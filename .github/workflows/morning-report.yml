@@ -3,13 +3,12 @@ name: Morning Report
 on:
   schedule:
     # 台灣時間 07:00 = UTC 23:00 (前一日)
-    # cron: 分 時 日 月 週幾 (UTC)
+    # 週日 23:00 UTC → 週一 07:00 TPE   (週末綜合報)
     # 週一 23:00 UTC → 週二 07:00 TPE   (報週一晚的美股)
     # 週二 23:00 UTC → 週三 07:00 TPE
     # 週三 23:00 UTC → 週四 07:00 TPE
     # 週四 23:00 UTC → 週五 07:00 TPE
     # 週五 23:00 UTC → 週六 07:00 TPE   (報週五晚收盤)
-    # 週日 23:00 UTC → 週一 07:00 TPE   (週末綜合報)
     - cron: "0 23 * * 0,1,2,3,4,5"
   workflow_dispatch:   # 允許手動觸發測試
 
@@ -36,7 +35,17 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RECIPIENT: ${{ secrets.RECIPIENT }}
+
+          # 預設用 Gemini 免費 API。改 "anthropic" 即切回 Claude（要付費）
+          LLM_PROVIDER: gemini
+
+          # Gemini（免費 1500 req/日）
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+
+          # Anthropic Claude（付費，可留空）
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_MODEL: claude-sonnet-4-6
+
           TZ: Asia/Taipei
         run: python morning_report.py

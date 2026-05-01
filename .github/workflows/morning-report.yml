@@ -1,0 +1,42 @@
+name: Morning Report
+
+on:
+  schedule:
+    # 台灣時間 07:00 = UTC 23:00 (前一日)
+    # cron: 分 時 日 月 週幾 (UTC)
+    # 週一 23:00 UTC → 週二 07:00 TPE   (報週一晚的美股)
+    # 週二 23:00 UTC → 週三 07:00 TPE
+    # 週三 23:00 UTC → 週四 07:00 TPE
+    # 週四 23:00 UTC → 週五 07:00 TPE
+    # 週五 23:00 UTC → 週六 07:00 TPE   (報週五晚收盤)
+    # 週日 23:00 UTC → 週一 07:00 TPE   (週末綜合報)
+    - cron: "0 23 * * 0,1,2,3,4,5"
+  workflow_dispatch:   # 允許手動觸發測試
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run morning report
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: claude-sonnet-4-6
+          TZ: Asia/Taipei
+        run: python morning_report.py

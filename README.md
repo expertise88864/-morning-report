@@ -20,13 +20,15 @@
 4. 「應用程式名稱」填 `Morning Report`，按建立
 5. **複製 16 碼密碼**（去掉空格），等下要用
 
-### 步驟 2：申請 Anthropic API Key
+### 步驟 2：申請 Google Gemini API Key（**完全免費**）
 
-1. 註冊 https://console.anthropic.com/
-2. 左側 **API Keys** → **Create Key**
-3. 名稱填 `morning-report`，複製 key（`sk-ant-...`）
-4. 在 **Plans & Billing** 儲值最少 USD $5（可用約 100 次以上）
-5. 預估每日成本：USD $0.04 ≈ NT$1.3
+1. 進 https://aistudio.google.com/apikey
+2. 用 Gmail 登入
+3. 按 **Create API key** → **Create API key in new project**
+4. 複製 key（`AIza...` 開頭）
+5. 預估每日成本：**NT$0**（Gemini 2.5 Flash 免費層每日 1500 req，你每天只用 1 次）
+
+> 💡 **進階選項**：若想換用 Claude（品質略勝、要付費約 NT$30/月），改去 https://console.anthropic.com 申請 `ANTHROPIC_API_KEY`，並把 workflow 中 `LLM_PROVIDER` 改成 `anthropic`，requirements.txt 取消 anthropic 那行的註解。
 
 ### 步驟 3：建 GitHub repo 並上傳檔案
 
@@ -54,7 +56,8 @@
 | `GMAIL_USER` | `expertise88864@gmail.com` |
 | `GMAIL_APP_PASSWORD` | 步驟 1 拿到的 16 碼密碼 |
 | `RECIPIENT` | `expertise88864@gmail.com`（如要寄給其他人改這個） |
-| `ANTHROPIC_API_KEY` | 步驟 2 拿到的 `sk-ant-...` |
+| `GEMINI_API_KEY` | 步驟 2 拿到的 `AIza...`（**必填**，預設用此） |
+| `ANTHROPIC_API_KEY` | 進階用：若要切 Claude 才需設，否則可不設 |
 
 ### 步驟 5：手動跑一次測試
 
@@ -129,10 +132,12 @@ python morning_report.py
 | 項目 | 月成本 |
 |---|---|
 | GitHub Actions（Private repo 2000 分鐘/月免費，本任務每次 ~2 分鐘 × 22 次 = 44 分鐘） | **NT$0** |
-| Anthropic Claude API（每日 ~3000 tokens 輸入 + 2000 tokens 輸出） | **NT$30–40** |
+| **Google Gemini API**（免費層每日 1500 req，每月用 ~22 req） | **NT$0** |
 | Gmail SMTP | **NT$0** |
 | Yahoo Finance 資料 | **NT$0** |
-| **合計** | **約 NT$30–40 / 月** |
+| **合計** | **NT$0 / 月** ✨ |
+
+> 📌 若改用 Claude（`LLM_PROVIDER=anthropic`）：每月約 NT$30–40。
 
 ---
 

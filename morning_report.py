@@ -3,7 +3,11 @@
 =================
 每日台灣時間 07:00 抓取昨晚美股 (QQQ / TSM / SPY) 收盤價，
 換算 00662 公允淨值、雙模型預測 2330 開盤合理價，
-並用 Claude API 產生新聞速報與分析，最後以 Gmail SMTP 寄出。
+並用 LLM API 產生新聞速報與分析，最後以 Gmail SMTP 寄出。
+
+支援 LLM 提供商（環境變數 LLM_PROVIDER 控制）：
+  - "gemini"    → Google Gemini 2.5 Flash（免費 1500 req/日，預設）
+  - "anthropic" → Claude Sonnet（付費，品質略勝）
 
 執行條件 (cron 已處理)：台灣時間週二至週六 07:00。週一另判斷。
 """
@@ -20,7 +24,6 @@ from email.message import EmailMessage
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-import anthropic
 import feedparser
 import pandas as pd
 import requests
@@ -33,9 +36,13 @@ NY = ZoneInfo("America/New_York")
 GMAIL_USER = os.environ["GMAIL_USER"]            # e.g. expertise88864@gmail.com
 GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 RECIPIENT = os.environ.get("RECIPIENT", GMAIL_USER)
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # RSS 新聞來源（中、英、Fed）
 RSS_FEEDS = {
@@ -220,16 +227,12 @@ def fetch_news() -> list[dict]:
     return items
 
 
-def call_claude_analysis(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
-    """請 Claude 寫 5 分鐘版科技財經速報。"""
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
+def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
     news_block = "\n".join(
         f"- [{n['source']}] {n['title']}（{n.get('summary','')[:150]}）"
         for n in news[:40]
     )
-
-    prompt = f"""你是專業科技股財經分析師。請依下列資料，用繁體中文寫一份 5 分鐘可讀完的早晨速報，給一位重押 00662（NASDAQ-100）與 2330（台積電）的投資人。
+    return f"""你是專業科技股財經分析師。請依下列資料，用繁體中文寫一份 5 分鐘可讀完的早晨速報，給一位重押 00662（NASDAQ-100）與 2330（台積電）的投資人。
 
 【昨日美股收盤】
 - QQQ：{quotes['QQQ']}
@@ -267,12 +270,50 @@ def call_claude_analysis(quotes: dict, fair: dict, predictions: dict, news: list
 給一個明確、不模糊的市場立場。
 """
 
+
+def _call_gemini(prompt: str) -> str:
+    """Google Gemini 2.5 Flash REST API（免費 1500 req/日）。"""
+    if not GEMINI_API_KEY:
+        raise RuntimeError("缺 GEMINI_API_KEY 環境變數")
+    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+           f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}")
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 4096,
+        },
+    }
+    r = requests.post(url, json=payload, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def _call_anthropic(prompt: str) -> str:
+    """Claude Sonnet 付費 API。"""
+    import anthropic  # 延後 import，未用就不需安裝
+    if not ANTHROPIC_API_KEY:
+        raise RuntimeError("缺 ANTHROPIC_API_KEY 環境變數")
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     msg = client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
     return msg.content[0].text
+
+
+def call_llm_analysis(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
+    """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。"""
+    prompt = _build_prompt(quotes, fair, predictions, news)
+    if LLM_PROVIDER == "anthropic":
+        return _call_anthropic(prompt)
+    return _call_gemini(prompt)
+
+
+# 向後相容別名（test_with_mock.py 等舊程式仍可運作）
+call_claude_analysis = call_llm_analysis
 
 
 # ---------- HTML 組版 ----------
@@ -358,7 +399,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
   <div>{analysis_html}</div>
 
   <hr>
-  <p style="font-size:11px;color:#888">本信件由自動化腳本於 GitHub Actions 產生。資料來源：Yahoo Finance、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、工商時報。分析由 Claude {CLAUDE_MODEL} 生成，僅供參考，不構成投資建議。</p>
+  <p style="font-size:11px;color:#888">本信件由自動化腳本於 GitHub Actions 產生。資料來源：Yahoo Finance、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、工商時報。分析由 LLM ({LLM_PROVIDER}/{GEMINI_MODEL if LLM_PROVIDER=='gemini' else CLAUDE_MODEL}) 生成，僅供參考，不構成投資建議。</p>
 </body></html>
 """
 
@@ -423,8 +464,8 @@ def main() -> int:
     print(f"[main] 抓到 {len(news)} 則新聞")
 
     # 6. Claude 分析
-    print("[main] 呼叫 Claude 分析…")
-    analysis = call_claude_analysis(quotes, fair, predictions, news)
+    print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
+    analysis = call_llm_analysis(quotes, fair, predictions, news)
 
     # 7. 組信
     html = render_html(quotes, fair, predictions, analysis, report_date, mode)

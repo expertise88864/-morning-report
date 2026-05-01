@@ -20,6 +20,7 @@ import smtplib
 import ssl
 import sys
 import textwrap
+import time
 from email.message import EmailMessage
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -271,12 +272,12 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict])
 """
 
 
-def _call_gemini(prompt: str) -> str:
-    """Google Gemini 2.5 Flash REST API（免費 1500 req/日）。"""
+def _call_gemini_once(model: str, prompt: str) -> str:
+    """單次呼叫 Gemini REST。失敗時直接 raise，由外層處理重試/降級。"""
     if not GEMINI_API_KEY:
         raise RuntimeError("缺 GEMINI_API_KEY 環境變數")
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}")
+           f"{model}:generateContent?key={GEMINI_API_KEY}")
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -284,10 +285,57 @@ def _call_gemini(prompt: str) -> str:
             "maxOutputTokens": 4096,
         },
     }
-    r = requests.post(url, json=payload, timeout=60)
+    r = requests.post(url, json=payload, timeout=90)
     r.raise_for_status()
     data = r.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise RuntimeError(f"Gemini 回應無 candidates: {data}")
+    parts = candidates[0].get("content", {}).get("parts") or []
+    if not parts:
+        raise RuntimeError(f"Gemini 回應無 parts: {data}")
+    return parts[0].get("text", "")
+
+
+# 模型降級鏈：主模型不穩時依序往下試
+GEMINI_FALLBACK_MODELS = [
+    GEMINI_MODEL,                    # 通常是 gemini-2.5-flash
+    "gemini-2.5-flash-lite",         # 更輕量，較少 503
+    "gemini-2.0-flash",              # 上一代穩定版
+]
+RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _call_gemini(prompt: str) -> str:
+    """
+    Gemini 完整呼叫流程：
+    對每個候選模型重試 3 次（指數退避 5s/15s/45s），
+    任何模型成功就回傳；全部失敗才 raise。
+    """
+    last_err: Optional[Exception] = None
+    for model in GEMINI_FALLBACK_MODELS:
+        for attempt in range(1, 4):
+            try:
+                print(f"[llm] 嘗試 Gemini model={model} attempt={attempt}")
+                return _call_gemini_once(model, prompt)
+            except requests.exceptions.HTTPError as e:
+                code = e.response.status_code if e.response is not None else None
+                last_err = e
+                if code in RETRY_STATUS_CODES and attempt < 3:
+                    wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
+                    print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                print(f"[llm] {model} 最終失敗: {e}", file=sys.stderr)
+                break  # 進入下一個 fallback 模型
+            except Exception as e:
+                last_err = e
+                print(f"[llm] {model} 異常: {e}", file=sys.stderr)
+                if attempt < 3:
+                    time.sleep(5)
+                    continue
+                break
+    raise RuntimeError(f"Gemini 所有降級模型皆失敗: {last_err}")
 
 
 def _call_anthropic(prompt: str) -> str:
@@ -304,12 +352,40 @@ def _call_anthropic(prompt: str) -> str:
     return msg.content[0].text
 
 
+def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
+    """LLM 完全失敗時的備援文字。仍提供原始新聞清單與錯誤說明。"""
+    top_news = "\n".join(
+        f"- [{n['source']}] {n['title']}"
+        for n in news[:20]
+    )
+    return f"""## ⚠️ LLM 服務暫時不可用
+
+今日早晨 LLM API 多次重試均失敗，已自動降級寄出基本版報告。錯誤訊息：
+`{type(err).__name__}: {str(err)[:200]}`
+
+## 一、原始新聞清單（供你自行判讀）
+
+{top_news}
+
+## 二、提示
+
+請直接看上方「美股收盤行情」「00662 公允價」「2330 雙模型預測」三個區塊做判斷。
+若情況持續，可考慮：
+- 切換 LLM_PROVIDER 為 anthropic（Claude 付費版較穩）
+- 等待數小時後 Gemini 服務恢復
+"""
+
+
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
-    """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。"""
+    """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。失敗回傳備援文字而非 raise。"""
     prompt = _build_prompt(quotes, fair, predictions, news)
-    if LLM_PROVIDER == "anthropic":
-        return _call_anthropic(prompt)
-    return _call_gemini(prompt)
+    try:
+        if LLM_PROVIDER == "anthropic":
+            return _call_anthropic(prompt)
+        return _call_gemini(prompt)
+    except Exception as e:
+        print(f"[llm] 全部失敗，使用備援文字: {e}", file=sys.stderr)
+        return _fallback_analysis_text(news, e)
 
 
 # 向後相容別名（test_with_mock.py 等舊程式仍可運作）

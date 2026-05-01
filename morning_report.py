@@ -184,12 +184,18 @@ def fetch_news() -> list[dict]:
                 r = requests.get(url, timeout=10,
                                  headers={"User-Agent": "Mozilla/5.0"})
                 if r.status_code == 200:
-                    data = r.json().get("items", {}).get("data", [])
+                    payload = r.json() or {}
+                    items_obj = payload.get("items") or {}
+                    data = items_obj.get("data") if isinstance(items_obj, dict) else None
+                    if not isinstance(data, list):
+                        data = []
                     for d in data[:10]:
+                        if not isinstance(d, dict):
+                            continue
                         items.append({
                             "source": source,
                             "title": d.get("title", ""),
-                            "summary": d.get("summary", "")[:300],
+                            "summary": (d.get("summary") or "")[:300],
                             "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
                             "published": d.get("publishAt", ""),
                         })

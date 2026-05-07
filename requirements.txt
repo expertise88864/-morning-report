@@ -2,4 +2,5 @@ yfinance>=0.2.40
 pandas>=2.2.0
 requests>=2.31.0
 feedparser>=6.0.10
-anthropic>=0.40.0
+# 不再需要 markdown 套件（已改用內建 re 自製轉譯器）
+# anthropic>=0.40.0   # 若要切回 Claude 才需取消註解

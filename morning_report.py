@@ -308,13 +308,33 @@ def fetch_twse_institutional() -> dict[str, dict]:
                     return k
         return None
 
+    def find_startswith(prefix: str) -> Optional[str]:
+        """嚴格用 startswith 匹配，避免「外資自營商」誤抓。"""
+        for k in sample_keys:
+            if k.strip().startswith(prefix):
+                return k
+        return None
+
+    def find_exact(*candidates: str) -> Optional[str]:
+        """精準匹配（去空白後相等）。"""
+        keys_clean = {k.strip(): k for k in sample_keys}
+        for cand in candidates:
+            if cand in keys_clean:
+                return keys_clean[cand]
+        return None
+
     # === 中文欄位（主站 API）===
-    # 主站欄位名範例：
-    #   證券代號、證券名稱、外陸資買賣超股數(不含外資自營商)、外資自營商買賣超股數、
-    #   投信買賣超股數、自營商買賣超股數(自行買賣)、自營商買賣超股數(避險)、自營商買賣超股數
+    # 主站欄位名實際格式：
+    #   證券代號、證券名稱、
+    #   外陸資買賣超股數(不含外資自營商)、外資自營商買賣超股數、
+    #   投信買賣超股數、
+    #   自營商買賣超股數(自行買賣)、自營商買賣超股數(避險)、自營商買賣超股數、
+    #   三大法人買賣超股數
+    # 重點：「自營商」要嚴格用 startswith，否則會抓到「外資自營商」
     f_over_cn = find_any("外陸資買賣超股數", "外資及陸資買賣超股數", "外資買賣超股數")
-    t_over_cn = find_any("投信買賣超股數")
-    d_over_cn = find_any("自營商買賣超股數")  # 包括 "自營商買賣超股數" 各變體
+    t_over_cn = find_startswith("投信買賣超股數") or find_any("投信買賣超股數")
+    # 優先抓「自營商買賣超股數」(合計)；找不到才用「自營商買賣超股數(自行買賣)」
+    d_over_cn = find_exact("自營商買賣超股數") or find_startswith("自營商買賣超股數")
     code_cn   = find_any("證券代號")
 
     # === 英文欄位（OpenAPI）===
@@ -834,9 +854,94 @@ call_claude_analysis = call_llm_analysis
 
 # ---------- HTML 組版（Email 友善版） ----------
 def _md_to_html(text: str) -> str:
-    """用 markdown 套件將 LLM 輸出轉 HTML，並加 inline style 做 Gmail/Outlook 兼容。"""
-    import markdown
-    html = markdown.markdown(text, extensions=["extra", "sane_lists", "nl2br"])
+    """
+    自製 minimal Markdown → HTML 轉譯器，只用 stdlib `re`，不依賴第三方套件。
+    支援：H1-H4 標題、**粗體**、*斜體*、- 與 * 列表、> 引用、空行分段。
+    """
+    import re
+    import html as html_lib
+
+    # 1. HTML escape（避免 LLM 輸出的 < > & 變成標籤）
+    text = html_lib.escape(text)
+
+    # 2. 一次處理一行
+    lines = text.split("\n")
+    out: list[str] = []
+    in_ul = False
+    in_blockquote = False
+    para_buffer: list[str] = []
+
+    def flush_para():
+        nonlocal para_buffer
+        if para_buffer:
+            joined = " ".join(para_buffer).strip()
+            if joined:
+                out.append(f"<p>{joined}</p>")
+            para_buffer = []
+
+    def close_lists():
+        nonlocal in_ul, in_blockquote
+        if in_ul:
+            out.append("</ul>")
+            in_ul = False
+        if in_blockquote:
+            out.append("</blockquote>")
+            in_blockquote = False
+
+    for raw in lines:
+        line = raw.rstrip()
+        # 空行 → 段落結束
+        if not line.strip():
+            flush_para()
+            close_lists()
+            continue
+
+        # 標題 #### / ### / ## / #
+        m = re.match(r"^(#{1,6})\s+(.+)$", line)
+        if m:
+            flush_para(); close_lists()
+            level = len(m.group(1))
+            content = m.group(2).strip()
+            out.append(f"<h{level}>{content}</h{level}>")
+            continue
+
+        # 引用 >
+        if line.lstrip().startswith("&gt;") or line.lstrip().startswith(">"):
+            flush_para()
+            if not in_blockquote:
+                out.append("<blockquote>")
+                in_blockquote = True
+            content = re.sub(r"^\s*(?:&gt;|>)\s?", "", line)
+            out.append(f"{content}<br>")
+            continue
+        elif in_blockquote:
+            out.append("</blockquote>")
+            in_blockquote = False
+
+        # 列表 - 或 *
+        m = re.match(r"^\s*[-*]\s+(.+)$", line)
+        if m:
+            flush_para()
+            if not in_ul:
+                out.append("<ul>")
+                in_ul = True
+            out.append(f"<li>{m.group(1)}</li>")
+            continue
+        elif in_ul:
+            out.append("</ul>")
+            in_ul = False
+
+        # 一般段落內容（累積）
+        para_buffer.append(line)
+
+    flush_para()
+    close_lists()
+    html = "\n".join(out)
+
+    # 3. 行內樣式：**粗體** 與 *斜體*（粗體優先）
+    html = re.sub(r"\*\*([^*\n]+?)\*\*", r"<strong>\1</strong>", html)
+    html = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<em>\1</em>", html)
+
     return html
 
 

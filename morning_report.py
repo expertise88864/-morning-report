@@ -76,6 +76,63 @@ RSS_FEEDS = {
     "中央社政治":         "https://feeds.feedburner.com/rsscna/politics",
 }
 
+# ---------- 0050 成分股清單（含業務簡介） ----------
+# 資料以元大投信 0050 ETF 公開月報為基準，每季可能小幅調整
+TW0050_CONSTITUENTS: dict[str, str] = {
+    "2330": "台積電 — 全球晶圓代工龍頭，先進製程 (3nm/5nm) 市佔超過 90%",
+    "2317": "鴻海 — 全球最大 EMS 代工，AI 伺服器與電動車 (Foxtron) 雙引擎",
+    "2454": "聯發科 — 全球第二大 IC 設計，主力天璣手機晶片與汽車/AI 邊緣晶片",
+    "2382": "廣達 — 全球最大 NB 代工 + AI 伺服器代工龍頭 (NVDA H100/B200 主力)",
+    "2308": "台達電 — 電源供應與工業自動化龍頭，AI 資料中心電源題材火熱",
+    "2891": "中信金 — 大型金控，銀行+證券+人壽綜合營運",
+    "2412": "中華電 — 電信龍頭，5G 與 IDC 業務穩定",
+    "2881": "富邦金 — 金控含人壽 (富邦人壽) 與證券，受惠美股投資收益",
+    "3711": "日月光投控 — 全球最大封測廠，CoWoS/SoIC 先進封裝受惠 AI 浪潮",
+    "2882": "國泰金 — 金控龍頭，人壽 + 銀行 + 證券，受惠美股+股債雙利",
+    "2002": "中鋼 — 國內最大鋼鐵廠，傳產循環與基建題材",
+    "1303": "南亞 — 塑化、電子材料 (BT/ABF 載板) 雙主軸",
+    "1301": "台塑 — 石化龍頭，傳統景氣循環",
+    "2303": "聯電 — 全球第三大晶圓代工，特殊製程 (28nm/22nm) 為主",
+    "3231": "緯創 — NB/伺服器代工，AI 伺服器二線受惠者",
+    "2357": "華碩 — 全球前三大 NB/PC 品牌，AI PC 題材",
+    "2880": "華南金 — 公股金控，銀行業務為主",
+    "1216": "統一 — 食品龍頭，內需消費代表",
+    "5871": "中租-KY — 國內最大租賃公司，受惠中小企業融資與綠能設備租賃",
+    "5880": "合庫金 — 公股金控，銀行業務主導",
+    "2884": "玉山金 — 民營金控，數位金融領先",
+    "3008": "大立光 — 高階手機鏡頭龍頭，VCSEL/車用鏡頭題材",
+    "2886": "兆豐金 — 公股金控，外匯業務專長",
+    "3034": "聯詠 — 顯示器驅動 IC + SoC 雙核心",
+    "2207": "和泰車 — Toyota 台灣總代理，受惠新車交車與電動車布局",
+    "2885": "元大金 — 證券+銀行+投信，市場成交量受益者",
+    "2892": "第一金 — 公股金控",
+    "2912": "統一超 — 7-ELEVEN 經營者，零售龍頭",
+    "5876": "上海商銀 — 中型銀行，財富管理優勢",
+    "2890": "永豐金 — 民營金控，海外布局積極",
+    "1101": "台泥 — 水泥龍頭，跨足儲能/綠能轉型",
+    "1326": "台化 — 台塑集團石化原料",
+    "2883": "開發金 — 金控含人壽 (中壽)",
+    "2887": "台新金 — 民營金控，銀行+人壽 (新光金合併中)",
+    "2379": "瑞昱 — 網通晶片龍頭 (乙太網路/Wi-Fi/藍牙 IC)",
+    "2395": "研華 — 工業電腦 (IPC) 全球龍頭，AI Edge 應用題材",
+    "1590": "亞德客-KY — 氣動元件龍頭，自動化設備題材",
+    "2603": "長榮 — 全球第七大貨櫃航商，受惠歐美補貨與紅海航線",
+    "2615": "萬海 — 亞洲區間貨櫃航運",
+    "2609": "陽明 — 國營背景貨櫃航商",
+    "1102": "亞泥 — 水泥次大廠",
+    "2801": "彰銀 — 公股銀行",
+    "1605": "華新 — 線纜與不鏽鋼，受惠電網與 AI 資料中心電力建設",
+    "2345": "智邦 — 高階交換器/網通設備，AI 資料中心 800G 交換器受惠者",
+    "2327": "國巨 — 全球第三大被動元件廠，併購 KEMET 後布局車用/工業利基",
+    "1102": "亞泥 — 水泥次大廠",   # （重複代號保險用）
+    "3045": "台灣大 — 電信第二大，併購台灣之星後 5G 規模擴大",
+    "4938": "和碩 — Apple iPhone 主要組裝代工，多角化布局伺服器與電動車",
+    "2301": "光寶科 — 電源/光電/雲端，AI 伺服器電源代工",
+    "3037": "欣興 — ABF 載板龍頭，受惠 AI 晶片高階載板需求",
+    "2356": "英業達 — 伺服器代工，AI 伺服器二線受惠者",
+}
+
+
 # ---------- 工具函式 ----------
 def safe_float(x) -> Optional[float]:
     try:
@@ -138,6 +195,105 @@ def fetch_usdtwd() -> Optional[float]:
         return round(safe_float(d.iloc[-1]["Close"]), 4)
     except Exception:
         return None
+
+
+def fetch_twse_institutional() -> dict[str, dict]:
+    """
+    從 TWSE OpenAPI 抓昨日三大法人買賣超。
+    回傳：{ "2330": {"foreign": +123456, "investment": -2000, "dealer": +500, "total": ...}, ... }
+    單位：股數（負為賣超）。
+    參考：https://openapi.twse.com.tw/#/
+    """
+    url = "https://openapi.twse.com.tw/v1/fund/T86"
+    try:
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        rows = r.json()
+    except Exception as e:
+        print(f"[twse] 法人 API 失敗: {e}", file=sys.stderr)
+        return {}
+
+    result: dict[str, dict] = {}
+    for row in rows:
+        code = (row.get("Code") or "").strip()
+        if not code:
+            continue
+        try:
+            # T86 欄位：外資、投信、自營商買賣超股數
+            foreign = int(str(row.get("ForeignInvestorsBuySellOver", "0")).replace(",", "") or 0)
+            invest  = int(str(row.get("InvestmentTrustBuySellOver", "0")).replace(",", "") or 0)
+            dealer  = int(str(row.get("DealerBuySellOver", "0")).replace(",", "") or 0)
+            total   = foreign + invest + dealer
+            result[code] = {
+                "foreign": foreign,      # 外資
+                "investment": invest,     # 投信
+                "dealer": dealer,         # 自營商
+                "total": total,           # 三大法人合計
+            }
+        except (ValueError, TypeError):
+            continue
+    print(f"[twse] 抓到 {len(result)} 檔法人買賣超資料")
+    return result
+
+
+def fetch_tw0050_snapshot() -> list[dict]:
+    """
+    批次抓 0050 成分股近期表現。
+    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超。
+    """
+    inst = fetch_twse_institutional()
+    snapshot: list[dict] = []
+    codes = list(TW0050_CONSTITUENTS.keys())
+
+    # yfinance 批次下載 (每檔加 .TW)
+    tickers = " ".join(f"{c}.TW" for c in codes)
+    try:
+        df_all = yf.download(tickers, period="1mo", group_by="ticker",
+                              auto_adjust=False, progress=False, threads=True)
+    except Exception as e:
+        print(f"[snapshot] 批次下載失敗: {e}", file=sys.stderr)
+        return []
+
+    for code in codes:
+        try:
+            sub = df_all[f"{code}.TW"].dropna(subset=["Close"])
+            sub = sub[sub["Close"] > 0]
+            if len(sub) < 5:
+                continue
+            last = sub.iloc[-1]
+            prev = sub.iloc[-2]
+            close = safe_float(last["Close"])
+            prev_close = safe_float(prev["Close"])
+            day_pct = (close - prev_close) / prev_close * 100 if prev_close else 0
+
+            vol = safe_float(last["Volume"])
+            avg5_vol = sub["Volume"].tail(5).mean()
+            vol_ratio = (vol / avg5_vol) if avg5_vol else None
+
+            month_first = safe_float(sub.iloc[0]["Close"])
+            month_pct = (close - month_first) / month_first * 100 if month_first else 0
+
+            inst_data = inst.get(code, {})
+
+            snapshot.append({
+                "code": code,
+                "name": TW0050_CONSTITUENTS[code].split(" — ")[0],
+                "desc": TW0050_CONSTITUENTS[code],
+                "close": round(close, 2),
+                "day_pct": round(day_pct, 2),
+                "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
+                "month_pct": round(month_pct, 2),
+                "foreign_lot": round(inst_data.get("foreign", 0) / 1000, 1),    # 轉張
+                "invest_lot": round(inst_data.get("investment", 0) / 1000, 1),
+                "dealer_lot": round(inst_data.get("dealer", 0) / 1000, 1),
+                "total_lot": round(inst_data.get("total", 0) / 1000, 1),
+            })
+        except (KeyError, ValueError, TypeError) as e:
+            print(f"[snapshot] {code} 跳過: {e}", file=sys.stderr)
+            continue
+
+    print(f"[snapshot] 0050 完成 {len(snapshot)} 檔")
+    return snapshot
 
 
 def fetch_2330_recent() -> Optional[pd.DataFrame]:
@@ -282,11 +438,32 @@ def fetch_news() -> list[dict]:
     return items
 
 
-def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
+def _build_prompt(quotes: dict, fair: dict, predictions: dict,
+                   news: list[dict], tw0050: list[dict]) -> str:
     news_block = "\n".join(
         f"- [{n['source']}] {n['title']}（{n.get('summary','')[:200]}）"
         for n in news[:60]
     )
+
+    # 整理 0050 法人/表現摘要表（讓 LLM 一眼掃完）
+    if tw0050:
+        # 排序：法人合計買超由大到小（負則是賣超）
+        tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)
+        rows = []
+        for s in tw0050_sorted:
+            rows.append(
+                f"{s['code']} {s['name']:<6} 收{s['close']:>8} "
+                f"日{s['day_pct']:+5.2f}% 月{s['month_pct']:+6.2f}% "
+                f"量比{(str(s['vol_ratio']) if s['vol_ratio'] else '-'):>5} "
+                f"外資{s['foreign_lot']:+8.0f}張 "
+                f"投信{s['invest_lot']:+6.0f}張 "
+                f"自營{s['dealer_lot']:+6.0f}張 "
+                f"總{s['total_lot']:+8.0f}張 | {s['desc']}"
+            )
+        tw0050_block = "\n".join(rows)
+    else:
+        tw0050_block = "（資料抓取失敗）"
+
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
 【昨日美股收盤】
@@ -303,6 +480,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict])
 
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
+
+【0050 成分股昨日表現與三大法人買賣超（單位：張，正為買超、負為賣超）】
+{tw0050_block}
 
 # 寫作要求（必讀）
 
@@ -349,8 +529,28 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict])
 > **00662 操作建議**：（明確寫加碼 / 觀望 / 減碼，給一個價位門檻）
 > **主要風險**：1 句話
 
-## 六、一句話總結
+## 六、今日台股關注三檔（**必寫，0050 成分股限定**）
+從上方「0050 成分股」表格中，**結合基本面（公司營運/題材）+ 消息面（昨日新聞）+ 法人面（外資/投信買超強度）** 三角度，選出**今日預期漲幅最高的三檔**。**不限制漲幅大小**、**不要用技術面（K 線、均線、MACD）**。
+
+每檔必須包含：
+- **代號 + 公司名**（H4 標題）
+- **業務簡介**（1-2 句，這間公司在做什麼）
+- **近期營收/獲利動向**（最近一季營收表現、年增率，若新聞清單沒提到可用先驗知識）
+- **昨日法人動向**：外資/投信/自營買超張數，重點解讀（外資是否連續買超？投信籌碼集中？）
+- **挑選理由**：為什麼是今天會漲（消息催化 + 籌碼結構 + 基本面定位）
+- **信心等級**：高 / 中 / 低（不可省略，且必須誠實）
+- **目標關注幅度**：給一個合理區間（例如「漲幅 2-4%」）
+
+**禁止事項**：
+- 不可用技術面分析（不能提 K 線、均線、MACD、KD、RSI、布林通道）
+- 不可選 0050 以外的股票
+- 若三檔都信心低，照寫，不要勉強說都很有把握
+
+## 七、一句話總結
 20 字內。給一句具體可執行的結論。
+
+# 重要警示
+你不是真神。**第六段最後務必加一行小字風險警示**：「以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議」。
 """
 
 
@@ -364,7 +564,7 @@ def _call_gemini_once(model: str, prompt: str) -> str:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 4096,
+            "maxOutputTokens": 8192,
         },
     }
     r = requests.post(url, json=payload, timeout=90)
@@ -458,9 +658,10 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 """
 
 
-def call_llm_analysis(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
+def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
+                       news: list[dict], tw0050: list[dict] | None = None) -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。失敗回傳備援文字而非 raise。"""
-    prompt = _build_prompt(quotes, fair, predictions, news)
+    prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [])
     try:
         if LLM_PROVIDER == "anthropic":
             return _call_anthropic(prompt)
@@ -526,17 +727,38 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                             .replace("##", "<h3 style='color:#1e40af;margin-top:16px'>") \
                             .replace("<br><h3", "</h3><h3")
 
+    # 將「## 六、今日台股關注三檔」段落特別包成黃色強調框（如有）
+    if "今日台股關注三檔" in analysis_html:
+        analysis_html = analysis_html.replace(
+            "<h3 style='color:#1e40af;margin-top:16px'> 六、今日台股關注三檔",
+            "</div><div class='tw-pick-box'><h3 style='color:#92400e;margin-top:0'>★ 六、今日台股關注三檔",
+            1,
+        )
+        # 在第七段標題前關閉黃色框
+        analysis_html = analysis_html.replace(
+            "<h3 style='color:#1e40af;margin-top:16px'> 七、",
+            "</div><h3 style='color:#1e40af;margin-top:16px'> 七、",
+            1,
+        )
+
     return f"""
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  body {{ font-family: -apple-system, "Microsoft JhengHei", sans-serif; max-width: 720px; margin: 0 auto; color: #111; line-height: 1.6; }}
+  body {{ font-family: -apple-system, "Microsoft JhengHei", sans-serif; max-width: 760px; margin: 0 auto; color: #111; line-height: 1.7; padding: 8px; }}
   h1 {{ color: #1e3a8a; border-bottom: 3px solid #1e3a8a; padding-bottom: 8px; }}
   h2 {{ color: #1e40af; margin-top: 24px; border-left: 4px solid #1e40af; padding-left: 8px; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 8px 0; }}
+  h3 {{ color: #1e40af; }}
+  h4 {{ color: #b45309; margin-top: 14px; margin-bottom: 4px; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 14px; }}
   td, th {{ border: 1px solid #ddd; padding: 6px 10px; }}
   th {{ background: #f3f4f6; }}
   .badge {{ background: #1e3a8a; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; }}
+  blockquote {{ border-left: 4px solid #b45309; background: #fffbeb; margin: 8px 0; padding: 8px 14px; }}
+  .tw-pick-box {{ background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px 18px; margin: 16px 0; }}
+  .tw-pick-box h3 {{ color: #92400e !important; }}
+  .tw-pick-box h4 {{ color: #b45309; border-bottom: 1px dashed #f59e0b; padding-bottom: 4px; }}
+  strong {{ color: #1e3a8a; }}
 </style></head>
 <body>
   <h1>📈 美股晨報 {report_date} <span class="badge">{mode}</span></h1>
@@ -621,11 +843,19 @@ def main() -> int:
     news = fetch_news()
     print(f"[main] 抓到 {len(news)} 則新聞")
 
-    # 6. Claude 分析
-    print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
-    analysis = call_llm_analysis(quotes, fair, predictions, news)
+    # 6. 抓 0050 成分股法人/表現
+    print("[main] 抓 0050 成分股法人買賣超與近期表現…")
+    try:
+        tw0050 = fetch_tw0050_snapshot()
+    except Exception as e:
+        print(f"[main] 0050 抓取失敗: {e}", file=sys.stderr)
+        tw0050 = []
 
-    # 7. 組信
+    # 7. LLM 分析
+    print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
+    analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050)
+
+    # 8. 組信
     html = render_html(quotes, fair, predictions, analysis, report_date, mode)
 
     # 8. dry-run 模式：只輸出檔案

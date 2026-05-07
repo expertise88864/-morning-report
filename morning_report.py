@@ -673,20 +673,23 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 # 輸出結構（必須完全照此順序與標題）
 
-## 一、昨夜三大重點
+## 四、昨夜三大重點
 僅 3 條 bullet。直接點出最影響 00662 / 2330 的關鍵事件。
 
-## 二、科技板塊脈動（5–8 條）
+## 五、科技板塊脈動（5–8 條）
 每條格式：**公司名（一句話業務簡介）**：發生什麼 + 為何重要。
 範例：**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力資料中心晶片）**：Q3 資料中心營收年增 122%，MI300X 出貨優於預期，AI 算力競賽中與 NVDA 差距縮小。
 
-## 三、總體經濟與政策環境
+## 六、總體經濟與政策環境
 分三小段：
+
 **(A) 美國利率/美元/VIX/通膨**：列出昨日 10Y 殖利率、DXY、VIX、CPI/PPI/就業數據（如有）。
+
 **(B) Fed/美國政府重大政策**：FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等。明確寫出對台灣科技業的影響。
+
 **(C) 全球其他國家政策（若有）**：日本央行、ECB、中國刺激政策、地緣政治等。
 
-## 四、台灣本地動態（必寫，不可略）
+## 七、台灣本地動態（必寫，不可略）
 聚焦昨日對台灣資本市場有影響的事：
 - 台灣央行/金管會動向
 - 台積電供應鏈動態（艾司摩爾、東京威力、SUMCO、信驊、力旺等）
@@ -694,40 +697,42 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - 政府政策（產創條例、科專、台美 21 世紀貿易倡議等）
 若新聞清單中沒有相關內容，寫「無重大本地新聞」，不要編造。
 
-## 五、我的明確立場（**最重要**）
+## 八、我的明確立場（**最重要**）
 **先給單一立場標籤**，再解釋為什麼。**不要列出樂觀/中性/悲觀三選一**——直接告訴投資人你選哪一個。
 
-格式：
+**注意：每一個項目必須獨立成段（中間有空行），不可寫成一段話連在一起**。格式如下：
+
 > **立場：[偏多 / 偏空 / 中性]**（任選一個，不可模糊）
->
-> 理由（3-5 句）：……
->
+
+> **理由**：3-5 句說明為什麼選這個立場
+
 > **2330 開盤關鍵價位**：守穩 XXX 元為強，跌破 XXX 元轉弱
-> **00662 操作建議**：（明確寫加碼 / 觀望 / 減碼，給一個價位門檻）
+
+> **00662 操作建議**：明確寫「加碼 / 觀望 / 減碼」+ 具體價位門檻
+
 > **主要風險**：1 句話
 
-## 六、今日台股關注三檔（**必寫，0050 成分股限定**）
+## 九、今日台股關注三檔（**必寫，0050 成分股限定**）
 從上方「0050 成分股」表格中，**結合基本面（公司營運/題材）+ 消息面（昨日新聞）+ 法人面（外資/投信買超強度）** 三角度，選出**今日預期漲幅最高的三檔**。**不限制漲幅大小**、**不要用技術面（K 線、均線、MACD）**。
 
-每檔必須包含：
-- **代號 + 公司名**（H4 標題）
-- **業務簡介**（1-2 句，這間公司在做什麼）
-- **近期營收/獲利動向**（最近一季營收表現、年增率，若新聞清單沒提到可用先驗知識）
-- **昨日法人動向**：外資/投信/自營買超張數，重點解讀（外資是否連續買超？投信籌碼集中？）
-- **挑選理由**：為什麼是今天會漲（消息催化 + 籌碼結構 + 基本面定位）
-- **信心等級**：高 / 中 / 低（不可省略，且必須誠實）
-- **目標關注幅度**：給一個合理區間（例如「漲幅 2-4%」）
+每檔必須用 **### 代號 公司名** 作為三級標題（例如 `### 2330 台積電`），下方接以下 6 個 bullet（**每項獨立一行**）：
+
+- **業務簡介**：1-2 句，這間公司在做什麼
+- **近期營收/獲利動向**：最近一季營收表現、年增率
+- **昨日法人動向**：外資/投信/自營買超張數，重點解讀（連續買超？籌碼集中？）
+- **挑選理由**：為什麼今天會漲（消息催化 + 籌碼結構 + 基本面定位）
+- **信心等級**：高 / 中 / 低（不可省略）
+- **目標關注幅度**：例如「漲幅 2-4%」
 
 **禁止事項**：
 - 不可用技術面分析（不能提 K 線、均線、MACD、KD、RSI、布林通道）
 - 不可選 0050 以外的股票
 - 若三檔都信心低，照寫，不要勉強說都很有把握
 
-## 七、一句話總結
-20 字內。給一句具體可執行的結論。
+第三檔分析完後**獨立成段**寫風險警示：「以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議」。
 
-# 重要警示
-你不是真神。**第六段最後務必加一行小字風險警示**：「以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議」。
+## 十、一句話總結
+20 字內。給一句具體可執行的結論。
 """
 
 
@@ -948,17 +953,19 @@ def _md_to_html(text: str) -> str:
 def _style_analysis_html(html: str) -> str:
     """為 markdown 轉出的 HTML 加 inline style（email client 不支援 <style>）。"""
     replacements = [
-        # 標題層次
-        ("<h2>", "<h2 style=\"color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;\">"),
-        ("<h3>", "<h3 style=\"color:#0f172a;font-size:17px;margin:24px 0 10px;padding-bottom:6px;border-bottom:2px solid #cbd5e1;\">"),
-        ("<h4>", "<h4 style=\"color:#0c4a6e;font-size:15px;margin:18px 0 6px;\">"),
+        # H2（章節標題：四、五、六、七、八、九、十）— 同首頁三大區塊風格
+        ("<h2>", "<h2 style=\"color:#0f172a;font-size:21px;font-weight:700;margin:36px 0 14px;padding:10px 16px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;letter-spacing:0.5px;\">"),
+        # H3（個股代號 + 公司名）— 大字 + 漸層背景
+        ("<h3>", "<h3 style=\"color:#92400e;font-size:19px;font-weight:700;margin:22px 0 12px;padding:10px 14px;background:linear-gradient(90deg,#fef3c7,#fde68a);border-radius:6px;border-left:4px solid #f59e0b;\">"),
+        # H4
+        ("<h4>", "<h4 style=\"color:#0c4a6e;font-size:16px;font-weight:700;margin:20px 0 8px;\">"),
         ("<h1>", "<h1 style=\"color:#0f172a;font-size:24px;margin:24px 0 12px;\">"),
         # 段落
-        ("<p>", "<p style=\"margin:10px 0;line-height:1.85;color:#1f2937;\">"),
+        ("<p>", "<p style=\"margin:14px 0;line-height:1.95;color:#1f2937;font-size:15px;\">"),
         # 列表
-        ("<ul>", "<ul style=\"margin:10px 0 14px;padding-left:24px;line-height:1.85;color:#1f2937;\">"),
-        ("<ol>", "<ol style=\"margin:10px 0 14px;padding-left:24px;line-height:1.85;color:#1f2937;\">"),
-        ("<li>", "<li style=\"margin:6px 0;\">"),
+        ("<ul>", "<ul style=\"margin:14px 0 18px;padding-left:24px;line-height:1.95;color:#1f2937;font-size:15px;\">"),
+        ("<ol>", "<ol style=\"margin:14px 0 18px;padding-left:24px;line-height:1.95;color:#1f2937;font-size:15px;\">"),
+        ("<li>", "<li style=\"margin:8px 0;padding-left:4px;\">"),
         # 強調
         ("<strong>", "<strong style=\"color:#0c4a6e;font-weight:700;\">"),
         ("<em>", "<em style=\"color:#475569;\">"),
@@ -997,18 +1004,17 @@ def _wrap_tw_picks(html: str) -> str:
 
     # mid 內的每一個 <h3>...</h3> 是一檔股票，把每檔包成卡片
     import re
-    # 把 h3 開始到下一個 h3（或 mid 結尾）的內容，包成卡片
     def card_repl(m: "re.Match[str]") -> str:
         block = m.group(0)
-        return ("<div style=\"background:#ffffff;border:1px solid #f59e0b;border-radius:8px;"
-                "padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,0.04);\">"
+        return ("<div style=\"background:#ffffff;border:1px solid #fcd34d;border-radius:10px;"
+                "padding:18px 22px;margin:18px 0;box-shadow:0 2px 6px rgba(245,158,11,0.12);\">"
                 + block + "</div>")
 
     pattern = re.compile(r"<h3[^>]*>.*?(?=<h3|$)", re.DOTALL)
     mid_cards = pattern.sub(card_repl, mid)
 
-    box = ("<div style=\"background:#fffbeb;border:2px solid #f59e0b;border-radius:12px;"
-           "padding:18px 20px;margin:24px 0;\">"
+    box = ("<div style=\"background:#fffbeb;border:2px solid #f59e0b;border-radius:14px;"
+           "padding:22px 24px;margin:28px 0;\">"
            + mid_cards + "</div>")
     return pre + box + post
 
@@ -1029,8 +1035,8 @@ def _wrap_stance(html: str) -> str:
     post = html[h2_end:]
 
     box = ("<div style=\"background:linear-gradient(135deg,#dbeafe,#e0f2fe);"
-           "border:2px solid #0284c7;border-radius:12px;"
-           "padding:18px 22px;margin:24px 0;\">"
+           "border:2px solid #0284c7;border-radius:14px;"
+           "padding:22px 26px;margin:28px 0;box-shadow:0 2px 8px rgba(2,132,199,0.10);\">"
            + mid + "</div>")
     return pre + box + post
 
@@ -1187,8 +1193,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">三、2330 開盤合理價預測</h2>
             {pred_html}
 
-            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">四、市場速報與分析</h2>
-            <div>{analysis_html}</div>
+            <div style="margin-top:32px;">{analysis_html}</div>
 
           </td></tr>
 

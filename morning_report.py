@@ -47,15 +47,33 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # RSS 新聞來源（中、英、Fed）
 RSS_FEEDS = {
-    "Reuters Tech":     "https://www.reuters.com/arc/outboundfeeds/rss/category/technology/?outputType=xml",
-    "Reuters Markets":  "https://www.reuters.com/arc/outboundfeeds/rss/category/markets/?outputType=xml",
-    "CNBC Top News":    "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
-    "CNBC Tech":        "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
-    "Bloomberg Markets":"https://feeds.bloomberg.com/markets/news.rss",
-    "Federal Reserve":  "https://www.federalreserve.gov/feeds/press_all.xml",
-    "鉅亨美股":          "https://api.cnyes.com/media/api/v1/newslist/category/us_stock?limit=20&page=1",  # JSON
-    "鉅亨台股":          "https://news.cnyes.com/rss/cat/tw_stock",
-    "工商時報財經":      "https://www.chinatimes.com/rss/realtimenews-finance.xml",
+    # === 國際財經 ===
+    "Reuters Tech":      "https://www.reuters.com/arc/outboundfeeds/rss/category/technology/?outputType=xml",
+    "Reuters Markets":   "https://www.reuters.com/arc/outboundfeeds/rss/category/markets/?outputType=xml",
+    "Reuters World":     "https://www.reuters.com/arc/outboundfeeds/rss/category/world/?outputType=xml",
+    "CNBC Top News":     "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+    "CNBC Tech":         "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
+    "CNBC Economy":      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",
+    "Bloomberg Markets": "https://feeds.bloomberg.com/markets/news.rss",
+    "Bloomberg Politics":"https://feeds.bloomberg.com/politics/news.rss",
+    "Yahoo Finance":     "https://finance.yahoo.com/news/rssindex",
+
+    # === 央行 / 政策 ===
+    "Federal Reserve":   "https://www.federalreserve.gov/feeds/press_all.xml",
+    "Fed Monetary":      "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    "Treasury":          "https://home.treasury.gov/news/press-releases/feed",
+
+    # === 台灣財經（中文）===
+    "鉅亨台股":           "https://news.cnyes.com/rss/cat/tw_stock",
+    "鉅亨美股":           "https://news.cnyes.com/rss/cat/wd_stock",
+    "鉅亨頭條":           "https://news.cnyes.com/rss/cat/headline",
+    "工商時報財經":       "https://www.chinatimes.com/rss/realtimenews-finance.xml",
+    "工商科技":           "https://www.chinatimes.com/rss/realtimenews-tech.xml",
+    "經濟日報財經":       "https://money.udn.com/rssfeed/news/1001/5589?ch=money",
+    "經濟日報國際":       "https://money.udn.com/rssfeed/news/1001/5599/12937?ch=money",
+    "聯合新聞兩岸":       "https://udn.com/rssfeed/news/2/6638?ch=news",
+    "中央社財經":         "https://feeds.feedburner.com/rsscna/finance",
+    "中央社政治":         "https://feeds.feedburner.com/rsscna/politics",
 }
 
 # ---------- 工具函式 ----------
@@ -66,12 +84,31 @@ def safe_float(x) -> Optional[float]:
         return None
 
 
-def fetch_quote(ticker: str) -> dict:
-    """抓最新收盤、前一日收盤、漲跌幅、成交量。yfinance 為主。"""
-    t = yf.Ticker(ticker)
-    hist = t.history(period="10d", auto_adjust=False)
+def fetch_quote(ticker: str, period: str = "1mo") -> dict:
+    """
+    抓最新收盤、前一日收盤、漲跌幅、成交量。
+    新增：自動 dropna 並往前找有效收盤，避開 Yahoo 偶發 nan 問題（特別是 .TW 標的）。
+    """
+    last_err = None
+    for attempt in range(3):
+        try:
+            t = yf.Ticker(ticker)
+            hist = t.history(period=period, auto_adjust=False)
+            # 過濾無效列：Close 必須是有效數字
+            hist = hist.dropna(subset=["Close"])
+            hist = hist[hist["Close"] > 0]
+            if not hist.empty:
+                break
+        except Exception as e:
+            last_err = e
+            print(f"[quote] {ticker} attempt {attempt+1} 失敗: {e}", file=sys.stderr)
+        time.sleep(2)
+    else:
+        return {"ticker": ticker, "error": f"no valid data: {last_err}"}
+
     if hist.empty:
-        return {"ticker": ticker, "error": "no data"}
+        return {"ticker": ticker, "error": "all rows were nan"}
+
     last = hist.iloc[-1]
     prev = hist.iloc[-2] if len(hist) >= 2 else None
     close = safe_float(last["Close"])
@@ -91,9 +128,11 @@ def fetch_quote(ticker: str) -> dict:
 
 
 def fetch_usdtwd() -> Optional[float]:
-    """USD/TWD 即期匯率 (Yahoo Finance: TWD=X)。"""
+    """USD/TWD 即期匯率 (Yahoo Finance: TWD=X)。已過濾 nan。"""
     try:
-        d = yf.Ticker("TWD=X").history(period="5d")
+        d = yf.Ticker("TWD=X").history(period="10d")
+        d = d.dropna(subset=["Close"])
+        d = d[d["Close"] > 0]
         if d.empty:
             return None
         return round(safe_float(d.iloc[-1]["Close"]), 4)
@@ -102,12 +141,18 @@ def fetch_usdtwd() -> Optional[float]:
 
 
 def fetch_2330_recent() -> Optional[pd.DataFrame]:
-    """抓 2330.TW 近 60 日收盤，供回歸用。"""
-    try:
-        d = yf.Ticker("2330.TW").history(period="3mo", auto_adjust=False)
-        return d if not d.empty else None
-    except Exception:
-        return None
+    """抓 2330.TW 近 60 日收盤，供回歸用。已過濾 nan。"""
+    for attempt in range(3):
+        try:
+            d = yf.Ticker("2330.TW").history(period="6mo", auto_adjust=False)
+            d = d.dropna(subset=["Close"])
+            d = d[d["Close"] > 0]
+            if not d.empty:
+                return d
+        except Exception as e:
+            print(f"[quote] 2330.TW attempt {attempt+1} 失敗: {e}", file=sys.stderr)
+        time.sleep(2)
+    return None
 
 
 def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
@@ -148,26 +193,35 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     model1 = last_2330 * (1 + tsm_pct)
 
     # 模型 2：比值回歸（近 60 日）
-    # 我們需要 TSM 與 USD/TWD 同期歷史
+    # 需要 TSM 與 USD/TWD 同期歷史，皆需過濾 nan
+    model2 = None
     try:
-        tsm_hist = yf.Ticker("TSM").history(period="3mo", auto_adjust=False)
-        fx_hist = yf.Ticker("TWD=X").history(period="3mo", auto_adjust=False)
-        # 對齊日期
+        tsm_hist = yf.Ticker("TSM").history(period="6mo", auto_adjust=False)
+        fx_hist = yf.Ticker("TWD=X").history(period="6mo", auto_adjust=False)
+        # 各自過濾 nan
+        tsm_close_s = tsm_hist["Close"].dropna()
+        fx_close_s = fx_hist["Close"].dropna()
+        t2330_s = hist_2330["Close"].dropna()
+        # 將時區拿掉以利對齊
+        tsm_close_s.index = tsm_close_s.index.tz_localize(None) if tsm_close_s.index.tz else tsm_close_s.index
+        fx_close_s.index  = fx_close_s.index.tz_localize(None)  if fx_close_s.index.tz  else fx_close_s.index
+        t2330_s.index     = t2330_s.index.tz_localize(None)     if t2330_s.index.tz     else t2330_s.index
         df = pd.DataFrame({
-            "tsm": tsm_hist["Close"],
-            "fx":  fx_hist["Close"],
-            "t2330": hist_2330["Close"],
+            "tsm":   tsm_close_s,
+            "fx":    fx_close_s,
+            "t2330": t2330_s,
         }).dropna()
-        if len(df) < 20:
-            model2 = None
-        else:
+        if len(df) >= 20:
             df["theo_tw"] = df["tsm"] * df["fx"] / 5.0   # 1 ADR = 5 股
             df["ratio"] = df["t2330"] / df["theo_tw"]
             avg_ratio = df["ratio"].tail(60).mean()
             today_theo = tsm_close * usdtwd / 5.0
             model2 = today_theo * avg_ratio
-    except Exception:
-        model2 = None
+            print(f"[calc] 2330 model2 ratio={avg_ratio:.3f} samples={len(df)}")
+        else:
+            print(f"[calc] 2330 model2 樣本不足 ({len(df)} 筆)")
+    except Exception as e:
+        print(f"[calc] 2330 model2 失敗: {e}", file=sys.stderr)
 
     res = {
         "last_2330": round(last_2330, 2),
@@ -230,10 +284,10 @@ def fetch_news() -> list[dict]:
 
 def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict]) -> str:
     news_block = "\n".join(
-        f"- [{n['source']}] {n['title']}（{n.get('summary','')[:150]}）"
-        for n in news[:40]
+        f"- [{n['source']}] {n['title']}（{n.get('summary','')[:200]}）"
+        for n in news[:60]
     )
-    return f"""你是專業科技股財經分析師。請依下列資料，用繁體中文寫一份 5 分鐘可讀完的早晨速報，給一位重押 00662（NASDAQ-100）與 2330（台積電）的投資人。
+    return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
 【昨日美股收盤】
 - QQQ：{quotes['QQQ']}
@@ -241,34 +295,62 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict, news: list[dict])
 - SPY：{quotes['SPY']}
 - USD/TWD：{quotes.get('USDTWD')}
 
-【今日 00662 估值】
+【今日 00662 估值（Python 已算）】
 {fair}
 
-【今日 2330 雙模型預測】
+【今日 2330 雙模型預測（Python 已算）】
 {predictions}
 
-【近 24 小時新聞清單】
+【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
 
-請依以下結構撰寫，務求精煉，不要客套：
+# 寫作要求（必讀）
 
-## 一、昨夜重點（3 行內）
-直接點出影響 00662 / 2330 最關鍵的 3 件事。
+1. **零客套，不寫「親愛的投資人」「以下是」這類開場白**，直接進主題
+2. **語氣精煉、敢下判斷**，不要三方並陳逃避立場
+3. 每提到「公司名」必附 (一句話講這間公司在做什麼 + 近期關鍵動向)
+4. 全部繁體中文
+5. 估值欄位若是 None / nan，直接寫「資料缺失」，不要瞎掰數字
+6. **避免重複條列**，每條只寫一件事
+7. 嚴禁 emoji 與表情符號
 
-## 二、科技板塊脈動（5-8 條）
-每條 2 句以內：發生什麼 + 為何重要。聚焦半導體、AI、雲端、Mag7。
+# 輸出結構（必須完全照此順序與標題）
 
-## 三、總體環境（利率 / 美元 / VIX / 通膨）
-精準摘要。如有 Fed 官員談話、CPI、PPI、就業數據，必列。
+## 一、昨夜三大重點
+僅 3 條 bullet。直接點出最影響 00662 / 2330 的關鍵事件。
 
-## 四、我的分析與見解
-- 今日台股開盤情境推演（樂觀 / 中性 / 悲觀 各一句話）
-- 2330 開盤該關注什麼價位
-- 00662 是否有套利空間
-- 風險提示
+## 二、科技板塊脈動（5–8 條）
+每條格式：**公司名（一句話業務簡介）**：發生什麼 + 為何重要。
+範例：**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力資料中心晶片）**：Q3 資料中心營收年增 122%，MI300X 出貨優於預期，AI 算力競賽中與 NVDA 差距縮小。
 
-## 五、一句話結論
-給一個明確、不模糊的市場立場。
+## 三、總體經濟與政策環境
+分三小段：
+**(A) 美國利率/美元/VIX/通膨**：列出昨日 10Y 殖利率、DXY、VIX、CPI/PPI/就業數據（如有）。
+**(B) Fed/美國政府重大政策**：FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等。明確寫出對台灣科技業的影響。
+**(C) 全球其他國家政策（若有）**：日本央行、ECB、中國刺激政策、地緣政治等。
+
+## 四、台灣本地動態（必寫，不可略）
+聚焦昨日對台灣資本市場有影響的事：
+- 台灣央行/金管會動向
+- 台積電供應鏈動態（艾司摩爾、東京威力、SUMCO、信驊、力旺等）
+- 台灣總經數據（出口、外銷訂單、CPI）
+- 政府政策（產創條例、科專、台美 21 世紀貿易倡議等）
+若新聞清單中沒有相關內容，寫「無重大本地新聞」，不要編造。
+
+## 五、我的明確立場（**最重要**）
+**先給單一立場標籤**，再解釋為什麼。**不要列出樂觀/中性/悲觀三選一**——直接告訴投資人你選哪一個。
+
+格式：
+> **立場：[偏多 / 偏空 / 中性]**（任選一個，不可模糊）
+>
+> 理由（3-5 句）：……
+>
+> **2330 開盤關鍵價位**：守穩 XXX 元為強，跌破 XXX 元轉弱
+> **00662 操作建議**：（明確寫加碼 / 觀望 / 減碼，給一個價位門檻）
+> **主要風險**：1 句話
+
+## 六、一句話總結
+20 字內。給一句具體可執行的結論。
 """
 
 

@@ -210,29 +210,85 @@ def _to_int(v) -> int:
         return 0
 
 
+def _twse_main_api(date_str: str) -> list[dict]:
+    """
+    主要端點：TWSE 主站 fund/T86 (response=json)。
+    這個端點欄位名固定為中文格式：證券代號、外陸資買賣超股數、投信買賣超股數、自營商買賣超股數
+    """
+    url = (f"https://www.twse.com.tw/fund/T86?response=json"
+           f"&date={date_str}&selectType=ALLBUT0999")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json,text/plain,*/*",
+        "Referer": "https://www.twse.com.tw/zh/trading/foreign/t86.html",
+    }
+    r = requests.get(url, timeout=15, headers=headers)
+    r.raise_for_status()
+    payload = r.json()
+    if payload.get("stat") != "OK":
+        return []
+    fields = payload.get("fields", [])
+    data = payload.get("data", [])
+    return [dict(zip(fields, row)) for row in data]
+
+
+def _twse_openapi(_unused: str) -> list[dict]:
+    """備援端點：OpenAPI（無日期參數，回傳最新一日）。"""
+    r = requests.get("https://openapi.twse.com.tw/v1/fund/T86",
+                      timeout=15,
+                      headers={"User-Agent": "Mozilla/5.0"})
+    r.raise_for_status()
+    return r.json() or []
+
+
 def fetch_twse_institutional() -> dict[str, dict]:
     """
-    從 TWSE OpenAPI 抓昨日三大法人買賣超。
-    回傳：{ "2330": {"foreign": +123456, "investment": -2000, "dealer": +500, "total": ...}, ... }
+    從 TWSE 抓昨日三大法人買賣超。
+    多端點 + 多日期備援，先試主站，再試 OpenAPI；日期從昨天往前找最近交易日。
+    回傳：{ "2330": {"foreign": +N, "investment": +N, "dealer": +N, "total": +N}, ... }
     單位：股數（負為賣超）。
-
-    TWSE 欄位名近年多次變更，此函式採「自動偵測」策略：
-    從 row 的 keys 中找包含 Foreign/Investment/Dealer 的欄位，分別找出買、賣、買賣超。
     """
-    url = "https://openapi.twse.com.tw/v1/fund/T86"
-    try:
-        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        rows = r.json()
-    except Exception as e:
-        print(f"[twse] 法人 API 失敗: {e}", file=sys.stderr)
-        return {}
+    # 嘗試最近 5 天，跳過週末
+    candidates: list[str] = []
+    today = dt.datetime.now(TPE).date()
+    for back in range(1, 8):
+        d = today - dt.timedelta(days=back)
+        if d.weekday() >= 5:  # 週六/日跳過
+            continue
+        candidates.append(d.strftime("%Y%m%d"))
+        if len(candidates) >= 4:
+            break
+
+    rows: list[dict] = []
+    used_endpoint = ""
+    used_date = ""
+    # 先試主站 (依日期往前)，主站不行再試 OpenAPI
+    for date_str in candidates:
+        try:
+            rows = _twse_main_api(date_str)
+            if rows:
+                used_endpoint = "main"
+                used_date = date_str
+                break
+        except Exception as e:
+            print(f"[twse] 主站 {date_str} 失敗: {e}", file=sys.stderr)
 
     if not rows:
-        print("[twse] API 回傳空陣列（可能今天非交易日或資料尚未更新）", file=sys.stderr)
+        try:
+            rows = _twse_openapi("")
+            if rows:
+                used_endpoint = "openapi"
+                used_date = "latest"
+        except Exception as e:
+            print(f"[twse] OpenAPI 也失敗: {e}", file=sys.stderr)
+
+    if not rows:
+        print("[twse] 所有端點皆無資料", file=sys.stderr)
         return {}
 
-    # === 自動偵測欄位名 ===
+    print(f"[twse] 使用端點={used_endpoint} 日期={used_date} 取得 {len(rows)} 筆原始資料")
+
+    # === 自動偵測欄位名（中英文都支援） ===
     sample_keys = list(rows[0].keys())
     print(f"[twse] 樣本欄位：{sample_keys}")
 
@@ -244,30 +300,51 @@ def fetch_twse_institutional() -> dict[str, dict]:
                 return k
         return None
 
-    # 找買、賣、買賣超欄位（優先用「買賣超」）
-    # 已知歷年版本：
-    #   2024 前: ForeignInvestorsBuySellOver / InvestmentTrustBuySellOver / DealerBuySellOver
-    #   2025+:   ForeignInvestorBuy/ForeignInvestorSell/ForeignInvestorOver
-    #            或 ForeignInstitutionalInvestorsBuySellOver 等
-    # 策略：先找含 "BuySellOver" 或 "Over" 結尾，找不到才用 Buy-Sell 計算
-    f_over = find_key("foreign", "over") or find_key("foreign", "buysell")
-    t_over = find_key("invest", "trust", "over") or find_key("invest", "trust", "buysell") \
-            or find_key("trust", "over")
-    d_over = find_key("dealer", "over") or find_key("dealer", "buysell")
+    def find_any(*candidates: str) -> Optional[str]:
+        """直接找完全匹配（中文用）。"""
+        for cand in candidates:
+            for k in sample_keys:
+                if cand in k:
+                    return k
+        return None
 
-    # 若沒找到 Over 欄位，試找 Buy / Sell 欄位
-    f_buy  = find_key("foreign", "buy") if not f_over else None
-    f_sell = find_key("foreign", "sell") if not f_over else None
-    t_buy  = find_key("invest", "trust", "buy") if not t_over else None
-    t_sell = find_key("invest", "trust", "sell") if not t_over else None
-    d_buy  = find_key("dealer", "buy") if not d_over else None
-    d_sell = find_key("dealer", "sell") if not d_over else None
+    # === 中文欄位（主站 API）===
+    # 主站欄位名範例：
+    #   證券代號、證券名稱、外陸資買賣超股數(不含外資自營商)、外資自營商買賣超股數、
+    #   投信買賣超股數、自營商買賣超股數(自行買賣)、自營商買賣超股數(避險)、自營商買賣超股數
+    f_over_cn = find_any("外陸資買賣超股數", "外資及陸資買賣超股數", "外資買賣超股數")
+    t_over_cn = find_any("投信買賣超股數")
+    d_over_cn = find_any("自營商買賣超股數")  # 包括 "自營商買賣超股數" 各變體
+    code_cn   = find_any("證券代號")
+
+    # === 英文欄位（OpenAPI）===
+    f_over_en = find_key("foreign", "over") or find_key("foreign", "buysell")
+    t_over_en = find_key("invest", "trust", "over") or find_key("invest", "trust", "buysell") \
+                or find_key("trust", "over")
+    d_over_en = find_key("dealer", "over") or find_key("dealer", "buysell")
+    code_en   = find_key("code") or find_key("symbol") or find_key("stock")
+
+    f_over = f_over_cn or f_over_en
+    t_over = t_over_cn or t_over_en
+    d_over = d_over_cn or d_over_en
+    code_key = code_cn or code_en
+
+    # 若還沒找到，試 Buy / Sell 兩欄相減
+    f_buy = f_sell = t_buy = t_sell = d_buy = d_sell = None
+    if not f_over:
+        f_buy  = find_key("foreign", "buy")
+        f_sell = find_key("foreign", "sell")
+    if not t_over:
+        t_buy  = find_key("invest", "trust", "buy")
+        t_sell = find_key("invest", "trust", "sell")
+    if not d_over:
+        d_buy  = find_key("dealer", "buy")
+        d_sell = find_key("dealer", "sell")
 
     print(f"[twse] 偵測欄位 外資={f_over or (f_buy, f_sell)} "
-          f"投信={t_over or (t_buy, t_sell)} 自營={d_over or (d_buy, d_sell)}")
+          f"投信={t_over or (t_buy, t_sell)} 自營={d_over or (d_buy, d_sell)} "
+          f"代號={code_key}")
 
-    # 找代號欄位
-    code_key = find_key("code") or find_key("symbol") or find_key("stock")
     if not code_key:
         print(f"[twse] 找不到代號欄位，sample_keys={sample_keys}", file=sys.stderr)
         return {}
@@ -643,7 +720,7 @@ def _call_gemini_once(model: str, prompt: str) -> str:
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.7,
+            "temperature": 0.3,
             "maxOutputTokens": 8192,
         },
     }

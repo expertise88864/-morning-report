@@ -755,113 +755,276 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
 call_claude_analysis = call_llm_analysis
 
 
-# ---------- HTML 組版 ----------
+# ---------- HTML 組版（Email 友善版） ----------
+def _md_to_html(text: str) -> str:
+    """用 markdown 套件將 LLM 輸出轉 HTML，並加 inline style 做 Gmail/Outlook 兼容。"""
+    import markdown
+    html = markdown.markdown(text, extensions=["extra", "sane_lists", "nl2br"])
+    return html
+
+
+def _style_analysis_html(html: str) -> str:
+    """為 markdown 轉出的 HTML 加 inline style（email client 不支援 <style>）。"""
+    replacements = [
+        # 標題層次
+        ("<h2>", "<h2 style=\"color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;\">"),
+        ("<h3>", "<h3 style=\"color:#0f172a;font-size:17px;margin:24px 0 10px;padding-bottom:6px;border-bottom:2px solid #cbd5e1;\">"),
+        ("<h4>", "<h4 style=\"color:#0c4a6e;font-size:15px;margin:18px 0 6px;\">"),
+        ("<h1>", "<h1 style=\"color:#0f172a;font-size:24px;margin:24px 0 12px;\">"),
+        # 段落
+        ("<p>", "<p style=\"margin:10px 0;line-height:1.85;color:#1f2937;\">"),
+        # 列表
+        ("<ul>", "<ul style=\"margin:10px 0 14px;padding-left:24px;line-height:1.85;color:#1f2937;\">"),
+        ("<ol>", "<ol style=\"margin:10px 0 14px;padding-left:24px;line-height:1.85;color:#1f2937;\">"),
+        ("<li>", "<li style=\"margin:6px 0;\">"),
+        # 強調
+        ("<strong>", "<strong style=\"color:#0c4a6e;font-weight:700;\">"),
+        ("<em>", "<em style=\"color:#475569;\">"),
+        # 引用塊（用於「我的明確立場」）
+        ("<blockquote>",
+         "<blockquote style=\"border-left:5px solid #0284c7;background:#f0f9ff;margin:14px 0;padding:14px 18px;border-radius:4px;color:#0c4a6e;\">"),
+        # 水平線
+        ("<hr>", "<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:24px 0;\">"),
+        ("<hr />", "<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:24px 0;\">"),
+    ]
+    for old, new in replacements:
+        html = html.replace(old, new)
+    return html
+
+
+def _wrap_tw_picks(html: str) -> str:
+    """把『今日台股關注三檔』段落包成琥珀色卡片，每檔個股做成獨立子卡片。"""
+    if "今日台股關注三檔" not in html:
+        return html
+
+    # 找第六段開始（h2 含「今日台股關注三檔」）
+    idx_six = html.find("今日台股關注三檔")
+    # 從這位置往前找最近的 <h2
+    h2_start = html.rfind("<h2", 0, idx_six)
+    # 找第七段開始
+    idx_seven = html.find("一句話總結")
+    if idx_seven == -1:
+        idx_seven = len(html)
+    h2_end = html.rfind("<h2", 0, idx_seven)
+    if h2_end <= h2_start:
+        h2_end = len(html)
+
+    pre  = html[:h2_start]
+    mid  = html[h2_start:h2_end]
+    post = html[h2_end:]
+
+    # mid 內的每一個 <h3>...</h3> 是一檔股票，把每檔包成卡片
+    import re
+    # 把 h3 開始到下一個 h3（或 mid 結尾）的內容，包成卡片
+    def card_repl(m: "re.Match[str]") -> str:
+        block = m.group(0)
+        return ("<div style=\"background:#ffffff;border:1px solid #f59e0b;border-radius:8px;"
+                "padding:14px 18px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,0.04);\">"
+                + block + "</div>")
+
+    pattern = re.compile(r"<h3[^>]*>.*?(?=<h3|$)", re.DOTALL)
+    mid_cards = pattern.sub(card_repl, mid)
+
+    box = ("<div style=\"background:#fffbeb;border:2px solid #f59e0b;border-radius:12px;"
+           "padding:18px 20px;margin:24px 0;\">"
+           + mid_cards + "</div>")
+    return pre + box + post
+
+
+def _wrap_stance(html: str) -> str:
+    """把『我的明確立場』段做更醒目的藍色 callout box。"""
+    marker = "我的明確立場"
+    if marker not in html:
+        return html
+    idx = html.find(marker)
+    h2_start = html.rfind("<h2", 0, idx)
+    # 找下一個 h2 即立場段結束
+    h2_end = html.find("<h2", idx)
+    if h2_end == -1:
+        return html
+    pre  = html[:h2_start]
+    mid  = html[h2_start:h2_end]
+    post = html[h2_end:]
+
+    box = ("<div style=\"background:linear-gradient(135deg,#dbeafe,#e0f2fe);"
+           "border:2px solid #0284c7;border-radius:12px;"
+           "padding:18px 22px;margin:24px 0;\">"
+           + mid + "</div>")
+    return pre + box + post
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
+    # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
         if "error" in q:
-            return f"<tr><td>{q['ticker']}</td><td colspan='4'>{q['error']}</td></tr>"
-        color = "#16a34a" if (q["change_pct"] or 0) >= 0 else "#dc2626"
-        sign = "+" if (q["change_pct"] or 0) >= 0 else ""
+            return (f"<tr><td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>{q['ticker']}</td>"
+                    f"<td colspan='4' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#dc2626'>{q['error']}</td></tr>")
+        pct = q.get("change_pct") or 0
+        color = "#16a34a" if pct >= 0 else "#dc2626"
+        sign = "+" if pct >= 0 else ""
+        vol = q.get("volume")
+        vol_str = f"{vol:,}" if vol else "—"
         return (
             f"<tr>"
-            f"<td><b>{q['ticker']}</b></td>"
-            f"<td>{q['close']}</td>"
-            f"<td style='color:{color}'>{sign}{q['change_pct']}%</td>"
-            f"<td>{q['high']} / {q['low']}</td>"
-            f"<td>{q.get('volume','')}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{q['ticker']}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{q['close']}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct}%</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569;font-size:13px;'>{q['high']} / {q['low']}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b;font-size:13px;'>{vol_str}</td>"
             f"</tr>"
         )
 
     quote_rows = "".join(fmt_quote(q) for k, q in quotes.items() if k != "USDTWD")
 
-    fair_html = ""
+    # ===== 2. KPI 卡片 (00662) =====
     if "error" not in fair:
         sign = "+" if fair["implied_change_pct"] >= 0 else ""
+        change_color = "#16a34a" if fair["implied_change_pct"] >= 0 else "#dc2626"
         fair_html = f"""
-        <table>
-          <tr><td>QQQ 漲跌幅</td><td>{sign}{fair['qqq_pct']}%</td></tr>
-          <tr><td>00662 昨收參考</td><td>{fair['last_00662_price']}</td></tr>
-          <tr><td><b>00662 今日合理價估值</b></td><td><b>{fair['fair_price']}</b></td></tr>
-          <tr><td>USD/TWD</td><td>{fair['usdtwd']}</td></tr>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;">
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;border-radius:6px 0 0 6px;color:#475569;width:55%;">QQQ 漲跌幅</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{change_color};font-variant-numeric:tabular-nums;">{sign}{fair['qqq_pct']}%</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">00662 昨收參考</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['last_00662_price']}</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 00662 今日合理價估值</td>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">USD/TWD</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['usdtwd']}</td>
+          </tr>
         </table>
-        <p style="font-size:12px;color:#666">註：估值未計入溢/折價、申購贖回價差、隔日匯率變動。</p>
+        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">註：估值未計入溢/折價、申購贖回價差、隔日匯率變動。</p>
         """
+    else:
+        fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"
 
-    pred_html = ""
+    # ===== 3. 2330 預測卡片 =====
     if "error" not in predictions:
-        m2 = predictions.get("model2_regression", "—")
+        m2 = predictions.get("model2_regression")
+        m2_str = m2 if m2 is not None else "資料缺失"
         rng = predictions.get("range")
-        rng_html = f"<tr><td>合理區間</td><td>{rng[0]} ~ {rng[1]} (中值 {predictions['mid']})</td></tr>" if rng else ""
-        pred_html = f"""
-        <table>
-          <tr><td>2330 昨收</td><td>{predictions['last_2330']}</td></tr>
-          <tr><td>TSM ADR 漲跌幅</td><td>{predictions['tsm_pct']}%</td></tr>
-          <tr><td>模型1（1:1 漲跌對應）</td><td>{predictions['model1_1to1']}</td></tr>
-          <tr><td>模型2（60日比值回歸）</td><td>{m2}</td></tr>
-          {rng_html}
-        </table>
+        tsm_pct = predictions.get("tsm_pct", 0)
+        tsm_color = "#16a34a" if tsm_pct >= 0 else "#dc2626"
+        tsm_sign = "+" if tsm_pct >= 0 else ""
+
+        rows_html = f"""
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;width:55%;">2330 昨收</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{predictions['last_2330']}</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">TSM ADR 漲跌幅</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{tsm_color};font-variant-numeric:tabular-nums;">{tsm_sign}{tsm_pct}%</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">模型1（1:1 漲跌對應）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{predictions['model1_1to1']}</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">模型2（60日比值回歸）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{m2_str}</td>
+          </tr>
         """
+        if rng:
+            rows_html += f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 合理區間（中值）</td>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:18px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">
+              {rng[0]} ~ {rng[1]}<br>
+              <span style="font-size:13px;font-weight:400;opacity:0.85;">（中值 {predictions['mid']}）</span>
+            </td>
+          </tr>
+            """
+        pred_html = f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">{rows_html}</table>'
+    else:
+        pred_html = f"<p style='color:#dc2626'>{predictions.get('error','資料缺失')}</p>"
 
-    analysis_html = analysis.replace("\n", "<br>") \
-                            .replace("##", "<h3 style='color:#1e40af;margin-top:16px'>") \
-                            .replace("<br><h3", "</h3><h3")
+    # ===== 4. LLM 分析（Markdown → HTML 後加樣式 + 三檔卡片化） =====
+    analysis_html = _md_to_html(analysis)
+    analysis_html = _style_analysis_html(analysis_html)
+    analysis_html = _wrap_stance(analysis_html)
+    analysis_html = _wrap_tw_picks(analysis_html)
 
-    # 將「## 六、今日台股關注三檔」段落特別包成黃色強調框（如有）
-    if "今日台股關注三檔" in analysis_html:
-        analysis_html = analysis_html.replace(
-            "<h3 style='color:#1e40af;margin-top:16px'> 六、今日台股關注三檔",
-            "</div><div class='tw-pick-box'><h3 style='color:#92400e;margin-top:0'>★ 六、今日台股關注三檔",
-            1,
-        )
-        # 在第七段標題前關閉黃色框
-        analysis_html = analysis_html.replace(
-            "<h3 style='color:#1e40af;margin-top:16px'> 七、",
-            "</div><h3 style='color:#1e40af;margin-top:16px'> 七、",
-            1,
-        )
+    llm_label = (LLM_PROVIDER + "/" +
+                 (GEMINI_MODEL if LLM_PROVIDER == "gemini" else CLAUDE_MODEL))
 
-    return f"""
-<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<style>
-  body {{ font-family: -apple-system, "Microsoft JhengHei", sans-serif; max-width: 760px; margin: 0 auto; color: #111; line-height: 1.7; padding: 8px; }}
-  h1 {{ color: #1e3a8a; border-bottom: 3px solid #1e3a8a; padding-bottom: 8px; }}
-  h2 {{ color: #1e40af; margin-top: 24px; border-left: 4px solid #1e40af; padding-left: 8px; }}
-  h3 {{ color: #1e40af; }}
-  h4 {{ color: #b45309; margin-top: 14px; margin-bottom: 4px; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 14px; }}
-  td, th {{ border: 1px solid #ddd; padding: 6px 10px; }}
-  th {{ background: #f3f4f6; }}
-  .badge {{ background: #1e3a8a; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; }}
-  blockquote {{ border-left: 4px solid #b45309; background: #fffbeb; margin: 8px 0; padding: 8px 14px; }}
-  .tw-pick-box {{ background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px 18px; margin: 16px 0; }}
-  .tw-pick-box h3 {{ color: #92400e !important; }}
-  .tw-pick-box h4 {{ color: #b45309; border-bottom: 1px dashed #f59e0b; padding-bottom: 4px; }}
-  strong {{ color: #1e3a8a; }}
-</style></head>
-<body>
-  <h1>📈 美股晨報 {report_date} <span class="badge">{mode}</span></h1>
+    return f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>美股晨報 {report_date}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:20px 12px;">
+        <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
 
-  <h2>一、美股收盤行情</h2>
-  <table>
-    <tr><th>標的</th><th>收盤</th><th>漲跌</th><th>高/低</th><th>成交量</th></tr>
-    {quote_rows}
+          <!-- HERO -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0c4a6e,#0284c7);padding:28px 28px 22px;color:#ffffff;">
+              <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">MORNING MARKET BRIEF</div>
+              <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.3;">美股晨報</h1>
+              <div style="margin-top:6px;font-size:15px;opacity:0.92;">{report_date} ・ <span style="background:rgba(255,255,255,0.18);padding:2px 10px;border-radius:12px;font-size:13px;">{mode}</span></div>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr><td style="padding:28px 28px 8px;">
+
+            <h2 style="color:#0f172a;font-size:20px;margin:0 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">一、美股收盤行情</h2>
+            <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
+              <tr style="background:#f1f5f9;">
+                <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">標的</th>
+                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
+                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">漲跌</th>
+                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">高/低</th>
+                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">成交量</th>
+              </tr>
+              {quote_rows}
+            </table>
+
+            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">二、00662 公允淨值換算</h2>
+            {fair_html}
+
+            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">三、2330 開盤合理價預測</h2>
+            {pred_html}
+
+            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">四、市場速報與分析</h2>
+            <div>{analysis_html}</div>
+
+          </td></tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;line-height:1.7;">
+              本信件由自動化腳本於 GitHub Actions 產生。<br>
+              資料來源：Yahoo Finance、TWSE OpenAPI、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、經濟日報、工商時報、中央社。<br>
+              分析由 LLM ({llm_label}) 生成，僅供參考，不構成投資建議。
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
   </table>
-
-  <h2>二、00662 公允淨值換算</h2>
-  {fair_html}
-
-  <h2>三、2330 開盤合理價預測</h2>
-  {pred_html}
-
-  <h2>四、市場速報與分析</h2>
-  <div>{analysis_html}</div>
-
-  <hr>
-  <p style="font-size:11px;color:#888">本信件由自動化腳本於 GitHub Actions 產生。資料來源：Yahoo Finance、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、工商時報。分析由 LLM ({LLM_PROVIDER}/{GEMINI_MODEL if LLM_PROVIDER=='gemini' else CLAUDE_MODEL}) 生成，僅供參考，不構成投資建議。</p>
-</body></html>
-"""
+</body>
+</html>"""
 
 
 def send_email(html: str, subject: str) -> None:

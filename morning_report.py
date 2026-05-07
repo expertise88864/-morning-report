@@ -197,12 +197,27 @@ def fetch_usdtwd() -> Optional[float]:
         return None
 
 
+def _to_int(v) -> int:
+    """容忍逗號、空字串、None、float 字串"""
+    if v is None:
+        return 0
+    s = str(v).replace(",", "").strip()
+    if not s or s in ("-", "NA"):
+        return 0
+    try:
+        return int(float(s))
+    except (ValueError, TypeError):
+        return 0
+
+
 def fetch_twse_institutional() -> dict[str, dict]:
     """
     從 TWSE OpenAPI 抓昨日三大法人買賣超。
     回傳：{ "2330": {"foreign": +123456, "investment": -2000, "dealer": +500, "total": ...}, ... }
     單位：股數（負為賣超）。
-    參考：https://openapi.twse.com.tw/#/
+
+    TWSE 欄位名近年多次變更，此函式採「自動偵測」策略：
+    從 row 的 keys 中找包含 Foreign/Investment/Dealer 的欄位，分別找出買、賣、買賣超。
     """
     url = "https://openapi.twse.com.tw/v1/fund/T86"
     try:
@@ -213,26 +228,91 @@ def fetch_twse_institutional() -> dict[str, dict]:
         print(f"[twse] 法人 API 失敗: {e}", file=sys.stderr)
         return {}
 
+    if not rows:
+        print("[twse] API 回傳空陣列（可能今天非交易日或資料尚未更新）", file=sys.stderr)
+        return {}
+
+    # === 自動偵測欄位名 ===
+    sample_keys = list(rows[0].keys())
+    print(f"[twse] 樣本欄位：{sample_keys}")
+
+    def find_key(*needles: str) -> Optional[str]:
+        """找出欄位名包含所有 needles（大小寫無關）的第一個 key。"""
+        for k in sample_keys:
+            kl = k.lower()
+            if all(n.lower() in kl for n in needles):
+                return k
+        return None
+
+    # 找買、賣、買賣超欄位（優先用「買賣超」）
+    # 已知歷年版本：
+    #   2024 前: ForeignInvestorsBuySellOver / InvestmentTrustBuySellOver / DealerBuySellOver
+    #   2025+:   ForeignInvestorBuy/ForeignInvestorSell/ForeignInvestorOver
+    #            或 ForeignInstitutionalInvestorsBuySellOver 等
+    # 策略：先找含 "BuySellOver" 或 "Over" 結尾，找不到才用 Buy-Sell 計算
+    f_over = find_key("foreign", "over") or find_key("foreign", "buysell")
+    t_over = find_key("invest", "trust", "over") or find_key("invest", "trust", "buysell") \
+            or find_key("trust", "over")
+    d_over = find_key("dealer", "over") or find_key("dealer", "buysell")
+
+    # 若沒找到 Over 欄位，試找 Buy / Sell 欄位
+    f_buy  = find_key("foreign", "buy") if not f_over else None
+    f_sell = find_key("foreign", "sell") if not f_over else None
+    t_buy  = find_key("invest", "trust", "buy") if not t_over else None
+    t_sell = find_key("invest", "trust", "sell") if not t_over else None
+    d_buy  = find_key("dealer", "buy") if not d_over else None
+    d_sell = find_key("dealer", "sell") if not d_over else None
+
+    print(f"[twse] 偵測欄位 外資={f_over or (f_buy, f_sell)} "
+          f"投信={t_over or (t_buy, t_sell)} 自營={d_over or (d_buy, d_sell)}")
+
+    # 找代號欄位
+    code_key = find_key("code") or find_key("symbol") or find_key("stock")
+    if not code_key:
+        print(f"[twse] 找不到代號欄位，sample_keys={sample_keys}", file=sys.stderr)
+        return {}
+
     result: dict[str, dict] = {}
     for row in rows:
-        code = (row.get("Code") or "").strip()
+        code = (row.get(code_key) or "").strip()
         if not code:
             continue
-        try:
-            # T86 欄位：外資、投信、自營商買賣超股數
-            foreign = int(str(row.get("ForeignInvestorsBuySellOver", "0")).replace(",", "") or 0)
-            invest  = int(str(row.get("InvestmentTrustBuySellOver", "0")).replace(",", "") or 0)
-            dealer  = int(str(row.get("DealerBuySellOver", "0")).replace(",", "") or 0)
-            total   = foreign + invest + dealer
-            result[code] = {
-                "foreign": foreign,      # 外資
-                "investment": invest,     # 投信
-                "dealer": dealer,         # 自營商
-                "total": total,           # 三大法人合計
-            }
-        except (ValueError, TypeError):
-            continue
-    print(f"[twse] 抓到 {len(result)} 檔法人買賣超資料")
+
+        if f_over:
+            foreign = _to_int(row.get(f_over))
+        elif f_buy and f_sell:
+            foreign = _to_int(row.get(f_buy)) - _to_int(row.get(f_sell))
+        else:
+            foreign = 0
+
+        if t_over:
+            invest = _to_int(row.get(t_over))
+        elif t_buy and t_sell:
+            invest = _to_int(row.get(t_buy)) - _to_int(row.get(t_sell))
+        else:
+            invest = 0
+
+        if d_over:
+            dealer = _to_int(row.get(d_over))
+        elif d_buy and d_sell:
+            dealer = _to_int(row.get(d_buy)) - _to_int(row.get(d_sell))
+        else:
+            dealer = 0
+
+        total = foreign + invest + dealer
+        result[code] = {
+            "foreign": foreign,
+            "investment": invest,
+            "dealer": dealer,
+            "total": total,
+        }
+
+    # 健康檢查：抓到的資料是否多數為 0
+    nonzero = sum(1 for v in result.values() if v["total"] != 0)
+    print(f"[twse] 抓到 {len(result)} 檔，其中 {nonzero} 檔有非零法人買賣超")
+    if len(result) > 0 and nonzero == 0:
+        print(f"[twse] ⚠️ 全部 0 — 欄位偵測可能失敗。Sample row: {rows[0]}", file=sys.stderr)
+
     return result
 
 

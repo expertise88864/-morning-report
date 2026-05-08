@@ -1049,7 +1049,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             return (f"<tr><td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>{q['ticker']}</td>"
                     f"<td colspan='4' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#dc2626'>{q['error']}</td></tr>")
         pct = q.get("change_pct") or 0
-        color = "#16a34a" if pct >= 0 else "#dc2626"
+        # 台股慣例：紅漲綠跌
+        color = "#dc2626" if pct >= 0 else "#16a34a"
         sign = "+" if pct >= 0 else ""
         vol = q.get("volume")
         vol_str = f"{vol:,}" if vol else "—"
@@ -1068,7 +1069,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # ===== 2. KPI 卡片 (00662) =====
     if "error" not in fair:
         sign = "+" if fair["implied_change_pct"] >= 0 else ""
-        change_color = "#16a34a" if fair["implied_change_pct"] >= 0 else "#dc2626"
+        # 台股慣例：紅漲綠跌
+        change_color = "#dc2626" if fair["implied_change_pct"] >= 0 else "#16a34a"
         fair_html = f"""
         <table style="width:100%;border-collapse:collapse;margin:12px 0;">
           <tr>
@@ -1102,7 +1104,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         m2_str = m2 if m2 is not None else "資料缺失"
         rng = predictions.get("range")
         tsm_pct = predictions.get("tsm_pct", 0)
-        tsm_color = "#16a34a" if tsm_pct >= 0 else "#dc2626"
+        # 台股慣例：紅漲綠跌
+        tsm_color = "#dc2626" if tsm_pct >= 0 else "#16a34a"
         tsm_sign = "+" if tsm_pct >= 0 else ""
 
         rows_html = f"""

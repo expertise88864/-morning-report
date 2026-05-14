@@ -2,12 +2,12 @@
 
 每天台灣時間 **約 06:00–06:20** 自動寄送晨報到你信箱，包含：
 - 昨夜美股 QQQ / TSM (台積電 ADR) / SPY 收盤
-- USD/TWD 匯率、VIX / SOX / 10Y / DXY / 13W 等總經指標
+- USD/TWD 匯率、VIX / SOX / 10Y / DXY / 13W / 日經225 / 上證 等總經與國際指標 + 10Y−13W 殖利率曲線利差
 - **00662 公允價估值**（QQQ beta + USD/TWD 變動 + 歷史平均偏離修正）
 - **2330 三模型開盤價預測**（漲跌幅 1:1 + 60日比值回歸 + ADR 衰減模型）
 - 加權指數開盤預測、TAIFEX 外資台指期未平倉、TWSE 法人籌碼
-- **台股市值前 100 大**動態 universe（每日自 TWSE OpenAPI 重算市值排名）+ 三大法人 + 30 日累積籌碼，LLM 從中挑選「今日關注三檔」
-- **預測自我校正**：每日把預測寫入歷史（保留 90 天），隔天用實際開盤誤差做模型加權 + bias 修正（見第四節）
+- **台股市值前 100 大**動態 universe（每日自 TWSE OpenAPI 重算市值排名）+ 三大法人 + 30 日累積籌碼 + **月營收年增率** + **大戶持股比例**（TDCC 集保），LLM 從中挑選「今日關注三檔」
+- **預測自我校正**：每日把預測寫入歷史（保留 90 天），隔天用實際開盤誤差做模型加權 + bias 修正（見第四節），並在信中附「預測準確度回顧」表
 - 新聞自動去重（同事件多來源重貼只留一則）
 - 24 小時內國際與台灣財經新聞速報、SEC 8-K 公告
 - LLM（預設 DeepSeek）撰寫的繁體中文分析與明確立場
@@ -31,9 +31,11 @@ workflow 預設 `LLM_PROVIDER: deepseek`（中文分析品質佳、每月約 NT$
 
 | Provider | 申請處 | 月成本 | 備註 |
 |---|---|---|---|
-| `deepseek`（**預設**） | https://platform.deepseek.com | NT$1–6 | 設 `DEEPSEEK_API_KEY` |
+| `deepseek`（**預設**） | https://platform.deepseek.com | NT$5–15 | 設 `DEEPSEEK_API_KEY`；預設 `deepseek-v4-pro` 並開啟思考模式 |
 | `gemini`（免費備援） | https://aistudio.google.com/apikey | NT$0 | 設 `GEMINI_API_KEY`，免費層每日 1500 req |
 | `anthropic`（品質最佳） | https://console.anthropic.com | NT$30–46 | 設 `ANTHROPIC_API_KEY`，並取消 requirements.txt 中 anthropic 註解 |
+
+> DeepSeek 思考模式：workflow 的 `DEEPSEEK_REASONING_EFFORT`（預設 `high`）控制 v4-pro 的推理深度，可設 `medium` / `low` 省成本，或 `off` 完全關閉。
 
 > 💡 建議至少同時設定 `GEMINI_API_KEY` 當免費備援——主 provider 失敗時程式不會自動跨 provider 降級，但 Gemini 內部已有多模型降級鏈。若所有 LLM 都失敗，仍會寄出含原始行情與新聞清單的基本版晨報。
 

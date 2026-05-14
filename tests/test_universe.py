@@ -13,6 +13,14 @@ class _FakeResp:
         return self._payload
 
 
+class _FakeCsvResp:
+    def __init__(self, text):
+        self.content = text.encode("utf-8")
+
+    def raise_for_status(self):
+        pass
+
+
 _BASICS = [
     {"公司代號": "2330", "公司簡稱": "台積電", "產業別": "半導體業",
      "已發行普通股數或TDR原發行股數": "25930380458"},
@@ -62,6 +70,77 @@ def test_universe_fallback_when_openapi_fails(monkeypatch):
     assert all(v.get("fallback") for v in uni.values())
 
 
+_REVENUE = [
+    {"公司代號": "2330", "資料年月": "11504",
+     "營業收入-當月營收": "300,000,000",
+     "營業收入-上月比較增減(%)": "5.2",
+     "營業收入-去年同月增減(%)": "38.6",
+     "累計營業收入-前期比較增減(%)": "41.0"},
+    {"公司代號": "2317", "資料年月": "11504",
+     "營業收入-當月營收": "550,000,000",
+     "營業收入-上月比較增減(%)": "-2.1",
+     "營業收入-去年同月增減(%)": "12.4",
+     "累計營業收入-前期比較增減(%)": "10.0"},
+    {"公司代號": "00878", "資料年月": "11504",   # 5 位代號應被略過
+     "營業收入-當月營收": "0",
+     "營業收入-上月比較增減(%)": "0",
+     "營業收入-去年同月增減(%)": "0",
+     "累計營業收入-前期比較增減(%)": "0"},
+]
+
+
+def test_monthly_revenue_parses(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: _FakeResp(_REVENUE))
+    rev = mr.fetch_tw_monthly_revenue()
+    assert "00878" not in rev
+    assert rev["2330"]["yoy_pct"] == 38.6
+    assert rev["2330"]["mom_pct"] == 5.2
+    assert rev["2330"]["rev"] == 300_000_000
+    assert rev["2317"]["yoy_pct"] == 12.4
+
+
+def test_monthly_revenue_fallback_on_failure(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_tw_monthly_revenue() == {}
+
+
+_TDCC_CSV = (
+    "資料日期,證券代號,持股分級,人數,股數,占集保庫存數比例%\n"
+    "20260509,2330,1,10000,5000000,2.00\n"          # 散戶分級，應排除
+    "20260509,2330,12,500,400000000,1.93\n"
+    "20260509,2330,13,300,300000000,1.50\n"
+    "20260509,2330,14,200,250000000,2.10\n"
+    "20260509,2330,15,150,9000000000,68.50\n"
+    "20260509,2330,17,11150,9955000000,100.00\n"    # 合計，應排除
+    "20260509,2317,15,5000,4000000000,40.00\n"
+)
+
+
+def test_tdcc_major_holders_parses(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeCsvResp(_TDCC_CSV))
+    out = mr.fetch_tdcc_major_holders({"2330", "2317"})
+    # 2330：分級 12-15 加總 = 1.93+1.50+2.10+68.50
+    assert round(out["2330"]["major_holder_pct"], 2) == 74.03
+    assert out["2317"]["major_holder_pct"] == 40.0
+    assert out["2330"]["date"] == "20260509"
+
+
+def test_tdcc_respects_target_codes(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeCsvResp(_TDCC_CSV))
+    out = mr.fetch_tdcc_major_holders({"2330"})
+    assert "2317" not in out
+
+
+def test_tdcc_fallback_on_failure(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_tdcc_major_holders() == {}
+
+
 def test_snapshot_uses_universe_codes(monkeypatch):
     """fetch_tw0050_snapshot 應依傳入的 universe 決定要抓哪些代號。"""
     captured = {}
@@ -80,6 +159,8 @@ def test_snapshot_uses_universe_codes(monkeypatch):
 
     monkeypatch.setattr(mr, "fetch_twse_institutional", fake_inst)
     monkeypatch.setattr(mr, "fetch_twse_institutional_cumulative", fake_inst_cum)
+    monkeypatch.setattr(mr, "fetch_tw_monthly_revenue", lambda: {})
+    monkeypatch.setattr(mr, "fetch_tdcc_major_holders", lambda tc=None: {})
     monkeypatch.setattr(mr.yf, "download", fake_download)
 
     universe = {"2330": {"name": "台積電", "industry": "半導體業", "market_cap": 1e13},

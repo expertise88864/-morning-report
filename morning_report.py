@@ -66,12 +66,15 @@ DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 # DeepSeek 模型名：
-#   deepseek-chat       → V3.2-Exp（一般版，便宜）
-#   deepseek-reasoner   → V3.2-Exp Reasoner（思考型，較準但慢）
-#   deepseek-v4-pro     → V4 Pro（如官方已上線）
+#   deepseek-v4-pro     → V4 Pro（推薦，分析最深，支援思考模式）
 #   deepseek-v4-flash   → V4 Flash（便宜版）
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+#   deepseek-chat       → V4 Flash 非思考模式別名（2026/07/24 後棄用）
+#   deepseek-reasoner   → V4 Flash 思考模式別名（2026/07/24 後棄用）
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+# 思考模式強度（high / medium / low；設 off/none 關閉）。
+# 僅對 v4-pro / reasoner 生效，可顯著提升分析推理深度（成本略升）。
+DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 
 # RSS 新聞來源（中、英、Fed）
 RSS_FEEDS = {
@@ -702,12 +705,14 @@ def fetch_taifex_foreign_futures() -> dict:
 
 def fetch_macro_indicators() -> dict:
     """
-    抓關鍵總經指標 + 過去 252 日歷史百分位（Task D）：
+    抓關鍵總經 + 國際連動指標 + 過去 252 日歷史百分位（Task D）：
     - VIX：恐慌指數
     - SOX：費城半導體指數
     - 10Y：美國 10 年期公債殖利率
     - DXY：美元指數
     - 13W：3 個月國庫券殖利率
+    - N225：日經 225（亞股開盤領先參考）
+    - SSE：上證綜合指數（中國盤面，影響台股資金面與情緒）
     每項回傳：close, change_pct, prev_close, pct_rank_252d, year_high, year_low
     """
     tickers = {
@@ -716,6 +721,8 @@ def fetch_macro_indicators() -> dict:
         "10Y": "^TNX",
         "DXY": "DX-Y.NYB",
         "13W": "^IRX",
+        "N225": "^N225",
+        "SSE": "000001.SS",
     }
     out: dict[str, dict] = {}
     for name, sym in tickers.items():
@@ -1153,10 +1160,124 @@ def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
         return _fallback_universe()
 
 
+def fetch_tw_monthly_revenue() -> dict[str, dict]:
+    """
+    抓上市公司「每月營業收入」（TWSE OpenAPI t187ap05_L，免費無 key，一次請求全市場）。
+    這是台股個股最即時、最硬的基本面數據——讓 LLM 選股有真實營收成長率佐證，
+    不再只靠先驗知識。
+    回傳：{ code: {"month", "rev", "mom_pct", "yoy_pct", "cum_yoy_pct"} }
+    失敗回傳 {}（不影響晨報其他區塊）。
+    """
+    try:
+        r = requests.get("https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
+                         timeout=20,
+                         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        r.raise_for_status()
+        data = r.json() or []
+        if not data:
+            return {}
+        keys = list(data[0].keys())
+        code_k = next((k for k in keys if "公司代號" in k or k.strip() == "代號"), None)
+        month_k = next((k for k in keys if "資料年月" in k), None)
+        yoy_k = next((k for k in keys if "去年同月增減" in k), None)
+        mom_k = next((k for k in keys if "上月比較增減" in k), None)
+        rev_k = next((k for k in keys if "當月營收" in k and "累計" not in k), None)
+        cumyoy_k = next((k for k in keys if "前期比較增減" in k), None)
+        if not code_k:
+            print(f"[revenue] 欄位偵測失敗 keys={keys}", file=sys.stderr)
+            return {}
+        out: dict[str, dict] = {}
+        for row in data:
+            c = str(row.get(code_k, "")).strip()
+            if not (len(c) == 4 and c.isdigit()):
+                continue
+            out[c] = {
+                "month": (str(row.get(month_k, "")).strip() if month_k else ""),
+                "rev": _to_int(row.get(rev_k)) if rev_k else None,
+                "mom_pct": _to_float(row.get(mom_k)) if mom_k else None,
+                "yoy_pct": _to_float(row.get(yoy_k)) if yoy_k else None,
+                "cum_yoy_pct": _to_float(row.get(cumyoy_k)) if cumyoy_k else None,
+            }
+        print(f"[revenue] 取得 {len(out)} 檔上市公司月營收")
+        return out
+    except Exception as e:
+        print(f"[revenue] 抓取失敗: {e}", file=sys.stderr)
+        return {}
+
+
+def fetch_tdcc_major_holders(target_codes: Optional[set] = None) -> dict[str, dict]:
+    """
+    抓「集保戶股權分散表」各檔的大戶持股比例（TDCC 集保結算所開放資料，免費無 key）。
+    大戶定義：持股 ≥ 400 張（分級 12-15）；比例越高代表籌碼越集中在大戶/主力手上。
+    資料每週更新（約週五），是「主力進出」最穩定的免費官方來源。
+    回傳：{ code: {"major_holder_pct": float, "date": str} }
+    失敗回傳 {}（不影響晨報其他區塊）。
+    """
+    import csv
+    import re as _re
+    from io import StringIO
+    try:
+        r = requests.get("https://opendata.tdcc.com.tw/getOD.ashx?id=1-5",
+                         timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        try:
+            text = r.content.decode("utf-8")
+        except UnicodeDecodeError:
+            text = r.content.decode("big5", errors="replace")
+        rows = list(csv.reader(StringIO(text)))
+        if len(rows) < 2:
+            return {}
+        header = [h.strip() for h in rows[0]]
+
+        def _col(*needles: str) -> Optional[int]:
+            for i, h in enumerate(header):
+                if any(n in h for n in needles):
+                    return i
+            return None
+
+        date_i = _col("資料日期")
+        code_i = _col("證券代號", "代號")
+        level_i = _col("分級", "持股")
+        pct_i = _col("比例", "占")
+        if code_i is None or level_i is None or pct_i is None:
+            print(f"[tdcc] 欄位偵測失敗 header={header}", file=sys.stderr)
+            return {}
+
+        out: dict[str, dict] = {}
+        idx_max = max(code_i, level_i, pct_i)
+        for row in rows[1:]:
+            if len(row) <= idx_max:
+                continue
+            code = str(row[code_i]).strip()
+            if target_codes is not None and code not in target_codes:
+                continue
+            m = _re.match(r"\s*(\d+)", str(row[level_i]))
+            if not m:
+                continue
+            level = int(m.group(1))
+            if not (12 <= level <= 15):   # 12-15 ＝ 持股 ≥ 400 張（大戶）
+                continue
+            pct = _to_float(row[pct_i])
+            if pct is None:
+                continue
+            entry = out.setdefault(code, {"major_holder_pct": 0.0, "date": ""})
+            entry["major_holder_pct"] += pct
+            if date_i is not None and date_i < len(row):
+                entry["date"] = str(row[date_i]).strip()
+        for v in out.values():
+            v["major_holder_pct"] = round(v["major_holder_pct"], 2)
+        print(f"[tdcc] 取得 {len(out)} 檔大戶持股比例")
+        return out
+    except Exception as e:
+        print(f"[tdcc] 抓取失敗: {e}", file=sys.stderr)
+        return {}
+
+
 def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
     """
     批次抓台股 universe（預設市值前 100 大）近期表現。
-    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超、30日累積法人。
+    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超、
+              30日累積法人、月營收年增率。
     universe 由 fetch_tw_top100_universe() 提供；未傳則退化為硬編 0050 清單。
     """
     if universe is None:
@@ -1166,6 +1287,8 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
     # 三大法人單日 API 一次回傳全市場，30 日累積只是 client 端篩選，universe 變大不增加請求數
     target_codes = set(universe.keys())
     inst_30d = fetch_twse_institutional_cumulative(days_back=30, target_codes=target_codes)
+    revenue = fetch_tw_monthly_revenue()              # 月營收（一次請求全市場）
+    tdcc = fetch_tdcc_major_holders(target_codes)     # 大戶持股比例（一次請求全市場）
     snapshot: list[dict] = []
     codes = list(universe.keys())
 
@@ -1199,6 +1322,8 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
 
             inst_data = inst.get(code, {})
             inst_30 = inst_30d.get(code, {})
+            rev = revenue.get(code, {})
+            tdcc_data = tdcc.get(code, {})
             info = universe[code]
             # 業務簡介：優先用硬編的詳細版，否則退而用 OpenAPI 的產業別
             desc = TW0050_CONSTITUENTS.get(code) or (
@@ -1223,6 +1348,12 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
                 "invest_30d_lot":  round(inst_30.get("invest_cum", 0) / 1000, 0),
                 "dealer_30d_lot":  round(inst_30.get("dealer_cum", 0) / 1000, 0),
                 "inst_30d_days":   inst_30.get("days", 0),
+                # 月營收基本面
+                "rev_month":   rev.get("month"),
+                "rev_yoy_pct": rev.get("yoy_pct"),
+                "rev_mom_pct": rev.get("mom_pct"),
+                # 大戶持股比例（TDCC 集保，≥400 張，週更）
+                "major_holder_pct": tdcc_data.get("major_holder_pct"),
             })
         except (KeyError, ValueError, TypeError) as e:
             print(f"[snapshot] {code} 跳過: {e}", file=sys.stderr)
@@ -2288,6 +2419,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         for s in tw0050_sorted:
             mcap = s.get("market_cap")
             mcap_str = f" 市值{mcap / 1e8:,.0f}億" if mcap else ""
+            yoy = s.get("rev_yoy_pct")
+            rev_str = f" 營收YoY{yoy:+.1f}%" if yoy is not None else " 營收YoY-"
+            mh = s.get("major_holder_pct")
+            mh_str = f" 大戶{mh:.1f}%" if mh is not None else " 大戶-"
             rows.append(
                 f"{s['code']} {s['name']:<6} 收{s['close']:>8} "
                 f"日{s['day_pct']:+5.2f}% 月{s['month_pct']:+6.2f}% "
@@ -2297,7 +2432,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"自營{s['dealer_lot']:+6.0f}張 "
                 f"總{s['total_lot']:+8.0f}張 | "
                 f"30日外資{s.get('foreign_30d_lot',0):+8.0f}張 "
-                f"30日投信{s.get('invest_30d_lot',0):+6.0f}張 |{mcap_str} {s['desc']}"
+                f"30日投信{s.get('invest_30d_lot',0):+6.0f}張 |{mcap_str}{rev_str}{mh_str} {s['desc']}"
             )
         tw0050_block = "\n".join(rows)
     else:
@@ -2312,7 +2447,15 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         rank = m.get("pct_rank_252d")
         rank_str = f", 1Y百分位 {rank:.0f}%" if rank is not None else ""
         return (f"{name}={m['close']} ({m.get('change_pct',0):+.2f}%{rank_str})")
-    macro_block = "\n".join([f"  {fmt_m(n)}" for n in ["VIX", "SOX", "10Y", "DXY", "13W"]])
+    macro_block = "\n".join(
+        [f"  {fmt_m(n)}" for n in ["VIX", "SOX", "10Y", "DXY", "13W", "N225", "SSE"]])
+    # 殖利率曲線 10Y − 13W 利差（由已抓資料推導，倒掛為衰退領先訊號）
+    ten_y = macro.get("10Y", {}) or {}
+    thirteen_w = macro.get("13W", {}) or {}
+    if ten_y.get("close") is not None and thirteen_w.get("close") is not None:
+        spread = ten_y["close"] - thirteen_w["close"]
+        macro_block += (f"\n  殖利率曲線 10Y−13W 利差 = {spread:+.2f} 個百分點"
+                        f"（負值=倒掛，衰退領先訊號；轉正回升=景氣回溫訊號）")
 
     # SEC 8-K 公告區塊（Task C）
     sec_filings = quotes.get("SEC_FILINGS", []) or []
@@ -2461,6 +2604,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - 10Y 殖利率上升 → 成長股估值壓力（折現率↑）
 - DXY 升 → 美元強 → 新興市場資金流出
 - 13W (3M 國庫券) 殖利率變動反映 Fed 短期利率預期
+- N225 (日經 225) 與台股同屬亞股、開盤時間相近，是台股開盤情緒的同步參考
+- SSE (上證綜指) 反映中國盤面，影響台股資金面與兩岸題材；中國重挫常壓抑台股風險偏好
+- 殖利率曲線倒掛（10Y−13W 為負）是經典衰退領先訊號；由負轉正回升則為景氣回溫訊號
 
 【SEC 8-K 主要公司公告（近 48 小時）】
 {sec_block}
@@ -2521,8 +2667,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
 
-【台股市值前 100 大昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）】
+【台股市值前 100 大昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）+ 月營收年增率 + 大戶持股】
 {tw0050_block}
+※「營收YoY」為該公司最新月營收的去年同月年增率（真實數據，TWSE 月營收彙總）；「-」代表無資料
+※「大戶」為持股 ≥ 400 張的大戶占集保總數比例（TDCC 集保股權分散表，週更）；比例高 = 籌碼集中在大戶/主力手上
 
 ═══════════════════════════════════════════════════════════
 # 寫作鐵律（必讀，違反任一條都是失敗報告）
@@ -2675,17 +2823,20 @@ QQQ X.X% [+1/-1/0]、SOX X.X% [+1/-1/0]、VIX X [+1/-1/0]、TSM ADR X.X% [+1/-1/
 2. 30 日累積外資買超 > 0 且加速
 3. 新聞清單有具體催化消息（不是空話）
 4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱）
+5. 月營收年增率（營收YoY）正成長，最好 > +10%（用上表「營收YoY」欄位，禁止瞎掰）
+6. 大戶持股比例偏高或結構穩固（用上表「大戶」欄位；籌碼集中在大戶 = 主力認同）
 
 **選股禁止事項**：
 - 不可用技術面分析
 - **只能選上方「台股市值前 100 大」清單裡有列出的股票**，不可選清單外或杜撰代號
-- 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼與消息才是主因**
+- 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼、消息、營收成長才是主因**
+- 營收 YoY 大幅衰退（< −15%）的個股，除非有極強催化消息，否則不選
 - 若三檔都信心低，**照寫，不要勉強拉高**
 
 每檔用 **### 代號 公司名** 作為三級標題（例：`### 2330 台積電`），下方接以下 6 個 bullet：
 
 - **業務簡介**：1-2 句，這間公司在做什麼 + 主力產品
-- **近期營收/獲利動向**：最近一季營收 / 年增率 / 法說會重點（用先驗知識）
+- **近期營收/獲利動向**：**優先引用上表「營收YoY」的真實月營收年增率數字**；可再補法說會重點（先驗知識），但月營收以上表為準
 - **昨日法人動向**：外資 X 張、投信 X 張、自營 X 張（**精準引用上表數字**）；30 日累積外資 X 張（**強度判讀**）
 - **挑選理由**：消息催化 + 籌碼結構 + 基本面定位（三者都要提）
 - **信心等級**：高 / 中 / 低（**禁止省略**；說明信心來自哪一面）
@@ -2813,6 +2964,12 @@ def _call_deepseek(prompt: str) -> str:
                     "max_tokens": 4000,
                     "stream": False,
                 }
+                # v4-pro / reasoner 支援思考模式：開啟可顯著提升分析推理深度
+                if (DEEPSEEK_REASONING_EFFORT not in ("", "off", "none", "disabled")
+                        and ("pro" in model or "reasoner" in model)):
+                    payload["thinking"] = {"type": "enabled"}
+                    payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
+                    print(f"[llm] DeepSeek 思考模式啟用 (reasoning_effort={DEEPSEEK_REASONING_EFFORT})")
                 headers = {
                     "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                     "Content-Type": "application/json",
@@ -3160,7 +3317,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         fmt_macro_row("SOX 費半指數", "SOX", "與2330 β≈1.1") +
         fmt_macro_row("10Y 殖利率", "10Y", "升→成長股壓力") +
         fmt_macro_row("DXY 美元指數", "DXY", "升→新興市場資金流出") +
-        fmt_macro_row("13W 國庫券", "13W", "反映Fed利率預期")
+        fmt_macro_row("13W 國庫券", "13W", "反映Fed利率預期") +
+        fmt_macro_row("日經 225", "N225", "亞股開盤情緒同步參考") +
+        fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面")
     )
     # === TAIFEX 外資台指期未平倉區塊 ===
     taifex = quotes.get("TAIFEX_OI", {}) or {}
@@ -3451,8 +3610,18 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     else:
         pred_html = f"<p style='color:#dc2626'>{predictions.get('error','資料缺失')}</p>"
 
-    # ===== 3.5 資料品質區塊 =====
+    # ===== 3.4 預測準確度回顧區塊 =====
     import html as _htmllib
+    backtest_text = (quotes.get("BACKTEST") or "").strip()
+    backtest_html = ""
+    if backtest_text:
+        backtest_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">預測準確度回顧</h2>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:12px 0;font-size:12px;line-height:1.75;color:#475569;white-space:pre-wrap;font-family:'Consolas','Menlo','Courier New',monospace;">{_htmllib.escape(backtest_text)}</div>
+        <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ 比對「當日預測 vs 隔日實際開盤」。平均誤差為正＝預測偏低、為負＝預測偏高；此誤差會回饋進隔日的自我校正。</p>
+        """
+
+    # ===== 3.5 資料品質區塊 =====
     dq_list = quotes.get("DATA_QUALITY", []) or []
     dq_html = ""
     if dq_list:
@@ -3560,6 +3729,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {backtest_html}
+
             {dq_html}
 
           </td></tr>
@@ -3636,17 +3807,18 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     else:
         add("USD/TWD 匯率", "error", "TWD=X 抓取失敗")
 
-    # 總經指標
+    # 總經 + 國際指標
     macro = quotes.get("MACRO", {}) or {}
     ok_n = sum(1 for v in macro.values()
                if isinstance(v, dict) and not v.get("error") and v.get("close") is not None)
-    tot = len(macro) or 5
+    tot = len(macro) or 7
+    macro_label = "總經/國際指標 VIX/SOX/10Y/DXY/13W/日經/上證"
     if ok_n >= tot:
-        add("總經指標 VIX/SOX/10Y/DXY/13W", "ok", f"{ok_n}/{tot} 項")
+        add(macro_label, "ok", f"{ok_n}/{tot} 項")
     elif ok_n == 0:
-        add("總經指標 VIX/SOX/10Y/DXY/13W", "error", "全部抓取失敗")
+        add(macro_label, "error", "全部抓取失敗")
     else:
-        add("總經指標 VIX/SOX/10Y/DXY/13W", "fallback", f"{ok_n}/{tot} 項成功")
+        add(macro_label, "fallback", f"{ok_n}/{tot} 項成功")
 
     # 00662 估值
     if isinstance(fair, dict) and not fair.get("error"):
@@ -3730,6 +3902,24 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         add("台股 universe 籌碼", "fallback", f"{n_uni} 檔・{uni_src}")
     else:
         add("台股 universe 籌碼", "error", "抓取失敗")
+
+    # 台股月營收（基本面）
+    n_rev = sum(1 for s in (tw0050 or []) if s.get("rev_yoy_pct") is not None)
+    if n_rev >= 50:
+        add("台股月營收 YoY", "ok", f"{n_rev} 檔有營收年增率")
+    elif n_rev > 0:
+        add("台股月營收 YoY", "fallback", f"僅 {n_rev} 檔有營收資料")
+    else:
+        add("台股月營收 YoY", "error", "TWSE 月營收抓取失敗")
+
+    # 大戶持股比例（TDCC 集保股權分散表）
+    n_mh = sum(1 for s in (tw0050 or []) if s.get("major_holder_pct") is not None)
+    if n_mh >= 50:
+        add("大戶持股比例 (TDCC)", "ok", f"{n_mh} 檔有大戶籌碼資料")
+    elif n_mh > 0:
+        add("大戶持股比例 (TDCC)", "fallback", f"僅 {n_mh} 檔有資料")
+    else:
+        add("大戶持股比例 (TDCC)", "error", "TDCC 集保資料抓取失敗")
 
     n_err = sum(1 for d in dq if d["status"] == "error")
     n_fb = sum(1 for d in dq if d["status"] == "fallback")

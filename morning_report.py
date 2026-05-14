@@ -635,6 +635,82 @@ def fetch_2330_recent() -> Optional[pd.DataFrame]:
     return None
 
 
+def build_historical_calibration(hist_2330: Optional[pd.DataFrame], days: int = 7) -> str:
+    """
+    建立「過去 N 日 TSM 漲跌 → 2330 隔日開盤實際漲跌」對照表。
+    讓 LLM 看真實的「ADR 預測 vs 台股實際」誤差，作為今日預測的校準錨點。
+    """
+    if hist_2330 is None or len(hist_2330) < days + 2:
+        return "（歷史資料不足，無法生成校準表）"
+    try:
+        tsm_hist = yf.Ticker("TSM").history(period="2mo", auto_adjust=False)
+        tsm_hist = tsm_hist.dropna(subset=["Close"])
+        tsm_hist = tsm_hist[tsm_hist["Close"] > 0]
+        if len(tsm_hist) < days + 2:
+            return "（TSM 歷史資料不足）"
+
+        # 對齊：TSM 第 T 日漲跌 vs 2330 第 T+1 日開盤漲跌
+        # 因 TSM 與 2330 時區不同，先做近似對齊（用日期）
+        tsm_d = tsm_hist["Close"].dropna()
+        tw_open = hist_2330["Open"].dropna()
+        tw_close_prev = hist_2330["Close"].shift(1).dropna()
+
+        tsm_d.index = tsm_d.index.tz_localize(None) if tsm_d.index.tz else tsm_d.index
+        tw_open.index = tw_open.index.tz_localize(None) if tw_open.index.tz else tw_open.index
+        tw_close_prev.index = tw_close_prev.index.tz_localize(None) if tw_close_prev.index.tz else tw_close_prev.index
+
+        # 取最近 N 個交易日的對照
+        rows = []
+        recent_dates = sorted(hist_2330.index)[-(days + 2):]
+        for i in range(1, min(days + 1, len(recent_dates))):
+            d_today = recent_dates[-i]
+            d_today_naive = d_today.tz_localize(None) if d_today.tz else d_today
+
+            # TSM 前一交易日（美股盤後對應台股當日開盤）
+            tsm_lookup = tsm_d[tsm_d.index < d_today_naive]
+            if len(tsm_lookup) < 2:
+                continue
+            tsm_today = float(tsm_lookup.iloc[-1])
+            tsm_prev = float(tsm_lookup.iloc[-2])
+            tsm_pct = (tsm_today - tsm_prev) / tsm_prev * 100
+
+            # 2330 開盤 vs 前一日收盤
+            if d_today_naive not in tw_open.index:
+                continue
+            tw_o = float(tw_open.loc[d_today_naive])
+            cl_lookup = tw_close_prev[tw_close_prev.index <= d_today_naive]
+            if cl_lookup.empty:
+                continue
+            tw_pc = float(cl_lookup.iloc[-1])
+            tw_open_pct = (tw_o - tw_pc) / tw_pc * 100
+
+            implied = tw_open_pct - tsm_pct  # 差值（2330 開盤實際 vs ADR 預期）
+            rows.append({
+                "date": d_today_naive.strftime("%m/%d"),
+                "tsm_pct": tsm_pct,
+                "tw_open_pct": tw_open_pct,
+                "delta": implied,
+            })
+
+        if not rows:
+            return "（無有效對照資料）"
+
+        # 計算平均偏離（含絕對值平均，反映誤差大小）
+        avg_delta = sum(r["delta"] for r in rows) / len(rows)
+        avg_abs = sum(abs(r["delta"]) for r in rows) / len(rows)
+
+        rows_str = "\n".join(
+            f"  {r['date']}：TSM 收盤 {r['tsm_pct']:+.2f}% → 2330 開盤 {r['tw_open_pct']:+.2f}%（偏離 {r['delta']:+.2f}%）"
+            for r in rows
+        )
+        return (f"近 {len(rows)} 個交易日 TSM 漲跌 vs 2330 開盤對照（驗證 ADR 預測準確度）：\n"
+                f"{rows_str}\n"
+                f"平均偏離 = {avg_delta:+.2f}% （正值 = 2330 開盤通常比 ADR 暗示偏高）\n"
+                f"平均絕對偏離 = {avg_abs:.2f}% （此為預測誤差參考）")
+    except Exception as e:
+        return f"（對照表生成失敗: {e}）"
+
+
 def fetch_00662_nav_history() -> list[dict]:
     """
     抓 00662 近期 NAV 與市價歷史。
@@ -870,7 +946,8 @@ def fetch_news() -> list[dict]:
 
 
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
-                   news: list[dict], tw0050: list[dict]) -> str:
+                   news: list[dict], tw0050: list[dict],
+                   calibration: str = "") -> str:
     news_block = "\n".join(
         f"- [{n['source']}] {n['title']}（{n.get('summary','')[:200]}）"
         for n in news[:60]
@@ -916,19 +993,22 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【總經指標（昨日收盤值與變動%）】
 {macro_block}
 
-判讀提示：
+判讀規則：
 - VIX < 15 樂觀、15-20 中性、20-25 警戒、>25 恐慌
-- SOX 與 2330 高度連動（β≈1.1）
-- 10Y 殖利率上升 → 成長股估值壓力
+- SOX 與 2330 高度連動（β≈1.1），SOX 是最重要的單一指標
+- 10Y 殖利率上升 → 成長股估值壓力（折現率↑）
 - DXY 升 → 美元強 → 新興市場資金流出
-- 13W (3M 國庫券) 殖利率變動反映 Fed 利率預期
+- 13W (3M 國庫券) 殖利率變動反映 Fed 短期利率預期
 
-【今日 00662 估值（Python 已算；method 欄位顯示用 NAV 或退化法）】
+【今日 00662 估值（Python 已算）】
 {fair}
 
 【今日 2330 三模型預測（Python 已算）】
 {predictions}
-（model3 是 ADR 衰減版，decay_factor 是近 60 日實證係數）
+（model3 是 ADR 衰減版，decay_factor 是近 60 日實證係數，越接近 1 代表 2330 跟 ADR 越緊密）
+
+【歷史校準資料】
+{calibration}
 
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
@@ -936,108 +1016,158 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【0050 成分股昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）】
 {tw0050_block}
 
-# 寫作要求（必讀）
+═══════════════════════════════════════════════════════════
+# 寫作鐵律（必讀，違反任一條都是失敗報告）
+═══════════════════════════════════════════════════════════
 
-1. **零客套，不寫「親愛的投資人」「以下是」這類開場白**，直接進主題
-2. **語氣精煉、敢下判斷**，不要三方並陳逃避立場
-3. 每提到「公司名」必附 (一句話講這間公司在做什麼 + 近期關鍵動向)
-4. 全部繁體中文
-5. 估值欄位若是 None / nan，直接寫「資料缺失」，不要瞎掰數字
-6. **避免重複條列**，每條只寫一件事
-7. 嚴禁 emoji 與表情符號
-8. **必須引用具體數據**：每個論點背後要有「XX 漲 X.X%」「外資買超 X 萬張」「VIX X」這類精準數字，禁止寫「市場樂觀」「資金充沛」這種空話
+R1. **零客套**：不寫「親愛的投資人」「以下是」「希望這份報告有幫助」這類話
+R2. **必須單一立場**：禁止「樂觀/中性/悲觀」三選一並陳，必須選邊
+R3. **每個論點必附數據**：禁止「市場樂觀」「資金充沛」這種空話。改寫成「VIX 13.2 處低檔、外資 30 日累積買超 2330 共 42,300 張」
+R4. **公司名必附簡介**：「**AMD（全球第二大 x86 CPU + AI GPU 廠，MI300X 為主力）**」
+R5. **估值若 None/nan 直接寫「資料缺失」**，不可瞎掰
+R6. **每條只寫一件事**：避免一句話塞三個論點
+R7. **嚴禁 emoji**：包括 ✅ ❌ 📈 等所有圖示
+R8. **嚴禁使用技術面術語**：不可提 K 線、均線、MACD、KD、RSI、黃金交叉、死亡交叉、布林通道
+R9. **不可用全形冒號之外的全形標點**（書名號、感嘆號除外）
+R10. **繁體中文，台灣財經用語**：寫「漲跌幅」不寫「涨幅」，寫「成交量」不寫「成交额」
 
-# 分析框架（你寫的時候應該照此順序思考，但不必寫進報告）
+═══════════════════════════════════════════════════════════
+# 分析框架（按此順序在腦中執行，但不寫進報告）
+═══════════════════════════════════════════════════════════
 
-## 籌碼面解讀規則
-- 外資**昨日 + 30日累積**同向 → 強烈訊號（如：昨買 1 萬 + 30日累積買 10 萬 = 中期確認上行）
-- 外資昨買但 30日累積賣 → **反彈不可信**（短線反彈）
-- 投信買 + 外資買 → **資金一致看多**（最強訊號）
-- 自營商買賣超通常雜訊大，**權重低**
-- 整體合計 < 5000 張 → 籌碼面**無明確訊號**
+## A. 籌碼面三步驗證
+**步驟 1：外資方向**
+- 昨日外資 + 30日累積外資都正 → 強多（外資中長線看多）
+- 昨日正 + 30日負 → 短彈（不可信，逢高賣壓）
+- 昨日負 + 30日正 → 中期支撐仍在
+- 都負 → 強空（避開）
 
-## 總經連動規則
-- VIX > 20 + DXY 升 + 10Y 升 → **三殺成長股**，估值壓力大
-- SOX 漲 > 1.5% + QQQ 漲 > 1% → 2330 開高機率 > 70%
-- SOX 跌 > 2% → 2330 開低機率 > 80%，**無視 ADR**
-- 13W 殖利率短期下降 → 降息預期升溫，有利成長股
+**步驟 2：投信跟風**
+- 投信跟外資同方向 → 確認訊號（強度加倍）
+- 投信反向 → 訊號減弱
 
-## 立場判斷 SOP（必須照此邏輯）
-- 加分項：QQQ +、SOX +、VIX < 18、外資台股淨買、TSM ADR +
-- 扣分項：QQQ -、SOX -、VIX > 22、外資台股淨賣、TSM ADR -
-- 淨加分 ≥ 3 → 偏多
-- 淨加分 ≤ -3 → 偏空
-- 其他 → 中性
-- **必須在「我的明確立場」段附上分數計算**（例：QQQ+1 SOX+1 VIX中性0 外資+1 TSM-1 = 淨+2 → 偏多偏弱）
+**步驟 3：規模門檻**
+- 外資+投信合計 < 3000 張 → 籌碼面**無明確訊號**，當沒看到
+- 外資+投信合計 > 10000 張 → 強訊號
+- 外資+投信合計 > 30000 張 → 主力強力進駐
 
-# 輸出結構（必須完全照此順序與標題）
+## B. 總經連動五規則
+**規則 1**：SOX 漲 > 1.5% + QQQ 漲 > 1% → 2330 開高機率 ≥ 70%
+**規則 2**：SOX 跌 > 2% → 2330 開低機率 ≥ 80%（即使 TSM ADR 紅也通常開低）
+**規則 3**：VIX > 20 + DXY 升 + 10Y 升 → 三殺成長股，避免重壓 00662
+**規則 4**：13W 殖利率明顯下降 → 降息預期升溫，有利成長股
+**規則 5**：DXY 升 0.5% 以上 → 外資匯出壓力，台股當日易現賣壓
+
+## C. 立場判斷 5 維加減分（強制執行）
+- QQQ 漲幅 > 0.5%: +1；< -0.5%: -1
+- SOX 漲幅 > 1%: +1；< -1%: -1
+- VIX < 18: +1；> 22: -1
+- TSM ADR 漲幅 > 0%: +1；< 0%: -1
+- 外資 0050 前 10 大昨日合計買超 > 0: +1；< 0: -1
+
+**判斷規則**：
+- 淨分 ≥ +3 → **偏多**
+- 淨分 ≤ -3 → **偏空**
+- -2 ~ +2 → **中性**
+
+**必須在「我的明確立場」段顯式寫出每項加減分計算過程**。
+
+═══════════════════════════════════════════════════════════
+# 輸出結構（嚴格按此順序與標題，不可增減段落）
+═══════════════════════════════════════════════════════════
 
 ## 五、昨夜三大重點
-僅 3 條 bullet。直接點出最影響 00662 / 2330 的關鍵事件。
+
+**用 3 條 bullet，每條 ≤ 50 字**。
+必須涵蓋（按優先序）：
+1. **最影響 00662 的事件**（美股科技股 / Fed / 半導體政策）
+2. **最影響 2330 的事件**（TSM 動向 / 台積電供應鏈消息 / 半導體出口管制）
+3. **第三個總經或地緣風險事件**
+
+每條必須附上**具體數據或來源**（例：「Nvidia 盤後 +2.3% 因 Mag7 ASIC 訂單超預期 [CNBC]」）
 
 ## 六、科技板塊脈動（5–8 條）
-每條格式：**公司名（一句話業務簡介）**：發生什麼 + 為何重要。
-範例：**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力資料中心晶片）**：Q3 資料中心營收年增 122%，MI300X 出貨優於預期，AI 算力競賽中與 NVDA 差距縮小。
+
+每條格式（嚴格遵守）：
+**公司中英文名（一句話業務簡介）**：發生什麼（含數字）+ 為何重要（對 00662/2330 的傳導）
+
+範例：
+**Broadcom（AVGO，全球前三大半導體 IP 設計商，主導 AI ASIC 客製晶片）**：宣布獲 Anthropic 80 億美元算力訂單，AVGO 盤後 +4.5%。為 2330 先進製程訂單能見度再添確認（CoWoS 2026 產能持續吃緊）。
 
 ## 七、總體經濟與政策環境
-分三小段：
 
-**(A) 美國利率/美元/VIX/通膨**：列出昨日 10Y 殖利率、DXY、VIX、CPI/PPI/就業數據（如有）。
+分三小段（每段 3-5 句，禁止超過）：
 
-**(B) Fed/美國政府重大政策**：FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等。明確寫出對台灣科技業的影響。
+**(A) 美國利率/美元/VIX/通膨**：
+列出 VIX、10Y、DXY、SOX 的**昨日收盤值與變動%**（用上方資料）。如有 CPI/PPI/就業數據釋出，必列數字。
 
-**(C) 全球其他國家政策（若有）**：日本央行、ECB、中國刺激政策、地緣政治等。
+**(B) Fed/美國政府重大政策**：
+FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等。**明確寫出對台灣科技業的影響**。
+
+**(C) 全球其他國家政策（若有）**：
+日本央行、ECB、中國刺激政策、地緣政治。沒有就寫「無重大事件」。
 
 ## 八、台灣本地動態（必寫，不可略）
+
 聚焦昨日對台灣資本市場有影響的事：
-- 台灣央行/金管會動向
+- 台灣央行 / 金管會動向
 - 台積電供應鏈動態（艾司摩爾、東京威力、SUMCO、信驊、力旺等）
 - 台灣總經數據（出口、外銷訂單、CPI）
 - 政府政策（產創條例、科專、台美 21 世紀貿易倡議等）
-若新聞清單中沒有相關內容，寫「無重大本地新聞」，不要編造。
 
-## 九、我的明確立場（**最重要**）
-**先給單一立場標籤**，再解釋為什麼。**不要列出樂觀/中性/悲觀三選一**——直接告訴投資人你選哪一個。
+若新聞清單中沒有相關內容，**直接寫「昨日無重大本地新聞」**，不要編造。
 
-**注意：每一個項目必須獨立成段（中間有空行），不可寫成一段話連在一起**。格式如下：
+## 九、我的明確立場（**最重要段**）
 
-> **立場：[偏多 / 偏空 / 中性]**（任選一個，不可模糊）
+**第 1 行 — 加減分計算**（強制顯示，不可省略）：
+```
+QQQ X.X% [+1/-1/0]、SOX X.X% [+1/-1/0]、VIX X [+1/-1/0]、TSM ADR X.X% [+1/-1/0]、外資 0050前10合計 [+1/-1] = 淨分 X
+```
 
-> **理由**：3-5 句說明為什麼選這個立場
+**第 2 行 — 立場標籤**：
+> **立場：偏多 / 偏空 / 中性**（按淨分自動判定）
 
-> **2330 開盤關鍵價位**：守穩 XXX 元為強，跌破 XXX 元轉弱
+**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。
 
-> **00662 操作建議**：明確寫「加碼 / 觀望 / 減碼」+ 具體價位門檻
+**第 4-6 行**（**每行獨立成段，中間空行**）：
 
-> **主要風險**：1 句話
+> **2330 開盤關鍵價位**：守穩 XXX 元為強，跌破 XXX 元轉弱（用三模型預測中位數 ± 1% 為觀察價位）
+
+> **00662 操作建議**：明確寫「加碼 / 觀望 / 減碼」，並給具體價位（例：「合理估值 116.5 元，若開盤 < 116 元可加碼」）
+
+> **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
 ## 十、今日台股關注三檔（**必寫，0050 成分股限定**）
-從上方「0050 成分股」表格中，**結合基本面（公司營運/題材）+ 消息面（昨日新聞）+ 法人面（外資/投信買超強度）** 三角度，選出**今日預期漲幅最高的三檔**。**不限制漲幅大小**、**不要用技術面（K 線、均線、MACD）**。
 
-每檔必須用 **### 代號 公司名** 作為三級標題（例如 `### 2330 台積電`），下方接以下 6 個 bullet（**每項獨立一行**）：
+**選股優先序**（必須符合至少 2 項）：
+1. 昨日法人買超強（外資 + 投信合計 > +5000 張）
+2. 30 日累積外資買超 > 0 且加速
+3. 新聞清單有具體催化消息（不是空話）
+4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱）
 
-- **業務簡介**：1-2 句，這間公司在做什麼
-- **近期營收/獲利動向**：最近一季營收表現、年增率
-- **昨日法人動向**：外資/投信/自營買超張數，重點解讀（連續買超？籌碼集中？）
-- **挑選理由**：為什麼今天會漲（消息催化 + 籌碼結構 + 基本面定位）
-- **信心等級**：高 / 中 / 低（不可省略）
-- **目標關注幅度**：例如「漲幅 2-4%」
-
-**選股優先序提示**（請優先選符合**至少 2 項**的標的）：
-1. **昨日法人買超強**（外資 + 投信合計 >+1 萬張，籌碼集中度高）
-2. **30 日累積外資買超為正且加速**（中期趨勢明確）
-3. **新聞清單有具體催化消息**（不是「市場樂觀」這種空話）
-4. **業務直接受惠當前主軸**（如 AI 算力、半導體先進製程、電動車）
-
-**禁止事項**：
-- 不可用技術面分析（不能提 K 線、均線、MACD、KD、RSI、布林通道）
+**選股禁止事項**：
+- 不可用技術面分析
 - 不可選 0050 以外的股票
-- 若三檔都信心低，照寫，不要勉強說都很有把握
+- 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼與消息才是主因**
+- 若三檔都信心低，**照寫，不要勉強拉高**
 
-第三檔分析完後**獨立成段**寫風險警示：「以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議」。
+每檔用 **### 代號 公司名** 作為三級標題（例：`### 2330 台積電`），下方接以下 6 個 bullet：
+
+- **業務簡介**：1-2 句，這間公司在做什麼 + 主力產品
+- **近期營收/獲利動向**：最近一季營收 / 年增率 / 法說會重點（用先驗知識）
+- **昨日法人動向**：外資 X 張、投信 X 張、自營 X 張（**精準引用上表數字**）；30 日累積外資 X 張（**強度判讀**）
+- **挑選理由**：消息催化 + 籌碼結構 + 基本面定位（三者都要提）
+- **信心等級**：高 / 中 / 低（**禁止省略**；說明信心來自哪一面）
+- **目標關注幅度**：給合理區間（例「漲幅 2-4%」），**不可超過 ±10%**
+
+第三檔分析完後**獨立成段**寫風險警示：
+> 以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議。
 
 ## 十一、一句話總結
-20 字內。給一句具體可執行的結論。
+
+20 字內。給一句**具體可執行**的結論（含立場 + 動作）。
+
+範例：「偏多操作 00662，2330 守穩 1180 元逢回加碼」
 """
 
 
@@ -1132,10 +1262,12 @@ def _call_deepseek(prompt: str) -> str:
     if not DEEPSEEK_API_KEY:
         raise RuntimeError("缺 DEEPSEEK_API_KEY 環境變數")
 
+    # 模型降級鏈：主模型不穩時依序往下試
+    # v4-pro (旗艦) → v4-flash (輕量) → deepseek-chat (V3.2 一般，最穩)
     fallback_models = [DEEPSEEK_MODEL]
-    # 若主模型不在常見列，加入 deepseek-chat 作備援
-    if DEEPSEEK_MODEL != "deepseek-chat":
-        fallback_models.append("deepseek-chat")
+    for alt in ("deepseek-v4-flash", "deepseek-chat"):
+        if alt not in fallback_models:
+            fallback_models.append(alt)
 
     last_err: Optional[Exception] = None
     for model in fallback_models:
@@ -1214,9 +1346,10 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 
 
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
-                       news: list[dict], tw0050: list[dict] | None = None) -> str:
+                       news: list[dict], tw0050: list[dict] | None = None,
+                       calibration: str = "") -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。失敗回傳備援文字而非 raise。"""
-    prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [])
+    prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
     try:
         if LLM_PROVIDER == "anthropic":
             return _call_anthropic(prompt)
@@ -1747,9 +1880,13 @@ def main() -> int:
         print(f"[main] 0050 抓取失敗: {e}", file=sys.stderr)
         tw0050 = []
 
+    # 6.5 建立歷史校準資料（TSM vs 2330 開盤實證對照）
+    calibration = build_historical_calibration(hist_2330, days=7)
+    print(f"[main] 歷史校準資料已生成（{len(calibration)} 字）")
+
     # 7. LLM 分析
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
-    analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050)
+    analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050, calibration)
 
     # 8. 組信
     html = render_html(quotes, fair, predictions, analysis, report_date, mode)

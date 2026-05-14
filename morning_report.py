@@ -675,17 +675,30 @@ def fetch_taifex_foreign_futures() -> dict:
             if len(rows) < 3:
                 continue
 
+            # 以表頭自動定位「多空淨額未平倉口數」欄。
+            # 注意：絕不可硬編 index —— 該欄旁邊就是「多空淨額未平倉契約金額(千元)」，
+            # 抓錯欄會把「金額」當「口數」讀，數字爆掉上萬倍。
+            header_i = netoi_i = None
+            role_i = 2
+            for ri, row in enumerate(rows[:6]):
+                for ci, cell in enumerate(row):
+                    c = cell.strip()
+                    if "多空淨額" in c and "未平倉" in c and "口數" in c and "金額" not in c:
+                        header_i, netoi_i = ri, ci
+                    if "身份別" in c:
+                        role_i = ci
+                if netoi_i is not None:
+                    break
+            if netoi_i is None:
+                print(f"[taifex] {date_str} 表頭偵測失敗，跳過", file=sys.stderr)
+                continue
+
             result = {"date": date_str}
-            # 找含「外資」「投信」「自營商」的列，欄位通常為「未平倉淨額口數」
-            for row in rows:
-                if len(row) < 13:
+            for row in rows[header_i + 1:]:
+                if len(row) <= max(role_i, netoi_i):
                     continue
-                role = row[2].strip() if len(row) > 2 else ""
-                # 通常第 13 欄是淨未平倉口數
-                try:
-                    net_oi = _to_int(row[12])
-                except Exception:
-                    continue
+                role = row[role_i].strip()
+                net_oi = _to_int(row[netoi_i])
                 if "外資" in role or "外國" in role:
                     result["foreign_oi_net"] = net_oi
                 elif "投信" in role:
@@ -2130,6 +2143,12 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         for obj in (fair, predictions, taiex_pred):
             if isinstance(obj, dict) and not obj.get("error"):
                 obj.setdefault("calibration", {"applied": False, "reason": reason})
+        # 2330：即使未校正，weighted_final 也要有值（= 等權中位數），讓信件顯示一致
+        if isinstance(predictions, dict) and not predictions.get("error"):
+            predictions.setdefault("weighted_final", predictions.get("mid"))
+            predictions.setdefault("final_method", "等權中位數（歷史樣本不足）")
+            predictions.setdefault("model_mae_pct",
+                                   {"model1": None, "model2": None, "model3": None})
 
     if not history or len(history) < 2:
         _mark_unapplied("歷史樣本不足（< 2 天）")

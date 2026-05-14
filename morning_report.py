@@ -711,41 +711,20 @@ def build_historical_calibration(hist_2330: Optional[pd.DataFrame], days: int = 
         return f"（對照表生成失敗: {e}）"
 
 
-def fetch_00662_nav_history() -> list[dict]:
-    """
-    抓 00662 近期 NAV 與市價歷史。
-    來源：基智網（MoneyDJ）公開 API，回傳近 60 個交易日 NAV/Price。
-    Fallback：用元大投信公開資料或設為空，由 calc 函式做退化處理。
-    """
-    # 鉅亨網 ETF API（公開、免 key）：
-    # https://www.cnyes.com/twstock/etf/00662
-    url = "https://ws.api.cnyes.com/ws/api/v1/etf/twstock/00662/nav"
-    try:
-        r = requests.get(url, timeout=10,
-                          headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        data = r.json().get("data", {}).get("items", [])
-        return data if isinstance(data, list) else []
-    except Exception as e:
-        print(f"[00662] NAV API 失敗（將回退到無 NAV 模式）: {e}", file=sys.stderr)
-        return []
-
-
 def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
                            usdtwd: float, last_00662_price: Optional[float],
                            usdtwd_prev: Optional[float] = None) -> dict:
     """
-    精準版 00662 公允淨值與合理價估算。
+    精準版 00662 公允淨值與合理價估算（V2 — 不依賴外部 NAV API）。
 
-    邏輯：
-    1. QQQ 漲跌幅 → 對應 NAV 美金價值變動
-    2. 加入今日匯率 vs 昨日匯率變動（USD 升 → NAV 台幣價值上升）
-    3. 加入 20 日平均折溢價（市價與 NAV 的長期偏離）
-    4. 若 NAV 抓不到，退化用「last_close × (1+QQQ%)」（最低保證準度）
+    新策略：用「歷史回歸 + 即時資料」三合一估算
+    1. QQQ 漲跌幅 → 主因子
+    2. 匯率變動 → 修正因子（USD 升 → 00662 台幣價上升）
+    3. 從 yfinance 抓 QQQ 與 00662 近 60 個交易日對照，
+       計算 00662 對 QQQ 的「實證 beta」與「平均偏離率」
+    4. 修正後：fair_price = last_00662 × (1 + QQQ% × beta + FX%) × (1 + 平均偏離)
 
-    公式：
-      理論 NAV (今日) = 昨日 NAV × (1 + QQQ%) × (1 + 匯率變動%)
-      合理市價 = 理論 NAV × (1 + 平均折溢價%)
+    這方法比抓 NAV API 更穩（不依賴第三方）且更精準（用真實對照資料）。
     """
     qqq_pct = (qqq_close - qqq_prev_close) / qqq_prev_close
     if last_00662_price is None:
@@ -756,48 +735,69 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     if usdtwd and usdtwd_prev:
         fx_pct = (usdtwd - usdtwd_prev) / usdtwd_prev
 
-    # 嘗試抓 NAV 歷史
-    nav_hist = fetch_00662_nav_history()
-    last_nav = None
-    avg_premium_pct = None
-    if nav_hist and len(nav_hist) >= 5:
-        # cnyes 結構通常為 [{"date":..., "nav":..., "price":...}]
-        try:
-            # 抓最近一筆 NAV
-            latest = nav_hist[0] if "nav" in nav_hist[0] else None
-            if latest:
-                last_nav = safe_float(latest.get("nav"))
-                # 計算近 20 日平均折溢價
-                premiums = []
-                for item in nav_hist[:20]:
-                    nav = safe_float(item.get("nav"))
-                    price = safe_float(item.get("price"))
-                    if nav and price and nav > 0:
-                        premiums.append((price - nav) / nav)
-                if premiums:
-                    avg_premium_pct = sum(premiums) / len(premiums)
-        except (KeyError, TypeError):
-            pass
+    # 用 yfinance 算 QQQ vs 00662 的歷史 beta 與偏離
+    beta = 1.0          # 預設
+    avg_deviation = 0.0 # 預設
+    samples = 0
+    try:
+        qqq_hist = yf.Ticker("QQQ").history(period="3mo", auto_adjust=False)
+        tw_hist  = yf.Ticker("00662.TW").history(period="3mo", auto_adjust=False)
+        fx_hist  = yf.Ticker("TWD=X").history(period="3mo", auto_adjust=False)
+
+        qqq_s = qqq_hist["Close"].dropna()
+        tw_s  = tw_hist["Close"].dropna()
+        fx_s  = fx_hist["Close"].dropna()
+        qqq_s.index = qqq_s.index.tz_localize(None) if qqq_s.index.tz else qqq_s.index
+        tw_s.index  = tw_s.index.tz_localize(None)  if tw_s.index.tz  else tw_s.index
+        fx_s.index  = fx_s.index.tz_localize(None)  if fx_s.index.tz  else fx_s.index
+
+        # 計算 00662 隔日漲跌（台股對應前一夜美股）
+        df = pd.DataFrame({
+            "qqq_lag": qqq_s.shift(1),     # 前一交易日 QQQ 收盤（美股盤後 → 隔日台股開盤反應）
+            "qqq_lag_pct": qqq_s.shift(1).pct_change(),
+            "tw": tw_s,
+            "tw_pct": tw_s.pct_change(),
+            "fx_lag_pct": fx_s.shift(1).pct_change(),
+        }).dropna()
+
+        # 取 |QQQ 變動 > 0.3%| 的樣本（有意義的訊號）
+        sig = df[df["qqq_lag_pct"].abs() > 0.003].tail(60)
+        if len(sig) >= 15:
+            # beta = avg(00662 變動 / QQQ 變動)
+            ratios = sig["tw_pct"] / sig["qqq_lag_pct"]
+            ratios = ratios[(ratios > -2) & (ratios < 3)]  # 過濾異常值
+            beta = float(ratios.median())
+            beta = max(0.5, min(beta, 1.5))   # 限制合理區間
+
+            # 偏離 = 實際 00662 變動 − (QQQ 變動 × beta + 匯率變動)
+            sig_full = sig.copy()
+            sig_full["predicted"] = sig_full["qqq_lag_pct"] * beta + sig_full["fx_lag_pct"]
+            sig_full["deviation"] = sig_full["tw_pct"] - sig_full["predicted"]
+            avg_deviation = float(sig_full["deviation"].median())
+            samples = len(sig)
+            print(f"[00662] 實證 beta={beta:.3f}, avg_deviation={avg_deviation*100:.3f}%, samples={samples}")
+    except Exception as e:
+        print(f"[00662] 歷史回歸失敗: {e}", file=sys.stderr)
 
     # 計算合理價
-    if last_nav and avg_premium_pct is not None:
-        # 進階版：用 NAV 估算
-        theo_nav = last_nav * (1 + qqq_pct) * (1 + fx_pct)
-        fair_price = theo_nav * (1 + avg_premium_pct)
-        method = "NAV+折溢價+匯率"
+    if samples >= 15:
+        # 精準版：實證 beta + 偏離修正
+        adjusted_pct = qqq_pct * beta + fx_pct + avg_deviation
+        fair_price = last_00662_price * (1 + adjusted_pct)
+        method = f"歷史回歸 (beta={beta:.2f}, 修正={avg_deviation*100:+.2f}%, n={samples})"
     else:
-        # 退化版：直接用昨收
-        theo_nav = None
-        fair_price = last_00662_price * (1 + qqq_pct) * (1 + fx_pct)
-        method = "昨收回推（NAV 資料缺失）"
+        # 退化版：beta=1，無偏離修正
+        adjusted_pct = qqq_pct + fx_pct
+        fair_price = last_00662_price * (1 + adjusted_pct)
+        method = "簡化版（歷史資料不足）"
 
     return {
         "qqq_pct": round(qqq_pct * 100, 2),
         "fx_pct": round(fx_pct * 100, 3),
         "last_00662_price": last_00662_price,
-        "last_nav": round(last_nav, 4) if last_nav else None,
-        "theo_nav": round(theo_nav, 4) if theo_nav else None,
-        "avg_premium_pct": round(avg_premium_pct * 100, 3) if avg_premium_pct is not None else None,
+        "beta": round(beta, 3),
+        "avg_deviation_pct": round(avg_deviation * 100, 3),
+        "samples": samples,
         "fair_price": round(fair_price, 2),
         "implied_change_pct": round((fair_price / last_00662_price - 1) * 100, 2),
         "usdtwd": usdtwd,
@@ -1619,24 +1619,24 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         sign = "+" if fair["implied_change_pct"] >= 0 else ""
         # 台股慣例：紅漲綠跌
         change_color = "#dc2626" if fair["implied_change_pct"] >= 0 else "#16a34a"
-        # 額外欄位（升級後新增）
-        nav_row = ""
-        if fair.get("last_nav"):
-            nav_row = f"""
+        # 新欄位：歷史回歸的 beta + 平均偏離
+        beta_row = ""
+        if fair.get("samples", 0) >= 15:
+            beta_row = f"""
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">昨日 NAV（淨值）</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['last_nav']}</td>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">00662 對 QQQ Beta（近 60 日實證）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair.get('beta','—')}</td>
           </tr>"""
-        premium_row = ""
-        if fair.get("avg_premium_pct") is not None:
-            p_color = "#dc2626" if fair["avg_premium_pct"] >= 0 else "#16a34a"
-            p_sign = "+" if fair["avg_premium_pct"] >= 0 else ""
-            premium_row = f"""
+        dev_row = ""
+        if fair.get("avg_deviation_pct") is not None and fair.get("samples", 0) >= 15:
+            d_color = "#dc2626" if fair["avg_deviation_pct"] >= 0 else "#16a34a"
+            d_sign = "+" if fair["avg_deviation_pct"] >= 0 else ""
+            dev_row = f"""
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">20日平均折溢價</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{p_color};font-variant-numeric:tabular-nums;">{p_sign}{fair['avg_premium_pct']}%</td>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">歷史平均偏離（中位數）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{d_color};font-variant-numeric:tabular-nums;">{d_sign}{fair['avg_deviation_pct']}%</td>
           </tr>"""
         fx_row = ""
         if fair.get("fx_pct") is not None:
@@ -1662,8 +1662,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">00662 昨收參考</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['last_00662_price']}</td>
           </tr>
-          {nav_row}
-          {premium_row}
+          {beta_row}
+          {dev_row}
           {fx_row}
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
@@ -1671,7 +1671,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
           </tr>
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">計算方式：{method_label}　|　含 QQQ 漲跌、匯率變動{"、20日平均折溢價" if fair.get("avg_premium_pct") is not None else ""}</p>
+        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">計算方式：{method_label}</p>
         """
     else:
         fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"

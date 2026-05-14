@@ -13,12 +13,18 @@ on:
     - cron: "0 22 * * 0,1,2,3,4,5"
   workflow_dispatch:   # 允許手動觸發測試
 
+permissions:
+  contents: write   # 允許 push 回 state/history.json
+
 jobs:
   send-report:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0    # 完整歷史，避免 push 衝突
 
       - name: Setup Python
         uses: actions/setup-python@v5

@@ -46,8 +46,12 @@ jobs:
 
           # DeepSeek（推薦）— 走 OpenAI 相容 API
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # 模型選項：deepseek-chat (一般版，便宜), deepseek-reasoner (思考型，較準)
-          DEEPSEEK_MODEL: deepseek-chat
+          # 模型選項：
+          #   deepseek-v4-pro    → V4 旗艦版（推薦，分析最深）
+          #   deepseek-v4-flash  → V4 輕量版（NT$1/月，品質尚可）
+          #   deepseek-chat      → V3.2 一般版（最便宜，備援）
+          #   deepseek-reasoner  → V3.2 思考型（慢但較準）
+          DEEPSEEK_MODEL: deepseek-v4-pro
           DEEPSEEK_BASE_URL: https://api.deepseek.com
 
           # Gemini（免費備援，可留空）

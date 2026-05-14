@@ -38,9 +38,25 @@ import yfinance as yf
 TPE = ZoneInfo("Asia/Taipei")
 NY = ZoneInfo("America/New_York")
 
-GMAIL_USER = os.environ["GMAIL_USER"]            # e.g. expertise88864@gmail.com
-GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
-RECIPIENT = os.environ.get("RECIPIENT", GMAIL_USER)
+# 寄信憑證：import 時不強制存在，只有真正 send_email() 才檢查。
+# 這樣 pytest / 其他 import 情境不需設 Gmail secret 也能載入模組。
+GMAIL_USER = os.environ.get("GMAIL_USER", "")            # e.g. you@gmail.com
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+
+
+def _parse_recipients(raw: str) -> list[str]:
+    """RECIPIENT 支援多位收件者：逗號或分號分隔，例如 'a@gmail.com,b@gmail.com'。"""
+    return [r.strip() for r in (raw or "").replace(";", ",").split(",") if r.strip()]
+
+
+# 收件者清單；未設 RECIPIENT 則寄給自己。RECIPIENT 字串形式保留供向後相容。
+RECIPIENTS = _parse_recipients(os.environ.get("RECIPIENT", "")) or (
+    [GMAIL_USER] if GMAIL_USER else [])
+RECIPIENT = ", ".join(RECIPIENTS)
+
+# SEC EDGAR 要求 User-Agent 內含聯絡 email；不寫死在原始碼，改讀環境變數。
+CONTACT_EMAIL = (os.environ.get("CONTACT_EMAIL") or GMAIL_USER
+                 or "morning-report-bot@users.noreply.github.com")
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -185,6 +201,19 @@ def safe_float(x) -> Optional[float]:
         return None
 
 
+def require_quote(quotes: dict, key: str) -> Optional[dict]:
+    """
+    取出一檔行情，若抓取失敗（error dict 或缺 close/prev_close）回傳 None。
+    讓 main() 在資料缺失時走降級流程，而不是在 quotes[key]["close"] 直接 KeyError 爆掉。
+    """
+    q = quotes.get(key)
+    if not isinstance(q, dict):
+        return None
+    if q.get("error") or q.get("close") is None or q.get("prev_close") is None:
+        return None
+    return q
+
+
 def fetch_quote(ticker: str, period: str = "1mo") -> dict:
     """
     抓最新收盤、前一日收盤、漲跌幅、成交量。
@@ -289,8 +318,8 @@ def fetch_sec_filings() -> list[dict]:
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=48)
     headers = {
-        # SEC 要求 User-Agent 必須含 email
-        "User-Agent": "Morning Report Bot expertise88864@gmail.com",
+        # SEC 要求 User-Agent 必須含 email（改讀 CONTACT_EMAIL 環境變數）
+        "User-Agent": f"Morning Report Bot {CONTACT_EMAIL}",
         "Accept": "application/json",
     }
 
@@ -737,6 +766,19 @@ def _to_int(v) -> int:
         return 0
 
 
+def _to_float(v) -> Optional[float]:
+    """容忍逗號、空字串、None、'--' 的 float 轉換（TWSE OpenAPI 欄位常見）。"""
+    if v is None:
+        return None
+    s = str(v).replace(",", "").strip()
+    if not s or s in ("-", "--", "NA", "null", "None"):
+        return None
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
 def _twse_main_api(date_str: str) -> list[dict]:
     """
     主要端點：TWSE 主站 fund/T86 (response=json)。
@@ -1015,19 +1057,119 @@ def fetch_twse_institutional_cumulative(days_back: int = 30,
     return cum
 
 
-def fetch_tw0050_snapshot() -> list[dict]:
+def _fallback_universe() -> dict[str, dict]:
+    """動態 universe 抓取失敗時的退化清單：用硬編的 TW0050_CONSTITUENTS。"""
+    return {
+        code: {
+            "name": desc.split(" — ")[0],
+            "industry": "",
+            "market_cap": None,
+            "fallback": True,
+        }
+        for code, desc in TW0050_CONSTITUENTS.items()
+    }
+
+
+def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
     """
-    批次抓 0050 成分股近期表現。
+    動態抓「台股市值前 N 大」universe（上市）。
+
+    用兩支 TWSE OpenAPI（免費、無需 API key、各一次請求）：
+      - opendata/t187ap03_L     上市公司基本資料 → 代號 / 簡稱 / 產業別 / 已發行股數
+      - exchangeReport/STOCK_DAY_ALL  上市個股日成交 → 收盤價
+    市值 = 已發行普通股數 × 收盤價，排序取前 N。
+
+    任何環節失敗 → fallback 回硬編 TW0050_CONSTITUENTS（每筆帶 "fallback": True）。
+    回傳：{ code: {"name", "industry", "market_cap", ["fallback"]} }
+    """
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    try:
+        r1 = requests.get("https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
+                          timeout=20, headers=headers)
+        r1.raise_for_status()
+        basics = r1.json() or []
+        r2 = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+                          timeout=20, headers=headers)
+        r2.raise_for_status()
+        prices = r2.json() or []
+        if not basics or not prices:
+            raise RuntimeError("OpenAPI 回傳空資料")
+
+        # 自動偵測欄位名（TWSE 偶爾微調欄位字串）
+        bk = list(basics[0].keys())
+        code_k = next((k for k in bk if "公司代號" in k or k.strip() == "代號"), None)
+        name_k = (next((k for k in bk if "簡稱" in k), None)
+                  or next((k for k in bk if "公司名稱" in k or "名稱" in k), None))
+        ind_k = next((k for k in bk if "產業別" in k), None)
+        share_k = next((k for k in bk if "發行" in k and "股數" in k), None)
+
+        pk = list(prices[0].keys())
+        pcode_k = next((k for k in pk if k == "Code" or "證券代號" in k or "公司代號" in k
+                        or k.strip() == "代號"), None)
+        close_k = next((k for k in pk if "clos" in k.lower() or "收盤" in k), None)
+
+        if not all([code_k, share_k, pcode_k, close_k]):
+            raise RuntimeError(f"OpenAPI 欄位偵測失敗 basics={bk} prices={pk}")
+
+        price_map: dict[str, float] = {}
+        for row in prices:
+            c = str(row.get(pcode_k, "")).strip()
+            cp = _to_float(row.get(close_k))
+            if c and cp:
+                price_map[c] = cp
+
+        rows: list[dict] = []
+        for row in basics:
+            c = str(row.get(code_k, "")).strip()
+            if not (len(c) == 4 and c.isdigit()):   # 只取 4 位數字的普通股代號
+                continue
+            shares = _to_int(row.get(share_k))
+            close = price_map.get(c)
+            if not shares or not close:
+                continue
+            rows.append({
+                "code": c,
+                "name": (str(row.get(name_k, "")).strip() or c) if name_k else c,
+                "industry": (str(row.get(ind_k, "")).strip() if ind_k else ""),
+                "market_cap": shares * close,
+            })
+
+        rows.sort(key=lambda x: x["market_cap"], reverse=True)
+        top = rows[:top_n]
+        # 健康檢查：有效資料遠少於預期 → 視為抓取異常，走 fallback
+        if len(top) < min(30, top_n):
+            raise RuntimeError(f"有效市值資料僅 {len(top)} 檔")
+
+        universe = {
+            r["code"]: {"name": r["name"], "industry": r["industry"],
+                        "market_cap": r["market_cap"]}
+            for r in top
+        }
+        print(f"[universe] 動態取得市值前 {len(universe)} 大"
+              f"（最大：{top[0]['code']} {top[0]['name']}）")
+        return universe
+    except Exception as e:
+        print(f"[universe] 動態抓取失敗，fallback 回 0050 硬編清單: {e}", file=sys.stderr)
+        return _fallback_universe()
+
+
+def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
+    """
+    批次抓台股 universe（預設市值前 100 大）近期表現。
     每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超、30日累積法人。
+    universe 由 fetch_tw_top100_universe() 提供；未傳則退化為硬編 0050 清單。
     """
+    if universe is None:
+        universe = _fallback_universe()
+
     inst = fetch_twse_institutional()
-    # 只對 0050 成分股抓 30 日累積（節省請求）
-    target_codes = set(TW0050_CONSTITUENTS.keys())
+    # 三大法人單日 API 一次回傳全市場，30 日累積只是 client 端篩選，universe 變大不增加請求數
+    target_codes = set(universe.keys())
     inst_30d = fetch_twse_institutional_cumulative(days_back=30, target_codes=target_codes)
     snapshot: list[dict] = []
-    codes = list(TW0050_CONSTITUENTS.keys())
+    codes = list(universe.keys())
 
-    # yfinance 批次下載 (每檔加 .TW)
+    # yfinance 批次下載 (每檔加 .TW) — 100 檔仍是「一次」request
     tickers = " ".join(f"{c}.TW" for c in codes)
     try:
         df_all = yf.download(tickers, period="1mo", group_by="ticker",
@@ -1057,11 +1199,17 @@ def fetch_tw0050_snapshot() -> list[dict]:
 
             inst_data = inst.get(code, {})
             inst_30 = inst_30d.get(code, {})
+            info = universe[code]
+            # 業務簡介：優先用硬編的詳細版，否則退而用 OpenAPI 的產業別
+            desc = TW0050_CONSTITUENTS.get(code) or (
+                f"{info['name']} — {info.get('industry') or '（產業別未知）'}")
 
             snapshot.append({
                 "code": code,
-                "name": TW0050_CONSTITUENTS[code].split(" — ")[0],
-                "desc": TW0050_CONSTITUENTS[code],
+                "name": info["name"],
+                "desc": desc,
+                "industry": info.get("industry", ""),
+                "market_cap": info.get("market_cap"),
                 "close": round(close, 2),
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
@@ -1080,7 +1228,7 @@ def fetch_tw0050_snapshot() -> list[dict]:
             print(f"[snapshot] {code} 跳過: {e}", file=sys.stderr)
             continue
 
-    print(f"[snapshot] 0050 完成 {len(snapshot)} 檔")
+    print(f"[snapshot] 台股 universe 完成 {len(snapshot)} / {len(codes)} 檔")
     return snapshot
 
 
@@ -1502,6 +1650,50 @@ def fetch_news() -> list[dict]:
     return items
 
 
+def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
+    """
+    去除重複 / 近似重複的新聞（同一事件常被多個 RSS 來源重貼）。
+    規則：標題正規化（去空白、去標點、小寫）後完全相同 → 重複；
+         或與已保留標題的 difflib 相似度 > similarity → 重複。
+    保留先出現者（feed 順序在前的來源）。
+    """
+    import difflib
+    import re as _re
+
+    def _norm(t: str) -> str:
+        t = (t or "").lower().strip()
+        t = _re.sub(r"[\s　]+", "", t)
+        # 只保留中英數，去掉所有標點符號
+        t = _re.sub(r"[^\w一-鿿]", "", t)
+        return t
+
+    kept: list[dict] = []
+    kept_norms: list[str] = []
+    dropped = 0
+    for n in news:
+        nt = _norm(n.get("title", ""))
+        if not nt:
+            kept.append(n)
+            continue
+        is_dup = False
+        for kn in kept_norms:
+            if nt == kn:
+                is_dup = True
+                break
+            # 近似比對：兩者較短長度 >= 8 才比，避免短標題誤殺
+            if (min(len(nt), len(kn)) >= 8
+                    and difflib.SequenceMatcher(None, nt, kn).ratio() > similarity):
+                is_dup = True
+                break
+        if is_dup:
+            dropped += 1
+            continue
+        kept.append(n)
+        kept_norms.append(nt)
+    print(f"[news] 去重：{len(news)} → {len(kept)} 則（移除 {dropped} 則重複）")
+    return kept
+
+
 # ===================== 重大事件自動辨識 (Task B) =====================
 # 高權重關鍵字（中英對照），用於 classify_news_importance
 FED_OFFICIALS = [
@@ -1783,7 +1975,156 @@ def build_prediction_backtest(history: list[dict]) -> str:
         return f"（回溯失敗: {e}）"
 
 
-def load_history_state(days: int = 7) -> list[dict]:
+def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
+                          history: list[dict],
+                          min_samples: int = 5, recent_n: int = 20,
+                          max_bias: float = 0.02) -> tuple[dict, dict, dict]:
+    """
+    用歷史記憶對三個「數值預測」做自我校正（純 Python，不靠 LLM）：
+
+    (A) 2330 模型加權：依 model1/2/3 近 recent_n 日的 MAE 反比給權重，產生
+        weighted_final；任一模型樣本不足 → 退回等權中位數 mid。
+    (B) bias 修正：對 00662 合理價、2330 weighted_final、加權指數 pred_open，
+        各自算近 recent_n 日「(實際開盤 − 預測) / 預測」的平均偏誤，
+        套用 corrected = raw × (1 + bias)；偏誤夾在 ±max_bias，避免離群值過度修正。
+
+    回傳調整後 (fair, predictions, taiex_pred)，每個帶 "calibration" 欄位。
+    任何環節失敗都不影響主流程：回傳原值並標記 calibration.applied = False。
+    """
+    fair = dict(fair) if isinstance(fair, dict) else fair
+    predictions = dict(predictions) if isinstance(predictions, dict) else predictions
+    taiex_pred = dict(taiex_pred) if isinstance(taiex_pred, dict) else taiex_pred
+
+    def _mark_unapplied(reason: str) -> None:
+        for obj in (fair, predictions, taiex_pred):
+            if isinstance(obj, dict) and not obj.get("error"):
+                obj.setdefault("calibration", {"applied": False, "reason": reason})
+
+    if not history or len(history) < 2:
+        _mark_unapplied("歷史樣本不足（< 2 天）")
+        return fair, predictions, taiex_pred
+
+    try:
+        def _opens(symbol: str) -> dict:
+            d = yf.Ticker(symbol).history(period="3mo", auto_adjust=False)
+            d = d.dropna(subset=["Open"])
+            out: dict[str, float] = {}
+            for idx, v in d["Open"].items():
+                key = (idx.tz_localize(None) if getattr(idx, "tz", None) else idx
+                       ).strftime("%Y-%m-%d")
+                out[key] = float(v)
+            return out
+        twii_o = _opens("^TWII")
+        t2330_o = _opens("2330.TW")
+        t00662_o = _opens("00662.TW")
+    except Exception as e:
+        print(f"[calib] 抓實際開盤失敗，跳過校正: {e}", file=sys.stderr)
+        _mark_unapplied(f"無法取得實際開盤：{e}")
+        return fair, predictions, taiex_pred
+
+    sorted_hist = sorted(history, key=lambda h: h.get("date", ""))
+
+    def _next_open(pred_date: str, opens_map: dict) -> Optional[float]:
+        for od in sorted(opens_map):
+            if od > pred_date:
+                return opens_map[od]
+        return None
+
+    # 收集相對誤差 (實際 − 預測) / 預測
+    err: dict[str, list] = {"00662": [], "2330_final": [],
+                            "m1": [], "m2": [], "m3": [], "taiex": []}
+    for h in sorted_hist[:-1]:   # 最後一筆還沒有「隔日開盤」可比對
+        pd_ = h.get("date", "")
+        a662 = _next_open(pd_, t00662_o)
+        a2330 = _next_open(pd_, t2330_o)
+        atwii = _next_open(pd_, twii_o)
+        p662 = h.get("fair_00662")
+        if p662 and a662:
+            err["00662"].append((a662 - p662) / p662)
+        if a2330:
+            for hk, ek in (("model1_2330", "m1"), ("model2_2330", "m2"),
+                           ("model3_2330", "m3"), ("weighted_final_2330", "2330_final")):
+                pv = h.get(hk)
+                if pv:
+                    err[ek].append((a2330 - pv) / pv)
+        ptwii = h.get("pred_taiex")
+        if ptwii and atwii:
+            err["taiex"].append((atwii - ptwii) / ptwii)
+
+    def _mean(lst: list) -> tuple[float, int]:
+        r = lst[-recent_n:]
+        return (sum(r) / len(r), len(r)) if r else (0.0, 0)
+
+    def _mae(lst: list) -> tuple[Optional[float], int]:
+        r = lst[-recent_n:]
+        return (sum(abs(x) for x in r) / len(r), len(r)) if r else (None, 0)
+
+    def _apply_bias(obj: dict, value_key: str, err_key: str, label: str) -> dict:
+        bias, n = _mean(err[err_key])
+        if n < min_samples:
+            return {"applied": False, "samples": n,
+                    "reason": f"{label} 誤差樣本僅 {n} 筆（需 ≥ {min_samples}）"}
+        raw = obj.get(value_key)
+        if raw is None:
+            return {"applied": False, "samples": n, "reason": f"{label} 無原始值"}
+        b = max(-max_bias, min(bias, max_bias))
+        obj[f"{value_key}_raw"] = raw
+        obj[value_key] = round(raw * (1 + b), 2)
+        return {"applied": True, "bias_pct": round(b * 100, 3),
+                "samples": n, "raw": raw}
+
+    # ---- (A) 2330 三模型 MAE 反比加權 ----
+    if isinstance(predictions, dict) and not predictions.get("error"):
+        m1 = predictions.get("model1_1to1")
+        m2 = predictions.get("model2_regression")
+        m3 = predictions.get("model3_adr_decay")
+        mae1, n1 = _mae(err["m1"])
+        mae2, n2 = _mae(err["m2"])
+        mae3, n3 = _mae(err["m3"])
+        cand = [(v, mae, n) for v, mae, n in
+                ((m1, mae1, n1), (m2, mae2, n2), (m3, mae3, n3)) if v is not None]
+        if cand and all(n >= min_samples and mae and mae > 0 for _, mae, n in cand):
+            inv = [(v, 1.0 / mae) for v, mae, _ in cand]
+            tot = sum(w for _, w in inv)
+            predictions["weighted_final"] = round(
+                sum(v * w for v, w in inv) / tot, 2)
+            predictions["final_method"] = "近期 MAE 反比加權"
+        else:
+            predictions["weighted_final"] = predictions.get("mid")
+            predictions["final_method"] = "等權中位數（模型誤差樣本不足）"
+        predictions["model_mae_pct"] = {
+            "model1": round(mae1 * 100, 3) if mae1 else None,
+            "model2": round(mae2 * 100, 3) if mae2 else None,
+            "model3": round(mae3 * 100, 3) if mae3 else None,
+        }
+        # ---- (B) bias 修正 2330 ----
+        predictions["calibration"] = _apply_bias(
+            predictions, "weighted_final", "2330_final", "2330")
+        # mid 同步成校正後最終值，讓既有 render 卡片直接反映
+        predictions["mid_raw"] = predictions.get("mid")
+        predictions["mid"] = predictions["weighted_final"]
+
+    # ---- (B) bias 修正 00662 ----
+    if isinstance(fair, dict) and not fair.get("error"):
+        cal = _apply_bias(fair, "fair_price", "00662", "00662")
+        if cal.get("applied") and fair.get("last_00662_price"):
+            fair["implied_change_pct"] = round(
+                (fair["fair_price"] / fair["last_00662_price"] - 1) * 100, 2)
+        fair["calibration"] = cal
+
+    # ---- (B) bias 修正 加權指數 ----
+    if isinstance(taiex_pred, dict) and not taiex_pred.get("error"):
+        taiex_pred["calibration"] = _apply_bias(
+            taiex_pred, "pred_open", "taiex", "加權指數")
+
+    n_applied = sum(1 for o in (fair, predictions, taiex_pred)
+                    if isinstance(o, dict) and o.get("calibration", {}).get("applied"))
+    fm = predictions.get("final_method", "—") if isinstance(predictions, dict) else "—"
+    print(f"[calib] 校正完成：{n_applied}/3 套用 bias 修正；2330 final_method={fm}")
+    return fair, predictions, taiex_pred
+
+
+def load_history_state(days: int = 90) -> list[dict]:
     """讀取過去 N 天的歷史記憶（critical 事件 + 外資籌碼 + 立場）。"""
     if not STATE_FILE.exists():
         print("[state] 無歷史記憶檔，將從本次開始累積")
@@ -1802,7 +2143,7 @@ def load_history_state(days: int = 7) -> list[dict]:
         return []
 
 
-def save_history_state(entry: dict, days_to_keep: int = 14) -> None:
+def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
     """
     新增一筆當日記憶，並維持只保留近 N 天。
     寫入後嘗試 git commit + push 回 repo。
@@ -1940,11 +2281,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     news_block += "★ 一般新聞（參考）★\n"
     news_block += "\n".join(fmt_news(n) for n in norm_news[:30])
 
-    # 整理 0050 法人/表現摘要表（讓 LLM 一眼掃完）
+    # 整理台股 universe（市值前 100）法人/表現摘要表（讓 LLM 一眼掃完）
     if tw0050:
         tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)
         rows = []
         for s in tw0050_sorted:
+            mcap = s.get("market_cap")
+            mcap_str = f" 市值{mcap / 1e8:,.0f}億" if mcap else ""
             rows.append(
                 f"{s['code']} {s['name']:<6} 收{s['close']:>8} "
                 f"日{s['day_pct']:+5.2f}% 月{s['month_pct']:+6.2f}% "
@@ -1954,7 +2297,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"自營{s['dealer_lot']:+6.0f}張 "
                 f"總{s['total_lot']:+8.0f}張 | "
                 f"30日外資{s.get('foreign_30d_lot',0):+8.0f}張 "
-                f"30日投信{s.get('invest_30d_lot',0):+6.0f}張 | {s['desc']}"
+                f"30日投信{s.get('invest_30d_lot',0):+6.0f}張 |{mcap_str} {s['desc']}"
             )
         tw0050_block = "\n".join(rows)
     else:
@@ -2064,7 +2407,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             f"  訊號: {signals_str}\n"
             f"  加權預測漲跌: {pred['weighted_pct']:+.2f}%\n"
             f"  ★ 預測開盤點位: {pred['pred_open']} （信心區間 {pred['ci_lower']} ~ {pred['ci_upper']}）\n"
-            f"  訊號共識: {pred['consensus']}（標準差 {pred.get('signal_std','—')}）"
+            f"  訊號共識: {pred['consensus']}（標準差 {pred.get('signal_std','—')}）\n"
+            f"  自我校正: {_calibration_note(pred)}"
         )
     else:
         taiex_pred_block = "（資料不足，無法預測大盤）"
@@ -2082,7 +2426,24 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         alerts_block = "（昨日市場無重大過熱/恐慌訊號）"
 
+    # 資料品質 block（讓 LLM 知道哪些來源失敗，禁止據此腦補）
+    dq_list = quotes.get("DATA_QUALITY", []) or []
+    if dq_list:
+        dq_block = "\n".join(
+            f"  [{d['status'].upper()}] {d['name']}：{d.get('detail', '')}"
+            for d in dq_list
+        )
+    else:
+        dq_block = "（未提供資料品質資訊）"
+
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
+
+【資料品質（最優先閱讀）】
+{dq_block}
+※ status=OK：資料正常，可正常引用。
+※ status=FALLBACK：降級資料（樣本不足或部分來源失敗），引用時須說明「資料有限」。
+※ status=ERROR：該來源今日抓取失敗 ＝「資料未提供」。對應段落必須明寫「資料未提供」，
+   嚴禁腦補、嚴禁編造數字 / 新聞 / 法人買賣超 / 公司財報。寧可少寫，不可瞎掰。
 
 【昨日美股收盤】
 - QQQ：{quotes['QQQ']}
@@ -2145,10 +2506,14 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 【今日 00662 估值（Python 已算）】
 {fair}
+（fair_price 已是「自我校正後」的合理價；calibration 欄位說明校正幅度，fair_price_raw 為校正前原值）
 
 【今日 2330 三模型預測（Python 已算）】
 {predictions}
-（model3 是 ADR 衰減版，decay_factor 是近 60 日實證係數，越接近 1 代表 2330 跟 ADR 越緊密）
+（model3 是 ADR 衰減版，decay_factor 是近 60 日實證係數，越接近 1 代表 2330 跟 ADR 越緊密。
+ weighted_final = 依各 model 近期 MAE 反比加權後、再經 bias 自我校正的「最終合理價」，
+ 應以 weighted_final 為今日 2330 的主要參考；model_mae_pct 是各模型近期平均絕對誤差。
+ calibration.applied=true 代表已用歷史偏誤修正，false 代表樣本仍在累積、暫用未校正值。）
 
 【歷史校準資料】
 {calibration}
@@ -2156,7 +2521,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
 
-【0050 成分股昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）】
+【台股市值前 100 大昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）】
 {tw0050_block}
 
 ═══════════════════════════════════════════════════════════
@@ -2303,7 +2668,7 @@ QQQ X.X% [+1/-1/0]、SOX X.X% [+1/-1/0]、VIX X [+1/-1/0]、TSM ADR X.X% [+1/-1/
 
 > **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
-## 十三、今日台股關注三檔（**必寫，0050 + 上櫃熱門股**）
+## 十三、今日台股關注三檔（**必寫，從上方「台股市值前 100 大」清單中選**）
 
 **選股優先序**（必須符合至少 2 項）：
 1. 昨日法人買超強（外資 + 投信合計 > +5000 張）
@@ -2313,7 +2678,7 @@ QQQ X.X% [+1/-1/0]、SOX X.X% [+1/-1/0]、VIX X [+1/-1/0]、TSM ADR X.X% [+1/-1/
 
 **選股禁止事項**：
 - 不可用技術面分析
-- 不可選 0050 以外的股票
+- **只能選上方「台股市值前 100 大」清單裡有列出的股票**，不可選清單外或杜撰代號
 - 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼與消息才是主因**
 - 若三檔都信心低，**照寫，不要勉強拉高**
 
@@ -2715,6 +3080,21 @@ def _wrap_stance(html: str) -> str:
     return pre + box + post
 
 
+def _calibration_note(obj: dict) -> str:
+    """把 calibration 欄位轉成一句人類可讀說明（純文字，render 與 prompt 共用）。"""
+    if not isinstance(obj, dict):
+        return ""
+    cal = obj.get("calibration")
+    if not isinstance(cal, dict):
+        return ""
+    if cal.get("applied"):
+        b = cal.get("bias_pct", 0) or 0
+        sign = "+" if b >= 0 else ""
+        return (f"已自我校正（近 {cal.get('samples')} 日平均偏誤 {sign}{b}%，"
+                f"原值 {cal.get('raw')}）")
+    return f"自我校正未套用：{cal.get('reason', '樣本累積中')}"
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     # ===== 1. 行情表格 =====
@@ -2738,9 +3118,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f"</tr>"
         )
 
+    # 只渲染真正的美股行情標的；quotes 字典還塞了 SEC_FILINGS / TAIFEX_OI / BACKTEST
+    # 等非行情資料（list / str / 巢狀 dict），不能丟給 fmt_quote。
     quote_rows = "".join(
-        fmt_quote(q) for k, q in quotes.items()
-        if k not in ("USDTWD", "USDTWD_prev", "MACRO")
+        fmt_quote(quotes[k]) for k in ("QQQ", "TSM", "SPY")
+        if isinstance(quotes.get(k), dict)
     )
 
     # 總經指標表
@@ -2912,7 +3294,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;">{taiex_pred['consensus']}</td>
           </tr>
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">SOX (40%) + TSM ADR (30%) + 夜盤台指期 (30%) 加權預測</p>
+        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">SOX (40%) + TSM ADR (30%) + 夜盤台指期 (30%) 加權預測　｜　{_calibration_note(taiex_pred)}</p>
         """
 
     # === 夜盤台指期卡 (Task B) ===
@@ -3005,7 +3387,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
           </tr>
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">計算方式：{method_label}</p>
+        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">計算方式：{method_label}　｜　{_calibration_note(fair)}</p>
         """
     else:
         fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"
@@ -3057,9 +3439,56 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             </td>
           </tr>
             """
-        pred_html = f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">{rows_html}</table>'
+        final_method = predictions.get("final_method", "")
+        wf = predictions.get("weighted_final")
+        wf_line = ""
+        if wf is not None:
+            wf_line = (f'<p style="font-size:12px;color:#94a3b8;margin:8px 0;">'
+                       f'最終取值：{final_method}（weighted_final {wf}）　｜　'
+                       f'{_calibration_note(predictions)}</p>')
+        pred_html = (f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">'
+                     f'{rows_html}</table>{wf_line}')
     else:
         pred_html = f"<p style='color:#dc2626'>{predictions.get('error','資料缺失')}</p>"
+
+    # ===== 3.5 資料品質區塊 =====
+    import html as _htmllib
+    dq_list = quotes.get("DATA_QUALITY", []) or []
+    dq_html = ""
+    if dq_list:
+        status_style = {
+            "ok":       ("#dcfce7", "#15803d", "正常"),
+            "fallback": ("#fef9c3", "#a16207", "降級"),
+            "error":    ("#fee2e2", "#b91c1c", "失敗"),
+        }
+        dq_rows = []
+        for d in dq_list:
+            bg, tc, label = status_style.get(d.get("status", "fallback"), status_style["fallback"])
+            name = _htmllib.escape(str(d.get("name", "")))
+            detail = _htmllib.escape(str(d.get("detail", "")))
+            dq_rows.append(
+                f"<tr>"
+                f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#0f172a;'>{name}</td>"
+                f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center;'>"
+                f"<span style='background:{bg};color:{tc};padding:2px 10px;border-radius:10px;font-size:12px;font-weight:700;'>{label}</span></td>"
+                f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;'>{detail}</td>"
+                f"</tr>"
+            )
+        n_err = sum(1 for d in dq_list if d.get("status") == "error")
+        n_fb = sum(1 for d in dq_list if d.get("status") == "fallback")
+        summary = f"全部正常" if (n_err == 0 and n_fb == 0) else f"{n_err} 項失敗、{n_fb} 項降級"
+        dq_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">資料品質（{summary}）</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;">
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">資料來源</th>
+            <th style="padding:8px 12px;text-align:center;color:#475569;font-size:12px;">狀態</th>
+            <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">說明</th>
+          </tr>
+          {''.join(dq_rows)}
+        </table>
+        <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※「失敗」代表該來源今日抓不到資料，對應分析以「資料未提供」呈現，非市場無訊號。</p>
+        """
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式 + 三檔卡片化） =====
     analysis_html = _md_to_html(analysis)
@@ -3131,6 +3560,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {dq_html}
+
           </td></tr>
 
           <!-- FOOTER -->
@@ -3151,10 +3582,17 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
 
 def send_email(html: str, subject: str) -> None:
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        raise RuntimeError(
+            "缺 GMAIL_USER / GMAIL_APP_PASSWORD 環境變數，無法寄信。"
+            "（本機測試請設 DRY_RUN=1 改為輸出預覽檔）"
+        )
+    if not RECIPIENTS:
+        raise RuntimeError("無收件者：請設定 RECIPIENT 環境變數，或確認 GMAIL_USER 不為空。")
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = GMAIL_USER
-    msg["To"] = RECIPIENT
+    msg["To"] = ", ".join(RECIPIENTS)   # 多位收件者：以逗號分隔，send_message 會全部寄送
     msg.set_content("此郵件需以 HTML 模式檢視。")
     msg.add_alternative(html, subtype="html")
 
@@ -3162,13 +3600,141 @@ def send_email(html: str, subject: str) -> None:
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx) as s:
         s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         s.send_message(msg)
-    print(f"[mail] 已寄出 → {RECIPIENT}")
+    print(f"[mail] 已寄出 → {', '.join(RECIPIENTS)}")
 
 
 def determine_mode(now_tpe: dt.datetime) -> str:
     """判斷今日為一般報 (週二~週六) 還是週末綜合報 (週一)。"""
     wd = now_tpe.weekday()  # Mon=0
     return "週末綜合" if wd == 0 else "每日報"
+
+
+def build_data_quality(quotes: dict, fair: dict, predictions: dict,
+                        news: list[dict], tw0050: list[dict]) -> list[dict]:
+    """
+    彙整各資料來源今日的抓取狀態，供 HTML「資料品質」區塊與 LLM prompt 使用。
+    讓 LLM 不會把「抓取失敗」誤判成「市場沒有訊號」。
+    每筆：{ "name": 來源名, "status": "ok"/"fallback"/"error", "detail": 說明 }
+    """
+    dq: list[dict] = []
+
+    def add(name: str, status: str, detail: str = "") -> None:
+        dq.append({"name": name, "status": status, "detail": str(detail)[:80]})
+
+    # 美股行情
+    for key, label in (("QQQ", "QQQ"), ("TSM", "TSM ADR"), ("SPY", "SPY")):
+        q = quotes.get(key, {})
+        if isinstance(q, dict) and not q.get("error") and q.get("close") is not None:
+            add(f"美股行情 {label}", "ok", f"{q.get('date','')} 收 {q.get('close')}")
+        else:
+            err = q.get("error", "資料缺失") if isinstance(q, dict) else "資料缺失"
+            add(f"美股行情 {label}", "error", err)
+
+    # USD/TWD
+    if quotes.get("USDTWD") is not None:
+        add("USD/TWD 匯率", "ok", str(quotes.get("USDTWD")))
+    else:
+        add("USD/TWD 匯率", "error", "TWD=X 抓取失敗")
+
+    # 總經指標
+    macro = quotes.get("MACRO", {}) or {}
+    ok_n = sum(1 for v in macro.values()
+               if isinstance(v, dict) and not v.get("error") and v.get("close") is not None)
+    tot = len(macro) or 5
+    if ok_n >= tot:
+        add("總經指標 VIX/SOX/10Y/DXY/13W", "ok", f"{ok_n}/{tot} 項")
+    elif ok_n == 0:
+        add("總經指標 VIX/SOX/10Y/DXY/13W", "error", "全部抓取失敗")
+    else:
+        add("總經指標 VIX/SOX/10Y/DXY/13W", "fallback", f"{ok_n}/{tot} 項成功")
+
+    # 00662 估值
+    if isinstance(fair, dict) and not fair.get("error"):
+        if fair.get("samples", 0) >= 15:
+            add("00662 估值", "ok", fair.get("method", ""))
+        else:
+            add("00662 估值", "fallback", fair.get("method", "簡化版（歷史資料不足）"))
+    else:
+        add("00662 估值", "error", (fair or {}).get("error", "資料缺失"))
+
+    # 2330 三模型預測
+    if isinstance(predictions, dict) and not predictions.get("error"):
+        if predictions.get("model2_regression") is not None:
+            add("2330 三模型預測", "ok", f"最終 {predictions.get('weighted_final', predictions.get('mid', '—'))}")
+        else:
+            add("2330 三模型預測", "fallback", "model2 比值回歸資料不足，僅 model1/model3")
+    else:
+        add("2330 三模型預測", "error", (predictions or {}).get("error", "資料缺失"))
+
+    # 預測自我校正（bias 修正 + 模型加權）
+    cal_objs = [fair, predictions, quotes.get("TAIEX_PRED", {})]
+    n_cal = sum(1 for o in cal_objs
+                if isinstance(o, dict) and o.get("calibration", {}).get("applied"))
+    if n_cal == 3:
+        add("預測自我校正", "ok", "00662 / 2330 / 加權指數 均已套用歷史偏誤修正")
+    elif n_cal > 0:
+        add("預測自我校正", "fallback", f"{n_cal}/3 已套用，其餘歷史樣本累積中")
+    else:
+        add("預測自我校正", "fallback", "尚未套用（歷史樣本累積中，約需 5+ 個交易日）")
+
+    # 加權指數預測
+    taiex = quotes.get("TAIEX_PRED", {}) or {}
+    if taiex.get("pred_open"):
+        n = taiex.get("signal_count", 0)
+        add("加權指數預測", "ok" if n >= 3 else "fallback",
+            f"{n}/3 訊號・{taiex.get('consensus', '')}")
+    else:
+        add("加權指數預測", "error", taiex.get("error", "三訊號全缺"))
+
+    # 夜盤台指期
+    night = quotes.get("NIGHT_TXF", {}) or {}
+    if night.get("night_pct") is not None:
+        add("夜盤台指期", "ok", f"{night.get('night_pct'):+}%")
+    else:
+        add("夜盤台指期", "error", "抓取失敗或尚未更新")
+
+    # TAIFEX 外資台指期未平倉
+    taifex = quotes.get("TAIFEX_OI", {}) or {}
+    if taifex.get("foreign_oi_net") is not None:
+        add("TAIFEX 外資台指期未平倉", "ok", f"{taifex.get('foreign_oi_net'):+} 口")
+    else:
+        add("TAIFEX 外資台指期未平倉", "error", "抓取失敗")
+
+    # TWSE 融資融券
+    margin = quotes.get("MARGIN", {}) or {}
+    if margin.get("margin_balance"):
+        add("TWSE 融資融券", "ok", str(margin.get("date", "")))
+    else:
+        add("TWSE 融資融券", "error", "抓取失敗")
+
+    # SEC 8-K（空清單也算 ok：代表 48h 內確實沒重大公告）
+    sec = quotes.get("SEC_FILINGS", []) or []
+    add("SEC 8-K 公告", "ok", f"{len(sec)} 筆")
+
+    # RSS 新聞
+    n_news = len(news or [])
+    if n_news >= 10:
+        add("RSS 新聞", "ok", f"{n_news} 則")
+    elif n_news > 0:
+        add("RSS 新聞", "fallback", f"僅 {n_news} 則（部分來源失敗）")
+    else:
+        add("RSS 新聞", "error", "全部來源失敗")
+
+    # 台股 universe（市值前 100）籌碼
+    n_uni = len(tw0050 or [])
+    uni_fallback = bool(quotes.get("TW_UNIVERSE_FALLBACK"))
+    uni_src = "0050 硬編清單（動態抓取失敗）" if uni_fallback else "市值前 100 動態"
+    if n_uni >= 70 and not uni_fallback:
+        add("台股 universe 籌碼", "ok", f"{n_uni} 檔・{uni_src}")
+    elif n_uni > 0:
+        add("台股 universe 籌碼", "fallback", f"{n_uni} 檔・{uni_src}")
+    else:
+        add("台股 universe 籌碼", "error", "抓取失敗")
+
+    n_err = sum(1 for d in dq if d["status"] == "error")
+    n_fb = sum(1 for d in dq if d["status"] == "fallback")
+    print(f"[data_quality] {len(dq)} 項來源：ok={len(dq)-n_err-n_fb}, fallback={n_fb}, error={n_err}")
+    return dq
 
 
 # ---------- 主流程 ----------
@@ -3202,19 +3768,33 @@ def main() -> int:
     hist_2330 = fetch_2330_recent()
 
     # 4. 計算（升級版：NAV + 折溢價 + 匯率變動 + ADR 衰減）
-    fair = calc_00662_fair_value(
-        quotes["QQQ"]["close"], quotes["QQQ"]["prev_close"],
-        usdtwd_today, last_00662, usdtwd_prev=usdtwd_prev,
-    )
-    predictions = calc_2330_predictions(
-        quotes["TSM"]["close"], quotes["TSM"]["prev_close"],
-        usdtwd_today, hist_2330,
-    )
+    #    QQQ / TSM 任一抓取失敗時走降級：回傳 error dict，render_html 會顯示「資料缺失」而非整包爆掉。
+    qqq_q = require_quote(quotes, "QQQ")
+    tsm_q = require_quote(quotes, "TSM")
+    if qqq_q is not None:
+        fair = calc_00662_fair_value(
+            qqq_q["close"], qqq_q["prev_close"],
+            usdtwd_today, last_00662, usdtwd_prev=usdtwd_prev,
+        )
+    else:
+        fair = {"error": "QQQ 行情抓取失敗，無法估算 00662 合理價"}
+        print("[main] QQQ 行情缺失 → 00662 估值降級", file=sys.stderr)
+    if tsm_q is not None:
+        predictions = calc_2330_predictions(
+            tsm_q["close"], tsm_q["prev_close"],
+            usdtwd_today, hist_2330,
+        )
+    else:
+        predictions = {"error": "TSM ADR 行情抓取失敗，無法預測 2330 開盤價"}
+        print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)
 
     # 5. 抓新聞
     print("[main] 抓新聞中…")
     news = fetch_news()
     print(f"[main] 抓到 {len(news)} 則新聞")
+
+    # 5.05 新聞去重（同事件常被多個 RSS 重貼，去重後 LLM 訊號更乾淨）
+    news = dedup_news(news)
 
     # 5.1 (Task B) 新聞重要性分類
     news = classify_news_importance(news)
@@ -3262,8 +3842,8 @@ def main() -> int:
     earnings_proximity = check_tsmc_earnings_proximity()
     print(f"[main] 法說會狀態: {earnings_proximity['note']}")
 
-    # 5.8 (Opt 1) 載入歷史記憶
-    history = load_history_state(days=7)
+    # 5.8 (Opt 1) 載入歷史記憶（90 天，供預測校準與回溯；prompt 仍只顯示近 7 天敘事流）
+    history = load_history_state(days=90)
 
     # 5.9 (Task B) 抓 TAIFEX 夜盤台指期
     print("[main] 抓 TAIFEX 夜盤台指期…")
@@ -3286,16 +3866,33 @@ def main() -> int:
         print(f"[main] 加權預測失敗: {e}", file=sys.stderr)
         taiex_pred = {}
 
+    # 5.105 預測自我校正：2330 模型誤差加權 + 三個預測的 bias 修正
+    print("[main] 套用預測自我校正（模型加權 + bias 修正）…")
+    try:
+        fair, predictions, taiex_pred = calibrate_predictions(
+            fair, predictions, taiex_pred, history)
+    except Exception as e:
+        print(f"[main] 預測校正失敗（沿用未校正值）: {e}", file=sys.stderr)
+
     # 5.11 (Task F) 預測準確度回溯
     print("[main] 計算預測準確度回溯…")
     backtest_block = build_prediction_backtest(history)
 
-    # 6. 抓 0050 成分股法人/表現（含 30 日累積）
-    print("[main] 抓 0050 成分股法人買賣超與近期表現…")
+    # 6. 抓台股市值前 100 大 universe + 法人/表現（含 30 日累積）
+    print("[main] 抓台股市值前 100 大 universe…")
     try:
-        tw0050 = fetch_tw0050_snapshot()
+        tw_universe = fetch_tw_top100_universe(top_n=100)
     except Exception as e:
-        print(f"[main] 0050 抓取失敗: {e}", file=sys.stderr)
+        print(f"[main] universe 抓取失敗，用 fallback: {e}", file=sys.stderr)
+        tw_universe = _fallback_universe()
+    quotes["TW_UNIVERSE_FALLBACK"] = any(
+        v.get("fallback") for v in tw_universe.values())
+
+    print("[main] 抓台股 universe 法人買賣超與近期表現…")
+    try:
+        tw0050 = fetch_tw0050_snapshot(tw_universe)
+    except Exception as e:
+        print(f"[main] universe snapshot 抓取失敗: {e}", file=sys.stderr)
         tw0050 = []
 
     # 6.5 建立歷史校準資料（TSM vs 2330 開盤實證對照）
@@ -3317,6 +3914,9 @@ def main() -> int:
     quotes["TAIEX_PRED"] = taiex_pred
     quotes["BACKTEST"] = backtest_block
     quotes["ALERTS"] = alerts
+
+    # 6.7 彙整資料品質（讓 LLM 與 HTML 都知道哪些來源失敗 / 降級）
+    quotes["DATA_QUALITY"] = build_data_quality(quotes, fair, predictions, news, tw0050)
 
     # 7. LLM 分析
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
@@ -3342,7 +3942,12 @@ def main() -> int:
             "sox_pct": (quotes.get("MACRO", {}) or {}).get("SOX", {}).get("change_pct"),
             "usdtwd": quotes.get("USDTWD"),
             "fair_00662": fair.get("fair_price"),
+            # 三個 model 的「原始」預測值（供 calibrate_predictions 算各模型 MAE 與權重）
+            "model1_2330": predictions.get("model1_1to1"),
+            "model2_2330": predictions.get("model2_regression"),
             "model3_2330": predictions.get("model3_adr_decay"),
+            # 經誤差加權 + bias 校正後的最終 2330 預測（供下次算 bias）
+            "weighted_final_2330": predictions.get("weighted_final"),
             "foreign_top10_total": round(top10_inst_total, 0),
             "pred_taiex": taiex_pred.get("pred_open"),
             "night_txf_pct": night_txf.get("night_pct"),
@@ -3350,7 +3955,7 @@ def main() -> int:
             "critical_news": crit_titles,
             "earnings_proximity": earnings_proximity.get("impact"),
         }
-        save_history_state(new_entry, days_to_keep=14)
+        save_history_state(new_entry, days_to_keep=90)
     except Exception as e:
         print(f"[main] 寫入歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)
 

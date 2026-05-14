@@ -41,7 +41,8 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          RECIPIENT: ${{ secrets.RECIPIENT }}
+          # 收件者可設在 GitHub Variables（vars）或 Secrets；支援多位，以逗號分隔。
+          RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
 
           # ===== LLM 切換 =====
           # 可選值：
@@ -67,6 +68,9 @@ jobs:
           # Anthropic Claude（付費高品質，可留空）
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_MODEL: claude-sonnet-4-6
+
+          # SEC EDGAR User-Agent 聯絡信箱（選填，不設則自動用 GMAIL_USER）
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
 
           TZ: Asia/Taipei
         run: python morning_report.py

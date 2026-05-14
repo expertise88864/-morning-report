@@ -1,0 +1,72 @@
+name: CI
+
+# 與每日寄信的 morning-report.yml 完全獨立；CI 不會寄信、不影響排程。
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m py_compile morning_report.py
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+  # 手動觸發：用真實資料跑一次完整流程（不寄信），產出 HTML 預覽 artifact。
+  # 連 Yahoo / TWSE / LLM，可能因外部服務不穩而失敗 —— 故設 continue-on-error，
+  # 不影響 CI 綠燈，也不影響每日排程。
+  dry-run-preview:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run morning report (DRY_RUN, no email)
+        env:
+          DRY_RUN: "1"
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
+          TZ: Asia/Taipei
+        run: python morning_report.py
+
+      - name: Upload HTML preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-report-preview
+          path: /tmp/morning_report_preview.html
+          if-no-files-found: warn

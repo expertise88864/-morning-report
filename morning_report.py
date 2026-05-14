@@ -583,32 +583,43 @@ def fetch_taifex_night_session() -> dict:
             if len(rows) < 2:
                 continue
 
+            # 以表頭定位欄位（勿硬編 index：「交易時段」不一定在最後一欄，
+            # 這正是夜盤長期抓不到的原因）。
+            header_i = close_i = session_i = month_i = None
+            for ri, row in enumerate(rows[:6]):
+                for ci, cell in enumerate(row):
+                    c = cell.strip()
+                    if close_i is None and "收盤" in c and "結算" not in c:
+                        close_i = ci
+                    if session_i is None and ("交易時段" in c or c == "盤別"):
+                        session_i = ci
+                    if month_i is None and ("到期月份" in c or "契約月份" in c):
+                        month_i = ci
+                if close_i is not None and session_i is not None:
+                    header_i = ri
+                    break
+            if close_i is None or session_i is None:
+                print(f"[taifex_night] {date_str} 表頭偵測失敗，跳過", file=sys.stderr)
+                continue
+
             # 找近月合約（無到期月 W 字樣的），分開「一般」與「盤後」
             day_close = None
             night_close = None
-            for row in rows:
-                if len(row) < 12:
+            for row in rows[header_i + 1:]:
+                if len(row) <= max(close_i, session_i, month_i or 0):
                     continue
-                # 通常欄位：日期、商品、到期月、開盤、最高、最低、收盤、漲跌、漲跌%、成交量、結算價、未平倉、盤別
-                # 找最早一個有效近月合約
-                try:
-                    # 嘗試取「盤別」欄位
-                    session = row[-1].strip() if len(row) > 0 else ""
-                    contract_month = row[2].strip() if len(row) > 2 else ""
-                    # 跳過週選/週期 (含 W 字樣)
-                    if "W" in contract_month:
-                        continue
-                    close_val = safe_float(row[6])
-                    if not close_val:
-                        continue
-                    if "盤後" in session or "夜盤" in session or "PM" in session.upper():
-                        if night_close is None:
-                            night_close = close_val
-                    else:
-                        if day_close is None:
-                            day_close = close_val
-                except Exception:
+                session = row[session_i].strip()
+                if month_i is not None and "W" in row[month_i].strip():
+                    continue   # 跳過週選 / 週期貨
+                close_val = safe_float(row[close_i])
+                if not close_val:
                     continue
+                if "盤後" in session or "夜盤" in session or "PM" in session.upper():
+                    if night_close is None:
+                        night_close = close_val
+                else:
+                    if day_close is None:
+                        day_close = close_val
 
             if day_close and night_close:
                 night_pct = (night_close - day_close) / day_close * 100

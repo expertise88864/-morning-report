@@ -75,3 +75,25 @@ def test_taifex_foreign_futures_reads_lots_not_value(monkeypatch):
     assert res["foreign_oi_net"] == 38000
     assert res["invest_oi_net"] == 6000
     assert res["dealer_oi_net"] == 2000
+
+
+# 夜盤台指期：「交易時段」欄不在最後一欄，硬編 row[-1] 會抓不到夜盤
+_TAIFEX_NIGHT_CSV = "\n".join([
+    "交易日期,契約,到期月份(週別),開盤價,最高價,最低價,收盤價,漲跌價,漲跌%,"
+    "成交量,結算價,未沖銷契約數,交易時段,備註欄",
+    "2026/05/14,TX,202605,41300,41500,41200,41374,+74,+0.18,120000,41380,95000,一般,-",
+    "2026/05/14,TX,202605,41374,41900,41350,41850,+476,+1.15,80000,41850,95000,盤後,-",
+    "2026/05/14,TX,202605W3,41300,41400,41280,41360,+60,+0.15,5000,41360,3000,一般,-",
+    "# padding line to keep the response body length over the 200-char guard " * 3,
+])
+
+
+def test_taifex_night_session_detects_session_column(monkeypatch):
+    import morning_report as mr
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda url, **kw: _FakeTaifexResp(_TAIFEX_NIGHT_CSV))
+    res = mr.fetch_taifex_night_session()
+    assert res["day_close"] == 41374
+    assert res["night_close"] == 41850
+    # 夜盤漲跌 = (41850 - 41374) / 41374 * 100
+    assert res["night_pct"] == round((41850 - 41374) / 41374 * 100, 2)

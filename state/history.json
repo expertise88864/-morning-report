@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-05-15",
+    "weekday": "Fri",
+    "qqq_pct": 0.97,
+    "tsm_pct": 4.6,
+    "spy_pct": 0.94,
+    "vix": 17.83,
+    "sox_pct": 0.59,
+    "usdtwd": 31.507,
+    "fair_00662": 119.23,
+    "model1_2330": 2322.12,
+    "model2_2330": 2256.8,
+    "model3_2330": 2272.53,
+    "weighted_final_2330": null,
+    "foreign_top10_total": -10520.0,
+    "pred_taiex": 42336.63,
+    "night_txf_pct": null,
+    "taifex_foreign_oi": 612000443,
+    "critical_news": [
+      "Bessent sees 'substantial disinflation' ahead as Warsh takes over the Fed",
+      "Xi tells Musk, Tim Cook and other CEOs on Trump's trip: China will 'open wider'",
+      "Warsh's confirmation, Trump-Xi meeting, Cisco earnings and more in Morning Squawk",
+      "Active Debate Is Important at the Fed, Shah Says",
+      "Tech Stocks Power Wall Street Gains as Cisco Soars: Markets Wrap"
+    ],
+    "earnings_proximity": "normal"
+  }
+]

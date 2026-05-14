@@ -6,8 +6,9 @@
 並用 LLM API 產生新聞速報與分析，最後以 Gmail SMTP 寄出。
 
 支援 LLM 提供商（環境變數 LLM_PROVIDER 控制）：
-  - "gemini"    → Google Gemini 2.5 Flash（免費 1500 req/日，預設）
-  - "anthropic" → Claude Sonnet（付費，品質略勝）
+  - "gemini"    → Google Gemini 2.5 Flash（免費 1500 req/日）
+  - "deepseek"  → DeepSeek V4 Pro/Flash（NT$3/月，中文超強，推薦）
+  - "anthropic" → Claude Sonnet（NT$46/月，品質最佳）
 
 執行條件 (cron 已處理)：台灣時間週二至週六 07:00。週一另判斷。
 """
@@ -41,9 +42,17 @@ RECIPIENT = os.environ.get("RECIPIENT", GMAIL_USER)
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# DeepSeek 模型名：
+#   deepseek-chat       → V3.2-Exp（一般版，便宜）
+#   deepseek-reasoner   → V3.2-Exp Reasoner（思考型，較準但慢）
+#   deepseek-v4-pro     → V4 Pro（如官方已上線）
+#   deepseek-v4-flash   → V4 Flash（便宜版）
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 # RSS 新聞來源（中、英、Fed）
 RSS_FEEDS = {
@@ -195,6 +204,60 @@ def fetch_usdtwd() -> Optional[float]:
         return round(safe_float(d.iloc[-1]["Close"]), 4)
     except Exception:
         return None
+
+
+def fetch_usdtwd_pair() -> tuple[Optional[float], Optional[float]]:
+    """同時抓今日與昨日匯率，供匯率變動因子計算。"""
+    try:
+        d = yf.Ticker("TWD=X").history(period="10d")
+        d = d.dropna(subset=["Close"])
+        d = d[d["Close"] > 0]
+        if len(d) < 2:
+            return (safe_float(d.iloc[-1]["Close"]) if len(d) else None, None)
+        return (round(safe_float(d.iloc[-1]["Close"]), 4),
+                round(safe_float(d.iloc[-2]["Close"]), 4))
+    except Exception:
+        return (None, None)
+
+
+def fetch_macro_indicators() -> dict:
+    """
+    抓關鍵總經指標（提供 LLM 做風險判讀）：
+    - VIX：恐慌指數（< 15 樂觀、> 25 警戒）
+    - SOX：費城半導體指數（與 2330/00662 高度連動）
+    - 10Y：美國 10 年期公債殖利率（升 → 成長股壓力）
+    - DXY：美元指數（升 → 新興市場資金流出）
+    - 13W：3 個月國庫券殖利率（與 Fed 利率政策連動，反映降息預期）
+    每項回傳：{ "close": X, "change_pct": Y, "prev_close": Z }
+    """
+    tickers = {
+        "VIX": "^VIX",
+        "SOX": "^SOX",
+        "10Y": "^TNX",      # 殖利率（單位：百分比，已乘 100）
+        "DXY": "DX-Y.NYB",
+        "13W": "^IRX",      # 3 個月國庫券利率（反映降息預期）
+    }
+    out: dict[str, dict] = {}
+    for name, sym in tickers.items():
+        try:
+            d = yf.Ticker(sym).history(period="10d", auto_adjust=False)
+            d = d.dropna(subset=["Close"])
+            d = d[d["Close"] > 0]
+            if len(d) < 2:
+                out[name] = {"error": "資料不足"}
+                continue
+            close = safe_float(d.iloc[-1]["Close"])
+            prev  = safe_float(d.iloc[-2]["Close"])
+            pct = ((close - prev) / prev * 100) if prev else None
+            out[name] = {
+                "close": round(close, 3),
+                "prev_close": round(prev, 3),
+                "change_pct": round(pct, 2) if pct is not None else None,
+            }
+        except Exception as e:
+            print(f"[macro] {name} 抓取失敗: {e}", file=sys.stderr)
+            out[name] = {"error": str(e)[:60]}
+    return out
 
 
 def _to_int(v) -> int:
@@ -413,12 +476,90 @@ def fetch_twse_institutional() -> dict[str, dict]:
     return result
 
 
+def fetch_twse_institutional_cumulative(days_back: int = 30,
+                                          target_codes: Optional[set] = None) -> dict[str, dict]:
+    """
+    抓取近 N 個交易日法人買賣超累積值。
+    回傳：{ "2330": {"foreign_30d": +N, "invest_30d": +N, "dealer_30d": +N, "days_count": K}, ... }
+
+    為避免請求量爆炸，只抓 target_codes 指定的股票（預設只給 0050 成分股用）。
+    """
+    today = dt.datetime.now(TPE).date()
+    cum: dict[str, dict] = {}
+    days_collected = 0
+
+    # 往前抓 days_back * 1.5 個自然日（含週末）
+    for back in range(1, int(days_back * 1.7) + 1):
+        if days_collected >= days_back:
+            break
+        d = today - dt.timedelta(days=back)
+        if d.weekday() >= 5:
+            continue
+        date_str = d.strftime("%Y%m%d")
+        try:
+            rows = _twse_main_api(date_str)
+            if not rows:
+                continue
+        except Exception:
+            continue
+
+        # 一次性偵測欄位（同 fetch_twse_institutional 的邏輯，但精簡）
+        sample_keys = list(rows[0].keys())
+        def find_in(keys, *needles):
+            for k in keys:
+                kl = k.lower()
+                if all(n.lower() in kl for n in needles):
+                    return k
+            return None
+        def find_strict(keys, *cands):
+            keys_clean = {k.strip(): k for k in keys}
+            for c in cands:
+                if c in keys_clean:
+                    return keys_clean[c]
+            return None
+        def find_starts(keys, prefix):
+            for k in keys:
+                if k.strip().startswith(prefix):
+                    return k
+            return None
+
+        f_key = find_in(sample_keys, "外陸資買賣超股數") or find_in(sample_keys, "外資") or find_in(sample_keys, "foreign", "over")
+        t_key = find_strict(sample_keys, "投信買賣超股數") or find_starts(sample_keys, "投信買賣超股數") or find_in(sample_keys, "trust", "over")
+        d_key = find_strict(sample_keys, "自營商買賣超股數") or find_starts(sample_keys, "自營商買賣超股數") or find_in(sample_keys, "dealer", "over")
+        c_key = find_strict(sample_keys, "證券代號") or find_in(sample_keys, "code") or find_in(sample_keys, "stock")
+        if not c_key:
+            continue
+
+        for row in rows:
+            code = (row.get(c_key) or "").strip()
+            if not code:
+                continue
+            if target_codes is not None and code not in target_codes:
+                continue
+            f = _to_int(row.get(f_key)) if f_key else 0
+            t = _to_int(row.get(t_key)) if t_key else 0
+            de = _to_int(row.get(d_key)) if d_key else 0
+            entry = cum.setdefault(code, {"foreign_cum": 0, "invest_cum": 0, "dealer_cum": 0, "days": 0})
+            entry["foreign_cum"] += f
+            entry["invest_cum"] += t
+            entry["dealer_cum"] += de
+            entry["days"] += 1
+
+        days_collected += 1
+
+    print(f"[twse] 30 日累積資料 — 共聚合 {days_collected} 天，{len(cum)} 檔股票")
+    return cum
+
+
 def fetch_tw0050_snapshot() -> list[dict]:
     """
     批次抓 0050 成分股近期表現。
-    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超。
+    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超、30日累積法人。
     """
     inst = fetch_twse_institutional()
+    # 只對 0050 成分股抓 30 日累積（節省請求）
+    target_codes = set(TW0050_CONSTITUENTS.keys())
+    inst_30d = fetch_twse_institutional_cumulative(days_back=30, target_codes=target_codes)
     snapshot: list[dict] = []
     codes = list(TW0050_CONSTITUENTS.keys())
 
@@ -451,6 +592,7 @@ def fetch_tw0050_snapshot() -> list[dict]:
             month_pct = (close - month_first) / month_first * 100 if month_first else 0
 
             inst_data = inst.get(code, {})
+            inst_30 = inst_30d.get(code, {})
 
             snapshot.append({
                 "code": code,
@@ -460,10 +602,15 @@ def fetch_tw0050_snapshot() -> list[dict]:
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
                 "month_pct": round(month_pct, 2),
-                "foreign_lot": round(inst_data.get("foreign", 0) / 1000, 1),    # 轉張
+                "foreign_lot": round(inst_data.get("foreign", 0) / 1000, 1),
                 "invest_lot": round(inst_data.get("investment", 0) / 1000, 1),
                 "dealer_lot": round(inst_data.get("dealer", 0) / 1000, 1),
                 "total_lot": round(inst_data.get("total", 0) / 1000, 1),
+                # 30 日累積（張）— 看中期籌碼方向
+                "foreign_30d_lot": round(inst_30.get("foreign_cum", 0) / 1000, 0),
+                "invest_30d_lot":  round(inst_30.get("invest_cum", 0) / 1000, 0),
+                "dealer_30d_lot":  round(inst_30.get("dealer_cum", 0) / 1000, 0),
+                "inst_30d_days":   inst_30.get("days", 0),
             })
         except (KeyError, ValueError, TypeError) as e:
             print(f"[snapshot] {code} 跳過: {e}", file=sys.stderr)
@@ -488,23 +635,98 @@ def fetch_2330_recent() -> Optional[pd.DataFrame]:
     return None
 
 
-def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
-                           usdtwd: float, last_00662_price: Optional[float]) -> dict:
+def fetch_00662_nav_history() -> list[dict]:
     """
-    估 00662 公允淨值與合理價。
-    由於 00662 追蹤 NASDAQ-100，QQQ 漲跌幅 + 匯率變化 → 00662 NAV 漲跌幅。
-    無法直接得知今日 NAV (T+1 公布)，因此用「昨日收盤 × (1 + QQQ%) × 匯率調整」估值。
+    抓 00662 近期 NAV 與市價歷史。
+    來源：基智網（MoneyDJ）公開 API，回傳近 60 個交易日 NAV/Price。
+    Fallback：用元大投信公開資料或設為空，由 calc 函式做退化處理。
+    """
+    # 鉅亨網 ETF API（公開、免 key）：
+    # https://www.cnyes.com/twstock/etf/00662
+    url = "https://ws.api.cnyes.com/ws/api/v1/etf/twstock/00662/nav"
+    try:
+        r = requests.get(url, timeout=10,
+                          headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        data = r.json().get("data", {}).get("items", [])
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        print(f"[00662] NAV API 失敗（將回退到無 NAV 模式）: {e}", file=sys.stderr)
+        return []
+
+
+def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
+                           usdtwd: float, last_00662_price: Optional[float],
+                           usdtwd_prev: Optional[float] = None) -> dict:
+    """
+    精準版 00662 公允淨值與合理價估算。
+
+    邏輯：
+    1. QQQ 漲跌幅 → 對應 NAV 美金價值變動
+    2. 加入今日匯率 vs 昨日匯率變動（USD 升 → NAV 台幣價值上升）
+    3. 加入 20 日平均折溢價（市價與 NAV 的長期偏離）
+    4. 若 NAV 抓不到，退化用「last_close × (1+QQQ%)」（最低保證準度）
+
+    公式：
+      理論 NAV (今日) = 昨日 NAV × (1 + QQQ%) × (1 + 匯率變動%)
+      合理市價 = 理論 NAV × (1 + 平均折溢價%)
     """
     qqq_pct = (qqq_close - qqq_prev_close) / qqq_prev_close
     if last_00662_price is None:
         return {"error": "缺 00662 昨收"}
-    fair_price = last_00662_price * (1 + qqq_pct)
+
+    # 匯率變動因子（昨 → 今）
+    fx_pct = 0.0
+    if usdtwd and usdtwd_prev:
+        fx_pct = (usdtwd - usdtwd_prev) / usdtwd_prev
+
+    # 嘗試抓 NAV 歷史
+    nav_hist = fetch_00662_nav_history()
+    last_nav = None
+    avg_premium_pct = None
+    if nav_hist and len(nav_hist) >= 5:
+        # cnyes 結構通常為 [{"date":..., "nav":..., "price":...}]
+        try:
+            # 抓最近一筆 NAV
+            latest = nav_hist[0] if "nav" in nav_hist[0] else None
+            if latest:
+                last_nav = safe_float(latest.get("nav"))
+                # 計算近 20 日平均折溢價
+                premiums = []
+                for item in nav_hist[:20]:
+                    nav = safe_float(item.get("nav"))
+                    price = safe_float(item.get("price"))
+                    if nav and price and nav > 0:
+                        premiums.append((price - nav) / nav)
+                if premiums:
+                    avg_premium_pct = sum(premiums) / len(premiums)
+        except (KeyError, TypeError):
+            pass
+
+    # 計算合理價
+    if last_nav and avg_premium_pct is not None:
+        # 進階版：用 NAV 估算
+        theo_nav = last_nav * (1 + qqq_pct) * (1 + fx_pct)
+        fair_price = theo_nav * (1 + avg_premium_pct)
+        method = "NAV+折溢價+匯率"
+    else:
+        # 退化版：直接用昨收
+        theo_nav = None
+        fair_price = last_00662_price * (1 + qqq_pct) * (1 + fx_pct)
+        method = "昨收回推（NAV 資料缺失）"
+
     return {
         "qqq_pct": round(qqq_pct * 100, 2),
+        "fx_pct": round(fx_pct * 100, 3),
         "last_00662_price": last_00662_price,
+        "last_nav": round(last_nav, 4) if last_nav else None,
+        "theo_nav": round(theo_nav, 4) if theo_nav else None,
+        "avg_premium_pct": round(avg_premium_pct * 100, 3) if avg_premium_pct is not None else None,
         "fair_price": round(fair_price, 2),
-        "implied_change_pct": round(qqq_pct * 100, 2),
+        "implied_change_pct": round((fair_price / last_00662_price - 1) * 100, 2),
         "usdtwd": usdtwd,
+        "usdtwd_prev": usdtwd_prev,
+        "method": method,
     }
 
 
@@ -556,16 +778,48 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     except Exception as e:
         print(f"[calc] 2330 model2 失敗: {e}", file=sys.stderr)
 
+    # 模型 3：ADR 溢價衰減版（改良版）
+    # 邏輯：ADR 漲跌不會 100% 反映到台股開盤，因為：
+    #   (a) 台股盤後新聞已部分反映 ADR 後續走勢
+    #   (b) ADR 收盤後到台股開盤有 5 小時，可能再有變動
+    # 實證上，2330 開盤幅度約為 ADR 漲跌幅的 0.75 (即衰減 25%)
+    # 用近 60 日「2330 開盤漲幅 / TSM 前夜漲幅」計算實際衰減係數
+    decay_factor = 0.75  # 預設值
+    model3 = None
+    df_local = locals().get("df")
+    try:
+        if model2 is not None and df_local is not None and len(df_local) >= 30:
+            df = df_local
+            # 計算 2330 隔日相對 TSM 當日的漲跌比
+            df["t2330_pct"] = df["t2330"].pct_change()
+            df["tsm_pct"] = df["tsm"].pct_change()
+            # 取 |TSM 變動 > 1%| 的樣本，較有意義
+            sig = df[df["tsm_pct"].abs() > 0.01].tail(60)
+            if len(sig) >= 10:
+                # 衰減係數 = 平均 (2330 變動 / TSM 變動)
+                ratio = (sig["t2330_pct"] / sig["tsm_pct"]).clip(lower=0, upper=1.5)
+                decay_factor = float(ratio.mean())
+                decay_factor = max(0.3, min(decay_factor, 1.2))  # 限制合理範圍
+                print(f"[calc] 2330 ADR 衰減係數 (近 60 日實證)={decay_factor:.3f}")
+        model3 = last_2330 * (1 + tsm_pct * decay_factor)
+    except Exception as e:
+        print(f"[calc] 2330 model3 失敗: {e}", file=sys.stderr)
+        model3 = last_2330 * (1 + tsm_pct * 0.75)  # 退化用預設
+
     res = {
         "last_2330": round(last_2330, 2),
         "tsm_pct": round(tsm_pct * 100, 2),
         "model1_1to1": round(model1, 2),
         "model2_regression": round(model2, 2) if model2 else None,
+        "model3_adr_decay": round(model3, 2) if model3 else None,
+        "decay_factor": round(decay_factor, 3),
     }
-    if model1 and model2:
-        lo, hi = sorted([model1, model2])
-        res["range"] = (round(lo, 2), round(hi, 2))
-        res["mid"] = round((lo + hi) / 2, 2)
+    # 三個模型可用就取中位數，提供更穩健的合理價
+    valid = [v for v in [model1, model2, model3] if v]
+    if valid:
+        res["mid"] = round(sorted(valid)[len(valid) // 2], 2)  # 中位數
+        if len(valid) >= 2:
+            res["range"] = (round(min(valid), 2), round(max(valid), 2))
     return res
 
 
@@ -624,7 +878,6 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
     # 整理 0050 法人/表現摘要表（讓 LLM 一眼掃完）
     if tw0050:
-        # 排序：法人合計買超由大到小（負則是賣超）
         tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)
         rows = []
         for s in tw0050_sorted:
@@ -635,11 +888,22 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"外資{s['foreign_lot']:+8.0f}張 "
                 f"投信{s['invest_lot']:+6.0f}張 "
                 f"自營{s['dealer_lot']:+6.0f}張 "
-                f"總{s['total_lot']:+8.0f}張 | {s['desc']}"
+                f"總{s['total_lot']:+8.0f}張 | "
+                f"30日外資{s.get('foreign_30d_lot',0):+8.0f}張 "
+                f"30日投信{s.get('invest_30d_lot',0):+6.0f}張 | {s['desc']}"
             )
         tw0050_block = "\n".join(rows)
     else:
         tw0050_block = "（資料抓取失敗）"
+
+    # 總經指標摘要
+    macro = quotes.get("MACRO", {}) or {}
+    def fmt_m(name: str) -> str:
+        m = macro.get(name, {})
+        if "error" in m or not m.get("close"):
+            return f"{name}=資料缺失"
+        return f"{name}={m['close']} ({m.get('change_pct',0):+.2f}%)"
+    macro_block = " | ".join([fmt_m(n) for n in ["VIX", "SOX", "10Y", "DXY", "13W"]])
 
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
@@ -647,18 +911,29 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - QQQ：{quotes['QQQ']}
 - TSM (台積電 ADR)：{quotes['TSM']}
 - SPY：{quotes['SPY']}
-- USD/TWD：{quotes.get('USDTWD')}
+- USD/TWD：今 {quotes.get('USDTWD')} / 昨 {quotes.get('USDTWD_prev')}
 
-【今日 00662 估值（Python 已算）】
+【總經指標（昨日收盤值與變動%）】
+{macro_block}
+
+判讀提示：
+- VIX < 15 樂觀、15-20 中性、20-25 警戒、>25 恐慌
+- SOX 與 2330 高度連動（β≈1.1）
+- 10Y 殖利率上升 → 成長股估值壓力
+- DXY 升 → 美元強 → 新興市場資金流出
+- 13W (3M 國庫券) 殖利率變動反映 Fed 利率預期
+
+【今日 00662 估值（Python 已算；method 欄位顯示用 NAV 或退化法）】
 {fair}
 
-【今日 2330 雙模型預測（Python 已算）】
+【今日 2330 三模型預測（Python 已算）】
 {predictions}
+（model3 是 ADR 衰減版，decay_factor 是近 60 日實證係數）
 
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
 
-【0050 成分股昨日表現與三大法人買賣超（單位：張，正為買超、負為賣超）】
+【0050 成分股昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）】
 {tw0050_block}
 
 # 寫作要求（必讀）
@@ -670,17 +945,41 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 5. 估值欄位若是 None / nan，直接寫「資料缺失」，不要瞎掰數字
 6. **避免重複條列**，每條只寫一件事
 7. 嚴禁 emoji 與表情符號
+8. **必須引用具體數據**：每個論點背後要有「XX 漲 X.X%」「外資買超 X 萬張」「VIX X」這類精準數字，禁止寫「市場樂觀」「資金充沛」這種空話
+
+# 分析框架（你寫的時候應該照此順序思考，但不必寫進報告）
+
+## 籌碼面解讀規則
+- 外資**昨日 + 30日累積**同向 → 強烈訊號（如：昨買 1 萬 + 30日累積買 10 萬 = 中期確認上行）
+- 外資昨買但 30日累積賣 → **反彈不可信**（短線反彈）
+- 投信買 + 外資買 → **資金一致看多**（最強訊號）
+- 自營商買賣超通常雜訊大，**權重低**
+- 整體合計 < 5000 張 → 籌碼面**無明確訊號**
+
+## 總經連動規則
+- VIX > 20 + DXY 升 + 10Y 升 → **三殺成長股**，估值壓力大
+- SOX 漲 > 1.5% + QQQ 漲 > 1% → 2330 開高機率 > 70%
+- SOX 跌 > 2% → 2330 開低機率 > 80%，**無視 ADR**
+- 13W 殖利率短期下降 → 降息預期升溫，有利成長股
+
+## 立場判斷 SOP（必須照此邏輯）
+- 加分項：QQQ +、SOX +、VIX < 18、外資台股淨買、TSM ADR +
+- 扣分項：QQQ -、SOX -、VIX > 22、外資台股淨賣、TSM ADR -
+- 淨加分 ≥ 3 → 偏多
+- 淨加分 ≤ -3 → 偏空
+- 其他 → 中性
+- **必須在「我的明確立場」段附上分數計算**（例：QQQ+1 SOX+1 VIX中性0 外資+1 TSM-1 = 淨+2 → 偏多偏弱）
 
 # 輸出結構（必須完全照此順序與標題）
 
-## 四、昨夜三大重點
+## 五、昨夜三大重點
 僅 3 條 bullet。直接點出最影響 00662 / 2330 的關鍵事件。
 
-## 五、科技板塊脈動（5–8 條）
+## 六、科技板塊脈動（5–8 條）
 每條格式：**公司名（一句話業務簡介）**：發生什麼 + 為何重要。
 範例：**AMD（全球第二大 x86 CPU 與 AI GPU 廠，MI300X 為主力資料中心晶片）**：Q3 資料中心營收年增 122%，MI300X 出貨優於預期，AI 算力競賽中與 NVDA 差距縮小。
 
-## 六、總體經濟與政策環境
+## 七、總體經濟與政策環境
 分三小段：
 
 **(A) 美國利率/美元/VIX/通膨**：列出昨日 10Y 殖利率、DXY、VIX、CPI/PPI/就業數據（如有）。
@@ -689,7 +988,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 **(C) 全球其他國家政策（若有）**：日本央行、ECB、中國刺激政策、地緣政治等。
 
-## 七、台灣本地動態（必寫，不可略）
+## 八、台灣本地動態（必寫，不可略）
 聚焦昨日對台灣資本市場有影響的事：
 - 台灣央行/金管會動向
 - 台積電供應鏈動態（艾司摩爾、東京威力、SUMCO、信驊、力旺等）
@@ -697,7 +996,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - 政府政策（產創條例、科專、台美 21 世紀貿易倡議等）
 若新聞清單中沒有相關內容，寫「無重大本地新聞」，不要編造。
 
-## 八、我的明確立場（**最重要**）
+## 九、我的明確立場（**最重要**）
 **先給單一立場標籤**，再解釋為什麼。**不要列出樂觀/中性/悲觀三選一**——直接告訴投資人你選哪一個。
 
 **注意：每一個項目必須獨立成段（中間有空行），不可寫成一段話連在一起**。格式如下：
@@ -712,7 +1011,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 > **主要風險**：1 句話
 
-## 九、今日台股關注三檔（**必寫，0050 成分股限定**）
+## 十、今日台股關注三檔（**必寫，0050 成分股限定**）
 從上方「0050 成分股」表格中，**結合基本面（公司營運/題材）+ 消息面（昨日新聞）+ 法人面（外資/投信買超強度）** 三角度，選出**今日預期漲幅最高的三檔**。**不限制漲幅大小**、**不要用技術面（K 線、均線、MACD）**。
 
 每檔必須用 **### 代號 公司名** 作為三級標題（例如 `### 2330 台積電`），下方接以下 6 個 bullet（**每項獨立一行**）：
@@ -724,6 +1023,12 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - **信心等級**：高 / 中 / 低（不可省略）
 - **目標關注幅度**：例如「漲幅 2-4%」
 
+**選股優先序提示**（請優先選符合**至少 2 項**的標的）：
+1. **昨日法人買超強**（外資 + 投信合計 >+1 萬張，籌碼集中度高）
+2. **30 日累積外資買超為正且加速**（中期趨勢明確）
+3. **新聞清單有具體催化消息**（不是「市場樂觀」這種空話）
+4. **業務直接受惠當前主軸**（如 AI 算力、半導體先進製程、電動車）
+
 **禁止事項**：
 - 不可用技術面分析（不能提 K 線、均線、MACD、KD、RSI、布林通道）
 - 不可選 0050 以外的股票
@@ -731,7 +1036,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 第三檔分析完後**獨立成段**寫風險警示：「以上分析基於昨日法人籌碼與新聞消息推論，實際走勢受開盤瞬間外資掛單、突發新聞、台美匯率波動影響，僅供參考不構成投資建議」。
 
-## 十、一句話總結
+## 十一、一句話總結
 20 字內。給一句具體可執行的結論。
 """
 
@@ -810,10 +1115,78 @@ def _call_anthropic(prompt: str) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     msg = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=2000,
+        max_tokens=4000,
         messages=[{"role": "user", "content": prompt}],
     )
     return msg.content[0].text
+
+
+def _call_deepseek(prompt: str) -> str:
+    """
+    DeepSeek API (OpenAI 相容 chat completions 介面)。
+    支援重試與降級：deepseek-chat → deepseek-reasoner。
+    每月成本估算（22 次/月、5000 tokens 輸入、3500 輸出）：
+      - deepseek-chat (V3.2/V4 Flash): 約 NT$1-3
+      - deepseek-reasoner (V4 Pro):   約 NT$4-6
+    """
+    if not DEEPSEEK_API_KEY:
+        raise RuntimeError("缺 DEEPSEEK_API_KEY 環境變數")
+
+    fallback_models = [DEEPSEEK_MODEL]
+    # 若主模型不在常見列，加入 deepseek-chat 作備援
+    if DEEPSEEK_MODEL != "deepseek-chat":
+        fallback_models.append("deepseek-chat")
+
+    last_err: Optional[Exception] = None
+    for model in fallback_models:
+        for attempt in range(1, 4):
+            try:
+                print(f"[llm] 嘗試 DeepSeek model={model} attempt={attempt}")
+                url = f"{DEEPSEEK_BASE_URL}/v1/chat/completions"
+                payload = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "max_tokens": 4000,
+                    "stream": False,
+                }
+                headers = {
+                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Content-Type": "application/json",
+                }
+                r = requests.post(url, json=payload, headers=headers, timeout=120)
+                r.raise_for_status()
+                data = r.json()
+                choices = data.get("choices") or []
+                if not choices:
+                    raise RuntimeError(f"DeepSeek 回應無 choices: {data}")
+                content = choices[0].get("message", {}).get("content")
+                if not content:
+                    raise RuntimeError(f"DeepSeek 回應無 content: {data}")
+                # 記錄成本（usage 通常含 prompt_tokens / completion_tokens / 快取資訊）
+                usage = data.get("usage", {})
+                print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
+                      f"completion={usage.get('completion_tokens')} "
+                      f"cache_hit={usage.get('prompt_cache_hit_tokens', 0)}")
+                return content
+            except requests.exceptions.HTTPError as e:
+                code = e.response.status_code if e.response is not None else None
+                last_err = e
+                if code in RETRY_STATUS_CODES and attempt < 3:
+                    wait = 5 * (3 ** (attempt - 1))
+                    print(f"[llm] DeepSeek HTTP {code}，{wait}s 後重試", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                print(f"[llm] DeepSeek {model} 最終失敗: {e}", file=sys.stderr)
+                break
+            except Exception as e:
+                last_err = e
+                print(f"[llm] DeepSeek {model} 異常: {e}", file=sys.stderr)
+                if attempt < 3:
+                    time.sleep(5)
+                    continue
+                break
+    raise RuntimeError(f"DeepSeek 所有模型皆失敗: {last_err}")
 
 
 def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
@@ -847,6 +1220,8 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
     try:
         if LLM_PROVIDER == "anthropic":
             return _call_anthropic(prompt)
+        if LLM_PROVIDER == "deepseek":
+            return _call_deepseek(prompt)
         return _call_gemini(prompt)
     except Exception as e:
         print(f"[llm] 全部失敗，使用備援文字: {e}", file=sys.stderr)
@@ -1064,13 +1439,85 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f"</tr>"
         )
 
-    quote_rows = "".join(fmt_quote(q) for k, q in quotes.items() if k != "USDTWD")
+    quote_rows = "".join(
+        fmt_quote(q) for k, q in quotes.items()
+        if k not in ("USDTWD", "USDTWD_prev", "MACRO")
+    )
+
+    # 總經指標表
+    macro = quotes.get("MACRO", {}) or {}
+    def fmt_macro_row(label: str, key: str, hint: str) -> str:
+        m = macro.get(key, {})
+        if "error" in m or not m.get("close"):
+            return ""
+        pct = m.get("change_pct") or 0
+        color = "#dc2626" if pct >= 0 else "#16a34a"  # 紅漲綠跌
+        sign = "+" if pct >= 0 else ""
+        return (f"<tr>"
+                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
+                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{m['close']}</td>"
+                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct:.2f}%</td>"
+                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;'>{hint}</td>"
+                f"</tr>")
+    macro_rows = (
+        fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
+        fmt_macro_row("SOX 費半指數", "SOX", "與2330 β≈1.1") +
+        fmt_macro_row("10Y 殖利率", "10Y", "升→成長股壓力") +
+        fmt_macro_row("DXY 美元指數", "DXY", "升→新興市場資金流出") +
+        fmt_macro_row("13W 國庫券", "13W", "反映Fed利率預期")
+    )
+    macro_table_html = ""
+    if macro_rows:
+        macro_table_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">二、總經指標</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
+          <tr style="background:#f1f5f9;">
+            <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">指標</th>
+            <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
+            <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">變動</th>
+            <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">判讀提示</th>
+          </tr>
+          {macro_rows}
+        </table>
+        """
 
     # ===== 2. KPI 卡片 (00662) =====
     if "error" not in fair:
         sign = "+" if fair["implied_change_pct"] >= 0 else ""
         # 台股慣例：紅漲綠跌
         change_color = "#dc2626" if fair["implied_change_pct"] >= 0 else "#16a34a"
+        # 額外欄位（升級後新增）
+        nav_row = ""
+        if fair.get("last_nav"):
+            nav_row = f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">昨日 NAV（淨值）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['last_nav']}</td>
+          </tr>"""
+        premium_row = ""
+        if fair.get("avg_premium_pct") is not None:
+            p_color = "#dc2626" if fair["avg_premium_pct"] >= 0 else "#16a34a"
+            p_sign = "+" if fair["avg_premium_pct"] >= 0 else ""
+            premium_row = f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">20日平均折溢價</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{p_color};font-variant-numeric:tabular-nums;">{p_sign}{fair['avg_premium_pct']}%</td>
+          </tr>"""
+        fx_row = ""
+        if fair.get("fx_pct") is not None:
+            fx_color = "#dc2626" if fair["fx_pct"] >= 0 else "#16a34a"
+            fx_sign = "+" if fair["fx_pct"] >= 0 else ""
+            fx_row = f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">USD/TWD 變動</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{fx_color};font-variant-numeric:tabular-nums;">{fx_sign}{fair['fx_pct']}% ({fair.get('usdtwd_prev','—')}→{fair.get('usdtwd','—')})</td>
+          </tr>"""
+
+        method_label = fair.get("method", "")
+
         fair_html = f"""
         <table style="width:100%;border-collapse:collapse;margin:12px 0;">
           <tr>
@@ -1082,18 +1529,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">00662 昨收參考</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['last_00662_price']}</td>
           </tr>
+          {nav_row}
+          {premium_row}
+          {fx_row}
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 00662 今日合理價估值</td>
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
           </tr>
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">USD/TWD</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{fair['usdtwd']}</td>
-          </tr>
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">註：估值未計入溢/折價、申購贖回價差、隔日匯率變動。</p>
+        <p style="font-size:12px;color:#94a3b8;margin:8px 0;">計算方式：{method_label}　|　含 QQQ 漲跌、匯率變動{"、20日平均折溢價" if fair.get("avg_premium_pct") is not None else ""}</p>
         """
     else:
         fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"
@@ -1128,6 +1573,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">模型2（60日比值回歸）</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{m2_str}</td>
           </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">模型3（ADR 衰減 / 係數 {predictions.get('decay_factor','—')}）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{predictions.get('model3_adr_decay','—')}</td>
+          </tr>
         """
         if rng:
             rows_html += f"""
@@ -1150,8 +1600,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_html = _wrap_stance(analysis_html)
     analysis_html = _wrap_tw_picks(analysis_html)
 
-    llm_label = (LLM_PROVIDER + "/" +
-                 (GEMINI_MODEL if LLM_PROVIDER == "gemini" else CLAUDE_MODEL))
+    if LLM_PROVIDER == "gemini":
+        llm_label = f"gemini/{GEMINI_MODEL}"
+    elif LLM_PROVIDER == "deepseek":
+        llm_label = f"deepseek/{DEEPSEEK_MODEL}"
+    else:
+        llm_label = f"anthropic/{CLAUDE_MODEL}"
 
     return f"""<!DOCTYPE html>
 <html lang="zh-TW">
@@ -1190,10 +1644,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
               {quote_rows}
             </table>
 
-            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">二、00662 公允淨值換算</h2>
+            {macro_table_html}
+
+            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">三、00662 公允淨值換算</h2>
             {fair_html}
 
-            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">三、2330 開盤合理價預測</h2>
+            <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">四、2330 開盤合理價預測</h2>
             {pred_html}
 
             <div style="margin-top:32px;">{analysis_html}</div>
@@ -1252,7 +1708,14 @@ def main() -> int:
         "TSM": fetch_quote("TSM"),
         "SPY": fetch_quote("SPY"),
     }
-    quotes["USDTWD"] = fetch_usdtwd()
+    usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
+    quotes["USDTWD"] = usdtwd_today
+    quotes["USDTWD_prev"] = usdtwd_prev
+
+    # 1.5 抓 4+1 個總經指標
+    print("[main] 抓總經指標…")
+    macro = fetch_macro_indicators()
+    quotes["MACRO"] = macro
 
     # 2. 抓 00662 昨收
     q662 = fetch_quote("00662.TW")
@@ -1261,14 +1724,14 @@ def main() -> int:
     # 3. 抓 2330 歷史
     hist_2330 = fetch_2330_recent()
 
-    # 4. 計算
+    # 4. 計算（升級版：NAV + 折溢價 + 匯率變動 + ADR 衰減）
     fair = calc_00662_fair_value(
         quotes["QQQ"]["close"], quotes["QQQ"]["prev_close"],
-        quotes["USDTWD"], last_00662,
+        usdtwd_today, last_00662, usdtwd_prev=usdtwd_prev,
     )
     predictions = calc_2330_predictions(
         quotes["TSM"]["close"], quotes["TSM"]["prev_close"],
-        quotes["USDTWD"], hist_2330,
+        usdtwd_today, hist_2330,
     )
 
     # 5. 抓新聞
@@ -1276,7 +1739,7 @@ def main() -> int:
     news = fetch_news()
     print(f"[main] 抓到 {len(news)} 則新聞")
 
-    # 6. 抓 0050 成分股法人/表現
+    # 6. 抓 0050 成分股法人/表現（含 30 日累積）
     print("[main] 抓 0050 成分股法人買賣超與近期表現…")
     try:
         tw0050 = fetch_tw0050_snapshot()

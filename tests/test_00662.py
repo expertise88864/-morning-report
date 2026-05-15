@@ -5,8 +5,9 @@ import pandas as pd
 import morning_report as mr
 
 
-def _regression_data(mkdf):
-    """產生 QQQ / 00662.TW / TWD=X 三條對齊的歷史，讓歷史回歸路徑真的被走到。"""
+def _regression_data(mkdf, beta=0.95):
+    """產生 QQQ / 00662.TW / TWD=X 三條對齊的歷史，讓歷史回歸路徑真的被走到。
+    beta 參數控制 00662 對 QQQ 前一日漲跌幅的敏感度。"""
     n = 80
     idx = pd.date_range("2026-01-06", periods=n, freq="B")
     rng = np.random.default_rng(42)
@@ -14,12 +15,12 @@ def _regression_data(mkdf):
     # 確保每天 |漲跌| > 0.4%，才會被 |qqq_lag_pct| > 0.003 的篩選保留
     rets = np.where(np.abs(rets) < 0.004, 0.004 * np.sign(rets + 1e-9), rets)
     qqq = 500.0 * np.cumprod(1 + rets)
-    # 00662 ≈ 0.9 倍 QQQ「前一日」漲跌幅
+    # 00662 ≈ beta 倍 QQQ「前一日」漲跌幅
     tw = np.empty(n)
     tw[0] = tw[1] = 100.0
     for t in range(2, n):
         qqq_lag_pct = qqq[t - 1] / qqq[t - 2] - 1
-        tw[t] = tw[t - 1] * (1 + 0.9 * qqq_lag_pct)
+        tw[t] = tw[t - 1] * (1 + beta * qqq_lag_pct)
     fx = 31.0 + rng.normal(0, 0.02, n)
     return {
         "QQQ": mkdf(qqq, idx),
@@ -47,12 +48,20 @@ def test_fair_value_fallback_when_history_missing(fake_yf):
 
 
 def test_fair_value_regression_when_history_available(fake_yf, mkdf):
-    fake_yf(_regression_data(mkdf))
+    fake_yf(_regression_data(mkdf, beta=0.95))
     res = mr.calc_00662_fair_value(520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.0)
     assert res["samples"] >= 15
     assert "歷史回歸" in res["method"]
-    assert 0.5 <= res["beta"] <= 1.5
+    assert 0.85 <= res["beta"] <= 1.15
     assert isinstance(res["fair_price"], float)
     # 回歸版的關鍵欄位都要在
     for k in ("qqq_pct", "fx_pct", "avg_deviation_pct", "implied_change_pct"):
         assert k in res
+
+
+def test_fair_value_rejects_implausible_beta(fake_yf, mkdf):
+    # 00662 追蹤 NASDAQ-100，beta 必 ≈ 1；資料算出 beta≈0.5 代表來源異常 → 退回簡化版
+    fake_yf(_regression_data(mkdf, beta=0.5))
+    res = mr.calc_00662_fair_value(520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.0)
+    assert res["samples"] == 0
+    assert "簡化版" in res["method"]

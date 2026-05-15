@@ -141,6 +141,31 @@ def test_tdcc_fallback_on_failure(monkeypatch):
     assert mr.fetch_tdcc_major_holders() == {}
 
 
+_STOCK_DAY_ALL = [
+    {"Code": "2330", "Name": "台積電", "ClosingPrice": "1,085.00"},
+    {"Code": "00662", "Name": "富邦NASDAQ", "ClosingPrice": "119.45"},
+]
+
+
+def test_twse_close_finds_etf(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeResp(_STOCK_DAY_ALL))
+    # 00662 是 ETF（5 位代號），Yahoo 常落後 → 改用 TWSE 官方收盤
+    assert mr.fetch_twse_close("00662") == 119.45
+    assert mr.fetch_twse_close("2330") == 1085.0
+
+
+def test_twse_close_not_found_returns_none(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeResp(_STOCK_DAY_ALL))
+    assert mr.fetch_twse_close("9999") is None
+
+
+def test_twse_close_fallback_on_failure(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_twse_close("00662") is None
+
+
 def test_snapshot_uses_universe_codes(monkeypatch):
     """fetch_tw0050_snapshot 應依傳入的 universe 決定要抓哪些代號。"""
     captured = {}

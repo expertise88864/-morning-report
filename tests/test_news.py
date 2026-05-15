@@ -36,3 +36,18 @@ def test_dedup_empty_titles_kept():
     news = [{"source": "A", "title": ""}, {"source": "B", "title": ""}]
     # 空標題不做相似度比對，全部保留（避免誤殺）
     assert len(mr.dedup_news(news)) == 2
+
+
+def test_classify_geopolitical_critical():
+    # 川習會 / 台海 / 晶片出口管制 → critical（會抓全文 + prompt 強制分析）
+    news = [
+        {"title": "川習會落幕 習近平稱台灣問題處理不當恐致衝突", "summary": ""},
+        {"title": "美國對中國祭出新一輪晶片出口管制措施", "summary": ""},
+        {"title": "中國公布稀土出口配額調整", "summary": ""},
+        {"title": "某公司推出新款掃地機器人", "summary": ""},
+    ]
+    out = mr.classify_news_importance(news)
+    assert out[0]["importance"] == "critical" and out[0]["category"] == "geo_critical"
+    assert out[1]["importance"] == "critical" and out[1]["category"] == "geo_critical"
+    assert out[2]["importance"] == "high" and out[2]["category"] == "geo"   # 稀土屬一般地緣
+    assert out[3]["importance"] == "normal"

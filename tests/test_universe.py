@@ -166,6 +166,27 @@ def test_twse_close_fallback_on_failure(monkeypatch):
     assert mr.fetch_twse_close("00662") is None
 
 
+def test_sec_cik_map_parses(monkeypatch):
+    # 模擬 SEC company_tickers.json 結構
+    payload = {
+        "0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."},
+        "1": {"cik_str": 1045810, "ticker": "NVDA", "title": "NVIDIA Corp"},
+    }
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeResp(payload))
+    mr._SEC_CIK_CACHE.clear()    # 清快取以確保重新載入
+    out = mr._load_sec_cik_map()
+    assert out["AAPL"] == ("0000320193", "Apple Inc.")
+    assert out["NVDA"] == ("0001045810", "NVIDIA Corp")
+
+
+def test_sec_cik_map_fallback_on_failure(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: (_ for _ in ()).throw(
+                            mr.requests.exceptions.ConnectionError("down")))
+    mr._SEC_CIK_CACHE.clear()
+    assert mr._load_sec_cik_map() == {}
+
+
 def test_snapshot_uses_universe_codes(monkeypatch):
     """fetch_tw0050_snapshot 應依傳入的 universe 決定要抓哪些代號。"""
     captured = {}

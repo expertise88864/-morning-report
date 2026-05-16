@@ -3478,6 +3478,150 @@ def _calibration_note_compact(obj: dict) -> str:
     return note
 
 
+def _extract_stance(text: str) -> dict:
+    """從 LLM markdown 分析中擷取「立場」與「淨分」，用於頂部 KPI 條。失敗回 {}。"""
+    import re as _re
+    out: dict = {"label": None, "score": None}
+    if not isinstance(text, str):
+        return out
+    m = _re.search(r"淨分\s*([+\-]?\d+)", text)
+    if m:
+        try:
+            out["score"] = int(m.group(1))
+        except ValueError:
+            pass
+    # 「立場：偏多」「立場: 中性偏多（...」「立場：偏空 / 防守為主」皆吃
+    m = _re.search(r"立場\s*[：:]\s*\**\s*([一-鿿/]+)", text)
+    if m:
+        label = m.group(1).strip()
+        # 取「/」或標點前的第一個有效詞，避免吃到後面括號的解釋
+        label = _re.split(r"[，,（()\s/]", label)[0].strip("*")
+        out["label"] = label or None
+    return out
+
+
+def _extract_summary(text: str) -> str:
+    """從 LLM markdown 分析中擷取「一句話總結」段落，用於頂部結論橫條。失敗回空字串。"""
+    import re as _re
+    if not isinstance(text, str):
+        return ""
+    # 匹配「## 一句話總結」或「## 十四、一句話總結」後的第一行
+    m = _re.search(r"#+\s*[一二三四五六七八九十零\d]*、?\s*一句話(?:總結|結論)\s*\n+([^\n#]+)", text)
+    if m:
+        return m.group(1).strip().lstrip("*").rstrip("*").strip()
+    return ""
+
+
+def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict) -> str:
+    """頂部 KPI 一覽條（dark bg，緊接 HERO 下方）。
+    內容：立場 / 2330 / 00662 / 加權 / VIX，2 秒掃完今天重點。"""
+    # === 立場 ===
+    score = stance.get("score")
+    label = stance.get("label") or "—"
+    if score is None:
+        stance_color = "#94a3b8"
+        score_str = ""
+    elif score >= 4:
+        stance_color = "#fb7185"   # 偏多 → 暖紅（TW 慣例）
+        score_str = f" {score:+d}"
+    elif score <= -4:
+        stance_color = "#86efac"   # 偏空 → 綠
+        score_str = f" {score:+d}"
+    else:
+        stance_color = "#fcd34d"   # 中性 → 黃
+        score_str = f" {score:+d}"
+
+    # === 2330 ===
+    mid_2330 = predictions.get("mid") if isinstance(predictions, dict) else None
+    last_2330 = predictions.get("last_2330") if isinstance(predictions, dict) else None
+    pct_2330 = ((mid_2330 / last_2330 - 1) * 100) if (mid_2330 and last_2330) else None
+
+    # === 00662 ===
+    fair_price = fair.get("fair_price") if isinstance(fair, dict) else None
+    last_00662 = fair.get("last_00662_price") if isinstance(fair, dict) else None
+    pct_00662 = ((fair_price / last_00662 - 1) * 100) if (fair_price and last_00662) else None
+
+    # === 加權 ===
+    taiex = quotes.get("TAIEX_PRED", {}) or {}
+    pred_taiex = taiex.get("pred_open")
+    last_taiex = taiex.get("last_close")
+    pct_taiex = ((pred_taiex / last_taiex - 1) * 100) if (pred_taiex and last_taiex) else None
+
+    # === VIX ===
+    vix = (quotes.get("MACRO", {}) or {}).get("VIX", {}) or {}
+    vix_close = vix.get("close")
+    vix_pct = vix.get("change_pct")
+
+    def fmt(v, dec=2):
+        return f"{v:.{dec}f}" if v is not None else "—"
+
+    def fmt_int(v):
+        return f"{v:,.0f}" if v is not None else "—"
+
+    def color_pct(p):
+        if p is None:
+            return "rgba(255,255,255,0.55)"
+        return "#fb7185" if p >= 0 else "#86efac"   # TW: 紅漲綠跌（在 dark bg 上用較柔的色)
+
+    def fmt_pct(p):
+        if p is None:
+            return ""
+        sign = "+" if p >= 0 else ""
+        return f"{sign}{p:.2f}%"
+
+    cell = ("text-align:center;padding:14px 6px;vertical-align:middle;"
+            "border-right:1px solid rgba(255,255,255,0.10);")
+    cell_last = "text-align:center;padding:14px 6px;vertical-align:middle;"
+    lbl = ("font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.60);"
+           "text-transform:uppercase;font-weight:600;")
+    val = "font-size:18px;font-weight:700;color:#ffffff;margin-top:4px;line-height:1.2;"
+    sub = "font-size:11px;font-weight:500;margin-left:4px;"
+
+    return f"""
+          <tr>
+            <td style="background:#0c4a6e;padding:0;">
+              <table role="presentation" style="width:100%;border-collapse:collapse;">
+                <tr>
+                  <td style="{cell}">
+                    <div style="{lbl}">立場</div>
+                    <div style="{val};color:{stance_color};">{label}{score_str}</div>
+                  </td>
+                  <td style="{cell}">
+                    <div style="{lbl}">2330 預測</div>
+                    <div style="{val}">{fmt(mid_2330)}<span style="{sub};color:{color_pct(pct_2330)};">{fmt_pct(pct_2330)}</span></div>
+                  </td>
+                  <td style="{cell}">
+                    <div style="{lbl}">00662 預測</div>
+                    <div style="{val}">{fmt(fair_price)}<span style="{sub};color:{color_pct(pct_00662)};">{fmt_pct(pct_00662)}</span></div>
+                  </td>
+                  <td style="{cell}">
+                    <div style="{lbl}">加權預測</div>
+                    <div style="{val}">{fmt_int(pred_taiex)}<span style="{sub};color:{color_pct(pct_taiex)};">{fmt_pct(pct_taiex)}</span></div>
+                  </td>
+                  <td style="{cell_last}">
+                    <div style="{lbl}">VIX</div>
+                    <div style="{val}">{fmt(vix_close)}<span style="{sub};color:{color_pct(vix_pct)};">{fmt_pct(vix_pct)}</span></div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>"""
+
+
+def _render_summary_bar(summary: str, htmllib) -> str:
+    """LLM 一句話結論釘到頂部（HERO/KPI 下方第一行可見的人話）。失敗 → 空字串。"""
+    if not summary:
+        return ""
+    safe = htmllib.escape(summary)
+    return f"""
+          <tr>
+            <td style="background:#fef3c7;border-top:3px solid #f59e0b;padding:16px 24px;">
+              <div style="font-size:10px;letter-spacing:2px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:6px;">今日結論</div>
+              <div style="font-size:16px;color:#0f172a;font-weight:600;line-height:1.55;">{safe}</div>
+            </td>
+          </tr>"""
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
@@ -3496,7 +3640,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         return (
             f"<tr>"
             f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{q['ticker']}</td>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{q['close']}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{q['close']:.2f}</td>"
             f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct}%</td>"
             f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569;font-size:13px;'>{q['high']} / {q['low']}</td>"
             f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b;font-size:13px;'>{vol_str}</td>"
@@ -3535,7 +3679,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                           f"{rank:.0f}%</span>")
         return (f"<tr>"
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{m['close']}</td>"
+                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{m['close']:,.2f}</td>"
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct:.2f}%</td>"
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;'>{rank_cell}</td>"
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;'>{hint}</td>"
@@ -3916,6 +4060,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※「失敗」代表該來源今日抓不到資料，對應分析以「資料未提供」呈現，非市場無訊號。</p>
         """
 
+    # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
+    stance = _extract_stance(analysis)
+    summary_text = _extract_summary(analysis)
+    kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
+    summary_bar = _render_summary_bar(summary_text, _htmllib)
+
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式 + 三檔卡片化） =====
     analysis_html = _md_to_html(analysis)
     analysis_html = _style_analysis_html(analysis_html)
@@ -3944,15 +4094,21 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           <!-- HERO -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0c4a6e,#0284c7);padding:28px 28px 22px;color:#ffffff;">
+            <td style="background:linear-gradient(135deg,#0c4a6e,#0284c7);padding:26px 28px 20px;color:#ffffff;">
               <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">MORNING MARKET BRIEF</div>
               <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.3;">美股晨報</h1>
               <div style="margin-top:6px;font-size:15px;opacity:0.92;">{report_date} ・ <span style="background:rgba(255,255,255,0.18);padding:2px 10px;border-radius:12px;font-size:13px;">{mode}</span></div>
             </td>
           </tr>
 
+          <!-- KPI STRIP (2 秒掃完今日重點) -->
+          {kpi_strip}
+
+          <!-- TODAY'S TAKEAWAY (LLM 一句話結論釘頂) -->
+          {summary_bar}
+
           <!-- BODY -->
-          <tr><td style="padding:28px 28px 8px;">
+          <tr><td style="padding:24px 28px 8px;">
 
             {alerts_html}
 

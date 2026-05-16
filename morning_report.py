@@ -2601,13 +2601,24 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # Opt 1: 歷史記憶 block
     history = quotes.get("HISTORY", []) or []
     if history:
+        # 安全格式化：歷史 entry 的任一欄位若是 None（前一天抓取失敗會這樣存），
+        # 直接用 f-string 的格式 spec（如 :+）會炸 TypeError，需各別防護。
+        def _fmt(v, default="?"):
+            return default if v is None else v
+
+        def _fmt_signed(v, suffix="", default="?"):
+            if isinstance(v, (int, float)):
+                return f"{int(v):+,d}{suffix}"
+            return default
+
         h_rows = []
         for h in history[-7:]:
             crit = " / ".join(h.get("critical_news", [])[:2])
             h_rows.append(
-                f"  {h.get('date','?')} ({h.get('weekday','?')}): "
-                f"QQQ {h.get('qqq_pct','?')}% / TSM {h.get('tsm_pct','?')}% / "
-                f"VIX {h.get('vix','?')} / 外資台指期 {h.get('taifex_foreign_oi','?'):+} 口 / "
+                f"  {_fmt(h.get('date'))} ({_fmt(h.get('weekday'))}): "
+                f"QQQ {_fmt(h.get('qqq_pct'))}% / TSM {_fmt(h.get('tsm_pct'))}% / "
+                f"VIX {_fmt(h.get('vix'))} / "
+                f"外資台指期 {_fmt_signed(h.get('taifex_foreign_oi'), ' 口', '資料缺失')} / "
                 f"重大事件: {crit[:80] if crit else '無'}"
             )
         history_block = "\n".join(h_rows)
@@ -3124,8 +3135,14 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
                        news: list[dict], tw0050: list[dict] | None = None,
                        calibration: str = "") -> str:
-    """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。失敗回傳備援文字而非 raise。"""
-    prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
+    """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。任何環節失敗都回傳備援文字而非 raise，
+    確保 main() 一定能寄出基本版晨報。"""
+    try:
+        prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
+    except Exception as e:
+        # prompt 組裝崩了（例：歷史記憶欄位格式化錯誤）—— 仍寄信，但用備援文字
+        print(f"[llm] prompt 組裝失敗，改用備援文字: {type(e).__name__}: {e}", file=sys.stderr)
+        return _fallback_analysis_text(news, e)
     try:
         if LLM_PROVIDER == "anthropic":
             return _call_anthropic(prompt)

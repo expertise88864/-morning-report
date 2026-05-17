@@ -52,5 +52,32 @@
       "The Tech Download: Trump’s China visit sparks fresh questions over chip exports and rare earths access"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-18",
+    "weekday": "Mon",
+    "qqq_pct": -1.51,
+    "tsm_pct": -3.2,
+    "spy_pct": -1.2,
+    "vix": 18.43,
+    "sox_pct": -4.02,
+    "usdtwd": 31.57,
+    "fair_00662": 117.03,
+    "model1_2330": 2192.5,
+    "model2_2330": 2188.08,
+    "model3_2330": 2229.2,
+    "weighted_final_2330": 2192.5,
+    "foreign_top10_total": 122408.0,
+    "pred_taiex": 40487.09,
+    "night_txf_pct": 3.28,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "Stock futures are little changed after record-setting week for Wall Street; traders await Nvidia and retail earnings: Live updates",
+      "Trump warns Iran to 'get moving' or 'there won’t be anything left'",
+      "UAE and Saudi Arabia report drone incidents as Iran war deadlock drags on",
+      "One of the market's hottest stock themes is buying everything AI can't replace",
+      "G7 finance ministers to meet amid warning of economic consequences of prolonged Strait of Hormuz closure"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

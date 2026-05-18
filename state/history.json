@@ -79,5 +79,32 @@
       "G7 finance ministers to meet amid warning of economic consequences of prolonged Strait of Hormuz closure"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-19",
+    "weekday": "Tue",
+    "qqq_pct": -0.43,
+    "tsm_pct": -2.08,
+    "spy_pct": -0.07,
+    "vix": 17.82,
+    "sox_pct": -2.47,
+    "usdtwd": 31.587,
+    "fair_00662": 117.38,
+    "model1_2330": 2193.47,
+    "model2_2330": 2147.5,
+    "model3_2330": 2217.62,
+    "weighted_final_2330": 2193.47,
+    "foreign_top10_total": -38167.0,
+    "pred_taiex": 40398.15,
+    "night_txf_pct": -0.73,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "Trump says he's postponing 'scheduled attack of Iran tomorrow' at Middle East leaders' request",
+      "Trump says he's 'concerned' about Ebola after American tests positive in Africa",
+      "White House adds generic drugs to direct-to-consumer TrumpRx site",
+      "Warren Buffett teased to CNBC a ‘tiny purchase’ in March. Berkshire filing may have revealed it",
+      "Trump pivots to midterms, affordability after China summit as Iran war persists"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

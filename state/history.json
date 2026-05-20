@@ -133,5 +133,32 @@
       "Google gives first glimpse of new AI glasses ahead of fall launch"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-21",
+    "weekday": "Thu",
+    "qqq_pct": 1.66,
+    "tsm_pct": 2.29,
+    "spy_pct": 1.02,
+    "vix": 17.44,
+    "sox_pct": 4.49,
+    "usdtwd": 31.615,
+    "fair_00662": 118.87,
+    "model1_2330": 2235.14,
+    "model2_2330": 2185.08,
+    "model3_2330": 2208.57,
+    "weighted_final_2330": 2208.57,
+    "foreign_top10_total": -68491.0,
+    "pred_taiex": 41227.27,
+    "night_txf_pct": 0.15,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "Nvidia earnings takeaways: Data center revenue nearly doubles, report is strong but stock slides",
+      "SpaceX's historic IPO plans: Billions in losses and Musk's massive ownership",
+      "U.S. crude oil falls below $100 per barrel after Trump says Iran talks in final stages",
+      "Intuit plans to cut workforce by about 17% as tax software maker reckons with slowing growth",
+      "E.l.f. Beauty to walk back some tariff price increases amid high gas prices and consumer 'suffering'"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

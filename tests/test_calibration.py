@@ -94,6 +94,34 @@ def test_model_weighting_favours_accurate_model(fake_yf):
     assert abs(p["weighted_final"] - 1100.0) < abs(p["weighted_final"] - 1300.0)
 
 
+def test_calibration_matches_same_day_not_next_day(fake_yf):
+    """回歸測試：state entry['date'] = 對應的台股開盤日，校正必須拿『同一天』
+    的實際開盤比，不可拿下一個交易日（這 bug 把週五的預測拿去比週一,
+    使誤差被市場移動汙染）。"""
+    # 14 個營業日。pred=1000；前 12 天 open=1005(+0.5%)；最後 2 天 open=1100(+10%)。
+    # 同日(正確) → bias≈+0.5%；隔日(buggy) → 最後一筆會拿到 1100 拉爆平均。
+    dates = pd.date_range("2026-04-01", periods=14, freq="B")
+    open_values = [1005.0] * 12 + [1100.0] * 2
+    df = pd.DataFrame({"Open": open_values}, index=dates)
+    fake_yf({"^TWII": df, "2330.TW": df, "00662.TW": df})
+
+    history = [{
+        "date": d.strftime("%Y-%m-%d"),
+        "fair_00662": 1000.0, "model1_2330": 1000.0, "model2_2330": 1000.0,
+        "model3_2330": 1000.0, "weighted_final_2330": 1000.0, "pred_taiex": 1000.0,
+    } for d in dates[:12]]
+
+    fair = {"fair_price": 100.0, "last_00662_price": 100.0}
+    preds = {"model1_1to1": 1000.0, "model2_regression": 1000.0,
+             "model3_adr_decay": 1000.0, "mid": 1000.0, "range": (990, 1010)}
+    taiex = {"pred_open": 1000.0}
+
+    f, p, t = mr.calibrate_predictions(fair, preds, taiex, history)
+    # bias 應該接近 +0.5%（同日比對），絕對值小於 2%（不會被 1100 汙染到 +10%）
+    assert f["calibration"]["applied"] is True
+    assert abs(f["calibration"]["bias_pct"]) < 2.0
+
+
 def test_calibration_skips_error_dicts(fake_yf):
     dates = _hist_dates(8)
     all_dates = pd.date_range("2026-04-01", periods=15, freq="B")

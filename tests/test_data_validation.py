@@ -79,6 +79,50 @@ def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     assert isinstance(out, str) and len(out) > 0
 
 
+def test_build_data_quality_detects_zero_filled_institutional():
+    """回歸：fetch_twse_institutional 失敗時 snapshot 仍會回 100 檔（全填 0）。
+    dq 不能只看數量就說「正常」，必須抓出『法人欄全 0』的情況。"""
+    # 100 檔，全部法人值是 0（模擬 三大法人端點失敗的結果）
+    tw0050 = [{"code": str(2300 + i), "name": f"x{i}", "desc": "x",
+               "close": 100.0, "day_pct": 0.0, "vol_ratio": 1.0, "month_pct": 0.0,
+               "foreign_lot": 0.0, "invest_lot": 0.0, "dealer_lot": 0.0, "total_lot": 0.0,
+               "foreign_30d_lot": 0.0, "invest_30d_lot": 0.0, "dealer_30d_lot": 0.0,
+               "inst_30d_days": 0, "market_cap": 1e10}
+              for i in range(100)]
+    quotes = {"QQQ": {"ticker": "QQQ", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "TSM": {"ticker": "TSM", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "SPY": {"ticker": "SPY", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "USDTWD": 31.0, "MACRO": {}, "TAIEX_PRED": {}, "NIGHT_TXF": {},
+              "TAIFEX_OI": {}, "MARGIN": {}, "SEC_FILINGS": [],
+              "TW_UNIVERSE_FALLBACK": False}
+    dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"},
+                                news=[{"title": "x"}] * 12, tw0050=tw0050)
+    inst_entry = next(d for d in dq if "universe 籌碼" in d["name"])
+    assert inst_entry["status"] == "error"
+    assert "三大法人" in inst_entry["detail"]
+
+
+def test_build_data_quality_universe_ok_when_institutional_present():
+    """正常情況：100 檔多數有非零法人 → dq 仍應為 ok。"""
+    tw0050 = [{"code": str(2300 + i), "name": f"x{i}", "desc": "x",
+               "close": 100.0, "day_pct": 0.0, "vol_ratio": 1.0, "month_pct": 0.0,
+               "foreign_lot": 1000.0 if i < 90 else 0.0,    # 90/100 有法人資料
+               "invest_lot": 0.0, "dealer_lot": 0.0, "total_lot": 1000.0,
+               "foreign_30d_lot": 0.0, "invest_30d_lot": 0.0, "dealer_30d_lot": 0.0,
+               "inst_30d_days": 0, "market_cap": 1e10}
+              for i in range(100)]
+    quotes = {"QQQ": {"ticker": "QQQ", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "TSM": {"ticker": "TSM", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "SPY": {"ticker": "SPY", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "USDTWD": 31.0, "MACRO": {}, "TAIEX_PRED": {}, "NIGHT_TXF": {},
+              "TAIFEX_OI": {}, "MARGIN": {}, "SEC_FILINGS": [],
+              "TW_UNIVERSE_FALLBACK": False}
+    dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"},
+                                news=[{"title": "x"}] * 12, tw0050=tw0050)
+    inst_entry = next(d for d in dq if "universe 籌碼" in d["name"])
+    assert inst_entry["status"] == "ok"
+
+
 def test_build_data_quality_marks_error_and_ok():
     quotes = {
         "QQQ": {"ticker": "QQQ", "date": "2026-05-13", "close": 520, "prev_close": 515},

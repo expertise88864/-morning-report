@@ -2216,18 +2216,21 @@ def build_prediction_backtest(history: list[dict]) -> str:
         def to_date(idx):
             return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
 
-        twii_opens = {to_date(d): float(v) for d, v in twii_hist["Open"].items()}
-        tw2330_opens = {to_date(d): float(v) for d, v in tw2330_hist["Open"].items()}
-        tw0066_opens = {to_date(d): float(v) for d, v in tw0066_hist["Open"].items()}
+        # 同步把 Yahoo 的 float64 精度雜訊（如 117.55000305175781）round 掉
+        twii_opens = {to_date(d): round(float(v), 2) for d, v in twii_hist["Open"].items()}
+        tw2330_opens = {to_date(d): round(float(v), 2) for d, v in tw2330_hist["Open"].items()}
+        tw0066_opens = {to_date(d): round(float(v), 2) for d, v in tw0066_hist["Open"].items()}
 
-        # 對齊：history 中第 i 天的預測，對應第 i+1 天的實際開盤
+        # state 的 entry["date"] 是「該預測對應的台股開盤日」（main 在 6am TPE 時用 now_tpe 寫入）。
+        # 比對時應該找『同一天』的實際開盤；若那天市場休市（如六、日），才往後找下一個交易日。
+        # 原本 `od > pred_date` 是錯的 —— 它把週五的預測拿去比週一的開盤，把單日誤差變成 3 天的市場移動。
         sorted_hist = sorted(history, key=lambda h: h.get("date", ""))
-        for h in sorted_hist[:-1]:  # 最後一天還沒實際開盤
+        for h in sorted_hist[:-1]:  # 最後一筆是今天剛寫的，還沒實際開盤
             pred_date = h.get("date", "")
-            # 找下一個交易日
+            # 找「pred_date 當天或之後」第一個有實際開盤的交易日
             next_date = None
             for od in sorted(tw2330_opens.keys()):
-                if od > pred_date:
+                if od >= pred_date:
                     next_date = od
                     break
             if not next_date:
@@ -2253,11 +2256,12 @@ def build_prediction_backtest(history: list[dict]) -> str:
         if not rows:
             return "（歷史資料尚未對齊，需再多 1-2 天累積）"
 
-        # 計算平均誤差
+        # 計算平均誤差（同上：用 `>=` 做同日匹配，遇到市場休市才往後找）
         err_2330_list = []
         err_00662_list = []
         for h in sorted_hist[:-1]:
-            next_date = next((od for od in sorted(tw2330_opens.keys()) if od > h.get("date", "")), None)
+            next_date = next((od for od in sorted(tw2330_opens.keys())
+                              if od >= h.get("date", "")), None)
             if not next_date:
                 continue
             p2 = h.get("model3_2330"); a2 = tw2330_opens.get(next_date)
@@ -2325,7 +2329,8 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
             for idx, v in d["Open"].items():
                 key = (idx.tz_localize(None) if getattr(idx, "tz", None) else idx
                        ).strftime("%Y-%m-%d")
-                out[key] = float(v)
+                # round 掉 Yahoo float64 精度雜訊（曾出現 117.55000305175781 這種值）
+                out[key] = round(float(v), 2)
             return out
         twii_o = _opens("^TWII")
         t2330_o = _opens("2330.TW")
@@ -2337,9 +2342,11 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
 
     sorted_hist = sorted(history, key=lambda h: h.get("date", ""))
 
-    def _next_open(pred_date: str, opens_map: dict) -> Optional[float]:
+    def _actual_open_for(pred_date: str, opens_map: dict) -> Optional[float]:
+        """state entry["date"] = 該預測對應的台股開盤日（同一天）。
+        故比對時必須用『同日』(>=) 而不是『隔日』(>)；若當天市場休市才往後找。"""
         for od in sorted(opens_map):
-            if od > pred_date:
+            if od >= pred_date:
                 return opens_map[od]
         return None
 
@@ -2348,9 +2355,9 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
                             "m1": [], "m2": [], "m3": [], "taiex": []}
     for h in sorted_hist[:-1]:   # 最後一筆還沒有「隔日開盤」可比對
         pd_ = h.get("date", "")
-        a662 = _next_open(pd_, t00662_o)
-        a2330 = _next_open(pd_, t2330_o)
-        atwii = _next_open(pd_, twii_o)
+        a662 = _actual_open_for(pd_, t00662_o)
+        a2330 = _actual_open_for(pd_, t2330_o)
+        atwii = _actual_open_for(pd_, twii_o)
         p662 = h.get("fair_00662")
         if p662 and a662:
             err["00662"].append((a662 - p662) / p662)
@@ -3569,39 +3576,45 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
         sign = "+" if p >= 0 else ""
         return f"{sign}{p:.2f}%"
 
-    cell = ("text-align:center;padding:14px 6px;vertical-align:middle;"
+    cell = ("text-align:center;padding:12px 6px 14px;vertical-align:middle;"
             "border-right:1px solid rgba(255,255,255,0.10);")
-    cell_last = "text-align:center;padding:14px 6px;vertical-align:middle;"
+    cell_last = "text-align:center;padding:12px 6px 14px;vertical-align:middle;"
     lbl = ("font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.60);"
-           "text-transform:uppercase;font-weight:600;")
-    val = "font-size:18px;font-weight:700;color:#ffffff;margin-top:4px;line-height:1.2;"
-    sub = "font-size:11px;font-weight:500;margin-left:4px;"
+           "text-transform:uppercase;font-weight:600;line-height:1.2;")
+    val = ("font-size:18px;font-weight:700;color:#ffffff;line-height:1.2;"
+           "margin-top:6px;font-variant-numeric:tabular-nums;")
+    delta = ("font-size:11px;font-weight:500;line-height:1.2;margin-top:3px;"
+             "font-variant-numeric:tabular-nums;")
+
+    def _kpi_tile_numeric(label_txt: str, value_str: str, pct: float | None,
+                          is_last: bool = False) -> str:
+        c = cell_last if is_last else cell
+        if pct is None:
+            delta_line = ""
+        else:
+            delta_line = (f'<div style="{delta};color:{color_pct(pct)};">'
+                          f'{fmt_pct(pct)}</div>')
+        return (f'<td style="{c}">'
+                f'<div style="{lbl}">{label_txt}</div>'
+                f'<div style="{val}">{value_str}</div>'
+                f'{delta_line}'
+                f'</td>')
+
+    stance_tile = (f'<td style="{cell}">'
+                   f'<div style="{lbl}">立場</div>'
+                   f'<div style="{val};color:{stance_color};">{label}{score_str}</div>'
+                   f'</td>')
 
     return f"""
           <tr>
             <td style="background:#0c4a6e;padding:0;">
               <table role="presentation" style="width:100%;border-collapse:collapse;">
                 <tr>
-                  <td style="{cell}">
-                    <div style="{lbl}">立場</div>
-                    <div style="{val};color:{stance_color};">{label}{score_str}</div>
-                  </td>
-                  <td style="{cell}">
-                    <div style="{lbl}">2330 預測</div>
-                    <div style="{val}">{fmt(mid_2330)}<span style="{sub};color:{color_pct(pct_2330)};">{fmt_pct(pct_2330)}</span></div>
-                  </td>
-                  <td style="{cell}">
-                    <div style="{lbl}">00662 預測</div>
-                    <div style="{val}">{fmt(fair_price)}<span style="{sub};color:{color_pct(pct_00662)};">{fmt_pct(pct_00662)}</span></div>
-                  </td>
-                  <td style="{cell}">
-                    <div style="{lbl}">加權預測</div>
-                    <div style="{val}">{fmt_int(pred_taiex)}<span style="{sub};color:{color_pct(pct_taiex)};">{fmt_pct(pct_taiex)}</span></div>
-                  </td>
-                  <td style="{cell_last}">
-                    <div style="{lbl}">VIX</div>
-                    <div style="{val}">{fmt(vix_close)}<span style="{sub};color:{color_pct(vix_pct)};">{fmt_pct(vix_pct)}</span></div>
-                  </td>
+                  {stance_tile}
+                  {_kpi_tile_numeric("2330 預測", fmt(mid_2330), pct_2330)}
+                  {_kpi_tile_numeric("00662 預測", fmt(fair_price), pct_00662)}
+                  {_kpi_tile_numeric("加權預測", fmt_int(pred_taiex), pct_taiex)}
+                  {_kpi_tile_numeric("VIX", fmt(vix_close), vix_pct, is_last=True)}
                 </tr>
               </table>
             </td>
@@ -4315,15 +4328,26 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         add("RSS 新聞", "error", "全部來源失敗")
 
     # 台股 universe（市值前 100）籌碼
+    # 注意：snapshot 即使三大法人 fetch 失敗也會有 100 檔（全填 0），
+    # 故除了數量，還要檢查「真有非零法人買賣超的檔數」。
     n_uni = len(tw0050 or [])
+    n_inst = sum(1 for s in (tw0050 or [])
+                 if (s.get("foreign_lot") or s.get("invest_lot") or s.get("dealer_lot")))
     uni_fallback = bool(quotes.get("TW_UNIVERSE_FALLBACK"))
     uni_src = "0050 硬編清單（動態抓取失敗）" if uni_fallback else "市值前 100 動態"
-    if n_uni >= 70 and not uni_fallback:
-        add("台股 universe 籌碼", "ok", f"{n_uni} 檔・{uni_src}")
-    elif n_uni > 0:
-        add("台股 universe 籌碼", "fallback", f"{n_uni} 檔・{uni_src}")
-    else:
+    inst_ratio = (n_inst / n_uni) if n_uni else 0
+    if n_uni == 0:
         add("台股 universe 籌碼", "error", "抓取失敗")
+    elif inst_ratio < 0.3:
+        # snapshot 有 100 檔但三大法人都是 0 —— TWSE 端點抓失敗的徵狀
+        add("台股 universe 籌碼", "error",
+            f"{n_uni} 檔但僅 {n_inst} 檔有法人買賣超 → 三大法人端點抓取失敗")
+    elif inst_ratio < 0.7 or uni_fallback:
+        add("台股 universe 籌碼", "fallback",
+            f"{n_uni} 檔・{n_inst} 檔有法人資料・{uni_src}")
+    else:
+        add("台股 universe 籌碼", "ok",
+            f"{n_uni} 檔・{n_inst} 檔有法人資料・{uni_src}")
 
     # 台股月營收（基本面）
     n_rev = sum(1 for s in (tw0050 or []) if s.get("rev_yoy_pct") is not None)

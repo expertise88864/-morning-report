@@ -166,6 +166,41 @@ def test_twse_close_fallback_on_failure(monkeypatch):
     assert mr.fetch_twse_close("00662") is None
 
 
+# === 大盤成交額 + 市場廣度 ===
+
+_STOCK_DAY_ALL_BREADTH = [
+    # Code, Name, Change, TradeValue
+    {"Code": "2330", "Name": "x", "Change": "+5.00", "TradeValue": "100000000000"},
+    {"Code": "2317", "Name": "x", "Change": "-2.00", "TradeValue": "50000000000"},
+    {"Code": "2454", "Name": "x", "Change": "+0.50", "TradeValue": "20000000000"},
+    {"Code": "1101", "Name": "x", "Change": "0.00",  "TradeValue": "5000000000"},
+    {"Code": "00878", "Name": "etf", "Change": "+0.10", "TradeValue": "10"},   # 5 位代號排除
+]
+
+
+def test_market_breadth_parses_and_classifies(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: _FakeResp(_STOCK_DAY_ALL_BREADTH))
+    out = mr.fetch_twse_market_breadth()
+    # 4 檔 4 位數: 2330(+), 2317(-), 2454(+), 1101(0)
+    assert out["total"] == 4
+    assert out["advance"] == 2
+    assert out["decline"] == 1
+    assert out["unchanged"] == 1
+    assert out["advance_ratio"] == 50.0
+    # 成交額 ≈ 1.75e11 ÷ 1e8 = 1750 億
+    assert 1700 <= out["total_value_yi"] <= 1800
+    # advance_ratio=50% 落在 45-55 → neutral
+    assert out["breadth_state"] == "neutral"
+
+
+def test_market_breadth_fallback_on_failure(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: (_ for _ in ()).throw(
+                            mr.requests.exceptions.ConnectionError("down")))
+    assert mr.fetch_twse_market_breadth() == {}
+
+
 def test_sec_cik_map_parses(monkeypatch):
     # 模擬 SEC company_tickers.json 結構
     payload = {

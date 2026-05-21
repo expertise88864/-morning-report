@@ -120,6 +120,40 @@ def test_render_html_includes_kpi_strip_with_full_data():
     assert "六、0050 ETF 開盤預測" in html or "0050 今日合理價" in html
 
 
+def test_render_html_shows_new_macro_indicators_and_breadth():
+    q = _full_quotes()
+    q["MACRO"] = {
+        "VIX":   {"close": 17.5, "change_pct": -1.0, "pct_rank_252d": 50},
+        "VIX9D": {"close": 18.0, "change_pct": 2.0,  "pct_rank_252d": 60},
+        "SOX":   {"close": 5800, "change_pct": 1.2,  "pct_rank_252d": 80},
+        "10Y":   {"close": 4.4,  "change_pct": -0.5},
+        "DXY":   {"close": 98.0, "change_pct": 0.1},
+        "13W":   {"close": 4.2,  "change_pct": 0.0},
+        "N225":  {"close": 41000, "change_pct": 0.3},
+        "SSE":   {"close": 3200, "change_pct": -0.4},
+        "NQ":    {"close": 20100, "change_pct": 0.8,  "pct_rank_252d": 90},
+        "ES":    {"close": 5800,  "change_pct": 0.5},
+        "WTI":   {"close": 75.0,  "change_pct": 1.2},
+        "GOLD":  {"close": 2400,  "change_pct": -0.3},
+        "VIX_TERM": {"ratio": 1.029, "spread": 0.5, "state": "backwardation"},
+    }
+    q["BREADTH"] = {
+        "total_value_raw": 3.5e11, "total_value_yi": 3500,
+        "advance": 700, "decline": 200, "unchanged": 100, "total": 1000,
+        "advance_ratio": 70.0, "breadth_state": "broad_rally",
+    }
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"},
+                          "x", "2026-05-21", "每日報")
+    # 新總經列都在
+    for label in ("VIX9D 短期恐慌", "NQ 期貨", "ES 期貨", "WTI 原油", "黃金 GC"):
+        assert label in html, f"missing macro row: {label}"
+    # 廣度卡片
+    assert "大盤成交額與市場廣度" in html
+    assert "3,500 億" in html or "3500 億" in html
+    assert "70.0%" in html
+    assert "普漲" in html
+
+
 def test_render_html_kpi_strip_degrades_gracefully():
     """LLM 沒給立場 / Python 預測 error → KPI 條仍要渲染，欠缺欄位顯示 '—'。"""
     q = _full_quotes()

@@ -65,3 +65,12 @@ def test_fair_value_rejects_implausible_beta(fake_yf, mkdf):
     res = mr.calc_00662_fair_value(520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.0)
     assert res["samples"] == 0
     assert "簡化版" in res["method"]
+
+
+def test_fair_value_computes_premium_when_history_available(fake_yf, mkdf):
+    # 歷史資料齊全 → 應算出 premium_pct（折溢價）
+    fake_yf(_regression_data(mkdf, beta=0.95))
+    res = mr.calc_00662_fair_value(520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.0)
+    assert res["premium_pct"] is not None
+    # 在合理數值範圍（不會爆值）
+    assert -50.0 <= res["premium_pct"] <= 50.0

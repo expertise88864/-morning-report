@@ -1642,6 +1642,7 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     beta = 1.0          # 預設
     avg_deviation = 0.0 # 預設
     samples = 0
+    premium_pct: Optional[float] = None    # 折溢價（vs NDX 隱含 NAV 的 60 日中位數）
     try:
         qqq_hist = yf.Ticker("QQQ").history(period="3mo", auto_adjust=False)
         tw_hist  = yf.Ticker("00662.TW").history(period="3mo", auto_adjust=False)
@@ -1687,6 +1688,26 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
                 print(f"[00662] 回歸 beta={beta:.3f} 偏離 0.85-1.15，研判 00662 歷史資料異常 → 退回簡化版",
                       file=sys.stderr)
                 beta = 1.0   # samples 維持 0 → 下方走簡化版
+
+        # 折溢價：00662 vs NDX 隱含 NAV (= QQQ × USD/TWD)
+        # 取 60 日 (00662 / (QQQ_lag × FX)) 比值的中位數作為「公允比值」
+        # 今日比值 = last_00662 / (qqq_prev_close × usdtwd_prev) — 對齊的是「驅動 last_00662 的 US 收盤」
+        try:
+            df_pp = pd.DataFrame({
+                "tw": tw_s, "qqq_lag": qqq_s.shift(1), "fx": fx_s,
+            }).dropna()
+            df_pp = df_pp[(df_pp["qqq_lag"] > 0) & (df_pp["fx"] > 0)]
+            if len(df_pp) >= 20:
+                df_pp["ratio"] = df_pp["tw"] / (df_pp["qqq_lag"] * df_pp["fx"])
+                median_ratio = float(df_pp["ratio"].tail(60).median())
+                ref_fx = usdtwd_prev or usdtwd
+                if median_ratio and ref_fx and qqq_prev_close:
+                    implied_nav = qqq_prev_close * ref_fx * median_ratio
+                    if implied_nav > 0:
+                        premium_pct = (last_00662_price / implied_nav - 1) * 100
+                        print(f"[00662] 折溢價 = {premium_pct:+.2f}% (n={len(df_pp)}, median_ratio={median_ratio:.6f})")
+        except Exception as e:
+            print(f"[00662] 折溢價計算失敗: {e}", file=sys.stderr)
     except Exception as e:
         print(f"[00662] 歷史回歸失敗: {e}", file=sys.stderr)
 
@@ -1714,6 +1735,8 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
         "usdtwd": usdtwd,
         "usdtwd_prev": usdtwd_prev,
         "method": method,
+        # 折溢價（vs NDX 隱含 NAV）：正=溢價（市價>合理NAV）；負=折價；None=資料不足
+        "premium_pct": round(premium_pct, 3) if premium_pct is not None else None,
     }
 
 
@@ -1901,6 +1924,52 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
         if len(valid) >= 2:
             res["range"] = (round(min(valid), 2), round(max(valid), 2))
     return res
+
+
+def calc_0050_prediction(last_0050: Optional[float],
+                          predictions_2330: dict,
+                          taiex_pred: dict) -> dict:
+    """
+    0050 (元大台灣 50) 開盤預測。
+
+    模型：0050 大約 50% 是 2330（其餘 49 檔加總約等於「加權指數扣掉 2330」），
+    故 0050 的預期漲跌幅 ≈ 0.5 × 2330 預期漲跌幅 + 0.5 × 加權指數預期漲跌幅。
+
+    任一上游缺失時退化：只用可用那一邊；兩邊都缺 → 回 error。
+    失敗 / 缺資料時不影響晨報，回 {"error": ...}。
+    """
+    if last_0050 is None:
+        return {"error": "缺 0050 昨收"}
+
+    # 2330 預測漲跌幅
+    p2_mid = predictions_2330.get("mid") if isinstance(predictions_2330, dict) else None
+    p2_last = predictions_2330.get("last_2330") if isinstance(predictions_2330, dict) else None
+    pct_2330 = (((p2_mid / p2_last) - 1) * 100) if (p2_mid and p2_last) else None
+
+    # 加權指數預測漲跌幅
+    pct_taiex = (taiex_pred or {}).get("weighted_pct")
+
+    if pct_2330 is not None and pct_taiex is not None:
+        pct_weighted = 0.5 * pct_2330 + 0.5 * pct_taiex
+        method = "0.5 × 2330 + 0.5 × 加權指數"
+    elif pct_taiex is not None:
+        pct_weighted = pct_taiex
+        method = "加權指數（2330 預測缺失）"
+    elif pct_2330 is not None:
+        pct_weighted = pct_2330
+        method = "2330（加權指數預測缺失）"
+    else:
+        return {"error": "上游 2330 與加權指數預測皆失敗"}
+
+    pred_open = last_0050 * (1 + pct_weighted / 100)
+    return {
+        "last": round(last_0050, 2),
+        "pred_open": round(pred_open, 2),
+        "pred_pct": round(pct_weighted, 3),
+        "pct_2330": round(pct_2330, 3) if pct_2330 is not None else None,
+        "pct_taiex": round(pct_taiex, 3) if pct_taiex is not None else None,
+        "method": method,
+    }
 
 
 def fetch_news() -> list[dict]:
@@ -2212,6 +2281,7 @@ def build_prediction_backtest(history: list[dict]) -> str:
         twii_hist = yf.Ticker("^TWII").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
         tw2330_hist = yf.Ticker("2330.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
         tw0066_hist = yf.Ticker("00662.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
+        tw0050_hist = yf.Ticker("0050.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
 
         def to_date(idx):
             return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
@@ -2220,6 +2290,7 @@ def build_prediction_backtest(history: list[dict]) -> str:
         twii_opens = {to_date(d): round(float(v), 2) for d, v in twii_hist["Open"].items()}
         tw2330_opens = {to_date(d): round(float(v), 2) for d, v in tw2330_hist["Open"].items()}
         tw0066_opens = {to_date(d): round(float(v), 2) for d, v in tw0066_hist["Open"].items()}
+        tw0050_opens = {to_date(d): round(float(v), 2) for d, v in tw0050_hist["Open"].items()}
 
         # state 的 entry["date"] 是「該預測對應的台股開盤日」（main 在 6am TPE 時用 now_tpe 寫入）。
         # 比對時應該找『同一天』的實際開盤；若那天市場休市（如六、日），才往後找下一個交易日。
@@ -2238,20 +2309,24 @@ def build_prediction_backtest(history: list[dict]) -> str:
 
             pred_2330 = h.get("model3_2330")
             pred_00662 = h.get("fair_00662")
+            pred_0050 = h.get("pred_0050")
             actual_2330 = tw2330_opens.get(next_date)
             actual_00662 = tw0066_opens.get(next_date)
-            actual_twii = twii_opens.get(next_date)
+            actual_0050 = tw0050_opens.get(next_date)
 
-            err_2330 = err_00662 = None
+            err_2330 = err_00662 = err_0050 = None
             if pred_2330 and actual_2330:
                 err_2330 = (actual_2330 - pred_2330) / pred_2330 * 100
             if pred_00662 and actual_00662:
                 err_00662 = (actual_00662 - pred_00662) / pred_00662 * 100
+            if pred_0050 and actual_0050:
+                err_0050 = (actual_0050 - pred_0050) / pred_0050 * 100
 
-            if err_2330 is not None or err_00662 is not None:
+            if any(e is not None for e in (err_2330, err_00662, err_0050)):
                 e2330 = f"2330: 預測 {pred_2330} → 實際 {actual_2330} ({err_2330:+.2f}%)" if err_2330 is not None else "2330: 缺資料"
                 e00662 = f"00662: 預測 {pred_00662} → 實際 {actual_00662} ({err_00662:+.2f}%)" if err_00662 is not None else "00662: 缺資料"
-                rows.append(f"  {next_date}：{e2330} | {e00662}")
+                e0050 = f"0050: 預測 {pred_0050} → 實際 {actual_0050} ({err_0050:+.2f}%)" if err_0050 is not None else "0050: 缺資料"
+                rows.append(f"  {next_date}：{e2330} | {e00662} | {e0050}")
 
         if not rows:
             return "（歷史資料尚未對齊，需再多 1-2 天累積）"
@@ -2259,6 +2334,7 @@ def build_prediction_backtest(history: list[dict]) -> str:
         # 計算平均誤差（同上：用 `>=` 做同日匹配，遇到市場休市才往後找）
         err_2330_list = []
         err_00662_list = []
+        err_0050_list = []
         for h in sorted_hist[:-1]:
             next_date = next((od for od in sorted(tw2330_opens.keys())
                               if od >= h.get("date", "")), None)
@@ -2266,20 +2342,20 @@ def build_prediction_backtest(history: list[dict]) -> str:
                 continue
             p2 = h.get("model3_2330"); a2 = tw2330_opens.get(next_date)
             p6 = h.get("fair_00662"); a6 = tw0066_opens.get(next_date)
+            p5 = h.get("pred_0050"); a5 = tw0050_opens.get(next_date)
             if p2 and a2:
                 err_2330_list.append((a2 - p2) / p2 * 100)
             if p6 and a6:
                 err_00662_list.append((a6 - p6) / p6 * 100)
+            if p5 and a5:
+                err_0050_list.append((a5 - p5) / p5 * 100)
 
         summary = ""
-        if err_2330_list:
-            avg = sum(err_2330_list) / len(err_2330_list)
-            bias = "偏高" if avg > 0.2 else "偏低" if avg < -0.2 else "中性"
-            summary += f"\n  2330 平均誤差: {avg:+.2f}% (預測{bias})"
-        if err_00662_list:
-            avg = sum(err_00662_list) / len(err_00662_list)
-            bias = "偏高" if avg > 0.2 else "偏低" if avg < -0.2 else "中性"
-            summary += f"\n  00662 平均誤差: {avg:+.2f}% (預測{bias})"
+        for name, lst in (("2330", err_2330_list), ("00662", err_00662_list), ("0050", err_0050_list)):
+            if lst:
+                avg = sum(lst) / len(lst)
+                bias = "偏高" if avg > 0.2 else "偏低" if avg < -0.2 else "中性"
+                summary += f"\n  {name} 平均誤差: {avg:+.2f}% (預測{bias})"
 
         return "\n".join(rows) + summary
     except Exception as e:
@@ -3521,7 +3597,8 @@ def _extract_summary(text: str) -> str:
 
 def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict) -> str:
     """頂部 KPI 一覽條（dark bg，緊接 HERO 下方）。
-    內容：立場 / 2330 / 00662 / 加權 / VIX，2 秒掃完今天重點。"""
+    內容：立場 / 2330 / 00662 / 0050 / 加權，2 秒掃完今天重點。
+    (VIX 移到「總經指標」表內，騰出 KPI 位置給 0050。)"""
     # === 立場 ===
     score = stance.get("score")
     label = stance.get("label") or "—"
@@ -3554,10 +3631,11 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
     last_taiex = taiex.get("last_close")
     pct_taiex = ((pred_taiex / last_taiex - 1) * 100) if (pred_taiex and last_taiex) else None
 
-    # === VIX ===
-    vix = (quotes.get("MACRO", {}) or {}).get("VIX", {}) or {}
-    vix_close = vix.get("close")
-    vix_pct = vix.get("change_pct")
+    # === 0050 ===
+    tw0050p = quotes.get("TW0050_PRED", {}) or {}
+    pred_0050 = tw0050p.get("pred_open")
+    last_0050 = tw0050p.get("last")
+    pct_0050 = ((pred_0050 / last_0050 - 1) * 100) if (pred_0050 and last_0050) else None
 
     def fmt(v, dec=2):
         return f"{v:.{dec}f}" if v is not None else "—"
@@ -3613,8 +3691,8 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                   {stance_tile}
                   {_kpi_tile_numeric("2330 預測", fmt(mid_2330), pct_2330)}
                   {_kpi_tile_numeric("00662 預測", fmt(fair_price), pct_00662)}
-                  {_kpi_tile_numeric("加權預測", fmt_int(pred_taiex), pct_taiex)}
-                  {_kpi_tile_numeric("VIX", fmt(vix_close), vix_pct, is_last=True)}
+                  {_kpi_tile_numeric("0050 預測", fmt(pred_0050), pct_0050)}
+                  {_kpi_tile_numeric("加權預測", fmt_int(pred_taiex), pct_taiex, is_last=True)}
                 </tr>
               </table>
             </td>
@@ -3866,6 +3944,36 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         {(lambda c: f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
         """
 
+    # === 0050 ETF 開盤預測卡 ===
+    tw0050p_data = quotes.get("TW0050_PRED", {}) or {}
+    tw0050_card_html = ""
+    if tw0050p_data.get("pred_open") and tw0050p_data.get("last"):
+        p50 = tw0050p_data["pred_open"]
+        l50 = tw0050p_data["last"]
+        pct50 = ((p50 / l50) - 1) * 100
+        c50 = "#dc2626" if pct50 >= 0 else "#16a34a"
+        s50 = "+" if pct50 >= 0 else ""
+        tw0050_card_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、0050 ETF 開盤預測</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;">
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;width:55%;">0050 昨收</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{l50}</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">預測漲跌幅</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{c50};font-variant-numeric:tabular-nums;">{s50}{pct50:.2f}%</td>
+          </tr>
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 0050 今日合理價</td>
+            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{p50}</td>
+          </tr>
+        </table>
+        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
+        """
+
     # === 夜盤台指期卡 (Task B) ===
     night = quotes.get("NIGHT_TXF", {}) or {}
     night_html = ""
@@ -3934,6 +4042,24 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{fx_color};font-variant-numeric:tabular-nums;">{fx_sign}{fair['fx_pct']}% ({fair.get('usdtwd_prev','—')}→{fair.get('usdtwd','—')})</td>
           </tr>"""
 
+        # 折溢價列（00662 市價 vs NDX 隱含 NAV 的 60 日中位數比較）
+        premium_row = ""
+        if fair.get("premium_pct") is not None:
+            pp = fair["premium_pct"]
+            if pp > 0.5:
+                pp_color = "#dc2626"; pp_label = "溢價"          # 偏貴
+            elif pp < -0.5:
+                pp_color = "#16a34a"; pp_label = "折價"          # 偏便宜
+            else:
+                pp_color = "#64748b"; pp_label = "接近合理"
+            pp_sign = "+" if pp >= 0 else ""
+            premium_row = f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">折溢價（vs NDX 隱含 NAV，60 日基準）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;color:{pp_color};font-weight:700;font-variant-numeric:tabular-nums;">{pp_sign}{pp:.2f}% <span style="font-weight:500;font-size:12px;color:{pp_color};">({pp_label})</span></td>
+          </tr>"""
+
         method_label = fair.get("method", "")
         calib_extra = _calibration_note_compact(fair)
         fair_foot = (f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">'
@@ -3955,6 +4081,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {beta_row}
           {dev_row}
           {fx_row}
+          {premium_row}
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 00662 今日合理價估值</td>
@@ -4146,6 +4273,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {pred_html}
 
             {taiex_html}
+
+            {tw0050_card_html}
 
             {night_html}
 
@@ -4519,6 +4648,15 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 預測校正失敗（沿用未校正值）: {e}", file=sys.stderr)
 
+    # 5.106 0050 ETF 開盤預測（0.5 × 2330 + 0.5 × 加權指數）
+    print("[main] 計算 0050 開盤預測…")
+    last_0050 = fetch_twse_close("0050")
+    try:
+        tw0050_pred = calc_0050_prediction(last_0050, predictions, taiex_pred)
+    except Exception as e:
+        print(f"[main] 0050 預測失敗: {e}", file=sys.stderr)
+        tw0050_pred = {"error": str(e)[:80]}
+
     # 5.11 (Task F) 預測準確度回溯
     print("[main] 計算預測準確度回溯…")
     backtest_block = build_prediction_backtest(history)
@@ -4569,6 +4707,7 @@ def main() -> int:
     quotes["HISTORY"] = history
     quotes["NIGHT_TXF"] = night_txf
     quotes["TAIEX_PRED"] = taiex_pred
+    quotes["TW0050_PRED"] = tw0050_pred
     quotes["BACKTEST"] = backtest_block
     quotes["ALERTS"] = alerts
 
@@ -4607,6 +4746,9 @@ def main() -> int:
             "weighted_final_2330": predictions.get("weighted_final"),
             "foreign_top10_total": round(top10_inst_total, 0),
             "pred_taiex": taiex_pred.get("pred_open"),
+            # 0050 開盤預測（供下次 backtest 對比）
+            "pred_0050": tw0050_pred.get("pred_open") if isinstance(tw0050_pred, dict) else None,
+            "last_0050": tw0050_pred.get("last") if isinstance(tw0050_pred, dict) else None,
             "night_txf_pct": night_txf.get("night_pct"),
             "taifex_foreign_oi": taifex_oi.get("foreign_oi_net"),
             "critical_news": crit_titles,

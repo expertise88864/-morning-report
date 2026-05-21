@@ -88,6 +88,41 @@ _TAIFEX_NIGHT_CSV = "\n".join([
 ])
 
 
+# ===== calc_0050_prediction =====
+
+def test_0050_prediction_weighted_2330_and_taiex():
+    import morning_report as mr
+    preds = {"mid": 2200.0, "last_2330": 2200.0}    # 2330 pct = 0%
+    taiex = {"weighted_pct": 2.0}                    # 加權 +2%
+    res = mr.calc_0050_prediction(last_0050=100.0, predictions_2330=preds, taiex_pred=taiex)
+    # 0050 應 = 100 × (1 + 0.5×0% + 0.5×2%) = 100 × 1.01 = 101
+    assert res["pred_open"] == 101.0
+    assert res["pred_pct"] == 1.0
+
+
+def test_0050_prediction_falls_back_to_taiex_when_2330_missing():
+    import morning_report as mr
+    res = mr.calc_0050_prediction(last_0050=100.0,
+                                   predictions_2330={"error": "x"},
+                                   taiex_pred={"weighted_pct": 1.5})
+    assert res["pred_pct"] == 1.5
+    assert "加權指數" in res["method"]
+
+
+def test_0050_prediction_error_when_both_upstream_missing():
+    import morning_report as mr
+    res = mr.calc_0050_prediction(last_0050=100.0,
+                                   predictions_2330={"error": "x"},
+                                   taiex_pred={"error": "x"})
+    assert res.get("error")
+
+
+def test_0050_prediction_error_when_no_last():
+    import morning_report as mr
+    assert mr.calc_0050_prediction(None, {"mid": 2200, "last_2330": 2200},
+                                    {"weighted_pct": 1.0}).get("error")
+
+
 def test_taifex_night_session_detects_session_column(monkeypatch):
     import morning_report as mr
     monkeypatch.setattr(mr.requests, "post",

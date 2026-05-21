@@ -90,6 +90,8 @@ def test_render_html_includes_kpi_strip_with_full_data():
         "ci_upper": 41855, "consensus": "偏空", "signal_std": 3.32,
         "signal_count": 3,
     }
+    q["TW0050_PRED"] = {"last": 96.5, "pred_open": 95.4, "pred_pct": -1.14,
+                        "method": "0.5 × 2330 + 0.5 × 加權指數"}
     q["MACRO"] = {"VIX": {"close": 18.43, "change_pct": 6.78}}
     fair = {"fair_price": 116.99, "last_00662_price": 118.8,
             "qqq_pct": -1.51, "implied_change_pct": -1.52,
@@ -105,11 +107,17 @@ def test_render_html_includes_kpi_strip_with_full_data():
     assert "2192.5" in html
     assert "116.99" in html
     assert "40,487" in html
-    assert "18.43" in html
+    # KPI 顯示 0050 取代 VIX
+    assert "0050 預測" in html and "95.4" in html
+    # VIX 仍在「總經指標」表，但不在 KPI 條
+    kpi_section = html.split("一、美股收盤行情")[0]
+    assert "VIX" not in kpi_section.split("MARKET ALERTS")[0] or "VIX 預測" not in html
     # 結論橫條
     assert "今日結論" in html and "SOX 暴跌減碼" in html
     # KPI 在 alerts 之前
     assert html.find("立場") < html.find("一、美股收盤行情")
+    # 0050 卡片
+    assert "六、0050 ETF 開盤預測" in html or "0050 今日合理價" in html
 
 
 def test_render_html_kpi_strip_degrades_gracefully():

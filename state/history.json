@@ -160,5 +160,34 @@
       "E.l.f. Beauty to walk back some tariff price increases amid high gas prices and consumer 'suffering'"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-22",
+    "weekday": "Fri",
+    "qqq_pct": 0.19,
+    "tsm_pct": 1.38,
+    "spy_pct": 0.2,
+    "vix": 16.76,
+    "sox_pct": 1.28,
+    "usdtwd": 31.555,
+    "fair_00662": 119.85,
+    "model1_2330": 2260.71,
+    "model2_2330": 2213.27,
+    "model3_2330": 2245.2,
+    "weighted_final_2330": 2265.07,
+    "foreign_top10_total": 52321.0,
+    "pred_taiex": 40404.28,
+    "pred_0050": 96.89,
+    "last_0050": 95.85,
+    "night_txf_pct": -1.16,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "SpaceX is heavily reliant on Starlink for growth and profit as it marches toward Nasdaq listing",
+      "Trump administration says new EPA rules will save you money at the supermarket. It's not clear they will",
+      "Stock futures rise slightly as S&P 500 looks toward another winning week: Live updates",
+      "SpaceX readies 12th test flight of massive Starship rocket as IPO looms",
+      "Meta, Broadcom and others to launch $125 million semiconductor research hub at UCLA"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

@@ -201,6 +201,38 @@ def test_market_breadth_fallback_on_failure(monkeypatch):
     assert mr.fetch_twse_market_breadth() == {}
 
 
+# === TAIEX 官方收盤 override ===
+
+_FMTQIK_DATA = [
+    {"日期": "1150519", "成交股數": "x", "成交金額": "x",
+     "成交筆數": "x", "發行量加權股價指數": "41,200.00", "漲跌點數": "+100.00"},
+    {"日期": "1150520", "成交股數": "x", "成交金額": "x",
+     "成交筆數": "x", "發行量加權股價指數": "41,368.45", "漲跌點數": "+168.45"},
+]
+
+
+def test_twse_taiex_close_parses_fmtqik(monkeypatch):
+    # 模擬 FMTQIK 端點：取最後一筆的「發行量加權股價指數」
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: _FakeResp(_FMTQIK_DATA))
+    assert mr.fetch_twse_taiex_close() == 41368.45
+
+
+def test_twse_taiex_close_falls_back_on_failure(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_twse_taiex_close() is None
+
+
+def test_twse_taiex_close_rejects_garbage_values(monkeypatch):
+    """若 FMTQIK 回傳指數值 < 1000（不合理），應視為錯誤回 None。"""
+    bad_data = [{"日期": "1150520", "發行量加權股價指數": "5.0"}]
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, **kw: _FakeResp(bad_data))
+    assert mr.fetch_twse_taiex_close() is None
+
+
 def test_sec_cik_map_parses(monkeypatch):
     # 模擬 SEC company_tickers.json 結構
     payload = {

@@ -1462,6 +1462,59 @@ def fetch_twse_close(code: str) -> Optional[float]:
         return None
 
 
+def fetch_twse_taiex_close() -> Optional[float]:
+    """
+    從 TWSE 官方抓「加權指數」(TAIEX) 最新收盤。
+
+    為什麼需要：Yahoo Finance 的 ^TWII 偶爾會給錯值（曾誤報 40020 而非 41368，
+    差 ~3.3%），整個加權指數預測、區間、自我校正 bias 都會被汙染。
+    TWSE 是台股指數的權威來源。
+
+    嘗試順序：
+      1. FMTQIK（大盤每日成交資訊，含 TAIEX 收盤點數）
+      2. MI_INDEX（每日收盤行情指數類）— fallback
+    失敗回 None（呼叫端 fallback 回 Yahoo）。
+    """
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    # 嘗試 1: FMTQIK
+    try:
+        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
+                         timeout=20, headers=headers)
+        r.raise_for_status()
+        data = r.json() or []
+        if data:
+            # FMTQIK 通常依日期 asc 排序，最後一筆 = 最新日。欄位含「發行量加權股價指數」
+            latest = data[-1]
+            for k in ("發行量加權股價指數", "TAIEX", "加權股價指數", "Closing_TAIEX"):
+                v = _to_float(latest.get(k))
+                if v and v > 1000:    # TAIEX 點數 > 1000 為合理區間
+                    print(f"[twse_taiex] FMTQIK → {v:,.2f}")
+                    return round(v, 2)
+    except Exception as e:
+        print(f"[twse_taiex] FMTQIK 失敗: {e}", file=sys.stderr)
+
+    # 嘗試 2: MI_INDEX
+    try:
+        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX",
+                         timeout=20, headers=headers)
+        r.raise_for_status()
+        data = r.json() or []
+        for row in data:
+            name = str(row.get("指數") or row.get("Name") or "").strip()
+            if "發行量加權股價指數" in name or name == "加權股價指數" or "TAIEX" in name.upper():
+                for k in ("收盤指數", "ClosingIndex", "Close"):
+                    v = _to_float(row.get(k))
+                    if v and v > 1000:
+                        print(f"[twse_taiex] MI_INDEX → {v:,.2f}")
+                        return round(v, 2)
+    except Exception as e:
+        print(f"[twse_taiex] MI_INDEX 失敗: {e}", file=sys.stderr)
+
+    print("[twse_taiex] TWSE 官方來源全失敗，將沿用 yfinance ^TWII", file=sys.stderr)
+    return None
+
+
 def fetch_twse_market_breadth() -> dict:
     """
     從 TWSE STOCK_DAY_ALL 計算「大盤量能 + 市場廣度」。
@@ -2385,13 +2438,17 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
     return alerts
 
 
+BACKTEST_DISPLAY_DAYS = 3   # 信件「預測準確度回顧」最多顯示幾筆（最近 N 個交易日）
+
+
 def build_prediction_backtest(history: list[dict]) -> str:
     """
     Task F: 比對「過去 N 天我預測的開盤點位」vs「實際開盤」，
     讓 LLM 看到自己的歷史誤差並修正。
 
-    需要每天記錄的欄位（main 已寫入）：fair_00662、model3_2330、pred_taiex
-    需要每天記錄的「實際開盤」（從 yfinance 抓）來比對
+    顯示 + 平均誤差皆限於最近 BACKTEST_DISPLAY_DAYS 個交易日(預設 3),
+    避免信件 backtest 區塊隨歷史累積越來越長。
+    （注意：自我校正迴圈 `calibrate_predictions` 仍用 ~20 日,獨立運作不受此限制。）
     """
     if not history or len(history) < 2:
         return "（首週運行，無歷史預測可回溯）"
@@ -2416,8 +2473,10 @@ def build_prediction_backtest(history: list[dict]) -> str:
         # state 的 entry["date"] 是「該預測對應的台股開盤日」（main 在 6am TPE 時用 now_tpe 寫入）。
         # 比對時應該找『同一天』的實際開盤；若那天市場休市（如六、日），才往後找下一個交易日。
         # 原本 `od > pred_date` 是錯的 —— 它把週五的預測拿去比週一的開盤，把單日誤差變成 3 天的市場移動。
+        # 只取最近 BACKTEST_DISPLAY_DAYS 筆（排除今天那筆，因今天的實際開盤還沒到）。
         sorted_hist = sorted(history, key=lambda h: h.get("date", ""))
-        for h in sorted_hist[:-1]:  # 最後一筆是今天剛寫的，還沒實際開盤
+        recent_hist = sorted_hist[:-1][-BACKTEST_DISPLAY_DAYS:]
+        for h in recent_hist:
             pred_date = h.get("date", "")
             # 找「pred_date 當天或之後」第一個有實際開盤的交易日
             next_date = None
@@ -2452,11 +2511,11 @@ def build_prediction_backtest(history: list[dict]) -> str:
         if not rows:
             return "（歷史資料尚未對齊，需再多 1-2 天累積）"
 
-        # 計算平均誤差（同上：用 `>=` 做同日匹配，遇到市場休市才往後找）
+        # 平均誤差也只算最近 BACKTEST_DISPLAY_DAYS 筆，跟顯示的行數一致避免混淆。
         err_2330_list = []
         err_00662_list = []
         err_0050_list = []
-        for h in sorted_hist[:-1]:
+        for h in recent_hist:
             next_date = next((od for od in sorted(tw2330_opens.keys())
                               if od >= h.get("date", "")), None)
             if not next_date:
@@ -4837,10 +4896,19 @@ def main() -> int:
         print(f"[main] 夜盤抓取失敗: {e}", file=sys.stderr)
         night_txf = {}
 
-    # 5.10 (Task A) 加權指數預測
+    # 5.10 (Task A) 加權指數預測 —— TAIEX 昨收以 TWSE 官方為準，避免 Yahoo ^TWII 偶發錯值
     print("[main] 計算加權指數預測…")
     try:
         taiex_hist = fetch_taiex_history()
+        twse_taiex_close = fetch_twse_taiex_close()
+        if twse_taiex_close and taiex_hist is not None and not taiex_hist.empty:
+            yahoo_last = safe_float(taiex_hist.iloc[-1]["Close"]) or 0
+            if yahoo_last and abs(twse_taiex_close - yahoo_last) / twse_taiex_close > 0.003:
+                print(f"[main] TAIEX 昨收以 TWSE 為準：Yahoo {yahoo_last:.2f} → TWSE {twse_taiex_close:.2f}",
+                      file=sys.stderr)
+                # 用 .loc 覆寫最後一筆 Close（pandas 不喜歡 iloc 賦值）
+                last_idx = taiex_hist.index[-1]
+                taiex_hist.loc[last_idx, "Close"] = twse_taiex_close
         macro = quotes.get("MACRO", {}) or {}
         sox_pct = (macro.get("SOX", {}) or {}).get("change_pct")
         tsm_pct = quotes["TSM"].get("change_pct")

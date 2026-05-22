@@ -189,5 +189,34 @@
       "Job training for robots: How China is getting machines ready to join the workforce"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-23",
+    "weekday": "Sat",
+    "qqq_pct": 0.42,
+    "tsm_pct": -0.65,
+    "spy_pct": 0.39,
+    "vix": 16.7,
+    "sox_pct": 1.99,
+    "usdtwd": 31.449,
+    "fair_00662": 120.01,
+    "model1_2330": 2240.43,
+    "model2_2330": 2194.49,
+    "model3_2330": 2247.79,
+    "weighted_final_2330": 2261.94,
+    "foreign_top10_total": -24876.0,
+    "pred_taiex": 42304.13,
+    "pred_0050": 97.54,
+    "last_0050": 97.3,
+    "night_txf_pct": -1.53,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "Kevin Warsh's real Fed 'regime change' may happen deep inside Wall Street's plumbing",
+      "Dow adds nearly 300 points Friday for new record close; S&P 500 notches eighth winning week: Live updates",
+      "SpaceX launches Starship test flight on second try",
+      "Two top Walmart executives leave company under new CEO John Furner",
+      "Stellantis' turnaround plan, prediction market regulation, Oura's IPO filing and more in Morning Squawk"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

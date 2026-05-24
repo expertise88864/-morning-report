@@ -218,5 +218,34 @@
       "Stellantis' turnaround plan, prediction market regulation, Oura's IPO filing and more in Morning Squawk"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-25",
+    "weekday": "Mon",
+    "qqq_pct": 0.42,
+    "tsm_pct": -0.65,
+    "spy_pct": 0.39,
+    "vix": 16.7,
+    "sox_pct": 1.99,
+    "usdtwd": 31.438,
+    "fair_00662": 119.91,
+    "model1_2330": 2240.43,
+    "model2_2330": 2193.73,
+    "model3_2330": 2247.79,
+    "weighted_final_2330": 2256.11,
+    "foreign_top10_total": -32666.0,
+    "pred_taiex": 42264.07,
+    "pred_0050": 97.41,
+    "last_0050": 97.3,
+    "night_txf_pct": -1.53,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "'The Mandalorian and Grogu' is Disney's lowest-ever Star Wars film opening",
+      "These companies have cash and are liked on Wall Street",
+      "Suspect dead after opening fire near White House security checkpoint, Secret Service says",
+      "Russia hits Ukraine with hypersonic missile in one of the war's biggest attacks on Kyiv",
+      "The Middle East war is testing the Gulf's ambitions to become an AI hub"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

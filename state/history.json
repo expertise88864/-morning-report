@@ -247,5 +247,34 @@
       "The Middle East war is testing the Gulf's ambitions to become an AI hub"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-26",
+    "weekday": "Tue",
+    "qqq_pct": 0.42,
+    "tsm_pct": -0.65,
+    "spy_pct": 0.39,
+    "vix": 16.59,
+    "sox_pct": 1.99,
+    "usdtwd": 31.433,
+    "fair_00662": 121.22,
+    "model1_2330": 2295.08,
+    "model2_2330": 2193.38,
+    "model3_2330": 2302.62,
+    "weighted_final_2330": 2303.13,
+    "foreign_top10_total": 92578.0,
+    "pred_taiex": 43527.68,
+    "pred_0050": 100.54,
+    "last_0050": 100.8,
+    "night_txf_pct": -2.83,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "Oil market at 'tank bottoms' in Asia, and Europe isn't far behind, warns market veteran Jeff Currie",
+      "Huawei plans new smartphone chips this fall as rivalry with Nvidia and Apple heats up",
+      "Iran and U.S. play down hopes for imminent breakthrough in war",
+      "Pope Leo urges AI regulation and warns that some weapons are now beyond human control",
+      "Oil Holds Decline as Traders See Progress Toward Iranian Deal"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

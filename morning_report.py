@@ -4131,9 +4131,23 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f"<td style='padding:6px 12px;text-align:right;color:#94a3b8;font-size:12px;'>權重 {s['weight']:.0%}</td></tr>"
             for s in taiex_pred.get("signals", [])
         )
-        pct = taiex_pred["weighted_pct"]
-        pct_color = "#dc2626" if pct >= 0 else "#16a34a"
-        pct_sign = "+" if pct >= 0 else ""
+        # 顯示用的「最終漲跌幅」必須從『校正後 pred_open』回推,跟頭條數字一致;
+        # 否則信件會出現「漲跌 +0.18%」但「預測點位 -0.01%」的怪現象（校正改了 pred_open 卻沒改 weighted_pct）。
+        raw_pct = taiex_pred.get("weighted_pct")
+        last_close_val = taiex_pred.get("last_close")
+        final_pred = taiex_pred.get("pred_open")
+        if last_close_val and final_pred:
+            final_pct = (final_pred / last_close_val - 1) * 100
+        else:
+            final_pct = raw_pct if raw_pct is not None else 0
+        pct_color = "#dc2626" if final_pct >= 0 else "#16a34a"
+        pct_sign = "+" if final_pct >= 0 else ""
+        # 若校正讓 raw 與 final 顯著不同(>0.05 pct point),括號內附原始訊號值供參考
+        raw_note = ""
+        if raw_pct is not None and abs(raw_pct - final_pct) > 0.05:
+            raw_sign = "+" if raw_pct >= 0 else ""
+            raw_note = (f' <span style="color:#94a3b8;font-size:12px;font-weight:400;">'
+                        f'(原始訊號 {raw_sign}{raw_pct:.2f}%)</span>')
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
@@ -4147,7 +4161,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">加權預測漲跌</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{pct}%</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%{raw_note}</td>
           </tr>
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>

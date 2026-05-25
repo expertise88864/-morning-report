@@ -2348,12 +2348,67 @@ def fetch_news_fulltext(news: list[dict], max_critical: int = 10) -> list[dict]:
 STATE_FILE = Path("state/history.json")
 
 
+def detect_us_holiday(quotes: dict, today_tpe_date: dt.date) -> dict:
+    """
+    偵測昨日美股是否休市（美國國定假日如 Memorial Day、Labor Day、Christmas...）。
+
+    邏輯：今日 TW 為 D 日,「最近 US 交易日」期望:
+      - TW Mon  → 期望 Fri (3 天前)
+      - TW Sat  → 期望 Fri (1 天前)
+      - TW Tue-Fri → 期望 昨天 (1 天前)
+    若 QQQ 的 date 比期望日更早 → 中間有 US 假日(美股停市),所有美股資料為延續值。
+
+    回傳 {"detected": bool, "actual_date", "expected_date", "gap_days", "weekday"}
+    """
+    qqq = quotes.get("QQQ", {})
+    qqq_date_str = (qqq.get("date") if isinstance(qqq, dict) else None) or ""
+    if not qqq_date_str:
+        return {"detected": False}
+    try:
+        actual_date = dt.datetime.strptime(qqq_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return {"detected": False}
+
+    wd = today_tpe_date.weekday()    # 0=Mon, 6=Sun
+    if wd == 0:                                       # Mon TPE
+        expected = today_tpe_date - dt.timedelta(days=3)
+    elif wd == 5:                                     # Sat TPE
+        expected = today_tpe_date - dt.timedelta(days=1)
+    elif wd == 6:                                     # Sun TPE (理論上 workflow 不跑,留著保險)
+        expected = today_tpe_date - dt.timedelta(days=2)
+    else:                                             # Tue-Fri TPE
+        expected = today_tpe_date - dt.timedelta(days=1)
+
+    detected = actual_date < expected
+    weekday_zh = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"][actual_date.weekday()]
+    return {
+        "detected": detected,
+        "actual_date": qqq_date_str,
+        "actual_weekday": weekday_zh,
+        "expected_date": expected.strftime("%Y-%m-%d"),
+        "gap_days": (expected - actual_date).days,
+    }
+
+
 def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi: dict) -> list[dict]:
     """
     Task H: 自動偵測市場過熱/恐慌訊號，回傳警告清單。
     每個警告含：level (red/orange/yellow)、title、detail
     """
     alerts: list[dict] = []
+
+    # 0. 美股昨日休市（最優先警告 —— 影響所有美股訊號的可信度）
+    us_hol = quotes.get("US_HOLIDAY") or {}
+    if us_hol.get("detected"):
+        alerts.append({
+            "level": "red",
+            "title": "美股昨日休市（國定假日）",
+            "detail": (f"美股最新收盤為 {us_hol.get('actual_date')}（{us_hol.get('actual_weekday')}），"
+                       f"與今日台股相隔 {us_hol.get('gap_days', 0)} 個工作天 → 所有美股相關訊號"
+                       f"(QQQ/TSM/SOX/VIX/NQ/ES/WTI/黃金/10Y) 為**延續值,非昨日新資訊**。"
+                       f"立場評分時應將這些維度視為 stale 給 0 分,只信任 TW 本地訊號(夜盤、外資、市場廣度)。"
+                       f"預測模型仍會跑但信心應降至低。"),
+        })
     macro = quotes.get("MACRO", {}) or {}
 
     # 1. VIX 恐慌
@@ -3063,6 +3118,19 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         alerts_block = "（昨日市場無重大過熱/恐慌訊號）"
 
+    # 美股休市旗標 block（單獨拉出來,確保 LLM 一定看到、必須套用 R13）
+    us_hol = quotes.get("US_HOLIDAY") or {}
+    if us_hol.get("detected"):
+        us_holiday_block = (
+            f"⚠ 美股昨日休市偵測:US 最新收盤 = {us_hol.get('actual_date')}"
+            f"({us_hol.get('actual_weekday')}),距今日預期 US 交易日"
+            f" {us_hol.get('expected_date')} 相差 {us_hol.get('gap_days')} 個工作天。\n"
+            f"→ 所有美股資料(QQQ/TSM/SOX/VIX/VIX9D/NQ/ES/WTI/黃金/10Y/DXY/13W)為**延續值**,不是昨日新資訊。\n"
+            f"→ 立場評分中所有美股維度**必須給 0 分並標 [stale]**(見 R13 鐵律),信心等級強制改「低」。"
+        )
+    else:
+        us_holiday_block = "（美股昨日正常開盤,所有美股資料為昨日新資訊。）"
+
     # 資料品質 block（讓 LLM 知道哪些來源失敗，禁止據此腦補）
     dq_list = quotes.get("DATA_QUALITY", []) or []
     if dq_list:
@@ -3156,6 +3224,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 {alerts_block}
 ※ 如有 red 級警告，必須在「我的明確立場」段顯著提及並反映在操作建議中。
 
+【美股交易日狀態（影響全部美股訊號可信度）】
+{us_holiday_block}
+
 【今日 00662 估值（Python 已算）】
 {fair}
 （fair_price 已是「自我校正後」的合理價；calibration 欄位說明校正幅度，fair_price_raw 為校正前原值）
@@ -3194,6 +3265,12 @@ R9. **不可用全形冒號之外的全形標點**（書名號、感嘆號除外
 R10. **繁體中文，台灣財經用語**：寫「漲跌幅」不寫「涨幅」，寫「成交量」不寫「成交额」
 R11. **重大地緣政治事件強制分析**：若上方新聞清單的 ★★★ 重大事件中出現 [geo_critical] 類別（川習會、台海、晶片出口管制、軍演、戰爭等），**必須**在「昨夜三大重點」**且**「總體經濟與政策環境 (C)」段明確點名該事件、引用新聞中的具體內容（人物、發言、數字），並分析其對 2330 / 00662 / 台股開盤的傳導影響。**禁止省略、禁止只用一句話帶過**。若清單中確實沒有此類事件，才可略過。
 R12. **個股動態必須有可驗證的具體事實**：「科技板塊脈動」與「今日台股關注三檔」每一條敘述,**必須含具體事實**(明確產品/合約/數字/法說發言/SEC 表單編號等)。若新聞清單對該公司只有模糊標題(如「揭露意外真相」「迎來轉折」「市場關注」這類沒有實質內容的措辭)、**禁止納入該公司**;寧可少寫,不可寫無資訊的句子。輸出前自我檢查:每句話是否說得出「發生了什麼具體事」,若說不出 → 刪掉那家公司。
+R13. **美股休市日 → 美股訊號必須標 stale 給 0 分**:若【市場警告】中出現「美股昨日休市」警告,代表 QQQ/TSM/SOX/VIX/VIX9D/NQ/ES/WTI/黃金/10Y/DXY/13W 全部都是**上一個美股交易日的延續值,不是昨日新資訊**。在「我的明確立場」段的 11 維加減分中:
+- 所有美股相關維度(QQQ/SOX/VIX/TSM ADR/NQ/VIX9D/WTI/10Y)的分數**強制給 0**,並在該維度後加 `[stale]` 標籤
+- 僅信任 TW 本地維度(外資 0050 前 10、外資台指期、市場廣度)
+- 信心等級**強制改為「低」**,「我的明確立場」段的理由必須首句明寫「**今日美股休市,美股訊號 stale**」
+- 預測模型仍會跑但「2330/00662/加權」的開盤關鍵價位建議寬度應加大 (±1.5% 而非 ±1%)
+違反此規則 = 失敗報告。
 
 ═══════════════════════════════════════════════════════════
 # 分析框架（按此順序在腦中執行，但不寫進報告）
@@ -4621,11 +4698,25 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     def add(name: str, status: str, detail: str = "") -> None:
         dq.append({"name": name, "status": status, "detail": str(detail)[:80]})
 
+    # 美股是否休市（國定假日)
+    us_hol = quotes.get("US_HOLIDAY") or {}
+    if us_hol.get("detected"):
+        add("美股交易日", "fallback",
+            f"昨日休市:最新收盤 {us_hol.get('actual_date')}({us_hol.get('actual_weekday')}),"
+            f"延續值非新資訊")
+    elif us_hol:
+        add("美股交易日", "ok",
+            f"{us_hol.get('actual_date','')} ({us_hol.get('actual_weekday','')})")
+
     # 美股行情
     for key, label in (("QQQ", "QQQ"), ("TSM", "TSM ADR"), ("SPY", "SPY")):
         q = quotes.get(key, {})
         if isinstance(q, dict) and not q.get("error") and q.get("close") is not None:
-            add(f"美股行情 {label}", "ok", f"{q.get('date','')} 收 {q.get('close')}")
+            # 若休市,降級標 fallback 提醒「資料延續但非新」
+            status = "fallback" if us_hol.get("detected") else "ok"
+            note = "(休市,延續值)" if us_hol.get("detected") else ""
+            add(f"美股行情 {label}", status,
+                f"{q.get('date','')} 收 {q.get('close')}{note}")
         else:
             err = q.get("error", "資料缺失") if isinstance(q, dict) else "資料缺失"
             add(f"美股行情 {label}", "error", err)
@@ -4993,7 +5084,14 @@ def main() -> int:
     calibration = build_historical_calibration(hist_2330, days=7)
     print(f"[main] 歷史校準資料已生成（{len(calibration)} 字）")
 
-    # 6.6 (Task H) 偵測過熱警告
+    # 6.55 偵測美股是否昨日休市（Memorial Day / Labor Day / 聖誕等）
+    quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
+    if quotes["US_HOLIDAY"].get("detected"):
+        print(f"[main] ⚠ 偵測到美股休市:QQQ.date={quotes['US_HOLIDAY'].get('actual_date')} "
+              f"(預期 {quotes['US_HOLIDAY'].get('expected_date')},gap={quotes['US_HOLIDAY'].get('gap_days')} 天)",
+              file=sys.stderr)
+
+    # 6.6 (Task H) 偵測過熱警告（含 US_HOLIDAY 警示）
     alerts = detect_market_alerts(quotes, fair, predictions, taifex_oi)
     print(f"[main] 偵測到 {len(alerts)} 個警告訊號")
 

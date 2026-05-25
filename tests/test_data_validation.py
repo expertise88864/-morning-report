@@ -79,6 +79,73 @@ def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     assert isinstance(out, str) and len(out) > 0
 
 
+def test_detect_us_holiday_memorial_day():
+    """週二早上跑時,QQQ.date 應為週一;若為週五則代表週一 US 休市(Memorial Day 之類)。"""
+    import datetime as dt
+    quotes = {"QQQ": {"date": "2026-05-22"}}    # Fri
+    today = dt.date(2026, 5, 26)                # Tue
+    out = mr.detect_us_holiday(quotes, today)
+    assert out["detected"] is True
+    assert out["gap_days"] == 3
+    assert out["expected_date"] == "2026-05-25"
+
+
+def test_detect_us_holiday_normal_tuesday():
+    import datetime as dt
+    quotes = {"QQQ": {"date": "2026-05-25"}}    # Mon
+    today = dt.date(2026, 5, 26)                 # Tue
+    out = mr.detect_us_holiday(quotes, today)
+    assert out["detected"] is False
+
+
+def test_detect_us_holiday_monday_normal():
+    """週一早上跑時 (TPE), 期望 US 為上週五。資料若為上週五 → 正常,非休市。"""
+    import datetime as dt
+    quotes = {"QQQ": {"date": "2026-05-22"}}    # Fri
+    today = dt.date(2026, 5, 25)                 # Mon TPE
+    out = mr.detect_us_holiday(quotes, today)
+    assert out["detected"] is False              # 週末跳到 Fri 為正常
+
+
+def test_detect_us_holiday_no_qqq_date():
+    import datetime as dt
+    out = mr.detect_us_holiday({"QQQ": {}}, dt.date(2026, 5, 26))
+    assert out["detected"] is False
+
+
+def test_us_holiday_triggers_red_alert():
+    """US_HOLIDAY 偵測到時,detect_market_alerts 應產生 red 警告。"""
+    quotes = {"US_HOLIDAY": {"detected": True, "actual_date": "2026-05-22",
+                             "actual_weekday": "週五", "expected_date": "2026-05-25", "gap_days": 3},
+              "MACRO": {}}
+    alerts = mr.detect_market_alerts(quotes, {}, {}, {})
+    assert any(a.get("title") == "美股昨日休市（國定假日）" and a.get("level") == "red"
+               for a in alerts)
+
+
+def test_data_quality_flags_us_holiday():
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "date": "2026-05-22", "close": 720.0, "prev_close": 718.0},
+        "TSM": {"ticker": "TSM", "date": "2026-05-22", "close": 405.0, "prev_close": 408.0},
+        "SPY": {"ticker": "SPY", "date": "2026-05-22", "close": 745.0, "prev_close": 742.0},
+        "USDTWD": 31.5, "MACRO": {}, "TAIEX_PRED": {}, "NIGHT_TXF": {},
+        "TAIFEX_OI": {}, "MARGIN": {}, "SEC_FILINGS": [],
+        "TW_UNIVERSE_FALLBACK": False,
+        "US_HOLIDAY": {"detected": True, "actual_date": "2026-05-22",
+                       "actual_weekday": "週五", "expected_date": "2026-05-25", "gap_days": 3},
+    }
+    dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"},
+                                news=[{"title": "x"}] * 12, tw0050=[])
+    # 應有「美股交易日」項目標 fallback
+    holiday_entry = next((d for d in dq if d["name"] == "美股交易日"), None)
+    assert holiday_entry is not None
+    assert holiday_entry["status"] == "fallback"
+    # 美股行情各檔也應降為 fallback,且 detail 含「休市」字眼
+    qqq_entry = next(d for d in dq if d["name"] == "美股行情 QQQ")
+    assert qqq_entry["status"] == "fallback"
+    assert "休市" in qqq_entry["detail"]
+
+
 def test_build_data_quality_detects_zero_filled_institutional():
     """回歸：fetch_twse_institutional 失敗時 snapshot 仍會回 100 檔（全填 0）。
     dq 不能只看數量就說「正常」，必須抓出『法人欄全 0』的情況。"""

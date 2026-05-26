@@ -58,3 +58,15 @@ def test_model3_adr_decay(fake_yf, mkdf):
     assert 0.3 <= res["decay_factor"] <= 1.2
     # 三模型齊備時應有中位數與區間
     assert "mid" in res and "range" in res
+
+
+def test_model4_momentum_added(fake_yf, mkdf):
+    """model4 momentum 在 hist_2330 有 ≥6 天資料時應計算出來。"""
+    idx, yf_data, hist_2330 = _aligned_data(mkdf, n=60)
+    fake_yf(yf_data)
+    res = mr.calc_2330_predictions(220.0, 215.0, 31.0, hist_2330)
+    assert res["model4_momentum"] is not None
+    # 5 日動能 % 也記在 res 內
+    assert res["momentum_5d_pct"] is not None
+    # range 與 mid 來自四個模型
+    assert "mid" in res and "range" in res

@@ -1654,6 +1654,18 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
             month_first = safe_float(sub.iloc[0]["Close"])
             month_pct = (close - month_first) / month_first * 100 if month_first else 0
 
+            # 5 日累積動能 + 20日MA 位置（看「結構是否健康」,避免追過熱)
+            pct_5d = None
+            ma20_dist_pct = None
+            if len(sub) >= 6:
+                prev5 = safe_float(sub.iloc[-6]["Close"])
+                if prev5 and prev5 > 0:
+                    pct_5d = (close - prev5) / prev5 * 100
+            if len(sub) >= 20:
+                ma20 = float(sub["Close"].tail(20).mean())
+                if ma20 > 0:
+                    ma20_dist_pct = (close / ma20 - 1) * 100
+
             inst_data = inst.get(code, {})
             inst_30 = inst_30d.get(code, {})
             rev = revenue.get(code, {})
@@ -1673,6 +1685,9 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
                 "month_pct": round(month_pct, 2),
+                # 新增:5日累積動能 + 距 MA20(看是否過熱)
+                "pct_5d": round(pct_5d, 2) if pct_5d is not None else None,
+                "ma20_dist_pct": round(ma20_dist_pct, 2) if ma20_dist_pct is not None else None,
                 "foreign_lot": round(inst_data.get("foreign", 0) / 1000, 1),
                 "invest_lot": round(inst_data.get("investment", 0) / 1000, 1),
                 "dealer_lot": round(inst_data.get("dealer", 0) / 1000, 1),
@@ -2083,16 +2098,33 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
         print(f"[calc] 2330 model3 失敗: {e}", file=sys.stderr)
         model3 = last_2330 * (1 + tsm_pct * 0.75)  # 退化用預設
 
+    # 模型 4：短期動能（5 日累積）dampened —— 對開盤預測貢獻較弱(學界共識),
+    # 加進 ensemble 讓 MAE-weighted calibration 自動決定權重;若無用權重自然趨近 0。
+    model4 = None
+    momentum_5d_pct = None
+    try:
+        if hist_2330 is not None and len(hist_2330) >= 6:
+            prev_5d = safe_float(hist_2330.iloc[-6]["Close"])
+            if prev_5d and prev_5d > 0:
+                momentum_5d_pct = (last_2330 / prev_5d - 1) * 100
+                # dampening 0.15:5 日累積 5% → 隔日多 0.75%;5d -5% → -0.75%
+                model4 = last_2330 * (1 + (momentum_5d_pct / 100) * 0.15)
+                print(f"[calc] 2330 model4 momentum(5d {momentum_5d_pct:+.2f}%, dampened 0.15) = {model4:.2f}")
+    except Exception as e:
+        print(f"[calc] 2330 model4 失敗: {e}", file=sys.stderr)
+
     res = {
         "last_2330": round(last_2330, 2),
         "tsm_pct": round(tsm_pct * 100, 2),
         "model1_1to1": round(model1, 2),
         "model2_regression": round(model2, 2) if model2 else None,
         "model3_adr_decay": round(model3, 2) if model3 else None,
+        "model4_momentum": round(model4, 2) if model4 else None,
+        "momentum_5d_pct": round(momentum_5d_pct, 2) if momentum_5d_pct is not None else None,
         "decay_factor": round(decay_factor, 3),
     }
-    # 三個模型可用就取中位數，提供更穩健的合理價
-    valid = [v for v in [model1, model2, model3] if v]
+    # 四個模型可用就取中位數
+    valid = [v for v in [model1, model2, model3, model4] if v]
     if valid:
         res["mid"] = round(sorted(valid)[len(valid) // 2], 2)  # 中位數
         if len(valid) >= 2:
@@ -2144,6 +2176,102 @@ def calc_0050_prediction(last_0050: Optional[float],
         "pct_taiex": round(pct_taiex, 3) if pct_taiex is not None else None,
         "method": method,
     }
+
+
+def calc_momentum_metrics(close_series) -> dict:
+    """
+    從 close 序列計算動能 / 波動度 / 移動平均指標。
+
+    回傳:
+      last, pct_5d, pct_20d, ma20, ma50, ma20_dist_pct, ma50_dist_pct,
+      daily_vol_pct (近 20 日 daily-return std)
+
+    資料不足時對應欄位為 None；最低需 6 天資料才有 5d 動能。
+    """
+    if close_series is None:
+        return {}
+    s = close_series.dropna() if hasattr(close_series, "dropna") else close_series
+    n = len(s) if hasattr(s, "__len__") else 0
+    if n < 6:
+        return {}
+
+    last = float(s.iloc[-1])
+    out: dict = {"last": round(last, 2)}
+
+    if n >= 6:
+        prev5 = float(s.iloc[-6])
+        out["pct_5d"] = round((last / prev5 - 1) * 100, 2) if prev5 > 0 else None
+    if n >= 21:
+        prev20 = float(s.iloc[-21])
+        out["pct_20d"] = round((last / prev20 - 1) * 100, 2) if prev20 > 0 else None
+        ma20 = float(s.tail(20).mean())
+        out["ma20"] = round(ma20, 2)
+        out["ma20_dist_pct"] = round((last / ma20 - 1) * 100, 2) if ma20 > 0 else None
+    if n >= 51:
+        ma50 = float(s.tail(50).mean())
+        out["ma50"] = round(ma50, 2)
+        out["ma50_dist_pct"] = round((last / ma50 - 1) * 100, 2) if ma50 > 0 else None
+    if n >= 21:
+        rets = s.pct_change().dropna().tail(20)
+        if len(rets):
+            out["daily_vol_pct"] = round(float(rets.std()) * 100, 3)
+    return out
+
+
+def calc_midterm_forecast(metrics: dict,
+                          horizons: tuple = (5, 20)) -> dict:
+    """
+    根據動能指標生成中期 range forecast。
+
+    **重要：這不是「點預測」**——學界共識:多日點預測精度與隨機漫步相近。
+    本 forecast 提供的是「**基於歷史波動度的合理區間**」(±1.5σ × √horizon),
+    + 一個保守的 drift 估計(過去 20 日平均日收益,長期 horizon 加均值回歸 dampening)。
+
+    解讀方式:「下週 2330 約 95% 機率落在 lower-upper」, 而非「下週 2330 會漲到 X」。
+    """
+    last = metrics.get("last")
+    daily_vol = metrics.get("daily_vol_pct")
+    pct_20d = metrics.get("pct_20d")
+    if not last or not daily_vol:
+        return {"error": "需要至少 21 天歷史"}
+
+    avg_daily_pct = (pct_20d / 20.0) if pct_20d is not None else 0.0
+
+    forecasts: dict = {}
+    for h in horizons:
+        # drift: 短期 horizon 全用,長期施加均值回歸 dampening
+        dampen = 1.0 if h <= 5 else 0.5 if h <= 20 else 0.3
+        expected_return_pct = avg_daily_pct * h * dampen
+        # ±1.5σ band, σ 隨 √h 擴張
+        band_pct = daily_vol * (h ** 0.5) * 1.5
+        mid = last * (1 + expected_return_pct / 100)
+        upper = last * (1 + (expected_return_pct + band_pct) / 100)
+        lower = last * (1 + (expected_return_pct - band_pct) / 100)
+        forecasts[f"{h}d"] = {
+            "horizon_days": h,
+            "expected_mid": round(mid, 2),
+            "upper": round(upper, 2),
+            "lower": round(lower, 2),
+            "expected_pct": round(expected_return_pct, 2),
+            "band_pct": round(band_pct, 2),
+        }
+    return forecasts
+
+
+def _trend_label(metrics: dict) -> str:
+    """根據 MA20 距離給趨勢標籤(過熱/上行/盤整/下行/超賣)。"""
+    d20 = metrics.get("ma20_dist_pct")
+    if d20 is None:
+        return "—"
+    if d20 > 5:
+        return "強勢(MA20 上方 >5%,過熱)"
+    if d20 > 2:
+        return "上行"
+    if d20 < -5:
+        return "弱勢(MA20 下方 >5%,超賣)"
+    if d20 < -2:
+        return "下行"
+    return "盤整"
 
 
 def fetch_news() -> list[dict]:
@@ -2490,6 +2618,31 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
             "detail": f"三模型預測與昨收差距 {pred_pct:+.2f}%。波動較大，建議減量操作或等開盤後再進場。",
         })
 
+    # 7. 過熱/超賣 regime 警示（5 日累積動能極端）—— 對 2330 / 00662 / 0050 三檔
+    midterm = quotes.get("MIDTERM") or {}
+    for name in ("2330", "0050", "00662"):
+        entry = midterm.get(name) or {}
+        metrics = entry.get("metrics") or {}
+        pct_5d = metrics.get("pct_5d")
+        d20 = metrics.get("ma20_dist_pct")
+        if pct_5d is None:
+            continue
+        # 5 日漲超過 +5% 或跌超過 -5% → orange 警示
+        if pct_5d > 5:
+            alerts.append({
+                "level": "orange",
+                "title": f"{name} 短期過熱（5 日 {pct_5d:+.1f}%）",
+                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%、距 MA20 {d20:+.1f}%(若有)。"
+                           f"短期超漲常伴隨回測,今日預測信心應降,關鍵價位寬度建議從 ±1% 擴大至 ±2%。"),
+            })
+        elif pct_5d < -5:
+            alerts.append({
+                "level": "orange",
+                "title": f"{name} 短期超賣（5 日 {pct_5d:+.1f}%）",
+                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%、距 MA20 {d20:+.1f}%(若有)。"
+                           f"短期超跌常伴隨技術性反彈,今日預測信心應降,關鍵價位寬度建議從 ±1% 擴大至 ±2%。"),
+            })
+
     return alerts
 
 
@@ -2663,7 +2816,7 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
 
     # 收集相對誤差 (實際 − 預測) / 預測
     err: dict[str, list] = {"00662": [], "2330_final": [],
-                            "m1": [], "m2": [], "m3": [], "taiex": []}
+                            "m1": [], "m2": [], "m3": [], "m4": [], "taiex": []}
     for h in sorted_hist[:-1]:   # 最後一筆還沒有「隔日開盤」可比對
         pd_ = h.get("date", "")
         a662 = _actual_open_for(pd_, t00662_o)
@@ -2674,7 +2827,8 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
             err["00662"].append((a662 - p662) / p662)
         if a2330:
             for hk, ek in (("model1_2330", "m1"), ("model2_2330", "m2"),
-                           ("model3_2330", "m3"), ("weighted_final_2330", "2330_final")):
+                           ("model3_2330", "m3"), ("model4_2330", "m4"),
+                           ("weighted_final_2330", "2330_final")):
                 pv = h.get(hk)
                 if pv:
                     err[ek].append((a2330 - pv) / pv)
@@ -2704,16 +2858,19 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         return {"applied": True, "bias_pct": round(b * 100, 3),
                 "samples": n, "raw": raw}
 
-    # ---- (A) 2330 三模型 MAE 反比加權 ----
+    # ---- (A) 2330 四模型 MAE 反比加權（model1/2/3 + model4 momentum） ----
     if isinstance(predictions, dict) and not predictions.get("error"):
         m1 = predictions.get("model1_1to1")
         m2 = predictions.get("model2_regression")
         m3 = predictions.get("model3_adr_decay")
+        m4 = predictions.get("model4_momentum")
         mae1, n1 = _mae(err["m1"])
         mae2, n2 = _mae(err["m2"])
         mae3, n3 = _mae(err["m3"])
+        mae4, n4 = _mae(err["m4"])
         cand = [(v, mae, n) for v, mae, n in
-                ((m1, mae1, n1), (m2, mae2, n2), (m3, mae3, n3)) if v is not None]
+                ((m1, mae1, n1), (m2, mae2, n2), (m3, mae3, n3), (m4, mae4, n4))
+                if v is not None]
         if cand and all(n >= min_samples and mae and mae > 0 for _, mae, n in cand):
             inv = [(v, 1.0 / mae) for v, mae, _ in cand]
             tot = sum(w for _, w in inv)
@@ -2727,6 +2884,7 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
             "model1": round(mae1 * 100, 3) if mae1 else None,
             "model2": round(mae2 * 100, 3) if mae2 else None,
             "model3": round(mae3 * 100, 3) if mae3 else None,
+            "model4": round(mae4 * 100, 3) if mae4 else None,
         }
         # ---- (B) bias 修正 2330 ----
         predictions["calibration"] = _apply_bias(
@@ -2929,9 +3087,14 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             rev_str = f" 營收YoY{yoy:+.1f}%" if yoy is not None else " 營收YoY-"
             mh = s.get("major_holder_pct")
             mh_str = f" 大戶{mh:.1f}%" if mh is not None else " 大戶-"
+            # 新增:5日累積 + 距 MA20(過熱/超賣判讀)
+            p5d = s.get("pct_5d")
+            d20 = s.get("ma20_dist_pct")
+            p5d_str = f" 5日{p5d:+5.2f}%" if p5d is not None else " 5日-"
+            d20_str = f" MA20{d20:+5.2f}%" if d20 is not None else " MA20-"
             rows.append(
                 f"{s['code']} {s['name']:<6} 收{s['close']:>8} "
-                f"日{s['day_pct']:+5.2f}% 月{s['month_pct']:+6.2f}% "
+                f"日{s['day_pct']:+5.2f}% 月{s['month_pct']:+6.2f}%{p5d_str}{d20_str} "
                 f"量比{(str(s['vol_ratio']) if s['vol_ratio'] else '-'):>5} "
                 f"外資{s['foreign_lot']:+8.0f}張 "
                 f"投信{s['invest_lot']:+6.0f}張 "
@@ -3244,7 +3407,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
 
-【台股市值前 100 大昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）+ 月營收年增率 + 大戶持股】
+【台股市值前 100 大昨日表現 + 三大法人買賣超 + 30日累積法人（張，正為買超）+ 月營收年增率 + 大戶持股 + 5日動能 + 距 MA20】
 {tw0050_block}
 ※「營收YoY」為該公司最新月營收的去年同月年增率（真實數據，TWSE 月營收彙總）；「-」代表無資料
 ※「大戶」為持股 ≥ 400 張的大戶占集保總數比例（TDCC 集保股權分散表，週更）；比例高 = 籌碼集中在大戶/主力手上
@@ -3406,19 +3569,21 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 ## 十三、今日台股關注三檔（**必寫，從上方「台股市值前 100 大」清單中選**）
 
-**選股優先序**（必須符合至少 2 項）：
+**選股優先序**（必須符合至少 3 項，**包含「結構健康」一項**）：
 1. 昨日法人買超強（外資 + 投信合計 > +5000 張）
 2. 30 日累積外資買超 > 0 且加速
 3. 新聞清單有具體催化消息（不是空話）
-4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱）
+4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱 / 記憶體）
 5. 月營收年增率（營收YoY）正成長，最好 > +10%（用上表「營收YoY」欄位，禁止瞎掰）
 6. 大戶持股比例偏高或結構穩固（用上表「大戶」欄位；籌碼集中在大戶 = 主力認同）
+7. **【新】結構健康**：5日累積與 MA20 偏離應**同向且不過熱**——理想:`5日 +1~+5%` 且 `MA20 +0~+5%`(穩健上行);**避開** `5日 > +8%` 或 `MA20 > +8%`(短期過熱、隨時拉回風險);**避開** `5日 < -5%` 且 `MA20 < -3%`(下行趨勢未止)。
 
 **選股禁止事項**：
-- 不可用技術面分析
+- 不可用技術面分析（K 線、均線、MACD 等;但 5日/MA20 統計數字可用,當作「結構強弱」描述,**不是技術分析,而是趨勢健康度**)
 - **只能選上方「台股市值前 100 大」清單裡有列出的股票**，不可選清單外或杜撰代號
 - 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼、消息、營收成長才是主因**
 - 營收 YoY 大幅衰退（< −15%）的個股，除非有極強催化消息，否則不選
+- **單日漲幅 > +6% 且 5日 > +10% 的個股,屬「短期暴衝過熱」,禁止入榜**(追高風險過高)
 - 若三檔都信心低，**照寫，不要勉強拉高**
 
 每檔用 **### 代號 公司名** 作為三級標題（例：`### 2330 台積電`），下方接以下 6 個 bullet：
@@ -4321,6 +4486,62 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </div>
         """
 
+    # === 中期展望卡（1 週 / 1 月 統計區間，非點預測）===
+    midterm = quotes.get("MIDTERM", {}) or {}
+    midterm_html = ""
+    if midterm:
+        midterm_rows = []
+        for name in ("2330", "0050", "00662"):
+            entry = midterm.get(name) or {}
+            metrics = entry.get("metrics") or {}
+            fc = entry.get("forecast") or {}
+            f5 = fc.get("5d") or {}
+            f20 = fc.get("20d") or {}
+            trend = entry.get("trend", "—")
+            # 趨勢顏色
+            if "強勢" in trend or "上行" in trend:
+                trend_color = "#dc2626"   # 紅 (TW 漲)
+            elif "弱勢" in trend or "下行" in trend:
+                trend_color = "#16a34a"   # 綠 (TW 跌)
+            else:
+                trend_color = "#64748b"
+            pct_5d = metrics.get("pct_5d")
+            d20 = metrics.get("ma20_dist_pct")
+            pct_5d_color = "#dc2626" if (pct_5d or 0) >= 0 else "#16a34a"
+            d20_color = "#dc2626" if (d20 or 0) >= 0 else "#16a34a"
+            if not f5 or not f20:
+                continue
+            midterm_rows.append(
+                f"<tr>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{name}</td>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{pct_5d_color};font-variant-numeric:tabular-nums;'>"
+                f"{('+' if (pct_5d or 0) >= 0 else '')}{pct_5d if pct_5d is not None else '—'}%</td>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{d20_color};font-variant-numeric:tabular-nums;'>"
+                f"{('+' if (d20 or 0) >= 0 else '')}{d20 if d20 is not None else '—'}%</td>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:#475569;font-variant-numeric:tabular-nums;'>"
+                f"{f5.get('lower')} ~ {f5.get('upper')}</td>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:#475569;font-variant-numeric:tabular-nums;'>"
+                f"{f20.get('lower')} ~ {f20.get('upper')}</td>"
+                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:{trend_color};font-weight:600;'>{trend}</td>"
+                f"</tr>"
+            )
+        if midterm_rows:
+            midterm_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">中期展望（統計區間，非點預測）</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">標的</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">5日累積</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">距 MA20</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1週區間(±1.5σ)</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1月區間(±1.5σ)</th>
+            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">趨勢</th>
+          </tr>
+          {''.join(midterm_rows)}
+        </table>
+        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ 區間 = 過去 20 日 daily-return 波動度 × √horizon × 1.5σ。**這是統計合理區間,不是「會漲到 X」的點預測**——區間外發生機率約 13%。</p>
+        """
+
     # === 夜盤台指期卡 (Task B) ===
     night = quotes.get("NIGHT_TXF", {}) or {}
     night_html = ""
@@ -4445,7 +4666,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         m1 = predictions.get("model1_1to1")
         m2 = predictions.get("model2_regression")
         m3 = predictions.get("model3_adr_decay")
+        m4 = predictions.get("model4_momentum")
         decay = predictions.get("decay_factor", "—")
+        momentum_5d = predictions.get("momentum_5d_pct")
         rng = predictions.get("range")
         tsm_pct = predictions.get("tsm_pct", 0)
         # 台股慣例：紅漲綠跌
@@ -4453,7 +4676,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         tsm_sign = "+" if tsm_pct >= 0 else ""
 
         def _fmt(v): return f"{v}" if v is not None else "—"
-        models_compact = f"{_fmt(m1)} / {_fmt(m2)} / {_fmt(m3)}"
+        if m4 is not None:
+            models_compact = f"{_fmt(m1)} / {_fmt(m2)} / {_fmt(m3)} / {_fmt(m4)}"
+            mom_str = f"{momentum_5d:+.2f}%" if momentum_5d is not None else "—"
+            models_label = (f"四模型估值<br><span style=\"color:#94a3b8;font-size:11px;\">"
+                            f"1:1 / 60日比值 / ADR衰減{decay} / 5日動能 {mom_str} ×0.15</span>")
+        else:
+            models_compact = f"{_fmt(m1)} / {_fmt(m2)} / {_fmt(m3)}"
+            models_label = (f"三模型估值<br><span style=\"color:#94a3b8;font-size:11px;\">"
+                            f"1:1 / 60日比值 / ADR衰減{decay}</span>")
 
         rows_html = f"""
           <tr>
@@ -4467,7 +4698,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           </tr>
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;font-size:13px;">三模型估值<br><span style="color:#94a3b8;font-size:11px;">1:1 / 60日比值 / ADR衰減{decay}</span></td>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;font-size:13px;">{models_label}</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;color:#64748b;font-size:13px;">{models_compact}</td>
           </tr>
         """
@@ -4624,6 +4855,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {tw0050_card_html}
 
             {breadth_html}
+
+            {midterm_html}
 
             {night_html}
 
@@ -5091,7 +5324,35 @@ def main() -> int:
               f"(預期 {quotes['US_HOLIDAY'].get('expected_date')},gap={quotes['US_HOLIDAY'].get('gap_days')} 天)",
               file=sys.stderr)
 
-    # 6.6 (Task H) 偵測過熱警告（含 US_HOLIDAY 警示）
+    # 6.58 中期動能指標 + 1週/1月波動度區間（2330/00662/0050）
+    #      必須先算好,detect_market_alerts 才能看到 5d 動能觸發過熱/超賣警示。
+    print("[main] 計算 2330/00662/0050 中期展望…")
+    midterm: dict = {}
+    try:
+        if hist_2330 is not None and not hist_2330.empty:
+            m = calc_momentum_metrics(hist_2330["Close"])
+            if m:
+                midterm["2330"] = {"metrics": m,
+                                   "forecast": calc_midterm_forecast(m),
+                                   "trend": _trend_label(m)}
+        for code, name in (("00662.TW", "00662"), ("0050.TW", "0050")):
+            try:
+                d = yf.Ticker(code).history(period="3mo", auto_adjust=False)
+                d = d.dropna(subset=["Close"])
+                d = d[d["Close"] > 0]
+                if not d.empty:
+                    m = calc_momentum_metrics(d["Close"])
+                    if m:
+                        midterm[name] = {"metrics": m,
+                                         "forecast": calc_midterm_forecast(m),
+                                         "trend": _trend_label(m)}
+            except Exception as e:
+                print(f"[midterm] {code} 失敗: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"[midterm] 整體失敗: {e}", file=sys.stderr)
+    quotes["MIDTERM"] = midterm
+
+    # 6.6 (Task H) 偵測過熱警告（含 US_HOLIDAY + 過熱/超賣警示）
     alerts = detect_market_alerts(quotes, fair, predictions, taifex_oi)
     print(f"[main] 偵測到 {len(alerts)} 個警告訊號")
 
@@ -5141,6 +5402,8 @@ def main() -> int:
             "model1_2330": predictions.get("model1_1to1"),
             "model2_2330": predictions.get("model2_regression"),
             "model3_2330": predictions.get("model3_adr_decay"),
+            "model4_2330": predictions.get("model4_momentum"),
+            "momentum_5d_pct_2330": predictions.get("momentum_5d_pct"),
             # 經誤差加權 + bias 校正後的最終 2330 預測（供下次算 bias）
             "weighted_final_2330": predictions.get("weighted_final"),
             "foreign_top10_total": round(top10_inst_total, 0),

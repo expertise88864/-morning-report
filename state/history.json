@@ -276,5 +276,36 @@
       "Oil Holds Decline as Traders See Progress Toward Iranian Deal"
     ],
     "earnings_proximity": "normal"
+  },
+  {
+    "date": "2026-05-27",
+    "weekday": "Wed",
+    "qqq_pct": 1.78,
+    "tsm_pct": 1.93,
+    "spy_pct": 0.66,
+    "vix": 17.01,
+    "sox_pct": 5.53,
+    "usdtwd": 31.437,
+    "fair_00662": 122.74,
+    "model1_2330": 2313.77,
+    "model2_2330": 2238.77,
+    "model3_2330": 2291.74,
+    "model4_2330": 2280.04,
+    "momentum_5d_pct_2330": 2.95,
+    "weighted_final_2330": 2308.12,
+    "foreign_top10_total": 110401.0,
+    "pred_taiex": 45082.8,
+    "pred_0050": 102.56,
+    "last_0050": 100.1,
+    "night_txf_pct": 1.13,
+    "taifex_foreign_oi": null,
+    "critical_news": [
+      "SpaceX-Tesla merger chatter reignites as Musk pushes rocket company towards Nasdaq",
+      "Trump officials split over Pope Leo’s AI warning as Vatican feud enters new front",
+      "American Airlines picks SpaceX's Starlink for in-flight Wi-Fi on more than 500 planes",
+      "Dropbox CEO Drew Houston to step down after 19 years at helm of cloud storage pioneer",
+      "The Warsh era begins, U.S. strikes Iran, summer travel's record cost and more in Morning Squawk"
+    ],
+    "earnings_proximity": "normal"
   }
 ]

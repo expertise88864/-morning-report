@@ -1144,10 +1144,15 @@ def fetch_twse_institutional() -> dict[str, dict]:
 
 
 def fetch_twse_institutional_cumulative(days_back: int = 30,
-                                          target_codes: Optional[set] = None) -> dict[str, dict]:
+                                          target_codes: Optional[set] = None,
+                                          keep_recent_days: int = 5) -> dict[str, dict]:
     """
-    抓取近 N 個交易日法人買賣超累積值。
-    回傳：{ "2330": {"foreign_30d": +N, "invest_30d": +N, "dealer_30d": +N, "days_count": K}, ... }
+    抓取近 N 個交易日法人買賣超累積值,同時保留最近 K 天的「逐日序列」供 streak 偵測用。
+
+    回傳：{ "2330": {"foreign_cum", "invest_cum", "dealer_cum", "days",
+                       "daily": [{"date": "20260520", "foreign": +N, "invest": +N, "dealer": +N}, ...]},
+            ... }
+    daily 最新在最後(時間升序)。
 
     為避免請求量爆炸，只抓 target_codes 指定的股票（預設只給 0050 成分股用）。
     """
@@ -1155,7 +1160,9 @@ def fetch_twse_institutional_cumulative(days_back: int = 30,
     cum: dict[str, dict] = {}
     days_collected = 0
 
-    # 往前抓 days_back * 1.5 個自然日（含週末）
+    # 往前抓 days_back * 1.5 個自然日（含週末）;先暫存 (date, foreign, invest, dealer) 由舊到新
+    daily_buffer: dict[str, list[dict]] = {}
+
     for back in range(1, int(days_back * 1.7) + 1):
         if days_collected >= days_back:
             break
@@ -1211,11 +1218,340 @@ def fetch_twse_institutional_cumulative(days_back: int = 30,
             entry["invest_cum"] += t
             entry["dealer_cum"] += de
             entry["days"] += 1
+            # 最近 K 天保留逐日序列(供 streak 計算)。此處用 days_collected 索引保證遠到近
+            if days_collected < keep_recent_days:
+                daily_buffer.setdefault(code, []).append({
+                    "date": date_str,
+                    "foreign": f,
+                    "invest": t,
+                    "dealer": de,
+                })
 
         days_collected += 1
 
-    print(f"[twse] 30 日累積資料 — 共聚合 {days_collected} 天，{len(cum)} 檔股票")
+    # daily_buffer 此時是「由近到遠」(因為 back=1 先處理);翻成「由遠到近」方便讀
+    for code, lst in daily_buffer.items():
+        cum.setdefault(code, {"foreign_cum": 0, "invest_cum": 0, "dealer_cum": 0, "days": 0})
+        cum[code]["daily"] = list(reversed(lst))
+
+    print(f"[twse] {days_back} 日累積資料 — 共聚合 {days_collected} 天，{len(cum)} 檔股票"
+          f"(逐日序列保留近 {keep_recent_days} 天)")
     return cum
+
+
+def _calc_inst_streaks(daily: list[dict]) -> dict:
+    """
+    給定逐日法人買賣超序列(由遠到近),計算外資 / 投信「最新方向的連續天數」。
+
+    回傳:
+      foreign_streak: 正數 N = 連續 N 天買超, 負數 = 連續 N 天賣超, 0 = 最新一天為 0 或無資料
+      invest_streak: 同上
+    僅最近 5 天內看,避免反映過久遠的資料。
+    """
+    if not daily:
+        return {"foreign_streak": 0, "invest_streak": 0}
+
+    def streak_of(key: str) -> int:
+        # 由近到遠遍歷,先看最新一天決定方向
+        seq = list(reversed(daily))   # 最新在前
+        latest = seq[0].get(key, 0) or 0
+        if latest == 0:
+            return 0
+        sign = 1 if latest > 0 else -1
+        n = 0
+        for d in seq:
+            v = d.get(key, 0) or 0
+            if v == 0:
+                break
+            if (v > 0 and sign > 0) or (v < 0 and sign < 0):
+                n += 1
+            else:
+                break
+        return n * sign
+
+    return {
+        "foreign_streak": streak_of("foreign"),
+        "invest_streak": streak_of("invest"),
+    }
+
+
+def fetch_twse_margin_per_stock(target_codes: Optional[set] = None) -> dict[str, dict]:
+    """
+    抓 TWSE 每日「個股融資融券」(MI_MARGN selectType=ALL),用於散戶 vs 法人背離偵測。
+
+    端點：https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&selectType=ALL&date=YYYYMMDD
+    回傳：{ code: {"margin_balance": N 張, "margin_change": N 張(今-昨), "date": "YYYY/MM/DD"} }
+
+    解讀(融資 = 散戶看多借錢買):
+      - margin_change < 0 + 股價漲 + 法人買 → 散戶丟給法人(經典反轉訊號,加分)
+      - margin_change > 0 + 股價跌 → 散戶逆勢加碼,容易斷頭
+
+    失敗回傳 {}。
+    """
+    today = dt.datetime.now(TPE).date()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json",
+    }
+    out: dict[str, dict] = {}
+    for back in range(1, 8):
+        d = today - dt.timedelta(days=back)
+        if d.weekday() >= 5:
+            continue
+        date_str = d.strftime("%Y%m%d")
+        url = (f"https://www.twse.com.tw/exchangeReport/MI_MARGN"
+               f"?response=json&date={date_str}&selectType=ALL")
+        try:
+            r = requests.get(url, timeout=20, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            if data.get("stat") != "OK":
+                continue
+            # MI_MARGN ALL 模式包多張表;個股表通常是 fields/data 結構
+            # 找到含「股票代號」+「融資」欄位的那張
+            tables = data.get("tables") or []
+            stock_table = None
+            for t in tables:
+                fields = t.get("fields") or []
+                fields_str = " ".join(fields) if isinstance(fields, list) else ""
+                if (("股票代號" in fields_str or "證券代號" in fields_str)
+                        and "融資" in fields_str):
+                    stock_table = t
+                    break
+            if not stock_table and data.get("fields") and data.get("data"):
+                # 早期格式:平鋪 fields/data
+                stock_table = {"fields": data["fields"], "data": data["data"]}
+            if not stock_table:
+                continue
+
+            fields: list[str] = stock_table.get("fields", [])
+            # 欄位偵測
+            def col_idx(*needles: str) -> Optional[int]:
+                for i, f in enumerate(fields):
+                    if all(n in f for n in needles):
+                        return i
+                return None
+
+            i_code = col_idx("股票代號") or col_idx("證券代號") or col_idx("代號")
+            # 融資餘額(今日):通常欄名「融資今日餘額」或就叫「融資-本日餘額」
+            i_bal = (col_idx("融資", "今日餘額") or col_idx("融資", "本日餘額")
+                     or col_idx("融資", "今日") or col_idx("融資餘額"))
+            # 融資前日餘額
+            i_prev = (col_idx("融資", "前日餘額") or col_idx("融資", "昨日餘額")
+                      or col_idx("融資", "前日"))
+
+            if i_code is None or i_bal is None:
+                continue
+
+            rows = stock_table.get("data") or []
+            for row in rows:
+                if i_code >= len(row):
+                    continue
+                code = str(row[i_code]).strip()
+                if not (len(code) == 4 and code.isdigit()):
+                    continue
+                if target_codes is not None and code not in target_codes:
+                    continue
+                bal = _to_int(row[i_bal]) if i_bal < len(row) else 0
+                prev = _to_int(row[i_prev]) if (i_prev is not None and i_prev < len(row)) else 0
+                change = bal - prev if prev else 0
+                out[code] = {
+                    "margin_balance": bal,
+                    "margin_change": change,
+                    "date": d.strftime("%Y/%m/%d"),
+                }
+            if out:
+                print(f"[margin_stock] {date_str} 取得 {len(out)} 檔個股融資")
+                return out
+        except Exception as e:
+            print(f"[margin_stock] {date_str} 失敗: {e}", file=sys.stderr)
+            continue
+    print("[margin_stock] 所有日期皆失敗", file=sys.stderr)
+    return {}
+
+
+def calc_tdcc_wow_delta(current_tdcc: dict[str, dict],
+                          history: list[dict],
+                          min_gap_days: int = 5) -> dict[str, float]:
+    """
+    從歷史記憶找 ≥ min_gap_days 之前的 TDCC 快照,計算每檔大戶持股 Δ%。
+
+    current_tdcc: { code: {"major_holder_pct": float, ...} }(本次 fetch 結果)
+    history:      load_history_state() 回傳清單(舊到新)
+    min_gap_days: 最少間隔(避免拿到同一週的)
+
+    回傳 { code: delta_pct }, 其中 delta_pct = 本週 % − 對照週 %。
+    沒有對照資料的 code 不會出現在回傳中。
+    """
+    if not current_tdcc or not history:
+        return {}
+    today = dt.datetime.now(TPE).date()
+    # 從舊到新,找第一個距今 >= min_gap_days 的有 tdcc_snapshot 的紀錄
+    target = None
+    for h in reversed(history):
+        ds = h.get("date") or ""
+        try:
+            d = dt.datetime.strptime(ds, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if (today - d).days < min_gap_days:
+            continue
+        snap = h.get("tdcc_snapshot")
+        if snap and isinstance(snap, dict):
+            target = snap
+            break
+    if not target:
+        return {}
+    deltas: dict[str, float] = {}
+    for code, entry in current_tdcc.items():
+        cur = entry.get("major_holder_pct")
+        old = target.get(code)
+        if cur is None or old is None:
+            continue
+        try:
+            deltas[code] = round(float(cur) - float(old), 2)
+        except (TypeError, ValueError):
+            continue
+    print(f"[tdcc_wow] 計算 {len(deltas)} 檔大戶 WoW Δ%(對照 ≥ {min_gap_days} 天前)")
+    return deltas
+
+
+def calc_smart_money_score(entry: dict) -> dict:
+    """
+    彙整「籌碼悄悄站隊」訊號,給單檔 0-100 分 + 細項。
+
+    輸入 entry 需有以下欄位(由 fetch_tw0050_snapshot 填寫):
+      foreign_streak, invest_streak: 連續天數(±)
+      tdcc_wow_pct:                  大戶持股週對週 Δ%
+      vol_ratio_20d:                 今日量 / 20 日均量
+      high20_break, low20_break:     bool(突破/跌破 20 日新高/低)
+      day_pct, pct_5d:               價格動能
+      foreign_lot, invest_lot:       昨日法人買賣超(張)
+
+    回傳 {"score": int 0-100, "components": {...}, "tag": str, "tags": list[str]}
+    """
+    if not entry:
+        return {"score": 0, "components": {}, "tag": "—", "tags": []}
+
+    f_streak = entry.get("foreign_streak", 0) or 0
+    i_streak = entry.get("invest_streak", 0) or 0
+    tdcc_wow = entry.get("tdcc_wow_pct")
+    vol_ratio = entry.get("vol_ratio_20d")
+    high20 = entry.get("high20_break", False)
+    low20 = entry.get("low20_break", False)
+    day_pct = entry.get("day_pct") or 0
+    pct_5d = entry.get("pct_5d")
+    foreign_lot = entry.get("foreign_lot") or 0
+    invest_lot = entry.get("invest_lot") or 0
+    margin_change = entry.get("margin_change_lot")
+
+    # 40 分:法人連買天數(外資 + 投信 加權)
+    # 外資連買 3 天 = 30 分, 連買 ≥4 天 = 40 分; 投信加成 ≤ 10 分
+    f_score = 0.0
+    if f_streak >= 4:
+        f_score = 40.0
+    elif f_streak == 3:
+        f_score = 30.0
+    elif f_streak == 2:
+        f_score = 18.0
+    elif f_streak == 1 and foreign_lot >= 500:    # 單日大買也算分
+        f_score = 8.0
+    elif f_streak <= -3:
+        f_score = -25.0   # 連賣警示
+    i_bonus = 0.0
+    if i_streak >= 2 and f_streak > 0:
+        i_bonus = 10.0   # 投信同向跟風
+    elif i_streak <= -2 and f_streak < 0:
+        i_bonus = -8.0
+
+    # 30 分:大戶持股 Δ%(WoW)
+    tdcc_score = 0.0
+    if tdcc_wow is not None:
+        # +0.5% = 15 分, +1.0% = 30 分; 負值最多扣 15 分
+        if tdcc_wow >= 0.5:
+            tdcc_score = min(30.0, 15.0 + (tdcc_wow - 0.5) * 30.0)
+        elif tdcc_wow > 0:
+            tdcc_score = tdcc_wow * 30.0
+        elif tdcc_wow < -0.3:
+            tdcc_score = max(-15.0, tdcc_wow * 20.0)
+
+    # 20 分:量縮 + 收紅 = 籌碼鎖定(經典偷買訊號);量暴增 + 收紅 + 法人賣 = 警示扣分
+    vol_score = 0.0
+    if vol_ratio is not None:
+        if vol_ratio < 0.8 and day_pct >= 0:
+            vol_score = 20.0     # 量縮收紅
+        elif vol_ratio < 0.9 and day_pct >= -0.5:
+            vol_score = 12.0
+        elif vol_ratio > 2.0 and day_pct >= 0 and foreign_lot < -500:
+            vol_score = -15.0    # 暴量收紅 + 法人賣 = 散戶接刀
+        elif vol_ratio > 1.5 and high20:
+            vol_score = 8.0      # 放量突破
+
+    # 10 分:5 日漲幅「偷買區間」(-2% ~ +3%) — 偷的本質是股價沒大動
+    quiet_score = 0.0
+    if pct_5d is not None:
+        if -2.0 <= pct_5d <= 3.0:
+            quiet_score = 10.0
+        elif 3.0 < pct_5d <= 5.0:
+            quiet_score = 6.0
+        elif pct_5d > 10.0:
+            quiet_score = -8.0    # 過熱反扣
+
+    # 額外:融資減少 + 股價穩(散戶丟給法人)
+    margin_score = 0.0
+    if margin_change is not None and day_pct >= -0.5:
+        if margin_change <= -200:
+            margin_score = 5.0
+
+    # 突破 20 日新高(放量 + 法人買) → 多頭續攻訊號(中性,不入主分,只給標籤)
+    raw_score = (f_score + i_bonus + tdcc_score + vol_score + quiet_score
+                 + margin_score)
+    score = max(0, min(100, int(round(raw_score))))
+
+    # 推導語意標籤
+    tags: list[str] = []
+    if f_streak >= 3:
+        tags.append(f"外資連{f_streak}買")
+    elif f_streak <= -3:
+        tags.append(f"外資連{abs(f_streak)}賣")
+    if i_streak >= 2:
+        tags.append(f"投信連{i_streak}買")
+    if tdcc_wow is not None and tdcc_wow >= 0.3:
+        tags.append(f"大戶+{tdcc_wow:.2f}%")
+    if vol_ratio is not None and vol_ratio < 0.8 and day_pct >= 0:
+        tags.append("量縮收紅")
+    if high20 and (foreign_lot > 0 or i_streak > 0):
+        tags.append("突破20日高+法人買")
+    if low20 and foreign_lot < 0:
+        tags.append("跌破20日低+外資賣")
+    if margin_change is not None and margin_change <= -200 and day_pct >= -0.5:
+        tags.append("融資減散戶賣")
+
+    # 整體標籤
+    if score >= 80:
+        tag = "強力偷買訊號"
+    elif score >= 60:
+        tag = "悄悄站隊"
+    elif score >= 40:
+        tag = "輕微正向"
+    elif score <= -20 or f_score <= -25:
+        tag = "籌碼鬆動警示"
+    else:
+        tag = "中性"
+
+    return {
+        "score": score,
+        "components": {
+            "foreign_streak_score": round(f_score, 1),
+            "invest_bonus": round(i_bonus, 1),
+            "tdcc_wow_score": round(tdcc_score, 1),
+            "volume_score": round(vol_score, 1),
+            "quiet_score": round(quiet_score, 1),
+            "margin_score": round(margin_score, 1),
+        },
+        "tag": tag,
+        "tags": tags,
+    }
 
 
 def _fallback_universe() -> dict[str, dict]:
@@ -1607,20 +1943,34 @@ def fetch_twse_market_breadth() -> dict:
         return {}
 
 
-def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
+def fetch_tw0050_snapshot(universe: Optional[dict] = None,
+                            tdcc_wow_map: Optional[dict[str, float]] = None,
+                            margin_per_stock: Optional[dict[str, dict]] = None,
+                            ) -> list[dict]:
     """
-    批次抓台股 universe（預設市值前 100 大）近期表現。
-    每檔回傳：代號、名稱、昨收、漲跌幅、5日均量比、月漲跌幅、法人合計買賣超、
-              30日累積法人、月營收年增率。
+    批次抓台股 universe（預設市值前 100 大）近期表現 + 籌碼悄悄站隊訊號。
+
+    每檔回傳:代號 / 名稱 / 昨收 / 漲跌幅 / 5日均量比 / 月漲跌幅 / 法人合計買賣超 /
+            30日累積法人 / 月營收年增率 / 大戶持股 / 5日動能 / 距 MA20 /
+            **新增**:foreign_streak / invest_streak / vol_ratio_20d /
+                     high20_break / low20_break / tdcc_wow_pct /
+                     margin_change_lot / smart_money(分數 + 標籤)
+
     universe 由 fetch_tw_top100_universe() 提供；未傳則退化為硬編 0050 清單。
+    tdcc_wow_map / margin_per_stock 若 None 則退化為「無資料」(分數計算時自動跳過)。
     """
     if universe is None:
         universe = _fallback_universe()
+    if tdcc_wow_map is None:
+        tdcc_wow_map = {}
+    if margin_per_stock is None:
+        margin_per_stock = {}
 
     inst = fetch_twse_institutional()
     # 三大法人單日 API 一次回傳全市場，30 日累積只是 client 端篩選，universe 變大不增加請求數
     target_codes = set(universe.keys())
-    inst_30d = fetch_twse_institutional_cumulative(days_back=30, target_codes=target_codes)
+    inst_30d = fetch_twse_institutional_cumulative(
+        days_back=30, target_codes=target_codes, keep_recent_days=5)
     revenue = fetch_tw_monthly_revenue()              # 月營收（一次請求全市場）
     tdcc = fetch_tdcc_major_holders(target_codes)     # 大戶持股比例（一次請求全市場）
     snapshot: list[dict] = []
@@ -1650,6 +2000,20 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
             vol = safe_float(last["Volume"])
             avg5_vol = sub["Volume"].tail(5).mean()
             vol_ratio = (vol / avg5_vol) if avg5_vol else None
+            # 20 日均量比(更可靠的「異常量能」訊號;5 日窗對短期波動敏感)
+            avg20_vol = sub["Volume"].tail(20).mean() if len(sub) >= 5 else None
+            vol_ratio_20d = (vol / avg20_vol) if avg20_vol and avg20_vol > 0 else None
+
+            # 突破 / 跌破 20 日高 / 低(法人連買 + 突破 = 多頭續攻)
+            high20_break = False
+            low20_break = False
+            if len(sub) >= 20:
+                high20 = float(sub["Close"].tail(20).iloc[:-1].max()) if len(sub) > 20 else float(sub["Close"].head(19).max())
+                low20 = float(sub["Close"].tail(20).iloc[:-1].min()) if len(sub) > 20 else float(sub["Close"].head(19).min())
+                if close > high20:
+                    high20_break = True
+                if close < low20:
+                    low20_break = True
 
             month_first = safe_float(sub.iloc[0]["Close"])
             month_pct = (close - month_first) / month_first * 100 if month_first else 0
@@ -1671,11 +2035,15 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
             rev = revenue.get(code, {})
             tdcc_data = tdcc.get(code, {})
             info = universe[code]
+            # 籌碼悄悄站隊原料:法人連買天數、大戶 WoW、個股融資變化
+            streaks = _calc_inst_streaks(inst_30.get("daily") or [])
+            tdcc_wow = tdcc_wow_map.get(code)
+            margin_data = margin_per_stock.get(code) or {}
             # 業務簡介：優先用硬編的詳細版，否則退而用 OpenAPI 的產業別
             desc = TW0050_CONSTITUENTS.get(code) or (
                 f"{info['name']} — {info.get('industry') or '（產業別未知）'}")
 
-            snapshot.append({
+            entry = {
                 "code": code,
                 "name": info["name"],
                 "desc": desc,
@@ -1684,6 +2052,9 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
                 "close": round(close, 2),
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
+                "vol_ratio_20d": round(vol_ratio_20d, 2) if vol_ratio_20d else None,
+                "high20_break": bool(high20_break),
+                "low20_break": bool(low20_break),
                 "month_pct": round(month_pct, 2),
                 # 新增:5日累積動能 + 距 MA20(看是否過熱)
                 "pct_5d": round(pct_5d, 2) if pct_5d is not None else None,
@@ -1697,13 +2068,25 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None) -> list[dict]:
                 "invest_30d_lot":  round(inst_30.get("invest_cum", 0) / 1000, 0),
                 "dealer_30d_lot":  round(inst_30.get("dealer_cum", 0) / 1000, 0),
                 "inst_30d_days":   inst_30.get("days", 0),
+                # 法人連買 / 連賣天數(±, 由近 5 日逐日序列推得)
+                "foreign_streak": streaks["foreign_streak"],
+                "invest_streak":  streaks["invest_streak"],
+                # 大戶持股 WoW Δ%(本週 − 對照週,需有歷史快照才有值)
+                "tdcc_wow_pct": tdcc_wow,
+                # 個股融資餘額變化(張),負值 = 散戶融資減,通常是散戶丟給法人
+                "margin_balance_lot": round((margin_data.get("margin_balance") or 0) / 1000, 0),
+                "margin_change_lot": round((margin_data.get("margin_change") or 0) / 1000, 0)
+                                        if margin_data.get("margin_change") is not None else None,
                 # 月營收基本面
                 "rev_month":   rev.get("month"),
                 "rev_yoy_pct": rev.get("yoy_pct"),
                 "rev_mom_pct": rev.get("mom_pct"),
                 # 大戶持股比例（TDCC 集保，≥400 張，週更）
                 "major_holder_pct": tdcc_data.get("major_holder_pct"),
-            })
+            }
+            # 籌碼悄悄站隊分數:綜合「外資連買 + 大戶 WoW + 量縮收紅 + 偷買區」
+            entry["smart_money"] = calc_smart_money_score(entry)
+            snapshot.append(entry)
         except (KeyError, ValueError, TypeError) as e:
             print(f"[snapshot] {code} 跳過: {e}", file=sys.stderr)
             continue
@@ -3122,6 +3505,42 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         tw0050_block = "（資料抓取失敗）"
 
+    # 籌碼悄悄站隊 Top 15(法人連買 + 大戶 WoW + 量縮收紅 綜合分數)
+    if tw0050:
+        scored = [s for s in tw0050
+                  if (s.get("smart_money") or {}).get("score", 0) >= 40]
+        scored.sort(key=lambda x: (x.get("smart_money") or {}).get("score", 0),
+                    reverse=True)
+        smart_top = scored[:15]
+        if smart_top:
+            sm_rows = []
+            for s in smart_top:
+                sm = s.get("smart_money") or {}
+                score = sm.get("score", 0)
+                tags = sm.get("tags", []) or []
+                fs = s.get("foreign_streak", 0) or 0
+                is_ = s.get("invest_streak", 0) or 0
+                wow = s.get("tdcc_wow_pct")
+                vr20 = s.get("vol_ratio_20d")
+                mc = s.get("margin_change_lot")
+                wow_str = f"{wow:+.2f}%" if wow is not None else "-"
+                vr20_str = f"{vr20:.2f}x" if vr20 else "-"
+                mc_str = f"{mc:+,.0f}張" if mc is not None else "-"
+                p5 = s.get("pct_5d")
+                p5_str = f"{p5:+.1f}%" if p5 is not None else "-"
+                tag_str = " | ".join(tags) if tags else "—"
+                sm_rows.append(
+                    f"{s['code']} {s['name']:<6} 分數={score:>3} | "
+                    f"外連{fs:+d} 投連{is_:+d} | 大戶ΔWoW {wow_str} | "
+                    f"量比20d {vr20_str} | 5日{p5_str} | 融資Δ{mc_str} | "
+                    f"訊號: {tag_str}"
+                )
+            smart_money_block = "\n".join(sm_rows)
+        else:
+            smart_money_block = "（今日無 ≥40 分的籌碼站隊候選;TDCC WoW 通常需累積 ≥ 1 週歷史才有 Δ%）"
+    else:
+        smart_money_block = "（資料抓取失敗,跳過籌碼站隊清單）"
+
     # 總經指標摘要（含 252 日百分位）
     macro = quotes.get("MACRO", {}) or {}
     def fmt_m(name: str) -> str:
@@ -3427,6 +3846,15 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 ※「營收YoY」為該公司最新月營收的去年同月年增率（真實數據，TWSE 月營收彙總）；「-」代表無資料
 ※「大戶」為持股 ≥ 400 張的大戶占集保總數比例（TDCC 集保股權分散表，週更）；比例高 = 籌碼集中在大戶/主力手上
 
+【★籌碼悄悄站隊 Top 15(分數 ≥ 40，挑「外資/投信偷買 + 大戶 WoW 增加 + 量縮收紅」的股票)】
+{smart_money_block}
+※ 分數 = 法人連買(40) + 大戶 WoW Δ%(30) + 量縮收紅 / 突破量(20) + 偷買區間(10) + 融資減(5);≥80 強訊號,≥60 站隊,≥40 輕微正向
+※ 外/投連買 = 近 5 日法人連續同向天數(正 = 連續買、負 = 連續賣);≥3 天是強訊號
+※ 大戶ΔWoW = 本週 TDCC 大戶持股 %（≥400 張）− 對照週(≥5 天前)的同欄;**正值 = 主力默默吸籌**,需累積歷史才有值
+※ 量比20d &lt; 0.8 + 法人買 + 收紅 = **「量縮鎖籌」經典偷買訊號**(沒人注意但籌碼集中)
+※ 量比20d &gt; 2.0 + 收紅 + 法人賣 = **「散戶接刀」警示**(扣分)
+※ 此分數**為輔助參考、不取代基本面與消息面分析**;選股時仍以營收 / 催化消息 / 結構健康為主、此清單為「籌碼面 second opinion」
+
 ═══════════════════════════════════════════════════════════
 # 寫作鐵律（必讀，違反任一條都是失敗報告）
 ═══════════════════════════════════════════════════════════
@@ -3584,13 +4012,13 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 ## 十三、今日台股關注三檔（**必寫，從上方「台股市值前 100 大」清單中選**）
 
-**選股優先序**（必須符合至少 3 項，**包含「結構健康」一項**）：
-1. 昨日法人買超強（外資 + 投信合計 > +5000 張）
+**選股優先序**（必須符合至少 3 項，**包含「結構健康」一項**;**強烈優先「籌碼悄悄站隊」清單中的個股**）：
+1. 昨日法人買超強（外資 + 投信合計 > +5000 張）**或上方「籌碼悄悄站隊」分數 ≥ 60**
 2. 30 日累積外資買超 > 0 且加速
 3. 新聞清單有具體催化消息（不是空話）
 4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱 / 記憶體）
 5. 月營收年增率（營收YoY）正成長，最好 > +10%（用上表「營收YoY」欄位，禁止瞎掰）
-6. 大戶持股比例偏高或結構穩固（用上表「大戶」欄位；籌碼集中在大戶 = 主力認同）
+6. 大戶持股比例偏高或結構穩固（用上表「大戶」欄位）;**若上方有大戶ΔWoW ≥ +0.3%（主力默默吸籌），加重權重**
 7. **【新】結構健康度標籤**(用上表「5日」「MA20」兩欄判讀,作為**信心評等與風險警示**的依據,**不是排除條件**):
    - **健康上行**：`5日 +1~+5%` 且 `MA20 +0~+5%`(理想,信心可給「高」)
    - **強勢但偏熱**：`5日 +5~+10%` 或 `MA20 +5~+10%`(信心降為「中」,挑選理由須註明追高風險)
@@ -3609,9 +4037,9 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 - **業務簡介**：1-2 句，這間公司在做什麼 + 主力產品
 - **近期營收/獲利動向**：**優先引用上表「營收YoY」的真實月營收年增率數字**；可再補法說會重點（先驗知識），但月營收以上表為準
-- **昨日法人動向**：外資 X 張、投信 X 張、自營 X 張（**精準引用上表數字**）；30 日累積外資 X 張（**強度判讀**）
+- **昨日法人動向**：外資 X 張、投信 X 張、自營 X 張（**精準引用上表數字**）；30 日累積外資 X 張（**強度判讀**）;**若此檔在「籌碼悄悄站隊」清單中,額外寫出分數、外/投連買天數、大戶ΔWoW、量比20d 4 項數據**
 - **挑選理由**：消息催化 + 籌碼結構 + 基本面定位（三者都要提）
-- **信心等級**：高 / 中 / 低（**禁止省略**；說明信心來自哪一面）
+- **信心等級**：高 / 中 / 低（**禁止省略**；說明信心來自哪一面）;**若入榜「籌碼悄悄站隊」且分數 ≥ 60,信心等級可提升一級**
 - **目標關注幅度**：給合理區間（例「漲幅 2-4%」），**不可超過 ±10%**
 
 第三檔分析完後**獨立成段**寫風險警示：
@@ -4473,6 +4901,100 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
         """
 
+    # === 籌碼悄悄站隊 Top 10(法人連買 + 大戶 WoW + 量縮收紅 綜合分數)===
+    smart_money_html = ""
+    # tw0050 是函式參數;從 quotes 也有,但這裡用先前已讀的版本(quotes 沒存)。
+    # render_html 簽名只有 quotes/fair/predictions/analysis,因此從 quotes 找 universe snapshot。
+    # 在 main() 已把 snapshot 內含 smart_money 欄位; render 透過 quotes["TW_UNIVERSE_SNAPSHOT"] 取得。
+    universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
+    if universe_snapshot:
+        scored = [s for s in universe_snapshot
+                  if (s.get("smart_money") or {}).get("score", 0) >= 40]
+        scored.sort(key=lambda x: (x.get("smart_money") or {}).get("score", 0),
+                    reverse=True)
+        top10 = scored[:10]
+        if top10:
+            rows_html = []
+            for s in top10:
+                sm = s.get("smart_money") or {}
+                score = sm.get("score", 0)
+                tags = sm.get("tags", []) or []
+                if score >= 80:
+                    score_bg, score_fg = "#fee2e2", "#b91c1c"   # 紅:強訊號
+                elif score >= 60:
+                    score_bg, score_fg = "#fef3c7", "#92400e"   # 橘:站隊
+                else:
+                    score_bg, score_fg = "#dbeafe", "#1e40af"   # 藍:輕微
+                tag_chips = "".join(
+                    f'<span style="display:inline-block;background:#f1f5f9;color:#475569;'
+                    f'padding:1px 6px;border-radius:8px;font-size:11px;margin:0 2px 2px 0;">'
+                    f'{_htmllib.escape(str(t))}</span>'
+                    for t in tags[:5]
+                )
+                fs = s.get("foreign_streak", 0) or 0
+                is_ = s.get("invest_streak", 0) or 0
+                streak_str = ""
+                if fs:
+                    streak_str += f"外{fs:+d} "
+                if is_:
+                    streak_str += f"投{is_:+d}"
+                wow = s.get("tdcc_wow_pct")
+                wow_str = f"{wow:+.2f}%" if wow is not None else "—"
+                wow_color = ("#dc2626" if wow is not None and wow > 0.3
+                             else "#16a34a" if wow is not None and wow < -0.3
+                             else "#64748b")
+                vr20 = s.get("vol_ratio_20d")
+                vr20_str = f"{vr20:.2f}x" if vr20 else "—"
+                vr20_color = "#16a34a" if vr20 and vr20 < 0.8 else "#dc2626" if vr20 and vr20 > 1.5 else "#64748b"
+                day_pct = s.get("day_pct") or 0
+                day_color = "#dc2626" if day_pct >= 0 else "#16a34a"
+                rows_html.append(
+                    f"<tr>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>"
+                    f"<span style='background:{score_bg};color:{score_fg};padding:2px 8px;"
+                    f"border-radius:10px;font-size:13px;font-weight:700;'>{score}</span></td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;'>"
+                    f"{s['code']} <span style='color:#64748b;font-weight:500;'>{_htmllib.escape(s.get('name',''))}</span></td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
+                    f"font-variant-numeric:tabular-nums;'>{s.get('close','—')}</td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
+                    f"color:{day_color};font-variant-numeric:tabular-nums;'>"
+                    f"{('+' if day_pct >= 0 else '')}{day_pct:.2f}%</td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;"
+                    f"font-size:12px;color:#475569;'>{streak_str or '—'}</td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
+                    f"color:{wow_color};font-size:12px;'>{wow_str}</td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
+                    f"color:{vr20_color};font-size:12px;'>{vr20_str}</td>"
+                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;'>"
+                    f"{tag_chips or '<span style=\"color:#94a3b8;\">—</span>'}</td>"
+                    f"</tr>"
+                )
+            smart_money_html = f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">籌碼悄悄站隊 Top {len(top10)}(分數 ≥ 40)</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px 10px;text-align:center;color:#475569;font-size:11px;">分數</th>
+            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:11px;">代號 名稱</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">昨收</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">日%</th>
+            <th style="padding:8px 10px;text-align:center;color:#475569;font-size:11px;">外/投連買</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">大戶ΔWoW</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">量比20d</th>
+            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:11px;">訊號標籤</th>
+          </tr>
+          {''.join(rows_html)}
+        </table>
+        <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
+          ※ <b>分數 = 法人連買 (40) + 大戶 WoW Δ%(30) + 量縮收紅 / 突破量(20) + 偷買區間 (10) + 融資減 (5)</b>。
+          <b>≥80 強訊號(紅)</b>、≥60 悄悄站隊(橘)、≥40 輕微正向(藍)。<br>
+          ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例的「本週 − 上週」變化(需累積 ≥ 1 週歷史才有值)。
+          量比 20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。
+          外/投連買為近 5 日法人連續同向天數(正 = 連買、負 = 連賣)。<br>
+          ※ 此分數**為輔助參考,不是買進訊號**;最終仍須結合新聞催化、營收基本面、結構健康度綜合判讀。
+        </p>
+        """
+
     # === 大盤成交額 + 市場廣度卡 ===
     breadth = quotes.get("BREADTH", {}) or {}
     breadth_html = ""
@@ -4881,6 +5403,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {taiex_html}
 
             {tw0050_card_html}
+
+            {smart_money_html}
 
             {breadth_html}
 
@@ -5323,9 +5847,33 @@ def main() -> int:
     quotes["TW_UNIVERSE_FALLBACK"] = any(
         v.get("fallback") for v in tw_universe.values())
 
+    # 6.1 (籌碼悄悄站隊) 個股融資餘額(MI_MARGN ALL)+ TDCC 大戶 WoW 變化
+    print("[main] 抓個股融資餘額(MI_MARGN ALL)…")
+    try:
+        margin_per_stock = fetch_twse_margin_per_stock(set(tw_universe.keys()))
+    except Exception as e:
+        print(f"[main] 個股融資抓取失敗: {e}", file=sys.stderr)
+        margin_per_stock = {}
+    # TDCC WoW Δ%(對照 history 中 ≥ 5 天前的快照)
+    try:
+        current_tdcc = fetch_tdcc_major_holders(set(tw_universe.keys()))
+        tdcc_wow_map = calc_tdcc_wow_delta(current_tdcc, history, min_gap_days=5)
+        # 同時準備本次 TDCC 快照,寫進 state 供下次 WoW 比較
+        tdcc_snapshot_for_state = {
+            c: round(v.get("major_holder_pct", 0), 2)
+            for c, v in current_tdcc.items()
+            if v.get("major_holder_pct") is not None
+        }
+    except Exception as e:
+        print(f"[main] TDCC WoW 計算失敗: {e}", file=sys.stderr)
+        tdcc_wow_map = {}
+        tdcc_snapshot_for_state = {}
+
     print("[main] 抓台股 universe 法人買賣超與近期表現…")
     try:
-        tw0050 = fetch_tw0050_snapshot(tw_universe)
+        tw0050 = fetch_tw0050_snapshot(tw_universe,
+                                          tdcc_wow_map=tdcc_wow_map,
+                                          margin_per_stock=margin_per_stock)
     except Exception as e:
         print(f"[main] universe snapshot 抓取失敗: {e}", file=sys.stderr)
         tw0050 = []
@@ -5395,6 +5943,8 @@ def main() -> int:
     quotes["NIGHT_TXF"] = night_txf
     quotes["TAIEX_PRED"] = taiex_pred
     quotes["TW0050_PRED"] = tw0050_pred
+    # 把 universe snapshot 也塞進 quotes,讓 render_html 可以畫「籌碼悄悄站隊 Top 10」
+    quotes["TW_UNIVERSE_SNAPSHOT"] = tw0050
     quotes["BREADTH"] = breadth
     quotes["BACKTEST"] = backtest_block
     quotes["ALERTS"] = alerts
@@ -5443,6 +5993,8 @@ def main() -> int:
             "taifex_foreign_oi": taifex_oi.get("foreign_oi_net"),
             "critical_news": crit_titles,
             "earnings_proximity": earnings_proximity.get("impact"),
+            # 籌碼悄悄站隊:本次 TDCC 大戶持股快照,供下次 WoW Δ% 比較
+            "tdcc_snapshot": tdcc_snapshot_for_state if 'tdcc_snapshot_for_state' in locals() else {},
         }
         save_history_state(new_entry, days_to_keep=90)
     except Exception as e:

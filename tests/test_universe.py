@@ -261,7 +261,7 @@ def test_snapshot_uses_universe_codes(monkeypatch):
     def fake_inst():
         return {}
 
-    def fake_inst_cum(days_back=30, target_codes=None):
+    def fake_inst_cum(days_back=30, target_codes=None, **kwargs):
         captured["target_codes"] = target_codes
         return {}
 

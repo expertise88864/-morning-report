@@ -4948,6 +4948,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 vr20_color = "#16a34a" if vr20 and vr20 < 0.8 else "#dc2626" if vr20 and vr20 > 1.5 else "#64748b"
                 day_pct = s.get("day_pct") or 0
                 day_color = "#dc2626" if day_pct >= 0 else "#16a34a"
+                # 注意:Python < 3.12 不允許 f-string 表達式內含反斜線,先把帶引號的 fallback
+                # 字串拉到 f-string 外面,避免 SyntaxError(CI Python 3.11)
+                tag_chips_cell = tag_chips or '<span style="color:#94a3b8;">—</span>'
+                day_sign = "+" if day_pct >= 0 else ""
                 rows_html.append(
                     f"<tr>"
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>"
@@ -4959,7 +4963,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"font-variant-numeric:tabular-nums;'>{s.get('close','—')}</td>"
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
                     f"color:{day_color};font-variant-numeric:tabular-nums;'>"
-                    f"{('+' if day_pct >= 0 else '')}{day_pct:.2f}%</td>"
+                    f"{day_sign}{day_pct:.2f}%</td>"
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;"
                     f"font-size:12px;color:#475569;'>{streak_str or '—'}</td>"
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
@@ -4967,7 +4971,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
                     f"color:{vr20_color};font-size:12px;'>{vr20_str}</td>"
                     f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;'>"
-                    f"{tag_chips or '<span style=\"color:#94a3b8;\">—</span>'}</td>"
+                    f"{tag_chips_cell}</td>"
                     f"</tr>"
                 )
             smart_money_html = f"""

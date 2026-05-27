@@ -2242,18 +2242,30 @@ def calc_midterm_forecast(metrics: dict,
         # drift: 短期 horizon 全用,長期施加均值回歸 dampening
         dampen = 1.0 if h <= 5 else 0.5 if h <= 20 else 0.3
         expected_return_pct = avg_daily_pct * h * dampen
-        # ±1.5σ band, σ 隨 √h 擴張
-        band_pct = daily_vol * (h ** 0.5) * 1.5
+        # ±1σ (~68% 常態波動) 與 ±1.5σ (~87% 極端波動) 同時計算
+        band_1s = daily_vol * (h ** 0.5) * 1.0
+        band_15s = daily_vol * (h ** 0.5) * 1.5
         mid = last * (1 + expected_return_pct / 100)
-        upper = last * (1 + (expected_return_pct + band_pct) / 100)
-        lower = last * (1 + (expected_return_pct - band_pct) / 100)
+        upper_1s = last * (1 + (expected_return_pct + band_1s) / 100)
+        lower_1s = last * (1 + (expected_return_pct - band_1s) / 100)
+        upper_15s = last * (1 + (expected_return_pct + band_15s) / 100)
+        lower_15s = last * (1 + (expected_return_pct - band_15s) / 100)
         forecasts[f"{h}d"] = {
             "horizon_days": h,
             "expected_mid": round(mid, 2),
-            "upper": round(upper, 2),
-            "lower": round(lower, 2),
+            # 向後相容:預設 upper/lower 仍為 ±1.5σ
+            "upper": round(upper_15s, 2),
+            "lower": round(lower_15s, 2),
+            # ±1σ (常態 68%) 與 ±1.5σ (極端 87%) 分開列
+            "upper_1s": round(upper_1s, 2),
+            "lower_1s": round(lower_1s, 2),
+            "upper_15s": round(upper_15s, 2),
+            "lower_15s": round(lower_15s, 2),
+            "band_1s_pct": round(band_1s, 2),
+            "band_15s_pct": round(band_15s, 2),
             "expected_pct": round(expected_return_pct, 2),
-            "band_pct": round(band_pct, 2),
+            # 向後相容
+            "band_pct": round(band_15s, 2),
         }
     return forecasts
 
@@ -2627,19 +2639,21 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
         d20 = metrics.get("ma20_dist_pct")
         if pct_5d is None:
             continue
+        # 距 MA20 是選配資訊（資料 < 21 天時為 None）
+        d20_str = f"、距 MA20 {d20:+.1f}%" if d20 is not None else ""
         # 5 日漲超過 +5% 或跌超過 -5% → orange 警示
         if pct_5d > 5:
             alerts.append({
                 "level": "orange",
                 "title": f"{name} 短期過熱（5 日 {pct_5d:+.1f}%）",
-                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%、距 MA20 {d20:+.1f}%(若有)。"
+                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%{d20_str}。"
                            f"短期超漲常伴隨回測,今日預測信心應降,關鍵價位寬度建議從 ±1% 擴大至 ±2%。"),
             })
         elif pct_5d < -5:
             alerts.append({
                 "level": "orange",
                 "title": f"{name} 短期超賣（5 日 {pct_5d:+.1f}%）",
-                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%、距 MA20 {d20:+.1f}%(若有)。"
+                "detail": (f"{name} 過去 5 日累積 {pct_5d:+.2f}%{d20_str}。"
                            f"短期超跌常伴隨技術性反彈,今日預測信心應降,關鍵價位寬度建議從 ±1% 擴大至 ±2%。"),
             })
 
@@ -2742,7 +2756,8 @@ def build_prediction_backtest(history: list[dict]) -> str:
         for name, lst in (("2330", err_2330_list), ("00662", err_00662_list), ("0050", err_0050_list)):
             if lst:
                 avg = sum(lst) / len(lst)
-                bias = "偏高" if avg > 0.2 else "偏低" if avg < -0.2 else "中性"
+                # err = (actual − pred) / pred. avg > 0 表示實際 > 預測 = 預測「偏低」
+                bias = "偏低" if avg > 0.2 else "偏高" if avg < -0.2 else "中性"
                 summary += f"\n  {name} 平均誤差: {avg:+.2f}% (預測{bias})"
 
         return "\n".join(rows) + summary
@@ -3576,15 +3591,19 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 4. 業務直接受惠當前主軸（AI 算力 / 半導體 / 電動車 / 散熱 / 記憶體）
 5. 月營收年增率（營收YoY）正成長，最好 > +10%（用上表「營收YoY」欄位，禁止瞎掰）
 6. 大戶持股比例偏高或結構穩固（用上表「大戶」欄位；籌碼集中在大戶 = 主力認同）
-7. **【新】結構健康**：5日累積與 MA20 偏離應**同向且不過熱**——理想:`5日 +1~+5%` 且 `MA20 +0~+5%`(穩健上行);**避開** `5日 > +8%` 或 `MA20 > +8%`(短期過熱、隨時拉回風險);**避開** `5日 < -5%` 且 `MA20 < -3%`(下行趨勢未止)。
+7. **【新】結構健康度標籤**(用上表「5日」「MA20」兩欄判讀,作為**信心評等與風險警示**的依據,**不是排除條件**):
+   - **健康上行**：`5日 +1~+5%` 且 `MA20 +0~+5%`(理想,信心可給「高」)
+   - **強勢但偏熱**：`5日 +5~+10%` 或 `MA20 +5~+10%`(信心降為「中」,挑選理由須註明追高風險)
+   - **暴衝過熱**：`5日 > +10%` 或 `MA20 > +10%`(信心降為「低」,目標關注幅度收窄至 ±3% 以內,挑選理由須明寫「短期暴衝、追高風險高、僅適合短線」)
+   - **超賣反彈候選**：`5日 < -5%` 且 `MA20 < -3%`(信心「中-低」,須有止跌訊號才入榜)
 
 **選股禁止事項**：
 - 不可用技術面分析（K 線、均線、MACD 等;但 5日/MA20 統計數字可用,當作「結構強弱」描述,**不是技術分析,而是趨勢健康度**)
 - **只能選上方「台股市值前 100 大」清單裡有列出的股票**，不可選清單外或杜撰代號
 - 不可只看「昨日漲幅」就選，**漲停只是參考，籌碼、消息、營收成長才是主因**
 - 營收 YoY 大幅衰退（< −15%）的個股，除非有極強催化消息，否則不選
-- **單日漲幅 > +6% 且 5日 > +10% 的個股,屬「短期暴衝過熱」,禁止入榜**(追高風險過高)
-- 若三檔都信心低，**照寫，不要勉強拉高**
+- **暴衝股可選但必須誠實標示**：若 5日 > +10%,信心一律給「低」,目標幅度 ±3% 以內,並在挑選理由首句寫「短期累積漲幅過大,追高風險高」。不可掩飾為「強勢買進」。
+- 若三檔都信心低，**照寫,不要勉強拉高**
 
 每檔用 **### 代號 公司名** 作為三級標題（例：`### 2330 台積電`），下方接以下 6 個 bullet：
 
@@ -4511,18 +4530,27 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             d20_color = "#dc2626" if (d20 or 0) >= 0 else "#16a34a"
             if not f5 or not f20:
                 continue
+            # 兩個範圍：±1σ(常態 68%) / ±1.5σ(極端 87%),都顯示
+            def _range_cell(fc: dict) -> str:
+                lo1 = fc.get("lower_1s") or fc.get("lower")
+                up1 = fc.get("upper_1s") or fc.get("upper")
+                lo15 = fc.get("lower_15s") or fc.get("lower")
+                up15 = fc.get("upper_15s") or fc.get("upper")
+                return (f"<div style='font-size:13px;color:#0f172a;'>"
+                        f"<b>{lo1}–{up1}</b> <span style='font-size:10px;color:#94a3b8;'>常態±1σ</span></div>"
+                        f"<div style='font-size:12px;color:#94a3b8;margin-top:2px;'>"
+                        f"{lo15}–{up15} <span style='font-size:10px;'>極端±1.5σ</span></div>")
+
             midterm_rows.append(
                 f"<tr>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{name}</td>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{pct_5d_color};font-variant-numeric:tabular-nums;'>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{name}</td>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{pct_5d_color};font-variant-numeric:tabular-nums;'>"
                 f"{('+' if (pct_5d or 0) >= 0 else '')}{pct_5d if pct_5d is not None else '—'}%</td>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{d20_color};font-variant-numeric:tabular-nums;'>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{d20_color};font-variant-numeric:tabular-nums;'>"
                 f"{('+' if (d20 or 0) >= 0 else '')}{d20 if d20 is not None else '—'}%</td>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:#475569;font-variant-numeric:tabular-nums;'>"
-                f"{f5.get('lower')} ~ {f5.get('upper')}</td>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:#475569;font-variant-numeric:tabular-nums;'>"
-                f"{f20.get('lower')} ~ {f20.get('upper')}</td>"
-                f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:{trend_color};font-weight:600;'>{trend}</td>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{_range_cell(f5)}</td>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{_range_cell(f20)}</td>"
+                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:{trend_color};font-weight:600;'>{trend}</td>"
                 f"</tr>"
             )
         if midterm_rows:
@@ -4533,13 +4561,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">標的</th>
             <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">5日累積</th>
             <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">距 MA20</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1週區間(±1.5σ)</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1月區間(±1.5σ)</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1週區間</th>
+            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1月區間</th>
             <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">趨勢</th>
           </tr>
           {''.join(midterm_rows)}
         </table>
-        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ 區間 = 過去 20 日 daily-return 波動度 × √horizon × 1.5σ。**這是統計合理區間,不是「會漲到 X」的點預測**——區間外發生機率約 13%。</p>
+        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ <b>常態±1σ</b> = 約 68% 機率落在此區間（一般波動）;<b>極端±1.5σ</b> = 約 87%（含中等劇烈日）。<b>這是統計區間,不是「會漲到 X」的點預測</b>。</p>
         """
 
     # === 夜盤台指期卡 (Task B) ===

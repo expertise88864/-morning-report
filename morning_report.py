@@ -316,6 +316,17 @@ NDX_TICKERS: list[str] = [
     "ARM", "KDP", "MRNA", "TTWO", "ILMN", "VRSK", "CEG", "EA", "APP", "SMCI",
 ]
 
+# 「重點科技股」白名單:8-K 公告區塊只顯示這些(美股前 10 大市值 + 關鍵半導體/AI/設備/EDA)。
+# 排除 NDX-100 裡的消費/零售/工業雜訊(Ross/Lululemon/Mondelez/Comcast/Honeywell/CDW…)。
+# 注意:LLM prompt 仍吃全部 8-K(供「科技板塊脈動」取材),只有 email 顯示套用此過濾。
+SEC_PRIORITY_TICKERS: set = {
+    # 美股前 10 大市值(科技權值)
+    "AAPL", "MSFT", "NVDA", "GOOGL", "GOOG", "AMZN", "META", "AVGO", "TSLA", "AMD",
+    # 關鍵半導體 / 設備 / EDA / AI 伺服器(直接牽動 2330 / 00662 供應鏈)
+    "QCOM", "MRVL", "AMAT", "LRCX", "KLAC", "ASML", "MU", "TXN", "ADI", "NXPI",
+    "MCHP", "ON", "SNPS", "CDNS", "ARM", "SMCI",
+}
+
 _SEC_CIK_CACHE: dict = {}
 
 
@@ -367,11 +378,15 @@ def fetch_sec_filings() -> list[dict]:
     # 合併硬編 + NDX-100 解析後的 CIK
     companies: dict[str, str] = dict(SEC_BASE_COMPANIES)
     cik_map = _load_sec_cik_map()
+    # priority_ciks:屬於「重點科技股」白名單者(email 8-K 區塊只顯示這些;LLM 仍吃全部)
+    priority_ciks: set = set(SEC_BASE_COMPANIES.keys())   # mega-cap + 台積電一律重點
     for ticker in NDX_TICKERS:
         entry = cik_map.get(ticker.upper())
         if not entry:
             continue
         cik, name = entry
+        if ticker.upper() in SEC_PRIORITY_TICKERS:
+            priority_ciks.add(cik)
         if cik not in companies:
             companies[cik] = f"{name} ({ticker})"
 
@@ -424,6 +439,8 @@ def fetch_sec_filings() -> list[dict]:
                     "date": filed_date_str,
                     "items": item_labels or [item_codes_str],
                     "link": link,
+                    # 是否屬「重點科技股」白名單(email 8-K 區塊只顯示 priority=True)
+                    "priority": cik in priority_ciks,
                 })
         except Exception as e:
             print(f"[sec] {name} 抓取失敗: {e}", file=sys.stderr)
@@ -4780,21 +4797,25 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </div>
         """
 
-    # === SEC 8-K 公告區塊 ===
+    # === SEC 8-K 公告區塊（只顯示「重點科技股」白名單:美股前 10 大市值 + 關鍵半導體 + 台積電）===
     sec_filings = quotes.get("SEC_FILINGS", []) or []
+    # 過濾:只留 priority(消費/零售/工業雜訊不顯示);舊資料無 priority 欄位時退化為全顯示
+    sec_priority = [f for f in sec_filings if f.get("priority")]
+    if not sec_priority and sec_filings and not any("priority" in f for f in sec_filings):
+        sec_priority = sec_filings    # 向後相容:state 來的舊 filing 沒有 priority 欄
     sec_html = ""
-    if sec_filings:
+    if sec_priority:
         sec_rows = "\n".join(
             f"<tr>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;'>{f['company']}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0284c7;font-size:13px;'>{f['form']}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:13px;'>{f['date']}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px;'>{' / '.join(f['items'])}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;font-size:13px;'>{_htmllib.escape(str(f['company']))}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#0284c7;font-size:13px;white-space:nowrap;'>{f['form']}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;white-space:nowrap;'>{f['date']}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;'>{_htmllib.escape(' / '.join(f['items']))}</td>"
             f"</tr>"
-            for f in sec_filings[:25]
+            for f in sec_priority[:15]
         )
         sec_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">主要科技股 SEC 8-K 公告（近 48 小時）</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">美股重點科技股 8-K 公告（近 48 小時）</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
             <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">公司</th>
@@ -4804,7 +4825,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           </tr>
           {sec_rows}
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ 8-K 是 SEC 規定的「重大事件即時揭露」表單，常見項目：1.01 重大協議、2.02 財報、5.02 高層變動、8.01 其他重大事件。</p>
+        <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ 只列美股前 10 大市值 + 關鍵半導體/AI/設備/EDA（NVDA/AVGO/AMD/MRVL/AMAT/ASML/SNPS/ARM 等）+ 台積電;台股其餘公司的重大訊息見上方「MOPS 重大訊息」段。8-K 是 SEC 規定的「重大事件即時揭露」表單。</p>
         """
 
     # === 台股前 10 大公司 MOPS 重大訊息 ===
@@ -4951,21 +4972,20 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
         """
 
-    # === 籌碼悄悄站隊 Top 10(法人連買 + 大戶 WoW + 量縮收紅 綜合分數)===
+    # === 籌碼悄悄站隊 Top 5(法人連買 + 大戶 WoW + 量縮收紅 綜合分數)===
+    # 手機版面:改成「每檔一列、列內 2 欄(分數 chip + 堆疊明細)」,避免 8 欄寬表在
+    # 手機 Gmail 擠爆跑版。
     smart_money_html = ""
-    # tw0050 是函式參數;從 quotes 也有,但這裡用先前已讀的版本(quotes 沒存)。
-    # render_html 簽名只有 quotes/fair/predictions/analysis,因此從 quotes 找 universe snapshot。
-    # 在 main() 已把 snapshot 內含 smart_money 欄位; render 透過 quotes["TW_UNIVERSE_SNAPSHOT"] 取得。
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
     if universe_snapshot:
         scored = [s for s in universe_snapshot
                   if (s.get("smart_money") or {}).get("score", 0) >= 40]
         scored.sort(key=lambda x: (x.get("smart_money") or {}).get("score", 0),
                     reverse=True)
-        top10 = scored[:10]
-        if top10:
+        top5 = scored[:5]
+        if top5:
             rows_html = []
-            for s in top10:
+            for s in top5:
                 sm = s.get("smart_money") or {}
                 score = sm.get("score", 0)
                 tags = sm.get("tags", []) or []
@@ -4977,75 +4997,59 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     score_bg, score_fg = "#dbeafe", "#1e40af"   # 藍:輕微
                 tag_chips = "".join(
                     f'<span style="display:inline-block;background:#f1f5f9;color:#475569;'
-                    f'padding:1px 6px;border-radius:8px;font-size:11px;margin:0 2px 2px 0;">'
+                    f'padding:1px 7px;border-radius:8px;font-size:11px;margin:0 3px 3px 0;">'
                     f'{_htmllib.escape(str(t))}</span>'
-                    for t in tags[:5]
+                    for t in tags[:6]
                 )
+                tag_chips_line = tag_chips or '<span style="color:#94a3b8;font-size:11px;">無特別標籤</span>'
                 fs = s.get("foreign_streak", 0) or 0
                 is_ = s.get("invest_streak", 0) or 0
-                streak_str = ""
-                if fs:
-                    streak_str += f"外{fs:+d} "
-                if is_:
-                    streak_str += f"投{is_:+d}"
-                wow = s.get("tdcc_wow_pct")
-                wow_str = f"{wow:+.2f}%" if wow is not None else "—"
-                wow_color = ("#dc2626" if wow is not None and wow > 0.3
-                             else "#16a34a" if wow is not None and wow < -0.3
-                             else "#64748b")
-                vr20 = s.get("vol_ratio_20d")
-                vr20_str = f"{vr20:.2f}x" if vr20 else "—"
-                vr20_color = "#16a34a" if vr20 and vr20 < 0.8 else "#dc2626" if vr20 and vr20 > 1.5 else "#64748b"
                 day_pct = s.get("day_pct") or 0
                 day_color = "#dc2626" if day_pct >= 0 else "#16a34a"
-                # 注意:Python < 3.12 不允許 f-string 表達式內含反斜線,先把帶引號的 fallback
-                # 字串拉到 f-string 外面,避免 SyntaxError(CI Python 3.11)
-                tag_chips_cell = tag_chips or '<span style="color:#94a3b8;">—</span>'
                 day_sign = "+" if day_pct >= 0 else ""
+                wow = s.get("tdcc_wow_pct")
+                wow_str = f"{wow:+.2f}%" if wow is not None else "—"
+                vr20 = s.get("vol_ratio_20d")
+                vr20_str = f"{vr20:.2f}x" if vr20 else "—"
+                # 數據明細(第三行小字):外連 / 投連 / 大戶ΔWoW / 量比20d
+                streak_bits = []
+                if fs:
+                    streak_bits.append(f"外資連{abs(fs)}{'買' if fs > 0 else '賣'}")
+                if is_:
+                    streak_bits.append(f"投信連{abs(is_)}{'買' if is_ > 0 else '賣'}")
+                metrics_line = (
+                    f"{' ・ '.join(streak_bits) if streak_bits else '法人無連續動向'}"
+                    f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}")
                 rows_html.append(
                     f"<tr>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>"
-                    f"<span style='background:{score_bg};color:{score_fg};padding:2px 8px;"
-                    f"border-radius:10px;font-size:13px;font-weight:700;'>{score}</span></td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;'>"
-                    f"{s['code']} <span style='color:#64748b;font-weight:500;'>{_htmllib.escape(s.get('name',''))}</span></td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
-                    f"font-variant-numeric:tabular-nums;'>{s.get('close','—')}</td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
-                    f"color:{day_color};font-variant-numeric:tabular-nums;'>"
-                    f"{day_sign}{day_pct:.2f}%</td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;"
-                    f"font-size:12px;color:#475569;'>{streak_str or '—'}</td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
-                    f"color:{wow_color};font-size:12px;'>{wow_str}</td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:right;"
-                    f"color:{vr20_color};font-size:12px;'>{vr20_str}</td>"
-                    f"<td style='padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;'>"
-                    f"{tag_chips_cell}</td>"
+                    f"<td style='padding:12px 8px 12px 0;border-bottom:1px solid #e2e8f0;"
+                    f"vertical-align:top;width:48px;text-align:center;'>"
+                    f"<span style='display:inline-block;background:{score_bg};color:{score_fg};"
+                    f"padding:5px 0;width:42px;border-radius:8px;font-size:16px;font-weight:700;'>{score}</span></td>"
+                    f"<td style='padding:12px 0;border-bottom:1px solid #e2e8f0;vertical-align:top;'>"
+                    # 第 1 行:代號 名稱 + 日%
+                    f"<div style='font-size:15px;font-weight:700;color:#0f172a;'>"
+                    f"{s['code']} {_htmllib.escape(s.get('name',''))}"
+                    f"<span style='color:{day_color};font-weight:700;font-size:13px;margin-left:8px;'>"
+                    f"昨收 {s.get('close','—')} ({day_sign}{day_pct:.2f}%)</span></div>"
+                    # 第 2 行:訊號標籤 chips
+                    f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
+                    # 第 3 行:數據明細小字
+                    f"<div style='margin-top:5px;font-size:11px;color:#94a3b8;'>{metrics_line}</div>"
+                    f"</td>"
                     f"</tr>"
                 )
             smart_money_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">籌碼悄悄站隊 Top {len(top10)}(分數 ≥ 40)</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
-          <tr style="background:#f1f5f9;">
-            <th style="padding:8px 10px;text-align:center;color:#475569;font-size:11px;">分數</th>
-            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:11px;">代號 名稱</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">昨收</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">日%</th>
-            <th style="padding:8px 10px;text-align:center;color:#475569;font-size:11px;">外/投連買</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">大戶ΔWoW</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:11px;">量比20d</th>
-            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:11px;">訊號標籤</th>
-          </tr>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">籌碼悄悄站隊 Top {len(top5)}（分數 ≥ 40）</h2>
+        <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}
         </table>
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
-          ※ <b>分數 = 法人連買 (40) + 大戶 WoW Δ%(30) + 量縮收紅 / 突破量(20) + 偷買區間 (10) + 融資減 (5)</b>。
+          ※ <b>分數 = 法人連買 (40) + 大戶 WoW Δ%(30) + 量縮收紅 / 突破量(20) + 偷買區間 (10) + 融資減 (5)</b>;
           <b>≥80 強訊號(紅)</b>、≥60 悄悄站隊(橘)、≥40 輕微正向(藍)。<br>
-          ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例的「本週 − 上週」變化(需累積 ≥ 1 週歷史才有值)。
-          量比 20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。
-          外/投連買為近 5 日法人連續同向天數(正 = 連買、負 = 連賣)。<br>
-          ※ 此分數**為輔助參考,不是買進訊號**;最終仍須結合新聞催化、營收基本面、結構健康度綜合判讀。
+          ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例「本週 − 上週」(需累積 ≥ 1 週歷史才有值);
+          量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
+          ※ 此分數**為輔助參考、不是買進訊號**;仍須結合新聞催化、營收基本面、結構健康度綜合判讀。
         </p>
         """
 
@@ -5458,8 +5462,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {tw0050_card_html}
 
-            {smart_money_html}
-
             {breadth_html}
 
             {midterm_html}
@@ -5468,11 +5470,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {taifex_html}
 
-            {sec_html}
-
             {mops_html}
 
             <div style="margin-top:32px;">{analysis_html}</div>
+
+            <!-- 籌碼悄悄站隊:排在 LLM「今日台股關注三檔」之後 -->
+            {smart_money_html}
+
+            <!-- 美股重點科技股 8-K:排在籌碼站隊之後、準確度回顧之前 -->
+            {sec_html}
 
             {backtest_html}
 

@@ -2570,9 +2570,11 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
             prev_5d = safe_float(hist_2330.iloc[-6]["Close"])
             if prev_5d and prev_5d > 0:
                 momentum_5d_pct = (last_2330 / prev_5d - 1) * 100
-                # dampening 0.15:5 日累積 5% → 隔日多 0.75%;5d -5% → -0.75%
-                model4 = last_2330 * (1 + (momentum_5d_pct / 100) * 0.15)
-                print(f"[calc] 2330 model4 momentum(5d {momentum_5d_pct:+.2f}%, dampened 0.15) = {model4:.2f}")
+                # dampening 0.25:5 日累積 5% → 隔日多 1.25%;5d -5% → -1.25%
+                # (0.15→0.25:讓 ensemble 在趨勢盤更跟得上,減少對 bias 校正的依賴;
+                #  MAE 反比加權仍會在 model4 失準時自動降權,風險可控)
+                model4 = last_2330 * (1 + (momentum_5d_pct / 100) * 0.25)
+                print(f"[calc] 2330 model4 momentum(5d {momentum_5d_pct:+.2f}%, dampened 0.25) = {model4:.2f}")
     except Exception as e:
         print(f"[calc] 2330 model4 失敗: {e}", file=sys.stderr)
 
@@ -2610,13 +2612,19 @@ def calc_0050_prediction(last_0050: Optional[float],
     if last_0050 is None:
         return {"error": "缺 0050 昨收"}
 
-    # 2330 預測漲跌幅
+    # 2330 預測漲跌幅(mid 已是校正後最終值)
     p2_mid = predictions_2330.get("mid") if isinstance(predictions_2330, dict) else None
     p2_last = predictions_2330.get("last_2330") if isinstance(predictions_2330, dict) else None
     pct_2330 = (((p2_mid / p2_last) - 1) * 100) if (p2_mid and p2_last) else None
 
-    # 加權指數預測漲跌幅
-    pct_taiex = (taiex_pred or {}).get("weighted_pct")
+    # 加權指數預測漲跌幅:優先用「校正後 pred_open」回推(吃到加權的 bias 修正);
+    # 否則退回原始 weighted_pct。修正前 bug:0050 只用 weighted_pct → 漏掉加權校正。
+    tp_open = (taiex_pred or {}).get("pred_open")
+    tp_last = (taiex_pred or {}).get("last_close")
+    if tp_open and tp_last:
+        pct_taiex = (tp_open / tp_last - 1) * 100
+    else:
+        pct_taiex = (taiex_pred or {}).get("weighted_pct")
 
     if pct_2330 is not None and pct_taiex is not None:
         pct_weighted = 0.5 * pct_2330 + 0.5 * pct_taiex
@@ -2639,6 +2647,65 @@ def calc_0050_prediction(last_0050: Optional[float],
         "pct_taiex": round(pct_taiex, 3) if pct_taiex is not None else None,
         "method": method,
     }
+
+
+def calibrate_0050_bias(tw0050_pred: dict, history: list[dict],
+                          min_samples: int = 5, recent_n: int = 20,
+                          max_bias: float = 0.03, ewm_span: int = 8) -> dict:
+    """
+    對 0050 開盤預測做獨立 bias 校正(原本 0050 完全沒校正,殘差最大 +1.77%)。
+
+    0050 雖用「校正後 2330 + 校正後加權」當輸入,但仍有自身結構性殘差
+    (折溢價、配息、0.5/0.5 權重近似誤差)。這裡用歷史 pred_0050 vs 實際 0050 開盤
+    的 EMA 加權偏誤,在最終 pred_open 上再修一層。
+
+    就地修改並回傳 tw0050_pred(帶 "calibration" 欄位)。失敗不影響晨報。
+    """
+    if not isinstance(tw0050_pred, dict) or tw0050_pred.get("error"):
+        return tw0050_pred
+    if not history or len(history) < 2:
+        tw0050_pred.setdefault("calibration", {"applied": False, "reason": "歷史樣本不足"})
+        return tw0050_pred
+    try:
+        opens = _fetch_open_map("0050.TW")
+    except Exception as e:
+        tw0050_pred.setdefault("calibration", {"applied": False, "reason": f"無法取得 0050 開盤:{e}"})
+        return tw0050_pred
+
+    sorted_hist = sorted(history, key=lambda h: h.get("date", ""))
+
+    def _actual_open_for(pred_date: str) -> Optional[float]:
+        for od in sorted(opens):
+            if od >= pred_date:
+                return opens[od]
+        return None
+
+    errs: list = []
+    for h in sorted_hist[:-1]:
+        a = _actual_open_for(h.get("date", ""))
+        p = h.get("pred_0050")
+        if p and a:
+            errs.append((a - p) / p)
+
+    bias, n = _ewm_bias(errs, recent_n, ewm_span)
+    if n < min_samples:
+        tw0050_pred["calibration"] = {"applied": False, "samples": n,
+                                       "reason": f"0050 誤差樣本僅 {n} 筆(需 ≥ {min_samples})"}
+        return tw0050_pred
+    raw = tw0050_pred.get("pred_open")
+    if raw is None:
+        tw0050_pred["calibration"] = {"applied": False, "samples": n, "reason": "0050 無原始預測"}
+        return tw0050_pred
+    b = max(-max_bias, min(bias, max_bias))
+    tw0050_pred["pred_open_raw"] = raw
+    tw0050_pred["pred_open"] = round(raw * (1 + b), 2)
+    last = tw0050_pred.get("last")
+    if last:
+        tw0050_pred["pred_pct"] = round((tw0050_pred["pred_open"] / last - 1) * 100, 3)
+    tw0050_pred["calibration"] = {"applied": True, "bias_pct": round(b * 100, 3),
+                                   "samples": n, "raw": raw}
+    print(f"[calib] 0050 bias 修正 {b*100:+.3f}%(EMA,{n} 樣本):{raw} → {tw0050_pred['pred_open']}")
+    return tw0050_pred
 
 
 def _norm_ret_index(s):
@@ -3461,10 +3528,45 @@ def build_prediction_backtest(history: list[dict]) -> str:
         return f"（回溯失敗: {e}）"
 
 
+def _fetch_open_map(symbol: str) -> dict:
+    """抓單一標的近 3 月「開盤價」對照表 {YYYY-MM-DD: open}。供自我校正比對用。"""
+    d = yf.Ticker(symbol).history(period="3mo", auto_adjust=False)
+    d = d.dropna(subset=["Open"])
+    out: dict[str, float] = {}
+    for idx, v in d["Open"].items():
+        key = (idx.tz_localize(None) if getattr(idx, "tz", None) else idx
+               ).strftime("%Y-%m-%d")
+        # round 掉 Yahoo float64 精度雜訊（曾出現 117.55000305175781 這種值）
+        out[key] = round(float(v), 2)
+    return out
+
+
+def _ewm_bias(errors: list, recent_n: int = 20, span: int = 8) -> tuple[float, int]:
+    """
+    指數加權平均偏誤(近期權重高),取代等權平均——關鍵修正:
+    在「加速上漲」的盤勢,等權近 20 日會被早期平靜日稀釋,導致校正落後、長期偏低。
+    EMA(span=8)讓最近約 1 週的偏誤主導,校正能更快跟上趨勢。
+
+    errors: (實際−預測)/預測 的序列(舊→新)。回傳 (加權偏誤, 樣本數)。
+    """
+    r = errors[-recent_n:]
+    n = len(r)
+    if n == 0:
+        return 0.0, 0
+    alpha = 2.0 / (span + 1)
+    num = 0.0
+    den = 0.0
+    for i, x in enumerate(r):                 # i=0 最舊, i=n-1 最新
+        w = (1.0 - alpha) ** (n - 1 - i)      # 最新權重=1,往前指數衰減
+        num += w * x
+        den += w
+    return (num / den if den else 0.0), n
+
+
 def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
                           history: list[dict],
                           min_samples: int = 5, recent_n: int = 20,
-                          max_bias: float = 0.02) -> tuple[dict, dict, dict]:
+                          max_bias: float = 0.03, ewm_span: int = 8) -> tuple[dict, dict, dict]:
     """
     用歷史記憶對三個「數值預測」做自我校正（純 Python，不靠 LLM）：
 
@@ -3497,19 +3599,9 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         return fair, predictions, taiex_pred
 
     try:
-        def _opens(symbol: str) -> dict:
-            d = yf.Ticker(symbol).history(period="3mo", auto_adjust=False)
-            d = d.dropna(subset=["Open"])
-            out: dict[str, float] = {}
-            for idx, v in d["Open"].items():
-                key = (idx.tz_localize(None) if getattr(idx, "tz", None) else idx
-                       ).strftime("%Y-%m-%d")
-                # round 掉 Yahoo float64 精度雜訊（曾出現 117.55000305175781 這種值）
-                out[key] = round(float(v), 2)
-            return out
-        twii_o = _opens("^TWII")
-        t2330_o = _opens("2330.TW")
-        t00662_o = _opens("00662.TW")
+        twii_o = _fetch_open_map("^TWII")
+        t2330_o = _fetch_open_map("2330.TW")
+        t00662_o = _fetch_open_map("00662.TW")
     except Exception as e:
         print(f"[calib] 抓實際開盤失敗，跳過校正: {e}", file=sys.stderr)
         _mark_unapplied(f"無法取得實際開盤：{e}")
@@ -3547,16 +3639,13 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         if ptwii and atwii:
             err["taiex"].append((atwii - ptwii) / ptwii)
 
-    def _mean(lst: list) -> tuple[float, int]:
-        r = lst[-recent_n:]
-        return (sum(r) / len(r), len(r)) if r else (0.0, 0)
-
     def _mae(lst: list) -> tuple[Optional[float], int]:
         r = lst[-recent_n:]
         return (sum(abs(x) for x in r) / len(r), len(r)) if r else (None, 0)
 
     def _apply_bias(obj: dict, value_key: str, err_key: str, label: str) -> dict:
-        bias, n = _mean(err[err_key])
+        # EMA 加權偏誤(近期主導),取代等權平均 → 趨勢盤校正不落後
+        bias, n = _ewm_bias(err[err_key], recent_n, ewm_span)
         if n < min_samples:
             return {"applied": False, "samples": n,
                     "reason": f"{label} 誤差樣本僅 {n} 筆（需 ≥ {min_samples}）"}
@@ -6184,11 +6273,13 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 預測校正失敗（沿用未校正值）: {e}", file=sys.stderr)
 
-    # 5.106 0050 ETF 開盤預測（0.5 × 2330 + 0.5 × 加權指數）
+    # 5.106 0050 ETF 開盤預測（0.5 × 校正後2330 + 0.5 × 校正後加權），再做 0050 獨立 bias 校正
     print("[main] 計算 0050 開盤預測…")
     last_0050 = fetch_twse_close("0050")
     try:
         tw0050_pred = calc_0050_prediction(last_0050, predictions, taiex_pred)
+        # 0050 自身殘差校正(原本完全沒校正,殘差最大 +1.77%)
+        tw0050_pred = calibrate_0050_bias(tw0050_pred, history)
     except Exception as e:
         print(f"[main] 0050 預測失敗: {e}", file=sys.stderr)
         tw0050_pred = {"error": str(e)[:80]}

@@ -122,6 +122,49 @@ def test_calibration_matches_same_day_not_next_day(fake_yf):
     assert abs(f["calibration"]["bias_pct"]) < 2.0
 
 
+def test_ewm_bias_recent_dominates():
+    """EMA 加權:舊平靜 + 近 5 日 +2% → 偏誤應明顯高於等權平均(近期主導)。"""
+    errs = [0.0] * 10 + [0.02] * 5
+    bias, n = mr._ewm_bias(errs, recent_n=20, span=8)
+    simple = sum(errs) / len(errs)        # = 0.00667
+    assert n == 15
+    assert bias > simple                  # EMA 近期主導 → 高於等權
+    assert bias > 0.012                   # 明顯靠近近期 +2%
+
+
+def test_ewm_bias_empty():
+    assert mr._ewm_bias([]) == (0.0, 0)
+
+
+def test_ewm_bias_constant_equals_value():
+    bias, n = mr._ewm_bias([0.01] * 8, recent_n=20, span=8)
+    assert round(bias, 6) == 0.01 and n == 8
+
+
+def test_calibrate_0050_error_passthrough():
+    out = mr.calibrate_0050_bias({"error": "x"}, history=[{"date": "2026-05-01"}])
+    assert out == {"error": "x"}
+
+
+def test_calibrate_0050_insufficient_history():
+    out = mr.calibrate_0050_bias({"pred_open": 100.0, "last": 99.0}, history=[])
+    assert out["calibration"]["applied"] is False
+
+
+def test_calibrate_0050_applies_positive_bias(fake_yf):
+    """歷史 0050 一律低估 +1% → 今日 0050 預測應被上修。"""
+    dates = _hist_dates(10)
+    all_dates = pd.date_range("2026-04-01", periods=20, freq="B")
+    fake_yf({"0050.TW": _open_df(all_dates, 101.0)})   # 實際開盤 101
+    history = [{"date": d, "pred_0050": 100.0} for d in dates]   # 預測 100 → +1%
+    out = mr.calibrate_0050_bias({"pred_open": 105.0, "last": 104.0}, history)
+    assert out["calibration"]["applied"] is True
+    assert out["calibration"]["bias_pct"] > 0
+    assert out["pred_open"] > 105.0 and out["pred_open_raw"] == 105.0
+    # pred_pct 應重算與校正後 pred_open 一致
+    assert out["pred_pct"] == round((out["pred_open"] / 104.0 - 1) * 100, 3)
+
+
 def test_calibration_skips_error_dicts(fake_yf):
     dates = _hist_dates(8)
     all_dates = pd.date_range("2026-04-01", periods=15, freq="B")

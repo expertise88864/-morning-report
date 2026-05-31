@@ -104,6 +104,16 @@ PORTFOLIO_2 = _parse_portfolio(os.environ.get("PORTFOLIO_2", ""))
 PORTFOLIO_1_NAME = os.environ.get("PORTFOLIO_1_NAME", "持倉1").strip() or "持倉1"
 PORTFOLIO_2_NAME = os.environ.get("PORTFOLIO_2_NAME", "持倉2").strip() or "持倉2"
 
+# 槓桿 ETF:今日預估漲幅 = 倍數 × 基準標的預估 %(基準 key 對應 special_preds)。
+# 比「beta × 加權」更準,因為基準(0050)的預測已吃進 2330 ADR 訊號。
+#   00631L 元大台灣50正2 → 2× 0050(同追台灣50指數,單日 2 倍)
+#   00675L 富邦台灣加權正2 / 00663L 國泰臺灣加權正2 → 2× 加權(taiex)
+LEVERAGED_ETF: dict[str, tuple] = {
+    "00631L": ("0050", 2.0),
+    "00675L": ("taiex", 2.0),
+    "00663L": ("taiex", 2.0),
+}
+
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -2748,6 +2758,36 @@ def calc_portfolio_forecast(portfolio: dict,
         "n_holdings": len(portfolio),
         "n_priced": n_priced,
     }
+
+
+def build_special_preds(predictions: dict, tw0050_pred: dict, fair: dict,
+                          taiex_pct: Optional[float] = None) -> dict:
+    """
+    組出有「專屬模型」的標的今日預估漲幅 %(供持股漲幅用),純函式易測。
+
+    涵蓋:
+      2330  → 2330 四模型中位數 vs 昨收
+      0050  → calc_0050_prediction 的 pred_pct
+      00662 → calc_00662_fair_value 的 implied_change_pct
+      槓桿 ETF(LEVERAGED_ETF)→ 倍數 × 基準(0050 或 加權)預估 %
+    回傳 {code: pct}(只含算得出來的)。
+    """
+    sp: dict = {}
+    p2_mid = predictions.get("mid") if isinstance(predictions, dict) else None
+    p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
+    if p2_mid and p2_last:
+        sp["2330"] = round((p2_mid / p2_last - 1) * 100, 4)
+    if isinstance(tw0050_pred, dict) and tw0050_pred.get("pred_pct") is not None:
+        sp["0050"] = tw0050_pred["pred_pct"]
+    if isinstance(fair, dict) and fair.get("implied_change_pct") is not None:
+        sp["00662"] = fair["implied_change_pct"]
+    # 槓桿 ETF = 倍數 × 基準(0050 同追台灣50;taiex 基準用加權預測 %)
+    base_vals = {"0050": sp.get("0050"), "taiex": taiex_pct}
+    for lev_code, (base_key, mult) in LEVERAGED_ETF.items():
+        base = base_vals.get(base_key)
+        if base is not None:
+            sp[lev_code] = round(mult * base, 4)
+    return sp
 
 
 def calc_momentum_metrics(close_series) -> dict:
@@ -6231,31 +6271,30 @@ def main() -> int:
     if PORTFOLIO_1 or PORTFOLIO_2:
         print("[main] 計算個人持股今日預估漲幅…")
         try:
-            # 專屬模型預測 %(2330/0050/00662)
-            p2_mid = predictions.get("mid") if isinstance(predictions, dict) else None
-            p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
-            special_preds = {}
-            if p2_mid and p2_last:
-                special_preds["2330"] = (p2_mid / p2_last - 1) * 100
-            if isinstance(tw0050_pred, dict) and tw0050_pred.get("pred_pct") is not None:
-                special_preds["0050"] = tw0050_pred["pred_pct"]
-            if isinstance(fair, dict) and fair.get("implied_change_pct") is not None:
-                special_preds["00662"] = fair["implied_change_pct"]
-            # 加權預測 %(其他個股 beta 基準);用校正後 pred_open 回推,與 KPI 加權一致
+            # 加權預測 %(其他個股 beta 基準 + 槓桿ETF taiex 基準);用校正後 pred_open 回推
             tp_open = (taiex_pred or {}).get("pred_open")
             tp_last = (taiex_pred or {}).get("last_close")
             taiex_pct = ((tp_open / tp_last - 1) * 100) if (tp_open and tp_last) else None
+            # 專屬模型預測 %(2330/0050/00662 + 槓桿 ETF 如 00631L=2×0050)
+            special_preds = build_special_preds(predictions, tw0050_pred, fair, taiex_pct)
             # 抓持股昨收 + beta;加權歷史供 beta 回歸(可能未定義 → 防護)
             _taiex_hist = locals().get("taiex_hist")
             all_codes = {**PORTFOLIO_1, **PORTFOLIO_2}
             close_map, beta_map = fetch_portfolio_market_data(all_codes, _taiex_hist)
-            # 大三標的的昨收用權威值覆寫(Yahoo 對 ETF 常落後)
+            # 大三標的昨收用權威值覆寫(Yahoo 對 ETF 常落後)
+            p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
             if p2_last:
                 close_map["2330"] = p2_last
             if isinstance(tw0050_pred, dict) and tw0050_pred.get("last"):
                 close_map["0050"] = tw0050_pred["last"]
             if isinstance(fair, dict) and fair.get("last_00662_price"):
                 close_map["00662"] = fair["last_00662_price"]
+            # 槓桿 ETF(00631L 等)昨收用 TWSE 官方覆寫(Yahoo 對槓桿 ETF 也落後)
+            for lev_code in LEVERAGED_ETF:
+                if lev_code in all_codes:
+                    tc = fetch_twse_close(lev_code)
+                    if tc:
+                        close_map[lev_code] = tc
             quotes["PORTFOLIO_FORECAST"] = {
                 "p1": calc_portfolio_forecast(PORTFOLIO_1, taiex_pct, special_preds, close_map, beta_map),
                 "p2": calc_portfolio_forecast(PORTFOLIO_2, taiex_pct, special_preds, close_map, beta_map),

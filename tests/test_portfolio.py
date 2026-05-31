@@ -77,6 +77,37 @@ def test_forecast_skips_unpriced_holding():
     assert out["pred_amount"] == 10000   # 只有 2330: 1000股×1000×1%
 
 
+# ---------- build_special_preds（含 00631L 槓桿 ETF）----------
+
+def test_build_special_preds_big_three():
+    preds = {"mid": 2346.0, "last_2330": 2300.0}
+    tw0050 = {"pred_pct": 0.98}
+    fair = {"implied_change_pct": 0.04}
+    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=0.5)
+    assert round(sp["2330"], 2) == 2.0       # 2346/2300-1 = +2.0%
+    assert sp["0050"] == 0.98
+    assert sp["00662"] == 0.04
+
+
+def test_build_special_preds_00631L_is_2x_0050():
+    """00631L 元大台灣50正2 = 2 × 0050 預估漲幅。"""
+    preds = {"mid": 2300.0, "last_2330": 2300.0}   # 2330 +0%
+    tw0050 = {"pred_pct": 1.5}                       # 0050 +1.5%
+    fair = {"implied_change_pct": 0.0}
+    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=1.0)
+    assert sp["00631L"] == 3.0                       # 2 × 1.5%
+    # taiex 基準的槓桿 ETF = 2 × 加權
+    assert sp["00675L"] == 2.0                       # 2 × 1.0%
+
+
+def test_build_special_preds_00631L_skipped_when_no_0050():
+    """0050 預測缺失 → 00631L 不給專屬值(改走 beta 路徑)。"""
+    sp = mr.build_special_preds({"error": "x"}, {"error": "x"},
+                                 {"error": "x"}, taiex_pct=None)
+    assert "00631L" not in sp
+    assert "0050" not in sp
+
+
 def test_forecast_output_has_no_stock_codes():
     """隱私關鍵:回傳彙總 dict 不可含任何個股代號 / 張數。"""
     out = mr.calc_portfolio_forecast(

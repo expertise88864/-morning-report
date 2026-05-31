@@ -89,23 +89,45 @@ def test_build_special_preds_big_three():
     assert sp["00662"] == 0.04
 
 
-def test_build_special_preds_00631L_is_2x_0050():
-    """00631L 元大台灣50正2 = 2 × 0050 預估漲幅。"""
-    preds = {"mid": 2300.0, "last_2330": 2300.0}   # 2330 +0%
-    tw0050 = {"pred_pct": 1.5}                       # 0050 +1.5%
+def test_build_special_preds_00631L_basket_model():
+    """00631L = 0.3963 × 2330% + 1.6087 × 加權%(申購買回清單實際基籃)。"""
+    preds = {"mid": 2346.0, "last_2330": 2300.0}   # 2330 = +2.0%
+    tw0050 = {"pred_pct": 1.0}
     fair = {"implied_change_pct": 0.0}
-    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=1.0)
-    assert sp["00631L"] == 3.0                       # 2 × 1.5%
-    # taiex 基準的槓桿 ETF = 2 × 加權
+    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=1.0)   # 加權 +1.0%
+    # 0.3963×2.0 + 1.6087×1.0 = 0.7926 + 1.6087 = 2.4013
+    assert sp["00631L"] == 2.4013
+    # 純 2× 加權的槓桿 ETF
     assert sp["00675L"] == 2.0                       # 2 × 1.0%
 
 
-def test_build_special_preds_00631L_skipped_when_no_0050():
-    """0050 預測缺失 → 00631L 不給專屬值(改走 beta 路徑)。"""
+def test_build_special_preds_00631L_normal_day_approx_2x():
+    """台積與大盤同向時,00631L ≈ 2×(0.3963+1.6087 = 2.005)。"""
+    preds = {"mid": 2323.0, "last_2330": 2300.0}   # 2330 = +1.0%
+    sp = mr.build_special_preds(preds, {"pred_pct": 1.0},
+                                 {"implied_change_pct": 1.0}, taiex_pct=1.0)
+    # 0.3963×1 + 1.6087×1 = 2.005
+    assert sp["00631L"] == 2.005
+
+
+def test_build_special_preds_00631L_diverges_from_2x0050_when_tsmc_decouples():
+    """台積大漲、大盤平盤時,基籃模型 << 2×0050(這正是修正重點)。"""
+    preds = {"mid": 2346.0, "last_2330": 2300.0}   # 2330 +2.0%
+    tw0050 = {"pred_pct": 1.015}                     # 0050 ≈ +1.015% → 2×0050 = 2.03%
+    sp = mr.build_special_preds(preds, tw0050, {"implied_change_pct": 0.04},
+                                 taiex_pct=0.03)     # 大盤幾乎平盤
+    # 基籃 = 0.3963×2.0 + 1.6087×0.03 = 0.7926 + 0.0483 = 0.8409
+    assert sp["00631L"] == 0.8409
+    # 與 2×0050(≈2.03)差距 > 1%,證明修正有意義
+    assert abs(sp["00631L"] - 2 * tw0050["pred_pct"]) > 1.0
+
+
+def test_build_special_preds_00631L_skipped_when_no_2330():
+    """2330 或加權預測缺失 → 00631L 不給專屬值(改走 beta 路徑)。"""
     sp = mr.build_special_preds({"error": "x"}, {"error": "x"},
                                  {"error": "x"}, taiex_pct=None)
     assert "00631L" not in sp
-    assert "0050" not in sp
+    assert "2330" not in sp
 
 
 def test_forecast_output_has_no_stock_codes():
@@ -116,6 +138,29 @@ def test_forecast_output_has_no_stock_codes():
                                 "n_holdings", "n_priced"}
     # 代號字串不應出現在任何值裡
     assert "2454" not in str(out)
+
+
+# ---------- detect_ex_dividend_today ----------
+
+def test_detect_ex_dividend_today_hits(fake_yf):
+    import datetime as dt
+    import pandas as pd
+    FT = fake_yf({})    # patch yf.Ticker → FakeTicker
+    today = dt.date(2026, 6, 12)
+    FT.div_map = {
+        "2330.TW": pd.Series([4.0], index=[pd.Timestamp("2026-06-12")]),  # 今日除息
+        "0050.TW": pd.Series([1.5], index=[pd.Timestamp("2026-03-20")]),  # 非今日
+    }
+    out = mr.detect_ex_dividend_today(["2330", "0050", "00662"], today)
+    assert out == {"2330": 4.0}
+
+
+def test_detect_ex_dividend_today_none(fake_yf):
+    import datetime as dt
+    FT = fake_yf({})
+    FT.div_map = {}    # 無配息資料
+    out = mr.detect_ex_dividend_today(["2330", "0050"], dt.date(2026, 6, 12))
+    assert out == {}
 
 
 # ---------- render 隱私 + KPI 持倉列 ----------

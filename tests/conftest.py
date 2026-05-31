@@ -35,14 +35,19 @@ class FakeTicker:
     def __init__(self, symbol):
         self.symbol = symbol
 
-    # data_map 由 fixture 注入到 class attribute
+    # data_map / div_map 由 fixture 注入到 class attribute
     data_map: dict = {}
+    div_map: dict = {}   # {symbol: pd.Series 配息(index 為除息日 Timestamp)}
 
     def history(self, **kwargs):
         df = FakeTicker.data_map.get(self.symbol)
         if df is None:
             return pd.DataFrame({"Close": []})
         return df.copy()
+
+    @property
+    def dividends(self):
+        return FakeTicker.div_map.get(self.symbol, pd.Series([], dtype=float))
 
 
 @pytest.fixture
@@ -70,3 +75,4 @@ def fake_yf(monkeypatch):
 
     yield set_data
     FakeTicker.data_map = {}
+    FakeTicker.div_map = {}

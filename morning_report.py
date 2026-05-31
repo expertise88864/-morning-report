@@ -58,6 +58,52 @@ RECIPIENT = ", ".join(RECIPIENTS)
 CONTACT_EMAIL = (os.environ.get("CONTACT_EMAIL") or GMAIL_USER
                  or "morning-report-bot@users.noreply.github.com")
 
+
+def _parse_portfolio(raw: str) -> dict[str, float]:
+    """
+    解析「我的持股」設定字串。隱私:這些是個人持股,只進記憶體與漲幅彙總,
+    **絕不**寫進 HTML / LLM prompt / state 檔(信件公開寄出,僅顯示彙總 % 與金額)。
+
+    支援兩種格式:
+      JSON:  {"2330": 5, "2454": 2}            # 代號 → 張數
+      簡易:  2330:5,2454:2  或  2330:5;2454:2   # 同上,逗號/分號分隔
+    張數可為小數(零股以張為單位,如 0.5 = 500 股)。解析失敗回 {}。
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return {}
+    out: dict[str, float] = {}
+    try:
+        if raw.startswith("{"):
+            data = json.loads(raw)
+            for k, v in (data or {}).items():
+                code = str(k).strip()
+                lots = float(v)
+                if code and lots > 0:
+                    out[code] = lots
+        else:
+            for pair in raw.replace(";", ",").split(","):
+                if ":" not in pair:
+                    continue
+                code, lots_str = pair.split(":", 1)
+                code = code.strip()
+                lots = float(lots_str.strip())
+                if code and lots > 0:
+                    out[code] = lots
+    except (ValueError, TypeError, json.JSONDecodeError) as e:
+        print(f"[portfolio] 設定解析失敗(將略過持股預測): {e}", file=sys.stderr)
+        return {}
+    return out
+
+
+# 兩個倉位的持股設定(GitHub Secrets / 環境變數)。未設 → 不顯示持股欄位。
+# 注意:個股代號與張數僅存記憶體,信件只顯示彙總漲幅 % 與金額,不揭露明細。
+PORTFOLIO_1 = _parse_portfolio(os.environ.get("PORTFOLIO_1", ""))
+PORTFOLIO_2 = _parse_portfolio(os.environ.get("PORTFOLIO_2", ""))
+# 倉位顯示名稱(可自訂,如「主帳戶」「定存股」);預設「持倉1/持倉2」。
+PORTFOLIO_1_NAME = os.environ.get("PORTFOLIO_1_NAME", "持倉1").strip() or "持倉1"
+PORTFOLIO_2_NAME = os.environ.get("PORTFOLIO_2_NAME", "持倉2").strip() or "持倉2"
+
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -2578,6 +2624,132 @@ def calc_0050_prediction(last_0050: Optional[float],
     }
 
 
+def _norm_ret_index(s):
+    """把日報酬 series 的 index 正規化成 tz-naive 的日期,方便兩檔對齊算 beta。"""
+    s = s.copy()
+    try:
+        s.index = s.index.tz_localize(None)
+    except (TypeError, AttributeError):
+        pass
+    try:
+        s.index = s.index.normalize()
+    except AttributeError:
+        pass
+    return s
+
+
+def fetch_portfolio_market_data(portfolio: dict,
+                                  taiex_hist=None) -> tuple[dict, dict]:
+    """
+    抓持股的昨收價 + 對加權指數 beta(近 ~60 日 daily-return 回歸,clamp [0.3, 2.0])。
+
+    回傳 (close_map, beta_map):
+      close_map: {code: 昨收價}
+      beta_map:  {code: beta}(資料不足者不列入,呼叫端視為 1.0)
+    隱私:不印出個股代號到任何使用者可見處,只在 stderr debug。失敗個股略過。
+    """
+    if not portfolio:
+        return {}, {}
+    close_map: dict = {}
+    beta_map: dict = {}
+    codes = list(portfolio.keys())
+    try:
+        tickers = " ".join(f"{c}.TW" for c in codes)
+        df = yf.download(tickers, period="3mo", group_by="ticker",
+                         auto_adjust=False, progress=False, threads=True)
+    except Exception as e:
+        print(f"[portfolio] 行情下載失敗: {e}", file=sys.stderr)
+        return {}, {}
+    if df is None or len(df) == 0:
+        return {}, {}
+
+    twii_ret = None
+    if taiex_hist is not None and hasattr(taiex_hist, "empty") and not taiex_hist.empty:
+        twii_ret = _norm_ret_index(taiex_hist["Close"].pct_change().dropna())
+
+    for code in codes:
+        try:
+            if len(codes) > 1:
+                sub = df[f"{code}.TW"].dropna(subset=["Close"])
+            else:
+                sub = df.dropna(subset=["Close"])
+            sub = sub[sub["Close"] > 0]
+            if sub.empty:
+                continue
+            close_map[code] = round(float(sub["Close"].iloc[-1]), 2)
+            if twii_ret is not None and len(sub) >= 30:
+                stock_ret = _norm_ret_index(sub["Close"].pct_change().dropna())
+                joined = pd.concat([stock_ret, twii_ret], axis=1, join="inner").dropna()
+                if len(joined) >= 20:
+                    sr = joined.iloc[:, 0]
+                    mr = joined.iloc[:, 1]
+                    var = float(mr.var())
+                    if var and var > 0:
+                        beta = float(sr.cov(mr) / var)
+                        beta_map[code] = max(0.3, min(2.0, beta))
+        except (KeyError, ValueError, TypeError) as e:
+            print(f"[portfolio] {code} 行情處理略過: {e}", file=sys.stderr)
+            continue
+    print(f"[portfolio] 取得 {len(close_map)}/{len(codes)} 檔昨收、{len(beta_map)} 檔 beta")
+    return close_map, beta_map
+
+
+def calc_portfolio_forecast(portfolio: dict,
+                              taiex_pct: Optional[float],
+                              special_preds: dict,
+                              close_map: dict,
+                              beta_map: Optional[dict] = None) -> dict:
+    """
+    估算單一倉位「今日預估開盤漲幅 %」與「預估損益金額」。
+
+    portfolio:     {code: lots(張)}
+    taiex_pct:     加權指數預測漲跌幅 %(非 2330/0050/00662 個股 beta 的基準)
+    special_preds: {code: pct} 已有專屬模型者(2330/0050/00662)直接用該 %
+    close_map:     {code: 昨收價}
+    beta_map:      {code: beta vs 加權};缺漏者視為 1.0
+
+    每檔預估漲跌幅:
+      - 在 special_preds 中(2330/0050/00662)→ 用專屬模型 %
+      - 其他 → beta × 加權預測 %
+    倉位漲幅 = Σ(市值 × 漲跌幅) / Σ市值;金額 = Σ(市值 × 漲跌幅)。
+
+    回傳 {pred_pct, pred_amount, last_value, n_holdings, n_priced} 或 {}（空倉/無報價）。
+    隱私:回傳只有彙總值,**無任何個股代號或張數**。
+    """
+    if not portfolio:
+        return {}
+    beta_map = beta_map or {}
+    total_value = 0.0
+    total_gain = 0.0
+    n_priced = 0
+    for code, lots in portfolio.items():
+        close = close_map.get(code)
+        if not close or close <= 0:
+            continue
+        shares = lots * 1000
+        if code in special_preds and special_preds.get(code) is not None:
+            pct = special_preds[code]
+        elif taiex_pct is not None:
+            beta = beta_map.get(code)
+            beta = 1.0 if beta is None else beta
+            pct = beta * taiex_pct
+        else:
+            pct = 0.0
+        value = shares * close
+        total_value += value
+        total_gain += value * pct / 100.0
+        n_priced += 1
+    if total_value <= 0:
+        return {}
+    return {
+        "pred_pct": round(total_gain / total_value * 100, 2),
+        "pred_amount": round(total_gain, 0),
+        "last_value": round(total_value, 0),
+        "n_holdings": len(portfolio),
+        "n_priced": n_priced,
+    }
+
+
 def calc_momentum_metrics(close_series) -> dict:
     """
     從 close 序列計算動能 / 波動度 / 移動平均指標。
@@ -4573,7 +4745,9 @@ def _extract_summary(text: str) -> str:
 def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict) -> str:
     """頂部 KPI 一覽條（dark bg，緊接 HERO 下方）。
     內容：立場 / 2330 / 00662 / 0050 / 加權，2 秒掃完今天重點。
+    若有設定個人持股,第二行顯示 持倉1/持倉2 今日預估漲幅 + 金額(僅彙總,不揭露明細)。
     (VIX 移到「總經指標」表內，騰出 KPI 位置給 0050。)"""
+    import html as _htmllib_kpi   # 持倉名稱可能是 user 自訂字串,需 escape
     # === 立場 ===
     score = stance.get("score")
     label = stance.get("label") or "—"
@@ -4658,6 +4832,53 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                    f'<div style="{val};color:{stance_color};">{label}{score_str}</div>'
                    f'</td>')
 
+    # === 個人持股列(第二行,僅在有設定時顯示;只秀彙總漲幅 + 金額,不揭露持股明細)===
+    pf = quotes.get("PORTFOLIO_FORECAST", {}) or {}
+
+    def _fmt_amount(amt):
+        if amt is None:
+            return ""
+        sign = "+" if amt >= 0 else "−"
+        a = abs(amt)
+        if a >= 10000:
+            return f"{sign}NT${a/10000:.1f}萬"
+        return f"{sign}NT${a:,.0f}"
+
+    def _portfolio_tile(name, data, is_last):
+        c = cell_last if is_last else cell
+        if not data or data.get("pred_pct") is None:
+            return (f'<td style="{c}">'
+                    f'<div style="{lbl}">{_htmllib_kpi.escape(name)}</div>'
+                    f'<div style="{val};color:rgba(255,255,255,0.55);">—</div>'
+                    f'<div style="{delta};color:rgba(255,255,255,0.45);">未設定</div>'
+                    f'</td>')
+        p = data["pred_pct"]
+        amt = data.get("pred_amount")
+        return (f'<td style="{c}">'
+                f'<div style="{lbl}">{_htmllib_kpi.escape(name)} 今日預估</div>'
+                f'<div style="{val};color:{color_pct(p)};">{fmt_pct(p)}</div>'
+                f'<div style="{delta};color:{color_pct(amt)};">{_fmt_amount(amt)}</div>'
+                f'</td>')
+
+    portfolio_row = ""
+    p1 = pf.get("p1") or {}
+    p2 = pf.get("p2") or {}
+    if p1 or p2:
+        p1_name = pf.get("p1_name", "持倉1")
+        p2_name = pf.get("p2_name", "持倉2")
+        # 兩格各佔一半;若只設一個,另一格顯示「未設定」佔位以維持版面
+        portfolio_row = f"""
+          <tr>
+            <td style="background:#0a3f5e;padding:0;border-top:1px solid rgba(255,255,255,0.12);">
+              <table role="presentation" style="width:100%;border-collapse:collapse;">
+                <tr>
+                  {_portfolio_tile(p1_name, p1, is_last=False)}
+                  {_portfolio_tile(p2_name, p2, is_last=True)}
+                </tr>
+              </table>
+            </td>
+          </tr>"""
+
     return f"""
           <tr>
             <td style="background:#0c4a6e;padding:0;">
@@ -4671,7 +4892,7 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                 </tr>
               </table>
             </td>
-          </tr>"""
+          </tr>{portfolio_row}"""
 
 
 def _render_summary_bar(summary: str, htmllib) -> str:
@@ -4750,19 +4971,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;'>{rank_cell}</td>"
                 f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;'>{hint}</td>"
                 f"</tr>")
+    # 信件只顯示「一般投資人看得懂」的指標;艱澀的 VIX9D / NQ・ES 期貨 / 10Y・13W 殖利率
+    # 已從 email 移除,但仍在 MACRO dict + LLM prompt 內(後台保留餵立場評分與模型,品質不降)。
     macro_rows = (
         fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
-        fmt_macro_row("VIX9D 短期恐慌", "VIX9D", ">VIX 為 backwardation 偏空") +
-        fmt_macro_row("SOX 費半指數", "SOX", "與2330 β≈1.1") +
-        fmt_macro_row("10Y 殖利率", "10Y", "升→成長股壓力") +
-        fmt_macro_row("DXY 美元指數", "DXY", "升→新興市場資金流出") +
-        fmt_macro_row("13W 國庫券", "13W", "反映Fed利率預期") +
-        fmt_macro_row("日經 225", "N225", "亞股開盤情緒同步參考") +
+        fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
+        fmt_macro_row("DXY 美元指數", "DXY", "升→外資易匯出、台股偏壓") +
+        fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
         fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
-        fmt_macro_row("NQ 期貨", "NQ", "美股盤後 → TW 開盤連結") +
-        fmt_macro_row("ES 期貨", "ES", "S&P 廣度確認") +
         fmt_macro_row("WTI 原油", "WTI", "通膨/地緣風險定價") +
-        fmt_macro_row("黃金 GC", "GOLD", "避險資產偏好")
+        fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫")
     )
     # === TAIFEX 外資台指期未平倉區塊 ===
     taifex = quotes.get("TAIFEX_OI", {}) or {}
@@ -6008,6 +6226,45 @@ def main() -> int:
     # 把 universe snapshot 也塞進 quotes,讓 render_html 可以畫「籌碼悄悄站隊 Top 10」
     quotes["TW_UNIVERSE_SNAPSHOT"] = tw0050
     quotes["BREADTH"] = breadth
+
+    # 6.65 個人持股今日預估漲幅(隱私:只算彙總 % + 金額,不揭露明細)
+    if PORTFOLIO_1 or PORTFOLIO_2:
+        print("[main] 計算個人持股今日預估漲幅…")
+        try:
+            # 專屬模型預測 %(2330/0050/00662)
+            p2_mid = predictions.get("mid") if isinstance(predictions, dict) else None
+            p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
+            special_preds = {}
+            if p2_mid and p2_last:
+                special_preds["2330"] = (p2_mid / p2_last - 1) * 100
+            if isinstance(tw0050_pred, dict) and tw0050_pred.get("pred_pct") is not None:
+                special_preds["0050"] = tw0050_pred["pred_pct"]
+            if isinstance(fair, dict) and fair.get("implied_change_pct") is not None:
+                special_preds["00662"] = fair["implied_change_pct"]
+            # 加權預測 %(其他個股 beta 基準);用校正後 pred_open 回推,與 KPI 加權一致
+            tp_open = (taiex_pred or {}).get("pred_open")
+            tp_last = (taiex_pred or {}).get("last_close")
+            taiex_pct = ((tp_open / tp_last - 1) * 100) if (tp_open and tp_last) else None
+            # 抓持股昨收 + beta;加權歷史供 beta 回歸(可能未定義 → 防護)
+            _taiex_hist = locals().get("taiex_hist")
+            all_codes = {**PORTFOLIO_1, **PORTFOLIO_2}
+            close_map, beta_map = fetch_portfolio_market_data(all_codes, _taiex_hist)
+            # 大三標的的昨收用權威值覆寫(Yahoo 對 ETF 常落後)
+            if p2_last:
+                close_map["2330"] = p2_last
+            if isinstance(tw0050_pred, dict) and tw0050_pred.get("last"):
+                close_map["0050"] = tw0050_pred["last"]
+            if isinstance(fair, dict) and fair.get("last_00662_price"):
+                close_map["00662"] = fair["last_00662_price"]
+            quotes["PORTFOLIO_FORECAST"] = {
+                "p1": calc_portfolio_forecast(PORTFOLIO_1, taiex_pct, special_preds, close_map, beta_map),
+                "p2": calc_portfolio_forecast(PORTFOLIO_2, taiex_pct, special_preds, close_map, beta_map),
+                "p1_name": PORTFOLIO_1_NAME,
+                "p2_name": PORTFOLIO_2_NAME,
+            }
+        except Exception as e:
+            print(f"[main] 持股預測失敗(不影響晨報): {e}", file=sys.stderr)
+            quotes["PORTFOLIO_FORECAST"] = {}
     quotes["BACKTEST"] = backtest_block
     quotes["ALERTS"] = alerts
 

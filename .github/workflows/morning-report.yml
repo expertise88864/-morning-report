@@ -72,5 +72,14 @@ jobs:
           # SEC EDGAR User-Agent 聯絡信箱（選填，不設則自動用 GMAIL_USER）
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
 
+          # ===== 個人持股今日預估漲幅（選填，隱私：信件只顯示彙總 % + 金額，不揭露明細）=====
+          # 格式：JSON {"2330": 5, "2454": 2} 或 簡易 2330:5,2454:2（代號:張數，張可小數）
+          # 放 Secrets（不是 Variables），避免持股明細出現在 Actions log。
+          PORTFOLIO_1: ${{ secrets.PORTFOLIO_1 }}
+          PORTFOLIO_2: ${{ secrets.PORTFOLIO_2 }}
+          # 倉位顯示名稱（選填，可放 Variables；預設 持倉1 / 持倉2）
+          PORTFOLIO_1_NAME: ${{ vars.PORTFOLIO_1_NAME }}
+          PORTFOLIO_2_NAME: ${{ vars.PORTFOLIO_2_NAME }}
+
           TZ: Asia/Taipei
         run: python morning_report.py

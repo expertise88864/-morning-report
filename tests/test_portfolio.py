@@ -1,4 +1,4 @@
-"""個人持股預測測試:設定解析 / beta 漲幅彙總 / 隱私(個股不外洩) / 降級。"""
+"""個人持股「昨日已實現損益」測試:設定解析 / 實際漲跌彙總 / 隱私 / 除息偵測 / 渲染。"""
 import morning_report as mr
 
 
@@ -33,114 +33,57 @@ def test_parse_portfolio_filters_nonpositive():
     assert mr._parse_portfolio("2330:0,2317:-3,2454:1") == {"2454": 1.0}
 
 
-# ---------- calc_portfolio_forecast ----------
+# ---------- calc_portfolio_actual（昨日已實現漲跌 = 前天收盤 vs 昨天收盤）----------
 
-def test_forecast_empty_portfolio():
-    assert mr.calc_portfolio_forecast({}, 1.0, {}, {}) == {}
-
-
-def test_forecast_no_prices_returns_empty():
-    # 有持股但 close_map 沒報價 → 無法估,回 {}
-    assert mr.calc_portfolio_forecast({"2330": 1}, 1.0, {}, {}) == {}
+def test_actual_empty_portfolio():
+    assert mr.calc_portfolio_actual({}, {}) == {}
 
 
-def test_forecast_special_pred_and_beta_mix():
-    portfolio = {"2330": 2, "2454": 1}
-    special = {"2330": 2.0}            # 2330 專屬模型 +2%
-    taiex_pct = 1.0                    # 加權 +1%
-    close_map = {"2330": 1000.0, "2454": 1300.0}
-    beta_map = {"2454": 1.5}           # 2454 beta 1.5 → +1.5%
-    out = mr.calc_portfolio_forecast(portfolio, taiex_pct, special, close_map, beta_map)
-    # 2330: 2張=2000股 ×1000 = 2,000,000 ×2% = 40,000
-    # 2454: 1張=1000股 ×1300 = 1,300,000 ×1.5% = 19,500
-    assert out["pred_amount"] == 59500
-    assert out["last_value"] == 3300000
-    assert out["pred_pct"] == 1.8       # 59500/3300000 = 1.803 → 1.8
-    assert out["n_holdings"] == 2
-    assert out["n_priced"] == 2
+def test_actual_no_closes_returns_empty():
+    # 有持股但 closes_map 沒資料 → 回 {}
+    assert mr.calc_portfolio_actual({"2330": 1}, {}) == {}
 
 
-def test_forecast_default_beta_one_when_missing():
-    # 沒 beta → 視為 1.0 → 漲幅 = 加權 %
-    out = mr.calc_portfolio_forecast({"6505": 1}, 2.0, {}, {"6505": 500.0}, {})
-    # 1張=1000股 ×500 = 500,000 ×2% = 10,000
-    assert out["pred_amount"] == 10000
-    assert out["pred_pct"] == 2.0
+def test_actual_realized_gain():
+    portfolio = {"00662": 7.059, "00631L": 19}
+    # closes_map: (前天收盤, 昨天收盤)
+    closes = {"00662": (120.0, 121.2), "00631L": (210.0, 215.0)}
+    out = mr.calc_portfolio_actual(portfolio, closes)
+    # 00662: 7059股 ×(121.2−120.0)=7059×1.2 = 8,470.8
+    # 00631L: 19000股 ×(215−210)=19000×5 = 95,000
+    # 前天市值 = 7059×120 + 19000×210 = 847,080 + 3,990,000 = 4,837,080
+    assert out["gain_amount"] == round(8470.8 + 95000.0, 0)   # 103471
+    assert out["prev_value"] == 4837080
+    # gain% = 103470.8 / 4837080 × 100 ≈ 2.14%
+    assert out["gain_pct"] == round((103470.8 / 4837080) * 100, 2)
+    assert out["n_holdings"] == 2 and out["n_priced"] == 2
 
 
-def test_forecast_skips_unpriced_holding():
-    # 一檔有報價、一檔沒 → 只算有報價的
-    out = mr.calc_portfolio_forecast(
-        {"2330": 1, "9999": 1}, 1.0, {"2330": 1.0}, {"2330": 1000.0}, {})
+def test_actual_negative_day():
+    out = mr.calc_portfolio_actual({"0050": 10}, {"0050": (103.0, 102.0)})
+    # 10000股 ×(102−103) = −10,000
+    assert out["gain_amount"] == -10000
+    assert out["gain_pct"] == round((-10000 / 1030000) * 100, 2)
+
+
+def test_actual_skips_unpriced_holding():
+    out = mr.calc_portfolio_actual(
+        {"2330": 1, "9999": 1}, {"2330": (1000.0, 1010.0)})
     assert out["n_holdings"] == 2
     assert out["n_priced"] == 1
-    assert out["pred_amount"] == 10000   # 只有 2330: 1000股×1000×1%
+    assert out["gain_amount"] == 10000   # 只有 2330: 1000股×(1010−1000)
 
 
-# ---------- build_special_preds（含 00631L 槓桿 ETF）----------
-
-def test_build_special_preds_big_three():
-    preds = {"mid": 2346.0, "last_2330": 2300.0}
-    tw0050 = {"pred_pct": 0.98}
-    fair = {"implied_change_pct": 0.04}
-    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=0.5)
-    assert round(sp["2330"], 2) == 2.0       # 2346/2300-1 = +2.0%
-    assert sp["0050"] == 0.98
-    assert sp["00662"] == 0.04
-
-
-def test_build_special_preds_00631L_basket_model():
-    """00631L = 0.3963 × 2330% + 1.6087 × 加權%(申購買回清單實際基籃)。"""
-    preds = {"mid": 2346.0, "last_2330": 2300.0}   # 2330 = +2.0%
-    tw0050 = {"pred_pct": 1.0}
-    fair = {"implied_change_pct": 0.0}
-    sp = mr.build_special_preds(preds, tw0050, fair, taiex_pct=1.0)   # 加權 +1.0%
-    # 0.3963×2.0 + 1.6087×1.0 = 0.7926 + 1.6087 = 2.4013
-    assert sp["00631L"] == 2.4013
-    # 純 2× 加權的槓桿 ETF
-    assert sp["00675L"] == 2.0                       # 2 × 1.0%
-
-
-def test_build_special_preds_00631L_normal_day_approx_2x():
-    """台積與大盤同向時,00631L ≈ 2×(0.3963+1.6087 = 2.005)。"""
-    preds = {"mid": 2323.0, "last_2330": 2300.0}   # 2330 = +1.0%
-    sp = mr.build_special_preds(preds, {"pred_pct": 1.0},
-                                 {"implied_change_pct": 1.0}, taiex_pct=1.0)
-    # 0.3963×1 + 1.6087×1 = 2.005
-    assert sp["00631L"] == 2.005
-
-
-def test_build_special_preds_00631L_diverges_from_2x0050_when_tsmc_decouples():
-    """台積大漲、大盤平盤時,基籃模型 << 2×0050(這正是修正重點)。"""
-    preds = {"mid": 2346.0, "last_2330": 2300.0}   # 2330 +2.0%
-    tw0050 = {"pred_pct": 1.015}                     # 0050 ≈ +1.015% → 2×0050 = 2.03%
-    sp = mr.build_special_preds(preds, tw0050, {"implied_change_pct": 0.04},
-                                 taiex_pct=0.03)     # 大盤幾乎平盤
-    # 基籃 = 0.3963×2.0 + 1.6087×0.03 = 0.7926 + 0.0483 = 0.8409
-    assert sp["00631L"] == 0.8409
-    # 與 2×0050(≈2.03)差距 > 1%,證明修正有意義
-    assert abs(sp["00631L"] - 2 * tw0050["pred_pct"]) > 1.0
-
-
-def test_build_special_preds_00631L_skipped_when_no_2330():
-    """2330 或加權預測缺失 → 00631L 不給專屬值(改走 beta 路徑)。"""
-    sp = mr.build_special_preds({"error": "x"}, {"error": "x"},
-                                 {"error": "x"}, taiex_pct=None)
-    assert "00631L" not in sp
-    assert "2330" not in sp
-
-
-def test_forecast_output_has_no_stock_codes():
+def test_actual_output_has_no_stock_codes():
     """隱私關鍵:回傳彙總 dict 不可含任何個股代號 / 張數。"""
-    out = mr.calc_portfolio_forecast(
-        {"2330": 5, "2454": 3}, 1.0, {"2330": 1.0}, {"2330": 1000.0, "2454": 1300.0}, {})
-    assert set(out.keys()) <= {"pred_pct", "pred_amount", "last_value",
-                                "n_holdings", "n_priced"}
-    # 代號字串不應出現在任何值裡
+    out = mr.calc_portfolio_actual(
+        {"2330": 5, "2454": 3}, {"2330": (1000.0, 1010.0), "2454": (1300.0, 1290.0)})
+    assert set(out.keys()) <= {"gain_pct", "gain_amount", "prev_value",
+                                "last_value", "n_holdings", "n_priced"}
     assert "2454" not in str(out)
 
 
-# ---------- detect_ex_dividend_today ----------
+# ---------- detect_ex_dividend_today（公開卡 2330/0050/00662 用）----------
 
 def test_detect_ex_dividend_today_hits(fake_yf):
     import datetime as dt
@@ -186,26 +129,25 @@ def _min_quotes(**over):
 
 def test_render_shows_portfolio_row_and_hides_holdings():
     pf = {
-        "p1": {"pred_pct": 1.23, "pred_amount": 35200, "last_value": 2860000,
-               "n_holdings": 3, "n_priced": 3},
-        "p2": {"pred_pct": -0.45, "pred_amount": -8800, "last_value": 1955000,
-               "n_holdings": 2, "n_priced": 2},
+        "p1": {"gain_pct": 1.23, "gain_amount": 35200, "prev_value": 2824800,
+               "last_value": 2860000, "n_holdings": 3, "n_priced": 3},
+        "p2": {"gain_pct": -0.45, "gain_amount": -8800, "prev_value": 1963800,
+               "last_value": 1955000, "n_holdings": 2, "n_priced": 2},
         "p1_name": "主帳戶", "p2_name": "定存股",
     }
-    quotes = _min_quotes(PORTFOLIO_FORECAST=pf)
+    quotes = _min_quotes(PORTFOLIO_ACTUAL=pf)
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "分析",
                           "2026-05-28 (Thu)", "每日報")
-    # 持倉列應出現:名稱 + 漲幅 + 金額(萬)
+    # 持倉列應出現:名稱 + 漲跌 + 金額(萬)
     assert "主帳戶" in html
     assert "定存股" in html
     assert "+1.23%" in html
     assert "3.5萬" in html      # 35200 → +NT$3.5萬
-    # 隱私:forecast 不含個股代號,html 自然不會有(這裡只能確認彙總值有出現)
-    assert "今日預估" in html
+    assert "昨日損益" in html
 
 
 def test_render_no_portfolio_row_when_absent():
-    quotes = _min_quotes()    # 無 PORTFOLIO_FORECAST
+    quotes = _min_quotes()    # 無 PORTFOLIO_ACTUAL
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "分析",
                           "2026-05-28 (Thu)", "每日報")
-    assert "今日預估" not in html    # 沒設定 → 不顯示持倉列
+    assert "昨日損益" not in html    # 沒設定 → 不顯示持倉列

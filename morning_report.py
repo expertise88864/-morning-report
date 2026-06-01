@@ -104,23 +104,6 @@ PORTFOLIO_2 = _parse_portfolio(os.environ.get("PORTFOLIO_2", ""))
 PORTFOLIO_1_NAME = os.environ.get("PORTFOLIO_1_NAME", "持倉1").strip() or "持倉1"
 PORTFOLIO_2_NAME = os.environ.get("PORTFOLIO_2_NAME", "持倉2").strip() or "持倉2"
 
-# 槓桿 ETF 開盤估算 = Σ(權重 × 該成分今日預估 %)。成分 key:
-#   "2330"  → 台積電現貨(用 2330 四模型預估 %)
-#   "taiex" → 台指期(用加權 SOX/TSM/夜盤預估 %)
-#   "0050"  → 0050 預估 %
-# 權重來自「申購買回清單 (PCF)」實際持倉,比「2× 0050」精準——因為 00631L 並非
-# 單純 2× 台灣50,而是「台積現貨 + 台指期」的基籃,台積與大盤背離時兩者差很多。
-#
-# 00631L 元大台灣50正2(2026-05-19 PCF):台積現貨 39.63% + 台指期 160.87%(總曝險 ~200%)
-#   ※ 權重會隨季度指數調整微幅變動;若要更新,查最新申購買回清單後改下面數字即可。
-#   ※ 正常日(台積與大盤同向)≈ 2×;台積背離大盤時才會與 2×0050 拉開,這正是它的真實行為。
-# 00675L 富邦台灣加權正2 / 00663L 國泰臺灣加權正2:無台積加碼,純 2× 加權。
-LEVERAGED_ETF_BASKET: dict[str, list] = {
-    "00631L": [("2330", 0.3963), ("taiex", 1.6087)],
-    "00675L": [("taiex", 2.0)],
-    "00663L": [("taiex", 2.0)],
-}
-
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -1865,6 +1848,47 @@ def fetch_tdcc_major_holders(target_codes: Optional[set] = None) -> dict[str, di
         return {}
 
 
+def fetch_twse_recent_closes(code: str, want: int = 3) -> list:
+    """
+    用 TWSE STOCK_DAY 抓某代號最近 want 個交易日的官方收盤(由舊到新)。
+
+    為什麼用 TWSE 而非 Yahoo:個人持股多為 ETF(00662/0050/00631L),Yahoo 對 ETF
+    常落後一天 → 算「昨日漲跌」會抓到錯的兩天。TWSE STOCK_DAY 是權威日線來源。
+    跨月(月初)時自動補抓上個月。失敗 / 不足回傳 []（呼叫端自行略過該檔）。
+
+    隱私:log 不印代號(repo 若公開,Actions log 也公開)。
+    """
+    today = dt.datetime.now(TPE).date()
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+               "Accept": "application/json"}
+    rows: list = []   # (date_str, close) 由舊到新
+    d = today
+    for _ in range(2):   # 本月 + 上月(處理月初資料不足)
+        ym = d.strftime("%Y%m%d")
+        url = (f"https://www.twse.com.tw/exchangeReport/STOCK_DAY"
+               f"?response=json&date={ym}&stockNo={code}")
+        month_rows: list = []
+        try:
+            r = requests.get(url, timeout=15, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            if data.get("stat") == "OK":
+                fields = data.get("fields", []) or []
+                close_i = next((i for i, f in enumerate(fields) if "收盤" in f), 6)
+                for row in data.get("data", []) or []:
+                    if close_i < len(row):
+                        c = _to_float(row[close_i])
+                        if c:
+                            month_rows.append((str(row[0]), c))
+        except Exception as e:
+            print(f"[recent_close] STOCK_DAY {ym} 失敗(略過): {e}", file=sys.stderr)
+        rows = month_rows + rows          # 較早的月份接在前面 → 維持升序
+        if len(rows) >= want:
+            break
+        d = d.replace(day=1) - dt.timedelta(days=1)   # 上個月最後一天
+    return [c for _, c in rows][-want:]
+
+
 def fetch_twse_close(code: str) -> Optional[float]:
     """
     從 TWSE OpenAPI STOCK_DAY_ALL 抓單一上市標的（含 ETF）的最新「官方」收盤價。
@@ -2730,128 +2754,41 @@ def calibrate_0050_bias(tw0050_pred: dict, history: list[dict],
     return tw0050_pred
 
 
-def _norm_ret_index(s):
-    """把日報酬 series 的 index 正規化成 tz-naive 的日期,方便兩檔對齊算 beta。"""
-    s = s.copy()
-    try:
-        s.index = s.index.tz_localize(None)
-    except (TypeError, AttributeError):
-        pass
-    try:
-        s.index = s.index.normalize()
-    except AttributeError:
-        pass
-    return s
-
-
-def fetch_portfolio_market_data(portfolio: dict,
-                                  taiex_hist=None) -> tuple[dict, dict]:
+def calc_portfolio_actual(portfolio: dict, closes_map: dict) -> dict:
     """
-    抓持股的昨收價 + 對加權指數 beta(近 ~60 日 daily-return 回歸,clamp [0.3, 2.0])。
+    計算單一倉位「昨日已實現漲跌」%與金額(用 前天收盤 vs 昨天收盤,非預測)。
 
-    回傳 (close_map, beta_map):
-      close_map: {code: 昨收價}
-      beta_map:  {code: beta}(資料不足者不列入,呼叫端視為 1.0)
-    隱私:不印出個股代號到任何使用者可見處,只在 stderr debug。失敗個股略過。
-    """
-    if not portfolio:
-        return {}, {}
-    close_map: dict = {}
-    beta_map: dict = {}
-    codes = list(portfolio.keys())
-    try:
-        tickers = " ".join(f"{c}.TW" for c in codes)
-        df = yf.download(tickers, period="3mo", group_by="ticker",
-                         auto_adjust=False, progress=False, threads=True)
-    except Exception as e:
-        print(f"[portfolio] 行情下載失敗: {e}", file=sys.stderr)
-        return {}, {}
-    if df is None or len(df) == 0:
-        return {}, {}
+    portfolio:   {code: lots(張)}
+    closes_map:  {code: (前天收盤, 昨天收盤)}(TWSE 官方,避開 Yahoo 對 ETF 落後)
 
-    twii_ret = None
-    if taiex_hist is not None and hasattr(taiex_hist, "empty") and not taiex_hist.empty:
-        twii_ret = _norm_ret_index(taiex_hist["Close"].pct_change().dropna())
-
-    for i, code in enumerate(codes):
-        try:
-            if len(codes) > 1:
-                sub = df[f"{code}.TW"].dropna(subset=["Close"])
-            else:
-                sub = df.dropna(subset=["Close"])
-            sub = sub[sub["Close"] > 0]
-            if sub.empty:
-                continue
-            close_map[code] = round(float(sub["Close"].iloc[-1]), 2)
-            if twii_ret is not None and len(sub) >= 30:
-                stock_ret = _norm_ret_index(sub["Close"].pct_change().dropna())
-                joined = pd.concat([stock_ret, twii_ret], axis=1, join="inner").dropna()
-                if len(joined) >= 20:
-                    sr = joined.iloc[:, 0]
-                    mr = joined.iloc[:, 1]
-                    var = float(mr.var())
-                    if var and var > 0:
-                        beta = float(sr.cov(mr) / var)
-                        beta_map[code] = max(0.3, min(2.0, beta))
-        except (KeyError, ValueError, TypeError) as e:
-            # 隱私:log 不印代號(repo 若公開,Actions log 也公開),只印序號
-            print(f"[portfolio] 第 {i+1} 檔行情處理略過: {e}", file=sys.stderr)
-            continue
-    print(f"[portfolio] 取得 {len(close_map)}/{len(codes)} 檔昨收、{len(beta_map)} 檔 beta")
-    return close_map, beta_map
-
-
-def calc_portfolio_forecast(portfolio: dict,
-                              taiex_pct: Optional[float],
-                              special_preds: dict,
-                              close_map: dict,
-                              beta_map: Optional[dict] = None) -> dict:
-    """
-    估算單一倉位「今日預估開盤漲幅 %」與「預估損益金額」。
-
-    portfolio:     {code: lots(張)}
-    taiex_pct:     加權指數預測漲跌幅 %(非 2330/0050/00662 個股 beta 的基準)
-    special_preds: {code: pct} 已有專屬模型者(2330/0050/00662)直接用該 %
-    close_map:     {code: 昨收價}
-    beta_map:      {code: beta vs 加權};缺漏者視為 1.0
-
-    每檔預估漲跌幅:
-      - 在 special_preds 中(2330/0050/00662)→ 用專屬模型 %
-      - 其他 → beta × 加權預測 %
-    倉位漲幅 = Σ(市值 × 漲跌幅) / Σ市值;金額 = Σ(市值 × 漲跌幅)。
-
-    回傳 {pred_pct, pred_amount, last_value, n_holdings, n_priced} 或 {}（空倉/無報價）。
+    倉位昨日漲跌 = Σ(昨天市值 − 前天市值) / Σ前天市值;金額 = Σ(張×1000×(昨−前))。
+    回傳 {gain_pct, gain_amount, prev_value, last_value, n_holdings, n_priced} 或 {}。
     隱私:回傳只有彙總值,**無任何個股代號或張數**。
     """
     if not portfolio:
         return {}
-    beta_map = beta_map or {}
-    total_value = 0.0
-    total_gain = 0.0
+    total_prev = 0.0
+    total_last = 0.0
     n_priced = 0
     for code, lots in portfolio.items():
-        close = close_map.get(code)
-        if not close or close <= 0:
+        pair = closes_map.get(code)
+        if not pair:
+            continue
+        prev, last = pair
+        if not prev or not last or prev <= 0:
             continue
         shares = lots * 1000
-        if code in special_preds and special_preds.get(code) is not None:
-            pct = special_preds[code]
-        elif taiex_pct is not None:
-            beta = beta_map.get(code)
-            beta = 1.0 if beta is None else beta
-            pct = beta * taiex_pct
-        else:
-            pct = 0.0
-        value = shares * close
-        total_value += value
-        total_gain += value * pct / 100.0
+        total_prev += shares * prev
+        total_last += shares * last
         n_priced += 1
-    if total_value <= 0:
+    if total_prev <= 0:
         return {}
+    gain_amount = total_last - total_prev
     return {
-        "pred_pct": round(total_gain / total_value * 100, 2),
-        "pred_amount": round(total_gain, 0),
-        "last_value": round(total_value, 0),
+        "gain_pct": round(gain_amount / total_prev * 100, 2),
+        "gain_amount": round(gain_amount, 0),
+        "prev_value": round(total_prev, 0),
+        "last_value": round(total_last, 0),
         "n_holdings": len(portfolio),
         "n_priced": n_priced,
     }
@@ -2886,45 +2823,6 @@ def detect_ex_dividend_today(codes: list, today_tpe_date) -> dict:
         except Exception:
             continue
     return out
-
-
-def build_special_preds(predictions: dict, tw0050_pred: dict, fair: dict,
-                          taiex_pct: Optional[float] = None) -> dict:
-    """
-    組出有「專屬模型」的標的今日預估漲幅 %(供持股漲幅用),純函式易測。
-
-    涵蓋:
-      2330  → 2330 四模型中位數 vs 昨收
-      0050  → calc_0050_prediction 的 pred_pct
-      00662 → calc_00662_fair_value 的 implied_change_pct
-      槓桿 ETF(LEVERAGED_ETF)→ 倍數 × 基準(0050 或 加權)預估 %
-    回傳 {code: pct}(只含算得出來的)。
-    """
-    sp: dict = {}
-    p2_mid = predictions.get("mid") if isinstance(predictions, dict) else None
-    p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
-    if p2_mid and p2_last:
-        sp["2330"] = round((p2_mid / p2_last - 1) * 100, 4)
-    if isinstance(tw0050_pred, dict) and tw0050_pred.get("pred_pct") is not None:
-        sp["0050"] = tw0050_pred["pred_pct"]
-    if isinstance(fair, dict) and fair.get("implied_change_pct") is not None:
-        sp["00662"] = fair["implied_change_pct"]
-    # 槓桿 ETF = Σ(權重 × 成分今日預估 %),權重取自申購買回清單(PCF)實際持倉。
-    # 例:00631L = 0.3963 × 2330% + 1.6087 × 加權%(台積現貨 + 台指期),
-    # 比「2× 0050」精準——台積與大盤背離時兩者差很多,且這是 00631L 的真實基籃。
-    base_vals = {"2330": sp.get("2330"), "0050": sp.get("0050"), "taiex": taiex_pct}
-    for lev_code, basket in LEVERAGED_ETF_BASKET.items():
-        parts = []
-        ok = True
-        for comp, w in basket:
-            v = base_vals.get(comp)
-            if v is None:
-                ok = False
-                break
-            parts.append(w * v)
-        if ok and parts:
-            sp[lev_code] = round(sum(parts), 4)
-    return sp
 
 
 def calc_momentum_metrics(close_series) -> dict:
@@ -4989,7 +4887,7 @@ def _extract_summary(text: str) -> str:
 def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict) -> str:
     """頂部 KPI 一覽條（dark bg，緊接 HERO 下方）。
     內容：立場 / 2330 / 00662 / 0050 / 加權，2 秒掃完今天重點。
-    若有設定個人持股,第二行顯示 持倉1/持倉2 今日預估漲幅 + 金額(僅彙總,不揭露明細)。
+    若有設定個人持股,第二行顯示 持倉1/持倉2 昨日已實現損益 + 金額(僅彙總,不揭露明細)。
     (VIX 移到「總經指標」表內，騰出 KPI 位置給 0050。)"""
     import html as _htmllib_kpi   # 持倉名稱可能是 user 自訂字串,需 escape
     # === 立場 ===
@@ -5076,8 +4974,8 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                    f'<div style="{val};color:{stance_color};">{label}{score_str}</div>'
                    f'</td>')
 
-    # === 個人持股列(第二行,僅在有設定時顯示;只秀彙總漲幅 + 金額,不揭露持股明細)===
-    pf = quotes.get("PORTFOLIO_FORECAST", {}) or {}
+    # === 個人持股列(第二行,僅在有設定時顯示;只秀彙總「昨日已實現漲跌」+ 金額,不揭露明細)===
+    pf = quotes.get("PORTFOLIO_ACTUAL", {}) or {}
 
     def _fmt_amount(amt):
         if amt is None:
@@ -5090,16 +4988,16 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
 
     def _portfolio_tile(name, data, is_last):
         c = cell_last if is_last else cell
-        if not data or data.get("pred_pct") is None:
+        if not data or data.get("gain_pct") is None:
             return (f'<td style="{c}">'
                     f'<div style="{lbl}">{_htmllib_kpi.escape(name)}</div>'
                     f'<div style="{val};color:rgba(255,255,255,0.55);">—</div>'
                     f'<div style="{delta};color:rgba(255,255,255,0.45);">未設定</div>'
                     f'</td>')
-        p = data["pred_pct"]
-        amt = data.get("pred_amount")
+        p = data["gain_pct"]
+        amt = data.get("gain_amount")
         return (f'<td style="{c}">'
-                f'<div style="{lbl}">{_htmllib_kpi.escape(name)} 今日預估</div>'
+                f'<div style="{lbl}">{_htmllib_kpi.escape(name)} 昨日損益</div>'
                 f'<div style="{val};color:{color_pct(p)};">{fmt_pct(p)}</div>'
                 f'<div style="{delta};color:{color_pct(amt)};">{_fmt_amount(amt)}</div>'
                 f'</td>')
@@ -6473,48 +6371,28 @@ def main() -> int:
     quotes["TW_UNIVERSE_SNAPSHOT"] = tw0050
     quotes["BREADTH"] = breadth
 
-    # 6.65 個人持股今日預估漲幅(隱私:只算彙總 % + 金額,不揭露明細)
+    # 6.65 個人持股「昨日已實現漲跌」(用 前天收盤 vs 昨天收盤,非預測)
+    #      隱私:只算彙總 % + 金額,不揭露任何個股明細。
     if PORTFOLIO_1 or PORTFOLIO_2:
-        print("[main] 計算個人持股今日預估漲幅…")
+        print("[main] 計算個人持股昨日已實現漲跌…")
         try:
-            # 加權預測 %(其他個股 beta 基準 + 槓桿ETF taiex 基準);用校正後 pred_open 回推
-            tp_open = (taiex_pred or {}).get("pred_open")
-            tp_last = (taiex_pred or {}).get("last_close")
-            taiex_pct = ((tp_open / tp_last - 1) * 100) if (tp_open and tp_last) else None
-            # 專屬模型預測 %(2330/0050/00662 + 槓桿 ETF 如 00631L=2×0050)
-            special_preds = build_special_preds(predictions, tw0050_pred, fair, taiex_pct)
-            # 抓持股昨收 + beta;加權歷史供 beta 回歸(可能未定義 → 防護)
-            _taiex_hist = locals().get("taiex_hist")
             all_codes = {**PORTFOLIO_1, **PORTFOLIO_2}
-            close_map, beta_map = fetch_portfolio_market_data(all_codes, _taiex_hist)
-            # 大三標的昨收用權威值覆寫(Yahoo 對 ETF 常落後)
-            p2_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
-            if p2_last:
-                close_map["2330"] = p2_last
-            if isinstance(tw0050_pred, dict) and tw0050_pred.get("last"):
-                close_map["0050"] = tw0050_pred["last"]
-            if isinstance(fair, dict) and fair.get("last_00662_price"):
-                close_map["00662"] = fair["last_00662_price"]
-            # 槓桿 ETF(00631L 等)昨收用 TWSE 官方覆寫(Yahoo 對槓桿 ETF 也落後)
-            for lev_code in LEVERAGED_ETF_BASKET:
-                if lev_code in all_codes:
-                    tc = fetch_twse_close(lev_code)
-                    if tc:
-                        close_map[lev_code] = tc
-            quotes["PORTFOLIO_FORECAST"] = {
-                "p1": calc_portfolio_forecast(PORTFOLIO_1, taiex_pct, special_preds, close_map, beta_map),
-                "p2": calc_portfolio_forecast(PORTFOLIO_2, taiex_pct, special_preds, close_map, beta_map),
+            closes_map: dict = {}
+            for code in all_codes:
+                cl = fetch_twse_recent_closes(code, want=2)   # TWSE 官方,避開 Yahoo ETF 落後
+                if len(cl) >= 2:
+                    closes_map[code] = (cl[-2], cl[-1])        # (前天收盤, 昨天收盤)
+            quotes["PORTFOLIO_ACTUAL"] = {
+                "p1": calc_portfolio_actual(PORTFOLIO_1, closes_map),
+                "p2": calc_portfolio_actual(PORTFOLIO_2, closes_map),
                 "p1_name": PORTFOLIO_1_NAME,
                 "p2_name": PORTFOLIO_2_NAME,
             }
         except Exception as e:
-            print(f"[main] 持股預測失敗(不影響晨報): {e}", file=sys.stderr)
-            quotes["PORTFOLIO_FORECAST"] = {}
+            print(f"[main] 持股昨日漲跌計算失敗(不影響晨報): {e}", file=sys.stderr)
+            quotes["PORTFOLIO_ACTUAL"] = {}
 
-    # 6.66 除息日偵測(透明標註 + 公開預測卡還原)
-    #   公開卡(2330/0050/00662)「預測開盤」減掉配息(實際開盤會更低,預測才準);
-    #   個人持倉漲幅%不調整(配息抵銷股價跌,市值約持平),只標註。
-    #   注意:必須在 build_special_preds(持倉用 raw)之後才調整,故放這裡。
+    # 6.66 除息日偵測(公開預測卡 2330/0050/00662 還原減息,使預測開盤與實際一致)
     try:
         public_codes = ["2330", "0050", "00662"]
         ex_div = detect_ex_dividend_today(public_codes, now_tpe.date())
@@ -6536,20 +6414,10 @@ def main() -> int:
             d = ex_div["0050"]
             tw0050_pred["ex_div_amt"] = d
             tw0050_pred["pred_open"] = round(tw0050_pred["pred_open"] - d, 2)
-        # 個人持倉是否有標的今日除息(只算數量,不洩漏代號)
-        pf_ex_count = 0
-        if PORTFOLIO_1 or PORTFOLIO_2:
-            _all = {**PORTFOLIO_1, **PORTFOLIO_2}
-            pf_ex_count = len(detect_ex_dividend_today(list(_all.keys()), now_tpe.date()))
-        if ex_div or pf_ex_count:
+        if ex_div:
             named = "、".join(f"{c} 配息 {ex_div[c]} 元" for c in public_codes if c in ex_div)
-            detail = ""
-            if named:
-                detail += f"今日除息：{named}。上方預測開盤點位已還原(減息),除息非下跌。"
-            if pf_ex_count:
-                detail += (f" 您的持倉中有 {pf_ex_count} 檔今日除息,預估漲幅為價格變動、"
-                           f"未計入配息(除息日市值含息約略持平)。")
-            alerts.append({"level": "yellow", "title": "除息日提示", "detail": detail.strip()})
+            alerts.append({"level": "yellow", "title": "除息日提示",
+                           "detail": f"今日除息：{named}。上方預測開盤點位已還原(減息),除息非下跌。"})
     except Exception as e:
         print(f"[main] 除息偵測失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["EX_DIV_TODAY"] = {}

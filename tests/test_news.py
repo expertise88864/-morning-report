@@ -60,6 +60,45 @@ def test_calibration_note_compact_hides_early_state():
     assert "已自我校正" in mr._calibration_note_compact(obj2)
 
 
+def test_gnews_rss_builds_encoded_url():
+    url = mr._gnews_rss("台積電 輝達", when="2d")
+    assert url.startswith("https://news.google.com/rss/search?q=")
+    assert "hl=zh-TW" in url and "ceid=TW:zh-Hant" in url
+    assert "when%3A2d" in url            # when:2d URL-encoded
+    assert "%E5%8F%B0%E7%A9%8D%E9%9B%BB" in url   # 台積電 已 URL 編碼
+
+
+def test_fetch_news_includes_company_queries(monkeypatch):
+    """fetch_news 應對 GOOGLE_NEWS_COMPANIES 每家查詢,產出帶 company_label 的項目。"""
+    import time as _t
+
+    class _FakeEntry(dict):
+        def get(self, k, d=None):
+            return dict.get(self, k, d)
+
+    class _FakeFeed:
+        def __init__(self, url):
+            # 公司查詢 URL 含 news.google.com/rss/search
+            self.entries = [{
+                "title": "輝達GB300出貨超預期 台積電CoWoS滿載",
+                "summary": "具體內容：訂單能見度到2027",
+                "link": "https://news.google.com/rss/articles/ABC123",
+                "published": "Mon, 01 Jun 2026 01:00:00 GMT",
+                "published_parsed": _t.gmtime(),   # 現在 → 不會被 cutoff 濾掉
+            }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _FakeFeed(url))
+    # 避免真的打 cnyes JSON / 其他 requests
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("blocked")))
+    items = mr.fetch_news()
+    company_items = [n for n in items if n.get("company_label")]
+    assert company_items, "應有 company_label 的個股新聞"
+    # 至少涵蓋我們查詢清單裡的標籤
+    labels = {n["company_label"] for n in company_items}
+    assert labels & {lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES}
+
+
 def test_classify_geopolitical_critical():
     # 川習會 / 台海 / 晶片出口管制 → critical（會抓全文 + prompt 強制分析）
     news = [

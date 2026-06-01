@@ -140,17 +140,29 @@ DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.co
 DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 
 # RSS 新聞來源（中、英、Fed）
+def _gnews_rss(query: str, when: str = "2d") -> str:
+    """組 Google News RSS 搜尋 URL(繁中/台灣)。Google News RSS 免費、穩定、即時,
+    且回傳中文個股新聞,正好補「公司資訊太少」的缺口。when:2d = 近 2 天。"""
+    from urllib.parse import quote
+    q = quote(f"{query} when:{when}")
+    return f"https://news.google.com/rss/search?q={q}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
+
+
 RSS_FEEDS = {
     # === 國際財經 ===
-    "Reuters Tech":      "https://www.reuters.com/arc/outboundfeeds/rss/category/technology/?outputType=xml",
-    "Reuters Markets":   "https://www.reuters.com/arc/outboundfeeds/rss/category/markets/?outputType=xml",
-    "Reuters World":     "https://www.reuters.com/arc/outboundfeeds/rss/category/world/?outputType=xml",
+    # 註:Reuters 公開 RSS 已於近年停止對外服務(連線被擋)→ 移除,改用 Google News 主題補。
     "CNBC Top News":     "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
     "CNBC Tech":         "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19854910",
     "CNBC Economy":      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258",
-    "Bloomberg Markets": "https://feeds.bloomberg.com/markets/news.rss",
-    "Bloomberg Politics":"https://feeds.bloomberg.com/politics/news.rss",
+    "Bloomberg Markets": "https://feeds.bloomberg.com/markets/news.rss",   # 偶 403,失敗自動略過
     "Yahoo Finance":     "https://finance.yahoo.com/news/rssindex",
+
+    # === Google News 主題(取代已停的 Reuters,廣度覆蓋)===
+    "Google-半導體":      _gnews_rss("半導體 AI晶片 台積電 輝達"),
+    "Google-美股科技":    _gnews_rss("美股 那斯達克 科技股 財報"),
+    "Google-Fed利率":     _gnews_rss("Fed 聯準會 利率 通膨 CPI"),
+    "Google-台股大盤":    _gnews_rss("台股 加權指數 外資 三大法人"),
+    "Google-地緣":        _gnews_rss("台海 晶片管制 美中 關稅"),
 
     # === 央行 / 政策 ===
     "Federal Reserve":   "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -169,13 +181,23 @@ RSS_FEEDS = {
     "中央社財經":         "https://feeds.feedburner.com/rsscna/finance",
     "中央社政治":         "https://feeds.feedburner.com/rsscna/politics",
 
-    # === 中國對台/對美深度新聞（Opt 5）===
-    "Reuters China":     "https://www.reuters.com/arc/outboundfeeds/rss/category/world/china/?outputType=xml",
+    # === 中國對台/對美深度新聞 ===
     "南華早報":           "https://www.scmp.com/rss/91/feed",          # 經濟
     "南華早報-科技":      "https://www.scmp.com/rss/36/feed",           # 中國科技
     "Nikkei Asia 中國":  "https://asia.nikkei.com/rss/feed/nar",       # 日經亞洲（中國頻道）
     "BBC 中文-兩岸":      "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
 }
+
+# 重點公司:每天用 Google News 查各自最新新聞(直接補「個股資訊太少」)。
+# 涵蓋 00662(NASDAQ-100)與 2330 供應鏈最相關的美股 + 台股名稱。
+# 格式 (查詢字串, 顯示用代號/標籤)。查詢字串用中英並列,提高命中率。
+GOOGLE_NEWS_COMPANIES: list[tuple] = [
+    ("輝達 NVIDIA", "NVDA"), ("超微 AMD", "AMD"), ("博通 Broadcom", "AVGO"),
+    ("美光 Micron 記憶體", "MU"), ("台積電", "2330"), ("艾司摩爾 ASML", "ASML"),
+    ("蘋果 Apple", "AAPL"), ("微軟 Microsoft AI", "MSFT"),
+    ("鴻海", "2317"), ("聯發科", "2454"), ("廣達 AI伺服器", "2382"),
+    ("台達電", "2308"),
+]
 
 # ---------- 0050 成分股清單（含業務簡介） ----------
 # 資料以元大投信 0050 ETF 公開月報為基準，每季可能小幅調整
@@ -3060,6 +3082,32 @@ def fetch_news() -> list[dict]:
                 })
         except Exception as e:
             print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
+
+    # === 重點公司 Google News 查詢(直接補個股新聞)===
+    # 每家公司查最新新聞、各取前 4 則。標題本身即帶具體公司事件,
+    # 大幅改善「科技板塊脈動」與「關注三檔」的取材厚度。
+    company_hit = 0
+    for query, label in GOOGLE_NEWS_COMPANIES:
+        try:
+            feed = feedparser.parse(_gnews_rss(query, when="2d"))
+            for entry in feed.entries[:4]:
+                pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                if pub:
+                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
+                    if pub_dt < cutoff:
+                        continue
+                items.append({
+                    "source": f"Google:{label}",
+                    "title": entry.get("title", ""),
+                    "summary": (entry.get("summary", "") or "")[:800],
+                    "link": entry.get("link", ""),
+                    "published": entry.get("published", ""),
+                    "company_label": label,    # 標記為個股新聞,供分類/取材
+                })
+                company_hit += 1
+        except Exception as e:
+            print(f"[news] 公司查詢 {label} 失敗：{e}", file=sys.stderr)
+    print(f"[news] 共 {len(items)} 則(含 {company_hit} 則重點公司 Google News)")
     return items
 
 
@@ -3206,6 +3254,8 @@ def fetch_news_fulltext(news: list[dict],
         link = n.get("link", "")
         if not link or not link.startswith("http"):
             continue
+        if "news.google.com" in link:    # Google News 是 redirect URL,抓不到內文且會 timeout,跳過
+            continue
         try:
             r = requests.get(link, timeout=10,
                               headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
@@ -3229,6 +3279,8 @@ def fetch_news_fulltext(news: list[dict],
             continue
         link = n.get("link", "")
         if not link or not link.startswith("http"):
+            continue
+        if "news.google.com" in link:    # Google News redirect,跳過(抓不到且 timeout)
             continue
         try:
             r = requests.get(link, timeout=8,    # high 用較短 timeout 避免拖慢
@@ -3879,6 +3931,21 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         news_block += "（無）\n\n"
     news_block += "★ 一般新聞（參考）★\n"
     news_block += "\n".join(fmt_news(n) for n in norm_news[:30])
+
+    # 重點公司新聞(Google News 查詢)獨立成段,確保「科技板塊脈動 / 關注三檔」一定取得到個股素材。
+    # (這些多半被分類為 normal,易被 norm[:30] 截掉;故額外保證露出。)
+    company_news = [n for n in news if n.get("company_label")]
+    if company_news:
+        # 依公司分組,每家最多 3 則,避免單一公司洗版
+        by_label: dict[str, list] = {}
+        for n in company_news:
+            by_label.setdefault(n.get("company_label", "?"), []).append(n)
+        lines = []
+        for label, lst in by_label.items():
+            for n in lst[:3]:
+                lines.append(f"- [{label}] {n['title']}（{n.get('summary','')[:300]}）")
+        news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」與「關注三檔」取材）】\n"
+                       + "\n".join(lines[:36]))
 
     # 整理台股 universe（市值前 100）法人/表現摘要表（讓 LLM 一眼掃完）
     if tw0050:

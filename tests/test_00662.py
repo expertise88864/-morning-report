@@ -74,3 +74,13 @@ def test_fair_value_computes_premium_when_history_available(fake_yf, mkdf):
     assert res["premium_pct"] is not None
     # 在合理數值範圍（不會爆值）
     assert -50.0 <= res["premium_pct"] <= 50.0
+
+
+def test_fair_value_applies_ex_dividend_once(fake_yf):
+    fake_yf({})
+    base = mr.calc_00662_fair_value(520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.1)
+    exdiv = mr.calc_00662_fair_value(
+        520.0, 515.0, 31.0, 118.0, usdtwd_prev=31.1, ex_div_amt=1.5)
+    assert exdiv["fair_price"] == round(base["fair_price"] - 1.5, 2)
+    assert exdiv["ex_div_amt"] == 1.5
+    assert exdiv["implied_change_pct"] == round((exdiv["fair_price"] / 118.0 - 1) * 100, 2)

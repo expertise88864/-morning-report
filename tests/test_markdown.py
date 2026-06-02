@@ -176,3 +176,21 @@ def test_render_html_kpi_strip_degrades_gracefully():
     assert "立場" in html and "—" in html
     # 不可崩
     assert html.startswith("<!DOCTYPE html>")
+
+
+def test_render_html_shows_attention_candidate_price_forecast():
+    q = _full_quotes()
+    q["TW_UNIVERSE_SNAPSHOT"] = [{
+        "code": "2330", "name": "台積電", "close": 1000.0, "day_pct": 1.0,
+        "attention_score": 72.5, "news_catalyst_score": 2.4,
+        "breakout": {"score": 70}, "smart_money": {"score": 60, "tags": ["外資連3買"]},
+        "price_forecast": {
+            "confidence": "中低",
+            "3d": {"expected_price": 1010.0, "lower": 970.0, "upper": 1050.0},
+            "5d": {"expected_price": 1020.0, "lower": 960.0, "upper": 1080.0},
+        },
+    }]
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-02", "每日報")
+    assert "台股關注候選 Top 1" in html
+    assert "3日 1010.0 (970.0~1050.0)" in html
+    assert "5日 1020.0 (960.0~1080.0)" in html

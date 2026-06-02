@@ -141,6 +141,32 @@ def test_tdcc_fallback_on_failure(monkeypatch):
     assert mr.fetch_tdcc_major_holders() == {}
 
 
+def test_margin_per_stock_parses_grouped_current_payload(monkeypatch):
+    """MI_MARGN 現行格式將「融資」放在 groups，欄位本身只有前日/今日餘額。"""
+    payload = {
+        "stat": "OK",
+        "tables": [{
+            "title": "信用交易統計",
+            "fields": ["項目", "前日餘額", "今日餘額"],
+            "data": [["融資(交易單位)", "100", "120"]],
+        }, {
+            "title": "融資融券彙總 (全部)",
+            "fields": ["代號", "名稱", "買進", "賣出", "現金償還", "前日餘額", "今日餘額",
+                       "次一營業日限額", "買進", "賣出", "現券償還", "前日餘額", "今日餘額",
+                       "次一營業日限額", "資券互抵", "註記"],
+            "groups": [{"title": "股票", "span": 2}, {"title": "融資", "span": 6},
+                       {"title": "融券", "span": 6}, {"title": "", "span": 1},
+                       {"title": "", "span": 1}],
+            "data": [["2330", "台積電", "2,142", "967", "260", "28,164", "29,079",
+                      "6,483,131", "9", "2", "0", "106", "99", "6,483,131", "5", " "]],
+        }],
+    }
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeResp(payload))
+    out = mr.fetch_twse_margin_per_stock({"2330"})
+    assert out["2330"]["margin_balance"] == 29079
+    assert out["2330"]["margin_change"] == 915
+
+
 _STOCK_DAY_ALL = [
     {"Code": "2330", "Name": "台積電", "ClosingPrice": "1,085.00"},
     {"Code": "00662", "Name": "富邦NASDAQ", "ClosingPrice": "119.45"},

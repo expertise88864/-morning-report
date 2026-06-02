@@ -23,6 +23,16 @@ def test_dedup_near_duplicate():
     assert len(out) == 2
 
 
+def test_dedup_prefers_trusted_richer_source():
+    news = [
+        {"source": "Google:2330", "title": "台積電上修展望", "summary": "短摘要"},
+        {"source": "中央社財經", "title": "台積電上修展望", "summary": "較完整的官方說明與具體數字"},
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 1
+    assert out[0]["source"] == "中央社財經"
+
+
 def test_dedup_keeps_distinct():
     news = [
         {"source": "A", "title": "台積電營收成長"},
@@ -112,3 +122,17 @@ def test_classify_geopolitical_critical():
     assert out[1]["importance"] == "critical" and out[1]["category"] == "geo_critical"
     assert out[2]["importance"] == "high" and out[2]["category"] == "geo"   # 稀土屬一般地緣
     assert out[3]["importance"] == "normal"
+
+
+def test_classify_war_keyword_requires_word_boundary():
+    """英文 war 不可誤中 Warren / software / hardware。"""
+    news = [
+        {"title": "Warren Buffett disclosed a tiny purchase", "summary": ""},
+        {"title": "Software maker cuts workforce", "summary": ""},
+        {"title": "Hardware demand rebounds for AI servers", "summary": ""},
+        {"title": "Iran war risk pushes oil higher", "summary": ""},
+    ]
+    out = mr.classify_news_importance(news)
+    assert [n["importance"] for n in out[:3]] == ["normal", "normal", "normal"]
+    assert out[3]["importance"] == "critical"
+    assert out[3]["category"] == "geo_critical"

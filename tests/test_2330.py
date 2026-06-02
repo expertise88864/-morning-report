@@ -70,3 +70,23 @@ def test_model4_momentum_added(fake_yf, mkdf):
     assert res["momentum_5d_pct"] is not None
     # range 與 mid 來自四個模型
     assert "mid" in res and "range" in res
+
+
+def test_previous_market_values_never_uses_same_day_value():
+    overseas = pd.Series(
+        [100.0, 200.0, 300.0],
+        index=pd.to_datetime(["2026-05-01", "2026-05-04", "2026-05-05"]),
+    )
+    mapped = mr._previous_market_values(overseas, pd.to_datetime(["2026-05-04", "2026-05-05"]))
+    assert mapped.tolist() == [100.0, 200.0]
+
+
+def test_2330_prediction_applies_ex_dividend_once(fake_yf, mkdf):
+    fake_yf({})
+    idx = pd.date_range("2026-02-02", periods=30, freq="B")
+    hist_2330 = mkdf(np.linspace(1000, 1080, 30), idx)
+    base = mr.calc_2330_predictions(220.0, 215.0, 31.0, hist_2330)
+    exdiv = mr.calc_2330_predictions(220.0, 215.0, 31.0, hist_2330, ex_div_amt=5.0)
+    assert exdiv["model1_1to1"] == round(base["model1_1to1"] - 5.0, 2)
+    assert exdiv["mid"] == round(base["mid"] - 5.0, 2)
+    assert exdiv["ex_div_amt"] == 5.0

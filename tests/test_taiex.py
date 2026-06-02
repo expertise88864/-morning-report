@@ -77,6 +77,16 @@ def test_taifex_foreign_futures_reads_lots_not_value(monkeypatch):
     assert res["dealer_oi_net"] == 2000
 
 
+def test_taifex_foreign_futures_accepts_current_header_order(monkeypatch):
+    """TAIFEX 現行欄名為「多空未平倉口數淨額」，詞序不同仍應解析。"""
+    import morning_report as mr
+    csv = _TAIFEX_CSV.replace("多空淨額未平倉口數", "多空未平倉口數淨額")
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda url, **kw: _FakeTaifexResp(csv))
+    res = mr.fetch_taifex_foreign_futures()
+    assert res["foreign_oi_net"] == 38000
+
+
 # 夜盤台指期：「交易時段」欄不在最後一欄，硬編 row[-1] 會抓不到夜盤
 _TAIFEX_NIGHT_CSV = "\n".join([
     "交易日期,契約,到期月份(週別),開盤價,最高價,最低價,收盤價,漲跌價,漲跌%,"
@@ -95,9 +105,23 @@ def test_0050_prediction_weighted_2330_and_taiex():
     preds = {"mid": 2200.0, "last_2330": 2200.0}    # 2330 pct = 0%
     taiex = {"weighted_pct": 2.0}                    # 加權 +2%
     res = mr.calc_0050_prediction(last_0050=100.0, predictions_2330=preds, taiex_pred=taiex)
-    # 0050 應 = 100 × (1 + 0.5×0% + 0.5×2%) = 100 × 1.01 = 101
-    assert res["pred_open"] == 101.0
-    assert res["pred_pct"] == 1.0
+    # 加權指數本身已含約 30% 台積電，先扣除後再估其餘 0050 成分。
+    assert res["pred_open"] == 101.43
+    assert res["pred_pct"] == 1.429
+    assert res["pct_taiex_ex_2330"] == round(2.0 / 0.7, 3)
+
+
+def test_0050_prediction_applies_ex_dividend_once():
+    import morning_report as mr
+    res = mr.calc_0050_prediction(
+        last_0050=100.0,
+        predictions_2330={"mid": 2200.0, "last_2330": 2200.0},
+        taiex_pred={"weighted_pct": 0.0},
+        ex_div_amt=1.2,
+    )
+    assert res["pred_open"] == 98.8
+    assert res["pred_pct"] == -1.2
+    assert res["ex_div_amt"] == 1.2
 
 
 def test_0050_prediction_falls_back_to_taiex_when_2330_missing():

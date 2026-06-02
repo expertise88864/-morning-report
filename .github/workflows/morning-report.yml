@@ -16,10 +16,14 @@ on:
 permissions:
   contents: write   # 允許 push 回 state/history.json
 
+concurrency:
+  group: morning-report
+  cancel-in-progress: true
+
 jobs:
   send-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,6 +54,7 @@ jobs:
           #   "gemini"    → Gemini 2.5 Flash（免費，品質中等）
           #   "anthropic" → Claude Sonnet 4.6（NT$46/月，品質最佳）
           LLM_PROVIDER: deepseek
+          LLM_EVENT_EXTRACTION: "1"
 
           # DeepSeek（推薦）— 走 OpenAI 相容 API
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -57,6 +62,7 @@ jobs:
           #   deepseek-v4-pro    → V4 旗艦版（推薦，分析最深，支援思考模式）
           #   deepseek-v4-flash  → V4 輕量版（便宜，品質尚可）
           DEEPSEEK_MODEL: deepseek-v4-pro
+          DEEPSEEK_EXTRACTOR_MODEL: deepseek-v4-flash
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 思考模式強度：high / medium / low；設 off 可關閉（僅 v4-pro/reasoner 生效）
           DEEPSEEK_REASONING_EFFORT: high

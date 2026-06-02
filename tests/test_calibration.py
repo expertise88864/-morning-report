@@ -182,3 +182,24 @@ def test_calibration_skips_error_dicts(fake_yf):
     assert f == {"error": "QQQ 抓取失敗"}
     assert p == {"error": "TSM 抓取失敗"}
     assert "calibration" in t
+
+
+def test_normalize_history_dedupes_same_target_session():
+    history = [
+        {"date": "2026-05-30", "generated_at": "2026-05-30T08:00:00+08:00", "pred_taiex": 100},
+        {"date": "2026-06-01", "generated_at": "2026-06-01T08:00:00+08:00", "pred_taiex": 200},
+    ]
+    out = mr._normalize_history_entries(history)
+    assert len(out) == 1
+    assert out[0]["target_session_date"] == "2026-06-01"
+    assert out[0]["pred_taiex"] == 200
+
+
+def test_resolved_history_dedupes_tw_holiday_actual_open():
+    history = [
+        {"date": "2026-04-03", "target_session_date": "2026-04-03", "pred_taiex": 100},
+        {"date": "2026-04-06", "target_session_date": "2026-04-06", "pred_taiex": 200},
+    ]
+    opens = {"2026-04-07": 300}
+    out = mr._resolved_prediction_history(history, opens, before_date="2026-04-08")
+    assert out == [("2026-04-07", history[1])]

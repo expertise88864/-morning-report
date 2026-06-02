@@ -171,7 +171,17 @@ python morning_report.py
 
 ---
 
-## 七、測試與 CI
+## 七、台股五檔預測學習與新聞事件管線
+
+- 每日保存市值前 100 大完整 point-in-time 快照至 `state/model_history.json`，最多保留 400 個交易日，並設 7 MB 上限避免 repo 無限成長。
+- 交易日使用 TWSE `FMTQIK` 官方資料，並合併 `^TWII` 兩年歷史索引補足回測區間。
+- 五檔候選分開預測「勝過大盤機率」與「預期報酬」，使用標準化 ridge 模型；樣本不足時才退回保守公式。
+- 排名加入產業中性化與 risk-on / neutral / risk-off / stale-US regime 權重。
+- 新聞先由抽取器轉成結構化事件，再交給晨報寫作者；事件會聚類、按新鮮度衰減，並優先採用 MOPS、TWSE、TAIFEX、SEC 等官方來源。
+- 新聞影響會隨歷史標籤累積改用事件研究平均超額報酬，不再永久依賴固定加分。
+- 每日 workflow 只做一次 state commit/push；dry-run 不 push。Production workflow 有 concurrency 保護與 15 分鐘上限。
+
+## 八、測試與 CI
 
 - `pytest -q`：本機跑單元測試，全程不連網、不寄信（mock 掉 yfinance）。
 - `.github/workflows/ci.yml`：每次 push / PR 自動跑 `py_compile` + `pytest`。
@@ -180,7 +190,7 @@ python morning_report.py
 
 ---
 
-## 八、故障排查
+## 九、故障排查
 
 - **沒收到信** → 進 repo 的 Actions tab 看 `Morning Report` 最後一次 run 是否紅燈，點進去看 log。即使資料源失敗，程式也會降級寄出（該區塊顯示「資料缺失」），所以「完全沒收到信」通常是寄信或排程問題。
 - **Yahoo Finance 失敗** → 偶爾限流；`fetch_quote` 已內建 3 次重試。QQQ/TSM 真的抓不到時，00662 估值 / 2330 預測會降級顯示「資料缺失」，其餘區塊照常。
@@ -193,7 +203,7 @@ python morning_report.py
 
 ---
 
-## 九、自訂
+## 十、自訂
 
 - 想加 BTC / ETH / NVDA 等其他標的：在 `main()` 內 `quotes` 字典加一行 `"NVDA": fetch_quote("NVDA"),`
 - 想改寄送時間：編輯 `.github/workflows/morning-report.yml` 的 `cron` 欄位（注意是 UTC 時間）

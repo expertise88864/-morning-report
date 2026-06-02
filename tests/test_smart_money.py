@@ -173,6 +173,8 @@ def test_score_retail_buying_high_warning():
     out = mr.calc_smart_money_score(entry)
     # 連賣 2 不到 -25 門檻;量暴 + 法人賣 = -15;5日 12% = -8 → 負分被夾到 0
     assert out["score"] == 0
+    assert out["raw_score"] <= -20
+    assert out["tag"] == "籌碼鬆動警示"
 
 
 def test_score_foreign_selling_streak_warns():
@@ -259,6 +261,117 @@ def test_breakout_score_handles_missing_fundamentals():
     out = mr.calc_breakout_score(e)
     assert out["components"]["revenue"] == 0.0 and out["components"]["eps"] == 0.0
     assert out["score"] > 0   # 籌碼+動能仍給分
+
+
+def test_breakout_score_prefers_cross_sectional_eps_percentile():
+    base = {"smart_money": {"score": 0}, "eps": 20.0}
+    assert mr.calc_breakout_score(dict(base, eps_percentile=10))["components"]["eps"] == 1.0
+    assert mr.calc_breakout_score(dict(base, eps_percentile=90))["components"]["eps"] == 9.0
+
+
+def test_breakout_tracking_reports_forward_snapshot_returns():
+    history = [{
+        "date": "2026-05-29",
+        "target_session_date": "2026-05-29",
+        "breakout_candidates": [{"code": "2330", "name": "台積電", "score": 90, "close": 1000.0}],
+    }]
+    out = mr.build_breakout_tracking(
+        history,
+        [{"code": "2330", "name": "台積電", "close": 1050.0}],
+        "2026-06-03",
+    )
+    assert "3 日候選" in out
+    assert "平均 +5.00%" in out
+
+
+def test_foreign_top10_total_requires_market_cap():
+    valid = [
+        {"code": str(i), "market_cap": 100 - i, "foreign_lot": i}
+        for i in range(10)
+    ]
+    assert mr._foreign_top10_total(valid) == 45
+    assert mr._foreign_top10_total([dict(valid[0], market_cap=None)] + valid[1:]) is None
+
+
+def test_stock_news_catalyst_direct_outweighs_supply_chain():
+    snapshot = [
+        {"code": "2330", "name": "台積電"},
+        {"code": "2382", "name": "廣達"},
+    ]
+    news = [{
+        "source": "CNBC Tech",
+        "source_grade": "B",
+        "company_label": "NVDA",
+        "title": "NVIDIA raises outlook as AI orders hit record",
+        "summary": "",
+    }, {
+        "source": "中央社財經",
+        "source_grade": "B",
+        "company_label": "2330",
+        "title": "台積電上修展望 訂單增加",
+        "summary": "",
+    }]
+    out = mr._stock_news_catalysts(snapshot, news, [])
+    assert out["2330"]["score"] > out["2382"]["score"] > 0
+
+
+def test_stock_news_catalyst_does_not_double_count_direct_supply_chain():
+    out = mr._stock_news_catalysts(
+        [{"code": "2330", "name": "台積電"}],
+        [{
+            "source": "CNBC Tech", "source_grade": "B", "company_label": "NVDA",
+            "title": "NVIDIA orders increase at 台積電", "summary": "",
+        }],
+        [],
+    )
+    assert out["2330"]["score"] == 1.04
+    assert len(out["2330"]["evidence"]) == 1
+
+
+def test_stock_news_catalyst_negative_mops_reduces_score():
+    out = mr._stock_news_catalysts(
+        [{"code": "2330", "name": "台積電"}],
+        [],
+        [{"code": "2330", "title": "台積電公告下修展望"}],
+    )
+    assert out["2330"]["score"] < 0
+    assert out["2330"]["evidence"][0]["relation"] == "direct"
+
+
+def test_stock_price_forecast_uses_learned_bias():
+    entry = {
+        "close": 100.0, "daily_vol_pct": 2.0, "pct_5d": 0.0,
+        "attention_score": 50, "news_catalyst_score": 0,
+    }
+    raw = mr.calc_stock_price_forecast(entry)
+    calibrated = mr.calc_stock_price_forecast(
+        entry, {3: {"forecast_samples": 5, "forecast_bias_pct": 1.0}})
+    assert calibrated["3d"]["expected_price"] > raw["3d"]["expected_price"]
+    assert calibrated["3d"]["lower"] < calibrated["3d"]["upper"]
+
+
+def test_breakout_tracking_reports_forecast_mae():
+    history = [{
+        "date": "2026-05-29",
+        "target_session_date": "2026-05-29",
+        "breakout_candidates": [{
+            "code": "2330", "close": 100.0,
+            "price_forecast": {"3d": {"expected_price": 104.0}},
+        }],
+    }]
+    out = mr.build_breakout_tracking(
+        history, [{"code": "2330", "close": 105.0}], "2026-06-03")
+    assert "預測 MAE 1.00%" in out
+    assert "方向命中 100%" in out
+
+
+def test_rank_attention_candidates_filters_weak_revenue_without_catalyst():
+    ranked = mr._rank_attention_candidates([
+        {"code": "A", "attention_score": 80, "rev_yoy_pct": -20, "news_catalyst_score": 0},
+        {"code": "B", "attention_score": 70, "rev_yoy_pct": -20, "news_catalyst_score": 2},
+        {"code": "C", "attention_score": 60, "rev_yoy_pct": 5, "news_catalyst_score": 0},
+    ])
+    assert [item["code"] for item in ranked] == ["B", "C"]
 
 
 # ---------- fetch_tw_eps（best-effort）----------

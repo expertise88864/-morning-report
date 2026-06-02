@@ -182,7 +182,11 @@ def test_render_html_shows_attention_candidate_price_forecast():
     q = _full_quotes()
     q["TW_UNIVERSE_SNAPSHOT"] = [{
         "code": "2330", "name": "台積電", "close": 1000.0, "day_pct": 1.0,
-        "attention_score": 72.5, "news_catalyst_score": 2.4,
+        "attention_score": 72.5, "ranking_score": 72.5, "news_catalyst_score": 2.4,
+        "ranking_components": {
+            "structure": 60.0, "news_event": 1.9, "industry_neutral": 2.0,
+            "beat_market": 4.0, "expected_return": 4.6, "quality_penalty": 0.0,
+        },
         "breakout": {"score": 70}, "smart_money": {"score": 60, "tags": ["外資連3買"]},
         "price_forecast": {
             "confidence": "中低",
@@ -191,6 +195,9 @@ def test_render_html_shows_attention_candidate_price_forecast():
         },
     }]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-02", "每日報")
-    assert "台股關注候選 Top 1" in html
+    assert "台股客觀關注排名 Top 1" in html
+    assert "客觀排名 #1" in html
+    assert "產業中性 +2.0" in html
+    assert "勝過大盤 +4.0" in html
     assert "3日 1010.0 (970.0~1050.0)" in html
     assert "5日 1020.0 (960.0~1080.0)" in html

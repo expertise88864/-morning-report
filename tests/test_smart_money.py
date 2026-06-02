@@ -374,6 +374,63 @@ def test_rank_attention_candidates_filters_weak_revenue_without_catalyst():
     assert [item["code"] for item in ranked] == ["B", "C"]
 
 
+def test_attention_ranking_breakdown_is_transparent_and_bounded():
+    item = {
+        "breakout": {"score": 72},
+        "news_catalyst_score": 4,
+        "industry_neutral_score": 1.5,
+        "market_regime": "neutral",
+    }
+    model3 = {
+        "beat_market_probability": 0.7,
+        "expected_return_pct": 2.5,
+        "fallback_enabled": False,
+        "probability_calibrated": True,
+        "model_version": "test-v1",
+    }
+    out = mr._attention_ranking_breakdown(
+        item, model3, {"structure": 1.0, "news": 1.0, "model": 1.0})
+    assert out["components"] == {
+        "structure": 56.0,
+        "news_event": 3.2,
+        "industry_neutral": 4.5,
+        "beat_market": 4.0,
+        "expected_return": 2.5,
+        "quality_penalty": 0.0,
+    }
+    assert out["score"] == sum(out["components"].values()) == 70.2
+    assert out["inputs"]["model_version"] == "test-v1"
+
+
+def test_attention_ranking_breakdown_penalizes_fallback_and_clips_score():
+    out = mr._attention_ranking_breakdown(
+        {
+            "breakout": {"score": 180},
+            "news_catalyst_score": 99,
+            "industry_neutral_score": 9,
+        },
+        {
+            "beat_market_probability": 1.0,
+            "expected_return_pct": 99,
+            "fallback_enabled": True,
+        },
+        {"structure": 1.0, "news": 1.0, "model": 1.0},
+    )
+    assert out["components"]["quality_penalty"] == -4.0
+    assert out["score"] == 100.0
+
+
+def test_rank_attention_candidates_uses_objective_score_and_stable_tiebreakers():
+    ranked = mr._rank_attention_candidates([
+        {"code": "C", "ranking_score": 60, "breakout": {"score": 50}},
+        {"code": "B", "ranking_score": 70, "breakout": {"score": 40}},
+        {"code": "A", "ranking_score": 70, "breakout": {"score": 50}},
+        {"code": "D", "ranking_score": 70, "breakout": {"score": 50}},
+    ])
+    assert [item["code"] for item in ranked] == ["A", "D", "B", "C"]
+    assert [item["attention_rank"] for item in ranked] == [1, 2, 3, 4]
+
+
 # ---------- fetch_tw_eps（best-effort）----------
 
 def test_fetch_tw_eps_parses(monkeypatch):

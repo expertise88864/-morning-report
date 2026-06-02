@@ -1707,14 +1707,14 @@ def calc_smart_money_score(entry: dict) -> dict:
 
 def calc_breakout_score(entry: dict) -> dict:
     """
-    「短線爆發力分數」(篩選未來 3-5 工作天關注候選),多因子複合 0-100:
+    「短線爆發力結構分」(篩選未來 3-5 工作天關注候選),多因子複合 0-90:
       籌碼 35% (smart_money 分數,法人連買+大戶吸籌+量能)
       動能 25% (5日漲幅 + 距MA20 + 突破20日高;**動能優先,不懲罰過熱**)
       營收 20% (月營收 YoY + MoM)
       EPS  10% (最新季度 EPS;>0 有獲利加分)
-      催化 10% 保留給 LLM(新聞/法說)判讀,Python 不計
+      新聞事件另由 _attention_ranking_breakdown 在 Python 中客觀整合
 
-    回傳 {"score": 0-100, "components": {...}}。資料缺漏的因子以 0 計。
+    回傳 {"score": 0-90, "components": {...}}。資料缺漏的因子以 0 計。
     """
     if not entry:
         return {"score": 0, "components": {}}
@@ -3911,7 +3911,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         "foreign_lot", "invest_lot", "dealer_lot", "total_lot", "foreign_30d_lot",
         "invest_30d_lot", "foreign_streak", "invest_streak", "tdcc_wow_pct",
         "margin_change_lot", "rev_yoy_pct", "rev_mom_pct", "eps_percentile",
-        "attention_score", "industry_neutral_score", "news_catalyst_score",
+        "attention_score", "ranking_score", "ranking_components", "attention_rank",
+        "industry_neutral_score", "news_catalyst_score",
         "price_forecast",
     }
     output = {}
@@ -4772,6 +4773,54 @@ def calc_stock_price_forecast(entry: dict,
     }
 
 
+def _attention_ranking_breakdown(item: dict,
+                                 model3: dict,
+                                 weights: dict) -> dict:
+    """Build a transparent, bounded 0-100 ranking score for the Taiwan watchlist."""
+    base_score = _safe_number((item.get("breakout") or {}).get("score"))
+    news_score = max(-10.0, min(10.0, _safe_number(item.get("news_catalyst_score"))))
+    industry_z = max(-2.0, min(2.0, _safe_number(item.get("industry_neutral_score"))))
+    probability = model3.get("beat_market_probability")
+    expected_return = model3.get("expected_return_pct")
+
+    components = {
+        # calc_breakout_score tops out at 90: chips 35 + momentum 25 + revenue 20 + EPS 10.
+        "structure": base_score / 90.0 * 70.0 * _safe_number(weights.get("structure"), 1.0),
+        "news_event": news_score * 0.8 * _safe_number(weights.get("news"), 1.0),
+        "industry_neutral": industry_z * 3.0,
+        "beat_market": (
+            (_safe_number(probability, 0.5) - 0.5) * 20.0
+            * _safe_number(weights.get("model"), 1.0)
+            if probability is not None else 0.0
+        ),
+        "expected_return": (
+            max(-6.0, min(6.0, _safe_number(expected_return)))
+            * _safe_number(weights.get("model"), 1.0)
+            if expected_return is not None else 0.0
+        ),
+        "quality_penalty": (
+            -4.0 if model3.get("fallback_enabled", True)
+            else -1.0 if not model3.get("probability_calibrated") else 0.0
+        ),
+    }
+    components = {key: round(value, 2) for key, value in components.items()}
+    raw_score = round(sum(components.values()), 2)
+    return {
+        "score": round(max(0.0, min(100.0, raw_score)), 2),
+        "raw_score": raw_score,
+        "components": components,
+        "inputs": {
+            "base_score": round(base_score, 2),
+            "news_catalyst_score": round(news_score, 2),
+            "industry_neutral_z": round(industry_z, 3),
+            "beat_market_probability": probability,
+            "expected_return_3d_pct": expected_return,
+            "market_regime": item.get("market_regime") or "neutral",
+            "model_version": model3.get("model_version", MODEL_VERSION),
+        },
+    }
+
+
 def enrich_stock_attention_candidates(snapshot: list[dict],
                                       news: list[dict],
                                       mops: list[dict],
@@ -4811,16 +4860,14 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
         code = str(item.get("code") or "")
         item["industry_neutral_score"] = neutral_scores.get(code, 0.0)
         model3 = (predictions.get("3d") or {}).get(code) or {}
-        probability = model3.get("beat_market_probability")
-        model_tilt = ((_safe_number(probability, 0.5) - 0.5) * 12.0
-                      if probability is not None else 0.0)
-        item["attention_score"] = round(max(0.0, min(
-            100.0,
-            _safe_number(item.get("attention_score_raw"))
-            + max(-2.0, min(2.0, item["industry_neutral_score"])) * 3.0
-            + model_tilt * weights["model"],
-        )), 2)
         item["market_regime"] = regime
+        ranking = _attention_ranking_breakdown(item, model3, weights)
+        item["ranking_score"] = ranking["score"]
+        item["ranking_score_raw"] = ranking["raw_score"]
+        item["ranking_components"] = ranking["components"]
+        item["ranking_inputs"] = ranking["inputs"]
+        # Backward-compatible alias used by existing snapshots and templates.
+        item["attention_score"] = item["ranking_score"]
         item["price_forecast"] = calc_stock_price_forecast(
             item,
             evaluation,
@@ -4835,18 +4882,25 @@ def _rank_attention_candidates(snapshot: list[dict]) -> list[dict]:
     """排序五檔候選；營收明顯衰退且沒有正面催化者先排除。"""
     eligible = []
     for item in snapshot or []:
-        score = item.get("attention_score", (item.get("breakout") or {}).get("score", 0))
+        score = item.get("ranking_score", item.get(
+            "attention_score", (item.get("breakout") or {}).get("score", 0)))
         yoy = item.get("rev_yoy_pct")
         if not score or score <= 0:
             continue
         if isinstance(yoy, (int, float)) and yoy < -15 and item.get("news_catalyst_score", 0) <= 0:
             continue
         eligible.append(item)
-    return sorted(
+    ranked = sorted(
         eligible,
-        key=lambda item: item.get("attention_score", (item.get("breakout") or {}).get("score", 0)),
-        reverse=True,
+        key=lambda item: (
+            -_safe_number(item.get("ranking_score", item.get("attention_score"))),
+            -_safe_number((item.get("breakout") or {}).get("score")),
+            str(item.get("code") or ""),
+        ),
     )
+    for rank, item in enumerate(ranked, 1):
+        item["attention_rank"] = rank
+    return ranked
 
 
 def _breakout_candidates_for_state(snapshot: list[dict], limit: int = 5) -> list[dict]:
@@ -4857,6 +4911,9 @@ def _breakout_candidates_for_state(snapshot: list[dict], limit: int = 5) -> list
         "name": item.get("name"),
         "score": (item.get("breakout") or {}).get("score", 0),
         "attention_score": item.get("attention_score"),
+        "ranking_score": item.get("ranking_score"),
+        "ranking_components": item.get("ranking_components"),
+        "attention_rank": item.get("attention_rank"),
         "news_catalyst_score": item.get("news_catalyst_score"),
         "close": item.get("close"),
         "price_forecast": item.get("price_forecast"),
@@ -5575,10 +5632,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         if isinstance(foreign_top10_total, (int, float)) else "資料缺失"
     )
 
-    # 短線爆發力 Top 15(複合分數:籌碼35 + 動能25 + 營收20 + EPS10),供「關注五檔」排序挑選
+    # 客觀關注排名 Top 15：固定公式由高至低排序，供 LLM 解釋而非自由換股。
     if tw0050:
         ranked = sorted(tw0050,
-                        key=lambda x: x.get("attention_score", (x.get("breakout") or {}).get("score", 0)),
+                        key=lambda x: x.get("ranking_score", x.get(
+                            "attention_score", (x.get("breakout") or {}).get("score", 0))),
                         reverse=True)
         bk_top = [s for s in ranked if (s.get("breakout") or {}).get("score", 0) > 0][:15]
         if bk_top:
@@ -5601,8 +5659,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 def _f(v, suf="", d="-"):
                     return f"{v:+.1f}{suf}" if isinstance(v, (int, float)) else d
                 bk_rows.append(
-                    f"{s['code']} {s['name']:<6} 關注={s.get('attention_score', bk.get('score',0)):>5} "
-                    f"(基礎{bk.get('score',0):>3}/新聞{s.get('news_catalyst_score',0):+4.1f}) "
+                    f"{s['code']} {s['name']:<6} 客觀排名分={s.get('ranking_score', s.get('attention_score', bk.get('score',0))):>5} "
+                    f"(結構{(s.get('ranking_components') or {}).get('structure',0):+4.1f}/"
+                    f"新聞{(s.get('ranking_components') or {}).get('news_event',0):+4.1f}/"
+                    f"產業{(s.get('ranking_components') or {}).get('industry_neutral',0):+4.1f}/"
+                    f"勝率{(s.get('ranking_components') or {}).get('beat_market',0):+4.1f}/"
+                    f"報酬{(s.get('ranking_components') or {}).get('expected_return',0):+4.1f}/"
+                    f"品質{(s.get('ranking_components') or {}).get('quality_penalty',0):+4.1f}) "
                     f"[籌{comp.get('chips',0):.0f}/動{comp.get('momentum',0):.0f}/"
                     f"營{comp.get('revenue',0):.0f}/EPS{comp.get('eps',0):.0f}] | "
                     f"昨日法人{tot_lot:+.0f}張 30日外資{f30:+.0f}張 外連{fs:+d}投連{is_:+d} "
@@ -5628,8 +5691,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"[{c.get('relation')}/{c.get('source_grade')}] {c.get('title')}"
                 for c in catalysts[:2]) or "無直接催化"
             attention_rows.append(
-                f"{rank}. {stock['code']} {stock['name']}｜關注分 {stock.get('attention_score',0):.1f} "
-                f"(基礎 {(stock.get('breakout') or {}).get('score',0)} / 新聞 {stock.get('news_catalyst_score',0):+.1f})｜"
+                f"{rank}. {stock['code']} {stock['name']}｜客觀排名分 {stock.get('ranking_score', stock.get('attention_score',0)):.1f} "
+                f"(結構 {(stock.get('ranking_components') or {}).get('structure',0):+.1f} / "
+                f"新聞 {(stock.get('ranking_components') or {}).get('news_event',0):+.1f} / "
+                f"產業中性 {(stock.get('ranking_components') or {}).get('industry_neutral',0):+.1f} / "
+                f"勝過大盤 {(stock.get('ranking_components') or {}).get('beat_market',0):+.1f} / "
+                f"預期報酬 {(stock.get('ranking_components') or {}).get('expected_return',0):+.1f} / "
+                f"品質 {(stock.get('ranking_components') or {}).get('quality_penalty',0):+.1f})｜"
                 f"昨收 {stock.get('close')}｜"
                 f"3日預測 {f3.get('expected_price','資料不足')} "
                 f"[{f3.get('lower','-')}~{f3.get('upper','-')}]｜"
@@ -5968,18 +6036,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 ※「營收YoY」為該公司最新月營收的去年同月年增率（真實數據，TWSE 月營收彙總）；「-」代表無資料
 ※「大戶」為持股 ≥ 400 張的大戶占集保總數比例（TDCC 集保股權分散表，週更）；比例高 = 籌碼集中在大戶/主力手上
 
-【★★ 短線爆發力 Top 15(複合分數排序,「今日台股關注五檔」請優先從這份清單挑)】
+【★★ 台股客觀關注排名 Top 15（固定公式由高至低排序；「今日台股關注五檔」只能使用前五名）】
 {smart_money_block}
-※ 爆發力分數(0-100) = 籌碼 35%（法人連買+大戶吸籌+量能,即原「籌碼站隊」）+ 動能 25%（5日漲幅+距MA20+突破20日高,**動能優先,不懲罰過熱**）+ 營收 20%（月營收 YoY+MoM）+ EPS 10%（最新季每股盈餘）。催化 10% 由你(LLM)依新聞/法說自行加分。
-※ 中括號 [籌X/動X/營X/EPSX] 為各因子貢獻分,讓你看出該股的爆發力「來源」(是籌碼推、動能推、還是基本面推)。
-※ 目標:篩選**未來 3-5 個工作天值得關注**的候選。這是尚未完成報酬校準的啟發式排序,不是報酬預測。
+※ 客觀排名分 = 結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件分 + 產業中性修正 + 勝過大盤機率修正 + 3 日預期報酬修正 + 模型品質折扣。
+※ 中括號 [籌X/動X/營X/EPSX] 為原始結構因子貢獻分；括號內「結構/新聞/產業/勝率/報酬/品質」為最終排名各分項，總分可重現、可回測。
+※ 目標：篩選**未來 3-5 個工作天值得關注**的候選。LLM 只能解釋 Python 固定公式的排序，不可自行加分或重排。
 ※ 大戶ΔWoW / EPS年增 需累積歷史才完整(剛上線可能多為「-」);此時以籌碼+動能+月營收為主即可。
-※ **此為排序輔助,最終仍須你結合新聞催化(催化 10% 權重在你手上)做最後判斷與排序。**
 
 【Python 已整合新聞後的五檔候選與股價預測】
 {attention_top_block}
-※ 這五檔已將「結構化基礎分 + 僅限明確關聯的新聞催化分」整合完成。3 日 / 5 日預測價為可回測的保守點估計，方括號為近 20 日波動度推導的 80% 參考區間。
-※ 報告的「今日台股關注五檔」原則上必須使用這五檔及其價格，不得自行替換。若因營收 YoY < -15%、明確負面公告或資料不足排除，必須逐檔寫明原因，並依關注分順位遞補。
+※ 這五檔已將「結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 + 模型品質」整合完成。3 日 / 5 日預測價為可回測的保守點估計，方括號為 80% 參考區間。
+※ 報告的「今日台股關注五檔」必須依客觀排名分由高至低使用這五檔及其價格，不得自行替換或重排。若因營收 YoY < -15%、明確負面公告或資料不足排除，必須逐檔寫明原因，並依客觀排名分順位遞補。
 
 【短線候選初步追蹤（晨報快照間報酬，尚未完成正式 walk-forward 校準）】
 {breakout_tracking_block}
@@ -6137,12 +6204,12 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 > **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
-## 十二、今日台股關注五檔（**必寫五檔，目標：未來 3-5 個工作天最可能漲幅最大者**）
+## 十二、今日台股關注五檔（**依 Python 客觀排名分由高至低，必寫五檔**）
 
-**核心方法**：以「Python 已整合新聞後的五檔候選與股價預測」為主清單。Python 已整合籌碼、動能、營收、EPS、明確新聞關聯與歷史預測偏誤。你的工作是解釋，不是自行重排熱門股。
+**核心方法**：以「Python 已整合新聞後的五檔候選與股價預測」為唯一清單。Python 已整合籌碼、動能、營收、EPS、明確新聞事件、產業中性、勝過大盤機率、3 日預期報酬與模型品質。你的工作是依序解釋，不是自行重排熱門股。
 
 **選股原則**：
-1. **原則上照 Python 五檔候選順序寫**。只有硬性排除條件成立時才能遞補，且必須說明。
+1. **必須照 Python 五檔候選順序寫**。只有硬性排除條件成立時才能按客觀排名分遞補，且必須說明。
 2. **動能優先**：本清單**不懲罰已大漲的過熱股**——若一檔爆發力分數高且 5日漲幅大（如 +15%），代表多方力道強勁，可入選（但須在挑選理由誠實說明「短期漲幅已大、留意急跌風險」，並把信心對應調整）。
 3. **催化消息**：只能引用候選列出的催化，或上方新聞/MOPS 中可逐字找到的具體事件。不可自行建立供應鏈關聯。
 4. **基本面佐證**：引用真實「營收YoY/MoM」與「EPS」（上表數字，禁止瞎掰；無資料寫「資料未提供」）。
@@ -7207,7 +7274,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
         """
 
-    # === 台股關注候選 Top 5(結構分數 + 新聞催化 + 可回測價格預測)===
+    # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
     # 手機版面:改成「每檔一列、列內 2 欄(分數 chip + 堆疊明細)」,避免 8 欄寬表在
     # 手機 Gmail 擠爆跑版。
     smart_money_html = ""
@@ -7217,9 +7284,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         top5 = scored[:5]
         if top5:
             rows_html = []
-            for s in top5:
+            for rank, s in enumerate(top5, 1):
                 sm = s.get("smart_money") or {}
-                score = s.get("attention_score", (s.get("breakout") or {}).get("score", 0))
+                score = s.get("ranking_score", s.get(
+                    "attention_score", (s.get("breakout") or {}).get("score", 0)))
+                ranking_components = s.get("ranking_components") or {}
                 tags = sm.get("tags", []) or []
                 if score >= 80:
                     score_bg, score_fg = "#fee2e2", "#b91c1c"   # 紅:強訊號
@@ -7254,6 +7323,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}"
                     f" ・ 基礎 {(s.get('breakout') or {}).get('score',0)}"
                     f" ・ 新聞 {s.get('news_catalyst_score',0):+.1f}")
+                ranking_line = (
+                    f"客觀排名 #{rank} ・ 結構 {ranking_components.get('structure', 0):+.1f}"
+                    f" ・ 新聞 {ranking_components.get('news_event', 0):+.1f}"
+                    f" ・ 產業中性 {ranking_components.get('industry_neutral', 0):+.1f}"
+                    f" ・ 勝過大盤 {ranking_components.get('beat_market', 0):+.1f}"
+                    f" ・ 預期報酬 {ranking_components.get('expected_return', 0):+.1f}"
+                    f" ・ 品質 {ranking_components.get('quality_penalty', 0):+.1f}")
                 forecast = s.get("price_forecast") or {}
                 f1o = forecast.get("1d_open") or {}
                 f1c = forecast.get("1d_close") or {}
@@ -7287,22 +7363,23 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
                     # 第 3 行:數據明細小字
                     f"<div style='margin-top:5px;font-size:11px;color:#94a3b8;'>{metrics_line}</div>"
+                    f"<div style='margin-top:5px;font-size:11px;color:#9a3412;font-weight:600;'>{ranking_line}</div>"
                     f"<div style='margin-top:5px;font-size:11px;color:#0369a1;'>{forecast_line}</div>"
                     f"<div style='margin-top:4px;font-size:10px;color:#64748b;'>{quality_line}</div>"
                     f"</td>"
                     f"</tr>"
                 )
             smart_money_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">台股關注候選 Top {len(top5)}（含新聞與預測價）</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">台股客觀關注排名 Top {len(top5)}（由高至低）</h2>
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}
         </table>
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
-          ※ <b>關注分 = 籌碼、動能、營收、EPS 基礎分 + 明確關聯新聞催化分</b>;
+          ※ <b>客觀排名分 = 結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 + 模型品質折扣</b>;
           <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。<br>
           ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例「本週 − 上週」(需累積 ≥ 1 週歷史才有值);
           量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
-          ※ 此分數**為輔助參考、不是買進訊號**;仍須結合新聞催化、營收基本面、結構健康度綜合判讀。
+          ※ 排名由 Python 固定公式產生並可回測，LLM 不會自行換股；此分數仍是參考，不是買進訊號。
         </p>
         """
 

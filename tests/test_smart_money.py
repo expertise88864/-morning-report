@@ -324,7 +324,7 @@ def test_stock_news_catalyst_does_not_double_count_direct_supply_chain():
         }],
         [],
     )
-    assert out["2330"]["score"] == 1.04
+    assert out["2330"]["score"] == 1.25
     assert len(out["2330"]["evidence"]) == 1
 
 

@@ -179,6 +179,10 @@ python morning_report.py
 - 排名加入產業中性化與 risk-on / neutral / risk-off / stale-US regime 權重。
 - 新聞先由抽取器轉成結構化事件，再交給晨報寫作者；事件會聚類、按新鮮度衰減，並優先採用 MOPS、TWSE、TAIFEX、SEC 等官方來源。
 - 新聞影響會隨歷史標籤累積改用事件研究平均超額報酬，不再永久依賴固定加分。
+- 關注五檔細分為隔日開盤、隔日收盤、3 日及 5 日收盤預測；勝過大盤機率會在樣本足夠後套用 Platt 校準，價格區間使用正規化 quantile regression。
+- 模型訓練保留 2 個交易日 purge gap，事件研究會去除重複事件，降低資料洩漏與重複計分。
+- 每檔預測會揭露模型版本、訓練樣本數、近期方向命中率、價格區間方法與 fallback 狀態，walk-forward 也會按模型版本分組。
+- 晨報新增「台灣政策昨日走向」與「台灣醫界昨日走向」兩個快速情報段落；兩者與股價模型完全隔離，不會改變選股或價格預測。
 - 每日 workflow 只做一次 state commit/push；dry-run 不 push。Production workflow 有 concurrency 保護與 15 分鐘上限。
 
 ## 八、測試與 CI

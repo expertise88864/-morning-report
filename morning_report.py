@@ -2289,6 +2289,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
             last = sub.iloc[-1]
             prev = sub.iloc[-2]
             close = safe_float(last["Close"])
+            open_price = safe_float(last.get("Open"))
             prev_close = safe_float(prev["Close"])
             day_pct = (close - prev_close) / prev_close * 100 if prev_close else 0
 
@@ -2352,6 +2353,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 "industry": info.get("industry", ""),
                 "market_cap": info.get("market_cap"),
                 "close": round(close, 2),
+                "open": round(open_price, 2) if open_price else None,
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
                 "vol_ratio_20d": round(vol_ratio_20d, 2) if vol_ratio_20d else None,
@@ -3243,6 +3245,122 @@ def fetch_news() -> list[dict]:
     return items
 
 
+TW_INTELLIGENCE_QUERIES = {
+    "policy": (
+        "台灣 政策 行政院 補助 津貼 房貸 社福 產業 site:gov.tw",
+        "台灣 政策 行政院 立法院 金管會 內政部 勞動部 經濟部",
+        "台灣 新青安 育兒津貼 長照 電價 租屋 補助 政策",
+    ),
+    "medical": (
+        "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
+        "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
+        "台灣 醫界 健保 藥價 疫情 醫療政策 醫院",
+    ),
+}
+
+TW_OFFICIAL_SOURCE_TOKENS = (
+    "gov.tw", "行政院", "衛福部", "健保署", "疾管署", "食藥署",
+    "金管會", "內政部", "勞動部", "經濟部", "財政部", "中央銀行",
+    "立法院", "衛生局", "醫院公告",
+)
+TW_INTELLIGENCE_RELEVANCE = {
+    "policy": (
+        "政策", "補助", "津貼", "新青安", "房貸", "租屋", "社福", "長照",
+        "育兒", "托育", "勞保", "稅", "電價", "能源", "產業", "草案",
+        "行政院", "立法院", "金管會", "央行", "部會",
+    ),
+    "medical": (
+        "醫院", "醫療", "醫界", "住院", "門診", "急診", "停診", "醫師",
+        "護理", "健保", "藥價", "藥品", "醫材", "病安", "衛福部", "健保署",
+        "疾管署", "食藥署", "疫情", "疫苗", "傳染病", "臨床", "手術",
+    ),
+}
+
+
+def _tw_intelligence_window(now_tpe: dt.datetime) -> tuple[dt.datetime, dt.datetime, str]:
+    """Use yesterday, with a weekend catch-up window for Monday reports."""
+    local_now = now_tpe.astimezone(TPE)
+    end = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    lookback_days = 2 if local_now.weekday() == 0 else 1
+    start = end - dt.timedelta(days=lookback_days)
+    label = f"{start:%Y-%m-%d} 至 {(end - dt.timedelta(seconds=1)):%Y-%m-%d}"
+    return start, end, label
+
+
+def _tw_intelligence_status(text: str) -> str:
+    if any(token in text for token in ("公告", "核定", "通過", "上路", "生效", "發布")):
+        return "已公告"
+    if any(token in text for token in ("研議", "擬", "規劃", "預告", "將推", "草案")):
+        return "研議中"
+    return "媒體報導"
+
+
+def _tw_intelligence_topic(kind: str, text: str) -> str:
+    groups = (
+        ("住宅金融", ("新青安", "房貸", "租屋", "房價", "信用管制")),
+        ("育兒社福", ("育兒", "津貼", "托育", "長照", "勞保", "社福")),
+        ("產業能源", ("半導體", "能源", "電價", "AI", "出口", "產業")),
+        ("健保藥政", ("健保", "藥價", "藥品", "醫材", "食藥署")),
+        ("醫院營運", ("醫院", "住院", "急診", "停診", "門診", "人力")),
+        ("公共衛生", ("疫情", "疫苗", "疾管署", "傳染病", "食安")),
+    )
+    for topic, tokens in groups:
+        if any(token in text for token in tokens):
+            return topic
+    return "其他政策" if kind == "policy" else "其他醫界"
+
+
+def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
+                                per_kind_limit: int = 8) -> dict:
+    """Fetch policy and medical headlines for awareness only; never feed stock models."""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    start, end, label = _tw_intelligence_window(now_tpe)
+    output = {"window": label, "policy": [], "medical": []}
+    for kind, queries in TW_INTELLIGENCE_QUERIES.items():
+        candidates = []
+        for query in queries:
+            try:
+                feed = feedparser.parse(_gnews_rss(query, when="3d"))
+                for entry in feed.entries[:8]:
+                    published = _parse_news_time(
+                        entry.get("published") or entry.get("updated"),
+                        now_tpe.astimezone(dt.timezone.utc),
+                    ).astimezone(TPE)
+                    if not start <= published < end:
+                        continue
+                    title = str(entry.get("title") or "").strip()
+                    if not title:
+                        continue
+                    if not any(token in title for token in TW_INTELLIGENCE_RELEVANCE[kind]):
+                        continue
+                    link = str(entry.get("link") or "")
+                    text = f"{title} {link}"
+                    official = any(token.lower() in text.lower() for token in TW_OFFICIAL_SOURCE_TOKENS)
+                    candidates.append({
+                        "title": title[:180],
+                        "link": link,
+                        "published": published.strftime("%Y-%m-%d %H:%M"),
+                        "topic": _tw_intelligence_topic(kind, title),
+                        "status": _tw_intelligence_status(title),
+                        "source_grade": "官方" if official else "媒體",
+                        "official": official,
+                    })
+            except Exception as e:
+                print(f"[tw-intelligence] {kind} query failed: {e}", file=sys.stderr)
+        deduped = {}
+        for item in candidates:
+            key = "".join(ch.lower() for ch in item["title"] if ch.isalnum())[:90]
+            previous = deduped.get(key)
+            if previous is None or item["official"] > previous["official"]:
+                deduped[key] = item
+        output[kind] = sorted(
+            deduped.values(),
+            key=lambda item: (item["official"], item["published"]),
+            reverse=True,
+        )[:per_kind_limit]
+    return output
+
+
 def _news_source_grade(item: dict) -> str:
     """新聞來源分級：官方 A、主流媒體 B、聚合或未識別來源 C。"""
     source = (item.get("source") or "").lower()
@@ -3469,6 +3587,8 @@ STATE_FILE = Path("state/history.json")
 MODEL_HISTORY_FILE = Path("state/model_history.json")
 MODEL_HISTORY_SESSIONS = 400
 MODEL_HISTORY_MAX_BYTES = 7_000_000
+MODEL_VERSION = "tw-top100-ridge-platt-quantile-v2"
+MODEL_PURGE_GAP = 2
 
 
 def _parse_twse_date(value: str) -> Optional[str]:
@@ -3549,6 +3669,13 @@ MODEL_FEATURES = (
     "rev_yoy_pct", "rev_mom_pct", "eps_percentile", "news_catalyst_score",
 )
 
+MODEL_TARGETS = {
+    "1d_open": {"horizon": 1, "target": "future_open_return_pct"},
+    "1d_close": {"horizon": 1, "target": "future_close_return_pct"},
+    "3d": {"horizon": 3, "target": "future_close_return_pct"},
+    "5d": {"horizon": 5, "target": "future_close_return_pct"},
+}
+
 
 def _market_regime(quotes: dict) -> str:
     """依當日風險環境切換模型曝險。"""
@@ -3597,27 +3724,171 @@ def _ridge_fit_predict(rows: list[dict], current: dict, target_key: str,
     usable = [row for row in rows if row.get(target_key) is not None]
     if len(usable) < min_rows:
         return None
+    model = _ridge_fit_model(usable, target_key, alpha=alpha, min_rows=min_rows)
+    return _linear_model_predict(model, current)
+
+
+def _purge_recent_rows(rows: list[dict],
+                       sessions: list[str],
+                       gap: int = MODEL_PURGE_GAP) -> list[dict]:
+    """Drop labels nearest the forecast boundary to reduce event overlap leakage."""
+    ordered = sorted(set(sessions))
+    if not ordered or gap <= 0:
+        return list(rows)
+    cutoff_index = max(0, len(ordered) - gap)
+    cutoff = ordered[cutoff_index] if cutoff_index < len(ordered) else ordered[-1]
+    return [row for row in rows if str(row.get("future_session_date") or "") < cutoff]
+
+
+def _feature_matrix(rows: list[dict], current: Optional[dict] = None
+                    ) -> tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]:
     x = np.asarray([
         [_safe_number(row.get(feature)) for feature in MODEL_FEATURES]
-        for row in usable
+        for row in rows
     ], dtype=float)
-    y = np.asarray([_safe_number(row.get(target_key)) for row in usable], dtype=float)
     mean = x.mean(axis=0)
     std = x.std(axis=0)
     std[std < 1e-9] = 1.0
     z = (x - mean) / std
+    current_z = None
+    if current is not None:
+        current_z = (
+            np.asarray([_safe_number(current.get(feature)) for feature in MODEL_FEATURES])
+            - mean) / std
+    return z, current_z, mean, std
+
+
+def _ridge_fit_model(rows: list[dict],
+                     target_key: str,
+                     alpha: float = 8.0,
+                     min_rows: int = 120) -> Optional[dict]:
+    usable = [row for row in rows if row.get(target_key) is not None]
+    if len(usable) < min_rows:
+        return None
+    z, _, mean, std = _feature_matrix(usable)
     design = np.column_stack([np.ones(len(z)), z])
+    y = np.asarray([_safe_number(row.get(target_key)) for row in usable], dtype=float)
     penalty = np.eye(design.shape[1]) * alpha
     penalty[0, 0] = 0.0
     try:
         beta = np.linalg.solve(design.T @ design + penalty, design.T @ y)
-        current_z = (
-            np.asarray([_safe_number(current.get(feature)) for feature in MODEL_FEATURES])
-            - mean) / std
-        prediction = float(np.r_[1.0, current_z] @ beta)
-        return prediction if math.isfinite(prediction) else None
     except np.linalg.LinAlgError:
         return None
+    return {"beta": beta, "mean": mean, "std": std}
+
+
+def _linear_model_predict(model: Optional[dict], current: dict) -> Optional[float]:
+    if not model:
+        return None
+    current_z = (
+        np.asarray([_safe_number(current.get(feature)) for feature in MODEL_FEATURES])
+        - model["mean"]) / model["std"]
+    prediction = float(np.r_[1.0, current_z] @ model["beta"])
+    return prediction if math.isfinite(prediction) else None
+
+
+def _quantile_ridge_fit_model(rows: list[dict],
+                              target_key: str,
+                              quantile: float,
+                              alpha: float = 0.02,
+                              min_rows: int = 120,
+                              steps: int = 220) -> Optional[dict]:
+    usable = [row for row in rows if row.get(target_key) is not None]
+    if len(usable) < min_rows:
+        return None
+    z, _, mean, std = _feature_matrix(usable)
+    design = np.column_stack([np.ones(len(z)), z])
+    beta = np.zeros(design.shape[1], dtype=float)
+    y = np.asarray([_safe_number(row.get(target_key)) for row in usable], dtype=float)
+    for _ in range(steps):
+        residual = y - design @ beta
+        grad = -(design.T @ (quantile - (residual < 0).astype(float))) / len(y)
+        grad[1:] += alpha * beta[1:]
+        beta -= 0.06 * grad
+    return {"beta": beta, "mean": mean, "std": std}
+
+
+def _quantile_ridge_fit_predict(rows: list[dict],
+                                current: dict,
+                                target_key: str,
+                                quantile: float,
+                                alpha: float = 0.02,
+                                min_rows: int = 120,
+                                steps: int = 220) -> Optional[float]:
+    """Fit a small regularized linear quantile model with pinball loss."""
+    model = _quantile_ridge_fit_model(
+        rows, target_key, quantile, alpha=alpha, min_rows=min_rows, steps=steps)
+    return _linear_model_predict(model, current)
+
+
+def _sigmoid(value: float) -> float:
+    return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, value))))
+
+
+def _platt_fit(scores: list[float],
+               labels: list[float],
+               min_rows: int = 30) -> Optional[tuple[float, float]]:
+    """Fit sigmoid(a * score + b) on held-out historical probabilities."""
+    if len(scores) < min_rows or len(set(labels)) < 2:
+        return None
+    x = np.asarray(scores, dtype=float)
+    y = np.asarray(labels, dtype=float)
+    a, b = 1.0, 0.0
+    for _ in range(300):
+        p = 1.0 / (1.0 + np.exp(-np.clip(a * x + b, -30, 30)))
+        a -= 0.08 * float(np.mean((p - y) * x))
+        b -= 0.08 * float(np.mean(p - y))
+    return float(a), float(b)
+
+
+def _platt_params_for_rows(rows: list[dict]) -> Optional[tuple[float, float]]:
+    """Fit reusable Platt parameters on a time-ordered validation tail."""
+    ordered = sorted(rows, key=lambda row: str(row.get("session_date") or ""))
+    session_dates = sorted({str(row.get("session_date") or "") for row in ordered})
+    if len(session_dates) < 5:
+        return None
+    cutoff = session_dates[max(1, int(len(session_dates) * 0.8))]
+    train = [row for row in ordered if str(row.get("session_date") or "") < cutoff]
+    validation = [row for row in ordered if str(row.get("session_date") or "") >= cutoff]
+    if len(validation) < 30:
+        return None
+    model = _ridge_fit_model(train, "beat_market", min_rows=120)
+    if model is None:
+        return None
+    scores, labels = [], []
+    for row in validation:
+        score = _linear_model_predict(model, row)
+        if score is not None:
+            scores.append(score)
+            labels.append(_safe_number(row.get("beat_market")))
+    return _platt_fit(scores, labels)
+
+
+def _calibrated_beat_probability(raw_probability: Optional[float],
+                                 params: Optional[tuple[float, float]]
+                                 ) -> tuple[Optional[float], bool]:
+    if raw_probability is None:
+        return None, False
+    if params is None:
+        return max(0.05, min(0.95, raw_probability)), False
+    a, b = params
+    return max(0.05, min(0.95, _sigmoid(a * raw_probability + b))), True
+
+
+def _recent_direction_hit_pct(rows: list[dict],
+                              target_key: str,
+                              limit: int = 80) -> Optional[float]:
+    """Expose recent realized directional quality without claiming false precision."""
+    usable = [row for row in rows if row.get(target_key) is not None][-limit:]
+    if not usable:
+        return None
+    hits = []
+    for row in usable:
+        prediction = ((row.get("price_forecast") or {}).get(row.get("forecast_key", "")) or {}
+                      ).get("expected_return_pct")
+        if prediction is not None:
+            hits.append((_safe_number(prediction) >= 0) == (_safe_number(row[target_key]) >= 0))
+    return round(sum(hits) / len(hits) * 100, 1) if hits else None
 
 
 def load_model_history() -> list[dict]:
@@ -3635,7 +3906,7 @@ def load_model_history() -> list[dict]:
 def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
     """縮減每日股票池欄位，保留可訓練特徵、事件與當日預測。"""
     keep = {
-        "code", "name", "industry", "market_cap", "close", "day_pct", "pct_5d",
+        "code", "name", "industry", "market_cap", "open", "close", "day_pct", "pct_5d",
         "ma20_dist_pct", "daily_vol_pct", "vol_ratio_20d", "high20_break",
         "foreign_lot", "invest_lot", "dealer_lot", "total_lot", "foreign_30d_lot",
         "invest_30d_lot", "foreign_streak", "invest_streak", "tdcc_wow_pct",
@@ -3651,7 +3922,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         row["news_catalysts"] = [{
             key: evidence.get(key)
             for key in ("event_id", "event_type", "direction", "relation",
-                        "score_delta", "source_grade")
+                        "score_delta", "source_grade", "surprise_score",
+                        "scope_company", "scope_industry", "scope_supply_chain")
             if evidence.get(key) is not None
         } for evidence in (item.get("news_catalysts") or [])[:4]]
         output[str(item["code"])] = row
@@ -3711,12 +3983,18 @@ def build_model_training_rows(model_history: list[dict],
             future_close = _safe_number(future_stock.get("close"))
             if not close or not future_close:
                 continue
+            future_open = _safe_number(future_stock.get("open"))
             stock_return = (future_close / close - 1) * 100
             row = dict(stock)
             row.update({
                 "session_date": session_date,
+                "future_session_date": future_date,
+                "model_version": current.get("model_version") or "legacy",
                 "code": code,
                 "future_return_pct": stock_return,
+                "future_close_return_pct": stock_return,
+                "future_open_return_pct": (
+                    (future_open / close - 1) * 100 if future_open else None),
                 "future_excess_pct": stock_return - market_return,
                 "beat_market": 1.0 if stock_return > market_return else 0.0,
             })
@@ -3725,33 +4003,59 @@ def build_model_training_rows(model_history: list[dict],
 
 
 def _model_predictions(model_history: list[dict], sessions: list[str],
-                       snapshot: list[dict], horizon: int) -> dict[str, dict]:
+                       snapshot: list[dict], horizon: int,
+                       target_key: str = "future_close_return_pct",
+                       forecast_key: Optional[str] = None) -> dict[str, dict]:
     """分類與報酬雙模型：勝過大盤機率 + 預期報酬。"""
-    rows = build_model_training_rows(model_history, sessions, horizon)
+    rows = _purge_recent_rows(
+        build_model_training_rows(model_history, sessions, horizon), sessions)
+    forecast_key = forecast_key or f"{horizon}d"
+    for row in rows:
+        row["forecast_key"] = forecast_key
+    beat_model = _ridge_fit_model(rows, "beat_market")
+    return_model = _ridge_fit_model(rows, target_key)
+    lower_model = _quantile_ridge_fit_model(rows, target_key, 0.10)
+    upper_model = _quantile_ridge_fit_model(rows, target_key, 0.90)
+    platt_params = _platt_params_for_rows(rows)
     out = {}
     for item in snapshot or []:
         code = str(item.get("code") or "")
-        beat_raw = _ridge_fit_predict(rows, item, "beat_market")
-        return_raw = _ridge_fit_predict(rows, item, "future_return_pct")
+        beat_raw = _linear_model_predict(beat_model, item)
+        beat_probability, calibrated = _calibrated_beat_probability(beat_raw, platt_params)
+        return_raw = _linear_model_predict(return_model, item)
+        lower = _linear_model_predict(lower_model, item)
+        upper = _linear_model_predict(upper_model, item)
+        fallback = beat_raw is None or return_raw is None
         out[code] = {
             "training_rows": len(rows),
             "beat_market_probability": (
-                round(max(0.05, min(0.95, beat_raw)), 3)
-                if beat_raw is not None else None),
+                round(beat_probability, 3) if beat_probability is not None else None),
             "expected_return_pct": (
                 round(max(-12.0, min(12.0, return_raw)), 3)
                 if return_raw is not None else None),
-            "method": "standardized ridge" if beat_raw is not None and return_raw is not None
+            "quantile_lower_pct": round(lower, 3) if lower is not None else None,
+            "quantile_upper_pct": round(upper, 3) if upper is not None else None,
+            "recent_direction_hit_pct": _recent_direction_hit_pct(rows, target_key),
+            "probability_calibrated": calibrated,
+            "fallback_enabled": fallback,
+            "model_version": MODEL_VERSION,
+            "method": "standardized ridge + Platt + quantile" if not fallback
                       else "heuristic fallback",
         }
     return out
 
 
 def evaluate_model_walk_forward(model_history: list[dict],
-                                sessions: list[str]) -> dict[int, dict]:
+                                sessions: list[str]) -> dict:
     """完整 walk-forward 指標：MAE、方向、超額報酬、Top5、區間涵蓋與回撤。"""
-    output: dict[int, dict] = {}
-    for horizon in (3, 5):
+    output: dict = {
+        "model_version": MODEL_VERSION,
+        "purge_gap_sessions": MODEL_PURGE_GAP,
+        "versions": {},
+    }
+    for forecast_key, config in MODEL_TARGETS.items():
+        horizon = config["horizon"]
+        target_key = config["target"]
         rows = build_model_training_rows(model_history, sessions, horizon)
         errors = []
         direction_hits = []
@@ -3764,10 +4068,12 @@ def evaluate_model_walk_forward(model_history: list[dict],
         by_session: dict[str, list[dict]] = {}
         for row in rows:
             by_session.setdefault(row["session_date"], []).append(row)
-            forecast = (row.get("price_forecast") or {}).get(f"{horizon}d") or {}
+            forecast = (row.get("price_forecast") or {}).get(forecast_key) or {}
             expected = forecast.get("expected_return_pct")
             if expected is not None:
-                actual = row["future_return_pct"]
+                actual = row.get(target_key)
+                if actual is None:
+                    continue
                 errors.append(actual - _safe_number(expected))
                 direction_hits.append((actual >= 0) == (_safe_number(expected) >= 0))
                 lower = forecast.get("lower")
@@ -3776,17 +4082,26 @@ def evaluate_model_walk_forward(model_history: list[dict],
                 if lower and upper and close:
                     actual_price = close * (1 + actual / 100)
                     interval_hits.append(float(lower) <= actual_price <= float(upper))
+                version = str(row.get("model_version") or "legacy")
+                version_stats = output["versions"].setdefault(version, {}).setdefault(
+                    forecast_key, {"errors": [], "direction_hits": []})
+                version_stats["errors"].append(actual - _safe_number(expected))
+                version_stats["direction_hits"].append(
+                    (actual >= 0) == (_safe_number(expected) >= 0))
         for values in by_session.values():
             top = sorted(values, key=lambda row: _safe_number(row.get("attention_score")), reverse=True)[:5]
             if top:
-                avg_return = sum(row["future_return_pct"] for row in top) / len(top)
+                realized = [row.get(target_key) for row in top if row.get(target_key) is not None]
+                if not realized:
+                    continue
+                avg_return = sum(realized) / len(realized)
                 avg_excess = sum(row["future_excess_pct"] for row in top) / len(top)
                 top5_returns.append(avg_return)
                 top5_excess.append(avg_excess)
                 equity *= 1 + avg_return / 100
                 peak = max(peak, equity)
                 max_drawdown = min(max_drawdown, equity / peak - 1)
-        output[horizon] = {
+        output[forecast_key] = {
             "samples": len(rows),
             "sessions": len(by_session),
             "forecast_mae_pct": round(sum(abs(e) for e in errors) / len(errors), 3) if errors else None,
@@ -3796,6 +4111,19 @@ def evaluate_model_walk_forward(model_history: list[dict],
             "top5_avg_excess_pct": round(sum(top5_excess) / len(top5_excess), 3) if top5_excess else None,
             "top5_max_drawdown_pct": round(max_drawdown * 100, 3) if top5_returns else None,
         }
+    # Backward-compatible aliases used by the existing report text.
+    for version, targets in output["versions"].items():
+        for forecast_key, stats in targets.items():
+            errors = stats.pop("errors")
+            hits = stats.pop("direction_hits")
+            stats.update({
+                "samples": len(errors),
+                "forecast_mae_pct": round(sum(abs(value) for value in errors) / len(errors), 3)
+                                    if errors else None,
+                "direction_hit_pct": round(sum(hits) / len(hits) * 100, 1) if hits else None,
+            })
+    output[3] = output["3d"]
+    output[5] = output["5d"]
     return output
 
 
@@ -4027,6 +4355,26 @@ def _event_cluster_key(event: dict) -> tuple:
     )
 
 
+def _event_surprise_score(event: dict) -> float:
+    """Estimate how much genuinely new information an event carries."""
+    explicit = event.get("surprise_score")
+    if explicit is not None:
+        return round(max(0.1, min(1.0, _safe_number(explicit, 0.5))), 3)
+    text = f"{event.get('title', '')} {event.get('summary', '')}".lower()
+    if any(token in text for token in (
+            "unexpected", "surprise", "beats estimates", "misses estimates",
+            "優於預期", "低於預期", "意外", "突發", "緊急")):
+        return 0.95
+    if any(token in text for token in (
+            "as expected", "in line with", "符合預期", "市場預期", "早已預期")):
+        return 0.25
+    return {
+        "guidance_raise": 0.90, "guidance_cut": 0.90, "orders": 0.70,
+        "earnings": 0.60, "revenue_growth": 0.50, "export_controls": 0.85,
+        "litigation": 0.75, "geopolitical": 0.90, "general": 0.35,
+    }.get(str(event.get("event_type")), 0.35)
+
+
 def extract_structured_events(news: list[dict],
                               mops: list[dict],
                               llm_events: Optional[list[dict]] = None,
@@ -4063,6 +4411,8 @@ def extract_structured_events(news: list[dict],
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
         }
+        event["surprise_score"] = _event_surprise_score(
+            dict(event, surprise_score=item.get("surprise_score"), summary=item.get("summary")))
         raw_id = "|".join(str(v) for v in _event_cluster_key(event))
         event["event_id"] = hashlib.sha1(raw_id.encode("utf-8")).hexdigest()[:12]
         candidates.append(event)
@@ -4097,16 +4447,39 @@ def extract_structured_events(news: list[dict],
 
 def build_event_study(model_history: list[dict],
                       sessions: list[str],
-                      horizon: int = 3) -> dict[tuple[str, int], dict]:
-    """Estimate post-event excess returns using only already-labelled snapshots."""
-    grouped: dict[tuple[str, int], list[float]] = {}
-    for row in build_model_training_rows(model_history, sessions, horizon):
+                      horizon: int = 3) -> dict[tuple, dict]:
+    """Estimate company, industry, supply-chain and global post-event excess returns."""
+    grouped: dict[tuple, list[float]] = {}
+    seen_events = set()
+    rows = _purge_recent_rows(
+        build_model_training_rows(model_history, sessions, horizon), sessions)
+    for row in rows:
         for evidence in row.get("news_catalysts") or []:
             event_type = str(evidence.get("event_type") or "")
             direction = int(_safe_number(evidence.get("direction")))
             if event_type and direction:
-                grouped.setdefault((event_type, direction), []).append(
-                    _safe_number(row.get("future_excess_pct")))
+                event_key = (
+                    str(evidence.get("event_id") or ""),
+                    str(row.get("code") or ""),
+                    event_type,
+                    direction,
+                )
+                if event_key[0] and event_key in seen_events:
+                    continue
+                seen_events.add(event_key)
+                value = _safe_number(row.get("future_excess_pct"))
+                keys = [
+                    ("global", "", event_type, direction),
+                    (event_type, direction),  # backward-compatible alias
+                ]
+                if evidence.get("scope_company"):
+                    keys.append(("company", str(evidence["scope_company"]), event_type, direction))
+                if evidence.get("scope_industry"):
+                    keys.append(("industry", str(evidence["scope_industry"]), event_type, direction))
+                if evidence.get("scope_supply_chain"):
+                    keys.append(("supply_chain", str(evidence["scope_supply_chain"]), event_type, direction))
+                for key in keys:
+                    grouped.setdefault(key, []).append(value)
     output = {}
     for key, values in grouped.items():
         output[key] = {
@@ -4115,6 +4488,38 @@ def build_event_study(model_history: list[dict],
             "win_rate_pct": round(sum(value > 0 for value in values) / len(values) * 100, 1),
         }
     return output
+
+
+def _shrunk_event_impact(event_study: dict[tuple, dict],
+                         code: str,
+                         industry: str,
+                         supply_chain: str,
+                         event_type: str,
+                         direction: int) -> tuple[float, int, str]:
+    """Shrink sparse company studies toward industry, supply-chain and global priors."""
+    levels = [
+        ("company", code, 10.0),
+        ("industry", industry, 18.0),
+        ("supply_chain", supply_chain, 18.0),
+        ("global", "", 30.0),
+    ]
+    weighted, total_weight, samples, used = 0.0, 0.0, 0, []
+    for scope, scope_id, prior_strength in levels:
+        if scope != "global" and not scope_id:
+            continue
+        stats = event_study.get((scope, scope_id, event_type, direction)) or {}
+        n = int(stats.get("samples", 0))
+        if not n:
+            continue
+        weight = n / (n + prior_strength)
+        weighted += _safe_number(stats.get("avg_excess_pct")) * weight
+        total_weight += weight
+        samples += n
+        used.append(scope)
+    if not total_weight:
+        return 0.0, 0, "conservative_fallback"
+    impact = max(-3.0, min(3.0, weighted / total_weight))
+    return impact, samples, "hierarchical_event_study:" + "+".join(used)
 
 
 def _stock_news_catalysts(snapshot: list[dict],
@@ -4132,6 +4537,8 @@ def _stock_news_catalysts(snapshot: list[dict],
     events = events if events is not None else extract_structured_events(news, mops)
     event_study = event_study or {}
 
+    stock_by_code = {str(item.get("code")): item for item in snapshot or []}
+
     def add(code: str, event: dict, relation: str, relation_weight: float) -> None:
         result = results.get(code)
         if result is None:
@@ -4139,11 +4546,14 @@ def _stock_news_catalysts(snapshot: list[dict],
         direction = int(_safe_number(event.get("direction")))
         if not direction:
             return
-        stats = event_study.get((str(event.get("event_type")), direction)) or {}
-        if stats.get("samples", 0) >= 5:
-            base = max(-3.0, min(3.0, _safe_number(stats.get("avg_excess_pct"))))
+        stock = stock_by_code.get(code) or {}
+        industry = str(stock.get("industry") or "")
+        supply_chain = str(event.get("entity") or "") if "supply-chain" in relation else ""
+        base, study_samples, score_method = _shrunk_event_impact(
+            event_study, code, industry, supply_chain,
+            str(event.get("event_type")), direction)
+        if study_samples >= 5:
             delta = base * relation_weight
-            score_method = "event_study"
         else:
             base = {
                 "guidance_raise": 3.0, "guidance_cut": -3.0, "orders": 2.0,
@@ -4152,7 +4562,8 @@ def _stock_news_catalysts(snapshot: list[dict],
             }.get(str(event.get("event_type")), 1.0)
             delta = abs(base) * direction * relation_weight
             score_method = "conservative_fallback"
-        delta *= _safe_number(event.get("quality_score"), 0.5)
+        surprise = _event_surprise_score(event)
+        delta *= _safe_number(event.get("quality_score"), 0.5) * (0.5 + surprise)
         result["score"] += delta
         result["evidence"].append({
             "event_id": event.get("event_id"),
@@ -4163,6 +4574,11 @@ def _stock_news_catalysts(snapshot: list[dict],
             "source_grade": event.get("source_grade"),
             "direction": direction,
             "score_method": score_method,
+            "surprise_score": surprise,
+            "event_study_samples": study_samples,
+            "scope_company": code,
+            "scope_industry": industry,
+            "scope_supply_chain": supply_chain,
             "score_delta": round(delta, 2),
         })
 
@@ -4275,7 +4691,13 @@ def calc_stock_price_forecast(entry: dict,
     model_predictions = model_predictions or {}
     regime_weight = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])["model"]
     forecasts = {}
-    for horizon in (3, 5):
+    forecast_specs = (
+        ("1d_open", 1, "隔日開盤"),
+        ("1d_close", 1, "隔日收盤"),
+        ("3d", 3, "3日收盤"),
+        ("5d", 5, "5日收盤"),
+    )
+    for forecast_key, horizon, label in forecast_specs:
         learned = evaluation.get(horizon) or {}
         learned_bias = (
             float(learned.get("forecast_bias_pct") or 0)
@@ -4288,7 +4710,7 @@ def calc_stock_price_forecast(entry: dict,
             + (score_tilt + news_tilt) * (horizon ** 0.5)
             + max(-2.0, min(2.0, learned_bias))
         )
-        model = model_predictions.get(horizon) or {}
+        model = model_predictions.get(forecast_key) or {}
         model_return = model.get("expected_return_pct")
         expected_return = (
             heuristic_return if model_return is None
@@ -4296,17 +4718,44 @@ def calc_stock_price_forecast(entry: dict,
                  + heuristic_return * (1 - regime_weight)
         )
         expected_return = max(-12.0, min(12.0, expected_return))
+        quantile_lower = model.get("quantile_lower_pct")
+        quantile_upper = model.get("quantile_upper_pct")
         band = max(1.5, min(15.0, daily_vol * (horizon ** 0.5) * 1.28))
+        lower_return = (
+            _safe_number(quantile_lower) if quantile_lower is not None
+            else expected_return - band
+        )
+        upper_return = (
+            _safe_number(quantile_upper) if quantile_upper is not None
+            else expected_return + band
+        )
+        if lower_return > upper_return:
+            lower_return, upper_return = upper_return, lower_return
+        lower_return = min(lower_return, expected_return)
+        upper_return = max(upper_return, expected_return)
         expected_price = close * (1 + expected_return / 100)
-        forecasts[f"{horizon}d"] = {
+        forecasts[forecast_key] = {
+            "label": label,
             "horizon_days": horizon,
             "expected_price": round(expected_price, 2),
             "expected_return_pct": round(expected_return, 2),
-            "lower": round(close * (1 + (expected_return - band) / 100), 2),
-            "upper": round(close * (1 + (expected_return + band) / 100), 2),
+            "lower": round(close * (1 + lower_return / 100), 2),
+            "upper": round(close * (1 + upper_return / 100), 2),
             "interval_pct": round(band, 2),
             "beat_market_probability": model.get("beat_market_probability"),
             "model_method": model.get("method", "heuristic fallback"),
+            "quality": {
+                "model_version": model.get("model_version", MODEL_VERSION),
+                "training_rows": model.get("training_rows", 0),
+                "recent_direction_hit_pct": model.get("recent_direction_hit_pct"),
+                "probability_calibrated": bool(model.get("probability_calibrated")),
+                "fallback_enabled": model.get("fallback_enabled", True),
+                "interval_method": (
+                    "quantile regression"
+                    if quantile_lower is not None and quantile_upper is not None
+                    else "volatility fallback"
+                ),
+            },
         }
     samples = sum((evaluation.get(h) or {}).get("forecast_samples", 0) for h in (3, 5))
     if samples >= 30 and attention_score >= 60:
@@ -4343,9 +4792,11 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
     catalysts = _stock_news_catalysts(
         snapshot, news, mops, events=structured_events, event_study=event_study)
     predictions = {
-        horizon: _model_predictions(model_history, sessions, snapshot, horizon)
-        for horizon in (3, 5)
-    } if sessions else {3: {}, 5: {}}
+        forecast_key: _model_predictions(
+            model_history, sessions, snapshot,
+            config["horizon"], config["target"], forecast_key)
+        for forecast_key, config in MODEL_TARGETS.items()
+    } if sessions else {forecast_key: {} for forecast_key in MODEL_TARGETS}
     weights = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])
     for item in snapshot or []:
         catalyst = catalysts.get(item.get("code"), {})
@@ -4359,7 +4810,7 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
     for item in snapshot or []:
         code = str(item.get("code") or "")
         item["industry_neutral_score"] = neutral_scores.get(code, 0.0)
-        model3 = (predictions.get(3) or {}).get(code) or {}
+        model3 = (predictions.get("3d") or {}).get(code) or {}
         probability = model3.get("beat_market_probability")
         model_tilt = ((_safe_number(probability, 0.5) - 0.5) * 12.0
                       if probability is not None else 0.0)
@@ -4373,8 +4824,8 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
         item["price_forecast"] = calc_stock_price_forecast(
             item,
             evaluation,
-            {horizon: (predictions.get(horizon) or {}).get(code, {})
-             for horizon in (3, 5)},
+            {forecast_key: (predictions.get(forecast_key) or {}).get(code, {})
+             for forecast_key in MODEL_TARGETS},
             regime,
         )
     return snapshot
@@ -5972,8 +6423,10 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
         "30 objects. Each object must have entity, event_type, direction, confidence, "
+        "surprise_score, "
         "title, source, published. direction is -1, 0, or 1. Use only supplied evidence. "
         "Prefer official disclosures over media rewrites. Merge duplicates. "
+        "surprise_score is 0.1 to 1.0: use a low score for already-expected news. "
         "Allowed event_type: guidance_raise, guidance_cut, orders, earnings, "
         "revenue_growth, export_controls, litigation, geopolitical, general.\nINPUT:\n"
         + json.dumps(compact_items, ensure_ascii=False, separators=(",", ":"))
@@ -6426,9 +6879,52 @@ def _render_summary_bar(summary: str, htmllib) -> str:
           </tr>"""
 
 
+def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
+    """Render awareness-only Taiwan policy and medical sections."""
+    if not intelligence:
+        return ""
+
+    def section(kind: str, title: str, color: str, background: str) -> str:
+        items = intelligence.get(kind) or []
+        if not items:
+            rows = (
+                "<div style='padding:12px 14px;color:#64748b;font-size:13px;'>"
+                "昨日未抓到足夠的重要公開資訊，建議仍以主管機關公告為準。</div>"
+            )
+        else:
+            rows = "".join(
+                f"<div style='padding:12px 14px;border-bottom:1px solid #e2e8f0;'>"
+                f"<div style='font-size:12px;color:#64748b;margin-bottom:4px;'>"
+                f"{htmllib.escape(str(item.get('published', '')))} ・ "
+                f"{htmllib.escape(str(item.get('topic', '')))} ・ "
+                f"<b style='color:{'#15803d' if item.get('official') else '#a16207'};'>"
+                f"{htmllib.escape(str(item.get('source_grade', '')))}</b> ・ "
+                f"{htmllib.escape(str(item.get('status', '')))}</div>"
+                f"<a href='{htmllib.escape(str(item.get('link', '')))}' "
+                f"style='font-size:14px;line-height:1.65;color:#0f172a;text-decoration:none;'>"
+                f"{htmllib.escape(str(item.get('title', '')))}</a></div>"
+                for item in items
+            )
+        return f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:{background};border-left:5px solid {color};border-radius:4px;">{title}</h2>
+        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">
+          {rows}
+        </div>"""
+
+    window = htmllib.escape(str(intelligence.get("window") or "昨日"))
+    return (
+        f"<p style='font-size:12px;color:#64748b;margin:28px 0 4px;'>"
+        f"整理區間：{window}。以下為快速情報，不納入股價模型。</p>"
+        + section("policy", "台灣政策昨日走向", "#7c3aed", "#f5f3ff")
+        + section("medical", "台灣醫界昨日走向", "#0891b2", "#ecfeff")
+    )
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
+    tw_intelligence_html = _render_tw_intelligence_html(
+        quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
 
     # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
@@ -6759,10 +7255,20 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 基礎 {(s.get('breakout') or {}).get('score',0)}"
                     f" ・ 新聞 {s.get('news_catalyst_score',0):+.1f}")
                 forecast = s.get("price_forecast") or {}
+                f1o = forecast.get("1d_open") or {}
+                f1c = forecast.get("1d_close") or {}
                 f3 = forecast.get("3d") or {}
                 f5 = forecast.get("5d") or {}
+                quality = f3.get("quality") or {}
+                quality_line = (
+                    f"模型 {quality.get('model_version', MODEL_VERSION)}"
+                    f" ・ 樣本 {quality.get('training_rows', 0)}"
+                    f" ・ 近期方向命中 {quality.get('recent_direction_hit_pct', '—')}%"
+                    f" ・ {'fallback' if quality.get('fallback_enabled', True) else quality.get('interval_method', 'model')}"
+                )
                 forecast_line = (
-                    f"3日 {f3.get('expected_price','—')} ({f3.get('lower','—')}~{f3.get('upper','—')})"
+                    f"隔日開 {f1o.get('expected_price','—')} ・ 隔日收 {f1c.get('expected_price','—')}"
+                    f" ・ 3日 {f3.get('expected_price','—')} ({f3.get('lower','—')}~{f3.get('upper','—')})"
                     f" ・ 5日 {f5.get('expected_price','—')} ({f5.get('lower','—')}~{f5.get('upper','—')})"
                     f" ・ 信心 {forecast.get('confidence','低')}")
                 rows_html.append(
@@ -6782,6 +7288,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     # 第 3 行:數據明細小字
                     f"<div style='margin-top:5px;font-size:11px;color:#94a3b8;'>{metrics_line}</div>"
                     f"<div style='margin-top:5px;font-size:11px;color:#0369a1;'>{forecast_line}</div>"
+                    f"<div style='margin-top:4px;font-size:10px;color:#64748b;'>{quality_line}</div>"
                     f"</td>"
                     f"</tr>"
                 )
@@ -7255,6 +7762,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {mops_html}
 
+            {tw_intelligence_html}
+
             <div style="margin-top:32px;">{analysis_html}</div>
 
           </td></tr>
@@ -7571,6 +8080,8 @@ def main() -> int:
     print("[main] 抓新聞中…")
     news = fetch_news()
     print(f"[main] 抓到 {len(news)} 則新聞")
+    print("[main] 整理台灣政策與醫界昨日走向…")
+    quotes["TW_DAILY_INTELLIGENCE"] = fetch_tw_daily_intelligence(now_tpe)
 
     # 5.05 新聞去重（同事件常被多個 RSS 重貼，去重後 LLM 訊號更乾淨）
     news = dedup_news(news)
@@ -7911,6 +8422,7 @@ def main() -> int:
             save_model_history({
                 "session_date": completed_session,
                 "generated_at": now_tpe.isoformat(),
+                "model_version": MODEL_VERSION,
                 "taiex_close": (
                     taiex_pred.get("last_close")
                     or (twse_taiex_close if 'twse_taiex_close' in locals() else None)

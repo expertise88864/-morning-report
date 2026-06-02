@@ -1774,6 +1774,40 @@ def _fallback_universe() -> dict[str, dict]:
     }
 
 
+def _fetch_twse_listing_basics() -> dict[str, dict]:
+    """Fetch current TWSE listing metadata and issued shares for ranking/backfill."""
+    r = requests.get(
+        "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
+        timeout=20,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    basics = r.json() or []
+    if not basics:
+        raise RuntimeError("上市公司基本資料為空")
+    keys = list(basics[0].keys())
+    code_k = next((k for k in keys if "公司代號" in k or k.strip() == "代號"), None)
+    name_k = (next((k for k in keys if "簡稱" in k), None)
+              or next((k for k in keys if "公司名稱" in k or "名稱" in k), None))
+    ind_k = next((k for k in keys if "產業別" in k), None)
+    share_k = next((k for k in keys if "發行" in k and "股數" in k), None)
+    if not code_k or not share_k:
+        raise RuntimeError(f"上市公司基本資料欄位偵測失敗: {keys}")
+    output = {}
+    for row in basics:
+        code = str(row.get(code_k, "")).strip()
+        shares = _to_int(row.get(share_k))
+        if len(code) == 4 and code.isdigit() and shares:
+            output[code] = {
+                "name": (str(row.get(name_k, "")).strip() or code) if name_k else code,
+                "industry": str(row.get(ind_k, "")).strip() if ind_k else "",
+                "shares": shares,
+            }
+    if not output:
+        raise RuntimeError("沒有有效上市公司基本資料")
+    return output
+
+
 def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
     """
     動態抓「台股市值前 N 大」universe（上市）。
@@ -1788,32 +1822,22 @@ def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
     """
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     try:
-        r1 = requests.get("https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
-                          timeout=20, headers=headers)
-        r1.raise_for_status()
-        basics = r1.json() or []
+        basics = _fetch_twse_listing_basics()
         r2 = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
                           timeout=20, headers=headers)
         r2.raise_for_status()
         prices = r2.json() or []
-        if not basics or not prices:
+        if not prices:
             raise RuntimeError("OpenAPI 回傳空資料")
 
         # 自動偵測欄位名（TWSE 偶爾微調欄位字串）
-        bk = list(basics[0].keys())
-        code_k = next((k for k in bk if "公司代號" in k or k.strip() == "代號"), None)
-        name_k = (next((k for k in bk if "簡稱" in k), None)
-                  or next((k for k in bk if "公司名稱" in k or "名稱" in k), None))
-        ind_k = next((k for k in bk if "產業別" in k), None)
-        share_k = next((k for k in bk if "發行" in k and "股數" in k), None)
-
         pk = list(prices[0].keys())
         pcode_k = next((k for k in pk if k == "Code" or "證券代號" in k or "公司代號" in k
                         or k.strip() == "代號"), None)
         close_k = next((k for k in pk if "clos" in k.lower() or "收盤" in k), None)
 
-        if not all([code_k, share_k, pcode_k, close_k]):
-            raise RuntimeError(f"OpenAPI 欄位偵測失敗 basics={bk} prices={pk}")
+        if not all([pcode_k, close_k]):
+            raise RuntimeError(f"OpenAPI 欄位偵測失敗 prices={pk}")
 
         price_map: dict[str, float] = {}
         for row in prices:
@@ -1823,18 +1847,15 @@ def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
                 price_map[c] = cp
 
         rows: list[dict] = []
-        for row in basics:
-            c = str(row.get(code_k, "")).strip()
-            if not (len(c) == 4 and c.isdigit()):   # 只取 4 位數字的普通股代號
-                continue
-            shares = _to_int(row.get(share_k))
+        for c, basic in basics.items():
+            shares = basic["shares"]
             close = price_map.get(c)
             if not shares or not close:
                 continue
             rows.append({
                 "code": c,
-                "name": (str(row.get(name_k, "")).strip() or c) if name_k else c,
-                "industry": (str(row.get(ind_k, "")).strip() if ind_k else ""),
+                "name": basic["name"],
+                "industry": basic["industry"],
                 "market_cap": shares * close,
             })
 
@@ -1900,6 +1921,54 @@ def fetch_tw_monthly_revenue() -> dict[str, dict]:
     except Exception as e:
         print(f"[revenue] 抓取失敗: {e}", file=sys.stderr)
         return {}
+
+
+def load_revenue_consensus() -> dict[str, dict]:
+    """
+    Load an optional point-in-time revenue consensus file.
+
+    The file is intentionally external: TWSE publishes actual revenue, but a free official
+    analyst-consensus feed is not available. Expected format:
+    {"2330":{"month":"11505","expected_rev":300000000000,"source":"vendor"}}.
+    """
+    if not REVENUE_CONSENSUS_FILE.exists():
+        return {}
+    try:
+        payload = json.loads(REVENUE_CONSENSUS_FILE.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception as e:
+        print(f"[revenue_consensus] 載入失敗: {e}", file=sys.stderr)
+        return {}
+
+
+def _revenue_expectation_feature(actual: dict,
+                                 consensus: Optional[dict] = None) -> dict:
+    """Prefer real consensus; otherwise use a conservative disclosed-growth baseline."""
+    actual_rev = _safe_number(actual.get("rev"))
+    expected_rev = _safe_number((consensus or {}).get("expected_rev"))
+    if actual_rev and expected_rev:
+        surprise = (actual_rev / expected_rev - 1) * 100
+        return {
+            "rev_expected": expected_rev,
+            "rev_surprise_pct": round(max(-50.0, min(50.0, surprise)), 3),
+            "rev_expectation_method": "external_consensus",
+            "rev_expectation_source": (consensus or {}).get("source") or "configured vendor",
+        }
+    yoy = actual.get("yoy_pct")
+    cum_yoy = actual.get("cum_yoy_pct")
+    if isinstance(yoy, (int, float)) and isinstance(cum_yoy, (int, float)):
+        return {
+            "rev_expected": None,
+            "rev_surprise_pct": round(max(-50.0, min(50.0, yoy - cum_yoy)), 3),
+            "rev_expectation_method": "cumulative_yoy_baseline",
+            "rev_expectation_source": "TWSE actual revenue trend proxy",
+        }
+    return {
+        "rev_expected": None,
+        "rev_surprise_pct": None,
+        "rev_expectation_method": "missing",
+        "rev_expectation_source": None,
+    }
 
 
 def fetch_tw_eps() -> dict[str, dict]:
@@ -2266,6 +2335,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
     inst_30d = fetch_twse_institutional_cumulative(
         days_back=30, target_codes=target_codes, keep_recent_days=5)
     revenue = fetch_tw_monthly_revenue()              # 月營收（一次請求全市場）
+    revenue_consensus = load_revenue_consensus()       # 選填：外部市場預期基準
     eps_map = fetch_tw_eps()                           # 季度 EPS（綜合損益表，全市場）
     tdcc = fetch_tdcc_major_holders(target_codes)     # 大戶持股比例（一次請求全市場）
     snapshot: list[dict] = []
@@ -2294,6 +2364,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
             day_pct = (close - prev_close) / prev_close * 100 if prev_close else 0
 
             vol = safe_float(last["Volume"])
+            trade_value = (vol or 0) * close
             avg5_vol = sub["Volume"].tail(5).mean()
             vol_ratio = (vol / avg5_vol) if avg5_vol else None
             # 20 日均量比(更可靠的「異常量能」訊號;5 日窗對短期波動敏感)
@@ -2335,6 +2406,8 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
             inst_data = inst.get(code, {})
             inst_30 = inst_30d.get(code, {})
             rev = revenue.get(code, {})
+            rev_expectation = _revenue_expectation_feature(
+                rev, revenue_consensus.get(code))
             eps_data = eps_map.get(code, {})
             tdcc_data = tdcc.get(code, {})
             info = universe[code]
@@ -2357,6 +2430,10 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 "day_pct": round(day_pct, 2),
                 "vol_ratio": round(vol_ratio, 2) if vol_ratio else None,
                 "vol_ratio_20d": round(vol_ratio_20d, 2) if vol_ratio_20d else None,
+                "trade_value": round(trade_value, 0) if trade_value else None,
+                "volume": round(vol, 0) if vol else None,
+                "slippage_bps": _estimate_slippage_bps(trade_value, daily_vol_pct),
+                "liquidity_eligible": bool(trade_value and trade_value >= TW_LIQUIDITY_MIN_TWD),
                 "high20_break": bool(high20_break),
                 "low20_break": bool(low20_break),
                 "month_pct": round(month_pct, 2),
@@ -2386,6 +2463,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 "rev_month":   rev.get("month"),
                 "rev_yoy_pct": rev.get("yoy_pct"),
                 "rev_mom_pct": rev.get("mom_pct"),
+                **rev_expectation,
                 # 季度 EPS(綜合損益表)
                 "eps": eps_data.get("eps"),
                 "eps_quarter": eps_data.get("quarter"),
@@ -3585,10 +3663,17 @@ def fetch_news_fulltext(news: list[dict],
 # ============= 多日歷史記憶 (Opt 1) =============
 STATE_FILE = Path("state/history.json")
 MODEL_HISTORY_FILE = Path("state/model_history.json")
+TWSE_TOP100_ARCHIVE_FILE = Path(os.environ.get(
+    "TWSE_TOP100_ARCHIVE_FILE", "state/twse_top100_archive.json"))
+REVENUE_CONSENSUS_FILE = Path(os.environ.get(
+    "REVENUE_CONSENSUS_FILE", "state/revenue_consensus.json"))
 MODEL_HISTORY_SESSIONS = 400
 MODEL_HISTORY_MAX_BYTES = 7_000_000
-MODEL_VERSION = "tw-top100-ridge-platt-quantile-v2"
+MODEL_BACKFILL_TARGET_SESSIONS = 60
+MODEL_BACKFILL_BATCH_DAYS = int(os.environ.get("MODEL_BACKFILL_BATCH_DAYS", "12"))
+MODEL_VERSION = "tw-top100-ridge-platt-quantile-v3"
 MODEL_PURGE_GAP = 2
+TW_LIQUIDITY_MIN_TWD = 50_000_000
 
 
 def _parse_twse_date(value: str) -> Optional[str]:
@@ -3638,6 +3723,262 @@ def fetch_tw_trading_sessions(months: int = 18) -> list[str]:
     return sorted(sessions)
 
 
+def _parse_twse_historical_market_day(payload: dict) -> list[dict]:
+    """Parse TWSE MI_INDEX daily quote payload into compact stock rows."""
+    tables = payload.get("tables") or []
+    table = next((
+        item for item in reversed(tables)
+        if any("證券代號" in str(field) for field in item.get("fields", []))
+        and any("收盤價" in str(field) for field in item.get("fields", []))
+    ), None)
+    if not table:
+        return []
+    fields = [str(field) for field in table.get("fields", [])]
+
+    def index_of(*tokens: str) -> Optional[int]:
+        return next((index for index, field in enumerate(fields)
+                     if any(token in field for token in tokens)), None)
+
+    code_i = index_of("證券代號")
+    name_i = index_of("證券名稱")
+    volume_i = index_of("成交股數")
+    trade_value_i = index_of("成交金額")
+    open_i = index_of("開盤價")
+    close_i = index_of("收盤價")
+    if code_i is None or close_i is None:
+        return []
+    rows = []
+    for raw in table.get("data", []):
+        code = str(raw[code_i]).strip() if code_i < len(raw) else ""
+        close = _to_float(raw[close_i]) if close_i < len(raw) else None
+        if not (len(code) == 4 and code.isdigit() and close):
+            continue
+        rows.append({
+            "code": code,
+            "name": str(raw[name_i]).strip() if name_i is not None and name_i < len(raw) else code,
+            "volume": _to_float(raw[volume_i]) if volume_i is not None and volume_i < len(raw) else None,
+            "trade_value": _to_float(raw[trade_value_i])
+                           if trade_value_i is not None and trade_value_i < len(raw) else None,
+            "open": _to_float(raw[open_i]) if open_i is not None and open_i < len(raw) else None,
+            "close": close,
+        })
+    return rows
+
+
+def fetch_twse_historical_market_day(session_date: str) -> list[dict]:
+    """Fetch one official TWSE all-stock historical daily quote page."""
+    r = requests.get(
+        "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX",
+        params={"response": "json", "date": session_date.replace("-", ""),
+                "type": "ALLBUT0999"},
+        timeout=20,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    payload = r.json() or {}
+    if payload.get("stat") not in (None, "OK"):
+        raise RuntimeError(f"TWSE MI_INDEX {session_date}: {payload.get('stat')}")
+    return _parse_twse_historical_market_day(payload)
+
+
+def load_twse_top100_archive() -> list[dict]:
+    """Load optional licensed daily TAIEX constituent snapshots with true shares in issue."""
+    if not TWSE_TOP100_ARCHIVE_FILE.exists():
+        return []
+    try:
+        payload = json.loads(TWSE_TOP100_ARCHIVE_FILE.read_text(encoding="utf-8"))
+        records = payload if isinstance(payload, list) else payload.get("records", [])
+        return [record for record in records if isinstance(record, dict)
+                and record.get("session_date") and record.get("stocks")]
+    except Exception as e:
+        print(f"[model_backfill] 正式 archive 載入失敗: {e}", file=sys.stderr)
+        return []
+
+
+def _historical_taiex_closes() -> dict[str, float]:
+    """Fetch a compact TAIEX close map for historical labels."""
+    try:
+        hist = yf.Ticker("^TWII").history(period="6mo", auto_adjust=False)
+        return {
+            (idx.tz_localize(None) if getattr(idx, "tz", None) else idx).strftime("%Y-%m-%d"):
+            float(row["Close"])
+            for idx, row in hist.iterrows()
+            if _safe_number(row.get("Close"))
+        }
+    except Exception as e:
+        print(f"[model_backfill] ^TWII 歷史收盤抓取失敗: {e}", file=sys.stderr)
+        return {}
+
+
+def _backfill_records_from_market_days(days: dict[str, list[dict]],
+                                       basics: dict[str, dict],
+                                       taiex_closes: dict[str, float],
+                                       seed_records: Optional[list[dict]] = None) -> list[dict]:
+    """
+    Build historical top-100 records from official quotes and current issued shares.
+
+    Free TWSE endpoints do not expose historical daily shares in issue. The method is
+    explicitly tagged as estimated_current_shares so it cannot be mistaken for licensed
+    point-in-time market capitalization data.
+    """
+    price_history: dict[str, list[dict]] = {}
+    first_new_session = min(days) if days else ""
+    for record in sorted(seed_records or [], key=lambda item: item.get("session_date", "")):
+        if first_new_session and str(record.get("session_date") or "") >= first_new_session:
+            continue
+        for code, stock in (record.get("stocks") or {}).items():
+            close = _safe_number(stock.get("close"))
+            if close:
+                price_history.setdefault(str(code), []).append({
+                    "close": close,
+                    "volume": _safe_number(stock.get("volume")),
+                })
+    price_history = {code: rows[-20:] for code, rows in price_history.items()}
+    output = []
+    for session_date in sorted(days):
+        ranked = []
+        for raw in days[session_date]:
+            code = str(raw.get("code") or "")
+            basic = basics.get(code) or {}
+            shares = _safe_number(basic.get("shares"))
+            close = _safe_number(raw.get("close"))
+            if not shares or not close:
+                continue
+            prior = price_history.setdefault(code, [])
+            prior_closes = [row["close"] for row in prior]
+            open_price = _safe_number(raw.get("open")) or None
+            trade_value = _safe_number(raw.get("trade_value"))
+            pct_5d = ((close / prior_closes[-5] - 1) * 100) if len(prior_closes) >= 5 else None
+            ma20 = (sum(prior_closes[-19:] + [close]) / 20
+                    if len(prior_closes) >= 19 else None)
+            returns = [
+                prior_closes[index] / prior_closes[index - 1] - 1
+                for index in range(max(1, len(prior_closes) - 19), len(prior_closes))
+                if prior_closes[index - 1]
+            ]
+            daily_vol = float(np.std(returns)) * 100 if len(returns) >= 5 else None
+            avg20_volume = (
+                sum(_safe_number(row.get("volume")) for row in prior[-20:]) / min(20, len(prior))
+                if prior else None
+            )
+            volume = _safe_number(raw.get("volume"))
+            stock = {
+                "code": code,
+                "name": basic.get("name") or raw.get("name") or code,
+                "industry": basic.get("industry") or "",
+                "market_cap": shares * close,
+                "open": open_price,
+                "close": close,
+                "day_pct": (
+                    (close / prior_closes[-1] - 1) * 100 if prior_closes else None),
+                "pct_5d": pct_5d,
+                "ma20_dist_pct": ((close / ma20 - 1) * 100) if ma20 else None,
+                "daily_vol_pct": daily_vol,
+                "vol_ratio_20d": (
+                    volume / avg20_volume if avg20_volume and volume else None),
+                "trade_value": trade_value or None,
+                "volume": volume or None,
+                "slippage_bps": _estimate_slippage_bps(trade_value, daily_vol),
+                "liquidity_eligible": bool(trade_value >= TW_LIQUIDITY_MIN_TWD),
+            }
+            ranked.append(stock)
+            prior.append({"close": close, "volume": volume})
+        ranked.sort(key=lambda item: _safe_number(item.get("market_cap")), reverse=True)
+        output.append({
+            "session_date": session_date,
+            "model_version": MODEL_VERSION,
+            "taiex_close": taiex_closes.get(session_date),
+            "universe_method": "estimated_current_shares",
+            "stocks": {stock["code"]: stock for stock in ranked[:100]},
+        })
+    return output
+
+
+def save_model_history_records(records: list[dict],
+                               sessions_to_keep: int = MODEL_HISTORY_SESSIONS) -> None:
+    """Merge and persist compact model snapshots in one bounded write."""
+    try:
+        merged = {
+            item.get("session_date"): item for item in load_model_history()
+            if item.get("session_date")
+        }
+        for record in records or []:
+            if record.get("session_date"):
+                merged[record["session_date"]] = record
+        history = sorted(merged.values(), key=lambda item: item.get("session_date", "")
+                         )[-sessions_to_keep:]
+        payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
+        while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and len(history) > 1:
+            history = history[1:]
+            payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
+        MODEL_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        MODEL_HISTORY_FILE.write_text(payload, encoding="utf-8")
+        print(f"[model_state] 已寫入完整股票池快照（共 {len(history)} 個交易日）")
+    except Exception as e:
+        print(f"[model_state] 寫入失敗: {e}", file=sys.stderr)
+
+
+def backfill_model_history(model_history: list[dict],
+                           sessions: list[str],
+                           max_days: int = MODEL_BACKFILL_BATCH_DAYS) -> tuple[list[dict], dict]:
+    """Incrementally backfill model history without exceeding the daily Actions budget."""
+    existing = {
+        item.get("session_date"): item for item in model_history or []
+        if item.get("session_date")
+    }
+    licensed = load_twse_top100_archive()
+    for record in licensed:
+        row = dict(record)
+        row.setdefault("universe_method", "licensed_point_in_time_archive")
+        existing[row["session_date"]] = row
+
+    desired = sorted(set(sessions))[-MODEL_BACKFILL_TARGET_SESSIONS:]
+    missing = [day for day in desired if day not in existing][:max(0, max_days)]
+    fetched_days: dict[str, list[dict]] = {}
+    errors = []
+    if missing:
+        try:
+            basics = _fetch_twse_listing_basics()
+            for session_date in missing:
+                try:
+                    rows = fetch_twse_historical_market_day(session_date)
+                    if rows:
+                        fetched_days[session_date] = rows
+                except Exception as e:
+                    errors.append(f"{session_date}: {e}")
+            estimated = _backfill_records_from_market_days(
+                fetched_days, basics, _historical_taiex_closes(),
+                seed_records=list(existing.values()))
+            for record in estimated:
+                existing[record["session_date"]] = record
+        except Exception as e:
+            errors.append(str(e))
+    merged = sorted(existing.values(), key=lambda item: item.get("session_date", ""))
+    if licensed or fetched_days:
+        save_model_history_records(merged)
+    report = {
+        "licensed_records": len(licensed),
+        "estimated_records_added": len(fetched_days),
+        "total_records": len(merged),
+        "remaining_sessions": max(0, len(desired) - len({
+            item.get("session_date") for item in merged})),
+        "method": (
+            "licensed_point_in_time_archive" if licensed
+            else "estimated_current_shares" if fetched_days
+            else "daily_accumulation"
+        ),
+        "limitations": (
+            [] if licensed else [
+                "免費 TWSE 歷史行情未含每日發行股數；市值使用目前發行股數估算",
+                "下市公司可能不在目前公司基本資料內，免費回填不能完全消除倖存者偏誤",
+            ]
+        ),
+        "errors": errors[:3],
+    }
+    print(f"[model_backfill] {report}")
+    return merged, report
+
+
 def _latest_completed_session(sessions: list[str], target_session_date: str) -> Optional[str]:
     """晨報在開盤前執行，最近完成交易日必須早於預測目標日。"""
     eligible = [day for day in sessions if day < target_session_date]
@@ -3662,11 +4003,32 @@ def _safe_number(value, default: float = 0.0) -> float:
         return default
 
 
+def _estimate_slippage_bps(trade_value,
+                           daily_vol_pct=None) -> float:
+    """Estimate one-way slippage conservatively from daily traded value and volatility."""
+    value = _safe_number(trade_value)
+    volatility = max(0.0, _safe_number(daily_vol_pct))
+    if value <= 0:
+        return 80.0
+    if value >= 5_000_000_000:
+        base = 3.0
+    elif value >= 1_000_000_000:
+        base = 5.0
+    elif value >= 300_000_000:
+        base = 8.0
+    elif value >= TW_LIQUIDITY_MIN_TWD:
+        base = 15.0
+    else:
+        base = 35.0
+    return round(min(80.0, base + min(20.0, volatility * 1.5)), 2)
+
+
 MODEL_FEATURES = (
     "pct_5d", "ma20_dist_pct", "daily_vol_pct", "vol_ratio_20d",
     "foreign_lot", "invest_lot", "foreign_30d_lot", "invest_30d_lot",
     "foreign_streak", "invest_streak", "tdcc_wow_pct", "margin_change_lot",
-    "rev_yoy_pct", "rev_mom_pct", "eps_percentile", "news_catalyst_score",
+    "rev_yoy_pct", "rev_mom_pct", "rev_surprise_pct", "eps_percentile",
+    "news_catalyst_score", "trade_value", "slippage_bps",
 )
 
 MODEL_TARGETS = {
@@ -3891,6 +4253,105 @@ def _recent_direction_hit_pct(rows: list[dict],
     return round(sum(hits) / len(hits) * 100, 1) if hits else None
 
 
+def _probability_calibration_metrics(values: list[tuple[float, float]],
+                                     bins: int = 10) -> dict:
+    """Return Brier score and expected calibration error for realized probabilities."""
+    usable = [
+        (max(0.0, min(1.0, _safe_number(probability))), _safe_number(label))
+        for probability, label in values
+        if probability is not None and label is not None
+    ]
+    if not usable:
+        return {"probability_samples": 0, "brier_score": None, "ece_pct": None}
+    brier = sum((probability - label) ** 2 for probability, label in usable) / len(usable)
+    ece = 0.0
+    for bin_index in range(bins):
+        lower, upper = bin_index / bins, (bin_index + 1) / bins
+        bucket = [
+            (probability, label) for probability, label in usable
+            if lower <= probability < upper or (bin_index == bins - 1 and probability == 1.0)
+        ]
+        if bucket:
+            avg_probability = sum(item[0] for item in bucket) / len(bucket)
+            observed = sum(item[1] for item in bucket) / len(bucket)
+            ece += len(bucket) / len(usable) * abs(avg_probability - observed)
+    return {
+        "probability_samples": len(usable),
+        "brier_score": round(brier, 4),
+        "ece_pct": round(ece * 100, 2),
+    }
+
+
+def build_feature_drift_report(model_history: list[dict],
+                               snapshot: list[dict],
+                               min_history_rows: int = 120) -> dict:
+    """Detect cross-sectional feature shifts and missing-data spikes."""
+    historical = []
+    for record in (model_history or [])[-60:]:
+        historical.extend((record.get("stocks") or {}).values())
+    if len(historical) < min_history_rows or not snapshot:
+        return {
+            "status": "fallback",
+            "penalty": 1.0,
+            "history_rows": len(historical),
+            "alerts": ["歷史特徵樣本不足，漂移監控仍在累積"],
+        }
+    alerts = []
+    for feature in MODEL_FEATURES:
+        old_values = [_safe_number(row.get(feature)) for row in historical
+                      if row.get(feature) is not None]
+        new_values = [_safe_number(row.get(feature)) for row in snapshot
+                      if row.get(feature) is not None]
+        if len(old_values) < 20 or not new_values:
+            continue
+        old_mean = float(np.mean(old_values))
+        old_std = float(np.std(old_values))
+        shift_z = abs(float(np.mean(new_values)) - old_mean) / max(old_std, 1e-9)
+        old_missing = 1 - len(old_values) / len(historical)
+        new_missing = 1 - len(new_values) / len(snapshot)
+        if shift_z >= 2.5 or new_missing - old_missing >= 0.25:
+            alerts.append({
+                "feature": feature,
+                "mean_shift_z": round(shift_z, 2),
+                "missing_pct": round(new_missing * 100, 1),
+            })
+    penalty = min(4.0, len(alerts) * 0.75)
+    return {
+        "status": "error" if penalty >= 3 else "fallback" if alerts else "ok",
+        "penalty": round(penalty, 2),
+        "history_rows": len(historical),
+        "alerts": alerts[:8],
+    }
+
+
+def build_source_health_report(snapshot: list[dict],
+                               news: list[dict],
+                               structured_events: list[dict]) -> dict:
+    """Convert source availability into a conservative ranking penalty."""
+    total = len(snapshot or [])
+    checks = {
+        "universe": total >= 70,
+        "institutional": bool(total and sum(bool(
+            item.get("foreign_lot") or item.get("invest_lot") or item.get("dealer_lot"))
+            for item in snapshot) / total >= 0.3),
+        "revenue": bool(total and sum(item.get("rev_yoy_pct") is not None
+                                     for item in snapshot) / total >= 0.5),
+        "liquidity": bool(total and sum(item.get("trade_value") is not None
+                                       for item in snapshot) / total >= 0.7),
+        "news": len(news or []) >= 10,
+        "structured_events": bool(structured_events),
+    }
+    failures = [name for name, healthy in checks.items() if not healthy]
+    score = max(0.0, 1.0 - len(failures) * 0.12)
+    return {
+        "status": "error" if score < 0.55 else "fallback" if failures else "ok",
+        "score": round(score, 3),
+        "ranking_penalty": round(min(4.0, len(failures) * 0.65), 2),
+        "checks": checks,
+        "failures": failures,
+    }
+
+
 def load_model_history() -> list[dict]:
     """讀取 point-in-time 股票池歷史。"""
     if not MODEL_HISTORY_FILE.exists():
@@ -3911,6 +4372,9 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         "foreign_lot", "invest_lot", "dealer_lot", "total_lot", "foreign_30d_lot",
         "invest_30d_lot", "foreign_streak", "invest_streak", "tdcc_wow_pct",
         "margin_change_lot", "rev_yoy_pct", "rev_mom_pct", "eps_percentile",
+        "rev_expected", "rev_surprise_pct", "rev_expectation_method",
+        "trade_value", "volume", "slippage_bps", "liquidity_eligible",
+        "feature_drift_penalty", "source_health_penalty", "model_monitor_penalty",
         "attention_score", "ranking_score", "ranking_components", "attention_rank",
         "industry_neutral_score", "news_catalyst_score",
         "price_forecast",
@@ -3924,6 +4388,7 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
             key: evidence.get(key)
             for key in ("event_id", "event_type", "direction", "relation",
                         "score_delta", "source_grade", "surprise_score",
+                        "revenue_surprise_pct", "lifecycle", "lifecycle_weight",
                         "scope_company", "scope_industry", "scope_supply_chain")
             if evidence.get(key) is not None
         } for evidence in (item.get("news_catalysts") or [])[:4]]
@@ -3933,23 +4398,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
 
 def save_model_history(record: dict, sessions_to_keep: int = MODEL_HISTORY_SESSIONS) -> None:
     """保存完整股票池 point-in-time 快照；一般 state writer 會合併 push。"""
-    try:
-        history = load_model_history()
-        session_date = record.get("session_date")
-        if not session_date:
-            return
-        history = [item for item in history if item.get("session_date") != session_date]
-        history.append(record)
-        history = sorted(history, key=lambda item: item.get("session_date", ""))[-sessions_to_keep:]
-        payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
-        while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and len(history) > 1:
-            history = history[1:]
-            payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
-        MODEL_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        MODEL_HISTORY_FILE.write_text(payload, encoding="utf-8")
-        print(f"[model_state] 已寫入完整股票池快照（共 {len(history)} 個交易日）")
-    except Exception as e:
-        print(f"[model_state] 寫入失敗: {e}", file=sys.stderr)
+    if record.get("session_date"):
+        save_model_history_records([record], sessions_to_keep=sessions_to_keep)
 
 
 def build_model_training_rows(model_history: list[dict],
@@ -4061,7 +4511,9 @@ def evaluate_model_walk_forward(model_history: list[dict],
         errors = []
         direction_hits = []
         interval_hits = []
+        probability_values = []
         top5_returns = []
+        top5_net_returns = []
         top5_excess = []
         equity = 1.0
         peak = 1.0
@@ -4077,6 +4529,9 @@ def evaluate_model_walk_forward(model_history: list[dict],
                     continue
                 errors.append(actual - _safe_number(expected))
                 direction_hits.append((actual >= 0) == (_safe_number(expected) >= 0))
+                probability = forecast.get("beat_market_probability")
+                if probability is not None:
+                    probability_values.append((probability, row.get("beat_market")))
                 lower = forecast.get("lower")
                 upper = forecast.get("upper")
                 close = _safe_number(row.get("close"))
@@ -4090,16 +4545,25 @@ def evaluate_model_walk_forward(model_history: list[dict],
                 version_stats["direction_hits"].append(
                     (actual >= 0) == (_safe_number(expected) >= 0))
         for values in by_session.values():
-            top = sorted(values, key=lambda row: _safe_number(row.get("attention_score")), reverse=True)[:5]
+            tradable = [row for row in values if row.get("liquidity_eligible") is not False]
+            rankable = [row for row in tradable if row.get(
+                "ranking_score", row.get("attention_score")) is not None]
+            top = sorted(rankable, key=lambda row: _safe_number(
+                row.get("ranking_score", row.get("attention_score"))), reverse=True)[:5]
             if top:
                 realized = [row.get(target_key) for row in top if row.get(target_key) is not None]
                 if not realized:
                     continue
                 avg_return = sum(realized) / len(realized)
+                avg_cost = sum(
+                    _safe_number(row.get("slippage_bps"), 80.0) * 2 / 100
+                    for row in top) / len(top)
+                avg_net_return = avg_return - avg_cost
                 avg_excess = sum(row["future_excess_pct"] for row in top) / len(top)
                 top5_returns.append(avg_return)
+                top5_net_returns.append(avg_net_return)
                 top5_excess.append(avg_excess)
-                equity *= 1 + avg_return / 100
+                equity *= 1 + avg_net_return / 100
                 peak = max(peak, equity)
                 max_drawdown = min(max_drawdown, equity / peak - 1)
         output[forecast_key] = {
@@ -4108,9 +4572,13 @@ def evaluate_model_walk_forward(model_history: list[dict],
             "forecast_mae_pct": round(sum(abs(e) for e in errors) / len(errors), 3) if errors else None,
             "direction_hit_pct": round(sum(direction_hits) / len(direction_hits) * 100, 1) if direction_hits else None,
             "interval_coverage_pct": round(sum(interval_hits) / len(interval_hits) * 100, 1) if interval_hits else None,
+            "interval_samples": len(interval_hits),
             "top5_avg_return_pct": round(sum(top5_returns) / len(top5_returns), 3) if top5_returns else None,
+            "top5_avg_net_return_pct": round(sum(top5_net_returns) / len(top5_net_returns), 3)
+                                       if top5_net_returns else None,
             "top5_avg_excess_pct": round(sum(top5_excess) / len(top5_excess), 3) if top5_excess else None,
             "top5_max_drawdown_pct": round(max_drawdown * 100, 3) if top5_returns else None,
+            **_probability_calibration_metrics(probability_values),
         }
     # Backward-compatible aliases used by the existing report text.
     for version, targets in output["versions"].items():
@@ -4126,6 +4594,33 @@ def evaluate_model_walk_forward(model_history: list[dict],
     output[3] = output["3d"]
     output[5] = output["5d"]
     return output
+
+
+def build_model_monitoring_report(walk_forward: dict,
+                                  forecast_key: str = "3d") -> dict:
+    """Turn calibration metrics into a conservative quality gate for ranking."""
+    metrics = (walk_forward or {}).get(forecast_key) or {}
+    samples = int(metrics.get("probability_samples") or 0)
+    brier = metrics.get("brier_score")
+    ece = metrics.get("ece_pct")
+    coverage = metrics.get("interval_coverage_pct")
+    alerts = []
+    if samples < 30:
+        alerts.append("勝過大盤機率樣本不足 30")
+    if isinstance(brier, (int, float)) and brier > 0.25:
+        alerts.append(f"Brier score 偏高: {brier}")
+    if isinstance(ece, (int, float)) and ece > 15:
+        alerts.append(f"ECE 偏高: {ece}%")
+    if isinstance(coverage, (int, float)) and not 65 <= coverage <= 95:
+        alerts.append(f"80% 價格區間覆蓋率異常: {coverage}%")
+    severe = any("偏高" in alert or "異常" in alert for alert in alerts)
+    return {
+        "status": "error" if severe else "fallback" if alerts else "ok",
+        "ranking_penalty": 3.0 if severe else 1.0 if alerts else 0.0,
+        "forecast_key": forecast_key,
+        "metrics": metrics,
+        "alerts": alerts,
+    }
 
 
 def _next_tw_weekday(day: dt.date) -> dt.date:
@@ -4411,6 +4906,7 @@ def extract_structured_events(news: list[dict],
             "published": published.isoformat(),
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
+            "lifecycle": item.get("lifecycle"),
         }
         event["surprise_score"] = _event_surprise_score(
             dict(event, surprise_score=item.get("surprise_score"), summary=item.get("summary")))
@@ -4444,6 +4940,63 @@ def extract_structured_events(news: list[dict],
     for event in output:
         event["corroboration_count"] = len(event.get("sources") or [])
     return sorted(output, key=lambda event: event["quality_score"], reverse=True)
+
+
+def _event_lifecycle(event: dict) -> str:
+    """Classify event progression so repeated coverage does not repeatedly add score."""
+    explicit = str(event.get("lifecycle") or event.get("status") or "").lower()
+    text = f"{explicit} {event.get('title', '')} {event.get('summary', '')}".lower()
+    if any(token in text for token in (
+            "withdrawn", "withdraw", "cancelled", "canceled", "撤回", "取消", "暫緩")):
+        return "withdrawn"
+    if any(token in text for token in (
+            "implemented", "effective", "takes effect", "上路", "生效", "實施")):
+        return "implemented"
+    if any(token in text for token in (
+            "confirmed", "announced", "approved", "公告", "核定", "通過", "證實")):
+        return "confirmed"
+    if any(token in text for token in (
+            "rumor", "reportedly", "may", "considering", "傳聞", "擬", "可能", "研議")):
+        return "rumor"
+    return "confirmed" if event.get("source_grade") == "A" else "rumor"
+
+
+def _event_timeline_key(event: dict) -> tuple[str, str]:
+    """Use a stable lineage key across rumor, confirmation and implementation coverage."""
+    return str(event.get("entity") or ""), str(event.get("event_type") or "general")
+
+
+def apply_event_timeline(model_history: list[dict],
+                         events: list[dict]) -> list[dict]:
+    """Annotate incremental lifecycle transitions and suppress repeated event scoring."""
+    previous: dict[tuple[str, str], str] = {}
+    for record in sorted(model_history or [], key=lambda item: item.get("session_date", "")):
+        for event in record.get("structured_events") or []:
+            previous[_event_timeline_key(event)] = str(
+                event.get("lifecycle") or _event_lifecycle(event))
+    order = {"rumor": 1, "confirmed": 2, "implemented": 3, "withdrawn": 4}
+    base_weight = {"rumor": 0.35, "confirmed": 1.0, "implemented": 0.55, "withdrawn": 1.0}
+    transitions = {("rumor", "confirmed"): 0.65, ("confirmed", "implemented"): 0.45}
+    output = []
+    for raw in events or []:
+        event = dict(raw)
+        key = _event_timeline_key(event)
+        status = _event_lifecycle(event)
+        prior = previous.get(key)
+        is_incremental = prior != status and (
+            prior is None or status == "withdrawn"
+            or order.get(status, 0) > order.get(prior, 0))
+        event["lifecycle"] = status
+        event["previous_lifecycle"] = prior
+        event["timeline_key"] = "|".join(key)
+        event["is_incremental"] = is_incremental
+        event["lifecycle_weight"] = (
+            transitions.get((prior, status), base_weight.get(status, 0.0))
+            if is_incremental else 0.0
+        )
+        previous[key] = status if is_incremental or prior is None else prior
+        output.append(event)
+    return output
 
 
 def build_event_study(model_history: list[dict],
@@ -4564,7 +5117,16 @@ def _stock_news_catalysts(snapshot: list[dict],
             delta = abs(base) * direction * relation_weight
             score_method = "conservative_fallback"
         surprise = _event_surprise_score(event)
-        delta *= _safe_number(event.get("quality_score"), 0.5) * (0.5 + surprise)
+        revenue_surprise = stock.get("rev_surprise_pct")
+        if (event.get("event_type") == "revenue_growth"
+                and isinstance(revenue_surprise, (int, float))):
+            # Numeric surprise beats prose heuristics when a real consensus/proxy exists.
+            surprise = round(max(0.1, min(1.0, 0.2 + abs(revenue_surprise) / 20)), 3)
+        lifecycle_weight = _safe_number(event.get("lifecycle_weight"), 1.0)
+        if lifecycle_weight <= 0:
+            return
+        delta *= (_safe_number(event.get("quality_score"), 0.5)
+                  * (0.5 + surprise) * lifecycle_weight)
         result["score"] += delta
         result["evidence"].append({
             "event_id": event.get("event_id"),
@@ -4576,6 +5138,9 @@ def _stock_news_catalysts(snapshot: list[dict],
             "direction": direction,
             "score_method": score_method,
             "surprise_score": surprise,
+            "revenue_surprise_pct": revenue_surprise,
+            "lifecycle": event.get("lifecycle"),
+            "lifecycle_weight": lifecycle_weight,
             "event_study_samples": study_samples,
             "scope_company": code,
             "scope_industry": industry,
@@ -4802,6 +5367,17 @@ def _attention_ranking_breakdown(item: dict,
             -4.0 if model3.get("fallback_enabled", True)
             else -1.0 if not model3.get("probability_calibrated") else 0.0
         ),
+        "liquidity_penalty": (
+            -4.0 if item.get("liquidity_eligible") is False
+            else -min(2.0, _safe_number(item.get("slippage_bps")) / 40.0)
+            if item.get("slippage_bps") is not None else 0.0
+        ),
+        "feature_drift_penalty": -max(
+            0.0, min(4.0, _safe_number(item.get("feature_drift_penalty")))),
+        "source_health_penalty": -max(
+            0.0, min(4.0, _safe_number(item.get("source_health_penalty")))),
+        "model_monitor_penalty": -max(
+            0.0, min(4.0, _safe_number(item.get("model_monitor_penalty")))),
     }
     components = {key: round(value, 2) for key, value in components.items()}
     raw_score = round(sum(components.values()), 2)
@@ -4815,6 +5391,8 @@ def _attention_ranking_breakdown(item: dict,
             "industry_neutral_z": round(industry_z, 3),
             "beat_market_probability": probability,
             "expected_return_3d_pct": expected_return,
+            "trade_value": item.get("trade_value"),
+            "slippage_bps": item.get("slippage_bps"),
             "market_regime": item.get("market_regime") or "neutral",
             "model_version": model3.get("model_version", MODEL_VERSION),
         },
@@ -4829,7 +5407,10 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
                                       model_history: Optional[list[dict]] = None,
                                       sessions: Optional[list[str]] = None,
                                       quotes: Optional[dict] = None,
-                                      structured_events: Optional[list[dict]] = None
+                                      structured_events: Optional[list[dict]] = None,
+                                      feature_drift: Optional[dict] = None,
+                                      source_health: Optional[dict] = None,
+                                      model_monitoring: Optional[dict] = None,
                                       ) -> list[dict]:
     """將新聞催化、最終關注分數與可回測價格預測加入台股快照。"""
     evaluation = evaluate_breakout_forecasts(
@@ -4848,6 +5429,9 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
     } if sessions else {forecast_key: {} for forecast_key in MODEL_TARGETS}
     weights = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])
     for item in snapshot or []:
+        item["feature_drift_penalty"] = _safe_number((feature_drift or {}).get("penalty"))
+        item["source_health_penalty"] = _safe_number((source_health or {}).get("ranking_penalty"))
+        item["model_monitor_penalty"] = _safe_number((model_monitoring or {}).get("ranking_penalty"))
         catalyst = catalysts.get(item.get("code"), {})
         base_score = float((item.get("breakout") or {}).get("score", 0))
         news_score = float(catalyst.get("score", 0))
@@ -4886,6 +5470,8 @@ def _rank_attention_candidates(snapshot: list[dict]) -> list[dict]:
             "attention_score", (item.get("breakout") or {}).get("score", 0)))
         yoy = item.get("rev_yoy_pct")
         if not score or score <= 0:
+            continue
+        if item.get("liquidity_eligible") is False:
             continue
         if isinstance(yoy, (int, float)) and yoy < -15 and item.get("news_catalyst_score", 0) <= 0:
             continue
@@ -5665,7 +6251,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                     f"產業{(s.get('ranking_components') or {}).get('industry_neutral',0):+4.1f}/"
                     f"勝率{(s.get('ranking_components') or {}).get('beat_market',0):+4.1f}/"
                     f"報酬{(s.get('ranking_components') or {}).get('expected_return',0):+4.1f}/"
-                    f"品質{(s.get('ranking_components') or {}).get('quality_penalty',0):+4.1f}) "
+                    f"品質{(s.get('ranking_components') or {}).get('quality_penalty',0):+4.1f}/"
+                    f"流動性{(s.get('ranking_components') or {}).get('liquidity_penalty',0):+4.1f}/"
+                    f"漂移{(s.get('ranking_components') or {}).get('feature_drift_penalty',0):+4.1f}/"
+                    f"來源{(s.get('ranking_components') or {}).get('source_health_penalty',0):+4.1f}/"
+                    f"校準{(s.get('ranking_components') or {}).get('model_monitor_penalty',0):+4.1f}) "
                     f"[籌{comp.get('chips',0):.0f}/動{comp.get('momentum',0):.0f}/"
                     f"營{comp.get('revenue',0):.0f}/EPS{comp.get('eps',0):.0f}] | "
                     f"昨日法人{tot_lot:+.0f}張 30日外資{f30:+.0f}張 外連{fs:+d}投連{is_:+d} "
@@ -5697,7 +6287,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"產業中性 {(stock.get('ranking_components') or {}).get('industry_neutral',0):+.1f} / "
                 f"勝過大盤 {(stock.get('ranking_components') or {}).get('beat_market',0):+.1f} / "
                 f"預期報酬 {(stock.get('ranking_components') or {}).get('expected_return',0):+.1f} / "
-                f"品質 {(stock.get('ranking_components') or {}).get('quality_penalty',0):+.1f})｜"
+                f"品質 {(stock.get('ranking_components') or {}).get('quality_penalty',0):+.1f} / "
+                f"流動性 {(stock.get('ranking_components') or {}).get('liquidity_penalty',0):+.1f} / "
+                f"漂移 {(stock.get('ranking_components') or {}).get('feature_drift_penalty',0):+.1f} / "
+                f"來源 {(stock.get('ranking_components') or {}).get('source_health_penalty',0):+.1f} / "
+                f"校準 {(stock.get('ranking_components') or {}).get('model_monitor_penalty',0):+.1f})｜"
                 f"昨收 {stock.get('close')}｜"
                 f"3日預測 {f3.get('expected_price','資料不足')} "
                 f"[{f3.get('lower','-')}~{f3.get('upper','-')}]｜"
@@ -6038,8 +6632,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 【★★ 台股客觀關注排名 Top 15（固定公式由高至低排序；「今日台股關注五檔」只能使用前五名）】
 {smart_money_block}
-※ 客觀排名分 = 結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件分 + 產業中性修正 + 勝過大盤機率修正 + 3 日預期報酬修正 + 模型品質折扣。
-※ 中括號 [籌X/動X/營X/EPSX] 為原始結構因子貢獻分；括號內「結構/新聞/產業/勝率/報酬/品質」為最終排名各分項，總分可重現、可回測。
+※ 客觀排名分 = 結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件分 + 產業中性修正 + 勝過大盤機率修正 + 3 日預期報酬修正 + 模型品質、流動性、機率校準、特徵漂移與來源健康度折扣。
+※ 中括號 [籌X/動X/營X/EPSX] 為原始結構因子貢獻分；括號內各欄位為最終排名各分項，總分可重現、可回測。
 ※ 目標：篩選**未來 3-5 個工作天值得關注**的候選。LLM 只能解釋 Python 固定公式的排序，不可自行加分或重排。
 ※ 大戶ΔWoW / EPS年增 需累積歷史才完整(剛上線可能多為「-」);此時以籌碼+動能+月營收為主即可。
 
@@ -6490,9 +7084,10 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
         "30 objects. Each object must have entity, event_type, direction, confidence, "
-        "surprise_score, "
+        "surprise_score, lifecycle, "
         "title, source, published. direction is -1, 0, or 1. Use only supplied evidence. "
         "Prefer official disclosures over media rewrites. Merge duplicates. "
+        "lifecycle must be rumor, confirmed, implemented, or withdrawn. "
         "surprise_score is 0.1 to 1.0: use a low score for already-expected news. "
         "Allowed event_type: guidance_raise, guidance_cut, orders, earnings, "
         "revenue_growth, export_controls, litigation, geopolitical, general.\nINPUT:\n"
@@ -7329,7 +7924,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 產業中性 {ranking_components.get('industry_neutral', 0):+.1f}"
                     f" ・ 勝過大盤 {ranking_components.get('beat_market', 0):+.1f}"
                     f" ・ 預期報酬 {ranking_components.get('expected_return', 0):+.1f}"
-                    f" ・ 品質 {ranking_components.get('quality_penalty', 0):+.1f}")
+                    f" ・ 品質 {ranking_components.get('quality_penalty', 0):+.1f}"
+                    f" ・ 流動性 {ranking_components.get('liquidity_penalty', 0):+.1f}"
+                    f" ・ 漂移 {ranking_components.get('feature_drift_penalty', 0):+.1f}"
+                    f" ・ 來源 {ranking_components.get('source_health_penalty', 0):+.1f}"
+                    f" ・ 校準 {ranking_components.get('model_monitor_penalty', 0):+.1f}")
                 forecast = s.get("price_forecast") or {}
                 f1o = forecast.get("1d_open") or {}
                 f1c = forecast.get("1d_close") or {}
@@ -7340,6 +7939,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"模型 {quality.get('model_version', MODEL_VERSION)}"
                     f" ・ 樣本 {quality.get('training_rows', 0)}"
                     f" ・ 近期方向命中 {quality.get('recent_direction_hit_pct', '—')}%"
+                    f" ・ 單邊滑價估計 {s.get('slippage_bps', '—')} bps"
                     f" ・ {'fallback' if quality.get('fallback_enabled', True) else quality.get('interval_method', 'model')}"
                 )
                 forecast_line = (
@@ -7375,7 +7975,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {''.join(rows_html)}
         </table>
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
-          ※ <b>客觀排名分 = 結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 + 模型品質折扣</b>;
+          ※ <b>客觀排名分 = 結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 − 模型品質、流動性、校準、漂移與來源風險折扣</b>;
           <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。<br>
           ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例「本週 − 上週」(需累積 ≥ 1 週歷史才有值);
           量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
@@ -8074,6 +8674,37 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     else:
         add("大戶持股比例 (TDCC)", "error", "TDCC 集保資料抓取失敗")
 
+    backfill = quotes.get("MODEL_BACKFILL", {}) or {}
+    if backfill.get("method") == "licensed_point_in_time_archive":
+        add("模型歷史回填", "ok", f"{backfill.get('total_records', 0)} 個交易日・正式 point-in-time archive")
+    elif backfill.get("total_records"):
+        add("模型歷史回填", "fallback",
+            f"{backfill.get('total_records', 0)} 個交易日・免費版市值使用目前發行股數估算")
+    else:
+        add("模型歷史回填", "fallback", "尚未累積歷史快照")
+
+    drift = quotes.get("FEATURE_DRIFT", {}) or {}
+    add("模型 feature drift", drift.get("status", "fallback"),
+        f"penalty={drift.get('penalty', 0)}・alerts={len(drift.get('alerts') or [])}")
+
+    source_health = quotes.get("SOURCE_HEALTH", {}) or {}
+    add("模型來源健康度", source_health.get("status", "fallback"),
+        f"score={source_health.get('score', 0)}・缺失={','.join(source_health.get('failures') or []) or '無'}")
+
+    model_monitoring = quotes.get("MODEL_MONITORING", {}) or {}
+    monitor_metrics = model_monitoring.get("metrics") or {}
+    add("模型機率校準監控", model_monitoring.get("status", "fallback"),
+        f"Brier={monitor_metrics.get('brier_score')}・ECE={monitor_metrics.get('ece_pct')}%"
+        f"・區間覆蓋={monitor_metrics.get('interval_coverage_pct')}%"
+        f"・樣本={monitor_metrics.get('probability_samples', 0)}")
+
+    n_consensus = sum(1 for item in (tw0050 or [])
+                      if item.get("rev_expectation_method") == "external_consensus")
+    n_proxy = sum(1 for item in (tw0050 or [])
+                  if item.get("rev_expectation_method") == "cumulative_yoy_baseline")
+    add("營收預期差", "ok" if n_consensus else "fallback",
+        f"外部共識 {n_consensus} 檔・TWSE 趨勢 proxy {n_proxy} 檔")
+
     n_err = sum(1 for d in dq if d["status"] == "error")
     n_fb = sum(1 for d in dq if d["status"] == "fallback")
     print(f"[data_quality] {len(dq)} 項來源：ok={len(dq)-n_err-n_fb}, fallback={n_fb}, error={n_err}")
@@ -8341,10 +8972,19 @@ def main() -> int:
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     trading_sessions = fetch_tw_trading_sessions(months=18)
     model_history = load_model_history()
-    structured_events = call_llm_event_extractor(news, tw_mops)
+    model_history, model_backfill = backfill_model_history(
+        model_history, trading_sessions)
+    quotes["MODEL_BACKFILL"] = model_backfill
+    structured_events = apply_event_timeline(
+        model_history, call_llm_event_extractor(news, tw_mops))
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
+    quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
+    quotes["SOURCE_HEALTH"] = build_source_health_report(
+        tw0050, news, structured_events)
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(
         model_history, trading_sessions)
+    quotes["MODEL_MONITORING"] = build_model_monitoring_report(
+        quotes["MODEL_WALK_FORWARD"])
     quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
     quotes["MARKET_REGIME"] = _market_regime(quotes)
     tw0050 = enrich_stock_attention_candidates(
@@ -8352,7 +8992,10 @@ def main() -> int:
         model_history=model_history,
         sessions=trading_sessions,
         quotes=quotes,
-        structured_events=structured_events)
+        structured_events=structured_events,
+        feature_drift=quotes["FEATURE_DRIFT"],
+        source_health=quotes["SOURCE_HEALTH"],
+        model_monitoring=quotes["MODEL_MONITORING"])
     quotes["BREAKOUT_TRACKING"] = build_breakout_tracking(
         history, tw0050, target_session_date, sessions=trading_sessions)
 

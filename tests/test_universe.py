@@ -307,3 +307,42 @@ def test_snapshot_uses_universe_codes(monkeypatch):
     mr.fetch_tw0050_snapshot(universe)
     assert captured["target_codes"] == {"2330", "2454"}
     assert "2330.TW" in captured["tickers"] and "2454.TW" in captured["tickers"]
+
+
+def test_parse_twse_historical_market_day():
+    payload = {"stat": "OK", "tables": [{
+        "fields": ["證券代號", "證券名稱", "成交股數", "成交金額", "開盤價", "收盤價"],
+        "data": [
+            ["2330", "台積電", "1,000", "1,050,000", "1,040", "1,050"],
+            ["00878", "ETF", "1,000", "20,000", "20", "20"],
+        ],
+    }]}
+    rows = mr._parse_twse_historical_market_day(payload)
+    assert rows == [{
+        "code": "2330", "name": "台積電", "volume": 1000.0,
+        "trade_value": 1050000.0, "open": 1040.0, "close": 1050.0,
+    }]
+
+
+def test_backfill_model_history_is_incremental_and_tagged(monkeypatch):
+    sessions = ["2026-05-29", "2026-06-01", "2026-06-02"]
+    monkeypatch.setattr(mr, "load_twse_top100_archive", lambda: [])
+    monkeypatch.setattr(mr, "_fetch_twse_listing_basics", lambda: {
+        "2330": {"name": "台積電", "industry": "半導體", "shares": 1000},
+    })
+    monkeypatch.setattr(mr, "fetch_twse_historical_market_day", lambda day: [{
+        "code": "2330", "name": "台積電", "open": 99, "close": 100,
+        "volume": 1000000, "trade_value": 100000000,
+    }])
+    monkeypatch.setattr(mr, "_historical_taiex_closes", lambda: {
+        day: 20000 for day in sessions
+    })
+    saved = {}
+    monkeypatch.setattr(mr, "save_model_history_records",
+                        lambda records: saved.setdefault("records", records))
+    records, report = mr.backfill_model_history([], sessions, max_days=2)
+    assert [row["session_date"] for row in records] == sessions[:2]
+    assert all(row["universe_method"] == "estimated_current_shares" for row in records)
+    assert report["estimated_records_added"] == 2
+    assert report["remaining_sessions"] == 1
+    assert saved["records"] == records

@@ -329,3 +329,86 @@ def test_event_study_counts_same_event_id_once_per_stock():
         })
     study = mr.build_event_study(history, sessions, horizon=1)
     assert study[("orders", 1)]["samples"] == 1
+
+
+def test_probability_metrics_expose_brier_and_ece():
+    out = mr._probability_calibration_metrics([(0.8, 1), (0.2, 0)])
+    assert out == {
+        "probability_samples": 2,
+        "brier_score": 0.04,
+        "ece_pct": 20.0,
+    }
+
+
+def test_event_timeline_only_scores_incremental_transitions():
+    history = [{
+        "session_date": "2026-06-01",
+        "structured_events": [{
+            "entity": "2330", "event_type": "orders", "lifecycle": "rumor",
+        }],
+    }]
+    events = [{
+        "entity": "2330", "event_type": "orders", "title": "台積電公告新訂單",
+        "source_grade": "A",
+    }, {
+        "entity": "2330", "event_type": "orders", "title": "台積電公告新訂單",
+        "source_grade": "A",
+    }]
+    out = mr.apply_event_timeline(history, events)
+    assert out[0]["lifecycle"] == "confirmed"
+    assert out[0]["lifecycle_weight"] == 0.65
+    assert out[1]["is_incremental"] is False
+    assert out[1]["lifecycle_weight"] == 0.0
+
+
+def test_revenue_expectation_prefers_external_consensus_then_proxy():
+    actual = {"rev": 110, "yoy_pct": 15.0, "cum_yoy_pct": 10.0}
+    consensus = mr._revenue_expectation_feature(actual, {"expected_rev": 100, "source": "vendor"})
+    assert consensus["rev_surprise_pct"] == pytest.approx(10)
+    assert consensus["rev_expectation_method"] == "external_consensus"
+    proxy = mr._revenue_expectation_feature(actual)
+    assert proxy["rev_surprise_pct"] == 5.0
+    assert proxy["rev_expectation_method"] == "cumulative_yoy_baseline"
+
+
+def test_feature_drift_report_and_source_health_penalize_degraded_data():
+    history = [{
+        "session_date": f"2026-05-{day:02d}",
+        "stocks": {str(code): {"pct_5d": 1.0} for code in range(100)},
+    } for day in range(1, 3)]
+    snapshot = [{"code": str(code), "pct_5d": 20.0} for code in range(100)]
+    drift = mr.build_feature_drift_report(history, snapshot, min_history_rows=100)
+    assert drift["penalty"] > 0
+    assert drift["alerts"][0]["feature"] == "pct_5d"
+    source = mr.build_source_health_report(snapshot, [], [])
+    assert source["status"] in ("fallback", "error")
+    assert source["ranking_penalty"] > 0
+
+
+def test_slippage_estimate_rewards_liquid_stocks():
+    assert mr._estimate_slippage_bps(5_000_000_000, 2) < mr._estimate_slippage_bps(10_000_000, 2)
+
+
+def test_model_monitoring_penalizes_unreliable_probability():
+    out = mr.build_model_monitoring_report({"3d": {
+        "probability_samples": 100,
+        "brier_score": 0.31,
+        "ece_pct": 20.0,
+        "interval_coverage_pct": 50.0,
+    }})
+    assert out["status"] == "error"
+    assert out["ranking_penalty"] == 3.0
+
+
+def test_walk_forward_does_not_fake_top5_for_unranked_backfill():
+    sessions = ["2026-06-01", "2026-06-02"]
+    history = [{
+        "session_date": sessions[0], "taiex_close": 100,
+        "stocks": {"2330": _stock(100, liquidity_eligible=True, slippage_bps=5)},
+    }, {
+        "session_date": sessions[1], "taiex_close": 101,
+        "stocks": {"2330": _stock(103, liquidity_eligible=True, slippage_bps=5)},
+    }]
+    out = mr.evaluate_model_walk_forward(history, sessions)
+    assert out["1d_close"]["top5_avg_return_pct"] is None
+    assert out["1d_close"]["top5_avg_net_return_pct"] is None

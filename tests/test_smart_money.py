@@ -397,6 +397,10 @@ def test_attention_ranking_breakdown_is_transparent_and_bounded():
         "beat_market": 4.0,
         "expected_return": 2.5,
         "quality_penalty": 0.0,
+        "liquidity_penalty": 0.0,
+        "feature_drift_penalty": 0.0,
+        "source_health_penalty": 0.0,
+        "model_monitor_penalty": 0.0,
     }
     assert out["score"] == sum(out["components"].values()) == 70.2
     assert out["inputs"]["model_version"] == "test-v1"

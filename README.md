@@ -174,15 +174,19 @@ python morning_report.py
 ## 七、台股五檔預測學習與新聞事件管線
 
 - 每日保存市值前 100 大完整 point-in-time 快照至 `state/model_history.json`，最多保留 400 個交易日，並設 7 MB 上限避免 repo 無限成長。
+- 冷啟動時每次最多回填 12 個 TWSE `MI_INDEX` 官方歷史交易日，分批累積到 60 日，不會讓每日 GitHub Actions 超時。免費端點沒有歷史每日發行股數，因此免費回填會標記為 `estimated_current_shares`；若放入 `state/twse_top100_archive.json` 正式 archive，則會優先使用真正 point-in-time 市值資料，完整處理倖存者偏誤。
 - 交易日使用 TWSE `FMTQIK` 官方資料，並合併 `^TWII` 兩年歷史索引補足回測區間。
 - 五檔候選分開預測「勝過大盤機率」與「預期報酬」，使用標準化 ridge 模型；樣本不足時才退回保守公式。
 - 排名加入產業中性化與 risk-on / neutral / risk-off / stale-US regime 權重。
-- 關注五檔改用固定且可解釋的客觀排名分，由高至低選出：結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 + 模型品質折扣。晨報會逐項顯示，LLM 只能解釋，不能自行換股或重排。
+- 關注五檔改用固定且可解釋的客觀排名分，由高至低選出：結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 − 模型品質、流動性、機率校準、feature drift 與來源健康度折扣。晨報會逐項顯示，LLM 只能解釋，不能自行換股或重排。
 - 新聞先由抽取器轉成結構化事件，再交給晨報寫作者；事件會聚類、按新鮮度衰減，並優先採用 MOPS、TWSE、TAIFEX、SEC 等官方來源。
 - 新聞影響會隨歷史標籤累積改用事件研究平均超額報酬，不再永久依賴固定加分。
+- 新聞事件會保存生命週期：`rumor → confirmed → implemented → withdrawn`。同一事件重複轉載不再每天加分，只有狀態真正推進時才計入增量影響。
+- 營收驚喜分優先讀取選填的 `state/revenue_consensus.json` 外部共識檔；未提供時，使用 TWSE 實際營收的累計 YoY 趨勢作保守 proxy，並清楚標記來源。
 - 關注五檔細分為隔日開盤、隔日收盤、3 日及 5 日收盤預測；勝過大盤機率會在樣本足夠後套用 Platt 校準，價格區間使用正規化 quantile regression。
 - 模型訓練保留 2 個交易日 purge gap，事件研究會去除重複事件，降低資料洩漏與重複計分。
-- 每檔預測會揭露模型版本、訓練樣本數、近期方向命中率、價格區間方法與 fallback 狀態，walk-forward 也會按模型版本分組。
+- 每檔預測會揭露模型版本、訓練樣本數、近期方向命中率、價格區間方法、單邊滑價估計與 fallback 狀態。walk-forward 會按模型版本分組，並監控 Brier score、ECE、價格區間覆蓋率、Top 5 毛報酬及扣除雙邊滑價後淨報酬。
+- 模型會監控 feature drift 與來源健康度；資料分布偏移、新聞不足、法人資料缺漏、營收覆蓋率不足或流動性過低時，自動降低排名分數。
 - 晨報新增「台灣政策昨日走向」與「台灣醫界昨日走向」兩個快速情報段落；兩者與股價模型完全隔離，不會改變選股或價格預測。
 - 每日 workflow 只做一次 state commit/push；dry-run 不 push。Production workflow 有 concurrency 保護與 15 分鐘上限。
 

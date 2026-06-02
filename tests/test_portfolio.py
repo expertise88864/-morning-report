@@ -138,16 +138,17 @@ def test_render_shows_portfolio_row_and_hides_holdings():
     quotes = _min_quotes(PORTFOLIO_ACTUAL=pf)
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "分析",
                           "2026-05-28 (Thu)", "每日報")
-    # 持倉列應出現:名稱 + 漲跌 + 金額(萬)
+    # 持倉列應出現:名稱 + 總市值 + 昨日損益%/金額
     assert "主帳戶" in html
     assert "定存股" in html
-    assert "+1.23%" in html
-    assert "3.5萬" in html      # 35200 → +NT$3.5萬
-    assert "昨日損益" in html
+    assert "總市值" in html             # 主數字改為總市值
+    assert "286.0萬" in html             # last_value 2,860,000 → NT$286.0萬
+    assert "+1.23%" in html             # 昨日損益% 在副行
+    assert "3.5萬" in html               # +NT$3.5萬
 
 
 def test_render_no_portfolio_row_when_absent():
     quotes = _min_quotes()    # 無 PORTFOLIO_ACTUAL
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "分析",
                           "2026-05-28 (Thu)", "每日報")
-    assert "昨日損益" not in html    # 沒設定 → 不顯示持倉列
+    assert "總市值" not in html    # 沒設定 → 不顯示持倉列

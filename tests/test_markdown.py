@@ -36,8 +36,18 @@ def test_render_html_contains_required_sections():
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
                           "## 測試分析", "2026-05-14 (Wed)", "每日報")
     assert html.startswith("<!DOCTYPE html>")
-    for section in ("一、美股收盤行情", "三、00662", "四、2330", "資料品質"):
+    # 2330/00662/0050 已濃縮成「個股開盤預測」一段;資料品質/8-K/回顧已移到後台不顯示
+    for section in ("一、美股收盤行情", "個股開盤預測", "2330"):
         assert section in html
+
+
+def test_render_html_hides_backstage_sections():
+    """資料品質 / 8-K / 預測準確度回顧 已移到後台,不應出現在信件。"""
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          "x", "2026-05-14", "每日報")
+    assert "資料品質" not in html
+    assert "8-K" not in html
+    assert "預測準確度回顧" not in html
 
 
 def test_render_html_survives_full_quotes_dict():
@@ -47,10 +57,11 @@ def test_render_html_survives_full_quotes_dict():
     assert "資料缺失" in html
 
 
-def test_render_html_shows_data_quality_error():
-    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
-                          "x", "2026-05-14", "每日報")
-    assert "夜盤台指期" in html and "失敗" in html
+def test_data_quality_still_feeds_llm_prompt():
+    """資料品質從信件移除,但仍須餵給 LLM prompt(後台保留)。"""
+    q = _full_quotes()
+    prompt = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "夜盤台指期" in prompt   # dq 內容仍在 prompt
 
 
 # ===== KPI strip + summary bar (頂部美觀區) =====
@@ -116,8 +127,8 @@ def test_render_html_includes_kpi_strip_with_full_data():
     assert "今日結論" in html and "SOX 暴跌減碼" in html
     # KPI 在 alerts 之前
     assert html.find("立場") < html.find("一、美股收盤行情")
-    # 0050 卡片
-    assert "六、0050 ETF 開盤預測" in html or "0050 今日合理價" in html
+    # 0050 在濃縮的「個股開盤預測」段
+    assert "個股開盤預測" in html and "0050" in html
 
 
 def test_render_html_shows_new_macro_indicators_and_breadth():

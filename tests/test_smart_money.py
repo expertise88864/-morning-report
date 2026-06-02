@@ -218,3 +218,75 @@ def test_score_components_breakdown():
     assert c["tdcc_wow_score"] == 30.0     # 1.0% → 30 分
     assert c["volume_score"] == 20.0        # 量縮收紅
     assert c["quiet_score"] == 10.0         # 5日 2% 在偷買區
+
+
+# ---------- calc_breakout_score（短線爆發力複合分數）----------
+
+def test_breakout_score_strong_multi_factor():
+    """籌碼+動能+營收+EPS 全強 → 高分。"""
+    e = {"smart_money": {"score": 80}, "pct_5d": 16.0, "ma20_dist_pct": 8.0,
+         "high20_break": True, "rev_yoy_pct": 112.0, "rev_mom_pct": 5.0, "eps": 3.5}
+    out = mr.calc_breakout_score(e)
+    assert out["score"] >= 65
+    c = out["components"]
+    assert c["chips"] == 28.0          # 80 × 0.35
+    assert c["momentum"] > 0 and c["revenue"] > 0 and c["eps"] > 0
+
+
+def test_breakout_score_momentum_priority_no_overheat_penalty():
+    """動能優先:5日漲幅越大分數越高(不懲罰過熱)。"""
+    base = {"smart_money": {"score": 50}, "ma20_dist_pct": 5.0, "high20_break": True,
+            "rev_yoy_pct": 20.0, "rev_mom_pct": 3.0, "eps": 2.0}
+    low = dict(base, pct_5d=3.0)
+    hot = dict(base, pct_5d=16.0)      # 已大漲
+    assert mr.calc_breakout_score(hot)["score"] >= mr.calc_breakout_score(low)["score"]
+
+
+def test_breakout_score_weak_stock_low():
+    e = {"smart_money": {"score": 15}, "pct_5d": 0.5, "ma20_dist_pct": 0.0,
+         "high20_break": False, "rev_yoy_pct": 5.0, "rev_mom_pct": 1.0, "eps": None}
+    assert mr.calc_breakout_score(e)["score"] < 20
+
+
+def test_breakout_score_empty():
+    assert mr.calc_breakout_score({})["score"] == 0
+
+
+def test_breakout_score_handles_missing_fundamentals():
+    """缺營收/EPS → 該因子 0,不崩。"""
+    e = {"smart_money": {"score": 60}, "pct_5d": 8.0, "ma20_dist_pct": 4.0,
+         "high20_break": True, "rev_yoy_pct": None, "rev_mom_pct": None, "eps": None}
+    out = mr.calc_breakout_score(e)
+    assert out["components"]["revenue"] == 0.0 and out["components"]["eps"] == 0.0
+    assert out["score"] > 0   # 籌碼+動能仍給分
+
+
+# ---------- fetch_tw_eps（best-effort）----------
+
+def test_fetch_tw_eps_parses(monkeypatch):
+    class _R:
+        def __init__(self, payload): self._p = payload
+        def raise_for_status(self): pass
+        def json(self): return self._p
+    payload = [
+        {"公司代號": "2330", "基本每股盈餘（元）": "12.5", "年度": "115", "季別": "1"},
+        {"公司代號": "2317", "基本每股盈餘（元）": "3.2", "年度": "115", "季別": "1"},
+        {"公司代號": "00878", "基本每股盈餘（元）": "0.0"},  # 5 位代號略過
+    ]
+    # 第一個端點回資料,其餘回空
+    calls = {"n": 0}
+    def fake_get(url, **kw):
+        calls["n"] += 1
+        return _R(payload if calls["n"] == 1 else [])
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_tw_eps()
+    assert out["2330"]["eps"] == 12.5
+    assert out["2317"]["eps"] == 3.2
+    assert "00878" not in out
+
+
+def test_fetch_tw_eps_all_fail(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_tw_eps() == {}

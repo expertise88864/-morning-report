@@ -720,7 +720,23 @@ def test_source_health_flags_official_intelligence_outage():
                     "official_entries": 1, "official_empty": 0, "sources": {"c": {}}},
     }}
     out = mr.build_source_health_report(snapshot, [{}] * 12, [{}], tw)
-    assert "tw_policy_official_sources" in out["failures"]
+    assert out["failures"] == []
+    assert out["ranking_penalty"] == 0
+    assert "tw_policy_official_sources" in out["awareness_failures"]
+
+
+def test_tw_intelligence_rejects_google_items_without_dates(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "行政院公告育兒津貼新制",
+            "link": "https://www.ey.gov.tw/policy",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["policy"] == []
+    assert out["diagnostics"]["policy"]["date_missing"] > 0
 
 
 def test_event_timeline_does_not_merge_unrelated_blank_general_events():

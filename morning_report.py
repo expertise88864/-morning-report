@@ -196,6 +196,26 @@ TW_SUPPLY_CHAIN_BY_US_LABEL: dict[str, set[str]] = {
     "AAPL": {"2317", "3008"},
 }
 
+# 台股產業級事件只給更弱的保守連動，避免未點名公司新聞過度灌分。
+TW_INDUSTRY_EVENT_MAP: dict[str, dict[str, set[str]]] = {
+    "memory": {
+        "terms": {"記憶體", "DRAM", "NAND", "HBM", "美光", "Micron"},
+        "codes": {"2344", "2408", "2451", "3711"},
+    },
+    "passive_components": {
+        "terms": {"被動元件", "MLCC", "電阻", "電容", "國巨", "華新科"},
+        "codes": {"2327", "2492"},
+    },
+    "ai_server": {
+        "terms": {"AI伺服器", "AI 伺服器", "伺服器", "資料中心", "GB200", "B200"},
+        "codes": {"2317", "2382", "3231", "2308", "3711", "2345"},
+    },
+    "semiconductor_equipment": {
+        "terms": {"半導體設備", "EUV", "ASML", "先進製程", "CoWoS", "封裝"},
+        "codes": {"2330", "3037", "3711"},
+    },
+}
+
 NEWS_POSITIVE_TERMS = [
     "上修", "優於預期", "創高", "成長", "增加", "擴產", "訂單", "得標",
     "獲利", "轉盈", "調升", "beat", "raise", "raised", "growth", "record",
@@ -3381,6 +3401,10 @@ TW_INTELLIGENCE_QUERIES = {
     "policy": (
         "台灣 政策 行政院 補助 津貼 房貸 社福 產業 site:gov.tw",
         "台灣 政策 行政院 立法院 金管會 內政部 勞動部 經濟部",
+        "台灣 政策 金管會 央行 內政部 房市 信用管制 site:gov.tw",
+        "台灣 政策 勞動部 勞保 基本工資 就業 補助 site:gov.tw",
+        "台灣 政策 經濟部 能源 電價 產業 補助 site:gov.tw",
+        "台灣 政策 教育部 托育 育兒 少子化 補助 site:gov.tw",
         "台灣 新青安 育兒津貼 長照 電價 租屋 補助 政策",
         "台灣 新青安 房貸 鬆綁 信用管制 青年安心成家",
         "台灣 少子化 育兒津貼 托育補助 長照 社福 政策",
@@ -3388,6 +3412,8 @@ TW_INTELLIGENCE_QUERIES = {
     ),
     "medical": (
         "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
+        "台灣 醫療 衛生局 醫院 公告 急診 住院 site:gov.tw",
+        "台灣 醫院 公告 暫停 門診 急診 住院 site:hosp",
         "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
         "台灣 醫界 健保 藥價 疫情 醫療政策 醫院",
         "台中榮總 中榮 神外 代刀 住院 停約 健保署",
@@ -3404,8 +3430,9 @@ TW_OFFICIAL_SOURCE_TOKENS = (
 TW_OFFICIAL_SOURCE_DOMAINS = (
     "gov.tw", "ey.gov.tw", "mohw.gov.tw", "nhi.gov.tw", "cdc.gov.tw",
     "hpa.gov.tw", "fda.gov.tw", "sfaa.gov.tw", "mol.gov.tw", "moi.gov.tw",
-    "moe.gov.tw", "ndc.gov.tw", "vghtpe.gov.tw", "vghtc.gov.tw",
-    "vghks.gov.tw", "ntuh.gov.tw", "nckuh.hosp.ncku.edu.tw",
+    "moe.gov.tw", "moea.gov.tw", "ndc.gov.tw", "fsc.gov.tw", "cbc.gov.tw",
+    "ly.gov.tw", "vghtpe.gov.tw", "vghtc.gov.tw", "vghks.gov.tw",
+    "ntuh.gov.tw", "nckuh.hosp.ncku.edu.tw", "tpech.gov.taipei",
     "cgmh.org.tw", "cmuh.cmu.edu.tw", "kmuh.org.tw",
 )
 TW_INTELLIGENCE_ENTITY_TERMS = (
@@ -3424,6 +3451,16 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.mohw.gov.tw/www/lp-16-1.html"},
         {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
          "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
+        {"name": "FSC News", "url": "https://www.fsc.gov.tw/ch/home.jsp?id=2&parentpath=0",
+         "html_url": "https://www.fsc.gov.tw/ch/home.jsp?id=2&parentpath=0"},
+        {"name": "CBC News", "url": "https://www.cbc.gov.tw/tw/lp-302-1.html",
+         "html_url": "https://www.cbc.gov.tw/tw/lp-302-1.html"},
+        {"name": "MOI News", "url": "https://www.moi.gov.tw/News.aspx?n=4",
+         "html_url": "https://www.moi.gov.tw/News.aspx?n=4"},
+        {"name": "MOL News", "url": "https://www.mol.gov.tw/1607/1632/1633/",
+         "html_url": "https://www.mol.gov.tw/1607/1632/1633/"},
+        {"name": "MOEA News", "url": "https://www.moea.gov.tw/Mns/populace/news/News.aspx?kind=1",
+         "html_url": "https://www.moea.gov.tw/Mns/populace/news/News.aspx?kind=1"},
     ),
     "medical": (
         {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.html",
@@ -3432,8 +3469,19 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.mohw.gov.tw/www/lp-18-1.html"},
         {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
          "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
+        {"name": "CDC News", "url": "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFQFA",
+         "html_url": "https://www.cdc.gov.tw/Category/ListContent/EmXW9Z9G5lXnKcSMacP7Mw"},
+        {"name": "FDA News", "url": "https://www.fda.gov.tw/TC/news.aspx?cid=4",
+         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=4"},
+        {"name": "VGHTC News", "url": "https://www.vghtc.gov.tw/News.aspx?n=56",
+         "html_url": "https://www.vghtc.gov.tw/News.aspx?n=56"},
+        {"name": "NTUH News", "url": "https://www.ntuh.gov.tw/News.aspx?n=2576",
+         "html_url": "https://www.ntuh.gov.tw/News.aspx?n=2576"},
     ),
 }
+
+TW_INTELLIGENCE_GOOGLE_ENTRY_LIMIT = {"policy": 36, "medical": 24}
+TW_INTELLIGENCE_OFFICIAL_ENTRY_LIMIT = {"policy": 28, "medical": 24}
 TW_INTELLIGENCE_RELEVANCE = {
     "policy": (
         "政策", "補助", "津貼", "新青安", "房貸", "租屋", "社福", "長照",
@@ -3601,6 +3649,29 @@ def _parse_tw_roc_date(value: str, default_year: Optional[int] = None) -> str:
         return ""
 
 
+def _parse_news_time_required(value) -> Optional[dt.datetime]:
+    """Parse a timestamp only when the source provides one; never assume 'now'."""
+    if isinstance(value, dt.datetime):
+        parsed = value
+    else:
+        parsed = None
+        raw = str(value or "").strip()
+        if raw:
+            try:
+                parsed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            except ValueError:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    parsed = parsedate_to_datetime(raw)
+                except (TypeError, ValueError):
+                    parsed = None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc)
+
+
 def _official_html_entries(html_text: str,
                            base_url: str,
                            source_name: str,
@@ -3609,7 +3680,66 @@ def _official_html_entries(html_text: str,
     """Fallback parser for official list pages when RSS is blocked or malformed."""
     import html as _html
     import re as _re
+
+    def _record_undated(title_value: str) -> None:
+        if stats is not None:
+            stats["html_undated"] = stats.get("html_undated", 0) + 1
+            rejected = stats.setdefault("rejected_samples", [])
+            if len(rejected) < 5:
+                rejected.append({
+                    "title": title_value[:120],
+                    "reason": "missing_date",
+                    "source": source_name,
+                })
+
+    def _append(entries: list[dict], title: str, href: str, block_text: str) -> None:
+        title = _html.unescape(_strip_html(title)).strip()
+        if len(title) < 8:
+            return
+        link = urljoin(base_url, _html.unescape(str(href or "")).strip())
+        if not _tw_source_is_official(link, base_url, source_name):
+            return
+        published = _parse_tw_roc_date(f"{title} {block_text}")
+        if not published:
+            _record_undated(title)
+            return
+        if any(item["link"] == link for item in entries):
+            return
+        entries.append({
+            "title": title[:180],
+            "link": link,
+            "published": published,
+            "source": {"title": source_name, "href": base_url},
+        })
+
     entries = []
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html_text or "", "html.parser")
+        blocks = soup.select("li, tr, article, div")
+        if not blocks:
+            blocks = [soup]
+        for block in blocks:
+            link_tag = block.find("a", href=True)
+            if not link_tag:
+                continue
+            date_bits = []
+            time_tag = block.find("time")
+            if time_tag:
+                date_bits.append(str(time_tag.get("datetime") or ""))
+                date_bits.append(time_tag.get_text(" ", strip=True))
+            for attr in ("data-date", "data-time", "datetime"):
+                date_bits.append(str(block.get(attr) or ""))
+            block_text = " ".join(
+                bit for bit in [block.get_text(" ", strip=True), *date_bits] if bit)
+            _append(entries, link_tag.get_text(" ", strip=True),
+                    str(link_tag.get("href") or ""), block_text)
+            if len(entries) >= limit:
+                return entries
+    except Exception as e:
+        if stats is not None:
+            stats.setdefault("errors", []).append(f"BeautifulSoup:{type(e).__name__}")
+
     block_pattern = _re.compile(
         r"<(?P<tag>li|tr|article|div)\b[^>]*>(?P<body>.*?)</(?P=tag)>",
         _re.I | _re.S,
@@ -3625,31 +3755,8 @@ def _official_html_entries(html_text: str,
         match = link_pattern.search(block)
         if not match:
             continue
-        raw_title = _strip_html(match.group("title"))
-        title = _html.unescape(raw_title).strip()
-        if len(title) < 8:
-            continue
-        href = _html.unescape(match.group("href")).strip()
-        link = urljoin(base_url, href)
-        if not _tw_source_is_official(link, base_url, source_name):
-            continue
         block_text = _strip_html(block)
-        published = _parse_tw_roc_date(f"{title} {block_text}")
-        if not published:
-            if stats is not None:
-                stats["html_undated"] = stats.get("html_undated", 0) + 1
-                (stats.setdefault("rejected_samples", [])).append({
-                    "title": title[:120],
-                    "reason": "missing_date",
-                    "source": source_name,
-                })
-            continue
-        entries.append({
-            "title": title,
-            "link": link,
-            "published": published,
-            "source": {"title": source_name, "href": base_url},
-        })
+        _append(entries, match.group("title"), match.group("href"), block_text)
         if len(entries) >= limit:
             break
     return entries
@@ -3805,6 +3912,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             "failed": 0, "official_kept": 0,
             "google_sources": 0, "official_sources": 0,
             "official_entries": 0, "official_empty": 0,
+            "date_missing": 0, "date_parse_failed": 0, "html_undated": 0,
         }
 
     def _append_candidate(kind: str, entry: dict, source: dict,
@@ -3821,14 +3929,16 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
 
         stats["entries"] += 1
         raw_time = entry.get("published") or entry.get("updated")
-        if source.get("official_hint") and not raw_time:
+        if not raw_time:
             stats["date_missing"] = stats.get("date_missing", 0) + 1
             _reject("missing_date")
             return
-        published = _parse_news_time(
-            raw_time,
-            now_tpe.astimezone(dt.timezone.utc),
-        ).astimezone(TPE)
+        parsed_time = _parse_news_time_required(raw_time)
+        if parsed_time is None:
+            stats["date_parse_failed"] = stats.get("date_parse_failed", 0) + 1
+            _reject("invalid_date")
+            return
+        published = parsed_time.astimezone(TPE)
         if not start <= published < end:
             _reject("outside_window")
             return
@@ -3902,12 +4012,19 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                     })
             try:
                 feed = feedparser.parse(_gnews_rss(query, when=rss_when))
-                for entry in feed.entries[:12]:
+                for entry in feed.entries[:TW_INTELLIGENCE_GOOGLE_ENTRY_LIMIT.get(kind, 20)]:
                     stats["entries"] += 1
-                    published = _parse_news_time(
-                        entry.get("published") or entry.get("updated"),
-                        now_tpe.astimezone(dt.timezone.utc),
-                    ).astimezone(TPE)
+                    raw_time = entry.get("published") or entry.get("updated")
+                    if not raw_time:
+                        stats["date_missing"] = stats.get("date_missing", 0) + 1
+                        _google_reject("missing_date", entry.get("title", ""))
+                        continue
+                    parsed_time = _parse_news_time_required(raw_time)
+                    if parsed_time is None:
+                        stats["date_parse_failed"] = stats.get("date_parse_failed", 0) + 1
+                        _google_reject("invalid_date", entry.get("title", ""))
+                        continue
+                    published = parsed_time.astimezone(TPE)
                     if not start <= published < end:
                         _google_reject("outside_window", entry.get("title", ""))
                         continue
@@ -3958,7 +4075,10 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             except Exception as e:
                 stats["failed"] += 1
                 print(f"[tw-intelligence] {kind} query failed: {e}", file=sys.stderr)
-            for key in ("entries", "in_window", "recalled", "kept", "failed", "official_kept"):
+            for key in (
+                "entries", "in_window", "recalled", "kept", "failed",
+                "official_kept", "date_missing", "date_parse_failed", "html_undated",
+            ):
                 diagnostics[key] += stats[key]
         for source in TW_INTELLIGENCE_DIRECT_SOURCES.get(kind, ()):
             source_name = str(source.get("name") or source.get("url") or "Direct")
@@ -3972,7 +4092,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 if not entries:
                     stats["official_empty"] += 1
                     diagnostics["official_empty"] += 1
-                for entry in entries[:16]:
+                for entry in entries[:TW_INTELLIGENCE_OFFICIAL_ENTRY_LIMIT.get(kind, 20)]:
                     _append_candidate(kind, entry, {
                         **source, "official_hint": True,
                     }, start, end, candidates, stats)
@@ -3980,7 +4100,10 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 stats["failed"] += 1
                 print(f"[tw-intelligence] {kind} direct source failed: {source_name}: {e}",
                       file=sys.stderr)
-            for key in ("entries", "in_window", "recalled", "kept", "failed", "official_kept"):
+            for key in (
+                "entries", "in_window", "recalled", "kept", "failed",
+                "official_kept", "date_missing", "date_parse_failed", "html_undated",
+            ):
                 diagnostics[key] += stats[key]
         deduped = {}
         for item in candidates:
@@ -4994,6 +5117,7 @@ def evaluate_model_rolling_origin(model_history: list[dict],
         "model_version": MODEL_VERSION,
         "max_origins": max_origins,
         "min_train_rows": min_train_rows,
+        "purge_gap_sessions": MODEL_PURGE_GAP,
     }
     for forecast_key, config in MODEL_TARGETS.items():
         horizon = config["horizon"]
@@ -5002,7 +5126,9 @@ def evaluate_model_rolling_origin(model_history: list[dict],
         by_session: dict[str, list[dict]] = {}
         for row in rows:
             by_session.setdefault(str(row.get("session_date") or ""), []).append(row)
-        validation_sessions = sorted(by_session)[-max_origins:]
+        ordered_sessions = sorted(by_session)
+        session_rank = {session: index for index, session in enumerate(ordered_sessions)}
+        validation_sessions = ordered_sessions[-max_origins:]
         errors = []
         direction_hits = []
         probability_values = []
@@ -5017,9 +5143,12 @@ def evaluate_model_rolling_origin(model_history: list[dict],
         max_drawdown = 0.0
         evaluated_origins = 0
         for session_date in validation_sessions:
+            origin_rank = session_rank.get(session_date, 0)
+            train_future_cutoff = max(0, origin_rank - MODEL_PURGE_GAP)
             train = [
                 row for row in rows
-                if str(row.get("future_session_date") or "") < session_date
+                if session_rank.get(str(row.get("future_session_date") or ""), 10**9)
+                < train_future_cutoff
             ]
             if len(train) < min_train_rows:
                 continue
@@ -5150,7 +5279,11 @@ def build_source_health_report(snapshot: list[dict],
                                news: list[dict],
                                structured_events: list[dict],
                                tw_intelligence: Optional[dict] = None) -> dict:
-    """Convert source availability into a conservative ranking penalty."""
+    """Convert market data availability into a conservative ranking penalty.
+
+    Taiwan policy/medical intelligence is awareness-only: its diagnostics are reported,
+    but outages must not change stock ranking scores.
+    """
     total = len(snapshot or [])
     tw_diag = (tw_intelligence or {}).get("diagnostics") or {}
     policy_diag = tw_diag.get("policy") or {}
@@ -5175,7 +5308,7 @@ def build_source_health_report(snapshot: list[dict],
         official_entries = int(diag.get("official_entries") or 0)
         return official_entries > 0 and official_empty < official_sources
 
-    checks = {
+    market_checks = {
         "universe": total >= 70,
         "institutional": bool(total and sum(bool(
             item.get("foreign_lot") or item.get("invest_lot") or item.get("dealer_lot"))
@@ -5186,19 +5319,27 @@ def build_source_health_report(snapshot: list[dict],
                                        for item in snapshot) / total >= 0.7),
         "news": len(news or []) >= 10,
         "structured_events": bool(structured_events),
+    }
+    awareness_checks = {
         "tw_policy_intelligence": _tw_diag_healthy(policy_diag),
         "tw_medical_intelligence": _tw_diag_healthy(medical_diag),
         "tw_policy_official_sources": _tw_official_diag_healthy(policy_diag),
         "tw_medical_official_sources": _tw_official_diag_healthy(medical_diag),
     }
-    failures = [name for name, healthy in checks.items() if not healthy]
+    failures = [name for name, healthy in market_checks.items() if not healthy]
+    awareness_failures = [
+        name for name, healthy in awareness_checks.items() if not healthy]
     score = max(0.0, 1.0 - len(failures) * 0.12)
     return {
         "status": "error" if score < 0.55 else "fallback" if failures else "ok",
+        "awareness_status": "fallback" if awareness_failures else "ok",
         "score": round(score, 3),
         "ranking_penalty": round(min(4.0, len(failures) * 0.65), 2),
-        "checks": checks,
+        "checks": {**market_checks, **awareness_checks},
+        "market_checks": market_checks,
+        "awareness_checks": awareness_checks,
         "failures": failures,
+        "awareness_failures": awareness_failures,
     }
 
 
@@ -5639,77 +5780,6 @@ def _news_event_direction(text: str) -> int:
     return 1 if positive else -1
 
 
-def _stock_news_catalysts(snapshot: list[dict],
-                          news: list[dict],
-                          mops: list[dict]) -> dict[str, dict]:
-    """
-    建立可回測的個股新聞催化分數。
-
-    直接提及公司或 MOPS 公告權重較高；美股供應鏈映射只給弱連動分。
-    沒有明確正負事件詞時只保存證據，不改變排序。
-    """
-    import re as _re
-
-    results = {
-        item["code"]: {"score": 0.0, "evidence": []}
-        for item in snapshot or [] if item.get("code")
-    }
-
-    def add(code: str, item: dict, relation: str, base_weight: float) -> None:
-        result = results.get(code)
-        if result is None:
-            return
-        title = (item.get("title") or "").strip()
-        text = f"{title} {item.get('summary', '')}"
-        direction = _news_event_direction(text)
-        grade = item.get("source_grade") or _news_source_grade(item)
-        grade_weight = {"A": 1.0, "B": 0.8, "C": 0.5}.get(grade, 0.5)
-        delta = direction * base_weight * grade_weight
-        result["score"] += delta
-        evidence_key = (relation, title)
-        if title and evidence_key not in {
-                (e.get("relation"), e.get("title")) for e in result["evidence"]}:
-            result["evidence"].append({
-                "relation": relation,
-                "title": title[:140],
-                "source": item.get("source") or "MOPS",
-                "source_grade": grade,
-                "direction": direction,
-                "score_delta": round(delta, 2),
-            })
-
-    for announcement in mops or []:
-        item = dict(announcement)
-        item.setdefault("source", "MOPS")
-        item.setdefault("source_grade", "A")
-        add(str(item.get("code") or ""), item, "直接公告", 4.0)
-
-    for item in news or []:
-        label = str(item.get("company_label") or "")
-        text = f"{item.get('title', '')} {item.get('summary', '')}"
-        direct_codes: set[str] = set()
-        for stock in snapshot or []:
-            code = str(stock.get("code") or "")
-            name = str(stock.get("name") or "")
-            code_hit = bool(code and _re.search(rf"(?<!\d){_re.escape(code)}(?!\d)", text))
-            name_hit = bool(len(name) >= 3 and name in text)
-            if label == code or code_hit or name_hit:
-                add(code, item, "直接新聞", 3.0)
-                direct_codes.add(code)
-        for code in TW_SUPPLY_CHAIN_BY_US_LABEL.get(label, set()):
-            if code not in direct_codes:
-                add(code, item, f"{label} 供應鏈", 1.0)
-
-    for result in results.values():
-        result["score"] = round(max(-10.0, min(10.0, result["score"])), 2)
-        result["evidence"] = sorted(
-            result["evidence"],
-            key=lambda e: (abs(e.get("score_delta", 0)), e.get("source_grade") == "A"),
-            reverse=True,
-        )[:4]
-    return results
-
-
 def _event_type(text: str) -> str:
     """Map noisy headlines to a small, learnable event taxonomy."""
     lower = (text or "").lower()
@@ -5815,7 +5885,9 @@ def extract_structured_events(news: list[dict],
         source = str(item.get("source") or ("MOPS" if official else "unknown"))
         grade = "A" if official else (item.get("source_grade") or _news_source_grade(item))
         text = f"{title} {item.get('summary', '')}"
-        published = _parse_news_time(item.get("published"), now)
+        raw_published = item.get("published")
+        parsed_published = _parse_news_time_required(raw_published)
+        published = parsed_published or (now - dt.timedelta(days=7))
         age_hours = max(0.0, (now - published).total_seconds() / 3600)
         event = {
             "entity": str(item.get("entity") or item.get("code")
@@ -5829,6 +5901,7 @@ def extract_structured_events(news: list[dict],
             "source_grade": grade,
             "title": title[:180],
             "published": published.isoformat(),
+            "date_missing": parsed_published is None,
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
             "lifecycle": item.get("lifecycle"),
@@ -6085,6 +6158,7 @@ def _stock_news_catalysts(snapshot: list[dict],
     for event in events:
         entity = str(event.get("entity") or "")
         title = str(event.get("title") or "")
+        event_text = f"{title} {event.get('summary', '')}"
         direct_codes = set()
         for stock in snapshot or []:
             code = str(stock.get("code") or "")
@@ -6097,6 +6171,14 @@ def _stock_news_catalysts(snapshot: list[dict],
         for code in TW_SUPPLY_CHAIN_BY_US_LABEL.get(entity, set()):
             if code not in direct_codes:
                 add(code, event, f"{entity} supply-chain", 0.35)
+        for industry_key, mapping in TW_INDUSTRY_EVENT_MAP.items():
+            terms = mapping.get("terms") or set()
+            if not any(str(term) and str(term) in event_text for term in terms):
+                continue
+            for code in mapping.get("codes") or set():
+                if code in direct_codes:
+                    continue
+                add(code, event, f"{industry_key} industry", 0.25)
 
     for result in results.values():
         result["score"] = round(max(-10.0, min(10.0, result["score"])), 2)
@@ -6272,6 +6354,25 @@ def calc_stock_price_forecast(entry: dict,
     }
 
 
+def _overheat_penalty(item: dict) -> float:
+    """Penalize crowded short-term moves so Top5 is not just a chase list."""
+    penalty = 0.0
+    pct_5d = _safe_number(item.get("pct_5d"))
+    ma20_dist = _safe_number(item.get("ma20_dist_pct"))
+    day_pct = _safe_number(item.get("day_pct"))
+    vol_ratio = _safe_number(item.get("vol_ratio_20d"))
+    daily_vol = _safe_number(item.get("daily_vol_pct"))
+    if pct_5d >= 18:
+        penalty += min(4.0, (pct_5d - 18) / 5.0)
+    if ma20_dist >= 12:
+        penalty += min(3.0, (ma20_dist - 12) / 4.0)
+    if day_pct >= 8 and 0 < vol_ratio < 0.8:
+        penalty += 2.0
+    if daily_vol >= 8:
+        penalty += min(2.0, (daily_vol - 8) / 2.0)
+    return round(min(8.0, penalty), 2)
+
+
 def _attention_ranking_breakdown(item: dict,
                                  model3: dict,
                                  weights: dict) -> dict:
@@ -6312,6 +6413,7 @@ def _attention_ranking_breakdown(item: dict,
             0.0, min(4.0, _safe_number(item.get("source_health_penalty")))),
         "model_monitor_penalty": -max(
             0.0, min(4.0, _safe_number(item.get("model_monitor_penalty")))),
+        "overheat_penalty": -_overheat_penalty(item),
     }
     components = {key: round(value, 2) for key, value in components.items()}
     raw_score = round(sum(components.values()), 2)
@@ -6327,6 +6429,7 @@ def _attention_ranking_breakdown(item: dict,
             "expected_return_3d_pct": expected_return,
             "trade_value": item.get("trade_value"),
             "slippage_bps": item.get("slippage_bps"),
+            "overheat_penalty": _overheat_penalty(item),
             "market_regime": item.get("market_regime") or "neutral",
             "model_version": model3.get("model_version", MODEL_VERSION),
         },
@@ -7200,7 +7303,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                     f"流動性{(s.get('ranking_components') or {}).get('liquidity_penalty',0):+4.1f}/"
                     f"漂移{(s.get('ranking_components') or {}).get('feature_drift_penalty',0):+4.1f}/"
                     f"來源{(s.get('ranking_components') or {}).get('source_health_penalty',0):+4.1f}/"
-                    f"校準{(s.get('ranking_components') or {}).get('model_monitor_penalty',0):+4.1f}) "
+                    f"校準{(s.get('ranking_components') or {}).get('model_monitor_penalty',0):+4.1f}/"
+                    f"過熱{(s.get('ranking_components') or {}).get('overheat_penalty',0):+4.1f}) "
                     f"[籌{comp.get('chips',0):.0f}/動{comp.get('momentum',0):.0f}/"
                     f"營{comp.get('revenue',0):.0f}/EPS{comp.get('eps',0):.0f}] | "
                     f"昨日法人{tot_lot:+.0f}張 30日外資{f30:+.0f}張 外連{fs:+d}投連{is_:+d} "
@@ -7236,7 +7340,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 f"流動性 {(stock.get('ranking_components') or {}).get('liquidity_penalty',0):+.1f} / "
                 f"漂移 {(stock.get('ranking_components') or {}).get('feature_drift_penalty',0):+.1f} / "
                 f"來源 {(stock.get('ranking_components') or {}).get('source_health_penalty',0):+.1f} / "
-                f"校準 {(stock.get('ranking_components') or {}).get('model_monitor_penalty',0):+.1f})｜"
+                f"校準 {(stock.get('ranking_components') or {}).get('model_monitor_penalty',0):+.1f} / "
+                f"過熱 {(stock.get('ranking_components') or {}).get('overheat_penalty',0):+.1f})｜"
                 f"昨收 {stock.get('close')}｜"
                 f"3日預測 {f3.get('expected_price','資料不足')} "
                 f"[{f3.get('lower','-')}~{f3.get('upper','-')}]｜"
@@ -8018,13 +8123,15 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         source_grade = item.get("source_grade") or _news_source_grade(item)
         importance = {"critical": 4, "high": 3, "normal": 1}.get(
             str(item.get("importance") or "normal"), 1)
-        published = _parse_news_time(item.get("published"), now_utc)
+        parsed_published = _parse_news_time_required(item.get("published"))
+        published = parsed_published or (now_utc - dt.timedelta(days=7))
         age_hours = max(0.0, (now_utc - published).total_seconds() / 3600)
         return (
             source_grade == "A",
             importance,
             bool(item.get("fulltext")),
             bool(item.get("company_label")),
+            parsed_published is not None,
             -age_hours,
             len(str(item.get("summary") or "")) + len(str(item.get("fulltext") or "")),
         )
@@ -8531,6 +8638,8 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
         sources = diag.get("sources") or {}
         html_undated = sum(_safe_number(stats.get("html_undated")) for stats in sources.values())
         date_missing = sum(_safe_number(stats.get("date_missing")) for stats in sources.values())
+        date_parse_failed = sum(
+            _safe_number(stats.get("date_parse_failed")) for stats in sources.values())
         source_errors = []
         rejected = []
         for source_name, stats in sources.items():
@@ -8548,7 +8657,8 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
             f"official_entries={htmllib.escape(str(diag.get('official_entries', 0)))}；"
             f"official_empty={htmllib.escape(str(diag.get('official_empty', 0)))}；"
             f"html_undated={htmllib.escape(str(int(html_undated)))}；"
-            f"date_missing={htmllib.escape(str(int(date_missing)))}"
+            f"date_missing={htmllib.escape(str(int(date_missing)))}；"
+            f"date_parse_failed={htmllib.escape(str(int(date_parse_failed)))}"
             + (f"<br>errors: {htmllib.escape('; '.join(source_errors))}" if source_errors else "")
             + (f"<br>rejected: {htmllib.escape('; '.join(rejected))}" if rejected else "")
             + "</div>"
@@ -8605,6 +8715,9 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
+    analysis_for_render = _strip_llm_watchlist_section(analysis)
+    stance = _extract_stance(analysis_for_render)
+    summary_text = _extract_summary(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
 
@@ -8845,6 +8958,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         else:
             trade_posture = "依開盤價位順勢觀察"
             posture_reason = "開盤方向與風險警告未明顯衝突"
+        stance_label = str(stance.get("label") or "—")
+        stance_score = stance.get("score")
+        stance_text = (
+            f"{stance_label} {stance_score:+d}"
+            if isinstance(stance_score, int) else stance_label
+        )
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
@@ -8883,10 +9002,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:8px 0 12px;">
           <div style="font-size:13px;color:#0f172a;line-height:1.7;">
             <b>開盤方向：</b>{open_direction}　
+            <b>整體立場：</b>{_htmllib.escape(stance_text)}　
             <b>交易立場：</b>{trade_posture}
           </div>
           <div style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px;">
-            ※ 開盤方向只描述「可能怎麼開」，交易立場則整合外資期貨、警告與波動風險；{posture_reason}。
+            ※ 開盤方向只描述「可能怎麼開」；整體立場取自「我的明確立場」；交易立場則整合外資期貨、警告與波動風險；{posture_reason}。
           </div>
         </div>
         {(lambda c: f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
@@ -8981,7 +9101,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 流動性 {ranking_components.get('liquidity_penalty', 0):+.1f}"
                     f" ・ 漂移 {ranking_components.get('feature_drift_penalty', 0):+.1f}"
                     f" ・ 來源 {ranking_components.get('source_health_penalty', 0):+.1f}"
-                    f" ・ 校準 {ranking_components.get('model_monitor_penalty', 0):+.1f}")
+                    f" ・ 校準 {ranking_components.get('model_monitor_penalty', 0):+.1f}"
+                    f" ・ 過熱 {ranking_components.get('overheat_penalty', 0):+.1f}")
                 forecast = s.get("price_forecast") or {}
                 f1o = forecast.get("1d_open") or {}
                 f1c = forecast.get("1d_close") or {}
@@ -9389,9 +9510,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         """
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
-    analysis_for_render = _strip_llm_watchlist_section(analysis)
-    stance = _extract_stance(analysis_for_render)
-    summary_text = _extract_summary(analysis_for_render)
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
     summary_bar = _render_summary_bar(summary_text, _htmllib)
 
@@ -9762,6 +9880,9 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     source_health = quotes.get("SOURCE_HEALTH", {}) or {}
     add("模型來源健康度", source_health.get("status", "fallback"),
         f"score={source_health.get('score', 0)}・缺失={','.join(source_health.get('failures') or []) or '無'}")
+    awareness_failures = source_health.get("awareness_failures") or []
+    add("台灣政策/醫界情報", source_health.get("awareness_status", "fallback"),
+        f"awareness-only・缺失={','.join(awareness_failures) or '無'}")
 
     monitoring = quotes.get("MODEL_MONITORING", {}) or {}
     rolling = monitoring.get("rolling_origin_metrics") or {}

@@ -324,8 +324,30 @@ def test_stock_news_catalyst_does_not_double_count_direct_supply_chain():
         }],
         [],
     )
-    assert out["2330"]["score"] == 1.25
+    assert out["2330"]["score"] == 0.25
     assert len(out["2330"]["evidence"]) == 1
+    assert out["2330"]["evidence"][0]["score_delta"] == 0.25
+
+
+def test_stock_news_catalyst_maps_industry_events_conservatively():
+    out = mr._stock_news_catalysts(
+        [
+            {"code": "2344", "name": "華邦電"},
+            {"code": "2408", "name": "南亞科"},
+            {"code": "2330", "name": "台積電"},
+        ],
+        [{
+            "source": "中央社財經",
+            "source_grade": "B",
+            "title": "記憶體報價成長 DRAM 需求優於預期",
+            "summary": "",
+            "published": "2026-06-02T00:00:00Z",
+        }],
+        [],
+    )
+    assert out["2344"]["score"] > 0
+    assert out["2408"]["score"] > 0
+    assert out["2330"]["score"] == 0
 
 
 def test_stock_news_catalyst_negative_mops_reduces_score():
@@ -401,6 +423,7 @@ def test_attention_ranking_breakdown_is_transparent_and_bounded():
         "feature_drift_penalty": 0.0,
         "source_health_penalty": 0.0,
         "model_monitor_penalty": 0.0,
+        "overheat_penalty": -0.0,
     }
     assert out["score"] == sum(out["components"].values()) == 70.2
     assert out["inputs"]["model_version"] == "test-v1"

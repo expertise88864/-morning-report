@@ -506,3 +506,40 @@ def test_walk_forward_does_not_fake_top5_for_unranked_backfill():
     out = mr.evaluate_model_walk_forward(history, sessions)
     assert out["1d_close"]["top5_avg_return_pct"] is None
     assert out["1d_close"]["top5_avg_net_return_pct"] is None
+
+
+def test_tw_official_detection_requires_publisher_domain():
+    title = "\u885b\u798f\u90e8\u8aaa\u660e\u65b0\u653f\u7b56"
+    assert not mr._tw_source_is_official("https://news.example.com/a", "", title)
+    assert mr._tw_source_is_official("https://www.mohw.gov.tw/news/a", "", "")
+    assert mr._tw_mentions_official_agency(title)
+
+
+def test_tw_intelligence_exposes_source_diagnostics(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "\u884c\u653f\u9662 \u65b0\u9752\u5b89 \u653f\u7b56 \u516c\u544a",
+            "link": "https://www.ey.gov.tw/policy",
+            "published": "Mon, 01 Jun 2026 08:00:00 GMT",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 2, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["diagnostics"]["policy"]["entries"] > 0
+    assert out["diagnostics"]["policy"]["returned"] >= 1
+    assert out["policy"][0]["official"] is True
+
+
+def test_event_timeline_does_not_merge_unrelated_blank_general_events():
+    events = [{
+        "entity": "", "event_type": "general", "title": "AI demand update",
+        "source_grade": "A",
+    }, {
+        "entity": "", "event_type": "general", "title": "Oil supply shock",
+        "source_grade": "A",
+    }]
+    out = mr.apply_event_timeline([], events)
+    assert out[0]["is_incremental"] is True
+    assert out[1]["is_incremental"] is True
+    assert out[0]["timeline_key"] != out[1]["timeline_key"]

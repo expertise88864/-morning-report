@@ -29,6 +29,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
+from urllib.parse import parse_qs, urlparse
 
 import feedparser
 import numpy as np
@@ -2734,10 +2735,48 @@ def fetch_taiex_history() -> Optional[pd.DataFrame]:
     return None
 
 
+def _taiex_conflict_adjustment(weighted_pct: float,
+                               signal_std: Optional[float],
+                               context: Optional[dict]) -> tuple[float, float, list[str]]:
+    """Shrink directional TAIEX forecasts when strong cross-signals disagree."""
+    if not context or not weighted_pct:
+        return weighted_pct, 1.0, []
+    macro = context.get("MACRO") or context.get("macro") or {}
+    taifex = context.get("TAIFEX_OI") or context.get("taifex_oi") or {}
+    reasons = []
+    shrink_penalty = 0.0
+    foreign_oi = _safe_number(taifex.get("foreign_oi_net"))
+    if foreign_oi <= -20000 and weighted_pct > 0:
+        shrink_penalty += min(0.35, abs(foreign_oi) / 120000 * 0.35)
+        reasons.append("foreign_oi_short")
+    elif foreign_oi >= 30000 and weighted_pct < 0:
+        shrink_penalty += min(0.25, abs(foreign_oi) / 140000 * 0.25)
+        reasons.append("foreign_oi_long")
+    wti_pct = _safe_number((macro.get("WTI") or {}).get("change_pct"))
+    if wti_pct >= 3.0 and weighted_pct > 0:
+        shrink_penalty += 0.12
+        reasons.append("oil_inflation")
+    sox_pct = _safe_number((macro.get("SOX") or {}).get("change_pct"))
+    if sox_pct >= 3.5 and weighted_pct > 0:
+        shrink_penalty += 0.10
+        reasons.append("sox_overheat")
+    vix = _safe_number((macro.get("VIX") or {}).get("close"))
+    vix9d = _safe_number((macro.get("VIX9D") or {}).get("close"))
+    if vix and vix9d and vix9d / vix > 1.02 and weighted_pct > 0:
+        shrink_penalty += 0.10
+        reasons.append("vix_backwardation")
+    if signal_std is not None and signal_std >= 2.0:
+        shrink_penalty += min(0.12, signal_std / 40)
+        reasons.append("signal_disagreement")
+    shrink = max(0.55, min(1.0, 1.0 - shrink_penalty))
+    return weighted_pct * shrink, round(shrink, 3), reasons[:5]
+
+
 def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
-                            sox_pct: Optional[float],
-                            tsm_pct: Optional[float],
-                            night_pct: Optional[float]) -> dict:
+                          sox_pct: Optional[float],
+                          tsm_pct: Optional[float],
+                          night_pct: Optional[float],
+                          context: Optional[dict] = None) -> dict:
     """
     Task A: 加權指數開盤預測（三訊號加權法）
 
@@ -2769,9 +2808,8 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
 
     # Reweight: 缺資料時，剩餘訊號權重重新分配
     total_weight = sum(w for _, _, w in signals)
-    weighted_pct = sum(val * w / total_weight for _, val, w in signals)
-
-    pred_open = last_close * (1 + weighted_pct / 100)
+    raw_weighted_pct = sum(val * w / total_weight for _, val, w in signals)
+    weighted_pct = raw_weighted_pct
 
     # 歷史樣本不足時的暫定參考區間：三訊號發散程度。
     # calibrate_predictions 累積足夠 walk-forward 殘差後，會覆寫成歷史殘差分位區間。
@@ -2779,9 +2817,15 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
     if len(values) >= 2:
         avg = sum(values) / len(values)
         std = (sum((v - avg) ** 2 for v in values) / len(values)) ** 0.5
+        weighted_pct, conflict_shrink, conflict_reasons = _taiex_conflict_adjustment(
+            weighted_pct, std, context)
+        pred_open = last_close * (1 + weighted_pct / 100)
         ci_lower = last_close * (1 + (weighted_pct - std) / 100)
         ci_upper = last_close * (1 + (weighted_pct + std) / 100)
     else:
+        weighted_pct, conflict_shrink, conflict_reasons = _taiex_conflict_adjustment(
+            weighted_pct, None, context)
+        pred_open = last_close * (1 + weighted_pct / 100)
         ci_lower = pred_open * 0.995
         ci_upper = pred_open * 1.005
         std = None
@@ -2803,12 +2847,15 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
     return {
         "last_close": round(last_close, 2),
         "signals": [{"name": n, "value": round(v, 2), "weight": w} for n, v, w in signals],
+        "raw_weighted_pct": round(raw_weighted_pct, 2),
         "weighted_pct": round(weighted_pct, 2),
         "pred_open": round(pred_open, 2),
         "ci_lower": round(ci_lower, 2),
         "ci_upper": round(ci_upper, 2),
         "consensus": consensus,
         "signal_std": round(std, 2) if std is not None else None,
+        "conflict_shrink_factor": conflict_shrink,
+        "conflict_reasons": conflict_reasons,
         "signal_count": len(signals),
         "interval_method": "訊號分歧近似區間（歷史殘差樣本不足）",
     }
@@ -3348,6 +3395,32 @@ TW_OFFICIAL_SOURCE_TOKENS = (
     "金管會", "內政部", "勞動部", "經濟部", "財政部", "中央銀行",
     "立法院", "衛生局", "醫院公告",
 )
+TW_OFFICIAL_SOURCE_DOMAINS = (
+    "gov.tw", "ey.gov.tw", "mohw.gov.tw", "nhi.gov.tw", "cdc.gov.tw",
+    "hpa.gov.tw", "fda.gov.tw", "sfaa.gov.tw", "mol.gov.tw", "moi.gov.tw",
+    "moe.gov.tw", "ndc.gov.tw", "vghtpe.gov.tw", "vghtc.gov.tw",
+    "vghks.gov.tw", "ntuh.gov.tw", "nckuh.hosp.ncku.edu.tw",
+    "cgmh.org.tw", "cmuh.cmu.edu.tw", "kmuh.org.tw",
+)
+TW_INTELLIGENCE_ENTITY_TERMS = (
+    "\u65b0\u9752\u5b89", "\u80b2\u5152\u6d25\u8cbc", "\u5c11\u5b50\u5316",
+    "\u623f\u8cb8", "\u5065\u4fdd", "\u4f4f\u9662", "\u6025\u8a3a",
+    "\u885b\u798f\u90e8", "\u5065\u4fdd\u7f72", "\u884c\u653f\u9662",
+    "\u4e2d\u69ae", "\u53f0\u4e2d\u69ae\u7e3d", "\u81fa\u4e2d\u69ae\u7e3d",
+)
+TW_INTELLIGENCE_DIRECT_SOURCES = {
+    "policy": (
+        {"name": "EY News", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=1"},
+        {"name": "EY Ministries", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3"},
+        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.xml"},
+        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.xml"},
+    ),
+    "medical": (
+        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.xml"},
+        {"name": "MOHW Notices", "url": "https://www.mohw.gov.tw/rss-18-1.xml"},
+        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.xml"},
+    ),
+}
 TW_INTELLIGENCE_RELEVANCE = {
     "policy": (
         "政策", "補助", "津貼", "新青安", "房貸", "租屋", "社福", "長照",
@@ -3446,7 +3519,75 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
     return specific or (broad and major)
 
 
-def _tw_intelligence_timeline_key(kind: str, title: str) -> str:
+def _host_from_url(url: str) -> str:
+    try:
+        parsed = urlparse(str(url or ""))
+        host = (parsed.netloc or "").lower()
+        return host[4:] if host.startswith("www.") else host
+    except Exception:
+        return ""
+
+
+def _extract_google_news_target(link: str) -> str:
+    """Return embedded publisher URL when Google News exposes one, else blank."""
+    try:
+        parsed = urlparse(str(link or ""))
+        if "news.google." not in (parsed.netloc or "").lower():
+            return ""
+        query = parse_qs(parsed.query or "")
+        for key in ("url", "u"):
+            values = query.get(key) or []
+            if values:
+                return values[0]
+    except Exception:
+        return ""
+    return ""
+
+
+def _tw_source_is_official(link: str,
+                           source_url: str = "",
+                           source_name: str = "") -> bool:
+    """Only publisher/agency domains count as official; title mentions do not."""
+    del source_name  # kept for call-site readability and future source allowlists
+    candidates = [link, source_url, _extract_google_news_target(link)]
+    for candidate in candidates:
+        host = _host_from_url(candidate)
+        if any(host == domain or host.endswith(f".{domain}")
+               for domain in TW_OFFICIAL_SOURCE_DOMAINS):
+            return True
+    return False
+
+
+def _tw_mentions_official_agency(text: str) -> bool:
+    return any(token.lower() in str(text or "").lower()
+               for token in TW_OFFICIAL_SOURCE_TOKENS)
+
+
+def _tw_entry_source(entry: dict) -> tuple[str, str]:
+    source = entry.get("source") or {}
+    if isinstance(source, dict):
+        return str(source.get("title") or ""), str(source.get("href") or "")
+    return str(source or ""), ""
+
+
+def _tw_intelligence_entity_key(title: str) -> str:
+    text = str(title or "")
+    for term in TW_INTELLIGENCE_ENTITY_TERMS:
+        if term and term in text:
+            return term
+    for raw in text.replace("-", " ").split():
+        token = "".join(ch for ch in raw if ch.isalnum())
+        if 2 <= len(token) <= 18 and any(
+            suffix in token for suffix in (
+                "\u90e8", "\u7f72", "\u9662", "\u6703", "\u59d4\u54e1\u6703",
+                "\u5c40", "\u8655", "\u91ab\u9662", "\u4e2d\u5fc3",
+            )
+        ):
+            return token
+    return ""
+
+
+def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
     """Group developing policy/medical stories into stable, human-scale timelines."""
     topic = _tw_intelligence_topic(kind, title)
     anchors = {
@@ -3458,7 +3599,8 @@ def _tw_intelligence_timeline_key(kind: str, title: str) -> str:
         "公共衛生": ("疫情", "疫苗", "疾管署", "傳染病"),
     }.get(topic, ())
     anchor = next((token for token in anchors if token in title), topic)
-    return f"{kind}:{topic}:{anchor}"
+    entity = _tw_intelligence_entity_key(title)
+    return f"{kind}:{topic}:{anchor}:{entity}"
 
 
 def _tw_intelligence_importance(kind: str,
@@ -3504,32 +3646,102 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
         "medical_window": daily_label,
         "policy": [],
         "medical": [],
+        "diagnostics": {},
     }
+
+    def _empty_stats() -> dict:
+        return {
+            "entries": 0, "in_window": 0, "recalled": 0, "kept": 0,
+            "failed": 0, "official_kept": 0,
+        }
+
+    def _append_candidate(kind: str, entry: dict, source: dict,
+                          start: dt.datetime, end: dt.datetime,
+                          candidates: list[dict], stats: dict) -> None:
+        stats["entries"] += 1
+        published = _parse_news_time(
+            entry.get("published") or entry.get("updated"),
+            now_tpe.astimezone(dt.timezone.utc),
+        ).astimezone(TPE)
+        if not start <= published < end:
+            return
+        stats["in_window"] += 1
+        title = str(entry.get("title") or "").strip()
+        if not title:
+            return
+        link = str(entry.get("link") or source.get("url") or "")
+        source_name, source_url = _tw_entry_source(entry)
+        text = f"{title} {link} {source_name} {source_url}"
+        if not _tw_intelligence_recall_hit(kind, text):
+            return
+        stats["recalled"] += 1
+        official = bool(source.get("official_hint")) or _tw_source_is_official(
+            link, source_url, source_name)
+        mentions_official = _tw_mentions_official_agency(text)
+        scope = (
+            "\u6628\u65e5\u65b0\u8a0a"
+            if daily_start <= published < daily_end
+            else "\u8fd1\u6708\u767c\u9175"
+        )
+        status = _tw_intelligence_status(title)
+        importance, reasons = _tw_intelligence_importance(
+            kind, title, official, scope, status)
+        if mentions_official and not official:
+            reasons = (reasons + ["mentions official agency"])[:4]
+        if importance < (2.0 if kind == "policy" else 2.2):
+            return
+        stats["kept"] += 1
+        if official:
+            stats["official_kept"] += 1
+        candidates.append({
+            "title": title[:180],
+            "link": link,
+            "published": published.strftime("%Y-%m-%d %H:%M"),
+            "scope": scope,
+            "timeline_key": _tw_intelligence_timeline_key(kind, title, link),
+            "importance": importance,
+            "why": reasons,
+            "topic": _tw_intelligence_topic(kind, title),
+            "status": status,
+            "source_grade": "摰" if official else "慦?",
+            "official": official,
+            "mentions_official_agency": mentions_official,
+            "source_name": source_name or source.get("name", ""),
+            "source_url": source_url or source.get("url", ""),
+        })
+
     for kind, queries in TW_INTELLIGENCE_QUERIES.items():
         candidates = []
+        diagnostics = {"sources": {}, **_empty_stats()}
         start, end = (
             (policy_start, policy_end) if kind == "policy"
             else (daily_start, daily_end)
         )
         rss_when = "30d" if kind == "policy" else "7d"
-        for query in queries:
+        for idx, query in enumerate(queries):
+            stats = diagnostics["sources"].setdefault(f"Google:{idx + 1}", _empty_stats())
             try:
                 feed = feedparser.parse(_gnews_rss(query, when=rss_when))
                 for entry in feed.entries[:12]:
+                    stats["entries"] += 1
                     published = _parse_news_time(
                         entry.get("published") or entry.get("updated"),
                         now_tpe.astimezone(dt.timezone.utc),
                     ).astimezone(TPE)
                     if not start <= published < end:
                         continue
+                    stats["in_window"] += 1
                     title = str(entry.get("title") or "").strip()
                     if not title:
                         continue
                     link = str(entry.get("link") or "")
-                    text = f"{title} {link}"
+                    source_name, source_url = _tw_entry_source(entry)
+                    text = f"{title} {link} {source_name} {source_url}"
                     if not _tw_intelligence_recall_hit(kind, text):
                         continue
-                    official = any(token.lower() in text.lower() for token in TW_OFFICIAL_SOURCE_TOKENS)
+                    stats["recalled"] += 1
+                    official = _tw_source_is_official(link, source_url, source_name)
+                    mentions_official = _tw_mentions_official_agency(text)
                     scope = (
                         "昨日新訊"
                         if daily_start <= published < daily_end
@@ -3540,21 +3752,45 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                         kind, title, official, scope, status)
                     if importance < (2.0 if kind == "policy" else 2.2):
                         continue
+                    stats["kept"] += 1
+                    if official:
+                        stats["official_kept"] += 1
                     candidates.append({
                         "title": title[:180],
                         "link": link,
                         "published": published.strftime("%Y-%m-%d %H:%M"),
                         "scope": scope,
-                        "timeline_key": _tw_intelligence_timeline_key(kind, title),
+                        "timeline_key": _tw_intelligence_timeline_key(kind, title, link),
                         "importance": importance,
                         "why": reasons,
                         "topic": _tw_intelligence_topic(kind, title),
                         "status": status,
                         "source_grade": "官方" if official else "媒體",
                         "official": official,
+                        "mentions_official_agency": mentions_official,
+                        "source_name": source_name,
+                        "source_url": source_url,
                     })
             except Exception as e:
+                stats["failed"] += 1
                 print(f"[tw-intelligence] {kind} query failed: {e}", file=sys.stderr)
+            for key in ("entries", "in_window", "recalled", "kept", "failed", "official_kept"):
+                diagnostics[key] += stats[key]
+        for source in TW_INTELLIGENCE_DIRECT_SOURCES.get(kind, ()):
+            source_name = str(source.get("name") or source.get("url") or "Direct")
+            stats = diagnostics["sources"].setdefault(source_name, _empty_stats())
+            try:
+                feed = feedparser.parse(source.get("url", ""))
+                for entry in (getattr(feed, "entries", []) or [])[:16]:
+                    _append_candidate(kind, entry, {
+                        **source, "official_hint": True,
+                    }, start, end, candidates, stats)
+            except Exception as e:
+                stats["failed"] += 1
+                print(f"[tw-intelligence] {kind} direct source failed: {source_name}: {e}",
+                      file=sys.stderr)
+            for key in ("entries", "in_window", "recalled", "kept", "failed", "official_kept"):
+                diagnostics[key] += stats[key]
         deduped = {}
         for item in candidates:
             key = item.get("timeline_key") or "".join(
@@ -3582,6 +3818,9 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             ),
             reverse=True,
         )[:per_kind_limit]
+        diagnostics["deduped"] = len(deduped)
+        diagnostics["returned"] = len(output[kind])
+        output["diagnostics"][kind] = diagnostics
     return output
 
 
@@ -4517,9 +4756,23 @@ def build_feature_drift_report(model_history: list[dict],
 
 def build_source_health_report(snapshot: list[dict],
                                news: list[dict],
-                               structured_events: list[dict]) -> dict:
+                               structured_events: list[dict],
+                               tw_intelligence: Optional[dict] = None) -> dict:
     """Convert source availability into a conservative ranking penalty."""
     total = len(snapshot or [])
+    tw_diag = (tw_intelligence or {}).get("diagnostics") or {}
+    policy_diag = tw_diag.get("policy") or {}
+    medical_diag = tw_diag.get("medical") or {}
+
+    def _tw_diag_healthy(diag: dict) -> bool:
+        if not tw_intelligence:
+            return True
+        source_count = len(diag.get("sources") or {})
+        return (
+            diag.get("entries", 0) > 0
+            and diag.get("failed", 0) < max(3, source_count)
+        )
+
     checks = {
         "universe": total >= 70,
         "institutional": bool(total and sum(bool(
@@ -4531,6 +4784,8 @@ def build_source_health_report(snapshot: list[dict],
                                        for item in snapshot) / total >= 0.7),
         "news": len(news or []) >= 10,
         "structured_events": bool(structured_events),
+        "tw_policy_intelligence": _tw_diag_healthy(policy_diag),
+        "tw_medical_intelligence": _tw_diag_healthy(medical_diag),
     }
     failures = [name for name, healthy in checks.items() if not healthy]
     score = max(0.0, 1.0 - len(failures) * 0.12)
@@ -5199,7 +5454,16 @@ def _event_lifecycle(event: dict) -> str:
 
 def _event_timeline_key(event: dict) -> tuple[str, str]:
     """Use a stable lineage key across rumor, confirmation and implementation coverage."""
-    return str(event.get("entity") or ""), str(event.get("event_type") or "general")
+    entity = str(event.get("entity") or "").strip()
+    event_type = str(event.get("event_type") or "general").strip() or "general"
+    if not entity or event_type == "general":
+        import hashlib
+        cluster = "|".join(str(part) for part in _event_cluster_key(event))
+        if not cluster.strip("|"):
+            cluster = str(event.get("title") or event.get("summary") or "")
+        digest = hashlib.sha1(cluster.encode("utf-8")).hexdigest()[:10]
+        return entity or f"cluster:{digest}", event_type
+    return entity, event_type
 
 
 def apply_event_timeline(model_history: list[dict],
@@ -6294,7 +6558,18 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
                         ["git", "commit", "-m", f"chore: update state {date_str} [skip ci]"],
                         check=True, timeout=10,
                     )
-                    subprocess.run(["git", "push"], check=True, timeout=20)
+                    try:
+                        subprocess.run(["git", "push"], check=True, timeout=25)
+                    except subprocess.SubprocessError:
+                        print("[state] initial push failed; retrying after rebase",
+                              file=sys.stderr)
+                        subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
+                        subprocess.run(
+                            ["git", "pull", "--rebase", "--autostash"],
+                            check=True,
+                            timeout=45,
+                        )
+                        subprocess.run(["git", "push"], check=True, timeout=30)
                     print("[state] 已 push 回 repo")
                 else:
                     print("[state] 無變動，跳過 commit")
@@ -9184,7 +9459,9 @@ def main() -> int:
         sox_pct = (macro.get("SOX", {}) or {}).get("change_pct")
         tsm_pct = quotes["TSM"].get("change_pct")
         night_pct = night_txf.get("night_pct")
-        taiex_pred = calc_taiex_prediction(taiex_hist, sox_pct, tsm_pct, night_pct)
+        taiex_pred = calc_taiex_prediction(
+            taiex_hist, sox_pct, tsm_pct, night_pct,
+            context={"MACRO": macro, "TAIFEX_OI": taifex_oi})
     except Exception as e:
         print(f"[main] 加權預測失敗: {e}", file=sys.stderr)
         taiex_pred = {}
@@ -9294,7 +9571,7 @@ def main() -> int:
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
-        tw0050, news, structured_events)
+        tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(
         model_history, trading_sessions)
     quotes["MODEL_MONITORING"] = build_model_monitoring_report(

@@ -156,3 +156,24 @@ def test_taifex_night_session_detects_session_column(monkeypatch):
     assert res["night_close"] == 41850
     # 夜盤漲跌 = (41850 - 41374) / 41374 * 100
     assert res["night_pct"] == round((41850 - 41374) / 41374 * 100, 2)
+
+
+def test_taiex_prediction_shrinks_bullish_forecast_on_conflicts(fake_yf, mkdf):
+    import morning_report as mr
+    base = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=4.0, tsm_pct=2.0, night_pct=1.0)
+    conflicted = mr.calc_taiex_prediction(
+        _hist(mkdf), sox_pct=4.0, tsm_pct=2.0, night_pct=1.0,
+        context={
+            "TAIFEX_OI": {"foreign_oi_net": -60000},
+            "MACRO": {
+                "SOX": {"change_pct": 4.0},
+                "WTI": {"change_pct": 3.5},
+                "VIX": {"close": 15.0},
+                "VIX9D": {"close": 15.6},
+            },
+        },
+    )
+    assert conflicted["raw_weighted_pct"] == base["weighted_pct"]
+    assert conflicted["weighted_pct"] < base["weighted_pct"]
+    assert conflicted["conflict_shrink_factor"] < 1
+    assert "foreign_oi_short" in conflicted["conflict_reasons"]

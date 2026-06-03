@@ -7395,9 +7395,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」與「關注三檔」取材）】\n"
                        + "\n".join(lines[:36]))
 
-    # 整理台股 universe（市值前 100）法人/表現摘要表（讓 LLM 一眼掃完）
+    # 整理台股 universe 法人/表現摘要表（讓 LLM 一眼掃完）。
+    # 五檔由 Python 排名渲染,LLM 不再自選個股 → 只需給法人買超前 50 檔當背景即可,
+    # 不必塞滿 100 列(縮短 prompt、降低 context-overflow 與成本)。
     if tw0050:
-        tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)
+        tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)[:50]
         rows = []
         for s in tw0050_sorted:
             mcap = s.get("market_cap")
@@ -8123,29 +8125,36 @@ def _call_deepseek(prompt: str) -> str:
         if alt not in fallback_models:
             fallback_models.append(alt)
 
+    # prompt 長度 log:400 多半是「內容過長(context overflow)」或「參數不被接受」,
+    # 印出長度有助診斷(中文約 1.5-2 字/token,40000 字 ≈ 20-27K tokens)。
+    print(f"[llm] DeepSeek prompt 長度 {len(prompt):,} 字")
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    url = f"{DEEPSEEK_BASE_URL}/v1/chat/completions"
     last_err: Optional[Exception] = None
     for model in fallback_models:
-        for attempt in range(1, 4):
+        slim = False    # 收到 400 後切「精簡模式」:去掉 thinking/reasoning_effort + 降 max_tokens
+        attempt = 0
+        while attempt < 3:
+            attempt += 1
             try:
-                print(f"[llm] 嘗試 DeepSeek model={model} attempt={attempt}")
-                url = f"{DEEPSEEK_BASE_URL}/v1/chat/completions"
+                print(f"[llm] 嘗試 DeepSeek model={model} attempt={attempt}"
+                      f"{' (slim)' if slim else ''}")
                 payload = {
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
-                    "max_tokens": LLM_REPORT_MAX_TOKENS,
+                    "max_tokens": 4096 if slim else LLM_REPORT_MAX_TOKENS,
                     "stream": False,
                 }
-                # v4-pro / reasoner 支援思考模式：開啟可顯著提升分析推理深度
-                if (DEEPSEEK_REASONING_EFFORT not in ("", "off", "none", "disabled")
+                # v4-pro / reasoner 思考模式（精簡模式下停用,以排除參數造成的 400）
+                if (not slim
+                        and DEEPSEEK_REASONING_EFFORT not in ("", "off", "none", "disabled")
                         and ("pro" in model or "reasoner" in model)):
                     payload["thinking"] = {"type": "enabled"}
                     payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
-                    print(f"[llm] DeepSeek 思考模式啟用 (reasoning_effort={DEEPSEEK_REASONING_EFFORT})")
-                headers = {
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json",
-                }
                 r = requests.post(url, json=payload, headers=headers, timeout=120)
                 r.raise_for_status()
                 data = r.json()
@@ -8155,7 +8164,6 @@ def _call_deepseek(prompt: str) -> str:
                 content = choices[0].get("message", {}).get("content")
                 if not content:
                     raise RuntimeError(f"DeepSeek 回應無 content: {data}")
-                # 記錄成本（usage 通常含 prompt_tokens / completion_tokens / 快取資訊）
                 usage = data.get("usage", {})
                 print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
                       f"completion={usage.get('completion_tokens')} "
@@ -8163,13 +8171,25 @@ def _call_deepseek(prompt: str) -> str:
                 return content
             except requests.exceptions.HTTPError as e:
                 code = e.response.status_code if e.response is not None else None
-                last_err = e
+                # 關鍵:印出 DeepSeek 回傳的錯誤內文(含具體原因),並帶進 last_err 讓信件看得到
+                body = ""
+                try:
+                    body = (e.response.text or "")[:400] if e.response is not None else ""
+                except Exception:
+                    body = ""
+                last_err = RuntimeError(f"HTTP {code}: {body}" if body else str(e))
+                print(f"[llm] DeepSeek {model} HTTP {code}: {body}", file=sys.stderr)
+                if code == 400 and not slim:
+                    # 400 → 改精簡 payload(去 reasoning + 降 tokens)立即重試,排除參數/長度問題
+                    print("[llm] DeepSeek 400 → 改用精簡 payload 重試", file=sys.stderr)
+                    slim = True
+                    attempt -= 1     # 這次不算入重試次數
+                    continue
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))
                     print(f"[llm] DeepSeek HTTP {code}，{wait}s 後重試", file=sys.stderr)
                     time.sleep(wait)
                     continue
-                print(f"[llm] DeepSeek {model} 最終失敗: {e}", file=sys.stderr)
                 break
             except Exception as e:
                 last_err = e
@@ -8368,6 +8388,15 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
         )
         return _call_llm_text(concise_prompt)
     except Exception as e:
+        # 跨供應商備援:主供應商(通常 DeepSeek)整個掛掉時,若有 Gemini 金鑰就改用 Gemini,
+        # 避免單一 API 故障(如 400/限流)導致整份分析空白。
+        if LLM_PROVIDER != "gemini" and GEMINI_API_KEY:
+            try:
+                print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
+                return _call_gemini(prompt)
+            except Exception as e2:
+                print(f"[llm] Gemini 備援也失敗: {e2}", file=sys.stderr)
+                return _fallback_analysis_text(news, e)
         print(f"[llm] 全部失敗，使用備援文字: {e}", file=sys.stderr)
         return _fallback_analysis_text(news, e)
 

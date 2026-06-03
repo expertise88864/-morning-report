@@ -260,3 +260,56 @@ def test_build_data_quality_marks_error_and_ok():
     for d in dq:
         assert {"name", "status", "detail"} <= set(d)
         assert d["status"] in ("ok", "fallback", "error")
+
+
+# === DeepSeek 400 → 精簡 payload 自動重試 ===
+
+class _FakePostResp:
+    def __init__(self, status, payload=None, text=""):
+        self.status_code = status
+        self._payload = payload or {}
+        self.text = text
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            err = mr.requests.exceptions.HTTPError(f"{self.status_code} Bad Request")
+            err.response = self
+            raise err
+
+    def json(self):
+        return self._payload
+
+
+def test_deepseek_400_retries_with_slim_payload(monkeypatch):
+    """thinking/reasoning_effort 造成 400 時,應去掉這些參數以精簡 payload 重試並成功。"""
+    calls = []
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        calls.append(json or {})
+        if "thinking" in (json or {}):
+            return _FakePostResp(400, text='{"error":{"message":"unsupported param"}}')
+        return _FakePostResp(200, {"choices": [{"message": {"content": "分析內容"}}],
+                                   "usage": {}})
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "DEEPSEEK_REASONING_EFFORT", "high")
+    out = mr._call_deepseek("prompt")
+    assert out == "分析內容"
+    assert any("thinking" in c for c in calls)          # 第一次帶 thinking → 400
+    assert any("thinking" not in c for c in calls)       # slim 重試不帶 → 成功
+
+
+def test_deepseek_400_body_in_error(monkeypatch):
+    """所有嘗試 400 時,RuntimeError 應帶回 DeepSeek 的錯誤內文(供信件診斷)。"""
+    def always_400(url, json=None, headers=None, timeout=None):
+        return _FakePostResp(400, text='{"error":{"message":"context length exceeded"}}')
+
+    monkeypatch.setattr(mr.requests, "post", always_400)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-flash")  # 無 thinking
+    import pytest
+    with pytest.raises(RuntimeError) as ei:
+        mr._call_deepseek("prompt")
+    assert "context length exceeded" in str(ei.value)

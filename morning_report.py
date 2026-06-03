@@ -3672,7 +3672,10 @@ MODEL_HISTORY_SESSIONS = 400
 MODEL_HISTORY_MAX_BYTES = 7_000_000
 MODEL_BACKFILL_TARGET_SESSIONS = 60
 MODEL_BACKFILL_BATCH_DAYS = int(os.environ.get("MODEL_BACKFILL_BATCH_DAYS", "12"))
-MODEL_VERSION = "tw-top100-ridge-platt-quantile-v3"
+MODEL_VERSION = "tw-top100-decay-regime-ridge-platt-quantile-v4"
+MODEL_TIME_DECAY_HALFLIFE_SESSIONS = int(os.environ.get(
+    "MODEL_TIME_DECAY_HALFLIFE_SESSIONS", "45"))
+MODEL_REGIME_BLEND_WEIGHT = float(os.environ.get("MODEL_REGIME_BLEND_WEIGHT", "0.35"))
 MODEL_PURGE_GAP = 2
 TW_LIQUIDITY_MIN_TWD = 50_000_000
 
@@ -4103,14 +4106,39 @@ def _purge_recent_rows(rows: list[dict],
     return [row for row in rows if str(row.get("future_session_date") or "") < cutoff]
 
 
-def _feature_matrix(rows: list[dict], current: Optional[dict] = None
+def _time_decay_weights(rows: list[dict],
+                        half_life_sessions: int = MODEL_TIME_DECAY_HALFLIFE_SESSIONS
+                        ) -> np.ndarray:
+    """Weight recent sessions more heavily while keeping old labels useful."""
+    if not rows:
+        return np.asarray([], dtype=float)
+    sessions = sorted({str(row.get("session_date") or "") for row in rows})
+    session_rank = {session: index for index, session in enumerate(sessions)}
+    latest_rank = len(sessions) - 1
+    half_life = max(1, int(half_life_sessions or 1))
+    weights = []
+    for row in rows:
+        distance = latest_rank - session_rank.get(str(row.get("session_date") or ""), latest_rank)
+        weights.append(max(0.15, 0.5 ** (distance / half_life)))
+    return np.asarray(weights, dtype=float)
+
+
+def _feature_matrix(rows: list[dict], current: Optional[dict] = None,
+                    sample_weights: Optional[np.ndarray] = None
                     ) -> tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]:
     x = np.asarray([
         [_safe_number(row.get(feature)) for feature in MODEL_FEATURES]
         for row in rows
     ], dtype=float)
-    mean = x.mean(axis=0)
-    std = x.std(axis=0)
+    if sample_weights is not None and len(sample_weights) == len(x):
+        weights = np.asarray(sample_weights, dtype=float)
+        weights = np.where(np.isfinite(weights) & (weights > 0), weights, 1.0)
+        mean = np.average(x, axis=0, weights=weights)
+        var = np.average((x - mean) ** 2, axis=0, weights=weights)
+        std = np.sqrt(var)
+    else:
+        mean = x.mean(axis=0)
+        std = x.std(axis=0)
     std[std < 1e-9] = 1.0
     z = (x - mean) / std
     current_z = None
@@ -4124,20 +4152,29 @@ def _feature_matrix(rows: list[dict], current: Optional[dict] = None
 def _ridge_fit_model(rows: list[dict],
                      target_key: str,
                      alpha: float = 8.0,
-                     min_rows: int = 120) -> Optional[dict]:
+                     min_rows: int = 120,
+                     sample_weights: Optional[np.ndarray] = None) -> Optional[dict]:
     usable = [row for row in rows if row.get(target_key) is not None]
     if len(usable) < min_rows:
         return None
-    z, _, mean, std = _feature_matrix(usable)
+    weights = (
+        np.asarray(sample_weights, dtype=float)
+        if sample_weights is not None and len(sample_weights) == len(usable)
+        else _time_decay_weights(usable)
+    )
+    z, _, mean, std = _feature_matrix(usable, sample_weights=weights)
     design = np.column_stack([np.ones(len(z)), z])
     y = np.asarray([_safe_number(row.get(target_key)) for row in usable], dtype=float)
+    sqrt_w = np.sqrt(np.where(np.isfinite(weights) & (weights > 0), weights, 1.0))
+    design_w = design * sqrt_w[:, None]
+    y_w = y * sqrt_w
     penalty = np.eye(design.shape[1]) * alpha
     penalty[0, 0] = 0.0
     try:
-        beta = np.linalg.solve(design.T @ design + penalty, design.T @ y)
+        beta = np.linalg.solve(design_w.T @ design_w + penalty, design_w.T @ y_w)
     except np.linalg.LinAlgError:
         return None
-    return {"beta": beta, "mean": mean, "std": std}
+    return {"beta": beta, "mean": mean, "std": std, "weighted": True}
 
 
 def _linear_model_predict(model: Optional[dict], current: dict) -> Optional[float]:
@@ -4155,20 +4192,28 @@ def _quantile_ridge_fit_model(rows: list[dict],
                               quantile: float,
                               alpha: float = 0.02,
                               min_rows: int = 120,
-                              steps: int = 220) -> Optional[dict]:
+                              steps: int = 220,
+                              sample_weights: Optional[np.ndarray] = None) -> Optional[dict]:
     usable = [row for row in rows if row.get(target_key) is not None]
     if len(usable) < min_rows:
         return None
-    z, _, mean, std = _feature_matrix(usable)
+    weights = (
+        np.asarray(sample_weights, dtype=float)
+        if sample_weights is not None and len(sample_weights) == len(usable)
+        else _time_decay_weights(usable)
+    )
+    weights = np.where(np.isfinite(weights) & (weights > 0), weights, 1.0)
+    z, _, mean, std = _feature_matrix(usable, sample_weights=weights)
     design = np.column_stack([np.ones(len(z)), z])
     beta = np.zeros(design.shape[1], dtype=float)
     y = np.asarray([_safe_number(row.get(target_key)) for row in usable], dtype=float)
+    weight_sum = max(float(weights.sum()), 1e-9)
     for _ in range(steps):
         residual = y - design @ beta
-        grad = -(design.T @ (quantile - (residual < 0).astype(float))) / len(y)
+        grad = -(design.T @ (weights * (quantile - (residual < 0).astype(float)))) / weight_sum
         grad[1:] += alpha * beta[1:]
         beta -= 0.06 * grad
-    return {"beta": beta, "mean": mean, "std": std}
+    return {"beta": beta, "mean": mean, "std": std, "weighted": True}
 
 
 def _quantile_ridge_fit_predict(rows: list[dict],
@@ -4442,6 +4487,7 @@ def build_model_training_rows(model_history: list[dict],
                 "session_date": session_date,
                 "future_session_date": future_date,
                 "model_version": current.get("model_version") or "legacy",
+                "market_regime": current.get("market_regime") or "neutral",
                 "code": code,
                 "future_return_pct": stock_return,
                 "future_close_return_pct": stock_return,
@@ -4457,29 +4503,74 @@ def build_model_training_rows(model_history: list[dict],
 def _model_predictions(model_history: list[dict], sessions: list[str],
                        snapshot: list[dict], horizon: int,
                        target_key: str = "future_close_return_pct",
-                       forecast_key: Optional[str] = None) -> dict[str, dict]:
+                       forecast_key: Optional[str] = None,
+                       market_regime: str = "neutral") -> dict[str, dict]:
     """分類與報酬雙模型：勝過大盤機率 + 預期報酬。"""
     rows = _purge_recent_rows(
         build_model_training_rows(model_history, sessions, horizon), sessions)
     forecast_key = forecast_key or f"{horizon}d"
     for row in rows:
         row["forecast_key"] = forecast_key
+    regime_rows = [
+        row for row in rows
+        if str(row.get("market_regime") or "neutral") == str(market_regime or "neutral")
+    ]
+    regime_weight = max(0.0, min(0.75, MODEL_REGIME_BLEND_WEIGHT))
+    if len(regime_rows) < 120:
+        regime_weight = 0.0
     beat_model = _ridge_fit_model(rows, "beat_market")
     return_model = _ridge_fit_model(rows, target_key)
     lower_model = _quantile_ridge_fit_model(rows, target_key, 0.10)
     upper_model = _quantile_ridge_fit_model(rows, target_key, 0.90)
+    regime_beat_model = _ridge_fit_model(regime_rows, "beat_market") if regime_weight else None
+    regime_return_model = _ridge_fit_model(regime_rows, target_key) if regime_weight else None
+    regime_lower_model = (
+        _quantile_ridge_fit_model(regime_rows, target_key, 0.10)
+        if regime_weight else None)
+    regime_upper_model = (
+        _quantile_ridge_fit_model(regime_rows, target_key, 0.90)
+        if regime_weight else None)
     platt_params = _platt_params_for_rows(rows)
+
+    def _blend(global_value: Optional[float], regime_value: Optional[float]) -> Optional[float]:
+        if global_value is None:
+            return regime_value
+        if regime_value is None or regime_weight <= 0:
+            return global_value
+        return global_value * (1 - regime_weight) + regime_value * regime_weight
+
     out = {}
     for item in snapshot or []:
         code = str(item.get("code") or "")
-        beat_raw = _linear_model_predict(beat_model, item)
+        beat_raw = _blend(
+            _linear_model_predict(beat_model, item),
+            _linear_model_predict(regime_beat_model, item),
+        )
         beat_probability, calibrated = _calibrated_beat_probability(beat_raw, platt_params)
-        return_raw = _linear_model_predict(return_model, item)
-        lower = _linear_model_predict(lower_model, item)
-        upper = _linear_model_predict(upper_model, item)
+        return_raw = _blend(
+            _linear_model_predict(return_model, item),
+            _linear_model_predict(regime_return_model, item),
+        )
+        lower = _blend(
+            _linear_model_predict(lower_model, item),
+            _linear_model_predict(regime_lower_model, item),
+        )
+        upper = _blend(
+            _linear_model_predict(upper_model, item),
+            _linear_model_predict(regime_upper_model, item),
+        )
         fallback = beat_raw is None or return_raw is None
+        method = (
+            "time-decayed ridge + regime blend + Platt + quantile"
+            if not fallback and regime_weight
+            else "time-decayed ridge + Platt + quantile" if not fallback
+            else "heuristic fallback"
+        )
         out[code] = {
             "training_rows": len(rows),
+            "regime_training_rows": len(regime_rows),
+            "market_regime": market_regime,
+            "regime_blend_weight": round(regime_weight, 3),
             "beat_market_probability": (
                 round(beat_probability, 3) if beat_probability is not None else None),
             "expected_return_pct": (
@@ -4491,8 +4582,7 @@ def _model_predictions(model_history: list[dict], sessions: list[str],
             "probability_calibrated": calibrated,
             "fallback_enabled": fallback,
             "model_version": MODEL_VERSION,
-            "method": "standardized ridge + Platt + quantile" if not fallback
-                      else "heuristic fallback",
+            "method": method,
         }
     return out
 
@@ -5425,7 +5515,7 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
     predictions = {
         forecast_key: _model_predictions(
             model_history, sessions, snapshot,
-            config["horizon"], config["target"], forecast_key)
+            config["horizon"], config["target"], forecast_key, regime)
         for forecast_key, config in MODEL_TARGETS.items()
     } if sessions else {forecast_key: {} for forecast_key in MODEL_TARGETS}
     weights = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])

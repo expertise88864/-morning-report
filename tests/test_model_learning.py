@@ -72,9 +72,30 @@ def test_dual_ridge_model_predicts_probability_and_return():
         history.append({"session_date": session, "taiex_close": 100 + index, "stocks": stocks})
     snapshot = [{**_stock(110), "code": "2330"}]
     out = mr._model_predictions(history, sessions, snapshot, horizon=1)["2330"]
-    assert out["method"] == "standardized ridge + Platt + quantile"
+    assert out["method"] == "time-decayed ridge + regime blend + Platt + quantile"
     assert 0.05 <= out["beat_market_probability"] <= 0.95
     assert -12 <= out["expected_return_pct"] <= 12
+    assert out["market_regime"] == "neutral"
+    assert out["regime_training_rows"] == out["training_rows"]
+
+
+def test_time_decay_weights_prioritize_recent_sessions():
+    rows = [{"session_date": f"2026-06-{day:02d}"} for day in range(1, 6)]
+    weights = mr._time_decay_weights(rows, half_life_sessions=2)
+    assert weights[-1] == pytest.approx(1.0)
+    assert weights[0] < weights[-1]
+
+
+def test_training_rows_preserve_market_regime():
+    sessions = ["2026-06-01", "2026-06-02"]
+    history = [
+        {"session_date": sessions[0], "taiex_close": 100, "market_regime": "risk_off",
+         "stocks": {"2330": _stock(100)}},
+        {"session_date": sessions[1], "taiex_close": 101, "market_regime": "risk_on",
+         "stocks": {"2330": _stock(102, open=101)}},
+    ]
+    row = mr.build_model_training_rows(history, sessions, 1)[0]
+    assert row["market_regime"] == "risk_off"
 
 
 def test_industry_neutral_scores_are_relative_within_industry():

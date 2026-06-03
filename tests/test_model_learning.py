@@ -508,6 +508,32 @@ def test_walk_forward_does_not_fake_top5_for_unranked_backfill():
     assert out["1d_close"]["top5_avg_net_return_pct"] is None
 
 
+def test_rolling_origin_backtest_uses_prior_realized_rows():
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 10)]
+    history = []
+    for day_index, session in enumerate(sessions):
+        stocks = {}
+        for code_index in range(12):
+            close = 100 + day_index + code_index * 0.1
+            stocks[str(2300 + code_index)] = _stock(
+                close,
+                ranking_score=float(code_index),
+                liquidity_eligible=True,
+                slippage_bps=5,
+                pct_5d=float(code_index % 5),
+                rev_yoy_pct=float(code_index),
+            )
+        history.append({
+            "session_date": session,
+            "taiex_close": 100 + day_index,
+            "stocks": stocks,
+        })
+    out = mr.evaluate_model_rolling_origin(
+        history, sessions, max_origins=3, min_train_rows=20)
+    assert out["1d_close"]["origins"] > 0
+    assert out["1d_close"]["samples"] > 0
+
+
 def test_tw_official_detection_requires_publisher_domain():
     title = "\u885b\u798f\u90e8\u8aaa\u660e\u65b0\u653f\u7b56"
     assert not mr._tw_source_is_official("https://news.example.com/a", "", title)
@@ -531,6 +557,51 @@ def test_tw_intelligence_exposes_source_diagnostics(monkeypatch):
     assert out["policy"][0]["official"] is True
 
 
+def test_tw_intelligence_official_html_fallback(monkeypatch):
+    class EmptyFeed:
+        entries = []
+        bozo = True
+        bozo_exception = RuntimeError("bad feed")
+
+    class Resp:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = (
+            '<html><a href="/Page/policy">'
+            "\u884c\u653f\u9662 \u65b0\u9752\u5b89 \u653f\u7b56 \u516c\u544a 115-06-03"
+            "</a></html>"
+        )
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: EmptyFeed())
+    monkeypatch.setattr(mr.requests, "get", lambda *args, **kwargs: Resp())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["policy"]
+    assert out["policy"][0]["source_grade"] == "\u5b98\u65b9"
+    assert out["diagnostics"]["policy"]["official_entries"] > 0
+    assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_fallback_ok"] >= 1
+
+
+def test_source_health_flags_official_intelligence_outage():
+    snapshot = [{
+        "code": str(code),
+        "foreign_lot": 1,
+        "rev_yoy_pct": 1.0,
+        "trade_value": 100_000_000,
+    } for code in range(100)]
+    tw = {"diagnostics": {
+        "policy": {"entries": 5, "failed": 0, "official_sources": 2,
+                   "official_entries": 0, "official_empty": 2, "sources": {"a": {}, "b": {}}},
+        "medical": {"entries": 5, "failed": 0, "official_sources": 1,
+                    "official_entries": 1, "official_empty": 0, "sources": {"c": {}}},
+    }}
+    out = mr.build_source_health_report(snapshot, [{}] * 12, [{}], tw)
+    assert "tw_policy_official_sources" in out["failures"]
+
+
 def test_event_timeline_does_not_merge_unrelated_blank_general_events():
     events = [{
         "entity": "", "event_type": "general", "title": "AI demand update",
@@ -543,3 +614,37 @@ def test_event_timeline_does_not_merge_unrelated_blank_general_events():
     assert out[0]["is_incremental"] is True
     assert out[1]["is_incremental"] is True
     assert out[0]["timeline_key"] != out[1]["timeline_key"]
+
+
+def test_llm_event_extractor_prioritizes_official_critical_items(monkeypatch):
+    import json
+    captured = {}
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "token")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
+    monkeypatch.setattr(mr, "ANTHROPIC_API_KEY", "")
+
+    def fake_call(prompt):
+        captured["prompt"] = prompt
+        return "[]"
+
+    monkeypatch.setattr(mr, "_call_llm_text", fake_call)
+    news = [{
+        "source": "Blog",
+        "source_grade": "C",
+        "importance": "normal",
+        "published": "Mon, 01 Jun 2026 00:00:00 GMT",
+        "title": "minor item",
+        "summary": "short",
+    }, {
+        "source": "MOPS",
+        "source_grade": "A",
+        "importance": "critical",
+        "published": "Tue, 02 Jun 2026 00:00:00 GMT",
+        "title": "official critical event",
+        "fulltext": "detailed official disclosure",
+    }]
+    mr.call_llm_event_extractor(news, [])
+    payload = captured["prompt"].split("INPUT:\n", 1)[1]
+    compact = json.loads(payload)
+    assert compact[0]["title"] == "official critical event"

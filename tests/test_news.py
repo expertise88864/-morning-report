@@ -136,3 +136,24 @@ def test_classify_war_keyword_requires_word_boundary():
     assert [n["importance"] for n in out[:3]] == ["normal", "normal", "normal"]
     assert out[3]["importance"] == "critical"
     assert out[3]["category"] == "geo_critical"
+
+
+def test_fetch_news_fulltext_resolves_google_news_target(monkeypatch):
+    requested = []
+
+    class Resp:
+        status_code = 200
+        text = "<html>" + ("important full text " * 20) + "</html>"
+
+    def fake_get(url, **kwargs):
+        requested.append(url)
+        return Resp()
+
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    news = [{
+        "importance": "critical",
+        "link": "https://news.google.com/rss/articles/abc?url=https%3A%2F%2Fexample.com%2Farticle",
+    }]
+    out = mr.fetch_news_fulltext(news, max_critical=1, max_high=0)
+    assert requested == ["https://example.com/article"]
+    assert "important full text" in out[0]["fulltext"]

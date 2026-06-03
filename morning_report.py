@@ -29,7 +29,7 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import feedparser
 import numpy as np
@@ -3326,6 +3326,7 @@ def fetch_news() -> list[dict]:
 
             feed = feedparser.parse(url)
             for entry in feed.entries[:10]:
+                source_name, source_url = _tw_entry_source(entry)
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 if pub:
                     pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
@@ -3339,6 +3340,8 @@ def fetch_news() -> list[dict]:
                     "summary": (entry.get("summary", "") or "")[:800],
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
+                    "source_name": source_name,
+                    "source_url": source_url,
                 })
         except Exception as e:
             print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
@@ -3351,6 +3354,7 @@ def fetch_news() -> list[dict]:
         try:
             feed = feedparser.parse(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:4]:
+                source_name, source_url = _tw_entry_source(entry)
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 if pub:
                     pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
@@ -3363,6 +3367,8 @@ def fetch_news() -> list[dict]:
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "company_label": label,    # 標記為個股新聞,供分類/取材
+                    "source_name": source_name,
+                    "source_url": source_url,
                 })
                 company_hit += 1
         except Exception as e:
@@ -3410,15 +3416,22 @@ TW_INTELLIGENCE_ENTITY_TERMS = (
 )
 TW_INTELLIGENCE_DIRECT_SOURCES = {
     "policy": (
-        {"name": "EY News", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=1"},
-        {"name": "EY Ministries", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3"},
-        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.xml"},
-        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.xml"},
+        {"name": "EY News", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=1",
+         "html_url": "https://www.ey.gov.tw/Page/6485009ABEC1CB9C"},
+        {"name": "EY Ministries", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3",
+         "html_url": "https://www.ey.gov.tw/Page/B31C61707D4FEEEF"},
+        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.html",
+         "html_url": "https://www.mohw.gov.tw/www/lp-16-1.html"},
+        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
+         "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
     ),
     "medical": (
-        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.xml"},
-        {"name": "MOHW Notices", "url": "https://www.mohw.gov.tw/rss-18-1.xml"},
-        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.xml"},
+        {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.html",
+         "html_url": "https://www.mohw.gov.tw/www/lp-16-1.html"},
+        {"name": "MOHW Notices", "url": "https://www.mohw.gov.tw/rss-18-1.html",
+         "html_url": "https://www.mohw.gov.tw/www/lp-18-1.html"},
+        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
+         "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
     ),
 }
 TW_INTELLIGENCE_RELEVANCE = {
@@ -3570,6 +3583,123 @@ def _tw_entry_source(entry: dict) -> tuple[str, str]:
     return str(source or ""), ""
 
 
+def _parse_tw_roc_date(value: str, default_year: Optional[int] = None) -> str:
+    """Parse Taiwan official-list dates such as 115-06-03 into ISO strings."""
+    import re as _re
+    text = str(value or "")
+    match = _re.search(r"(?<!\d)(\d{2,4})[-/](\d{1,2})[-/](\d{1,2})(?!\d)", text)
+    if not match:
+        return ""
+    year, month, day = (int(part) for part in match.groups())
+    if year < 1911:
+        year += 1911
+    elif year < 100:
+        year += (default_year or dt.datetime.now(TPE).year) // 100 * 100
+    try:
+        return dt.datetime(year, month, day, tzinfo=TPE).isoformat()
+    except ValueError:
+        return ""
+
+
+def _official_html_entries(html_text: str,
+                           base_url: str,
+                           source_name: str,
+                           limit: int = 20) -> list[dict]:
+    """Fallback parser for official list pages when RSS is blocked or malformed."""
+    import html as _html
+    import re as _re
+    entries = []
+    pattern = _re.compile(
+        r"<a\b[^>]*href=[\"'](?P<href>[^\"']+)[\"'][^>]*>(?P<title>.*?)</a>",
+        _re.I | _re.S,
+    )
+    for match in pattern.finditer(html_text or ""):
+        raw_title = _strip_html(match.group("title"))
+        title = _html.unescape(raw_title).strip()
+        if len(title) < 8:
+            continue
+        href = _html.unescape(match.group("href")).strip()
+        link = urljoin(base_url, href)
+        if not _tw_source_is_official(link, base_url, source_name):
+            continue
+        tail = _strip_html((html_text or "")[match.end():match.end() + 260])
+        published = _parse_tw_roc_date(f"{title} {tail}")
+        entries.append({
+            "title": title,
+            "link": link,
+            "published": published,
+            "source": {"title": source_name, "href": base_url},
+        })
+        if len(entries) >= limit:
+            break
+    return entries
+
+
+def _fetch_official_text(url: str, stats: dict, timeout: int = 12) -> str:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/rss+xml, application/xml, text/html;q=0.9",
+    }
+    try:
+        response = requests.get(url, timeout=timeout, headers=headers)
+    except requests.exceptions.SSLError:
+        stats["ssl_relaxed"] = stats.get("ssl_relaxed", 0) + 1
+        requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
+        response = requests.get(url, timeout=timeout, headers=headers, verify=False)
+    stats["http_status"] = response.status_code
+    stats["content_type"] = response.headers.get("content-type", "")
+    response.raise_for_status()
+    return response.text
+
+
+def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
+    import socket
+    old_timeout = socket.getdefaulttimeout()
+    try:
+        socket.setdefaulttimeout(timeout)
+        return feedparser.parse(url)
+    finally:
+        socket.setdefaulttimeout(old_timeout)
+
+
+def _official_source_entries(source: dict, stats: dict) -> list[dict]:
+    """Read official RSS, then fall back to the public HTML list page."""
+    url = str(source.get("url") or "")
+    html_url = str(source.get("html_url") or url)
+    source_name = str(source.get("name") or "Official")
+    feed = _feedparser_parse_url_with_timeout(url)
+    entries = list(getattr(feed, "entries", []) or [])
+    bozo = bool(getattr(feed, "bozo", False))
+    if bozo:
+        stats["bozo"] = stats.get("bozo", 0) + 1
+        exc = getattr(feed, "bozo_exception", None)
+        if exc:
+            stats.setdefault("errors", []).append(type(exc).__name__)
+    if entries and not bozo:
+        stats["feed_ok"] = stats.get("feed_ok", 0) + 1
+        return entries
+    try:
+        text = _fetch_official_text(url, stats)
+        parsed = feedparser.parse(text)
+        entries = list(getattr(parsed, "entries", []) or [])
+        if getattr(parsed, "bozo", False):
+            stats["bozo"] = stats.get("bozo", 0) + 1
+        if entries:
+            stats["requests_feed_ok"] = stats.get("requests_feed_ok", 0) + 1
+            return entries
+    except Exception as e:
+        stats.setdefault("errors", []).append(type(e).__name__)
+    try:
+        text = _fetch_official_text(html_url, stats)
+        entries = _official_html_entries(text, html_url, source_name)
+        if entries:
+            stats["html_fallback_ok"] = stats.get("html_fallback_ok", 0) + 1
+        return entries
+    except Exception as e:
+        stats.setdefault("errors", []).append(type(e).__name__)
+        return []
+
+
 def _tw_intelligence_entity_key(title: str) -> str:
     text = str(title or "")
     for term in TW_INTELLIGENCE_ENTITY_TERMS:
@@ -3653,6 +3783,8 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
         return {
             "entries": 0, "in_window": 0, "recalled": 0, "kept": 0,
             "failed": 0, "official_kept": 0,
+            "google_sources": 0, "official_sources": 0,
+            "official_entries": 0, "official_empty": 0,
         }
 
     def _append_candidate(kind: str, entry: dict, source: dict,
@@ -3703,7 +3835,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             "why": reasons,
             "topic": _tw_intelligence_topic(kind, title),
             "status": status,
-            "source_grade": "摰" if official else "慦?",
+            "source_grade": "官方" if official else "媒體",
             "official": official,
             "mentions_official_agency": mentions_official,
             "source_name": source_name or source.get("name", ""),
@@ -3720,6 +3852,8 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
         rss_when = "30d" if kind == "policy" else "7d"
         for idx, query in enumerate(queries):
             stats = diagnostics["sources"].setdefault(f"Google:{idx + 1}", _empty_stats())
+            stats["source_type"] = "google"
+            diagnostics["google_sources"] += 1
             try:
                 feed = feedparser.parse(_gnews_rss(query, when=rss_when))
                 for entry in feed.entries[:12]:
@@ -3779,9 +3913,16 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
         for source in TW_INTELLIGENCE_DIRECT_SOURCES.get(kind, ()):
             source_name = str(source.get("name") or source.get("url") or "Direct")
             stats = diagnostics["sources"].setdefault(source_name, _empty_stats())
+            stats["source_type"] = "official"
+            diagnostics["official_sources"] += 1
             try:
-                feed = feedparser.parse(source.get("url", ""))
-                for entry in (getattr(feed, "entries", []) or [])[:16]:
+                entries = _official_source_entries(source, stats)
+                stats["official_entries"] += len(entries)
+                diagnostics["official_entries"] += len(entries)
+                if not entries:
+                    stats["official_empty"] += 1
+                    diagnostics["official_empty"] += 1
+                for entry in entries[:16]:
                     _append_candidate(kind, entry, {
                         **source, "official_hint": True,
                     }, start, end, candidates, stats)
@@ -3991,16 +4132,27 @@ def fetch_news_fulltext(news: list[dict],
     """
     crit_fetched = 0
     high_fetched = 0
+
+    def _target_link(item: dict) -> str:
+        link = str(item.get("link") or "")
+        if "news.google.com" in link:
+            return (
+                _extract_google_news_target(link)
+                or str(item.get("source_url") or "")
+                or str(item.get("publisher_url") or "")
+            )
+        return link
+
     # 先掃一輪 critical(優先級高,即使在 list 後段也先抓)
     for n in news:
         if crit_fetched >= max_critical:
             break
         if n.get("importance") != "critical":
             continue
-        link = n.get("link", "")
+        link = _target_link(n)
         if not link or not link.startswith("http"):
             continue
-        if "news.google.com" in link:    # Google News 是 redirect URL,抓不到內文且會 timeout,跳過
+        if "news.google.com" in link:
             continue
         try:
             r = requests.get(link, timeout=10,
@@ -4023,10 +4175,10 @@ def fetch_news_fulltext(news: list[dict],
             continue
         if n.get("fulltext"):    # 已被 critical 路徑抓過(理論上不該發生,但保險)
             continue
-        link = n.get("link", "")
+        link = _target_link(n)
         if not link or not link.startswith("http"):
             continue
-        if "news.google.com" in link:    # Google News redirect,跳過(抓不到且 timeout)
+        if "news.google.com" in link:
             continue
         try:
             r = requests.get(link, timeout=8,    # high 用較短 timeout 避免拖慢
@@ -4656,6 +4808,44 @@ def _platt_params_for_rows(rows: list[dict]) -> Optional[tuple[float, float]]:
     return _platt_fit(scores, labels)
 
 
+def _platt_params_for_blended_rows(rows: list[dict],
+                                   market_regime: str,
+                                   regime_weight: float) -> Optional[tuple[float, float]]:
+    """Calibrate the final blended global/regime score, not only the global model."""
+    ordered = sorted(rows, key=lambda row: str(row.get("session_date") or ""))
+    session_dates = sorted({str(row.get("session_date") or "") for row in ordered})
+    if len(session_dates) < 5:
+        return None
+    cutoff = session_dates[max(1, int(len(session_dates) * 0.8))]
+    train = [row for row in ordered if str(row.get("session_date") or "") < cutoff]
+    validation = [row for row in ordered if str(row.get("session_date") or "") >= cutoff]
+    if len(validation) < 30:
+        return None
+    train_regime = [
+        row for row in train
+        if str(row.get("market_regime") or "neutral") == str(market_regime or "neutral")
+    ]
+    if len(train_regime) < 120 or regime_weight <= 0:
+        return _platt_params_for_rows(rows)
+    global_model = _ridge_fit_model(train, "beat_market", min_rows=120)
+    regime_model = _ridge_fit_model(train_regime, "beat_market", min_rows=120)
+    if global_model is None:
+        return None
+    scores, labels = [], []
+    for row in validation:
+        global_score = _linear_model_predict(global_model, row)
+        regime_score = _linear_model_predict(regime_model, row)
+        if global_score is None:
+            continue
+        if regime_score is not None:
+            score = global_score * (1 - regime_weight) + regime_score * regime_weight
+        else:
+            score = global_score
+        scores.append(score)
+        labels.append(_safe_number(row.get("beat_market")))
+    return _platt_fit(scores, labels)
+
+
 def _calibrated_beat_probability(raw_probability: Optional[float],
                                  params: Optional[tuple[float, float]]
                                  ) -> tuple[Optional[float], bool]:
@@ -4710,6 +4900,77 @@ def _probability_calibration_metrics(values: list[tuple[float, float]],
         "brier_score": round(brier, 4),
         "ece_pct": round(ece * 100, 2),
     }
+
+
+def evaluate_model_rolling_origin(model_history: list[dict],
+                                  sessions: list[str],
+                                  max_origins: int = 16,
+                                  min_train_rows: int = 180) -> dict:
+    """Offline purged rolling-origin backtest using only prior realized rows."""
+    output = {
+        "model_version": MODEL_VERSION,
+        "max_origins": max_origins,
+        "min_train_rows": min_train_rows,
+    }
+    for forecast_key, config in MODEL_TARGETS.items():
+        horizon = config["horizon"]
+        target_key = config["target"]
+        rows = build_model_training_rows(model_history, sessions, horizon)
+        by_session: dict[str, list[dict]] = {}
+        for row in rows:
+            by_session.setdefault(str(row.get("session_date") or ""), []).append(row)
+        validation_sessions = sorted(by_session)[-max_origins:]
+        errors = []
+        direction_hits = []
+        probability_values = []
+        top5_returns = []
+        top5_excess = []
+        evaluated_origins = 0
+        for session_date in validation_sessions:
+            train = [
+                row for row in rows
+                if str(row.get("future_session_date") or "") < session_date
+            ]
+            if len(train) < min_train_rows:
+                continue
+            return_model = _ridge_fit_model(train, target_key, min_rows=min_train_rows)
+            beat_model = _ridge_fit_model(train, "beat_market", min_rows=min_train_rows)
+            platt_params = _platt_params_for_rows(train)
+            if return_model is None:
+                continue
+            evaluated_origins += 1
+            scored = []
+            for row in by_session.get(session_date, []):
+                expected = _linear_model_predict(return_model, row)
+                actual = row.get(target_key)
+                if expected is None or actual is None:
+                    continue
+                errors.append(_safe_number(actual) - expected)
+                direction_hits.append((_safe_number(actual) >= 0) == (expected >= 0))
+                beat_raw = _linear_model_predict(beat_model, row)
+                probability, _ = _calibrated_beat_probability(beat_raw, platt_params)
+                if probability is not None:
+                    probability_values.append((probability, row.get("beat_market")))
+                scored.append((expected, row))
+            tradable = [
+                item for item in scored
+                if item[1].get("liquidity_eligible") is not False
+            ]
+            top = sorted(tradable, key=lambda item: item[0], reverse=True)[:5]
+            realized = [row.get(target_key) for _, row in top if row.get(target_key) is not None]
+            if realized:
+                top5_returns.append(sum(realized) / len(realized))
+                top5_excess.append(sum(_safe_number(row.get("future_excess_pct")) for _, row in top) / len(top))
+        output[forecast_key] = {
+            "samples": len(errors),
+            "origins": evaluated_origins,
+            "forecast_mae_pct": round(sum(abs(e) for e in errors) / len(errors), 3) if errors else None,
+            "direction_hit_pct": round(sum(direction_hits) / len(direction_hits) * 100, 1) if direction_hits else None,
+            "top5_avg_return_pct": round(sum(top5_returns) / len(top5_returns), 3) if top5_returns else None,
+            "top5_avg_excess_pct": round(sum(top5_excess) / len(top5_excess), 3) if top5_excess else None,
+            **_probability_calibration_metrics(probability_values),
+        }
+    return output
 
 
 def build_feature_drift_report(model_history: list[dict],
@@ -4773,6 +5034,16 @@ def build_source_health_report(snapshot: list[dict],
             and diag.get("failed", 0) < max(3, source_count)
         )
 
+    def _tw_official_diag_healthy(diag: dict) -> bool:
+        if not tw_intelligence:
+            return True
+        official_sources = int(diag.get("official_sources") or 0)
+        if official_sources <= 0:
+            return False
+        official_empty = int(diag.get("official_empty") or 0)
+        official_entries = int(diag.get("official_entries") or 0)
+        return official_entries > 0 and official_empty < official_sources
+
     checks = {
         "universe": total >= 70,
         "institutional": bool(total and sum(bool(
@@ -4786,6 +5057,8 @@ def build_source_health_report(snapshot: list[dict],
         "structured_events": bool(structured_events),
         "tw_policy_intelligence": _tw_diag_healthy(policy_diag),
         "tw_medical_intelligence": _tw_diag_healthy(medical_diag),
+        "tw_policy_official_sources": _tw_official_diag_healthy(policy_diag),
+        "tw_medical_official_sources": _tw_official_diag_healthy(medical_diag),
     }
     failures = [name for name, healthy in checks.items() if not healthy]
     score = max(0.0, 1.0 - len(failures) * 0.12)
@@ -4930,7 +5203,11 @@ def _model_predictions(model_history: list[dict], sessions: list[str],
     regime_upper_model = (
         _quantile_ridge_fit_model(regime_rows, target_key, 0.90)
         if regime_weight else None)
-    platt_params = _platt_params_for_rows(rows)
+    platt_params = (
+        _platt_params_for_blended_rows(rows, market_regime, regime_weight)
+        if regime_weight else _platt_params_for_rows(rows)
+    )
+    calibration_method = "blended_platt" if regime_weight else "global_platt"
 
     def _blend(global_value: Optional[float], regime_value: Optional[float]) -> Optional[float]:
         if global_value is None:
@@ -4980,6 +5257,7 @@ def _model_predictions(model_history: list[dict], sessions: list[str],
             "quantile_upper_pct": round(upper, 3) if upper is not None else None,
             "recent_direction_hit_pct": _recent_direction_hit_pct(rows, target_key),
             "probability_calibrated": calibrated,
+            "probability_calibration_method": calibration_method if calibrated else "fallback",
             "fallback_enabled": fallback,
             "model_version": MODEL_VERSION,
             "method": method,
@@ -5084,6 +5362,7 @@ def evaluate_model_walk_forward(model_history: list[dict],
             })
     output[3] = output["3d"]
     output[5] = output["5d"]
+    output["rolling_origin"] = evaluate_model_rolling_origin(model_history, sessions)
     return output
 
 
@@ -7578,14 +7857,36 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         return deterministic
     if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
         return deterministic
+    now_utc = dt.datetime.now(dt.timezone.utc)
+
+    def _extractor_priority(item: dict) -> tuple:
+        source_grade = item.get("source_grade") or _news_source_grade(item)
+        importance = {"critical": 4, "high": 3, "normal": 1}.get(
+            str(item.get("importance") or "normal"), 1)
+        published = _parse_news_time(item.get("published"), now_utc)
+        age_hours = max(0.0, (now_utc - published).total_seconds() / 3600)
+        return (
+            source_grade == "A",
+            importance,
+            bool(item.get("fulltext")),
+            bool(item.get("company_label")),
+            -age_hours,
+            len(str(item.get("summary") or "")) + len(str(item.get("fulltext") or "")),
+        )
+
+    ranked_items = sorted(
+        list(mops or []) + list(news or []),
+        key=_extractor_priority,
+        reverse=True,
+    )
     compact_items = [{
         "source": item.get("source"),
         "source_grade": item.get("source_grade") or _news_source_grade(item),
         "company_label": item.get("company_label"),
         "published": item.get("published"),
         "title": str(item.get("title") or "")[:180],
-        "summary": str(item.get("summary") or "")[:280],
-    } for item in (list(mops or []) + list(news or []))[:35]]
+        "summary": (str(item.get("fulltext") or item.get("summary") or "")[:360]),
+    } for item in ranked_items[:35]]
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
         "30 objects. Each object must have entity, event_type, direction, confidence, "

@@ -2467,6 +2467,9 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 "invest_lot": round(inst_data.get("investment", 0) / 1000, 1),
                 "dealer_lot": round(inst_data.get("dealer", 0) / 1000, 1),
                 "total_lot": round(inst_data.get("total", 0) / 1000, 1),
+                # 法人單日淨買占近 20 日均量 %(標準化法人信心;+20% = 淨買達日均量 1/5)
+                "inst_buy_vol_ratio": (round(inst_data.get("total", 0) / avg20_vol * 100, 2)
+                                       if avg20_vol and avg20_vol > 0 else None),
                 # 30 日累積（張）— 看中期籌碼方向
                 "foreign_30d_lot": round(inst_30.get("foreign_cum", 0) / 1000, 0),
                 "invest_30d_lot":  round(inst_30.get("invest_cum", 0) / 1000, 0),
@@ -2507,9 +2510,24 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
         value: (50.0 if len(eps_values) == 1 else index / (len(eps_values) - 1) * 100)
         for index, value in enumerate(eps_values)
     }
+    # 相對強度 vs 同業:pct_5d − 該產業中位數(>0 = 比同業強,短線輪動領先指標)
+    industry_p5: dict[str, list] = {}
+    for entry in snapshot:
+        p5 = entry.get("pct_5d")
+        if isinstance(p5, (int, float)):
+            industry_p5.setdefault(str(entry.get("industry") or "未分類"), []).append(p5)
+    industry_median = {}
+    for ind, vals in industry_p5.items():
+        sv = sorted(vals)
+        n = len(sv)
+        industry_median[ind] = (sv[n // 2] if n % 2 else (sv[n // 2 - 1] + sv[n // 2]) / 2) if n else 0.0
+
     for entry in snapshot:
         eps = entry.get("eps")
         entry["eps_percentile"] = eps_rank.get(float(eps), 0.0) if isinstance(eps, (int, float)) else None
+        p5 = entry.get("pct_5d")
+        med = industry_median.get(str(entry.get("industry") or "未分類"), 0.0)
+        entry["rel_strength_5d"] = (round(p5 - med, 2) if isinstance(p5, (int, float)) else None)
         # 短線爆發力複合分數(籌碼+動能+營收+EPS),供「關注五檔」排序
         entry["breakout"] = calc_breakout_score(entry)
 
@@ -4775,6 +4793,8 @@ MODEL_FEATURES = (
     "foreign_streak", "invest_streak", "tdcc_wow_pct", "margin_change_lot",
     "rev_yoy_pct", "rev_mom_pct", "rev_surprise_pct", "eps_percentile",
     "news_catalyst_score", "trade_value", "slippage_bps",
+    # 新增高訊號特徵:相對同業強度、法人單日淨買占均量(標準化法人信心)
+    "rel_strength_5d", "inst_buy_vol_ratio",
 )
 
 MODEL_TARGETS = {
@@ -5363,6 +5383,7 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         "foreign_lot", "invest_lot", "dealer_lot", "total_lot", "foreign_30d_lot",
         "invest_30d_lot", "foreign_streak", "invest_streak", "tdcc_wow_pct",
         "margin_change_lot", "rev_yoy_pct", "rev_mom_pct", "eps_percentile",
+        "rel_strength_5d", "inst_buy_vol_ratio",
         "rev_expected", "rev_surprise_pct", "rev_expectation_method",
         "trade_value", "volume", "slippage_bps", "liquidity_eligible",
         "feature_drift_penalty", "source_health_penalty", "model_monitor_penalty",
@@ -8627,6 +8648,97 @@ def _render_summary_bar(summary: str, htmllib) -> str:
           </tr>"""
 
 
+def _render_model_evidence_html(quotes: dict) -> str:
+    """
+    顯示「五檔 ML 模型實證(walk-forward)」——讓使用者知道何時該信 ML 排序、何時只信啟發式。
+    指標:方向命中率、Top5 平均淨報酬/超額、區間涵蓋、樣本數。無資料則不顯示。
+    """
+    wf = quotes.get("MODEL_WALK_FORWARD", {}) or {}
+    mon = quotes.get("MODEL_MONITORING", {}) or {}
+    rows = []
+    have_data = False
+    for key, label in (("3d", "3 日"), ("5d", "5 日")):
+        m = wf.get(key) or {}
+        dh = m.get("direction_hit_pct")
+        net = m.get("top5_avg_net_return_pct")
+        exc = m.get("top5_avg_excess_pct")
+        cov = m.get("interval_coverage_pct")
+        n = m.get("samples") or 0
+        if dh is not None or n:
+            have_data = True
+        def _c(v, good_hi=None):
+            if v is None:
+                return "#94a3b8"
+            if good_hi is not None:
+                return "#16a34a" if v >= good_hi else "#dc2626"
+            return "#dc2626" if v >= 0 else "#16a34a"
+        dh_s = f"{dh:.1f}%" if dh is not None else "—"
+        net_s = f"{net:+.2f}%" if net is not None else "—"
+        exc_s = f"{exc:+.2f}%" if exc is not None else "—"
+        cov_s = f"{cov:.0f}%" if cov is not None else "—"
+        rows.append(
+            f"<tr>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;color:{_c(dh,52)};font-weight:700;'>{dh_s}</td>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;color:{_c(net)};'>{net_s}</td>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;color:{_c(exc)};'>{exc_s}</td>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569;'>{cov_s}</td>"
+            f"<td style='padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;color:#94a3b8;'>{n}</td>"
+            f"</tr>")
+
+    # 白話判決(用 3 日為主)
+    m3 = wf.get("3d") or {}
+    dh3 = m3.get("direction_hit_pct")
+    net3 = m3.get("top5_avg_net_return_pct")
+    n3 = m3.get("samples") or 0
+    status = mon.get("status", "ok")
+    if not have_data or n3 < 30 or dh3 is None:
+        verdict_bg, verdict_c = "#f1f5f9", "#475569"
+        verdict = ("模型實證樣本累積中（live 紀錄需時間累積）。目前五檔以「籌碼+動能+營收」啟發式為主，"
+                   "ML 加權自動調低——數字夠了才會證明它是否真的贏過基準。")
+    elif dh3 >= 53 and (net3 is None or net3 > 0) and status != "error":
+        verdict_bg, verdict_c = "#dcfce7", "#15803d"
+        verdict = (f"模型已展現邊際優勢（3 日方向命中 {dh3:.1f}%、Top5 淨報酬 "
+                   f"{(f'{net3:+.2f}%' if net3 is not None else 'n/a')}）。五檔 ML 排序可參考。")
+    else:
+        verdict_bg, verdict_c = "#fef9c3", "#a16207"
+        verdict = (f"模型尚未穩定贏過基準（3 日方向命中 {dh3:.1f}%）。建議五檔以籌碼/基本面為主、"
+                   f"ML 僅作輔助。")
+    alerts = mon.get("alerts") or []
+    alert_line = ""
+    if status == "error" and alerts:
+        alert_line = (f"<div style='font-size:11px;color:#b91c1c;margin-top:6px;'>⚠ 模型品質警示："
+                      f"{_html_escape_safe('；'.join(alerts[:2]))}</div>")
+    if not have_data:
+        rows_html = ("<tr><td colspan='6' style='padding:10px;color:#94a3b8;font-size:13px;'>"
+                     "尚無 live 實證紀錄（系統剛上線或回填中）。</td></tr>")
+    else:
+        rows_html = "".join(rows)
+    return f"""
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#eef2ff;border-left:5px solid #6366f1;border-radius:4px;">五檔模型實證（walk-forward 回測）</h2>
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
+          <tr style="background:#f1f5f9;">
+            <th style="padding:7px 10px;text-align:left;color:#475569;font-size:11px;">期間</th>
+            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">方向命中</th>
+            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">Top5淨報酬</th>
+            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">Top5超額</th>
+            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">區間涵蓋</th>
+            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">樣本</th>
+          </tr>
+          {rows_html}
+        </table>
+        <div style="background:{verdict_bg};border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;color:{verdict_c};line-height:1.6;">
+          {verdict}{alert_line}
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:4px 0;">※ 方向命中 ≥ 52% 才算有預測力(綠);Top5淨報酬已扣交易成本(滑價×2);超額 = 相對大盤。樣本 = 已實現的歷史預測筆數。</p>
+        """
+
+
+def _html_escape_safe(s: str) -> str:
+    import html as _h
+    return _h.escape(str(s))
+
+
 def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
     """Render awareness-only Taiwan policy and medical sections."""
     if not intelligence:
@@ -8720,6 +8832,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     summary_text = _extract_summary(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
+    model_evidence_html = _render_model_evidence_html(quotes)
 
     # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
@@ -9623,6 +9736,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {model_evidence_html}
+
             {night_html}
 
             {mops_html}
@@ -10154,37 +10269,41 @@ def main() -> int:
         tw0050 = []
     quotes["FOREIGN_TOP10_TOTAL"] = _foreign_top10_total(tw0050)
 
-    # 6.2 市值前 10 大 + 初步候選前 15 檔 MOPS 重大訊息
+    # 6.2 市值前 15 大 + 爆發力前 30 檔 MOPS 重大訊息(擴大覆蓋,讓五檔候選抓得到自家重訊;
+    #     每檔一支 RSS,故合計上限 40 檔以控制請求量與 Actions 時間)
     print("[main] 抓台股重點公司 MOPS 重大訊息…")
     try:
-        top10_codes = [c for c, _ in sorted(
+        top_mcap_codes = [c for c, _ in sorted(
             tw_universe.items(),
-            key=lambda kv: kv[1].get("market_cap") or 0, reverse=True)[:10]]
+            key=lambda kv: kv[1].get("market_cap") or 0, reverse=True)[:15]]
         breakout_codes = [
             item.get("code") for item in sorted(
                 tw0050,
                 key=lambda item: (item.get("breakout") or {}).get("score", 0),
                 reverse=True,
-            )[:15]
+            )[:30]
             if item.get("code")
         ]
-        mops_codes = list(dict.fromkeys(top10_codes + breakout_codes))
+        mops_codes = list(dict.fromkeys(top_mcap_codes + breakout_codes))[:40]
         tw_mops = fetch_tw_major_announcements(mops_codes)
     except Exception as e:
         print(f"[main] MOPS 抓取失敗: {e}", file=sys.stderr)
         tw_mops = []
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
+    _ml_t0 = time.monotonic()
     trading_sessions = fetch_tw_trading_sessions(months=18)
     model_history = load_model_history()
     model_history, model_backfill = backfill_model_history(
         model_history, trading_sessions)
     quotes["MODEL_BACKFILL"] = model_backfill
+    print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
     structured_events = apply_event_timeline(
         model_history, call_llm_event_extractor(news, tw_mops))
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))
+    print(f"[main] 事件/來源健康完成 ({time.monotonic()-_ml_t0:.1f}s);跑 walk-forward…")
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(
         model_history, trading_sessions)
     quotes["MODEL_MONITORING"] = build_model_monitoring_report(
@@ -10202,14 +10321,18 @@ def main() -> int:
         model_monitoring=quotes["MODEL_MONITORING"])
     quotes["BREAKOUT_TRACKING"] = build_breakout_tracking(
         history, tw0050, target_session_date, sessions=trading_sessions)
+    _ml_elapsed = time.monotonic() - _ml_t0
+    print(f"[main] ML/情報區塊總耗時 {_ml_elapsed:.1f}s")
+    if _ml_elapsed > 300:
+        print(f"[main] ⚠ ML 區塊耗時 {_ml_elapsed:.0f}s 偏高(Actions 上限 600s);"
+              f"如逼近上限可調降 MODEL_BACKFILL_BATCH_DAYS", file=sys.stderr)
 
     # 6.5 建立歷史校準資料（TSM vs 2330 開盤實證對照）
     calibration = build_historical_calibration(hist_2330, days=7)
     print(f"[main] 歷史校準資料已生成（{len(calibration)} 字）")
 
-    # 6.55 偵測美股是否昨日休市（Memorial Day / Labor Day / 聖誕等）
-    quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
-    if quotes["US_HOLIDAY"].get("detected"):
+    # 6.55 美股休市偵測:已在上方模型區塊算過 quotes["US_HOLIDAY"],這裡僅記錄,不重複計算
+    if quotes.get("US_HOLIDAY", {}).get("detected"):
         print(f"[main] ⚠ 偵測到美股休市:QQQ.date={quotes['US_HOLIDAY'].get('actual_date')} "
               f"(預期 {quotes['US_HOLIDAY'].get('expected_date')},gap={quotes['US_HOLIDAY'].get('gap_days')} 天)",
               file=sys.stderr)

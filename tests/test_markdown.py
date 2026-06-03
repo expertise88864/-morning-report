@@ -285,3 +285,45 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
     assert "今日無高信心標的" in html
     assert "相對排名" in html
     assert "台股觀察名單 Top 5" in html
+
+
+# ===== 模型實證 walk-forward 區塊 =====
+
+def test_model_evidence_green_verdict():
+    q = {"MODEL_WALK_FORWARD": {
+            "3d": {"direction_hit_pct": 55.0, "top5_avg_net_return_pct": 0.9,
+                   "top5_avg_excess_pct": 0.6, "interval_coverage_pct": 82, "samples": 140},
+            "5d": {"direction_hit_pct": 53.0, "top5_avg_net_return_pct": 0.4,
+                   "top5_avg_excess_pct": 0.3, "interval_coverage_pct": 80, "samples": 130}},
+         "MODEL_MONITORING": {"status": "ok", "alerts": []}}
+    h = mr._render_model_evidence_html(q)
+    assert "五檔模型實證" in h
+    assert "55.0%" in h
+    assert "邊際優勢" in h          # 綠燈判決
+
+
+def test_model_evidence_accumulating_verdict():
+    q = {"MODEL_WALK_FORWARD": {"3d": {"direction_hit_pct": None, "samples": 0}},
+         "MODEL_MONITORING": {"status": "fallback", "alerts": ["calibration samples < 30"]}}
+    h = mr._render_model_evidence_html(q)
+    assert "樣本累積中" in h         # 資料不足判決
+
+
+def test_model_evidence_weak_verdict():
+    q = {"MODEL_WALK_FORWARD": {
+            "3d": {"direction_hit_pct": 47.0, "top5_avg_net_return_pct": -0.5,
+                   "interval_coverage_pct": 70, "samples": 120}},
+         "MODEL_MONITORING": {"status": "fallback", "alerts": []}}
+    h = mr._render_model_evidence_html(q)
+    assert "尚未穩定贏過基準" in h    # 黃燈判決
+
+
+def test_new_high_signal_features_registered():
+    """新特徵須進 MODEL_FEATURES 與 model snapshot 白名單,否則 ML 學不到。"""
+    assert "rel_strength_5d" in mr.MODEL_FEATURES
+    assert "inst_buy_vol_ratio" in mr.MODEL_FEATURES
+    snap = mr._snapshot_for_model([{
+        "code": "2330", "close": 1000.0, "rel_strength_5d": 2.5,
+        "inst_buy_vol_ratio": 18.0, "pct_5d": 5.0}])
+    assert snap["2330"].get("rel_strength_5d") == 2.5
+    assert snap["2330"].get("inst_buy_vol_ratio") == 18.0

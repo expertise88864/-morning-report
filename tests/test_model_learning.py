@@ -304,6 +304,42 @@ def test_tw_medical_intelligence_catches_hospital_suspension_terms(monkeypatch):
     assert out["medical"]
     assert out["medical"][0]["topic"] == "醫院營運"
     assert out["medical"][0]["scope"] == "昨日新訊"
+    assert out["medical"][0]["importance"] >= 2.2
+    assert out["medical"][0]["why"]
+
+
+def test_tw_intelligence_filters_low_value_health_noise(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "夏天養生食譜幫助減肥",
+            "link": "https://health.example.com/diet",
+            "published": "Tue, 02 Jun 2026 08:00:00 GMT",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["medical"] == []
+
+
+def test_tw_policy_timeline_keeps_most_important_update(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "媒體整理新青安房貸方向",
+            "link": "https://example.com/news",
+            "published": "Wed, 20 May 2026 08:00:00 GMT",
+        }, {
+            "title": "行政院公告新青安房貸鬆綁措施",
+            "link": "https://www.ey.gov.tw/policy",
+            "published": "Thu, 21 May 2026 08:00:00 GMT",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=5)
+    titles = [item["title"] for item in out["policy"]]
+    assert titles.count("行政院公告新青安房貸鬆綁措施") == 1
+    assert all("媒體整理新青安房貸方向" != title for title in titles)
 
 
 def test_tw_intelligence_html_marks_awareness_only():
@@ -312,12 +348,15 @@ def test_tw_intelligence_html_marks_awareness_only():
         "medical_window": "2026-06-01 至 2026-06-01",
         "policy": [{"title": "行政院公告新制", "link": "https://gov.tw", "official": True,
                     "source_grade": "官方", "status": "已公告", "topic": "育兒社福",
-                    "published": "2026-06-01 09:00", "scope": "近月發酵"}],
+                    "published": "2026-06-01 09:00", "scope": "近月發酵",
+                    "importance": 4.2, "why": ["官方/主管機關", "已公告"]}],
         "medical": [],
     }, __import__("html"))
     assert "台灣政策近月走向" in html
     assert "台灣醫界昨日走向" in html
     assert "近月發酵" in html
+    assert "重要性 4.2" in html
+    assert "入選原因" in html
     assert "不納入股價模型" in html
 
 

@@ -3364,6 +3364,35 @@ TW_INTELLIGENCE_RELEVANCE = {
     ),
 }
 
+TW_INTELLIGENCE_BROAD_RECALL = {
+    "policy": (
+        "台灣", "行政院", "立法院", "部", "署", "會", "政策", "補助",
+        "津貼", "草案", "修法", "上路", "預告", "法案", "新制",
+    ),
+    "medical": (
+        "台灣", "醫", "院", "健保", "衛福", "疾管", "食藥", "疫情",
+        "藥", "病床", "急診", "門診", "住院", "手術", "護理",
+    ),
+}
+
+TW_INTELLIGENCE_NOISE = {
+    "policy": ("娛樂", "體育", "影劇", "股價", "星座", "食譜"),
+    "medical": ("保健食品", "養生", "星座", "減肥", "美容", "食譜", "偏方"),
+}
+
+TW_INTELLIGENCE_MAJOR_TERMS = {
+    "policy": (
+        "通過", "核定", "公告", "上路", "修法", "草案", "預告", "補助",
+        "津貼", "新青安", "電價", "稅", "勞保", "健保", "少子化",
+        "房貸", "信用管制", "行政院", "立法院",
+    ),
+    "medical": (
+        "停約", "停診", "停業", "暫停", "住院", "急診", "病房", "病床",
+        "醫療量能", "裁罰", "感染", "疫情", "疫苗", "缺藥", "藥價",
+        "健保署", "衛福部", "疾管署", "食藥署", "醫院", "醫學中心",
+    ),
+}
+
 
 def _tw_intelligence_window(now_tpe: dt.datetime) -> tuple[dt.datetime, dt.datetime, str]:
     """Use yesterday, with a weekend catch-up window for Monday reports."""
@@ -3407,6 +3436,62 @@ def _tw_intelligence_topic(kind: str, text: str) -> str:
     return "其他政策" if kind == "policy" else "其他醫界"
 
 
+def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
+    """Broad recall: allow source/category words first, then score importance later."""
+    if any(token in text for token in TW_INTELLIGENCE_NOISE[kind]):
+        return False
+    broad = any(token in text for token in TW_INTELLIGENCE_BROAD_RECALL[kind])
+    specific = any(token in text for token in TW_INTELLIGENCE_RELEVANCE[kind])
+    major = any(token in text for token in TW_INTELLIGENCE_MAJOR_TERMS[kind])
+    return specific or (broad and major)
+
+
+def _tw_intelligence_timeline_key(kind: str, title: str) -> str:
+    """Group developing policy/medical stories into stable, human-scale timelines."""
+    topic = _tw_intelligence_topic(kind, title)
+    anchors = {
+        "住宅金融": ("新青安", "房貸", "信用管制", "租屋", "住宅"),
+        "育兒社福": ("育兒", "兒少", "成長津貼", "托育", "長照", "少子化"),
+        "產業能源": ("電價", "能源", "半導體", "AI", "出口", "產業"),
+        "醫院營運": ("中榮", "台中榮總", "神外", "停約", "急診", "住院", "病床"),
+        "健保藥政": ("健保", "藥價", "藥品", "醫材", "食藥署"),
+        "公共衛生": ("疫情", "疫苗", "疾管署", "傳染病"),
+    }.get(topic, ())
+    anchor = next((token for token in anchors if token in title), topic)
+    return f"{kind}:{topic}:{anchor}"
+
+
+def _tw_intelligence_importance(kind: str,
+                                title: str,
+                                official: bool,
+                                scope: str,
+                                status: str) -> tuple[float, list[str]]:
+    """Score recalled items so keywords expand coverage without flooding the report."""
+    reasons = []
+    score = 0.0
+    if official:
+        score += 2.0
+        reasons.append("官方/主管機關")
+    if scope == "昨日新訊":
+        score += 1.5
+        reasons.append("昨日新訊")
+    if status in ("已公告", "研議中"):
+        score += 1.0
+        reasons.append(status)
+    major_hits = [token for token in TW_INTELLIGENCE_MAJOR_TERMS[kind] if token in title]
+    if major_hits:
+        score += min(2.5, 0.7 * len(major_hits))
+        reasons.append("重大詞:" + "、".join(major_hits[:3]))
+    topic = _tw_intelligence_topic(kind, title)
+    if topic not in ("其他政策", "其他醫界"):
+        score += 0.7
+        reasons.append(topic)
+    if any(token in title for token in TW_INTELLIGENCE_NOISE[kind]):
+        score -= 3.0
+        reasons.append("疑似雜訊")
+    return round(max(0.0, score), 2), reasons[:4]
+
+
 def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                                 per_kind_limit: int = 8) -> dict:
     """Fetch policy and medical headlines for awareness only; never feed stock models."""
@@ -3440,23 +3525,31 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                     title = str(entry.get("title") or "").strip()
                     if not title:
                         continue
-                    if not any(token in title for token in TW_INTELLIGENCE_RELEVANCE[kind]):
-                        continue
                     link = str(entry.get("link") or "")
                     text = f"{title} {link}"
+                    if not _tw_intelligence_recall_hit(kind, text):
+                        continue
                     official = any(token.lower() in text.lower() for token in TW_OFFICIAL_SOURCE_TOKENS)
                     scope = (
                         "昨日新訊"
                         if daily_start <= published < daily_end
                         else "近月發酵"
                     )
+                    status = _tw_intelligence_status(title)
+                    importance, reasons = _tw_intelligence_importance(
+                        kind, title, official, scope, status)
+                    if importance < (2.0 if kind == "policy" else 2.2):
+                        continue
                     candidates.append({
                         "title": title[:180],
                         "link": link,
                         "published": published.strftime("%Y-%m-%d %H:%M"),
                         "scope": scope,
+                        "timeline_key": _tw_intelligence_timeline_key(kind, title),
+                        "importance": importance,
+                        "why": reasons,
                         "topic": _tw_intelligence_topic(kind, title),
-                        "status": _tw_intelligence_status(title),
+                        "status": status,
                         "source_grade": "官方" if official else "媒體",
                         "official": official,
                     })
@@ -3464,13 +3557,25 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 print(f"[tw-intelligence] {kind} query failed: {e}", file=sys.stderr)
         deduped = {}
         for item in candidates:
-            key = "".join(ch.lower() for ch in item["title"] if ch.isalnum())[:90]
+            key = item.get("timeline_key") or "".join(
+                ch.lower() for ch in item["title"] if ch.isalnum())[:90]
             previous = deduped.get(key)
-            if previous is None or item["official"] > previous["official"]:
+            if previous is None or (
+                item.get("importance", 0),
+                item.get("scope") == "昨日新訊",
+                item["official"],
+                item["published"],
+            ) > (
+                previous.get("importance", 0),
+                previous.get("scope") == "昨日新訊",
+                previous["official"],
+                previous["published"],
+            ):
                 deduped[key] = item
         output[kind] = sorted(
             deduped.values(),
             key=lambda item: (
+                item.get("importance", 0),
                 item.get("scope") == "昨日新訊",
                 item["official"],
                 item["published"],
@@ -7710,10 +7815,14 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
                 f"{htmllib.escape(str(item.get('topic', '')))} ・ "
                 f"<b style='color:{'#15803d' if item.get('official') else '#a16207'};'>"
                 f"{htmllib.escape(str(item.get('source_grade', '')))}</b> ・ "
-                f"{htmllib.escape(str(item.get('status', '')))}</div>"
+                f"{htmllib.escape(str(item.get('status', '')))} ・ "
+                f"重要性 {htmllib.escape(str(item.get('importance', '—')))}</div>"
                 f"<a href='{htmllib.escape(str(item.get('link', '')))}' "
                 f"style='font-size:14px;line-height:1.65;color:#0f172a;text-decoration:none;'>"
-                f"{htmllib.escape(str(item.get('title', '')))}</a></div>"
+                f"{htmllib.escape(str(item.get('title', '')))}</a>"
+                f"<div style='font-size:11px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
+                f"入選原因：{htmllib.escape('、'.join(item.get('why') or ['寬召回分類']))}</div>"
+                f"</div>"
                 for item in items
             )
         return f"""

@@ -190,7 +190,10 @@ def test_render_html_shows_attention_candidate_price_forecast():
         "breakout": {"score": 70}, "smart_money": {"score": 60, "tags": ["外資連3買"]},
         "price_forecast": {
             "confidence": "中低",
-            "3d": {"expected_price": 1010.0, "lower": 970.0, "upper": 1050.0},
+            "3d": {
+                "expected_price": 1010.0, "lower": 970.0, "upper": 1050.0,
+                "quality": {"recent_direction_hit_pct": None},
+            },
             "5d": {"expected_price": 1020.0, "lower": 960.0, "upper": 1080.0},
         },
     }]
@@ -199,5 +202,25 @@ def test_render_html_shows_attention_candidate_price_forecast():
     assert "客觀排名 #1" in html
     assert "產業中性 +2.0" in html
     assert "勝過大盤 +4.0" in html
+    assert "近期方向命中 —" in html
+    assert "None%" not in html
     assert "3日 1010.0 (970.0~1050.0)" in html
     assert "5日 1020.0 (960.0~1080.0)" in html
+
+
+def test_render_html_warns_when_watchlist_scores_are_low_confidence():
+    q = _full_quotes()
+    q["TW_UNIVERSE_SNAPSHOT"] = [{
+        "code": str(2300 + index), "name": f"測試{index}", "close": 100.0,
+        "day_pct": 1.0, "ranking_score": 40 + index, "attention_score": 40 + index,
+        "news_catalyst_score": 0, "breakout": {"score": 40},
+        "smart_money": {"score": 30, "tags": []},
+        "price_forecast": {
+            "confidence": "低",
+            "3d": {"expected_price": 101.0, "lower": 95.0, "upper": 105.0},
+            "5d": {"expected_price": 102.0, "lower": 94.0, "upper": 106.0},
+        },
+    } for index in range(5)]
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-03", "每日報")
+    assert "今日無高信心標的" in html
+    assert "相對排名" in html

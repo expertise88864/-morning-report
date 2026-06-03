@@ -79,6 +79,36 @@ def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     assert isinstance(out, str) and len(out) > 0
 
 
+def test_analysis_complete_enough_detects_truncated_watchlist():
+    complete = (
+        "## 十二、今日台股關注五檔\n"
+        + "\n".join(f"### {2300+i} 測試\n- x" for i in range(5))
+        + "\n## 十三、一句話總結\n完成"
+    )
+    truncated = "## 十二、今日台股關注五檔\n2451 創見\n基本面：月"
+    assert mr._analysis_complete_enough(complete) is True
+    assert mr._analysis_complete_enough(truncated) is False
+
+
+def test_call_llm_analysis_retries_once_when_truncated(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_call(prompt):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return "## 十二、今日台股關注五檔\n2451 創見\n基本面：月"
+        return (
+            "## 十二、今日台股關注五檔\n"
+            + "\n".join(f"{2300+i} 測試\n- x" for i in range(5))
+            + "\n## 十三、一句話總結\n完成"
+        )
+
+    monkeypatch.setattr(mr, "_call_llm_text", fake_call)
+    out = mr.call_llm_analysis(_empty_quotes(), {"error": "x"}, {"error": "x"}, [])
+    assert calls["n"] == 2
+    assert "一句話總結" in out
+
+
 def test_detect_us_holiday_memorial_day():
     """週二早上跑時,QQQ.date 應為週一;若為週五則代表週一 US 休市(Memorial Day 之類)。"""
     import datetime as dt

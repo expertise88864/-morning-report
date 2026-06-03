@@ -494,6 +494,29 @@ def test_model_monitoring_penalizes_unreliable_probability():
     assert out["ranking_penalty"] == 3.0
 
 
+def test_model_monitoring_penalizes_bad_rolling_origin():
+    out = mr.build_model_monitoring_report({
+        "3d": {
+            "probability_samples": 100,
+            "brier_score": 0.10,
+            "ece_pct": 5.0,
+            "interval_coverage_pct": 80.0,
+        },
+        "rolling_origin": {
+            "3d": {
+                "samples": 80,
+                "origins": 6,
+                "brier_score": 0.30,
+                "direction_hit_pct": 42.0,
+                "top5_avg_net_return_pct": -0.5,
+            }
+        },
+    })
+    assert out["status"] == "error"
+    assert out["ranking_penalty"] == 3.0
+    assert out["rolling_origin_metrics"]["top5_avg_net_return_pct"] == -0.5
+
+
 def test_walk_forward_does_not_fake_top5_for_unranked_backfill():
     sessions = ["2026-06-01", "2026-06-02"]
     history = [{
@@ -532,6 +555,7 @@ def test_rolling_origin_backtest_uses_prior_realized_rows():
         history, sessions, max_origins=3, min_train_rows=20)
     assert out["1d_close"]["origins"] > 0
     assert out["1d_close"]["samples"] > 0
+    assert out["1d_close"]["top5_avg_net_return_pct"] is not None
 
 
 def test_tw_official_detection_requires_publisher_domain():
@@ -583,6 +607,32 @@ def test_tw_intelligence_official_html_fallback(monkeypatch):
     assert out["policy"][0]["source_grade"] == "\u5b98\u65b9"
     assert out["diagnostics"]["policy"]["official_entries"] > 0
     assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_fallback_ok"] >= 1
+
+
+def test_tw_intelligence_skips_undated_official_html(monkeypatch):
+    class EmptyFeed:
+        entries = []
+        bozo = True
+        bozo_exception = RuntimeError("bad feed")
+
+    class Resp:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = (
+            '<html><a href="/Page/policy">'
+            "\u884c\u653f\u9662 \u65b0\u9752\u5b89 \u653f\u7b56 \u516c\u544a"
+            "</a></html>"
+        )
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: EmptyFeed())
+    monkeypatch.setattr(mr.requests, "get", lambda *args, **kwargs: Resp())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["policy"] == []
+    assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_undated"] >= 1
 
 
 def test_source_health_flags_official_intelligence_outage():

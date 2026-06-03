@@ -3604,7 +3604,8 @@ def _parse_tw_roc_date(value: str, default_year: Optional[int] = None) -> str:
 def _official_html_entries(html_text: str,
                            base_url: str,
                            source_name: str,
-                           limit: int = 20) -> list[dict]:
+                           limit: int = 20,
+                           stats: Optional[dict] = None) -> list[dict]:
     """Fallback parser for official list pages when RSS is blocked or malformed."""
     import html as _html
     import re as _re
@@ -3624,6 +3625,10 @@ def _official_html_entries(html_text: str,
             continue
         tail = _strip_html((html_text or "")[match.end():match.end() + 260])
         published = _parse_tw_roc_date(f"{title} {tail}")
+        if not published:
+            if stats is not None:
+                stats["html_undated"] = stats.get("html_undated", 0) + 1
+            continue
         entries.append({
             "title": title,
             "link": link,
@@ -3691,7 +3696,7 @@ def _official_source_entries(source: dict, stats: dict) -> list[dict]:
         stats.setdefault("errors", []).append(type(e).__name__)
     try:
         text = _fetch_official_text(html_url, stats)
-        entries = _official_html_entries(text, html_url, source_name)
+        entries = _official_html_entries(text, html_url, source_name, stats=stats)
         if entries:
             stats["html_fallback_ok"] = stats.get("html_fallback_ok", 0) + 1
         return entries
@@ -3791,8 +3796,12 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                           start: dt.datetime, end: dt.datetime,
                           candidates: list[dict], stats: dict) -> None:
         stats["entries"] += 1
+        raw_time = entry.get("published") or entry.get("updated")
+        if source.get("official_hint") and not raw_time:
+            stats["date_missing"] = stats.get("date_missing", 0) + 1
+            return
         published = _parse_news_time(
-            entry.get("published") or entry.get("updated"),
+            raw_time,
             now_tpe.astimezone(dt.timezone.utc),
         ).astimezone(TPE)
         if not start <= published < end:
@@ -4924,7 +4933,11 @@ def evaluate_model_rolling_origin(model_history: list[dict],
         direction_hits = []
         probability_values = []
         top5_returns = []
+        top5_net_returns = []
         top5_excess = []
+        equity = 1.0
+        peak = 1.0
+        max_drawdown = 0.0
         evaluated_origins = 0
         for session_date in validation_sessions:
             train = [
@@ -4959,15 +4972,27 @@ def evaluate_model_rolling_origin(model_history: list[dict],
             top = sorted(tradable, key=lambda item: item[0], reverse=True)[:5]
             realized = [row.get(target_key) for _, row in top if row.get(target_key) is not None]
             if realized:
-                top5_returns.append(sum(realized) / len(realized))
+                avg_return = sum(realized) / len(realized)
+                avg_cost = sum(
+                    _safe_number(row.get("slippage_bps"), 80.0) * 2 / 100
+                    for _, row in top) / len(top)
+                avg_net_return = avg_return - avg_cost
+                top5_returns.append(avg_return)
+                top5_net_returns.append(avg_net_return)
                 top5_excess.append(sum(_safe_number(row.get("future_excess_pct")) for _, row in top) / len(top))
+                equity *= 1 + avg_net_return / 100
+                peak = max(peak, equity)
+                max_drawdown = min(max_drawdown, equity / peak - 1)
         output[forecast_key] = {
             "samples": len(errors),
             "origins": evaluated_origins,
             "forecast_mae_pct": round(sum(abs(e) for e in errors) / len(errors), 3) if errors else None,
             "direction_hit_pct": round(sum(direction_hits) / len(direction_hits) * 100, 1) if direction_hits else None,
             "top5_avg_return_pct": round(sum(top5_returns) / len(top5_returns), 3) if top5_returns else None,
+            "top5_avg_net_return_pct": round(sum(top5_net_returns) / len(top5_net_returns), 3)
+                                       if top5_net_returns else None,
             "top5_avg_excess_pct": round(sum(top5_excess) / len(top5_excess), 3) if top5_excess else None,
+            "top5_max_drawdown_pct": round(max_drawdown * 100, 3) if top5_net_returns else None,
             **_probability_calibration_metrics(probability_values),
         }
     return output
@@ -5370,10 +5395,13 @@ def build_model_monitoring_report(walk_forward: dict,
                                   forecast_key: str = "3d") -> dict:
     """Turn calibration metrics into a conservative quality gate for ranking."""
     metrics = (walk_forward or {}).get(forecast_key) or {}
+    rolling_metrics = ((walk_forward or {}).get("rolling_origin") or {}).get(forecast_key) or {}
     samples = int(metrics.get("probability_samples") or 0)
     brier = metrics.get("brier_score")
     ece = metrics.get("ece_pct")
     coverage = metrics.get("interval_coverage_pct")
+    rolling_samples = int(rolling_metrics.get("samples") or 0)
+    rolling_origins = int(rolling_metrics.get("origins") or 0)
     alerts = []
     if samples < 30:
         alerts.append("勝過大盤機率樣本不足 30")
@@ -5383,12 +5411,30 @@ def build_model_monitoring_report(walk_forward: dict,
         alerts.append(f"ECE 偏高: {ece}%")
     if isinstance(coverage, (int, float)) and not 65 <= coverage <= 95:
         alerts.append(f"80% 價格區間覆蓋率異常: {coverage}%")
-    severe = any("偏高" in alert or "異常" in alert for alert in alerts)
+    if rolling_metrics:
+        rolling_brier = rolling_metrics.get("brier_score")
+        rolling_direction = rolling_metrics.get("direction_hit_pct")
+        rolling_net = rolling_metrics.get("top5_avg_net_return_pct")
+        if rolling_origins < 3 or rolling_samples < 30:
+            alerts.append(
+                f"rolling-origin samples low: origins={rolling_origins}, samples={rolling_samples}")
+        if isinstance(rolling_brier, (int, float)) and rolling_brier > 0.28:
+            alerts.append(f"rolling-origin Brier high: {rolling_brier}")
+        if isinstance(rolling_direction, (int, float)) and rolling_direction < 45:
+            alerts.append(f"rolling-origin direction weak: {rolling_direction}%")
+        if isinstance(rolling_net, (int, float)) and rolling_net < 0:
+            alerts.append(f"rolling-origin top5 net negative: {rolling_net}%")
+    severe = any(
+        "偏高" in alert or "異常" in alert
+        or "Brier high" in alert or "direction weak" in alert
+        or "top5 net negative" in alert
+        for alert in alerts)
     return {
         "status": "error" if severe else "fallback" if alerts else "ok",
         "ranking_penalty": 3.0 if severe else 1.0 if alerts else 0.0,
         "forecast_key": forecast_key,
         "metrics": metrics,
+        "rolling_origin_metrics": rolling_metrics,
         "alerts": alerts,
     }
 

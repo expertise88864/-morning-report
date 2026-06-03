@@ -3501,6 +3501,63 @@ def fetch_news() -> list[dict]:
     return items
 
 
+def fetch_candidate_company_news(snapshot: list[dict],
+                                 top_n: int = 20,
+                                 per_query: int = 3,
+                                 exclude_codes: Optional[set] = None) -> list[dict]:
+    """
+    對「爆發力分數前 N 檔候選股」用 Google News 查各自最新新聞,並 tag company_label=code。
+
+    為什麼:五檔候選常是 10 名外的中型股(緯創/群創/南亞科…),固定 12 檔權值股查詢
+    抓不到它們的自家催化 → news_catalyst_score 多為 0。針對「正在被預測的候選」動態查新聞,
+    讓催化分數與排名/股價預測都吃得到個股消息面。
+
+    tag company_label=code → extract_structured_events 會把 entity 設為該 code → 直接歸因。
+    回傳已 tag 的 news 清單(失敗個股略過)。
+    """
+    if not snapshot:
+        return []
+    exclude = {str(c) for c in (exclude_codes or set())}
+    ranked = sorted(snapshot,
+                    key=lambda s: (s.get("breakout") or {}).get("score", 0),
+                    reverse=True)
+    picks = [s for s in ranked
+             if s.get("code") and (s.get("breakout") or {}).get("score", 0) > 0][:top_n]
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=54)
+    items: list[dict] = []
+    hit = 0
+    queried = 0
+    for s in picks:
+        code = str(s.get("code"))
+        name = str(s.get("name") or "")
+        if code in exclude:        # 固定 12 檔已在 fetch_news 查過,不重複
+            continue
+        query = f"{name} {code}" if name else code
+        queried += 1
+        try:
+            feed = feedparser.parse(_gnews_rss(query, when="2d"))
+            for entry in feed.entries[:per_query]:
+                pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                if pub:
+                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
+                    if pub_dt < cutoff:
+                        continue
+                items.append({
+                    "source": f"Google:{code}",
+                    "title": entry.get("title", ""),
+                    "summary": (entry.get("summary", "") or "")[:800],
+                    "link": entry.get("link", ""),
+                    "published": entry.get("published", ""),
+                    "company_label": code,
+                    "code": code,
+                })
+                hit += 1
+        except Exception as e:
+            print(f"[cand_news] 候選 {code} 查詢失敗: {e}", file=sys.stderr)
+    print(f"[cand_news] 候選個股新聞 {hit} 則(查詢 {queried} 檔爆發力候選)")
+    return items
+
+
 TW_INTELLIGENCE_QUERIES = {
     "policy": (
         "台灣 政策 行政院 補助 津貼 房貸 社福 產業 site:gov.tw",
@@ -10380,6 +10437,20 @@ def main() -> int:
     except Exception as e:
         print(f"[main] MOPS 抓取失敗: {e}", file=sys.stderr)
         tw_mops = []
+
+    # 6.3 對「爆發力前 20 檔候選」動態查 Google News(補五檔候選的自家催化訊號;
+    #     已被固定 12 檔權值查過的不重複)。tag company_label → 直接歸因到該股。
+    print("[main] 對爆發力候選查個股新聞…")
+    try:
+        cand_news = fetch_candidate_company_news(
+            tw0050, top_n=20,
+            exclude_codes={lbl for _, lbl in GOOGLE_NEWS_COMPANIES})
+        if cand_news:
+            news = dedup_news(news + classify_news_importance(cand_news))
+            print(f"[main] 併入候選個股新聞後共 {len(news)} 則")
+    except Exception as e:
+        print(f"[main] 候選個股新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
+
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()
     trading_sessions = fetch_tw_trading_sessions(months=18)

@@ -157,3 +157,34 @@ def test_fetch_news_fulltext_resolves_google_news_target(monkeypatch):
     out = mr.fetch_news_fulltext(news, max_critical=1, max_high=0)
     assert requested == ["https://example.com/article"]
     assert "important full text" in out[0]["fulltext"]
+
+
+# ---------- fetch_candidate_company_news（候選股動態新聞）----------
+
+def test_fetch_candidate_company_news(monkeypatch):
+    import time as _t
+
+    class _Feed:
+        def __init__(self, url):
+            self.entries = [{
+                "title": "緯創 GB300 出貨超預期", "summary": "訂單能見度到 2027",
+                "link": "https://news.google.com/rss/articles/X",
+                "published": "Mon, 01 Jun 2026 01:00:00 GMT",
+                "published_parsed": _t.gmtime(),
+            }]
+    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _Feed(url))
+    snap = [
+        {"code": "3231", "name": "緯創", "breakout": {"score": 80}},
+        {"code": "2330", "name": "台積電", "breakout": {"score": 74}},   # exclude
+        {"code": "6770", "name": "力積電", "breakout": {"score": 50}},
+        {"code": "9999", "name": "低分股", "breakout": {"score": 0}},     # 0 分跳過
+    ]
+    out = mr.fetch_candidate_company_news(snap, top_n=20, exclude_codes={"2330"})
+    labels = {n["company_label"] for n in out}
+    assert labels == {"3231", "6770"}                  # 排除 2330、跳過 0 分
+    assert all(n.get("company_label") and n.get("code") for n in out)
+    assert all(n["source"].startswith("Google:") for n in out)
+
+
+def test_fetch_candidate_company_news_empty():
+    assert mr.fetch_candidate_company_news([]) == []

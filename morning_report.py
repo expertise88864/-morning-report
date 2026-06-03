@@ -3610,11 +3610,21 @@ def _official_html_entries(html_text: str,
     import html as _html
     import re as _re
     entries = []
-    pattern = _re.compile(
+    block_pattern = _re.compile(
+        r"<(?P<tag>li|tr|article|div)\b[^>]*>(?P<body>.*?)</(?P=tag)>",
+        _re.I | _re.S,
+    )
+    link_pattern = _re.compile(
         r"<a\b[^>]*href=[\"'](?P<href>[^\"']+)[\"'][^>]*>(?P<title>.*?)</a>",
         _re.I | _re.S,
     )
-    for match in pattern.finditer(html_text or ""):
+    blocks = [match.group("body") for match in block_pattern.finditer(html_text or "")]
+    if not blocks:
+        blocks = [html_text or ""]
+    for block in blocks:
+        match = link_pattern.search(block)
+        if not match:
+            continue
         raw_title = _strip_html(match.group("title"))
         title = _html.unescape(raw_title).strip()
         if len(title) < 8:
@@ -3623,11 +3633,16 @@ def _official_html_entries(html_text: str,
         link = urljoin(base_url, href)
         if not _tw_source_is_official(link, base_url, source_name):
             continue
-        tail = _strip_html((html_text or "")[match.end():match.end() + 260])
-        published = _parse_tw_roc_date(f"{title} {tail}")
+        block_text = _strip_html(block)
+        published = _parse_tw_roc_date(f"{title} {block_text}")
         if not published:
             if stats is not None:
                 stats["html_undated"] = stats.get("html_undated", 0) + 1
+                (stats.setdefault("rejected_samples", [])).append({
+                    "title": title[:120],
+                    "reason": "missing_date",
+                    "source": source_name,
+                })
             continue
         entries.append({
             "title": title,
@@ -3795,25 +3810,38 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
     def _append_candidate(kind: str, entry: dict, source: dict,
                           start: dt.datetime, end: dt.datetime,
                           candidates: list[dict], stats: dict) -> None:
+        def _reject(reason: str, title_value: str = "") -> None:
+            rejected = stats.setdefault("rejected_samples", [])
+            if len(rejected) < 5:
+                rejected.append({
+                    "title": str(title_value or entry.get("title") or "")[:120],
+                    "reason": reason,
+                    "source": source.get("name", ""),
+                })
+
         stats["entries"] += 1
         raw_time = entry.get("published") or entry.get("updated")
         if source.get("official_hint") and not raw_time:
             stats["date_missing"] = stats.get("date_missing", 0) + 1
+            _reject("missing_date")
             return
         published = _parse_news_time(
             raw_time,
             now_tpe.astimezone(dt.timezone.utc),
         ).astimezone(TPE)
         if not start <= published < end:
+            _reject("outside_window")
             return
         stats["in_window"] += 1
         title = str(entry.get("title") or "").strip()
         if not title:
+            _reject("missing_title")
             return
         link = str(entry.get("link") or source.get("url") or "")
         source_name, source_url = _tw_entry_source(entry)
         text = f"{title} {link} {source_name} {source_url}"
         if not _tw_intelligence_recall_hit(kind, text):
+            _reject("recall_filter", title)
             return
         stats["recalled"] += 1
         official = bool(source.get("official_hint")) or _tw_source_is_official(
@@ -3830,6 +3858,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
         if mentions_official and not official:
             reasons = (reasons + ["mentions official agency"])[:4]
         if importance < (2.0 if kind == "policy" else 2.2):
+            _reject(f"low_importance:{importance}", title)
             return
         stats["kept"] += 1
         if official:
@@ -3863,6 +3892,14 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             stats = diagnostics["sources"].setdefault(f"Google:{idx + 1}", _empty_stats())
             stats["source_type"] = "google"
             diagnostics["google_sources"] += 1
+            def _google_reject(reason: str, title_value: str = "") -> None:
+                rejected = stats.setdefault("rejected_samples", [])
+                if len(rejected) < 5:
+                    rejected.append({
+                        "title": str(title_value or "")[:120],
+                        "reason": reason,
+                        "source": f"Google:{idx + 1}",
+                    })
             try:
                 feed = feedparser.parse(_gnews_rss(query, when=rss_when))
                 for entry in feed.entries[:12]:
@@ -3872,15 +3909,18 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                         now_tpe.astimezone(dt.timezone.utc),
                     ).astimezone(TPE)
                     if not start <= published < end:
+                        _google_reject("outside_window", entry.get("title", ""))
                         continue
                     stats["in_window"] += 1
                     title = str(entry.get("title") or "").strip()
                     if not title:
+                        _google_reject("missing_title")
                         continue
                     link = str(entry.get("link") or "")
                     source_name, source_url = _tw_entry_source(entry)
                     text = f"{title} {link} {source_name} {source_url}"
                     if not _tw_intelligence_recall_hit(kind, text):
+                        _google_reject("recall_filter", title)
                         continue
                     stats["recalled"] += 1
                     official = _tw_source_is_official(link, source_url, source_name)
@@ -3894,6 +3934,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                     importance, reasons = _tw_intelligence_importance(
                         kind, title, official, scope, status)
                     if importance < (2.0 if kind == "policy" else 2.2):
+                        _google_reject(f"low_importance:{importance}", title)
                         continue
                     stats["kept"] += 1
                     if official:
@@ -4213,9 +4254,9 @@ TWSE_TOP100_ARCHIVE_FILE = Path(os.environ.get(
     "TWSE_TOP100_ARCHIVE_FILE", "state/twse_top100_archive.json"))
 REVENUE_CONSENSUS_FILE = Path(os.environ.get(
     "REVENUE_CONSENSUS_FILE", "state/revenue_consensus.json"))
-MODEL_HISTORY_SESSIONS = 400
-MODEL_HISTORY_MAX_BYTES = 7_000_000
-MODEL_BACKFILL_TARGET_SESSIONS = 60
+MODEL_HISTORY_SESSIONS = 520
+MODEL_HISTORY_MAX_BYTES = 14_000_000
+MODEL_BACKFILL_TARGET_SESSIONS = 180
 MODEL_BACKFILL_BATCH_DAYS = int(os.environ.get("MODEL_BACKFILL_BATCH_DAYS", "12"))
 MODEL_VERSION = "tw-top100-decay-regime-ridge-platt-quantile-v4"
 MODEL_TIME_DECAY_HALFLIFE_SESSIONS = int(os.environ.get(
@@ -4446,6 +4487,33 @@ def _backfill_records_from_market_days(days: dict[str, list[dict]],
 def save_model_history_records(records: list[dict],
                                sessions_to_keep: int = MODEL_HISTORY_SESSIONS) -> None:
     """Merge and persist compact model snapshots in one bounded write."""
+
+    def _compact_record(record: dict) -> dict:
+        keep_record = {
+            "session_date", "model_version", "market_regime", "taiex_close",
+            "universe_method", "structured_events",
+        }
+        keep_stock = {
+            "code", "name", "industry", "open", "close", "day_pct", "pct_5d",
+            "ma20_dist_pct", "daily_vol_pct", "vol_ratio_20d", "trade_value",
+            "volume", "slippage_bps", "liquidity_eligible", "rev_yoy_pct",
+            "rev_mom_pct", "rev_surprise_pct", "eps_percentile", "foreign_lot",
+            "invest_lot", "dealer_lot", "foreign_streak", "invest_streak",
+            "tdcc_wow_pct", "margin_change_lot", "ranking_score",
+            "attention_score", "industry_neutral_score", "news_catalyst_score",
+            "price_forecast", "news_catalysts",
+        }
+        compact = {key: record.get(key) for key in keep_record if key in record}
+        stocks = {}
+        for code, stock in (record.get("stocks") or {}).items():
+            row = {key: stock.get(key) for key in keep_stock if key in stock}
+            if row.get("news_catalysts"):
+                row["news_catalysts"] = row["news_catalysts"][:3]
+            stocks[str(code)] = row
+        compact["stocks"] = stocks
+        compact["compact"] = True
+        return compact
+
     try:
         merged = {
             item.get("session_date"): item for item in load_model_history()
@@ -4457,6 +4525,12 @@ def save_model_history_records(records: list[dict],
         history = sorted(merged.values(), key=lambda item: item.get("session_date", "")
                          )[-sessions_to_keep:]
         payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
+        compact_index = 0
+        while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and compact_index < len(history):
+            if not history[compact_index].get("compact"):
+                history[compact_index] = _compact_record(history[compact_index])
+                payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
+            compact_index += 1
         while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and len(history) > 1:
             history = history[1:]
             payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
@@ -4935,6 +5009,9 @@ def evaluate_model_rolling_origin(model_history: list[dict],
         top5_returns = []
         top5_net_returns = []
         top5_excess = []
+        ranking_top5_returns = []
+        ranking_top5_net_returns = []
+        ranking_top5_excess = []
         equity = 1.0
         peak = 1.0
         max_drawdown = 0.0
@@ -4983,6 +5060,26 @@ def evaluate_model_rolling_origin(model_history: list[dict],
                 equity *= 1 + avg_net_return / 100
                 peak = max(peak, equity)
                 max_drawdown = min(max_drawdown, equity / peak - 1)
+            rankable = [
+                row for _, row in tradable
+                if row.get("ranking_score", row.get("attention_score")) is not None
+            ]
+            ranked_top = sorted(
+                rankable,
+                key=lambda row: _safe_number(row.get("ranking_score", row.get("attention_score"))),
+                reverse=True,
+            )[:5]
+            ranked_realized = [
+                row.get(target_key) for row in ranked_top if row.get(target_key) is not None]
+            if ranked_realized:
+                ranked_return = sum(ranked_realized) / len(ranked_realized)
+                ranked_cost = sum(
+                    _safe_number(row.get("slippage_bps"), 80.0) * 2 / 100
+                    for row in ranked_top) / len(ranked_top)
+                ranking_top5_returns.append(ranked_return)
+                ranking_top5_net_returns.append(ranked_return - ranked_cost)
+                ranking_top5_excess.append(sum(
+                    _safe_number(row.get("future_excess_pct")) for row in ranked_top) / len(ranked_top))
         output[forecast_key] = {
             "samples": len(errors),
             "origins": evaluated_origins,
@@ -4993,6 +5090,15 @@ def evaluate_model_rolling_origin(model_history: list[dict],
                                        if top5_net_returns else None,
             "top5_avg_excess_pct": round(sum(top5_excess) / len(top5_excess), 3) if top5_excess else None,
             "top5_max_drawdown_pct": round(max_drawdown * 100, 3) if top5_net_returns else None,
+            "ranking_top5_avg_return_pct": (
+                round(sum(ranking_top5_returns) / len(ranking_top5_returns), 3)
+                if ranking_top5_returns else None),
+            "ranking_top5_avg_net_return_pct": (
+                round(sum(ranking_top5_net_returns) / len(ranking_top5_net_returns), 3)
+                if ranking_top5_net_returns else None),
+            "ranking_top5_avg_excess_pct": (
+                round(sum(ranking_top5_excess) / len(ranking_top5_excess), 3)
+                if ranking_top5_excess else None),
             **_probability_calibration_metrics(probability_values),
         }
     return output
@@ -5404,17 +5510,18 @@ def build_model_monitoring_report(walk_forward: dict,
     rolling_origins = int(rolling_metrics.get("origins") or 0)
     alerts = []
     if samples < 30:
-        alerts.append("勝過大盤機率樣本不足 30")
+        alerts.append("calibration samples < 30")
     if isinstance(brier, (int, float)) and brier > 0.25:
-        alerts.append(f"Brier score 偏高: {brier}")
+        alerts.append(f"Brier score high: {brier}")
     if isinstance(ece, (int, float)) and ece > 15:
-        alerts.append(f"ECE 偏高: {ece}%")
+        alerts.append(f"ECE high: {ece}%")
     if isinstance(coverage, (int, float)) and not 65 <= coverage <= 95:
-        alerts.append(f"80% 價格區間覆蓋率異常: {coverage}%")
+        alerts.append(f"80pct interval coverage abnormal: {coverage}%")
     if rolling_metrics:
         rolling_brier = rolling_metrics.get("brier_score")
         rolling_direction = rolling_metrics.get("direction_hit_pct")
         rolling_net = rolling_metrics.get("top5_avg_net_return_pct")
+        ranking_net = rolling_metrics.get("ranking_top5_avg_net_return_pct")
         if rolling_origins < 3 or rolling_samples < 30:
             alerts.append(
                 f"rolling-origin samples low: origins={rolling_origins}, samples={rolling_samples}")
@@ -5424,8 +5531,10 @@ def build_model_monitoring_report(walk_forward: dict,
             alerts.append(f"rolling-origin direction weak: {rolling_direction}%")
         if isinstance(rolling_net, (int, float)) and rolling_net < 0:
             alerts.append(f"rolling-origin top5 net negative: {rolling_net}%")
+        if isinstance(ranking_net, (int, float)) and ranking_net < 0:
+            alerts.append(f"rolling-origin ranking top5 net negative: {ranking_net}%")
     severe = any(
-        "偏高" in alert or "異常" in alert
+        "Brier score high" in alert or "coverage abnormal" in alert
         or "Brier high" in alert or "direction weak" in alert
         or "top5 net negative" in alert
         for alert in alerts)
@@ -8418,6 +8527,32 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
 
     def section(kind: str, title: str, color: str, background: str) -> str:
         items = intelligence.get(kind) or []
+        diag = ((intelligence.get("diagnostics") or {}).get(kind) or {})
+        sources = diag.get("sources") or {}
+        html_undated = sum(_safe_number(stats.get("html_undated")) for stats in sources.values())
+        date_missing = sum(_safe_number(stats.get("date_missing")) for stats in sources.values())
+        source_errors = []
+        rejected = []
+        for source_name, stats in sources.items():
+            for error in stats.get("errors") or []:
+                if len(source_errors) < 4:
+                    source_errors.append(f"{source_name}:{error}")
+            for sample in stats.get("rejected_samples") or []:
+                if len(rejected) < 3:
+                    rejected.append(f"{sample.get('reason', '')}:{sample.get('title', '')}")
+        diagnostic_html = (
+            "<div style='padding:8px 14px;background:#f8fafc;color:#64748b;"
+            "font-size:11px;line-height:1.5;border-top:1px solid #e2e8f0;'>"
+            f"診斷：entries={htmllib.escape(str(diag.get('entries', 0)))}；"
+            f"returned={htmllib.escape(str(diag.get('returned', 0)))}；"
+            f"official_entries={htmllib.escape(str(diag.get('official_entries', 0)))}；"
+            f"official_empty={htmllib.escape(str(diag.get('official_empty', 0)))}；"
+            f"html_undated={htmllib.escape(str(int(html_undated)))}；"
+            f"date_missing={htmllib.escape(str(int(date_missing)))}"
+            + (f"<br>errors: {htmllib.escape('; '.join(source_errors))}" if source_errors else "")
+            + (f"<br>rejected: {htmllib.escape('; '.join(rejected))}" if rejected else "")
+            + "</div>"
+        )
         if not items:
             empty_text = (
                 "近一個月未抓到足夠的重要政策發酵資訊，建議仍以主管機關公告為準。"
@@ -8451,6 +8586,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:{background};border-left:5px solid {color};border-radius:4px;">{title}</h2>
         <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">
           {rows}
+          {diagnostic_html}
         </div>"""
 
     policy_window = htmllib.escape(str(
@@ -9626,6 +9762,15 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     source_health = quotes.get("SOURCE_HEALTH", {}) or {}
     add("模型來源健康度", source_health.get("status", "fallback"),
         f"score={source_health.get('score', 0)}・缺失={','.join(source_health.get('failures') or []) or '無'}")
+
+    monitoring = quotes.get("MODEL_MONITORING", {}) or {}
+    rolling = monitoring.get("rolling_origin_metrics") or {}
+    if rolling:
+        add("rolling-origin 回測", monitoring.get("status", "fallback"),
+            f"origins={rolling.get('origins', 0)}・samples={rolling.get('samples', 0)}"
+            f"・top5 net={rolling.get('top5_avg_net_return_pct')}"
+            f"・ranking net={rolling.get('ranking_top5_avg_net_return_pct')}"
+            f"・Brier={rolling.get('brier_score')}")
 
     model_monitoring = quotes.get("MODEL_MONITORING", {}) or {}
     monitor_metrics = model_monitoring.get("metrics") or {}

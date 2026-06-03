@@ -24,6 +24,32 @@ def test_parse_twse_date_supports_roc_and_gregorian():
     assert mr._parse_twse_date("2026-06-02") == "2026-06-02"
 
 
+def test_save_model_history_compacts_before_dropping(monkeypatch, tmp_path):
+    path = tmp_path / "model_history.json"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", path)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_MAX_BYTES", 1600)
+    records = []
+    for day in range(1, 4):
+        records.append({
+            "session_date": f"2026-06-0{day}",
+            "taiex_close": 100 + day,
+            "large_unused_blob": "x" * 2000,
+            "stocks": {
+                str(code): {
+                    **_stock(100 + code),
+                    "large_unused_blob": "y" * 2000,
+                    "price_forecast": {"1d_close": {"expected_return_pct": 1}},
+                }
+                for code in range(3)
+            },
+        })
+    mr.save_model_history_records(records, sessions_to_keep=3)
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved
+    assert saved[0].get("compact") is True
+    assert "large_unused_blob" not in saved[0]
+
+
 def test_fetch_trading_sessions_merges_twse_and_long_history(monkeypatch):
     class Response:
         def raise_for_status(self):
@@ -492,6 +518,7 @@ def test_model_monitoring_penalizes_unreliable_probability():
     }})
     assert out["status"] == "error"
     assert out["ranking_penalty"] == 3.0
+    assert any("Brier score high" in alert for alert in out["alerts"])
 
 
 def test_model_monitoring_penalizes_bad_rolling_origin():
@@ -556,6 +583,7 @@ def test_rolling_origin_backtest_uses_prior_realized_rows():
     assert out["1d_close"]["origins"] > 0
     assert out["1d_close"]["samples"] > 0
     assert out["1d_close"]["top5_avg_net_return_pct"] is not None
+    assert out["1d_close"]["ranking_top5_avg_net_return_pct"] is not None
 
 
 def test_tw_official_detection_requires_publisher_domain():
@@ -609,6 +637,18 @@ def test_tw_intelligence_official_html_fallback(monkeypatch):
     assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_fallback_ok"] >= 1
 
 
+def test_official_html_parser_reads_date_from_parent_block():
+    html = (
+        "<ul><li><span>115-06-03</span>"
+        '<a href="/Page/policy">\u884c\u653f\u9662 \u65b0\u9752\u5b89 \u653f\u7b56 \u516c\u544a</a>'
+        "</li></ul>"
+    )
+    stats = {}
+    entries = mr._official_html_entries(
+        html, "https://www.ey.gov.tw/Page/list", "EY News", stats=stats)
+    assert entries[0]["published"].startswith("2026-06-03")
+
+
 def test_tw_intelligence_skips_undated_official_html(monkeypatch):
     class EmptyFeed:
         entries = []
@@ -633,6 +673,37 @@ def test_tw_intelligence_skips_undated_official_html(monkeypatch):
         dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["policy"] == []
     assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_undated"] >= 1
+
+
+def test_tw_intelligence_html_includes_diagnostics():
+    html = mr._render_tw_intelligence_html({
+        "policy_window": "2026-05-01 至 2026-06-01",
+        "medical_window": "2026-06-01 至 2026-06-01",
+        "policy": [],
+        "medical": [],
+        "diagnostics": {
+            "policy": {
+                "entries": 2,
+                "returned": 0,
+                "official_entries": 0,
+                "official_empty": 1,
+                "sources": {
+                    "EY News": {
+                        "html_undated": 1,
+                        "date_missing": 0,
+                        "errors": ["URLError"],
+                        "rejected_samples": [{
+                            "reason": "missing_date",
+                            "title": "policy headline",
+                        }],
+                    }
+                },
+            }
+        },
+    }, __import__("html"))
+    assert "診斷" in html
+    assert "html_undated=1" in html
+    assert "missing_date:policy headline" in html
 
 
 def test_source_health_flags_official_intelligence_outage():

@@ -3329,11 +3329,17 @@ TW_INTELLIGENCE_QUERIES = {
         "台灣 政策 行政院 補助 津貼 房貸 社福 產業 site:gov.tw",
         "台灣 政策 行政院 立法院 金管會 內政部 勞動部 經濟部",
         "台灣 新青安 育兒津貼 長照 電價 租屋 補助 政策",
+        "台灣 新青安 房貸 鬆綁 信用管制 青年安心成家",
+        "台灣 少子化 育兒津貼 托育補助 長照 社福 政策",
+        "台灣 政策 修法 草案 預告 上路 補貼 近月",
     ),
     "medical": (
         "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
         "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
         "台灣 醫界 健保 藥價 疫情 醫療政策 醫院",
+        "台中榮總 中榮 神外 代刀 住院 停約 健保署",
+        "健保署 醫院 停約 抵扣停約 住院 業務",
+        "自由健康網 中榮 神外 住院 停約",
     ),
 }
 
@@ -3346,12 +3352,15 @@ TW_INTELLIGENCE_RELEVANCE = {
     "policy": (
         "政策", "補助", "津貼", "新青安", "房貸", "租屋", "社福", "長照",
         "育兒", "托育", "勞保", "稅", "電價", "能源", "產業", "草案",
-        "行政院", "立法院", "金管會", "央行", "部會",
+        "行政院", "立法院", "金管會", "央行", "部會", "鬆綁", "管制",
+        "修法", "預告", "上路", "補貼", "少子化", "人口", "住宅",
     ),
     "medical": (
         "醫院", "醫療", "醫界", "住院", "門診", "急診", "停診", "醫師",
         "護理", "健保", "藥價", "藥品", "醫材", "病安", "衛福部", "健保署",
         "疾管署", "食藥署", "疫情", "疫苗", "傳染病", "臨床", "手術",
+        "中榮", "台中榮總", "神外", "代刀", "停約", "抵扣停約",
+        "裁罰", "健保申報", "停業", "醫療量能",
     ),
 }
 
@@ -3362,6 +3371,15 @@ def _tw_intelligence_window(now_tpe: dt.datetime) -> tuple[dt.datetime, dt.datet
     end = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
     lookback_days = 2 if local_now.weekday() == 0 else 1
     start = end - dt.timedelta(days=lookback_days)
+    label = f"{start:%Y-%m-%d} 至 {(end - dt.timedelta(seconds=1)):%Y-%m-%d}"
+    return start, end, label
+
+
+def _tw_policy_intelligence_window(now_tpe: dt.datetime) -> tuple[dt.datetime, dt.datetime, str]:
+    """Track still-developing Taiwan policy items for the past month."""
+    local_now = now_tpe.astimezone(TPE)
+    end = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start = end - dt.timedelta(days=30)
     label = f"{start:%Y-%m-%d} 至 {(end - dt.timedelta(seconds=1)):%Y-%m-%d}"
     return start, end, label
 
@@ -3379,8 +3397,8 @@ def _tw_intelligence_topic(kind: str, text: str) -> str:
         ("住宅金融", ("新青安", "房貸", "租屋", "房價", "信用管制")),
         ("育兒社福", ("育兒", "津貼", "托育", "長照", "勞保", "社福")),
         ("產業能源", ("半導體", "能源", "電價", "AI", "出口", "產業")),
+        ("醫院營運", ("醫院", "住院", "急診", "停診", "門診", "人力", "停約", "中榮", "神外")),
         ("健保藥政", ("健保", "藥價", "藥品", "醫材", "食藥署")),
-        ("醫院營運", ("醫院", "住院", "急診", "停診", "門診", "人力")),
         ("公共衛生", ("疫情", "疫苗", "疾管署", "傳染病", "食安")),
     )
     for topic, tokens in groups:
@@ -3393,14 +3411,26 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                                 per_kind_limit: int = 8) -> dict:
     """Fetch policy and medical headlines for awareness only; never feed stock models."""
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    start, end, label = _tw_intelligence_window(now_tpe)
-    output = {"window": label, "policy": [], "medical": []}
+    daily_start, daily_end, daily_label = _tw_intelligence_window(now_tpe)
+    policy_start, policy_end, policy_label = _tw_policy_intelligence_window(now_tpe)
+    output = {
+        "window": f"政策近一月：{policy_label}；醫界昨日：{daily_label}",
+        "policy_window": policy_label,
+        "medical_window": daily_label,
+        "policy": [],
+        "medical": [],
+    }
     for kind, queries in TW_INTELLIGENCE_QUERIES.items():
         candidates = []
+        start, end = (
+            (policy_start, policy_end) if kind == "policy"
+            else (daily_start, daily_end)
+        )
+        rss_when = "30d" if kind == "policy" else "7d"
         for query in queries:
             try:
-                feed = feedparser.parse(_gnews_rss(query, when="3d"))
-                for entry in feed.entries[:8]:
+                feed = feedparser.parse(_gnews_rss(query, when=rss_when))
+                for entry in feed.entries[:12]:
                     published = _parse_news_time(
                         entry.get("published") or entry.get("updated"),
                         now_tpe.astimezone(dt.timezone.utc),
@@ -3415,10 +3445,16 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                     link = str(entry.get("link") or "")
                     text = f"{title} {link}"
                     official = any(token.lower() in text.lower() for token in TW_OFFICIAL_SOURCE_TOKENS)
+                    scope = (
+                        "昨日新訊"
+                        if daily_start <= published < daily_end
+                        else "近月發酵"
+                    )
                     candidates.append({
                         "title": title[:180],
                         "link": link,
                         "published": published.strftime("%Y-%m-%d %H:%M"),
+                        "scope": scope,
                         "topic": _tw_intelligence_topic(kind, title),
                         "status": _tw_intelligence_status(title),
                         "source_grade": "官方" if official else "媒體",
@@ -3434,7 +3470,11 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 deduped[key] = item
         output[kind] = sorted(
             deduped.values(),
-            key=lambda item: (item["official"], item["published"]),
+            key=lambda item: (
+                item.get("scope") == "昨日新訊",
+                item["official"],
+                item["published"],
+            ),
             reverse=True,
         )[:per_kind_limit]
     return output
@@ -7652,15 +7692,21 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
     def section(kind: str, title: str, color: str, background: str) -> str:
         items = intelligence.get(kind) or []
         if not items:
+            empty_text = (
+                "近一個月未抓到足夠的重要政策發酵資訊，建議仍以主管機關公告為準。"
+                if kind == "policy"
+                else "昨日未抓到足夠的重要公開資訊，建議仍以主管機關公告為準。"
+            )
             rows = (
                 "<div style='padding:12px 14px;color:#64748b;font-size:13px;'>"
-                "昨日未抓到足夠的重要公開資訊，建議仍以主管機關公告為準。</div>"
+                f"{empty_text}</div>"
             )
         else:
             rows = "".join(
                 f"<div style='padding:12px 14px;border-bottom:1px solid #e2e8f0;'>"
                 f"<div style='font-size:12px;color:#64748b;margin-bottom:4px;'>"
                 f"{htmllib.escape(str(item.get('published', '')))} ・ "
+                f"{htmllib.escape(str(item.get('scope', '昨日新訊')))} ・ "
                 f"{htmllib.escape(str(item.get('topic', '')))} ・ "
                 f"<b style='color:{'#15803d' if item.get('official') else '#a16207'};'>"
                 f"{htmllib.escape(str(item.get('source_grade', '')))}</b> ・ "
@@ -7676,11 +7722,15 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
           {rows}
         </div>"""
 
-    window = htmllib.escape(str(intelligence.get("window") or "昨日"))
+    policy_window = htmllib.escape(str(
+        intelligence.get("policy_window") or intelligence.get("window") or "近一月"))
+    medical_window = htmllib.escape(str(
+        intelligence.get("medical_window") or intelligence.get("window") or "昨日"))
     return (
         f"<p style='font-size:12px;color:#64748b;margin:28px 0 4px;'>"
-        f"整理區間：{window}。以下為快速情報，不納入股價模型。</p>"
-        + section("policy", "台灣政策昨日走向", "#7c3aed", "#f5f3ff")
+        f"政策整理區間：{policy_window}；醫界整理區間：{medical_window}。"
+        f"以下為快速情報，不納入股價模型。</p>"
+        + section("policy", "台灣政策近月走向", "#7c3aed", "#f5f3ff")
         + section("medical", "台灣醫界昨日走向", "#0891b2", "#ecfeff")
     )
 
@@ -7904,6 +7954,30 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             raw_sign = "+" if raw_pct >= 0 else ""
             raw_note = (f' <span style="color:#94a3b8;font-size:12px;font-weight:400;">'
                         f'(原始訊號 {raw_sign}{raw_pct:.2f}%)</span>')
+        foreign_oi = _safe_number((quotes.get("TAIFEX_OI") or {}).get("foreign_oi_net"))
+        red_alerts = [
+            str(alert.get("title") or "")
+            for alert in quotes.get("ALERTS", []) or []
+            if alert.get("level") == "red"
+        ]
+        if final_pct >= 1.0:
+            open_direction = "偏多開高"
+        elif final_pct <= -1.0:
+            open_direction = "偏空開低"
+        else:
+            open_direction = "中性震盪"
+        if foreign_oi <= -20000 or red_alerts:
+            trade_posture = "保守防追高"
+            posture_reason = (
+                f"外資台指期 {foreign_oi:,.0f} 口偏空"
+                if foreign_oi <= -20000 else f"紅色警告：{'、'.join(red_alerts[:2])}"
+            )
+        elif abs(final_pct) >= 2.5:
+            trade_posture = "高波動控倉"
+            posture_reason = "預測開盤幅度大，容易出現開高/開低後反向震盪"
+        else:
+            trade_posture = "依開盤價位順勢觀察"
+            posture_reason = "開盤方向與風險警告未明顯衝突"
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
@@ -7939,6 +8013,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;">{taiex_pred['consensus']}</td>
           </tr>
         </table>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:8px 0 12px;">
+          <div style="font-size:13px;color:#0f172a;line-height:1.7;">
+            <b>開盤方向：</b>{open_direction}　
+            <b>交易立場：</b>{trade_posture}
+          </div>
+          <div style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px;">
+            ※ 開盤方向只描述「可能怎麼開」，交易立場則整合外資期貨、警告與波動風險；{posture_reason}。
+          </div>
+        </div>
         {(lambda c: f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
         """
 
@@ -8085,8 +8168,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 "</p>"
                 if top_score < 60 else ""
             )
+            title_text = (
+                f"台股觀察名單 Top {len(top5)}（低信心，相對排名）"
+                if top_score < 60
+                else f"台股客觀關注排名 Top {len(top5)}（由高至低）"
+            )
             smart_money_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">台股客觀關注排名 Top {len(top5)}（由高至低）</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
         {low_confidence_note}
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}

@@ -261,7 +261,7 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
     assert "LLM重複段" not in html
     stance_idx = html.find("我的明確立場")
     taifex_idx = html.find("外資台指期未平倉")
-    policy_idx = html.find("台灣政策昨日走向")
+    policy_idx = html.find("台灣政策近月走向")
     medical_idx = html.find("台灣醫界昨日走向")
     top5_idx = html.find("台股客觀關注排名 Top 1")
     assert -1 not in (stance_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
@@ -284,3 +284,4 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-03", "每日報")
     assert "今日無高信心標的" in html
     assert "相對排名" in html
+    assert "台股觀察名單 Top 5" in html

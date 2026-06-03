@@ -274,16 +274,50 @@ def test_fetch_tw_intelligence_is_bounded_and_prioritizes_official(monkeypatch):
     assert out["policy"][0]["official"] is True
 
 
+def test_tw_policy_intelligence_includes_recent_month_items(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "行政院研議新青安房貸鬆綁措施",
+            "link": "https://www.ey.gov.tw/policy",
+            "published": "Wed, 20 May 2026 08:00:00 GMT",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["policy"]
+    assert out["policy"][0]["scope"] == "近月發酵"
+    assert "新青安" in out["policy"][0]["title"]
+
+
+def test_tw_medical_intelligence_catches_hospital_suspension_terms(monkeypatch):
+    class Feed:
+        entries = [{
+            "title": "中榮神外住院業務遭健保署停約三個月",
+            "link": "https://health.example.com/news",
+            "published": "Tue, 02 Jun 2026 08:00:00 GMT",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
+    assert out["medical"]
+    assert out["medical"][0]["topic"] == "醫院營運"
+    assert out["medical"][0]["scope"] == "昨日新訊"
+
+
 def test_tw_intelligence_html_marks_awareness_only():
     html = mr._render_tw_intelligence_html({
-        "window": "2026-06-01 至 2026-06-01",
+        "policy_window": "2026-05-03 至 2026-06-02",
+        "medical_window": "2026-06-01 至 2026-06-01",
         "policy": [{"title": "行政院公告新制", "link": "https://gov.tw", "official": True,
                     "source_grade": "官方", "status": "已公告", "topic": "育兒社福",
-                    "published": "2026-06-01 09:00"}],
+                    "published": "2026-06-01 09:00", "scope": "近月發酵"}],
         "medical": [],
     }, __import__("html"))
-    assert "台灣政策昨日走向" in html
+    assert "台灣政策近月走向" in html
     assert "台灣醫界昨日走向" in html
+    assert "近月發酵" in html
     assert "不納入股價模型" in html
 
 

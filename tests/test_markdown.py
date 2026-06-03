@@ -78,6 +78,17 @@ def test_extract_stance_bearish():
     assert s["score"] == -5 and s["label"] == "偏空"
 
 
+def test_extract_stance_uses_explicit_stance_section_only():
+    text = (
+        "## 市場警告\n立場：偏空\n淨分 -9\n"
+        "\n## 十一、我的明確立場\n淨分 +5\n**立場：偏多**\n"
+        "\n## 十二、一句話總結\n偏多但控風險"
+    )
+    s = mr._extract_stance(text)
+    assert s["score"] == 5
+    assert s["label"] == "偏多"
+
+
 def test_extract_stance_missing():
     s = mr._extract_stance("沒有立場相關文字")
     assert s == {"label": None, "score": None}
@@ -206,6 +217,55 @@ def test_render_html_shows_attention_candidate_price_forecast():
     assert "None%" not in html
     assert "3日 1010.0 (970.0~1050.0)" in html
     assert "5日 1020.0 (960.0~1080.0)" in html
+
+
+def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
+    q = _full_quotes()
+    q["TAIFEX_OI"] = {
+        "date": "2026/06/02", "foreign_oi_net": -21000,
+        "invest_oi_net": 1000, "dealer_oi_net": -500,
+    }
+    q["TW_DAILY_INTELLIGENCE"] = {
+        "window": "2026-06-02 至 2026-06-02",
+        "policy": [{
+            "published": "2026-06-02", "topic": "住宅政策",
+            "official": True, "source_grade": "A", "status": "confirmed",
+            "title": "政策測試標題", "link": "https://example.com/policy",
+        }],
+        "medical": [{
+            "published": "2026-06-02", "topic": "醫療量能",
+            "official": False, "source_grade": "B", "status": "confirmed",
+            "title": "醫界測試標題", "link": "https://example.com/medical",
+        }],
+    }
+    q["TW_UNIVERSE_SNAPSHOT"] = [{
+        "code": "2330", "name": "台積電", "close": 1000.0, "day_pct": 1.0,
+        "attention_score": 72.5, "ranking_score": 72.5, "news_catalyst_score": 2.4,
+        "ranking_components": {
+            "structure": 60.0, "news_event": 1.9, "industry_neutral": 2.0,
+            "beat_market": 4.0, "expected_return": 4.6, "quality_penalty": 0.0,
+        },
+        "breakout": {"score": 70}, "smart_money": {"score": 60, "tags": ["外資連3買"]},
+        "price_forecast": {
+            "confidence": "中低",
+            "3d": {"expected_price": 1010.0, "lower": 970.0, "upper": 1050.0},
+            "5d": {"expected_price": 1020.0, "lower": 960.0, "upper": 1080.0},
+        },
+    }]
+    analysis = (
+        "## 十一、我的明確立場\n淨分 +5\n**立場：偏多**\n"
+        "\n## 十二、今日台股關注五檔\n### 9999 LLM重複段\n- 不應顯示\n"
+        "\n## 十三、一句話總結\n偏多但控風險"
+    )
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis, "2026-06-03", "每日報")
+    assert "LLM重複段" not in html
+    stance_idx = html.find("我的明確立場")
+    taifex_idx = html.find("外資台指期未平倉")
+    policy_idx = html.find("台灣政策昨日走向")
+    medical_idx = html.find("台灣醫界昨日走向")
+    top5_idx = html.find("台股客觀關注排名 Top 1")
+    assert -1 not in (stance_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
+    assert stance_idx < taifex_idx < policy_idx < medical_idx < top5_idx
 
 
 def test_render_html_warns_when_watchlist_scores_are_low_confidence():

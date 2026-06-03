@@ -70,6 +70,12 @@ def test_build_prompt_handles_none_in_history():
     assert "川習會落幕" in p  # critical news 仍保留
 
 
+def test_build_prompt_does_not_ask_llm_to_write_watchlist_section():
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "## 十二、今日台股關注五檔" not in p
+    assert "不要撰寫「今日台股關注五檔」段落" in p
+
+
 def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     """_build_prompt 若拋例外，call_llm_analysis 必須回 fallback 字串而不是 raise，
     確保 main() 仍能寄出基本版晨報。"""
@@ -79,15 +85,27 @@ def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     assert isinstance(out, str) and len(out) > 0
 
 
-def test_analysis_complete_enough_detects_truncated_watchlist():
+def test_analysis_complete_enough_detects_missing_report_ending():
     complete = (
-        "## 十二、今日台股關注五檔\n"
-        + "\n".join(f"### {2300+i} 測試\n- x" for i in range(5))
-        + "\n## 十三、一句話總結\n完成"
+        "## 十一、我的明確立場\n"
+        "淨分 +1\n立場：中性\n"
+        "\n## 十二、一句話總結\n完成"
     )
-    truncated = "## 十二、今日台股關注五檔\n2451 創見\n基本面：月"
+    truncated = "## 十一、我的明確立場\n淨分 +1\n立場：中性\n"
     assert mr._analysis_complete_enough(complete) is True
     assert mr._analysis_complete_enough(truncated) is False
+
+
+def test_strip_llm_watchlist_section_keeps_summary():
+    text = (
+        "## 十一、我的明確立場\n淨分 +1\n立場：中性\n"
+        "\n## 十二、今日台股關注五檔\n### 2330 台積電\n- 不應渲染\n"
+        "\n## 十三、一句話總結\n完成"
+    )
+    stripped = mr._strip_llm_watchlist_section(text)
+    assert "今日台股關注五檔" not in stripped
+    assert "2330 台積電" not in stripped
+    assert "一句話總結" in stripped
 
 
 def test_call_llm_analysis_retries_once_when_truncated(monkeypatch):
@@ -96,11 +114,11 @@ def test_call_llm_analysis_retries_once_when_truncated(monkeypatch):
     def fake_call(prompt):
         calls["n"] += 1
         if calls["n"] == 1:
-            return "## 十二、今日台股關注五檔\n2451 創見\n基本面：月"
+            return "## 十一、我的明確立場\n淨分 +1\n立場：中性\n"
         return (
-            "## 十二、今日台股關注五檔\n"
-            + "\n".join(f"{2300+i} 測試\n- x" for i in range(5))
-            + "\n## 十三、一句話總結\n完成"
+            "## 十一、我的明確立場\n"
+            "淨分 +1\n立場：中性\n"
+            "\n## 十二、一句話總結\n完成"
         )
 
     monkeypatch.setattr(mr, "_call_llm_text", fake_call)

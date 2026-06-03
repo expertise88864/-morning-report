@@ -6631,17 +6631,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 ※「營收YoY」為該公司最新月營收的去年同月年增率（真實數據，TWSE 月營收彙總）；「-」代表無資料
 ※「大戶」為持股 ≥ 400 張的大戶占集保總數比例（TDCC 集保股權分散表，週更）；比例高 = 籌碼集中在大戶/主力手上
 
-【★★ 台股客觀關注排名 Top 15（固定公式由高至低排序；「今日台股關注五檔」只能使用前五名）】
+【★★ 台股客觀關注排名 Top 15（固定公式由高至低排序；信件底部 Top5 卡片使用前五名）】
 {smart_money_block}
 ※ 客觀排名分 = 結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件分 + 產業中性修正 + 勝過大盤機率修正 + 3 日預期報酬修正 + 模型品質、流動性、機率校準、特徵漂移與來源健康度折扣。
 ※ 中括號 [籌X/動X/營X/EPSX] 為原始結構因子貢獻分；括號內各欄位為最終排名各分項，總分可重現、可回測。
-※ 目標：篩選**未來 3-5 個工作天值得關注**的候選。LLM 只能解釋 Python 固定公式的排序，不可自行加分或重排。
+※ 目標：篩選**未來 3-5 個工作天值得關注**的候選。信件底部 Top5 由 Python 固定公式直接渲染；LLM 不另寫五檔段落。
 ※ 大戶ΔWoW / EPS年增 需累積歷史才完整(剛上線可能多為「-」);此時以籌碼+動能+月營收為主即可。
 
 【Python 已整合新聞後的五檔候選與股價預測】
 {attention_top_block}
 ※ 這五檔已將「結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 + 模型品質」整合完成。3 日 / 5 日預測價為可回測的保守點估計，方括號為 80% 參考區間。
-※ 報告的「今日台股關注五檔」必須依客觀排名分由高至低使用這五檔及其價格，不得自行替換或重排。若因營收 YoY < -15%、明確負面公告或資料不足排除，必須逐檔寫明原因，並依客觀排名分順位遞補。
+※ 這些資料只供「我的明確立場」引用風險與市場主題；不要撰寫「今日台股關注五檔」段落，因為信件底部 Top5 卡片會由 Python 統一顯示。
 
 【短線候選初步追蹤（晨報快照間報酬，尚未完成正式 walk-forward 校準）】
 {breakout_tracking_block}
@@ -6664,7 +6664,7 @@ R8. **嚴禁使用技術面術語**：不可提 K 線、均線、MACD、KD、RSI
 R9. **不可用全形冒號之外的全形標點**（書名號、感嘆號除外）
 R10. **繁體中文，台灣財經用語**：寫「漲跌幅」不寫「涨幅」，寫「成交量」不寫「成交额」
 R11. **重大地緣政治事件強制分析**：若上方新聞清單的 ★★★ 重大事件中出現 [geo_critical] 類別（川習會、台海、晶片出口管制、軍演、戰爭等），**必須**在「昨夜三大重點」**且**「總體經濟與政策環境 (C)」段明確點名該事件、引用新聞中的具體內容（人物、發言、數字），並分析其對 2330 / 00662 / 台股開盤的傳導影響。**禁止省略、禁止只用一句話帶過**。若清單中確實沒有此類事件，才可略過。
-R12. **個股動態以「具體事實 + 透明標記」為原則**:「科技板塊脈動」與「今日台股關注五檔」每一條敘述,**優先用具體事實**(明確產品/合約/數字/法說發言/SEC 表單編號 / MOPS 公告)。
+R12. **個股動態以「具體事實 + 透明標記」為原則**:「科技板塊脈動」每一條敘述,**優先用具體事實**(明確產品/合約/數字/法說發言/SEC 表單編號 / MOPS 公告)。
 - **A 級(有具體事實)**:照寫,信心可給「中-高」。範例:「Broadcom 宣布 Anthropic 80 億美元 ASIC 合約,盤後 +4.5%」
 - **B 級(只有方向性訊號,如分析師喊買 / 動能標題 / 法人買超)**:**可寫,但須明確標註「資訊有限」並降為「低-中」信心**。範例:「NVIDIA 昨日外資買超 12,000 張(籌碼面正向,但今日無具體公司消息,信心:中-低)」
 - **C 級(只有「揭露意外真相」「迎來轉折」「市場關注」這類沒內容的標題)**:不要寫。
@@ -6799,37 +6799,7 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 > **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
-## 十二、今日台股關注五檔（**依 Python 客觀排名分由高至低，必寫五檔**）
-
-**核心方法**：以「Python 已整合新聞後的五檔候選與股價預測」為唯一清單。Python 已整合籌碼、動能、營收、EPS、明確新聞事件、產業中性、勝過大盤機率、3 日預期報酬與模型品質。你的工作是依序解釋，不是自行重排熱門股。
-
-**選股原則**：
-1. **必須照 Python 五檔候選順序寫**。只有硬性排除條件成立時才能按客觀排名分遞補，且必須說明。
-2. **動能優先**：本清單**不懲罰已大漲的過熱股**——若一檔爆發力分數高且 5日漲幅大（如 +15%），代表多方力道強勁，可入選（但須在挑選理由誠實說明「短期漲幅已大、留意急跌風險」，並把信心對應調整）。
-3. **催化消息**：只能引用候選列出的催化，或上方新聞/MOPS 中可逐字找到的具體事件。不可自行建立供應鏈關聯。
-4. **基本面佐證**：引用真實「營收YoY/MoM」與「EPS」（上表數字，禁止瞎掰；無資料寫「資料未提供」）。
-5. 5 檔盡量**分散產業**（避免 5 檔都是同一主題，降低集中風險），但若某主題（如 AI 伺服器）訊號壓倒性強，可佔 2-3 檔。
-
-**禁止事項**：
-- **只能選上方「台股市值前 100 大」清單裡的股票**，不可選清單外或杜撰代號。
-- 不可用技術面術語（K 線、均線、MACD）；但 5日/MA20/突破 等統計數字可當「動能/結構」描述。
-- 不可只看「昨日漲幅」就選——爆發力分數是籌碼+動能+基本面的**綜合**，不是單看漲幅。
-- 營收 YoY 大幅衰退（< −15%）且無強催化者不選。
-
-每檔用 **### 代號 公司名** 三級標題，下方固定寫 **5 個 bullet**，每個 bullet ≤ 45 字，禁止加第 6 個 bullet：
-- **業務**：公司主力產品，1 句。
-- **分數來源**：引用客觀排名分與結構/新聞/勝率/報酬/校準重點。
-- **籌碼與基本面**：引用法人、30 日外資、營收 YoY/MoM、EPS。
-- **催化與信心**：只引用候選列出的催化；無則寫「無明確催化」。信心必寫高/中/低；過熱股必降信心。
-- **預測股價**：逐字引用 3 日與 5 日預測價及 80% 參考區間。
-
-若 Python 五檔的客觀排名分全部 < 60 或模型信心多為「低」，本段開頭第一句必須寫：
-> 今日五檔皆屬「相對排名」而非高信心買點，短線追價風險偏高。
-
-第五檔分析完後**獨立成段**寫風險警示：
-> 以上為基於籌碼、動能、營收與消息面的「機率傾斜」候選，非保證；短線預測本質不確定性高，實際走勢受開盤外資掛單、突發新聞、大盤系統性風險影響，僅供參考不構成投資建議。
-
-## 十三、一句話總結
+## 十二、一句話總結
 
 20 字內。給一句**具體可執行**的結論（含立場 + 動作）。
 
@@ -7017,18 +6987,27 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 """
 
 
+def _strip_llm_watchlist_section(text: str) -> str:
+    """Remove duplicated LLM-written Taiwan Top5; Python renders the canonical card."""
+    if not isinstance(text, str):
+        return ""
+    import re as _re
+    pattern = (
+        r"\n*#{1,6}\s*"
+        r"(?:[一二三四五六七八九十零\d]+、)?"
+        r"(?:今日台股(?:客觀)?關注五檔|台股關注五檔)"
+        r".*?"
+        r"(?=\n#{1,6}\s*(?:[一二三四五六七八九十零\d]+、)?一句話(?:總結|結論)|\Z)"
+    )
+    return _re.sub(pattern, "\n", text, flags=_re.S).strip()
+
+
 def _analysis_complete_enough(text: str) -> bool:
     """Detect obvious report truncation before rendering/sending."""
-    body = text or ""
-    if "一句話總結" not in body:
+    body = _strip_llm_watchlist_section(text or "")
+    if "我的明確立場" not in body:
         return False
-    if "今日台股關注五檔" in body:
-        tail = body.split("今日台股關注五檔", 1)[-1]
-        # Prefer ### stock headings, but tolerate plain "2330 台積電" headings.
-        import re as _re
-        if len(_re.findall(r"(?:^|\n)\s*(?:###\s*)?\d{4}\s+\S+", tail)) < 5:
-            return False
-    return True
+    return "一句話總結" in body
 
 
 def _call_llm_text(prompt: str) -> str:
@@ -7142,8 +7121,8 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
             prompt
             + "\n\n【長度控制追加規則】\n"
               "上一版容易過長。請完整輸出所有章節，但更短：科技板塊 6-8 條；"
-              "今日台股關注五檔每檔只寫 5 個 bullet、每 bullet 45 字內；"
-              "必須寫完第五檔、風險警示與一句話總結。"
+              "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
+              "必須寫完我的明確立場與一句話總結。"
         )
         return _call_llm_text(concise_prompt)
     except Exception as e:
@@ -7372,14 +7351,21 @@ def _extract_stance(text: str) -> dict:
     out: dict = {"label": None, "score": None}
     if not isinstance(text, str):
         return out
-    m = _re.search(r"淨分\s*([+\-]?\d+)", text)
+    section_match = _re.search(
+        r"#{1,6}\s*(?:[一二三四五六七八九十零\d]+、)?我的明確立場\b"
+        r".*?(?=\n#{1,6}\s*(?:[一二三四五六七八九十零\d]+、)?|\Z)",
+        text,
+        _re.S,
+    )
+    scoped = section_match.group(0) if section_match else text
+    m = _re.search(r"淨分\s*([+\-]?\d+)", scoped)
     if m:
         try:
             out["score"] = int(m.group(1))
         except ValueError:
             pass
     # 「立場：偏多」「立場: 中性偏多（...」「立場：偏空 / 防守為主」皆吃
-    m = _re.search(r"立場\s*[：:]\s*\**\s*([一-鿿/]+)", text)
+    m = _re.search(r"立場\s*[：:]\s*\**\s*([一-鿿/]+)", scoped)
     if m:
         label = m.group(1).strip()
         # 取「/」或標點前的第一個有效詞，避免吃到後面括號的解釋
@@ -8358,16 +8344,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         """
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
-    stance = _extract_stance(analysis)
-    summary_text = _extract_summary(analysis)
+    analysis_for_render = _strip_llm_watchlist_section(analysis)
+    stance = _extract_stance(analysis_for_render)
+    summary_text = _extract_summary(analysis_for_render)
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
     summary_bar = _render_summary_bar(summary_text, _htmllib)
 
-    # ===== 4. LLM 分析（Markdown → HTML 後加樣式 + 三檔卡片化） =====
-    analysis_html = _md_to_html(analysis)
+    # ===== 4. LLM 分析（Markdown → HTML 後加樣式） =====
+    analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _wrap_stance(analysis_html)
-    analysis_html = _wrap_tw_picks(analysis_html)
 
     if LLM_PROVIDER == "gemini":
         llm_label = f"gemini/{GEMINI_MODEL}"
@@ -8470,19 +8456,19 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {breadth_html}
 
-            {smart_money_html}
-
             {midterm_html}
+
+            <div style="margin-top:32px;">{analysis_html}</div>
 
             {night_html}
 
-            {taifex_html}
-
             {mops_html}
+
+            {taifex_html}
 
             {tw_intelligence_html}
 
-            <div style="margin-top:32px;">{analysis_html}</div>
+            {smart_money_html}
 
           </td></tr>
 

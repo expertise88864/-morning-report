@@ -2328,6 +2328,80 @@ def fetch_twse_market_breadth() -> dict:
         return {}
 
 
+def fetch_twse_short_balance(target_codes: Optional[set] = None) -> dict[str, dict]:
+    """
+    抓 TWSE「融券借券賣出餘額」(TWT93U,全市場一次請求),算空方餘額與日變化。
+
+    為什麼有用:借券賣出餘額 = 機構放空部位(類似 short interest)。
+      - 餘額**驟降(還券/回補)** → 空方認輸,短線常見軋空 / 反彈訊號(偏多)
+      - 餘額**續增 + 股價漲** → 空方加碼但被軋,潛在軋空燃料
+    融券(散戶放空)+ 借券賣出(機構放空)皆為**股數**,合計為總空方餘額。
+
+    端點欄位(兩個區塊各有「前日餘額/今日餘額」,故用「第一次/第二次出現」定位):
+      代號 / 名稱 / [融券] 前日餘額,賣出,買進,現券,今日餘額,限額 / [借券] 前日餘額,當日賣出,當日還券,當日調整,當日餘額,可限額,備註
+    回傳 {code: {short_balance, short_balance_prev, short_balance_chg, margin_short, sbl_short}}。
+    失敗回 {}(不影響晨報)。
+    """
+    today = dt.datetime.now(TPE).date()
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+               "Accept": "application/json"}
+    for back in range(1, 8):
+        d = today - dt.timedelta(days=back)
+        if d.weekday() >= 5:
+            continue
+        date_str = d.strftime("%Y%m%d")
+        url = (f"https://www.twse.com.tw/exchangeReport/TWT93U"
+               f"?response=json&date={date_str}")
+        try:
+            r = requests.get(url, timeout=20, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            if data.get("stat") != "OK":
+                continue
+            rows = data.get("data") or []
+            fields = [str(f).strip() for f in (data.get("fields") or [])]
+            if not rows:
+                continue
+            # 欄位定位:前日餘額 出現兩次(融券、借券);今日餘額=融券、當日餘額=借券
+            prev_idxs = [i for i, f in enumerate(fields) if f == "前日餘額"]
+            code_i = next((i for i, f in enumerate(fields) if "代號" in f), 0)
+            mshort_now_i = next((i for i, f in enumerate(fields) if f == "今日餘額"), 6)
+            sbl_now_i = next((i for i, f in enumerate(fields) if f == "當日餘額"), 12)
+            mshort_prev_i = prev_idxs[0] if prev_idxs else 2
+            sbl_prev_i = prev_idxs[1] if len(prev_idxs) >= 2 else 8
+            max_i = max(mshort_now_i, sbl_now_i, mshort_prev_i, sbl_prev_i, code_i)
+            out: dict[str, dict] = {}
+            for row in rows:
+                if len(row) <= max_i:
+                    continue
+                code = str(row[code_i]).strip()
+                if not (len(code) == 4 and code.isdigit()):    # 只取上市普通股 4 碼
+                    continue
+                if target_codes is not None and code not in target_codes:
+                    continue
+                m_now = _to_int(row[mshort_now_i])
+                m_prev = _to_int(row[mshort_prev_i])
+                s_now = _to_int(row[sbl_now_i])
+                s_prev = _to_int(row[sbl_prev_i])
+                total_now = m_now + s_now
+                total_prev = m_prev + s_prev
+                out[code] = {
+                    "short_balance": total_now,
+                    "short_balance_prev": total_prev,
+                    "short_balance_chg": total_now - total_prev,
+                    "margin_short": m_now,
+                    "sbl_short": s_now,
+                }
+            if out:
+                print(f"[short_bal] {date_str} 取得 {len(out)} 檔融券+借券賣出餘額")
+                return out
+        except Exception as e:
+            print(f"[short_bal] {date_str} 失敗: {e}", file=sys.stderr)
+            continue
+    print("[short_bal] 所有日期皆失敗", file=sys.stderr)
+    return {}
+
+
 def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                             tdcc_wow_map: Optional[dict[str, float]] = None,
                             margin_per_stock: Optional[dict[str, dict]] = None,
@@ -2360,6 +2434,7 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
     revenue_consensus = load_revenue_consensus()       # 選填：外部市場預期基準
     eps_map = fetch_tw_eps()                           # 季度 EPS（綜合損益表，全市場）
     tdcc = fetch_tdcc_major_holders(target_codes)     # 大戶持股比例（一次請求全市場）
+    short_bal = fetch_twse_short_balance(target_codes)  # 融券+借券賣出餘額（空方,全市場）
     snapshot: list[dict] = []
     codes = list(universe.keys())
 
@@ -2432,10 +2507,17 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 rev, revenue_consensus.get(code))
             eps_data = eps_map.get(code, {})
             tdcc_data = tdcc.get(code, {})
+            sb_data = short_bal.get(code, {})
             info = universe[code]
             # 籌碼悄悄站隊原料:法人連買天數、大戶 WoW、個股融資變化
             streaks = _calc_inst_streaks(inst_30.get("daily") or [])
             tdcc_wow = tdcc_wow_map.get(code)
+            # 空方回補比:-(空方餘額日變化)/近20日均量 ×100
+            #   正 = 淨回補/還券(空方認輸,短線偏多);負 = 空方加碼(壓力或軋空燃料)
+            _short_chg = sb_data.get("short_balance_chg")
+            short_cover_ratio = (round(-_short_chg / avg20_vol * 100, 2)
+                                 if (_short_chg is not None and avg20_vol and avg20_vol > 0)
+                                 else None)
             margin_data = margin_per_stock.get(code) or {}
             # 業務簡介：優先用硬編的詳細版，否則退而用 OpenAPI 的產業別
             desc = TW0050_CONSTITUENTS.get(code) or (
@@ -2470,6 +2552,10 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 # 法人單日淨買占近 20 日均量 %(標準化法人信心;+20% = 淨買達日均量 1/5)
                 "inst_buy_vol_ratio": (round(inst_data.get("total", 0) / avg20_vol * 100, 2)
                                        if avg20_vol and avg20_vol > 0 else None),
+                # 空方餘額(融券+借券賣出,股)+ 回補比(正=空方還券回補,短線偏多)
+                "short_balance": sb_data.get("short_balance"),
+                "short_balance_chg": sb_data.get("short_balance_chg"),
+                "short_cover_ratio": short_cover_ratio,
                 # 30 日累積（張）— 看中期籌碼方向
                 "foreign_30d_lot": round(inst_30.get("foreign_cum", 0) / 1000, 0),
                 "invest_30d_lot":  round(inst_30.get("invest_cum", 0) / 1000, 0),
@@ -4793,8 +4879,8 @@ MODEL_FEATURES = (
     "foreign_streak", "invest_streak", "tdcc_wow_pct", "margin_change_lot",
     "rev_yoy_pct", "rev_mom_pct", "rev_surprise_pct", "eps_percentile",
     "news_catalyst_score", "trade_value", "slippage_bps",
-    # 新增高訊號特徵:相對同業強度、法人單日淨買占均量(標準化法人信心)
-    "rel_strength_5d", "inst_buy_vol_ratio",
+    # 新增高訊號特徵:相對同業強度、法人單日淨買占均量(標準化法人信心)、空方回補比
+    "rel_strength_5d", "inst_buy_vol_ratio", "short_cover_ratio",
 )
 
 MODEL_TARGETS = {
@@ -5383,7 +5469,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         "foreign_lot", "invest_lot", "dealer_lot", "total_lot", "foreign_30d_lot",
         "invest_30d_lot", "foreign_streak", "invest_streak", "tdcc_wow_pct",
         "margin_change_lot", "rev_yoy_pct", "rev_mom_pct", "eps_percentile",
-        "rel_strength_5d", "inst_buy_vol_ratio",
+        "rel_strength_5d", "inst_buy_vol_ratio", "short_cover_ratio",
+        "short_balance", "short_balance_chg",
         "rev_expected", "rev_surprise_pct", "rev_expectation_method",
         "trade_value", "volume", "slippage_bps", "liquidity_eligible",
         "feature_drift_penalty", "source_health_penalty", "model_monitor_penalty",
@@ -7311,6 +7398,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                 eps = s.get("eps")
                 tot_lot = s.get("total_lot", 0)
                 f30 = s.get("foreign_30d_lot", 0)
+                rel = s.get("rel_strength_5d")
+                scr = s.get("short_cover_ratio")
                 def _f(v, suf="", d="-"):
                     return f"{v:+.1f}{suf}" if isinstance(v, (int, float)) else d
                 bk_rows.append(
@@ -7330,7 +7419,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                     f"營{comp.get('revenue',0):.0f}/EPS{comp.get('eps',0):.0f}] | "
                     f"昨日法人{tot_lot:+.0f}張 30日外資{f30:+.0f}張 外連{fs:+d}投連{is_:+d} "
                     f"大戶ΔWoW{_f(wow,'%')} 站隊{sm.get('score',0)} | "
-                    f"5日{_f(p5,'%')} MA20{_f(d20,'%')} 量比{(f'{vr20:.2f}x' if vr20 else '-')} | "
+                    f"5日{_f(p5,'%')} MA20{_f(d20,'%')} 相對同業{_f(rel,'%')} "
+                    f"量比{(f'{vr20:.2f}x' if vr20 else '-')} 借券回補{_f(scr,'%')} | "
                     f"營收YoY{_f(yoy,'%')} MoM{_f(mom,'%')} EPS{(f'{eps:.2f}' if eps is not None else '-')}"
                 )
             smart_money_block = "\n".join(bk_rows)
@@ -7707,6 +7797,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 ※ 中括號 [籌X/動X/營X/EPSX] 為原始結構因子貢獻分；括號內各欄位為最終排名各分項，總分可重現、可回測。
 ※ 目標：篩選**未來 3-5 個工作天值得關注**的候選。信件底部 Top5 由 Python 固定公式直接渲染；LLM 不另寫五檔段落。
 ※ 大戶ΔWoW / EPS年增 需累積歷史才完整(剛上線可能多為「-」);此時以籌碼+動能+月營收為主即可。
+※ 相對同業 = 該股 5 日漲幅 − 同產業中位數(>0 = 比同業強,輪動領先);借券回補 = -(融券+借券賣出餘額日變化)/20日均量 %(正 = 空方還券回補,常見軋空/反彈;負 = 空方加碼放空)。
 
 【Python 已整合新聞後的五檔候選與股價預測】
 {attention_top_block}

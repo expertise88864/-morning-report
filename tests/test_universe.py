@@ -346,3 +346,47 @@ def test_backfill_model_history_is_incremental_and_tagged(monkeypatch):
     assert report["estimated_records_added"] == 2
     assert report["remaining_sessions"] == 1
     assert saved["records"] == records
+
+
+# === 融券借券賣出餘額 (TWT93U) 空方訊號 ===
+
+_TWT93U = {
+    "stat": "OK",
+    "fields": ["代號", "名稱", "前日餘額", "賣出", "買進", "現券", "今日餘額",
+               "次一營業日限額", "前日餘額", "當日賣出", "當日還券", "當日調整",
+               "當日餘額", "次一營業日可限額", "備註"],
+    "data": [
+        ["0050", "元大台灣50", "1,303,000", "47,000", "21,000", "0", "1,329,000",
+         "x", "106,077,000", "6,000", "0", "0", "106,083,000", "x", " "],
+        ["2330", "台積電", "500,000", "0", "100,000", "0", "400,000",
+         "x", "8,000,000", "0", "2,000,000", "0", "6,000,000", "x", " "],
+        ["00878", "某ETF", "0", "0", "0", "0", "0", "x", "0", "0", "0", "0", "0", "x", " "],
+    ],
+}
+
+
+def test_short_balance_parses_and_computes_change(monkeypatch):
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: _FakeResp(_TWT93U))
+    out = mr.fetch_twse_short_balance({"0050", "2330"})
+    # 2330: 融券400k + 借券6M = 6.4M;前日 0.5M+8M=8.5M → chg = -2.1M(回補)
+    assert out["2330"]["short_balance"] == 6_400_000
+    assert out["2330"]["short_balance_chg"] == -2_100_000
+    assert out["2330"]["sbl_short"] == 6_000_000
+    # 0050: 1.329M + 106.083M = 107.412M
+    assert out["0050"]["short_balance"] == 107_412_000
+    assert "00878" not in out      # 5 位代號(非 4 碼普通股)排除
+
+
+def test_short_balance_fallback_on_failure(monkeypatch):
+    def boom(url, **kw):
+        raise mr.requests.exceptions.ConnectionError("down")
+    monkeypatch.setattr(mr.requests, "get", boom)
+    assert mr.fetch_twse_short_balance() == {}
+
+
+def test_short_cover_ratio_feature_registered():
+    assert "short_cover_ratio" in mr.MODEL_FEATURES
+    snap = mr._snapshot_for_model([{
+        "code": "2330", "close": 1000.0, "short_cover_ratio": 12.5,
+        "short_balance": 6_400_000, "short_balance_chg": -2_100_000}])
+    assert snap["2330"].get("short_cover_ratio") == 12.5

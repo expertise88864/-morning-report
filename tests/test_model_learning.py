@@ -348,6 +348,40 @@ def test_tw_intelligence_filters_low_value_health_noise(monkeypatch):
     assert out["medical"] == []
 
 
+def test_tw_medical_intelligence_drops_routine_admin_and_health_ed(monkeypatch):
+    """例行公告(空床數/招考/免費採檢/衛教)即使來自官方也不進醫界區,只留事件性硬新聞。"""
+    class Feed:
+        entries = [
+            {"title": "【公告】本院住院數及空床數參考一覽表",
+             "link": "https://kln.mohw.gov.tw/news",
+             "published": "Tue, 02 Jun 2026 03:51:00 GMT"},
+            {"title": "招考及錄取 - 榮民總醫院",
+             "link": "https://www.vghtc.gov.tw/jobs",
+             "published": "Tue, 02 Jun 2026 10:20:00 GMT"},
+            {"title": "衛福部宣布入境無症狀旅客免費採檢",
+             "link": "https://www.mohw.gov.tw/news",
+             "published": "Tue, 02 Jun 2026 05:25:00 GMT"},
+            {"title": "牙醫師提醒嘴破超過2週留意口腔癌黃金警訊",
+             "link": "https://hch.gov.tw/news",
+             "published": "Tue, 02 Jun 2026 03:54:00 GMT"},
+            {"title": "中榮神外住院業務遭健保署裁罰停約三個月",
+             "link": "https://news.ltn.com.tw/news",
+             "published": "Tue, 02 Jun 2026 05:30:00 GMT"},
+        ]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
+    titles = [item["title"] for item in out["medical"]]
+    # 事件性硬新聞(裁罰/停約)留下
+    assert any("停約" in t for t in titles)
+    # 例行/行政/衛教全部剔除
+    assert not any(("空床" in t or "一覽表" in t) for t in titles)
+    assert not any(("招考" in t or "錄取" in t) for t in titles)
+    assert not any("免費採檢" in t for t in titles)
+    assert not any("口腔癌" in t for t in titles)
+
+
 def test_tw_policy_timeline_keeps_most_important_update(monkeypatch):
     class Feed:
         entries = [{
@@ -675,8 +709,8 @@ def test_tw_intelligence_skips_undated_official_html(monkeypatch):
     assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_undated"] >= 1
 
 
-def test_tw_intelligence_html_includes_diagnostics():
-    html = mr._render_tw_intelligence_html({
+def test_tw_intelligence_html_hides_diagnostics_by_default(monkeypatch):
+    payload = {
         "policy_window": "2026-05-01 至 2026-06-01",
         "medical_window": "2026-06-01 至 2026-06-01",
         "policy": [],
@@ -700,10 +734,21 @@ def test_tw_intelligence_html_includes_diagnostics():
                 },
             }
         },
-    }, __import__("html"))
-    assert "診斷" in html
-    assert "html_undated=1" in html
-    assert "missing_date:policy headline" in html
+    }
+    # 預設:診斷字串(entries/errors/rejected)不得外洩到正式信件。
+    monkeypatch.delenv("TW_INTELLIGENCE_DEBUG", raising=False)
+    monkeypatch.delenv("MORNING_REPORT_DEBUG", raising=False)
+    html = mr._render_tw_intelligence_html(payload, __import__("html"))
+    assert "診斷" not in html
+    assert "html_undated" not in html
+    assert "missing_date" not in html
+
+    # 設了除錯環境變數後才顯示,供開發排查。
+    monkeypatch.setenv("TW_INTELLIGENCE_DEBUG", "1")
+    html_debug = mr._render_tw_intelligence_html(payload, __import__("html"))
+    assert "診斷" in html_debug
+    assert "html_undated=1" in html_debug
+    assert "missing_date:policy headline" in html_debug
 
 
 def test_source_health_flags_official_intelligence_outage():

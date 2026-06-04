@@ -78,6 +78,19 @@ def test_gnews_rss_builds_encoded_url():
     assert "%E5%8F%B0%E7%A9%8D%E9%9B%BB" in url   # 台積電 已 URL 編碼
 
 
+def test_other_sector_feeds_registered():
+    """『九、其他類股資訊』取材的非科技類股來源,須以「類股-」前綴併入 RSS_FEEDS。"""
+    expected = {
+        "金融保險", "航運", "傳產原物料", "生技醫療",
+        "電信公用", "重電綠能", "觀光內需", "軍工汽車營建",
+    }
+    assert expected.issubset(set(mr.OTHER_SECTOR_QUERIES))
+    for label in mr.OTHER_SECTOR_QUERIES:
+        key = f"類股-{label}"
+        assert key in mr.RSS_FEEDS, f"{key} 未併入 RSS_FEEDS"
+        assert mr.RSS_FEEDS[key].startswith("https://news.google.com/rss/search?q=")
+
+
 def test_fetch_news_includes_company_queries(monkeypatch):
     """fetch_news 應對 GOOGLE_NEWS_COMPANIES 每家查詢,產出帶 company_label 的項目。"""
     import time as _t

@@ -7,7 +7,7 @@
 - **2330 三模型開盤價預測**（漲跌幅 1:1 + 60日比值回歸 + ADR 衰減模型）
 - 加權指數開盤預測、TAIFEX 外資台指期未平倉、TWSE 法人籌碼
 - **台股市值前 100 大**動態 universe（每日自 TWSE OpenAPI 重算市值排名）+ 三大法人 + 30 日累積籌碼 + **月營收年增率** + **大戶持股比例**（TDCC 集保），LLM 從中挑選「今日關注三檔」
-- **預測自我校正**：每日把預測寫入歷史（保留 90 天），隔天用實際開盤誤差做模型加權 + bias 修正（見第四節），並在信中附「預測準確度回顧」表
+- **預測自我校正**：每日把預測寫入歷史（保留 450 天），隔天用實際開盤誤差做模型加權 + bias 修正（見第四節），並在信中附「預測準確度回顧」表
 - 新聞自動去重（同事件多來源重貼只留一則）
 - 24 小時內國際與台灣財經新聞速報、SEC 8-K 公告
 - LLM（預設 DeepSeek）撰寫的繁體中文分析與明確立場
@@ -37,7 +37,7 @@ workflow 預設 `LLM_PROVIDER: deepseek`（中文分析品質佳、每月約 NT$
 
 > DeepSeek 思考模式：workflow 的 `DEEPSEEK_REASONING_EFFORT`（預設 `high`）控制 v4-pro 的推理深度，可設 `medium` / `low` 省成本，或 `off` 完全關閉。
 
-> 💡 建議至少同時設定 `GEMINI_API_KEY` 當免費備援——主 provider 失敗時程式不會自動跨 provider 降級，但 Gemini 內部已有多模型降級鏈。若所有 LLM 都失敗，仍會寄出含原始行情與新聞清單的基本版晨報。
+> 💡 建議至少同時設定 `GEMINI_API_KEY` 當免費備援——主 provider 失敗時程式會嘗試切到 Gemini，Gemini 內部也有多模型降級鏈。若所有 LLM 都失敗，仍會寄出含原始行情與新聞清單的基本版晨報。
 
 ### 步驟 3：建 GitHub repo 並上傳檔案
 
@@ -135,7 +135,7 @@ python morning_report.py
 
 ### 預測自我校正（`calibrate_predictions`）
 
-晨報每天會把預測寫進 `state/history.json`（保留 **90 天**），隔天自動讀回做兩件事：
+晨報每天會把預測寫進 `state/history.json`（保留 **450 天**），隔天自動讀回做兩件事：
 
 1. **三模型 MAE 反比加權**：用各 model 近 20 日的平均絕對誤差，誤差越小權重越高，算出 `weighted_final`。樣本不足時退回等權中位數。
 2. **bias 修正**：對 00662 合理價、2330 `weighted_final`、加權指數開盤，各自算近 20 日「(實際開盤 − 預測) / 預測」的平均偏誤，套 `修正後 = 原值 × (1 + 偏誤)`（偏誤夾在 ±2%）。
@@ -173,7 +173,7 @@ python morning_report.py
 
 ## 七、台股五檔預測學習與新聞事件管線
 
-- 每日保存市值前 100 大完整 point-in-time 快照至 `state/model_history.json`，最多保留 400 個交易日，並設 7 MB 上限避免 repo 無限成長。
+- 每日保存市值前 100 大完整 point-in-time 快照至 `state/model_history.json`，最多保留 520 個交易日，並設 14 MB 上限避免 repo 無限成長。
 - 冷啟動時每次最多回填 12 個 TWSE `MI_INDEX` 官方歷史交易日，分批累積到 60 日，不會讓每日 GitHub Actions 超時。免費端點沒有歷史每日發行股數，因此免費回填會標記為 `estimated_current_shares`；若放入 `state/twse_top100_archive.json` 正式 archive，則會優先使用真正 point-in-time 市值資料，完整處理倖存者偏誤。
 - 交易日使用 TWSE `FMTQIK` 官方資料，並合併 `^TWII` 兩年歷史索引補足回測區間。
 - 五檔候選分開預測「勝過大盤機率」與「預期報酬」，使用標準化 ridge 模型；樣本不足時才退回保守公式。

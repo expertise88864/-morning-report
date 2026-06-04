@@ -40,11 +40,10 @@ if errorlevel 1 (
 )
 
 if not "%FIRST_RUN%"=="1" goto :stage
-REM adopt remote history without overwriting your local edited files
+REM adopt remote history without overwriting your local edited files,
+REM including state/*. They may appear as local modifications after setup.
 git branch -M %REMOTE_BRANCH%
 git reset --soft origin/%REMOTE_BRANCH%
-REM restore the state/ folder from remote so it is not seen as "deleted"
-git checkout -- state 2>nul
 echo [setup] Done. Using branch: %REMOTE_BRANCH%
 echo.
 

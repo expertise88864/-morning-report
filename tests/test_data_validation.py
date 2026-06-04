@@ -127,6 +127,55 @@ def test_call_llm_analysis_retries_once_when_truncated(monkeypatch):
     assert "一句話總結" in out
 
 
+def test_call_llm_analysis_falls_back_when_retry_still_truncated(monkeypatch):
+    calls = {"n": 0}
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "gemini")
+
+    def fake_call(prompt):
+        calls["n"] += 1
+        return "## 十一、我的明確立場\n淨分 +1\n立場：中性\n"
+
+    monkeypatch.setattr(mr, "_call_llm_text", fake_call)
+    out = mr.call_llm_analysis(_empty_quotes(), {"error": "x"}, {"error": "x"}, [])
+    assert calls["n"] == 2
+    assert "LLM 服務暫時不可用" in out
+
+
+def test_redact_secret_text_removes_configured_secrets_and_query_keys(monkeypatch):
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "gemini-secret")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "deepseek-secret")
+    text = (
+        "https://generativelanguage.googleapis.com/v1beta/models/x:generateContent"
+        "?key=gemini-secret Authorization: Bearer deepseek-secret"
+    )
+    redacted = mr._redact_secret_text(text)
+    assert "gemini-secret" not in redacted
+    assert "deepseek-secret" not in redacted
+    assert "[REDACTED]" in redacted
+
+
+def test_gemini_call_sends_key_header_not_query(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "gemini-secret")
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+
+    def fake_post(url, json, timeout, headers=None):
+        captured["url"] = url
+        captured["headers"] = headers or {}
+        return FakeResponse()
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    assert mr._call_gemini_once("gemini-test", "prompt") == "ok"
+    assert "gemini-secret" not in captured["url"]
+    assert captured["headers"]["x-goog-api-key"] == "gemini-secret"
+
+
 def test_detect_us_holiday_memorial_day():
     """週二早上跑時,QQQ.date 應為週一;若為週五則代表週一 US 休市(Memorial Day 之類)。"""
     import datetime as dt

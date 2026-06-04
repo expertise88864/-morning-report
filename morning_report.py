@@ -1,7 +1,7 @@
 """
 美股收盤晨報自動化
 =================
-每日台灣時間 07:00 抓取昨晚美股 (QQQ / TSM / SPY) 收盤價，
+每日台灣時間 06:00 抓取昨晚美股 (QQQ / TSM / SPY) 收盤價，
 換算 00662 公允淨值、雙模型預測 2330 開盤合理價，
 並用 LLM API 產生新聞速報與分析，最後以 Gmail SMTP 寄出。
 
@@ -10,7 +10,7 @@
   - "deepseek"  → DeepSeek V4 Pro/Flash（NT$3/月，中文超強，推薦）
   - "anthropic" → Claude Sonnet（NT$46/月，品質最佳）
 
-執行條件 (cron 已處理)：台灣時間週二至週六 07:00。週一另判斷。
+執行條件 (cron 已處理)：台灣時間週一至週六 06:00。週一另判斷為週末綜合報。
 """
 
 from __future__ import annotations
@@ -125,6 +125,36 @@ DEEPSEEK_EXTRACTOR_MODEL = os.environ.get("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-
 # 僅對 v4-pro / reasoner 生效，可顯著提升分析推理深度（成本略升）。
 DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
+
+
+def _redact_secret_text(text: str) -> str:
+    """Remove configured secrets and common API-key query params from diagnostic text."""
+    if not text:
+        return ""
+    out = str(text)
+    for secret in (GEMINI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, GMAIL_APP_PASSWORD):
+        if secret and len(secret) >= 6:
+            out = out.replace(secret, "[REDACTED]")
+    import re as _re
+    out = _re.sub(r"([?&](?:key|api_key|token)=)[^&\s]+", r"\1[REDACTED]", out,
+                  flags=_re.I)
+    out = _re.sub(r"(Authorization:\s*Bearer\s+)[^\s]+", r"\1[REDACTED]", out,
+                  flags=_re.I)
+    return out
+
+
+def _http_error_summary(err: requests.exceptions.HTTPError) -> str:
+    """Return an HTTP error summary that is useful in logs without leaking request secrets."""
+    response = err.response
+    code = response.status_code if response is not None else None
+    body = ""
+    try:
+        body = (response.text or "")[:400] if response is not None else ""
+    except Exception:
+        body = ""
+    if body:
+        return _redact_secret_text(f"HTTP {code}: {body}")
+    return _redact_secret_text(f"HTTP {code}" if code is not None else str(err))
 
 # RSS 新聞來源（中、英、Fed）
 def _gnews_rss(query: str, when: str = "2d") -> str:
@@ -3948,9 +3978,15 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
     try:
         response = requests.get(url, timeout=timeout, headers=headers)
     except requests.exceptions.SSLError:
+        stats["ssl_error"] = stats.get("ssl_error", 0) + 1
+        if os.environ.get("ALLOW_INSECURE_OFFICIAL_SSL") != "1":
+            raise
         stats["ssl_relaxed"] = stats.get("ssl_relaxed", 0) + 1
-        requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
-        response = requests.get(url, timeout=timeout, headers=headers, verify=False)
+        import warnings
+        import urllib3
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
+            response = requests.get(url, timeout=timeout, headers=headers, verify=False)
     stats["http_status"] = response.status_code
     stats["content_type"] = response.headers.get("content-type", "")
     response.raise_for_status()
@@ -8092,7 +8128,7 @@ def _call_gemini_once(model: str, prompt: str) -> str:
     if not GEMINI_API_KEY:
         raise RuntimeError("缺 GEMINI_API_KEY 環境變數")
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{model}:generateContent?key={GEMINI_API_KEY}")
+           f"{model}:generateContent")
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -8100,7 +8136,8 @@ def _call_gemini_once(model: str, prompt: str) -> str:
             "maxOutputTokens": max(8192, LLM_REPORT_MAX_TOKENS),
         },
     }
-    r = requests.post(url, json=payload, timeout=90)
+    r = requests.post(url, json=payload, timeout=90,
+                      headers={"x-goog-api-key": GEMINI_API_KEY})
     r.raise_for_status()
     data = r.json()
     candidates = data.get("candidates") or []
@@ -8135,17 +8172,17 @@ def _call_gemini(prompt: str) -> str:
                 return _call_gemini_once(model, prompt)
             except requests.exceptions.HTTPError as e:
                 code = e.response.status_code if e.response is not None else None
-                last_err = e
+                last_err = RuntimeError(_http_error_summary(e))
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
                     print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
                     time.sleep(wait)
                     continue
-                print(f"[llm] {model} 最終失敗: {e}", file=sys.stderr)
+                print(f"[llm] {model} 最終失敗: {last_err}", file=sys.stderr)
                 break  # 進入下一個 fallback 模型
             except Exception as e:
                 last_err = e
-                print(f"[llm] {model} 異常: {e}", file=sys.stderr)
+                print(f"[llm] {model} 異常: {_redact_secret_text(str(e))}", file=sys.stderr)
                 if attempt < 3:
                     time.sleep(5)
                     continue
@@ -8237,8 +8274,10 @@ def _call_deepseek(prompt: str) -> str:
                     body = (e.response.text or "")[:400] if e.response is not None else ""
                 except Exception:
                     body = ""
-                last_err = RuntimeError(f"HTTP {code}: {body}" if body else str(e))
-                print(f"[llm] DeepSeek {model} HTTP {code}: {body}", file=sys.stderr)
+                last_err = RuntimeError(_redact_secret_text(
+                    f"HTTP {code}: {body}" if body else str(e)))
+                print(f"[llm] DeepSeek {model} HTTP {code}: {_redact_secret_text(body)}",
+                      file=sys.stderr)
                 if code == 400 and not slim:
                     # 400 → 改精簡 payload(去 reasoning + 降 tokens)立即重試,排除參數/長度問題
                     print("[llm] DeepSeek 400 → 改用精簡 payload 重試", file=sys.stderr)
@@ -8253,7 +8292,8 @@ def _call_deepseek(prompt: str) -> str:
                 break
             except Exception as e:
                 last_err = e
-                print(f"[llm] DeepSeek {model} 異常: {e}", file=sys.stderr)
+                print(f"[llm] DeepSeek {model} 異常: {_redact_secret_text(str(e))}",
+                      file=sys.stderr)
                 if attempt < 3:
                     time.sleep(5)
                     continue
@@ -8270,7 +8310,7 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
     return f"""## ⚠️ LLM 服務暫時不可用
 
 今日早晨 LLM API 多次重試均失敗，已自動降級寄出基本版報告。錯誤訊息：
-`{type(err).__name__}: {str(err)[:200]}`
+`{type(err).__name__}: {_redact_secret_text(str(err))[:200]}`
 
 ## 一、原始新聞清單（供你自行判讀）
 
@@ -8446,7 +8486,10 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
               "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
               "必須寫完我的明確立場與一句話總結。"
         )
-        return _call_llm_text(concise_prompt)
+        text = _call_llm_text(concise_prompt)
+        if _analysis_complete_enough(text):
+            return text
+        raise RuntimeError("LLM concise retry output incomplete")
     except Exception as e:
         # 跨供應商備援:主供應商(通常 DeepSeek)整個掛掉時,若有 Gemini 金鑰就改用 Gemini,
         # 避免單一 API 故障(如 400/限流)導致整份分析空白。
@@ -8455,9 +8498,11 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
                 print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
                 return _call_gemini(prompt)
             except Exception as e2:
-                print(f"[llm] Gemini 備援也失敗: {e2}", file=sys.stderr)
+                print(f"[llm] Gemini 備援也失敗: {_redact_secret_text(str(e2))}",
+                      file=sys.stderr)
                 return _fallback_analysis_text(news, e)
-        print(f"[llm] 全部失敗，使用備援文字: {e}", file=sys.stderr)
+        print(f"[llm] 全部失敗，使用備援文字: {_redact_secret_text(str(e))}",
+              file=sys.stderr)
         return _fallback_analysis_text(news, e)
 
 
@@ -10396,7 +10441,7 @@ def main() -> int:
     earnings_proximity = check_tsmc_earnings_proximity()
     print(f"[main] 法說會狀態: {earnings_proximity['note']}")
 
-    # 5.8 (Opt 1) 載入歷史記憶（90 天，供預測校準與回溯；prompt 仍只顯示近 7 天敘事流）
+    # 5.8 (Opt 1) 載入歷史記憶（450 天，供預測校準與回溯；prompt 仍只顯示近 7 天敘事流）
     history = load_history_state(days=450)
 
     # 5.9 (Task B) 抓 TAIFEX 夜盤台指期

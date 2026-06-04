@@ -6876,15 +6876,40 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
             "detail": f"SOX 單日漲 {sox_pct:.2f}%（> 3.5%）。歷史上連續急漲後常有獲利了結。",
         })
 
-    # 3. 外資台指期淨空
+    # 3. 外資台指期淨空 —— 看「方向(日變化)+ 現貨對照」而非只看「水位」。
+    #    重要:外資現貨大買時的期貨淨空多為「避險」,不是看空(故大淨空也可能上漲);
+    #    只有空單『較前日新增』且現貨同步調節,才是真正的偏空壓力。
     foreign_oi = taifex_oi.get("foreign_oi_net")
+    oi_chg = taifex_oi.get("foreign_oi_chg")            # 日變化(口),負=空單增加
+    spot_net = taifex_oi.get("foreign_spot_net_lot")    # 外資現貨買超合計(張)
     if foreign_oi is not None:
         if foreign_oi < -20000:
-            alerts.append({
-                "level": "red",
-                "title": "外資台指期重壓淨空",
-                "detail": f"外資台指期未平倉 {foreign_oi:+,} 口（< -2 萬）。今日台股開低或盤中下殺機率高。",
-            })
+            chg_str = f"、較前日 {oi_chg:+,.0f} 口" if isinstance(oi_chg, (int, float)) else ""
+            increasing = isinstance(oi_chg, (int, float)) and oi_chg <= -5000   # 空單明顯增加
+            hedge = isinstance(spot_net, (int, float)) and spot_net > 3000        # 現貨明顯買超
+            if increasing and not hedge:
+                alerts.append({
+                    "level": "red",
+                    "title": "外資台指期淨空『再增』(實空壓)",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str}(空單較前日新增),"
+                               f"且現貨未見明顯買超 → 偏空壓力較實,今日易開低或盤中下殺。"),
+                })
+            elif hedge:
+                alerts.append({
+                    "level": "yellow",
+                    "title": "外資台指期淨空(多為避險,方向參考性低)",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str},但外資現貨同步買超 "
+                               f"{spot_net:+,.0f} 張 → 期貨淨空多為『避險現貨多單』而非看空,"
+                               f"不宜單憑此判定開低(近期同樣大淨空但台股上漲即為此故)。"),
+                })
+            else:
+                alerts.append({
+                    "level": "orange",
+                    "title": "外資台指期淨空(既有部位,非新增壓力)",
+                    "detail": (f"外資台指期未平倉 {foreign_oi:+,} 口{chg_str},水位雖大但"
+                               f"{'大致持平' if isinstance(oi_chg,(int,float)) else '日變化不明'}"
+                               f" → 屬既有空單,方向訊號偏弱,僅供參考。"),
+                })
         elif foreign_oi > 30000:
             alerts.append({
                 "level": "yellow",
@@ -10590,6 +10615,21 @@ def main() -> int:
     except Exception as e:
         print(f"[midterm] 整體失敗: {e}", file=sys.stderr)
     quotes["MIDTERM"] = midterm
+
+    # 6.55 外資台指期「日變化」+ 外資現貨買超 → 讓淨空警告判讀「方向」而非只看「水位」。
+    #   (外資現貨大買 + 期貨淨空 = 多為避險,非看空;只有空單『新增』且現貨同步調節才是實空壓)
+    try:
+        if isinstance(taifex_oi, dict) and taifex_oi.get("foreign_oi_net") is not None:
+            prev_oi = next((h.get("taifex_foreign_oi") for h in reversed(history)
+                            if h.get("taifex_foreign_oi") is not None), None)
+            if prev_oi is not None:
+                taifex_oi["foreign_oi_prev"] = prev_oi
+                taifex_oi["foreign_oi_chg"] = taifex_oi["foreign_oi_net"] - prev_oi
+            if tw0050:
+                taifex_oi["foreign_spot_net_lot"] = round(
+                    sum(_safe_number(s.get("foreign_lot")) for s in tw0050), 0)
+    except Exception as e:
+        print(f"[main] 外資期貨變化/現貨彙整失敗: {e}", file=sys.stderr)
 
     # 6.6 (Task H) 偵測過熱警告（含 US_HOLIDAY + 過熱/超賣警示）
     alerts = detect_market_alerts(quotes, fair, predictions, taifex_oi)

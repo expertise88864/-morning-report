@@ -313,3 +313,40 @@ def test_deepseek_400_body_in_error(monkeypatch):
     with pytest.raises(RuntimeError) as ei:
         mr._call_deepseek("prompt")
     assert "context length exceeded" in str(ei.value)
+
+
+# === 外資台指期淨空警告:看「方向(日變化)+ 現貨對照」而非只看水位 ===
+
+def _short_oi_alert(oi, chg, spot):
+    alerts = mr.detect_market_alerts(
+        {"MACRO": {}}, {}, {},
+        {"foreign_oi_net": oi, "foreign_oi_chg": chg, "foreign_spot_net_lot": spot})
+    return next((a for a in alerts if "台指期淨空" in a["title"]), None)
+
+
+def test_short_oi_hedge_downgrades_to_yellow():
+    """大淨空但外資現貨大買 → 多為避險,降為 yellow、不喊開低(對應『昨天同樣淨空卻漲』)。"""
+    a = _short_oi_alert(-66772, -2000, 86505)
+    assert a and a["level"] == "yellow"
+    assert "避險" in a["title"] or "避險" in a["detail"]
+
+
+def test_short_oi_increasing_is_red():
+    """空單較前日明顯新增 + 現貨未買超 → 真實空壓,red。"""
+    a = _short_oi_alert(-66772, -12000, -5000)
+    assert a and a["level"] == "red"
+    assert "再增" in a["title"] or "新增" in a["detail"]
+
+
+def test_short_oi_stable_is_orange():
+    """水位大但日變化持平、無明顯現貨買超 → 既有部位,orange、方向訊號弱。"""
+    a = _short_oi_alert(-66772, -800, -500)
+    assert a and a["level"] == "orange"
+    assert "既有" in a["title"] or "方向訊號偏弱" in a["detail"]
+
+
+def test_short_oi_no_change_data_still_warns():
+    """無日變化/現貨資料時仍給保守警告(orange),不崩。"""
+    a = mr.detect_market_alerts({"MACRO": {}}, {}, {}, {"foreign_oi_net": -66772})
+    hit = next((x for x in a if "台指期淨空" in x["title"]), None)
+    assert hit is not None

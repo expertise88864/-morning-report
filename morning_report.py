@@ -3923,11 +3923,28 @@ def _official_html_entries(html_text: str,
     return entries
 
 
-def _fetch_official_text(url: str, stats: dict, timeout: int = 12) -> str:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "application/rss+xml, application/xml, text/html;q=0.9",
-    }
+# feedparser 對「HTTP 宣告編碼 ≠ XML 內宣告」「content-type 非 XML」會設 bozo=True,
+# 但這兩種其實是「警告」——feedparser 仍成功解析出 entries。視為良性,有 entries 就採用。
+_BENIGN_FEED_BOZO = {"CharacterEncodingOverride", "NonXMLContentType"}
+
+
+# 完整瀏覽器式 headers:部分官方站(如健保署 NHI)會擋非瀏覽器 UA 回 403,
+# 補 Accept-Language / Referer 可降低被擋機率。
+_OFFICIAL_HTTP_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+    "Accept": "application/rss+xml, application/xml, text/html;q=0.9, */*;q=0.8",
+    "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+}
+
+
+def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
+    """抓官方來源,回傳 response 物件(呼叫端可取 .content 餵 feedparser 或 .text 解 HTML)。"""
+    from urllib.parse import urlsplit
+    headers = dict(_OFFICIAL_HTTP_HEADERS)
+    parts = urlsplit(url)
+    if parts.scheme and parts.netloc:
+        headers["Referer"] = f"{parts.scheme}://{parts.netloc}/"   # 帶同站 Referer 降低被擋
     try:
         response = requests.get(url, timeout=timeout, headers=headers)
     except requests.exceptions.SSLError:
@@ -3937,7 +3954,7 @@ def _fetch_official_text(url: str, stats: dict, timeout: int = 12) -> str:
     stats["http_status"] = response.status_code
     stats["content_type"] = response.headers.get("content-type", "")
     response.raise_for_status()
-    return response.text
+    return response
 
 
 def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
@@ -3945,9 +3962,24 @@ def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
     old_timeout = socket.getdefaulttimeout()
     try:
         socket.setdefaulttimeout(timeout)
-        return feedparser.parse(url)
+        # 用瀏覽器式 UA + Accept-Language 讓 feedparser 自身抓取也較不易被官方站擋(403)
+        return feedparser.parse(
+            url,
+            agent=_OFFICIAL_HTTP_HEADERS["User-Agent"],
+            request_headers={"Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"]})
     finally:
         socket.setdefaulttimeout(old_timeout)
+
+
+def _feed_usable(feed) -> tuple[list, bool]:
+    """回傳 (entries, usable)。良性 bozo(編碼/content-type 警告)只要有 entries 就算可用。"""
+    entries = list(getattr(feed, "entries", []) or [])
+    bozo = bool(getattr(feed, "bozo", False))
+    if not bozo:
+        return entries, bool(entries)
+    exc = getattr(feed, "bozo_exception", None)
+    benign = (type(exc).__name__ in _BENIGN_FEED_BOZO) if exc is not None else False
+    return entries, bool(entries and benign)
 
 
 def _official_source_entries(source: dict, stats: dict) -> list[dict]:
@@ -3955,31 +3987,34 @@ def _official_source_entries(source: dict, stats: dict) -> list[dict]:
     url = str(source.get("url") or "")
     html_url = str(source.get("html_url") or url)
     source_name = str(source.get("name") or "Official")
+
+    # 1) feedparser 直接抓 URL
     feed = _feedparser_parse_url_with_timeout(url)
-    entries = list(getattr(feed, "entries", []) or [])
-    bozo = bool(getattr(feed, "bozo", False))
-    if bozo:
+    entries, usable = _feed_usable(feed)
+    if bool(getattr(feed, "bozo", False)):
         stats["bozo"] = stats.get("bozo", 0) + 1
         exc = getattr(feed, "bozo_exception", None)
-        if exc:
+        if exc and not usable:    # 良性警告(已採用)不記為 error,避免噪音
             stats.setdefault("errors", []).append(type(exc).__name__)
-    if entries and not bozo:
+    if usable:
         stats["feed_ok"] = stats.get("feed_ok", 0) + 1
         return entries
+
+    # 2) 用 requests 抓「bytes」再餵 feedparser(bytes 比 str 更能正確判斷編碼,修 CharacterEncodingOverride)
     try:
-        text = _fetch_official_text(url, stats)
-        parsed = feedparser.parse(text)
-        entries = list(getattr(parsed, "entries", []) or [])
-        if getattr(parsed, "bozo", False):
-            stats["bozo"] = stats.get("bozo", 0) + 1
-        if entries:
+        resp = _fetch_official_response(url, stats)
+        parsed = feedparser.parse(resp.content)
+        entries, usable = _feed_usable(parsed)
+        if usable:
             stats["requests_feed_ok"] = stats.get("requests_feed_ok", 0) + 1
             return entries
     except Exception as e:
         stats.setdefault("errors", []).append(type(e).__name__)
+
+    # 3) 最後退化:把公開 HTML 列表頁當清單解析
     try:
-        text = _fetch_official_text(html_url, stats)
-        entries = _official_html_entries(text, html_url, source_name, stats=stats)
+        resp = _fetch_official_response(html_url, stats)
+        entries = _official_html_entries(resp.text, html_url, source_name, stats=stats)
         if entries:
             stats["html_fallback_ok"] = stats.get("html_fallback_ok", 0) + 1
         return entries

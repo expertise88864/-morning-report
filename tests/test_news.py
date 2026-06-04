@@ -188,3 +188,48 @@ def test_fetch_candidate_company_news(monkeypatch):
 
 def test_fetch_candidate_company_news_empty():
     assert mr.fetch_candidate_company_news([]) == []
+
+
+# ---------- 官方情報源:良性 bozo(編碼/content-type 警告)應採用 entries ----------
+
+class _FakeFeed:
+    def __init__(self, entries, bozo=False, exc_name=None):
+        self.entries = entries
+        self.bozo = bozo
+        self.bozo_exception = type(exc_name, (Exception,), {})() if exc_name else None
+
+
+def test_feed_usable_benign_bozo_with_entries():
+    # CharacterEncodingOverride / NonXMLContentType 是警告,有 entries 就算可用
+    for benign in ("CharacterEncodingOverride", "NonXMLContentType"):
+        entries, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], True, benign))
+        assert usable is True and len(entries) == 1
+
+
+def test_feed_usable_fatal_bozo_not_usable():
+    # SAXParseException 是真的解析失敗 → 不可用(會走 fallback)
+    _, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], True, "SAXParseException"))
+    assert usable is False
+
+
+def test_feed_usable_clean_feed():
+    _, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], False, None))
+    assert usable is True
+    _, usable_empty = mr._feed_usable(_FakeFeed([], False, None))
+    assert usable_empty is False
+
+
+def test_official_source_entries_accepts_benign_bozo(monkeypatch):
+    """EY/CDC 類:feedparser 設 CharacterEncodingOverride/NonXMLContentType 但有 entries
+    → 直接採用,不再誤判失敗、不記為 error。"""
+    monkeypatch.setattr(
+        mr, "_feedparser_parse_url_with_timeout",
+        lambda url, timeout=12: _FakeFeed(
+            [{"title": "行政院公告", "link": "https://ey.gov.tw/x"}],
+            True, "CharacterEncodingOverride"))
+    stats = {}
+    out = mr._official_source_entries(
+        {"name": "EY News", "url": "https://www.ey.gov.tw/x"}, stats)
+    assert len(out) == 1
+    assert stats.get("feed_ok") == 1
+    assert not stats.get("errors")     # 良性警告不記為錯誤

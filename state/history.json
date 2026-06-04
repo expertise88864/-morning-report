@@ -2107,5 +2107,562 @@
       "8046": 82.11,
       "8210": 71.51
     }
+  },
+  {
+    "date": "2026-06-05",
+    "generated_at": "2026-06-05T07:07:56.498171+08:00",
+    "target_session_date": "2026-06-05",
+    "weekday": "Fri",
+    "qqq_pct": -0.48,
+    "tsm_pct": 1.88,
+    "spy_pct": 0.38,
+    "vix": 15.4,
+    "sox_pct": -2.15,
+    "usdtwd": 31.481,
+    "fair_00662": 122.18,
+    "model1_2330": 2429.95,
+    "model2_2330": 2438.08,
+    "model3_2330": 2406.21,
+    "model4_2330": 2408.38,
+    "momentum_5d_pct_2330": 3.92,
+    "weighted_final_2330": 2417.96,
+    "foreign_top10_total": 97960.0,
+    "pred_taiex": 45373.8,
+    "pred_0050": 105.8,
+    "last_0050": 106.1,
+    "night_txf_pct": 0.52,
+    "taifex_foreign_oi": -69476,
+    "critical_news": [
+      "美元走勢繫聯準會政策與數據 布朗兄弟哈里曼聚焦 - 財經新聞 - PChome Online 新聞 - PChome Online 新聞",
+      "華爾街不再只看非農？市場焦點轉向通膨與Fed決策 - news.cnyes.com",
+      "川習會後中美「各自爭取時間」 張登及：台海短期相對穩定 - 梅花新聞網",
+      "張五岳：台海風險大致可控 但北京若有「這些動作」值得注意",
+      "中東局勢進展提振投資信心　美股道瓊標普500指數收高"
+    ],
+    "earnings_proximity": "normal",
+    "ex_div_today": {},
+    "breakout_candidates": [
+      {
+        "code": "2451",
+        "name": "創見",
+        "score": 57,
+        "attention_score": 47.0,
+        "ranking_score": 47.0,
+        "ranking_components": {
+          "structure": 44.33,
+          "news_event": 0.07,
+          "industry_neutral": 6.0,
+          "beat_market": 0.61,
+          "expected_return": -0.73,
+          "quality_penalty": 0.0,
+          "liquidity_penalty": -0.28,
+          "feature_drift_penalty": -0.0,
+          "source_health_penalty": -0.0,
+          "model_monitor_penalty": -3.0,
+          "overheat_penalty": -0.0
+        },
+        "attention_rank": 1,
+        "news_catalyst_score": 0.11,
+        "close": 357.0,
+        "price_forecast": {
+          "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
+          "regime": "neutral",
+          "confidence": "低",
+          "1d_open": {
+            "label": "隔日開盤",
+            "horizon_days": 1,
+            "expected_price": 353.83,
+            "expected_return_pct": -0.89,
+            "lower": 347.83,
+            "upper": 365.42,
+            "interval_pct": 5.12,
+            "beat_market_probability": 0.547,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "1d_close": {
+            "label": "隔日收盤",
+            "horizon_days": 1,
+            "expected_price": 354.91,
+            "expected_return_pct": -0.59,
+            "lower": 345.56,
+            "upper": 368.0,
+            "interval_pct": 5.12,
+            "beat_market_probability": 0.547,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "3d": {
+            "label": "3日收盤",
+            "horizon_days": 3,
+            "expected_price": 355.53,
+            "expected_return_pct": -0.41,
+            "lower": 339.87,
+            "upper": 364.9,
+            "interval_pct": 8.87,
+            "beat_market_probability": 0.538,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 893,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "5d": {
+            "label": "5日收盤",
+            "horizon_days": 5,
+            "expected_price": 359.24,
+            "expected_return_pct": 0.63,
+            "lower": 338.92,
+            "upper": 366.24,
+            "interval_pct": 11.45,
+            "beat_market_probability": 0.49,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 693,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          }
+        }
+      },
+      {
+        "code": "2890",
+        "name": "永豐金",
+        "score": 54,
+        "attention_score": 44.08,
+        "ranking_score": 44.08,
+        "ranking_components": {
+          "structure": 42.0,
+          "news_event": 0.13,
+          "industry_neutral": 3.6,
+          "beat_market": 0.58,
+          "expected_return": 0.96,
+          "quality_penalty": 0.0,
+          "liquidity_penalty": -0.19,
+          "feature_drift_penalty": -0.0,
+          "source_health_penalty": -0.0,
+          "model_monitor_penalty": -3.0,
+          "overheat_penalty": -0.0
+        },
+        "attention_rank": 2,
+        "news_catalyst_score": 0.21,
+        "close": 33.15,
+        "price_forecast": {
+          "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
+          "regime": "neutral",
+          "confidence": "低",
+          "1d_open": {
+            "label": "隔日開盤",
+            "horizon_days": 1,
+            "expected_price": 32.49,
+            "expected_return_pct": -1.98,
+            "lower": 32.3,
+            "upper": 33.82,
+            "interval_pct": 2.29,
+            "beat_market_probability": 0.546,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "1d_close": {
+            "label": "隔日收盤",
+            "horizon_days": 1,
+            "expected_price": 32.66,
+            "expected_return_pct": -1.47,
+            "lower": 32.16,
+            "upper": 34.03,
+            "interval_pct": 2.29,
+            "beat_market_probability": 0.546,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "3d": {
+            "label": "3日收盤",
+            "horizon_days": 3,
+            "expected_price": 33.59,
+            "expected_return_pct": 1.32,
+            "lower": 31.96,
+            "upper": 34.17,
+            "interval_pct": 3.97,
+            "beat_market_probability": 0.536,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 893,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "5d": {
+            "label": "5日收盤",
+            "horizon_days": 5,
+            "expected_price": 33.89,
+            "expected_return_pct": 2.22,
+            "lower": 31.86,
+            "upper": 34.3,
+            "interval_pct": 5.13,
+            "beat_market_probability": 0.493,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 693,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          }
+        }
+      },
+      {
+        "code": "2884",
+        "name": "玉山金",
+        "score": 52,
+        "attention_score": 42.26,
+        "ranking_score": 42.26,
+        "ranking_components": {
+          "structure": 40.44,
+          "news_event": 0.13,
+          "industry_neutral": 3.03,
+          "beat_market": 0.59,
+          "expected_return": 1.24,
+          "quality_penalty": 0.0,
+          "liquidity_penalty": -0.17,
+          "feature_drift_penalty": -0.0,
+          "source_health_penalty": -0.0,
+          "model_monitor_penalty": -3.0,
+          "overheat_penalty": -0.0
+        },
+        "attention_rank": 3,
+        "news_catalyst_score": 0.21,
+        "close": 33.45,
+        "price_forecast": {
+          "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
+          "regime": "neutral",
+          "confidence": "低",
+          "1d_open": {
+            "label": "隔日開盤",
+            "horizon_days": 1,
+            "expected_price": 33.01,
+            "expected_return_pct": -1.32,
+            "lower": 32.7,
+            "upper": 34.17,
+            "interval_pct": 1.56,
+            "beat_market_probability": 0.549,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "1d_close": {
+            "label": "隔日收盤",
+            "horizon_days": 1,
+            "expected_price": 33.14,
+            "expected_return_pct": -0.94,
+            "lower": 32.54,
+            "upper": 34.34,
+            "interval_pct": 1.56,
+            "beat_market_probability": 0.549,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "3d": {
+            "label": "3日收盤",
+            "horizon_days": 3,
+            "expected_price": 33.95,
+            "expected_return_pct": 1.49,
+            "lower": 32.41,
+            "upper": 34.57,
+            "interval_pct": 2.7,
+            "beat_market_probability": 0.537,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 893,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "5d": {
+            "label": "5日收盤",
+            "horizon_days": 5,
+            "expected_price": 34.28,
+            "expected_return_pct": 2.49,
+            "lower": 32.38,
+            "upper": 34.7,
+            "interval_pct": 3.49,
+            "beat_market_probability": 0.493,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 693,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          }
+        }
+      },
+      {
+        "code": "2882",
+        "name": "國泰金",
+        "score": 52,
+        "attention_score": 41.77,
+        "ranking_score": 41.77,
+        "ranking_components": {
+          "structure": 40.44,
+          "news_event": 0.0,
+          "industry_neutral": 2.98,
+          "beat_market": 0.62,
+          "expected_return": 1.62,
+          "quality_penalty": 0.0,
+          "liquidity_penalty": -0.14,
+          "feature_drift_penalty": -0.0,
+          "source_health_penalty": -0.0,
+          "model_monitor_penalty": -3.0,
+          "overheat_penalty": -0.75
+        },
+        "attention_rank": 4,
+        "news_catalyst_score": 0.0,
+        "close": 94.4,
+        "price_forecast": {
+          "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
+          "regime": "neutral",
+          "confidence": "低",
+          "1d_open": {
+            "label": "隔日開盤",
+            "horizon_days": 1,
+            "expected_price": 92.54,
+            "expected_return_pct": -1.97,
+            "lower": 91.86,
+            "upper": 96.49,
+            "interval_pct": 2.1,
+            "beat_market_probability": 0.546,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "1d_close": {
+            "label": "隔日收盤",
+            "horizon_days": 1,
+            "expected_price": 93.11,
+            "expected_return_pct": -1.37,
+            "lower": 91.48,
+            "upper": 97.05,
+            "interval_pct": 2.1,
+            "beat_market_probability": 0.546,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "3d": {
+            "label": "3日收盤",
+            "horizon_days": 3,
+            "expected_price": 96.24,
+            "expected_return_pct": 1.95,
+            "lower": 91.31,
+            "upper": 97.8,
+            "interval_pct": 3.63,
+            "beat_market_probability": 0.539,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 893,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "5d": {
+            "label": "5日收盤",
+            "horizon_days": 5,
+            "expected_price": 97.15,
+            "expected_return_pct": 2.91,
+            "lower": 91.03,
+            "upper": 98.22,
+            "interval_pct": 4.69,
+            "beat_market_probability": 0.499,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 693,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          }
+        }
+      },
+      {
+        "code": "2360",
+        "name": "致茂",
+        "score": 53,
+        "attention_score": 41.35,
+        "ranking_score": 41.35,
+        "ranking_components": {
+          "structure": 41.22,
+          "news_event": 0.0,
+          "industry_neutral": 3.41,
+          "beat_market": 0.7,
+          "expected_return": -0.73,
+          "quality_penalty": 0.0,
+          "liquidity_penalty": -0.25,
+          "feature_drift_penalty": -0.0,
+          "source_health_penalty": -0.0,
+          "model_monitor_penalty": -3.0,
+          "overheat_penalty": -0.0
+        },
+        "attention_rank": 5,
+        "news_catalyst_score": 0.0,
+        "close": 2620.0,
+        "price_forecast": {
+          "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
+          "regime": "neutral",
+          "confidence": "低",
+          "1d_open": {
+            "label": "隔日開盤",
+            "horizon_days": 1,
+            "expected_price": 2631.71,
+            "expected_return_pct": 0.45,
+            "lower": 2551.33,
+            "upper": 2686.44,
+            "interval_pct": 6.0,
+            "beat_market_probability": 0.553,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "1d_close": {
+            "label": "隔日收盤",
+            "horizon_days": 1,
+            "expected_price": 2638.17,
+            "expected_return_pct": 0.69,
+            "lower": 2537.31,
+            "upper": 2701.27,
+            "interval_pct": 6.0,
+            "beat_market_probability": 0.553,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 1093,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "3d": {
+            "label": "3日收盤",
+            "horizon_days": 3,
+            "expected_price": 2600.97,
+            "expected_return_pct": -0.73,
+            "lower": 2508.49,
+            "upper": 2680.94,
+            "interval_pct": 10.39,
+            "beat_market_probability": 0.544,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 893,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          },
+          "5d": {
+            "label": "5日收盤",
+            "horizon_days": 5,
+            "expected_price": 2618.6,
+            "expected_return_pct": -0.05,
+            "lower": 2496.57,
+            "upper": 2686.94,
+            "interval_pct": 13.41,
+            "beat_market_probability": 0.5,
+            "model_method": "time-decayed ridge + regime blend + Platt + quantile",
+            "quality": {
+              "model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+              "training_rows": 693,
+              "recent_direction_hit_pct": null,
+              "probability_calibrated": true,
+              "fallback_enabled": false,
+              "interval_method": "quantile regression"
+            }
+          }
+        }
+      }
+    ],
+    "tdcc_snapshot": {}
   }
 ]

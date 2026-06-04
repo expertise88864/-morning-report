@@ -10574,8 +10574,8 @@ def main() -> int:
         history, tw0050, target_session_date, sessions=trading_sessions)
     _ml_elapsed = time.monotonic() - _ml_t0
     print(f"[main] ML/情報區塊總耗時 {_ml_elapsed:.1f}s")
-    if _ml_elapsed > 300:
-        print(f"[main] ⚠ ML 區塊耗時 {_ml_elapsed:.0f}s 偏高(Actions 上限 600s);"
+    if _ml_elapsed > 600:
+        print(f"[main] ⚠ ML 區塊耗時 {_ml_elapsed:.0f}s 偏高(workflow timeout 900s);"
               f"如逼近上限可調降 MODEL_BACKFILL_BATCH_DAYS", file=sys.stderr)
 
     # 6.5 建立歷史校準資料（TSM vs 2330 開盤實證對照）

@@ -227,6 +227,17 @@ RSS_FEEDS.update({f"類股-{label}": _gnews_rss(query)
 # 重點公司:每天用 Google News 查各自最新新聞(直接補「個股資訊太少」)。
 # 涵蓋 00662(NASDAQ-100)與 2330 供應鏈最相關的美股 + 台股名稱。
 # 格式 (查詢字串, 顯示用代號/標籤)。查詢字串用中英並列,提高命中率。
+OTHER_SECTOR_LABELS: tuple[str, ...] = tuple(OTHER_SECTOR_QUERIES.keys())
+
+
+def _other_sector_label_from_source(source: str) -> str:
+    source_text = str(source or "")
+    for label in OTHER_SECTOR_LABELS:
+        if source_text.endswith(label):
+            return label
+    return ""
+
+
 GOOGLE_NEWS_COMPANIES: list[tuple] = [
     ("輝達 NVIDIA", "NVDA"), ("超微 AMD", "AMD"), ("博通 Broadcom", "AVGO"),
     ("美光 Micron 記憶體", "MU"), ("台積電", "2330"), ("艾司摩爾 ASML", "ASML"),
@@ -3498,14 +3509,15 @@ def fetch_news() -> list[dict]:
                 continue
 
             feed = feedparser.parse(url)
+            is_sector_source = str(source).startswith("憿-")
             for entry in feed.entries[:10]:
                 source_name, source_url = _tw_entry_source(entry)
-                pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub:
-                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
-                    if pub_dt < cutoff:
-                        continue
-                items.append({
+                pub_dt = _entry_published_dt(entry)
+                if pub_dt and pub_dt < cutoff:
+                    continue
+                if is_sector_source and pub_dt is None:
+                    continue
+                item = {
                     "source": source,
                     "title": entry.get("title", ""),
                     # 800 字 — 與上方 cnyes JSON 路徑一致;讓 LLM 看到具體事實(產品/數字/引言),
@@ -3515,7 +3527,8 @@ def fetch_news() -> list[dict]:
                     "published": entry.get("published", ""),
                     "source_name": source_name,
                     "source_url": source_url,
-                })
+                }
+                items.append(_mark_news_date_quality(item, pub_dt))
         except Exception as e:
             print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
 
@@ -3528,11 +3541,9 @@ def fetch_news() -> list[dict]:
             feed = feedparser.parse(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:4]:
                 source_name, source_url = _tw_entry_source(entry)
-                pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub:
-                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
-                    if pub_dt < cutoff:
-                        continue
+                pub_dt = _entry_published_dt(entry)
+                if pub_dt and pub_dt < cutoff:
+                    continue
                 items.append({
                     "source": f"Google:{label}",
                     "title": entry.get("title", ""),
@@ -3547,6 +3558,9 @@ def fetch_news() -> list[dict]:
         except Exception as e:
             print(f"[news] 公司查詢 {label} 失敗：{e}", file=sys.stderr)
     print(f"[news] 共 {len(items)} 則(含 {company_hit} 則重點公司 Google News)")
+    for item in items:
+        if "date_missing" not in item:
+            _mark_news_date_quality(item, _parse_news_time_required(item.get("published")))
     return items
 
 
@@ -3586,12 +3600,10 @@ def fetch_candidate_company_news(snapshot: list[dict],
         try:
             feed = feedparser.parse(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:per_query]:
-                pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub:
-                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
-                    if pub_dt < cutoff:
-                        continue
-                items.append({
+                pub_dt = _entry_published_dt(entry)
+                if pub_dt and pub_dt < cutoff:
+                    continue
+                item = {
                     "source": f"Google:{code}",
                     "title": entry.get("title", ""),
                     "summary": (entry.get("summary", "") or "")[:800],
@@ -3599,7 +3611,8 @@ def fetch_candidate_company_news(snapshot: list[dict],
                     "published": entry.get("published", ""),
                     "company_label": code,
                     "code": code,
-                })
+                }
+                items.append(_mark_news_date_quality(item, pub_dt))
                 hit += 1
         except Exception as e:
             print(f"[cand_news] 候選 {code} 查詢失敗: {e}", file=sys.stderr)
@@ -3751,12 +3764,29 @@ TW_MEDICAL_HARD_NEWS_TERMS = (
 )
 # 醫界「例行/行政/衛教」雜訊:住院數、招考、義診、衛教、免費篩檢等,不進晨報。
 # 這類即使來自官方、含「公告」,也不是投資人需要的醫界大事。
+TW_MEDICAL_CAPACITY_NEWS_TERMS = (
+    "\u6025\u8a3a\u58c5\u585e", "\u6025\u8a3a\u7206\u6eff", "\u6025\u8a3a",
+    "\u4f4f\u9662\u696d\u52d9", "\u4f4f\u9662", "\u66ab\u505c\u4f4f\u9662",
+    "\u66ab\u505c\u6536\u6cbb", "\u505c\u6536", "\u95dc\u5e8a", "\u7e2e\u5e8a",
+    "\u6eff\u5e8a", "\u75c5\u5e8a\u5403\u7dca", "\u5019\u5e8a",
+    "\u8b77\u7406\u4eba\u529b", "\u91ab\u5e2b\u8352", "\u4eba\u529b\u4e0d\u8db3",
+    "\u91ab\u7642\u91cf\u80fd", "\u91cf\u80fd", "\u6551\u8b77\u8eca",
+    "\u91cd\u75c7", "\u5152\u79d1", "\u795e\u5916", "\u91ab\u9662\u670d\u52d9",
+)
+
 TW_MEDICAL_ROUTINE_NOISE = (
     "招考", "招募", "錄取", "甄選", "甄試", "約僱", "徵才", "職缺", "報名", "招生",
     "空床", "床數", "住院數", "一覽表", "參考表", "看診時間", "門診表", "代診",
     "衛教", "講座", "課程", "研習", "宣導", "義診", "篩檢", "免費", "活動",
     "保健", "養生", "菜單", "食譜", "祝賀", "得獎", "獲獎", "表揚", "捐贈",
     "揭牌", "啟用", "剪綵", "週年", "感謝", "公益", "志工", "捐血",
+)
+
+
+TW_MEDICAL_ROUTINE_NOISE_EXTRA = (
+    "\u4f4f\u9662\u6578", "\u7a7a\u5e8a", "\u4e00\u89bd\u8868",
+    "\u62db\u8003", "\u9304\u53d6", "\u514d\u8cbb\u63a1\u6aa2",
+    "\u885b\u6559", "\u63d0\u9192",
 )
 
 
@@ -3806,6 +3836,8 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
     """Broad recall: allow source/category words first, then score importance later."""
     if any(token in text for token in TW_INTELLIGENCE_NOISE[kind]):
         return False
+    if kind == "medical" and any(token in text for token in TW_MEDICAL_ROUTINE_NOISE_EXTRA):
+        return False
     broad = any(token in text for token in TW_INTELLIGENCE_BROAD_RECALL[kind])
     specific = any(token in text for token in TW_INTELLIGENCE_RELEVANCE[kind])
     major = any(token in text for token in TW_INTELLIGENCE_MAJOR_TERMS[kind])
@@ -3813,7 +3845,8 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
         # 醫界區只要「事件性硬新聞」(停約、裁罰、糾紛、缺藥、群聚感染…)。
         # 例行/行政/衛教(招考、空床數、義診、免費篩檢、衛教講座…)若無事件詞,一律剔除。
         hard = any(token in text for token in TW_MEDICAL_HARD_NEWS_TERMS)
-        if not hard:
+        capacity = any(token in text for token in TW_MEDICAL_CAPACITY_NEWS_TERMS)
+        if not (hard or capacity):
             return False
         return specific or broad
     return specific or (broad and major)
@@ -3911,6 +3944,24 @@ def _parse_news_time_required(value) -> Optional[dt.datetime]:
     return parsed.astimezone(dt.timezone.utc)
 
 
+def _entry_published_dt(entry) -> Optional[dt.datetime]:
+    """Return feed entry time only when the publisher exposes a real timestamp."""
+    parsed_struct = entry.get("published_parsed") or entry.get("updated_parsed")
+    if parsed_struct:
+        try:
+            return dt.datetime(*parsed_struct[:6], tzinfo=dt.timezone.utc)
+        except (TypeError, ValueError):
+            pass
+    return _parse_news_time_required(entry.get("published") or entry.get("updated"))
+
+
+def _mark_news_date_quality(item: dict, published_dt: Optional[dt.datetime]) -> dict:
+    item["date_missing"] = published_dt is None
+    if published_dt is not None:
+        item["published_dt"] = published_dt.isoformat()
+    return item
+
+
 def _official_html_entries(html_text: str,
                            base_url: str,
                            source_name: str,
@@ -3920,13 +3971,20 @@ def _official_html_entries(html_text: str,
     import html as _html
     import re as _re
 
+    seen_links: set[str] = set()
+    seen_undated: set[str] = set()
+
     def _record_undated(title_value: str) -> None:
+        key = title_value[:120]
+        if key in seen_undated:
+            return
+        seen_undated.add(key)
         if stats is not None:
             stats["html_undated"] = stats.get("html_undated", 0) + 1
             rejected = stats.setdefault("rejected_samples", [])
             if len(rejected) < 5:
                 rejected.append({
-                    "title": title_value[:120],
+                    "title": key,
                     "reason": "missing_date",
                     "source": source_name,
                 })
@@ -3936,13 +3994,14 @@ def _official_html_entries(html_text: str,
         if len(title) < 8:
             return
         link = urljoin(base_url, _html.unescape(str(href or "")).strip())
+        if link in seen_links:
+            return
+        seen_links.add(link)
         if not _tw_source_is_official(link, base_url, source_name):
             return
         published = _parse_tw_roc_date(f"{title} {block_text}")
         if not published:
             _record_undated(title)
-            return
-        if any(item["link"] == link for item in entries):
             return
         entries.append({
             "title": title[:180],
@@ -3955,12 +4014,14 @@ def _official_html_entries(html_text: str,
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(html_text or "", "html.parser")
+        for noisy in soup.select("script, style, nav, header, footer, aside"):
+            noisy.decompose()
         blocks = soup.select("li, tr, article, div")
         if not blocks:
             blocks = [soup]
         for block in blocks:
-            link_tag = block.find("a", href=True)
-            if not link_tag:
+            link_tags = block.find_all("a", href=True)
+            if not link_tags:
                 continue
             date_bits = []
             time_tag = block.find("time")
@@ -3971,10 +4032,11 @@ def _official_html_entries(html_text: str,
                 date_bits.append(str(block.get(attr) or ""))
             block_text = " ".join(
                 bit for bit in [block.get_text(" ", strip=True), *date_bits] if bit)
-            _append(entries, link_tag.get_text(" ", strip=True),
-                    str(link_tag.get("href") or ""), block_text)
-            if len(entries) >= limit:
-                return entries
+            for link_tag in link_tags[:8]:
+                _append(entries, link_tag.get_text(" ", strip=True),
+                        str(link_tag.get("href") or ""), block_text)
+                if len(entries) >= limit:
+                    return entries
     except Exception as e:
         if stats is not None:
             stats.setdefault("errors", []).append(f"BeautifulSoup:{type(e).__name__}")
@@ -3991,11 +4053,14 @@ def _official_html_entries(html_text: str,
     if not blocks:
         blocks = [html_text or ""]
     for block in blocks:
-        match = link_pattern.search(block)
-        if not match:
+        matches = list(link_pattern.finditer(block))
+        if not matches:
             continue
         block_text = _strip_html(block)
-        _append(entries, match.group("title"), match.group("href"), block_text)
+        for match in matches[:8]:
+            _append(entries, match.group("title"), match.group("href"), block_text)
+            if len(entries) >= limit:
+                break
         if len(entries) >= limit:
             break
     return entries
@@ -4162,7 +4227,11 @@ def _tw_intelligence_importance(kind: str,
         if any(token in title for token in TW_MEDICAL_HARD_NEWS_TERMS):
             score += 2.5
             reasons.insert(0, "重大事件")
-        if any(token in title for token in TW_MEDICAL_ROUTINE_NOISE):
+        if any(token in title for token in TW_MEDICAL_CAPACITY_NEWS_TERMS):
+            score += 2.0
+            reasons.insert(0, "\u91ab\u7642\u91cf\u80fd/\u670d\u52d9\u4e2d\u65b7")
+        if (any(token in title for token in TW_MEDICAL_ROUTINE_NOISE)
+                or any(token in title for token in TW_MEDICAL_ROUTINE_NOISE_EXTRA)):
             score -= 3.0
             reasons.append("例行/行政")
     major_hits = [token for token in TW_INTELLIGENCE_MAJOR_TERMS[kind] if token in title]
@@ -5155,29 +5224,57 @@ def _time_decay_weights(rows: list[dict],
     return np.asarray(weights, dtype=float)
 
 
+def _model_feature_raw(row: dict, feature: str) -> float:
+    value = row.get(feature)
+    if value is None:
+        return float("nan")
+    number = _safe_number(value)
+    return number if math.isfinite(number) else float("nan")
+
+
+def _nan_weighted_mean_std(x: np.ndarray,
+                           sample_weights: Optional[np.ndarray] = None
+                           ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    missing_rates = np.mean(~np.isfinite(x), axis=0) if len(x) else np.zeros(x.shape[1])
+    if sample_weights is not None and len(sample_weights) == len(x):
+        weights = np.asarray(sample_weights, dtype=float)
+        weights = np.where(np.isfinite(weights) & (weights > 0), weights, 1.0)
+    else:
+        weights = np.ones(len(x), dtype=float)
+    mean = np.zeros(x.shape[1], dtype=float)
+    std = np.ones(x.shape[1], dtype=float)
+    for col in range(x.shape[1]):
+        values = x[:, col]
+        mask = np.isfinite(values)
+        if not np.any(mask):
+            continue
+        w = weights[mask]
+        v = values[mask]
+        mean[col] = float(np.average(v, weights=w))
+        var = float(np.average((v - mean[col]) ** 2, weights=w))
+        std[col] = math.sqrt(max(var, 0.0))
+    std[std < 1e-9] = 1.0
+    return mean, std, missing_rates
+
+
 def _feature_matrix(rows: list[dict], current: Optional[dict] = None,
                     sample_weights: Optional[np.ndarray] = None
                     ) -> tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]:
     x = np.asarray([
-        [_safe_number(row.get(feature)) for feature in MODEL_FEATURES]
+        [_model_feature_raw(row, feature) for feature in MODEL_FEATURES]
         for row in rows
     ], dtype=float)
-    if sample_weights is not None and len(sample_weights) == len(x):
-        weights = np.asarray(sample_weights, dtype=float)
-        weights = np.where(np.isfinite(weights) & (weights > 0), weights, 1.0)
-        mean = np.average(x, axis=0, weights=weights)
-        var = np.average((x - mean) ** 2, axis=0, weights=weights)
-        std = np.sqrt(var)
-    else:
-        mean = x.mean(axis=0)
-        std = x.std(axis=0)
-    std[std < 1e-9] = 1.0
-    z = (x - mean) / std
+    mean, std, _ = _nan_weighted_mean_std(x, sample_weights)
+    x_filled = np.where(np.isfinite(x), x, mean)
+    z = (x_filled - mean) / std
     current_z = None
     if current is not None:
+        current_raw = np.asarray([
+            _model_feature_raw(current, feature) for feature in MODEL_FEATURES
+        ], dtype=float)
+        current_filled = np.where(np.isfinite(current_raw), current_raw, mean)
         current_z = (
-            np.asarray([_safe_number(current.get(feature)) for feature in MODEL_FEATURES])
-            - mean) / std
+            current_filled - mean) / std
     return z, current_z, mean, std
 
 
@@ -5206,15 +5303,26 @@ def _ridge_fit_model(rows: list[dict],
         beta = np.linalg.solve(design_w.T @ design_w + penalty, design_w.T @ y_w)
     except np.linalg.LinAlgError:
         return None
-    return {"beta": beta, "mean": mean, "std": std, "weighted": True}
+    x_raw = np.asarray([
+        [_model_feature_raw(row, feature) for feature in MODEL_FEATURES]
+        for row in usable
+    ], dtype=float)
+    _, _, missing_rates = _nan_weighted_mean_std(x_raw, weights)
+    return {
+        "beta": beta, "mean": mean, "std": std, "weighted": True,
+        "feature_imputation": "train_mean",
+        "missing_rates": missing_rates,
+    }
 
 
 def _linear_model_predict(model: Optional[dict], current: dict) -> Optional[float]:
     if not model:
         return None
-    current_z = (
-        np.asarray([_safe_number(current.get(feature)) for feature in MODEL_FEATURES])
-        - model["mean"]) / model["std"]
+    current_raw = np.asarray([
+        _model_feature_raw(current, feature) for feature in MODEL_FEATURES
+    ], dtype=float)
+    current_filled = np.where(np.isfinite(current_raw), current_raw, model["mean"])
+    current_z = (current_filled - model["mean"]) / model["std"]
     prediction = float(np.r_[1.0, current_z] @ model["beta"])
     return prediction if math.isfinite(prediction) else None
 
@@ -5245,7 +5353,16 @@ def _quantile_ridge_fit_model(rows: list[dict],
         grad = -(design.T @ (weights * (quantile - (residual < 0).astype(float)))) / weight_sum
         grad[1:] += alpha * beta[1:]
         beta -= 0.06 * grad
-    return {"beta": beta, "mean": mean, "std": std, "weighted": True}
+    x_raw = np.asarray([
+        [_model_feature_raw(row, feature) for feature in MODEL_FEATURES]
+        for row in usable
+    ], dtype=float)
+    _, _, missing_rates = _nan_weighted_mean_std(x_raw, weights)
+    return {
+        "beta": beta, "mean": mean, "std": std, "weighted": True,
+        "feature_imputation": "train_mean",
+        "missing_rates": missing_rates,
+    }
 
 
 def _quantile_ridge_fit_predict(rows: list[dict],
@@ -5672,7 +5789,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
             for key in ("event_id", "event_type", "direction", "relation",
                         "score_delta", "source_grade", "surprise_score",
                         "revenue_surprise_pct", "lifecycle", "lifecycle_weight",
-                        "scope_company", "scope_industry", "scope_supply_chain")
+                        "scope_company", "scope_industry", "scope_supply_chain",
+                        "timeline_key")
             if evidence.get(key) is not None
         } for evidence in (item.get("news_catalysts") or [])[:4]]
         output[str(item["code"])] = row
@@ -6298,6 +6416,30 @@ def apply_event_timeline(model_history: list[dict],
     return output
 
 
+def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:
+    event_type = str(evidence.get("event_type") or "")
+    direction = int(_safe_number(evidence.get("direction")))
+    code = str(row.get("code") or "")
+    event_id = str(evidence.get("event_id") or "").strip()
+    if event_id:
+        return ("event_id", event_id, code, event_type, direction)
+    timeline_key = str(evidence.get("timeline_key") or "").strip()
+    if timeline_key:
+        return ("timeline", timeline_key, code, event_type, direction)
+    return (
+        "fallback",
+        str(row.get("session_date") or ""),
+        code,
+        event_type,
+        direction,
+        str(evidence.get("scope_company") or ""),
+        str(evidence.get("scope_industry") or ""),
+        str(evidence.get("scope_supply_chain") or ""),
+        str(evidence.get("lifecycle") or ""),
+        str(evidence.get("relation") or ""),
+    )
+
+
 def build_event_study(model_history: list[dict],
                       sessions: list[str],
                       horizon: int = 3) -> dict[tuple, dict]:
@@ -6311,13 +6453,8 @@ def build_event_study(model_history: list[dict],
             event_type = str(evidence.get("event_type") or "")
             direction = int(_safe_number(evidence.get("direction")))
             if event_type and direction:
-                event_key = (
-                    str(evidence.get("event_id") or ""),
-                    str(row.get("code") or ""),
-                    event_type,
-                    direction,
-                )
-                if event_key[0] and event_key in seen_events:
+                event_key = _event_study_dedupe_key(row, evidence)
+                if event_key in seen_events:
                     continue
                 seen_events.add(event_key)
                 value = _safe_number(row.get("future_excess_pct"))
@@ -6547,7 +6684,8 @@ def evaluate_breakout_forecasts(history: list[dict],
 def calc_stock_price_forecast(entry: dict,
                               evaluation: Optional[dict[int, dict]] = None,
                               model_predictions: Optional[dict[int, dict]] = None,
-                              regime: str = "neutral") -> dict:
+                              regime: str = "neutral",
+                              model_monitoring: Optional[dict] = None) -> dict:
     """
     產生個股 3 日 / 5 日保守點預測與 80% 波動區間。
 
@@ -6563,6 +6701,13 @@ def calc_stock_price_forecast(entry: dict,
     momentum_daily = float(entry.get("pct_5d") or 0) / 5.0
     evaluation = evaluation or {}
     model_predictions = model_predictions or {}
+    monitor_status = (model_monitoring or {}).get("status", "ok")
+    monitor_penalty = _safe_number((model_monitoring or {}).get("ranking_penalty"))
+    monitor_band_multiplier = (
+        1.55 if monitor_status == "error"
+        else 1.3 if monitor_status == "fallback" or monitor_penalty >= 2.0
+        else 1.0
+    )
     regime_weight = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])["model"]
     forecasts = {}
     forecast_specs = (
@@ -6595,14 +6740,20 @@ def calc_stock_price_forecast(entry: dict,
         quantile_lower = model.get("quantile_lower_pct")
         quantile_upper = model.get("quantile_upper_pct")
         band = max(1.5, min(15.0, daily_vol * (horizon ** 0.5) * 1.28))
+        adjusted_band = min(22.0, band * monitor_band_multiplier)
         lower_return = (
             _safe_number(quantile_lower) if quantile_lower is not None
-            else expected_return - band
+            else expected_return - adjusted_band
         )
         upper_return = (
             _safe_number(quantile_upper) if quantile_upper is not None
-            else expected_return + band
+            else expected_return + adjusted_band
         )
+        if monitor_band_multiplier > 1.0 and quantile_lower is not None and quantile_upper is not None:
+            spread = max(0.0, upper_return - lower_return)
+            extra = min(8.0, spread * (monitor_band_multiplier - 1.0) / 2.0)
+            lower_return -= extra
+            upper_return += extra
         if lower_return > upper_return:
             lower_return, upper_return = upper_return, lower_return
         lower_return = min(lower_return, expected_return)
@@ -6615,7 +6766,7 @@ def calc_stock_price_forecast(entry: dict,
             "expected_return_pct": round(expected_return, 2),
             "lower": round(close * (1 + lower_return / 100), 2),
             "upper": round(close * (1 + upper_return / 100), 2),
-            "interval_pct": round(band, 2),
+            "interval_pct": round(adjusted_band, 2),
             "beat_market_probability": model.get("beat_market_probability"),
             "model_method": model.get("method", "heuristic fallback"),
             "quality": {
@@ -6624,6 +6775,8 @@ def calc_stock_price_forecast(entry: dict,
                 "recent_direction_hit_pct": model.get("recent_direction_hit_pct"),
                 "probability_calibrated": bool(model.get("probability_calibrated")),
                 "fallback_enabled": model.get("fallback_enabled", True),
+                "model_monitoring_status": monitor_status,
+                "model_monitoring_penalty": round(monitor_penalty, 2),
                 "interval_method": (
                     "quantile regression"
                     if quantile_lower is not None and quantile_upper is not None
@@ -6641,7 +6794,12 @@ def calc_stock_price_forecast(entry: dict,
     return {
         "method": "收縮動能 + 結構分數 + 已驗證新聞催化 + 歷史偏誤",
         "regime": regime,
-        "confidence": confidence,
+        "confidence": (
+            "\u4f4e" if monitor_status == "error"
+            else "\u4e2d" if monitor_status == "fallback"
+            and samples >= 30 and attention_score >= 60
+            else confidence
+        ),
         **forecasts,
     }
 
@@ -6787,6 +6945,7 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
             {forecast_key: (predictions.get(forecast_key) or {}).get(code, {})
              for forecast_key in MODEL_TARGETS},
             regime,
+            model_monitoring,
         )
     return snapshot
 
@@ -7554,7 +7713,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         src = str(n.get("source", ""))
         if src.startswith("類股-"):
             sector_news.setdefault(src[len("類股-"):], []).append(n)
-    if sector_news:
+    if False and sector_news:
         sec_lines = []
         for label, lst in sector_news.items():
             sec_lines.append(f"\n■ {label}")
@@ -7567,6 +7726,25 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 整理台股 universe 法人/表現摘要表（讓 LLM 一眼掃完）。
     # 五檔由 Python 排名渲染,LLM 不再自選個股 → 只需給法人買超前 50 檔當背景即可,
     # 不必塞滿 100 列(縮短 prompt、降低 context-overflow 與成本)。
+    sector_news = {}
+    for n in news:
+        label = _other_sector_label_from_source(str(n.get("source", "")))
+        if label and not n.get("date_missing"):
+            sector_news.setdefault(label, []).append(n)
+    sec_lines = []
+    for label in OTHER_SECTOR_LABELS:
+        sec_lines.append(f"\n## {label}")
+        lst = sector_news.get(label) or []
+        if not lst:
+            sec_lines.append("- no dated material headline available")
+            continue
+        for n in lst[:6]:
+            published = str(n.get("published_dt") or n.get("published") or "")[:19]
+            sec_lines.append(f"- [{published}] {n['title']}")
+    news_block += ("\n\n[Other sector coverage: dated headlines only; if a label says no dated material, "
+                   "write that no major news was found and do not invent details.]\n"
+                   + "\n".join(sec_lines))
+
     if tw0050:
         tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)[:50]
         rows = []

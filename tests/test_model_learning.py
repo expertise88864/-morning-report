@@ -485,6 +485,40 @@ def test_event_study_counts_same_event_id_once_per_stock():
     assert study[("orders", 1)]["samples"] == 1
 
 
+def test_event_study_dedupes_legacy_events_without_event_id():
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
+    history = []
+    for index, session in enumerate(sessions):
+        history.append({
+            "session_date": session,
+            "taiex_close": 100,
+            "stocks": {"2330": _stock(
+                100 + index,
+                news_catalysts=[{
+                    "event_type": "orders",
+                    "direction": 1,
+                    "timeline_key": "2330:orders:gb300",
+                }],
+            )},
+        })
+    study = mr.build_event_study(history, sessions, horizon=1)
+    assert study[("orders", 1)]["samples"] == 1
+
+
+def test_feature_matrix_imputes_missing_values_with_training_mean():
+    rows = [
+        {feature: 1.0 for feature in mr.MODEL_FEATURES},
+        {feature: 3.0 for feature in mr.MODEL_FEATURES},
+    ]
+    rows.append({feature: None for feature in mr.MODEL_FEATURES})
+    z, current_z, mean, std = mr._feature_matrix(
+        rows, current={feature: None for feature in mr.MODEL_FEATURES})
+    assert mean[0] == pytest.approx(2.0)
+    assert z[2][0] == pytest.approx(0.0)
+    assert current_z[0] == pytest.approx(0.0)
+    assert std[0] > 0
+
+
 def test_probability_metrics_expose_brier_and_ece():
     out = mr._probability_calibration_metrics([(0.8, 1), (0.2, 0)])
     assert out == {
@@ -681,6 +715,28 @@ def test_official_html_parser_reads_date_from_parent_block():
     entries = mr._official_html_entries(
         html, "https://www.ey.gov.tw/Page/list", "EY News", stats=stats)
     assert entries[0]["published"].startswith("2026-06-03")
+
+
+def test_official_html_parser_checks_multiple_links_in_block():
+    html = (
+        "<ul><li><span>115-06-03</span>"
+        '<a href="https://example.com/nav">nav</a>'
+        '<a href="/Page/policy">\u884c\u653f\u9662 \u65b0\u9752\u5b89 \u653f\u7b56 \u516c\u544a</a>'
+        "</li></ul>"
+    )
+    stats = {}
+    entries = mr._official_html_entries(
+        html, "https://www.ey.gov.tw/Page/list", "EY News", stats=stats)
+    assert entries[0]["link"] == "https://www.ey.gov.tw/Page/policy"
+
+
+def test_tw_medical_recall_keeps_capacity_service_disruption():
+    text = "\u4e2d\u69ae\u795e\u5916\u66ab\u505c\u4f4f\u9662\u696d\u52d9 \u6025\u8a3a\u91ab\u7642\u91cf\u80fd\u5403\u7dca"
+    assert mr._tw_intelligence_recall_hit("medical", text)
+    score, reasons = mr._tw_intelligence_importance(
+        "medical", text, official=True, scope="\u5168\u570b", status="\u767c\u9175")
+    assert score >= 2.0
+    assert any("\u91ab\u7642\u91cf\u80fd" in reason for reason in reasons)
 
 
 def test_tw_intelligence_skips_undated_official_html(monkeypatch):

@@ -372,6 +372,19 @@ def test_stock_price_forecast_uses_learned_bias():
     assert calibrated["3d"]["lower"] < calibrated["3d"]["upper"]
 
 
+def test_stock_price_forecast_widens_interval_when_model_monitoring_fails():
+    entry = {
+        "close": 100.0, "daily_vol_pct": 2.0, "pct_5d": 0.0,
+        "attention_score": 65, "news_catalyst_score": 0,
+    }
+    raw = mr.calc_stock_price_forecast(entry)
+    degraded = mr.calc_stock_price_forecast(
+        entry, model_monitoring={"status": "error", "ranking_penalty": 3.0})
+    assert degraded["3d"]["interval_pct"] > raw["3d"]["interval_pct"]
+    assert degraded["3d"]["quality"]["model_monitoring_status"] == "error"
+    assert degraded["confidence"] == "\u4f4e"
+
+
 def test_breakout_tracking_reports_forecast_mae():
     history = [{
         "date": "2026-05-29",

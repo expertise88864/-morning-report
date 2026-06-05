@@ -122,6 +122,23 @@ def test_fetch_news_includes_company_queries(monkeypatch):
     assert labels & {lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES}
 
 
+def test_fetch_news_skips_undated_other_sector_items(monkeypatch):
+    monkeypatch.setattr(mr, "RSS_FEEDS", {
+        f"類股-{next(iter(mr.OTHER_SECTOR_QUERIES))}": "https://news.google.com/rss/search?q=x"
+    })
+    monkeypatch.setattr(mr, "GOOGLE_NEWS_COMPANIES", [])
+
+    class _Feed:
+        entries = [{
+            "title": "sector headline without date",
+            "summary": "",
+            "link": "https://example.com/sector",
+        }]
+
+    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _Feed())
+    assert mr.fetch_news() == []
+
+
 def test_classify_geopolitical_critical():
     # 川習會 / 台海 / 晶片出口管制 → critical（會抓全文 + prompt 強制分析）
     news = [

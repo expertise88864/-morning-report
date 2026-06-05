@@ -3509,7 +3509,7 @@ def fetch_news() -> list[dict]:
                 continue
 
             feed = feedparser.parse(url)
-            is_sector_source = str(source).startswith("憿-")
+            is_sector_source = bool(_other_sector_label_from_source(str(source)))
             for entry in feed.entries[:10]:
                 source_name, source_url = _tw_entry_source(entry)
                 pub_dt = _entry_published_dt(entry)
@@ -5692,6 +5692,15 @@ def build_source_health_report(snapshot: list[dict],
     but outages must not change stock ranking scores.
     """
     total = len(snapshot or [])
+    quality_news = [
+        item for item in (news or [])
+        if not item.get("date_missing")
+        and not _other_sector_label_from_source(str(item.get("source", "")))
+    ]
+    strong_news = [
+        item for item in quality_news
+        if (item.get("source_grade") or _news_source_grade(item)) in ("A", "B")
+    ]
     tw_diag = (tw_intelligence or {}).get("diagnostics") or {}
     policy_diag = tw_diag.get("policy") or {}
     medical_diag = tw_diag.get("medical") or {}
@@ -5724,7 +5733,7 @@ def build_source_health_report(snapshot: list[dict],
                                      for item in snapshot) / total >= 0.5),
         "liquidity": bool(total and sum(item.get("trade_value") is not None
                                        for item in snapshot) / total >= 0.7),
-        "news": len(news or []) >= 10,
+        "news": len(quality_news) >= 10 and len(strong_news) >= 5,
         "structured_events": bool(structured_events),
     }
     awareness_checks = {
@@ -6048,9 +6057,7 @@ def evaluate_model_walk_forward(model_history: list[dict],
     return output
 
 
-def build_model_monitoring_report(walk_forward: dict,
-                                  forecast_key: str = "3d") -> dict:
-    """Turn calibration metrics into a conservative quality gate for ranking."""
+def _model_monitoring_for_key(walk_forward: dict, forecast_key: str) -> dict:
     metrics = (walk_forward or {}).get(forecast_key) or {}
     rolling_metrics = ((walk_forward or {}).get("rolling_origin") or {}).get(forecast_key) or {}
     samples = int(metrics.get("probability_samples") or 0)
@@ -6095,6 +6102,39 @@ def build_model_monitoring_report(walk_forward: dict,
         "forecast_key": forecast_key,
         "metrics": metrics,
         "rolling_origin_metrics": rolling_metrics,
+        "alerts": alerts,
+    }
+
+
+def build_model_monitoring_report(walk_forward: dict,
+                                  forecast_key: str = "3d") -> dict:
+    """Turn calibration metrics into a conservative quality gate for ranking."""
+    keys = tuple(MODEL_TARGETS.keys())
+    by_target = {
+        key: _model_monitoring_for_key(walk_forward or {}, key)
+        for key in keys
+    }
+    primary = by_target.get(forecast_key) or _model_monitoring_for_key(
+        walk_forward or {}, forecast_key)
+    worst_penalty = max(
+        (_safe_number(item.get("ranking_penalty")) for item in by_target.values()),
+        default=_safe_number(primary.get("ranking_penalty")),
+    )
+    if any(item.get("status") == "error" for item in by_target.values()):
+        status = "error"
+    elif any(item.get("status") == "fallback" for item in by_target.values()):
+        status = "fallback"
+    else:
+        status = "ok"
+    alerts = []
+    for key, item in by_target.items():
+        alerts.extend(f"{key}: {alert}" for alert in item.get("alerts", []))
+    return {
+        **primary,
+        "status": status,
+        "ranking_penalty": worst_penalty,
+        "forecast_key": forecast_key,
+        "by_target": by_target,
         "alerts": alerts,
     }
 
@@ -7713,7 +7753,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         src = str(n.get("source", ""))
         if src.startswith("類股-"):
             sector_news.setdefault(src[len("類股-"):], []).append(n)
-    if False and sector_news:
+    if sector_news:
         sec_lines = []
         for label, lst in sector_news.items():
             sec_lines.append(f"\n■ {label}")

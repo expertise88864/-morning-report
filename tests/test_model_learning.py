@@ -573,6 +573,27 @@ def test_feature_drift_report_and_source_health_penalize_degraded_data():
     assert source["ranking_penalty"] > 0
 
 
+def test_source_health_requires_dated_non_sector_quality_news():
+    snapshot = [
+        {"code": str(code), "trade_value": 1, "rev_yoy_pct": 1,
+         "foreign_lot": 1}
+        for code in range(100)
+    ]
+    sector_source = f"類股-{next(iter(mr.OTHER_SECTOR_QUERIES))}"
+    news = [
+        {"source": sector_source, "title": "sector", "date_missing": False,
+         "source_grade": "A"}
+        for _ in range(20)
+    ] + [
+        {"source": "Google:noise", "title": "missing date", "date_missing": True,
+         "source_grade": "A"}
+        for _ in range(20)
+    ]
+    out = mr.build_source_health_report(snapshot, news, [{"event_type": "orders"}])
+    assert out["market_checks"]["news"] is False
+    assert "news" in out["failures"]
+
+
 def test_slippage_estimate_rewards_liquid_stocks():
     assert mr._estimate_slippage_bps(5_000_000_000, 2) < mr._estimate_slippage_bps(10_000_000, 2)
 
@@ -610,6 +631,26 @@ def test_model_monitoring_penalizes_bad_rolling_origin():
     assert out["status"] == "error"
     assert out["ranking_penalty"] == 3.0
     assert out["rolling_origin_metrics"]["top5_avg_net_return_pct"] == -0.5
+
+
+def test_model_monitoring_aggregates_all_forecast_targets():
+    out = mr.build_model_monitoring_report({
+        "3d": {
+            "probability_samples": 100,
+            "brier_score": 0.10,
+            "ece_pct": 5.0,
+            "interval_coverage_pct": 80.0,
+        },
+        "5d": {
+            "probability_samples": 100,
+            "brier_score": 0.32,
+            "ece_pct": 5.0,
+            "interval_coverage_pct": 80.0,
+        },
+    })
+    assert out["status"] == "error"
+    assert out["by_target"]["5d"]["status"] == "error"
+    assert any(alert.startswith("5d:") for alert in out["alerts"])
 
 
 def test_walk_forward_does_not_fake_top5_for_unranked_backfill():
@@ -820,7 +861,15 @@ def test_source_health_flags_official_intelligence_outage():
         "medical": {"entries": 5, "failed": 0, "official_sources": 1,
                     "official_entries": 1, "official_empty": 0, "sources": {"c": {}}},
     }}
-    out = mr.build_source_health_report(snapshot, [{}] * 12, [{}], tw)
+    news = [
+        {"source": "CNBC", "title": f"market news {idx}",
+         "published": "2026-06-01T00:00:00+00:00",
+         "published_dt": "2026-06-01T00:00:00+00:00",
+         "date_missing": False,
+         "source_grade": "A"}
+        for idx in range(12)
+    ]
+    out = mr.build_source_health_report(snapshot, news, [{}], tw)
     assert out["failures"] == []
     assert out["ranking_penalty"] == 0
     assert "tw_policy_official_sources" in out["awareness_failures"]

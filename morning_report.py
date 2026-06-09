@@ -7337,7 +7337,9 @@ def build_prediction_backtest(history: list[dict]) -> str:
         err_0050_list = []
         for next_date, h in recent_hist:
 
-            pred_2330 = h.get("model3_2330")
+            # 回溯要衡量「實際拿來預測的值」= weighted_final;舊紀錄沒存才退回 model3。
+            # 否則回溯準確度衡量的是 ADR 衰減模型(model3)、與報告實際給的預測不一致。
+            pred_2330 = h.get("weighted_final_2330") or h.get("model3_2330")
             pred_00662 = h.get("fair_00662")
             pred_0050 = h.get("pred_0050")
             actual_2330 = tw2330_opens.get(next_date)

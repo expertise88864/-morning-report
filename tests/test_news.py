@@ -78,6 +78,26 @@ def test_gnews_rss_builds_encoded_url():
     assert "%E5%8F%B0%E7%A9%8D%E9%9B%BB" in url   # 台積電 已 URL 編碼
 
 
+def test_news_grade_uses_publisher_not_aggregator():
+    """Google/類股 feed 的 source 是代號,真正媒體在 source_name/標題 → 應升級為 B,不是 C。"""
+    assert mr._news_source_grade({"source": "Google:NVDA", "source_name": "中央社"}) == "B"
+    assert mr._news_source_grade({"source": "類股-金融-台股",
+                                  "title": "壽險業大賺 - 經濟日報"}) == "B"
+    assert mr._news_source_grade({"source": "Google:2330"}) == "C"  # 無媒體線索仍 C
+
+
+def test_dedup_preserves_company_label():
+    """個股新聞被去重時,company_label 必須保留在留下來的那筆(否則股票從科技板塊消失)。"""
+    news = [
+        {"source": "中央社財經", "title": "台積電法說釋樂觀展望", "summary": "完整官方說明與數字"},
+        {"source": "Google:2330", "source_name": "鉅亨", "company_label": "2330",
+         "title": "台積電法說釋樂觀展望", "summary": "短"},
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 1
+    assert out[0].get("company_label") == "2330"  # 標籤被保留
+
+
 def test_other_sector_feeds_registered():
     """『九、其他類股資訊』取材的非科技類股來源,須以「類股-」前綴併入 RSS_FEEDS。"""
     expected = {

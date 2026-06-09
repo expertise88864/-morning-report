@@ -239,11 +239,17 @@ def _other_sector_label_from_source(source: str) -> str:
 
 
 GOOGLE_NEWS_COMPANIES: list[tuple] = [
+    # --- 美股權值/AI/半導體龍頭 ---
     ("輝達 NVIDIA", "NVDA"), ("超微 AMD", "AMD"), ("博通 Broadcom", "AVGO"),
     ("美光 Micron 記憶體", "MU"), ("台積電", "2330"), ("艾司摩爾 ASML", "ASML"),
     ("蘋果 Apple", "AAPL"), ("微軟 Microsoft AI", "MSFT"),
+    ("特斯拉 Tesla", "TSLA"), ("高通 Qualcomm", "QCOM"), ("邁威爾 Marvell", "MRVL"),
+    ("應用材料 Applied Materials", "AMAT"), ("安謀 Arm", "ARM"),
+    ("美超微 Supermicro", "SMCI"), ("Alphabet Google AI", "GOOGL"), ("Meta", "META"),
+    # --- 台股 2330 供應鏈 / AI 伺服器 / 半導體 ---
     ("鴻海", "2317"), ("聯發科", "2454"), ("廣達 AI伺服器", "2382"),
-    ("台達電", "2308"),
+    ("台達電", "2308"), ("聯電 UMC", "2303"), ("日月光 ASE", "3711"),
+    ("緯創 AI伺服器", "3231"), ("緯穎 AI伺服器", "6669"), ("世芯-KY ASIC", "3661"),
 ]
 
 # 美股公司消息只對具體、長期穩定的台股供應鏈做弱連動；分數低於直接命中。
@@ -3539,11 +3545,16 @@ def fetch_news() -> list[dict]:
     for query, label in GOOGLE_NEWS_COMPANIES:
         try:
             feed = feedparser.parse(_gnews_rss(query, when="2d"))
-            for entry in feed.entries[:4]:
-                source_name, source_url = _tw_entry_source(entry)
+            kept_for_company = 0
+            for entry in feed.entries:
+                # 先過濾「近 30h 內」再截斷,避免前幾則剛好是舊聞就整家公司空手(rank 6);
+                # pub_dt 用 owner 新增的 _entry_published_dt 解析(較穩健)。
+                if kept_for_company >= 6:
+                    break
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
+                source_name, source_url = _tw_entry_source(entry)
                 items.append({
                     "source": f"Google:{label}",
                     "title": entry.get("title", ""),
@@ -3555,6 +3566,7 @@ def fetch_news() -> list[dict]:
                     "source_url": source_url,
                 })
                 company_hit += 1
+                kept_for_company += 1
         except Exception as e:
             print(f"[news] 公司查詢 {label} 失敗：{e}", file=sys.stderr)
     print(f"[news] 共 {len(items)} 則(含 {company_hit} 則重點公司 Google News)")
@@ -4495,18 +4507,30 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
     return output
 
 
-def _news_source_grade(item: dict) -> str:
-    """新聞來源分級：官方 A、主流媒體 B、聚合或未識別來源 C。"""
-    source = (item.get("source") or "").lower()
-    if any(token in source for token in (
+def _grade_from_text(text: str) -> str:
+    """從單一字串(source / source_name / 標題)判斷來源等級;無法判斷回空字串。"""
+    text = (text or "").lower()
+    if any(token in text for token in (
             "federal reserve", "treasury", "sec", "mops", "twse", "taifex",
             "中央銀行", "證交所", "公開資訊觀測站")):
         return "A"
-    if any(token in source for token in (
-            "cnbc", "bloomberg", "鉅亨", "工商", "經濟日報", "聯合",
-            "中央社", "南華", "nikkei", "bbc")):
+    if any(token in text for token in (
+            "cnbc", "bloomberg", "reuters", "鉅亨", "cnyes", "工商", "經濟日報",
+            "udn", "聯合", "中央社", "cna", "南華", "scmp", "nikkei", "bbc",
+            "moneydj", "technews", "科技新報", "digitimes", "yahoo")):
         return "B"
-    return "C"
+    return ""
+
+
+def _news_source_grade(item: dict) -> str:
+    """新聞來源分級：官方 A、主流媒體 B、聚合或未識別來源 C。
+    Google News / 類股 feed 的 source 只是聚合器代號(如 Google:NVDA、類股-金融-台股),
+    真正的發布媒體在 source_name、或 Google 標題結尾「- 經濟日報」。三者一起看,
+    否則正版個股新聞會被誤判為 C → 去重時輸給舊版、且被當低可信度。"""
+    return (_grade_from_text(item.get("source"))
+            or _grade_from_text(item.get("source_name"))
+            or _grade_from_text(item.get("title"))
+            or "C")
 
 
 def _news_keep_score(item: dict) -> tuple[int, int]:
@@ -4552,9 +4576,14 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
                 dup_index = index
                 break
         if dup_index is not None:
+            # 不論保留哪一版,都把 company_label 補到留下來的那筆,
+            # 避免個股新聞因去重而失去標籤、從「科技板塊脈動」消失(rank 5)。
+            label = n.get("company_label") or kept[dup_index].get("company_label")
             if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
                 kept[dup_index] = n
                 kept_norms[dup_index] = nt
+            if label and not kept[dup_index].get("company_label"):
+                kept[dup_index]["company_label"] = label
             dropped += 1
             continue
         kept.append(n)
@@ -7679,6 +7708,15 @@ def classify_news_importance(news: list[dict]) -> list[dict]:
             n["importance"] = "high"
             n["category"] = "tw_policy"
             n["keyword"] = tw_hit
+        elif n.get("company_label") and (
+                _matches_any(text, NEWS_POSITIVE_TERMS)
+                or _matches_any(text, NEWS_NEGATIVE_TERMS)):
+            # 重點公司 + 具體催化(訂單/上修/財報/砍單/出口管制…)→ 升級為 high。
+            # 讓它抓全文並進入高權重區,避免「科技板塊脈動」退化成只報股價+B級低信心(rank 7)。
+            n["importance"] = "high"
+            n["category"] = "company_catalyst"
+            n["keyword"] = (_matches_any(text, NEWS_POSITIVE_TERMS)
+                            or _matches_any(text, NEWS_NEGATIVE_TERMS))
         else:
             n["importance"] = "normal"
             n["category"] = "general"
@@ -7723,9 +7761,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         news_block += "（昨日無自動辨識的 Fed/數據/政策重大事件）\n\n"
     # high 也帶全文(fetch_news_fulltext 對 high 也抓了,個股新聞多半在這層,
     # 不帶全文 LLM 只看到 600 字 snippet → R12 觸發 → 公司被刪)
-    news_block += "★★ 高權重事件（地緣/台灣政策/個股法說 / 8-K 等）★★\n"
+    news_block += "★★ 高權重事件（地緣/台灣政策/個股催化/法說 / 8-K 等）★★\n"
     if high_news:
-        news_block += "\n".join(fmt_news(n, with_full=True) for n in high_news[:15]) + "\n\n"
+        # 地緣/政策新聞在 news 串接順序較前(各 RSS 來源),個股催化(company_label)由公司查詢
+        # 最後 append → 排在後面;取 20 則確保兩者都進得來,不會被個股催化擠掉地緣/政策。
+        news_block += "\n".join(fmt_news(n, with_full=True) for n in high_news[:20]) + "\n\n"
     else:
         news_block += "（無）\n\n"
     news_block += "★ 一般新聞（參考）★\n"
@@ -10807,7 +10847,7 @@ def main() -> int:
     try:
         # 同時對 critical 與 high 級新聞抓全文(個股新聞多半屬 high,只有 RSS snippet
         # 會讓 LLM 因「沒有具體事實」而把該公司刪掉,報告變稀薄)
-        news = fetch_news_fulltext(news, max_critical=10, max_high=10)
+        news = fetch_news_fulltext(news, max_critical=10, max_high=16)
     except Exception as e:
         print(f"[main] 全文擷取失敗: {e}", file=sys.stderr)
 

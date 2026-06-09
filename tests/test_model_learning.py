@@ -19,6 +19,33 @@ def _stock(close, **extra):
     }
 
 
+def test_backfill_actual_opens_fills_matured_targets(monkeypatch):
+    """已成熟(過去)target 才補實際開盤;未來日不補;四標的對應正確。"""
+    past = (dt.datetime.now(mr.TPE) - dt.timedelta(days=3)).strftime("%Y-%m-%d")
+    future = (dt.datetime.now(mr.TPE) + dt.timedelta(days=30)).strftime("%Y-%m-%d")
+    prices = {"2330.TW": 1001.0, "00662.TW": 101.0, "0050.TW": 51.0, "^TWII": 20001.0}
+
+    class Ticker:
+        def __init__(self, sym):
+            self.sym = sym
+
+        def history(self, **kwargs):
+            return pd.DataFrame({"Open": [prices[self.sym]]}, index=pd.to_datetime([past]))
+
+    monkeypatch.setattr(mr.yf, "Ticker", lambda sym, *a, **k: Ticker(sym))
+    history = [
+        {"date": past, "target_session_date": past, "weighted_final_2330": 999},
+        {"date": future, "target_session_date": future},
+    ]
+    filled = mr.backfill_actual_opens(history)
+    assert filled == 4
+    assert history[0]["actual_open_2330"] == 1001.0
+    assert history[0]["actual_open_taiex"] == 20001.0
+    assert "actual_open_2330" not in history[1]   # 未成熟不補
+    # 重跑不應重複補(冪等)
+    assert mr.backfill_actual_opens(history) == 0
+
+
 def test_parse_twse_date_supports_roc_and_gregorian():
     assert mr._parse_twse_date("115/06/01") == "2026-06-01"
     assert mr._parse_twse_date("2026-06-02") == "2026-06-02"

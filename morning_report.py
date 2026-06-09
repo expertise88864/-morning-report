@@ -7591,6 +7591,49 @@ def load_history_state(days: int = 90) -> list[dict]:
         return []
 
 
+def backfill_actual_opens(history: list[dict]) -> int:
+    """把已成熟交易日的『實際開盤』寫回歷史記錄。
+
+    晨報於開盤前產生,當下拿不到「今日實際開盤」;但**過去**預測對應的開盤日早已成熟。
+    這裡為每筆 target_session_date 已過的記錄補上 actual_open_2330/00662/0050/taiex,
+    讓 (訊號 + 預測 + 實際) 成為自含資料集 → 預測回測可離線重現、且是誠實的 live 紀錄。
+    純資料記錄,不影響當日預測或信件內容。回傳補了幾個欄位。
+    """
+    if not history:
+        return 0
+    try:
+        def _opens(sym: str) -> dict:
+            h = yf.Ticker(sym).history(period="1mo", auto_adjust=False).dropna(subset=["Open"])
+
+            def _to_date(idx):
+                return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
+            return {_to_date(d): round(float(v), 2) for d, v in h["Open"].items()}
+
+        series = {
+            "actual_open_2330": _opens("2330.TW"),
+            "actual_open_00662": _opens("00662.TW"),
+            "actual_open_0050": _opens("0050.TW"),
+            "actual_open_taiex": _opens("^TWII"),
+        }
+    except Exception as e:
+        print(f"[backfill] 實際開盤回填略過(取數失敗): {e}", file=sys.stderr)
+        return 0
+
+    today = dt.datetime.now(TPE).strftime("%Y-%m-%d")
+    filled = 0
+    for rec in history:
+        tgt = rec.get("target_session_date")
+        if not tgt or tgt >= today:        # 只回填已成熟(過去)的交易日
+            continue
+        for field, omap in series.items():
+            if field not in rec and tgt in omap:
+                rec[field] = omap[tgt]
+                filled += 1
+    if filled:
+        print(f"[backfill] 回填 {filled} 個實際開盤欄位至歷史記錄")
+    return filled
+
+
 def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
     """
     新增一筆當日記憶，並維持只保留近 N 天。
@@ -7617,6 +7660,12 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=days_to_keep)).strftime("%Y-%m-%d")
         existing = _normalize_history_entries(
             [d for d in existing if d.get("date", "") >= cutoff])
+
+        # 回填已成熟交易日的實際開盤(累積離線可重現的預測準確度資料集);取數失敗不影響存檔
+        try:
+            backfill_actual_opens(existing)
+        except Exception as e:
+            print(f"[state] 實際開盤回填略過: {e}", file=sys.stderr)
 
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATE_FILE.write_text(

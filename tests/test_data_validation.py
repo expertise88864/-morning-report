@@ -76,6 +76,28 @@ def test_build_prompt_does_not_ask_llm_to_write_watchlist_section():
     assert "不要撰寫「今日台股關注五檔」段落" in p
 
 
+def test_build_prompt_injects_python_2330_price_levels():
+    """2330 關鍵價位必須由 Python 注入(新台幣中樞值),不可再叫 LLM 自己用 XXX 算
+    → 根除把台積電 ADR 美元價(約 426 美元)誤當 2330 台股價(約 2300 元)的幻覺。"""
+    preds = {"mid": 2313.24, "last_2330": 2295.0,
+             "model1_1to1": 2310, "model2_regression": 2320}
+    fair = {"fair_price": 120.16, "last_00662_price": 118.15}
+    p = mr._build_prompt(_empty_quotes(), fair, preds, [], [], "")
+    assert "2313" in p                 # Python 注入的新台幣中樞值
+    assert "守穩 XXX" not in p          # 舊的「LLM 自己填」占位符已移除
+    assert "新台幣計價" in p            # 明確標示幣別
+    assert "R14" in p                  # 幣別/量級鐵律存在
+    # 美股報價不再把含 history 的整個 dict 倒進 prompt
+    assert "history" not in p.lower()
+
+
+def test_build_prompt_2330_price_unavailable_is_explicit():
+    """預測缺失時,prompt 要明寫「資料未提供」並禁止編造,而非留白讓 LLM 亂掰。"""
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "資料未提供" in p
+    assert "守穩 XXX" not in p
+
+
 def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     """_build_prompt 若拋例外，call_llm_analysis 必須回 fallback 字串而不是 raise，
     確保 main() 仍能寄出基本版晨報。"""

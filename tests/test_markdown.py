@@ -104,6 +104,29 @@ def test_extract_summary_missing():
     assert mr._extract_summary("沒有總結章節的文字") == ""
 
 
+def test_sanitize_2330_prices_fixes_adr_confusion():
+    """LLM 把 2330 寫成台積電 ADR 美元價(約430)時,sanitizer 用中樞值改回。"""
+    preds = {"mid": 2313.24, "last_2330": 2295.0}
+    bad = "2330 開盤關鍵價位:守穩 430 元為強,跌破 425 元轉弱\n結論:2330 守穩 430 元逢回加碼"
+    out = mr._sanitize_llm_2330_prices(bad, preds)
+    assert "430" not in out and "425" not in out
+    assert "2313" in out
+
+
+def test_sanitize_2330_prices_leaves_other_tickers_and_valid_prices():
+    preds = {"mid": 2313.24, "last_2330": 2295.0}
+    # 不含 2330/台積電 → 完全不動(00662 120、0050 100 保留)
+    other = "00662 合理估值 120 元、0050 約 100 元"
+    assert mr._sanitize_llm_2330_prices(other, preds) == other
+    # 正常的 2330 新台幣價(約 mid)→ 不動
+    valid = "2330 守穩 2295 元、站上 2336 元偏強"
+    assert mr._sanitize_llm_2330_prices(valid, preds) == valid
+
+
+def test_sanitize_2330_prices_noop_without_mid():
+    assert mr._sanitize_llm_2330_prices("2330 守穩 430 元", {"error": "x"}) == "2330 守穩 430 元"
+
+
 def test_render_html_includes_kpi_strip_with_full_data():
     q = _full_quotes()
     q["TAIEX_PRED"] = {

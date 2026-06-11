@@ -127,6 +127,19 @@ def test_sanitize_2330_prices_noop_without_mid():
     assert mr._sanitize_llm_2330_prices("2330 守穩 430 元", {"error": "x"}) == "2330 守穩 430 元"
 
 
+def test_sanitize_2330_prices_fixes_malformed_thousands():
+    """LLM 寫出「2,2182 元」這種畸形千分位(逗號後非 3 位)時,以中樞值改寫。"""
+    preds = {"mid": 2182.26, "last_2330": 2255.0}
+    bad = "台積電除息參考價為 2,2182 元"
+    out = mr._sanitize_llm_2330_prices(bad, preds)
+    assert "2,2182" not in out and "2182 元" in out
+    # 合法千分位(逗號後恰 3 位)不誤傷;非 2330 行不動
+    ok = "台積電市值 22,182 億元"
+    assert mr._sanitize_llm_2330_prices(ok, preds) == ok
+    other = "加權指數 4,2328 點"   # 沒提 2330/台積電 → 不動
+    assert mr._sanitize_llm_2330_prices(other, preds) == other
+
+
 def test_render_html_includes_kpi_strip_with_full_data():
     q = _full_quotes()
     q["TAIEX_PRED"] = {

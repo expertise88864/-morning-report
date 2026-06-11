@@ -9594,10 +9594,13 @@ def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
     lo, hi = mid * 0.10, mid * 0.45
     target = str(round(mid))
     num_re = _re.compile(r"(?<![\d.])(\d{2,4}(?:\.\d+)?)\s*元")
+    # 畸形千分位:合法格式逗號後必為恰 3 位(如 22,182);「2,2182」這種是 LLM 排版幻覺
+    malformed_re = _re.compile(r"(?<![\d.])(\d{1,3},\d{4,}(?:\.\d+)?)\s*元")
 
     def _fix_line(line: str) -> str:
         if ("2330" not in line and "台積電" not in line) or "元" not in line:
             return line
+        line = malformed_re.sub(f"{target} 元", line)
 
         def _sub(m):
             try:
@@ -11226,9 +11229,25 @@ def main() -> int:
 
     # 6.66 除息已在預測模型執行前套用，這裡只加入報告提醒。
     if ex_div:
-        named = "、".join(f"{c} 配息 {ex_div[c]} 元" for c in public_codes if c in ex_div)
+        # 逐檔附 Python 算好的「除息參考價 = 昨收 − 配息」,讓 LLM 直接引用,
+        # 避免它自己心算把參考價與預測中樞混排(曾寫出「2,2182 元」這種畸形數字)。
+        _last_by_code = {
+            "2330": predictions.get("last_2330") if isinstance(predictions, dict) else None,
+            "00662": fair.get("last_00662_price") if isinstance(fair, dict) else None,
+            "0050": tw0050_pred.get("last") if isinstance(tw0050_pred, dict) else None,
+        }
+        parts = []
+        for c in public_codes:
+            if c not in ex_div:
+                continue
+            last_c = _last_by_code.get(c)
+            ref = (f"，除息參考價 {round(last_c - ex_div[c], 2)} 元（昨收 {last_c} − 配息）"
+                   if isinstance(last_c, (int, float)) else "")
+            parts.append(f"{c} 配息 {ex_div[c]} 元{ref}")
+        named = "、".join(parts)
         alerts.append({"level": "yellow", "title": "除息日提示",
-                       "detail": f"預測交易日除息：{named}。上方預測開盤點位已減息，除息缺口非跌幅。"})
+                       "detail": f"預測交易日除息：{named}。上方預測開盤點位已減息，除息缺口非跌幅。"
+                                 f"（參考價由 Python 計算，引用時請原樣使用）"})
 
     quotes["BACKTEST"] = backtest_block
     quotes["ALERTS"] = alerts

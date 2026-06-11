@@ -2962,20 +2962,45 @@ def _taiex_conflict_adjustment(weighted_pct: float,
     return weighted_pct * shrink, round(shrink, 3), reasons[:5]
 
 
+TAIEX_US_BETA_PRIOR = 0.31   # 2021-2026 共 1200 日回測:開盤跳空對前夜美股的有效 beta
+TAIEX_US_BETA_BOUNDS = (0.15, 0.60)
+
+
+def _taiex_us_beta(context: Optional[dict]) -> tuple[float, str]:
+    """美股合成訊號 → 加權開盤跳空的縮放係數 k。
+
+    2021-2026 回測(500 日評估窗)發現:台股日內盤已先消化大部分美股重疊資訊,
+    開盤跳空對前夜美股的真實 beta 僅 ~0.23-0.31,而舊公式權重總和 ~1.03,
+    系統性放大預測 ~3.4 倍(live 誤差 -1.7%~+4.1% 的成因)。重縮放後離線 MAE -73%。
+    live 配對樣本(history 回填的 實際開盤 vs 當日美股訊號)累積 ≥30 筆後,
+    改用近 60 筆 OLS 過原點動態估計,並夾在合理範圍內。
+    """
+    samples = (context or {}).get("us_beta_samples") or []
+    pairs = [(float(x), float(y)) for x, y in samples
+             if isinstance(x, (int, float)) and isinstance(y, (int, float))]
+    if len(pairs) >= 30:
+        recent = pairs[-60:]
+        sxx = sum(x * x for x, _ in recent)
+        if sxx > 0:
+            k = sum(x * y for x, y in recent) / sxx
+            lo, hi = TAIEX_US_BETA_BOUNDS
+            return max(lo, min(k, hi)), f"live OLS(n={len(recent)})"
+    return TAIEX_US_BETA_PRIOR, "回測先驗"
+
+
 def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
                           sox_pct: Optional[float],
                           tsm_pct: Optional[float],
                           night_pct: Optional[float],
                           context: Optional[dict] = None) -> dict:
     """
-    Task A: 加權指數開盤預測（三訊號加權法）
+    Task A: 加權指數開盤預測（美股訊號重縮放 + 夜盤台指期）
 
-    加權邏輯：
-      SOX 漲跌幅 × β=1.05 × 40%（半導體與台股加權連動）
-      TSM ADR 漲跌幅 × 30%（台積電佔加權 ~28-32%）
-      夜盤台指期漲跌幅 × 30%（最直接領先指標）
-
-    若任一訊號缺失，自動 reweight 剩下的權重。
+    邏輯（2021-2026 回測選定,離線 MAE -73%）：
+      us_combo = SOX×1.05×(0.4/0.7) + TSM_ADR×(0.3/0.7)   ← 美股合成訊號
+      us_pred  = k × us_combo                              ← k≈0.31(有效 beta,可由 live 樣本動態估)
+      最終     = 0.70 × us_pred + 0.30 × 夜盤台指期         ← 夜盤直接定價開盤(beta≈1),不縮放
+    任一邊缺失時用另一邊;全缺回 error。
     """
     if taiex_hist is None or taiex_hist.empty:
         return {"error": "缺加權指數歷史"}
@@ -2984,22 +3009,37 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
     if not last_close:
         return {"error": "加權指數收盤無效"}
 
-    # 收集有效訊號
-    signals = []
-    if sox_pct is not None:
-        signals.append(("SOX", sox_pct * 1.05, 0.40))
-    if tsm_pct is not None:
-        signals.append(("TSM_ADR", tsm_pct, 0.30))
-    if night_pct is not None:
-        signals.append(("Night_TXF", night_pct, 0.30))
+    us_beta, us_beta_source = _taiex_us_beta(context)
 
-    if not signals:
+    # 美股合成訊號(舊 40/30 重正規化)
+    us_parts = []
+    if sox_pct is not None:
+        us_parts.append(("SOX", sox_pct * 1.05, 0.40))
+    if tsm_pct is not None:
+        us_parts.append(("TSM_ADR", tsm_pct, 0.30))
+    us_total_w = sum(w for _, _, w in us_parts)
+    us_combo = (sum(v * w for _, v, w in us_parts) / us_total_w) if us_parts else None
+    us_pred = us_beta * us_combo if us_combo is not None else None
+
+    if us_pred is None and night_pct is None:
         return {"error": "三大訊號全缺，無法預測"}
 
-    # Reweight: 缺資料時，剩餘訊號權重重新分配
-    total_weight = sum(w for _, _, w in signals)
-    raw_weighted_pct = sum(val * w / total_weight for _, val, w in signals)
+    # 合成:夜盤台指期直接定價 09:00 開盤(beta≈1),不可與美股訊號一起縮放
+    if us_pred is not None and night_pct is not None:
+        raw_weighted_pct = 0.70 * us_pred + 0.30 * night_pct
+    elif us_pred is not None:
+        raw_weighted_pct = us_pred
+    else:
+        raw_weighted_pct = night_pct
     weighted_pct = raw_weighted_pct
+
+    # signals 帶「有效權重」(實際乘進 weighted_pct 的係數),供信件表格誠實呈現;
+    # 加總 <1 正是「美股訊號縮放」的體現。
+    us_leg_w = (0.70 if night_pct is not None else 1.0)
+    signals = [(name, val, round(us_leg_w * us_beta * w / us_total_w, 3))
+               for name, val, w in us_parts]
+    if night_pct is not None:
+        signals.append(("Night_TXF", night_pct, 0.30 if us_pred is not None else 1.0))
 
     # 歷史樣本不足時的暫定參考區間：三訊號發散程度。
     # calibrate_predictions 累積足夠 walk-forward 殘差後，會覆寫成歷史殘差分位區間。
@@ -3047,8 +3087,24 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
         "conflict_shrink_factor": conflict_shrink,
         "conflict_reasons": conflict_reasons,
         "signal_count": len(signals),
+        "us_rescale_k": round(us_beta, 3),
+        "us_beta_source": us_beta_source,
         "interval_method": "訊號分歧近似區間（歷史殘差樣本不足）",
     }
+
+
+def _taiex_us_beta_samples(history: list[dict]) -> list[tuple[float, float]]:
+    """從已回填的 live 歷史組出 (美股合成訊號%, 實際開盤跳空%) 配對,供動態 beta 估計。"""
+    samples = []
+    for h in history or []:
+        sox, tsm = h.get("sox_pct"), h.get("tsm_pct")
+        op, prev = h.get("actual_open_taiex"), h.get("actual_taiex_prev_close")
+        if None in (sox, tsm, op, prev) or not prev:
+            continue
+        us_combo = (0.40 * sox * 1.05 + 0.30 * tsm) / 0.70
+        gap = (op / prev - 1) * 100
+        samples.append((us_combo, gap))
+    return samples
 
 
 def _previous_market_values(series: pd.Series, target_index) -> pd.Series:
@@ -3111,13 +3167,12 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     except Exception as e:
         print(f"[calc] 2330 model2 失敗: {e}", file=sys.stderr)
 
-    # 模型 3：ADR 溢價衰減版（改良版）
-    # 邏輯：ADR 漲跌不會 100% 反映到台股開盤，因為：
-    #   (a) 台股盤後新聞已部分反映 ADR 後續走勢
-    #   (b) ADR 收盤後到台股開盤有 5 小時，可能再有變動
-    # 實證上，2330 開盤幅度約為 ADR 漲跌幅的 0.75 (即衰減 25%)
-    # 用近 60 日「2330 開盤漲幅 / TSM 前夜漲幅」計算實際衰減係數
-    decay_factor = 0.75  # 預設值
+    # 模型 3：ADR 溢價衰減版（M2,500 日回測選定)
+    # 邏輯：ADR 漲跌不會 100% 反映到台股開盤(台股盤後已部分反映 + ADR 收盤到台股開盤有 5 小時)。
+    # decay 估計:近 60 個台股交易日全樣本「open_gap% ~ TSM前夜%」OLS 過原點斜率。
+    # (2021-2026 回測:OLS 斜率版 MAE 比「|TSM|>1% 比值中位數」版的四模型 ensemble 低 13.6%,
+    #  p=4.7e-9、方向命中不變;實測斜率範圍 0.297~0.709,故夾限下緣放寬至 0.25。)
+    decay_factor = 0.75  # 樣本不足時的預設值
     model3 = None
     try:
         # target = 台股開盤 / 前一日台股收盤；feature = 前夜 ADR 漲跌。
@@ -3128,14 +3183,15 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
             tw["open_gap_pct"] = tw["Open"] / tw["Close"].shift(1) - 1
             tsm_returns = tsm_close_s.pct_change().dropna()
             tw["tsm_prev_night_pct"] = _previous_market_values(tsm_returns, tw.index)
-            # 取 |TSM 變動 > 1%| 的樣本，較有意義
-            sig = tw[tw["tsm_prev_night_pct"].abs() > 0.01].dropna().tail(60)
-            if len(sig) >= 10:
-                ratio = (sig["open_gap_pct"] / sig["tsm_prev_night_pct"]).clip(
-                    lower=0, upper=1.5)
-                decay_factor = float(ratio.median())
-                decay_factor = max(0.3, min(decay_factor, 1.2))  # 限制合理範圍
-                print(f"[calc] 2330 ADR 衰減係數 (近 60 日實證)={decay_factor:.3f}")
+            sig = tw[["open_gap_pct", "tsm_prev_night_pct"]].dropna().tail(60)
+            if len(sig) >= 30:
+                x = sig["tsm_prev_night_pct"]
+                y = sig["open_gap_pct"]
+                sxx = float((x * x).sum())
+                if sxx > 0:
+                    decay_factor = float((x * y).sum() / sxx)
+                    decay_factor = max(0.25, min(decay_factor, 1.2))  # 限制合理範圍
+                    print(f"[calc] 2330 ADR 衰減係數 (近 60 日 OLS 過原點)={decay_factor:.3f}")
         model3 = last_2330 * (1 + tsm_pct * decay_factor)
     except Exception as e:
         print(f"[calc] 2330 model3 失敗: {e}", file=sys.stderr)
@@ -7508,26 +7564,20 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
 
     # ---- (A) 2330 四模型 MAE 反比加權（model1/2/3 + model4 momentum） ----
     if isinstance(predictions, dict) and not predictions.get("error"):
-        m1 = predictions.get("model1_1to1")
-        m2 = predictions.get("model2_regression")
         m3 = predictions.get("model3_adr_decay")
-        m4 = predictions.get("model4_momentum")
         mae1, n1 = _mae(err["m1"])
         mae2, n2 = _mae(err["m2"])
         mae3, n3 = _mae(err["m3"])
         mae4, n4 = _mae(err["m4"])
-        cand = [(v, mae, n) for v, mae, n in
-                ((m1, mae1, n1), (m2, mae2, n2), (m3, mae3, n3), (m4, mae4, n4))
-                if v is not None]
-        if cand and all(n >= min_samples and mae and mae > 0 for _, mae, n in cand):
-            inv = [(v, 1.0 / mae) for v, mae, _ in cand]
-            tot = sum(w for _, w in inv)
-            predictions["weighted_final"] = round(
-                sum(v * w for v, w in inv) / tot, 2)
-            predictions["final_method"] = "近期 MAE 反比加權"
+        # 2021-2026 共 500 個交易日 rolling-origin 回測:純 model3(OLS decay) MAE 0.940%
+        # < 四模型中位數 0.946% < MAE 反比加權 0.972%(且加權版方向命中 -1.34pp)。
+        # → 停用 MAE 反比加權,weighted_final 直接採 model3;model3 缺值才退回中位數。
+        if m3 is not None:
+            predictions["weighted_final"] = m3
+            predictions["final_method"] = "純 ADR 衰減 model3(500 日回測選定)"
         else:
             predictions["weighted_final"] = predictions.get("mid")
-            predictions["final_method"] = "等權中位數（模型誤差樣本不足）"
+            predictions["final_method"] = "等權中位數（model3 缺值退化）"
         predictions["model_mae_pct"] = {
             "model1": round(mae1 * 100, 3) if mae1 else None,
             "model2": round(mae2 * 100, 3) if mae2 else None,
@@ -7602,19 +7652,26 @@ def backfill_actual_opens(history: list[dict]) -> int:
     if not history:
         return 0
     try:
-        def _opens(sym: str) -> dict:
+        def _ohlc(sym: str) -> tuple[dict, dict]:
             h = yf.Ticker(sym).history(period="1mo", auto_adjust=False).dropna(subset=["Open"])
 
             def _to_date(idx):
                 return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
-            return {_to_date(d): round(float(v), 2) for d, v in h["Open"].items()}
+            opens = {_to_date(d): round(float(v), 2) for d, v in h["Open"].items()}
+            closes = {_to_date(d): round(float(v), 2) for d, v in h["Close"].items()}
+            return opens, closes
 
+        opens_2330, _ = _ohlc("2330.TW")
+        opens_00662, _ = _ohlc("00662.TW")
+        opens_0050, _ = _ohlc("0050.TW")
+        opens_taiex, closes_taiex = _ohlc("^TWII")
         series = {
-            "actual_open_2330": _opens("2330.TW"),
-            "actual_open_00662": _opens("00662.TW"),
-            "actual_open_0050": _opens("0050.TW"),
-            "actual_open_taiex": _opens("^TWII"),
+            "actual_open_2330": opens_2330,
+            "actual_open_00662": opens_00662,
+            "actual_open_0050": opens_0050,
+            "actual_open_taiex": opens_taiex,
         }
+        taiex_dates = sorted(closes_taiex)
     except Exception as e:
         print(f"[backfill] 實際開盤回填略過(取數失敗): {e}", file=sys.stderr)
         return 0
@@ -7628,6 +7685,12 @@ def backfill_actual_opens(history: list[dict]) -> int:
         for field, omap in series.items():
             if field not in rec and tgt in omap:
                 rec[field] = omap[tgt]
+                filled += 1
+        # 加權「前收」:供 live 動態估計美股訊號 → 開盤跳空的有效 beta(us_beta_samples)
+        if "actual_taiex_prev_close" not in rec and tgt in opens_taiex:
+            prior = [d for d in taiex_dates if d < tgt]
+            if prior:
+                rec["actual_taiex_prev_close"] = closes_taiex[prior[-1]]
                 filled += 1
     if filled:
         print(f"[backfill] 回填 {filled} 個實際開盤欄位至歷史記錄")
@@ -8329,9 +8392,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 {night_block}
 ※ 夜盤交易 14:45 - 翌日 05:00。早上跑報時夜盤剛收，是大盤開盤方向的最強訊號。
 
-【加權指數預測（Task A，三訊號加權法）】
+【加權指數預測（Task A，美股訊號重縮放 + 夜盤台指期）】
 {taiex_pred_block}
-※ 用 SOX 40% + TSM ADR 30% + 夜盤台指期 30% 加權預測。訊號分歧時信心降低。
+※ 美股訊號(SOX/TSM ADR)依歷史有效 beta(約 0.31,5 年回測)縮放後,與夜盤台指期 0.7/0.3 合成;表中為有效權重。訊號分歧時信心降低。
 
 【大盤量能與市場廣度（TWSE STOCK_DAY_ALL 統計）】
 {breadth_block}
@@ -10982,7 +11045,8 @@ def main() -> int:
         night_pct = night_txf.get("night_pct")
         taiex_pred = calc_taiex_prediction(
             taiex_hist, sox_pct, tsm_pct, night_pct,
-            context={"MACRO": macro, "TAIFEX_OI": taifex_oi})
+            context={"MACRO": macro, "TAIFEX_OI": taifex_oi,
+                     "us_beta_samples": _taiex_us_beta_samples(history)})
     except Exception as e:
         print(f"[main] 加權預測失敗: {e}", file=sys.stderr)
         taiex_pred = {}

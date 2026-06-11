@@ -20,8 +20,9 @@ def _stock(close, **extra):
 
 
 def test_backfill_actual_opens_fills_matured_targets(monkeypatch):
-    """已成熟(過去)target 才補實際開盤;未來日不補;四標的對應正確。"""
+    """已成熟(過去)target 才補實際開盤;未來日不補;四標的對應正確;加權另補前收。"""
     past = (dt.datetime.now(mr.TPE) - dt.timedelta(days=3)).strftime("%Y-%m-%d")
+    prev_day = (dt.datetime.now(mr.TPE) - dt.timedelta(days=4)).strftime("%Y-%m-%d")
     future = (dt.datetime.now(mr.TPE) + dt.timedelta(days=30)).strftime("%Y-%m-%d")
     prices = {"2330.TW": 1001.0, "00662.TW": 101.0, "0050.TW": 51.0, "^TWII": 20001.0}
 
@@ -30,7 +31,9 @@ def test_backfill_actual_opens_fills_matured_targets(monkeypatch):
             self.sym = sym
 
         def history(self, **kwargs):
-            return pd.DataFrame({"Open": [prices[self.sym]]}, index=pd.to_datetime([past]))
+            p = prices[self.sym]
+            return pd.DataFrame({"Open": [p - 1, p], "Close": [p - 2, p + 1]},
+                                index=pd.to_datetime([prev_day, past]))
 
     monkeypatch.setattr(mr.yf, "Ticker", lambda sym, *a, **k: Ticker(sym))
     history = [
@@ -38,9 +41,10 @@ def test_backfill_actual_opens_fills_matured_targets(monkeypatch):
         {"date": future, "target_session_date": future},
     ]
     filled = mr.backfill_actual_opens(history)
-    assert filled == 4
+    assert filled == 5   # 4 個 open + 1 個加權前收
     assert history[0]["actual_open_2330"] == 1001.0
     assert history[0]["actual_open_taiex"] == 20001.0
+    assert history[0]["actual_taiex_prev_close"] == 19999.0   # prev_day 的收盤(20001-2)
     assert "actual_open_2330" not in history[1]   # 未成熟不補
     # 重跑不應重複補(冪等)
     assert mr.backfill_actual_opens(history) == 0

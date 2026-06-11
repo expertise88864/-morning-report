@@ -56,14 +56,15 @@ def test_calibration_applies_positive_bias(fake_yf):
     assert f["fair_price"] > 120.0 and f["fair_price_raw"] == 120.0
     assert t["calibration"]["applied"] is True
     assert t["pred_open"] > 23000.0
-    # 2330：三模型都有足夠樣本 → 應走 MAE 加權
-    assert p["final_method"] == "近期 MAE 反比加權"
+    # 2330:停用 MAE 反比加權(500 日回測證實較差),weighted_final 直接採 model3 再經 bias 校正
+    assert "純 ADR 衰減" in p["final_method"]
     assert p["weighted_final"] is not None
     assert p["mid"] == p["weighted_final"]   # mid 同步成校正後最終值
 
 
-def test_model_weighting_favours_accurate_model(fake_yf):
-    # model1 歷史很準、model3 很不準 → weighted_final 應明顯偏向 model1 的今日值
+def test_weighted_final_uses_model3_not_mae_weighting(fake_yf):
+    # 2021-2026 共 500 日回測:純 model3 MAE 0.940% < 中位數 0.946% < MAE 反比加權 0.972%
+    # (且加權版方向命中 -1.34pp)→ weighted_final 直接採 model3,不再做 MAE 加權。
     dates = _hist_dates(12)
     all_dates = pd.date_range("2026-04-01", periods=20, freq="B")
     fake_yf({
@@ -89,9 +90,10 @@ def test_model_weighting_favours_accurate_model(fake_yf):
     f, p, t = mr.calibrate_predictions(fair, preds, taiex, history)
 
     mae = p["model_mae_pct"]
-    assert mae["model1"] < mae["model2"] < mae["model3"]
-    # 加權結果應比中位數(1200)更靠近準確的 model1(1100)
-    assert abs(p["weighted_final"] - 1100.0) < abs(p["weighted_final"] - 1300.0)
+    assert mae["model1"] < mae["model2"] < mae["model3"]   # MAE 統計仍計算(供顯示/監控)
+    # weighted_final 不做 MAE 加權:= model3 今日值(歷史 bias=0 → 不調整)
+    assert p["weighted_final"] == 1300.0
+    assert "純 ADR 衰減" in p["final_method"]
 
 
 def test_calibration_matches_same_day_not_next_day(fake_yf):

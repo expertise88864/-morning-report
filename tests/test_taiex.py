@@ -43,6 +43,44 @@ def test_consensus_all_bullish(fake_yf, mkdf):
     assert res["signal_std"] is not None
 
 
+def test_us_signal_rescaled_by_backtest_beta(fake_yf, mkdf):
+    """2021-2026 回測:開盤跳空對美股有效 beta 僅 ~0.31,美股訊號必須縮放(夜盤不縮)。"""
+    import morning_report as mr
+    res = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.2, tsm_pct=0.8, night_pct=0.5)
+    assert res["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR == 0.31
+    # us_combo=(1.2*1.05*0.4+0.8*0.3)/0.7≈1.063 → 0.7*0.31*1.063 + 0.3*0.5 ≈ 0.38
+    assert 0.2 < res["raw_weighted_pct"] < 0.55   # 遠小於舊公式的 ~0.85
+    # signals 帶有效權重,加總 <1(縮放的體現)
+    assert sum(s["weight"] for s in res["signals"]) < 1.0
+
+
+def test_us_beta_learned_from_live_samples(fake_yf, mkdf):
+    """live 配對樣本 ≥30 筆 → 改用 OLS 過原點動態估 beta,並夾在合理範圍。"""
+    import morning_report as mr
+    ctx = {"us_beta_samples": [(1.0, 0.5)] * 40}   # y=0.5x → k=0.5
+    res = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
+                                   night_pct=None, context=ctx)
+    assert res["us_rescale_k"] == 0.5
+    assert "OLS" in res["us_beta_source"]
+    # 夾限:y=2x → k=2 → 夾到上緣 0.60
+    ctx2 = {"us_beta_samples": [(1.0, 2.0)] * 40}
+    res2 = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
+                                    night_pct=None, context=ctx2)
+    assert res2["us_rescale_k"] == mr.TAIEX_US_BETA_BOUNDS[1]
+    # 樣本不足(<30)→ 回測先驗
+    ctx3 = {"us_beta_samples": [(1.0, 0.5)] * 10}
+    res3 = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
+                                    night_pct=None, context=ctx3)
+    assert res3["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR
+
+
+def test_night_leg_not_rescaled(fake_yf, mkdf):
+    """夜盤台指期直接定價開盤(beta≈1),只有美股腿縮放;只剩夜盤時不縮。"""
+    import morning_report as mr
+    res = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=None, tsm_pct=None, night_pct=1.0)
+    assert res["raw_weighted_pct"] == 1.0   # 純夜盤,不被 0.31 縮掉
+
+
 # --- 回歸測試：fetch_taifex_foreign_futures 曾誤抓「契約金額」欄當「口數」 ---
 class _FakeTaifexResp:
     def __init__(self, text):

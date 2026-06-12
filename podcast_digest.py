@@ -2,11 +2,13 @@
 """Podcast 重點摘要產生器(獨立於晨報主流程)。
 
 流程:iTunes Search 解析 RSS → 抓最新集 → 未處理且 48h 內的新集 →
-下載 mp3 → Gemini File API 上傳 → 多模態直接摘要(不需獨立 STT)→
+下載 mp3 → faster-whisper 本地轉錄(免費,GitHub Actions CPU)→
+DeepSeek 摘要(repo 既有 key,不依賴 Gemini)→
 寫入 state/podcast_digest.json(git push 交給 workflow)。
 
 晨報(morning_report.py)只讀 state JSON 渲染,本腳本失敗不影響寄信。
-執行:python podcast_digest.py(需 GEMINI_API_KEY)
+執行:python podcast_digest.py(需 DEEPSEEK_API_KEY;faster-whisper 由
+workflow 單獨 pip install,不進 requirements.txt 以免拖慢晨報/CI)
 """
 from __future__ import annotations
 
@@ -21,11 +23,15 @@ from pathlib import Path
 import feedparser
 import requests
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("PODCAST_GEMINI_MODEL", os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+# 摘要用 flash 即可(輸入是轉錄文字 ~2-3 萬 tokens,flash 便宜且夠用)
+DEEPSEEK_MODEL = os.getenv("PODCAST_DEEPSEEK_MODEL", "deepseek-v4-flash")
+WHISPER_MODEL = os.getenv("PODCAST_WHISPER_MODEL", "small")   # small 中文夠用;medium 更準但慢一倍
 STATE_FILE = Path("state/podcast_digest.json")
 MAX_EPISODE_AGE_HOURS = 48      # 只處理 48 小時內的新集
 MAX_AUDIO_MB = 200
+MAX_TRANSCRIPT_CHARS = 60000    # 轉錄文字進 LLM 前的長度上限(~90 分鐘集數也夠)
 KEEP_EPISODES_PER_SHOW = 5
 
 PODCASTS = [
@@ -34,7 +40,8 @@ PODCASTS = [
     {"key": "statementdog", "name": "財報狗", "search": "財報狗"},
 ]
 
-DIGEST_PROMPT = """你是財經 podcast 重點整理員。請聽完整集音檔,輸出 JSON(繁體中文):
+DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目的逐字稿(機器轉錄,可能有錯字,
+請依上下文自行校正,尤其公司名與數字)。請整理重點,輸出 JSON(繁體中文):
 {
   "summary_points": ["3-6 條本集重點,每條一句話,具體(含數字/事件/邏輯),不要空泛"],
   "tickers": [{"name": "公司或 ETF 名", "code": "台股代號或美股 ticker,不確定就留空字串",
@@ -106,70 +113,47 @@ def download_audio(url: str, dest: Path) -> bool:
     return True
 
 
-def gemini_upload_file(path: Path) -> str:
-    """Gemini File API resumable 上傳,回傳 file_uri(失敗拋例外)。"""
-    size = path.stat().st_size
-    start = requests.post(
-        f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={GEMINI_API_KEY}",
-        headers={
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-            "X-Goog-Upload-Header-Content-Length": str(size),
-            "X-Goog-Upload-Header-Content-Type": "audio/mpeg",
-            "Content-Type": "application/json",
-        },
-        json={"file": {"display_name": path.name}},
-        timeout=30,
-    )
-    start.raise_for_status()
-    upload_url = start.headers.get("X-Goog-Upload-URL")
-    if not upload_url:
-        raise RuntimeError("Gemini File API 未回傳上傳 URL")
-    with open(path, "rb") as f:
-        up = requests.post(
-            upload_url,
-            headers={
-                "X-Goog-Upload-Command": "upload, finalize",
-                "X-Goog-Upload-Offset": "0",
-                "Content-Length": str(size),
-            },
-            data=f,
-            timeout=600,
-        )
-    up.raise_for_status()
-    info = up.json().get("file", {})
-    name, uri = info.get("name", ""), info.get("uri", "")
-    # 等待轉檔完成(大音檔 PROCESSING 數十秒)
-    for _ in range(60):
-        st = requests.get(
-            f"https://generativelanguage.googleapis.com/v1beta/{name}?key={GEMINI_API_KEY}",
-            timeout=20).json()
-        if st.get("state") == "ACTIVE":
-            return uri
-        if st.get("state") == "FAILED":
-            raise RuntimeError("Gemini 檔案處理失敗")
-        time.sleep(5)
-    raise RuntimeError("Gemini 檔案處理逾時")
+def transcribe_audio(path: Path) -> str:
+    """faster-whisper 本地轉錄(CPU int8,免費)。50 分鐘集約 10-25 分鐘。"""
+    from faster_whisper import WhisperModel   # lazy import:晨報/CI 不裝此套件
+    t0 = time.time()
+    model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    segments, info = model.transcribe(
+        str(path), language="zh", vad_filter=True, beam_size=1)
+    parts = []
+    total = 0
+    for seg in segments:
+        parts.append(seg.text)
+        total += len(seg.text)
+        if total > MAX_TRANSCRIPT_CHARS:
+            log(f"轉錄達 {MAX_TRANSCRIPT_CHARS} 字上限,截斷")
+            break
+    text = "".join(parts).strip()
+    log(f"轉錄完成 {len(text)} 字(音長 {getattr(info, 'duration', 0) / 60:.0f} 分,"
+        f"耗時 {(time.time() - t0) / 60:.1f} 分,model={WHISPER_MODEL})")
+    return text
 
 
-def gemini_digest(file_uri: str) -> dict:
+def deepseek_digest(transcript: str) -> dict:
+    """DeepSeek(OpenAI 相容 API)把逐字稿整理成結構化摘要 JSON。"""
     body = {
-        "contents": [{"parts": [
-            {"file_data": {"mime_type": "audio/mpeg", "file_uri": file_uri}},
-            {"text": DIGEST_PROMPT},
-        ]}],
-        "generationConfig": {"response_mime_type": "application/json",
-                             "temperature": 0.2},
+        "model": DEEPSEEK_MODEL,
+        "messages": [
+            {"role": "system", "content": DIGEST_PROMPT},
+            {"role": "user", "content": transcript[:MAX_TRANSCRIPT_CHARS]},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
     }
     last_err = None
     for attempt in range(3):
         try:
             r = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}"
-                f":generateContent?key={GEMINI_API_KEY}",
-                json=body, timeout=600)
+                f"{DEEPSEEK_BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+                json=body, timeout=300)
             r.raise_for_status()
-            text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+            text = r.json()["choices"][0]["message"]["content"]
             digest = json.loads(text)
             if isinstance(digest, dict) and digest.get("summary_points"):
                 return digest
@@ -178,7 +162,7 @@ def gemini_digest(file_uri: str) -> dict:
             last_err = e
             log(f"摘要第 {attempt + 1} 次失敗: {str(e)[:100]}")
             time.sleep(15 * (attempt + 1))
-    raise RuntimeError(f"Gemini 摘要失敗: {last_err}")
+    raise RuntimeError(f"DeepSeek 摘要失敗: {last_err}")
 
 
 def process_podcast(cfg: dict, state: dict) -> bool:
@@ -213,8 +197,11 @@ def process_podcast(cfg: dict, state: dict) -> bool:
     try:
         if not download_audio(audio_url, tmp):
             return False
-        uri = gemini_upload_file(tmp)
-        digest = gemini_digest(uri)
+        transcript = transcribe_audio(tmp)
+        if len(transcript) < 500:
+            log(f"{name}: 轉錄過短({len(transcript)} 字),跳過")
+            return False
+        digest = deepseek_digest(transcript)
     finally:
         tmp.unlink(missing_ok=True)
 
@@ -232,8 +219,8 @@ def process_podcast(cfg: dict, state: dict) -> bool:
 
 
 def main() -> int:
-    if not GEMINI_API_KEY:
-        log("缺 GEMINI_API_KEY,結束")
+    if not DEEPSEEK_API_KEY:
+        log("缺 DEEPSEEK_API_KEY,結束")
         return 1
     state = load_state()
     updated = False

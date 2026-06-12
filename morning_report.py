@@ -1071,6 +1071,8 @@ def fetch_macro_indicators() -> dict:
         "ES":    "ES=F",
         "WTI":   "CL=F",
         "GOLD":  "GC=F",
+        "BTC":   "BTC-USD",   # 風險偏好即時溫度計(24h 交易,凌晨也有訊號)
+        "COPPER": "HG=F",     # 銅:景氣領先指標,與台股出口連動
     }
     out: dict[str, dict] = {}
     for name, sym in tickers.items():
@@ -7911,7 +7913,8 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
                 subprocess.run(["git", "config", "user.name", "morning-report-bot"], check=True, timeout=10)
                 subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
                 subprocess.run(
-                    ["git", "add", str(STATE_FILE), str(MODEL_HISTORY_FILE)],
+                    ["git", "add", str(STATE_FILE), str(MODEL_HISTORY_FILE),
+                     str(EVENT_TIMELINE_FILE)],
                     check=True,
                     timeout=10,
                 )
@@ -9949,6 +9952,422 @@ def _render_weather_html(locs: list[dict]) -> str:
         f"<span style='color:#0369a1;'>👕 {_weather_advice(locs)}</span></div>")
 
 
+def _render_weekly_recap_html(history: list[dict]) -> str:
+    """週末綜合報專屬:本週預測準確度回顧(加權/2330 預測 vs 實際開盤)。"""
+    rows = []
+    for rec in (history or [])[-5:]:
+        tgt = rec.get("target_session_date", "")
+        pt, at = rec.get("pred_taiex"), rec.get("actual_open_taiex")
+        p2, a2 = rec.get("weighted_final_2330"), rec.get("actual_open_2330")
+        if not (pt and at) and not (p2 and a2):
+            continue
+        e_t = f"{(at / pt - 1) * 100:+.2f}%" if (pt and at) else "—"
+        e_2 = f"{(a2 / p2 - 1) * 100:+.2f}%" if (p2 and a2) else "—"
+        rows.append(
+            f"<tr><td style='padding:6px 12px;border-bottom:1px solid #e2e8f0;"
+            f"font-size:13px;color:#0f172a;'>{tgt[5:]}</td>"
+            f"<td style='padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
+            f"font-size:13px;'>{e_t}</td>"
+            f"<td style='padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
+            f"font-size:13px;'>{e_2}</td></tr>")
+    if not rows:
+        return ""
+    return (
+        '<div style="border:1px solid #c4b5fd;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#f5f3ff;color:#5b21b6;padding:8px 14px;font-weight:700;'
+        'font-size:14px;">📊 本週預測回顧(實際開盤 vs 預測的偏差)</div>'
+        '<table style="width:100%;border-collapse:collapse;background:#fff;">'
+        '<tr style="background:#faf5ff;"><th style="padding:6px 12px;text-align:left;'
+        'font-size:11px;color:#6d28d9;">日期</th><th style="padding:6px 12px;text-align:right;'
+        'font-size:11px;color:#6d28d9;">加權誤差</th><th style="padding:6px 12px;'
+        'text-align:right;font-size:11px;color:#6d28d9;">2330 誤差</th></tr>'
+        + "".join(rows) + "</table></div>")
+
+
+# ===== 風險事件日曆(未來 7 天:經濟數據/FOMC/結算日/三巫/財報) =====
+def _third_weekday_of_month(year: int, month: int, weekday: int) -> dt.date:
+    """該月第三個星期 weekday(0=一,2=三,4=五)。"""
+    d = dt.date(year, month, 1)
+    offset = (weekday - d.weekday()) % 7
+    return d + dt.timedelta(days=offset + 14)
+
+
+def _rule_based_events(today: dt.date, horizon_days: int = 7) -> list[dict]:
+    """規則式市場結構日:台指期結算、美股三巫、MSCI 季調生效(近似)。"""
+    events = []
+    end = today + dt.timedelta(days=horizon_days)
+    for probe in (today, (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)):
+        y, m = probe.year, probe.month
+        settle = _third_weekday_of_month(y, m, 2)
+        if today <= settle <= end:
+            events.append({"date": settle, "time": "13:30", "title": "台指期/選擇權結算日",
+                           "note": "結算日波動天生較大,慎防尾盤急拉急殺", "impact": "high"})
+        if m in (3, 6, 9, 12):
+            witch = _third_weekday_of_month(y, m, 4)
+            if today <= witch <= end:
+                events.append({"date": witch, "time": "美股收盤", "title": "美股三巫日(期貨/期權同步到期)",
+                               "note": "美股尾盤量能與波動放大", "impact": "high"})
+        if m in (2, 5, 8, 11):
+            last = (dt.date(y, m, 28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
+            while last.weekday() >= 5:
+                last -= dt.timedelta(days=1)
+            if today <= last <= end:
+                events.append({"date": last, "time": "台股收盤", "title": "MSCI 季調生效日(近似)",
+                               "note": "尾盤外資被動買賣壓放大", "impact": "medium"})
+    return events
+
+
+def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
+                         horizon_days: int = 7) -> list[dict]:
+    """未來 7 天風險事件:ForexFactory 高衝擊經濟數據(含預期值)+ 規則式市場結構日
+    + 重點美股財報(yfinance)。全部轉 TPE 時間;失敗回部分結果。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    today = now_tpe.date()
+    end = today + dt.timedelta(days=horizon_days)
+    events: list[dict] = list(_rule_based_events(today, horizon_days))
+
+    # ForexFactory 本週+下週日曆(免金鑰;date 含時區 offset)
+    for url in ("https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+                "https://nfs.faireconomy.media/ff_calendar_nextweek.json"):
+        try:
+            r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            for e in r.json():
+                if e.get("impact") != "High" or e.get("country") not in ("USD", "CNY", "EUR"):
+                    continue
+                try:
+                    when = dt.datetime.fromisoformat(str(e.get("date", ""))).astimezone(TPE)
+                except Exception:
+                    continue
+                if not (today <= when.date() <= end):
+                    continue
+                extra = []
+                if e.get("forecast"):
+                    extra.append(f"預期 {e['forecast']}")
+                if e.get("previous"):
+                    extra.append(f"前值 {e['previous']}")
+                events.append({"date": when.date(), "time": when.strftime("%H:%M"),
+                               "title": f"[{e.get('country')}] {str(e.get('title', ''))[:40]}",
+                               "note": "、".join(extra), "impact": "high"})
+        except Exception as ex:
+            print(f"[calendar] FF 日曆抓取失敗: {ex}", file=sys.stderr)
+    # 去重(FF 本週/下週可能重疊)
+    seen = set()
+    deduped = []
+    for e in events:
+        key = (e["date"], e["title"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(e)
+    events = deduped
+
+    # 重點美股財報(yfinance earnings;逐檔輕量,失敗逐檔略過)
+    for tk in ("NVDA", "AAPL", "MSFT", "AVGO", "TSLA", "AMD", "GOOGL", "META", "MU", "QCOM"):
+        try:
+            cal = yf.Ticker(tk).calendar
+            dates = (cal or {}).get("Earnings Date") or []
+            for d in dates[:1]:
+                ed = d if isinstance(d, dt.date) else getattr(d, "date", lambda: None)()
+                if ed and today <= ed <= end:
+                    events.append({"date": ed, "time": "盤後(美東)", "title": f"{tk} 財報",
+                                   "note": "", "impact": "high"})
+        except Exception:
+            continue
+    events.sort(key=lambda e: (e["date"], e.get("time", "")))
+    return events
+
+
+def _render_event_calendar_html(events: list[dict]) -> str:
+    if not events:
+        return ""
+    rows = "".join(
+        f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;"
+        f"font-weight:700;white-space:nowrap;font-size:13px;'>"
+        f"{e['date'].strftime('%m/%d')}（{'一二三四五六日'[e['date'].weekday()]}）{e.get('time', '')}</td>"
+        f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;font-size:13px;"
+        f"color:{'#b91c1c' if e.get('impact') == 'high' else '#475569'};'>{e['title']}"
+        + (f"<span style='color:#94a3b8;font-size:12px;'>　{e['note']}</span>" if e.get("note") else "")
+        + "</td></tr>"
+        for e in events[:12])
+    return (
+        '<div style="border:1px solid #fca5a5;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#fef2f2;color:#991b1b;padding:8px 14px;font-weight:700;font-size:14px;">'
+        '📅 未來 7 天風險事件（時間均為台北時間）</div>'
+        '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
+        + rows + '</table></div>')
+
+
+# ===== 台股行事曆:公開申購 + 除權息預告 =====
+def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
+                      dividend_watchlist: tuple = ("0050", "00662", "2330", "0056", "00878")) -> dict:
+    """TWSE 公開申購(進行中/即將開始)+ 關注標的除權息預告(未來 14 天)。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    today = now_tpe.date()
+    out: dict = {"ipo": [], "dividends": []}
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    def _roc_to_date(s: str) -> Optional[dt.date]:
+        import re as _re
+        m = _re.search(r"(\d{2,3})[/年](\d{1,2})[/月](\d{1,2})", str(s or ""))
+        if not m:
+            return None
+        try:
+            return dt.date(int(m.group(1)) + 1911, int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+
+    try:
+        r = requests.get("https://www.twse.com.tw/announcement/publicForm",
+                         params={"response": "json"}, timeout=15, headers=headers)
+        d = r.json()
+        fields = d.get("fields") or []
+        idx = {name: i for i, name in enumerate(fields)}
+        for row in d.get("data") or []:
+            try:
+                end_d = _roc_to_date(row[idx.get("申購結束日", 6)])
+                start_d = _roc_to_date(row[idx.get("申購開始日", 5)])
+                if not end_d or end_d < today or (start_d and start_d > today + dt.timedelta(days=7)):
+                    continue
+                price = ""
+                for cand in ("承銷價格(元)", "承銷價格", "承銷價"):
+                    if cand in idx:
+                        price = str(row[idx[cand]])
+                        break
+                out["ipo"].append({
+                    "name": str(row[idx.get("證券名稱", 2)]),
+                    "code": str(row[idx.get("證券代號", 3)]),
+                    "start": start_d, "end": end_d,
+                    "draw": _roc_to_date(row[idx.get("抽籤日期", 1)]),
+                    "price": price,
+                })
+            except Exception:
+                continue
+    except Exception as e:
+        print(f"[tw_calendar] 申購抓取失敗: {e}", file=sys.stderr)
+
+    try:
+        r = requests.get("https://www.twse.com.tw/exchangeReport/TWT48U",
+                         params={"response": "json"}, timeout=15, headers=headers)
+        d = r.json()
+        fields = d.get("fields") or []
+        idx = {name: i for i, name in enumerate(fields)}
+        watch = set(dividend_watchlist)
+        for row in d.get("data") or []:
+            try:
+                code = str(row[idx.get("股票代號", 1)]).strip()
+                if code not in watch:
+                    continue
+                ex_d = _roc_to_date(row[idx.get("除權除息日期", 0)])
+                if not ex_d or not (today <= ex_d <= today + dt.timedelta(days=14)):
+                    continue
+                amount = ""
+                for cand in ("現金股利", "權值+息值", "息值"):
+                    if cand in idx:
+                        amount = str(row[idx[cand]])
+                        break
+                out["dividends"].append({
+                    "code": code, "name": str(row[idx.get("名稱", 2)]),
+                    "ex_date": ex_d, "kind": str(row[idx.get("除權息", 3)]),
+                    "amount": amount,
+                })
+            except Exception:
+                continue
+    except Exception as e:
+        print(f"[tw_calendar] 除權息預告抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def _render_tw_calendar_html(cal: dict) -> str:
+    ipo = (cal or {}).get("ipo") or []
+    divs = (cal or {}).get("dividends") or []
+    if not ipo and not divs:
+        return ""
+    blocks = []
+    if ipo:
+        rows = "".join(
+            f"<li style='margin:4px 0;'><b>{i['name']}（{i['code']}）</b>"
+            f"　申購至 {i['end'].strftime('%m/%d')}"
+            + (f"・抽籤 {i['draw'].strftime('%m/%d')}" if i.get("draw") else "")
+            + (f"・承銷價 {i['price']} 元" if i.get("price") else "")
+            + "</li>"
+            for i in ipo[:6])
+        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>🎟 公開申購(抽籤)</b>"
+                      f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;color:#334155;"
+                      f"line-height:1.7;'>{rows}</ul></div>")
+    if divs:
+        rows = "".join(
+            f"<li style='margin:4px 0;'><b>{v['name']}（{v['code']}）</b>"
+            f"　{v['ex_date'].strftime('%m/%d')} 除{v['kind']}"
+            + (f"・每股 {v['amount']} 元" if v.get("amount") else "")
+            + "</li>"
+            for v in divs[:6])
+        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>💵 關注標的除權息</b>"
+                      f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;color:#334155;"
+                      f"line-height:1.7;'>{rows}</ul></div>")
+    return (
+        '<div style="border:1px solid #fcd34d;border-radius:10px;padding:8px 14px;'
+        'margin:14px 0;background:#fffbeb;">'
+        '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">📋 台股行事曆</div>'
+        + "".join(blocks) + "</div>")
+
+
+# ===== 醫學文獻速報(PubMed E-utilities + DeepSeek 中文摘要) =====
+MEDICAL_JOURNALS = [
+    ("JAAD", "J Am Acad Dermatol"),
+    ("JEADV", "J Eur Acad Dermatol Venereol"),
+    ("NEJM", "N Engl J Med"),
+    ("AJO", "Am J Ophthalmol"),
+]
+
+
+def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
+    """PubMed 近 7 天各期刊新文(過濾 Comment/Reply/Erratum);失敗回部分結果。"""
+    out = []
+    for short, journal in MEDICAL_JOURNALS:
+        try:
+            r = requests.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+                             params={"db": "pubmed", "term": f'"{journal}"[ta]',
+                                     "reldate": "7", "datetype": "edat",
+                                     "retmode": "json", "retmax": "12"}, timeout=20)
+            ids = r.json().get("esearchresult", {}).get("idlist", [])
+            if not ids:
+                continue
+            r2 = requests.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
+                              params={"db": "pubmed", "id": ",".join(ids),
+                                      "retmode": "json"}, timeout=20)
+            res = r2.json().get("result", {})
+            kept = 0
+            for pid in ids:
+                if kept >= per_journal:
+                    break
+                item = res.get(pid) or {}
+                title = str(item.get("title") or "").strip().rstrip(".")
+                low = title.lower()
+                if not title or low.startswith(("comment", "reply", "erratum",
+                                                "correction", "response to")):
+                    continue
+                out.append({"journal": short, "pmid": pid, "title": title})
+                kept += 1
+            time.sleep(0.5)   # NCBI 禮貌限速
+        except Exception as e:
+            print(f"[journals] {short} 抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def translate_journal_titles(articles: list[dict]) -> list[dict]:
+    """DeepSeek flash 把英文標題譯成繁中一句重點;失敗保留英文(degrade)。"""
+    if not articles:
+        return articles
+    try:
+        payload = [{"i": i, "title": a["title"]} for i, a in enumerate(articles)]
+        prompt = (
+            "你是醫學文獻編譯。把以下論文標題各翻成一句繁體中文重點(口語、保留關鍵術語原文縮寫),"
+            '回 JSON {"items": [{"i": 索引, "zh": "中文一句"}]}:\n'
+            + json.dumps(payload, ensure_ascii=False))
+        response = _call_deepseek_extractor(prompt)
+        import re as _re
+        m = _re.search(r"\{.*\}", response, _re.S)
+        items = (json.loads(m.group(0)) if m else {}).get("items", [])
+        zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
+        for i, a in enumerate(articles):
+            if zh_map.get(i):
+                a["zh"] = zh_map[i]
+    except Exception as e:
+        print(f"[journals] 中文摘要失敗(顯示英文): {e}", file=sys.stderr)
+    return articles
+
+
+def _render_journals_html(articles: list[dict], htmllib) -> str:
+    if not articles:
+        return ""
+    by_journal: dict[str, list] = {}
+    for a in articles:
+        by_journal.setdefault(a["journal"], []).append(a)
+    blocks = []
+    for short, _ in MEDICAL_JOURNALS:
+        arts = by_journal.get(short)
+        if not arts:
+            continue
+        items = "".join(
+            f"<li style='margin:5px 0;'>"
+            f"<a href='https://pubmed.ncbi.nlm.nih.gov/{a['pmid']}/' "
+            f"style='color:#0f172a;text-decoration:none;'>"
+            f"{htmllib.escape(a.get('zh') or a['title'])}</a>"
+            + (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(a['title'][:90])}</div>"
+               if a.get("zh") else "")
+            + "</li>"
+            for a in arts)
+        blocks.append(f"<div style='margin:8px 0;'><b style='color:#7c2d12;'>{short}</b>"
+                      f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;"
+                      f"color:#334155;line-height:1.6;'>{items}</ul></div>")
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">'
+        '醫學文獻速報（近 7 天・JAAD / JEADV / NEJM / AJO）</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;background:#ffffff;">'
+        + "".join(blocks) +
+        '<p style="font-size:11px;color:#94a3b8;">※ 中文為 AI 編譯重點,點擊可開 PubMed 原文。</p></div>')
+
+
+# ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
+EVENT_TIMELINE_FILE = Path("state/event_timeline.json")
+_TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
+
+
+def update_event_timeline(structured_events: list[dict],
+                          now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """以 structured events 維護延燒事件 timeline:同 entity+type 連續出現則累計天數;
+    3 天沒新進展自動退場。回傳進行中的事件(供渲染「第 N 天」)。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    today = now_tpe.strftime("%Y-%m-%d")
+    state: dict = {}
+    if EVENT_TIMELINE_FILE.exists():
+        try:
+            state = json.loads(EVENT_TIMELINE_FILE.read_text(encoding="utf-8")) or {}
+        except Exception:
+            state = {}
+    for ev in structured_events or []:
+        if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
+            continue
+        key = f"{ev.get('event_type')}:{str(ev.get('entity') or '')[:20]}"
+        rec = state.get(key) or {"first_seen": today, "days": 0, "last_seen": ""}
+        if rec.get("last_seen") != today:
+            rec["days"] = int(rec.get("days", 0)) + 1
+            rec["last_seen"] = today
+        rec["latest_title"] = str(ev.get("title") or "")[:90]
+        state[key] = rec
+    # 退場:超過 3 天無更新
+    cutoff = (now_tpe - dt.timedelta(days=3)).strftime("%Y-%m-%d")
+    state = {k: v for k, v in state.items() if v.get("last_seen", "") >= cutoff}
+    try:
+        EVENT_TIMELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        EVENT_TIMELINE_FILE.write_text(
+            json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:
+        print(f"[timeline] 寫入失敗: {e}", file=sys.stderr)
+    active = [{"key": k, **v} for k, v in state.items()
+              if v.get("last_seen") == today and v.get("days", 0) >= 2]
+    active.sort(key=lambda r: -r.get("days", 0))
+    return active
+
+
+def _render_event_timeline_html(active: list[dict], htmllib) -> str:
+    if not active:
+        return ""
+    rows = "".join(
+        f"<div style='margin:4px 0;font-size:13px;color:#334155;'>"
+        f"📌 <b>{htmllib.escape(str(r['key']).split(':', 1)[-1] or '事件')}</b>"
+        f"<span style='color:#b91c1c;font-weight:700;'>(第 {r['days']} 天)</span>　"
+        f"{htmllib.escape(r.get('latest_title', ''))}</div>"
+        for r in active[:4])
+    return (
+        '<div style="border:1px solid #c7d2fe;border-radius:10px;padding:8px 14px;'
+        'margin:14px 0;background:#eef2ff;">'
+        '<div style="font-weight:700;font-size:14px;color:#3730a3;margin-bottom:2px;">'
+        '🔄 延燒中事件</div>' + rows + "</div>")
+
+
 # ===== 體育快訊(醫界區下方;ESPN 公開 API 比分 + Google News 消息) =====
 SPORTS_NEWS_QUERIES = [
     ("MLB", "MLB 大聯盟"),
@@ -9992,6 +10411,29 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             out["scores"][league] = games
         except Exception as e:
             print(f"[sports] {league} 比分抓取失敗: {e}", file=sys.stderr)
+    # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
+    try:
+        r = requests.get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
+                         timeout=15)
+        r.raise_for_status()
+        standings = {}
+        for league in r.json().get("children", []):
+            name = "美聯" if "American" in str(league.get("name", "")) else "國聯"
+            entries = (league.get("standings") or {}).get("entries", [])
+
+            def _wins(en):
+                stats = {s.get("name"): s for s in en.get("stats", [])}
+                return float((stats.get("winPercent") or {}).get("value") or 0)
+            top = sorted(entries, key=_wins, reverse=True)[:3]
+            standings[name] = [
+                {"team": (en.get("team") or {}).get("abbreviation", "?"),
+                 "record": next((s.get("displayValue") for s in en.get("stats", [])
+                                 if s.get("name") == "overall"), "")}
+                for en in top]
+        out["standings"] = standings
+    except Exception as e:
+        print(f"[sports] MLB 戰績抓取失敗: {e}", file=sys.stderr)
+
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
         try:
@@ -10036,6 +10478,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             blocks.append(
                 f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{league}</b>"
                 f"<span style='font-size:12px;color:#94a3b8;'> 昨日無賽事</span></div>")
+    standings = (sports or {}).get("standings") or {}
+    if standings:
+        seg = "　|　".join(
+            f"<b>{lg}</b> " + "、".join(f"{t['team']} {t['record']}" for t in teams)
+            for lg, teams in standings.items())
+        blocks.append(f"<div style='margin:8px 0;font-size:12px;color:#475569;'>"
+                      f"🏆 MLB 戰績前三:{seg}</div>")
     for label in ("中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:
@@ -10220,6 +10669,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib)
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
     sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
+    event_calendar_html = _render_event_calendar_html(quotes.get("EVENT_CALENDAR") or [])
+    event_timeline_html = _render_event_timeline_html(
+        quotes.get("EVENT_TIMELINE") or [], _htmllib)
+    tw_calendar_html = _render_tw_calendar_html(quotes.get("TW_CALENDAR") or {})
+    journals_html = _render_journals_html(quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
+    weekly_recap_html = (_render_weekly_recap_html(quotes.get("HISTORY") or [])
+                         if "週末" in str(mode) else "")
     model_evidence_html = _render_model_evidence_html(quotes)
 
     # ===== 1. 行情表格 =====
@@ -10289,7 +10745,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
         fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
         fmt_macro_row("WTI 原油", "WTI", "通膨/地緣風險定價") +
-        fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫")
+        fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫") +
+        fmt_macro_row("BTC 比特幣", "BTC", "風險偏好溫度計,24h 交易") +
+        fmt_macro_row("銅期貨", "COPPER", "景氣領先指標,與台股出口連動")
     )
     # === TAIFEX 外資台指期未平倉區塊 ===
     taifex = quotes.get("TAIFEX_OI", {}) or {}
@@ -11109,6 +11567,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {alerts_html}
 
+            {event_calendar_html}
+
+            {event_timeline_html}
+
+            {weekly_recap_html}
+
             <h2 style="color:#0f172a;font-size:20px;margin:0 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">一、美股收盤行情</h2>
             <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
               <tr style="background:#f1f5f9;">
@@ -11127,6 +11591,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {combined_pred_html}
 
+            {tw_calendar_html}
+
             {breadth_html}
 
             {midterm_html}
@@ -11144,6 +11610,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {taifex_html}
 
             {tw_intelligence_html}
+
+            {journals_html}
 
             {sports_html}
 
@@ -11523,6 +11991,22 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 體育抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SPORTS"] = {}
+    try:
+        quotes["EVENT_CALENDAR"] = fetch_event_calendar(now_tpe)
+    except Exception as e:
+        print(f"[main] 風險事件日曆失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["EVENT_CALENDAR"] = []
+    try:
+        quotes["TW_CALENDAR"] = fetch_tw_calendar(now_tpe)
+    except Exception as e:
+        print(f"[main] 台股行事曆失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["TW_CALENDAR"] = {}
+    try:
+        quotes["MEDICAL_JOURNALS"] = translate_journal_titles(
+            fetch_medical_journal_articles())
+    except Exception as e:
+        print(f"[main] 醫學文獻抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["MEDICAL_JOURNALS"] = []
 
     # 5.05 新聞去重（同事件常被多個 RSS 重貼，去重後 LLM 訊號更乾淨）
     news = dedup_news(news)
@@ -11754,6 +12238,11 @@ def main() -> int:
     structured_events = apply_event_timeline(
         model_history, call_llm_event_extractor(news, tw_mops))
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
+    try:
+        quotes["EVENT_TIMELINE"] = update_event_timeline(structured_events, now_tpe)
+    except Exception as e:
+        print(f"[main] 事件 timeline 失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["EVENT_TIMELINE"] = []
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))

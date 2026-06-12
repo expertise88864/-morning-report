@@ -47,6 +47,42 @@ def test_render_sports_html():
     assert mr._render_sports_html({}, htmllib) == ""
 
 
+def test_rule_based_events_settlement_and_witching():
+    import datetime as dt
+    # 2026-06 第三個週三 = 6/17(結算)、第三個週五 = 6/19(三巫,6 月適用)
+    assert mr._third_weekday_of_month(2026, 6, 2) == dt.date(2026, 6, 17)
+    events = mr._rule_based_events(dt.date(2026, 6, 12), horizon_days=7)
+    titles = [e["title"] for e in events]
+    assert any("台指期" in t for t in titles)
+    assert any("三巫" in t for t in titles)
+    # 7 月初(非季月)不該有三巫
+    events_jul = mr._rule_based_events(dt.date(2026, 7, 1), horizon_days=7)
+    assert not any("三巫" in e["title"] for e in events_jul)
+
+
+def test_event_timeline_counts_days_and_expires(tmp_path, monkeypatch):
+    import datetime as dt
+    monkeypatch.setattr(mr, "EVENT_TIMELINE_FILE", tmp_path / "tl.json")
+    ev = [{"event_type": "geopolitical", "entity": "伊朗", "title": "美伊衝突升溫"}]
+    d1 = dt.datetime(2026, 6, 10, 6, tzinfo=mr.TPE)
+    assert mr.update_event_timeline(ev, d1) == []     # 第 1 天不顯示(尚非連續劇)
+    d2 = dt.datetime(2026, 6, 11, 6, tzinfo=mr.TPE)
+    active = mr.update_event_timeline(ev, d2)
+    assert active and active[0]["days"] == 2          # 第 2 天開始顯示
+    # 4 天沒更新 → 退場
+    d6 = dt.datetime(2026, 6, 15, 6, tzinfo=mr.TPE)
+    assert mr.update_event_timeline([], d6) == []
+
+
+def test_weekly_recap_html():
+    history = [{"target_session_date": "2026-06-09", "pred_taiex": 44445.66,
+                "actual_open_taiex": 43687.62, "weighted_final_2330": 2313.24,
+                "actual_open_2330": 2305.0}]
+    h = mr._render_weekly_recap_html(history)
+    assert "本週預測回顧" in h and "-1.71%" in h and "-0.36%" in h
+    assert mr._render_weekly_recap_html([]) == ""
+
+
 def test_medical_entity_cap_one_per_day(monkeypatch):
     """同一機構(中榮)多角度報導,醫界區每天最多 1 條。"""
     class Feed:

@@ -127,6 +127,22 @@ def test_sanitize_2330_prices_noop_without_mid():
     assert mr._sanitize_llm_2330_prices("2330 守穩 430 元", {"error": "x"}) == "2330 守穩 430 元"
 
 
+def test_strip_stance_calculation_hides_score_line_keeps_label():
+    """11 維計算行(含淨分+[)隱藏;「立場:中性(淨分 +3…)」結論行保留。"""
+    text = ("## 十二、我的明確立場\n\n"
+            "```\n"
+            "QQQ +3.38% [+1]、SOX +7.91% [+1]、VIX 19.44 [-1] = 淨分 +3\n"
+            "```\n\n"
+            "立場：中性（淨分 +3，落入 −4∼+4 區間）\n理由:訊號分歧。")
+    out = mr._strip_stance_calculation(text)
+    assert "[+1]" not in out and "```" not in out
+    assert "立場：中性（淨分 +3，落入 −4∼+4 區間）" in out
+    assert "理由:訊號分歧。" in out
+    # 抽取順序保證:原文先 _extract_stance(用計算行也行),strip 後結論行仍可抽
+    stance = mr._extract_stance(out)
+    assert stance["label"] == "中性" and stance["score"] == 3
+
+
 def test_sanitize_2330_prices_fixes_malformed_thousands():
     """LLM 寫出「2,2182 元」這種畸形千分位(逗號後非 3 位)時,以中樞值改寫。"""
     preds = {"mid": 2182.26, "last_2330": 2255.0}
@@ -246,11 +262,12 @@ def test_render_html_shows_attention_candidate_price_forecast():
     }]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-02", "每日報")
     assert "台股客觀關注排名 Top 1" in html
-    assert "客觀排名 #1" in html
-    assert "產業中性 +2.0" in html
-    assert "勝過大盤 +4.0" in html
-    assert "近期方向命中 —" in html
+    # 使用者回饋:排名分解與模型技術行屬內部細節,不顯示
+    assert "客觀排名 #1" not in html
+    assert "勝過大盤" not in html
+    assert "近期方向命中" not in html
     assert "None%" not in html
+    # 預測價位行保留
     assert "3日 1010.0 (970.0~1050.0)" in html
     assert "5日 1020.0 (960.0~1080.0)" in html
 
@@ -333,9 +350,10 @@ def test_model_evidence_green_verdict():
                    "top5_avg_excess_pct": 0.3, "interval_coverage_pct": 80, "samples": 130}},
          "MODEL_MONITORING": {"status": "ok", "alerts": []}}
     h = mr._render_model_evidence_html(q)
-    assert "五檔模型實證" in h
-    assert "55.0%" in h
+    # 使用者回饋:詳細表格隱藏,只留一句白話結論
+    assert "模型狀態" in h
     assert "邊際優勢" in h          # 綠燈判決
+    assert "<table" not in h        # 不再輸出明細表格
 
 
 def test_model_evidence_accumulating_verdict():

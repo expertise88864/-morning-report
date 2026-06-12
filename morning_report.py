@@ -9387,6 +9387,26 @@ def _calibration_note_compact(obj: dict) -> str:
     return note
 
 
+def _strip_stance_calculation(text: str) -> str:
+    """隱藏「我的明確立場」的 11 維加減分計算行(使用者回饋:內部計算不需顯示)。
+
+    LLM 仍被要求顯式輸出計算(強迫算數 = 品質保證,且 _extract_stance 依賴「淨分」),
+    只在渲染前移除。規則:含「淨分」且含「[」的行 = 計算行(如「QQQ +1.2% [+1]、…= 淨分 -5」);
+    「立場:中性(淨分 +3…)」這種結論行不含 [,保留。順帶清掉殘留的 ``` 圍欄。
+    """
+    if not isinstance(text, str) or "淨分" not in text:
+        return text
+    out = []
+    for line in text.split("\n"):
+        s = line.strip()
+        if "淨分" in s and "[" in s:
+            continue
+        if s in ("```", "``` "):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 def _extract_stance(text: str) -> dict:
     """從 LLM markdown 分析中擷取「立場」與「淨分」，用於頂部 KPI 條。失敗回 {}。"""
     import re as _re
@@ -9652,33 +9672,13 @@ def _render_model_evidence_html(quotes: dict) -> str:
         verdict_bg, verdict_c = "#fef9c3", "#a16207"
         verdict = (f"模型尚未穩定贏過基準（3 日方向命中 {dh3:.1f}%）。建議五檔以籌碼/基本面為主、"
                    f"ML 僅作輔助。")
-    alerts = mon.get("alerts") or []
-    alert_line = ""
-    if status == "error" and alerts:
-        alert_line = (f"<div style='font-size:11px;color:#b91c1c;margin-top:6px;'>⚠ 模型品質警示："
-                      f"{_html_escape_safe('；'.join(alerts[:2]))}</div>")
-    if not have_data:
-        rows_html = ("<tr><td colspan='6' style='padding:10px;color:#94a3b8;font-size:13px;'>"
-                     "尚無 live 實證紀錄（系統剛上線或回填中）。</td></tr>")
-    else:
-        rows_html = "".join(rows)
+    # 使用者回饋:詳細表格(方向命中/淨報酬/區間涵蓋/樣本)屬內部驗證細節,
+    # 不顯示 — 只留一句白話結論;指標仍在後台計算並驅動熔斷與品質警示。
+    del rows
     return f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#eef2ff;border-left:5px solid #6366f1;border-radius:4px;">五檔模型實證（walk-forward 回測）</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
-          <tr style="background:#f1f5f9;">
-            <th style="padding:7px 10px;text-align:left;color:#475569;font-size:11px;">期間</th>
-            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">方向命中</th>
-            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">Top5淨報酬</th>
-            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">Top5超額</th>
-            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">區間涵蓋</th>
-            <th style="padding:7px 10px;text-align:right;color:#475569;font-size:11px;">樣本</th>
-          </tr>
-          {rows_html}
-        </table>
-        <div style="background:{verdict_bg};border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13px;color:{verdict_c};line-height:1.6;">
-          {verdict}{alert_line}
+        <div style="background:{verdict_bg};border-radius:8px;padding:10px 14px;margin:18px 0 8px;font-size:13px;color:{verdict_c};line-height:1.6;">
+          <b>模型狀態：</b>{verdict}
         </div>
-        <p style="font-size:11px;color:#94a3b8;margin:4px 0;">※ 方向命中 ≥ 52% 才算有預測力(綠);Top5淨報酬已扣交易成本(滑價×2);超額 = 相對大盤。樣本 = 已實現的歷史預測筆數。</p>
         """
 
 
@@ -9933,6 +9933,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
     stance = _extract_stance(analysis_for_render)
     summary_text = _extract_summary(analysis_for_render)
+    # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
+    analysis_for_render = _strip_stance_calculation(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
     podcast_html = _render_podcast_html(
@@ -10130,10 +10132,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     taiex_pred = quotes.get("TAIEX_PRED", {}) or {}
     taiex_html = ""
     if taiex_pred.get("pred_open"):
+        # 使用者回饋:權重屬內部計算細節,不顯示(縮放邏輯仍在後台運作)
         signal_rows = "".join(
             f"<tr><td style='padding:6px 12px;color:#475569;font-size:13px;'>{s['name']}</td>"
-            f"<td style='padding:6px 12px;text-align:right;font-variant-numeric:tabular-nums;'>{s['value']:+.2f}%</td>"
-            f"<td style='padding:6px 12px;text-align:right;color:#94a3b8;font-size:12px;'>權重 {s['weight']:.0%}</td></tr>"
+            f"<td style='padding:6px 12px;text-align:right;font-variant-numeric:tabular-nums;'>{s['value']:+.2f}%</td></tr>"
             for s in taiex_pred.get("signals", [])
         )
         # 顯示用的「最終漲跌幅」必須從『校正後 pred_open』回推,跟頭條數字一致;
@@ -10307,9 +10309,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     streak_bits.append(f"投信連{abs(is_)}{'買' if is_ > 0 else '賣'}")
                 metrics_line = (
                     f"{' ・ '.join(streak_bits) if streak_bits else '法人無連續動向'}"
-                    f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}"
-                    f" ・ 基礎 {(s.get('breakout') or {}).get('score',0)}"
-                    f" ・ 新聞 {s.get('news_catalyst_score',0):+.1f}")
+                    f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}")
                 ranking_line = (
                     f"客觀排名 #{rank} ・ 結構 {ranking_components.get('structure', 0):+.1f}"
                     f" ・ 新聞 {ranking_components.get('news_event', 0):+.1f}"
@@ -10358,9 +10358,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
                     # 第 3 行:數據明細小字
                     f"<div style='margin-top:5px;font-size:11px;color:#94a3b8;'>{metrics_line}</div>"
-                    f"<div style='margin-top:5px;font-size:11px;color:#9a3412;font-weight:600;'>{ranking_line}</div>"
+                    # 排名分解(ranking_line)與模型技術行(quality_line)屬內部計算細節,
+                    # 使用者回饋不需顯示 — 隱藏(資料仍在 state/log 供除錯)
                     f"<div style='margin-top:5px;font-size:11px;color:#0369a1;'>{forecast_line}</div>"
-                    f"<div style='margin-top:4px;font-size:10px;color:#64748b;'>{quality_line}</div>"
                     f"</td>"
                     f"</tr>"
                 )
@@ -10397,11 +10397,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {''.join(rows_html)}
         </table>
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
-          ※ <b>客觀排名分 = 結構分 + 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 − 模型品質、流動性、校準、漂移與來源風險折扣</b>;
-          <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。<br>
-          ※ 大戶 ΔWoW = TDCC 集保 ≥400 張持股比例「本週 − 上週」(需累積 ≥ 1 週歷史才有值);
-          量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
-          ※ 排名由 Python 固定公式產生並可回測，LLM 不會自行換股；此分數仍是參考，不是買進訊號。
+          ※ 分數 <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。
+          大戶 ΔWoW = 大戶持股比例週變化;量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
+          ※ 排名由固定公式產生並每日回測驗證;此分數僅供觀察參考，不是買進訊號。
         </p>
         """
 

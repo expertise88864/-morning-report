@@ -1,14 +1,20 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 1,
-  "last_seen": "2026-06-12",
-  "latest_title": "Pimco is warning about a spike in defaults — How it says income investors should position "
+  "days": 2,
+  "last_seen": "2026-06-13",
+  "latest_title": "Huawei arms HarmonyOS with 2,000 AI agents in challenge to Apple"
  },
  "litigation:2330": {
   "first_seen": "2026-06-12",
   "days": 1,
   "last_seen": "2026-06-12",
   "latest_title": "台積電在美捲專利侵權訴訟 法院估本月作出初步裁定 - 公視新聞網PNN"
+ },
+ "litigation:": {
+  "first_seen": "2026-06-13",
+  "days": 1,
+  "last_seen": "2026-06-13",
+  "latest_title": "綠指修選罷法等因人設事　白：合情合理合法合憲"
  }
 }

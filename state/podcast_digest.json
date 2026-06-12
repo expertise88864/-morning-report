@@ -1,0 +1,258 @@
+{
+  "gooaye": {
+    "name": "股癌",
+    "episodes": [
+      {
+        "guid": "f208d558-a3a0-4812-a19a-777c69ac31bf",
+        "title": "EP669 | 🎈",
+        "published": "Wed, 10 Jun 2026 07:37:19 GMT",
+        "processed_at": "2026-06-12T03:28:35Z",
+        "digest": {
+          "summary_points": [
+            "主持人分享34歲生日體驗，驗血報告顯示身體狀況好轉，感謝聽眾祝福。",
+            "市場近期波動劇烈，但主持人認為是正常修正，長線趨勢未變，資金可能流向流動性好、有實績的大型股。",
+            "台積電可能漲價是利多，Semi Analysis的看空報告被視為洗盤鬼故事，不影響AI產業長期需求。",
+            "Apple WWDC無驚喜，但選擇自建伺服器與Google合作是折衷路線，長期看好其螢幕感知功能。",
+            "主持人本週無操作，因持股流動性低或無資金加碼，等待修正結束後再觀察資金動向。",
+            "回應聽眾提問：建議處理債務問題應先解決心理壓力，並分享克服玻璃心的方法是大量暴露和篩選環境。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "可能漲價，有機會推升營收和估值，產業面無敗象。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "長期看好，螢幕感知功能是潛在殺手級應用，用戶基礎穩固。"
+            }
+          ],
+          "market_view": "市場目前處於修正階段，長線趨勢不變，資金可能從高估值題材股轉向流動性好、有實績的大型股。",
+          "action_view": "現階段觀望，不操作，等待修正結束後再觀察資金流向，偏好流動性佳且營收獲利紮實的股票。",
+          "notable_quote": "在下跌的時候一定會有很多的鬼故事丟出來，這時候大家就要去考驗一下自己的記憶力。"
+        }
+      }
+    ]
+  },
+  "haojiao": {
+    "name": "游庭皓的財經皓角",
+    "episodes": [
+      {
+        "guid": "tag:soundcloud,2010:tracks/2337295955",
+        "title": "【市場觀察】除了台積電 台灣還剩下什麼?",
+        "published": "Fri, 12 Jun 2026 00:25:49 +0000",
+        "processed_at": "2026-06-12T03:12:09Z",
+        "digest": {
+          "summary_points": [
+            "台灣2024年Q1 GDP年增13.69%，股市市值達5.04兆美元，超越英國、法國、加拿大、印度，成為新興市場指數最大權重市場。",
+            "美國從台灣進口金額超越中國，台灣從代工島轉變為美國AI帝國核心基礎設施供應者。",
+            "台灣人均GDP預計2026年挑戰4萬美元，2031年超越南韓22%，但基本工資仍低於日韓。",
+            "科技業高薪導致教育、醫療、國防、社工等領域嚴重缺工，公務員高考錄取率從9.75%升至22.52%。",
+            "少子化加劇，5月出生8433人創單月新低，已53個月生不如死，詐騙、電子煙、毒駕等社會問題惡化。",
+            "政府政策以加薪、補貼、開放移工應對缺工，但失聯移工比率達10%，職場霸凌通報5年增10倍。"
+          ],
+          "tickers": [],
+          "market_view": "台灣經濟因AI半導體產業快速增長，但資源過度集中導致其他部門（教育、醫療、國防、服務業）嚴重缺工，貧富差距擴大，社會結構面臨挑戰。",
+          "action_view": "主持人未提供具體操作建議，但指出買台灣股票即賭國運，並強調需關注AI紅利能否轉化為全面產業升級，否則可能出現市值成長但社會維繫系統失血的風險。",
+          "notable_quote": "AI確實讓台灣變得更富有也讓世界重新認識到台灣的重要性但一個強大的國家不能夠只有晶片股市和GDP更需要能夠維持社會正常運作的人"
+        }
+      }
+    ]
+  },
+  "statementdog": {
+    "name": "財報狗",
+    "episodes": [
+      {
+        "guid": "cmq9m7ory003o01tlc7941igy",
+        "title": "531.【財經時事放大鏡】升不了壓，封不了光！HVDC & CPO 雖遲但到？",
+        "published": "Thu, 11 Jun 2026 23:02:57 GMT",
+        "processed_at": "2026-06-12T03:18:46Z",
+        "digest": {
+          "summary_points": [
+            "Semi-Analysis 報告指出 800V 高壓直流電（HVDC）量產時程延後至 28 年以後，但正負 400V 方案仍會推進，相關功率元件、被動元件需求不減。",
+            "CPO（共封裝光學）量產遞延至 29 年以後，但可插拔光模組仍是主流，中國供應鏈持續受惠。",
+            "主持人認為本波下跌主因是股價漲多後的修正，與基本面變化關聯不大，情緒性賣壓為主。",
+            "光模組實際需求強勁，缺貨現象真實，長期趨勢仍看好，但短期需等待情緒修復。",
+            "HVDC 方向正確，但技術突破需要時間，新材料（如碳化矽、氮化鎵）與安規測試是瓶頸。",
+            "市場常將研報簡化為敘事，投資者應區分短期情緒與長期趨勢，避免過度反應。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為大盤下跌主因是漲多修正，無重大利空，市場情緒主導短期走勢。",
+          "action_view": "建議關注被錯殺的光模組及 HVDC 相關供應鏈，等待情緒修復後再考慮進場。",
+          "notable_quote": "漲高了就是利空"
+        }
+      }
+    ]
+  },
+  "mviewpoint": {
+    "name": "M觀點",
+    "episodes": []
+  },
+  "usstock-class": {
+    "name": "美股投資學",
+    "episodes": []
+  },
+  "money168": {
+    "name": "財經一路發",
+    "episodes": []
+  },
+  "macromicro": {
+    "name": "財經M平方",
+    "episodes": []
+  },
+  "ft-briefing": {
+    "name": "FT News Briefing",
+    "episodes": [
+      {
+        "guid": "6a2a07b27fe177e75b70ad4d",
+        "title": "Can a correction fix Australia’s housing market?",
+        "published": "Thu, 11 Jun 2026 04:00:00 GMT",
+        "processed_at": "2026-06-12T03:04:08Z",
+        "digest": {
+          "summary_points": [
+            "France and Germany are discussing a radical overhaul of the EU's foreign service, shifting power from chief diplomat Kaia Callis to the European Commission and member states due to coordination issues and overlapping responsibilities.",
+            "US inflation rose to 4.2% last month, pressuring President Trump to strike a deal with Iran amid ongoing skirmishes and a shaky ceasefire over the Strait of Hormuz.",
+            "Australia's Prime Minister Anthony Albanese plans to reverse tax incentives introduced in 1999 (negative gearing and capital gains reforms) to address housing unaffordability, as house prices have surged ~400% while incomes only doubled.",
+            "The Australian housing market has stalled, with forecasts of a correction up to 10% (worst in 40 years), but risks include a rental price spike (as seen in New Zealand) and potential supply shortages."
+          ],
+          "tickers": [],
+          "market_view": "Rising US inflation (4.2%) is creating political pressure for a US-Iran deal to lower energy prices; Australia's housing policy changes may lead to a market correction, but risks to rental and supply exist.",
+          "action_view": "",
+          "notable_quote": "It's a ceasefire that has frequent violations, frequent skirmishes, and in which there has been no breakthrough on the key issue of what happens to the Strait of Hormuz."
+        }
+      }
+    ]
+  },
+  "wsj-whatsnews": {
+    "name": "WSJ What's News",
+    "episodes": [
+      {
+        "guid": "a659c378-65d9-11f1-8393-6bba3934d4ee",
+        "title": "Stocks Soar After Trump Cancels Threatened Strikes on Iran",
+        "published": "Thu, 11 Jun 2026 21:07:00 -0000",
+        "processed_at": "2026-06-12T03:06:11Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX在IPO中以每股135美元出售超過5.55億股，估值約1.77兆美元，共募集750億美元，黑石集團下單50億美元，散戶投資者需求超過700億美元，馬斯克成為全球首位萬億富翁。",
+            "花旗集團推出基於區塊鏈的存託憑證系統，讓富裕客戶交易私人公司股票，強調此結構受監管且投資者明確知道自己買入的資產。",
+            "歐洲央行近三年來首次升息，將關鍵利率從2%上調至2.25%，市場預期今年內還會再升一次。",
+            "美國5月生產者物價指數（PPI）月增1.1%，高於預期，顯示通膨壓力持續。",
+            "川普宣布取消對伊朗的威脅攻擊，股市應聲大漲，道瓊指數上漲930點，那斯達克指數漲逾2.5%，油價則下跌近3%。",
+            "川普提名前證交會主席傑伊·克萊頓擔任國家情報總監，此舉可能化解與國會因比爾·波蒂代理任命而引發的FISA授權僵局。"
+          ],
+          "tickers": [],
+          "market_view": "市場因川普取消對伊朗攻擊而大漲，但通膨數據（PPI）高於預期及ECB升息顯示全球貨幣緊縮趨勢未變。",
+          "action_view": "",
+          "notable_quote": "The pitch that Citigroup is making is this structure is regulated, and so investors know what they're buying."
+        }
+      }
+    ]
+  },
+  "ws-breakfast": {
+    "name": "Wall Street Breakfast",
+    "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72476178",
+        "title": "No reward for Oracle's beat",
+        "published": "Thu, 11 Jun 2026 10:25:03 +0000",
+        "processed_at": "2026-06-12T03:02:32Z",
+        "digest": {
+          "summary_points": [
+            "Oracle (ORCL) fell 9% despite beating Q4 estimates with adjusted EPS $2.11 and revenue $19.18B, due to declines in software license support and a $40B debt/equity plan for AI expansion.",
+            "Microsoft's Xbox division plans major layoffs and budget cuts after the CEO said the business has a 3% profit margin and is 'not in a healthy spot'.",
+            "Wing and Walmart expanded drone delivery to seven new metro areas, targeting 270 locations nationwide.",
+            "Alibaba and JD shares fell after Beijing criticized misleading discount campaigns.",
+            "Palantir CEO warned that AI firms are upsetting enterprise clients.",
+            "Navi (NAVN) surged 19% after a strong fiscal Q1 beat and raised full-year outlook."
+          ],
+          "tickers": [
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Stock fell 9% despite earnings beat, overshadowed by software license decline and capital raise plans."
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Xbox reorganization and layoffs but overall company not directly commented."
+            },
+            {
+              "name": "Alibaba",
+              "code": "BABA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Shares fell after Beijing rebuked misleading discount campaigns."
+            },
+            {
+              "name": "JD.com",
+              "code": "JD",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Shares fell alongside Alibaba due to regulatory criticism."
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "CEO warned that AI firms are upsetting enterprise clients, no clear directional call."
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "CEO invited to testify about China business and export controls, no specific view."
+            },
+            {
+              "name": "Navan",
+              "code": "NAVN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Stock up 19% after strong Q1 beat and raised full-year outlook."
+            },
+            {
+              "name": "Walmart",
+              "code": "WMT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Expanding drone delivery with Wing, but no specific stock view."
+            }
+          ],
+          "market_view": "Stock index futures are higher before the bell; crude oil down 0.5%, Bitcoin up 2%, gold up 0.3%.",
+          "action_view": "",
+          "notable_quote": "The business has plummeted to a 3% accountability margin, which refers to the metric Microsoft uses to measure its profit margin."
+        }
+      }
+    ]
+  },
+  "unhedged": {
+    "name": "Unhedged (FT)",
+    "episodes": []
+  },
+  "oddlots": {
+    "name": "Odd Lots",
+    "episodes": []
+  },
+  "moneytalks": {
+    "name": "Money Talks (Economist)",
+    "episodes": []
+  },
+  "animalspirits": {
+    "name": "Animal Spirits",
+    "episodes": []
+  },
+  "investlikebest": {
+    "name": "Invest Like the Best",
+    "episodes": []
+  }
+}

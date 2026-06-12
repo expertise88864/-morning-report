@@ -559,6 +559,13 @@ def fetch_sec_filings() -> list[dict]:
     # 合併硬編 + NDX-100 解析後的 CIK
     companies: dict[str, str] = dict(SEC_BASE_COMPANIES)
     cik_map = _load_sec_cik_map()
+    # cik → ticker(filing 帶 ticker,供 8-K 公司動態新聞查詢歸因)
+    cik_ticker: dict[str, str] = {
+        "0001046179": "TSM", "0001045810": "NVDA", "0000789019": "MSFT",
+        "0000320193": "AAPL", "0001318605": "TSLA", "0001730168": "AVGO",
+        "0000002488": "AMD", "0001326801": "META", "0001652044": "GOOGL",
+        "0001018724": "AMZN",
+    }
     # priority_ciks:屬於「重點科技股」白名單者(email 8-K 區塊只顯示這些;LLM 仍吃全部)
     priority_ciks: set = set(SEC_BASE_COMPANIES.keys())   # mega-cap + 台積電一律重點
     for ticker in NDX_TICKERS:
@@ -566,6 +573,7 @@ def fetch_sec_filings() -> list[dict]:
         if not entry:
             continue
         cik, name = entry
+        cik_ticker.setdefault(cik, ticker.upper())
         if ticker.upper() in SEC_PRIORITY_TICKERS:
             priority_ciks.add(cik)
         if cik not in companies:
@@ -616,6 +624,7 @@ def fetch_sec_filings() -> list[dict]:
                     link = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession_no_dash}/{primary}"
                 out.append({
                     "company": name,
+                    "ticker": cik_ticker.get(cik, ""),
                     "form": form,
                     "date": filed_date_str,
                     "items": item_labels or [item_codes_str],
@@ -1908,13 +1917,9 @@ def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
     任何環節失敗 → fallback 回硬編 TW0050_CONSTITUENTS（每筆帶 "fallback": True）。
     回傳：{ code: {"name", "industry", "market_cap", ["fallback"]} }
     """
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     try:
         basics = _fetch_twse_listing_basics()
-        r2 = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
-                          timeout=20, headers=headers)
-        r2.raise_for_status()
-        prices = r2.json() or []
+        prices = _fetch_twse_stock_day_all()
         if not prices:
             raise RuntimeError("OpenAPI 回傳空資料")
 
@@ -2214,6 +2219,36 @@ def fetch_twse_recent_closes(code: str, want: int = 3) -> list:
     return [c for _, c in rows][-want:]
 
 
+_TWSE_STOCK_DAY_ALL_CACHE: dict = {"data": None}
+_TWSE_RETRY_SLEEP_BASE = 3.0   # 測試中設 0 避免退避拖慢
+
+
+def _fetch_twse_stock_day_all() -> list:
+    """STOCK_DAY_ALL 共用 getter:重試 3 次(退避)+ 程序內快取。
+
+    此 API 被「個股收盤價 / 市場廣度 / 外資彙整」三處各自請求且回應 ~MB 級;
+    2026-06-12 單次失敗即導致 0050 預測、市場廣度、11 維兩維全缺。
+    改為共用快取(同一次執行只抓一次)+ 重試,單點故障機率大幅下降。
+    """
+    if _TWSE_STOCK_DAY_ALL_CACHE["data"] is not None:
+        return _TWSE_STOCK_DAY_ALL_CACHE["data"]
+    for attempt in range(3):
+        try:
+            r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+                             timeout=20,
+                             headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            r.raise_for_status()
+            data = r.json() or []
+            if data:
+                _TWSE_STOCK_DAY_ALL_CACHE["data"] = data
+                return data
+        except Exception as e:
+            print(f"[twse] STOCK_DAY_ALL 第 {attempt + 1} 次失敗: {e}", file=sys.stderr)
+            if attempt < 2 and _TWSE_RETRY_SLEEP_BASE > 0:
+                time.sleep(_TWSE_RETRY_SLEEP_BASE * (attempt + 1))
+    return []
+
+
 def fetch_twse_close(code: str) -> Optional[float]:
     """
     從 TWSE OpenAPI STOCK_DAY_ALL 抓單一上市標的（含 ETF）的最新「官方」收盤價。
@@ -2223,11 +2258,7 @@ def fetch_twse_close(code: str) -> Optional[float]:
     TWSE 是台股/台股 ETF 的權威來源。失敗回傳 None（由呼叫端 fallback）。
     """
     try:
-        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
-                         timeout=20,
-                         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-        r.raise_for_status()
-        data = r.json() or []
+        data = _fetch_twse_stock_day_all()
         if not data:
             return None
         keys = list(data[0].keys())
@@ -2319,11 +2350,7 @@ def fetch_twse_market_breadth() -> dict:
     失敗回 {} 不影響晨報。
     """
     try:
-        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
-                         timeout=20,
-                         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-        r.raise_for_status()
-        data = r.json() or []
+        data = _fetch_twse_stock_day_all()
         if not data:
             return {}
 
@@ -3688,6 +3715,50 @@ def fetch_candidate_company_news(snapshot: list[dict],
     return items
 
 
+def fetch_8k_company_news(sec_filings: list[dict],
+                          exclude_labels: Optional[set] = None,
+                          per_query: int = 3,
+                          max_tickers: int = 8) -> list[dict]:
+    """對「今日有 8-K 的重點科技股」動態查 Google News,tag company_label=ticker。
+
+    動態宇宙的美股側:固定清單外的公司(ORCL/TXN/ON…)平常不查新聞,
+    但它一旦發 8-K 就是當日重點 — 此時自動把它加進新聞宇宙,
+    讓「科技板塊脈動」吃得到 8-K 背後的脈絡報導,而非只有表單編號。
+    """
+    if not sec_filings:
+        return []
+    exclude = {str(t).upper() for t in (exclude_labels or set())}
+    tickers: list[str] = []
+    for f in sec_filings:
+        t = str(f.get("ticker") or "").upper()
+        if t and t not in exclude and t not in tickers and t in SEC_PRIORITY_TICKERS:
+            tickers.append(t)
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=54)
+    items: list[dict] = []
+    hit = 0
+    for t in tickers[:max_tickers]:
+        try:
+            feed = feedparser.parse(_gnews_rss(f"{t} 股票", when="2d"))
+            for entry in feed.entries[:per_query]:
+                pub_dt = _entry_published_dt(entry)
+                if pub_dt and pub_dt < cutoff:
+                    continue
+                item = {
+                    "source": f"Google:{t}",
+                    "title": entry.get("title", ""),
+                    "summary": (entry.get("summary", "") or "")[:800],
+                    "link": entry.get("link", ""),
+                    "published": entry.get("published", ""),
+                    "company_label": t,
+                }
+                items.append(_mark_news_date_quality(item, pub_dt))
+                hit += 1
+        except Exception as e:
+            print(f"[8k_news] {t} 查詢失敗: {e}", file=sys.stderr)
+    print(f"[8k_news] 8-K 公司新聞 {hit} 則(動態查 {len(tickers[:max_tickers])} 檔)")
+    return items
+
+
 TW_INTELLIGENCE_QUERIES = {
     "policy": (
         "台灣 政策 行政院 補助 津貼 房貸 社福 產業 site:gov.tw",
@@ -4763,6 +4834,8 @@ def fetch_news_fulltext(news: list[dict],
         if crit_fetched >= max_critical:
             break
         if n.get("importance") != "critical":
+            continue
+        if n.get("fulltext"):    # 冪等:晚到的新聞(候選股/8-K)併入後會再補跑一次,別重抓
             continue
         link = _target_link(n)
         if not link or not link.startswith("http"):
@@ -6214,10 +6287,14 @@ def build_model_monitoring_report(walk_forward: dict,
     alerts = []
     for key, item in by_target.items():
         alerts.extend(f"{key}: {alert}" for alert in item.get("alerts", []))
+    # 熔斷:任一 horizon 的 Top5(模型或排名公式)回測淨報酬為負 → 排名的 ML 組件不可信,
+    # 降級為「純結構觀察」(audit rank 9)。penalty 3 分在 0-100 量表上無實質作用,故另設旗標。
+    suppress = status == "error" or any("net negative" in a for a in alerts)
     return {
         **primary,
         "status": status,
         "ranking_penalty": worst_penalty,
+        "suppress_ranking": suppress,
         "forecast_key": forecast_key,
         "by_target": by_target,
         "alerts": alerts,
@@ -6848,7 +6925,8 @@ def calc_stock_price_forecast(entry: dict,
             if learned.get("forecast_samples", 0) >= 5 else 0.0
         )
         score_tilt = ((attention_score - 50.0) / 50.0) * daily_vol * 0.20
-        news_tilt = (news_score / 10.0) * daily_vol * 0.30
+        # 新聞 tilt 0.30→0.10:同 _attention_ranking_breakdown 的 IC 依據(新聞股短線負超額)
+        news_tilt = (news_score / 10.0) * daily_vol * 0.10
         heuristic_return = (
             momentum_daily * horizon * 0.25
             + (score_tilt + news_tilt) * (horizon ** 0.5)
@@ -6950,18 +7028,26 @@ def _overheat_penalty(item: dict) -> float:
 
 def _attention_ranking_breakdown(item: dict,
                                  model3: dict,
-                                 weights: dict) -> dict:
-    """Build a transparent, bounded 0-100 ranking score for the Taiwan watchlist."""
+                                 weights: dict,
+                                 suppress_model: bool = False) -> dict:
+    """Build a transparent, bounded 0-100 ranking score for the Taiwan watchlist.
+
+    suppress_model=True(熔斷):rolling-origin 回測顯示 Top5 淨報酬為負時,
+    ML 組件(beat_market / expected_return)不可信 → 歸零,排名降級為純結構觀察。
+    """
     base_score = _safe_number((item.get("breakout") or {}).get("score"))
     news_score = max(-10.0, min(10.0, _safe_number(item.get("news_catalyst_score"))))
     industry_z = max(-2.0, min(2.0, _safe_number(item.get("industry_neutral_score"))))
-    probability = model3.get("beat_market_probability")
-    expected_return = model3.get("expected_return_pct")
+    probability = None if suppress_model else model3.get("beat_market_probability")
+    expected_return = None if suppress_model else model3.get("expected_return_pct")
 
     components = {
         # calc_breakout_score tops out at 90: chips 35 + momentum 25 + revenue 20 + EPS 10.
         "structure": base_score / 90.0 * 70.0 * _safe_number(weights.get("structure"), 1.0),
-        "news_event": news_score * 0.8 * _safe_number(weights.get("news"), 1.0),
+        # 新聞分降權 0.8→0.3:IC 回測(backtest_data/ic_news_score.py)顯示 1d IC=-0.107、
+        # 「有新聞」股票次日平均 -1.1%(p=0.03)— 注意力效應,新聞股短線易追高。
+        # 樣本僅 ~6 sessions 故降權不全刪;live 累積 ≥30 sessions 後重跑腳本再決定去留。
+        "news_event": news_score * 0.3 * _safe_number(weights.get("news"), 1.0),
         "industry_neutral": industry_z * 3.0,
         "beat_market": (
             (_safe_number(probability, 0.5) - 0.5) * 20.0
@@ -7057,7 +7143,9 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
         item["industry_neutral_score"] = neutral_scores.get(code, 0.0)
         model3 = (predictions.get("3d") or {}).get(code) or {}
         item["market_regime"] = regime
-        ranking = _attention_ranking_breakdown(item, model3, weights)
+        ranking = _attention_ranking_breakdown(
+            item, model3, weights,
+            suppress_model=bool((model_monitoring or {}).get("suppress_ranking")))
         item["ranking_score"] = ranking["score"]
         item["ranking_score_raw"] = ranking["raw_score"]
         item["ranking_components"] = ranking["components"]
@@ -10125,6 +10213,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 "</p>"
                 if top_score < 60 else ""
             )
+            # 熔斷橫幅:回測 Top5 淨報酬為負 → ML 組件已自排名移除,明示使用者本表僅為結構觀察
+            if (quotes.get("MODEL_MONITORING", {}) or {}).get("suppress_ranking"):
+                low_confidence_note = (
+                    "<p style='font-size:12px;color:#991b1b;background:#fef2f2;"
+                    "border-left:4px solid #dc2626;padding:8px 10px;margin:8px 0;line-height:1.6;'>"
+                    "<b>⚠ 模型熔斷中：</b>rolling-origin 回測顯示 Top5 淨報酬為負，"
+                    "本表已<b>移除 ML 預測組件</b>（勝過大盤機率 / 預期報酬不計分），"
+                    "僅反映籌碼、動能與營收結構；下方預測價位僅供參考，<b>不構成選股訊號</b>。"
+                    "</p>"
+                ) + low_confidence_note
             title_text = (
                 f"台股觀察名單 Top {len(top5)}（低信心，相對排名）"
                 if top_score < 60
@@ -11062,6 +11160,12 @@ def main() -> int:
     # 5.106 0050 ETF 開盤預測（2330 + 加權扣除 2330 後的市場），再做 0050 獨立 bias 校正
     print("[main] 計算 0050 開盤預測…")
     last_0050 = fetch_twse_close("0050")
+    if not last_0050:
+        # TWSE 失敗時退回 Yahoo(2026-06-12 TWSE 單點故障使 0050 預測整列缺失)。
+        # Yahoo 對 0050 偶有延遲,但「略舊的昨收」仍遠勝「整列資料缺失」。
+        last_0050 = (fetch_quote("0050.TW") or {}).get("close")
+        if last_0050:
+            print("[main] 0050 昨收 TWSE 失敗,改用 Yahoo fallback", file=sys.stderr)
     try:
         tw0050_pred = calc_0050_prediction(
             last_0050, predictions, taiex_pred, ex_div_amt=ex_div.get("0050", 0.0))
@@ -11159,6 +11263,23 @@ def main() -> int:
             print(f"[main] 併入候選個股新聞後共 {len(news)} 則")
     except Exception as e:
         print(f"[main] 候選個股新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
+
+    # 6.35 動態宇宙(美股側):今日有 8-K 的重點科技股,自動加進新聞查詢
+    try:
+        eightk_news = fetch_8k_company_news(
+            sec_filings, exclude_labels={lbl for _, lbl in GOOGLE_NEWS_COMPANIES})
+        if eightk_news:
+            news = dedup_news(news + classify_news_importance(eightk_news))
+            print(f"[main] 併入 8-K 公司新聞後共 {len(news)} 則")
+    except Exception as e:
+        print(f"[main] 8-K 公司新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
+
+    # 6.36 補抓全文:候選股/8-K 新聞在 5.2 全文擷取之後才併入,其中升級為
+    # critical/high 者在此補抓(fetch_news_fulltext 冪等,已抓過的會跳過)。
+    try:
+        news = fetch_news_fulltext(news, max_critical=3, max_high=8)
+    except Exception as e:
+        print(f"[main] 補抓全文失敗(不影響晨報): {e}", file=sys.stderr)
 
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()

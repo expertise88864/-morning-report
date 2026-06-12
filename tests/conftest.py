@@ -19,6 +19,16 @@ import pytest
 import morning_report as mr
 
 
+@pytest.fixture(autouse=True)
+def _reset_twse_stock_day_all_cache(monkeypatch):
+    """STOCK_DAY_ALL 共用快取在測試間必須清空,否則 mock 資料會跨測試污染;
+    重試退避在測試中歸零,避免失敗路徑測試慢 10 倍。"""
+    mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
+    monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
+    yield
+    mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
+
+
 def _bdays(n: int, start: str = "2026-01-05"):
     return pd.date_range(start, periods=n, freq="B")
 

@@ -427,7 +427,8 @@ def test_attention_ranking_breakdown_is_transparent_and_bounded():
         item, model3, {"structure": 1.0, "news": 1.0, "model": 1.0})
     assert out["components"] == {
         "structure": 56.0,
-        "news_event": 3.2,
+        # 新聞分權重 0.8→0.3(IC 回測:新聞股次日 -1.1% p=0.03,見 backtest_data/ic_news_score.py)
+        "news_event": 1.2,
         "industry_neutral": 4.5,
         "beat_market": 4.0,
         "expected_return": 2.5,
@@ -438,8 +439,22 @@ def test_attention_ranking_breakdown_is_transparent_and_bounded():
         "model_monitor_penalty": 0.0,
         "overheat_penalty": -0.0,
     }
-    assert out["score"] == sum(out["components"].values()) == 70.2
+    assert out["score"] == sum(out["components"].values()) == 68.2
     assert out["inputs"]["model_version"] == "test-v1"
+
+
+def test_attention_ranking_suppresses_model_components_when_circuit_broken():
+    """熔斷(回測 Top5 淨報酬為負)時,ML 組件歸零 → 排名只剩結構觀察。"""
+    item = {"breakout": {"score": 72}, "news_catalyst_score": 4,
+            "industry_neutral_score": 1.5}
+    model3 = {"beat_market_probability": 0.7, "expected_return_pct": 2.5,
+              "fallback_enabled": False, "probability_calibrated": True}
+    out = mr._attention_ranking_breakdown(
+        item, model3, {"structure": 1.0, "news": 1.0, "model": 1.0},
+        suppress_model=True)
+    assert out["components"]["beat_market"] == 0.0
+    assert out["components"]["expected_return"] == 0.0
+    assert out["components"]["structure"] == 56.0   # 結構分不受影響
 
 
 def test_attention_ranking_breakdown_penalizes_fallback_and_clips_score():

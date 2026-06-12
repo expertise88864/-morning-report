@@ -7,3 +7,4 @@ venv/
 sample_preview.html
 *_preview.html
 backtest_data/
+.claude/

@@ -2232,6 +2232,9 @@ def _fetch_twse_stock_day_all() -> list:
     """
     if _TWSE_STOCK_DAY_ALL_CACHE["data"] is not None:
         return _TWSE_STOCK_DAY_ALL_CACHE["data"]
+    if _TWSE_STOCK_DAY_ALL_CACHE.get("failed"):
+        # 失敗哨兵:本次執行已重試耗盡,4 個呼叫點不重複各自重試(最壞省 ~3 分鐘)
+        return []
     for attempt in range(3):
         try:
             r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
@@ -2246,6 +2249,7 @@ def _fetch_twse_stock_day_all() -> list:
             print(f"[twse] STOCK_DAY_ALL 第 {attempt + 1} 次失敗: {e}", file=sys.stderr)
             if attempt < 2 and _TWSE_RETRY_SLEEP_BASE > 0:
                 time.sleep(_TWSE_RETRY_SLEEP_BASE * (attempt + 1))
+    _TWSE_STOCK_DAY_ALL_CACHE["failed"] = True
     return []
 
 
@@ -3715,15 +3719,28 @@ def fetch_candidate_company_news(snapshot: list[dict],
     return items
 
 
+# 8-K 動態查詢用 ticker → 查詢字串(中英並列收斂歧義;短 ticker 如 ON/MU/ARM
+# 直接查會撈到大量無關結果)。不在表內的 ticker 用「{t} stock」退化查詢。
+_8K_QUERY_BY_TICKER: dict[str, str] = {
+    "QCOM": "高通 Qualcomm", "MRVL": "邁威爾 Marvell", "AMAT": "應用材料 Applied Materials",
+    "LRCX": "科林研發 Lam Research", "KLAC": "科磊 KLA", "MU": "美光 Micron",
+    "TXN": "德州儀器 Texas Instruments", "ADI": "亞德諾 Analog Devices",
+    "NXPI": "恩智浦 NXP", "MCHP": "微芯 Microchip", "ON": "安森美 onsemi",
+    "SNPS": "新思 Synopsys", "CDNS": "益華 Cadence", "ARM": "安謀 Arm",
+    "SMCI": "美超微 Supermicro", "GOOG": "Alphabet Google",
+}
+
+
 def fetch_8k_company_news(sec_filings: list[dict],
                           exclude_labels: Optional[set] = None,
                           per_query: int = 3,
                           max_tickers: int = 8) -> list[dict]:
     """對「今日有 8-K 的重點科技股」動態查 Google News,tag company_label=ticker。
 
-    動態宇宙的美股側:固定清單外的公司(ORCL/TXN/ON…)平常不查新聞,
+    動態宇宙的美股側:固定清單外的公司(TXN/ON/MRVL/AMAT…)平常不查新聞,
     但它一旦發 8-K 就是當日重點 — 此時自動把它加進新聞宇宙,
     讓「科技板塊脈動」吃得到 8-K 背後的脈絡報導,而非只有表單編號。
+    (註:TSMC/ASML 等外國發行人申報 6-K 非 8-K,不會出現在此路徑。)
     """
     if not sec_filings:
         return []
@@ -3738,7 +3755,8 @@ def fetch_8k_company_news(sec_filings: list[dict],
     hit = 0
     for t in tickers[:max_tickers]:
         try:
-            feed = feedparser.parse(_gnews_rss(f"{t} 股票", when="2d"))
+            query = _8K_QUERY_BY_TICKER.get(t, f"{t} stock")
+            feed = feedparser.parse(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:per_query]:
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
@@ -6254,9 +6272,15 @@ def _model_monitoring_for_key(walk_forward: dict, forecast_key: str) -> dict:
         or "Brier high" in alert or "direction weak" in alert
         or "top5 net negative" in alert
         for alert in alerts)
+    # 熔斷訊號需「樣本夠格」:小樣本(單一 origin / 幾筆)的負淨報酬是雜訊,
+    # 不可觸發熔斷,否則 ML 排名會被長期靜默關閉(5d horizon 樣本天然最少、最易誤觸)。
+    suppress_signal = (
+        rolling_origins >= 3 and rolling_samples >= 30
+        and any("net negative" in alert for alert in alerts))
     return {
         "status": "error" if severe else "fallback" if alerts else "ok",
         "ranking_penalty": 3.0 if severe else 1.0 if alerts else 0.0,
+        "suppress_signal": suppress_signal,
         "forecast_key": forecast_key,
         "metrics": metrics,
         "rolling_origin_metrics": rolling_metrics,
@@ -6287,9 +6311,11 @@ def build_model_monitoring_report(walk_forward: dict,
     alerts = []
     for key, item in by_target.items():
         alerts.extend(f"{key}: {alert}" for alert in item.get("alerts", []))
-    # 熔斷:任一 horizon 的 Top5(模型或排名公式)回測淨報酬為負 → 排名的 ML 組件不可信,
-    # 降級為「純結構觀察」(audit rank 9)。penalty 3 分在 0-100 量表上無實質作用,故另設旗標。
-    suppress = status == "error" or any("net negative" in a for a in alerts)
+    # 熔斷:任一 horizon 的 Top5(模型或排名公式)回測淨報酬為負「且樣本夠格」
+    # (origins≥3、samples≥30,見 _model_monitoring_for_key.suppress_signal)→
+    # 排名的 ML 組件不可信,降級為「純結構觀察」(audit rank 9)。
+    # 刻意不用 status=="error":coverage/Brier 異常在小樣本下極易越界,會誤觸熔斷。
+    suppress = any(item.get("suppress_signal") for item in by_target.values())
     return {
         **primary,
         "status": status,
@@ -7060,7 +7086,9 @@ def _attention_ranking_breakdown(item: dict,
             if expected_return is not None else 0.0
         ),
         "quality_penalty": (
-            -4.0 if model3.get("fallback_enabled", True)
+            # 熔斷時 ML 已不計分,不再以「模型品質」差異化懲罰個股(避免引入模型雜訊)
+            0.0 if suppress_model
+            else -4.0 if model3.get("fallback_enabled", True)
             else -1.0 if not model3.get("probability_calibrated") else 0.0
         ),
         "liquidity_penalty": (

@@ -27,7 +27,8 @@ def test_render_etf_action_card():
     assert "ETF 今日進出參考價" in h
     assert "120.27" in h and "121.47" in h     # 00662 ±0.5%
     assert "99.45" in h and "101.45" in h      # 0050 ±1.0%
-    assert "分批買入參考" in h and "分批調節參考" in h
+    # 手機版堆疊文案
+    assert "可分批買" in h and "偏貴" in h and "觀望" in h
     assert mr._render_etf_action_card(None, None) == ""
 
 

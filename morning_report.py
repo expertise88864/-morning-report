@@ -9460,37 +9460,33 @@ def _render_etf_action_card(fair_00662, pred_0050) -> str:
     0050  帶寬 ±1.0%:衍生自 2330+加權 預測,誤差較大故放寬。
     低於下緣 = 相對便宜(分批買入參考);高於上緣 = 相對偏貴(分批調節參考)。
     """
-    rows = []
+    # 手機版堆疊式:每檔一卡兩行(原 4 欄表在 390px 寬會擠爆)
+    cards = []
     for label, center, band in (("00662 富邦NASDAQ", fair_00662, 0.005),
                                 ("0050 元大台灣50", pred_0050, 0.010)):
         if not isinstance(center, (int, float)) or center <= 0:
             continue
         lo = round(center * (1 - band), 2)
         hi = round(center * (1 + band), 2)
-        rows.append(
-            f"<tr>"
-            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
-            f"color:#15803d;font-weight:700;font-variant-numeric:tabular-nums;'>&lt; {lo}<br>"
-            f"<span style='font-size:11px;font-weight:400;'>偏便宜・分批買入參考</span></td>"
-            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
-            f"color:#475569;font-variant-numeric:tabular-nums;'>{lo} ~ {hi}<br>"
-            f"<span style='font-size:11px;'>合理區間・觀望</span></td>"
-            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
-            f"color:#b91c1c;font-weight:700;font-variant-numeric:tabular-nums;'>&gt; {hi}<br>"
-            f"<span style='font-size:11px;font-weight:400;'>偏貴・分批調節參考</span></td>"
-            f"</tr>")
-    if not rows:
+        cards.append(
+            f"<div style='padding:10px 14px;border-bottom:1px solid #e2e8f0;background:#fff;'>"
+            f"<div style='font-weight:700;color:#0f172a;font-size:15px;'>{label}</div>"
+            f"<div style='font-size:14px;margin-top:6px;line-height:1.9;'>"
+            f"<span style='color:#15803d;font-weight:700;'>&lt; {lo} 可分批買</span>"
+            f"<span style='color:#cbd5e1;'>　|　</span>"
+            f"<span style='color:#475569;'>{lo}~{hi} 觀望</span>"
+            f"<span style='color:#cbd5e1;'>　|　</span>"
+            f"<span style='color:#b91c1c;font-weight:700;'>&gt; {hi} 偏貴</span></div>"
+            f"</div>")
+    if not cards:
         return ""
     return (
         '<div style="border:2px solid #0284c7;border-radius:10px;overflow:hidden;margin:14px 0;">'
-        '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:14px;">'
-        'ETF 今日進出參考價（依模型合理價推算）</div>'
-        '<table style="width:100%;border-collapse:collapse;background:#ffffff;font-size:14px;">'
-        + "".join(rows) +
-        '</table>'
-        '<div style="padding:6px 14px;background:#f8fafc;font-size:11px;color:#94a3b8;">'
-        '※ 開盤前推算的當日參考價位,盤中若大幅偏離(如重大消息)請以即時資訊為準;僅供參考,非投資建議。</div>'
+        '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:15px;">'
+        'ETF 今日進出參考價</div>'
+        + "".join(cards) +
+        '<div style="padding:6px 14px;background:#f8fafc;font-size:12px;color:#94a3b8;">'
+        '※ 開盤前依模型合理價推算;盤中大幅偏離時以即時資訊為準。僅供參考,非投資建議。</div>'
         '</div>')
 
 
@@ -9619,11 +9615,11 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
     cell = ("text-align:center;padding:12px 6px 14px;vertical-align:middle;"
             "border-right:1px solid rgba(255,255,255,0.10);")
     cell_last = "text-align:center;padding:12px 6px 14px;vertical-align:middle;"
-    lbl = ("font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.60);"
+    lbl = ("font-size:12px;letter-spacing:2px;color:rgba(255,255,255,0.60);"
            "text-transform:uppercase;font-weight:600;line-height:1.2;")
     val = ("font-size:18px;font-weight:700;color:#ffffff;line-height:1.2;"
            "margin-top:6px;font-variant-numeric:tabular-nums;")
-    delta = ("font-size:11px;font-weight:500;line-height:1.2;margin-top:3px;"
+    delta = ("font-size:12px;font-weight:500;line-height:1.2;margin-top:3px;"
              "font-variant-numeric:tabular-nums;")
 
     def _kpi_tile_numeric(label_txt: str, value_str: str, pct: float | None,
@@ -9693,6 +9689,7 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
             </td>
           </tr>"""
 
+    # 手機版 3+2 兩列:5 格橫排在 iPhone(~390px)每格僅 78px,數字會擠爆
     return f"""
           <tr>
             <td style="background:#0c4a6e;padding:0;">
@@ -9700,7 +9697,11 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                 <tr>
                   {stance_tile}
                   {_kpi_tile_numeric("2330 預測", fmt(mid_2330), pct_2330)}
-                  {_kpi_tile_numeric("00662 預測", fmt(fair_price), pct_00662)}
+                  {_kpi_tile_numeric("00662 預測", fmt(fair_price), pct_00662, is_last=True)}
+                </tr>
+              </table>
+              <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.12);">
+                <tr>
                   {_kpi_tile_numeric("0050 預測", fmt(pred_0050), pct_0050)}
                   {_kpi_tile_numeric("加權預測", fmt_int(pred_taiex), pct_taiex, is_last=True)}
                 </tr>
@@ -9752,7 +9753,7 @@ def _render_summary_bar(summary: str, stance_detail: str, htmllib) -> str:
     return f"""
           <tr>
             <td style="background:#fef3c7;border-top:3px solid #f59e0b;padding:16px 24px;">
-              <div style="font-size:10px;letter-spacing:2px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:6px;">今日結論</div>
+              <div style="font-size:12px;letter-spacing:2px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:6px;">今日結論</div>
               {headline}
               {detail}
             </td>
@@ -9854,7 +9855,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
                     rejected.append(f"{sample.get('reason', '')}:{sample.get('title', '')}")
         diagnostic_html = (
             "<div style='padding:8px 14px;background:#f8fafc;color:#64748b;"
-            "font-size:11px;line-height:1.5;border-top:1px solid #e2e8f0;'>"
+            "font-size:12px;line-height:1.5;border-top:1px solid #e2e8f0;'>"
             f"診斷：entries={htmllib.escape(str(diag.get('entries', 0)))}；"
             f"returned={htmllib.escape(str(diag.get('returned', 0)))}；"
             f"official_entries={htmllib.escape(str(diag.get('official_entries', 0)))}；"
@@ -9894,7 +9895,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
                 f"<a href='{htmllib.escape(str(item.get('link', '')))}' "
                 f"style='font-size:14px;line-height:1.65;color:#0f172a;text-decoration:none;'>"
                 f"{htmllib.escape(str(item.get('title', '')))}</a>"
-                f"<div style='font-size:11px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
+                f"<div style='font-size:12px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
                 f"入選原因：{htmllib.escape('、'.join(item.get('why') or ['寬召回分類']))}</div>"
                 f"</div>"
                 for item in items
@@ -10024,9 +10025,9 @@ def _render_weekly_recap_html(history: list[dict]) -> str:
         'font-size:14px;">本週預測回顧(實際開盤 vs 預測的偏差)</div>'
         '<table style="width:100%;border-collapse:collapse;background:#fff;">'
         '<tr style="background:#faf5ff;"><th style="padding:6px 12px;text-align:left;'
-        'font-size:11px;color:#6d28d9;">日期</th><th style="padding:6px 12px;text-align:right;'
-        'font-size:11px;color:#6d28d9;">加權誤差</th><th style="padding:6px 12px;'
-        'text-align:right;font-size:11px;color:#6d28d9;">2330 誤差</th></tr>'
+        'font-size:12px;color:#6d28d9;">日期</th><th style="padding:6px 12px;text-align:right;'
+        'font-size:12px;color:#6d28d9;">加權誤差</th><th style="padding:6px 12px;'
+        'text-align:right;font-size:12px;color:#6d28d9;">2330 誤差</th></tr>'
         + "".join(rows) + "</table></div>")
 
 
@@ -10404,7 +10405,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
             f"<a href='https://pubmed.ncbi.nlm.nih.gov/{a['pmid']}/' "
             f"style='color:#0f172a;text-decoration:none;'>"
             f"{htmllib.escape(a.get('zh') or a['title'])}</a>"
-            + (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(a['title'][:90])}</div>"
+            + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(a['title'][:90])}</div>"
                if a.get("zh") else "")
             + "</li>"
             for a in arts)
@@ -10417,7 +10418,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
         '醫學文獻速報（近 7 天・JAAD / JEADV / NEJM / AJO）</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;background:#ffffff;">'
         + "".join(blocks) +
-        '<p style="font-size:11px;color:#94a3b8;">※ 中文為 AI 編譯重點,點擊可開 PubMed 原文。</p></div>')
+        '<p style="font-size:12px;color:#94a3b8;">※ 中文為 AI 編譯重點,點擊可開 PubMed 原文。</p></div>')
 
 
 # ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
@@ -10666,10 +10667,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒戰績</b>"
             "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
             "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
-            "font-size:11px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
-            "text-align:right;font-size:11px;color:#64748b;'>勝-和-敗</th>"
-            "<th style='padding:4px 10px;text-align:right;font-size:11px;color:#64748b;'>勝率</th>"
-            "<th style='padding:4px 10px;text-align:right;font-size:11px;color:#64748b;'>勝差</th></tr>"
+            "font-size:12px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
+            "text-align:right;font-size:12px;color:#64748b;'>勝-和-敗</th>"
+            "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th>"
+            "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝差</th></tr>"
             + rows + "</table></div>")
     if nba:
         rows = "".join(
@@ -10677,7 +10678,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"{g.get('date', '')}　{g['text']}"
             + (f"　<span style='color:#b91c1c;font-weight:700;'>{htmllib.escape(g['series'])}</span>"
                if g.get("series") else "")
-            + (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
+            + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
                if g.get("note") else "")
             + "</div>"
             for g in nba)
@@ -10777,12 +10778,16 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         return ""
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
+    tw_shows = {"股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
+                "美股投資學", "財經一路發", "財經M平方"}
     cards = []
     for ep in episodes[:14]:   # 節目多時控制信件長度(load 端已每節目只取最新一集)
         d = ep.get("digest") or {}
+        # 國際節目精簡(重點 5 條、無金句):控長度避開 Gmail 102KB 剪輯,手機少滑兩屏
+        is_tw = str(ep.get("show", "")) in tw_shows
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
-            for p in (d.get("summary_points") or [])[:10])
+            for p in (d.get("summary_points") or [])[:(10 if is_tw else 5)])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
             label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))
@@ -10790,7 +10795,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
             code = htmllib.escape(str(t.get("code", "")).strip())
             disp = f"{name}（{code}）" if code else name
             check = _podcast_ticker_crosscheck(t, snapshot)
-            check_html = (f"<div style='font-size:11px;color:#0369a1;margin-top:2px;'>"
+            check_html = (f"<div style='font-size:12px;color:#0369a1;margin-top:2px;'>"
                           f"對照:{htmllib.escape(check)}</div>") if check else ""
             ticker_rows += (
                 f"<div style='padding:6px 0;border-bottom:1px dashed #e2e8f0;'>"
@@ -10806,7 +10811,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
                 extras += (f"<div style='font-size:13px;color:#334155;margin-top:6px;'>"
                            f"<b>{label}：</b>{htmllib.escape(val)}</div>")
         quote = str(d.get("notable_quote") or "").strip()
-        if quote:
+        if quote and is_tw:   # 金句只留台灣節目(國際精簡)
             extras += (f"<div style='font-size:12px;color:#64748b;margin-top:6px;"
                        f"font-style:italic;'>「{htmllib.escape(quote)}」</div>")
         cards.append(
@@ -10824,7 +10829,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         'background:#faf5ff;border-left:5px solid #9333ea;border-radius:4px;">'
         'Podcast 重點（台灣節目在前・國際在後）</h2>'
         + "".join(cards)
-        + "<p style='font-size:11px;color:#94a3b8;margin:4px 0;'>"
+        + "<p style='font-size:12px;color:#94a3b8;margin:4px 0;'>"
           "※ 以上為主持人個人觀點之摘要(AI 轉錄,可能有誤),非本報建議;"
           "「對照」為與本報法人/動能資料的對照,不納入股價模型。</p>")
 
@@ -10896,22 +10901,19 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
+        # 手機版 3 欄(標的/收盤/漲跌):iPhone Gmail 寬度 ~390px,高低與量在小螢幕沒人看
         if "error" in q:
             return (f"<tr><td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>{q['ticker']}</td>"
-                    f"<td colspan='4' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#dc2626'>{q['error']}</td></tr>")
+                    f"<td colspan='2' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#dc2626'>{q['error']}</td></tr>")
         pct = q.get("change_pct") or 0
         # 台股慣例：紅漲綠跌
         color = "#dc2626" if pct >= 0 else "#16a34a"
         sign = "+" if pct >= 0 else ""
-        vol = q.get("volume")
-        vol_str = f"{vol:,}" if vol else "—"
         return (
             f"<tr>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{q['ticker']}</td>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{q['close']:.2f}</td>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct}%</td>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569;font-size:13px;'>{q['high']} / {q['low']}</td>"
-            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b;font-size:13px;'>{vol_str}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;font-size:15px;'>{q['ticker']}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;font-size:15px;'>{q['close']:.2f}</td>"
+            f"<td style='padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;font-size:15px;'>{sign}{pct}%</td>"
             f"</tr>"
         )
 
@@ -10945,13 +10947,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             rank_cell = (f"<span style='background:{bg};color:{tcolor};"
                           f"padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;'>"
                           f"{rank:.0f}%</span>")
+        # 手機版:判讀提示改放第二列小字(原本獨立欄在 390px 寬擠掉數字欄)
         return (f"<tr>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{m['close']:,.2f}</td>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:right;color:{color};font-weight:700;'>{sign}{pct:.2f}%</td>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;'>{rank_cell}</td>"
-                f"<td style='padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;'>{hint}</td>"
-                f"</tr>")
+                f"<td style='padding:10px 14px 2px;font-weight:700;color:#0f172a;font-size:14px;'>{label}</td>"
+                f"<td style='padding:10px 14px 2px;text-align:right;font-variant-numeric:tabular-nums;font-size:14px;'>{m['close']:,.2f}</td>"
+                f"<td style='padding:10px 14px 2px;text-align:right;color:{color};font-weight:700;font-size:14px;'>{sign}{pct:.2f}%</td>"
+                f"<td style='padding:10px 14px 2px;text-align:center;'>{rank_cell}</td>"
+                f"</tr>"
+                f"<tr><td colspan='4' style='padding:0 14px 8px;border-bottom:1px solid #e2e8f0;"
+                f"color:#94a3b8;font-size:12px;'>{hint}</td></tr>")
     # 信件只顯示「一般投資人看得懂」的指標;艱澀的 VIX9D / NQ・ES 期貨 / 10Y・13W 殖利率
     # 已從 email 移除,但仍在 MACRO dict + LLM prompt 內(後台保留餵立場評分與模型,品質不降)。
     macro_rows = (
@@ -11180,7 +11184,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             ※ 開盤方向只描述「可能怎麼開」；整體立場取自「我的明確立場」；交易立場則整合外資期貨、警告與波動風險；{posture_reason}。
           </div>
         </div>
-        {(lambda c: f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
+        {(lambda c: f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
         """
 
     # === 0050 ETF 開盤預測卡 ===
@@ -11210,7 +11214,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{p50}</td>
           </tr>
         </table>
-        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
         """
 
     # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
@@ -11237,11 +11241,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     score_bg, score_fg = "#dbeafe", "#1e40af"   # 藍:輕微
                 tag_chips = "".join(
                     f'<span style="display:inline-block;background:#f1f5f9;color:#475569;'
-                    f'padding:1px 7px;border-radius:8px;font-size:11px;margin:0 3px 3px 0;">'
+                    f'padding:1px 7px;border-radius:8px;font-size:12px;margin:0 3px 3px 0;">'
                     f'{_htmllib.escape(str(t))}</span>'
                     for t in tags[:6]
                 )
-                tag_chips_line = tag_chips or '<span style="color:#94a3b8;font-size:11px;">無特別標籤</span>'
+                tag_chips_line = tag_chips or '<span style="color:#94a3b8;font-size:12px;">無特別標籤</span>'
                 fs = s.get("foreign_streak", 0) or 0
                 is_ = s.get("invest_streak", 0) or 0
                 day_pct = s.get("day_pct") or 0
@@ -11307,10 +11311,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     # 第 2 行:訊號標籤 chips
                     f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
                     # 第 3 行:數據明細小字
-                    f"<div style='margin-top:5px;font-size:11px;color:#94a3b8;'>{metrics_line}</div>"
+                    f"<div style='margin-top:5px;font-size:12px;color:#94a3b8;'>{metrics_line}</div>"
                     # 排名分解(ranking_line)與模型技術行(quality_line)屬內部計算細節,
                     # 使用者回饋不需顯示 — 隱藏(資料仍在 state/log 供除錯)
-                    f"<div style='margin-top:5px;font-size:11px;color:#0369a1;'>{forecast_line}</div>"
+                    f"<div style='margin-top:5px;font-size:12px;color:#0369a1;'>{forecast_line}</div>"
                     f"</td>"
                     f"</tr>"
                 )
@@ -11346,7 +11350,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}
         </table>
-        <p style="font-size:11px;color:#94a3b8;margin:6px 0;line-height:1.6;">
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0;line-height:1.6;">
           ※ 分數 <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。
           大戶 ΔWoW = 大戶持股比例週變化;量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
           ※ 排名由固定公式產生並每日回測驗證;此分數僅供觀察參考，不是買進訊號。
@@ -11381,7 +11385,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
             <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>
           </div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:6px;">※ 上漲家數 ≥ 60% 為普漲、≤ 40% 為普跌；若指數漲但廣度低 = 少數權值股撐盤、健康度差。</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:6px;">※ 上漲家數 ≥ 60% 為普漲、≤ 40% 為普跌；若指數漲但廣度低 = 少數權值股撐盤、健康度差。</div>
         </div>
         """
 
@@ -11417,37 +11421,34 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 lo15 = fc.get("lower_15s") or fc.get("lower")
                 up15 = fc.get("upper_15s") or fc.get("upper")
                 return (f"<div style='font-size:13px;color:#0f172a;'>"
-                        f"<b>{lo1}–{up1}</b> <span style='font-size:10px;color:#94a3b8;'>常態±1σ</span></div>"
+                        f"<b>{lo1}–{up1}</b> <span style='font-size:12px;color:#94a3b8;'>常態±1σ</span></div>"
                         f"<div style='font-size:12px;color:#94a3b8;margin-top:2px;'>"
-                        f"{lo15}–{up15} <span style='font-size:10px;'>極端±1.5σ</span></div>")
+                        f"{lo15}–{up15} <span style='font-size:12px;'>極端±1.5σ</span></div>")
 
+            # 手機版卡片式(原 6 欄表在 390px 寬會擠爆):每標的兩行
+            sign5 = "+" if (pct_5d or 0) >= 0 else ""
+            sign20 = "+" if (d20 or 0) >= 0 else ""
+            lo1 = f5.get("lower_1s") or f5.get("lower")
+            up1 = f5.get("upper_1s") or f5.get("upper")
+            lo1m = f20.get("lower_1s") or f20.get("lower")
+            up1m = f20.get("upper_1s") or f20.get("upper")
             midterm_rows.append(
-                f"<tr>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{name}</td>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{pct_5d_color};font-variant-numeric:tabular-nums;'>"
-                f"{('+' if (pct_5d or 0) >= 0 else '')}{pct_5d if pct_5d is not None else '—'}%</td>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:13px;color:{d20_color};font-variant-numeric:tabular-nums;'>"
-                f"{('+' if (d20 or 0) >= 0 else '')}{d20 if d20 is not None else '—'}%</td>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{_range_cell(f5)}</td>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums;'>{_range_cell(f20)}</td>"
-                f"<td style='padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:{trend_color};font-weight:600;'>{trend}</td>"
-                f"</tr>"
-            )
+                f"<div style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>"
+                f"<div style='font-size:15px;'><b style='color:#0f172a;'>{name}</b>"
+                f"　<span style='color:{trend_color};font-weight:700;font-size:13px;'>{trend}</span>"
+                f"　<span style='color:{pct_5d_color};font-size:13px;'>5日 {sign5}{pct_5d if pct_5d is not None else '—'}%</span>"
+                f"　<span style='color:{d20_color};font-size:13px;'>距MA20 {sign20}{d20 if d20 is not None else '—'}%</span></div>"
+                f"<div style='font-size:13px;color:#475569;margin-top:4px;'>"
+                f"1週 <b>{lo1}–{up1}</b>　|　1月 <b>{lo1m}–{up1m}</b>"
+                f"<span style='color:#94a3b8;font-size:12px;'>（68% 機率區間）</span></div>"
+                f"</div>")
         if midterm_rows:
             midterm_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">中期展望（統計區間，非點預測）</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;">
-          <tr style="background:#f1f5f9;">
-            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">標的</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">5日累積</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">距 MA20</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1週區間</th>
-            <th style="padding:8px 10px;text-align:right;color:#475569;font-size:12px;">1月區間</th>
-            <th style="padding:8px 10px;text-align:left;color:#475569;font-size:12px;">趨勢</th>
-          </tr>
+        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;margin:12px 0;">
           {''.join(midterm_rows)}
-        </table>
-        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ <b>常態±1σ</b> = 約 68% 機率落在此區間（一般波動）;<b>極端±1.5σ</b> = 約 87%（含中等劇烈日）。<b>這是統計區間,不是「會漲到 X」的點預測</b>。</p>
+        </div>
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0;">※ 區間 = 約 68% 機率的統計範圍,不是「會漲到 X」的點預測。</p>
         """
 
     # === 夜盤台指期卡 (Task B) ===
@@ -11477,7 +11478,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
             <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">變動</th>
             <th style="padding:10px 14px;text-align:center;color:#475569;font-size:12px;letter-spacing:1px;">1Y 百分位</th>
-            <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">判讀提示</th>
           </tr>
           {macro_rows}
         </table>
@@ -11538,7 +11538,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
         method_label = fair.get("method", "")
         calib_extra = _calibration_note_compact(fair)
-        fair_foot = (f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">'
+        fair_foot = (f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">'
                      f'計算方式：{method_label}'
                      + (f'　｜　{calib_extra}' if calib_extra else '')
                      + '</p>')
@@ -11587,11 +11587,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if m4 is not None:
             models_compact = f"{_fmt(m1)} / {_fmt(m2)} / {_fmt(m3)} / {_fmt(m4)}"
             mom_str = f"{momentum_5d:+.2f}%" if momentum_5d is not None else "—"
-            models_label = (f"四模型估值<br><span style=\"color:#94a3b8;font-size:11px;\">"
+            models_label = (f"四模型估值<br><span style=\"color:#94a3b8;font-size:12px;\">"
                             f"1:1 / 60日比值 / ADR衰減{decay} / 5日動能 {mom_str} ×0.15</span>")
         else:
             models_compact = f"{_fmt(m1)} / {_fmt(m2)} / {_fmt(m3)}"
-            models_label = (f"三模型估值<br><span style=\"color:#94a3b8;font-size:11px;\">"
+            models_label = (f"三模型估值<br><span style=\"color:#94a3b8;font-size:12px;\">"
                             f"1:1 / 60日比值 / ADR衰減{decay}</span>")
 
         rows_html = f"""
@@ -11631,7 +11631,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             notes.append(calib_extra)
         wf_line = ""
         if notes:
-            wf_line = (f'<p style="font-size:11px;color:#94a3b8;margin:6px 0;">'
+            wf_line = (f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">'
                        f'{"　｜　".join(notes)}</p>')
         pred_html = (f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">'
                      f'{rows_html}</table>{wf_line}')
@@ -11740,7 +11740,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {_pred_row("00662 富邦NASDAQ", _f_last, _f_price, _f_pct)}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
-        <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ 2330 四模型中位數;00662 公允淨值(QQQ×匯率);0050 ≈ 0.5×2330 + 0.5×加權。皆已套用歷史偏誤自我校正。</p>
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0;">※ 2330 四模型中位數;00662 公允淨值(QQQ×匯率);0050 ≈ 0.5×2330 + 0.5×加權。皆已套用歷史偏誤自我校正。</p>
         {_render_etf_action_card(_f_price, _t_pred)}
         """
 
@@ -11754,7 +11754,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;">
   <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
     <tr>
-      <td align="center" style="padding:20px 12px;">
+      <td align="center" style="padding:12px 4px;">
         <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
 
           <!-- HERO -->
@@ -11772,8 +11772,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <!-- TODAY'S TAKEAWAY (LLM 一句話結論釘頂) -->
           {summary_bar}
 
-          <!-- BODY -->
-          <tr><td style="padding:24px 28px 8px;">
+          <!-- BODY(手機版兩側 16px:28px 在 390px 寬會吃掉 15% 可用寬度)-->
+          <tr><td style="padding:20px 16px 8px;">
 
             {weather_html}
 
@@ -11791,8 +11791,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 <th style="padding:10px 14px;text-align:left;color:#475569;font-size:12px;letter-spacing:1px;">標的</th>
                 <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">收盤</th>
                 <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">漲跌</th>
-                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">高/低</th>
-                <th style="padding:10px 14px;text-align:right;color:#475569;font-size:12px;letter-spacing:1px;">成交量</th>
               </tr>
               {quote_rows}
             </table>
@@ -11833,7 +11831,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           <!-- FOOTER -->
           <tr>
-            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;line-height:1.7;">
+            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;line-height:1.7;">
               本信件由自動化腳本於 GitHub Actions 產生。<br>
               資料來源：Yahoo Finance、TWSE OpenAPI、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、經濟日報、工商時報、中央社。<br>
               分析由 LLM ({llm_label}) 生成，僅供參考，不構成投資建議。

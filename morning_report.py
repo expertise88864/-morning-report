@@ -10483,52 +10483,74 @@ SPORTS_NEWS_QUERIES = [
 ]
 
 
-def fetch_cpbl_standings() -> list[dict]:
-    """CPBL 戰績:官網直連(台灣 IP 可),GitHub Actions(海外 IP)被 geo-block
-    回 404 → 退 r.jina.ai 代理(回頁面純文字,同樣可解析)。失敗回空。"""
+def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
+    """Wikipedia「中華職棒N年」戰績表(全球可用,社群賽後更新)。
+
+    頁內有多個 wikitable(熱身賽/上半季/下半季),取「已賽總場次最大」者 = 當前賽季進度。
+    """
     import re as _re
-    html = ""
+    year = year or dt.datetime.now(TPE).year
+    page = f"中華職棒{year - 1989}年"   # 2026 = 中職 37 年
+    r = requests.get("https://zh.wikipedia.org/w/api.php", params={
+        "action": "parse", "page": page, "prop": "wikitext",
+        "format": "json", "formatversion": "2"},
+        timeout=20, headers={"User-Agent": "MorningReportBot/1.0"})
+    r.raise_for_status()
+    wikitext = (r.json().get("parse") or {}).get("wikitext", "")
+    # 列格式:| 1 || [[富邦悍將]] ||應賽||已賽||勝||敗||和||{{Winning percentage|勝|敗}}||勝差
+    # 勝率欄是 {{Winning percentage|W|L}} 模板(內含單 pipe),用 non-greedy 跨過
+    row_re = _re.compile(
+        r"\|\s*(\d+)\s*\|\|\s*\[\[([^\]|]+)(?:\|[^\]]*)?\]\]\s*"
+        r"\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)"
+        r"\s*\|\|.*?\|\|\s*([^\n|]*)")
+    best: list[dict] = []
+    best_games = -1
+    for block in wikitext.split('{|'):
+        rows = []
+        played_sum = 0
+        for m in row_re.finditer(block):
+            rank, team = int(m.group(1)), m.group(2).strip()
+            played, w, l, t = int(m.group(4)), int(m.group(5)), int(m.group(6)), int(m.group(7))
+            pct = w / (w + l) if (w + l) else 0.0
+            rows.append({"rank": rank, "team": team, "games": str(played),
+                         "wdl": f"{w}-{t}-{l}", "pct": f"{pct:.3f}",
+                         "gb": m.group(8).strip().replace("–", "-")})
+            played_sum += played
+        if len(rows) >= 4 and played_sum > best_games:
+            best, best_games = rows, played_sum
+    return best[:6]
+
+
+def fetch_cpbl_standings() -> list[dict]:
+    """CPBL 戰績:官網直連(台灣 IP 可)→ Wikipedia 備援(GitHub Actions 海外 IP
+    被官網 geo-block 回 404;r.jina.ai 代理實測也被擋,改用 wiki)。失敗回空。"""
+    import re as _re
     try:
         r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
                          headers={"User-Agent": "Mozilla/5.0",
                                   "Accept-Language": "zh-TW,zh;q=0.9"})
         r.raise_for_status()
-        html = r.text
+        out = []
+        pattern = _re.compile(
+            r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
+            r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
+            r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
+            _re.S)
+        for m in pattern.finditer(r.text):
+            out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
+                        "games": m.group(3), "wdl": m.group(4),
+                        "pct": m.group(5), "gb": m.group(6).strip()})
+            if len(out) >= 6:
+                break
+        if out:
+            return out
     except Exception as e:
-        print(f"[sports] CPBL 直連失敗({str(e)[:60]}),改走代理", file=sys.stderr)
-        try:
-            r = requests.get("https://r.jina.ai/https://www.cpbl.com.tw/standings/season",
-                             timeout=30, headers={"User-Agent": "Mozilla/5.0"})
-            r.raise_for_status()
-            html = r.text
-        except Exception as e2:
-            print(f"[sports] CPBL 代理也失敗: {e2}", file=sys.stderr)
-            return []
-    out = []
-    # 主解析:官網 HTML(rank div + 隊名連結 + 出賽/勝-和-敗/勝率/勝差)
-    pattern = _re.compile(
-        r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
-        r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
-        r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
-        _re.S)
-    for m in pattern.finditer(html):
-        out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
-                    "games": m.group(3), "wdl": m.group(4),
-                    "pct": m.group(5), "gb": m.group(6).strip()})
-        if len(out) >= 6:
-            break
-    if out:
-        return out
-    # 備援解析:jina 代理回純文字/markdown — 隊名後接 出賽、勝-和-敗、勝率
-    text_pattern = _re.compile(
-        r'(味全龍|統一7-ELEVEn獅|樂天桃猿|富邦悍將|中信兄弟|台鋼雄鷹)\D{0,40}?'
-        r'(\d{1,3})\D{0,10}?(\d{1,3}-\d{1,2}-\d{1,3})\D{0,10}?(0?\.\d{3})')
-    for rank, m in enumerate(text_pattern.finditer(html), start=1):
-        out.append({"rank": rank, "team": m.group(1), "games": m.group(2),
-                    "wdl": m.group(3), "pct": m.group(4), "gb": ""})
-        if len(out) >= 6:
-            break
-    return out
+        print(f"[sports] CPBL 官網失敗({str(e)[:60]}),改用 Wikipedia", file=sys.stderr)
+    try:
+        return _cpbl_from_wikipedia()
+    except Exception as e:
+        print(f"[sports] CPBL Wikipedia 備援也失敗: {e}", file=sys.stderr)
+        return []
 
 
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:

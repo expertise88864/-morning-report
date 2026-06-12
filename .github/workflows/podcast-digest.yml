@@ -44,7 +44,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PODCAST_DEEPSEEK_MODEL: deepseek-v4-flash
           PODCAST_WHISPER_MODEL: small
-          PODCAST_DAILY_BUDGET_MIN: "150"
+          PODCAST_DAILY_BUDGET_MIN: "300"
         run: python podcast_digest.py
 
       - name: Commit & push state

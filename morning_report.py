@@ -3791,16 +3791,29 @@ TW_INTELLIGENCE_QUERIES = {
         "台灣 政策 修法 草案 預告 上路 補貼 近月",
     ),
     "medical": (
+        # 通用事件查詢(原本 3 條中榮專屬查詢使同一事件天天洗版 → 改廣);
+        # OR 語法經實測召回較佳(Google News 把多關鍵字當 AND)
+        "醫院 裁罰 OR 停約 OR 處分",
+        "醫療糾紛 OR 醫療疏失 OR 醫療事故",
+        "缺藥 OR 藥品短缺 OR 藥價調整",
+        "醫院 疫情 OR 群聚感染 OR 院內感染",
+        "醫師 罷工 OR 出走 OR 人力荒",
+        "健保署 OR 衛福部 重大 OR 改革",
         "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
-        "台灣 醫療 衛生局 醫院 公告 急診 住院 site:gov.tw",
-        "台灣 醫院 公告 暫停 門診 急診 住院 site:hosp",
         "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
-        "台灣 醫界 健保 藥價 疫情 醫療政策 醫院",
-        "台中榮總 中榮 神外 代刀 住院 停約 健保署",
-        "健保署 醫院 停約 抵扣停約 住院 業務",
-        "自由健康網 中榮 神外 住院 停約",
     ),
 }
+
+# 政策區「財經相關」白名單:召回必須命中其一,否則一律剔除
+# (使用者回饋:宗教宣導/毒駕修法/性平等與投資無關的政策造成版面雜亂)。
+TW_POLICY_FINANCE_TERMS = (
+    "稅", "關稅", "電價", "能源", "油價", "匯率", "利率", "升息", "降息",
+    "房貸", "房市", "信用管制", "新青安", "囤房", "地價",
+    "金管會", "央行", "中央銀行", "證交所", "證期", "金融", "保險業", "壽險",
+    "半導體", "晶片", "出口", "貿易", "產業園區", "科學園區", "投資",
+    "基本工資", "最低工資", "勞保", "勞退", "就業保險", "缺工",
+    "健保費", "補助", "振興", "碳費", "碳權", "電動車", "AI", "招商",
+)
 
 TW_OFFICIAL_SOURCE_TOKENS = (
     "gov.tw", "行政院", "衛福部", "健保署", "疾管署", "食藥署",
@@ -3821,6 +3834,24 @@ TW_INTELLIGENCE_ENTITY_TERMS = (
     "\u885b\u798f\u90e8", "\u5065\u4fdd\u7f72", "\u884c\u653f\u9662",
     "\u4e2d\u69ae", "\u53f0\u4e2d\u69ae\u7e3d", "\u81fa\u4e2d\u69ae\u7e3d",
 )
+
+# \u91ab\u754c\u300c\u6a5f\u69cb\u9375\u300d:per-entity \u6d17\u7248\u4e0a\u9650\u5c08\u7528(\u540c\u4e00\u6a5f\u69cb\u6bcf\u5929\u6700\u591a 1 \u689d)\u3002
+# \u8207 timeline entity \u5206\u958b:timeline \u7528\u4e3b\u984c\u8a5e\u5229\u65bc policy \u805a\u5408,
+# \u6d17\u7248\u4e0a\u9650\u5fc5\u9808\u8a8d\u300c\u6a5f\u69cb\u300d,\u5426\u5247\u4e2d\u69ae\u4e8b\u4ef6\u7684\u591a\u89d2\u5ea6\u5831\u5c0e\u6703\u5404\u62ff\u4e0d\u540c key\u3002
+TW_MEDICAL_ORG_TERMS = (
+    "\u53f0\u4e2d\u69ae\u7e3d", "\u81fa\u4e2d\u69ae\u7e3d", "\u4e2d\u69ae", "\u5317\u69ae", "\u9ad8\u69ae", "\u53f0\u5927\u91ab\u9662", "\u81fa\u5927\u91ab\u9662",
+    "\u9577\u5e9a", "\u99ac\u5055", "\u5947\u7f8e", "\u5f70\u57fa", "\u4e2d\u570b\u9644\u91ab", "\u65b0\u5149\u91ab\u9662", "\u570b\u6cf0\u91ab\u9662",
+    "\u885b\u798f\u90e8", "\u5065\u4fdd\u7f72", "\u75be\u7ba1\u7f72", "\u98df\u85e5\u7f72",
+)
+
+
+def _tw_medical_org_key(title: str) -> str:
+    text = str(title or "")
+    for term in TW_MEDICAL_ORG_TERMS:
+        if term in text:
+            # \u4e2d\u69ae\u7684\u5404\u7a2e\u5beb\u6cd5\u7d71\u4e00\u6210\u540c\u4e00\u9375
+            return "\u4e2d\u69ae" if "\u69ae\u7e3d" in term or term == "\u4e2d\u69ae" else term
+    return ""
 TW_INTELLIGENCE_DIRECT_SOURCES = {
     "policy": (
         {"name": "EY News", "url": "https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=1",
@@ -3890,7 +3921,10 @@ TW_INTELLIGENCE_BROAD_RECALL = {
 }
 
 TW_INTELLIGENCE_NOISE = {
-    "policy": ("娛樂", "體育", "影劇", "股價", "星座", "食譜"),
+    "policy": ("娛樂", "體育", "影劇", "股價", "星座", "食譜",
+               "宗教", "毒駕", "酒駕", "性別平等", "性平", "兵役", "替代役",
+               "宣導列車", "宣導活動", "揭牌", "剪綵", "頒獎", "表揚",
+               "觀光活動", "演習", "招生", "考試", "藝文", "節慶"),
     "medical": ("保健食品", "養生", "星座", "減肥", "美容", "食譜", "偏方"),
 }
 
@@ -4006,6 +4040,10 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
         if not (hard or capacity):
             return False
         return specific or broad
+    if kind == "policy":
+        # 政策區必須「與財經/投資相關」(使用者回饋:宗教/毒駕/性平等雜訊太多)
+        if not any(token in text for token in TW_POLICY_FINANCE_TERMS):
+            return False
     return specific or (broad and major)
 
 
@@ -4636,7 +4674,7 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 previous["published"],
             ):
                 deduped[key] = item
-        output[kind] = sorted(
+        ranked = sorted(
             deduped.values(),
             key=lambda item: (
                 item.get("importance", 0),
@@ -4645,7 +4683,21 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                 item["published"],
             ),
             reverse=True,
-        )[:per_kind_limit]
+        )
+        if kind == "medical":
+            # 同一機構每天最多 1 條:中榮代刀這類延燒事件的多角度報導
+            # timeline_key 不同(anchor 不同)而躲過 dedup,曾連日洗版整個醫界區。
+            seen_orgs: set = set()
+            capped = []
+            for item in ranked:
+                org = _tw_medical_org_key(item.get("title", ""))
+                if org and org in seen_orgs:
+                    continue
+                if org:
+                    seen_orgs.add(org)
+                capped.append(item)
+            ranked = capped
+        output[kind] = ranked[:per_kind_limit]
         diagnostics["deduped"] = len(deduped)
         diagnostics["returned"] = len(output[kind])
         output["diagnostics"][kind] = diagnostics
@@ -9387,6 +9439,47 @@ def _calibration_note_compact(obj: dict) -> str:
     return note
 
 
+def _render_etf_action_card(fair_00662, pred_0050) -> str:
+    """ETF 今日進出參考價(使用者核心需求:買入/賣出的相對合理價位,行動導向)。
+
+    00662 帶寬 ±0.5%:公允淨值 = QQQ×匯率 的 NAV 套利錨,模型誤差小;
+    0050  帶寬 ±1.0%:衍生自 2330+加權 預測,誤差較大故放寬。
+    低於下緣 = 相對便宜(分批買入參考);高於上緣 = 相對偏貴(分批調節參考)。
+    """
+    rows = []
+    for label, center, band in (("00662 富邦NASDAQ", fair_00662, 0.005),
+                                ("0050 元大台灣50", pred_0050, 0.010)):
+        if not isinstance(center, (int, float)) or center <= 0:
+            continue
+        lo = round(center * (1 - band), 2)
+        hi = round(center * (1 + band), 2)
+        rows.append(
+            f"<tr>"
+            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
+            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
+            f"color:#15803d;font-weight:700;font-variant-numeric:tabular-nums;'>&lt; {lo}<br>"
+            f"<span style='font-size:11px;font-weight:400;'>偏便宜・分批買入參考</span></td>"
+            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
+            f"color:#475569;font-variant-numeric:tabular-nums;'>{lo} ~ {hi}<br>"
+            f"<span style='font-size:11px;'>合理區間・觀望</span></td>"
+            f"<td style='padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;"
+            f"color:#b91c1c;font-weight:700;font-variant-numeric:tabular-nums;'>&gt; {hi}<br>"
+            f"<span style='font-size:11px;font-weight:400;'>偏貴・分批調節參考</span></td>"
+            f"</tr>")
+    if not rows:
+        return ""
+    return (
+        '<div style="border:2px solid #0284c7;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:14px;">'
+        '💰 ETF 今日進出參考價（依模型合理價推算）</div>'
+        '<table style="width:100%;border-collapse:collapse;background:#ffffff;font-size:14px;">'
+        + "".join(rows) +
+        '</table>'
+        '<div style="padding:6px 14px;background:#f8fafc;font-size:11px;color:#94a3b8;">'
+        '※ 開盤前推算的當日參考價位,盤中若大幅偏離(如重大消息)請以即時資訊為準;僅供參考,非投資建議。</div>'
+        '</div>')
+
+
 def _strip_stance_calculation(text: str) -> str:
     """隱藏「我的明確立場」的 11 維加減分計算行(使用者回饋:內部計算不需顯示)。
 
@@ -9776,6 +9869,191 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
     )
 
 
+# ===== 天氣(信件開頭問候卡;Open-Meteo 免金鑰) =====
+WEATHER_LOCATIONS = [
+    ("彰化市", 24.0809, 120.5383),
+    ("台中北區", 24.1668, 120.6840),
+]
+_WMO_CODE_LABEL = (
+    ((0,), "晴朗"), ((1, 2), "多雲時晴"), ((3,), "陰天"), ((45, 48), "有霧"),
+    ((51, 53, 55, 56, 57), "毛毛雨"), ((61, 63, 65, 66, 67), "有雨"),
+    ((71, 73, 75, 77), "降雪"), ((80, 81, 82), "陣雨"),
+    ((85, 86), "陣雪"), ((95, 96, 99), "雷雨"),
+)
+
+
+def fetch_weather() -> list[dict]:
+    """Open-Meteo 抓兩地當日氣溫/降雨機率/天氣;失敗回空(不影響晨報)。"""
+    out = []
+    for name, lat, lon in WEATHER_LOCATIONS:
+        try:
+            r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+                "latitude": lat, "longitude": lon,
+                "daily": ("temperature_2m_max,temperature_2m_min,"
+                          "precipitation_probability_max,weather_code"),
+                "timezone": "Asia/Taipei", "forecast_days": 1}, timeout=15)
+            r.raise_for_status()
+            d = r.json().get("daily", {})
+            code = int((d.get("weather_code") or [0])[0])
+            label = next((lbl for codes, lbl in _WMO_CODE_LABEL if code in codes), "—")
+            out.append({
+                "name": name,
+                "t_min": round(float((d.get("temperature_2m_min") or [0])[0])),
+                "t_max": round(float((d.get("temperature_2m_max") or [0])[0])),
+                "rain_prob": int((d.get("precipitation_probability_max") or [0])[0]),
+                "label": label,
+            })
+        except Exception as e:
+            print(f"[weather] {name} 抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def _weather_advice(locs: list[dict]) -> str:
+    """規則式穿著/帶傘建議(取兩地較極端值)。"""
+    if not locs:
+        return ""
+    t_max = max(loc["t_max"] for loc in locs)
+    t_min = min(loc["t_min"] for loc in locs)
+    rain = max(loc["rain_prob"] for loc in locs)
+    if t_max >= 32:
+        wear = "短袖即可,注意防曬與補水"
+    elif t_max >= 28:
+        wear = "短袖為主,室內冷氣房可備薄外套"
+    elif t_max >= 22:
+        wear = "短袖加薄外套,早晚溫差留意"
+    else:
+        wear = "長袖加外套,注意保暖"
+    if t_min <= 16:
+        wear += "(清晨偏冷)"
+    if rain >= 60:
+        umbrella = "降雨機率高,出門記得帶傘"
+    elif rain >= 30:
+        umbrella = "可能有局部陣雨,建議備折疊傘"
+    else:
+        umbrella = "下雨機率低,不太需要帶傘"
+    return f"{wear};{umbrella}。"
+
+
+def _render_weather_html(locs: list[dict]) -> str:
+    if not locs:
+        return ""
+    parts = "　|　".join(
+        f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
+        for loc in locs)
+    rain = max(loc["rain_prob"] for loc in locs)
+    icon = "🌧" if rain >= 60 else "⛅" if rain >= 30 else "☀"
+    return (
+        f"<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"
+        f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
+        f"{icon} <b>早安!</b>　{parts}<br>"
+        f"<span style='color:#0369a1;'>👕 {_weather_advice(locs)}</span></div>")
+
+
+# ===== 體育快訊(醫界區下方;ESPN 公開 API 比分 + Google News 消息) =====
+SPORTS_NEWS_QUERIES = [
+    ("MLB", "MLB 大聯盟"),
+    ("NBA", "NBA"),
+    ("中華職棒", "中華職棒"),
+    ("網球", "網球 ATP OR WTA OR 大滿貫"),
+]
+
+
+def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """MLB/NBA 昨日比分(ESPN 公開 API)+ 四類體育新聞標題;失敗回部分結果。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    out: dict = {"scores": {}, "news": {}}
+    et_date = (now_tpe - dt.timedelta(days=1)).strftime("%Y%m%d")
+    for league, path in (("MLB", "baseball/mlb"), ("NBA", "basketball/nba")):
+        try:
+            r = requests.get(
+                f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard",
+                params={"dates": et_date}, timeout=15)
+            r.raise_for_status()
+            games = []
+            for e in r.json().get("events", []):
+                comp = (e.get("competitions") or [{}])[0]
+                status = (e.get("status") or {}).get("type", {}).get("state", "")
+                teams = comp.get("competitors", [])
+                if len(teams) != 2:
+                    continue
+                away = next((t for t in teams if t.get("homeAway") == "away"), teams[0])
+                home = next((t for t in teams if t.get("homeAway") == "home"), teams[1])
+
+                def _fmt(t):
+                    name = (t.get("team") or {}).get("abbreviation", "?")
+                    return f"<b>{name}</b>" if t.get("winner") else name
+                games.append({
+                    "text": f"{_fmt(away)} {away.get('score', '-')}:"
+                            f"{home.get('score', '-')} {_fmt(home)}",
+                    "final": status == "post",
+                    # NBA 季後賽系列賽註記(如 "Game 3 of 7")
+                    "note": ((comp.get("notes") or [{}])[0].get("headline") or "")[:40],
+                })
+            out["scores"][league] = games
+        except Exception as e:
+            print(f"[sports] {league} 比分抓取失敗: {e}", file=sys.stderr)
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
+    for label, query in SPORTS_NEWS_QUERIES:
+        try:
+            feed = feedparser.parse(_gnews_rss(query, when="1d"))
+            titles = []
+            for entry in feed.entries:
+                if len(titles) >= 3:
+                    break
+                pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                    continue
+                titles.append(str(entry.get("title", ""))[:90])
+            out["news"][label] = titles
+        except Exception as e:
+            print(f"[sports] {label} 新聞抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def _render_sports_html(sports: dict, htmllib) -> str:
+    """體育快訊卡:MLB/NBA 比分 + 中職/網球等新聞標題。無資料回空。"""
+    scores = (sports or {}).get("scores") or {}
+    news = (sports or {}).get("news") or {}
+    if not scores and not any(news.values()):
+        return ""
+    blocks = []
+    for league in ("MLB", "NBA"):
+        games = scores.get(league)
+        if games is None:
+            continue
+        if games:
+            rows = "　".join(
+                f"<span style='white-space:nowrap;'>{g['text']}</span>"
+                for g in games if g.get("final"))
+            note = next((g["note"] for g in games if g.get("note")), "")
+            note_html = (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(note)}</div>"
+                         if note else "")
+            blocks.append(
+                f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{league} 昨日比分</b>"
+                f"<div style='font-size:13px;color:#334155;line-height:1.9;'>{rows or '比賽進行中/未開打'}</div>"
+                f"{note_html}</div>")
+        else:
+            blocks.append(
+                f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{league}</b>"
+                f"<span style='font-size:12px;color:#94a3b8;'> 昨日無賽事</span></div>")
+    for label in ("中華職棒", "網球", "MLB", "NBA"):
+        titles = news.get(label) or []
+        if not titles:
+            continue
+        items = "".join(
+            f"<li style='margin:3px 0;'>{htmllib.escape(t)}</li>" for t in titles)
+        blocks.append(
+            f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{label} 消息</b>"
+            f"<ul style='margin:4px 0;padding-left:20px;font-size:12px;color:#475569;"
+            f"line-height:1.6;'>{items}</ul></div>")
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#f0fdf4;border-left:5px solid #16a34a;border-radius:4px;">'
+        '體育快訊（MLB / NBA / 中職 / 網球）</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
+        'background:#ffffff;">' + "".join(blocks) + "</div>")
+
+
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
 
 
@@ -9940,6 +10218,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     podcast_html = _render_podcast_html(
         quotes.get("PODCAST_DIGEST") or [],
         quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib)
+    weather_html = _render_weather_html(quotes.get("WEATHER") or [])
+    sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
     model_evidence_html = _render_model_evidence_html(quotes)
 
     # ===== 1. 行情表格 =====
@@ -10791,6 +11071,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
         <p style="font-size:11px;color:#94a3b8;margin:6px 0;">※ 2330 四模型中位數;00662 公允淨值(QQQ×匯率);0050 ≈ 0.5×2330 + 0.5×加權。皆已套用歷史偏誤自我校正。</p>
+        {_render_etf_action_card(_f_price, _t_pred)}
         """
 
     return f"""<!DOCTYPE html>
@@ -10823,6 +11104,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           <!-- BODY -->
           <tr><td style="padding:24px 28px 8px;">
+
+            {weather_html}
 
             {alerts_html}
 
@@ -10861,6 +11144,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {taifex_html}
 
             {tw_intelligence_html}
+
+            {sports_html}
 
             {smart_money_html}
 
@@ -11227,6 +11512,17 @@ def main() -> int:
     quotes["PODCAST_DIGEST"] = load_podcast_digest()
     if quotes["PODCAST_DIGEST"]:
         print(f"[main] 載入 {len(quotes['PODCAST_DIGEST'])} 集 podcast 摘要")
+    print("[main] 抓天氣與體育快訊…")
+    try:
+        quotes["WEATHER"] = fetch_weather()
+    except Exception as e:
+        print(f"[main] 天氣抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["WEATHER"] = []
+    try:
+        quotes["SPORTS"] = fetch_sports_digest(now_tpe)
+    except Exception as e:
+        print(f"[main] 體育抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["SPORTS"] = {}
 
     # 5.05 新聞去重（同事件常被多個 RSS 重貼，去重後 LLM 訊號更乾淨）
     news = dedup_news(news)

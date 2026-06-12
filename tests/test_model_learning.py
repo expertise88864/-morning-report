@@ -313,13 +313,14 @@ def test_tw_intelligence_monday_window_includes_weekend():
 
 
 def test_fetch_tw_intelligence_is_bounded_and_prioritizes_official(monkeypatch):
+    # 標題用財經詞(電價):政策區已加財經白名單 gate,非財經政策(如育兒活動)不再召回
     class Feed:
         entries = [{
-            "title": "行政院公告育兒津貼新制",
+            "title": "行政院公告電價凍漲新制",
             "link": "https://www.ey.gov.tw/policy",
             "published": "Mon, 01 Jun 2026 08:00:00 GMT",
         }, {
-            "title": "媒體整理育兒津貼方向",
+            "title": "媒體整理電價凍漲方向",
             "link": "https://example.com/news",
             "published": "Mon, 01 Jun 2026 09:00:00 GMT",
         }]

@@ -29,7 +29,8 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.getenv("PODCAST_DEEPSEEK_MODEL", "deepseek-v4-flash")
 WHISPER_MODEL = os.getenv("PODCAST_WHISPER_MODEL", "small")   # small 中文夠用;medium 更準但慢一倍
 STATE_FILE = Path("state/podcast_digest.json")
-MAX_EPISODE_AGE_HOURS = 48      # 只處理 48 小時內的新集
+# 72h:涵蓋「被每日預算擋掉的集隔天補轉」與「清空重轉」情境(48h 曾讓兩者永遠錯過)
+MAX_EPISODE_AGE_HOURS = float(os.getenv("PODCAST_MAX_AGE_H", "72"))
 MAX_AUDIO_MB = 200
 MAX_TRANSCRIPT_CHARS = 60000    # 轉錄文字進 LLM 前的長度上限(~90 分鐘集數也夠)
 KEEP_EPISODES_PER_SHOW = 5

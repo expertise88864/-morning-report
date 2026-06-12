@@ -355,63 +355,7 @@
   },
   "wsj-whatsnews": {
     "name": "WSJ What's News",
-    "episodes": [
-      {
-        "guid": "290ae2e4-657f-11f1-b2d2-035ce5cf2b40",
-        "title": "Why OpenAI Might Slash Prices for Users",
-        "published": "Thu, 11 Jun 2026 10:16:00 -0000",
-        "processed_at": "2026-06-12T04:18:04Z",
-        "digest": {
-          "summary_points": [
-            "OpenAI考虑大幅降价以应对客户对高昂AI费用的审查，推动行业转向token消耗优化。",
-            "Anthropic的Claude Fable 5因安全限制引发用户反弹，部分限制后被撤销。",
-            "加拿大提议禁止16岁以下青少年使用社交媒体，违者面临最高3%全球营收罚款。",
-            "Oracle云基础设施收入增长47%至近100亿美元，但资本支出达700亿美元，股价盘后下跌。",
-            "数据中心反对声浪加剧，Bloom Energy CEO主张现场发电优于电网供电。",
-            "通用汽车零部件供应商Dowk罢工10天后达成临时协议，工人时薪目标从22美元升至29美元。"
-          ],
-          "tickers": [
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "财报显示云收入增长但资本支出庞大，联席CEO警告利润率承压，股价盘后下跌。"
-            },
-            {
-              "name": "Bloom Energy",
-              "code": "BE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "CEO强调其现场发电方案不耗水、无空气污染，能高效服务数据中心，避免电网瓶颈。"
-            }
-          ],
-          "market_view": "AI基础设施投资面临公众反对与电网瓶颈，能源效率与现场发电成为关键议题。",
-          "action_view": "关注AI公司定价战对营收的影响，以及数据中心的现场发电解决方案。",
-          "notable_quote": "The grid simply cannot support gigawatt data centers. The grid was not built to be able to do that."
-        }
-      },
-      {
-        "guid": "a659c378-65d9-11f1-8393-6bba3934d4ee",
-        "title": "Stocks Soar After Trump Cancels Threatened Strikes on Iran",
-        "published": "Thu, 11 Jun 2026 21:07:00 -0000",
-        "processed_at": "2026-06-12T03:06:11Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX在IPO中以每股135美元出售超過5.55億股，估值約1.77兆美元，共募集750億美元，黑石集團下單50億美元，散戶投資者需求超過700億美元，馬斯克成為全球首位萬億富翁。",
-            "花旗集團推出基於區塊鏈的存託憑證系統，讓富裕客戶交易私人公司股票，強調此結構受監管且投資者明確知道自己買入的資產。",
-            "歐洲央行近三年來首次升息，將關鍵利率從2%上調至2.25%，市場預期今年內還會再升一次。",
-            "美國5月生產者物價指數（PPI）月增1.1%，高於預期，顯示通膨壓力持續。",
-            "川普宣布取消對伊朗的威脅攻擊，股市應聲大漲，道瓊指數上漲930點，那斯達克指數漲逾2.5%，油價則下跌近3%。",
-            "川普提名前證交會主席傑伊·克萊頓擔任國家情報總監，此舉可能化解與國會因比爾·波蒂代理任命而引發的FISA授權僵局。"
-          ],
-          "tickers": [],
-          "market_view": "市場因川普取消對伊朗攻擊而大漲，但通膨數據（PPI）高於預期及ECB升息顯示全球貨幣緊縮趨勢未變。",
-          "action_view": "",
-          "notable_quote": "The pitch that Citigroup is making is this structure is regulated, and so investors know what they're buying."
-        }
-      }
-    ]
+    "episodes": []
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
@@ -525,52 +469,11 @@
   },
   "unhedged": {
     "name": "Unhedged (FT)",
-    "episodes": [
-      {
-        "guid": "6a2b0111622531b86448b15c",
-        "title": "Can Trump make a deal with Iran?",
-        "published": "Thu, 11 Jun 2026 20:00:00 GMT",
-        "processed_at": "2026-06-12T04:40:25Z",
-        "digest": {
-          "summary_points": [
-            "Trump has repeatedly claimed a deal with Iran is imminent, but negotiations remain stalled due to deep distrust and conflicting red lines.",
-            "The potential short-term deal aims to reopen the Strait of Hormuz to ease global energy prices, while pushing nuclear talks to a later phase.",
-            "Oil prices have fallen to ~$87/barrel from ~$120, but analysts warn of depletion of strategic reserves and risk of spike to $140-150.",
-            "Iran needs economic relief (sanctions relief, frozen assets) to agree to any deal, while Trump wants a quick win ahead of midterms.",
-            "The current escalatory cycle of strikes between US and Iran continues even as mediation (by Qatar, Pakistan) tries to finalize a preliminary agreement."
-          ],
-          "tickers": [],
-          "market_view": "Oil market remains relatively calm despite ongoing US-Iran strikes, but there is a risk of a sharp price spike if reserve depletion continues or hostilities escalate further.",
-          "action_view": "No specific investment actions mentioned; the discussion focuses on geopolitical and oil market uncertainty.",
-          "notable_quote": "The good thing with Trump is he can spin anything. I mean, yesterday he was asked about inflation. He said, 'I love inflation.'"
-        }
-      }
-    ]
+    "episodes": []
   },
   "oddlots": {
     "name": "Odd Lots",
-    "episodes": [
-      {
-        "guid": "bb971e9b-4530-4ff9-bd68-b46500d94544",
-        "title": "Why Tomatoes Are the Most Expensive They've Been in Four Decades",
-        "published": "Thu, 11 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-12T05:01:38Z",
-        "digest": {
-          "summary_points": [
-            "番茄价格同比上涨40%至每磅2.69美元，因佛罗里达冬季霜冻摧毁80%作物，墨西哥产量受反倾销关税和病害影响减少3-4%。",
-            "美国冬季番茄供应中墨西哥占70%、佛罗里达占30%，NAFTA前比例相反，反倾销关税增加市场不确定性。",
-            "零售商倾向于在批发价下跌后仍维持高零售价（'火箭上升，羽毛下降'），以补贴电商和数据基础设施成本。",
-            "卡车运输成本飙升，例如加州至东海岸团队运费从8个月前1万美元涨至1.6-1.7万美元，创历史新高。",
-            "化肥成本将在未来半年内反映在新合约中，进一步推高番茄生产成本和零售价格。",
-            "高端风味番茄（如Girl and Doug品种）通过餐厅推广和社交媒体趋势进入消费者视野，推动品种创新和价格分层。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Everybody says retailers, they take their prices up like a rocket and down like a feather."
-        }
-      }
-    ]
+    "episodes": []
   },
   "moneytalks": {
     "name": "Money Talks (Economist)",

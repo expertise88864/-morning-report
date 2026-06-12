@@ -2241,7 +2241,10 @@ def _fetch_twse_stock_day_all() -> list:
         try:
             r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
                              timeout=20,
-                             headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+                             headers={"User-Agent": "Mozilla/5.0",
+                                      "Accept": "application/json",
+                                      "Accept-Language": "zh-TW,zh;q=0.9",
+                                      "Referer": "https://www.twse.com.tw/"})
             r.raise_for_status()
             data = r.json() or []
             if data:
@@ -2249,8 +2252,9 @@ def _fetch_twse_stock_day_all() -> list:
                 return data
         except Exception as e:
             print(f"[twse] STOCK_DAY_ALL 第 {attempt + 1} 次失敗: {e}", file=sys.stderr)
+            # 2026-06-12 實測:三連敗多為同一波過載/限流,間隔拉長到 10/20 秒
             if attempt < 2 and _TWSE_RETRY_SLEEP_BASE > 0:
-                time.sleep(_TWSE_RETRY_SLEEP_BASE * (attempt + 1))
+                time.sleep(_TWSE_RETRY_SLEEP_BASE * (attempt + 1) * 3.3)
     _TWSE_STOCK_DAY_ALL_CACHE["failed"] = True
     return []
 
@@ -10030,10 +10034,24 @@ def _third_weekday_of_month(year: int, month: int, weekday: int) -> dt.date:
     return d + dt.timedelta(days=offset + 14)
 
 
+# 2026 年 FOMC 會議日程(Fed 官網公布;FF 免費日曆只有本週,
+# 跨週的 FOMC 會漏 → 硬編,每年初更新一次)
+FOMC_2026 = (
+    dt.date(2026, 1, 28), dt.date(2026, 3, 18), dt.date(2026, 4, 29),
+    dt.date(2026, 6, 17), dt.date(2026, 7, 29), dt.date(2026, 9, 16),
+    dt.date(2026, 10, 28), dt.date(2026, 12, 9),
+)
+
+
 def _rule_based_events(today: dt.date, horizon_days: int = 7) -> list[dict]:
-    """規則式市場結構日:台指期結算、美股三巫、MSCI 季調生效(近似)。"""
+    """規則式市場結構日:FOMC、台指期結算、美股三巫、MSCI 季調生效(近似)。"""
     events = []
     end = today + dt.timedelta(days=horizon_days)
+    for fomc in FOMC_2026:
+        if today <= fomc <= end:
+            events.append({"date": fomc, "time": "02:00(隔日凌晨)",
+                           "title": "FOMC 利率決策(台北時間隔日凌晨 2:00 公布)",
+                           "note": "決策日前後美股波動放大", "impact": "high"})
     for probe in (today, (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)):
         y, m = probe.year, probe.month
         settle = _third_weekday_of_month(y, m, 2)
@@ -10064,9 +10082,9 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
     end = today + dt.timedelta(days=horizon_days)
     events: list[dict] = list(_rule_based_events(today, horizon_days))
 
-    # ForexFactory 本週+下週日曆(免金鑰;date 含時區 offset)
-    for url in ("https://nfs.faireconomy.media/ff_calendar_thisweek.json",
-                "https://nfs.faireconomy.media/ff_calendar_nextweek.json"):
+    # ForexFactory 本週日曆(免金鑰;nextweek 端點實測 404 不存在,
+    # 跨週缺口由 FOMC_2026 硬編日程補)
+    for url in ("https://nfs.faireconomy.media/ff_calendar_thisweek.json",):
         try:
             r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
@@ -10330,19 +10348,33 @@ def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
 
 
 def translate_journal_titles(articles: list[dict]) -> list[dict]:
-    """DeepSeek flash 把英文標題譯成繁中一句重點;失敗保留英文(degrade)。"""
-    if not articles:
+    """DeepSeek 把英文標題譯成繁中一句重點;失敗保留英文(degrade)。
+
+    自帶 chat/completions 呼叫(response_format=json_object):
+    extractor 路徑曾在 GitHub Actions 上回空 content,直連 + JSON 模式最穩。
+    """
+    if not articles or not DEEPSEEK_API_KEY:
         return articles
     try:
         payload = [{"i": i, "title": a["title"]} for i, a in enumerate(articles)]
-        prompt = (
-            "你是醫學文獻編譯。把以下論文標題各翻成一句繁體中文重點(口語、保留關鍵術語原文縮寫),"
-            '回 JSON {"items": [{"i": 索引, "zh": "中文一句"}]}:\n'
-            + json.dumps(payload, ensure_ascii=False))
-        response = _call_deepseek_extractor(prompt)
-        import re as _re
-        m = _re.search(r"\{.*\}", response, _re.S)
-        items = (json.loads(m.group(0)) if m else {}).get("items", [])
+        r = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+            json={
+                "model": os.getenv("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-v4-flash"),
+                "messages": [
+                    {"role": "system", "content":
+                        "你是醫學文獻編譯。把每篇論文標題翻成一句台灣繁體中文重點"
+                        "(口語、保留關鍵術語原文縮寫,嚴禁簡體字)。"
+                        '輸出 JSON:{"items": [{"i": 索引, "zh": "中文一句"}]}'},
+                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2,
+            },
+            timeout=120)
+        r.raise_for_status()
+        items = json.loads(r.json()["choices"][0]["message"]["content"]).get("items", [])
         zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
         for i, a in enumerate(articles):
             if zh_map.get(i):
@@ -10452,22 +10484,48 @@ SPORTS_NEWS_QUERIES = [
 
 
 def fetch_cpbl_standings() -> list[dict]:
-    """爬 CPBL 官網戰績頁(server-side render,實測可解析)。失敗回空。"""
+    """CPBL 戰績:官網直連(台灣 IP 可),GitHub Actions(海外 IP)被 geo-block
+    回 404 → 退 r.jina.ai 代理(回頁面純文字,同樣可解析)。失敗回空。"""
     import re as _re
-    r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
-                     headers={"User-Agent": "Mozilla/5.0"})
-    r.raise_for_status()
+    html = ""
+    try:
+        r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
+                         headers={"User-Agent": "Mozilla/5.0",
+                                  "Accept-Language": "zh-TW,zh;q=0.9"})
+        r.raise_for_status()
+        html = r.text
+    except Exception as e:
+        print(f"[sports] CPBL 直連失敗({str(e)[:60]}),改走代理", file=sys.stderr)
+        try:
+            r = requests.get("https://r.jina.ai/https://www.cpbl.com.tw/standings/season",
+                             timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            html = r.text
+        except Exception as e2:
+            print(f"[sports] CPBL 代理也失敗: {e2}", file=sys.stderr)
+            return []
     out = []
-    # 每列:rank → 隊名連結 → 出賽數 → 勝-和-敗 → 勝率 → 勝差
+    # 主解析:官網 HTML(rank div + 隊名連結 + 出賽/勝-和-敗/勝率/勝差)
     pattern = _re.compile(
         r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
         r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
         r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
         _re.S)
-    for m in pattern.finditer(r.text):
+    for m in pattern.finditer(html):
         out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
                     "games": m.group(3), "wdl": m.group(4),
                     "pct": m.group(5), "gb": m.group(6).strip()})
+        if len(out) >= 6:
+            break
+    if out:
+        return out
+    # 備援解析:jina 代理回純文字/markdown — 隊名後接 出賽、勝-和-敗、勝率
+    text_pattern = _re.compile(
+        r'(味全龍|統一7-ELEVEn獅|樂天桃猿|富邦悍將|中信兄弟|台鋼雄鷹)\D{0,40}?'
+        r'(\d{1,3})\D{0,10}?(\d{1,3}-\d{1,2}-\d{1,3})\D{0,10}?(0?\.\d{3})')
+    for rank, m in enumerate(text_pattern.finditer(html), start=1):
+        out.append({"rank": rank, "team": m.group(1), "games": m.group(2),
+                    "wdl": m.group(3), "pct": m.group(4), "gb": ""})
         if len(out) >= 6:
             break
     return out

@@ -8493,11 +8493,12 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     if _p_mid:
         _lo2330 = round(_p_mid * (1 - _band_2330))
         _hi2330 = round(_p_mid * (1 + _band_2330))
+        # 注意:指令文字(請原樣引用等)不可放進這行 — LLM 會連指令一起抄進信件;
+        # 約束已由 R14 鐵律與「我的明確立場」段的格式說明承擔。
         key_2330_line = (
-            f"2330 台積電（**新台幣計價**）：預測開盤中樞 {round(_p_mid)} 元、昨收 "
+            f"2330 台積電（新台幣計價）：預測開盤中樞 {round(_p_mid)} 元、昨收 "
             f"{round(_p_last) if _p_last else '—'} 元。關鍵價位——站上 {_hi2330} 元偏強、"
-            f"跌破 {_lo2330} 元轉弱。（以上數字由 Python 計算，**請原樣引用、不可自行更動，"
-            f"更不可改用台積電 ADR 的美元價(約 {quotes.get('TSM', {}).get('close', '—') if isinstance(quotes.get('TSM'), dict) else '—'} 美元)**）")
+            f"跌破 {_lo2330} 元轉弱。")
         _mid2330_txt = str(round(_p_mid))
     else:
         key_2330_line = "2330 預測資料未提供 → 本行寫「資料未提供」，**嚴禁自行編造價位**。"
@@ -8508,9 +8509,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     _f_last = fair.get("last_00662_price") if isinstance(fair, dict) else None
     if _f_price:
         key_00662_line = (
-            f"00662（**新台幣計價**）：合理估值 {_f_price} 元、昨收 "
+            f"00662（新台幣計價）：合理估值 {_f_price} 元、昨收 "
             f"{_f_last if _f_last else '—'} 元。開盤明顯低於 {round(_f_price * 0.995, 2)} 元偏便宜、"
-            f"高於合理值則偏貴。（數字由 Python 計算，請原樣引用）")
+            f"高於合理值則偏貴。")
     else:
         key_00662_line = "00662 估值資料未提供 → 寫「資料未提供」，嚴禁編造。"
 
@@ -8838,6 +8839,9 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 > **2330 開盤關鍵價位**：{key_2330_line}
 
 > **00662 操作建議**：{key_00662_line} 在此基礎上明確寫「加碼 / 觀望 / 減碼」。
+
+（上兩行的價位數字由 Python 計算:**原樣引用、不可自行更動、不可改用 ADR 美元價**;
+ 這段括號說明是給你的指令,**不要抄進輸出**。）
 
 > **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
@@ -10778,7 +10782,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         d = ep.get("digest") or {}
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
-            for p in (d.get("summary_points") or [])[:6])
+            for p in (d.get("summary_points") or [])[:10])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
             label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))

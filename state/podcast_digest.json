@@ -43,6 +43,26 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2337041408",
+        "title": "2026/6/11(四)通膨創高!升息將來臨?股市還要跌?【早晨財經速解讀】",
+        "published": "Thu, 11 Jun 2026 01:06:24 +0000",
+        "processed_at": "2026-06-12T04:24:08Z",
+        "digest": {
+          "summary_points": [
+            "美國5月CPI年增4.2%創3年新高，能源價格（汽油年漲50%）與科技通膨（PPI年增87%）為主要推動力，但核心商品通膨已現降溫。",
+            "主持人指出聯準會可能因統計分類錯誤（PCE中電腦軟體配件權重不當）而調整通膨計算，若剔除科技通膨，核心PCE可從5.47%降至2.7%。",
+            "中國5月CPI僅1.2%低於預期，石油進口量創8年新低，煉油廠開工率跌至66.9%歷史新低，內需疲軟反而緩解全球能源通膨壓力。",
+            "台灣5月CPI升至2.2%創14個月新高，PPI達14%為疫情來新高，政府透過補貼（如計程車補助1.5萬元）凍漲交通與公用事業價格至9月。",
+            "央行總裁楊總裁表示防屋信用管制「就到這裡」，暗示不再緊縮但未取消，房價跌幅約3%-6%，預售屋價格仍硬，市場預期資金可能回流房市。",
+            "美股四大指數全面下跌，費半跌3.57%，主持人認為這是中期健康回調，有助於清洗籌碼，建議投資人保持耐心。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為美國通膨雖高但結構性因素居多（能源與科技統計錯誤），聯準會可能僅釋放鷹派談話而不升息；整體市場處於中期盤跌回調，反而是健康的籌碼清洗過程，不必過度悲觀。",
+          "action_view": "主持人建議投資人保持耐心與投資原則，避免因短期波動改變策略；認為目前盤跌有助於籌碼沉澱，應觀察成交量縮小後的進場機會。",
+          "notable_quote": "這種盤跌跡象是不是反而是最健康的呢？跌太快也不好，慢慢跌每跌一次反彈一下，市場上始終會出現異性攔山的時候。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2337295955",
         "title": "【市場觀察】除了台積電 台灣還剩下什麼?",
         "published": "Fri, 12 Jun 2026 00:25:49 +0000",
@@ -91,15 +111,193 @@
   },
   "mviewpoint": {
     "name": "M觀點",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "15035c9f-d784-41c8-adda-b03dcedac78d",
+        "title": "EP310. 蘋果 WWDC 重點、Anthropic 最強模型、SpaceX AI 衛星 | M觀點",
+        "published": "Thu, 11 Jun 2026 16:03:57 GMT",
+        "processed_at": "2026-06-12T04:36:48Z",
+        "digest": {
+          "summary_points": [
+            "蘋果在WWDC發表AFFM系列AI模型，包含30億參數手機端模型及200億參數混合專家模型，但整體評分僅70分，AI進展務實但仍落後對手。",
+            "Anthropic推出Claude Fable 5模型，在多項基準測試如SWE-bench Pro、GPQA、Human's Last Exam等全面大幅超越GPT-5.5和Claude Opus 4.8，但API價格為Opus兩倍，且30天數據保留政策可能阻礙企業採用。",
+            "SpaceX公布AI衛星AI1，配備150kW太陽能板與NVL72機櫃，計劃2027年部署，未來可能搭載輝達GPU、Google TPU或特斯拉自研晶片，加速太空資料中心落地。",
+            "美股與台股近期從高點回調約5-10%，主持人認為屬小型或中型修正，但不排除更深修正，建議投資者控管風險、避免重倉賭注。",
+            "蘋果Siri將整合AFFM模型及外部模型（如Gemini、ChatGPT），實現個人資料理解、螢幕感知與App操作，但該功能尚未正式推出。",
+            "中國開源模型目前落後美國前沿模型約半年，但未來因防蒸餾技術與算力限制，差距可能進一步擴大。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "AI策略務實但非領先，模型能力可能不及Gemini，Siri新功能尚待驗證，整體評分70分。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "SpaceX AI1衛星計劃使用NVL72機櫃（含GP300 GPU），帶動太空運算需求。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "未來可能將自研AI5/AI6晶片用於太空資料中心，能源效率為輝達Blackwell的三倍，單位成本僅十分之一。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "內部員工禁用Claude Fable 5，因30天數據保留政策影響企業機密安全。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "與蘋果合作提供模型訓練技術，並計劃與SpaceX合作在AI1衛星上部署TPU版本。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "模型開發優先智能眼鏡與廣告系統，而非前沿模型競爭，短期內未推出對抗Fable的模型。"
+            }
+          ],
+          "market_view": "美股及台股從高點回調超5%但未達10%，屬小型或中型修正，但仍有進一步下探可能，投資者需控管風險。",
+          "action_view": "主持人建議投資是馬拉松，避免重倉賭注，應控管風險以防看錯時重創資產。",
+          "notable_quote": "Cloud Fable 5是市面上第一名毫無疑問，全面點壓之前的模型。"
+        }
+      }
+    ]
   },
   "usstock-class": {
     "name": "美股投資學",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "c4409f61-f3e8-4a62-bcfe-79d304406a1e",
+        "title": "2026/06/11 (四) 通膨沒事，黃金暴跌，空頭來了？",
+        "published": "Thu, 11 Jun 2026 01:16:00 GMT",
+        "processed_at": "2026-06-12T04:45:35Z",
+        "digest": {
+          "summary_points": [
+            "美股週三全面收跌，道瓊跌1.9%、那斯達克100跌2%、費半跌3.6%，VIX升破20至22，市場波動加劇。",
+            "5月核心CPI月增0.2%較4月放緩，但整體CPI年增4.2%創三年新高，降低聯準會短期降息預期。",
+            "黃金從高點回落約23%跌破年線，進入技術性熊市，主因實質利率上升削弱避險需求。",
+            "美伊戰爭升溫推動油價上漲，但川普釋放和平信號，市場視為事件型交易。",
+            "甲骨文盤後大跌10%，儘管營收獲利超預期且剩餘履約義務暴增363%，但700億美元資本支出引發融資與毛利率擔憂。",
+            "指數回測月線，主持人建議長線越跌越買，短線觀察支撐分批布局，避免追高。"
+          ],
+          "tickers": [
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "盤後大跌10%，高資本支出與融資壓力使市場不買單，未見獲利效益。"
+            },
+            {
+              "name": "SPDR S&P 500 ETF Trust",
+              "code": "SPY",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人建議大盤型ETF越跌越買，長期看多。"
+            }
+          ],
+          "market_view": "短線震盪因美伊戰爭與通膨壓力，但核心CPI放緩使聯準會可能維持利率不變，長線多頭格局未破，指數回測月線屬均值回歸。",
+          "action_view": "長線投資者可將資金分2-3等分，每跌3-5%加碼大盤型ETF；短線觀察半導體ETF月線支撐，反彈不過前高可減碼。",
+          "notable_quote": "越跌越買不是說你有多少錢就直接歐印，假設正常修正10%到15%，你把資金分成2到3等分，每下跌3到5%就丟進去。"
+        }
+      }
+    ]
   },
   "money168": {
     "name": "財經一路發",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "cmq9fvc4n00wf01rx6lzackvh",
+        "title": "大跌10%之後，台股下一步？ 2026.06.11",
+        "published": "Thu, 11 Jun 2026 11:56:14 GMT",
+        "processed_at": "2026-06-12T04:53:01Z",
+        "digest": {
+          "summary_points": [
+            "韓國股市本週暴跌17%，融資強制平倉規模創新高，5日強制平倉占融資餘額比率達9.1%，去槓桿壓力未釋放。",
+            "海力士（SK Hynix）與輝達計劃合作在日本建立AI資料中心，股價V轉收漲2.6%，今年已漲220%。",
+            "台股集中市場融資單日大減171億、減幅3%，櫃買減79億、減幅3.9%，去槓桿同步發生。",
+            "黃金91天內從高點下跌20%進入熊市，為2008年金融海嘯以來最快跌速，顯示資金套現壓力。",
+            "甲骨文第四季營收192億美元（年增21%），雲端業務年增93%，但自由現金流轉負，新財年計劃融資400億，盤後股價大跌9-12%。",
+            "杜大師認為台股本波修正可能達4000-6000點（目前跌約4500點），4萬點附近可分批布局，預估明年5月指數目標5萬4千點。"
+          ],
+          "tickers": [
+            {
+              "name": "海力士",
+              "code": "",
+              "market": "",
+              "direction": "bullish",
+              "reason": "與輝達合作AI資料中心，股價V轉收漲，今年漲幅220%。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "杜大師趁低買入，認為定點買進是好機會。"
+            },
+            {
+              "name": "聯電",
+              "code": "2303",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "股價漲到155元，挑戰歷史前高188元。"
+            },
+            {
+              "name": "勤誠",
+              "code": "8210",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "跌幅較大，今天開低走高接近漲停。"
+            },
+            {
+              "name": "富邦金",
+              "code": "2881",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "今年創歷史新高，金融股領漲。"
+            },
+            {
+              "name": "元大金",
+              "code": "2885",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "漲勢落後富邦金與國泰金，預期將補漲。"
+            },
+            {
+              "name": "緯創",
+              "code": "3231",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "股價創歷史新高，受惠除息行情。"
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報營收優但自由現金流轉負，盤後大跌9-12%。"
+            }
+          ],
+          "market_view": "台股目前多頭修正，可能再跌至4萬點附近，但長多趨勢不變，預計10月前完成ABC整理後展開末升段，目標明年5月5萬4千點。",
+          "action_view": "逢低分批承接，定點買入台積電，持股可加至6成5，控制部位耐心等待回升。",
+          "notable_quote": "我現在在做補部位當中，萬一補錯沒有關係啦，反正休息一下他就會上去"
+        }
+      }
+    ]
   },
   "macromicro": {
     "name": "財經M平方",
@@ -108,6 +306,33 @@
   "ft-briefing": {
     "name": "FT News Briefing",
     "episodes": [
+      {
+        "guid": "6a2b4ded72ff36e11a3d5ac6",
+        "title": "World Cup ticket prices are a red card for fans",
+        "published": "Fri, 12 Jun 2026 04:00:00 GMT",
+        "processed_at": "2026-06-12T04:15:42Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX進行史上最大IPO，籌資750億美元，發行5.556億股，每股135美元，超越阿里巴巴2014年IPO紀錄。",
+            "歐洲央行自2023年以來首次升息0.25個百分點，主因能源價格推升通膨，預計年內可能再升一次。",
+            "美聯儲下週幾乎確定維持利率不變，英國央行也預期按兵不動，日本央行則可能從3.25%升息至1%。",
+            "本屆世界盃門票為史上最貴，小組賽票價是2022年卡達世界盃的三倍，黃牛大幅降價仍可能導致大量空位。",
+            "金價跌至六個月低點，因市場預期各國央行將進一步升息，非收益資產如黃金與比特幣承壓。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "SpaceX今日上市，IPO規模創紀錄，每股135美元。"
+            }
+          ],
+          "market_view": "美國市場本週波動；歐洲央行升息，美聯儲與英國央行預期按兵不動，日本央行可能升息。",
+          "action_view": "",
+          "notable_quote": "The real fans are the fans that really can't get in because of the ticket prices."
+        }
+      },
       {
         "guid": "6a2a07b27fe177e75b70ad4d",
         "title": "Can a correction fix Australia’s housing market?",
@@ -131,6 +356,41 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "290ae2e4-657f-11f1-b2d2-035ce5cf2b40",
+        "title": "Why OpenAI Might Slash Prices for Users",
+        "published": "Thu, 11 Jun 2026 10:16:00 -0000",
+        "processed_at": "2026-06-12T04:18:04Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI考虑大幅降价以应对客户对高昂AI费用的审查，推动行业转向token消耗优化。",
+            "Anthropic的Claude Fable 5因安全限制引发用户反弹，部分限制后被撤销。",
+            "加拿大提议禁止16岁以下青少年使用社交媒体，违者面临最高3%全球营收罚款。",
+            "Oracle云基础设施收入增长47%至近100亿美元，但资本支出达700亿美元，股价盘后下跌。",
+            "数据中心反对声浪加剧，Bloom Energy CEO主张现场发电优于电网供电。",
+            "通用汽车零部件供应商Dowk罢工10天后达成临时协议，工人时薪目标从22美元升至29美元。"
+          ],
+          "tickers": [
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "财报显示云收入增长但资本支出庞大，联席CEO警告利润率承压，股价盘后下跌。"
+            },
+            {
+              "name": "Bloom Energy",
+              "code": "BE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "CEO强调其现场发电方案不耗水、无空气污染，能高效服务数据中心，避免电网瓶颈。"
+            }
+          ],
+          "market_view": "AI基础设施投资面临公众反对与电网瓶颈，能源效率与现场发电成为关键议题。",
+          "action_view": "关注AI公司定价战对营收的影响，以及数据中心的现场发电解决方案。",
+          "notable_quote": "The grid simply cannot support gigawatt data centers. The grid was not built to be able to do that."
+        }
+      },
       {
         "guid": "a659c378-65d9-11f1-8393-6bba3934d4ee",
         "title": "Stocks Soar After Trump Cancels Threatened Strikes on Iran",
@@ -156,6 +416,34 @@
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72456975",
+        "title": "Iran strikes hit futures",
+        "published": "Wed, 10 Jun 2026 11:03:10 +0000",
+        "processed_at": "2026-06-12T04:12:15Z",
+        "digest": {
+          "summary_points": [
+            "美國對伊朗發動報復性打擊，引發中東緊張局勢升級，美股期貨普遍下跌，道瓊期貨跌0.7%，標普500期貨跌0.8%，納斯達克期貨跌1.3%。",
+            "預測市場平台Kalshi計畫要求用戶在涉及內線資訊的合約中揭露雇主，以防止內線交易與市場操縱。",
+            "SK海力士據報目標最早8月在美國上市，預估募資額可達140億美元，SEC預計6月22日當週批准其ADR申請。",
+            "比亞迪董事長預測五年內奪下全球汽車銷量第一，並表示公司正在加速擴張。",
+            "SpaceX首次公開發行（IPO）需求已接近超額認購四倍，反映市場高度興趣。",
+            "Cracker Barrel股價上漲7%，因季度財報優於預期並上調財測，顯示連鎖餐廳正在轉型回升。"
+          ],
+          "tickers": [
+            {
+              "name": "Cracker Barrel Old Country Store",
+              "code": "CBRL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價上漲7%，因季度財報優於預期並上調財測，顯示轉型回升態勢。"
+            }
+          ],
+          "market_view": "美股期貨因美國對伊朗打擊而下跌，中東緊張局勢升溫，市場關注今日CPI數據。",
+          "action_view": "",
+          "notable_quote": "Cracker Barrel is up 7% after a beat and raise quarter that showed the chain is in turnaround mode."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72476178",
         "title": "No reward for Oracle's beat",
@@ -237,11 +525,52 @@
   },
   "unhedged": {
     "name": "Unhedged (FT)",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "6a2b0111622531b86448b15c",
+        "title": "Can Trump make a deal with Iran?",
+        "published": "Thu, 11 Jun 2026 20:00:00 GMT",
+        "processed_at": "2026-06-12T04:40:25Z",
+        "digest": {
+          "summary_points": [
+            "Trump has repeatedly claimed a deal with Iran is imminent, but negotiations remain stalled due to deep distrust and conflicting red lines.",
+            "The potential short-term deal aims to reopen the Strait of Hormuz to ease global energy prices, while pushing nuclear talks to a later phase.",
+            "Oil prices have fallen to ~$87/barrel from ~$120, but analysts warn of depletion of strategic reserves and risk of spike to $140-150.",
+            "Iran needs economic relief (sanctions relief, frozen assets) to agree to any deal, while Trump wants a quick win ahead of midterms.",
+            "The current escalatory cycle of strikes between US and Iran continues even as mediation (by Qatar, Pakistan) tries to finalize a preliminary agreement."
+          ],
+          "tickers": [],
+          "market_view": "Oil market remains relatively calm despite ongoing US-Iran strikes, but there is a risk of a sharp price spike if reserve depletion continues or hostilities escalate further.",
+          "action_view": "No specific investment actions mentioned; the discussion focuses on geopolitical and oil market uncertainty.",
+          "notable_quote": "The good thing with Trump is he can spin anything. I mean, yesterday he was asked about inflation. He said, 'I love inflation.'"
+        }
+      }
+    ]
   },
   "oddlots": {
     "name": "Odd Lots",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "bb971e9b-4530-4ff9-bd68-b46500d94544",
+        "title": "Why Tomatoes Are the Most Expensive They've Been in Four Decades",
+        "published": "Thu, 11 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-12T05:01:38Z",
+        "digest": {
+          "summary_points": [
+            "番茄价格同比上涨40%至每磅2.69美元，因佛罗里达冬季霜冻摧毁80%作物，墨西哥产量受反倾销关税和病害影响减少3-4%。",
+            "美国冬季番茄供应中墨西哥占70%、佛罗里达占30%，NAFTA前比例相反，反倾销关税增加市场不确定性。",
+            "零售商倾向于在批发价下跌后仍维持高零售价（'火箭上升，羽毛下降'），以补贴电商和数据基础设施成本。",
+            "卡车运输成本飙升，例如加州至东海岸团队运费从8个月前1万美元涨至1.6-1.7万美元，创历史新高。",
+            "化肥成本将在未来半年内反映在新合约中，进一步推高番茄生产成本和零售价格。",
+            "高端风味番茄（如Girl and Doug品种）通过餐厅推广和社交媒体趋势进入消费者视野，推动品种创新和价格分层。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Everybody says retailers, they take their prices up like a rocket and down like a feather."
+        }
+      }
+    ]
   },
   "moneytalks": {
     "name": "Money Talks (Economist)",
@@ -254,5 +583,37 @@
   "investlikebest": {
     "name": "Invest Like the Best",
     "episodes": []
+  },
+  "techorange": {
+    "name": "科技報橘",
+    "episodes": [
+      {
+        "guid": "0299f2f7-8518-4bc2-b049-f4e5277b1eac",
+        "title": "科技早餐 6/12｜台積電捲入美國專利戰，OpenAI 準備 IPO 又打價格戰",
+        "published": "Thu, 11 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-12T04:13:42Z",
+        "digest": {
+          "summary_points": [
+            "台積電遭專利侵權申訴至美國ITC，美國國會要求強力執法，凸顯其在AI供應鏈戰略地位與專利執法間的取捨。",
+            "SK海力士加速擴產，目標2034年前晶圓產能提高三倍，並與NVIDIA合作設計AI工廠，反映AI記憶體需求強勁。",
+            "OpenAI預計一年內上市，已保密遞交IPO申請，同時考慮降價以應對Anthropic競爭，成本壓力成公開市場檢驗重點。",
+            "加拿大推出5億加幣AI戰略基金，目標2034年企業AI採用率達60%，並將AI聊天機器人納入社群媒體安全責任。",
+            "Anthropic呼籲聯邦AI監管標準，並提醒應建立就業安全網因應AI可能造成的勞動市場衝擊。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "面臨專利訴訟風險，但戰略重要性高"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI監管的討論已經從模型安全、國家安全進一步延伸到就業衝擊與社會制度準備"
+        }
+      }
+    ]
   }
 }

@@ -352,6 +352,87 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmqavfovg009401qoeb3p9xn7",
+        "title": "台股下週將變盤？ 2026.06.12",
+        "published": "Fri, 12 Jun 2026 11:59:24 GMT",
+        "processed_at": "2026-06-12T21:25:24Z",
+        "digest": {
+          "summary_points": [
+            "美伊傳出初步諒解備忘錄協議，擬停火60天並談判核武，但伊朗外交部否認，川普與內坦尼亞胡立場分歧使局勢不確定。",
+            "美國5月PPI年增6.5%創三年新高，但核心PPI月增0.4%低於預期，市場解讀為通膨壓力可控，美股先跌後漲。",
+            "費半指數大漲近8%，創2025年4月來最大單日漲幅，帶動台股及亞股反彈，夜盤台指期漲約300點至44500點附近。",
+            "下週重要事件包括日本央行會議（可能升息）、台指期結算、6月FOMC會議（6/16-17），市場波動可能加大。",
+            "分析師謝成恩認為目前ATR擴大顯示波動劇烈，下週可能先震盪後量縮，是佈局時機，若FOMC偏鴿則股市有機會轉強。",
+            "主流族群包括設備（漢唐、家登）、IC設計、散熱、記憶體，其中設備股因台積電資本支出持續受惠。",
+            "漢唐5月營收創歷史新高，月增13.7%、年增85%，在手訂單近2000億元，訂單能見度延伸至2030年。",
+            "記憶體需求強勁，外資調高南亞科目標價至600元以上，華邦電散戶持續撤出，分析師認為是上車機會。",
+            "光通訊概念股本益比偏高（聯鈞130倍、華興光80倍），短線有壓力但長線看好，操作上宜逢回買進。",
+            "分析師建議避開已漲多的台達電、聯發科及金融股，偏好低本益比、低融資使用率的設備與記憶體，避險可考慮中租-KY。"
+          ],
+          "tickers": [
+            {
+              "name": "漢唐",
+              "code": "2404",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "設備股龍頭，5月營收創高，在手訂單近2000億且能見度至2030年，長線看好。"
+            },
+            {
+              "name": "家登",
+              "code": "3680",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "設備族群，本益比合理，分析師認為長線值得持有。"
+            },
+            {
+              "name": "華邦電",
+              "code": "2344",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "記憶體產業受惠，散戶撤出為上車機會，分析師認為OK。"
+            },
+            {
+              "name": "南亞科",
+              "code": "2408",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "外資調高目標價至600元以上，明年獲利預估近100元，記憶體需求高。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "股價已漲多，分析師短線不想碰。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "股價已漲多，分析師短線不想碰。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "橫盤整理，長不動，看法中性。"
+            },
+            {
+              "name": "中租-KY",
+              "code": "5871",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "適合避險或存股，分析師認為是一個方向。"
+            }
+          ],
+          "market_view": "下週市場波動仍大，受日本央行會議、台指結算、FOMC會議影響，但若FOMC偏鴿，股市有望轉強，是佈局時機。",
+          "action_view": "選擇低本益比、低融資使用率的個股（如設備、記憶體），避開高本益比光通訊短線壓力，逢回買進；已漲多的台達電、聯發科及金融股暫不建議追高。",
+          "notable_quote": "我覺得現在的主軸其實還蠻明確"
+        }
+      },
+      {
         "guid": "cmq9fm1op00vz01t17t561s3n",
         "title": "美股危機解除了嗎？ 2026.06.11",
         "published": "Thu, 11 Jun 2026 11:50:40 GMT",
@@ -569,6 +650,27 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "5f8be996-664a-11f1-98f8-73196a23bde5",
+        "title": "Will SpaceX Skyrocket on Trading Debut?",
+        "published": "Fri, 12 Jun 2026 10:30:00 -0000",
+        "processed_at": "2026-06-12T21:20:53Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 即將進行史上最大規模的首次公開發行（IPO），估值近 1.8 兆美元，預計今天掛牌交易。",
+            "零售投資者近期拋售 Marvel Technology、Micron 及 Apple 等熱門股票，以籌措資金購買 SpaceX 股票。",
+            "美國總統川普取消對伊朗的攻擊計畫後，油價跌破每桶 90 美元，但分析師表示，由於荷姆茲海峽恢復航運需時數月，油價短期內難以下跌至 80 美元以下。",
+            "祕魯總統選舉由藤森惠子勝出，標誌拉丁美洲向右翼領導的轉變。",
+            "加拿大應美國要求，延後開放連接底特律與溫莎的新橋梁，此事與美加貿易緊張局勢有關。",
+            "英國國防大臣因不滿國防支出承諾不足而辭職，凸顯歐洲在提升軍事準備方面面臨的困境。",
+            "哈利·斯泰爾斯在倫敦溫布利球場的 12 場演唱會預計將創造超過 10 億英鎊的消費，超過泰勒·斯威夫特和綠洲合唱團的巡演。"
+          ],
+          "tickers": [],
+          "market_view": "油價因中東局勢緩和而下跌，但供應恢復緩慢，短期可能維持在 80 美元以上。SpaceX 掛牌可能引發市場波動，零售投資者調整持股。",
+          "action_view": "",
+          "notable_quote": "which is honestly the first time that being a Swiftie has ever felt cheap."
+        }
+      },
+      {
         "guid": "a659c378-65d9-11f1-8393-6bba3934d4ee",
         "title": "Stocks Soar After Trump Cancels Threatened Strikes on Iran",
         "published": "Thu, 11 Jun 2026 21:07:00 -0000",
@@ -593,6 +695,59 @@
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72502284",
+        "title": "Wall Street Roundup: Trillion dollar baby",
+        "published": "Fri, 12 Jun 2026 17:55:22 +0000",
+        "processed_at": "2026-06-12T21:18:05Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX IPO定價每股135美元，開盤150美元，籌資約750億美元，估值近1.8兆美元，超額認購3.5倍。",
+            "Oracle財報優於預期（雲端營收年增47%），但股價暴跌，因資本支出計畫擴大並計劃發行股票籌資。",
+            "半導體設備股（KLA、AMAT、LRCX）本週大漲兩位數，反映AI支出利多，投資人傾向「鏟子公司」策略。",
+            "CPI報告顯示通膨4.2%，市場淡定，認為通膨主要來自伊朗衝突，待衝突解決後將回落。",
+            "聯準會下週會議是焦點，新任主席Kevin Warsh首次主持；市場預期利率不變，年底前升息機率60%。",
+            "IPO市場熱絡：今年至今162件；OpenAI和Anthropic亦考慮上市，可能創紀錄。",
+            "主持人將當前AI投資週期比擬為大麻產業，鏟子公司比直接押注AI的公司更受青睞。",
+            "Oracle股價下跌反映與其他超大型業者類似的擔憂：過度投資AI且報酬不確定。",
+            "夏季交易淡季來臨，成交量下降，可能導致劇烈波動。",
+            "市場處於觀望：通膨走向、伊朗協議進展、新聯準會主席立場。"
+          ],
+          "tickers": [
+            {
+              "name": "甲骨文公司",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "雖然財報優於預期，但因資本支出擴大及計劃發股籌資，股價重挫。"
+            },
+            {
+              "name": "科磊公司",
+              "code": "KLAC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "作為AI支出受益的鏟子公司，股價大漲兩位數。"
+            },
+            {
+              "name": "應用材料公司",
+              "code": "AMAT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "半導體設備股受惠AI支出，股價強勁上漲。"
+            },
+            {
+              "name": "科林研發公司",
+              "code": "LRCX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "同樣屬於半導體設備，本週漲幅顯著。"
+            }
+          ],
+          "market_view": "主持人認為通膨雖高但市場視為伊朗衝突所致，預期衝突解決後將回落；聯準會新主席上任帶來不確定性，市場觀望。",
+          "action_view": "主持人未明確提及操作建議，但暗示夏季交易量低可能導致過度波動，宜謹慎。",
+          "notable_quote": "There's a pretty big bet that most of this inflation is tied to the Iran conflict, right? So when that resolves, um, it might take a little time for that to work its way through the system But overall things will go back to normal as soon as that resolves."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72456975",
         "title": "Iran strikes hit futures",
@@ -702,11 +857,60 @@
   },
   "unhedged": {
     "name": "Unhedged (FT)",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "6a2b0111622531b86448b15c",
+        "title": "Can Trump make a deal with Iran?",
+        "published": "Thu, 11 Jun 2026 20:00:00 GMT",
+        "processed_at": "2026-06-12T21:29:21Z",
+        "digest": {
+          "summary_points": [
+            "特朗普自與伊朗開戰以來，已約40次聲稱和平協議即將達成，但實際上仍無最終協議，僅有4月8日以來的停火。",
+            "巴基斯坦和卡塔爾等國積極調解，目標是先達成延期停火的短期協議，重點是重新開放霍爾木茲海峽。",
+            "特朗普急於重開霍爾木茲海峽以降低美國汽油價格，這對其中期選舉至關重要。",
+            "伊朗與美國之間存在數十年的敵意和不信任，加上美國和以色列在過去一年內兩次打擊伊朗，使談判極為困難。",
+            "即使在談判期間，雙方仍在互相攻擊：美國擊落伊朗直升機後，伊朗襲擊美軍基地，導致升級循環。",
+            "布倫特原油價格已從約120美元降至約87美元，但市場仍面臨供應風險，全球石油儲備被持續消耗。",
+            "短期協議可能包括伊朗承諾不發展核武，但長期核問題仍棘手，包括濃縮鈾庫存和設施去留。",
+            "伊朗需要經濟紅利（如解除制裁、解凍資產），但美國難以給予全面制裁解除。",
+            "長期穩定狀態難以達成，因為雙方紅線不同；特朗普可能用誇張言論將任何結果包裝為勝利。",
+            "嘉賓Andrew England認為，最佳情況是短期協議重開海峽，然後進行第二階段的核談判，但過程充滿不確定性。"
+          ],
+          "tickers": [],
+          "market_view": "油價雖從高點回落，但地緣風險仍高，全球石油儲備持續消耗可能導致油價再次飆升至140美元以上。",
+          "action_view": "",
+          "notable_quote": "The good thing with Trump is he can spin anything. I mean, yesterday he was asked about inflation. He said, I love inflation."
+        }
+      }
+    ]
   },
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "3cfa0968-658f-4cce-a2df-b466015e5042",
+        "title": "How a Vibecoded Newsletter Is Making the Hay Market More Transparent",
+        "published": "Fri, 12 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-12T21:37:23Z",
+        "digest": {
+          "summary_points": [
+            "乾草市場高度分裂且不透明，沒有單一基準價格；因運輸成本高，各地價格差異極大。",
+            "美國農業部每週/雙週發布乾草拍賣價格的PDF檔；Haywire透過API匯總這些數據，並從拍賣場取得第一手資訊。",
+            "乾草價格上漲：4月乾草每噸180美元（較3月漲13美元），苜蓿草每噸185美元（漲10美元）。",
+            "美國46%的苜蓿草種植面積處於乾旱中，供應緊張推升價格。",
+            "第一茬乾草產量偏低，2025年庫存幾乎耗盡，農民正在搶購囤貨。",
+            "高乾草價格衝擊養馬業（寄宿成本上升）及酪農業（混合高/低品質乾草控制成本）。",
+            "乾草種植面積約4900-5000萬英畝；苜蓿草年產值80億美元，是美國第四大作物。",
+            "Haywire由20歲的Aiden Johnson創立，利用AI和「氛圍編碼」建立數據平台，源自他父親詢問「苜蓿草價格」的契機。",
+            "商業模式包括免費與付費（每月14美元）電子報，目標成為區域乾草價格的基準數據提供者。",
+            "中間商（經紀人）可能因價格透明化而受損，因為他們目前依賴資訊不對稱來進行交易。"
+          ],
+          "tickers": [],
+          "market_view": "乾草價格因乾旱與供給緊張持續上漲，區域市場高度分化，缺乏透明定價機制。",
+          "action_view": "農民正積極建立夏季庫存，酪農業則透過混合不同品質乾草來控制成本；整體市場處於搶購狀態。",
+          "notable_quote": "We kind of want to be at the top, you know, being the benchmark data for these prices regionally."
+        }
+      },
       {
         "guid": "bb971e9b-4530-4ff9-bd68-b46500d94544",
         "title": "Why Tomatoes Are the Most Expensive They've Been in Four Decades",
@@ -739,7 +943,47 @@
   },
   "animalspirits": {
     "name": "Animal Spirits",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "01585c2a-48b2-11f1-bf10-db1143a961cb",
+        "title": "The Teflon Economy (EP. 468)",
+        "published": "Wed, 10 Jun 2026 08:00:00 -0000",
+        "processed_at": "2026-06-12T21:48:03Z",
+        "digest": {
+          "summary_points": [
+            "週五大幅下跌，半導體股重挫：Mycon 跌 13%、Sandisk 跌 12%、Western Digital 跌 11%、DRAM ETF 跌 15%、SMH 跌 9.2%、QQQ 跌近 5%，主因就業數據強勁引發通膨與利率擔憂。",
+            "Michael 與 Ben 對 AI 是否影響就業市場看法分歧：Ben 認為 AI 終將衝擊勞動市場，Michael 則指出數據未顯示影響（職缺增加、失業率低）。",
+            "科技與通訊服務類股合計占 S&P 500 比重達 49%；Michael 認為 Berkshire 與低波動 ETF SPLV（科技占比低於 2%）是避險選擇，但分散難度大。",
+            "SpaceX 未被 S&P 納入；對指數影響極小（QQQ 約 21 基點、VTI 約 3 基點）。Morgan Stanley 預估 SpaceX 2040 年營收達 3.4 兆美元，Michael 稱此為潛在泡沫頂部訊號。",
+            "SpaceX 在 Hyperliquid 平台交易價 158 美元，24 小時成交量 1.18 億美元；金融圈偏空、科技圈偏多。",
+            "Z 世代 IRA 帳戶持有占比翻倍至 10%；VOO 資產突破 1 兆美元；散戶交易占比也升至 20%，但投機與理性投資並存。",
+            "財富集中加劇：前 3% 家庭財富占比從 1989 年的 26% 升至 53%，中產階級占比下滑；政治影響顯著。",
+            "反駁聽眾：1970 年代經濟明顯更差（高通膨、三次衰退、失業率 10%、房貸利率 18%），即使當前住房/醫療/教育成本高，整體悲觀情緒不應超過當時。",
+            "AI 效率問題：中國模型以美國 82% 成本達到 90% 表現，引發對超大型企業資本支出回報的質疑；AI 生成內容（App、電子書、論文）數量暴增但品質下滑。",
+            "加密貨幣未跟上風險偏好行情；銀行計劃推出代幣化存款網路以加速結算，但對價格影響不明。Michael Saylor 賣出比特幣後又買回。"
+          ],
+          "tickers": [
+            {
+              "name": "Berkshire Hathaway",
+              "code": "BRK.B",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Michael 認為 Berkshire 是躲避科技集中的好去處，相較於指數表現偏弱。"
+            },
+            {
+              "name": "Invesco S&P 500 Low Volatility ETF",
+              "code": "SPLV",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Michael 稱其為「避險標的」，科技與通訊服務占比低於 2%，適合擔心 AI 泡沫的投資人。"
+            }
+          ],
+          "market_view": "週五的下跌是市場的「巴掌式修正」而非頂部；逢低買盤在本次多頭中屢次獲利，投資人仍在尋找賣出理由，顯示恐懼未散。",
+          "action_view": "",
+          "notable_quote": "This will be the quote that we look back and say, ding, ding, ding, ding, ding, ding. Are you kidding me? What were you people thinking?"
+        }
+      }
+    ]
   },
   "investlikebest": {
     "name": "Invest Like the Best",
@@ -809,6 +1053,83 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "0e24423d-9921-41d8-ad19-cf32e4b68188",
+        "title": "科技早餐 6/10｜OpenAI、Anthropic 排隊 IPO，AI 估值進入公開市場檢驗",
+        "published": "Tue, 09 Jun 2026 22:50:00 GMT",
+        "processed_at": "2026-06-12T21:15:59Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI秘密申請IPO，目標估值最高1兆美元，最快9月登場；Anthropic也提交IPO文件，估值9,650億美元，AI熱潮進入公開市場估值檢驗。",
+            "SpaceX衛星可作為太空AI運算節點，首顆AI衛星峰值功率150kW，持續功率120kW，相當於一組NVIDIA GB300機架，2027年全球衛星產業產值估達4,471億美元。",
+            "Google委託Intel在2028年製造超過300萬顆自研TPU，為台積電以外產能建立備援；NVIDIA評估Intel技術用於2028年下一代處理器。",
+            "蘋果WWDC發表Apple Intelligence與Siri AI，強調裝置端運算及私有雲端，與Google Gemini合作，初期不於歐盟及中國推出。",
+            "AMD宣布5年內在英國投資最高21億英鎊，用於高效能運算基礎設施及新創投資；英國政府同步發布11億英鎊AI硬體計畫，含國家級AI超級電腦。",
+            "台積電董事長表示正努力避免成為供應鏈瓶頸，但完全滿足客戶需求仍需長時間，Intel有望成為先進製程與封裝市場的備選選項。"
+          ],
+          "tickers": [
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "秘密申請IPO，目標估值最高1兆美元，最快9月登場。"
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "已提交IPO文件，估值9,650億美元。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "計劃將太空AI資料中心納入IPO故事，技術已存在於下一代Starlink衛星。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "委託Intel在2028年製造超過300萬顆自研TPU，建立台積電以外備援產能。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "獲Google TPU訂單，NVIDIA評估其技術應用於下一代GPU，有機會成為先進製程備選。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "評估Intel技術是否可用於2028年整合4個GPU晶片的下一代處理器。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "先進製程與封裝產能吃緊，努力避免成為供應鏈瓶頸，但完全滿足客戶需求仍需長時間。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "發表Apple Intelligence與Siri AI，強調裝置端運算及私有雲端，初期不於歐盟及中國推出。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "最好的還在後頭"
+        }
+      },
       {
         "guid": "73ed7cc0-ccf0-4ba8-9442-921faff46751",
         "title": "科技早餐 6/11｜OpenAI 傳租 10GW 園區，AI 算力戰從模型燒到電力與台積電",

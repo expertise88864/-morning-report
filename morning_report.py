@@ -8387,6 +8387,18 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         ensure_ascii=False,
         separators=(",", ":"),
     )
+
+    # Podcast 觀點(主持人個人看法):供 LLM 在分析中「引用對照」,嚴禁當成事實或本報立場
+    podcast_lines = []
+    for ep in (quotes.get("PODCAST_DIGEST") or [])[:3]:
+        d = ep.get("digest") or {}
+        pts = "; ".join(str(p) for p in (d.get("summary_points") or [])[:3])
+        tk = ", ".join(
+            f"{t.get('name')}({t.get('direction')})"
+            for t in (d.get("tickers") or [])[:5])
+        podcast_lines.append(f"- {ep.get('show')}「{str(ep.get('title', ''))[:40]}」:{pts}"
+                             + (f" | 個股觀點: {tk}" if tk else ""))
+    podcast_block = "\n".join(podcast_lines) if podcast_lines else "(近 48 小時無新集)"
     walk_forward_block = json.dumps(
         quotes.get("MODEL_WALK_FORWARD") or {},
         ensure_ascii=False,
@@ -8542,6 +8554,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 【歷史校準資料】
 {calibration}
+
+【財經 Podcast 主持人觀點(股癌/財經皓角/財報狗,AI 轉錄摘要)】
+{podcast_block}
+※ 這是「主持人個人觀點」非事實新聞:可在分析中引用對照(須標注「股癌觀點」等來源),
+   嚴禁當成市場事實、嚴禁未標注來源就採納為本報立場。與你的數據結論分歧時,以數據為準並可點出分歧。
 
 【近 24-30 小時新聞清單（含國際財經、Fed、台灣財經、政府政策）】
 {news_block}
@@ -9759,6 +9776,120 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
     )
 
 
+PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
+
+
+def load_podcast_digest(max_age_hours: int = 48) -> list[dict]:
+    """讀 podcast_digest.py 產出的摘要,回近 max_age_hours 內的最新集(供渲染/prompt)。"""
+    if not PODCAST_DIGEST_FILE.exists():
+        return []
+    try:
+        data = json.loads(PODCAST_DIGEST_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"[podcast] digest 讀取失敗: {e}", file=sys.stderr)
+        return []
+    out = []
+    now = dt.datetime.now(dt.timezone.utc)
+    for show in (data or {}).values():
+        if not isinstance(show, dict):
+            continue
+        for ep in (show.get("episodes") or [])[:1]:   # 每節目只取最新一集
+            try:
+                ts = dt.datetime.strptime(
+                    ep.get("processed_at", ""), "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=dt.timezone.utc)
+            except Exception:
+                continue
+            if (now - ts).total_seconds() / 3600 <= max_age_hours:
+                out.append({"show": show.get("name", ""), **ep})
+    out.sort(key=lambda e: e.get("processed_at", ""), reverse=True)
+    return out
+
+
+def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
+    """主持人觀點 vs 本報法人/動能資料的規則式對照(純 Python 查表,零幻覺)。"""
+    code = str(t.get("code") or "").strip()
+    direction = t.get("direction")
+    if t.get("market") == "US" or not code:
+        return ""
+    row = next((s for s in snapshot or [] if str(s.get("code")) == code), None)
+    if row is None:
+        return "不在本報追蹤池"
+    f30 = row.get("foreign_30d_lot")
+    p5 = row.get("pct_5d")
+    facts = []
+    if isinstance(f30, (int, float)) and f30:
+        facts.append(f"外資30日{'買超' if f30 > 0 else '賣超'} {abs(f30):,.0f} 張")
+    if isinstance(p5, (int, float)):
+        facts.append(f"5日 {p5:+.1f}%")
+    if not facts:
+        return ""
+    aligned = None
+    if isinstance(f30, (int, float)) and f30 and direction in ("bullish", "bearish"):
+        aligned = (f30 > 0) == (direction == "bullish")
+    tag = ("與法人方向一致" if aligned
+           else "與法人方向分歧" if aligned is not None else "本報資料")
+    return f"{tag}({'、'.join(facts)})"
+
+
+def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) -> str:
+    """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。"""
+    if not episodes:
+        return ""
+    dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
+                 "neutral": ("中性", "#64748b")}
+    cards = []
+    for ep in episodes:
+        d = ep.get("digest") or {}
+        points = "".join(
+            f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
+            for p in (d.get("summary_points") or [])[:6])
+        ticker_rows = ""
+        for t in (d.get("tickers") or [])[:8]:
+            label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))
+            name = htmllib.escape(str(t.get("name", "")))
+            code = htmllib.escape(str(t.get("code", "")).strip())
+            disp = f"{name}（{code}）" if code else name
+            check = _podcast_ticker_crosscheck(t, snapshot)
+            check_html = (f"<div style='font-size:11px;color:#0369a1;margin-top:2px;'>"
+                          f"↔ {htmllib.escape(check)}</div>") if check else ""
+            ticker_rows += (
+                f"<div style='padding:6px 0;border-bottom:1px dashed #e2e8f0;'>"
+                f"<b style='color:{color};'>[{label}]</b> "
+                f"<b>{disp}</b>"
+                f"<span style='color:#475569;font-size:13px;'>"
+                f" — {htmllib.escape(str(t.get('reason', '')))}</span>"
+                f"{check_html}</div>")
+        extras = ""
+        for key, label in (("market_view", "大盤觀點"), ("action_view", "操作思路")):
+            val = str(d.get(key) or "").strip()
+            if val:
+                extras += (f"<div style='font-size:13px;color:#334155;margin-top:6px;'>"
+                           f"<b>{label}：</b>{htmllib.escape(val)}</div>")
+        quote = str(d.get("notable_quote") or "").strip()
+        if quote:
+            extras += (f"<div style='font-size:12px;color:#64748b;margin-top:6px;"
+                       f"font-style:italic;'>「{htmllib.escape(quote)}」</div>")
+        cards.append(
+            f"<div style='border:1px solid #e2e8f0;border-radius:10px;padding:14px;"
+            f"margin:10px 0;background:#ffffff;'>"
+            f"<div style='font-size:14px;font-weight:700;color:#0f172a;'>"
+            f"🎙 {htmllib.escape(str(ep.get('show', '')))}"
+            f"<span style='font-weight:400;color:#64748b;font-size:12px;'> ・ "
+            f"{htmllib.escape(str(ep.get('title', ''))[:60])}</span></div>"
+            f"<ul style='margin:8px 0;padding-left:20px;font-size:13px;color:#1f2937;"
+            f"line-height:1.7;'>{points}</ul>"
+            f"{ticker_rows}{extras}</div>")
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#faf5ff;border-left:5px solid #9333ea;border-radius:4px;">'
+        'Podcast 重點（股癌 / 財經皓角 / 財報狗）</h2>'
+        + "".join(cards)
+        + "<p style='font-size:11px;color:#94a3b8;margin:4px 0;'>"
+          "※ 以上為主持人個人觀點之摘要(AI 轉錄,可能有誤),非本報建議;"
+          "「↔」為與本報法人/動能資料的對照,不納入股價模型。</p>")
+
+
 def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
     """最後防線:LLM 若把 2330 寫成台積電 ADR 的美元價(約 400-500),用 Python 中樞值改回。
     2330 本地價約數千元(mid);台積電 ADR 美元價 ≈ mid 的 ~19%(約 mid×0.10~0.45 區間)。
@@ -9804,6 +9935,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     summary_text = _extract_summary(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
+    podcast_html = _render_podcast_html(
+        quotes.get("PODCAST_DIGEST") or [],
+        quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib)
     model_evidence_html = _render_model_evidence_html(quotes)
 
     # ===== 1. 行情表格 =====
@@ -10718,6 +10852,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {podcast_html}
+
             {model_evidence_html}
 
             {night_html}
@@ -11089,6 +11225,10 @@ def main() -> int:
     print(f"[main] 抓到 {len(news)} 則新聞")
     print("[main] 整理台灣政策與醫界昨日走向…")
     quotes["TW_DAILY_INTELLIGENCE"] = fetch_tw_daily_intelligence(now_tpe)
+    # Podcast 摘要由獨立排程(podcast-digest.yml)預先產生,這裡只讀檔,失敗不影響晨報
+    quotes["PODCAST_DIGEST"] = load_podcast_digest()
+    if quotes["PODCAST_DIGEST"]:
+        print(f"[main] 載入 {len(quotes['PODCAST_DIGEST'])} 集 podcast 摘要")
 
     # 5.05 新聞去重（同事件常被多個 RSS 重貼，去重後 LLM 訊號更乾淨）
     news = dedup_news(news)

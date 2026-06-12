@@ -1,0 +1,56 @@
+name: Podcast Digest
+
+# 與晨報完全獨立:每天台北 04:30(UTC 20:30 前一日)轉錄前夜上架的財經 podcast
+# (股癌/財經皓角/財報狗),摘要寫入 state/podcast_digest.json 並 push。
+# 晨報(UTC 22:00)checkout 時即可讀到最新摘要;本 job 失敗不影響寄信。
+on:
+  schedule:
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: podcast-digest
+  cancel-in-progress: true
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run podcast digest
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+        run: python podcast_digest.py
+
+      - name: Commit & push state
+        run: |
+          git config user.name "morning-report-bot"
+          git config user.email "actions@github.com"
+          git add state/podcast_digest.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update podcast digest [skip ci]"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "no digest changes"
+          fi

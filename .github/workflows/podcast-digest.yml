@@ -6,7 +6,9 @@ name: Podcast Digest
 # 本 job 失敗不影響寄信。轉錄較慢(50 分鐘集約 10-25 分),故提早到 04:00。
 on:
   schedule:
-    - cron: "0 20 * * *"
+    # 台北 03:30(UTC 19:30 前一日):預算滿載(150 分音檔 ≈ 60-75 分轉錄)
+    # 也能在晨報(UTC 22:00)前完成並 push
+    - cron: "30 19 * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +21,7 @@ concurrency:
 jobs:
   digest:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 110
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,6 +44,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PODCAST_DEEPSEEK_MODEL: deepseek-v4-flash
           PODCAST_WHISPER_MODEL: small
+          PODCAST_DAILY_BUDGET_MIN: "150"
         run: python podcast_digest.py
 
       - name: Commit & push state

@@ -34,14 +34,53 @@ MAX_AUDIO_MB = 200
 MAX_TRANSCRIPT_CHARS = 60000    # 轉錄文字進 LLM 前的長度上限(~90 分鐘集數也夠)
 KEEP_EPISODES_PER_SHOW = 5
 
+# priority 1 = 每天必轉(短/每日/核心);2 = 預算內輪轉(長集深度)。
+# lang: zh/en → whisper 轉錄語言;country → iTunes Search 商店。
+# 註:Acquired(單集 3.5h)與 Bloomberg Surveillance(每日 1-2h)因時長
+# 超出每日預算太多,刻意不納入。
 PODCASTS = [
-    {"key": "gooaye", "name": "股癌", "search": "股癌 Gooaye"},
-    {"key": "haojiao", "name": "游庭皓的財經皓角", "search": "游庭皓的財經皓角"},
-    {"key": "statementdog", "name": "財報狗", "search": "財報狗"},
+    # --- 中文核心(每日/高契合) ---
+    {"key": "gooaye", "name": "股癌", "search": "股癌 Gooaye",
+     "lang": "zh", "country": "TW", "priority": 1},
+    {"key": "haojiao", "name": "游庭皓的財經皓角", "search": "游庭皓的財經皓角",
+     "lang": "zh", "country": "TW", "priority": 1},
+    {"key": "statementdog", "name": "財報狗", "search": "財報狗",
+     "lang": "zh", "country": "TW", "priority": 1},
+    {"key": "mviewpoint", "name": "M觀點", "search": "M觀點 Miula",
+     "lang": "zh", "country": "TW", "priority": 1},
+    {"key": "usstock-class", "name": "美股投資學", "search": "美股投資學",
+     "lang": "zh", "country": "TW", "priority": 2},
+    {"key": "money168", "name": "財經一路發", "search": "財經一路發",
+     "lang": "zh", "country": "TW", "priority": 2},
+    {"key": "macromicro", "name": "財經M平方", "search": "財經M平方",
+     "lang": "zh", "country": "TW", "priority": 2},
+    # --- 英文每日新聞(短,便宜) ---
+    {"key": "ft-briefing", "name": "FT News Briefing", "search": "FT News Briefing",
+     "lang": "en", "country": "US", "priority": 1},
+    {"key": "wsj-whatsnews", "name": "WSJ What's News", "search": "WSJ What's News",
+     "lang": "en", "country": "US", "priority": 1},
+    {"key": "ws-breakfast", "name": "Wall Street Breakfast", "search": "Wall Street Breakfast",
+     "lang": "en", "country": "US", "priority": 1},
+    {"key": "unhedged", "name": "Unhedged (FT)", "search": "Unhedged Financial Times",
+     "lang": "en", "country": "US", "priority": 2},
+    # --- 英文深度(長集,預算內輪轉) ---
+    {"key": "oddlots", "name": "Odd Lots", "search": "Odd Lots Bloomberg",
+     "lang": "en", "country": "US", "priority": 2},
+    {"key": "moneytalks", "name": "Money Talks (Economist)",
+     "search": "Money Talks from The Economist",
+     "lang": "en", "country": "US", "priority": 2},
+    {"key": "animalspirits", "name": "Animal Spirits", "search": "Animal Spirits Podcast",
+     "lang": "en", "country": "US", "priority": 2},
+    {"key": "investlikebest", "name": "Invest Like the Best",
+     "search": "Invest Like the Best",
+     "lang": "en", "country": "US", "priority": 2},
 ]
 
+DAILY_BUDGET_MINUTES = float(os.getenv("PODCAST_DAILY_BUDGET_MIN", "150"))
+
 DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目的逐字稿(機器轉錄,可能有錯字,
-請依上下文自行校正,尤其公司名與數字)。請整理重點,輸出 JSON(繁體中文):
+請依上下文自行校正,尤其公司名與數字;節目可能是英文,**摘要一律用繁體中文**)。
+請整理重點,輸出 JSON(繁體中文):
 {
   "summary_points": ["3-6 條本集重點,每條一句話,具體(含數字/事件/邏輯),不要空泛"],
   "tickers": [{"name": "公司或 ETF 名", "code": "台股代號或美股 ticker,不確定就留空字串",
@@ -59,9 +98,9 @@ def log(msg: str) -> None:
     print(f"[podcast] {msg}", flush=True)
 
 
-def resolve_feed_url(search_term: str) -> str:
+def resolve_feed_url(search_term: str, country: str = "TW") -> str:
     r = requests.get("https://itunes.apple.com/search",
-                     params={"term": search_term, "country": "TW",
+                     params={"term": search_term, "country": country,
                              "media": "podcast", "limit": 1},
                      timeout=20)
     r.raise_for_status()
@@ -113,13 +152,19 @@ def download_audio(url: str, dest: Path) -> bool:
     return True
 
 
-def transcribe_audio(path: Path) -> str:
+_WHISPER_MODEL_CACHE: dict = {}
+
+
+def transcribe_audio(path: Path, lang: str = "zh") -> str:
     """faster-whisper 本地轉錄(CPU int8,免費)。50 分鐘集約 10-25 分鐘。"""
     from faster_whisper import WhisperModel   # lazy import:晨報/CI 不裝此套件
     t0 = time.time()
-    model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    if WHISPER_MODEL not in _WHISPER_MODEL_CACHE:   # 多集共用,模型只載一次
+        _WHISPER_MODEL_CACHE[WHISPER_MODEL] = WhisperModel(
+            WHISPER_MODEL, device="cpu", compute_type="int8")
+    model = _WHISPER_MODEL_CACHE[WHISPER_MODEL]
     segments, info = model.transcribe(
-        str(path), language="zh", vad_filter=True, beam_size=1)
+        str(path), language=lang or None, vad_filter=True, beam_size=1)
     parts = []
     total = 0
     for seg in segments:
@@ -165,39 +210,62 @@ def deepseek_digest(transcript: str) -> dict:
     raise RuntimeError(f"DeepSeek 摘要失敗: {last_err}")
 
 
-def process_podcast(cfg: dict, state: dict) -> bool:
-    """處理單一節目最新集;有新摘要寫入 state 回 True。"""
+def _duration_minutes(entry) -> float:
+    """從 feed 的 itunes_duration 解析時長(分);格式可為秒數或 HH:MM:SS。沒有就估 40 分。"""
+    raw = str(entry.get("itunes_duration") or "").strip()
+    if not raw:
+        return 40.0
+    try:
+        if ":" in raw:
+            parts = [float(p) for p in raw.split(":")]
+            secs = parts[-1] + parts[-2] * 60 + (parts[-3] * 3600 if len(parts) > 2 else 0)
+        else:
+            secs = float(raw)
+        return max(1.0, secs / 60)
+    except Exception:
+        return 40.0
+
+
+def find_new_episode(cfg: dict, state: dict):
+    """查單一節目是否有未處理且 48h 內的新集;回 (entry, audio_url, duration_min) 或 None。"""
     key, name = cfg["key"], cfg["name"]
-    feed_url = resolve_feed_url(cfg["search"])
+    feed_url = resolve_feed_url(cfg["search"], cfg.get("country", "TW"))
     if not feed_url:
         log(f"{name}: iTunes 查無 feed")
-        return False
+        return None
     feed = feedparser.parse(feed_url)
     if not feed.entries:
         log(f"{name}: feed 無集數")
-        return False
-    entry = feed.entries[0]
-    guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
+        return None
     show = state.setdefault(key, {"name": name, "episodes": []})
-    if any(ep.get("guid") == guid for ep in show["episodes"]):
-        log(f"{name}: 最新集已處理過,跳過")
-        return False
-    age = _entry_age_hours(entry)
-    if age > MAX_EPISODE_AGE_HOURS:
-        log(f"{name}: 最新集已 {age:.0f}h(>{MAX_EPISODE_AGE_HOURS}h),跳過")
-        return False
-    audio_url = next((enc.get("href") for enc in (entry.get("enclosures") or [])
-                      if enc.get("href")), "")
-    if not audio_url:
-        log(f"{name}: 無音檔連結")
-        return False
+    # 掃前 3 集:跳過已處理/超齡/預告片(<3 分,如 Money Talks 的 Trailer 會佔住 entries[0])
+    for entry in feed.entries[:3]:
+        guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
+        if any(ep.get("guid") == guid for ep in show["episodes"]):
+            continue
+        if _entry_age_hours(entry) > MAX_EPISODE_AGE_HOURS:
+            continue
+        dur = _duration_minutes(entry)
+        if dur < 3:
+            continue
+        audio_url = next((enc.get("href") for enc in (entry.get("enclosures") or [])
+                          if enc.get("href")), "")
+        if not audio_url:
+            continue
+        return entry, audio_url, dur
+    return None
 
-    log(f"{name}: 處理新集「{str(entry.get('title', ''))[:50]}」({age:.0f}h 前)")
+
+def process_episode(cfg: dict, state: dict, entry, audio_url: str) -> bool:
+    """下載 → 轉錄 → DeepSeek 摘要 → 寫入 state。"""
+    key, name = cfg["key"], cfg["name"]
+    guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
+    log(f"{name}: 處理新集「{str(entry.get('title', ''))[:50]}」")
     tmp = Path(f"podcast_{key}.mp3")
     try:
         if not download_audio(audio_url, tmp):
             return False
-        transcript = transcribe_audio(tmp)
+        transcript = transcribe_audio(tmp, lang=cfg.get("lang", "zh"))
         if len(transcript) < 500:
             log(f"{name}: 轉錄過短({len(transcript)} 字),跳過")
             return False
@@ -205,6 +273,7 @@ def process_podcast(cfg: dict, state: dict) -> bool:
     finally:
         tmp.unlink(missing_ok=True)
 
+    show = state.setdefault(key, {"name": name, "episodes": []})
     show["episodes"].insert(0, {
         "guid": guid,
         "title": str(entry.get("title", ""))[:120],
@@ -223,16 +292,37 @@ def main() -> int:
         log("缺 DEEPSEEK_API_KEY,結束")
         return 1
     state = load_state()
-    updated = False
+
+    # 第一輪:盤點所有節目的新集(只打 RSS,便宜)
+    pending = []
     for cfg in PODCASTS:
         try:
-            if process_podcast(cfg, state):
+            found = find_new_episode(cfg, state)
+            if found:
+                pending.append((cfg, *found))
+        except Exception as e:
+            log(f"{cfg['name']} 盤點失敗: {str(e)[:120]}")
+    log(f"盤點完成:{len(pending)} 個節目有新集")
+
+    # 第二輪:優先級排序 + 每日轉錄預算(音檔總分鐘),超出者留待明天
+    pending.sort(key=lambda item: (item[0].get("priority", 9), item[3]))
+    used_min = 0.0
+    updated = False
+    for cfg, entry, audio_url, dur in pending:
+        if used_min + dur > DAILY_BUDGET_MINUTES:
+            log(f"{cfg['name']}: 超出每日預算({used_min:.0f}+{dur:.0f}"
+                f">{DAILY_BUDGET_MINUTES:.0f} 分),本次跳過")
+            continue
+        try:
+            if process_episode(cfg, state, entry, audio_url):
                 updated = True
+                used_min += dur
+                save_state(state)   # 逐集落盤:後面失敗/超時不丟已完成的摘要
         except Exception as e:
             log(f"{cfg['name']} 處理失敗(不影響其他節目): {str(e)[:150]}")
+
     if updated:
-        save_state(state)
-        log(f"已寫入 {STATE_FILE}")
+        log(f"已寫入 {STATE_FILE}(共轉錄 {used_min:.0f} 分鐘音檔)")
     else:
         log("本次無新集")
     return 0

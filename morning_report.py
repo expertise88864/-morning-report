@@ -9839,7 +9839,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
     cards = []
-    for ep in episodes:
+    for ep in episodes[:10]:   # 節目多時控制信件長度(load 端已每節目只取最新一集)
         d = ep.get("digest") or {}
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"

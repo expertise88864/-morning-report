@@ -312,13 +312,16 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
     )
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis, "2026-06-03", "每日報")
     assert "LLM重複段" not in html
-    stance_idx = html.find("我的明確立場")
+    # 十二、十三已上移到頂端「今日結論」卡,body 不再有「我的明確立場」標題;
+    # 其內容(立場/一句話)應出現在頂端(比 taifex 更早)。
+    summary_idx = html.find("今日結論")
     taifex_idx = html.find("外資台指期未平倉")
     policy_idx = html.find("台灣政策近月走向")
     medical_idx = html.find("台灣醫界昨日走向")
     top5_idx = html.find("台股客觀關注排名 Top 1")
-    assert -1 not in (stance_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
-    assert stance_idx < taifex_idx < policy_idx < medical_idx < top5_idx
+    assert -1 not in (summary_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
+    assert summary_idx < taifex_idx < policy_idx < medical_idx < top5_idx
+    assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
 
 
 def test_render_html_warns_when_watchlist_scores_are_low_confidence():

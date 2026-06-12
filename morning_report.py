@@ -3927,7 +3927,10 @@ TW_INTELLIGENCE_NOISE = {
                "宗教", "毒駕", "酒駕", "性別平等", "性平", "兵役", "替代役",
                "宣導列車", "宣導活動", "揭牌", "剪綵", "頒獎", "表揚",
                "觀光活動", "演習", "招生", "考試", "藝文", "節慶"),
-    "medical": ("保健食品", "養生", "星座", "減肥", "美容", "食譜", "偏方"),
+    # 港澳媒體/機構新聞混入過(博愛醫院/醫管局/文匯網)→ 一律剔除,只留台灣醫界
+    "medical": ("保健食品", "養生", "星座", "減肥", "美容", "食譜", "偏方",
+                "香港", "澳門", "醫管局", "入稟", "文匯", "星島", "singtao",
+                "hk01", "東網", "on.cc", "明報", "大公"),
 }
 
 TW_INTELLIGENCE_MAJOR_TERMS = {
@@ -9026,7 +9029,7 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
         f"- [{n['source']}] {n['title']}"
         for n in news[:20]
     )
-    return f"""## ⚠️ LLM 服務暫時不可用
+    return f"""## LLM 服務暫時不可用
 
 今日早晨 LLM API 多次重試均失敗，已自動降級寄出基本版報告。錯誤訊息：
 `{type(err).__name__}: {_redact_secret_text(str(err))[:200]}`
@@ -9474,7 +9477,7 @@ def _render_etf_action_card(fair_00662, pred_0050) -> str:
     return (
         '<div style="border:2px solid #0284c7;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:14px;">'
-        '💰 ETF 今日進出參考價（依模型合理價推算）</div>'
+        'ETF 今日進出參考價（依模型合理價推算）</div>'
         '<table style="width:100%;border-collapse:collapse;background:#ffffff;font-size:14px;">'
         + "".join(rows) +
         '</table>'
@@ -9698,16 +9701,52 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
           </tr>{portfolio_row}"""
 
 
-def _render_summary_bar(summary: str, htmllib) -> str:
-    """LLM 一句話結論釘到頂部（HERO/KPI 下方第一行可見的人話）。失敗 → 空字串。"""
-    if not summary:
+def _extract_stance_section(text: str) -> str:
+    """抽出「我的明確立場」段 body(理由/關鍵價位/操作建議/風險),供頂端結論卡使用。"""
+    import re as _re
+    if not isinstance(text, str):
         return ""
-    safe = htmllib.escape(summary)
+    m = _re.search(
+        r"#{1,6}\s*(?:[一-十\d]+、)?我的明確立場[^\n]*\n"
+        r"(.*?)(?=\n#{1,6}\s|\Z)", text, _re.S)
+    return m.group(1).strip() if m else ""
+
+
+def _strip_llm_sections(text: str, section_names: tuple) -> str:
+    """把指定的 LLM 章節(含標題)整段自渲染文字移除(內容已上移到頂端結論卡)。"""
+    import re as _re
+    if not isinstance(text, str):
+        return text
+    for name in section_names:
+        text = _re.sub(
+            rf"#{{1,6}}\s*(?:[一-十\d]+、)?{_re.escape(name)}[^\n]*\n"
+            rf".*?(?=\n#{{1,6}}\s|\Z)", "", text, flags=_re.S)
+    return text.strip()
+
+
+def _render_summary_bar(summary: str, stance_detail: str, htmllib) -> str:
+    """頂端「今日結論」卡:一句話總結(粗體)+ 立場敘述/關鍵價位/操作建議/風險。
+    (使用者要求:十二、十三章內容直接上移到頂端,不在信件中段重複。)"""
+    if not summary and not stance_detail:
+        return ""
+    import re as _re
+
+    def _fmt(text: str) -> str:
+        safe = htmllib.escape(text)
+        safe = _re.sub(r"\*\*([^*\n]+?)\*\*", r"<b>\1</b>", safe)
+        lines = [ln.strip().lstrip("&gt;").strip() for ln in safe.split("\n")]
+        return "<br>".join(ln for ln in lines if ln)
+
+    headline = (f"<div style='font-size:16px;color:#0f172a;font-weight:700;"
+                f"line-height:1.55;'>{htmllib.escape(summary)}</div>" if summary else "")
+    detail = (f"<div style='font-size:13px;color:#334155;line-height:1.8;"
+              f"margin-top:8px;'>{_fmt(stance_detail)}</div>" if stance_detail else "")
     return f"""
           <tr>
             <td style="background:#fef3c7;border-top:3px solid #f59e0b;padding:16px 24px;">
               <div style="font-size:10px;letter-spacing:2px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:6px;">今日結論</div>
-              <div style="font-size:16px;color:#0f172a;font-weight:600;line-height:1.55;">{safe}</div>
+              {headline}
+              {detail}
             </td>
           </tr>"""
 
@@ -9944,12 +9983,11 @@ def _render_weather_html(locs: list[dict]) -> str:
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
         for loc in locs)
     rain = max(loc["rain_prob"] for loc in locs)
-    icon = "🌧" if rain >= 60 else "⛅" if rain >= 30 else "☀"
     return (
         f"<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"
         f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
-        f"{icon} <b>早安!</b>　{parts}<br>"
-        f"<span style='color:#0369a1;'>👕 {_weather_advice(locs)}</span></div>")
+        f"<b>早安!</b>　{parts}<br>"
+        f"<span style='color:#0369a1;'>{_weather_advice(locs)}</span></div>")
 
 
 def _render_weekly_recap_html(history: list[dict]) -> str:
@@ -9975,7 +10013,7 @@ def _render_weekly_recap_html(history: list[dict]) -> str:
     return (
         '<div style="border:1px solid #c4b5fd;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#f5f3ff;color:#5b21b6;padding:8px 14px;font-weight:700;'
-        'font-size:14px;">📊 本週預測回顧(實際開盤 vs 預測的偏差)</div>'
+        'font-size:14px;">本週預測回顧(實際開盤 vs 預測的偏差)</div>'
         '<table style="width:100%;border-collapse:collapse;background:#fff;">'
         '<tr style="background:#faf5ff;"><th style="padding:6px 12px;text-align:left;'
         'font-size:11px;color:#6d28d9;">日期</th><th style="padding:6px 12px;text-align:right;'
@@ -10093,7 +10131,7 @@ def _render_event_calendar_html(events: list[dict]) -> str:
     return (
         '<div style="border:1px solid #fca5a5;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#fef2f2;color:#991b1b;padding:8px 14px;font-weight:700;font-size:14px;">'
-        '📅 未來 7 天風險事件（時間均為台北時間）</div>'
+        '未來 7 天風險事件（時間均為台北時間）</div>'
         '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
         + rows + '</table></div>')
 
@@ -10117,6 +10155,28 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
         except ValueError:
             return None
 
+    def _market_price(code: str) -> Optional[float]:
+        """申購標的現價 best-effort:上市(STOCK_DAY_ALL)→ 上櫃(TPEX openapi)。"""
+        try:
+            for row in _fetch_twse_stock_day_all():
+                keys = list(row.keys())
+                code_k = next((k for k in keys if k == "Code" or "代號" in k), None)
+                close_k = next((k for k in keys if "clos" in k.lower() or "收盤" in k), None)
+                if code_k and str(row.get(code_k, "")).strip() == code:
+                    return _to_float(row.get(close_k))
+        except Exception:
+            pass
+        try:
+            r = requests.get(
+                "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+                timeout=12, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            for row in r.json() or []:
+                if str(row.get("SecuritiesCompanyCode", "")).strip() == code:
+                    return _to_float(row.get("Close") or row.get("ClosingPrice"))
+        except Exception:
+            pass
+        return None
+
     try:
         r = requests.get("https://www.twse.com.tw/announcement/publicForm",
                          params={"response": "json"}, timeout=15, headers=headers)
@@ -10129,17 +10189,21 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
                 start_d = _roc_to_date(row[idx.get("申購開始日", 5)])
                 if not end_d or end_d < today or (start_d and start_d > today + dt.timedelta(days=7)):
                     continue
-                price = ""
-                for cand in ("承銷價格(元)", "承銷價格", "承銷價"):
-                    if cand in idx:
-                        price = str(row[idx[cand]])
-                        break
+                code = str(row[idx.get("證券代號", 3)]).strip()
+                price = _to_float(str(row[idx.get("承銷價(元)", 9)]).replace(",", ""))
+                units = _to_float(str(row[idx.get("申購股數", 13)]).replace(",", "")) or 1000
+                market = _market_price(code)
+                spread = round(market - price, 2) if (market and price) else None
+                profit = (round((market - price) * units)
+                          if (market and price and units) else None)
                 out["ipo"].append({
                     "name": str(row[idx.get("證券名稱", 2)]),
-                    "code": str(row[idx.get("證券代號", 3)]),
+                    "code": code,
                     "start": start_d, "end": end_d,
                     "draw": _roc_to_date(row[idx.get("抽籤日期", 1)]),
-                    "price": price,
+                    "price": price, "market": market,
+                    "spread": spread, "profit": profit,
+                    "lottery_pct": str(row[idx.get("中籤率(%)", 16)]).strip(),
                 })
             except Exception:
                 continue
@@ -10185,14 +10249,22 @@ def _render_tw_calendar_html(cal: dict) -> str:
         return ""
     blocks = []
     if ipo:
-        rows = "".join(
-            f"<li style='margin:4px 0;'><b>{i['name']}（{i['code']}）</b>"
-            f"　申購至 {i['end'].strftime('%m/%d')}"
-            + (f"・抽籤 {i['draw'].strftime('%m/%d')}" if i.get("draw") else "")
-            + (f"・承銷價 {i['price']} 元" if i.get("price") else "")
-            + "</li>"
-            for i in ipo[:6])
-        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>🎟 公開申購(抽籤)</b>"
+        def _ipo_line(i: dict) -> str:
+            parts = [f"<b>{i['name']}（{i['code']}）</b>　申購至 {i['end'].strftime('%m/%d')}"]
+            if i.get("draw"):
+                parts.append(f"抽籤 {i['draw'].strftime('%m/%d')}")
+            if i.get("price"):
+                parts.append(f"承銷價 {i['price']:g} 元")
+            if i.get("market"):
+                parts.append(f"市價 {i['market']:g} 元")
+            if i.get("spread") is not None:
+                color = "#b91c1c" if i["spread"] > 0 else "#15803d"
+                parts.append(f"<b style='color:{color};'>價差 {i['spread']:+g} 元</b>")
+            if i.get("profit") is not None:
+                parts.append(f"中籤潛在獲利約 <b>{i['profit']:+,} 元</b>")
+            return "・".join(parts)
+        rows = "".join(f"<li style='margin:4px 0;'>{_ipo_line(i)}</li>" for i in ipo[:6])
+        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>公開申購(抽籤)</b>"
                       f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;color:#334155;"
                       f"line-height:1.7;'>{rows}</ul></div>")
     if divs:
@@ -10202,13 +10274,13 @@ def _render_tw_calendar_html(cal: dict) -> str:
             + (f"・每股 {v['amount']} 元" if v.get("amount") else "")
             + "</li>"
             for v in divs[:6])
-        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>💵 關注標的除權息</b>"
+        blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>關注標的除權息</b>"
                       f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;color:#334155;"
                       f"line-height:1.7;'>{rows}</ul></div>")
     return (
         '<div style="border:1px solid #fcd34d;border-radius:10px;padding:8px 14px;'
         'margin:14px 0;background:#fffbeb;">'
-        '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">📋 台股行事曆</div>'
+        '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px;">台股行事曆</div>'
         + "".join(blocks) + "</div>")
 
 
@@ -10216,6 +10288,8 @@ def _render_tw_calendar_html(cal: dict) -> str:
 MEDICAL_JOURNALS = [
     ("JAAD", "J Am Acad Dermatol"),
     ("JEADV", "J Eur Acad Dermatol Venereol"),
+    ("BJD", "Br J Dermatol"),
+    ("JAMA Derm", "JAMA Dermatol"),
     ("NEJM", "N Engl J Med"),
     ("AJO", "Am J Ophthalmol"),
 ]
@@ -10357,7 +10431,7 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
         return ""
     rows = "".join(
         f"<div style='margin:4px 0;font-size:13px;color:#334155;'>"
-        f"📌 <b>{htmllib.escape(str(r['key']).split(':', 1)[-1] or '事件')}</b>"
+        f"・<b>{htmllib.escape(str(r['key']).split(':', 1)[-1] or '事件')}</b>"
         f"<span style='color:#b91c1c;font-weight:700;'>(第 {r['days']} 天)</span>　"
         f"{htmllib.escape(r.get('latest_title', ''))}</div>"
         for r in active[:4])
@@ -10365,7 +10439,7 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
         '<div style="border:1px solid #c7d2fe;border-radius:10px;padding:8px 14px;'
         'margin:14px 0;background:#eef2ff;">'
         '<div style="font-weight:700;font-size:14px;color:#3730a3;margin-bottom:2px;">'
-        '🔄 延燒中事件</div>' + rows + "</div>")
+        '延燒中事件</div>' + rows + "</div>")
 
 
 # ===== 體育快訊(醫界區下方;ESPN 公開 API 比分 + Google News 消息) =====
@@ -10377,21 +10451,50 @@ SPORTS_NEWS_QUERIES = [
 ]
 
 
+def fetch_cpbl_standings() -> list[dict]:
+    """爬 CPBL 官網戰績頁(server-side render,實測可解析)。失敗回空。"""
+    import re as _re
+    r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
+                     headers={"User-Agent": "Mozilla/5.0"})
+    r.raise_for_status()
+    out = []
+    # 每列:rank → 隊名連結 → 出賽數 → 勝-和-敗 → 勝率 → 勝差
+    pattern = _re.compile(
+        r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
+        r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
+        r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
+        _re.S)
+    for m in pattern.finditer(r.text):
+        out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
+                    "games": m.group(3), "wdl": m.group(4),
+                    "pct": m.group(5), "gb": m.group(6).strip()})
+        if len(out) >= 6:
+            break
+    return out
+
+
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
-    """MLB/NBA 昨日比分(ESPN 公開 API)+ 四類體育新聞標題;失敗回部分結果。"""
+    """CPBL 戰績表 + NBA 冠軍賽(最近一場+系列賽戰況)+ MLB 戰績榜 + 體育新聞。
+
+    使用者需求:中職要完整戰績表;NBA 要冠軍賽比分與系列賽狀態;不要 MLB 逐場比分。
+    """
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    out: dict = {"scores": {}, "news": {}}
-    et_date = (now_tpe - dt.timedelta(days=1)).strftime("%Y%m%d")
-    for league, path in (("MLB", "baseball/mlb"), ("NBA", "basketball/nba")):
-        try:
+    out: dict = {"news": {}}
+    try:
+        out["cpbl"] = fetch_cpbl_standings()
+    except Exception as e:
+        print(f"[sports] CPBL 戰績抓取失敗: {e}", file=sys.stderr)
+    # NBA:往回找最近一場(冠軍賽系列非每天打),取比分+系列賽戰況(如 NY leads 3-1)
+    try:
+        for back in range(1, 6):
+            day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
             r = requests.get(
-                f"https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard",
-                params={"dates": et_date}, timeout=15)
-            r.raise_for_status()
-            games = []
-            for e in r.json().get("events", []):
+                "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+                params={"dates": day}, timeout=15)
+            events = r.json().get("events", [])
+            finals = []
+            for e in events:
                 comp = (e.get("competitions") or [{}])[0]
-                status = (e.get("status") or {}).get("type", {}).get("state", "")
                 teams = comp.get("competitors", [])
                 if len(teams) != 2:
                     continue
@@ -10401,16 +10504,19 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 def _fmt(t):
                     name = (t.get("team") or {}).get("abbreviation", "?")
                     return f"<b>{name}</b>" if t.get("winner") else name
-                games.append({
+                series = (comp.get("series") or {}).get("summary", "")
+                note = ((comp.get("notes") or [{}])[0].get("headline") or "")
+                finals.append({
                     "text": f"{_fmt(away)} {away.get('score', '-')}:"
                             f"{home.get('score', '-')} {_fmt(home)}",
-                    "final": status == "post",
-                    # NBA 季後賽系列賽註記(如 "Game 3 of 7")
-                    "note": ((comp.get("notes") or [{}])[0].get("headline") or "")[:40],
+                    "series": series, "note": note[:50],
+                    "date": f"{day[4:6]}/{day[6:]}",
                 })
-            out["scores"][league] = games
-        except Exception as e:
-            print(f"[sports] {league} 比分抓取失敗: {e}", file=sys.stderr)
+            if finals:
+                out["nba"] = finals
+                break
+    except Exception as e:
+        print(f"[sports] NBA 抓取失敗: {e}", file=sys.stderr)
     # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
     try:
         r = requests.get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
@@ -10453,38 +10559,51 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
 
 def _render_sports_html(sports: dict, htmllib) -> str:
-    """體育快訊卡:MLB/NBA 比分 + 中職/網球等新聞標題。無資料回空。"""
-    scores = (sports or {}).get("scores") or {}
+    """體育快訊卡:CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜 + 新聞標題。無資料回空。"""
     news = (sports or {}).get("news") or {}
-    if not scores and not any(news.values()):
+    cpbl = (sports or {}).get("cpbl") or []
+    nba = (sports or {}).get("nba") or []
+    standings = (sports or {}).get("standings") or {}
+    if not (cpbl or nba or standings or any(news.values())):
         return ""
     blocks = []
-    for league in ("MLB", "NBA"):
-        games = scores.get(league)
-        if games is None:
-            continue
-        if games:
-            rows = "　".join(
-                f"<span style='white-space:nowrap;'>{g['text']}</span>"
-                for g in games if g.get("final"))
-            note = next((g["note"] for g in games if g.get("note")), "")
-            note_html = (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(note)}</div>"
-                         if note else "")
-            blocks.append(
-                f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{league} 昨日比分</b>"
-                f"<div style='font-size:13px;color:#334155;line-height:1.9;'>{rows or '比賽進行中/未開打'}</div>"
-                f"{note_html}</div>")
-        else:
-            blocks.append(
-                f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{league}</b>"
-                f"<span style='font-size:12px;color:#94a3b8;'> 昨日無賽事</span></div>")
-    standings = (sports or {}).get("standings") or {}
+    if cpbl:
+        rows = "".join(
+            f"<tr><td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
+            f"font-size:13px;color:#0f172a;'>{t['rank']}. <b>{htmllib.escape(t['team'])}</b></td>"
+            f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;"
+            f"font-size:13px;'>{t['wdl']}</td>"
+            f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;"
+            f"font-size:13px;'>{t['pct']}</td>"
+            f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;"
+            f"font-size:13px;color:#64748b;'>{htmllib.escape(t['gb'] or '-')}</td></tr>"
+            for t in cpbl)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒戰績</b>"
+            "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
+            "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
+            "font-size:11px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
+            "text-align:right;font-size:11px;color:#64748b;'>勝-和-敗</th>"
+            "<th style='padding:4px 10px;text-align:right;font-size:11px;color:#64748b;'>勝率</th>"
+            "<th style='padding:4px 10px;text-align:right;font-size:11px;color:#64748b;'>勝差</th></tr>"
+            + rows + "</table></div>")
+    if nba:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
+            f"{g.get('date', '')}　{g['text']}"
+            + (f"　<span style='color:#b91c1c;font-weight:700;'>{htmllib.escape(g['series'])}</span>"
+               if g.get("series") else "")
+            + (f"<div style='font-size:11px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
+               if g.get("note") else "")
+            + "</div>"
+            for g in nba)
+        blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}</div>")
     if standings:
         seg = "　|　".join(
             f"<b>{lg}</b> " + "、".join(f"{t['team']} {t['record']}" for t in teams)
             for lg, teams in standings.items())
         blocks.append(f"<div style='margin:8px 0;font-size:12px;color:#475569;'>"
-                      f"🏆 MLB 戰績前三:{seg}</div>")
+                      f"MLB 戰績前三:{seg}</div>")
     for label in ("中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:
@@ -10529,7 +10648,16 @@ def load_podcast_digest(max_age_hours: int = 48) -> list[dict]:
                 continue
             if (now - ts).total_seconds() / 3600 <= max_age_hours:
                 out.append({"show": show.get("name", ""), **ep})
-    out.sort(key=lambda e: e.get("processed_at", ""), reverse=True)
+    # 顯示順序:台灣節目優先(依熱門度),外國節目殿後(使用者要求)
+    display_order = [
+        "股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
+        "美股投資學", "財經一路發", "財經M平方",
+        "FT News Briefing", "WSJ What's News", "Wall Street Breakfast",
+        "Unhedged (FT)", "Odd Lots", "Money Talks (Economist)",
+        "Animal Spirits", "Invest Like the Best",
+    ]
+    rank = {name: i for i, name in enumerate(display_order)}
+    out.sort(key=lambda e: rank.get(e.get("show", ""), 99))
     return out
 
 
@@ -10566,7 +10694,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
     cards = []
-    for ep in episodes[:10]:   # 節目多時控制信件長度(load 端已每節目只取最新一集)
+    for ep in episodes[:14]:   # 節目多時控制信件長度(load 端已每節目只取最新一集)
         d = ep.get("digest") or {}
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
@@ -10579,7 +10707,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
             disp = f"{name}（{code}）" if code else name
             check = _podcast_ticker_crosscheck(t, snapshot)
             check_html = (f"<div style='font-size:11px;color:#0369a1;margin-top:2px;'>"
-                          f"↔ {htmllib.escape(check)}</div>") if check else ""
+                          f"對照:{htmllib.escape(check)}</div>") if check else ""
             ticker_rows += (
                 f"<div style='padding:6px 0;border-bottom:1px dashed #e2e8f0;'>"
                 f"<b style='color:{color};'>[{label}]</b> "
@@ -10601,7 +10729,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
             f"<div style='border:1px solid #e2e8f0;border-radius:10px;padding:14px;"
             f"margin:10px 0;background:#ffffff;'>"
             f"<div style='font-size:14px;font-weight:700;color:#0f172a;'>"
-            f"🎙 {htmllib.escape(str(ep.get('show', '')))}"
+            f"{htmllib.escape(str(ep.get('show', '')))}"
             f"<span style='font-weight:400;color:#64748b;font-size:12px;'> ・ "
             f"{htmllib.escape(str(ep.get('title', ''))[:60])}</span></div>"
             f"<ul style='margin:8px 0;padding-left:20px;font-size:13px;color:#1f2937;"
@@ -10610,11 +10738,11 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#faf5ff;border-left:5px solid #9333ea;border-radius:4px;">'
-        'Podcast 重點（股癌 / 財經皓角 / 財報狗）</h2>'
+        'Podcast 重點（台灣節目在前・國際在後）</h2>'
         + "".join(cards)
         + "<p style='font-size:11px;color:#94a3b8;margin:4px 0;'>"
           "※ 以上為主持人個人觀點之摘要(AI 轉錄,可能有誤),非本報建議;"
-          "「↔」為與本報法人/動能資料的對照,不納入股價模型。</p>")
+          "「對照」為與本報法人/動能資料的對照,不納入股價模型。</p>")
 
 
 def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
@@ -10662,6 +10790,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     summary_text = _extract_summary(analysis_for_render)
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
+    # 十二(立場敘述/價位/操作/風險)上移到頂端結論卡,body 中移除十二、十三避免重複
+    stance_detail = _extract_stance_section(analysis_for_render)
+    analysis_for_render = _strip_llm_sections(
+        analysis_for_render, ("我的明確立場", "一句話總結"))
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
     podcast_html = _render_podcast_html(
@@ -10870,12 +11002,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     taiex_pred = quotes.get("TAIEX_PRED", {}) or {}
     taiex_html = ""
     if taiex_pred.get("pred_open"):
-        # 使用者回饋:權重屬內部計算細節,不顯示(縮放邏輯仍在後台運作)
-        signal_rows = "".join(
-            f"<tr><td style='padding:6px 12px;color:#475569;font-size:13px;'>{s['name']}</td>"
-            f"<td style='padding:6px 12px;text-align:right;font-variant-numeric:tabular-nums;'>{s['value']:+.2f}%</td></tr>"
-            for s in taiex_pred.get("signals", [])
-        )
+        # 使用者回饋:SOX/TSM/夜盤個別訊號屬內部計算,信件只顯示最終預測結果
+        signal_rows = ""
         # 顯示用的「最終漲跌幅」必須從『校正後 pred_open』回推,跟頭條數字一致;
         # 否則信件會出現「漲跌 +0.18%」但「預測點位 -0.01%」的怪現象（校正改了 pred_open 卻沒改 weighted_pct）。
         raw_pct = taiex_pred.get("weighted_pct")
@@ -11118,7 +11246,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 low_confidence_note = (
                     "<p style='font-size:12px;color:#991b1b;background:#fef2f2;"
                     "border-left:4px solid #dc2626;padding:8px 10px;margin:8px 0;line-height:1.6;'>"
-                    "<b>⚠ 模型熔斷中：</b>rolling-origin 回測顯示 Top5 淨報酬為負，"
+                    "<b>模型熔斷中：</b>rolling-origin 回測顯示 Top5 淨報酬為負，"
                     "本表已<b>移除 ML 預測組件</b>（勝過大盤機率 / 預期報酬不計分），"
                     "僅反映籌碼、動能與營收結構；下方預測價位僅供參考，<b>不構成選股訊號</b>。"
                     "</p>"
@@ -11476,7 +11604,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
-    summary_bar = _render_summary_bar(summary_text, _htmllib)
+    summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式） =====
     analysis_html = _md_to_html(analysis_for_render)

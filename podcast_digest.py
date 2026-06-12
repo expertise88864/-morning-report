@@ -83,8 +83,15 @@ PODCASTS = [
 DAILY_BUDGET_MINUTES = float(os.getenv("PODCAST_DAILY_BUDGET_MIN", "300"))
 
 DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目的逐字稿(機器轉錄,可能有錯字,
-請依上下文自行校正,尤其公司名與數字;節目可能是英文,**摘要一律用繁體中文**)。
-請整理重點,輸出 JSON(繁體中文):
+請依上下文自行校正,尤其公司名與數字)。
+
+【語言鐵則(最重要)】所有輸出欄位一律使用**台灣繁體中文(zh-TW)**:
+- 嚴禁簡體字(寫「臺/台、與、產業、訊號」,不寫「与、产业、信号」)
+- 節目是英文時,summary_points / market_view / action_view / reason 全部翻譯成繁體中文,
+  只有 notable_quote 可保留英文原文
+- 用台灣用語(寫「漲跌幅、營收、晶片」,不寫「涨跌幅、营收、芯片」)
+
+請整理重點,輸出 JSON:
 {
   "summary_points": ["3-6 條本集重點,每條一句話,具體(含數字/事件/邏輯),不要空泛"],
   "tickers": [{"name": "公司或 ETF 名", "code": "台股代號或美股 ticker,不確定就留空字串",

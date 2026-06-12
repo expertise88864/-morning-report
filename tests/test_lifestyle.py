@@ -33,17 +33,20 @@ def test_render_etf_action_card():
 
 def test_render_sports_html():
     sports = {
-        "scores": {
-            "MLB": [{"text": "<b>MIA</b> 2:0 ARI", "final": True, "note": ""}],
-            "NBA": [],
-        },
+        "cpbl": [{"rank": 1, "team": "味全龍", "games": "49", "wdl": "33-0-16",
+                  "pct": "0.673", "gb": "-"}],
+        "nba": [{"text": "SA 106:<b>107 NY</b>", "series": "NY leads series 3-1",
+                 "note": "NBA Finals - Game 4", "date": "06/10"}],
+        "standings": {"美聯": [{"team": "TB", "record": "40-25"}]},
         "news": {"中華職棒": ["兄弟逆轉勝 悍將吞三連敗"], "網球": []},
     }
     h = mr._render_sports_html(sports, htmllib)
     assert "體育快訊" in h
-    assert "MLB 昨日比分" in h and "2:0" in h
-    assert "NBA" in h and "昨日無賽事" in h
-    assert "中華職棒 消息" in h and "兄弟逆轉勝" in h
+    assert "中華職棒戰績" in h and "味全龍" in h and "33-0-16" in h
+    assert "NBA 冠軍賽" in h and "NY leads series 3-1" in h
+    assert "MLB 戰績前三" in h and "TB 40-25" in h
+    assert "MLB 昨日比分" not in h          # 使用者要求移除逐場比分
+    assert "兄弟逆轉勝" in h
     assert mr._render_sports_html({}, htmllib) == ""
 
 

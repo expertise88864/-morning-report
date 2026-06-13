@@ -7921,7 +7921,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
                 subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
                 subprocess.run(
                     ["git", "add", str(STATE_FILE), str(MODEL_HISTORY_FILE),
-                     str(EVENT_TIMELINE_FILE)],
+                     str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE)],
                     check=True,
                     timeout=10,
                 )
@@ -10710,8 +10710,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
 
 
-def load_podcast_digest(max_age_hours: int = 48) -> list[dict]:
-    """讀 podcast_digest.py 產出的摘要,回近 max_age_hours 內的最新集(供渲染/prompt)。"""
+def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
+    """讀 podcast_digest.py 產出的摘要,回「尚未在信件中顯示過」的近期集。
+
+    每集只出現一次(使用者需求):寄信成功後 mark_podcast_episodes_shown 標記
+    shown_at,之後的信不再重複;也因此每集可完整展開全部重點而不擔心信件過長。
+    """
     if not PODCAST_DIGEST_FILE.exists():
         return []
     try:
@@ -10724,7 +10728,9 @@ def load_podcast_digest(max_age_hours: int = 48) -> list[dict]:
     for show in (data or {}).values():
         if not isinstance(show, dict):
             continue
-        for ep in (show.get("episodes") or [])[:1]:   # 每節目只取最新一集
+        for ep in (show.get("episodes") or [])[:2]:   # 每節目最多取 2 集未顯示的新集
+            if ep.get("shown_at"):
+                continue   # 已在先前信件顯示過 → 不再重複
             try:
                 ts = dt.datetime.strptime(
                     ep.get("processed_at", ""), "%Y-%m-%dT%H:%M:%SZ"
@@ -10744,6 +10750,31 @@ def load_podcast_digest(max_age_hours: int = 48) -> list[dict]:
     rank = {name: i for i, name in enumerate(display_order)}
     out.sort(key=lambda e: rank.get(e.get("show", ""), 99))
     return out
+
+
+def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
+    """寄信前把本次顯示的集標記 shown_at,之後的信不再重複出現。
+    寫回 PODCAST_DIGEST_FILE,由 save_history_state 的 git push 一併帶回 repo。"""
+    if not episodes or not PODCAST_DIGEST_FILE.exists():
+        return
+    try:
+        data = json.loads(PODCAST_DIGEST_FILE.read_text(encoding="utf-8"))
+        shown_guids = {str(ep.get("guid")) for ep in episodes if ep.get("guid")}
+        now_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        marked = 0
+        for show in (data or {}).values():
+            if not isinstance(show, dict):
+                continue
+            for ep in show.get("episodes") or []:
+                if str(ep.get("guid")) in shown_guids and not ep.get("shown_at"):
+                    ep["shown_at"] = now_iso
+                    marked += 1
+        if marked:
+            PODCAST_DIGEST_FILE.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"[podcast] 已標記 {marked} 集為已顯示(下次信件不再重複)")
+    except Exception as e:
+        print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
 
 
 def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
@@ -10778,16 +10809,13 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         return ""
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
-    tw_shows = {"股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
-                "美股投資學", "財經一路發", "財經M平方"}
     cards = []
-    for ep in episodes[:14]:   # 節目多時控制信件長度(load 端已每節目只取最新一集)
+    # 每集只出現一次(shown_at 機制),信件不會重複堆疊 → 重點全展開不裁切
+    for ep in episodes[:14]:
         d = ep.get("digest") or {}
-        # 國際節目精簡(重點 5 條、無金句):控長度避開 Gmail 102KB 剪輯,手機少滑兩屏
-        is_tw = str(ep.get("show", "")) in tw_shows
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
-            for p in (d.get("summary_points") or [])[:(10 if is_tw else 5)])
+            for p in (d.get("summary_points") or [])[:15])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
             label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))
@@ -10811,7 +10839,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
                 extras += (f"<div style='font-size:13px;color:#334155;margin-top:6px;'>"
                            f"<b>{label}：</b>{htmllib.escape(val)}</div>")
         quote = str(d.get("notable_quote") or "").strip()
-        if quote and is_tw:   # 金句只留台灣節目(國際精簡)
+        if quote:
             extras += (f"<div style='font-size:12px;color:#64748b;margin-top:6px;"
                        f"font-style:italic;'>「{htmllib.escape(quote)}」</div>")
         cards.append(
@@ -12663,6 +12691,10 @@ def main() -> int:
                 "structured_events": (
                     quotes.get("STRUCTURED_NEWS_EVENTS") or [])[:40],
             })
+        # Podcast 已顯示標記(寫檔後由 save_history_state 的 git push 一併帶回);
+        # DRY_RUN 不標記(沒真的寄信)
+        if os.environ.get("DRY_RUN") != "1":
+            mark_podcast_episodes_shown(quotes.get("PODCAST_DIGEST") or [])
         save_history_state(new_entry, days_to_keep=450)
     except Exception as e:
         print(f"[main] 寫入歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)

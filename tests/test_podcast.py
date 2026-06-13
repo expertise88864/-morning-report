@@ -43,12 +43,32 @@ def test_load_podcast_digest_respects_age_window(tmp_path, monkeypatch):
     path.write_text(json.dumps(_digest_state(_now_iso(1))), encoding="utf-8")
     eps = mr.load_podcast_digest()
     assert len(eps) == 1 and eps[0]["show"] == "股癌"
-    # 72 小時前 → 過期不載入
-    path.write_text(json.dumps(_digest_state(_now_iso(72))), encoding="utf-8")
+    # 超過時效視窗(96h)→ 過期不載入
+    path.write_text(json.dumps(_digest_state(_now_iso(120))), encoding="utf-8")
     assert mr.load_podcast_digest() == []
     # 壞 JSON → 空,不炸
     path.write_text("{not json", encoding="utf-8")
     assert mr.load_podcast_digest() == []
+
+
+def test_podcast_episode_shown_only_once(tmp_path, monkeypatch):
+    """每集只出現一次:寄信後 mark shown_at,之後 load 不再回傳。"""
+    path = tmp_path / "podcast_digest.json"
+    monkeypatch.setattr(mr, "PODCAST_DIGEST_FILE", path)
+    path.write_text(json.dumps(_digest_state(_now_iso(1))), encoding="utf-8")
+    eps = mr.load_podcast_digest()
+    assert len(eps) == 1
+    # 標記已顯示
+    mr.mark_podcast_episodes_shown(eps)
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["gooaye"]["episodes"][0].get("shown_at")
+    # 再 load → 空(不重複出現)
+    assert mr.load_podcast_digest() == []
+    # 重複標記冪等(shown_at 不被覆寫)
+    first_ts = saved["gooaye"]["episodes"][0]["shown_at"]
+    mr.mark_podcast_episodes_shown(eps)
+    saved2 = json.loads(path.read_text(encoding="utf-8"))
+    assert saved2["gooaye"]["episodes"][0]["shown_at"] == first_ts
 
 
 def test_podcast_ticker_crosscheck_rules():

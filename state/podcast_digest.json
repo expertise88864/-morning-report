@@ -3,6 +3,50 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "685bc211-b7dc-478b-9463-53a160c20cdf",
+        "title": "EP670 | 🫡",
+        "published": "Sat, 13 Jun 2026 07:07:21 GMT",
+        "processed_at": "2026-06-13T21:04:03Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX上市後，相關衛星/火箭類股出現大逃殺，資金趁機出貨，需觀察後續是否持續軟腳。",
+            "主持人認為台股大跌可能已結束，除非有新事件，已開始持續買進，不等到季線。",
+            "被動元件漲價成功，且漲價範圍從AI核心料號擴大到中小尺寸，日系廠也開始配貨，驗證需求真實性。",
+            "被動元件本波漲價速度超預期，原本預估需漲6-7次才能到終點，現在可能兩次就到達，但產業擴產節制，週期可能較長。",
+            "Fable模型被美國出口管制，可能影響市場觸及度，並促使資金轉向邊緣AI（Edge）。",
+            "邊緣AI可能在未來一年內爆發，因為地端模型已足夠強大，且高端模型可能面臨監管。",
+            "主持人認為估值是藝術，重點是比別人早看到，而非絕對數字；成長股與價值股界限模糊。",
+            "持有SpaceX類似持有特斯拉，是相挺題材，目標賺錢但不糾結估值，會根據市場表現調整。",
+            "提醒投資者不要在意短期消息如Semi-analysis報告導致的電源族群下跌，那是市場情緒而非理性。",
+            "台股大跌時所有壞消息一次丟出，若未再破底則修正可能結束，應專注驗證是否對投資具毀滅性打擊。",
+            "被動元件漲價成功，券商報告開始跟進上修目標價，但主持人已不在高檔評論股價。",
+            "AI模型發展趨勢：未來一年開放模型可滿足多數需求，地端裝置迎來爆發，H compute成焦點。",
+            "主持人強調注意力是重要資產，應封鎖負面資訊和人，不必討好每個人。",
+            "教育孩子不必過度討好他人，保持禮貌即可，不需為他人情緒負責。",
+            "關於資訊收集，建議多開戶取得券商報告，交易量夠大可開法人戶獲更多資源，但資訊邊際效益遞減，大方向比細節重要。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人持續買進，認為是支持太空夢想，目標賺錢，不糾結估值。"
+            },
+            {
+              "name": "國巨",
+              "code": "2327",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "被動元件漲價成功，料號擴散，產業週期可能較長，後續還有上漲空間。"
+            }
+          ],
+          "market_view": "主持人認為台股修正可能已結束，除非有新事件，已開始持續買進；大跌時所有壞消息一次丟出，若未再破底則行情應已落底。",
+          "action_view": "持續買進，不等到季線；被動元件持股續抱，SpaceX少量參與並觀察；短期消息視為雜訊，不受影響。",
+          "notable_quote": "估值是一個蠻藝術的東西甚至我覺得估值的重點你並不是在估的當下去證一個對錯而是你估在別人的前面"
+        }
+      },
+      {
         "guid": "f208d558-a3a0-4812-a19a-777c69ac31bf",
         "title": "EP669 | 🎈",
         "published": "Wed, 10 Jun 2026 07:37:19 GMT",
@@ -360,6 +404,50 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmqavmwfz007401t5b1kw35xs",
+        "title": "聯電漲幅贏過台積電　產業版圖正在改變？ 2026.06.12",
+        "published": "Sat, 13 Jun 2026 00:02:05 GMT",
+        "processed_at": "2026-06-13T21:08:02Z",
+        "digest": {
+          "summary_points": [
+            "六大頂級投行（花旗、摩根大通、高盛、美銀、法巴、瑞銀）將韓國晶片股（海力士、三星）互換融資利率從SOFR加200bp大幅調升至15%，摩根士丹利關閉新增訂單，主因股價漲幅過大（海力士漲3倍、三星漲175%），台積電也被列入限制行列。",
+            "外資今年賣超台股超過6000億元，其中台積電是主要賣超標的，今年累計賣超64.2萬張，套現1.26兆元，外資持股比例降至69.96%。",
+            "聯電今年股價漲幅達150%，遠超台積電的40%，主因12吋產能滿載、調漲價格，且外資持續買超。",
+            "聯電12吋產能已滿載，是股價從100元漲至140元的關鍵，後續漲價反映供需吃緊。",
+            "AI需求外溢至成熟製程，中國半導體產能不足，台灣成熟製程供不應求，聯電受惠。",
+            "聯電與Intel合作12奈米FinFET平台，利用Intel閒置產能，透過設計合作分潤，不增加資本支出。",
+            "聯電董事長洪嘉聰表示，台積電成熟製程訂單移轉至聯電需再兩年，未來有挪移效應。",
+            "聯電資本支出保守，今年15億美元，較去年16億美元減少，但藉由合作擴充產能。",
+            "外資今年買超聯電144萬張，占發行量11.5%，持股比例升至24.2%。",
+            "聯電五月營收創43個月新高，但營收成長力道不強，毛利率尚未明顯上升。",
+            "聯電CEO王石指出公司六大產品：Drive IC、高壓手機天線、邏輯、PMIC、矽光子、先進封裝。",
+            "聯電發展先進封裝，包括新加坡廠的interposer、深溝槽電容（DTC）技術，目標打入高通等AI裝置供應鏈。",
+            "聯電策略是不砸大錢資本支出，透過設計部門幫助Intel等合作夥伴轉換產線，賺取分潤。",
+            "聯電可能與台積電形成同一產業鏈，例如台積電做GPU、聯電做封裝。",
+            "聯電的矽光子技術與比利時微電子研究中心（imec）合作，布局光電整合CPU。"
+          ],
+          "tickers": [
+            {
+              "name": "聯電",
+              "code": "2303",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "12吋產能滿載、調漲價格，外資持續買超，與Intel合作擴充產能，未來受惠成熟製程訂單挪移。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "外資今年大幅賣超，持股比例降至70%以下，被列入投行風險警示名單，股價漲幅落後大盤。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "聯電現在其實有很多事情同時在發生，可是他又相對的低調，他的訊息很多沒有被揭露出來。"
+        }
+      },
+      {
         "guid": "cmqavfovg009401qoeb3p9xn7",
         "title": "台股下週將變盤？ 2026.06.12",
         "published": "Fri, 12 Jun 2026 11:59:24 GMT",
@@ -663,6 +751,89 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "addc38e8-670e-11f1-8fc7-bff9e686d4ee",
+        "title": "What’s News in Markets: AI Whiplash, SpaceX’s Historic IPO, Knicks Fever",
+        "published": "Sat, 13 Jun 2026 10:00:00 -0000",
+        "processed_at": "2026-06-13T20:51:18Z",
+        "digest": {
+          "summary_points": [
+            "道指周三暴跌創年內最大跌幅，因中東衝突引發油價升通脹擔憂；週四特朗普取消對伊打擊後反彈930點。",
+            "標普500、道瓊、那斯達克本週分別上漲0.65%、0.66%、0.7%，波動劇烈。",
+            "那斯達克過去一週日均波動超2%，為典型水準的兩倍多，凸顯市場波動加劇。",
+            "晶片股成波動核心，三星、SK海力士、Marvell等先跌後漲；SK海力士本週漲近4%，Marvell漲超6%，三星跌約2%。",
+            "AI成長預期過於樂觀的擔憂引發晶片股拋售，但週末情緒逆轉反彈。",
+            "投資者開始尋找AI以外的機會，運輸、金融、材料類股吸引資金流入。",
+            "Old Dominion Freight Line今年漲58%創新高，Ryder System漲46%，Matson漲61%。",
+            "SpaceX昨日上市，為史上最大IPO，首日漲19%，市值約2.1兆美元。",
+            "散戶對SpaceX需求極旺，申請金額超700億美元，但分配極少（有人申請450股僅得1股）。",
+            "部分投資者為參與SpaceX IPO而賣出其他股票，加劇市場波動。",
+            "麥迪遜廣場花園體育（MSG Sports）因尼克隊NBA總決賽表現及分拆提案創新高，今年已漲52%。",
+            "東區決賽主場賽事每場約為公司帶來2000萬美元收入，總決賽更高。"
+          ],
+          "tickers": [
+            {
+              "name": "SK Hynix",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "本週股價反彈近4%，AI需求帶動業績成長"
+            },
+            {
+              "name": "Marvell Technology",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "本週漲超6%，受AI晶片需求前景提振"
+            },
+            {
+              "name": "Samsung",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "本週跌約2%，受AI預期降溫賣壓影響"
+            },
+            {
+              "name": "Old Dominion Freight Line",
+              "code": "ODFL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "今年漲58%創新高，運輸類股受資金追捧"
+            },
+            {
+              "name": "Ryder System",
+              "code": "R",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "今年漲46%創新高，受惠於物流需求"
+            },
+            {
+              "name": "Matson",
+              "code": "MATX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "今年漲61%創新高，運輸類股輪動受益"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "IPO首日漲19%，成為史上最大上市案"
+            },
+            {
+              "name": "Madison Square Garden Sports",
+              "code": "MSGS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因尼克隊季後賽表現及分拆提案創新高，今年漲52%"
+            }
+          ],
+          "market_view": "市場本週受地緣政治與AI交易質疑影響，波動劇烈，但最終小幅收高。投資者對AI晶片股的樂觀情緒降溫，開始關注其他估值較低的板塊。",
+          "action_view": "部分投資者考慮從AI晶片股轉向運輸、金融等類股，並可能為參加SpaceX IPO而減持其他部位。",
+          "notable_quote": "Markets went on a roller coaster ride this week."
+        }
+      },
+      {
         "guid": "5f8be996-664a-11f1-98f8-73196a23bde5",
         "title": "Will SpaceX Skyrocket on Trading Debut?",
         "published": "Fri, 12 Jun 2026 10:30:00 -0000",
@@ -709,6 +880,47 @@
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72496283",
+        "title": "SpaceX enters public orbit",
+        "published": "Fri, 12 Jun 2026 10:09:10 +0000",
+        "processed_at": "2026-06-13T20:52:37Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX IPO 定價每股 135 美元，籌資 750 億美元，估值約 1.8 兆美元，成為史上最大 IPO。",
+            "Seeking Alpha 量化分析師 Steve Kress 認為 SpaceX 不符合其投資標準，因為營收相對較小（180 億美元）且獲利為負。",
+            "David Keller 稱 SpaceX 為遊戲規則改變者，但警告大型 IPO 通常發生在週期後期，引發逆向指標警訊。",
+            "Adobe 公布第二季調整後每股盈餘 5.96 美元，優於預估 5.81 美元；營收 66.2 億美元，優於預估 64.5 億美元，全年財測亦優於預期。",
+            "Adobe 股價當日下跌 6.25%，盤前再跌，儘管財報優於預期；財務長 Dan Dern 將離職。",
+            "川普總統表示與伊朗的協議可能於本週末敲定，但伊朗外交部表示尚未做出最終決定。",
+            "世界銀行將全球成長預測下調至 2.5%，並警告若戰爭嚴重升級可能導致 1.3% 的崩跌。",
+            "那斯達克 100 指數正在進行調整，獎勵贏家並剔除落後者。",
+            "Cintessa Pharmaceuticals 股東將投票表決 Eli Lilly 的收購要約。",
+            "KLA Corporation 在 1 拆 10 股票分割後開始以調整基礎交易。",
+            "歐洲血液學協會大會在斯德哥爾摩開幕，焦點公司包括 Novartis 和 Eli Lilly。",
+            "盤前：股指期貨漲跌互見，原油下跌 4.6% 至 83 美元，比特幣下跌 0.3% 至 63,000 美元，黃金上漲 0.2% 至 42.21 美元。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "SPCX",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師看法分歧：Steve Kress 因缺乏獲利且營收偏小而看空，David Keller 則認為是遊戲規則改變者但提及逆向指標風險。"
+            },
+            {
+              "name": "Adobe",
+              "code": "ADBE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "儘管財報優於預期，股價仍下跌 6.25%，財務長離職增添不確定性。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72502284",
         "title": "Wall Street Roundup: Trillion dollar baby",
@@ -903,6 +1115,33 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "90cd8aa8-11c9-4cd3-813a-b467011c7f57",
+        "title": "Anjney Midha's Plan to Radically Lower the Price of Compute",
+        "published": "Sat, 13 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-13T21:17:45Z",
+        "digest": {
+          "summary_points": [
+            "AI 的進展受到算力、能源和人才的物理限制，導致各家公司爭相調度資源來建立資料中心和訓練模型。",
+            "前沿模型並非單一戰線：Anthropic 在軟體工程領先，OpenAI 在聊天領域領先，字節跳動在影片領域領先，Google 則在科學領域表現突出。",
+            "模型訓練包含四個階段：預訓練（模式識別）、中期訓練（領域特化）、後訓練（部署），以及持續反饋迴圈。",
+            "可驗證的反饋（例如程式碼審查、實驗室實驗）能顯著加速模型改進，而主觀任務（如創意寫作）進展較慢。",
+            "由於研究需求的尖峰特性與長期租約模式，資料中心平均算力利用率低於 70%；AMP PBC 企圖透過軟體將其提升至 95% 以上。",
+            "AMP PBC 將不同晶片類型（Nvidia、AMD 等）標準化為「電網點數」，使閒置算力變成可互換的資源。",
+            "Google 內部的 Borg 系統達到 99% 的利用率；AMP 的共同創辦人曾主導該專案，目前正在為所有實驗室建立類似系統。",
+            "實驗室設計客製化晶片（如微軟的 MAI）是為了掌握供應鏈與改善單位經濟，而非必然為了效能提升。",
+            "AI 算力需求極為強勁：長期租賃價格在 2026 年 1 月至 6 月間翻倍，部分原因是 Claude Code 等突破引發熱潮。",
+            "CEO 呈現兩極分化：親自使用 AI 工具的人理解其「鋸齒狀前沿」；外包理解的人則可能誤用技術。",
+            "模型能力與使用者介面的共同設計（如 Claude Code）能透過對齊模型改進與工具發展來創造突破。",
+            "「鋸齒狀前沿」意味 AI 擅長可驗證的結構化任務，但主觀創意工作仍由人類主導。",
+            "缺乏技術素養而過度依賴 AI 可能導致「外包理解」，產生風險。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "People don't measure the inputs. You should be using the outputs."
+        }
+      },
       {
         "guid": "3cfa0968-658f-4cce-a2df-b466015e5042",
         "title": "How a Vibecoded Newsletter Is Making the Hay Market More Transparent",

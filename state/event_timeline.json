@@ -1,9 +1,9 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 2,
-  "last_seen": "2026-06-13",
-  "latest_title": "Huawei arms HarmonyOS with 2,000 AI agents in challenge to Apple"
+  "days": 3,
+  "last_seen": "2026-06-15",
+  "latest_title": "U.S. and Iran agree on peace deal to end the war, Trump and Pakistan say"
  },
  "litigation:2330": {
   "first_seen": "2026-06-12",
@@ -16,5 +16,17 @@
   "days": 1,
   "last_seen": "2026-06-13",
   "latest_title": "綠指修選罷法等因人設事　白：合情合理合法合憲"
+ },
+ "geopolitical:2327": {
+  "first_seen": "2026-06-15",
+  "days": 1,
+  "last_seen": "2026-06-15",
+  "latest_title": "遭受惡意攻擊，發文感恩大家給❤️五星鼓勵也被系統攔截??? - CMoney"
+ },
+ "litigation:MSFT": {
+  "first_seen": "2026-06-15",
+  "days": 1,
+  "last_seen": "2026-06-15",
+  "latest_title": "微軟因與 AI 有關的股價損失面臨集體訴訟 - Yellow.com"
  }
 }

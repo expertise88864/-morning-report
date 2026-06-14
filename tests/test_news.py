@@ -130,7 +130,8 @@ def test_fetch_news_includes_company_queries(monkeypatch):
                 "published_parsed": _t.gmtime(),   # 現在 → 不會被 cutoff 濾掉
             }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _FakeFeed(url))
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, **kwargs: _FakeFeed(url))
     # 避免真的打 cnyes JSON / 其他 requests
     monkeypatch.setattr(mr.requests, "get",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("blocked")))
@@ -155,7 +156,8 @@ def test_fetch_news_skips_undated_other_sector_items(monkeypatch):
             "link": "https://example.com/sector",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, **kwargs: _Feed())
     assert mr.fetch_news() == []
 
 
@@ -222,7 +224,8 @@ def test_fetch_candidate_company_news(monkeypatch):
                 "published": "Mon, 01 Jun 2026 01:00:00 GMT",
                 "published_parsed": _t.gmtime(),
             }]
-    monkeypatch.setattr(mr.feedparser, "parse", lambda url: _Feed(url))
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, **kwargs: _Feed(url))
     snap = [
         {"code": "3231", "name": "緯創", "breakout": {"score": 80}},
         {"code": "2330", "name": "台積電", "breakout": {"score": 74}},   # exclude

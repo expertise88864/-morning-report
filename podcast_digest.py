@@ -33,7 +33,7 @@ STATE_FILE = Path("state/podcast_digest.json")
 MAX_EPISODE_AGE_HOURS = float(os.getenv("PODCAST_MAX_AGE_H", "72"))
 MAX_AUDIO_MB = 200
 MAX_TRANSCRIPT_CHARS = 60000    # 轉錄文字進 LLM 前的長度上限(~90 分鐘集數也夠)
-KEEP_EPISODES_PER_SHOW = 5
+KEEP_EPISODES_PER_SHOW = 12
 
 # priority 1 = 每天必轉(短/每日/核心);2 = 預算內輪轉(長集深度)。
 # lang: zh/en → whisper 轉錄語言;country → iTunes Search 商店。
@@ -82,6 +82,8 @@ PODCASTS = [
 # 首跑實測:轉錄速度 ~0.18x 音長(147 分音檔僅 25 分轉錄),預算可放寬;
 # 且被擋的集隔天常已超過 48h 齡限而永遠錯過 → 300 分讓單日積壓也消化得完。
 DAILY_BUDGET_MINUTES = float(os.getenv("PODCAST_DAILY_BUDGET_MIN", "300"))
+JOB_BUDGET_SECONDS = float(os.getenv("PODCAST_JOB_BUDGET_MIN", "95")) * 60
+TRANSCRIBE_REALTIME_FACTOR = float(os.getenv("PODCAST_TRANSCRIBE_REALTIME_FACTOR", "0.30"))
 
 DIGEST_PROMPT = """你是財經 podcast 重點整理員。以下是一集節目的逐字稿(機器轉錄,可能有錯字,
 請依上下文自行校正,尤其公司名與數字)。
@@ -126,15 +128,33 @@ def resolve_feed_url(search_term: str, country: str = "TW") -> str:
     return str(results[0].get("feedUrl", "")) if results else ""
 
 
-def _entry_age_hours(entry) -> float:
+def parse_feed_url(url: str, timeout: int = 20):
+    """Fetch podcast RSS with a bounded request, then parse it locally."""
+    response = requests.get(
+        url,
+        timeout=timeout,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/rss+xml,application/xml"},
+    )
+    response.raise_for_status()
+    return feedparser.parse(response.content)
+
+
+def _entry_published_at(entry) -> dt.datetime | None:
     raw = entry.get("published") or entry.get("updated") or ""
     try:
         pub = parsedate_to_datetime(raw)
         if pub.tzinfo is None:
             pub = pub.replace(tzinfo=dt.timezone.utc)
-        return (dt.datetime.now(dt.timezone.utc) - pub).total_seconds() / 3600
+        return pub
     except Exception:
+        return None
+
+
+def _entry_age_hours(entry) -> float:
+    pub = _entry_published_at(entry)
+    if pub is None:
         return float("inf")
+    return (dt.datetime.now(dt.timezone.utc) - pub).total_seconds() / 3600
 
 
 def load_state() -> dict:
@@ -150,8 +170,9 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2),
-                          encoding="utf-8")
+    temp = STATE_FILE.with_suffix(f"{STATE_FILE.suffix}.tmp")
+    temp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp.replace(STATE_FILE)
 
 
 def download_audio(url: str, dest: Path) -> bool:
@@ -281,20 +302,21 @@ def _duration_minutes(entry) -> float:
         return 40.0
 
 
-def find_new_episode(cfg: dict, state: dict):
-    """查單一節目是否有未處理且 48h 內的新集;回 (entry, audio_url, duration_min) 或 None。"""
+def find_new_episodes(cfg: dict, state: dict, limit: int = 5) -> list[tuple]:
+    """Return multiple recent unprocessed episodes so backlog can drain."""
     key, name = cfg["key"], cfg["name"]
     feed_url = resolve_feed_url(cfg["search"], cfg.get("country", "TW"))
     if not feed_url:
         log(f"{name}: iTunes 查無 feed")
-        return None
-    feed = feedparser.parse(feed_url)
+        return []
+    feed = parse_feed_url(feed_url)
     if not feed.entries:
         log(f"{name}: feed 無集數")
-        return None
+        return []
     show = state.setdefault(key, {"name": name, "episodes": []})
-    # 掃前 3 集:跳過已處理/超齡/預告片(<3 分,如 Money Talks 的 Trailer 會佔住 entries[0])
-    for entry in feed.entries[:3]:
+    found = []
+    # 多掃幾集，讓每日多更或前一日預算不足的積壓能在 72 小時內補完。
+    for entry in feed.entries[:12]:
         guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
         if any(ep.get("guid") == guid for ep in show["episodes"]):
             continue
@@ -307,8 +329,16 @@ def find_new_episode(cfg: dict, state: dict):
                           if enc.get("href")), "")
         if not audio_url:
             continue
-        return entry, audio_url, dur
-    return None
+        found.append((entry, audio_url, dur))
+        if len(found) >= limit:
+            break
+    return found
+
+
+def find_new_episode(cfg: dict, state: dict):
+    """Backward-compatible single-episode wrapper."""
+    found = find_new_episodes(cfg, state, limit=1)
+    return found[0] if found else None
 
 
 def process_episode(cfg: dict, state: dict, entry, audio_url: str) -> bool:
@@ -347,26 +377,38 @@ def main() -> int:
         log("缺 DEEPSEEK_API_KEY,結束")
         return 1
     state = load_state()
+    started = time.monotonic()
 
     # 第一輪:盤點所有節目的新集(只打 RSS,便宜)
     pending = []
     for cfg in PODCASTS:
         try:
-            found = find_new_episode(cfg, state)
-            if found:
+            for found in find_new_episodes(cfg, state):
                 pending.append((cfg, *found))
         except Exception as e:
             log(f"{cfg['name']} 盤點失敗: {str(e)[:120]}")
     log(f"盤點完成:{len(pending)} 個節目有新集")
 
     # 第二輪:優先級排序 + 每日轉錄預算(音檔總分鐘),超出者留待明天
-    pending.sort(key=lambda item: (item[0].get("priority", 9), item[3]))
+    # Process older backlog first within each priority. Because process_episode inserts
+    # at index 0, the newest episode ends up first in persisted display order.
+    pending.sort(key=lambda item: (
+        item[0].get("priority", 9),
+        _entry_published_at(item[1]) or dt.datetime.max.replace(tzinfo=dt.timezone.utc),
+        item[3],
+    ))
     used_min = 0.0
     updated = False
     for cfg, entry, audio_url, dur in pending:
         if used_min + dur > DAILY_BUDGET_MINUTES:
             log(f"{cfg['name']}: 超出每日預算({used_min:.0f}+{dur:.0f}"
                 f">{DAILY_BUDGET_MINUTES:.0f} 分),本次跳過")
+            continue
+        # Reserve enough wall time for transcription, summarization, state write and
+        # the workflow's final git commit step. Skipped items remain eligible tomorrow.
+        estimated_seconds = dur * 60 * TRANSCRIBE_REALTIME_FACTOR + 1500
+        if time.monotonic() - started + estimated_seconds > JOB_BUDGET_SECONDS:
+            log(f"{cfg['name']}: 剩餘 job 時間不足以安全完成，留待下次")
             continue
         try:
             if process_episode(cfg, state, entry, audio_url):

@@ -10,7 +10,8 @@ on:
     # 週三 22:00 UTC → 週四 06:00 TPE
     # 週四 22:00 UTC → 週五 06:00 TPE
     # 週五 22:00 UTC → 週六 06:00 TPE   (報週五晚收盤)
-    - cron: "0 22 * * 0,1,2,3,4,5"
+    # 週六 22:00 UTC → 週日 06:00 TPE   (週日綜合輕量信:有新體育/Podcast/政策/醫界才寄)
+    - cron: "0 22 * * *"
   workflow_dispatch:   # 允許手動觸發測試
 
 permissions:
@@ -66,6 +67,8 @@ jobs:
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 思考模式強度：high / medium / low；設 off 可關閉（僅 v4-pro/reasoner 生效）
           DEEPSEEK_REASONING_EFFORT: high
+          LLM_TOTAL_TIMEOUT_SECONDS: "180"
+          LLM_REQUEST_TIMEOUT_SECONDS: "75"
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

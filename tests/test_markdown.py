@@ -16,9 +16,10 @@ def test_md_basic_formatting():
 
 
 def _full_quotes():
-    base = lambda t: {"ticker": t, "date": "2026-05-13", "close": 100.0,
-                      "prev_close": 99.0, "change_pct": 1.01, "high": 101.0,
-                      "low": 98.0, "volume": 1_000_000}
+    def base(t):
+        return {"ticker": t, "date": "2026-05-13", "close": 100.0,
+                "prev_close": 99.0, "change_pct": 1.01, "high": 101.0,
+                "low": 98.0, "volume": 1_000_000}
     return {
         "QQQ": base("QQQ"), "TSM": base("TSM"), "SPY": base("SPY"),
         "USDTWD": 31.0, "USDTWD_prev": 31.1, "MACRO": {},

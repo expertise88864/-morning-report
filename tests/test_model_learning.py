@@ -273,6 +273,75 @@ def test_training_rows_include_next_open_and_close_targets():
     assert row["future_close_return_pct"] == pytest.approx(3)
 
 
+def test_training_rows_use_label_prices_after_stock_leaves_top100():
+    sessions = ["2026-06-01", "2026-06-02"]
+    history = [
+        {"session_date": sessions[0], "taiex_close": 100,
+         "stocks": {"2330": _stock(100)}},
+        {"session_date": sessions[1], "taiex_close": 101,
+         "stocks": {"2454": {**_stock(200), "code": "2454"}},
+         "label_prices": {"2330": {"open": 98, "close": 97}},
+         "label_prices_complete": True},
+    ]
+    row = mr.build_model_training_rows(history, sessions, 1)[0]
+    assert row["code"] == "2330"
+    assert row["future_open_return_pct"] == pytest.approx(-2)
+    assert row["future_close_return_pct"] == pytest.approx(-3)
+
+
+def test_historical_labels_capture_prior_constituents_and_track_attempts():
+    records = {
+        "2026-06-01": {
+            "session_date": "2026-06-01",
+            "stocks": {"2330": _stock(100)},
+        },
+        "2026-06-02": {
+            "session_date": "2026-06-02",
+            "stocks": {"2454": {**_stock(200), "code": "2454"}},
+        },
+    }
+    fetched_days = {
+        "2026-06-02": [
+            {"code": "2330", "open": 98, "close": 97},
+            {"code": "2454", "open": 201, "close": 202},
+        ]
+    }
+
+    assert mr._attach_historical_label_prices(records, fetched_days) == 1
+    assert records["2026-06-02"]["label_prices"]["2330"] == {
+        "open": 98.0,
+        "close": 97.0,
+    }
+    assert records["2026-06-02"]["label_prices_complete"] is True
+    assert records["2026-06-02"]["label_prices_attempts"] == 1
+
+
+def test_training_rows_reject_production_top100_without_complete_labels():
+    sessions = ["2026-06-01", "2026-06-02"]
+    history = [
+        {"session_date": sessions[0], "taiex_close": 100,
+         "model_version": mr.MODEL_VERSION,
+         "universe_method": "daily_point_in_time_top100",
+         "stocks": {"2330": _stock(100)}},
+        {"session_date": sessions[1], "taiex_close": 101,
+         "model_version": mr.MODEL_VERSION,
+         "universe_method": "daily_point_in_time_top100",
+         "stocks": {"2330": _stock(103)}},
+    ]
+    assert mr.build_model_training_rows(history, sessions, 1) == []
+
+
+def test_training_rows_reject_legacy_daily_record_without_complete_labels():
+    sessions = ["2026-06-01", "2026-06-02"]
+    history = [
+        {"session_date": sessions[0], "generated_at": "2026-06-02T06:00:00+08:00",
+         "taiex_close": 100, "stocks": {"2330": _stock(100)}},
+        {"session_date": sessions[1], "generated_at": "2026-06-03T06:00:00+08:00",
+         "taiex_close": 101, "stocks": {"2330": _stock(103)}},
+    ]
+    assert mr.build_model_training_rows(history, sessions, 1) == []
+
+
 def test_platt_fit_returns_calibrated_probability():
     scores = [index / 100 for index in range(-40, 40)]
     labels = [float(score > 0) for score in scores]
@@ -325,7 +394,8 @@ def test_fetch_tw_intelligence_is_bounded_and_prioritizes_official(monkeypatch):
             "published": "Mon, 01 Jun 2026 09:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 2, 6, tzinfo=mr.TPE), per_kind_limit=1)
     assert len(out["policy"]) == 1
@@ -340,7 +410,8 @@ def test_tw_policy_intelligence_includes_recent_month_items(monkeypatch):
             "published": "Wed, 20 May 2026 08:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["policy"]
@@ -356,7 +427,8 @@ def test_tw_medical_intelligence_catches_hospital_suspension_terms(monkeypatch):
             "published": "Tue, 02 Jun 2026 08:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["medical"]
@@ -374,7 +446,8 @@ def test_tw_intelligence_filters_low_value_health_noise(monkeypatch):
             "published": "Tue, 02 Jun 2026 08:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["medical"] == []
@@ -401,7 +474,8 @@ def test_tw_medical_intelligence_drops_routine_admin_and_health_ed(monkeypatch):
              "published": "Tue, 02 Jun 2026 05:30:00 GMT"},
         ]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
     titles = [item["title"] for item in out["medical"]]
@@ -426,7 +500,8 @@ def test_tw_policy_timeline_keeps_most_important_update(monkeypatch):
             "published": "Thu, 21 May 2026 08:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=5)
     titles = [item["title"] for item in out["policy"]]
@@ -742,7 +817,8 @@ def test_tw_intelligence_exposes_source_diagnostics(monkeypatch):
             "published": "Mon, 01 Jun 2026 08:00:00 GMT",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 2, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["diagnostics"]["policy"]["entries"] > 0
@@ -768,7 +844,8 @@ def test_tw_intelligence_official_html_fallback(monkeypatch):
         def raise_for_status(self):
             return None
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: EmptyFeed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: EmptyFeed())
     monkeypatch.setattr(mr.requests, "get", lambda *args, **kwargs: Resp())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
@@ -830,7 +907,8 @@ def test_tw_intelligence_skips_undated_official_html(monkeypatch):
         def raise_for_status(self):
             return None
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: EmptyFeed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: EmptyFeed())
     monkeypatch.setattr(mr.requests, "get", lambda *args, **kwargs: Resp())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
@@ -914,7 +992,8 @@ def test_tw_intelligence_rejects_google_items_without_dates(monkeypatch):
             "link": "https://www.ey.gov.tw/policy",
         }]
 
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *args, **kwargs: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *args, **kwargs: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["policy"] == []

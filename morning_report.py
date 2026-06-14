@@ -23,7 +23,6 @@ import smtplib
 import ssl
 import subprocess
 import sys
-import textwrap
 import time
 from email.message import EmailMessage
 from pathlib import Path
@@ -125,6 +124,29 @@ DEEPSEEK_EXTRACTOR_MODEL = os.environ.get("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-
 # 僅對 v4-pro / reasoner 生效，可顯著提升分析推理深度（成本略升）。
 DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
+LLM_TOTAL_TIMEOUT_SECONDS = float(os.environ.get("LLM_TOTAL_TIMEOUT_SECONDS", "180"))
+LLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LLM_REQUEST_TIMEOUT_SECONDS", "75"))
+_LLM_DEADLINE: Optional[float] = None
+
+
+def _llm_remaining_seconds() -> float:
+    if _LLM_DEADLINE is None:
+        return max(1.0, LLM_REQUEST_TIMEOUT_SECONDS)
+    return max(0.0, _LLM_DEADLINE - time.monotonic())
+
+
+def _llm_request_timeout(cap: Optional[float] = None) -> float:
+    remaining = _llm_remaining_seconds()
+    if remaining < 1.0:
+        raise TimeoutError("LLM 總時間預算已耗盡")
+    return max(1.0, min(remaining, cap or LLM_REQUEST_TIMEOUT_SECONDS))
+
+
+def _llm_sleep(seconds: float) -> None:
+    remaining = _llm_remaining_seconds()
+    if remaining <= 1.0:
+        raise TimeoutError("LLM 總時間預算已耗盡")
+    time.sleep(min(seconds, max(0.0, remaining - 1.0)))
 
 
 def _redact_secret_text(text: str) -> str:
@@ -343,7 +365,6 @@ TW0050_CONSTITUENTS: dict[str, str] = {
     "1605": "華新 — 線纜與不鏽鋼，受惠電網與 AI 資料中心電力建設",
     "2345": "智邦 — 高階交換器/網通設備，AI 資料中心 800G 交換器受惠者",
     "2327": "國巨 — 全球第三大被動元件廠，併購 KEMET 後布局車用/工業利基",
-    "1102": "亞泥 — 水泥次大廠",   # （重複代號保險用）
     "3045": "台灣大 — 電信第二大，併購台灣之星後 5G 規模擴大",
     "4938": "和碩 — Apple iPhone 主要組裝代工，多角化布局伺服器與電動車",
     "2301": "光寶科 — 電源/光電/雲端，AI 伺服器電源代工",
@@ -373,7 +394,6 @@ TW_OTC_HOT: dict[str, str] = {
     "8299": "群聯 — 全球第二大 NAND 控制晶片，AI PC/SSD 受惠",
     "8210": "勤誠 — 伺服器機殼龍頭，AI 機櫃結構主力",
     "5269": "祥碩 — USB/SATA 控制晶片，蘋果/AMD 主要客戶",
-    "6781": "AES-KY — 高效能伺服器 BBU（重複，AI 資料中心電池）",
 }
 
 
@@ -1691,7 +1711,6 @@ def calc_smart_money_score(entry: dict) -> dict:
     day_pct = entry.get("day_pct") or 0
     pct_5d = entry.get("pct_5d")
     foreign_lot = entry.get("foreign_lot") or 0
-    invest_lot = entry.get("invest_lot") or 0
     margin_change = entry.get("margin_change_lot")
 
     # 40 分:法人連買天數(外資 + 投信 加權)
@@ -3607,7 +3626,7 @@ def fetch_news() -> list[dict]:
                         })
                 continue
 
-            feed = feedparser.parse(url)
+            feed = _feedparser_parse_url_with_timeout(url)
             is_sector_source = bool(_other_sector_label_from_source(str(source)))
             for entry in feed.entries[:10]:
                 source_name, source_url = _tw_entry_source(entry)
@@ -3637,7 +3656,7 @@ def fetch_news() -> list[dict]:
     company_hit = 0
     for query, label in GOOGLE_NEWS_COMPANIES:
         try:
-            feed = feedparser.parse(_gnews_rss(query, when="2d"))
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             kept_for_company = 0
             for entry in feed.entries:
                 # 先過濾「近 30h 內」再截斷,避免前幾則剛好是舊聞就整家公司空手(rank 6);
@@ -3703,7 +3722,7 @@ def fetch_candidate_company_news(snapshot: list[dict],
         query = f"{name} {code}" if name else code
         queried += 1
         try:
-            feed = feedparser.parse(_gnews_rss(query, when="2d"))
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:per_query]:
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
@@ -3762,7 +3781,7 @@ def fetch_8k_company_news(sec_filings: list[dict],
     for t in tickers[:max_tickers]:
         try:
             query = _8K_QUERY_BY_TICKER.get(t, f"{t} stock")
-            feed = feedparser.parse(_gnews_rss(query, when="2d"))
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             for entry in feed.entries[:per_query]:
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
@@ -4311,17 +4330,20 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
 
 
 def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
-    import socket
-    old_timeout = socket.getdefaulttimeout()
-    try:
-        socket.setdefaulttimeout(timeout)
-        # 用瀏覽器式 UA + Accept-Language 讓 feedparser 自身抓取也較不易被官方站擋(403)
-        return feedparser.parse(
-            url,
-            agent=_OFFICIAL_HTTP_HEADERS["User-Agent"],
-            request_headers={"Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"]})
-    finally:
-        socket.setdefaulttimeout(old_timeout)
+    """Fetch RSS with a real requests timeout, then parse bytes locally."""
+    response = requests.get(
+        url,
+        timeout=timeout,
+        headers={
+            "User-Agent": _OFFICIAL_HTTP_HEADERS["User-Agent"],
+            "Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"],
+        },
+    )
+    response.raise_for_status()
+    content = getattr(response, "content", None)
+    if content is None:
+        content = str(getattr(response, "text", "")).encode("utf-8")
+    return feedparser.parse(content)
 
 
 def _feed_usable(feed) -> tuple[list, bool]:
@@ -4572,7 +4594,8 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                         "source": f"Google:{idx + 1}",
                     })
             try:
-                feed = feedparser.parse(_gnews_rss(query, when=rss_when))
+                feed = _feedparser_parse_url_with_timeout(
+                    _gnews_rss(query, when=rss_when))
                 for entry in feed.entries[:TW_INTELLIGENCE_GOOGLE_ENTRY_LIMIT.get(kind, 20)]:
                     stats["entries"] += 1
                     raw_time = entry.get("published") or entry.get("updated")
@@ -5201,6 +5224,49 @@ def _backfill_records_from_market_days(days: dict[str, list[dict]],
     return output
 
 
+def _market_day_label_prices(rows: list[dict], needed_codes: set[str]) -> dict[str, dict]:
+    """Extract compact open/close labels for stocks held by prior universes."""
+    output = {}
+    for row in rows or []:
+        code = str(row.get("code") or "")
+        if code not in needed_codes:
+            continue
+        close = _safe_number(row.get("close"))
+        if not close:
+            continue
+        open_price = _safe_number(row.get("open"))
+        output[code] = {
+            "close": close,
+            "open": open_price or None,
+        }
+    return output
+
+
+def _attach_historical_label_prices(records: dict[str, dict],
+                                    fetched_days: dict[str, list[dict]]) -> int:
+    """Attach labels for prior constituents without changing each day's universe."""
+    attached = 0
+    ordered_dates = sorted(records)
+    for session_date, rows in fetched_days.items():
+        if session_date not in records:
+            continue
+        prior_dates = [day for day in ordered_dates if day < session_date][-5:]
+        needed_codes = {
+            str(code)
+            for day in prior_dates
+            for code in (records[day].get("stocks") or {})
+        }
+        label_prices = _market_day_label_prices(rows, needed_codes)
+        records[session_date]["label_prices"] = label_prices
+        records[session_date]["label_prices_complete"] = (
+            len(label_prices) == len(needed_codes))
+        records[session_date]["label_prices_attempts"] = (
+            int(records[session_date].get("label_prices_attempts", 0) or 0) + 1
+        )
+        attached += 1
+    return attached
+
+
 def save_model_history_records(records: list[dict],
                                sessions_to_keep: int = MODEL_HISTORY_SESSIONS) -> None:
     """Merge and persist compact model snapshots in one bounded write."""
@@ -5208,7 +5274,8 @@ def save_model_history_records(records: list[dict],
     def _compact_record(record: dict) -> dict:
         keep_record = {
             "session_date", "model_version", "market_regime", "taiex_close",
-            "universe_method", "structured_events",
+            "universe_method", "structured_events", "label_prices",
+            "label_prices_complete", "label_prices_attempts",
         }
         keep_stock = {
             "code", "name", "industry", "open", "close", "day_pct", "pct_5d",
@@ -5273,32 +5340,54 @@ def backfill_model_history(model_history: list[dict],
         existing[row["session_date"]] = row
 
     desired = sorted(set(sessions))[-MODEL_BACKFILL_TARGET_SESSIONS:]
-    missing = [day for day in desired if day not in existing][:max(0, max_days)]
+    missing = [day for day in desired if day not in existing]
+    label_refresh = [
+        day for day in desired
+        if (
+            day in existing
+            and existing[day].get("label_prices_complete") is not True
+            and int(existing[day].get("label_prices_attempts", 0) or 0) < 3
+        )
+    ][::-1]
+    # Repair recent biased labels first; time-decay makes these the most influential.
+    fetch_targets = (label_refresh + missing)[:max(0, max_days)]
     fetched_days: dict[str, list[dict]] = {}
+    estimated: list[dict] = []
     errors = []
-    if missing:
+    if fetch_targets:
         try:
-            basics = _fetch_twse_listing_basics()
-            for session_date in missing:
+            for session_date in fetch_targets:
                 try:
                     rows = fetch_twse_historical_market_day(session_date)
                     if rows:
                         fetched_days[session_date] = rows
                 except Exception as e:
                     errors.append(f"{session_date}: {e}")
-            estimated = _backfill_records_from_market_days(
-                fetched_days, basics, _historical_taiex_closes(),
-                seed_records=list(existing.values()))
+            missing_days = {
+                day: rows for day, rows in fetched_days.items() if day in missing
+            }
+            if missing_days:
+                estimated = _backfill_records_from_market_days(
+                    missing_days,
+                    _fetch_twse_listing_basics(),
+                    _historical_taiex_closes(),
+                    seed_records=list(existing.values()),
+                )
             for record in estimated:
                 existing[record["session_date"]] = record
+            labels_attached = _attach_historical_label_prices(existing, fetched_days)
         except Exception as e:
             errors.append(str(e))
+            labels_attached = 0
+    else:
+        labels_attached = 0
     merged = sorted(existing.values(), key=lambda item: item.get("session_date", ""))
     if licensed or fetched_days:
         save_model_history_records(merged)
     report = {
         "licensed_records": len(licensed),
-        "estimated_records_added": len(fetched_days),
+        "estimated_records_added": len(estimated) if fetch_targets else 0,
+        "label_records_refreshed": labels_attached,
         "total_records": len(merged),
         "remaining_sessions": max(0, len(desired) - len({
             item.get("session_date") for item in merged})),
@@ -5317,6 +5406,29 @@ def backfill_model_history(model_history: list[dict],
     }
     print(f"[model_backfill] {report}")
     return merged, report
+
+
+def _current_label_prices(model_history: list[dict]) -> tuple[dict[str, dict], bool]:
+    """Capture today's prices for prior universes, including stocks that left Top 100."""
+    needed_codes = {
+        str(code)
+        for record in (model_history or [])[-5:]
+        for code in (record.get("stocks") or {})
+    }
+    if not needed_codes:
+        return {}, True
+    rows = []
+    for raw in _fetch_twse_stock_day_all():
+        code = str(raw.get("Code") or raw.get("證券代號") or "").strip()
+        if code not in needed_codes:
+            continue
+        rows.append({
+            "code": code,
+            "open": _to_float(raw.get("OpeningPrice") or raw.get("開盤價")),
+            "close": _to_float(raw.get("ClosingPrice") or raw.get("收盤價")),
+        })
+    label_prices = _market_day_label_prices(rows, needed_codes)
+    return label_prices, len(label_prices) == len(needed_codes)
 
 
 def _latest_completed_session(sessions: list[str], target_session_date: str) -> Optional[str]:
@@ -6069,14 +6181,28 @@ def build_model_training_rows(model_history: list[dict],
             continue
         current = by_session[session_date]
         future = by_session[future_date]
+        production_universe = (
+            bool(current.get("generated_at"))
+            or current.get("model_version") == MODEL_VERSION
+            or current.get("universe_method") in {
+                "estimated_current_shares",
+                "licensed_point_in_time_archive",
+                "daily_point_in_time_top100",
+            }
+        )
+        if production_universe and future.get("label_prices_complete") is not True:
+            # Using only future Top-100 members would drop losers that leave the index
+            # and make training/backtests optimistically biased.
+            continue
         current_market = _safe_number(current.get("taiex_close"))
         future_market = _safe_number(future.get("taiex_close"))
         if not current_market or not future_market:
             continue
         market_return = (future_market / current_market - 1) * 100
         future_stocks = future.get("stocks") or {}
+        future_labels = future.get("label_prices") or {}
         for code, stock in (current.get("stocks") or {}).items():
-            future_stock = future_stocks.get(code) or {}
+            future_stock = future_stocks.get(code) or future_labels.get(code) or {}
             close = _safe_number(stock.get("close"))
             future_close = _safe_number(future_stock.get("close"))
             if not close or not future_close:
@@ -7874,6 +8000,37 @@ def backfill_actual_opens(history: list[dict]) -> int:
     return filled
 
 
+def _git_commit_and_push_state(paths: list, message: str) -> None:
+    """在 GitHub Actions 上把指定 state 檔 commit + push 回 repo(本機/DRY_RUN 不動作)。
+
+    晨報與週日綜合共用:週日只 push podcast 狀態,不寫入預測歷史(避免與週六的
+    週一預測筆記撞 target_session_date 而互相覆蓋)。
+    """
+    if not (os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("DRY_RUN") != "1"):
+        return
+    try:
+        subprocess.run(["git", "config", "user.name", "morning-report-bot"], check=True, timeout=10)
+        subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
+        subprocess.run(["git", "add", *paths], check=True, timeout=10)
+        # 若無變動就跳過
+        diff = subprocess.run(["git", "diff", "--cached", "--quiet"], timeout=10)
+        if diff.returncode != 0:
+            subprocess.run(["git", "commit", "-m", message], check=True, timeout=10)
+            try:
+                subprocess.run(["git", "push"], check=True, timeout=25)
+            except subprocess.SubprocessError:
+                print("[state] initial push failed; retrying after rebase", file=sys.stderr)
+                subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
+                subprocess.run(["git", "pull", "--rebase", "--autostash"], check=True, timeout=45)
+                subprocess.run(["git", "push"], check=True, timeout=30)
+            print("[state] 已 push 回 repo")
+        else:
+            print("[state] 無變動，跳過 commit")
+    except subprocess.SubprocessError as e:
+        print(f"[state] git push 失敗（不影響寄信）: {e}", file=sys.stderr)
+
+
 def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
     """
     新增一筆當日記憶，並維持只保留近 N 天。
@@ -7915,42 +8072,22 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         print(f"[state] 已寫入記憶（共 {len(existing)} 筆）")
 
         # 在 GitHub Actions 環境中 commit + push 回 repo
-        if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("DRY_RUN") != "1":
-            try:
-                subprocess.run(["git", "config", "user.name", "morning-report-bot"], check=True, timeout=10)
-                subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
-                subprocess.run(
-                    ["git", "add", str(STATE_FILE), str(MODEL_HISTORY_FILE),
-                     str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE)],
-                    check=True,
-                    timeout=10,
-                )
-                # 若無變動就跳過
-                diff = subprocess.run(["git", "diff", "--cached", "--quiet"], timeout=10)
-                if diff.returncode != 0:
-                    subprocess.run(
-                        ["git", "commit", "-m", f"chore: update state {date_str} [skip ci]"],
-                        check=True, timeout=10,
-                    )
-                    try:
-                        subprocess.run(["git", "push"], check=True, timeout=25)
-                    except subprocess.SubprocessError:
-                        print("[state] initial push failed; retrying after rebase",
-                              file=sys.stderr)
-                        subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
-                        subprocess.run(
-                            ["git", "pull", "--rebase", "--autostash"],
-                            check=True,
-                            timeout=45,
-                        )
-                        subprocess.run(["git", "push"], check=True, timeout=30)
-                    print("[state] 已 push 回 repo")
-                else:
-                    print("[state] 無變動，跳過 commit")
-            except subprocess.SubprocessError as e:
-                print(f"[state] git push 失敗（不影響寄信）: {e}", file=sys.stderr)
+        _git_commit_and_push_state(
+            [str(STATE_FILE), str(MODEL_HISTORY_FILE),
+             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE)],
+            f"chore: update state {date_str} [skip ci]")
     except Exception as e:
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)
+
+
+def persist_delivered_report_state(entry: Optional[dict],
+                                   podcast_episodes: list[dict],
+                                   mark_podcasts: bool) -> None:
+    """Persist delivery state; production callers invoke this only after SMTP succeeds."""
+    if mark_podcasts:
+        mark_podcast_episodes_shown(podcast_episodes)
+    if entry:
+        save_history_state(entry, days_to_keep=450)
 
 
 def classify_news_importance(news: list[dict]) -> list[dict]:
@@ -7972,8 +8109,6 @@ def classify_news_importance(news: list[dict]) -> list[dict]:
         tw_hit = _matches_any(text, TW_POLICY)
 
         # 評分邏輯：Fed/數據/重大地緣 → critical；一般地緣/台灣政策 → high
-        hits = [h for h in (fed_hit, econ_hit, geo_hit, tw_hit) if h]
-
         if fed_hit and econ_hit:
             # Fed + 經濟數據同時出現 = 政策轉向訊號
             n["importance"] = "critical"
@@ -8866,7 +9001,7 @@ def _call_gemini_once(model: str, prompt: str) -> str:
             "maxOutputTokens": max(8192, LLM_REPORT_MAX_TOKENS),
         },
     }
-    r = requests.post(url, json=payload, timeout=90,
+    r = requests.post(url, json=payload, timeout=_llm_request_timeout(),
                       headers={"x-goog-api-key": GEMINI_API_KEY})
     r.raise_for_status()
     data = r.json()
@@ -8906,7 +9041,7 @@ def _call_gemini(prompt: str) -> str:
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
                     print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
-                    time.sleep(wait)
+                    _llm_sleep(wait)
                     continue
                 print(f"[llm] {model} 最終失敗: {last_err}", file=sys.stderr)
                 break  # 進入下一個 fallback 模型
@@ -8914,7 +9049,7 @@ def _call_gemini(prompt: str) -> str:
                 last_err = e
                 print(f"[llm] {model} 異常: {_redact_secret_text(str(e))}", file=sys.stderr)
                 if attempt < 3:
-                    time.sleep(5)
+                    _llm_sleep(5)
                     continue
                 break
     raise RuntimeError(f"Gemini 所有降級模型皆失敗: {last_err}")
@@ -8925,7 +9060,10 @@ def _call_anthropic(prompt: str) -> str:
     import anthropic  # 延後 import，未用就不需安裝
     if not ANTHROPIC_API_KEY:
         raise RuntimeError("缺 ANTHROPIC_API_KEY 環境變數")
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(
+        api_key=ANTHROPIC_API_KEY,
+        timeout=_llm_request_timeout(),
+    )
     msg = client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=LLM_REPORT_MAX_TOKENS,
@@ -8982,7 +9120,10 @@ def _call_deepseek(prompt: str) -> str:
                         and ("pro" in model or "reasoner" in model)):
                     payload["thinking"] = {"type": "enabled"}
                     payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
-                r = requests.post(url, json=payload, headers=headers, timeout=120)
+                r = requests.post(
+                    url, json=payload, headers=headers,
+                    timeout=_llm_request_timeout(),
+                )
                 r.raise_for_status()
                 data = r.json()
                 choices = data.get("choices") or []
@@ -9017,7 +9158,7 @@ def _call_deepseek(prompt: str) -> str:
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))
                     print(f"[llm] DeepSeek HTTP {code}，{wait}s 後重試", file=sys.stderr)
-                    time.sleep(wait)
+                    _llm_sleep(wait)
                     continue
                 break
             except Exception as e:
@@ -9025,7 +9166,7 @@ def _call_deepseek(prompt: str) -> str:
                 print(f"[llm] DeepSeek {model} 異常: {_redact_secret_text(str(e))}",
                       file=sys.stderr)
                 if attempt < 3:
-                    time.sleep(5)
+                    _llm_sleep(5)
                     continue
                 break
     raise RuntimeError(f"DeepSeek 所有模型皆失敗: {last_err}")
@@ -9194,8 +9335,22 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
 
 
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
-                       news: list[dict], tw0050: list[dict] | None = None,
-                       calibration: str = "") -> str:
+                      news: list[dict], tw0050: list[dict] | None = None,
+                      calibration: str = "") -> str:
+    """Run report generation inside one shared wall-clock budget."""
+    global _LLM_DEADLINE
+    previous_deadline = _LLM_DEADLINE
+    _LLM_DEADLINE = time.monotonic() + max(1.0, LLM_TOTAL_TIMEOUT_SECONDS)
+    try:
+        return _call_llm_analysis_impl(
+            quotes, fair, predictions, news, tw0050, calibration)
+    finally:
+        _LLM_DEADLINE = previous_deadline
+
+
+def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
+                            news: list[dict], tw0050: list[dict] | None = None,
+                            calibration: str = "") -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。任何環節失敗都回傳備援文字而非 raise，
     確保 main() 一定能寄出基本版晨報。"""
     try:
@@ -9289,7 +9444,8 @@ def _md_to_html(text: str) -> str:
         # 標題 #### / ### / ## / #
         m = re.match(r"^(#{1,6})\s+(.+)$", line)
         if m:
-            flush_para(); close_lists()
+            flush_para()
+            close_lists()
             level = len(m.group(1))
             content = m.group(2).strip()
             out.append(f"<h{level}>{content}</h{level}>")
@@ -9991,7 +10147,6 @@ def _render_weather_html(locs: list[dict]) -> str:
     parts = "　|　".join(
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
         for loc in locs)
-    rain = max(loc["rain_prob"] for loc in locs)
     return (
         f"<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"
         f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
@@ -10481,6 +10636,7 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
 
 # ===== 體育快訊(醫界區下方;ESPN 公開 API 比分 + Google News 消息) =====
 SPORTS_NEWS_QUERIES = [
+    ("世足", "世界盃足球 OR FIFA World Cup"),
     ("MLB", "MLB 大聯盟"),
     ("NBA", "NBA"),
     ("中華職棒", "中華職棒"),
@@ -10515,10 +10671,11 @@ def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
         played_sum = 0
         for m in row_re.finditer(block):
             rank, team = int(m.group(1)), m.group(2).strip()
-            played, w, l, t = int(m.group(4)), int(m.group(5)), int(m.group(6)), int(m.group(7))
-            pct = w / (w + l) if (w + l) else 0.0
+            played, wins, losses, ties = (
+                int(m.group(4)), int(m.group(5)), int(m.group(6)), int(m.group(7)))
+            pct = wins / (wins + losses) if (wins + losses) else 0.0
             rows.append({"rank": rank, "team": team, "games": str(played),
-                         "wdl": f"{w}-{t}-{l}", "pct": f"{pct:.3f}",
+                         "wdl": f"{wins}-{ties}-{losses}", "pct": f"{pct:.3f}",
                          "gb": m.group(8).strip().replace("–", "-")})
             played_sum += played
         if len(rows) >= 4 and played_sum > best_games:
@@ -10558,10 +10715,125 @@ def fetch_cpbl_standings() -> list[dict]:
         return []
 
 
-def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
-    """CPBL 戰績表 + NBA 冠軍賽(最近一場+系列賽戰況)+ MLB 戰績榜 + 體育新聞。
+# 世足國家隊英文→繁中對照(ESPN 回傳英文隊名)。查無對照時回原英文,不漏資料。
+_WC_TEAM_ZH = {
+    "Argentina": "阿根廷", "Brazil": "巴西", "France": "法國", "Spain": "西班牙",
+    "England": "英格蘭", "Portugal": "葡萄牙", "Germany": "德國", "Netherlands": "荷蘭",
+    "Belgium": "比利時", "Italy": "義大利", "Croatia": "克羅埃西亞", "Uruguay": "烏拉圭",
+    "Colombia": "哥倫比亞", "Mexico": "墨西哥", "United States": "美國", "USA": "美國",
+    "Canada": "加拿大", "Japan": "日本", "South Korea": "南韓", "Korea Republic": "南韓",
+    "Australia": "澳洲", "Morocco": "摩洛哥", "Senegal": "塞內加爾", "Switzerland": "瑞士",
+    "Denmark": "丹麥", "Poland": "波蘭", "Serbia": "塞爾維亞", "Ecuador": "厄瓜多",
+    "Ghana": "迦納", "Cameroon": "喀麥隆", "Nigeria": "奈及利亞", "Egypt": "埃及",
+    "Tunisia": "突尼西亞", "Algeria": "阿爾及利亞", "Ivory Coast": "象牙海岸",
+    "Cote d'Ivoire": "象牙海岸", "Saudi Arabia": "沙烏地阿拉伯", "Iran": "伊朗",
+    "Qatar": "卡達", "Iraq": "伊拉克", "Jordan": "約旦", "Uzbekistan": "烏茲別克",
+    "Austria": "奧地利", "Norway": "挪威", "Sweden": "瑞典", "Scotland": "蘇格蘭",
+    "Wales": "威爾斯", "Turkey": "土耳其", "Ukraine": "烏克蘭", "Czech Republic": "捷克",
+    "Czechia": "捷克", "Hungary": "匈牙利", "Greece": "希臘", "Romania": "羅馬尼亞",
+    "Slovakia": "斯洛伐克", "Slovenia": "斯洛維尼亞", "Paraguay": "巴拉圭", "Peru": "秘魯",
+    "Chile": "智利", "Venezuela": "委內瑞拉", "Bolivia": "玻利維亞", "Costa Rica": "哥斯大黎加",
+    "Panama": "巴拿馬", "Honduras": "宏都拉斯", "Jamaica": "牙買加", "New Zealand": "紐西蘭",
+    "South Africa": "南非", "Mali": "馬利", "Burkina Faso": "布吉納法索", "DR Congo": "剛果民主共和國",
+    "Congo DR": "剛果民主共和國", "Cape Verde": "維德角", "Angola": "安哥拉", "Gabon": "加彭",
+    "China": "中國", "China PR": "中國", "Cuba": "古巴", "Curacao": "古拉索", "Curaçao": "古拉索",
+    "Haiti": "海地", "El Salvador": "薩爾瓦多", "Bosnia-Herzegovina": "波士尼亞",
+    "Türkiye": "土耳其",
+}
 
-    使用者需求:中職要完整戰績表;NBA 要冠軍賽比分與系列賽狀態;不要 MLB 逐場比分。
+
+def _wc_zh(name: str) -> str:
+    name = (name or "").strip()
+    return _WC_TEAM_ZH.get(name, name)
+
+
+# 2026 世界盃賽期(美/加/墨,2026-06-11 ~ 2026-07-19)。賽期外不抓,避免 ESPN
+# 殘留上屆分組戰績被誤當「目前累計」顯示(stale standings)。下屆需更新此區間,
+# 與既有 FOMC_2026 硬編慣例一致。
+_WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 19))
+
+
+def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """世足(FIFA World Cup):昨日/最新完賽戰績 + 各分組累計戰績表。
+
+    使用者需求:世足要最新戰績、昨日戰績、目前累計戰績表。
+    資料源 ESPN(免費,無金鑰)。賽期外回空 dict,渲染端自動略過。
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    out: dict = {"results": [], "groups": []}
+    # 賽期外直接略過:既省呼叫,也避免顯示上屆殘留戰績表。
+    if not (_WC_WINDOW[0] <= now_tpe.date() <= _WC_WINDOW[1]):
+        return out
+    # 昨日+今日(台北)完賽比分 —— 世足多在台北凌晨/上午開打,跨兩個 ESPN 日期較保險
+    seen = set()
+    for back in (1, 0):
+        day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
+        try:
+            r = requests.get(
+                "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
+                params={"dates": day}, timeout=15)
+            r.raise_for_status()
+            for ev in r.json().get("events", []):
+                comp = (ev.get("competitions") or [{}])[0]
+                teams = comp.get("competitors", [])
+                if len(teams) != 2:
+                    continue
+                home = next((t for t in teams if t.get("homeAway") == "home"), teams[0])
+                away = next((t for t in teams if t.get("homeAway") == "away"), teams[1])
+                st = (((ev.get("status") or {}).get("type")) or {})
+                if not st.get("completed"):
+                    continue  # 只列已完賽,未開賽/進行中不列「昨日戰績」
+                gid = ev.get("id") or ev.get("uid")
+                if gid in seen:
+                    continue
+                seen.add(gid)
+                ht = _wc_zh((home.get("team") or {}).get("displayName")
+                            or (home.get("team") or {}).get("name", "?"))
+                at = _wc_zh((away.get("team") or {}).get("displayName")
+                            or (away.get("team") or {}).get("name", "?"))
+                detail = st.get("shortDetail") or st.get("detail") or "完賽"
+                out["results"].append({
+                    "text": f"{at} {away.get('score', '-')} : {home.get('score', '-')} {ht}",
+                    "status": str(detail)[:18],
+                    "date": f"{day[4:6]}/{day[6:]}",
+                })
+        except Exception as e:
+            print(f"[sports] 世足比分抓取失敗({day}): {e}", file=sys.stderr)
+    out["results"] = out["results"][:14]
+    # 各分組累計戰績表
+    try:
+        r = requests.get(
+            "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings",
+            timeout=15)
+        r.raise_for_status()
+        for grp in r.json().get("children", []):
+            gname = str(grp.get("name") or grp.get("abbreviation") or "").strip()
+            gname = gname.replace("Group ", "").strip() + " 組" if gname else "分組"
+            rows = []
+            for en in (grp.get("standings") or {}).get("entries", []):
+                stats = {s.get("name"): s for s in en.get("stats", [])}
+
+                def _v(key):
+                    return int(float((stats.get(key) or {}).get("value") or 0))
+                rows.append({
+                    "team": _wc_zh((en.get("team") or {}).get("displayName")
+                                   or (en.get("team") or {}).get("name", "?")),
+                    "gp": _v("gamesPlayed"), "w": _v("wins"),
+                    "d": _v("ties") or _v("draws"), "l": _v("losses"),
+                    "pts": _v("points"),
+                })
+            if rows:
+                out["groups"].append({"name": gname, "rows": rows})
+    except Exception as e:
+        print(f"[sports] 世足分組戰績抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """CPBL 戰績表 + NBA 冠軍賽(最近一場+系列賽戰況)+ MLB 戰績榜 + 世足 + 體育新聞。
+
+    使用者需求:中職要完整戰績表;NBA 要冠軍賽比分與系列賽狀態;不要 MLB 逐場比分;
+    世足要最新/昨日戰績與分組累計戰績表。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
     out: dict = {"news": {}}
@@ -10624,11 +10896,18 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         out["standings"] = standings
     except Exception as e:
         print(f"[sports] MLB 戰績抓取失敗: {e}", file=sys.stderr)
+    # 世足(賽期內才有資料,非賽期回空,渲染端自動略過)
+    try:
+        wc = fetch_worldcup(now_tpe)
+        if wc.get("results") or wc.get("groups"):
+            out["worldcup"] = wc
+    except Exception as e:
+        print(f"[sports] 世足抓取失敗: {e}", file=sys.stderr)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
         try:
-            feed = feedparser.parse(_gnews_rss(query, when="1d"))
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="1d"))
             titles = []
             for entry in feed.entries:
                 if len(titles) >= 3:
@@ -10649,9 +10928,44 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     cpbl = (sports or {}).get("cpbl") or []
     nba = (sports or {}).get("nba") or []
     standings = (sports or {}).get("standings") or {}
-    if not (cpbl or nba or standings or any(news.values())):
+    worldcup = (sports or {}).get("worldcup") or {}
+    wc_results = worldcup.get("results") or []
+    wc_groups = worldcup.get("groups") or []
+    if not (cpbl or nba or standings or wc_results or wc_groups or any(news.values())):
         return ""
     blocks = []
+    if wc_results or wc_groups:
+        wc_inner = []
+        if wc_results:
+            lines = "".join(
+                f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+                f"<span style='color:#94a3b8;'>{g.get('date', '')}</span>　{htmllib.escape(g['text'])}"
+                f"　<span style='color:#16a34a;font-size:11px;'>{htmllib.escape(g.get('status', ''))}</span>"
+                f"</div>"
+                for g in wc_results)
+            wc_inner.append(
+                f"<div style='margin:6px 0;'><b style='color:#0f172a;'>近期戰績</b>{lines}</div>")
+        if wc_groups:
+            grp_blocks = []
+            for grp in wc_groups:
+                rows = "".join(
+                    f"<tr><td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;"
+                    f"font-size:12px;color:#0f172a;'>{i}. {htmllib.escape(t['team'])}</td>"
+                    f"<td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;text-align:right;"
+                    f"font-size:12px;color:#64748b;'>{t['gp']}賽 {t['w']}勝{t['d']}和{t['l']}敗</td>"
+                    f"<td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;text-align:right;"
+                    f"font-size:12px;font-weight:700;color:#0f172a;'>{t['pts']}分</td></tr>"
+                    for i, t in enumerate(grp["rows"], 1))
+                grp_blocks.append(
+                    f"<div style='margin:6px 0;'>"
+                    f"<span style='font-size:12px;font-weight:700;color:#16a34a;'>{htmllib.escape(grp['name'])}</span>"
+                    f"<table style='width:100%;border-collapse:collapse;margin-top:2px;'>{rows}</table></div>")
+            wc_inner.append(
+                "<div style='margin:6px 0;'><b style='color:#0f172a;'>分組累計戰績</b>"
+                + "".join(grp_blocks) + "</div>")
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"
+            + "".join(wc_inner) + "</div>")
     if cpbl:
         rows = "".join(
             f"<tr><td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
@@ -10689,7 +11003,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for lg, teams in standings.items())
         blocks.append(f"<div style='margin:8px 0;font-size:12px;color:#475569;'>"
                       f"MLB 戰績前三:{seg}</div>")
-    for label in ("中華職棒", "網球", "MLB", "NBA"):
+    for label in ("世足", "中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:
             continue
@@ -10702,7 +11016,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#f0fdf4;border-left:5px solid #16a34a;border-radius:4px;">'
-        '體育快訊（MLB / NBA / 中職 / 網球）</h2>'
+        '體育快訊（世足 / MLB / NBA / 中職 / 網球）</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
         'background:#ffffff;">' + "".join(blocks) + "</div>")
 
@@ -10728,7 +11042,8 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
     for show in (data or {}).values():
         if not isinstance(show, dict):
             continue
-        for ep in (show.get("episodes") or [])[:2]:   # 每節目最多取 2 集未顯示的新集
+        unshown_count = 0
+        for ep in show.get("episodes") or []:
             if ep.get("shown_at"):
                 continue   # 已在先前信件顯示過 → 不再重複
             try:
@@ -10739,6 +11054,9 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
                 continue
             if (now - ts).total_seconds() / 3600 <= max_age_hours:
                 out.append({"show": show.get("name", ""), **ep})
+                unshown_count += 1
+                if unshown_count >= 2:
+                    break
     # 顯示順序:台灣節目優先(依熱門度),外國節目殿後(使用者要求)
     display_order = [
         "股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
@@ -10753,8 +11071,9 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
 
 
 def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
-    """寄信前把本次顯示的集標記 shown_at,之後的信不再重複出現。
-    寫回 PODCAST_DIGEST_FILE,由 save_history_state 的 git push 一併帶回 repo。"""
+    """寄信成功後把本次顯示的集標記 shown_at,之後的信不再重複出現。
+    寫回 PODCAST_DIGEST_FILE;晨報由 save_history_state、週日綜合由
+    _git_commit_and_push_state 各自 git push 帶回 repo。"""
     if not episodes or not PODCAST_DIGEST_FILE.exists():
         return
     try:
@@ -10967,11 +11286,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             rank_cell = "—"
         else:
             if rank < 30:
-                bg = "#dcfce7"; tcolor = "#15803d"  # 低位（綠）
+                bg = "#dcfce7"
+                tcolor = "#15803d"  # 低位（綠）
             elif rank > 70:
-                bg = "#fee2e2"; tcolor = "#b91c1c"  # 高位（紅）
+                bg = "#fee2e2"
+                tcolor = "#b91c1c"  # 高位（紅）
             else:
-                bg = "#f1f5f9"; tcolor = "#475569"  # 中位
+                bg = "#f1f5f9"
+                tcolor = "#475569"  # 中位
             rank_cell = (f"<span style='background:{bg};color:{tcolor};"
                           f"padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;'>"
                           f"{rank:.0f}%</span>")
@@ -11006,13 +11328,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         f_sign = "+" if f_oi > 0 else ""
         if abs(f_oi) > 20000:
             strength = "強烈訊號"
-            bg = "#fef3c7"; border = "#f59e0b"
+            bg = "#fef3c7"
+            border = "#f59e0b"
         elif abs(f_oi) > 5000:
             strength = "明確訊號"
-            bg = "#dbeafe"; border = "#3b82f6"
+            bg = "#dbeafe"
+            border = "#3b82f6"
         else:
             strength = "中性"
-            bg = "#f1f5f9"; border = "#94a3b8"
+            bg = "#f1f5f9"
+            border = "#94a3b8"
         direction = "偏多" if f_oi > 0 else "偏空" if f_oi < 0 else "中性"
         taifex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">外資台指期未平倉（領先指標）</h2>
@@ -11036,7 +11361,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     sec_priority = [f for f in sec_filings if f.get("priority")]
     if not sec_priority and sec_filings and not any("priority" in f for f in sec_filings):
         sec_priority = sec_filings    # 向後相容:state 來的舊 filing 沒有 priority 欄
-    sec_html = ""
+    _sec_html = ""
     if sec_priority:
         sec_rows = "\n".join(
             f"<tr>"
@@ -11047,7 +11372,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f"</tr>"
             for f in sec_priority[:15]
         )
-        sec_html = f"""
+        _sec_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">美股重點科技股 8-K 公告（近 48 小時）</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
@@ -11217,14 +11542,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === 0050 ETF 開盤預測卡 ===
     tw0050p_data = quotes.get("TW0050_PRED", {}) or {}
-    tw0050_card_html = ""
+    _tw0050_card_html = ""
     if tw0050p_data.get("pred_open") and tw0050p_data.get("last"):
         p50 = tw0050p_data["pred_open"]
         l50 = tw0050p_data["last"]
         pct50 = ((p50 / l50) - 1) * 100
         c50 = "#dc2626" if pct50 >= 0 else "#16a34a"
         s50 = "+" if pct50 >= 0 else ""
-        tw0050_card_html = f"""
+        _tw0050_card_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、0050 ETF 開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;">
           <tr>
@@ -11292,7 +11617,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 metrics_line = (
                     f"{' ・ '.join(streak_bits) if streak_bits else '法人無連續動向'}"
                     f" ・ 大戶ΔWoW {wow_str} ・ 量比20d {vr20_str}")
-                ranking_line = (
+                _ranking_line = (
                     f"客觀排名 #{rank} ・ 結構 {ranking_components.get('structure', 0):+.1f}"
                     f" ・ 新聞 {ranking_components.get('news_event', 0):+.1f}"
                     f" ・ 產業中性 {ranking_components.get('industry_neutral', 0):+.1f}"
@@ -11312,7 +11637,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 quality = f3.get("quality") or {}
                 hit_pct = quality.get("recent_direction_hit_pct")
                 hit_text = f"{hit_pct}%" if hit_pct is not None else "—"
-                quality_line = (
+                _quality_line = (
                     f"模型 {quality.get('model_version', MODEL_VERSION)}"
                     f" ・ 樣本 {quality.get('training_rows', 0)}"
                     f" ・ 近期方向命中 {hit_text}"
@@ -11392,9 +11717,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         adv = breadth.get("advance", 0)
         dec = breadth.get("decline", 0)
         unch = breadth.get("unchanged", 0)
-        total = breadth.get("total", 0)
         adv_ratio = breadth.get("advance_ratio", 0)
-        state = breadth.get("breadth_state", "neutral")
         # 顏色：上漲多 = 紅 (台股慣例); 下跌多 = 綠
         if adv_ratio >= 60:
             b_color, b_label = "#dc2626", "普漲（強勢）"
@@ -11551,11 +11874,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if fair.get("premium_pct") is not None:
             pp = fair["premium_pct"]
             if pp > 0.5:
-                pp_color = "#dc2626"; pp_label = "溢價"          # 偏貴
+                pp_color = "#dc2626"
+                pp_label = "溢價"          # 偏貴
             elif pp < -0.5:
-                pp_color = "#16a34a"; pp_label = "折價"          # 偏便宜
+                pp_color = "#16a34a"
+                pp_label = "折價"          # 偏便宜
             else:
-                pp_color = "#64748b"; pp_label = "接近合理"
+                pp_color = "#64748b"
+                pp_label = "接近合理"
             pp_sign = "+" if pp >= 0 else ""
             premium_row = f"""
           <tr><td colspan="2" style="height:4px;"></td></tr>
@@ -11571,7 +11897,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                      + (f'　｜　{calib_extra}' if calib_extra else '')
                      + '</p>')
 
-        fair_html = f"""
+        _fair_html = f"""
         <table style="width:100%;border-collapse:collapse;margin:12px 0;">
           <tr>
             <td style="padding:10px 14px;background:#f8fafc;border-radius:6px 0 0 6px;color:#475569;width:55%;">QQQ 漲跌幅</td>
@@ -11595,7 +11921,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         {fair_foot}
         """
     else:
-        fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"
+        _fair_html = f"<p style='color:#dc2626'>{fair.get('error','資料缺失')}</p>"
 
     # ===== 3. 2330 預測卡片 =====
     if "error" not in predictions:
@@ -11661,16 +11987,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if notes:
             wf_line = (f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">'
                        f'{"　｜　".join(notes)}</p>')
-        pred_html = (f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">'
-                     f'{rows_html}</table>{wf_line}')
+        _pred_html = (f'<table style="width:100%;border-collapse:collapse;margin:12px 0;">'
+                      f'{rows_html}</table>{wf_line}')
     else:
-        pred_html = f"<p style='color:#dc2626'>{predictions.get('error','資料缺失')}</p>"
+        _pred_html = f"<p style='color:#dc2626'>{predictions.get('error','資料缺失')}</p>"
 
     # ===== 3.4 預測準確度回顧區塊 =====
     backtest_text = (quotes.get("BACKTEST") or "").strip()
-    backtest_html = ""
+    _backtest_html = ""
     if backtest_text:
-        backtest_html = f"""
+        _backtest_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">預測準確度回顧</h2>
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:12px 0;font-size:12px;line-height:1.75;color:#475569;white-space:pre-wrap;font-family:'Consolas','Menlo','Courier New',monospace;">{_htmllib.escape(backtest_text)}</div>
         <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ 比對「當日預測 vs 隔日實際開盤」。平均誤差為正＝預測偏低、為負＝預測偏高；此誤差會回饋進隔日的自我校正。</p>
@@ -11678,7 +12004,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # ===== 3.5 資料品質區塊 =====
     dq_list = quotes.get("DATA_QUALITY", []) or []
-    dq_html = ""
+    _dq_html = ""
     if dq_list:
         status_style = {
             "ok":       ("#dcfce7", "#15803d", "正常"),
@@ -11700,8 +12026,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             )
         n_err = sum(1 for d in dq_list if d.get("status") == "error")
         n_fb = sum(1 for d in dq_list if d.get("status") == "fallback")
-        summary = f"全部正常" if (n_err == 0 and n_fb == 0) else f"{n_err} 項失敗、{n_fb} 項降級"
-        dq_html = f"""
+        summary = "全部正常" if (n_err == 0 and n_fb == 0) else f"{n_err} 項失敗、{n_fb} 項降級"
+        _dq_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">資料品質（{summary}）</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;">
           <tr style="background:#f1f5f9;">
@@ -11894,6 +12220,17 @@ def send_email(html: str, subject: str) -> None:
         s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         s.send_message(msg)
     print(f"[mail] 已寄出 → {', '.join(RECIPIENTS)}")
+
+
+def deliver_report(html: str, subject: str, state_entry: Optional[dict],
+                   podcast_episodes: list[dict]) -> None:
+    """Send first, then commit delivery state for at-least-once semantics."""
+    send_email(html, subject)
+    persist_delivered_report_state(
+        state_entry,
+        podcast_episodes,
+        mark_podcasts=True,
+    )
 
 
 def determine_mode(now_tpe: dt.datetime) -> str:
@@ -12135,9 +12472,195 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     return dq
 
 
+def _published_within_hours(pub_str, hours: float = 30,
+                            now_tpe: Optional[dt.datetime] = None) -> bool:
+    """published 字串(台北時間,如 '2026-06-13 14:30')是否落在近 N 小時內。
+
+    無法解析或過舊回 False(保守:不因無法判讀就誤判為新內容而重複寄信)。
+    """
+    if not pub_str:
+        return False
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    s = str(pub_str).strip()
+    parsed = None
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            parsed = dt.datetime.strptime(s, fmt)
+            break
+        except ValueError:
+            continue
+    if parsed is None:
+        try:
+            parsed = dt.datetime.fromisoformat(s)
+        except ValueError:
+            return False
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=TPE)
+    age = (now_tpe - parsed).total_seconds()
+    # 允許小幅未來偏差(時區/時鐘誤差),但拒絕過舊
+    return -6 * 3600 <= age <= hours * 3600
+
+
+def _weekend_digest_has_content(sports: dict, podcast_eps: list,
+                                intel: dict, journals: list,
+                                now_tpe: Optional[dt.datetime] = None) -> bool:
+    """週日輕量信只在「週六信之後才新增」的內容時才寄(使用者需求:有新的才寄)。
+
+    用時效判定「新」,而非只看「存在」,避免與週六信重複:
+      - Podcast:load_podcast_digest 已以 shown_at 去重,回傳的即未顯示過的新集。
+      - 世足/NBA:使用者明確要求週日要看「昨日戰績」,故昨日/今日的賽果視為當日新內容
+        (這是刻意的每日戰報,賽季中與週六信小幅重疊屬預期;NBA 回看 5 天的舊場次不算)。
+      - 政策/醫界:只認 published 落在近 24 小時者 ≈「上一封信之後才出刊」,避開週六已看過的。
+        (純覺察用途,不另建已送清單做精準去重;24h 邊界的排程抖動影響可忽略。)
+      - 文獻(7 天窗)、純戰績表、一般體育新聞:僅作版面內容,不單獨觸發寄信。
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    if podcast_eps:
+        return True
+    sports = sports or {}
+    if (sports.get("worldcup") or {}).get("results"):
+        return True
+    fresh_dates = {(now_tpe - dt.timedelta(days=1)).strftime("%m/%d"),
+                   now_tpe.strftime("%m/%d")}
+    if any((g.get("date") in fresh_dates) for g in (sports.get("nba") or [])):
+        return True
+    intel = intel or {}
+    for kind in ("policy", "medical"):
+        for item in (intel.get(kind) or []):
+            if _published_within_hours(item.get("published"), 24, now_tpe):
+                return True
+    return False
+
+
+def render_weekend_digest_html(report_date: str, weather_html: str,
+                               sports_html: str, podcast_html: str,
+                               intel_html: str, journals_html: str,
+                               calendar_html: str) -> str:
+    """週日綜合輕量信:只含天氣/體育/Podcast/政策/醫界/文獻,不跑行情與預測。"""
+    body = "".join(s for s in (
+        weather_html,
+        '<div style="margin:8px 0 16px;padding:10px 14px;background:#f0fdf4;'
+        'border-left:5px solid #16a34a;border-radius:4px;font-size:13px;color:#475569;">'
+        '週日綜合:本日不開盤,僅彙整週末新增的體育戰績、Podcast、政策與醫界訊息。'
+        '</div>',
+        sports_html,
+        podcast_html,
+        intel_html,
+        journals_html,
+        calendar_html,
+    ) if s)
+    return f"""<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>週末綜合 {report_date}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:12px 4px;">
+        <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#065f46,#16a34a);padding:26px 28px 20px;color:#ffffff;">
+              <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">WEEKEND DIGEST</div>
+              <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.3;">週日綜合</h1>
+              <div style="margin-top:6px;font-size:15px;opacity:0.92;">{report_date} ・ <span style="background:rgba(255,255,255,0.18);padding:2px 10px;border-radius:12px;font-size:13px;">週日綜合</span></div>
+            </td>
+          </tr>
+          <tr><td style="padding:20px 16px 8px;">
+            {body}
+          </td></tr>
+          <tr>
+            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;line-height:1.7;">
+              本信件由自動化腳本於 GitHub Actions 產生。週日不開盤,僅彙整週末新增資訊。<br>
+              資料來源：ESPN、Open-Meteo、PubMed、中央社、鉅亨網、各 Podcast RSS。
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def run_weekend_digest(now_tpe: dt.datetime) -> int:
+    """週日輕量綜合信:不跑行情/ML/預測,只抓週末新增的體育/Podcast/政策/醫界/文獻,
+    且僅在有新內容時才寄信(使用者需求)。寄出後標記 podcast 已顯示並 push state。"""
+    import html as _htmllib
+    report_date = now_tpe.strftime("%Y-%m-%d (%a)")
+    print(f"[weekend] 開始產生週日綜合 — {report_date}")
+
+    try:
+        weather = fetch_weather()
+    except Exception as e:
+        print(f"[weekend] 天氣抓取失敗: {e}", file=sys.stderr)
+        weather = []
+    try:
+        sports = fetch_sports_digest(now_tpe)
+    except Exception as e:
+        print(f"[weekend] 體育抓取失敗: {e}", file=sys.stderr)
+        sports = {}
+    podcast_eps = load_podcast_digest()
+    try:
+        intel = fetch_tw_daily_intelligence(now_tpe)
+    except Exception as e:
+        print(f"[weekend] 政策/醫界抓取失敗: {e}", file=sys.stderr)
+        intel = {}
+    try:
+        journals = translate_journal_titles(fetch_medical_journal_articles())
+    except Exception as e:
+        print(f"[weekend] 醫學文獻抓取失敗: {e}", file=sys.stderr)
+        journals = []
+    try:
+        calendar = fetch_event_calendar(now_tpe)
+    except Exception as e:
+        print(f"[weekend] 風險事件日曆失敗: {e}", file=sys.stderr)
+        calendar = []
+
+    if not _weekend_digest_has_content(sports, podcast_eps, intel, journals, now_tpe):
+        print("[weekend] 無新增體育/Podcast/政策/醫界內容 → 本週日不寄信")
+        return 0
+
+    weather_html = _render_weather_html(weather or [])
+    sports_html = _render_sports_html(sports or {}, _htmllib)
+    podcast_html = _render_podcast_html(podcast_eps, [], _htmllib)
+    intel_html = _render_tw_intelligence_html(intel or {}, _htmllib)
+    journals_html = _render_journals_html(journals or [], _htmllib)
+    calendar_html = _render_event_calendar_html(calendar or [])
+    html = render_weekend_digest_html(
+        report_date, weather_html, sports_html, podcast_html,
+        intel_html, journals_html, calendar_html)
+
+    if os.environ.get("DRY_RUN") == "1":
+        # 同時寫入晨報慣用的預覽路徑,讓 CI 的 dry-run-preview artifact 在週日也抓得到。
+        for out in ("/tmp/morning_report_preview.html",
+                    "/tmp/weekend_digest_preview.html"):
+            with open(out, "w", encoding="utf-8") as f:
+                f.write(html)
+        print("[weekend] DRY_RUN — 預覽寫入 /tmp/morning_report_preview.html"
+              "(同時 /tmp/weekend_digest_preview.html)")
+        return 0
+
+    subject = f"📰 週日綜合 {report_date} | 體育 / Podcast / 政策 / 醫界"
+    # 寄信成功後才標記 podcast 已顯示(避免漏寄)。週日不寫入預測歷史:weekend 筆記的
+    # target_session_date 會指向週一,與週六晨報的「週一預測」撞號,save_history_state
+    # 去重時會誤刪週六的真實預測紀錄。因此這裡 entry=None,只單獨 push podcast 狀態檔。
+    deliver_report(html, subject, None, podcast_eps)
+    _git_commit_and_push_state(
+        [str(PODCAST_DIGEST_FILE)],
+        f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
+    print("[weekend] 週日綜合已寄出")
+    return 0
+
+
 # ---------- 主流程 ----------
 def main() -> int:
     now_tpe = dt.datetime.now(TPE)
+    # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
+    if now_tpe.weekday() == 6:
+        return run_weekend_digest(now_tpe)
     mode = determine_mode(now_tpe)
     report_date = now_tpe.strftime("%Y-%m-%d (%a)")
     target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
@@ -12636,10 +13159,12 @@ def main() -> int:
     # 8. 組信
     html = render_html(quotes, fair, predictions, analysis, report_date, mode)
 
-    # 8.5 (Opt 1) 寫入今日記憶到 state file
+    # 8.5 (Opt 1) 準備今日記憶。Production 必須等 SMTP 成功後才提交，
+    # 否則寄信失敗卻先標記 Podcast shown_at，會造成永久漏寄。
+    pending_state_entry: Optional[dict] = None
     try:
         crit_titles = [n["title"] for n in news if n.get("importance") == "critical"][:5]
-        new_entry = {
+        pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
             "generated_at": now_tpe.isoformat(),
             "target_session_date": target_session_date,
@@ -12678,29 +13203,33 @@ def main() -> int:
             target_session_date,
         )
         if completed_session:
+            label_prices, label_prices_complete = _current_label_prices(model_history)
             save_model_history({
                 "session_date": completed_session,
                 "generated_at": now_tpe.isoformat(),
                 "model_version": MODEL_VERSION,
+                "universe_method": "daily_point_in_time_top100",
                 "taiex_close": (
                     taiex_pred.get("last_close")
                     or (twse_taiex_close if 'twse_taiex_close' in locals() else None)
                 ),
                 "market_regime": quotes.get("MARKET_REGIME"),
                 "stocks": _snapshot_for_model(tw0050),
+                "label_prices": label_prices,
+                "label_prices_complete": label_prices_complete,
                 "structured_events": (
                     quotes.get("STRUCTURED_NEWS_EVENTS") or [])[:40],
             })
-        # Podcast 已顯示標記(寫檔後由 save_history_state 的 git push 一併帶回);
-        # DRY_RUN 不標記(沒真的寄信)
-        if os.environ.get("DRY_RUN") != "1":
-            mark_podcast_episodes_shown(quotes.get("PODCAST_DIGEST") or [])
-        save_history_state(new_entry, days_to_keep=450)
     except Exception as e:
-        print(f"[main] 寫入歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)
+        print(f"[main] 準備歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)
 
     # 9. dry-run 模式：只輸出檔案
     if os.environ.get("DRY_RUN") == "1":
+        persist_delivered_report_state(
+            pending_state_entry,
+            quotes.get("PODCAST_DIGEST") or [],
+            mark_podcasts=False,
+        )
         out = "/tmp/morning_report_preview.html"
         with open(out, "w", encoding="utf-8") as f:
             f.write(html)
@@ -12709,7 +13238,14 @@ def main() -> int:
 
     # 10. 寄信
     subject = f"📈 美股晨報 {report_date} | QQQ {quotes['QQQ'].get('change_pct','?')}% / TSM {quotes['TSM'].get('change_pct','?')}%"
-    send_email(html, subject)
+    # SMTP 成功後才把本次 Podcast 標成已顯示並 push 所有 state。
+    # 若 state push 失敗，下次最多重複寄送，不會發生未寄出卻永久消失。
+    deliver_report(
+        html,
+        subject,
+        pending_state_entry,
+        quotes.get("PODCAST_DIGEST") or [],
+    )
     return 0
 
 

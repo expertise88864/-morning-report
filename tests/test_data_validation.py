@@ -1,4 +1,6 @@
 """require_quote / safe_float 與 build_data_quality 的邊界測試。"""
+import time
+
 import morning_report as mr
 
 
@@ -384,6 +386,26 @@ def test_deepseek_400_body_in_error(monkeypatch):
     with pytest.raises(RuntimeError) as ei:
         mr._call_deepseek("prompt")
     assert "context length exceeded" in str(ei.value)
+
+
+def test_deepseek_request_respects_shared_wall_clock_budget(monkeypatch):
+    captured = {}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        captured["timeout"] = timeout
+        return _FakePostResp(
+            200, {"choices": [{"message": {"content": "ok"}}], "usage": {}})
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-flash")
+    previous = mr._LLM_DEADLINE
+    mr._LLM_DEADLINE = time.monotonic() + 2
+    try:
+        assert mr._call_deepseek("prompt") == "ok"
+    finally:
+        mr._LLM_DEADLINE = previous
+    assert 0 < captured["timeout"] <= 2
 
 
 # === 外資台指期淨空警告:看「方向(日變化)+ 現貨對照」而非只看水位 ===

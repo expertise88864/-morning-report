@@ -22,10 +22,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt "ruff==0.15.15"
 
       - name: Syntax check
-        run: python -m py_compile morning_report.py
+        run: python -m py_compile morning_report.py podcast_digest.py
+
+      - name: Lint
+        run: python -m ruff check morning_report.py podcast_digest.py tests
 
       - name: Run unit tests
         run: python -m pytest -q

@@ -51,6 +51,226 @@ def test_render_sports_html():
     assert mr._render_sports_html({}, htmllib) == ""
 
 
+def test_render_sports_worldcup_block():
+    """世足:近期戰績 + 分組累計戰績表,英文隊名中文化。"""
+    sports = {
+        "worldcup": {
+            "results": [{"text": "美國 4 : 1 巴拉圭", "status": "FT", "date": "06/13"}],
+            "groups": [{"name": "A 組", "rows": [
+                {"team": "巴西", "gp": 2, "w": 2, "d": 0, "l": 0, "pts": 6},
+                {"team": "喀麥隆", "gp": 2, "w": 0, "d": 1, "l": 1, "pts": 1},
+            ]}],
+        },
+        "news": {"世足": ["世界盃32強賽程出爐"]},
+    }
+    h = mr._render_sports_html(sports, htmllib)
+    assert "世足 / MLB" in h                      # 區塊標題已含世足
+    assert "世界盃足球賽" in h
+    assert "近期戰績" in h and "美國 4 : 1 巴拉圭" in h
+    assert "分組累計戰績" in h and "A 組" in h
+    assert "6分" in h and "2勝0和0敗" in h
+    assert "世界盃32強賽程出爐" in h
+
+
+def test_wc_zh_mapping_and_fallback():
+    assert mr._wc_zh("United States") == "美國"
+    assert mr._wc_zh("Brazil") == "巴西"
+    assert mr._wc_zh("Korea Republic") == "南韓"
+    assert mr._wc_zh("Atlantis") == "Atlantis"   # 查無對照保留原名,不漏資料
+    assert mr._wc_zh("") == ""
+
+
+def test_weekend_digest_content_gate():
+    """週日輕量信只在『週六信之後才新增』的內容時才寄,避免與週六信重複。"""
+    import datetime as dt
+    now = dt.datetime(2026, 6, 14, 8, 0, tzinfo=mr.TPE)   # 週日早上
+    yday = (now - dt.timedelta(days=1)).strftime("%m/%d")
+    fresh = (now - dt.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
+    stale = (now - dt.timedelta(days=10)).strftime("%Y-%m-%d %H:%M")
+
+    # 新內容 → 寄
+    assert mr._weekend_digest_has_content(
+        {"worldcup": {"results": [1]}}, [], {}, [], now) is True       # 世足昨日完賽
+    assert mr._weekend_digest_has_content({}, [{"x": 1}], {}, [], now) is True  # 未顯示過的 podcast
+    assert mr._weekend_digest_has_content(
+        {"nba": [{"date": yday, "text": "x"}]}, [], {}, [], now) is True        # 昨日 NBA
+    assert mr._weekend_digest_has_content(
+        {}, [], {"policy": [{"published": fresh}]}, [], now) is True            # 近 30h 政策
+    assert mr._weekend_digest_has_content(
+        {}, [], {"medical": [{"published": fresh}]}, [], now) is True           # 近 30h 醫界
+
+    # 舊內容/純版面內容 → 不寄(避免與週六信重複)
+    assert mr._weekend_digest_has_content(
+        {"nba": [{"date": "06/09", "text": "x"}]}, [], {}, [], now) is False    # 5 天前 NBA 非新
+    assert mr._weekend_digest_has_content(
+        {}, [], {"policy": [{"published": stale}]}, [], now) is False           # 10 天前政策
+    assert mr._weekend_digest_has_content(
+        {"cpbl": [1, 2], "standings": {"美聯": [1]}}, [], {}, [], now) is False  # 純戰績表
+    assert mr._weekend_digest_has_content({}, [], {}, [1], now) is False        # 文獻不單獨觸發
+    assert mr._weekend_digest_has_content({}, [], {}, [], now) is False
+
+
+def test_weekend_gate_policy_excludes_pre_saturday_items():
+    """政策/醫界用 24h 窗 ≈『上一封信之後才出刊』,週六信之前(>24h)的不再觸發。"""
+    import datetime as dt
+    sun = dt.datetime(2026, 6, 14, 6, 10, tzinfo=mr.TPE)            # 週日早上發信
+    after_sat_report = (sun - dt.timedelta(hours=20)).strftime("%Y-%m-%d %H:%M")  # 週六上午之後
+    before_sat_report = (sun - dt.timedelta(hours=26)).strftime("%Y-%m-%d %H:%M")  # 週六信之前
+    assert mr._weekend_digest_has_content(
+        {}, [], {"policy": [{"published": after_sat_report}]}, [], sun) is True
+    assert mr._weekend_digest_has_content(
+        {}, [], {"policy": [{"published": before_sat_report}]}, [], sun) is False
+
+
+def test_published_within_hours():
+    import datetime as dt
+    now = dt.datetime(2026, 6, 14, 8, 0, tzinfo=mr.TPE)
+    assert mr._published_within_hours("2026-06-14 06:00", 30, now) is True
+    assert mr._published_within_hours("2026-06-13 05:00", 30, now) is True
+    assert mr._published_within_hours("2026-06-12 06:00", 30, now) is False   # >30h
+    assert mr._published_within_hours("2026-06-14", 30, now) is True          # 純日期
+    assert mr._published_within_hours("", 30, now) is False
+    assert mr._published_within_hours("not-a-date", 30, now) is False         # 無法解析→False
+
+
+def test_fetch_worldcup_parses_espn(monkeypatch):
+    """以 mock 的 ESPN JSON 驗證 scoreboard/standings 解析(防 schema/端點漂移)。"""
+    import datetime as dt
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._payload
+
+    scoreboard = {"events": [{
+        "id": "401",
+        "status": {"type": {"completed": True, "shortDetail": "FT"}},
+        "competitions": [{"competitors": [
+            {"homeAway": "home", "score": "1", "team": {"displayName": "Brazil"}},
+            {"homeAway": "away", "score": "2", "team": {"displayName": "United States"}},
+        ]}],
+    }]}
+    standings = {"children": [{
+        "name": "Group A",
+        "standings": {"entries": [
+            {"team": {"displayName": "United States"},
+             "stats": [{"name": "gamesPlayed", "value": 2}, {"name": "wins", "value": 2},
+                       {"name": "ties", "value": 0}, {"name": "losses", "value": 0},
+                       {"name": "points", "value": 6}]},
+            {"team": {"displayName": "Brazil"},
+             "stats": [{"name": "gamesPlayed", "value": 2}, {"name": "wins", "value": 0},
+                       {"name": "ties", "value": 1}, {"name": "losses", "value": 1},
+                       {"name": "points", "value": 1}]},
+        ]},
+    }]}
+
+    def fake_get(url, **kwargs):
+        return _Resp(standings if "standings" in url else scoreboard)
+
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    now = dt.datetime(2026, 6, 14, 8, 0, tzinfo=mr.TPE)   # 賽期內
+    wc = mr.fetch_worldcup(now)
+    # 兩日 scoreboard 同一場(id 去重)→ 一筆;英文隊名中文化
+    assert len(wc["results"]) == 1
+    assert wc["results"][0]["text"] == "美國 2 : 1 巴西"
+    assert wc["results"][0]["status"] == "FT"
+    assert len(wc["groups"]) == 1 and wc["groups"][0]["name"] == "A 組"
+    rows = wc["groups"][0]["rows"]
+    assert rows[0]["team"] == "美國" and rows[0]["pts"] == 6 and rows[0]["w"] == 2
+    assert rows[1]["team"] == "巴西" and rows[1]["d"] == 1
+
+
+def _stub_weekend_sources(monkeypatch, *, podcast):
+    """把週日綜合的抓取/渲染都換成輕量 stub,只測控制流。"""
+    monkeypatch.setattr(mr, "fetch_weather", lambda: [])
+    monkeypatch.setattr(mr, "fetch_sports_digest", lambda now: {})
+    monkeypatch.setattr(mr, "load_podcast_digest", lambda: podcast)
+    monkeypatch.setattr(mr, "fetch_tw_daily_intelligence", lambda now: {})
+    monkeypatch.setattr(mr, "fetch_medical_journal_articles", lambda: [])
+    monkeypatch.setattr(mr, "translate_journal_titles", lambda a: [])
+    monkeypatch.setattr(mr, "fetch_event_calendar", lambda now: [])
+    for fn in ("_render_weather_html", "_render_event_calendar_html"):
+        monkeypatch.setattr(mr, fn, lambda *a, **k: "")
+    for fn in ("_render_sports_html", "_render_podcast_html",
+               "_render_tw_intelligence_html", "_render_journals_html"):
+        monkeypatch.setattr(mr, fn, lambda *a, **k: "")
+    monkeypatch.delenv("DRY_RUN", raising=False)
+
+
+def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
+    """有新 podcast → 寄信 + 標記已顯示 + 只 push podcast 狀態,絕不寫入預測歷史。
+
+    回歸防護:週日筆記若寫進 history.json 會與週六的『週一預測』撞 target,被去重誤刪。
+    """
+    import datetime as dt
+    events = []
+    _stub_weekend_sources(monkeypatch, podcast=[{"show": "股癌", "guid": "ep1"}])
+    monkeypatch.setattr(mr, "send_email", lambda *a: events.append("sent"))
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown",
+                        lambda eps: events.append(("marked", len(eps))))
+    monkeypatch.setattr(mr, "save_history_state",
+                        lambda *a, **k: events.append("history!"))   # 不該被呼叫
+    monkeypatch.setattr(mr, "_git_commit_and_push_state",
+                        lambda paths, msg: events.append(("push", list(paths))))
+
+    rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
+
+    assert rc == 0
+    assert "sent" in events
+    assert ("marked", 1) in events
+    assert "history!" not in events                       # 關鍵:不污染預測歷史
+    pushes = [e for e in events if isinstance(e, tuple) and e[0] == "push"]
+    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE)]
+    # 寄信必須早於標記/ push(at-least-once:寄成功才落狀態)
+    assert events.index("sent") < events.index(("marked", 1))
+
+
+def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
+    """無新內容 → 不寄信、不動任何狀態。"""
+    import datetime as dt
+    events = []
+    _stub_weekend_sources(monkeypatch, podcast=[])
+    monkeypatch.setattr(mr, "send_email", lambda *a: events.append("sent"))
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown",
+                        lambda eps: events.append("marked"))
+    monkeypatch.setattr(mr, "save_history_state", lambda *a, **k: events.append("history"))
+    monkeypatch.setattr(mr, "_git_commit_and_push_state",
+                        lambda *a, **k: events.append("push"))
+
+    rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
+
+    assert rc == 0 and events == []                       # 完全不動作
+
+
+def test_fetch_worldcup_off_season_returns_empty(monkeypatch):
+    """賽期外不呼叫 ESPN、回空(避免顯示上屆殘留戰績表)。"""
+    import datetime as dt
+
+    def boom(*a, **k):
+        raise AssertionError("賽期外不應呼叫 ESPN")
+
+    monkeypatch.setattr(mr.requests, "get", boom)
+    off = dt.datetime(2026, 3, 1, 8, 0, tzinfo=mr.TPE)
+    wc = mr.fetch_worldcup(off)
+    assert wc == {"results": [], "groups": []}
+
+
+def test_render_weekend_digest_html_shell():
+    sports_html = mr._render_sports_html(
+        {"worldcup": {"results": [{"text": "巴西 2 : 0 喀麥隆", "status": "FT",
+                                   "date": "06/13"}], "groups": []}}, htmllib)
+    h = mr.render_weekend_digest_html(
+        "2026-06-14 (Sun)", "", sports_html, "", "", "", "")
+    assert "週日綜合" in h and "WEEKEND DIGEST" in h
+    assert "世界盃足球賽" in h and "巴西 2 : 0 喀麥隆" in h
+    assert "本日不開盤" in h
+
+
 def test_rule_based_events_settlement_and_witching():
     import datetime as dt
     # 2026-06 第三個週三 = 6/17(結算)、第三個週五 = 6/19(三巫,6 月適用)
@@ -101,7 +321,8 @@ def test_medical_entity_cap_one_per_day(monkeypatch):
         }]
 
     import datetime as dt
-    monkeypatch.setattr(mr.feedparser, "parse", lambda *a, **k: Feed())
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: Feed())
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
     titles = [item["title"] for item in out["medical"]]

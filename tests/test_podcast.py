@@ -3,6 +3,7 @@ import datetime as dt
 import json
 
 import morning_report as mr
+import pytest
 
 
 def _digest_state(processed_at: str) -> dict:
@@ -69,6 +70,56 @@ def test_podcast_episode_shown_only_once(tmp_path, monkeypatch):
     mr.mark_podcast_episodes_shown(eps)
     saved2 = json.loads(path.read_text(encoding="utf-8"))
     assert saved2["gooaye"]["episodes"][0]["shown_at"] == first_ts
+
+
+def test_load_podcast_digest_skips_shown_prefix(tmp_path, monkeypatch):
+    path = tmp_path / "podcast_digest.json"
+    monkeypatch.setattr(mr, "PODCAST_DIGEST_FILE", path)
+    state = _digest_state(_now_iso(1))
+    episodes = state["gooaye"]["episodes"]
+    episodes[0]["shown_at"] = _now_iso(0.5)
+    episodes.extend([
+        {
+            **episodes[0],
+            "guid": "ep670",
+            "title": "EP670",
+            "shown_at": _now_iso(0.4),
+        },
+        {
+            **episodes[0],
+            "guid": "ep671",
+            "title": "EP671",
+            "shown_at": None,
+        },
+    ])
+    path.write_text(json.dumps(state), encoding="utf-8")
+
+    loaded = mr.load_podcast_digest()
+
+    assert [episode["guid"] for episode in loaded] == ["ep671"]
+
+
+def test_deliver_report_does_not_commit_state_when_email_fails(monkeypatch):
+    committed = []
+    monkeypatch.setattr(
+        mr, "send_email",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("smtp failed")))
+    monkeypatch.setattr(
+        mr, "persist_delivered_report_state",
+        lambda *args, **kwargs: committed.append((args, kwargs)))
+    with pytest.raises(RuntimeError, match="smtp failed"):
+        mr.deliver_report("<html>", "subject", {"date": "2026-06-14"}, [{"guid": "x"}])
+    assert committed == []
+
+
+def test_deliver_report_commits_state_after_email(monkeypatch):
+    events = []
+    monkeypatch.setattr(mr, "send_email", lambda *args: events.append("sent"))
+    monkeypatch.setattr(
+        mr, "persist_delivered_report_state",
+        lambda *args, **kwargs: events.append("persisted"))
+    mr.deliver_report("<html>", "subject", {"date": "2026-06-14"}, [{"guid": "x"}])
+    assert events == ["sent", "persisted"]
 
 
 def test_podcast_ticker_crosscheck_rules():

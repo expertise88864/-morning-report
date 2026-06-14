@@ -85,7 +85,7 @@ workflow 預設 `LLM_PROVIDER: deepseek`（中文分析品質佳、每月約 NT$
 
 ## 二、排程說明
 
-預設 cron：`0 22 * * 0,1,2,3,4,5`（UTC）
+預設 cron：`0 22 * * *`（UTC，每日）
 
 | GitHub Actions 觸發 (UTC) | 台灣時間 | 報告類型 |
 |---|---|---|
@@ -95,8 +95,9 @@ workflow 預設 `LLM_PROVIDER: deepseek`（中文分析品質佳、每月約 NT$
 | 週三 22:00 | 週四 06:00 | 一般日報 |
 | 週四 22:00 | 週五 06:00 | 一般日報 |
 | 週五 22:00 | 週六 06:00 | 一般日報（週五美股收盤） |
+| 週六 22:00 | 週日 06:00 | 週日綜合輕量信（不開盤；**僅在有新體育/Podcast/政策/醫界時才寄**） |
 
-**已排除週六 22:00**（因為週日早上美股沒消息）。
+> 週日早上美股沒開盤，故走輕量綜合信：略過行情與預測，只彙整週末新增的世足/體育戰績、Podcast、政策與醫界訊息；若週末無新內容則當天不寄信。
 
 > ⚠️ GitHub Actions cron 偶爾會延遲 5-15 分鐘，這是平台特性，不可避免。如極在意準時，可改部署在 Render / Railway 排程。
 
@@ -193,7 +194,8 @@ python morning_report.py
 ## 八、測試與 CI
 
 - `pytest -q`：本機跑單元測試，全程不連網、不寄信（mock 掉 yfinance）。
-- `.github/workflows/ci.yml`：每次 push / PR 自動跑 `py_compile` + `pytest`。
+- CI 同時執行 `py_compile`（晨報與 Podcast）及 Ruff，避免獨立 Podcast 排程未經檢查就上線。
+- `.github/workflows/ci.yml`：每次 push / PR 自動跑 `py_compile` + Ruff + `pytest`。
 - CI 另有一個手動觸發（workflow_dispatch）的 `dry-run-preview` job，會用真實資料跑一次並把 HTML 預覽上傳成 artifact，但**不寄信**；此 job 失敗不影響 CI 綠燈。
 - 排程寄信的 workflow（`morning-report.yml`）與 CI 完全獨立，CI 改動不會影響每日自動寄信。
 

@@ -52,10 +52,11 @@ def test_render_sports_html():
 
 
 def test_render_sports_worldcup_block():
-    """世足:近期戰績 + 分組累計戰績表,英文隊名中文化。"""
+    """世足:近期戰績 + 今日賽程 + 分組累計戰績(收合成一行/組)。"""
     sports = {
         "worldcup": {
             "results": [{"text": "美國 4 : 1 巴拉圭", "status": "FT", "date": "06/13"}],
+            "fixtures": [{"text": "西班牙 vs 維德角", "kickoff": "06/16 00:00", "round": ""}],
             "groups": [{"name": "A 組", "rows": [
                 {"team": "巴西", "gp": 2, "w": 2, "d": 0, "l": 0, "pts": 6},
                 {"team": "喀麥隆", "gp": 2, "w": 0, "d": 1, "l": 1, "pts": 1},
@@ -67,9 +68,98 @@ def test_render_sports_worldcup_block():
     assert "世足 / MLB" in h                      # 區塊標題已含世足
     assert "世界盃足球賽" in h
     assert "近期戰績" in h and "美國 4 : 1 巴拉圭" in h
+    assert "今日/近日賽程" in h and "西班牙 vs 維德角" in h and "06/16 00:00" in h
     assert "分組累計戰績" in h and "A 組" in h
-    assert "6分" in h and "2勝0和0敗" in h
+    assert "巴西 6(2-0-0)" in h and "喀麥隆 1(0-1-1)" in h   # 收合成一行/組
     assert "世界盃32強賽程出爐" in h
+
+
+def test_render_sports_mlb_tw_and_tennis():
+    sports = {
+        "news": {},
+        "mlb_tw": [{"name": "鄧愷威", "en": "Kai-Wei Teng", "role": "投手",
+                    "date": "06/14", "summary": "5.0 IP, 1 ER, 6 K"}],
+        "tennis": {"tournaments": [{"tour": "ATP", "name": "Boss Open", "status": "Final"}],
+                   "results": [{"tour": "ATP", "winner": "A. Player",
+                                "loser": "B. Loser", "event": "Boss Open"}]},
+    }
+    h = mr._render_sports_html(sports, htmllib)
+    assert "MLB 台灣旅外球員" in h and "鄧愷威" in h and "5.0 IP, 1 ER, 6 K" in h
+    assert "網球 ATP / WTA" in h and "Boss Open" in h
+    assert "A. Player" in h and "勝" in h
+
+
+def test_fetch_mlb_taiwan_players(monkeypatch):
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    monkeypatch.setenv("MLB_TW_PLAYERS", "Kai-Wei Teng:鄧愷威")
+    now = dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE)
+
+    def fake_get(url, params=None, timeout=None, **k):
+        params = params or {}
+        if "search" in url:
+            return R({"people": [{"id": 678906, "fullName": "Kai-Wei Teng"}]})
+        if "/stats" in url:
+            if params.get("group") == "pitching":
+                return R({"stats": [{"splits": [
+                    {"date": "2026-06-14", "stat": {"summary": "5.0 IP, 1 ER, 6 K"}}]}]})
+            return R({"stats": [{"splits": []}]})
+        return R({})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_mlb_taiwan_players(now)
+    assert len(out) == 1
+    assert out[0]["name"] == "鄧愷威" and out[0]["role"] == "投手"
+    assert out[0]["date"] == "06/14" and "6 K" in out[0]["summary"]
+
+    # 超過 7 天未出賽 → 略過(不顯示過舊資料)
+    def fake_old(url, params=None, timeout=None, **k):
+        params = params or {}
+        if "search" in url:
+            return R({"people": [{"id": 1, "fullName": "X"}]})
+        if "/stats" in url and params.get("group") == "pitching":
+            return R({"stats": [{"splits": [
+                {"date": "2026-06-01", "stat": {"summary": "old"}}]}]})
+        return R({"stats": [{"splits": []}]})
+    monkeypatch.setattr(mr.requests, "get", fake_old)
+    assert mr.fetch_mlb_taiwan_players(now) == []
+
+
+def test_fetch_tennis_digest(monkeypatch):
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def fake_get(url, timeout=None, **k):
+        return R({"events": [{
+            "shortName": "Boss Open",
+            "status": {"type": {"shortDetail": "Final"}},
+            "groupings": [{"competitions": [{
+                "status": {"type": {"completed": True}},
+                "competitors": [
+                    {"athlete": {"shortName": "A. Player"}, "winner": True},
+                    {"athlete": {"shortName": "B. Loser"}, "winner": False}]}]}],
+        }]})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_tennis_digest()
+    assert any(t["name"] == "Boss Open" for t in out["tournaments"])
+    assert any(r["winner"] == "A. Player" and r["loser"] == "B. Loser"
+               for r in out["results"])
 
 
 def test_wc_zh_mapping_and_fallback():

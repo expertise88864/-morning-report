@@ -10826,14 +10826,167 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                 out["groups"].append({"name": gname, "rows": rows})
     except Exception as e:
         print(f"[sports] 世足分組戰績抓取失敗: {e}", file=sys.stderr)
+    # 今日/明日賽程預告(未開賽場次,附台北開球時間)——小組賽結束後自動變成淘汰賽對戰
+    fixtures = []
+    fseen = set()
+    for ahead in (0, 1):
+        day = (now_tpe + dt.timedelta(days=ahead)).strftime("%Y%m%d")
+        try:
+            r = requests.get(
+                "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
+                params={"dates": day}, timeout=15)
+            r.raise_for_status()
+            for ev in r.json().get("events", []):
+                st = (((ev.get("status") or {}).get("type")) or {})
+                if st.get("completed") or st.get("state") == "in":
+                    continue  # 只列尚未開打的
+                gid = ev.get("id") or ev.get("uid")
+                if gid in fseen:
+                    continue
+                fseen.add(gid)
+                comp = (ev.get("competitions") or [{}])[0]
+                teams = comp.get("competitors", [])
+                if len(teams) != 2:
+                    continue
+                names = [_wc_zh((t.get("team") or {}).get("displayName")
+                                or (t.get("team") or {}).get("name", "?")) for t in teams]
+                kickoff = ""
+                try:
+                    iso = str(ev.get("date") or "").replace("Z", "+00:00")
+                    ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
+                    kickoff = ko.strftime("%m/%d %H:%M")
+                except Exception:
+                    pass
+                rnd = str((comp.get("notes") or [{}])[0].get("headline") or "")[:24]
+                fixtures.append({"text": " vs ".join(names), "kickoff": kickoff, "round": rnd})
+        except Exception as e:
+            print(f"[sports] 世足賽程抓取失敗({day}): {e}", file=sys.stderr)
+    out["fixtures"] = fixtures[:10]
+    return out
+
+
+# 台灣旅外 MLB 球員(英文搜尋名 → 繁中顯示名)。可用環境變數 MLB_TW_PLAYERS 覆寫,
+# 格式:「英文名:中文名,英文名:中文名」。資料源 MLB statsapi(免費,不 geo-block)。
+_MLB_TW_PLAYERS_DEFAULT = {
+    "Kai-Wei Teng": "鄧愷威",
+    "Yu Chang": "張育成",
+    "Yu-Min Lin": "林昱珉",
+    "Chih-Jung Liu": "劉致榮",
+}
+
+
+def _mlb_tw_players() -> dict:
+    raw = os.getenv("MLB_TW_PLAYERS", "").strip()
+    if not raw:
+        return dict(_MLB_TW_PLAYERS_DEFAULT)
+    out = {}
+    for pair in raw.split(","):
+        if ":" in pair:
+            en, zh = pair.split(":", 1)
+            if en.strip():
+                out[en.strip()] = zh.strip() or en.strip()
+    return out or dict(_MLB_TW_PLAYERS_DEFAULT)
+
+
+def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """台灣旅外 MLB 球員近期最新一場出賽數據。MLB statsapi(免費)。
+
+    打者顯示打數/安打/全壘打/打點;投手顯示局數/責失/三振/防禦率;附出賽日期。
+    台灣旅外 MLB 球員不多、且常上下大小聯盟,故取「近 7 天內最新一場」而非僅限昨日,
+    超過 7 天未出賽(可能下放小聯盟/傷兵)則略過,避免顯示過舊資料。
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    season = now_tpe.year
+    recent_cut = now_tpe.date() - dt.timedelta(days=7)
+    out = []
+    for en_name, zh_name in _mlb_tw_players().items():
+        try:
+            r = requests.get("https://statsapi.mlb.com/api/v1/people/search",
+                             params={"names": en_name}, timeout=12)
+            people = r.json().get("people", [])
+            if not people:
+                continue
+            pid = people[0].get("id")
+            latest = None
+            for grp in ("hitting", "pitching"):
+                rr = requests.get(
+                    f"https://statsapi.mlb.com/api/v1/people/{pid}/stats",
+                    params={"stats": "gameLog", "season": season, "group": grp},
+                    timeout=12)
+                splits = (rr.json().get("stats") or [{}])[0].get("splits") or []
+                if not splits:
+                    continue
+                sp = splits[-1]
+                d = sp.get("date") or ""
+                try:
+                    gdate = dt.datetime.strptime(d, "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                if gdate < recent_cut:
+                    continue
+                if latest is None or gdate >= latest[0]:
+                    summary = (sp.get("stat") or {}).get("summary") or ""
+                    latest = (gdate, grp, summary)
+            if latest:
+                out.append({
+                    "name": zh_name, "en": en_name,
+                    "role": "投手" if latest[1] == "pitching" else "打者",
+                    "date": latest[0].strftime("%m/%d"),
+                    "summary": str(latest[2])[:60],
+                })
+        except Exception as e:
+            print(f"[sports] MLB 台灣球員 {en_name} 抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def fetch_tennis_digest() -> dict:
+    """網球 ATP/WTA 當週賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。"""
+    out: dict = {"tournaments": [], "results": []}
+    for tour, label in (("atp", "ATP"), ("wta", "WTA")):
+        try:
+            r = requests.get(
+                f"https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard",
+                timeout=15)
+            r.raise_for_status()
+            for ev in r.json().get("events", [])[:4]:
+                status = (((ev.get("status") or {}).get("type")) or {}).get("shortDetail", "")
+                name = ev.get("shortName") or ev.get("name") or ""
+                if name:
+                    out["tournaments"].append({"tour": label, "name": str(name)[:40],
+                                               "status": str(status)[:18]})
+                for g in (ev.get("groupings") or []):
+                    for comp in (g.get("competitions") or []):
+                        st = (((comp.get("status") or {}).get("type")) or {})
+                        cs = comp.get("competitors", [])
+                        if len(cs) != 2 or not st.get("completed"):
+                            continue
+                        win = next((c for c in cs if c.get("winner")), None)
+                        lose = next((c for c in cs if not c.get("winner")), None)
+                        if not (win and lose):
+                            continue
+
+                        def _an(c):
+                            a = c.get("athlete") or {}
+                            return a.get("shortName") or a.get("displayName") or "?"
+                        out["results"].append({
+                            "tour": label, "winner": _an(win), "loser": _an(lose),
+                            "event": str(name)[:30]})
+                        if len(out["results"]) >= 6:
+                            break
+                    if len(out["results"]) >= 6:
+                        break
+        except Exception as e:
+            print(f"[sports] 網球 {label} 抓取失敗: {e}", file=sys.stderr)
+    out["tournaments"] = out["tournaments"][:6]
+    out["results"] = out["results"][:6]
     return out
 
 
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
-    """CPBL 戰績表 + NBA 冠軍賽(最近一場+系列賽戰況)+ MLB 戰績榜 + 世足 + 體育新聞。
+    """CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜/台灣球員 + 世足 + 網球 + 體育新聞。
 
     使用者需求:中職要完整戰績表;NBA 要冠軍賽比分與系列賽狀態;不要 MLB 逐場比分;
-    世足要最新/昨日戰績與分組累計戰績表。
+    世足要最新/昨日戰績、分組表與今日賽程;加台灣旅外 MLB 球員與網球賽況。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
     out: dict = {"news": {}}
@@ -10899,10 +11052,24 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     # 世足(賽期內才有資料,非賽期回空,渲染端自動略過)
     try:
         wc = fetch_worldcup(now_tpe)
-        if wc.get("results") or wc.get("groups"):
+        if wc.get("results") or wc.get("groups") or wc.get("fixtures"):
             out["worldcup"] = wc
     except Exception as e:
         print(f"[sports] 世足抓取失敗: {e}", file=sys.stderr)
+    # 台灣旅外 MLB 球員昨日表現
+    try:
+        tw_mlb = fetch_mlb_taiwan_players(now_tpe)
+        if tw_mlb:
+            out["mlb_tw"] = tw_mlb
+    except Exception as e:
+        print(f"[sports] MLB 台灣球員抓取失敗: {e}", file=sys.stderr)
+    # 網球 ATP/WTA 賽況
+    try:
+        tennis = fetch_tennis_digest()
+        if tennis.get("tournaments") or tennis.get("results"):
+            out["tennis"] = tennis
+    except Exception as e:
+        print(f"[sports] 網球抓取失敗: {e}", file=sys.stderr)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
@@ -10931,10 +11098,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     worldcup = (sports or {}).get("worldcup") or {}
     wc_results = worldcup.get("results") or []
     wc_groups = worldcup.get("groups") or []
-    if not (cpbl or nba or standings or wc_results or wc_groups or any(news.values())):
+    wc_fixtures = worldcup.get("fixtures") or []
+    mlb_tw = (sports or {}).get("mlb_tw") or []
+    tennis = (sports or {}).get("tennis") or {}
+    if not (cpbl or nba or standings or wc_results or wc_groups or wc_fixtures
+            or mlb_tw or tennis.get("tournaments") or tennis.get("results")
+            or any(news.values())):
         return ""
     blocks = []
-    if wc_results or wc_groups:
+    if wc_results or wc_groups or wc_fixtures:
         wc_inner = []
         if wc_results:
             lines = "".join(
@@ -10945,27 +11117,45 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 for g in wc_results)
             wc_inner.append(
                 f"<div style='margin:6px 0;'><b style='color:#0f172a;'>近期戰績</b>{lines}</div>")
+        if wc_fixtures:
+            lines = "".join(
+                f"<div style='font-size:13px;color:#334155;line-height:1.8;'>"
+                f"<span style='color:#94a3b8;'>{htmllib.escape(g.get('kickoff', ''))}</span>　"
+                f"{htmllib.escape(g['text'])}"
+                + (f"　<span style='color:#94a3b8;font-size:11px;'>{htmllib.escape(g['round'])}</span>"
+                   if g.get("round") else "")
+                + "</div>"
+                for g in wc_fixtures)
+            wc_inner.append(
+                f"<div style='margin:6px 0;'><b style='color:#0f172a;'>今日/近日賽程（台北時間）</b>{lines}</div>")
         if wc_groups:
-            grp_blocks = []
-            for grp in wc_groups:
-                rows = "".join(
-                    f"<tr><td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;"
-                    f"font-size:12px;color:#0f172a;'>{i}. {htmllib.escape(t['team'])}</td>"
-                    f"<td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;text-align:right;"
-                    f"font-size:12px;color:#64748b;'>{t['gp']}賽 {t['w']}勝{t['d']}和{t['l']}敗</td>"
-                    f"<td style='padding:3px 8px;border-bottom:1px solid #f1f5f9;text-align:right;"
-                    f"font-size:12px;font-weight:700;color:#0f172a;'>{t['pts']}分</td></tr>"
-                    for i, t in enumerate(grp["rows"], 1))
-                grp_blocks.append(
-                    f"<div style='margin:6px 0;'>"
-                    f"<span style='font-size:12px;font-weight:700;color:#16a34a;'>{htmllib.escape(grp['name'])}</span>"
-                    f"<table style='width:100%;border-collapse:collapse;margin-top:2px;'>{rows}</table></div>")
+            # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度
+            grp_lines = "".join(
+                "<div style='font-size:12px;color:#334155;line-height:1.8;margin:1px 0;'>"
+                f"<b style='color:#16a34a;'>{htmllib.escape(grp['name'])}</b>　"
+                + " ・ ".join(
+                    f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
+                    for t in grp["rows"])
+                + "</div>"
+                for grp in wc_groups)
             wc_inner.append(
                 "<div style='margin:6px 0;'><b style='color:#0f172a;'>分組累計戰績</b>"
-                + "".join(grp_blocks) + "</div>")
+                "<div style='font-size:11px;color:#94a3b8;'>隊名 積分(勝-和-敗)</div>"
+                + grp_lines + "</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"
             + "".join(wc_inner) + "</div>")
+    if mlb_tw:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(p.get('date', ''))}</span>　"
+            f"<b>{htmllib.escape(p['name'])}</b>"
+            f"<span style='color:#64748b;font-size:11px;'>（{htmllib.escape(p.get('role', ''))}）</span>　"
+            f"{htmllib.escape(p.get('summary', ''))}</div>"
+            for p in mlb_tw)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 台灣旅外球員（近期出賽）</b>"
+            + rows + "</div>")
     if cpbl:
         rows = "".join(
             f"<tr><td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
@@ -11003,6 +11193,25 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for lg, teams in standings.items())
         blocks.append(f"<div style='margin:8px 0;font-size:12px;color:#475569;'>"
                       f"MLB 戰績前三:{seg}</div>")
+    if tennis.get("tournaments") or tennis.get("results"):
+        t_inner = []
+        if tennis.get("tournaments"):
+            seg = "　|　".join(
+                f"{htmllib.escape(t['tour'])} {htmllib.escape(t['name'])}"
+                + (f"（{htmllib.escape(t['status'])}）" if t.get("status") else "")
+                for t in tennis["tournaments"])
+            t_inner.append(f"<div style='font-size:12px;color:#475569;line-height:1.7;'>{seg}</div>")
+        if tennis.get("results"):
+            seg = "".join(
+                f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
+                f"<span style='color:#94a3b8;'>{htmllib.escape(r['tour'])}</span>　"
+                f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}</div>"
+                for r in tennis["results"])
+            t_inner.append(seg)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
+            + "".join(t_inner)
+            + "<div style='font-size:11px;color:#94a3b8;'>※ 免費資料源未含逐盤比分</div></div>")
     for label in ("世足", "中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:

@@ -25,30 +25,53 @@ import requests
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-# 摘要用 flash 即可(輸入是轉錄文字 ~2-3 萬 tokens,flash 便宜且夠用)
+# 一般節目:flash + small 即可(便宜快)。核心節目(accuracy=high)走較準的組合,
+# 把額度花在使用者真正在讀、且個股/數字密集的台系深度節目上。
 DEEPSEEK_MODEL = os.getenv("PODCAST_DEEPSEEK_MODEL", "deepseek-v4-flash")
-WHISPER_MODEL = os.getenv("PODCAST_WHISPER_MODEL", "small")   # small 中文夠用;medium 更準但慢一倍
+DEEPSEEK_MODEL_HIGH = os.getenv("PODCAST_DEEPSEEK_MODEL_HIGH", "deepseek-v4-pro")
+WHISPER_MODEL = os.getenv("PODCAST_WHISPER_MODEL", "small")   # small 中文夠用
+WHISPER_MODEL_HIGH = os.getenv("PODCAST_WHISPER_MODEL_HIGH", "medium")  # 中文/公司名更準,慢約一倍
 STATE_FILE = Path("state/podcast_digest.json")
 # 72h:涵蓋「被每日預算擋掉的集隔天補轉」與「清空重轉」情境(48h 曾讓兩者永遠錯過)
 MAX_EPISODE_AGE_HOURS = float(os.getenv("PODCAST_MAX_AGE_H", "72"))
 MAX_AUDIO_MB = 200
-MAX_TRANSCRIPT_CHARS = 60000    # 轉錄文字進 LLM 前的長度上限(~90 分鐘集數也夠)
+# 轉錄文字進 LLM 前的長度上限。180000 字 ≈ 2.5 小時,確保 90 分鐘長集尾段不被截掉
+# (曾因 60000 上限把股癌尾段的被動元件/記憶體討論切掉)。DeepSeek v4 context 夠大可一次吃下。
+MAX_TRANSCRIPT_CHARS = int(os.getenv("PODCAST_MAX_TRANSCRIPT_CHARS", "180000"))
 KEEP_EPISODES_PER_SHOW = 12
+
+# faster-whisper initial_prompt:餵領域詞庫,讓機器轉錄不把公司名/術語聽成錯字
+# (台股代號、半導體/AI 供應鏈常見詞)。這是準確度 CP 值最高的一招。
+WHISPER_ZH_PROMPT = (
+    "以下是台灣財經投資 podcast,內容常見台股與半導體、AI 供應鏈。"
+    "台積電、聯發科、輝達(NVIDIA)、台達電、鴻海、廣達、緯創、緯穎、技嘉、"
+    "日月光、聯詠、瑞昱、世芯、創意、力旺、群聯、南亞科、華邦電、聯電、"
+    "被動元件、散熱、水冷、光通訊、矽光子、CoWoS、HBM、記憶體、晶圓代工、"
+    "先進封裝、ASIC、伺服器、機器人、重電、加權指數、台股、那斯達克、聯準會。"
+)
+WHISPER_EN_PROMPT = (
+    "A finance and markets podcast discussing stocks, the Federal Reserve, "
+    "Nvidia, TSMC, semiconductors, AI, earnings, inflation and the S&P 500."
+)
+# 核心(accuracy=high)節目轉錄較慢,job 預算估時用較大的 realtime factor 才不會超時
+TRANSCRIBE_REALTIME_FACTOR_HIGH = float(
+    os.getenv("PODCAST_TRANSCRIBE_REALTIME_FACTOR_HIGH", "0.55"))
 
 # priority 1 = 每天必轉(短/每日/核心);2 = 預算內輪轉(長集深度)。
 # lang: zh/en → whisper 轉錄語言;country → iTunes Search 商店。
 # 註:Acquired(單集 3.5h)與 Bloomberg Surveillance(每日 1-2h)因時長
 # 超出每日預算太多,刻意不納入。
+# accuracy="high" → 用 medium 轉錄 + beam 5 + v4-pro 摘要(個股/數字密集的台系深度節目)。
 PODCASTS = [
     # --- 中文核心(每日/高契合) ---
     {"key": "gooaye", "name": "股癌", "search": "股癌 Gooaye",
-     "lang": "zh", "country": "TW", "priority": 1},
+     "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
     {"key": "haojiao", "name": "游庭皓的財經皓角", "search": "游庭皓的財經皓角",
-     "lang": "zh", "country": "TW", "priority": 1},
+     "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
     {"key": "statementdog", "name": "財報狗", "search": "財報狗",
-     "lang": "zh", "country": "TW", "priority": 1},
+     "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
     {"key": "mviewpoint", "name": "M觀點", "search": "M觀點 Miula",
-     "lang": "zh", "country": "TW", "priority": 1},
+     "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
     {"key": "techorange", "name": "科技報橘", "search": "科技報橘",
      "lang": "zh", "country": "TW", "priority": 1},   # 每日「科技早餐」,科技產業向
     {"key": "usstock-class", "name": "美股投資學", "search": "美股投資學",
@@ -57,26 +80,22 @@ PODCASTS = [
      "lang": "zh", "country": "TW", "priority": 2},
     {"key": "macromicro", "name": "財經M平方", "search": "財經M平方",
      "lang": "zh", "country": "TW", "priority": 2},
-    # --- 英文每日新聞(短,便宜) ---
-    {"key": "ft-briefing", "name": "FT News Briefing", "search": "FT News Briefing",
-     "lang": "en", "country": "US", "priority": 1},
+    # --- 英文每日新聞(短,便宜;砍重複,保留兩檔最精煉的盤前/快訊) ---
     {"key": "wsj-whatsnews", "name": "WSJ What's News", "search": "WSJ What's News",
      "lang": "en", "country": "US", "priority": 1},
     {"key": "ws-breakfast", "name": "Wall Street Breakfast", "search": "Wall Street Breakfast",
      "lang": "en", "country": "US", "priority": 1},
-    {"key": "unhedged", "name": "Unhedged (FT)", "search": "Unhedged Financial Times",
-     "lang": "en", "country": "US", "priority": 2},
-    # --- 英文深度(長集,預算內輪轉) ---
+    # --- 英文深度 / 科技(預算內輪轉;貼近 2330/00662 半導體與 NASDAQ 曝險) ---
     {"key": "oddlots", "name": "Odd Lots", "search": "Odd Lots Bloomberg",
      "lang": "en", "country": "US", "priority": 2},
     {"key": "moneytalks", "name": "Money Talks (Economist)",
      "search": "Money Talks from The Economist",
      "lang": "en", "country": "US", "priority": 2},
-    {"key": "animalspirits", "name": "Animal Spirits", "search": "Animal Spirits Podcast",
-     "lang": "en", "country": "US", "priority": 2},
-    {"key": "investlikebest", "name": "Invest Like the Best",
-     "search": "Invest Like the Best",
-     "lang": "en", "country": "US", "priority": 2},
+    {"key": "sharptech", "name": "Sharp Tech (Ben Thompson)",
+     "search": "Sharp Tech Ben Thompson",
+     "lang": "en", "country": "US", "priority": 2},   # 科技/半導體策略,貼 2330/00662
+    {"key": "allin", "name": "All-In Podcast", "search": "All-In Podcast",
+     "lang": "en", "country": "US", "priority": 2},    # 總經+科技+市場,週更格局大
 ]
 
 # 首跑實測:轉錄速度 ~0.18x 音長(147 分音檔僅 25 分轉錄),預算可放寬;
@@ -194,16 +213,23 @@ def download_audio(url: str, dest: Path) -> bool:
 _WHISPER_MODEL_CACHE: dict = {}
 
 
-def transcribe_audio(path: Path, lang: str = "zh") -> str:
-    """faster-whisper 本地轉錄(CPU int8,免費)。50 分鐘集約 10-25 分鐘。"""
+def transcribe_audio(path: Path, lang: str = "zh",
+                     model_name: str = WHISPER_MODEL, beam_size: int = 1) -> str:
+    """faster-whisper 本地轉錄(CPU int8,免費)。50 分鐘集約 10-25 分鐘。
+
+    model_name/beam_size 可由呼叫端依節目重要性提高(medium + beam5 更準但較慢);
+    initial_prompt 餵領域詞庫,大幅降低公司名/術語被聽錯的機率。
+    """
     from faster_whisper import WhisperModel   # lazy import:晨報/CI 不裝此套件
     t0 = time.time()
-    if WHISPER_MODEL not in _WHISPER_MODEL_CACHE:   # 多集共用,模型只載一次
-        _WHISPER_MODEL_CACHE[WHISPER_MODEL] = WhisperModel(
-            WHISPER_MODEL, device="cpu", compute_type="int8")
-    model = _WHISPER_MODEL_CACHE[WHISPER_MODEL]
+    if model_name not in _WHISPER_MODEL_CACHE:   # 多集共用,各尺寸模型各載一次
+        _WHISPER_MODEL_CACHE[model_name] = WhisperModel(
+            model_name, device="cpu", compute_type="int8")
+    model = _WHISPER_MODEL_CACHE[model_name]
+    initial_prompt = WHISPER_ZH_PROMPT if (lang or "zh").startswith("zh") else WHISPER_EN_PROMPT
     segments, info = model.transcribe(
-        str(path), language=lang or None, vad_filter=True, beam_size=1)
+        str(path), language=lang or None, vad_filter=True,
+        beam_size=beam_size, initial_prompt=initial_prompt)
     parts = []
     total = 0
     for seg in segments:
@@ -214,7 +240,7 @@ def transcribe_audio(path: Path, lang: str = "zh") -> str:
             break
     text = "".join(parts).strip()
     log(f"轉錄完成 {len(text)} 字(音長 {getattr(info, 'duration', 0) / 60:.0f} 分,"
-        f"耗時 {(time.time() - t0) / 60:.1f} 分,model={WHISPER_MODEL})")
+        f"耗時 {(time.time() - t0) / 60:.1f} 分,model={model_name},beam={beam_size})")
     return text
 
 
@@ -245,7 +271,18 @@ def _lang_violation(digest: dict) -> str:
     return ""
 
 
-def deepseek_digest(transcript: str) -> dict:
+def _accuracy_settings(cfg: dict) -> dict:
+    """依節目 accuracy 等級回傳轉錄/摘要設定。high = medium+beam5+v4-pro。"""
+    if cfg.get("accuracy") == "high":
+        return {"whisper": WHISPER_MODEL_HIGH, "beam": 5,
+                "summary_model": DEEPSEEK_MODEL_HIGH,
+                "rt_factor": TRANSCRIBE_REALTIME_FACTOR_HIGH}
+    return {"whisper": WHISPER_MODEL, "beam": 1,
+            "summary_model": DEEPSEEK_MODEL,
+            "rt_factor": TRANSCRIBE_REALTIME_FACTOR}
+
+
+def deepseek_digest(transcript: str, model: str = DEEPSEEK_MODEL) -> dict:
     """DeepSeek(OpenAI 相容 API)把逐字稿整理成結構化摘要 JSON。
     輸出做語言驗證(簡體/未翻譯英文 → 帶錯誤回饋重試)。"""
     messages = [
@@ -258,7 +295,7 @@ def deepseek_digest(transcript: str) -> dict:
             r = requests.post(
                 f"{DEEPSEEK_BASE_URL}/chat/completions",
                 headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
-                json={"model": DEEPSEEK_MODEL, "messages": messages,
+                json={"model": model, "messages": messages,
                       "response_format": {"type": "json_object"},
                       "temperature": 0.2},
                 timeout=300)
@@ -346,15 +383,18 @@ def process_episode(cfg: dict, state: dict, entry, audio_url: str) -> bool:
     key, name = cfg["key"], cfg["name"]
     guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
     log(f"{name}: 處理新集「{str(entry.get('title', ''))[:50]}」")
+    acc = _accuracy_settings(cfg)
     tmp = Path(f"podcast_{key}.mp3")
     try:
         if not download_audio(audio_url, tmp):
             return False
-        transcript = transcribe_audio(tmp, lang=cfg.get("lang", "zh"))
+        transcript = transcribe_audio(
+            tmp, lang=cfg.get("lang", "zh"),
+            model_name=acc["whisper"], beam_size=acc["beam"])
         if len(transcript) < 500:
             log(f"{name}: 轉錄過短({len(transcript)} 字),跳過")
             return False
-        digest = deepseek_digest(transcript)
+        digest = deepseek_digest(transcript, model=acc["summary_model"])
     finally:
         tmp.unlink(missing_ok=True)
 
@@ -406,7 +446,8 @@ def main() -> int:
             continue
         # Reserve enough wall time for transcription, summarization, state write and
         # the workflow's final git commit step. Skipped items remain eligible tomorrow.
-        estimated_seconds = dur * 60 * TRANSCRIBE_REALTIME_FACTOR + 1500
+        # 核心節目用 medium 轉錄較慢,估時用較大的 realtime factor 才不會超時。
+        estimated_seconds = dur * 60 * _accuracy_settings(cfg)["rt_factor"] + 1500
         if time.monotonic() - started + estimated_seconds > JOB_BUDGET_SECONDS:
             log(f"{cfg['name']}: 剩餘 job 時間不足以安全完成，留待下次")
             continue

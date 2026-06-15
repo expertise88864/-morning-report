@@ -11551,6 +11551,37 @@ def _render_sports_html(sports: dict, htmllib) -> str:
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
 
 
+def _norm_podcast_point(s) -> str:
+    """重點句正規化(去空白/標點/全形符號),供跨集去重比對。"""
+    import re as _re
+    return _re.sub(r"[\s，。、！？,.!?:：;；…()（）「」【】\"'`%　]+", "", str(s)).lower()
+
+
+def _dedup_podcast_episodes(episodes: list[dict]) -> list[dict]:
+    """跨節目/跨集去重(信件最大長度元兇):同場聯名特輯被兩個 feed 各收一次、或同一事件
+    在多個節目重貼。保守處理:與已保留集重點重疊 ≥60% 的整集略過(僅當本集 ≥3 點);其餘集
+    移除與先前集重複的個別重點(移除後 <2 點則保留原樣,避免變空集)。被略過的集未標 shown,
+    其雙胞胎被顯示後,它隔日獨立出現時已不再重複。"""
+    seen_norm: set = set()
+    kept: list[dict] = []
+    kept_sets: list[set] = []
+    for ep in episodes:
+        d = ep.get("digest") or {}
+        pts = [p for p in (d.get("summary_points") or []) if str(p).strip()]
+        norms = [_norm_podcast_point(p) for p in pts]
+        nset = {n for n in norms if n}
+        if len(nset) >= 3 and any(
+                prev and len(nset & prev) / len(nset) >= 0.6 for prev in kept_sets):
+            continue   # 整集近重複(如聯名特輯重貼)→ 略過
+        uniq = [p for p, n in zip(pts, norms) if n and n not in seen_norm]
+        if 2 <= len(uniq) < len(pts):
+            ep = {**ep, "digest": {**d, "summary_points": uniq}}
+        seen_norm.update(n for n in norms if n)
+        kept.append(ep)
+        kept_sets.append(nset)
+    return kept
+
+
 def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
     """讀 podcast_digest.py 產出的摘要,回「尚未在信件中顯示過」的近期集。
 
@@ -11594,7 +11625,7 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
     ]
     rank = {name: i for i, name in enumerate(display_order)}
     out.sort(key=lambda e: rank.get(e.get("show", ""), 99))
-    return out
+    return _dedup_podcast_episodes(out)   # 跨節目/跨集去重(聯名特輯/同事件重貼)
 
 
 def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
@@ -11655,13 +11686,16 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         return ""
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
+    # 台系深度節目重點全展開;國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB)
+    tw_shows = {"股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
+                "美股投資學", "財經一路發", "財經M平方"}
     cards = []
-    # 每集只出現一次(shown_at 機制),信件不會重複堆疊 → 重點全展開不裁切
     for ep in episodes[:14]:
         d = ep.get("digest") or {}
+        max_pts = 15 if ep.get("show", "") in tw_shows else 6
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
-            for p in (d.get("summary_points") or [])[:15])
+            for p in (d.get("summary_points") or [])[:max_pts])
         ticker_rows = ""
         for t in (d.get("tickers") or [])[:8]:
             label, color = dir_label.get(str(t.get("direction")), ("—", "#64748b"))

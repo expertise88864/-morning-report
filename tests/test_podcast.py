@@ -138,6 +138,50 @@ def test_podcast_ticker_crosscheck_rules():
         snapshot) == ""
 
 
+def test_dedup_podcast_skips_near_duplicate_episode():
+    """同場聯名特輯被兩個 feed 各收一次 → 重疊高的整集略過。"""
+    ep_a = {"show": "美股投資學", "guid": "a",
+            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "P5"]}}
+    ep_b = {"show": "財經M平方", "guid": "b",   # 4/5 重疊 → 視為重貼,略過
+            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "X6"]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_b])
+    assert [e["guid"] for e in out] == ["a"]
+
+
+def test_dedup_podcast_drops_repeated_points_keeps_episode():
+    """重疊不足以整集略過時,移除個別重複重點、保留該集。"""
+    ep_a = {"show": "股癌", "guid": "a",
+            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "P5"]}}
+    ep_c = {"show": "財報狗", "guid": "c",   # 僅 P1 重複(1/5)→ 保留,但 P1 被移除
+            "digest": {"summary_points": ["P1", "Y2", "Y3", "Y4", "Y5"]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_c])
+    assert len(out) == 2
+    assert out[1]["digest"]["summary_points"] == ["Y2", "Y3", "Y4", "Y5"]
+
+
+def test_dedup_podcast_keeps_original_when_too_few_unique():
+    """2 點全重複的短集(不觸發整集略過門檻)→ 保留原樣,避免變空集。"""
+    ep_a = {"show": "股癌", "guid": "a",
+            "digest": {"summary_points": ["P1", "P2", "P3"]}}
+    ep_d = {"show": "財報狗", "guid": "d", "digest": {"summary_points": ["P1", "P2"]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_d])
+    assert len(out) == 2
+    assert out[1]["digest"]["summary_points"] == ["P1", "P2"]   # 原樣保留
+
+
+def test_render_podcast_international_point_cap():
+    """國際節目重點壓到 6 條;台系節目全展開。"""
+    import html as htmllib
+    intl = [{"show": "Odd Lots", "title": "x",
+             "digest": {"summary_points": [f"pt{i}" for i in range(10)]}}]
+    h = mr._render_podcast_html(intl, [], htmllib)
+    assert "pt5" in h and "pt6" not in h          # 國際 → 只到第 6 條
+    tw = [{"show": "股癌", "title": "x",
+           "digest": {"summary_points": [f"pt{i}" for i in range(12)]}}]
+    h2 = mr._render_podcast_html(tw, [], htmllib)
+    assert "pt11" in h2                            # 台系 → 全展開(≤15)
+
+
 def test_render_podcast_html(tmp_path, monkeypatch):
     import html as htmllib
     path = tmp_path / "podcast_digest.json"

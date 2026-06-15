@@ -268,10 +268,20 @@ def test_supply_chain_2330_tag():
     assert "對2330供應鏈" in mr._supply_chain_2330_tag("NVDA")
     assert "對2330供應鏈" in mr._supply_chain_2330_tag("ASML")
     assert "對2330供應鏈" in mr._supply_chain_2330_tag("ARM")
-    assert mr._supply_chain_2330_tag("MU") == ""      # MU→3711,非 2330
-    assert mr._supply_chain_2330_tag("AAPL") == ""    # AAPL→2317/3008,非 2330
+    assert mr._supply_chain_2330_tag("MU") == ""      # MU 不在顯示集
     assert mr._supply_chain_2330_tag("") == ""
     assert mr._supply_chain_2330_tag(None) == ""
+
+
+def test_supply_chain_tag_does_not_touch_scoring_map():
+    """顯示標籤用獨立集合,計分用的 TW_SUPPLY_CHAIN_BY_US_LABEL 不得被新增條目污染。"""
+    scoring = mr.TW_SUPPLY_CHAIN_BY_US_LABEL
+    # 純顯示新增的這些,絕不可出現在計分 map(否則等於未回測就改模型)
+    for t in ("QCOM", "MRVL", "AMAT", "ARM"):
+        assert t not in scoring
+        assert "對2330供應鏈" in mr._supply_chain_2330_tag(t)   # 但顯示標籤照樣有
+    # 計分 map 維持原本 6 個 key
+    assert set(scoring) == {"NVDA", "AMD", "AVGO", "MU", "ASML", "AAPL"}
 
 
 def test_other_sector_queries_precision():

@@ -135,6 +135,8 @@ def test_fetch_mlb_taiwan_players(monkeypatch):
 
 
 def test_fetch_tennis_digest(monkeypatch):
+    import datetime as dt
+
     class R:
         def __init__(self, p):
             self._p = p
@@ -145,21 +147,25 @@ def test_fetch_tennis_digest(monkeypatch):
         def json(self):
             return self._p
 
-    def fake_get(url, timeout=None, **k):
+    def fake_get(url, params=None, timeout=None, **k):
         return R({"events": [{
             "shortName": "Boss Open",
             "status": {"type": {"shortDetail": "Final"}},
-            "groupings": [{"competitions": [{
-                "status": {"type": {"completed": True}},
-                "competitors": [
-                    {"athlete": {"shortName": "A. Player"}, "winner": True},
-                    {"athlete": {"shortName": "B. Loser"}, "winner": False}]}]}],
+            "groupings": [{
+                "grouping": {"slug": "mens-singles"},
+                "competitions": [{
+                    "id": "c1", "date": "2026-06-14T12:00Z",
+                    "status": {"type": {"completed": True}},
+                    "competitors": [
+                        {"athlete": {"shortName": "A. Player"}, "winner": True},
+                        {"athlete": {"shortName": "B. Loser"}, "winner": False}]}]}],
         }]})
     monkeypatch.setattr(mr.requests, "get", fake_get)
-    out = mr.fetch_tennis_digest()
+    out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
     assert any(t["name"] == "Boss Open" for t in out["tournaments"])
-    assert any(r["winner"] == "A. Player" and r["loser"] == "B. Loser"
-               for r in out["results"])
+    # 兩端點都回同一場 → 用 competition id 去重,只算一次
+    matches = [r for r in out["results"] if r["winner"] == "A. Player"]
+    assert len(matches) == 1 and matches[0]["tour"] == "ATP"
 
 
 def test_wc_zh_mapping_and_fallback():
@@ -314,7 +320,9 @@ def test_fetch_worldcup_fixtures_filters_to_tpe_day(monkeypatch):
 
 
 def test_fetch_tennis_orders_latest_first_per_tour(monkeypatch):
-    """ESPN 場次舊→新;各 tour 取最近 3 場、合併後最新在前,WTA 不被 ATP 佔滿。"""
+    """各 tour 取最近 3 場、最新在前;性別以 slug 分類;competition id 跨端點去重;雙打略過。"""
+    import datetime as dt
+
     class R:
         def __init__(self, p):
             self._p = p
@@ -325,26 +333,44 @@ def test_fetch_tennis_orders_latest_first_per_tour(monkeypatch):
         def json(self):
             return self._p
 
-    def _match(winner, day):
-        return {"date": f"2026-06-{day}T12:00Z",
+    def _match(cid, winner, day):
+        return {"id": cid, "date": f"2026-06-{day}T12:00Z",
                 "status": {"type": {"completed": True}},
                 "competitors": [{"athlete": {"shortName": winner}, "winner": True},
                                 {"athlete": {"shortName": "Loser"}, "winner": False}]}
 
-    def fake_get(url, timeout=None, **k):
-        if "/atp/" in url:   # 四場,舊→新(ESPN 順序)
-            comps = [_match(f"ATP{d}", d) for d in (10, 11, 12, 13)]
+    def fake_get(url, params=None, timeout=None, **k):
+        if "/atp/" in url:
             return R({"events": [{"shortName": "ATP Cup", "status": {"type": {}},
-                                  "groupings": [{"competitions": comps}]}]})
+                                  "groupings": [
+                # 男單四場(舊→新)
+                {"grouping": {"slug": "mens-singles"},
+                 "competitions": [_match(f"m{d}", f"ATP{d}", d) for d in (10, 11, 12, 13)]},
+                # atp 端點夾帶的女單(應標 WTA,非 ATP)
+                {"grouping": {"slug": "womens-singles"},
+                 "competitions": [_match("w20", "WTA20", 12)]},
+                # 雙打應略過
+                {"grouping": {"slug": "mens-doubles"},
+                 "competitions": [_match("d1", "DOUBLES", 13)]},
+            ]}]})
         return R({"events": [{"shortName": "WTA Cup", "status": {"type": {}},
-                              "groupings": [{"competitions": [_match("WTA12", 12)]}]}]})
+                              "groupings": [{
+                                  "grouping": {"slug": "womens-singles"},
+                                  "competitions": [
+                                      _match("w20", "WTA20", 12),    # 與 atp 端點重複 → 去重
+                                      _match("w22", "WTA22", 11)]}]}]})
     monkeypatch.setattr(mr.requests, "get", fake_get)
-    out = mr.fetch_tennis_digest()
+    out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
     winners = [r["winner"] for r in out["results"]]
-    assert winners[0] == "ATP13"                         # 最新在前
-    assert "WTA12" in winners                            # WTA 有代表,未被 ATP 佔滿
-    assert winners.count("ATP10") == 0 or winners.index("ATP13") == 0  # ATP 每 tour 上限 3
+    assert winners[0] == "ATP13"                          # 最新在前
+    assert "WTA20" in winners                             # atp 端點的女單被正確標為 WTA
+    assert winners.count("WTA20") == 1                    # 跨端點同一場去重
+    assert "ATP10" not in winners                         # 各 tour 上限 3,最舊被擠掉
+    assert "DOUBLES" not in winners                       # 雙打略過
     assert sum(1 for w in winners if w.startswith("ATP")) <= 3
+    # tour 標籤正確
+    assert all(r["tour"] == ("WTA" if r["winner"].startswith("WTA") else "ATP")
+               for r in out["results"])
 
 
 def _stub_weekend_sources(monkeypatch, *, podcast):

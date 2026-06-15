@@ -10948,34 +10948,52 @@ def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict
     return out
 
 
-def fetch_tennis_digest() -> dict:
-    """網球 ATP/WTA 當週賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。
+# ESPN 網球 grouping slug → 我方 tour 標籤(只取單打;雙打與其他略過)
+_TENNIS_SINGLES = {"mens-singles": "ATP", "womens-singles": "WTA"}
 
-    ESPN 回傳場次為「舊→新」順序,故各 tour 內依比賽時間由新到舊排序、各取最近 3 場,
-    再合併(兩 tour 都有代表,不會被單一 tour 佔滿)。
+
+def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """網球 ATP/WTA 近日賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。
+
+    注意 ESPN 行為:
+      - 不帶 dates 會回某個預設日(可能是舊資料),故必須帶近 3 日的 dates 區間。
+      - atp/wta 兩端點都會夾帶對方性別的 grouping,且同一場 competition 兩端點都出現;
+        故以 grouping.slug 判定性別(只取單打)、並用 competition id 全域去重。
+      - 場次為舊→新,故各 tour 依時間新→舊取最近 3 場再合併。
     """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    dates = (f"{(now_tpe - dt.timedelta(days=3)).strftime('%Y%m%d')}"
+             f"-{now_tpe.strftime('%Y%m%d')}")
     out: dict = {"tournaments": [], "results": []}
 
     def _an(c):
         a = c.get("athlete") or {}
         return a.get("shortName") or a.get("displayName") or "?"
 
-    per_tour: list[list[dict]] = []
-    for tour, label in (("atp", "ATP"), ("wta", "WTA")):
-        matches = []
+    seen_comp = set()
+    seen_tourn = set()
+    by_label: dict = {"ATP": [], "WTA": []}
+    for tour in ("atp", "wta"):
         try:
             r = requests.get(
                 f"https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard",
-                timeout=15)
+                params={"dates": dates}, timeout=15)
             r.raise_for_status()
-            for ev in r.json().get("events", [])[:4]:
+            for ev in r.json().get("events", [])[:8]:
                 status = (((ev.get("status") or {}).get("type")) or {}).get("shortDetail", "")
-                name = ev.get("shortName") or ev.get("name") or ""
-                if name:
-                    out["tournaments"].append({"tour": label, "name": str(name)[:40],
-                                               "status": str(status)[:18]})
+                name = str(ev.get("shortName") or ev.get("name") or "")
+                if name and name not in seen_tourn:
+                    seen_tourn.add(name)
+                    out["tournaments"].append({"name": name[:40], "status": str(status)[:18]})
                 for g in (ev.get("groupings") or []):
+                    slug = str((g.get("grouping") or {}).get("slug") or "")
+                    label = _TENNIS_SINGLES.get(slug)
+                    if not label:
+                        continue  # 只取單打,跳過雙打/其他
                     for comp in (g.get("competitions") or []):
+                        cid = comp.get("id")
+                        if cid in seen_comp:
+                            continue  # 兩端點重複的同一場去重
                         st = (((comp.get("status") or {}).get("type")) or {})
                         cs = comp.get("competitors", [])
                         if len(cs) != 2 or not st.get("completed"):
@@ -10984,15 +11002,16 @@ def fetch_tennis_digest() -> dict:
                         lose = next((c for c in cs if not c.get("winner")), None)
                         if not (win and lose):
                             continue
-                        matches.append({
+                        seen_comp.add(cid)
+                        by_label[label].append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
-                            "event": str(name)[:30],
+                            "event": name[:30],
                             "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:
-            print(f"[sports] 網球 {label} 抓取失敗: {e}", file=sys.stderr)
-        matches.sort(key=lambda m: m["_ts"], reverse=True)   # 新→舊
-        per_tour.append(matches[:3])
-    combined = [m for tour_matches in per_tour for m in tour_matches]
+            print(f"[sports] 網球 {tour} 抓取失敗: {e}", file=sys.stderr)
+    combined = []
+    for label in ("ATP", "WTA"):
+        combined += sorted(by_label[label], key=lambda m: m["_ts"], reverse=True)[:3]
     combined.sort(key=lambda m: m["_ts"], reverse=True)
     for m in combined:
         m.pop("_ts", None)
@@ -11216,7 +11235,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         t_inner = []
         if tennis.get("tournaments"):
             seg = "　|　".join(
-                f"{htmllib.escape(t['tour'])} {htmllib.escape(t['name'])}"
+                f"{htmllib.escape(t['name'])}"
                 + (f"（{htmllib.escape(t['status'])}）" if t.get("status") else "")
                 for t in tennis["tournaments"])
             t_inner.append(f"<div style='font-size:12px;color:#475569;line-height:1.7;'>{seg}</div>")

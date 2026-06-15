@@ -11020,8 +11020,49 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     return out
 
 
+def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """中華職棒昨日(及今日已完賽)比分。
+
+    資料源 Yahoo 運動 sports editorial scoreboard API(免金鑰、全球 CDN 可連),
+    避開中職官網對 GitHub Actions 海外機房 IP 的 geo-block。抓不到回空,
+    渲染端自動只保留戰績表。
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                             "AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+               "Accept": "application/json"}
+    out = []
+    seen = set()
+    for back in (1, 0):   # 昨日為主,今日已完賽者一併收
+        day = (now_tpe - dt.timedelta(days=back)).strftime("%Y-%m-%d")
+        try:
+            r = requests.get(
+                "https://api-secure.sports.yahoo.com/v1/editorial/s/scoreboard",
+                params={"leagues": "cpbl", "date": day}, headers=headers, timeout=15)
+            r.raise_for_status()
+            sb = ((r.json().get("service") or {}).get("scoreboard")) or {}
+            games = sb.get("games") or {}
+            teams = sb.get("teams") or {}
+            for gid, g in games.items():
+                if gid in seen or g.get("status_type") != "status.type.final":
+                    continue  # 只列已完賽
+                seen.add(gid)
+                away = (teams.get(g.get("away_team_id")) or {}).get("display_name", "?")
+                home = (teams.get(g.get("home_team_id")) or {}).get("display_name", "?")
+                a_s = int(_safe_number(g.get("total_away_points")))
+                h_s = int(_safe_number(g.get("total_home_points")))
+                out.append({
+                    "away": away, "home": home, "away_score": a_s, "home_score": h_s,
+                    "winner": "away" if a_s > h_s else ("home" if h_s > a_s else ""),
+                    "date": f"{day[5:7]}/{day[8:]}",
+                })
+        except Exception as e:
+            print(f"[sports] CPBL 比分抓取失敗({day}): {e}", file=sys.stderr)
+    return out[:10]
+
+
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
-    """CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜/台灣球員 + 世足 + 網球 + 體育新聞。
+    """CPBL 戰績表/昨日比分 + NBA 冠軍賽 + MLB 戰績榜/台灣球員 + 世足 + 網球 + 體育新聞。
 
     使用者需求:中職要完整戰績表;NBA 要冠軍賽比分與系列賽狀態;不要 MLB 逐場比分;
     世足要最新/昨日戰績、分組表與今日賽程;加台灣旅外 MLB 球員與網球賽況。
@@ -11032,6 +11073,13 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         out["cpbl"] = fetch_cpbl_standings()
     except Exception as e:
         print(f"[sports] CPBL 戰績抓取失敗: {e}", file=sys.stderr)
+    # CPBL 昨日比分(Yahoo 運動,避開中職官網 geo-block)
+    try:
+        cs = fetch_cpbl_scores(now_tpe)
+        if cs:
+            out["cpbl_scores"] = cs
+    except Exception as e:
+        print(f"[sports] CPBL 比分抓取失敗: {e}", file=sys.stderr)
     # NBA:往回找最近一場(冠軍賽系列非每天打),取比分+系列賽戰況(如 NY leads 3-1)
     try:
         for back in range(1, 6):
@@ -11131,6 +11179,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     """體育快訊卡:CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜 + 新聞標題。無資料回空。"""
     news = (sports or {}).get("news") or {}
     cpbl = (sports or {}).get("cpbl") or []
+    cpbl_scores = (sports or {}).get("cpbl_scores") or []
     nba = (sports or {}).get("nba") or []
     standings = (sports or {}).get("standings") or {}
     worldcup = (sports or {}).get("worldcup") or {}
@@ -11139,9 +11188,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     wc_fixtures = worldcup.get("fixtures") or []
     mlb_tw = (sports or {}).get("mlb_tw") or []
     tennis = (sports or {}).get("tennis") or {}
-    if not (cpbl or nba or standings or wc_results or wc_groups or wc_fixtures
-            or mlb_tw or tennis.get("tournaments") or tennis.get("results")
-            or any(news.values())):
+    if not (cpbl or cpbl_scores or nba or standings or wc_results or wc_groups
+            or wc_fixtures or mlb_tw or tennis.get("tournaments")
+            or tennis.get("results") or any(news.values())):
         return ""
     blocks = []
     if wc_results or wc_groups or wc_fixtures:
@@ -11193,6 +11242,19 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for p in mlb_tw)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 台灣旅外球員（近期出賽）</b>"
+            + rows + "</div>")
+    if cpbl_scores:
+        def _side(name, score, is_win):
+            cell = f"{htmllib.escape(name)} {score}"
+            return f"<b style='color:#b91c1c;'>{cell}</b>" if is_win else cell
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(s.get('date', ''))}</span>　"
+            f"{_side(s['away'], s['away_score'], s.get('winner') == 'away')}"
+            f"　:　{_side(s['home'], s['home_score'], s.get('winner') == 'home')}</div>"
+            for s in cpbl_scores)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 昨日比分</b>"
             + rows + "</div>")
     if cpbl:
         rows = "".join(
@@ -12755,7 +12817,7 @@ def _weekend_digest_has_content(sports: dict, podcast_eps: list,
 
     用時效判定「新」,而非只看「存在」,避免與週六信重複:
       - Podcast:load_podcast_digest 已以 shown_at 去重,回傳的即未顯示過的新集。
-      - 世足/NBA:使用者明確要求週日要看「昨日戰績」,故昨日/今日的賽果視為當日新內容
+      - 世足/NBA/中職:使用者明確要求週日要看「昨日戰績」,故昨日/今日的賽果視為當日新內容
         (這是刻意的每日戰報,賽季中與週六信小幅重疊屬預期;NBA 回看 5 天的舊場次不算)。
       - 政策/醫界:只認 published 落在近 24 小時者 ≈「上一封信之後才出刊」,避開週六已看過的。
         (純覺察用途,不另建已送清單做精準去重;24h 邊界的排程抖動影響可忽略。)
@@ -12770,6 +12832,8 @@ def _weekend_digest_has_content(sports: dict, podcast_eps: list,
     fresh_dates = {(now_tpe - dt.timedelta(days=1)).strftime("%m/%d"),
                    now_tpe.strftime("%m/%d")}
     if any((g.get("date") in fresh_dates) for g in (sports.get("nba") or [])):
+        return True
+    if any((s.get("date") in fresh_dates) for s in (sports.get("cpbl_scores") or [])):
         return True
     intel = intel or {}
     for kind in ("policy", "medical"):

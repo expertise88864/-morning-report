@@ -168,6 +168,56 @@ def test_fetch_tennis_digest(monkeypatch):
     assert len(matches) == 1 and matches[0]["tour"] == "ATP"
 
 
+def test_render_sports_cpbl_scores():
+    sports = {"news": {}, "cpbl_scores": [
+        {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
+         "winner": "away", "date": "06/14"}]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "中華職棒 昨日比分" in h
+    assert "統一 5" in h and "味全 3" in h
+    assert "<b style='color:#b91c1c;'>統一 5</b>" in h     # 勝方加粗標紅
+
+
+def test_fetch_cpbl_scores(monkeypatch):
+    """Yahoo 運動 API:解析昨日比分、隊名對照、只取完賽、勝方由比分判定。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    payload = {"service": {"scoreboard": {
+        "games": {
+            "cpbl.g.1": {"status_type": "status.type.final",
+                         "away_team_id": "cpbl.t.2", "home_team_id": "cpbl.t.7",
+                         "total_away_points": "5", "total_home_points": "3"},
+            "cpbl.g.2": {"status_type": "status.type.inprogress",  # 未完賽 → 略過
+                         "away_team_id": "cpbl.t.1", "home_team_id": "cpbl.t.3",
+                         "total_away_points": "1", "total_home_points": "0"},
+        },
+        "teams": {"cpbl.t.2": {"display_name": "統一"},
+                  "cpbl.t.7": {"display_name": "味全"}},
+    }}}
+
+    def fake_get(url, params=None, timeout=None, headers=None, **k):
+        return R(payload)
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    now = dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE)
+    out = mr.fetch_cpbl_scores(now)
+    # 昨日+今日兩次查詢回同一場 → 用 game id 去重,只算一次;未完賽被濾掉
+    assert len(out) == 1
+    g = out[0]
+    assert g["away"] == "統一" and g["home"] == "味全"
+    assert g["away_score"] == 5 and g["home_score"] == 3 and g["winner"] == "away"
+    assert g["date"] == "06/14"
+
+
 def test_wc_zh_mapping_and_fallback():
     assert mr._wc_zh("United States") == "美國"
     assert mr._wc_zh("Brazil") == "巴西"
@@ -190,6 +240,8 @@ def test_weekend_digest_content_gate():
     assert mr._weekend_digest_has_content({}, [{"x": 1}], {}, [], now) is True  # 未顯示過的 podcast
     assert mr._weekend_digest_has_content(
         {"nba": [{"date": yday, "text": "x"}]}, [], {}, [], now) is True        # 昨日 NBA
+    assert mr._weekend_digest_has_content(
+        {"cpbl_scores": [{"date": yday}]}, [], {}, [], now) is True             # 昨日中職比分
     assert mr._weekend_digest_has_content(
         {}, [], {"policy": [{"published": fresh}]}, [], now) is True            # 近 30h 政策
     assert mr._weekend_digest_has_content(

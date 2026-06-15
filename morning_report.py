@@ -11047,14 +11047,29 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                 if gid in seen or g.get("status_type") != "status.type.final":
                     continue  # 只列已完賽
                 seen.add(gid)
-                away = (teams.get(g.get("away_team_id")) or {}).get("display_name", "?")
-                home = (teams.get(g.get("home_team_id")) or {}).get("display_name", "?")
-                a_s = int(_safe_number(g.get("total_away_points")))
-                h_s = int(_safe_number(g.get("total_home_points")))
+                # 比分缺值不可當 0(會誤報 0:0 或錯判勝方),解析失敗就跳過該場
+                a_raw = g.get("total_away_points")
+                h_raw = g.get("total_home_points")
+                if a_raw in (None, "") or h_raw in (None, ""):
+                    continue
+                try:
+                    a_s, h_s = int(float(a_raw)), int(float(h_raw))
+                except (TypeError, ValueError):
+                    continue
+                away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
+                home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
+                # 日期以該場開賽時間(轉台北)為準,而非查詢日期桶
+                gdate = f"{day[5:7]}/{day[8:]}"
+                try:
+                    gdt = dt.datetime.strptime(
+                        str(g.get("start_time") or ""), "%a, %d %b %Y %H:%M:%S %z")
+                    gdate = gdt.astimezone(TPE).strftime("%m/%d")
+                except (ValueError, TypeError):
+                    pass
                 out.append({
                     "away": away, "home": home, "away_score": a_s, "home_score": h_s,
                     "winner": "away" if a_s > h_s else ("home" if h_s > a_s else ""),
-                    "date": f"{day[5:7]}/{day[8:]}",
+                    "date": gdate,
                 })
         except Exception as e:
             print(f"[sports] CPBL 比分抓取失敗({day}): {e}", file=sys.stderr)
@@ -11254,7 +11269,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"　:　{_side(s['home'], s['home_score'], s.get('winner') == 'home')}</div>"
             for s in cpbl_scores)
         blocks.append(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 昨日比分</b>"
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 最新賽果</b>"
             + rows + "</div>")
     if cpbl:
         rows = "".join(

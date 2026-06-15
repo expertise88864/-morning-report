@@ -173,9 +173,18 @@ def test_render_sports_cpbl_scores():
         {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
          "winner": "away", "date": "06/14"}]}
     h = mr._render_sports_html(sports, htmllib)
-    assert "中華職棒 昨日比分" in h
+    assert "中華職棒 最新賽果" in h
     assert "統一 5" in h and "味全 3" in h
     assert "<b style='color:#b91c1c;'>統一 5</b>" in h     # 勝方加粗標紅
+
+
+def test_render_sports_cpbl_scores_escapes_team_name():
+    """隊名含標記字元時必須 HTML 跳脫,不可注入。"""
+    sports = {"news": {}, "cpbl_scores": [
+        {"away": "<b>X</b>", "home": "味全", "away_score": 1, "home_score": 2,
+         "winner": "home", "date": "06/14"}]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "&lt;b&gt;X&lt;/b&gt;" in h and "<b>X</b> 1" not in h
 
 
 def test_fetch_cpbl_scores(monkeypatch):
@@ -195,11 +204,15 @@ def test_fetch_cpbl_scores(monkeypatch):
     payload = {"service": {"scoreboard": {
         "games": {
             "cpbl.g.1": {"status_type": "status.type.final",
+                         "start_time": "Sun, 14 Jun 2026 08:05:00 +0000",  # 台北 16:05
                          "away_team_id": "cpbl.t.2", "home_team_id": "cpbl.t.7",
                          "total_away_points": "5", "total_home_points": "3"},
             "cpbl.g.2": {"status_type": "status.type.inprogress",  # 未完賽 → 略過
                          "away_team_id": "cpbl.t.1", "home_team_id": "cpbl.t.3",
                          "total_away_points": "1", "total_home_points": "0"},
+            "cpbl.g.3": {"status_type": "status.type.final",       # 比分缺值 → 略過
+                         "away_team_id": "cpbl.t.2", "home_team_id": "cpbl.t.7",
+                         "total_away_points": None, "total_home_points": "2"},
         },
         "teams": {"cpbl.t.2": {"display_name": "統一"},
                   "cpbl.t.7": {"display_name": "味全"}},
@@ -210,12 +223,12 @@ def test_fetch_cpbl_scores(monkeypatch):
     monkeypatch.setattr(mr.requests, "get", fake_get)
     now = dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE)
     out = mr.fetch_cpbl_scores(now)
-    # 昨日+今日兩次查詢回同一場 → 用 game id 去重,只算一次;未完賽被濾掉
+    # 昨日+今日兩次查詢回同一場 → 用 game id 去重;未完賽與缺比分都被濾掉
     assert len(out) == 1
     g = out[0]
     assert g["away"] == "統一" and g["home"] == "味全"
     assert g["away_score"] == 5 and g["home_score"] == 3 and g["winner"] == "away"
-    assert g["date"] == "06/14"
+    assert g["date"] == "06/14"          # 由 start_time 換算台北,非查詢日期桶
 
 
 def test_wc_zh_mapping_and_fallback():

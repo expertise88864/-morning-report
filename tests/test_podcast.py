@@ -138,35 +138,74 @@ def test_podcast_ticker_crosscheck_rules():
         snapshot) == ""
 
 
-def test_dedup_podcast_skips_near_duplicate_episode():
-    """同場聯名特輯被兩個 feed 各收一次 → 重疊高的整集略過。"""
+def test_dedup_podcast_skips_crossover_by_title():
+    """同場聯名特輯被兩個 feed 各收一次(內容各自改寫、逐字不重疊,但標題含同一特輯名)
+    → 用標題重疊係數偵測為重貼,略過後者。"""
     ep_a = {"show": "美股投資學", "guid": "a",
-            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "P5"]}}
-    ep_b = {"show": "財經M平方", "guid": "b",   # 4/5 重疊 → 視為重貼,略過
-            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "X6"]}}
+            "title": "【聯名特輯】財經M平方 x 美股投資學-財女珍妮｜通膨修估值，還是 SpaceX 救估值",
+            "digest": {"summary_points": [f"美股投資學第{i}點獨特內容" for i in range(8)]}}
+    ep_b = {"show": "財經M平方", "guid": "b",
+            "title": "財女珍妮聯合特輯｜通膨修估值，還是 SpaceX 救估值",
+            "digest": {"summary_points": [f"財經M平方改寫第{i}點" for i in range(8)]}}
     out = mr._dedup_podcast_episodes([ep_a, ep_b])
-    assert [e["guid"] for e in out] == ["a"]
+    assert [e["guid"] for e in out] == ["a"]   # 標題高度重疊 → 後者整集略過
 
 
-def test_dedup_podcast_drops_repeated_points_keeps_episode():
-    """重疊不足以整集略過時,移除個別重複重點、保留該集。"""
-    ep_a = {"show": "股癌", "guid": "a",
-            "digest": {"summary_points": ["P1", "P2", "P3", "P4", "P5"]}}
-    ep_c = {"show": "財報狗", "guid": "c",   # 僅 P1 重複(1/5)→ 保留,但 P1 被移除
-            "digest": {"summary_points": ["P1", "Y2", "Y3", "Y4", "Y5"]}}
-    out = mr._dedup_podcast_episodes([ep_a, ep_c])
+def test_dedup_podcast_keeps_distinct_short_episodes():
+    """不同短集(標題不同、<8 點)即使主題相近也不可被整集略過(防誤砍)。"""
+    ep_a = {"show": "股癌", "guid": "a", "title": "EP670 台股觀察",
+            "digest": {"summary_points": ["看好散熱族群", "記憶體循環向上", "被動元件漲價"]}}
+    ep_b = {"show": "財報狗", "guid": "b", "title": "財報狗 AI 伺服器專題",
+            "digest": {"summary_points": ["光通訊需求強", "CoWoS 產能吃緊", "金融股估值低"]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_b])
+    assert [e["guid"] for e in out] == ["a", "b"]   # 兩集都保留
+
+
+def test_dedup_podcast_drops_near_identical_point():
+    """跨集近乎相同的個別重點(模糊比對)→ 移除重複者、保留該集其餘。"""
+    line = "AI 伺服器下半年拉貨需求強勁，散熱族群受惠"
+    ep_a = {"show": "股癌", "guid": "a", "title": "EP670",
+            "digest": {"summary_points": [line, "被動元件漲價成功", "記憶體循環向上"]}}
+    ep_b = {"show": "財報狗", "guid": "b", "title": "完全不同的標題避免整集略過",
+            "digest": {"summary_points": [line + "。", "光通訊獨家觀點甲", "重電獨家觀點乙"]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_b])
     assert len(out) == 2
-    assert out[1]["digest"]["summary_points"] == ["Y2", "Y3", "Y4", "Y5"]
+    pts_b = out[1]["digest"]["summary_points"]
+    assert line not in pts_b and (line + "。") not in pts_b   # 近重複句被移除
+    assert "光通訊獨家觀點甲" in pts_b
 
 
-def test_dedup_podcast_keeps_original_when_too_few_unique():
-    """2 點全重複的短集(不觸發整集略過門檻)→ 保留原樣,避免變空集。"""
-    ep_a = {"show": "股癌", "guid": "a",
-            "digest": {"summary_points": ["P1", "P2", "P3"]}}
-    ep_d = {"show": "財報狗", "guid": "d", "digest": {"summary_points": ["P1", "P2"]}}
-    out = mr._dedup_podcast_episodes([ep_a, ep_d])
-    assert len(out) == 2
-    assert out[1]["digest"]["summary_points"] == ["P1", "P2"]   # 原樣保留
+def test_dedup_podcast_keeps_same_show_recurring_episodes():
+    """同節目連續集(標題格式雷同、內容不同)不可被標題重疊互砍。"""
+    ep_a = {"show": "股癌", "guid": "ep670",
+            "title": "EP670 | 美股財經週報 market update",
+            "digest": {"summary_points": [f"第670集獨特觀點{i}" for i in range(8)]}}
+    ep_b = {"show": "股癌", "guid": "ep671",   # 標題重疊極高但同節目 → 必須都保留
+            "title": "EP671 | 美股財經週報 market update",
+            "digest": {"summary_points": [f"第671集獨特觀點{i}" for i in range(8)]}}
+    out = mr._dedup_podcast_episodes([ep_a, ep_b])
+    assert [e["guid"] for e in out] == ["ep670", "ep671"]
+
+
+def test_dedup_podcast_short_episode_does_not_swallow_long_one():
+    """先前的短集(3 點)即使內容是後面長集(8 點)的子集,也不可把更豐富的長集砍掉。"""
+    shared = ["AI 伺服器拉貨強", "散熱族群受惠", "記憶體循環向上"]
+    ep_short = {"show": "財報狗", "guid": "s", "title": "短講",
+                "digest": {"summary_points": list(shared)}}
+    ep_long = {"show": "股癌", "guid": "l", "title": "深度長集",
+               "digest": {"summary_points": shared + [f"長集獨家觀點{i}" for i in range(5)]}}
+    out = mr._dedup_podcast_episodes([ep_short, ep_long])
+    assert [e["guid"] for e in out] == ["s", "l"]   # 長集保留(其獨家觀點不被吃掉)
+    long_pts = out[1]["digest"]["summary_points"]
+    assert any("長集獨家觀點" in p for p in long_pts)
+
+
+def test_dedup_podcast_does_not_mutate_input():
+    ep = {"show": "股癌", "guid": "a", "title": "x",
+          "digest": {"summary_points": ["A", "B", "C"]}}
+    original = ["A", "B", "C"]
+    mr._dedup_podcast_episodes([ep])
+    assert ep["digest"]["summary_points"] == original   # 原輸入不被改動
 
 
 def test_render_podcast_international_point_cap():

@@ -11554,31 +11554,72 @@ PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
 def _norm_podcast_point(s) -> str:
     """重點句正規化(去空白/標點/全形符號),供跨集去重比對。"""
     import re as _re
-    return _re.sub(r"[\s，。、！？,.!?:：;；…()（）「」【】\"'`%　]+", "", str(s)).lower()
+    return _re.sub(r"[\s，。、！？,.!?:：;；…()（）「」【】\"'`%　|｜]+", "", str(s)).lower()
+
+
+def _podcast_bigrams(s) -> set:
+    """中文無詞界,用字元 bigram 當 token 做近似比對。"""
+    t = _norm_podcast_point(s)
+    if len(t) < 2:
+        return {t} if t else set()
+    return {t[i:i + 2] for i in range(len(t) - 1)}
+
+
+def _overlap_coef(a: set, b: set) -> float:
+    """重疊係數 |A∩B| / min(|A|,|B|);比 Jaccard 更能偵測『一方包含於另一方』(聯名特輯)。"""
+    if not a or not b:
+        return 0.0
+    return len(a & b) / min(len(a), len(b))
 
 
 def _dedup_podcast_episodes(episodes: list[dict]) -> list[dict]:
-    """跨節目/跨集去重(信件最大長度元兇):同場聯名特輯被兩個 feed 各收一次、或同一事件
-    在多個節目重貼。保守處理:與已保留集重點重疊 ≥60% 的整集略過(僅當本集 ≥3 點);其餘集
-    移除與先前集重複的個別重點(移除後 <2 點則保留原樣,避免變空集)。被略過的集未標 shown,
-    其雙胞胎被顯示後,它隔日獨立出現時已不再重複。"""
-    seen_norm: set = set()
+    """跨節目/跨集去重(信件最大長度元兇)。同場聯名特輯被兩個獨立 feed 各收一次
+    (內容是 LLM 各自改寫,逐字幾乎無重疊,但『標題』含同一特輯名)→ 用標題 bigram 重疊係數
+    偵測為主、長集摘要 bigram 重疊係數為輔,整集略過。其餘集再以 difflib 模糊比對
+    移除『與先前集近乎相同』的個別重點(移除後 <2 點則保留原樣,避免空集)。
+
+    整集略過刻意只發生在『不同節目』之間:同一節目連續集(EP670/EP671、每日財經快訊)
+    標題格式雷同但內容不同,不可用標題重疊互砍(同節目重貼已由 guid 去重)。標題路徑另要求
+    共享 bigram 絕對量足夠(避免短標題以重疊係數誤判);摘要路徑要求兩集都夠長(各 ≥8 點),
+    避免短集恰為長集子集時、以 min 分母把更豐富的長集吃掉。門檻偏保守,寧可漏去重也不誤砍。
+    被略過的集未標 shown,其雙胞胎顯示後它隔日獨立出現已不重複。"""
+    import difflib
     kept: list[dict] = []
-    kept_sets: list[set] = []
+    kept_meta: list[dict] = []   # {show, title_bg, sum_bg, npts}
+    seen_points: list[str] = []
     for ep in episodes:
         d = ep.get("digest") or {}
         pts = [p for p in (d.get("summary_points") or []) if str(p).strip()]
-        norms = [_norm_podcast_point(p) for p in pts]
-        nset = {n for n in norms if n}
-        if len(nset) >= 3 and any(
-                prev and len(nset & prev) / len(nset) >= 0.6 for prev in kept_sets):
-            continue   # 整集近重複(如聯名特輯重貼)→ 略過
-        uniq = [p for p, n in zip(pts, norms) if n and n not in seen_norm]
+        show = ep.get("show", "")
+        title_bg = _podcast_bigrams(ep.get("title", ""))
+        sum_bg = _podcast_bigrams("".join(str(p) for p in pts))
+        npts = len(pts)
+        is_dup = False
+        for m in kept_meta:
+            if m["show"] == show:
+                continue   # 同節目連續集 → 不以標題/摘要重疊互砍
+            shared_title = title_bg & m["title_bg"]
+            if len(shared_title) >= 10 and _overlap_coef(title_bg, m["title_bg"]) >= 0.6:
+                is_dup = True
+                break
+            if npts >= 8 and m["npts"] >= 8 and _overlap_coef(sum_bg, m["sum_bg"]) >= 0.65:
+                is_dup = True
+                break
+        if is_dup:
+            continue   # 整集近重複(跨節目聯名特輯重貼)→ 略過
+        uniq = []
+        for p in pts:
+            npn = _norm_podcast_point(p)
+            if npn and any(difflib.SequenceMatcher(None, npn, sp).ratio() >= 0.85
+                           for sp in seen_points):
+                continue   # 與先前集近乎相同的重點 → 略過
+            uniq.append(p)
         if 2 <= len(uniq) < len(pts):
             ep = {**ep, "digest": {**d, "summary_points": uniq}}
-        seen_norm.update(n for n in norms if n)
+        seen_points.extend(_norm_podcast_point(p) for p in pts if str(p).strip())
         kept.append(ep)
-        kept_sets.append(nset)
+        kept_meta.append({"show": show, "title_bg": title_bg,
+                          "sum_bg": sum_bg, "npts": npts})
     return kept
 
 
@@ -11686,13 +11727,15 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
         return ""
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
-    # 台系深度節目重點全展開;國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB)
-    tw_shows = {"股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
-                "美股投資學", "財經一路發", "財經M平方"}
+    # 國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB);其餘(含未知/新增節目)維持 15 條
+    intl_shows = {"FT News Briefing", "WSJ What's News", "Wall Street Breakfast",
+                  "Unhedged (FT)", "Odd Lots", "Money Talks (Economist)",
+                  "Sharp Tech (Ben Thompson)", "All-In Podcast",
+                  "Animal Spirits", "Invest Like the Best"}
     cards = []
     for ep in episodes[:14]:
         d = ep.get("digest") or {}
-        max_pts = 15 if ep.get("show", "") in tw_shows else 6
+        max_pts = 6 if ep.get("show", "") in intl_shows else 15
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
             for p in (d.get("summary_points") or [])[:max_pts])

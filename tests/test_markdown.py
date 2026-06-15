@@ -34,11 +34,19 @@ def _full_quotes():
 
 
 def test_render_html_size_guard_truncates_low_priority(monkeypatch):
-    """超標時依優先序移除低價值區塊,但核心(行情/預測卡)與截斷橫幅保留。"""
-    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 120.0)   # 永遠超標
-    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+    """超標時依優先序移除:體育先被移除、移除後降回門檻內就停手(不續砍醫學文獻)。"""
+    # 內容敏感估算器:只要還含體育區塊就判超標,移除後即降回門檻內 → 驗證順序與停手
+    monkeypatch.setattr(
+        mr, "_estimated_email_kb",
+        lambda h: 120.0 if "中華職棒 最新賽果" in h else 80.0)
+    quotes = {**_full_quotes(), "SPORTS": {"news": {}, "cpbl_scores": [
+        {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
+         "winner": "away", "date": "06/14"}]}}
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"},
                           "## 測試分析", "2026-05-14 (Wed)", "每日報")
-    assert "為避免 Gmail 截斷" in html and "已暫略" in html
+    assert "為避免 Gmail 截斷" in html and "體育" in html
+    assert "醫學文獻" not in html and "Podcast" not in html   # 砍到體育就停,沒續砍
+    assert "中華職棒 最新賽果" not in html                    # 體育確實被移除(closure 重組生效)
     # 核心永不被剪
     assert "一、美股收盤行情" in html and "個股開盤預測" in html and "2330" in html
 

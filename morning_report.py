@@ -12612,41 +12612,51 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # === Gmail 102KB 剪裁防護 ===
     # 估編碼後大小;超標時按使用者核可的優先序(體育→醫學文獻→Podcast→模型實證→事件連續劇)
     # 暫移除最低價值區塊,確保行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。
+    # 門檻 96KB:留出橫幅(~0.3KB)與 base64 編碼變異的安全邊際,避免加橫幅後又超 102KB。
+    LIMIT_KB = 96.0
     html = _assemble()
     dropped: list[str] = []
     for label, var_setter in (
         ("體育", "sports_html"), ("醫學文獻", "journals_html"), ("Podcast", "podcast_html"),
         ("模型實證", "model_evidence_html"), ("事件連續劇", "event_timeline_html"),
     ):
-        if _estimated_email_kb(html) <= 100:
+        if _estimated_email_kb(html) <= LIMIT_KB:
             break
-        # 逐一清空低優先區塊後重組(closure 讀取最新值)
+        # 逐一清空低優先區塊後重組(closure 讀取最新值);本就空的區塊不計入「已暫略」
         if var_setter == "sports_html":
-            sports_html = ""
+            was_present, sports_html = bool(sports_html), ""
         elif var_setter == "journals_html":
-            journals_html = ""
+            was_present, journals_html = bool(journals_html), ""
         elif var_setter == "podcast_html":
-            podcast_html = ""
+            was_present, podcast_html = bool(podcast_html), ""
         elif var_setter == "model_evidence_html":
-            model_evidence_html = ""
-        elif var_setter == "event_timeline_html":
-            event_timeline_html = ""
-        dropped.append(label)
+            was_present, model_evidence_html = bool(model_evidence_html), ""
+        else:
+            was_present, event_timeline_html = bool(event_timeline_html), ""
+        if was_present:
+            dropped.append(label)
         html = _assemble()
+    # 先決定橫幅文案,再組一次並做「含橫幅」的最終量測;仍超標就誠實標示可能被剪。
     if dropped:
+        still_over = _estimated_email_kb(_assemble()) > LIMIT_KB  # 估含內容、未含橫幅
+        tail = ";惟內容仍偏長,信末仍可能被 Gmail 截斷" if still_over else ""
         truncation_notice = (
             '<div style="margin:0 0 14px;padding:10px 14px;background:#fef2f2;'
             'border-left:5px solid #ef4444;border-radius:4px;font-size:12px;color:#7f1d1d;">'
             f'⚠ 為避免 Gmail 截斷,本期已暫略:{"、".join(dropped)}'
-            '(行情、2330/00662/0050 預測與結論完整保留)。</div>')
+            f'(行情、2330/00662/0050 預測與結論完整保留){tail}。</div>')
         html = _assemble()
-    elif _estimated_email_kb(html) > 95:
+    elif _estimated_email_kb(html) > LIMIT_KB - 4:
         truncation_notice = (
             '<div style="margin:0 0 14px;padding:10px 14px;background:#fffbeb;'
             'border-left:5px solid #f59e0b;border-radius:4px;font-size:12px;color:#78350f;">'
             '⚠ 本期內容偏長,Gmail 可能於信末「顯示完整內容」處截斷,點開即可看到全文。</div>')
         html = _assemble()
-    print(f"[render] 郵件約 {_estimated_email_kb(html):.0f}KB(估編碼後);"
+    final_kb = _estimated_email_kb(html)   # 含橫幅後的真實大小
+    if final_kb > 102:
+        print(f"[render] ⚠ 郵件約 {final_kb:.0f}KB,已逾 Gmail 102KB,信末可能被剪",
+              file=sys.stderr)
+    print(f"[render] 郵件約 {final_kb:.0f}KB(估編碼後);"
           f"移除區塊={'、'.join(dropped) if dropped else '無'}", file=sys.stderr)
     return html
 

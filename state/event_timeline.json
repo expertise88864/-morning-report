@@ -1,21 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 3,
-  "last_seen": "2026-06-15",
-  "latest_title": "U.S. and Iran agree on peace deal to end the war, Trump and Pakistan say"
- },
- "litigation:2330": {
-  "first_seen": "2026-06-12",
-  "days": 1,
-  "last_seen": "2026-06-12",
-  "latest_title": "台積電在美捲專利侵權訴訟 法院估本月作出初步裁定 - 公視新聞網PNN"
+  "days": 4,
+  "last_seen": "2026-06-16",
+  "latest_title": "UK declares under-16 social media ban to protect children, but experts warn of enforcement"
  },
  "litigation:": {
   "first_seen": "2026-06-13",
-  "days": 1,
-  "last_seen": "2026-06-13",
-  "latest_title": "綠指修選罷法等因人設事　白：合情合理合法合憲"
+  "days": 2,
+  "last_seen": "2026-06-16",
+  "latest_title": "US judge dismisses Elon Musk’s xAI trade secret lawsuit against OpenAI"
  },
  "geopolitical:2327": {
   "first_seen": "2026-06-15",
@@ -28,5 +22,11 @@
   "days": 1,
   "last_seen": "2026-06-15",
   "latest_title": "微軟因與 AI 有關的股價損失面臨集體訴訟 - Yellow.com"
+ },
+ "export_controls:": {
+  "first_seen": "2026-06-16",
+  "days": 1,
+  "last_seen": "2026-06-16",
+  "latest_title": "UK charges Indian captain of suspected Russian shadow tanker seized in Channel"
  }
 }

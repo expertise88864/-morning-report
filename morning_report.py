@@ -11027,6 +11027,7 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     避開中職官網對 GitHub Actions 海外機房 IP 的 geo-block。抓不到回空,
     渲染端自動只保留戰績表。
     """
+    from email.utils import parsedate_to_datetime
     now_tpe = now_tpe or dt.datetime.now(TPE)
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                              "AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
@@ -11046,23 +11047,25 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             for gid, g in games.items():
                 if gid in seen or g.get("status_type") != "status.type.final":
                     continue  # 只列已完賽
-                seen.add(gid)
-                # 比分缺值不可當 0(會誤報 0:0 或錯判勝方),解析失敗就跳過該場
+                # 比分缺值不可當 0(會誤報 0:0 或錯判勝方),解析失敗就跳過該場。
+                # 注意:驗證通過才標記 seen —— 否則某桶缺比分的同場會擋掉另一桶有效的版本。
                 a_raw = g.get("total_away_points")
                 h_raw = g.get("total_home_points")
                 if a_raw in (None, "") or h_raw in (None, ""):
                     continue
                 try:
                     a_s, h_s = int(float(a_raw)), int(float(h_raw))
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, OverflowError):
                     continue
+                seen.add(gid)
                 away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
                 home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
                 # 日期以該場開賽時間(轉台北)為準,而非查詢日期桶
                 gdate = f"{day[5:7]}/{day[8:]}"
                 try:
-                    gdt = dt.datetime.strptime(
-                        str(g.get("start_time") or ""), "%a, %d %b %Y %H:%M:%S %z")
+                    gdt = parsedate_to_datetime(str(g.get("start_time") or ""))
+                    if gdt.tzinfo is None:
+                        gdt = gdt.replace(tzinfo=dt.timezone.utc)
                     gdate = gdt.astimezone(TPE).strftime("%m/%d")
                 except (ValueError, TypeError):
                     pass

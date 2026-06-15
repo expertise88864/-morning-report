@@ -231,6 +231,39 @@ def test_fetch_cpbl_scores(monkeypatch):
     assert g["date"] == "06/14"          # 由 start_time 換算台北,非查詢日期桶
 
 
+def test_fetch_cpbl_scores_missing_in_one_bucket_recovered(monkeypatch):
+    """某查詢桶缺比分的同一場,不可擋掉另一桶有效的版本(seen 應在驗證後才標記)。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def _payload(away_pts):
+        return {"service": {"scoreboard": {
+            "games": {"cpbl.g.9": {
+                "status_type": "status.type.final",
+                "start_time": "Sun, 14 Jun 2026 08:05:00 +0000",
+                "away_team_id": "cpbl.t.2", "home_team_id": "cpbl.t.7",
+                "total_away_points": away_pts, "total_home_points": "1"}},
+            "teams": {"cpbl.t.2": {"display_name": "統一"},
+                      "cpbl.t.7": {"display_name": "味全"}}}}}
+
+    def fake_get(url, params=None, timeout=None, headers=None, **k):
+        # 昨日桶缺比分(None);今日桶有有效比分
+        return R(_payload(None if (params or {}).get("date") == "2026-06-14" else "4"))
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    now = dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE)
+    out = mr.fetch_cpbl_scores(now)
+    assert len(out) == 1 and out[0]["away_score"] == 4 and out[0]["winner"] == "away"
+
+
 def test_wc_zh_mapping_and_fallback():
     assert mr._wc_zh("United States") == "美國"
     assert mr._wc_zh("Brazil") == "巴西"

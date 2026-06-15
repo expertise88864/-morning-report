@@ -366,6 +366,67 @@ def test_estimated_email_kb_accounts_for_encoding():
     assert 1.3 < kb < 1.45         # ×1.37 / 1024
 
 
+def test_render_worldcup_marks_advancing_top2():
+    """分組表前 2 名以綠色標示(晉級區),第 3 名以後不標。"""
+    sports = {"news": {}, "worldcup": {"results": [], "fixtures": [], "groups": [
+        {"name": "A 組", "rows": [
+            {"team": "巴西", "gp": 3, "w": 3, "d": 0, "l": 0, "pts": 9},
+            {"team": "美國", "gp": 3, "w": 2, "d": 0, "l": 1, "pts": 6},
+            {"team": "越南", "gp": 3, "w": 0, "d": 0, "l": 3, "pts": 0},
+        ]}]}}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "晉級區" in h
+    assert "<b style='color:#16a34a;'>巴西 9(3-0-0)</b>" in h   # 第1名綠字
+    assert "<b style='color:#16a34a;'>美國 6(2-0-1)</b>" in h   # 第2名綠字
+    assert "<b style='color:#16a34a;'>越南" not in h            # 第3名不標綠
+
+
+def test_fetch_nba_favorite_games(monkeypatch):
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    payload = {"events": [{
+        "status": {"type": {"completed": True}},
+        "competitions": [{
+            "notes": [{"headline": "NBA Finals Game 5"}],
+            "competitors": [
+                {"homeAway": "away", "score": "110", "winner": True,
+                 "team": {"displayName": "Boston Celtics", "abbreviation": "BOS"}},
+                {"homeAway": "home", "score": "105",
+                 "team": {"displayName": "New York Knicks", "abbreviation": "NYK"}}]}]}]}
+
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, params=None, timeout=None, **k: R(payload))
+    out = mr.fetch_nba_favorite_games(
+        dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE), ["celtics"])
+    assert len(out) == 1
+    assert "BOS" in out[0]["text"] and "110:105" in out[0]["text"]
+    assert out[0]["note"] == "NBA Finals Game 5"
+
+
+def test_render_nba_favorite_block():
+    sports = {"news": {}, "nba_fav": [
+        {"text": "<b>BOS</b> 110:105 NYK", "date": "06/14", "note": "Finals G5"}]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "NBA 關注球隊近況" in h and "BOS" in h and "Finals G5" in h
+
+
+def test_nba_favorite_teams_env(monkeypatch):
+    monkeypatch.delenv("NBA_FAVORITE_TEAMS", raising=False)
+    assert mr._nba_favorite_teams() == []
+    monkeypatch.setenv("NBA_FAVORITE_TEAMS", "Celtics, Lakers ,")
+    assert mr._nba_favorite_teams() == ["celtics", "lakers"]
+
+
 def test_wc_zh_mapping_and_fallback():
     assert mr._wc_zh("United States") == "美國"
     assert mr._wc_zh("Brazil") == "巴西"

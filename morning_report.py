@@ -11151,6 +11151,61 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
+def _nba_favorite_teams() -> list[str]:
+    """環境變數 NBA_FAVORITE_TEAMS(逗號分隔,如 'Celtics,Lakers')→ 小寫關鍵字清單。
+    未設定回空 → NBA 維持只顯示冠軍賽(預設行為不變)。"""
+    raw = os.getenv("NBA_FAVORITE_TEAMS", "").strip()
+    return [t.strip().lower() for t in raw.split(",") if t.strip()]
+
+
+def _espn_team_names(competitor: dict) -> str:
+    tm = competitor.get("team") or {}
+    return " ".join(str(tm.get(k, "") or "") for k in (
+        "displayName", "shortDisplayName", "name", "location", "abbreviation")).lower()
+
+
+def fetch_nba_favorite_games(now_tpe: dt.datetime, favorites: list[str]) -> list[dict]:
+    """關注球隊近 8 日最近一場(不限冠軍賽)。僅在設定 NBA_FAVORITE_TEAMS 時呼叫。"""
+    found: dict[str, dict] = {}
+
+    def _fmt(t):
+        nm = (t.get("team") or {}).get("abbreviation", "?")
+        return f"<b>{nm}</b>" if t.get("winner") else nm
+
+    for back in range(0, 8):
+        if len(found) >= len(favorites):
+            break
+        day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
+        try:
+            r = requests.get(
+                "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+                params={"dates": day}, timeout=15)
+            r.raise_for_status()
+        except Exception as e:
+            print(f"[sports] NBA 關注球隊抓取失敗({day}): {e}", file=sys.stderr)
+            continue
+        for ev in r.json().get("events", []):
+            if not (((ev.get("status") or {}).get("type")) or {}).get("completed"):
+                continue
+            comp = (ev.get("competitions") or [{}])[0]
+            tlist = comp.get("competitors", [])
+            if len(tlist) != 2:
+                continue
+            for fav in favorites:
+                if fav in found:
+                    continue
+                if any(fav in _espn_team_names(t) for t in tlist):
+                    away = next((t for t in tlist if t.get("homeAway") == "away"), tlist[0])
+                    home = next((t for t in tlist if t.get("homeAway") == "home"), tlist[1])
+                    found[fav] = {
+                        "text": f"{_fmt(away)} {away.get('score', '-')}:"
+                                f"{home.get('score', '-')} {_fmt(home)}",
+                        "date": f"{day[4:6]}/{day[6:]}",
+                        "note": ((comp.get("notes") or [{}])[0].get("headline") or "")[:40],
+                    }
+    return list(found.values())
+
+
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     """CPBL 戰績表/昨日比分 + NBA 冠軍賽 + MLB 戰績榜/台灣球員 + 世足 + 網球 + 體育新聞。
 
@@ -11205,6 +11260,15 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 break
     except Exception as e:
         print(f"[sports] NBA 抓取失敗: {e}", file=sys.stderr)
+    # NBA 關注球隊(opt-in;未設 NBA_FAVORITE_TEAMS 時不動作,維持只顯示冠軍賽)
+    _nba_favs = _nba_favorite_teams()
+    if _nba_favs:
+        try:
+            fav_games = fetch_nba_favorite_games(now_tpe, _nba_favs)
+            if fav_games:
+                out["nba_fav"] = fav_games
+        except Exception as e:
+            print(f"[sports] NBA 關注球隊整體失敗: {e}", file=sys.stderr)
     # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
     try:
         r = requests.get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
@@ -11274,6 +11338,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     cpbl_source = (sports or {}).get("cpbl_source")
     cpbl_scores = (sports or {}).get("cpbl_scores") or []
     nba = (sports or {}).get("nba") or []
+    nba_fav = (sports or {}).get("nba_fav") or []
     standings = (sports or {}).get("standings") or {}
     worldcup = (sports or {}).get("worldcup") or {}
     wc_results = worldcup.get("results") or []
@@ -11281,8 +11346,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     wc_fixtures = worldcup.get("fixtures") or []
     mlb_tw = (sports or {}).get("mlb_tw") or []
     tennis = (sports or {}).get("tennis") or {}
-    if not (cpbl or cpbl_scores or nba or standings or wc_results or wc_groups
-            or wc_fixtures or mlb_tw or tennis.get("tournaments")
+    if not (cpbl or cpbl_scores or nba or nba_fav or standings or wc_results
+            or wc_groups or wc_fixtures or mlb_tw or tennis.get("tournaments")
             or tennis.get("results") or any(news.values())):
         return ""
     blocks = []
@@ -11309,18 +11374,23 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             wc_inner.append(
                 f"<div style='margin:6px 0;'><b style='color:#0f172a;'>今日/近日賽程（台北時間）</b>{lines}</div>")
         if wc_groups:
-            # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度
+            # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度。
+            # 各組前 2 名(暫居晉級線內)以綠色粗體標示;小組賽結束後即代表晉級者。
+            def _team_cell(idx, t):
+                cell = f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
+                if idx < 2:   # ESPN 已依排名排序,前兩名為晉級區
+                    return f"<b style='color:#16a34a;'>{cell}</b>"
+                return f"<span style='color:#94a3b8;'>{cell}</span>"
             grp_lines = "".join(
                 "<div style='font-size:12px;color:#334155;line-height:1.8;margin:1px 0;'>"
-                f"<b style='color:#16a34a;'>{htmllib.escape(grp['name'])}</b>　"
-                + " ・ ".join(
-                    f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
-                    for t in grp["rows"])
+                f"<b style='color:#0f172a;'>{htmllib.escape(grp['name'])}</b>　"
+                + " ・ ".join(_team_cell(i, t) for i, t in enumerate(grp["rows"]))
                 + "</div>"
                 for grp in wc_groups)
             wc_inner.append(
                 "<div style='margin:6px 0;'><b style='color:#0f172a;'>分組累計戰績</b>"
-                "<div style='font-size:11px;color:#94a3b8;'>隊名 積分(勝-和-敗)</div>"
+                "<div style='font-size:11px;color:#94a3b8;'>隊名 積分(勝-和-敗);"
+                "<span style='color:#16a34a;'>綠字</span>=暫居小組前 2(晉級區)</div>"
                 + grp_lines + "</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"
@@ -11384,6 +11454,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + "</div>"
             for g in nba)
         blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}</div>")
+    if nba_fav:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(g.get('date', ''))}</span>　{g['text']}"
+            + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
+               if g.get("note") else "")
+            + "</div>"
+            for g in nba_fav)
+        blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 關注球隊近況</b>{rows}</div>")
     if standings:
         seg = "　|　".join(
             f"<b>{lg}</b> " + "、".join(f"{t['team']} {t['record']}" for t in teams)

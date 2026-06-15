@@ -33,6 +33,23 @@ def _full_quotes():
     }
 
 
+def test_render_html_size_guard_truncates_low_priority(monkeypatch):
+    """超標時依優先序移除低價值區塊,但核心(行情/預測卡)與截斷橫幅保留。"""
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 120.0)   # 永遠超標
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          "## 測試分析", "2026-05-14 (Wed)", "每日報")
+    assert "為避免 Gmail 截斷" in html and "已暫略" in html
+    # 核心永不被剪
+    assert "一、美股收盤行情" in html and "個股開盤預測" in html and "2330" in html
+
+
+def test_render_html_size_guard_quiet_when_small(monkeypatch):
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 50.0)
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          "x", "2026-05-14", "每日報")
+    assert "為避免 Gmail 截斷" not in html and "Gmail 可能於信末" not in html
+
+
 def test_render_html_contains_required_sections():
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
                           "## 測試分析", "2026-05-14 (Wed)", "每日報")

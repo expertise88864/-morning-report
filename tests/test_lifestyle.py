@@ -264,6 +264,79 @@ def test_fetch_cpbl_scores_missing_in_one_bucket_recovered(monkeypatch):
     assert len(out) == 1 and out[0]["away_score"] == 4 and out[0]["winner"] == "away"
 
 
+def test_tennis_tier_classification():
+    assert mr._tennis_tier("Wimbledon")[0] == 0
+    assert mr._tennis_tier("Roland Garros")[0] == 0
+    assert mr._tennis_tier("US Open")[0] == 0
+    assert mr._tennis_tier("Madrid Open")[0] == 1
+    assert mr._tennis_tier("Cincinnati")[0] == 1
+    assert mr._tennis_tier("Stuttgart Open")[0] == 2   # ATP250
+    assert mr._tennis_tier("")[0] == 2
+
+
+def test_fetch_tennis_grand_slam_first(monkeypatch):
+    """大滿貫結果排在非大滿貫之前(即使日期較舊)。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def _m(cid, w, day):
+        return {"id": cid, "date": f"2026-06-{day}T12:00Z",
+                "status": {"type": {"completed": True}},
+                "competitors": [{"athlete": {"shortName": w}, "winner": True},
+                                {"athlete": {"shortName": "L"}, "winner": False}]}
+
+    def fake_get(url, params=None, timeout=None, **k):
+        if "/atp/" in url:
+            return R({"events": [
+                {"shortName": "Stuttgart Open", "status": {"type": {}},   # ATP250,日期較新
+                 "groupings": [{"grouping": {"slug": "mens-singles"},
+                                "competitions": [_m("s1", "ATP250win", 14)]}]},
+                {"shortName": "Wimbledon", "status": {"type": {}},        # 大滿貫,日期較舊
+                 "groupings": [{"grouping": {"slug": "mens-singles"},
+                                "competitions": [_m("w1", "SLAMwin", 11)]}]},
+            ]})
+        return R({"events": []})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
+    winners = [r["winner"] for r in out["results"]]
+    assert winners and winners[0] == "SLAMwin"          # 大滿貫優先於較新的 ATP250
+    slam = next(r for r in out["results"] if r["winner"] == "SLAMwin")
+    assert slam["tier"] == "大滿貫"
+
+
+def test_render_sports_cpbl_source_note():
+    base = {"rank": 1, "team": "統一", "games": "50", "wdl": "30-0-20",
+            "pct": "0.600", "gb": "-"}
+    wiki = mr._render_sports_html({"news": {}, "cpbl": [base],
+                                   "cpbl_source": "Wikipedia 備援"}, htmllib)
+    assert "Wikipedia 備援" in wiki and "可能稍有遲滯" in wiki
+    official = mr._render_sports_html({"news": {}, "cpbl": [base],
+                                       "cpbl_source": "官網"}, htmllib)
+    assert "Wikipedia 備援" not in official              # 官網來源不顯示備援警語
+
+
+def test_cap_analysis_text():
+    short = "第一段。\n\n第二段。"
+    assert mr._cap_analysis_text(short, max_chars=999) == short   # 短的不動
+    long = "\n\n".join(f"段落{i}内容文字" * 50 for i in range(20))
+    capped = mr._cap_analysis_text(long, max_chars=400)
+    assert len(capped) < len(long) and "已截斷" in capped
+
+
+def test_estimated_email_kb_accounts_for_encoding():
+    kb = mr._estimated_email_kb("a" * 1024)
+    assert 1.3 < kb < 1.45         # ×1.37 / 1024
+
+
 def test_wc_zh_mapping_and_fallback():
     assert mr._wc_zh("United States") == "美國"
     assert mr._wc_zh("Brazil") == "巴西"

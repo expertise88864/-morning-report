@@ -272,6 +272,8 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     ("鴻海", "2317"), ("聯發科", "2454"), ("廣達 AI伺服器", "2382"),
     ("台達電", "2308"), ("聯電 UMC", "2303"), ("日月光 ASE", "3711"),
     ("緯創 AI伺服器", "3231"), ("緯穎 AI伺服器", "6669"), ("世芯-KY ASIC", "3661"),
+    # --- 非科技龍頭(對應使用者持股/類股均衡;皆已在市值前 100 watchlist,當日有新聞才取) ---
+    ("藥華藥", "6446"), ("富邦金", "2881"), ("國泰金", "2882"), ("長榮 航運", "2603"),
 ]
 
 # 美股公司消息只對具體、長期穩定的台股供應鏈做弱連動；分數低於直接命中。
@@ -7257,9 +7259,11 @@ def _attention_ranking_breakdown(item: dict,
     components = {
         # calc_breakout_score tops out at 90: chips 35 + momentum 25 + revenue 20 + EPS 10.
         "structure": base_score / 90.0 * 70.0 * _safe_number(weights.get("structure"), 1.0),
-        # 新聞分降權 0.8→0.3:IC 回測(backtest_data/ic_news_score.py)顯示 1d IC=-0.107、
-        # 「有新聞」股票次日平均 -1.1%(p=0.03)— 注意力效應,新聞股短線易追高。
-        # 樣本僅 ~6 sessions 故降權不全刪;live 累積 ≥30 sessions 後重跑腳本再決定去留。
+        # 新聞分維持降權 0.3:IC 回測(backtest_data/ic_news_score.py,2026-06 重跑)顯示
+        # 1d IC≈-0.064、IC_IR=-1.0、「有新聞」股票次日平均 -0.86%(p=0.076,尚不顯著);
+        # 3d 殘差版 IC≈-0.081(p=0.016)。整體仍為「注意力效應、新聞股短線易追高」的負向,
+        # 但統計力不足(model_history 目前僅 ~6-9 場真正含 news_catalyst_score 欄位)。
+        # 因此維持降權不全刪、也不自動調權;待 live 累積 ≥30 場後重跑腳本再決定去留。
         "news_event": news_score * 0.3 * _safe_number(weights.get("news"), 1.0),
         "industry_neutral": industry_z * 3.0,
         "beat_market": (
@@ -9710,7 +9714,7 @@ def _extract_summary(text: str) -> str:
 def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict) -> str:
     """頂部 KPI 一覽條（dark bg，緊接 HERO 下方）。
     內容：立場 / 2330 / 00662 / 0050 / 加權，2 秒掃完今天重點。
-    若有設定個人持股,第二行顯示 持倉1/持倉2 昨日已實現損益 + 金額(僅彙總,不揭露明細)。
+    若有設定個人持股,第二行顯示 持倉1/持倉2 昨日帳上(未實現)市值變動 + 金額(僅彙總,不揭露明細)。
     (VIX 移到「總經指標」表內，騰出 KPI 位置給 0050。)"""
     import html as _htmllib_kpi   # 持倉名稱可能是 user 自訂字串,需 escape
     # === 立場 ===
@@ -9817,11 +9821,12 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                     f'<div style="{val};color:rgba(255,255,255,0.55);">—</div>'
                     f'<div style="{delta};color:rgba(255,255,255,0.45);">未設定</div>'
                     f'</td>')
-        # 只顯示昨日損益，不在郵件揭露總市值。
+        # 長抱者語意:這是「昨日帳上(未實現)市值變動」= 前天收盤→昨天收盤的部位漲跌,
+        # 非賣出已實現損益(系統無持有成本,無法算累計未實現)。不揭露總市值。
         p = data["gain_pct"]
         amt = data.get("gain_amount")
         return (f'<td style="{c}">'
-                f'<div style="{lbl}">{_htmllib_kpi.escape(name)} 昨日損益</div>'
+                f'<div style="{lbl}">{_htmllib_kpi.escape(name)} 昨日帳上</div>'
                 f'<div style="{val};color:{color_pct(p)};">{fmt_pct(p)}</div>'
                 f'<div style="{delta};color:{color_pct(p)};">{_fmt_amount(amt)}</div>'
                 f'</td>')
@@ -10683,10 +10688,16 @@ def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
     return best[:6]
 
 
-def fetch_cpbl_standings() -> list[dict]:
+def fetch_cpbl_standings(meta: Optional[dict] = None) -> list[dict]:
     """CPBL 戰績:官網直連(台灣 IP 可)→ Wikipedia 備援(GitHub Actions 海外 IP
-    被官網 geo-block 回 404;r.jina.ai 代理實測也被擋,改用 wiki)。失敗回空。"""
+    被官網 geo-block 回 404;r.jina.ai 代理實測也被擋,改用 wiki)。失敗回空。
+
+    meta(可選 dict)會被填入 {"source": "官網"/"Wikipedia 備援"/"無"},供渲染端標註
+    資料來源透明度(Wikipedia 取決於社群編輯速度,可能遲滯)。
+    """
     import re as _re
+    if meta is not None:
+        meta["source"] = "無"
     try:
         r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
                          headers={"User-Agent": "Mozilla/5.0",
@@ -10705,11 +10716,16 @@ def fetch_cpbl_standings() -> list[dict]:
             if len(out) >= 6:
                 break
         if out:
+            if meta is not None:
+                meta["source"] = "官網"
             return out
     except Exception as e:
         print(f"[sports] CPBL 官網失敗({str(e)[:60]}),改用 Wikipedia", file=sys.stderr)
     try:
-        return _cpbl_from_wikipedia()
+        rows = _cpbl_from_wikipedia()
+        if rows and meta is not None:
+            meta["source"] = "Wikipedia 備援"
+        return rows
     except Exception as e:
         print(f"[sports] CPBL Wikipedia 備援也失敗: {e}", file=sys.stderr)
         return []
@@ -10951,6 +10967,24 @@ def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict
 # ESPN 網球 grouping slug → 我方 tour 標籤(只取單打;雙打與其他略過)
 _TENNIS_SINGLES = {"mens-singles": "ATP", "womens-singles": "WTA"}
 
+# 賽事分層:大滿貫 > Masters1000/WTA1000 > 其他(ATP500/250)。投資人/球迷關注大滿貫遠多於週賽。
+_TENNIS_SLAM_KEYS = ("australian open", "roland garros", "french open", "wimbledon",
+                     "the championships", "us open")
+_TENNIS_M1000_KEYS = ("indian wells", "miami open", "monte", "madrid open", "italian open",
+                      "rome", "national bank", "canadian open", "cincinnati",
+                      "western & southern", "shanghai", "paris masters", "rolex paris",
+                      "masters 1000", "1000")
+
+
+def _tennis_tier(name: str) -> tuple:
+    """回 (rank, label):0=大滿貫, 1=Masters/1000, 2=其他。rank 越小越優先。"""
+    low = (name or "").lower()
+    if any(k in low for k in _TENNIS_SLAM_KEYS):
+        return (0, "大滿貫")
+    if any(k in low for k in _TENNIS_M1000_KEYS):
+        return (1, "1000 級")
+    return (2, "")
+
 
 def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     """網球 ATP/WTA 近日賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。
@@ -10982,9 +11016,11 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             for ev in r.json().get("events", [])[:8]:
                 status = (((ev.get("status") or {}).get("type")) or {}).get("shortDetail", "")
                 name = str(ev.get("shortName") or ev.get("name") or "")
+                tier_rank, tier_label = _tennis_tier(name)
                 if name and name not in seen_tourn:
                     seen_tourn.add(name)
-                    out["tournaments"].append({"name": name[:40], "status": str(status)[:18]})
+                    out["tournaments"].append({"name": name[:40], "status": str(status)[:18],
+                                               "tier": tier_label, "_tier": tier_rank})
                 for g in (ev.get("groupings") or []):
                     slug = str((g.get("grouping") or {}).get("slug") or "")
                     label = _TENNIS_SINGLES.get(slug)
@@ -11005,17 +11041,31 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         seen_comp.add(cid)
                         by_label[label].append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
-                            "event": name[:30],
+                            "event": name[:30], "tier": tier_label,
+                            "_tier": tier_rank,
                             "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:
             print(f"[sports] 網球 {tour} 抓取失敗: {e}", file=sys.stderr)
+    # 可選:只顯示大滿貫(TENNIS_FAVOR_SLAMS=1 且當期確實有大滿貫時)
+    if os.getenv("TENNIS_FAVOR_SLAMS") == "1":
+        if any(m["_tier"] == 0 for ms in by_label.values() for m in ms):
+            for k in by_label:
+                by_label[k] = [m for m in by_label[k] if m["_tier"] == 0]
+        out["tournaments"] = [t for t in out["tournaments"] if t["_tier"] == 0] or out["tournaments"]
     combined = []
     for label in ("ATP", "WTA"):
-        combined += sorted(by_label[label], key=lambda m: m["_ts"], reverse=True)[:3]
+        ms = sorted(by_label[label], key=lambda m: m["_ts"], reverse=True)  # 新→舊
+        ms.sort(key=lambda m: m["_tier"])                                   # 穩定:大滿貫優先
+        combined += ms[:3]
     combined.sort(key=lambda m: m["_ts"], reverse=True)
+    combined.sort(key=lambda m: m["_tier"])     # 穩定排序:大滿貫 > 1000 > 其他,同層新→舊
     for m in combined:
         m.pop("_ts", None)
+        m.pop("_tier", None)
     out["results"] = combined[:6]
+    out["tournaments"].sort(key=lambda t: t["_tier"])
+    for t in out["tournaments"]:
+        t.pop("_tier", None)
     out["tournaments"] = out["tournaments"][:6]
     return out
 
@@ -11088,7 +11138,9 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     now_tpe = now_tpe or dt.datetime.now(TPE)
     out: dict = {"news": {}}
     try:
-        out["cpbl"] = fetch_cpbl_standings()
+        _cpbl_meta: dict = {}
+        out["cpbl"] = fetch_cpbl_standings(_cpbl_meta)
+        out["cpbl_source"] = _cpbl_meta.get("source")
     except Exception as e:
         print(f"[sports] CPBL 戰績抓取失敗: {e}", file=sys.stderr)
     # CPBL 昨日比分(Yahoo 運動,避開中職官網 geo-block)
@@ -11197,6 +11249,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     """體育快訊卡:CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜 + 新聞標題。無資料回空。"""
     news = (sports or {}).get("news") or {}
     cpbl = (sports or {}).get("cpbl") or []
+    cpbl_source = (sports or {}).get("cpbl_source")
     cpbl_scores = (sports or {}).get("cpbl_scores") or []
     nba = (sports or {}).get("nba") or []
     standings = (sports or {}).get("standings") or {}
@@ -11285,6 +11338,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;"
             f"font-size:13px;color:#64748b;'>{htmllib.escape(t['gb'] or '-')}</td></tr>"
             for t in cpbl)
+        src_note = ""
+        if cpbl_source == "Wikipedia 備援":
+            src_note = ("<div style='font-size:11px;color:#94a3b8;margin-top:2px;'>"
+                        "※ 中職官網海外連線受限,本表為 Wikipedia 備援(社群更新,可能稍有遲滯)</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒戰績</b>"
             "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
@@ -11293,7 +11350,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "text-align:right;font-size:12px;color:#64748b;'>勝-和-敗</th>"
             "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th>"
             "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝差</th></tr>"
-            + rows + "</table></div>")
+            + rows + "</table>" + src_note + "</div>")
     if nba:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
@@ -11323,7 +11380,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             seg = "".join(
                 f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
                 f"<span style='color:#94a3b8;'>{htmllib.escape(r['tour'])}</span>　"
-                f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}</div>"
+                + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
+                   if r.get("tier") else "")
+                + f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}</div>"
                 for r in tennis["results"])
             t_inner.append(seg)
         blocks.append(
@@ -11541,6 +11600,24 @@ def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
         return num_re.sub(_sub, line)
 
     return "\n".join(_fix_line(ln) for ln in text.split("\n"))
+
+
+def _cap_analysis_text(text: str, max_chars: int = 2400) -> str:
+    """LLM 分析過長時在段落邊界截斷(避免把整封信推近 Gmail 102KB 剪裁線、也省手機下滑)。"""
+    if not text or len(text) <= max_chars:
+        return text
+    cut = text.rfind("\n\n", 0, max_chars)
+    if cut < int(max_chars * 0.6):
+        cut = text.rfind("\n", 0, max_chars)
+    if cut < int(max_chars * 0.6):
+        cut = max_chars
+    return text[:cut].rstrip() + "\n\n（…以下分析較長已截斷,完整數據與結論見上方卡片）"
+
+
+def _estimated_email_kb(html: str) -> float:
+    """估算寄出後郵件大小(KB)。繁中 HTML 經 MIME(base64/quoted-printable)編碼約 ×1.37;
+    Gmail 約 102KB 會剪信,故用此估算值控管,門檻保留安全邊際。"""
+    return len(html.encode("utf-8")) * 1.37 / 1024.0
 
 
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
@@ -12371,7 +12448,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
 
-    # ===== 4. LLM 分析（Markdown → HTML 後加樣式） =====
+    # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
+    analysis_for_render = _cap_analysis_text(analysis_for_render)
     analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _wrap_stance(analysis_html)
@@ -12425,7 +12503,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         {_render_etf_action_card(_f_price, _t_pred)}
         """
 
-    return f"""<!DOCTYPE html>
+    truncation_notice = ""
+
+    def _assemble() -> str:
+        return f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="utf-8">
@@ -12455,6 +12536,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           <!-- BODY(手機版兩側 16px:28px 在 390px 寬會吃掉 15% 可用寬度)-->
           <tr><td style="padding:20px 16px 8px;">
+
+            {truncation_notice}
 
             {weather_html}
 
@@ -12525,6 +12608,47 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
   </table>
 </body>
 </html>"""
+
+    # === Gmail 102KB 剪裁防護 ===
+    # 估編碼後大小;超標時按使用者核可的優先序(體育→醫學文獻→Podcast→模型實證→事件連續劇)
+    # 暫移除最低價值區塊,確保行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。
+    html = _assemble()
+    dropped: list[str] = []
+    for label, var_setter in (
+        ("體育", "sports_html"), ("醫學文獻", "journals_html"), ("Podcast", "podcast_html"),
+        ("模型實證", "model_evidence_html"), ("事件連續劇", "event_timeline_html"),
+    ):
+        if _estimated_email_kb(html) <= 100:
+            break
+        # 逐一清空低優先區塊後重組(closure 讀取最新值)
+        if var_setter == "sports_html":
+            sports_html = ""
+        elif var_setter == "journals_html":
+            journals_html = ""
+        elif var_setter == "podcast_html":
+            podcast_html = ""
+        elif var_setter == "model_evidence_html":
+            model_evidence_html = ""
+        elif var_setter == "event_timeline_html":
+            event_timeline_html = ""
+        dropped.append(label)
+        html = _assemble()
+    if dropped:
+        truncation_notice = (
+            '<div style="margin:0 0 14px;padding:10px 14px;background:#fef2f2;'
+            'border-left:5px solid #ef4444;border-radius:4px;font-size:12px;color:#7f1d1d;">'
+            f'⚠ 為避免 Gmail 截斷,本期已暫略:{"、".join(dropped)}'
+            '(行情、2330/00662/0050 預測與結論完整保留)。</div>')
+        html = _assemble()
+    elif _estimated_email_kb(html) > 95:
+        truncation_notice = (
+            '<div style="margin:0 0 14px;padding:10px 14px;background:#fffbeb;'
+            'border-left:5px solid #f59e0b;border-radius:4px;font-size:12px;color:#78350f;">'
+            '⚠ 本期內容偏長,Gmail 可能於信末「顯示完整內容」處截斷,點開即可看到全文。</div>')
+        html = _assemble()
+    print(f"[render] 郵件約 {_estimated_email_kb(html):.0f}KB(估編碼後);"
+          f"移除區塊={'、'.join(dropped) if dropped else '無'}", file=sys.stderr)
+    return html
 
 
 def send_email(html: str, subject: str) -> None:

@@ -58,6 +58,60 @@ def test_render_html_size_guard_quiet_when_small(monkeypatch):
     assert "為避免 Gmail 截斷" not in html and "Gmail 可能於信末" not in html
 
 
+def test_truncate_order_env_override(monkeypatch):
+    monkeypatch.delenv("EMAIL_TRUNCATE_ORDER", raising=False)
+    assert mr._truncate_order() == list(mr._TRUNCATE_SECTIONS)          # 預設順序
+    monkeypatch.setenv("EMAIL_TRUNCATE_ORDER", "event_timeline, journals")
+    order = mr._truncate_order()
+    assert order[:2] == ["event_timeline", "journals"]                 # env 指定者優先
+    assert set(order) == set(mr._TRUNCATE_SECTIONS)                     # 未列入者仍涵蓋全部
+    monkeypatch.setenv("EMAIL_TRUNCATE_ORDER", "bogus,podcast")          # 未知 key 忽略
+    assert mr._truncate_order()[0] == "podcast" and "bogus" not in mr._truncate_order()
+
+
+def _podcast_episodes(n, points_per_ep=15):
+    pts = ["這是一段很長的播客重點摘要內容用來灌版面測試" * 4 for _ in range(points_per_ep)]
+    return [{"show": f"節目{i}", "title": f"EPMARK{i}",
+             "digest": {"summary_points": list(pts), "tickers": []}} for i in range(n)]
+
+
+def test_render_html_size_guard_reduces_podcast_before_nuking(monkeypatch):
+    """Podcast 超標時先局部縮減集數,縮到 ≤3 集即降回門檻內 → 不整塊砍掉(保住主訂內容)。"""
+    # 內容敏感估算器:只要 Podcast 卡片數(EPMARK)> 3 就判超標,縮到 3 集即降回門檻內。
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("EPMARK") > 3 else 80.0)
+    q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(10)}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
+    assert html.count("EPMARK") == 3                  # 縮到 3 集
+    assert "Podcast 已縮減集數" in html                # 提示局部縮減
+    assert "已暫略:Podcast" not in html               # 未被整塊移除
+    assert "一、美股收盤行情" in html                  # 核心永不被剪
+
+
+def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypatch):
+    """只有 1–3 集但很長時,先壓每集條數(compact_points),而非整塊砍掉。"""
+    # 估算器對「渲染出的重點條數(PTMARK)」敏感:>12 條判超標,壓到 ≤12 條降回門檻內。
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("PTMARK") > 12 else 80.0)
+    # 每條重點只含 1 個 PTMARK(長度靠其餘文字),才能用計數精準反映「條數」
+    pts = [f"PTMARK_{j} " + "很長的播客重點內容" * 5 for j in range(15)]
+    episodes = [{"show": f"節目{i}", "title": f"集{i}",
+                 "digest": {"summary_points": list(pts), "tickers": []}} for i in range(2)]
+    q = {**_full_quotes(), "PODCAST_DIGEST": episodes}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
+    assert 0 < html.count("PTMARK") <= 12              # 條數被壓低,但未清空
+    assert "已暫略:Podcast" not in html               # 沒被整塊砍
+    assert "一、美股收盤行情" in html
+
+
+def test_render_html_stays_within_gmail_ceiling_with_huge_podcast():
+    """端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
+    q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(30)}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
+    assert mr._estimated_email_kb(html) <= 102
+    assert "一、美股收盤行情" in html and "2330" in html
+
+
 def test_render_html_contains_required_sections():
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
                           "## 測試分析", "2026-05-14 (Wed)", "每日報")

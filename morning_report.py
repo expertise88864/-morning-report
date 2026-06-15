@@ -11835,8 +11835,11 @@ def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
     return f"{tag}({'、'.join(facts)})"
 
 
-def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) -> str:
-    """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。"""
+def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
+                         max_episodes: int = 14, compact_points: Optional[int] = None) -> str:
+    """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。
+    max_episodes / compact_points 供 102KB 超標時「局部縮減」(先減集數/條數)使用,
+    預設維持原行為(14 集、台系 15 條)。"""
     if not episodes:
         return ""
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
@@ -11847,9 +11850,11 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib) ->
                   "Sharp Tech (Ben Thompson)", "All-In Podcast",
                   "Animal Spirits", "Invest Like the Best"}
     cards = []
-    for ep in episodes[:14]:
+    for ep in episodes[:max(1, max_episodes)]:
         d = ep.get("digest") or {}
         max_pts = 6 if ep.get("show", "") in intl_shows else 15
+        if compact_points is not None:               # 局部縮減:進一步壓低每集條數
+            max_pts = min(max_pts, compact_points)
         points = "".join(
             f"<li style='margin:4px 0;'>{htmllib.escape(str(p))}</li>"
             for p in (d.get("summary_points") or [])[:max_pts])
@@ -11950,6 +11955,27 @@ def _estimated_email_kb(html: str) -> float:
     """估算寄出後郵件大小(KB)。繁中 HTML 經 MIME(base64/quoted-printable)編碼約 ×1.37;
     Gmail 約 102KB 會剪信,故用此估算值控管,門檻保留安全邊際。"""
     return len(html.encode("utf-8")) * 1.37 / 1024.0
+
+
+# 102KB 超標時「整塊移除」的預設優先序(價值低→高;先移除最前者)。
+_TRUNCATE_SECTIONS = ("sports", "journals", "podcast", "model_evidence", "event_timeline")
+_TRUNCATE_LABELS = {"sports": "體育", "journals": "醫學文獻", "podcast": "Podcast",
+                    "model_evidence": "模型實證", "event_timeline": "事件連續劇"}
+
+
+def _truncate_order() -> list[str]:
+    """整塊移除的優先序。可用環境變數 EMAIL_TRUNCATE_ORDER(逗號分隔 key)覆寫,
+    例:'event_timeline,model_evidence,journals,sports,podcast' 把體育殿後、文獻提前。
+    env 指定者優先,未列入者沿用預設相對順序接在後面(確保涵蓋全部區塊、不漏)。"""
+    raw = os.environ.get("EMAIL_TRUNCATE_ORDER", "").strip()
+    if not raw:
+        return list(_TRUNCATE_SECTIONS)
+    wanted: list[str] = []
+    for k in raw.split(","):
+        k = k.strip()
+        if k in _TRUNCATE_LABELS and k not in wanted:
+            wanted.append(k)
+    return wanted + [k for k in _TRUNCATE_SECTIONS if k not in wanted]
 
 
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
@@ -12944,26 +12970,46 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 </html>"""
 
     # === Gmail 102KB 剪裁防護 ===
-    # 估編碼後大小;超標時按使用者核可的優先序(體育→醫學文獻→Podcast→模型實證→事件連續劇)
-    # 暫移除最低價值區塊,確保行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。
+    # 估編碼後大小;超標時 (1) 先「局部縮減」Podcast(使用者主訂內容)減集數/條數,
+    # (2) 仍超標再按優先序(預設 體育→醫學文獻→Podcast→模型實證→事件連續劇,可由
+    #     EMAIL_TRUNCATE_ORDER 覆寫)整塊移除最低價值區塊。
+    # 確保行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。
     # 門檻 96KB:留出橫幅(~0.3KB)與 base64 編碼變異的安全邊際,避免加橫幅後又超 102KB。
     LIMIT_KB = 96.0
+    podcast_eps = quotes.get("PODCAST_DIGEST") or []
+    pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
     html = _assemble()
     dropped: list[str] = []
-    for label, var_setter in (
-        ("體育", "sports_html"), ("醫學文獻", "journals_html"), ("Podcast", "podcast_html"),
-        ("模型實證", "model_evidence_html"), ("事件連續劇", "event_timeline_html"),
-    ):
+    reduced = False
+
+    # 依優先序逐一處理超標(closure 讀最新值)。輪到 Podcast 時(使用者主訂內容)先「局部
+    # 縮減」減集數/條數,縮到最小仍超標才整塊移除;其餘區塊直接清空。本就空的不計「已暫略」。
+    for key in _truncate_order():
         if _estimated_email_kb(html) <= LIMIT_KB:
             break
-        # 逐一清空低優先區塊後重組(closure 讀取最新值);本就空的區塊不計入「已暫略」
-        if var_setter == "sports_html":
+        label = _TRUNCATE_LABELS[key]
+        if key == "podcast":
+            # 不論集數多寡都先試局部縮減(少數但很長的集也能靠 compact_points 壓條數)。
+            if podcast_html and podcast_eps:
+                for cap, pts in ((8, 8), (5, 6), (3, 5)):
+                    if _estimated_email_kb(html) <= LIMIT_KB:
+                        break
+                    podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
+                                                        max_episodes=cap, compact_points=pts)
+                    reduced = True
+                    html = _assemble()
+                if _estimated_email_kb(html) <= LIMIT_KB:
+                    break
+            was_present, podcast_html = bool(podcast_html), ""   # 縮到最小仍超標 → 整塊移除
+            if was_present:
+                dropped.append(label)
+            html = _assemble()
+            continue
+        if key == "sports":
             was_present, sports_html = bool(sports_html), ""
-        elif var_setter == "journals_html":
+        elif key == "journals":
             was_present, journals_html = bool(journals_html), ""
-        elif var_setter == "podcast_html":
-            was_present, podcast_html = bool(podcast_html), ""
-        elif var_setter == "model_evidence_html":
+        elif key == "model_evidence":
             was_present, model_evidence_html = bool(model_evidence_html), ""
         else:
             was_present, event_timeline_html = bool(event_timeline_html), ""
@@ -12971,13 +13017,18 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             dropped.append(label)
         html = _assemble()
     # 先決定橫幅文案,再組一次並做「含橫幅」的最終量測;仍超標就誠實標示可能被剪。
-    if dropped:
+    if dropped or (reduced and podcast_html):
         still_over = _estimated_email_kb(_assemble()) > LIMIT_KB  # 估含內容、未含橫幅
         tail = ";惟內容仍偏長,信末仍可能被 Gmail 截斷" if still_over else ""
+        bits = []
+        if reduced and podcast_html and "Podcast" not in dropped:
+            bits.append("Podcast 已縮減集數")
+        if dropped:
+            bits.append("已暫略:" + "、".join(dropped))
         truncation_notice = (
             '<div style="margin:0 0 14px;padding:10px 14px;background:#fef2f2;'
             'border-left:5px solid #ef4444;border-radius:4px;font-size:12px;color:#7f1d1d;">'
-            f'⚠ 為避免 Gmail 截斷,本期已暫略:{"、".join(dropped)}'
+            f'⚠ 為避免 Gmail 截斷,本期{";".join(bits)}'
             f'(行情、2330/00662/0050 預測與結論完整保留){tail}。</div>')
         html = _assemble()
     elif _estimated_email_kb(html) > LIMIT_KB - 4:

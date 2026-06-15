@@ -11158,22 +11158,36 @@ def _nba_favorite_teams() -> list[str]:
     return [t.strip().lower() for t in raw.split(",") if t.strip()]
 
 
-def _espn_team_names(competitor: dict) -> str:
+def _nba_team_matches_favorite(competitor: dict, fav: str) -> bool:
+    """球隊是否命中關注關鍵字。單字關鍵字用「整詞」比對(避免 'den' 誤中 'golden state');
+    多字關鍵字(含空白,如 'golden state')才用整串子字串比對。"""
     tm = competitor.get("team") or {}
-    return " ".join(str(tm.get(k, "") or "") for k in (
-        "displayName", "shortDisplayName", "name", "location", "abbreviation")).lower()
+    text = " ".join(str(tm.get(k, "") or "") for k in (
+        "displayName", "name", "location", "shortDisplayName")).lower()
+    if " " in fav:
+        return fav in text
+    tokens = set(text.split())   # 整詞比對:'den' 不會誤中 'golden state warriors'
+    tokens.add(str(tm.get("abbreviation", "") or "").lower())
+    return fav in tokens
 
 
 def fetch_nba_favorite_games(now_tpe: dt.datetime, favorites: list[str]) -> list[dict]:
-    """關注球隊近 8 日最近一場(不限冠軍賽)。僅在設定 NBA_FAVORITE_TEAMS 時呼叫。"""
-    found: dict[str, dict] = {}
+    """關注球隊近 8 日最近一場(不限冠軍賽)。僅在設定 NBA_FAVORITE_TEAMS 時呼叫。
+    隊名/比分皆 HTML 跳脫後才加 <b> 標記;同一場(兩支關注隊對戰)只列一次。"""
+    import html as _h
+    found_favs: set = set()
+    games: list[dict] = []
+    seen_games: set = set()
 
-    def _fmt(t):
-        nm = (t.get("team") or {}).get("abbreviation", "?")
+    def _name(t):
+        nm = _h.escape(str((t.get("team") or {}).get("abbreviation", "?")))
         return f"<b>{nm}</b>" if t.get("winner") else nm
 
+    def _sc(t):
+        return _h.escape(str(t.get("score", "-")))
+
     for back in range(0, 8):
-        if len(found) >= len(favorites):
+        if len(found_favs) >= len(favorites):
             break
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
         try:
@@ -11181,29 +11195,34 @@ def fetch_nba_favorite_games(now_tpe: dt.datetime, favorites: list[str]) -> list
                 "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
+            events = r.json().get("events", [])
         except Exception as e:
             print(f"[sports] NBA 關注球隊抓取失敗({day}): {e}", file=sys.stderr)
             continue
-        for ev in r.json().get("events", []):
+        for ev in events:
             if not (((ev.get("status") or {}).get("type")) or {}).get("completed"):
                 continue
             comp = (ev.get("competitions") or [{}])[0]
             tlist = comp.get("competitors", [])
             if len(tlist) != 2:
                 continue
-            for fav in favorites:
-                if fav in found:
-                    continue
-                if any(fav in _espn_team_names(t) for t in tlist):
-                    away = next((t for t in tlist if t.get("homeAway") == "away"), tlist[0])
-                    home = next((t for t in tlist if t.get("homeAway") == "home"), tlist[1])
-                    found[fav] = {
-                        "text": f"{_fmt(away)} {away.get('score', '-')}:"
-                                f"{home.get('score', '-')} {_fmt(home)}",
-                        "date": f"{day[4:6]}/{day[6:]}",
-                        "note": ((comp.get("notes") or [{}])[0].get("headline") or "")[:40],
-                    }
-    return list(found.values())
+            matched = [f for f in favorites if f not in found_favs
+                       and any(_nba_team_matches_favorite(t, f) for t in tlist)]
+            if not matched:
+                continue
+            found_favs.update(matched)   # 已找到這些關注隊的最近一場
+            gid = ev.get("id") or ev.get("uid")
+            if gid in seen_games:
+                continue                 # 兩支關注隊對戰 → 同一場只列一次
+            seen_games.add(gid)
+            away = next((t for t in tlist if t.get("homeAway") == "away"), tlist[0])
+            home = next((t for t in tlist if t.get("homeAway") == "home"), tlist[1])
+            games.append({
+                "text": f"{_name(away)} {_sc(away)}:{_sc(home)} {_name(home)}",
+                "date": f"{day[4:6]}/{day[6:]}",
+                "note": ((comp.get("notes") or [{}])[0].get("headline") or "")[:40],
+            })
+    return games
 
 
 def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:

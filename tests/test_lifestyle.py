@@ -413,6 +413,49 @@ def test_fetch_nba_favorite_games(monkeypatch):
     assert out[0]["note"] == "NBA Finals Game 5"
 
 
+def test_nba_favorite_no_substring_false_positive():
+    """'den' 不可誤中 'Golden State';隊名/比分含標記字元須跳脫。"""
+    gsw = {"homeAway": "away", "score": "<x>", "winner": True,
+           "team": {"displayName": "Golden State Warriors", "abbreviation": "<i>GSW</i>"}}
+    lal = {"homeAway": "home", "score": "100",
+           "team": {"displayName": "Los Angeles Lakers", "abbreviation": "LAL"}}
+    assert mr._nba_team_matches_favorite(gsw, "den") is False        # 不誤中 golDEN
+    assert mr._nba_team_matches_favorite(gsw, "warriors") is True
+    assert mr._nba_team_matches_favorite(gsw, "golden state") is True  # 多字串比對
+    assert mr._nba_team_matches_favorite(lal, "lakers") is True
+
+
+def test_fetch_nba_favorite_escapes_and_dedupes(monkeypatch):
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    # 一場含「兩支關注隊」對戰 + 惡意標記字元
+    payload = {"events": [{
+        "id": "g1", "status": {"type": {"completed": True}},
+        "competitions": [{"notes": [],
+            "competitors": [
+                {"homeAway": "away", "score": "<b>9</b>", "winner": True,
+                 "team": {"displayName": "Boston Celtics", "abbreviation": "<x>"}},
+                {"homeAway": "home", "score": "100",
+                 "team": {"displayName": "Los Angeles Lakers", "abbreviation": "LAL"}}]}]}]}
+    monkeypatch.setattr(mr.requests, "get",
+                        lambda url, params=None, timeout=None, **k: R(payload))
+    out = mr.fetch_nba_favorite_games(
+        dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE), ["celtics", "lakers"])
+    assert len(out) == 1                       # 兩隊同場 → 只列一次(去重)
+    assert "&lt;x&gt;" in out[0]["text"] and "<x>" not in out[0]["text"]   # 隊名跳脫
+    assert "&lt;b&gt;9&lt;/b&gt;" in out[0]["text"]                        # 比分跳脫
+
+
 def test_render_nba_favorite_block():
     sports = {"news": {}, "nba_fav": [
         {"text": "<b>BOS</b> 110:105 NYK", "date": "06/14", "note": "Finals G5"}]}

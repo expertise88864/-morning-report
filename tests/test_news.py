@@ -86,6 +86,62 @@ def test_news_grade_uses_publisher_not_aggregator():
     assert mr._news_source_grade({"source": "Google:2330"}) == "C"  # 無媒體線索仍 C
 
 
+def test_tech_gate_drops_analyst_and_chipflow_noise():
+    """純喊價/純籌碼流向且無具體催化 → 視為科技脈動雜訊。"""
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "鉅亨", "title": "外資調升評等,目標價上看 1500 元", "summary": ""})
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "工商時報", "title": "台積電獲三大法人買超 2 萬張", "summary": ""})
+
+
+def test_tech_gate_keeps_concrete_catalyst_and_official():
+    """有具體催化(法說/訂單/出口管制)或 A 級官方來源 → 一律保留。"""
+    # 喊價措辭但夾帶具體催化(法說上修)→ 保留
+    assert not mr._is_low_value_tech_headline(
+        {"source_name": "經濟日報", "title": "法說調升財測,外資目標價上看 1500",
+         "summary": "資本支出擴產"})
+    # A 級官方來源即使是籌碼字眼也保留
+    assert not mr._is_low_value_tech_headline(
+        {"source": "TWSE", "title": "三大法人買賣超日報", "summary": ""})
+    # 一般中性標題(無喊價、無籌碼字眼)→ 不該被當雜訊砍
+    assert not mr._is_low_value_tech_headline(
+        {"source_name": "中央社", "title": "輝達執行長訪台與供應鏈會談", "summary": ""})
+
+
+def test_tech_gate_vague_growth_words_are_not_catalysts():
+    """泛詞(成長/獲利/增加)不算具體催化 → 純喊價/純籌碼仍被當雜訊砍。"""
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "鉅亨", "title": "外資調升目標價,預估獲利成長", "summary": ""})
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "工商時報", "title": "外資買超增加,投信同步加碼", "summary": ""})
+    # 裸「上修」不可放行喊價:「外資上修目標價」仍是雜訊(真正財測上修由「財測」涵蓋)
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "鉅亨", "title": "外資上修目標價至 1600 元", "summary": ""})
+    assert not mr._is_low_value_tech_headline(
+        {"source_name": "經濟日報", "title": "公司法說上修財測,目標價同步調升", "summary": ""})
+
+
+def test_tech_gate_short_english_terms_respect_word_boundary():
+    """短英文催化詞(ban/miss/beat)走 _matches_any 的詞界比對,不可子字串誤中
+    (bank/bandwidth/mission)→ 純喊價的英文標題仍被當雜訊砍。"""
+    assert mr._matches_any("Bank of America bandwidth note", mr.TECH_GATE_CATALYST) is None
+    assert mr._matches_any("US ban on chip exports", mr.TECH_GATE_CATALYST) == "ban"
+    # 「Bank…reiterates price target」是純喊價(且 ban 不誤中 Bank)→ 應被砍
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "Reuters", "title": "Bank of America reiterates buy rating, price target",
+         "summary": ""})
+
+
+def test_tech_gate_does_not_drop_real_subscription_action():
+    """『認購私募/增資』是實質公司動作,不可當權證籌碼雜訊砍掉。"""
+    assert not mr._is_low_value_tech_headline(
+        {"source_name": "經濟日報", "title": "鴻海認購某新創私募增資案取得董事席次",
+         "summary": ""})
+    # 但「認購權證」仍屬籌碼雜訊
+    assert mr._is_low_value_tech_headline(
+        {"source_name": "鉅亨", "title": "台積電認購權證掛牌交易熱絡", "summary": ""})
+
+
 def test_dedup_preserves_company_label():
     """個股新聞被去重時,company_label 必須保留在留下來的那筆(否則股票從科技板塊消失)。"""
     news = [

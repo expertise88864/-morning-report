@@ -831,6 +831,69 @@ def test_rule_based_events_settlement_and_witching():
     assert not any("三巫" in e["title"] for e in events_jul)
 
 
+def test_event_category_collapses_fomc_variants():
+    """規則式 FOMC 與 ForexFactory 各種 FOMC 寫法歸同類;ECB 不被誤歸 FOMC;
+    CPI 與 Core CPI 不被合併。"""
+    assert mr._event_category("FOMC 利率決策(台北時間隔日凌晨 2:00 公布)") == "FOMC"
+    assert mr._event_category("[USD] FOMC Statement") == "FOMC"
+    assert mr._event_category("[USD] Federal Funds Rate") == "FOMC"
+    assert mr._event_category("[EUR] ECB Interest Rate Decision") != "FOMC"   # 泛用利率決策不歸 FOMC
+    assert mr._event_category("[USD] CPI m/m") != mr._event_category("[USD] Core CPI m/m")
+    # 不同國別的同名數據不可塌成一筆(保留國別前綴)
+    assert mr._event_category("[USD] CPI m/m") != mr._event_category("[EUR] CPI m/m")
+
+
+def test_fetch_event_calendar_dedupes_fomc_across_sources(monkeypatch):
+    import datetime as dt
+
+    class _Resp:
+        def raise_for_status(self): pass
+        def json(self):
+            # 真實情況:FOMC 決策於美東 14:00(夏令 -04:00)公布,換算台北已是「隔日」凌晨。
+            # 規則式 FOMC 用美國會議日 6/17,FF 落在台北時間 6/18 → 日期不同,須靠類別收斂。
+            day = "2026-06-17T14:00:00-04:00"   # 美東 14:00 = 台北 6/18 02:00
+            return [
+                {"impact": "High", "country": "USD", "title": "FOMC Statement",
+                 "date": day, "forecast": "", "previous": ""},
+                {"impact": "High", "country": "USD", "title": "Federal Funds Rate",
+                 "date": day, "forecast": "4.50%", "previous": "4.50%"},
+                {"impact": "High", "country": "USD", "title": "FOMC Press Conference",
+                 "date": day, "forecast": "", "previous": ""},
+            ]
+
+    monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _Resp())
+    # 不打 yfinance 財報
+    monkeypatch.setattr(mr.yf, "Ticker", lambda *a, **k: type("T", (), {"calendar": {}})())
+    now = dt.datetime(2026, 6, 15, 8, tzinfo=mr.TPE)
+    events = mr.fetch_event_calendar(now, horizon_days=7)
+    fomc = [e for e in events if mr._event_category(e["title"]) == "FOMC"]
+    assert len(fomc) == 1                              # 跨日期 + 三來源 → 收斂成一筆
+    assert "FOMC 利率決策" in fomc[0]["title"]          # 保留中文時區說明的規則式那筆
+    assert fomc[0]["date"] == dt.date(2026, 6, 17)     # 保留規則式美國會議日
+    # 不漏資訊:規則式 note 仍在,且併入 FF 的預期/前值
+    assert "決策日前後" in fomc[0]["note"]
+    assert "預期 4.50%" in fomc[0]["note"]
+
+
+def test_event_structural_dedup_keeps_distant_same_category():
+    """同類別但相隔較遠(較長 horizon 下不同月份的結算日)不可被塌成一筆。"""
+    import datetime as dt
+    events = [
+        {"date": dt.date(2026, 6, 17), "title": "台指期/選擇權結算日", "note": "a"},
+        {"date": dt.date(2026, 7, 15), "title": "台指期/選擇權結算日", "note": "b"},
+    ]
+    # 相差 28 天 > 1 → 兩筆都保留
+    assert mr._event_category(events[0]["title"]) == mr._event_category(events[1]["title"]) == "TW_SETTLE"
+    out = mr._dedupe_calendar_events(events)
+    assert len(out) == 2
+    # 但同類別相差 ≤1 天(規則式美國會議日 vs FF 台北日)→ 收斂成一筆
+    near = mr._dedupe_calendar_events([
+        {"date": dt.date(2026, 6, 17), "title": "FOMC 利率決策", "note": "x"},
+        {"date": dt.date(2026, 6, 18), "title": "[USD] Federal Funds Rate", "note": "預期 4.5%"},
+    ])
+    assert len(near) == 1 and near[0]["date"] == dt.date(2026, 6, 17)
+
+
 def test_event_timeline_counts_days_and_expires(tmp_path, monkeypatch):
     import datetime as dt
     monkeypatch.setattr(mr, "EVENT_TIMELINE_FILE", tmp_path / "tl.json")

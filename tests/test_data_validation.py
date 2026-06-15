@@ -100,6 +100,22 @@ def test_build_prompt_2330_price_unavailable_is_explicit():
     assert "守穩 XXX" not in p
 
 
+def test_build_prompt_company_news_roundrobin_keeps_late_companies():
+    """重點公司新聞展平採輪替:即使前面公司各塞 3 則,後面公司(含關注三檔)
+    的頭條仍須在全域上限內露出,不被整家吃掉。"""
+    news = []
+    for i in range(15):                       # 15 家 × 3 則 = 45,超過 lines[:36] 上限
+        label = f"C{i:02d}"
+        for j in range(3):
+            news.append({
+                "company_label": label, "source": f"Google:{label}", "source_name": "鉅亨",
+                "title": f"{label} 取得大訂單第{j}案", "summary": "客戶擴產投片",
+            })
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    # 第 13~15 家在舊的「每家連塞 3 則後 [:36] 截斷」會整家消失;輪替後其頭條仍在。
+    assert "[C12]" in p and "[C13]" in p and "[C14]" in p
+
+
 def test_call_llm_analysis_survives_prompt_build_failure(monkeypatch):
     """_build_prompt 若拋例外，call_llm_analysis 必須回 fallback 字串而不是 raise，
     確保 main() 仍能寄出基本版晨報。"""

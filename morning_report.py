@@ -335,6 +335,35 @@ NEWS_NEGATIVE_TERMS = [
     "sanctions", "recall", "lawsuit", "downgrade", "downgraded",
 ]
 
+# 科技脈動品質閘門用詞:純分析師喊價、純籌碼流向、具體催化。
+# 用於過濾「重點公司新聞」餵 LLM 的取材厚度,不影響任何計分(計分仍吃全部新聞)。
+TECH_NEWS_ANALYST_NOISE = [
+    "目標價", "上看", "喊買", "喊到", "看好上", "評等", "重申", "調升評等", "調降評等",
+    "投顧", "分析師看", "外資點名", "外資喊", "法人喊", "buy 評等",
+    "target price", "price target", "overweight", "outperform", "reiterate", "initiate",
+]
+TECH_NEWS_CHIPFLOW_NOISE = [
+    "買超", "賣超", "三大法人", "外資連", "投信連", "自營商連", "籌碼", "法人動向",
+    "土洋對作", "權證", "融資增", "融券增",   # 「認購/認售」太廣(認購私募=實質公司動作)→ 只留權證
+]
+# 科技脈動閘門的「具體催化」白名單:刻意只放難以在純喊價/籌碼文中出現的具體事件詞,
+# 不沿用 NEWS_POSITIVE/NEGATIVE_TERMS(那組為計分召回而設,含成長/增加/獲利等泛詞,
+# 會讓「調升目標價,預估獲利成長」這類純喊價漏網)。
+TECH_GATE_CATALYST = [
+    # 訂單/接單/產能
+    "訂單", "新訂單", "得標", "接單", "大單", "下單", "投片", "擴產", "產能", "良率",
+    # 營運/財報事件(具體,非泛詞;不用裸「上修/下修」——會放行「上修目標價」這類喊價,
+    # 真正的財測上修由「財測」涵蓋,另收「上修/下修展望」)
+    "法說", "財報", "財測", "上修展望", "下修展望", "轉盈", "轉虧", "beat", "miss",
+    # 製造/產品
+    "量產", "出貨", "投產", "流片", "tape-out", "tapeout", "認證", "漲價", "報價",
+    # 投資/設廠/併購
+    "設廠", "建廠", "併購", "收購", "簽約", "簽訂", "合作",
+    # 負面具體事件
+    "砍單", "減產", "停產", "罷工", "火災", "資遣", "裁員", "召回", "訴訟",
+    "出口管制", "禁令", "制裁", "sanction", "sanctions", "ban", "banned", "recall", "lawsuit",
+]
+
 # ---------- 0050 成分股清單（含業務簡介） ----------
 # 資料以元大投信 0050 ETF 公開月報為基準，每季可能小幅調整
 TW0050_CONSTITUENTS: dict[str, str] = {
@@ -8195,6 +8224,20 @@ def _format_macro_line(name: str, m: dict) -> str:
     return f"{name}={m['close']} ({prev_str}{cp_str}{rank_str})"
 
 
+def _is_low_value_tech_headline(n: dict) -> bool:
+    """純分析師喊價或純籌碼流向、且不含具體催化的非 A 級新聞 → 視為科技脈動雜訊。
+    僅用於過濾「重點公司新聞」餵 LLM 的取材(這類內容股價表/法人表已涵蓋),
+    不更動 importance/ranking 等任何計分。"""
+    text = f"{n.get('title', '')} {n.get('summary', '')}"
+    grade = n.get("source_grade") or _news_source_grade(n)
+    if grade == "A":                       # 官方來源(SEC/MOPS/TWSE…)一律保留
+        return False
+    if _matches_any(text, TECH_GATE_CATALYST):
+        return False
+    return bool(_matches_any(text, TECH_NEWS_ANALYST_NOISE)
+                or _matches_any(text, TECH_NEWS_CHIPFLOW_NOISE))
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -8246,11 +8289,23 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         by_label: dict[str, list] = {}
         for n in company_news:
             by_label.setdefault(n.get("company_label", "?"), []).append(n)
-        lines = []
+        # 每家先過品質閘門(濾純喊價/純籌碼雜訊),每家至少保留 1 則(取最可信完整者),
+        # 各家最多 3 則。
+        per_label: list[tuple] = []   # (label, tag, [news…])
         for label, lst in by_label.items():
             tag = _supply_chain_2330_tag(label)
-            for n in lst[:3]:
-                lines.append(f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）")
+            filtered = [n for n in lst if not _is_low_value_tech_headline(n)]
+            if not filtered:
+                filtered = sorted(lst, key=_news_keep_score, reverse=True)[:1]
+            per_label.append((label, tag, filtered[:3]))
+        # 以「輪替」展平:先每家各取第 1 則,再各取第 2、3 則,最後才套用全域上限 ——
+        # 確保 lines[:36] 不會在前幾家各塞 3 則後、把後面公司(含關注三檔)整個吃掉。
+        lines = []
+        for rank in range(3):
+            for label, tag, items in per_label:
+                if rank < len(items):
+                    n = items[rank]
+                    lines.append(f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）")
         news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」與「關注三檔」取材;"
                        "標 [對2330供應鏈] 者請在分析點出對 2330 的傳導）】\n"
                        + "\n".join(lines[:36]))
@@ -9023,6 +9078,9 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 ## 十三、一句話總結
 
 20 字內。給一句**具體可執行**的結論（含立場 + 動作）。
+**立場用詞必須與第十二段「立場標籤」完全一致（偏多／偏空／中性）——不可另創說法**
+（不要用「樂觀/保守/審慎」等同義詞改寫,讓讀者一眼看到同一個立場詞；
+ 風險或操作紀律可在動作裡補述,但開頭立場詞要一致）。
 
 範例：「偏多操作 00662，2330 守穩 {_mid2330_txt} 元逢回加碼」（**2330 價位請用上方 Python 提供的新台幣中樞值，不可寫成美元 ADR 價**）
 """
@@ -10274,6 +10332,71 @@ def _rule_based_events(today: dt.date, horizon_days: int = 7) -> list[dict]:
     return events
 
 
+def _event_category(title: str) -> str:
+    """把事件標題收斂成粗分類 key,讓同一事件的不同來源/寫法只留一筆。
+    例:規則式『FOMC 利率決策…』與 ForexFactory『[USD] FOMC Statement / Federal Funds Rate』
+    都歸 FOMC;其餘事件以去國別前綴+去標點的標題當 key(CPI 與 Core CPI 仍視為不同)。"""
+    t = str(title).lower()
+    # 僅認 Fed 專屬字樣;不可用泛用的 "interest rate decision"(會把 ECB/BOE 等也歸 FOMC)。
+    if ("fomc" in t or "federal funds" in t or "federal open market" in t
+            or "聯準會" in t or "fed 利率決策" in t):
+        return "FOMC"
+    if "三巫" in t or "quadruple witching" in t or "triple witching" in t:
+        return "WITCHING"
+    if "結算" in t and ("台指" in t or "選擇權" in t):
+        return "TW_SETTLE"
+    # 其餘事件以「去標點的標題」當 key:保留 [usd]/[eur] 國別前綴(否則 [USD] CPI 與
+    # [EUR] CPI 會塌成同一筆),CPI 與 Core CPI 也因字串不同而視為不同事件。
+    import re as _re
+    base = _re.sub(r"[\s（）()，,。.、:：;；/-]+", "", t)
+    return base or t
+
+
+_STRUCTURAL_EVENT_CATS = {"FOMC", "WITCHING", "TW_SETTLE"}
+
+
+def _dedupe_calendar_events(events: list[dict]) -> list[dict]:
+    """事件日曆去重(保序,就地填補 note)。
+    一般事件:同日同類別只留一筆(FF 本週重疊、不同寫法收斂)。
+    結構性事件(FOMC/三巫/結算)跨來源日期可能差一天(規則式用美國會議日 6/17、
+    FF 用台北公布日 6/18)→ 與同類別且日期相差 ≤1 天的已留事件視為同一筆;但相隔
+    較遠者(較長 horizon 下不同月份的結算日)仍各自保留,不可一律塌成一筆。
+    保留者無 note 而被丟的同類事件有(如 FF 的預期/前值)→ 補上,不漏資訊。"""
+    def _merge_note(kept: dict, dup: dict) -> None:
+        # 併入被丟者的 note(如 FF 的預期/前值);保留者已有 note 時附加「不同」內容,
+        # 不重複附加(FF 本週重疊的同名事件 note 相同 → 不會疊字)。
+        dn = (dup.get("note") or "").strip()
+        if not dn:
+            return
+        kn = (kept.get("note") or "").strip()
+        if not kn:
+            kept["note"] = dn
+        elif dn not in kn:
+            kept["note"] = f"{kn}；{dn}"
+
+    deduped: list[dict] = []
+    seen_generic: set = set()
+    for e in events:
+        cat = _event_category(e["title"])
+        if cat in _STRUCTURAL_EVENT_CATS:
+            near = next((k for k in deduped
+                         if _event_category(k["title"]) == cat
+                         and abs((e["date"] - k["date"]).days) <= 1), None)
+            if near is not None:
+                _merge_note(near, e)
+                continue
+            deduped.append(e)
+            continue
+        key = (e["date"], cat)
+        if key in seen_generic:
+            _merge_note(next(k for k in deduped
+                             if (k["date"], _event_category(k["title"])) == key), e)
+            continue
+        seen_generic.add(key)
+        deduped.append(e)
+    return deduped
+
+
 def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
                          horizon_days: int = 7) -> list[dict]:
     """未來 7 天風險事件:ForexFactory 高衝擊經濟數據(含預期值)+ 規則式市場結構日
@@ -10308,16 +10431,7 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
                                "note": "、".join(extra), "impact": "high"})
         except Exception as ex:
             print(f"[calendar] FF 日曆抓取失敗: {ex}", file=sys.stderr)
-    # 去重(FF 本週/下週可能重疊)
-    seen = set()
-    deduped = []
-    for e in events:
-        key = (e["date"], e["title"])
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(e)
-    events = deduped
+    events = _dedupe_calendar_events(events)
 
     # 重點美股財報(yfinance earnings;逐檔輕量,失敗逐檔略過)
     for tk in ("NVDA", "AAPL", "MSFT", "AVGO", "TSLA", "AMD", "GOOGL", "META", "MU", "QCOM"):
@@ -12150,13 +12264,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           </tr>
         </table>
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:8px 0 12px;">
-          <div style="font-size:13px;color:#0f172a;line-height:1.7;">
-            <b>開盤方向：</b>{open_direction}　
-            <b>整體立場：</b>{_htmllib.escape(stance_text)}　
-            <b>交易立場：</b>{trade_posture}
+          <div style="font-size:15px;color:#0f172a;font-weight:700;line-height:1.6;">
+            今日立場：{_htmllib.escape(stance_text)}
+          </div>
+          <div style="font-size:13px;color:#334155;line-height:1.7;margin-top:2px;">
+            <b>短線開盤：</b>{open_direction}　<b>操作紀律：</b>{trade_posture}
           </div>
           <div style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px;">
-            ※ 開盤方向只描述「可能怎麼開」；整體立場取自「我的明確立場」；交易立場則整合外資期貨、警告與波動風險；{posture_reason}。
+            ※ 三者是同一立場的不同面向,非互相矛盾:今日立場取自「我的明確立場（淨分判定）」、為當日總方向；
+            短線開盤只描述「可能怎麼開」；操作紀律整合外資期貨、警告與波動風險；{posture_reason}。
           </div>
         </div>
         {(lambda c: f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}

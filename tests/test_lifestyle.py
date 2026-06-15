@@ -380,6 +380,23 @@ def test_fetch_worldcup_sorts_group_by_standings(monkeypatch):
     assert teams[:2] == ["南韓", "墨西哥"]               # 前 2 名(晉級線)正確
 
 
+def test_format_macro_line_prev_value():
+    """總經行須帶前值以防 LLM 編造;缺漲跌幅時不可捏造前值==現值。"""
+    # 提供 prev_close → 直接用
+    assert "前值 19.43" in mr._format_macro_line("VIX", {"close": 17.68, "prev_close": 19.43, "change_pct": -9.05})
+    # 無 prev_close、有 change_pct → 反推(17.68 / (1-0.0905) ≈ 19.44)
+    line = mr._format_macro_line("VIX", {"close": 17.68, "change_pct": -9.05})
+    assert "前值 19.4" in line and "-9.05%" in line
+    # 無 change_pct → 不捏造前值、標漲跌不明
+    line2 = mr._format_macro_line("X", {"close": 100.0})
+    assert "前值" not in line2 and "漲跌不明" in line2
+    # -100%(歸零)→ 不除以零、不顯示前值
+    line3 = mr._format_macro_line("Z", {"close": 0.0, "change_pct": -100})
+    assert line3 == "Z=資料缺失" or "前值" not in line3
+    # 資料缺失
+    assert mr._format_macro_line("Y", {"error": "x"}) == "Y=資料缺失"
+
+
 def test_render_sports_cpbl_source_note():
     base = {"rank": 1, "team": "統一", "games": "50", "wdl": "30-0-20",
             "pct": "0.600", "gb": "-"}

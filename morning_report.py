@@ -8176,6 +8176,25 @@ def classify_news_importance(news: list[dict]) -> list[dict]:
     return news
 
 
+def _format_macro_line(name: str, m: dict) -> str:
+    """總經指標餵 LLM 的單行格式。明確帶「前值」避免 LLM 回推前值而編造數字
+    (曾出現「VIX 從 22.2 跳水」幻覺);僅在 change_pct 確為數字時才反推前值。"""
+    if not isinstance(m, dict) or "error" in m or not m.get("close"):
+        return f"{name}=資料缺失"
+    rank = m.get("pct_rank_252d")
+    rank_str = f", 1Y百分位 {rank:.0f}%" if rank is not None else ""
+    cp = m.get("change_pct")
+    prev = m.get("prev_close")
+    if prev is None and isinstance(cp, (int, float)) and (1 + cp / 100) != 0:
+        try:
+            prev = m["close"] / (1 + cp / 100)
+        except (TypeError, ZeroDivisionError):
+            prev = None
+    prev_str = f"前值 {prev:.2f}, " if isinstance(prev, (int, float)) else ""
+    cp_str = f"{cp:+.2f}%" if isinstance(cp, (int, float)) else "漲跌不明"
+    return f"{name}={m['close']} ({prev_str}{cp_str}{rank_str})"
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -8403,21 +8422,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 總經指標摘要（含 252 日百分位）
     macro = quotes.get("MACRO", {}) or {}
     def fmt_m(name: str) -> str:
-        m = macro.get(name, {})
-        if "error" in m or not m.get("close"):
-            return f"{name}=資料缺失"
-        rank = m.get("pct_rank_252d")
-        rank_str = f", 1Y百分位 {rank:.0f}%" if rank is not None else ""
-        # 明確給「前值」,避免 LLM 自行回推前值而編造數字(曾出現「VIX 從 22.2 跳水」的幻覺)
-        cp = m.get("change_pct", 0) or 0
-        prev = m.get("prev_close")
-        if prev is None and (1 + cp / 100) != 0:
-            try:
-                prev = m["close"] / (1 + cp / 100)
-            except (TypeError, ZeroDivisionError):
-                prev = None
-        prev_str = f"前值 {prev:.2f}, " if isinstance(prev, (int, float)) else ""
-        return (f"{name}={m['close']} ({prev_str}{cp:+.2f}%{rank_str})")
+        return _format_macro_line(name, macro.get(name) or {})
     macro_block = "\n".join(
         [f"  {fmt_m(n)}" for n in
          ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
@@ -10869,10 +10874,13 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                     "d": _v("ties") or _v("draws"), "l": _v("losses"),
                     "pts": _v("points"),
                     "gd": _v("pointDifferential"), "gf": _v("pointsFor"),
+                    "rank": _v("rank"),
                 })
-            # ESPN entries 並非依名次排序(實測會以種子/隊名序回傳),自行依
-            # 積分→淨勝分→進球數(FIFA 小組賽 tie-break)排序,前 2 名才是真正晉級線。
-            rows.sort(key=lambda r: (-r["pts"], -r["gd"], -r["gf"]))
+            # ESPN entries 並非依名次排序(實測會以種子/隊名序回傳),自行依 FIFA 小組賽
+            # tie-break 排序:積分→淨勝分→進球數;三者全同時,再用 ESPN 的 rank 收尾
+            # (rank 已含對戰成績/公平競賽分等我方無法計算的次序),前 2 名才是真正晉級線。
+            rows.sort(key=lambda r: (-r["pts"], -r["gd"], -r["gf"],
+                                     r["rank"] if r["rank"] else 99))
             if rows:
                 out["groups"].append({"name": gname, "rows": rows})
     except Exception as e:

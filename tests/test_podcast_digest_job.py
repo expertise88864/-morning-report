@@ -46,6 +46,29 @@ def test_find_new_episodes_returns_multiple_backlog_items(monkeypatch):
     assert [item[0]["id"] for item in found] == ["new-1", "new-2"]
 
 
+def test_accuracy_settings_routing():
+    """accuracy=high → medium + beam5 + v4-pro;一般 → small + beam1 + flash。"""
+    high = pd._accuracy_settings({"accuracy": "high"})
+    assert high["whisper"] == pd.WHISPER_MODEL_HIGH and high["beam"] == 5
+    assert high["summary_model"] == pd.DEEPSEEK_MODEL_HIGH
+    assert high["rt_factor"] == pd.TRANSCRIBE_REALTIME_FACTOR_HIGH
+    base = pd._accuracy_settings({})
+    assert base["whisper"] == pd.WHISPER_MODEL and base["beam"] == 1
+    assert base["summary_model"] == pd.DEEPSEEK_MODEL
+
+
+def test_core_podcasts_marked_high_accuracy():
+    """台系核心節目(股癌/財報狗/財經皓角/M觀點)應標 accuracy=high。"""
+    by_key = {p["key"]: p for p in pd.PODCASTS}
+    for key in ("gooaye", "statementdog", "haojiao", "mviewpoint"):
+        assert by_key[key].get("accuracy") == "high", key
+    # 已剔除的節目不應再存在
+    for gone in ("ft-briefing", "unhedged", "animalspirits", "investlikebest"):
+        assert gone not in by_key
+    # 新增的節目應存在
+    assert "sharptech" in by_key and "allin" in by_key
+
+
 def test_main_processes_multiple_episodes_from_same_show(monkeypatch):
     cfg = {"key": "show", "name": "Show", "search": "Show", "priority": 1}
     processed = []

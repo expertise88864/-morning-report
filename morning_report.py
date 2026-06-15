@@ -11103,7 +11103,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         print(f"[sports] MLB 台灣球員抓取失敗: {e}", file=sys.stderr)
     # 網球 ATP/WTA 賽況
     try:
-        tennis = fetch_tennis_digest()
+        tennis = fetch_tennis_digest(now_tpe)
         if tennis.get("tournaments") or tennis.get("results"):
             out["tennis"] = tennis
     except Exception as e:

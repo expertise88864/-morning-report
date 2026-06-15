@@ -46,6 +46,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser requests faster-whisper
 
+      - name: Prefetch whisper models
+        # 一律下載 small + medium,確保 cache miss 時兩個模型一起被存進快取
+        # (exact-key 命中時 actions/cache 不會再存,否則 medium 會每天重抓)。
+        run: |
+          python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8'); WhisperModel('medium', device='cpu', compute_type='int8')"
+
       - name: Run podcast digest
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}

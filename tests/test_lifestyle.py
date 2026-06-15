@@ -275,6 +275,78 @@ def test_fetch_worldcup_parses_espn(monkeypatch):
     assert rows[1]["team"] == "巴西" and rows[1]["d"] == 1
 
 
+def test_fetch_worldcup_fixtures_filters_to_tpe_day(monkeypatch):
+    """賽程只留台北今天/明天的場次,且開球時間換算成台北時區。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    now = dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE)
+    today_match = {"id": "g1", "date": "2026-06-15T05:00Z",  # 台北 13:00 = 今天
+                   "status": {"type": {"completed": False, "state": "pre"}},
+                   "competitions": [{"competitors": [
+                       {"team": {"displayName": "Brazil"}},
+                       {"team": {"displayName": "United States"}}]}]}
+    far_match = {"id": "g2", "date": "2026-06-20T05:00Z",     # 5 天後 → 應被濾掉
+                 "status": {"type": {"completed": False, "state": "pre"}},
+                 "competitions": [{"competitors": [
+                     {"team": {"displayName": "France"}},
+                     {"team": {"displayName": "Spain"}}]}]}
+
+    def fake_get(url, params=None, timeout=None, **k):
+        if "standings" in url:
+            return R({"children": []})
+        return R({"events": [today_match, far_match]})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    wc = mr.fetch_worldcup(now)
+    fx = wc["fixtures"]
+    assert len(fx) == 1                                   # 只留今天那場;5 天後被濾掉
+    assert fx[0]["text"] == "巴西 vs 美國"
+    assert fx[0]["kickoff"] == "06/15 13:00"             # UTC→台北
+
+
+def test_fetch_tennis_orders_latest_first_per_tour(monkeypatch):
+    """ESPN 場次舊→新;各 tour 取最近 3 場、合併後最新在前,WTA 不被 ATP 佔滿。"""
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def _match(winner, day):
+        return {"date": f"2026-06-{day}T12:00Z",
+                "status": {"type": {"completed": True}},
+                "competitors": [{"athlete": {"shortName": winner}, "winner": True},
+                                {"athlete": {"shortName": "Loser"}, "winner": False}]}
+
+    def fake_get(url, timeout=None, **k):
+        if "/atp/" in url:   # 四場,舊→新(ESPN 順序)
+            comps = [_match(f"ATP{d}", d) for d in (10, 11, 12, 13)]
+            return R({"events": [{"shortName": "ATP Cup", "status": {"type": {}},
+                                  "groupings": [{"competitions": comps}]}]})
+        return R({"events": [{"shortName": "WTA Cup", "status": {"type": {}},
+                              "groupings": [{"competitions": [_match("WTA12", 12)]}]}]})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_tennis_digest()
+    winners = [r["winner"] for r in out["results"]]
+    assert winners[0] == "ATP13"                         # 最新在前
+    assert "WTA12" in winners                            # WTA 有代表,未被 ATP 佔滿
+    assert winners.count("ATP10") == 0 or winners.index("ATP13") == 0  # ATP 每 tour 上限 3
+    assert sum(1 for w in winners if w.startswith("ATP")) <= 3
+
+
 def _stub_weekend_sources(monkeypatch, *, podcast):
     """把週日綜合的抓取/渲染都換成輕量 stub,只測控制流。"""
     monkeypatch.setattr(mr, "fetch_weather", lambda: [])

@@ -10826,41 +10826,50 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                 out["groups"].append({"name": gname, "rows": rows})
     except Exception as e:
         print(f"[sports] 世足分組戰績抓取失敗: {e}", file=sys.stderr)
-    # 今日/明日賽程預告(未開賽場次,附台北開球時間)——小組賽結束後自動變成淘汰賽對戰
+    # 今日/明日(台北)賽程預告——小組賽結束後自動變成淘汰賽對戰。
+    # ESPN 的 dates 以其自身行事曆(UTC 為主)分桶,與台北日界不一致,故多查幾天
+    # (昨~後天),把開球時間換成台北時區後,只留台北「今天/明天」的場次,避免漏抓或錯抓。
     fixtures = []
     fseen = set()
-    for ahead in (0, 1):
-        day = (now_tpe + dt.timedelta(days=ahead)).strftime("%Y%m%d")
+    today_tpe = now_tpe.date()
+    tomorrow_tpe = today_tpe + dt.timedelta(days=1)
+    for off in (-1, 0, 1, 2):
+        day = (now_tpe + dt.timedelta(days=off)).strftime("%Y%m%d")
         try:
             r = requests.get(
                 "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
             for ev in r.json().get("events", []):
-                st = (((ev.get("status") or {}).get("type")) or {})
-                if st.get("completed") or st.get("state") == "in":
-                    continue  # 只列尚未開打的
                 gid = ev.get("id") or ev.get("uid")
                 if gid in fseen:
                     continue
-                fseen.add(gid)
+                st = (((ev.get("status") or {}).get("type")) or {})
+                if st.get("completed") or st.get("state") == "in":
+                    continue  # 只列尚未開打的
+                try:
+                    iso = str(ev.get("date") or "").replace("Z", "+00:00")
+                    ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
+                except Exception:
+                    continue  # 無法判定開球時間就不列(避免誤放錯日場次)
+                if ko.date() not in (today_tpe, tomorrow_tpe):
+                    continue
                 comp = (ev.get("competitions") or [{}])[0]
                 teams = comp.get("competitors", [])
                 if len(teams) != 2:
                     continue
+                fseen.add(gid)
                 names = [_wc_zh((t.get("team") or {}).get("displayName")
                                 or (t.get("team") or {}).get("name", "?")) for t in teams]
-                kickoff = ""
-                try:
-                    iso = str(ev.get("date") or "").replace("Z", "+00:00")
-                    ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
-                    kickoff = ko.strftime("%m/%d %H:%M")
-                except Exception:
-                    pass
                 rnd = str((comp.get("notes") or [{}])[0].get("headline") or "")[:24]
-                fixtures.append({"text": " vs ".join(names), "kickoff": kickoff, "round": rnd})
+                fixtures.append({"text": " vs ".join(names),
+                                 "kickoff": ko.strftime("%m/%d %H:%M"),
+                                 "round": rnd, "_ko": ko})
         except Exception as e:
             print(f"[sports] 世足賽程抓取失敗({day}): {e}", file=sys.stderr)
+    fixtures.sort(key=lambda f: f["_ko"])
+    for f in fixtures:
+        f.pop("_ko", None)
     out["fixtures"] = fixtures[:10]
     return out
 
@@ -10940,9 +10949,20 @@ def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict
 
 
 def fetch_tennis_digest() -> dict:
-    """網球 ATP/WTA 當週賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。"""
+    """網球 ATP/WTA 當週賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。
+
+    ESPN 回傳場次為「舊→新」順序,故各 tour 內依比賽時間由新到舊排序、各取最近 3 場,
+    再合併(兩 tour 都有代表,不會被單一 tour 佔滿)。
+    """
     out: dict = {"tournaments": [], "results": []}
+
+    def _an(c):
+        a = c.get("athlete") or {}
+        return a.get("shortName") or a.get("displayName") or "?"
+
+    per_tour: list[list[dict]] = []
     for tour, label in (("atp", "ATP"), ("wta", "WTA")):
+        matches = []
         try:
             r = requests.get(
                 f"https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard",
@@ -10964,21 +10984,20 @@ def fetch_tennis_digest() -> dict:
                         lose = next((c for c in cs if not c.get("winner")), None)
                         if not (win and lose):
                             continue
-
-                        def _an(c):
-                            a = c.get("athlete") or {}
-                            return a.get("shortName") or a.get("displayName") or "?"
-                        out["results"].append({
+                        matches.append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
-                            "event": str(name)[:30]})
-                        if len(out["results"]) >= 6:
-                            break
-                    if len(out["results"]) >= 6:
-                        break
+                            "event": str(name)[:30],
+                            "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:
             print(f"[sports] 網球 {label} 抓取失敗: {e}", file=sys.stderr)
+        matches.sort(key=lambda m: m["_ts"], reverse=True)   # 新→舊
+        per_tour.append(matches[:3])
+    combined = [m for tour_matches in per_tour for m in tour_matches]
+    combined.sort(key=lambda m: m["_ts"], reverse=True)
+    for m in combined:
+        m.pop("_ts", None)
+    out["results"] = combined[:6]
     out["tournaments"] = out["tournaments"][:6]
-    out["results"] = out["results"][:6]
     return out
 
 

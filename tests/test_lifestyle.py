@@ -264,6 +264,25 @@ def test_fetch_cpbl_scores_missing_in_one_bucket_recovered(monkeypatch):
     assert len(out) == 1 and out[0]["away_score"] == 4 and out[0]["winner"] == "away"
 
 
+def test_supply_chain_2330_tag():
+    assert "對2330供應鏈" in mr._supply_chain_2330_tag("NVDA")
+    assert "對2330供應鏈" in mr._supply_chain_2330_tag("ASML")
+    assert "對2330供應鏈" in mr._supply_chain_2330_tag("ARM")
+    assert mr._supply_chain_2330_tag("MU") == ""      # MU→3711,非 2330
+    assert mr._supply_chain_2330_tag("AAPL") == ""    # AAPL→2317/3008,非 2330
+    assert mr._supply_chain_2330_tag("") == ""
+    assert mr._supply_chain_2330_tag(None) == ""
+
+
+def test_other_sector_queries_precision():
+    """生技收斂到個股+催化、金融偏壽險投資收益;且仍維持 8 個類股鍵。"""
+    q = mr.OTHER_SECTOR_QUERIES
+    assert len(q) == 8
+    assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
+    assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
+    assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
+
+
 def test_tennis_tier_classification():
     assert mr._tennis_tier("Wimbledon")[0] == 0
     assert mr._tennis_tier("Roland Garros")[0] == 0

@@ -233,11 +233,13 @@ RSS_FEEDS = {
 # 注意:Google News RSS 把多個關鍵字當 AND 處理,塞太多字會抓到 0 則。
 # 以下查詢經實測校準(近 30h 各有 ~11–88 則):用 OR 群組或 1–2 個關鍵字才有足夠量。
 OTHER_SECTOR_QUERIES: dict[str, str] = {
-    "金融-台股": "金控 OR 金融股 OR 壽險",
+    # 金融偏催化(壽險投資收益/淨息差),對接使用者持有的富邦金;實測召回 ~78 則
+    "金融-台股": "壽險 OR 金控 OR 淨息差 OR 投資收益",
     "金融-全球": "美股 金融",
     "航運-台股": "長榮 OR 陽明 OR 萬海",
     "航運-全球": "運價 OR BDI OR SCFI OR 貨櫃航運",
-    "生技-台股": "生技股 OR 新藥 OR 醫材",
+    # 生技收斂到個股+催化(新藥/臨床/健保),去政策雜訊;實測召回 ~48 則、命中臨床/個股
+    "生技-台股": "藥華藥 OR 浩鼎 OR 新藥 OR 臨床 OR 健保給付",
     "生技-全球": "美股 生技",
     "汽車-台股": "和泰車 OR 裕隆 OR 車用",
     "汽車-全球": "特斯拉 OR 電動車 OR 車市",
@@ -284,7 +286,18 @@ TW_SUPPLY_CHAIN_BY_US_LABEL: dict[str, set[str]] = {
     "MU": {"3711"},
     "ASML": {"2330"},
     "AAPL": {"2317", "3008"},
+    "QCOM": {"2330"},
+    "MRVL": {"2330"},
+    "AMAT": {"2330"},
+    "ARM": {"2330"},
 }
+
+
+def _supply_chain_2330_tag(label) -> str:
+    """美股新聞若屬 2330 供應鏈,回顯示標籤(僅 prompt 顯示用,不改 importance/計分)。
+    讓 LLM 在「科技板塊脈動」浮現「ASML/NVDA 動向→2330 受惠」這類前驅訊號。"""
+    codes = TW_SUPPLY_CHAIN_BY_US_LABEL.get(str(label or ""))
+    return "[對2330供應鏈] " if codes and "2330" in codes else ""
 
 # 台股產業級事件只給更弱的保守連動，避免未點名公司新聞過度灌分。
 TW_INDUSTRY_EVENT_MAP: dict[str, dict[str, set[str]]] = {
@@ -8173,6 +8186,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             prefix = f"★★★[{cat}:{kw}] "
         elif imp == "high":
             prefix = f"★★[{cat}:{kw}] "
+        prefix += _supply_chain_2330_tag(n.get("company_label"))
         # summary 顯示 600 字(由 fetch_news 端 800 切過,這裡再做一次安全切);
         # 之前 200 切太短常切在「公司剛被提及」就沒下文,LLM 看不到具體事實
         grade = n.get("source_grade") or _news_source_grade(n)
@@ -8212,9 +8226,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             by_label.setdefault(n.get("company_label", "?"), []).append(n)
         lines = []
         for label, lst in by_label.items():
+            tag = _supply_chain_2330_tag(label)
             for n in lst[:3]:
-                lines.append(f"- [{label}] {n['title']}（{n.get('summary','')[:300]}）")
-        news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」與「關注三檔」取材）】\n"
+                lines.append(f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）")
+        news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」與「關注三檔」取材;"
+                       "標 [對2330供應鏈] 者請在分析點出對 2330 的傳導）】\n"
                        + "\n".join(lines[:36]))
 
     # 其他(非科技)類股新聞(來源名前綴「類股-」)獨立成段、依類股分組,
@@ -8925,6 +8941,9 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 2. **嚴禁**把「股價漲跌 X% / 法人買賣超 X 張 / 營收年增率 Y%」單獨當成一條——那些是量化數據、別的段落已涵蓋，**不算類股新聞**。若某類股當日你手上只有股價 / 法人數據而沒有新聞，**寧可略過該類股**，也不要拿數據湊數。
 3. **每類盡量「台灣 1 條 + 全球 1 條」**（金融 / 航運 / 生技 / 汽車 共 8 條基本盤）；某類某地當日確無重要新聞才可略過。**不可跨類張冠李戴**（例：航運就寫運價 / SCFI / BDI / 長榮 / 陽明 / 塞港，**不要拿油價或別類消息充當航運**）。
 4. **影響說明必須具體**：要寫「利多/利空了誰、透過什麼機制、幅度多大」。**禁止**「對 X 類股有帶動作用」「情緒帶動」「中性偏正」這類無機制空話——沒講出機制就等於沒分析。
+   - **航運**判斷「利多/利空幅度」時可援引油價(WTI,燃油成本)與匯率(USD/TWD)作背景(上方總經區有數據),但「新聞事件」本身仍須是運價/航商/塞港動態,油價匯率只當佐證、不可單獨充當航運新聞。
+   - **金融(壽險/金控)**請扣連使用者熟悉的傳導鏈:美股/美債走勢→壽險投資收益、央行利率→銀行淨息差;能寫出這條鏈才算合格。
+5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
 
 每條格式（嚴格遵守）：
 **【類股｜台灣/全球】公司或主題（一句話簡介）**：發生什麼（具體事件＋數字／來源媒體）＋ 影響（**點名利多/利空對象＋傳導機制＋幅度**）＋ **資訊強度(A/B)＋信心(高/中/低)**

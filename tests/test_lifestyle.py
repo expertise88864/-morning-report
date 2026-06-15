@@ -342,6 +342,44 @@ def test_fetch_tennis_grand_slam_first(monkeypatch):
     assert slam["tier"] == "大滿貫"
 
 
+def test_fetch_worldcup_sorts_group_by_standings(monkeypatch):
+    """ESPN entries 非名次序時,fetch_worldcup 須自行依積分→淨勝分→進球數排序。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def _entry(name, pts, gd, gf):
+        return {"team": {"displayName": name}, "stats": [
+            {"name": "gamesPlayed", "value": 1}, {"name": "wins", "value": 0},
+            {"name": "ties", "value": 0}, {"name": "losses", "value": 0},
+            {"name": "points", "value": pts},
+            {"name": "pointDifferential", "value": gd},
+            {"name": "pointsFor", "value": gf}]}
+
+    standings = {"children": [{"name": "Group A", "standings": {"entries": [
+        _entry("South Africa", 0, -2, 0),   # ESPN 亂序:0 分卻排第一
+        _entry("Mexico", 3, 1, 2),          # 3 分、淨勝 +1
+        _entry("South Korea", 3, 3, 4),     # 3 分、淨勝 +3(同分應排 Mexico 之前)
+        _entry("Czechia", 0, -2, 1)]}}]}
+
+    def fake_get(url, params=None, timeout=None, **k):
+        return R(standings if "standings" in url else {"events": []})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    wc = mr.fetch_worldcup(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
+    teams = [r["team"] for r in wc["groups"][0]["rows"]]
+    # 3分組內南韓淨勝+3 > 墨西哥+1;0分組內捷克進球1 > 南非進球0
+    assert teams == ["南韓", "墨西哥", "捷克", "南非"]
+    assert teams[:2] == ["南韓", "墨西哥"]               # 前 2 名(晉級線)正確
+
+
 def test_render_sports_cpbl_source_note():
     base = {"rank": 1, "team": "統一", "games": "50", "wdl": "30-0-20",
             "pct": "0.600", "gb": "-"}

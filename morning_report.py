@@ -8408,7 +8408,16 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             return f"{name}=資料缺失"
         rank = m.get("pct_rank_252d")
         rank_str = f", 1Y百分位 {rank:.0f}%" if rank is not None else ""
-        return (f"{name}={m['close']} ({m.get('change_pct',0):+.2f}%{rank_str})")
+        # 明確給「前值」,避免 LLM 自行回推前值而編造數字(曾出現「VIX 從 22.2 跳水」的幻覺)
+        cp = m.get("change_pct", 0) or 0
+        prev = m.get("prev_close")
+        if prev is None and (1 + cp / 100) != 0:
+            try:
+                prev = m["close"] / (1 + cp / 100)
+            except (TypeError, ZeroDivisionError):
+                prev = None
+        prev_str = f"前值 {prev:.2f}, " if isinstance(prev, (int, float)) else ""
+        return (f"{name}={m['close']} ({prev_str}{cp:+.2f}%{rank_str})")
     macro_block = "\n".join(
         [f"  {fmt_m(n)}" for n in
          ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
@@ -10859,7 +10868,11 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                     "gp": _v("gamesPlayed"), "w": _v("wins"),
                     "d": _v("ties") or _v("draws"), "l": _v("losses"),
                     "pts": _v("points"),
+                    "gd": _v("pointDifferential"), "gf": _v("pointsFor"),
                 })
+            # ESPN entries 並非依名次排序(實測會以種子/隊名序回傳),自行依
+            # 積分→淨勝分→進球數(FIFA 小組賽 tie-break)排序,前 2 名才是真正晉級線。
+            rows.sort(key=lambda r: (-r["pts"], -r["gd"], -r["gf"]))
             if rows:
                 out["groups"].append({"name": gname, "rows": rows})
     except Exception as e:
@@ -11397,7 +11410,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             # 各組前 2 名(暫居晉級線內)以綠色粗體標示;小組賽結束後即代表晉級者。
             def _team_cell(idx, t):
                 cell = f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
-                if idx < 2:   # ESPN 已依排名排序,前兩名為晉級區
+                if idx < 2:   # rows 已於 fetch_worldcup 端依積分/淨勝分排序,前兩名為晉級區
                     return f"<b style='color:#16a34a;'>{cell}</b>"
                 return f"<span style='color:#94a3b8;'>{cell}</span>"
             grp_lines = "".join(

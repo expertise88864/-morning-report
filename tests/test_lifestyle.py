@@ -831,6 +831,47 @@ def test_rule_based_events_settlement_and_witching():
     assert not any("三巫" in e["title"] for e in events_jul)
 
 
+def test_nba_offseason_note():
+    import datetime as dt
+    tpe = mr.TPE
+    # 球季進行中(冠軍賽期間,6 月初)→ 無休賽季說明
+    assert mr._nba_offseason_note(dt.datetime(2026, 6, 10, 8, tzinfo=tpe)) == ""
+    # 6 月下旬 → 選秀/自由市場說明(措辭不宣稱冠軍賽已結束,避免賽事仍進行時誤判)
+    jun = mr._nba_offseason_note(dt.datetime(2026, 6, 25, 8, tzinfo=tpe))
+    assert "選秀" in jun and "已結束" not in jun
+    # 7/8/9 月休賽季
+    assert "休賽季" in mr._nba_offseason_note(dt.datetime(2026, 8, 1, 8, tzinfo=tpe))
+    # 10 月中下旬開季 → 不再是休賽季空白
+    assert mr._nba_offseason_note(dt.datetime(2026, 10, 25, 8, tzinfo=tpe)) == ""
+
+
+def test_render_sports_shows_nba_offseason_when_no_games():
+    import html as htmllib
+    h = mr._render_sports_html({"nba_offseason": "NBA 休賽季:自由市場與夏季聯賽進行中。"}, htmllib)
+    assert "NBA" in h and "休賽季" in h
+    # 有實際冠軍賽賽果時,不顯示休賽季說明
+    h2 = mr._render_sports_html(
+        {"nba": [{"text": "BOS 110:104 NYK", "date": "06/12"}],
+         "nba_offseason": "NBA 球季尾聲;選秀即將登場"}, htmllib)
+    assert "NBA 冠軍賽" in h2 and "球季尾聲" not in h2 and "選秀" not in h2
+
+
+def test_audit_dramatic_macro_claims():
+    macro = {"VIX": {"close": 17.2, "change_pct": 0.3},   # 沒大跌
+             "SOX": {"change_pct": -4.5},                  # 真的大跌
+             "QQQ": {"change_pct": 2.8}}                   # 真的大漲
+    # VIX 說「跳水」但只動 0.3% → 應被標記
+    flags = mr._audit_dramatic_macro_claims("今日 VIX 跳水,市場恐慌降溫", macro)
+    assert any("VIX" in f for f in flags)
+    # 費半「重挫」-4.5%、那斯達克「大漲」+2.8% 都名實相符 → 不標記
+    assert mr._audit_dramatic_macro_claims("費半重挫拖累台股", macro) == []
+    assert mr._audit_dramatic_macro_claims("那斯達克大漲帶動科技股", macro) == []
+    # 沒提到任何已知指標的戲劇詞 → 不誤報
+    assert mr._audit_dramatic_macro_claims("台積電 ADR 暴跌", macro) == []
+    # 戲劇詞與指標分屬不同子句(句號隔開)→ 不可跨句誤掛 VIX
+    assert mr._audit_dramatic_macro_claims("VIX 變動不大。台股暴跌", macro) == []
+
+
 def test_event_category_collapses_fomc_variants():
     """規則式 FOMC 與 ForexFactory 各種 FOMC 寫法歸同類;ECB 不被誤歸 FOMC;
     CPI 與 Core CPI 不被合併。"""

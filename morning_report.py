@@ -11286,6 +11286,23 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
+def _nba_offseason_note(now_tpe: dt.datetime) -> str:
+    """NBA 休賽季(約 6 月下旬–10 月中)的階段說明,讓冠軍賽結束後該區不致空白空轉。
+    球季進行中(含冠軍賽)→ 回空字串(由實際賽果渲染)。"""
+    m, d = now_tpe.month, now_tpe.day
+    if m == 6 and d >= 20:
+        return "NBA 球季尾聲;選秀(6 月底)、自由市場(7 月初)即將登場。"
+    if m == 7:
+        return "NBA 休賽季:自由市場與夏季聯賽進行中。"
+    if m == 8:
+        return "NBA 休賽季(交易與陣容調整期)。"
+    if m == 9:
+        return "NBA 休賽季;新球季 10 月中下旬開打。"
+    if m == 10 and d <= 14:
+        return "NBA 季前賽期間,例行賽 10 月下旬開打。"
+    return ""
+
+
 def _nba_favorite_teams() -> list[str]:
     """環境變數 NBA_FAVORITE_TEAMS(逗號分隔,如 'Celtics,Lakers')→ 小寫關鍵字清單。
     未設定回空 → NBA 維持只顯示冠軍賽(預設行為不變)。"""
@@ -11423,6 +11440,11 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 out["nba_fav"] = fav_games
         except Exception as e:
             print(f"[sports] NBA 關注球隊整體失敗: {e}", file=sys.stderr)
+    # 休賽季:無任何 NBA 賽果可顯示時,給階段說明(選秀/自由市場/休賽季),避免該區空轉
+    if not out.get("nba") and not out.get("nba_fav"):
+        _off = _nba_offseason_note(now_tpe)
+        if _off:
+            out["nba_offseason"] = _off
     # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
     try:
         r = requests.get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
@@ -11493,6 +11515,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     cpbl_scores = (sports or {}).get("cpbl_scores") or []
     nba = (sports or {}).get("nba") or []
     nba_fav = (sports or {}).get("nba_fav") or []
+    nba_offseason = (sports or {}).get("nba_offseason") or ""
     standings = (sports or {}).get("standings") or {}
     worldcup = (sports or {}).get("worldcup") or {}
     wc_results = worldcup.get("results") or []
@@ -11500,7 +11523,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     wc_fixtures = worldcup.get("fixtures") or []
     mlb_tw = (sports or {}).get("mlb_tw") or []
     tennis = (sports or {}).get("tennis") or {}
-    if not (cpbl or cpbl_scores or nba or nba_fav or standings or wc_results
+    if not (cpbl or cpbl_scores or nba or nba_fav or nba_offseason or standings or wc_results
             or wc_groups or wc_fixtures or mlb_tw or tennis.get("tournaments")
             or tennis.get("results") or any(news.values())):
         return ""
@@ -11617,6 +11640,11 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + "</div>"
             for g in nba_fav)
         blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 關注球隊近況</b>{rows}</div>")
+    if nba_offseason and not nba and not nba_fav:
+        blocks.append(
+            f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
+            f"<div style='font-size:13px;color:#64748b;margin-top:2px;'>"
+            f"{htmllib.escape(nba_offseason)}</div></div>")
     if standings:
         seg = "　|　".join(
             f"<b>{lg}</b> " + "、".join(f"{t['team']} {t['record']}" for t in teams)
@@ -11978,12 +12006,76 @@ def _truncate_order() -> list[str]:
     return wanted + [k for k in _TRUNCATE_SECTIONS if k not in wanted]
 
 
+# 敘述-數字交叉驗證:LLM 用「跳水/暴跌」「暴漲/飆漲」等戲劇性字眼形容某指標時,
+# 核對該指標實際漲跌幅是否相符,攔截「VIX 22.2 跳水」這類數字幻覺(僅記錄不改稿)。
+_DRAMA_DOWN = ("暴跌", "跳水", "重挫", "崩跌", "急殺", "崩盤", "大跌", "狂瀉", "雪崩")
+_DRAMA_UP = ("暴漲", "飆漲", "狂飆", "大漲", "噴出", "狂噴", "急拉")
+_MACRO_ALIASES = {
+    "VIX": ("vix", "恐慌指數"),
+    "SOX": ("費半", "費城半導體", "sox"),
+    "QQQ": ("那斯達克", "nasdaq", "qqq"),
+    "NQ": ("那指期", "nq"),
+    "WTI": ("油價", "原油", "wti", "西德州"),
+    "10Y": ("十年期", "10年期", "美債殖利率", "10y"),
+}
+
+
+def _audit_dramatic_macro_claims(analysis: str, macro: dict, threshold: float = 1.0) -> list[str]:
+    """掃描分析文,對「指標 + 戲劇性漲跌詞」核對實際 change_pct;不符則回報(供記錄,不改稿)。
+    只檢查本報有資料的總經指標;找不到對應指標就跳過,降低誤報。"""
+    if not isinstance(analysis, str) or not isinstance(macro, dict):
+        return []
+    low = analysis.lower()
+    alias_to_key = [(a.lower(), key) for key, aliases in _MACRO_ALIASES.items() for a in aliases]
+
+    import re as _re
+
+    def _nearest_indicator(pos: int) -> Optional[str]:
+        window = low[max(0, pos - 16):pos]   # 指標名通常緊鄰在戲劇詞之前
+        # 只看同一子句:截到最後一個標點之後,避免跨句誤掛(「VIX變動不大。台股暴跌」)
+        window = _re.split(r"[。!?！？.,，;;；、\n]", window)[-1]
+        best, best_i = None, -1
+        for a, key in alias_to_key:
+            i = window.rfind(a)
+            if i > best_i:
+                best_i, best = i, key
+        return best
+
+    flags: list[str] = []
+    for words, expect_down in ((_DRAMA_DOWN, True), (_DRAMA_UP, False)):
+        for w in words:
+            start = 0
+            while True:
+                pos = analysis.find(w, start)
+                if pos < 0:
+                    break
+                start = pos + len(w)
+                key = _nearest_indicator(pos)
+                if not key:
+                    continue
+                cp = _safe_number((macro.get(key) or {}).get("change_pct"))
+                if cp is None:
+                    flags.append(f"{key}「{w}」但無漲跌資料")
+                elif expect_down and cp >= -abs(threshold):
+                    flags.append(f"{key}「{w}」但 change_pct={cp:+.2f}%(未明顯下跌)")
+                elif (not expect_down) and cp <= abs(threshold):
+                    flags.append(f"{key}「{w}」但 change_pct={cp:+.2f}%(未明顯上漲)")
+    return flags
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
     analysis_for_render = _strip_llm_watchlist_section(analysis)
     # 數字健全性最後防線:把 LLM 誤植的 2330「美元 ADR 價」改回新台幣中樞值
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
+    # 敘述-數字交叉驗證(僅記錄):戲劇性漲跌詞與實際幅度不符 → 印警告供監看
+    try:
+        _drama = _audit_dramatic_macro_claims(analysis_for_render, quotes.get("MACRO") or {})
+        if _drama:
+            print(f"[render] ⚠ 敘述-數字交叉驗證:{'; '.join(_drama[:6])}", file=sys.stderr)
+    except Exception as _e:
+        print(f"[render] 敘述-數字交叉驗證略過: {_e}", file=sys.stderr)
     stance = _extract_stance(analysis_for_render)
     summary_text = _extract_summary(analysis_for_render)
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)

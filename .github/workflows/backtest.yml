@@ -1,0 +1,37 @@
+name: Backtest
+
+# 手動觸發的長窗回測(~2 年)。獨立於晨報/CI,不寄信、不影響排程。
+# 在 GitHub Actions 跑是因為這裡抓得到 Yahoo 歷史(本機開發環境對 Yahoo 被 geo-block)。
+on:
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run long-window backtest (us_beta)
+        env:
+          TZ: Asia/Taipei
+        run: python backtest_runner.py | tee /tmp/backtest_results.txt
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results
+          path: /tmp/backtest_results.txt
+          if-no-files-found: warn

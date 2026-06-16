@@ -12533,8 +12533,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 校準 {ranking_components.get('model_monitor_penalty', 0):+.1f}"
                     f" ・ 過熱 {ranking_components.get('overheat_penalty', 0):+.1f}")
                 forecast = s.get("price_forecast") or {}
-                f1o = forecast.get("1d_open") or {}
-                f1c = forecast.get("1d_close") or {}
                 f3 = forecast.get("3d") or {}
                 f5 = forecast.get("5d") or {}
                 quality = f3.get("quality") or {}
@@ -12547,9 +12545,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 單邊滑價估計 {s.get('slippage_bps', '—')} bps"
                     f" ・ {'fallback' if quality.get('fallback_enabled', True) else quality.get('interval_method', 'model')}"
                 )
+                # 回測:隔日~數日幾乎無預測力(IC≈0)→ 不再顯示「隔日」噪音價,只留 3/5 日參考區間
+                # 並標短期信心低;真正略有訊號在 ~月線(見區塊說明的波段框架)。
                 forecast_line = (
-                    f"隔日開 {f1o.get('expected_price','—')} ・ 隔日收 {f1c.get('expected_price','—')}"
-                    f" ・ 3日 {f3.get('expected_price','—')} ({f3.get('lower','—')}~{f3.get('upper','—')})"
+                    f"短期參考(信心低): 3日 {f3.get('expected_price','—')} "
+                    f"({f3.get('lower','—')}~{f3.get('upper','—')})"
                     f" ・ 5日 {f5.get('expected_price','—')} ({f5.get('lower','—')}~{f5.get('upper','—')})"
                     f" ・ 信心 {forecast.get('confidence','低')}")
                 rows_html.append(
@@ -12580,8 +12580,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 "<p style='font-size:12px;color:#92400e;background:#fffbeb;"
                 "border-left:4px solid #f59e0b;padding:8px 10px;margin:8px 0;"
                 "line-height:1.6;'>"
-                "<b>今日無高信心標的：</b>Top 5 皆為相對排名，客觀排名分未達 60；"
-                "短線追價風險偏高，請以觀察名單看待。"
+                "<b>中長線(波段)結構觀察:</b>回測顯示這些技術/籌碼因子在<b>隔日~數日幾乎無預測力</b>"
+                "(IC≈0)、約<b>一個月(~20 日)才略有訊號</b>,故請以<b>數週波段</b>而非隔日當沖角度看待。"
+                "本表為相對排名(客觀分未達 60)、僅供觀察,<b>非買進訊號</b>。"
                 "</p>"
                 if top_score < 60 else ""
             )
@@ -12610,7 +12611,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     "這是「方法論優先結構」,不代表市場冷或個股不好。</p>"
                 )
             title_text = (
-                f"台股觀察名單 Top {len(top5)}（低信心，相對排名）"
+                f"台股波段觀察名單 Top {len(top5)}（中長線・相對排名）"
                 if top_score < 60
                 else f"台股客觀關注排名 Top {len(top5)}（由高至低）"
             )

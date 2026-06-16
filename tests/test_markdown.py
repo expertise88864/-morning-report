@@ -549,9 +549,10 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
         },
     } for index in range(5)]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-03", "每日報")
-    assert "今日無高信心標的" in html
-    assert "相對排名" in html
-    assert "台股觀察名單 Top 5" in html
+    assert "中長線(波段)結構觀察" in html         # 改框架:短線無效→波段參考
+    assert "非買進訊號" in html and "相對排名" in html
+    assert "台股波段觀察名單 Top 5" in html
+    assert "隔日開" not in html                    # 移除隔日噪音價
 
 
 def test_render_html_top5_market_state_note_on_big_up_day():

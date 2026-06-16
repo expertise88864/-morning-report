@@ -23,10 +23,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run long-window backtest (us_beta)
+      - name: Run long-window backtest (us_beta / night-blend / strategies)
         env:
           TZ: Asia/Taipei
-        run: python backtest_runner.py | tee /tmp/backtest_results.txt
+        run: |
+          set -o pipefail   # 讓 backtest_runner 的非零退出(資料抓取失敗)真的讓 job 失敗,不被 tee 吃掉
+          python backtest_runner.py | tee /tmp/backtest_results.txt
 
       - name: Upload results
         if: always()

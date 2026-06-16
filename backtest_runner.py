@@ -14,10 +14,15 @@
 """
 import csv
 import io
+import json
 import sys
+import time
 import datetime as dt
+from pathlib import Path
 
 import requests
+
+NIGHT_FILE = Path(__file__).resolve().parent / "taifex_night_history.json"
 
 US_BETA_PRIOR = 0.23
 H = {"User-Agent": "Mozilla/5.0"}
@@ -73,7 +78,7 @@ def taifex_night_pct(years=2):
     start = today - dt.timedelta(days=365 * years + 10)
     cur = start
     while cur < today:
-        nxt = min(cur + dt.timedelta(days=90), today)
+        nxt = min(cur + dt.timedelta(days=28), today)   # TAIFEX futDataDown 範圍上限約 1 個月,逐月抓
         try:
             r = requests.post("https://www.taifex.com.tw/cht/3/futDataDown", timeout=30, headers=H,
                               data={"down_type": "1", "commodity_id": "TX",
@@ -115,8 +120,22 @@ def taifex_night_pct(years=2):
                             break
         except Exception as e:
             print(f"[taifex] {cur} 失敗 {type(e).__name__}", file=sys.stderr)
+        time.sleep(0.3)
         cur = nxt + dt.timedelta(days=1)
     return out
+
+
+def load_night_pct(years=2):
+    """夜盤序列:優先讀已入庫的 taifex_night_history.json(本機抓好、避免 Actions 對 TAIFEX
+    的連通不確定),不足才即時抓。"""
+    try:
+        if NIGHT_FILE.exists():
+            data = json.loads(NIGHT_FILE.read_text(encoding="utf-8"))
+            if len(data) >= 100:
+                return {k: float(v) for k, v in data.items()}
+    except Exception as e:
+        print(f"[night] 讀檔失敗 {e}", file=sys.stderr)
+    return taifex_night_pct(years)
 
 
 def _mae_stats(errs):
@@ -167,7 +186,7 @@ def section_b():
     print("\n=== B) 全合成模型 pred = w×beta×us_combo + (1−w)×night(~2 年,含 TAIFEX 夜盤)===")
     sox, tsm = pct_by_date(y_close("^SOX")), pct_by_date(y_close("TSM"))
     twii = y_open_close("^TWII")
-    night = taifex_night_pct(2)
+    night = load_night_pct(2)
     if not (sox and tsm and twii and night):
         print(f"資料不齊(twii={len(twii)} night={len(night)} sox={len(sox)});Yahoo 需在 Actions。")
         return
@@ -226,8 +245,9 @@ def _metrics(equity):
 
 def section_c():
     print("\n=== C) 長抱策略 bake-off(股利還原 adjusted,~5 年)===")
+    print("  (00631L 為每日 2 倍槓桿,長抱有波動耗損;特別看『趨勢過濾 vs 買進持有』的回撤差。)")
     for tk, name in (("00662.TW", "00662 富邦NASDAQ"), ("0050.TW", "0050 元大台灣50"),
-                     ("2330.TW", "2330 台積電")):
+                     ("2330.TW", "2330 台積電"), ("00631L.TW", "00631L 台灣50正2(2x槓桿)")):
         cm = y_close(tk, period="5y", adjust=True)
         if len(cm) < 250:
             print(f"  {name}: 資料不足(n={len(cm)})")

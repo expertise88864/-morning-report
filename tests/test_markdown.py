@@ -34,7 +34,8 @@ def _full_quotes():
 
 
 def test_render_html_size_guard_truncates_low_priority(monkeypatch):
-    """超標時依優先序移除:體育先被移除、移除後降回門檻內就停手(不續砍醫學文獻)。"""
+    """trim 模式:超標時依優先序移除;體育在政策/醫界/文獻/五檔之後才砍。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     # 內容敏感估算器:只要還含體育區塊就判超標,移除後即降回門檻內 → 驗證順序與停手
     monkeypatch.setattr(
         mr, "_estimated_email_kb",
@@ -76,7 +77,8 @@ def _podcast_episodes(n, points_per_ep=15):
 
 
 def test_render_html_size_guard_reduces_podcast_before_nuking(monkeypatch):
-    """Podcast 超標時先局部縮減集數,縮到 ≤3 集即降回門檻內 → 不整塊砍掉(保住主訂內容)。"""
+    """trim 模式:Podcast 超標時先局部縮減集數,縮到 ≤3 集即降回門檻內 → 不整塊砍掉。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     # 內容敏感估算器:只要 Podcast 卡片數(EPMARK)> 3 就判超標,縮到 3 集即降回門檻內。
     monkeypatch.setattr(mr, "_estimated_email_kb",
                         lambda h: 120.0 if h.count("EPMARK") > 3 else 80.0)
@@ -89,7 +91,8 @@ def test_render_html_size_guard_reduces_podcast_before_nuking(monkeypatch):
 
 
 def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypatch):
-    """只有 1–3 集但很長時,先壓每集條數(compact_points),而非整塊砍掉。"""
+    """trim 模式:只有 1–3 集但很長時,先壓每集條數(compact_points),而非整塊砍掉。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     # 估算器對「渲染出的重點條數(PTMARK)」敏感:>12 條判超標,壓到 ≤12 條降回門檻內。
     monkeypatch.setattr(mr, "_estimated_email_kb",
                         lambda h: 120.0 if h.count("PTMARK") > 12 else 80.0)
@@ -105,7 +108,8 @@ def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypat
 
 
 def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypatch):
-    """超標時依使用者優先序先砍政策,Podcast 與體育保留。"""
+    """trim 模式:超標時依使用者優先序先砍政策,Podcast 與體育保留。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     monkeypatch.setattr(mr, "_estimated_email_kb",
                         lambda h: 120.0 if "POLICYMARK" in h else 80.0)
     q = {**_full_quotes(),
@@ -126,6 +130,7 @@ def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypat
 
 def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
     """只有真正出現在信中的 Podcast 集才回報為 shown;被砍/縮掉的不算(否則永遠不再出現)。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")   # 縮減/移除行為僅在 trim 模式
     eps = _podcast_episodes(10)
     # 不超標 → 全部顯示
     monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 50.0)
@@ -148,12 +153,44 @@ def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
     assert q3["PODCAST_SHOWN_EPISODES"] == []
 
 
-def test_render_html_stays_within_gmail_ceiling_with_huge_podcast():
-    """端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
+def test_render_html_stays_within_gmail_ceiling_with_huge_podcast(monkeypatch):
+    """trim 模式端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
     q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(30)}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-15", "每日報")
     assert mr._estimated_email_kb(html) <= 102
     assert "一、美股收盤行情" in html and "2330" in html
+
+
+def test_render_html_keep_mode_does_not_omit_sections(monkeypatch):
+    """預設 keep 模式:即使估算超標也不省略任何區塊,只加可點開提示;Podcast/體育/政策都在。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 = keep
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 130.0)   # 一律「超標」
+    q = {**_full_quotes(),
+         "TW_DAILY_INTELLIGENCE": {
+             "policy": [{"title": "POLICYKEEP 政策", "published": "2026-06-15", "link": "#"}]},
+         "SPORTS": {"news": {}, "cpbl_scores": [
+             {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
+              "winner": "away", "date": "06/14"}]},
+         "PODCAST_DIGEST": [{"show": "股癌", "title": "EPKEEP",
+                             "digest": {"summary_points": ["重點一", "重點二"], "tickers": []}}]}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "已暫略" not in html                       # 不省略
+    assert "顯示完整內容" in html                       # 改為提示可點開
+    assert "POLICYKEEP" in html and "中華職棒" in html and "EPKEEP" in html  # 全都在
+    assert q["PODCAST_SHOWN_EPISODES"] == q["PODCAST_DIGEST"]   # 全集視為已顯示
+
+
+def test_render_html_low_priority_sections_sit_at_bottom():
+    """版面順序:體育在前,政策/醫界在最末(Gmail 真要剪先剪低優先,不動體育)。"""
+    q = {**_full_quotes(),
+         "TW_DAILY_INTELLIGENCE": {"policy": [{"title": "政策X", "published": "2026-06-15", "link": "#"}]},
+         "SPORTS": {"news": {}, "cpbl_scores": [
+             {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
+              "winner": "away", "date": "06/14"}]}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    # 體育(中華職棒)應排在 政策整理 之前
+    assert html.index("中華職棒") < html.index("政策整理")
 
 
 def test_render_html_contains_required_sections():
@@ -492,7 +529,9 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
     medical_idx = html.find("台灣醫界昨日走向")
     top5_idx = html.find("台股客觀關注排名 Top 1")
     assert -1 not in (summary_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
-    assert summary_idx < taifex_idx < policy_idx < medical_idx < top5_idx
+    # 依使用者犧牲優先序排版(低優先在最末,Gmail 真要剪先剪政策/醫界):
+    # 結論在頂端,接著 taifex/五檔,最後才是醫學文獻、政策、醫界。
+    assert summary_idx < taifex_idx < top5_idx < policy_idx < medical_idx
     assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
 
 

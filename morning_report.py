@@ -13081,13 +13081,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {taifex_html}
 
-            {tw_intelligence_html}
-
-            {journals_html}
-
             {sports_html}
 
             {smart_money_html}
+
+            {journals_html}
+
+            {tw_intelligence_html}
 
           </td></tr>
 
@@ -13108,12 +13108,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 </html>"""
 
     # === Gmail ~102KB 剪裁防護 ===
-    # Gmail 量的是「解碼後 HTML」大小(~102KB;base64 信更晚才剪),_estimated_email_kb 已直接量
-    # 解碼後大小。超標時:輪到 Podcast(使用者主訂)先「局部縮減」減集數/條數,縮到最小仍超標才
-    # 整塊移除;其餘區塊直接清空。犧牲優先序(可由 EMAIL_TRUNCATE_ORDER 覆寫)依使用者指定:
-    # 政策→醫界→醫學文獻→五檔觀察→事件連續劇→模型實證→體育→Podcast(後二者萬不得已才動)。
-    # 行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。門檻 95KB:對 ~102KB 真實線留安全邊際。
+    # Gmail 量的是「解碼後 HTML」大小(~102KB;base64 信更晚才剪),_estimated_email_kb 已直接量解碼後大小。
+    # 預設 keep 模式(使用者偏好):不省略任何區塊,送全文;若可能超過 Gmail 上限,只提示信末可點
+    #   「顯示完整內容」看全文。版面已把最低價值區塊排在最末(…體育→五檔→醫學文獻→政策/醫界),
+    #   Gmail 真要剪也先剪政策/醫界,不動體育/Podcast。
+    # trim 模式(EMAIL_OVERFLOW_MODE=trim):依優先序局部縮減 Podcast + 整塊移除最低價值區塊,
+    #   完全避免 Gmail 摺疊;犧牲序可由 EMAIL_TRUNCATE_ORDER 覆寫(政策→醫界→醫學文獻→五檔→…→體育→Podcast)。
+    # 兩模式下行情表/2330·00662·0050 預測卡/結論永不被移除。門檻 95KB:對 ~102KB 真實線留安全邊際。
     LIMIT_KB = 95.0
+    overflow_mode = os.environ.get("EMAIL_OVERFLOW_MODE", "keep").strip().lower()
     intel_data = quotes.get("TW_DAILY_INTELLIGENCE") or {}
     inc_policy = inc_medical = True
     podcast_eps = quotes.get("PODCAST_DIGEST") or []
@@ -13125,53 +13128,54 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     dropped: list[str] = []
     reduced = False
 
-    for key in _truncate_order():
-        if _estimated_email_kb(html) <= LIMIT_KB:
-            break
-        label = _TRUNCATE_LABELS[key]
-        if key == "podcast":
-            # 不論集數多寡都先試局部縮減(少數但很長的集也能靠 compact_points 壓條數)。
-            if podcast_html and podcast_eps:
-                for cap, pts in ((8, 8), (5, 6), (3, 5)):
+    if overflow_mode == "trim":
+        for key in _truncate_order():
+            if _estimated_email_kb(html) <= LIMIT_KB:
+                break
+            label = _TRUNCATE_LABELS[key]
+            if key == "podcast":
+                # 不論集數多寡都先試局部縮減(少數但很長的集也能靠 compact_points 壓條數)。
+                if podcast_html and podcast_eps:
+                    for cap, pts in ((8, 8), (5, 6), (3, 5)):
+                        if _estimated_email_kb(html) <= LIMIT_KB:
+                            break
+                        podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
+                                                            max_episodes=cap, compact_points=pts)
+                        podcast_shown_n = min(cap, len(podcast_eps))
+                        reduced = True
+                        html = _assemble()
                     if _estimated_email_kb(html) <= LIMIT_KB:
                         break
-                    podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
-                                                        max_episodes=cap, compact_points=pts)
-                    podcast_shown_n = min(cap, len(podcast_eps))
-                    reduced = True
-                    html = _assemble()
-                if _estimated_email_kb(html) <= LIMIT_KB:
-                    break
-            was_present, podcast_html = bool(podcast_html), ""   # 縮到最小仍超標 → 整塊移除
-            podcast_shown_n = 0
+                was_present, podcast_html = bool(podcast_html), ""   # 縮到最小仍超標 → 整塊移除
+                podcast_shown_n = 0
+                if was_present:
+                    dropped.append(label)
+                html = _assemble()
+                continue
+            if key == "policy":
+                was_present = bool(intel_data.get("policy"))
+                inc_policy = False
+                tw_intelligence_html = _render_tw_intelligence_html(
+                    intel_data, _htmllib, inc_policy, inc_medical)
+            elif key == "medical":
+                was_present = bool(intel_data.get("medical"))
+                inc_medical = False
+                tw_intelligence_html = _render_tw_intelligence_html(
+                    intel_data, _htmllib, inc_policy, inc_medical)
+            elif key == "top5":
+                was_present, smart_money_html = bool(smart_money_html), ""
+            elif key == "sports":
+                was_present, sports_html = bool(sports_html), ""
+            elif key == "journals":
+                was_present, journals_html = bool(journals_html), ""
+            elif key == "model_evidence":
+                was_present, model_evidence_html = bool(model_evidence_html), ""
+            else:   # event_timeline
+                was_present, event_timeline_html = bool(event_timeline_html), ""
             if was_present:
                 dropped.append(label)
             html = _assemble()
-            continue
-        if key == "policy":
-            was_present = bool(intel_data.get("policy"))
-            inc_policy = False
-            tw_intelligence_html = _render_tw_intelligence_html(
-                intel_data, _htmllib, inc_policy, inc_medical)
-        elif key == "medical":
-            was_present = bool(intel_data.get("medical"))
-            inc_medical = False
-            tw_intelligence_html = _render_tw_intelligence_html(
-                intel_data, _htmllib, inc_policy, inc_medical)
-        elif key == "top5":
-            was_present, smart_money_html = bool(smart_money_html), ""
-        elif key == "sports":
-            was_present, sports_html = bool(sports_html), ""
-        elif key == "journals":
-            was_present, journals_html = bool(journals_html), ""
-        elif key == "model_evidence":
-            was_present, model_evidence_html = bool(model_evidence_html), ""
-        else:   # event_timeline
-            was_present, event_timeline_html = bool(event_timeline_html), ""
-        if was_present:
-            dropped.append(label)
-        html = _assemble()
-    # 先決定橫幅文案,再組一次並做「含橫幅」的最終量測;仍超標就誠實標示可能被剪。
+    # 橫幅:trim 模式真的動了區塊 → 紅色「已暫略…」;否則(含 keep 模式)內容偏長 → 琥珀色提示可點開看全文。
     if dropped or (reduced and podcast_html):
         still_over = _estimated_email_kb(_assemble()) > LIMIT_KB  # 估含內容、未含橫幅
         tail = ";惟內容仍偏長,信末仍可能被 Gmail 截斷" if still_over else ""
@@ -13190,7 +13194,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         truncation_notice = (
             '<div style="margin:0 0 14px;padding:10px 14px;background:#fffbeb;'
             'border-left:5px solid #f59e0b;border-radius:4px;font-size:12px;color:#78350f;">'
-            '⚠ 本期內容偏長,Gmail 可能於信末「顯示完整內容」處截斷,點開即可看到全文。</div>')
+            '⚠ 本期內容較長,Gmail 信末可能出現「顯示完整內容」連結,點開即可看全文;'
+            '本報未省略任何區塊,且最後才會被摺疊的是政策/醫界(非體育與 Podcast)。</div>')
         html = _assemble()
     final_kb = _estimated_email_kb(html)   # 含橫幅後的真實大小
     if final_kb > 102:

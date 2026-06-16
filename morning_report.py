@@ -13086,6 +13086,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     inc_policy = inc_medical = True
     podcast_eps = quotes.get("PODCAST_DIGEST") or []
     pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
+    # 追蹤「實際出現在信中的 Podcast 集數」:局部縮減/整塊移除後,只有真正顯示的集才該被
+    # 標成已顯示(否則被砍掉的集會被誤標 shown、永遠不再出現 —— 曾導致整日 Podcast 消失)。
+    podcast_shown_n = min(14, len(podcast_eps)) if podcast_html else 0
     html = _assemble()
     dropped: list[str] = []
     reduced = False
@@ -13102,11 +13105,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                         break
                     podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
                                                         max_episodes=cap, compact_points=pts)
+                    podcast_shown_n = min(cap, len(podcast_eps))
                     reduced = True
                     html = _assemble()
                 if _estimated_email_kb(html) <= LIMIT_KB:
                     break
             was_present, podcast_html = bool(podcast_html), ""   # 縮到最小仍超標 → 整塊移除
+            podcast_shown_n = 0
             if was_present:
                 dropped.append(label)
             html = _assemble()
@@ -13159,8 +13164,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     if final_kb > 102:
         print(f"[render] ⚠ 郵件約 {final_kb:.0f}KB,已逾 Gmail 102KB,信末可能被剪",
               file=sys.stderr)
-    print(f"[render] 郵件約 {final_kb:.0f}KB(估編碼後);"
+    print(f"[render] 郵件約 {final_kb:.0f}KB(解碼後 HTML);"
           f"移除區塊={'、'.join(dropped) if dropped else '無'}", file=sys.stderr)
+    # 回報實際顯示的 Podcast 集,供寄信後只標記這些為 shown(被砍/縮掉的集留待下次再出現)。
+    quotes["PODCAST_SHOWN_EPISODES"] = podcast_eps[:podcast_shown_n]
     return html
 
 
@@ -14193,7 +14200,7 @@ def main() -> int:
     if os.environ.get("DRY_RUN") == "1":
         persist_delivered_report_state(
             pending_state_entry,
-            quotes.get("PODCAST_DIGEST") or [],
+            quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or [],
             mark_podcasts=False,
         )
         out = "/tmp/morning_report_preview.html"
@@ -14210,7 +14217,8 @@ def main() -> int:
         html,
         subject,
         pending_state_entry,
-        quotes.get("PODCAST_DIGEST") or [],
+        # 只把「實際出現在信中」的 Podcast 集標成已顯示;被尺寸守衛砍/縮掉的留待下次再出現。
+        quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or [],
     )
     return 0
 

@@ -124,6 +124,30 @@ def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypat
     assert "Podcast 重點" in html and "股癌" in html  # Podcast 保留
 
 
+def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
+    """只有真正出現在信中的 Podcast 集才回報為 shown;被砍/縮掉的不算(否則永遠不再出現)。"""
+    eps = _podcast_episodes(10)
+    # 不超標 → 全部顯示
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 50.0)
+    q = {**_full_quotes(), "PODCAST_DIGEST": list(eps)}
+    mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert len(q["PODCAST_SHOWN_EPISODES"]) == 10
+
+    # 局部縮減到 3 集 → 只回報 3 集
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("EPMARK") > 3 else 80.0)
+    q2 = {**_full_quotes(), "PODCAST_DIGEST": list(eps)}
+    mr.render_html(q2, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert len(q2["PODCAST_SHOWN_EPISODES"]) == 3
+    assert [e["title"] for e in q2["PODCAST_SHOWN_EPISODES"]] == [f"EPMARK{i}" for i in range(3)]
+
+    # 整塊砍掉(永遠超標)→ 回報 0 集(不會把未顯示的集標成已顯示)
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 200.0)
+    q3 = {**_full_quotes(), "PODCAST_DIGEST": list(eps)}
+    mr.render_html(q3, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert q3["PODCAST_SHOWN_EPISODES"] == []
+
+
 def test_render_html_stays_within_gmail_ceiling_with_huge_podcast():
     """端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
     q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(30)}

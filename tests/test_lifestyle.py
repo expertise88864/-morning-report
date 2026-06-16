@@ -416,9 +416,32 @@ def test_cap_analysis_text():
     assert len(capped) < len(long) and "已截斷" in capped
 
 
-def test_estimated_email_kb_accounts_for_encoding():
-    kb = mr._estimated_email_kb("a" * 1024)
-    assert 1.3 < kb < 1.45         # ×1.37 / 1024
+def test_estimated_email_kb_measures_decoded_html():
+    """Gmail 截斷量的是解碼後 HTML 大小,不可再 ×1.37(那會過早誤判超標砍內容)。"""
+    assert abs(mr._estimated_email_kb("a" * 1024) - 1.0) < 0.01      # 純 ASCII:1KB
+    # 繁中每字 3 bytes:1024 字 ≈ 3KB(仍量解碼後 UTF-8,不乘編碼膨脹係數)
+    assert abs(mr._estimated_email_kb("中" * 1024) - 3.0) < 0.05
+
+
+def test_truncate_default_order_protects_podcast_and_sports():
+    """預設犧牲序依使用者指定:政策先砍、Podcast/體育殿後。"""
+    order = mr._truncate_order()
+    assert order[0] == "policy" and order[1] == "medical"
+    assert order[-1] == "podcast" and order[-2] == "sports"
+    # 政策/醫界/醫學文獻/五檔 都排在 體育/Podcast 之前
+    for k in ("policy", "medical", "journals", "top5"):
+        assert order.index(k) < order.index("sports") < order.index("podcast")
+
+
+def test_tw_intelligence_include_flags():
+    intel = {"policy": [{"title": "政策A", "published": "2026-06-15", "link": "#"}],
+             "medical": [{"title": "醫界B", "published": "2026-06-15", "link": "#"}]}
+    import html as htmllib
+    both = mr._render_tw_intelligence_html(intel, htmllib)
+    assert "政策A" in both and "醫界B" in both
+    no_policy = mr._render_tw_intelligence_html(intel, htmllib, include_policy=False)
+    assert "政策A" not in no_policy and "醫界B" in no_policy        # 砍政策不影響醫界
+    assert mr._render_tw_intelligence_html(intel, htmllib, False, False) == ""
 
 
 def test_render_worldcup_marks_advancing_top2():

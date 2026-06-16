@@ -10086,9 +10086,13 @@ def _html_escape_safe(s: str) -> str:
     return _h.escape(str(s))
 
 
-def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
-    """Render awareness-only Taiwan policy and medical sections."""
-    if not intelligence:
+def _render_tw_intelligence_html(intelligence: dict, htmllib,
+                                 include_policy: bool = True,
+                                 include_medical: bool = True) -> str:
+    """Render awareness-only Taiwan policy and medical sections.
+    include_policy / include_medical 供 102KB 超標時依使用者優先序(先砍政策、再砍醫界)
+    各自移除其一,不影響另一塊。"""
+    if not intelligence or not (include_policy or include_medical):
         return ""
 
     def section(kind: str, title: str, color: str, background: str) -> str:
@@ -10166,13 +10170,17 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib) -> str:
         intelligence.get("policy_window") or intelligence.get("window") or "近一月"))
     medical_window = htmllib.escape(str(
         intelligence.get("medical_window") or intelligence.get("window") or "昨日"))
-    return (
-        f"<p style='font-size:12px;color:#64748b;margin:28px 0 4px;'>"
-        f"政策整理區間：{policy_window}；醫界整理區間：{medical_window}。"
-        f"以下為快速情報，不納入股價模型。</p>"
-        + section("policy", "台灣政策近月走向", "#7c3aed", "#f5f3ff")
-        + section("medical", "台灣醫界昨日走向", "#0891b2", "#ecfeff")
-    )
+    intro_bits = []
+    body = ""
+    if include_policy:
+        intro_bits.append(f"政策整理區間：{policy_window}")
+        body += section("policy", "台灣政策近月走向", "#7c3aed", "#f5f3ff")
+    if include_medical:
+        intro_bits.append(f"醫界整理區間：{medical_window}")
+        body += section("medical", "台灣醫界昨日走向", "#0891b2", "#ecfeff")
+    intro = (f"<p style='font-size:12px;color:#64748b;margin:28px 0 4px;'>"
+             f"{'；'.join(intro_bits)}。以下為快速情報，不納入股價模型。</p>")
+    return intro + body
 
 
 # ===== 天氣(信件開頭問候卡;Open-Meteo 免金鑰) =====
@@ -11980,20 +11988,26 @@ def _cap_analysis_text(text: str, max_chars: int = 2400) -> str:
 
 
 def _estimated_email_kb(html: str) -> float:
-    """估算寄出後郵件大小(KB)。繁中 HTML 經 MIME(base64/quoted-printable)編碼約 ×1.37;
-    Gmail 約 102KB 會剪信,故用此估算值控管,門檻保留安全邊際。"""
-    return len(html.encode("utf-8")) * 1.37 / 1024.0
+    """估算 Gmail 是否會剪信用的大小(KB)。
+    Gmail ~102KB 截斷量的是「解碼後的 HTML 內容」本身(Email on Acid 6000+ 封實測、
+    Litmus、Mailchimp 一致),而非 base64 編碼後大小——base64 信反而更晚才剪(~110KB)。
+    故直接量解碼後 UTF-8 大小即可,不可再 ×1.37(那會在離真正危險還有 ~30KB 餘裕時就誤判超標,
+    把使用者要看的內容過早砍掉)。"""
+    return len(html.encode("utf-8")) / 1024.0
 
 
-# 102KB 超標時「整塊移除」的預設優先序(價值低→高;先移除最前者)。
-_TRUNCATE_SECTIONS = ("sports", "journals", "podcast", "model_evidence", "event_timeline")
-_TRUNCATE_LABELS = {"sports": "體育", "journals": "醫學文獻", "podcast": "Podcast",
-                    "model_evidence": "模型實證", "event_timeline": "事件連續劇"}
+# 超標時的預設犧牲優先序(先移除最前者;依使用者指定:政策→醫界→醫學文獻→五檔觀察,
+# 其後才是低價值卡片,Podcast 與體育殿後、萬不得已才動)。
+_TRUNCATE_SECTIONS = ("policy", "medical", "journals", "top5",
+                      "event_timeline", "model_evidence", "sports", "podcast")
+_TRUNCATE_LABELS = {"policy": "政府政策", "medical": "醫界", "journals": "醫學文獻",
+                    "top5": "五檔觀察", "event_timeline": "事件連續劇",
+                    "model_evidence": "模型實證", "sports": "體育", "podcast": "Podcast"}
 
 
 def _truncate_order() -> list[str]:
     """整塊移除的優先序。可用環境變數 EMAIL_TRUNCATE_ORDER(逗號分隔 key)覆寫,
-    例:'event_timeline,model_evidence,journals,sports,podcast' 把體育殿後、文獻提前。
+    例:'policy,medical,journals,top5,sports,podcast'。
     env 指定者優先,未列入者沿用預設相對順序接在後面(確保涵蓋全部區塊、不漏)。"""
     raw = os.environ.get("EMAIL_TRUNCATE_ORDER", "").strip()
     if not raw:
@@ -13061,21 +13075,21 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 </body>
 </html>"""
 
-    # === Gmail 102KB 剪裁防護 ===
-    # 估編碼後大小;超標時 (1) 先「局部縮減」Podcast(使用者主訂內容)減集數/條數,
-    # (2) 仍超標再按優先序(預設 體育→醫學文獻→Podcast→模型實證→事件連續劇,可由
-    #     EMAIL_TRUNCATE_ORDER 覆寫)整塊移除最低價值區塊。
-    # 確保行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。
-    # 門檻 96KB:留出橫幅(~0.3KB)與 base64 編碼變異的安全邊際,避免加橫幅後又超 102KB。
-    LIMIT_KB = 96.0
+    # === Gmail ~102KB 剪裁防護 ===
+    # Gmail 量的是「解碼後 HTML」大小(~102KB;base64 信更晚才剪),_estimated_email_kb 已直接量
+    # 解碼後大小。超標時:輪到 Podcast(使用者主訂)先「局部縮減」減集數/條數,縮到最小仍超標才
+    # 整塊移除;其餘區塊直接清空。犧牲優先序(可由 EMAIL_TRUNCATE_ORDER 覆寫)依使用者指定:
+    # 政策→醫界→醫學文獻→五檔觀察→事件連續劇→模型實證→體育→Podcast(後二者萬不得已才動)。
+    # 行情表/2330·00662·0050 預測卡/結論永不被靜默剪掉。門檻 95KB:對 ~102KB 真實線留安全邊際。
+    LIMIT_KB = 95.0
+    intel_data = quotes.get("TW_DAILY_INTELLIGENCE") or {}
+    inc_policy = inc_medical = True
     podcast_eps = quotes.get("PODCAST_DIGEST") or []
     pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
     html = _assemble()
     dropped: list[str] = []
     reduced = False
 
-    # 依優先序逐一處理超標(closure 讀最新值)。輪到 Podcast 時(使用者主訂內容)先「局部
-    # 縮減」減集數/條數,縮到最小仍超標才整塊移除;其餘區塊直接清空。本就空的不計「已暫略」。
     for key in _truncate_order():
         if _estimated_email_kb(html) <= LIMIT_KB:
             break
@@ -13097,13 +13111,25 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 dropped.append(label)
             html = _assemble()
             continue
-        if key == "sports":
+        if key == "policy":
+            was_present = bool(intel_data.get("policy"))
+            inc_policy = False
+            tw_intelligence_html = _render_tw_intelligence_html(
+                intel_data, _htmllib, inc_policy, inc_medical)
+        elif key == "medical":
+            was_present = bool(intel_data.get("medical"))
+            inc_medical = False
+            tw_intelligence_html = _render_tw_intelligence_html(
+                intel_data, _htmllib, inc_policy, inc_medical)
+        elif key == "top5":
+            was_present, smart_money_html = bool(smart_money_html), ""
+        elif key == "sports":
             was_present, sports_html = bool(sports_html), ""
         elif key == "journals":
             was_present, journals_html = bool(journals_html), ""
         elif key == "model_evidence":
             was_present, model_evidence_html = bool(model_evidence_html), ""
-        else:
+        else:   # event_timeline
             was_present, event_timeline_html = bool(event_timeline_html), ""
         if was_present:
             dropped.append(label)

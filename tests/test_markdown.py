@@ -104,6 +104,26 @@ def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypat
     assert "一、美股收盤行情" in html
 
 
+def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypatch):
+    """超標時依使用者優先序先砍政策,Podcast 與體育保留。"""
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if "POLICYMARK" in h else 80.0)
+    q = {**_full_quotes(),
+         "TW_DAILY_INTELLIGENCE": {
+             "policy": [{"title": "POLICYMARK 重大政策", "published": "2026-06-15", "link": "#"}],
+             "medical": [{"title": "醫界訊息", "published": "2026-06-15", "link": "#"}]},
+         "SPORTS": {"news": {}, "cpbl_scores": [
+             {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
+              "winner": "away", "date": "06/14"}]},
+         "PODCAST_DIGEST": [{"show": "股癌", "title": "EP670",
+                             "digest": {"summary_points": ["重點一", "重點二"], "tickers": []}}]}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "POLICYMARK" not in html                 # 政策被砍
+    assert "已暫略" in html and "政府政策" in html    # 橫幅標示砍了政策
+    assert "中華職棒" in html                         # 體育保留
+    assert "Podcast 重點" in html and "股癌" in html  # Podcast 保留
+
+
 def test_render_html_stays_within_gmail_ceiling_with_huge_podcast():
     """端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
     q = {**_full_quotes(), "PODCAST_DIGEST": _podcast_episodes(30)}

@@ -9310,11 +9310,14 @@ def _strip_llm_watchlist_section(text: str) -> str:
 
 
 def _analysis_complete_enough(text: str) -> bool:
-    """Detect obvious report truncation before rendering/sending."""
+    """Detect obvious report truncation before rendering/sending.
+    除了需含「我的明確立場」「一句話總結」兩段,還要求立場可被解析(有淨分或立場詞),
+    否則頂部 KPI/結論卡會變「—」——這種輸出視為不完整,觸發重試。"""
     body = _strip_llm_watchlist_section(text or "")
-    if "我的明確立場" not in body:
+    if "我的明確立場" not in body or "一句話總結" not in body:
         return False
-    return "一句話總結" in body
+    st = _extract_stance(body)
+    return st.get("score") is not None or bool(st.get("label"))
 
 
 def _call_llm_text(prompt: str) -> str:
@@ -9777,20 +9780,41 @@ def _extract_stance(text: str) -> dict:
         _re.S,
     )
     scoped = section_match.group(0) if section_match else text
-    m = _re.search(r"淨分\s*([+\-]?\d+)", scoped)
+    # 淨分容錯:「淨分 +7」「淨分:+7」「淨分為 +7」「= 淨分 +7」皆吃
+    m = _re.search(r"淨分\s*[:：=為]?\s*([+\-]?\d+)", scoped)
     if m:
         try:
             out["score"] = int(m.group(1))
         except ValueError:
             pass
-    # 「立場：偏多」「立場: 中性偏多（...」「立場：偏空 / 防守為主」皆吃
-    m = _re.search(r"立場\s*[：:]\s*\**\s*([一-鿿/]+)", scoped)
+    # 立場容錯:「立場：偏多」「> **立場**：偏多」「立場 ：偏多」皆吃。錨定行首(可有 >/空白/**)
+    # 才匹配,避免吃到「## 我的明確立場：…」標題行裡的「立場」而誤抓後面的「淨分」等字。
+    m = _re.search(r"(?m)^[>\s]*\**\s*立場\s*\**\s*[：:]\s*\**\s*([一-鿿/]+)", scoped)
     if m:
         label = m.group(1).strip()
         # 取「/」或標點前的第一個有效詞，避免吃到後面括號的解釋
         label = _re.split(r"[，,（()\s/]", label)[0].strip("*")
         out["label"] = label or None
     return out
+
+
+def _fallback_stance_from_signals(quotes: dict) -> dict:
+    """LLM 未輸出可解析的立場時,用 Python 訊號(加權預測共識/方向)給保底立場,
+    避免頂部 KPI/加權區出現「—」。score 留 None(非 11 維淨分),label 標 source=signals。"""
+    taiex = quotes.get("TAIEX_PRED") or {}
+    consensus = str(taiex.get("consensus") or "")
+    label = None
+    if "偏多" in consensus:
+        label = "偏多"
+    elif "偏空" in consensus:
+        label = "偏空"
+    elif consensus:
+        label = "中性"
+    if label is None:
+        wp = taiex.get("weighted_pct")
+        if isinstance(wp, (int, float)):
+            label = "偏多" if wp > 0 else ("偏空" if wp < 0 else "中性")
+    return {"label": label, "score": None, "source": "signals"} if label else {}
 
 
 def _extract_summary(text: str) -> str:
@@ -12091,6 +12115,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     except Exception as _e:
         print(f"[render] 敘述-數字交叉驗證略過: {_e}", file=sys.stderr)
     stance = _extract_stance(analysis_for_render)
+    # LLM 未產出可解析的立場(輸出不完整/格式變異)時,用 Python 訊號共識保底,頂部不顯示「—」
+    if stance.get("score") is None and not stance.get("label"):
+        stance = _fallback_stance_from_signals(quotes) or stance
     summary_text = _extract_summary(analysis_for_render)
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
@@ -12356,10 +12383,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             posture_reason = "開盤方向與風險警告未明顯衝突"
         stance_label = str(stance.get("label") or "—")
         stance_score = stance.get("score")
+        _stance_is_signal = stance.get("source") == "signals"
         stance_text = (
             f"{stance_label} {stance_score:+d}"
-            if isinstance(stance_score, int) else stance_label
+            if isinstance(stance_score, int)
+            else (f"{stance_label}（訊號參考）" if _stance_is_signal else stance_label)
         )
+        _stance_origin_note = (
+            "今日立場改採訊號共識(本期 LLM 分析未產出完整立場)"
+            if _stance_is_signal else "今日立場取自「我的明確立場（淨分判定）」、為當日總方向")
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
@@ -12403,7 +12435,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <b>短線開盤：</b>{open_direction}　<b>操作紀律：</b>{trade_posture}
           </div>
           <div style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px;">
-            ※ 三者是同一立場的不同面向,非互相矛盾:今日立場取自「我的明確立場（淨分判定）」、為當日總方向；
+            ※ 三者是同一立場的不同面向,非互相矛盾:{_stance_origin_note}；
             短線開盤只描述「可能怎麼開」；操作紀律整合外資期貨、警告與波動風險；{posture_reason}。
           </div>
         </div>

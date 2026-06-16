@@ -218,6 +218,54 @@ def test_extract_stance_missing():
     assert s == {"label": None, "score": None}
 
 
+def test_extract_stance_tolerant_to_format_variants():
+    """容錯 LLM 格式變異:淨分不同標點(:/為/=)、缺 markdown 標題、立場前後有 ** 皆可解析。"""
+    assert mr._extract_stance("我的明確立場\n淨分:+7\n立場：偏多")["score"] == 7
+    assert mr._extract_stance("淨分為 -6\n**立場**：偏空")["label"] == "偏空"
+    assert mr._extract_stance("我的明確立場\n結果 = 淨分 +4\n立場：偏多")["score"] == 4
+    assert mr._extract_stance("立場：中性")["label"] == "中性"
+    assert mr._extract_stance("> **立場**：偏多")["label"] == "偏多"   # 引用+粗體行
+    # 「我的明確立場」標題不可被誤當立場值(需冒號且錨定行首)
+    assert mr._extract_stance("沒有立場相關文字") == {"label": None, "score": None}
+    # 標題行帶冒號也不可被誤抓(避免抓到「淨分」當 label)
+    assert mr._extract_stance("## 我的明確立場：淨分 +7\n## 一句話總結\n偏多")["label"] is None
+
+
+def test_analysis_complete_requires_parseable_stance():
+    """有段落標題但立場無法解析 → 視為不完整(會觸發重試),避免頂部變「—」。"""
+    # 兩段標題都在,但沒有淨分/立場 → 不算完整
+    assert not mr._analysis_complete_enough("## 我的明確立場\n(略)\n## 一句話總結\n偏多操作")
+    # 補上可解析立場 → 完整
+    assert mr._analysis_complete_enough(
+        "## 我的明確立場\n淨分 +5\n立場：偏多\n## 一句話總結\n偏多操作")
+
+
+def test_fallback_stance_from_signals():
+    assert mr._fallback_stance_from_signals(
+        {"TAIEX_PRED": {"consensus": "偏多 (2/3 訊號)"}})["label"] == "偏多"
+    assert mr._fallback_stance_from_signals(
+        {"TAIEX_PRED": {"consensus": "全部偏空"}})["label"] == "偏空"
+    # 無共識字串 → 用 weighted_pct 正負號
+    assert mr._fallback_stance_from_signals(
+        {"TAIEX_PRED": {"weighted_pct": 0.1}})["label"] == "偏多"
+    assert mr._fallback_stance_from_signals(
+        {"TAIEX_PRED": {"weighted_pct": -0.1}})["label"] == "偏空"
+    assert mr._fallback_stance_from_signals({"TAIEX_PRED": {}}) == {}
+
+
+def test_render_html_stance_falls_back_when_llm_incomplete():
+    """LLM 分析未含可解析立場時,頂部立場用訊號共識保底,不顯示「—」。"""
+    q = {**_full_quotes(), "TAIEX_PRED": {
+        "last_close": 45000, "pred_open": 45200, "weighted_pct": 0.44,
+        "ci_lower": 44000, "ci_upper": 46000, "consensus": "偏多 (2/3 訊號)",
+        "signals": [], "interval_method": "x"}}
+    # 分析文沒有「我的明確立場/淨分」→ 立場抽取失敗 → 應退回訊號共識「偏多」
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"},
+                          "七、昨夜重點\n只有新聞沒有立場段落", "2026-06-16", "每日報")
+    assert "今日立場：—" not in html
+    assert "偏多" in html and "訊號參考" in html
+
+
 def test_extract_summary_basic():
     text = ("## 十四、一句話總結\n\n"
             "SOX 暴跌 + Fed 升息預期雙殺成長股，減碼 00662 等止穩。\n\n## 其他")

@@ -3013,6 +3013,27 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     return result
 
 
+def fetch_ma200_status() -> dict:
+    """核心持股的 200 日均線(波段長線參考)。回測(5–15 年)顯示「站上 MA200 才持有、跌破轉中性」
+    歷史上能大幅降低最大回撤、報酬接近、Sharpe 較高(尤其高波動標的)。失敗逐檔略過,回 {}。
+    用未還原收盤(與券商看到的報價一致),last 與 MA200 同基準故趨勢判斷一致。"""
+    out: dict = {}
+    for sym, name in (("00662.TW", "00662 富邦NASDAQ"), ("0050.TW", "0050 元大台灣50"),
+                      ("2330.TW", "2330 台積電")):
+        try:
+            d = yf.Ticker(sym).history(period="15mo", auto_adjust=False)
+            closes = [float(c) for c in d["Close"].dropna().tolist() if c == c and c > 0]
+            if len(closes) < 200:
+                continue
+            ma200 = sum(closes[-200:]) / 200
+            last = closes[-1]
+            out[sym] = {"name": name, "close": round(last, 2), "ma200": round(ma200, 2),
+                        "above": last >= ma200, "dist_pct": round((last / ma200 - 1) * 100, 1)}
+        except Exception as e:
+            print(f"[ma200] {sym} 失敗: {e}", file=sys.stderr)
+    return out
+
+
 def fetch_taiex_history() -> Optional[pd.DataFrame]:
     """抓加權指數 (^TWII) 過去 3 個月歷史，供大盤預測用。"""
     for attempt in range(3):
@@ -9712,6 +9733,35 @@ def _calibration_note_compact(obj: dict) -> str:
     return note
 
 
+def _render_ma200_html(status: dict) -> str:
+    """長線趨勢參考:核心持股站上/跌破 200 日均線(波段觀點,非買賣訊號)。無資料回空。"""
+    if not status:
+        return ""
+    rows = []
+    for v in status.values():
+        above = v.get("above")
+        tag = "站上(波段偏多)" if above else "跌破(波段轉弱)"
+        color = "#dc2626" if above else "#16a34a"   # TW 紅漲綠跌
+        rows.append(
+            f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;"
+            f"color:#0f172a;font-size:13px;'>{v.get('name', '')}</td>"
+            f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
+            f"font-size:12px;color:#64748b;font-variant-numeric:tabular-nums;'>"
+            f"收 {v.get('close')} / MA200 {v.get('ma200')}</td>"
+            f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
+            f"font-weight:700;font-size:13px;color:{color};white-space:nowrap;'>"
+            f"{tag} {v.get('dist_pct', 0):+.1f}%</td></tr>")
+    return (
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#f1f5f9;color:#475569;padding:8px 14px;font-weight:700;font-size:14px;">'
+        '長線趨勢參考(200 日均線)</div>'
+        '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
+        + "".join(rows) + '</table>'
+        '<div style="padding:6px 14px;color:#94a3b8;font-size:12px;line-height:1.5;">'
+        '※ 回測(5–15 年)顯示「站上 MA200 才持有、跌破轉中性」歷史上能大幅降低最大回撤、報酬接近、'
+        'Sharpe 較高;惟橫盤鋸齒市易來回被巴、且未計交易成本。僅長線波段參考,非買賣訊號。</div></div>')
+
+
 def _render_etf_action_card(fair_00662, pred_0050) -> str:
     """ETF 今日進出參考價(使用者核心需求:買入/賣出的相對合理價位,行動導向)。
 
@@ -12133,6 +12183,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         quotes.get("PODCAST_DIGEST") or [],
         quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib)
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
+    ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
     sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
     event_calendar_html = _render_event_calendar_html(quotes.get("EVENT_CALENDAR") or [])
     event_timeline_html = _render_event_timeline_html(
@@ -13085,6 +13136,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {combined_pred_html}
 
+            {ma200_html}
+
             {tw_calendar_html}
 
             {breadth_html}
@@ -13784,6 +13837,11 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 體育抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SPORTS"] = {}
+    try:
+        quotes["MA200_STATUS"] = fetch_ma200_status()   # 核心持股 200 日線(長線波段參考)
+    except Exception as e:
+        print(f"[main] MA200 抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["MA200_STATUS"] = {}
     try:
         quotes["EVENT_CALENDAR"] = fetch_event_calendar(now_tpe)
     except Exception as e:

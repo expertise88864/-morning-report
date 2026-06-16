@@ -582,6 +582,27 @@ def test_render_html_00662_labeled_fair_value_not_open():
     assert "非開盤價" in html and "刻意保守" in html      # footnote 說明偏差來源
 
 
+def test_render_ma200_status_card():
+    """長線趨勢(MA200)卡:站上紅/跌破綠 + 距離%,無資料回空。"""
+    assert mr._render_ma200_html({}) == ""
+    h = mr._render_ma200_html({
+        "0050.TW": {"name": "0050 元大台灣50", "close": 200.0, "ma200": 180.0,
+                    "above": True, "dist_pct": 11.1},
+        "2330.TW": {"name": "2330 台積電", "close": 900.0, "ma200": 950.0,
+                    "above": False, "dist_pct": -5.3}})
+    assert "長線趨勢參考(200 日均線)" in h
+    assert "站上(波段偏多)" in h and "跌破(波段轉弱)" in h
+    assert "非買賣訊號" in h
+
+
+def test_render_html_includes_ma200_when_present():
+    q = {**_full_quotes(), "MA200_STATUS": {
+        "0050.TW": {"name": "0050 元大台灣50", "close": 200.0, "ma200": 180.0,
+                    "above": True, "dist_pct": 11.1}}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "長線趨勢參考(200 日均線)" in html
+
+
 def test_build_prompt_biotech_and_transmission_rules():
     """prompt 應要求生技/醫療專門著墨,且立場理由要寫傳導機制。"""
     p = mr._build_prompt(_full_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")

@@ -44,11 +44,11 @@ def test_consensus_all_bullish(fake_yf, mkdf):
 
 
 def test_us_signal_rescaled_by_backtest_beta(fake_yf, mkdf):
-    """2021-2026 回測:開盤跳空對美股有效 beta 僅 ~0.31,美股訊號必須縮放(夜盤不縮)。"""
+    """482 日長窗回測:開盤跳空對美股有效 beta ≈0.23,美股訊號必須縮放(夜盤不縮)。"""
     import morning_report as mr
     res = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.2, tsm_pct=0.8, night_pct=0.5)
-    assert res["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR == 0.31
-    # us_combo=(1.2*1.05*0.4+0.8*0.3)/0.7≈1.063 → 0.7*0.31*1.063 + 0.3*0.5 ≈ 0.38
+    assert res["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR == 0.23
+    # us_combo=(1.2*1.05*0.4+0.8*0.3)/0.7≈1.063 → 0.7*0.23*1.063 + 0.3*0.5 ≈ 0.32
     assert 0.2 < res["raw_weighted_pct"] < 0.55   # 遠小於舊公式的 ~0.85
     # signals 帶有效權重,加總 <1(縮放的體現)
     assert sum(s["weight"] for s in res["signals"]) < 1.0

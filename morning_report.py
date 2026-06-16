@@ -3065,16 +3065,16 @@ def _taiex_conflict_adjustment(weighted_pct: float,
     return weighted_pct * shrink, round(shrink, 3), reasons[:5]
 
 
-TAIEX_US_BETA_PRIOR = 0.31   # 2021-2026 共 1200 日回測:開盤跳空對前夜美股的有效 beta
+TAIEX_US_BETA_PRIOR = 0.23   # 482 日長窗回測(Actions/Yahoo)複驗:US-implied 開盤跳空 OLS 有效 beta≈0.233,舊先驗 0.31 偏高(過度預測,US-leg MAE 0.44%→0.40%);live 樣本≥30 後改動態 OLS
 TAIEX_US_BETA_BOUNDS = (0.15, 0.60)
 
 
 def _taiex_us_beta(context: Optional[dict]) -> tuple[float, str]:
     """美股合成訊號 → 加權開盤跳空的縮放係數 k。
 
-    2021-2026 回測(500 日評估窗)發現:台股日內盤已先消化大部分美股重疊資訊,
-    開盤跳空對前夜美股的真實 beta 僅 ~0.23-0.31,而舊公式權重總和 ~1.03,
-    系統性放大預測 ~3.4 倍(live 誤差 -1.7%~+4.1% 的成因)。重縮放後離線 MAE -73%。
+    台股日內盤已先消化大部分美股重疊資訊,開盤跳空對前夜美股的真實 beta 偏低。
+    482 日長窗回測(Actions 抓 Yahoo ^SOX/TSM/^TWII)OLS 過原點估得 US-implied beta≈0.233,
+    故先驗由舊值 0.31 下修至 0.23(舊值偏高、系統性過度預測 US 端)。
     live 配對樣本(history 回填的 實際開盤 vs 當日美股訊號)累積 ≥30 筆後,
     改用近 60 筆 OLS 過原點動態估計,並夾在合理範圍內。
     """
@@ -3101,7 +3101,7 @@ def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],
 
     邏輯（2021-2026 回測選定,離線 MAE -73%）：
       us_combo = SOX×1.05×(0.4/0.7) + TSM_ADR×(0.3/0.7)   ← 美股合成訊號
-      us_pred  = k × us_combo                              ← k≈0.31(有效 beta,可由 live 樣本動態估)
+      us_pred  = k × us_combo                              ← k≈0.23(有效 beta,可由 live 樣本動態估)
       最終     = 0.70 × us_pred + 0.30 × 夜盤台指期         ← 夜盤直接定價開盤(beta≈1),不縮放
     任一邊缺失時用另一邊;全缺回 error。
     """
@@ -8812,7 +8812,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 【加權指數預測（Task A，美股訊號重縮放 + 夜盤台指期）】
 {taiex_pred_block}
-※ 美股訊號(SOX/TSM ADR)依歷史有效 beta(約 0.31,5 年回測)縮放後,與夜盤台指期 0.7/0.3 合成;表中為有效權重。訊號分歧時信心降低。
+※ 美股訊號(SOX/TSM ADR)依歷史有效 beta(約 0.23,482 日長窗回測)縮放後,與夜盤台指期 0.7/0.3 合成;表中為有效權重。訊號分歧時信心降低。
 
 【大盤量能與市場廣度（TWSE STOCK_DAY_ALL 統計）】
 {breadth_block}

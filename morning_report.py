@@ -233,7 +233,7 @@ RSS_FEEDS = {
 # 注意:Google News RSS 把多個關鍵字當 AND 處理,塞太多字會抓到 0 則。
 # 以下查詢經實測校準(近 30h 各有 ~11–88 則):用 OR 群組或 1–2 個關鍵字才有足夠量。
 OTHER_SECTOR_QUERIES: dict[str, str] = {
-    # 金融偏催化(壽險投資收益/淨息差),對接使用者持有的富邦金;實測召回 ~78 則
+    # 金融類股催化(壽險投資收益/淨息差);0050 重成分,供類股均衡;實測召回 ~78 則
     "金融-台股": "壽險 OR 金控 OR 淨息差 OR 投資收益",
     "金融-全球": "美股 金融",
     "航運-台股": "長榮 OR 陽明 OR 萬海",
@@ -274,7 +274,7 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     ("鴻海", "2317"), ("聯發科", "2454"), ("廣達 AI伺服器", "2382"),
     ("台達電", "2308"), ("聯電 UMC", "2303"), ("日月光 ASE", "3711"),
     ("緯創 AI伺服器", "3231"), ("緯穎 AI伺服器", "6669"), ("世芯-KY ASIC", "3661"),
-    # --- 非科技龍頭(對應使用者持股/類股均衡;皆已在市值前 100 watchlist,當日有新聞才取) ---
+    # --- 非科技類股代表(金融/航運/生技,類股均衡;皆為 0050 成分或市值前 100,當日有新聞才取) ---
     ("藥華藥", "6446"), ("富邦金", "2881"), ("國泰金", "2882"), ("長榮 航運", "2603"),
 ]
 
@@ -3018,8 +3018,12 @@ def fetch_ma200_status() -> dict:
     歷史上能大幅降低最大回撤、報酬接近、Sharpe 較高(尤其高波動標的)。失敗逐檔略過,回 {}。
     用未還原收盤(與券商看到的報價一致),last 與 MA200 同基準故趨勢判斷一致。"""
     out: dict = {}
-    for sym, name in (("00662.TW", "00662 富邦NASDAQ"), ("0050.TW", "0050 元大台灣50"),
-                      ("2330.TW", "2330 台積電")):
+    # 對齊使用者實際持股(ETF 為主);00631L 為 2x 槓桿,長抱波動耗損大、回測中
+    # 趨勢紀律對它最關鍵(15 年買進持有最大回撤 -96.9%),故特別納入。leveraged 旗標供渲染加註。
+    for sym, name, leveraged in (("00662.TW", "00662 富邦NASDAQ", False),
+                                 ("0050.TW", "0050 元大台灣50", False),
+                                 ("00631L.TW", "00631L 台灣50正2", True),
+                                 ("2330.TW", "2330 台積電", False)):
         try:
             d = yf.Ticker(sym).history(period="15mo", auto_adjust=False)
             closes = [float(c) for c in d["Close"].dropna().tolist() if c == c and c > 0]
@@ -3028,7 +3032,8 @@ def fetch_ma200_status() -> dict:
             ma200 = sum(closes[-200:]) / 200
             last = closes[-1]
             out[sym] = {"name": name, "close": round(last, 2), "ma200": round(ma200, 2),
-                        "above": last >= ma200, "dist_pct": round((last / ma200 - 1) * 100, 1)}
+                        "above": last >= ma200, "dist_pct": round((last / ma200 - 1) * 100, 1),
+                        "leveraged": leveraged}
         except Exception as e:
             print(f"[ma200] {sym} 失敗: {e}", file=sys.stderr)
     return out
@@ -9742,9 +9747,11 @@ def _render_ma200_html(status: dict) -> str:
         above = v.get("above")
         tag = "站上(波段偏多)" if above else "跌破(波段轉弱)"
         color = "#dc2626" if above else "#16a34a"   # TW 紅漲綠跌
+        lev_badge = (" <span style='color:#b45309;font-size:11px;font-weight:700;'>槓桿</span>"
+                     if v.get("leveraged") else "")
         rows.append(
             f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;"
-            f"color:#0f172a;font-size:13px;'>{v.get('name', '')}</td>"
+            f"color:#0f172a;font-size:13px;'>{v.get('name', '')}{lev_badge}</td>"
             f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
             f"font-size:12px;color:#64748b;font-variant-numeric:tabular-nums;'>"
             f"收 {v.get('close')} / MA200 {v.get('ma200')}</td>"
@@ -9758,8 +9765,10 @@ def _render_ma200_html(status: dict) -> str:
         '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
         + "".join(rows) + '</table>'
         '<div style="padding:6px 14px;color:#94a3b8;font-size:12px;line-height:1.5;">'
-        '※ 回測(5–15 年)顯示「站上 MA200 才持有、跌破轉中性」歷史上能大幅降低最大回撤、報酬接近、'
-        'Sharpe 較高;惟橫盤鋸齒市易來回被巴、且未計交易成本。僅長線波段參考,非買賣訊號。</div></div>')
+        '※ 定位為「抗回撤/控波動」參考,非「增報酬」工具:回測 5–10 年「站上才持有、跌破轉中性」'
+        '可把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)可能因離場成本而少賺、報酬反輸買進持有,'
+        '橫盤鋸齒市也易來回被巴(未計交易成本)。槓桿(00631L)長抱回撤最凶,趨勢紀律對它最關鍵。'
+        '僅長線波段參考,非買賣訊號。</div></div>')
 
 
 def _render_etf_action_card(fair_00662, pred_0050) -> str:

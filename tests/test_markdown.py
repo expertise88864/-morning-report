@@ -587,12 +587,17 @@ def test_render_ma200_status_card():
     assert mr._render_ma200_html({}) == ""
     h = mr._render_ma200_html({
         "0050.TW": {"name": "0050 元大台灣50", "close": 200.0, "ma200": 180.0,
-                    "above": True, "dist_pct": 11.1},
+                    "above": True, "dist_pct": 11.1, "leveraged": False},
+        "00631L.TW": {"name": "00631L 台灣50正2", "close": 90.0, "ma200": 80.0,
+                      "above": True, "dist_pct": 12.5, "leveraged": True},
         "2330.TW": {"name": "2330 台積電", "close": 900.0, "ma200": 950.0,
-                    "above": False, "dist_pct": -5.3}})
+                    "above": False, "dist_pct": -5.3, "leveraged": False}})
     assert "長線趨勢參考(200 日均線)" in h
     assert "站上(波段偏多)" in h and "跌破(波段轉弱)" in h
     assert "非買賣訊號" in h
+    # 槓桿標的(00631L)應帶「槓桿」標記;定位措辭為控波動而非增報酬
+    assert "槓桿" in h
+    assert "抗回撤" in h
 
 
 def test_render_html_includes_ma200_when_present():

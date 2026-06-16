@@ -100,6 +100,86 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2340159440",
+        "title": "2026/6/16(二)美股上太空!這次漲去哪?AI副作用出現 誰能駕馭新技術?【早晨財經速解讀】",
+        "published": "Tue, 16 Jun 2026 01:06:00 +0000",
+        "processed_at": "2026-06-16T22:39:34Z",
+        "digest": {
+          "summary_points": [
+            "美伊停火預計週五於瑞士簽署，河姆茲海峽可望重開，原油價格持穩每桶80美元，若跌破恐形成M頭。",
+            "高盛預估中東協議執行後，美國汽油價格有機會在7月4日前降至每加侖3.75美元，有利第三季通膨降溫。",
+            "美國放鬆制裁後，委內瑞拉5月原油出口創7年新高，達每日125萬桶，美國每日進口55.8萬桶。",
+            "費城半導體指數大漲5.45%創歷史新高，美光漲近10%，輝達、博通、台積電ADR等同步上漲。",
+            "SpaceX上市連兩日大漲19%與19.6%，市值已超越台積電，AI相關IPO造夢行情吸引資金集中半導體與科技股。",
+            "華爾街銀行開始提高避險基金做多AI股的融資成本，部分交易成本達15%至30%，限縮槓桿額度以防止估值無限擴張。",
+            "企業轉向低成本AI模型，OpenAI考慮大幅降價留住客戶，AI市場進入價格戰階段，不再只追求最強性能。",
+            "瑞穎報告指出全球信貸脈衝佔GDP比重回升至1.3%為十年新高，55%來自企業貸款，由大型公司興建資料中心驅動。",
+            "輝達發行250億美元投資等級債，為近年首度發債，加上亞馬遜、Meta等科技巨頭大舉發債，AI軍備競賽持續。",
+            "韓國股市本益比僅8至9倍，市值膨脹至4.4兆美元，6月23日MSCI分類總檢討可能從新興市場升為已開發市場，吸引被動資金。",
+            "印尼可能因外資流出130億美元及經濟治理爭議，從新興市場降級為邊境市場，為近年最大流出規模。",
+            "亞洲開發銀行提供15國40億美元緊急貸款，亞太經濟成長率由5.1%下修至4.7%，衝擊菲律賓、印度、孟加拉等國。",
+            "市場心理出現利空鈍化，投資人經歷多次利空後傾向低接或不拋售，導致股市回檔幅度有限。",
+            "美國勞工薪資佔經濟比重降至51%，企業利潤佔比升至12%，財富集中可能引發對科技富豪加稅的討論。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "IPO上市連兩日大漲19%與19.6%，市值快速膨脹超越台積電，造夢行情吸引資金追捧。"
+            }
+          ],
+          "market_view": "市場對利空反應鈍化，中東停火與IPO造夢行情推升短期創高，但需留意銀行限縮槓桿與AI估值壓力。",
+          "action_view": "",
+          "notable_quote": "歷史會重複，但不一定每一次都會同樣的事件重複發生，歷史能夠重複的，大概就是押韻，道理和周期是不會改變的，但是下一次的利空，大概還是有很多人會被嚇到被嚇跑的。"
+        }
+      },
+      {
+        "guid": "tag:soundcloud,2010:tracks/2339400725",
+        "title": "2026/6/15(一)美伊停戰!利多又來了?美股IPO行情 市場吃得下?【早晨財經速解讀】",
+        "published": "Mon, 15 Jun 2026 01:08:26 +0000",
+        "processed_at": "2026-06-16T22:18:47Z",
+        "digest": {
+          "summary_points": [
+            "美伊協議預計本週五（6/19）簽署，伊朗將清除荷姆茲海峽水雷，美國解除海上封鎖，Polymarket賭盤顯示簽署機率94%。",
+            "布蘭特原油價格上週跌至每桶81美元，高盛預估若協議順利，2027年可能回到60美元，能源通膨壓力預計6至8月快速回調。",
+            "協議採分階段交換：伊朗恢復航道換取制裁鬆綁，核問題延後60天談判，協議性質接近停火框架，破局風險仍存。",
+            "美國5月PPI年增6.5%高於預期，能源成本推升商品價格單月暴漲2.8%（2009年來最大升幅），但油價回跌可望拉低未來通膨數據。",
+            "聯準會FOMC會議前，Waller面臨釋出緊縮訊號的困境，若油價續跌可能緩和緊縮條件，市場觀望是否調整通膨統計方式以達成目標。",
+            "肥料與硫磺價格暴漲，硫磺現貨每噸從長期均價200美元漲至1,200美元，僵固性通膨可能從原物料擴散至終端，聯準會關注科技通膨（電腦軟體配件年增87%）。",
+            "美股上週五收紅：道瓊+0.7%報51,202點，標普+0.5%報7,431點，費半+1.5%報13,371點；台股上週跌901點但留下2,100點下影線，月線有守。",
+            "今年以來全球資產報酬：大宗商品+27%、可轉債+20%、小型股+19%、那斯達克+17%，黃金-2.5%，比特幣-27.4%。",
+            "SpaceX以135美元IPO定價，首日收在166美元大漲23%，市值躍居全美第六大，IPO募資750億美元，承銷商協商罕見免收綠鞋手續費。",
+            "SpaceX收入來自星鏈、火箭發射、XAI算力出租，但XAI極度虧損，公司從未全年獲利，市場對高估值虧損企業的接受度面臨考驗。",
+            "谷歌每月固定支付9.2億美元租用XAI算力，Anthropic亦為客戶，支撐SpaceX估值，但馬斯克提出太空太陽能等敘事因應能源瓶頸。",
+            "馬斯克整合特斯拉、SpaceX、XAI等打造垂直整合帝國，但特斯拉Robotaxi車隊數量不足100台，遠低於2025年覆蓋全美一半人口的目標。",
+            "債市恐慌指數MOVE自4月底以來平穩，但那斯達克波動率VXN居高，軟體股ETF IGV大漲後遇獲利了結，顯示科技股緊張但資金行情蠢動。",
+            "今年IPO總募資規模估逾2,300億美元，SpaceX證明市場承接力，投資人逐步接受虧損型夢想公司上市，估值邏輯出現轉變。",
+            "主持人指出利空出現時為買點，利多來臨時把握機會，市場情緒從中東局勢緩和獲得信心，資金行情可望延續。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "IPO首日大漲23%，市場信心強勁，且有谷歌等穩定算力租用收入支撐，敘事轉向AI太空整合。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Robotaxi車隊數量遠低於承諾，自駕服務進度明顯落後，馬斯克將市場焦點移往SpaceX，股東壓力大。"
+            }
+          ],
+          "market_view": "在美伊協議與油價回檔預期下，市場信心增強，資金行情有望延續，但僵固性通膨與FOMC緊縮風險仍待觀察。",
+          "action_view": "市場利空出現時可視為買點，利多來臨時把握機會，須留意通膨數據與聯準會動向。",
+          "notable_quote": "利空來那是一個好買點，利多來你要把握機會變成心理情緒的傳導。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2336450486",
         "title": "2026/6/10(三)多空角力 泡沫論再現?土洋對作!台股還能飆?【早晨財經速解讀】",
         "published": "Wed, 10 Jun 2026 01:06:44 +0000",
@@ -351,6 +431,97 @@
     "name": "美股投資學",
     "episodes": [
       {
+        "guid": "c502057d-b5b9-434a-9e30-a57b79ec4358",
+        "title": "2026/06/16 (二) 輝達發債，AI 缺錢嗎？#nvda",
+        "published": "Tue, 16 Jun 2026 01:20:19 GMT",
+        "processed_at": "2026-06-16T22:58:52Z",
+        "digest": {
+          "summary_points": [
+            "美股因美國與伊朗達成初步和平協議而強勁反彈，道瓊創歷史新高，納斯達克100指數創3月31日以來最大單日漲幅。",
+            "費城半導體指數上漲5.5%，輝達(NVIDIA)漲3.5%，美光漲近11%，AMD漲7%。",
+            "AMD宣布收購AI驅動記憶體優化新創公司MASS，被視為提升競爭力的利多。",
+            "美光因分析師上調目標價及HBM需求爆炸性成長預期而大漲，財報將於6月24日公布。",
+            "輝達完成250億美元投資級公司債發行，認購金額達850億美元，票面利率僅比美債高0.65%。",
+            "輝達發債主要用於償還債務及投資（如入股Inter、Anthropic、OpenAI），分析師預估本財年自由現金流超過2000億美元。",
+            "微軟CEO Nadella在X發文強調AI競爭關鍵在建立企業學習循環，而非最強模型，微軟定位為AI資產基礎平台。",
+            "微軟股價跌破年線後反彈無力，目前處於弱勢打底格局，需關注能否站回年線。",
+            "SpaceX連續兩日大漲，市值超2兆美元，與輝達有真實算力合約支撐，開拓太空算力市場。",
+            "市場對聯準會年底升息機率從80%降至70%，因油價下跌且地緣風險緩解，通膨預期降溫。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "發債獲超額認購，資金充裕且利率極低，有利資本支出與回購，AI需求持續強勁。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "分析師上調目標價，HBM需求爆炸性成長，股價創高，財報預期樂觀。"
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收購AI記憶體優化公司MASS，有助提升競爭力，看好其長期前景。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "股價處於弱勢打底格局，CEO發文強調企業AI定位，但短線需觀察能否站回年線。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上市後連續大漲，與輝達有實際合約，開拓太空算力市場，蜜月行情持續。"
+            }
+          ],
+          "market_view": "美股受地緣政治風險緩解激勵全面反彈，科技股領漲，市場情緒樂觀，但後續需關注聯準會利率決議及通膨數據。",
+          "action_view": "主持人建議投資者不必頻繁調整部位，可設定停利停損點；自己已小幅減倉以保留現金應對聯準會決議，但仍維持長期看多趨勢。",
+          "notable_quote": "AI的循環或是我們所謂的AI閉環這種金融化的程度呢開始上升的時候...這個產業成長就非常依賴資本市場"
+        }
+      },
+      {
+        "guid": "2c6383b6-c656-4c84-be41-b853e5c69836",
+        "title": "2026/06/15 (一) 美伊停戰，SpaceX 可以買嗎？#SPCX",
+        "published": "Mon, 15 Jun 2026 01:23:51 GMT",
+        "processed_at": "2026-06-16T22:47:21Z",
+        "digest": {
+          "summary_points": [
+            "上週美股整體上漲，費城半導體指數反彈近10%，羅素2000指數漲4%創高。",
+            "VIX恐慌指數從19降至17，跌破18代表市場波動預期明顯降溫。",
+            "美伊達成初步協議，解除荷姆茲海峽封鎖，6月19日正式簽署，對油價有壓制作用。",
+            "6月密西根大學消費者信心指數從44.8反彈至48.9，但仍為1970年以來第二低。",
+            "聯準會利率決議是本週最重要事件，關注點陣圖、經濟預測及新任主席Kevin Walsh的立場。",
+            "上週七大科技巨頭跑輸大盤，蘋果跌1.5%，英特爾漲6.5%且週漲25%。",
+            "SpaceX首日漲19%收於160.95美元，市值超3500億美元，成為史上最大IPO。",
+            "SpaceX三大業務：火箭發射、Starlink低軌衛星網際網路、XAI人工智慧，其中XAI虧損嚴重。",
+            "主持人認為SpaceX合理估值約1兆美元，但市場給予約2兆，已計入未來高預期。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "估值偏高但長期願景強，建議觀察鎖定期後進場做波段"
+            }
+          ],
+          "market_view": "主持人認為大盤偏多，美伊協議降低不確定性，但需關注聯準會決議及後續動能。",
+          "action_view": "主持人建議觀察SpaceX上市後走勢，等待鎖定期或回調後做短線波段，不建議首日追買。",
+          "notable_quote": "我覺得停戰對於全世界都是一件好事，對於資本市場來說，就是一個確定性的展開。"
+        }
+      },
+      {
         "guid": "8430d2f0-c752-4523-bab6-a4fc8fe2d6a5",
         "title": "【聯名特輯】財經Ｍ平方 x 美股投資學-財女珍妮｜通膨修估值，還是 SpaceX 救估值",
         "published": "Sun, 14 Jun 2026 03:40:17 GMT",
@@ -483,6 +654,112 @@
   "money168": {
     "name": "財經一路發",
     "episodes": [
+      {
+        "guid": "cmqf5czlg00v001wb2gph13ap",
+        "title": "美伊停戰？！ 本周台指結算前撥雲見日？！ 2026.06.15",
+        "published": "Mon, 15 Jun 2026 11:52:33 GMT",
+        "processed_at": "2026-06-16T22:55:46Z",
+        "digest": {
+          "summary_points": [
+            "美伊達成停戰諒解備忘錄，預計6月19日簽署，油價應聲下跌至80美元附近，WTI跌至81美元，布油跌至83美元。",
+            "川普授權荷姆茲海峽免費開放並解除美國海軍封鎖，伊朗確認協議，地緣風險降溫。",
+            "聯準會新任主席Kevin Wach將於6月17日首次主持利率決策會議，市場關注其改革方向（如廢除點陣圖、減少前瞻指引）。",
+            "日本央行升息預期達88%，但行值田河南因病缺席會議，市場預期升息但日圓仍弱勢。",
+            "美國十年期國債殖利率上週下跌5個基點至4.4787%，兩年期跌6.6個基點至4.08%。",
+            "美股上週全週上漲，標普500漲0.57%，道瓊漲0.66%，納斯達克漲0.7%，費半指數漲9.42%創歷史新高。",
+            "七巨頭上週逆勢下跌2.9%，資金轉向新上市的SpaceX（SpecX），因其AI與太空願景吸金。",
+            "台股6月合約多方勝出，但挑戰前高約46,000點需觀察，若成功則續多，否則高檔震盪。",
+            "AI動能仍強，算力不足且電力為瓶頸，比特幣礦商轉型算力租賃，但依賴借貸，若連續升息可能引發風險。",
+            "連續性升息（至少3次）才會真正打壓股市，目前僅為情緒拉回，基本面未變。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為美伊協議緩解通膨壓力，聯準會可能維持觀望，股市多頭格局未變，挑戰前高機率大，但需注意價量配合與後續消息面。",
+          "action_view": "建議投資者不要過度看空或放空，應順應多頭趨勢，但需留意高檔震盪風險。",
+          "notable_quote": "AI難得第四次的工業革命這麼大的盛勢全世界這些有錢人有實力的人大家都要趁這一波大賺其錢你覺得這行情有那麼快可以結束嗎"
+        }
+      },
+      {
+        "guid": "cmqf54gg1019z01wleu5c29rz",
+        "title": "馬斯克點名的飆股 就是他們！ 2026.06.15",
+        "published": "Mon, 15 Jun 2026 11:42:39 GMT",
+        "processed_at": "2026-06-16T22:53:30Z",
+        "digest": {
+          "summary_points": [
+            "高盛警告10年期美債殖利率若升破5%，AI牛市恐面臨估值重擊，但目前利率約4.5%，短期內升至5%可能性不高。",
+            "SpaceX於6月12日在納斯達克上市，代號SPCX，IPO價格135美元，收盤漲19%，市值1.77兆美元，馬斯克身價破1兆美元。",
+            "SpaceX三大業務：Starlink營收113.87億美元（年增50%），用戶1030萬戶；發射衛星營收40.86億美元；AI Grok算力虧損63億美元。2025年總營收187億美元，PS比90-107倍。",
+            "華爾街分析師看空美光（目標價500美元，下跌空間44%）和Intel（目標價45美元，下跌空間60%）。",
+            "台股加權指數與櫃買指數收復所有均線，市場情緒轉樂觀，來賓陳冠霆認為老AI有機會復活，鴻海、緯創、技嘉等可關注。",
+            "高盛預估大型雲端CSP明年AI資本支出年增22%-89%，摩根士丹利上修2026/2027資本支出，顯示AI硬體需求持續上修。",
+            "SpaceX上市帶動太空題材，台灣太陽能個股（元金、茂迪、中美晶等）整理兩個月後有機會上攻。",
+            "馬斯克計劃自建晶圓廠TerraFab，帶動台灣半導體設備與廠務工程公司如漢唐、亞翔等股價強勢。",
+            "CPU（共同封裝光學）族群短期受良率影響較弱，但中長線技術優勢仍被看好，反彈至季線可期待。",
+            "記憶體族群（利基電、南亞科、華邦電、華東）回檔至起漲支撐區，市場記憶點帶動止跌反攻。",
+            "被動元件（臺邦、附頂）止跌轉強，重電股（中興電等）處於低檔區可逢低布局。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "分析師目標價500美元，較現價有44%下跌空間"
+            },
+            {
+              "name": "英特爾",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "分析師目標價45美元，較現價有60%下跌空間"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為老AI復活，鴻海可關注"
+            },
+            {
+              "name": "緯創",
+              "code": "3231",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為老AI復活，緯創可關注"
+            },
+            {
+              "name": "技嘉",
+              "code": "2376",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為老AI復活，技嘉可關注"
+            },
+            {
+              "name": "漢唐",
+              "code": "2404",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "TerraFab題材帶動，股價強勢"
+            },
+            {
+              "name": "亞翔",
+              "code": "6139",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "TerraFab題材帶動，連續漲停"
+            },
+            {
+              "name": "創意",
+              "code": "3443",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "IC設計，回測季線後漲停"
+            }
+          ],
+          "market_view": "主持人認為台股強勢收復所有均線，但需關注美債殖利率風險，短期內升至5%可能性不高。",
+          "action_view": "來賓建議逢低布局低檔轉強的股票，尤其是SpaceX相關的半導體設備、記憶體、被動元件等族群，找尋N字型買點。",
+          "notable_quote": "高盛警告美股最大風險：10年期美債殖利率若升破5%，AI牛市恐面臨估值重擊。"
+        }
+      },
       {
         "guid": "cmqavw8me008c01t5d1pm8xjj",
         "title": "財經觀點｜歐央升息了  聯準會還能裝睡嗎？ 2026.06.12",
@@ -945,6 +1222,110 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "1b42b28e-69c8-11f1-bbb2-bfd154a93dd8",
+        "title": "SpaceX Makes a $60 Billion Bet on Its AI Future",
+        "published": "Tue, 16 Jun 2026 21:12:00 -0000",
+        "processed_at": "2026-06-16T22:43:08Z",
+        "digest": {
+          "summary_points": [
+            "美伊臨時協議允許伊朗立即開始銷售石油，但凍結資金暫不解凍，制裁解除取決於伊朗履行核要求。",
+            "SpaceX以6000億美元股票收購AI編碼代理Cursor，推動其AI業務成為新未來，股價較IPO漲50%。",
+            "Yum Brands以15億美元出售必勝客海外業務給Long-Rage Capital，並以12億美元出售中國業務給Yum China Holdings，聚焦肯德基和塔可鐘。",
+            "通用汽車與洛克希德馬丁談判生產武器零件，響應特朗普援引《國防生產法》增產飛彈等武器。",
+            "Marriott 50多家酒店業主施壓要求分享忠誠度計劃收入，Marriott預計今年信用卡費用收入增長35%至近10億美元，股價微跌。",
+            "Rivian裁員2%約數百人，涉及銷售和行銷，以助力盈利並推出R2 SUV。",
+            "Robinhood裁員10%約290人，CEO稱保持精簡，業務仍強勁。",
+            "美股道瓊漲0.6%，標普跌0.6%，納指跌1.2%，科技股表現分化。",
+            "Qualcomm過去兩年回報僅5%，遠低於晶片指數150%漲幅，但其數據中心晶片業務獲得大客戶，有望成為新增長點。"
+          ],
+          "tickers": [
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "數據中心晶片業務獲得大客戶，有合理成功機會，下週投資者會議將是關鍵分水嶺。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "SpaceX thought it was a rocket company, thought it was a satellite company, and it's going to keep doing both of those things, but its new future is in AI."
+        }
+      },
+      {
+        "guid": "6a17ad2a-696d-11f1-a77b-736743e148e1",
+        "title": "Why the Iran Peace Deal Won’t End Rate Hikes",
+        "published": "Tue, 16 Jun 2026 10:09:00 -0000",
+        "processed_at": "2026-06-16T22:40:41Z",
+        "digest": {
+          "summary_points": [
+            "G7 峰會聚焦伊朗戰爭和平協議，預計將降低油價並緩解通膨擔憂。",
+            "包括歐洲央行和日本銀行在內的各國央行因通膨持續而升息或暫停降息。",
+            "澳洲央行總裁 Michelle Bullock 今年已升息 75 個基點，並維持利率不變以評估經濟影響。",
+            "Paul Hannon 指出央行對通膨保持謹慎，能源和供應鏈衝擊使物價居高不下。",
+            "中國消費者支出自新冠疫情以來首次下滑，顯示家庭需求疲弱。"
+          ],
+          "tickers": [],
+          "market_view": "央行對通膨保持警惕，短期內不太可能降息。",
+          "action_view": "",
+          "notable_quote": "It's not a situation in which inflation is likely to settle down quickly. It's just a more troubled world that we live in and central banks are very much on their guard."
+        }
+      },
+      {
+        "guid": "242696aa-68ff-11f1-83eb-e72b34145032",
+        "title": "DOJ Career Staffers Were Surprised by Decision to Allow Paramount-Warner Deal",
+        "published": "Mon, 15 Jun 2026 21:13:00 -0000",
+        "processed_at": "2026-06-16T22:22:33Z",
+        "digest": {
+          "summary_points": [
+            "福斯（Fox）以250億美元收購串流服務Roku，為其史上最大交易，押注廣告支撐的串流未來。",
+            "福斯股價今日下跌超過15%。",
+            "國際油價（布蘭特原油）下跌近5%至每桶83美元以上，為3月以來最低，受美伊初步協議結束戰爭的樂觀情緒帶動。",
+            "美伊達成初步協議，但荷姆茲海峽重新開放可能需要數週至數月，分析師估計原油從海峽運抵買家需約50天。",
+            "科技股大漲，那斯達克指數上漲超過3%；SpaceX（未上市）飆升20%，市值僅比亞馬遜少4%。",
+            "伊朗協議框架仍不明確，雙方各自宣稱勝利，歐洲盟友是否協助重新開放海峽仍是疑問。"
+          ],
+          "tickers": [
+            {
+              "name": "福斯公司",
+              "code": "FOXA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布以250億美元收購Roku；股價下跌逾15%，反映市場質疑或稀釋擔憂。"
+            },
+            {
+              "name": "Roku公司",
+              "code": "ROKU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "被福斯以250億美元收購；未提供獨立展望。"
+            }
+          ],
+          "market_view": "對美伊協議的樂觀情緒壓低油價並推升科技股，但分析師預期汽油價格在9月前不會回到戰前水準。",
+          "action_view": "",
+          "notable_quote": "The strain is already partially open. As you know, they're doing a little hunting for a couple of mines that they've already found. But essentially ships are starting to go out."
+        }
+      },
+      {
+        "guid": "903bf306-68a2-11f1-9784-e3c4da34bb4f",
+        "title": "U.S., Iran Reach Peace Deal. But Israel Won’t Withdraw From Lebanon.",
+        "published": "Mon, 15 Jun 2026 10:06:00 -0000",
+        "processed_at": "2026-06-16T22:20:09Z",
+        "digest": {
+          "summary_points": [
+            "美國與伊朗達成臨時協議，預計週五簽署，荷姆茲海峽將重新開放，恢復全球石油流通。",
+            "油價因協議消息下跌，WTI 原油約 80 美元/桶，天然氣價格也重挫。",
+            "市場仍預期油市緊繃，產業需時間恢復航運通道、受損基礎設施及原油庫存。",
+            "川普行政命令禁止外國政府、企業及個人使用 Anthropic 的 Fable 5 與 Mythos 5 AI 模型，Anthropic 已全面關閉存取。",
+            "頂尖網路安全專家呼籲解除 AI 出口限制，認為此舉會危害網路防禦者與美國 AI 領導地位。"
+          ],
+          "tickers": [],
+          "market_view": "全球市場因美伊達成臨時和平協議而上漲，但油價因此消息下跌。",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "d9de718a-67d7-11f1-ac2c-53658a0a118b",
         "title": "How a Health Insurance Shortfall in Georgia Could Play Out in the Midterms",
         "published": "Sun, 14 Jun 2026 10:00:00 -0000",
@@ -1149,6 +1530,212 @@
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72551054",
+        "title": "Yum! boxes up Pizza Hut to go",
+        "published": "Tue, 16 Jun 2026 15:58:39 +0000",
+        "processed_at": "2026-06-16T22:41:55Z",
+        "digest": {
+          "summary_points": [
+            "Yum Brands以27億美元出售Pizza Hut：海外業務以15億美元售予Long Range Capital，中國業務以12億美元售予Yum China，公司將專注於剩餘品牌。",
+            "Dave & Buster's第一季業績未達預期，股價下跌，但重申全年展望，預期自由現金流超過1億美元。",
+            "RackSpace Technology與AMD簽署協議，部署30兆瓦AI算力，股價飆升。",
+            "SpaceX以600億美元股票交易收購AI程式碼助手Cursor開發商any sphere。",
+            "Walmart將於6月22日至28日推出夏季促銷活動，跟進Amazon將Prime Day移至6月的策略，可能將部分銷售從7月提前至6月。",
+            "宏觀策略師Lynn Alden指出，以黃金計價的美國GDP降至約70億盎司，為逾一個世紀低點，遠低於1970年代初的300億盎司與2000年左右的390億盎司。"
+          ],
+          "tickers": [
+            {
+              "name": "Yum Brands",
+              "code": "YUM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "出售Pizza Hut以聚焦核心品牌，但未明確表達看多或看空。"
+            },
+            {
+              "name": "Dave & Buster's",
+              "code": "PLAY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "第一季業績未達預期，股價下跌。"
+            },
+            {
+              "name": "RackSpace Technology",
+              "code": "RXT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與AMD簽署AI算力協議，股價飆升。"
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與RackSpace合作部署AI算力，顯示AI業務擴張。"
+            },
+            {
+              "name": "Walmart",
+              "code": "WMT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "推出夏季促銷活動，可能影響銷售時間點。"
+            },
+            {
+              "name": "Yum China",
+              "code": "YUMC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "收購Pizza Hut中國業務，但未明確表達看法。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72547760",
+        "title": "Qualcomm builds an AI wardrobe",
+        "published": "Tue, 16 Jun 2026 10:37:48 +0000",
+        "processed_at": "2026-06-16T22:41:21Z",
+        "digest": {
+          "summary_points": [
+            "高通(Qualcomm)執行長表示公司正在開發超過40款新AI穿戴式裝置設計，包括珠寶、附相機的耳機、筆和手錶；看好智慧眼鏡，規模可能與智慧手機匹敵。",
+            "超微(AMD)收購AI記憶體優化技術公司MEX，強化AI與資料中心產品組合；市場反應正面，股價上漲約7%。",
+            "百勝餐飲集團(YUM Brands)宣布肯德基全球品牌更新，包括新菜單、現代化店面設計與品牌重塑，以吸引年輕消費者。",
+            "Dave & Buster's (PLAY) 公佈失望的第一季財報，營收與獲利均不如預期，股價下跌14%。",
+            "聯準會FOMC會議於今日開始，市場關注。"
+          ],
+          "tickers": [
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "執行長看好智慧眼鏡與AI穿戴裝置，開發超過40款設計"
+            },
+            {
+              "name": "超微",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收購MEX強化AI/資料中心，股價上漲7%"
+            },
+            {
+              "name": "百勝餐飲集團",
+              "code": "YUM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布肯德基全球品牌更新，影響尚不明確"
+            },
+            {
+              "name": "Dave & Buster's",
+              "code": "PLAY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "第一季財報不如預期，股價大跌14%"
+            }
+          ],
+          "market_view": "股市期貨表現平淡，道瓊指數收於歷史新高；市場聚焦今日開始的FOMC會議。",
+          "action_view": "",
+          "notable_quote": "The Qualcomm CEO says he is bullish on smart glasses, a category of product that could rival smartphones in terms of scale."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72535317",
+        "title": "Fox buys Roku in $22B deal",
+        "published": "Mon, 15 Jun 2026 14:57:48 +0000",
+        "processed_at": "2026-06-16T22:21:20Z",
+        "digest": {
+          "summary_points": [
+            "福斯公司以220億美元現金加股票收購Roku，每股Roku可獲得96美元現金加上0.9693股福斯A類股票，估值約每股160美元。",
+            "福斯股價因收購案下跌10%，Roku股價最初飆升20%，隨後回落。",
+            "SpaceX股價持續上漲，因馬斯克預測2030年營收可達1兆美元；技術分析師關注150美元支撐位。",
+            "TripAdvisor股價上漲超過10%，因同意以7億美元現金將歐洲訂位平台The Fork出售給美國運通。",
+            "記憶體晶片股（美光、威騰電子、希捷科技、SanDisk）領漲科技板塊，受美伊和平協議激勵。",
+            "在SpaceX IPO後，Anthropic和OpenAI的IPO機率下降；Polymarket機率分別降至75%和55%，Kalshi則分別為90%和62%。",
+            "一般民眾搜尋焦點在AI資料中心、電網、學貸、退稅、好市多降價、速食店關閉、石油運輸中斷及金價，而非華爾街指標。"
+          ],
+          "tickers": [
+            {
+              "name": "福斯公司",
+              "code": "FOXA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價因收購Roku案下跌10%。"
+            },
+            {
+              "name": "Roku",
+              "code": "ROKU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價因收購消息飆升20%，隨後回落。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價持續上漲，受馬斯克營收預測激勵。"
+            },
+            {
+              "name": "TripAdvisor",
+              "code": "TRIP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價上漲超過10%，因出售The Fork給美國運通。"
+            },
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
+            },
+            {
+              "name": "威騰電子",
+              "code": "WDC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
+            },
+            {
+              "name": "希捷科技",
+              "code": "STX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "In other words, burgers, not bonds."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72532918",
+        "title": "U.S.-Iran peace deal agreed",
+        "published": "Mon, 15 Jun 2026 10:53:45 +0000",
+        "processed_at": "2026-06-16T22:20:38Z",
+        "digest": {
+          "summary_points": [
+            "美國與伊朗達成和平協議，終止戰爭，美國解除封鎖並重新開放荷姆茲海峽，但細節尚未公開",
+            "協議帶動美股期貨上漲，那斯達克100期貨漲約2%，標普500期貨漲逾1%",
+            "原油價格大跌，布蘭特原油跌約5%，WTI跌逾5%",
+            "美國公債殖利率走低",
+            "Anthropic因國安考量被川普政府要求暫停對外國人提供Fable 5及Mythos 5模型，公司被迫全球停用",
+            "英國首相宣布對16歲以下兒童實施社群媒體禁令，涵蓋Snapchat、TikTok、YouTube、Instagram、Facebook、X",
+            "英國政府同時宣布限制直播平台，並探討對18歲以下實施夜間宵禁與無限滾動限制",
+            "經濟日曆：6月紐約州製造業指數、工業生產與產能利用率、NAHB房屋市場指數將公布",
+            "以色列總理納坦雅胡拒絕協議中涉及黎巴嫩的條款，稱以色列不受該條款約束",
+            "協議14點草案包括結束戰爭、美國撤軍、制裁救濟與重建計畫"
+          ],
+          "tickers": [],
+          "market_view": "美股期貨因美伊和平協議而走高，原油價格重挫，公債殖利率下滑",
+          "action_view": "",
+          "notable_quote": "The U.S. and Iran have agreed to a peace deal to end the war, a move that will halt the U.S. blockade and reopen the Strait of Hormuz."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72523307",
         "title": "Fed week's hawkish test",
@@ -1424,6 +2011,32 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "60472ab3-350e-4e47-a612-b4670121babd",
+        "title": "Carmen Li's Plan to Build a Futures Market for Compute",
+        "published": "Mon, 15 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-16T22:50:34Z",
+        "digest": {
+          "summary_points": [
+            "Carmen Li，Compute Exchange 與 Silicon Data 的執行長，正在推出 GPU 期貨與選擇權，並在 CME 上市，尚待監管批准。",
+            "Compute Exchange 是一個 GPU 採購的現貨市場，提供保留合約、遠期合約以及翻新晶片合約。",
+            "Silicon Data 提供 GPU 指數，包括 2025 年在 Bloomberg Terminal 上線的全球首個指數。",
+            "同一顆晶片的效能差異可達 38%，原因來自不同供應商或同一供應商內部的差異，因此指數需要標準化處理。",
+            "GPU 價格波動率約為年化 20-30%（日波動），與健康的大宗商品波動範圍相近，因此避險工具具有合理性。",
+            "近期 GPU 價格上漲：H100 過去三個月漲約 8%，A100 漲 10-15%，B200 價格高於上市水準。",
+            "翻新晶片的殘值很高：H100 在第二年後仍保留約 85 美分對 1 美元。",
+            "GPU 市場的買家多元，包括 AI 新創、傳統企業、推論服務提供商以及新興雲端業者。",
+            "遠期與期貨可幫助多頭（GPU 持有者）與空頭（使用者）對沖成本波動。",
+            "指數編製方法每天收集來自 200 多個資料來源的 15 萬筆以上交易價格，並根據晶片配置與地點進行標準化。",
+            "Token 推論價格自 2024 年 12 月以來翻倍，達到每百萬個 token 約 2.21 美元（混合開源與閉源模型）。",
+            "運算市場結構類似石油，但因晶片非均質與軟體層差異而存在基差風險。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The market always gravitates towards things that actually help them hedge."
+        }
+      },
+      {
         "guid": "90cd8aa8-11c9-4cd3-813a-b467011c7f57",
         "title": "Anjney Midha's Plan to Radically Lower the Price of Compute",
         "published": "Sat, 13 Jun 2026 08:00:00 +0000",
@@ -1621,6 +2234,115 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "dcb62050-40e4-4840-be46-850fa8b7aabc",
+        "title": "科技早餐 6/17｜NVIDIA 發債 250 億美元，AI 資本戰從晶片燒進債券市場",
+        "published": "Tue, 16 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-16T22:43:56Z",
+        "digest": {
+          "summary_points": [
+            "台灣美國商會2026白皮書將能源和基礎建設韌性列為優先議題，AI用電需求增加使能源政策穩定性成為國安議題。",
+            "美國貿易代表署針對強迫勞動產品啟動301調查，建議對台灣產品加徵10%額外關稅；商會表示調查涵蓋60經濟體，非僅針對台灣。",
+            "NVIDIA發行250億美元公司債，認購需求達850億美元，資金用於一般企業用途，強化財務彈性而非大規模資本支出。",
+            "Google威脅情報報告指出中國相關駭客組織入侵美加學術、醫療及軍事機構，目標涵蓋AI、無人機及網路戰計畫。",
+            "阿里巴巴發佈首款支援機器人應用的AI模型，顯示AI競爭從聊天機器人轉向能執行複雜任務的AI代理。",
+            "牛津大學路透新聞學研究所報告顯示社群媒體和影音平台首度超越電視成為全球主要新聞來源，18-24歲族群中50%以此為主要來源。",
+            "約10%受訪者每週使用AI聊天機器人取得新聞，高於去年的7%，新聞入口正被社群平台和AI工具重新分配。",
+            "無人機被視為台灣與美國新的合作機會，美國具設計優勢，台灣擅長規模化生產。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "發行公司債籌資250億美元，強化財務彈性，但非用於大規模資本支出，整體看法中性。"
+            },
+            {
+              "name": "阿里巴巴",
+              "code": "BABA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "發佈支援機器人應用的AI模型，顯示AI競爭方向轉變，但未給出明確投資觀點。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI基礎建設不只考驗晶片與電力，也開始考驗企業的融資能力與資金成本。"
+        }
+      },
+      {
+        "guid": "17a89ca5-d397-44b6-95ad-5ae9b6ce7801",
+        "title": "科技早餐 6/16｜鴻海聯手施耐德搶 AI 資料中心，電力冷卻成基建新門檻",
+        "published": "Mon, 15 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-16T22:23:27Z",
+        "digest": {
+          "summary_points": [
+            "鴻海與施耐德電機合作開發次世代AI資料中心基礎設施，整合電力、冷卻與能源管理，預計今年稍晚展開生產。",
+            "字節跳動與上海AI晶片新創天數自新洽談採購至少5萬片AI晶片，主要用於推論工作，顯示中國AI晶片本土化加速。",
+            "中國本土GPU與AI晶片在中國AI加速伺服器市場佔比已接近41%。",
+            "G7峰會聚焦AI治理，加拿大總理警告過渡依賴少數美國AI供應商的風險，各國需多元化供應。",
+            "NVIDIA向中國客戶推銷新款VERA中央處理器，最快8月供應，CPU銷售限制較少，可能成為重返中國市場的途徑。",
+            "Google與三星洽談，計畫由三星以2nm製程代工部分下一代TPU Icefish的連接記憶體元件，台積電負責主要運算部件，最快2028年量產。",
+            "Google已向Intel訂購超過300萬顆TPU，預計2028年交付，顯示科技公司開始尋求多元晶片供應來源。",
+            "AI基礎建設競爭從伺服器擴大到整座資料中心的電力、散熱與能源管理，對台灣供應鏈提供整合能力機會。"
+          ],
+          "tickers": [
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "與施耐德電機合作，拓展AI資料中心基礎設施市場。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "向中國推銷新款VERA CPU，尋求重返中國市場。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "尋求三星、Intel等多元晶片供應，分散台積電依賴。"
+            },
+            {
+              "name": "三星電子",
+              "code": "",
+              "market": "",
+              "direction": "bullish",
+              "reason": "可能取得Google TPU代工訂單，2nm製程獲客戶認可。"
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "仍是Google TPU主要供應商，但部分訂單轉向三星及Intel。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "獲得Google超過300萬顆TPU訂單，預計2028年交付。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "與Google合作設計Icefish晶片，參與AI晶片供應鏈。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "bd2a4bfc-9619-4d67-8698-9ae27868b447",
         "title": "科技早餐 6/15｜SpaceX 市值衝破 2 兆美元，AI IPO 信心同步受檢驗",

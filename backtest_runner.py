@@ -24,7 +24,7 @@ import requests
 
 NIGHT_FILE = Path(__file__).resolve().parent / "taifex_night_history.json"
 
-US_BETA_PRIOR = 0.23
+US_BETA_PRIOR = 0.31   # 與 morning_report.TAIEX_US_BETA_PRIOR 同步(全合成回測定案)
 H = {"User-Agent": "Mozilla/5.0"}
 
 
@@ -146,10 +146,10 @@ def _mae_stats(errs):
 
 
 # ---------- A. US-only ----------
-def section_a():
-    print("=== A) US-only us_beta(~2 年)===")
-    sox, tsm = pct_by_date(y_close("^SOX")), pct_by_date(y_close("TSM"))
-    twii = y_open_close("^TWII")
+def section_a(period="2y"):
+    print(f"=== A) US-only us_beta(視窗 {period})===")
+    sox, tsm = pct_by_date(y_close("^SOX", period)), pct_by_date(y_close("TSM", period))
+    twii = y_open_close("^TWII", period)
     if not (sox and tsm and twii):
         print("Yahoo 不可用(本機 geo-block 屬正常,請在 Actions 跑)。")
         return None
@@ -222,7 +222,7 @@ def section_b():
             if w_us in (0.70, 0.50, 0.30) and beta in (0.23, 0.31):
                 print(f"  US權重 {w_us:.2f}/夜盤 {1-w_us:.2f}, beta {beta:.2f}: MAE {st[1]:.3f}%  偏誤 {st[2]:+.3f}%{tag}")
     print(f"  → 最小 MAE:US權重 {best[0]:.2f}/夜盤 {1-best[0]:.2f}, beta {best[1]:.2f}(MAE {best[2]:.3f}%)")
-    print("  (若最小 MAE 仍接近 現行 0.70/0.30+beta0.23,代表現行設定已好;夜盤權重明顯較高才考慮調整。)")
+    print("  (若最小 MAE 仍接近 現行 0.70/0.30+beta0.31,代表現行設定已好;夜盤權重明顯較高才考慮調整。)")
 
 
 # ---------- C. 長抱策略 bake-off ----------
@@ -243,12 +243,13 @@ def _metrics(equity):
     return cagr * 100, mdd * 100, vol * 100, sharpe
 
 
-def section_c():
-    print("\n=== C) 長抱策略 bake-off(股利還原 adjusted,~5 年)===")
-    print("  (00631L 為每日 2 倍槓桿,長抱有波動耗損;特別看『趨勢過濾 vs 買進持有』的回撤差。)")
+def section_c(period="5y"):
+    print(f"\n=== C) 長抱策略 bake-off(股利還原 adjusted,視窗 {period})===")
+    print("  (00631L 為每日 2 倍槓桿,長抱有波動耗損;特別看『趨勢過濾 vs 買進持有』的回撤差。"
+          "上市較晚者(00662~2016、00631L~2014)實際區間以其最早資料為準。)")
     for tk, name in (("00662.TW", "00662 富邦NASDAQ"), ("0050.TW", "0050 元大台灣50"),
                      ("2330.TW", "2330 台積電"), ("00631L.TW", "00631L 台灣50正2(2x槓桿)")):
-        cm = y_close(tk, period="5y", adjust=True)
+        cm = y_close(tk, period=period, adjust=True)
         if len(cm) < 250:
             print(f"  {name}: 資料不足(n={len(cm)})")
             continue
@@ -298,10 +299,16 @@ def main():
     except Exception as e:
         print(f"需要 yfinance:{e}", file=sys.stderr)
         return 1
-    a = section_a()
+    # A(us_beta)與 C(策略)各跑 5/10/15 年視窗;B(含夜盤)受 TAIFEX 夜盤史限制,固定 2 年。
+    a_any = None
+    for p in ("5y", "10y", "15y"):
+        print(f"\n##################### 視窗 {p} #####################")
+        r = section_a(p)
+        a_any = a_any or r
+        section_c(p)
+    print("\n##################### B 全合成(2 年,夜盤史所限)#####################")
     section_b()
-    section_c()
-    if a is None:
+    if a_any is None:
         print("\n⚠ 核心校驗資料(Yahoo)不可用 → 本次未產出有效回測結果(在 Actions 應正常)。",
               file=sys.stderr)
         return 2     # 讓 Actions 顯示失敗,避免「綠燈卻無有效回測」誤導

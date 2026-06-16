@@ -554,6 +554,40 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
     assert "台股觀察名單 Top 5" in html
 
 
+def test_render_html_top5_market_state_note_on_big_up_day():
+    """大漲(普漲)但 Top5 仍低分時,卡片要解釋『為何大漲日也都是觀察』。"""
+    q = _full_quotes()
+    q["BREADTH"] = {"advance_ratio": 67.1, "total": 1000}
+    q["TW_UNIVERSE_SNAPSHOT"] = [{
+        "code": str(2300 + i), "name": f"測試{i}", "close": 100.0, "day_pct": 5.0,
+        "ranking_score": 40 + i, "attention_score": 40 + i, "news_catalyst_score": 0,
+        "breakout": {"score": 40}, "smart_money": {"score": 30, "tags": []},
+        "price_forecast": {"confidence": "低",
+                           "3d": {"expected_price": 105.0, "lower": 95.0, "upper": 115.0},
+                           "5d": {"expected_price": 106.0, "lower": 94.0, "upper": 116.0}},
+    } for i in range(5)]
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "為何大漲日也都是" in html and "普漲" in html
+    assert "不隨大盤起伏調整" in html
+
+
+def test_render_html_00662_labeled_fair_value_not_open():
+    """00662 應標為『公允價』並說明非實時開盤價;且解釋大漲日預測為何看似保守。"""
+    # 標籤/footnote 不依賴 fair 數值即會渲染,用 error-fair 避開 00662 卡的其他必填欄
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          "x", "2026-06-16", "每日報")
+    assert "00662 公允價" in html                       # KPI 標籤
+    assert "00662 富邦NASDAQ 公允價" in html             # 六大表列名
+    assert "非開盤價" in html and "刻意保守" in html      # footnote 說明偏差來源
+
+
+def test_build_prompt_biotech_and_transmission_rules():
+    """prompt 應要求生技/醫療專門著墨,且立場理由要寫傳導機制。"""
+    p = mr._build_prompt(_full_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "生技/醫療(本報讀者為醫師" in p
+    assert "傳導機制" in p and "成長股估值折扣" in p
+
+
 # ===== 模型實證 walk-forward 區塊 =====
 
 def test_model_evidence_green_verdict():

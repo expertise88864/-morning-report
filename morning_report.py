@@ -9015,6 +9015,7 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 4. **影響說明必須具體**：要寫「利多/利空了誰、透過什麼機制、幅度多大」。**禁止**「對 X 類股有帶動作用」「情緒帶動」「中性偏正」這類無機制空話——沒講出機制就等於沒分析。
    - **航運**判斷「利多/利空幅度」時可援引油價(WTI,燃油成本)與匯率(USD/TWD)作背景(上方總經區有數據),但「新聞事件」本身仍須是運價/航商/塞港動態,油價匯率只當佐證、不可單獨充當航運新聞。
    - **金融(壽險/金控)**請扣連使用者熟悉的傳導鏈:美股/美債走勢→壽險投資收益、央行利率→銀行淨息差;能寫出這條鏈才算合格。
+   - **生技/醫療(本報讀者為醫師,請特別著墨且寫得具體)**:事件優先序 FDA/EMA 核准或里程碑 > 臨床試驗解盲/進度 > 健保給付 > 併購/授權;機制要明確——新藥上市→專利獨佔期營收、解盲成敗→股價常 ±15–30%、納入健保→營收確定性提升。**禁止**「生技基金看好」「長線可期」這類無事件、無機制的空話。
 5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
 
 每條格式（嚴格遵守）：
@@ -9062,7 +9063,7 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 **第 2 行 — 立場標籤**：
 > **立場：偏多 / 偏空 / 中性**（按淨分自動判定）
 
-**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。
+**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到使用者持股,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
 
 **第 4-6 行**（**每行獨立成段，中間空行**）：
 
@@ -9695,7 +9696,7 @@ def _calibration_note(obj: dict) -> str:
         b = cal.get("bias_pct", 0) or 0
         sign = "+" if b >= 0 else ""
         return (f"已自我校正（近 {cal.get('samples')} 日平均偏誤 {sign}{b}%，"
-                f"原值 {cal.get('raw')}）")
+                f"原值 {cal.get('raw')};屬追趕型修正,市場結構驟變時失效率較高）")
     return f"自我校正未套用：{cal.get('reason', '樣本累積中')}"
 
 
@@ -9976,7 +9977,7 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                 <tr>
                   {stance_tile}
                   {_kpi_tile_numeric("2330 預測", fmt(mid_2330), pct_2330)}
-                  {_kpi_tile_numeric("00662 預測", fmt(fair_price), pct_00662, is_last=True)}
+                  {_kpi_tile_numeric("00662 公允價", fmt(fair_price), pct_00662, is_last=True)}
                 </tr>
               </table>
               <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid rgba(255,255,255,0.12);">
@@ -12594,6 +12595,20 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     "僅反映籌碼、動能與營收結構；下方預測價位僅供參考，<b>不構成選股訊號</b>。"
                     "</p>"
                 ) + low_confidence_note
+            # 市場狀態說明:回答使用者疑問「為何大漲日也都是觀察」(門檻看絕對分不看大盤 + 熔斷只剩結構分)
+            _adv_raw = (quotes.get("BREADTH") or {}).get("advance_ratio")
+            if top_score < 60 and isinstance(_adv_raw, (int, float)):
+                _mkt = (f"今日大盤普漲(上漲家數 {_adv_raw:.0f}%)" if _adv_raw >= 60
+                        else f"今日大盤偏弱(上漲家數 {_adv_raw:.0f}%)" if _adv_raw <= 40
+                        else f"今日大盤分歧(上漲家數 {_adv_raw:.0f}%)")
+                low_confidence_note += (
+                    "<p style='font-size:12px;color:#475569;background:#f8fafc;"
+                    "border-left:4px solid #94a3b8;padding:8px 10px;margin:8px 0;line-height:1.6;'>"
+                    f"<b>為何大漲日也都是「觀察」?</b> {_mkt};但本表門檻看的是<b>個股絕對分</b>"
+                    "(≥80 強、≥60 中度),<b>不隨大盤起伏調整</b>,加上模型熔斷時只計純結構分"
+                    "(籌碼/動能/營收,設計上限約 70),故即使普漲也難破 60。"
+                    "這是「方法論優先結構」,不代表市場冷或個股不好。</p>"
+                )
             title_text = (
                 f"台股觀察名單 Top {len(top5)}（低信心，相對排名）"
                 if top_score < 60
@@ -12985,19 +13000,24 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     _t_last = _tw.get("last")
     _t_pct = ((_t_pred / _t_last - 1) * 100) if (_t_pred and _t_last) else None
     combined_pred_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、個股開盤預測（2330 / 00662 / 0050）</h2>
+        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、個股開盤預測與公允價（2330 / 0050 開盤;00662 公允價）</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
             <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">標的</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">昨收</th>
-            <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預測開盤</th>
+            <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預測開盤／公允價</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預估漲跌</th>
           </tr>
           {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct)}
-          {_pred_row("00662 富邦NASDAQ", _f_last, _f_price, _f_pct)}
+          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:6px 0;">※ 2330 四模型中位數;00662 公允淨值(QQQ×匯率);0050 ≈ 0.5×2330 + 0.5×加權。皆已套用歷史偏誤自我校正。</p>
+        <p style="font-size:12px;color:#94a3b8;margin:6px 0;line-height:1.6;">
+        ※ <b>2330 / 0050 為開盤預測</b>(2330 四模型中位數;0050 ≈ 0.5×2330 + 0.5×加權),已套用歷史偏誤自我校正。<br>
+        ※ <b>00662 為「公允淨值」非開盤價</b>:= QQQ 變動×beta + 匯率變動 + 近期追蹤誤差,代表合理價;
+        實際開盤常因折溢價、夜盤期貨已先反映而與此不同。<br>
+        ※ 為何大漲日預測幅度看似偏小:加權/個股對美股採<b>回測有效 beta</b>(台股盤中早已消化大半美股,
+        開盤跳空只反映約 1/3),極端日另觸發衝突收縮,故屬<b>刻意保守的區間估計</b>,非單一精準值。</p>
         {_render_etf_action_card(_f_price, _t_pred)}
         """
 

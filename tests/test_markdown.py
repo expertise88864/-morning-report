@@ -176,9 +176,44 @@ def test_render_html_keep_mode_does_not_omit_sections(monkeypatch):
                              "digest": {"summary_points": ["重點一", "重點二"], "tickers": []}}]}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
     assert "已暫略" not in html                       # 不省略
-    assert "顯示完整內容" in html                       # 改為提示可點開
+    assert "顯示完整內容" not in html                   # 使用者要求移除「本期內容較長」提示橫幅
     assert "POLICYKEEP" in html and "中華職棒" in html and "EPKEEP" in html  # 全都在
     assert q["PODCAST_SHOWN_EPISODES"] == q["PODCAST_DIGEST"]   # 全集視為已顯示
+
+
+def test_render_html_user_requested_trims_2026_06():
+    """2026-06 使用者批次精簡:市場警告/外資台指期未平倉/中期展望/區間方法/今日立場/
+    已自我校正/個股冗長註腳 全部移除;政策·醫界各只留 3 篇;核心(訊號共識/行情/個股預測)保留。"""
+    q = {**_full_quotes(),
+         "ALERTS": [{"level": "red", "title": "費半急跌", "detail": "SOX 單日跌 -5.71%"}],
+         "TAIFEX_OI": {"foreign_oi_net": -69847, "invest_oi_net": 56894,
+                       "dealer_oi_net": 2219, "date": "2026/06/16"},
+         "TAIEX_PRED": {"last_close": 45809, "pred_open": 45521, "weighted_pct": -0.63,
+                        "ci_lower": 44262, "ci_upper": 46781, "consensus": "偏空 (2/3 訊號)",
+                        "signals": [], "interval_method": "walk-forward 絕對殘差 90% 分位"},
+         "MIDTERM": {"2330": {"trend": "上行",
+                              "metrics": {"pct_5d": 4.1, "ma20_dist_pct": 3.6},
+                              "forecast": {"5d": {"lower": 2359, "upper": 2546},
+                                           "20d": {"lower": 2318, "upper": 2693}}}},
+         "TW_DAILY_INTELLIGENCE": {
+             "policy": [{"title": f"政策{i}", "published": "2026-06-16", "link": "#",
+                         "importance": 5 - i * 0.1} for i in range(5)],
+             "medical": [{"title": f"醫界{i}", "published": "2026-06-16", "link": "#",
+                          "importance": 6 - i * 0.1} for i in range(5)]}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-17", "每日報")
+    # --- 移除項 ---
+    assert "市場警告" not in html and "費半急跌" not in html       # 2. 市場警告
+    assert "外資台指期未平倉" not in html                          # 7. 外資台指期未平倉
+    assert "中期展望" not in html                                  # 6. 中期展望
+    assert "區間方法" not in html and "今日立場：" not in html       # 4. 區間方法/今日立場
+    assert "已自我校正" not in html                                # 4. 已自我校正
+    assert "非開盤價" not in html and "刻意保守" not in html         # 5. 個股冗長註腳
+    # --- 政策/醫界各只留最重要 3 篇 ---
+    assert "政策0" in html and "政策2" in html and "政策3" not in html
+    assert "醫界0" in html and "醫界2" in html and "醫界3" not in html
+    # --- 核心保留 ---
+    assert "訊號共識" in html                                      # 訊號共識保留
+    assert "一、美股收盤行情" in html and "個股開盤預測" in html
 
 
 def test_render_html_low_priority_sections_sit_at_bottom():
@@ -291,7 +326,8 @@ def test_fallback_stance_from_signals():
 
 
 def test_render_html_stance_falls_back_when_llm_incomplete():
-    """LLM 分析未含可解析立場時,頂部立場用訊號共識保底,不顯示「—」。"""
+    """LLM 分析未含可解析立場時,頂部 KPI 立場用訊號共識保底,不顯示「—」。
+    (開盤預測卡的「今日立場」區塊已依使用者要求移除,立場僅留頂部 KPI 條。)"""
     q = {**_full_quotes(), "TAIEX_PRED": {
         "last_close": 45000, "pred_open": 45200, "weighted_pct": 0.44,
         "ci_lower": 44000, "ci_upper": 46000, "consensus": "偏多 (2/3 訊號)",
@@ -299,8 +335,8 @@ def test_render_html_stance_falls_back_when_llm_incomplete():
     # 分析文沒有「我的明確立場/淨分」→ 立場抽取失敗 → 應退回訊號共識「偏多」
     html = mr.render_html(q, {"error": "x"}, {"error": "x"},
                           "七、昨夜重點\n只有新聞沒有立場段落", "2026-06-16", "每日報")
-    assert "今日立場：—" not in html
-    assert "偏多" in html and "訊號參考" in html
+    assert ">偏多</div>" in html        # 頂部 KPI 立場保底顯示「偏多」(不顯示「—」)
+    assert "今日立場：" not in html       # 開盤預測卡的立場區塊已移除
 
 
 def test_extract_summary_basic():
@@ -524,14 +560,14 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
     # 十二、十三已上移到頂端「今日結論」卡,body 不再有「我的明確立場」標題;
     # 其內容(立場/一句話)應出現在頂端(比 taifex 更早)。
     summary_idx = html.find("今日結論")
-    taifex_idx = html.find("外資台指期未平倉")
     policy_idx = html.find("台灣政策近月走向")
     medical_idx = html.find("台灣醫界昨日走向")
     top5_idx = html.find("台股客觀關注排名 Top 1")
-    assert -1 not in (summary_idx, taifex_idx, policy_idx, medical_idx, top5_idx)
+    assert -1 not in (summary_idx, policy_idx, medical_idx, top5_idx)
+    assert "外資台指期未平倉" not in html   # 該區塊已依使用者要求隱藏
     # 依使用者犧牲優先序排版(低優先在最末,Gmail 真要剪先剪政策/醫界):
-    # 結論在頂端,接著 taifex/五檔,最後才是醫學文獻、政策、醫界。
-    assert summary_idx < taifex_idx < top5_idx < policy_idx < medical_idx
+    # 結論在頂端,接著五檔,最後才是醫學文獻、政策、醫界。
+    assert summary_idx < top5_idx < policy_idx < medical_idx
     assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
 
 
@@ -549,14 +585,15 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
         },
     } for index in range(5)]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-03", "每日報")
-    assert "中長線(波段)結構觀察" in html         # 改框架:短線無效→波段參考
-    assert "非買進訊號" in html and "相對排名" in html
-    assert "台股波段觀察名單 Top 5" in html
+    assert "台股波段觀察名單 Top 5" in html         # 低信心→波段框架(標題)
+    assert "相對排名" in html                       # 標題仍標相對排名
+    assert "不是買進訊號" in html                   # 精簡圖例仍保留風險提示
+    assert "中長線(波段)結構觀察" not in html       # 冗長說明已依使用者要求移除
     assert "隔日開" not in html                    # 移除隔日噪音價
 
 
-def test_render_html_top5_market_state_note_on_big_up_day():
-    """大漲(普漲)但 Top5 仍低分時,卡片要解釋『為何大漲日也都是觀察』。"""
+def test_render_html_top5_market_state_note_removed_on_big_up_day():
+    """大漲(普漲)但 Top5 仍低分時,卡片仍正常渲染;『為何大漲日也都是觀察』冗長說明已移除。"""
     q = _full_quotes()
     q["BREADTH"] = {"advance_ratio": 67.1, "total": 1000}
     q["TW_UNIVERSE_SNAPSHOT"] = [{
@@ -568,18 +605,19 @@ def test_render_html_top5_market_state_note_on_big_up_day():
                            "5d": {"expected_price": 106.0, "lower": 94.0, "upper": 116.0}},
     } for i in range(5)]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    assert "為何大漲日也都是" in html and "普漲" in html
-    assert "不隨大盤起伏調整" in html
+    assert "台股波段觀察名單 Top 5" in html         # 大漲日仍正常渲染觀察名單
+    assert "為何大漲日也都是" not in html           # 冗長說明已依使用者要求移除
+    assert "不隨大盤起伏調整" not in html
 
 
 def test_render_html_00662_labeled_fair_value_not_open():
-    """00662 應標為『公允價』並說明非實時開盤價;且解釋大漲日預測為何看似保守。"""
-    # 標籤/footnote 不依賴 fair 數值即會渲染,用 error-fair 避開 00662 卡的其他必填欄
+    """00662 應標為『公允價』(KPI + 表列名);冗長 footnote 說明已依使用者要求移除。"""
+    # 標籤不依賴 fair 數值即會渲染,用 error-fair 避開 00662 卡的其他必填欄
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
                           "x", "2026-06-16", "每日報")
     assert "00662 公允價" in html                       # KPI 標籤
     assert "00662 富邦NASDAQ 公允價" in html             # 六大表列名
-    assert "非開盤價" in html and "刻意保守" in html      # footnote 說明偏差來源
+    assert "刻意保守" not in html                        # footnote 冗長說明已移除(標籤本身保留)
 
 
 def test_render_ma200_status_card():

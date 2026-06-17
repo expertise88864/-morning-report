@@ -10239,7 +10239,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib,
                 f"<div style='font-size:12px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
                 f"入選原因：{htmllib.escape('、'.join(item.get('why') or ['寬召回分類']))}</div>"
                 f"</div>"
-                for item in items
+                for item in items[:3]   # 使用者要求:政策/醫界各只挑最重要 3 篇(已依重要性排序)
             )
         return f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:{background};border-left:5px solid {color};border-radius:4px;">{title}</h2>
@@ -10863,6 +10863,41 @@ def update_event_timeline(structured_events: list[dict],
     return active
 
 
+def translate_event_titles(active: list[dict]) -> list[dict]:
+    """把「延燒中事件」的英文標題譯成一句繁中重點(zh_title);失敗保留原文(degrade)。
+    沿用 journals 的直連 chat/completions + JSON 模式(在 Actions 上最穩)。"""
+    targets = [r for r in (active or []) if str(r.get("latest_title") or "").strip()]
+    if not targets or not DEEPSEEK_API_KEY:
+        return active
+    try:
+        payload = [{"i": i, "title": r["latest_title"]} for i, r in enumerate(targets)]
+        resp = requests.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+            json={
+                "model": os.getenv("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-v4-flash"),
+                "messages": [
+                    {"role": "system", "content":
+                        "你是財經新聞編譯。把每則延燒事件的標題翻成一句台灣繁體中文重點"
+                        "(精簡、保留關鍵公司名/專有名詞,嚴禁簡體字)。"
+                        '輸出 JSON:{"items": [{"i": 索引, "zh": "中文一句"}]}'},
+                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2,
+            },
+            timeout=60)
+        resp.raise_for_status()
+        items = json.loads(resp.json()["choices"][0]["message"]["content"]).get("items", [])
+        zh_map = {int(it.get("i", -1)): str(it.get("zh", "")) for it in items}
+        for i, rec in enumerate(targets):
+            if zh_map.get(i):
+                rec["zh_title"] = zh_map[i]
+    except Exception as e:
+        print(f"[timeline] 事件中文翻譯失敗(顯示原文): {e}", file=sys.stderr)
+    return active
+
+
 def _render_event_timeline_html(active: list[dict], htmllib) -> str:
     if not active:
         return ""
@@ -10870,7 +10905,7 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
         f"<div style='margin:4px 0;font-size:13px;color:#334155;'>"
         f"・<b>{htmllib.escape(str(r['key']).split(':', 1)[-1] or '事件')}</b>"
         f"<span style='color:#b91c1c;font-weight:700;'>(第 {r['days']} 天)</span>　"
-        f"{htmllib.escape(r.get('latest_title', ''))}</div>"
+        f"{htmllib.escape(r.get('zh_title') or r.get('latest_title', ''))}</div>"
         for r in active[:4])
     return (
         '<div style="border:1px solid #c7d2fe;border-radius:10px;padding:8px 14px;'
@@ -12273,41 +12308,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         fmt_macro_row("BTC 比特幣", "BTC", "風險偏好溫度計,24h 交易") +
         fmt_macro_row("銅期貨", "COPPER", "景氣領先指標,與台股出口連動")
     )
-    # === TAIFEX 外資台指期未平倉區塊 ===
-    taifex = quotes.get("TAIFEX_OI", {}) or {}
+    # === 外資台指期未平倉區塊:使用者要求隱藏。===
+    #     TAIFEX_OI 資料仍計算並用於 conflict-shrink / 開盤預測的後台判定,只是不再單獨渲染本區塊。
     taifex_html = ""
-    if taifex.get("foreign_oi_net") is not None:
-        f_oi = taifex.get("foreign_oi_net", 0)
-        f_color = "#dc2626" if f_oi > 0 else "#16a34a"
-        f_sign = "+" if f_oi > 0 else ""
-        if abs(f_oi) > 20000:
-            strength = "強烈訊號"
-            bg = "#fef3c7"
-            border = "#f59e0b"
-        elif abs(f_oi) > 5000:
-            strength = "明確訊號"
-            bg = "#dbeafe"
-            border = "#3b82f6"
-        else:
-            strength = "中性"
-            bg = "#f1f5f9"
-            border = "#94a3b8"
-        direction = "偏多" if f_oi > 0 else "偏空" if f_oi < 0 else "中性"
-        taifex_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">外資台指期未平倉（領先指標）</h2>
-        <div style="background:{bg};border:2px solid {border};border-radius:10px;padding:14px 18px;margin:12px 0;">
-          <div style="font-size:13px;color:#475569;margin-bottom:6px;">資料日期：{taifex.get('date','—')}</div>
-          <div style="font-size:16px;color:#0f172a;line-height:1.8;">
-            <b>外資台指期未平倉淨額：<span style="color:{f_color};font-size:22px;font-weight:700;">{f_sign}{f_oi:,} 口</span> （{direction}・{strength}）</b><br>
-            投信淨額：{taifex.get('invest_oi_net',0):+,d} 口　|
-            自營商淨額：{taifex.get('dealer_oi_net',0):+,d} 口
-          </div>
-          <div style="font-size:12px;color:#64748b;margin-top:8px;">
-            ※ 外資台指期未平倉是領先指標，比現貨買賣超更直接反映法人對今日台股的方向預期。
-            正值=偏多倉位、負值=偏空倉位。&gt;±2萬口為強烈訊號。
-          </div>
-        </div>
-        """
 
     # === SEC 8-K 公告區塊（只顯示「重點科技股」白名單:美股前 10 大市值 + 關鍵半導體 + 台積電）===
     sec_filings = quotes.get("SEC_FILINGS", []) or []
@@ -12365,33 +12368,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ MOPS（公開資訊觀測站）為台灣上市公司法定即時揭露來源。</p>
         """
 
-    # === 警告 Banner (Task H) ===
-    alerts = quotes.get("ALERTS", []) or []
+    # === 市場警告 Banner:使用者要求隱藏(費半急跌/外資台指期淨空等)。===
+    #     ALERTS 資料仍計算並用於下方「開盤預測」的操作紀律判定,只是不再單獨渲染警告區塊。
     alerts_html = ""
-    if alerts:
-        level_colors = {
-            "red":    {"bg": "#fef2f2", "border": "#dc2626", "text": "#991b1b", "icon": "▲"},
-            "orange": {"bg": "#fff7ed", "border": "#ea580c", "text": "#9a3412", "icon": "▲"},
-            "yellow": {"bg": "#fefce8", "border": "#ca8a04", "text": "#854d0e", "icon": "▲"},
-        }
-        alert_items = []
-        for a in alerts:
-            c = level_colors.get(a["level"], level_colors["yellow"])
-            alert_items.append(
-                f'<div style="background:{c["bg"]};border-left:5px solid {c["border"]};'
-                f'padding:12px 16px;margin:8px 0;border-radius:4px;">'
-                f'<div style="color:{c["text"]};font-weight:700;font-size:14px;">'
-                f'{c["icon"]} {a["title"]}</div>'
-                f'<div style="color:{c["text"]};font-size:13px;margin-top:4px;line-height:1.6;">{a["detail"]}</div>'
-                f'</div>'
-            )
-        alerts_html = (
-            '<div style="margin:24px 0;">'
-            '<div style="font-size:13px;color:#475569;font-weight:700;letter-spacing:1px;margin-bottom:8px;">'
-            'MARKET ALERTS ・ 市場警告</div>'
-            + "\n".join(alert_items) +
-            '</div>'
-        )
 
     # === 加權指數預測卡 (Task A) ===
     taiex_pred = quotes.get("TAIEX_PRED", {}) or {}
@@ -12416,41 +12395,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             raw_sign = "+" if raw_pct >= 0 else ""
             raw_note = (f' <span style="color:#94a3b8;font-size:12px;font-weight:400;">'
                         f'(原始訊號 {raw_sign}{raw_pct:.2f}%)</span>')
-        foreign_oi = _safe_number((quotes.get("TAIFEX_OI") or {}).get("foreign_oi_net"))
-        red_alerts = [
-            str(alert.get("title") or "")
-            for alert in quotes.get("ALERTS", []) or []
-            if alert.get("level") == "red"
-        ]
-        if final_pct >= 1.0:
-            open_direction = "偏多開高"
-        elif final_pct <= -1.0:
-            open_direction = "偏空開低"
-        else:
-            open_direction = "中性震盪"
-        if foreign_oi <= -20000 or red_alerts:
-            trade_posture = "保守防追高"
-            posture_reason = (
-                f"外資台指期 {foreign_oi:,.0f} 口偏空"
-                if foreign_oi <= -20000 else f"紅色警告：{'、'.join(red_alerts[:2])}"
-            )
-        elif abs(final_pct) >= 2.5:
-            trade_posture = "高波動控倉"
-            posture_reason = "預測開盤幅度大，容易出現開高/開低後反向震盪"
-        else:
-            trade_posture = "依開盤價位順勢觀察"
-            posture_reason = "開盤方向與風險警告未明顯衝突"
-        stance_label = str(stance.get("label") or "—")
-        stance_score = stance.get("score")
-        _stance_is_signal = stance.get("source") == "signals"
-        stance_text = (
-            f"{stance_label} {stance_score:+d}"
-            if isinstance(stance_score, int)
-            else (f"{stance_label}（訊號參考）" if _stance_is_signal else stance_label)
-        )
-        _stance_origin_note = (
-            "今日立場改採訊號共識(本期 LLM 分析未產出完整立場)"
-            if _stance_is_signal else "今日立場取自「我的明確立場（淨分判定）」、為當日總方向")
+        # 使用者要求:開盤預測卡移除「今日立場/短線開盤/操作紀律」整段,以及「區間方法」「已自我校正」
+        # 註腳(相關判定改放後台);卡片只保留 昨收/預測漲跌/預測開盤/合理區間/訊號共識。
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
@@ -12476,29 +12422,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">合理區間</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{taiex_pred['ci_lower']:,.0f} ~ {taiex_pred['ci_upper']:,.0f}</td>
           </tr>
-          <tr>
-            <td style="padding:6px 14px;background:#f8fafc;color:#94a3b8;font-size:12px;">區間方法</td>
-            <td style="padding:6px 14px;background:#f8fafc;text-align:right;color:#94a3b8;font-size:12px;">{taiex_pred.get('interval_method', '資料缺失')}</td>
-          </tr>
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">訊號共識</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;">{taiex_pred['consensus']}</td>
           </tr>
         </table>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:8px 0 12px;">
-          <div style="font-size:15px;color:#0f172a;font-weight:700;line-height:1.6;">
-            今日立場：{_htmllib.escape(stance_text)}
-          </div>
-          <div style="font-size:13px;color:#334155;line-height:1.7;margin-top:2px;">
-            <b>短線開盤：</b>{open_direction}　<b>操作紀律：</b>{trade_posture}
-          </div>
-          <div style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px;">
-            ※ 三者是同一立場的不同面向,非互相矛盾:{_stance_origin_note}；
-            短線開盤只描述「可能怎麼開」；操作紀律整合外資期貨、警告與波動風險；{posture_reason}。
-          </div>
-        </div>
-        {(lambda c: f'<p style="font-size:12px;color:#94a3b8;margin:6px 0;">{c}</p>' if c else "")(_calibration_note_compact(taiex_pred))}
         """
 
     # === 0050 ETF 開盤預測卡 ===
@@ -12634,16 +12563,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 )
             top_score = max(_safe_number(item.get("ranking_score", item.get("attention_score")))
                             for item in top5)
-            low_confidence_note = (
-                "<p style='font-size:12px;color:#92400e;background:#fffbeb;"
-                "border-left:4px solid #f59e0b;padding:8px 10px;margin:8px 0;"
-                "line-height:1.6;'>"
-                "<b>中長線(波段)結構觀察:</b>回測顯示這些技術/籌碼因子在<b>隔日~數日幾乎無預測力</b>"
-                "(IC≈0)、約<b>一個月(~20 日)才略有訊號</b>,故請以<b>數週波段</b>而非隔日當沖角度看待。"
-                "本表為相對排名(客觀分未達 60)、僅供觀察,<b>非買進訊號</b>。"
-                "</p>"
-                if top_score < 60 else ""
-            )
+            # 使用者要求刪除冗長說明(中長線波段結構觀察);保留下方熔斷紅字與精簡圖例即可。
+            low_confidence_note = ""
             # 熔斷橫幅:回測 Top5 淨報酬為負 → ML 組件已自排名移除,明示使用者本表僅為結構觀察
             if (quotes.get("MODEL_MONITORING", {}) or {}).get("suppress_ranking"):
                 low_confidence_note = (
@@ -12654,20 +12575,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     "僅反映籌碼、動能與營收結構；下方預測價位僅供參考，<b>不構成選股訊號</b>。"
                     "</p>"
                 ) + low_confidence_note
-            # 市場狀態說明:回答使用者疑問「為何大漲日也都是觀察」(門檻看絕對分不看大盤 + 熔斷只剩結構分)
-            _adv_raw = (quotes.get("BREADTH") or {}).get("advance_ratio")
-            if top_score < 60 and isinstance(_adv_raw, (int, float)):
-                _mkt = (f"今日大盤普漲(上漲家數 {_adv_raw:.0f}%)" if _adv_raw >= 60
-                        else f"今日大盤偏弱(上漲家數 {_adv_raw:.0f}%)" if _adv_raw <= 40
-                        else f"今日大盤分歧(上漲家數 {_adv_raw:.0f}%)")
-                low_confidence_note += (
-                    "<p style='font-size:12px;color:#475569;background:#f8fafc;"
-                    "border-left:4px solid #94a3b8;padding:8px 10px;margin:8px 0;line-height:1.6;'>"
-                    f"<b>為何大漲日也都是「觀察」?</b> {_mkt};但本表門檻看的是<b>個股絕對分</b>"
-                    "(≥80 強、≥60 中度),<b>不隨大盤起伏調整</b>,加上模型熔斷時只計純結構分"
-                    "(籌碼/動能/營收,設計上限約 70),故即使普漲也難破 60。"
-                    "這是「方法論優先結構」,不代表市場冷或個股不好。</p>"
-                )
+            # 使用者要求刪除「為何大漲日也都是觀察」說明段(門檻說明已足夠精簡於圖例)。
             title_text = (
                 f"台股波段觀察名單 Top {len(top5)}（中長線・相對排名）"
                 if top_score < 60
@@ -12716,67 +12624,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </div>
         """
 
-    # === 中期展望卡（1 週 / 1 月 統計區間，非點預測）===
-    midterm = quotes.get("MIDTERM", {}) or {}
+    # === 中期展望:使用者要求刪除整段(改以「長線趨勢參考」MA200 卡為準)。===
+    #     MIDTERM 仍於 main 計算並存於 quotes 供後台,只是不再於信中渲染。
     midterm_html = ""
-    if midterm:
-        midterm_rows = []
-        for name in ("2330", "0050", "00662"):
-            entry = midterm.get(name) or {}
-            metrics = entry.get("metrics") or {}
-            fc = entry.get("forecast") or {}
-            f5 = fc.get("5d") or {}
-            f20 = fc.get("20d") or {}
-            trend = entry.get("trend", "—")
-            # 趨勢顏色
-            if "強勢" in trend or "上行" in trend:
-                trend_color = "#dc2626"   # 紅 (TW 漲)
-            elif "弱勢" in trend or "下行" in trend:
-                trend_color = "#16a34a"   # 綠 (TW 跌)
-            else:
-                trend_color = "#64748b"
-            pct_5d = metrics.get("pct_5d")
-            d20 = metrics.get("ma20_dist_pct")
-            pct_5d_color = "#dc2626" if (pct_5d or 0) >= 0 else "#16a34a"
-            d20_color = "#dc2626" if (d20 or 0) >= 0 else "#16a34a"
-            if not f5 or not f20:
-                continue
-            # 兩個範圍：±1σ(常態 68%) / ±1.5σ(極端 87%),都顯示
-            def _range_cell(fc: dict) -> str:
-                lo1 = fc.get("lower_1s") or fc.get("lower")
-                up1 = fc.get("upper_1s") or fc.get("upper")
-                lo15 = fc.get("lower_15s") or fc.get("lower")
-                up15 = fc.get("upper_15s") or fc.get("upper")
-                return (f"<div style='font-size:13px;color:#0f172a;'>"
-                        f"<b>{lo1}–{up1}</b> <span style='font-size:12px;color:#94a3b8;'>常態±1σ</span></div>"
-                        f"<div style='font-size:12px;color:#94a3b8;margin-top:2px;'>"
-                        f"{lo15}–{up15} <span style='font-size:12px;'>極端±1.5σ</span></div>")
-
-            # 手機版卡片式(原 6 欄表在 390px 寬會擠爆):每標的兩行
-            sign5 = "+" if (pct_5d or 0) >= 0 else ""
-            sign20 = "+" if (d20 or 0) >= 0 else ""
-            lo1 = f5.get("lower_1s") or f5.get("lower")
-            up1 = f5.get("upper_1s") or f5.get("upper")
-            lo1m = f20.get("lower_1s") or f20.get("lower")
-            up1m = f20.get("upper_1s") or f20.get("upper")
-            midterm_rows.append(
-                f"<div style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>"
-                f"<div style='font-size:15px;'><b style='color:#0f172a;'>{name}</b>"
-                f"　<span style='color:{trend_color};font-weight:700;font-size:13px;'>{trend}</span>"
-                f"　<span style='color:{pct_5d_color};font-size:13px;'>5日 {sign5}{pct_5d if pct_5d is not None else '—'}%</span>"
-                f"　<span style='color:{d20_color};font-size:13px;'>距MA20 {sign20}{d20 if d20 is not None else '—'}%</span></div>"
-                f"<div style='font-size:13px;color:#475569;margin-top:4px;'>"
-                f"1週 <b>{lo1}–{up1}</b>　|　1月 <b>{lo1m}–{up1m}</b>"
-                f"<span style='color:#94a3b8;font-size:12px;'>（68% 機率區間）</span></div>"
-                f"</div>")
-        if midterm_rows:
-            midterm_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">中期展望（統計區間，非點預測）</h2>
-        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;margin:12px 0;">
-          {''.join(midterm_rows)}
-        </div>
-        <p style="font-size:12px;color:#94a3b8;margin:6px 0;">※ 區間 = 約 68% 機率的統計範圍,不是「會漲到 X」的點預測。</p>
-        """
 
     # === 夜盤台指期卡 (Task B) ===
     night = quotes.get("NIGHT_TXF", {}) or {}
@@ -13071,12 +12921,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
-        <p style="font-size:12px;color:#94a3b8;margin:6px 0;line-height:1.6;">
-        ※ <b>2330 / 0050 為開盤預測</b>(2330 四模型中位數;0050 ≈ 0.5×2330 + 0.5×加權),已套用歷史偏誤自我校正。<br>
-        ※ <b>00662 為「公允淨值」非開盤價</b>:= QQQ 變動×beta + 匯率變動 + 近期追蹤誤差,代表合理價;
-        實際開盤常因折溢價、夜盤期貨已先反映而與此不同。<br>
-        ※ 為何大漲日預測幅度看似偏小:加權/個股對美股採<b>回測有效 beta</b>(台股盤中早已消化大半美股,
-        開盤跳空只反映約 1/3),極端日另觸發衝突收縮,故屬<b>刻意保守的區間估計</b>,非單一精準值。</p>
         {_render_etf_action_card(_f_price, _t_pred)}
         """
 
@@ -13271,13 +13115,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f'⚠ 為避免 Gmail 截斷,本期{";".join(bits)}'
             f'(行情、2330/00662/0050 預測與結論完整保留){tail}。</div>')
         html = _assemble()
-    elif _estimated_email_kb(html) > LIMIT_KB - 4:
-        truncation_notice = (
-            '<div style="margin:0 0 14px;padding:10px 14px;background:#fffbeb;'
-            'border-left:5px solid #f59e0b;border-radius:4px;font-size:12px;color:#78350f;">'
-            '⚠ 本期內容較長,Gmail 信末可能出現「顯示完整內容」連結,點開即可看全文;'
-            '本報未省略任何區塊,且最後才會被摺疊的是政策/醫界(非體育與 Podcast)。</div>')
-        html = _assemble()
+    # 使用者要求移除「本期內容較長」琥珀提示(keep 模式下不再顯示任何提示橫幅)。
     final_kb = _estimated_email_kb(html)   # 含橫幅後的真實大小
     if final_kb > 102:
         print(f"[render] ⚠ 郵件約 {final_kb:.0f}KB,已逾 Gmail 102KB,信末可能被剪",
@@ -14096,7 +13934,8 @@ def main() -> int:
         model_history, call_llm_event_extractor(news, tw_mops))
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     try:
-        quotes["EVENT_TIMELINE"] = update_event_timeline(structured_events, now_tpe)
+        quotes["EVENT_TIMELINE"] = translate_event_titles(
+            update_event_timeline(structured_events, now_tpe))
     except Exception as e:
         print(f"[main] 事件 timeline 失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["EVENT_TIMELINE"] = []

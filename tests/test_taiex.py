@@ -54,24 +54,19 @@ def test_us_signal_rescaled_by_backtest_beta(fake_yf, mkdf):
     assert sum(s["weight"] for s in res["signals"]) < 1.0
 
 
-def test_us_beta_learned_from_live_samples(fake_yf, mkdf):
-    """live 配對樣本 ≥30 筆 → 改用 OLS 過原點動態估 beta,並夾在合理範圍。"""
+def test_us_beta_pinned_to_prior_dynamic_disabled(fake_yf, mkdf):
+    """動態 live OLS 已停用(誤設:學成 US-only ~0.19,餵進 0.70/0.30 blend 會雙重低估)。
+    在改成殘差式規格 + 回測前,不論 live 樣本多少都固定回傳回測先驗 0.31,避免 ≥30 後漂移劣化。"""
     import morning_report as mr
-    ctx = {"us_beta_samples": [(1.0, 0.5)] * 40}   # y=0.5x → k=0.5
+    # 即使 ≥30 筆樣本(舊版會動態估出 0.5),現在仍釘在 0.31
+    ctx = {"us_beta_samples": [(1.0, 0.5)] * 40}
     res = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
                                    night_pct=None, context=ctx)
-    assert res["us_rescale_k"] == 0.5
-    assert "OLS" in res["us_beta_source"]
-    # 夾限:y=2x → k=2 → 夾到上緣 0.60
-    ctx2 = {"us_beta_samples": [(1.0, 2.0)] * 40}
-    res2 = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
-                                    night_pct=None, context=ctx2)
-    assert res2["us_rescale_k"] == mr.TAIEX_US_BETA_BOUNDS[1]
-    # 樣本不足(<30)→ 回測先驗
-    ctx3 = {"us_beta_samples": [(1.0, 0.5)] * 10}
-    res3 = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0,
-                                    night_pct=None, context=ctx3)
-    assert res3["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR
+    assert res["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR == 0.31
+    assert "OLS" not in res["us_beta_source"]   # 不再走動態路徑
+    # 無樣本同樣是先驗
+    res2 = mr.calc_taiex_prediction(_hist(mkdf), sox_pct=1.0, tsm_pct=1.0, night_pct=None)
+    assert res2["us_rescale_k"] == mr.TAIEX_US_BETA_PRIOR
 
 
 def test_night_leg_not_rescaled(fake_yf, mkdf):

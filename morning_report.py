@@ -3014,8 +3014,9 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
 
 
 def fetch_ma200_status() -> dict:
-    """核心持股的 200 日均線(波段長線參考)。回測(5–15 年)顯示「站上 MA200 才持有、跌破轉中性」
-    歷史上能大幅降低最大回撤、報酬接近、Sharpe 較高(尤其高波動標的)。失敗逐檔略過,回 {}。
+    """核心持股的 200 日均線(波段長線參考)。定位為「抗回撤/控波動」而非「增報酬」工具:
+    回測 5–10 年「站上才持有、跌破轉中性」能把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)
+    0050/2330 的 CAGR 反輸買進持有(離場成本+鋸齒洗刷),未計交易成本/證交稅。失敗逐檔略過,回 {}。
     用未還原收盤(與券商看到的報價一致),last 與 MA200 同基準故趨勢判斷一致。"""
     out: dict = {}
     # 對齊使用者實際持股(ETF 為主);00631L 為 2x 槓桿,長抱波動耗損大、回測中
@@ -3091,31 +3092,27 @@ def _taiex_conflict_adjustment(weighted_pct: float,
     return weighted_pct * shrink, round(shrink, 3), reasons[:5]
 
 
-TAIEX_US_BETA_PRIOR = 0.31   # 482 日「全合成」回測(0.70US/0.30夜盤 含 TAIFEX 夜盤)定案:該真實模型下 beta 0.31 的 MAE(0.384%)優於 0.23(0.417%)。US-only 回測曾誤導為 0.23(忽略 0.70 權重+夜盤),含夜盤的真實模型 0.31 較佳;live 樣本≥30 後改動態 OLS
-TAIEX_US_BETA_BOUNDS = (0.15, 0.60)
+TAIEX_US_BETA_PRIOR = 0.31   # 482 日「全合成」回測(0.70US/0.30夜盤 含 TAIFEX 夜盤)定案:該真實模型下 beta 0.31 的 MAE(0.384%)優於 0.23(0.417%)。US-only 回測曾誤導為 0.23(忽略 0.70 權重+夜盤),含夜盤的真實模型 0.31 較佳。動態 live OLS 暫停(見 _taiex_us_beta);日後改殘差式規格 + 回測才重啟
+TAIEX_US_BETA_BOUNDS = (0.15, 0.60)   # 動態 beta 重啟後的夾擠範圍(目前未使用)
 
 
 def _taiex_us_beta(context: Optional[dict]) -> tuple[float, str]:
-    """美股合成訊號 → 加權開盤跳空的縮放係數 k。
+    """美股合成訊號 → 加權開盤跳空的縮放係數 k(目前固定回傳回測先驗 0.31)。
 
     台股日內盤已先消化大部分美股重疊資訊,開盤跳空對前夜美股的真實 beta 偏低。
     482 日「全合成」回測(0.70×us + 0.30×夜盤,含 TAIFEX 夜盤史)顯示:在實際使用的混合模型下,
     beta 0.31 的 MAE(0.384%)優於 0.23(0.417%)——因 0.70 權重已先縮放 US 端,beta 需較高才補足。
     (純 US-only 迴歸曾估得 ~0.23,但那忽略了 0.70 權重與夜盤,屬誤導;以全合成回測為準 → 0.31。)
-    live 配對樣本(history 回填的 實際開盤 vs 當日美股訊號)累積 ≥30 筆後,
-    改用近 60 筆 OLS 過原點動態估計,並夾在合理範圍內。
+
+    ⚠ 動態 live OLS 已停用(2026-06 釘回先驗,經程式碼追蹤 + panel.csv 重現確認):
+    舊版用 (us_combo, 原始開盤 gap) 過原點 OLS,擬合目標「未扣夜盤、也未除以 0.70 權重」,
+    學到的其實是 US-only beta ≈0.19;直接當成 blend 的美股腿係數,有效 beta 只剩 0.70×0.19≈0.13,
+    系統性低估開盤對美股的反應(blend 內正確規格的 beta 重現為 ~0.375,與 0.31 同區)。
+    在改以「殘差式」規格(對 (gap−0.30×night) 除以 0.70×us_combo 迴歸)並通過全合成回測前,
+    一律回傳回測先驗 0.31,避免 ≥30 樣本後自動向 ~0.19 漂移而劣化。us_beta_samples 仍由
+    main() 回填(供日後殘差式動態 beta + 回測使用),此處暫不消費。
     """
-    samples = (context or {}).get("us_beta_samples") or []
-    pairs = [(float(x), float(y)) for x, y in samples
-             if isinstance(x, (int, float)) and isinstance(y, (int, float))]
-    if len(pairs) >= 30:
-        recent = pairs[-60:]
-        sxx = sum(x * x for x, _ in recent)
-        if sxx > 0:
-            k = sum(x * y for x, y in recent) / sxx
-            lo, hi = TAIEX_US_BETA_BOUNDS
-            return max(lo, min(k, hi)), f"live OLS(n={len(recent)})"
-    return TAIEX_US_BETA_PRIOR, "回測先驗"
+    return TAIEX_US_BETA_PRIOR, "回測先驗(0.31;動態暫停)"
 
 
 def calc_taiex_prediction(taiex_hist: Optional[pd.DataFrame],

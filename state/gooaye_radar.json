@@ -1,0 +1,36 @@
+{
+ "gooaye": {
+  "name": "股癌",
+  "episodes": [
+   {
+    "guid": "4f8d2d01-0119-4349-b970-5077910a3362",
+    "title": "EP671 | 🌼",
+    "published": "Wed, 17 Jun 2026 06:29:22 GMT",
+    "processed_at": "2026-06-18T17:16:24Z",
+    "radar_sent_at": "2026-06-18T17:16:24Z",
+    "sectors": [
+     {
+      "name": "功率半導體",
+      "stance": "看多"
+     },
+     {
+      "name": "被動元件",
+      "stance": "中性"
+     },
+     {
+      "name": "臺積電",
+      "stance": "看多"
+     },
+     {
+      "name": "金融股",
+      "stance": "中性"
+     },
+     {
+      "name": "PCB載板",
+      "stance": "中性"
+     }
+    ]
+   }
+  ]
+ }
+}

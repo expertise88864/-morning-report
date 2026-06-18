@@ -1,0 +1,78 @@
+name: Gooaye Radar
+
+# 股癌雷達:獨立於晨報。股癌固定週三/週六下午約 14:00–16:30 台北上架 →
+# 本 workflow 在週三/週六下午~晚上多時段偵測新集 → 轉錄 → LLM 萃取族群+立場 →
+# 看多族群混合驗證展開台股個股 + 籌碼/基本面/動能/新聞 → 寄獨立信。
+# 偵測不到新集即秒退不寄;以 state/gooaye_radar.json 的 guid 去重,同一集只寄一次。
+# 個股為本報依族群自動整理、非股癌推薦、非投資建議。
+on:
+  schedule:
+    # UTC;台北 = UTC+8。週三(3)/週六(6)下午~晚上每 2 小時一次,涵蓋上架+轉錄時間。
+    - cron: "0 6,8,10,12,14 * * 3,6"   # 台北 14:00 / 16:00 / 18:00 / 20:00 / 22:00
+  workflow_dispatch:   # 手動觸發驗收(可搭配 DRY_RUN 不寄信)
+
+permissions:
+  contents: write   # push 回 state/gooaye_radar.json(及 podcast_digest.json 去重標記)
+
+concurrency:
+  group: gooaye-radar
+  cancel-in-progress: false   # 勿中途取消:寄信後若被新一輪 cron 取消、來不及 push state 會重複寄
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110   # 股癌約 50 分、medium 模型轉錄較慢
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache whisper models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: faster-whisper-small-medium-v1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt faster-whisper
+
+      - name: Prefetch whisper model (medium, 股癌 high-accuracy)
+        run: |
+          python -c "from faster_whisper import WhisperModel; WhisperModel('medium', device='cpu', compute_type='int8')"
+
+      - name: Run Gooaye radar
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+          # 留空 RADAR_RECIPIENT → 與晨報同一批收件者
+          RADAR_RECIPIENT: ${{ vars.RADAR_RECIPIENT || secrets.RADAR_RECIPIENT }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_BASE_URL: https://api.deepseek.com
+          PODCAST_WHISPER_MODEL_HIGH: medium
+          TZ: Asia/Taipei
+        run: python gooaye_radar.py
+
+      - name: Commit & push state
+        if: always()
+        run: |
+          git config user.name "morning-report-bot"
+          git config user.email "actions@github.com"
+          # 只 push 雷達自有 state;不碰 podcast_digest.json(去重由晨報讀本檔 radar_sent_at 達成,避免競寫)
+          git add state/gooaye_radar.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update gooaye radar state [skip ci]"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "no state changes"
+          fi

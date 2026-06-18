@@ -11917,11 +11917,32 @@ def _dedup_podcast_episodes(episodes: list[dict]) -> list[dict]:
     return kept
 
 
+def _radar_processed_guids() -> set:
+    """股癌雷達(gooaye_radar.py)已『獨立寄出』的股癌集 guid。雷達寫自己的 state/gooaye_radar.json
+    (不碰 podcast_digest.json,避免兩 workflow 競寫),晨報讀它來去重:雷達已處理的股癌集,
+    晨報 Podcast 段不再重複。讀檔失敗一律回空集(降級為不去重,最壞重複一次)。"""
+    try:
+        p = Path("state/gooaye_radar.json")
+        if not p.exists():
+            return set()
+        data = json.loads(p.read_text(encoding="utf-8"))
+        out = set()
+        for show in (data or {}).values():
+            if isinstance(show, dict):
+                for ep in show.get("episodes") or []:
+                    if ep.get("guid") and ep.get("radar_sent_at"):
+                        out.add(str(ep["guid"]))
+        return out
+    except Exception:
+        return set()
+
+
 def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
     """讀 podcast_digest.py 產出的摘要,回「尚未在信件中顯示過」的近期集。
 
     每集只出現一次(使用者需求):寄信成功後 mark_podcast_episodes_shown 標記
     shown_at,之後的信不再重複;也因此每集可完整展開全部重點而不擔心信件過長。
+    另:股癌若已由「股癌雷達」獨立信處理(radar_processed),晨報此處也跳過,避免兩封重複。
     """
     if not PODCAST_DIGEST_FILE.exists():
         return []
@@ -11931,14 +11952,15 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
         print(f"[podcast] digest 讀取失敗: {e}", file=sys.stderr)
         return []
     out = []
+    radar_guids = _radar_processed_guids()
     now = dt.datetime.now(dt.timezone.utc)
     for show in (data or {}).values():
         if not isinstance(show, dict):
             continue
         unshown_count = 0
         for ep in show.get("episodes") or []:
-            if ep.get("shown_at"):
-                continue   # 已在先前信件顯示過 → 不再重複
+            if ep.get("shown_at") or (ep.get("guid") and str(ep["guid"]) in radar_guids):
+                continue   # 已在先前信件顯示過、或已由股癌雷達獨立信寄出 → 不再重複
             try:
                 ts = dt.datetime.strptime(
                     ep.get("processed_at", ""), "%Y-%m-%dT%H:%M:%SZ"

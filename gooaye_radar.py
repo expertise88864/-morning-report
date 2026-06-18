@@ -15,6 +15,7 @@ import datetime as dt
 import html as _html
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -36,6 +37,22 @@ _STANCES = ("看多", "看空", "中性")
 
 def log(msg: str) -> None:
     print(f"[radar] {msg}", file=sys.stderr)
+
+
+# 表情符號/雜訊符號移除(使用者要求信中不要 emoji;CMoney 新聞標題常夾 😇💕🌟、股癌集名帶 🌼)。
+_EMOJI_RE = re.compile(
+    "[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U00002B00-\U00002BFF"
+    "\U0001F1E6-\U0001F1FF\U00002190-\U000021FF️‍⃣™ℹ⭐✅❌]",
+    flags=re.UNICODE)
+
+
+def _strip_emoji(s: str) -> str:
+    return _EMOJI_RE.sub("", str(s or "")).strip()
+
+
+def _clean(s: str) -> str:
+    """顯示用文字一律:簡轉繁(opencc)+ 去 emoji。"""
+    return _strip_emoji(mr._to_traditional(s))
 
 
 def _gooaye_cfg() -> dict:
@@ -140,7 +157,7 @@ def extract_sectors(transcript: str, model: str) -> dict:
     """回 {episode_summary,key_takeaways,market_view,sectors:[{name,stance,reasoning,evidence}]};
     text 欄位一律過 opencc 轉繁(防 LLM 偶出簡體)。"""
     raw = _deepseek_json(SECTOR_EXTRACT_PROMPT, transcript[:pdg.MAX_TRANSCRIPT_CHARS], model)
-    t = mr._to_traditional
+    t = _clean
     sectors = []
     for s in (raw.get("sectors") or []):
         name = t(str(s.get("name", "")).strip())
@@ -229,20 +246,25 @@ def _norm01(vals: dict, code: str, default_mid: bool = True) -> float:
 
 def rank_top5(entries: list[dict], top_n: int = TOP_N_PER_SECTOR) -> list[dict]:
     """以 radar_score 在『同族群候選池內』相對排序取前 N(各子項池內 min-max 正規化)。
-    radar_score = 0.40 籌碼(smart_money) + 0.20 30日法人 + 0.20 月營收YoY + 0.20 動能。"""
+    radar_score = 0.40 籌碼(smart_money) + 0.20 30日法人 + 0.20 月營收YoY + 0.20 動能。
+    動能 = 0.6×近5日漲幅(池內) + 0.4×未過熱度(距 MA20 絕對值越大越扣,逾 30% 歸零)——
+    避免『暴衝過熱股』只因 5 日大漲就排第一。"""
     if not entries:
         return []
     sm = {e["code"]: _safe(e.get("smart_money", {}).get("score")) for e in entries}
     inst = {e["code"]: _safe(e.get("foreign_30d_lot")) for e in entries}
     rev = {e["code"]: _safe(e.get("rev_yoy_pct")) for e in entries}
-    mom = {e["code"]: _safe(e.get("pct_5d")) for e in entries}
+    p5 = {e["code"]: _safe(e.get("pct_5d")) for e in entries}
     for e in entries:
         c = e["code"]
+        dist = abs(_safe(e.get("ma20_dist_pct")) or 0)
+        not_overheated = max(0.0, 1 - min(dist, 30) / 30)
+        mom_score = 0.6 * _norm01(p5, c) + 0.4 * not_overheated
         e["radar_score"] = round(
             100 * (0.40 * (sm.get(c) or 0) / 100
                    + 0.20 * _norm01(inst, c)
                    + 0.20 * _norm01(rev, c)
-                   + 0.20 * _norm01(mom, c)), 1)
+                   + 0.20 * mom_score), 1)
     entries.sort(key=lambda e: (-(e.get("radar_score") or 0),
                                 -(_safe(e.get("foreign_30d_lot")) or 0), e["code"]))
     return entries[:top_n]
@@ -252,13 +274,55 @@ def _safe(v):
     return v if isinstance(v, (int, float)) else None
 
 
+def _pct(v):
+    return ("%+.1f%%" % v) if isinstance(v, (int, float)) else "—"
+
+
+def _lot(v):
+    return f"{int(v):+,d} 張" if isinstance(v, (int, float)) else "—"
+
+
+def _stock_verdict(e: dict) -> str:
+    """一句話綜合資料面強弱(非買賣建議):點出最強/最弱面 + 過熱警示,協助判斷孰優孰劣。"""
+    pos, neg = [], []
+    fs, ins = _safe(e.get("foreign_streak")) or 0, _safe(e.get("invest_streak")) or 0
+    f30 = _safe(e.get("foreign_30d_lot"))
+    if fs >= 2 and ins >= 2:
+        pos.append("外資投信同步連買")
+    elif fs >= 2:
+        pos.append(f"外資連買{int(fs)}日")
+    if isinstance(f30, (int, float)) and f30 <= -1000:
+        neg.append("30日外資大賣超")
+    sm = (e.get("smart_money") or {}).get("score")
+    if isinstance(sm, (int, float)) and sm <= 10:
+        neg.append("籌碼鬆動")
+    rev = _safe(e.get("rev_yoy_pct"))
+    if isinstance(rev, (int, float)) and rev >= 20:
+        pos.append(f"營收年增{rev:.0f}%")
+    elif isinstance(rev, (int, float)) and rev < 0:
+        neg.append(f"營收衰退{abs(rev):.0f}%")
+    dist = _safe(e.get("ma20_dist_pct"))
+    if isinstance(dist, (int, float)) and dist >= 20:
+        neg.append(f"距MA20+{dist:.0f}%明顯過熱、追高風險")
+    elif isinstance(dist, (int, float)) and dist >= 10:
+        neg.append(f"距MA20+{dist:.0f}%略過熱")
+    score = e.get("radar_score") or 0
+    tone = "資料面偏強" if score >= 55 else ("資料面偏弱" if score < 35 else "資料面中性")
+    bits = []
+    if pos:
+        bits.append("優:" + "、".join(pos))
+    if neg:
+        bits.append("弱:" + "、".join(neg))
+    return f"{tone}({'；'.join(bits)})" if bits else tone
+
+
 def _stock_news_oneliner(code: str, name: str) -> str:
     try:
         feed = mr._feedparser_parse_url_with_timeout(mr._gnews_rss(f"{name} {code}", when="2d"))
         for e in (getattr(feed, "entries", None) or [])[:1]:
             title = str(e.get("title", "")).strip()
             if title:
-                return mr._to_traditional(title)
+                return _clean(title)
     except Exception:
         pass
     return "—"
@@ -285,7 +349,7 @@ def enrich_sector(codes: list[str], whitelist: dict) -> list[dict]:
 
 # ---------- 渲染 ----------
 _DISCLAIM_TOP = (
-    "⚠ 重要聲明:本信個股清單為『本報依股癌本集所談族群、以程式自動整理』,"
+    "重要聲明:本信個股清單為『本報依股癌本集所談族群、以程式自動整理』,"
     "並非股癌節目或主持人推薦的個股(股癌不點名個股,只談族群趨勢)。僅供研究參考,"
     "非投資建議,請自行判斷並承擔風險。"
 )
@@ -306,8 +370,8 @@ def _stance_color(stance: str) -> str:
 def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                       whitelist_ok: bool = True) -> str:
     esc = _html.escape
-    t = mr._to_traditional
-    # 防禦性:顯示前一律轉繁(opencc 對繁體近乎 idempotent),即使上游漏轉也不外漏簡體。
+    t = _clean
+    # 防禦性:顯示前一律轉繁(opencc)+ 去 emoji,即使上游漏處理也不外漏簡體/表情符號。
     extract = {
         "episode_summary": t(extract.get("episode_summary", "")),
         "market_view": t(extract.get("market_view", "")),
@@ -322,7 +386,7 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
         '<div style="font-family:-apple-system,BlinkMacSystemFont,\'PingFang TC\',\'Microsoft JhengHei\',sans-serif;'
         'max-width:680px;margin:0 auto;background:#fff;color:#0f172a;">',
         '<div style="background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;padding:22px 24px;">'
-        '<div style="font-size:13px;letter-spacing:2px;opacity:.85;">📻 GOOAYE RADAR・股癌雷達</div>'
+        '<div style="font-size:13px;letter-spacing:2px;opacity:.85;">GOOAYE RADAR・股癌雷達</div>'
         f'<h1 style="margin:6px 0 0;font-size:22px;">{esc(t(meta.get("title", "")))}</h1>'
         f'<div style="margin-top:4px;font-size:13px;opacity:.9;">{esc(meta.get("published", ""))}'
         '　|　AI 轉錄本集 → 萃取討論族群 → 依族群自動整理台股個股供延伸觀察</div></div>',
@@ -362,42 +426,51 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
             parts.append(head + '<div style="margin:0 16px;font-size:13px;color:#94a3b8;">'
                                 '(此族群未取得通過驗證的上市個股,僅列立場)</div>')
             continue
-        trs = []
+        cards = []
         for i, e in enumerate(stocks, 1):
             sm = e.get("smart_money", {}) or {}
-            inst30 = _safe(e.get("foreign_30d_lot"))
-            rev = _safe(e.get("rev_yoy_pct"))
-            p5 = _safe(e.get("pct_5d"))
+            fs, ins = _safe(e.get("foreign_streak")), _safe(e.get("invest_streak"))
             d20 = _safe(e.get("ma20_dist_pct"))
-            trs.append(
-                f'<tr><td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">{i}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:700;">'
-                f'{esc(str(e.get("code", "")))} {esc(t(str(e.get("name", ""))))}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;">'
-                f'{int(sm.get("score") or 0)} {esc(t(str(sm.get("tag", ""))))}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">'
-                f'{("%+d" % inst30) if inst30 is not None else "—"}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">'
-                f'{("%+.1f%%" % rev) if rev is not None else "—"}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">'
-                f'{("%+.1f%%" % p5) if p5 is not None else "—"} / '
-                f'{("%+.1f%%" % d20) if d20 is not None else "—"}</td>'
-                f'<td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#475569;">'
-                f'{esc(e.get("_news", "—"))}</td></tr>')
+            score = e.get("radar_score")
+            badge = ('<span style="background:#dc2626;color:#fff;font-size:11px;padding:1px 7px;'
+                     'border-radius:8px;margin-left:6px;white-space:nowrap;">本族群資料面首選</span>'
+                     if i == 1 else "")
+            chip_bits = []
+            if isinstance(fs, (int, float)) and fs:
+                chip_bits.append(f"外資連{'買' if fs > 0 else '賣'}{abs(int(fs))}日")
+            if isinstance(ins, (int, float)) and ins:
+                chip_bits.append(f"投信連{'買' if ins > 0 else '賣'}{abs(int(ins))}日")
+            chip_line = "、".join(chip_bits) or "—"
+            heat = (' <span style="color:#b45309;">(明顯過熱)</span>'
+                    if isinstance(d20, (int, float)) and d20 >= 20
+                    else ' <span style="color:#b45309;">(略過熱)</span>'
+                    if isinstance(d20, (int, float)) and d20 >= 10 else "")
+            cards.append(
+                '<div style="border:1px solid #e2e8f0;border-radius:10px;margin:8px 16px;padding:10px 12px;">'
+                f'<div style="font-size:15px;font-weight:700;color:#0f172a;">#{i} '
+                f'{esc(str(e.get("code", "")))} {esc(t(str(e.get("name", ""))))}{badge}'
+                f'<span style="float:right;font-size:12px;color:#64748b;font-weight:400;">綜合分 '
+                f'{score if score is not None else "—"}</span></div>'
+                f'<div style="font-size:13px;color:#334155;margin-top:3px;">收 '
+                f'{_safe(e.get("close")) if _safe(e.get("close")) is not None else "—"} '
+                f'({_pct(_safe(e.get("day_pct")))})　籌碼分 {int(sm.get("score") or 0)} '
+                f'{esc(t(str(sm.get("tag", ""))))}</div>'
+                f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
+                f'籌碼:{esc(chip_line)}　30日外資 {_lot(_safe(e.get("foreign_30d_lot")))}／投信 '
+                f'{_lot(_safe(e.get("invest_30d_lot")))}　大戶持股週變 {_pct(_safe(e.get("tdcc_wow_pct")))}<br>'
+                f'基本面:月營收 YoY {_pct(_safe(e.get("rev_yoy_pct")))}(MoM {_pct(_safe(e.get("rev_mom_pct")))})'
+                f'　EPS {_safe(e.get("eps")) if _safe(e.get("eps")) is not None else "—"}<br>'
+                f'動能:近5日 {_pct(_safe(e.get("pct_5d")))}　距MA20 {_pct(d20)}{heat}</div>'
+                f'<div style="font-size:13px;color:#0f172a;margin-top:6px;">'
+                f'<b>雷達評語:</b>{esc(_stock_verdict(e))}</div>'
+                f'<div style="font-size:12px;color:#64748b;margin-top:3px;">近期新聞:{esc(_clean(e.get("_news") or "—"))}</div>'
+                '</div>')
         parts.append(
-            head +
-            '<table style="width:calc(100% - 32px);margin:6px 16px;border-collapse:collapse;font-size:13px;">'
-            '<tr style="background:#fff7ed;"><th style="padding:6px 8px;text-align:left;">#</th>'
-            '<th style="padding:6px 8px;text-align:left;">代號 名稱</th>'
-            '<th style="padding:6px 8px;text-align:left;">籌碼分</th>'
-            '<th style="padding:6px 8px;text-align:right;">30日外資(張)</th>'
-            '<th style="padding:6px 8px;text-align:right;">月營收YoY</th>'
-            '<th style="padding:6px 8px;text-align:right;">5日 / 距MA20</th>'
-            '<th style="padding:6px 8px;text-align:left;">近期新聞</th></tr>'
-            + "".join(trs) + "</table>"
-            f'<div style="margin:2px 16px 10px;font-size:11px;color:#94a3b8;">'
-            f'※ 本表個股為本報依「{esc(sec["name"])}」主題自動篩選整理,非股癌推薦;籌碼/營收/動能為公開資料、'
-            f'新聞為自動擷取,均不構成買賣建議。</div>')
+            head + "".join(cards) +
+            '<div style="margin:2px 16px 12px;font-size:11px;color:#94a3b8;line-height:1.7;">'
+            '※ <b>排名 = 綜合資料面強弱</b>(籌碼 40%＋30日法人 20%＋月營收 20%＋動能 20%,動能對「距 MA20 過遠」'
+            '會扣分以避免追高過熱股);<b>#1 為資料面相對最強</b>,但這是研究排序、<b>非買賣建議</b>,'
+            f'仍須自行評估題材與基本面。個股為本報依「{esc(sec["name"])}」主題自動整理、非股癌推薦。</div>')
     # 看空/中性族群(只列立場,不展開個股)
     others = [s for s in extract.get("sectors", []) if s["stance"] != "看多"]
     if others:
@@ -467,7 +540,7 @@ def process_new_episode() -> int:
 
     meta = {"title": title, "published": published, "guid": guid}
     html = render_radar_html(meta, extract, sector_stocks, whitelist_ok=bool(whitelist) or not bullish)
-    subject = f"📻 股癌雷達 ｜ {mr._to_traditional(title)[:30]}"
+    subject = f"股癌雷達 ｜ {_clean(title)[:30]}"
     log(f"信件約 {mr._estimated_email_kb(html):.0f}KB;看多族群 {len(bullish)}")
 
     # DRY_RUN:只輸出預覽、不寄信、不標記(避免抑制日後真正寄送);保留供本機/CI 驗收版面。

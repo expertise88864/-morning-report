@@ -620,6 +620,26 @@ def test_render_html_00662_labeled_fair_value_not_open():
     assert "刻意保守" not in html                        # footnote 冗長說明已移除(標籤本身保留)
 
 
+def test_to_traditional_simplified_to_taiwan():
+    """簡體→台灣繁體(opencc s2twp);已是繁體者不變;空字串安全。"""
+    assert mr._to_traditional("") == ""
+    out = mr._to_traditional("中国终结补贴与价格战")
+    assert "中國" in out and "終結" in out and "補貼" in out
+    assert "中国" not in out and "终结" not in out      # 確實已轉繁
+    assert mr._to_traditional("已是繁體中文") == "已是繁體中文"
+
+
+def test_render_event_timeline_converts_simplified_to_traditional():
+    """延燒中事件:陸媒簡體原標題顯示前須轉成繁體(zh_title 缺也走 latest_title)。"""
+    import html as _h
+    rows = mr._render_event_timeline_html(
+        [{"key": "geopolitical:中国外卖", "days": 6,
+          "latest_title": "中国出手终结外卖平台补贴与价格战"}], _h)
+    assert "延燒中事件" in rows
+    assert "中國" in rows and "終結" in rows and "補貼" in rows
+    assert "中国" not in rows and "终结" not in rows      # 簡體不該外漏
+
+
 def test_render_ma200_status_card():
     """長線趨勢(MA200)卡:站上紅/跌破綠 + 距離%,無資料回空。"""
     assert mr._render_ma200_html({}) == ""

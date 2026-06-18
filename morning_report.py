@@ -10863,9 +10863,36 @@ def update_event_timeline(structured_events: list[dict],
     return active
 
 
+_S2TW_CC = None
+_S2TW_CC_TRIED = False
+
+
+def _to_traditional(text: str) -> str:
+    """簡體→台灣繁體(opencc s2twp);外部中文標題(如延燒事件抓自陸媒)正名用。
+    opencc 不可用或轉換失敗時原樣返回,絕不讓報告中斷;已是繁體者近乎不變(idempotent)。"""
+    global _S2TW_CC, _S2TW_CC_TRIED
+    s = str(text or "")
+    if not s:
+        return s
+    if not _S2TW_CC_TRIED:
+        _S2TW_CC_TRIED = True
+        try:
+            from opencc import OpenCC
+            _S2TW_CC = OpenCC("s2twp")
+        except Exception as e:
+            print(f"[opencc] 不可用,中文標題不轉繁: {e}", file=sys.stderr)
+    if _S2TW_CC is None:
+        return s
+    try:
+        return _S2TW_CC.convert(s)
+    except Exception:
+        return s
+
+
 def translate_event_titles(active: list[dict]) -> list[dict]:
     """把「延燒中事件」的英文標題譯成一句繁中重點(zh_title);失敗保留原文(degrade)。
-    沿用 journals 的直連 chat/completions + JSON 模式(在 Actions 上最穩)。"""
+    沿用 journals 的直連 chat/completions + JSON 模式(在 Actions 上最穩)。
+    註:不論翻譯成功與否,顯示時都會再經 _to_traditional 簡轉繁(陸媒原標題多為簡體)。"""
     targets = [r for r in (active or []) if str(r.get("latest_title") or "").strip()]
     if not targets or not DEEPSEEK_API_KEY:
         return active
@@ -10903,9 +10930,9 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
         return ""
     rows = "".join(
         f"<div style='margin:4px 0;font-size:13px;color:#334155;'>"
-        f"・<b>{htmllib.escape(str(r['key']).split(':', 1)[-1] or '事件')}</b>"
+        f"・<b>{htmllib.escape(_to_traditional(str(r['key']).split(':', 1)[-1] or '事件'))}</b>"
         f"<span style='color:#b91c1c;font-weight:700;'>(第 {r['days']} 天)</span>　"
-        f"{htmllib.escape(r.get('zh_title') or r.get('latest_title', ''))}</div>"
+        f"{htmllib.escape(_to_traditional(r.get('zh_title') or r.get('latest_title', '')))}</div>"
         for r in active[:4])
     return (
         '<div style="border:1px solid #c7d2fe;border-radius:10px;padding:8px 14px;'

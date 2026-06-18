@@ -1,14 +1,19 @@
 name: Podcast Digest
 
-# 與晨報完全獨立:每天台北 04:00(UTC 20:00 前一日)轉錄前夜上架的財經 podcast
-# (股癌/財經皓角/財報狗),faster-whisper 本地轉錄(免費)→ DeepSeek 摘要,
-# 寫入 state/podcast_digest.json 並 push。晨報(UTC 22:00)checkout 即讀到;
-# 本 job 失敗不影響寄信。轉錄較慢(50 分鐘集約 10-25 分),故提早到 04:00。
+# 與晨報完全獨立:轉錄上架的財經 podcast(股癌/財經皓角/科技報橘…),
+# faster-whisper 本地轉錄(免費)→ DeepSeek 摘要,寫入 state/podcast_digest.json 並 push。
+# 晨報(UTC 22:00)checkout 即讀到;本 job 失敗不影響寄信。
+# 一天跑 4 次(每 6 小時):(A) 提高抓取頻率 + 清轉錄積壓(忙日一次跑不完的 backlog 當天就補完);
+# (B) 最後一跑 19:30 UTC(03:30 台北)為「寄信前最後一抓」,約 21:10 UTC 完成並 push,
+# 與晨報 22:00 UTC checkout 之間留 ~35 分緩衝(即使 cron 延遲也能趕上;真來不及則退用前一輪)。
+# 先天限制:在晨報送出時(06:00 台北)尚未上架的集仍只能隔天收錄。
 on:
   schedule:
-    # 台北 03:30(UTC 19:30 前一日):預算滿載(150 分音檔 ≈ 60-75 分轉錄)
-    # 也能在晨報(UTC 22:00)前完成並 push
-    - cron: "30 19 * * *"
+    # UTC;台北 = UTC+8。各次自帶 95 分(PODCAST_JOB_BUDGET_MIN)上限,無新集即秒退。
+    - cron: "30 1 * * *"    # 09:30 台北
+    - cron: "30 7 * * *"    # 15:30 台北
+    - cron: "30 13 * * *"   # 21:30 台北
+    - cron: "30 19 * * *"   # 03:30 台北 — 寄信前最後一抓(B),晨報前完成並入庫
   workflow_dispatch:
 
 permissions:

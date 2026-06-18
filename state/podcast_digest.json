@@ -100,6 +100,87 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2341445678",
+        "title": "2026/6/18(四)華許首秀放鷹 升息要來了?AI科技通膨壓得住?【早晨財經速解讀】",
+        "published": "Thu, 18 Jun 2026 01:10:39 +0000",
+        "processed_at": "2026-06-18T12:12:22Z",
+        "digest": {
+          "summary_points": [
+            "聯準會維持利率 3.5-3.75% 不變，12:0 全票通過，但點陣圖顯示 18 位官員中有 9 位預估年底前至少升息一次。",
+            "新任聯準會主席花絮強調價格穩定使命，政策聲明取消前瞻指引，改採更簡短版本，僅 130 字。",
+            "核心 PCE 通膨預測上調至 3.6%，因伊朗戰事推高能源成本，但若中東停戰協議簽署，油價回落可能降低升息壓力。",
+            "兩年期美債殖利率飆升至近 4.2% 創 16 個月新高，市場預期 2026 年底聯邦資金利率達 4.03%。",
+            "伊朗戰事停火有望，油價已跌破 80 美元，卡達宣布一個月內恢復 50% 液化天然氣產能，有利通膨降溫。",
+            "中國 5 月原油進口量降至每日 780 萬桶的八年新低，全球石油需求疲弱可能進一步壓低油價。",
+            "台灣 PPI 年增幅預測暴增至 11.37%，但 CPI 僅 1.96%，主因 AI 設備成本上升但未轉嫁國內消費，通膨向美國輸出。",
+            "科技通膨論：AI 基礎建設推高短期生產者物價，但長期可能因效率提升導致通縮，微軟考慮採用低成本 AI 模型反映成本下降趨勢。",
+            "美國 5 月工業生產月增僅 0.1% 遠遜預期，AI 投資對 GDP 成長貢獻有限，且資料中心面臨地方反對。",
+            "美股半導體股相對大盤超額報酬創歷史新高，費半指數 14 個月上漲 230%，類似 2000 年網路泡沫時期的極端估值。",
+            "個股估值過高：印財（可能為輝達或英特爾）股價營收比達 16 倍，超越 2000 年泡沫高點；美光股價營收比亦處於歷史極端。",
+            "AI 概念股第二季報酬率離散程度擴大至 53 個百分點，創 ChatGPT 問世以來最大，顯示市場極度分化。",
+            "新興市場 ETF 已成台灣與南韓的形狀，台積電、三星、SK 海力士權重高，投資分散策略仍難擺脫 AI 集中度。",
+            "川普通膨支持率跌至 27%，過去五年美國咖啡漲 108%、牛肉漲 64%、汽車保險漲 54%，薪資增幅已落後物價。",
+            "主持人認為只要算力未過剩，AI 泡沫不易破裂，但高估值個股可能以盤代跌，等待 EPS 追上。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指出美光股價營收比處於歷史極端高位，估值過高。"
+            },
+            {
+              "name": "印財",
+              "code": "",
+              "market": "",
+              "direction": "bearish",
+              "reason": "主持人指其股價營收比 16 倍，超越 2000 年泡沫高點，估值過高。"
+            }
+          ],
+          "market_view": "主持人認為聯準會雖釋出鷹派訊號，但油價下跌及需求放緩有利通膨降溫，年底升息預期可能收斂，對後市偏樂觀；但半導體估值已達歷史極端，需留意回調風險。",
+          "action_view": "",
+          "notable_quote": "只要算力還沒有過剩,距離泡沫破滅肯定有一段距離"
+        }
+      },
+      {
+        "guid": "tag:soundcloud,2010:tracks/2340824117",
+        "title": "2026/6/17(三)訂單暴增!亞洲誰最補?台日韓AI 行情吃到飽?【早晨財經速解讀】",
+        "published": "Wed, 17 Jun 2026 01:06:11 +0000",
+        "processed_at": "2026-06-18T12:46:57Z",
+        "digest": {
+          "summary_points": [
+            "費半指數昨日下跌5.7%，納斯達克下跌1.15%，市場對高估值和財報空窗期有所擔憂。",
+            "布蘭特原油跌破每桶80美元，伊朗停火協議簽署，霍爾木茲海峽預計恢復通航，緩解中東地緣風險。",
+            "聯準會FOMC會議召開在即，凱文·沃什首次主持，市場關注其溝通方式及年底是否可能重新升息。",
+            "美國商務部限制Anthropic AI模型使用，首次直接限制AI軟體而非僅晶片，AI監管成新增風險。",
+            "SpaceX IPO後市值突破3兆美元，超越微軟，散戶連續兩天買超金額逾1億美元/日，占全市場散戶買盤7成。",
+            "SpaceX以600億美元收購AI程式開發商Corsair（估值2倍），展現AI自動寫程式成為最成功商業應用。",
+            "美國企業科技投資佔整體投資比重從23年29%升至36%，創歷史新高，三分之一投資流向AI基礎建設。",
+            "多空分歧加劇，SOXS創2005年來第三大ETF單日成交量，SOXX同步入前十，顯示雙方皆放大槓桿壓注半導體。",
+            "韓國5月家庭貸款暴增9.3兆韓元，信用貸款增3.4兆，槓桿ETF規模400億美元，單日波動5%時資金流出可達47億美元。",
+            "台灣國銀外幣放款前四月增2300億元，超過去年全年新增，來自AI投資與海外設廠，預估全年新增規模上看5000億元。",
+            "台灣AI產業貢獻GDP比重約11%，遠高於美國與韓國的2%，從晶圓代工到AI伺服器全面受惠。",
+            "日本央行升息至1%但宣布停止縮減購債，日圓反應平淡；日股盤中突破7萬點創歷史新高。",
+            "韓國股市因記憶體行情與美韓軍事合作（核潛艦建造）獲得基本面信心，但槓桿風險明顯高於台日。",
+            "主持人提醒，資金洪流能重定義估值，但波動加大（單日指數漲跌5%），投資人勿因恐慌而離開趨勢，應保持判斷力、忍耐力與記憶力。",
+            "從台日韓輪動看，背後美國長期透過專利授權與貿易政策主導半導體產業格局，接棒者輪替但核心地位不變。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "IPO後市值突破3兆美元，散戶連續兩天買超逾1億美元，收購Corsair展現AI應用擴張，但估值處於高位且籌碼混亂，後續需觀察基本面支撐。"
+            }
+          ],
+          "market_view": "美股短期面臨估值修正壓力，多空交戰加劇，但資金洪流與AI基建支出持續支撐；台日韓股市受惠AI輪動，當中台灣基本面最扎實，韓國槓桿風險較高，日本則受制於通膨與消費信心。",
+          "action_view": "保持長期投資初衷，利用市場回調時加碼，但避免過度放大槓桿；不因短期波動恐慌殺出，牢記投資需要判斷力、忍耐力與記憶力。",
+          "notable_quote": "買股票靠的是判斷力，持有股票靠的是忍耐力，最終考驗的是記憶力。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2340159440",
         "title": "2026/6/16(二)美股上太空!這次漲去哪?AI副作用出現 誰能駕馭新技術?【早晨財經速解讀】",
         "published": "Tue, 16 Jun 2026 01:06:00 +0000",
@@ -182,6 +263,48 @@
         "shown_at": "2026-06-16T23:24:06Z"
       },
       {
+        "guid": "tag:soundcloud,2010:tracks/2337295955",
+        "title": "【市場觀察】除了台積電 台灣還剩下什麼?",
+        "published": "Fri, 12 Jun 2026 00:25:49 +0000",
+        "processed_at": "2026-06-12T03:12:09Z",
+        "digest": {
+          "summary_points": [
+            "台灣2024年Q1 GDP年增13.69%，股市市值達5.04兆美元，超越英國、法國、加拿大、印度，成為新興市場指數最大權重市場。",
+            "美國從台灣進口金額超越中國，台灣從代工島轉變為美國AI帝國核心基礎設施供應者。",
+            "台灣人均GDP預計2026年挑戰4萬美元，2031年超越南韓22%，但基本工資仍低於日韓。",
+            "科技業高薪導致教育、醫療、國防、社工等領域嚴重缺工，公務員高考錄取率從9.75%升至22.52%。",
+            "少子化加劇，5月出生8433人創單月新低，已53個月生不如死，詐騙、電子煙、毒駕等社會問題惡化。",
+            "政府政策以加薪、補貼、開放移工應對缺工，但失聯移工比率達10%，職場霸凌通報5年增10倍。"
+          ],
+          "tickers": [],
+          "market_view": "台灣經濟因AI半導體產業快速增長，但資源過度集中導致其他部門（教育、醫療、國防、服務業）嚴重缺工，貧富差距擴大，社會結構面臨挑戰。",
+          "action_view": "主持人未提供具體操作建議，但指出買台灣股票即賭國運，並強調需關注AI紅利能否轉化為全面產業升級，否則可能出現市值成長但社會維繫系統失血的風險。",
+          "notable_quote": "AI確實讓台灣變得更富有也讓世界重新認識到台灣的重要性但一個強大的國家不能夠只有晶片股市和GDP更需要能夠維持社會正常運作的人"
+        },
+        "shown_at": "2026-06-13T01:06:36Z"
+      },
+      {
+        "guid": "tag:soundcloud,2010:tracks/2337041408",
+        "title": "2026/6/11(四)通膨創高!升息將來臨?股市還要跌?【早晨財經速解讀】",
+        "published": "Thu, 11 Jun 2026 01:06:24 +0000",
+        "processed_at": "2026-06-12T04:24:08Z",
+        "digest": {
+          "summary_points": [
+            "美國5月CPI年增4.2%創3年新高，能源價格（汽油年漲50%）與科技通膨（PPI年增87%）為主要推動力，但核心商品通膨已現降溫。",
+            "主持人指出聯準會可能因統計分類錯誤（PCE中電腦軟體配件權重不當）而調整通膨計算，若剔除科技通膨，核心PCE可從5.47%降至2.7%。",
+            "中國5月CPI僅1.2%低於預期，石油進口量創8年新低，煉油廠開工率跌至66.9%歷史新低，內需疲軟反而緩解全球能源通膨壓力。",
+            "台灣5月CPI升至2.2%創14個月新高，PPI達14%為疫情來新高，政府透過補貼（如計程車補助1.5萬元）凍漲交通與公用事業價格至9月。",
+            "央行總裁楊總裁表示防屋信用管制「就到這裡」，暗示不再緊縮但未取消，房價跌幅約3%-6%，預售屋價格仍硬，市場預期資金可能回流房市。",
+            "美股四大指數全面下跌，費半跌3.57%，主持人認為這是中期健康回調，有助於清洗籌碼，建議投資人保持耐心。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為美國通膨雖高但結構性因素居多（能源與科技統計錯誤），聯準會可能僅釋放鷹派談話而不升息；整體市場處於中期盤跌回調，反而是健康的籌碼清洗過程，不必過度悲觀。",
+          "action_view": "主持人建議投資人保持耐心與投資原則，避免因短期波動改變策略；認為目前盤跌有助於籌碼沉澱，應觀察成交量縮小後的進場機會。",
+          "notable_quote": "這種盤跌跡象是不是反而是最健康的呢？跌太快也不好，慢慢跌每跌一次反彈一下，市場上始終會出現異性攔山的時候。"
+        },
+        "shown_at": "2026-06-13T01:06:36Z"
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2336450486",
         "title": "2026/6/10(三)多空角力 泡沫論再現?土洋對作!台股還能飆?【早晨財經速解讀】",
         "published": "Wed, 10 Jun 2026 01:06:44 +0000",
@@ -260,48 +383,6 @@
           "market_view": "台股目前處於多空角力階段，散戶買盤強勁支撐，但外資持續調節。整體市場呈現洗盤格局，盤整有助於籌碼清洗。通膨結構從供給型轉向需求型，AI資本支出需生產力突破才能兌現，短期估值回調壓力存在。",
           "action_view": "建議採取觀望或逢低佈局策略，避免追高殺低。AI長線趨勢不變，但須注意利率及通膨對融資成本的影響，短期洗盤有助於健康發展。",
           "notable_quote": "AI行情一定要能夠變現，我們一定要對於未來的生產力有信心。"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2337041408",
-        "title": "2026/6/11(四)通膨創高!升息將來臨?股市還要跌?【早晨財經速解讀】",
-        "published": "Thu, 11 Jun 2026 01:06:24 +0000",
-        "processed_at": "2026-06-12T04:24:08Z",
-        "digest": {
-          "summary_points": [
-            "美國5月CPI年增4.2%創3年新高，能源價格（汽油年漲50%）與科技通膨（PPI年增87%）為主要推動力，但核心商品通膨已現降溫。",
-            "主持人指出聯準會可能因統計分類錯誤（PCE中電腦軟體配件權重不當）而調整通膨計算，若剔除科技通膨，核心PCE可從5.47%降至2.7%。",
-            "中國5月CPI僅1.2%低於預期，石油進口量創8年新低，煉油廠開工率跌至66.9%歷史新低，內需疲軟反而緩解全球能源通膨壓力。",
-            "台灣5月CPI升至2.2%創14個月新高，PPI達14%為疫情來新高，政府透過補貼（如計程車補助1.5萬元）凍漲交通與公用事業價格至9月。",
-            "央行總裁楊總裁表示防屋信用管制「就到這裡」，暗示不再緊縮但未取消，房價跌幅約3%-6%，預售屋價格仍硬，市場預期資金可能回流房市。",
-            "美股四大指數全面下跌，費半跌3.57%，主持人認為這是中期健康回調，有助於清洗籌碼，建議投資人保持耐心。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為美國通膨雖高但結構性因素居多（能源與科技統計錯誤），聯準會可能僅釋放鷹派談話而不升息；整體市場處於中期盤跌回調，反而是健康的籌碼清洗過程，不必過度悲觀。",
-          "action_view": "主持人建議投資人保持耐心與投資原則，避免因短期波動改變策略；認為目前盤跌有助於籌碼沉澱，應觀察成交量縮小後的進場機會。",
-          "notable_quote": "這種盤跌跡象是不是反而是最健康的呢？跌太快也不好，慢慢跌每跌一次反彈一下，市場上始終會出現異性攔山的時候。"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2337295955",
-        "title": "【市場觀察】除了台積電 台灣還剩下什麼?",
-        "published": "Fri, 12 Jun 2026 00:25:49 +0000",
-        "processed_at": "2026-06-12T03:12:09Z",
-        "digest": {
-          "summary_points": [
-            "台灣2024年Q1 GDP年增13.69%，股市市值達5.04兆美元，超越英國、法國、加拿大、印度，成為新興市場指數最大權重市場。",
-            "美國從台灣進口金額超越中國，台灣從代工島轉變為美國AI帝國核心基礎設施供應者。",
-            "台灣人均GDP預計2026年挑戰4萬美元，2031年超越南韓22%，但基本工資仍低於日韓。",
-            "科技業高薪導致教育、醫療、國防、社工等領域嚴重缺工，公務員高考錄取率從9.75%升至22.52%。",
-            "少子化加劇，5月出生8433人創單月新低，已53個月生不如死，詐騙、電子煙、毒駕等社會問題惡化。",
-            "政府政策以加薪、補貼、開放移工應對缺工，但失聯移工比率達10%，職場霸凌通報5年增10倍。"
-          ],
-          "tickers": [],
-          "market_view": "台灣經濟因AI半導體產業快速增長，但資源過度集中導致其他部門（教育、醫療、國防、服務業）嚴重缺工，貧富差距擴大，社會結構面臨挑戰。",
-          "action_view": "主持人未提供具體操作建議，但指出買台灣股票即賭國運，並強調需關注AI紅利能否轉化為全面產業升級，否則可能出現市值成長但社會維繫系統失血的風險。",
-          "notable_quote": "AI確實讓台灣變得更富有也讓世界重新認識到台灣的重要性但一個強大的國家不能夠只有晶片股市和GDP更需要能夠維持社會正常運作的人"
         },
         "shown_at": "2026-06-13T01:06:36Z"
       }
@@ -1260,6 +1341,114 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "13e97c4a-6b01-11f1-83ba-039a4443b9fa",
+        "title": "Iran and the U.S. Make a Deal. What Now?",
+        "published": "Thu, 18 Jun 2026 10:25:00 -0000",
+        "processed_at": "2026-06-18T11:40:00Z",
+        "digest": {
+          "summary_points": [
+            "美國和伊朗簽署和平協議，霍爾木茲海峽重新開放，美國解除對伊朗石油出口的制裁。",
+            "油價大跌：西德州中質原油（WTI）跌破每桶75美元，美國汽油價格降至每加侖4美元以下。",
+            "國際能源署（IEA）警告全球可能出現石油供過於求，預測明年供應每日增加800萬桶，需求僅增加200萬桶。",
+            "分析師預期油價將在2025年第三或第四季度回落至戰前水準，每桶約60至70美元。",
+            "美國股指期貨因協議消息上漲；亞洲股市創歷史新高（韓國KOSPI指數突破9000點，日經指數突破70000點）。",
+            "歐洲市場漲跌互見，市場等待英國央行利率決策（預計維持不變）。",
+            "AI新創公司Base10正完成新一輪融資，估值達130億美元。",
+            "英特爾（Intel）股價在盤前交易中飆升至歷史新高，因川普表示蘋果同意與其合作在美國設計和製造晶片。",
+            "蘋果可能因記憶體晶片成本飆升而提高iPhone售價，iPhone 18 Pro定價為1300美元。",
+            "遠距工作持續：5月約26%的有薪工作日是在家完成，與兩年前相比變化不大。"
+          ],
+          "tickers": [
+            {
+              "name": "英特爾",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價因蘋果合作消息盤前飆升至歷史新高。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "計劃與英特爾合作但可能因晶片成本調漲售價，方向不明。"
+            }
+          ],
+          "market_view": "美國股市對美伊協議反應正面，指數期貨上漲；油價因預期供給增加而下跌。",
+          "action_view": "",
+          "notable_quote": "The IEA is forecasting that next year supply will increase by like 8 million barrels a day and demand will only increase by 2. So now the oil glut is here again."
+        }
+      },
+      {
+        "guid": "93fa98d0-6a91-11f1-8f02-abff7b9999ee",
+        "title": "A Hawkish Fed Signals Higher Interest Rates Ahead",
+        "published": "Wed, 17 Jun 2026 21:13:00 -0000",
+        "processed_at": "2026-06-18T12:16:33Z",
+        "digest": {
+          "summary_points": [
+            "聯準會維持利率在3.5%-3.75%不變，但會議基調鷹派，點陣圖顯示約半數委員預計今年可能升息，較3月無人預期升息大幅轉變。",
+            "新主席Kevin Warsh未參與點陣圖，但計劃召集專家審查聯準會的溝通方式和經濟數據處理流程。",
+            "市場對鷹派訊號強烈反應：公債殖利率上升，那斯達克跌1.3%，標普500跌1.2%，道瓊跌1%。",
+            "蘋果CEO Tim Cook表示，由於記憶體和儲存晶片成本飆升，產品漲價無可避免，未說明具體時間和幅度。",
+            "研究機構Tech Insights估算，下一代iPhone 18 Pro製造成本中晶片從50美元升至200美元，建議零售價可能達1,300美元，可能影響換機意願。",
+            "SpaceX股價今日下跌近5%，為上週五IPO以來首次下跌。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "成本上升導致產品漲價，可能抑制消費者升級需求，利空營收與利潤。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價今日下跌近5%，為IPO後首次下跌，市場情緒偏空。"
+            }
+          ],
+          "market_view": "聯準會鷹派態度及升息預期升溫，導致股市全面下跌，市場對未來流動性收緊感到擔憂。",
+          "action_view": "",
+          "notable_quote": "Price increases were unavoidable."
+        }
+      },
+      {
+        "guid": "1b3e9c2c-6a35-11f1-b5c4-ab7db980371c",
+        "title": "Warsh Faces First Big Test at Fed",
+        "published": "Wed, 17 Jun 2026 09:57:00 -0000",
+        "processed_at": "2026-06-18T12:19:21Z",
+        "digest": {
+          "summary_points": [
+            "聯準會主席凱文·沃什面臨首次利率決策，他傾向減少前瞻指引，但在通膨接近4%且市場渴望明確訊號的時刻，這可能帶來不確定性。",
+            "關鍵張力在於聯準會是否會降息，甚至在今年夏天考慮升息，而川普總統正施壓要求較低利率。",
+            "寶馬(BMW)因中國市場惡化及伊朗戰爭連鎖效應，大幅下修全年財測，股價下跌超過6%。",
+            "美國企業今年至今已發行約540億美元的可轉換債券，較去年同期成長43%，主要用於AI資金需求。",
+            "被稱為「中國Instagram」的小紅書擁有超過4億月活躍用戶，正準備首次公開募股(IPO)。"
+          ],
+          "tickers": [
+            {
+              "name": "寶馬",
+              "code": "BMW.DE",
+              "market": "DE",
+              "direction": "bearish",
+              "reason": "因中國市場疲弱及伊朗戰爭影響而大幅下修全年財測。"
+            },
+            {
+              "name": "微芯科技",
+              "code": "MCHP",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "作為540億美元可轉債發行潮的一部分，但節目中無明確看法。"
+            }
+          ],
+          "market_view": "聯準會在沃什領導下可能維持利率不變（因通膨接近4%），但可能減少前瞻指引；市場渴望明確方向。",
+          "action_view": "",
+          "notable_quote": "The more interesting question isn't even whether they cut. It's how far do Fed officials go this summer towards entertaining raising rates?"
+        }
+      },
+      {
         "guid": "1b42b28e-69c8-11f1-bbb2-bfd154a93dd8",
         "title": "SpaceX Makes a $60 Billion Bet on Its AI Future",
         "published": "Tue, 16 Jun 2026 21:12:00 -0000",
@@ -1398,49 +1587,6 @@
         "shown_at": "2026-06-14T23:06:02Z"
       },
       {
-        "guid": "980644d8-66a4-11f1-ac5e-27044a328bca",
-        "title": "SpaceX Is Now America’s 6th Most Valuable Public Company",
-        "published": "Fri, 12 Jun 2026 21:19:00 -0000",
-        "processed_at": "2026-06-14T20:51:17Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 上市首日開盤價 150 美元，較 IPO 價格 135 美元上漲 11%，收盤報 160.95 美元，漲幅 19%，市值達 2.1 兆美元，成為美國第六大公司。",
-            "Elon Musk 因 SpaceX 上市成為全球首位兆億富翁，身價約 1.2 兆美元，主要來自其持有的 SpaceX 和 Tesla 股票。",
-            "Tesla 股價今日上漲 1.8%。",
-            "道瓊指數領漲，大盤收高 0.7%。",
-            "油價目前約每桶 85 美元，遠低於霍爾木茲海峽關閉時預測的 150-200 美元，主因美國出口增加及中國進口減少。",
-            "中國 5 月原油進口量從日均 1100 萬桶驟降至 780 萬桶，經濟未見明顯衝擊，原因包括戰略儲備、電動車滲透率超過 60%、以煤電及可再生能源為主要電力來源。",
-            "中國長期儲備原油估計達 10-14 億桶，足以支撐數月進口，且石化業若因進口減少而成本上升，將影響製造業。",
-            "美國、伊朗與調解方巴基斯坦今日表示和平協議接近完成，但 Trump 曾近 40 次宣布接近協議卻破局，外界存疑。",
-            "伊朗要求美國解除港口封鎖作為初步姿態，但雙方溝通失誤導致信任不足，預定週日在日內瓦舉行的 Vance 與 Halibath 會面遭伊朗否認。",
-            "聯邦法官阻止 Trump 政府動用 18 億美元的「反武器化基金」，要求政府一週內書面承諾放棄該基金。",
-            "世界盃首戰美國對巴拉圭今晚在洛杉磯舉行，但 Trump 移民政策導致超過 24 名球員、工作人員及官員入境困難，索馬利亞裁判被拘留 10 小時後驅逐出境。",
-            "中國外交部證實拘留美國公民、學生運動人士及記者 Min Zin，指控其涉嫌間諜活動及危害國家安全，此事可能成為美中新的摩擦點。",
-            "SpaceX IPO 慶祝派對今晚於摩根大通總部舉行，提供帶有 JPMorgan 與 SpaceX 標誌的戰斧牛排，特調雞尾酒命名為「未來公開上市」、「星艦」及「獵鷹 9 號」。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO 首日表現亮眼，股價大漲 19%，被譽為近乎完美的上市。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價今日上漲 1.8%。"
-            }
-          ],
-          "market_view": "股市整體上漲，道瓊指數領先，收高 0.7%。",
-          "action_view": "",
-          "notable_quote": "Elon Musk is officially the world's first trillionaire."
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
         "guid": "addc38e8-670e-11f1-8fc7-bff9e686d4ee",
         "title": "What’s News in Markets: AI Whiplash, SpaceX’s Historic IPO, Knicks Fever",
         "published": "Sat, 13 Jun 2026 10:00:00 -0000",
@@ -1525,6 +1671,49 @@
         "shown_at": "2026-06-16T01:08:29Z"
       },
       {
+        "guid": "980644d8-66a4-11f1-ac5e-27044a328bca",
+        "title": "SpaceX Is Now America’s 6th Most Valuable Public Company",
+        "published": "Fri, 12 Jun 2026 21:19:00 -0000",
+        "processed_at": "2026-06-14T20:51:17Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 上市首日開盤價 150 美元，較 IPO 價格 135 美元上漲 11%，收盤報 160.95 美元，漲幅 19%，市值達 2.1 兆美元，成為美國第六大公司。",
+            "Elon Musk 因 SpaceX 上市成為全球首位兆億富翁，身價約 1.2 兆美元，主要來自其持有的 SpaceX 和 Tesla 股票。",
+            "Tesla 股價今日上漲 1.8%。",
+            "道瓊指數領漲，大盤收高 0.7%。",
+            "油價目前約每桶 85 美元，遠低於霍爾木茲海峽關閉時預測的 150-200 美元，主因美國出口增加及中國進口減少。",
+            "中國 5 月原油進口量從日均 1100 萬桶驟降至 780 萬桶，經濟未見明顯衝擊，原因包括戰略儲備、電動車滲透率超過 60%、以煤電及可再生能源為主要電力來源。",
+            "中國長期儲備原油估計達 10-14 億桶，足以支撐數月進口，且石化業若因進口減少而成本上升，將影響製造業。",
+            "美國、伊朗與調解方巴基斯坦今日表示和平協議接近完成，但 Trump 曾近 40 次宣布接近協議卻破局，外界存疑。",
+            "伊朗要求美國解除港口封鎖作為初步姿態，但雙方溝通失誤導致信任不足，預定週日在日內瓦舉行的 Vance 與 Halibath 會面遭伊朗否認。",
+            "聯邦法官阻止 Trump 政府動用 18 億美元的「反武器化基金」，要求政府一週內書面承諾放棄該基金。",
+            "世界盃首戰美國對巴拉圭今晚在洛杉磯舉行，但 Trump 移民政策導致超過 24 名球員、工作人員及官員入境困難，索馬利亞裁判被拘留 10 小時後驅逐出境。",
+            "中國外交部證實拘留美國公民、學生運動人士及記者 Min Zin，指控其涉嫌間諜活動及危害國家安全，此事可能成為美中新的摩擦點。",
+            "SpaceX IPO 慶祝派對今晚於摩根大通總部舉行，提供帶有 JPMorgan 與 SpaceX 標誌的戰斧牛排，特調雞尾酒命名為「未來公開上市」、「星艦」及「獵鷹 9 號」。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "IPO 首日表現亮眼，股價大漲 19%，被譽為近乎完美的上市。"
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價今日上漲 1.8%。"
+            }
+          ],
+          "market_view": "股市整體上漲，道瓊指數領先，收高 0.7%。",
+          "action_view": "",
+          "notable_quote": "Elon Musk is officially the world's first trillionaire."
+        },
+        "shown_at": "2026-06-14T23:06:02Z"
+      },
+      {
         "guid": "5f8be996-664a-11f1-98f8-73196a23bde5",
         "title": "Will SpaceX Skyrocket on Trading Debut?",
         "published": "Fri, 12 Jun 2026 10:30:00 -0000",
@@ -1572,6 +1761,123 @@
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72577037",
+        "title": "Futures find peace",
+        "published": "Thu, 18 Jun 2026 10:39:38 +0000",
+        "processed_at": "2026-06-18T11:37:27Z",
+        "digest": {
+          "summary_points": [
+            "美股期貨上漲：道瓊+524點、S&P 500 +1.3%、那斯達克+2.2%，受美伊備忘錄與Fed新主席政策期待激勵。",
+            "國際油價下跌2.5%至74美元，因美伊協議可能放寬伊朗原油出口限制。",
+            "蘋果CEO庫克表示將調漲部分產品價格，以因應記憶體與儲存成本大幅上漲，但未提供具體品項與時間表。",
+            "星巴克計劃在印度每年新增50-100家門市，目前已有500多家據點，印度為其成長最快市場之一。",
+            "SK海力士向主要客戶出貨次世代AI記憶體晶片樣品，反映AI記憶體需求持續。",
+            "今日經濟數據：初領失業金人數與費城聯邦準備銀行製造業指數。",
+            "明日6月19日為美股休市日（六月節聯邦假日），因此無週五節目。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "公司將因成本上漲而調漲產品售價，影響待觀察。"
+            },
+            {
+              "name": "星巴克",
+              "code": "SBUX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "積極擴張印度市場，每年新增50-100家門市，成長動能強勁。"
+            }
+          ],
+          "market_view": "市場整體正面，受美伊簽署和平備忘錄與Fed新主席政策立場影響，指數期貨全面上漲。",
+          "action_view": "",
+          "notable_quote": "Apple CEO Tim Cook said 'unfortunately price increases are unavoidable' due to rising memory and storage costs."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72569604",
+        "title": "Stocks sink after meeting Warsh the hawk",
+        "published": "Wed, 17 Jun 2026 21:33:22 +0000",
+        "processed_at": "2026-06-18T12:13:13Z",
+        "digest": {
+          "summary_points": [
+            "聯準會維持利率在3.5-3.75%不變，投票一致，但新主席Kevin Warsh的記者會意外鷹派。",
+            "聯準會聲明從341字縮減至130字，取消前瞻指引，Warsh強調對抗通膨是首要任務。",
+            "點陣圖顯示其他委員預測2026年升息，但Warsh本人未在點陣圖上標點。",
+            "市場對Warsh的鷹派立場反應劇烈，標普500指數在決議後兩小時內市值蒸發1.2兆美元。",
+            "標普500指數收跌1.2%，那斯達克跌1.3%，道瓊跌1%。",
+            "短天期公債殖利率攀升，2年期升15個基點至4.21%，10年期升12個基點至4.5%。",
+            "長債殖利率下跌至4.94%，殖利率曲線趨平，顯示市場擔憂長期經濟成長。",
+            "Warsh宣布成立五個工作小組，涵蓋溝通、資產負債表、數據使用、生產力與就業、通膨框架。",
+            "分析師認為Warsh的舉動使聯準會觀察變得更加困難，且權力轉向鷹派。",
+            "SpaceX自上市以來首次下跌，反映市場整體風險情緒惡化。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "聯準會決議後，市場全面下跌，SpaceX也出現上市以來首次下跌。"
+            }
+          ],
+          "market_view": "主持人認為聯準會新主席Warsh的鷹派立場導致市場全面下跌，殖利率上升，股市市值大幅蒸發，整體市場看法偏負面。",
+          "action_view": "",
+          "notable_quote": "Inflation is a choice. You bet it is."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72561507",
+        "title": "Netflix dims lion hopes",
+        "published": "Wed, 17 Jun 2026 10:32:40 +0000",
+        "processed_at": "2026-06-18T12:17:32Z",
+        "digest": {
+          "summary_points": [
+            "Netflix 否認有意收購 Lionsgate Studios，導致 Lionsgate 股價盤前下跌 4%，此前一日曾飆漲 14%。",
+            "BMW 發布獲利預警，將 2024 年營業利潤率預測從 4-6% 下調至 1-3%，歸因於中國市場加速惡化與伊朗戰爭影響，集團稅前利潤預期衰退超過 15%。",
+            "Amazon 面臨美國聯邦貿易委員會（FTC）可能提起的訴訟，涉及誤導廣告商，潛在民事罰款達數十億美元，調查可能於夏季結束。",
+            "Lazy Boy（LZB）股價飆升 16%，因第四財季業績優於預期，凸顯在行業挑戰下強勁的營運執行力。",
+            "美國據傳暫緩對 DeepSeek 及中國科技公司的黑名單計劃，以避免緊張局勢升級。",
+            "今日經濟數據包括零售銷售、成屋待完成銷售指數、FOMC 聲明及聯準會主席記者會。"
+          ],
+          "tickers": [
+            {
+              "name": "Lionsgate Studios",
+              "code": "LGF.A",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價盤前下跌 4%，因 Netflix 否認收購興趣。"
+            },
+            {
+              "name": "BMW",
+              "code": "BMWYY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "發布獲利預警，下調利潤率預測，受中國市場放緩與伊朗戰爭影響。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "可能面臨 FTC 訴訟，但尚未有最終結果。"
+            },
+            {
+              "name": "Lazy Boy",
+              "code": "LZB",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價上漲 16%，因第四財季業績優於預期及強勁營運執行。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72551054",
         "title": "Yum! boxes up Pizza Hut to go",
@@ -1818,48 +2124,6 @@
         "shown_at": "2026-06-14T23:06:02Z"
       },
       {
-        "guid": "https://api.spreaker.com/episode/72496283",
-        "title": "SpaceX enters public orbit",
-        "published": "Fri, 12 Jun 2026 10:09:10 +0000",
-        "processed_at": "2026-06-13T20:52:37Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX IPO 定價每股 135 美元，籌資 750 億美元，估值約 1.8 兆美元，成為史上最大 IPO。",
-            "Seeking Alpha 量化分析師 Steve Kress 認為 SpaceX 不符合其投資標準，因為營收相對較小（180 億美元）且獲利為負。",
-            "David Keller 稱 SpaceX 為遊戲規則改變者，但警告大型 IPO 通常發生在週期後期，引發逆向指標警訊。",
-            "Adobe 公布第二季調整後每股盈餘 5.96 美元，優於預估 5.81 美元；營收 66.2 億美元，優於預估 64.5 億美元，全年財測亦優於預期。",
-            "Adobe 股價當日下跌 6.25%，盤前再跌，儘管財報優於預期；財務長 Dan Dern 將離職。",
-            "川普總統表示與伊朗的協議可能於本週末敲定，但伊朗外交部表示尚未做出最終決定。",
-            "世界銀行將全球成長預測下調至 2.5%，並警告若戰爭嚴重升級可能導致 1.3% 的崩跌。",
-            "那斯達克 100 指數正在進行調整，獎勵贏家並剔除落後者。",
-            "Cintessa Pharmaceuticals 股東將投票表決 Eli Lilly 的收購要約。",
-            "KLA Corporation 在 1 拆 10 股票分割後開始以調整基礎交易。",
-            "歐洲血液學協會大會在斯德哥爾摩開幕，焦點公司包括 Novartis 和 Eli Lilly。",
-            "盤前：股指期貨漲跌互見，原油下跌 4.6% 至 83 美元，比特幣下跌 0.3% 至 63,000 美元，黃金上漲 0.2% 至 42.21 美元。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "SPCX",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師看法分歧：Steve Kress 因缺乏獲利且營收偏小而看空，David Keller 則認為是遊戲規則改變者但提及逆向指標風險。"
-            },
-            {
-              "name": "Adobe",
-              "code": "ADBE",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "儘管財報優於預期，股價仍下跌 6.25%，財務長離職增添不確定性。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
         "guid": "https://api.spreaker.com/episode/72502284",
         "title": "Wall Street Roundup: Trillion dollar baby",
         "published": "Fri, 12 Jun 2026 17:55:22 +0000",
@@ -1914,33 +2178,46 @@
         "shown_at": "2026-06-16T01:08:29Z"
       },
       {
-        "guid": "https://api.spreaker.com/episode/72456975",
-        "title": "Iran strikes hit futures",
-        "published": "Wed, 10 Jun 2026 11:03:10 +0000",
-        "processed_at": "2026-06-12T04:12:15Z",
+        "guid": "https://api.spreaker.com/episode/72496283",
+        "title": "SpaceX enters public orbit",
+        "published": "Fri, 12 Jun 2026 10:09:10 +0000",
+        "processed_at": "2026-06-13T20:52:37Z",
         "digest": {
           "summary_points": [
-            "美國對伊朗發動報復性打擊，引發中東緊張局勢升級，美股期貨普遍下跌，道瓊期貨跌0.7%，標普500期貨跌0.8%，納斯達克期貨跌1.3%。",
-            "預測市場平台Kalshi計畫要求用戶在涉及內線資訊的合約中揭露雇主，以防止內線交易與市場操縱。",
-            "SK海力士據報目標最早8月在美國上市，預估募資額可達140億美元，SEC預計6月22日當週批准其ADR申請。",
-            "比亞迪董事長預測五年內奪下全球汽車銷量第一，並表示公司正在加速擴張。",
-            "SpaceX首次公開發行（IPO）需求已接近超額認購四倍，反映市場高度興趣。",
-            "Cracker Barrel股價上漲7%，因季度財報優於預期並上調財測，顯示連鎖餐廳正在轉型回升。"
+            "SpaceX IPO 定價每股 135 美元，籌資 750 億美元，估值約 1.8 兆美元，成為史上最大 IPO。",
+            "Seeking Alpha 量化分析師 Steve Kress 認為 SpaceX 不符合其投資標準，因為營收相對較小（180 億美元）且獲利為負。",
+            "David Keller 稱 SpaceX 為遊戲規則改變者，但警告大型 IPO 通常發生在週期後期，引發逆向指標警訊。",
+            "Adobe 公布第二季調整後每股盈餘 5.96 美元，優於預估 5.81 美元；營收 66.2 億美元，優於預估 64.5 億美元，全年財測亦優於預期。",
+            "Adobe 股價當日下跌 6.25%，盤前再跌，儘管財報優於預期；財務長 Dan Dern 將離職。",
+            "川普總統表示與伊朗的協議可能於本週末敲定，但伊朗外交部表示尚未做出最終決定。",
+            "世界銀行將全球成長預測下調至 2.5%，並警告若戰爭嚴重升級可能導致 1.3% 的崩跌。",
+            "那斯達克 100 指數正在進行調整，獎勵贏家並剔除落後者。",
+            "Cintessa Pharmaceuticals 股東將投票表決 Eli Lilly 的收購要約。",
+            "KLA Corporation 在 1 拆 10 股票分割後開始以調整基礎交易。",
+            "歐洲血液學協會大會在斯德哥爾摩開幕，焦點公司包括 Novartis 和 Eli Lilly。",
+            "盤前：股指期貨漲跌互見，原油下跌 4.6% 至 83 美元，比特幣下跌 0.3% 至 63,000 美元，黃金上漲 0.2% 至 42.21 美元。"
           ],
           "tickers": [
             {
-              "name": "Cracker Barrel Old Country Store",
-              "code": "CBRL",
+              "name": "SpaceX",
+              "code": "SPCX",
               "market": "US",
-              "direction": "bullish",
-              "reason": "股價上漲7%，因季度財報優於預期並上調財測，顯示轉型回升態勢。"
+              "direction": "neutral",
+              "reason": "分析師看法分歧：Steve Kress 因缺乏獲利且營收偏小而看空，David Keller 則認為是遊戲規則改變者但提及逆向指標風險。"
+            },
+            {
+              "name": "Adobe",
+              "code": "ADBE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "儘管財報優於預期，股價仍下跌 6.25%，財務長離職增添不確定性。"
             }
           ],
-          "market_view": "美股期貨因美國對伊朗打擊而下跌，中東緊張局勢升溫，市場關注今日CPI數據。",
+          "market_view": "",
           "action_view": "",
-          "notable_quote": "Cracker Barrel is up 7% after a beat and raise quarter that showed the chain is in turnaround mode."
+          "notable_quote": ""
         },
-        "shown_at": "2026-06-13T01:06:36Z"
+        "shown_at": "2026-06-14T23:06:02Z"
       },
       {
         "guid": "https://api.spreaker.com/episode/72476178",
@@ -2017,6 +2294,35 @@
           "market_view": "Stock index futures are higher before the bell; crude oil down 0.5%, Bitcoin up 2%, gold up 0.3%.",
           "action_view": "",
           "notable_quote": "The business has plummeted to a 3% accountability margin, which refers to the metric Microsoft uses to measure its profit margin."
+        },
+        "shown_at": "2026-06-13T01:06:36Z"
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72456975",
+        "title": "Iran strikes hit futures",
+        "published": "Wed, 10 Jun 2026 11:03:10 +0000",
+        "processed_at": "2026-06-12T04:12:15Z",
+        "digest": {
+          "summary_points": [
+            "美國對伊朗發動報復性打擊，引發中東緊張局勢升級，美股期貨普遍下跌，道瓊期貨跌0.7%，標普500期貨跌0.8%，納斯達克期貨跌1.3%。",
+            "預測市場平台Kalshi計畫要求用戶在涉及內線資訊的合約中揭露雇主，以防止內線交易與市場操縱。",
+            "SK海力士據報目標最早8月在美國上市，預估募資額可達140億美元，SEC預計6月22日當週批准其ADR申請。",
+            "比亞迪董事長預測五年內奪下全球汽車銷量第一，並表示公司正在加速擴張。",
+            "SpaceX首次公開發行（IPO）需求已接近超額認購四倍，反映市場高度興趣。",
+            "Cracker Barrel股價上漲7%，因季度財報優於預期並上調財測，顯示連鎖餐廳正在轉型回升。"
+          ],
+          "tickers": [
+            {
+              "name": "Cracker Barrel Old Country Store",
+              "code": "CBRL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價上漲7%，因季度財報優於預期並上調財測，顯示轉型回升態勢。"
+            }
+          ],
+          "market_view": "美股期貨因美國對伊朗打擊而下跌，中東緊張局勢升溫，市場關注今日CPI數據。",
+          "action_view": "",
+          "notable_quote": "Cracker Barrel is up 7% after a beat and raise quarter that showed the chain is in turnaround mode."
         },
         "shown_at": "2026-06-13T01:06:36Z"
       }
@@ -2281,6 +2587,56 @@
     "name": "科技報橘",
     "episodes": [
       {
+        "guid": "fd32cf91-d9a2-4b7d-bb76-6d194f193c51",
+        "title": "科技早餐 6/18｜Microsoft 評估 DeepSeek 進 Copilot，企業 AI 成本戰開打",
+        "published": "Wed, 17 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-18T12:14:45Z",
+        "digest": {
+          "summary_points": [
+            "微軟正評估將中國AI新創DeepSync的模型納入Co-Pilot，作為低成本選項，企業AI服務可能轉向按算力消耗計費。",
+            "DeepSync首輪融資超74億美元，估值超500億美元，成為中國估值最高AI新創，美國政府暫緩將其列入實體清單。",
+            "ChatGPT全球AI助理月活躍用戶市佔率降至46.4%（首度跌破50%），月活躍用戶約11億；Google Gemini約6.62億、Anthropic約2.45億。",
+            "企業AI訂閱支出方面，Anthropic在5月佔比升至41%，首次超越OpenAI的39.5%，主因Claude Code等開發工具企業採用增加。",
+            "SpaceX宣布以600億美元全股票交易收購AI開發工具Curseer母公司，交易預計2026年第三季完成。",
+            "英特爾宣布18AP先進製程進入風險量產，相較18A可提升9%效能或降低18%功耗，且相容設計規則，目標搶進晶圓代工市場。",
+            "黃仁勳表示AI需新社會規範，鼓勵使用AI，並指出AI資料中心需龐大能源，美國需投入更多能源。"
+          ],
+          "tickers": [
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "評估納入DeepSync模型，企業AI成本壓力升高，多模型策略調整。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Gemini用戶市佔率第二，但未提及具體影響。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "18AP製程進入風險量產，有望搶進晶圓代工，但量產仍有不確定性。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "黃仁勳談AI能源需求與社會規範，未直接評論公司前景。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "dcb62050-40e4-4840-be46-850fa8b7aabc",
         "title": "科技早餐 6/17｜NVIDIA 發債 250 億美元，AI 資本戰從晶片燒進債券市場",
         "published": "Tue, 16 Jun 2026 21:30:00 GMT",
@@ -2460,6 +2816,55 @@
         "shown_at": "2026-06-14T23:06:02Z"
       },
       {
+        "guid": "0299f2f7-8518-4bc2-b049-f4e5277b1eac",
+        "title": "科技早餐 6/12｜台積電捲入美國專利戰，OpenAI 準備 IPO 又打價格戰",
+        "published": "Thu, 11 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-12T04:13:42Z",
+        "digest": {
+          "summary_points": [
+            "台積電遭專利侵權申訴至美國ITC，美國國會要求強力執法，凸顯其在AI供應鏈戰略地位與專利執法間的取捨。",
+            "SK海力士加速擴產，目標2034年前晶圓產能提高三倍，並與NVIDIA合作設計AI工廠，反映AI記憶體需求強勁。",
+            "OpenAI預計一年內上市，已保密遞交IPO申請，同時考慮降價以應對Anthropic競爭，成本壓力成公開市場檢驗重點。",
+            "加拿大推出5億加幣AI戰略基金，目標2034年企業AI採用率達60%，並將AI聊天機器人納入社群媒體安全責任。",
+            "Anthropic呼籲聯邦AI監管標準，並提醒應建立就業安全網因應AI可能造成的勞動市場衝擊。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "面臨專利訴訟風險，但戰略重要性高"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI監管的討論已經從模型安全、國家安全進一步延伸到就業衝擊與社會制度準備"
+        },
+        "shown_at": "2026-06-13T01:06:36Z"
+      },
+      {
+        "guid": "73ed7cc0-ccf0-4ba8-9442-921faff46751",
+        "title": "科技早餐 6/11｜OpenAI 傳租 10GW 園區，AI 算力戰從模型燒到電力與台積電",
+        "published": "Wed, 10 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-12T06:22:49Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI 洽談租用俄亥俄州能源部土地上資料中心園區，規劃容量達 10 幾 GW，建設成本至少 5 千億美元，可能獲 NVIDIA 財務支持，第一階段預計 2028 年啟用。",
+            "台積電財務長黃仁昭表示不排除未來調整價格，但不會劇烈漲幅；最先進製程生產將持續留在台灣。",
+            "台積電五月營收達新台幣 4169.75 億元創單月歷史新高，年增 30.1%，反映 AI 需求強健。",
+            "Anthropic 開放最強公開模型 CloudFabric5，但限制資安、生物與化學相關查詢，防止被用於惡意目的。",
+            "Crowdstrike 報告指出與中國有關的駭客對科技公司構成最大間諜威脅，鎖定半導體、IT 服務、軟體等，AI 公司成高價值目標。",
+            "Meta 投入 1.15 億美元啟動 America's Workforce Academy，培訓 AI 資料中心建設所需的技術工人，應對勞動力短缺。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI 需求仍然強健 但產能 成本與價格壓力也正一起反映到全球 AI 基礎建設支出"
+        },
+        "shown_at": "2026-06-13T01:06:36Z"
+      },
+      {
         "guid": "0e24423d-9921-41d8-ad19-cf32e4b68188",
         "title": "科技早餐 6/10｜OpenAI、Anthropic 排隊 IPO，AI 估值進入公開市場檢驗",
         "published": "Tue, 09 Jun 2026 22:50:00 GMT",
@@ -2536,55 +2941,6 @@
           "notable_quote": "最好的還在後頭"
         },
         "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "73ed7cc0-ccf0-4ba8-9442-921faff46751",
-        "title": "科技早餐 6/11｜OpenAI 傳租 10GW 園區，AI 算力戰從模型燒到電力與台積電",
-        "published": "Wed, 10 Jun 2026 21:30:00 GMT",
-        "processed_at": "2026-06-12T06:22:49Z",
-        "digest": {
-          "summary_points": [
-            "OpenAI 洽談租用俄亥俄州能源部土地上資料中心園區，規劃容量達 10 幾 GW，建設成本至少 5 千億美元，可能獲 NVIDIA 財務支持，第一階段預計 2028 年啟用。",
-            "台積電財務長黃仁昭表示不排除未來調整價格，但不會劇烈漲幅；最先進製程生產將持續留在台灣。",
-            "台積電五月營收達新台幣 4169.75 億元創單月歷史新高，年增 30.1%，反映 AI 需求強健。",
-            "Anthropic 開放最強公開模型 CloudFabric5，但限制資安、生物與化學相關查詢，防止被用於惡意目的。",
-            "Crowdstrike 報告指出與中國有關的駭客對科技公司構成最大間諜威脅，鎖定半導體、IT 服務、軟體等，AI 公司成高價值目標。",
-            "Meta 投入 1.15 億美元啟動 America's Workforce Academy，培訓 AI 資料中心建設所需的技術工人，應對勞動力短缺。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "AI 需求仍然強健 但產能 成本與價格壓力也正一起反映到全球 AI 基礎建設支出"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
-      },
-      {
-        "guid": "0299f2f7-8518-4bc2-b049-f4e5277b1eac",
-        "title": "科技早餐 6/12｜台積電捲入美國專利戰，OpenAI 準備 IPO 又打價格戰",
-        "published": "Thu, 11 Jun 2026 21:30:00 GMT",
-        "processed_at": "2026-06-12T04:13:42Z",
-        "digest": {
-          "summary_points": [
-            "台積電遭專利侵權申訴至美國ITC，美國國會要求強力執法，凸顯其在AI供應鏈戰略地位與專利執法間的取捨。",
-            "SK海力士加速擴產，目標2034年前晶圓產能提高三倍，並與NVIDIA合作設計AI工廠，反映AI記憶體需求強勁。",
-            "OpenAI預計一年內上市，已保密遞交IPO申請，同時考慮降價以應對Anthropic競爭，成本壓力成公開市場檢驗重點。",
-            "加拿大推出5億加幣AI戰略基金，目標2034年企業AI採用率達60%，並將AI聊天機器人納入社群媒體安全責任。",
-            "Anthropic呼籲聯邦AI監管標準，並提醒應建立就業安全網因應AI可能造成的勞動市場衝擊。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "面臨專利訴訟風險，但戰略重要性高"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "AI監管的討論已經從模型安全、國家安全進一步延伸到就業衝擊與社會制度準備"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
       }
     ]
   },

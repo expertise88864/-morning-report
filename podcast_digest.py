@@ -381,6 +381,33 @@ def find_new_episode(cfg: dict, state: dict):
     return found[0] if found else None
 
 
+def _stored_pub_dt(ep: dict) -> dt.datetime:
+    """已存集的發布時間(供新→舊排序):先用 published(RFC822),退回 processed_at,再退回最小值。"""
+    pub = str(ep.get("published") or "").strip()
+    if pub:
+        try:
+            d = parsedate_to_datetime(pub)
+            return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+        except Exception:
+            pass
+    proc = str(ep.get("processed_at") or "").strip()
+    if proc:
+        try:
+            return dt.datetime.strptime(proc, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+        except Exception:
+            pass
+    return dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+
+
+def _process_order_key(item):
+    """轉錄處理順序:優先級小者先;同優先級內『最新集先轉』(新→舊,確保旗艦最新集在預算內);
+    再以時長短者為次要鍵(同日多更時先轉短的、較省預算)。無發布日者視為最舊、最後處理。"""
+    cfg, entry, _audio, dur = item
+    pub = _entry_published_at(entry)
+    ts = pub.timestamp() if pub else 0.0
+    return (cfg.get("priority", 9), -ts, dur)
+
+
 def process_episode(cfg: dict, state: dict, entry, audio_url: str) -> bool:
     """下載 → 轉錄 → DeepSeek 摘要 → 寫入 state。"""
     key, name = cfg["key"], cfg["name"]
@@ -402,13 +429,17 @@ def process_episode(cfg: dict, state: dict, entry, audio_url: str) -> bool:
         tmp.unlink(missing_ok=True)
 
     show = state.setdefault(key, {"name": name, "episodes": []})
-    show["episodes"].insert(0, {
+    show["episodes"].append({
         "guid": guid,
         "title": str(entry.get("title", ""))[:120],
         "published": str(entry.get("published", "")),
         "processed_at": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "digest": digest,
     })
+    # 與轉錄順序解耦:一律依發布時間新→舊排序儲存,確保晨報挑到「最新未顯示」、
+    # 截斷時也保留最新 KEEP_EPISODES_PER_SHOW 集(原本靠 insert(0)+舊集先轉達成,
+    # 改最新先轉後需顯式排序,否則顯示會變舊→新)。
+    show["episodes"].sort(key=_stored_pub_dt, reverse=True)
     show["episodes"] = show["episodes"][:KEEP_EPISODES_PER_SHOW]
     log(f"{name}: 摘要完成({len(digest.get('summary_points', []))} 條重點、"
         f"{len(digest.get('tickers', []))} 檔個股)")
@@ -432,14 +463,11 @@ def main() -> int:
             log(f"{cfg['name']} 盤點失敗: {str(e)[:120]}")
     log(f"盤點完成:{len(pending)} 個節目有新集")
 
-    # 第二輪:優先級排序 + 每日轉錄預算(音檔總分鐘),超出者留待明天
-    # Process older backlog first within each priority. Because process_episode inserts
-    # at index 0, the newest episode ends up first in persisted display order.
-    pending.sort(key=lambda item: (
-        item[0].get("priority", 9),
-        _entry_published_at(item[1]) or dt.datetime.max.replace(tzinfo=dt.timezone.utc),
-        item[3],
-    ))
+    # 第二輪:優先級排序 + 每日轉錄預算(音檔總分鐘),超出者留待下次。
+    # 同優先級內「最新集先轉」(見 _process_order_key):晨報要的是當日最新,預算吃緊時
+    # 也保證旗艦節目(股癌等)的最新集先進庫,不再被舊積壓擠到預算外;舊集仍在 72h 內由
+    # 後續(一天 4 次)的剩餘預算補完。顯示順序與轉錄順序解耦,由 process_episode 依發布時間排序。
+    pending.sort(key=_process_order_key)
     used_min = 0.0
     updated = False
     for cfg, entry, audio_url, dur in pending:

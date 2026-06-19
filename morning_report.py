@@ -2235,6 +2235,54 @@ def _attach_listing_fundamentals(snapshot: list[dict]) -> None:
     print(f"[fundamentals] 估值/獲利率附加 {attached} 檔(供 model_history 累積)")
 
 
+def _finmind_top5_extras(codes: list[str]) -> dict:
+    """為每日 Top5(少量代號)補 FinMind 的 EPS 年增率 + 外資持股比率(教育/非商業用途)。
+    token 選填(FINMIND_TOKEN),任何代號/欄位失敗都略過,絕不影響晨報。
+    回 {code: {eps_latest, eps_yoy_pct, foreign_hold_pct}}。"""
+    token = os.getenv("FINMIND_TOKEN", "").strip()
+    today = dt.datetime.now(TPE).date()
+    eps_start = (today - dt.timedelta(days=550)).isoformat()    # 至少 5 季
+    fh_start = (today - dt.timedelta(days=45)).isoformat()
+
+    def _finmind(dataset: str, sid: str, start: str) -> list:
+        params = {"dataset": dataset, "data_id": sid, "start_date": start}
+        if token:
+            params["token"] = token
+        r = requests.get("https://api.finmindtrade.com/api/v4/data",
+                         params=params, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+        return (r.json() or {}).get("data") or []
+
+    out = {}
+    for c in codes:
+        rec = {}
+        try:
+            data = _finmind("TaiwanStockFinancialStatements", c, eps_start)
+            eps = sorted(((str(row.get("date")), _to_float(row.get("value")))
+                          for row in data
+                          if row.get("type") == "EPS" and _to_float(row.get("value")) is not None),
+                         key=lambda x: x[0])
+            if eps:
+                latest_d, latest_v = eps[-1]
+                rec["eps_latest"] = latest_v
+                yago = (str(int(latest_d[:4]) - 1) + latest_d[4:]) if latest_d[:4].isdigit() else ""
+                prior = next((v for d, v in eps if d == yago), None)
+                if prior:
+                    rec["eps_yoy_pct"] = round((latest_v - prior) / abs(prior) * 100, 1)
+        except Exception:
+            pass
+        try:
+            data = _finmind("TaiwanStockShareholding", c, fh_start)
+            if data:
+                fhp = _to_float(data[-1].get("ForeignInvestmentSharesRatio"))
+                if fhp is not None:
+                    rec["foreign_hold_pct"] = fhp
+        except Exception:
+            pass
+        if rec:
+            out[c] = rec
+    return out
+
+
 def fetch_tdcc_major_holders(target_codes: Optional[set] = None) -> dict[str, dict]:
     """
     抓「集保戶股權分散表」各檔的大戶持股比例（TDCC 集保結算所開放資料，免費無 key）。
@@ -12581,8 +12629,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         scored = _rank_attention_candidates(universe_snapshot)
         top5 = scored[:5]
         if top5:
+            # Top5 補 FinMind EPS 年增率 + 外資持股(教育用途、僅 5 檔、失敗略過不影響晨報)
+            try:
+                _fm_extras = _finmind_top5_extras([str(s.get("code", "")) for s in top5])
+            except Exception:
+                _fm_extras = {}
             rows_html = []
             for rank, s in enumerate(top5, 1):
+                s.update(_fm_extras.get(str(s.get("code", "")), {}))
                 sm = s.get("smart_money") or {}
                 score = s.get("ranking_score", s.get(
                     "attention_score", (s.get("breakout") or {}).get("score", 0)))
@@ -12651,6 +12705,53 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"({f3.get('lower','—')}~{f3.get('upper','—')})"
                     f" ・ 5日 {f5.get('expected_price','—')} ({f5.get('lower','—')}~{f5.get('upper','—')})"
                     f" ・ 信心 {forecast.get('confidence','低')}")
+
+                # 基本面/估值/籌碼擴充欄(取得到才顯示;與股癌雷達同口徑,純參考、不計入排名分數)
+                def _num(v):
+                    return v if isinstance(v, (int, float)) else None
+                fund_bits = []
+                ry = _num(s.get("rev_yoy_pct"))
+                if ry is not None:
+                    fund_bits.append(f"營收YoY {ry:+.0f}%")
+                _mm = "／".join(x for x in [
+                    f"毛利 {s['gross_margin']:.0f}%" if _num(s.get("gross_margin")) is not None else None,
+                    f"營益 {s['op_margin']:.0f}%" if _num(s.get("op_margin")) is not None else None,
+                    f"淨利 {s['net_margin']:.0f}%" if _num(s.get("net_margin")) is not None else None] if x)
+                if _mm:
+                    fund_bits.append(_mm)
+                eps_v, eg = _num(s.get("eps")), _num(s.get("eps_yoy_pct"))
+                if eps_v is not None:
+                    fund_bits.append(f"EPS {eps_v}" + (f"(年增 {eg:+.0f}%)" if eg is not None else ""))
+                roe_q = _num(s.get("roe_q"))
+                if roe_q is not None:
+                    fund_bits.append(f"單季ROE {roe_q:.1f}%")
+                fund_line = ("基本面: " + " ・ ".join(fund_bits)) if fund_bits else ""
+                val_bits = []
+                for label, key, suf in (("PER", "per", ""), ("殖利率", "yield_pct", "%"), ("PBR", "pbr", "")):
+                    v = _num(s.get(key))
+                    if v is not None:
+                        val_bits.append(f"{label} {v:.1f}{suf}")
+                mc = _num(s.get("market_cap"))
+                if mc:
+                    val_bits.append(f"市值 {mc / 1e8:,.0f}億")
+                val_line = ("估值: " + " ・ ".join(val_bits)) if val_bits else ""
+                chip2_bits = []
+                mh, fhp = _num(s.get("major_holder_pct")), _num(s.get("foreign_hold_pct"))
+                f30, mbl, scr = _num(s.get("foreign_30d_lot")), _num(s.get("margin_balance_lot")), _num(s.get("short_cover_ratio"))
+                if mh is not None:
+                    chip2_bits.append(f"大戶持股 {mh:.0f}%")
+                if fhp is not None:
+                    chip2_bits.append(f"外資持股 {fhp:.0f}%")
+                if f30 is not None:
+                    chip2_bits.append(f"外資30日 {int(f30):+,}張")
+                if mbl:
+                    chip2_bits.append(f"融資餘額 {int(mbl):,}張")
+                if scr is not None:
+                    chip2_bits.append(f"空方回補 {scr}")
+                chip2_line = ("籌碼: " + " ・ ".join(chip2_bits)) if chip2_bits else ""
+                ext_html = "".join(
+                    f"<div style='margin-top:4px;font-size:12px;color:#475569;'>{_htmllib.escape(x)}</div>"
+                    for x in (fund_line, val_line, chip2_line) if x)
                 rows_html.append(
                     f"<tr>"
                     f"<td style='padding:12px 8px 12px 0;border-bottom:1px solid #e2e8f0;"
@@ -12667,6 +12768,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
                     # 第 3 行:數據明細小字
                     f"<div style='margin-top:5px;font-size:12px;color:#94a3b8;'>{metrics_line}</div>"
+                    # 基本面/估值/籌碼擴充(與股癌雷達同口徑,純參考、不計入排名分數)
+                    f"{ext_html}"
                     # 排名分解(ranking_line)與模型技術行(quality_line)屬內部計算細節,
                     # 使用者回饋不需顯示 — 隱藏(資料仍在 state/log 供除錯)
                     f"<div style='margin-top:5px;font-size:12px;color:#0369a1;'>{forecast_line}</div>"
@@ -14070,6 +14173,11 @@ def main() -> int:
         feature_drift=quotes["FEATURE_DRIFT"],
         source_health=quotes["SOURCE_HEALTH"],
         model_monitoring=quotes["MODEL_MONITORING"])
+    # 為每日股池補估值/獲利率/ROE(TWSE 全市場一次),供「Top5 推薦/觀察」顯示 + model_history 累積
+    try:
+        _attach_listing_fundamentals(tw0050)
+    except Exception as e:
+        print(f"[main] 附加基本面失敗(略過): {e}", file=sys.stderr)
     quotes["BREAKOUT_TRACKING"] = build_breakout_tracking(
         history, tw0050, target_session_date, sessions=trading_sessions)
     _ml_elapsed = time.monotonic() - _ml_t0
@@ -14250,11 +14358,7 @@ def main() -> int:
             target_session_date,
         )
         if completed_session:
-            # 鋪路:為快照補估值/獲利率/ROE,讓基本面因子隨日累積(失敗不影響寄信)
-            try:
-                _attach_listing_fundamentals(tw0050)
-            except Exception as e:
-                print(f"[main] 附加基本面失敗(略過): {e}", file=sys.stderr)
+            # 基本面已於上方 _attach_listing_fundamentals(tw0050) 附加,此處直接存史累積
             label_prices, label_prices_complete = _current_label_prices(model_history)
             save_model_history({
                 "session_date": completed_session,

@@ -1095,3 +1095,28 @@ def test_snapshot_for_model_keeps_fundamentals():
     for k in ("market_cap", "per", "yield_pct", "pbr", "gross_margin", "op_margin", "net_margin",
               "roe_q", "roa_q", "eps", "rev_yoy_pct", "foreign_30d_lot", "major_holder_pct"):
         assert k in row, f"{k} 應保留供回測累積"
+
+
+def test_finmind_top5_extras_parse(monkeypatch):
+    """每日 Top5 的 FinMind 補充:EPS 年增率(最新季 vs 去年同季)+ 外資持股比率。"""
+    def fake_get(url, *a, **k):
+        ds = (k.get("params") or {}).get("dataset")
+        if ds == "TaiwanStockFinancialStatements":
+            data = [{"date": "2025-03-31", "type": "EPS", "value": 10.0},
+                    {"date": "2026-03-31", "type": "EPS", "value": 14.0},
+                    {"date": "2026-03-31", "type": "Revenue", "value": 1}]
+        elif ds == "TaiwanStockShareholding":
+            data = [{"date": "2026-06-18", "ForeignInvestmentSharesRatio": 48.0}]
+        else:
+            data = []
+
+        class _R:
+            def json(self):
+                return {"data": data}
+        return _R()
+
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr._finmind_top5_extras(["2330"])
+    assert out["2330"]["eps_latest"] == 14.0
+    assert out["2330"]["eps_yoy_pct"] == 40.0       # (14-10)/10
+    assert out["2330"]["foreign_hold_pct"] == 48.0

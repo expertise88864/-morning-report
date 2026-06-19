@@ -19,6 +19,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import requests
 
@@ -177,13 +178,16 @@ def extract_sectors(transcript: str, model: str) -> dict:
 # ---------- 看多族群 → 候選個股(LLM 提名,只准提名,真假由白名單裁決)----------
 def llm_candidate_tickers(sector_name: str, reasoning: str, model: str) -> list[dict]:
     prompt = (
-        "你是台股產業研究員。給你一個族群與其多頭邏輯,請列出該族群在台灣『上市』的代表性個股。"
-        "【鐵則】只列上市股(排除 ETF、興櫃);不確定代號就把 code 留空字串、只給 name,"
-        "嚴禁編造代號;一律台灣繁體中文。"
-        f"只輸出 JSON:{{\"candidates\":[{{\"code\":\"4位數字或空\",\"name\":\"公司簡稱\"}}]}},最多 {CAND_PER_SECTOR} 檔。"
+        "你是台股產業研究員。給你一個族群、以及『股癌本集對該族群的具體多頭邏輯/子題』,"
+        "請列出在台灣『上市』、且**真正契合此具體子題**的代表性個股(不是把整個族群亂槍打鳥)。"
+        "【鐵則】只列上市股(排除 ETF、興櫃);只收與該子題直接相關者,沾邊/題材無關者一律不列;"
+        "不確定代號就把 code 留空字串、只給 name,嚴禁編造代號;一律台灣繁體中文。"
+        "每檔附 theme_fit:一句(≤25字)說明它如何吻合此子題。"
+        "只輸出 JSON:{\"candidates\":[{\"code\":\"4位數字或空\",\"name\":\"公司簡稱\","
+        f"\"theme_fit\":\"契合此子題的理由\"}}]}},最多 {CAND_PER_SECTOR} 檔。"
     )
     try:
-        raw = _deepseek_json(prompt, f"族群:{sector_name}\n多頭邏輯:{reasoning}", model)
+        raw = _deepseek_json(prompt, f"族群:{sector_name}\n股癌的具體多頭邏輯/子題:{reasoning}", model)
     except Exception as e:
         log(f"族群「{sector_name}」候選生成失敗: {str(e)[:100]}")
         return []
@@ -192,7 +196,8 @@ def llm_candidate_tickers(sector_name: str, reasoning: str, model: str) -> list[
         code = "".join(ch for ch in str(c.get("code", "")) if ch.isdigit())
         name = str(c.get("name", "")).strip()
         if code or name:
-            out.append({"code": code, "name": name})
+            out.append({"code": code, "name": name,
+                        "theme_fit": _clean(str(c.get("theme_fit", "")).strip())})
     return out
 
 
@@ -208,24 +213,33 @@ def _names_match(llm_name: str, official_name: str) -> bool:
     return mr._overlap_coef(mr._podcast_bigrams(a), mr._podcast_bigrams(b)) >= 0.5
 
 
+def _name_to_code_map(whitelist: dict) -> dict:
+    m = {}
+    for code, meta in whitelist.items():
+        nm = mr._norm_podcast_point(meta.get("name", ""))
+        if nm:
+            m.setdefault(nm, code)
+    return m
+
+
+def _resolve_code(cand: dict, whitelist: dict, name_to_code: dict):
+    """單一候選 → 有效代號或 None。代號存在且名稱相符→用代號;否則以名稱反查救回(信任名稱)。"""
+    code, name = cand.get("code", ""), cand.get("name", "")
+    if len(code) == 4 and code in whitelist and _names_match(name, whitelist[code].get("name", "")):
+        return code
+    return name_to_code.get(mr._norm_podcast_point(name))
+
+
 def validate_tickers(candidates: list[dict], whitelist: dict) -> list[str]:
     """whitelist = {code:{name,...}}(全上市)。回經四關驗證的有效代號(去重保序),fail-closed。
     四關:格式 → 存在於白名單(擋幻覺/下市)→ 官方名一致(擋張冠李戴)→ 名稱反查救回。
     代號與名稱衝突時『信任名稱』(以名稱反查正確代號),反查不到則丟棄,絕不誤收衝突代號。"""
     if not whitelist:                       # 白名單抓取失敗 → 不展開個股(由呼叫端決定降級)
         return []
-    name_to_code = {}
-    for code, meta in whitelist.items():
-        nm = mr._norm_podcast_point(meta.get("name", ""))
-        if nm:
-            name_to_code.setdefault(nm, code)
+    name_to_code = _name_to_code_map(whitelist)
     valid, seen = [], set()
     for c in candidates:
-        code, name = c.get("code", ""), c.get("name", "")
-        if len(code) == 4 and code in whitelist and _names_match(name, whitelist[code].get("name", "")):
-            chosen = code                   # 代號存在且名稱相符
-        else:
-            chosen = name_to_code.get(mr._norm_podcast_point(name))   # 代號錯/張冠李戴/缺 → 名稱反查救回
+        chosen = _resolve_code(c, whitelist, name_to_code)
         if chosen and chosen not in seen:
             seen.add(chosen)
             valid.append(chosen)
@@ -245,26 +259,34 @@ def _norm01(vals: dict, code: str, default_mid: bool = True) -> float:
 
 
 def rank_top5(entries: list[dict], top_n: int = TOP_N_PER_SECTOR) -> list[dict]:
-    """以 radar_score 在『同族群候選池內』相對排序取前 N(各子項池內 min-max 正規化)。
-    radar_score = 0.40 籌碼(smart_money) + 0.20 30日法人 + 0.20 月營收YoY + 0.20 動能。
-    動能 = 0.6×近5日漲幅(池內) + 0.4×未過熱度(距 MA20 絕對值越大越扣,逾 30% 歸零)——
-    避免『暴衝過熱股』只因 5 日大漲就排第一。"""
+    """radar_score(偏基本面/估值,對齊股癌的波段視角;不計短線 5 日動能):
+      基本面 30%(營收YoY 0.6 + 營益率 0.4)
+    + 估值   15%(P/E 池內越低越好 0.6 + 殖利率 0.4;虧損/無 P/E 給保守 0.3)
+    + 籌碼   25%(smart_money 站隊分)
+    + 中期法人 15%(30 日外資累積)
+    + 未過熱 15%(距 MA20 越遠越扣,逾 30% 歸零)。
+    依晨報因子 IC 回測:短線技術/籌碼預測力弱、約 20 日(波段)才顯著、基本面較持久,
+    故權重往基本面/估值傾斜(原版籌碼+動能各 40/20,易讓暴衝過熱股霸榜)。"""
     if not entries:
         return []
     sm = {e["code"]: _safe(e.get("smart_money", {}).get("score")) for e in entries}
     inst = {e["code"]: _safe(e.get("foreign_30d_lot")) for e in entries}
-    rev = {e["code"]: _safe(e.get("rev_yoy_pct")) for e in entries}
-    p5 = {e["code"]: _safe(e.get("pct_5d")) for e in entries}
+    revy = {e["code"]: _safe(e.get("rev_yoy_pct")) for e in entries}
+    opm = {e["code"]: _safe(e.get("op_margin")) for e in entries}
+    yld = {e["code"]: _safe(e.get("yield_pct")) for e in entries}
+    per_pos = {e["code"]: _safe(e.get("per")) for e in entries
+               if isinstance(_safe(e.get("per")), (int, float)) and _safe(e.get("per")) > 0}
     for e in entries:
         c = e["code"]
+        fund = 0.6 * _norm01(revy, c) + 0.4 * _norm01(opm, c)
+        per_v = _safe(e.get("per"))
+        per_sc = (1 - _norm01(per_pos, c)) if (isinstance(per_v, (int, float)) and per_v > 0) else 0.3
+        val = 0.6 * per_sc + 0.4 * _norm01(yld, c)
         dist = abs(_safe(e.get("ma20_dist_pct")) or 0)
         not_overheated = max(0.0, 1 - min(dist, 30) / 30)
-        mom_score = 0.6 * _norm01(p5, c) + 0.4 * not_overheated
         e["radar_score"] = round(
-            100 * (0.40 * (sm.get(c) or 0) / 100
-                   + 0.20 * _norm01(inst, c)
-                   + 0.20 * _norm01(rev, c)
-                   + 0.20 * mom_score), 1)
+            100 * (0.30 * fund + 0.15 * val + 0.25 * (sm.get(c) or 0) / 100
+                   + 0.15 * _norm01(inst, c) + 0.15 * not_overheated), 1)
     entries.sort(key=lambda e: (-(e.get("radar_score") or 0),
                                 -(_safe(e.get("foreign_30d_lot")) or 0), e["code"]))
     return entries[:top_n]
@@ -301,6 +323,17 @@ def _stock_verdict(e: dict) -> str:
         pos.append(f"營收年增{rev:.0f}%")
     elif isinstance(rev, (int, float)) and rev < 0:
         neg.append(f"營收衰退{abs(rev):.0f}%")
+    opm = _safe(e.get("op_margin"))
+    if isinstance(opm, (int, float)) and opm >= 20:
+        pos.append(f"營益率{opm:.0f}%佳")
+    per = _safe(e.get("per"))
+    if isinstance(per, (int, float)) and 0 < per <= 15:
+        pos.append(f"本益比{per:.0f}偏低")
+    elif isinstance(per, (int, float)) and per >= 40:
+        neg.append(f"本益比{per:.0f}偏高")
+    yld = _safe(e.get("yield_pct"))
+    if isinstance(yld, (int, float)) and yld >= 4:
+        pos.append(f"殖利率{yld:.1f}%")
     dist = _safe(e.get("ma20_dist_pct"))
     if isinstance(dist, (int, float)) and dist >= 20:
         neg.append(f"距MA20+{dist:.0f}%明顯過熱、追高風險")
@@ -328,8 +361,65 @@ def _stock_news_oneliner(code: str, name: str) -> str:
     return "—"
 
 
-def enrich_sector(codes: list[str], whitelist: dict) -> list[dict]:
-    """把驗證後代號組成 mini-universe → fetch_tw0050_snapshot 取籌碼/營收/動能 → 排序前 N → 補新聞。"""
+# ---------- 估值/獲利率(TWSE OpenAPI,上市全市場,一次取)----------
+_TWSE_HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+_INCOME_ENDPOINTS = (
+    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_ci",     # 一般業
+    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_basi",   # 金融
+    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_bd",     # 證券
+    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_mim",    # 金控
+)
+
+
+def _f(v):
+    try:
+        return float(str(v).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _twse_json(url: str) -> list:
+    try:
+        r = requests.get(url, timeout=20, headers=_TWSE_HEADERS)
+        r.raise_for_status()
+        return r.json() or []
+    except Exception as e:
+        log(f"TWSE {url.rsplit('/', 1)[-1]} 失敗: {str(e)[:80]}")
+        return []
+
+
+def fetch_valuation() -> dict:
+    """{code: {per, yield_pct, pbr}} —— BWIBBU_ALL(上市個股本益比/殖利率/股價淨值比,一次全市場)。"""
+    out = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL"):
+        c = str(row.get("Code", "")).strip()
+        if len(c) == 4 and c.isdigit():
+            out[c] = {"per": _f(row.get("PEratio")), "yield_pct": _f(row.get("DividendYield")),
+                      "pbr": _f(row.get("PBratio"))}
+    return out
+
+
+def fetch_margins() -> dict:
+    """{code: {gross_margin, op_margin}} —— 綜合損益表 營業毛利/營業利益 ÷ 營業收入(最新季)。"""
+    out = {}
+    for url in _INCOME_ENDPOINTS:
+        for row in _twse_json(url):
+            c = str(row.get("公司代號", "")).strip()
+            if not (len(c) == 4 and c.isdigit()):
+                continue
+            rev = _f(row.get("營業收入"))
+            gp = _f(row.get("營業毛利（毛損）淨額")) or _f(row.get("營業毛利（毛損）"))
+            op = _f(row.get("營業利益（損失）"))
+            if rev and rev > 0:
+                out[c] = {"gross_margin": round(gp / rev * 100, 1) if gp is not None else None,
+                          "op_margin": round(op / rev * 100, 1) if op is not None else None}
+    return out
+
+
+def enrich_sector(codes: list[str], whitelist: dict,
+                  candidates: Optional[list] = None, extra: Optional[dict] = None) -> list[dict]:
+    """驗證後代號 → fetch_tw0050_snapshot 取籌碼/營收/動能,再併入估值(P/E/殖利率/P/B)、
+    營益率、累計年增與 theme_fit → 排序前 N → 補新聞。extra=共用的全市場估值/獲利率/營收快取。"""
     if not codes:
         return []
     universe = {c: {"name": whitelist.get(c, {}).get("name", c),
@@ -340,7 +430,24 @@ def enrich_sector(codes: list[str], whitelist: dict) -> list[dict]:
     except Exception as e:
         log(f"snapshot 失敗: {str(e)[:120]}")
         return []
-    entries = [e for e in (snap or []) if e.get("code") in set(codes)]
+    code_set = set(codes)
+    entries = [e for e in (snap or []) if e.get("code") in code_set]
+    extra = extra or {}
+    val, margins, rev = extra.get("val") or {}, extra.get("margins") or {}, extra.get("rev") or {}
+    themefit = {}
+    if candidates:
+        ntc = _name_to_code_map(whitelist)
+        for cand in candidates:
+            rc = _resolve_code(cand, whitelist, ntc)
+            if rc and cand.get("theme_fit"):
+                themefit.setdefault(rc, cand["theme_fit"])
+    for e in entries:
+        c = e["code"]
+        e.update(val.get(c) or {})            # per / yield_pct / pbr
+        e.update(margins.get(c) or {})        # gross_margin / op_margin
+        if c in rev:
+            e["rev_cum_yoy_pct"] = rev[c].get("cum_yoy_pct")
+        e["theme_fit"] = themefit.get(c, "")
     top = rank_top5(entries)
     for e in top:
         e["_news"] = _stock_news_oneliner(e["code"], e.get("name", ""))
@@ -458,19 +565,27 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
                 f'籌碼:{esc(chip_line)}　30日外資 {_lot(_safe(e.get("foreign_30d_lot")))}／投信 '
                 f'{_lot(_safe(e.get("invest_30d_lot")))}　大戶持股週變 {_pct(_safe(e.get("tdcc_wow_pct")))}<br>'
-                f'基本面:月營收 YoY {_pct(_safe(e.get("rev_yoy_pct")))}(MoM {_pct(_safe(e.get("rev_mom_pct")))})'
+                f'基本面:月營收 YoY {_pct(_safe(e.get("rev_yoy_pct")))}(MoM {_pct(_safe(e.get("rev_mom_pct")))}'
+                f'、累計 {_pct(_safe(e.get("rev_cum_yoy_pct")))})'
+                f'　毛利率 {_pct(_safe(e.get("gross_margin")))}／營益率 {_pct(_safe(e.get("op_margin")))}'
                 f'　EPS {_safe(e.get("eps")) if _safe(e.get("eps")) is not None else "—"}<br>'
+                f'估值:P/E {_safe(e.get("per")) if _safe(e.get("per")) is not None else "—"}'
+                f'　殖利率 {_pct(_safe(e.get("yield_pct")))}'
+                f'　P/B {_safe(e.get("pbr")) if _safe(e.get("pbr")) is not None else "—"}<br>'
                 f'動能:近5日 {_pct(_safe(e.get("pct_5d")))}　距MA20 {_pct(d20)}{heat}</div>'
-                f'<div style="font-size:13px;color:#0f172a;margin-top:6px;">'
+                + (f'<div style="font-size:12px;color:#7c2d12;margin-top:4px;">'
+                   f'符合子題:{esc(t(e.get("theme_fit", "")))}</div>' if e.get("theme_fit") else "")
+                + f'<div style="font-size:13px;color:#0f172a;margin-top:6px;">'
                 f'<b>雷達評語:</b>{esc(_stock_verdict(e))}</div>'
                 f'<div style="font-size:12px;color:#64748b;margin-top:3px;">近期新聞:{esc(_clean(e.get("_news") or "—"))}</div>'
                 '</div>')
         parts.append(
             head + "".join(cards) +
             '<div style="margin:2px 16px 12px;font-size:11px;color:#94a3b8;line-height:1.7;">'
-            '※ <b>排名 = 綜合資料面強弱</b>(籌碼 40%＋30日法人 20%＋月營收 20%＋動能 20%,動能對「距 MA20 過遠」'
-            '會扣分以避免追高過熱股);<b>#1 為資料面相對最強</b>,但這是研究排序、<b>非買賣建議</b>,'
-            f'仍須自行評估題材與基本面。個股為本報依「{esc(sec["name"])}」主題自動整理、非股癌推薦。</div>')
+            '※ <b>排名 = 綜合資料面強弱</b>(基本面 30%〔營收+營益率〕＋估值 15%〔P/E+殖利率〕＋籌碼 25%＋'
+            '30日法人 15%＋未過熱 15%;偏基本面/估值以對齊波段視角,過熱會扣分);<b>#1 為資料面相對最強</b>,'
+            f'但這是研究排序、<b>非買賣建議</b>,仍須自行評估題材與基本面。個股為本報依「{esc(sec["name"])}」'
+            '主題自動整理、非股癌推薦。</div>')
     # 看空/中性族群(只列立場,不展開個股)
     others = [s for s in extract.get("sectors", []) if s["stance"] != "看多"]
     if others:
@@ -530,11 +645,15 @@ def process_new_episode() -> int:
 
     bullish = [s for s in extract["sectors"] if s["stance"] == "看多"][:RADAR_MAX_BULLISH_SECTORS]
     whitelist = _build_whitelist() if bullish else {}
+    # 全市場估值/獲利率/月營收一次抓、跨族群共用(免每族群重打)
+    extra = {}
+    if bullish and whitelist:
+        extra = {"val": fetch_valuation(), "margins": fetch_margins(), "rev": mr.fetch_tw_monthly_revenue()}
     sector_stocks = []
     for sec in bullish:
         cands = llm_candidate_tickers(sec["name"], sec.get("reasoning", ""), acc["summary_model"])
         codes = validate_tickers(cands, whitelist)
-        stocks = enrich_sector(codes, whitelist)
+        stocks = enrich_sector(codes, whitelist, candidates=cands, extra=extra)
         sector_stocks.append({"sector": sec, "stocks": stocks})
         log(f"族群「{sec['name']}」候選 {len(cands)} → 驗證 {len(codes)} → 取 {len(stocks)}")
 

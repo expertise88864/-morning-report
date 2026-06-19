@@ -334,6 +334,17 @@ def _stock_verdict(e: dict) -> str:
     yld = _safe(e.get("yield_pct"))
     if isinstance(yld, (int, float)) and yld >= 4:
         pos.append(f"殖利率{yld:.1f}%")
+    dpct = _safe(e.get("director_pct"))
+    if isinstance(dpct, (int, float)) and dpct >= 30:
+        pos.append(f"董監持股{dpct:.0f}%高")
+    ppct = _safe(e.get("pledge_pct"))
+    if isinstance(ppct, (int, float)) and ppct >= 30:
+        neg.append(f"董監設質{ppct:.0f}%偏高")
+    achv = _safe(e.get("forecast_achv_pct"))
+    if isinstance(achv, (int, float)) and achv >= 100:
+        pos.append(f"財測達成{achv:.0f}%")
+    elif isinstance(achv, (int, float)) and achv < 90:
+        neg.append(f"財測達成僅{achv:.0f}%")
     dist = _safe(e.get("ma20_dist_pct"))
     if isinstance(dist, (int, float)) and dist >= 20:
         neg.append(f"距MA20+{dist:.0f}%明顯過熱、追高風險")
@@ -416,6 +427,111 @@ def fetch_margins() -> dict:
     return out
 
 
+def _roc_md(s) -> str:
+    """民國 yyyymmdd(如 1150709)→ MM/DD。"""
+    s = str(s or "").strip()
+    return f"{s[3:5]}/{s[5:7]}" if len(s) >= 7 and s.isdigit() else ""
+
+
+def _safe_fetch(fn, label: str) -> dict:
+    """單一官方來源抓取失敗時降級為空 dict,不拖垮整封雷達。"""
+    try:
+        return fn() or {}
+    except Exception as e:
+        log(f"{label}抓取失敗(本期略過此欄): {str(e)[:120]}")
+        return {}
+
+
+def fetch_exdiv_calendar() -> dict:
+    """{code: {exdiv_md, exdiv_type, cash_div}} —— 上市除權息預告(TWT48U_ALL)。"""
+    out = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL"):
+        c = str(row.get("Code", "")).strip()
+        if len(c) == 4 and c.isdigit():
+            out[c] = {"exdiv_md": _roc_md(row.get("Date")),
+                      "exdiv_type": str(row.get("Exdividend", "")).strip(),
+                      "cash_div": _f(row.get("CashDividend"))}
+    return out
+
+
+def fetch_dividends() -> dict:
+    """{code: {year, cash_div, stock_div, progress}} —— 上市股利分派(t187ap45_L)。
+    依「最新股利年度」彙總該年度各期(季配/半年配)現金股利與配股,避免只取單季而低估;
+    year 為民國股利年度,卡片會標明所屬年度。"""
+    by_code = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap45_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if not (len(c) == 4 and c.isdigit()):
+            continue
+        yr = str(row.get("股利年度", "")).strip()
+        if not yr:
+            # 後備:由「股利所屬期間」起日取民國年(如 1140101~1141231 → 114)
+            period = str(row.get("股利所屬期間", "")).strip()
+            yr = period[:3] if len(period) >= 3 and period[:3].isdigit() else ""
+        if not yr:
+            continue
+        cash = sum((_f(row.get(k)) or 0) for k in (
+            "股東配發-盈餘分配之現金股利(元/股)", "股東配發-法定盈餘公積發放之現金(元/股)",
+            "股東配發-資本公積發放之現金(元/股)"))
+        stock = sum((_f(row.get(k)) or 0) for k in (
+            "股東配發-盈餘轉增資配股(元/股)", "股東配發-法定盈餘公積轉增資配股(元/股)",
+            "股東配發-資本公積轉增資配股(元/股)"))
+        rec = by_code.setdefault(c, {}).setdefault(yr, {"cash": 0.0, "stock": 0.0, "progress": ""})
+        rec["cash"] += cash
+        rec["stock"] += stock
+        prog = str(row.get("決議（擬議）進度", "")).strip()
+        if prog:
+            rec["progress"] = prog
+    out = {}
+    for c, years in by_code.items():
+        yr = max(years.keys())   # 最新股利年度(同長度民國年字串字典序即年序)
+        rec = years[yr]
+        out[c] = {"div_year": yr, "cash_div": round(rec["cash"], 2),
+                  "stock_div": round(rec["stock"], 2), "progress": rec["progress"]}
+    return out
+
+
+def fetch_insider(whitelist: dict) -> dict:
+    """{code: {director_pct, pledge_pct}} —— 董監事持股(t187ap11_L 逐人 → 依代號彙總),
+    佔比用 whitelist 的已發行股數;設質比例 = 設質/持股。"""
+    agg = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap11_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if not (len(c) == 4 and c.isdigit()):
+            continue
+        a = agg.setdefault(c, {"held": 0.0, "pledged": 0.0})
+        a["held"] += _f(row.get("目前持股")) or 0
+        a["pledged"] += _f(row.get("設質股數")) or 0
+    out = {}
+    for c, a in agg.items():
+        shares = _f((whitelist.get(c) or {}).get("shares"))
+        out[c] = {
+            "director_pct": round(a["held"] / shares * 100, 1) if shares and shares > 0 else None,
+            "pledge_pct": round(a["pledged"] / a["held"] * 100, 1) if a["held"] > 0 else None,
+        }
+    return out
+
+
+def fetch_guidance() -> dict:
+    """{code: {forecast_achv_pct}} —— 財測達成情形(t187ap15_L)。
+    ⚠ 全市場僅約 6-8 家有發正式財測,覆蓋極低,雷達股多半取不到(有才顯示)。"""
+    out = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap15_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if not (len(c) == 4 and c.isdigit()):
+            continue
+        actual = _f(row.get("截至該季經會計師查核或核閱數"))
+        fc = str(row.get("截至該季綜合損益預測數", "")).strip()
+        if "~" in fc:
+            parts = [p for p in (_f(x) for x in fc.split("~")) if p is not None]
+            mid = sum(parts) / 2 if len(parts) == 2 else None
+        else:
+            mid = _f(fc)
+        if actual is not None and mid and mid > 0:
+            out[c] = {"forecast_achv_pct": round(actual / mid * 100, 0)}
+    return out
+
+
 def enrich_sector(codes: list[str], whitelist: dict,
                   candidates: Optional[list] = None, extra: Optional[dict] = None) -> list[dict]:
     """驗證後代號 → fetch_tw0050_snapshot 取籌碼/營收/動能,再併入估值(P/E/殖利率/P/B)、
@@ -434,6 +550,8 @@ def enrich_sector(codes: list[str], whitelist: dict,
     entries = [e for e in (snap or []) if e.get("code") in code_set]
     extra = extra or {}
     val, margins, rev = extra.get("val") or {}, extra.get("margins") or {}, extra.get("rev") or {}
+    div, exdiv = extra.get("div") or {}, extra.get("exdiv") or {}
+    insider, guidance = extra.get("insider") or {}, extra.get("guidance") or {}
     themefit = {}
     if candidates:
         ntc = _name_to_code_map(whitelist)
@@ -445,8 +563,14 @@ def enrich_sector(codes: list[str], whitelist: dict,
         c = e["code"]
         e.update(val.get(c) or {})            # per / yield_pct / pbr
         e.update(margins.get(c) or {})        # gross_margin / op_margin
+        e.update(div.get(c) or {})            # cash_div / stock_div / progress
+        e.update(insider.get(c) or {})        # director_pct / pledge_pct
+        e.update(guidance.get(c) or {})       # forecast_achv_pct
         if c in rev:
             e["rev_cum_yoy_pct"] = rev[c].get("cum_yoy_pct")
+        if c in exdiv:
+            e["exdiv_md"] = exdiv[c].get("exdiv_md")
+            e["exdiv_type"] = exdiv[c].get("exdiv_type")
         e["theme_fit"] = themefit.get(c, "")
     top = rank_top5(entries)
     for e in top:
@@ -552,6 +676,35 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                     if isinstance(d20, (int, float)) and d20 >= 20
                     else ' <span style="color:#b45309;">(略過熱)</span>'
                     if isinstance(d20, (int, float)) and d20 >= 10 else "")
+            # 官方來源:股利/除權息預告 + 董監持股/設質 + 財測達成(取得到才顯示)
+            gov_bits = []
+            cd, sd = _safe(e.get("cash_div")), _safe(e.get("stock_div"))
+            cd = cd if isinstance(cd, (int, float)) else 0
+            sd = sd if isinstance(sd, (int, float)) else 0
+            if cd or sd:   # 純配股(現金=0)也要顯示
+                amt = []
+                if cd:
+                    amt.append(f"現金股利 {cd} 元")
+                if sd:
+                    amt.append(f"配股 {sd} 元")
+                yr = e.get("div_year")
+                seg = (f"{yr}年度" if yr else "") + "+".join(amt)
+                if e.get("progress"):
+                    seg += f"({t(str(e.get('progress')))})"
+                gov_bits.append(seg)
+            if e.get("exdiv_md"):
+                gov_bits.append(f"{t(str(e.get('exdiv_type') or '除息'))}日 {e.get('exdiv_md')}")
+            dpct2, ppct2 = _safe(e.get("director_pct")), _safe(e.get("pledge_pct"))
+            if isinstance(dpct2, (int, float)):
+                seg = f"董監持股 {dpct2}%"
+                if isinstance(ppct2, (int, float)) and ppct2:
+                    seg += f"、設質 {ppct2}%"
+                gov_bits.append(seg)
+            achv2 = _safe(e.get("forecast_achv_pct"))
+            if isinstance(achv2, (int, float)):
+                gov_bits.append(f"財測達成 {achv2:.0f}%")
+            gov_line = (f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
+                        f'官方:{esc("　".join(gov_bits))}</div>') if gov_bits else ""
             cards.append(
                 '<div style="border:1px solid #e2e8f0;border-radius:10px;margin:8px 16px;padding:10px 12px;">'
                 f'<div style="font-size:15px;font-weight:700;color:#0f172a;">#{i} '
@@ -573,6 +726,7 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 f'　殖利率 {_pct(_safe(e.get("yield_pct")))}'
                 f'　P/B {_safe(e.get("pbr")) if _safe(e.get("pbr")) is not None else "—"}<br>'
                 f'動能:近5日 {_pct(_safe(e.get("pct_5d")))}　距MA20 {_pct(d20)}{heat}</div>'
+                + gov_line
                 + (f'<div style="font-size:12px;color:#7c2d12;margin-top:4px;">'
                    f'符合子題:{esc(t(e.get("theme_fit", "")))}</div>' if e.get("theme_fit") else "")
                 + f'<div style="font-size:13px;color:#0f172a;margin-top:6px;">'
@@ -645,10 +799,15 @@ def process_new_episode() -> int:
 
     bullish = [s for s in extract["sectors"] if s["stance"] == "看多"][:RADAR_MAX_BULLISH_SECTORS]
     whitelist = _build_whitelist() if bullish else {}
-    # 全市場估值/獲利率/月營收一次抓、跨族群共用(免每族群重打)
+    # 全市場估值/獲利率/月營收/官方來源一次抓、跨族群共用(免每族群重打)
     extra = {}
     if bullish and whitelist:
-        extra = {"val": fetch_valuation(), "margins": fetch_margins(), "rev": mr.fetch_tw_monthly_revenue()}
+        extra = {"val": fetch_valuation(), "margins": fetch_margins(),
+                 "rev": mr.fetch_tw_monthly_revenue(),
+                 "exdiv": _safe_fetch(fetch_exdiv_calendar, "除權息預告"),
+                 "div": _safe_fetch(fetch_dividends, "股利分派"),
+                 "insider": _safe_fetch(lambda: fetch_insider(whitelist), "董監持股"),
+                 "guidance": _safe_fetch(fetch_guidance, "財測達成")}
     sector_stocks = []
     for sec in bullish:
         cands = llm_candidate_tickers(sec["name"], sec.get("reasoning", ""), acc["summary_model"])

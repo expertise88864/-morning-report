@@ -68,12 +68,16 @@ def test_strip_emoji():
 def test_stock_verdict_flags_strength_and_overheat():
     strong = gr._stock_verdict({"foreign_streak": 3, "invest_streak": 2, "rev_yoy_pct": 25,
                                 "op_margin": 30, "per": 12, "yield_pct": 5.0,
+                                "director_pct": 35, "forecast_achv_pct": 105,
                                 "ma20_dist_pct": 1.0, "radar_score": 70})
     assert "偏強" in strong and "外資投信同步連買" in strong
     assert "營益率" in strong and "本益比12偏低" in strong and "殖利率" in strong
+    assert "董監持股35%高" in strong and "財測達成105%" in strong
     weak = gr._stock_verdict({"foreign_30d_lot": -3000, "smart_money": {"score": 0},
-                              "per": 55, "ma20_dist_pct": 30.0, "radar_score": 20})
+                              "per": 55, "pledge_pct": 40, "forecast_achv_pct": 80,
+                              "ma20_dist_pct": 30.0, "radar_score": 20})
     assert "偏弱" in weak and "過熱" in weak and "賣超" in weak and "本益比55偏高" in weak
+    assert "董監設質40%偏高" in weak and "財測達成僅80%" in weak
 
 
 def test_fetch_valuation_parse(monkeypatch):
@@ -91,6 +95,79 @@ def test_fetch_margins_parse(monkeypatch):
     assert out["2330"]["gross_margin"] == 55.0 and out["2330"]["op_margin"] == 40.0
 
 
+def test_roc_md():
+    assert gr._roc_md("1150709") == "07/09"
+    assert gr._roc_md("") == "" and gr._roc_md("abc") == ""
+
+
+def test_fetch_dividends_sums_latest_year(monkeypatch):
+    monkeypatch.setattr(gr, "_twse_json", lambda url: [
+        # 114 年度兩期(季配)→ 彙總:現金 4+4.5=8.5,配股 1.0
+        {"公司代號": "2330", "股利年度": "114", "股東配發-盈餘分配之現金股利(元/股)": "4.0",
+         "股東配發-盈餘轉增資配股(元/股)": "1.0", "決議（擬議）進度": "董事會擬議"},
+        {"公司代號": "2330", "股利年度": "114", "股東配發-盈餘分配之現金股利(元/股)": "4.0",
+         "股東配發-資本公積發放之現金(元/股)": "0.5", "決議（擬議）進度": "股東會確認"},
+        {"公司代號": "2330", "股利年度": "113", "股東配發-盈餘分配之現金股利(元/股)": "99"},  # 舊年度 → 不取
+        {"公司代號": "2330", "股利年度": ""},                                              # 無年度 → 略過
+        {"公司代號": "00", "股利年度": "114", "股東配發-盈餘分配之現金股利(元/股)": "1"}])    # 非4位 → 略過
+    out = gr.fetch_dividends()
+    assert out["2330"] == {"div_year": "114", "cash_div": 8.5, "stock_div": 1.0,
+                           "progress": "股東會確認"}   # 取最新年度、彙總各期、進度取最後有值
+    assert "00" not in out
+
+
+def test_fetch_dividends_year_falls_back_to_period(monkeypatch):
+    """股利年度缺值時,改由『股利所屬期間』起日取民國年。"""
+    monkeypatch.setattr(gr, "_twse_json", lambda url: [
+        {"公司代號": "2603", "股利年度": "", "股利所屬期間": "1140101~1141231",
+         "股東配發-盈餘分配之現金股利(元/股)": "5.0"}])
+    assert gr.fetch_dividends()["2603"]["div_year"] == "114"
+
+
+def test_card_renders_stock_only_dividend():
+    """純配股(現金=0、配股>0)不可被吃掉。"""
+    meta = {"title": "EP1", "published": "x", "guid": "g"}
+    extract = {"sectors": [{"name": "A", "stance": "看多", "reasoning": "r"}]}
+    ss = [{"sector": {"name": "A", "reasoning": "r"},
+           "stocks": [{"code": "1234", "name": "測試", "cash_div": 0, "stock_div": 2.0,
+                       "div_year": "114", "radar_score": 50}]}]
+    html = gr.render_radar_html(meta, extract, ss)
+    assert "114年度配股 2.0 元" in html and "現金股利" not in html
+
+
+def test_fetch_exdiv_calendar_parse(monkeypatch):
+    monkeypatch.setattr(gr, "_twse_json", lambda url: [
+        {"Code": "2330", "Date": "1150709", "Exdividend": "息", "CashDividend": "4.5"},
+        {"Code": "00400A", "Date": "1150709", "Exdividend": "息"}])   # 非4位數字 → 略過
+    assert gr.fetch_exdiv_calendar() == {
+        "2330": {"exdiv_md": "07/09", "exdiv_type": "息", "cash_div": 4.5}}
+
+
+def test_fetch_insider_aggregates_and_pct(monkeypatch):
+    monkeypatch.setattr(gr, "_twse_json", lambda url: [
+        {"公司代號": "2330", "目前持股": "100", "設質股數": "20"},
+        {"公司代號": "2330", "目前持股": "300", "設質股數": "0"},   # 逐人 → 彙總 held=400
+        {"公司代號": "ab", "目前持股": "999"}])                     # 非4位 → 略過
+    out = gr.fetch_insider({"2330": {"shares": 1000}})
+    assert out["2330"]["director_pct"] == 40.0    # 400/1000
+    assert out["2330"]["pledge_pct"] == 5.0       # 20/400
+    assert "ab" not in out
+    # 白名單缺已發行股數 → 佔比 None(不爆),設質比例仍可算
+    out2 = gr.fetch_insider({})
+    assert out2["2330"]["director_pct"] is None and out2["2330"]["pledge_pct"] == 5.0
+
+
+def test_fetch_guidance_parse(monkeypatch):
+    monkeypatch.setattr(gr, "_twse_json", lambda url: [
+        {"公司代號": "2412", "截至該季經會計師查核或核閱數": "10000",
+         "截至該季綜合損益預測數": "8000~12000"},     # 區間中值=10000 → 100%
+        {"公司代號": "1234", "截至該季經會計師查核或核閱數": "",
+         "截至該季綜合損益預測數": "100"}])             # 無實際數 → 略過
+    out = gr.fetch_guidance()
+    assert out["2412"]["forecast_achv_pct"] == 100.0
+    assert "1234" not in out
+
+
 def test_render_radar_html_disclaimers_cards_no_emoji():
     meta = {"title": "EP671 | 🌼 测试", "published": "Wed, 17 Jun 2026", "guid": "g1"}
     extract = {"episode_summary": "本集主轴", "key_takeaways": ["重点一"], "market_view": "偏多",
@@ -104,6 +181,10 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
                                   "rev_yoy_pct": 15.0, "rev_mom_pct": 4.0, "rev_cum_yoy_pct": 12.0,
                                   "gross_margin": 35.5, "op_margin": 22.1, "eps": 1.2,
                                   "per": 14.0, "yield_pct": 4.2, "pbr": 2.1,
+                                  "div_year": "114", "cash_div": 16.5, "stock_div": 1.0,
+                                  "progress": "股東會確認",
+                                  "exdiv_md": "07/09", "exdiv_type": "息",
+                                  "director_pct": 12.3, "pledge_pct": 0.0,
                                   "pct_5d": 3.2, "ma20_dist_pct": 2.0, "radar_score": 62.0,
                                   "theme_fit": "功率分離元件供 Non-China 缺口",
                                   "_news": "強茂 Q2 拉貨😇旺 🌟"}]}]
@@ -114,6 +195,8 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
     assert "雷達評語" in html and "排名 = 綜合資料面強弱" in html       # 判斷依據說明
     assert "外資連買3日" in html and "EPS 1.2" in html and "大戶持股週變" in html  # 籌碼欄位
     assert "毛利率" in html and "營益率" in html and "P/E 14.0" in html and "P/B 2.1" in html  # 基本面+估值
+    assert "官方:" in html and "114年度現金股利 16.5 元" in html and "+配股 1.0 元" in html  # 股利(標年度)
+    assert "息日 07/09" in html and "董監持股 12.3%" in html             # 除權息預告 + 董監持股
     assert "符合子題" in html and "Non-China" in html                 # theme-fit
     assert "看空" in html and "面板" in html                          # 看空族群仍列立場
     # 不外漏簡體 + 不外漏 emoji(標題/新聞/總綱)

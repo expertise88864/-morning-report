@@ -1,8 +1,8 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 7,
-  "last_seen": "2026-06-19",
+  "days": 8,
+  "last_seen": "2026-06-20",
   "latest_title": "Waymo recalls about 3,900 robotaxis after some drove into 'freeway construction zones'"
  },
  "litigation:": {
@@ -13,9 +13,9 @@
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 2,
-  "last_seen": "2026-06-18",
-  "latest_title": "Why the US-Iran deal may fail to revive shipping through the Strait of Hormuz"
+  "days": 3,
+  "last_seen": "2026-06-20",
+  "latest_title": "China’s trillion-parameter AI race: how developers strive to narrow gap with US rivals"
  },
  "litigation:META": {
   "first_seen": "2026-06-19",
@@ -28,5 +28,11 @@
   "days": 1,
   "last_seen": "2026-06-19",
   "latest_title": "國泰投信道歉了！基金投資涉利害關係人恐造成投資人損失達6.5億元 金管會：將綜合相關情節進行裁罰 - 財訊"
+ },
+ "litigation:2881": {
+  "first_seen": "2026-06-20",
+  "days": 1,
+  "last_seen": "2026-06-20",
+  "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
  }
 }

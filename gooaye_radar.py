@@ -33,6 +33,10 @@ TOP_N_PER_SECTOR = int(os.getenv("RADAR_TOP_N_PER_SECTOR", "5"))
 CAND_PER_SECTOR = 12                                          # 每族群請 LLM 提名候選數
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+# 市值/流動性門檻:排序前剔除「市值過小、實際難買進」的個股(這是過濾不是加分;留太少則自動放寬)
+RADAR_MIN_MARKET_CAP = float(os.getenv("RADAR_MIN_MARKET_CAP", "3000000000"))   # 預設 30 億元
+# FinMind(教育/非商業用途)token,留空則用免費無 token 額度;僅對最終 Top 名單抓外資持股比率
+FINMIND_TOKEN = os.getenv("FINMIND_TOKEN", "").strip()
 _STANCES = ("看多", "看空", "中性")
 
 
@@ -304,6 +308,23 @@ def _lot(v):
     return f"{int(v):+,d} 張" if isinstance(v, (int, float)) else "—"
 
 
+def _eok(v):
+    """元 → 億元(顯示用)。"""
+    v = _safe(v)
+    return f"{v / 1e8:,.0f} 億" if isinstance(v, (int, float)) and v else "—"
+
+
+def _radar_tradeable(e: dict) -> bool:
+    """市值/流動性門檻:剔除『市值過小、實際難買進』者(過濾,非加分)。
+    資料缺漏一律放行(不因缺資料誤殺)。"""
+    if e.get("liquidity_eligible") is False:
+        return False
+    mc = _safe(e.get("market_cap"))
+    if mc is not None and mc < RADAR_MIN_MARKET_CAP:
+        return False
+    return True
+
+
 def _stock_verdict(e: dict) -> str:
     """一句話綜合資料面強弱(非買賣建議):點出最強/最弱面 + 過熱警示,協助判斷孰優孰劣。"""
     pos, neg = [], []
@@ -326,6 +347,15 @@ def _stock_verdict(e: dict) -> str:
     opm = _safe(e.get("op_margin"))
     if isinstance(opm, (int, float)) and opm >= 20:
         pos.append(f"營益率{opm:.0f}%佳")
+    roe = _safe(e.get("roe_q"))
+    if isinstance(roe, (int, float)) and roe >= 5:
+        pos.append(f"單季ROE{roe:.0f}%佳")
+    mh = _safe(e.get("major_holder_pct"))
+    if isinstance(mh, (int, float)) and mh >= 65:
+        pos.append(f"大戶持股{mh:.0f}%集中")
+    fhp = _safe(e.get("foreign_hold_pct"))
+    if isinstance(fhp, (int, float)) and fhp >= 50:
+        pos.append(f"外資持股{fhp:.0f}%高")
     per = _safe(e.get("per"))
     if isinstance(per, (int, float)) and 0 < per <= 15:
         pos.append(f"本益比{per:.0f}偏低")
@@ -372,14 +402,30 @@ def _stock_news_oneliner(code: str, name: str) -> str:
     return "—"
 
 
+def sector_trend_oneliner(sector_name: str, reasoning: str, model: str) -> str:
+    """產業趨勢維度(軟訊號):用類股關鍵字抓近 7 天新聞標題 → DeepSeek 濃縮成一句『產業近況/趨勢』。
+    抓不到新聞或無 LLM 則回空字串(不顯示);非投資建議,且要求不得杜撰標題沒有的事實。"""
+    try:
+        feed = mr._feedparser_parse_url_with_timeout(
+            mr._gnews_rss(f"{sector_name} 產業 趨勢 需求", when="7d"))
+        heads = [str(e.get("title", "")).strip()
+                 for e in (getattr(feed, "entries", None) or [])[:6]]
+        heads = [h for h in heads if h]
+        if not heads:
+            return ""
+        raw = _deepseek_json(
+            "你是台股產業分析助理。依據以下某類股近期新聞標題,用繁體中文寫『一句話』(40字內),"
+            "點出該產業近況/趨勢方向(需求、報價、供需、政策動向)。只回 JSON {\"trend\":\"...\"};"
+            "不得提及買賣或目標價,不得杜撰新聞標題沒有的事實,若標題訊息不足就寫『近期新聞有限』。",
+            f"類股:{sector_name}\n股癌看多邏輯:{reasoning}\n新聞標題:\n- " + "\n- ".join(heads),
+            model)
+        return _clean(str(raw.get("trend", "")).strip())[:60]
+    except Exception:
+        return ""
+
+
 # ---------- 估值/獲利率(TWSE OpenAPI,上市全市場,一次取)----------
 _TWSE_HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-_INCOME_ENDPOINTS = (
-    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_ci",     # 一般業
-    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_basi",   # 金融
-    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_bd",     # 證券
-    "https://openapi.twse.com.tw/v1/opendata/t187ap06_L_mim",    # 金控
-)
 
 
 def _f(v):
@@ -411,19 +457,65 @@ def fetch_valuation() -> dict:
 
 
 def fetch_margins() -> dict:
-    """{code: {gross_margin, op_margin}} —— 綜合損益表 營業毛利/營業利益 ÷ 營業收入(最新季)。"""
+    """{code: {gross_margin, op_margin, net_margin}} —— 營益分析彙總(t187ap17_L,官方直接給率,
+    比自行用綜合損益表推算更乾淨;最新季,全市場一次取)。"""
     out = {}
-    for url in _INCOME_ENDPOINTS:
-        for row in _twse_json(url):
-            c = str(row.get("公司代號", "")).strip()
-            if not (len(c) == 4 and c.isdigit()):
-                continue
-            rev = _f(row.get("營業收入"))
-            gp = _f(row.get("營業毛利（毛損）淨額")) or _f(row.get("營業毛利（毛損）"))
-            op = _f(row.get("營業利益（損失）"))
-            if rev and rev > 0:
-                out[c] = {"gross_margin": round(gp / rev * 100, 1) if gp is not None else None,
-                          "op_margin": round(op / rev * 100, 1) if op is not None else None}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap17_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if not (len(c) == 4 and c.isdigit()):
+            continue
+        out[c] = {
+            "gross_margin": _f(row.get("毛利率(%)(營業毛利)/(營業收入)")),
+            "op_margin": _f(row.get("營業利益率(%)(營業利益)/(營業收入)")),
+            "net_margin": _f(row.get("稅後純益率(%)(稅後純益)/(營業收入)")),
+        }
+    return out
+
+
+def fetch_roe() -> dict:
+    """{code: {roe_q, roa_q}} —— 單季 ROE/ROA = 稅後淨利(t187ap14_L)÷ 權益/資產總額
+    (t187ap07_L_ci 資產負債表);皆為『單季』(未年化),當品質參考、不進計分。"""
+    ni = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap14_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if len(c) == 4 and c.isdigit():
+            ni[c] = _f(row.get("稅後淨利"))
+    out = {}
+    for row in _twse_json("https://openapi.twse.com.tw/v1/opendata/t187ap07_L_ci"):
+        c = str(row.get("公司代號", "")).strip()
+        if not (len(c) == 4 and c.isdigit()):
+            continue
+        n = ni.get(c)
+        if n is None:
+            continue
+        eq, asset = _f(row.get("權益總額")), _f(row.get("資產總額"))
+        out[c] = {
+            "roe_q": round(n / eq * 100, 1) if eq and eq > 0 else None,
+            "roa_q": round(n / asset * 100, 1) if asset and asset > 0 else None,
+        }
+    return out
+
+
+def fetch_foreign_holding(codes: list[str]) -> dict:
+    """{code: {foreign_hold_pct}} —— 外資持股比率(FinMind TaiwanStockShareholding,取最新一筆)。
+    教育/非商業用途;只對最終 Top 名單(少量代號)查、免 token 即可,設 FINMIND_TOKEN 可拉高額度;
+    任何一檔失敗就略過該檔,不拖垮整封。"""
+    out = {}
+    start = (dt.date.today() - dt.timedelta(days=45)).isoformat()
+    for c in codes:
+        try:
+            params = {"dataset": "TaiwanStockShareholding", "data_id": c, "start_date": start}
+            if FINMIND_TOKEN:
+                params["token"] = FINMIND_TOKEN
+            r = requests.get("https://api.finmindtrade.com/api/v4/data",
+                             params=params, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            data = (r.json() or {}).get("data") or []
+            if data:
+                pct = _f(data[-1].get("ForeignInvestmentSharesRatio"))
+                if pct is not None:
+                    out[c] = {"foreign_hold_pct": pct}
+        except Exception:
+            continue
     return out
 
 
@@ -551,7 +643,7 @@ def enrich_sector(codes: list[str], whitelist: dict,
     extra = extra or {}
     val, margins, rev = extra.get("val") or {}, extra.get("margins") or {}, extra.get("rev") or {}
     div, exdiv = extra.get("div") or {}, extra.get("exdiv") or {}
-    insider, guidance = extra.get("insider") or {}, extra.get("guidance") or {}
+    insider, guidance, roe = extra.get("insider") or {}, extra.get("guidance") or {}, extra.get("roe") or {}
     themefit = {}
     if candidates:
         ntc = _name_to_code_map(whitelist)
@@ -562,19 +654,38 @@ def enrich_sector(codes: list[str], whitelist: dict,
     for e in entries:
         c = e["code"]
         e.update(val.get(c) or {})            # per / yield_pct / pbr
-        e.update(margins.get(c) or {})        # gross_margin / op_margin
+        e.update(margins.get(c) or {})        # gross_margin / op_margin / net_margin
         e.update(div.get(c) or {})            # cash_div / stock_div / progress
         e.update(insider.get(c) or {})        # director_pct / pledge_pct
         e.update(guidance.get(c) or {})       # forecast_achv_pct
+        e.update(roe.get(c) or {})            # roe_q / roa_q
         if c in rev:
             e["rev_cum_yoy_pct"] = rev[c].get("cum_yoy_pct")
         if c in exdiv:
             e["exdiv_md"] = exdiv[c].get("exdiv_md")
             e["exdiv_type"] = exdiv[c].get("exdiv_type")
+        # 市值:snapshot 未帶時,用 已發行股數 × 收盤 自算(元)
+        if not _safe(e.get("market_cap")):
+            shares, close = _f((whitelist.get(c) or {}).get("shares")), _safe(e.get("close"))
+            if shares and close:
+                e["market_cap"] = shares * close
         e["theme_fit"] = themefit.get(c, "")
-    top = rank_top5(entries)
+    # 排序前先剔除「市值過小/流動性差、實際難買進」者;濾到不足 top_n 則放寬回全部(不寧缺勿濫)
+    eligible = [e for e in entries if _radar_tradeable(e)]
+    dropped = len(entries) - len(eligible)
+    if len(eligible) >= TOP_N_PER_SECTOR:
+        if dropped:
+            log(f"  門檻濾除 {dropped} 檔(市值<{RADAR_MIN_MARKET_CAP/1e8:.0f}億/流動性不足)")
+        pool = eligible
+    else:
+        pool = entries
+    top = rank_top5(pool)
     for e in top:
         e["_news"] = _stock_news_oneliner(e["code"], e.get("name", ""))
+    # 僅對最終 Top 名單補外資持股比率(FinMind,少量代號、教育用途)
+    fh = _safe_fetch(lambda: fetch_foreign_holding([e["code"] for e in top]), "外資持股(FinMind)")
+    for e in top:
+        e.update(fh.get(e["code"]) or {})     # foreign_hold_pct
     return top
 
 
@@ -612,7 +723,8 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
     }
     sector_stocks = [{"sector": {**b["sector"], "name": t(b["sector"].get("name", "")),
                                  "reasoning": t(b["sector"].get("reasoning", ""))},
-                      "stocks": b.get("stocks") or []} for b in (sector_stocks or [])]
+                      "stocks": b.get("stocks") or [],
+                      "trend": t(b.get("trend") or "")} for b in (sector_stocks or [])]
     parts = [
         '<div style="font-family:-apple-system,BlinkMacSystemFont,\'PingFang TC\',\'Microsoft JhengHei\',sans-serif;'
         'max-width:680px;margin:0 auto;background:#fff;color:#0f172a;">',
@@ -653,6 +765,9 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
         sec, stocks = blk["sector"], blk["stocks"]
         head = (f'<h2 style="font-size:17px;margin:18px 16px 6px;color:#b91c1c;">看多族群:{esc(sec["name"])}</h2>'
                 f'<div style="margin:0 16px 6px;font-size:13px;color:#475569;">股癌邏輯:{esc(sec.get("reasoning", ""))}</div>')
+        if blk.get("trend"):
+            head += (f'<div style="margin:0 16px 6px;font-size:13px;color:#0369a1;">'
+                     f'產業近況(近一週新聞 AI 摘要):{esc(_clean(blk["trend"]))}</div>')
         if not stocks:
             parts.append(head + '<div style="margin:0 16px;font-size:13px;color:#94a3b8;">'
                                 '(此族群未取得通過驗證的上市個股,僅列立場)</div>')
@@ -705,6 +820,30 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 gov_bits.append(f"財測達成 {achv2:.0f}%")
             gov_line = (f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
                         f'官方:{esc("　".join(gov_bits))}</div>') if gov_bits else ""
+            # 市值(自算或 snapshot)+ 第二籌碼列(大戶/外資持股、融資餘額、空方回補,有才列)
+            mc_str = f'　市值 {_eok(e.get("market_cap"))}' if _safe(e.get("market_cap")) else ""
+            chip2 = []
+            mh = _safe(e.get("major_holder_pct"))
+            if mh is not None:
+                chip2.append(f"大戶持股 {mh:.0f}%")
+            fhp = _safe(e.get("foreign_hold_pct"))
+            if fhp is not None:
+                chip2.append(f"外資持股 {fhp:.0f}%")
+            mbl = _safe(e.get("margin_balance_lot"))
+            if mbl:
+                chip2.append(f"融資餘額 {int(mbl):,}張")
+            scr = _safe(e.get("short_cover_ratio"))
+            if scr is not None:
+                chip2.append(f"空方回補比 {scr}")
+            chip2_line = (f'　　{esc("　".join(chip2))}<br>') if chip2 else ""
+            # 基本面延伸:淨利率 + 單季 ROE(有才列)
+            nm = _safe(e.get("net_margin"))
+            roe = _safe(e.get("roe_q"))
+            base_ext = ""
+            if nm is not None:
+                base_ext += f"／淨利率 {nm:.1f}%"
+            if roe is not None:
+                base_ext += f"　單季ROE {roe:.1f}%"
             cards.append(
                 '<div style="border:1px solid #e2e8f0;border-radius:10px;margin:8px 16px;padding:10px 12px;">'
                 f'<div style="font-size:15px;font-weight:700;color:#0f172a;">#{i} '
@@ -713,14 +852,15 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 f'{score if score is not None else "—"}</span></div>'
                 f'<div style="font-size:13px;color:#334155;margin-top:3px;">收 '
                 f'{_safe(e.get("close")) if _safe(e.get("close")) is not None else "—"} '
-                f'({_pct(_safe(e.get("day_pct")))})　籌碼分 {int(sm.get("score") or 0)} '
+                f'({_pct(_safe(e.get("day_pct")))}){mc_str}　籌碼分 {int(sm.get("score") or 0)} '
                 f'{esc(t(str(sm.get("tag", ""))))}</div>'
                 f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
                 f'籌碼:{esc(chip_line)}　30日外資 {_lot(_safe(e.get("foreign_30d_lot")))}／投信 '
                 f'{_lot(_safe(e.get("invest_30d_lot")))}　大戶持股週變 {_pct(_safe(e.get("tdcc_wow_pct")))}<br>'
+                f'{chip2_line}'
                 f'基本面:月營收 YoY {_pct(_safe(e.get("rev_yoy_pct")))}(MoM {_pct(_safe(e.get("rev_mom_pct")))}'
                 f'、累計 {_pct(_safe(e.get("rev_cum_yoy_pct")))})'
-                f'　毛利率 {_pct(_safe(e.get("gross_margin")))}／營益率 {_pct(_safe(e.get("op_margin")))}'
+                f'　毛利率 {_pct(_safe(e.get("gross_margin")))}／營益率 {_pct(_safe(e.get("op_margin")))}{base_ext}'
                 f'　EPS {_safe(e.get("eps")) if _safe(e.get("eps")) is not None else "—"}<br>'
                 f'估值:P/E {_safe(e.get("per")) if _safe(e.get("per")) is not None else "—"}'
                 f'　殖利率 {_pct(_safe(e.get("yield_pct")))}'
@@ -737,9 +877,10 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
             head + "".join(cards) +
             '<div style="margin:2px 16px 12px;font-size:11px;color:#94a3b8;line-height:1.7;">'
             '※ <b>排名 = 綜合資料面強弱</b>(基本面 30%〔營收+營益率〕＋估值 15%〔P/E+殖利率〕＋籌碼 25%＋'
-            '30日法人 15%＋未過熱 15%;偏基本面/估值以對齊波段視角,過熱會扣分);<b>#1 為資料面相對最強</b>,'
-            f'但這是研究排序、<b>非買賣建議</b>,仍須自行評估題材與基本面。個股為本報依「{esc(sec["name"])}」'
-            '主題自動整理、非股癌推薦。</div>')
+            '30日法人 15%＋未過熱 15%;偏基本面/估值以對齊波段視角,過熱會扣分);排序前已先<b>剔除市值過小/'
+            '流動性不足</b>(實際難買進)者。淨利率/單季ROE/大戶持股/外資持股/融資餘額為新增<b>參考欄位,'
+            '尚未計入分數</b>(計分權重之變更須先經回測驗證)。<b>#1 為資料面相對最強</b>,但這是研究排序、'
+            f'<b>非買賣建議</b>,仍須自行評估題材與基本面。個股為本報依「{esc(sec["name"])}」主題自動整理、非股癌推薦。</div>')
     # 看空/中性族群(只列立場,不展開個股)
     others = [s for s in extract.get("sectors", []) if s["stance"] != "看多"]
     if others:
@@ -807,13 +948,15 @@ def process_new_episode() -> int:
                  "exdiv": _safe_fetch(fetch_exdiv_calendar, "除權息預告"),
                  "div": _safe_fetch(fetch_dividends, "股利分派"),
                  "insider": _safe_fetch(lambda: fetch_insider(whitelist), "董監持股"),
-                 "guidance": _safe_fetch(fetch_guidance, "財測達成")}
+                 "guidance": _safe_fetch(fetch_guidance, "財測達成"),
+                 "roe": _safe_fetch(fetch_roe, "ROE/ROA")}
     sector_stocks = []
     for sec in bullish:
         cands = llm_candidate_tickers(sec["name"], sec.get("reasoning", ""), acc["summary_model"])
         codes = validate_tickers(cands, whitelist)
         stocks = enrich_sector(codes, whitelist, candidates=cands, extra=extra)
-        sector_stocks.append({"sector": sec, "stocks": stocks})
+        trend = sector_trend_oneliner(sec["name"], sec.get("reasoning", ""), acc["summary_model"])
+        sector_stocks.append({"sector": sec, "stocks": stocks, "trend": trend})
         log(f"族群「{sec['name']}」候選 {len(cands)} → 驗證 {len(codes)} → 取 {len(stocks)}")
 
     meta = {"title": title, "published": published, "guid": guid}

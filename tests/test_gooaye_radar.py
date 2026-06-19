@@ -69,10 +69,12 @@ def test_stock_verdict_flags_strength_and_overheat():
     strong = gr._stock_verdict({"foreign_streak": 3, "invest_streak": 2, "rev_yoy_pct": 25,
                                 "op_margin": 30, "per": 12, "yield_pct": 5.0,
                                 "director_pct": 35, "forecast_achv_pct": 105,
+                                "roe_q": 8, "major_holder_pct": 70, "foreign_hold_pct": 60,
                                 "ma20_dist_pct": 1.0, "radar_score": 70})
     assert "偏強" in strong and "外資投信同步連買" in strong
     assert "營益率" in strong and "本益比12偏低" in strong and "殖利率" in strong
     assert "董監持股35%高" in strong and "財測達成105%" in strong
+    assert "單季ROE8%佳" in strong and "大戶持股70%集中" in strong and "外資持股60%高" in strong
     weak = gr._stock_verdict({"foreign_30d_lot": -3000, "smart_money": {"score": 0},
                               "per": 55, "pledge_pct": 40, "forecast_achv_pct": 80,
                               "ma20_dist_pct": 30.0, "radar_score": 20})
@@ -88,11 +90,53 @@ def test_fetch_valuation_parse(monkeypatch):
 
 
 def test_fetch_margins_parse(monkeypatch):
+    """改用 t187ap17_L 營益分析(官方直接給率)。"""
     monkeypatch.setattr(gr, "_twse_json", lambda url: [
-        {"公司代號": "2330", "營業收入": "1,000",
-         "營業毛利（毛損）淨額": "550", "營業利益（損失）": "400"}])
+        {"公司代號": "2330", "毛利率(%)(營業毛利)/(營業收入)": "66.25",
+         "營業利益率(%)(營業利益)/(營業收入)": "58.10",
+         "稅後純益率(%)(稅後純益)/(營業收入)": "50.51"},
+        {"公司代號": "00", "毛利率(%)(營業毛利)/(營業收入)": "1"}])   # 非4位 → 略過
     out = gr.fetch_margins()
-    assert out["2330"]["gross_margin"] == 55.0 and out["2330"]["op_margin"] == 40.0
+    assert out["2330"] == {"gross_margin": 66.25, "op_margin": 58.1, "net_margin": 50.51}
+    assert "00" not in out
+
+
+def test_fetch_roe_parse(monkeypatch):
+    """單季 ROE/ROA = 稅後淨利(t187ap14)÷ 權益/資產總額(t187ap07_L_ci)。"""
+    def fake(url):
+        if "t187ap14" in url:
+            return [{"公司代號": "2330", "稅後淨利": "1,000"},
+                    {"公司代號": "2454", "稅後淨利": "500"}]
+        if "t187ap07" in url:
+            return [{"公司代號": "2330", "權益總額": "5,000", "資產總額": "10,000"},
+                    {"公司代號": "2454", "權益總額": "0", "資產總額": ""}]   # 權益 0/資產空 → None 不爆
+        return []
+    monkeypatch.setattr(gr, "_twse_json", fake)
+    out = gr.fetch_roe()
+    assert out["2330"] == {"roe_q": 20.0, "roa_q": 10.0}
+    assert out["2454"] == {"roe_q": None, "roa_q": None}
+
+
+def test_fetch_foreign_holding_parse(monkeypatch):
+    """FinMind 外資持股比率,取最新一筆;失敗的代號略過不爆。"""
+    class _R:
+        def json(self):
+            return {"data": [{"date": "2026-06-10", "ForeignInvestmentSharesRatio": 68.0},
+                             {"date": "2026-06-18", "ForeignInvestmentSharesRatio": 69.98}]}
+    monkeypatch.setattr(gr.requests, "get", lambda *a, **k: _R())
+    assert gr.fetch_foreign_holding(["2330"]) == {"2330": {"foreign_hold_pct": 69.98}}
+
+    def boom(*a, **k):
+        raise RuntimeError("rate limit")
+    monkeypatch.setattr(gr.requests, "get", boom)
+    assert gr.fetch_foreign_holding(["2330"]) == {}   # 失敗 → 空,不拋例外
+
+
+def test_radar_tradeable_filter():
+    assert gr._radar_tradeable({"market_cap": 5e9, "liquidity_eligible": True}) is True
+    assert gr._radar_tradeable({"market_cap": 1e9}) is False          # < 30 億 → 剔除
+    assert gr._radar_tradeable({"liquidity_eligible": False}) is False  # 流動性不足 → 剔除
+    assert gr._radar_tradeable({}) is True                            # 缺資料 → 放行(不誤殺)
 
 
 def test_roc_md():
@@ -174,12 +218,16 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
                "sectors": [{"name": "功率半导体", "stance": "看多", "reasoning": "需求强"},
                            {"name": "面板", "stance": "看空", "reasoning": "供过于求"}]}
     sector_stocks = [{"sector": {"name": "功率半導體", "reasoning": "需求強"},
+                      "trend": "功率元件需求回溫、報價止跌😇",
                       "stocks": [{"code": "2481", "name": "強茂", "close": 55.3, "day_pct": 2.1,
-                                  "smart_money": {"score": 70, "tag": "外資連買"},
+                                  "market_cap": 32_500_000_000, "smart_money": {"score": 70, "tag": "外資連買"},
                                   "foreign_streak": 3, "invest_streak": 2,
                                   "foreign_30d_lot": 1200, "invest_30d_lot": 300, "tdcc_wow_pct": 0.3,
+                                  "major_holder_pct": 58.0, "foreign_hold_pct": 21.0,
+                                  "margin_balance_lot": 4200, "short_cover_ratio": 1.1,
                                   "rev_yoy_pct": 15.0, "rev_mom_pct": 4.0, "rev_cum_yoy_pct": 12.0,
-                                  "gross_margin": 35.5, "op_margin": 22.1, "eps": 1.2,
+                                  "gross_margin": 35.5, "op_margin": 22.1, "net_margin": 18.0,
+                                  "roe_q": 4.5, "eps": 1.2,
                                   "per": 14.0, "yield_pct": 4.2, "pbr": 2.1,
                                   "div_year": "114", "cash_div": 16.5, "stock_div": 1.0,
                                   "progress": "股東會確認",
@@ -195,9 +243,14 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
     assert "雷達評語" in html and "排名 = 綜合資料面強弱" in html       # 判斷依據說明
     assert "外資連買3日" in html and "EPS 1.2" in html and "大戶持股週變" in html  # 籌碼欄位
     assert "毛利率" in html and "營益率" in html and "P/E 14.0" in html and "P/B 2.1" in html  # 基本面+估值
+    assert "市值 325 億" in html                                       # 市值(自算/顯示)
+    assert "淨利率 18.0%" in html and "單季ROE 4.5%" in html            # 基本面延伸
+    assert "大戶持股 58%" in html and "外資持股 21%" in html and "融資餘額 4,200張" in html  # 第二籌碼列
+    assert "產業近況" in html                                          # 類股趨勢一句話
     assert "官方:" in html and "114年度現金股利 16.5 元" in html and "+配股 1.0 元" in html  # 股利(標年度)
     assert "息日 07/09" in html and "董監持股 12.3%" in html             # 除權息預告 + 董監持股
     assert "符合子題" in html and "Non-China" in html                 # theme-fit
+    assert "🌼" not in html and "😇" not in html                       # trend/news 也要去 emoji
     assert "看空" in html and "面板" in html                          # 看空族群仍列立場
     # 不外漏簡體 + 不外漏 emoji(標題/新聞/總綱)
     assert "测试" not in html and "半导体" not in html and "主轴" not in html

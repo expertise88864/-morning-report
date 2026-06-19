@@ -66,10 +66,10 @@ def _parse_portfolio(raw: str) -> dict[str, float]:
     解析「我的持股」設定字串。隱私:這些是個人持股,只進記憶體與漲幅彙總,
     **絕不**寫進 HTML / LLM prompt / state 檔(信件公開寄出,僅顯示彙總 % 與金額)。
 
-    支援兩種格式:
-      JSON:  {"2330": 5, "2454": 2}            # 代號 → 張數
-      簡易:  2330:5,2454:2  或  2330:5;2454:2   # 同上,逗號/分號分隔
-    張數可為小數(零股以張為單位,如 0.5 = 500 股)。解析失敗回 {}。
+    單位為「股數」(直接填股數,零股亦同;非以張為單位)。支援兩種格式:
+      JSON:  {"2330": 5000, "2454": 2000}        # 代號 → 股數
+      簡易:  2330:5000,2454:2000  或  2330:5000;2454:2000   # 同上,逗號/分號分隔
+    股數通常為整數(亦接受小數)。解析失敗回 {}。
     """
     raw = (raw or "").strip()
     if not raw:
@@ -80,26 +80,26 @@ def _parse_portfolio(raw: str) -> dict[str, float]:
             data = json.loads(raw)
             for k, v in (data or {}).items():
                 code = str(k).strip()
-                lots = float(v)
-                if code and lots > 0:
-                    out[code] = lots
+                shares = float(v)
+                if code and shares > 0:
+                    out[code] = shares
         else:
             for pair in raw.replace(";", ",").split(","):
                 if ":" not in pair:
                     continue
-                code, lots_str = pair.split(":", 1)
+                code, shares_str = pair.split(":", 1)
                 code = code.strip()
-                lots = float(lots_str.strip())
-                if code and lots > 0:
-                    out[code] = lots
+                shares = float(shares_str.strip())
+                if code and shares > 0:
+                    out[code] = shares
     except (ValueError, TypeError, json.JSONDecodeError) as e:
         print(f"[portfolio] 設定解析失敗(將略過持股預測): {e}", file=sys.stderr)
         return {}
     return out
 
 
-# 兩個倉位的持股設定(GitHub Secrets / 環境變數)。未設 → 不顯示持股欄位。
-# 注意:個股代號與張數僅存記憶體,信件只顯示彙總漲幅 % 與金額,不揭露明細。
+# 兩個倉位的持股設定(GitHub Secrets / 環境變數;單位=股數)。未設 → 不顯示持股欄位。
+# 注意:個股代號與股數僅存記憶體,信件只顯示彙總漲幅 % 與金額,不揭露明細。
 PORTFOLIO_1 = _parse_portfolio(os.environ.get("PORTFOLIO_1", ""))
 PORTFOLIO_2 = _parse_portfolio(os.environ.get("PORTFOLIO_2", ""))
 # 倉位顯示名稱(可自訂,如「主帳戶」「定存股」);預設「持倉1/持倉2」。
@@ -3490,28 +3490,27 @@ def calibrate_0050_bias(tw0050_pred: dict, history: list[dict],
 
 def calc_portfolio_actual(portfolio: dict, closes_map: dict) -> dict:
     """
-    計算單一倉位「昨日已實現漲跌」%與金額(用 前天收盤 vs 昨天收盤,非預測)。
+    計算單一倉位「昨日帳上漲跌」%與金額(用 前天收盤 vs 昨天收盤,非預測)。
 
-    portfolio:   {code: lots(張)}
+    portfolio:   {code: shares(股)}   # 單位為股數
     closes_map:  {code: (前天收盤, 昨天收盤)}(TWSE 官方,避開 Yahoo 對 ETF 落後)
 
-    倉位昨日漲跌 = Σ(昨天市值 − 前天市值) / Σ前天市值;金額 = Σ(張×1000×(昨−前))。
+    倉位昨日漲跌 = Σ(昨天市值 − 前天市值) / Σ前天市值;金額 = Σ(股×(昨−前))。
     回傳 {gain_pct, gain_amount, prev_value, last_value, n_holdings, n_priced} 或 {}。
-    隱私:回傳只有彙總值,**無任何個股代號或張數**。
+    隱私:回傳只有彙總值,**無任何個股代號或股數**。
     """
     if not portfolio:
         return {}
     total_prev = 0.0
     total_last = 0.0
     n_priced = 0
-    for code, lots in portfolio.items():
+    for code, shares in portfolio.items():
         pair = closes_map.get(code)
         if not pair:
             continue
         prev, last = pair
         if not prev or not last or prev <= 0:
             continue
-        shares = lots * 1000
         total_prev += shares * prev
         total_last += shares * last
         n_priced += 1
@@ -9977,7 +9976,7 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                    f'<div style="{val};color:{stance_color};">{label}{score_str}</div>'
                    f'</td>')
 
-    # === 個人持股列(第二行,僅在有設定時顯示;只秀彙總「昨日已實現漲跌」+ 金額,不揭露明細)===
+    # === 個人持股列(第二行,僅在有設定時顯示;只秀彙總「昨日帳上漲跌」+ 金額,不揭露明細)===
     pf = quotes.get("PORTFOLIO_ACTUAL", {}) or {}
 
     def _fmt_amount(amt):
@@ -14087,10 +14086,10 @@ def main() -> int:
     quotes["TW_UNIVERSE_SNAPSHOT"] = tw0050
     quotes["BREADTH"] = breadth
 
-    # 6.65 個人持股「昨日已實現漲跌」(用 前天收盤 vs 昨天收盤,非預測)
+    # 6.65 個人持股「昨日帳上漲跌」(用 前天收盤 vs 昨天收盤,非預測)
     #      隱私:只算彙總 % + 金額,不揭露任何個股明細。
     if PORTFOLIO_1 or PORTFOLIO_2:
-        print("[main] 計算個人持股昨日已實現漲跌…")
+        print("[main] 計算個人持股昨日帳上漲跌…")
         try:
             all_codes = {**PORTFOLIO_1, **PORTFOLIO_2}
             closes_map: dict = {}

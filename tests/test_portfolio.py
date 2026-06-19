@@ -1,4 +1,4 @@
-"""個人持股「昨日已實現損益」測試:設定解析 / 實際漲跌彙總 / 隱私 / 除息偵測 / 渲染。"""
+"""個人持股「昨日帳上損益」測試:設定解析(單位=股數) / 實際漲跌彙總 / 隱私 / 除息偵測 / 渲染。"""
 import morning_report as mr
 
 
@@ -17,8 +17,8 @@ def test_parse_portfolio_simple_semicolon():
     assert mr._parse_portfolio("2330:5;2454:2") == {"2330": 5.0, "2454": 2.0}
 
 
-def test_parse_portfolio_fractional_lots():
-    # 零股以張為單位:0.5 張 = 500 股
+def test_parse_portfolio_fractional_shares():
+    # 單位為股數,通常整數;小數也接受(解析不限制)
     assert mr._parse_portfolio("2330:0.5") == {"2330": 0.5}
 
 
@@ -33,7 +33,7 @@ def test_parse_portfolio_filters_nonpositive():
     assert mr._parse_portfolio("2330:0,2317:-3,2454:1") == {"2454": 1.0}
 
 
-# ---------- calc_portfolio_actual（昨日已實現漲跌 = 前天收盤 vs 昨天收盤）----------
+# ---------- calc_portfolio_actual（昨日帳上漲跌 = 前天收盤 vs 昨天收盤;持股單位=股數）----------
 
 def test_actual_empty_portfolio():
     assert mr.calc_portfolio_actual({}, {}) == {}
@@ -45,7 +45,7 @@ def test_actual_no_closes_returns_empty():
 
 
 def test_actual_realized_gain():
-    portfolio = {"00662": 7.059, "00631L": 19}
+    portfolio = {"00662": 7059, "00631L": 19000}   # 單位=股數(原 7.059 張 / 19 張)
     # closes_map: (前天收盤, 昨天收盤)
     closes = {"00662": (120.0, 121.2), "00631L": (210.0, 215.0)}
     out = mr.calc_portfolio_actual(portfolio, closes)
@@ -60,7 +60,7 @@ def test_actual_realized_gain():
 
 
 def test_actual_negative_day():
-    out = mr.calc_portfolio_actual({"0050": 10}, {"0050": (103.0, 102.0)})
+    out = mr.calc_portfolio_actual({"0050": 10000}, {"0050": (103.0, 102.0)})
     # 10000股 ×(102−103) = −10,000
     assert out["gain_amount"] == -10000
     assert out["gain_pct"] == round((-10000 / 1030000) * 100, 2)
@@ -68,16 +68,16 @@ def test_actual_negative_day():
 
 def test_actual_skips_unpriced_holding():
     out = mr.calc_portfolio_actual(
-        {"2330": 1, "9999": 1}, {"2330": (1000.0, 1010.0)})
+        {"2330": 1000, "9999": 1000}, {"2330": (1000.0, 1010.0)})
     assert out["n_holdings"] == 2
     assert out["n_priced"] == 1
     assert out["gain_amount"] == 10000   # 只有 2330: 1000股×(1010−1000)
 
 
 def test_actual_output_has_no_stock_codes():
-    """隱私關鍵:回傳彙總 dict 不可含任何個股代號 / 張數。"""
+    """隱私關鍵:回傳彙總 dict 不可含任何個股代號 / 股數。"""
     out = mr.calc_portfolio_actual(
-        {"2330": 5, "2454": 3}, {"2330": (1000.0, 1010.0), "2454": (1300.0, 1290.0)})
+        {"2330": 5000, "2454": 3000}, {"2330": (1000.0, 1010.0), "2454": (1300.0, 1290.0)})
     assert set(out.keys()) <= {"gain_pct", "gain_amount", "prev_value",
                                 "last_value", "n_holdings", "n_priced"}
     assert "2454" not in str(out)

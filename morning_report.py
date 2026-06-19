@@ -2178,6 +2178,63 @@ def fetch_tw_eps() -> dict[str, dict]:
     return out
 
 
+def _attach_listing_fundamentals(snapshot: list[dict]) -> None:
+    """為每日快照就地補上『估值/獲利率/ROE』(TWSE OpenAPI 全市場各一次取,免金鑰),
+    供 model_history 累積、日後回測基本面/估值因子(這是鋪路:先存,夠長再驗 IC)。
+    任一來源失敗只跳過該欄,絕不影響晨報主流程。"""
+    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+    def _j(url: str) -> list:
+        try:
+            r = requests.get(url, timeout=20, headers=headers)
+            r.raise_for_status()
+            return r.json() or []
+        except Exception as e:
+            print(f"[fundamentals] {url.rsplit('/', 1)[-1]} 失敗(略過): {e}", file=sys.stderr)
+            return []
+
+    def _ok(c: str) -> bool:
+        return len(c) == 4 and c.isdigit()
+
+    val, margin, net_income, eq_asset = {}, {}, {}, {}
+    for row in _j("https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL"):
+        c = str(row.get("Code", "")).strip()
+        if _ok(c):
+            val[c] = {"per": _to_float(row.get("PEratio")),
+                      "yield_pct": _to_float(row.get("DividendYield")),
+                      "pbr": _to_float(row.get("PBratio"))}
+    for row in _j("https://openapi.twse.com.tw/v1/opendata/t187ap17_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if _ok(c):
+            margin[c] = {"gross_margin": _to_float(row.get("毛利率(%)(營業毛利)/(營業收入)")),
+                         "op_margin": _to_float(row.get("營業利益率(%)(營業利益)/(營業收入)")),
+                         "net_margin": _to_float(row.get("稅後純益率(%)(稅後純益)/(營業收入)"))}
+    for row in _j("https://openapi.twse.com.tw/v1/opendata/t187ap14_L"):
+        c = str(row.get("公司代號", "")).strip()
+        if _ok(c):
+            net_income[c] = _to_float(row.get("稅後淨利"))
+    for row in _j("https://openapi.twse.com.tw/v1/opendata/t187ap07_L_ci"):
+        c = str(row.get("公司代號", "")).strip()
+        if _ok(c):
+            eq_asset[c] = (_to_float(row.get("權益總額")), _to_float(row.get("資產總額")))
+    attached = 0
+    for e in snapshot or []:
+        c = str(e.get("code", "")).strip()
+        if c in val:
+            e.update(val[c])
+        if c in margin:
+            e.update(margin[c])
+        n = net_income.get(c)
+        eq, asset = eq_asset.get(c, (None, None))
+        if n is not None and eq and eq > 0:
+            e["roe_q"] = round(n / eq * 100, 1)
+        if n is not None and asset and asset > 0:
+            e["roa_q"] = round(n / asset * 100, 1)
+        if c in val or c in margin:
+            attached += 1
+    print(f"[fundamentals] 估值/獲利率附加 {attached} 檔(供 model_history 累積)")
+
+
 def fetch_tdcc_major_holders(target_codes: Optional[set] = None) -> dict[str, dict]:
     """
     抓「集保戶股權分散表」各檔的大戶持股比例（TDCC 集保結算所開放資料，免費無 key）。
@@ -5356,6 +5413,10 @@ def save_model_history_records(records: list[dict],
             "tdcc_wow_pct", "margin_change_lot", "ranking_score",
             "attention_score", "industry_neutral_score", "news_catalyst_score",
             "price_forecast", "news_catalysts",
+            # 基本面/估值/市值因子(鋪路:壓縮後也要保留,否則因子序列會被砍斷)
+            "market_cap", "per", "yield_pct", "pbr", "gross_margin", "op_margin",
+            "net_margin", "roe_q", "roa_q", "eps", "foreign_30d_lot",
+            "inst_buy_vol_ratio", "short_cover_ratio", "major_holder_pct",
         }
         compact = {key: record.get(key) for key in keep_record if key in record}
         stocks = {}
@@ -6206,6 +6267,9 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         "attention_score", "ranking_score", "ranking_components", "attention_rank",
         "industry_neutral_score", "news_catalyst_score",
         "price_forecast",
+        # 基本面/估值因子(鋪路:供日後回測,_attach_listing_fundamentals 附加)
+        "per", "yield_pct", "pbr", "gross_margin", "op_margin", "net_margin",
+        "roe_q", "roa_q", "eps", "major_holder_pct", "inst_buy_vol_ratio",
     }
     output = {}
     for item in snapshot or []:
@@ -14186,6 +14250,11 @@ def main() -> int:
             target_session_date,
         )
         if completed_session:
+            # 鋪路:為快照補估值/獲利率/ROE,讓基本面因子隨日累積(失敗不影響寄信)
+            try:
+                _attach_listing_fundamentals(tw0050)
+            except Exception as e:
+                print(f"[main] 附加基本面失敗(略過): {e}", file=sys.stderr)
             label_prices, label_prices_complete = _current_label_prices(model_history)
             save_model_history({
                 "session_date": completed_session,

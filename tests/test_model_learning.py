@@ -1046,3 +1046,52 @@ def test_llm_event_extractor_prioritizes_official_critical_items(monkeypatch):
     payload = captured["prompt"].split("INPUT:\n", 1)[1]
     compact = json.loads(payload)
     assert compact[0]["title"] == "official critical event"
+
+
+def test_attach_listing_fundamentals_merges(monkeypatch):
+    """鋪路:估值/獲利率/ROE 由四個 TWSE 端點就地併入快照,供 model_history 累積。"""
+    def fake_get(url, *a, **k):
+        if "BWIBBU_ALL" in url:
+            data = [{"Code": "2330", "PEratio": "32.4", "DividendYield": "0.9", "PBratio": "10.6"}]
+        elif "t187ap17_L" in url:
+            data = [{"公司代號": "2330", "毛利率(%)(營業毛利)/(營業收入)": "66.25",
+                     "營業利益率(%)(營業利益)/(營業收入)": "58.1",
+                     "稅後純益率(%)(稅後純益)/(營業收入)": "50.5"}]
+        elif "t187ap14_L" in url:
+            data = [{"公司代號": "2330", "稅後淨利": "1000"}]
+        elif "t187ap07_L_ci" in url:
+            data = [{"公司代號": "2330", "權益總額": "5000", "資產總額": "10000"}]
+        else:
+            data = []
+
+        class _R:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return data
+        return _R()
+
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    snap = [{"code": "2330", "close": 1000.0}, {"code": "9999", "close": 5.0}]
+    mr._attach_listing_fundamentals(snap)
+    e = snap[0]
+    assert e["per"] == 32.4 and e["yield_pct"] == 0.9 and e["pbr"] == 10.6
+    assert e["gross_margin"] == 66.25 and e["op_margin"] == 58.1 and e["net_margin"] == 50.5
+    assert e["roe_q"] == 20.0 and e["roa_q"] == 10.0   # 1000/5000, 1000/10000
+    assert "per" not in snap[1]                          # 名單外不動
+
+
+def test_snapshot_for_model_keeps_fundamentals():
+    """_snapshot_for_model 要保留新基本面/估值欄位,否則因子序列無法累積回測。"""
+    snap = [{"code": "2330", "name": "台積電", "close": 1000.0, "market_cap": 2.6e13,
+             "per": 32.4, "yield_pct": 0.9, "gross_margin": 66.2, "op_margin": 58.1,
+             "net_margin": 50.5, "roe_q": 9.7, "eps": 22.08, "rev_yoy_pct": 40.0,
+             "foreign_30d_lot": 5000, "inst_buy_vol_ratio": 12.0, "short_cover_ratio": 1.1,
+             "major_holder_pct": 60.0}]
+    snap[0]["pbr"] = 5.2
+    snap[0]["roa_q"] = 6.6
+    row = mr._snapshot_for_model(snap)["2330"]
+    for k in ("market_cap", "per", "yield_pct", "pbr", "gross_margin", "op_margin", "net_margin",
+              "roe_q", "roa_q", "eps", "rev_yoy_pct", "foreign_30d_lot", "major_holder_pct"):
+        assert k in row, f"{k} 應保留供回測累積"

@@ -70,11 +70,12 @@ def test_stock_verdict_flags_strength_and_overheat():
                                 "op_margin": 30, "per": 12, "yield_pct": 5.0,
                                 "director_pct": 35, "forecast_achv_pct": 105,
                                 "roe_q": 8, "major_holder_pct": 70, "foreign_hold_pct": 60,
-                                "ma20_dist_pct": 1.0, "radar_score": 70})
+                                "eps_yoy_pct": 45, "ma20_dist_pct": 1.0, "radar_score": 70})
     assert "偏強" in strong and "外資投信同步連買" in strong
     assert "營益率" in strong and "本益比12偏低" in strong and "殖利率" in strong
     assert "董監持股35%高" in strong and "財測達成105%" in strong
     assert "單季ROE8%佳" in strong and "大戶持股70%集中" in strong and "外資持股60%高" in strong
+    assert "EPS年增45%" in strong
     weak = gr._stock_verdict({"foreign_30d_lot": -3000, "smart_money": {"score": 0},
                               "per": 55, "pledge_pct": 40, "forecast_achv_pct": 80,
                               "ma20_dist_pct": 30.0, "radar_score": 20})
@@ -130,6 +131,21 @@ def test_fetch_foreign_holding_parse(monkeypatch):
         raise RuntimeError("rate limit")
     monkeypatch.setattr(gr.requests, "get", boom)
     assert gr.fetch_foreign_holding(["2330"]) == {}   # 失敗 → 空,不拋例外
+
+
+def test_fetch_eps_growth_parse(monkeypatch):
+    """FinMind 財報季 EPS 序列 → 最新季 vs 去年同季年增率。"""
+    class _R:
+        def json(self):
+            return {"data": [
+                {"date": "2025-03-31", "type": "EPS", "value": 10.0},
+                {"date": "2025-06-30", "type": "EPS", "value": 12.0},
+                {"date": "2026-03-31", "type": "EPS", "value": 15.0},
+                {"date": "2026-03-31", "type": "Revenue", "value": 999}]}   # 非 EPS → 略過
+    monkeypatch.setattr(gr.requests, "get", lambda *a, **k: _R())
+    out = gr.fetch_eps_growth(["2330"])
+    assert out["2330"]["eps_latest"] == 15.0 and out["2330"]["eps_latest_q"] == "2026-03-31"
+    assert out["2330"]["eps_yoy_pct"] == 50.0    # (15-10)/10,對齊去年同季 2025-03-31
 
 
 def test_radar_tradeable_filter():
@@ -227,7 +243,7 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
                                   "margin_balance_lot": 4200, "short_cover_ratio": 1.1,
                                   "rev_yoy_pct": 15.0, "rev_mom_pct": 4.0, "rev_cum_yoy_pct": 12.0,
                                   "gross_margin": 35.5, "op_margin": 22.1, "net_margin": 18.0,
-                                  "roe_q": 4.5, "eps": 1.2,
+                                  "roe_q": 4.5, "eps": 1.2, "eps_yoy_pct": 58.0,
                                   "per": 14.0, "yield_pct": 4.2, "pbr": 2.1,
                                   "div_year": "114", "cash_div": 16.5, "stock_div": 1.0,
                                   "progress": "股東會確認",
@@ -245,6 +261,7 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
     assert "毛利率" in html and "營益率" in html and "P/E 14.0" in html and "P/B 2.1" in html  # 基本面+估值
     assert "市值 325 億" in html                                       # 市值(自算/顯示)
     assert "淨利率 18.0%" in html and "單季ROE 4.5%" in html            # 基本面延伸
+    assert "EPS年增 +58%" in html                                      # FinMind EPS 年增率
     assert "大戶持股 58%" in html and "外資持股 21%" in html and "融資餘額 4,200張" in html  # 第二籌碼列
     assert "產業近況" in html                                          # 類股趨勢一句話
     assert "官方:" in html and "114年度現金股利 16.5 元" in html and "+配股 1.0 元" in html  # 股利(標年度)

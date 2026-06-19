@@ -344,6 +344,11 @@ def _stock_verdict(e: dict) -> str:
         pos.append(f"營收年增{rev:.0f}%")
     elif isinstance(rev, (int, float)) and rev < 0:
         neg.append(f"營收衰退{abs(rev):.0f}%")
+    epsg = _safe(e.get("eps_yoy_pct"))
+    if isinstance(epsg, (int, float)) and epsg >= 30:
+        pos.append(f"EPS年增{epsg:.0f}%")
+    elif isinstance(epsg, (int, float)) and epsg < 0:
+        neg.append(f"EPS年減{abs(epsg):.0f}%")
     opm = _safe(e.get("op_margin"))
     if isinstance(opm, (int, float)) and opm >= 20:
         pos.append(f"營益率{opm:.0f}%佳")
@@ -519,6 +524,37 @@ def fetch_foreign_holding(codes: list[str]) -> dict:
     return out
 
 
+def fetch_eps_growth(codes: list[str]) -> dict:
+    """{code: {eps_latest, eps_latest_q, eps_yoy_pct}} —— EPS 年增率(FinMind 財報季 EPS 序列,
+    最新季 vs 去年同季)。教育/非商業用途;只對最終 Top 名單查、token 選填、失敗略過。"""
+    out = {}
+    start = (dt.date.today() - dt.timedelta(days=550)).isoformat()   # 至少涵蓋 5 季
+    for c in codes:
+        try:
+            params = {"dataset": "TaiwanStockFinancialStatements", "data_id": c, "start_date": start}
+            if FINMIND_TOKEN:
+                params["token"] = FINMIND_TOKEN
+            r = requests.get("https://api.finmindtrade.com/api/v4/data",
+                             params=params, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            data = (r.json() or {}).get("data") or []
+            eps = sorted(((str(row.get("date")), _f(row.get("value")))
+                          for row in data
+                          if row.get("type") == "EPS" and _f(row.get("value")) is not None),
+                         key=lambda x: x[0])
+            if not eps:
+                continue
+            latest_d, latest_v = eps[-1]
+            rec = {"eps_latest": latest_v, "eps_latest_q": latest_d}
+            yago = (str(int(latest_d[:4]) - 1) + latest_d[4:]) if latest_d[:4].isdigit() else ""
+            prior = next((v for d, v in eps if d == yago), None)
+            if prior:   # 去年同季存在且非 0
+                rec["eps_yoy_pct"] = round((latest_v - prior) / abs(prior) * 100, 1)
+            out[c] = rec
+        except Exception:
+            continue
+    return out
+
+
 def _roc_md(s) -> str:
     """民國 yyyymmdd(如 1150709)→ MM/DD。"""
     s = str(s or "").strip()
@@ -682,10 +718,13 @@ def enrich_sector(codes: list[str], whitelist: dict,
     top = rank_top5(pool)
     for e in top:
         e["_news"] = _stock_news_oneliner(e["code"], e.get("name", ""))
-    # 僅對最終 Top 名單補外資持股比率(FinMind,少量代號、教育用途)
-    fh = _safe_fetch(lambda: fetch_foreign_holding([e["code"] for e in top]), "外資持股(FinMind)")
+    # 僅對最終 Top 名單補 FinMind 資料(少量代號、教育用途):外資持股比率 + EPS 年增率
+    top_codes = [e["code"] for e in top]
+    fh = _safe_fetch(lambda: fetch_foreign_holding(top_codes), "外資持股(FinMind)")
+    eg = _safe_fetch(lambda: fetch_eps_growth(top_codes), "EPS年增(FinMind)")
     for e in top:
         e.update(fh.get(e["code"]) or {})     # foreign_hold_pct
+        e.update(eg.get(e["code"]) or {})     # eps_latest / eps_latest_q / eps_yoy_pct
     return top
 
 
@@ -839,11 +878,14 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
             # 基本面延伸:淨利率 + 單季 ROE(有才列)
             nm = _safe(e.get("net_margin"))
             roe = _safe(e.get("roe_q"))
+            epsg = _safe(e.get("eps_yoy_pct"))
             base_ext = ""
             if nm is not None:
                 base_ext += f"／淨利率 {nm:.1f}%"
             if roe is not None:
                 base_ext += f"　單季ROE {roe:.1f}%"
+            if epsg is not None:
+                base_ext += f"　EPS年增 {epsg:+.0f}%"
             cards.append(
                 '<div style="border:1px solid #e2e8f0;border-radius:10px;margin:8px 16px;padding:10px 12px;">'
                 f'<div style="font-size:15px;font-weight:700;color:#0f172a;">#{i} '

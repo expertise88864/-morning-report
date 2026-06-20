@@ -304,6 +304,11 @@ def _pct(v):
     return ("%+.1f%%" % v) if isinstance(v, (int, float)) else "—"
 
 
+def _lvl(v):
+    """水準型百分比(毛利率/營益率/殖利率等,不加正負號;與『變化型』_pct 區分)。"""
+    return ("%.1f%%" % v) if isinstance(v, (int, float)) else "—"
+
+
 def _lot(v):
     return f"{int(v):+,d} 張" if isinstance(v, (int, float)) else "—"
 
@@ -633,8 +638,12 @@ def fetch_insider(whitelist: dict) -> dict:
     out = {}
     for c, a in agg.items():
         shares = _f((whitelist.get(c) or {}).get("shares"))
+        dpct = a["held"] / shares * 100 if shares and shares > 0 else None
+        # KY/TDR 等股本基準與申報股數不一致時會 >100%(不可能)→ 視為不可信,捨棄
+        if dpct is not None and dpct > 100:
+            dpct = None
         out[c] = {
-            "director_pct": round(a["held"] / shares * 100, 1) if shares and shares > 0 else None,
+            "director_pct": round(dpct, 1) if dpct is not None else None,
             "pledge_pct": round(a["pledged"] / a["held"] * 100, 1) if a["held"] > 0 else None,
         }
     return out
@@ -884,8 +893,10 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 base_ext += f"／淨利率 {nm:.1f}%"
             if roe is not None:
                 base_ext += f"　單季ROE {roe:.1f}%"
+            eps_v = _safe(e.get("eps"))
+            eps_str = (f"{eps_v}" if eps_v is not None else "—")
             if epsg is not None:
-                base_ext += f"　EPS年增 {epsg:+.0f}%"
+                eps_str += f"(年增 {epsg:+.0f}%)"
             cards.append(
                 '<div style="border:1px solid #e2e8f0;border-radius:10px;margin:8px 16px;padding:10px 12px;">'
                 f'<div style="font-size:15px;font-weight:700;color:#0f172a;">#{i} '
@@ -898,14 +909,14 @@ def render_radar_html(meta: dict, extract: dict, sector_stocks: list[dict],
                 f'{esc(t(str(sm.get("tag", ""))))}</div>'
                 f'<div style="font-size:12px;color:#475569;margin-top:4px;line-height:1.8;">'
                 f'籌碼:{esc(chip_line)}　30日外資 {_lot(_safe(e.get("foreign_30d_lot")))}／投信 '
-                f'{_lot(_safe(e.get("invest_30d_lot")))}　大戶持股週變 {_pct(_safe(e.get("tdcc_wow_pct")))}<br>'
+                f'{_lot(_safe(e.get("invest_30d_lot")))}<br>'
                 f'{chip2_line}'
                 f'基本面:月營收 YoY {_pct(_safe(e.get("rev_yoy_pct")))}(MoM {_pct(_safe(e.get("rev_mom_pct")))}'
                 f'、累計 {_pct(_safe(e.get("rev_cum_yoy_pct")))})'
-                f'　毛利率 {_pct(_safe(e.get("gross_margin")))}／營益率 {_pct(_safe(e.get("op_margin")))}{base_ext}'
-                f'　EPS {_safe(e.get("eps")) if _safe(e.get("eps")) is not None else "—"}<br>'
+                f'　毛利率 {_lvl(_safe(e.get("gross_margin")))}／營益率 {_lvl(_safe(e.get("op_margin")))}{base_ext}'
+                f'　EPS {eps_str}<br>'
                 f'估值:P/E {_safe(e.get("per")) if _safe(e.get("per")) is not None else "—"}'
-                f'　殖利率 {_pct(_safe(e.get("yield_pct")))}'
+                f'　殖利率 {_lvl(_safe(e.get("yield_pct")))}'
                 f'　P/B {_safe(e.get("pbr")) if _safe(e.get("pbr")) is not None else "—"}<br>'
                 f'動能:近5日 {_pct(_safe(e.get("pct_5d")))}　距MA20 {_pct(d20)}{heat}</div>'
                 + gov_line

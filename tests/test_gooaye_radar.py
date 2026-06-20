@@ -207,10 +207,12 @@ def test_fetch_insider_aggregates_and_pct(monkeypatch):
     monkeypatch.setattr(gr, "_twse_json", lambda url: [
         {"公司代號": "2330", "目前持股": "100", "設質股數": "20"},
         {"公司代號": "2330", "目前持股": "300", "設質股數": "0"},   # 逐人 → 彙總 held=400
+        {"公司代號": "6525", "目前持股": "1500", "設質股數": "0"},   # KY:held>股本 → >100% 不可信
         {"公司代號": "ab", "目前持股": "999"}])                     # 非4位 → 略過
-    out = gr.fetch_insider({"2330": {"shares": 1000}})
+    out = gr.fetch_insider({"2330": {"shares": 1000}, "6525": {"shares": 1000}})
     assert out["2330"]["director_pct"] == 40.0    # 400/1000
     assert out["2330"]["pledge_pct"] == 5.0       # 20/400
+    assert out["6525"]["director_pct"] is None    # 150% → 捨棄(KY 股本基準不符)
     assert "ab" not in out
     # 白名單缺已發行股數 → 佔比 None(不爆),設質比例仍可算
     out2 = gr.fetch_insider({})
@@ -257,11 +259,11 @@ def test_render_radar_html_disclaimers_cards_no_emoji():
     assert "強茂" in html and "2481" in html
     assert "本族群資料面首選" in html and "綜合分 62" in html          # #1 標記 + 綜合分
     assert "雷達評語" in html and "排名 = 綜合資料面強弱" in html       # 判斷依據說明
-    assert "外資連買3日" in html and "EPS 1.2" in html and "大戶持股週變" in html  # 籌碼欄位
+    assert "外資連買3日" in html and "EPS 1.2" in html and "30日外資" in html  # 籌碼欄位
     assert "毛利率" in html and "營益率" in html and "P/E 14.0" in html and "P/B 2.1" in html  # 基本面+估值
     assert "市值 325 億" in html                                       # 市值(自算/顯示)
     assert "淨利率 18.0%" in html and "單季ROE 4.5%" in html            # 基本面延伸
-    assert "EPS年增 +58%" in html                                      # FinMind EPS 年增率
+    assert "EPS 1.2(年增 +58%)" in html                                # FinMind EPS 年增率(緊接 EPS)
     assert "大戶持股 58%" in html and "外資持股 21%" in html and "融資餘額 4,200張" in html  # 第二籌碼列
     assert "產業近況" in html                                          # 類股趨勢一句話
     assert "官方:" in html and "114年度現金股利 16.5 元" in html and "+配股 1.0 元" in html  # 股利(標年度)

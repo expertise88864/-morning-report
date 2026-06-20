@@ -3,6 +3,39 @@
   "name": "股癌",
   "episodes": [
    {
+    "guid": "99c7ad0e-d899-4a9a-9450-749b5053dbff",
+    "title": "EP672 | 🐣",
+    "published": "Sat, 20 Jun 2026 05:40:47 GMT",
+    "processed_at": "2026-06-20T09:39:20Z",
+    "radar_sent_at": "2026-06-20T09:39:20Z",
+    "sectors": [
+     {
+      "name": "功率半導體",
+      "stance": "看多"
+     },
+     {
+      "name": "被動元件",
+      "stance": "中性"
+     },
+     {
+      "name": "AI伺服器",
+      "stance": "看多"
+     },
+     {
+      "name": "機器人",
+      "stance": "看多"
+     },
+     {
+      "name": "消費性電子",
+      "stance": "中性"
+     },
+     {
+      "name": "車用",
+      "stance": "中性"
+     }
+    ]
+   },
+   {
     "guid": "4f8d2d01-0119-4349-b970-5077910a3362",
     "title": "EP671 | 🌼",
     "published": "Wed, 17 Jun 2026 06:29:22 GMT",

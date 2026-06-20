@@ -1826,6 +1826,34 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "d8215e96-6c8e-11f1-97b0-07533598e722",
+        "title": "What’s News in Markets: SpaceX’s Rocky Flight, Oil Slides, Fed Fallout",
+        "published": "Sat, 20 Jun 2026 10:00:00 -0000",
+        "processed_at": "2026-06-20T10:19:47Z",
+        "digest": {
+          "summary_points": [
+            "美國與伊朗和平協議進展導致能源類股下跌近7%，因石油供應過剩風險浮現；布蘭特原油下跌9%至約每桶79美元。",
+            "聯準會維持利率不變，但19位官員中有9位預期年底前至少升息一次，3月時為0位；2年期公債殖利率上升10個基點至一年多來最高。",
+            "SpaceX IPO飆漲，短暫成為全球第五大上市公司；股價仍較IPO價格高出37%，但週中回落；選擇權交易首日創紀錄，成交量達180萬口。",
+            "主要指數上漲：那斯達克+2.5%，標普500+0.9%，道瓊+0.7%。",
+            "能源是標普500表現最差的類股，儘管今年迄今仍上漲21%。",
+            "國際能源署警告石油產量可能超過需求，明年可能出現石油過剩。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "IPO首日表現強勁但波動大；股價從高點回落。"
+            }
+          ],
+          "market_view": "市場本週收高，由科技股領漲（那斯達克+2.5%），但能源股拖累；聯準會鷹派訊號抑制了樂觀情緒。",
+          "action_view": "",
+          "notable_quote": "and investors didn't like what they heard."
+        }
+      },
+      {
         "guid": "8abd3600-6b5a-11f1-b9a0-73900fcc29ea",
         "title": "The Tech Making ‘Dark-Fleet’ Tankers Into Ticking Time Bombs",
         "published": "Thu, 18 Jun 2026 21:12:00 -0000",
@@ -2235,28 +2263,6 @@
           "notable_quote": "Elon Musk is officially the world's first trillionaire."
         },
         "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "5f8be996-664a-11f1-98f8-73196a23bde5",
-        "title": "Will SpaceX Skyrocket on Trading Debut?",
-        "published": "Fri, 12 Jun 2026 10:30:00 -0000",
-        "processed_at": "2026-06-12T21:20:53Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 即將進行史上最大規模的首次公開發行（IPO），估值近 1.8 兆美元，預計今天掛牌交易。",
-            "零售投資者近期拋售 Marvel Technology、Micron 及 Apple 等熱門股票，以籌措資金購買 SpaceX 股票。",
-            "美國總統川普取消對伊朗的攻擊計畫後，油價跌破每桶 90 美元，但分析師表示，由於荷姆茲海峽恢復航運需時數月，油價短期內難以下跌至 80 美元以下。",
-            "祕魯總統選舉由藤森惠子勝出，標誌拉丁美洲向右翼領導的轉變。",
-            "加拿大應美國要求，延後開放連接底特律與溫莎的新橋梁，此事與美加貿易緊張局勢有關。",
-            "英國國防大臣因不滿國防支出承諾不足而辭職，凸顯歐洲在提升軍事準備方面面臨的困境。",
-            "哈利·斯泰爾斯在倫敦溫布利球場的 12 場演唱會預計將創造超過 10 億英鎊的消費，超過泰勒·斯威夫特和綠洲合唱團的巡演。"
-          ],
-          "tickers": [],
-          "market_view": "油價因中東局勢緩和而下跌，但供應恢復緩慢，短期可能維持在 80 美元以上。SpaceX 掛牌可能引發市場波動，零售投資者調整持股。",
-          "action_view": "",
-          "notable_quote": "which is honestly the first time that being a Swiftie has ever felt cheap."
-        },
-        "shown_at": "2026-06-16T01:08:29Z"
       }
     ]
   },
@@ -2881,6 +2887,36 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "af2e1113-d234-4b94-89ce-b46d0139fa3f",
+        "title": "How Substack Creators Are Covering This Strange Markets Era",
+        "published": "Sat, 20 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-20T10:26:15Z",
+        "digest": {
+          "summary_points": [
+            "James van Geelen 預測中國的「deepseek 時刻」將出現在硬體（記憶體）而非 AI 模型，可能影響 DRAM 市場。",
+            "他警告記憶體瓶頸遲早會被打破，暗示當前 DRAM 的高價可能因快閃記憶體頻寬匹配等創新而無法持續。",
+            "Van Geelen 主張美國應繼續對中國出口晶片，以避免刺激中國自建產能並失去對基礎設施供應鏈的控制。",
+            "Sam Rowe 強調承認市場下跌與壞消息的重要性，以建立韌性，而非為了長期投資而忽略它們。",
+            "James 指出大型語言模型已能模仿人類寫作風格，對傳統投資研究的價值主張構成挑戰。",
+            "中國的 AI 實驗室更傾向合作與開源，但受美國晶片管制侷限算力，導致安全對齊的資源較少。",
+            "亞馬遜目前僱用的機器人數量已達人類員工的兩倍，顯示加速中的工廠自動化可能重塑勞動市場。",
+            "關於 AI 安全的討論指出，即便是頂尖研究人員也擔心對齊問題，因為可控性與經濟效用密切相關。"
+          ],
+          "tickers": [
+            {
+              "name": "SK Hynix",
+              "code": "000660",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "James van Geelen 討論記憶體族群價格走勢，但警告瓶頸終將被拓寬，暗示當前漲勢可能面臨逆風。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "3b7f6933-fbbc-4e6e-a0de-b46d00ff8723",
         "title": "Anthropic's Co-Founder and Top Economist on Doing Research at the AI Frontier",
@@ -3624,6 +3660,39 @@
   },
   "allin": {
     "name": "All-In Podcast",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "fe009dce-e1b0-43e5-b9c3-ac8169bd39eb",
+        "title": "World's First Trillionaire, Anthropic Fable Banned, The New Oligarchs, Iran Peace Deal",
+        "published": "Fri, 19 Jun 2026 22:07:00 +0000",
+        "processed_at": "2026-06-20T10:39:02Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 進行了史上最大規模的 IPO，籌資 850 億美元，股價收漲 19% 至 161 美元，市值一度突破 2 兆美元，短暫超越亞馬遜和微軟。",
+            "SpaceX 以 600 億美元收購 AI 程式碼代理 Cursor，交易估值約為其 40 億美元營收的 15 倍，並以股票互換方式避開 S-1 文件過時問題。",
+            "Elon Musk 的財富主要來自公司股權，IPO 並未為他帶來現金；財富是市場對其創造未來價值能力的貼現。",
+            "美國政府要求 Anthropic 因國安疑慮關閉其最新模型 Fable 5（原代號 Mythos），原因是 Amazon 通報該模型存在越獄漏洞。",
+            "Anthropic 在未諮詢白宮的情況下將 Mythos 預覽版提供給南韓 SK Telecom，導致政府對其信任受損。",
+            "白宮官員試圖與 Anthropic CEO Dario Amodei 溝通修復漏洞，但遭對方以「漏洞不嚴重」為由拒絕，最終發出出口管制函。",
+            "此事件可能強化雲端巨頭（AWS、Google Cloud）的閘道角色，迫使使用者須通過 KYC 驗證才能使用高階 AI 模型，形成寡頭壟斷。",
+            "伊朗戰爭暫停：美伊達成初步協議（MoU），伊朗同意放棄核武、銷毀濃縮鈾庫存、凍結核計畫 60 天，換取制裁解除及 3000 億美元重建資金。",
+            "美國無須負擔重建費用，且取得荷姆茲海峽重新開放，確保全球石油運輸暢通；但彈道飛彈計畫與以色列立場仍未解決。",
+            "Friedberg 表示市場將因伊朗和平協議而大漲（「市場要去月球了」），但 Sacks 強調仍需謹慎觀察細節。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "史上最大 IPO 成功，擴張與收購 Cursor 展現強勁成長動能。"
+            }
+          ],
+          "market_view": "Friedberg 認為伊朗和平協議將帶動市場大漲，但 Sacks 提醒需注意協議細節與不確定性。",
+          "action_view": "",
+          "notable_quote": "This was the biggest IPO of all time."
+        }
+      }
+    ]
   }
 }

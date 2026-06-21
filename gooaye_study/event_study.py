@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import json
 import statistics as st
 import sys
@@ -30,7 +31,7 @@ EVENTS_PATH = HERE / "data" / "events_raw.json"
 OUT_JSON = HERE / "data" / "event_study_results.json"
 OUT_HTML = HERE / "report.html"
 BENCHMARK = "0050.TW"
-WINDOWS = [5, 20, 60, 120]
+WINDOWS = [5, 10, 30, 60, 120]
 PRE_START, PRE_END = -120, -1        # β 估計窗(交易日)
 RUNUP_START = -60                    # 事件前漲幅窗(反向因果)
 PAD_FWD = 420                        # t0 後抓多少日曆天
@@ -172,14 +173,31 @@ def agg(rows, key_prefix):
 
 def main() -> int:
     configure_stdio()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--since", default="", help="只看 t0 >= YYYY-MM-DD 的事件")
+    ap.add_argument("--until", default="", help="只看 t0 <= YYYY-MM-DD 的事件")
+    ap.add_argument("--tag", default="", help="輸出檔名標籤(避免覆蓋全期報告)")
+    args = ap.parse_args()
+    global OUT_JSON, OUT_HTML
+    if args.tag:
+        OUT_JSON = HERE / "data" / f"event_study_results_{args.tag}.json"
+        OUT_HTML = HERE / f"report_{args.tag}.html"
     if not EVENTS_PATH.exists():
         log(f"缺 {EVENTS_PATH}")
         return 1
     events = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
+    if args.since:
+        events = [e for e in events if e.get("t0_date", "") >= args.since]
+    if args.until:
+        events = [e for e in events if e.get("t0_date", "") <= args.until]
+    window = f"{args.since or '2020-02'}~{args.until or '2026-06'}"
     n_eps = len({e["ep"] for e in events})
-    log(f"載入 {len(events)} 事件 / {n_eps} 集")
+    log(f"窗格 {window};載入 {len(events)} 事件 / {n_eps} 集")
 
     dates = [e["t0_date"] for e in events if e.get("t0_date")]
+    if not dates:
+        log(f"窗格 {window} 內無含 t0_date 的事件,結束")
+        return 1
     gstart = (pd.Timestamp(min(dates)) - pd.Timedelta(days=PAD_BACK)).date().isoformat()
     gend = (pd.Timestamp(max(dates)) + pd.Timedelta(days=PAD_FWD)).date().isoformat()
     bench = bench_prices(gstart, gend)
@@ -222,26 +240,24 @@ def main() -> int:
         if idx % 50 == 0:
             log(f"  個股 {idx}/{len(stock_cand)}")
 
-    # ---------- 題材層級(同集『同向』點名台股等權籃子) ----------
-    # ⚠ schema 未把個股連到特定題材 → 用「同集且同立場(看多題材取看多個股)」近似,
-    #   比「同集所有股」少誤歸因,但仍是粗略代理(同集多個同向題材會共用籃子)→ 僅探索、非結論。
-    ep_stance_stocks = defaultdict(lambda: defaultdict(list))   # ep -> stance -> [code]
+    # ---------- 題材層級(個股 theme 欄連到該題材的『成分股籃子』) ----------
+    # 重抽後每檔個股帶 theme(=股癌在該集把它歸到的族群),用「同集且 theme==該題材」建籃子,
+    # 真正連到該題材的點名成分股(取代舊的「同集同向」粗略代理)。仍揭露:依賴 LLM 歸屬準確度。
+    def _theme_key(s):
+        return (s or "").strip()
+    ep_theme_stocks = defaultdict(lambda: defaultdict(list))   # ep -> theme_name -> [code]
     for e in events:
-        if e["level"] == "stock" and e.get("market") == "TW" and e.get("code"):
-            mt = e.get("mention_type")
-            stance = "bullish" if mt == "bullish_call" else ("bearish" if mt == "bearish_call" else None)
-            if stance:
-                ep_stance_stocks[e["ep"]][stance].append(e["code"])
+        if e["level"] == "stock" and e.get("market") == "TW" and e.get("code") and _theme_key(e.get("theme")):
+            ep_theme_stocks[e["ep"]][_theme_key(e["theme"])].append(e["code"])
     theme_cand = [e for e in events if e["level"] == "theme"
                   and e.get("mention_type") in ("bullish_call", "bearish_call")]
-    log(f"題材可研究事件 {len(theme_cand)}；建同集同向籃子…")
+    log(f"題材可研究事件 {len(theme_cand)}；建題材成分股籃子(theme 連結)…")
     theme_rows = []
     for e in theme_cand:
-        stance = "bullish" if e["mention_type"] == "bullish_call" else "bearish"
-        codes = list(dict.fromkeys(ep_stance_stocks[e["ep"]].get(stance, [])))   # 同集同向、去重保序
+        codes = list(dict.fromkeys(ep_theme_stocks[e["ep"]].get(_theme_key(e["name"]), [])))  # 連到該題材的台股
         if len(codes) < 2:
-            continue   # 同集無足夠同向點名台股 → 無法建籃子
-        sign = 1.0 if stance == "bullish" else -1.0
+            continue   # 該題材在該集無足夠連結台股(可能 proxy 在美股或未點名)→ 無法建籃子
+        sign = 1.0 if e["mention_type"] == "bullish_call" else -1.0
         per_k = {k: [] for k in WINDOWS}
         bench_k = {}
         used = 0
@@ -282,7 +298,7 @@ def main() -> int:
             "ex_alreadyran": agg([r for r in rows if not r["already_ran"]], "excess"),
         }
     results = {
-        "meta": {"n_episodes": n_eps, "n_events": len(events),
+        "meta": {"n_episodes": n_eps, "n_events": len(events), "window": window,
                  "stock_events": len(stock_rows), "theme_events": len(theme_rows),
                  "missing_codes": sorted(missing), "windows": WINDOWS,
                  "price_source": "yfinance auto_adjust", "note": "pilot-grade, survivorship-biased-up"},
@@ -360,7 +376,7 @@ th,td{{border:1px solid #ddd;padding:5px 8px;text-align:center}} th{{background:
 .key{{background:#f0f5f2;border:1px solid #7a9285;padding:10px 14px;border-radius:6px}}
 small{{color:#666}}</style></head><body>
 <h1>《股癌》題材後續漲跌 × 0050 常抱 — 事件研究</h1>
-<p><small>樣本:{m['n_episodes']} 集 / {m['n_events']} 事件(2020–2026)。可研究個股事件 {m['stock_events']}、題材事件 {m['theme_events']}。
+<p><small>樣本窗格:{m.get('window','2020–2026')}。{m['n_episodes']} 集 / {m['n_events']} 事件。可研究個股事件 {m['stock_events']}、題材事件 {m['theme_events']}。
 價格:{m['price_source']}。</small></p>
 <div class="key"><b>核心發現(歷史對照,非預測)</b><br>
 • <b>個股看多沒有明顯贏 0050</b>:看下表「贏 0050 比率」——&lt;50% 代表還不如直接買 0050(漲幅多來自大盤 beta,非選股力)。<br>

@@ -1,0 +1,34 @@
+<!doctype html><html lang="zh-TW"><head><meta charset="utf-8">
+<title>股癌題材後續漲跌 × 0050 事件研究</title><style>
+body{font-family:-apple-system,"Noto Sans TC",sans-serif;max-width:920px;margin:24px auto;padding:0 16px;color:#222;line-height:1.6}
+h1{font-size:22px} h2{font-size:18px;border-left:4px solid #7a9285;padding-left:8px;margin-top:28px}
+h4{margin:14px 0 4px} table{border-collapse:collapse;width:100%;font-size:14px;margin-bottom:8px}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:center} th{background:#faf7f2}
+.warn{background:#fff7ed;border:1px solid #fdba74;padding:10px 14px;border-radius:6px;font-size:13px}
+.key{background:#f0f5f2;border:1px solid #7a9285;padding:10px 14px;border-radius:6px}
+small{color:#666}</style></head><body>
+<h1>《股癌》題材後續漲跌 × 0050 常抱 — 事件研究</h1>
+<p><small>樣本窗格:2025-06-22~2026-06。103 集 / 872 事件。可研究個股事件 56、題材事件 14。
+價格:yfinance auto_adjust。</small></p>
+<div class="key"><b>核心發現(歷史對照,非預測)</b><br>
+• <b>個股看多沒有明顯贏 0050</b>:看下表「贏 0050 比率」——&lt;50% 代表還不如直接買 0050(漲幅多來自大盤 beta,非選股力)。<br>
+• β 調整持有超額 proxy(拆掉大盤)個股中位:5日 -0.1% · 10日 -0.9% · 30日 -3.2% · 60日 -4.3% · 120日 -8.7%。<b>≈0 僅代表此 pilot 樣本未見 β 外超額,不等於嚴格證明「無 alpha」。</b><br>
+• 看多事件「事件前 60 日」漲幅中位 +35.8% → 反向因果指標:題材常是<b>已先漲一段才被提到</b>(正對應「只記得被動元件漲翻」的近因偏誤)。<br>
+• 題材層級(下方第二段)為<b>粗略代理,誤歸因風險高,僅供探索</b>,不作為結論。</div>
+<h2>一、個股層級(明確點名 + 有方向)</h2>
+<h4>看多 bullish_call</h4><table><tr><th>窗格</th><th>n</th><th>策略中位</th><th>策略winsor均</th><th>vs0050超額中位</th><th>勝率</th><th>贏0050</th></tr><tr><td>5 日</td><td>51</td><td>+1.1%</td><td>+1.2%</td><td><b>-0.7%</b></td><td>58.8%</td><td><b>45.1%</b></td></tr><tr><td>10 日</td><td>50</td><td>+2.5%</td><td>+3.8%</td><td><b>-1.1%</b></td><td>60.0%</td><td><b>44.0%</b></td></tr><tr><td>30 日</td><td>50</td><td>+5.8%</td><td>+19.4%</td><td><b>-1.6%</b></td><td>70.0%</td><td><b>46.0%</b></td></tr><tr><td>60 日</td><td>43</td><td>+21.3%</td><td>+27.4%</td><td><b>+0.0%</b></td><td>67.4%</td><td><b>48.8%</b></td></tr><tr><td>120 日</td><td>35</td><td>+47.5%</td><td>+63.0%</td><td><b>+7.1%</b></td><td>80.0%</td><td><b>54.3%</b></td></tr></table>
+<h4>看空 bearish_call(超額=避開改抱0050的效益;策略中位為放空報酬)</h4><table><tr><th>窗格</th><th>n</th><th>策略中位</th><th>策略winsor均</th><th>vs0050超額中位</th><th>勝率</th><th>贏0050</th></tr><tr><td>5 日</td><td>4</td><td>+2.3%</td><td>+2.5%</td><td><b>+1.9%</b></td><td>75.0%</td><td><b>50.0%</b></td></tr><tr><td>10 日</td><td>4</td><td>+4.7%</td><td>+4.6%</td><td><b>+2.3%</b></td><td>75.0%</td><td><b>75.0%</b></td></tr><tr><td>30 日</td><td>4</td><td>-8.3%</td><td>-9.4%</td><td><b>-0.5%</b></td><td>50.0%</td><td><b>50.0%</b></td></tr><tr><td>60 日</td><td>4</td><td>-57.5%</td><td>-91.8%</td><td><b>-33.3%</b></td><td>0.0%</td><td><b>0.0%</b></td></tr><tr><td>120 日</td><td>1</td><td>-135.8%</td><td>-135.8%</td><td><b>-67.6%</b></td><td>0.0%</td><td><b>0.0%</b></td></tr></table>
+<h4>排除 already_ran(去掉「已先漲才提」的事件)</h4><table><tr><th>窗格</th><th>n</th><th>策略中位</th><th>策略winsor均</th><th>vs0050超額中位</th><th>勝率</th><th>贏0050</th></tr><tr><td>5 日</td><td>40</td><td>+1.2%</td><td>+0.8%</td><td><b>-0.5%</b></td><td>62.5%</td><td><b>45.0%</b></td></tr><tr><td>10 日</td><td>39</td><td>+2.1%</td><td>+2.2%</td><td><b>-1.2%</b></td><td>59.0%</td><td><b>41.0%</b></td></tr><tr><td>30 日</td><td>39</td><td>+5.6%</td><td>+13.4%</td><td><b>-1.5%</b></td><td>71.8%</td><td><b>46.2%</b></td></tr><tr><td>60 日</td><td>35</td><td>+13.0%</td><td>+12.6%</td><td><b>-4.7%</b></td><td>62.9%</td><td><b>42.9%</b></td></tr><tr><td>120 日</td><td>26</td><td>+45.9%</td><td>+36.8%</td><td><b>+5.1%</b></td><td>76.9%</td><td><b>53.8%</b></td></tr></table>
+<h2>二、題材/類股層級(同集『同向』點名台股籃子;粗略代理、誤歸因風險、僅探索)</h2>
+<h4>看多題材</h4><table><tr><th>窗格</th><th>n</th><th>策略中位</th><th>策略winsor均</th><th>vs0050超額中位</th><th>勝率</th><th>贏0050</th></tr><tr><td>5 日</td><td>14</td><td>-0.1%</td><td>-2.3%</td><td><b>-1.1%</b></td><td>50.0%</td><td><b>50.0%</b></td></tr><tr><td>10 日</td><td>14</td><td>+1.6%</td><td>+1.0%</td><td><b>+0.5%</b></td><td>57.1%</td><td><b>57.1%</b></td></tr><tr><td>30 日</td><td>14</td><td>+8.3%</td><td>+11.5%</td><td><b>+6.2%</b></td><td>71.4%</td><td><b>64.3%</b></td></tr><tr><td>60 日</td><td>13</td><td>+24.4%</td><td>+24.4%</td><td><b>+0.5%</b></td><td>69.2%</td><td><b>53.8%</b></td></tr><tr><td>120 日</td><td>10</td><td>+37.7%</td><td>+49.4%</td><td><b>-6.2%</b></td><td>70.0%</td><td><b>50.0%</b></td></tr></table>
+<h4>看空題材</h4><table><tr><th>窗格</th><th>n</th><th>策略中位</th><th>策略winsor均</th><th>vs0050超額中位</th><th>勝率</th><th>贏0050</th></tr></table>
+<h2>三、方法與限制(誠實揭露)</h2>
+<div class="warn">
+• <b>結論口徑</b>:本研究只能說「<b>pilot 樣本不支持『聽到股癌看多就穩定贏 0050』</b>」;<b>不</b>等於嚴格證明股癌無 alpha(那需要正式 market-model CAR + 信賴區間 + 因子控制 + 下市股納入 + 人工複核)。<br>
+• <b>倖存偏誤</b>:yfinance 查無 1 檔(下市/換號)已排除 → 看多結果<b>偏高</b>,真實更差。<br>
+• <b>題材層級僅探索</b>:籃子用「同集同向點名台股」近似,非該題材真正成分;同集多個同向題材會共用籃子 → 誤歸因風險,<b>方向不穩、不作結論</b>。<br>
+• β proxy = 持有報酬 − β×0050持有報酬(事件前約 120 日迴歸),<b>非</b>嚴格逐日 market-model CAR。<br>
+• 重疊窗格 + 同集多事件會高估有效樣本數;<b>未做</b> bootstrap 信賴區間、產業中性化、交易成本。<br>
+• 價格用 yfinance 含息還原(非 FinMind);均值已 winsorize,<b>中位數/勝率為主</b>。進場=t0 次一交易日開盤,窗格為「進場開盤→第 k 交易日收盤」。<br>
+• <b>本報告為歷史對照,非預測;不構成投資建議。</b></div>
+</body></html>

@@ -101,6 +101,7 @@ EXTRACT_PROMPT = """你是台股研究的事件標註員。輸入是一集《股
   ],
   "tickers": [   // 明確點名的個股/ETF
     {"name":"公司或ETF名","code":"台股代號或美股ticker,不確定留空字串","market":"TW|US",
+     "theme":"該股在本集被股癌歸到的族群(必須對應上方 sectors 之一的 name;純個股討論、無題材歸屬則留空字串)",
      "stance":"bullish|bearish|neutral","conviction":"high|medium|low",
      "mention_type":"上述六類之一","already_ran": true/false,
      "mention_count": 整數(該集大致提及次數),
@@ -113,7 +114,9 @@ EXTRACT_PROMPT = """你是台股研究的事件標註員。輸入是一集《股
 2. evidence 必須是逐字稿裡的實際句子(可截短),不可杜撰。
 3. 產業級觀點放 sectors,具名公司放 tickers;同一標的若先回顧再給前瞻看法,以前瞻那句標 bullish_call。
 4. 寧缺勿濫:沒有明確方向就標 neutral,不要硬湊 bullish_call。
-5. 一集 tickers 最多 12 檔、sectors 最多 10 個。"""
+5. 一集 tickers 最多 12 檔、sectors 最多 10 個。
+6. tickers[].theme 是題材籃子的關鍵:只在「股癌明確把該股當成某族群的受惠/成分股」時,
+   才填對應的 sectors[].name;若只是獨立聊某檔股、或無題材脈絡,theme 留空字串。務必準確,寧空勿錯填。"""
 
 
 def deepseek_extract(transcript: str, model: str, api_key: str) -> dict:
@@ -176,6 +179,7 @@ def flatten_events(ep: dict, digest: dict, model: str) -> list[dict]:
                      "name": str(t.get("name", "")).strip(),
                      "code": str(t.get("code", "")).strip(),
                      "market": str(t.get("market", "TW")).strip() or "TW",
+                     "theme": str(t.get("theme", "")).strip(),   # 所屬題材(連到 sector.name)
                      "stance": str(t.get("stance", "")).strip(),
                      "conviction": str(t.get("conviction", "")).strip(),
                      "mention_type": mt if mt in VALID_TYPES else "neutral",

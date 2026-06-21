@@ -1,0 +1,11 @@
+# 股癌題材事件研究 — 不進 git 的本機資料
+# 逐字稿原文為第三方非官方站內容，僅供個人研究，嚴禁再散布／進公開 repo
+transcripts/
+data/
+raw_cache/
+prices/
+*.parquet
+_*.txt
+_*.md
+events_raw*.json
+events_raw*.csv

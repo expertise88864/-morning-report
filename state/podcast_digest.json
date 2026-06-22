@@ -689,6 +689,56 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "b911adb2-9839-4029-bfbd-3d9883757cbc",
+        "title": "EP313. 谷歌痛失 AI 大將、Fable 5 配方解密、Meta 士氣低落中、FSD 即將入台 | M觀點",
+        "published": "Mon, 22 Jun 2026 06:34:58 GMT",
+        "processed_at": "2026-06-22T14:08:58Z",
+        "digest": {
+          "summary_points": [
+            "Google兩名關鍵AI人員離職：Gemini共同負責人Non-Shader跳槽OpenAI，諾貝爾獎得主John Jumper跳槽Anthropic，市場擔憂Google AI競爭力。",
+            "Google消費者端Gemini市占率升至27.7%，但企業端Agentic workflow落後OpenAI與Anthropic。",
+            "外界傳言Gemini 3.5 Pro可能不如預期，需觀察六月底前發布狀況。",
+            "主持人認為Google不會因此被打趴，但士氣打擊不小，Google人才與資源仍強。",
+            "Anthropic的Fable5模型洩漏的系統提示詞顯示其透過Agent Harness大幅強化聊天機器人性能，可能帶動業界跟進。",
+            "美國國會議員稱Fable5可在數小時內破解高度機密系統，但主持人認為配合修復漏洞後，2-4週內可能重新上線。",
+            "AI顯學是Harness，模型實力加Harness決定最終表現，這將影響各AI公司競爭格局。",
+            "Meta裁員8000人後，將7000人調至Applied AI部門，從事重複性AI訓練工作，導致士氣低落，CTO承認20年來最糟。",
+            "Applied AI部門的工作無意義，可能導致人才流失，主持人認為這是Placeholder過渡安排。",
+            "主持人預測人類未來創造高熵值數據的工作可能普遍意義低落，對AI產業長期人力供給有影響。",
+            "特斯拉FSD在台灣正式送件申請，預計第三季可能通過，快則8月慢則9月。",
+            "主持人認為FSD將震撼台灣駕駛，今年特斯拉全球銷量因FSD效應將重新上升。",
+            "台灣汽車關稅可能因台美貿易協議降低，但德國特斯拉也可能要求同等降稅，未來特斯拉有降價空間。",
+            "特斯拉目前台灣買斷FSD 22.2萬元，主持人建議用月費即可。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為Google人才多，不會因大將離職而被打趴，但AI競爭落後，對士氣有打擊。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為Meta士氣低落、Applied AI部門工作無意義可能導致人才流失，影響長期表現。"
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好FSD進入台灣將帶動銷售，認為全球FSD效應將使特斯拉今年銷量重新上升。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI最終的實力要等於它的模型的實力，加上Harness的實力。"
+        }
+      },
+      {
         "guid": "a54f6e5d-a2e4-4371-8509-e71546ad8f7a",
         "title": "EP312. SPCX 併購 Cursor、Fable 5 還在牢裡、AI 產業的新利空 | M觀點",
         "published": "Thu, 18 Jun 2026 16:19:31 GMT",
@@ -1898,6 +1948,29 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "c31e2f78-6e24-11f1-a128-0b42db4e274a",
+        "title": "The Fight for Affordable Housing",
+        "published": "Mon, 22 Jun 2026 10:19:00 -0000",
+        "processed_at": "2026-06-22T13:14:19Z",
+        "digest": {
+          "summary_points": [
+            "中國對10家美國國防公司和兩家稀土生產商（MP Materials、USA Rare Earth）實施貿易限制，禁止出口可能具有軍事用途的中國製產品，以報復五角大廈將中國公司列入黑名單。"
+          ],
+          "tickers": [
+            {
+              "name": "MP Materials",
+              "code": "MP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "中國限制對MP Materials的出口，可能影響其供應鏈。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "d8215e96-6c8e-11f1-97b0-07533598e722",
         "title": "What’s News in Markets: SpaceX’s Rocky Flight, Oil Slides, Fed Fallout",
         "published": "Sat, 20 Jun 2026 10:00:00 -0000",
@@ -2293,55 +2366,33 @@
           "notable_quote": "Markets went on a roller coaster ride this week."
         },
         "shown_at": "2026-06-16T01:08:29Z"
-      },
-      {
-        "guid": "980644d8-66a4-11f1-ac5e-27044a328bca",
-        "title": "SpaceX Is Now America’s 6th Most Valuable Public Company",
-        "published": "Fri, 12 Jun 2026 21:19:00 -0000",
-        "processed_at": "2026-06-14T20:51:17Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 上市首日開盤價 150 美元，較 IPO 價格 135 美元上漲 11%，收盤報 160.95 美元，漲幅 19%，市值達 2.1 兆美元，成為美國第六大公司。",
-            "Elon Musk 因 SpaceX 上市成為全球首位兆億富翁，身價約 1.2 兆美元，主要來自其持有的 SpaceX 和 Tesla 股票。",
-            "Tesla 股價今日上漲 1.8%。",
-            "道瓊指數領漲，大盤收高 0.7%。",
-            "油價目前約每桶 85 美元，遠低於霍爾木茲海峽關閉時預測的 150-200 美元，主因美國出口增加及中國進口減少。",
-            "中國 5 月原油進口量從日均 1100 萬桶驟降至 780 萬桶，經濟未見明顯衝擊，原因包括戰略儲備、電動車滲透率超過 60%、以煤電及可再生能源為主要電力來源。",
-            "中國長期儲備原油估計達 10-14 億桶，足以支撐數月進口，且石化業若因進口減少而成本上升，將影響製造業。",
-            "美國、伊朗與調解方巴基斯坦今日表示和平協議接近完成，但 Trump 曾近 40 次宣布接近協議卻破局，外界存疑。",
-            "伊朗要求美國解除港口封鎖作為初步姿態，但雙方溝通失誤導致信任不足，預定週日在日內瓦舉行的 Vance 與 Halibath 會面遭伊朗否認。",
-            "聯邦法官阻止 Trump 政府動用 18 億美元的「反武器化基金」，要求政府一週內書面承諾放棄該基金。",
-            "世界盃首戰美國對巴拉圭今晚在洛杉磯舉行，但 Trump 移民政策導致超過 24 名球員、工作人員及官員入境困難，索馬利亞裁判被拘留 10 小時後驅逐出境。",
-            "中國外交部證實拘留美國公民、學生運動人士及記者 Min Zin，指控其涉嫌間諜活動及危害國家安全，此事可能成為美中新的摩擦點。",
-            "SpaceX IPO 慶祝派對今晚於摩根大通總部舉行，提供帶有 JPMorgan 與 SpaceX 標誌的戰斧牛排，特調雞尾酒命名為「未來公開上市」、「星艦」及「獵鷹 9 號」。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO 首日表現亮眼，股價大漲 19%，被譽為近乎完美的上市。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價今日上漲 1.8%。"
-            }
-          ],
-          "market_view": "股市整體上漲，道瓊指數領先，收高 0.7%。",
-          "action_view": "",
-          "notable_quote": "Elon Musk is officially the world's first trillionaire."
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72626483",
+        "title": "Negotiations in doubt",
+        "published": "Mon, 22 Jun 2026 08:55:02 +0000",
+        "processed_at": "2026-06-22T13:15:45Z",
+        "digest": {
+          "summary_points": [
+            "美伊談判因黎巴嫩真主黨問題陷入不確定性，伊朗暫停參與，可能影響石油供應、制裁政策和中東穩定，投資者關注地緣政治風險。",
+            "英國首相施凱爾面臨黨內領導層過渡壓力，因曼徹斯特市長安迪·伯納姆在補選中表現強勁，可能影響經濟政策、能源監管和貿易關係。",
+            "中國對數十家美國公司實施貿易報復，此前美國將更多中國公司加入五角大樓軍事援助黑名單，但川普政府推遲將DeepSeq、CXMT等列入貿易黑名單以避免緊張升級。",
+            "伊朗衝突致鋁市場供應中斷，但生產商找到替代供應路徑，價格飆升預期緩解；分析師對後續短缺看法分歧，部分認為庫存耗盡將致短缺，部分認為中國和印尼增產可彌補。",
+            "AI新創公司Anthropic在華盛頓處境逆轉，川普稱不再視為國家安全威脅，但此前其模型因政府指令被關閉；川普未排除使用《國防生產法》強制合規。",
+            "微軟CEO薩提亞·納德拉呼籲AI行業轉向更廣泛訪問、低成本、公共信任的模式，減少對少數主導供應商依賴，微軟推出低價AI產品應對客戶支出上升。",
+            "迪士尼與皮克斯《玩具總動員5》首周末北美票房1.6億美元，創系列紀錄，推動北美周末票房達2.3億美元，同比增長80%；2025年至今累計票房44.6億美元，同比增14%。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72581971",
         "title": "Toy Story 5 targets blockbuster debut",
@@ -2846,84 +2897,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72476178",
-        "title": "No reward for Oracle's beat",
-        "published": "Thu, 11 Jun 2026 10:25:03 +0000",
-        "processed_at": "2026-06-12T03:02:32Z",
-        "digest": {
-          "summary_points": [
-            "Oracle (ORCL) fell 9% despite beating Q4 estimates with adjusted EPS $2.11 and revenue $19.18B, due to declines in software license support and a $40B debt/equity plan for AI expansion.",
-            "Microsoft's Xbox division plans major layoffs and budget cuts after the CEO said the business has a 3% profit margin and is 'not in a healthy spot'.",
-            "Wing and Walmart expanded drone delivery to seven new metro areas, targeting 270 locations nationwide.",
-            "Alibaba and JD shares fell after Beijing criticized misleading discount campaigns.",
-            "Palantir CEO warned that AI firms are upsetting enterprise clients.",
-            "Navi (NAVN) surged 19% after a strong fiscal Q1 beat and raised full-year outlook."
-          ],
-          "tickers": [
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Stock fell 9% despite earnings beat, overshadowed by software license decline and capital raise plans."
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Xbox reorganization and layoffs but overall company not directly commented."
-            },
-            {
-              "name": "Alibaba",
-              "code": "BABA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Shares fell after Beijing rebuked misleading discount campaigns."
-            },
-            {
-              "name": "JD.com",
-              "code": "JD",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Shares fell alongside Alibaba due to regulatory criticism."
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "CEO warned that AI firms are upsetting enterprise clients, no clear directional call."
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "CEO invited to testify about China business and export controls, no specific view."
-            },
-            {
-              "name": "Navan",
-              "code": "NAVN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Stock up 19% after strong Q1 beat and raised full-year outlook."
-            },
-            {
-              "name": "Walmart",
-              "code": "WMT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Expanding drone delivery with Wing, but no specific stock view."
-            }
-          ],
-          "market_view": "Stock index futures are higher before the bell; crude oil down 0.5%, Bitcoin up 2%, gold up 0.3%.",
-          "action_view": "",
-          "notable_quote": "The business has plummeted to a 3% accountability margin, which refers to the metric Microsoft uses to measure its profit margin."
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
       }
     ]
   },
@@ -3346,6 +3319,65 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "5c0b3761-0d4e-499e-a459-f788149c0672",
+        "title": "科技早餐 6/22｜Google 砸錢推 TPU 挑戰 NVIDIA，AI 算力戰從晶片燒到資本",
+        "published": "Sun, 21 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-22T14:10:36Z",
+        "digest": {
+          "summary_points": [
+            "Google 透過財務擔保推廣自研 TPU 晶片，複製 NVIDIA 生態系策略，將資本與資料中心綁定。",
+            "Amazon 準備將自研 AI 晶片 Trainium 銷售給外部企業，進一步挑戰 NVIDIA 市場地位。",
+            "美國總統川普表示蘋果同意與 Intel 合作在美國設計製造晶片，但雙方尚未正式回應。",
+            "台灣央行上修今年經濟成長率至 9.45%，主因 AI 基礎設施投資與半導體擴產，但提醒依賴高科技產業的風險。",
+            "經濟部預估未來 10 年電力需求年均成長 2.5%，因半導體擴廠與 AI 資料中心用電增加，規劃新增燃氣機組約 26GW。",
+            "鴻海董事長劉揚偉預估 2030 年全球資料中心投資達 1.6 兆美元，用電規模從 68GW 成長至 174GW。",
+            "劉揚偉指出算力需求四大群體：模型開發商、雲端服務業者、政府與企業，前兩者商業模式明確。",
+            "美國 AI 監管從晶片出口延伸至模型安全，川普對 Anthropic 態度從國安威脅轉為合作。",
+            "台積電先進製程短期內地位難以被取代，即使蘋果增加 Intel 為第二來源，僅部分產品先行測試。"
+          ],
+          "tickers": [
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "透過財務擔保推廣TPU，複製NVIDIA生態系策略，鞏固AI晶片市場。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "準備將自研AI晶片Trainium推向外部市場，挑戰NVIDIA主導地位。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "蘋果可能合作在美國製造晶片，且有美國政府持股支持轉型。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "與Intel合作分散晶片製造來源，但短期仍高度依賴台積電。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "董事長看好AI工廠時代，預估資料中心投資與用電需求大幅成長。"
+            }
+          ],
+          "market_view": "台灣經濟受惠AI需求，GDP成長率上修至9.45%，但需注意電力與產業過度集中風險。",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "5886a7f5-7d92-44a9-82a5-defd40ecb91f",
         "title": "【全新一週】五大 AI 吸走全球創投過半資金！台灣新創如何以「工具服務化」站在硬體巨人肩膀上突圍，跟上這波大浪？Ft. KPMG 黃海寧會計師│EP219",

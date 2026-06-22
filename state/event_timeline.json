@@ -1,27 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 9,
-  "last_seen": "2026-06-22",
-  "latest_title": "Apple supplier Lingyi seeks US$1.1 billion Hong Kong IPO to fund AI and robotics push"
+  "days": 10,
+  "last_seen": "2026-06-23",
+  "latest_title": "Vimeo Parent Bending Spoons, Backers Seek $1.62 Billion in IPO"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 4,
-  "last_seen": "2026-06-22",
-  "latest_title": "陸出口管制效應延續 對日稀土磁體出口創一年低點"
- },
- "litigation:META": {
-  "first_seen": "2026-06-19",
-  "days": 1,
-  "last_seen": "2026-06-19",
-  "latest_title": "Meta私下遊說美國國會 盼立法免除「兒童傷害」訴訟責任 - Yahoo新聞"
- },
- "litigation:2882": {
-  "first_seen": "2026-06-19",
-  "days": 1,
-  "last_seen": "2026-06-19",
-  "latest_title": "國泰投信道歉了！基金投資涉利害關係人恐造成投資人損失達6.5億元 金管會：將綜合相關情節進行裁罰 - 財訊"
+  "days": 5,
+  "last_seen": "2026-06-23",
+  "latest_title": "兩岸快遞／大陸國務院副總理丁薛祥表態 要主動擴大進口"
  },
  "litigation:2881": {
   "first_seen": "2026-06-20",
@@ -31,8 +19,14 @@
  },
  "export_controls:ASML": {
   "first_seen": "2026-06-22",
-  "days": 1,
-  "last_seen": "2026-06-22",
+  "days": 2,
+  "last_seen": "2026-06-23",
   "latest_title": "國際產經：美方質疑EUV設備恐流入中國，艾司摩爾強硬否認違反出口管制 - 富聯網"
+ },
+ "litigation:": {
+  "first_seen": "2026-06-23",
+  "days": 1,
+  "last_seen": "2026-06-23",
+  "latest_title": "Gas Stations Accused of Using AI to Boost California Prices"
  }
 }

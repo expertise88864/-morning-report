@@ -6,10 +6,12 @@ name: Gooaye Radar
 # 偵測不到新集即秒退不寄;以 state/gooaye_radar.json 的 guid 去重,同一集只寄一次。
 # 個股為本報依族群自動整理、非股癌推薦、非投資建議。
 on:
-  schedule:
-    # UTC;台北 = UTC+8。週三(3)/週六(6)下午~晚上每 2 小時一次,涵蓋上架+轉錄時間。
-    - cron: "0 6,8,10,12,14 * * 3,6"   # 台北 14:00 / 16:00 / 18:00 / 20:00 / 22:00
-  workflow_dispatch:   # 手動觸發驗收(可搭配 DRY_RUN 不寄信)
+  # 2026-06-22 停用自動排程:回測顯示股癌題材對 0050 無穩定 alpha(多為「已先漲才被提及」),
+  #   故不再寄獨立股癌信;股癌觀點仍透過 podcast_digest 併入每日晨報。
+  #   保留 workflow_dispatch,需要時仍可手動跑。要恢復自動寄信,取消下方 schedule 註解即可。
+  # schedule:
+  #   - cron: "0 6,8,10,12,14 * * 3,6"   # 台北 週三/週六 14:00/16:00/18:00/20:00/22:00
+  workflow_dispatch:   # 手動觸發(可搭配 DRY_RUN 不寄信)
 
 permissions:
   contents: write   # push 回 state/gooaye_radar.json(及 podcast_digest.json 去重標記)

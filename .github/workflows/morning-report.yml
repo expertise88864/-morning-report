@@ -24,7 +24,7 @@ concurrency:
 jobs:
   send-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25   # 平時 2-8 分;放寬以吸收偶發 LLM 變慢(如外部大量佔用同把 API key)避免撞 timeout 被取消
     steps:
       - uses: actions/checkout@v4
         with:

@@ -1972,6 +1972,48 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "2b0dd1ee-6e82-11f1-9cfc-2fda1b302929",
+        "title": "The Strait of Hormuz Is Open (Sort Of). So How’s It Going?",
+        "published": "Mon, 22 Jun 2026 21:33:00 -0000",
+        "processed_at": "2026-06-22T21:42:05Z",
+        "digest": {
+          "summary_points": [
+            "英國政治不確定性升溫：首相施凱爾辭職，曼徹斯特前市長伯納姆可能接任，導致英鎊小幅波動、借貸成本微升，投資者對英國經濟投資趨於謹慎，加劇低成長困境。",
+            "油價跌破每桶80美元：美國允許伊朗以美元銷售石油後，布蘭特原油價格下滑至80美元以下，儘管荷姆茲海峽航運量仍低於戰前水準。",
+            "微軟執行長納德拉批評AI競賽，主張開發更便宜的模型並賦予用戶更多控制權，同時與雪佛龍簽署20年協議，在德州西部建造2.7GW資料中心，預計2028年底供電。",
+            "科技股表現疲弱：那斯達克指數下跌1.3%，SpaceX大跌16%（連三日下滑），Alphabet因AI業務擔憂重挫5%，創一年多來最大單日跌幅。",
+            "達美樂披薩執行長換人：現任執行長Weiner轉任執行主席，營運長Jordan於10月1日接任CEO；公司股價今年已下跌約30%，面臨整體披薩市場成長挑戰。",
+            "美國汽車安全監管機構對休士頓特斯拉致命車禍展開調查，駕駛表示事發時車輛啟動自動駕駛輔助系統。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因AI業務前景擔憂，股價單日大跌5%，創一年多來最大跌幅。"
+            },
+            {
+              "name": "Domino's Pizza",
+              "code": "DPZ",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "執行長換人，今年股價下跌30%，整體披薩市場成長艱困。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "執行長提出AI新方向（更便宜模型、用戶控制），並與雪佛龍合作大型資料中心，但未明確影響股價。"
+            }
+          ],
+          "market_view": "美股漲跌互見：道瓊漲0.3%，那斯達克跌1.3%，標普500跌0.4%；油價因伊朗協議進展跌破80美元。",
+          "action_view": "",
+          "notable_quote": "When college students are booing commencement speakers who are to the word AI, that's a tell on, hey, they're anxious."
+        }
+      },
+      {
         "guid": "c31e2f78-6e24-11f1-a128-0b42db4e274a",
         "title": "The Fight for Affordable Housing",
         "published": "Mon, 22 Jun 2026 10:19:00 -0000",
@@ -1992,6 +2034,27 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": ""
+        }
+      },
+      {
+        "guid": "0014601e-6d58-11f1-8845-6fea1e62e668",
+        "title": "Mamdani Won on Housing. Will Democrats Follow His Lead?",
+        "published": "Sun, 21 Jun 2026 10:00:00 -0000",
+        "processed_at": "2026-06-22T21:48:21Z",
+        "digest": {
+          "summary_points": [
+            "紐約市租金穩定公寓的房東因保險、水電、材料成本飆升而面臨財務壓力，市長Mamdani推出城市保險基金以降低其成本。",
+            "Mamdani的住房計劃「Block by Block」目標在五年內建造20萬套可負擔住房，並維護20萬套現有住房，總投資220億美元。",
+            "房東LeVon Mason表示，租金凍結使其無法負擔維修費用，若政府凍結租金應同時提供房東支持。",
+            "租客Eva Sanchez指出紐約市租金對普通民眾而言難以負擔，穩定的住房是生存和發展的基礎。",
+            "Mamdani強調其住房政策同時注重增加供應與加強租客保護，並與私人市場合作。",
+            "市長Mamdani推動的Sunnyside Yards大型開發案可創造30,000個就業機會，需聯邦資金支持。",
+            "Mamdani認為民主黨若在國會贏得多數，將有助於紐約市獲得更多聯邦投資，促進住房與經濟發展。"
+          ],
+          "tickers": [],
+          "market_view": "紐約市面臨嚴重的住房成本危機，租金和運營成本雙雙上漲，市長試圖透過增加供應、租金管制及聯邦投資來平衡市場。",
+          "action_view": "關注紐約市住房政策對房地產市場的影響，尤其是租金穩定公寓的房東和租客之間的動態，以及大型開發案的進展。",
+          "notable_quote": "If we were to have partners in Washington that were committed to delivering for this city, it would unlock to a far greater potential than what we see today what's possible for this city."
         }
       },
       {
@@ -2276,126 +2339,66 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-17T23:21:49Z"
-      },
-      {
-        "guid": "d9de718a-67d7-11f1-ac2c-53658a0a118b",
-        "title": "How a Health Insurance Shortfall in Georgia Could Play Out in the Midterms",
-        "published": "Sun, 14 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-14T20:59:25Z",
-        "digest": {
-          "summary_points": [
-            "Affordable Care Act (ACA) 合規保費大幅上升，聯邦稅收抵免於1月1日到期，導致保費年增30-40%。",
-            "喬治亞州ACA投保人數自去年初下降37%，超過50萬人失去保險。",
-            "KFF估計，補貼到期後，ACA市場參保者年均保費從2025年的888美元翻倍至2026年的約1,900美元。",
-            "部分家庭保費甚至上漲三倍，許多人因無力負擔而選擇不投保。",
-            "喬治亞州未滿65歲無保險率達13.6%，高於全美平均。",
-            "失業者Joey Bernard因新工作無健康保險，被迫自費醫療，並祈禱不出現重大醫療事故。",
-            "Elizabeth Barnett因心臟科就診自費500美元而減少看診，同時採取節省開支措施如無肉星期一。",
-            "多數選民（70%）預期保費將續漲，44%歸咎於川普政府政策，僅27%歸咎於保險公司。",
-            "民主黨在醫療保健議題上較受信任，但選民對兩黨解決問題的能力普遍缺乏信心。",
-            "2025年1月WSJ民調顯示，醫療保健與雜貨開銷同為最受關注議題，但醫療保健被視為政府更可干預的領域。",
-            "WSJ 5月民調顯示，34%美國人無法負擔500美元的意外帳單（如醫療、輪胎等），反映財務焦慮。",
-            "選民認為健康保險成本過高（43%關注），其次為要求保險公司覆蓋醫生處方治療（38%），降處方藥價格僅7%。",
-            "共和黨聚焦補貼資格詐欺與財政赤字，民主黨則主張恢復ACA補貼與擴大醫療補助。",
-            "喬治亞州參議員John Ossoff（民主黨）因爭取恢復補貼而受惠，特別是在女性與年長選民中。",
-            "年長選民與郊區女性成為醫療保健議題的搖擺群體，2020年拜登曾縮小與川普在該群體的差距。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "We've taken the money that otherwise would have been spent for insurance and just using it for straight-up cash and just, you know, kind of hoping and praying that, you know, nothing catastrophic happens for right now until we can find something more reasonable for our family."
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "addc38e8-670e-11f1-8fc7-bff9e686d4ee",
-        "title": "What’s News in Markets: AI Whiplash, SpaceX’s Historic IPO, Knicks Fever",
-        "published": "Sat, 13 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-13T20:51:18Z",
-        "digest": {
-          "summary_points": [
-            "道指周三暴跌創年內最大跌幅，因中東衝突引發油價升通脹擔憂；週四特朗普取消對伊打擊後反彈930點。",
-            "標普500、道瓊、那斯達克本週分別上漲0.65%、0.66%、0.7%，波動劇烈。",
-            "那斯達克過去一週日均波動超2%，為典型水準的兩倍多，凸顯市場波動加劇。",
-            "晶片股成波動核心，三星、SK海力士、Marvell等先跌後漲；SK海力士本週漲近4%，Marvell漲超6%，三星跌約2%。",
-            "AI成長預期過於樂觀的擔憂引發晶片股拋售，但週末情緒逆轉反彈。",
-            "投資者開始尋找AI以外的機會，運輸、金融、材料類股吸引資金流入。",
-            "Old Dominion Freight Line今年漲58%創新高，Ryder System漲46%，Matson漲61%。",
-            "SpaceX昨日上市，為史上最大IPO，首日漲19%，市值約2.1兆美元。",
-            "散戶對SpaceX需求極旺，申請金額超700億美元，但分配極少（有人申請450股僅得1股）。",
-            "部分投資者為參與SpaceX IPO而賣出其他股票，加劇市場波動。",
-            "麥迪遜廣場花園體育（MSG Sports）因尼克隊NBA總決賽表現及分拆提案創新高，今年已漲52%。",
-            "東區決賽主場賽事每場約為公司帶來2000萬美元收入，總決賽更高。"
-          ],
-          "tickers": [
-            {
-              "name": "SK Hynix",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "本週股價反彈近4%，AI需求帶動業績成長"
-            },
-            {
-              "name": "Marvell Technology",
-              "code": "MRVL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "本週漲超6%，受AI晶片需求前景提振"
-            },
-            {
-              "name": "Samsung",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "本週跌約2%，受AI預期降溫賣壓影響"
-            },
-            {
-              "name": "Old Dominion Freight Line",
-              "code": "ODFL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "今年漲58%創新高，運輸類股受資金追捧"
-            },
-            {
-              "name": "Ryder System",
-              "code": "R",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "今年漲46%創新高，受惠於物流需求"
-            },
-            {
-              "name": "Matson",
-              "code": "MATX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "今年漲61%創新高，運輸類股輪動受益"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO首日漲19%，成為史上最大上市案"
-            },
-            {
-              "name": "Madison Square Garden Sports",
-              "code": "MSGS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因尼克隊季後賽表現及分拆提案創新高，今年漲52%"
-            }
-          ],
-          "market_view": "市場本週受地緣政治與AI交易質疑影響，波動劇烈，但最終小幅收高。投資者對AI晶片股的樂觀情緒降溫，開始關注其他估值較低的板塊。",
-          "action_view": "部分投資者考慮從AI晶片股轉向運輸、金融等類股，並可能為參加SpaceX IPO而減持其他部位。",
-          "notable_quote": "Markets went on a roller coaster ride this week."
-        },
-        "shown_at": "2026-06-16T01:08:29Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72637138",
+        "title": "U.S. authorizes Iranian oil sales",
+        "published": "Mon, 22 Jun 2026 18:41:01 +0000",
+        "processed_at": "2026-06-22T21:44:43Z",
+        "digest": {
+          "summary_points": [
+            "標普500下跌0.3%，那斯達克下跌1.1%，道瓊上漲0.3%，因伊朗協議的不確定性。",
+            "10年期公債殖利率上升5個基點至約4.5%，2年期上升4個基點至約4.2%。",
+            "西德州原油期貨每桶73美元，布蘭特原油每桶77美元。",
+            "阿波羅首席經濟學家指出，那斯達克波動率相對於標普500的比率升至多年高點，顯示風險集中在AI/科技股。",
+            "選擇權市場顯示對那斯達克下跌保護的需求增加，反映市場擔憂科技股估值過高與籌碼擁擠。",
+            "艾伯維（AbbVie）以約109億美元現金收購Apigee Therapeutics；Apigee股價大漲52%。",
+            "美光（Micron）與Anthropic合作，成為其主要記憶體與儲存供應商；美光股價上漲5%。",
+            "Meta以9億美元收购印度金融科技公司Cred 20%股權；Cred創辦人將領導WhatsApp。",
+            "戴爾（Dell）與Super Micro推出搭載輝達（Nvidia）Vera Rubin GPU的新AI伺服器。",
+            "Coinbase提供掛鉤Anthropic和OpenAI的上市前永久期貨合約。",
+            "SpaceX與AI新創Reflection簽訂最高價值63億美元的運算容量協議。"
+          ],
+          "tickers": [
+            {
+              "name": "艾伯維",
+              "code": "ABBV",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "收購Apigee強化免疫與呼吸道產品線，但為現金交易且長期佈局。"
+            },
+            {
+              "name": "Apigee Therapeutics",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因被艾伯維以每股135.11美元收購，股價飆漲52%。"
+            },
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與Anthropic合作成為主要記憶體供應商，提升AI題材；股價上漲5%。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "以9億美元收購Cred 20%股權，屬金融科技策略佈局，對財務影響不大。"
+            }
+          ],
+          "market_view": "主持人未明確表達對大盤或總體經濟的整體看法，僅報導市場波動與殖利率變化。",
+          "action_view": "未提及操作思路。",
+          "notable_quote": "This waiver doesn't just weaken the pressure campaign, it puts it into reverse."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72626483",
         "title": "Negotiations in doubt",
@@ -2879,48 +2882,6 @@
           "notable_quote": "There's a pretty big bet that most of this inflation is tied to the Iran conflict, right? So when that resolves, um, it might take a little time for that to work its way through the system But overall things will go back to normal as soon as that resolves."
         },
         "shown_at": "2026-06-16T01:08:29Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72496283",
-        "title": "SpaceX enters public orbit",
-        "published": "Fri, 12 Jun 2026 10:09:10 +0000",
-        "processed_at": "2026-06-13T20:52:37Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX IPO 定價每股 135 美元，籌資 750 億美元，估值約 1.8 兆美元，成為史上最大 IPO。",
-            "Seeking Alpha 量化分析師 Steve Kress 認為 SpaceX 不符合其投資標準，因為營收相對較小（180 億美元）且獲利為負。",
-            "David Keller 稱 SpaceX 為遊戲規則改變者，但警告大型 IPO 通常發生在週期後期，引發逆向指標警訊。",
-            "Adobe 公布第二季調整後每股盈餘 5.96 美元，優於預估 5.81 美元；營收 66.2 億美元，優於預估 64.5 億美元，全年財測亦優於預期。",
-            "Adobe 股價當日下跌 6.25%，盤前再跌，儘管財報優於預期；財務長 Dan Dern 將離職。",
-            "川普總統表示與伊朗的協議可能於本週末敲定，但伊朗外交部表示尚未做出最終決定。",
-            "世界銀行將全球成長預測下調至 2.5%，並警告若戰爭嚴重升級可能導致 1.3% 的崩跌。",
-            "那斯達克 100 指數正在進行調整，獎勵贏家並剔除落後者。",
-            "Cintessa Pharmaceuticals 股東將投票表決 Eli Lilly 的收購要約。",
-            "KLA Corporation 在 1 拆 10 股票分割後開始以調整基礎交易。",
-            "歐洲血液學協會大會在斯德哥爾摩開幕，焦點公司包括 Novartis 和 Eli Lilly。",
-            "盤前：股指期貨漲跌互見，原油下跌 4.6% 至 83 美元，比特幣下跌 0.3% 至 63,000 美元，黃金上漲 0.2% 至 42.21 美元。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "SPCX",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師看法分歧：Steve Kress 因缺乏獲利且營收偏小而看空，David Keller 則認為是遊戲規則改變者但提及逆向指標風險。"
-            },
-            {
-              "name": "Adobe",
-              "code": "ADBE",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "儘管財報優於預期，股價仍下跌 6.25%，財務長離職增添不確定性。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
       }
     ]
   },
@@ -3425,6 +3386,27 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "c9976783-ac98-42de-bad6-916356873946",
+        "title": "科技早餐 6/23｜中美搶半導體關鍵材料，AI 光通訊供應鏈拉警報",
+        "published": "Mon, 22 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-22T21:43:26Z",
+        "digest": {
+          "summary_points": [
+            "中國加強對鎵、鍺等關鍵金屬的出口審查，該金屬全球近7成供給來自中國，是高速光學晶片關鍵原料，美國計劃三年內儲備403公噸以降低供應風險。",
+            "美國政府將提供NVIDIA投資的新創公司SandboxAQ 5億美元，用AI尋找半導體新材料，並取得少數股份，顯示半導體供應鏈競爭延伸至光通訊材料與化學品。",
+            "G7峰會上歐洲擔憂美國限制先進AI模型存取，法國總統建議建立信任夥伴制度，可能影響AI技術供應鏈的國際合作格局。",
+            "中國推動AI資料中心綠電使用比例，目標2030年達80%，但GPU高耗電且負載不易調整，綠電接入與儲能配套面臨壓力。",
+            "愛爾蘭政府允許資料中心擴建，但前提是須自建電廠或開發新電源，反映電力供應成為AI資料中心擴張的關鍵瓶頸。",
+            "Intel執行長陳立五指出半導體基礎設施發展跟不上AI成長，最嚴重瓶頸是記憶體短缺及氦氣供應風險，晶片價格可能持續上漲。",
+            "日本三大銀行（三菱UFJ、瑞穗、三井住友）簽署備忘錄，目標2026年推動日元穩定幣用於金融商品結算，顯示穩定幣被傳統金融納入下一代結算基礎設施。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "5c0b3761-0d4e-499e-a459-f788149c0672",
         "title": "科技早餐 6/22｜Google 砸錢推 TPU 挑戰 NVIDIA，AI 算力戰從晶片燒到資本",

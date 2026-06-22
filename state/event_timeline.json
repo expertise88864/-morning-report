@@ -1,21 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 8,
-  "last_seen": "2026-06-20",
-  "latest_title": "Waymo recalls about 3,900 robotaxis after some drove into 'freeway construction zones'"
- },
- "litigation:": {
-  "first_seen": "2026-06-13",
-  "days": 3,
-  "last_seen": "2026-06-17",
-  "latest_title": "DOJ assists Musk's xAI in NAACP air pollution suit, asks court to toss case"
+  "days": 9,
+  "last_seen": "2026-06-22",
+  "latest_title": "Apple supplier Lingyi seeks US$1.1 billion Hong Kong IPO to fund AI and robotics push"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 3,
-  "last_seen": "2026-06-20",
-  "latest_title": "China’s trillion-parameter AI race: how developers strive to narrow gap with US rivals"
+  "days": 4,
+  "last_seen": "2026-06-22",
+  "latest_title": "陸出口管制效應延續 對日稀土磁體出口創一年低點"
  },
  "litigation:META": {
   "first_seen": "2026-06-19",
@@ -34,5 +28,11 @@
   "days": 1,
   "last_seen": "2026-06-20",
   "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
+ },
+ "export_controls:ASML": {
+  "first_seen": "2026-06-22",
+  "days": 1,
+  "last_seen": "2026-06-22",
+  "latest_title": "國際產經：美方質疑EUV設備恐流入中國，艾司摩爾強硬否認違反出口管制 - 富聯網"
  }
 }

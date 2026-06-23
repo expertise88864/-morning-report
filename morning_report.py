@@ -7536,11 +7536,64 @@ def evaluate_breakout_forecasts(history: list[dict],
     return out
 
 
+# ── Conformal 區間校準(借鏡 Angelopoulos "Conformal PID Control",MIT;inline ~單一純量更新)──
+# 80% 區間實際命中率 < 80%(台股肥尾/跳空常見)→ 把 band 加寬;> 80% → 收窄。
+# P-control:q_{t+1} = clamp(q_t + η·(目標覆蓋 − 實際覆蓋)/100);q 為 band 的加性調整(%)。
+CONFORMAL_STATE_FILE = Path("state/conformal_intervals.json")
+CONFORMAL_TARGET_COV = 80.0
+CONFORMAL_LR = 2.0
+CONFORMAL_Q_LO, CONFORMAL_Q_HI = -2.0, 6.0
+
+
+def _load_conformal_state() -> dict:
+    try:
+        if CONFORMAL_STATE_FILE.exists():
+            data = json.loads(CONFORMAL_STATE_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):          # JSON 合法但非 dict → 視為無狀態
+                return data
+    except Exception:
+        pass
+    return {}
+
+
+def _save_conformal_state(state: dict) -> None:
+    try:
+        CONFORMAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        CONFORMAL_STATE_FILE.write_text(
+            json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8")
+    except Exception as e:
+        print(f"[conformal] 寫入失敗(不影響晨報): {e}", file=sys.stderr)
+
+
+def _update_conformal_q(prev_q: float, coverage_pct) -> float:
+    """P-control 一步更新:覆蓋率不足→q 增(加寬);過高→q 減(收窄)。缺/壞覆蓋率→不動。"""
+    cov = _safe_number(coverage_pct, None)        # 壞值 → None(不當成 0% 覆蓋而暴衝)
+    if cov is None:
+        return prev_q
+    q = prev_q + CONFORMAL_LR * (CONFORMAL_TARGET_COV - cov) / 100.0
+    return max(CONFORMAL_Q_LO, min(CONFORMAL_Q_HI, q))
+
+
+def compute_conformal_adjustments(walk_forward: Optional[dict], save: bool = True) -> dict:
+    """每日一次:讀上次 q、依 walk-forward 各 horizon 的 interval_coverage_pct 更新、(非 DRY_RUN 才)存回。
+    回 {forecast_key: q_pct}(加到 80% band 的加性調整)。"""
+    prev = _load_conformal_state()
+    out = {}
+    for key in MODEL_TARGETS:
+        cov = ((walk_forward or {}).get(key) or {}).get("interval_coverage_pct")
+        prev_q = _safe_number(prev.get(key), 0.0)      # 壞 state → 0(fail-safe)
+        out[key] = round(_update_conformal_q(prev_q, cov), 3)
+    if save and os.environ.get("DRY_RUN") != "1":
+        _save_conformal_state(out)
+    return out
+
+
 def calc_stock_price_forecast(entry: dict,
                               evaluation: Optional[dict[int, dict]] = None,
                               model_predictions: Optional[dict[int, dict]] = None,
                               regime: str = "neutral",
-                              model_monitoring: Optional[dict] = None) -> dict:
+                              model_monitoring: Optional[dict] = None,
+                              conformal_adj: Optional[dict] = None) -> dict:
     """
     產生個股 3 日 / 5 日保守點預測與 80% 波動區間。
 
@@ -7610,6 +7663,11 @@ def calc_stock_price_forecast(entry: dict,
             extra = min(8.0, spread * (monitor_band_multiplier - 1.0) / 2.0)
             lower_return -= extra
             upper_return += extra
+        # Conformal-PID 校準:對稱套用到「實際」lower/upper(quantile 與啟發式兩條路徑都生效,
+        # 確保覆蓋率回饋迴路真正閉合;不足→加寬、過高→收窄)。
+        q_adj = _safe_number((conformal_adj or {}).get(forecast_key), 0.0)
+        lower_return -= q_adj
+        upper_return += q_adj
         if lower_return > upper_return:
             lower_return, upper_return = upper_return, lower_return
         lower_return = min(lower_return, expected_return)
@@ -7622,7 +7680,8 @@ def calc_stock_price_forecast(entry: dict,
             "expected_return_pct": round(expected_return, 2),
             "lower": round(close * (1 + lower_return / 100), 2),
             "upper": round(close * (1 + upper_return / 100), 2),
-            "interval_pct": round(adjusted_band, 2),
+            "interval_pct": round((upper_return - lower_return) / 2.0, 2),   # 實際半寬(含 conformal)
+            "conformal_adj_pct": round(q_adj, 2),
             "beat_market_probability": model.get("beat_market_probability"),
             "model_method": model.get("method", "heuristic fallback"),
             "quality": {
@@ -7783,6 +7842,8 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
         for forecast_key, config in MODEL_TARGETS.items()
     } if sessions else {forecast_key: {} for forecast_key in MODEL_TARGETS}
     weights = REGIME_WEIGHTS.get(regime, REGIME_WEIGHTS["neutral"])
+    # Conformal-PID:依 walk-forward 區間命中率,每日更新 band 加性校準(一次/run)
+    conformal_adj = compute_conformal_adjustments((quotes or {}).get("MODEL_WALK_FORWARD") or {})
     for item in snapshot or []:
         item["feature_drift_penalty"] = _safe_number((feature_drift or {}).get("penalty"))
         item["source_health_penalty"] = _safe_number((source_health or {}).get("ranking_penalty"))
@@ -7816,6 +7877,7 @@ def enrich_stock_attention_candidates(snapshot: list[dict],
              for forecast_key in MODEL_TARGETS},
             regime,
             model_monitoring,
+            conformal_adj=conformal_adj,
         )
     return snapshot
 
@@ -8529,7 +8591,8 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         # 在 GitHub Actions 環境中 commit + push 回 repo
         _git_commit_and_push_state(
             [str(STATE_FILE), str(MODEL_HISTORY_FILE),
-             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE)],
+             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
+             str(CONFORMAL_STATE_FILE)],   # conformal 區間校準 q 需跨日持久化才會收斂
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)

@@ -54,10 +54,15 @@ def _bs_at(rows: list, typ: str, back: int = 0) -> float | None:
     return s[idx][1] if len(s) > abs(idx) - 1 and len(s) >= abs(idx) else None
 
 
-def compute(code: str, price: float | None, token: str) -> dict:
-    fs = finmind("TaiwanStockFinancialStatements", code, "2023-07-01", token)
-    bs = finmind("TaiwanStockBalanceSheet", code, "2023-07-01", token)
-    cf = finmind("TaiwanStockCashFlowsStatement", code, "2023-07-01", token)
+def fetch_statements(code: str, token: str, start: str = "2023-07-01") -> tuple[list, list, list]:
+    """一次抓三表(損益/資產負債/現金流),供 F/Z 與估值共用,避免重複抓取。"""
+    return (finmind("TaiwanStockFinancialStatements", code, start, token),
+            finmind("TaiwanStockBalanceSheet", code, start, token),
+            finmind("TaiwanStockCashFlowsStatement", code, start, token))
+
+
+def compute(code: str, price: float | None, token: str, stmts: tuple | None = None) -> dict:
+    fs, bs, cf = stmts if stmts is not None else fetch_statements(code, token)
     out: dict = {"code": code}
 
     TA = _bs_at(bs, "TotalAssets"); TA_p = _bs_at(bs, "TotalAssets", 4)

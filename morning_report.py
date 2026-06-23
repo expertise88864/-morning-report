@@ -2264,9 +2264,10 @@ def _attach_listing_fundamentals(snapshot: list[dict]) -> None:
 
 def _finmind_top5_extras(codes: list[str], prices: dict | None = None) -> dict:
     """為每日 Top5(少量代號)補 FinMind 的 EPS 年增率 + 外資持股比率 + 財報品質評分
-    (Piotroski F-score / Altman Z-score;教育/非商業用途)。
-    token 選填(FINMIND_TOKEN),任何代號/欄位失敗都略過,絕不影響晨報。
-    回 {code: {eps_latest, eps_yoy_pct, foreign_hold_pct, fscore, fscore_denom, zscore, zscore_zone}}。"""
+    (Piotroski F-score / Altman Z-score)+ DCF 內在價值 gap(估值三法,只取 DCF;教育/非商業用途)。
+    token 選填(FINMIND_TOKEN),任何代號/欄位失敗都略過,絕不影響晨報。F/Z 與估值共用同一次三表抓取。
+    回 {code: {eps_latest, eps_yoy_pct, foreign_hold_pct, fscore, fscore_denom, zscore, zscore_zone,
+              val_dcf_gap_pct, val_dcf_zone}}。"""
     token = os.getenv("FINMIND_TOKEN", "").strip()
     today = dt.datetime.now(TPE).date()
     eps_start = (today - dt.timedelta(days=550)).isoformat()    # 至少 5 季
@@ -2308,13 +2309,25 @@ def _finmind_top5_extras(codes: list[str], prices: dict | None = None) -> dict:
             pass
         try:
             import fz_score   # 同目錄獨立模組;Piotroski F + Altman Z(吃 FinMind 三表)
-            fz = fz_score.compute(c, (prices or {}).get(c), token)
+            _px = (prices or {}).get(c)
+            _stmts = fz_score.fetch_statements(c, token)   # 抓一次,餵 F/Z 與估值兩邊
+            fz = fz_score.compute(c, _px, token, stmts=_stmts)
             if fz.get("fscore") is not None:
                 rec["fscore"] = fz["fscore"]
                 rec["fscore_denom"] = fz.get("fscore_denom")
             if fz.get("zscore") is not None:
                 rec["zscore"] = fz["zscore"]
                 rec["zscore_zone"] = fz.get("zscore_zone")
+            # 估值:只取 DCF gap(持續經營內在價值;辨別度最高)。獨立 try:估值出錯不拖累 F/Z。
+            try:
+                import valuation   # 估值三法(移植 ai-hedge-fund);與 F/Z 共用上面的 _stmts
+                val = valuation.compute(c, _px, token, stmts=_stmts)
+                dcf_gap = (val.get("per_method_gap_pct") or {}).get("dcf")
+                if dcf_gap is not None:
+                    rec["val_dcf_gap_pct"] = dcf_gap
+                    rec["val_dcf_zone"] = ("偏低估" if dcf_gap > 15 else ("偏高估" if dcf_gap < -15 else "合理"))
+            except Exception:
+                pass
         except Exception:
             pass
         if rec:
@@ -12775,6 +12788,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 mc = _num(s.get("market_cap"))
                 if mc:
                     val_bits.append(f"市值 {mc / 1e8:,.0f}億")
+                # DCF 內在價值 gap(移植 ai-hedge-fund 估值法;持續經營口徑,保守參考非精算)
+                dcfg, dcfz = _num(s.get("val_dcf_gap_pct")), s.get("val_dcf_zone")
+                if dcfg is not None and dcfz:
+                    val_bits.append(f"DCF {dcfz}({dcfg:+.0f}%)")
                 val_line = ("估值: " + " ・ ".join(val_bits)) if val_bits else ""
                 chip2_bits = []
                 mh, fhp = _num(s.get("major_holder_pct")), _num(s.get("foreign_hold_pct"))

@@ -72,10 +72,8 @@ def residual_income_value(ni, bv) -> float | None:
     return (bv + pv + term) * (1 - MOS_RIM)
 
 
-def compute(code: str, price: float | None, token: str) -> dict:
-    fs = fz.finmind("TaiwanStockFinancialStatements", code, "2023-07-01", token)
-    bs = fz.finmind("TaiwanStockBalanceSheet", code, "2023-07-01", token)
-    cf = fz.finmind("TaiwanStockCashFlowsStatement", code, "2023-07-01", token)
+def compute(code: str, price: float | None, token: str, stmts: tuple | None = None) -> dict:
+    fs, bs, cf = stmts if stmts is not None else fz.fetch_statements(code, token)
     out: dict = {"code": code}
 
     ni = fz._ttm(fs, "IncomeAfterTaxes")

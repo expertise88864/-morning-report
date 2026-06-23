@@ -5775,15 +5775,86 @@ MODEL_TARGETS = {
 }
 
 
+def calc_absorption_ratio(model_history: list[dict], window: int = 60,
+                          factor_frac: float = 0.2, short_win: int = 15) -> dict:
+    """Absorption Ratio(Kritzman & Li 2010 系統性風險指標)。
+
+    AR = universe 日報酬共變異矩陣「前 N 主成分」解釋的變異佔比(N = 資產數 × factor_frac)。
+    AR 高 → 報酬高度同步、相關結構壓縮 → 市場脆弱(小衝擊易全面擴散);AR 低 → 分散、有緩衝。
+    借鏡 TommasoBelluzzo/SystemicRisk(MATLAB)之演算法,純 numpy 重寫;資料用 model_history 逐日 close。
+
+    標準化偏移 ΔAR_z =(近 short_win 日 AR 均值 − 全期 AR 均值)/ 全期 AR 標準差。
+    ΔAR_z 顯著為正 = 相關結構近期快速壓縮 → 系統性風險上升『早警』(Kritzman 實證常領先回檔)。
+
+    回 {ar, ar_shift_z, fragile(z≥1), severe(z≥2), n_assets, n_factors, asof, sample_days};資料不足回 {}。
+    """
+    snaps = [s for s in (model_history or [])
+             if s.get("session_date") and isinstance(s.get("stocks"), dict)]
+    snaps.sort(key=lambda s: s["session_date"])
+    if len(snaps) < window + short_win + 5:
+        return {}
+    panel = [(s["session_date"],
+              {c: v.get("close") for c, v in s["stocks"].items()
+               if isinstance(v.get("close"), (int, float)) and v.get("close") > 0})
+             for s in snaps]
+
+    def _ar_at(end_idx: int):
+        seg = panel[end_idx - window: end_idx + 1]      # window+1 個收盤 → window 個報酬
+        common = set(seg[0][1])
+        for _, d in seg[1:]:
+            common &= set(d)
+        if len(common) < 20:                            # 共同成分太少不可靠
+            return None
+        codes = sorted(common)
+        prices = np.array([[d[c] for c in codes] for _, d in seg], dtype=float)
+        rets = np.diff(np.log(prices), axis=0)          # log 報酬 (window, M)
+        if rets.shape[0] < 20 or not np.all(np.isfinite(rets)):
+            return None
+        cov = np.cov(rets, rowvar=False)                # PSD (M, M)
+        evals = np.clip(np.linalg.eigvalsh(cov), 0.0, None)
+        total = float(evals.sum())
+        if total <= 0:
+            return None
+        n_fac = max(1, int(np.ceil(len(codes) * factor_frac)))
+        top = float(np.sort(evals)[::-1][:n_fac].sum())
+        return (top / total, len(codes), n_fac)
+
+    last = _ar_at(len(panel) - 1)
+    if last is None:                       # 最新視窗無有效讀數 → 不給(避免回 stale 值卻標最新日期)
+        return {}
+    ar_series = []
+    for end_idx in range(window, len(panel)):
+        r = _ar_at(end_idx)
+        if r is not None:
+            ar_series.append(r[0])
+    if len(ar_series) < short_win + 5:
+        return {}
+    arr = np.asarray(ar_series, dtype=float)   # arr[-1] 即最新視窗(last[0]),與 asof 一致
+    long_mean, long_std = float(arr.mean()), float(arr.std())
+    short_mean = float(arr[-short_win:].mean())
+    shift_z = (short_mean - long_mean) / long_std if long_std > 1e-9 else 0.0
+    return {
+        "ar": round(float(last[0]), 4),
+        "ar_shift_z": round(shift_z, 2),
+        "fragile": bool(shift_z >= 1.0),       # 偏高早警
+        "severe": bool(shift_z >= 2.0),        # 強烈(觸發 regime risk_off)
+        "n_assets": last[1],
+        "n_factors": last[2],
+        "asof": panel[-1][0],
+        "sample_days": len(ar_series),
+    }
+
+
 def _market_regime(quotes: dict) -> str:
     """依當日風險環境切換模型曝險。"""
     macro = quotes.get("MACRO", {}) or {}
     vix = _safe_number((macro.get("VIX") or {}).get("close"), 0.0)
     breadth = _safe_number((quotes.get("BREADTH") or {}).get("advance_ratio"), 50.0)
     sox = _safe_number((macro.get("SOX") or {}).get("change_pct"), 0.0)
+    severe_absorption = bool((quotes.get("ABSORPTION") or {}).get("severe"))   # 系統性風險早警(ΔAR_z≥2)
     if (quotes.get("US_HOLIDAY") or {}).get("detected"):
         return "stale_us"
-    if vix >= 25 or breadth <= 35 or sox <= -3:
+    if vix >= 25 or breadth <= 35 or sox <= -3 or severe_absorption:
         return "risk_off"
     if vix and vix <= 18 and breadth >= 60 and sox >= 1:
         return "risk_on"
@@ -7840,6 +7911,19 @@ def detect_market_alerts(quotes: dict, fair: dict, predictions: dict, taifex_oi:
             "level": "orange",
             "title": "費半急漲（短期可能拉回）",
             "detail": f"SOX 單日漲 {sox_pct:.2f}%（> 3.5%）。歷史上連續急漲後常有獲利了結。",
+        })
+
+    # 2.5 系統性風險:Absorption Ratio 標準化偏移(類股相關結構快速壓縮 = 脆弱早警;只在偏高時出現)
+    absorp = quotes.get("ABSORPTION") or {}
+    z = absorp.get("ar_shift_z")
+    if z is not None and absorp.get("fragile"):
+        alerts.append({
+            "level": "red" if absorp.get("severe") else "orange",
+            "title": "系統性風險上升（類股相關結構壓縮）",
+            "detail": (f"Absorption Ratio 近期標準化偏移 +{z:.1f}σ"
+                       f"(AR={absorp.get('ar')}、{absorp.get('n_assets')}檔取前{absorp.get('n_factors')}主成分)。"
+                       f"前幾主成分吃下的變異佔比快速上升 → 全市場連動性增強、分散避險效果下降,"
+                       f"小衝擊易全面擴散;Kritzman 實證此訊號常領先大盤回檔,操作宜降槓桿、提防多殺多。"),
         })
 
     # 3. 外資台指期淨空 —— 看「方向(日變化)+ 現貨對照」而非只看「水位」。
@@ -14336,6 +14420,12 @@ def main() -> int:
     quotes["MODEL_MONITORING"] = build_model_monitoring_report(
         quotes["MODEL_WALK_FORWARD"])
     quotes["US_HOLIDAY"] = detect_us_holiday(quotes, now_tpe.date())
+    try:
+        # Absorption Ratio 系統性風險早警(借鏡 Kritzman-Li);失敗不影響晨報
+        quotes["ABSORPTION"] = calc_absorption_ratio(model_history)
+    except Exception as e:
+        print(f"[main] Absorption Ratio 失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["ABSORPTION"] = {}
     quotes["MARKET_REGIME"] = _market_regime(quotes)
     tw0050 = enrich_stock_attention_candidates(
         tw0050, news, tw_mops, history, target_session_date,

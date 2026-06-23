@@ -2131,6 +2131,64 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "a5b83164-6eeb-11f1-87c3-f310ce12fead",
+        "title": "Wall Street’s Tech Selloff Goes Global",
+        "published": "Tue, 23 Jun 2026 10:01:00 -0000",
+        "processed_at": "2026-06-23T10:50:33Z",
+        "digest": {
+          "summary_points": [
+            "科技股因AI成本擔憂重挫，Alphabet、Nvidia、Oracle盤前大跌，賣壓擴散至全球市場。",
+            "亞洲市場走低，韓國KOSPI指數暴跌10%，主要受三星等大型晶片股拖累。",
+            "歐洲市值最高公司ASML下跌5%，拖累歐洲科技股。",
+            "2025年美國執行長年薪超過1億美元的人數創2021年以來新高，近12人超過2億美元。",
+            "研究顯示，執行長薪酬上升並不一定帶來更好的股東回報。",
+            "美國住宅產業面臨勞工短缺，促使業者嘗試模組化建築以降低成本與工期。",
+            "模組化建築可節省40-50%的專案成本，並將防風雨工期從20週縮短至8週。",
+            "高房價與高房貸利率使買家觀望，建商被迫縮小房屋面積並嘗試替代工法以壓低價格。"
+          ],
+          "tickers": [
+            {
+              "name": "三星電子",
+              "code": "",
+              "market": "KR",
+              "direction": "bearish",
+              "reason": "股價暴跌10%，拖累KOSPI指數。"
+            },
+            {
+              "name": "ASML控股",
+              "code": "ASML",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "在歐洲下跌5%，科技股賣壓蔓延。"
+            },
+            {
+              "name": "Alphabet Inc.",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "盤前大跌，因市場擔憂AI成本。"
+            },
+            {
+              "name": "NVIDIA公司",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "盤前下跌，投資人憂慮AI支出。"
+            },
+            {
+              "name": "甲骨文公司",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "科技股賣壓下盤前走弱。"
+            }
+          ],
+          "market_view": "市場因AI成本疑慮出現廣泛賣壓，美國、亞洲及歐洲科技股普遍下跌。",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "2b0dd1ee-6e82-11f1-9cfc-2fda1b302929",
         "title": "The Strait of Hormuz Is Open (Sort Of). So How’s It Going?",
         "published": "Mon, 22 Jun 2026 21:33:00 -0000",
@@ -2478,26 +2536,6 @@
           "market_view": "對美伊協議的樂觀情緒壓低油價並推升科技股，但分析師預期汽油價格在9月前不會回到戰前水準。",
           "action_view": "",
           "notable_quote": "The strain is already partially open. As you know, they're doing a little hunting for a couple of mines that they've already found. But essentially ships are starting to go out."
-        },
-        "shown_at": "2026-06-17T23:21:49Z"
-      },
-      {
-        "guid": "903bf306-68a2-11f1-9784-e3c4da34bb4f",
-        "title": "U.S., Iran Reach Peace Deal. But Israel Won’t Withdraw From Lebanon.",
-        "published": "Mon, 15 Jun 2026 10:06:00 -0000",
-        "processed_at": "2026-06-16T22:20:09Z",
-        "digest": {
-          "summary_points": [
-            "美國與伊朗達成臨時協議，預計週五簽署，荷姆茲海峽將重新開放，恢復全球石油流通。",
-            "油價因協議消息下跌，WTI 原油約 80 美元/桶，天然氣價格也重挫。",
-            "市場仍預期油市緊繃，產業需時間恢復航運通道、受損基礎設施及原油庫存。",
-            "川普行政命令禁止外國政府、企業及個人使用 Anthropic 的 Fable 5 與 Mythos 5 AI 模型，Anthropic 已全面關閉存取。",
-            "頂尖網路安全專家呼籲解除 AI 出口限制，認為此舉會危害網路防禦者與美國 AI 領導地位。"
-          ],
-          "tickers": [],
-          "market_view": "全球市場因美伊達成臨時和平協議而上漲，但油價因此消息下跌。",
-          "action_view": "",
-          "notable_quote": ""
         },
         "shown_at": "2026-06-17T23:21:49Z"
       }

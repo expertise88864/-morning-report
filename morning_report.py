@@ -3738,13 +3738,31 @@ def detect_ex_dividend_today(codes: list, today_tpe_date) -> dict:
     return out
 
 
+def _ewma_vol_pct(returns, lam: float = 0.94) -> Optional[float]:
+    """RiskMetrics EWMA 日波動度(%):σ²_t = λ·σ²_{t-1} + (1−λ)·r²_{t-1},λ=0.94。
+
+    近期報酬權重指數遞減 → 波動叢聚:恐慌期 σ 自動變寬、平靜期收窄,
+    比「近 20 日等權 std」更能反映當前 regime。借鏡 GARCH 思路但零相依、不會擬合失敗。
+    報酬筆數 < 10 或結果非正/NaN → 回 None(由呼叫端退回固定 σ)。
+    """
+    arr = np.asarray([x for x in returns if x is not None and x == x], dtype=float)
+    if arr.size < 10:
+        return None
+    var = float(np.var(arr))                      # 以全期變異數(ddof=0)起始(夠多步後會被洗掉)
+    for r2 in arr * arr:
+        var = lam * var + (1.0 - lam) * float(r2)
+    if not (var > 0) or var != var:               # 非正 / NaN
+        return None
+    return float(np.sqrt(var)) * 100.0
+
+
 def calc_momentum_metrics(close_series) -> dict:
     """
     從 close 序列計算動能 / 波動度 / 移動平均指標。
 
     回傳:
       last, pct_5d, pct_20d, ma20, ma50, ma20_dist_pct, ma50_dist_pct,
-      daily_vol_pct (近 20 日 daily-return std)
+      daily_vol_pct (近 20 日 daily-return std)、ewma_vol_pct (RiskMetrics EWMA 條件波動度)
 
     資料不足時對應欄位為 None；最低需 6 天資料才有 5d 動能。
     """
@@ -3772,9 +3790,13 @@ def calc_momentum_metrics(close_series) -> dict:
         out["ma50"] = round(ma50, 2)
         out["ma50_dist_pct"] = round((last / ma50 - 1) * 100, 2) if ma50 > 0 else None
     if n >= 21:
-        rets = s.pct_change().dropna().tail(20)
+        rets_all = s.pct_change().dropna()
+        rets = rets_all.tail(20)
         if len(rets):
-            out["daily_vol_pct"] = round(float(rets.std()) * 100, 3)
+            out["daily_vol_pct"] = round(float(rets.std()) * 100, 3)   # 近 20 日等權(其他消費者沿用)
+        ewma = _ewma_vol_pct(rets_all.to_numpy())                       # 全序列 EWMA 條件波動度
+        if ewma is not None:
+            out["ewma_vol_pct"] = round(ewma, 3)
     return out
 
 
@@ -3787,11 +3809,16 @@ def calc_midterm_forecast(metrics: dict,
     本 forecast 提供的是「**基於歷史波動度的合理區間**」(±1.5σ × √horizon),
     + 一個保守的 drift 估計(過去 20 日平均日收益,長期 horizon 加均值回歸 dampening)。
 
+    波動度優先用 EWMA 條件波動度(ewma_vol_pct,反映當前 regime:恐慌期變寬、
+    平靜期收窄),取不到才退回近 20 日等權 std(daily_vol_pct)。
+
     解讀方式:「下週 2330 在常態近似下約 87% 機率落在 lower-upper」,
     而非「下週 2330 會漲到 X」。
     """
     last = metrics.get("last")
-    daily_vol = metrics.get("daily_vol_pct")
+    ewma_vol = metrics.get("ewma_vol_pct")
+    daily_vol = ewma_vol if (ewma_vol and ewma_vol > 0) else metrics.get("daily_vol_pct")
+    vol_basis = "EWMA" if (ewma_vol and ewma_vol > 0) else "20d-std"
     pct_20d = metrics.get("pct_20d")
     if not last or not daily_vol:
         return {"error": "需要至少 21 天歷史"}
@@ -3827,6 +3854,7 @@ def calc_midterm_forecast(metrics: dict,
             "expected_pct": round(expected_return_pct, 2),
             # 向後相容
             "band_pct": round(band_15s, 2),
+            "vol_basis": vol_basis,        # EWMA 或 20d-std(供 debug,不渲染)
         }
     return forecasts
 

@@ -49,6 +49,49 @@ def test_midterm_forecast_error_when_insufficient():
     assert mr.calc_midterm_forecast({"last": 100}).get("error")    # 缺 vol
 
 
+def test_ewma_vol_insufficient_returns_none():
+    assert mr._ewma_vol_pct([0.01] * 5) is None      # < 10 筆
+    assert mr._ewma_vol_pct([]) is None
+
+
+def test_ewma_vol_reacts_to_recent_spike():
+    """EWMA 應對『近期波動放大』敏感:結尾有大跳動的序列 EWMA 明顯高於全程平靜序列。"""
+    calm = [0.001] * 60
+    spike = [0.001] * 59 + [0.06]            # 最後一天 +6% 大跳動
+    v_calm = mr._ewma_vol_pct(calm)
+    v_spike = mr._ewma_vol_pct(spike)
+    assert v_calm is not None and v_spike is not None
+    assert v_spike > v_calm * 3              # 近期 spike 把條件波動度顯著拉高
+    assert v_spike > 0
+
+
+def test_ewma_vol_constant_returns_converge():
+    """常數報酬 r 的 EWMA 波動度應收斂到 |r|(此處 1% → ~1.0)。"""
+    v = mr._ewma_vol_pct([0.01] * 300)
+    assert v is not None and abs(v - 1.0) < 0.05
+
+
+def test_momentum_metrics_includes_ewma_vol():
+    np.random.seed(7)
+    values = 100 * np.cumprod(1 + np.random.normal(0, 0.012, 80))
+    m = mr.calc_momentum_metrics(_close_series(values.tolist()))
+    assert m.get("ewma_vol_pct") is not None and m["ewma_vol_pct"] > 0
+
+
+def test_midterm_forecast_prefers_ewma_then_falls_back():
+    # 有 ewma_vol_pct → 用 EWMA;band 依該 σ 計算
+    fc = mr.calc_midterm_forecast(
+        {"last": 100.0, "daily_vol_pct": 1.0, "ewma_vol_pct": 2.0, "pct_20d": 0.0},
+        horizons=(5,))
+    assert fc["5d"]["vol_basis"] == "EWMA"
+    assert fc["5d"]["band_1s_pct"] == round(2.0 * (5 ** 0.5), 2)      # 用 2.0 不是 1.0
+    # 無 ewma → 退回 20d-std
+    fc2 = mr.calc_midterm_forecast(
+        {"last": 100.0, "daily_vol_pct": 1.0, "pct_20d": 0.0}, horizons=(5,))
+    assert fc2["5d"]["vol_basis"] == "20d-std"
+    assert fc2["5d"]["band_1s_pct"] == round(1.0 * (5 ** 0.5), 2)
+
+
 def test_trend_label():
     assert mr._trend_label({"ma20_dist_pct": 6.0}).startswith("強勢")
     assert mr._trend_label({"ma20_dist_pct": 3.0}) == "上行"

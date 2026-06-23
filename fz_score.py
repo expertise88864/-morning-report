@@ -29,7 +29,7 @@ def finmind(dataset: str, sid: str, start: str, token: str) -> list:
     p = {"dataset": dataset, "data_id": sid, "start_date": start}
     if token:
         p["token"] = token
-    r = requests.get(BASE, params=p, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+    r = requests.get(BASE, params=p, timeout=(5, 8), headers={"User-Agent": "Mozilla/5.0"})
     return (r.json() or {}).get("data") or []
 
 

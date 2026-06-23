@@ -2262,10 +2262,11 @@ def _attach_listing_fundamentals(snapshot: list[dict]) -> None:
     print(f"[fundamentals] 估值/獲利率附加 {attached} 檔(供 model_history 累積)")
 
 
-def _finmind_top5_extras(codes: list[str]) -> dict:
-    """為每日 Top5(少量代號)補 FinMind 的 EPS 年增率 + 外資持股比率(教育/非商業用途)。
+def _finmind_top5_extras(codes: list[str], prices: dict | None = None) -> dict:
+    """為每日 Top5(少量代號)補 FinMind 的 EPS 年增率 + 外資持股比率 + 財報品質評分
+    (Piotroski F-score / Altman Z-score;教育/非商業用途)。
     token 選填(FINMIND_TOKEN),任何代號/欄位失敗都略過,絕不影響晨報。
-    回 {code: {eps_latest, eps_yoy_pct, foreign_hold_pct}}。"""
+    回 {code: {eps_latest, eps_yoy_pct, foreign_hold_pct, fscore, fscore_denom, zscore, zscore_zone}}。"""
     token = os.getenv("FINMIND_TOKEN", "").strip()
     today = dt.datetime.now(TPE).date()
     eps_start = (today - dt.timedelta(days=550)).isoformat()    # 至少 5 季
@@ -2303,6 +2304,17 @@ def _finmind_top5_extras(codes: list[str]) -> dict:
                 fhp = _to_float(data[-1].get("ForeignInvestmentSharesRatio"))
                 if fhp is not None:
                     rec["foreign_hold_pct"] = fhp
+        except Exception:
+            pass
+        try:
+            import fz_score   # 同目錄獨立模組;Piotroski F + Altman Z(吃 FinMind 三表)
+            fz = fz_score.compute(c, (prices or {}).get(c), token)
+            if fz.get("fscore") is not None:
+                rec["fscore"] = fz["fscore"]
+                rec["fscore_denom"] = fz.get("fscore_denom")
+            if fz.get("zscore") is not None:
+                rec["zscore"] = fz["zscore"]
+                rec["zscore_zone"] = fz.get("zscore_zone")
         except Exception:
             pass
         if rec:
@@ -12658,7 +12670,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if top5:
             # Top5 補 FinMind EPS 年增率 + 外資持股(教育用途、僅 5 檔、失敗略過不影響晨報)
             try:
-                _fm_extras = _finmind_top5_extras([str(s.get("code", "")) for s in top5])
+                _fm_extras = _finmind_top5_extras(
+                    [str(s.get("code", "")) for s in top5],
+                    prices={str(s.get("code", "")): s.get("close") for s in top5})
             except Exception:
                 _fm_extras = {}
             rows_html = []
@@ -12776,9 +12790,19 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 if scr is not None:
                     chip2_bits.append(f"空方回補 {scr}")
                 chip2_line = ("籌碼: " + " ・ ".join(chip2_bits)) if chip2_bits else ""
+                # 財報品質(Piotroski F-score 9 項 + Altman Z-score 破產風險;FinMind 三表、純參考不計分)
+                fz_bits = []
+                fsc, fden = _num(s.get("fscore")), _num(s.get("fscore_denom"))
+                if fsc is not None:
+                    grade = "強健" if fsc >= 7 else ("中等" if fsc >= 4 else "體質弱")
+                    fz_bits.append(f"F-score {int(fsc)}/{int(fden) if fden else 9}({grade})")
+                zsc = _num(s.get("zscore"))
+                if zsc is not None:
+                    fz_bits.append(f"Z-score {zsc}({s.get('zscore_zone', '')})")
+                fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else ""
                 ext_html = "".join(
                     f"<div style='margin-top:4px;font-size:12px;color:#475569;'>{_htmllib.escape(x)}</div>"
-                    for x in (fund_line, val_line, chip2_line) if x)
+                    for x in (fund_line, val_line, chip2_line, fz_line) if x)
                 rows_html.append(
                     f"<tr>"
                     f"<td style='padding:12px 8px 12px 0;border-bottom:1px solid #e2e8f0;"

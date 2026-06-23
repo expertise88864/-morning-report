@@ -12406,6 +12406,34 @@ def _audit_dramatic_macro_claims(analysis: str, macro: dict, threshold: float = 
     return flags
 
 
+def _sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> dict:
+    """從 universe snapshot 聚合各類股近 5 日中位漲幅,算相對大盤的資金輪動方向。
+    借鏡 daily_stock_analysis 的 sector rotation;純聚合既有 industry+pct_5d,無新增抓取。
+    回 {"market_median", "strong":[(類股,中位%,相對大盤%,檔數)...], "weak":[...]}(類股不足則回 {})。"""
+    def _med(xs: list) -> float:
+        sv = sorted(xs); n = len(sv)
+        return sv[n // 2] if n % 2 else (sv[n // 2 - 1] + sv[n // 2]) / 2
+    by_ind: dict[str, list] = {}
+    all_p5: list = []
+    for e in snapshot:
+        p5 = e.get("pct_5d")
+        if isinstance(p5, (int, float)):
+            ind = str(e.get("industry") or "").strip()
+            if ind and ind != "未分類":
+                by_ind.setdefault(ind, []).append(p5)
+                all_p5.append(p5)
+    if not all_p5:
+        return {}
+    mkt = _med(all_p5)
+    ranked = [(ind, round(_med(xs), 2), round(_med(xs) - mkt, 2), len(xs))
+              for ind, xs in by_ind.items() if len(xs) >= min_members]
+    if len(ranked) < 3:                      # 類股太少不具輪動意義
+        return {}
+    ranked.sort(key=lambda r: r[1], reverse=True)
+    weak = [r for r in ranked[::-1][:2] if r not in ranked[:top_n]]   # 最弱 2 類,排除與強勢重疊
+    return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak}
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
@@ -12864,8 +12892,32 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 if top_score < 60
                 else f"台股客觀關注排名 Top {len(top5)}（由高至低）"
             )
+            # 資金輪動(借鏡 daily_stock_analysis sector rotation):各類股近 5 日中位漲幅 vs 大盤
+            sector_rotation_html = ""
+            _rot = _sector_rotation(universe_snapshot)
+            if _rot:
+                def _rot_chip(item):
+                    ind, med, rel, _n = item
+                    col = "#dc2626" if med >= 0 else "#16a34a"   # 台股慣例:紅漲綠跌
+                    return (f'<span style="display:inline-block;background:#fff;border:1px solid #fcd9b6;'
+                            f'color:{col};padding:2px 8px;border-radius:8px;font-size:12px;margin:0 4px 4px 0;">'
+                            f'{_htmllib.escape(ind)} {med:+.1f}%'
+                            f'<span style="color:#94a3b8;"> (相對{rel:+.1f})</span></span>')
+                strong_chips = "".join(_rot_chip(it) for it in _rot["strong"])
+                weak_chips = "".join(_rot_chip(it) for it in _rot["weak"])
+                weak_part = (f'<div style="margin-top:4px;"><span style="font-size:12px;color:#64748b;">轉弱：</span>'
+                             f'{weak_chips}</div>' if weak_chips else "")
+                sector_rotation_html = (
+                    f'<div style="margin:4px 0 14px;padding:10px 12px;background:#fffbeb;border-radius:8px;">'
+                    f'<div style="font-size:13px;font-weight:600;color:#92400e;margin-bottom:6px;">'
+                    f'近 5 日資金輪動（類股中位漲幅，大盤中位 {_rot["market_median"]:+.1f}%）</div>'
+                    f'<div>{strong_chips}</div>{weak_part}'
+                    f'<div style="font-size:11px;color:#94a3b8;margin-top:6px;">'
+                    f'※ 各類股成分股近 5 日漲幅中位數；「相對」為減去全市場中位數（&gt;0＝資金相對流入）。純參考、非買賣訊號。</div>'
+                    f'</div>')
             smart_money_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
+        {sector_rotation_html}
         {low_confidence_note}
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}

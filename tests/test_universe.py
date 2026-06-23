@@ -384,6 +384,49 @@ def test_short_balance_fallback_on_failure(monkeypatch):
     assert mr.fetch_twse_short_balance() == {}
 
 
+# === 類股資金輪動 (sector rotation) ===
+
+def _rot_snapshot():
+    return (
+        [{"industry": "半導體業", "pct_5d": v} for v in (5, 6, 7, 8)] +
+        [{"industry": "航運業", "pct_5d": v} for v in (3, 4, 5)] +
+        [{"industry": "金融保險業", "pct_5d": v} for v in (0, 1, 2, 1)] +
+        [{"industry": "生技醫療業", "pct_5d": v} for v in (-3, -4, -5)] +
+        [{"industry": "玻璃陶瓷", "pct_5d": v} for v in (-6, -7, -8)] +
+        [{"industry": "未分類", "pct_5d": 100}] +          # 應排除(無類股)
+        [{"industry": "觀光業", "pct_5d": 2}]              # 檔數 <3 應排除
+    )
+
+
+def test_sector_rotation_ranks_and_filters():
+    r = mr._sector_rotation(_rot_snapshot())
+    # 大盤中位:18 筆合格 p5(含觀光1檔)中位數 = 1.5,排除「未分類」的 100
+    assert r["market_median"] == 1.5
+    # 強勢由高到低、相對 = 中位 − 大盤中位(1.5)
+    strong = r["strong"]
+    assert [s[0] for s in strong] == ["半導體業", "航運業", "金融保險業", "生技醫療業"]
+    assert strong[0] == ("半導體業", 6.5, 5.0, 4)
+    # 轉弱:最弱類股(玻璃陶瓷),且不與強勢前 4 名重疊
+    assert any(w[0] == "玻璃陶瓷" for w in r["weak"])
+    assert all(w[0] not in [s[0] for s in strong] for w in r["weak"])
+
+
+def test_sector_rotation_excludes_unclassified_and_small():
+    r = mr._sector_rotation(_rot_snapshot())
+    names = [x[0] for x in r["strong"]] + [x[0] for x in r["weak"]]
+    assert "未分類" not in names      # 無 industry 標籤者不計
+    assert "觀光業" not in names      # 成分股 <3 檔者不計
+
+
+def test_sector_rotation_empty_or_too_few_returns_empty():
+    assert mr._sector_rotation([]) == {}
+    assert mr._sector_rotation([{"pct_5d": 1}, {"pct_5d": 2}]) == {}    # 無 industry
+    # 只有 2 個合格類股(<3)→ 不具輪動意義
+    snap = ([{"industry": "A", "pct_5d": v} for v in (1, 2, 3)] +
+            [{"industry": "B", "pct_5d": v} for v in (4, 5, 6)])
+    assert mr._sector_rotation(snap) == {}
+
+
 def test_short_cover_ratio_feature_registered():
     assert "short_cover_ratio" in mr.MODEL_FEATURES
     snap = mr._snapshot_for_model([{

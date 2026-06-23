@@ -963,7 +963,7 @@ def fetch_taifex_night_session() -> dict:
 
             # 以表頭定位欄位（勿硬編 index：「交易時段」不一定在最後一欄，
             # 這正是夜盤長期抓不到的原因）。
-            header_i = close_i = session_i = month_i = None
+            header_i = close_i = session_i = month_i = chgpct_i = chgprice_i = None
             for ri, row in enumerate(rows[:6]):
                 for ci, cell in enumerate(row):
                     c = cell.strip()
@@ -973,6 +973,10 @@ def fetch_taifex_night_session() -> dict:
                         session_i = ci
                     if month_i is None and ("到期月份" in c or "契約月份" in c):
                         month_i = ci
+                    if chgpct_i is None and "漲跌" in c and "%" in c:
+                        chgpct_i = ci            # 官方漲跌%(夜盤訊號的正確基準)
+                    if chgprice_i is None and "漲跌" in c and ("價" in c or "點" in c):
+                        chgprice_i = ci          # 官方漲跌價(無 % 欄時推回基準用)
                 if close_i is not None and session_i is not None:
                     header_i = ri
                     break
@@ -980,11 +984,19 @@ def fetch_taifex_night_session() -> dict:
                 print(f"[taifex_night] {date_str} 表頭偵測失敗，跳過", file=sys.stderr)
                 continue
 
-            # 找近月合約（無到期月 W 字樣的），分開「一般」與「盤後」
+            # 找近月合約（無到期月 W 字樣的），分開「一般」與「盤後」。
+            # 夜盤訊號改用 TAIFEX「盤後」官方漲跌%（GPT-5.5 複審):該值以該合約正確參考價計算,
+            # 自動避開「日盤期貨收盤被正價差/除息灌高」造成的假性反向(舊式 (夜盤收-日盤收)/日盤收
+            # 在除息/正價差暴衝日會把『夜盤上漲』誤算成下跌)。day_close 僅留作診斷,不再當基準。
+            def _pct_clean(s):
+                return safe_float(str(s).replace("%", "").replace("+", "").replace(",", ""))
             day_close = None
             night_close = None
+            night_chg_pct = None        # 盤後官方漲跌%
+            night_chg_price = None      # 盤後官方漲跌價(備援)
+            _need = max(close_i, session_i, month_i or 0, chgpct_i or 0, chgprice_i or 0)
             for row in rows[header_i + 1:]:
-                if len(row) <= max(close_i, session_i, month_i or 0):
+                if len(row) <= _need:
                     continue
                 session = row[session_i].strip()
                 if month_i is not None and "W" in row[month_i].strip():
@@ -995,19 +1007,34 @@ def fetch_taifex_night_session() -> dict:
                 if "盤後" in session or "夜盤" in session or "PM" in session.upper():
                     if night_close is None:
                         night_close = close_val
+                        if chgpct_i is not None:
+                            night_chg_pct = _pct_clean(row[chgpct_i])
+                        if chgprice_i is not None:
+                            night_chg_price = _pct_clean(row[chgprice_i])
                 else:
                     if day_close is None:
                         day_close = close_val
 
-            if day_close and night_close:
-                night_pct = (night_close - day_close) / day_close * 100
-                print(f"[taifex_night] {date_str} 日盤 {day_close} → 夜盤 {night_close} ({night_pct:+.2f}%)")
-                return {
-                    "date": date_str,
-                    "day_close": day_close,
-                    "night_close": night_close,
-                    "night_pct": round(night_pct, 2),
-                }
+            if night_close:
+                # 主:官方漲跌%；備:用漲跌價推回參考價算%
+                if night_chg_pct is not None:
+                    night_pct = night_chg_pct
+                elif night_chg_price is not None and (night_close - night_chg_price):
+                    night_pct = night_chg_price / (night_close - night_chg_price) * 100
+                else:
+                    night_pct = None
+                if night_pct is not None:
+                    if abs(night_pct) > 8:
+                        print(f"[taifex_night] {date_str} ⚠ 夜盤官方漲跌 {night_pct:+.2f}% 異常大,請查證",
+                              file=sys.stderr)
+                    print(f"[taifex_night] {date_str} 夜盤官方漲跌 {night_pct:+.2f}% "
+                          f"(夜盤收 {night_close};日盤收 {day_close} 僅診斷)")
+                    return {
+                        "date": date_str,
+                        "day_close": day_close,
+                        "night_close": night_close,
+                        "night_pct": round(night_pct, 2),
+                    }
         except Exception as e:
             print(f"[taifex_night] {date_str} 失敗: {e}", file=sys.stderr)
             continue
@@ -8741,8 +8768,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     if night.get("night_pct") is not None:
         night_block = (
             f"  日期: {night.get('date','—')}\n"
-            f"  日盤收盤: {night.get('day_close')} → 夜盤收盤: {night.get('night_close')}\n"
-            f"  夜盤漲跌: {night['night_pct']:+.2f}% （直接反映外資對今日台股開盤預期）"
+            f"  夜盤收盤: {night.get('night_close')}（日盤收 {night.get('day_close')} 僅診斷,除息/正價差日勿直接相減）\n"
+            f"  夜盤官方漲跌: {night['night_pct']:+.2f}% ← TAIFEX 盤後官方漲跌%（直接反映外資對今日台股開盤的方向預期；正=偏多開高）"
         )
     else:
         night_block = "（夜盤資料抓取失敗或尚未更新）"
@@ -12854,8 +12881,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <div style="background:#f1f5f9;border-radius:10px;padding:14px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:6px;">夜盤台指期（{night.get('date','—')}）</div>
           <div style="font-size:16px;color:#0f172a;">
-            日盤 {night.get('day_close')} → 夜盤 {night.get('night_close')}
+            夜盤收 {night.get('night_close')}
             <span style="color:{n_color};font-weight:700;margin-left:8px;">({n_sign}{n_pct}%)</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:8px;">日盤收 {night.get('day_close')}（僅診斷,正價差/除息日勿直接相比）</span>
           </div>
         </div>
         """

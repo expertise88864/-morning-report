@@ -1219,6 +1219,56 @@ def fetch_taifex_large_traders(contract: str = "TX") -> dict:
         return {}
 
 
+_ANALYST_MOMENTUM_TICKERS = ("TSM", "NVDA", "AVGO", "AMD", "ASML")
+
+
+def fetch_analyst_rating_momentum(tickers=_ANALYST_MOMENTUM_TICKERS, days: int = 30) -> dict:
+    """分析師評等/目標價動能(借鏡 yfinance upgrades_downgrades;前瞻共識轉向訊號)。
+
+    台股本地代號(2330.TW)Yahoo 多無分析師資料 → 改用 ADR/美股(TSM≈2330 + AI/半導體龍頭)。
+    近 days 日:淨動能 = (升評 up + 調高目標價 Raises) − (降評 down + 調低目標價 Lowers)。
+    Yahoo 為非官方 API 易壞 → 每檔包 try/except,任何錯誤跳過(fail-safe,不影響晨報)。
+    回 {ticker: {net, up, down, tgt_raise, tgt_cut, n, latest}}。
+    """
+    out: dict = {}
+    try:
+        cutoff = pd.Timestamp(dt.datetime.now(TPE).date()) - pd.Timedelta(days=days)
+    except Exception:
+        return {}
+    for tk in tickers:
+        try:
+            ud = yf.Ticker(tk).upgrades_downgrades
+            if ud is None or len(ud) == 0:
+                continue
+            ud = ud.reset_index()
+            gd = pd.to_datetime(ud["GradeDate"], errors="coerce")
+            if getattr(gd.dt, "tz", None) is not None:
+                gd = gd.dt.tz_localize(None)
+            ud = ud[gd >= cutoff]
+            if not len(ud):
+                continue
+            ud = ud.sort_values("GradeDate", ascending=False)   # 自行排序,latest 不依賴來源順序
+            act = ud["Action"].astype(str).str.lower() if "Action" in ud else None
+            up = int((act == "up").sum()) if act is not None else 0
+            down = int((act == "down").sum()) if act is not None else 0
+            if "priceTargetAction" in ud:
+                pta = ud["priceTargetAction"].astype(str).str.lower()
+                raises = int((pta == "raises").sum())
+                cuts = int((pta == "lowers").sum())
+            else:
+                raises = cuts = 0
+            row0 = ud.iloc[0]      # yfinance 以 GradeDate 由新到舊 → 第一列為最新
+            latest = f"{row0.get('Firm', '')} {row0.get('priceTargetAction', '') or row0.get('Action', '')}".strip()
+            out[tk] = {"net": (up + raises) - (down + cuts), "up": up, "down": down,
+                       "tgt_raise": raises, "tgt_cut": cuts, "n": int(len(ud)), "latest": latest}
+        except Exception:
+            continue
+    if out:
+        print(f"[analyst] 評等動能 {len(out)} 檔(net: "
+              + ", ".join(f"{k}{v['net']:+d}" for k, v in out.items()) + ")")
+    return out
+
+
 def fetch_macro_indicators() -> dict:
     """
     抓關鍵總經 + 國際連動指標 + 過去 252 日歷史百分位（Task D）：
@@ -8992,6 +9042,20 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         sec_block = "（過去 48 小時無重大 8-K 公告）"
 
+    # 分析師評等/目標價動能(近 30 日;ADR/美股,TSM≈2330 供應鏈)
+    analyst_mom = quotes.get("ANALYST_MOMENTUM", {}) or {}
+    if analyst_mom:
+        _rows = []
+        for tk, v in analyst_mom.items():
+            _rows.append(
+                f"  {tk}: 淨動能 {v.get('net', 0):+d}（升{v.get('up', 0)}/降{v.get('down', 0)}/"
+                f"調高目標{v.get('tgt_raise', 0)}/調低{v.get('tgt_cut', 0)};最近 {v.get('latest', '')}）")
+        analyst_block = ("近 30 日賣方分析師動向（淨動能=升評+調高目標 − 降評+調低目標;"
+                         "TSM 對應 2330、其餘為 AI/半導體龍頭,屬前瞻共識轉向、非當日新聞）:\n"
+                         + "\n".join(_rows))
+    else:
+        analyst_block = "（分析師評等資料暫無或抓取失敗）"
+
     # 台股重點公司 MOPS 重大訊息
     tw_mops = quotes.get("TW_MOPS", []) or []
     if tw_mops:
@@ -9264,6 +9328,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 【SEC 8-K 主要公司公告（近 48 小時，涵蓋 NASDAQ-100 + TSMC ADR）】
 {sec_block}
 ※ 8-K Item 1.01=重大協議、2.02=財報、5.02=高層異動、8.01=其他重大事件
+
+【分析師評等動能（近 30 日，賣方共識轉向）】
+{analyst_block}
+※ 持續調高目標價/升評 = 共識轉強的前瞻訊號;TSM 動能可作為 2330 的領先參考。屬方向性訊號(B 級),勿當當日催化。
 
 【台股重點公司 MOPS 重大訊息（市值前 10 大 + 初步候選前 15，近 48 小時）】
 {mops_block}
@@ -14250,6 +14318,8 @@ def main() -> int:
     print("[main] 抓總經指標…")
     macro = fetch_macro_indicators()
     quotes["MACRO"] = macro
+    # 分析師評等動能(借鏡 yfinance upgrades_downgrades;ADR/美股,前瞻共識轉向)。fail-safe 回 {}
+    quotes["ANALYST_MOMENTUM"] = fetch_analyst_rating_momentum()
 
     # 2. 抓 00662 昨收 —— 以 TWSE 官方收盤價為準。
     #    Yahoo 對 00662.TW 常落後一天/卡價，會把錯誤昨收一路汙染到合理價估值。

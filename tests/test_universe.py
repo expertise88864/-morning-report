@@ -22,11 +22,12 @@ class _FakeCsvResp:
 
 
 _BASICS = [
-    {"公司代號": "2330", "公司簡稱": "台積電", "產業別": "半導體業",
+    # 產業別為 TWSE 2 碼代碼(真實 OpenAPI 格式)→ 應映射成名稱
+    {"公司代號": "2330", "公司簡稱": "台積電", "產業別": "24",
      "已發行普通股數或TDR原發行股數": "25930380458"},
-    {"公司代號": "2317", "公司簡稱": "鴻海", "產業別": "其他電子業",
+    {"公司代號": "2317", "公司簡稱": "鴻海", "產業別": "31",
      "已發行普通股數或TDR原發行股數": "13868736199"},
-    {"公司代號": "1234", "公司簡稱": "小型股", "產業別": "食品工業",
+    {"公司代號": "1234", "公司簡稱": "小型股", "產業別": "02",
      "已發行普通股數或TDR原發行股數": "100000000"},
     {"公司代號": "00878", "公司簡稱": "某 ETF", "產業別": "",
      "已發行普通股數或TDR原發行股數": "5000000000"},  # 5 位數代號，應被過濾
@@ -55,7 +56,18 @@ def test_universe_parses_and_ranks_by_market_cap(monkeypatch):
     assert "1234" not in uni                          # top_n=2 截斷
     assert uni["2330"]["market_cap"] > uni["2317"]["market_cap"]
     assert uni["2330"]["name"] == "台積電"
-    assert uni["2330"]["industry"] == "半導體業"
+    assert uni["2330"]["industry"] == "半導體業"      # 代碼 24 → 名稱
+    assert uni["2317"]["industry"] == "其他電子業"     # 代碼 31 → 名稱
+
+
+def test_industry_name_maps_code_and_passes_through():
+    assert mr._industry_name("24") == "半導體業"
+    assert mr._industry_name("15") == "航運業"
+    assert mr._industry_name("17") == "金融保險業"
+    assert mr._industry_name("半導體業") == "半導體業"   # 已是名稱 → 原樣
+    assert mr._industry_name("99") == "99"             # 未知代碼 → 原樣(安全)
+    assert mr._industry_name("") == ""
+    assert mr._industry_name(None) == ""
 
 
 def test_universe_fallback_when_openapi_fails(monkeypatch):

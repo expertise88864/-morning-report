@@ -1,21 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 10,
-  "last_seen": "2026-06-23",
-  "latest_title": "Vimeo Parent Bending Spoons, Backers Seek $1.62 Billion in IPO"
+  "days": 11,
+  "last_seen": "2026-06-24",
+  "latest_title": "Couche-Tard Shares Hit Record as High Fuel Prices Bring Surging Profit"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 5,
-  "last_seen": "2026-06-23",
-  "latest_title": "兩岸快遞／大陸國務院副總理丁薛祥表態 要主動擴大進口"
- },
- "litigation:2881": {
-  "first_seen": "2026-06-20",
-  "days": 1,
-  "last_seen": "2026-06-20",
-  "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
+  "days": 6,
+  "last_seen": "2026-06-24",
+  "latest_title": "US targets Cuba mining sector in move with implications for China-linked supply chains"
  },
  "export_controls:ASML": {
   "first_seen": "2026-06-22",
@@ -25,8 +19,8 @@
  },
  "litigation:": {
   "first_seen": "2026-06-23",
-  "days": 1,
-  "last_seen": "2026-06-23",
-  "latest_title": "Gas Stations Accused of Using AI to Boost California Prices"
+  "days": 2,
+  "last_seen": "2026-06-24",
+  "latest_title": "Alibaba sues Pentagon over China military blacklist"
  }
 }

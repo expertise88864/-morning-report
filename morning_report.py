@@ -1135,6 +1135,90 @@ def fetch_taifex_foreign_futures() -> dict:
     return {}
 
 
+def fetch_taifex_options_pc_ratio() -> dict:
+    """TAIFEX 台指選擇權 Put/Call ratio(本土選擇權情緒;TAIFEX OpenAPI JSON)。
+
+    借鏡 node-twstock txoPutCallRatio,改用官方 OpenAPI。P/C(OI)>100% = 未平倉偏 Put、
+    避險/偏空部位濃;極端高常是散戶過度避險 → 反向(contrarian)偏多訊號。補晨報缺的
+    『台股本土情緒』(現只有美股 VIX)。失敗回 {}(fail-safe,不影響晨報)。
+    """
+    try:
+        r = requests.get("https://openapi.taifex.com.tw/v1/PutCallRatio",
+                         timeout=(5, 10), headers={"User-Agent": "Mozilla/5.0"})
+        data = r.json() or []
+        if not data:
+            return {}
+        latest = max(data, key=lambda x: str(x.get("Date", "")))   # 取最新交易日
+        vol = _to_float(latest.get("PutCallVolumeRatio%"))
+        oi = _to_float(latest.get("PutCallOIRatio%"))
+        if oi is None and vol is None:
+            return {}
+        out = {"date": str(latest.get("Date", "")), "pc_vol_ratio": vol, "pc_oi_ratio": oi}
+        print(f"[taifex] TXO Put/Call OI ratio = {oi}% (vol {vol}%)")
+        return out
+    except Exception as e:
+        print(f"[taifex] PCR 抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        return {}
+
+
+def fetch_taifex_large_traders(contract: str = "TX") -> dict:
+    """TAIFEX 大額交易人未沖銷部位(台指期 TX,所有契約合計 SettlementMonth=999912)。
+
+    借鏡 node-twstock largeTraders 配方,改用 TAIFEX OpenAPI。前 10 大交易人淨部位(買−賣)
+    與集中度,反映『主力方向 + 籌碼集中』;特定法人(TypeOfTraders=1)更貼近機構動向。
+    補晨報缺的『大額交易人定位』(現只有三大法人淨額)。失敗回 {}(fail-safe)。
+
+    回 {date, top10_net(正=偏多), top10_buy, top10_sell, oi_market,
+        top10_long_pct, top10_short_pct, concentration_pct, spec_top10_net}。
+    """
+    try:
+        r = requests.get("https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures",
+                         timeout=(5, 12), headers={"User-Agent": "Mozilla/5.0"})
+        data = r.json() or []
+        rows = [x for x in data if x.get("Contract") == contract
+                and str(x.get("SettlementMonth")) == "999912"]      # 所有契約合計
+        if not rows:
+            return {}
+        latest = max(str(x.get("Date", "")) for x in rows)
+        allt = next((x for x in rows if str(x.get("Date")) == latest
+                     and str(x.get("TypeOfTraders")) == "0"), None)
+        spec = next((x for x in rows if str(x.get("Date")) == latest
+                     and str(x.get("TypeOfTraders")) == "1"), None)
+        if not allt:
+            return {}
+
+        def _strict_int(v):
+            # 嚴格解析:缺欄位/空/壞值回 None(不可用 _to_int,它壞值回 0 會算出假部位)
+            if v is None or str(v).strip() in ("", "-", "NA"):
+                return None
+            try:
+                return int(float(str(v).replace(",", "").strip()))
+            except (TypeError, ValueError):
+                return None
+        b, s, oi = (_strict_int(allt.get("Top10Buy")),
+                    _strict_int(allt.get("Top10Sell")),
+                    _strict_int(allt.get("OIOfMarket")))
+        if b is None or s is None or not oi:      # 缺欄位/壞值/OI=0 → fail-safe 回 {}
+            return {}
+        out = {
+            "date": latest, "top10_buy": b, "top10_sell": s, "top10_net": b - s,
+            "oi_market": oi,
+            "top10_long_pct": round(b / oi * 100, 1),
+            "top10_short_pct": round(s / oi * 100, 1),
+            "concentration_pct": round(max(b, s) / oi * 100, 1),
+        }
+        if spec:
+            sb, ss = _strict_int(spec.get("Top10Buy")), _strict_int(spec.get("Top10Sell"))
+            if sb is not None and ss is not None:
+                out["spec_top10_net"] = sb - ss
+        print(f"[taifex] TX 大額交易人 Top10 淨 = {out['top10_net']:+d} 口"
+              f"(集中度 {out['concentration_pct']}%)")
+        return out
+    except Exception as e:
+        print(f"[taifex] 大額交易人抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        return {}
+
+
 def fetch_macro_indicators() -> dict:
     """
     抓關鍵總經 + 國際連動指標 + 過去 252 日歷史百分位（Task D）：
@@ -8864,6 +8948,19 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         )
     else:
         taifex_block = "（TAIFEX 資料抓取失敗或未更新）"
+    # 大額交易人 + 台指選擇權 P/C(借鏡 node-twstock,TAIFEX OpenAPI;附加在期貨 block,只餵 LLM 不單獨渲染)
+    lt = quotes.get("TAIFEX_LARGE_TRADERS", {}) or {}
+    if lt.get("top10_net") is not None:
+        taifex_block += (
+            f"\n  大額交易人(台指期所有契約)前10大淨部位: {lt['top10_net']:+d} 口"
+            f"（正=偏多、負=偏空;前10大集中度 {lt.get('concentration_pct')}%）")
+        if lt.get("spec_top10_net") is not None:
+            taifex_block += f"；其中特定法人前10大淨 {lt['spec_top10_net']:+d} 口（更貼近機構方向）"
+    pcr = quotes.get("TAIFEX_PCR", {}) or {}
+    if pcr.get("pc_oi_ratio") is not None:
+        taifex_block += (
+            f"\n  台指選擇權 Put/Call 比(未平倉): {pcr['pc_oi_ratio']}%"
+            f"（>100=未平倉偏 Put/避險偏空;極端偏高常是散戶過度避險 → 反向偏多訊號）")
 
     # Opt 4: 融資融券 block
     margin = quotes.get("MARGIN", {}) or {}
@@ -14205,6 +14302,9 @@ def main() -> int:
     except Exception as e:
         print(f"[main] TAIFEX 抓取失敗: {e}", file=sys.stderr)
         taifex_oi = {}
+    # 5.4b 大額交易人 + 選擇權 P/C(借鏡 node-twstock;OpenAPI;各自 fail-safe 回 {})
+    taifex_large = fetch_taifex_large_traders()
+    taifex_pcr = fetch_taifex_options_pc_ratio()
 
     # 5.5 (Opt 4) TWSE 融資融券
     print("[main] 抓 TWSE 融資融券…")
@@ -14510,6 +14610,8 @@ def main() -> int:
     quotes["SEC_FILINGS"] = sec_filings
     quotes["TW_MOPS"] = tw_mops
     quotes["TAIFEX_OI"] = taifex_oi
+    quotes["TAIFEX_LARGE_TRADERS"] = taifex_large
+    quotes["TAIFEX_PCR"] = taifex_pcr
     quotes["MARGIN"] = margin
     quotes["WEEKLY"] = weekly
     quotes["EARNINGS_PROXIMITY"] = earnings_proximity

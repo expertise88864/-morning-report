@@ -12411,7 +12411,8 @@ def _sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> di
     借鏡 daily_stock_analysis 的 sector rotation;純聚合既有 industry+pct_5d,無新增抓取。
     回 {"market_median", "strong":[(類股,中位%,相對大盤%,檔數)...], "weak":[...]}(類股不足則回 {})。"""
     def _med(xs: list) -> float:
-        sv = sorted(xs); n = len(sv)
+        sv = sorted(xs)
+        n = len(sv)
         return sv[n // 2] if n % 2 else (sv[n // 2 - 1] + sv[n // 2]) / 2
     by_ind: dict[str, list] = {}
     all_p5: list = []

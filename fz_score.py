@@ -65,26 +65,40 @@ def compute(code: str, price: float | None, token: str, stmts: tuple | None = No
     fs, bs, cf = stmts if stmts is not None else fetch_statements(code, token)
     out: dict = {"code": code}
 
-    TA = _bs_at(bs, "TotalAssets"); TA_p = _bs_at(bs, "TotalAssets", 4)
-    CA = _bs_at(bs, "CurrentAssets"); CL = _bs_at(bs, "CurrentLiabilities")
-    CA_p = _bs_at(bs, "CurrentAssets", 4); CL_p = _bs_at(bs, "CurrentLiabilities", 4)
-    NCL = _bs_at(bs, "NoncurrentLiabilities"); NCL_p = _bs_at(bs, "NoncurrentLiabilities", 4)
-    RE = _bs_at(bs, "RetainedEarnings"); TL = _bs_at(bs, "Liabilities")
-    shares_now = _bs_at(bs, "CapitalStock"); shares_p = _bs_at(bs, "CapitalStock", 4)
+    TA = _bs_at(bs, "TotalAssets")
+    TA_p = _bs_at(bs, "TotalAssets", 4)
+    CA = _bs_at(bs, "CurrentAssets")
+    CL = _bs_at(bs, "CurrentLiabilities")
+    CA_p = _bs_at(bs, "CurrentAssets", 4)
+    CL_p = _bs_at(bs, "CurrentLiabilities", 4)
+    NCL = _bs_at(bs, "NoncurrentLiabilities")
+    NCL_p = _bs_at(bs, "NoncurrentLiabilities", 4)
+    RE = _bs_at(bs, "RetainedEarnings")
+    TL = _bs_at(bs, "Liabilities")
+    shares_now = _bs_at(bs, "CapitalStock")
+    shares_p = _bs_at(bs, "CapitalStock", 4)
 
-    ni = _ttm(fs, "IncomeAfterTaxes"); ni_p = _ttm(fs, "IncomeAfterTaxes", 4)
-    rev = _ttm(fs, "Revenue"); rev_p = _ttm(fs, "Revenue", 4)
-    gp = _ttm(fs, "GrossProfit"); gp_p = _ttm(fs, "GrossProfit", 4)
+    ni = _ttm(fs, "IncomeAfterTaxes")
+    ni_p = _ttm(fs, "IncomeAfterTaxes", 4)
+    rev = _ttm(fs, "Revenue")
+    rev_p = _ttm(fs, "Revenue", 4)
+    gp = _ttm(fs, "GrossProfit")
+    gp_p = _ttm(fs, "GrossProfit", 4)
     ebit = _ttm(fs, "OperatingIncome")
     cfo = _ttm(cf, "CashFlowsFromOperatingActivities")
 
     # ---------- Piotroski F-score(9 準則)----------
-    f = 0; denom = 0; comp = {}
+    f = 0
+    denom = 0
+    comp = {}
     def crit(name, ok):
         nonlocal f, denom
         if ok is None:
-            comp[name] = None; return
-        denom += 1; f += 1 if ok else 0; comp[name] = bool(ok)
+            comp[name] = None
+            return
+        denom += 1
+        f += 1 if ok else 0
+        comp[name] = bool(ok)
     roa = (ni / TA) if (ni is not None and TA) else None
     roa_p = (ni_p / TA_p) if (ni_p is not None and TA_p) else None
     crit("ROA>0", (roa > 0) if roa is not None else None)
@@ -119,7 +133,8 @@ def compute(code: str, price: float | None, token: str, stmts: tuple | None = No
 
 
 def main() -> int:
-    import os, pathlib
+    import os
+    import pathlib
     code = sys.argv[1] if len(sys.argv) > 1 else "2330"
     price = float(sys.argv[2]) if len(sys.argv) > 2 else None
     token = os.getenv("FINMIND_TOKEN", "")

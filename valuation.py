@@ -129,7 +129,8 @@ def main() -> int:
         except Exception:
             pass
     if len(sys.argv) < 2:
-        print("用法: python valuation.py <股號> [收盤價]"); return 1
+        print("用法: python valuation.py <股號> [收盤價]")
+        return 1
     code = sys.argv[1]
     price = float(sys.argv[2]) if len(sys.argv) > 2 else None
     import os

@@ -34,14 +34,16 @@ def _spearman(x: np.ndarray, y: np.ndarray) -> float:
         return np.nan
     rx = pd.Series(x).rank().to_numpy()      # method='average':同值取平均秩
     ry = pd.Series(y).rank().to_numpy()
-    rx -= rx.mean(); ry -= ry.mean()
+    rx -= rx.mean()
+    ry -= ry.mean()
     denom = np.sqrt((rx * rx).sum() * (ry * ry).sum())
     return float((rx * ry).sum() / denom) if denom else np.nan
 
 
 def main() -> int:
     if not HIST.exists():
-        print(f"缺 {HIST}"); return 1
+        print(f"缺 {HIST}")
+        return 1
     snaps = json.loads(HIST.read_text(encoding="utf-8"))
     snaps = [s for s in snaps if s.get("session_date") and isinstance(s.get("stocks"), dict)]
     snaps.sort(key=lambda s: s["session_date"])
@@ -68,7 +70,8 @@ def main() -> int:
                     c1 = fwd.get(code)
                     if fv is None or not c0 or not c1:
                         continue
-                    xs.append(float(fv)); ys.append(c1 / c0 - 1.0)
+                    xs.append(float(fv))
+                    ys.append(c1 / c0 - 1.0)
                 ic = _spearman(np.array(xs), np.array(ys))
                 if not np.isnan(ic):
                     ics.append(ic)

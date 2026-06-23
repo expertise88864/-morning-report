@@ -2425,6 +2425,9 @@ def _finmind_top5_extras(codes: list[str], prices: dict | None = None) -> dict:
             if fz.get("zscore") is not None:
                 rec["zscore"] = fz["zscore"]
                 rec["zscore_zone"] = fz.get("zscore_zone")
+            if fz.get("mscore") is not None:                 # Beneish M-score(盈餘操弄)
+                rec["mscore"] = fz["mscore"]
+                rec["mscore_flag"] = fz.get("mscore_flag")
             # 估值:只取 DCF gap(持續經營內在價值;辨別度最高)。獨立 try:估值出錯不拖累 F/Z。
             try:
                 import valuation   # 估值三法(移植 ai-hedge-fund);與 F/Z 共用上面的 _stmts
@@ -13131,7 +13134,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 if scr is not None:
                     chip2_bits.append(f"空方回補 {scr}")
                 chip2_line = ("籌碼: " + " ・ ".join(chip2_bits)) if chip2_bits else ""
-                # 財報品質(Piotroski F-score 9 項 + Altman Z-score 破產風險;FinMind 三表、純參考不計分)
+                # 財報品質(Piotroski F-score + Altman Z-score 破產 + Beneish M-score 盈餘操弄;
+                # FinMind 三表、純參考不計分)
                 fz_bits = []
                 fsc, fden = _num(s.get("fscore")), _num(s.get("fscore_denom"))
                 if fsc is not None:
@@ -13140,6 +13144,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 zsc = _num(s.get("zscore"))
                 if zsc is not None:
                     fz_bits.append(f"Z-score {zsc}({s.get('zscore_zone', '')})")
+                msc = _num(s.get("mscore"))
+                if msc is not None:
+                    fz_bits.append(f"M-score {msc}({'⚠留意操弄' if s.get('mscore_flag') else '正常'})")
                 fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else ""
                 ext_html = "".join(
                     f"<div style='margin-top:4px;font-size:12px;color:#475569;'>{_htmllib.escape(x)}</div>"

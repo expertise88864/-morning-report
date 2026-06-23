@@ -61,6 +61,61 @@ def fetch_statements(code: str, token: str, start: str = "2023-07-01") -> tuple[
             finmind("TaiwanStockCashFlowsStatement", code, start, token))
 
 
+def compute_mscore(fs: list, bs: list, cf: list) -> dict:
+    """Beneish M-score(盈餘操弄偵測,8 變數)。借鏡 Beneish(1999)公式 clean-room 自寫。
+
+    全為「比率」或「年增比」→ scale-free、免貨幣校準,跨市場通用(適合台股)。
+    M > −1.78 → 統計上較可能為盈餘操弄者(earnings manipulator)→ 對財報品質打問號。
+    任一必要欄位缺 → 回 {}(M-score 為固定線性組合,不可部分計算)。flow 用近 4 季 TTM、
+    資產負債用時點;t=最新、p=去年同期(back=4)。
+    回 {mscore, mscore_flag(>−1.78), mscore_zone}。
+    """
+    AR = _bs_at(bs, "AccountsReceivableNet")
+    AR_p = _bs_at(bs, "AccountsReceivableNet", 4)
+    PPE = _bs_at(bs, "PropertyPlantAndEquipment")
+    PPE_p = _bs_at(bs, "PropertyPlantAndEquipment", 4)
+    TA = _bs_at(bs, "TotalAssets")
+    TA_p = _bs_at(bs, "TotalAssets", 4)
+    CA = _bs_at(bs, "CurrentAssets")
+    CA_p = _bs_at(bs, "CurrentAssets", 4)
+    CL = _bs_at(bs, "CurrentLiabilities")
+    CL_p = _bs_at(bs, "CurrentLiabilities", 4)
+    NCL = _bs_at(bs, "NoncurrentLiabilities")
+    NCL_p = _bs_at(bs, "NoncurrentLiabilities", 4)
+    rev = _ttm(fs, "Revenue")
+    rev_p = _ttm(fs, "Revenue", 4)
+    gp = _ttm(fs, "GrossProfit")
+    gp_p = _ttm(fs, "GrossProfit", 4)
+    opex = _ttm(fs, "OperatingExpenses")
+    opex_p = _ttm(fs, "OperatingExpenses", 4)
+    dep = _ttm(cf, "Depreciation")
+    dep_p = _ttm(cf, "Depreciation", 4)
+    ni = _ttm(fs, "IncomeAfterTaxes")
+    cfo = _ttm(cf, "CashFlowsFromOperatingActivities")
+
+    req = [AR, AR_p, PPE, PPE_p, TA, TA_p, CA, CA_p, CL, CL_p, NCL, NCL_p,
+           rev, rev_p, gp, gp_p, opex, opex_p, dep, dep_p, ni, cfo]
+    if any(v is None for v in req) or 0 in (rev, rev_p, TA, TA_p):
+        return {}
+    try:
+        dsri = (AR / rev) / (AR_p / rev_p)
+        gmi = (gp_p / rev_p) / (gp / rev)                       # 前期毛利率 / 本期毛利率
+        aqi = (1 - (CA + PPE) / TA) / (1 - (CA_p + PPE_p) / TA_p)
+        sgi = rev / rev_p
+        depi = (dep_p / (dep_p + PPE_p)) / (dep / (dep + PPE))
+        sgai = (opex / rev) / (opex_p / rev_p)
+        tata = (ni - cfo) / TA
+        lvgi = ((CL + NCL) / TA) / ((CL_p + NCL_p) / TA_p)
+    except ZeroDivisionError:
+        return {}
+    m = (-4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi
+         + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi)
+    if not (-1e9 < m < 1e9):                                    # NaN/inf 防呆
+        return {}
+    return {"mscore": round(m, 2), "mscore_flag": bool(m > -1.78),
+            "mscore_zone": ("偏高(留意操弄)" if m > -1.78 else "正常")}
+
+
 def compute(code: str, price: float | None, token: str, stmts: tuple | None = None) -> dict:
     fs, bs, cf = stmts if stmts is not None else fetch_statements(code, token)
     out: dict = {"code": code}
@@ -129,6 +184,9 @@ def compute(code: str, price: float | None, token: str, stmts: tuple | None = No
         z = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
         out["zscore"] = round(z, 2)
         out["zscore_zone"] = ("安全" if z > 2.99 else ("灰色" if z >= 1.81 else "危險"))
+
+    # ---------- Beneish M-score(盈餘操弄;與 F/Z 共用三表)----------
+    out.update(compute_mscore(fs, bs, cf))
     return out
 
 

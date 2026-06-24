@@ -2781,6 +2781,71 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72676479",
+        "title": "Wendy's, Jack in the Box get meme stock love",
+        "published": "Wed, 24 Jun 2026 18:03:10 +0000",
+        "processed_at": "2026-06-24T21:12:24Z",
+        "digest": {
+          "summary_points": [
+            "溫蒂漢堡股價飆漲超過25%，因成為WallStreetBets炒作目標，受高空單餘額及僅10億美元市值驅動。",
+            "Jack in the Box大漲15%，創近五年最大單日漲幅，空頭回補推動，放空比率約33%。",
+            "赫茲租車暴跌30%，因宣布1億美元股票發行及3億美元債券發行。",
+            "聯邦快遞雖獲利優於預期但股價下跌，2026年會計年度每股盈餘財測1690-1810美元，高標僅略高於共識1809美元。",
+            "Take-Two Interactive股價波動，Rockstar確認《俠盜獵車手6》6月25日開放預購，售價79.99美元。",
+            "Adobe公布亞馬遜Prime Day首日線上消費年增5.3%至83億美元。",
+            "SK海力士計畫在納斯達克以294億美元掛牌，代號SKHY，7月10日開始交易。",
+            "Pantheon Macro指出世界盃未顯著提振美國經濟活動，6月採購經理人指數顯示動能減弱。"
+          ],
+          "tickers": [
+            {
+              "name": "Wendy's",
+              "code": "WEN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因社群媒體熱潮及高空單餘額，股價飆漲逾25%。"
+            },
+            {
+              "name": "Jack in the Box",
+              "code": "JACK",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "空頭回補推動，股價上漲15%，創近五年最佳單日表現。"
+            },
+            {
+              "name": "Hertz",
+              "code": "HTZ",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因宣布股票及債券發行，股價暴跌30%。"
+            },
+            {
+              "name": "FedEx",
+              "code": "FDX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "儘管獲利優於預期，但財測疲弱，股價下跌。"
+            },
+            {
+              "name": "Take-Two Interactive",
+              "code": "TTWO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "因《俠盜獵車手6》預購消息公布，股價波動。"
+            },
+            {
+              "name": "SK Hynix",
+              "code": "SKHY",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "計畫在美國上市，但未提供明確方向看法。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Wendy's is currently sitting on $6. Ouch!"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72668867",
         "title": "Alphabet joins the Dow",
         "published": "Wed, 24 Jun 2026 11:17:18 +0000",
@@ -3307,78 +3372,6 @@
           "notable_quote": "The Qualcomm CEO says he is bullish on smart glasses, a category of product that could rival smartphones in terms of scale."
         },
         "shown_at": "2026-06-16T23:24:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72535317",
-        "title": "Fox buys Roku in $22B deal",
-        "published": "Mon, 15 Jun 2026 14:57:48 +0000",
-        "processed_at": "2026-06-16T22:21:20Z",
-        "digest": {
-          "summary_points": [
-            "福斯公司以220億美元現金加股票收購Roku，每股Roku可獲得96美元現金加上0.9693股福斯A類股票，估值約每股160美元。",
-            "福斯股價因收購案下跌10%，Roku股價最初飆升20%，隨後回落。",
-            "SpaceX股價持續上漲，因馬斯克預測2030年營收可達1兆美元；技術分析師關注150美元支撐位。",
-            "TripAdvisor股價上漲超過10%，因同意以7億美元現金將歐洲訂位平台The Fork出售給美國運通。",
-            "記憶體晶片股（美光、威騰電子、希捷科技、SanDisk）領漲科技板塊，受美伊和平協議激勵。",
-            "在SpaceX IPO後，Anthropic和OpenAI的IPO機率下降；Polymarket機率分別降至75%和55%，Kalshi則分別為90%和62%。",
-            "一般民眾搜尋焦點在AI資料中心、電網、學貸、退稅、好市多降價、速食店關閉、石油運輸中斷及金價，而非華爾街指標。"
-          ],
-          "tickers": [
-            {
-              "name": "福斯公司",
-              "code": "FOXA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價因收購Roku案下跌10%。"
-            },
-            {
-              "name": "Roku",
-              "code": "ROKU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價因收購消息飆升20%，隨後回落。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價持續上漲，受馬斯克營收預測激勵。"
-            },
-            {
-              "name": "TripAdvisor",
-              "code": "TRIP",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價上漲超過10%，因出售The Fork給美國運通。"
-            },
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
-            },
-            {
-              "name": "威騰電子",
-              "code": "WDC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
-            },
-            {
-              "name": "希捷科技",
-              "code": "STX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "記憶體晶片股領漲科技板塊，受和平協議帶動。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "In other words, burgers, not bonds."
-        },
-        "shown_at": "2026-06-17T23:21:49Z"
       }
     ]
   },

@@ -3,6 +3,87 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "df09166b-22a7-4cc7-8610-ab2f6f812e92",
+        "title": "EP673 | 🥬",
+        "published": "Wed, 24 Jun 2026 08:09:45 GMT",
+        "processed_at": "2026-06-24T11:25:06Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為近期市場回撤並非假突破，而是從低點反彈逾6000點後的漲多拉回，主要均線尚未跌破。",
+            "韓國散戶大量使用槓桿ETF可能導致全球連動賣壓，是潛在觸發因素，但無堅實基本利空。",
+            "被動元件族群強勢，國巨等個股形態多頭，預計後續電阻將跟進漲價，整體供需趨緊。",
+            "聯發科傳出全產品線漲價消息，雖未公布細節，但反映客戶接受度，是財務正面訊號。",
+            "聯發科取得Google新晶片TriggerFish訂單，屬早期開發，加強版設計，顯示ASIC進展順利。",
+            "博通未跳過第九代產品，推出WellFish雙拼晶片，解決市場疑慮，維持AI晶片競爭力。",
+            "功率元件受制於8吋晶圓產能，後續能否開出業績取決於製造與封測環節的掌握度。",
+            "市場資金可能在大型股與中小型股間輪動，但中小股仍未熄火，短期結構未變。",
+            "操作上不宜過度敏感，避免因短期波動頻繁進出，長期持有指數即可勝過多數交易者。",
+            "聯準會升息傳聞或被視為下跌藉口，但實際經濟與市場動能仍強，無系統性風險。"
+          ],
+          "tickers": [
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "漲價與Google新案利多，但股價短期已漲多。"
+            },
+            {
+              "name": "國巨",
+              "code": "2327",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "被動元件龍頭，族群強勢，後續漲價可期。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "主持人短線進出，長期看好但當前未加重倉位。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "僅提及漲多，無明確方向。"
+            },
+            {
+              "name": "博通",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "提及AI晶片競爭，但未評論個股方向。"
+            },
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "提及，無方向。"
+            },
+            {
+              "name": "Lumentum",
+              "code": "LITE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "光通股中主持人較偏愛，但目前持股低。"
+            },
+            {
+              "name": "Coherent",
+              "code": "COHR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "光通股，同Lumentum。"
+            }
+          ],
+          "market_view": "大盤漲多了拉回，並非假突破，市場結構沒變，中小股仍然活躍，暫無反轉跡象。",
+          "action_view": "部位總水位不變，短線調整但中長期續抱，忌敏感交易，維持多頭思維。",
+          "notable_quote": "下跌不用花太多時間去解釋為什麼下跌，因為你解釋了半天，後面V上來你就是把自己的臉打到爛掉。"
+        }
+      },
+      {
         "guid": "99c7ad0e-d899-4a9a-9450-749b5053dbff",
         "title": "EP672 | 🐣",
         "published": "Sat, 20 Jun 2026 05:40:47 GMT",
@@ -1042,6 +1123,59 @@
   "usstock-class": {
     "name": "美股投資學",
     "episodes": [
+      {
+        "guid": "48f547fe-1ff4-4712-8cb1-f4b78ff6b4b8",
+        "title": "2026/06/24 (三) 記憶體暴跌導火線，韓股熔斷、美光能救嗎？",
+        "published": "Wed, 24 Jun 2026 08:30:19 GMT",
+        "processed_at": "2026-06-24T11:31:40Z",
+        "digest": {
+          "summary_points": [
+            "記憶體暴跌導火線：媒體報導SK海力士為因應輝達Rubin量產預測下調，放慢HBM4產能升級，轉向傳統DRAM，引發市場對HBM需求疑慮。",
+            "韓股熔斷主因：韓國金融監督院對單一股票槓桿ETF發出警告，投資人去槓桿踩踏，三星電子、SK海力士同步暴跌，帶動KOSPI指數單日大跌逾10%。",
+            "聯準會鷹派轉向：上週利率決議後市場預期今年可能升息，壓抑成長股估值，美元指數升至近7個月高點，加劇科技股賣壓。",
+            "美國經濟數據強勁：6月綜合PMI 52.2（近5月新高），製造業PMI 55.7（2022年5月以來最高），支撐聯準會維持高利率，不利流動性敏感資產。",
+            "輝達股價回測200美元關鍵支撐，今年漲幅僅12%，落後AMD（+158%）、英特爾（+280%）、美光（+270%），因缺乏新催化劑。",
+            "美光財報重點：市場關注HBM產能展望、定價能力及毛利率（預期80-81%），結果將決定半導體短期方向。",
+            "韓國槓桿ETF機制：下跌時基金需賣出持股降槓桿，形成「跌→賣→再跌」的自我強化循環，放大市場波動。",
+            "Google將取代Verizon納入道瓊工業指數，使道瓊AI權重升高，與納斯達克相關性提升，削弱其傳統抗跌特性。",
+            "DREN ETF（記憶體主題ETF）單日跌14%，持股高度集中三星、SK海力士、美光，非分散配置，投資人需主動關注產業動態。",
+            "主持人認為目前非AI泡沫破裂，而是漲多休息；強勢股趨勢未破，拉回時可分批布局，但應買強不買弱。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價回到200美元關鍵支撐，主持人建議可分批試單，長線AI趨勢未變。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "趨勢未破仍處月線之上，但短線波動大，需觀察財報指引。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "納入道瓊指數將吸引追蹤資金，且公司轉向成熟穩健增長。"
+            },
+            {
+              "name": "DREN ETF",
+              "code": "DREN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "隨記憶體板塊波動，非分散投資，投資人需自行判斷產業前景。"
+            }
+          ],
+          "market_view": "聯準會鷹派轉向、美元強勢及經濟數據強勁壓抑成長股，短期缺乏催化劑，大盤陷入整理；需觀察美光財報能否重建市場信心。",
+          "action_view": "主持人已於先前減碼保留現金，建議拉回時分批布局強勢股（如輝達），不賭財報，買強不買弱。",
+          "notable_quote": "目前看起來我並不覺得現在就是AI泡沫的戳破，而是漲多的休息。"
+        }
+      },
       {
         "guid": "5246da6b-d380-420d-a63d-5003e2b22a14",
         "title": "2026/06/23 (二)  SpaceX發債，股價會跌破發行價嗎？ #spcx",
@@ -2189,6 +2323,26 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "cf8d501c-6fb5-11f1-8668-c346ceae52aa",
+        "title": "First an Energy Crisis. Now El Niño?",
+        "published": "Wed, 24 Jun 2026 10:09:00 -0000",
+        "processed_at": "2026-06-24T10:34:27Z",
+        "digest": {
+          "summary_points": [
+            "El Niño 氣候模式已啟動，NOAA 預測其有超過 60% 機率發展為強烈事件，可能加劇全球糧食價格壓力。",
+            "亞洲面臨雙重打擊：中東戰爭導致的肥料短缺已推高肥料價格，加上 El Niño 帶來的極端天氣（高溫、乾旱），將進一步加重農業負擔。",
+            "印度 45% 的農業用地依賴雨水灌溉，若降雨不足將衝擊其稻米、糖等出口，印度已實施糖出口限制，可能帶動全球糖價上漲。",
+            "El Niño 可能影響水力發電，如越南 25% 的電力來自水力，乾旱將導致發電量下降，形成另一波能源危機。",
+            "氣候事件對經濟的宏觀影響包括抑制經濟成長、推升物價（特別是糧食），並迫使政府增加基礎設施抗災支出。",
+            "El Niño 亦可能影響礦業，例如鎳、銅的開採因缺水而受限，進而影響相關商品價格。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "That Asia essentially could be in for a double whammy here."
+        }
+      },
+      {
         "guid": "4d0d7c6e-6f49-11f1-93e7-bf4434f05d28",
         "title": "The Housing Market Slumped This Spring. Where Does It Go From Here?",
         "published": "Tue, 23 Jun 2026 21:19:00 -0000",
@@ -2605,26 +2759,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "SpaceX thought it was a rocket company, thought it was a satellite company, and it's going to keep doing both of those things, but its new future is in AI."
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
-      },
-      {
-        "guid": "6a17ad2a-696d-11f1-a77b-736743e148e1",
-        "title": "Why the Iran Peace Deal Won’t End Rate Hikes",
-        "published": "Tue, 16 Jun 2026 10:09:00 -0000",
-        "processed_at": "2026-06-16T22:40:41Z",
-        "digest": {
-          "summary_points": [
-            "G7 峰會聚焦伊朗戰爭和平協議，預計將降低油價並緩解通膨擔憂。",
-            "包括歐洲央行和日本銀行在內的各國央行因通膨持續而升息或暫停降息。",
-            "澳洲央行總裁 Michelle Bullock 今年已升息 75 個基點，並維持利率不變以評估經濟影響。",
-            "Paul Hannon 指出央行對通膨保持謹慎，能源和供應鏈衝擊使物價居高不下。",
-            "中國消費者支出自新冠疫情以來首次下滑，顯示家庭需求疲弱。"
-          ],
-          "tickers": [],
-          "market_view": "央行對通膨保持警惕，短期內不太可能降息。",
-          "action_view": "",
-          "notable_quote": "It's not a situation in which inflation is likely to settle down quickly. It's just a more troubled world that we live in and central banks are very much on their guard."
         },
         "shown_at": "2026-06-16T23:24:06Z"
       }

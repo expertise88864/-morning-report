@@ -228,6 +228,69 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2345060255",
+        "title": "2026/6/24(三)記憶體亂流 AI踩剎車?韓股槓桿連環爆 回檔驗信仰?【早晨財經速解讀】",
+        "published": "Wed, 24 Jun 2026 01:07:36 +0000",
+        "processed_at": "2026-06-24T06:14:28Z",
+        "digest": {
+          "summary_points": [
+            "費半指數週二大跌7.8%，主因記憶體族群賣壓與升息預期導致的估值修正，但費半仍在月均線之上。",
+            "美光單日跌13%，三星與SK海力士跌逾12%，CounterPoint報告預警2027下半年記憶體供給增速可能超過需求。",
+            "主持人強調AI資本支出目前未現鬆動，微軟、亞馬遜等雲端巨頭仍每年增加約1000億美元支出，因此記憶體修正視為中期回調。",
+            "美銀預估聯準會下半年可能升息三碼，全年累積75基點，並將降息推遲至2028年，但主持人對此鷹派預測存疑。",
+            "對沖基金上週轉為淨賣超美股，放空交易增加至多頭買盤的2.4倍，但主持人認為此為波動性放大而非趨勢反轉。",
+            "中國智普發布開源模型GLM5.2，性能接近美國頂尖模型且成本僅十分之一，可能引發市場對AI資本支出性價比的擔憂，但主持人認為此為舊聞新解。",
+            "特斯拉股價三天蒸發8000億美元市值，因散戶買盤消退且9月將有大規模內部人持股解禁，拖累市場情緒。",
+            "韓國股市因融資餘額創歷史新高達38.5兆韓元，槓桿ETF多殺多導致三星、SK海力士暴跌，但早盤已見反彈。",
+            "台積電傳出將調漲先進製程價格約5%，毛利率可望提升2個百分點，反映AI需求強勁且定價能力穩固。",
+            "費半過去18個月漲幅246%，超越1999-2000年網路泡沫時期，近期修正屬正常乖離回調。",
+            "七巨頭中亞馬遜本益比僅28倍，較一年前50倍顯著下滑，輝達本益比低於標普500，主持人認為AI長線贏家仍可能是這些巨頭。",
+            "銅價未隨科技股上漲，實體經濟需求與金融市場出現落差，但尚難斷言資本支出將放緩。",
+            "台股散戶FOMO情緒高漲，開戶數與融資餘額大增，但台灣科技新貴的穩健買盤支撐ETF，使市場結構較韓國健康。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為AI資本支出未鬆動，輝達長期受益，本益比低於標普500，股價回檔屬正常修正。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "傳出調漲先進製程價格，毛利率可望提升，反映AI需求強勁且定價能力穩固。"
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "本益比降至28倍，主持人認為七巨頭長線可能成AI贏家，現價相對便宜。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "股價單日跌13%，但主持人認為只要資本支出不減，記憶體修正屬於中期回調，並未看空。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "散戶熱潮退燒，股價三日蒸發8000億美元，且後續大量內部人解禁可能帶來賣壓。"
+            }
+          ],
+          "market_view": "主持人認為目前美股回檔屬於乖離過大後的健康修正，AI資本支出未有鬆動跡象，長線仍看好，並指出韓國槓桿清洗有助市場健康。",
+          "action_view": "逢回可留意長期AI趨勢，但應避免使用過高槓桿，保持耐心，「看對趨勢但不要死在波動」。",
+          "notable_quote": "看對趨勢，但是不要死在波動。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2344446845",
         "title": "2026/6/23(二)資金大輪動 台股衝五萬!SpaceX重挫!散戶被坑了?【早晨財經速解讀】",
         "published": "Tue, 23 Jun 2026 01:09:20 +0000",
@@ -2126,6 +2189,71 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "4d0d7c6e-6f49-11f1-93e7-bf4434f05d28",
+        "title": "The Housing Market Slumped This Spring. Where Does It Go From Here?",
+        "published": "Tue, 23 Jun 2026 21:19:00 -0000",
+        "processed_at": "2026-06-24T06:18:01Z",
+        "digest": {
+          "summary_points": [
+            "那斯達克指數下跌2.2%，英特爾、輝達、甲骨文和特斯拉跌幅超過4%，原因是市場預期聯準會將升息。",
+            "聯準會主席Kevin Warsh的鷹派談話暗示利率可能維持不變甚至調升，這將影響依賴發債融資資料中心建置的科技公司。",
+            "美光與Sandisk（Western Digital）是標普500指數中跌幅最大的股票，但美光過去12個月仍上漲700%。",
+            "儘管出現賣壓，許多科技股過去漲幅巨大，因此當日下跌僅被視為小插曲。",
+            "油價下跌逾1%至每桶77.08美元，為伊朗戰爭以來最低結算價。",
+            "春季房屋購買季表現令人失望，抵押貸款利率升至6.66%，市場回溫可能要等到2027年。",
+            "沃爾瑪以14億美元收購法國廣告科技公司Vibe.co，以在廣告收入方面與亞馬遜競爭。",
+            "能源部提供超過170億美元的低利貸款，協助公用事業公司向西屋電氣訂購核反應爐。"
+          ],
+          "tickers": [
+            {
+              "name": "英特爾",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "科技股賣壓中跌幅超過4%。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "科技股賣壓中跌幅超過4%。"
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "科技股賣壓中跌幅超過4%。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "科技股賣壓中跌幅超過4%。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "當日標普500指數中跌幅最大。"
+            },
+            {
+              "name": "Western Digital",
+              "code": "WDC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "當日標普500指數中跌幅最大之一，但仍較12個月前上漲4000%。"
+            }
+          ],
+          "market_view": "主持人認為科技股賣壓主要來自聯準會鷹派立場，導致利率預期升高，但由於先前漲幅巨大，短期下跌僅為小回檔。",
+          "action_view": "未明確提及操作建議，但暗示投資人應觀察此波回檔是否為暫時現象。",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "a5b83164-6eeb-11f1-87c3-f310ce12fead",
         "title": "Wall Street’s Tech Selloff Goes Global",
         "published": "Tue, 23 Jun 2026 10:01:00 -0000",
@@ -2499,42 +2627,6 @@
           "notable_quote": "It's not a situation in which inflation is likely to settle down quickly. It's just a more troubled world that we live in and central banks are very much on their guard."
         },
         "shown_at": "2026-06-16T23:24:06Z"
-      },
-      {
-        "guid": "242696aa-68ff-11f1-83eb-e72b34145032",
-        "title": "DOJ Career Staffers Were Surprised by Decision to Allow Paramount-Warner Deal",
-        "published": "Mon, 15 Jun 2026 21:13:00 -0000",
-        "processed_at": "2026-06-16T22:22:33Z",
-        "digest": {
-          "summary_points": [
-            "福斯（Fox）以250億美元收購串流服務Roku，為其史上最大交易，押注廣告支撐的串流未來。",
-            "福斯股價今日下跌超過15%。",
-            "國際油價（布蘭特原油）下跌近5%至每桶83美元以上，為3月以來最低，受美伊初步協議結束戰爭的樂觀情緒帶動。",
-            "美伊達成初步協議，但荷姆茲海峽重新開放可能需要數週至數月，分析師估計原油從海峽運抵買家需約50天。",
-            "科技股大漲，那斯達克指數上漲超過3%；SpaceX（未上市）飆升20%，市值僅比亞馬遜少4%。",
-            "伊朗協議框架仍不明確，雙方各自宣稱勝利，歐洲盟友是否協助重新開放海峽仍是疑問。"
-          ],
-          "tickers": [
-            {
-              "name": "福斯公司",
-              "code": "FOXA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布以250億美元收購Roku；股價下跌逾15%，反映市場質疑或稀釋擔憂。"
-            },
-            {
-              "name": "Roku公司",
-              "code": "ROKU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "被福斯以250億美元收購；未提供獨立展望。"
-            }
-          ],
-          "market_view": "對美伊協議的樂觀情緒壓低油價並推升科技股，但分析師預期汽油價格在9月前不會回到戰前水準。",
-          "action_view": "",
-          "notable_quote": "The strain is already partially open. As you know, they're doing a little hunting for a couple of mines that they've already found. But essentially ships are starting to go out."
-        },
-        "shown_at": "2026-06-17T23:21:49Z"
       }
     ]
   },
@@ -3632,6 +3724,51 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "890c07c4-91e5-4b79-8454-fa775ea45229",
+        "title": "科技早餐 6/24｜五眼聯盟示警 AI 資安風險升級，企業防禦時間只剩數月",
+        "published": "Tue, 23 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-24T06:15:45Z",
+        "digest": {
+          "summary_points": [
+            "五眼聯盟警告前沿AI模型正快速提升網路攻擊能力，反應時間以月計算，企業需加速修補漏洞",
+            "美國CISA要求政府機關修補重大漏洞期限縮短至三天，反映AI資安風險壓縮應對時間",
+            "美國總統川普簽署行政命令，目標2028年前研發可用於科研的量子電腦，並推動政府2030年轉向後量子加密",
+            "Amazon AI主管預測未來5至7年內可能出現具商業價值的小型量子電腦，多家科技巨頭投入",
+            "Microsoft與Chefram簽署20年天然氣發電供電合約，為德州AI資料中心供電，規模達2.67GW",
+            "NVIDIA宣布下一代AI伺服器採用封閉式液冷設計，降低用水能耗，可在45°C下運作",
+            "歐洲23國開發35台基於NVIDIA平台的AI超級電腦，預計服務逾300萬研究人員，帶動GPU及基礎設施需求",
+            "美光與AI公司Anthropic達成策略合作，將提供高頻寬記憶體與儲存，並參與融資，有助於確保模型擴張的底層資源",
+            "美光導入Anthropic的Claude應用於內部工程、製造與程式碼開發，提升效率"
+          ],
+          "tickers": [
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "簽署20年供電合約確保資料中心能源供應，利於AI發展"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "推出新一代液冷伺服器及歐洲超級電腦計畫，鞏固AI基礎設施領導地位"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與Anthropic策略合作，確保記憶體供應並導入AI應用，提升競爭力"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "記憶體與儲存不再只是AI伺服器的配角，而是模型公司擴張時必須先確保的底層資源。"
+        }
+      },
       {
         "guid": "c9976783-ac98-42de-bad6-916356873946",
         "title": "科技早餐 6/23｜中美搶半導體關鍵材料，AI 光通訊供應鏈拉警報",

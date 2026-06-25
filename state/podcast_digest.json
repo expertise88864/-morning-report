@@ -2390,6 +2390,35 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "0c633942-707f-11f1-a050-d39de8d6afc8",
+        "title": "The AI Build-Out Is Inflation’s New Driver",
+        "published": "Thu, 25 Jun 2026 10:12:00 -0000",
+        "processed_at": "2026-06-25T10:27:46Z",
+        "digest": {
+          "summary_points": [
+            "美光財報優於預期，帶動AI交易復甦，科技股期貨上漲。",
+            "油價持續下跌，西德州原油接近戰前水準，低於每桶70美元。",
+            "AI基礎建設增加DRAM、NAND晶片及冷卻、電力設備需求，推升通膨壓力。",
+            "晶片價格上漲可能推高iPhone等電子產品價格。",
+            "投資人希望通膨已觸頂，但個人消費支出指數可能仍偏高。",
+            "兩黨聯盟成立以因應AI對勞動市場的衝擊，成員包括微軟、美國銀行、禮來、亞馬遜。",
+            "亞馬遜執行長表示AI已大幅改變編碼、維運、客服、研究及銷售等工作方式。"
+          ],
+          "tickers": [
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "美光財報優於預期，重振AI交易，帶動科技股上漲。"
+            }
+          ],
+          "market_view": "美光財報帶動AI股反彈，但油價下跌與AI建置引發的通膨壓力使市場關注聯準會動向。",
+          "action_view": "",
+          "notable_quote": "So it puts cost pressures on a number of businesses and those costs are likely to get passed on to consumers."
+        }
+      },
+      {
         "guid": "d42a3e1a-7013-11f1-b15e-d3b7206dcff4",
         "title": "What’s in the New Bipartisan Housing Bill That Congress Just Passed",
         "published": "Wed, 24 Jun 2026 21:28:00 -0000",
@@ -2805,41 +2834,6 @@
           "market_view": "聯準會鷹派態度及升息預期升溫，導致股市全面下跌，市場對未來流動性收緊感到擔憂。",
           "action_view": "",
           "notable_quote": "Price increases were unavoidable."
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "1b3e9c2c-6a35-11f1-b5c4-ab7db980371c",
-        "title": "Warsh Faces First Big Test at Fed",
-        "published": "Wed, 17 Jun 2026 09:57:00 -0000",
-        "processed_at": "2026-06-18T12:19:21Z",
-        "digest": {
-          "summary_points": [
-            "聯準會主席凱文·沃什面臨首次利率決策，他傾向減少前瞻指引，但在通膨接近4%且市場渴望明確訊號的時刻，這可能帶來不確定性。",
-            "關鍵張力在於聯準會是否會降息，甚至在今年夏天考慮升息，而川普總統正施壓要求較低利率。",
-            "寶馬(BMW)因中國市場惡化及伊朗戰爭連鎖效應，大幅下修全年財測，股價下跌超過6%。",
-            "美國企業今年至今已發行約540億美元的可轉換債券，較去年同期成長43%，主要用於AI資金需求。",
-            "被稱為「中國Instagram」的小紅書擁有超過4億月活躍用戶，正準備首次公開募股(IPO)。"
-          ],
-          "tickers": [
-            {
-              "name": "寶馬",
-              "code": "BMW.DE",
-              "market": "DE",
-              "direction": "bearish",
-              "reason": "因中國市場疲弱及伊朗戰爭影響而大幅下修全年財測。"
-            },
-            {
-              "name": "微芯科技",
-              "code": "MCHP",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "作為540億美元可轉債發行潮的一部分，但節目中無明確看法。"
-            }
-          ],
-          "market_view": "聯準會在沃什領導下可能維持利率不變（因通膨接近4%），但可能減少前瞻指引；市場渴望明確方向。",
-          "action_view": "",
-          "notable_quote": "The more interesting question isn't even whether they cut. It's how far do Fed officials go this summer towards entertaining raising rates?"
         },
         "shown_at": "2026-06-19T22:49:25Z"
       }
@@ -3478,6 +3472,30 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "c2695185-bd74-4f28-9efa-b47300f4a97a",
+        "title": "How the 1994 World Cup Transformed the Business of Football Forever",
+        "published": "Thu, 25 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-25T10:38:03Z",
+        "digest": {
+          "summary_points": [
+            "1994年美國世界盃是商業化轉折點，首次引入麥當勞、通用汽車等全球贊助商，每筆交易高達2000萬美元，開啟世界盃收入指數增長的趨勢。",
+            "FIFA雖是非營利組織，但透過世界盃將數十億美元廣告和轉播收入分配給200多個會員協會，形成『一會員一票』的權力結構，小國與大國投票權相等。",
+            "英超聯賽的升降級制度使俱樂部估值存在『左尾風險』，熱刺接近降級時段影響曼聯、切爾西等隊的估值上限，而美國職業體育聯盟（如MLS）無升降級，估值較穩定。",
+            "歐洲足球球迷忠誠度以俱樂部為核心，但全球化下梅西、C羅等個人球星影響力超越俱樂部，球衣銷售和贊助更依賴明星個人IP。",
+            "石油美元與地緣政治深入足球：沙烏地PIF收購紐卡索聯、俄羅斯天然氣工業股份公司贊助沙爾克04，後者因俄烏戰爭失去合約後降級，年損失1000萬歐元。",
+            "球衣贊助反映政治敏感度：海地國家隊因球衣印有革命英雄圖案被FIFA認定『太政治』而需修改，凸顯審查標準的任意性。",
+            "MLS擴張特許經營權：貝克漢2007年合約中獲得低價購入邁阿密國際隊權利的條款，該隊現估值已增長數十倍，展現美國體育聯盟的投資機會。",
+            "世界盃門票定價遵循美國市場化模式（二級市場價格飆升），而歐洲俱樂部仍堅持低於市場出清的固定票價，反映文化差異。",
+            "國際足總以球員健康為名引入強制飲水暫停，實際增加廣告時段，但此舉破壞比賽節奏，可能長期損害賽事吸引力。",
+            "英超電視收入形成『贏家通吃』：即使AC米蘭等傳統豪門，財務實力已不及許多英超小球會，加劇歐洲聯賽實力不均。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為世界盃是「人類文明巔峰的文化盛事」，短期內商業化仍可大幅榨取現金，但過度干預（如飲水暫停、擴軍）可能慢慢侵蝕年輕觀眾的興趣。",
+          "action_view": "",
+          "notable_quote": "FIFA is a vehicle for funneling money from advertisers and TV to member associations."
+        }
+      },
       {
         "guid": "ec8ef41e-9021-43ba-a6fb-b46d013a0fc5",
         "title": "Grace Shao on What the World Should Know About Chinese AI",

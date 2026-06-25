@@ -1592,6 +1592,135 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmqtf50cx0mzm01yv7mpm5dva",
+        "title": "AI商機下半年如何擴散？台股受惠供應鏈？ 2026.06.25",
+        "published": "Thu, 25 Jun 2026 11:30:19 GMT",
+        "processed_at": "2026-06-25T16:09:21Z",
+        "digest": {
+          "summary_points": [
+            "美光財報盤後發布未提振美股，但盤後納斯達克期貨漲逾2%。",
+            "高通預測2019財年非手機業務營收達400億美元，盤後股價大漲11%；新CPU DragonFly C1000獲Meta採用，帶動南亞科、聯電等供應鏈。",
+            "SK海力士ADR預計7月12日掛牌，募資上看294億美元。",
+            "台積電先進封裝月產能預計從7萬片提升至13萬片（2026年底），帶動日月光、星雲等設備商受惠。",
+            "記憶體HBM需求強勁，海力士市占約66%，但合約價漲幅趨緩，投資建議偏保守。",
+            "輝達GB300機櫃單價約780-820萬美元，零組件成本漲幅以記憶體435%最高、其次PCB 230%、被動元件180%。",
+            "今年輝達出貨主軸為GB300，AI機櫃出貨量約6萬櫃（去年2.8萬），明年續增。",
+            "明年重點為Vera Rubin Atra（800V），預計2027年實現，帶動第三代半導體（GaN、SiC）需求，相關公司漢磊、嘉晶、環球晶等受關注。",
+            "矽光子/光通訊今年為元年，800G光模組為主，1.6T規劃中，聯亞目標價調升至830元，上詮、大立光等受惠。",
+            "被動元件因AI伺服器需求大增，單台用量從傳統2千顆增至AI伺服器2萬顆，新一代可能達45-50萬顆，國巨、華新科、臺慶科等受惠。",
+            "主權AI趨勢興起，歐洲等國發展自有AI，整體AI需求持續擴大。",
+            "ABF載板因排擠效應，欣興、景碩、南電等可受惠。",
+            "美債10年期殖利率下跌10個基點至4.392%，油價跌破70美元，金價跌破4000美元，亞幣受壓。",
+            "外資連續兩日在台股集中市場賣超逾2000億元，台幣貶值，亞幣壓力大。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "先進封裝需求強勁，月產能持續提升。"
+            },
+            {
+              "name": "日月光投控",
+              "code": "3711",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "先進封裝外溢效果，設備需求增加。"
+            },
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "預測非手機業務營收大幅成長，資料中心CPU獲Meta採用，盤後大漲11%。"
+            },
+            {
+              "name": "聯亞",
+              "code": "3081",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "矽光子題材，目標價調升至830元。"
+            },
+            {
+              "name": "國巨",
+              "code": "2327",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "AI伺服器被動元件用量暴增，受惠明顯。"
+            },
+            {
+              "name": "臺慶科",
+              "code": "3357",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "AI伺服器電感需求，股價已上300元。"
+            },
+            {
+              "name": "漢磊",
+              "code": "3707",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "第三代半導體布局，將受惠800V Rubin Atra需求。"
+            },
+            {
+              "name": "欣興",
+              "code": "3037",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "ABF載板受排擠效應，未來可期。"
+            }
+          ],
+          "market_view": "市場短線波動整理，AI基建長線趨勢不變，但外資賣超及亞幣貶值壓力仍存。",
+          "action_view": "無明確操作建議，但強調AI長期趨勢，建議投資人善用AI工具輔助分析。",
+          "notable_quote": "這一輪AI基建週期長達數十年"
+        }
+      },
+      {
+        "guid": "cmqtewm9d0mxl01yv0pb6ftj5",
+        "title": "AI目前處於什麼階段？ 2026.06.25",
+        "published": "Thu, 25 Jun 2026 11:23:44 GMT",
+        "processed_at": "2026-06-25T16:13:24Z",
+        "digest": {
+          "summary_points": [
+            "美光財報亮麗，盤後漲16%；電話會議指出人形機器人所需記憶體容量為Level 2+自駕車的10倍，預期記憶體需求週期長達數十年（2026-2030年揭開序幕）。",
+            "輝達股東會黃仁勳表示AI基建週期長達數十年，AI投資報酬率已有答案，正式進入獲利時代。",
+            "高通在投資者大會宣布營運目標翻倍、揮軍資料中心，已有Meta等客戶，盤後大漲11%。",
+            "高盛報告認為AI投資熱潮離高峰尚遠，企業支出仍有上修空間，且目前獲利增長穩健，泡沫風險低於網路時代。",
+            "東吳證券報告指出AI目標在認知替代，市場天花板遠超網路，全民投資與各國安全焦慮驅動，行情可能被低估。",
+            "美國5年5年遠期通膨預期（5Y5Y）從2.32%降至2.18%，長期通膨疑慮消退，聯準會降息機率上升。",
+            "分析師與主持人均認為AI基本面持續向上，短期波動為布局機會，不宜放空美股或台股。",
+            "市場波動率預期將進一步上升，但AI產業的獲利修正與投資動能將壓過總體經濟擔憂。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報優異且電話會議看好記憶體長週期需求，盤後大漲16%。"
+            },
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "投資者大會宣布營運目標翻倍、進軍資料中心且已有客戶，盤後漲11%。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "股東會釋出利多但股價漲不動，短期動能相對較弱。"
+            }
+          ],
+          "market_view": "主持人認為AI基本面持續向上，長線多頭架構不變，但短期波動可能加大；聯準會可能轉向降息，市場資金仍充沛。",
+          "action_view": "建議不要做空美股與台股，下跌時可逢低佈局AI相關個股，但要控制風險。",
+          "notable_quote": "我們預期一場可持續的規模龐大長達數十年的記憶體需求週期"
+        }
+      },
+      {
         "guid": "cmqs0xwg607pw01xgf62o3zht",
         "title": "M3上市超級吸金 衝擊全球股市暴漲暴跌 2026.06.24",
         "published": "Wed, 24 Jun 2026 12:10:04 GMT",
@@ -2097,97 +2226,6 @@
           "notable_quote": "我覺得下半年邊緣AI會是一個很重要的一個主戰場"
         },
         "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "cmqjgtzkw02jr01xj62224gnt",
-        "title": "美、日央行定調&四巫日結算！多頭繼續走？  2026.06.18",
-        "published": "Thu, 18 Jun 2026 12:32:10 GMT",
-        "processed_at": "2026-06-18T17:47:39Z",
-        "digest": {
-          "summary_points": [
-            "聯準會新任主席華許成立五個工作小組，試圖逐步掌控聯準會，但市場解讀其捍衛2%通膨目標為偏鷹，實際上意在統合鷹派。",
-            "台灣央行理監事會議維持利率不變，連九季不變，重貼現率2.335%，考量通膨溫和與經濟穩健。",
-            "前聯準會官員卡普蘭警告若通膨未降溫，9月可能升息；CME FedWatch顯示9月升息機率上升，年底可能再升一次。",
-            "美債兩年期殖利率逼近4.25%，反映市場預期升息三碼，但殖利率會隨經濟數據波動。",
-            "摩根大通資產管理主管表示聯準會鷹派立場讓市場意外，顯示決策者認為通膨風險遠高於預期。",
-            "分析師林昌興認為升息一碼市場可接受，因AI資本支出強勁支撐股市；若連續升息將引發估值修正。",
-            "費城半導體指數不跌反漲，因美光、安謀等AI相關公司EPS上修，估值仍有支撐；市場可能不認為會真正升息。",
-            "台股集中市場融資餘額創歷史新高，今年增加70%，內資強勁，外資賣壓無法壓盤。",
-            "台灣加權指數與櫃買指數今年漲幅分別約46%與45%，主動式ETF第二季漲幅達39%至90%。",
-            "0050與0056大幅換股，剔除中鋼、南亞科等，納入臻鼎-KY、南電等，被動資金流向AI及相關產業。",
-            "高股息ETF（00878、00929等）今年漲幅落後主動型，但外資開始買進，六七月配息季有填息行情。",
-            "建議定期定額投資市值型或高股息ETF，同時部分資金布局中低價位潛力股（如兩三百元股票）。",
-            "主持人認為市場真正懂運作的大戶並不相信聯準會會升息，或升息對科技股影響有限。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "外資目標價調升至3500元，EPS成長，20倍本益比合理，AI需求帶動。"
-            },
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "未來EPS大幅上修，本益比僅10倍以內，估值有支撐。"
-            },
-            {
-              "name": "元大台灣50",
-              "code": "0050",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "台積電權重近六成，成分股調整納入AI相關，被動資金推升。"
-            },
-            {
-              "name": "國泰永續高股息",
-              "code": "00878",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "金融股成分多，落後補漲，外資買進，填息行情可期。"
-            },
-            {
-              "name": "復華台灣科技優息",
-              "code": "00929",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "科技高股息ETF，配息與股價成長兼具，適合定期定額。"
-            }
-          ],
-          "market_view": "市場對聯準會升息預期存疑，認為即使升息一碼也無礙，AI趨勢支撐股市；台股因內資與AI動能持續創高，但需注意高檔震盪風險。",
-          "action_view": "建議資產配置，部分資金投入市值型或高股息ETF定期定額，部分個股追逐中低價位潛力股（如兩三百元股票），避免過度槓桿。",
-          "notable_quote": "真正的金融市場高端人士不會出來講真心話，大家出來接受記者訪問都是講檯面話。"
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "cmqjh2u7w02ie01xc1eb57sis",
-        "title": "華許初登場！ 真鷹？假鷹？ 2026.06.18",
-        "published": "Thu, 18 Jun 2026 12:27:35 GMT",
-        "processed_at": "2026-06-18T17:51:50Z",
-        "digest": {
-          "summary_points": [
-            "台股收盤創歷史新高46465點，漲1.28%，本周漲2296點（5.2%），盤中高點46565點。",
-            "櫃買指數收盤創歷史新高447.06點，漲3.17%。",
-            "日本日經225首次收在71000點以上，韓國股市創歷史新高，亞洲三兄弟強勢。",
-            "聯準會維持利率不變，但點陣圖顯示多數官員預期年內可能升息（9位預期至少一次，6位預期兩次）。",
-            "華許作為新主席，作風改變，聲明稿大幅縮減，未提交個人點陣圖，市場預期未來可能無點陣圖。",
-            "川普對聯準會態度轉變，稱讚華許，與之前批評鮑爾形成對比，反映其選舉考量。",
-            "美伊達成臨時和平協議，油價回落至80美元附近，有助緩解通膨壓力。",
-            "美國期貨盤後上漲，亞洲股市提前反應利多，美股半導體指數（費半）逆勢上漲1.38%。",
-            "AI多頭主旋律持續，半導體股不受聯準會鷹派影響，市場回歸AI行情。",
-            "市場認為華許的溝通方式會導致短期波動放大，但長期穩定，因為減少非傳統貨幣政策干預。",
-            "聯準會內部共識增強，本次決議全數同意，有別於上次的分歧。",
-            "美國非農生產力回升至2%，支持AI帶動生產力提升的說法，為未來降息鋪路。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為台股及亞洲股市強勢，受AI多頭及美伊協議帶動，但聯準會政策路徑不確定性增加，需關注通膨變化。",
-          "action_view": "",
-          "notable_quote": "沒事隨便吧（川普對聯準會決議的回應）"
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
       }
     ]
   },
@@ -2843,6 +2881,105 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72690377",
+        "title": "Nordstrom, FAO Schwarz team up on toys",
+        "published": "Thu, 25 Jun 2026 15:49:34 +0000",
+        "processed_at": "2026-06-25T16:01:20Z",
+        "digest": {
+          "summary_points": [
+            "Nordstrom 與 FAO Schwartz 合作擴大玩具品類，包括在紐約旗艦店開設 5,000 平方英尺的店中店，以及在全美八個據點推出玩具店。",
+            "5 月核心 PCE 物價指數月增 0.3%，符合預期，年增率為 3.4%。",
+            "第一季 GDP 最終值上修至 2.1%（第二次預估為 1.6%），主因進口下修，部分抵銷消費支出下修。",
+            "Apple 因前所未有的記憶體短缺，調漲多款裝置（含 MacBook Neo）的起售價。",
+            "Sandisk 受美光帶動的漲勢激勵，City 將其目標價上調至 2,500 美元，並開啟 90 天上行催化觀察。",
+            "Wendy's 持續劇烈波動，延續迷因股走勢；Vanda Research 指出此現象與 2021 年散戶驅動的軋空行情如出一轍。",
+            "根據 JPMorgan 分析，Amazon 在去年某時超越 Walmart，成為美國最大零售商，估計佔美國電商市場 47%。"
+          ],
+          "tickers": [
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因記憶體短缺調漲裝置價格，可能壓抑需求。"
+            },
+            {
+              "name": "Sandisk",
+              "code": "WDC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "受美光帶動上漲；City 調升目標價並開啟催化觀察。"
+            },
+            {
+              "name": "Wendy's",
+              "code": "WEN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "劇烈波動，延續迷因股特性，類似 2021 年散戶軋空。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "超越 Walmart 成為美國最大零售商；JPMorgan 看好其持續領先。"
+            }
+          ],
+          "market_view": "債券交易員接收到混合訊號：通膨溫和（核心 PCE 月增 0.3%），但第一季 GDP 上修至 2.1%。",
+          "action_view": "",
+          "notable_quote": "Heather Long, chief economist at Navy Federal Credit Union, said consumer spending remains the backbone of the US economy and that while the anemic 0.5% growth figure should rebound in Q2, it's worth watching closely."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/72686697",
+        "title": "Memory lane runs higher",
+        "published": "Thu, 25 Jun 2026 11:01:52 +0000",
+        "processed_at": "2026-06-25T16:02:08Z",
+        "digest": {
+          "summary_points": [
+            "Micron (MU) 公布第三季度財報與展望，均大幅優於華爾街預期，盤前股價上漲17%。",
+            "SK Hynix 計劃通過美國 ADR 上市籌資最多294億美元，用於擴充AI記憶體晶片產能。",
+            "Roundhill Memory ETF (DRAM) 因Micron財報優於預期與SK Hynix上市消息，盤前上漲逾12%，自4月2日上市以來已漲近152%。",
+            "Samsung、SK Hynix 與 Micron 合計佔DRAM ETF約75%的投資組合。",
+            "阿里巴巴 (BABA) 因被指控非法存取Anthropic的AI模型，港股跌至16個月新低，跌幅達4.9%，今年以來累跌33%。",
+            "高通 (QCOM) 在投資者日宣布，預估到2029會計年度數據中心營收將達150億美元，股價上漲。"
+          ],
+          "tickers": [
+            {
+              "name": "Micron Technology",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報與展望優於預期，盤前大漲。"
+            },
+            {
+              "name": "Roundhill Memory ETF",
+              "code": "DRAM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因Micron財報與SK Hynix上市消息，盤前上漲逾12%。"
+            },
+            {
+              "name": "Alibaba Group",
+              "code": "BABA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "被指控非法存取Anthropic的AI模型，股價下跌。"
+            },
+            {
+              "name": "Qualcomm",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "投資者日宣布2029年數據中心營收目標，股價上漲。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "MU reported fiscal third-quarter results and guidance that topped Wall Street's expectations by a wide margin."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72676479",
         "title": "Wendy's, Jack in the Box get meme stock love",
         "published": "Wed, 24 Jun 2026 18:03:10 +0000",
@@ -3323,119 +3460,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72551054",
-        "title": "Yum! boxes up Pizza Hut to go",
-        "published": "Tue, 16 Jun 2026 15:58:39 +0000",
-        "processed_at": "2026-06-16T22:41:55Z",
-        "digest": {
-          "summary_points": [
-            "Yum Brands以27億美元出售Pizza Hut：海外業務以15億美元售予Long Range Capital，中國業務以12億美元售予Yum China，公司將專注於剩餘品牌。",
-            "Dave & Buster's第一季業績未達預期，股價下跌，但重申全年展望，預期自由現金流超過1億美元。",
-            "RackSpace Technology與AMD簽署協議，部署30兆瓦AI算力，股價飆升。",
-            "SpaceX以600億美元股票交易收購AI程式碼助手Cursor開發商any sphere。",
-            "Walmart將於6月22日至28日推出夏季促銷活動，跟進Amazon將Prime Day移至6月的策略，可能將部分銷售從7月提前至6月。",
-            "宏觀策略師Lynn Alden指出，以黃金計價的美國GDP降至約70億盎司，為逾一個世紀低點，遠低於1970年代初的300億盎司與2000年左右的390億盎司。"
-          ],
-          "tickers": [
-            {
-              "name": "Yum Brands",
-              "code": "YUM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "出售Pizza Hut以聚焦核心品牌，但未明確表達看多或看空。"
-            },
-            {
-              "name": "Dave & Buster's",
-              "code": "PLAY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第一季業績未達預期，股價下跌。"
-            },
-            {
-              "name": "RackSpace Technology",
-              "code": "RXT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與AMD簽署AI算力協議，股價飆升。"
-            },
-            {
-              "name": "AMD",
-              "code": "AMD",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與RackSpace合作部署AI算力，顯示AI業務擴張。"
-            },
-            {
-              "name": "Walmart",
-              "code": "WMT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "推出夏季促銷活動，可能影響銷售時間點。"
-            },
-            {
-              "name": "Yum China",
-              "code": "YUMC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收購Pizza Hut中國業務，但未明確表達看法。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72547760",
-        "title": "Qualcomm builds an AI wardrobe",
-        "published": "Tue, 16 Jun 2026 10:37:48 +0000",
-        "processed_at": "2026-06-16T22:41:21Z",
-        "digest": {
-          "summary_points": [
-            "高通(Qualcomm)執行長表示公司正在開發超過40款新AI穿戴式裝置設計，包括珠寶、附相機的耳機、筆和手錶；看好智慧眼鏡，規模可能與智慧手機匹敵。",
-            "超微(AMD)收購AI記憶體優化技術公司MEX，強化AI與資料中心產品組合；市場反應正面，股價上漲約7%。",
-            "百勝餐飲集團(YUM Brands)宣布肯德基全球品牌更新，包括新菜單、現代化店面設計與品牌重塑，以吸引年輕消費者。",
-            "Dave & Buster's (PLAY) 公佈失望的第一季財報，營收與獲利均不如預期，股價下跌14%。",
-            "聯準會FOMC會議於今日開始，市場關注。"
-          ],
-          "tickers": [
-            {
-              "name": "高通",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "執行長看好智慧眼鏡與AI穿戴裝置，開發超過40款設計"
-            },
-            {
-              "name": "超微",
-              "code": "AMD",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "收購MEX強化AI/資料中心，股價上漲7%"
-            },
-            {
-              "name": "百勝餐飲集團",
-              "code": "YUM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布肯德基全球品牌更新，影響尚不明確"
-            },
-            {
-              "name": "Dave & Buster's",
-              "code": "PLAY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第一季財報不如預期，股價大跌14%"
-            }
-          ],
-          "market_view": "股市期貨表現平淡，道瓊指數收於歷史新高；市場聚焦今日開始的FOMC會議。",
-          "action_view": "",
-          "notable_quote": "The Qualcomm CEO says he is bullish on smart glasses, a category of product that could rival smartphones in terms of scale."
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
       }
     ]
   },

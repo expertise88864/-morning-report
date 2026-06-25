@@ -2428,6 +2428,50 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "75616ca2-70d9-11f1-a76e-f715287b5094",
+        "title": "With Homeownership Out of Reach, Some Are Choosing to Rent Forever",
+        "published": "Thu, 25 Jun 2026 21:03:00 -0000",
+        "processed_at": "2026-06-25T21:15:37Z",
+        "digest": {
+          "summary_points": [
+            "美光科技股價飆升近16%，受惠於優異的財報表現。",
+            "蘋果股價下跌逾6%，因宣布調漲Mac和iPad產品價格。",
+            "美國最高法院裁定拜耳無需就Roundup除草劑致癌風險向消費者提出警告，拜耳股價大漲約19%。",
+            "美國5月個人消費支出(PCE)物價指數年增4.1%，創2023年4月以來新高。",
+            "原油期貨上漲約2%，暫緩近期跌勢，市場關注伊朗局勢。",
+            "摩根大通任命Doug Petno和Troy Roarbaugh為總裁，為執行長繼任鋪路，預計Jamie Dimon將再留任三年。",
+            "美國最高法院判決允許川普政府對人道主義臨時保護身分(TPS)移民撤銷保護，影響約35萬海地移民及6千敘利亞移民。",
+            "最高法院同時允許邊境官員拒絕庇護申請者入境，擴大川普移民政策權力。"
+          ],
+          "tickers": [
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報表現傑出，股價大幅上漲。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "產品漲價導致股價下跌。"
+            },
+            {
+              "name": "拜耳",
+              "code": "BAYRY",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "最高法院裁定免除Roundup致癌警告責任，股價大漲。"
+            }
+          ],
+          "market_view": "美國股市漲跌互見，道瓊指數微漲0.1%，標普500持平，那斯達克指數因AI支出疑慮下跌約0.5%。",
+          "action_view": "",
+          "notable_quote": "A Bayer spokesperson said the decision was, 'good for science, farmers and industries that depend on regulatory clarity for innovation.'"
+        }
+      },
+      {
         "guid": "0c633942-707f-11f1-a050-d39de8d6afc8",
         "title": "The AI Build-Out Is Inflation’s New Driver",
         "published": "Thu, 25 Jun 2026 10:12:00 -0000",
@@ -2838,42 +2882,6 @@
           "notable_quote": "The IEA is forecasting that next year supply will increase by like 8 million barrels a day and demand will only increase by 2. So now the oil glut is here again."
         },
         "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "93fa98d0-6a91-11f1-8f02-abff7b9999ee",
-        "title": "A Hawkish Fed Signals Higher Interest Rates Ahead",
-        "published": "Wed, 17 Jun 2026 21:13:00 -0000",
-        "processed_at": "2026-06-18T12:16:33Z",
-        "digest": {
-          "summary_points": [
-            "聯準會維持利率在3.5%-3.75%不變，但會議基調鷹派，點陣圖顯示約半數委員預計今年可能升息，較3月無人預期升息大幅轉變。",
-            "新主席Kevin Warsh未參與點陣圖，但計劃召集專家審查聯準會的溝通方式和經濟數據處理流程。",
-            "市場對鷹派訊號強烈反應：公債殖利率上升，那斯達克跌1.3%，標普500跌1.2%，道瓊跌1%。",
-            "蘋果CEO Tim Cook表示，由於記憶體和儲存晶片成本飆升，產品漲價無可避免，未說明具體時間和幅度。",
-            "研究機構Tech Insights估算，下一代iPhone 18 Pro製造成本中晶片從50美元升至200美元，建議零售價可能達1,300美元，可能影響換機意願。",
-            "SpaceX股價今日下跌近5%，為上週五IPO以來首次下跌。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "成本上升導致產品漲價，可能抑制消費者升級需求，利空營收與利潤。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價今日下跌近5%，為IPO後首次下跌，市場情緒偏空。"
-            }
-          ],
-          "market_view": "聯準會鷹派態度及升息預期升溫，導致股市全面下跌，市場對未來流動性收緊感到擔憂。",
-          "action_view": "",
-          "notable_quote": "Price increases were unavoidable."
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
       }
     ]
   },

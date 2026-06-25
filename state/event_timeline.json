@@ -1,26 +1,26 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 12,
-  "last_seen": "2026-06-25",
-  "latest_title": "Trump meets defense CEOs as Iran operations strain U.S. missile stockpiles"
+  "days": 13,
+  "last_seen": "2026-06-26",
+  "latest_title": "HB Fuller CEO: Moving Portfolio Toward Faster Growth"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 6,
-  "last_seen": "2026-06-24",
-  "latest_title": "US targets Cuba mining sector in move with implications for China-linked supply chains"
+  "days": 7,
+  "last_seen": "2026-06-26",
+  "latest_title": "Kuaishou chip spin-off taps new funding for in-house designs amid US export controls"
  },
  "export_controls:ASML": {
   "first_seen": "2026-06-22",
-  "days": 2,
-  "last_seen": "2026-06-23",
-  "latest_title": "國際產經：美方質疑EUV設備恐流入中國，艾司摩爾強硬否認違反出口管制 - 富聯網"
+  "days": 3,
+  "last_seen": "2026-06-26",
+  "latest_title": "國際財經：ASML銷中受威脅，荷蘭遊說美國不要擴大半導體設備出口管制 - 富聯網"
  },
  "litigation:": {
   "first_seen": "2026-06-23",
-  "days": 2,
-  "last_seen": "2026-06-24",
-  "latest_title": "Alibaba sues Pentagon over China military blacklist"
+  "days": 3,
+  "last_seen": "2026-06-26",
+  "latest_title": "Judge says lawsuit against Trump DOJ 'anti-weaponization' fund will proceed"
  }
 }

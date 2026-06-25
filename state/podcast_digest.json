@@ -310,6 +310,55 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2345710829",
+        "title": "2026/6/25(四)美光報喜 外資狂賣 內資接得住?金銀油、比特幣重挫 流動性告急?【早晨財經速解讀】",
+        "published": "Thu, 25 Jun 2026 01:08:01 +0000",
+        "processed_at": "2026-06-25T06:17:52Z",
+        "digest": {
+          "summary_points": [
+            "美光第三季營收414億美元、年增逾4倍，調整後EPS 25美元（預期20美元），毛利率84.9%，並簽下16項3至5年長期協議鎖定半數營收，顯示HBM供給極度稀缺。",
+            "高通財報後盤後大漲15%，上修非手機業務展望，資料中心營收2029年上看150億美元，調整後EPS預估突破18美元（原15.2美元）。",
+            "黃金期貨跌破每盎司4000美元、白銀失守60美元、比特幣跌破6萬美元，油價亦重挫，資金從大宗商品與加密貨幣轉向AI股，反映市場流動性收縮。",
+            "川普要求司法部調查石油公司操縱價格，欲將終端汽油價格壓回戰前水準，油價近期自高點跌幅已達4成。",
+            "美股淨股票供給量創1999年網路泡沫以來新高，SpaceX、OpenAI等大型IPO吸金估達2750億美元，形成資金排擠效應，壓抑大型股並拉動中小型股輪動。",
+            "外資26日賣超台股1,774億元創紀錄，台指期空單增至8.3萬口，但內資ETF與投信買盤強勁，台股仍收漲564點至46,607點。",
+            "台灣5月外銷訂單逼近900億美元、年增47.2%，證交稅單月704億元，半年可望創歷年新高，AI出口強勁推升台股動能。",
+            "散戶熱絡帶動融資與當沖，股票質押餘額突破7,500億元，6月違約交割金額逾22億元創2021年高點，個體槓桿顯著拉高。",
+            "金管會設兩條監理紅線監控銀行放款（業務異常成長與風險指標顯著變化），並未放鬆券商融資限額，顯示政策有意降溫。",
+            "金融三業前4月稅前盈餘5,890億元、年增109%，證券與保險受惠股市大漲，銀行放款亦因企業海外佈局擴張。",
+            "SK海力士宣布赴美發行存託憑證籌資約290億美元，市值突破1兆美元，反映高頻寬記憶體需求持續暢旺。",
+            "全球央行購金速度創逾一年最快，金價修正時提供系統性買盤支撐，顯示黃金長線實質需求未失。",
+            "台灣超越中國成為美國最大進口來源（占比8.2%），台美供應鏈重組深化，AI出口帶動台灣經濟結構轉型。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "第三季財報遠優於預期，毛利率高達84.9%，長期協議鎖定未來訂單，HBM供給極度稀缺。"
+            },
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "非手機業務展望大幅上修，資料中心營收目標翻倍，盤後股價大漲15%。"
+            },
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "赴美發行存託憑證籌資290億美元，全球HBM市占率57%，需求強勁推升市值破兆美元。"
+            }
+          ],
+          "market_view": "市場流動性收縮，資金從黃金、比特幣等資產轉向AI類股；台股獲內資ETF及投信強力承接，外資賣壓僅拖慢漲速，在AI生產力週期未鬆動前仍偏多看待。",
+          "action_view": "順應AI產業趨勢，控制好槓桿部位即可；台股回調時可留意內資支撐力道，核心仍聚焦出口與企業獲利成長的持續性。",
+          "notable_quote": "同樣是借錢，有些人說這是財務規劃，有些人說這是資產活化，提高資金效率。但是反過來說，也許變成融資追繳，違約交割……牛市當中，槓桿往往會包裝成能力，在熊市當中，槓桿卻變成風險了。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2345060255",
         "title": "2026/6/24(三)記憶體亂流 AI踩剎車?韓股槓桿連環爆 回檔驗信仰?【早晨財經速解讀】",
         "published": "Wed, 24 Jun 2026 01:07:36 +0000",
@@ -2341,6 +2390,50 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "d42a3e1a-7013-11f1-b15e-d3b7206dcff4",
+        "title": "What’s in the New Bipartisan Housing Bill That Congress Just Passed",
+        "published": "Wed, 24 Jun 2026 21:28:00 -0000",
+        "processed_at": "2026-06-25T06:21:35Z",
+        "digest": {
+          "summary_points": [
+            "美國主要指數漲跌互現，道瓊漲0.4%，那斯達克跌0.4%（近兩日累計跌4%），標普500跌0.1%，科技股因AI泡沫擔憂持續承壓。",
+            "晶片製造商Cerebras股價暴跌近20%，因公司警告將持續虧損，突顯AI建設的高成本。",
+            "布蘭特原油期貨下跌4.3%至73.74美元/桶，接近戰前水準。",
+            "比特幣跌破60,000美元，因比特幣累積公司Strategy賣出部分持倉。",
+            "美光（Micron）最新季度營收超410億美元，年增4倍以上，幾乎所有財務指標均超預期，但股價受科技估值擔憂影響，盤後漲近14%。",
+            "SK海力士計劃透過美國上市籌資超290億美元，預計7月10日開始交易，將成為史上大規模IPO之一。",
+            "美國5月新屋銷售年化58萬戶，低於4月的62.6萬戶，遜於預期。",
+            "美國兩院通過《21世紀住宅法案》，包含鼓勵建房條款和禁止機構投資者購買獨戶住宅的條款，房地產行業總體支持，但投資者禁令存在爭議。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報超預期且盤後大漲，但面臨估值擔憂。"
+            },
+            {
+              "name": "Cerebras",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價暴跌近20%，因警告將持續虧損。"
+            },
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "計劃透過美國上市籌資超290億美元，尚未上市。"
+            }
+          ],
+          "market_view": "主要指數漲跌互現，科技股因AI泡沫擔憂承壓，那斯達克近期累計下跌。",
+          "action_view": "",
+          "notable_quote": "Another reminder of the heavy costs of the AI buildout."
+        }
+      },
+      {
         "guid": "cf8d501c-6fb5-11f1-8668-c346ceae52aa",
         "title": "First an Energy Crisis. Now El Niño?",
         "published": "Wed, 24 Jun 2026 10:09:00 -0000",
@@ -2749,38 +2842,6 @@
           "notable_quote": "The more interesting question isn't even whether they cut. It's how far do Fed officials go this summer towards entertaining raising rates?"
         },
         "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "1b42b28e-69c8-11f1-bbb2-bfd154a93dd8",
-        "title": "SpaceX Makes a $60 Billion Bet on Its AI Future",
-        "published": "Tue, 16 Jun 2026 21:12:00 -0000",
-        "processed_at": "2026-06-16T22:43:08Z",
-        "digest": {
-          "summary_points": [
-            "美伊臨時協議允許伊朗立即開始銷售石油，但凍結資金暫不解凍，制裁解除取決於伊朗履行核要求。",
-            "SpaceX以6000億美元股票收購AI編碼代理Cursor，推動其AI業務成為新未來，股價較IPO漲50%。",
-            "Yum Brands以15億美元出售必勝客海外業務給Long-Rage Capital，並以12億美元出售中國業務給Yum China Holdings，聚焦肯德基和塔可鐘。",
-            "通用汽車與洛克希德馬丁談判生產武器零件，響應特朗普援引《國防生產法》增產飛彈等武器。",
-            "Marriott 50多家酒店業主施壓要求分享忠誠度計劃收入，Marriott預計今年信用卡費用收入增長35%至近10億美元，股價微跌。",
-            "Rivian裁員2%約數百人，涉及銷售和行銷，以助力盈利並推出R2 SUV。",
-            "Robinhood裁員10%約290人，CEO稱保持精簡，業務仍強勁。",
-            "美股道瓊漲0.6%，標普跌0.6%，納指跌1.2%，科技股表現分化。",
-            "Qualcomm過去兩年回報僅5%，遠低於晶片指數150%漲幅，但其數據中心晶片業務獲得大客戶，有望成為新增長點。"
-          ],
-          "tickers": [
-            {
-              "name": "高通",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "數據中心晶片業務獲得大客戶，有合理成功機會，下週投資者會議將是關鍵分水嶺。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "SpaceX thought it was a rocket company, thought it was a satellite company, and it's going to keep doing both of those things, but its new future is in AI."
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
       }
     ]
   },
@@ -3887,6 +3948,25 @@
     "name": "科技報橘",
     "episodes": [
       {
+        "guid": "7c33b460-3808-4326-9820-c8909ff23709",
+        "title": "科技早餐 6/25｜美國盯上中國機器人，AI 戰場從晶片燒到工廠",
+        "published": "Wed, 24 Jun 2026 21:30:00 GMT",
+        "processed_at": "2026-06-25T06:19:04Z",
+        "digest": {
+          "summary_points": [
+            "美國商務部審視中國補貼機器人進口，暗示可能採取行動，中美科技競爭從AI晶片擴大到機器人與製造業。",
+            "高通傳與字節跳動洽談客製晶片設計服務，可能包括VPU，目標2026年底量產，但談判尚未確定。",
+            "軟銀計劃2027年度在日本大阪工廠生產AI伺服器，並規劃生產蓄電池，2030年產能目標2GWh。",
+            "PWC報告指出，受AI投資潮推動，2024年全球企業併購金額有望達4兆美元，巨型併購（>50億美元）佔近半。",
+            "歐洲央行數位歐元草案獲歐洲議會經濟委員會支持，目標2029年推出，以降低對Visa、Mastercard等美國支付網路的依賴。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI已經正式進入董事會層級的投資與併購決策"
+        }
+      },
+      {
         "guid": "890c07c4-91e5-4b79-8454-fa775ea45229",
         "title": "科技早餐 6/24｜五眼聯盟示警 AI 資安風險升級，企業防禦時間只剩數月",
         "published": "Tue, 23 Jun 2026 21:30:00 GMT",
@@ -4317,84 +4397,6 @@
           "notable_quote": "AI 需求仍然強健 但產能 成本與價格壓力也正一起反映到全球 AI 基礎建設支出"
         },
         "shown_at": "2026-06-13T01:06:36Z"
-      },
-      {
-        "guid": "0e24423d-9921-41d8-ad19-cf32e4b68188",
-        "title": "科技早餐 6/10｜OpenAI、Anthropic 排隊 IPO，AI 估值進入公開市場檢驗",
-        "published": "Tue, 09 Jun 2026 22:50:00 GMT",
-        "processed_at": "2026-06-12T21:15:59Z",
-        "digest": {
-          "summary_points": [
-            "OpenAI秘密申請IPO，目標估值最高1兆美元，最快9月登場；Anthropic也提交IPO文件，估值9,650億美元，AI熱潮進入公開市場估值檢驗。",
-            "SpaceX衛星可作為太空AI運算節點，首顆AI衛星峰值功率150kW，持續功率120kW，相當於一組NVIDIA GB300機架，2027年全球衛星產業產值估達4,471億美元。",
-            "Google委託Intel在2028年製造超過300萬顆自研TPU，為台積電以外產能建立備援；NVIDIA評估Intel技術用於2028年下一代處理器。",
-            "蘋果WWDC發表Apple Intelligence與Siri AI，強調裝置端運算及私有雲端，與Google Gemini合作，初期不於歐盟及中國推出。",
-            "AMD宣布5年內在英國投資最高21億英鎊，用於高效能運算基礎設施及新創投資；英國政府同步發布11億英鎊AI硬體計畫，含國家級AI超級電腦。",
-            "台積電董事長表示正努力避免成為供應鏈瓶頸，但完全滿足客戶需求仍需長時間，Intel有望成為先進製程與封裝市場的備選選項。"
-          ],
-          "tickers": [
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "秘密申請IPO，目標估值最高1兆美元，最快9月登場。"
-            },
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "已提交IPO文件，估值9,650億美元。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "計劃將太空AI資料中心納入IPO故事，技術已存在於下一代Starlink衛星。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "委託Intel在2028年製造超過300萬顆自研TPU，建立台積電以外備援產能。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "獲Google TPU訂單，NVIDIA評估其技術應用於下一代GPU，有機會成為先進製程備選。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "評估Intel技術是否可用於2028年整合4個GPU晶片的下一代處理器。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "先進製程與封裝產能吃緊，努力避免成為供應鏈瓶頸，但完全滿足客戶需求仍需長時間。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "發表Apple Intelligence與Siri AI，強調裝置端運算及私有雲端，初期不於歐盟及中國推出。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "最好的還在後頭"
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
       }
     ]
   },

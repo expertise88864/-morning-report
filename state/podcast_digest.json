@@ -2938,6 +2938,86 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72705770",
+        "title": "Wall Street Roundup: What isn't priced in?",
+        "published": "Fri, 26 Jun 2026 18:03:47 +0000",
+        "processed_at": "2026-06-26T21:08:48Z",
+        "digest": {
+          "summary_points": [
+            "Micron營收年增逾4倍至410億美元，優於預期且AI需求加速但供應仍吃緊，股價財報後漲16%但後續漲幅有限，反映利多已部分反映在股價中。",
+            "Micron股價波動加劇：週一創新高，週二科技賣壓跌雙位數，財報後反彈但仍低於週一高點。",
+            "過去一週大型股表現防禦性，如Merck、J&J、Lilly、Home Depot、Coke上漲，而Arm、Oracle、Palantir等AI股下跌，顯示資金從AI轉向防禦。",
+            "SpaceX IPO價格135美元，開盤150美元，一度漲至225美元，後因發行250億美元債券引發市場擔憂泡沫，股價回落至略高於150美元。",
+            "SpaceX自IPO以來累計籌資超過1000億美元（初始750億+超額110億+債券250億），市場擔心高估。",
+            "OpenAI因SpaceX回調及投資者情緒考慮延遲IPO。",
+            "明尼阿波利斯聯儲總裁Kashkari基於廣泛通膨預期，在6月點陣圖中預測今年升息一次，2026年無降息。",
+            "聯準會主席Warsh傾向減少溝通，對點陣圖持懷疑態度，最新聲明為近年最短，市場需適應更少資訊。",
+            "下週經濟數據清淡，關注Nike與General Mills財報（消費端）、就業數據，但強勁就業可能引發「好消息是壞消息」效應，因聯準會可能升息。"
+          ],
+          "tickers": [
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "雖然財報強勁，但利多已反映，股價高點回落，後續上漲空間有限。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價從高點回跌，發債引發市場擔憂泡沫，IPO熱度消退。"
+            },
+            {
+              "name": "Arm",
+              "code": "ARM",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "過去一週跌幅顯著，AI股資金撤出。"
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "過去一週跌幅顯著，AI股資金撤出。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "過去一週跌幅顯著，AI股資金撤出。"
+            },
+            {
+              "name": "Merck",
+              "code": "MRK",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "過去一週上漲，資金轉向防禦型股票。"
+            },
+            {
+              "name": "Nike",
+              "code": "NKE",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "下週財報將提供消費端數據，市場觀望。"
+            },
+            {
+              "name": "General Mills",
+              "code": "GIS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "下週財報將提供消費端數據，市場觀望。"
+            }
+          ],
+          "market_view": "市場處於「氣穴」狀態，AI利多已部分反映，通膨與利率將主導未來數週走勢，聯準會溝通減少增加不確定性。",
+          "action_view": "操作上需繫緊安全帶，注意波動；強勁就業數據可能引發利率擔憂，形成反直覺反應。",
+          "notable_quote": "An A++ plus earnings report could not be better. However, after some reflection, a lot of this was already baked into the stock. So much is priced in."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72697968",
         "title": "Will tech stocks rebound?",
         "published": "Fri, 26 Jun 2026 08:50:03 +0000",
@@ -3482,39 +3562,6 @@
           "notable_quote": "Apple CEO Tim Cook said 'unfortunately price increases are unavoidable' due to rising memory and storage costs."
         },
         "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72569604",
-        "title": "Stocks sink after meeting Warsh the hawk",
-        "published": "Wed, 17 Jun 2026 21:33:22 +0000",
-        "processed_at": "2026-06-18T12:13:13Z",
-        "digest": {
-          "summary_points": [
-            "聯準會維持利率在3.5-3.75%不變，投票一致，但新主席Kevin Warsh的記者會意外鷹派。",
-            "聯準會聲明從341字縮減至130字，取消前瞻指引，Warsh強調對抗通膨是首要任務。",
-            "點陣圖顯示其他委員預測2026年升息，但Warsh本人未在點陣圖上標點。",
-            "市場對Warsh的鷹派立場反應劇烈，標普500指數在決議後兩小時內市值蒸發1.2兆美元。",
-            "標普500指數收跌1.2%，那斯達克跌1.3%，道瓊跌1%。",
-            "短天期公債殖利率攀升，2年期升15個基點至4.21%，10年期升12個基點至4.5%。",
-            "長債殖利率下跌至4.94%，殖利率曲線趨平，顯示市場擔憂長期經濟成長。",
-            "Warsh宣布成立五個工作小組，涵蓋溝通、資產負債表、數據使用、生產力與就業、通膨框架。",
-            "分析師認為Warsh的舉動使聯準會觀察變得更加困難，且權力轉向鷹派。",
-            "SpaceX自上市以來首次下跌，反映市場整體風險情緒惡化。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "聯準會決議後，市場全面下跌，SpaceX也出現上市以來首次下跌。"
-            }
-          ],
-          "market_view": "主持人認為聯準會新主席Warsh的鷹派立場導致市場全面下跌，殖利率上升，股市市值大幅蒸發，整體市場看法偏負面。",
-          "action_view": "",
-          "notable_quote": "Inflation is a choice. You bet it is."
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
       }
     ]
   },

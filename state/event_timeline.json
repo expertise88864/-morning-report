@@ -1,9 +1,9 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 13,
-  "last_seen": "2026-06-26",
-  "latest_title": "HB Fuller CEO: Moving Portfolio Toward Faster Growth"
+  "days": 14,
+  "last_seen": "2026-06-27",
+  "latest_title": "Apple price hikes may hit iPhone next as memory, storage costs soar: analysts"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
@@ -22,5 +22,17 @@
   "days": 3,
   "last_seen": "2026-06-26",
   "latest_title": "Judge says lawsuit against Trump DOJ 'anti-weaponization' fund will proceed"
+ },
+ "geopolitical:2603": {
+  "first_seen": "2026-06-27",
+  "days": 1,
+  "last_seen": "2026-06-27",
+  "latest_title": "貨輪經荷姆茲疑遭伊無人機攻擊 長榮海運：人員均安已平安駛離 - 公視新聞網PNN"
+ },
+ "litigation:ARM": {
+  "first_seen": "2026-06-27",
+  "days": 1,
+  "last_seen": "2026-06-27",
+  "latest_title": "Red Lobster's Ultimate Endless Shrimp promotion described as a 'car crash' for the company"
  }
 }

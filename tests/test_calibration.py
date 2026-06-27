@@ -62,6 +62,56 @@ def test_calibration_applies_positive_bias(fake_yf):
     assert p["mid"] == p["weighted_final"]   # mid 同步成校正後最終值
 
 
+def test_calibration_flip_guard_clamps_to_baseline(fake_yf):
+    """方向翻轉防護:歷史強烈正偏移(實際>>預測)+ 今日原始預測略偏空 →
+    stale 多頭 bias 想把它翻成偏多 → 應夾到中性(=昨收),不可反轉漲跌方向。"""
+    dates = _hist_dates(10)
+    all_dates = pd.date_range("2026-04-01", periods=20, freq="B")
+    fake_yf({
+        "^TWII": _open_df(all_dates, 19190.0),     # 實際開盤 vs 預測 19000 → +1% 正偏移
+        "2330.TW": _open_df(all_dates, 1000.0),
+        "00662.TW": _open_df(all_dates, 100.0),
+    })
+    history = [{
+        "date": d, "fair_00662": 100.0,
+        "model1_2330": 1000.0, "model2_2330": 1000.0, "model3_2330": 1000.0,
+        "weighted_final_2330": 1000.0, "pred_taiex": 19000.0,
+    } for d in dates]
+    fair = {"fair_price": 100.0, "last_00662_price": 100.0}
+    preds = {"model1_1to1": 1000.0, "model2_regression": 1000.0,
+             "model3_adr_decay": 1000.0, "mid": 1000.0}
+    # 今日加權:原始略偏空(19978 < 昨收 20000)
+    taiex = {"pred_open": 19978.0, "last_close": 20000.0, "weighted_pct": -0.11}
+    f, p, t = mr.calibrate_predictions(fair, preds, taiex, history)
+    assert t["calibration"]["applied"] is True
+    assert t["calibration"]["bias_pct"] > 0            # 偏移確實為正(stale 多頭)
+    assert t["calibration"]["flip_guarded"] is True    # 觸發方向翻轉防護
+    assert t["pred_open"] == 20000.0                   # 夾到中性(昨收),未被翻成偏多
+
+
+def test_calibration_no_flip_guard_when_bias_agrees(fake_yf):
+    """偏移與原始方向一致(都偏空)→ 正常套用、不觸發防護。"""
+    dates = _hist_dates(10)
+    all_dates = pd.date_range("2026-04-01", periods=20, freq="B")
+    fake_yf({
+        "^TWII": _open_df(all_dates, 18810.0),     # 實際 < 預測 19000 → -1% 負偏移(偏空)
+        "2330.TW": _open_df(all_dates, 1000.0),
+        "00662.TW": _open_df(all_dates, 100.0),
+    })
+    history = [{
+        "date": d, "fair_00662": 100.0,
+        "model1_2330": 1000.0, "model2_2330": 1000.0, "model3_2330": 1000.0,
+        "weighted_final_2330": 1000.0, "pred_taiex": 19000.0,
+    } for d in dates]
+    fair = {"fair_price": 100.0, "last_00662_price": 100.0}
+    preds = {"model1_1to1": 1000.0, "model2_regression": 1000.0,
+             "model3_adr_decay": 1000.0, "mid": 1000.0}
+    taiex = {"pred_open": 19978.0, "last_close": 20000.0, "weighted_pct": -0.11}
+    f, p, t = mr.calibrate_predictions(fair, preds, taiex, history)
+    assert t["calibration"]["flip_guarded"] is False
+    assert t["pred_open"] < 19978.0                    # 負偏移把偏空再放大,方向不變
+
+
 def test_weighted_final_uses_model3_not_mae_weighting(fake_yf):
     # 2021-2026 共 500 日回測:純 model3 MAE 0.940% < 中位數 0.946% < MAE 反比加權 0.972%
     # (且加權版方向命中 -1.34pp)→ weighted_final 直接採 model3,不再做 MAE 加權。

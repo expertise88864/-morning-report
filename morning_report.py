@@ -3336,7 +3336,8 @@ def fetch_ma200_status() -> dict:
     """核心持股的 200 日均線(波段長線參考)。定位為「抗回撤/控波動」而非「增報酬」工具:
     回測 5–10 年「站上才持有、跌破轉中性」能把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)
     0050/2330 的 CAGR 反輸買進持有(離場成本+鋸齒洗刷),未計交易成本/證交稅。失敗逐檔略過,回 {}。
-    用未還原收盤(與券商看到的報價一致),last 與 MA200 同基準故趨勢判斷一致。"""
+    用未還原收盤(與券商看到的報價一致);最新收盤優先用 TWSE 官方現值(與第六點同源、
+    避免 yfinance 落後 1 日造成信中同檔兩個收盤),MA200 仍用 yfinance trailing(同為未還原收盤,基準一致)。"""
     out: dict = {}
     # 對齊使用者實際持股(ETF 為主);00631L 為 2x 槓桿,長抱波動耗損大、回測中
     # 趨勢紀律對它最關鍵(15 年買進持有最大回撤 -96.9%),故特別納入。leveraged 旗標供渲染加註。
@@ -3351,6 +3352,13 @@ def fetch_ma200_status() -> dict:
                 continue
             ma200 = sum(closes[-200:]) / 200
             last = closes[-1]
+            # 最新收盤改用 TWSE 官方現值(與第六點一致、消除 yfinance 落後 1 日);取不到才用 yfinance
+            try:
+                official = fetch_twse_close(sym.replace(".TW", ""))
+                if official and official > 0:
+                    last = float(official)
+            except Exception:
+                pass
             out[sym] = {"name": name, "close": round(last, 2), "ma200": round(ma200, 2),
                         "above": last >= ma200, "dist_pct": round((last / ma200 - 1) * 100, 1),
                         "leveraged": leveraged}
@@ -8422,7 +8430,8 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         r = lst[-recent_n:]
         return (sum(abs(x) for x in r) / len(r), len(r)) if r else (None, 0)
 
-    def _apply_bias(obj: dict, value_key: str, err_key: str, label: str) -> dict:
+    def _apply_bias(obj: dict, value_key: str, err_key: str, label: str,
+                    baseline: Optional[float] = None) -> dict:
         # EMA 加權偏誤(近期主導),取代等權平均 → 趨勢盤校正不落後
         bias, n = _ewm_bias(err[err_key], recent_n, ewm_span)
         if n < min_samples:
@@ -8432,10 +8441,19 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         if raw is None:
             return {"applied": False, "samples": n, "reason": f"{label} 無原始值"}
         b = max(-max_bias, min(bias, max_bias))
+        corrected = raw * (1 + b)
+        # 方向翻轉防護:bias 是近期殘差(regime 轉折時為 stale)。若套用後讓「相對昨收的
+        # 漲跌方向」翻轉(例:原始偏空 -0.11% 被 +0.5pp stale 多頭偏移翻成 +0.42%),
+        # 夾到中性(=昨收),只允許 bias 把預測往中性拉、不可反轉方向。只在真翻轉日生效。
+        flip_guarded = False
+        if baseline and baseline > 0:
+            if (raw - baseline) * (corrected - baseline) < 0:
+                corrected = baseline
+                flip_guarded = True
         obj[f"{value_key}_raw"] = raw
-        obj[value_key] = round(raw * (1 + b), 2)
+        obj[value_key] = round(corrected, 2)
         return {"applied": True, "bias_pct": round(b * 100, 3),
-                "samples": n, "raw": raw}
+                "samples": n, "raw": raw, "flip_guarded": flip_guarded}
 
     # ---- (A) 2330 四模型 MAE 反比加權（model1/2/3 + model4 momentum） ----
     if isinstance(predictions, dict) and not predictions.get("error"):
@@ -8459,25 +8477,28 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
             "model3": round(mae3 * 100, 3) if mae3 else None,
             "model4": round(mae4 * 100, 3) if mae4 else None,
         }
-        # ---- (B) bias 修正 2330 ----
+        # ---- (B) bias 修正 2330(帶昨收做方向翻轉防護)----
         predictions["calibration"] = _apply_bias(
-            predictions, "weighted_final", "2330_final", "2330")
+            predictions, "weighted_final", "2330_final", "2330",
+            baseline=predictions.get("last_2330"))
         # mid 同步成校正後最終值，讓既有 render 卡片直接反映
         predictions["mid_raw"] = predictions.get("mid")
         predictions["mid"] = predictions["weighted_final"]
 
-    # ---- (B) bias 修正 00662 ----
+    # ---- (B) bias 修正 00662(帶昨收做方向翻轉防護)----
     if isinstance(fair, dict) and not fair.get("error"):
-        cal = _apply_bias(fair, "fair_price", "00662", "00662")
+        cal = _apply_bias(fair, "fair_price", "00662", "00662",
+                          baseline=fair.get("last_00662_price"))
         if cal.get("applied") and fair.get("last_00662_price"):
             fair["implied_change_pct"] = round(
                 (fair["fair_price"] / fair["last_00662_price"] - 1) * 100, 2)
         fair["calibration"] = cal
 
-    # ---- (B) bias 修正 加權指數 ----
+    # ---- (B) bias 修正 加權指數(帶昨收做方向翻轉防護)----
     if isinstance(taiex_pred, dict) and not taiex_pred.get("error"):
         taiex_pred["calibration"] = _apply_bias(
-            taiex_pred, "pred_open", "taiex", "加權指數")
+            taiex_pred, "pred_open", "taiex", "加權指數",
+            baseline=taiex_pred.get("last_close"))
         # 累積足夠樣本後，以 walk-forward 絕對殘差 90% 分位建立參考區間。
         # 這比「三訊號彼此很接近」可靠：訊號可能一致但同時判錯方向。
         recent_residuals = err["taiex"][-recent_n:]

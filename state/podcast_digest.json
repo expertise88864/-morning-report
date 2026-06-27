@@ -1663,6 +1663,87 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmquwkz560j4701xebjm09an7",
+        "title": "這次是真的回檔了嗎？ 2026.06.26",
+        "published": "Sat, 27 Jun 2026 00:02:03 GMT",
+        "processed_at": "2026-06-27T05:37:40Z",
+        "digest": {
+          "summary_points": [
+            "本週上市指數週跌4%，櫃買指數週跌幅更大，為今年最大；加權指數與櫃買指數均失守五日均線、十日均線及月均線，櫃買指數月線轉下彎，乖離幅度達4%-4.5%。",
+            "全球科技股因蘋果與微軟下跌而重挫，亞洲科技股全面大跌，台股同步受影響。",
+            "來賓杜金榮認為此次下跌為真正的回檔（「煮的下跌」），而非過去三次假回檔（11月跌7%、3月跌11%、6月跌9%），主因是漲幅過大且融資激增。",
+            "台股自低點已漲逾3萬點，主升段漲幅達2.618倍，成交量曾放大至2兆元；目前從高點回檔約3700點，跌幅約7.5%。",
+            "三台一花（台積電、台達電、鴻海、聯發科）中，台達電跌幅已超20%，鴻海一度跌停，台積電相對抗跌但跌破月線。",
+            "外資賣超但ETF撐盤，5月ETF規模增加1.7兆元；高價電子股如信驊、聯華科跌停，可能受國泰事件影響。",
+            "融資餘額今年增幅驚人：集中市場增幅78%，櫃買近80%；融資從2900億增至6000億，大盤漲170%，融資若持續增加不利止跌。",
+            "除息因素使期貨開始貼近現貨，每月約扣500點；台塑、南亞除息後股價下跌。",
+            "槓桿型ETF跌幅較大，富邦正二、國泰正二跌8%，0050正二跌7.6%，主因成分股跌幅集中。",
+            "來賓預測低點約在4000-6000點回檔幅度（約從高點回檔至4萬點附近），需觀察最強股票何時止跌。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "跌幅較小但跌破月線，外資賣盤減輕，仍為重要權值股。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "跌幅已超20%，屬三台一花中最弱勢。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "今日一度跌停，尾盤打開但仍有壓。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "三台一花之一，今日跌停板。"
+            },
+            {
+              "name": "信驊",
+              "code": "5274",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "高價電子股，今日跌停，罕見鎖死。"
+            },
+            {
+              "name": "聯華科",
+              "code": "6552",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "跌停後尾盤打開但反彈無力。"
+            },
+            {
+              "name": "南亞",
+              "code": "1303",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "除息後股價重挫，今日跌停。"
+            },
+            {
+              "name": "0050",
+              "code": "0050",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "元大台灣50跌幅約6%，正二版本跌幅更大。"
+            }
+          ],
+          "market_view": "主持人與來賓認為台股本波為真正回檔，櫃買月線下彎壓力大，預估跌幅約4000-6000點（自高點回檔至4萬點附近），短期反彈不易。",
+          "action_view": "來賓建議觀望，等待最強股票止跌訊號；目前不應追高，因買股票易被套牢。",
+          "notable_quote": "這一次是煮的下跌，不是真的，是煮的。"
+        }
+      },
+      {
         "guid": "cmquwqjmg0aum01yj0aq1hbxl",
         "title": "外資落跑 台股即將變天？ 2026.06.26",
         "published": "Fri, 26 Jun 2026 12:31:13 GMT",
@@ -2255,32 +2336,6 @@
           "notable_quote": "行情還可以走多久？你的投資方式尤其是槓桿的方法其實很難讓你用一輩子中這個方式再做投資，所以行情好的時候當然可以賺更多，可是你不知道什麼時候行情會反轉。"
         },
         "shown_at": "2026-06-22T01:50:33Z"
-      },
-      {
-        "guid": "cmqji4olv02tt01xc0ctq1vai",
-        "title": "基金小姐姐詹璇依教你「母子基金投資法」 2026.06.19",
-        "published": "Sat, 20 Jun 2026 00:02:08 GMT",
-        "processed_at": "2026-06-20T06:56:30Z",
-        "digest": {
-          "summary_points": [
-            "母子基金是一種投資策略，非單一基金，適合有一筆資金且擔心高點的投資者。",
-            "母基金選擇平衡型基金（股債配置）或全球債等穩定標的，子基金選擇科技、AI等波動大的標的。",
-            "母子基金有自動停利機制，可設定10%-15%停利，獲利回到母基金，實現鎖利。",
-            "母子基金適合四類人：手上有一筆錢者、已獲利想鎖利者、怕波動者、停利後不敢再投入者。",
-            "子基金設定停利點後，資金自動回母基金，形成閉環，克服人性干擾。",
-            "母基金可手動加碼（如5萬元），但子基金停利條件不可手動更改（全自動）。",
-            "聽友問題：獲利200%後是否加大子基金扣款？建議加大扣款力道，因母基金已穩健，可參與後續行情。",
-            "定期定額可適用於基金或ETF，核心是信念，長期趨勢向上。",
-            "基金換經理人不必過度擔憂，應看長期績效和投信口碑。",
-            "定期定額至少投入薪水三分之一，強制投資。",
-            "母子基金三年循環正報酬機率高，可達30%以上，甚至有86%的案例。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "已有獲利的投資者可加大子基金扣款力道；母子基金方式可鎖利；定期定額需堅持信念。",
-          "notable_quote": "定期定額你一定要有信念，因為過去20年，我們也看過市場很多次的大跌波動，事實上長期定期定額好的基金，或者說用ETF，你賺錢的機率應該是…你會賺到錢。"
-        },
-        "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
   },
@@ -2482,6 +2537,33 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "f9b84496-71a4-11f1-b3e0-63677b5e0000",
+        "title": "How Iran Devastated an American Naval Base in the Middle East",
+        "published": "Fri, 26 Jun 2026 21:20:00 -0000",
+        "processed_at": "2026-06-27T05:33:28Z",
+        "digest": {
+          "summary_points": [
+            "美國股市本週下跌，那斯達克和標普500分別下跌4.6%和2%，道瓊指數小漲0.6%，那斯達克連跌五個交易日。",
+            "福斯汽車宣布進行大幅重組，預計在已裁員5萬人的基礎上再裁減數千個職位，原因包括關稅壓力、中國市佔率下滑和來自比亞迪、吉利及特斯拉的競爭。",
+            "OpenAI推出GPT 5.6，但僅限於經川普政府批准的小部分客戶使用，反映國家安全限制對AI模型的影響。",
+            "兩位美國參議員要求商品期貨交易委員會調查預測市場Polymarket的誤導性社群媒體行銷手法。",
+            "川普總統威脅對實施數位服務稅的歐洲國家課徵100%關稅，可能影響亞馬遜、Meta等科技巨頭。"
+          ],
+          "tickers": [
+            {
+              "name": "福斯汽車（Volkswagen）",
+              "code": "VWAGY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "福斯面臨關稅、中國市佔流失及電動車競爭，被迫進行大幅重組與裁員，業務前景承壓。"
+            }
+          ],
+          "market_view": "美國股市本週走弱，那斯達克和標普500分別下跌4.6%和2%，道瓊僅微漲0.6%，市場情緒偏空。",
+          "action_view": "",
+          "notable_quote": "US indexes were down a bit in afternoon trading. The Nasdaq led the losses closing down about a quarter of a percent. Its fifth straight decline."
+        }
+      },
       {
         "guid": "f0907546-7145-11f1-b28e-f7e36e97d752",
         "title": "Can Anything Kick-Start the U.S. Housing Market?",
@@ -2901,41 +2983,6 @@
           "notable_quote": "and investors didn't like what they heard."
         },
         "shown_at": "2026-06-20T22:57:53Z"
-      },
-      {
-        "guid": "8abd3600-6b5a-11f1-b9a0-73900fcc29ea",
-        "title": "The Tech Making ‘Dark-Fleet’ Tankers Into Ticking Time Bombs",
-        "published": "Thu, 18 Jun 2026 21:12:00 -0000",
-        "processed_at": "2026-06-18T21:37:20Z",
-        "digest": {
-          "summary_points": [
-            "納斯達克指數收漲1.9%，英特爾因與蘋果的晶片合作大漲逾10%。",
-            "布倫特原油期貨本週跌約9%，價格略高于戰前水平。",
-            "Accenture下調財年銷售展望，中東業務受伊朗戰爭影響損失4億美元，股價暴跌18%。",
-            "CME集團起訴CFTC，阻止預測市場公司Cal-She上市永續期貨合約。",
-            "伊朗和平協議解除石油制裁，但Dark Fleet油輪風險可能加劇。"
-          ],
-          "tickers": [
-            {
-              "name": "英特爾",
-              "code": "INTC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因美國與蘋果的晶片合作消息，股價大漲超過10%。"
-            },
-            {
-              "name": "埃森哲",
-              "code": "ACN",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "下調財年銷售指引，股價跌18%，創歷史最大單日跌幅。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Intel shares today rose more than 10% on a US chip partnership with Apple announced by President Trump."
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
       }
     ]
   },
@@ -4671,6 +4718,73 @@
   "allin": {
     "name": "All-In Podcast",
     "episodes": [
+      {
+        "guid": "786c45b1-79c0-4c09-9b9e-923c9f056e99",
+        "title": "Socialists Sweep NYC, China Catches Up in Coding, AI Memory Crunch, Micron's Blowout Quarter",
+        "published": "Fri, 26 Jun 2026 23:53:00 +0000",
+        "processed_at": "2026-06-27T05:53:49Z",
+        "digest": {
+          "summary_points": [
+            "中國開源模型 GLM 5.2 具有 7440 億參數、100 萬 token 上下文視窗，在 SWE 編碼基準上僅落後 Claude Opus 4.8 不到 1%，且 API 使用成本比 GPT 5.5 低 85%。",
+            "GLM 5.2 是目前最強的開源權重模型，採用 MIT 授權，可自由下載、商用，且已針對華為晶片進行推理優化。",
+            "美光（Micron）上季營收年增 4 倍至 420 億美元，優於預期 16%，本季財測 500 億美元，2026 年 HBM 產能已全數售罄。",
+            "DRAM 是 AI 基礎設施最重要瓶頸，HBM 僅有三家廠商（美光、SK 海力士、三星）能製造，且訂價合約地板已超越前週期高峰毛利率。",
+            "蘋果因 DRAM 成本上升調漲 MacBook Neo、Mac Studio 等產品價格，漲幅 15% 至 25%。",
+            "Cerebrus 上市後股價跌破發行價，主因部分機構投資人設有破發即賣出的交易規則，且成長速度不如同業。",
+            "Gavin Baker 認為 Anthropic 目前估值約 3 兆美元，今年營收將遠超 1000 億美元，推論業務毛利率可達 85%。",
+            "中國 AI 公司透過蒸餾（Distillation）技術，從美國前沿模型 API 獲取推理軌跡，快速縮小能力差距，Z.AI 創辦人預測 2027 年第一季前可達標。",
+            "未來 AI 推理將走向分離式架構，預填充與解碼任務可使用不同晶片，舊 GPU（如 H100）與 Groq/Cerebras 搭配仍具競爭力。",
+            "模組化資料中心（如 Tesla MegaPod）可將 GPU 預裝於貨櫃，90 天內完成部署，但用於訓練時節點間延遲問題仍待解決。"
+          ],
+          "tickers": [
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "DRAM 與 HBM 需求爆發，2026 年產能全滿，營收 4 倍成長，定價合約改善產業結構。"
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Gavin Baker 認為估值 3 兆美元，今年營收遠超 1000 億，推論毛利率 85%，為 AI 領域龍頭。"
+            },
+            {
+              "name": "Cerebrus",
+              "code": "CRBR",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "上市後跌破發行價，但長線取決於供電速度與 Open AI 合約貢獻，需觀察建置進度。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "MegaPod 商標顯示可能進入模組化資料中心市場，但細節未定，需關注 AI 與能源整合進展。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "軌道運算概念具長期潛力，但 IPO 後員工拋售壓力待觀察，創辦人及多數早期投資者不賣。"
+            },
+            {
+              "name": "SK 海力士",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與美光同為 HBM 三大供應商，受惠於 DRAM 結構性短缺，但節目未提供具體數字。"
+            }
+          ],
+          "market_view": "全球資本市場能吸收 Anthropic、SpaceX 等巨額新股供給，因為僅是從私募轉至公募；DRAM 瓶頸將持續，AI 基礎設施建設成本通膨可能為社會爭取調適時間。",
+          "action_view": "投資人應關注 DRAM 與 HBM 供應鏈（美光、SK 海力士、三星），以及能快速建置供電的 AI 基礎設施公司（如 CoreWeave、Crusoe、SpaceX AI）；Cerebrus 需觀察其供電速度能否兌現。",
+          "notable_quote": "I think Anthropic is worth $3 trillion today."
+        }
+      },
       {
         "guid": "1d6e6319-449a-458d-b740-174eb6bb17d6",
         "title": "GameStop CEO Ryan Cohen's $56B Plan to Take Over eBay",

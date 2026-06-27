@@ -2591,6 +2591,57 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "ff679954-720e-11f1-a505-938a9748b1c1",
+        "title": "What’s News in Markets: AI Tales, Oracle Woes, Wendy’s Sizzles",
+        "published": "Sat, 27 Jun 2026 10:00:00 -0000",
+        "processed_at": "2026-06-27T15:01:11Z",
+        "digest": {
+          "summary_points": [
+            "科技股賣壓重挫標普500和那斯達克，那斯達克週線跌4.6%，為一年多來最大單週跌幅。",
+            "標普500本週跌2%，道瓊則因科技股較少而微漲0.6%。",
+            "油價本週跌8.7%，跌破每桶70美元，為自伊朗戰爭以來首次。",
+            "AI熱潮能否持續的疑慮打壓市場，科技巨頭今年漲幅主要由AI推動，但本週面臨回調。",
+            "新上市晶片公司Sarah Brass Systems營收近倍增至，但獲利率展望較窄，股價週三跌近20%，週線跌23%。",
+            "記憶體晶片大廠美光(Micron)營收成長逾四倍，各項指標均優於預期，本季營收估超越歷史全年營收高點，股價週四飆近16%，週線大致持平。",
+            "甲骨文(Oracle)年度報告顯示員工人數減少21,000人（13%），重組成本18.4億美元，暗示AI投資可能無法回收，週線跌19%，為標普500中表現最差之一。",
+            "溫蒂漢堡(Wendy's)因散戶大軍的迷因股操作而暴漲暴跌，週線仍漲15%，但交易量一度超過美光。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "營收成長逾四倍，各項指標優於預期，記憶體短缺帶動業績強勁。"
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "員工人數大幅縮減、重組成本高昂，且暗示AI投資風險，股價重挫。"
+            },
+            {
+              "name": "溫蒂漢堡",
+              "code": "WEN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "受迷因股熱潮推動股價波動，但基本面未見明顯利多。"
+            },
+            {
+              "name": "Sarah Brass Systems",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "營收增長但獲利率展望縮窄，股價暴跌。"
+            }
+          ],
+          "market_view": "市場對AI熱潮能否持續產生疑慮，科技股賣壓沉重，但那斯達克和標普500走弱，道瓊則因科技股曝險較低而逆勢上漲。",
+          "action_view": "",
+          "notable_quote": "Our world will not be shaken. Wendy will prosper."
+        }
+      },
+      {
         "guid": "f9b84496-71a4-11f1-b3e0-63677b5e0000",
         "title": "How Iran Devastated an American Naval Base in the Middle East",
         "published": "Fri, 26 Jun 2026 21:20:00 -0000",
@@ -3007,35 +3058,6 @@
           "notable_quote": "If we were to have partners in Washington that were committed to delivering for this city, it would unlock to a far greater potential than what we see today what's possible for this city."
         },
         "shown_at": "2026-06-23T23:05:24Z"
-      },
-      {
-        "guid": "d8215e96-6c8e-11f1-97b0-07533598e722",
-        "title": "What’s News in Markets: SpaceX’s Rocky Flight, Oil Slides, Fed Fallout",
-        "published": "Sat, 20 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-20T10:19:47Z",
-        "digest": {
-          "summary_points": [
-            "美國與伊朗和平協議進展導致能源類股下跌近7%，因石油供應過剩風險浮現；布蘭特原油下跌9%至約每桶79美元。",
-            "聯準會維持利率不變，但19位官員中有9位預期年底前至少升息一次，3月時為0位；2年期公債殖利率上升10個基點至一年多來最高。",
-            "SpaceX IPO飆漲，短暫成為全球第五大上市公司；股價仍較IPO價格高出37%，但週中回落；選擇權交易首日創紀錄，成交量達180萬口。",
-            "主要指數上漲：那斯達克+2.5%，標普500+0.9%，道瓊+0.7%。",
-            "能源是標普500表現最差的類股，儘管今年迄今仍上漲21%。",
-            "國際能源署警告石油產量可能超過需求，明年可能出現石油過剩。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "IPO首日表現強勁但波動大；股價從高點回落。"
-            }
-          ],
-          "market_view": "市場本週收高，由科技股領漲（那斯達克+2.5%），但能源股拖累；聯準會鷹派訊號抑制了樂觀情緒。",
-          "action_view": "",
-          "notable_quote": "and investors didn't like what they heard."
-        },
-        "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
   },
@@ -3705,6 +3727,42 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "b1fa9369-e153-4071-8b62-b47400f4a30f",
+        "title": "How Lenovo's CFO Is Allocating Capital During One of History's Biggest Booms",
+        "published": "Sat, 27 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-27T15:10:58Z",
+        "digest": {
+          "summary_points": [
+            "Lenovo 是全球 AI 基礎設施公司，提供從口袋到雲端的 AI 基礎架構，並擁有來自 IBM x86 的 CPU 運算優勢。",
+            "Lenovo 的 AI 代理可協調裝置端與雲端推理，透過最佳化路由查詢來節省 token 成本。",
+            "企業 CFO 仍在初期摸索如何預算 token 支出，有工程師一個月花費 1 億美元在 token 上，凸顯 ROI 追蹤的重要性。",
+            "Lenovo 利用 AI 優化定價、庫存與需求預測，遍及 180 個市場，目標是產生可衡量的美元生產力增益。",
+            "Lenovo 擁有全球供應鏈，30 個工廠遍布 12 個地區，能在 6-9 個月內快速建造資料中心。",
+            "AI 硬體元件（記憶體、GPU、變壓器）短缺預計持續 2-3 年，土地與電力是關鍵瓶頸。",
+            "Lenovo 透過提供伺服器、液冷、資料中心建置與服務等端到端解決方案來差異化。",
+            "美國與中國 AI 路徑不同：美國有最高效晶片，中國因限制而達成極低 token 成本（如 DeepSeek 成本僅為美國的 1/50）。",
+            "Lenovo 保持平台中立，不押注單一 AI 模型，而是透過協調層將查詢路由至最佳模型。",
+            "貿易關稅是潛在風險，但 Lenovo 的全球製造有助緩解，且 PC 產品最終獲得豁免。",
+            "Lenovo 同時經營裝置（PC、電競）與基礎設施（伺服器）業務，需平衡供給分配。",
+            "企業仍在學習如何最佳化 AI 支出，CFO 對 token 經濟的理解處於早期階段。",
+            "Lenovo 派發史上最高股息以回報股東，同時平衡成長投資。",
+            "東南亞（馬來西亞、印尼）與日本是資料中心新興地點；中國因法規導致閒置資源。"
+          ],
+          "tickers": [
+            {
+              "name": "Lenovo",
+              "code": "LNVGY",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Lenovo 具備端到端 AI 基礎設施能力與全球供應鏈，在 AI 建設浪潮中佔有優勢地位。"
+            }
+          ],
+          "market_view": "AI 基礎設施需求非常強勁，供應鏈瓶頸預計持續 2-3 年，土地與電力是關鍵限制。",
+          "action_view": "CFO 應重視 token 支出的 ROI 與預算分配，在創新與成本控制間取得平衡；同時利用飢餓策略強迫部門採用 AI。",
+          "notable_quote": "Overall, the commitment that we see in the market, particularly for data center space, for equipment, for other things, is really a multi-year commitment. And I think people see this as a critical infrastructure they learn from the internet era in terms of the cloud service providers, how much data can be generated."
+        }
+      },
       {
         "guid": "774dd005-8b31-4ba1-9549-b474011e8753",
         "title": "Rory Johnston on Why His $200 Oil Prediction Didn't Turn Out Right",

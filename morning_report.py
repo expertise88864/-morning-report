@@ -3053,8 +3053,10 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
                 # 大戶持股 WoW Δ%(本週 − 對照週,需有歷史快照才有值)
                 "tdcc_wow_pct": tdcc_wow,
                 # 個股融資餘額變化(張),負值 = 散戶融資減,通常是散戶丟給法人
-                "margin_balance_lot": round((margin_data.get("margin_balance") or 0) / 1000, 0),
-                "margin_change_lot": round((margin_data.get("margin_change") or 0) / 1000, 0)
+                "margin_balance_lot": round(margin_data.get("margin_balance") or 0, 0),   # 已是「張」,勿再除(舊版誤 /1000 → 信中少 1000 倍)
+                # 已是「張」,勿再 /1000:calc_smart_money_score 用 <=-200 張當「散戶丟給法人」門檻,
+                # 舊版 /1000 後值剩 ~0 → 此籌碼訊號從未觸發(failed-silent);移除後恢復作用。
+                "margin_change_lot": round(margin_data.get("margin_change") or 0, 0)
                                         if margin_data.get("margin_change") is not None else None,
                 # 月營收基本面
                 "rev_month":   rev.get("month"),
@@ -9155,8 +9157,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     if night.get("night_pct") is not None:
         night_block = (
             f"  日期: {night.get('date','—')}\n"
-            f"  夜盤收盤: {night.get('night_close')}（日盤收 {night.get('day_close')} 僅診斷,除息/正價差日勿直接相減）\n"
-            f"  夜盤官方漲跌: {night['night_pct']:+.2f}% ← TAIFEX 盤後官方漲跌%（直接反映外資對今日台股開盤的方向預期；正=偏多開高）"
+            f"  夜盤收盤: {night.get('night_close')}"
+            + (f"（日盤收 {night.get('day_close')} 僅診斷,除息/正價差日勿直接相減）\n"
+               if night.get('day_close') is not None else "\n")
+            + f"  夜盤官方漲跌: {night['night_pct']:+.2f}% ← TAIFEX 盤後官方漲跌%（直接反映外資對今日台股開盤的方向預期；正=偏多開高）"
         )
     else:
         night_block = "（夜盤資料抓取失敗或尚未更新）"
@@ -13347,7 +13351,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <div style="font-size:16px;color:#0f172a;">
             夜盤收 {night.get('night_close')}
             <span style="color:{n_color};font-weight:700;margin-left:8px;">({n_sign}{n_pct}%)</span>
-            <span style="font-size:12px;color:#94a3b8;margin-left:8px;">日盤收 {night.get('day_close')}（僅診斷,正價差/除息日勿直接相比）</span>
+            {f'<span style="font-size:12px;color:#94a3b8;margin-left:8px;">日盤收 {night.get("day_close")}（僅診斷,正價差/除息日勿直接相比）</span>' if night.get("day_close") is not None else ''}
           </div>
         </div>
         """

@@ -1,9 +1,9 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 14,
-  "last_seen": "2026-06-27",
-  "latest_title": "Apple price hikes may hit iPhone next as memory, storage costs soar: analysts"
+  "days": 15,
+  "last_seen": "2026-06-29",
+  "latest_title": "New Zealand Dollar Faces Tough Third Quarter on Growth Headwinds"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
@@ -34,5 +34,11 @@
   "days": 1,
   "last_seen": "2026-06-27",
   "latest_title": "Red Lobster's Ultimate Endless Shrimp promotion described as a 'car crash' for the company"
+ },
+ "litigation:2881": {
+  "first_seen": "2026-06-29",
+  "days": 1,
+  "last_seen": "2026-06-29",
+  "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
  }
 }

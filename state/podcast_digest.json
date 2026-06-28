@@ -3134,6 +3134,35 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72729356",
+        "title": "Jobs report headlines holiday week",
+        "published": "Sun, 28 Jun 2026 15:36:22 +0000",
+        "processed_at": "2026-06-28T20:43:57Z",
+        "digest": {
+          "summary_points": [
+            "本週因獨立日假期交易日縮短，重點為週四公布的非農就業報告，預期新增11萬就業人口，失業率維持4.3%。",
+            "聯準會可能因強勁就業數據而收緊政策，市場關注工資通膨壓力。",
+            "Wells Fargo經濟學家認為勞動市場趨於平衡，需求未顯著加速，無過熱跡象。",
+            "Pantheon Macro指出初領與續領失業金人數自5月起上升，暗示就業增長可能放緩至低於平衡水準。",
+            "Nike將於週二公布財報，Evercore將其評級從優於大盤下調至符合表現，理由包括批發通路面臨新挑戰、2027年創新有限及近期執行問題。",
+            "伊朗周邊衝突升溫，美軍打擊伊朗通訊及防空設施，荷姆茲海峽油輪遇襲，預測市場對海峽交通恢復正常的機率大幅下降。",
+            "Anthropic最快下週恢復最新AI模型Fable 5的存取，此前因政府指令暫停。"
+          ],
+          "tickers": [
+            {
+              "name": "Nike",
+              "code": "NKE",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Evercore下調評級至符合表現，指出批發通路挑戰、創新動能不足及短期執行問題。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Even with some recent firmness in the headline payroll gains, the broader picture remains one of the labor market near balance with neither labor demand nor wage pressures signaling a return to overheating."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72705770",
         "title": "Wall Street Roundup: What isn't priced in?",
         "published": "Fri, 26 Jun 2026 18:03:47 +0000",
@@ -3721,43 +3750,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "top-tier family franchises remain among Hollywood's safest big-budget bets, even as audiences have shown signals of sequel fatigue elsewhere."
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72577037",
-        "title": "Futures find peace",
-        "published": "Thu, 18 Jun 2026 10:39:38 +0000",
-        "processed_at": "2026-06-18T11:37:27Z",
-        "digest": {
-          "summary_points": [
-            "美股期貨上漲：道瓊+524點、S&P 500 +1.3%、那斯達克+2.2%，受美伊備忘錄與Fed新主席政策期待激勵。",
-            "國際油價下跌2.5%至74美元，因美伊協議可能放寬伊朗原油出口限制。",
-            "蘋果CEO庫克表示將調漲部分產品價格，以因應記憶體與儲存成本大幅上漲，但未提供具體品項與時間表。",
-            "星巴克計劃在印度每年新增50-100家門市，目前已有500多家據點，印度為其成長最快市場之一。",
-            "SK海力士向主要客戶出貨次世代AI記憶體晶片樣品，反映AI記憶體需求持續。",
-            "今日經濟數據：初領失業金人數與費城聯邦準備銀行製造業指數。",
-            "明日6月19日為美股休市日（六月節聯邦假日），因此無週五節目。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "公司將因成本上漲而調漲產品售價，影響待觀察。"
-            },
-            {
-              "name": "星巴克",
-              "code": "SBUX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "積極擴張印度市場，每年新增50-100家門市，成長動能強勁。"
-            }
-          ],
-          "market_view": "市場整體正面，受美伊簽署和平備忘錄與Fed新主席政策立場影響，指數期貨全面上漲。",
-          "action_view": "",
-          "notable_quote": "Apple CEO Tim Cook said 'unfortunately price increases are unavoidable' due to rising memory and storage costs."
         },
         "shown_at": "2026-06-18T23:34:37Z"
       }

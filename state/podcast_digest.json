@@ -2657,6 +2657,29 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "2bf39f6c-72d8-11f1-9e58-53dcd890149a",
+        "title": "Owning a Piece of America",
+        "published": "Sun, 28 Jun 2026 10:00:00 -0000",
+        "processed_at": "2026-06-28T10:16:18Z",
+        "digest": {
+          "summary_points": [
+            "1862年的《宅地法》授予公民160英畝聯邦土地，使包括非裔美國人和女性在內的約300萬人嘗試拓荒，超過半數最終獲得土地所有權。",
+            "二戰後，政府透過FHA擔保的30年固定利率抵押貸款及大型開發商（如Levitt）的大規模建設，將美國住房擁有率從1940年的不到50%提升至1960年的近70%。",
+            "美國抵押貸款的獨特性包括固定利率、可提前還款（允許再融資）以及多數為無追索權貸款，降低借款人風險。",
+            "紅線和種族限制導致非裔美國人被排除在戰後住房繁榮之外，無法透過住房累積財富。",
+            "2000年代，高風險的浮動利率、僅付利息等抵押貸款重新出現，取代了安全的固定利率貸款，最終引發2008年次貸危機。",
+            "2008年金融危機後，住宅建築商數量減半，新建住房供應嚴重不足，2000-2020年比1980-2000年少建1500萬套。",
+            "當前中位房價約為家庭收入中位數的5倍（3倍視為可負擔），加上高抵押貸款利率，首次購房者比例降至21%的歷史新低，平均購房年齡升至40歲。",
+            "住房供應瓶頸主要來自地方政府限制和社區抵制開發，而非需求端因素。",
+            "川普提出50年抵押貸款以降低月供，但專家認為金融創新無法解決供應短缺問題。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The combination of high prices and high mortgage rates, which makes things pretty brutal for anyone who wants to buy in."
+        }
+      },
+      {
         "guid": "ff679954-720e-11f1-a505-938a9748b1c1",
         "title": "What’s News in Markets: AI Tales, Oracle Woes, Wendy’s Sizzles",
         "published": "Sat, 27 Jun 2026 10:00:00 -0000",
@@ -3104,28 +3127,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "0014601e-6d58-11f1-8845-6fea1e62e668",
-        "title": "Mamdani Won on Housing. Will Democrats Follow His Lead?",
-        "published": "Sun, 21 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-22T21:48:21Z",
-        "digest": {
-          "summary_points": [
-            "紐約市租金穩定公寓的房東因保險、水電、材料成本飆升而面臨財務壓力，市長Mamdani推出城市保險基金以降低其成本。",
-            "Mamdani的住房計劃「Block by Block」目標在五年內建造20萬套可負擔住房，並維護20萬套現有住房，總投資220億美元。",
-            "房東LeVon Mason表示，租金凍結使其無法負擔維修費用，若政府凍結租金應同時提供房東支持。",
-            "租客Eva Sanchez指出紐約市租金對普通民眾而言難以負擔，穩定的住房是生存和發展的基礎。",
-            "Mamdani強調其住房政策同時注重增加供應與加強租客保護，並與私人市場合作。",
-            "市長Mamdani推動的Sunnyside Yards大型開發案可創造30,000個就業機會，需聯邦資金支持。",
-            "Mamdani認為民主黨若在國會贏得多數，將有助於紐約市獲得更多聯邦投資，促進住房與經濟發展。"
-          ],
-          "tickers": [],
-          "market_view": "紐約市面臨嚴重的住房成本危機，租金和運營成本雙雙上漲，市長試圖透過增加供應、租金管制及聯邦投資來平衡市場。",
-          "action_view": "關注紐約市住房政策對房地產市場的影響，尤其是租金穩定公寓的房東和租客之間的動態，以及大型開發案的進展。",
-          "notable_quote": "If we were to have partners in Washington that were committed to delivering for this city, it would unlock to a far greater potential than what we see today what's possible for this city."
-        },
-        "shown_at": "2026-06-23T23:05:24Z"
       }
     ]
   },

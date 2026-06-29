@@ -1,27 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 15,
-  "last_seen": "2026-06-29",
-  "latest_title": "New Zealand Dollar Faces Tough Third Quarter on Growth Headwinds"
+  "days": 16,
+  "last_seen": "2026-06-30",
+  "latest_title": "China’s cooling, e-commerce giants see sales surge as scorched Europe scrambles for relief"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 7,
-  "last_seen": "2026-06-26",
-  "latest_title": "Kuaishou chip spin-off taps new funding for in-house designs amid US export controls"
- },
- "export_controls:ASML": {
-  "first_seen": "2026-06-22",
-  "days": 3,
-  "last_seen": "2026-06-26",
-  "latest_title": "國際財經：ASML銷中受威脅，荷蘭遊說美國不要擴大半導體設備出口管制 - 富聯網"
- },
- "litigation:": {
-  "first_seen": "2026-06-23",
-  "days": 3,
-  "last_seen": "2026-06-26",
-  "latest_title": "Judge says lawsuit against Trump DOJ 'anti-weaponization' fund will proceed"
+  "days": 8,
+  "last_seen": "2026-06-30",
+  "latest_title": "EU sets October deadline for ‘tangible results’ on China imbalances after key trade talks"
  },
  "geopolitical:2603": {
   "first_seen": "2026-06-27",
@@ -40,5 +28,11 @@
   "days": 1,
   "last_seen": "2026-06-29",
   "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
+ },
+ "litigation:MU": {
+  "first_seen": "2026-06-30",
+  "days": 1,
+  "last_seen": "2026-06-30",
+  "latest_title": "記憶體飆天價引眾怒！三星、SK 海力士與美光面臨美國反壟斷訴訟 - TechNews 科技新報"
  }
 }

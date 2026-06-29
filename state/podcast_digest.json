@@ -3186,6 +3186,68 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72740418",
+        "title": "Comcast to split with NBC spinoff",
+        "published": "Mon, 29 Jun 2026 14:45:45 +0000",
+        "processed_at": "2026-06-29T16:46:26Z",
+        "digest": {
+          "summary_points": [
+            "Comcast 宣布透過免稅分拆將 NBCUniversal 和 Sky 獨立為公開上市公司，股價飆升 25%。",
+            "Charter Communications 因週末報導稱其與 SpaceX 就推出美國消費者手機服務進行高層談判而大幅上漲。",
+            "GameStop 在週五晚間預測 2027 財年調整後 EBITDA 超過 6000 億美元（高於 2025 財年的 3.454 億美元）後走高。",
+            "Iridium Communications 因 Rocket Lab 同意以 8 億美元現金加股票收購該衛星營運商而飆升，交易將打造一家垂直整合的太空公司。",
+            "高盛預測標普 500 第二季每股盈餘年增 22%，為 2021 年以來最強勁的財測前預估，主要由 AI 和能源類股（如 Micron、Chevron、Marathon Petroleum、Broadcom）貢獻。"
+          ],
+          "tickers": [
+            {
+              "name": "Comcast",
+              "code": "CMCSA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因分拆公告股價飆升 25%。"
+            },
+            {
+              "name": "Charter Communications",
+              "code": "CHTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因 SpaceX 合作報導而大漲。"
+            },
+            {
+              "name": "GameStop",
+              "code": "GME",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上調 2027 財年 EBITDA 指引至超過 6000 億美元後走高。"
+            },
+            {
+              "name": "Iridium Communications",
+              "code": "IRDM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因 Rocket Lab 收購協議而飆升。"
+            },
+            {
+              "name": "Rocket Lab",
+              "code": "RKLB",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收購 Iridium 以打造垂直整合太空公司。"
+            },
+            {
+              "name": "Micron Technology",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "被列為第二季盈餘成長的主要貢獻者之一。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72737955",
         "title": "South Korea chips in big",
         "published": "Mon, 29 Jun 2026 10:23:55 +0000",
@@ -3772,28 +3834,6 @@
           "market_view": "主持人未明確表達對大盤或總體經濟的整體看法，僅報導市場波動與殖利率變化。",
           "action_view": "未提及操作思路。",
           "notable_quote": "This waiver doesn't just weaken the pressure campaign, it puts it into reverse."
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72626483",
-        "title": "Negotiations in doubt",
-        "published": "Mon, 22 Jun 2026 08:55:02 +0000",
-        "processed_at": "2026-06-22T13:15:45Z",
-        "digest": {
-          "summary_points": [
-            "美伊談判因黎巴嫩真主黨問題陷入不確定性，伊朗暫停參與，可能影響石油供應、制裁政策和中東穩定，投資者關注地緣政治風險。",
-            "英國首相施凱爾面臨黨內領導層過渡壓力，因曼徹斯特市長安迪·伯納姆在補選中表現強勁，可能影響經濟政策、能源監管和貿易關係。",
-            "中國對數十家美國公司實施貿易報復，此前美國將更多中國公司加入五角大樓軍事援助黑名單，但川普政府推遲將DeepSeq、CXMT等列入貿易黑名單以避免緊張升級。",
-            "伊朗衝突致鋁市場供應中斷，但生產商找到替代供應路徑，價格飆升預期緩解；分析師對後續短缺看法分歧，部分認為庫存耗盡將致短缺，部分認為中國和印尼增產可彌補。",
-            "AI新創公司Anthropic在華盛頓處境逆轉，川普稱不再視為國家安全威脅，但此前其模型因政府指令被關閉；川普未排除使用《國防生產法》強制合規。",
-            "微軟CEO薩提亞·納德拉呼籲AI行業轉向更廣泛訪問、低成本、公共信任的模式，減少對少數主導供應商依賴，微軟推出低價AI產品應對客戶支出上升。",
-            "迪士尼與皮克斯《玩具總動員5》首周末北美票房1.6億美元，創系列紀錄，推動北美周末票房達2.3億美元，同比增長80%；2025年至今累計票房44.6億美元，同比增14%。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
         },
         "shown_at": "2026-06-22T23:16:31Z"
       }

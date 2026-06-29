@@ -2692,6 +2692,57 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "23302050-73fd-11f1-a25c-1316df4624c4",
+        "title": "What the Lisa Cook Decision Means for the Fed’s Independence",
+        "published": "Mon, 29 Jun 2026 20:41:00 -0000",
+        "processed_at": "2026-06-29T21:11:55Z",
+        "digest": {
+          "summary_points": [
+            "最高法院以5比4裁定，駁回川普總統解僱聯準會理事Lisa Cook的請求，強調正當程序並支持聯準會獨立性。",
+            "另一項最高法院判決賦予總統廣泛權力可開除其他獨立機構官員，但聯準會仍受Humphrey's Executor判例更大保護。",
+            "股市反彈：那斯達克指數上漲逾2%，標普500指數漲1.2%，雙雙終止連五跌；道瓊指數漲0.6%，首次收在52,000點以上，創今年第18次收盤新高。",
+            "Comcast宣布分拆NBC環球為獨立上市公司，理由是對規模和多元化效益的看法改變。",
+            "Dish DBS（EchoStar旗下）最快於明天申請第11章破產保護，因沉重債務和用戶流失。",
+            "迪士尼執行長Josh D'Amaro正在重整公司，聚焦數位策略，整合行銷並將ESPN納入Disney+。",
+            "法國通過對超快時尚（ultra-fast fashion）課徵罰款的法律，瞄準中國電商巨頭Shein和Temu，禁止其廣告和網紅宣傳。",
+            "道瓊指數今日新增Alphabet（Google）為成分股，取代另一檔股票。"
+          ],
+          "tickers": [
+            {
+              "name": "Comcast",
+              "code": "CMCSA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布分拆NBC環球，將媒體和連線業務分開。"
+            },
+            {
+              "name": "Dish DBS (EchoStar)",
+              "code": "DISH",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因債務和用戶流失，準備申請第11章破產。"
+            },
+            {
+              "name": "迪士尼",
+              "code": "DIS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "執行長Josh D'Amaro重整公司，聚焦數位策略並將ESPN整合至Disney+。"
+            },
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "今日加入道瓊指數成為成分股。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "7f8b29b0-73a5-11f1-a634-ab20bd190627",
         "title": "A New Chinese AI Resets the Global Tech Race",
         "published": "Mon, 29 Jun 2026 10:22:00 -0000",
@@ -3136,49 +3187,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-23T23:05:24Z"
-      },
-      {
-        "guid": "2b0dd1ee-6e82-11f1-9cfc-2fda1b302929",
-        "title": "The Strait of Hormuz Is Open (Sort Of). So How’s It Going?",
-        "published": "Mon, 22 Jun 2026 21:33:00 -0000",
-        "processed_at": "2026-06-22T21:42:05Z",
-        "digest": {
-          "summary_points": [
-            "英國政治不確定性升溫：首相施凱爾辭職，曼徹斯特前市長伯納姆可能接任，導致英鎊小幅波動、借貸成本微升，投資者對英國經濟投資趨於謹慎，加劇低成長困境。",
-            "油價跌破每桶80美元：美國允許伊朗以美元銷售石油後，布蘭特原油價格下滑至80美元以下，儘管荷姆茲海峽航運量仍低於戰前水準。",
-            "微軟執行長納德拉批評AI競賽，主張開發更便宜的模型並賦予用戶更多控制權，同時與雪佛龍簽署20年協議，在德州西部建造2.7GW資料中心，預計2028年底供電。",
-            "科技股表現疲弱：那斯達克指數下跌1.3%，SpaceX大跌16%（連三日下滑），Alphabet因AI業務擔憂重挫5%，創一年多來最大單日跌幅。",
-            "達美樂披薩執行長換人：現任執行長Weiner轉任執行主席，營運長Jordan於10月1日接任CEO；公司股價今年已下跌約30%，面臨整體披薩市場成長挑戰。",
-            "美國汽車安全監管機構對休士頓特斯拉致命車禍展開調查，駕駛表示事發時車輛啟動自動駕駛輔助系統。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因AI業務前景擔憂，股價單日大跌5%，創一年多來最大跌幅。"
-            },
-            {
-              "name": "Domino's Pizza",
-              "code": "DPZ",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "執行長換人，今年股價下跌30%，整體披薩市場成長艱困。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "執行長提出AI新方向（更便宜模型、用戶控制），並與雪佛龍合作大型資料中心，但未明確影響股價。"
-            }
-          ],
-          "market_view": "美股漲跌互見：道瓊漲0.3%，那斯達克跌1.3%，標普500跌0.4%；油價因伊朗協議進展跌破80美元。",
-          "action_view": "",
-          "notable_quote": "When college students are booing commencement speakers who are to the word AI, that's a tell on, hey, they're anxious."
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
       }
     ]
   },
@@ -5018,6 +5026,21 @@
   "allin": {
     "name": "All-In Podcast",
     "episodes": [
+      {
+        "guid": "a76ab591-7664-4c68-9059-580b160956b0",
+        "title": "Nate Silver Predicts: Democrats Take the House, Newsom Is Fading & AOC Might Win It All in 2028",
+        "published": "Mon, 29 Jun 2026 15:47:00 +0000",
+        "processed_at": "2026-06-29T21:21:25Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為AI資本繁榮是維持美國股市相對健康的主要原因之一。"
+          ],
+          "tickers": [],
+          "market_view": "AI資本繁榮帶動經濟與股市，但整體市場受政治與地緣風險影響。",
+          "action_view": "",
+          "notable_quote": "It's not a good time to be a defender of the status quo."
+        }
+      },
       {
         "guid": "786c45b1-79c0-4c09-9b9e-923c9f056e99",
         "title": "Socialists Sweep NYC, China Catches Up in Coding, AI Memory Crunch, Micron's Blowout Quarter",

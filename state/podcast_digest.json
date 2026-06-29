@@ -1095,6 +1095,50 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "05dbfcf7-a0b7-4e78-ac2e-a172c51cd27e",
+        "title": "EP315. GPT-5.6 限定推出、蘋果漲價被罵翻、Meta 新智能眼鏡 | M觀點",
+        "published": "Mon, 29 Jun 2026 07:13:40 GMT",
+        "processed_at": "2026-06-29T13:06:13Z",
+        "digest": {
+          "summary_points": [
+            "蘋果因 DRAM 和 NAND 記憶體價格大漲，調漲 Mac、iPad 等產品售價，外界批評聲浪大，主持人認為成本上升約 2,500 元台幣，漲價 3,000 元台幣屬合理。",
+            "美光商務長批評客戶先前壓價導致現在缺貨，但主持人直言記憶體廠過去不會因此擴產，現在記憶體價格將維持高檔一段時間。",
+            "記憶體大缺，台灣記憶體相關廠商近期股價表現亮眼。",
+            "記憶體漲價可能衝擊消費性電子產品需求，相關類股投資須謹慎。",
+            "OpenAI 發布 GPT5.6 模型，在 Agentic 工作流與資安測試等指標上打敗 Anthropic Measles，AI 競賽形成雙頭馬車。",
+            "美國政府對前沿 AI 模型進行監管，可能影響 OpenAI 等公司營收，若限制過嚴可能將市場讓給中國開源模型。",
+            "Meta 推出自有品牌平價智慧眼鏡，降價策略正確，但 AI 功能能否跟上將是關鍵，否則可能被 Google 反超。",
+            "近期股市波動大，主持人建議去槓桿，避免因指數修正而被斷頭。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "調漲產品售價合理，但成本上升可能壓抑需求，無明確看多或看空。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "記憶體漲價受惠，但擴產有限，長期仍須觀察。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "平價智慧眼鏡策略正確，但 AI 表現若不佳可能影響產品競爭力。"
+            }
+          ],
+          "market_view": "近期股市波動很大，台股美股都出現大幅上下，主持人認為波動大，但未明確看多或看空。",
+          "action_view": "建議去槓桿，在波動大的時期不要承擔無法承受的風險，避免因指數跌幅而斷頭。",
+          "notable_quote": "記憶體真的會貴一陣子，那這樣真的就會打到很多消費品。"
+        }
+      },
+      {
         "guid": "b911adb2-9839-4029-bfbd-3d9883757cbc",
         "title": "EP313. 谷歌痛失 AI 大將、Fable 5 配方解密、Meta 士氣低落中、FSD 即將入台 | M觀點",
         "published": "Mon, 22 Jun 2026 06:34:58 GMT",
@@ -1746,6 +1790,49 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmqz5msew08ff01y32ea6hdwl",
+        "title": "台股止跌？反彈先別追 換股是關鍵 2026.06.29",
+        "published": "Mon, 29 Jun 2026 11:52:46 GMT",
+        "processed_at": "2026-06-29T13:10:46Z",
+        "digest": {
+          "summary_points": [
+            "台股今日反彈，但期貨正價差擴大至800多點，夜盤續漲，顯示市場情緒偏多。",
+            "外資今日賣超60億元，今年累計賣超近一兆元，期貨空單增加至76600多口，仍偏空。",
+            "韓國總統宣布三星與海力士合建晶片廠，投資800兆韓元，目標倍增DRAM產能，另加1000兆韓元投入AI數據中心。",
+            "OpenAI延後IPO，導致微軟、Nebris等雲端概念股下跌。",
+            "分析師指出，大盤長線多頭未被破壞，但許多高檔股（如金像電、華通、台達電等）已跌破整理型態，後續反彈有限，應謹慎。",
+            "記憶體、被動元件等強勢題材中，位階較低的股票（如華東、檢測等）相對安全，有機會落底。",
+            "操作上應避免追高已破線的高價股，轉向低檔整理股進行分批低接。"
+          ],
+          "tickers": [
+            {
+              "name": "金像電",
+              "code": "2368",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "跌破區間整理景線支撐，短線反彈空間有限。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "上週跌破前低，反彈至季線可能再度承壓。"
+            },
+            {
+              "name": "華東",
+              "code": "8110",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "記憶體族群中位階較低，股價回測季線有撐，可分批低接。"
+            }
+          ],
+          "market_view": "大盤反彈但正價差擴大，外資持續賣超且期貨空單高，長線多頭未破壞但個股分化。",
+          "action_view": "操作上應選擇位階較低的強勢題材股（如記憶體、被動元件）分批低接，避免追高已破線的高檔股。",
+          "notable_quote": "烏龜比氣長，外資就是跟你拼轉倉。"
+        }
+      },
+      {
         "guid": "cmquwxbzx0avl01yjgi5qb9wn",
         "title": "財經觀點｜AI是長期賽道 但跑久了還是要休息 2026.06.26",
         "published": "Sun, 28 Jun 2026 00:02:07 GMT",
@@ -2368,89 +2455,6 @@
           "notable_quote": "AI這個需求啊，其實就有點像家裡面這個生了小孩之後的教育基金。"
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "cmqp5dcfb0023010r94so1yts",
-        "title": "台股創高，破解鬼故事掌握大賺機會！ 2026.06.22",
-        "published": "Mon, 22 Jun 2026 11:46:52 GMT",
-        "processed_at": "2026-06-22T18:19:31Z",
-        "digest": {
-          "summary_points": [
-            "博恩斯坦分析指出本次半導體週期是15年一遇，AI基建已逼近美國GDP的4.4%。",
-            "預估今年全球半導體營收達1.3兆美元，先前預估為8千億美元，營收增長超預期。",
-            "台積電股價創新高，日月光創新高，成熟製程世界先進、聯電、利基電漲停。",
-            "中信證券認為目前市場為「貧景交易」（缺貨漲價題材），類似2006-2007年，但本益比遠低於2000年泡沫。",
-            "那斯達克100遠期本益比目前25倍，2000年時為60倍；七巨頭本益比38倍，2000年頂尖科技股82.7倍。",
-            "台積電重申成熟製程策略不變，將繼續優化產品組合。",
-            "楊蕙瑜分析師認為指數無需預設高點，台積電以25倍本益比計算目標價3200元。",
-            "AI從雲端擴散至終端，聯電、聯發科等獲得本益比重估，聯電目標價200元（明年EPS 5元，40倍本益比）。",
-            "日月光因川普關稅鬼故事跌至月線下，分析師認為是第二次機會，已攻上漲停。",
-            "被動元件、面板、矽晶圓等族群輪動上漲，記憶體後由被動元件接手。",
-            "功率元件（二極體、MOSFET、IGBT）受惠AI電力控制需求，棚城、附頂、結立等漲停。",
-            "環球金（6488）因漲價與第三代半導體題材上漲，建議關注第三代半導體。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "股價創新高，目標價3200元，本益比仍低。"
-            },
-            {
-              "name": "聯電",
-              "code": "2303",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "受惠AI擴散至成熟製程，目標價150-200元。"
-            },
-            {
-              "name": "世界先進",
-              "code": "5347",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "成熟製程漲停，受惠轉單效應。"
-            },
-            {
-              "name": "日月光",
-              "code": "3711",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "鬼故事後跌至月線下再度承接，已攻漲停。"
-            },
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "組裝廠本益比從10倍跳至20倍，但未特別提及。"
-            },
-            {
-              "name": "廣達",
-              "code": "2382",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "類似鴻海，本益比重估。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "本益比衝至40倍，受惠AI。"
-            },
-            {
-              "name": "環球金",
-              "code": "6488",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "漲價與第三代半導體題材，建議關注第三代半導體。"
-            }
-          ],
-          "market_view": "主持人與分析師均認為方向仍偏多，指數無需預設高點，但需留意成交量1.5兆以上、天量長上影線或長黑K為反轉訊號。",
-          "action_view": "壓回要勇敢買，但部分獲利可先入袋；避免短線投機，以波段操作為主，持股做好控管。",
-          "notable_quote": "AI等於半導體，半導體等於台廠，台廠當中70%幾乎或多或少跟AI都會有關係。"
-        }
       }
     ]
   },
@@ -2687,6 +2691,46 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "7f8b29b0-73a5-11f1-a634-ab20bd190627",
+        "title": "A New Chinese AI Resets the Global Tech Race",
+        "published": "Mon, 29 Jun 2026 10:22:00 -0000",
+        "processed_at": "2026-06-29T12:20:06Z",
+        "digest": {
+          "summary_points": [
+            "中國AI模型Z.AI在網路安全任務上與Anthropic的模型並駕齊驅，且為開源權重，可能削弱美國限制高端AI模型出口的努力。",
+            "韓國總統宣布計畫投資近2兆美元用於半導體、資料中心和機器人領域，三星和SK海力士承諾新增設施投資。",
+            "SK海力士、三星和美光科技是全球領先的高頻寬記憶體晶片供應商，用於Nvidia的AI加速器。",
+            "美伊衝突短暫升級後同意恢復和談，油價因供應擔憂小幅上漲。"
+          ],
+          "tickers": [
+            {
+              "name": "三星電子",
+              "code": "005930.KS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "韓國半導體投資計畫中承諾建設新設施，但未提供明確方向性看法。"
+            },
+            {
+              "name": "SK海力士",
+              "code": "000660.KS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "韓國半導體投資計畫中承諾建設新設施，但未提供明確方向性看法。"
+            },
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "全球領先的高頻寬記憶體晶片供應商，用於Nvidia的AI加速器，但節目未提供具體觀點。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Shares of both South Korean companies have been on a wild ride this year on the back of the AI build out with both crossing the $1 trillion market value threshold."
+        }
+      },
       {
         "guid": "2bf39f6c-72d8-11f1-9e58-53dcd890149a",
         "title": "Owning a Piece of America",
@@ -3135,36 +3179,47 @@
           "notable_quote": "When college students are booing commencement speakers who are to the word AI, that's a tell on, hey, they're anxious."
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "c31e2f78-6e24-11f1-a128-0b42db4e274a",
-        "title": "The Fight for Affordable Housing",
-        "published": "Mon, 22 Jun 2026 10:19:00 -0000",
-        "processed_at": "2026-06-22T13:14:19Z",
-        "digest": {
-          "summary_points": [
-            "中國對10家美國國防公司和兩家稀土生產商（MP Materials、USA Rare Earth）實施貿易限制，禁止出口可能具有軍事用途的中國製產品，以報復五角大廈將中國公司列入黑名單。"
-          ],
-          "tickers": [
-            {
-              "name": "MP Materials",
-              "code": "MP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "中國限制對MP Materials的出口，可能影響其供應鏈。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72737955",
+        "title": "South Korea chips in big",
+        "published": "Mon, 29 Jun 2026 10:23:55 +0000",
+        "processed_at": "2026-06-29T12:17:59Z",
+        "digest": {
+          "summary_points": [
+            "韓國宣布三項大型計劃，聚焦半導體、AI 和機器人，承諾投資總額超過 5760 億美元。",
+            "三星和 SK 海力士股價分別下跌 6% 和 4%，儘管兩公司宣布將投入 5180 億美元在韓國西南部興建新的半導體晶圓廠。",
+            "英美菸草計劃裁減 5,500 個職位並將 3,500 個職位轉移至策略夥伴，目標在 2028 年前實現年成本節省 7.92 億美元。",
+            "本田將其美國俄亥俄州電池廠從生產電動車電池轉為生產 AI 資料中心用的儲能系統，並計劃在 2028 年開始生產油電混合車電池。",
+            "美股期指因美伊衝突暫緩而上漲，但原油因供應疑慮仍上漲 1.3%。",
+            "美國銀行認為夏季股市可能出現回檔，之後才有年底反彈機會。"
+          ],
+          "tickers": [
+            {
+              "name": "三星電子",
+              "code": "",
+              "market": "",
+              "direction": "bearish",
+              "reason": "股價在投資計劃宣布後下跌 6%"
+            },
+            {
+              "name": "SK 海力士",
+              "code": "",
+              "market": "",
+              "direction": "bearish",
+              "reason": "股價在投資計劃宣布後下跌 4%"
+            }
+          ],
+          "market_view": "美股期指因美伊衝突暫緩而上漲，但原油仍因供應疑慮走高。",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72729356",
         "title": "Jobs report headlines holiday week",
@@ -3741,50 +3796,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72581971",
-        "title": "Toy Story 5 targets blockbuster debut",
-        "published": "Thu, 18 Jun 2026 16:14:53 +0000",
-        "processed_at": "2026-06-18T17:39:26Z",
-        "digest": {
-          "summary_points": [
-            "《玩具總動員5》預計在週末檔期以1.45-1.5億美元國內票房開出，全球開畫可能超過2.8億美元，顯示頂級家庭系列仍是好萊塢最安全的大預算賭注。",
-            "Take-Two互動的Rockstar Games宣布《俠盜獵車手6》預購將於6月25日開始，遊戲將於11月19日發行。",
-            "Kroger第一季混合財報：調整後EPS為1.58美元，營收461億美元年增2.2%，同店銷售增長1%符合預期，股價下跌。",
-            "Accenture第三財季營收及第四財季展望均低於預期，股價暴跌。",
-            "Intel因川普總統宣布與蘋果合作設計及國內製造晶片而領漲標普500。",
-            "谷歌工程副總裁兼Gemini AI共同領導Noam Shazir離職加入OpenAI，距谷歌以27億美元挖角不到兩年。",
-            "美元指數因聯準會主席Kevin Warsh的鷹派首秀而升至2025年5月以來最高，法興經濟學家認為應繼續做多美元。"
-          ],
-          "tickers": [
-            {
-              "name": "Kroger",
-              "code": "KR",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第一季財報混合，營收及獲利略低預期，股價下跌。"
-            },
-            {
-              "name": "Accenture",
-              "code": "ACN",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第三財季營收及第四季展望均低於預期，股價重挫。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "川普宣布與蘋果合作設計及製造晶片，股價領漲。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "top-tier family franchises remain among Hollywood's safest big-budget bets, even as audiences have shown signals of sequel fatigue elsewhere."
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
       }
     ]
   },
@@ -3821,6 +3832,42 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "f5c05315-7559-4fa4-a6da-b47400f7cb90",
+        "title": "Baidu's CFO on How It Became a Full-Stack AI Player",
+        "published": "Mon, 29 Jun 2026 08:00:00 +0000",
+        "processed_at": "2026-06-29T13:19:38Z",
+        "digest": {
+          "summary_points": [
+            "百度認為 AI 正從基礎設施轉向應用，從模型轉向代理，80% 的增量 Token 需求來自推理。",
+            "財務長何亨利指出雲端是必爭之地，因為它託管文心一言及其他模型，並透過 MCP 平台連接推理。",
+            "百度雲端營收年增 79%，約為中國整體雲端市場成長率的兩倍。",
+            "百度營業利潤季增近一倍，且自 2023 年第三季以來營運現金流轉正，顯示資本效率改善。",
+            "百度正擴大校園招聘，並推廣「一人公司」文化，利用內部 AI 工具提升員工自主性與生產力。",
+            "百度自研晶片專注於推理與應用工作負載，利用中國的成本效率與生態系統優勢。",
+            "百度搜尋營收占比降至 48% 以下，新成長動力來自數位人與 AI 軟體應用。",
+            "Apollo Go 自動駕駛計程車每週完成約 35 萬趟行程，僅比 Waymo 少 25%，並計劃進軍倫敦，與 Uber/Lyft 合作。",
+            "百度透過任務完成與結果付費模式衡量 AI 投資報酬率，例如為港口安裝代理提升物流效率並分享利潤。",
+            "百度已在香港提交晶片業務分拆的保密申請，旨在打造更中立且開放的生態系統。",
+            "每日活躍代理（DAA）成為衡量 AI 成功的新指標，取代傳統 DAU，因代理能自主完成複雜任務。",
+            "AI 代理透過收益共享模式變現，例如數位員工協助電商賣家 24 小時銷售。",
+            "文心一言 5.1 基礎模型在 OpenClaw 平台上全球分類第一、搜尋技能排名第五。",
+            "百度強調以負責任的方式配置資本，平衡 AI 投資密度與股東回報。"
+          ],
+          "tickers": [
+            {
+              "name": "百度",
+              "code": "BIDU",
+              "market": "US",
+              "direction": "看多",
+              "reason": "百度雲端營收高速成長、AI 代理商業模式逐漸成熟、自駕計程車擴張，財務長展現資本配置紀律。"
+            }
+          ],
+          "market_view": "財務長認為 AI 產業正從預訓練轉向推理與應用，成本快速下降將推動更多落地場景，中國市場公有雲滲透率仍低但未來可望快速提升。",
+          "action_view": "百度將持續投資 AI 基礎設施，但會以負責任的方式控制節奏，同時提升營運效率與現金流，並透過分拆晶片業務釋放價值。",
+          "notable_quote": "So I think the unique thing today is I think the entire AI has been shifting from infrastructure to applications and from model to agents."
+        }
+      },
       {
         "guid": "b1fa9369-e153-4071-8b62-b47400f4a30f",
         "title": "How Lenovo's CFO Is Allocating Capital During One of History's Biggest Booms",
@@ -4231,31 +4278,6 @@
           "notable_quote": "We kind of want to be at the top, you know, being the benchmark data for these prices regionally."
         },
         "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "bb971e9b-4530-4ff9-bd68-b46500d94544",
-        "title": "Why Tomatoes Are the Most Expensive They've Been in Four Decades",
-        "published": "Thu, 11 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-12T06:55:16Z",
-        "digest": {
-          "summary_points": [
-            "鮮番茄批發價格在2023年4月至5月較五年均值飆升，主因是佛羅里達冬季兩次霜凍摧毀約80%作物、損失逾1.5億美元，以及墨西哥對美反傾銷關稅17.5%導致產量減少3–4%。",
-            "冬季美國番茄供應結構已從NAFTA前的80%國內20%墨西哥反轉為30%國內70%墨西哥，佛州霜凍直接抽走約26%的市場供應，推高價格至每箱65美元。",
-            "批發價格在5月底至6月已回落至五年平均水準，但零售端傾向「漲如火箭、跌如羽毛」，利用消費者資訊不對稱維持較高的售價底線，以補貼電商基礎建設與數據系統成本。",
-            "零售商利潤率約4–6%，但營運成本因宅配、科技投資而增加，透過出售顧客數據與提高終端售價來穩定利潤，而非完全反映批發成本波動。",
-            "溫室種植的「點心番茄」品種因病毒（如ToBRFV）導致產量波動，種植者須連土壤移除重新栽種，加劇高單價番茄的價格波動。",
-            "物流成本顯著上升：從加州薩利納斯到東岸的「雙駕駛」卡車運費從8個月前的1萬–1.1萬美元漲至近期1.6萬–1.7萬美元，主因油價上漲與邊境移民管制收緊導致卡車供給減少。",
-            "餐廳的食材成本僅佔總成本約30%，因此傾向每日或每週詢價以捕捉低價機會，而非鎖定長期合約；零售商食材成本佔比高達70–75%，對價格波動更敏感。",
-            "創意番茄品種（如Girl & Doug的混合盒）由種子公司透過雜交育種開發，並與廚師合作推廣，再經由社群媒體與餐廳菜單擴散至消費者，形成需求拉動。",
-            "肥料價格對番茄成本的影響有6–12個月滯後期，目前大型種植者已提前鎖定價格，但下一輪合約談判將反映漲幅，預計在2023年底至2024年顯現。",
-            "草莓風味遜色的主因是品種選育優先考量耐運輸與產量，而非風味；大學合作（如UC Davis）培育的硬皮品種主導市售供應鏈，而農夫市集與小農則種植風味優先的品種。"
-          ],
-          "tickers": [],
-          "market_view": "番茄批發價格在2023年5月因佛州霜凍與墨西哥關稅創新高，但6月已回落至五年均值；零售端可能維持漲後價格以補貼營運成本，短期內消費端價格不易同步下跌。",
-          "action_view": "無明確操作建議；對餐廳而言，建議保持靈活採購以利用批發市場波動，而一般消費者可在夏季多利用本地農產品與農夫市集，或嘗試具風味的品種以獲得較高性價比。",
-          "notable_quote": "Retailers take their prices up like a rocket and down like a feather."
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
       }
     ]
   },

@@ -9492,6 +9492,7 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 凡寫到 2330 的價位,**只能引用上方 Python 已注入的新台幣中樞/關鍵價位**(見「我的明確立場」段),
 **嚴禁自行計算或改用台積電 ADR 的美元價(約 400–450 美元)**。若你寫出的 2330 價位落在 400–500,
 代表你把美股 ADR 美元價誤當成台股新台幣價 = **失敗報告**。00662/0050/加權同理,一律新台幣、需與上方數字一致。
+所有金額/目標價/點位一律用**正常數字與千分位**(如 3,242 元、45,577 點),**嚴禁出現位數錯位或多餘逗號**(如『3,2424』『1,2,345』);不確定的具體數字寧可不寫,不可亂湊。
 
 ═══════════════════════════════════════════════════════════
 # 分析框架（按此順序在腦中執行，但不寫進報告）
@@ -11412,7 +11413,9 @@ def update_event_timeline(structured_events: list[dict],
     except Exception as e:
         print(f"[timeline] 寫入失敗: {e}", file=sys.stderr)
     active = [{"key": k, **v} for k, v in state.items()
-              if v.get("last_seen") == today and v.get("days", 0) >= 2]
+              if v.get("last_seen") == today and v.get("days", 0) >= 2
+              # 需綁定具體標的(公司/類股/商品);無 entity 的泛新聞(中國天氣、貿易談判)關聯性低 → 不列
+              and str(k).split(":", 1)[-1].strip()]
     active.sort(key=lambda r: -r.get("days", 0))
     return active
 
@@ -13183,9 +13186,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 # 基本面/估值/籌碼擴充欄(取得到才顯示;與股癌雷達同口徑,純參考、不計入排名分數)
                 def _num(v):
                     return v if isinstance(v, (int, float)) else None
+                # 金融業(金控/銀行/保險/證券):營收YoY 易受合併/利差扭曲、Piotroski/Altman/Beneish 皆不適用。
+                # 多源判斷:產業別中文名 / TWSE 產業代碼 17(金融保險)/ 公司簡介(fallback universe 的 industry 可能為空)
+                _ind = str(s.get("industry", "")).strip()
+                _desc = str(s.get("desc", ""))
+                is_fin = (_ind == "17"
+                          or any(k in _ind for k in ("金融", "保險", "金控", "銀行", "證券", "票券"))
+                          or any(k in _desc for k in ("金控", "銀行", "保險", "證券", "票券", "壽險", "產險")))
                 fund_bits = []
                 ry = _num(s.get("rev_yoy_pct"))
-                if ry is not None:
+                if ry is not None and not is_fin:
                     fund_bits.append(f"營收YoY {ry:+.0f}%")
                 _mm = "／".join(x for x in [
                     f"毛利 {s['gross_margin']:.0f}%" if _num(s.get("gross_margin")) is not None else None,
@@ -13204,7 +13214,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 for label, key, suf in (("PER", "per", ""), ("殖利率", "yield_pct", "%"), ("PBR", "pbr", "")):
                     v = _num(s.get(key))
                     if v is not None:
-                        val_bits.append(f"{label} {v:.1f}{suf}")
+                        # PER 極高(>100)多為轉機/獲利剛回升,標註避免誤讀為「貴」
+                        tag = "(極高·轉機股留意)" if key == "per" and v >= 100 else ""
+                        val_bits.append(f"{label} {v:.1f}{suf}{tag}")
                 mc = _num(s.get("market_cap"))
                 if mc:
                     val_bits.append(f"市值 {mc / 1e8:,.0f}億")
@@ -13228,19 +13240,22 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     chip2_bits.append(f"空方回補 {scr}")
                 chip2_line = ("籌碼: " + " ・ ".join(chip2_bits)) if chip2_bits else ""
                 # 財報品質(Piotroski F-score + Altman Z-score 破產 + Beneish M-score 盈餘操弄;
-                # FinMind 三表、純參考不計分)
+                # FinMind 三表、純參考不計分)。金融業不適用此三法 → 不算不顯示,改標「不適用」。
                 fz_bits = []
-                fsc, fden = _num(s.get("fscore")), _num(s.get("fscore_denom"))
-                if fsc is not None:
-                    grade = "強健" if fsc >= 7 else ("中等" if fsc >= 4 else "體質弱")
-                    fz_bits.append(f"F-score {int(fsc)}/{int(fden) if fden else 9}({grade})")
-                zsc = _num(s.get("zscore"))
-                if zsc is not None:
-                    fz_bits.append(f"Z-score {zsc}({s.get('zscore_zone', '')})")
-                msc = _num(s.get("mscore"))
-                if msc is not None:
-                    fz_bits.append(f"M-score {msc}({'⚠留意操弄' if s.get('mscore_flag') else '正常'})")
-                fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else ""
+                if not is_fin:
+                    fsc, fden = _num(s.get("fscore")), _num(s.get("fscore_denom"))
+                    # 可得準則太少(分母 <5,多為資料缺漏)→ F-score 不可信,不顯示(避免誤標體質弱)
+                    if fsc is not None and (not fden or fden >= 5):
+                        grade = "強健" if fsc >= 7 else ("中等" if fsc >= 4 else "體質弱")
+                        fz_bits.append(f"F-score {int(fsc)}/{int(fden) if fden else 9}({grade})")
+                    zsc = _num(s.get("zscore"))
+                    if zsc is not None:
+                        fz_bits.append(f"Z-score {zsc}({s.get('zscore_zone', '')})")
+                    msc = _num(s.get("mscore"))
+                    if msc is not None:
+                        fz_bits.append(f"M-score {msc}({'⚠留意操弄' if s.get('mscore_flag') else '正常'})")
+                fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else (
+                    "財報品質: 金融業·F/Z/M-score 不適用" if is_fin else "")
                 ext_html = "".join(
                     f"<div style='margin-top:4px;font-size:12px;color:#475569;'>{_htmllib.escape(x)}</div>"
                     for x in (fund_line, val_line, chip2_line, fz_line) if x)

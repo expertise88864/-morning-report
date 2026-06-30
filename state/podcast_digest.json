@@ -3326,6 +3326,82 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72760604",
+        "title": "Buffett delays Gates Foundation gift",
+        "published": "Tue, 30 Jun 2026 17:39:38 +0000",
+        "processed_at": "2026-06-30T21:16:29Z",
+        "digest": {
+          "summary_points": [
+            "Oppenheimer調降多家大型銀行評級：高盛與摩根士丹利降至「遜於大盤」，美國銀行與花旗降至「與大盤持平」，理由是產業進入週期後期。",
+            "Patrick Industries與LCI Industries宣布全股票合併，LCI股價上漲，Patrick下跌約10%。",
+            "華納兄弟探索因英國政府可能干預派拉蒙Skydance收購案而股價承壓。",
+            "美國5月JOLTS職位空缺微增至759.4萬，高於預期，經濟學家認為勞動市場既未惡化也未明顯增強。",
+            "DA Davidson分析師指出，Google與亞馬遜在AI支出上獲得市場寬容，微軟卻因類似投資受罰，但分析師認為三者皆為贏家。"
+          ],
+          "tickers": [
+            {
+              "name": "高盛",
+              "code": "GS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Oppenheimer降評至「遜於大盤」，因產業週期後期。"
+            },
+            {
+              "name": "摩根士丹利",
+              "code": "MS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Oppenheimer降評至「遜於大盤」。"
+            },
+            {
+              "name": "美國銀行",
+              "code": "BAC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Oppenheimer降評至「與大盤持平」。"
+            },
+            {
+              "name": "花旗集團",
+              "code": "C",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Oppenheimer降評至「與大盤持平」。"
+            },
+            {
+              "name": "Patrick Industries",
+              "code": "PATK",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "合併消息後股價下跌約10%。"
+            },
+            {
+              "name": "LCI Industries",
+              "code": "LCII",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "合併消息後股價上漲。"
+            },
+            {
+              "name": "華納兄弟探索",
+              "code": "WBD",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "英國政府可能干預收購案導致股價受壓。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "市場對其AI支出反應負面，股價表現落後。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "They're both winners."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72755572",
         "title": "iPhone 18 secrets surface",
         "published": "Tue, 30 Jun 2026 10:28:12 +0000",
@@ -3943,63 +4019,6 @@
           "market_view": "AI記憶體和晶片股面臨獲利了結賣壓，但分析師仍看好AI需求，整體市場情緒偏樂觀。",
           "action_view": "",
           "notable_quote": "Recent Asia checks and overall AI enterprise demand tracking have accelerated over the past few months, and are showing no cracks in the armor, which continue to make us very bullish on owning the tech AI winners over the next coming year."
-        },
-        "shown_at": "2026-06-23T23:05:24Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72648431",
-        "title": "AI trade hits a speed bump",
-        "published": "Tue, 23 Jun 2026 10:54:18 +0000",
-        "processed_at": "2026-06-23T16:10:16Z",
-        "digest": {
-          "summary_points": [
-            "Dan Niles 警告 AI 交易將出現減速帶，建議投資資金流向 AI 支出目的地（半導體），而非超大規模雲廠商。",
-            "五大 AI 主要支出公司（亞馬遜、Alphabet、微軟、甲骨文、Meta）今年迄今股價下跌，而晶片股上漲。",
-            "企業 AI 策略從代幣最大化轉向代幣最小化，可能導致未來業績指引不如預期。",
-            "AI 相關的鉅額資本需求迫使科技巨頭大量舉債和股權融資，形成壓力。",
-            "Niles 表示將減持超大規模公司和半導體部位，預計九月份業績指引將出現減速帶。",
-            "科技股持續走弱：韓國 Kospi 指數下跌約 10%，那斯達克 100 期貨下跌逾 2%。"
-          ],
-          "tickers": [
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 資本支出巨大，雲業務面臨減速，Niles 認為股價承壓。"
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 投資回報存疑，Niles 建議避開超大規模公司。"
-            },
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 支出高昂，未來指引可能令人失望。"
-            },
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 資本需求導致舉債，Niles 認為有風險。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI 預算從最大化轉向最小化，可能影響業績。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "My question is, well, if you're routing things to cheaper models, what does your September guidance look like?"
         },
         "shown_at": "2026-06-23T23:05:24Z"
       }

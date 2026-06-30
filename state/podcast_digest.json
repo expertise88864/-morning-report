@@ -2817,6 +2817,25 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "d9971476-746a-11f1-91af-4f37fd85356e",
+        "title": "U.S. Stocks Set To Close Out Blockbuster Quarter",
+        "published": "Tue, 30 Jun 2026 09:54:00 -0000",
+        "processed_at": "2026-06-30T10:47:12Z",
+        "digest": {
+          "summary_points": [
+            "美國股市第二季表現強勁，標普500漲14%、納斯達克漲20%，創2020年以來最佳季度漲幅，科技股上週大跌後已回升。",
+            "日圓跌至40年低點162兌1美元，主因美日利差、AI熱潮導致亞洲貨幣走弱，以及日本散戶大舉投資美股。",
+            "歐洲通膨雖略有降溫但仍偏高，消費者因焦慮而增加儲蓄、減少支出，拖累經濟成長。",
+            "歐洲家庭銀行帳戶存款總計約10兆美元，經濟學家認為若轉向投資可提振經濟。",
+            "多家航空公司（荷航、漢莎、新加坡航空、聯合航空、美國航空）新款商務艙座椅因認證延遲，導致高級艙位空置、損失營收。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為美股漲勢強勁，但近期有波動；歐洲經濟因消費者謹慎而成長緩慢。",
+          "action_view": "",
+          "notable_quote": "The fact that Europeans are so anxious about spending, the fact that they're saving more, that is really holding back the European economy."
+        }
+      },
+      {
         "guid": "23302050-73fd-11f1-a25c-1316df4624c4",
         "title": "What the Lisa Cook Decision Means for the Fed’s Independence",
         "published": "Mon, 29 Jun 2026 20:41:00 -0000",
@@ -3255,71 +3274,91 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-24T23:05:02Z"
-      },
-      {
-        "guid": "a5b83164-6eeb-11f1-87c3-f310ce12fead",
-        "title": "Wall Street’s Tech Selloff Goes Global",
-        "published": "Tue, 23 Jun 2026 10:01:00 -0000",
-        "processed_at": "2026-06-23T10:50:33Z",
-        "digest": {
-          "summary_points": [
-            "科技股因AI成本擔憂重挫，Alphabet、Nvidia、Oracle盤前大跌，賣壓擴散至全球市場。",
-            "亞洲市場走低，韓國KOSPI指數暴跌10%，主要受三星等大型晶片股拖累。",
-            "歐洲市值最高公司ASML下跌5%，拖累歐洲科技股。",
-            "2025年美國執行長年薪超過1億美元的人數創2021年以來新高，近12人超過2億美元。",
-            "研究顯示，執行長薪酬上升並不一定帶來更好的股東回報。",
-            "美國住宅產業面臨勞工短缺，促使業者嘗試模組化建築以降低成本與工期。",
-            "模組化建築可節省40-50%的專案成本，並將防風雨工期從20週縮短至8週。",
-            "高房價與高房貸利率使買家觀望，建商被迫縮小房屋面積並嘗試替代工法以壓低價格。"
-          ],
-          "tickers": [
-            {
-              "name": "三星電子",
-              "code": "",
-              "market": "KR",
-              "direction": "bearish",
-              "reason": "股價暴跌10%，拖累KOSPI指數。"
-            },
-            {
-              "name": "ASML控股",
-              "code": "ASML",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "在歐洲下跌5%，科技股賣壓蔓延。"
-            },
-            {
-              "name": "Alphabet Inc.",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "盤前大跌，因市場擔憂AI成本。"
-            },
-            {
-              "name": "NVIDIA公司",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "盤前下跌，投資人憂慮AI支出。"
-            },
-            {
-              "name": "甲骨文公司",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "科技股賣壓下盤前走弱。"
-            }
-          ],
-          "market_view": "市場因AI成本疑慮出現廣泛賣壓，美國、亞洲及歐洲科技股普遍下跌。",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-23T23:05:24Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72755572",
+        "title": "iPhone 18 secrets surface",
+        "published": "Tue, 30 Jun 2026 10:28:12 +0000",
+        "processed_at": "2026-06-30T10:44:40Z",
+        "digest": {
+          "summary_points": [
+            "Apple的iPhone 18 Pro機密資訊因印度代工廠Tata Electronics遭勒索軟體攻擊而洩露於暗網，文件包含供應商名單與設計圖，影響Apple、Tesla、台積電及高通。",
+            "Mirae Asset Securities因誤解SpaceX IPO訂單提交流程，導致超過11億美元的韓國訂單未被納入IPO簿記，該券商正接受監管審查。",
+            "Nike將於收盤後公布Q4 2026財報，市場預期營收108.5億美元（年減2%），營業利益2.53億美元（年減21%），每股盈餘0.13美元（年減7%），股價處12年低點。",
+            "Goldman Sachs認為黃金仍有上漲空間，儘管金價今日微跌。",
+            "Amazon因FTC案需支付225萬美元和解金，並在澳洲面臨訴訟。",
+            "Exelon CEO警告美國可能因電力供應短缺於明年出現大停電。",
+            "Arrow Virement (AVAV)公布創紀錄的Q4財報，營收與獲利優於預期，股價飆漲20%。",
+            "今日經濟數據包括Case-Shiller房價指數、FHFA房價指數及JOLTS職位空缺數。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "數據洩露事件未直接影響營運，但可能引發安全疑慮。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "供應商資料遭洩露，但未對公司基本面造成影響。"
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "文件洩露涉及iPhone零件設計，但非核心機密。"
+            },
+            {
+              "name": "高通",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "零件設計文件遭洩露，但影響有限。"
+            },
+            {
+              "name": "耐克",
+              "code": "NKE",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報預期不佳，股價處低檔，但未明確看空。"
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "和解與訴訟未影響核心業務。"
+            },
+            {
+              "name": "艾克西隆",
+              "code": "EXC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "CEO警告停電風險，可能影響電力供應穩定性。"
+            },
+            {
+              "name": "Arrow Virement",
+              "code": "AVAV",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q4財報創紀錄，營收獲利超預期，股價大漲。"
+            }
+          ],
+          "market_view": "美股期貨漲跌互見，整體市場觀望氣氛濃厚，等待經濟數據及Nike財報指引。",
+          "action_view": "",
+          "notable_quote": "Exxalon CEO warns the US may face blackouts by next year due to a power supply shortfall."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72740418",
         "title": "Comcast to split with NBC spinoff",
@@ -3918,61 +3957,6 @@
           "notable_quote": "My question is, well, if you're routing things to cheaper models, what does your September guidance look like?"
         },
         "shown_at": "2026-06-23T23:05:24Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72637138",
-        "title": "U.S. authorizes Iranian oil sales",
-        "published": "Mon, 22 Jun 2026 18:41:01 +0000",
-        "processed_at": "2026-06-22T21:44:43Z",
-        "digest": {
-          "summary_points": [
-            "標普500下跌0.3%，那斯達克下跌1.1%，道瓊上漲0.3%，因伊朗協議的不確定性。",
-            "10年期公債殖利率上升5個基點至約4.5%，2年期上升4個基點至約4.2%。",
-            "西德州原油期貨每桶73美元，布蘭特原油每桶77美元。",
-            "阿波羅首席經濟學家指出，那斯達克波動率相對於標普500的比率升至多年高點，顯示風險集中在AI/科技股。",
-            "選擇權市場顯示對那斯達克下跌保護的需求增加，反映市場擔憂科技股估值過高與籌碼擁擠。",
-            "艾伯維（AbbVie）以約109億美元現金收購Apigee Therapeutics；Apigee股價大漲52%。",
-            "美光（Micron）與Anthropic合作，成為其主要記憶體與儲存供應商；美光股價上漲5%。",
-            "Meta以9億美元收购印度金融科技公司Cred 20%股權；Cred創辦人將領導WhatsApp。",
-            "戴爾（Dell）與Super Micro推出搭載輝達（Nvidia）Vera Rubin GPU的新AI伺服器。",
-            "Coinbase提供掛鉤Anthropic和OpenAI的上市前永久期貨合約。",
-            "SpaceX與AI新創Reflection簽訂最高價值63億美元的運算容量協議。"
-          ],
-          "tickers": [
-            {
-              "name": "艾伯維",
-              "code": "ABBV",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收購Apigee強化免疫與呼吸道產品線，但為現金交易且長期佈局。"
-            },
-            {
-              "name": "Apigee Therapeutics",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因被艾伯維以每股135.11美元收購，股價飆漲52%。"
-            },
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與Anthropic合作成為主要記憶體供應商，提升AI題材；股價上漲5%。"
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "以9億美元收購Cred 20%股權，屬金融科技策略佈局，對財務影響不大。"
-            }
-          ],
-          "market_view": "主持人未明確表達對大盤或總體經濟的整體看法，僅報導市場波動與殖利率變化。",
-          "action_view": "未提及操作思路。",
-          "notable_quote": "This waiver doesn't just weaken the pressure campaign, it puts it into reverse."
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
       }
     ]
   },

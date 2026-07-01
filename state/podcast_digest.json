@@ -2999,6 +2999,56 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "e2c410f0-758f-11f1-a227-437d3b61b55b",
+        "title": "Inside the First Flight of the Qatari-Gifted Air Force One",
+        "published": "Wed, 01 Jul 2026 20:55:00 -0000",
+        "processed_at": "2026-07-01T21:10:27Z",
+        "digest": {
+          "summary_points": [
+            "聯準會主席 Kevin Warsh 表示通膨風險已經減退，市場預期今年稍後升息，但下次會議預計維持利率不變。",
+            "市場整體表現平淡：道瓊持平，標普500下跌，那斯達克下跌0.7%。",
+            "Bending Spoons（旗下擁有 AOL、Vimeo、Eventbrite）上市首日大漲40%。",
+            "SpaceX 向投資者展示一款早期原型 AI 裝置，比 iPhone 更薄，使用高通 Snapdragon 晶片組。",
+            "Medicare 將以每月50美元共付額涵蓋減重藥物 Wegovy（諾和諾德）及 Zepbound/Foundayo（禮來），適用多達2000萬人，計劃持續至明年底。",
+            "美墨加協定（USMCA）未獲延期，改為未來十年每年審查，導致加拿大和墨西哥長期投資受影響。",
+            "川普總統財務揭露顯示去年從海灣實體獲得約3億美元，其中2.63億美元來自阿聯酋王室支持的實體購買其 World Liberty Financial 一半股份。"
+          ],
+          "tickers": [
+            {
+              "name": "Novo Nordisk",
+              "code": "NVO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Medicare 擴充涵蓋 Wegovy 可能增加需求，但計畫成本與長期永續性仍不確定。"
+            },
+            {
+              "name": "Eli Lilly",
+              "code": "LLY",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Medicare 涵蓋 Zepbound 與 Foundayo 有助銷售，但計畫僅至2026年底且保險公司參與非保證。"
+            },
+            {
+              "name": "Bending Spoons",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上市首日大漲40%，反映市場對其改造科技品牌策略的樂觀情緒。"
+            },
+            {
+              "name": "Qualcomm",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bulish",
+              "reason": "被選為 SpaceX AI 原型裝置的晶片供應商，若產品量產將帶來新營收。"
+            }
+          ],
+          "market_view": "市場整體表現平淡，道瓊持平，標普和那斯達克下跌，那斯達克領跌收跌0.7%。聯準會主席表示通膨風險減退，但未明確暗示未來利率路徑。",
+          "action_view": "",
+          "notable_quote": "There has been a tendency, and I take plenty of blame from this, the OA crisis, where we were trying to suppress volatility, where we thought we needed to spoon feed markets to get out of that. That was the right policy for a crisis. It is not the right policy for the time that we have now."
+        }
+      },
+      {
         "guid": "0414ee50-7536-11f1-8ff0-b7cf1d3fc6f4",
         "title": "Inside Trump's Growing Crypto Fortune",
         "published": "Wed, 01 Jul 2026 10:12:00 -0000",
@@ -3376,57 +3426,91 @@
           "notable_quote": "So it puts cost pressures on a number of businesses and those costs are likely to get passed on to consumers."
         },
         "shown_at": "2026-06-25T23:12:20Z"
-      },
-      {
-        "guid": "d42a3e1a-7013-11f1-b15e-d3b7206dcff4",
-        "title": "What’s in the New Bipartisan Housing Bill That Congress Just Passed",
-        "published": "Wed, 24 Jun 2026 21:28:00 -0000",
-        "processed_at": "2026-06-25T06:21:35Z",
-        "digest": {
-          "summary_points": [
-            "美國主要指數漲跌互現，道瓊漲0.4%，那斯達克跌0.4%（近兩日累計跌4%），標普500跌0.1%，科技股因AI泡沫擔憂持續承壓。",
-            "晶片製造商Cerebras股價暴跌近20%，因公司警告將持續虧損，突顯AI建設的高成本。",
-            "布蘭特原油期貨下跌4.3%至73.74美元/桶，接近戰前水準。",
-            "比特幣跌破60,000美元，因比特幣累積公司Strategy賣出部分持倉。",
-            "美光（Micron）最新季度營收超410億美元，年增4倍以上，幾乎所有財務指標均超預期，但股價受科技估值擔憂影響，盤後漲近14%。",
-            "SK海力士計劃透過美國上市籌資超290億美元，預計7月10日開始交易，將成為史上大規模IPO之一。",
-            "美國5月新屋銷售年化58萬戶，低於4月的62.6萬戶，遜於預期。",
-            "美國兩院通過《21世紀住宅法案》，包含鼓勵建房條款和禁止機構投資者購買獨戶住宅的條款，房地產行業總體支持，但投資者禁令存在爭議。"
-          ],
-          "tickers": [
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報超預期且盤後大漲，但面臨估值擔憂。"
-            },
-            {
-              "name": "Cerebras",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價暴跌近20%，因警告將持續虧損。"
-            },
-            {
-              "name": "SK海力士",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "計劃透過美國上市籌資超290億美元，尚未上市。"
-            }
-          ],
-          "market_view": "主要指數漲跌互現，科技股因AI泡沫擔憂承壓，那斯達克近期累計下跌。",
-          "action_view": "",
-          "notable_quote": "Another reminder of the heavy costs of the AI buildout."
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72777346",
+        "title": "Meta eyes AI cloud business",
+        "published": "Wed, 01 Jul 2026 18:45:54 +0000",
+        "processed_at": "2026-07-01T21:11:29Z",
+        "digest": {
+          "summary_points": [
+            "Meta平台正利用其過剩AI運算能力建立雲端業務，客戶可存取AI模型或購買原始運算容量，UBS分析師認為此舉能降低獲利風險。",
+            "Nike第四季獲利與營收優於預期，股價上漲，但中國市場持續疲軟，Needham分析師表示轉機仍不明朗。",
+            "General Mills第四季營收與獲利優於預期，股價上揚，但展望顯示有機淨銷售低於預期，每股盈餘預估中值3.10美元略低於市場共識。",
+            "Kroger以12.5億美元現金並承擔4億美元債務收購Giant Eagle，後者年營收約90億美元。",
+            "ADP報告6月美國私部門新增就業98,000人，低於市場預期的117,000人，但三個月平均仍為2025年1月以來最強。",
+            "Bending Spoons在IPO中定價29美元，盤中股價突破40美元，該公司採用數位品牌併購策略。",
+            "William Blair更新分析師信心清單，新增14個標的，其中Oracle因AI基礎建設受惠而被加入。",
+            "CoreWeave、Applied Digital等雲端提供商因Meta進入雲端業務的消息而下跌。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "報告指出公司將利用過剩AI運算建立雲端業務，股價上漲。"
+            },
+            {
+              "name": "Nike",
+              "code": "NKE",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "第四季獲利營收優於預期但中國市場疲軟，轉機不明。"
+            },
+            {
+              "name": "General Mills",
+              "code": "GIS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "第四季業績優預期但展望保守。"
+            },
+            {
+              "name": "Kroger",
+              "code": "KR",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "收購Giant Eagle，但對股價影響未明。"
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "William Blair認為公司是AI基礎建設主要受惠者，加入信心清單。"
+            },
+            {
+              "name": "CoreWeave",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因Meta建立雲端業務的競爭消息而下跌。"
+            },
+            {
+              "name": "Applied Digital",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "同因Meta消息下跌。"
+            },
+            {
+              "name": "Bending Spoons",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "IPO定價29美元，盤中股價突破40美元。"
+            }
+          ],
+          "market_view": "ADP就業數據低於預期，但三個月平均仍強勁，市場等待週四聯邦就業報告。",
+          "action_view": "",
+          "notable_quote": "Monetizing excess compute could reduce earnings risk."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72769151",
         "title": "Peak power problems",
@@ -4077,44 +4161,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "Wendy's is currently sitting on $6. Ouch!"
-        },
-        "shown_at": "2026-06-24T23:05:02Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72668867",
-        "title": "Alphabet joins the Dow",
-        "published": "Wed, 24 Jun 2026 11:17:18 +0000",
-        "processed_at": "2026-06-24T15:42:40Z",
-        "digest": {
-          "summary_points": [
-            "Alphabet (GOOGL) 將取代 Verizon 納入道瓊工業平均指數，自6月29日生效，預計將因指數基金買入而提振股價。",
-            "Honeywell International 分拆其航空航天業務為 Honeywell Aerospace，母公司更名為 Honeywell Technologies 保留在道指，Honeywell Aerospace 加入標普500，Conagra Brands 移至小型股指數。",
-            "GameStop CEO Ryan Cohen 持續推動收購 eBay，提議每股125美元現金加股票，但遭 eBay 董事會拒絕，Cohen 計劃直接向股東提出要約，目前已持有 eBay 7.8% 股份。",
-            "Cerebras Systems 因第二季度毛利率指引大幅下降（從47%降至36-38%）而股價下跌，儘管與 OpenAI 達成 200 億美元合作協議。",
-            "美光科技將於盤後公佈財報，期權市場隱含波動約 13%，市場關注其業績表現。",
-            "分析師 Jeffrey 認為 Alphabet 的 AI 人才流失僅為短期噪音，不影響長期前景。",
-            "iShares 生物科技 ETF (IBB) 創下歷史新高，顯示市場對該板塊的信心。",
-            "盤前交易中，標普500和納斯達克100期貨小幅反彈，原油和黃金下跌約1%，國債收益率走低。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "納入道瓊工業平均指數將帶動指數基金買入，有利股價表現。"
-            },
-            {
-              "name": "Cerebras Systems",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第二季度毛利率指引大幅下降，引發市場擔憂，儘管有大單加持。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The move should provide the expected boost Alphabet shares through buying by index funds and ETFs."
         },
         "shown_at": "2026-06-24T23:05:02Z"
       }

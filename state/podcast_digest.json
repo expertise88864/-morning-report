@@ -4256,6 +4256,25 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "6f683bb0-bf70-4fb7-8c81-b47a013f78c2",
+        "title": "What Dan Wang Saw on His Last Trip to China",
+        "published": "Thu, 02 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-02T10:27:34Z",
+        "digest": {
+          "summary_points": [
+            "中國一線城市房價自高點下跌25-30%，民眾財富約3/4集中在房產，對消費信心造成壓力。",
+            "中國青年失業率官方公布超過15%，接近20%，使年輕人就業困難。",
+            "上海總和生育率(TFR)僅0.6，全國為1.0，人口老化嚴峻，預估20年後半數人口超過65歲。",
+            "中國政府優先發展半導體與電池等高技術產業，即便經濟放緩仍持續投入資源。",
+            "電動車滿電行駛約600公里，充電成本僅約12美元，顯示能源成本優勢。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I think that the central contradiction as the Marxists like to call it now is that what I feel on this trip is that this is kind of people have a bit of a serene discontent with their lives."
+        }
+      },
+      {
         "guid": "f5c05315-7559-4fa4-a6da-b47400f7cb90",
         "title": "Baidu's CFO on How It Became a Full-Stack AI Player",
         "published": "Mon, 29 Jun 2026 08:00:00 +0000",
@@ -4675,31 +4694,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "People don't measure the inputs. You should be using the outputs."
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
-      },
-      {
-        "guid": "3cfa0968-658f-4cce-a2df-b466015e5042",
-        "title": "How a Vibecoded Newsletter Is Making the Hay Market More Transparent",
-        "published": "Fri, 12 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-12T21:37:23Z",
-        "digest": {
-          "summary_points": [
-            "乾草市場高度分裂且不透明，沒有單一基準價格；因運輸成本高，各地價格差異極大。",
-            "美國農業部每週/雙週發布乾草拍賣價格的PDF檔；Haywire透過API匯總這些數據，並從拍賣場取得第一手資訊。",
-            "乾草價格上漲：4月乾草每噸180美元（較3月漲13美元），苜蓿草每噸185美元（漲10美元）。",
-            "美國46%的苜蓿草種植面積處於乾旱中，供應緊張推升價格。",
-            "第一茬乾草產量偏低，2025年庫存幾乎耗盡，農民正在搶購囤貨。",
-            "高乾草價格衝擊養馬業（寄宿成本上升）及酪農業（混合高/低品質乾草控制成本）。",
-            "乾草種植面積約4900-5000萬英畝；苜蓿草年產值80億美元，是美國第四大作物。",
-            "Haywire由20歲的Aiden Johnson創立，利用AI和「氛圍編碼」建立數據平台，源自他父親詢問「苜蓿草價格」的契機。",
-            "商業模式包括免費與付費（每月14美元）電子報，目標成為區域乾草價格的基準數據提供者。",
-            "中間商（經紀人）可能因價格透明化而受損，因為他們目前依賴資訊不對稱來進行交易。"
-          ],
-          "tickers": [],
-          "market_view": "乾草價格因乾旱與供給緊張持續上漲，區域市場高度分化，缺乏透明定價機制。",
-          "action_view": "農民正積極建立夏季庫存，酪農業則透過混合不同品質乾草來控制成本；整體市場處於搶購狀態。",
-          "notable_quote": "We kind of want to be at the top, you know, being the benchmark data for these prices regionally."
         },
         "shown_at": "2026-06-14T23:06:02Z"
       }

@@ -2146,6 +2146,110 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmr3fe92d0mt601tj2c3577ux",
+        "title": "IC設計新趨勢  Nvidea面對的戰局 2026.07.02",
+        "published": "Thu, 02 Jul 2026 11:35:08 GMT",
+        "processed_at": "2026-07-02T15:46:20Z",
+        "digest": {
+          "summary_points": [
+            "Semi-annus報導Google下一代TPU Humufish將改用Intel ENIBT封裝，取代台積電CoWoS，以降低成本並提高晶片利用率。",
+            "聯發科先前放風聲考慮與Intel合作先進封裝，與Google TPU轉向Intel的傳聞有脈絡，可能聯發科扮演關鍵角色。",
+            "Intel ENIBT目前良率約90%，若提升至97%可能成為CoWoS的替代方案，但台積電CoWoS-S預計2028-2029量產，Intel需搶佔時間。",
+            "高盛將聯發科目標價從5000調升至6800（非14000），預估2027年ASIC營收佔比達49%，2028年EPS可達422元。",
+            "麥格里將聯發科目標價拉至1萬元，外資報告基於ASIC趨勢看好聯發科未來成長。",
+            "新思CEO表示下一個最重要趨勢是雲端業者自己設計晶片（ASIC），成長率超過CPU和GPU。",
+            "OpenAI自研晶片僅9個月tap out，效能可與NVIDIA較量，顯示AI輔助設計加速晶片客製化。",
+            "AI Agent讓晶片設計速度加快，未來雲端巨頭將推出更多客製化AI加速器。",
+            "台灣ASIC業者世芯KY、創意、智原可受益於ASIC趨勢，世芯KY今日漲停。",
+            "智原布局Intel和三星封裝，有機會成為非台積電陣營的ASIC供應商，但目前尚未有實績。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "Google TPU轉單Intel ENIBT對台積電影響有限，因CoWoS產能已滿，但Intel追趕可能形成長期競爭。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "外資報告調升目標價，看好ASIC營收佔比提升，且可能承接Google TPU相關訂單。"
+            },
+            {
+              "name": "世芯KY",
+              "code": "3661",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "ASIC趨勢下最大受惠者之一，股價漲停反映市場對其前景樂觀。"
+            },
+            {
+              "name": "創意",
+              "code": "3443",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "ASIC設計服務龍頭，受益於雲端巨頭自研晶片趨勢。"
+            },
+            {
+              "name": "智原",
+              "code": "3035",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "布局三星和Intel封裝，有機會成為非台積電陣營ASIC供應商，但尚無具體訂單成果。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "ENIBT良率待提升，需搶在台積電CoWoS-S量產前證明量產能力。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "推論時代ASIC可能侵蝕GPU市場，且競爭對手如OpenAI自研晶片效能可與之較量。"
+            }
+          ],
+          "market_view": "主持人認為ASIC客製化晶片是接下來的重要趨勢，雲端巨頭自研晶片將加速，台灣相關業者機會增加。",
+          "action_view": "",
+          "notable_quote": "我覺得ASIC就會接下來的關鍵字，為什麼？各位去看，Meta搞不好要自己賣算力，那就開始大家要競爭，大家要競爭的時候，每個平台都能夠in token，都能夠產生token，然後模型呢，可能大家都盡量說模型你有的我也要有，總不能夠說你加油這個我沒有，那唯一差異化的是什麼？總不能說那你生產這個token的方式，你用這個晶片我也一樣，那我沒辦法差異化。"
+        }
+      },
+      {
+        "guid": "cmr3f6rfx0lzh01uo8hns51wl",
+        "title": "AI巨頭鬼故事一直來，下半年費半創高有望嗎？ 2026.07.02",
+        "published": "Thu, 02 Jul 2026 11:30:35 GMT",
+        "processed_at": "2026-07-02T15:50:19Z",
+        "digest": {
+          "summary_points": [
+            "鴻海除息每股配發7.17元現金股利，收盤貼息下跌2元至239元，郭台銘可領約124.7億元股息。",
+            "費半指數自6月22日高點14655點後進入高檔震盪，7月1日單日大跌6.3%。",
+            "Meta宣布釋出數據中心過剩算力、成立Meta Compute部門並轉向雲端業務，導致輝達、AMD等晶片股大跌，但Meta股價大漲8.8%。",
+            "聯準會主席華許表示AI將提升生產力且不會造成通膨，反而可能使通膨下滑，市場對9月升息預期降溫。",
+            "美國ADP就業數據為9.8萬人，市場預期非農就業約12-14萬人，經濟動能尚可。",
+            "Morgan Stanley報告建議下半年分散投資，關注標普1500中型股、日本股市及美國消費類股，對AI趨勢保持審慎樂觀。",
+            "鄧副總認為費半短期可能區間整理，但下跌空間有限，若再跌3-5%是好的投資點；日本股市因股價偏低且外資持續加碼，相對看好。",
+            "日圓持續貶值至1美元兌162日圓的40年低點，存在短期續貶風險；美債殖利率若接近高檔區間可考慮鎖定投資。"
+          ],
+          "tickers": [
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "除息貼息，短期股價偏弱"
+            }
+          ],
+          "market_view": "費半指數高檔震盪，區間整理機率較大，但AI敘事仍在，下跌空間有限。",
+          "action_view": "費半若再跌3-5%可逢低布局；下半年可分散至標普1500中型股、日本股市及美國消費類股。",
+          "notable_quote": "費半如果再灌下去三到五，這也是一個很好的投資指點。"
+        }
+      },
+      {
         "guid": "cmr208zdo07ly01vmdpnc5z48",
         "title": "進入最難操作的第三季，族群強弱易位了？！ 2026.07.01",
         "published": "Wed, 01 Jul 2026 11:45:29 GMT",
@@ -2666,154 +2770,6 @@
           "notable_quote": "與其是看到結果再去找原因倒不如在很多跡象出來之前你就已經能先預判了這才對你的操作是有意義的"
         },
         "shown_at": "2026-06-28T22:58:22Z"
-      },
-      {
-        "guid": "cmquwkz560j4701xebjm09an7",
-        "title": "這次是真的回檔了嗎？ 2026.06.26",
-        "published": "Sat, 27 Jun 2026 00:02:03 GMT",
-        "processed_at": "2026-06-27T05:37:40Z",
-        "digest": {
-          "summary_points": [
-            "本週上市指數週跌4%，櫃買指數週跌幅更大，為今年最大；加權指數與櫃買指數均失守五日均線、十日均線及月均線，櫃買指數月線轉下彎，乖離幅度達4%-4.5%。",
-            "全球科技股因蘋果與微軟下跌而重挫，亞洲科技股全面大跌，台股同步受影響。",
-            "來賓杜金榮認為此次下跌為真正的回檔（「煮的下跌」），而非過去三次假回檔（11月跌7%、3月跌11%、6月跌9%），主因是漲幅過大且融資激增。",
-            "台股自低點已漲逾3萬點，主升段漲幅達2.618倍，成交量曾放大至2兆元；目前從高點回檔約3700點，跌幅約7.5%。",
-            "三台一花（台積電、台達電、鴻海、聯發科）中，台達電跌幅已超20%，鴻海一度跌停，台積電相對抗跌但跌破月線。",
-            "外資賣超但ETF撐盤，5月ETF規模增加1.7兆元；高價電子股如信驊、聯華科跌停，可能受國泰事件影響。",
-            "融資餘額今年增幅驚人：集中市場增幅78%，櫃買近80%；融資從2900億增至6000億，大盤漲170%，融資若持續增加不利止跌。",
-            "除息因素使期貨開始貼近現貨，每月約扣500點；台塑、南亞除息後股價下跌。",
-            "槓桿型ETF跌幅較大，富邦正二、國泰正二跌8%，0050正二跌7.6%，主因成分股跌幅集中。",
-            "來賓預測低點約在4000-6000點回檔幅度（約從高點回檔至4萬點附近），需觀察最強股票何時止跌。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "跌幅較小但跌破月線，外資賣盤減輕，仍為重要權值股。"
-            },
-            {
-              "name": "台達電",
-              "code": "2308",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "跌幅已超20%，屬三台一花中最弱勢。"
-            },
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "今日一度跌停，尾盤打開但仍有壓。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "三台一花之一，今日跌停板。"
-            },
-            {
-              "name": "信驊",
-              "code": "5274",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "高價電子股，今日跌停，罕見鎖死。"
-            },
-            {
-              "name": "聯華科",
-              "code": "6552",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "跌停後尾盤打開但反彈無力。"
-            },
-            {
-              "name": "南亞",
-              "code": "1303",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "除息後股價重挫，今日跌停。"
-            },
-            {
-              "name": "0050",
-              "code": "0050",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "元大台灣50跌幅約6%，正二版本跌幅更大。"
-            }
-          ],
-          "market_view": "主持人與來賓認為台股本波為真正回檔，櫃買月線下彎壓力大，預估跌幅約4000-6000點（自高點回檔至4萬點附近），短期反彈不易。",
-          "action_view": "來賓建議觀望，等待最強股票止跌訊號；目前不應追高，因買股票易被套牢。",
-          "notable_quote": "這一次是煮的下跌，不是真的，是煮的。"
-        },
-        "shown_at": "2026-06-27T22:52:53Z"
-      },
-      {
-        "guid": "cmquwqjmg0aum01yj0aq1hbxl",
-        "title": "外資落跑 台股即將變天？ 2026.06.26",
-        "published": "Fri, 26 Jun 2026 12:31:13 GMT",
-        "processed_at": "2026-06-26T15:41:49Z",
-        "digest": {
-          "summary_points": [
-            "美國5月PC年增4.1%、核心PC年增3.4%，月增0.3%，顯示通膨壓力仍大。",
-            "蘋果與微軟調漲產品價格，可能推升全球商品物價，使降息更困難。",
-            "川普幕僚貝申特暗示降息以減輕債務壓力，但高物價限制聯準會行動。",
-            "台股單日市值蒸發5.5兆，跌破150兆；聯發科、國巨跌停，台積電、聯電跌幅逾8%。",
-            "外資單日賣超台股1431億元，創歷史次高；期貨空單增至7.6萬口，約當6700億元。",
-            "美元指數升至一年高點，台幣偏弱，不利外資買超。",
-            "分析師認為今年升息可能性低，因期中選舉、債務壓力及油價回落。",
-            "韓國股市因槓桿ETF管制與課稅政策大跌，連帶拖累台股。",
-            "亞洲股市（日、韓、台）過去一季漲幅大（韓國57%、台灣/日本逾35%），外資獲利了結。",
-            "下週富台期結算，外資趁勢壓盤以收割空單。",
-            "AI設備股（如CoWoS、台積電資本支出相關）相對抗跌，可逢低關注。",
-            "ABF載板、被動元件、CPO等族群漲多，分析師轉為中立，不追高。",
-            "聯發科從高點5000元修正至3880元，長期獲利展望佳，可考慮低接。",
-            "台股基本面無虞，問題在籌碼面與情緒面，拉回反而提供買點。",
-            "操作上短線謹慎，但大型股與設備股經修正後可留意進場機會。"
-          ],
-          "tickers": [
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "修正後本益比合理，長期獲利展望佳，可考慮低接。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "基本面強勁，跌幅大但可持有，拉回是機會。"
-            },
-            {
-              "name": "國巨",
-              "code": "2327",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "基本面沒有問題，但漲多後修正，暫無明確方向。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價線型走空，月線下彎，反彈無力。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "記憶體族群漲多，分析師轉為中性，追高無興趣。"
-            }
-          ],
-          "market_view": "短線因籌碼亂、外資壓盤及國際變數而承壓，但基本面穩健，拉回後可視為健康修正，中長線仍有機會。",
-          "action_view": "短線謹慎，減少槓桿；可關注設備股及大型權值股（如聯發科）的逢低布局機會。",
-          "notable_quote": "基本面沒有問題完全就是籌碼面跟情緒各方面這些消息面的問題"
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },
@@ -3050,6 +3006,45 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "04f9d32e-7600-11f1-acf4-3be443849e6f",
+        "title": "Is There Already Too Much AI Computing Power?",
+        "published": "Thu, 02 Jul 2026 10:18:00 -0000",
+        "processed_at": "2026-07-02T15:42:40Z",
+        "digest": {
+          "summary_points": [
+            "全球AI股票在美國就業數據公布前下跌，投資人預期強勁招聘可能提高聯準會短期升息的可能性。",
+            "韓國KOSPI指數下跌8%，科技股為主的KOSDAQ跌7%並暫停交易，原因為AI過度支出擔憂和持倉擁擠。",
+            "Meta計劃進軍雲端業務以出售多餘AI運算能力，引發超大型雲端業者可能過度建置產能而無法獲利的擔憂。",
+            "Michael Burry加碼做空Nvidia、特斯拉、應用材料及一檔半導體ETF，稱三星與SK海力士投資逾5000億美元的AI晶片中心是「終結的開始」。",
+            "歐盟最高法院維持對Google的創紀錄45億歐元反壟斷罰款，因其濫用Android主導地位偏袒自家搜尋引擎。",
+            "阿里巴巴與一家美國支付處理商同意支付6億美元，和解美國司法部指控其允許商家銷售非法藥品及受限商品的訴訟。",
+            "三家大型蛋商同意支付330萬美元並捐贈5300萬顆雞蛋，以和解價格操縱指控，但不承認過失。",
+            "AI正自動化初級顧問工作，迫使顧問公司從按小時計費轉向固定費用或成果導向定價，可能帶來成本超支與聲譽風險。",
+            "廣告業積極採用AI進行創意與廣告購買，WPP繼去年裁員約1萬人後，未來數月再裁數百人。",
+            "生成式搜尋廣告收入預計2024年達50億美元，2030年達1000億美元（WPP Media預測）。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "股價因報導稱其計畫進入雲端業務出售多餘AI運算能力而上漲。"
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry加碼做空特斯拉。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I see that as the beginning of an end."
+        }
+      },
       {
         "guid": "e2c410f0-758f-11f1-a227-437d3b61b55b",
         "title": "Inside the First Flight of the Qatari-Gifted Air Force One",
@@ -3450,42 +3445,58 @@
           "notable_quote": "A Bayer spokesperson said the decision was, 'good for science, farmers and industries that depend on regulatory clarity for innovation.'"
         },
         "shown_at": "2026-06-25T23:12:20Z"
-      },
-      {
-        "guid": "0c633942-707f-11f1-a050-d39de8d6afc8",
-        "title": "The AI Build-Out Is Inflation’s New Driver",
-        "published": "Thu, 25 Jun 2026 10:12:00 -0000",
-        "processed_at": "2026-06-25T10:27:46Z",
-        "digest": {
-          "summary_points": [
-            "美光財報優於預期，帶動AI交易復甦，科技股期貨上漲。",
-            "油價持續下跌，西德州原油接近戰前水準，低於每桶70美元。",
-            "AI基礎建設增加DRAM、NAND晶片及冷卻、電力設備需求，推升通膨壓力。",
-            "晶片價格上漲可能推高iPhone等電子產品價格。",
-            "投資人希望通膨已觸頂，但個人消費支出指數可能仍偏高。",
-            "兩黨聯盟成立以因應AI對勞動市場的衝擊，成員包括微軟、美國銀行、禮來、亞馬遜。",
-            "亞馬遜執行長表示AI已大幅改變編碼、維運、客服、研究及銷售等工作方式。"
-          ],
-          "tickers": [
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "美光財報優於預期，重振AI交易，帶動科技股上漲。"
-            }
-          ],
-          "market_view": "美光財報帶動AI股反彈，但油價下跌與AI建置引發的通膨壓力使市場關注聯準會動向。",
-          "action_view": "",
-          "notable_quote": "So it puts cost pressures on a number of businesses and those costs are likely to get passed on to consumers."
-        },
-        "shown_at": "2026-06-25T23:12:20Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72788185",
+        "title": "EU locks in Google fine",
+        "published": "Thu, 02 Jul 2026 10:42:04 +0000",
+        "processed_at": "2026-07-02T15:40:25Z",
+        "digest": {
+          "summary_points": [
+            "Alphabet 的 Google 因 Android 壟斷案被歐盟法院判賠 47 億歐元罰款，上訴遭駁回，為監管機構的重大勝利。",
+            "OpenAI 執行長 Sam Altman 提議將公司 5% 股權給予美國政府，以共享 AI 發展成果。",
+            "National Beverage (FIZZ) 宣布每股 3.25 美元特別現金股利，股價上漲 6%。",
+            "美國股指期貨漲跌互見，市場等待就業報告。",
+            "原油價格下跌 1.5% 至每桶 67 美元。",
+            "比特幣上漲 1% 至 60,000 美元。",
+            "黃金上漲 0.8% 至 4,066 美元。",
+            "CrowdStrike 進行 4 比 1 股票分割，今日生效。",
+            "美國股市週五因獨立紀念日休市。",
+            "今日上午 8:30 公布就業報告。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet Inc.",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "歐盟反壟斷罰款獲法院維持，對公司財務與監管前景不利。"
+            },
+            {
+              "name": "National Beverage Corp.",
+              "code": "FIZZ",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "宣布每股 3.25 美元特別股利，股價因此上揚。"
+            },
+            {
+              "name": "CrowdStrike Holdings",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "股票分割生效，無基本面變化。"
+            }
+          ],
+          "market_view": "美國股指期貨漲跌互見，原油下跌、黃金上漲，顯示市場在就業數據公布前態度謹慎。",
+          "action_view": "",
+          "notable_quote": "Sam Altman, the chief executive of the chat GPT maker, has argued that giving the public a financial stake in the company is the best way to share the upside of AI."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72777346",
         "title": "Meta eyes AI cloud business",
@@ -4153,72 +4164,6 @@
           "notable_quote": "MU reported fiscal third-quarter results and guidance that topped Wall Street's expectations by a wide margin."
         },
         "shown_at": "2026-06-25T23:12:20Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72676479",
-        "title": "Wendy's, Jack in the Box get meme stock love",
-        "published": "Wed, 24 Jun 2026 18:03:10 +0000",
-        "processed_at": "2026-06-24T21:12:24Z",
-        "digest": {
-          "summary_points": [
-            "溫蒂漢堡股價飆漲超過25%，因成為WallStreetBets炒作目標，受高空單餘額及僅10億美元市值驅動。",
-            "Jack in the Box大漲15%，創近五年最大單日漲幅，空頭回補推動，放空比率約33%。",
-            "赫茲租車暴跌30%，因宣布1億美元股票發行及3億美元債券發行。",
-            "聯邦快遞雖獲利優於預期但股價下跌，2026年會計年度每股盈餘財測1690-1810美元，高標僅略高於共識1809美元。",
-            "Take-Two Interactive股價波動，Rockstar確認《俠盜獵車手6》6月25日開放預購，售價79.99美元。",
-            "Adobe公布亞馬遜Prime Day首日線上消費年增5.3%至83億美元。",
-            "SK海力士計畫在納斯達克以294億美元掛牌，代號SKHY，7月10日開始交易。",
-            "Pantheon Macro指出世界盃未顯著提振美國經濟活動，6月採購經理人指數顯示動能減弱。"
-          ],
-          "tickers": [
-            {
-              "name": "Wendy's",
-              "code": "WEN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因社群媒體熱潮及高空單餘額，股價飆漲逾25%。"
-            },
-            {
-              "name": "Jack in the Box",
-              "code": "JACK",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "空頭回補推動，股價上漲15%，創近五年最佳單日表現。"
-            },
-            {
-              "name": "Hertz",
-              "code": "HTZ",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因宣布股票及債券發行，股價暴跌30%。"
-            },
-            {
-              "name": "FedEx",
-              "code": "FDX",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "儘管獲利優於預期，但財測疲弱，股價下跌。"
-            },
-            {
-              "name": "Take-Two Interactive",
-              "code": "TTWO",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "因《俠盜獵車手6》預購消息公布，股價波動。"
-            },
-            {
-              "name": "SK Hynix",
-              "code": "SKHY",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "計畫在美國上市，但未提供明確方向看法。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Wendy's is currently sitting on $6. Ouch!"
-        },
-        "shown_at": "2026-06-24T23:05:02Z"
       }
     ]
   },

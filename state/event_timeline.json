@@ -1,26 +1,32 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 18,
-  "last_seen": "2026-07-02",
-  "latest_title": "原油供應過剩跡象增　國際油價下跌"
+  "days": 19,
+  "last_seen": "2026-07-03",
+  "latest_title": "Warsh Using Strategic Ambiguity: Diczok"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 9,
-  "last_seen": "2026-07-01",
-  "latest_title": "US, China should de-escalate from tit-for-tat actions, US lawmaker says"
- },
- "litigation:2881": {
-  "first_seen": "2026-06-29",
-  "days": 1,
-  "last_seen": "2026-06-29",
-  "latest_title": "2881 富邦金- 【美股動態】2.5億結案沒用，波克夏房仲子公司再吃反壟斷訴訟- 股市爆料同學會 - CMoney"
+  "days": 10,
+  "last_seen": "2026-07-03",
+  "latest_title": "中國對日本軍工管制升級：面對稀土牌，高市早苗如何應對？"
  },
  "litigation:MU": {
   "first_seen": "2026-06-30",
   "days": 1,
   "last_seen": "2026-06-30",
   "latest_title": "記憶體飆天價引眾怒！三星、SK 海力士與美光面臨美國反壟斷訴訟 - TechNews 科技新報"
+ },
+ "litigation:": {
+  "first_seen": "2026-07-03",
+  "days": 1,
+  "last_seen": "2026-07-03",
+  "latest_title": "陸動力電池業組智財專利池"
+ },
+ "geopolitical:2603": {
+  "first_seen": "2026-07-03",
+  "days": 1,
+  "last_seen": "2026-07-03",
+  "latest_title": "油價已恢復至美伊戰爭前水準 富邦金：全球經濟5成機率軟著陸 - 知新聞"
  }
 }

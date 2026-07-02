@@ -1283,6 +1283,59 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "71dc7fca-30b3-4e4c-87e7-76a7fd9511d7",
+        "title": "EP316. Claude Sonnet 5、Meta 也要賣算力、PLTR 合作 NVDA | M觀點",
+        "published": "Thu, 02 Jul 2026 16:42:42 GMT",
+        "processed_at": "2026-07-02T21:36:33Z",
+        "digest": {
+          "summary_points": [
+            "Anthropic推出Cloud Sonnet 5中階模型，性能逼近Opus 4.8，價格僅其六成，可能提升中階模型CP值，影響AI應用市場。",
+            "Meta傳出啟動Meta Compute專案，打算出租閒置AI算力，帶動股價大漲，但引發市場對算力過剩擔憂，光通訊、記憶體等AI基建股下跌。",
+            "Palantir與NVIDIA合作推出Intelligence Engine，協助企業在私有環境中訓練模型，有望搶佔企業級AI市場。",
+            "Palantir CEO批評OpenAI及Anthropic的Token收費模式，認為企業應掌握控制層而非依賴前沿模型，此論點可能影響AI投資佈局。",
+            "主持人賣出英特爾持股，暗示對其前景轉趨保守，但未透露新投資標的。",
+            "AI Agent技術進步可能削弱NVIDIA CUDA護城河，加速競爭對手如AMD的採用，長期風險浮現。",
+            "主持人認為Meta出租算力是資產活化，不代表退出AI競賽，長線仍看好其AI投資。",
+            "三大公有雲業者（AWS、GCP、Azure）仍表示AI算力供不應求，市場短期對閒置算力過剩的擔憂可能過度。",
+            "2026年第三季中階AI模型競爭加劇，Google Gemline 3.5 Pro、Grok 4.5等將推出，AI進步速度加快，可能影響相關公司估值。",
+            "主持人先前即預測Meta將出租算力，如今成真，顯示其對產業趨勢掌握，並認為市場反應慢半拍。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "出租閒置算力可創造營收，顯示AI投資有彈性，非認輸。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與NVIDIA合作推出企業AI引擎，控制層路線正確，有望受益於私有AI需求。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "AI Agent可能削弱CUDA護城河，但算力需求仍強，短期影響不明。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人賣出英特爾持股，可能看壞前景。"
+            }
+          ],
+          "market_view": "主持人認為AI算力需求仍然強勁，市場對閒置算力釋出的擔憂可能過度，長線看好AI基礎設施投資。",
+          "action_view": "賣出英特爾持股，轉向其他更具成長潛力的投資標的；對AI基礎設施股下跌採觀望或逢低布局策略。",
+          "notable_quote": "我告訴你，Meta出租算力不是認輸，這很合理。"
+        }
+      },
+      {
         "guid": "05dbfcf7-a0b7-4e78-ac2e-a172c51cd27e",
         "title": "EP315. GPT-5.6 限定推出、蘋果漲價被罵翻、Meta 新智能眼鏡 | M觀點",
         "published": "Mon, 29 Jun 2026 07:13:40 GMT",

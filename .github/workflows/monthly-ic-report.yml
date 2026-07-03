@@ -1,0 +1,39 @@
+name: Monthly IC Report
+
+# 每月產出因子 IC / 計分方案回測報告(讀 repo 內 state/model_history.json,純離線、不寄信)。
+# 目的:讓使用者不用等 session,自己就能看因子成熟度;累積夠月數後據此提「權重變更提案」。
+on:
+  schedule:
+    - cron: "0 2 1 * *"   # 每月 1 日 02:00 UTC(台北 10:00)
+  workflow_dispatch:
+
+permissions:
+  contents: write   # push 回 backtest_data/reports/YYYY-MM.md
+
+concurrency:
+  group: monthly-ic-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # bt_factor_ic / bt_radar_score / monthly_report 皆純標準庫,無需安裝依賴。
+      - name: Generate IC report
+        run: python backtest_data/monthly_report.py
+
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backtest_data/reports/*.md || true
+          git commit -m "chore(report): 月度因子 IC 報告 [skip ci]" || echo "no changes to commit"
+          git push || echo "push skipped"

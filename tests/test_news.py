@@ -426,3 +426,26 @@ def test_mask_malformed_numbers():
     assert mr._mask_malformed_numbers("市值 12,345,678 元、股價 1,234 元") == "市值 12,345,678 元、股價 1,234 元"
     assert mr._mask_malformed_numbers("EPS 22.08") == "EPS 22.08"
     assert mr._mask_malformed_numbers("no commas here") == "no commas here"
+
+
+def test_rss_content_cache_dedups_same_url(monkeypatch):
+    """N5:同一 URL 一個 run 只抓一次(內容快取);不同 URL 各抓一次。"""
+    calls = {"n": 0}
+
+    class _R:
+        status_code = 200
+        content = b"<rss><channel><item><title>x</title></item></channel></rss>"
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url, **kw):
+        calls["n"] += 1
+        return _R()
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    mr._feedparser_parse_url_with_timeout("https://news.example/A")
+    mr._feedparser_parse_url_with_timeout("https://news.example/A")   # 命中快取、不再抓
+    assert calls["n"] == 1
+    mr._feedparser_parse_url_with_timeout("https://news.example/B")   # 不同 URL
+    assert calls["n"] == 2

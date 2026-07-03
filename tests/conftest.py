@@ -25,10 +25,12 @@ def _reset_twse_stock_day_all_cache(monkeypatch):
     重試退避在測試中歸零,避免失敗路徑測試慢 10 倍。"""
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)
+    mr._RSS_CONTENT_CACHE.clear()   # N5:RSS 內容快取也必須測試間清空,避免跨測試污染
     monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
     yield
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)
+    mr._RSS_CONTENT_CACHE.clear()
 
 
 def _bdays(n: int, start: str = "2026-01-05"):

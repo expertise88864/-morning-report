@@ -4804,20 +4804,29 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
     return response
 
 
+_RSS_CONTENT_CACHE: dict = {}   # N5:同一 run 內同一 RSS URL 只抓一次(內容位元組快取);測試間由 conftest 清空
+
+
 def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
-    """Fetch RSS with a real requests timeout, then parse bytes locally."""
-    response = _http_get(
-        url,
-        timeout=timeout,
-        headers={
-            "User-Agent": _OFFICIAL_HTTP_HEADERS["User-Agent"],
-            "Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"],
-        },
-    )
-    response.raise_for_status()
-    content = getattr(response, "content", None)
+    """Fetch RSS with a real requests timeout, then parse bytes locally.
+    N5:同一 run 內同一 URL 的內容只抓一次(快取位元組、每次仍重新 parse 給獨立物件,
+    避免呼叫端共用可變 feed 物件),減少重複的 Google News RSS 請求。"""
+    content = _RSS_CONTENT_CACHE.get(url)
     if content is None:
-        content = str(getattr(response, "text", "")).encode("utf-8")
+        response = _http_get(
+            url,
+            timeout=timeout,
+            headers={
+                "User-Agent": _OFFICIAL_HTTP_HEADERS["User-Agent"],
+                "Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"],
+            },
+        )
+        response.raise_for_status()
+        content = getattr(response, "content", None)
+        if content is None:
+            content = str(getattr(response, "text", "")).encode("utf-8")
+        if content:                       # 成功且非空才快取;失敗(例外)不快取、下次重試
+            _RSS_CONTENT_CACHE[url] = content
     return feedparser.parse(content)
 
 

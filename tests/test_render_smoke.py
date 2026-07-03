@@ -40,10 +40,8 @@ def _fixture():
     return quotes, fair, predictions, analysis
 
 
-def test_render_html_smoke_has_core_sections(monkeypatch):
-    # render_html 的 Top5 段會呼叫 _finmind_top5_extras(live FinMind HTTP)→ stub 成無網路,
-    # 讓本測試純離線、快速、非 flaky
-    monkeypatch.setattr(mr, "_finmind_top5_extras", lambda codes: {})
+def test_render_html_smoke_has_core_sections():
+    # render_html 已改為純渲染(不做 live HTTP:Top5 的 FinMind 補值移到 main 抓取階段)→ 本測試天然無網路
     quotes, fair, predictions, analysis = _fixture()
     html = mr.render_html(quotes, fair, predictions, analysis, "2026-07-03", "daily")
     assert isinstance(html, str) and len(html) > 2000          # 端到端有產出

@@ -13175,16 +13175,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         scored = _rank_attention_candidates(universe_snapshot)
         top5 = scored[:5]
         if top5:
-            # Top5 補 FinMind EPS 年增率 + 外資持股(教育用途、僅 5 檔、失敗略過不影響晨報)
-            try:
-                _fm_extras = _finmind_top5_extras(
-                    [str(s.get("code", "")) for s in top5],
-                    prices={str(s.get("code", "")): s.get("close") for s in top5})
-            except Exception:
-                _fm_extras = {}
+            # FinMind 補值(EPS年增/外資持股)已於 main 抓取階段併入 snapshot;render 只讀不抓(避免寄信前 live HTTP)
             rows_html = []
             for rank, s in enumerate(top5, 1):
-                s.update(_fm_extras.get(str(s.get("code", "")), {}))
                 sm = s.get("smart_money") or {}
                 score = s.get("ranking_score", s.get(
                     "attention_score", (s.get("breakout") or {}).get("score", 0)))
@@ -14882,6 +14875,18 @@ def main() -> int:
     # 把 universe snapshot 也塞進 quotes,讓 render_html 可以畫「籌碼悄悄站隊 Top 10」
     quotes["TW_UNIVERSE_SNAPSHOT"] = tw0050
     quotes["BREADTH"] = breadth
+    # Top5 的 FinMind 補值(EPS年增/外資持股)在此(渲染前、抓取階段)先做,
+    # 避免 render_html 於寄信前才同步打 FinMind live HTTP(慢會拖到寄信)。失敗略過不影響晨報。
+    try:
+        _top5 = _rank_attention_candidates(tw0050)[:5]
+        if _top5:
+            _fm5 = _finmind_top5_extras(
+                [str(s.get("code", "")) for s in _top5],
+                prices={str(s.get("code", "")): s.get("close") for s in _top5})
+            for _s in _top5:
+                _s.update(_fm5.get(str(_s.get("code", "")), {}))
+    except Exception as e:
+        print(f"[main] Top5 FinMind 補值略過: {e}", file=sys.stderr)
 
     # 6.65 個人持股「昨日帳上漲跌」(用 前天收盤 vs 昨天收盤,非預測)
     #      隱私:只算彙總 % + 金額,不揭露任何個股明細。

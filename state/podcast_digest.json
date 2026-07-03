@@ -441,6 +441,38 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2352246479",
+        "title": "2026/7/3(五)川普晶圓夢 又點台積電?非農降溫 通膨下得去?【早晨財經速解讀】",
+        "published": "Fri, 03 Jul 2026 01:10:14 +0000",
+        "processed_at": "2026-07-03T06:02:26Z",
+        "digest": {
+          "summary_points": [
+            "費半過去14個月滾動報酬達237%，超越2000年網路泡沫時期，但因獲利快速增長、本益比相對低，並無明顯泡沫。",
+            "美股資金輪動：道瓊創收盤新高，科技股為主的納斯達克與費半下跌，費半單日跌5.44%，短線可能測試平台下緣。",
+            "二季度資產表現分化：費半單季上漲88%、南韓64%，同創紀錄；布蘭特原油跌38.4%、黃金跌14.1%、白銀跌22%、比特幣跌14%，商品與避險資產遭資金撤出。",
+            "川普宣稱台積電將倍增亞利桑那廠規模，目標美國先進晶片市占率50%，但以建廠進度而言，2028年前極難達成，實為中期選舉拉票。",
+            "投審會核准台積電增資美國子公司200億美元，今年累計海外資金調度核准突破500億美元創紀錄，顯示美台半導體供應鏈整合加速。",
+            "美國80% AI資料中心設備仰賴進口，台灣2025年供應860億美元伺服器，掌握先進邏輯晶片產能60%，但AI高耗電引發社會反對，川普改邀功台積電而非資料中心建設。",
+            "美國6月非農新增就業5.7萬人低於預期，但失業率降至4.2%，顯示就業市場依然缺工，降低市場升息擔憂。",
+            "台灣5月失業率3.27%創本世紀新低，全台26.3萬個職位空缺，餐飲業求供比逾4倍，缺工帶動軍公教明年調薪4%。",
+            "日本5月失業率2.5%接近充分就業，但日圓大貶導致實質薪資仍在負增長，購買力受創，經濟復甦壓力大。",
+            "主持人提醒資產配置應著眼長期，勿因短期價格波動恐慌，因經濟體成長最終將反映在資產價值上。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "川普政策難撼動台積電在台灣的主導地位，美國增資反強化其營收貢獻，長期仍看好。"
+            }
+          ],
+          "market_view": "大盤資金輪動，科技股短期面臨修正壓力但無泡沫，長期仍受AI生產力推動；就業市場穩固支撐經濟，但須注意消費兩極化。",
+          "action_view": "進行資產配置應著眼長期，勿因短期價格波動而恐慌拋售，回歸經濟成長本質。",
+          "notable_quote": "巴菲特說過，其實投資久了，最後還是在賭國運。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2351500346",
         "title": "2026/7/2(四)AI投資進挑選時代 不再閉眼買就會漲?【早晨財經速解讀】",
         "published": "Thu, 02 Jul 2026 01:07:55 +0000",
@@ -1076,49 +1108,41 @@
           "notable_quote": "買股票靠的是判斷力，持有股票靠的是忍耐力，最終考驗的是記憶力。"
         },
         "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2340159440",
-        "title": "2026/6/16(二)美股上太空!這次漲去哪?AI副作用出現 誰能駕馭新技術?【早晨財經速解讀】",
-        "published": "Tue, 16 Jun 2026 01:06:00 +0000",
-        "processed_at": "2026-06-16T22:39:34Z",
-        "digest": {
-          "summary_points": [
-            "美伊停火預計週五於瑞士簽署，河姆茲海峽可望重開，原油價格持穩每桶80美元，若跌破恐形成M頭。",
-            "高盛預估中東協議執行後，美國汽油價格有機會在7月4日前降至每加侖3.75美元，有利第三季通膨降溫。",
-            "美國放鬆制裁後，委內瑞拉5月原油出口創7年新高，達每日125萬桶，美國每日進口55.8萬桶。",
-            "費城半導體指數大漲5.45%創歷史新高，美光漲近10%，輝達、博通、台積電ADR等同步上漲。",
-            "SpaceX上市連兩日大漲19%與19.6%，市值已超越台積電，AI相關IPO造夢行情吸引資金集中半導體與科技股。",
-            "華爾街銀行開始提高避險基金做多AI股的融資成本，部分交易成本達15%至30%，限縮槓桿額度以防止估值無限擴張。",
-            "企業轉向低成本AI模型，OpenAI考慮大幅降價留住客戶，AI市場進入價格戰階段，不再只追求最強性能。",
-            "瑞穎報告指出全球信貸脈衝佔GDP比重回升至1.3%為十年新高，55%來自企業貸款，由大型公司興建資料中心驅動。",
-            "輝達發行250億美元投資等級債，為近年首度發債，加上亞馬遜、Meta等科技巨頭大舉發債，AI軍備競賽持續。",
-            "韓國股市本益比僅8至9倍，市值膨脹至4.4兆美元，6月23日MSCI分類總檢討可能從新興市場升為已開發市場，吸引被動資金。",
-            "印尼可能因外資流出130億美元及經濟治理爭議，從新興市場降級為邊境市場，為近年最大流出規模。",
-            "亞洲開發銀行提供15國40億美元緊急貸款，亞太經濟成長率由5.1%下修至4.7%，衝擊菲律賓、印度、孟加拉等國。",
-            "市場心理出現利空鈍化，投資人經歷多次利空後傾向低接或不拋售，導致股市回檔幅度有限。",
-            "美國勞工薪資佔經濟比重降至51%，企業利潤佔比升至12%，財富集中可能引發對科技富豪加稅的討論。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO上市連兩日大漲19%與19.6%，市值快速膨脹超越台積電，造夢行情吸引資金追捧。"
-            }
-          ],
-          "market_view": "市場對利空反應鈍化，中東停火與IPO造夢行情推升短期創高，但需留意銀行限縮槓桿與AI估值壓力。",
-          "action_view": "",
-          "notable_quote": "歷史會重複，但不一定每一次都會同樣的事件重複發生，歷史能夠重複的，大概就是押韻，道理和周期是不會改變的，但是下一次的利空，大概還是有很多人會被嚇到被嚇跑的。"
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
       }
     ]
   },
   "statementdog": {
     "name": "財報狗",
     "episodes": [
+      {
+        "guid": "cmr3qqy160e9f01v96f8l6jbq",
+        "title": "536.【財經時事放大鏡】玻璃橋 x Meta 有一批算力好便宜",
+        "published": "Thu, 02 Jul 2026 23:02:07 GMT",
+        "processed_at": "2026-07-03T06:34:55Z",
+        "digest": {
+          "summary_points": [
+            "康寧推出 Glass Bridge 技術，採用被動對位，可能衝擊光通訊 FAU 供應鏈。",
+            "FAU 為光纖陣列單元，對位耗時且複雜，Glass Bridge 號稱被動對位可大幅節省時間。",
+            "Glass Bridge 成本與量產導入仍不明朗，需觀察生態系（尤其是台積電陣營）是否採用。",
+            "Glass Bridge 對多排數高階應用較具優勢，低排數市場 FAU 仍有存在空間。",
+            "市場解讀 Glass Bridge 將衝擊光通訊族群，導致相關個股下跌，部分可能錯殺。",
+            "Meta 計畫將多餘 AI 算力出租，提供雲服務，引發市場對「AI 算力過剩」的擔憂。",
+            "SKY 認為 Meta 此舉合理：可將舊晶片（如 H100）出租，新晶片（如 Blackwell）用於訓練模型，且 Meta 原本缺乏雲服務欲拓展。",
+            "從零組件漲價、租賃指數短期波動、AI Agent 滲透率仍低等跡象，判斷整體算力過剩可能性低。",
+            "AI Agent（如 Codex）在企業端使用率快速攀升，但整體滲透率仍低，需求才剛起步。",
+            "Meta 的 CAPEX 佔營收比重最高，推出雲服務可回收部分投資，並非需求下降訊號。",
+            "其他 CSP 的積壓訂單仍高，顯示市場對算力需求依然強勁。",
+            "Glass Bridge 技術仍待一兩代商用驗證，短期對產業實際影響有限。",
+            "光通訊產業仍處早期階段，FAU 供應商需評估新競爭，但整體需求成長趨勢不變。",
+            "投資操作上，可尋找因消息錯殺、具實質成長性的光通訊或 AI 相關標的。",
+            "從 EUV 晶片數量推算，算力供給短期內難過剩，長期需觀察滲透率提升速度。"
+          ],
+          "tickers": [],
+          "market_view": "AI 需求仍處早期滲透階段，算力過剩擔憂過度；光通訊面臨技術競爭，但實際影響有待觀察。",
+          "action_view": "可關注因消息錯殺、實際成長性佳的標的，在估值合理時布局。",
+          "notable_quote": "這個時間到現在才兩季而已吧，這個滲透率這麼低要崩，太快了吧。"
+        }
+      },
       {
         "guid": "cmqtpnn1k0a9l01xee1ow5y7e",
         "title": "535.【財經時事放大鏡】CoPoS x Glass core",
@@ -3065,6 +3089,33 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "d6f17b7c-7658-11f1-8c38-27fd7676c39c",
+        "title": "Why a Hot U.S. Job Market Cooled in June",
+        "published": "Thu, 02 Jul 2026 20:56:00 -0000",
+        "processed_at": "2026-07-03T06:39:22Z",
+        "digest": {
+          "summary_points": [
+            "美國6月非農就業僅增加5.7萬人，遠低於預期，且前兩個月數據大幅下修。",
+            "失業率降至4.2%，但勞動參與率下降70萬人，主因嬰兒潮退休與移民減少；休閒餐旅業流失6萬個工作。",
+            "就業報告疲軟使市場預期聯準會7月升息機率從30%降至20%。",
+            "特斯拉第二季銷量年增25%，但股價單日大跌7.5%，公司正轉向自駕計程車與人形機器人。",
+            "德國政府公布34項經濟改革措施，包含減稅、放寬勞動法規，以提振受中國製造與關稅打擊的經濟。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "銷量季增但股價重挫，公司轉型至自駕計程車與人形機器人，尚未貢獻營收。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The softer June jobs report made investors think that the Fed is less likely to raise interest rates at its meeting later this month."
+        }
+      },
+      {
         "guid": "04f9d32e-7600-11f1-acf4-3be443849e6f",
         "title": "Is There Already Too Much AI Computing Power?",
         "published": "Thu, 02 Jul 2026 10:18:00 -0000",
@@ -3460,57 +3511,84 @@
           "notable_quote": "The only thing that I could really think of at the moment that would seem certain to bring down mortgage rates would be a severe economic slowdown or recession."
         },
         "shown_at": "2026-06-26T23:04:32Z"
-      },
-      {
-        "guid": "75616ca2-70d9-11f1-a76e-f715287b5094",
-        "title": "With Homeownership Out of Reach, Some Are Choosing to Rent Forever",
-        "published": "Thu, 25 Jun 2026 21:03:00 -0000",
-        "processed_at": "2026-06-25T21:15:37Z",
-        "digest": {
-          "summary_points": [
-            "美光科技股價飆升近16%，受惠於優異的財報表現。",
-            "蘋果股價下跌逾6%，因宣布調漲Mac和iPad產品價格。",
-            "美國最高法院裁定拜耳無需就Roundup除草劑致癌風險向消費者提出警告，拜耳股價大漲約19%。",
-            "美國5月個人消費支出(PCE)物價指數年增4.1%，創2023年4月以來新高。",
-            "原油期貨上漲約2%，暫緩近期跌勢，市場關注伊朗局勢。",
-            "摩根大通任命Doug Petno和Troy Roarbaugh為總裁，為執行長繼任鋪路，預計Jamie Dimon將再留任三年。",
-            "美國最高法院判決允許川普政府對人道主義臨時保護身分(TPS)移民撤銷保護，影響約35萬海地移民及6千敘利亞移民。",
-            "最高法院同時允許邊境官員拒絕庇護申請者入境，擴大川普移民政策權力。"
-          ],
-          "tickers": [
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報表現傑出，股價大幅上漲。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "產品漲價導致股價下跌。"
-            },
-            {
-              "name": "拜耳",
-              "code": "BAYRY",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "最高法院裁定免除Roundup致癌警告責任，股價大漲。"
-            }
-          ],
-          "market_view": "美國股市漲跌互見，道瓊指數微漲0.1%，標普500持平，那斯達克指數因AI支出疑慮下跌約0.5%。",
-          "action_view": "",
-          "notable_quote": "A Bayer spokesperson said the decision was, 'good for science, farmers and industries that depend on regulatory clarity for innovation.'"
-        },
-        "shown_at": "2026-06-25T23:12:20Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72795127",
+        "title": "June job growth falters",
+        "published": "Thu, 02 Jul 2026 21:22:48 +0000",
+        "processed_at": "2026-07-03T06:37:03Z",
+        "digest": {
+          "summary_points": [
+            "6月非農就業人數增加5.7萬，遠低於市場預期11.4萬，且較5月的12.9萬大幅下滑。",
+            "失業率意外降至4.2%，但勞動參與率下滑至61.5%，顯示部分降幅來自勞動力減少。",
+            "平均時薪月增0.3%、年增3.5%，符合預期，薪資增長穩定。",
+            "貝萊德首席投資官Rick Reiter表示，非農整體趨勢仍穩健，但AI長期可能限制相關產業就業。",
+            "記憶體晶片股普遍承壓，韓國KOSPI指數重挫約8%，SK海力士暴跌近15%，三星電子跌約9%。",
+            "美光科技、Sandisk及威騰電子等記憶體個股同步走低，市場擔憂需求放緩。",
+            "蘋果計劃在2025年下半年至2027年上半年推出至少五款新機，其中折疊機數量高於預期。",
+            "Genuine Parts股價大漲，因傳O'Reilly Automotive以現金收購其汽車零件業務，估值可能達100億美元以上。"
+          ],
+          "tickers": [
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價暴跌近15%，記憶體產業前景疑慮。"
+            },
+            {
+              "name": "三星電子",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價下跌約9%，受記憶體族群拖累。"
+            },
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "記憶體晶片股持續受壓。"
+            },
+            {
+              "name": "威騰電子",
+              "code": "WDC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "記憶體相關個股普遍下跌。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "計劃擴大iPhone產線並增加折疊機數量，顯示積極擴張。"
+            },
+            {
+              "name": "Genuine Parts",
+              "code": "GPC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "傳O'Reilly Automotive以現金收購其汽車零件業務，股價大漲。"
+            },
+            {
+              "name": "O'Reilly Automotive",
+              "code": "ORLY",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "傳出收購Genuine Parts汽車零件業務，但尚未確認。"
+            }
+          ],
+          "market_view": "非農就業數據不如預期，但貝萊德認為整體趨勢仍穩健，AI長期可能抑制就業但利好生產力。",
+          "action_view": "",
+          "notable_quote": "BlackRock Chief Investment Officer Rick Reiter said that while the headline payroll figure missed expectations, the trend continued to look solid and stable relative to the more volatile data from the early part of the year and weaker figures seen in late 2025."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72788185",
         "title": "EU locks in Google fine",
@@ -4175,56 +4253,6 @@
           "notable_quote": "Heather Long, chief economist at Navy Federal Credit Union, said consumer spending remains the backbone of the US economy and that while the anemic 0.5% growth figure should rebound in Q2, it's worth watching closely."
         },
         "shown_at": "2026-06-25T23:12:20Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72686697",
-        "title": "Memory lane runs higher",
-        "published": "Thu, 25 Jun 2026 11:01:52 +0000",
-        "processed_at": "2026-06-25T16:02:08Z",
-        "digest": {
-          "summary_points": [
-            "Micron (MU) 公布第三季度財報與展望，均大幅優於華爾街預期，盤前股價上漲17%。",
-            "SK Hynix 計劃通過美國 ADR 上市籌資最多294億美元，用於擴充AI記憶體晶片產能。",
-            "Roundhill Memory ETF (DRAM) 因Micron財報優於預期與SK Hynix上市消息，盤前上漲逾12%，自4月2日上市以來已漲近152%。",
-            "Samsung、SK Hynix 與 Micron 合計佔DRAM ETF約75%的投資組合。",
-            "阿里巴巴 (BABA) 因被指控非法存取Anthropic的AI模型，港股跌至16個月新低，跌幅達4.9%，今年以來累跌33%。",
-            "高通 (QCOM) 在投資者日宣布，預估到2029會計年度數據中心營收將達150億美元，股價上漲。"
-          ],
-          "tickers": [
-            {
-              "name": "Micron Technology",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報與展望優於預期，盤前大漲。"
-            },
-            {
-              "name": "Roundhill Memory ETF",
-              "code": "DRAM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因Micron財報與SK Hynix上市消息，盤前上漲逾12%。"
-            },
-            {
-              "name": "Alibaba Group",
-              "code": "BABA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "被指控非法存取Anthropic的AI模型，股價下跌。"
-            },
-            {
-              "name": "Qualcomm",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "投資者日宣布2029年數據中心營收目標，股價上漲。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "MU reported fiscal third-quarter results and guidance that topped Wall Street's expectations by a wide margin."
-        },
-        "shown_at": "2026-06-25T23:12:20Z"
       }
     ]
   },
@@ -4825,6 +4853,42 @@
     "name": "科技報橘",
     "episodes": [
       {
+        "guid": "a583ae55-c120-4f6d-9b69-73b293a0f7e5",
+        "title": "科技早餐 7/3｜川普再點名台積電，亞利桑那成美國晶片戰焦點",
+        "published": "Thu, 02 Jul 2026 21:30:00 GMT",
+        "processed_at": "2026-07-03T06:36:12Z",
+        "digest": {
+          "summary_points": [
+            "台積電在亞利桑那投資從650億美元追加至1000億美元，新增三座晶圓廠、兩座先進封裝廠及一個研發中心，被美國納入AI晶片自主供應鏈。",
+            "美國政府正與AI企業協商制定前沿AI模型的測試、發布與存取準則，最快下週公布，旨在防止模型被中國、俄羅斯用於軍事用途。",
+            "OpenAI執行長Sam Altman提議將5%股權交給美國政府，由類似阿拉斯加永久基金的機構持有，讓民眾分享AI產業成長利益。",
+            "Meta正規劃成立雲端基礎設施業務，提供AI模型付費服務或出租GPU算力，挑戰AWS、微軟、Google Cloud的雲端市場主導地位。",
+            "微軟等六家公司計劃新建一條3600公里長的海底電纜，連接印度、馬來西亞、新加坡，支援AI與雲端運算需求，預計2029年啟用。",
+            "日本政府啟動八項印太通訊基礎建設計畫，涵蓋海底電纜、衛星通訊與高速光通訊，強化AI時代的數位基礎設施與經濟安全。",
+            "川普表示台灣正在擴大亞利桑那晶圓廠規模，有助於美國晶片市佔率在任期結束前提高到50%，台積電不予評論。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "台積電在美投資大幅擴張，納入美國AI晶片自主供應鏈，長期需求看好。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Meta規劃將多餘AI算力轉為雲端收費服務，開拓新營收來源。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "台積電在美國的布局已經不只是單一海外廠，而是被美國政府放進AI晶片自主供應鏈裡的重要蓄勢力。"
+        }
+      },
+      {
         "guid": "f8f62bf6-89f8-46ba-8f72-dc197688ea35",
         "title": "科技早餐 7/2｜Anthropic 模型解禁，美國 AI 審查卡到產品上線",
         "published": "Wed, 01 Jul 2026 21:30:00 GMT",
@@ -5271,57 +5335,6 @@
           "notable_quote": "全球的底級資本對於AI底層架構跟順利高度的重視不言而喻。"
         },
         "shown_at": "2026-06-22T01:50:33Z"
-      },
-      {
-        "guid": "fd32cf91-d9a2-4b7d-bb76-6d194f193c51",
-        "title": "科技早餐 6/18｜Microsoft 評估 DeepSeek 進 Copilot，企業 AI 成本戰開打",
-        "published": "Wed, 17 Jun 2026 21:30:00 GMT",
-        "processed_at": "2026-06-18T12:14:45Z",
-        "digest": {
-          "summary_points": [
-            "微軟正評估將中國AI新創DeepSync的模型納入Co-Pilot，作為低成本選項，企業AI服務可能轉向按算力消耗計費。",
-            "DeepSync首輪融資超74億美元，估值超500億美元，成為中國估值最高AI新創，美國政府暫緩將其列入實體清單。",
-            "ChatGPT全球AI助理月活躍用戶市佔率降至46.4%（首度跌破50%），月活躍用戶約11億；Google Gemini約6.62億、Anthropic約2.45億。",
-            "企業AI訂閱支出方面，Anthropic在5月佔比升至41%，首次超越OpenAI的39.5%，主因Claude Code等開發工具企業採用增加。",
-            "SpaceX宣布以600億美元全股票交易收購AI開發工具Curseer母公司，交易預計2026年第三季完成。",
-            "英特爾宣布18AP先進製程進入風險量產，相較18A可提升9%效能或降低18%功耗，且相容設計規則，目標搶進晶圓代工市場。",
-            "黃仁勳表示AI需新社會規範，鼓勵使用AI，並指出AI資料中心需龐大能源，美國需投入更多能源。"
-          ],
-          "tickers": [
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "評估納入DeepSync模型，企業AI成本壓力升高，多模型策略調整。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Gemini用戶市佔率第二，但未提及具體影響。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "18AP製程進入風險量產，有望搶進晶圓代工，但量產仍有不確定性。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "黃仁勳談AI能源需求與社會規範，未直接評論公司前景。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
       }
     ]
   },

@@ -715,42 +715,66 @@ def fetch_sec_filings() -> list[dict]:
     return filings
 
 
+def _mops_roc_datetime(roc_date, hhmmss):
+    """MOPS 民國發言日期(yyyymmdd)+ 發言時間(HHMMSS,可能省略前導 0)→ 台北時區 datetime;失敗回 None。"""
+    s = str(roc_date or "").strip()
+    if len(s) != 7 or not s.isdigit():
+        return None
+    try:
+        t = str(hhmmss or "0").strip().zfill(6)[:6]
+        return dt.datetime(int(s[:3]) + 1911, int(s[3:5]), int(s[5:7]),
+                           min(int(t[:2]), 23), min(int(t[2:4]), 59), min(int(t[4:6]), 59),
+                           tzinfo=TPE)
+    except (ValueError, TypeError):
+        return None
+
+
 def fetch_tw_major_announcements(codes: list[str], hours: int = 48) -> list[dict]:
     """
-    抓台股指定公司近 N 小時的「重大訊息」(MOPS 公開資訊觀測站，每家公司一支 RSS)。
-    免費無 API key。個別公司失敗(RSS 端點偶爾不穩)會略過，不影響其他。
+    抓台股指定公司近 N 小時的「重大訊息」。
+    **改用 TWSE OpenAPI 全市場當日重大訊息**(opendata/t187ap04_L,免金鑰、一次取回、再依代號過濾);
+    原每公司 MOPS RSS(t05st01_rss)已於 2026-07 停用(連線重置 / 導回 SPA,實測失效)。
 
-    回傳：[{"code","title","link","published"}, ...] 依時間 desc。整體失敗回 []。
+    回傳:[{"code","title","summary","link","published"}, ...] 依時間 desc。整體失敗回 []。
     """
     if not codes:
         return []
-    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+    want = {str(c).strip() for c in codes}
+    cutoff = dt.datetime.now(TPE) - dt.timedelta(hours=hours)
+    try:
+        data = requests.get(
+            "https://openapi.twse.com.tw/v1/opendata/t187ap04_L",
+            timeout=20, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        ).json() or []
+    except Exception as e:
+        print(f"[mops] OpenAPI t187ap04_L 失敗: {e}", file=sys.stderr)
+        return []
+    if not isinstance(data, list):   # 非預期形狀(錯誤 payload/物件)→ 降級為空,不拋例外
+        print(f"[mops] t187ap04_L 回傳非清單({type(data).__name__}),略過", file=sys.stderr)
+        return []
     out: list[dict] = []
-    for code in codes:
-        try:
-            url = f"https://mops.twse.com.tw/mops/web/t05st01_rss?step=0&co_id={code}"
-            r = requests.get(url, timeout=10,
-                             headers={"User-Agent": "Mozilla/5.0"})
-            if r.status_code != 200 or len(r.text) < 100:
-                continue
-            feed = feedparser.parse(r.text)
-            for entry in feed.entries[:10]:
-                pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub:
-                    pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
-                    if pub_dt < cutoff:
-                        continue
-                out.append({
-                    "code": code,
-                    "title": (entry.get("title", "") or "").strip(),
-                    "link": entry.get("link", ""),
-                    "published": entry.get("published", ""),
-                })
-        except Exception as e:
-            print(f"[mops] {code} 失敗: {e}", file=sys.stderr)
+    for row in data:
+        if not isinstance(row, dict):
             continue
+        code = str(row.get("公司代號", "")).strip()
+        if code not in want:
+            continue
+        pub_dt = _mops_roc_datetime(row.get("發言日期"), row.get("發言時間"))
+        if pub_dt is not None and pub_dt < cutoff:
+            continue
+        # 欄名「主旨 」帶尾空白;清掉換行
+        title = str(row.get("主旨 ") or row.get("主旨") or "").replace("\r", "").replace("\n", " ").strip()
+        if not title:
+            continue
+        out.append({
+            "code": code,
+            "title": title,
+            "summary": str(row.get("說明") or "").replace("\r", "").strip()[:600],
+            "link": "https://mops.twse.com.tw/mops/#/web/t05st01",
+            "published": pub_dt.isoformat() if pub_dt else "",
+        })
     out.sort(key=lambda x: x.get("published", ""), reverse=True)
-    print(f"[mops] 取得 {len(out)} 筆台股重大訊息（{len(codes)} 家公司）")
+    print(f"[mops] 取得 {len(out)} 筆台股重大訊息（OpenAPI t187ap04_L,目標 {len(want)} 家）")
     return out
 
 

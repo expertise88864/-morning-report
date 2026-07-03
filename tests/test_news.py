@@ -342,3 +342,37 @@ def test_official_source_entries_accepts_benign_bozo(monkeypatch):
     assert len(out) == 1
     assert stats.get("feed_ok") == 1
     assert not stats.get("errors")     # 良性警告不記為錯誤
+
+
+def test_mops_roc_datetime():
+    """MOPS 民國發言日期+時間 → 台北時區 datetime。"""
+    d = mr._mops_roc_datetime("1150702", "70003")   # 115/07/02 07:00:03
+    assert d is not None and (d.year, d.month, d.day, d.hour) == (2026, 7, 2, 7)
+    assert mr._mops_roc_datetime("", "") is None
+    assert mr._mops_roc_datetime("abc", "1") is None
+
+
+def test_fetch_tw_major_announcements_openapi(monkeypatch):
+    """重大訊息改用 OpenAPI t187ap04_L:依代號過濾、主旨/說明/時間映射、時間 desc。"""
+    rows = [
+        {"公司代號": "2330", "主旨 ": "台積電 公告子公司增資", "說明": "1.事實發生日：...",
+         "發言日期": "1150702", "發言時間": "70003"},
+        {"公司代號": "2454", "主旨 ": "聯發科 董事會決議", "說明": "說明內容",
+         "發言日期": "1150701", "發言時間": "143000"},
+        {"公司代號": "9999", "主旨 ": "非目標公司", "說明": "x",
+         "發言日期": "1150702", "發言時間": "90000"},
+    ]
+
+    class _R:
+        def json(self):
+            return rows
+
+    monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _R())
+    out = mr.fetch_tw_major_announcements(["2330", "2454"], hours=10 ** 7)  # 大窗→不因日期被濾
+    codes = [o["code"] for o in out]
+    assert "2330" in codes and "2454" in codes and "9999" not in codes   # 只留目標公司
+    top = next(o for o in out if o["code"] == "2330")
+    assert top["title"] == "台積電 公告子公司增資"          # 「主旨 」尾空白鍵處理
+    assert top["summary"].startswith("1.事實發生日")        # 說明 → summary
+    assert top["published"].startswith("2026-07-02T07:00")  # 民國+時間 → ISO(可被解析器讀)
+    assert codes.index("2330") < codes.index("2454")         # 時間 desc

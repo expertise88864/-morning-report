@@ -6658,6 +6658,47 @@ def build_source_health_report(snapshot: list[dict],
     }
 
 
+SOURCE_HEALTH_HISTORY_FILE = Path("state/source_health_history.json")
+
+
+def update_source_health_history(report: dict, today: str, keep_days: int = 30) -> list[str]:
+    """把每日各項來源檢查(checks)累積到滾動 30 天歷史,回傳『連續 ≥3 天失敗』的項目清單。
+    純 JSON、任何失敗都不影響晨報(回空清單)。供信尾標註『來源 X 已連續 N 天失敗』。"""
+    checks = (report or {}).get("checks") or {}
+    if not checks or not today:
+        return []
+    hist: list = []
+    try:
+        if SOURCE_HEALTH_HISTORY_FILE.exists():
+            hist = json.loads(SOURCE_HEALTH_HISTORY_FILE.read_text(encoding="utf-8")) or []
+    except Exception:
+        hist = []
+    hist = [h for h in hist if isinstance(h, dict) and h.get("date") != today]
+    hist.append({"date": today, "checks": {k: bool(v) for k, v in checks.items()}})
+    hist.sort(key=lambda h: h.get("date", ""))
+    hist = hist[-keep_days:]
+    try:
+        SOURCE_HEALTH_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SOURCE_HEALTH_HISTORY_FILE.write_text(
+            json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:
+        print(f"[health] 歷史寫入失敗: {e}", file=sys.stderr)
+    # 連續失敗 streak(從最近往回數,遇 True 或缺該檢查即中斷)
+    persistent = []
+    all_names = {name for h in hist for name in (h.get("checks") or {})}
+    for name in sorted(all_names):
+        streak = 0
+        for h in reversed(hist):
+            v = (h.get("checks") or {}).get(name)
+            if v is False:
+                streak += 1
+            else:
+                break
+        if streak >= 3:
+            persistent.append(f"{name}({streak}天)")
+    return persistent
+
+
 def load_model_history() -> list[dict]:
     """讀取 point-in-time 股票池歷史。"""
     if not MODEL_HISTORY_FILE.exists():
@@ -8718,7 +8759,8 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         _git_commit_and_push_state(
             [str(STATE_FILE), str(MODEL_HISTORY_FILE),
              str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
-             str(CONFORMAL_STATE_FILE)],   # conformal 區間校準 q 需跨日持久化才會收斂
+             str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
+             str(SOURCE_HEALTH_HISTORY_FILE)],   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)
@@ -14184,8 +14226,10 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         f"penalty={drift.get('penalty', 0)}・alerts={len(drift.get('alerts') or [])}")
 
     source_health = quotes.get("SOURCE_HEALTH", {}) or {}
+    _persist_fail = source_health.get("persistent_failures") or []
     add("模型來源健康度", source_health.get("status", "fallback"),
-        f"score={source_health.get('score', 0)}・缺失={','.join(source_health.get('failures') or []) or '無'}")
+        f"score={source_health.get('score', 0)}・缺失={','.join(source_health.get('failures') or []) or '無'}"
+        + (f"・⚠連續失敗:{','.join(_persist_fail)}" if _persist_fail else ""))
     awareness_failures = source_health.get("awareness_failures") or []
     add("台灣政策/醫界情報", source_health.get("awareness_status", "fallback"),
         f"awareness-only・缺失={','.join(awareness_failures) or '無'}")
@@ -14767,6 +14811,14 @@ def main() -> int:
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))
+    try:   # N4:滾動 30 天來源健康歷史 → 標記連續失敗的來源(不影響計分)
+        _persist = update_source_health_history(
+            quotes["SOURCE_HEALTH"], now_tpe.strftime("%Y-%m-%d"))
+        if _persist:
+            quotes["SOURCE_HEALTH"]["persistent_failures"] = _persist
+            print(f"[health] 連續失敗來源: {', '.join(_persist)}", file=sys.stderr)
+    except Exception as e:
+        print(f"[health] 歷史更新略過: {e}", file=sys.stderr)
     print(f"[main] 事件/來源健康完成 ({time.monotonic()-_ml_t0:.1f}s);跑 walk-forward…")
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(
         model_history, trading_sessions)

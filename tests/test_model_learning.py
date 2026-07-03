@@ -1120,3 +1120,15 @@ def test_finmind_top5_extras_parse(monkeypatch):
     assert out["2330"]["eps_latest"] == 14.0
     assert out["2330"]["eps_yoy_pct"] == 40.0       # (14-10)/10
     assert out["2330"]["foreign_hold_pct"] == 48.0
+
+
+def test_update_source_health_history_flags_persistent(tmp_path, monkeypatch):
+    """N4:連續 ≥3 天失敗的來源要被標記;恢復後 streak 歸零。"""
+    monkeypatch.setattr(mr, "SOURCE_HEALTH_HISTORY_FILE", tmp_path / "shh.json")
+    out = []
+    for d in ("2026-07-01", "2026-07-02", "2026-07-03"):
+        out = mr.update_source_health_history({"checks": {"news": False, "universe": True}}, d)
+    assert "news(3天)" in out                     # news 連 3 天失敗 → 標記
+    assert not any(x.startswith("universe") for x in out)   # universe 一直 OK → 不標記
+    out2 = mr.update_source_health_history({"checks": {"news": True, "universe": True}}, "2026-07-04")
+    assert out2 == []                             # 恢復後 streak 歸零

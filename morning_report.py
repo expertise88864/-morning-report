@@ -12713,6 +12713,25 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
           "「對照」為與本報法人/動能資料的對照,不納入股價模型。</p>")
 
 
+def _mask_malformed_numbers(text: str) -> str:
+    """遮蔽 LLM 產出的畸形千分位數字(如「3,2424」——逗號後接 ≥4 位,絕非合法千分位)。
+    這類多為 LLM 排版幻覺;寧可遮蔽也不留錯誤數字。合法「1,234」「12,345,678」不受影響。"""
+    if not isinstance(text, str) or "," not in text:
+        return text
+    import re as _re
+    pat = _re.compile(r"(?<![\d.])\d{1,3},\d{4,}(?:\.\d+)?")
+    n = {"c": 0}
+
+    def _sub(_m):
+        n["c"] += 1
+        return "(數值異常已略)"
+
+    out = pat.sub(_sub, text)
+    if n["c"]:
+        print(f"[render] 遮蔽 {n['c']} 個畸形數字(LLM 千分位幻覺)", file=sys.stderr)
+    return out
+
+
 def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
     """最後防線:LLM 若把 2330 寫成台積電 ADR 的美元價(約 400-500),用 Python 中樞值改回。
     2330 本地價約數千元(mid);台積電 ADR 美元價 ≈ mid 的 ~19%(約 mid×0.10~0.45 區間)。
@@ -12885,6 +12904,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_for_render = _strip_llm_watchlist_section(analysis)
     # 數字健全性最後防線:把 LLM 誤植的 2330「美元 ADR 價」改回新台幣中樞值
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
+    # 一般畸形數字(如「3,2424」逗號後 4+ 位)全文遮蔽——2330 專用修正管不到的其它段落(如科技脈動目標價)
+    analysis_for_render = _mask_malformed_numbers(analysis_for_render)
     # 敘述-數字交叉驗證(僅記錄):戲劇性漲跌詞與實際幅度不符 → 印警告供監看
     try:
         _drama = _audit_dramatic_macro_claims(analysis_for_render, quotes.get("MACRO") or {})

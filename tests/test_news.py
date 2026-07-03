@@ -416,3 +416,13 @@ def test_http_get_raises_after_exhausting_retries(monkeypatch):
     monkeypatch.setattr(mr.requests, "get", boom)
     with pytest.raises(mr.requests.RequestException):
         mr._http_get("https://x", retries=1)
+
+
+def test_mask_malformed_numbers():
+    """畸形千分位(逗號後 ≥4 位)遮蔽;合法千分位/小數不受影響。"""
+    assert "(數值異常已略)" in mr._mask_malformed_numbers("瑞銀目標價 3,2424 元")
+    assert "3,2424" not in mr._mask_malformed_numbers("目標價 3,2424 元")
+    # 合法數字保留
+    assert mr._mask_malformed_numbers("市值 12,345,678 元、股價 1,234 元") == "市值 12,345,678 元、股價 1,234 元"
+    assert mr._mask_malformed_numbers("EPS 22.08") == "EPS 22.08"
+    assert mr._mask_malformed_numbers("no commas here") == "no commas here"

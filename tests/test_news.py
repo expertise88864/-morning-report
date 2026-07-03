@@ -376,3 +376,43 @@ def test_fetch_tw_major_announcements_openapi(monkeypatch):
     assert top["summary"].startswith("1.事實發生日")        # 說明 → summary
     assert top["published"].startswith("2026-07-02T07:00")  # 民國+時間 → ISO(可被解析器讀)
     assert codes.index("2330") < codes.index("2454")         # 時間 desc
+
+
+def test_http_get_retries_on_5xx(monkeypatch):
+    """5xx 會重試,下一次成功即回傳。"""
+    calls = {"n": 0}
+
+    class _R:
+        def __init__(self, code):
+            self.status_code = code
+
+    def fake(url, **kw):
+        calls["n"] += 1
+        return _R(500 if calls["n"] == 1 else 200)
+
+    monkeypatch.setattr(mr.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(mr.requests, "get", fake)
+    r = mr._http_get("https://x", retries=2)
+    assert r.status_code == 200 and calls["n"] == 2
+
+
+def test_http_get_passthrough_fake_without_status(monkeypatch):
+    """測試假物件無 status_code → 視為 200、直接回(不重試),向後相容既有 monkeypatch。"""
+    class _Fake:
+        def json(self):
+            return {"ok": 1}
+
+    monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _Fake())
+    assert mr._http_get("https://x").json() == {"ok": 1}
+
+
+def test_http_get_raises_after_exhausting_retries(monkeypatch):
+    import pytest
+    monkeypatch.setattr(mr.time, "sleep", lambda *_: None)
+
+    def boom(*a, **k):
+        raise mr.requests.ConnectionError("down")
+
+    monkeypatch.setattr(mr.requests, "get", boom)
+    with pytest.raises(mr.requests.RequestException):
+        mr._http_get("https://x", retries=1)

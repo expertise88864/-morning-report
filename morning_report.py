@@ -584,7 +584,7 @@ def _load_sec_cik_map() -> dict[str, tuple[str, str]]:
     if _SEC_CIK_CACHE:
         return _SEC_CIK_CACHE
     try:
-        r = requests.get("https://www.sec.gov/files/company_tickers.json",
+        r = _http_get("https://www.sec.gov/files/company_tickers.json",
                          timeout=20,
                          headers={"User-Agent": f"Morning Report Bot {CONTACT_EMAIL}"})
         r.raise_for_status()
@@ -713,6 +713,32 @@ def fetch_sec_filings() -> list[dict]:
     filings.sort(key=lambda f: f.get("date", ""), reverse=True)
     print(f"[sec] 追蹤 {len(companies)} 家公司，抓到 {len(filings)} 筆近 2 日 8-K 公告")
     return filings
+
+
+def _http_get(url, *, retries=2, backoff=1.2,
+              retry_status=(429, 500, 502, 503, 504), **kwargs):
+    """帶重試/退避的 GET(沿用 requests.get 介面、回傳 Response)。
+    連線例外或 retry_status(429/5xx)才重試(指數退避);404 等其餘直接回;
+    全數失敗則拋最後一次例外(呼叫端沿用既有 try/except)。
+    內部走 requests.get(而非獨立 Session),讓既有 monkeypatch(mr.requests.get)測試仍可攔截;
+    以 getattr 取 status_code,測試假物件無此屬性時視為 200(直接回、不重試)。"""
+    kwargs.setdefault("timeout", 20)
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, **kwargs)
+        except requests.RequestException as e:
+            last_exc = e
+            if attempt < retries:
+                time.sleep(backoff * (attempt + 1))
+                continue
+            raise
+        if getattr(r, "status_code", 200) in retry_status and attempt < retries:
+            time.sleep(backoff * (attempt + 1))
+            continue
+        return r
+    if last_exc:
+        raise last_exc
 
 
 def _mops_roc_datetime(roc_date, hhmmss):
@@ -1167,7 +1193,7 @@ def fetch_taifex_options_pc_ratio() -> dict:
     『台股本土情緒』(現只有美股 VIX)。失敗回 {}(fail-safe,不影響晨報)。
     """
     try:
-        r = requests.get("https://openapi.taifex.com.tw/v1/PutCallRatio",
+        r = _http_get("https://openapi.taifex.com.tw/v1/PutCallRatio",
                          timeout=(5, 10), headers={"User-Agent": "Mozilla/5.0"})
         data = r.json() or []
         if not data:
@@ -1196,7 +1222,7 @@ def fetch_taifex_large_traders(contract: str = "TX") -> dict:
         top10_long_pct, top10_short_pct, concentration_pct, spec_top10_net}。
     """
     try:
-        r = requests.get("https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures",
+        r = _http_get("https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures",
                          timeout=(5, 12), headers={"User-Agent": "Mozilla/5.0"})
         data = r.json() or []
         rows = [x for x in data if x.get("Contract") == contract
@@ -1431,7 +1457,7 @@ def _twse_main_api(date_str: str) -> list[dict]:
 
 def _twse_openapi(_unused: str) -> list[dict]:
     """備援端點：OpenAPI（無日期參數，回傳最新一日）。"""
-    r = requests.get("https://openapi.twse.com.tw/v1/fund/T86",
+    r = _http_get("https://openapi.twse.com.tw/v1/fund/T86",
                       timeout=15,
                       headers={"User-Agent": "Mozilla/5.0"})
     r.raise_for_status()
@@ -2256,7 +2282,7 @@ def fetch_tw_monthly_revenue() -> dict[str, dict]:
     失敗回傳 {}（不影響晨報其他區塊）。
     """
     try:
-        r = requests.get("https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
+        r = _http_get("https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
                          timeout=20,
                          headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
         r.raise_for_status()
@@ -2458,7 +2484,7 @@ def _finmind_top5_extras(codes: list[str], prices: dict | None = None) -> dict:
         params = {"dataset": dataset, "data_id": sid, "start_date": start}
         if token:
             params["token"] = token
-        r = requests.get("https://api.finmindtrade.com/api/v4/data",
+        r = _http_get("https://api.finmindtrade.com/api/v4/data",
                          params=params, timeout=12, headers={"User-Agent": "Mozilla/5.0"})
         return (r.json() or {}).get("data") or []
 
@@ -2531,7 +2557,7 @@ def fetch_tdcc_major_holders(target_codes: Optional[set] = None) -> dict[str, di
     import re as _re
     from io import StringIO
     try:
-        r = requests.get("https://opendata.tdcc.com.tw/getOD.ashx?id=1-5",
+        r = _http_get("https://opendata.tdcc.com.tw/getOD.ashx?id=1-5",
                          timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
         try:
@@ -2646,7 +2672,7 @@ def _fetch_twse_stock_day_all() -> list:
         return []
     for attempt in range(3):
         try:
-            r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+            r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
                              timeout=20,
                              headers={"User-Agent": "Mozilla/5.0",
                                       "Accept": "application/json",
@@ -2714,7 +2740,7 @@ def fetch_twse_taiex_close() -> Optional[float]:
 
     # 嘗試 1: FMTQIK
     try:
-        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
                          timeout=20, headers=headers)
         r.raise_for_status()
         data = r.json() or []
@@ -2731,7 +2757,7 @@ def fetch_twse_taiex_close() -> Optional[float]:
 
     # 嘗試 2: MI_INDEX
     try:
-        r = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX",
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX",
                          timeout=20, headers=headers)
         r.raise_for_status()
         data = r.json() or []
@@ -10862,7 +10888,7 @@ def fetch_weather() -> list[dict]:
     out = []
     for name, lat, lon in WEATHER_LOCATIONS:
         try:
-            r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+            r = _http_get("https://api.open-meteo.com/v1/forecast", params={
                 "latitude": lat, "longitude": lon,
                 "daily": ("temperature_2m_max,temperature_2m_min,"
                           "precipitation_probability_max,weather_code"),
@@ -11180,7 +11206,7 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
         return None
 
     try:
-        r = requests.get("https://www.twse.com.tw/announcement/publicForm",
+        r = _http_get("https://www.twse.com.tw/announcement/publicForm",
                          params={"response": "json"}, timeout=15, headers=headers)
         d = r.json()
         fields = d.get("fields") or []
@@ -11213,7 +11239,7 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
         print(f"[tw_calendar] 申購抓取失敗: {e}", file=sys.stderr)
 
     try:
-        r = requests.get("https://www.twse.com.tw/exchangeReport/TWT48U",
+        r = _http_get("https://www.twse.com.tw/exchangeReport/TWT48U",
                          params={"response": "json"}, timeout=15, headers=headers)
         d = r.json()
         fields = d.get("fields") or []
@@ -11302,14 +11328,14 @@ def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
     out = []
     for short, journal in MEDICAL_JOURNALS:
         try:
-            r = requests.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+            r = _http_get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
                              params={"db": "pubmed", "term": f'"{journal}"[ta]',
                                      "reldate": "7", "datetype": "edat",
                                      "retmode": "json", "retmax": "12"}, timeout=20)
             ids = r.json().get("esearchresult", {}).get("idlist", [])
             if not ids:
                 continue
-            r2 = requests.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
+            r2 = _http_get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
                               params={"db": "pubmed", "id": ",".join(ids),
                                       "retmode": "json"}, timeout=20)
             res = r2.json().get("result", {})
@@ -11540,7 +11566,7 @@ def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
     import re as _re
     year = year or dt.datetime.now(TPE).year
     page = f"中華職棒{year - 1989}年"   # 2026 = 中職 37 年
-    r = requests.get("https://zh.wikipedia.org/w/api.php", params={
+    r = _http_get("https://zh.wikipedia.org/w/api.php", params={
         "action": "parse", "page": page, "prop": "wikitext",
         "format": "json", "formatversion": "2"},
         timeout=20, headers={"User-Agent": "MorningReportBot/1.0"})
@@ -11582,7 +11608,7 @@ def fetch_cpbl_standings(meta: Optional[dict] = None) -> list[dict]:
     if meta is not None:
         meta["source"] = "無"
     try:
-        r = requests.get("https://www.cpbl.com.tw/standings/season", timeout=15,
+        r = _http_get("https://www.cpbl.com.tw/standings/season", timeout=15,
                          headers={"User-Agent": "Mozilla/5.0",
                                   "Accept-Language": "zh-TW,zh;q=0.9"})
         r.raise_for_status()
@@ -11816,7 +11842,7 @@ def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict
     out = []
     for en_name, zh_name in _mlb_tw_players().items():
         try:
-            r = requests.get("https://statsapi.mlb.com/api/v1/people/search",
+            r = _http_get("https://statsapi.mlb.com/api/v1/people/search",
                              params={"names": en_name}, timeout=12)
             people = r.json().get("people", [])
             if not people:
@@ -12180,7 +12206,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             out["nba_offseason"] = _off
     # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
     try:
-        r = requests.get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
+        r = _http_get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
                          timeout=15)
         r.raise_for_status()
         standings = {}

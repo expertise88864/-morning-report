@@ -768,7 +768,7 @@ def fetch_tw_major_announcements(codes: list[str], hours: int = 48) -> list[dict
     want = {str(c).strip() for c in codes}
     cutoff = dt.datetime.now(TPE) - dt.timedelta(hours=hours)
     try:
-        data = requests.get(
+        data = _http_get(
             "https://openapi.twse.com.tw/v1/opendata/t187ap04_L",
             timeout=20, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
         ).json() or []
@@ -2175,7 +2175,7 @@ def _industry_name(raw) -> str:
 
 def _fetch_twse_listing_basics() -> dict[str, dict]:
     """Fetch current TWSE listing metadata and issued shares for ranking/backfill."""
-    r = requests.get(
+    r = _http_get(
         "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
         timeout=20,
         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
@@ -4806,7 +4806,7 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
 
 def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
     """Fetch RSS with a real requests timeout, then parse bytes locally."""
-    response = requests.get(
+    response = _http_get(
         url,
         timeout=timeout,
         headers={
@@ -5500,7 +5500,7 @@ def fetch_tw_trading_sessions(months: int = 18) -> list[str]:
     """從 TWSE FMTQIK 取得真實交易日；失敗時退回 ^TWII 歷史索引。"""
     sessions: set[str] = set()
     try:
-        r = requests.get(
+        r = _http_get(
             "https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
             timeout=20,
             headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
@@ -5572,7 +5572,7 @@ def _parse_twse_historical_market_day(payload: dict) -> list[dict]:
 
 def fetch_twse_historical_market_day(session_date: str) -> list[dict]:
     """Fetch one official TWSE all-stock historical daily quote page."""
-    r = requests.get(
+    r = _http_get(
         "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX",
         params={"response": "json", "date": session_date.replace("-", ""),
                 "type": "ALLBUT0999"},
@@ -11195,7 +11195,7 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
         except Exception:
             pass
         try:
-            r = requests.get(
+            r = _http_get(
                 "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
                 timeout=12, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
             for row in r.json() or []:
@@ -11694,7 +11694,7 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     for back in (1, 0):
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
         try:
-            r = requests.get(
+            r = _http_get(
                 "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
@@ -11727,7 +11727,7 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     out["results"] = out["results"][:14]
     # 各分組累計戰績表
     try:
-        r = requests.get(
+        r = _http_get(
             "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings",
             timeout=15)
         r.raise_for_status()
@@ -11768,7 +11768,7 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     for off in (-1, 0, 1, 2):
         day = (now_tpe + dt.timedelta(days=off)).strftime("%Y%m%d")
         try:
-            r = requests.get(
+            r = _http_get(
                 "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
@@ -11850,7 +11850,7 @@ def fetch_mlb_taiwan_players(now_tpe: Optional[dt.datetime] = None) -> list[dict
             pid = people[0].get("id")
             latest = None
             for grp in ("hitting", "pitching"):
-                rr = requests.get(
+                rr = _http_get(
                     f"https://statsapi.mlb.com/api/v1/people/{pid}/stats",
                     params={"stats": "gameLog", "season": season, "group": grp},
                     timeout=12)
@@ -11925,7 +11925,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     by_label: dict = {"ATP": [], "WTA": []}
     for tour in ("atp", "wta"):
         try:
-            r = requests.get(
+            r = _http_get(
                 f"https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard",
                 params={"dates": dates}, timeout=15)
             r.raise_for_status()
@@ -12003,7 +12003,7 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     for back in (1, 0):   # 昨日為主,今日已完賽者一併收
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y-%m-%d")
         try:
-            r = requests.get(
+            r = _http_get(
                 "https://api-secure.sports.yahoo.com/v1/editorial/s/scoreboard",
                 params={"leagues": "cpbl", "date": day}, headers=headers, timeout=15)
             r.raise_for_status()
@@ -12102,7 +12102,7 @@ def fetch_nba_favorite_games(now_tpe: dt.datetime, favorites: list[str]) -> list
             break
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
         try:
-            r = requests.get(
+            r = _http_get(
                 "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
                 params={"dates": day}, timeout=15)
             r.raise_for_status()
@@ -12161,7 +12161,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     try:
         for back in range(1, 6):
             day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
-            r = requests.get(
+            r = _http_get(
                 "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
                 params={"dates": day}, timeout=15)
             events = r.json().get("events", [])

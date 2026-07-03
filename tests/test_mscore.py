@@ -70,3 +70,20 @@ def test_mscore_flags_aggressive_accruals_and_growth():
     assert r and r["mscore"] > -1.78
     assert r["mscore_flag"] is True
     assert r["mscore_zone"].startswith("偏高")
+
+
+def test_http_get_retries_on_5xx(monkeypatch):
+    """fz_score._http_get:5xx 重試、下次成功即回;假物件無 status_code 直接回。"""
+    calls = {"n": 0}
+
+    class _R:
+        def __init__(self, code):
+            self.status_code = code
+
+    def fake(url, **kw):
+        calls["n"] += 1
+        return _R(500 if calls["n"] == 1 else 200)
+
+    monkeypatch.setattr(fz.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(fz.requests, "get", fake)
+    assert fz._http_get("https://x", retries=2).status_code == 200 and calls["n"] == 2

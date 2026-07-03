@@ -140,11 +140,37 @@ def log(msg: str) -> None:
     print(f"[podcast] {msg}", flush=True)
 
 
+def _http_get(url, *, retries=2, backoff=1.2,
+              retry_status=(429, 500, 502, 503, 504), **kwargs):
+    """帶重試/退避的 GET(沿用 requests.get 介面、回傳 Response)。
+    刻意不共用 morning_report._http_get:podcast_digest 為獨立輕量模組,import morning_report
+    會拖入 15k 行 + pandas/yfinance,podcast job 不值得;故自帶語義相同的 mini 版
+    (連線例外/5xx 才重試、404 直接回、耗盡拋出)。以 getattr 取 status_code,測試假物件無此屬性
+    時視為 200(直接回、不重試),保 monkeypatch(pd.requests.get)相容。"""
+    kwargs.setdefault("timeout", 20)
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, **kwargs)
+        except requests.RequestException as e:
+            last_exc = e
+            if attempt < retries:
+                time.sleep(backoff * (attempt + 1))
+                continue
+            raise
+        if getattr(r, "status_code", 200) in retry_status and attempt < retries:
+            time.sleep(backoff * (attempt + 1))
+            continue
+        return r
+    if last_exc:
+        raise last_exc
+
+
 def resolve_feed_url(search_term: str, country: str = "TW") -> str:
-    r = requests.get("https://itunes.apple.com/search",
-                     params={"term": search_term, "country": country,
-                             "media": "podcast", "limit": 1},
-                     timeout=20)
+    r = _http_get("https://itunes.apple.com/search",
+                  params={"term": search_term, "country": country,
+                          "media": "podcast", "limit": 1},
+                  timeout=20)
     r.raise_for_status()
     results = r.json().get("results", [])
     return str(results[0].get("feedUrl", "")) if results else ""
@@ -152,7 +178,7 @@ def resolve_feed_url(search_term: str, country: str = "TW") -> str:
 
 def parse_feed_url(url: str, timeout: int = 20):
     """Fetch podcast RSS with a bounded request, then parse it locally."""
-    response = requests.get(
+    response = _http_get(
         url,
         timeout=timeout,
         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/rss+xml,application/xml"},

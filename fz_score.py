@@ -12,9 +12,36 @@ F-score 比較「本 TTM vs 去年 TTM」(需近 8 季)。資產負債表為時�
 from __future__ import annotations
 
 import sys
+import time
+
 import requests
 
 BASE = "https://api.finmindtrade.com/api/v4/data"
+
+
+def _http_get(url, *, retries=2, backoff=1.2,
+              retry_status=(429, 500, 502, 503, 504), **kwargs):
+    """帶重試/退避的 GET(沿用 requests.get 介面、回傳 Response)。
+    刻意不共用 morning_report._http_get:fz_score 若 import morning_report 會造成循環 import
+    (morning_report 於函式內 lazy import fz_score);故自帶語義相同的 mini 版
+    (連線例外/5xx 才重試、404 直接回、耗盡拋出)。以 getattr 取 status_code 保 monkeypatch 相容。"""
+    kwargs.setdefault("timeout", 20)
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(url, **kwargs)
+        except requests.RequestException as e:
+            last_exc = e
+            if attempt < retries:
+                time.sleep(backoff * (attempt + 1))
+                continue
+            raise
+        if getattr(r, "status_code", 200) in retry_status and attempt < retries:
+            time.sleep(backoff * (attempt + 1))
+            continue
+        return r
+    if last_exc:
+        raise last_exc
 
 
 def _to_float(v):
@@ -29,7 +56,7 @@ def finmind(dataset: str, sid: str, start: str, token: str) -> list:
     p = {"dataset": dataset, "data_id": sid, "start_date": start}
     if token:
         p["token"] = token
-    r = requests.get(BASE, params=p, timeout=(5, 8), headers={"User-Agent": "Mozilla/5.0"})
+    r = _http_get(BASE, params=p, timeout=(5, 8), headers={"User-Agent": "Mozilla/5.0"})
     return (r.json() or {}).get("data") or []
 
 

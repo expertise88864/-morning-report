@@ -89,3 +89,20 @@ def test_main_processes_multiple_episodes_from_same_show(monkeypatch):
     monkeypatch.setattr(pd, "save_state", lambda state: None)
     assert pd.main() == 0
     assert processed == ["one", "two"]
+
+
+def test_http_get_retries_on_5xx(monkeypatch):
+    """podcast_digest._http_get:5xx 重試、下次成功即回。"""
+    calls = {"n": 0}
+
+    class _R:
+        def __init__(self, code):
+            self.status_code = code
+
+    def fake(url, **kw):
+        calls["n"] += 1
+        return _R(503 if calls["n"] == 1 else 200)
+
+    monkeypatch.setattr(pd.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(pd.requests, "get", fake)
+    assert pd._http_get("https://x", retries=2).status_code == 200 and calls["n"] == 2

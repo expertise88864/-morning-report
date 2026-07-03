@@ -13273,7 +13273,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 # DCF 內在價值 gap(移植 ai-hedge-fund 估值法;持續經營口徑,保守參考非精算)
                 dcfg, dcfz = _num(s.get("val_dcf_gap_pct")), s.get("val_dcf_zone")
                 if dcfg is not None and dcfz:
-                    val_bits.append(f"DCF {dcfz}({dcfg:+.0f}%)")
+                    # gap 極端值(|.|>200%)夾住顯示,避免 +353% 這類誇張數字傷可信度
+                    _dcf = (">+200%" if dcfg > 200 else ("<-200%" if dcfg < -200 else f"{dcfg:+.0f}%"))
+                    val_bits.append(f"DCF {dcfz}({_dcf})")
                 val_line = ("估值: " + " ・ ".join(val_bits)) if val_bits else ""
                 chip2_bits = []
                 mh, fhp = _num(s.get("major_holder_pct")), _num(s.get("foreign_hold_pct"))
@@ -13303,7 +13305,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                         fz_bits.append(f"Z-score {zsc}({s.get('zscore_zone', '')})")
                     msc = _num(s.get("mscore"))
                     if msc is not None:
-                        fz_bits.append(f"M-score {msc}({'⚠留意操弄' if s.get('mscore_flag') else '正常'})")
+                        # Beneish M-score 對「高成長/剛轉機」股天然誤報(高營收/EPS 成長長得像美化帳)→ 軟化措辭
+                        if not s.get("mscore_flag"):
+                            mtag = "正常"
+                        elif (isinstance(eg, (int, float)) and eg > 100) or (isinstance(ry, (int, float)) and ry > 50):
+                            mtag = "偏高(高成長股常見誤報)"
+                        else:
+                            mtag = "⚠留意操弄"
+                        fz_bits.append(f"M-score {msc}({mtag})")
                 fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else (
                     "財報品質: 金融業·F/Z/M-score 不適用" if is_fin else "")
                 ext_html = "".join(

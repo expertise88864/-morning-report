@@ -8,5 +8,12 @@ venv/
 *.local
 sample_preview.html
 *_preview.html
-backtest_data/
+# 回測工具:納入版控腳本(*.py)與說明/報告,忽略本機資料(需 model_history.json 才能跑)
+backtest_data/*
+!backtest_data/*.py
+!backtest_data/README.md
+!backtest_data/reports/
+backtest_data/reports/*
+!backtest_data/reports/*.md
 .claude/
+OPTIMIZATION_PLAN.md

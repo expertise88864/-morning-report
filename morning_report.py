@@ -657,7 +657,7 @@ def fetch_sec_filings() -> list[dict]:
         out: list[dict] = []
         try:
             url = f"https://data.sec.gov/submissions/CIK{cik}.json"
-            r = requests.get(url, timeout=8, headers=headers)
+            r = _http_get(url, timeout=8, headers=headers)
             if r.status_code != 200:
                 return out
             data = r.json()
@@ -914,7 +914,7 @@ def fetch_twse_margin() -> dict:
         url = (f"https://www.twse.com.tw/exchangeReport/MI_MARGN"
                f"?response=json&date={date_str}&selectType=MS")
         try:
-            r = requests.get(url, timeout=15, headers=headers)
+            r = _http_get(url, timeout=15, headers=headers)
             r.raise_for_status()
             data = r.json()
             if data.get("stat") != "OK":
@@ -1445,7 +1445,7 @@ def _twse_main_api(date_str: str) -> list[dict]:
         "Accept": "application/json,text/plain,*/*",
         "Referer": "https://www.twse.com.tw/zh/trading/foreign/t86.html",
     }
-    r = requests.get(url, timeout=15, headers=headers)
+    r = _http_get(url, timeout=15, headers=headers)
     r.raise_for_status()
     payload = r.json()
     if payload.get("stat") != "OK":
@@ -1795,7 +1795,7 @@ def fetch_twse_margin_per_stock(target_codes: Optional[set] = None) -> dict[str,
         url = (f"https://www.twse.com.tw/exchangeReport/MI_MARGN"
                f"?response=json&date={date_str}&selectType=ALL")
         try:
-            r = requests.get(url, timeout=20, headers=headers)
+            r = _http_get(url, timeout=20, headers=headers)
             r.raise_for_status()
             data = r.json()
             if data.get("stat") != "OK":
@@ -2384,7 +2384,7 @@ def fetch_tw_eps() -> dict[str, dict]:
     out: dict[str, dict] = {}
     for url in endpoints:
         try:
-            r = requests.get(url, timeout=20,
+            r = _http_get(url, timeout=20,
                              headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
             r.raise_for_status()
             data = r.json() or []
@@ -2420,7 +2420,7 @@ def _attach_listing_fundamentals(snapshot: list[dict]) -> None:
 
     def _j(url: str) -> list:
         try:
-            r = requests.get(url, timeout=20, headers=headers)
+            r = _http_get(url, timeout=20, headers=headers)
             r.raise_for_status()
             return r.json() or []
         except Exception as e:
@@ -2634,7 +2634,7 @@ def fetch_twse_recent_closes(code: str, want: int = 3) -> list:
                f"?response=json&date={ym}&stockNo={code}")
         month_rows: list = []
         try:
-            r = requests.get(url, timeout=15, headers=headers)
+            r = _http_get(url, timeout=15, headers=headers)
             r.raise_for_status()
             data = r.json()
             if data.get("stat") == "OK":
@@ -2889,7 +2889,7 @@ def fetch_twse_short_balance(target_codes: Optional[set] = None) -> dict[str, di
         url = (f"https://www.twse.com.tw/exchangeReport/TWT93U"
                f"?response=json&date={date_str}")
         try:
-            r = requests.get(url, timeout=20, headers=headers)
+            r = _http_get(url, timeout=20, headers=headers)
             r.raise_for_status()
             data = r.json()
             if data.get("stat") != "OK":
@@ -4079,7 +4079,7 @@ def fetch_news() -> list[dict]:
     for source, url in RSS_FEEDS.items():
         try:
             if url.endswith("&page=1"):  # 鉅亨美股 JSON 特例
-                r = requests.get(url, timeout=10,
+                r = _http_get(url, timeout=10,
                                  headers={"User-Agent": "Mozilla/5.0"})
                 if r.status_code == 200:
                     payload = r.json() or {}
@@ -4787,7 +4787,7 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
     if parts.scheme and parts.netloc:
         headers["Referer"] = f"{parts.scheme}://{parts.netloc}/"   # 帶同站 Referer 降低被擋
     try:
-        response = requests.get(url, timeout=timeout, headers=headers)
+        response = _http_get(url, timeout=timeout, headers=headers)
     except requests.exceptions.SSLError:
         stats["ssl_error"] = stats.get("ssl_error", 0) + 1
         if os.environ.get("ALLOW_INSECURE_OFFICIAL_SSL") != "1":
@@ -4797,7 +4797,7 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
         import urllib3
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
-            response = requests.get(url, timeout=timeout, headers=headers, verify=False)
+            response = _http_get(url, timeout=timeout, headers=headers, verify=False)
     stats["http_status"] = response.status_code
     stats["content_type"] = response.headers.get("content-type", "")
     response.raise_for_status()
@@ -5420,7 +5420,7 @@ def fetch_news_fulltext(news: list[dict],
         if "news.google.com" in link:
             continue
         try:
-            r = requests.get(link, timeout=10,
+            r = _http_get(link, timeout=10,
                               headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
                               allow_redirects=True)
             if r.status_code != 200:
@@ -5446,7 +5446,7 @@ def fetch_news_fulltext(news: list[dict],
         if "news.google.com" in link:
             continue
         try:
-            r = requests.get(link, timeout=8,    # high 用較短 timeout 避免拖慢
+            r = _http_get(link, timeout=8,    # high 用較短 timeout 避免拖慢
                               headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
                               allow_redirects=True)
             if r.status_code != 200:
@@ -11105,7 +11105,7 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
     # 跨週缺口由 FOMC_2026 硬編日程補)
     for url in ("https://nfs.faireconomy.media/ff_calendar_thisweek.json",):
         try:
-            r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            r = _http_get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
             for e in r.json():
                 if e.get("impact") != "High" or e.get("country") not in ("USD", "CNY", "EUR"):

@@ -447,7 +447,7 @@ def _f(v):
 
 def _twse_json(url: str) -> list:
     try:
-        r = requests.get(url, timeout=20, headers=_TWSE_HEADERS)
+        r = mr._http_get(url, timeout=20, headers=_TWSE_HEADERS)
         r.raise_for_status()
         return r.json() or []
     except Exception as e:
@@ -517,7 +517,7 @@ def fetch_foreign_holding(codes: list[str]) -> dict:
             params = {"dataset": "TaiwanStockShareholding", "data_id": c, "start_date": start}
             if FINMIND_TOKEN:
                 params["token"] = FINMIND_TOKEN
-            r = requests.get("https://api.finmindtrade.com/api/v4/data",
+            r = mr._http_get("https://api.finmindtrade.com/api/v4/data",
                              params=params, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
             data = (r.json() or {}).get("data") or []
             if data:
@@ -539,7 +539,7 @@ def fetch_eps_growth(codes: list[str]) -> dict:
             params = {"dataset": "TaiwanStockFinancialStatements", "data_id": c, "start_date": start}
             if FINMIND_TOKEN:
                 params["token"] = FINMIND_TOKEN
-            r = requests.get("https://api.finmindtrade.com/api/v4/data",
+            r = mr._http_get("https://api.finmindtrade.com/api/v4/data",
                              params=params, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
             data = (r.json() or {}).get("data") or []
             eps = sorted(((str(row.get("date")), _f(row.get("value")))

@@ -4805,26 +4805,42 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
 
 
 _RSS_CONTENT_CACHE: dict = {}   # N5:同一 run 內同一 RSS URL 只抓一次(內容位元組快取);測試間由 conftest 清空
+_FEED_STATS: dict = {}          # V2-N1:本 run 各來源 host 的 ok/fail 次數(供 N4 歷史逐 host 追蹤);測試間清空
+
+
+def _feed_label(url: str) -> str:
+    """把 RSS URL 聚合成 host 標籤(如 news.google.com);Google News 各查詢併為同一 host,避免 state 膨脹。"""
+    try:
+        return (str(url).split("/", 3)[2] or "unknown").lower()
+    except IndexError:
+        return "unknown"
 
 
 def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
     """Fetch RSS with a real requests timeout, then parse bytes locally.
     N5:同一 run 內同一 URL 的內容只抓一次(快取位元組、每次仍重新 parse 給獨立物件,
-    避免呼叫端共用可變 feed 物件),減少重複的 Google News RSS 請求。"""
+    避免呼叫端共用可變 feed 物件),減少重複的 Google News RSS 請求。
+    V2-N1:每次『實際抓取』記錄該 host 的 ok/fail 到 _FEED_STATS(快取命中不重複計)。"""
     content = _RSS_CONTENT_CACHE.get(url)
     if content is None:
-        response = _http_get(
-            url,
-            timeout=timeout,
-            headers={
-                "User-Agent": _OFFICIAL_HTTP_HEADERS["User-Agent"],
-                "Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"],
-            },
-        )
-        response.raise_for_status()
-        content = getattr(response, "content", None)
-        if content is None:
-            content = str(getattr(response, "text", "")).encode("utf-8")
+        stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0})
+        try:
+            response = _http_get(
+                url,
+                timeout=timeout,
+                headers={
+                    "User-Agent": _OFFICIAL_HTTP_HEADERS["User-Agent"],
+                    "Accept-Language": _OFFICIAL_HTTP_HEADERS["Accept-Language"],
+                },
+            )
+            response.raise_for_status()
+            content = getattr(response, "content", None)
+            if content is None:
+                content = str(getattr(response, "text", "")).encode("utf-8")
+        except Exception:
+            stat["fail"] += 1
+            raise
+        stat["ok"] += 1
         if content:                       # 成功且非空才快取;失敗(例外)不快取、下次重試
             _RSS_CONTENT_CACHE[url] = content
     return feedparser.parse(content)
@@ -6670,12 +6686,19 @@ def build_source_health_report(snapshot: list[dict],
 SOURCE_HEALTH_HISTORY_FILE = Path("state/source_health_history.json")
 
 
-def update_source_health_history(report: dict, today: str, keep_days: int = 30) -> list[str]:
-    """把每日各項來源檢查(checks)累積到滾動 30 天歷史,回傳『連續 ≥3 天失敗』的項目清單。
-    純 JSON、任何失敗都不影響晨報(回空清單)。供信尾標註『來源 X 已連續 N 天失敗』。"""
+def update_source_health_history(report: dict, today: str, keep_days: int = 30,
+                                  feed_stats: Optional[dict] = None) -> list[str]:
+    """把每日『類別檢查(checks)』與『各來源 host 健康(V2-N1)』累積到滾動 30 天歷史,
+    回傳『連續 ≥3 天失敗』的項目(檢查項 + 個別 host)。純 JSON、失敗不影響晨報(回空)。
+    host 當日健康:有成功即健康;只有失敗=False;完全沒抓該 host=不列(不算失敗)。"""
     checks = (report or {}).get("checks") or {}
     if not checks or not today:
         return []
+    feeds_today = {}
+    for host, s in (feed_stats or {}).items():
+        ok, fail = int((s or {}).get("ok", 0)), int((s or {}).get("fail", 0))
+        if ok or fail:
+            feeds_today[host] = bool(ok)
     hist: list = []
     try:
         if SOURCE_HEALTH_HISTORY_FILE.exists():
@@ -6683,7 +6706,8 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30) 
     except Exception:
         hist = []
     hist = [h for h in hist if isinstance(h, dict) and h.get("date") != today]
-    hist.append({"date": today, "checks": {k: bool(v) for k, v in checks.items()}})
+    hist.append({"date": today, "checks": {k: bool(v) for k, v in checks.items()},
+                 "feeds": feeds_today})
     hist.sort(key=lambda h: h.get("date", ""))
     hist = hist[-keep_days:]
     try:
@@ -6692,20 +6716,23 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30) 
             json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
     except Exception as e:
         print(f"[health] 歷史寫入失敗: {e}", file=sys.stderr)
-    # 連續失敗 streak(從最近往回數,遇 True 或缺該檢查即中斷)
-    persistent = []
-    all_names = {name for h in hist for name in (h.get("checks") or {})}
-    for name in sorted(all_names):
-        streak = 0
-        for h in reversed(hist):
-            v = (h.get("checks") or {}).get(name)
-            if v is False:
-                streak += 1
-            else:
-                break
-        if streak >= 3:
-            persistent.append(f"{name}({streak}天)")
-    return persistent
+
+    def _persist(field: str) -> list[str]:
+        # 連續失敗 streak(從最近往回數,遇 True 或缺該項即中斷)
+        out = []
+        for name in sorted({n for h in hist for n in (h.get(field) or {})}):
+            streak = 0
+            for h in reversed(hist):
+                v = (h.get(field) or {}).get(name)
+                if v is False:
+                    streak += 1
+                else:
+                    break
+            if streak >= 3:
+                out.append(f"{name}({streak}天)")
+        return out
+
+    return _persist("checks") + _persist("feeds")
 
 
 def load_model_history() -> list[dict]:
@@ -14856,7 +14883,7 @@ def main() -> int:
         tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))
     try:   # N4:滾動 30 天來源健康歷史 → 標記連續失敗的來源(不影響計分)
         _persist = update_source_health_history(
-            quotes["SOURCE_HEALTH"], now_tpe.strftime("%Y-%m-%d"))
+            quotes["SOURCE_HEALTH"], now_tpe.strftime("%Y-%m-%d"), feed_stats=_FEED_STATS)
         if _persist:
             quotes["SOURCE_HEALTH"]["persistent_failures"] = _persist
             print(f"[health] 連續失敗來源: {', '.join(_persist)}", file=sys.stderr)

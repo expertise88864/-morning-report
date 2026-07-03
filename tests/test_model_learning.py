@@ -1167,3 +1167,16 @@ def test_llm_event_extractor_retries_once_when_zero_valid(monkeypatch):
              "importance": "critical", "published": "Tue, 02 Jul 2026 00:00:00 GMT"}]
     mr.call_llm_event_extractor(news, [])
     assert calls["n"] == 2   # 零合格觸發重試
+
+
+def test_source_health_history_flags_persistent_feed(tmp_path, monkeypatch):
+    """V2-N1:個別 host 連續 ≥3 天只失敗要被點名;一直成功的不點名。"""
+    monkeypatch.setattr(mr, "SOURCE_HEALTH_HISTORY_FILE", tmp_path / "shh2.json")
+    out = []
+    for d in ("2026-07-01", "2026-07-02", "2026-07-03"):
+        out = mr.update_source_health_history(
+            {"checks": {"news": True}}, d,
+            feed_stats={"ey.gov.tw": {"ok": 0, "fail": 2},
+                        "news.google.com": {"ok": 5, "fail": 0}})
+    assert "ey.gov.tw(3天)" in out
+    assert not any(x.startswith("news.google.com") for x in out)

@@ -449,3 +449,31 @@ def test_rss_content_cache_dedups_same_url(monkeypatch):
     assert calls["n"] == 1
     mr._feedparser_parse_url_with_timeout("https://news.example/B")   # 不同 URL
     assert calls["n"] == 2
+
+
+def test_feed_label_aggregates_to_host():
+    assert mr._feed_label("https://news.google.com/rss/search?q=abc") == "news.google.com"
+    assert mr._feed_label("https://WWW.EY.GOV.TW/x/y") == "www.ey.gov.tw"
+
+
+def test_feed_stats_records_ok_and_fail(monkeypatch):
+    """V2-N1:成功抓取記 ok、例外記 fail(依 host 聚合)。"""
+    class _R:
+        content = b"<rss/>"
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(mr, "_http_get", lambda url, **k: _R())
+    mr._feedparser_parse_url_with_timeout("https://news.google.com/rss/search?q=x")
+    assert mr._FEED_STATS["news.google.com"]["ok"] == 1
+
+    def boom(url, **k):
+        raise mr.requests.ConnectionError("down")
+
+    monkeypatch.setattr(mr, "_http_get", boom)
+    try:
+        mr._feedparser_parse_url_with_timeout("https://ey.gov.tw/feed")
+    except Exception:
+        pass
+    assert mr._FEED_STATS["ey.gov.tw"]["fail"] == 1

@@ -10052,6 +10052,32 @@ def _parse_llm_event_json(text: str) -> list[dict]:
     return [item for item in parsed if isinstance(item, dict)][:40] if isinstance(parsed, list) else []
 
 
+_LLM_EVENT_TYPES = {"guidance_raise", "guidance_cut", "orders", "earnings",
+                    "revenue_growth", "export_controls", "litigation", "geopolitical", "general"}
+
+
+def _validate_llm_events(events: list) -> tuple[list, int]:
+    """驗證 LLM 抽取事件 schema:event_type 屬允許集合、direction ∈ {-1,0,1}、entity 為字串或缺。
+    回 (合格清單, 丟棄數)。不合格項丟棄(寧缺勿濫,避免髒事件污染下游計分/去重)。"""
+    valid, dropped = [], 0
+    for ev in events or []:
+        if not isinstance(ev, dict):
+            dropped += 1
+            continue
+        try:
+            direction = int(ev.get("direction"))
+        except (TypeError, ValueError):
+            direction = None
+        entity = ev.get("entity")
+        if (str(ev.get("event_type") or "") in _LLM_EVENT_TYPES
+                and direction in (-1, 0, 1)
+                and isinstance(entity, (str, type(None)))):
+            valid.append(ev)
+        else:
+            dropped += 1
+    return valid, dropped
+
+
 def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
     """Run one bounded extractor call, then merge its output with deterministic events."""
     deterministic = extract_structured_events(news, mops)
@@ -10103,14 +10129,22 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         "revenue_growth, export_controls, litigation, geopolitical, general.\nINPUT:\n"
         + json.dumps(compact_items, ensure_ascii=False, separators=(",", ":"))
     )
+    def _call(p: str) -> str:
+        return (_call_deepseek_extractor(p) if LLM_PROVIDER == "deepseek"
+                else _call_llm_text(p))
+
     try:
-        response = (
-            _call_deepseek_extractor(prompt)
-            if LLM_PROVIDER == "deepseek"
-            else _call_llm_text(prompt)
-        )
-        llm_events = _parse_llm_event_json(response)
-        return extract_structured_events(news, mops, llm_events=llm_events)
+        parsed = _parse_llm_event_json(_call(prompt))
+        valid, dropped = _validate_llm_events(parsed)
+        if dropped:
+            print(f"[llm-extractor] 丟棄 {dropped} 個不合格事件(schema)", file=sys.stderr)
+        # 有解析出事件卻全數不合格 → 帶嚴格提醒重試一次(空陣列=合法「無事件」,不重試;成本上限 +1)
+        if parsed and not valid:
+            print("[llm-extractor] 全數不合格 → 重試一次", file=sys.stderr)
+            valid = _validate_llm_events(_parse_llm_event_json(_call(
+                prompt + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
+                "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
+        return extract_structured_events(news, mops, llm_events=valid)
     except Exception as e:
         print(f"[llm-extractor] fallback to deterministic events: {e}", file=sys.stderr)
         return deterministic

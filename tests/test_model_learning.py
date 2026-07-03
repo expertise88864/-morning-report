@@ -1132,3 +1132,38 @@ def test_update_source_health_history_flags_persistent(tmp_path, monkeypatch):
     assert not any(x.startswith("universe") for x in out)   # universe 一直 OK → 不標記
     out2 = mr.update_source_health_history({"checks": {"news": True, "universe": True}}, "2026-07-04")
     assert out2 == []                             # 恢復後 streak 歸零
+
+
+def test_validate_llm_events_drops_invalid():
+    """V2-N2:壞 event_type / 壞 direction / entity 非 str-or-None / 非 dict 都丟棄。"""
+    valid, dropped = mr._validate_llm_events([
+        {"entity": "2330", "event_type": "orders", "direction": 1},        # ok
+        {"entity": None, "event_type": "general", "direction": 0},          # ok(entity None)
+        {"entity": "2454", "event_type": "made_up", "direction": 1},        # 壞 event_type
+        {"entity": "2317", "event_type": "orders", "direction": 5},         # 壞 direction
+        {"entity": 999, "event_type": "orders", "direction": 1},            # entity 非 str/None
+        "not a dict",                                                        # 非 dict
+    ])
+    assert len(valid) == 2 and dropped == 4
+    assert {v["event_type"] for v in valid} == {"orders", "general"}
+
+
+def test_llm_event_extractor_retries_once_when_zero_valid(monkeypatch):
+    """V2-N2:第一次抽取全不合格 → 帶嚴格提醒重試一次(至多 +1)。"""
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "token")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
+    monkeypatch.setattr(mr, "ANTHROPIC_API_KEY", "")
+    calls = {"n": 0}
+
+    def fake(prompt):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return '[{"entity":"2330","event_type":"BOGUS","direction":9}]'   # 全不合格
+        return '[{"entity":"2330","event_type":"orders","direction":1,"title":"x"}]'
+
+    monkeypatch.setattr(mr, "_call_llm_text", fake)
+    news = [{"source": "MOPS", "company_label": "2330", "title": "2330 new orders",
+             "importance": "critical", "published": "Tue, 02 Jul 2026 00:00:00 GMT"}]
+    mr.call_llm_event_extractor(news, [])
+    assert calls["n"] == 2   # 零合格觸發重試

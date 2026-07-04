@@ -2275,6 +2275,82 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmr4uy9eb044w01uz3yc758xd",
+        "title": "正二、高股息ETF布局全攻略！ 2026.07.03",
+        "published": "Sat, 04 Jul 2026 00:02:12 GMT",
+        "processed_at": "2026-07-04T05:28:42Z",
+        "digest": {
+          "summary_points": [
+            "被動元件（電容）價格大漲，低容量電容漲幅達4-5倍，低潤價格漲勢驚人。",
+            "三星第三季低潤（DRAM）計劃再漲20%，第一季已漲90%、第二季漲50%。",
+            "ChainForce預估第三季一般型DRAM合約價季增13-18%，NAND Flash季增10-15%，漲幅較前幾季收斂。",
+            "記憶體價格持續上漲將傷害下游廠商，可能導致倒閉或減產，最終價格難以無限期上漲。",
+            "正二ETF（如00631L）成交量創歷史新高，6月8日成交73萬張。",
+            "正二ETF有波動損耗、期貨轉倉成本及融資利息，費用率較一般ETF高。",
+            "正二ETF在盤整期間可能虧損，例如中國正二ETF曾因長期盤整而大幅下跌。",
+            "建議正二ETF投資佔比不超過資產30%，且需具備低進高出能力。",
+            "高股息ETF中，0056現金股利口袋充足（4.5元），資本利得口袋22元，配息穩定性高。",
+            "00919、00929等高配息ETF主要依賴資本利得，若行情修正可能導致配息下調。",
+            "主持人建議第三季優先考慮0056，因其在2022年對等關稅時仍維持穩定配息。",
+            "主持人認為第三季市場可能出現健康修正，風險較大，投資需更謹慎。"
+          ],
+          "tickers": [
+            {
+              "name": "元大台灣50正2",
+              "code": "00631L",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "提醒波動損耗及盤整風險，建議小資金操作。"
+            },
+            {
+              "name": "群益台灣加權正2",
+              "code": "00685L",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "一拆24停牌，提醒槓桿ETF風險。"
+            },
+            {
+              "name": "富邦台灣加權正2",
+              "code": "00675L",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "提示長期盤整可能導致虧損。"
+            },
+            {
+              "name": "元大高股息",
+              "code": "0056",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "配息穩定，底氣充足，建議第三季配置。"
+            },
+            {
+              "name": "群益台灣精選高息",
+              "code": "00919",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "配息高但依賴資本利得，行情修正可能下調。"
+            },
+            {
+              "name": "復華台灣科技優息",
+              "code": "00929",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "資本利得口袋有限，修正時配息可能受影響。"
+            },
+            {
+              "name": "大華優利高填息30",
+              "code": "00918",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "配息高但穩定性不足，需注意風險。"
+            }
+          ],
+          "market_view": "主持人認為第三季市場可能出現健康修正，變數與風險較大。",
+          "action_view": "正二ETF建議小資金（不超過30%資產）操作，高股息ETF優先考慮0056，其他高配息ETF需留意行情修正風險。",
+          "notable_quote": "不要過度高估自己的抗壓力，尤其是遇到盤勢在大跌的時候，當你的帳上資產大幅減損，你還能不能夠去承受？"
+        }
+      },
+      {
         "guid": "cmr4ullv203zl01uzc0vr7iki",
         "title": "台股獨強 7月上五萬？ 2026.07.03",
         "published": "Fri, 03 Jul 2026 11:29:33 GMT",
@@ -2873,50 +2949,6 @@
           "action_view": "6月下底可逢低布局，7月留意反彈機會，但需注意波動風險；台積電法說會前可關注相關供應鏈。",
           "notable_quote": "我個人是覺得這個盤呢這怪這是詭異我看不太懂"
         }
-      },
-      {
-        "guid": "cmqz5msew08ff01y32ea6hdwl",
-        "title": "台股止跌？反彈先別追 換股是關鍵 2026.06.29",
-        "published": "Mon, 29 Jun 2026 11:52:46 GMT",
-        "processed_at": "2026-06-29T13:10:46Z",
-        "digest": {
-          "summary_points": [
-            "台股今日反彈，但期貨正價差擴大至800多點，夜盤續漲，顯示市場情緒偏多。",
-            "外資今日賣超60億元，今年累計賣超近一兆元，期貨空單增加至76600多口，仍偏空。",
-            "韓國總統宣布三星與海力士合建晶片廠，投資800兆韓元，目標倍增DRAM產能，另加1000兆韓元投入AI數據中心。",
-            "OpenAI延後IPO，導致微軟、Nebris等雲端概念股下跌。",
-            "分析師指出，大盤長線多頭未被破壞，但許多高檔股（如金像電、華通、台達電等）已跌破整理型態，後續反彈有限，應謹慎。",
-            "記憶體、被動元件等強勢題材中，位階較低的股票（如華東、檢測等）相對安全，有機會落底。",
-            "操作上應避免追高已破線的高價股，轉向低檔整理股進行分批低接。"
-          ],
-          "tickers": [
-            {
-              "name": "金像電",
-              "code": "2368",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "跌破區間整理景線支撐，短線反彈空間有限。"
-            },
-            {
-              "name": "台達電",
-              "code": "2308",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "上週跌破前低，反彈至季線可能再度承壓。"
-            },
-            {
-              "name": "華東",
-              "code": "8110",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "記憶體族群中位階較低，股價回測季線有撐，可分批低接。"
-            }
-          ],
-          "market_view": "大盤反彈但正價差擴大，外資持續賣超且期貨空單高，長線多頭未破壞但個股分化。",
-          "action_view": "操作上應選擇位階較低的強勢題材股（如記憶體、被動元件）分批低接，避免追高已破線的高檔股。",
-          "notable_quote": "烏龜比氣長，外資就是跟你拼轉倉。"
-        },
-        "shown_at": "2026-06-29T22:52:55Z"
       }
     ]
   },
@@ -5469,6 +5501,44 @@
   "allin": {
     "name": "All-In Podcast",
     "episodes": [
+      {
+        "guid": "afd9c6d3-2254-4a38-9847-a304981d286d",
+        "title": "AI Sovereignty Wars, Palantir-Nvidia Deal, SCOTUS Birthright Ruling, Newsom's CA Budget Lie",
+        "published": "Fri, 03 Jul 2026 22:12:00 +0000",
+        "processed_at": "2026-07-04T05:40:16Z",
+        "digest": {
+          "summary_points": [
+            "Palantir（PLTR）與Nvidia（NVDA）宣布合作，利用Nvidia的NemoTron開源模型為美國政府打造自主AI作業系統，強調數據與模型權限由客戶掌控。",
+            "Anthropic被指控利用模型層壟斷地位，觀察客戶成功領域後垂直整合推出競爭產品（如Claw Design、Claw Code），導致合作企業（如Figma）股價下跌50%。",
+            "企業使用封閉模型存在數據外洩風險：Anthropic與OpenAI可能學習客戶專有知識並最終與之競爭，建議企業採用開源模型自建AI以保護「智能主權」。",
+            "Chamath的實測顯示：搭配8100框架的開源模型比單用Claude Opus便宜16.4倍（雖慢3倍），證明開源自建方案在成本與控制上的巨大優勢。",
+            "Nvidia推出NemoTron開源模型，性能接近Claude，並與Palantir合作，企圖打破Anthropic/OpenAI在模型層的雙寡頭局面。",
+            "企業AI部署模式正從「大樞紐-大輻條」轉向「大樞紐-中樞紐-分散式輻條」，越來越多企業將自行訓練模型並在本地硬體上運行推論。",
+            "加州預算從2019年2150億美元膨脹至2025年3550億美元，實際靠舉債「平衡」；前1%納稅人貢獻50%個人所得稅，但因高稅率導致企業與富人外流，形成螺旋式惡化。",
+            "加州潛在未計負債（退休金、醫療等）高達1.5-2兆美元，若聯邦不出手紓困，可能導致退休金重整或憲法改寫。",
+            "Ramp與Revello Labs研究顯示：高強度採用AI的企業在兩年內員工成長約10%（初階職位成長12%），並未出現AI導致失業的證據。"
+          ],
+          "tickers": [
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與Nvidia合作推出自主AI作業系統，切入政府與企業自建模型需求，有利長期成長。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "推出NemoTron開源模型並與Palantir合作，有助於打破模型層雙寡頭，擴大晶片客戶基礎。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "If you partner with any of these people, they will slit your throat and take your business, wholesale."
+        }
+      },
       {
         "guid": "a76ab591-7664-4c68-9059-580b160956b0",
         "title": "Nate Silver Predicts: Democrats Take the House, Newsom Is Fading & AOC Might Win It All in 2028",

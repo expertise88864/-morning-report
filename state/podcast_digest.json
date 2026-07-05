@@ -3738,6 +3738,87 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72828393",
+        "title": "Big catalyst week for SpaceX",
+        "published": "Sun, 05 Jul 2026 16:20:57 +0000",
+        "processed_at": "2026-07-05T20:38:15Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 本週將迎來兩個重大催化劑：週二靜默期結束，分析師可發布評級和目標價，同時股票將納入納斯達克100指數。",
+            "選擇權市場顯示交易者預期 SpaceX 股價波動約正負9%，180美元和190美元買權吸引最強勁的看多興趣。",
+            "PepsiCo 將於週四公佈財報，分析師預期每股盈餘221美元，營收約240億美元。",
+            "分析師 Monty Sapier（持有評級）表示，PepsiCo 需展現北美飲料和零食的明確成長、正自由現金流及成本控制能力，才能吸引多頭回歸。",
+            "Cody's Dividends（買進評級）認為 PepsiCo 仍具吸引力，是價值型收益投資，且能維持可持續的常規貨幣核心每股盈餘成長。",
+            "Levi Strauss 週三公佈財報，Delta Air Lines 週五公佈財報。",
+            "聯準會將於週三發布主席 Kevin Warsh 首次會議的會議紀錄，市場關注通膨持續性及勞動市場是否構成問題。",
+            "德州檢察總長調查 StubHub 涉嫌世界盃門票幽靈售票行為。",
+            "特斯拉限制員工對 AI 產品的支出為每週200美元，但不適用於 xAI。",
+            "本週除息股票包括 Micron、GE Aerospace、JPMorgan Chase、Cisco、Dollar General、紐約時報、Accenture、MasterCard、AT&T、Verizon、Marvell Technology、Toll Brothers、Oracle 和 Lennar。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "選擇權市場顯示強勁看多布局，因靜默期結束和納斯達克100納入。"
+            },
+            {
+              "name": "PepsiCo",
+              "code": "PEP",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師看法分歧，持有評級與買進評級並存。"
+            },
+            {
+              "name": "Levi Strauss",
+              "code": "LEVI",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "週三財報，無明確方向性看法。"
+            },
+            {
+              "name": "Delta Air Lines",
+              "code": "DAL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "週五財報，無明確方向性看法。"
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "限制AI支出，但未直接影響股價方向。"
+            },
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "除息事件，無方向性討論。"
+            },
+            {
+              "name": "JPMorgan Chase",
+              "code": "JPM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "除息事件，無方向性討論。"
+            },
+            {
+              "name": "Cisco Systems",
+              "code": "CSCO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "除息事件，無方向性討論。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "SpaceX gets two major catalysts this week."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72795127",
         "title": "June job growth falters",
         "published": "Thu, 02 Jul 2026 21:22:48 +0000",
@@ -4423,57 +4504,6 @@
           "notable_quote": "Apple said that it has reached a point where we need to begin raising prices on a number of products."
         },
         "shown_at": "2026-06-26T23:04:32Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72690377",
-        "title": "Nordstrom, FAO Schwarz team up on toys",
-        "published": "Thu, 25 Jun 2026 15:49:34 +0000",
-        "processed_at": "2026-06-25T16:01:20Z",
-        "digest": {
-          "summary_points": [
-            "Nordstrom 與 FAO Schwartz 合作擴大玩具品類，包括在紐約旗艦店開設 5,000 平方英尺的店中店，以及在全美八個據點推出玩具店。",
-            "5 月核心 PCE 物價指數月增 0.3%，符合預期，年增率為 3.4%。",
-            "第一季 GDP 最終值上修至 2.1%（第二次預估為 1.6%），主因進口下修，部分抵銷消費支出下修。",
-            "Apple 因前所未有的記憶體短缺，調漲多款裝置（含 MacBook Neo）的起售價。",
-            "Sandisk 受美光帶動的漲勢激勵，City 將其目標價上調至 2,500 美元，並開啟 90 天上行催化觀察。",
-            "Wendy's 持續劇烈波動，延續迷因股走勢；Vanda Research 指出此現象與 2021 年散戶驅動的軋空行情如出一轍。",
-            "根據 JPMorgan 分析，Amazon 在去年某時超越 Walmart，成為美國最大零售商，估計佔美國電商市場 47%。"
-          ],
-          "tickers": [
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因記憶體短缺調漲裝置價格，可能壓抑需求。"
-            },
-            {
-              "name": "Sandisk",
-              "code": "WDC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "受美光帶動上漲；City 調升目標價並開啟催化觀察。"
-            },
-            {
-              "name": "Wendy's",
-              "code": "WEN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "劇烈波動，延續迷因股特性，類似 2021 年散戶軋空。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "超越 Walmart 成為美國最大零售商；JPMorgan 看好其持續領先。"
-            }
-          ],
-          "market_view": "債券交易員接收到混合訊號：通膨溫和（核心 PCE 月增 0.3%），但第一季 GDP 上修至 2.1%。",
-          "action_view": "",
-          "notable_quote": "Heather Long, chief economist at Navy Federal Credit Union, said consumer spending remains the backbone of the US economy and that while the anemic 0.5% growth figure should rebound in Q2, it's worth watching closely."
-        },
-        "shown_at": "2026-06-25T23:12:20Z"
       }
     ]
   },

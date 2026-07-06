@@ -327,6 +327,39 @@ def test_build_data_quality_universe_ok_when_institutional_present():
     assert inst_entry["status"] == "ok"
 
 
+def test_last_known_usdtwd_stale_fallback(tmp_path, monkeypatch):
+    """即時匯率失敗時,從 history 讀最近非空 usdtwd 昨值;超齡或無檔回 None。"""
+    import datetime as dt
+    import json
+    p = tmp_path / "history.json"
+    p.write_text(json.dumps([
+        {"date": "2026-07-01", "usdtwd": 31.5},
+        {"date": "2026-07-03", "usdtwd": 31.8},   # 最新非空
+        {"date": "2026-07-02", "usdtwd": None},
+        {"date": "bad-date", "usdtwd": 99.9},      # 壞日期不可入選
+    ]), encoding="utf-8")
+    monkeypatch.setattr(mr, "STATE_FILE", p)
+    now = dt.datetime(2026, 7, 6, tzinfo=mr.TPE)
+    r = mr._last_known_usdtwd(now_tpe=now)
+    assert r == {"value": 31.8, "date": "2026-07-03", "age_days": 3}
+    assert mr._last_known_usdtwd(max_age_days=2, now_tpe=now) is None   # 超齡
+    monkeypatch.setattr(mr, "STATE_FILE", tmp_path / "missing.json")
+    assert mr._last_known_usdtwd(now_tpe=now) is None                   # 無檔
+
+
+def test_build_data_quality_usdtwd_stale_is_fallback():
+    """USDTWD_STALE 標記存在時,匯率項顯示 fallback + 昨值天數,不再標 error。"""
+    quotes = {"QQQ": {"ticker": "QQQ", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "TSM": {"ticker": "TSM", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "SPY": {"ticker": "SPY", "close": 1.0, "prev_close": 1.0, "date": "d"},
+              "USDTWD": 31.8, "USDTWD_STALE": {"value": 31.8, "date": "2026-07-03", "age_days": 3},
+              "MACRO": {}, "TAIEX_PRED": {}, "NIGHT_TXF": {},
+              "TAIFEX_OI": {}, "MARGIN": {}, "SEC_FILINGS": []}
+    dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"}, news=[], tw0050=[])
+    fx = next(d for d in dq if d["name"] == "USD/TWD 匯率")
+    assert fx["status"] == "fallback" and "昨值" in fx["detail"] and "3" in fx["detail"]
+
+
 def test_build_data_quality_marks_error_and_ok():
     quotes = {
         "QQQ": {"ticker": "QQQ", "date": "2026-05-13", "close": 520, "prev_close": 515},

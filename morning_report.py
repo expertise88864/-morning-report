@@ -552,6 +552,43 @@ def fetch_usdtwd_pair() -> tuple[Optional[float], Optional[float]]:
         return (None, None)
 
 
+def _last_known_usdtwd(max_age_days: int = 7,
+                       now_tpe: Optional["dt.datetime"] = None) -> Optional[dict]:
+    """即時匯率抓取失敗時,從 history 讀最近一筆非空 usdtwd 當昨值降級。
+    USD/TWD 日波動通常 <0.5%,昨值遠勝「資料缺失」。僅供顯示/LLM prompt 情境——
+    calc_00662_fair_value 用自己的 fx_hist,不吃此值,故非排名/計分輸入。
+    回 {"value","date","age_days"};無快取或距今 >max_age_days 回 None。"""
+    try:
+        if not STATE_FILE.exists():
+            return None
+        rows = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        if not isinstance(rows, list):
+            return None
+    except Exception:
+        return None
+    best_v = None
+    best_date = None
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        v = _safe_number(r.get("usdtwd"))
+        if v is None or not r.get("date"):
+            continue
+        try:   # 只採用可解析的 YYYY-MM-DD,壞日期直接跳過(勿讓它在字串比較中勝出)
+            dd = dt.datetime.strptime(str(r.get("date")), "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if best_date is None or dd > best_date:
+            best_date, best_v = dd, v
+    if best_v is None:
+        return None
+    today = (now_tpe or dt.datetime.now(TPE)).date()
+    age = (today - best_date).days
+    if age < 0 or age > max_age_days:
+        return None
+    return {"value": best_v, "date": best_date.strftime("%Y-%m-%d"), "age_days": age}
+
+
 # 硬編關鍵 CIK（TSMC ADR 及最大型科技股 — 永遠追蹤，不受 SEC ticker→CIK 對應檔變動影響）
 SEC_BASE_COMPANIES: dict[str, str] = {
     "0001046179": "TSMC (台積電)",
@@ -13833,7 +13870,11 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
             add(f"美股行情 {label}", "error", err)
 
     # USD/TWD
-    if quotes.get("USDTWD") is not None:
+    _fx_stale = quotes.get("USDTWD_STALE")
+    if _fx_stale:
+        add("USD/TWD 匯率", "fallback",
+            f"即時抓取失敗,採 {_fx_stale.get('age_days')} 天前昨值 {_fx_stale.get('value')}")
+    elif quotes.get("USDTWD") is not None:
         add("USD/TWD 匯率", "ok", str(quotes.get("USDTWD")))
     else:
         add("USD/TWD 匯率", "error", "TWD=X 抓取失敗")
@@ -14237,6 +14278,13 @@ def main() -> int:
         "SPY": fetch_quote("SPY"),
     }
     usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
+    if usdtwd_today is None:   # 即時抓取失敗 → 用 history 昨值降級(僅顯示/prompt,非計分輸入)
+        _stale_fx = _last_known_usdtwd(now_tpe=now_tpe)
+        if _stale_fx:
+            usdtwd_today = _stale_fx["value"]
+            quotes["USDTWD_STALE"] = _stale_fx
+            print(f"[main] USD/TWD 即時抓取失敗 → 採 {_stale_fx['age_days']} 天前昨值 "
+                  f"{_stale_fx['value']}({_stale_fx['date']})", file=sys.stderr)
     quotes["USDTWD"] = usdtwd_today
     quotes["USDTWD_prev"] = usdtwd_prev
 

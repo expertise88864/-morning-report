@@ -52,6 +52,45 @@ def test_render_html_size_guard_truncates_low_priority(monkeypatch):
     assert "一、美股收盤行情" in html and "個股開盤預測" in html and "2330" in html
 
 
+def test_render_html_has_preheader_with_key_numbers():
+    """收件匣預覽文字(preheader):含當日關鍵數字、在正文之前、隱藏、無持股洩漏、冪等。"""
+    import re
+    q = {**_full_quotes(),
+         "TAIEX_PRED": {"pred_open": 45210, "last_close": 45000, "weighted_pct": 0.47,
+                        "ci_lower": 44500, "ci_upper": 45900, "consensus": "偏多",
+                        "signals": [], "signal_std": 2.0, "signal_count": 3},
+         "TW0050_PRED": {"last": 96.5, "pred_open": 95.4, "pred_pct": -1.14,
+                         "method": "0.5 × 2330 + 0.5 × 加權指數"}}
+    fair = {"fair_price": 116.99, "last_00662_price": 118.8, "qqq_pct": -1.51,
+            "implied_change_pct": -1.52, "method": "簡化版", "samples": 0}
+    preds = {"last_2330": 2265.0, "mid": 2192.5, "model2_regression": 2187.38,
+             "model3_adr_decay": 2229.2, "range": (2187.38, 2229.2)}
+    analysis = "## 十二、我的明確立場\n淨分 +3\n**立場：偏多**\n"
+    html = mr.render_html(q, fair, preds, analysis, "2026-06-16", "每日報")
+    m = re.search(r'mso-hide:all[^>]*>([^<]*)</div>', html)
+    assert m, "preheader 隱藏 div 應存在"
+    preheader = m.group(1)
+    # preheader 在正文(hero)之前
+    assert html.find("mso-hide:all") < html.find("MORNING MARKET BRIEF")
+    # 含當日關鍵數字與立場
+    assert "45,210" in preheader and "2,192" in preheader
+    assert "95.40" in preheader and "116.99" in preheader and "偏多" in preheader
+    # 隱藏、不佔版面
+    assert "display:none" in html[:html.find("MORNING MARKET BRIEF")]
+    # 冪等:同輸入兩次 render,preheader 一致
+    html2 = mr.render_html({**q}, dict(fair), dict(preds), analysis, "2026-06-16", "每日報")
+    assert re.search(r'mso-hide:all[^>]*>([^<]*)</div>', html2).group(1) == preheader
+
+
+def test_render_html_preheader_falls_back_without_data():
+    """無任何預測數字時 preheader 退回標題,不留空(空預覽會被 Gmail 抓信首雜訊)。"""
+    import re
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          "沒有立場", "2026-06-16", "每日報")
+    ph = re.search(r'mso-hide:all[^>]*>([^<]*)</div>', html).group(1)
+    assert ph.strip() and "美股晨報" in ph
+
+
 def test_render_html_size_guard_quiet_when_small(monkeypatch):
     monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 50.0)
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},

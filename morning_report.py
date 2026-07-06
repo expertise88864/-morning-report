@@ -4090,7 +4090,7 @@ def _trend_label(metrics: dict) -> str:
 
 
 def fetch_news() -> list[dict]:
-    """抓 RSS 摘要，回傳最近 24 小時內的新聞。"""
+    """抓 RSS 摘要，回傳最近 30 小時內的新聞(涵蓋跨日凌晨發布的 Fed/美股盤後新聞)。"""
     items: list[dict] = []
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for source, url in RSS_FEEDS.items():
@@ -13542,6 +13542,20 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     truncation_notice = ""
 
+    # 收件匣預覽文字(preheader):Gmail/iOS 主旨後那行灰字。不設則抓到信首(天氣/MARKET BRIEF 等
+    # 雜訊)。放當日最重要數字,一眼可判今日盤勢。隱私:僅公開預測(加權/2330/0050/00662),絕無持股。
+    def _ph_num(v, nd=0):
+        return f"{v:,.{nd}f}" if isinstance(v, (int, float)) else None
+    _taiex_ph = (quotes.get("TAIEX_PRED") or {}).get("pred_open")
+    _ph_bits = [b for b in (
+        (f"加權預估 {_ph_num(_taiex_ph)}" if _ph_num(_taiex_ph) else None),
+        (f"2330 {_ph_num(_p_mid)}" if _ph_num(_p_mid) else None),
+        (f"0050 {_ph_num(_t_pred, 2)}" if _ph_num(_t_pred, 2) else None),
+        (f"00662公允 {_ph_num(_f_price, 2)}" if _ph_num(_f_price, 2) else None),
+        (f"立場{stance.get('label')}" if stance.get("label") else None),
+    ) if b]
+    preheader = _htmllib.escape("　".join(_ph_bits) or f"美股晨報 {report_date}")
+
     def _assemble() -> str:
         return f"""<!DOCTYPE html>
 <html lang="zh-TW">
@@ -13551,6 +13565,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
   <title>美股晨報 {report_date}</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#f1f5f9;opacity:0;">{preheader}</div>
   <table role="presentation" style="width:100%;border-collapse:collapse;background:#f1f5f9;">
     <tr>
       <td align="center" style="padding:12px 4px;">

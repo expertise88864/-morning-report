@@ -14,14 +14,22 @@ import statistics
 from pathlib import Path
 
 MH = Path(__file__).resolve().parent.parent / "state" / "model_history.json"
+#   涵蓋 morning_report.MODEL_FEATURES 全 22 項(缺一項 D1 驗收時該因子就拿不出 IC 證據)
+#   + 額外基本面/估值因子(op_margin/per… 非模型特徵,但鋪路供日後評估)。
+#   凡列於此的名稱都必須是 _snapshot_for_model 的 keep 欄位,否則整欄樣本為 0。
 FACTORS = [
     # 技術/動能(歷史最久)
     "pct_5d", "ma20_dist_pct", "vol_ratio_20d", "day_pct", "daily_vol_pct",
+    "rel_strength_5d",
     # 基本面/成長/估值(自 2026-06 起累積)
     "rev_yoy_pct", "rev_mom_pct", "rev_surprise_pct", "eps_percentile",
     "op_margin", "net_margin", "roe_q", "per", "yield_pct", "market_cap",
     # 籌碼(中期)
-    "foreign_30d_lot", "inst_buy_vol_ratio", "short_cover_ratio", "tdcc_wow_pct",
+    "foreign_lot", "invest_lot", "foreign_30d_lot", "invest_30d_lot",
+    "foreign_streak", "invest_streak", "margin_change_lot", "tdcc_wow_pct",
+    "inst_buy_vol_ratio", "short_cover_ratio",
+    # 事件/新聞、流動性(模型特徵,先前無 IC 追蹤)
+    "news_catalyst_score", "trade_value", "slippage_bps",
 ]
 HORIZONS = (1, 3, 5, 20)
 

@@ -20,7 +20,7 @@ import morning_report as mr
 
 
 @pytest.fixture(autouse=True)
-def _reset_twse_stock_day_all_cache(monkeypatch):
+def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
     """STOCK_DAY_ALL 共用快取在測試間必須清空,否則 mock 資料會跨測試污染;
     重試退避在測試中歸零,避免失敗路徑測試慢 10 倍。"""
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
@@ -28,6 +28,8 @@ def _reset_twse_stock_day_all_cache(monkeypatch):
     mr._RSS_CONTENT_CACHE.clear()   # N5:RSS 內容快取也必須測試間清空,避免跨測試污染
     mr._FEED_STATS.clear()          # V2-N1:per-host feed 統計同理
     monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
+    # §B:信件存檔目錄導到 tmp,避免經 deliver_report 的測試把 *.html.gz 寫進真實 state/emails/
+    monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path_factory.mktemp("emails"))
     yield
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)

@@ -2410,6 +2410,147 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmr94yaxr02kq01q6gt863egg",
+        "title": "SemiAnalysis最新報告！AI供應鏈警訊浮現？ 2026.07.06",
+        "published": "Mon, 06 Jul 2026 11:29:15 GMT",
+        "processed_at": "2026-07-06T16:41:19Z",
+        "digest": {
+          "summary_points": [
+            "營收創新高個股眾多（如川湖、凡軒、創意、監點、中壘、貿聯KY等），基本面良好但股價已漲多。",
+            "SemiAnalysis報告指出NVLink 144架構因PCB技術瓶頸延遲超過12個月至2028年，衝擊PCB（台光電、南電）及CPO族群跌停。",
+            "該機構先前報告稱HV DC延後至2028年、CPU延後至2028-2029年，相關概念股（台達電、環宇KY）走弱。",
+            "強勢族群集中在漲價題材：公綠元件（富鼎、大中）、導線架（順德、長科）、電源管理IC（茂達），資金從夢想型（CPO）轉向。",
+            "封測族群強勢，超豐、新權、細格漲停，金源電收漲，日月光相對抗跌（僅跌0.4%）。",
+            "國巨董事長陳泰銘親自擔任多家公司董事長（國巨、同欣電、大中、富鼎、茂達），股價表現強勢。",
+            "台積電法說會（7/16）前，高盛上調資本支出：2027年780億美元、2028年820億美元，設備股未跟漲。",
+            "群創因台積電CoPOS供應鏈概念強勢，外資買超第一。",
+            "總經面：FED主席Walsh稱通膨風險緩和，FactSet預估Q2標普500 EPS年增23.1%、Q3年增26.8%，基本面穩健。",
+            "主持人與來賓對第三季台股看法偏多，認為為高檔震盪，修正後可布局，且年底有美國中期選舉政策支撐。"
+          ],
+          "tickers": [
+            {
+              "name": "群創",
+              "code": "3481",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "便宜，CoPOS概念，外資買超第一名"
+            },
+            {
+              "name": "超豐",
+              "code": "2441",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "封測強勢，股價漲停後收漲3%"
+            },
+            {
+              "name": "大中",
+              "code": "6435",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "國巨董事長陳泰銘擔任董事長，股價強勢"
+            },
+            {
+              "name": "富鼎",
+              "code": "8261",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "國巨集團旗下，公綠元件漲價題材"
+            },
+            {
+              "name": "茂達",
+              "code": "6138",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "國巨董事長親自擔任董事長，電源管理IC"
+            },
+            {
+              "name": "環宇KY",
+              "code": "",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "semi analysis報告影響，漲停後又跌停"
+            },
+            {
+              "name": "台光電",
+              "code": "2383",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "NVLink延遲利空導致跌停，但主持人認為基本面好"
+            },
+            {
+              "name": "南電",
+              "code": "8046",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "NVLink延遲利空導致跌停，但主持人認為基本面好"
+            }
+          ],
+          "market_view": "第三季大盤高檔震盪偏多，基本面支撐，修正可視為布局機會。",
+          "action_view": "關注漲價題材（封測、BBU），第三季高檔震盪換股，修正時分批布局。",
+          "notable_quote": "慢慢來我覺得終究會突破的，慢慢來其實比較長長得比較久。"
+        }
+      },
+      {
+        "guid": "cmr94tc0e02bt01uvbesm0e3p",
+        "title": "台股V轉，小心主力誘多？！ 2026.07.06",
+        "published": "Mon, 06 Jul 2026 11:26:01 GMT",
+        "processed_at": "2026-07-06T16:45:25Z",
+        "digest": {
+          "summary_points": [
+            "鴻海6月營收8,218億元，年增52%，月減4.38%，第二季營收創歷年同期新高。",
+            "聯電6月營收年增22.85%，創歷年同期次高，外資持續買超。",
+            "楊惠宇認為台股短線因外資期貨空單（8萬口）與台積電法說前觀望，指數將高檔震盪，但長線有AI基本面支撐。",
+            "SemiAnesthesia看空PCB報告致台光電等重挫，但楊惠宇指僅短期影響，長線仍看好台光電技術領先。",
+            "記憶體族群先前利空後，華邦電6月11日打月線後6天漲5成，建議操作不追高、不停損。",
+            "封測族群今日強勢，先進封裝延續摩爾定律，新權3天漲19%。",
+            "功率元件由富鼎領漲，鴻城（8255）7月1日打月線後連拉漲停，可找壓回月線的趨勢股。",
+            "台積電6月17日以來外資賣超6.8萬張，短線震盪但可做價差（兩次約賺10-11%）。",
+            "今日三大法人賣超，外資賣超110億，櫃買指數開高走低跌1.25%，波動劇烈。",
+            "下週聚焦美國ISM服務業、GPT-5.6、SpaceX入納指、中國CPI/PPI、聯準會會議紀要、SK海力士IPO。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "長線看多，短線因外資賣壓與法說前震盪，可做價差操作。"
+            },
+            {
+              "name": "台光電",
+              "code": "2383",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "技術領先，長線受惠AI PCB，短線受鬼故事影響可觀察月線或季線支撐。"
+            },
+            {
+              "name": "華邦電",
+              "code": "2344",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "記憶體循環向上，利空後快速反彈，建議不追高、不停損。"
+            },
+            {
+              "name": "新權",
+              "code": "3264",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "封測族群強勢，受惠先進封裝需求。"
+            },
+            {
+              "name": "富鼎",
+              "code": "8261",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "功率元件指標股，受惠AI電源控制需求。"
+            }
+          ],
+          "market_view": "楊惠宇認為台股短線因外資期貨空單及台積電法說前觀望，指數將高檔震盪，但長線有AI帶動基本面支撐，趨勢仍然向上。",
+          "action_view": "建議長線持股比重降低，短線比重增加，利用震盪做價差；記憶體族群不可追高、不停損；PCB族群可等回測季線再佈局；封測、功率元件等強勢族群可找壓回月線的個股操作。",
+          "notable_quote": "短線震盪，但是長線是趨勢。"
+        }
+      },
+      {
         "guid": "cmr4v5py508wi01tc0dqjdjq7",
         "title": "財經觀點｜股市地心引力來了，抗震抗跌自救手冊 2026.07.03",
         "published": "Sun, 05 Jul 2026 00:02:19 GMT",
@@ -3024,82 +3165,6 @@
           "notable_quote": "我覺得在整個盤面上面的架構來看，今天看起來是百花齊放沒有錯，但是我覺得有一部分的一個這些的一個個股他其實是因為修正過了他的股價已經到一定的相對低位階，這時候呢在資金輪動的這個情況之下去輪動到這些相對低檔的個股。"
         },
         "shown_at": "2026-07-03T23:00:25Z"
-      },
-      {
-        "guid": "cmr0kp3dm0bnk01z4942xhkwc",
-        "title": "記憶體、被動元件、老AI明天能買嗎？ 2026.06.30",
-        "published": "Tue, 30 Jun 2026 11:40:23 GMT",
-        "processed_at": "2026-06-30T16:16:14Z",
-        "digest": {
-          "summary_points": [
-            "台幣第二季走升0.45%，但今年以來仍貶1%以上；外資股息匯出壓力大，2.5兆台幣股息創新高，外資約領一兆，可能使台幣往32元挺進，第三季偏貶。",
-            "五月製造業景氣信號值15.75分，創15個月新高，續亮綠燈，超過兩成業者亮紅燈。",
-            "高盛預估標普500第二季盈利成長22%，AI熱潮助攻；第一季實際成長27%遠超預期。",
-            "韓國三星、SK海力士等投入800兆韓元（5200億美元）新建四座先進記憶體工廠，另加550兆韓元建AI資料中心，被視為國運賭注。",
-            "記憶體族群因韓國擴產消息偏弱，但分析師認為供過於求是3-5年後，目前AI需求遠超供給，缺貨至少到2028上半年，建議站在買方。",
-            "記憶體可留意旺宏(2337)、力積電(6770)；被動元件可留意立敦(6175)、台慶科(3357)，但要買黑不買紅、乖離大於30%不追。",
-            "被動元件族群今日多檔漲停，但離月線正乖離過大者不宜追價。",
-            "本週大盤類似6月8日那週，明後天開高不追，因週四美國非農就業數據公布，且每伊衝突仍存在，但拉回靠近月線可買。",
-            "每伊衝突目前簽14項備忘錄但未最終協議；油價已回落，通膨壓力可望減輕，聯準會升息機率不大。",
-            "5月美國CPI年增4.1%創新高，主因能源單月暴增3.9%，扣除後核心商品下跌0.6%；油價若回穩，通膨壓力不重。"
-          ],
-          "tickers": [
-            {
-              "name": "旺宏",
-              "code": "2337",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "分析師建議記憶體可留意，並認為目前供過於求是3-5年後，可趁拉回買進。"
-            },
-            {
-              "name": "力積電",
-              "code": "6770",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "分析師建議記憶體可留意，並認為目前供過於求是3-5年後，可趁拉回買進。"
-            },
-            {
-              "name": "立敦",
-              "code": "6175",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "分析師建議被動元件可留意，但要買黑不買紅、乖離過大不追。"
-            },
-            {
-              "name": "台慶科",
-              "code": "3357",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "分析師建議被動元件可留意，但要買黑不買紅、乖離過大不追。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "分析師提及美光股價受韓國擴產消息拉回後收漲1.1%，顯示AI需求強勁，財報佳。"
-            }
-          ],
-          "market_view": "短期因非農數據及每伊衝突將偏震盪，但拉回靠近月線可買，中期偏多。",
-          "action_view": "明後天開高不追，震盪拉回可站在買方；記憶體與被動元件買黑不買紅，乖離過大不追。",
-          "notable_quote": "明後天開高不要追，因為還是會偏震盪，你反而趁著這震盪幾天的過程當中，有風拉回，如果有回到月線附近，強烈建議大家可以去站站買方。"
-        }
-      },
-      {
-        "guid": "cmqz628tg08h901ul3sqv1k0r",
-        "title": "財富生活｜精準防癌 如何不讓細胞作惡？",
-        "published": "Mon, 29 Jun 2026 22:17:16 GMT",
-        "processed_at": "2026-07-01T06:52:47Z",
-        "digest": {
-          "summary_points": [
-            "本集內容主要為癌症預防健康討論，無直接與投資或市場相關的重點。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "最近股票這個波動劇烈，有些它可能會壓力走的失衡。"
-        },
-        "shown_at": "2026-07-04T22:45:57Z"
       }
     ]
   },
@@ -4630,6 +4695,30 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "7ed31c1e-3cf5-467d-a302-b47b014db8c5",
+        "title": "These Are the Sharps Actually Making Money on Prediction Markets",
+        "published": "Mon, 06 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-06T16:53:00Z",
+        "digest": {
+          "summary_points": [
+            "預測市場是零和遊戲，多數參與者賠錢，只有少數『sharps』能持續獲利。",
+            "Los Angeles 市長初選中，Spencer Pratt 的勝率因媒體炒作而被高估，實際民主黨優勢 +42 使共和黨不可能贏。",
+            "Brian Golden 重建 BLS 通膨計算公式，用 Excel 模型預測 CPI，過去兩年平均絕對誤差優於彭博共識。",
+            "預測市場的效率取決於流動性與參與者類型：政治選舉仍受情緒主導，存在套利空間。",
+            "AI 模型（如 ChatGPT）在預測市場中無優勢，因它會迎合提問且依賴過時的專家意見，容易反向操作。",
+            "Sharps 的優勢來自原創研究（電話訪問、實地調查、自建模型），而非公開資訊或 AI。",
+            "Romanian 選舉中，Sharps 因忽略當地媒體氛圍而慘賠，顯示在地化資訊的重要性。",
+            "預測市場的『評論區』通常是反向指標：越多人討論的一方越可能是錯的。",
+            "預測市場的價格訊號價值在於『後果』（輸贏有代價），而非絕對準確度高於專家。",
+            "長期來看，業餘玩家（dumb money）會因持續虧損而退出，使市場變得更難獲利（類似線上撲克泡沫）。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "If you are listening to this, and you think you're gonna make money, you probably aren't unless you actually have some reason to think that you're putting in work."
+        }
+      },
+      {
         "guid": "8e5cf07d-8bf4-43a2-9703-b47b014a5166",
         "title": "How a Major Grocery Store Chain Can Dramatically Lower the Cost of Food",
         "published": "Fri, 03 Jul 2026 08:00:00 +0000",
@@ -5044,33 +5133,6 @@
           "notable_quote": "Everyone has discovered from the past six years that these big one-off, supposedly one-off disruptions can happen with frequency."
         },
         "shown_at": "2026-06-20T22:57:53Z"
-      },
-      {
-        "guid": "60472ab3-350e-4e47-a612-b4670121babd",
-        "title": "Carmen Li's Plan to Build a Futures Market for Compute",
-        "published": "Mon, 15 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-16T22:50:34Z",
-        "digest": {
-          "summary_points": [
-            "Carmen Li，Compute Exchange 與 Silicon Data 的執行長，正在推出 GPU 期貨與選擇權，並在 CME 上市，尚待監管批准。",
-            "Compute Exchange 是一個 GPU 採購的現貨市場，提供保留合約、遠期合約以及翻新晶片合約。",
-            "Silicon Data 提供 GPU 指數，包括 2025 年在 Bloomberg Terminal 上線的全球首個指數。",
-            "同一顆晶片的效能差異可達 38%，原因來自不同供應商或同一供應商內部的差異，因此指數需要標準化處理。",
-            "GPU 價格波動率約為年化 20-30%（日波動），與健康的大宗商品波動範圍相近，因此避險工具具有合理性。",
-            "近期 GPU 價格上漲：H100 過去三個月漲約 8%，A100 漲 10-15%，B200 價格高於上市水準。",
-            "翻新晶片的殘值很高：H100 在第二年後仍保留約 85 美分對 1 美元。",
-            "GPU 市場的買家多元，包括 AI 新創、傳統企業、推論服務提供商以及新興雲端業者。",
-            "遠期與期貨可幫助多頭（GPU 持有者）與空頭（使用者）對沖成本波動。",
-            "指數編製方法每天收集來自 200 多個資料來源的 15 萬筆以上交易價格，並根據晶片配置與地點進行標準化。",
-            "Token 推論價格自 2024 年 12 月以來翻倍，達到每百萬個 token 約 2.21 美元（混合開源與閉源模型）。",
-            "運算市場結構類似石油，但因晶片非均質與軟體層差異而存在基差風險。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The market always gravitates towards things that actually help them hedge."
-        },
-        "shown_at": "2026-06-16T23:24:06Z"
       }
     ]
   },
@@ -5192,6 +5254,29 @@
   "techorange": {
     "name": "科技報橘",
     "episodes": [
+      {
+        "guid": "7dd661e1-429f-4aa6-a292-91f3efb6ffa4",
+        "title": "科技早餐 7/6｜SoftBank 搶 10GW AI 算力出租，Neocloud 戰火燒進美國",
+        "published": "Sun, 05 Jul 2026 21:30:00 GMT",
+        "processed_at": "2026-07-06T16:37:30Z",
+        "digest": {
+          "summary_points": [
+            "軟銀集團與軟銀宣布在美國成立 SBNIL，切入 AI 算力出租市場，預計 2027 年啟動，長期目標 2030 年前提供 10 萬規模資料中心容量，股權投資約數億美元。",
+            "國際半導體產業協會 (Semi) 致信美國財政部，警告干預記憶體價格與產能可能惡化短缺，AI 需求加劇供應緊張，呼籲允許長期協議與延長稅收優惠。",
+            "蘋果傳尋求美國政府批准向中國記憶體供應商採購零組件，美國國會議員主張記憶體應優先供應美國客戶。",
+            "歐盟資助報告指出，中國出口管制、歐洲依賴美國技術及晶片產業結構性弱點，增加歐盟晶片供應鏈風險，並提及台海衝突與美國可能要求 ASML 停止對中出口設備。",
+            "美國總統川普表示 AI 需安全護欄但限制越少越好，避免削弱與中國競爭能力。",
+            "中國 AI 公司智譜的 GLM 5.2 模型受矽谷關注，企業應用表現接近 Anthopec，但 Token 成本僅約 Anthopec 四分之一，顯示模型成本競爭加劇。",
+            "Elon Musk 預測中國 AI 模型可能在 2027 年第一季達到 Anthopec 水準，智譜創辦人回應可能更快。",
+            "微軟成立新營運事業 Microsoft Frontier Company，投入 25 億美元與 6000 名工程師，協助企業將 AI 導入營運流程，支援多種模型，首波合作包括倫敦證交所等。",
+            "AI 進入企業會議場景，Dynabook 的 Dynet Connect Meeting 智慧會議系統可兼容既有 H323/SIP 設備，提供逐字稿、翻譯、摘要等功能，滿足高資安需求。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "AI 比網際網路更強大，誰取得領先，誰就能贏得這場競賽。"
+        }
+      },
       {
         "guid": "3ba2270e-8f04-43b5-956e-e80f4aa25861",
         "title": "【全新一週】《虛擬資產服務法》三讀通過！蔡玉玲：如何結合物流、金流、資訊流，創造屬於臺灣的殺手級應用場域？│EP221",
@@ -5615,66 +5700,6 @@
           ],
           "tickers": [],
           "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "5c0b3761-0d4e-499e-a459-f788149c0672",
-        "title": "科技早餐 6/22｜Google 砸錢推 TPU 挑戰 NVIDIA，AI 算力戰從晶片燒到資本",
-        "published": "Sun, 21 Jun 2026 21:30:00 GMT",
-        "processed_at": "2026-06-22T14:10:36Z",
-        "digest": {
-          "summary_points": [
-            "Google 透過財務擔保推廣自研 TPU 晶片，複製 NVIDIA 生態系策略，將資本與資料中心綁定。",
-            "Amazon 準備將自研 AI 晶片 Trainium 銷售給外部企業，進一步挑戰 NVIDIA 市場地位。",
-            "美國總統川普表示蘋果同意與 Intel 合作在美國設計製造晶片，但雙方尚未正式回應。",
-            "台灣央行上修今年經濟成長率至 9.45%，主因 AI 基礎設施投資與半導體擴產，但提醒依賴高科技產業的風險。",
-            "經濟部預估未來 10 年電力需求年均成長 2.5%，因半導體擴廠與 AI 資料中心用電增加，規劃新增燃氣機組約 26GW。",
-            "鴻海董事長劉揚偉預估 2030 年全球資料中心投資達 1.6 兆美元，用電規模從 68GW 成長至 174GW。",
-            "劉揚偉指出算力需求四大群體：模型開發商、雲端服務業者、政府與企業，前兩者商業模式明確。",
-            "美國 AI 監管從晶片出口延伸至模型安全，川普對 Anthropic 態度從國安威脅轉為合作。",
-            "台積電先進製程短期內地位難以被取代，即使蘋果增加 Intel 為第二來源，僅部分產品先行測試。"
-          ],
-          "tickers": [
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "透過財務擔保推廣TPU，複製NVIDIA生態系策略，鞏固AI晶片市場。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "準備將自研AI晶片Trainium推向外部市場，挑戰NVIDIA主導地位。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "蘋果可能合作在美國製造晶片，且有美國政府持股支持轉型。"
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "與Intel合作分散晶片製造來源，但短期仍高度依賴台積電。"
-            },
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "董事長看好AI工廠時代，預估資料中心投資與用電需求大幅成長。"
-            }
-          ],
-          "market_view": "台灣經濟受惠AI需求，GDP成長率上修至9.45%，但需注意電力與產業過度集中風險。",
           "action_view": "",
           "notable_quote": ""
         },

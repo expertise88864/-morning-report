@@ -1174,6 +1174,39 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmr7n7pcz00g601wtcpabdx98",
+        "title": "537.【達人聊產業】駭客正義 ! 匿於國防與企業後的資訊安全 ft. 奧義賽博吳明蔚董事長",
+        "published": "Sun, 05 Jul 2026 23:02:05 GMT",
+        "processed_at": "2026-07-06T12:58:44Z",
+        "digest": {
+          "summary_points": [
+            "奥义智慧第一支箭「资安 AI」端點防護採訂閱制，在台灣金融業市佔約六成、銀行高達八成，半導體客戶逾 100 家，政府 A/B 級單位亦超過 100 家，年成長率 20～30%。",
+            "公司第二支箭「AI 防護」以小型模型保護大型 AI 模型，今年起正式出貨，目標一年內回收研發投入，並可能依客戶使用量計費。",
+            "第三支箭「無人機偵測與反制」專注於破解加密控制訊號以定位飛手與機體，預計 2025 下半年出貨，與反制系統廠商整合。",
+            "費用率曾達 100%，但公司策略為控制員額於 200 人以內、以 AI 放大每人戰力，未來營收成長將帶動營運槓桿浮現。",
+            "創辦人團隊曾創辦艾斯庫柏並獲以色列 Nasdaq 公司高價併購，具備深厚駭客攻防與資安技術背景，為公司核心競爭力。",
+            "公司以「聯防」機制讓客戶共同分享威脅情資，部署量越大 AI 學習越強，護城河隨客戶數累積，形成大者恆大優勢。",
+            "全球駭客攻擊因 AI 而降門檻，日本 2024 年全年遭駭導致不當股票交易損失逾 7,000 億日圓，凸顯資安剛需與產業成長空間。",
+            "奧義智慧目標三年內成為亞洲資安第一品牌，日本已打入多家大型夥伴，並開始布局澳洲與印度，海外市場為主要成長動能。",
+            "未來將透過異業結盟（如與 D-Link 等硬體廠合作）把資安軟體嵌入連網裝置，開拓消費性市場並增加營收來源。",
+            "因應 AI 普及，每家企業都將變成 7×24 小時營運，資安需求隨之擴增，公司看好第一支箭長期潛力仍大。",
+            "SaaS 訂閱制下，合約負債為領先指標，可提前一至兩季反映業務動能，公司建議投資人關注此項目優於單月營收。"
+          ],
+          "tickers": [
+            {
+              "name": "奥义智慧",
+              "code": "",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "三條產品線成長明確，海外擴張積極，目標成為亞洲資安龍頭，且聯防機制加深護城河。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "關注 SaaS 公司的合約負債作為領先指標，因其可提前反映未來數月營收動能。",
+          "notable_quote": "資安等於國安。"
+        }
+      },
+      {
         "guid": "cmr3qqy160e9f01v96f8l6jbq",
         "title": "536.【財經時事放大鏡】玻璃橋 x Meta 有一批算力好便宜",
         "published": "Thu, 02 Jul 2026 23:02:07 GMT",
@@ -3360,6 +3393,59 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "9bf9cdc4-7925-11f1-9148-6f24c2a46837",
+        "title": "How the White House Overturned a World Cup Red Card",
+        "published": "Mon, 06 Jul 2026 10:27:00 -0000",
+        "processed_at": "2026-07-06T11:50:35Z",
+        "digest": {
+          "summary_points": [
+            "美股期貨週一上漲，那斯達克100指數期貨漲逾1%，科技股熱情重燃。",
+            "本週重要事件包括南韓晶片大廠SK海力士在那斯達克上市，以及三星電子財報。",
+            "SpaceX將於週二納入那斯達克100指數。",
+            "聯準會首次利率會議紀要將公佈，市場關注新主席凱文·沃什的鷹派程度。",
+            "油價續跌，因OPEC+同意增產，且荷姆茲海峽航運逐步恢復，可能導致供過於求。",
+            "OPEC+自下月起日產量增加約18.8萬桶。",
+            "英國廉航EasyJet同意美國投資公司Castle Lake的收購提議，交易金額可能超過70億美元，溢價24%。",
+            "美國電動車銷售今年以來因聯邦補貼結束而下降25%，但分析師預期不會持續。",
+            "最新研究顯示電動車電池續航力優於預期：上路5年後仍可維持原始續航里程的95%。",
+            "全球電動車銷量佔新車銷售15%，預計2030年達近25%。"
+          ],
+          "tickers": [
+            {
+              "name": "SK海力士",
+              "code": "000660.KS",
+              "market": "KR",
+              "direction": "neutral",
+              "reason": "即將在那斯達克上市，但主持人未給明確方向。"
+            },
+            {
+              "name": "三星電子",
+              "code": "005930.KS",
+              "market": "KR",
+              "direction": "neutral",
+              "reason": "本週將公佈財報，主持人未給明確方向。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "將納入那斯達克100指數，反映科技股正面情緒。"
+            },
+            {
+              "name": "易捷航空",
+              "code": "EZJ.LN",
+              "market": "UK",
+              "direction": "bullish",
+              "reason": "同意以溢價24%被收購，股價上漲。"
+            }
+          ],
+          "market_view": "美股期貨週一上漲，科技股熱情重燃，但油價因OPEC+增產及荷姆茲海峽恢復而下跌，市場關注本週聯準會會議紀要及企業財報。",
+          "action_view": "",
+          "notable_quote": "According to a test that's been done by a company called Recurrent that after five years on the road, the average EV will still be able to drive up to 95% of its original range."
+        }
+      },
+      {
         "guid": "d6f17b7c-7658-11f1-8c38-27fd7676c39c",
         "title": "Why a Hot U.S. Job Market Cooled in June",
         "published": "Thu, 02 Jul 2026 20:56:00 -0000",
@@ -3747,48 +3833,45 @@
           "notable_quote": "US indexes were down a bit in afternoon trading. The Nasdaq led the losses closing down about a quarter of a percent. Its fifth straight decline."
         },
         "shown_at": "2026-06-27T22:52:53Z"
-      },
-      {
-        "guid": "f0907546-7145-11f1-b28e-f7e36e97d752",
-        "title": "Can Anything Kick-Start the U.S. Housing Market?",
-        "published": "Fri, 26 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-26T10:39:11Z",
-        "digest": {
-          "summary_points": [
-            "油價（WTI）今日下跌超過3%，較一個月前下跌約20美元，因交易者關注中東能源流動可能恢復，忽略伊朗在荷姆茲海峽附近的攻擊。",
-            "全球科技股在亞洲暴跌後下跌，韓國監管機構暫停記憶體晶片股交易。",
-            "日本軟銀集團（SoftBank Group）暴跌超過12%，因報導指出OpenAI考慮進一步延後IPO。",
-            "美國商務部禁止多數中資電動車公司Polestar在美國銷售新車，理由是針對中國軟體的規定；Polestar將售出剩餘庫存並提供維修服務。",
-            "在房屋市場中，抵押貸款利率是關鍵因素；WSJ房地產編輯Craig Carmen指出，目前唯一能確定降低抵押貸款利率的因素可能是嚴重的經濟放緩或衰退。",
-            "房價已連續35個月上漲，中位數房價超過40萬美元。"
-          ],
-          "tickers": [
-            {
-              "name": "軟銀集團",
-              "code": "SFTBY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價暴跌超過12%，因OpenAI可能延後IPO的報導。"
-            },
-            {
-              "name": "Polestar",
-              "code": "PSNY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "美國商務部禁止其在美國銷售新車。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The only thing that I could really think of at the moment that would seem certain to bring down mortgage rates would be a severe economic slowdown or recession."
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72836861",
+        "title": "Wall Street’s bulls, few bears",
+        "published": "Mon, 06 Jul 2026 10:01:35 +0000",
+        "processed_at": "2026-07-06T11:51:29Z",
+        "digest": {
+          "summary_points": [
+            "Yardini Research是最看多的機構，標普500年底目標為80-50，隱含約10%漲幅。",
+            "Oppenheimer和Citigroup預測標普500為80-100，22V Research為80-60。",
+            "德意志銀行、高盛、摩根士丹利目標皆為8,000。",
+            "分析師平均預測標普500為77-16，隱含約3%漲幅。",
+            "Stiefel目標最低為7,000，暗示約6%下跌；美銀目標70-100。",
+            "比特幣兩週來首度突破63,000美元，受弱於預期的美國就業報告及聯準會評論支撐。",
+            "特斯拉將機器人計程車服務擴展至邁阿密，與Waymo競爭。",
+            "Comcast Sky將以超過20億美元收購ITV的媒體與娛樂部門。",
+            "一家蘋果與輝達供應商计划透過全球存託憑證募資14億美元。",
+            "OPEC+批准增產，因荷莫茲海峽重新開放提振供給前景。",
+            "Middleby分拆的Madeira食品加工業務今日生效。"
+          ],
+          "tickers": [
+            {
+              "name": "Strategy (MicroStrategy)",
+              "code": "MSTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "比特幣突破63,000後，MSTR上漲5%。"
+            }
+          ],
+          "market_view": "華爾街策略師普遍看好美股，但共識指向較溫和的漲幅（約3%）。",
+          "action_view": "",
+          "notable_quote": "The distribution of forecasts suggests strategists continue to expect gains for the broader market through the end of the year, though the consensus points to a more modest advance than the sharp rally that has already pushed the S&P to record highs this year."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72828393",
         "title": "Big catalyst week for SpaceX",
@@ -4508,53 +4591,6 @@
           "market_view": "市場處於「氣穴」狀態，AI利多已部分反映，通膨與利率將主導未來數週走勢，聯準會溝通減少增加不確定性。",
           "action_view": "操作上需繫緊安全帶，注意波動；強勁就業數據可能引發利率擔憂，形成反直覺反應。",
           "notable_quote": "An A++ plus earnings report could not be better. However, after some reflection, a lot of this was already baked into the stock. So much is priced in."
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72697968",
-        "title": "Will tech stocks rebound?",
-        "published": "Fri, 26 Jun 2026 08:50:03 +0000",
-        "processed_at": "2026-06-26T10:40:18Z",
-        "digest": {
-          "summary_points": [
-            "美國主要指數收盤混合：標普500平盤，那斯達克下跌0.4%，道瓊上漲0.1%，受惠於美光強勁財報及符合預期的通膨數據。",
-            "科技股週末前反彈，但交易員評估賣壓是否加劇或逢低買盤浮現。",
-            "聯準會官員威廉斯與卡什卡利將發表談話，可能提供利率與經濟展望新見解。",
-            "國際海事組織暫停荷莫茲海峽護航任務，因阿曼灣船隻遇襲，引發對伊朗戰爭協議的擔憂；油價下跌2%。",
-            "蘋果股價暴跌逾6%，因宣布調漲MacBook與iPad價格以因應零組件成本上升。",
-            "OpenAI正考慮將IPO延後至2027年，原因包括投資人情緒疑慮及來自Anthropic的競爭。",
-            "Anthropic在完成650億美元融資後秘密提交IPO申請，估值達9650億美元，超越OpenAI成為全球最有價值AI新創。",
-            "比特幣觸及58,000美元，為2024年9月以來最低，因通膨數據偏高與降息預期降溫；13.3萬名交易者被清算。",
-            "SpaceX計劃為美國消費者推出Starlink行動服務，可能與威瑞森、AT&T等傳統電信商競爭。",
-            "TD Cowan分析師認為，若SpaceX未達成批發網路協議，T-Mobile將是明確的合作夥伴。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因宣布漲價導致股價下跌逾6%"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "第三財季獲利強勁"
-            },
-            {
-              "name": "比特幣",
-              "code": "BTC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "價格跌至58,000美元，年初至今下跌33%"
-            }
-          ],
-          "market_view": "市場漲跌互見，科技股拖累那斯達克；關注反彈能否持續。",
-          "action_view": "交易員正在評估賣壓是否持續或逢低買盤是否出現。",
-          "notable_quote": "Apple said that it has reached a point where we need to begin raising prices on a number of products."
         },
         "shown_at": "2026-06-26T23:04:32Z"
       }

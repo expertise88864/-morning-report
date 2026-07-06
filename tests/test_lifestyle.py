@@ -795,7 +795,8 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert ("marked", 1) in events
     assert "history!" not in events                       # 關鍵:不污染預測歷史
     pushes = [e for e in events if isinstance(e, tuple) and e[0] == "push"]
-    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE)]
+    # §B:週末也 push 信件存檔目錄(仍不含 history/model_history,故不污染預測歷史)
+    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE), str(mr.EMAIL_ARCHIVE_DIR)]
     # 寄信必須早於標記/ push(at-least-once:寄成功才落狀態)
     assert events.index("sent") < events.index(("marked", 1))
 

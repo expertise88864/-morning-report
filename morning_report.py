@@ -8850,7 +8850,8 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
             [str(STATE_FILE), str(MODEL_HISTORY_FILE),
              str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
              str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
-             str(SOURCE_HEALTH_HISTORY_FILE)],   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
+             str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
+             str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)
@@ -10529,8 +10530,9 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
         p1_name = pf.get("p1_name", "持倉1")
         p2_name = pf.get("p2_name", "持倉2")
         # 兩格各佔一半;若只設一個,另一格顯示「未設定」佔位以維持版面
+        # <!--PF_ROW_START/END--> 標記供 archive_report_html 去識別(存檔時整列移除),於信件中不可見
         portfolio_row = f"""
-          <tr>
+          <!--PF_ROW_START--><tr>
             <td style="background:#0a3f5e;padding:0;border-top:1px solid rgba(255,255,255,0.12);">
               <table role="presentation" style="width:100%;border-collapse:collapse;">
                 <tr>
@@ -10539,7 +10541,7 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                 </tr>
               </table>
             </td>
-          </tr>"""
+          </tr><!--PF_ROW_END-->"""
 
     # 手機版 3+2 兩列:5 格橫排在 iPhone(~390px)每格僅 78px,數字會擠爆
     return f"""
@@ -13817,10 +13819,44 @@ def send_email(html: str, subject: str) -> None:
     print(f"[mail] 已寄出 → {', '.join(RECIPIENTS)}")
 
 
+EMAIL_ARCHIVE_DIR = Path("state/emails")
+
+
+def _redact_private_for_archive(html: str) -> str:
+    """存檔前移除 KPI 個人持股列(昨日帳上損益 % + NT$ 金額)——敏感財務不落地 repo/RAG。
+    以 render 端插入的 <!--PF_ROW_START/END--> 註解標記精準定位;無持股設定時為 no-op。"""
+    import re as _re
+    return _re.sub(r"<!--PF_ROW_START-->.*?<!--PF_ROW_END-->",
+                   "<!--[持股列存檔時已去識別移除]-->", html, flags=_re.S)
+
+
+def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optional[Path]:
+    """把寄出的信件 HTML(去識別後)存成 state/emails/<date>.html.gz,供日後檢索/RAG。
+    §B:先前 state 只存結構化數字,無法回溯「當天信實際說了什麼」。gzip 後每日 ~15-25KB、
+    年約 6-9MB;保留近 keep_days 天,超過者刪除。任何失敗都不影響寄信(晨報不可斷)。"""
+    import gzip
+    try:
+        EMAIL_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+        out = EMAIL_ARCHIVE_DIR / f"{date_str}.html.gz"
+        with gzip.open(out, "wt", encoding="utf-8") as f:
+            f.write(_redact_private_for_archive(html))
+        cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=keep_days)).strftime("%Y-%m-%d")
+        for p in EMAIL_ARCHIVE_DIR.glob("*.html.gz"):
+            if p.name.split(".")[0] < cutoff:   # 檔名 YYYY-MM-DD.html.gz
+                p.unlink()
+        return out
+    except Exception as e:
+        print(f"[archive] 信件存檔略過(不影響寄信): {e}", file=sys.stderr)
+        return None
+
+
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
                    podcast_episodes: list[dict]) -> None:
     """Send first, then commit delivery state for at-least-once semantics."""
     send_email(html, subject)
+    archive_report_html(
+        html,
+        (state_entry or {}).get("date") or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
     persist_delivered_report_state(
         state_entry,
         podcast_episodes,
@@ -14252,7 +14288,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # 去重時會誤刪週六的真實預測紀錄。因此這裡 entry=None,只單獨 push podcast 狀態檔。
     deliver_report(html, subject, None, podcast_eps)
     _git_commit_and_push_state(
-        [str(PODCAST_DIGEST_FILE)],
+        [str(PODCAST_DIGEST_FILE), str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")
     return 0

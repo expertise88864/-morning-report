@@ -91,6 +91,33 @@ def test_render_html_preheader_falls_back_without_data():
     assert ph.strip() and "美股晨報" in ph
 
 
+def test_archive_report_html_redacts_and_prunes(tmp_path, monkeypatch):
+    """信件存檔(§B):寫 gzip、去識別移除持股列、修剪過舊檔;失敗不拋。"""
+    import gzip
+    monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path)
+    (tmp_path / "2020-01-01.html.gz").write_bytes(b"old")   # 很舊,應被修剪
+    html = ("<body><!--PF_ROW_START--><tr><td>持倉1 昨日帳上 +NT$1.2萬</td></tr>"
+            "<!--PF_ROW_END--><div>一、美股收盤行情</div></body>")
+    out = mr.archive_report_html(html, "2026-07-06", keep_days=30)
+    assert out and out.exists()
+    saved = gzip.open(out, "rt", encoding="utf-8").read()
+    assert "NT$1.2萬" not in saved and "昨日帳上" not in saved   # 敏感財務去識別
+    assert "一、美股收盤行情" in saved                           # 其餘內容保留
+    assert not (tmp_path / "2020-01-01.html.gz").exists()        # 舊檔已修剪
+
+
+def test_render_html_portfolio_redacted_in_archive_but_present_in_email():
+    """持股帳上損益:寄給本人的信中保留,存檔版(去識別)移除整列。"""
+    q = {**_full_quotes(), "PORTFOLIO_ACTUAL": {
+        "p1": {"gain_pct": 1.5, "gain_amount": 12000},
+        "p1_name": "持倉1", "p2": {}, "p2_name": "持倉2"}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "昨日帳上" in html and "PF_ROW_START" in html          # 信中有(寄本人)
+    redacted = mr._redact_private_for_archive(html)
+    assert "昨日帳上" not in redacted and "PF_ROW_START" not in redacted  # 存檔去識別
+    assert "一、美股收盤行情" in redacted                          # 其餘保留
+
+
 def test_render_html_size_guard_quiet_when_small(monkeypatch):
     monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 50.0)
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},

@@ -3848,6 +3848,25 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72858350",
+        "title": "We are in a bubble",
+        "published": "Tue, 07 Jul 2026 20:15:11 +0000",
+        "processed_at": "2026-07-07T21:07:55Z",
+        "digest": {
+          "summary_points": [
+            "6月的市場波動是由於季度末的再平衡所致，基金調整因AI和記憶體晶片獲利而過度集中的持倉。",
+            "基金經理被迫在季度末前重新平衡，並在新的季度開始時再次調整，造成「洗牌」效應。",
+            "當前市場類似1997-1998年的網路泡沫，而非2000年的崩盤，預期仍有上漲空間。",
+            "泡沫可能持續約16個月，若能謹慎操作並制定退場計畫，可獲得可觀報酬。",
+            "三星和南韓市場的極端表現加劇了國際基金的投資組合集中度問題。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "順勢操作泡沫，但需有退場計畫；在不認為泡沫會永遠持續的前提下掌握波動。",
+          "notable_quote": "if you know you're in a bubble, then you can ride it as long as you don't believe that it's going to go on forever"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72851935",
         "title": "Walmart turns up discounts",
         "published": "Tue, 07 Jul 2026 10:39:21 +0000",
@@ -4514,36 +4533,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-29T22:52:55Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72729356",
-        "title": "Jobs report headlines holiday week",
-        "published": "Sun, 28 Jun 2026 15:36:22 +0000",
-        "processed_at": "2026-06-28T20:43:57Z",
-        "digest": {
-          "summary_points": [
-            "本週因獨立日假期交易日縮短，重點為週四公布的非農就業報告，預期新增11萬就業人口，失業率維持4.3%。",
-            "聯準會可能因強勁就業數據而收緊政策，市場關注工資通膨壓力。",
-            "Wells Fargo經濟學家認為勞動市場趨於平衡，需求未顯著加速，無過熱跡象。",
-            "Pantheon Macro指出初領與續領失業金人數自5月起上升，暗示就業增長可能放緩至低於平衡水準。",
-            "Nike將於週二公布財報，Evercore將其評級從優於大盤下調至符合表現，理由包括批發通路面臨新挑戰、2027年創新有限及近期執行問題。",
-            "伊朗周邊衝突升溫，美軍打擊伊朗通訊及防空設施，荷姆茲海峽油輪遇襲，預測市場對海峽交通恢復正常的機率大幅下降。",
-            "Anthropic最快下週恢復最新AI模型Fable 5的存取，此前因政府指令暫停。"
-          ],
-          "tickers": [
-            {
-              "name": "Nike",
-              "code": "NKE",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Evercore下調評級至符合表現，指出批發通路挑戰、創新動能不足及短期執行問題。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Even with some recent firmness in the headline payroll gains, the broader picture remains one of the labor market near balance with neither labor demand nor wage pressures signaling a return to overheating."
-        },
-        "shown_at": "2026-06-28T22:58:22Z"
       }
     ]
   },

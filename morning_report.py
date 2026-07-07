@@ -14327,15 +14327,21 @@ def main() -> int:
         "SPY": fetch_quote("SPY"),
     }
     usdtwd_today, usdtwd_prev = fetch_usdtwd_pair()
-    if usdtwd_today is None:   # 即時抓取失敗 → 用 history 昨值降級(僅顯示/prompt,非計分輸入)
-        _stale_fx = _last_known_usdtwd(now_tpe=now_tpe)
-        if _stale_fx:
-            usdtwd_today = _stale_fx["value"]
-            quotes["USDTWD_STALE"] = _stale_fx
-            print(f"[main] USD/TWD 即時抓取失敗 → 採 {_stale_fx['age_days']} 天前昨值 "
-                  f"{_stale_fx['value']}({_stale_fx['date']})", file=sys.stderr)
     quotes["USDTWD"] = usdtwd_today
     quotes["USDTWD_prev"] = usdtwd_prev
+    if usdtwd_today is None:
+        # 即時抓取失敗 → 昨值降級「只寫進 quotes['USDTWD'] 供顯示/prompt/資料品質」。
+        # 絕不改 local usdtwd_today —— 它之後餵 calc_00662_fair_value 與 calc_2330_predictions;
+        # 保持它=None,預測看到的 usdtwd 就與「本功能加入前」完全相同(00662 把 FX 變動視為 0、
+        # 2330 排除 model2 改用 model1/3/4),即維持系統原有的降級輸出,對計分零改變。
+        # (刻意不讓預測「完全停掉」——那是改預測行為 + 違反晨報不可斷;昨值也不進預測避免用舊 FX 汙染。)
+        _stale_fx = _last_known_usdtwd(now_tpe=now_tpe)
+        if _stale_fx:
+            quotes["USDTWD"] = _stale_fx["value"]
+            quotes["USDTWD_STALE"] = _stale_fx
+            print(f"[main] USD/TWD 即時抓取失敗 → 昨值 {_stale_fx['value']}"
+                  f"({_stale_fx['date']},{_stale_fx['age_days']}天前)僅供顯示,預測維持 fail-closed",
+                  file=sys.stderr)
 
     # 1.5 抓 4+1 個總經指標
     print("[main] 抓總經指標…")

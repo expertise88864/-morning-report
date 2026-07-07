@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 22,
-  "last_seen": "2026-07-07",
-  "latest_title": "China's Alibaba bans Anthropic AI for employees after 'distillation attack' accusation"
+  "days": 23,
+  "last_seen": "2026-07-08",
+  "latest_title": "Google backs nuclear fusion startup targeting Europe’s first commercial power plant"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 12,
-  "last_seen": "2026-07-06",
-  "latest_title": "Chinese AI chip start-up exits stealth mode, bets on 3D stacking to bypass US controls"
+  "days": 13,
+  "last_seen": "2026-07-08",
+  "latest_title": "U.S. revokes Iran oil sales authorization after tanker attacks"
  },
  "litigation:": {
   "first_seen": "2026-07-03",
@@ -17,16 +17,10 @@
   "last_seen": "2026-07-06",
   "latest_title": "監院：導盲犬進出仍受限　應研議公部門拒絕就開罰"
  },
- "geopolitical:2454": {
-  "first_seen": "2026-07-04",
+ "litigation:2317": {
+  "first_seen": "2026-07-08",
   "days": 1,
-  "last_seen": "2026-07-04",
-  "latest_title": "【千金股急行軍2】國巨聯發科都輸了...最強黑馬股上半年飆漲逾14倍 從「百元俱樂部」直奔千金 - Yahoo股市"
- },
- "litigation:GOOGL": {
-  "first_seen": "2026-07-04",
-  "days": 1,
-  "last_seen": "2026-07-04",
-  "latest_title": "專利情報： 歐盟終審維持41億歐元裁罰，Google敗訴凸顯全球科技監管新階段 - 國家實驗研究院"
+  "last_seen": "2026-07-08",
+  "latest_title": "代重要子公司富士康工業互聯網股份有限公司董事會決議 聘任財務總監"
  }
 }

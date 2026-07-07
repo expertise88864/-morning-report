@@ -571,6 +571,8 @@ def _last_known_usdtwd(max_age_days: int = 7,
     for r in rows:
         if not isinstance(r, dict):
             continue
+        if r.get("usdtwd_stale"):   # 跳過本身就是昨值降級的筆,只採真觀測(否則昨值會自我延續、護欄失效)
+            continue
         v = _safe_number(r.get("usdtwd"))
         if v is None or not r.get("date"):
             continue
@@ -13823,11 +13825,17 @@ EMAIL_ARCHIVE_DIR = Path("state/emails")
 
 
 def _redact_private_for_archive(html: str) -> str:
-    """存檔前移除 KPI 個人持股列(昨日帳上損益 % + NT$ 金額)——敏感財務不落地 repo/RAG。
-    以 render 端插入的 <!--PF_ROW_START/END--> 註解標記精準定位;無持股設定時為 no-op。"""
+    """存檔前移除 KPI 個人持股列(昨日帳上損益 % + NT$ 金額 + 持倉名稱)——敏感財務不落地 repo/RAG。
+    第一層:以 render 端插入的 <!--PF_ROW_START/END--> 標記精準移除整列(持股資訊唯一出現處)。
+    第二層(防禦縱深,Codex review):即使未來持股資訊漏到標記之外,也把使用者自訂的持倉名稱一併遮蔽。
+    持股代號/股數本就從不進 HTML(僅彙總損益),故雙層後存檔不含任何可識別持股資訊。無持股設定時為 no-op。"""
     import re as _re
-    return _re.sub(r"<!--PF_ROW_START-->.*?<!--PF_ROW_END-->",
-                   "<!--[持股列存檔時已去識別移除]-->", html, flags=_re.S)
+    out = _re.sub(r"<!--PF_ROW_START-->.*?<!--PF_ROW_END-->",
+                  "<!--[持股列存檔時已去識別移除]-->", html, flags=_re.S)
+    for name in (PORTFOLIO_1_NAME, PORTFOLIO_2_NAME):
+        if name and name not in ("持倉1", "持倉2") and len(name) >= 2:
+            out = out.replace(name, "持倉")
+    return out
 
 
 def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optional[Path]:
@@ -13835,6 +13843,10 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
     §B:先前 state 只存結構化數字,無法回溯「當天信實際說了什麼」。gzip 後每日 ~15-25KB、
     年約 6-9MB;保留近 keep_days 天,超過者刪除。任何失敗都不影響寄信(晨報不可斷)。"""
     import gzip
+    import re as _re
+    if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date_str or "")):   # 檔名安全:僅收 YYYY-MM-DD
+        print(f"[archive] 日期格式異常({date_str!r}),略過存檔", file=sys.stderr)
+        return None
     try:
         EMAIL_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
         out = EMAIL_ARCHIVE_DIR / f"{date_str}.html.gz"
@@ -13842,7 +13854,8 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
             f.write(_redact_private_for_archive(html))
         cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=keep_days)).strftime("%Y-%m-%d")
         for p in EMAIL_ARCHIVE_DIR.glob("*.html.gz"):
-            if p.name.split(".")[0] < cutoff:   # 檔名 YYYY-MM-DD.html.gz
+            stem = p.name.split(".")[0]   # 只修剪合法日期檔名,異常檔名不動(Codex nit)
+            if _re.fullmatch(r"\d{4}-\d{2}-\d{2}", stem) and stem < cutoff:
                 p.unlink()
         return out
     except Exception as e:
@@ -14865,6 +14878,9 @@ def main() -> int:
             "vix": (quotes.get("MACRO", {}) or {}).get("VIX", {}).get("close"),
             "sox_pct": (quotes.get("MACRO", {}) or {}).get("SOX", {}).get("change_pct"),
             "usdtwd": quotes.get("USDTWD"),
+            # 標記今日 usdtwd 是否為 stale 昨值降級——供 _last_known_usdtwd 讀取時跳過,
+            # 避免「昨值被當成新的真觀測」讓 max_age_days 護欄失效而無限延用(Codex review)。
+            "usdtwd_stale": bool(quotes.get("USDTWD_STALE")),
             "fair_00662": fair.get("fair_price"),
             # 三個 model 的「原始」預測值（供 calibrate_predictions 算各模型 MAE 與權重）
             "model1_2330": predictions.get("model1_1to1"),

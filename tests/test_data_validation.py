@@ -347,6 +347,21 @@ def test_last_known_usdtwd_stale_fallback(tmp_path, monkeypatch):
     assert mr._last_known_usdtwd(now_tpe=now) is None                   # 無檔
 
 
+def test_last_known_usdtwd_skips_stale_rows(tmp_path, monkeypatch):
+    """Codex 回歸:usdtwd_stale=True 的筆不可被當真觀測,否則昨值自我延續、護欄失效。"""
+    import datetime as dt
+    import json
+    p = tmp_path / "history.json"
+    p.write_text(json.dumps([
+        {"date": "2026-06-25", "usdtwd": 31.0},                        # 真觀測,但 11 天前
+        {"date": "2026-07-05", "usdtwd": 31.9, "usdtwd_stale": True},  # 昨值降級,須跳過
+    ]), encoding="utf-8")
+    monkeypatch.setattr(mr, "STATE_FILE", p)
+    now = dt.datetime(2026, 7, 6, tzinfo=mr.TPE)
+    # 唯一真觀測已 >7 天、stale 筆被跳過 → None(護欄有效,不會延用 31.9)
+    assert mr._last_known_usdtwd(now_tpe=now) is None
+
+
 def test_build_data_quality_usdtwd_stale_is_fallback():
     """USDTWD_STALE 標記存在時,匯率項顯示 fallback + 昨值天數,不再標 error。"""
     quotes = {"QQQ": {"ticker": "QQQ", "close": 1.0, "prev_close": 1.0, "date": "d"},

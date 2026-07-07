@@ -104,6 +104,16 @@ def test_archive_report_html_redacts_and_prunes(tmp_path, monkeypatch):
     assert "NT$1.2萬" not in saved and "昨日帳上" not in saved   # 敏感財務去識別
     assert "一、美股收盤行情" in saved                           # 其餘內容保留
     assert not (tmp_path / "2020-01-01.html.gz").exists()        # 舊檔已修剪
+    assert mr.archive_report_html(html, "bad-date") is None       # 日期格式異常 → 不寫檔
+
+
+def test_redact_scrubs_custom_portfolio_name_defense_in_depth(monkeypatch):
+    """Codex 防禦縱深:即使持倉名稱漏到 PF 標記之外,存檔去識別也要遮蔽。"""
+    monkeypatch.setattr(mr, "PORTFOLIO_1_NAME", "老婆帳戶")
+    html = ("<div>老婆帳戶 對帳單</div>"
+            "<!--PF_ROW_START--><tr><td>老婆帳戶 +NT$1.2萬</td></tr><!--PF_ROW_END-->")
+    out = mr._redact_private_for_archive(html)
+    assert "老婆帳戶" not in out and "NT$1.2萬" not in out and "PF_ROW_START" not in out
 
 
 def test_render_html_portfolio_redacted_in_archive_but_present_in_email():

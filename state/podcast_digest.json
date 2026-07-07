@@ -2425,6 +2425,76 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmraklp22018w01xm1xr82p77",
+        "title": "聽，阮大哥的！｜大盤再破月線，台積法說前再現警訊 2026.07.07",
+        "published": "Tue, 07 Jul 2026 11:35:30 GMT",
+        "processed_at": "2026-07-07T16:07:12Z",
+        "digest": {
+          "summary_points": [
+            "台股大盤自6月以來已三次跌破月線，且月線走平即將扣底高檔，若無法站回可能下彎形成趨勢性下跌。",
+            "富邦台灣中小ETF單日跌幅達6.84%，因其前十大成分股如臻鼎-KY、引威、緊縮等今年漲多後出現獲利回吐賣壓。",
+            "融資餘額持續增加，上市加計上櫃今年以來增幅超過80%，顯示散戶戒心不足，籌碼易鬆動。",
+            "費城半導體指數已跌至50日均線，且20日均線下彎，若無法站回月線可能對台股造成更大負面影響。",
+            "那斯達克指數處於收斂三角形整理末端，能否突破向上是關鍵，若突破可帶動台股擺脫整理。",
+            "美國S&P 500第二季盈餘增長預估23.3%，全年預估達24%，盈餘增長強勁，基本面無問題。",
+            "標普500前瞻本益比20.4倍，接近五年均值19.9倍與十年均值19倍，估值合理，非由估值推動。",
+            "台股滾動本益比約30倍偏高，但考量今年盈餘增長約50%，前瞻本益比約20倍，與美股相當。",
+            "主持人認為目前下跌主因為情緒面、籌碼面與估值面，AI基本面未鬆動，利空仍須觀察。",
+            "主持人已於五月底及六月中下旬進行結碼降倉位，建議投資人準備好雨傘（風險管理）。"
+          ],
+          "tickers": [],
+          "market_view": "大盤高檔震盪，多次破月線是警訊，但基本面（盈餘增長）無虞，目前下跌主因情緒與籌碼問題。",
+          "action_view": "主持人已進行結碼（減碼），建議保留現金、做好風險管理，不要追高。",
+          "notable_quote": "金融市場從來不是沒有雨天，有沒有雨天的問題，而是您有沒有準備好雨傘。"
+        }
+      },
+      {
+        "guid": "cmrakdbrr017l01xm8g8lcn2s",
+        "title": "六月營收失靈！？台股漲勢有變？ 2026.07.07",
+        "published": "Tue, 07 Jul 2026 11:28:15 GMT",
+        "processed_at": "2026-07-07T16:10:56Z",
+        "digest": {
+          "summary_points": [
+            "多家公司6月營收創歷史新高，如齊鴻第二季營收490億元、志邦年增60%、營華首破百億元，但股價普遍下跌，呈現利多出盡。",
+            "台股半導體股票明顯下挫，市場情緒恐慌，亞股全面下跌，韓國股市一度大跌8%。",
+            "美股週一上漲，納斯達克漲1.1%、標普創三週新高，但亞股週二重挫，資金似乎從半導體轉向雲端巨頭。",
+            "來賓指出營收創高但股價不漲，主因股價已在高位，如台光電營收創高卻遭外資提款跌停。",
+            "川湖營收年增2.2倍，股價開漲停後尾盤打開，因大盤殺盤力道恐慌，但外資已連續賣超。",
+            "銀幫營收年增74%，股價跳空漲停鎖死，因經過一個月橫盤整理，不受大盤影響。",
+            "融資餘額從上次費半大跌後持續增加約845億元，增幅約15%，但加權指數同期僅漲14%，顯示高檔壓力。",
+            "今晚SpaceX掛牌納入NASDAQ成分股，是否帶動費半指數同步上漲為關鍵觀察點。",
+            "來賓推薦兩檔黑馬股：一家設備廠（去年EPS 15.8元，與日月光投控相關），另一家AMD供應鏈（EPS約8元，營收創新高且股價已拉回）。",
+            "7月16日台積電法說會將決定第三季至第四季行情，AI類股有機會，低基期無人機類股也可留意。"
+          ],
+          "tickers": [
+            {
+              "name": "台光電",
+              "code": "2383",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "營收創歷史新高但股價利多出盡，外資大賣導致跌停。"
+            },
+            {
+              "name": "川湖",
+              "code": "2059",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "營收創新高，股價開漲停後尾盤打開，外資逢高獲利了結。"
+            },
+            {
+              "name": "銀幫",
+              "code": "",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "營收年增74%且月增74%，股價整理後跳空漲停鎖死。"
+            }
+          ],
+          "market_view": "市場處於高檔震盪，融資持續增加但指數未明顯突破，需觀察台積電法說及SpaceX掛牌後資金動向。",
+          "action_view": "建議持股以AI類股為核心，留意低基期如無人機族群，可參考來賓推薦的兩檔黑馬股（設備廠與AMD供應鏈）。",
+          "notable_quote": "營收創新高的同時，股價相對高位，市場當成利多出盡解讀。"
+        }
+      },
+      {
         "guid": "cmr94yaxr02kq01q6gt863egg",
         "title": "SemiAnalysis最新報告！AI供應鏈警訊浮現？ 2026.07.06",
         "published": "Mon, 06 Jul 2026 11:29:15 GMT",
@@ -3051,137 +3121,6 @@
           "notable_quote": "我覺得AI賽道會轉換到其他的族群上面。"
         },
         "shown_at": "2026-06-30T23:20:25Z"
-      },
-      {
-        "guid": "cmr0l8ynm0c8o01z5gdr2b21u",
-        "title": "GDP、股市雙創高！消費者為何仍患得患失？ 2026.06.30",
-        "published": "Tue, 30 Jun 2026 11:56:57 GMT",
-        "processed_at": "2026-06-30T16:07:47Z",
-        "digest": {
-          "summary_points": [
-            "長鑫存儲即將掛牌上市，可能成為低刃市場新競爭者，但被列入美國1260H清單，面臨協助中國軍方指控，蘋果若採購須獲美國政府首肯。",
-            "美國加州北區法院對美光、SK海力士、三星提起反壟斷訴訟，指控三家聯手限制低刃供應並提高價格。",
-            "分析師預測2027年低刃支出將佔大型雲端供應商資本支出30%至40%，數千億美元投資推高資料中心成本。",
-            "台灣6月消費者信心指數(CCI)為65.05，月增近3點，4個月來最佳，股市信心指標升幅最大，但仍處於嚴重悲觀區（約30點）。",
-            "韓國媒體《韓民族日報》專文「富裕的台灣貧困的台灣人」，指出台灣GDP成長突破9%但民眾感受落差大，形成K型經濟。",
-            "台灣電子業就業人數約100萬，服務業700萬，傳統產業200萬，AI紅利多集中於電子業，多數產業未共享成長。",
-            "台灣平均薪資約4.8萬，但領不到平均薪資比例從65%升至近70%，低薪問題嚴重。",
-            "2023年台灣新生兒僅10萬7812人，總生育率0.695，創歷史新低。",
-            "台灣經濟成長高度依賴AI採購熱潮，若AI泡沫或投資放緩將衝擊整體經濟。"
-          ],
-          "tickers": [
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "面臨反壟斷訴訟及長鑫競爭壓力，短期利空。"
-            },
-            {
-              "name": "三星",
-              "code": "SSNLF",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "同樣面臨反壟斷訴訟，且長鑫加入競爭可能侵蝕市佔。"
-            },
-            {
-              "name": "SK海力士",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "與美光、三星一同被告反壟斷，且受長鑫競爭影響。"
-            }
-          ],
-          "market_view": "主持人未明確表達對大盤看法，但吳教授指出台灣經濟過度集中於AI產業，若AI需求放緩恐有風險。",
-          "action_view": "",
-          "notable_quote": "我們的經濟成長幾乎只靠AI的採購熱潮，其實也是等於雞蛋放在一個籃子裡面。"
-        },
-        "shown_at": "2026-06-30T23:20:25Z"
-      },
-      {
-        "guid": "cmr0kv8hs007001x12hdxddfn",
-        "title": "下半年震盪加劇！ETF短打、長抱如何布局？ 2026.06.30",
-        "published": "Tue, 30 Jun 2026 11:50:27 GMT",
-        "processed_at": "2026-06-30T16:11:40Z",
-        "digest": {
-          "summary_points": [
-            "台幣全月貶值1.44%（貶4.53角），本季升值0.45%（升1.43角），美元指數強勢壓抑亞幣，日元貶至40年低點。",
-            "第二季亞洲股市：日經漲37%，韓國漲68%（30年最佳），台股加權漲45%、櫃買漲38%。",
-            "陸股上半年滬指僅漲3%，但科創50漲64%，創業板漲35%，聚焦算力、晶片、半導體、CPU、玻璃基板。",
-            "港股上半年恆指跌11%，恆生科技跌19%，但半導體個股（中興、華虹等）表現強勁。",
-            "台股基本面無虞，但部分個股本益比高，資金可能調整；市場信心充足，漲停家數超100家。",
-            "漲停個股多為前期修正過的低位階股票（如啟基、昇達科、台玻、富喬），資金輪動至低檔股。",
-            "低軌衛星族群市場規模存疑（SpaceX Starlink年營收僅100多億美元），商業模式不明，但硬體發射持續。",
-            "主動式ETF今年表現亮眼：00991A漲97%、00981A漲85%等，但經理人壓力大，因持股公開。",
-            "00991A持股包括國巨（9.57%）、新興電（5.26%）、南電、聯電、齊紅、台達電、金像電等熱門股。",
-            "00981A（安聯高息）屬穩健型，配息前提高持股比例，今年漲約49%，適合長期投資。",
-            "00406A（中性台灣收益）採Covered Call策略，部分資金賣出買權賺取權利金，適合震盪行情。",
-            "對第三季看法：高檔震盪，資金面（升息可能）與基期因素恐限制指數上攻空間。",
-            "正二ETF在大漲時表現優異，但震盪行情下需考慮調整持股策略。"
-          ],
-          "tickers": [
-            {
-              "name": "國巨",
-              "code": "2327",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "00991A核心持股，今日漲停，載板與被動元件需求強勁。"
-            },
-            {
-              "name": "南電",
-              "code": "8046",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "00991A持股，ABF載板供不應求。"
-            },
-            {
-              "name": "台達電",
-              "code": "2308",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "00991A新增持股，為電源與AI相關龍頭。"
-            },
-            {
-              "name": "金像電",
-              "code": "2368",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "00991A新增持股，PCB族群熱門。"
-            },
-            {
-              "name": "啟碁",
-              "code": "6285",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "低軌衛星概念，股價跌深反彈，但市場規模存疑。"
-            },
-            {
-              "name": "00991A",
-              "code": "00991A",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主動式台股ETF今年漲97%，經理人選股精準，重壓熱門族群。"
-            },
-            {
-              "name": "00981A",
-              "code": "00981A",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "主動式高息ETF，穩健成長，今年漲約49%，適合長期持有。"
-            },
-            {
-              "name": "00406A",
-              "code": "00406A",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "Covered Call策略ETF，適合震盪行情，可賺取權利金收入。"
-            }
-          ],
-          "market_view": "台股基本面無虞，但部分個股本益比高，資金可能調整；預期第三季指數高檔震盪，不易持續大漲。",
-          "action_view": "建議不殺低已修正個股，可分散佈局2-3檔主動式ETF，並留意Covered Call策略ETF（如00406A）以應對震盪。",
-          "notable_quote": "我覺得在整個盤面上面的架構來看，今天看起來是百花齊放沒有錯，但是我覺得有一部分的一個這些的一個個股他其實是因為修正過了他的股價已經到一定的相對低位階，這時候呢在資金輪動的這個情況之下去輪動到這些相對低檔的個股。"
-        },
-        "shown_at": "2026-07-03T23:00:25Z"
       }
     ]
   },
@@ -3909,6 +3848,29 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72851935",
+        "title": "Walmart turns up discounts",
+        "published": "Tue, 07 Jul 2026 10:39:21 +0000",
+        "processed_at": "2026-07-07T16:03:31Z",
+        "digest": {
+          "summary_points": [
+            "沃爾瑪和山姆會員店對多種商品降價，玉米棒降至0.25美元，櫻桃降至5.63美元，碎牛肉降價12%。",
+            "Meta Platform面臨四個州約1.4兆美元的民事罰款訴訟，指控其設計Facebook和Instagram使年輕用戶上癮。",
+            "三星電子第二季營業利潤較去年同期飆升19倍至89.4兆韓元，但股價下跌近5%，因一次性勞動費用和獲利回吐。",
+            "三星計劃第三季將DRAM價格提高約20%。",
+            "SpaceX獲得摩根士丹利和高盛的看漲評級。",
+            "啤酒股因巴西和墨西哥在世界盃出局而漲勢減弱。",
+            "Chronetics Pharmaceuticals被Vertex Pharmaceuticals以約100億美元全現金收購，股價翻倍。",
+            "今日經濟日曆：上午8:30公佈國際貿易商品和服務數據。",
+            "GameStop舉行年會；輝達在柏林世界開發者大會演講；SpaceX納入納斯達克100指數。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Meta Platform said four US states are seeking about $1.4 trillion in civil penalties."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72836861",
         "title": "Wall Street’s bulls, few bears",
         "published": "Mon, 06 Jul 2026 10:01:35 +0000",
@@ -4582,87 +4544,6 @@
           "notable_quote": "Even with some recent firmness in the headline payroll gains, the broader picture remains one of the labor market near balance with neither labor demand nor wage pressures signaling a return to overheating."
         },
         "shown_at": "2026-06-28T22:58:22Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72705770",
-        "title": "Wall Street Roundup: What isn't priced in?",
-        "published": "Fri, 26 Jun 2026 18:03:47 +0000",
-        "processed_at": "2026-06-26T21:08:48Z",
-        "digest": {
-          "summary_points": [
-            "Micron營收年增逾4倍至410億美元，優於預期且AI需求加速但供應仍吃緊，股價財報後漲16%但後續漲幅有限，反映利多已部分反映在股價中。",
-            "Micron股價波動加劇：週一創新高，週二科技賣壓跌雙位數，財報後反彈但仍低於週一高點。",
-            "過去一週大型股表現防禦性，如Merck、J&J、Lilly、Home Depot、Coke上漲，而Arm、Oracle、Palantir等AI股下跌，顯示資金從AI轉向防禦。",
-            "SpaceX IPO價格135美元，開盤150美元，一度漲至225美元，後因發行250億美元債券引發市場擔憂泡沫，股價回落至略高於150美元。",
-            "SpaceX自IPO以來累計籌資超過1000億美元（初始750億+超額110億+債券250億），市場擔心高估。",
-            "OpenAI因SpaceX回調及投資者情緒考慮延遲IPO。",
-            "明尼阿波利斯聯儲總裁Kashkari基於廣泛通膨預期，在6月點陣圖中預測今年升息一次，2026年無降息。",
-            "聯準會主席Warsh傾向減少溝通，對點陣圖持懷疑態度，最新聲明為近年最短，市場需適應更少資訊。",
-            "下週經濟數據清淡，關注Nike與General Mills財報（消費端）、就業數據，但強勁就業可能引發「好消息是壞消息」效應，因聯準會可能升息。"
-          ],
-          "tickers": [
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "雖然財報強勁，但利多已反映，股價高點回落，後續上漲空間有限。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價從高點回跌，發債引發市場擔憂泡沫，IPO熱度消退。"
-            },
-            {
-              "name": "Arm",
-              "code": "ARM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "過去一週跌幅顯著，AI股資金撤出。"
-            },
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "過去一週跌幅顯著，AI股資金撤出。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "過去一週跌幅顯著，AI股資金撤出。"
-            },
-            {
-              "name": "Merck",
-              "code": "MRK",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "過去一週上漲，資金轉向防禦型股票。"
-            },
-            {
-              "name": "Nike",
-              "code": "NKE",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "下週財報將提供消費端數據，市場觀望。"
-            },
-            {
-              "name": "General Mills",
-              "code": "GIS",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "下週財報將提供消費端數據，市場觀望。"
-            }
-          ],
-          "market_view": "市場處於「氣穴」狀態，AI利多已部分反映，通膨與利率將主導未來數週走勢，聯準會溝通減少增加不確定性。",
-          "action_view": "操作上需繫緊安全帶，注意波動；強勁就業數據可能引發利率擔憂，形成反直覺反應。",
-          "notable_quote": "An A++ plus earnings report could not be better. However, after some reflection, a lot of this was already baked into the stock. So much is priced in."
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },

@@ -1755,6 +1755,64 @@
     "name": "美股投資學",
     "episodes": [
       {
+        "guid": "6985402e-c3aa-426c-bdf1-e03be03cc3f2",
+        "title": "2026/07/07 (二) 費半反彈，輝達就是漲不動？Kyber延期對供應鏈衝擊大嗎",
+        "published": "Tue, 07 Jul 2026 10:06:32 GMT",
+        "processed_at": "2026-07-07T10:47:17Z",
+        "digest": {
+          "summary_points": [
+            "道瓊工業指數上漲0.3%收53055點，首次突破53000關卡；標普500上漲0.7%，距離歷史高點不到1%；納斯達克上漲1.3%，科技股反彈；半導體指數上漲2.2%。",
+            "ISM服務業PMI降至54，低於預期的54.5，但仍高於50榮枯線，顯示服務業持續擴張但速度放緩；就業分項回升至51.2，價格分項雖回落但仍偏高。",
+            "經濟數據顯示需求降溫但未惡化，聯準會無需急於降息，可維持高利率；通膨壓力主要來自油價，但油價因沙烏地阿拉伯降價及美伊和緩跌至今年2月以來最低，有利通膨降溫。",
+            "輝達(NVDA)受報告稱下一代AI伺服器Kyber可能延後一年至2028年部署，股價一度下跌；輝達隨後否認，稱產品路線圖不變，股價反彈但仍在年線附近震盪。",
+            "AMD股價大漲近7%，因高盛將目標價從450美元上調至640美元，看好MI300系列打入主要雲端超大規模客戶，市占率可望提升。",
+            "博通(AVGO)與蘋果延長合作協議至2031年，將提供客製化ASIC晶片用於多代產品，帶動股價漲近4%。",
+            "戴爾(DELL)因川普公開讚賞並呼籲買進，股價漲約4%。",
+            "特斯拉(TSLA)在邁阿密啟動Robotaxi服務，股價反彈；第二季交車量優於預期但股價先漲後跌，目前於年線附近打底，後續觀察7月底財報。",
+            "Kyber延後對台股供應鏈影響：高階CCL/PCB（如台光電、台耀）受最大衝擊，因高單價產品出貨延後；舊款需求仍在，ODM、散熱、電力等供應鏈影響較小；光通訊、交換器可能因既有網路使用週期拉長而受惠。",
+            "油價跌破年線，沙烏地阿拉伯降價及美伊和緩是主因；油價下跌有利通膨降溫，市場解讀為正面。",
+            "市場風險偏好回升，防禦類股（公用事業、健康照護等）表現較差；金融股及AI相關半導體表現較強。",
+            "聯準會短期無降息壓力，但通膨因油價走降而趨緩，觀察後續數據。",
+            "主持人操作策略：觀望保守，等待指數挑戰新高成功或修正時布局長期前景公司；避免追高，分散持股。",
+            "建議長期投資者可考慮買入納斯達克100指數或S&P500指數ETF，或趁科技巨頭下跌時分批布局。",
+            "沃爾瑪(WMT)降價反映成本下降，可能帶動銷量，對消費類股有小幅利多。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "短期受Kyber延後傳聞壓抑，但長期基本面未變，年線為關鍵支撐。"
+            },
+            {
+              "name": "超微半導體",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "分析師上調目標價，看好MI300打入雲端客戶，市占率提升。"
+            },
+            {
+              "name": "博通",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與蘋果延長合作至2031年，提供客製化ASIC晶片，長期成長可期。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Robotaxi啟動服務，第二季交車優於預期，股價可望逐步打底向上。"
+            }
+          ],
+          "market_view": "市場整體偏多，但指數接近高點，短期可能震盪；通膨降溫及經濟韌性支撐風險偏好，但仍需觀察後續財報及聯準會動向。",
+          "action_view": "建議觀望等待方向確認，若指數挑戰新高成功可適度加碼；若有修正則分批布局AI等長期趨勢股，避免追高並分散持股。",
+          "notable_quote": "油價下跌，通膨降溫，對於聯準會的壓力單也會越來越勤。"
+        }
+      },
+      {
         "guid": "7da2f013-2612-4bd8-ac7d-46004bebd54c",
         "title": "2026/07/03 (五) 費半跌回季線，可以買了嗎？特斯拉(TSLA)又大跌了",
         "published": "Fri, 03 Jul 2026 01:20:49 GMT",
@@ -2360,58 +2418,6 @@
           "notable_quote": "我覺得停戰對於全世界都是一件好事，對於資本市場來說，就是一個確定性的展開。"
         },
         "shown_at": "2026-06-16T23:24:06Z"
-      },
-      {
-        "guid": "8430d2f0-c752-4523-bab6-a4fc8fe2d6a5",
-        "title": "【聯名特輯】財經Ｍ平方 x 美股投資學-財女珍妮｜通膨修估值，還是 SpaceX 救估值",
-        "published": "Sun, 14 Jun 2026 03:40:17 GMT",
-        "processed_at": "2026-06-14T21:32:26Z",
-        "digest": {
-          "summary_points": [
-            "上週費半單日跌幅超10%，但週一修復約6%，CPI公布後市場再度波動，震盪加劇。",
-            "Oracle財報營收獲利好，上修資本支出至500億美元，但盤後跌10%，因剩餘履約義務高度依賴OpenAI且資本支出過大，自由現金流為負。",
-            "Broadcom財報營收獲利優於預期，但未上調千億美元營收目標，且毛利因轉型系統而下降，股價下跌但估值變得更吸引人。",
-            "記憶體族群因GTC大會CPU記憶體降規消息與資金流出而下跌，但HBM需求仍強勁，長期趨勢未變。",
-            "資金從高漲AI股流向低處，但基本面無惡化，適合下跌時布局。",
-            "5月CPI年增4.2%創新高，但核心CPI僅2.8%，漲幅集中能源，房租回落，核心商品下跌，通膨未擴散。",
-            "非農就業17.2萬人大幅超預期，挑戰者裁員數據樣本小，官方JOLTS顯示裁員仍低，勞動市場穩定好轉。",
-            "聯準會6月會議重點：點陣圖可能顯示不降息，關注升息點數、溝通方式及縮表動向。",
-            "股市歷史本益比偏高，但預估本益比與疫情後平均相近，若相信獲利預估則不算貴。",
-            "SpaceX IPO建議觀望，因閉鎖期短（員工40天可賣），初期波動大，長期看好垂直整合（星鏈、火箭、xAI）。",
-            "相比SpaceX，更看好Anthropic（Claude）上市，因其商業模式明確（企業用戶）且已開始獲利。",
-            "大型IPO對市場流動性影響有限，SpaceX初期流通市值佔納斯達克100權重約0.4%-0.7%，資金影響約30-50億美元。",
-            "市場處於健康修正，長線投資者可在月季線附近分批布局，短線投資者等待站回月線。",
-            "AI趨勢從訓練轉向推論，Agent應用帶動數據存儲需求，記憶體長期需求增長。",
-            "馬斯克整合SpaceX、xAI、星鏈形成垂直生態，有助於降低成本與提升競爭力。"
-          ],
-          "tickers": [
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "財報後盤後跌10%，因資本支出過大且營收依賴OpenAI，市場擔憂不確定性。"
-            },
-            {
-              "name": "Broadcom",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報優於預期但未上調營收目標，股價下跌後估值吸引人，長期趨勢看好。"
-            },
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "記憶體短期因消息面下跌，但長期需求增長，適合下跌時布局。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "我覺得其實美國今年不需要走到升息的這個就是比較糟糕的一步。"
-        },
-        "shown_at": "2026-06-14T23:06:02Z"
       }
     ]
   },
@@ -3469,6 +3475,47 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "10392a82-79ed-11f1-97e5-7318283b5f70",
+        "title": "NATO Allies Announce Billions in New Spending to Placate Trump",
+        "published": "Tue, 07 Jul 2026 10:10:00 -0000",
+        "processed_at": "2026-07-07T10:41:06Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 加入納斯達克 100 指數，採用快速納入規則，指數基金被迫買入，短期帶來買壓；長期因鎖倉期屆滿賣壓而展望不明。",
+            "三星第二季獲利暴增 19 倍，但股價因 AI 晶片漲勢暫歇而下跌 8%。",
+            "SK 海力士股價下跌 7%，儘管獲利強勁；其美國掛牌股票將於週五在納斯達克 100 開始交易。",
+            "羅素 2000 指數在 2025 上半年漲逾 20%，創 1991 年以來最佳上半年表現，受 AI 及有利經濟環境推動。",
+            "華爾街出現 AI 疲勞，投資人開始尋找晶片股以外的機會，如小型股及工業股。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "指數納入帶來短期買壓，但後續可能面臨鎖倉期賣壓。"
+            },
+            {
+              "name": "三星",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "儘管獲利強勁，但股價因晶片漲勢修正而下跌。"
+            },
+            {
+              "name": "SK 海力士",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "韓國股價跌 7%；美國掛牌股票週五開始交易。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "If you're an investor and you're worried about SpaceX or not interested in the stock, you're not going to have some sort of outsized exposure to it if you own a fund that tracks the Nasdaq 100."
+        }
+      },
+      {
         "guid": "fa9a80c4-797c-11f1-b154-97296341973d",
         "title": "Khamenei Funeral Is a Show of Defiance Against the U.S.",
         "published": "Mon, 06 Jul 2026 20:54:00 -0000",
@@ -3855,58 +3902,6 @@
           "notable_quote": "The combination of high prices and high mortgage rates, which makes things pretty brutal for anyone who wants to buy in."
         },
         "shown_at": "2026-06-28T22:58:22Z"
-      },
-      {
-        "guid": "ff679954-720e-11f1-a505-938a9748b1c1",
-        "title": "What’s News in Markets: AI Tales, Oracle Woes, Wendy’s Sizzles",
-        "published": "Sat, 27 Jun 2026 10:00:00 -0000",
-        "processed_at": "2026-06-27T15:01:11Z",
-        "digest": {
-          "summary_points": [
-            "科技股賣壓重挫標普500和那斯達克，那斯達克週線跌4.6%，為一年多來最大單週跌幅。",
-            "標普500本週跌2%，道瓊則因科技股較少而微漲0.6%。",
-            "油價本週跌8.7%，跌破每桶70美元，為自伊朗戰爭以來首次。",
-            "AI熱潮能否持續的疑慮打壓市場，科技巨頭今年漲幅主要由AI推動，但本週面臨回調。",
-            "新上市晶片公司Sarah Brass Systems營收近倍增至，但獲利率展望較窄，股價週三跌近20%，週線跌23%。",
-            "記憶體晶片大廠美光(Micron)營收成長逾四倍，各項指標均優於預期，本季營收估超越歷史全年營收高點，股價週四飆近16%，週線大致持平。",
-            "甲骨文(Oracle)年度報告顯示員工人數減少21,000人（13%），重組成本18.4億美元，暗示AI投資可能無法回收，週線跌19%，為標普500中表現最差之一。",
-            "溫蒂漢堡(Wendy's)因散戶大軍的迷因股操作而暴漲暴跌，週線仍漲15%，但交易量一度超過美光。"
-          ],
-          "tickers": [
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "營收成長逾四倍，各項指標優於預期，記憶體短缺帶動業績強勁。"
-            },
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "員工人數大幅縮減、重組成本高昂，且暗示AI投資風險，股價重挫。"
-            },
-            {
-              "name": "溫蒂漢堡",
-              "code": "WEN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "受迷因股熱潮推動股價波動，但基本面未見明顯利多。"
-            },
-            {
-              "name": "Sarah Brass Systems",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "營收增長但獲利率展望縮窄，股價暴跌。"
-            }
-          ],
-          "market_view": "市場對AI熱潮能否持續產生疑慮，科技股賣壓沉重，但那斯達克和標普500走弱，道瓊則因科技股曝險較低而逆勢上漲。",
-          "action_view": "",
-          "notable_quote": "Our world will not be shaken. Wendy will prosper."
-        },
-        "shown_at": "2026-06-27T22:52:53Z"
       }
     ]
   },

@@ -464,6 +464,18 @@ def test_strip_stance_calculation_hides_score_line_keeps_label():
     assert stance["label"] == "中性" and stance["score"] == 3
 
 
+def test_sanitize_2330_prices_keeps_four_digit_thousands_separated():
+    """2026-07 回歸:台積電漲破 2000 後,LLM 用千分位寫的四位數 2330 價(2,400)不可被
+    誤修成畸形「2,2392」再被 _mask_malformed_numbers 遮成「(數值異常已略)」。"""
+    preds = {"mid": 2392.4, "last_2330": 2440.0}
+    out = mr._sanitize_llm_2330_prices("2330 守 2,400 元、中樞 2,392 元、昨收 2,440 元", preds)
+    assert "2,2392" not in out and "2,2400" not in out        # 不產生畸形
+    assert "2,400" in out and "2,392" in out and "2,440" in out  # 合法千分位原樣保留
+    assert "(數值異常已略)" not in mr._mask_malformed_numbers(out)  # 下游不遮蔽
+    # 真 ADR 誤植(無逗號)仍要修
+    assert "2392" in mr._sanitize_llm_2330_prices("2330 守穩 430 元", preds)
+
+
 def test_sanitize_2330_prices_fixes_malformed_thousands():
     """LLM 寫出「2,2182 元」這種畸形千分位(逗號後非 3 位)時,以中樞值改寫。"""
     preds = {"mid": 2182.26, "last_2330": 2255.0}

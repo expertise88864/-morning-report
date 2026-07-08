@@ -155,7 +155,10 @@ def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
         return text
     lo, hi = mid * 0.10, mid * 0.45
     target = str(round(mid))
-    num_re = _re.compile(r"(?<![\d.])(\d{2,4}(?:\.\d+)?)\s*元")
+    # lookbehind 必須連逗號一起擋:2330 漲破 2000 後是四位數,LLM 常寫千分位「2,400 元」,
+    # 若只擋 [\d.] 會匹配到逗號後的「400 元」(落在 ADR 區間)→ 誤修成「2,2392」→ 再被
+    # _mask_malformed_numbers 遮成「(數值異常已略)」(2026-07 實際回歸)。加逗號即根治。
+    num_re = _re.compile(r"(?<![\d.,])(\d{2,4}(?:\.\d+)?)\s*元")
     # 畸形千分位:合法格式逗號後必為恰 3 位(如 22,182);「2,2182」這種是 LLM 排版幻覺
     malformed_re = _re.compile(r"(?<![\d.])(\d{1,3},\d{4,}(?:\.\d+)?)\s*元")
 

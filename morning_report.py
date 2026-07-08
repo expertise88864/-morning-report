@@ -9359,10 +9359,15 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             f"{s['name']} {s['value']:+.2f}%(w={s['weight']:.0%})"
             for s in pred.get("signals", [])
         )
+        # 校準後漲跌 = 由(已含 bias 修正的)pred_open 回推,與信件卡片顯示一致;
+        # weighted_pct 是「未校準原始訊號」,LLM 引用它會與卡片數字打架(2026-07 實例:敘述 1.32% vs 卡片 1.17%)。
+        _cal_pct = ((pred['pred_open'] / pred['last_close'] - 1) * 100
+                    if pred.get('last_close') else pred.get('weighted_pct', 0.0))
         taiex_pred_block = (
             f"  加權指數昨收: {pred['last_close']}\n"
             f"  訊號: {signals_str}\n"
-            f"  加權預測漲跌: {pred['weighted_pct']:+.2f}%\n"
+            f"  加權預測漲跌（校準後,敘述請一律引用此值）: {_cal_pct:+.2f}%"
+            f"（未校準原始訊號 {pred['weighted_pct']:+.2f}%,僅供參考、勿寫進結論）\n"
             f"  ★ 預測開盤點位: {pred['pred_open']} （參考區間 {pred['ci_lower']} ~ {pred['ci_upper']}）\n"
             f"  區間方法: {pred.get('interval_method', '資料缺失')}\n"
             f"  訊號共識: {pred['consensus']}（標準差 {pred.get('signal_std','—')}）\n"
@@ -11187,10 +11192,22 @@ def _render_tw_calendar_html(cal: dict) -> str:
                       f"<ul style='margin:4px 0;padding-left:20px;font-size:13px;color:#334155;"
                       f"line-height:1.7;'>{rows}</ul></div>")
     if divs:
+        def _div_amt(a) -> str:
+            # 只有「有限數字」才顯示金額。TWSE 對未公告 ETF 回文字「待公告實際收益分配金額」→ 顯示
+            # 「配息待公告」;空/NaN 儲存格 str() 後會變 "nan"/"inf"(float() 不拋例外)→ 一律留空,
+            # 絕不印「每股 nan 元」(Codex review)。
+            s = str(a if a is not None else "").strip()
+            try:
+                v = float(s.replace(",", ""))
+                if math.isfinite(v):
+                    return f"・每股 {v:g} 元"
+            except ValueError:
+                pass
+            return "・配息待公告" if s and s.lower() not in ("nan", "inf", "-inf", "none") else ""
         rows = "".join(
             f"<li style='margin:4px 0;'><b>{v['name']}（{v['code']}）</b>"
             f"　{v['ex_date'].strftime('%m/%d')} 除{v['kind']}"
-            + (f"・每股 {v['amount']} 元" if v.get("amount") else "")
+            + _div_amt(v.get("amount"))
             + "</li>"
             for v in divs[:6])
         blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>關注標的除權息</b>"
@@ -12203,6 +12220,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         if wc_groups:
             # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度。
             # 各組前 2 名(暫居晉級線內)以綠色粗體標示;小組賽結束後即代表晉級者。
+            # 小組賽是否全部踢完(每隊 gp≥3)→ 淘汰賽開打後改標「最終積分/已晉級」,
+            # 避免與上方淘汰賽戰績並存時看起來像小組賽還在進行(資料驅動,不做脆弱的階段偵測)。
+            _grp_done = all(t.get("gp", 0) >= 3 for grp in wc_groups for t in grp["rows"])
+            _grp_title = "小組賽最終積分" if _grp_done else "分組累計戰績"
+            _grp_note = "小組前 2(已晉級)" if _grp_done else "暫居小組前 2(晉級區)"
+
             def _team_cell(idx, t):
                 cell = f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
                 if idx < 2:   # rows 已於 fetch_worldcup 端依積分/淨勝分排序,前兩名為晉級區
@@ -12215,9 +12238,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 + "</div>"
                 for grp in wc_groups)
             wc_inner.append(
-                "<div style='margin:6px 0;'><b style='color:#0f172a;'>分組累計戰績</b>"
+                f"<div style='margin:6px 0;'><b style='color:#0f172a;'>{_grp_title}</b>"
                 "<div style='font-size:11px;color:#94a3b8;'>隊名 積分(勝-和-敗);"
-                "<span style='color:#16a34a;'>綠字</span>=暫居小組前 2(晉級區)</div>"
+                f"<span style='color:#16a34a;'>綠字</span>={_grp_note}</div>"
                 + grp_lines + "</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"

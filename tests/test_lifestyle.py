@@ -445,7 +445,7 @@ def test_tw_intelligence_include_flags():
 
 
 def test_render_worldcup_marks_advancing_top2():
-    """分組表前 2 名以綠色標示(晉級區),第 3 名以後不標。"""
+    """分組表前 2 名以綠色標示;此資料每隊 gp=3(小組賽已結束)→ 標籤為「已晉級」。"""
     sports = {"news": {}, "worldcup": {"results": [], "fixtures": [], "groups": [
         {"name": "A 組", "rows": [
             {"team": "巴西", "gp": 3, "w": 3, "d": 0, "l": 0, "pts": 9},
@@ -453,7 +453,7 @@ def test_render_worldcup_marks_advancing_top2():
             {"team": "越南", "gp": 3, "w": 0, "d": 0, "l": 3, "pts": 0},
         ]}]}}
     h = mr._render_sports_html(sports, htmllib)
-    assert "晉級區" in h
+    assert "已晉級" in h   # gp=3 → 小組賽最終積分
     assert "<b style='color:#16a34a;'>巴西 9(3-0-0)</b>" in h   # 第1名綠字
     assert "<b style='color:#16a34a;'>美國 6(2-0-1)</b>" in h   # 第2名綠字
     assert "<b style='color:#16a34a;'>越南" not in h            # 第3名不標綠
@@ -829,6 +829,43 @@ def test_fetch_worldcup_off_season_returns_empty(monkeypatch):
     off = dt.datetime(2026, 3, 1, 8, 0, tzinfo=mr.TPE)
     wc = mr.fetch_worldcup(off)
     assert wc == {"results": [], "groups": []}
+
+
+def test_render_sports_worldcup_group_label_switches_when_stage_done():
+    """世足:小組賽全踢完(每隊 gp≥3)→ 標題改「小組賽最終積分/已晉級」,
+    避免與淘汰賽戰績並存時看似小組賽還在進行。"""
+    def _sports(gp):
+        return {"worldcup": {"results": [], "fixtures": [], "groups": [
+            {"name": "A 組", "rows": [
+                {"team": "墨西哥", "pts": 9, "w": 3, "d": 0, "l": 0, "gp": gp},
+                {"team": "南非", "pts": 4, "w": 1, "d": 1, "l": 1, "gp": gp},
+                {"team": "南韓", "pts": 3, "w": 1, "d": 0, "l": 2, "gp": gp}]}]}}
+    done = mr._render_sports_html(_sports(3), htmllib)
+    assert "小組賽最終積分" in done and "已晉級" in done
+    ongoing = mr._render_sports_html(_sports(2), htmllib)
+    assert "分組累計戰績" in ongoing and "暫居小組前 2" in ongoing
+
+
+def test_render_tw_calendar_dividend_amount_handling():
+    """配息卡:數字金額顯示「每股 X 元」;TWSE 未公告文字不可硬套「元」,改「配息待公告」。"""
+    import datetime as dt
+    ex = dt.date(2026, 7, 21)
+    h1 = mr._render_tw_calendar_html({"dividends": [
+        {"code": "2603", "name": "長榮", "ex_date": ex, "kind": "息", "amount": "5.0"}]})
+    assert "每股 5 元" in h1                                   # 數字照顯示
+    h2 = mr._render_tw_calendar_html({"dividends": [
+        {"code": "0050", "name": "元大台灣50", "ex_date": ex, "kind": "息",
+         "amount": "待公告實際收益分配金額"}]})
+    assert "待公告實際收益分配金額 元" not in h2                # 不再硬接「元」
+    assert "配息待公告" in h2
+    h3 = mr._render_tw_calendar_html({"dividends": [
+        {"code": "0056", "name": "元大高股息", "ex_date": ex, "kind": "息", "amount": ""}]})
+    assert "配息待公告" not in h3 and "每股" not in h3          # 空金額不顯示金額片段
+    # Codex 回歸:TWSE 空/NaN 儲存格 str() 後為 "nan"/float('nan'),float() 不拋 → 不可印「每股 nan 元」
+    for bad in ("nan", "inf", float("nan")):
+        hb = mr._render_tw_calendar_html({"dividends": [
+            {"code": "0050", "name": "元大台灣50", "ex_date": ex, "kind": "息", "amount": bad}]})
+        assert "每股" not in hb and "nan" not in hb and "inf" not in hb
 
 
 def test_render_weekend_digest_html_shell():

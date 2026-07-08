@@ -3,6 +3,90 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "4c045cc2-378b-4653-a683-c93fc37d0a2d",
+        "title": "EP677 | 🐎",
+        "published": "Wed, 08 Jul 2026 08:03:15 GMT",
+        "processed_at": "2026-07-08T10:36:50Z",
+        "digest": {
+          "summary_points": [
+            "主持人回憶自己年輕時最大槓桿約 2.5 倍（融資開滿），現今年輕人透過信貸、融資、股期等槓桿倍數可達 5-6 倍以上，風險更高。",
+            "觀察到韓國股市投機氣氛濃厚，近期降槓桿引發震盪，推測台股可能也出現類似降槓桿行為導致中小型股回檔。",
+            "台股加權指數仍在右上角，中小型股尾盤轉強，部分個股跌破季線可能轉弱，但功率元件、CCL、Wafer 等強勢族群仍守在 5 日與 10 日線上。",
+            "功率元件族群因市值較小，大型法人不易進駐，需關注可容納大資金的族群，如被動元件雖進入修正但仍在季線上。",
+            "近期 Semi-Analysis 報告（如 Kyber NVL 144 延遲、800V DC 延遲）引發市場震盪，但主持人認為這些多為修正短期預期，長期 AI 趨勢不變，市場過度反應。",
+            "Semi-Analysis 提到的 Kyber NVL 144 延遲並非新聞，產業早有預期；800V DC 滲透率 5% 實為正向訊號，市場錯誤解讀。",
+            "主持人強調市場常交易尚未量產的研發專案，預期拉高後下修造成波動，但公司基本面無變化，投資者不應恐慌。",
+            "在 AI 族群中，TSMC 與 NVIDIA 估值相對便宜但股價表現落後，反而週邊公司估值較高，反映市場偏好因素。",
+            "主持人認為 TSMC 如同市場避風港，動盪時資金會回流，表現穩健；NVIDIA 則因 AI 領導地位且估值便宜，值得長期持有。",
+            "軟體股方面，主持人認為 Token 成本下降有利軟體公司，點名 Palantir、CrowdStrike、Cloudflare 等，若 CPU 族群轉弱可能將資金轉移至此。",
+            "主持人長期持有 Tesla 主要出於對馬斯克的信仰，希望未來 SpaceX 能收購 Tesla，視為信仰投資。",
+            "主持人建議操作上應見招拆招，觀察強勢族群是否持續創高；個人因質押額度已滿無法加碼，但心態中性偏多。",
+            "關於熊市，主持人認為台股今年已漲 50%，遠優於過去平均 8-12%；熊市一定會來，但無法預測，應守住本金避免毀滅性虧損。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "AI 領導地位且估值便宜，長期持有。"
+            },
+            {
+              "name": "Tesla",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "信仰股，長期持有，希望被 SpaceX 收購。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
+            },
+            {
+              "name": "CrowdStrike",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
+            },
+            {
+              "name": "Cloudflare",
+              "code": "NET",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "市場動盪時資金回流，穩健避險，但無明確多空。"
+            },
+            {
+              "name": "國巨",
+              "code": "2327",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "被動元件族群進入修正但仍在季線上，中性觀察。"
+            },
+            {
+              "name": "華新科",
+              "code": "2492",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "被動元件族群進入修正但仍在季線上，中性觀察。"
+            }
+          ],
+          "market_view": "主持人認為台股仍處於多頭，近期中小型回檔為槓桿清理，強勢族群如功率元件、CCL、Wafer 仍撐盤，輪動持續，行情未結束。",
+          "action_view": "主持人建議見招拆招，觀察強勢族群是否持續創高，若強勢股轉弱則注意資金輪動至其他如軟體股；個人因質押額度已滿，暫時按兵不動，但心態中性偏多。",
+          "notable_quote": "其實我覺得根本沒什麼好解的，因為你去看一下加權指數，基本上就在右上角。"
+        }
+      },
+      {
         "guid": "2d7b77d8-c828-43f9-b835-5a1a72aa2e38",
         "title": "EP676 | 🐬",
         "published": "Sat, 04 Jul 2026 07:45:37 GMT",

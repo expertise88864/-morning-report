@@ -1,9 +1,9 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 23,
-  "last_seen": "2026-07-08",
-  "latest_title": "Google backs nuclear fusion startup targeting Europe’s first commercial power plant"
+  "days": 24,
+  "last_seen": "2026-07-10",
+  "latest_title": "Shares soar as recently-listed Zhipu AI and Iluvatar CoreX launch secondary placements"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
@@ -11,16 +11,22 @@
   "last_seen": "2026-07-08",
   "latest_title": "U.S. revokes Iran oil sales authorization after tanker attacks"
  },
- "litigation:": {
-  "first_seen": "2026-07-03",
-  "days": 2,
-  "last_seen": "2026-07-06",
-  "latest_title": "監院：導盲犬進出仍受限　應研議公部門拒絕就開罰"
- },
  "litigation:2317": {
   "first_seen": "2026-07-08",
   "days": 1,
   "last_seen": "2026-07-08",
   "latest_title": "代重要子公司富士康工業互聯網股份有限公司董事會決議 聘任財務總監"
+ },
+ "geopolitical:2317": {
+  "first_seen": "2026-07-10",
+  "days": 1,
+  "last_seen": "2026-07-10",
+  "latest_title": "每日遭攻擊3.8億次 鴻海亞歐美3地接力守資安防線 - DIGITIMES"
+ },
+ "litigation:QCOM": {
+  "first_seen": "2026-07-10",
+  "days": 1,
+  "last_seen": "2026-07-10",
+  "latest_title": "高通遭公平會重罰234億元！5年投資合作換訴訟和解| 財經 - 三立新聞"
  }
 }

@@ -3527,6 +3527,27 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "4d8e0eb0-7b7e-11f1-a450-5fdd6390cc4a",
+        "title": "Beijing Weighs Curbs on the AI Models Americans Love",
+        "published": "Thu, 09 Jul 2026 10:02:00 -0000",
+        "processed_at": "2026-07-09T10:46:16Z",
+        "digest": {
+          "summary_points": [
+            "中國可能收緊對 DeepSeek 和 Moonshot AI 等本土 AI 應用的出口限制，這些應用已被美國企業用於降低成本，可能擾亂 AI 模型的取得與定價。",
+            "北京發現 Anthropic 的 Claude Code 工具存在安全後門漏洞，導致阿里巴巴禁止員工在工作時使用，凸顯科技地緣政治緊張。",
+            "中國簡化的法規與較低成本加速生技創新，吸引美國創投投資 AI 驅動的臨床試驗工具。",
+            "FDA 宣布加速臨床研究的計畫，包括加快人體試驗啟動的試辦項目，有助於生技產業。",
+            "舊金山獨棟住宅價格年增 22%，主因是 OpenAI 和 Anthropic 等 AI 公司預期 IPO 帶動的財富效應。",
+            "WHOOP 在潛在 IPO 前聘請前 Nike 行銷主管，與 Apple Watch、Fitbit 和 Aura 競爭健康穿戴裝置市場。",
+            "分析師警告，消費健康穿戴裝置長期商業模式可能難以持續，儘管 IPO 初期有零售投資人追捧，以 Fitbit 為例先翻倍後下跌。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I think a lot of times, if familiar product investors on the retail side like to get involved, because it's something that they know and they have understanding of the look and feel, don't forget Fitbit doubled before it dropped down."
+        }
+      },
+      {
         "guid": "a32ad33e-7b11-11f1-9b6a-335d0916429a",
         "title": "U.S. Launches New Strikes on Iran",
         "published": "Wed, 08 Jul 2026 21:11:00 -0000",
@@ -3941,32 +3962,69 @@
           "notable_quote": "Investors were piling into shares of semiconductor companies."
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "d9971476-746a-11f1-91af-4f37fd85356e",
-        "title": "U.S. Stocks Set To Close Out Blockbuster Quarter",
-        "published": "Tue, 30 Jun 2026 09:54:00 -0000",
-        "processed_at": "2026-06-30T10:47:12Z",
-        "digest": {
-          "summary_points": [
-            "美國股市第二季表現強勁，標普500漲14%、納斯達克漲20%，創2020年以來最佳季度漲幅，科技股上週大跌後已回升。",
-            "日圓跌至40年低點162兌1美元，主因美日利差、AI熱潮導致亞洲貨幣走弱，以及日本散戶大舉投資美股。",
-            "歐洲通膨雖略有降溫但仍偏高，消費者因焦慮而增加儲蓄、減少支出，拖累經濟成長。",
-            "歐洲家庭銀行帳戶存款總計約10兆美元，經濟學家認為若轉向投資可提振經濟。",
-            "多家航空公司（荷航、漢莎、新加坡航空、聯合航空、美國航空）新款商務艙座椅因認證延遲，導致高級艙位空置、損失營收。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為美股漲勢強勁，但近期有波動；歐洲經濟因消費者謹慎而成長緩慢。",
-          "action_view": "",
-          "notable_quote": "The fact that Europeans are so anxious about spending, the fact that they're saving more, that is really holding back the European economy."
-        },
-        "shown_at": "2026-06-30T23:20:25Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72885787",
+        "title": "Levi's frayed forecast",
+        "published": "Thu, 09 Jul 2026 10:25:58 +0000",
+        "processed_at": "2026-07-09T10:43:45Z",
+        "digest": {
+          "summary_points": [
+            "Levi Strauss 第二季財報優於預期，但全年展望保守，因美國關稅影響，股價下跌6%。",
+            "Monster Beverage 宣布一股分割為兩股的股票分割，生效日為2026年8月。",
+            "Michael Burry 揭露持有 DraftKings 和 Flutter 股份，看好營運轉折點與規模，股價上漲。",
+            "SK hynix 美國上市據稱超額認購逾7倍。",
+            "Ampco Pittsburgh 股價飆升14%，因2026年上半年客戶訂單年增32%。",
+            "美股期指開盤前上漲；原油跌0.75%，比特幣漲0.9%，黃金漲0.8%。",
+            "今日經濟數據：初次申請失業救濟金人數與成屋銷售。"
+          ],
+          "tickers": [
+            {
+              "name": "Levi Strauss",
+              "code": "LEVI",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因關稅因素展望保守，股價下跌6%。"
+            },
+            {
+              "name": "Monster Beverage",
+              "code": "MNST",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布股票分割，無明確方向。"
+            },
+            {
+              "name": "DraftKings",
+              "code": "DKNG",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Michael Burry 揭露持股，認為營運正處於轉折點。"
+            },
+            {
+              "name": "Flutter Entertainment",
+              "code": "FLUT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Michael Burry 揭露持股，認為基本面良好且具規模。"
+            },
+            {
+              "name": "Ampco Pittsburgh",
+              "code": "AP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上半年客戶訂單年增32%，股價上漲14%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72866816",
         "title": "Oil futures surge on strikes",
@@ -4587,69 +4645,6 @@
           "notable_quote": "Exxalon CEO warns the US may face blackouts by next year due to a power supply shortfall."
         },
         "shown_at": "2026-06-30T23:20:25Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72740418",
-        "title": "Comcast to split with NBC spinoff",
-        "published": "Mon, 29 Jun 2026 14:45:45 +0000",
-        "processed_at": "2026-06-29T16:46:26Z",
-        "digest": {
-          "summary_points": [
-            "Comcast 宣布透過免稅分拆將 NBCUniversal 和 Sky 獨立為公開上市公司，股價飆升 25%。",
-            "Charter Communications 因週末報導稱其與 SpaceX 就推出美國消費者手機服務進行高層談判而大幅上漲。",
-            "GameStop 在週五晚間預測 2027 財年調整後 EBITDA 超過 6000 億美元（高於 2025 財年的 3.454 億美元）後走高。",
-            "Iridium Communications 因 Rocket Lab 同意以 8 億美元現金加股票收購該衛星營運商而飆升，交易將打造一家垂直整合的太空公司。",
-            "高盛預測標普 500 第二季每股盈餘年增 22%，為 2021 年以來最強勁的財測前預估，主要由 AI 和能源類股（如 Micron、Chevron、Marathon Petroleum、Broadcom）貢獻。"
-          ],
-          "tickers": [
-            {
-              "name": "Comcast",
-              "code": "CMCSA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因分拆公告股價飆升 25%。"
-            },
-            {
-              "name": "Charter Communications",
-              "code": "CHTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因 SpaceX 合作報導而大漲。"
-            },
-            {
-              "name": "GameStop",
-              "code": "GME",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上調 2027 財年 EBITDA 指引至超過 6000 億美元後走高。"
-            },
-            {
-              "name": "Iridium Communications",
-              "code": "IRDM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "因 Rocket Lab 收購協議而飆升。"
-            },
-            {
-              "name": "Rocket Lab",
-              "code": "RKLB",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "收購 Iridium 以打造垂直整合太空公司。"
-            },
-            {
-              "name": "Micron Technology",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "被列為第二季盈餘成長的主要貢獻者之一。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-29T22:52:55Z"
       }
     ]
   },
@@ -4686,6 +4681,31 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "ee665e22-5abb-4981-a58d-b481016ff97e",
+        "title": "One of the World's Largest Hedge Funds on Its 86x Growth in Token Spending",
+        "published": "Thu, 09 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-09T10:54:22Z",
+        "digest": {
+          "summary_points": [
+            "Man Group 正在利用生成式 AI 輔助研究，例如將 Podcast 內容轉錄並提煉出對供應鏈瓶頸的見解，幫助投資經理更快掌握關鍵資訊。",
+            "Man Group 的 AI 系統已經能自動產生交易假說、撰寫程式碼並執行回測，至今已有 15-20 個模型經人類投資委員會審核後用於實際交易。",
+            "自從 2024 年 1 月以來，Man Group 的 token 消耗量成長了 86 倍，且使用範圍從技術部門擴展到財務、營運與人力資源等非技術部門。",
+            "AI 的應用正從單純的問答升級為自主完成長達 16 小時的任務，導致 token 使用量大幅增加，企業需重新思考團隊協作方式。",
+            "公司內部採用預算分配制，將 token 使用權限下放給各業務單位，同時提供教育訓練，確保員工能選用最適合的模型並控制成本。",
+            "在系統化投資中，AI 能協助處理非結構化市場數據（如複雜衍生性商品說明書），自動填入參考數據庫，降低人工處理成本。",
+            "目前 Man Group 的招聘重點是提升所有新進員工的 AI 素養，並尋找具備長遠思維、能指揮多個 AI Agent 而非埋頭細節的人才。",
+            "AI 的引入正同時帶來「超級明星效應」（少數人善用 AI 大幅提升生產力）與「民主化效果」（多數員工透過 AI 執行更多任務）。",
+            "數據標註與結構化比使用最先進模型更重要，尤其是對於量化研究任務；Man Group 投入大量資源為數據加上統一語意的標籤。",
+            "AI 驅動的阿爾法不會迅速被競爭侵蝕，因為差異化來自於獨有的數據生態系、市場接入關係與多年累積的基礎設施，而非單一模型。",
+            "某些明星基金經理仍保留 10% 的個人獨特投資流程不願分享，但公司透過 AI 平台將共通工作流程（如回測、報告閱讀）標準化供全員使用。"
+          ],
+          "tickers": [],
+          "market_view": "AI 在資產管理中的應用正快速擴大，Token 消耗量指數級成長，但真正的阿爾法來自於數據生態系與流程整合，而非單純使用模型。",
+          "action_view": "Man Group 採取聯邦預算制，將 token 額度分配給各業務單位，並鼓勵員工透過教育主動優化使用方式，同時持續投資數據標註與平台建設。",
+          "notable_quote": ""
+        }
+      },
       {
         "guid": "7ed31c1e-3cf5-467d-a302-b47b014db8c5",
         "title": "These Are the Sharps Actually Making Money on Prediction Markets",
@@ -5099,33 +5119,6 @@
           "notable_quote": "To have a great bubble, you have to have a fabulous idea... this one is as big as anything but the railroads."
         },
         "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "bd6581ca-5dff-41c1-b4c5-b46b01441d87",
-        "title": "The Iran War’s Lasting Scars Across Asia",
-        "published": "Tue, 16 Jun 2026 20:00:00 +0000",
-        "processed_at": "2026-06-19T07:51:36Z",
-        "digest": {
-          "summary_points": [
-            "美國與伊朗達成臨時協議，將重新開放荷姆茲海峽，油價下跌，亞洲市場出現反彈。",
-            "亞洲較貧窮國家因缺乏石油庫存，被迫採取需求破壞措施，如印度鼓勵減少飛行、中國石油需求下降9%（約每日150萬桶）。",
-            "香港汽油價格約每加侖16美元，柴油價格自伊朗戰爭以來上漲近50%。",
-            "美國戰略石油儲備已降至3.49億桶，接近2.5億桶的營運最低水準，緩衝空間即將耗盡。",
-            "美元走強對新興亞洲經濟體不利，政府可能出售儲備資產換取外匯購買石油，削弱財政狀況。",
-            "AI投資熱潮推動對韓國和台灣記憶體晶片的巨額支出，可能壓制傳統宏觀訊號（如利率、匯率）的影響。",
-            "荷姆茲海峽封鎖影響氦氣供應，氦氣是半導體製造的關鍵原料，供應缺乏彈性，可能影響晶片生產。",
-            "日本5月生產者物價指數（PPI）年增6.3%，創三年最快增速，對日本銀行升息形成壓力。",
-            "各國政府與企業因應頻繁中斷而建立庫存，此行為消耗資源，將導致長期通膨壓力。",
-            "東南亞農民因無法負擔柴油成本而跳過種植季，可能引發未來糧食危機，並減少對中國電子產品的需求。",
-            "泰國漁民因燃料成本佔每次出航成本的一半以上而決定不出海，漁業供應受影響。",
-            "全球因地緣政治中斷頻率增加而轉向「阻塞點經濟」，貿易壁壘上升，生產率與物價將受衝擊。"
-          ],
-          "tickers": [],
-          "market_view": "美伊協議短期緩解供給壓力，但亞洲新興經濟體因庫存不足與需求破壞，結構性通膨與經濟下行風險仍在，且美元強勢加劇財政壓力。",
-          "action_view": "",
-          "notable_quote": "Everyone has discovered from the past six years that these big one-off, supposedly one-off disruptions can happen with frequency."
-        },
-        "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
   },

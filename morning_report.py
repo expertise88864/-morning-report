@@ -4862,6 +4862,9 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
 
 _RSS_CONTENT_CACHE: dict = {}   # N5:同一 run 內同一 RSS URL 只抓一次(內容位元組快取);測試間由 conftest 清空
 _FEED_STATS: dict = {}          # V2-N1:本 run 各來源 host 的 ok/fail 次數(供 N4 歷史逐 host 追蹤);測試間清空
+# 同一 host 本 run 連續失敗達此數且從未成功 → 熔斷:後續同 host 查詢直接快速失敗、不再送 HTTP+重試。
+# 起因:2026-07-08 Google News 整批 503,幾十條查詢 × 重試/退避耗光 job 的 25 分 timeout → 整份晨報未寄出。
+_FEED_HOST_CIRCUIT_BREAK = 4
 
 
 def _feed_label(url: str) -> str:
@@ -4879,7 +4882,14 @@ def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
     V2-N1:每次『實際抓取』記錄該 host 的 ok/fail 到 _FEED_STATS(快取命中不重複計)。"""
     content = _RSS_CONTENT_CACHE.get(url)
     if content is None:
-        stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0})
+        stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0, "streak": 0})
+        # 熔斷:此 host 本 run「連續」失敗達門檻(streak,任一次成功即歸零)→ 判定當下不可用,
+        # 直接快速失敗、不再送 HTTP+重試。用連續而非「零成功」,是為了同時涵蓋「一開始就整批 503」
+        # 與「跑到一半才被限流」(Google News rate-limit 可能在數次成功後才觸發)。
+        # 避免幾十條查詢把 job timeout 預算耗光導致整份晨報不寄(晨報不可斷;2026-07-08 事故)。
+        if stat.get("streak", 0) >= _FEED_HOST_CIRCUIT_BREAK:
+            raise RuntimeError(
+                f"{_feed_label(url)} 本 run 已連續 {stat['streak']} 次失敗 → 熔斷跳過")
         try:
             response = _http_get(
                 url,
@@ -4895,8 +4905,10 @@ def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
                 content = str(getattr(response, "text", "")).encode("utf-8")
         except Exception:
             stat["fail"] += 1
+            stat["streak"] = stat.get("streak", 0) + 1
             raise
         stat["ok"] += 1
+        stat["streak"] = 0                # 成功即重置連續失敗計數
         if content:                       # 成功且非空才快取;失敗(例外)不快取、下次重試
             _RSS_CONTENT_CACHE[url] = content
     return feedparser.parse(content)

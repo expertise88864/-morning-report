@@ -418,6 +418,56 @@ def test_http_get_raises_after_exhausting_retries(monkeypatch):
         mr._http_get("https://x", retries=1)
 
 
+def test_feed_host_circuit_breaker_stops_hammering_dead_host(monkeypatch):
+    """host 連續失敗達門檻且零成功 → 後續同 host 查詢直接熔斷,不再送 HTTP(避免整批 503
+    把 job timeout 耗光導致晨報未寄,2026-07-08 事故)。"""
+    calls = {"n": 0}
+
+    def _boom(url, **kw):
+        calls["n"] += 1
+        raise RuntimeError("simulated 503")
+
+    monkeypatch.setattr(mr, "_http_get", _boom)
+    n = mr._FEED_HOST_CIRCUIT_BREAK
+    for i in range(n + 5):
+        try:   # 不同 URL 避開內容快取;同一 host(news.google.com)共用 _FEED_STATS
+            mr._feedparser_parse_url_with_timeout(f"https://news.google.com/rss/search?q=q{i}")
+        except Exception:
+            pass
+    assert calls["n"] == n   # 只有前 n 次真的送 HTTP,之後全被熔斷跳過
+
+
+def test_feed_host_circuit_breaker_resets_streak_on_success(monkeypatch):
+    """連續失敗才熔斷:先成功數次(streak 歸零)、之後才整批 503,仍能正確熔斷
+    (涵蓋 Google News 跑到一半才被限流的情境)。"""
+    n = mr._FEED_HOST_CIRCUIT_BREAK
+    calls = {"n": 0}
+    mode = {"ok": True}
+
+    class _Resp:
+        content = b"<rss></rss>"
+
+        def raise_for_status(self):
+            pass
+
+    def _fake(url, **kw):
+        calls["n"] += 1
+        if mode["ok"]:
+            return _Resp()
+        raise RuntimeError("simulated 503")
+
+    monkeypatch.setattr(mr, "_http_get", _fake)
+    for i in range(2):   # 先 2 次成功 → streak 保持 0
+        mr._feedparser_parse_url_with_timeout(f"https://news.google.com/rss/search?q=ok{i}")
+    mode["ok"] = False
+    for i in range(n + 3):   # 之後連續失敗
+        try:
+            mr._feedparser_parse_url_with_timeout(f"https://news.google.com/rss/search?q=bad{i}")
+        except Exception:
+            pass
+    assert calls["n"] == 2 + n   # 2 成功 + n 次真失敗後熔斷,其餘不送 HTTP
+
+
 def test_mask_malformed_numbers():
     """畸形千分位(逗號後 ≥4 位)遮蔽;合法千分位/小數不受影響。"""
     assert "(數值異常已略)" in mr._mask_malformed_numbers("瑞銀目標價 3,2424 元")

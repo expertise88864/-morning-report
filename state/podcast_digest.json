@@ -1239,6 +1239,45 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmrdm8n6v0a7j01uo3iva4lxt",
+        "title": "538.【財經時事放大鏡】Token 經濟若失速，硬體估值臉著陸",
+        "published": "Thu, 09 Jul 2026 23:02:35 GMT",
+        "processed_at": "2026-07-10T06:25:36Z",
+        "digest": {
+          "summary_points": [
+            "記憶體合約價 Q3 預估仍季增，DRAM 季增 13-18%、NAND 季增 10-15%，但較前一季的 60% 增幅大幅趨緩。",
+            "韓國記憶體股因當地高槓桿投資（如兩倍做多海力士）導致近期大跌，但韓國股市今年仍漲 70%，台股漲 54%。",
+            "美光毛利率高達 80%，且記憶體產能不足至 2027 年，短期供需吃緊，但市場擔憂價格漲幅見頂。",
+            "企業開始分層優化 AI 成本，Coinbase 等公司設立 Token 上限或改採便宜模型，總用量仍成長但支出砍半。",
+            "OpenRouter 數據顯示，便宜開源模型（如 DeepSeek）的 API 使用量暴增，總 Token 消耗量仍在攀升。",
+            "模型分層可能促使算力需求分化，自研 ASIC 或便宜 GPU 需求受益，高階通用 GPU 叙事受挑戰。",
+            "AI 滲透率仍低，一旦企業深度應用（如 Agentic AI）普及，算力需求將再度噴發。",
+            "高估值下任何邊際變化（如 Nvidia Kyber 延後）都易引發股價劇烈修正，台股融資額度借光但相對市值增長未過熱。",
+            "記憶體股回檔屬高位修正，若跌深可能吸引資金回補，產業循環未結束但投資難度提升。",
+            "反泡沫思維：若認為 AI 是泡沫，應買受害股而非放空 AI，但台股受害標的有限。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "自研晶片趨勢與 Kyber 延後可能影響高階 GPU 需求，加上估值已高，容易出現修正。"
+            },
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "記憶體毛利率高但合約價季增幅大幅趨緩，市場對循環高點有所疑慮。"
+            }
+          ],
+          "market_view": "台股處高位，任何邊際變化都可能引發劇烈修正，但 AI 長線需求未變，需持續追蹤滲透率與成本變化。",
+          "action_view": "高檔持股須嚴設停損，記憶體若修正過深可留意進場機會，AI 相關投資需持續觀察終端需求數據。",
+          "notable_quote": "長高就是風險，沒什麼好說的。你高點就是利多。變化就是風險。"
+        }
+      },
+      {
         "guid": "cmr7n7pcz00g601wtcpabdx98",
         "title": "537.【達人聊產業】駭客正義 ! 匿於國防與企業後的資訊安全 ft. 奧義賽博吳明蔚董事長",
         "published": "Sun, 05 Jul 2026 23:02:05 GMT",
@@ -1857,6 +1896,66 @@
   "usstock-class": {
     "name": "美股投資學",
     "episodes": [
+      {
+        "guid": "123f4c3a-29b3-4bdf-b679-93f052c31503",
+        "title": "2026/07/10 (五) 股市無視戰爭：美光砸錢、SK Hynix美股上市，Meta三大利多",
+        "published": "Fri, 10 Jul 2026 01:15:08 GMT",
+        "processed_at": "2026-07-10T06:47:35Z",
+        "digest": {
+          "summary_points": [
+            "美股整體震盪，道瓊漲0.3%，標普500漲0.8%收於7542點，那斯達克100漲1.3%，費城半導體漲3.1%，羅素2000漲1.2%。",
+            "百事可樂Q2營收242億美元年增6.4%超預期，但北美市場疲軟，股價跌3%以上，公司警告下半年成本通膨更嚴重，消費者支出縮減。",
+            "美光宣布2035年前美國投資擴大至2500億美元以上，資本支出增加顯示對AI需求信心，但短期股價震盪需觀察月線支撐。",
+            "SK海力士在美IPO定價約149美元，超額認購，關注上市後蜜月行情，但相對韓股已有溢價。",
+            "Meta自研AI晶片Iris計劃9月量產，由博通合作設計、台積電製造，帶動博通、台積電及設備股上漲。",
+            "Meta首次推出企業付費API，Spark 1.1模型定價僅為OpenAI等頂級模型的25%，積極搶佔市場。",
+            "Meta探索AI雲端業務，將多餘算力打包出售，商業模式從廣告公司向複合型科技公司轉變。",
+            "全球晶圓製造設備市場預計2028年增至2500億美元，設備股如應用材料、科林研發、科磊等受惠上漲4-6%。",
+            "美國初領失業救濟金21.5萬低於預期，但非農新增僅5.7萬，勞動力市場信心分化。",
+            "消費者信心指數與PMI出現分歧，企業端樂觀而消費者因高通膨收縮支出，建議將資金投入增值資產。"
+          ],
+          "tickers": [
+            {
+              "name": "百事可樂",
+              "code": "PEP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "北美市場疲軟，公司警告下半年成本通膨更嚴重，消費者支出縮減，股價下跌。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "擴大美國投資顯示信心，但短期震盪需觀察月線，建議觀望。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "自研晶片量產、推出付費API、探索雲端業務，商業模式升級，估值合理。"
+            },
+            {
+              "name": "博通",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與Meta合作設計AI晶片，直接受惠於Meta資本支出增加。"
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "負責Meta晶片製造，且所有晶片製造都需台積電，處於不敗之地。"
+            }
+          ],
+          "market_view": "大盤震盪偏多，長期趨勢向上，經濟有支撐但消費者信心弱，建議配置指數ETF。",
+          "action_view": "短期對美光觀望，不追高；長期可配置S&P500或科技指數ETF；關注Meta及記憶體族群。",
+          "notable_quote": "You need to predict the stock price for a day is very difficult, but predicting for a longer term is easier; long-term trend is upward."
+        }
+      },
       {
         "guid": "0f2d3f56-be76-4e4d-943d-f694191a50c7",
         "title": "2026/07/09 (四) 美伊再開火，AI助攻通膨回不去了？輝達分析#nvda",
@@ -2520,41 +2619,6 @@
           "notable_quote": "我選擇再稍微的降一點部位，然後等到之後有拉回的時候再去做一個佈局。"
         },
         "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "0af21e16-ede9-4d79-aba6-23fdf43e6ddb",
-        "title": "2026/06/17 (三)  Warsh 首秀，FOMC會出意外嗎？",
-        "published": "Wed, 17 Jun 2026 01:22:13 GMT",
-        "processed_at": "2026-06-19T12:16:15Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX以每股135美元IPO，上市三天漲49%，市值達2.65兆美元，超越亞馬遜成全球第五大上市公司。",
-            "SpaceX選擇權首日成交逾180萬口，打破Meta在2012年創下的新股選擇權首日紀錄。",
-            "聯準會6月利率決議預計維持3.5-3.75%不變，市場關注新主席Worst的首場記者會及點陣圖是否調整。",
-            "美國5月進口物價月增1.9%、年增6.7%，創四年最快；電腦與半導體進口價格月增3.6%，為1994年以來第二大增幅。",
-            "資金從漲多科技股流向價值股，道瓊工業漲0.6%，納斯達克跌1.7%，費半跌5.7%，羅素2000跌0.9%但前幾日曾創高。",
-            "美林全球基金經理人調查：56%認為AI仍在繁榮期，80%認為做多半導體是最擁擠交易，現金水位從3.9%升至4.1%。",
-            "僅21%受訪者認為AI已進入極端狂熱期，多數基金經理人進行戰術性降風險而非全面撤退。",
-            "聯準會新主席Worst過去反對QE2，主張降息但縮表，批評聯準會過度干預市場，可能不提交點陣圖。",
-            "Worst上任後風格溫和，未開除官員，但市場仍對其政策不確定性保持謹慎。",
-            "NASDAQ修改規則，允許超大型IPO快速納入指數，可能吸引被動基金買盤，SpaceX受益。",
-            "美林調查顯示通膨仍是最大尾部風險，若通膨降溫將緩解成長股壓力。",
-            "主持人建議降低部位、提高現金，等待FOMC結果後再決定進場，對10-15%修正視為加碼機會。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO上市後股價暴漲，市場熱情高漲，但估值已遠超營收基本面，需關注長期願景與現實差距。"
-            }
-          ],
-          "market_view": "市場處於震盪格局，等待聯準會利率決議方向；基本面有支撐但估值偏高，資金進行輪動，短期不確定性較大。",
-          "action_view": "建議降低部位、提高現金水位，因應FOMC波動；若出現10-15%修正可視為加碼機會，等結果明朗後再追加。",
-          "notable_quote": "你不要去想到底有沒有衰退，就跟你不要去想到底有沒有AI泡沫一樣，你把每一次的交易都當成是一個獨立的事件。"
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
       }
     ]
   },
@@ -3529,6 +3593,24 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "80c93c30-7bda-11f1-a4b5-c3e93079067c",
+        "title": "Why It’s So Hard to Crack Down on Deadly Counterfeit Air-Bag Parts",
+        "published": "Thu, 09 Jul 2026 21:09:00 -0000",
+        "processed_at": "2026-07-10T06:29:14Z",
+        "digest": {
+          "summary_points": [
+            "美國6月成屋銷售月減2.4%，低於預期，受房貸利率走高與房價創紀錄影響。",
+            "油價雖因美伊緊張開盤走高，但隨後回落，布蘭特原油約76美元/桶；分析師警告美國庫存偏低將限制應對中斷的能力。",
+            "股市全面上漲，那斯達克漲1.3%領漲；10年期公債殖利率終止連續7日上升。",
+            "曼哈頓辦公樓改住宅建案因結構受損引發業界擔憂，可能導致保險費上升、融資更謹慎，拖慢全美辦公轉住宅改建熱潮。"
+          ],
+          "tickers": [],
+          "market_view": "今日股市上漲，那斯達克領漲；油價因美伊緊張反跌，房市持續受高利率與高房價壓抑。",
+          "action_view": "",
+          "notable_quote": "Ultimately, there's a question on are lenders and investors going to have to reprice the risk of doing an office to residential conversion?"
+        }
+      },
+      {
         "guid": "4d8e0eb0-7b7e-11f1-a450-5fdd6390cc4a",
         "title": "Beijing Weighs Curbs on the AI Models Americans Love",
         "published": "Thu, 09 Jul 2026 10:02:00 -0000",
@@ -3948,24 +4030,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-01T23:06:46Z"
-      },
-      {
-        "guid": "a2ea9e02-74c9-11f1-abd5-13ac82ab4538",
-        "title": "Why the Supreme Court Upheld Birthright Citizenship",
-        "published": "Tue, 30 Jun 2026 20:03:00 -0000",
-        "processed_at": "2026-07-01T06:41:40Z",
-        "digest": {
-          "summary_points": [
-            "S&P 500 本季上漲 15%，那斯達克上漲 21%，均創 2020 年以來最佳季度表現。",
-            "漲勢主要由半導體股票帶動，投資人搶進晶片股，形成瘋狂的晶片股漲勢。",
-            "人工智慧交易持續發燒，但市場漲幅過於集中科技股，存在風險。"
-          ],
-          "tickers": [],
-          "market_view": "大盤本季表現強勁，但漲幅集中在科技股，缺乏廣泛性。",
-          "action_view": "",
-          "notable_quote": "Investors were piling into shares of semiconductor companies."
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },
@@ -5247,6 +5311,26 @@
     "name": "科技報橘",
     "episodes": [
       {
+        "guid": "a3c631e7-d730-4538-98c7-51d70d6c472c",
+        "title": "科技早餐 7/10｜蘋果砸逾 300 億美元擴大美國晶片，帶動 150 億顆本土製造",
+        "published": "Thu, 09 Jul 2026 21:30:00 GMT",
+        "processed_at": "2026-07-10T06:27:01Z",
+        "digest": {
+          "summary_points": [
+            "蘋果與博通延長多年期合作，總金額超過300億美元，預計帶動逾150億顆美國晶片生產，博通將投入15億美元擴建科羅拉多州設施。",
+            "美國半導體產業到2030年可能短缺15.7萬名技術人才，影響晶片產能回流進度。",
+            "美國國會調查企業使用中國AI模型（如DeepSeek）的情況，擔憂若缺乏低價高效替代方案，企業可能轉向中國模型。",
+            "OpenAI推出GPT Live全雙工語音模型，實現同時聆聽與回應，並將語音互動與複雜推理分離，競爭焦點轉向多模態整合。",
+            "Waymo在聖地牙哥、拉斯維加斯、坦帕和丹佛啟動無安全人員的全自動駕駛營運，Tesla也將Robotaxi服務擴大到邁阿密部分地區。",
+            "Meta在加拿大亞伯達省新建資料中心，總投資超過130億美元，初期規模1GW，預計2-3年內投入營運，將創造逾3,000個工作機會。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "3bd728d2-2724-413c-a1bf-09d783b2c38d",
         "title": "科技早餐 7/9｜中美前沿 AI 模型先過政府關，DeepSeek 自研晶片卡供應鏈",
         "published": "Wed, 08 Jul 2026 21:30:00 GMT",
@@ -5710,57 +5794,6 @@
           "notable_quote": "Google 在今年大概兩個月前就是四月份的時候有公佈他們把原本這個量子輕易完成的時間從2030年再往前提到2029年"
         },
         "shown_at": "2026-06-28T22:58:22Z"
-      },
-      {
-        "guid": "5ff935c3-0069-4ec3-99d8-dbf84b8f5c75",
-        "title": "科技早餐 6/26｜黃仁勳押 AI 工廠喊國安優先，NVIDIA 把算力戰推進新階段",
-        "published": "Thu, 25 Jun 2026 21:30:00 GMT",
-        "processed_at": "2026-06-26T10:41:45Z",
-        "digest": {
-          "summary_points": [
-            "NVIDIA 股東大會：黃仁勳表示 AI 已從有趣走向有用，算力需求加速擴張，AI 工廠成為新成長核心。",
-            "NVIDIA 強調國家安全優先，不會支援走私晶片，但未影響其 AI 基礎設施市場主導地位。",
-            "OpenAI 與博通合作開發首款客製化 AI 晶片 Halepino，推理成本可能比標準 GPU 低 50%，預計年底部署。",
-            "高通在投資人日設定 2029 年非手機晶片營收 400 億美元目標，其中資料中心業務貢獻 150 億美元。",
-            "高通發表資料中心品牌 Dragonfly，布局 CPU、AI 推理加速器及客製化 ASIC，並收購 AI 軟體新創 Modular。",
-            "日本政府提出官民投資路線圖，15 年內投入超過 370 兆日元，重點投資 AI（10.5 兆）、半導體（68 兆）等 17 個戰略領域。",
-            "Anthropic 指控阿里巴巴非法蒸餾其 AI 模型，涉及 2.5 萬個詐騙帳號與 2880 萬次互動，可能導致美國 AI 能力外流。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股東大會強調 AI 需求成長，AI 工廠成為新核心，算力擴張利多。"
-            },
-            {
-              "name": "博通",
-              "code": "AVGO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與 OpenAI 合作開發客製化 AI 晶片，布局推理市場。"
-            },
-            {
-              "name": "高通",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "設定資料中心營收目標，推出 Dragonfly 品牌並收購 Modular 強化生態。"
-            },
-            {
-              "name": "阿里巴巴",
-              "code": "BABA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "被 Anthropic 指控非法蒸餾 AI 模型，可能面臨監管風險。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "AI 已經從有趣走向有用"
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },
@@ -5827,6 +5860,46 @@
   "allin": {
     "name": "All-In Podcast",
     "episodes": [
+      {
+        "guid": "e7e64c8a-492a-4227-a6cb-5ff7894f3f3a",
+        "title": "Open Source Wins, AGI Is Here, and Scorsese's AI Toolkit with CEOs of Cerebras & Black Forest Labs",
+        "published": "Fri, 10 Jul 2026 01:26:00 +0000",
+        "processed_at": "2026-07-10T06:40:42Z",
+        "digest": {
+          "summary_points": [
+            "Cerebras 有 250 億美元的訂單積壓，AI 需求遠超過數據中心與硬體的供應能力。",
+            "推理（inference）在運算上非常密集，快速算力（如 Cerebras）對於消耗大量代幣的推理模型至關重要。",
+            "Cerebras 打破摩爾定律，預期在接下來 18 個月內新架構效能提升超過 2 倍。",
+            "AI 數據中心建設規模前所未有，單一建築用電量超過中型城市。",
+            "開源模型（如 Black Forest Labs 的 Flux）因主權與客製化需求而受青睞，尤其在受監管產業。",
+            "前沿模型供應商（OpenAI、Anthropic）與超大規模業者是飢渴的客戶，但也自造晶片以降低依賴。",
+            "AI 推理模型（如 OpenAI 的 o 系列）從遵循提示進展到理解使用者意圖，實現遞迴自我改善。",
+            "Black Forest Labs 正將影像、影片、音訊生成與動作預測結合，目標是世界模型與機器人。",
+            "生成式 AI 已被用於電影製作（例如與馬丁·史柯西斯合作）的發想與前期視覺化，但尚未能製作完整電影。",
+            "IP 持有者（如迪士尼）可使用開源模型基於自有內容訓練，實現粉絲創作與互動內容。",
+            "此技術有望實現無限能源、教育與醫療突破，並有潛力治癒癌症。"
+          ],
+          "tickers": [
+            {
+              "name": "Cerebras Systems",
+              "code": "CRBR",
+              "market": "US",
+              "direction": "看多",
+              "reason": "執行長表示有 250 億美元積壓訂單，需求遠超過供給；快速推理晶片是推理模型的關鍵。"
+            },
+            {
+              "name": "Black Forest Labs",
+              "code": "",
+              "market": "US",
+              "direction": "中立",
+              "reason": "私人公司，專注開源影像/影片模型與機器人 AI，發展中。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "We have a shot with this technology. So not our children nor anyone they know dies of cancer."
+        }
+      },
       {
         "guid": "afd9c6d3-2254-4a38-9847-a304981d286d",
         "title": "AI Sovereignty Wars, Palantir-Nvidia Deal, SCOTUS Birthright Ruling, Newsom's CA Budget Lie",

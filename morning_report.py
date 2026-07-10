@@ -64,6 +64,23 @@ from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保
     _render_podcast_html,
     _render_sports_html,
 )
+from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已抽出。只 re-export morning_report
+    # 本體/測試實際引用者;另 20 個常數與 2 個內部函式僅 news_rules 內部使用,不外露(已驗證零外部引用)。
+    NEWS_POSITIVE_TERMS,
+    NEWS_NEGATIVE_TERMS,
+    TECH_GATE_CATALYST,  # noqa: F401 — re-export:test_news 經 mr.* 讀取
+    classify_news_importance,
+    dedup_news,
+    _matches_any,
+    _news_source_grade,
+    _news_keep_score,
+    _strip_html,
+    _is_low_value_tech_headline,
+    _tw_intelligence_topic,
+    _tw_intelligence_importance,
+    _tw_intelligence_recall_hit,
+    _tw_intelligence_timeline_key,
+)
 
 # ---------- 設定 ----------
 TPE = ZoneInfo("Asia/Taipei")
@@ -351,47 +368,12 @@ TW_INDUSTRY_EVENT_MAP: dict[str, dict[str, set[str]]] = {
     },
 }
 
-NEWS_POSITIVE_TERMS = [
-    "上修", "優於預期", "創高", "成長", "增加", "擴產", "訂單", "得標",
-    "獲利", "轉盈", "調升", "beat", "raise", "raised", "growth", "record",
-    "order", "orders", "contract", "contracts", "expand", "expanded",
-    "increase", "increased", "upgrade", "upgraded",
-]
-NEWS_NEGATIVE_TERMS = [
-    "下修", "低於預期", "衰退", "減產", "砍單", "虧損", "轉虧", "調降",
-    "禁令", "出口管制", "制裁", "召回", "訴訟", "miss", "cut", "lower",
-    "decline", "declined", "loss", "losses", "ban", "banned", "sanction",
-    "sanctions", "recall", "lawsuit", "downgrade", "downgraded",
-]
 
 # 科技脈動品質閘門用詞:純分析師喊價、純籌碼流向、具體催化。
 # 用於過濾「重點公司新聞」餵 LLM 的取材厚度,不影響任何計分(計分仍吃全部新聞)。
-TECH_NEWS_ANALYST_NOISE = [
-    "目標價", "上看", "喊買", "喊到", "看好上", "評等", "重申", "調升評等", "調降評等",
-    "投顧", "分析師看", "外資點名", "外資喊", "法人喊", "buy 評等",
-    "target price", "price target", "overweight", "outperform", "reiterate", "initiate",
-]
-TECH_NEWS_CHIPFLOW_NOISE = [
-    "買超", "賣超", "三大法人", "外資連", "投信連", "自營商連", "籌碼", "法人動向",
-    "土洋對作", "權證", "融資增", "融券增",   # 「認購/認售」太廣(認購私募=實質公司動作)→ 只留權證
-]
 # 科技脈動閘門的「具體催化」白名單:刻意只放難以在純喊價/籌碼文中出現的具體事件詞,
 # 不沿用 NEWS_POSITIVE/NEGATIVE_TERMS(那組為計分召回而設,含成長/增加/獲利等泛詞,
 # 會讓「調升目標價,預估獲利成長」這類純喊價漏網)。
-TECH_GATE_CATALYST = [
-    # 訂單/接單/產能
-    "訂單", "新訂單", "得標", "接單", "大單", "下單", "投片", "擴產", "產能", "良率",
-    # 營運/財報事件(具體,非泛詞;不用裸「上修/下修」——會放行「上修目標價」這類喊價,
-    # 真正的財測上修由「財測」涵蓋,另收「上修/下修展望」)
-    "法說", "財報", "財測", "上修展望", "下修展望", "轉盈", "轉虧", "beat", "miss",
-    # 製造/產品
-    "量產", "出貨", "投產", "流片", "tape-out", "tapeout", "認證", "漲價", "報價",
-    # 投資/設廠/併購
-    "設廠", "建廠", "併購", "收購", "簽約", "簽訂", "合作",
-    # 負面具體事件
-    "砍單", "減產", "停產", "罷工", "火災", "資遣", "裁員", "召回", "訴訟",
-    "出口管制", "禁令", "制裁", "sanction", "sanctions", "ban", "banned", "recall", "lawsuit",
-]
 
 # ---------- 0050 成分股清單（含業務簡介） ----------
 # 資料以元大投信 0050 ETF 公開月報為基準，每季可能小幅調整
@@ -4354,14 +4336,6 @@ TW_INTELLIGENCE_QUERIES = {
 
 # 政策區「財經相關」白名單:召回必須命中其一,否則一律剔除
 # (使用者回饋:宗教宣導/毒駕修法/性平等與投資無關的政策造成版面雜亂)。
-TW_POLICY_FINANCE_TERMS = (
-    "稅", "關稅", "電價", "能源", "油價", "匯率", "利率", "升息", "降息",
-    "房貸", "房市", "信用管制", "新青安", "囤房", "地價",
-    "金管會", "央行", "中央銀行", "證交所", "證期", "金融", "保險業", "壽險",
-    "半導體", "晶片", "出口", "貿易", "產業園區", "科學園區", "投資",
-    "基本工資", "最低工資", "勞保", "勞退", "就業保險", "缺工",
-    "健保費", "補助", "振興", "碳費", "碳權", "電動車", "AI", "招商",
-)
 
 TW_OFFICIAL_SOURCE_TOKENS = (
     "gov.tw", "行政院", "衛福部", "健保署", "疾管署", "食藥署",
@@ -4375,12 +4349,6 @@ TW_OFFICIAL_SOURCE_DOMAINS = (
     "ly.gov.tw", "vghtpe.gov.tw", "vghtc.gov.tw", "vghks.gov.tw",
     "ntuh.gov.tw", "nckuh.hosp.ncku.edu.tw", "tpech.gov.taipei",
     "cgmh.org.tw", "cmuh.cmu.edu.tw", "kmuh.org.tw",
-)
-TW_INTELLIGENCE_ENTITY_TERMS = (
-    "\u65b0\u9752\u5b89", "\u80b2\u5152\u6d25\u8cbc", "\u5c11\u5b50\u5316",
-    "\u623f\u8cb8", "\u5065\u4fdd", "\u4f4f\u9662", "\u6025\u8a3a",
-    "\u885b\u798f\u90e8", "\u5065\u4fdd\u7f72", "\u884c\u653f\u9662",
-    "\u4e2d\u69ae", "\u53f0\u4e2d\u69ae\u7e3d", "\u81fa\u4e2d\u69ae\u7e3d",
 )
 
 # \u91ab\u754c\u300c\u6a5f\u69cb\u9375\u300d:per-entity \u6d17\u7248\u4e0a\u9650\u5c08\u7528(\u540c\u4e00\u6a5f\u69cb\u6bcf\u5929\u6700\u591a 1 \u689d)\u3002
@@ -4441,95 +4409,12 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
 
 TW_INTELLIGENCE_GOOGLE_ENTRY_LIMIT = {"policy": 36, "medical": 24}
 TW_INTELLIGENCE_OFFICIAL_ENTRY_LIMIT = {"policy": 28, "medical": 24}
-TW_INTELLIGENCE_RELEVANCE = {
-    "policy": (
-        "政策", "補助", "津貼", "新青安", "房貸", "租屋", "社福", "長照",
-        "育兒", "托育", "勞保", "稅", "電價", "能源", "產業", "草案",
-        "行政院", "立法院", "金管會", "央行", "部會", "鬆綁", "管制",
-        "修法", "預告", "上路", "補貼", "少子化", "人口", "住宅",
-    ),
-    "medical": (
-        "醫院", "醫療", "醫界", "住院", "門診", "急診", "停診", "醫師",
-        "護理", "健保", "藥價", "藥品", "醫材", "病安", "衛福部", "健保署",
-        "疾管署", "食藥署", "疫情", "疫苗", "傳染病", "臨床", "手術",
-        "中榮", "台中榮總", "神外", "代刀", "停約", "抵扣停約",
-        "裁罰", "健保申報", "停業", "醫療量能",
-    ),
-}
 
-TW_INTELLIGENCE_BROAD_RECALL = {
-    "policy": (
-        "台灣", "行政院", "立法院", "部", "署", "會", "政策", "補助",
-        "津貼", "草案", "修法", "上路", "預告", "法案", "新制",
-    ),
-    "medical": (
-        "台灣", "醫", "院", "健保", "衛福", "疾管", "食藥", "疫情",
-        "藥", "病床", "急診", "門診", "住院", "手術", "護理",
-    ),
-}
-
-TW_INTELLIGENCE_NOISE = {
-    "policy": ("娛樂", "體育", "影劇", "股價", "星座", "食譜",
-               "宗教", "毒駕", "酒駕", "性別平等", "性平", "兵役", "替代役",
-               "宣導列車", "宣導活動", "揭牌", "剪綵", "頒獎", "表揚",
-               "觀光活動", "演習", "招生", "考試", "藝文", "節慶"),
-    # 港澳媒體/機構新聞混入過(博愛醫院/醫管局/文匯網)→ 一律剔除,只留台灣醫界
-    "medical": ("保健食品", "養生", "星座", "減肥", "美容", "食譜", "偏方",
-                "香港", "澳門", "醫管局", "入稟", "文匯", "星島", "singtao",
-                "hk01", "東網", "on.cc", "明報", "大公"),
-}
-
-TW_INTELLIGENCE_MAJOR_TERMS = {
-    "policy": (
-        "通過", "核定", "公告", "上路", "修法", "草案", "預告", "補助",
-        "津貼", "新青安", "電價", "稅", "勞保", "健保", "少子化",
-        "房貸", "信用管制", "行政院", "立法院",
-    ),
-    "medical": (
-        "停約", "停診", "停業", "暫停", "住院", "急診", "病房", "病床",
-        "醫療量能", "裁罰", "感染", "疫情", "疫苗", "缺藥", "藥價",
-        "健保署", "衛福部", "疾管署", "食藥署", "醫院", "醫學中心",
-    ),
-}
 
 # 醫界「重大事件」詞:真正值得進晨報的硬新聞(裁罰、停約、糾紛、缺藥、疫情爆發…)。
 # 醫界區只召回標題含這類事件詞的新聞,藉此擋掉例行公告(空床數、招考、義診、衛教)。
-TW_MEDICAL_HARD_NEWS_TERMS = (
-    "停約", "解約", "抵扣停約", "裁罰", "罰鍰", "開罰", "重罰", "處分",
-    "懲處", "違規", "違法", "停業", "勒令", "撤照", "廢止", "吊照",
-    "糾紛", "醫糾", "疏失", "代刀", "密醫", "弊", "賄", "貪", "詐領", "溢領",
-    "起訴", "判刑", "判賠", "判決", "求償", "假扣押",
-    "缺藥", "斷藥", "短缺", "回收", "下架",
-    "群聚", "爆發", "院內感染", "食物中毒", "中毒", "疫情升溫",
-    "罷工", "抗議", "請辭", "出走", "倒閉", "停辦", "示警",
-    "致死", "死亡", "事故", "醫療事故", "醫療疏失",
-)
 # 醫界「例行/行政/衛教」雜訊:住院數、招考、義診、衛教、免費篩檢等,不進晨報。
 # 這類即使來自官方、含「公告」,也不是投資人需要的醫界大事。
-TW_MEDICAL_CAPACITY_NEWS_TERMS = (
-    "\u6025\u8a3a\u58c5\u585e", "\u6025\u8a3a\u7206\u6eff", "\u6025\u8a3a",
-    "\u4f4f\u9662\u696d\u52d9", "\u4f4f\u9662", "\u66ab\u505c\u4f4f\u9662",
-    "\u66ab\u505c\u6536\u6cbb", "\u505c\u6536", "\u95dc\u5e8a", "\u7e2e\u5e8a",
-    "\u6eff\u5e8a", "\u75c5\u5e8a\u5403\u7dca", "\u5019\u5e8a",
-    "\u8b77\u7406\u4eba\u529b", "\u91ab\u5e2b\u8352", "\u4eba\u529b\u4e0d\u8db3",
-    "\u91ab\u7642\u91cf\u80fd", "\u91cf\u80fd", "\u6551\u8b77\u8eca",
-    "\u91cd\u75c7", "\u5152\u79d1", "\u795e\u5916", "\u91ab\u9662\u670d\u52d9",
-)
-
-TW_MEDICAL_ROUTINE_NOISE = (
-    "招考", "招募", "錄取", "甄選", "甄試", "約僱", "徵才", "職缺", "報名", "招生",
-    "空床", "床數", "住院數", "一覽表", "參考表", "看診時間", "門診表", "代診",
-    "衛教", "講座", "課程", "研習", "宣導", "義診", "篩檢", "免費", "活動",
-    "保健", "養生", "菜單", "食譜", "祝賀", "得獎", "獲獎", "表揚", "捐贈",
-    "揭牌", "啟用", "剪綵", "週年", "感謝", "公益", "志工", "捐血",
-)
-
-
-TW_MEDICAL_ROUTINE_NOISE_EXTRA = (
-    "\u4f4f\u9662\u6578", "\u7a7a\u5e8a", "\u4e00\u89bd\u8868",
-    "\u62db\u8003", "\u9304\u53d6", "\u514d\u8cbb\u63a1\u6aa2",
-    "\u885b\u6559", "\u63d0\u9192",
-)
 
 
 def _tw_intelligence_window(now_tpe: dt.datetime) -> tuple[dt.datetime, dt.datetime, str]:
@@ -4557,45 +4442,6 @@ def _tw_intelligence_status(text: str) -> str:
     if any(token in text for token in ("研議", "擬", "規劃", "預告", "將推", "草案")):
         return "研議中"
     return "媒體報導"
-
-
-def _tw_intelligence_topic(kind: str, text: str) -> str:
-    groups = (
-        ("住宅金融", ("新青安", "房貸", "租屋", "房價", "信用管制")),
-        ("育兒社福", ("育兒", "津貼", "托育", "長照", "勞保", "社福")),
-        ("產業能源", ("半導體", "能源", "電價", "AI", "出口", "產業")),
-        ("醫院營運", ("醫院", "住院", "急診", "停診", "門診", "人力", "停約", "中榮", "神外")),
-        ("健保藥政", ("健保", "藥價", "藥品", "醫材", "食藥署")),
-        ("公共衛生", ("疫情", "疫苗", "疾管署", "傳染病", "食安")),
-    )
-    for topic, tokens in groups:
-        if any(token in text for token in tokens):
-            return topic
-    return "其他政策" if kind == "policy" else "其他醫界"
-
-
-def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
-    """Broad recall: allow source/category words first, then score importance later."""
-    if any(token in text for token in TW_INTELLIGENCE_NOISE[kind]):
-        return False
-    if kind == "medical" and any(token in text for token in TW_MEDICAL_ROUTINE_NOISE_EXTRA):
-        return False
-    broad = any(token in text for token in TW_INTELLIGENCE_BROAD_RECALL[kind])
-    specific = any(token in text for token in TW_INTELLIGENCE_RELEVANCE[kind])
-    major = any(token in text for token in TW_INTELLIGENCE_MAJOR_TERMS[kind])
-    if kind == "medical":
-        # 醫界區只要「事件性硬新聞」(停約、裁罰、糾紛、缺藥、群聚感染…)。
-        # 例行/行政/衛教(招考、空床數、義診、免費篩檢、衛教講座…)若無事件詞,一律剔除。
-        hard = any(token in text for token in TW_MEDICAL_HARD_NEWS_TERMS)
-        capacity = any(token in text for token in TW_MEDICAL_CAPACITY_NEWS_TERMS)
-        if not (hard or capacity):
-            return False
-        return specific or broad
-    if kind == "policy":
-        # 政策區必須「與財經/投資相關」(使用者回饋:宗教/毒駕/性平等雜訊太多)
-        if not any(token in text for token in TW_POLICY_FINANCE_TERMS):
-            return False
-    return specific or (broad and major)
 
 
 def _host_from_url(url: str) -> str:
@@ -4958,82 +4804,6 @@ def _official_source_entries(source: dict, stats: dict) -> list[dict]:
         return []
 
 
-def _tw_intelligence_entity_key(title: str) -> str:
-    text = str(title or "")
-    for term in TW_INTELLIGENCE_ENTITY_TERMS:
-        if term and term in text:
-            return term
-    for raw in text.replace("-", " ").split():
-        token = "".join(ch for ch in raw if ch.isalnum())
-        if 2 <= len(token) <= 18 and any(
-            suffix in token for suffix in (
-                "\u90e8", "\u7f72", "\u9662", "\u6703", "\u59d4\u54e1\u6703",
-                "\u5c40", "\u8655", "\u91ab\u9662", "\u4e2d\u5fc3",
-            )
-        ):
-            return token
-    return ""
-
-
-def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
-    """Group developing policy/medical stories into stable, human-scale timelines."""
-    topic = _tw_intelligence_topic(kind, title)
-    anchors = {
-        "住宅金融": ("新青安", "房貸", "信用管制", "租屋", "住宅"),
-        "育兒社福": ("育兒", "兒少", "成長津貼", "托育", "長照", "少子化"),
-        "產業能源": ("電價", "能源", "半導體", "AI", "出口", "產業"),
-        "醫院營運": ("中榮", "台中榮總", "神外", "停約", "急診", "住院", "病床"),
-        "健保藥政": ("健保", "藥價", "藥品", "醫材", "食藥署"),
-        "公共衛生": ("疫情", "疫苗", "疾管署", "傳染病"),
-    }.get(topic, ())
-    anchor = next((token for token in anchors if token in title), topic)
-    entity = _tw_intelligence_entity_key(title)
-    return f"{kind}:{topic}:{anchor}:{entity}"
-
-
-def _tw_intelligence_importance(kind: str,
-                                title: str,
-                                official: bool,
-                                scope: str,
-                                status: str) -> tuple[float, list[str]]:
-    """Score recalled items so keywords expand coverage without flooding the report."""
-    reasons = []
-    score = 0.0
-    if official:
-        score += 2.0
-        reasons.append("官方/主管機關")
-    if scope == "昨日新訊":
-        score += 1.5
-        reasons.append("昨日新訊")
-    if status in ("已公告", "研議中"):
-        score += 1.0
-        reasons.append(status)
-    if kind == "medical":
-        # 醫界:事件性硬新聞優先(停約/裁罰/糾紛/缺藥…),例行/行政/衛教重扣。
-        if any(token in title for token in TW_MEDICAL_HARD_NEWS_TERMS):
-            score += 2.5
-            reasons.insert(0, "重大事件")
-        if any(token in title for token in TW_MEDICAL_CAPACITY_NEWS_TERMS):
-            score += 2.0
-            reasons.insert(0, "\u91ab\u7642\u91cf\u80fd/\u670d\u52d9\u4e2d\u65b7")
-        if (any(token in title for token in TW_MEDICAL_ROUTINE_NOISE)
-                or any(token in title for token in TW_MEDICAL_ROUTINE_NOISE_EXTRA)):
-            score -= 3.0
-            reasons.append("例行/行政")
-    major_hits = [token for token in TW_INTELLIGENCE_MAJOR_TERMS[kind] if token in title]
-    if major_hits:
-        score += min(2.5, 0.7 * len(major_hits))
-        reasons.append("重大詞:" + "、".join(major_hits[:3]))
-    topic = _tw_intelligence_topic(kind, title)
-    if topic not in ("其他政策", "其他醫界"):
-        score += 0.7
-        reasons.append(topic)
-    if any(token in title for token in TW_INTELLIGENCE_NOISE[kind]):
-        score -= 3.0
-        reasons.append("疑似雜訊")
-    return round(max(0.0, score), 2), reasons[:4]
-
-
 def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                                 per_kind_limit: int = 8) -> dict:
     """Fetch policy and medical headlines for awareness only; never feed stock models."""
@@ -5296,173 +5066,9 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
     return output
 
 
-def _grade_from_text(text: str) -> str:
-    """從單一字串(source / source_name / 標題)判斷來源等級;無法判斷回空字串。"""
-    text = (text or "").lower()
-    if any(token in text for token in (
-            "federal reserve", "treasury", "sec", "mops", "twse", "taifex",
-            "中央銀行", "證交所", "公開資訊觀測站")):
-        return "A"
-    if any(token in text for token in (
-            "cnbc", "bloomberg", "reuters", "鉅亨", "cnyes", "工商", "經濟日報",
-            "udn", "聯合", "中央社", "cna", "南華", "scmp", "nikkei", "bbc",
-            "moneydj", "technews", "科技新報", "digitimes", "yahoo")):
-        return "B"
-    return ""
-
-
-def _news_source_grade(item: dict) -> str:
-    """新聞來源分級：官方 A、主流媒體 B、聚合或未識別來源 C。
-    Google News / 類股 feed 的 source 只是聚合器代號(如 Google:NVDA、類股-金融-台股),
-    真正的發布媒體在 source_name、或 Google 標題結尾「- 經濟日報」。三者一起看,
-    否則正版個股新聞會被誤判為 C → 去重時輸給舊版、且被當低可信度。"""
-    return (_grade_from_text(item.get("source"))
-            or _grade_from_text(item.get("source_name"))
-            or _grade_from_text(item.get("title"))
-            or "C")
-
-
-def _news_keep_score(item: dict) -> tuple[int, int]:
-    """同事件去重時優先保留較可信、內容較完整的版本。"""
-    grade_score = {"A": 3, "B": 2, "C": 1}.get(_news_source_grade(item), 0)
-    content_len = len(item.get("summary") or "") + len(item.get("fulltext") or "")
-    return grade_score, content_len
-
-
-def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
-    """
-    去除重複 / 近似重複的新聞（同一事件常被多個 RSS 來源重貼）。
-    規則：標題正規化（去空白、去標點、小寫）後完全相同 → 重複；
-         或與已保留標題的 difflib 相似度 > similarity → 重複。
-    重複時保留來源品質較高、摘要較完整者。
-    """
-    import difflib
-    import re as _re
-
-    def _norm(t: str) -> str:
-        t = (t or "").lower().strip()
-        t = _re.sub(r"[\s　]+", "", t)
-        # 只保留中英數，去掉所有標點符號
-        t = _re.sub(r"[^\w一-鿿]", "", t)
-        return t
-
-    kept: list[dict] = []
-    kept_norms: list[str] = []
-    dropped = 0
-    for n in news:
-        nt = _norm(n.get("title", ""))
-        if not nt:
-            kept.append(n)
-            continue
-        dup_index = None
-        for index, kn in enumerate(kept_norms):
-            if nt == kn:
-                dup_index = index
-                break
-            # 近似比對：兩者較短長度 >= 8 才比，避免短標題誤殺
-            if (min(len(nt), len(kn)) >= 8
-                    and difflib.SequenceMatcher(None, nt, kn).ratio() > similarity):
-                dup_index = index
-                break
-        if dup_index is not None:
-            # 不論保留哪一版,都把 company_label 補到留下來的那筆,
-            # 避免個股新聞因去重而失去標籤、從「科技板塊脈動」消失(rank 5)。
-            label = n.get("company_label") or kept[dup_index].get("company_label")
-            if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
-                kept[dup_index] = n
-                kept_norms[dup_index] = nt
-            if label and not kept[dup_index].get("company_label"):
-                kept[dup_index]["company_label"] = label
-            dropped += 1
-            continue
-        kept.append(n)
-        kept_norms.append(nt)
-    print(f"[news] 去重：{len(news)} → {len(kept)} 則（移除 {dropped} 則重複）")
-    return kept
-
-
 # ===================== 重大事件自動辨識 (Task B) =====================
 # 高權重關鍵字（中英對照），用於 classify_news_importance
-FED_OFFICIALS = [
-    "Powell", "Williams", "Jefferson", "Bowman", "Cook", "Kugler", "Waller",
-    "Barr", "Brainard", "Daly", "Bostic", "Mester", "Kashkari", "Goolsbee",
-    "Schmid", "Logan", "Musalem", "Hammack", "鮑爾", "鮑威爾",
-    "Warsh",   # 新任聯準會主席
-]
-FED_EVENTS = [
-    "FOMC", "聯準會", "Federal Reserve", "Fed minutes", "Fed Funds",
-    "rate decision", "升息", "降息", "利率決議", "點陣圖", "dot plot",
-    "Jackson Hole",
-]
-ECON_DATA = [
-    "CPI", "PPI", "PCE", "核心通膨", "core inflation",
-    "Nonfarm Payrolls", "非農", "就業數據", "失業率", "Initial Jobless Claims",
-    "ADP", "JOLTS",
-    "GDP", "ISM", "PMI", "零售銷售", "Retail Sales", "Consumer Confidence",
-    "Durable Goods", "Industrial Production",
-]
-GEOPOLITICAL = [
-    "出口管制", "晶片禁令", "對中制裁", "Entity List", "EAR",
-    "川習會", "Trump Xi", "貿易戰", "tariff", "關稅",
-    "台海", "Taiwan Strait", "封鎖", "demilitarized",
-    "伊朗", "以色列", "烏克蘭", "戰爭", "war",
-    # 中國政策/對台 深度
-    "中共", "中國商務部", "China MOFCOM", "中國國台辦",
-    "解放軍", "PLA", "海警", "軍演", "drill",
-    "稀土", "rare earth", "中國新晶片", "華為", "SMIC", "Huawei",
-    "禁止出口", "ban", "黑名單", "blacklist",
-    "晶片補貼", "CHIPS Act",
-    "央行降準", "RRR", "China stimulus", "人民幣",
-]
 # 直接牽動台股的重大地緣事件 —— 升級為 critical（會抓全文 + prompt 強制分析對台影響）
-GEOPOLITICAL_CRITICAL = [
-    "川習會", "川習", "Trump Xi", "拜習", "習拜",
-    "台海", "Taiwan Strait", "對台", "台灣問題", "一個中國", "侵台", "封島",
-    "軍演", "對台軍售", "解放軍", "PLA", "封鎖", "blockade",
-    "出口管制", "晶片禁令", "Entity List", "對中制裁", "EAR",
-    "戰爭", "war",
-]
-TW_POLICY = [
-    "金管會", "央行", "升息", "降息", "外資匯入", "外匯存底",
-    "產創條例", "新青安", "科專",
-    "TSMC", "台積電", "艾司摩爾", "ASML",
-]
-
-
-def _matches_any(text: str, keywords: list[str]) -> Optional[str]:
-    """文本是否包含任一關鍵字，回傳命中的那個。"""
-    if not text:
-        return None
-    import re as _re
-    lower = text.lower()
-    for kw in keywords:
-        needle = kw.lower()
-        # 英文關鍵字用 word boundary，避免 war 誤中 Warren / software / hardware。
-        # 中文與混合中文詞維持 substring，才能命中「台海軍演」等自然語句。
-        if _re.fullmatch(r"[a-z0-9][a-z0-9 ._/-]*", needle):
-            pattern = rf"(?<![a-z0-9]){_re.escape(needle)}(?![a-z0-9])"
-            matched = _re.search(pattern, lower) is not None
-        else:
-            matched = needle in lower
-        if matched:
-            return kw
-    return None
-
-
-def _strip_html(html: str) -> str:
-    """簡單去 HTML tag，不依賴 BeautifulSoup。"""
-    import re as _re
-    # 移除 <script>...</script> 與 <style>...</style>
-    html = _re.sub(r"<script[^>]*>.*?</script>", "", html, flags=_re.DOTALL | _re.IGNORECASE)
-    html = _re.sub(r"<style[^>]*>.*?</style>", "", html, flags=_re.DOTALL | _re.IGNORECASE)
-    # 移除其他 tag
-    html = _re.sub(r"<[^>]+>", " ", html)
-    # HTML entities
-    html = html.replace("&nbsp;", " ").replace("&amp;", "&")
-    html = html.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
-    # 壓縮空白
-    html = _re.sub(r"\s+", " ", html).strip()
-    return html
 
 
 def fetch_news_fulltext(news: list[dict],
@@ -8858,86 +8464,6 @@ def persist_delivered_report_state(entry: Optional[dict],
         mark_podcast_episodes_shown(podcast_episodes)
     if entry:
         save_history_state(entry, days_to_keep=450)
-
-
-def classify_news_importance(news: list[dict]) -> list[dict]:
-    """
-    對每則新聞自動分類與評重要性：
-      importance: "critical" (★★★) / "high" (★★) / "normal"
-      category:   "fed" / "econ_data" / "geo" / "tw_policy" / "general"
-
-    Critical 事件會在 prompt 中被特別標記，並可選擇抓全文（Task A）。
-    """
-    for n in news:
-        text = f"{n.get('title','')} {n.get('summary','')}"
-        n["source_grade"] = _news_source_grade(n)
-
-        fed_hit = _matches_any(text, FED_OFFICIALS) or _matches_any(text, FED_EVENTS)
-        econ_hit = _matches_any(text, ECON_DATA)
-        geo_crit_hit = _matches_any(text, GEOPOLITICAL_CRITICAL)
-        geo_hit = geo_crit_hit or _matches_any(text, GEOPOLITICAL)
-        tw_hit = _matches_any(text, TW_POLICY)
-
-        # 評分邏輯：Fed/數據/重大地緣 → critical；一般地緣/台灣政策 → high
-        if fed_hit and econ_hit:
-            # Fed + 經濟數據同時出現 = 政策轉向訊號
-            n["importance"] = "critical"
-            n["category"] = "fed_econ"
-            n["keyword"] = f"{fed_hit} + {econ_hit}"
-        elif fed_hit:
-            n["importance"] = "critical"
-            n["category"] = "fed"
-            n["keyword"] = fed_hit
-        elif econ_hit:
-            n["importance"] = "critical"
-            n["category"] = "econ_data"
-            n["keyword"] = econ_hit
-        elif geo_crit_hit:
-            # 直接牽動台股的重大地緣事件（川習會、台海、出口管制…）→ critical
-            n["importance"] = "critical"
-            n["category"] = "geo_critical"
-            n["keyword"] = geo_crit_hit
-        elif geo_hit:
-            n["importance"] = "high"
-            n["category"] = "geo"
-            n["keyword"] = geo_hit
-        elif tw_hit:
-            n["importance"] = "high"
-            n["category"] = "tw_policy"
-            n["keyword"] = tw_hit
-        elif n.get("company_label") and (
-                _matches_any(text, NEWS_POSITIVE_TERMS)
-                or _matches_any(text, NEWS_NEGATIVE_TERMS)):
-            # 重點公司 + 具體催化(訂單/上修/財報/砍單/出口管制…)→ 升級為 high。
-            # 讓它抓全文並進入高權重區,避免「科技板塊脈動」退化成只報股價+B級低信心(rank 7)。
-            n["importance"] = "high"
-            n["category"] = "company_catalyst"
-            n["keyword"] = (_matches_any(text, NEWS_POSITIVE_TERMS)
-                            or _matches_any(text, NEWS_NEGATIVE_TERMS))
-        else:
-            n["importance"] = "normal"
-            n["category"] = "general"
-            n["keyword"] = ""
-
-    # 統計
-    crit = sum(1 for n in news if n.get("importance") == "critical")
-    high = sum(1 for n in news if n.get("importance") == "high")
-    print(f"[news] 重要性分類完成：critical={crit}, high={high}, normal={len(news)-crit-high}")
-    return news
-
-
-def _is_low_value_tech_headline(n: dict) -> bool:
-    """純分析師喊價或純籌碼流向、且不含具體催化的非 A 級新聞 → 視為科技脈動雜訊。
-    僅用於過濾「重點公司新聞」餵 LLM 的取材(這類內容股價表/法人表已涵蓋),
-    不更動 importance/ranking 等任何計分。"""
-    text = f"{n.get('title', '')} {n.get('summary', '')}"
-    grade = n.get("source_grade") or _news_source_grade(n)
-    if grade == "A":                       # 官方來源(SEC/MOPS/TWSE…)一律保留
-        return False
-    if _matches_any(text, TECH_GATE_CATALYST):
-        return False
-    return bool(_matches_any(text, TECH_NEWS_ANALYST_NOISE)
-                or _matches_any(text, TECH_NEWS_CHIPFLOW_NOISE))
 
 
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,

@@ -4113,6 +4113,88 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72917294",
+        "title": "Wall Street Roundup: carving up the AI trade",
+        "published": "Fri, 10 Jul 2026 17:15:46 +0000",
+        "processed_at": "2026-07-10T20:52:50Z",
+        "digest": {
+          "summary_points": [
+            "本週市場因獨立日假期交投清淡，伊朗地緣風險持續但市場已大致適應。",
+            "SK海力士ADR IPO籌資265億美元，定價每股149美元，將於週一上市，被視為AI新股需求的測試。",
+            "美光股價自高點下跌22%，顯示AI記憶體晶片領域可能已過度擴張。",
+            "台積電將於下週公布財報，為亞洲晶片及AI領域提供重要訊號。",
+            "美光近期日波動劇烈（如跌10%、漲5%），反映市場對AI前景的不確定性。",
+            "百事可樂財報營收優於預期但股價跌3%，公司警告消費者因通膨減少衝動購買。",
+            "達美航空財報後下跌，但強調強勁旅遊需求，顯示高收入消費者支出仍穩健。",
+            "消費者出現分化：百事可樂代表低階消費者緊縮，達美航空代表高階需求強勁。",
+            "金融股將在下週進入財報季，花旗、高盛、摩根大通、美國銀行、富國銀行等將公布業績。",
+            "金融板塊自3月以來上漲約17%，但個股表現分歧：花旗與高盛今年漲約20%，富國銀行跌6%。",
+            "嘉賓Clem Chambers認為AI價值鏈中投資銀行如高盛將受益，因它們將主導AI基礎建設融資。"
+          ],
+          "tickers": [
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "其ADR IPO將測試AI新股需求，但尚未交易，看法中立。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股價自高點下跌22%，顯示AI記憶體領域可能過熱。"
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "下週財報將提供AI晶片需求線索，目前觀望。"
+            },
+            {
+              "name": "百事可樂",
+              "code": "PEP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報顯示消費者因通膨減少衝動購買，營運面臨壓力。"
+            },
+            {
+              "name": "達美航空",
+              "code": "DAL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報顯示強勁旅遊需求，高收入消費者支出穩健。"
+            },
+            {
+              "name": "高盛",
+              "code": "GS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "嘉賓認為其將在AI基礎建設融資中受益，且股價相對便宜。"
+            },
+            {
+              "name": "花旗集團",
+              "code": "C",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "今年以來上漲約20%，但財報前看法中立。"
+            },
+            {
+              "name": "富國銀行",
+              "code": "WFC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "今年以來下跌6%，表現落後同業。"
+            }
+          ],
+          "market_view": "市場處於夏季低迷期，AI板塊出現分化，消費者支出亦呈現高低階分歧。",
+          "action_view": "",
+          "notable_quote": "I think 2026 is sort of the realization that there's going to be winners and losers in the AI trade rather than just sort of, you know, all lines go up situation."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72912653",
         "title": "SK Hynix lands record U.S. debut",
         "published": "Fri, 10 Jul 2026 11:20:25 +0000",
@@ -4671,83 +4753,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-01T23:06:46Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72760604",
-        "title": "Buffett delays Gates Foundation gift",
-        "published": "Tue, 30 Jun 2026 17:39:38 +0000",
-        "processed_at": "2026-06-30T21:16:29Z",
-        "digest": {
-          "summary_points": [
-            "Oppenheimer調降多家大型銀行評級：高盛與摩根士丹利降至「遜於大盤」，美國銀行與花旗降至「與大盤持平」，理由是產業進入週期後期。",
-            "Patrick Industries與LCI Industries宣布全股票合併，LCI股價上漲，Patrick下跌約10%。",
-            "華納兄弟探索因英國政府可能干預派拉蒙Skydance收購案而股價承壓。",
-            "美國5月JOLTS職位空缺微增至759.4萬，高於預期，經濟學家認為勞動市場既未惡化也未明顯增強。",
-            "DA Davidson分析師指出，Google與亞馬遜在AI支出上獲得市場寬容，微軟卻因類似投資受罰，但分析師認為三者皆為贏家。"
-          ],
-          "tickers": [
-            {
-              "name": "高盛",
-              "code": "GS",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Oppenheimer降評至「遜於大盤」，因產業週期後期。"
-            },
-            {
-              "name": "摩根士丹利",
-              "code": "MS",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Oppenheimer降評至「遜於大盤」。"
-            },
-            {
-              "name": "美國銀行",
-              "code": "BAC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Oppenheimer降評至「與大盤持平」。"
-            },
-            {
-              "name": "花旗集團",
-              "code": "C",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Oppenheimer降評至「與大盤持平」。"
-            },
-            {
-              "name": "Patrick Industries",
-              "code": "PATK",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "合併消息後股價下跌約10%。"
-            },
-            {
-              "name": "LCI Industries",
-              "code": "LCII",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "合併消息後股價上漲。"
-            },
-            {
-              "name": "華納兄弟探索",
-              "code": "WBD",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "英國政府可能干預收購案導致股價受壓。"
-            },
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "市場對其AI支出反應負面，股價表現落後。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "They're both winners."
-        },
-        "shown_at": "2026-06-30T23:20:25Z"
       }
     ]
   },

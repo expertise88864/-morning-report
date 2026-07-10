@@ -375,6 +375,24 @@ def test_build_data_quality_usdtwd_stale_is_fallback():
     assert fx["status"] == "fallback" and "昨值" in fx["detail"] and "3" in fx["detail"]
 
 
+def test_build_data_quality_flags_tsm_adr_sox_divergence():
+    """SOX 大幅變動但 TSM ADR 幾乎不動 → 標記疑報價未更新(2026-07-10 事故);一般日不誤報。"""
+    base = {"QQQ": {"ticker": "QQQ", "close": 1.0, "prev_close": 1.0, "date": "d"},
+            "TSM": {"ticker": "TSM", "close": 436.0, "prev_close": 436.0, "date": "d",
+                    "change_pct": 0.0},
+            "SPY": {"ticker": "SPY", "close": 1.0, "prev_close": 1.0, "date": "d"},
+            "USDTWD": 31.0, "TAIEX_PRED": {}, "NIGHT_TXF": {}, "TAIFEX_OI": {},
+            "MARGIN": {}, "SEC_FILINGS": []}
+    q = {**base, "MACRO": {"SOX": {"close": 12960, "change_pct": 3.06}}}
+    dq = mr.build_data_quality(q, {"error": "x"}, {"error": "x"}, news=[], tw0050=[])
+    tsm = next((d for d in dq if d["name"] == "TSM ADR 新鮮度"), None)
+    assert tsm is not None and "背離" in tsm["detail"]
+    # 一般日(SOX 小動)不誤報
+    q2 = {**base, "MACRO": {"SOX": {"close": 12960, "change_pct": 0.5}}}
+    dq2 = mr.build_data_quality(q2, {"error": "x"}, {"error": "x"}, news=[], tw0050=[])
+    assert not any(d["name"] == "TSM ADR 新鮮度" for d in dq2)
+
+
 def test_build_data_quality_marks_error_and_ok():
     quotes = {
         "QQQ": {"ticker": "QQQ", "date": "2026-05-13", "close": 520, "prev_close": 515},

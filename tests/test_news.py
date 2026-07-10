@@ -468,6 +468,36 @@ def test_feed_host_circuit_breaker_resets_streak_on_success(monkeypatch):
     assert calls["n"] == 2 + n   # 2 成功 + n 次真失敗後熔斷,其餘不送 HTTP
 
 
+def test_fetch_tw_major_announcements_dedups_only_exact_duplicate_rows(monkeypatch):
+    """MOPS 去重:只移除「完全相同的重複列」。主旨相同但實質不同的公告必須保留——
+    顯示用 summary 會截到 600 字,故鍵必須用整列原始資料(Codex review)。"""
+    class _R:
+        def __init__(self, p):
+            self._p = p
+
+        def json(self):
+            return self._p
+
+    base = "設備採購說明內容" * 120        # 遠超過 600 字
+    t = "取得營業用機器設備達十億元"
+    rows = [
+        {"公司代號": "3711", "發言日期": "1150709", "發言時間": "17:51:00", "主旨 ": t,
+         "說明": base + "尾A"},
+        {"公司代號": "3711", "發言日期": "1150709", "發言時間": "17:51:00", "主旨 ": t,
+         "說明": base + "尾A"},                                    # 完全相同 → 合併
+        {"公司代號": "3711", "發言日期": "1150709", "發言時間": "17:51:00", "主旨 ": t,
+         "說明": base + "尾B"},                                    # 600 字後不同 → 保留
+        {"公司代號": "3711", "發言日期": "1150709", "發言時間": "17:51:00", "主旨 ": t,
+         "說明": base + "尾A", "事實發生日": "1150708"},            # 多一欄不同 → 保留
+        {"公司代號": "3711", "發言日期": "壞日期", "發言時間": "壞時間", "主旨 ": t,
+         "說明": base + "尾A"},                                    # 時間無法解析 → 保留
+    ]
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R(rows))
+    out = mr.fetch_tw_major_announcements(["3711"], hours=100000)
+    assert len(out) == 4                       # 5 筆中僅一組完全相同被合併
+    assert all(o["code"] == "3711" and o["title"] == t for o in out)
+
+
 def test_mask_malformed_numbers():
     """畸形千分位(逗號後 ≥4 位)遮蔽;合法千分位/小數不受影響。"""
     assert "(數值異常已略)" in mr._mask_malformed_numbers("瑞銀目標價 3,2424 元")

@@ -445,7 +445,8 @@ def test_tw_intelligence_include_flags():
 
 
 def test_render_worldcup_marks_advancing_top2():
-    """分組表前 2 名以綠色標示;此資料每隊 gp=3(小組賽已結束)→ 標籤為「已晉級」。"""
+    """分組表前 2 名以綠色標示,第 3 名以後不標。
+    (此 payload 只有 1 組 3 隊 → 未達 12 組×4 隊,依完整性防護保守視為小組賽進行中。)"""
     sports = {"news": {}, "worldcup": {"results": [], "fixtures": [], "groups": [
         {"name": "A 組", "rows": [
             {"team": "巴西", "gp": 3, "w": 3, "d": 0, "l": 0, "pts": 9},
@@ -453,7 +454,7 @@ def test_render_worldcup_marks_advancing_top2():
             {"team": "越南", "gp": 3, "w": 0, "d": 0, "l": 3, "pts": 0},
         ]}]}}
     h = mr._render_sports_html(sports, htmllib)
-    assert "已晉級" in h   # gp=3 → 小組賽最終積分
+    assert "晉級區" in h   # 部分 payload → 保守標「暫居小組前 2(晉級區)」
     assert "<b style='color:#16a34a;'>巴西 9(3-0-0)</b>" in h   # 第1名綠字
     assert "<b style='color:#16a34a;'>美國 6(2-0-1)</b>" in h   # 第2名綠字
     assert "<b style='color:#16a34a;'>越南" not in h            # 第3名不標綠
@@ -831,19 +832,46 @@ def test_fetch_worldcup_off_season_returns_empty(monkeypatch):
     assert wc == {"results": [], "groups": []}
 
 
+def _wc_groups(gp, n_groups=12, n_teams=4):
+    """完整世足 payload:12 組 × 4 隊(2026 賽制)。"""
+    return [{"name": f"{chr(65 + g)} 組",
+             "rows": [{"team": f"隊{g}-{i}", "pts": 9 - i * 2, "w": 3 - i, "d": 0,
+                       "l": i, "gp": gp} for i in range(n_teams)]}
+            for g in range(n_groups)]
+
+
+def _wc_sports(groups):
+    return {"worldcup": {"results": [], "fixtures": [], "groups": groups}}
+
+
 def test_render_sports_worldcup_group_label_switches_when_stage_done():
-    """世足:小組賽全踢完(每隊 gp≥3)→ 標題改「小組賽最終積分/已晉級」,
-    避免與淘汰賽戰績並存時看似小組賽還在進行。"""
-    def _sports(gp):
-        return {"worldcup": {"results": [], "fixtures": [], "groups": [
-            {"name": "A 組", "rows": [
-                {"team": "墨西哥", "pts": 9, "w": 3, "d": 0, "l": 0, "gp": gp},
-                {"team": "南非", "pts": 4, "w": 1, "d": 1, "l": 1, "gp": gp},
-                {"team": "南韓", "pts": 3, "w": 1, "d": 0, "l": 2, "gp": gp}]}]}}
-    done = mr._render_sports_html(_sports(3), htmllib)
-    assert "小組賽最終積分" in done and "已晉級" in done
-    ongoing = mr._render_sports_html(_sports(2), htmllib)
+    """世足:完整 payload 且小組賽全踢完 → 標題改「小組賽最終積分」。
+    但**一律列全隊**:2026 為 48 隊制,除各組前 2 直接晉級外另有 8 個最佳第 3 名晉級,
+    隱藏第 3 名會藏掉真正晉級的隊伍(Codex review)。"""
+    done = mr._render_sports_html(_wc_sports(_wc_groups(3)), htmllib)
+    assert "小組賽最終積分" in done and "直接晉級" in done
+    for i in range(4):
+        assert f"隊0-{i}" in done          # 全 4 隊都在,第 3/4 名不可被藏
+    ongoing = mr._render_sports_html(_wc_sports(_wc_groups(2)), htmllib)
     assert "分組累計戰績" in ongoing and "暫居小組前 2" in ongoing
+    assert "隊0-3" in ongoing
+
+
+def test_render_sports_worldcup_partial_payload_not_treated_as_done():
+    """Codex 回歸:ESPN 只回部分/重複分組時不可誤判小組賽已結束(標籤會誤導)。"""
+    # 只回 3 組(雖各組都踢完)→ 保守視為進行中
+    partial = mr._render_sports_html(_wc_sports(_wc_groups(3, n_groups=3)), htmllib)
+    assert "分組累計戰績" in partial and "小組賽最終積分" not in partial
+    # 12 組但某組只回 3 隊 → 同樣保守
+    g = _wc_groups(3)
+    g[0]["rows"] = g[0]["rows"][:3]
+    short = mr._render_sports_html(_wc_sports(g), htmllib)
+    assert "分組累計戰績" in short and "小組賽最終積分" not in short
+    # 12 筆但有重複組(唯一組名只有 11)→ 不可當成完整 payload
+    dup = _wc_groups(3)
+    dup[11] = dup[0]
+    d = mr._render_sports_html(_wc_sports(dup), htmllib)
+    assert "分組累計戰績" in d and "小組賽最終積分" not in d
 
 
 def test_render_tw_calendar_dividend_amount_handling():

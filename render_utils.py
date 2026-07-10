@@ -6,6 +6,10 @@ from __future__ import annotations
 import re
 from typing import Optional
 
+# 世足小組賽完賽判定用:2026 世界盃為 12 組 × 4 隊。ESPN 回傳不完整時保守視為「進行中」。
+_WC_EXPECTED_GROUPS = 12
+_WC_TEAMS_PER_GROUP = 4
+
 
 def _format_macro_line(name: str, m: dict) -> str:
     """總經指標餵 LLM 的單行格式。明確帶「前值」避免 LLM 回推前值而編造數字
@@ -560,17 +564,30 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         if wc_groups:
             # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度。
             # 各組前 2 名(暫居晉級線內)以綠色粗體標示;小組賽結束後即代表晉級者。
-            # 小組賽是否全部踢完(每隊 gp≥3)→ 淘汰賽開打後改標「最終積分/已晉級」,
-            # 避免與上方淘汰賽戰績並存時看起來像小組賽還在進行(資料驅動,不做脆弱的階段偵測)。
-            _grp_done = all(t.get("gp", 0) >= 3 for grp in wc_groups for t in grp["rows"])
+            # 小組賽是否全部踢完 → 只用來切換標題/圖例措辭(不影響顯示哪些隊,一律列全隊)。
+            # 完整性防護(Codex review):ESPN 可能只回部分分組/部分隊伍(缺列的組不會出現在
+            # wc_groups),若只檢查「已回傳的列 gp≥3」,單一完賽分組就會誤判整個小組賽結束。
+            # 故要求「分組數達預期 12 組、每組 4 隊皆有、且每隊 gp≥3」才算完賽;任一條件不符
+            # → 保守視為進行中(顯示全隊+「累計」標籤),不會誤藏隊伍。
+            # 用「唯一」組名/隊名計數,避免重複組或重複隊被當成完整 payload(Codex review)。
+            _grp_done = (
+                len({grp["name"] for grp in wc_groups}) >= _WC_EXPECTED_GROUPS
+                and all(len({t["team"] for t in grp["rows"]}) >= _WC_TEAMS_PER_GROUP
+                        for grp in wc_groups)
+                and all(t.get("gp", 0) >= 3 for grp in wc_groups for t in grp["rows"])
+            )
             _grp_title = "小組賽最終積分" if _grp_done else "分組累計戰績"
-            _grp_note = "小組前 2(已晉級)" if _grp_done else "暫居小組前 2(晉級區)"
+            # 2026 為 48 隊制:各組前 2「直接晉級」,另有 8 個成績最佳第 3 名亦晉級,
+            # 故措辭不可寫成「只有前 2 晉級」。
+            _grp_note = "小組前 2(直接晉級)" if _grp_done else "暫居小組前 2(晉級區)"
 
             def _team_cell(idx, t):
                 cell = f"{htmllib.escape(t['team'])} {t['pts']}({t['w']}-{t['d']}-{t['l']})"
                 if idx < 2:   # rows 已於 fetch_worldcup 端依積分/淨勝分排序,前兩名為晉級區
                     return f"<b style='color:#16a34a;'>{cell}</b>"
                 return f"<span style='color:#94a3b8;'>{cell}</span>"
+            # 一律列全隊。刻意不在小組賽結束後只留前 2 名:2026 世界盃 48 隊制,除各組前 2 外
+            # 另有「8 個成績最佳的第 3 名」晉級,隱藏第 3 名會藏掉真正晉級的隊伍(Codex review)。
             grp_lines = "".join(
                 "<div style='font-size:12px;color:#334155;line-height:1.8;margin:1px 0;'>"
                 f"<b style='color:#0f172a;'>{htmllib.escape(grp['name'])}</b>　"

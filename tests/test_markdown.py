@@ -229,6 +229,67 @@ def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
     assert q3["PODCAST_SHOWN_EPISODES"] == []
 
 
+def test_render_html_keep_mode_compacts_points_keeps_all_episodes(monkeypatch):
+    """keep 模式超標時只壓「每集重點條數」,所有集數都保留且都正確標記已顯示。
+    絕不砍集數:load_podcast_digest 每節目只取 2 集未顯示、>96h 即丟棄,且顯示順序固定
+    (台灣節目優先),砍集數會讓排序靠後的節目永遠輪不到而過期消失(Codex review)。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 keep
+    pts = [f"PTMARK{j} " + "很長的重點內容" * 5 for j in range(15)]
+    eps = [{"show": f"節目{i}", "title": f"EPMARK{i}",
+            "digest": {"summary_points": list(pts), "tickers": []}} for i in range(10)]
+    # 重點條數 >60 判超標 → 迫使壓到每集 6 條(10 集 × 6 = 60)
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("PTMARK") > 60 else 80.0)
+    q = {**_full_quotes(), "PODCAST_DIGEST": eps}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert html.count("EPMARK") == 10                  # 10 集全在,一集都沒砍
+    assert len(q["PODCAST_SHOWN_EPISODES"]) == 10      # 全部正確標記已顯示
+    assert html.count("PTMARK") <= 60                  # 條數被壓低
+    assert "已暫略" not in html                         # keep 模式不省略任何區塊
+
+
+def test_render_html_keep_mode_last_resort_reduces_episodes_and_shown_count(monkeypatch):
+    """keep 模式壓到最小條數仍超標 → 最後手段才減集數,且 shown 數與實際渲染數一致
+    (未渲染的集不標記已顯示,隔天會再出現;絕不「沒看到卻永久消失」)。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 keep
+    eps = _podcast_episodes(10)
+    # 只要集數(EPMARK)>4 就判超標(壓條數救不了)→ 迫使最後手段減到 4 集
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("EPMARK") > 4 else 80.0)
+    q = {**_full_quotes(), "PODCAST_DIGEST": list(eps)}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    n = html.count("EPMARK")
+    assert 0 < n <= 4                                  # 集數被減到過關
+    assert len(q["PODCAST_SHOWN_EPISODES"]) == n       # shown 與實際渲染一致,不多標
+    assert "已暫略" not in html                         # 仍不省略任何區塊
+
+
+def test_render_html_keep_mode_reduces_episodes_one_at_a_time(monkeypatch):
+    """最後手段減集數一次只減 1 集:3 集超標但 2 集塞得下 → 應保留 2 集(不可跳到 1),
+    否則多丟一集反而加重餓死風險(Codex review)。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # keep
+    eps = _podcast_episodes(3)
+    monkeypatch.setattr(mr, "_estimated_email_kb",
+                        lambda h: 120.0 if h.count("EPMARK") > 2 else 80.0)
+    q = {**_full_quotes(), "PODCAST_DIGEST": list(eps)}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert html.count("EPMARK") == 2                   # 剛好減到 2 集
+    assert len(q["PODCAST_SHOWN_EPISODES"]) == 2       # shown 同步
+
+
+def test_render_html_medical_journals_before_podcast():
+    """醫學文獻速報移到 podcast 之前(2026-07-10 剪信事故:14 集 podcast 把醫學文獻擠到信末被
+    Gmail 剪掉)。醫師使用者重視的醫學內容須排在龐大 podcast 之前,才不會先被剪。"""
+    q = {**_full_quotes(),
+         "MEDICAL_JOURNALS": [{"journal": "JAAD", "pmid": "123", "zh": "測試皮膚醫學文獻",
+                               "title": "Test Derm Article"}],
+         "PODCAST_DIGEST": [{"show": "股癌", "title": "EPPOD",
+                             "digest": {"summary_points": ["重點一"], "tickers": []}}]}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "醫學文獻速報" in html and "Podcast 重點" in html
+    assert html.index("醫學文獻速報") < html.index("Podcast 重點")
+
+
 def test_render_html_stays_within_gmail_ceiling_with_huge_podcast(monkeypatch):
     """trim 模式端到端:用超大 Podcast 灌爆版面,真實估算器下守衛仍把信壓進 Gmail 102KB 內,核心保留。"""
     monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")

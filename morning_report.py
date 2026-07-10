@@ -831,6 +831,7 @@ def fetch_tw_major_announcements(codes: list[str], hours: int = 48) -> list[dict
         print(f"[mops] t187ap04_L 回傳非清單({type(data).__name__}),略過", file=sys.stderr)
         return []
     out: list[dict] = []
+    seen_keys: set = set()
     for row in data:
         if not isinstance(row, dict):
             continue
@@ -844,10 +845,19 @@ def fetch_tw_major_announcements(codes: list[str], hours: int = 48) -> list[dict
         title = str(row.get("主旨 ") or row.get("主旨") or "").replace("\r", "").replace("\n", " ").strip()
         if not title:
             continue
+        summary_raw = str(row.get("說明") or "").replace("\r", "").strip()
+        # 去重:鍵 = 整列原始資料的正規化序列化 → 只移除「完全相同的重複列」。
+        # 任何欄位不同(說明後段、事實發生日、條款、無法解析的發言時間…)都視為不同公告,絕不合併。
+        # 刻意不用 (代號,主旨) 或截斷後的 summary:同公司可同時發多筆主旨相同但內容不同的公告
+        # (如 3711 多筆「取得營業用機器設備達十億元」實為不同設備採購),那樣會藏掉真實揭露(Codex review)。
+        dedup_key = json.dumps(row, sort_keys=True, ensure_ascii=False)
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
         out.append({
             "code": code,
             "title": title,
-            "summary": str(row.get("說明") or "").replace("\r", "").strip()[:600],
+            "summary": summary_raw[:600],
             "link": "https://mops.twse.com.tw/mops/#/web/t05st01",
             "published": pub_dt.isoformat() if pub_dt else "",
         })
@@ -11274,6 +11284,12 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
 
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
+# keep 模式超標時逐步壓「每集重點條數」的階梯(不丟任何一集)。
+# 為何不改砍集數:load_podcast_digest 每節目最多取 2 集未顯示、且丟棄 >96h 的未顯示集,
+# 而顯示順序固定(台灣節目優先)。若砍集數,排序靠後的節目(WSJ/Wall Street Breakfast…)
+# 會永遠輪不到、96h 後直接過期 = 永久消失(Codex review 指出的「餓死」)。
+# 壓條數則每集都在、都被正確標記已顯示,信也變小(2026-07-10 剪信事故)。
+_PODCAST_KEEP_COMPACT_STEPS = (10, 8, 6, 4)
 
 
 def _norm_podcast_point(s) -> str:
@@ -11601,9 +11617,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         analysis_for_render, ("我的明確立場", "一句話總結"))
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
+    # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,
+    # 若這裡再砍集數,排序靠後的節目會永遠輪不到、96h 後過期消失(Codex review)。
+    # 超標時改由下方 keep/trim 分支「先壓條數、必要時才減集數並同步下修 shown 數」處理。
+    _pod_eps_init = quotes.get("PODCAST_DIGEST") or []
     podcast_html = _render_podcast_html(
-        quotes.get("PODCAST_DIGEST") or [],
-        quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib)
+        _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
+        max_episodes=max(1, len(_pod_eps_init)))
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
     ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
     sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
@@ -12506,6 +12526,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {journals_html}
+
             {podcast_html}
 
             {model_evidence_html}
@@ -12519,8 +12541,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {sports_html}
 
             {smart_money_html}
-
-            {journals_html}
 
             {tw_intelligence_html}
 
@@ -12558,7 +12578,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
     # 追蹤「實際出現在信中的 Podcast 集數」:局部縮減/整塊移除後,只有真正顯示的集才該被
     # 標成已顯示(否則被砍掉的集會被誤標 shown、永遠不再出現 —— 曾導致整日 Podcast 消失)。
-    podcast_shown_n = min(14, len(podcast_eps)) if podcast_html else 0
+    podcast_shown_n = len(podcast_eps) if podcast_html else 0
     html = _assemble()
     dropped: list[str] = []
     reduced = False
@@ -12610,6 +12630,31 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             if was_present:
                 dropped.append(label)
             html = _assemble()
+    elif podcast_html and podcast_eps:
+        # keep 模式:不省略任何區塊。超標時 (1) 先逐步壓「每集重點條數」(不丟集);
+        # (2) 壓到最小仍超標,才作為最後手段逐步減少集數,並**同步下修 podcast_shown_n**
+        #     → 未渲染的集不會被標記已顯示,隔天會再出現(不會「沒看到卻永久消失」)。
+        # 減集數是最後手段而非首選:砍集數會讓固定顯示順序中排後面的節目長期輪不到
+        # 而在 96h 後過期(Codex review 的「餓死」)。
+        for _pts in _PODCAST_KEEP_COMPACT_STEPS:
+            if _estimated_email_kb(html) <= LIMIT_KB:
+                break
+            podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
+                                                max_episodes=podcast_shown_n,
+                                                compact_points=_pts)
+            html = _assemble()
+        _pts_floor = _PODCAST_KEEP_COMPACT_STEPS[-1]
+        # 一次只減 1 集:減 2 會在「3 集超標、2 集剛好塞得下」時直接跳到 1 集,
+        # 多丟一集 → 反而加重它要防的餓死風險(Codex review)。
+        while _estimated_email_kb(html) > LIMIT_KB and podcast_shown_n > 1:
+            podcast_shown_n -= 1
+            podcast_html = _render_podcast_html(podcast_eps, pod_snapshot, _htmllib,
+                                                max_episodes=podcast_shown_n,
+                                                compact_points=_pts_floor)
+            html = _assemble()
+        if _estimated_email_kb(html) > LIMIT_KB:
+            print(f"[render] keep 模式已壓到 {podcast_shown_n} 集 × {_pts_floor} 條仍偏長",
+                  file=sys.stderr)
     # 橫幅:trim 模式真的動了區塊 → 紅色「已暫略…」;否則(含 keep 模式)內容偏長 → 琥珀色提示可點開看全文。
     if dropped or (reduced and podcast_html):
         still_over = _estimated_email_kb(_assemble()) > LIMIT_KB  # 估含內容、未含橫幅
@@ -12780,6 +12825,17 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         add(macro_label, "error", "全部抓取失敗")
     else:
         add(macro_label, "fallback", f"{ok_n}/{tot} 項成功")
+
+    # TSM ADR 新鮮度 sanity:SOX 大幅變動但 TSM ADR 幾乎不動 → 疑 ADR 報價未更新
+    # (2026-07-10:SOX +3.06% 但 TSM ADR +0.00% → 2330 開盤預測被拉成 +0.00% 誤導)。
+    # 門檻嚴(|SOX|≥2.5% 且 |TSM|<0.3%)避免誤報;僅記錄餵 LLM,不改任何預測/計分。
+    _sox_pct = _safe_number((macro.get("SOX") or {}).get("change_pct"), None)
+    _tsm_q = quotes.get("TSM") or {}
+    _tsm_pct = None if _tsm_q.get("error") else _safe_number(_tsm_q.get("change_pct"), None)
+    if (_sox_pct is not None and _tsm_pct is not None
+            and abs(_sox_pct) >= 2.5 and abs(_tsm_pct) < 0.3):
+        add("TSM ADR 新鮮度", "fallback",
+            f"SOX {_sox_pct:+.2f}% 但 TSM ADR {_tsm_pct:+.2f}% 背離 → 疑報價未更新,2330 預測請留意")
 
     # 大盤成交額 + 市場廣度
     breadth = quotes.get("BREADTH", {}) or {}
@@ -13623,7 +13679,7 @@ def main() -> int:
 
     # 把 SEC + TAIFEX + 新增資料包進 quotes
     quotes["SEC_FILINGS"] = sec_filings
-    quotes["TW_MOPS"] = tw_mops
+    quotes["TW_MOPS"] = tw_mops   # 去重已在 fetch_tw_major_announcements 內以未截斷原文完成
     quotes["TAIFEX_OI"] = taifex_oi
     quotes["TAIFEX_LARGE_TRADERS"] = taifex_large
     quotes["TAIFEX_PCR"] = taifex_pcr

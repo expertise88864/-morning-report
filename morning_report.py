@@ -35,6 +35,12 @@ import numpy as np
 import pandas as pd
 import requests
 import yfinance as yf
+from num_utils import (  # A5-B1:數值基礎工具已抽出(僅依 stdlib),re-export 保相容
+    safe_float,
+    _to_int,
+    _safe_number,
+    _sigmoid,
+)
 from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處 re-export 保相容
     _mask_malformed_numbers,
     _sanitize_llm_2330_prices,
@@ -462,13 +468,6 @@ TW_OTC_HOT: dict[str, str] = {
 
 
 # ---------- 工具函式 ----------
-def safe_float(x) -> Optional[float]:
-    try:
-        return float(x)
-    except (TypeError, ValueError):
-        return None
-
-
 def require_quote(quotes: dict, key: str) -> Optional[dict]:
     """
     取出一檔行情，若抓取失敗（error dict 或缺 close/prev_close）回傳 None。
@@ -1461,19 +1460,6 @@ def fetch_macro_indicators() -> dict:
         print(f"[macro] VIX 期限結構計算失敗: {e}", file=sys.stderr)
 
     return out
-
-
-def _to_int(v) -> int:
-    """容忍逗號、空字串、None、float 字串"""
-    if v is None:
-        return 0
-    s = str(v).replace(",", "").strip()
-    if not s or s in ("-", "NA"):
-        return 0
-    try:
-        return int(float(s))
-    except (ValueError, TypeError):
-        return 0
 
 
 def _to_float(v) -> Optional[float]:
@@ -6018,15 +6004,6 @@ def _session_distance(start_date: str, end_date: str, sessions: list[str]) -> Op
         return None
 
 
-def _safe_number(value, default: float = 0.0) -> float:
-    """將模型特徵轉成有限浮點數。"""
-    try:
-        number = float(value)
-        return number if math.isfinite(number) else default
-    except (TypeError, ValueError):
-        return default
-
-
 def _estimate_slippage_bps(trade_value,
                            daily_vol_pct=None) -> float:
     """Estimate one-way slippage conservatively from daily traded value and volatility."""
@@ -6368,10 +6345,6 @@ def _quantile_ridge_fit_predict(rows: list[dict],
     model = _quantile_ridge_fit_model(
         rows, target_key, quantile, alpha=alpha, min_rows=min_rows, steps=steps)
     return _linear_model_predict(model, current)
-
-
-def _sigmoid(value: float) -> float:
-    return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, value))))
 
 
 def _platt_fit(scores: list[float],

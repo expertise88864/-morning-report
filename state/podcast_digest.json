@@ -4752,6 +4752,45 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "59c7d65a-dfbb-447c-8ed4-b482014569c9",
+        "title": "The Korean Levered ETFs Shaking Markets All Around the World",
+        "published": "Fri, 10 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-10T10:45:50Z",
+        "digest": {
+          "summary_points": [
+            "杠杆ETF全球AUM約2500-2700億美元，美國從4月低點1200億增至2000億以上，亞洲從年初120-130億增至500-550億。",
+            "韓國93%的杠杆ETF由散戶持有，美國約75%。",
+            "美國家庭股票持倉佔財富34%創歷史新高，超過房地產26%的差額也為歷史最寬。",
+            "杠杆ETF每日再平衡產生負伽馬效應，在下跌時放大賣壓，加劇市場波動。",
+            "融資利率上升主因股市上漲導致保證金需求大增，杠杆ETF僅部分貢獻。",
+            "Barclays的Betty模型5月底發出警告，標普500隨後停滯，訊號雖回落但仍顯示短期報酬不對稱不佳。",
+            "當前標普500本益比約20.2倍，遠高於歷史上實際收益率在95百分位時的14-15倍，考慮高利潤率後約18.5倍仍偏高。",
+            "美國最大單一股票杠杆ETF是Micron，全球最大是SK Hynix。",
+            "多策略平台AUM自COVID以來成長三倍至約1兆美元，進一步消耗銀行資產負債表。",
+            "AI在量化分析中擅長識別參數數據，但在無結構參數下仍需人工驗證。"
+          ],
+          "tickers": [
+            {
+              "name": "Micron",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "美國最大的單一股票杠杆ETF，但嘉賓未表達多空看法。"
+            },
+            {
+              "name": "SK Hynix",
+              "code": "",
+              "market": "KR",
+              "direction": "neutral",
+              "reason": "全球最大的單一股票杠杆ETF，但嘉賓未表達多空看法。"
+            }
+          ],
+          "market_view": "整體市場估值偏高，動能擁擠，短期有修正風險，但獲利良好和財政赤字支撐下大幅下跌不易。",
+          "action_view": "Betty模型顯示短期報酬不對稱不佳，建議投資者謹慎，等待動能回落後的進場機會。",
+          "notable_quote": "34% of U.S. household wealth is now in equities. It's the highest on record."
+        }
+      },
+      {
         "guid": "ee665e22-5abb-4981-a58d-b481016ff97e",
         "title": "One of the World's Largest Hedge Funds on Its 86x Growth in Token Spending",
         "published": "Thu, 09 Jul 2026 08:00:00 +0000",
@@ -5112,81 +5151,6 @@
           "market_view": "主持人未明確表達對大盤或總經的看法，但來賓認為 AI 是全球歷史性的技術，長期將大幅提升生產力，短期影響尚未充分反映在傳統統計中。",
           "action_view": "主持人未給出具體操作建議，但來賓建議關注 AI 原生企業及能有效整合 AI 的大型公司，並留意初階工作機會可能減少。",
           "notable_quote": "The whole purpose of what we're doing is we're trying to set up systems by which you could eventually mandate through policy but companies share information."
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
-      },
-      {
-        "guid": "60f6b6ac-8fe5-49e8-80a2-b46c01750478",
-        "title": "Jeremy Grantham on How to Tell If a Bubble Is About to Burst",
-        "published": "Thu, 18 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-19T07:38:18Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 單日漲幅達 17%，市值約 2.7 兆美元，超過微軟，但營收僅約 200 億美元，本益比超過 100 倍，引發泡沫疑慮。",
-            "Jeremy Grantham 認為當前 AI 狂熱是史上最大泡沫之一，堪比鐵路泡沫，並指出泡沫典型訊號：領漲股開始下跌而大盤續漲（1929、1972、2000、2021 年均出現）。",
-            "Nvidia 營收從 2019 年的 117 億美元暴增至 2025 年的 1300 億美元，但 Grantham 認為這只是先發優勢，未來競爭將加劇。",
-            "七大科技巨頭（Mag7）從各自領域的準壟斷轉向在同一 AI 市場激烈競爭，資本支出大幅增加，商業模式從輕資產轉為重資產。",
-            "Grantham 表示 AI 的能源消耗巨大，將使全球能源需求倍增，並加劇碳排放與環境壓力。",
-            "他認為 AI 的未來極度不確定，可能帶來巨大繁榮或滅絕風險，而目前人類並未投入足夠資源確保 AI 的「善意」。",
-            "Grantham 在 2008 年 7 月發出「棄船」訊號（賣出新興市場），2021 年底警告「狂歡開始」（建議避險），並在 2009 年 3 月市場底部呼籲「恐懼時重新投資」。",
-            "他認為當前市場整體本益比（約 23 倍）遠高於 20 世紀平均（15 倍），屬於過熱狀態。",
-            "日本 1989 年股市本益比達 65 倍，之後經歷失落 20 年，是史上最大泡沫之一，Grantham 以此警告當前 AI 泡沫的長期風險。",
-            "全球生育率持續下滑，中國生育率僅 1.0，已開發國家多低於替代水準，長期將導致人口銳減，構成另一重大風險。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "營收爆發但先發優勢恐被競爭侵蝕，長線面臨替代技術風險。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "歷史曾為深度價值股，但如今投入 AI 軍備競賽，戰線模糊化。"
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "與其他巨頭在 AI 市場直接競爭，資本支出大增。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "零售霸主但同樣重金投入 AI 基礎設施。"
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "搜尋廣告龍頭，AI 領域面臨新挑戰。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "電動車先驅但 AI 賽局中角色不明。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "估值極高（2.7 兆美元）營收有限，AI 概念炒作痕跡明顯。"
-            }
-          ],
-          "market_view": "Grantham 認為當前市場是史上最高估之一，AI 狂熱與過去重大泡沫（鐵路、網路）相似，整體本益比偏高，且經濟面臨人口老化、能源與環境多重風險。",
-          "action_view": "Grantham 建議避免追逐 AI 熱門股，檢查基本面數字（如營收、本益比），並準備在市場極度恐慌時（如 2009 年）逐步加碼便宜資產。",
-          "notable_quote": "To have a great bubble, you have to have a fabulous idea... this one is as big as anything but the railroads."
         },
         "shown_at": "2026-06-19T22:49:25Z"
       }
@@ -5800,6 +5764,41 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-meta-and-its-messaging-problem-the-xbox-reset-q-a-on-token-costs-american-soccer-starlink-in-nature",
+        "title": "(Preview) Meta and Its Messaging Problem, The XBOX Reset, Q&amp;A on Token Costs, American Soccer, Starlink in Nature",
+        "published": "Fri, 10 Jul 2026 08:59:07 +0000",
+        "processed_at": "2026-07-10T10:38:32Z",
+        "digest": {
+          "summary_points": [
+            "Ben Thompson 認為 Meta 是史上最佳廣告公司，其廣告業務是好事，Mark Zuckerberg 應該接納而非感到尷尬。",
+            "Meta 多年來因 Zuckerberg 抗拒公司本質而犯錯，包括硬體投入、對 TikTok 反應遲緩和 AI 定位錯誤。",
+            "儘管 Zuckerberg 的溝通有問題，Meta 在 AI 上的投資方向正確（如廣告改進），最終會帶來回報。",
+            "Meta 在 AI 領域有獨特優勢：消費者導向、數據豐富、廣告業務可大量試驗，無需在基礎模型上與 OpenAI 正面競爭。",
+            "投資者對 Meta 的擔憂主要源於 Zuckerberg 無法清晰闡述公司價值，導致股價波動，但基本面強勁。",
+            "Meta 應聚焦於透過 AI 強化廣告主業，而非追求個人助理或編碼公司形象。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Ben Thompson 認為 Meta 是最大的廣告公司，AI 將大幅提升其廣告業務，但投資者需改善溝通。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "提及 Apple 的隱私政策對 Meta 的影響，但未給出明確方向。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Mark Zuckerberg has never, he's always, he's like the Sam Altman thing. We talk like vaguely embarrassed. He wants to be great and wants to be revolutionary and doesn't treat the ad business as revolutionary."
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-a-summer-break-mailbag-memory-mania-vibe-coding-mafia-pr-caffeine-intake-garages-and-how-to-fix-soccer",
         "title": "(Preview) A Summer Break Mailbag: Memory Mania, Vibe Coding, Mafia PR, Caffeine Intake, Garages, and How to Fix Soccer",

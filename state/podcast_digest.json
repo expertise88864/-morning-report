@@ -2626,6 +2626,91 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmrex5h6700qn01ubefazh9wo",
+        "title": "美股、韓股V轉 台股有救了？ 2026.07.10",
+        "published": "Fri, 10 Jul 2026 12:38:18 GMT",
+        "processed_at": "2026-07-10T15:52:11Z",
+        "digest": {
+          "summary_points": [
+            "SK海力士完成650億美元ADR發行，今晚登錄納斯達克，代碼SKHY。",
+            "美光宣佈在美國建廠金額再增500億美元至2500億美元，帶動費半指數漲3%，美光股價漲4.5%。",
+            "Meta與多家公司達成長期供給協議，預計2027年算力翻倍至14GW，資本支出提升至1450億美元。",
+            "谷歌、亞馬遜、Meta明年資本支出總計接近7000億美元，AI訂單需求持續成長。",
+            "瑞銀報告指出6月全球記憶體晶片銷售746億美元創歷史新高，月增31.7%，供應缺口可能持續至2028年。",
+            "南亞科法說會公布明年資本支出提升至2000億台幣（今年500億），顯示記憶體擴產積極。",
+            "瑞銀預估今年記憶體產業總收入9920億美元，2027年倍翻至1.76兆美元，HBM需求年增90%。",
+            "威剛董事長預估Q3 DRAM合約價漲20-30%，NAND漲35-40%；Chain Force看法較保守，瑞銀則預估DRAM漲32%。",
+            "嘉賓陳厭認為記憶體長線趨勢向上，但近期漲幅已大，韓國槓桿ETF散戶比例高增加波動。",
+            "台積電6月營收創歷史新高，但股價跌破季線，嘉賓建議反彈站在賣方。",
+            "鴻海、廣達、緯創、緯穎等AI伺服器營收表現良好，嘉賓建議保守者關注此類未大漲的個股。",
+            "網通自幫營收年增61%，貿聯63%，鴻海52%，廣達102%，顯示供應鏈強勁。",
+            "大戶重押QQQ看多選擇權，顯示看好納斯達克100後市。",
+            "台股在月線附近整理，後續觀察台指期結算及台積電法說。"
+          ],
+          "tickers": [
+            {
+              "name": "SK海力士",
+              "code": "SKHY",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "ADR上市，但股價已漲多，短期中性看待。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "建廠金額擴大，股價受激勵上漲，記憶體需求看好。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "資本支出持續提升，算力部署擴大，AI展望正面。"
+            },
+            {
+              "name": "南亞科",
+              "code": "2408",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "法說釋出利多，但近期漲多，建議觀察法人買盤續航力。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "營收創高但股價跌破季線，建議反彈站在賣方。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "AI伺服器營收強勁，股價尚未大漲，避險買盤可留意。"
+            },
+            {
+              "name": "廣達",
+              "code": "2382",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "營收年增102%，AI動能強，股價穩定可望向上。"
+            },
+            {
+              "name": "QQQ",
+              "code": "QQQ",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "大戶重押看多選擇權，顯示看好納斯達克100未來表現。"
+            }
+          ],
+          "market_view": "台股在月線附近整理，美股納斯達克已穩定，大戶押注QQQ看多選擇權，顯示對科技股後市樂觀。後續關注台指期結算與台積電法說，若利多訊息帶動，有機會反彈。",
+          "action_view": "保守者建議關注營收好但股價未大漲的個股（如鴻海、廣達），記憶體等回檔不追高，台達電反彈站在賣方。",
+          "notable_quote": "記憶體的需求是真的很難滿足"
+        }
+      },
+      {
         "guid": "cmrdes48r08d501uo86ihfz24",
         "title": "美國科技股修正，撿便宜的好機會？ 2026.07.09",
         "published": "Thu, 09 Jul 2026 11:15:28 GMT",
@@ -3269,37 +3354,6 @@
           "notable_quote": "我覺得ASIC就會接下來的關鍵字，為什麼？各位去看，Meta搞不好要自己賣算力，那就開始大家要競爭，大家要競爭的時候，每個平台都能夠in token，都能夠產生token，然後模型呢，可能大家都盡量說模型你有的我也要有，總不能夠說你加油這個我沒有，那唯一差異化的是什麼？總不能說那你生產這個token的方式，你用這個晶片我也一樣，那我沒辦法差異化。"
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "cmr3f6rfx0lzh01uo8hns51wl",
-        "title": "AI巨頭鬼故事一直來，下半年費半創高有望嗎？ 2026.07.02",
-        "published": "Thu, 02 Jul 2026 11:30:35 GMT",
-        "processed_at": "2026-07-02T15:50:19Z",
-        "digest": {
-          "summary_points": [
-            "鴻海除息每股配發7.17元現金股利，收盤貼息下跌2元至239元，郭台銘可領約124.7億元股息。",
-            "費半指數自6月22日高點14655點後進入高檔震盪，7月1日單日大跌6.3%。",
-            "Meta宣布釋出數據中心過剩算力、成立Meta Compute部門並轉向雲端業務，導致輝達、AMD等晶片股大跌，但Meta股價大漲8.8%。",
-            "聯準會主席華許表示AI將提升生產力且不會造成通膨，反而可能使通膨下滑，市場對9月升息預期降溫。",
-            "美國ADP就業數據為9.8萬人，市場預期非農就業約12-14萬人，經濟動能尚可。",
-            "Morgan Stanley報告建議下半年分散投資，關注標普1500中型股、日本股市及美國消費類股，對AI趨勢保持審慎樂觀。",
-            "鄧副總認為費半短期可能區間整理，但下跌空間有限，若再跌3-5%是好的投資點；日本股市因股價偏低且外資持續加碼，相對看好。",
-            "日圓持續貶值至1美元兌162日圓的40年低點，存在短期續貶風險；美債殖利率若接近高檔區間可考慮鎖定投資。"
-          ],
-          "tickers": [
-            {
-              "name": "鴻海",
-              "code": "2317",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "除息貼息，短期股價偏弱"
-            }
-          ],
-          "market_view": "費半指數高檔震盪，區間整理機率較大，但AI敘事仍在，下跌空間有限。",
-          "action_view": "費半若再跌3-5%可逢低布局；下半年可分散至標普1500中型股、日本股市及美國消費類股。",
-          "notable_quote": "費半如果再灌下去三到五，這也是一個很好的投資指點。"
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },
@@ -3592,6 +3646,63 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "d089ee98-7c4a-11f1-a765-0bc98c5e1b0b",
+        "title": "Trillion-Dollar Chipmaker SK Hynix Lands on Nasdaq",
+        "published": "Fri, 10 Jul 2026 10:29:00 -0000",
+        "processed_at": "2026-07-10T15:47:49Z",
+        "digest": {
+          "summary_points": [
+            "SK Hynix 在納斯達克上市，融資超過 260 億美元，為史上最大規模之一，計劃用於南韓擴建記憶體晶片產能。",
+            "SK Hynix 股價過去一年在南韓大漲逾 8 倍，分析師預期今年淨利潤近 1500 億美元，但 AI 成長若放緩可能導致股價崩跌。",
+            "歐盟認定 Meta 的 Instagram 和 Facebook 未充分保護用戶免於成癮設計傷害，可能違反數位服務法，面臨高達全球營收 6% 的罰款。",
+            "Netflix 為應對訂閱戶參與度下滑，考慮新增直播頻道或捆綁其他串流服務（如 NBCUniversal 的 Peacock），但股價過去 12 個月仍下跌逾 40%。",
+            "AI 資料中心與航空業對燃氣渦輪葉片需求暴增，但全球僅四家西方製造商能生產，產能擴張不易，預期這些廠商將享有定價權。",
+            "Volkswagen 計劃削減多達一半的車型並縮減產能，以應對成本高漲與中國車廠在歐洲的競爭，2024 年表現為 2015 年以來最差。",
+            "聯邦監管機構預計本月將認證波音 737 最小型號，為該機型在兩次致命空難與艙門脫落事件後的重要里程碑，FAA 也接近恢復波音部分安全簽證權。"
+          ],
+          "tickers": [
+            {
+              "name": "SK Hynix",
+              "code": "000660.KS",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "AI 熱潮帶動獲利暴增，但若 AI 投資需求不如預期，股價可能大幅回跌，且美國上市可望吸引更多資金。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "歐盟調查認定其平台設計具成癮性，可能遭罰款高達全球營收 6%，且美國多起訴訟已判決 Meta 需為傷害負責。"
+            },
+            {
+              "name": "Netflix",
+              "code": "NFLX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "訂戶參與度下滑，股價一年跌逾 40%，雖嘗試新增直播與捆綁服務，但競爭激烈且成長動能不足。"
+            },
+            {
+              "name": "Volkswagen",
+              "code": "VOW3.DE",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "計劃大幅削減車型與產能以降低成本，面臨中國車廠挑戰及高營運費用，2024 年獲利為近十年最差。"
+            },
+            {
+              "name": "Boeing",
+              "code": "BA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "737 最小型號獲聯邦認證，且 FAA 可能恢復其部分安全簽證權，為歷經多次危機後的正面進展。"
+            }
+          ],
+          "market_view": "AI 產業成長強勁，但若現金流未能跟上估值，整個 AI 供應鏈可能面臨同步下修風險；資料中心與航空業需求推升關鍵零組件定價權。",
+          "action_view": "",
+          "notable_quote": "If there's any doubt cast on that growth story, then the whole structure underlying the AI boom in the stock market could fall apart. And that would affect everyone, whether it be Anthropik or OpenAI, SK Hynex, Microsoft, the hyperscalers, Google, Nvidia and many others."
+        }
+      },
       {
         "guid": "80c93c30-7bda-11f1-a4b5-c3e93079067c",
         "title": "Why It’s So Hard to Crack Down on Deadly Counterfeit Air-Bag Parts",
@@ -3995,47 +4106,49 @@
           "notable_quote": "There has been a tendency, and I take plenty of blame from this, the OA crisis, where we were trying to suppress volatility, where we thought we needed to spoon feed markets to get out of that. That was the right policy for a crisis. It is not the right policy for the time that we have now."
         },
         "shown_at": "2026-07-01T23:06:46Z"
-      },
-      {
-        "guid": "0414ee50-7536-11f1-8ff0-b7cf1d3fc6f4",
-        "title": "Inside Trump's Growing Crypto Fortune",
-        "published": "Wed, 01 Jul 2026 10:12:00 -0000",
-        "processed_at": "2026-07-01T10:58:01Z",
-        "digest": {
-          "summary_points": [
-            "特朗普去年從加密貨幣領域獲得超過10億美元收入，主要來自Trumpcoin和World Liberty Financial代幣，各貢獻超過5億美元。",
-            "特朗普的商業模式轉向加密貨幣，傳統房地產（如Mar-a-Lago收入7700萬美元）已相對次要。",
-            "耐吉最新季度銷售再次下滑，中國市場疲弱部分抵消北美復甦；CEO宣布加速中國策略轉型，將於2027年推出當地設計產品。",
-            "韓國6月晶片出口創歷史新高接近450億美元，受AI需求推動年增三倍，帶動整體出口飆升至1020億美元。",
-            "美國鋁業Alcoa以56億美元收購South32的鋁土礦、氧化鋁和鋁資產，試圖應對中國競爭加劇。"
-          ],
-          "tickers": [
-            {
-              "name": "耐吉",
-              "code": "NKE",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "季度銷售下滑，中國市場表現疲弱，CEO正在推動轉型但短期仍面臨壓力。"
-            },
-            {
-              "name": "美國鋁業",
-              "code": "AA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收購South32資產以強化競爭力，但面臨中國主導市場的挑戰。"
-            }
-          ],
-          "market_view": "全球半導體需求（尤其AI記憶體）強勁，韓國出口數據顯示產業週期向上；中國競爭壓力持續影響西方零售、汽車及原物料業者。",
-          "action_view": "無明確操作建議。",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-01T23:06:46Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72912653",
+        "title": "SK Hynix lands record U.S. debut",
+        "published": "Fri, 10 Jul 2026 11:20:25 +0000",
+        "processed_at": "2026-07-10T15:45:19Z",
+        "digest": {
+          "summary_points": [
+            "SK海力士在美國ADR首發上市募資265億美元，成為外國公司在美最大IPO，但低於SpaceX的857億美元。",
+            "花旗銀行從SK海力士股票發行中賺取超過7000萬美元費用，整個承銷團總費用近2.6億美元。",
+            "百事可樂執行長表示，油價上漲導致消費者支出比預期更差，影響便利商店等衝動型購買。",
+            "截至五月，美國汽油與能源支出占消費比例升至2.51%，三個月移動增幅創2009年以來最大。",
+            "伊朗戰爭干擾中東生產與出口後，全球石油需求自2020年以來首次面臨下滑，但IEA預期年底前將反彈。",
+            "IEA預測全球石油市場年底將重返供過於求，前提是海峽油輪交通逐步恢復，使生產商重啟油田。",
+            "盤前交易：那斯達克100期貨下跌超過0.5%，標普500期貨微跌，道瓊期貨接近平盤。",
+            "美國未對伊朗發動新的打擊，持續透過技術談判尋求外交解決方案。"
+          ],
+          "tickers": [
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上市可能有助於重新評價韓國股票，使其至少與美光持平甚至溢價交易。"
+            },
+            {
+              "name": "百事可樂",
+              "code": "PEP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "執行長表示消費者因油價上漲支出減少，影響便利商店銷售。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The consumer is worse than we'd anticipated and it's driven mainly by gas."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72885787",
         "title": "Levi's frayed forecast",
@@ -4633,86 +4746,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "They're both winners."
-        },
-        "shown_at": "2026-06-30T23:20:25Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72755572",
-        "title": "iPhone 18 secrets surface",
-        "published": "Tue, 30 Jun 2026 10:28:12 +0000",
-        "processed_at": "2026-06-30T10:44:40Z",
-        "digest": {
-          "summary_points": [
-            "Apple的iPhone 18 Pro機密資訊因印度代工廠Tata Electronics遭勒索軟體攻擊而洩露於暗網，文件包含供應商名單與設計圖，影響Apple、Tesla、台積電及高通。",
-            "Mirae Asset Securities因誤解SpaceX IPO訂單提交流程，導致超過11億美元的韓國訂單未被納入IPO簿記，該券商正接受監管審查。",
-            "Nike將於收盤後公布Q4 2026財報，市場預期營收108.5億美元（年減2%），營業利益2.53億美元（年減21%），每股盈餘0.13美元（年減7%），股價處12年低點。",
-            "Goldman Sachs認為黃金仍有上漲空間，儘管金價今日微跌。",
-            "Amazon因FTC案需支付225萬美元和解金，並在澳洲面臨訴訟。",
-            "Exelon CEO警告美國可能因電力供應短缺於明年出現大停電。",
-            "Arrow Virement (AVAV)公布創紀錄的Q4財報，營收與獲利優於預期，股價飆漲20%。",
-            "今日經濟數據包括Case-Shiller房價指數、FHFA房價指數及JOLTS職位空缺數。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "數據洩露事件未直接影響營運，但可能引發安全疑慮。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "供應商資料遭洩露，但未對公司基本面造成影響。"
-            },
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "文件洩露涉及iPhone零件設計，但非核心機密。"
-            },
-            {
-              "name": "高通",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "零件設計文件遭洩露，但影響有限。"
-            },
-            {
-              "name": "耐克",
-              "code": "NKE",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報預期不佳，股價處低檔，但未明確看空。"
-            },
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "和解與訴訟未影響核心業務。"
-            },
-            {
-              "name": "艾克西隆",
-              "code": "EXC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "CEO警告停電風險，可能影響電力供應穩定性。"
-            },
-            {
-              "name": "Arrow Virement",
-              "code": "AVAV",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q4財報創紀錄，營收獲利超預期，股價大漲。"
-            }
-          ],
-          "market_view": "美股期貨漲跌互見，整體市場觀望氣氛濃厚，等待經濟數據及Nike財報指引。",
-          "action_view": "",
-          "notable_quote": "Exxalon CEO warns the US may face blackouts by next year due to a power supply shortfall."
         },
         "shown_at": "2026-06-30T23:20:25Z"
       }

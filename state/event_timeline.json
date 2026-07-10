@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 24,
-  "last_seen": "2026-07-10",
-  "latest_title": "Shares soar as recently-listed Zhipu AI and Iluvatar CoreX launch secondary placements"
+  "days": 25,
+  "last_seen": "2026-07-11",
+  "latest_title": "Insuring Rare and Collectible Cars and Boats: Masters in Business with McKeel Hagerty"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 13,
-  "last_seen": "2026-07-08",
-  "latest_title": "U.S. revokes Iran oil sales authorization after tanker attacks"
+  "days": 14,
+  "last_seen": "2026-07-11",
+  "latest_title": "Trump admin eases export controls for UAE; Warren blasts 'corrupt' provision"
  },
  "litigation:2317": {
   "first_seen": "2026-07-08",
@@ -28,5 +28,17 @@
   "days": 1,
   "last_seen": "2026-07-10",
   "latest_title": "高通遭公平會重罰234億元！5年投資合作換訴訟和解| 財經 - 三立新聞"
+ },
+ "litigation:": {
+  "first_seen": "2026-07-11",
+  "days": 1,
+  "last_seen": "2026-07-11",
+  "latest_title": "Apple sues OpenAI for stealing trade secrets"
+ },
+ "export_controls:NVDA": {
+  "first_seen": "2026-07-11",
+  "days": 1,
+  "last_seen": "2026-07-11",
+  "latest_title": "中國傳有限放行H200，輝達高階晶片能重返中國？4年出口管制與美中談判一次看懂 - 數位時代"
  }
 }

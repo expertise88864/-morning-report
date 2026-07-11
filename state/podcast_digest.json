@@ -3692,6 +3692,62 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "50f1e7d8-7d0f-11f1-8bc4-f3c777ffe51d",
+        "title": "What’s News in Markets: Middle East Strikes Send Oil Higher, South Korean Chip Stocks Fall, SpaceX Stumbles",
+        "published": "Sat, 11 Jul 2026 10:00:00 -0000",
+        "processed_at": "2026-07-11T14:35:56Z",
+        "digest": {
+          "summary_points": [
+            "整體市場：S&P 500本週上漲1.2%，NASDAQ上漲1.7%，道瓊指數下跌約0.5%。",
+            "中東衝突重啟，油價本週飆升5.4%至每桶76美元以上，能源類股上漲3.2%成為表現最佳類股。",
+            "能源個股中，Baker Hughes和Phillips 66各上漲約7.9%，領漲能源股。",
+            "三星預測季度利潤暴增19倍，但股價仍下跌8%，分析師認為業績並未令人失望，只是市場預期更高。",
+            "SK Hynix因AI記憶體需求，今年股價已上漲三倍多，但本週在韓國下跌10%，隨後在美國那斯達克首日上市大漲13%。",
+            "SpaceX加入那斯達克100指數後，本週股價下跌10%，因分析師目標價從165美元至800美元不等，分歧大導致表現不佳。"
+          ],
+          "tickers": [
+            {
+              "name": "Baker Hughes",
+              "code": "BKR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "本週股價上漲約7.9%領漲能源股。"
+            },
+            {
+              "name": "Phillips 66",
+              "code": "PSX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "本週股價上漲約7.9%領漲能源股。"
+            },
+            {
+              "name": "Samsung",
+              "code": "",
+              "market": "",
+              "direction": "neutral",
+              "reason": "儘管季度利潤暴增19倍，但股價仍下跌8%，因市場預期更高。"
+            },
+            {
+              "name": "SK Hynix",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "在韓國下跌後，美國那斯達克首日上市大漲13%。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "加入那斯達克100指數後股價下跌10%，分析師目標價分歧大。"
+            }
+          ],
+          "market_view": "整體市場本週上漲，S&P 500漲1.2%，NASDAQ漲1.7%，道瓊跌0.5%，但中東局勢和AI晶片股波動帶來不確定性。",
+          "action_view": "",
+          "notable_quote": "Here we go again."
+        }
+      },
+      {
         "guid": "abd64dfe-7ca3-11f1-88a5-efb9df62c7fd",
         "title": "Apple Sues OpenAI, Alleging the AI Company Stole Trade Secrets",
         "published": "Fri, 10 Jul 2026 21:08:00 -0000",
@@ -4107,46 +4163,6 @@
           "notable_quote": "The softer June jobs report made investors think that the Fed is less likely to raise interest rates at its meeting later this month."
         },
         "shown_at": "2026-07-03T23:00:25Z"
-      },
-      {
-        "guid": "04f9d32e-7600-11f1-acf4-3be443849e6f",
-        "title": "Is There Already Too Much AI Computing Power?",
-        "published": "Thu, 02 Jul 2026 10:18:00 -0000",
-        "processed_at": "2026-07-02T15:42:40Z",
-        "digest": {
-          "summary_points": [
-            "全球AI股票在美國就業數據公布前下跌，投資人預期強勁招聘可能提高聯準會短期升息的可能性。",
-            "韓國KOSPI指數下跌8%，科技股為主的KOSDAQ跌7%並暫停交易，原因為AI過度支出擔憂和持倉擁擠。",
-            "Meta計劃進軍雲端業務以出售多餘AI運算能力，引發超大型雲端業者可能過度建置產能而無法獲利的擔憂。",
-            "Michael Burry加碼做空Nvidia、特斯拉、應用材料及一檔半導體ETF，稱三星與SK海力士投資逾5000億美元的AI晶片中心是「終結的開始」。",
-            "歐盟最高法院維持對Google的創紀錄45億歐元反壟斷罰款，因其濫用Android主導地位偏袒自家搜尋引擎。",
-            "阿里巴巴與一家美國支付處理商同意支付6億美元，和解美國司法部指控其允許商家銷售非法藥品及受限商品的訴訟。",
-            "三家大型蛋商同意支付330萬美元並捐贈5300萬顆雞蛋，以和解價格操縱指控，但不承認過失。",
-            "AI正自動化初級顧問工作，迫使顧問公司從按小時計費轉向固定費用或成果導向定價，可能帶來成本超支與聲譽風險。",
-            "廣告業積極採用AI進行創意與廣告購買，WPP繼去年裁員約1萬人後，未來數月再裁數百人。",
-            "生成式搜尋廣告收入預計2024年達50億美元，2030年達1000億美元（WPP Media預測）。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價因報導稱其計畫進入雲端業務出售多餘AI運算能力而上漲。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry加碼做空特斯拉。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "I see that as the beginning of an end."
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },

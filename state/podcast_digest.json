@@ -3651,6 +3651,51 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "abd64dfe-7ca3-11f1-88a5-efb9df62c7fd",
+        "title": "Apple Sues OpenAI, Alleging the AI Company Stole Trade Secrets",
+        "published": "Fri, 10 Jul 2026 21:08:00 -0000",
+        "processed_at": "2026-07-11T04:47:29Z",
+        "digest": {
+          "summary_points": [
+            "達美航空第二季營收成長19%，但獲利降至16億美元，因燃油成本攀升；執行長稱機票價格相對於通膨仍是「極大的 bargain」。",
+            "易捷航空收到Apollo 76億美元收購要約，此前已有Castle Lake的70億美元報價；易捷航空在倫敦股價上漲14%。",
+            "SK海力士在美國上市首日收漲13%，創外國公司最大美國股票發行紀錄。",
+            "美國股市週五收高：標普500指數上漲0.4%，標普500和那斯達克指數本週均漲逾1%，道瓊指數跌0.5%。",
+            "中國成功發射並部分回收太空火箭，此為可重複使用技術的里程碑，縮小了與SpaceX的差距，對降低衛星發射成本至關重要。",
+            "6月鎖定房貸利率的人數增加，暗示未來幾個月房屋銷售可能回暖。",
+            "川普總統表示，除非國會通過他的選民身份證提案，否則他不會簽署兩黨住房法案，使住房立法陷入危機。",
+            "蘋果起訴OpenAI及兩名前蘋果員工，指控其竊取與開發競爭設備相關的商業機密。",
+            "好萊塢製片廠正從YouTube和Reddit收購數位恐怖片IP（如Siren Head），創作者Trevor Henderson獲超過100萬美元的電影版權費。"
+          ],
+          "tickers": [
+            {
+              "name": "達美航空",
+              "code": "DAL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "營收成長但獲利因燃油成本下滑；執行長對需求仍樂觀。"
+            },
+            {
+              "name": "易捷航空",
+              "code": "EZJ",
+              "market": "UK",
+              "direction": "bullish",
+              "reason": "收到多家收購要約，股價大漲14%。"
+            },
+            {
+              "name": "SK海力士",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "美國IPO首日表現強勁，漲13%，為外國公司最大美國發行。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "If you look at post-COVID, airfares for the industry are 10 to 15 percent lower than what average CPI has been. So if people are having concerns with respect to airfares, they have much higher concerns with respect to other products, which maybe is a reason why the demand continues to stay strong for us."
+        }
+      },
+      {
         "guid": "d089ee98-7c4a-11f1-a765-0bc98c5e1b0b",
         "title": "Trillion-Dollar Chipmaker SK Hynix Lands on Nasdaq",
         "published": "Fri, 10 Jul 2026 10:29:00 -0000",
@@ -4061,57 +4106,6 @@
           "notable_quote": "I see that as the beginning of an end."
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "e2c410f0-758f-11f1-a227-437d3b61b55b",
-        "title": "Inside the First Flight of the Qatari-Gifted Air Force One",
-        "published": "Wed, 01 Jul 2026 20:55:00 -0000",
-        "processed_at": "2026-07-01T21:10:27Z",
-        "digest": {
-          "summary_points": [
-            "聯準會主席 Kevin Warsh 表示通膨風險已經減退，市場預期今年稍後升息，但下次會議預計維持利率不變。",
-            "市場整體表現平淡：道瓊持平，標普500下跌，那斯達克下跌0.7%。",
-            "Bending Spoons（旗下擁有 AOL、Vimeo、Eventbrite）上市首日大漲40%。",
-            "SpaceX 向投資者展示一款早期原型 AI 裝置，比 iPhone 更薄，使用高通 Snapdragon 晶片組。",
-            "Medicare 將以每月50美元共付額涵蓋減重藥物 Wegovy（諾和諾德）及 Zepbound/Foundayo（禮來），適用多達2000萬人，計劃持續至明年底。",
-            "美墨加協定（USMCA）未獲延期，改為未來十年每年審查，導致加拿大和墨西哥長期投資受影響。",
-            "川普總統財務揭露顯示去年從海灣實體獲得約3億美元，其中2.63億美元來自阿聯酋王室支持的實體購買其 World Liberty Financial 一半股份。"
-          ],
-          "tickers": [
-            {
-              "name": "Novo Nordisk",
-              "code": "NVO",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Medicare 擴充涵蓋 Wegovy 可能增加需求，但計畫成本與長期永續性仍不確定。"
-            },
-            {
-              "name": "Eli Lilly",
-              "code": "LLY",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Medicare 涵蓋 Zepbound 與 Foundayo 有助銷售，但計畫僅至2026年底且保險公司參與非保證。"
-            },
-            {
-              "name": "Bending Spoons",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上市首日大漲40%，反映市場對其改造科技品牌策略的樂觀情緒。"
-            },
-            {
-              "name": "Qualcomm",
-              "code": "QCOM",
-              "market": "US",
-              "direction": "bulish",
-              "reason": "被選為 SpaceX AI 原型裝置的晶片供應商，若產品量產將帶來新營收。"
-            }
-          ],
-          "market_view": "市場整體表現平淡，道瓊持平，標普和那斯達克下跌，那斯達克領跌收跌0.7%。聯準會主席表示通膨風險減退，但未明確暗示未來利率路徑。",
-          "action_view": "",
-          "notable_quote": "There has been a tendency, and I take plenty of blame from this, the OA crisis, where we were trying to suppress volatility, where we thought we needed to spoon feed markets to get out of that. That was the right policy for a crisis. It is not the right policy for the time that we have now."
-        },
-        "shown_at": "2026-07-01T23:06:46Z"
       }
     ]
   },
@@ -5909,6 +5903,68 @@
   "allin": {
     "name": "All-In Podcast",
     "episodes": [
+      {
+        "guid": "4423c373-1b80-4d70-b500-f9823914247a",
+        "title": "More Trillion Dollar IPOs, Anthropic $3T, Zuck's Price War, China Ends Open Source?, Trump Accounts",
+        "published": "Sat, 11 Jul 2026 02:12:00 +0000",
+        "processed_at": "2026-07-11T05:03:40Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 的 IPO 成功定價於 1.75 兆美元，目前交易價格高於發行價，為 Anthropic 與 OpenAI 等巨型 IPO 提供借鑑。",
+            "Anthropic 年化營收預估超過 1,000 億美元，可能於今年或明年初 IPO。",
+            "OpenAI 營收約 700 億美元，但企業重組可能使其較晚上市。",
+            "企業 AI 支出面臨 ROI 檢驗，多數公司仍處於實驗階段，尚未嚴格審視效益，但 token 成本每 45 天翻倍，下游生產力提升僅約 5%。",
+            "Jevons Paradox 正在發生：Token 價格暴跌 90% 促使使用量暴增，進一步推升需求。",
+            "雖然 AI 模型實力在技術上逐步趨近，但營收集中度卻反而向 Anthropic 與 OpenAI 兩大廠靠攏。",
+            "中國可能收緊其 AI 模型出口，藉此保護自身優勢，並呼應美國對模型蒸餾的禁令。",
+            "能源將成為 AI 發展的關鍵瓶頸，美國預估到 2050 年前電力缺口相當於三個加州的用電量。",
+            "Trump Accounts 正式上線，每位新生兒可獲 1,000 美元投資於 S&P 500，且具有顯著稅務優惠。",
+            "主持人認為 Trump Accounts 可望在 12 個月內募集超過 1,000 億美元，成為有史以來最大的直接捐贈平台。",
+            "Trump Accounts 最終可能取代社會福利制度，讓美國下一代從出生就擁有資本，被視為社會安全制度的現代化版本。",
+            "美中 AI 競賽正熾，美國內部應避免因 AI 末日論而自我設限。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "SpaceX 的 IPO 成功定價於 1.75 兆美元，目前交易價格高於發行價，顯示出強勁的投資者需求。"
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Anthropic 的營收增長年化超過 1,000 億美元，被認為是 AI 領域的下一個巨型 IPO。"
+            },
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "OpenAI 營收約 700 億美元，並正在開發 GPT-6，但企業重組可能會推遲其 IPO。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Nvidia 是 AI 支出激增的最大受益者，其晶片被用於訓練和推理。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Meta 發布了強大的開源模型 Llama，但面臨商品化和定價壓力。"
+            }
+          ],
+          "market_view": "主持人整體看多 AI 帶動的牛市，尤其看好大型 IPO (SpaceX, Anthropic, OpenAI) 及 AI 基礎建設 (Nvidia)，但也提醒能源將成為關鍵瓶頸。",
+          "action_view": "建議投資人關注即將到來的巨型 IPO，同時利用 Trump Accounts 的稅務優惠進行長期複利投資，並在 AI 領域聚焦於能證明 ROI 的龍頭公司。",
+          "notable_quote": "If you can get out now, you should get out now before all of that starts to seep into the water table."
+        }
+      },
       {
         "guid": "e7e64c8a-492a-4227-a6cb-5ff7894f3f3a",
         "title": "Open Source Wins, AGI Is Here, and Scorsese's AI Toolkit with CEOs of Cerebras & Black Forest Labs",

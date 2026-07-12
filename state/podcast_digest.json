@@ -4192,6 +4192,63 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72939757",
+        "title": "Earnings, inflation take center stage",
+        "published": "Sun, 12 Jul 2026 16:32:41 +0000",
+        "processed_at": "2026-07-12T20:23:46Z",
+        "digest": {
+          "summary_points": [
+            "本週財報季由大型銀行股揭幕，包括摩根大通、花旗、富國銀行、高盛和摩根士丹利，華爾街分析師普遍看多，無賣出評級。",
+            "Seeking Alpha分析師Ian Brezhik對花旗(C)罕見給予賣出評級，認為2027-2028年共識EPS預估過高，若金融市場轉弱可能面臨下修風險。",
+            "市場焦點將迅速轉向晶片設備商，台積電(TSM)和ASML(ASML)即將公佈財報，重點在於AI需求相關的先進封裝、2nm製程毛利率稀釋及供應是否仍受限。",
+            "本週經濟數據以通膨為主，6月CPI預計年增率降至3.7%（核心CPI維持2.8%），PPI接續公佈，分析師認為核心服務通膨應會放緩。",
+            "地緣政治風險升溫：美國對伊朗發動新一輪空襲，伊朗以飛彈攻擊波斯灣盟國，預測市場顯示油價週一可能漲逾3%。",
+            "MGM Resorts據報已成立特別委員會評估Barry Diller旗下媒體公司124億美元的收購要約，認為出價低估公司價值。",
+            "Netflix(NFLX)被Seeking Alpha分析師Louis Gerard評為「強力買進」，認為公司估值具吸引力，且競爭對手Paramount在高槓桿下整合，Netflix未參與該「愚蠢行為」。"
+          ],
+          "tickers": [
+            {
+              "name": "花旗集團",
+              "code": "C",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "分析師給予罕見賣出評級，認為未來EPS預估過高。"
+            },
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "AI需求焦點，市場關注其先進封裝及展望。"
+            },
+            {
+              "name": "ASML",
+              "code": "ASML",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "晶片設備商，AI需求帶動，財報指引為關鍵。"
+            },
+            {
+              "name": "Netflix",
+              "code": "NFLX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "分析師視為強力買進，估值具吸引力，競爭環境有利。"
+            },
+            {
+              "name": "MGM Resorts",
+              "code": "MGM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "收到收購要約，但公司認為出價低估，成立委員會評估。"
+            }
+          ],
+          "market_view": "市場預期大型銀行股財報穩健，但通膨數據及中東地緣風險將主導本週波動，焦點可能迅速轉向AI相關的半導體設備商。",
+          "action_view": "關注銀行股財報有無驚喜，並聚焦台積電與ASML的AI需求指引；留意CPI與PPI對聯準會政策的暗示；油價因地緣政治風險可能短線波動。",
+          "notable_quote": "Barring major disappointments from the banks, market attention is likely to shift quickly to chip equipment companies for the latest read on AI demand."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72917294",
         "title": "Wall Street Roundup: carving up the AI trade",
         "published": "Fri, 10 Jul 2026 17:15:46 +0000",
@@ -4759,79 +4816,6 @@
           "market_view": "ADP就業數據低於預期，但三個月平均仍強勁，市場等待週四聯邦就業報告。",
           "action_view": "",
           "notable_quote": "Monetizing excess compute could reduce earnings risk."
-        },
-        "shown_at": "2026-07-01T23:06:46Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72769151",
-        "title": "Peak power problems",
-        "published": "Wed, 01 Jul 2026 10:33:13 +0000",
-        "processed_at": "2026-07-01T10:55:46Z",
-        "digest": {
-          "summary_points": [
-            "PJM互聯電網因用電需求激增及發電容量不足宣布電力緊急狀態，授權電廠以最大出力運轉。",
-            "歐盟對來自區外價值低於150歐元的電商進口商品課徵3歐元關稅，針對Shein、Temu、AliExpress等中國平臺。",
-            "達飛海運接近以14億美元現金收购聯邦快遞的第三方物流業務。",
-            "微軟計劃裁員，影響不到2.5%員工。",
-            "Bloom Energy（BE）因擴大與Brookfield合作、融資承諾增至250億美元以資助AI基礎設施電力項目，股價上漲8%。",
-            "S&P Global將分拆其汽車數據業務為獨立上市公司Mobility Global（代碼MBGL）。",
-            "環球影業的《小小兵與神偷奶爸》預期在假期週末創下超過8000萬美元票房。",
-            "美國股指期貨下跌；原油跌1.5%；黃金跌0.7%。"
-          ],
-          "tickers": [
-            {
-              "name": "Bloom Energy",
-              "code": "BE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "擴大與Brookfield合作以融資AI電力項目，資金承諾增至250億美元。"
-            },
-            {
-              "name": "Constellation Energy",
-              "code": "CEG",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司，電力緊急狀態可能影響營運但無明確看法。"
-            },
-            {
-              "name": "NextEra Energy",
-              "code": "NEE",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司。"
-            },
-            {
-              "name": "Vistra",
-              "code": "VST",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司。"
-            },
-            {
-              "name": "American Electric Power",
-              "code": "AEP",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司。"
-            },
-            {
-              "name": "Exelon",
-              "code": "EXC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司。"
-            },
-            {
-              "name": "Dominion Energy",
-              "code": "D",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "列為PJM區域的公用事業公司。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
         },
         "shown_at": "2026-07-01T23:06:46Z"
       }

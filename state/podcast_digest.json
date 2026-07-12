@@ -3721,6 +3721,25 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "7bd6b004-7dd8-11f1-89ef-670e7719ef34",
+        "title": "More States Want to Tax the Rich. Here's How.",
+        "published": "Sun, 12 Jul 2026 10:00:00 -0000",
+        "processed_at": "2026-07-12T14:43:14Z",
+        "digest": {
+          "summary_points": [
+            "加州11月選票上包含一項針對淨資產10億美元以上富豪的5%一次性財富稅提案，由醫療保健工會推動，旨在彌補醫療補助削減，預計可為加州醫療補助計畫籌集約1000億美元。",
+            "反對者包括州長紐森、教師、醫生和計劃生育協會，他們擔心富豪會逃往佛羅里達州或德州等低稅州。",
+            "其他州（緬因州、華盛頓州、麻薩諸塞州）已對年收入超過100萬美元者實施所得附加稅；麻薩諸塞州2025年從其4%的附加稅中徵收了30億美元。",
+            "「買入、借貸、死亡」策略允許超級富豪透過抵押資產借款來避免所得稅，聯邦稅制改革討論旨在堵住此類漏洞。",
+            "羅德島和科羅拉多州的進步派團體也在推動類似的富人加稅措施，反映藍州在聯邦減稅後的普遍趨勢。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I'd be happy to pay more taxes and have capital gains, which is mostly what I pay, be the same as ordinary income. But you have opposed the wealth tax on the table right now in California. That's a dumb idea. It solves nothing."
+        }
+      },
+      {
         "guid": "50f1e7d8-7d0f-11f1-8bc4-f3c777ffe51d",
         "title": "What’s News in Markets: Middle East Strikes Send Oil Higher, South Korean Chip Stocks Fall, SpaceX Stumbles",
         "published": "Sat, 11 Jul 2026 10:00:00 -0000",
@@ -4166,34 +4185,6 @@
           "notable_quote": "According to a test that's been done by a company called Recurrent that after five years on the road, the average EV will still be able to drive up to 95% of its original range."
         },
         "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "d6f17b7c-7658-11f1-8c38-27fd7676c39c",
-        "title": "Why a Hot U.S. Job Market Cooled in June",
-        "published": "Thu, 02 Jul 2026 20:56:00 -0000",
-        "processed_at": "2026-07-03T06:39:22Z",
-        "digest": {
-          "summary_points": [
-            "美國6月非農就業僅增加5.7萬人，遠低於預期，且前兩個月數據大幅下修。",
-            "失業率降至4.2%，但勞動參與率下降70萬人，主因嬰兒潮退休與移民減少；休閒餐旅業流失6萬個工作。",
-            "就業報告疲軟使市場預期聯準會7月升息機率從30%降至20%。",
-            "特斯拉第二季銷量年增25%，但股價單日大跌7.5%，公司正轉向自駕計程車與人形機器人。",
-            "德國政府公布34項經濟改革措施，包含減稅、放寬勞動法規，以提振受中國製造與關稅打擊的經濟。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "銷量季增但股價重挫，公司轉型至自駕計程車與人形機器人，尚未貢獻營收。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The softer June jobs report made investors think that the Fed is less likely to raise interest rates at its meeting later this month."
-        },
-        "shown_at": "2026-07-03T23:00:25Z"
       }
     ]
   },

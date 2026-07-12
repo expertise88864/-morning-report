@@ -802,6 +802,37 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert events.index("sent") < events.index(("marked", 1))
 
 
+def test_run_weekend_digest_renders_and_marks_all_loaded_episodes(monkeypatch):
+    """回歸(Codex P1):週日載入 >14 集時,渲染集數與標記集數必須一致 —— 全部。
+
+    舊行為:renderer 用預設 14 集上限,卻對 deliver_report 傳入完整清單 → 第 15 集起
+    被誤標 shown 卻從未出現在信中;週末信每週僅一次、集在 96h 內過期 → 永久遺失。
+    """
+    import datetime as dt
+    eps = [{"show": "股癌", "guid": f"ep{i}"} for i in range(16)]
+    captured = {}
+    _stub_weekend_sources(monkeypatch, podcast=eps)
+
+    def _capture_render(episodes, snapshot, _htmllib, *, max_episodes=14, compact_points=None):
+        captured["max_episodes"] = max_episodes
+        return "<div>pod</div>"
+    monkeypatch.setattr(mr, "_render_podcast_html", _capture_render)
+    monkeypatch.setattr(mr, "archive_report_html", lambda *a, **k: None)
+    monkeypatch.setattr(mr, "send_email", lambda *a: None)
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown",
+                        lambda e: captured.__setitem__("marked_n", len(e)))
+    monkeypatch.setattr(mr, "save_history_state", lambda *a, **k: None)
+    monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
+
+    rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
+
+    assert rc == 0
+    # renderer 被要求渲染全部 16 集(非預設 14 上限)
+    assert captured["max_episodes"] == 16
+    # 標記已顯示的集數 == 渲染集數 == 全部載入(無靜默遺失)
+    assert captured["marked_n"] == 16
+
+
 def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
     """無新內容 → 不寄信、不動任何狀態。"""
     import datetime as dt

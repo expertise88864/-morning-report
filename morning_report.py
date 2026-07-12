@@ -13171,7 +13171,11 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
 
     weather_html = _render_weather_html(weather or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
-    podcast_html = _render_podcast_html(podcast_eps, [], _htmllib)
+    # 與平日報對稱:渲染「全部」載入的集,再把「這些」集標成已顯示(見下方 deliver_report)。
+    # 若沿用 renderer 預設 14 集上限卻對 deliver_report 傳入完整 podcast_eps,第 15 集起會被
+    # 誤標 shown 卻從未出現在信中;週末信每週僅一次、集在 96h 內過期,等於永久遺失(Codex review)。
+    podcast_html = _render_podcast_html(podcast_eps, [], _htmllib,
+                                        max_episodes=max(1, len(podcast_eps)))
     intel_html = _render_tw_intelligence_html(intel or {}, _htmllib)
     journals_html = _render_journals_html(journals or [], _htmllib)
     calendar_html = _render_event_calendar_html(calendar or [])

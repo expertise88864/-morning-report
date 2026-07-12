@@ -284,3 +284,42 @@ def test_radar_state_roundtrip_and_processed_guids(tmp_path, monkeypatch):
         {"guid": "g2"}]}})                          # g2 未寄 → 不算已處理
     assert gr.load_radar_state()["gooaye"]["episodes"][0]["guid"] == "g1"
     assert gr.radar_processed_guids() == {"g1"}     # 只有已寄(radar_sent_at)的算
+
+
+# ===================== oneliner 加深(F)=====================
+
+class _OLEntry:
+    def __init__(self, title):
+        self._t = title
+
+    def get(self, k, d=None):
+        return self._t if k == "title" else d
+
+
+class _OLFeed:
+    def __init__(self, titles):
+        self.entries = [_OLEntry(t) for t in titles]
+
+
+def test_stock_news_oneliner_prefers_catalyst_title(monkeypatch):
+    import morning_report as mr
+    # 前 3 則:純股價 / 具催化詞 / 法說 → 應挑含催化詞者(非盲取第一則)
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda u: _OLFeed(["長榮股價收紅", "長榮獲美線大單、運價漲價", "長榮法說"]))
+    out = gr._stock_news_oneliner("2603", "長榮")
+    assert "大單" in out or "漲價" in out
+
+
+def test_stock_news_oneliner_falls_back_to_latest(monkeypatch):
+    import morning_report as mr
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda u: _OLFeed(["長榮股價震盪", "外資調節長榮"]))
+    out = gr._stock_news_oneliner("2603", "長榮")
+    assert out == "長榮股價震盪"          # 無催化詞 → 回最新一則
+
+
+def test_stock_news_oneliner_empty_returns_dash(monkeypatch):
+    import morning_report as mr
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda u: _OLFeed([]))
+    assert gr._stock_news_oneliner("2603", "長榮") == "—"

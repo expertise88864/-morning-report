@@ -557,3 +557,111 @@ def test_feed_stats_records_ok_and_fail(monkeypatch):
     except Exception:
         pass
     assert mr._FEED_STATS["ey.gov.tw"]["fail"] == 1
+
+
+# ===================== 類股廣度優化(A/B/D/E)=====================
+
+def _mk_sector_caches(monkeypatch):
+    """注入 STOCK_DAY_ALL + 上市基本資料快取,讓 fetch_sector_heat 純計算(零網路)。"""
+    monkeypatch.setitem(mr._TWSE_STOCK_DAY_ALL_CACHE, "data", [
+        {"Code": "2330", "ClosingPrice": "1000", "Change": "20", "TradeValue": "50000000000"},
+        {"Code": "2317", "ClosingPrice": "200", "Change": "-2", "TradeValue": "10000000000"},
+        {"Code": "2603", "ClosingPrice": "250", "Change": "12", "TradeValue": "30000000000"},
+        {"Code": "2609", "ClosingPrice": "90", "Change": "5", "TradeValue": "20000000000"},
+        {"Code": "2882", "ClosingPrice": "60", "Change": "0.5", "TradeValue": "8000000000"},
+        {"Code": "0050", "ClosingPrice": "190", "Change": "1", "TradeValue": "9999"},  # ETF 應排除
+    ])
+    monkeypatch.setitem(mr._TWSE_LISTING_BASICS_CACHE, "data", {
+        "2330": {"name": "台積電", "industry": "半導體業", "shares": 1},
+        "2317": {"name": "鴻海", "industry": "其他電子業", "shares": 1},
+        "2603": {"name": "長榮", "industry": "航運業", "shares": 1},
+        "2609": {"name": "陽明", "industry": "航運業", "shares": 1},
+        "2882": {"name": "國泰金", "industry": "金融保險業", "shares": 1},
+    })
+
+
+def test_fetch_sector_heat_aggregates_by_industry(monkeypatch):
+    _mk_sector_caches(monkeypatch)
+    h = mr.fetch_sector_heat(min_names=1)
+    sec = h["sectors"]
+    # ETF 不進任何類股
+    assert all(m["code"] != "0050" for s in sec.values() for m in s["leaders"])
+    # 航運業聚合長榮+陽明,領先股依成交值(長榮 300 億 > 陽明 200 億)
+    ship = sec["航運業"]
+    assert ship["n"] == 2 and ship["up"] == 2 and ship["down"] == 0
+    assert ship["leaders"][0]["code"] == "2603"
+    # 半導體漲跌幅 20/(1000-20)=2.04%
+    assert abs(sec["半導體業"]["median_pct"] - 2.04) < 0.01
+    # ranked 依成交值降序;成交值佔比合計約 100
+    assert h["ranked"][0] in sec
+    assert abs(sum(s["value_share_pct"] for s in sec.values()) - 100) < 1.0
+
+
+def test_fetch_sector_heat_empty_on_missing_data(monkeypatch):
+    monkeypatch.setitem(mr._TWSE_STOCK_DAY_ALL_CACHE, "data", [])
+    monkeypatch.setitem(mr._TWSE_LISTING_BASICS_CACHE, "data", {})
+    monkeypatch.setitem(mr._TWSE_LISTING_BASICS_CACHE, "failed", True)
+    assert mr.fetch_sector_heat() == {}
+
+
+def test_format_sector_heat_block_and_empty(monkeypatch):
+    _mk_sector_caches(monkeypatch)
+    h = mr.fetch_sector_heat(min_names=1)
+    blk = mr._format_sector_heat_block(h)
+    assert "類股熱度表" in blk and "航運業" in blk and "領先" in blk
+    assert mr._format_sector_heat_block({}) == ""       # 無資料回空字串
+
+
+def test_sector_queries_expanded_to_eight_sectors():
+    labels = set(mr.OTHER_SECTOR_LABELS)
+    # 新增四類齊備
+    for new in ("傳產-台股", "營建-台股", "重電-台股", "觀光-台股"):
+        assert new in labels
+    # 全數併入 RSS_FEEDS(前綴「類股-」)
+    n = len([k for k in mr.RSS_FEEDS if k.startswith("類股-")])
+    assert n == len(mr.OTHER_SECTOR_LABELS) >= 12
+
+
+def test_tech_theme_feeds_present_and_untagged():
+    # E:科技二線族群主題 feed 存在(純取材,不掛 company_label → 不進計分)
+    for k in ("Google-散熱", "Google-先進封裝", "Google-載板PCB", "Google-光通訊"):
+        assert k in mr.RSS_FEEDS
+    # 這些是「主題」而非「類股-」來源,不會被 _other_sector_label_from_source 認成類股
+    assert mr._other_sector_label_from_source("Google-散熱") == ""
+
+
+class _SectorNewsEntry:
+    def __init__(self, title):
+        self._d = {"title": title, "summary": "x", "link": "l",
+                   "published": "2026-07-11T08:00:00Z"}
+
+    def get(self, k, d=None):
+        return self._d.get(k, d)
+
+
+class _SectorNewsFeed:
+    def __init__(self, titles):
+        self.entries = [_SectorNewsEntry(t) for t in titles]
+
+
+def test_fetch_sector_leader_news_skips_tech_and_excludes(monkeypatch):
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda u: _SectorNewsFeed(["長榮運價大漲", "長榮法說"]))
+    monkeypatch.setattr(mr, "_entry_published_dt", lambda e: None)
+    heat = {"sectors": {
+        "半導體業": {"leaders": [{"code": "2330", "name": "台積電"}]},
+        "航運業": {"leaders": [{"code": "2603", "name": "長榮"},
+                             {"code": "2609", "name": "陽明"}]},
+        "金融保險業": {"leaders": [{"code": "2881", "name": "富邦金"},
+                               {"code": "2882", "name": "國泰金"}]},
+    }, "ranked": ["半導體業", "航運業", "金融保險業"]}
+    out = mr.fetch_sector_leader_news(heat, exclude_codes={"2881"}, leaders_per_sector=2)
+    codes = {i["code"] for i in out}
+    assert "2330" not in codes           # 科技類股跳過(已被固定清單/候選覆蓋)
+    assert "2881" not in codes           # 已排除者不查
+    assert {"2603", "2609", "2882"} <= codes
+    assert all(i["company_label"] == i["code"] for i in out)   # 直接歸因
+
+
+def test_fetch_sector_leader_news_empty_without_heat():
+    assert mr.fetch_sector_leader_news({}) == []

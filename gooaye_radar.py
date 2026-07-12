@@ -400,13 +400,29 @@ def _stock_verdict(e: dict) -> str:
     return f"{tone}({'；'.join(bits)})" if bits else tone
 
 
+# 具體催化詞:掃多則新聞標題時優先挑含這些詞的(避開純股價/籌碼標題),提高單行證據力。
+_STOCK_NEWS_CATALYST_HINTS = (
+    "訂單", "法說", "營收", "獲利", "毛利", "新廠", "擴產", "併購", "漲價", "報價",
+    "認證", "出貨", "接單", "解盲", "核准", "得標", "合作", "簽約", "調升", "財測", "營運",
+)
+
+
 def _stock_news_oneliner(code: str, name: str) -> str:
+    """回該股近 2 日最具『事件性』的一則新聞標題。相對舊版加深:
+    (1) 以公司名為主查詢(原本 `名稱 代號` 為 AND、常因標題不含數字代號而 0 則,recall 太低);
+    (2) 掃前 3 則、優先挑含具體催化詞者,避開純股價/籌碼標題。仍只回一句(不堆疊)。抓不到回『—』。"""
     try:
-        feed = mr._feedparser_parse_url_with_timeout(mr._gnews_rss(f"{name} {code}", when="2d"))
-        for e in (getattr(feed, "entries", None) or [])[:1]:
-            title = str(e.get("title", "")).strip()
-            if title:
-                return _clean(title)
+        query = (name or "").strip() or code
+        feed = mr._feedparser_parse_url_with_timeout(mr._gnews_rss(query, when="2d"))
+        titles = [_clean(str(e.get("title", "")).strip())
+                  for e in (getattr(feed, "entries", None) or [])[:3]]
+        titles = [t for t in titles if t]
+        if not titles:
+            return "—"
+        for t in titles:                      # 先挑有具體催化詞的
+            if any(h in t for h in _STOCK_NEWS_CATALYST_HINTS):
+                return t
+        return titles[0]                       # 否則回最新一則
     except Exception:
         pass
     return "—"
@@ -416,10 +432,12 @@ def sector_trend_oneliner(sector_name: str, reasoning: str, model: str) -> str:
     """產業趨勢維度(軟訊號):用類股關鍵字抓近 7 天新聞標題 → DeepSeek 濃縮成一句『產業近況/趨勢』。
     抓不到新聞或無 LLM 則回空字串(不顯示);非投資建議,且要求不得杜撰標題沒有的事實。"""
     try:
+        # 加深:原 `類股 產業 趨勢 需求` 為四詞 AND、命中極少;改為「類股 AND (催化詞 OR …)」
+        # 廣化 recall,並取前 8 則標題餵 LLM 濃縮(證據更厚)。
         feed = mr._feedparser_parse_url_with_timeout(
-            mr._gnews_rss(f"{sector_name} 產業 趨勢 需求", when="7d"))
+            mr._gnews_rss(f"{sector_name} (需求 OR 報價 OR 訂單 OR 產能 OR 政策 OR 趨勢)", when="7d"))
         heads = [str(e.get("title", "")).strip()
-                 for e in (getattr(feed, "entries", None) or [])[:6]]
+                 for e in (getattr(feed, "entries", None) or [])[:8]]
         heads = [h for h in heads if h]
         if not heads:
             return ""

@@ -21,6 +21,7 @@ import math
 import os
 import smtplib
 import ssl
+import statistics
 import subprocess
 import sys
 import time
@@ -257,6 +258,11 @@ RSS_FEEDS = {
     "Google-Fed利率":     _gnews_rss("Fed 聯準會 利率 通膨 CPI"),
     "Google-台股大盤":    _gnews_rss("台股 加權指數 外資 三大法人"),
     "Google-地緣":        _gnews_rss("台海 晶片管制 美中 關稅"),
+    # === 科技二線族群主題(讓「科技板塊脈動」不再只有 2330/2454;純取材、不掛個股標籤、不進計分)===
+    "Google-散熱":        _gnews_rss("散熱 水冷 液冷 AI伺服器"),
+    "Google-先進封裝":    _gnews_rss("CoWoS 先進封裝 台積電 日月光"),
+    "Google-載板PCB":     _gnews_rss("ABF載板 PCB CCL 銅箔基板"),
+    "Google-光通訊":      _gnews_rss("光通訊 CPO 矽光子 800G"),
 
     # === 央行 / 政策 ===
     "Federal Reserve":   "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -283,21 +289,34 @@ RSS_FEEDS = {
 }
 
 # 其他(非科技)類股新聞來源:供「九、其他類股資訊」段落取材。
-# 只看四大類股(金融/航運/生技/汽車),每類各拆「台股」與「全球」兩條,確保台灣與全球都涵蓋。
+# 核心四類(金融/航運/生技/汽車)台股+全球雙軌;另補傳產原物料/營建資產/重電綠能/觀光內需
+# (以台灣在地事件為主),補齊非科技結構性缺口。哪些類股當日在動由 SECTOR_HEAT 熱度表判斷。
 # key = 類股標籤(同時用於 prompt 依類股分組);科技類股不在此,由上方半導體/美股科技覆蓋。
 # 注意:Google News RSS 把多個關鍵字當 AND 處理,塞太多字會抓到 0 則。
 # 以下查詢經實測校準(近 30h 各有 ~11–88 則):用 OR 群組或 1–2 個關鍵字才有足夠量。
 OTHER_SECTOR_QUERIES: dict[str, str] = {
+    # === 核心四類(每日必查;台灣+全球雙軌)===
     # 金融類股催化(壽險投資收益/淨息差);0050 重成分,供類股均衡;實測召回 ~78 則
     "金融-台股": "壽險 OR 金控 OR 淨息差 OR 投資收益",
-    "金融-全球": "美股 金融",
-    "航運-台股": "長榮 OR 陽明 OR 萬海",
-    "航運-全球": "運價 OR BDI OR SCFI OR 貨櫃航運",
+    # 全球金融精準化:原「美股 金融」太泛,收斂到會傳導台股壽險/銀行的具體題材
+    "金融-全球": "Fed 銀行股 OR 美債殖利率 OR 壽險 投資收益",
+    "航運-台股": "長榮 OR 陽明 OR 萬海 OR 貨櫃航運",
+    "航運-全球": "運價 OR BDI OR SCFI OR 塞港 OR 紅海航運",
     # 生技收斂到個股+催化(新藥/臨床/健保),去政策雜訊;實測召回 ~48 則、命中臨床/個股
-    "生技-台股": "藥華藥 OR 浩鼎 OR 新藥 OR 臨床 OR 健保給付",
-    "生技-全球": "美股 生技",
-    "汽車-台股": "和泰車 OR 裕隆 OR 車用",
-    "汽車-全球": "特斯拉 OR 電動車 OR 車市",
+    "生技-台股": "藥華藥 OR 新藥 OR 臨床 OR 解盲 OR 健保給付",
+    # 全球生技精準化:原「美股 生技」太泛,收斂到有事件性的核准/里程碑
+    "生技-全球": "FDA 核准 OR EMA OR 新藥 臨床 OR 併購 生技",
+    "汽車-台股": "和泰車 OR 裕隆 OR 車用 OR 電動車 供應鏈",
+    "汽車-全球": "特斯拉 OR 電動車 OR 車市 銷量",
+    # === 新增四類(補齊傳產/營建/重電/觀光的結構性缺口;以台股在地事件為主)===
+    # 傳產原物料:鋼鐵/塑化/水泥的景氣循環與報價
+    "傳產-台股": "中鋼 OR 台塑 OR 南亞 OR 台泥 OR 鋼價 OR 塑化 報價",
+    # 營建資產:房市/預售/都更/資產股題材
+    "營建-台股": "營建股 OR 房市 OR 預售屋 OR 資產股 OR 都更",
+    # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
+    "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
+    # 觀光內需:旅遊/航空客運/零售內需
+    "觀光-台股": "觀光 旅遊 OR 航空 客運 OR 內需 零售",
 }
 # 併入 RSS_FEEDS(來源名前綴「類股-」,便於 fetch_news 抓取與 prompt 依類股分組)。
 RSS_FEEDS.update({f"類股-{label}": _gnews_rss(query)
@@ -2253,7 +2272,28 @@ def _fetch_twse_listing_basics() -> dict[str, dict]:
             }
     if not output:
         raise RuntimeError("沒有有效上市公司基本資料")
+    _TWSE_LISTING_BASICS_CACHE["data"] = output   # 供容錯快取版共用(類股熱度免重抓)
     return output
+
+
+_TWSE_LISTING_BASICS_CACHE: dict = {"data": None, "failed": False}
+
+
+def _get_twse_listing_basics_cached() -> dict[str, dict]:
+    """`_fetch_twse_listing_basics` 的容錯快取版:同一次執行只抓一次,失敗回 {}(不拋)。
+    universe 走原本會拋例外的版本(它需要 raise 來分流 fallback);其餘唯讀取用點走這支。
+    universe 若已先跑過,其成功結果已寫入 _TWSE_LISTING_BASICS_CACHE,這裡直接命中、零新請求。"""
+    c = _TWSE_LISTING_BASICS_CACHE
+    if c["data"] is not None:
+        return c["data"]
+    if c.get("failed"):
+        return {}
+    try:
+        return _fetch_twse_listing_basics()   # 成功時會自行寫入快取
+    except Exception as e:
+        print(f"[twse] 上市基本資料抓取失敗(類股熱度略過): {e}", file=sys.stderr)
+        c["failed"] = True
+        return {}
 
 
 def fetch_tw_top100_universe(top_n: int = 100) -> dict[str, dict]:
@@ -2911,6 +2951,117 @@ def fetch_twse_market_breadth() -> dict:
     except Exception as e:
         print(f"[breadth] 抓取失敗: {e}", file=sys.stderr)
         return {}
+
+
+def fetch_sector_heat(top_leaders: int = 3, min_names: int = 3) -> dict:
+    """按 TWSE 產業別彙整當日「類股熱度」——純計算,重用已快取的 STOCK_DAY_ALL(當日成交)
+    與上市公司基本資料(產業別),**不新增網路請求、不進任何計分**。
+
+    用途:(1) 給「九、其他類股」LLM 硬數據背景(哪些類股在動、領漲股是誰),讓分析有行情
+    佐證而非只憑標題;(2) 動態決定要補查哪些非科技類股的個股新聞(見 fetch_sector_leader_news)。
+    任何環節失敗回 {}(晨報不可斷)。
+
+    回傳 {
+      "sectors": { 產業名稱: {"n","up","down","median_pct","value_yi","value_share_pct",
+                             "leaders":[{"code","name","pct","value_yi"}, ...]} },
+      "ranked": [產業名稱, ...],          # 依成交值降序
+      "total_value_yi": 全市場成交值(億),
+    }
+    """
+    try:
+        rows = _fetch_twse_stock_day_all()          # 已快取:與市場廣度共用同一份
+        basics = _get_twse_listing_basics_cached()  # 已快取:與 universe 共用同一份
+        if not rows or not basics:
+            return {}
+        keys = list(rows[0].keys())
+        code_k = next((k for k in keys if k == "Code" or "證券代號" in k or "代號" in k), None)
+        close_k = next((k for k in keys if "clos" in k.lower() or "收盤" in k), None)
+        change_k = next((k for k in keys if k.lower() in ("change", "change_value") or k == "漲跌"), None)
+        if change_k is None:
+            change_k = next((k for k in keys if ("change" in k.lower() and "pct" not in k.lower())
+                             or "漲跌" in k), None)
+        value_k = next((k for k in keys if "tradevalue" in k.lower() or k in ("TradeValue", "成交金額")), None)
+        if not all([code_k, close_k, change_k, value_k]):
+            print(f"[sector] STOCK_DAY_ALL 欄位偵測失敗 keys={keys}", file=sys.stderr)
+            return {}
+
+        agg: dict[str, dict] = {}
+        total_value = 0.0
+        for row in rows:
+            code = str(row.get(code_k, "")).strip()
+            if not (len(code) == 4 and code.isdigit()):   # 只算普通上市股,排除 ETF/權證
+                continue
+            b = basics.get(code)
+            if not b:
+                continue
+            industry = b.get("industry") or "其他"
+            close = _to_float(row.get(close_k))
+            change = _to_float(row.get(change_k))
+            tv = _to_float(row.get(value_k)) or 0.0
+            if close is None or change is None:
+                continue
+            prev = close - change          # 昨收 = 今收 − 漲跌
+            pct = (change / prev * 100) if prev else 0.0
+            total_value += tv
+            s = agg.setdefault(industry, {"n": 0, "up": 0, "down": 0,
+                                          "pcts": [], "value": 0.0, "members": []})
+            s["n"] += 1
+            if change > 0:
+                s["up"] += 1
+            elif change < 0:
+                s["down"] += 1
+            s["pcts"].append(pct)
+            s["value"] += tv
+            s["members"].append({"code": code, "name": b.get("name") or code,
+                                 "pct": round(pct, 2), "value": tv})
+
+        if not agg or total_value <= 0:
+            return {}
+
+        sectors: dict[str, dict] = {}
+        for industry, s in agg.items():
+            if s["n"] < min_names:         # 樣本太少的類別(存託憑證/管理股票)略過
+                continue
+            leaders = sorted(s["members"], key=lambda m: m["value"], reverse=True)[:top_leaders]
+            sectors[industry] = {
+                "n": s["n"], "up": s["up"], "down": s["down"],
+                "median_pct": round(statistics.median(s["pcts"]), 2),
+                "value_yi": round(s["value"] / 1e8, 0),
+                "value_share_pct": round(s["value"] / total_value * 100, 1),
+                "leaders": [{"code": m["code"], "name": m["name"], "pct": m["pct"],
+                             "value_yi": round(m["value"] / 1e8, 1)} for m in leaders],
+            }
+        ranked = sorted(sectors, key=lambda k: sectors[k]["value_yi"], reverse=True)
+        if ranked:
+            print(f"[sector] 類股熱度:{len(sectors)} 個產業,最熱 {ranked[0]}"
+                  f"(成交 {sectors[ranked[0]]['value_yi']:,.0f} 億)")
+        return {"sectors": sectors, "ranked": ranked,
+                "total_value_yi": round(total_value / 1e8, 0)}
+    except Exception as e:
+        print(f"[sector] 類股熱度計算失敗: {e}", file=sys.stderr)
+        return {}
+
+
+def _format_sector_heat_block(sector_heat: dict, top_n: int = 12) -> str:
+    """把 fetch_sector_heat 的結果排成精簡文字表,供 LLM「九、其他類股」當硬數據背景。
+    純行情數據(非新聞),不含任何持股資訊。無資料回空字串。"""
+    sectors = (sector_heat or {}).get("sectors") or {}
+    ranked = (sector_heat or {}).get("ranked") or []
+    if not sectors or not ranked:
+        return ""
+    lines = []
+    for name in ranked[:top_n]:
+        s = sectors.get(name) or {}
+        leaders = "、".join(
+            f"{m['code']}{m['name']}{m['pct']:+.1f}%" for m in (s.get("leaders") or [])[:3])
+        lines.append(
+            f"- {name}:成交 {s.get('value_yi', 0):,.0f} 億"
+            f"(佔 {s.get('value_share_pct', 0):.1f}%)、中位 {s.get('median_pct', 0):+.1f}%、"
+            f"漲 {s.get('up', 0)}/跌 {s.get('down', 0)} | 領先:{leaders or '-'}")
+    total = (sector_heat or {}).get("total_value_yi") or 0
+    return ("\n\n【類股熱度表(今日 TWSE 全市場,依成交值排序;純行情數據非新聞,"
+            f"供「九、其他類股」判斷哪些類股在動、誰領漲。全市場成交約 {total:,.0f} 億)】\n"
+            + "\n".join(lines))
 
 
 def fetch_twse_short_balance(target_codes: Optional[set] = None) -> dict[str, dict]:
@@ -4265,6 +4416,75 @@ def fetch_candidate_company_news(snapshot: list[dict],
         except Exception as e:
             print(f"[cand_news] 候選 {code} 查詢失敗: {e}", file=sys.stderr)
     print(f"[cand_news] 候選個股新聞 {hit} 則(查詢 {queried} 檔爆發力候選)")
+    return items
+
+
+# 已由固定重點清單 / 爆發力候選 / 8-K 充分覆蓋的「電子科技」產業;動態非科技公司池排除之,
+# 避免重複查詢並把查詢額度留給真正缺乏個股新聞的非科技類股。
+_TECH_INDUSTRIES_FOR_SECTOR_NEWS: set[str] = {
+    "半導體業", "電腦及週邊設備業", "光電業", "通信網路業", "電子零組件業",
+    "電子通路業", "資訊服務業", "其他電子業", "數位雲端",
+}
+
+
+def fetch_sector_leader_news(sector_heat: dict,
+                             exclude_codes: Optional[set] = None,
+                             leaders_per_sector: int = 2,
+                             per_query: int = 2,
+                             max_queries: int = 10) -> list[dict]:
+    """對「今日成交熱度高的非科技類股」的領先個股補查 Google News,tag company_label=code。
+
+    為什麼:固定重點清單多為科技股,fetch_candidate_company_news 又只查爆發力排序前段
+    (多為電子股),所以金融/傳產/航運/生技以外的個股催化長期抓不到。本函式依 SECTOR_HEAT
+    由「當日最熱的非科技類股」挑成交值領先股(排除已被固定清單/候選查過者),補其自家新聞。
+    與候選機制同一路徑(擴充新聞「輸入」,不改任何計分係數)。任何個股失敗略過(晨報不可斷)。
+    """
+    sectors = (sector_heat or {}).get("sectors") or {}
+    ranked = (sector_heat or {}).get("ranked") or []
+    if not sectors or not ranked:
+        return []
+    exclude = {str(c) for c in (exclude_codes or set())}
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=54)
+    items: list[dict] = []
+    queried = hit = 0
+    for sector in ranked:
+        if queried >= max_queries:
+            break
+        if sector in _TECH_INDUSTRIES_FOR_SECTOR_NEWS:
+            continue
+        picked = 0
+        for m in (sectors[sector].get("leaders") or []):
+            if picked >= leaders_per_sector or queried >= max_queries:
+                break
+            code = str(m.get("code") or "")
+            name = str(m.get("name") or "")
+            if not code or code in exclude:
+                continue
+            exclude.add(code)      # 同一次執行不重複查同一檔
+            picked += 1
+            queried += 1
+            query = f"{name} {code}" if name else code
+            try:
+                feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
+                for entry in feed.entries[:per_query]:
+                    pub_dt = _entry_published_dt(entry)
+                    if pub_dt and pub_dt < cutoff:
+                        continue
+                    item = {
+                        "source": f"Google:{code}",
+                        "title": entry.get("title", ""),
+                        "summary": (entry.get("summary", "") or "")[:800],
+                        "link": entry.get("link", ""),
+                        "published": entry.get("published", ""),
+                        "company_label": code,
+                        "code": code,
+                        "sector": sector,
+                    }
+                    items.append(_mark_news_date_quality(item, pub_dt))
+                    hit += 1
+            except Exception as e:
+                print(f"[sector_news] {sector} {code} 查詢失敗: {e}", file=sys.stderr)
+    print(f"[sector_news] 非科技類股領先股新聞 {hit} 則(查詢 {queried} 檔,涵蓋熱門非科技類股)")
     return items
 
 
@@ -8416,6 +8636,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    "write that no major news was found and do not invent details.]\n"
                    + "\n".join(sec_lines))
 
+    # 類股熱度表(純行情數據,供「九、其他類股」判斷哪些類股在動、誰領漲;不進計分)
+    heat_block = _format_sector_heat_block(quotes.get("SECTOR_HEAT") or {})
+    if heat_block:
+        news_block += heat_block
+
     if tw0050:
         tw0050_sorted = sorted(tw0050, key=lambda x: x.get("total_lot", 0), reverse=True)[:50]
         rows = []
@@ -9110,18 +9335,22 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 範例 B 級(只有方向性訊號,但仍點出機制):
 **NVIDIA(NVDA,GPU/AI 加速器龍頭)**：無原始數字，惟鉅亨報導分析師上修目標價（分析師動向）。GPU 出貨增量會經 CoWoS / HBM 傳導到 2330 稼動率，故對 2330 偏正、但僅屬方向性。**[B 級・信心:中-低,資訊有限]**
 
-## 九、其他類股資訊（金融 / 航運 / 生技 / 汽車，含台灣與全球；**目標 6–10 條，基本盤 8 條**）
+## 九、其他類股資訊（金融 / 航運 / 生技 / 汽車 / 傳產原物料 / 營建資產 / 重電綠能 / 觀光內需，含台灣與全球；**目標 6–10 條**）
 
-聚焦四大非科技類股的昨日重大動態，**台灣與全球都要寫**。取材**只能**來自上方【其他類股最新新聞】各類股的「台股 / 全球」分組標題。
+聚焦非科技類股的昨日重大動態。**依【類股熱度表】的今日成交熱度排序**：優先寫「今日成交熱、且【其他類股最新新聞】確有實質新聞事件」的類股——不限傳統四大類，若傳產/營建/重電/觀光今日有真新聞就寫進來。取材**只能**來自上方【其他類股最新新聞】各類股分組標題;熱度表只當背景(判斷哪類在動、誰領漲),**不可**把熱度表的漲跌數字單獨當一條新聞。
 
 **鐵則（務必遵守，違反即為失敗報告）**：
-1. **每條必須是一則真正的「新聞事件」**——寫出「發生了什麼事」（政策 / 財報 / 合約 / 併購 / 運價 / 新藥進度 / 車市數據 / 國際大事…），並引用標題裡的具體內容、數字與來源媒體。
+1. **每條必須是一則真正的「新聞事件」**——寫出「發生了什麼事」（政策 / 財報 / 合約 / 併購 / 運價 / 新藥進度 / 車市數據 / 鋼價塑化報價 / 房市政策 / 電網儲能標案 / 觀光客流 / 國際大事…），並引用標題裡的具體內容、數字與來源媒體。
 2. **嚴禁**把「股價漲跌 X% / 法人買賣超 X 張 / 營收年增率 Y%」單獨當成一條——那些是量化數據、別的段落已涵蓋，**不算類股新聞**。若某類股當日你手上只有股價 / 法人數據而沒有新聞，**寧可略過該類股**，也不要拿數據湊數。
-3. **每類盡量「台灣 1 條 + 全球 1 條」**（金融 / 航運 / 生技 / 汽車 共 8 條基本盤）；某類某地當日確無重要新聞才可略過。**不可跨類張冠李戴**（例：航運就寫運價 / SCFI / BDI / 長榮 / 陽明 / 塞港，**不要拿油價或別類消息充當航運**）。
+3. **只寫確有實質新聞的類股，沒有就略過該類**（避免信件冗長）;有全球重大新聞的類股(金融/航運/生技/汽車)再補全球，傳產/營建/重電/觀光以台灣在地事件為主。**不可跨類張冠李戴**（例：航運就寫運價 / SCFI / BDI / 長榮 / 陽明 / 塞港，**不要拿油價或別類消息充當航運**）。
 4. **影響說明必須具體**：要寫「利多/利空了誰、透過什麼機制、幅度多大」。**禁止**「對 X 類股有帶動作用」「情緒帶動」「中性偏正」這類無機制空話——沒講出機制就等於沒分析。
    - **航運**判斷「利多/利空幅度」時可援引油價(WTI,燃油成本)與匯率(USD/TWD)作背景(上方總經區有數據),但「新聞事件」本身仍須是運價/航商/塞港動態,油價匯率只當佐證、不可單獨充當航運新聞。
    - **金融(壽險/金控)**請扣連使用者熟悉的傳導鏈:美股/美債走勢→壽險投資收益、央行利率→銀行淨息差;能寫出這條鏈才算合格。
    - **生技/醫療(本報讀者為醫師,請特別著墨且寫得具體)**:事件優先序 FDA/EMA 核准或里程碑 > 臨床試驗解盲/進度 > 健保給付 > 併購/授權;機制要明確——新藥上市→專利獨佔期營收、解盲成敗→股價常 ±15–30%、納入健保→營收確定性提升。**禁止**「生技基金看好」「長線可期」這類無事件、無機制的空話。
+   - **傳產原物料(鋼鐵/塑化/水泥)**:機制走「報價/景氣循環」——鋼價或塑化利差變動→中鋼/台塑四寶毛利,中國需求/反傾銷/油價成本是背景;寫得出報價方向與利差傳導才算合格。
+   - **營建資產**:機制走「房市政策/預售買氣/資產題材」——升降息與選擇性信用管制→建商推案與去化,土地開發/都更/資產活化是個股催化。
+   - **重電綠能**:機制走「電網強韌計畫/台電標案/儲能離岸風電」——電力基建資本支出→重電三雄(華城/士電/中興電)在手訂單能見度。
+   - **觀光內需**:機制走「客流/客運量/內需消費」——來台/出國旅客與航空客運載客率→觀光航空營收,零售看內需景氣。
 5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
 
 每條格式（嚴格遵守）：
@@ -9580,8 +9809,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             prompt
             + "\n\n【長度控制追加規則】\n"
               "上一版容易過長。請完整輸出所有章節，但更短：科技板塊脈動 6-8 條(只寫科技);"
-              "其他類股資訊(金融/航運/生技/汽車)每類 1-2 條、以真正的新聞事件為主"
-              "(非股價/法人/營收數據),台灣與全球都要,無新聞的類股略過;"
+              "其他類股資訊依類股熱度表挑今日在動且確有新聞的類股、每類 1-2 條、"
+              "以真正的新聞事件為主(非股價/法人/營收數據),無新聞的類股略過;"
               "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
               "必須寫完我的明確立場與一句話總結。"
         )
@@ -13478,6 +13707,14 @@ def main() -> int:
     quotes["TW_UNIVERSE_FALLBACK"] = any(
         v.get("fallback") for v in tw_universe.values())
 
+    # 6.05 類股熱度掃描(純計算,重用 STOCK_DAY_ALL + 上市基本資料快取,零新請求;不進計分)。
+    #      供「九、其他類股」硬數據背景與非科技動態公司池的類股挑選依據。
+    try:
+        quotes["SECTOR_HEAT"] = fetch_sector_heat()
+    except Exception as e:
+        print(f"[main] 類股熱度計算失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["SECTOR_HEAT"] = {}
+
     # 6.1 (籌碼悄悄站隊) 個股融資餘額(MI_MARGN ALL)+ TDCC 大戶 WoW 變化
     print("[main] 抓個股融資餘額(MI_MARGN ALL)…")
     try:
@@ -13553,6 +13790,18 @@ def main() -> int:
             print(f"[main] 併入 8-K 公司新聞後共 {len(news)} 則")
     except Exception as e:
         print(f"[main] 8-K 公司新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
+
+    # 6.37 非科技類股領先股:依 SECTOR_HEAT 挑當日最熱的非科技類股領先個股,補其自家新聞。
+    #      補齊「金融/傳產/航運/生技以外個股催化長期抓不到」的缺口;與候選機制同路徑(擴輸入非改係數)。
+    try:
+        sector_news = fetch_sector_leader_news(
+            quotes.get("SECTOR_HEAT") or {},
+            exclude_codes={lbl for _, lbl in GOOGLE_NEWS_COMPANIES})
+        if sector_news:
+            news = dedup_news(news + classify_news_importance(sector_news))
+            print(f"[main] 併入非科技類股領先股新聞後共 {len(news)} 則")
+    except Exception as e:
+        print(f"[main] 非科技類股新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
 
     # 6.36 補抓全文:候選股/8-K 新聞在 5.2 全文擷取之後才併入,其中升級為
     # critical/high 者在此補抓(fetch_news_fulltext 冪等,已抓過的會跳過)。

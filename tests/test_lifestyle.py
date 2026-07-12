@@ -285,12 +285,15 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 
 
 def test_other_sector_queries_precision():
-    """生技收斂到個股+催化、金融偏壽險投資收益;且仍維持 8 個類股鍵。"""
+    """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 8
+    assert len(q) == 12                               # 核心四類×2 + 傳產/營建/重電/觀光×1
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
     assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
+    # 新增四類齊備,以台股在地事件為主
+    for new in ("傳產-台股", "營建-台股", "重電-台股", "觀光-台股"):
+        assert new in q and q[new]
 
 
 def test_tennis_tier_classification():

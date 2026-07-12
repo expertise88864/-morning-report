@@ -1,21 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 25,
-  "last_seen": "2026-07-11",
-  "latest_title": "Insuring Rare and Collectible Cars and Boats: Masters in Business with McKeel Hagerty"
+  "days": 26,
+  "last_seen": "2026-07-13",
+  "latest_title": "Stanton Warns Hormuz Closure Hurts Economy"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
   "days": 14,
   "last_seen": "2026-07-11",
   "latest_title": "Trump admin eases export controls for UAE; Warren blasts 'corrupt' provision"
- },
- "litigation:2317": {
-  "first_seen": "2026-07-08",
-  "days": 1,
-  "last_seen": "2026-07-08",
-  "latest_title": "代重要子公司富士康工業互聯網股份有限公司董事會決議 聘任財務總監"
  },
  "geopolitical:2317": {
   "first_seen": "2026-07-10",
@@ -31,14 +25,20 @@
  },
  "litigation:": {
   "first_seen": "2026-07-11",
-  "days": 1,
-  "last_seen": "2026-07-11",
-  "latest_title": "Apple sues OpenAI for stealing trade secrets"
+  "days": 2,
+  "last_seen": "2026-07-13",
+  "latest_title": "Elon Musk and Sam Altman spar on X after Apple files OpenAI lawsuit"
  },
  "export_controls:NVDA": {
   "first_seen": "2026-07-11",
   "days": 1,
   "last_seen": "2026-07-11",
   "latest_title": "中國傳有限放行H200，輝達高階晶片能重返中國？4年出口管制與美中談判一次看懂 - 數位時代"
+ },
+ "litigation:AAPL": {
+  "first_seen": "2026-07-13",
+  "days": 1,
+  "last_seen": "2026-07-13",
+  "latest_title": "OpenAI遭控竊取商業機密 看聰明人如何評論蘋果提起的訴訟 - Business Insider Taiwan"
  }
 }

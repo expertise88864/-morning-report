@@ -4313,8 +4313,12 @@ def fetch_news() -> list[dict]:
             feed = _feedparser_parse_url_with_timeout(url)
             # 類股與世界大事來源都要求有發布時間:這兩類直接餵專屬 prompt 段,
             # 無日期的舊聞混進「昨日」會誤導(一般來源仍容忍缺日期,僅標記 date_missing)。
-            requires_date = (bool(_other_sector_label_from_source(str(source)))
-                             or str(source).startswith("世界-"))
+            # 中央社國際也是世界來源,同樣要求日期(Codex review)。
+            _src_s = str(source)
+            world_cat = (_src_s[3:] if _src_s.startswith("世界-")
+                         else (_src_s if _src_s == "中央社國際" else ""))
+            requires_date = (bool(_other_sector_label_from_source(_src_s))
+                             or bool(world_cat))
             for entry in feed.entries[:10]:
                 source_name, source_url = _tw_entry_source(entry)
                 pub_dt = _entry_published_dt(entry)
@@ -4333,6 +4337,10 @@ def fetch_news() -> list[dict]:
                     "source_name": source_name,
                     "source_url": source_url,
                 }
+                if world_cat:
+                    # 世界大事標記:dedup_news 會像 company_label 一樣把它併到留下的那筆,
+                    # 同一事件即使被一般來源那版吃掉,世界取材段仍找得到(Codex review)。
+                    item["world_cat"] = world_cat
                 items.append(_mark_news_date_quality(item, pub_dt))
         except Exception as e:
             print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
@@ -8592,9 +8600,23 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             text += f"\n  [全文摘錄]：{n['fulltext'][:1500]}"
         return text
 
-    crit_news = [n for n in news if n.get("importance") == "critical"]
-    high_news = [n for n in news if n.get("importance") == "high"]
-    norm_news = [n for n in news if n.get("importance") == "normal"]
+    # 世界大事項目不進市場新聞配額桶(crit[:10]/high[:20]/norm[:30]):它們有專屬的
+    # 【昨日世界大事新聞】取材段;「戰爭」等詞會被判 critical,不排除的話忙碌新聞日
+    # 會把 Fed/台股/公司消息從配額裡擠掉——市場仍是本報核心(Codex review)。
+    # (真正牽動市場的地緣事件仍由既有 Google-地緣/CNBC 等一般來源進桶,不受影響。)
+    def _world_cat_of(n: dict) -> str:
+        wc = str(n.get("world_cat") or "")
+        if wc:
+            return wc
+        src = str(n.get("source", ""))
+        if src.startswith("世界-"):
+            return src[3:]
+        return src if src == "中央社國際" else ""
+
+    market_news = [n for n in news if not _world_cat_of(n)]
+    crit_news = [n for n in market_news if n.get("importance") == "critical"]
+    high_news = [n for n in market_news if n.get("importance") == "high"]
+    norm_news = [n for n in market_news if n.get("importance") == "normal"]
 
     news_block = "★★★ 重大事件（必讀，含全文摘錄）★★★\n"
     if crit_news:
@@ -8681,18 +8703,18 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    "write that no major news was found and do not invent details.]\n"
                    + "\n".join(sec_lines))
 
-    # 世界大事(非市場)新聞獨立成段:供「世界大事速覽」取材(來源前綴「世界-」+中央社國際)。
-    # 每來源最多 4 則:保留跨類別多樣性(國際/災難/科學/AI),同時控 prompt 長度(Codex 第二意見)。
+    # 世界大事(非市場)新聞獨立成段:供「世界大事速覽」取材。以 world_cat 判定
+    # (dedup 後仍保留;來源前綴僅為 fallback)。每類最多 4 則:保留跨類別多樣性
+    # (國際/災難/科學/AI),同時控 prompt 長度(Codex 第二意見)。
     world_lines: list[str] = []
-    _world_per_src: dict[str, int] = {}
+    _world_per_cat: dict[str, int] = {}
     for n in news:
-        src = str(n.get("source", ""))
-        if not (src.startswith("世界-") or src == "中央社國際") or n.get("date_missing"):
+        cat = _world_cat_of(n)
+        if not cat or n.get("date_missing"):
             continue
-        _world_per_src[src] = _world_per_src.get(src, 0) + 1
-        if _world_per_src[src] > 4:
+        _world_per_cat[cat] = _world_per_cat.get(cat, 0) + 1
+        if _world_per_cat[cat] > 4:
             continue
-        cat = src[3:] if src.startswith("世界-") else src
         published = str(n.get("published_dt") or n.get("published") or "")[:16]
         world_lines.append(f"- [{published}][{cat}] {n['title']}")
     if world_lines:

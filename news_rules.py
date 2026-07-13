@@ -349,12 +349,18 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
         if dup_index is not None:
             # 不論保留哪一版,都把 company_label 補到留下來的那筆,
             # 避免個股新聞因去重而失去標籤、從「科技板塊脈動」消失(rank 5)。
+            # world_cat 同理:同一事件常同時出現在一般來源(如 Google-地緣)與世界來源,
+            # 若被一般來源那版吃掉、世界標記跟著消失,「世界大事速覽」取材段就漏事件
+            # (Codex review)。
             label = n.get("company_label") or kept[dup_index].get("company_label")
+            wcat = n.get("world_cat") or kept[dup_index].get("world_cat")
             if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
                 kept[dup_index] = n
                 kept_norms[dup_index] = nt
             if label and not kept[dup_index].get("company_label"):
                 kept[dup_index]["company_label"] = label
+            if wcat and not kept[dup_index].get("world_cat"):
+                kept[dup_index]["world_cat"] = wcat
             dropped += 1
             continue
         kept.append(n)

@@ -570,3 +570,32 @@ def test_world_news_block_caps_per_source():
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
     blk = p.split("【昨日世界大事新聞")[1]
     assert "事件3" in blk and "事件4" not in blk
+
+
+def test_world_items_excluded_from_market_buckets():
+    """世界項目(即使被判 critical)不進市場配額桶,只出現在世界取材段(Codex review)。"""
+    news = [
+        {"source": "世界-國際大事", "world_cat": "國際大事", "importance": "critical",
+         "title": "某區域戰爭爆發", "published": "2026-07-15"},
+        {"source": "CNBC Top News", "importance": "critical",
+         "title": "Fed 意外升息", "published": "2026-07-15"},
+    ]
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    # 世界標題只出現一次(取材段),不佔 ★★★ 市場桶
+    assert p.count("某區域戰爭爆發") == 1
+    assert "[國際大事] 某區域戰爭爆發" in p
+    # 市場 critical 正常進桶
+    assert "Fed 意外升息" in p
+
+
+def test_dedup_news_preserves_world_cat():
+    """同一事件同時出現在一般來源與世界來源:不論留哪版,world_cat 都要活下來(Codex review)。"""
+    news = [
+        {"source": "Google-地緣", "title": "美伊衝突再升級,油價跳漲",
+         "summary": "很長的摘要" * 30},                      # keep_score 較高,會被保留
+        {"source": "世界-國際大事", "world_cat": "國際大事",
+         "title": "美伊衝突再升級,油價跳漲", "summary": "短"},
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 1
+    assert out[0].get("world_cat") == "國際大事"            # 標記併到留下的那筆

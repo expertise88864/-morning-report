@@ -1180,3 +1180,49 @@ def test_source_health_history_flags_persistent_feed(tmp_path, monkeypatch):
                         "news.google.com": {"ok": 5, "fail": 0}})
     assert "ey.gov.tw(3天)" in out
     assert not any(x.startswith("news.google.com") for x in out)
+
+
+def test_backfill_skips_zero_volume_fake_bar_and_heals(monkeypatch):
+    """颱風臨時休市日 yfinance 回「量 0 假持平 bar」:個股不得回填,已誤填者自癒移除。
+
+    2026-07-10 實際發生:假 bar 把 actual_open_2330 寫進 history → 回顧表出現
+    +0.00% 幽靈列、且污染 MAE/bias 校正。^TWII 指數源無假 bar(量值語意不同,不套濾)。
+    """
+    older = (dt.datetime.now(mr.TPE) - dt.timedelta(days=6)).strftime("%Y-%m-%d")
+    closed = (dt.datetime.now(mr.TPE) - dt.timedelta(days=4)).strftime("%Y-%m-%d")
+    real = (dt.datetime.now(mr.TPE) - dt.timedelta(days=2)).strftime("%Y-%m-%d")
+    prices = {"2330.TW": 2415.0, "00662.TW": 120.0, "0050.TW": 105.0, "^TWII": 45000.0}
+
+    class Ticker:
+        def __init__(self, sym):
+            self.sym = sym
+
+        def history(self, **kwargs):
+            p = prices[self.sym]
+            if self.sym == "^TWII":
+                # 指數源:休市日「沒有」bar(實測行為)
+                return pd.DataFrame({"Open": [p - 10, p], "Close": [p - 12, p + 5]},
+                                    index=pd.to_datetime([older, real]))
+            # 個股/ETF:休市日出現量 0 的假持平 bar
+            return pd.DataFrame(
+                {"Open": [p - 5, p, p + 1], "Close": [p - 3, p, p + 2],
+                 "Volume": [1000, 0, 1200]},
+                index=pd.to_datetime([older, closed, real]))
+
+    monkeypatch.setattr(mr.yf, "Ticker", lambda sym, *a, **k: Ticker(sym))
+    history = [
+        # 休市日紀錄:actual_open_2330 已被前次假 bar 誤填 → 應被自癒移除
+        {"date": closed, "target_session_date": closed,
+         "weighted_final_2330": 2415.0, "actual_open_2330": 2415.0},
+        # 真交易日紀錄:正常補值
+        {"date": real, "target_session_date": real, "weighted_final_2330": 2400.0},
+    ]
+    mr.backfill_actual_opens(history)
+    # 自癒:休市日的 2330 誤填被移除,且不會回填任何個股開盤
+    assert "actual_open_2330" not in history[0]
+    assert "actual_open_0050" not in history[0]
+    # 指數欄不在自癒範圍(當初也沒被誤填)
+    assert "actual_open_taiex" not in history[0]
+    # 真交易日正常補值(假 bar 濾除不影響其他日期)
+    assert history[1]["actual_open_2330"] == prices["2330.TW"] + 1
+    assert history[1]["actual_open_taiex"] == prices["^TWII"]

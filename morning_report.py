@@ -8092,10 +8092,17 @@ def build_prediction_backtest(history: list[dict]) -> str:
 
     rows = []
     try:
-        # 抓近 7 個交易日實際開盤
-        tw2330_hist = yf.Ticker("2330.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
-        tw0066_hist = yf.Ticker("00662.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
-        tw0050_hist = yf.Ticker("0050.TW").history(period="10d", auto_adjust=False).dropna(subset=["Open"])
+        # 抓近 7 個交易日實際開盤。量 > 0 過濾:排除 yfinance 在颱風臨時休市日回傳的
+        # 假持平 bar(開=收=前收、量 0),否則「不存在的開盤」會以 0.00% 誤差進入
+        # MAE/bias 統計,把自我校正帶偏(理由詳 backfill_actual_opens)。
+        def _hist_open(sym):
+            h = yf.Ticker(sym).history(period="10d", auto_adjust=False).dropna(subset=["Open"])
+            if "Volume" in h.columns:
+                h = h[h["Volume"] > 0]
+            return h
+        tw2330_hist = _hist_open("2330.TW")
+        tw0066_hist = _hist_open("00662.TW")
+        tw0050_hist = _hist_open("0050.TW")
 
         def to_date(idx):
             return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
@@ -8387,8 +8394,15 @@ def backfill_actual_opens(history: list[dict]) -> int:
     if not history:
         return 0
     try:
-        def _ohlc(sym: str) -> tuple[dict, dict]:
+        def _ohlc(sym: str, require_volume: bool = False) -> tuple[dict, dict]:
             h = yf.Ticker(sym).history(period="1mo", auto_adjust=False).dropna(subset=["Open"])
+            # 個股/ETF 要求成交量 > 0:yfinance 在台股「臨時休市日」(颱風)會回一根
+            # 開=收=前收、量 0 的假持平 bar(Yahoo 行事曆不知道臨時停市)。不濾掉會把
+            # 「不存在的開盤」寫進 history → 回顧表出現 +0.00% 幽靈列、且污染 MAE/bias
+            # 自我校正(讓校正以為預測完美)。2026-07-10 颱風日實際發生。
+            # ^TWII 指數的量值語意不同(可為 0/NaN),不套此濾(實測指數源不產生假 bar)。
+            if require_volume and "Volume" in h.columns:
+                h = h[h["Volume"] > 0]
 
             def _to_date(idx):
                 return idx.tz_localize(None).strftime("%Y-%m-%d") if idx.tz else idx.strftime("%Y-%m-%d")
@@ -8396,9 +8410,9 @@ def backfill_actual_opens(history: list[dict]) -> int:
             closes = {_to_date(d): round(float(v), 2) for d, v in h["Close"].items()}
             return opens, closes
 
-        opens_2330, _ = _ohlc("2330.TW")
-        opens_00662, _ = _ohlc("00662.TW")
-        opens_0050, _ = _ohlc("0050.TW")
+        opens_2330, _ = _ohlc("2330.TW", require_volume=True)
+        opens_00662, _ = _ohlc("00662.TW", require_volume=True)
+        opens_0050, _ = _ohlc("0050.TW", require_volume=True)
         opens_taiex, closes_taiex = _ohlc("^TWII")
         series = {
             "actual_open_2330": opens_2330,
@@ -8412,6 +8426,9 @@ def backfill_actual_opens(history: list[dict]) -> int:
         return 0
 
     today = dt.datetime.now(TPE).strftime("%Y-%m-%d")
+    # 自癒視窗:只在「本次抓得到的日期範圍內」做誤填清理,視窗外的舊紀錄不動
+    # (yfinance 只回 1 個月,更早的合法回填不能因為不在本次 map 就被誤刪)。
+    _heal_floor = min((min(m) for m in series.values() if m), default=None)
     filled = 0
     for rec in history:
         tgt = rec.get("target_session_date")
@@ -8421,6 +8438,14 @@ def backfill_actual_opens(history: list[dict]) -> int:
             if field not in rec and tgt in omap:
                 rec[field] = omap[tgt]
                 filled += 1
+            elif (field != "actual_open_taiex" and field in rec
+                  and _heal_floor and _heal_floor <= tgt and tgt not in omap):
+                # 自癒:個股欄位在(量>0 過濾後的)真交易日清單裡查無此日 → 先前寫入的是
+                # 假持平 bar(颱風休市),移除之。回顧表該列隨即消失(與「當日無開盤」一致)。
+                del rec[field]
+                filled += 1
+                print(f"[backfill] 移除 {tgt} 的 {field}(臨時休市日假 bar 誤填,已自癒)",
+                      file=sys.stderr)
         # 加權「前收」:供 live 動態估計美股訊號 → 開盤跳空的有效 beta(us_beta_samples)
         if "actual_taiex_prev_close" not in rec and tgt in opens_taiex:
             prior = [d for d in taiex_dates if d < tgt]
@@ -9342,6 +9367,7 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 **鐵則（務必遵守，違反即為失敗報告）**：
 1. **每條必須是一則真正的「新聞事件」**——寫出「發生了什麼事」（政策 / 財報 / 合約 / 併購 / 運價 / 新藥進度 / 車市數據 / 鋼價塑化報價 / 房市政策 / 電網儲能標案 / 觀光客流 / 國際大事…），並引用標題裡的具體內容、數字與來源媒體。
 2. **嚴禁**把「股價漲跌 X% / 法人買賣超 X 張 / 營收年增率 Y%」單獨當成一條——那些是量化數據、別的段落已涵蓋，**不算類股新聞**。若某類股當日你手上只有股價 / 法人數據而沒有新聞，**寧可略過該類股**，也不要拿數據湊數。
+   - **唯一例外「行情觀察」條目(全節最多 1 條)**:當【類股熱度表】顯示某類股出現**極端異動**(中位數 |漲跌| 大、或成交佔比異常放大)而新聞標題無對應事件時,可寫一條標記為**【類股名｜行情觀察】**的條目——必須(1)引用熱度表的具體數字、(2)給出機制推論並標明是推論(如「反映利差承壓,屬推論」)、(3)結尾標 **[行情觀察・信心:低-中]**。來源就寫「類股熱度表」——這張表信件內有刊出,讀者查得到。
 3. **只寫確有實質新聞的類股，沒有就略過該類**（避免信件冗長）;有全球重大新聞的類股(金融/航運/生技/汽車)再補全球，傳產/營建/重電/觀光以台灣在地事件為主。**不可跨類張冠李戴**（例：航運就寫運價 / SCFI / BDI / 長榮 / 陽明 / 塞港，**不要拿油價或別類消息充當航運**）。
 4. **影響說明必須具體**：要寫「利多/利空了誰、透過什麼機制、幅度多大」。**禁止**「對 X 類股有帶動作用」「情緒帶動」「中性偏正」這類無機制空話——沒講出機制就等於沒分析。
    - **航運**判斷「利多/利空幅度」時可援引油價(WTI,燃油成本)與匯率(USD/TWD)作背景(上方總經區有數據),但「新聞事件」本身仍須是運價/航商/塞港動態,油價匯率只當佐證、不可單獨充當航運新聞。
@@ -9365,12 +9391,12 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 
 **不可**與 00662 / 2330 硬扯傳導；改從「該類股 / 相關台股 / 整體市場」的角度說明。R12 的 A/B/C 級透明標記規則同樣適用(只有「迎來轉折」「市場關注」這類沒內容的 C 級標題不要寫)。
 
-## 十、總體經濟與政策環境
+## 十、總體經濟與政策環境（**精簡段:全節 8 句內**;收盤值/變動%上方「總經指標」卡已完整列出,本節**只寫解讀,不重抄數字表**）
 
-分三小段（每段 3-5 句，禁止超過）：
+分三小段（每段 2-3 句，禁止超過;(C) 有 geo_critical 事件時可放寬至 4 句）：
 
 **(A) 美國利率/美元/VIX/通膨**：
-列出 VIX、10Y、DXY、SOX 的**昨日收盤值與變動%**（用上方資料）。如有 CPI/PPI/就業數據釋出，必列數字。
+解讀 VIX、10Y、DXY、SOX 對今日風險偏好的意義(引用關鍵數字即可,不逐項重列)。如有 CPI/PPI/就業數據釋出，必列數字。
 
 **(B) Fed/美國政府重大政策**：
 FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等。**明確寫出對台灣科技業的影響**。
@@ -10935,9 +10961,12 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     # 賽期外直接略過:既省呼叫,也避免顯示上屆殘留戰績表。
     if not (_WC_WINDOW[0] <= now_tpe.date() <= _WC_WINDOW[1]):
         return out
-    # 昨日+今日(台北)完賽比分 —— 世足多在台北凌晨/上午開打,跨兩個 ESPN 日期較保險
+    # 完賽比分:ESPN 以「美國日期」分桶,2026 世足在北美 → 台北早上的場次落在
+    # 「台北日期−1」的桶;昨天(台北)早上的場次就落在「−2」的桶。只查 back=(1,0)
+    # 會讓台北 07:00 後開打的比賽永遠消失(實測:台北 07/12 09:00 的 8 強戰在
+    # bucket 20260711)→ 改掃 back=(2,1,0),顯示日期以各場開球時間換算台北為準。
     seen = set()
-    for back in (1, 0):
+    for back in (2, 1, 0):
         day = (now_tpe - dt.timedelta(days=back)).strftime("%Y%m%d")
         try:
             r = _http_get(
@@ -10963,13 +10992,28 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                 at = _wc_zh((away.get("team") or {}).get("displayName")
                             or (away.get("team") or {}).get("name", "?"))
                 detail = st.get("shortDetail") or st.get("detail") or "完賽"
+                # 顯示日期用「該場開球時間換算台北」,不可用查詢桶日(桶=美國日,會標錯天)
+                gdate = f"{day[4:6]}/{day[6:]}"
+                gts = ""
+                try:
+                    iso = str(ev.get("date") or "").replace("Z", "+00:00")
+                    ko_tpe = dt.datetime.fromisoformat(iso).astimezone(TPE)
+                    gdate = ko_tpe.strftime("%m/%d")
+                    gts = ko_tpe.isoformat()
+                except Exception:
+                    pass
                 out["results"].append({
                     "text": f"{at} {away.get('score', '-')} : {home.get('score', '-')} {ht}",
                     "status": str(detail)[:18],
-                    "date": f"{day[4:6]}/{day[6:]}",
+                    "date": gdate,
+                    "round": str((comp.get("notes") or [{}])[0].get("headline") or "")[:24],
+                    "_ts": gts,
                 })
         except Exception as e:
             print(f"[sports] 世足比分抓取失敗({day}): {e}", file=sys.stderr)
+    out["results"].sort(key=lambda g: g.get("_ts") or "", reverse=True)   # 新→舊
+    for g in out["results"]:
+        g.pop("_ts", None)
     out["results"] = out["results"][:14]
     # 各分組累計戰績表
     try:
@@ -11148,6 +11192,18 @@ def _tennis_tier(name: str) -> tuple:
     return (2, "")
 
 
+def _cut_word(s: str, n: int) -> str:
+    """截字加省略號,盡量斷在空白處:避免「Hall of Fame Open for th」「10:00 AM ED」
+    這種難看的中斷字(2026-07-12 週日信實見)。"""
+    s = str(s or "")
+    if len(s) <= n:
+        return s
+    cut = s.rfind(" ", 0, n)
+    if cut < int(n * 0.6):   # 找不到合理空白(如中文/連續長字)就硬切
+        cut = n - 1
+    return s[:cut].rstrip() + "…"
+
+
 def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     """網球 ATP/WTA 近日賽事與最新完賽勝方。ESPN 免費 scoreboard(不含逐盤比分)。
 
@@ -11175,13 +11231,20 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 f"https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard",
                 params={"dates": dates}, timeout=15)
             r.raise_for_status()
-            for ev in r.json().get("events", [])[:8]:
+            # 先依賽事層級排序再截量:ESPN 回傳順序與重要性無關,溫網週小賽事一多,
+            # 大滿貫會被擠出前 8 而整個消失(2026-07-12 週日信實見:溫網決賽週卻只列
+            # Challenger 小賽)。大滿貫優先、同層保留原序,再取前 10。
+            evs = sorted(r.json().get("events", []),
+                         key=lambda e: _tennis_tier(
+                             str(e.get("shortName") or e.get("name") or ""))[0])[:10]
+            for ev in evs:
                 status = (((ev.get("status") or {}).get("type")) or {}).get("shortDetail", "")
                 name = str(ev.get("shortName") or ev.get("name") or "")
                 tier_rank, tier_label = _tennis_tier(name)
                 if name and name not in seen_tourn:
                     seen_tourn.add(name)
-                    out["tournaments"].append({"name": name[:40], "status": str(status)[:18],
+                    out["tournaments"].append({"name": _cut_word(name, 40),
+                                               "status": _cut_word(str(status), 22),
                                                "tier": tier_label, "_tier": tier_rank})
                 for g in (ev.get("groupings") or []):
                     slug = str((g.get("grouping") or {}).get("slug") or "")
@@ -11203,7 +11266,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         seen_comp.add(cid)
                         by_label[label].append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
-                            "event": name[:30], "tier": tier_label,
+                            "event": _cut_word(name, 30), "tier": tier_label,
                             "_tier": tier_rank,
                             "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:
@@ -11687,8 +11750,12 @@ def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
         print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
 
 
-def _cap_analysis_text(text: str, max_chars: int = 2400) -> str:
-    """LLM 分析過長時在段落邊界截斷(避免把整封信推近 Gmail 102KB 剪裁線、也省手機下滑)。"""
+def _cap_analysis_text(text: str, max_chars: int = 3200) -> str:
+    """LLM 分析過長時在段落邊界截斷(避免把整封信推近 Gmail 102KB 剪裁線、也省手機下滑)。
+
+    2400→3200(2026-07-13):九、其他類股擴充到 8 類後,總長常態性超過 2400,
+    導致「十、總體經濟」整段被砍到只剩標題(07-13 信實見)。+800 字 ≈ +2KB HTML,
+    信件仍有餘裕;超標壓力由下游 keep-mode 壓縮 podcast 條數吸收,不會觸發 Gmail 剪裁。"""
     if not text or len(text) <= max_chars:
         return text
     cut = text.rfind("\n\n", 0, max_chars)
@@ -11696,7 +11763,14 @@ def _cap_analysis_text(text: str, max_chars: int = 2400) -> str:
         cut = text.rfind("\n", 0, max_chars)
     if cut < int(max_chars * 0.6):
         cut = max_chars
-    return text[:cut].rstrip() + "\n\n（…以下分析較長已截斷,完整數據與結論見上方卡片）"
+    out = text[:cut].rstrip()
+    # 孤兒標題清理:切點若剛好落在某節標題之後,會留下「## 十、…」+截斷訊息的空殼
+    # (07-13 信實見)。截斷後結尾若是標題行,連標題一起移除。
+    lines = out.split("\n")
+    while lines and lines[-1].lstrip().startswith("#"):
+        lines.pop()
+    out = "\n".join(lines).rstrip()
+    return out + "\n\n（…以下分析較長已截斷,完整數據與結論見上方卡片）"
 
 
 def _estimated_email_kb(html: str) -> float:
@@ -12354,9 +12428,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             b_color, b_label = "#64748b", "多空均衡"
         else:
             b_color, b_label = "#a16207", "窄幅（少數股撐盤）"
+        # 標示資料所屬 session:颱風臨時休市/連假後「昨日」其實是數天前的收盤,不標會誤導
+        _lts = str(quotes.get("LAST_TRADING_SESSION") or "")
+        _lts_label = f"(上一交易日 {_lts[5:].replace('-', '/')} 收盤)" if len(_lts) == 10 else ""
         breadth_html = f"""
         <div style="background:#f1f5f9;border-radius:10px;padding:14px 18px;margin:12px 0;">
-          <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:6px;">大盤成交額與市場廣度</div>
+          <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:6px;">大盤成交額與市場廣度{_lts_label}</div>
           <div style="font-size:14px;color:#0f172a;line-height:1.7;">
             成交金額 <b>{breadth.get('total_value_yi',0):,.0f} 億</b>　｜
             上漲 <b style="color:#dc2626;">{adv}</b> 檔・下跌 <b style="color:#16a34a;">{dec}</b> 檔・平盤 {unch} 檔　|
@@ -12364,6 +12441,33 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>
           </div>
           <div style="font-size:12px;color:#94a3b8;margin-top:6px;">※ 上漲家數 ≥ 60% 為普漲、≤ 40% 為普跌；若指數漲但廣度低 = 少數權值股撐盤、健康度差。</div>
+        </div>
+        """
+        # 類股熱度(前 5 熱門產業):附掛在廣度卡內。「九、其他類股」的行情觀察條目引用
+        # 此表 → 讀者看得到出處(先前 LLM 引 [類股熱度表] 但信裡沒有,形同隱形來源)。
+        # 純渲染 quotes["SECTOR_HEAT"](main 已算好,零網路);無資料自動略過。
+        _heat = quotes.get("SECTOR_HEAT") or {}
+        _hsec, _hrank = _heat.get("sectors") or {}, _heat.get("ranked") or []
+        if _hsec and _hrank:
+            _hrows = []
+            for _hn in _hrank[:5]:
+                _hs = _hsec.get(_hn) or {}
+                _hc = "#dc2626" if _hs.get("median_pct", 0) > 0 else (
+                    "#16a34a" if _hs.get("median_pct", 0) < 0 else "#64748b")
+                _hlead = "、".join(
+                    f"{m['code']} {m['name']} {m['pct']:+.1f}%"
+                    for m in (_hs.get("leaders") or [])[:2])
+                _hrows.append(
+                    f"<div style='font-size:12px;color:#334155;line-height:1.8;'>"
+                    f"<b>{_hn}</b>　成交 {_hs.get('value_yi', 0):,.0f} 億"
+                    f"({_hs.get('value_share_pct', 0):.1f}%)・中位 "
+                    f"<b style='color:{_hc};'>{_hs.get('median_pct', 0):+.1f}%</b>"
+                    f"　領先:{_hlead or '-'}</div>")
+            breadth_html += f"""
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;margin:12px 0;">
+          <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;全市場口徑）</div>
+          {''.join(_hrows)}
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">※ 中位=該產業個股漲跌中位數;「九、其他類股」的行情觀察條目取材於此。</div>
         </div>
         """
 
@@ -13006,6 +13110,19 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
 
     def add(name: str, status: str, detail: str = "") -> None:
         dq.append({"name": name, "status": status, "detail": str(detail)[:80]})
+
+    # 2330 預測透明度:預測與昨收幾乎持平、但 TSM ADR 有明顯波動 → 提示留意
+    # (可能是 bias 校正恰好抵銷 ADR 訊號,也可能是輸入新鮮度問題;2026-07-13 信
+    #  出現連兩日 +0.00% 預測,事後查為颱風假 bar 污染校正樣本——此警示讓下次一眼看到)。
+    try:
+        _wf = (predictions or {}).get("weighted_final")
+        _lc = (predictions or {}).get("last_2330")
+        _tsm_chg = abs(float((quotes.get("TSM") or {}).get("change_pct") or 0))
+        if _wf and _lc and abs(_wf / _lc - 1) < 0.0005 and _tsm_chg > 0.3:
+            add("2330 預測", "fallback",
+                f"預測與昨收持平但 TSM ADR 波動 {_tsm_chg:.2f}%——校正抵銷或輸入新鮮度,請留意")
+    except (TypeError, ValueError):
+        pass
 
     # 美股是否休市（國定假日)
     us_hol = quotes.get("US_HOLIDAY") or {}
@@ -13813,6 +13930,14 @@ def main() -> int:
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()
     trading_sessions = fetch_tw_trading_sessions(months=18)
+    # 上一交易日:供渲染端標示「昨收/成交額」實際屬於哪個 session。颱風臨時休市/連假後
+    # 「昨收」其實是好幾天前的收盤(07-13 信的昨收實為 07-09),不標日期會誤導。
+    try:
+        _today_str = now_tpe.strftime("%Y-%m-%d")
+        quotes["LAST_TRADING_SESSION"] = max(
+            (s for s in trading_sessions if s < _today_str), default="")
+    except Exception:
+        quotes["LAST_TRADING_SESSION"] = ""
     model_history = load_model_history()
     model_history, model_backfill = backfill_model_history(
         model_history, trading_sessions)

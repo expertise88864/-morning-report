@@ -863,3 +863,19 @@ def test_new_high_signal_features_registered():
         "inst_buy_vol_ratio": 18.0, "pct_5d": 5.0}])
     assert snap["2330"].get("rel_strength_5d") == 2.5
     assert snap["2330"].get("inst_buy_vol_ratio") == 18.0
+
+
+def test_cap_analysis_removes_orphan_header():
+    """截斷點恰落在節標題後 → 孤兒標題(「## 十、…」+截斷訊息空殼)一併移除。
+
+    2026-07-13 信實見:「十、總體經濟」只剩標題與截斷訊息。
+    """
+    body = "A" * 3100 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
+    capped = mr._cap_analysis_text(body)
+    assert "已截斷" in capped
+    assert "十、總體經濟" not in capped            # 孤兒標題被清掉
+    assert "B" not in capped
+    # 短文原樣通過;上限已放寬到 3200(九、擴充後 2400 常態超標)
+    assert mr._cap_analysis_text("short") == "short"
+    ok = "C" * 3000
+    assert mr._cap_analysis_text(ok) == ok

@@ -541,11 +541,20 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     blocks = []
     if wc_results or wc_groups or wc_fixtures:
         wc_inner = []
+        # 淘汰賽是否已開打:任一賽果/賽程帶「非小組賽」回合標籤(Quarterfinal/Round of 32…)。
+        # 用於下方收斂小組積分表;無回合標籤時保守視為未開打(積分表照常顯示,不誤藏)。
+        def _is_ko_round(r):
+            s = str(r or "")
+            return bool(s) and "group" not in s.lower() and "組" not in s
+        _knockout_started = (any(_is_ko_round(g.get("round")) for g in wc_results)
+                             or any(_is_ko_round(g.get("round")) for g in wc_fixtures))
         if wc_results:
             lines = "".join(
                 f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
                 f"<span style='color:#94a3b8;'>{g.get('date', '')}</span>　{htmllib.escape(g['text'])}"
-                f"　<span style='color:#16a34a;font-size:11px;'>{htmllib.escape(g.get('status', ''))}</span>"
+                + (f"　<span style='color:#94a3b8;font-size:11px;'>{htmllib.escape(g['round'])}</span>"
+                   if _is_ko_round(g.get("round")) else "")
+                + f"　<span style='color:#16a34a;font-size:11px;'>{htmllib.escape(g.get('status', ''))}</span>"
                 f"</div>"
                 for g in wc_results)
             wc_inner.append(
@@ -561,7 +570,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 for g in wc_fixtures)
             wc_inner.append(
                 f"<div style='margin:6px 0;'><b style='color:#0f172a;'>今日/近日賽程（台北時間）</b>{lines}</div>")
-        if wc_groups:
+        if wc_groups and _knockout_started:
+            # 淘汰賽已開打:12 組積分表已是舊聞(最終積分已在小組賽結束當天完整顯示過),
+            # 每日重複佔 ~3KB;收斂成一行。偵測不到淘汰賽回合標籤時走下方分支照常顯示(不誤藏)。
+            wc_inner.append(
+                "<div style='margin:6px 0;font-size:12px;color:#94a3b8;'>"
+                "小組賽已結束(最終積分表已於先前信件完整刊出);淘汰賽戰績與賽程如上。</div>")
+        elif wc_groups:
             # 收合:每組一行(隊名 積分(勝-和-敗)),iPhone 上比 12 張表省 3/4 高度。
             # 各組前 2 名(暫居晉級線內)以綠色粗體標示;小組賽結束後即代表晉級者。
             # 小組賽是否全部踢完 → 只用來切換標題/圖例措辭(不影響顯示哪些隊,一律列全隊)。

@@ -1101,3 +1101,109 @@ def test_medical_entity_cap_one_per_day(monkeypatch):
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
     titles = [item["title"] for item in out["medical"]]
     assert sum(1 for t in titles if "中榮" in t) <= 1
+
+
+# ===================== 世足淘汰賽修正(2026-07-13)=====================
+
+def test_fetch_worldcup_results_cover_previous_espn_bucket(monkeypatch):
+    """ESPN 以美國日期分桶:台北早上場次在「台北−2」桶也要抓到,日期以開球換算台北為準。
+
+    實測:台北 07/12 09:00 的 8 強戰在 bucket 20260711;舊版只查 back=(1,0) → 永久漏失。
+    """
+    import datetime as dt
+    wend = mr._WC_WINDOW[1]
+    now = dt.datetime(wend.year, wend.month, wend.day, 6, 40, tzinfo=mr.TPE) - dt.timedelta(days=2)
+    bucket = (now - dt.timedelta(days=2)).strftime("%Y%m%d")     # 「台北−2」桶
+    ko_utc = (now - dt.timedelta(days=1)).replace(hour=1, minute=0)  # 台北昨日 09:00
+    ko_iso = ko_utc.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+    class R:
+        def __init__(self, payload):
+            self._p = payload
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def fake_get(url, params=None, timeout=15, **k):
+        if "standings" in url:
+            return R({"children": []})
+        if (params or {}).get("dates") == bucket:
+            return R({"events": [{
+                "id": "qf1", "date": ko_iso,
+                "status": {"type": {"completed": True, "shortDetail": "FT"}},
+                "competitions": [{
+                    "competitors": [
+                        {"homeAway": "home", "team": {"displayName": "Argentina"}, "score": "2"},
+                        {"homeAway": "away", "team": {"displayName": "Switzerland"}, "score": "0"},
+                    ],
+                    "notes": [{"headline": "Quarterfinal"}],
+                }],
+            }]})
+        return R({"events": []})
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    out = mr.fetch_worldcup(now)
+    assert len(out["results"]) == 1
+    g = out["results"][0]
+    assert g["date"] == (now - dt.timedelta(days=1)).strftime("%m/%d")   # 台北日期,非查詢桶日
+    assert g["round"] == "Quarterfinal"
+    assert "2" in g["text"] and "0" in g["text"]
+
+
+def test_render_sports_worldcup_hides_groups_after_knockout():
+    """淘汰賽已開打(賽果帶非小組賽回合標籤)→ 小組積分表收斂成一行;小組賽賽果不觸發。"""
+    res_ko = [{"text": "阿根廷 2 : 0 瑞士", "status": "FT", "date": "07/12",
+               "round": "Quarterfinal"}]
+    sports = {"worldcup": {"results": res_ko, "fixtures": [], "groups": _wc_groups(3)}}
+    html = mr._render_sports_html(sports, htmllib)
+    assert "小組賽已結束" in html
+    assert "隊0-0" not in html                     # 積分表已收斂
+    assert "阿根廷 2 : 0 瑞士" in html             # 淘汰賽果照常顯示
+    assert "Quarterfinal" in html                  # 回合標籤顯示
+    # 小組賽回合(或無回合標籤)→ 積分表照常
+    res_grp = [{"text": "墨西哥 1 : 0 南非", "status": "FT", "date": "06/20",
+                "round": "Group A"}]
+    sports2 = {"worldcup": {"results": res_grp, "fixtures": [], "groups": _wc_groups(3)}}
+    html2 = mr._render_sports_html(sports2, htmllib)
+    assert "隊0-0" in html2 and "小組賽已結束" not in html2
+
+
+# ===================== 網球修正(2026-07-13)=====================
+
+def test_fetch_tennis_slam_survives_event_cap(monkeypatch):
+    """大滿貫排在 ESPN 回傳清單末端也不可消失(先依層級排序再截量)。
+
+    實測 2026-07-12 週日信:溫網決賽週,ESPN 前 8 筆全是 Challenger → 溫網整個不見。
+    """
+    def ev(name):
+        return {"shortName": name, "name": name,
+                "status": {"type": {"shortDetail": "Final"}}, "groupings": []}
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            # 9 個小賽在前,溫網在最後(超出舊版 [:8] 截點)
+            return {"events": [ev(f"Small Open {i}") for i in range(9)] + [ev("Wimbledon")]}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_tennis_digest()
+    names = [t["name"] for t in out["tournaments"]]
+    assert "Wimbledon" in names
+    assert names[0] == "Wimbledon"                 # 大滿貫排最前
+
+
+def test_cut_word_breaks_at_word_boundary():
+    """截字斷在空白處+省略號;不再出現「for th」「AM ED」這種中斷字。"""
+    s = "Cerity Partners Hall of Fame Open for the Championships"
+    out = mr._cut_word(s, 40)
+    assert out.endswith("…") and len(out) <= 41
+    assert not out.endswith("th…")                 # 不切在字中間
+    assert out[:-1] == s[:len(out) - 1] and s[len(out) - 1] == " " or out[-2] != " "
+    assert mr._cut_word("short", 40) == "short"    # 短字串原樣
+    cn = mr._cut_word("這是一段沒有空白的中文字串測試內容延伸更長", 10)
+    assert cn.endswith("…") and len(cn) == 10      # 中文無空白 → n-1 硬切+省略號

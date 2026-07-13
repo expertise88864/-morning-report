@@ -525,3 +525,19 @@ def test_short_oi_no_change_data_still_warns():
     a = mr.detect_market_alerts({"MACRO": {}}, {}, {}, {"foreign_oi_net": -66772})
     hit = next((x for x in a if "台指期淨空" in x["title"]), None)
     assert hit is not None
+
+
+def test_data_quality_flags_flat_2330_prediction_with_adr_move():
+    """2330 預測與昨收持平、但 TSM ADR 波動明顯 → 資料品質表提示(透明度)。"""
+    quotes = {"TSM": {"change_pct": -0.65}}
+    predictions = {"weighted_final": 2415.0, "last_2330": 2415.0}
+    dq = mr.build_data_quality(quotes, {}, predictions, [], [])
+    assert any(d["name"] == "2330 預測" and d["status"] == "fallback" for d in dq)
+    # ADR 幾乎沒動 → 持平預測屬正常,不提示
+    quotes2 = {"TSM": {"change_pct": 0.05}}
+    dq2 = mr.build_data_quality(quotes2, {}, predictions, [], [])
+    assert not any(d["name"] == "2330 預測" for d in dq2)
+    # 預測有明確方向 → 不提示
+    predictions3 = {"weighted_final": 2390.0, "last_2330": 2415.0}
+    dq3 = mr.build_data_quality(quotes, {}, predictions3, [], [])
+    assert not any(d["name"] == "2330 預測" for d in dq3)

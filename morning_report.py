@@ -1409,6 +1409,27 @@ def fetch_analyst_rating_momentum(tickers=_ANALYST_MOMENTUM_TICKERS, days: int =
     return out
 
 
+def _yield_curve_read(macro: dict) -> dict:
+    """美債殖利率曲線 → 白話結論(隱藏「倒掛/2s10s」等術語,使用者只要結果)。
+    回 {"detail": 顯示字串, "flag": warn|caution|normal} 或 {}(無資料)。不進計分。"""
+    m3 = (macro.get("13W") or {}).get("close")
+    m10 = (macro.get("10Y") or {}).get("close")
+    m30 = (macro.get("30Y") or {}).get("close")
+    if m3 is None or m10 is None:
+        return {}
+    spread = m10 - m3
+    if spread < -0.05:
+        flag, tail = "warn", "長期利率低於短期,歷史上常領先景氣轉弱,值得留意"
+    elif spread < 0.25:
+        flag, tail = "caution", "長短期利率差距偏小,市場對後續成長偏保守"
+    else:
+        flag, tail = "normal", "利率結構正常,市場預期成長穩定"
+    parts = f"短期 {m3:.2f}%、10 年 {m10:.2f}%"
+    if m30 is not None:
+        parts += f"、30 年 {m30:.2f}%"
+    return {"detail": f"美債利率{parts};{tail}", "flag": flag}
+
+
 def fetch_macro_indicators() -> dict:
     """
     抓關鍵總經 + 國際連動指標 + 過去 252 日歷史百分位（Task D）：
@@ -1433,6 +1454,8 @@ def fetch_macro_indicators() -> dict:
         "10Y":   "^TNX",
         "DXY":   "DX-Y.NYB",
         "13W":   "^IRX",
+        "5Y":    "^FVX",     # 美債 5 年期(完整化殖利率曲線判讀,白話呈現)
+        "30Y":   "^TYX",     # 美債 30 年期
         "N225":  "^N225",
         "SSE":   "000001.SS",
         "NQ":    "NQ=F",
@@ -8861,13 +8884,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         [f"  {fmt_m(n)}" for n in
          ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
           "NQ", "ES", "WTI", "GOLD"]])
-    # 殖利率曲線 10Y − 13W 利差（由已抓資料推導，倒掛為衰退領先訊號）
+    # 殖利率曲線 10Y − 13W 利差（由已抓資料推導，倒掛為衰退領先訊號）。
+    # 給 LLM 完整技術資訊以利判斷,但另附白話結論——信件呈現請用白話、避免術語(使用者要求)。
     ten_y = macro.get("10Y", {}) or {}
     thirteen_w = macro.get("13W", {}) or {}
     if ten_y.get("close") is not None and thirteen_w.get("close") is not None:
         spread = ten_y["close"] - thirteen_w["close"]
         macro_block += (f"\n  殖利率曲線 10Y−13W 利差 = {spread:+.2f} 個百分點"
                         f"（負值=倒掛，衰退領先訊號；轉正回升=景氣回溫訊號）")
+    _yc_read = _yield_curve_read(macro)
+    if _yc_read.get("detail"):
+        macro_block += f"\n  美債利率環境(請用此白話、勿在信中寫「倒掛/殖利率曲線」術語):{_yc_read['detail']}"
     # VIX 期限結構（VIX9D vs VIX）
     vix_term = macro.get("VIX_TERM") or {}
     if vix_term.get("ratio") is not None:
@@ -12249,6 +12276,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         fmt_macro_row("BTC 比特幣", "BTC", "風險偏好溫度計,24h 交易") +
         fmt_macro_row("銅期貨", "COPPER", "景氣領先指標,與台股出口連動")
     )
+    # 美債利率環境:白話結論(隱藏殖利率曲線/倒掛術語,只給結果)。跨兩欄放表末。
+    _yc = _yield_curve_read(macro)
+    if _yc.get("detail"):
+        _yc_color = {"warn": "#b91c1c", "caution": "#a16207", "normal": "#475569"}.get(
+            _yc.get("flag"), "#475569")
+        macro_rows += (
+            f"<tr><td colspan='4' style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>"
+            f"<span style='font-weight:700;color:#0f172a;font-size:13px;'>美債利率環境　</span>"
+            f"<span style='color:{_yc_color};font-size:13px;'>{_yc['detail']}</span></td></tr>")
     # === 外資台指期未平倉區塊:使用者要求隱藏。===
     #     TAIFEX_OI 資料仍計算並用於 conflict-shrink / 開盤預測的後台判定,只是不再單獨渲染本區塊。
     taifex_html = ""

@@ -615,3 +615,18 @@ def test_mixed_source_event_reaches_both_blocks():
     news[0]["published"] = "2026-07-15"
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
     assert p.count("美伊衝突升級油價飆漲") == 2       # 市場桶一次 + 世界取材段一次
+
+
+def test_yield_curve_read_plain_language():
+    """美債殖利率曲線白話化:倒掛/偏小/正常三態,且不吐術語(隱藏「倒掛/殖利率曲線」)。"""
+    warn = mr._yield_curve_read({"13W": {"close": 5.2}, "10Y": {"close": 4.5}})
+    assert warn["flag"] == "warn" and "領先景氣轉弱" in warn["detail"]
+    caution = mr._yield_curve_read({"13W": {"close": 4.4}, "10Y": {"close": 4.55}})
+    assert caution["flag"] == "caution"
+    normal = mr._yield_curve_read({"13W": {"close": 4.0}, "10Y": {"close": 4.6},
+                                   "30Y": {"close": 4.8}})
+    assert normal["flag"] == "normal" and "30 年 4.80%" in normal["detail"]
+    # 白話:結論裡不得出現艱澀術語
+    for r in (warn, caution, normal):
+        assert "倒掛" not in r["detail"] and "殖利率曲線" not in r["detail"] and "2s10s" not in r["detail"]
+    assert mr._yield_curve_read({"10Y": {"close": 4.5}}) == {}     # 缺短率 → 空

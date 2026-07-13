@@ -541,3 +541,32 @@ def test_data_quality_flags_flat_2330_prediction_with_adr_move():
     predictions3 = {"weighted_final": 2390.0, "last_2330": 2415.0}
     dq3 = mr.build_data_quality(quotes, {}, predictions3, [], [])
     assert not any(d["name"] == "2330 預測" for d in dq3)
+
+
+def test_world_news_feeds_and_prompt_block():
+    """世界大事 feeds 存在(不掛 company_label→不進計分);prompt 組出獨立取材段與新節指引。"""
+    for k in ("世界-國際大事", "世界-災難極端", "世界-科學太空", "世界-AI大事", "中央社國際"):
+        assert k in mr.RSS_FEEDS
+    news = [
+        {"source": "世界-國際大事", "title": "某國停火協議破裂", "published": "2026-07-15"},
+        {"source": "中央社國際", "title": "葉門局勢升溫", "published": "2026-07-15"},
+        {"source": "世界-科學太空", "title": "舊聞無日期", "date_missing": True},   # 無日期不入段
+        {"source": "鉅亨台股", "title": "台股大漲", "published": "2026-07-15"},      # 非世界來源不入段
+    ]
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    assert "【昨日世界大事新聞" in p
+    assert "[國際大事] 某國停火協議破裂" in p            # 前綴剝除為類別標示
+    assert "[中央社國際] 葉門局勢升溫" in p
+    assert "舊聞無日期" not in p.split("【昨日世界大事新聞")[1].split("】")[1][:600]
+    # 新節指引存在,且防誇大鐵則在內
+    assert "七之二、世界大事速覽" in p
+    assert "只寫「已發生」的事" in p
+
+
+def test_world_news_block_caps_per_source():
+    """每來源最多 4 則進 prompt(保跨類多樣性、控長度)。"""
+    news = [{"source": "世界-國際大事", "title": f"事件{i}", "published": "2026-07-15"}
+            for i in range(7)]
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    blk = p.split("【昨日世界大事新聞")[1]
+    assert "事件3" in blk and "事件4" not in blk

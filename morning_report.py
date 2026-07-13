@@ -263,6 +263,15 @@ RSS_FEEDS = {
     "Google-先進封裝":    _gnews_rss("CoWoS 先進封裝 台積電 日月光"),
     "Google-載板PCB":     _gnews_rss("ABF載板 PCB CCL 銅箔基板"),
     "Google-光通訊":      _gnews_rss("光通訊 CPO 矽光子 800G"),
+    # === 世界大事(非市場導向;供「世界大事速覽」取材)===
+    # 使用者需求(2026-07-16):晨報升級為「一封信掌握昨日世界」——股市之外的重大
+    # 地緣/災難/科學/AI 事件也要看得到。查詢經實測校準(召回 46-100 則/2d);
+    # 這些來源不掛 company_label、不進任何計分,純供 LLM「世界大事速覽」段取材。
+    "世界-國際大事":      _gnews_rss("戰爭 OR 停火 OR 大選 OR 政變 OR 峰會 OR 制裁"),
+    "世界-災難極端":      _gnews_rss("地震 OR 颱風 OR 洪災 OR 熱浪 OR 空難"),
+    "世界-科學太空":      _gnews_rss("NASA OR SpaceX OR 諾貝爾 OR 核融合 OR 太空任務"),
+    "世界-AI大事":        _gnews_rss("OpenAI OR Anthropic OR DeepMind OR AI模型 發布"),
+    "中央社國際":         "https://feeds.feedburner.com/rsscna/intworld",
 
     # === 央行 / 政策 ===
     "Federal Reserve":   "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -4302,13 +4311,16 @@ def fetch_news() -> list[dict]:
                 continue
 
             feed = _feedparser_parse_url_with_timeout(url)
-            is_sector_source = bool(_other_sector_label_from_source(str(source)))
+            # 類股與世界大事來源都要求有發布時間:這兩類直接餵專屬 prompt 段,
+            # 無日期的舊聞混進「昨日」會誤導(一般來源仍容忍缺日期,僅標記 date_missing)。
+            requires_date = (bool(_other_sector_label_from_source(str(source)))
+                             or str(source).startswith("世界-"))
             for entry in feed.entries[:10]:
                 source_name, source_url = _tw_entry_source(entry)
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
-                if is_sector_source and pub_dt is None:
+                if requires_date and pub_dt is None:
                     continue
                 item = {
                     "source": source,
@@ -8669,6 +8681,24 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    "write that no major news was found and do not invent details.]\n"
                    + "\n".join(sec_lines))
 
+    # 世界大事(非市場)新聞獨立成段:供「世界大事速覽」取材(來源前綴「世界-」+中央社國際)。
+    # 每來源最多 4 則:保留跨類別多樣性(國際/災難/科學/AI),同時控 prompt 長度(Codex 第二意見)。
+    world_lines: list[str] = []
+    _world_per_src: dict[str, int] = {}
+    for n in news:
+        src = str(n.get("source", ""))
+        if not (src.startswith("世界-") or src == "中央社國際") or n.get("date_missing"):
+            continue
+        _world_per_src[src] = _world_per_src.get(src, 0) + 1
+        if _world_per_src[src] > 4:
+            continue
+        cat = src[3:] if src.startswith("世界-") else src
+        published = str(n.get("published_dt") or n.get("published") or "")[:16]
+        world_lines.append(f"- [{published}][{cat}] {n['title']}")
+    if world_lines:
+        news_block += ("\n\n【昨日世界大事新聞(非市場導向,供「世界大事速覽」取材;"
+                       "[類別] 標示,標題末為來源媒體)】\n" + "\n".join(world_lines[:18]))
+
     # 類股熱度表(純行情數據,供「九、其他類股」判斷哪些類股在動、誰領漲;不進計分)
     heat_block = _format_sector_heat_block(quotes.get("SECTOR_HEAT") or {})
     if heat_block:
@@ -9345,9 +9375,19 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 
 每條必須附上**具體數據或來源**（例：「Nvidia 盤後 +2.3% 因 Mag7 ASIC 訂單超預期 [CNBC]」）
 
-## 八、科技板塊脈動（**8–12 條,最多 15 條**;有料就寫滿,沒料 8 條也可)
+## 七之二、世界大事速覽（3-5 條;**股市之外的世界**）
 
-**重要**:寫 6-9 條即可；只有 A 級具體事實很多時才可到 12 條。R12 已放寬:B 級資訊也可寫但須明確標註信心降級。
+讓讀者一眼掌握「昨天世界發生了什麼」。取材以【昨日世界大事新聞】為主,輔以其他新聞中的重大非市場事件。涵蓋(有才寫):重大地緣衝突/停火、大選政變、重大災難、科學/太空/醫藥里程碑、AI 重大發布、影響深遠的社會/制度變化。
+
+**鐵則**:
+1. 每條=「發生什麼(具體事實+數字+來源媒體)」+「為什麼重要」,合計 ≤60 字。
+2. 七、已寫過的市場事件**不重複**——這段寫的是「市場之外的世界」;確有市場影響者以半句帶過並指向對應段落即可。
+3. **只寫「已發生」的事**:科學/醫藥只寫已完成的里程碑(發射成功/核准上市/試驗解盲/得獎),**禁止**把「研究中/有望/可能」寫成突破;災難寫具體災情數字(死傷/停班/規模),不誇大不渲染。
+4. 來源 A/B/C 分級照 R12;寧可 3 條紮實,不要 5 條灌水;昨日確無大事就寫「昨日世界相對平靜」一行帶過。
+
+## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
+
+**重要**:寫 7-10 條;只有 A 級具體事實很多時才可到 12 條。R12 已放寬:B 級資訊也可寫但須明確標註信心降級。
 本段**只寫科技/半導體類股**(00662 與 2330 相關);非科技類股一律寫在下方「九、其他類股資訊」,不要混在這裡。
 
 **深度鐵則（每條必須三段式因果鏈，否則就是填充垃圾）**：
@@ -9842,7 +9882,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
         concise_prompt = (
             prompt
             + "\n\n【長度控制追加規則】\n"
-              "上一版容易過長。請完整輸出所有章節，但更短：科技板塊脈動 6-8 條(只寫科技);"
+              "上一版容易過長。請完整輸出所有章節，但更短：世界大事速覽最多 4 條、每條一行;"
+              "科技板塊脈動 6-8 條(只寫科技);"
               "其他類股資訊依類股熱度表挑今日在動且確有新聞的類股、每類 1-2 條、"
               "以真正的新聞事件為主(非股價/法人/營收數據),無新聞的類股略過;"
               "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
@@ -11920,12 +11961,14 @@ def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
         print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
 
 
-def _cap_analysis_text(text: str, max_chars: int = 3200) -> str:
+def _cap_analysis_text(text: str, max_chars: int = 3800) -> str:
     """LLM 分析過長時在段落邊界截斷(避免把整封信推近 Gmail 102KB 剪裁線、也省手機下滑)。
 
     2400→3200(2026-07-13):九、其他類股擴充到 8 類後,總長常態性超過 2400,
-    導致「十、總體經濟」整段被砍到只剩標題(07-13 信實見)。+800 字 ≈ +2KB HTML,
-    信件仍有餘裕;超標壓力由下游 keep-mode 壓縮 podcast 條數吸收,不會觸發 Gmail 剪裁。"""
+    導致「十、總體經濟」整段被砍到只剩標題(07-13 信實見)。
+    3200→3800(2026-07-16):新增「七之二、世界大事速覽」(3-5 條 ≈ +400-600 字)。
+    世界速覽排在分析前段,尾端截斷仍先犧牲十/十一(其數據已在上方卡片);
+    +600 字 ≈ +1.5KB HTML,超標壓力由下游 keep-mode 壓縮 podcast 條數吸收。"""
     if not text or len(text) <= max_chars:
         return text
     cut = text.rfind("\n\n", 0, max_chars)

@@ -870,12 +870,12 @@ def test_cap_analysis_removes_orphan_header():
 
     2026-07-13 信實見:「十、總體經濟」只剩標題與截斷訊息。
     """
-    body = "A" * 3100 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
+    body = "A" * 3700 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
     capped = mr._cap_analysis_text(body)
     assert "已截斷" in capped
     assert "十、總體經濟" not in capped            # 孤兒標題被清掉
     assert "B" not in capped
-    # 短文原樣通過;上限已放寬到 3200(九、擴充後 2400 常態超標)
+    # 短文原樣通過;上限 3800(九、擴充後調 3200,世界大事速覽再調 3800)
     assert mr._cap_analysis_text("short") == "short"
-    ok = "C" * 3000
+    ok = "C" * 3700
     assert mr._cap_analysis_text(ok) == ok

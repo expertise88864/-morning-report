@@ -13432,8 +13432,10 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
 
     # 總經 + 國際指標 + 期貨/商品 (12 項)
     macro = quotes.get("MACRO", {}) or {}
-    # VIX_TERM 是 derived，不算實際抓取項目
-    countable = {k: v for k, v in macro.items() if k != "VIX_TERM"}
+    # VIX_TERM 是 derived,不算實際抓取項目;5Y/30Y 為選配(僅供美債利率白話卡),
+    # 抓不到不應把整個總經來源判成 fallback、誤入 LLM 資料品質區塊(Codex review)。
+    _MACRO_OPTIONAL = {"VIX_TERM", "5Y", "30Y"}
+    countable = {k: v for k, v in macro.items() if k not in _MACRO_OPTIONAL}
     ok_n = sum(1 for v in countable.values()
                if isinstance(v, dict) and not v.get("error") and v.get("close") is not None)
     tot = len(countable) or 12

@@ -630,3 +630,15 @@ def test_yield_curve_read_plain_language():
     for r in (warn, caution, normal):
         assert "倒掛" not in r["detail"] and "殖利率曲線" not in r["detail"] and "2s10s" not in r["detail"]
     assert mr._yield_curve_read({"10Y": {"close": 4.5}}) == {}     # 缺短率 → 空
+
+
+def test_optional_5y30y_failure_does_not_degrade_macro_quality():
+    """選配 5Y/30Y 抓取失敗不得把總經來源判成 fallback(Codex review P2)。"""
+    macro = {n: {"close": 1.0, "change_pct": 0.0} for n in
+             ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
+              "NQ", "ES", "WTI", "GOLD", "BTC", "COPPER"]}
+    macro["5Y"] = {"error": "資料不足"}      # 選配失敗
+    macro["30Y"] = {"error": "資料不足"}
+    dq = mr.build_data_quality({"MACRO": macro}, {}, {}, [], [])
+    macro_row = next((d for d in dq if d["name"].startswith("總經/國際")), None)
+    assert macro_row is not None and macro_row["status"] == "ok"   # 不因選配失敗降級

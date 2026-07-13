@@ -8426,9 +8426,11 @@ def backfill_actual_opens(history: list[dict]) -> int:
         return 0
 
     today = dt.datetime.now(TPE).strftime("%Y-%m-%d")
-    # 自癒視窗:只在「本次抓得到的日期範圍內」做誤填清理,視窗外的舊紀錄不動
+    # 自癒視窗:逐欄位用「該標的自己」抓到的最早日期當下限,且空地圖不做任何刪除——
+    # 不能用跨標的全域下限:某一檔 yfinance 回空/被截短(無例外)時,會拿別檔的視窗
+    # 當授權、把這檔在視窗內的合法回填全數誤刪(Codex review P2)。視窗外的舊紀錄不動
     # (yfinance 只回 1 個月,更早的合法回填不能因為不在本次 map 就被誤刪)。
-    _heal_floor = min((min(m) for m in series.values() if m), default=None)
+    _floor_by_field = {f: (min(m) if m else None) for f, m in series.items()}
     filled = 0
     for rec in history:
         tgt = rec.get("target_session_date")
@@ -8438,10 +8440,12 @@ def backfill_actual_opens(history: list[dict]) -> int:
             if field not in rec and tgt in omap:
                 rec[field] = omap[tgt]
                 filled += 1
-            elif (field != "actual_open_taiex" and field in rec
-                  and _heal_floor and _heal_floor <= tgt and tgt not in omap):
-                # 自癒:個股欄位在(量>0 過濾後的)真交易日清單裡查無此日 → 先前寫入的是
-                # 假持平 bar(颱風休市),移除之。回顧表該列隨即消失(與「當日無開盤」一致)。
+            elif (field != "actual_open_taiex" and field in rec and omap
+                  and _floor_by_field[field] <= tgt and tgt not in omap):
+                # 自癒:個股欄位在「該標的」(量>0 過濾後的)真交易日清單裡查無此日 →
+                # 先前寫入的是假持平 bar(颱風休市),移除之。回顧表該列隨即消失
+                # (與「當日無開盤」一致)。若某日是被 yfinance 漏抓而誤刪,下次執行
+                # 該日重新出現在 map 時會自動回填補回(欄位缺+日期命中即補)。
                 del rec[field]
                 filled += 1
                 print(f"[backfill] 移除 {tgt} 的 {field}(臨時休市日假 bar 誤填,已自癒)",

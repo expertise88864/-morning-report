@@ -1226,3 +1226,41 @@ def test_backfill_skips_zero_volume_fake_bar_and_heals(monkeypatch):
     # 真交易日正常補值(假 bar 濾除不影響其他日期)
     assert history[1]["actual_open_2330"] == prices["2330.TW"] + 1
     assert history[1]["actual_open_taiex"] == prices["^TWII"]
+
+
+def test_backfill_heal_uses_per_symbol_floor(monkeypatch):
+    """自癒授權必須來自「該標的自己」的視窗:某檔回空/被截短時,不得拿別檔視窗誤刪其合法值。
+
+    Codex review P2:全域 floor 會在 00662 回空 DataFrame 時,拿 2330 的 30 天視窗當授權,
+    把 00662 在視窗內的所有合法 actual_open 刪光。
+    """
+    older = (dt.datetime.now(mr.TPE) - dt.timedelta(days=6)).strftime("%Y-%m-%d")
+    real = (dt.datetime.now(mr.TPE) - dt.timedelta(days=2)).strftime("%Y-%m-%d")
+
+    class Ticker:
+        def __init__(self, sym):
+            self.sym = sym
+
+        def history(self, **kwargs):
+            if self.sym == "00662.TW":
+                # 這檔 yfinance 回空(無例外,只是空)→ 不得因此刪它的歷史回填
+                return pd.DataFrame({"Open": [], "Close": [], "Volume": []},
+                                    index=pd.to_datetime([]))
+            if self.sym == "0050.TW":
+                # 這檔被截短:只回最近 2 天 → older 在它視窗外,不得刪
+                return pd.DataFrame({"Open": [50.0], "Close": [51.0], "Volume": [500]},
+                                    index=pd.to_datetime([real]))
+            p = 2400.0 if self.sym == "2330.TW" else 45000.0
+            return pd.DataFrame({"Open": [p, p + 5], "Close": [p + 1, p + 6],
+                                 "Volume": [1000, 1100]},
+                                index=pd.to_datetime([older, real]))
+
+    monkeypatch.setattr(mr.yf, "Ticker", lambda sym, *a, **k: Ticker(sym))
+    history = [
+        {"date": older, "target_session_date": older,
+         "actual_open_00662": 118.5,     # 合法舊回填:00662 回空 → 必須保留
+         "actual_open_0050": 49.0},      # 合法舊回填:older 在 0050 截短視窗外 → 必須保留
+    ]
+    mr.backfill_actual_opens(history)
+    assert history[0]["actual_open_00662"] == 118.5
+    assert history[0]["actual_open_0050"] == 49.0

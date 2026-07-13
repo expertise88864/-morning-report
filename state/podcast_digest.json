@@ -4294,6 +4294,41 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72952243",
+        "title": "Trump says U.S. will run Hormuz for 20% fee",
+        "published": "Mon, 13 Jul 2026 17:08:35 +0000",
+        "processed_at": "2026-07-13T20:41:17Z",
+        "digest": {
+          "summary_points": [
+            "特朗普宣布对通过霍尔木兹海峡的货物徵收20%補償費，並重啟「伊朗封鎖」，推動WTI和布倫特原油價格上漲超過4%。",
+            "記憶體與AI相關股票承壓，SK海力士在首爾暴跌15%，三星電子下跌近11%，拖累韓國KOSPI指數下跌9%。",
+            "傑富瑞將Shopify評級上調至買入，認為其獨特定位為代理商務和商家代理賦能工具的基礎設施層，股價上漲。",
+            "包括加州在內的多個州預計提起訴訟，尋求阻止派拉蒙-天空舞者以1100億美元收購華納兄弟探索，稱合併將形成反競爭力量。",
+            "Jersey Mike's Subs計劃上市，估值超120億美元，擁有超過3300家門店，近期在美國客戶滿意度指數中超越Chick-fil-A成為最高評價快餐品牌。",
+            "SpaceX股價再次下跌至140美元以下，接近135美元的IPO價格；資深投資者喬治·諾布爾警告未來幾個月將出現內部人拋售潮，認為IPO是最大的退出流動性操作。"
+          ],
+          "tickers": [
+            {
+              "name": "Shopify",
+              "code": "SHOP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "傑富瑞將其評級上調至買入，認為其獨特定位為代理商務和商家代理賦能工具的基礎設施層。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "資深投資者喬治·諾布爾警告內部人拋售潮，認為IPO是最大的退出流動性操作，股價下跌。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72948477",
         "title": "Apple alleges AI heist",
         "published": "Mon, 13 Jul 2026 10:57:28 +0000",
@@ -4834,53 +4869,6 @@
           "notable_quote": "BlackRock Chief Investment Officer Rick Reiter said that while the headline payroll figure missed expectations, the trend continued to look solid and stable relative to the more volatile data from the early part of the year and weaker figures seen in late 2025."
         },
         "shown_at": "2026-07-03T23:00:25Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72788185",
-        "title": "EU locks in Google fine",
-        "published": "Thu, 02 Jul 2026 10:42:04 +0000",
-        "processed_at": "2026-07-02T15:40:25Z",
-        "digest": {
-          "summary_points": [
-            "Alphabet 的 Google 因 Android 壟斷案被歐盟法院判賠 47 億歐元罰款，上訴遭駁回，為監管機構的重大勝利。",
-            "OpenAI 執行長 Sam Altman 提議將公司 5% 股權給予美國政府，以共享 AI 發展成果。",
-            "National Beverage (FIZZ) 宣布每股 3.25 美元特別現金股利，股價上漲 6%。",
-            "美國股指期貨漲跌互見，市場等待就業報告。",
-            "原油價格下跌 1.5% 至每桶 67 美元。",
-            "比特幣上漲 1% 至 60,000 美元。",
-            "黃金上漲 0.8% 至 4,066 美元。",
-            "CrowdStrike 進行 4 比 1 股票分割，今日生效。",
-            "美國股市週五因獨立紀念日休市。",
-            "今日上午 8:30 公布就業報告。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet Inc.",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "歐盟反壟斷罰款獲法院維持，對公司財務與監管前景不利。"
-            },
-            {
-              "name": "National Beverage Corp.",
-              "code": "FIZZ",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "宣布每股 3.25 美元特別股利，股價因此上揚。"
-            },
-            {
-              "name": "CrowdStrike Holdings",
-              "code": "CRWD",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "股票分割生效，無基本面變化。"
-            }
-          ],
-          "market_view": "美國股指期貨漲跌互見，原油下跌、黃金上漲，顯示市場在就業數據公布前態度謹慎。",
-          "action_view": "",
-          "notable_quote": "Sam Altman, the chief executive of the chat GPT maker, has argued that giving the public a financial stake in the company is the best way to share the upside of AI."
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },

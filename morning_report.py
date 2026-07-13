@@ -10956,6 +10956,11 @@ def _wc_zh(name: str) -> str:
 # 殘留上屆分組戰績被誤當「目前累計」顯示(stale standings)。下屆需更新此區間,
 # 與既有 FOMC_2026 硬編慣例一致。
 _WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 19))
+# 淘汰賽(32 強)首日:對戰表範圍查詢的固定下界。不可用「今天−N 天」滾動窗——
+# 小組賽 72 場+淘汰賽 32 場(未賽 fixtures 也算 events)=104 場會超過 ESPN 單次
+# 回覆 100 場上限而截尾(Codex review P1:06/28 查 06/03→07/20 正好全包)。
+# 取 −1 天緩衝:ESPN 以美國日期分桶,台北 06/28 早上的場次在 06/27 桶。
+_WC_KO_START = dt.date(2026, 6, 28)
 
 
 # ESPN season.slug → 中文回合名與顯示順序。回合資訊在 event.season.slug
@@ -11149,11 +11154,14 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     out["fixtures"] = fixtures[:10]
     # ---------- 淘汰賽對戰表:各回合完整賽果 + 未賽場次(台北開球時間) ----------
     # 使用者需求:不只昨日,32 強→決賽的「每一階段」賽果與開賽時間都要看得到。
-    # 範圍查詢一次取回;注意 ESPN 單次回覆上限 100 場(整屆 104 場會截掉尾端),
-    # 故起點用「今天−25 天」滾動:淘汰賽任一時點,25 天窗都涵蓋整個淘汰賽階段、
-    # 且含部分小組賽也不會破百(實測 06/11-07/20 全範圍=100 場即被截斷)。
+    # 範圍查詢一次取回,起點固定為淘汰賽首日−1(緩衝美國日期桶):
+    # 淘汰賽全部 32 場+末日小組賽遠低於 ESPN 單次回覆 100 場上限。
+    # 不可用滾動窗(會把小組賽+全部未賽 fixtures 包進來超過上限而截尾);
+    # 小組賽期間不查(對戰表僅 TBD 佔位無資訊,且會誤觸發渲染端的小組表收斂)。
+    if now_tpe.date() < _WC_KO_START:
+        return out
     try:
-        span = (f"{(now_tpe - dt.timedelta(days=25)).strftime('%Y%m%d')}"
+        span = (f"{(_WC_KO_START - dt.timedelta(days=1)).strftime('%Y%m%d')}"
                 f"-{(_WC_WINDOW[1] + dt.timedelta(days=1)).strftime('%Y%m%d')}")
         r = _http_get(
             "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",

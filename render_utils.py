@@ -563,15 +563,21 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             wc_inner.append(
                 "<div style='margin:6px 0;'><b style='color:#0f172a;'>淘汰賽對戰表(台北時間;灰字=未開賽)</b>"
                 + "".join(ko_parts) + "</div>")
-        # 淘汰賽是否已開打:有對戰表、或任一賽果/賽程帶「非小組賽」回合標籤。
-        # 用於下方收斂小組積分表;偵測不到時保守視為未開打(積分表照常顯示,不誤藏)。
+        # 淘汰賽是否已開打:對戰表中「有已完賽場次」、或任一賽果/賽程帶「非小組賽」
+        # 回合標籤。刻意不以「對戰表存在」為準——淘汰賽首日早上對戰表全是未賽場次,
+        # 一場未打就收掉小組最終積分表、吞掉末日小組賽賽果都太早(Codex review)。
+        # 偵測不到時保守視為未開打(積分表/近期戰績照常顯示,不誤藏)。
         def _is_ko_round(r):
             s = str(r or "")
             return bool(s) and "group" not in s.lower() and "組" not in s
-        _knockout_started = (bool(wc_knockout)
+        # _bracket_live=對戰表含已完賽場次(可完整取代近期戰績);對戰表缺席或全未賽時,
+        # 近期戰績照常顯示(bracket 抓取失敗要能降級,末日小組賽賽果也不能被吞)。
+        _bracket_live = any(g.get("done") for rd in wc_knockout
+                            for g in (rd.get("games") or []))
+        _knockout_started = (_bracket_live
                              or any(_is_ko_round(g.get("round")) for g in wc_results)
                              or any(_is_ko_round(g.get("round")) for g in wc_fixtures))
-        if wc_results and not wc_knockout:
+        if wc_results and not _bracket_live:
             lines = "".join(
                 f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
                 f"<span style='color:#94a3b8;'>{g.get('date', '')}</span>　{htmllib.escape(g['text'])}"
@@ -582,6 +588,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 for g in wc_results)
             wc_inner.append(
                 f"<div style='margin:6px 0;'><b style='color:#0f172a;'>近期戰績</b>{lines}</div>")
+        # 賽程是對戰表未賽場次的嚴格子集:對戰表存在(含全未賽)即不重複列
         if wc_fixtures and not wc_knockout:
             lines = "".join(
                 f"<div style='font-size:13px;color:#334155;line-height:1.8;'>"

@@ -1345,3 +1345,74 @@ def test_wc_placeholder_zh():
     assert mr._wc_placeholder_zh("Quarterfinal 3 Winner") == "8 強戰3勝方"
     assert mr._wc_placeholder_zh("Argentina") == "Argentina"
     assert mr._wc_placeholder_zh("") == ""
+
+
+def test_fetch_worldcup_no_bracket_during_group_stage(monkeypatch):
+    """小組賽期間不查對戰表(TBD 佔位無資訊+會誤觸發收斂),且範圍查詢不得發出。"""
+    import datetime as dt
+    ks = mr._WC_KO_START
+    now = dt.datetime(ks.year, ks.month, ks.day, 6, 30, tzinfo=mr.TPE) - dt.timedelta(days=5)
+    range_calls = []
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [], "children": []}
+
+    def fake_get(url, params=None, timeout=15, **k):
+        d = str((params or {}).get("dates") or "")
+        if "-" in d:
+            range_calls.append(d)
+        return R()
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    out = mr.fetch_worldcup(now)
+    assert "knockout" not in out
+    assert range_calls == []                          # 沒發範圍查詢
+
+
+def test_fetch_worldcup_bracket_range_uses_fixed_ko_start(monkeypatch):
+    """範圍查詢起點固定=淘汰賽首日−1(ESPN 100 場上限;滾動窗在淘汰賽早期會全包 104 場截尾)。"""
+    import datetime as dt
+    ks = mr._WC_KO_START
+    now = dt.datetime(ks.year, ks.month, ks.day, 6, 30, tzinfo=mr.TPE) + dt.timedelta(days=1)
+    range_calls = []
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [], "children": []}
+
+    def fake_get(url, params=None, timeout=15, **k):
+        d = str((params or {}).get("dates") or "")
+        if "-" in d:
+            range_calls.append(d)
+        return R()
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    mr.fetch_worldcup(now)
+    assert len(range_calls) == 1
+    start = range_calls[0].split("-")[0]
+    assert start == (ks - dt.timedelta(days=1)).strftime("%Y%m%d")
+
+
+def test_render_sports_worldcup_scheduled_bracket_keeps_groups_and_results():
+    """淘汰賽首日早上(對戰表全未賽):積分表不收斂、末日小組賽賽果照常顯示;
+    對戰表已含賽程 → 通用「今日/近日賽程」不重複列。"""
+    sports = {"worldcup": {
+        "results": [{"text": "墨西哥 1 : 0 南非", "status": "FT", "date": "06/27",
+                     "round": "小組賽"}],
+        "fixtures": [{"text": "加拿大 vs 南非", "kickoff": "06/29 03:00", "round": ""}],
+        "groups": _wc_groups(3),
+        "knockout": [{"name": "32 強", "games": [
+            {"text": "加拿大 vs 南非", "when": "06/29 03:00", "done": False}]}],
+    }}
+    html = mr._render_sports_html(sports, htmllib)
+    assert "隊0-0" in html                            # 積分表未收斂
+    assert "墨西哥 1 : 0 南非" in html                 # 小組賽賽果未被吞
+    assert "淘汰賽對戰表" in html and "06/29 03:00" in html
+    assert "今日/近日賽程" not in html                 # 賽程已在對戰表,不重複

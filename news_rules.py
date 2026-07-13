@@ -354,6 +354,10 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             # (Codex review)。
             label = n.get("company_label") or kept[dup_index].get("company_label")
             wcat = n.get("world_cat") or kept[dup_index].get("world_cat")
+            # 混源重複(一版來自市場來源、一版來自世界來源)→ 標 world_and_market:
+            # 該事件同屬兩個版面,市場配額桶與世界取材段都要收,不可因帶 world_cat
+            # 就被市場桶排除(Codex review 第二輪:否則跨源大事件從市場桶消失)。
+            mixed = bool(n.get("world_cat")) != bool(kept[dup_index].get("world_cat"))
             if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
                 kept[dup_index] = n
                 kept_norms[dup_index] = nt
@@ -361,6 +365,8 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
                 kept[dup_index]["company_label"] = label
             if wcat and not kept[dup_index].get("world_cat"):
                 kept[dup_index]["world_cat"] = wcat
+            if mixed:
+                kept[dup_index]["world_and_market"] = True
             dropped += 1
             continue
         kept.append(n)

@@ -8613,7 +8613,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             return src[3:]
         return src if src == "中央社國際" else ""
 
-    market_news = [n for n in news if not _world_cat_of(n)]
+    # world_and_market=同一事件同時來自市場與世界來源(dedup 時標記)→ 兩個版面都收
+    market_news = [n for n in news
+                   if not _world_cat_of(n) or n.get("world_and_market")]
     crit_news = [n for n in market_news if n.get("importance") == "critical"]
     high_news = [n for n in market_news if n.get("importance") == "high"]
     norm_news = [n for n in market_news if n.get("importance") == "normal"]

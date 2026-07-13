@@ -599,3 +599,19 @@ def test_dedup_news_preserves_world_cat():
     out = mr.dedup_news(news)
     assert len(out) == 1
     assert out[0].get("world_cat") == "國際大事"            # 標記併到留下的那筆
+
+
+def test_mixed_source_event_reaches_both_blocks():
+    """跨源大事件(市場來源+世界來源皆報導):dedup 後市場配額桶與世界取材段都要有
+    (Codex review 第二輪:不可因帶 world_cat 就從市場桶消失)。"""
+    news = mr.dedup_news([
+        {"source": "Google-地緣", "title": "美伊衝突升級油價飆漲",
+         "summary": "很長的摘要" * 30},
+        {"source": "世界-國際大事", "world_cat": "國際大事",
+         "title": "美伊衝突升級油價飆漲", "summary": "短"},
+    ])
+    assert len(news) == 1 and news[0].get("world_and_market") is True
+    news[0]["importance"] = "critical"
+    news[0]["published"] = "2026-07-15"
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    assert p.count("美伊衝突升級油價飆漲") == 2       # 市場桶一次 + 世界取材段一次

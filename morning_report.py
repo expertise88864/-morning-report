@@ -10958,10 +10958,55 @@ def _wc_zh(name: str) -> str:
 _WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 19))
 
 
-def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
-    """世足(FIFA World Cup):昨日/最新完賽戰績 + 各分組累計戰績表。
+# ESPN season.slug → 中文回合名與顯示順序。回合資訊在 event.season.slug
+# (實測;notes.headline 是 PK 大戰註記如「Paraguay advance 4-3 on penalties」,不是回合)。
+_WC_ROUND_ZH: dict[str, tuple[int, str]] = {
+    "group-stage": (0, "小組賽"),
+    "round-of-32": (1, "32 強"),
+    "round-of-16": (2, "16 強"),
+    "quarterfinals": (3, "8 強"),
+    "semifinals": (4, "4 強"),
+    "3rd-place-match": (5, "季軍戰"),   # 實測 slug(2026-07-14)
+    "third-place": (5, "季軍戰"),
+    "3rd-place": (5, "季軍戰"),
+    "third-place-game": (5, "季軍戰"),
+    "final": (6, "決賽"),               # 實測:決賽正確翻譯,slug 為 final(s) 之一
+    "finals": (6, "決賽"),
+}
 
-    使用者需求:世足要最新戰績、昨日戰績、目前累計戰績表。
+# 未定隊伍的英文佔位(如「Semifinal 2 Winner」)→ 繁中。僅處理實測見過的型態,
+# 其餘原樣顯示(誠實 fallback,不猜)。
+_WC_PLACEHOLDER_RE = None   # lazy compile
+
+
+def _wc_placeholder_zh(name: str) -> str:
+    global _WC_PLACEHOLDER_RE
+    if _WC_PLACEHOLDER_RE is None:
+        import re as _re
+        _WC_PLACEHOLDER_RE = _re.compile(
+            r"^(Round of 32|Round of 16|Quarterfinal|Semifinal)s?\s+(\d+)\s+(Winner|Loser)$",
+            _re.IGNORECASE)
+    m = _WC_PLACEHOLDER_RE.match(str(name or "").strip())
+    if not m:
+        return name
+    stage = {"round of 32": "32 強", "round of 16": "16 強",
+             "quarterfinal": "8 強", "semifinal": "4 強"}[m.group(1).lower()]
+    side = "勝方" if m.group(3).lower() == "winner" else "負方"
+    return f"{stage}戰{m.group(2)}{side}"
+
+
+def _wc_round_of(ev: dict) -> tuple[int, str]:
+    """回 (順序, 中文回合名)。未知 slug 原樣顯示(誠實不猜),排在最後。"""
+    slug = str(((ev.get("season") or {}).get("slug")) or "").strip().lower()
+    if slug in _WC_ROUND_ZH:
+        return _WC_ROUND_ZH[slug]
+    return (9, slug.replace("-", " ") or "其他")
+
+
+def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """世足(FIFA World Cup):昨日/最新完賽戰績 + 各分組累計戰績表 + 淘汰賽對戰表。
+
+    使用者需求:世足要各階段(小組賽/8 強/4 強/決賽…)完整賽果與未賽場次的開球時間。
     資料源 ESPN(免費,無金鑰)。賽期外回空 dict,渲染端自動略過。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
@@ -11014,7 +11059,8 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                     "text": f"{at} {away.get('score', '-')} : {home.get('score', '-')} {ht}",
                     "status": str(detail)[:18],
                     "date": gdate,
-                    "round": str((comp.get("notes") or [{}])[0].get("headline") or "")[:24],
+                    # 回合取自 season.slug(notes.headline 是 PK 註記非回合,勿用)
+                    "round": _wc_round_of(ev)[1],
                     "_ts": gts,
                 })
         except Exception as e:
@@ -11101,6 +11147,62 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     for f in fixtures:
         f.pop("_ko", None)
     out["fixtures"] = fixtures[:10]
+    # ---------- 淘汰賽對戰表:各回合完整賽果 + 未賽場次(台北開球時間) ----------
+    # 使用者需求:不只昨日,32 強→決賽的「每一階段」賽果與開賽時間都要看得到。
+    # 範圍查詢一次取回;注意 ESPN 單次回覆上限 100 場(整屆 104 場會截掉尾端),
+    # 故起點用「今天−25 天」滾動:淘汰賽任一時點,25 天窗都涵蓋整個淘汰賽階段、
+    # 且含部分小組賽也不會破百(實測 06/11-07/20 全範圍=100 場即被截斷)。
+    try:
+        span = (f"{(now_tpe - dt.timedelta(days=25)).strftime('%Y%m%d')}"
+                f"-{(_WC_WINDOW[1] + dt.timedelta(days=1)).strftime('%Y%m%d')}")
+        r = _http_get(
+            "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
+            params={"dates": span}, timeout=25)
+        r.raise_for_status()
+        rounds: dict[str, dict] = {}
+        for ev in r.json().get("events", []):
+            rank, rname = _wc_round_of(ev)
+            if rank == 0:
+                continue   # 小組賽已有積分表/近期戰績,不進對戰表
+            comp = (ev.get("competitions") or [{}])[0]
+            teams = comp.get("competitors", [])
+            if len(teams) != 2:
+                continue
+            home = next((t for t in teams if t.get("homeAway") == "home"), teams[0])
+            away = next((t for t in teams if t.get("homeAway") == "away"), teams[1])
+            ht = _wc_placeholder_zh(_wc_zh((home.get("team") or {}).get("displayName")
+                                           or (home.get("team") or {}).get("name", "?")))
+            at = _wc_placeholder_zh(_wc_zh((away.get("team") or {}).get("displayName")
+                                           or (away.get("team") or {}).get("name", "?")))
+            try:
+                iso = str(ev.get("date") or "").replace("Z", "+00:00")
+                ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
+            except Exception:
+                continue   # 無法定時間就不列,避免錯標
+            st = (((ev.get("status") or {}).get("type")) or {})
+            if st.get("completed"):
+                # PK 大戰註記在 notes.headline(如「X advance 4-3 on penalties」)
+                pk = str((comp.get("notes") or [{}])[0].get("headline") or "")
+                game = {"text": f"{at} {away.get('score', '-')} : {home.get('score', '-')} {ht}"
+                                + (f"(PK,{_wc_zh(pk.split(' advance')[0])} 晉級)" if "penalt" in pk.lower() else ""),
+                        "when": ko.strftime("%m/%d"), "done": True}
+            elif st.get("state") == "in":
+                game = {"text": f"{at} vs {ht}", "when": "進行中", "done": False}
+            else:
+                game = {"text": f"{at} vs {ht}",
+                        "when": ko.strftime("%m/%d %H:%M"), "done": False}
+            game["_ko"] = ko
+            rounds.setdefault(rname, {"rank": rank, "games": []})["games"].append(game)
+        ko_rounds = []
+        for rname, rd in sorted(rounds.items(), key=lambda kv: kv[1]["rank"]):
+            rd["games"].sort(key=lambda g: g["_ko"])
+            for g in rd["games"]:
+                g.pop("_ko", None)
+            ko_rounds.append({"name": rname, "games": rd["games"]})
+        if ko_rounds:
+            out["knockout"] = ko_rounds
+    except Exception as e:
+        print(f"[sports] 世足淘汰賽對戰表抓取失敗(不影響其他區塊): {e}", file=sys.stderr)
     return out
 
 
@@ -11362,6 +11464,52 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
+def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """中華職棒「今日賽程」(對戰組合+台北開賽時間)。
+
+    使用者需求:體育資訊要有開賽時間,不只賽果。與 fetch_cpbl_scores 同一 Yahoo
+    scoreboard 端點(免金鑰),只取今日「尚未開打」場次。抓不到回空(渲染端自動略過)。
+    """
+    from email.utils import parsedate_to_datetime
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    day = now_tpe.strftime("%Y-%m-%d")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                             "AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+               "Accept": "application/json"}
+    out = []
+    try:
+        r = _http_get(
+            "https://api-secure.sports.yahoo.com/v1/editorial/s/scoreboard",
+            params={"leagues": "cpbl", "date": day}, headers=headers, timeout=15)
+        r.raise_for_status()
+        sb = ((r.json().get("service") or {}).get("scoreboard")) or {}
+        games = sb.get("games") or {}
+        teams = sb.get("teams") or {}
+        for g in games.values():
+            status = str(g.get("status_type") or "")
+            if "final" in status or "postponed" in status or "cancel" in status:
+                continue   # 只列未開打(進行中也略過:晨報寄出時中職不會在打)
+            try:
+                gdt = parsedate_to_datetime(str(g.get("start_time") or ""))
+                if gdt.tzinfo is None:
+                    gdt = gdt.replace(tzinfo=dt.timezone.utc)
+                gdt = gdt.astimezone(TPE)
+            except (ValueError, TypeError):
+                continue   # 沒有可靠開賽時間就不列(開賽時間是本區塊的存在意義)
+            if gdt.strftime("%Y-%m-%d") != day:
+                continue   # Yahoo 日期桶偶含跨日場,以台北開賽日為準
+            away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
+            home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
+            out.append({"away": away, "home": home,
+                        "start": gdt.strftime("%H:%M"), "_ko": gdt})
+    except Exception as e:
+        print(f"[sports] CPBL 今日賽程抓取失敗: {e}", file=sys.stderr)
+    out.sort(key=lambda x: x["_ko"])
+    for x in out:
+        x.pop("_ko", None)
+    return out[:6]
+
+
 def _nba_offseason_note(now_tpe: dt.datetime) -> str:
     """NBA 休賽季(約 6 月下旬–10 月中)的階段說明,讓冠軍賽結束後該區不致空白空轉。
     球季進行中(含冠軍賽)→ 回空字串(由實際賽果渲染)。"""
@@ -11474,6 +11622,12 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             out["cpbl_scores"] = cs
     except Exception as e:
         print(f"[sports] CPBL 比分抓取失敗: {e}", file=sys.stderr)
+    try:
+        cf = fetch_cpbl_today_fixtures(now_tpe)
+        if cf:
+            out["cpbl_fixtures"] = cf
+    except Exception as e:
+        print(f"[sports] CPBL 今日賽程抓取失敗: {e}", file=sys.stderr)
     # NBA:往回找最近一場(冠軍賽系列非每天打),取比分+系列賽戰況(如 NY leads 3-1)
     try:
         for back in range(1, 6):

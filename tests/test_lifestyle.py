@@ -1133,13 +1133,14 @@ def test_fetch_worldcup_results_cover_previous_espn_bucket(monkeypatch):
         if (params or {}).get("dates") == bucket:
             return R({"events": [{
                 "id": "qf1", "date": ko_iso,
+                "season": {"slug": "quarterfinals"},   # 回合真源是 season.slug(非 notes)
                 "status": {"type": {"completed": True, "shortDetail": "FT"}},
                 "competitions": [{
                     "competitors": [
                         {"homeAway": "home", "team": {"displayName": "Argentina"}, "score": "2"},
                         {"homeAway": "away", "team": {"displayName": "Switzerland"}, "score": "0"},
                     ],
-                    "notes": [{"headline": "Quarterfinal"}],
+                    "notes": [{"headline": "Argentina advance 4-3 on penalties"}],
                 }],
             }]})
         return R({"events": []})
@@ -1149,7 +1150,7 @@ def test_fetch_worldcup_results_cover_previous_espn_bucket(monkeypatch):
     assert len(out["results"]) == 1
     g = out["results"][0]
     assert g["date"] == (now - dt.timedelta(days=1)).strftime("%m/%d")   # 台北日期,非查詢桶日
-    assert g["round"] == "Quarterfinal"
+    assert g["round"] == "8 強"                       # slug 翻譯,不受 PK 註記干擾
     assert "2" in g["text"] and "0" in g["text"]
 
 
@@ -1207,3 +1208,140 @@ def test_cut_word_breaks_at_word_boundary():
     assert mr._cut_word("short", 40) == "short"    # 短字串原樣
     cn = mr._cut_word("這是一段沒有空白的中文字串測試內容延伸更長", 10)
     assert cn.endswith("…") and len(cn) == 10      # 中文無空白 → n-1 硬切+省略號
+
+
+# ===================== 淘汰賽對戰表 + 中職今日賽程(2026-07-14)=====================
+
+def test_wc_round_of_translates_slugs_and_falls_back():
+    """season.slug → 中文回合;未知 slug 原樣顯示且排最後(誠實不猜)。"""
+    assert mr._wc_round_of({"season": {"slug": "quarterfinals"}}) == (3, "8 強")
+    assert mr._wc_round_of({"season": {"slug": "semifinals"}}) == (4, "4 強")
+    assert mr._wc_round_of({"season": {"slug": "group-stage"}})[1] == "小組賽"
+    rank, name = mr._wc_round_of({"season": {"slug": "mystery-round"}})
+    assert rank == 9 and name == "mystery round"
+    assert mr._wc_round_of({})[0] == 9                # 無 season 也不炸
+
+
+def test_fetch_worldcup_builds_knockout_bracket(monkeypatch):
+    """範圍查詢組出各回合完整對戰表:已完賽含比分/PK 註記,未賽含台北開球時間;小組賽排除。"""
+    import datetime as dt
+    wend = mr._WC_WINDOW[1]
+    now = dt.datetime(wend.year, wend.month, wend.day, 6, 40, tzinfo=mr.TPE) - dt.timedelta(days=3)
+
+    def ev(slug, iso, done, home, away, hs="1", as_="0", pk=""):
+        return {"id": f"{slug}-{home}", "date": iso,
+                "season": {"slug": slug},
+                "status": {"type": {"completed": done,
+                                    "state": "post" if done else "pre",
+                                    "shortDetail": "FT" if done else "Sched"}},
+                "competitions": [{
+                    "competitors": [
+                        {"homeAway": "home", "team": {"displayName": home}, "score": hs},
+                        {"homeAway": "away", "team": {"displayName": away}, "score": as_},
+                    ],
+                    "notes": ([{"headline": pk}] if pk else []),
+                }]}
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def fake_get(url, params=None, timeout=15, **k):
+        if "standings" in url:
+            return R({"children": []})
+        d = (params or {}).get("dates") or ""
+        if "-" in d:   # 範圍查詢 → 對戰表資料
+            return R({"events": [
+                ev("group-stage", "2026-06-20T01:00Z", True, "Mexico", "South Africa"),
+                ev("quarterfinals", "2026-07-12T01:00Z", True, "Argentina", "Switzerland",
+                   "0", "0", pk="Argentina advance 4-3 on penalties"),
+                ev("semifinals", "2026-07-14T19:00Z", False, "France", "Spain"),
+            ]})
+        return R({"events": []})
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    out = mr.fetch_worldcup(now)
+    ko = out.get("knockout") or []
+    names = [rd["name"] for rd in ko]
+    assert names == ["8 強", "4 強"]                  # 依回合順序;小組賽不進對戰表
+    qf = ko[0]["games"][0]
+    assert qf["done"] and "PK" in qf["text"] and "晉級" in qf["text"]
+    sf = ko[1]["games"][0]
+    assert not sf["done"]
+    # 台北開球時間:07-14T19:00Z = 台北 07/15 03:00
+    assert sf["when"] == "07/15 03:00"
+
+
+def test_render_sports_worldcup_knockout_bracket_supersedes():
+    """對戰表存在 → 為世足主視圖:近期戰績/今日賽程不再另列,小組表收斂。"""
+    sports = {"worldcup": {
+        "results": [{"text": "阿根廷 2 : 0 瑞士", "status": "FT", "date": "07/12",
+                     "round": "8 強"}],
+        "fixtures": [{"text": "法國 vs 西班牙", "kickoff": "07/15 03:00", "round": ""}],
+        "groups": _wc_groups(3),
+        "knockout": [
+            {"name": "8 強", "games": [
+                {"text": "阿根廷 2 : 0 瑞士", "when": "07/12", "done": True}]},
+            {"name": "4 強", "games": [
+                {"text": "法國 vs 西班牙", "when": "07/15 03:00", "done": False}]},
+        ],
+    }}
+    html = mr._render_sports_html(sports, htmllib)
+    assert "淘汰賽對戰表" in html
+    assert "8 強" in html and "4 強" in html
+    assert "07/15 03:00" in html                     # 未賽場次帶開球時間
+    assert "近期戰績" not in html                     # 子集區塊不重複
+    assert "今日/近日賽程" not in html
+    assert "隊0-0" not in html and "小組賽已結束" in html   # 小組表收斂
+
+
+def test_fetch_cpbl_today_fixtures(monkeypatch):
+    """今日未開打場次列開賽時間(台北);已完賽/非今日不列。"""
+    import datetime as dt
+    now = dt.datetime.now(mr.TPE).replace(hour=6, minute=30)
+    today_evening = now.replace(hour=18, minute=35)
+    rfc = today_evening.astimezone(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"service": {"scoreboard": {
+                "teams": {"t1": {"display_name": "味全龍"}, "t2": {"display_name": "統一7-ELEVEn獅"},
+                          "t3": {"display_name": "樂天桃猿"}, "t4": {"display_name": "中信兄弟"}},
+                "games": {
+                    "g1": {"status_type": "status.type.pregame", "start_time": rfc,
+                           "away_team_id": "t1", "home_team_id": "t2"},
+                    "g2": {"status_type": "status.type.final", "start_time": rfc,
+                           "away_team_id": "t3", "home_team_id": "t4",
+                           "total_away_points": "3", "total_home_points": "5"},
+                },
+            }}}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_cpbl_today_fixtures(now)
+    assert len(out) == 1                              # final 不列
+    assert out[0]["away"] == "味全龍" and out[0]["home"] == "統一7-ELEVEn獅"
+    assert out[0]["start"] == "18:35"
+
+
+def test_render_cpbl_fixtures_block():
+    sports = {"cpbl_fixtures": [{"away": "味全龍", "home": "統一7-ELEVEn獅", "start": "18:35"}]}
+    html = mr._render_sports_html(sports, htmllib)
+    assert "中華職棒 今日賽程" in html and "18:35" in html and "味全龍 vs 統一7-ELEVEn獅" in html
+
+
+def test_wc_placeholder_zh():
+    """未定隊伍英文佔位翻繁中;非佔位原樣(誠實 fallback)。"""
+    assert mr._wc_placeholder_zh("Semifinal 2 Winner") == "4 強戰2勝方"
+    assert mr._wc_placeholder_zh("Semifinal 1 Loser") == "4 強戰1負方"
+    assert mr._wc_placeholder_zh("Quarterfinal 3 Winner") == "8 強戰3勝方"
+    assert mr._wc_placeholder_zh("Argentina") == "Argentina"
+    assert mr._wc_placeholder_zh("") == ""

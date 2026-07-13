@@ -532,23 +532,46 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     wc_results = worldcup.get("results") or []
     wc_groups = worldcup.get("groups") or []
     wc_fixtures = worldcup.get("fixtures") or []
+    wc_knockout = worldcup.get("knockout") or []
     mlb_tw = (sports or {}).get("mlb_tw") or []
     tennis = (sports or {}).get("tennis") or {}
-    if not (cpbl or cpbl_scores or nba or nba_fav or nba_offseason or standings or wc_results
-            or wc_groups or wc_fixtures or mlb_tw or tennis.get("tournaments")
+    cpbl_fixtures = (sports or {}).get("cpbl_fixtures") or []
+    if not (cpbl or cpbl_scores or cpbl_fixtures or nba or nba_fav or nba_offseason
+            or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
+            or mlb_tw or tennis.get("tournaments")
             or tennis.get("results") or any(news.values())):
         return ""
     blocks = []
-    if wc_results or wc_groups or wc_fixtures:
+    if wc_results or wc_groups or wc_fixtures or wc_knockout:
         wc_inner = []
-        # 淘汰賽是否已開打:任一賽果/賽程帶「非小組賽」回合標籤(Quarterfinal/Round of 32…)。
-        # 用於下方收斂小組積分表;無回合標籤時保守視為未開打(積分表照常顯示,不誤藏)。
+        # 淘汰賽對戰表(各回合完整賽果+未賽場次台北開球時間):存在時為世足主視圖,
+        # 「近期戰績/今日賽程」(其內容是對戰表的子集)不再另列,只保留小組表收斂註記。
+        if wc_knockout:
+            ko_parts = []
+            for rd in wc_knockout:
+                glines = "".join(
+                    "<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+                    f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
+                    + (f"{htmllib.escape(g['text'])}"
+                       if g.get("done")
+                       else f"<span style='color:#64748b;'>{htmllib.escape(g['text'])}</span>")
+                    + "</div>"
+                    for g in rd.get("games") or [])
+                ko_parts.append(
+                    f"<div style='margin:4px 0;'><b style='color:#0f172a;font-size:13px;'>"
+                    f"{htmllib.escape(rd.get('name', ''))}</b>{glines}</div>")
+            wc_inner.append(
+                "<div style='margin:6px 0;'><b style='color:#0f172a;'>淘汰賽對戰表(台北時間;灰字=未開賽)</b>"
+                + "".join(ko_parts) + "</div>")
+        # 淘汰賽是否已開打:有對戰表、或任一賽果/賽程帶「非小組賽」回合標籤。
+        # 用於下方收斂小組積分表;偵測不到時保守視為未開打(積分表照常顯示,不誤藏)。
         def _is_ko_round(r):
             s = str(r or "")
             return bool(s) and "group" not in s.lower() and "組" not in s
-        _knockout_started = (any(_is_ko_round(g.get("round")) for g in wc_results)
+        _knockout_started = (bool(wc_knockout)
+                             or any(_is_ko_round(g.get("round")) for g in wc_results)
                              or any(_is_ko_round(g.get("round")) for g in wc_fixtures))
-        if wc_results:
+        if wc_results and not wc_knockout:
             lines = "".join(
                 f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
                 f"<span style='color:#94a3b8;'>{g.get('date', '')}</span>　{htmllib.escape(g['text'])}"
@@ -559,7 +582,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 for g in wc_results)
             wc_inner.append(
                 f"<div style='margin:6px 0;'><b style='color:#0f172a;'>近期戰績</b>{lines}</div>")
-        if wc_fixtures:
+        if wc_fixtures and not wc_knockout:
             lines = "".join(
                 f"<div style='font-size:13px;color:#334155;line-height:1.8;'>"
                 f"<span style='color:#94a3b8;'>{htmllib.escape(g.get('kickoff', ''))}</span>　"
@@ -640,6 +663,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for s in cpbl_scores)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 最新賽果</b>"
+            + rows + "</div>")
+    if cpbl_fixtures:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(str(f.get('start', '')))}</span>　"
+            f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}</div>"
+            for f in cpbl_fixtures)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 今日賽程（台北時間）</b>"
             + rows + "</div>")
     if cpbl:
         rows = "".join(

@@ -1264,3 +1264,37 @@ def test_backfill_heal_uses_per_symbol_floor(monkeypatch):
     mr.backfill_actual_opens(history)
     assert history[0]["actual_open_00662"] == 118.5
     assert history[0]["actual_open_0050"] == 49.0
+
+
+def test_backfill_heal_requires_taiex_corroboration(monkeypatch):
+    """單檔視窗「中間」被 Yahoo 漏抓 ≠ 休市:^TWII 當日有交易 → 不得刪該檔合法回填。
+
+    Codex review 第二輪:自癒授權需雙重佐證——該標的地圖查無「且」^TWII 也查無
+    (大盤確實沒開)才可刪。
+    """
+    older = (dt.datetime.now(mr.TPE) - dt.timedelta(days=6)).strftime("%Y-%m-%d")
+    mid = (dt.datetime.now(mr.TPE) - dt.timedelta(days=4)).strftime("%Y-%m-%d")
+    real = (dt.datetime.now(mr.TPE) - dt.timedelta(days=2)).strftime("%Y-%m-%d")
+
+    class Ticker:
+        def __init__(self, sym):
+            self.sym = sym
+
+        def history(self, **kwargs):
+            if self.sym == "2330.TW":
+                # Yahoo 對這檔漏抓 mid(視窗中間的洞),但 mid 其實是真交易日
+                return pd.DataFrame({"Open": [2400.0, 2410.0], "Close": [2401.0, 2411.0],
+                                     "Volume": [1000, 1100]},
+                                    index=pd.to_datetime([older, real]))
+            p = {"00662.TW": 120.0, "0050.TW": 50.0, "^TWII": 45000.0}[self.sym]
+            # 其他來源(含 ^TWII)mid 都有 → 大盤當天有交易
+            return pd.DataFrame({"Open": [p, p + 1, p + 2], "Close": [p, p + 1, p + 2],
+                                 "Volume": [900, 950, 980]},
+                                index=pd.to_datetime([older, mid, real]))
+
+    monkeypatch.setattr(mr.yf, "Ticker", lambda sym, *a, **k: Ticker(sym))
+    history = [{"date": mid, "target_session_date": mid,
+                "actual_open_2330": 2405.0}]      # 合法舊回填
+    mr.backfill_actual_opens(history)
+    # ^TWII 有 mid → 只是單檔漏抓,合法值必須保留
+    assert history[0]["actual_open_2330"] == 2405.0

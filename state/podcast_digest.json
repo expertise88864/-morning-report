@@ -1553,6 +1553,64 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "ee0ca554-9ada-4bcf-a77d-e644cfad35c8",
+        "title": "EP319. xAI & Meta 重回賽道、蘋果要告 OpenAI、微軟 Xbox 大重整 | M觀點",
+        "published": "Mon, 13 Jul 2026 07:25:08 GMT",
+        "processed_at": "2026-07-13T11:46:49Z",
+        "digest": {
+          "summary_points": [
+            "上週AI模型密集發布，OpenAI的GPT 5.6全面上線，XAI的Grog 4.5與Meta的Muse Spark 1.1表現超乎預期，雙雙打臉市場原先看衰的觀點。",
+            "根據Artificial Analysis的AAAI指數，Grog 4.5得分54，實力等同GPT 5.5與Claude Opus 4.8，但平均價格僅GPT 5.6 Tera的60%，且處理任務時消耗的Token僅其1/3，以不到20%成本提供同等能力。",
+            "Meta的Muse Spark 1.1在AAAI得分51，實力介於GPT 5.4與5.5之間，超越開源模型GLM 5.2，成本比GLM 5.2更低，展現Meta仍具模型研發競爭力。",
+            "AI前沿賽局差距有限：Anthropy領先OpenAI約一個月，OpenAI領先XAI兩個月，Meta再落後一到兩個月，整體仍在可追趕範圍，無需認輸。",
+            "XAI與Meta擁有自研模型的三大優勢：算力（大量GPU）、獨家資料（X的高品質文字、Meta的社群數據）、人才，因此不會放棄模型研發；市場過度解讀「賣算力」為投降訊號。",
+            "蘋果正式控告OpenAI竊取商業機密，指控其前任副總裁Tan Tan挖角蘋果員工並要求攜帶機密，已有工程師因未歸還公司筆電而遭調查，顯示OpenAI可能涉系統性竊密。",
+            "微軟宣佈Xbox大裁員，幅度達20%（3,200人），並將四家工作室獨立或出售；新任CEO Asha Sharma坦承Xbox獲利能力僅對手（Sony、任天堂）的1/3至1/10，主機銷量與Game Pass成長皆不如預期。",
+            "主持人認為微軟DNA不適合2C遊戲業務，應考慮將Xbox賣給Netflix等公司；若不放棄，下一代Xbox應轉型為PC based平台，並推出Xbox OS與雙系統版本。",
+            "遊戲產業在AI時代將面臨人力精簡，過去需200人的專案未來可能只需50人，所有遊戲公司目前都處於超編狀態，裁員重整為大勢所趨。",
+            "OpenAI與Anthropy因模型能力而跨足各垂直應用，形成與客戶競爭的「全民公敵」形象，已引發業界反彈，主持人認為這是不健康的文化。",
+            "Meta的Muse Spark 1.1在Coding Agent Index得分69，超越GLM 5.2的58分，但落後GPT 5.5（76分），顯示Meta在代理式程式設計能力上已有顯著進步。",
+            "Grog 4.5的速度快且成本低，成為目前性價比最高的前沿級模型，將搶佔中階市場，並可能吸引原本使用Anthropy和OpenAI的開發者回流。",
+            "對於微軟的Xbox重整，裁員與工作室瘦身被視為正確方向，主因過去過度尊重創作者導致商業化不足，買來的獨立工作室缺乏生存壓力反而影響產品競爭力。",
+            "蘋果提告的訴訟可能迫使OpenAI交出內部文件，若證實高層指引竊密，將打擊OpenAI聲譽與未來合作；主持人認為OpenAI文化與CEO Sam Altman有關。",
+            "Google的Gemini 3.5 Pro預計近期發布，主持人預期實力約與Grog 4.5同級，不會超越GPT 5.6，真正大招可能在年底的Gemini 4.0。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "AI模型Muse Spark 1.1追趕上來，實力介入GPT 5.4與5.5之間，且成本更低，證明Meta仍具競爭力，打臉市場原先看衰觀點。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Xbox業務獲利只有對手的1/3到1/10，裁員20%仍難解決根本問題，主持人認為微軟應賣掉Xbox，遊戲業務不適合其企業DNA。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "提告OpenAI竊取商業機密，目前證據對蘋果有利，但訴訟仍在進行，尚無法判斷對公司財務的實質影響。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Gemini 3.5 Pro將發表，預計能力與Grog 4.5同級，不會超越GPT 5.6，市場期待有限，真正突破可能待Gemini 4.0。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "現在才四局上半，五比二，有必要認輸嗎？"
+        }
+      },
+      {
         "guid": "aa467feb-5e2f-49aa-b3f9-a5f157771d85",
         "title": "EP318. 科技股能持續打敗大盤嗎？Feat. 曼報Pro Vincent | M觀點",
         "published": "Thu, 09 Jul 2026 15:50:00 GMT",
@@ -3761,6 +3819,44 @@
     "name": "WSJ What's News",
     "episodes": [
       {
+        "guid": "e07a72f2-7ea5-11f1-852d-cf8f6f49d26b",
+        "title": "Stunned GOP Looks to Replace Graham After His Sudden Death",
+        "published": "Mon, 13 Jul 2026 10:23:00 -0000",
+        "processed_at": "2026-07-13T10:42:32Z",
+        "digest": {
+          "summary_points": [
+            "SK hynix 在納斯達克掛牌後，股價在南韓暴跌15%，在美國盤前也下跌10%。",
+            "美國股票期貨週一開盤走低，那斯達克100指數期貨跌幅超過1%。",
+            "本週美國大型銀行將拉開財報季序幕，市場預期標普500成分股第二季每股盈餘成長23%。",
+            "分析師認為高盈餘預期來自AI驅動的效率提升、營運韌性與成本削減，營收成長仍穩健達12%。",
+            "2026日曆年盈餘成長率預估為24%。",
+            "《華爾街日報》調查顯示經濟學家將美國2025年GDP成長預測上修至2.1%，高於4月的預測。",
+            "通膨預計下半年將維持在3%以上，使聯準會沒有降息空間。",
+            "中國快時尚品牌Shein獲得北京當局批准赴香港IPO，估值可能超過400億美元，預計第三季掛牌。",
+            "財報季展望樂觀，但黏性通膨仍是隱憂。"
+          ],
+          "tickers": [
+            {
+              "name": "SK hynix",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "納斯達克上市後股價暴跌15%，反映市場對其前景的懷疑。"
+            },
+            {
+              "name": "Shein",
+              "code": "",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "獲得北京批准赴港IPO，但無明確多空看法。"
+            }
+          ],
+          "market_view": "週一美股開低，受SK hynix股價暴跌拖累；但財報季預期樂觀，標普500盈餘成長率達23%，GDP預測上修至2.1%。",
+          "action_view": "",
+          "notable_quote": "We're past the AI hype. Now we want some sort of proof that there are returns on these investments."
+        }
+      },
+      {
         "guid": "7bd6b004-7dd8-11f1-89ef-670e7719ef34",
         "title": "More States Want to Tax the Rich. Here's How.",
         "published": "Sun, 12 Jul 2026 10:00:00 -0000",
@@ -4172,60 +4268,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-07T22:58:09Z"
-      },
-      {
-        "guid": "9bf9cdc4-7925-11f1-9148-6f24c2a46837",
-        "title": "How the White House Overturned a World Cup Red Card",
-        "published": "Mon, 06 Jul 2026 10:27:00 -0000",
-        "processed_at": "2026-07-06T11:50:35Z",
-        "digest": {
-          "summary_points": [
-            "美股期貨週一上漲，那斯達克100指數期貨漲逾1%，科技股熱情重燃。",
-            "本週重要事件包括南韓晶片大廠SK海力士在那斯達克上市，以及三星電子財報。",
-            "SpaceX將於週二納入那斯達克100指數。",
-            "聯準會首次利率會議紀要將公佈，市場關注新主席凱文·沃什的鷹派程度。",
-            "油價續跌，因OPEC+同意增產，且荷姆茲海峽航運逐步恢復，可能導致供過於求。",
-            "OPEC+自下月起日產量增加約18.8萬桶。",
-            "英國廉航EasyJet同意美國投資公司Castle Lake的收購提議，交易金額可能超過70億美元，溢價24%。",
-            "美國電動車銷售今年以來因聯邦補貼結束而下降25%，但分析師預期不會持續。",
-            "最新研究顯示電動車電池續航力優於預期：上路5年後仍可維持原始續航里程的95%。",
-            "全球電動車銷量佔新車銷售15%，預計2030年達近25%。"
-          ],
-          "tickers": [
-            {
-              "name": "SK海力士",
-              "code": "000660.KS",
-              "market": "KR",
-              "direction": "neutral",
-              "reason": "即將在那斯達克上市，但主持人未給明確方向。"
-            },
-            {
-              "name": "三星電子",
-              "code": "005930.KS",
-              "market": "KR",
-              "direction": "neutral",
-              "reason": "本週將公佈財報，主持人未給明確方向。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "將納入那斯達克100指數，反映科技股正面情緒。"
-            },
-            {
-              "name": "易捷航空",
-              "code": "EZJ.LN",
-              "market": "UK",
-              "direction": "bullish",
-              "reason": "同意以溢價24%被收購，股價上漲。"
-            }
-          ],
-          "market_view": "美股期貨週一上漲，科技股熱情重燃，但油價因OPEC+增產及荷姆茲海峽恢復而下跌，市場關注本週聯準會會議紀要及企業財報。",
-          "action_view": "",
-          "notable_quote": "According to a test that's been done by a company called Recurrent that after five years on the road, the average EV will still be able to drive up to 95% of its original range."
-        },
-        "shown_at": "2026-07-06T23:02:03Z"
       }
     ]
   },

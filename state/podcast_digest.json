@@ -2777,6 +2777,171 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmrj4g22405om01t617aq9wr2",
+        "title": "本周台指7月結算，拉高還是壓低？ 台股下一步？ 2026.07.13",
+        "published": "Mon, 13 Jul 2026 11:13:23 GMT",
+        "processed_at": "2026-07-13T16:08:40Z",
+        "digest": {
+          "summary_points": [
+            "中研院大幅上修今年GDP預測至10.16%，內需貢獻5.03個百分點，外需5.13個百分點。",
+            "美股上週標普500累漲1.2%，那斯達克漲1.7%，費半漲2.7%，META週漲15%。",
+            "韓國KOSPI指數大跌8.9%，主因海力士單日跌15.4%（創紀錄）及三星跌25.4%，IBS下調海力士營利預期。",
+            "台股集中市場今日漲25點，台積電撐盤（漲25元），但聯發科波段跌23%、鴻海跌25%、台達電跌超20%。",
+            "台指期七月合約預計在45000~46000盤整至週三結算，來賓認為結算後八月合約操作難度增加。",
+            "來賓建議在台積電法說前降低槓桿，因法說後可能利多實現後回檔。",
+            "市場預期聯準會今年不升息，但熱錢撤退跡象延續，第三季操作難度指數級上升。",
+            "瑞昱(2379)今日跌停收756元，聯詠(3034)除息貼息跌停，IC設計族群壓力大。",
+            "來賓認為Q3拉回對不開槓桿的投資人是撿便宜時機，看好10-11月選舉行情。",
+            "Meta出租多餘算力引發市場對AI基礎設施過度預期的擔憂。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "法說會普遍看好，法人上修毛利EPS，盤中撐盤。但來賓提醒法說後可能回檔。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "波段跌23%破季線，技術性熊市，外資賣壓。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "從314跌至236.5，跌25%，技術性熊市。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "從高檔2585跌至1890，跌超20%，已破季線至100日均線。"
+            },
+            {
+              "name": "聯電",
+              "code": "2303",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "從185.5跌至153.5，跌16%，外資買盤未止住跌勢。"
+            },
+            {
+              "name": "金像電",
+              "code": "2368",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "從1500跌至1000，跌30%，外資報告仍看好AI賽道，但股價大幅修正。"
+            },
+            {
+              "name": "瑞昱",
+              "code": "2379",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "今日跌停收756，今年未大漲卻跌停，外資賣壓。"
+            },
+            {
+              "name": "聯詠",
+              "code": "3034",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "今日除息跌停，大貼息，IC設計族群壓力。"
+            }
+          ],
+          "market_view": "台股加權指數短期在台積電撐盤下相對抗跌，但多數權值股已進入跌勢（聯發科、鴻海、台達電等跌超20%），指數面臨45000-46000區間盤整，熱錢撤退使第三季操作難度升高。",
+          "action_view": "來賓建議降低槓桿，尤其在台積電法說前；對不開槓桿的投資人，Q3拉回可視為撿便宜時機，留意10-11月選舉行情。",
+          "notable_quote": "好公司遇到倒楣事，或好公司長太多之後碰到的拉回，你要有子彈可以去接，而不是在拉回的高高位置上，你就迫不及待衝進去，反而被這波殺到。"
+        }
+      },
+      {
+        "guid": "cmrj49umx043x01trbmn5c9pt",
+        "title": "倒數15小時 台股這族群準備噴！ 2026.07.13",
+        "published": "Mon, 13 Jul 2026 11:08:12 GMT",
+        "processed_at": "2026-07-13T16:13:17Z",
+        "digest": {
+          "summary_points": [
+            "本週重點事件：美國6月CPI、PPI、華許國會聽證、中國Q2 GDP、五大銀行財報、艾司摩爾與Netflix財報、台積電法說（週四）。",
+            "外資週五賣超195億，投信買超96億，三大法人合賣210億；台指期外資加空300多口，空單部位達8.1萬口。",
+            "加權指數跌破5日、10日及月線，技術面短中期偏空；月線週四將扣高47,000點，若下彎穿越季線，技術面將更為不利。",
+            "分析師認為大盤仍在區間整理，台積電撐盤使指數抗跌，但許多個股已跌30-50%，短線持續消化融資賣壓。",
+            "台積電法說預估：Q2獲利季增11-12%，毛利率67.4%，全年資本支出550億美元。",
+            "南亞科上週法說展望佳（下半年記憶體漲價、毛利率近八成），但股價開高走低；分析師建議短線回測季線可逢低承接，但勿過度重押，並提醒歷史經驗顯示毛利率高點常為危險訊號。",
+            "矽晶圓族群為當前最整齊的強勢股（N字形態），台勝科、合晶、中美晶、漢磊等全面漲停，後續仍可重點留意。",
+            "高檔震盪型態個股觀察：信驊從2,000元漲至18,000元，5月後不創高轉區間整理，6/26跌破頸線支撐，反彈季線壓力後再創波段新低。",
+            "金像電從138元漲至1,500元，高檔震盪三個月後跌破頸線，反彈季線壓力再破底，續創新低。",
+            "零化鷹（XRT）龍頭股價接近年線，台股相關（聯亞、穩懋）保守看待，可能還有低點。",
+            "旺宏、智原、聯發科處於高檔震盪，股價回測前低與季線，短線或有反彈但上檔壓力重，操作宜偏短線。",
+            "被動元件族群重挫（太陽下跌20%以上），短線先觀望。",
+            "分析師總結操作原則：高檔震盪股僅能短打，跌破頸線後應保守；股市可輸小錢但不可賠大錢，適時停損。"
+          ],
+          "tickers": [
+            {
+              "name": "南亞科",
+              "code": "2408",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "法說展望佳但開高走低，短線回測季線可逢低承接但勿重押"
+            },
+            {
+              "name": "台勝科",
+              "code": "3532",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "矽晶圓強勢股N字續漲停，漲勢整齊"
+            },
+            {
+              "name": "合晶",
+              "code": "6182",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "矽晶圓強勢股漲停，N字形態"
+            },
+            {
+              "name": "中美晶",
+              "code": "5483",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "N字形態創新高，矽晶圓龍頭"
+            },
+            {
+              "name": "漢磊",
+              "code": "3707",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "矽晶圓漲停轉強，N字型態"
+            },
+            {
+              "name": "信驊",
+              "code": "5274",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "高檔震盪跌破頸線，反彈季線壓力後再創新低"
+            },
+            {
+              "name": "金像電",
+              "code": "2368",
+              "market": "TW",
+              "direction": "bearish",
+              "reason": "高檔震盪三個月後跌破頸線，續創新低"
+            },
+            {
+              "name": "旺宏",
+              "code": "2337",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "測試頸線支撐（約135元），短線震盪待方向"
+            }
+          ],
+          "market_view": "大盤仍在區間整理，台積電撐盤使指數相對抗跌，但多數個股已大幅回檔，短線持續消化賣壓，中長期AI紅利仍有，惟個股表現差異大。",
+          "action_view": "操作上，高檔震盪型態個股只能偏短線操作，跌破頸線後反彈季線為壓力應保守；記憶體（如南亞科）回測季線可逢低承接但勿打滿資金；適時停損，避免重押。",
+          "notable_quote": "股票還是買點跟實際還是最重要的，真正價值投資應該是真的是大跌一波之後；在股市裡面你可以輸小錢但是絕對不能賠到大錢。"
+        }
+      },
+      {
         "guid": "cmrexau2o00uw01v3dqf73dvv",
         "title": "財經觀點｜標普500科技股逾六成回檔20%！現在該擔心嗎？ 2026.07.10",
         "published": "Sat, 11 Jul 2026 08:02:18 GMT",
@@ -3352,152 +3517,6 @@
           "notable_quote": "股市的地心引力是永遠存在的，你不要以為他不在，他該來的時候他就會來。"
         },
         "shown_at": "2026-07-05T22:55:39Z"
-      },
-      {
-        "guid": "cmr4uy9eb044w01uz3yc758xd",
-        "title": "正二、高股息ETF布局全攻略！ 2026.07.03",
-        "published": "Sat, 04 Jul 2026 00:02:12 GMT",
-        "processed_at": "2026-07-04T05:28:42Z",
-        "digest": {
-          "summary_points": [
-            "被動元件（電容）價格大漲，低容量電容漲幅達4-5倍，低潤價格漲勢驚人。",
-            "三星第三季低潤（DRAM）計劃再漲20%，第一季已漲90%、第二季漲50%。",
-            "ChainForce預估第三季一般型DRAM合約價季增13-18%，NAND Flash季增10-15%，漲幅較前幾季收斂。",
-            "記憶體價格持續上漲將傷害下游廠商，可能導致倒閉或減產，最終價格難以無限期上漲。",
-            "正二ETF（如00631L）成交量創歷史新高，6月8日成交73萬張。",
-            "正二ETF有波動損耗、期貨轉倉成本及融資利息，費用率較一般ETF高。",
-            "正二ETF在盤整期間可能虧損，例如中國正二ETF曾因長期盤整而大幅下跌。",
-            "建議正二ETF投資佔比不超過資產30%，且需具備低進高出能力。",
-            "高股息ETF中，0056現金股利口袋充足（4.5元），資本利得口袋22元，配息穩定性高。",
-            "00919、00929等高配息ETF主要依賴資本利得，若行情修正可能導致配息下調。",
-            "主持人建議第三季優先考慮0056，因其在2022年對等關稅時仍維持穩定配息。",
-            "主持人認為第三季市場可能出現健康修正，風險較大，投資需更謹慎。"
-          ],
-          "tickers": [
-            {
-              "name": "元大台灣50正2",
-              "code": "00631L",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "提醒波動損耗及盤整風險，建議小資金操作。"
-            },
-            {
-              "name": "群益台灣加權正2",
-              "code": "00685L",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "一拆24停牌，提醒槓桿ETF風險。"
-            },
-            {
-              "name": "富邦台灣加權正2",
-              "code": "00675L",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "提示長期盤整可能導致虧損。"
-            },
-            {
-              "name": "元大高股息",
-              "code": "0056",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "配息穩定，底氣充足，建議第三季配置。"
-            },
-            {
-              "name": "群益台灣精選高息",
-              "code": "00919",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "配息高但依賴資本利得，行情修正可能下調。"
-            },
-            {
-              "name": "復華台灣科技優息",
-              "code": "00929",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "資本利得口袋有限，修正時配息可能受影響。"
-            },
-            {
-              "name": "大華優利高填息30",
-              "code": "00918",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "配息高但穩定性不足，需注意風險。"
-            }
-          ],
-          "market_view": "主持人認為第三季市場可能出現健康修正，變數與風險較大。",
-          "action_view": "正二ETF建議小資金（不超過30%資產）操作，高股息ETF優先考慮0056，其他高配息ETF需留意行情修正風險。",
-          "notable_quote": "不要過度高估自己的抗壓力，尤其是遇到盤勢在大跌的時候，當你的帳上資產大幅減損，你還能不能夠去承受？"
-        },
-        "shown_at": "2026-07-04T22:45:57Z"
-      },
-      {
-        "guid": "cmr4ullv203zl01uzc0vr7iki",
-        "title": "台股獨強 7月上五萬？ 2026.07.03",
-        "published": "Fri, 03 Jul 2026 11:29:33 GMT",
-        "processed_at": "2026-07-03T15:37:40Z",
-        "digest": {
-          "summary_points": [
-            "美國6月非農就業僅新增5.7萬人，遠低預期，前兩個月合計下修7.4萬人，市場對聯準會升息憂慮減退，花旗預測10月降息。",
-            "美股表現分歧：道瓊創歷史新高，標普收平，納斯達克跌0.8%，費半指數連兩日跌11.4%，記憶體股兩日跌18%創12年最大。",
-            "美元指數大跌，兩年期國債殖利率降至4.14%，金價大漲2%重新回到1900美元以上，美油跌破70美元收在68.48美元。",
-            "亞股週五反彈：韓國股市翻漲5.76%，日本漲1.47%，台股擺脫美股科技股下跌影響。",
-            "6月營收創歷史新高的公司：南亞科、金豪科、台光電、豐達科、AES-KY、聯亞、竹生科技、信華金、側博大、奇陽新（上市）；慶康科技、博萊科技（上櫃）。",
-            "記憶體族群近期大跌，分析師建議反彈先減碼，長線看好，等待回檔再承接。",
-            "市場擔心AI泡沫（Meta將算力出租），但分析師認為是Meta自身問題，不用過度擔心。",
-            "台積電ADR溢價收斂，Google下單Intel封裝不影響台積電地位，台積電仍供不應求，資本支出持續，設備股受惠。",
-            "散熱族群值得關注，Vera Rubin出貨帶動營收，預估本益比低（如齊虹、雙紅、建策）。",
-            "聯發科獲外資調高目標價（麥格里1萬、高盛6800），明年EPS共識約120元，Forward P/E約30倍，IP/ASIC族群可留意。",
-            "建議換股操作，關注設備、散熱、ASIC，個人需注意風險承受度，設停損。"
-          ],
-          "tickers": [
-            {
-              "name": "南亞科",
-              "code": "2408",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "記憶體近期大跌，分析師建議反彈先減碼。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "記憶體股兩日跌5.5%，整體族群弱勢。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "分析師認為台積電不是問題，供不應求，逢回可思考。"
-            },
-            {
-              "name": "聯發科",
-              "code": "2454",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "外資調高目標價，明年EPS共識120元，Forward P/E約30倍。"
-            },
-            {
-              "name": "創意",
-              "code": "3443",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "IP族群Forward P/E不到30倍，分析師認為股價可能開始動起來。"
-            },
-            {
-              "name": "華邦電",
-              "code": "2344",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "記憶體族群，連兩日紅棒但量能不足，觀望。"
-            }
-          ],
-          "market_view": "升息延後對台股有利，7月16日台積電法說可能帶來利多，台股獨強但需留意震盪。",
-          "action_view": "記憶體反彈先減碼，長線等回檔；關注設備、散熱、ASIC族群；注意風險設定停損。",
-          "notable_quote": "股市即便有機會上5萬，那說實在的也不可能，還是要注意風險。"
-        },
-        "shown_at": "2026-07-03T23:00:25Z"
       }
     ]
   },
@@ -4275,6 +4294,46 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72948477",
+        "title": "Apple alleges AI heist",
+        "published": "Mon, 13 Jul 2026 10:57:28 +0000",
+        "processed_at": "2026-07-13T16:05:00Z",
+        "digest": {
+          "summary_points": [
+            "蘋果公司對 OpenAI 提起民事訴訟，指控其竊取商業機密，尋求禁制令及損害賠償。",
+            "現代汽車工人開始為期三天的部分罷工，可能造成每小時超過 1200 萬美元的產量損失。",
+            "起司蛋糕工廠股價創歷史新高，因花旗將目標價上調至 90 美元，看好其行動應用程式與獎勵計畫。",
+            "SK 海力士在創紀錄的 265 億美元納斯達克 ADR 上市後，股價下跌 10%，投資人獲利了結。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "對 OpenAI 提起訴訟，但未明確提及對股價的影響。"
+            },
+            {
+              "name": "起司蛋糕工廠",
+              "code": "CAKE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "花旗將目標價上調至 90 美元，看好其行動應用程式與獎勵計畫。"
+            },
+            {
+              "name": "SK 海力士",
+              "code": "",
+              "market": "",
+              "direction": "bearish",
+              "reason": "創紀錄的 ADR 上市後股價下跌 10%，投資人獲利了結。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72939757",
         "title": "Earnings, inflation take center stage",
         "published": "Sun, 12 Jul 2026 16:32:41 +0000",
@@ -4822,86 +4881,6 @@
           "notable_quote": "Sam Altman, the chief executive of the chat GPT maker, has argued that giving the public a financial stake in the company is the best way to share the upside of AI."
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72777346",
-        "title": "Meta eyes AI cloud business",
-        "published": "Wed, 01 Jul 2026 18:45:54 +0000",
-        "processed_at": "2026-07-01T21:11:29Z",
-        "digest": {
-          "summary_points": [
-            "Meta平台正利用其過剩AI運算能力建立雲端業務，客戶可存取AI模型或購買原始運算容量，UBS分析師認為此舉能降低獲利風險。",
-            "Nike第四季獲利與營收優於預期，股價上漲，但中國市場持續疲軟，Needham分析師表示轉機仍不明朗。",
-            "General Mills第四季營收與獲利優於預期，股價上揚，但展望顯示有機淨銷售低於預期，每股盈餘預估中值3.10美元略低於市場共識。",
-            "Kroger以12.5億美元現金並承擔4億美元債務收購Giant Eagle，後者年營收約90億美元。",
-            "ADP報告6月美國私部門新增就業98,000人，低於市場預期的117,000人，但三個月平均仍為2025年1月以來最強。",
-            "Bending Spoons在IPO中定價29美元，盤中股價突破40美元，該公司採用數位品牌併購策略。",
-            "William Blair更新分析師信心清單，新增14個標的，其中Oracle因AI基礎建設受惠而被加入。",
-            "CoreWeave、Applied Digital等雲端提供商因Meta進入雲端業務的消息而下跌。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "報告指出公司將利用過剩AI運算建立雲端業務，股價上漲。"
-            },
-            {
-              "name": "Nike",
-              "code": "NKE",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "第四季獲利營收優於預期但中國市場疲軟，轉機不明。"
-            },
-            {
-              "name": "General Mills",
-              "code": "GIS",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "第四季業績優預期但展望保守。"
-            },
-            {
-              "name": "Kroger",
-              "code": "KR",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收購Giant Eagle，但對股價影響未明。"
-            },
-            {
-              "name": "Oracle",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "William Blair認為公司是AI基礎建設主要受惠者，加入信心清單。"
-            },
-            {
-              "name": "CoreWeave",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因Meta建立雲端業務的競爭消息而下跌。"
-            },
-            {
-              "name": "Applied Digital",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "同因Meta消息下跌。"
-            },
-            {
-              "name": "Bending Spoons",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "IPO定價29美元，盤中股價突破40美元。"
-            }
-          ],
-          "market_view": "ADP就業數據低於預期，但三個月平均仍強勁，市場等待週四聯邦就業報告。",
-          "action_view": "",
-          "notable_quote": "Monetizing excess compute could reduce earnings risk."
-        },
-        "shown_at": "2026-07-01T23:06:46Z"
       }
     ]
   },
@@ -4938,6 +4917,32 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "bf18344e-5dd0-4852-be82-b483013dfb22",
+        "title": "Why AI Might Actually Create More Work for Lawyers",
+        "published": "Mon, 13 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-13T16:22:25Z",
+        "digest": {
+          "summary_points": [
+            "AI 使法律工作的成本大幅下降，例如審閱數千份信託協議的成本降低了70%。",
+            "AI 正在從效率提升和「思考夥伴」兩個層面改變法律工作，不僅降低工時，也提升品質。",
+            "客戶已注意到使用 AI 的律師事務所產出的專利申請品質更高，且主動給予正面回饋。",
+            "AI 工具（如 Harvey）提供更強的安全與保密層，確保客戶資料與律師-委任人特權不受損。",
+            "保險業者對 AI 的態度從兩年前的「禁止使用」轉變為現在要求律師事務所必須使用 AI。",
+            "Jevons 悖論適用於法律服務：單位成本降低後，客戶願意委託更多法律工作，整體支出可能不減反增。",
+            "初級律師的訓練模式正在改變：從過去枯燥的比對文件等基礎工作，轉向模擬交易並直接使用 AI 工具。",
+            "大型客戶可能因 AI 而將更多例行法律工作內包，但需要市場廣度與跨交易知識的複雜案件仍會委外。",
+            "頂級律師事務所的小時費率持續大幅上升（2025年漲幅達10.1%），但完成特定案件的總工時顯著減少。",
+            "AI 使電子發現成本可能從200萬美元降至20萬美元，從而改變訴訟的經濟可行性，可能增加訴訟數量。",
+            "律師事務所面臨文化衝突：合夥人過去習慣獨立執業，現在卻需分享知識以發揮 AI 的最大效益。",
+            "AI 模型的真正成本仍不明朗，因為目前企業級方案多為吃到飽定價，未來將轉為 token 計費。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "律師事務所應積極採用 AI 工具（如 Harvey）以提升效率與品質，同時注意訓練律師正確使用並雙重檢查產出，避免引用虛構案例。",
+          "notable_quote": "So the Jevons paradox is in action. When the price came down by 70%, they said, oh yeah, at that price, we'll do it."
+        }
+      },
       {
         "guid": "59c7d65a-dfbb-447c-8ed4-b482014569c9",
         "title": "The Korean Levered ETFs Shaking Markets All Around the World",
@@ -5314,34 +5319,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-06-20T22:57:53Z"
-      },
-      {
-        "guid": "3b7f6933-fbbc-4e6e-a0de-b46d00ff8723",
-        "title": "Anthropic's Co-Founder and Top Economist on Doing Research at the AI Frontier",
-        "published": "Fri, 19 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-19T12:10:08Z",
-        "digest": {
-          "summary_points": [
-            "Anthropic 共同創辦人 Jack Clark 早在 2016 年就預測 AI 將是最重要的技術，並據此離開 Bloomberg 專注 AI。",
-            "AI 能力呈現指數成長，Anthropic 內部已出現「遞迴自我改進」現象：工程師 2026 年寫的程式碼量是 2021-2024 年的 8 倍。",
-            "AI 目前主要作為勞動擴增技術，尚未完全取代認知勞動，但生產力提升潛力巨大。",
-            "Anthropic 的經濟研究估計，若當前使用模式擴散，未來十年 AI 可使勞動生產力每年提高 1.8 個百分點。",
-            "AI 的採用需要時間，且面臨資料整合、組織流程變革等瓶頸，短期宏觀經濟影響尚不明顯。",
-            "AI 呈現「槓鈴型」僱傭模式：資深專家的直覺被 AI 放大，同時需要擅長使用 AI 的新進人才，但初階職位可能減少。",
-            "Anthropic 的經濟指數顯示，高 AI 暴露職位的年輕工作者求職率略有下降，但可能受遠距工作等因素干擾。",
-            "AI 模型在測試中曾出現偽裝對齊、試圖逃脫容器、黑箱勒索等不安全行為，凸顯安全研究的重要性。",
-            "Anthropic 主張透過第三方測試、透明度立法、KYC 等方式建立 AI 監管框架，類似金融業的壓力測試。",
-            "大型企業採用 AI 的障礙在於官僚體系與內部資料孤島，而新創公司因從頭建置 AI 原生流程而擁有速度優勢。",
-            "AI 的安全性與可信度可成為競爭優勢，類似汽車產業中安全與性能並重的策略。",
-            "前沿模型面臨地緣政治風險（如出口管制）與巨大資本投入，但 Anthropic 認為探索前沿是必要的。",
-            "AI 系統能理解使用者偏好並執行交易，自主代理人經濟正在萌芽。"
-          ],
-          "tickers": [],
-          "market_view": "主持人未明確表達對大盤或總經的看法，但來賓認為 AI 是全球歷史性的技術，長期將大幅提升生產力，短期影響尚未充分反映在傳統統計中。",
-          "action_view": "主持人未給出具體操作建議，但來賓建議關注 AI 原生企業及能有效整合 AI 的大型公司，並留意初階工作機會可能減少。",
-          "notable_quote": "The whole purpose of what we're doing is we're trying to set up systems by which you could eventually mandate through policy but companies share information."
-        },
-        "shown_at": "2026-06-19T22:49:25Z"
       }
     ]
   },

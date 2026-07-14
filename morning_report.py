@@ -11770,8 +11770,18 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
         name = str(ev.get("shortName") or ev.get("name") or "")
         slug = str((ev.get("season") or {}).get("slug") or "").lower()
         special = "all-star" in slug or "All-Star" in str(ev.get("name") or "")
+        # 可搜尋字串:兩隊全名+縮寫。shortName 只有縮寫("LAL @ BOS"),而
+        # NBA_FAVORITE_TEAMS 文件明載用全名(Celtics,Lakers)——只用 shortName 過濾
+        # 會把關注隊賽程全數濾光(Codex review P2)。
+        _names = []
+        for t in ((ev.get("competitions") or [{}])[0].get("competitors") or []):
+            team = t.get("team") or {}
+            _names += [str(team.get("displayName") or ""),
+                       str(team.get("shortDisplayName") or ""),
+                       str(team.get("abbreviation") or "")]
+        search = " ".join(n for n in _names if n).lower() or name.lower()
         out.append({"text": name, "when": ko.strftime("%m/%d %H:%M"),
-                    "special": special, "_ko": ko})
+                    "special": special, "_search": search, "_ko": ko})
     out.sort(key=lambda g: g["_ko"])
     for g in out:
         g.pop("_ko", None)
@@ -11796,6 +11806,8 @@ def fetch_mlb_week_fixtures(now_tpe: Optional[dt.datetime] = None,
             teams = {p.strip().upper() for p in str(g["text"]).replace("@", " ").split()}
             return bool(teams & tops)
         games = [g for g in games if _keep(g)]
+    for g in games:
+        g.pop("_search", None)
     return games[:8]
 
 
@@ -11806,8 +11818,12 @@ def fetch_nba_week_fixtures(now_tpe: Optional[dt.datetime] = None) -> list[dict]
     games = _espn_week_fixtures("basketball/nba", now_tpe, cap=100)
     favs = _nba_favorite_teams()
     if favs:
+        # 用 _search(兩隊全名+縮寫)比對,勿用 shortName(只有縮寫,全名關鍵字永不命中)
         games = [g for g in games
-                 if g.get("special") or any(f in str(g["text"]).lower() for f in favs)]
+                 if g.get("special")
+                 or any(f in str(g.get("_search") or g["text"]).lower() for f in favs)]
+    for g in games:
+        g.pop("_search", None)
     return games[:10]
 
 

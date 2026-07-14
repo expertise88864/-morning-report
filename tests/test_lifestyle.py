@@ -1519,3 +1519,34 @@ def test_fetch_mlb_week_fixtures_filters_top_teams(monkeypatch):
     assert "TB @ BOS" in texts                        # 強隊對戰保留
     assert "PIT @ CLE" not in texts                   # 非強隊剔除
     assert any(g["special"] for g in out)             # 明星賽保留並標記
+
+
+def test_fetch_nba_week_fixtures_matches_full_team_names(monkeypatch):
+    """NBA_FAVORITE_TEAMS 用全名(文件明載):過濾須比對兩隊全名,不能只看縮寫 shortName
+    (Codex review P2:LAL @ BOS 永遠比不中 'lakers')。"""
+    def ev(short, home_full, away_full, iso):
+        return {"shortName": short, "name": short, "date": iso,
+                "season": {"slug": "regular-season"},
+                "status": {"type": {"state": "pre"}},
+                "competitions": [{"competitors": [
+                    {"team": {"displayName": home_full, "abbreviation": short.split(" @ ")[1]}},
+                    {"team": {"displayName": away_full, "abbreviation": short.split(" @ ")[0]}},
+                ]}]}
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [
+                ev("LAL @ BOS", "Boston Celtics", "Los Angeles Lakers", "2026-10-22T00:00Z"),
+                ev("MIA @ NYK", "New York Knicks", "Miami Heat", "2026-10-22T02:00Z"),
+            ]}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    monkeypatch.setenv("NBA_FAVORITE_TEAMS", "Celtics,Lakers")
+    out = mr.fetch_nba_week_fixtures()
+    texts = [g["text"] for g in out]
+    assert "LAL @ BOS" in texts                       # 全名關鍵字命中兩隊之一
+    assert "MIA @ NYK" not in texts                   # 非關注隊剔除
+    assert all("_search" not in g for g in out)       # 內部欄位不外洩

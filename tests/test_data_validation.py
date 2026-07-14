@@ -1207,3 +1207,18 @@ def test_prompt_deep_labels_survive_busy_day_with_30_companies():
         assert n_lines == 5, f"{label} 應有 5 則,實得 {n_lines}"
     # 30 家首則全數保底
     assert sum(1 for ln in block.split("\n") if ln.startswith("- [C")) >= 27
+
+
+def test_mops_prompt_prioritizes_deep_company_announcements():
+    """MOPS 表信中已隱藏 → 兩金控/台積電公告(人事/投資)須優先進 prompt 塊,
+    忙日不與其他 40 家搶最新 20 筆名額;指引導向「九」金融條目呈現。"""
+    mops = ([{"code": f"9{i:03d}", "title": f"其他公司公告{i}", "published": f"2026-07-14 1{i%10}:00"}
+             for i in range(25)]                       # 25 筆其他公司(比 2882 新)
+            + [{"code": "2882", "title": "國泰金公告子公司總經理異動", "published": "2026-07-13 09:00"},
+               {"code": "2891", "title": "中信金公告重大轉投資案", "published": "2026-07-13 08:00"}])
+    p = mr._build_prompt(_empty_quotes(TW_MOPS=mops),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    block = p.split("MOPS 重大訊息")[1][:3000]
+    assert "國泰金公告子公司總經理異動" in block        # 沉在第 26 筆仍被撈進 prompt
+    assert "中信金公告重大轉投資案" in block
+    assert "MOPS 公告(代號 2882/2891" in p             # 九金融指引導向 MOPS 素材

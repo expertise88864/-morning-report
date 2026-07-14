@@ -937,3 +937,71 @@ def test_build_prompt_event_scenario_section_present_when_no_events():
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "七之三" in p
     assert "未來 48 小時無重大排程事件" in p
+
+
+# ── G3 世界證據門檻警示 ──────────────────────────────────────────────────────
+def _macro_ok(**over):
+    base = {k: {"close": 100.0, "prev_close": 100.0, "change_pct": 0.0,
+                "pct_rank_252d": 50.0} for k in
+            ("VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
+             "NQ", "ES", "WTI", "GOLD", "BTC", "COPPER")}
+    base.update(over)
+    return base
+
+
+def test_world_evidence_quiet_by_default():
+    """平常(所有指標正常)→ 不出現任何警示。"""
+    assert mr._world_evidence_signals(_macro_ok(), {"change_pct": 0.3}) == []
+
+
+def test_world_evidence_move_spike_or_percentile_or_level():
+    for mv in ({"change_pct": 15.0, "pct_rank_252d": 50, "close": 100},   # 單日急升
+               {"change_pct": 1.0, "pct_rank_252d": 95, "close": 100},    # 逼近一年高
+               {"change_pct": 1.0, "pct_rank_252d": 50, "close": 140}):   # 絕對水位高
+        sig = mr._world_evidence_signals(_macro_ok(MOVE=mv), {"change_pct": 0.3})
+        assert any("債市波動" in s for s in sig)
+
+
+def test_world_evidence_breadth_divergence():
+    """指數(SPY)漲但等權(RSP)明顯落後 → 廣度警示。"""
+    sig = mr._world_evidence_signals(
+        _macro_ok(RSP={"change_pct": -0.6}), {"change_pct": 1.2})
+    assert any("廣度" in s for s in sig)
+    # 兩者同漲(廣度健康)→ 不觸發
+    assert mr._world_evidence_signals(
+        _macro_ok(RSP={"change_pct": 1.1}), {"change_pct": 1.2}) == []
+
+
+def test_world_evidence_copper_gold_ratio_drop():
+    sig = mr._world_evidence_signals(
+        _macro_ok(COPPER={"change_pct": -4.0}, GOLD={"change_pct": 1.0}),
+        {"change_pct": 0.3})
+    assert any("銅金比" in s for s in sig)
+
+
+def test_world_evidence_missing_data_is_safe():
+    assert mr._world_evidence_signals({}, {}) == []
+    assert mr._world_evidence_signals({"MOVE": {"error": "x"}, "RSP": None}, None) == []
+
+
+def test_render_world_evidence_empty_and_nonempty():
+    assert mr._render_world_evidence_html([]) == ""
+    html = mr._render_world_evidence_html(["債市波動明顯升溫,僅供留意。"])
+    assert "市場結構訊號" in html and "債市波動" in html
+    assert "不影響本報立場計分" in html    # 明示不進計分
+
+
+def test_move_rsp_optional_do_not_degrade_macro_quality():
+    """MOVE/RSP 抓取失敗不得把整個總經來源判成 fallback(列入 _MACRO_OPTIONAL)。"""
+    macro = _macro_ok(MOVE={"error": "no data"}, RSP={"error": "no data"})
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "date": "2026-05-13", "close": 520, "prev_close": 515},
+        "TSM": {"ticker": "TSM", "date": "2026-05-13", "close": 220, "prev_close": 218},
+        "SPY": {"ticker": "SPY", "date": "2026-05-13", "close": 580, "prev_close": 578},
+        "USDTWD": 31.0, "MACRO": macro,
+        "TAIEX_PRED": {}, "NIGHT_TXF": {}, "TAIFEX_OI": {}, "MARGIN": {},
+        "SEC_FILINGS": [],
+    }
+    dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"}, news=[], tw0050=[])
+    macro_row = next(d for d in dq if d["name"].startswith("總經/國際/期貨/商品"))
+    assert macro_row["status"] == "ok"    # MOVE/RSP error 被排除,其餘全 ok

@@ -1679,6 +1679,9 @@ def fetch_macro_indicators() -> dict:
         "GOLD":  "GC=F",
         "BTC":   "BTC-USD",   # 風險偏好即時溫度計(24h 交易,凌晨也有訊號)
         "COPPER": "HG=F",     # 銅:景氣領先指標,與台股出口連動
+        # G3 世界證據增項(門檻式白話顯示,平日不出現;全列 _MACRO_OPTIONAL 抓不到不降級):
+        "MOVE":  "^MOVE",     # 美債市場波動率(債市的 VIX);急升常伴隨股市震盪
+        "RSP":   "RSP",       # S&P 500 等權重 ETF;與市值加權 SPY 比較看「漲勢廣度」
     }
     out: dict[str, dict] = {}
     for name, sym in tickers.items():
@@ -1731,6 +1734,45 @@ def fetch_macro_indicators() -> dict:
             print(f"[macro] VIX 期限結構 ratio={ratio:.3f} ({state})")
     except Exception as e:
         print(f"[macro] VIX 期限結構計算失敗: {e}", file=sys.stderr)
+
+    return out
+
+
+def _world_evidence_signals(macro: dict, spy: Optional[dict] = None) -> list:
+    """G3|世界證據「門檻式」白話警示:平日回空 list,只有指標明顯異常時才回一行白話。
+
+    純函式(吃 macro dict + SPY 報價),供渲染層在超門檻時掛一則提醒——顯示層啟發式、
+    僅供參考,不進計分。閾值刻意保守(避免天天觸發破壞「異常才出現」的用意)。"""
+    macro = macro or {}
+    spy = spy or {}
+    out: list[str] = []
+
+    def _num(d, k):
+        v = (d or {}).get(k) if isinstance(d, dict) else None
+        return v if isinstance(v, (int, float)) else None
+
+    # 1) 美債市場波動率(MOVE):單日急升 / 逼近一年高 / 絕對水位偏高
+    mv = macro.get("MOVE") if isinstance(macro.get("MOVE"), dict) else {}
+    mv_chg = _num(mv, "change_pct")
+    mv_rank = _num(mv, "pct_rank_252d")
+    mv_close = _num(mv, "close")
+    if (mv_chg is not None and mv_chg > 10) or (mv_rank is not None and mv_rank > 90) \
+            or (mv_close is not None and mv_close > 130):
+        out.append("債市波動明顯升溫(美債波動率偏高),歷史上常伴隨股市震盪加大——僅供留意,非賣出訊號。")
+
+    # 2) 漲勢廣度:市值加權(SPY)上漲但等權(RSP)明顯落後 → 只靠少數大型股撐盤
+    rsp = macro.get("RSP") if isinstance(macro.get("RSP"), dict) else {}
+    rsp_chg = _num(rsp, "change_pct")
+    spy_chg = _num(spy, "change_pct")
+    if spy_chg is not None and rsp_chg is not None and spy_chg > 0 \
+            and (rsp_chg - spy_chg) < -1.0:
+        out.append("美股上漲主要靠少數權值股撐盤、廣度偏弱(等權重指數明顯落後),漲勢基礎較不穩——僅供留意。")
+
+    # 3) 銅金比:銅(景氣)相對金(避險)當日明顯轉弱 → 景氣訊號偏保守
+    cop_chg = _num(macro.get("COPPER"), "change_pct")
+    gold_chg = _num(macro.get("GOLD"), "change_pct")
+    if cop_chg is not None and gold_chg is not None and (cop_chg - gold_chg) < -3.0:
+        out.append("工業金屬走弱、避險偏好升溫(銅金比明顯下滑),景氣訊號轉為保守——僅供留意。")
 
     return out
 
@@ -10712,6 +10754,26 @@ def _render_portfolio_risk_html(risk: dict) -> str:
         "<!--PF_ROW_END-->")
 
 
+def _render_world_evidence_html(signals: list) -> str:
+    """G3|世界證據門檻警示卡:平日 signals 為空 → 回空字串(不顯示);異常時列白話一行。
+    掛在總經卡下方,琥珀色提醒風格,明示「僅供參考」。"""
+    if not signals:
+        return ""
+    import html as _h
+    rows = "".join(
+        f"<div style='padding:6px 0;color:#78350f;font-size:13px;line-height:1.6;'>"
+        f"⚠ {_h.escape(str(s))}</div>" for s in signals)
+    return (
+        '<div style="border:1px solid #f59e0b;border-radius:10px;overflow:hidden;'
+        'margin:12px 0;background:#fffbeb;">'
+        '<div style="background:#f59e0b;color:#fff;padding:7px 14px;font-weight:700;font-size:14px;">'
+        '市場結構訊號(異常時才出現)</div>'
+        f'<div style="padding:8px 14px;">{rows}</div>'
+        '<div style="padding:4px 14px 8px;color:#b45309;font-size:11px;">'
+        '※ 顯示層啟發式門檻,僅供留意背景風險,非買賣訊號、不影響本報立場計分。</div>'
+        '</div>')
+
+
 def _fallback_stance_from_signals(quotes: dict) -> dict:
     """LLM 未輸出可解析的立場時,用 Python 訊號(加權預測共識/方向)給保底立場,
     避免頂部 KPI/加權區出現「—」。score 留 None(非 11 維淨分),label 標 source=signals。"""
@@ -13527,6 +13589,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {macro_rows}
         </table>
         """
+    # G3 世界證據門檻警示(平日空字串;異常時掛總經卡下方一則白話)
+    world_evidence_html = _render_world_evidence_html(
+        _world_evidence_signals(quotes.get("MACRO") or {}, quotes.get("SPY") or {}))
 
     # ===== 2. KPI 卡片 (00662) =====
     if "error" not in fair:
@@ -13865,6 +13930,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {macro_table_html}
 
+            {world_evidence_html}
+
             {taiex_html}
 
             {combined_pred_html}
@@ -14187,8 +14254,9 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     # 總經 + 國際指標 + 期貨/商品 (12 項)
     macro = quotes.get("MACRO", {}) or {}
     # VIX_TERM 是 derived,不算實際抓取項目;5Y/30Y 為選配(僅供美債利率白話卡),
-    # 抓不到不應把整個總經來源判成 fallback、誤入 LLM 資料品質區塊(Codex review)。
-    _MACRO_OPTIONAL = {"VIX_TERM", "5Y", "30Y"}
+    # MOVE/RSP 為 G3 世界證據選配(門檻式白話,平日不顯示)——
+    # 抓不到不應把整個總經來源判成 fallback、誤入 LLM 資料品質區塊(Codex review / A2 教訓)。
+    _MACRO_OPTIONAL = {"VIX_TERM", "5Y", "30Y", "MOVE", "RSP"}
     countable = {k: v for k, v in macro.items() if k not in _MACRO_OPTIONAL}
     ok_n = sum(1 for v in countable.values()
                if isinstance(v, dict) and not v.get("error") and v.get("close") is not None)

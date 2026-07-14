@@ -665,3 +665,26 @@ def test_fetch_sector_leader_news_skips_tech_and_excludes(monkeypatch):
 
 def test_fetch_sector_leader_news_empty_without_heat():
     assert mr.fetch_sector_leader_news({}) == []
+
+
+def test_fetch_news_fulltext_respects_run_deadline(monkeypatch):
+    """P0-2 內層保命(Codex review):剩餘時間跌破地板時,fetch_news_fulltext 一篇都不抓,
+    避免大量逐篇失敗×重試拖過 25 分。充足時間則正常抓。"""
+    import time
+    calls = []
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: calls.append(1))
+    news = [{"importance": "critical", "title": "x", "link": "http://e.com/a", "source": "S"},
+            {"importance": "high", "title": "y", "link": "http://e.com/b", "source": "S"}]
+    monkeypatch.setattr(mr, "_RUN_DEADLINE", time.monotonic() + 60)   # < 120s 地板
+    mr.fetch_news_fulltext(list(news), max_critical=10, max_high=16)
+    assert calls == []                                # 零抓取
+
+    class R:
+        status_code = 200
+        text = "<p>" + ("實際內容 real fulltext " * 40) + "</p>"
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    monkeypatch.setattr(mr, "_RUN_DEADLINE", time.monotonic() + 600)
+    out = mr.fetch_news_fulltext(
+        [{"importance": "critical", "title": "x", "link": "http://e.com/a", "source": "S"}],
+        max_critical=10, max_high=16)
+    assert out[0].get("fulltext")                     # 充足時間正常抓

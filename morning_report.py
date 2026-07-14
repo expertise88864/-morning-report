@@ -5623,9 +5623,13 @@ def fetch_news_fulltext(news: list[dict],
             )
         return link
 
+    # P0-2 內層保命:即使本步驟已通過時間閘,大量逐篇失敗×重試仍可能吃掉整個緩衝
+    # (Codex review)。故每篇動工前也檢查全域剩餘時間,低於地板(120s,留給主分析/寄信)
+    # 就提前停止抓取、回傳已抓到的——閘只擋「開始」,這裡擋「中途拖過頭」。
+    _FULLTEXT_FLOOR = 120.0
     # 先掃一輪 critical(優先級高,即使在 list 後段也先抓)
     for n in news:
-        if crit_fetched >= max_critical:
+        if crit_fetched >= max_critical or _run_seconds_left() < _FULLTEXT_FLOOR:
             break
         if n.get("importance") != "critical":
             continue
@@ -5649,9 +5653,9 @@ def fetch_news_fulltext(news: list[dict],
         except Exception as e:
             print(f"[news_full] critical {link[:60]} 失敗: {e}", file=sys.stderr)
             continue
-    # 再掃 high(預算用滿不再抓)
+    # 再掃 high(預算用滿不再抓;剩餘時間跌破地板也停)
     for n in news:
-        if high_fetched >= max_high:
+        if high_fetched >= max_high or _run_seconds_left() < _FULLTEXT_FLOOR:
             break
         if n.get("importance") != "high":
             continue
@@ -14641,14 +14645,16 @@ def main() -> int:
     model_history, model_backfill = backfill_model_history(
         model_history, trading_sessions)
     quotes["MODEL_BACKFILL"] = model_backfill
-    # 事件抽取是額外一次 LLM 呼叫(供事件連續劇/歸因),非核心;時間不足就跳過,
-    # 事件連續劇區塊自然為空,不影響主分析與寄信(P0-2)。
-    if _run_budget_ok(260, "LLM 新聞事件抽取"):
+    # 事件抽取:LLM 「豐富化」是額外呼叫、非核心;時間不足時**只跳過 LLM 那層**,
+    # 仍用確定性抽取 extract_structured_events 產生 events——它是計分/歸因/來源健康的
+    # 輸入,若改傳 [] 會在時間預算觸發時「悄悄改變計分」並讓來源健康被誤扣分
+    # (Codex review;違反計分凍結)。(P0-2)
+    if _run_budget_ok(260, "LLM 新聞事件抽取(豐富化)"):
         print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
-        structured_events = apply_event_timeline(
-            model_history, call_llm_event_extractor(news, tw_mops))
+        _events = call_llm_event_extractor(news, tw_mops)
     else:
-        structured_events = apply_event_timeline(model_history, [])
+        _events = extract_structured_events(news, tw_mops)   # 確定性 baseline,無 LLM/網路
+    structured_events = apply_event_timeline(model_history, _events)
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     try:
         quotes["EVENT_TIMELINE"] = translate_event_titles(

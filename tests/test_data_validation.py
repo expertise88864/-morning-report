@@ -793,3 +793,59 @@ def test_no_degraded_row_when_budget_healthy():
     mr._DEGRADED_STEPS.clear()
     dq = mr.build_data_quality({}, {}, {}, [], [])
     assert not any(d["name"] == "時間預算" for d in dq)
+
+
+# ===================== P1-4 觀測性 run manifest =====================
+
+def test_run_manifest_and_step_summary(tmp_path, monkeypatch):
+    """階段耗時 manifest 寫入 JSON,並在 GITHUB_STEP_SUMMARY 存在時附 markdown 表。"""
+    import time
+    import json as _json
+    import datetime as dt
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", tmp_path / "run_manifest.json")
+    ss = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(ss))
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", ["重大事件全文擷取"])
+    monkeypatch.setattr(mr, "_FEED_STATS",
+                        {"news.google.com": {"ok": 40, "fail": 6, "streak": 0},
+                         "feeds.bloomberg.com": {"ok": 0, "fail": 1, "streak": 1}})
+    t = time.monotonic()
+    monkeypatch.setitem(mr._RUN_MANIFEST, "marks",
+                        [("行情", t), ("新聞", t + 30), ("預測", t + 80),
+                         ("LLM", t + 260), ("完成", t + 300)])
+    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50))
+    m = _json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
+    assert m["total_seconds"] == 300.0
+    labels = {p["label"]: p["seconds"] for p in m["phases"]}
+    # marks 相鄰差:行情30、新聞50、預測180、LLM40(完成為終點,不產生階段)
+    assert labels["行情"] == 30.0 and labels["新聞"] == 50.0
+    assert labels["預測"] == 180.0 and labels["LLM"] == 40.0 and "完成" not in labels
+    assert m["degraded_steps"] == ["重大事件全文擷取"]
+    assert m["feeds"]["news.google.com"]["fail"] == 6
+    # Step Summary markdown 表存在且列出最慢階段、降級、失敗來源
+    summ = ss.read_text(encoding="utf-8")
+    assert "晨報執行摘要" in summ and "| 階段 | 耗時(s) |" in summ
+    assert "時間預算降級" in summ and "bloomberg" in summ
+
+
+def test_run_manifest_no_step_summary_when_env_absent(tmp_path, monkeypatch):
+    """非 Actions 環境(無 GITHUB_STEP_SUMMARY)→ 只寫 JSON,不炸。"""
+    import time
+    import datetime as dt
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", tmp_path / "rm.json")
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", [])
+    monkeypatch.setattr(mr, "_FEED_STATS", {})
+    t = time.monotonic()
+    monkeypatch.setitem(mr._RUN_MANIFEST, "marks", [("a", t), ("完成", t + 10)])
+    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50))
+    assert (tmp_path / "rm.json").exists()
+
+
+def test_mark_phase_records():
+    mr._RUN_MANIFEST["marks"].clear()
+    mr._mark_phase("x")
+    mr._mark_phase("y")
+    labels = [m[0] for m in mr._RUN_MANIFEST["marks"]]
+    assert labels == ["x", "y"]
+    mr._RUN_MANIFEST["marks"].clear()

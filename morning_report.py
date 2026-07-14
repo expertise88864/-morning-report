@@ -193,6 +193,72 @@ _LLM_DEADLINE: Optional[float] = None
 RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "1140"))   # 19 分(25 分留 6 分緩衝)
 # P0-1 新聞抓取平行度(依 host 分組,不同 host 平行、同 host 序列);設 1 退回序列(逃生門)。
 NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
+
+# ── P1-4 觀測性 run manifest ──────────────────────────────────────────
+# 記錄每階段耗時、時間預算降級、各來源抓取結果 → state/run_manifest.json + GitHub Actions
+# Step Summary(在 Actions 執行頁直接看得到「時間花在哪、平行化有沒有幫助、哪個來源在掛」)。
+# 純市場中性資料(耗時/計數/來源健康),不含任何個人化內容。失敗不影響晨報。
+RUN_MANIFEST_FILE = Path("state/run_manifest.json")
+_RUN_MANIFEST: dict = {"marks": []}
+
+
+def _mark_phase(label: str) -> None:
+    """在 main() 階段邊界插一個時間標記(相鄰標記差=該階段耗時)。純觀測,不影響流程。"""
+    _RUN_MANIFEST["marks"].append((label, time.monotonic()))
+
+
+def _write_run_manifest(now_tpe) -> None:
+    """把本次執行的階段耗時等寫成 manifest + 附到 GitHub Actions Step Summary。失敗不影響晨報。"""
+    try:
+        marks = _RUN_MANIFEST.get("marks") or []
+        phases = [{"label": marks[i][0], "seconds": round(marks[i + 1][1] - marks[i][1], 1)}
+                  for i in range(len(marks) - 1)]
+        total = round(marks[-1][1] - marks[0][1], 1) if len(marks) >= 2 else 0.0
+        feeds = {h: {"ok": int((s or {}).get("ok", 0)), "fail": int((s or {}).get("fail", 0))}
+                 for h, s in (_FEED_STATS or {}).items()}
+        manifest = {
+            "date": now_tpe.strftime("%Y-%m-%d %H:%M"),
+            "total_seconds": total,
+            "budget_seconds": RUN_BUDGET_SECONDS,
+            "news_workers": NEWS_FETCH_WORKERS,
+            "degraded_steps": list(dict.fromkeys(_DEGRADED_STEPS)),
+            "phases": phases,
+            "feeds": feeds,
+        }
+        RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
+        RUN_MANIFEST_FILE.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+        _append_actions_summary(manifest)
+        print(f"[manifest] 總耗時 {total:.0f}s / 預算 {RUN_BUDGET_SECONDS:.0f}s"
+              f"({len(phases)} 階段);manifest → {RUN_MANIFEST_FILE}")
+    except Exception as e:
+        print(f"[manifest] 寫入失敗(不影響晨報): {e}", file=sys.stderr)
+
+
+def _append_actions_summary(manifest: dict) -> None:
+    """GitHub Actions Step Summary(環境變數 GITHUB_STEP_SUMMARY 指向的檔)。非 Actions 環境則 no-op。"""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    lines = [
+        f"## 晨報執行摘要 {manifest['date']}",
+        f"總耗時 **{manifest['total_seconds']:.0f}s** / 預算 {manifest['budget_seconds']:.0f}s"
+        f"・新聞平行度 {manifest['news_workers']}",
+        "",
+        "| 階段 | 耗時(s) |", "|---|---:|",
+    ]
+    for p in sorted(manifest["phases"], key=lambda x: -x["seconds"]):
+        lines.append(f"| {p['label']} | {p['seconds']:.0f} |")
+    if manifest["degraded_steps"]:
+        lines += ["", "⚠ 時間預算降級跳過:" + "、".join(manifest["degraded_steps"])]
+    slow = [f"{h}(失敗 {s['fail']})" for h, s in manifest["feeds"].items() if s["fail"]]
+    if slow:
+        lines += ["", "抓取有失敗的來源:" + "、".join(sorted(slow))]
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except Exception as e:
+        print(f"[manifest] Step Summary 附加失敗: {e}", file=sys.stderr)
 _RUN_DEADLINE: Optional[float] = None
 _DEGRADED_STEPS: list[str] = []
 
@@ -8865,6 +8931,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
              str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
              str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
              str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
+             str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
              str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
@@ -14278,6 +14345,8 @@ def main() -> int:
     target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
 
     print(f"[main] 開始產生 {mode} 報告 — {report_date}")
+    _RUN_MANIFEST["marks"].clear()
+    _mark_phase("行情/總經/FX")
 
     # 1. 抓行情
     quotes = {
@@ -14358,6 +14427,7 @@ def main() -> int:
         print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)
 
     # 5. 抓新聞
+    _mark_phase("新聞+政策+體育")
     print("[main] 抓新聞中…")
     news = fetch_news()
     print(f"[main] 抓到 {len(news)} 則新聞")
@@ -14425,6 +14495,7 @@ def main() -> int:
         sec_filings = []
 
     # 5.4 (Task E) TAIFEX 外資台指期未平倉
+    _mark_phase("TAIFEX/籌碼/預測")
     print("[main] 抓 TAIFEX 三大法人台指期未平倉…")
     try:
         taifex_oi = fetch_taifex_foreign_futures()
@@ -14538,6 +14609,7 @@ def main() -> int:
     backtest_block = build_prediction_backtest(history)
 
     # 6. 抓台股市值前 100 大 universe + 法人/表現（含 30 日累積）
+    _mark_phase("TWSE universe/候選新聞")
     print("[main] 抓台股市值前 100 大 universe…")
     try:
         tw_universe = fetch_tw_top100_universe(top_n=100)
@@ -14662,6 +14734,7 @@ def main() -> int:
         except Exception as e:
             print(f"[main] 補抓全文失敗(不影響晨報): {e}", file=sys.stderr)
 
+    _mark_phase("事件抽取/模型/walk-forward")
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()
     trading_sessions = fetch_tw_trading_sessions(months=18)
@@ -14876,10 +14949,12 @@ def main() -> int:
     quotes["DATA_QUALITY"] = build_data_quality(quotes, fair, predictions, news, tw0050)
 
     # 7. LLM 分析
+    _mark_phase("LLM 主分析")
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
     analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050, calibration)
 
     # 8. 組信
+    _mark_phase("渲染")
     html = render_html(quotes, fair, predictions, analysis, report_date, mode)
 
     # 8.5 (Opt 1) 準備今日記憶。Production 必須等 SMTP 成功後才提交，
@@ -14961,7 +15036,14 @@ def main() -> int:
         with open(out, "w", encoding="utf-8") as f:
             f.write(html)
         print(f"[main] DRY_RUN — 預覽寫入 {out}")
+        _mark_phase("完成")
+        _write_run_manifest(now_tpe)
         return 0
+
+    # P1-4:在寄信/state push 前寫 manifest,使其隨 state 一併 commit(供跨日趨勢);
+    # SMTP 送出約 5-10s 未計入屬可接受(manifest 主要看 fetch/compute 花在哪)。失敗不影響寄信。
+    _mark_phase("完成")
+    _write_run_manifest(now_tpe)
 
     # 10. 寄信
     subject = f"📈 美股晨報 {report_date} | QQQ {quotes['QQQ'].get('change_pct','?')}% / TSM {quotes['TSM'].get('change_pct','?')}%"

@@ -9142,6 +9142,30 @@ def _format_event_scenarios(calendar: Optional[list],
     return "\n".join(rows) if rows else "（未來 48 小時無重大排程事件）"
 
 
+def _format_narrative_delta(history: Optional[list]) -> str:
+    """G4:取最近一份歷史(=昨日報)的立場 + 重點事件,逐字整理成「昨日敘事回顧」供 prompt
+    做「昨日 vs 今日」差分。history 為時間升冪(最新在末),今日尚未存入 → history[-1] 即
+    最近一份完成報告。無可用紀錄回固定佔位字串(指引 LLM 整段略過)。防幻覺:只整理 history
+    原文,不新增判讀(判讀交給 LLM)。"""
+    hist = [h for h in (history or []) if isinstance(h, dict)]
+    if not hist:
+        return "（無昨日紀錄可對照）"
+    last = hist[-1]
+    date = (str(last.get("date") or "").split() or ["昨日"])[0] or "昨日"
+    stance = str(last.get("stance_label") or "").strip() or "未記錄"
+    crit = [str(c).strip() for c in (last.get("critical_news") or []) if str(c).strip()][:5]
+    if not crit and stance == "未記錄":
+        return "（無昨日紀錄可對照）"
+    lines = [f"【昨日({date})本報敘事回顧——逐字對照,不可竄改】",
+             f"昨日立場:{stance}"]
+    if crit:
+        lines.append("昨日重點事件:")
+        lines.extend(f"- {c}" for c in crit)
+    else:
+        lines.append("昨日無自動記錄的重大事件。")
+    return "\n".join(lines)
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -9741,6 +9765,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
     # G2:未來 ~48h 重要行事曆事件(含既有預期/前值),供「七之三、事件情境決策表」取材。
     event_scenario_lines = _format_event_scenarios(quotes.get("EVENT_CALENDAR"))
+    # G4:昨日本報立場+重點事件(逐字),供「七之四、敘事變化」做昨日 vs 今日差分。
+    narrative_delta_block = _format_narrative_delta(quotes.get("HISTORY"))
 
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
@@ -10010,6 +10036,15 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 - **失效條件**:一句話——什麼情況會讓上面的判斷作廢(如「若同日 Fed 官員鷹派發言蓋過數據」)。
 
 **鐵則**:本段是「若…則…」的條件式沙盤,不是預測;所有門檻一律以「相對預期/前值的高低方向」表述,不得出現任何自創的絕對數字目標。
+
+## 七之四、敘事變化（昨日觀點 vs 今日新證據;**無昨日紀錄則整段省略**）
+
+{narrative_delta_block}
+
+對照上方昨日紀錄與今日的新聞/數據,用 **≤5 行**說明:昨日的哪些判斷/事件今日被**強化**(有新證據支持)、
+哪些被**推翻/降溫**(出現反向證據)、哪些**無進展**(今日沒有新消息);若今日立場與昨日不同,補一句「為何轉變」。
+**鐵則**:昨日部分只能引用上方【昨日本報敘事回顧】的原文,**不可**替昨日補記它沒說過的話;今日部分必須引用今日新聞/數據。
+若上方為「(無昨日紀錄可對照)」,本段只寫一行「無昨日紀錄可對照」即可。
 
 ## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
 
@@ -15288,8 +15323,12 @@ def main() -> int:
     pending_state_entry: Optional[dict] = None
     try:
         crit_titles = [n["title"] for n in news if n.get("importance") == "critical"][:5]
+        # G4:存今日 LLM 立場,供明日「敘事變化」段逐字對照(顯示層產物,非凍結計分模型)。
+        _stance_state = _extract_stance(analysis) if isinstance(analysis, str) else {}
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
+            "stance_label": _stance_state.get("label"),
+            "stance_score": _stance_state.get("score"),
             "generated_at": now_tpe.isoformat(),
             "target_session_date": target_session_date,
             "weekday": now_tpe.strftime("%a"),

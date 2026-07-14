@@ -1005,3 +1005,40 @@ def test_move_rsp_optional_do_not_degrade_macro_quality():
     dq = mr.build_data_quality(quotes, {"error": "x"}, {"error": "x"}, news=[], tw0050=[])
     macro_row = next(d for d in dq if d["name"].startswith("總經/國際/期貨/商品"))
     assert macro_row["status"] == "ok"    # MOVE/RSP error 被排除,其餘全 ok
+
+
+# ── G4 敘事變化(Narrative Delta) ────────────────────────────────────────────
+def test_format_narrative_delta_uses_last_entry_verbatim():
+    hist = [
+        {"date": "2026-07-10", "stance_label": "偏空", "critical_news": ["舊事件"]},
+        {"date": "2026-07-13", "stance_label": "偏多",
+         "critical_news": ["Fed 官員放鴿", "台積電法說優於預期"]},
+    ]
+    out = mr._format_narrative_delta(hist)
+    assert "2026-07-13" in out and "昨日立場:偏多" in out   # 取最新一份(末尾)
+    assert "Fed 官員放鴿" in out and "台積電法說優於預期" in out
+    assert "舊事件" not in out                              # 不取更早的那份
+
+
+def test_format_narrative_delta_empty_and_no_material():
+    assert "無昨日紀錄可對照" in mr._format_narrative_delta([])
+    assert "無昨日紀錄可對照" in mr._format_narrative_delta(None)
+    # 有 entry 但無立場也無事件 → 佔位
+    assert "無昨日紀錄可對照" in mr._format_narrative_delta(
+        [{"date": "2026-07-13", "critical_news": []}])
+
+
+def test_build_prompt_has_narrative_delta_section():
+    hist = [{"date": "2026-07-13", "stance_label": "偏多",
+             "critical_news": ["Fed 官員放鴿"]}]
+    p = mr._build_prompt(_empty_quotes(HISTORY=hist),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之四" in p and "敘事變化" in p
+    assert "昨日立場:偏多" in p and "Fed 官員放鴿" in p     # 昨日紀錄逐字注入
+    assert "不可" in p and "替昨日補記" in p                # 防幻覺鐵律
+
+
+def test_build_prompt_narrative_delta_placeholder_without_history():
+    p = mr._build_prompt(_empty_quotes(HISTORY=[]),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之四" in p and "無昨日紀錄可對照" in p

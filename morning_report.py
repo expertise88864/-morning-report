@@ -1182,6 +1182,98 @@ def fetch_taifex_night_session() -> dict:
     return {}
 
 
+def _fmtqik_taiex_by_roc_date() -> dict:
+    """TWSE FMTQIK → {民國日期字串(yyyMMdd): 加權指數收盤}。供台指期價差同日對齊。失敗回 {}。"""
+    out: dict[str, float] = {}
+    try:
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
+                      timeout=20, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        r.raise_for_status()
+        for row in (r.json() or []):
+            date_k = next((k for k in row if "日期" in k or k == "Date"), None)
+            if not date_k:
+                continue
+            roc = str(row.get(date_k) or "").strip().replace("/", "")
+            for k in ("發行量加權股價指數", "TAIEX", "加權股價指數", "Closing_TAIEX"):
+                v = _to_float(row.get(k))
+                if v and v > 1000:
+                    out[roc] = round(v, 2)
+                    break
+    except Exception as e:
+        print(f"[taifex_basis] FMTQIK 對齊表失敗: {e}", file=sys.stderr)
+    return out
+
+
+def fetch_taifex_basis() -> dict:
+    """台指期近月「與現貨價差」(純事實,不下情緒結論)。
+
+    使用者要求:純事實版——只呈現「期貨 vs 現貨相差幾點」,**不**寫「法人樂觀/避險」。
+    原因:台股 7-8 月除息旺季本就逆價差(期貨低於現貨),那是除息造成、非看空;
+    直接解讀成情緒訊號會每天誤導。故只給數字+季節性說明,判讀留給讀者。不進任何計分。
+
+    同日對齊:期貨結算與現貨收盤取「同一交易日」(FMTQIK 逐日表 match),避免跨日錯配。
+    回 {"date","fut_month","fut_settle","spot","diff","div_season"} 或 {}(失敗/無法對齊)。
+    """
+    today = dt.datetime.now(TPE).date()
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "text/html"}
+    taiex_map = _fmtqik_taiex_by_roc_date()
+    for back in range(0, 6):
+        d = today - dt.timedelta(days=back)
+        if d.weekday() >= 5:
+            continue
+        date_str = d.strftime("%Y/%m/%d")
+        roc = f"{d.year - 1911:03d}{d.month:02d}{d.day:02d}"
+        spot = taiex_map.get(roc)
+        if spot is None:
+            continue   # 沒有同日現貨收盤 → 不硬湊(避免跨日錯配)
+        try:
+            r = requests.post("https://www.taifex.com.tw/cht/3/futDataDown",
+                              data={"down_type": "1", "commodity_id": "TX",
+                                    "queryStartDate": date_str, "queryEndDate": date_str},
+                              timeout=15, headers=headers)
+            if r.status_code != 200 or len(r.text) < 200:
+                continue
+            import csv
+            from io import StringIO
+            rows = list(csv.reader(StringIO(r.content.decode("big5", errors="replace"))))
+            if len(rows) < 2:
+                continue
+            hdr = [c.strip() for c in rows[0]]
+            month_i = next((i for i, c in enumerate(hdr) if "到期月份" in c or "契約月份" in c), None)
+            close_i = next((i for i, c in enumerate(hdr) if "收盤" in c and "結算" not in c), None)
+            settle_i = next((i for i, c in enumerate(hdr) if "結算" in c), None)
+            session_i = next((i for i, c in enumerate(hdr) if "交易時段" in c or c == "盤別"), None)
+            if month_i is None or close_i is None:
+                continue
+            fut_settle = fut_month = None
+            _need = max(x for x in (month_i, close_i, settle_i or 0, session_i or 0))
+            for row in rows[1:]:
+                if len(row) <= _need:
+                    continue
+                mon = row[month_i].strip()
+                if "W" in mon or "/" in mon:
+                    continue   # 跳過週選/價差組合列
+                if session_i is not None and ("盤後" in row[session_i] or "夜盤" in row[session_i]):
+                    continue   # 只取日盤(與現貨收盤同時點)
+                val = safe_float(row[settle_i]) if settle_i is not None else None
+                val = val or safe_float(row[close_i])
+                if val and val > 1000:
+                    fut_settle, fut_month = round(val, 0), mon
+                    break   # 第一筆日盤非週約 = 近月
+            if fut_settle is None:
+                continue
+            diff = round(fut_settle - spot, 0)
+            div_season = d.month in (6, 7, 8, 9)   # 台股除息旺季:期貨天生偏低,屬季節性
+            print(f"[taifex_basis] {date_str} 近月{fut_month} 期 {fut_settle:.0f} vs 現貨 {spot:.0f} "
+                  f"= {diff:+.0f} 點(除息季={div_season})")
+            return {"date": date_str, "fut_month": fut_month, "fut_settle": fut_settle,
+                    "spot": spot, "diff": diff, "div_season": div_season}
+        except Exception as e:
+            print(f"[taifex_basis] {date_str} 失敗: {e}", file=sys.stderr)
+            continue
+    return {}
+
+
 def fetch_taifex_foreign_futures() -> dict:
     """
     抓 TAIFEX 期交所三大法人台指期未平倉（Task E）。
@@ -1407,6 +1499,23 @@ def fetch_analyst_rating_momentum(tickers=_ANALYST_MOMENTUM_TICKERS, days: int =
         print(f"[analyst] 評等動能 {len(out)} 檔(net: "
               + ", ".join(f"{k}{v['net']:+d}" for k, v in out.items()) + ")")
     return out
+
+
+def _basis_line_html(basis: dict) -> str:
+    """台指期與現貨價差 → 純事實一行(不下情緒結論;隱藏基差/逆價差術語)。無資料回空。"""
+    if not basis or basis.get("diff") is None or basis.get("spot") is None:
+        return ""
+    diff = basis["diff"]
+    hl = "高" if diff > 0 else ("低" if diff < 0 else "持平")
+    season = ("　7-8 月除息旺季期貨常低於現貨,屬季節性、非看空訊號"
+              if basis.get("div_season") else "")
+    return (
+        "<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+        "padding:12px 18px;margin:12px 0;font-size:13px;color:#334155;line-height:1.7;'>"
+        "<b style='color:#0f172a;'>台指期 vs 大盤現貨</b>　"
+        f"近月期貨 {basis['fut_settle']:,.0f}、大盤現貨 {basis['spot']:,.0f}"
+        f"(期貨{hl} <b>{abs(diff):,.0f}</b> 點)"
+        f"<span style='color:#94a3b8;'>{season}</span></div>")
 
 
 def _yield_curve_read(macro: dict) -> dict:
@@ -12765,6 +12874,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           </div>
         </div>
         """
+    # 台指期與現貨價差(純事實,不下情緒結論;獨立於夜盤資料是否存在)
+    night_html += _basis_line_html(quotes.get("TAIFEX_BASIS") or {})
 
     macro_table_html = ""
     if macro_rows:
@@ -14024,6 +14135,13 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 夜盤抓取失敗: {e}", file=sys.stderr)
         night_txf = {}
+
+    # 5.9b 台指期與現貨價差(純事實,不進計分)
+    try:
+        quotes["TAIFEX_BASIS"] = fetch_taifex_basis()
+    except Exception as e:
+        print(f"[main] 台指期價差抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["TAIFEX_BASIS"] = {}
 
     # 5.10 (Task A) 加權指數預測 —— TAIEX 昨收以 TWSE 官方為準，避免 Yahoo ^TWII 偶發錯值
     print("[main] 計算加權指數預測…")

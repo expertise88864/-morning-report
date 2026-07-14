@@ -1146,3 +1146,38 @@ def test_build_prompt_shows_credibility_tag_on_critical_news():
              "summary": "官方聲明重點", "merged_n": 3, "official": True}]
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
     assert "獨立來源 3・含官方來源" in p
+
+
+# ── 金控/台積電深度覆蓋(2026-07-14 使用者要求) ──────────────────────────────
+def test_google_companies_include_two_bank_holdings_and_tsmc_themes():
+    labels = [lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES]
+    assert "2882" in labels and "2891" in labels        # 兩大金控都在查詢清單
+    assert labels.count("2330") >= 3                    # 台積電泛查詢+財報/法說+製程主題
+    q2882 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2882")
+    assert "OR" in q2882                                # 子公司名 OR 擴充(國泰人壽)
+
+
+def test_prompt_company_roundrobin_deep_labels_get_five_slots():
+    """深耕公司(2330/2882/2891)每家可到 5 則;一般公司仍上限 3 則。"""
+    news = []
+    for label, n_items in (("2330", 6), ("2882", 6), ("NVDA", 6)):
+        for j in range(n_items):
+            news.append({"company_label": label, "source": f"Google:{label}",
+                         "source_name": "鉅亨",
+                         "title": f"{label} 重大進展第{j}案 具體數字{j}億",
+                         "summary": "客戶擴產投片"})
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    assert "第4案" in p.split("【重點公司最新新聞")[1][:4000]   # 深耕公司第 5 則(index 4)露出
+    # 一般公司(NVDA)不得超過 3 則
+    company_block = p.split("【重點公司最新新聞")[1]
+    nvda_lines = [ln for ln in company_block.split("\n") if ln.startswith("- [NVDA]")]
+    assert len(nvda_lines) == 3
+    tsmc_lines = [ln for ln in company_block.split("\n") if ln.startswith("- [2330]")]
+    assert len(tsmc_lines) == 5
+
+
+def test_prompt_guidance_names_tsmc_depth_and_bank_holdings():
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "台積電自家動態優先" in p                     # 八:台積電深度指引
+    assert "國泰金(2882)/中信金(2891) 為本段核心觀察" in p  # 九:金融核心觀察
+    assert "金融條目另可取材【重點公司最新新聞】" in p       # 九:取材放行

@@ -91,6 +91,15 @@ from session_calendar import (  # A5-B4:交易日/預測日期工具已抽出。
     evaluate_breakout_forecasts,
     build_breakout_tracking,
 )
+from portfolio_risk import (  # G1:持倉曝險引擎的純數學(合成序列可精確單測)。re-export 供測試以 mr.* 呼叫。
+    aligned_returns,
+    ols_beta,
+    value_weights,
+    portfolio_beta,
+    scenario_rows,
+    stress_rows,
+    phrase_multiple,
+)
 
 # ---------- 設定 ----------
 TPE = ZoneInfo("Asia/Taipei")
@@ -3924,6 +3933,105 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     if ex_div_amt:
         result["ex_div_amt"] = round(ex_div_amt, 4)
     return result
+
+
+def _history_close_by_date(ticker: str, period: str = "6mo") -> dict:
+    """抓單一 ticker 的日收盤 → {'YYYY-MM-DD': close}(去 tz、剔非正值)。失敗回 {}。"""
+    try:
+        h = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+        s = h["Close"].dropna()
+        if getattr(s.index, "tz", None) is not None:
+            s.index = s.index.tz_localize(None)
+        return {d.strftime("%Y-%m-%d"): float(c)
+                for d, c in s.items() if c and c > 0}
+    except Exception:
+        return {}
+
+
+def fetch_portfolio_risk(portfolio: dict, latest_prices: Optional[dict] = None) -> dict:
+    """G1|持倉曝險引擎(白話)。由持股(記憶體 {code: 股數})+ 公開歷史價,估算組合對
+    台股大盤 / 美股科技(那斯達克)/ 匯率的連動、情境變動與壓力測試。
+
+    隱私鐵律:回傳**只有比例(%)與相對敏感度**,絕無代號/股數/金額/個股權重
+    (權重只活在本函式內、彙總後即丟)。不進 LLM prompt、不進 state、不記 log 明細。
+    方法:各持股單因子 OLS beta(對 QQQ 隔夜 lag、對台股大盤/匯率同日),再以市值權重彙總。
+    coverage < 0.5 的因子視為資料不足以 None 隱藏。任何失敗回 {}(晨報不可斷)。"""
+    if not portfolio:
+        return {}
+    latest_prices = latest_prices or {}
+    try:
+        qqq = _history_close_by_date("QQQ")
+        twii = _history_close_by_date("^TWII")
+        fx = _history_close_by_date("TWD=X")
+        if not twii and not qqq:
+            return {}   # 兩個主要驅動都抓不到 → 放棄
+
+        values: dict = {}
+        betas_tw: dict = {}
+        betas_qqq: dict = {}
+        betas_fx: dict = {}
+        n_priced = 0
+        n_samples = 0
+        for code in portfolio:
+            hist = _history_close_by_date(f"{code}.TW")
+            if not hist:
+                continue
+            # 市值 = 股數 × 最新價(優先 TWSE 官方 last,退回 Yahoo 歷史末值)
+            last = latest_prices.get(code) or hist[max(hist)]
+            if not last or last <= 0:
+                continue
+            values[code] = portfolio[code] * last
+            n_priced += 1
+            a_tw, d_tw = aligned_returns(hist, twii, lag_driver=False)
+            betas_tw[code] = ols_beta(a_tw, d_tw)
+            n_samples = max(n_samples, len(a_tw))
+            a_q, d_q = aligned_returns(hist, qqq, lag_driver=True)
+            betas_qqq[code] = ols_beta(a_q, d_q)
+            a_f, d_f = aligned_returns(hist, fx, lag_driver=False)
+            betas_fx[code] = ols_beta(a_f, d_f)
+
+        weights = value_weights(values)
+        if not weights:
+            return {}
+        pf_tw, cov_tw = portfolio_beta(weights, betas_tw)
+        pf_qqq, cov_qqq = portfolio_beta(weights, betas_qqq)
+        pf_fx, cov_fx = portfolio_beta(weights, betas_fx)
+
+        # 涵蓋率(有有效 beta 的持股權重和)< 0.5 → 資料不足,對應項隱藏
+        tw_beta = round(pf_tw, 2) if cov_tw >= 0.5 else None
+        qqq_beta = round(pf_qqq, 2) if cov_qqq >= 0.5 else None
+        fx_beta = round(pf_fx, 2) if cov_fx >= 0.5 else None
+        if tw_beta is None and qqq_beta is None:
+            return {}   # 主要曝險都算不出 → 不顯示
+
+        pf_betas: dict = {}
+        if tw_beta is not None:
+            pf_betas["tw"] = pf_tw
+        if qqq_beta is not None:
+            pf_betas["qqq"] = pf_qqq
+        if fx_beta is not None:
+            pf_betas["fx"] = pf_fx
+
+        scen = scenario_rows(pf_betas, [
+            ("qqq", -3.0, "美股科技(那斯達克)跌 3%"),
+            ("qqq", -5.0, "美股科技(那斯達克)跌 5%"),
+            ("tw", -3.0, "台股大盤跌 3%"),
+            ("fx", 1.0, "台幣貶值 1%(美元走強)"),
+        ])
+        stress = stress_rows(pf_betas.get("qqq"), [10, 20, 30])
+
+        cov_shown = max(cov_tw, cov_qqq)   # 兩主因子中涵蓋較高者當「涵蓋部位」白話值
+        print(f"[risk] 持倉曝險:台股≈{tw_beta} 那斯達克≈{qqq_beta} 匯率≈{fx_beta} "
+              f"(涵蓋 {cov_shown*100:.0f}%, {n_samples} 日, {n_priced} 檔計價)")
+        return {
+            "tw_beta": tw_beta, "qqq_beta": qqq_beta, "fx_beta": fx_beta,
+            "tw_cov": round(cov_tw, 2), "qqq_cov": round(cov_qqq, 2),
+            "fx_cov": round(cov_fx, 2), "cov_shown": round(cov_shown, 2),
+            "scenarios": scen, "stress": stress, "n_samples": n_samples,
+        }
+    except Exception as e:
+        print(f"[risk] 持倉曝險計算略過(不影響晨報): {e}", file=sys.stderr)
+        return {}
 
 
 def fetch_ma200_status() -> dict:
@@ -10472,6 +10580,80 @@ def _render_etf_action_card(fair_00662, pred_0050) -> str:
         '</div>')
 
 
+def _render_portfolio_risk_html(risk: dict) -> str:
+    """G1|持倉曝險卡(白話)。只顯示比例/情境/壓力,無任何持股明細。
+
+    以 <!--PF_ROW_START/END--> 包裹 → archive_report_html 存檔時整卡去識別移除
+    (曝險輪廓仍屬個人財務,repo 目前為 public,存檔不落地)。無資料回空字串。"""
+    if not risk:
+        return ""
+    tw = risk.get("tw_beta")
+    qqq = risk.get("qqq_beta")
+    fx = risk.get("fx_beta")
+
+    def _c(pct):   # TW 慣例:漲(正)紅、跌(負)綠
+        return "#dc2626" if pct >= 0 else "#16a34a"
+
+    lines = []   # 白話「連動」三行
+    if tw is not None:
+        lev = "（含槓桿,跌時放大)" if tw >= 1.3 else ""
+        lines.append(f"整體大約等於 <b>{phrase_multiple(tw)}</b> 台股大盤{lev}——"
+                     f"台股大盤變動 1%,你的資產約跟著同向變動 {abs(tw):.1f}%。")
+    if qqq is not None:
+        lines.append(f"與<b>美股科技(那斯達克)</b>的連動:那斯達克變動 1%,"
+                     f"你的資產約同向變動 {abs(qqq):.1f}%。")
+    if fx is not None and abs(fx) >= 0.05:
+        d = "貶值" if fx >= 0 else "升值"
+        lines.append(f"<b>匯率</b>:台幣每{d} 1%,你的海外部位讓資產約 "
+                     f"<span style='color:{_c(fx)}'>{fx:+.1f}%</span>(美元計價資產的匯率效果)。")
+    lines_html = "".join(
+        f"<div style='padding:3px 0;color:#334155;'>{ln}</div>" for ln in lines)
+
+    scen = risk.get("scenarios") or []
+    scen_rows = "".join(
+        f"<tr><td style='padding:6px 12px;border-bottom:1px solid #eef2f7;color:#334155;'>{s['label']}</td>"
+        f"<td style='padding:6px 12px;border-bottom:1px solid #eef2f7;text-align:right;font-weight:700;"
+        f"color:{_c(s['delta_pct'])};font-variant-numeric:tabular-nums;white-space:nowrap;'>"
+        f"你的資產約 {s['delta_pct']:+.1f}%</td></tr>"
+        for s in scen)
+    scen_html = (
+        "<div style='padding:8px 14px 2px;font-weight:700;color:#0f172a;font-size:13px;'>"
+        "如果發生這些狀況(粗估、假設每次只動一個因素):</div>"
+        f"<table style='width:100%;border-collapse:collapse;font-size:13px;'>{scen_rows}</table>"
+        if scen_rows else "")
+
+    stress = risk.get("stress") or []
+    if stress:
+        parts = "、".join(
+            f"那斯達克 −{s['drawdown_pct']}% 時約 "
+            f"<span style='color:{_c(s['delta_pct'])};font-weight:700;'>{s['delta_pct']:+.0f}%</span>"
+            for s in stress)
+        stress_html = (
+            "<div style='padding:8px 14px;font-size:13px;color:#334155;line-height:1.8;'>"
+            f"<b>歷史級大跌壓力測試</b>:{parts}。</div>")
+    else:
+        stress_html = ""
+
+    cov = risk.get("cov_shown")
+    n = risk.get("n_samples") or 0
+    cov_txt = f"涵蓋你約 {cov*100:.0f}% 部位、" if isinstance(cov, (int, float)) else ""
+    foot = (
+        "<div style='padding:8px 14px;background:#f8fafc;font-size:12px;color:#94a3b8;line-height:1.6;'>"
+        f"※ 以近 {n} 個交易日的實際連動估算;{cov_txt}為粗估非精準預測,漲跌方向相反、幅度相同。"
+        "此區僅寄給你本人,存檔時自動移除,不含任何持股明細。</div>")
+
+    return (
+        "<!--PF_ROW_START-->"
+        '<div style="border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;margin:14px 0;">'
+        '<div style="background:#334155;color:#fff;padding:8px 14px;font-weight:700;font-size:15px;">'
+        '你的持倉曝險(白話估算)</div>'
+        '<div style="padding:10px 14px;background:#fff;font-size:13px;line-height:1.7;">'
+        f"{lines_html}</div>"
+        f"{scen_html}{stress_html}{foot}"
+        "</div>"
+        "<!--PF_ROW_END-->")
+
+
 def _fallback_stance_from_signals(quotes: dict) -> dict:
     """LLM 未輸出可解析的立場時,用 Python 訊號(加權預測共識/方向)給保底立場,
     避免頂部 KPI/加權區出現「—」。score 留 None(非 11 維淨分),label 標 source=signals。"""
@@ -12687,6 +12869,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         max_episodes=max(1, len(_pod_eps_init)))
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
     ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
+    portfolio_risk_html = _render_portfolio_risk_html(quotes.get("PORTFOLIO_RISK") or {})
     sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
     event_calendar_html = _render_event_calendar_html(quotes.get("EVENT_CALENDAR") or [])
     event_timeline_html = _render_event_timeline_html(
@@ -13627,6 +13810,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {taiex_html}
 
             {combined_pred_html}
+
+            {portfolio_risk_html}
 
             {ma200_html}
 
@@ -14926,6 +15111,12 @@ def main() -> int:
         except Exception as e:
             print(f"[main] 持股昨日漲跌計算失敗(不影響晨報): {e}", file=sys.stderr)
             quotes["PORTFOLIO_ACTUAL"] = {}
+
+    # 6.655 G1 持倉曝險(白話):組合對台股/那斯達克/匯率的連動 + 情境 + 壓力測試。
+    #       只顯示比例(%),無任何持股明細;非核心步驟 → 走時間預算閘,不足則跳過保寄信。
+    if (PORTFOLIO_1 or PORTFOLIO_2) and _run_budget_ok(235, "持倉曝險"):
+        print("[main] 計算持倉曝險(白話)…")
+        quotes["PORTFOLIO_RISK"] = fetch_portfolio_risk({**PORTFOLIO_1, **PORTFOLIO_2})
 
     # 6.66 除息已在預測模型執行前套用，這裡只加入報告提醒。
     if ex_div:

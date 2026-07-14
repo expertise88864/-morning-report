@@ -184,6 +184,35 @@ LLM_TOTAL_TIMEOUT_SECONDS = float(os.environ.get("LLM_TOTAL_TIMEOUT_SECONDS", "1
 LLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LLM_REQUEST_TIMEOUT_SECONDS", "75"))
 _LLM_DEADLINE: Optional[float] = None
 
+# ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
+# GitHub Actions job 有 timeout-minutes(本專案 25 分);2026-07-08 曾因 Google News
+# 大量 503 × 逐源重試把 job 拖到 25 分被強制取消 → 整封信沒寄出。保命機制:main() 起點
+# 記整體 deadline,昂貴且「非核心」的步驟(全文擷取、LLM 事件抽取)在動工前檢查剩餘時間,
+# 不足就跳過、用當次已有資料組信寄出——寧可少一塊資料,不可整封信被 timeout 吞掉。
+# 核心(行情/預測/LLM 主分析/寄信)永遠執行;主分析本身另有 LLM_TOTAL_TIMEOUT 保護。
+RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "1140"))   # 19 分(25 分留 6 分緩衝)
+_RUN_DEADLINE: Optional[float] = None
+_DEGRADED_STEPS: list[str] = []
+
+
+def _run_seconds_left() -> float:
+    """距整體保命 deadline 的剩餘秒數;未設定(如測試/本機)回一個大值=不限制。"""
+    if _RUN_DEADLINE is None:
+        return 1e9
+    return _RUN_DEADLINE - time.monotonic()
+
+
+def _run_budget_ok(need_seconds: float, step_label: str) -> bool:
+    """昂貴非核心步驟的時間閘:剩餘時間 < 該步驟+後續寄信所需 → 跳過並記錄降級。
+    回 True=可執行。need_seconds 應含「本步驟估時 + 後續核心(LLM 主分析~180s + 渲染寄信~40s)」。"""
+    left = _run_seconds_left()
+    if left >= need_seconds:
+        return True
+    _DEGRADED_STEPS.append(step_label)
+    print(f"[budget] 剩餘 {left:.0f}s < {need_seconds:.0f}s → 跳過「{step_label}」保寄信",
+          file=sys.stderr)
+    return False
+
 
 def _llm_remaining_seconds() -> float:
     if _LLM_DEADLINE is None:
@@ -13751,6 +13780,11 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     def add(name: str, status: str, detail: str = "") -> None:
         dq.append({"name": name, "status": status, "detail": str(detail)[:80]})
 
+    # P0-2 時間預算降級:本次跑因時間不足跳過的非核心步驟(供 LLM 知悉、資料品質透明)
+    if _DEGRADED_STEPS:
+        add("時間預算", "fallback",
+            f"本期為確保準時寄出,已跳過:{'、'.join(dict.fromkeys(_DEGRADED_STEPS))}")
+
     # 2330 預測透明度:預測與昨收幾乎持平、但 TSM ADR 有明顯波動 → 提示留意
     # (可能是 bias 校正恰好抵銷 ADR 訊號,也可能是輸入新鮮度問題;2026-07-13 信
     #  出現連兩日 +0.00% 預測,事後查為颱風假 bar 污染校正樣本——此警示讓下次一眼看到)。
@@ -14195,6 +14229,9 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
 
 # ---------- 主流程 ----------
 def main() -> int:
+    global _RUN_DEADLINE
+    _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
+    _DEGRADED_STEPS.clear()
     now_tpe = dt.datetime.now(TPE)
     # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
     if now_tpe.weekday() == 6:
@@ -14333,14 +14370,15 @@ def main() -> int:
     # 5.1 (Task B) 新聞重要性分類
     news = classify_news_importance(news)
 
-    # 5.2 (Task A) 對 critical 事件抓全文
-    print("[main] 對重大事件擷取全文…")
-    try:
-        # 同時對 critical 與 high 級新聞抓全文(個股新聞多半屬 high,只有 RSS snippet
-        # 會讓 LLM 因「沒有具體事實」而把該公司刪掉,報告變稀薄)
-        news = fetch_news_fulltext(news, max_critical=10, max_high=16)
-    except Exception as e:
-        print(f"[main] 全文擷取失敗: {e}", file=sys.stderr)
+    # 5.2 (Task A) 對 critical 事件抓全文(P0-2:時間預算不足時跳過——全文是「加深」而非核心)
+    if _run_budget_ok(360, "重大事件全文擷取"):
+        print("[main] 對重大事件擷取全文…")
+        try:
+            # 同時對 critical 與 high 級新聞抓全文(個股新聞多半屬 high,只有 RSS snippet
+            # 會讓 LLM 因「沒有具體事實」而把該公司刪掉,報告變稀薄)
+            news = fetch_news_fulltext(news, max_critical=10, max_high=16)
+        except Exception as e:
+            print(f"[main] 全文擷取失敗: {e}", file=sys.stderr)
 
     # 5.3 (Task C) SEC 8-K 主要公司公告
     print("[main] 抓 SEC 8-K 主要公司公告…")
@@ -14582,10 +14620,11 @@ def main() -> int:
 
     # 6.36 補抓全文:候選股/8-K 新聞在 5.2 全文擷取之後才併入,其中升級為
     # critical/high 者在此補抓(fetch_news_fulltext 冪等,已抓過的會跳過)。
-    try:
-        news = fetch_news_fulltext(news, max_critical=3, max_high=8)
-    except Exception as e:
-        print(f"[main] 補抓全文失敗(不影響晨報): {e}", file=sys.stderr)
+    if _run_budget_ok(300, "候選/8-K 補抓全文"):
+        try:
+            news = fetch_news_fulltext(news, max_critical=3, max_high=8)
+        except Exception as e:
+            print(f"[main] 補抓全文失敗(不影響晨報): {e}", file=sys.stderr)
 
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()
@@ -14602,9 +14641,14 @@ def main() -> int:
     model_history, model_backfill = backfill_model_history(
         model_history, trading_sessions)
     quotes["MODEL_BACKFILL"] = model_backfill
-    print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
-    structured_events = apply_event_timeline(
-        model_history, call_llm_event_extractor(news, tw_mops))
+    # 事件抽取是額外一次 LLM 呼叫(供事件連續劇/歸因),非核心;時間不足就跳過,
+    # 事件連續劇區塊自然為空,不影響主分析與寄信(P0-2)。
+    if _run_budget_ok(260, "LLM 新聞事件抽取"):
+        print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
+        structured_events = apply_event_timeline(
+            model_history, call_llm_event_extractor(news, tw_mops))
+    else:
+        structured_events = apply_event_timeline(model_history, [])
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     try:
         quotes["EVENT_TIMELINE"] = translate_event_titles(

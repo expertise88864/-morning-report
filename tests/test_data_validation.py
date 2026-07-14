@@ -759,3 +759,37 @@ def test_valuation_and_magnet_reach_prompt():
     # 無資料時不產生空段
     p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "結算磁吸參考價" not in p2
+
+
+# ===================== P0-2 寄信保命時間預算 =====================
+
+def test_run_budget_gate(monkeypatch):
+    """時間閘:剩餘充足→執行;不足→跳過並記錄降級;未設 deadline→不限制。"""
+    import time
+    monkeypatch.setattr(mr, "_RUN_DEADLINE", None)
+    mr._DEGRADED_STEPS.clear()
+    assert mr._run_budget_ok(999, "x") is True and mr._DEGRADED_STEPS == []
+    monkeypatch.setattr(mr, "_RUN_DEADLINE", time.monotonic() + 600)
+    assert mr._run_budget_ok(360, "全文") is True and mr._DEGRADED_STEPS == []
+    monkeypatch.setattr(mr, "_RUN_DEADLINE", time.monotonic() + 100)
+    assert mr._run_budget_ok(360, "全文擷取") is False
+    assert "全文擷取" in mr._DEGRADED_STEPS
+    mr._DEGRADED_STEPS.clear()
+
+
+def test_degraded_steps_surface_in_data_quality(monkeypatch):
+    """跳過的步驟出現在資料品質(供 LLM 知悉、透明);去重不重覆。"""
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS",
+                        ["重大事件全文擷取", "重大事件全文擷取", "LLM 新聞事件抽取"])
+    dq = mr.build_data_quality({}, {}, {}, [], [])
+    row = next((d for d in dq if d["name"] == "時間預算"), None)
+    assert row is not None and row["status"] == "fallback"
+    assert "全文擷取" in row["detail"] and "事件抽取" in row["detail"]
+    assert row["detail"].count("全文擷取") == 1        # 去重
+
+
+def test_no_degraded_row_when_budget_healthy():
+    """時間充足(無降級)→ 不產生時間預算列。"""
+    mr._DEGRADED_STEPS.clear()
+    dq = mr.build_data_quality({}, {}, {}, [], [])
+    assert not any(d["name"] == "時間預算" for d in dq)

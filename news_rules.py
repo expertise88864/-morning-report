@@ -345,16 +345,30 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
         t = _re.sub(r"[^\w一-鿿]", "", t)
         return t
 
+    def _pub_key(item: dict) -> str:
+        """發布者身分(用於算「獨立來源數」)。優先用 source_name(真正媒體,如「鉅亨」),
+        其次 source(常是聚合器代號)。目的:同一媒體經多條查詢路徑(類股 feed vs 個股 Google)
+        重貼,source 不同但 source_name 相同 → 視為同一來源、不灌水 merged_n(Codex review)。"""
+        return _norm(str(item.get("source_name") or item.get("source") or ""))
+
     kept: list[dict] = []
     kept_norms: list[str] = []
+    # 每個保留項「已合併的發布者身分集合」,與 kept/kept_norms 同步索引;merged_n = 其基數。
+    kept_pubs: list[set] = []
     dropped = 0
     for n in news:
         nt = _norm(n.get("title", ""))
         if not nt:
+            # 無標題者不參與比對,但三個平行陣列仍同步 append(空 norm 永不匹配),
+            # 維持 kept / kept_norms / kept_pubs 索引一致(否則 dup_index 會錯位)。
             kept.append(n)
+            kept_norms.append("")
+            kept_pubs.append({_pub_key(n)})
             continue
         dup_index = None
         for index, kn in enumerate(kept_norms):
+            if not kn:
+                continue
             if nt == kn:
                 dup_index = index
                 break
@@ -375,9 +389,9 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             # 該事件同屬兩個版面,市場配額桶與世界取材段都要收,不可因帶 world_cat
             # 就被市場桶排除(Codex review 第二輪:否則跨源大事件從市場桶消失)。
             mixed = bool(n.get("world_cat")) != bool(kept[dup_index].get("world_cat"))
-            # G6 可信度確定性欄位:累計「獨立來源數」+「是否含官方來源(grade A)」。
-            # 在可能替換 kept 版本『之前』先算好,替換後再寫回,避免被覆蓋掉累計值。
-            combined_merged = (kept[dup_index].get("merged_n", 1) + n.get("merged_n", 1))
+            # G6 可信度確定性欄位:merged_n=去重後「不同發布者」數(非則數),含官方=任一版 grade A。
+            # 集合存 kept_pubs(平行陣列,替換保留版本也不遺失累計);官方旗標取 OR。
+            kept_pubs[dup_index].add(_pub_key(n))
             combined_official = (bool(kept[dup_index].get("official"))
                                  or bool(n.get("official"))
                                  or _news_source_grade(kept[dup_index]) == "A"
@@ -385,7 +399,7 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
                 kept[dup_index] = n
                 kept_norms[dup_index] = nt
-            kept[dup_index]["merged_n"] = combined_merged
+            kept[dup_index]["merged_n"] = len(kept_pubs[dup_index])
             kept[dup_index]["official"] = combined_official
             if label and not kept[dup_index].get("company_label"):
                 kept[dup_index]["company_label"] = label
@@ -397,6 +411,7 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             continue
         kept.append(n)
         kept_norms.append(nt)
+        kept_pubs.append({_pub_key(n)})
     print(f"[news] 去重：{len(news)} → {len(kept)} 則（移除 {dropped} 則重複）")
     return kept
 

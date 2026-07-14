@@ -805,3 +805,29 @@ def test_credibility_tag_format():
     # 未去重單筆(無 official 欄位)退回以來源分級即時判定
     assert "含官方來源" in mr._credibility_tag({"source": "Federal Reserve"})
     assert mr._credibility_tag({"source": "Google:x", "source_name": "鉅亨"}) == ""
+
+
+def test_dedup_same_publisher_two_feeds_not_double_counted():
+    """同一媒體(source_name 相同)經兩條查詢路徑重貼 → 獨立來源數不灌水(Codex review)。"""
+    news = [
+        {"title": "台積電宣布擴產亞利桑那新廠", "source": "類股-半導體-台股", "source_name": "鉅亨"},
+        {"title": "台積電宣布擴產亞利桑那新廠", "source": "Google:2330", "source_name": "鉅亨"},
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 1
+    assert out[0].get("merged_n", 1) == 1       # 同一發布者,不算兩個獨立來源
+    assert mr._credibility_tag(out[0]) == ""    # 不顯示「獨立來源 N」
+
+
+def test_dedup_empty_title_keeps_arrays_aligned():
+    """無標題項不參與比對但陣列同步 → 後續同標題項仍正確合併到對的那筆(索引不錯位)。"""
+    news = [
+        {"title": "", "source": "x", "source_name": "無題"},
+        {"title": "重要事件甲乙丙丁戊", "source": "Google:a", "source_name": "鉅亨"},
+        {"title": "重要事件甲乙丙丁戊", "source": "Federal Reserve", "source_name": ""},
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 2                          # 空標題 + 合併後一則
+    merged = next(o for o in out if o.get("title"))
+    assert merged["official"] is True             # 合併寫到正確那筆(非空標題項)
+    assert merged["merged_n"] == 2

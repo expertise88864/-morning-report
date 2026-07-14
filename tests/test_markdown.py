@@ -233,7 +233,7 @@ def test_render_html_keep_mode_compacts_points_keeps_all_episodes(monkeypatch):
     """keep 模式超標時只壓「每集重點條數」,所有集數都保留且都正確標記已顯示。
     絕不砍集數:load_podcast_digest 每節目只取 2 集未顯示、>96h 即丟棄,且顯示順序固定
     (台灣節目優先),砍集數會讓排序靠後的節目永遠輪不到而過期消失(Codex review)。"""
-    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 keep
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "keep")   # keep 為選項(預設已改 full)
     pts = [f"PTMARK{j} " + "很長的重點內容" * 5 for j in range(15)]
     eps = [{"show": f"節目{i}", "title": f"EPMARK{i}",
             "digest": {"summary_points": list(pts), "tickers": []}} for i in range(10)]
@@ -251,7 +251,7 @@ def test_render_html_keep_mode_compacts_points_keeps_all_episodes(monkeypatch):
 def test_render_html_keep_mode_last_resort_reduces_episodes_and_shown_count(monkeypatch):
     """keep 模式壓到最小條數仍超標 → 最後手段才減集數,且 shown 數與實際渲染數一致
     (未渲染的集不標記已顯示,隔天會再出現;絕不「沒看到卻永久消失」)。"""
-    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 keep
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "keep")   # keep 為選項(預設已改 full)
     eps = _podcast_episodes(10)
     # 只要集數(EPMARK)>4 就判超標(壓條數救不了)→ 迫使最後手段減到 4 集
     monkeypatch.setattr(mr, "_estimated_email_kb",
@@ -267,7 +267,7 @@ def test_render_html_keep_mode_last_resort_reduces_episodes_and_shown_count(monk
 def test_render_html_keep_mode_reduces_episodes_one_at_a_time(monkeypatch):
     """最後手段減集數一次只減 1 集:3 集超標但 2 集塞得下 → 應保留 2 集(不可跳到 1),
     否則多丟一集反而加重餓死風險(Codex review)。"""
-    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # keep
+    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "keep")   # keep 為選項(預設已改 full)
     eps = _podcast_episodes(3)
     monkeypatch.setattr(mr, "_estimated_email_kb",
                         lambda h: 120.0 if h.count("EPMARK") > 2 else 80.0)
@@ -878,12 +878,29 @@ def test_cap_analysis_removes_orphan_header():
 
     2026-07-13 信實見:「十、總體經濟」只剩標題與截斷訊息。
     """
-    body = "A" * 3700 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
+    body = "A" * 5900 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
     capped = mr._cap_analysis_text(body)
     assert "已截斷" in capped
     assert "十、總體經濟" not in capped            # 孤兒標題被清掉
     assert "B" not in capped
-    # 短文原樣通過;上限 3800(九、擴充後調 3200,世界大事速覽再調 3800)
+    # 短文原樣通過;上限 6000(2026-07-14 起僅防 LLM 跑飛,不再為信件大小服務)
     assert mr._cap_analysis_text("short") == "short"
-    ok = "C" * 3700
+    ok = "C" * 5900
     assert mr._cap_analysis_text(ok) == ok
+
+
+def test_render_html_full_mode_default_never_compacts(monkeypatch):
+    """預設 full 模式(使用者 2026-07-14 拍板:內容完整優先、接受 Gmail 摺疊):
+    即使估算大小遠超 102KB,也不壓條數、不減集、不移除區塊,全部集數照標記已顯示。
+    07-13/14 教訓:keep 模式把 10 集擠到剩 1 集,比摺疊更傷。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設=full
+    pts = [f"PTMARK{j} 重點" for j in range(15)]
+    eps = [{"show": f"節目{i}", "title": f"EPMARK{i}",
+            "digest": {"summary_points": list(pts), "tickers": []}} for i in range(10)]
+    monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 150.0)   # 永遠「超標」
+    q = {**_full_quotes(), "PODCAST_DIGEST": eps}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert html.count("EPMARK") == 10                  # 10 集全在
+    assert html.count("PTMARK") == 150                 # 條數完全沒壓(10 集 × 15 條)
+    assert len(q["PODCAST_SHOWN_EPISODES"]) == 10      # 全部標記已顯示
+    assert "已暫略" not in html                         # 無任何區塊被移除

@@ -12246,14 +12246,13 @@ def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
         print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
 
 
-def _cap_analysis_text(text: str, max_chars: int = 3800) -> str:
-    """LLM 分析過長時在段落邊界截斷(避免把整封信推近 Gmail 102KB 剪裁線、也省手機下滑)。
+def _cap_analysis_text(text: str, max_chars: int = 6000) -> str:
+    """LLM 分析異常過長時在段落邊界截斷(保險絲,防模型跑飛)。
 
-    2400→3200(2026-07-13):九、其他類股擴充到 8 類後,總長常態性超過 2400,
-    導致「十、總體經濟」整段被砍到只剩標題(07-13 信實見)。
-    3200→3800(2026-07-16):新增「七之二、世界大事速覽」(3-5 條 ≈ +400-600 字)。
-    世界速覽排在分析前段,尾端截斷仍先犧牲十/十一(其數據已在上方卡片);
-    +600 字 ≈ +1.5KB HTML,超標壓力由下游 keep-mode 壓縮 podcast 條數吸收。"""
+    2400→3200→3800:歷次擴充(其他類股 8 類、世界大事速覽)後調升,仍常截到十/十一。
+    3800→6000(2026-07-14):使用者拍板「內容完整優先、接受 Gmail 摺疊」(尺寸守衛改
+    full 模式)後,本上限不再為信件大小服務,只防 LLM 異常輸出;正常分析(~4-5k 字)
+    應完整呈現,不再截斷十、總經/十一、台灣動態。"""
     if not text or len(text) <= max_chars:
         return text
     cut = text.rfind("\n\n", 0, max_chars)
@@ -13383,14 +13382,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === Gmail ~102KB 剪裁防護 ===
     # Gmail 量的是「解碼後 HTML」大小(~102KB;base64 信更晚才剪),_estimated_email_kb 已直接量解碼後大小。
-    # 預設 keep 模式(使用者偏好):不省略任何區塊,送全文;若可能超過 Gmail 上限,只提示信末可點
-    #   「顯示完整內容」看全文。版面已把最低價值區塊排在最末(…體育→五檔→醫學文獻→政策/醫界),
-    #   Gmail 真要剪也先剪政策/醫界,不動體育/Podcast。
-    # trim 模式(EMAIL_OVERFLOW_MODE=trim):依優先序局部縮減 Podcast + 整塊移除最低價值區塊,
-    #   完全避免 Gmail 摺疊;犧牲序可由 EMAIL_TRUNCATE_ORDER 覆寫(政策→醫界→醫學文獻→五檔→…→體育→Podcast)。
-    # 兩模式下行情表/2330·00662·0050 預測卡/結論永不被移除。門檻 95KB:對 ~102KB 真實線留安全邊際。
+    # 預設 full 模式(使用者 2026-07-14 拍板:「信件超過大小沒關係,接受被折疊,手動打開就好」):
+    #   完全不壓縮、不減集、不移除任何區塊——內容完整優先,超過 102KB 由 Gmail 摺疊、
+    #   使用者點「查看整封郵件」展開。07-13/14 的教訓:keep 模式的減集把 10 集 Podcast
+    #   擠到剩 1 集,比摺疊更傷。
+    # keep 模式(EMAIL_OVERFLOW_MODE=keep):不移除區塊,但逐步壓 Podcast 條數/集數到 95KB 內。
+    # trim 模式(EMAIL_OVERFLOW_MODE=trim):依優先序局部縮減 + 整塊移除,完全避免摺疊;
+    #   犧牲序可由 EMAIL_TRUNCATE_ORDER 覆寫。
+    # 三模式下行情表/2330·00662·0050 預測卡/結論永不被移除。門檻 95KB:對 ~102KB 真實線留安全邊際。
     LIMIT_KB = 95.0
-    overflow_mode = os.environ.get("EMAIL_OVERFLOW_MODE", "keep").strip().lower()
+    overflow_mode = os.environ.get("EMAIL_OVERFLOW_MODE", "full").strip().lower()
     intel_data = quotes.get("TW_DAILY_INTELLIGENCE") or {}
     inc_policy = inc_medical = True
     podcast_eps = quotes.get("PODCAST_DIGEST") or []
@@ -13449,7 +13450,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             if was_present:
                 dropped.append(label)
             html = _assemble()
-    elif podcast_html and podcast_eps:
+    elif overflow_mode == "keep" and podcast_html and podcast_eps:
         # keep 模式:不省略任何區塊。超標時 (1) 先逐步壓「每集重點條數」(不丟集);
         # (2) 壓到最小仍超標,才作為最後手段逐步減少集數,並**同步下修 podcast_shown_n**
         #     → 未渲染的集不會被標記已顯示,隔天會再出現(不會「沒看到卻永久消失」)。

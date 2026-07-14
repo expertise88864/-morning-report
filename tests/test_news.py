@@ -831,3 +831,20 @@ def test_dedup_empty_title_keeps_arrays_aligned():
     merged = next(o for o in out if o.get("title"))
     assert merged["official"] is True             # 合併寫到正確那筆(非空標題項)
     assert merged["merged_n"] == 2
+
+
+def test_dedup_multi_call_preserves_merged_n():
+    """dedup 被 pipeline 多次呼叫:累計的獨立來源數不得在下一輪縮水(Codex review 第二輪)。"""
+    T = "重大國際事件甲乙丙丁戊己庚"
+    r1 = mr.dedup_news([
+        {"title": T, "source": "s1", "source_name": "鉅亨"},
+        {"title": T, "source": "s2", "source_name": "cnbc"},
+        {"title": T, "source": "s3", "source_name": "reuters"},
+    ])
+    assert r1[0]["merged_n"] == 3
+    # 第二輪:r1 結果 + 一則新媒體同事件 → 累積到 4,不縮水
+    r2 = mr.dedup_news(r1 + [{"title": T, "source": "s4", "source_name": "bloomberg"}])
+    assert r2[0]["merged_n"] == 4
+    # 第三輪:同事件但來源是已算過的媒體(鉅亨)→ 不重複計,維持 4
+    r3 = mr.dedup_news(r2 + [{"title": T, "source": "s5", "source_name": "鉅亨"}])
+    assert r3[0]["merged_n"] == 4

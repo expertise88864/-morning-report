@@ -772,3 +772,36 @@ class _RaiseJSON:
 
     def json(self):
         return {}
+
+
+# ── G6 可信度確定性欄位 ──────────────────────────────────────────────────────
+def test_dedup_records_merged_n_and_official_flag():
+    """去重合併時累計獨立來源數;任一版為官方(grade A)→ official=True(Codex 慣例)。"""
+    news = [
+        {"title": "Fed 決議維持利率不變", "source": "Google:macro", "source_name": "鉅亨"},   # B
+        {"title": "Fed 決議維持利率不變", "source": "Federal Reserve", "source_name": ""},     # A 官方
+        {"title": "Fed 決議維持利率不變", "source": "Google:macro2", "source_name": "cnbc"},   # B
+    ]
+    out = mr.dedup_news(news)
+    assert len(out) == 1
+    assert out[0]["merged_n"] == 3          # 三個獨立來源合併
+    assert out[0]["official"] is True       # 含官方來源(Federal Reserve)
+    assert mr._news_source_grade(out[0]) == "A"   # 保留了官方版
+
+
+def test_dedup_non_official_duplicates_merged_n_only():
+    news = [
+        {"title": "某公司傳擴產計畫啟動", "source": "Google:x", "source_name": "鉅亨"},
+        {"title": "某公司傳擴產計畫啟動", "source": "Google:y", "source_name": "cnbc"},
+    ]
+    out = mr.dedup_news(news)
+    assert out[0]["merged_n"] == 2 and out[0]["official"] is False
+
+
+def test_credibility_tag_format():
+    assert mr._credibility_tag({"merged_n": 3, "official": True}) == "〔獨立來源 3・含官方來源〕"
+    assert mr._credibility_tag({"merged_n": 2, "official": False}) == "〔獨立來源 2〕"
+    assert mr._credibility_tag({"merged_n": 1, "official": False}) == ""
+    # 未去重單筆(無 official 欄位)退回以來源分級即時判定
+    assert "含官方來源" in mr._credibility_tag({"source": "Federal Reserve"})
+    assert mr._credibility_tag({"source": "Google:x", "source_name": "鉅亨"}) == ""

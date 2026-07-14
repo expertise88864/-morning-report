@@ -311,6 +311,23 @@ def _news_keep_score(item: dict) -> tuple[int, int]:
     return grade_score, content_len
 
 
+def _credibility_tag(item: dict) -> str:
+    """G6:可信度確定性標記。獨立來源數(dedup 累計的 merged_n)> 1 或含官方來源時,
+    回「〔獨立來源 N・含官方來源〕」供 prompt 顯示;否則回 ""。純確定性,不進計分。
+    official 欄位由 dedup_news 累計;單筆未去重者退回以來源分級(A=官方)即時判定。"""
+    n = item.get("merged_n", 1)
+    n = n if isinstance(n, int) and n > 0 else 1
+    official = item.get("official")
+    if not isinstance(official, bool):
+        official = _news_source_grade(item) == "A"
+    bits = []
+    if n > 1:
+        bits.append(f"獨立來源 {n}")
+    if official:
+        bits.append("含官方來源")
+    return f"〔{'・'.join(bits)}〕" if bits else ""
+
+
 def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
     """
     去除重複 / 近似重複的新聞（同一事件常被多個 RSS 來源重貼）。
@@ -358,9 +375,18 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             # 該事件同屬兩個版面,市場配額桶與世界取材段都要收,不可因帶 world_cat
             # 就被市場桶排除(Codex review 第二輪:否則跨源大事件從市場桶消失)。
             mixed = bool(n.get("world_cat")) != bool(kept[dup_index].get("world_cat"))
+            # G6 可信度確定性欄位:累計「獨立來源數」+「是否含官方來源(grade A)」。
+            # 在可能替換 kept 版本『之前』先算好,替換後再寫回,避免被覆蓋掉累計值。
+            combined_merged = (kept[dup_index].get("merged_n", 1) + n.get("merged_n", 1))
+            combined_official = (bool(kept[dup_index].get("official"))
+                                 or bool(n.get("official"))
+                                 or _news_source_grade(kept[dup_index]) == "A"
+                                 or _news_source_grade(n) == "A")
             if _news_keep_score(n) > _news_keep_score(kept[dup_index]):
                 kept[dup_index] = n
                 kept_norms[dup_index] = nt
+            kept[dup_index]["merged_n"] = combined_merged
+            kept[dup_index]["official"] = combined_official
             if label and not kept[dup_index].get("company_label"):
                 kept[dup_index]["company_label"] = label
             if wcat and not kept[dup_index].get("world_cat"):

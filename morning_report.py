@@ -74,6 +74,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     dedup_news,
     _matches_any,
     _news_source_grade,
+    _credibility_tag,
     _news_keep_score,
     _strip_html,
     _is_low_value_tech_headline,
@@ -9277,7 +9278,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         # summary 顯示 600 字(由 fetch_news 端 800 切過,這裡再做一次安全切);
         # 之前 200 切太短常切在「公司剛被提及」就沒下文,LLM 看不到具體事實
         grade = n.get("source_grade") or _news_source_grade(n)
-        text = f"- {prefix}[來源{grade}:{n['source']}] {n['title']}（{n.get('summary','')[:600]}）"
+        # G6:critical/high(with_full)附可信度確定性標記——獨立來源數 + 是否含官方來源。
+        cred = _credibility_tag(n) if with_full else ""
+        text = (f"- {prefix}[來源{grade}:{n['source']}]{cred} "
+                f"{n['title']}（{n.get('summary','')[:600]}）")
         if with_full and n.get("fulltext"):
             text += f"\n  [全文摘錄]：{n['fulltext'][:1500]}"
         return text

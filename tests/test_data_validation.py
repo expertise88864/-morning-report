@@ -1137,3 +1137,12 @@ def test_weekly_review_flat_prediction_counts_as_directional_miss():
     ]
     t = mr._compute_weekly_review_stats(hist, today="2099-01-01")["taiex"]
     assert t["n_dir"] == 1 and t["hit_rate_pct"] == 0
+
+
+def test_build_prompt_shows_credibility_tag_on_critical_news():
+    """G6:critical 新聞在 prompt 顯示「獨立來源 N・含官方來源」可信度標記。"""
+    news = [{"importance": "critical", "category": "macro", "keyword": "Fed",
+             "source": "Federal Reserve", "title": "Fed 決議維持利率不變",
+             "summary": "官方聲明重點", "merged_n": 3, "official": True}]
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    assert "獨立來源 3・含官方來源" in p

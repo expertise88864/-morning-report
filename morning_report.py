@@ -12893,6 +12893,14 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
 
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
+# 現行訂閱節目(2026-07-14 使用者拍板瘦身後)兼「顯示順序」:台灣節目優先、外國殿後。
+# 同時是 load_podcast_digest 的白名單——已刪節目(科技報橘/美股投資學/財經一路發/
+# WSJ What's News 等)的 state 殘留不再進信件。與 podcast_digest.PODCASTS 同步維護。
+_PODCAST_DISPLAY_RANK: dict[str, int] = {name: i for i, name in enumerate([
+    "股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "財經M平方",
+    "Wall Street Breakfast", "Odd Lots", "Sharp Tech (Ben Thompson)",
+    "Money Talks (Economist)", "All-In Podcast", "BG2 Pod",
+])}
 # keep 模式超標時逐步壓「每集重點條數」的階梯(不丟任何一集)。
 # 為何不改砍集數:load_podcast_digest 每節目最多取 2 集未顯示、且丟棄 >96h 的未顯示集,
 # 而顯示順序固定(台灣節目優先)。若砍集數,排序靠後的節目(WSJ/Wall Street Breakfast…)
@@ -13013,6 +13021,11 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
     for show in (data or {}).values():
         if not isinstance(show, dict):
             continue
+        # 只載入「現行訂閱清單」的節目:已刪節目的 state 殘留 episodes(尚無 shown_at)
+        # 不得再進信件,否則清單瘦身在下一封信不生效(Codex review)。
+        # 白名單=display_order(見下),與 podcast_digest.PODCASTS 同步維護。
+        if show.get("name") not in _PODCAST_DISPLAY_RANK:
+            continue
         unshown_count = 0
         for ep in show.get("episodes") or []:
             if ep.get("shown_at") or (ep.get("guid") and str(ep["guid"]) in radar_guids):
@@ -13028,16 +13041,7 @@ def load_podcast_digest(max_age_hours: int = 96) -> list[dict]:
                 unshown_count += 1
                 if unshown_count >= 2:
                     break
-    # 顯示順序:台灣節目優先(依熱門度),外國節目殿後(使用者要求)
-    display_order = [
-        "股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "科技報橘",
-        "美股投資學", "財經一路發", "財經M平方",
-        "FT News Briefing", "WSJ What's News", "Wall Street Breakfast",
-        "Unhedged (FT)", "Odd Lots", "Money Talks (Economist)",
-        "Animal Spirits", "Invest Like the Best",
-    ]
-    rank = {name: i for i, name in enumerate(display_order)}
-    out.sort(key=lambda e: rank.get(e.get("show", ""), 99))
+    out.sort(key=lambda e: _PODCAST_DISPLAY_RANK.get(e.get("show", ""), 99))
     return _dedup_podcast_episodes(out)   # 跨節目/跨集去重(聯名特輯/同事件重貼)
 
 

@@ -236,3 +236,27 @@ def test_render_podcast_html(tmp_path, monkeypatch):
     assert "非本報建議" not in html_out      # 免責註腳已依使用者要求移除(2026-07-14)
     # 無集 → 空字串(信件不出現該區塊)
     assert mr._render_podcast_html([], snapshot, htmllib) == ""
+
+
+def test_load_podcast_digest_excludes_removed_shows(tmp_path, monkeypatch):
+    """已刪節目(如科技報橘/WSJ What's News)的 state 殘留未顯示集,不得再進信件
+    (Codex review:否則清單瘦身在下一封信不生效)。"""
+    now = _now_iso(1)
+    state = {
+        "gooaye": {"name": "股癌", "episodes": [
+            {"guid": "g1", "title": "現行節目集", "processed_at": now,
+             "summary_points": ["重點"], "published": now}]},
+        "techorange": {"name": "科技報橘", "episodes": [
+            {"guid": "t1", "title": "已刪節目殘留集", "processed_at": now,
+             "summary_points": ["重點"], "published": now}]},
+        "wsj-whatsnews": {"name": "WSJ What's News", "episodes": [
+            {"guid": "w1", "title": "removed show ep", "processed_at": now,
+             "summary_points": ["pt"], "published": now}]},
+    }
+    path = tmp_path / "podcast_digest.json"
+    path.write_text(json.dumps(state), encoding="utf-8")
+    monkeypatch.setattr(mr, "PODCAST_DIGEST_FILE", path)
+    eps = mr.load_podcast_digest()
+    shows = {e["show"] for e in eps}
+    assert "股癌" in shows
+    assert "科技報橘" not in shows and "WSJ What's News" not in shows

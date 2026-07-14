@@ -9085,6 +9085,10 @@ def _format_event_scenarios(calendar: Optional[list],
     rows: list[str] = []
     for e in (calendar or []):
         d = e.get("date")
+        # datetime 是 date 的子類:先正規化成 date,否則「date <= datetime」比較會拋 TypeError
+        # (財報 adapter 可能保留 datetime/Timestamp 子類)→ 一顆壞事件就讓整份 prompt 降級(Codex review)
+        if isinstance(d, dt.datetime):
+            d = d.date()
         if not isinstance(d, dt.date) or not (today <= d <= horizon):
             continue
         note = str(e.get("note") or "").strip()

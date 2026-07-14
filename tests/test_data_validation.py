@@ -908,6 +908,17 @@ def test_format_event_scenarios_empty_returns_placeholder():
     assert "無重大排程事件" in mr._format_event_scenarios(None)
 
 
+def test_format_event_scenarios_accepts_datetime_date_without_typeerror():
+    """財報 adapter 可能存入 datetime(date 子類);date<=datetime 比較會 TypeError,
+    須先正規化成 date,否則一顆壞事件讓整份 prompt 降級(Codex review)。"""
+    import datetime as dt
+    now = dt.datetime.now(mr.TPE)
+    cal = [{"date": dt.datetime(now.year, now.month, now.day, 13, 30),
+            "time": "盤後(美東)", "title": "NVDA 財報", "note": "", "impact": "high"}]
+    out = mr._format_event_scenarios(cal, now_tpe=now)   # 不可拋例外
+    assert "NVDA 財報" in out
+
+
 def test_build_prompt_has_event_scenario_section_with_injected_events():
     import datetime as dt
     today = dt.datetime.now(mr.TPE).date()

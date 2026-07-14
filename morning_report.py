@@ -191,6 +191,8 @@ _LLM_DEADLINE: Optional[float] = None
 # 不足就跳過、用當次已有資料組信寄出——寧可少一塊資料,不可整封信被 timeout 吞掉。
 # 核心(行情/預測/LLM 主分析/寄信)永遠執行;主分析本身另有 LLM_TOTAL_TIMEOUT 保護。
 RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "1140"))   # 19 分(25 分留 6 分緩衝)
+# P0-1 新聞抓取平行度(依 host 分組,不同 host 平行、同 host 序列);設 1 退回序列(逃生門)。
+NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
 _RUN_DEADLINE: Optional[float] = None
 _DEGRADED_STEPS: list[str] = []
 
@@ -4548,101 +4550,128 @@ def _trend_label(metrics: dict) -> str:
     return "盤整"
 
 
-def fetch_news() -> list[dict]:
-    """抓 RSS 摘要，回傳最近 30 小時內的新聞(涵蓋跨日凌晨發布的 Fed/美股盤後新聞)。"""
-    items: list[dict] = []
-    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
-    for source, url in RSS_FEEDS.items():
-        try:
-            if url.endswith("&page=1"):  # 鉅亨美股 JSON 特例
-                r = _http_get(url, timeout=10,
-                                 headers={"User-Agent": "Mozilla/5.0"})
-                if r.status_code == 200:
-                    payload = r.json() or {}
-                    items_obj = payload.get("items") or {}
-                    data = items_obj.get("data") if isinstance(items_obj, dict) else None
-                    if not isinstance(data, list):
-                        data = []
-                    for d in data[:10]:
-                        if not isinstance(d, dict):
-                            continue
-                        items.append({
-                            "source": source,
-                            "title": d.get("title", ""),
-                            # 800 字而非 300 — Reuters/Bloomberg/CNBC 摘要常 500-1000 字,
-                            # 切太短容易切在「公司剛被提及」就沒下文,LLM 看不到證據
-                            "summary": (d.get("summary") or "")[:800],
-                            "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
-                            "published": d.get("publishAt", ""),
-                        })
-                continue
-
+def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
+    """處理單一 feed 工作項 → 該 feed 的 news 清單。本體逐字沿用舊 fetch_news 兩迴圈,
+    行為不變;抽出以便依 host 分組平行(P0-1)。同 host 由單一執行緒序列處理,
+    故 _FEED_STATS/斷路器/RSS 快取天生執行緒安全、無需鎖。"""
+    source, url, kind = w["source"], w["url"], w["kind"]
+    out: list[dict] = []
+    try:
+        if kind == "cnyes_json":       # 鉅亨美股 JSON 特例
+            r = _http_get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code == 200:
+                payload = r.json() or {}
+                items_obj = payload.get("items") or {}
+                data = items_obj.get("data") if isinstance(items_obj, dict) else None
+                if not isinstance(data, list):
+                    data = []
+                for d in data[:10]:
+                    if not isinstance(d, dict):
+                        continue
+                    out.append({
+                        "source": source,
+                        "title": d.get("title", ""),
+                        "summary": (d.get("summary") or "")[:800],
+                        "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
+                        "published": d.get("publishAt", ""),
+                    })
+            return out
+        if kind == "company":          # 重點公司 Google News 查詢(補個股新聞)
             feed = _feedparser_parse_url_with_timeout(url)
-            # 類股與世界大事來源都要求有發布時間:這兩類直接餵專屬 prompt 段,
-            # 無日期的舊聞混進「昨日」會誤導(一般來源仍容忍缺日期,僅標記 date_missing)。
-            # 中央社國際也是世界來源,同樣要求日期(Codex review)。
-            _src_s = str(source)
-            world_cat = (_src_s[3:] if _src_s.startswith("世界-")
-                         else (_src_s if _src_s == "中央社國際" else ""))
-            requires_date = (bool(_other_sector_label_from_source(_src_s))
-                             or bool(world_cat))
-            for entry in feed.entries[:10]:
-                source_name, source_url = _tw_entry_source(entry)
-                pub_dt = _entry_published_dt(entry)
-                if pub_dt and pub_dt < cutoff:
-                    continue
-                if requires_date and pub_dt is None:
-                    continue
-                item = {
-                    "source": source,
-                    "title": entry.get("title", ""),
-                    # 800 字 — 與上方 cnyes JSON 路徑一致;讓 LLM 看到具體事實(產品/數字/引言),
-                    # 避免 R12 鐵律因「沒看到具體事實」而把該公司刪掉
-                    "summary": (entry.get("summary", "") or "")[:800],
-                    "link": entry.get("link", ""),
-                    "published": entry.get("published", ""),
-                    "source_name": source_name,
-                    "source_url": source_url,
-                }
-                if world_cat:
-                    # 世界大事標記:dedup_news 會像 company_label 一樣把它併到留下的那筆,
-                    # 同一事件即使被一般來源那版吃掉,世界取材段仍找得到(Codex review)。
-                    item["world_cat"] = world_cat
-                items.append(_mark_news_date_quality(item, pub_dt))
-        except Exception as e:
-            print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
-
-    # === 重點公司 Google News 查詢(直接補個股新聞)===
-    # 每家公司查最新新聞、各取前 4 則。標題本身即帶具體公司事件,
-    # 大幅改善「科技板塊脈動」與「關注三檔」的取材厚度。
-    company_hit = 0
-    for query, label in GOOGLE_NEWS_COMPANIES:
-        try:
-            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
-            kept_for_company = 0
+            label = w["label"]
+            kept = 0
             for entry in feed.entries:
-                # 先過濾「近 30h 內」再截斷,避免前幾則剛好是舊聞就整家公司空手(rank 6);
-                # pub_dt 用 owner 新增的 _entry_published_dt 解析(較穩健)。
-                if kept_for_company >= 6:
+                if kept >= 6:
                     break
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
                 source_name, source_url = _tw_entry_source(entry)
-                items.append({
+                out.append({
                     "source": f"Google:{label}",
                     "title": entry.get("title", ""),
                     "summary": (entry.get("summary", "") or "")[:800],
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
-                    "company_label": label,    # 標記為個股新聞,供分類/取材
+                    "company_label": label,
                     "source_name": source_name,
                     "source_url": source_url,
                 })
-                company_hit += 1
-                kept_for_company += 1
-        except Exception as e:
-            print(f"[news] 公司查詢 {label} 失敗：{e}", file=sys.stderr)
+                kept += 1
+            return out
+        # kind == "rss"
+        feed = _feedparser_parse_url_with_timeout(url)
+        # 類股與世界大事來源都要求有發布時間:這兩類直接餵專屬 prompt 段,
+        # 無日期的舊聞混進「昨日」會誤導(一般來源仍容忍缺日期,僅標記 date_missing)。
+        _src_s = str(source)
+        world_cat = (_src_s[3:] if _src_s.startswith("世界-")
+                     else (_src_s if _src_s == "中央社國際" else ""))
+        requires_date = (bool(_other_sector_label_from_source(_src_s)) or bool(world_cat))
+        for entry in feed.entries[:10]:
+            source_name, source_url = _tw_entry_source(entry)
+            pub_dt = _entry_published_dt(entry)
+            if pub_dt and pub_dt < cutoff:
+                continue
+            if requires_date and pub_dt is None:
+                continue
+            item = {
+                "source": source,
+                "title": entry.get("title", ""),
+                "summary": (entry.get("summary", "") or "")[:800],
+                "link": entry.get("link", ""),
+                "published": entry.get("published", ""),
+                "source_name": source_name,
+                "source_url": source_url,
+            }
+            if world_cat:
+                item["world_cat"] = world_cat
+            out.append(_mark_news_date_quality(item, pub_dt))
+        return out
+    except Exception as e:
+        print(f"[news] {source} 抓取失敗：{e}", file=sys.stderr)
+        return out
+
+
+def fetch_news() -> list[dict]:
+    """抓 RSS 摘要,回最近 30 小時內的新聞(涵蓋跨日凌晨的 Fed/美股盤後)。
+
+    P0-1:依 host 分組平行抓取——不同 host 平行(消除 2026-07-08 的序列瓶頸),
+    同 host 序列(讓 per-host 斷路器仍能 fail-fast、且天生執行緒安全)。
+    NEWS_FETCH_WORKERS=1 退回序列(行為與平行化前完全相同,為安全逃生門)。"""
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.parse import urlparse
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
+    # 組工作清單(保留原順序:RSS_FEEDS 先、公司查詢後),各項帶 idx 供重組回原序
+    work: list[dict] = []
+    for source, url in RSS_FEEDS.items():
+        kind = "cnyes_json" if url.endswith("&page=1") else "rss"
+        work.append({"idx": len(work), "source": source, "url": url, "kind": kind})
+    for query, label in GOOGLE_NEWS_COMPANIES:
+        work.append({"idx": len(work), "source": f"Google:{label}",
+                     "url": _gnews_rss(query, when="2d"), "kind": "company", "label": label})
+    # 依 host 分組
+    groups: dict[str, list[dict]] = {}
+    for w in work:
+        host = urlparse(w["url"]).netloc or str(w["url"])
+        groups.setdefault(host, []).append(w)
+
+    def _run_group(items_in_group: list[dict]) -> dict:
+        return {w["idx"]: _process_feed_item(w, cutoff) for w in items_in_group}
+
+    merged: dict[int, list[dict]] = {}
+    workers = max(1, min(NEWS_FETCH_WORKERS, len(groups)))
+    if workers <= 1 or len(groups) <= 1:
+        for g in groups.values():
+            merged.update(_run_group(g))
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for part in ex.map(_run_group, list(groups.values())):
+                merged.update(part)
+
+    items: list[dict] = []
+    for w in work:                     # 依原始工作順序重組,輸出穩定
+        items.extend(merged.get(w["idx"], []))
+    company_hit = sum(len(merged.get(w["idx"], [])) for w in work if w["kind"] == "company")
     print(f"[news] 共 {len(items)} 則(含 {company_hit} 則重點公司 Google News)")
     for item in items:
         if "date_missing" not in item:

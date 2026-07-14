@@ -688,3 +688,56 @@ def test_fetch_news_fulltext_respects_run_deadline(monkeypatch):
         [{"importance": "critical", "title": "x", "link": "http://e.com/a", "source": "S"}],
         max_critical=10, max_high=16)
     assert out[0].get("fulltext")                     # 充足時間正常抓
+
+
+# ===================== P0-1 抓取平行化(依 host 分組)=====================
+
+class _PFakeEntry(dict):
+    def get(self, k, d=None):
+        return dict.get(self, k, d)
+
+
+class _PFakeFeed:
+    def __init__(self, url):
+        self.entries = [_PFakeEntry({
+            "title": f"T::{url[-24:]}", "summary": "s", "link": "http://x",
+            "published": "Mon, 01 Jun 2026 01:00:00 GMT"})]
+
+
+def _stub_feeds(monkeypatch):
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, timeout=12: _PFakeFeed(url))
+    monkeypatch.setattr(mr, "_entry_published_dt", lambda e: None)   # None → 不被 cutoff 濾
+    monkeypatch.setattr(mr, "_parse_news_time_required", lambda p: None)
+    monkeypatch.setattr(mr, "_http_get",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no json in test")))
+
+
+def test_fetch_news_parallel_equals_serial(monkeypatch):
+    """平行(依 host 分組)與序列輸出「則數與順序完全一致」——平行化純為排程,不改結果。"""
+    _stub_feeds(monkeypatch)
+    monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 8)
+    par = mr.fetch_news()
+    monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 1)
+    ser = mr.fetch_news()
+    assert len(par) == len(ser) > 0
+    assert [n["source"] for n in par] == [n["source"] for n in ser]   # 順序穩定
+
+
+def test_fetch_news_circuit_breaker_still_trips_under_grouping(monkeypatch):
+    """同 host 序列處理 → 斷路器仍能在連續失敗後 fail-fast(平行化不得繞過它)。
+    Google host 全失敗:超過門檻後應停止實際送 HTTP(節省時間預算)。"""
+    mr._FEED_STATS.clear()
+    mr._RSS_CONTENT_CACHE.clear()
+    http_calls = {"n": 0}
+
+    def boom(url, **kw):
+        http_calls["n"] += 1
+        raise mr.requests.exceptions.ConnectionError("503")
+    monkeypatch.setattr(mr, "_http_get", boom)
+    monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 8)
+    # 只留 google host 的多條 feed(公司查詢 29 條同 host)
+    monkeypatch.setattr(mr, "RSS_FEEDS", {})
+    mr.fetch_news()
+    # 斷路器門檻 4:實際 HTTP 呼叫應遠少於 29(門檻後 fail-fast),證明未被平行繞過
+    assert http_calls["n"] <= mr._FEED_HOST_CIRCUIT_BREAK + 1

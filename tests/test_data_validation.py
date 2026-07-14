@@ -1222,3 +1222,19 @@ def test_mops_prompt_prioritizes_deep_company_announcements():
     assert "國泰金公告子公司總經理異動" in block        # 沉在第 26 筆仍被撈進 prompt
     assert "中信金公告重大轉投資案" in block
     assert "MOPS 公告(代號 2882/2891" in p             # 九金融指引導向 MOPS 素材
+
+
+def test_mops_deep_company_summary_included_for_generic_titles():
+    """回歸(Codex review P1):金控公告標題常是泛稱(「代子公司公告總經理異動」),
+    人名/金額/生效日只在 summary——深耕公司公告須附說明摘要,否則 LLM 寫不出具體內容。"""
+    mops = [
+        {"code": "2882", "title": "代子公司國泰人壽公告總經理異動",
+         "summary": "新任總經理:王小明,生效日:115/08/01,原任職副總經理",
+         "published": "2026-07-14 09:00"},
+        {"code": "9999", "title": "其他公司公告",
+         "summary": "其他公司的說明不該進 prompt", "published": "2026-07-14 10:00"},
+    ]
+    p = mr._build_prompt(_empty_quotes(TW_MOPS=mops),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "王小明" in p and "115/08/01" in p        # 深耕公司摘要入 prompt
+    assert "其他公司的說明不該進 prompt" not in p     # 一般公司仍僅標題(控長度)

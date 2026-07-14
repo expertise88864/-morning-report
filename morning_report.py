@@ -9678,10 +9678,19 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                       if str(m.get("code", "")) in ("2330", "2882", "2891")][:8]
         _other_mops = [m for m in tw_mops if m not in _deep_mops]
         _mops_pick = _deep_mops + _other_mops[:max(0, 20 - len(_deep_mops))]
-        mops_block = "\n".join(
-            f"- {m.get('code','')} {m.get('title','')[:80]}"
-            for m in _mops_pick
-        )
+
+        def _mops_line(m: dict) -> str:
+            line = f"- {m.get('code','')} {m.get('title','')[:80]}"
+            # 深耕公司附「說明」摘要:人事異動的人名/生效日、投資案的金額/交易對象
+            # 常只在 summary、標題僅泛稱「公告總經理異動」——不附摘要 LLM 寫不出
+            # 具體內容甚至瞎編(Codex review P1)。其他公司維持標題,控 prompt 長度。
+            if m in _deep_mops:
+                summary = " ".join(str(m.get("summary") or "").split())[:400]
+                if summary:
+                    line += f"\n  說明:{summary}"
+            return line
+
+        mops_block = "\n".join(_mops_line(m) for m in _mops_pick)
     else:
         mops_block = "（過去 48 小時無重點公司 MOPS 重大訊息，或來源暫不可用）"
 

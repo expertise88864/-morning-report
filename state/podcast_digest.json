@@ -2749,6 +2749,111 @@
     "name": "財經一路發",
     "episodes": [
       {
+        "guid": "cmrkkp5ws01l201ujf9m61jo9",
+        "title": "聽，阮大哥的！｜如果日圓貶到170  2026.07.14",
+        "published": "Tue, 14 Jul 2026 11:39:32 GMT",
+        "processed_at": "2026-07-14T15:13:12Z",
+        "digest": {
+          "summary_points": [
+            "日圓當前匯率約162，為40年低點，10年期日本國債殖利率2.8%，創1996年以來新高。",
+            "日圓貶值至170的影響取決於速度：有序緩貶（數月）影響可控，失序急貶（一兩週內）才會引發全球金融恐慌。",
+            "失序貶值將迫使日本財務省大規模干預（賣美元買日圓），並可能促使日本央行緊急升息，導致日圓暴力反彈。",
+            "日本央行陷入兩難：升息救匯率將推升國債殖利率，加重財政負擔（政府債務/GDP達250%），市場預期其不敢持續升息。",
+            "日圓有序貶值有利於Carry Trade（借日圓買海外資產），因利差與匯差雙賺；但失序貶值將觸發Carry Trade暴力平倉，資金回流日本，衝擊全球風險資產。",
+            "觀察指標包括：美元兌日圓貶值速度（整數關卡如163、164、165是否快速失守）、美元兌日圓隱含波動率、10年期日本國債殖利率是否同步飆升（匯市與債市齊跌為危險信號）。",
+            "類似2024年8月日本央行意外升息引發的全球市場波動，若日圓失序貶值，美股、美債、加密貨幣等風險資產可能同步下跌。",
+            "日本財政主導政策（高市擴張支出）與貨幣政策（日本央行升息）的衝突加劇市場疑慮，日圓與日債同步走弱是新興市場式風險，對G-10國家相當罕見。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為日圓貶值速度是關鍵，失序急貶可能導致全球風險資產同步下跌，但目前尚未發生，需密切觀察匯率波動率與日本國債殖利率動向。",
+          "action_view": "建議觀察美元兌日圓貶值速度、隱含波動率及10年期日本國債殖利率變化，若出現連續整數關卡失守或殖利率快速飆升，應提高對風險資產的警覺。",
+          "notable_quote": "170元這個數字，它並不是一個非常嚴重的問題，反而是到底用什麼樣的速度達到170元。"
+        }
+      },
+      {
+        "guid": "cmrkk3d8t01f601wibjgmeyyb",
+        "title": "三大利空干擾 台股要先跑一趟！？ 2026.07.14",
+        "published": "Tue, 14 Jul 2026 11:20:01 GMT",
+        "processed_at": "2026-07-14T15:16:42Z",
+        "digest": {
+          "summary_points": [
+            "台股加權指數從1700點跌點收斂至642點，櫃買指數跌幅從近7%收斂至3%，尾盤拉升但法人賣超753億，外資買超63億。",
+            "外資大台空單增至83000口，明天期貨結算壓力沉重，台幣續貶至32.172，不利外資大幅買超。",
+            "費城半導體指數從高點14655跌至12646，跌幅約13%，跌破50日均線且月線下彎，亞洲硬體股疲弱核心在費半。",
+            "上市櫃指數月線若站不回去可能下彎，櫃買月線已下彎且乖離率-5%以上，技術面壓力大。",
+            "融資近期增加，今天尾盤拉抬可能使融資減幅不如預期，籌碼尚未乾淨。",
+            "今晚美國公布6月CPI，明天公布PPI，市場擔憂通膨數據可能影響7月底FOMC升息決策。",
+            "來賓預估美國6月CPI年增率約3.8%-4%，低於5月的4.2%，油價下跌有助通膨緩解，7月底升息機率不高。",
+            "美伊衝突持續但來賓認為最終會妥協（台西脫棚），類似6月中旬的市場波動後反彈。",
+            "台積電7/16法說會預估營收創高，毛利率維持66.5%，EPS約23-24元，有望帶動法說行情。",
+            "記憶體缺貨狀況持續，南亞科法說看好下半年，海力士CEO稱缺貨可能到2027年，瑞銀等報告也看好。",
+            "來賓看好記憶體、被動元件、PCB族群，但建議用技術面操作，買黑不買紅，找6月底7月初創高、拉回月線附近且季線上揚的股票。",
+            "大型權值股如台積電、聯發科、台達電、鴻海、廣達、緯創、緯穎今年營收獲利多創新高，可依本益比找買點。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為今年營收獲利創新高，法說會前可依本益比找買點。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "來賓指出今年營收創高但EPS不一定，本益比評估後未明確推薦。"
+            },
+            {
+              "name": "台達電",
+              "code": "2308",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為營收獲利創新高，基本面不錯，可依本益比布局。"
+            },
+            {
+              "name": "鴻海",
+              "code": "2317",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為營收獲利創新高，建議找安全買點。"
+            },
+            {
+              "name": "廣達",
+              "code": "2382",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為營收獲利創新高，可依本益比操作。"
+            },
+            {
+              "name": "緯創",
+              "code": "3231",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為營收獲利創新高，可依本益比布局。"
+            },
+            {
+              "name": "緯穎",
+              "code": "6669",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓認為營收獲利創新高，可依本益比布局。"
+            },
+            {
+              "name": "南亞科",
+              "code": "2408",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "來賓提及法說後大漲5%，記憶體缺貨持續，看好後市。"
+            }
+          ],
+          "market_view": "加權指數與費半連動，費半跌破月線且月線下彎，台股月線可能下彎；來賓預期通膨數據緩解、美伊衝突終將解決，台積電法說後有望轉強，但短期震盪劇烈，最差看季線是否下彎。",
+          "action_view": "中小型股利用買黑不買紅，找6月底7月初創新高、拉回月線附近且季線上揚的股票；大型權值股依本益比找安全買點。明天期貨結算壓力大，建議觀望或低接不追高。",
+          "notable_quote": "台股的核心就來看費半能不能止住這個跌勢。"
+        }
+      },
+      {
         "guid": "cmrj4g22405om01t617aq9wr2",
         "title": "本周台指7月結算，拉高還是壓低？ 台股下一步？ 2026.07.13",
         "published": "Mon, 13 Jul 2026 11:13:23 GMT",
@@ -3360,135 +3465,6 @@
           "notable_quote": "慢慢來我覺得終究會突破的，慢慢來其實比較長長得比較久。"
         },
         "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "cmr94tc0e02bt01uvbesm0e3p",
-        "title": "台股V轉，小心主力誘多？！ 2026.07.06",
-        "published": "Mon, 06 Jul 2026 11:26:01 GMT",
-        "processed_at": "2026-07-06T16:45:25Z",
-        "digest": {
-          "summary_points": [
-            "鴻海6月營收8,218億元，年增52%，月減4.38%，第二季營收創歷年同期新高。",
-            "聯電6月營收年增22.85%，創歷年同期次高，外資持續買超。",
-            "楊惠宇認為台股短線因外資期貨空單（8萬口）與台積電法說前觀望，指數將高檔震盪，但長線有AI基本面支撐。",
-            "SemiAnesthesia看空PCB報告致台光電等重挫，但楊惠宇指僅短期影響，長線仍看好台光電技術領先。",
-            "記憶體族群先前利空後，華邦電6月11日打月線後6天漲5成，建議操作不追高、不停損。",
-            "封測族群今日強勢，先進封裝延續摩爾定律，新權3天漲19%。",
-            "功率元件由富鼎領漲，鴻城（8255）7月1日打月線後連拉漲停，可找壓回月線的趨勢股。",
-            "台積電6月17日以來外資賣超6.8萬張，短線震盪但可做價差（兩次約賺10-11%）。",
-            "今日三大法人賣超，外資賣超110億，櫃買指數開高走低跌1.25%，波動劇烈。",
-            "下週聚焦美國ISM服務業、GPT-5.6、SpaceX入納指、中國CPI/PPI、聯準會會議紀要、SK海力士IPO。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "長線看多，短線因外資賣壓與法說前震盪，可做價差操作。"
-            },
-            {
-              "name": "台光電",
-              "code": "2383",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "技術領先，長線受惠AI PCB，短線受鬼故事影響可觀察月線或季線支撐。"
-            },
-            {
-              "name": "華邦電",
-              "code": "2344",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "記憶體循環向上，利空後快速反彈，建議不追高、不停損。"
-            },
-            {
-              "name": "新權",
-              "code": "3264",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "封測族群強勢，受惠先進封裝需求。"
-            },
-            {
-              "name": "富鼎",
-              "code": "8261",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "功率元件指標股，受惠AI電源控制需求。"
-            }
-          ],
-          "market_view": "楊惠宇認為台股短線因外資期貨空單及台積電法說前觀望，指數將高檔震盪，但長線有AI帶動基本面支撐，趨勢仍然向上。",
-          "action_view": "建議長線持股比重降低，短線比重增加，利用震盪做價差；記憶體族群不可追高、不停損；PCB族群可等回測季線再佈局；封測、功率元件等強勢族群可找壓回月線的個股操作。",
-          "notable_quote": "短線震盪，但是長線是趨勢。"
-        },
-        "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "cmr4v5py508wi01tc0dqjdjq7",
-        "title": "財經觀點｜股市地心引力來了，抗震抗跌自救手冊 2026.07.03",
-        "published": "Sun, 05 Jul 2026 00:02:19 GMT",
-        "processed_at": "2026-07-05T05:53:21Z",
-        "digest": {
-          "summary_points": [
-            "過去39年第三季股市下跌22次、上漲17次，下跌率56%，第四季上漲率67%。",
-            "台股本益比達30倍、股價淨值比達4倍，估值過高成為股市阻力。",
-            "基本面良好，AI資本支出趨勢不變，台積電資本支出每年成長約20%，紀律嚴謹。",
-            "技術面加權指數未跌破最大日K量，技術面無明顯問題。",
-            "主動式ETF上半年表現亮眼，但第三季進入盤整，斜率變平，如00919高點未過。",
-            "高股息ETF適合第三季震盪行情，既能抗震又有一定績效。",
-            "0050配息0.6元，較前次縮水四成，殖利率約2%；0056配息1.35元創新高，殖利率近10%。",
-            "主要高股息ETF今年總報酬率：00878為71.54%，00929為76.46%，00919為53.1%，0056為50.48%。",
-            "Beta值比較：0056為1.02，00878為0.7，00919為0.56（最抗震），00929為0.97。",
-            "3月大盤跌10%時，跌幅最小為00984A的5.84%，其次為00919的7.42%（已加回除息）。"
-          ],
-          "tickers": [
-            {
-              "name": "國泰永續高股息",
-              "code": "00878",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "今年總報酬率71.54%最高，Beta值0.7抗震"
-            },
-            {
-              "name": "復華台灣科技優息",
-              "code": "00929",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "今年總報酬率76.46%最佳，月配息"
-            },
-            {
-              "name": "野村全球科技創新主動式ETF",
-              "code": "00984A",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "3月大跌時跌幅最小5.84%，成分股分散"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "資本支出每年成長約20%，紀律良好"
-            },
-            {
-              "name": "環球晶",
-              "code": "6488",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "被點名為飆股，股價上漲多"
-            },
-            {
-              "name": "AMD",
-              "code": "AMD",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人持有但回檔27%因估值問題"
-            }
-          ],
-          "market_view": "第三季可能休息整理，技術面未破最大量，但估值偏高是阻力，基本面好，AI趨勢不變，不需過度悲觀。",
-          "action_view": "第三季可留意高股息ETF，用於抗震避險；主動式ETF可能盤整，建議暫時避開。",
-          "notable_quote": "股市的地心引力是永遠存在的，你不要以為他不在，他該來的時候他就會來。"
-        },
-        "shown_at": "2026-07-05T22:55:39Z"
       }
     ]
   },
@@ -3809,6 +3785,26 @@
   "wsj-whatsnews": {
     "name": "WSJ What's News",
     "episodes": [
+      {
+        "guid": "6be1b7b2-7f6c-11f1-ac8e-df573aaee35f",
+        "title": "The Tech Company That Rejects 99.9% of Job Applicants",
+        "published": "Tue, 14 Jul 2026 10:08:00 -0000",
+        "processed_at": "2026-07-14T15:10:40Z",
+        "digest": {
+          "summary_points": [
+            "美國原油期貨上漲近10%，因美國對伊朗發動新一輪打擊並封鎖荷姆茲海峽。",
+            "紐約州長霍楚將簽署行政命令，暫停大型資料中心建設長達一年，因能源與環境考量。",
+            "中國新創公司DFSX推出完全在中國製造的DF-1000 AI晶片，旨在繞過限制並與輝達競爭。",
+            "DFSX計劃在年底前推出DF-2000晶片，以縮小在AI訓練效能上的差距。",
+            "美國勞動力成長放緩，預計未來數十年將萎縮，可能推高薪資並帶動AI投資。",
+            "美國半導體出口6月年增27%（5月為19%），顯示半導體對中國經濟的重要性日益增加。"
+          ],
+          "tickers": [],
+          "market_view": "油價因中東衝突與荷姆茲海峽封鎖而上漲，但資料中心建設面臨法規阻力。",
+          "action_view": "",
+          "notable_quote": "For oil markets, it's pretty clear that the prices will have to rise because a big chunk of the world's oil supply is still a question mark."
+        }
+      },
       {
         "guid": "201c2cd8-7f01-11f1-93c7-3b540f0d3be2",
         "title": "President Trump to Reimpose a U.S. Blockade of Iran",
@@ -4239,54 +4235,63 @@
           "action_view": "航空股短期可能因燃油成本壓力而震盪，需觀察夏季後需求是否持續；AI公司價格戰不利長期利潤，投資者應關注其單位經濟效益。",
           "notable_quote": "Well, airlines have realized that they have some pricing power right now and they're not wanting to give it up easily."
         }
-      },
-      {
-        "guid": "10392a82-79ed-11f1-97e5-7318283b5f70",
-        "title": "NATO Allies Announce Billions in New Spending to Placate Trump",
-        "published": "Tue, 07 Jul 2026 10:10:00 -0000",
-        "processed_at": "2026-07-07T10:41:06Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 加入納斯達克 100 指數，採用快速納入規則，指數基金被迫買入，短期帶來買壓；長期因鎖倉期屆滿賣壓而展望不明。",
-            "三星第二季獲利暴增 19 倍，但股價因 AI 晶片漲勢暫歇而下跌 8%。",
-            "SK 海力士股價下跌 7%，儘管獲利強勁；其美國掛牌股票將於週五在納斯達克 100 開始交易。",
-            "羅素 2000 指數在 2025 上半年漲逾 20%，創 1991 年以來最佳上半年表現，受 AI 及有利經濟環境推動。",
-            "華爾街出現 AI 疲勞，投資人開始尋找晶片股以外的機會，如小型股及工業股。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "指數納入帶來短期買壓，但後續可能面臨鎖倉期賣壓。"
-            },
-            {
-              "name": "三星",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "儘管獲利強勁，但股價因晶片漲勢修正而下跌。"
-            },
-            {
-              "name": "SK 海力士",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "韓國股價跌 7%；美國掛牌股票週五開始交易。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "If you're an investor and you're worried about SpaceX or not interested in the stock, you're not going to have some sort of outsized exposure to it if you own a fund that tracks the Nasdaq 100."
-        },
-        "shown_at": "2026-07-07T22:58:09Z"
       }
     ]
   },
   "ws-breakfast": {
     "name": "Wall Street Breakfast",
     "episodes": [
+      {
+        "guid": "https://api.spreaker.com/episode/72965271",
+        "title": "Saronic hits the front line",
+        "published": "Tue, 14 Jul 2026 10:29:45 +0000",
+        "processed_at": "2026-07-14T15:08:54Z",
+        "digest": {
+          "summary_points": [
+            "SK海力士在連續兩日暴跌後出現劇烈反彈，週一暴跌15%，週二早盤再跌9%，但逢低買盤湧入，收盤持平。",
+            "三星電子從波段低點反彈，盤中一度上漲4.3%。",
+            "Chipotle Mexican Grill宣布將於7月16日在墨西哥蒙特雷開設首家門店，股價週一上漲3.9%。",
+            "Tower Semiconductor宣布投資30億美元擴張日本先進半導體製造產能，股價大漲18%。",
+            "美國6月預算赤字達1200億美元。",
+            "阿斯利康簽署15億美元許可協議，獲得一款肺癌藥物權利。",
+            "原油價格上漲2.7%至每桶80美元。",
+            "三項經濟數據焦點：上午8:30公布CPI。"
+          ],
+          "tickers": [
+            {
+              "name": "SK Hynix",
+              "code": "",
+              "market": "",
+              "direction": "neutral",
+              "reason": "股價在暴跌後因逢低買盤回穩，收盤持平。"
+            },
+            {
+              "name": "Samsung Electronics",
+              "code": "",
+              "market": "",
+              "direction": "neutral",
+              "reason": "從低點反彈，但無明確方向性看法。"
+            },
+            {
+              "name": "Chipotle Mexican Grill",
+              "code": "CMG",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布墨西哥首店開張，股價上漲，但主持人未發表觀點。"
+            },
+            {
+              "name": "Tower Semiconductor",
+              "code": "TSEM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布30億美元日本投資，股價大漲18%，但主持人未明確看多。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "SK Hynex fought off a massive morning sell-off to stabilize by the close."
+        }
+      },
       {
         "guid": "https://api.spreaker.com/episode/72952243",
         "title": "Trump says U.S. will run Hormuz for 20% fee",
@@ -4790,79 +4795,6 @@
           "notable_quote": "SpaceX gets two major catalysts this week."
         },
         "shown_at": "2026-07-05T22:55:39Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72795127",
-        "title": "June job growth falters",
-        "published": "Thu, 02 Jul 2026 21:22:48 +0000",
-        "processed_at": "2026-07-03T06:37:03Z",
-        "digest": {
-          "summary_points": [
-            "6月非農就業人數增加5.7萬，遠低於市場預期11.4萬，且較5月的12.9萬大幅下滑。",
-            "失業率意外降至4.2%，但勞動參與率下滑至61.5%，顯示部分降幅來自勞動力減少。",
-            "平均時薪月增0.3%、年增3.5%，符合預期，薪資增長穩定。",
-            "貝萊德首席投資官Rick Reiter表示，非農整體趨勢仍穩健，但AI長期可能限制相關產業就業。",
-            "記憶體晶片股普遍承壓，韓國KOSPI指數重挫約8%，SK海力士暴跌近15%，三星電子跌約9%。",
-            "美光科技、Sandisk及威騰電子等記憶體個股同步走低，市場擔憂需求放緩。",
-            "蘋果計劃在2025年下半年至2027年上半年推出至少五款新機，其中折疊機數量高於預期。",
-            "Genuine Parts股價大漲，因傳O'Reilly Automotive以現金收購其汽車零件業務，估值可能達100億美元以上。"
-          ],
-          "tickers": [
-            {
-              "name": "SK海力士",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價暴跌近15%，記憶體產業前景疑慮。"
-            },
-            {
-              "name": "三星電子",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價下跌約9%，受記憶體族群拖累。"
-            },
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "記憶體晶片股持續受壓。"
-            },
-            {
-              "name": "威騰電子",
-              "code": "WDC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "記憶體相關個股普遍下跌。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "計劃擴大iPhone產線並增加折疊機數量，顯示積極擴張。"
-            },
-            {
-              "name": "Genuine Parts",
-              "code": "GPC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "傳O'Reilly Automotive以現金收購其汽車零件業務，股價大漲。"
-            },
-            {
-              "name": "O'Reilly Automotive",
-              "code": "ORLY",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "傳出收購Genuine Parts汽車零件業務，但尚未確認。"
-            }
-          ],
-          "market_view": "非農就業數據不如預期，但貝萊德認為整體趨勢仍穩健，AI長期可能抑制就業但利好生產力。",
-          "action_view": "",
-          "notable_quote": "BlackRock Chief Investment Officer Rick Reiter said that while the headline payroll figure missed expectations, the trend continued to look solid and stable relative to the more volatile data from the early part of the year and weaker figures seen in late 2025."
-        },
-        "shown_at": "2026-07-03T23:00:25Z"
       }
     ]
   },

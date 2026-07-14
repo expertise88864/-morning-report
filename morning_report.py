@@ -11108,7 +11108,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib,
                 f"{htmllib.escape(str(item.get('status', '')))} ・ "
                 f"重要性 {htmllib.escape(str(item.get('importance', '—')))}</div>"
                 f"<a href='{htmllib.escape(str(item.get('link', '')))}' "
-                f"style='font-size:14px;line-height:1.65;color:#0f172a;text-decoration:none;'>"
+                f"style='font-size:14px;line-height:1.65;color:#1d4ed8;text-decoration:underline;'>"
                 f"{htmllib.escape(str(item.get('title', '')))}</a>"
                 f"<div style='font-size:12px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
                 f"入選原因：{htmllib.escape('、'.join(item.get('why') or ['寬召回分類']))}</div>"
@@ -11709,7 +11709,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
         items = "".join(
             f"<li style='margin:5px 0;'>"
             f"<a href='https://pubmed.ncbi.nlm.nih.gov/{a['pmid']}/' "
-            f"style='color:#0f172a;text-decoration:none;'>"
+            f"style='color:#1d4ed8;text-decoration:underline;'>"
             f"{htmllib.escape(a.get('zh') or a['title'])}</a>"
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(a['title'][:90])}</div>"
                if a.get("zh") else "")
@@ -12883,7 +12883,9 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
-                titles.append(str(entry.get("title", ""))[:90])
+                # 保留原文連結(使用者要求 2026-07-14:標題做超連結,有興趣可點進去)
+                titles.append({"title": str(entry.get("title", ""))[:90],
+                               "link": str(entry.get("link", ""))})
             out["news"][label] = titles
         except Exception as e:
             print(f"[sports] {label} 新聞抓取失敗: {e}", file=sys.stderr)

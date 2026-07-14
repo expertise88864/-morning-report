@@ -1725,3 +1725,16 @@ def test_night_txf_standalone_fallback_without_taiex_pred():
          "NIGHT_TXF": {"date": "2026/07/14", "night_close": 45058.0, "night_pct": -1.11}}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-14", "每日報")
     assert "夜盤台指期" in html and "45058" in html
+
+
+def test_sports_news_titles_render_as_hyperlinks():
+    """體育「消息」標題須為可見超連結(dict 格式);舊純字串格式仍相容不崩。"""
+    import html as htmllib
+    sports = {"news": {"MLB": [
+        {"title": "大谷翔平雙響砲", "link": "https://news.example.com/ohtani"},
+        "舊格式純字串標題",
+    ]}}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "<a href='https://news.example.com/ohtani'" in h
+    assert "text-decoration:underline" in h        # 看得出可點
+    assert "舊格式純字串標題" in h                   # 舊 state 相容

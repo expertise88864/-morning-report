@@ -72,17 +72,14 @@ PODCASTS = [
      "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
     {"key": "mviewpoint", "name": "M觀點", "search": "M觀點 Miula",
      "lang": "zh", "country": "TW", "priority": 1, "accuracy": "high"},
-    {"key": "techorange", "name": "科技報橘", "search": "科技報橘",
-     "lang": "zh", "country": "TW", "priority": 1},   # 每日「科技早餐」,科技產業向
-    {"key": "usstock-class", "name": "美股投資學", "search": "美股投資學",
-     "lang": "zh", "country": "TW", "priority": 2},
-    {"key": "money168", "name": "財經一路發", "search": "財經一路發",
-     "lang": "zh", "country": "TW", "priority": 2},
+    # 2026-07-14 使用者拍板瘦身(每天 ~10 集讀不完 → ~5 集),刪 4 檔重複度最高的每日型:
+    #   科技報橘(科技早餐=科技新聞朗讀,與信中「八、科技板塊脈動」全重複)
+    #   美股投資學(每日美股 recap,與 Wall Street Breakfast+信中美股區重複)
+    #   財經一路發(訪談名師,觀點與游庭皓/股癌重疊、來賓品質波動)
+    #   WSJ What's News(與 Wall Street Breakfast 同為美股每日快訊;世界新聞信中已有速覽)
     {"key": "macromicro", "name": "財經M平方", "search": "財經M平方",
      "lang": "zh", "country": "TW", "priority": 2},
-    # --- 英文每日新聞(短,便宜;砍重複,保留兩檔最精煉的盤前/快訊) ---
-    {"key": "wsj-whatsnews", "name": "WSJ What's News", "search": "WSJ What's News",
-     "lang": "en", "country": "US", "priority": 1},
+    # --- 英文每日新聞(短,便宜;美股盤前僅留最精煉的一檔) ---
     {"key": "ws-breakfast", "name": "Wall Street Breakfast", "search": "Wall Street Breakfast",
      "lang": "en", "country": "US", "priority": 1},
     # --- 英文深度 / 科技(預算內輪轉;貼近 2330/00662 半導體與 NASDAQ 曝險) ---
@@ -96,6 +93,8 @@ PODCASTS = [
      "lang": "en", "country": "US", "priority": 2},   # 科技/半導體策略,貼 2330/00662
     {"key": "allin", "name": "All-In Podcast", "search": "All-In Podcast",
      "lang": "en", "country": "US", "priority": 2},    # 總經+科技+市場,週更格局大
+    {"key": "bg2", "name": "BG2 Pod", "search": "BG2 Pod",
+     "lang": "en", "country": "US", "priority": 2},    # Gerstner/Gurley 科技投資深度,週更(2026-07-14 使用者拍板新增)
 ]
 
 # 首跑實測:轉錄速度 ~0.18x 音長(147 分音檔僅 25 分轉錄),預算可放寬;

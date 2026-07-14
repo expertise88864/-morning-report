@@ -811,8 +811,20 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         titles = news.get(label) or []
         if not titles:
             continue
-        items = "".join(
-            f"<li style='margin:3px 0;'>{htmllib.escape(t)}</li>" for t in titles)
+
+        def _sports_item(t) -> str:
+            # 新格式 dict {"title","link"} → 可見超連結(使用者要求 2026-07-14);
+            # 舊格式純字串(state 殘留/降級)→ 純文字,不崩
+            if isinstance(t, dict):
+                title = htmllib.escape(str(t.get("title", "")))
+                link = htmllib.escape(str(t.get("link", "")))
+                if link:
+                    return (f"<li style='margin:3px 0;'><a href='{link}' "
+                            f"style='color:#1d4ed8;text-decoration:underline;'>{title}</a></li>")
+                return f"<li style='margin:3px 0;'>{title}</li>"
+            return f"<li style='margin:3px 0;'>{htmllib.escape(str(t))}</li>"
+
+        items = "".join(_sports_item(t) for t in titles)
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{label} 消息</b>"
             f"<ul style='margin:4px 0;padding-left:20px;font-size:12px;color:#475569;"

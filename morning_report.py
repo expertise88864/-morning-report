@@ -3935,6 +3935,16 @@ def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
     return result
 
 
+def _merge_share_dicts(*portfolios: dict) -> dict:
+    """把多個帳戶的 {code: 股數} 合併,同代號跨帳戶「相加」(非覆蓋)。
+    {**a, **b} 會丟掉 a 的重複代號股數 → 市值權重/曝險全錯,故需逐檔加總(Codex review)。"""
+    out: dict = {}
+    for pf in portfolios:
+        for code, shares in (pf or {}).items():
+            out[code] = out.get(code, 0) + shares
+    return out
+
+
 def _history_close_by_date(ticker: str, period: str = "6mo") -> dict:
     """抓單一 ticker 的日收盤 → {'YYYY-MM-DD': close}(去 tz、剔非正值)。失敗回 {}。"""
     try:
@@ -3984,11 +3994,12 @@ def fetch_portfolio_risk(portfolio: dict, latest_prices: Optional[dict] = None) 
             n_priced += 1
             a_tw, d_tw = aligned_returns(hist, twii, lag_driver=False)
             betas_tw[code] = ols_beta(a_tw, d_tw)
-            n_samples = max(n_samples, len(a_tw))
             a_q, d_q = aligned_returns(hist, qqq, lag_driver=True)
             betas_qqq[code] = ols_beta(a_q, d_q)
             a_f, d_f = aligned_returns(hist, fx, lag_driver=False)
             betas_fx[code] = ols_beta(a_f, d_f)
+            # 樣本數取三因子最大值:即使台股大盤資料缺失、僅那斯達克可算,白話卡也不會誤標「近 0 日」
+            n_samples = max(n_samples, len(a_tw), len(a_q), len(a_f))
 
         weights = value_weights(values)
         if not weights:
@@ -10596,16 +10607,19 @@ def _render_portfolio_risk_html(risk: dict) -> str:
 
     lines = []   # 白話「連動」三行
     if tw is not None:
-        lev = "（含槓桿,跌時放大)" if tw >= 1.3 else ""
-        lines.append(f"整體大約等於 <b>{phrase_multiple(tw)}</b> 台股大盤{lev}——"
-                     f"台股大盤變動 1%,你的資產約跟著同向變動 {abs(tw):.1f}%。")
+        direction = "同向" if tw >= 0 else "反向"   # 空頭/反向 ETF 可能為負,方向依係數符號
+        lev = "(含槓桿,漲跌都放大)" if abs(tw) >= 1.3 else ""
+        lines.append(f"整體大約等於 <b>{phrase_multiple(abs(tw))}</b> 台股大盤{lev}——"
+                     f"台股大盤變動 1%,你的資產約{direction}變動 {abs(tw):.1f}%。")
     if qqq is not None:
+        direction = "同向" if qqq >= 0 else "反向"
         lines.append(f"與<b>美股科技(那斯達克)</b>的連動:那斯達克變動 1%,"
-                     f"你的資產約同向變動 {abs(qqq):.1f}%。")
+                     f"你的資產約{direction}變動 {abs(qqq):.1f}%。")
     if fx is not None and abs(fx) >= 0.05:
-        d = "貶值" if fx >= 0 else "升值"
-        lines.append(f"<b>匯率</b>:台幣每{d} 1%,你的海外部位讓資產約 "
-                     f"<span style='color:{_c(fx)}'>{fx:+.1f}%</span>(美元計價資產的匯率效果)。")
+        # 驅動固定為「台幣貶值(美元走強)」,方向由結果符號承載(正=資產受益、負=受損),
+        # 不隨係數符號翻轉驅動字眼,避免「升值→負值」的雙重反轉錯誤(Codex review)。
+        lines.append(f"<b>匯率</b>:台幣每貶值 1%,你的資產約 "
+                     f"<span style='color:{_c(fx)}'>{fx:+.1f}%</span>(美元計價海外部位的匯率效果)。")
     lines_html = "".join(
         f"<div style='padding:3px 0;color:#334155;'>{ln}</div>" for ln in lines)
 
@@ -15116,7 +15130,9 @@ def main() -> int:
     #       只顯示比例(%),無任何持股明細;非核心步驟 → 走時間預算閘,不足則跳過保寄信。
     if (PORTFOLIO_1 or PORTFOLIO_2) and _run_budget_ok(235, "持倉曝險"):
         print("[main] 計算持倉曝險(白話)…")
-        quotes["PORTFOLIO_RISK"] = fetch_portfolio_risk({**PORTFOLIO_1, **PORTFOLIO_2})
+        # 兩帳戶同代號需「相加」股數(非 {**a,**b} 覆蓋),否則權重錯 → 曝險全錯
+        quotes["PORTFOLIO_RISK"] = fetch_portfolio_risk(
+            _merge_share_dicts(PORTFOLIO_1, PORTFOLIO_2))
 
     # 6.66 除息已在預測模型執行前套用，這裡只加入報告提醒。
     if ex_div:

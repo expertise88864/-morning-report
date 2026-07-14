@@ -178,6 +178,32 @@ def test_fetch_portfolio_risk_returns_empty_when_drivers_dead(monkeypatch):
     assert mr.fetch_portfolio_risk({"2330": 1000}) == {}
 
 
+def test_merge_share_dicts_sums_duplicate_codes():
+    """兩帳戶同代號需相加(非 {**a,**b} 覆蓋),否則權重/曝險全錯(Codex review)。"""
+    merged = mr._merge_share_dicts({"2330": 1000, "0050": 500},
+                                   {"2330": 300, "00662": 200})
+    assert merged["2330"] == 1300     # 相加,非被 300 覆蓋
+    assert merged["0050"] == 500 and merged["00662"] == 200
+    assert mr._merge_share_dicts({}, None, {"x": 1}) == {"x": 1}
+
+
+def test_fetch_portfolio_risk_samples_from_qqq_when_twii_missing(monkeypatch):
+    """台股大盤資料缺、僅那斯達克可算時,n_samples 仍應 > 0(不誤標近 0 日,Codex review)。"""
+    _install_fake_history(monkeypatch)
+
+    real = mr._history_close_by_date
+
+    def fake(ticker, period="6mo"):
+        if ticker == "^TWII":
+            return {}                      # 台股大盤抓不到
+        return real(ticker, period)
+    monkeypatch.setattr(mr, "_history_close_by_date", fake)
+    out = mr.fetch_portfolio_risk({"2330": 1000})
+    assert out and out["qqq_beta"] is not None
+    assert out["tw_beta"] is None          # 台股大盤資料缺 → 隱藏
+    assert out["n_samples"] > 0            # 但樣本數來自那斯達克,不為 0
+
+
 # ── 渲染 + 存檔去識別 ────────────────────────────────────────────────────────
 def _sample_risk():
     return {
@@ -205,6 +231,21 @@ def test_render_portfolio_risk_plain_language_no_jargon():
 
 def test_render_portfolio_risk_empty_is_blank():
     assert mr._render_portfolio_risk_html({}) == ""
+
+
+def test_render_portfolio_risk_negative_beta_says_opposite_direction():
+    """負係數(空頭/避險部位)→ 白話說「反向」而非「同向」;FX 驅動固定為貶值、
+    方向由結果符號承載,不得雙重反轉(Codex review)。"""
+    risk = {
+        "tw_beta": -0.8, "qqq_beta": -0.5, "fx_beta": -0.6,
+        "tw_cov": 1.0, "qqq_cov": 1.0, "fx_cov": 1.0, "cov_shown": 1.0,
+        "scenarios": [], "stress": [], "n_samples": 100,
+    }
+    html = mr._render_portfolio_risk_html(risk)
+    assert "反向" in html and "約 0.8 倍" in html   # 顯示絕對倍數 + 反向
+    # FX:驅動固定「貶值」,呈現的資產變動帶負號(受損),不出現「升值」字眼翻轉
+    assert "台幣每貶值 1%" in html
+    assert "-0.6%" in html or "−0.6%" in html
 
 
 def test_portfolio_risk_card_stripped_on_archive():

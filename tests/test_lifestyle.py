@@ -1580,3 +1580,32 @@ def test_fetch_nba_week_fixtures_den_not_matching_golden_state(monkeypatch):
     texts = [g["text"] for g in out]
     assert "DEN @ PHX" in texts                       # 縮寫整詞命中金塊
     assert "GSW @ MIA" not in texts                   # 不誤中 Golden State
+
+
+def test_medical_org_cap_covers_source_org_key(monkeypatch):
+    """G8 回歸(Codex review):TFDA 公告標題常不含「食藥署」——每日一機構 cap 須退回
+    來源設定的 org_key 辨識,否則官方 feed 多則公告會繞過 cap 佔滿醫界區。"""
+    import datetime as dt
+
+    class Feed:
+        def __init__(self, url):
+            title = ("藥品全面回收 多批次檢驗不符規範" if "rssNews" in url
+                     else "醫材預防性下架 標示不符須改正")   # 皆不含「食藥署」
+            self.entries = [{
+                "title": title,
+                "link": f"https://www.fda.gov.tw/x/{'a' if 'rssNews' in url else 'b'}",
+                "published": "Tue, 02 Jun 2026 08:00:00 GMT",
+            }]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, *a, **k: Feed(url))
+    # 只留兩條 TFDA 官方 feed(共用 org_key),排除 Google 與其他直連源的干擾
+    monkeypatch.setattr(mr, "TW_INTELLIGENCE_QUERIES", {"policy": (), "medical": ()})
+    monkeypatch.setattr(mr, "TW_INTELLIGENCE_DIRECT_SOURCES", {
+        "policy": (),
+        "medical": tuple(s for s in mr.TW_INTELLIGENCE_DIRECT_SOURCES["medical"]
+                         if "FDA" in s["name"]),
+    })
+    out = mr.fetch_tw_daily_intelligence(
+        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
+    # 兩則標題皆無機關名 → 靠 org_key 歸同機構,每日最多 1 條
+    assert len(out["medical"]) == 1

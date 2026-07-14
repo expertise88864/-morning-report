@@ -5199,10 +5199,12 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
         # 含日期與標題)→ 升級為主路徑,原 HTML 頁降為退化備援;另補「本署公告」
         # (法規預告/下架/回收,對醫師讀者高相關)。健保署 rss 403 bot-block、
         # 衛福部憑證缺 SKI 對 requests 驗證失敗 → 維持既有條目靠 HTML 退化,不新增。
+        # org_key:兩條 TFDA feed 共用「食藥署」機構鍵——公告標題常不含機關名,
+        # 僅靠標題的每日一機構 cap 會漏,靠此鍵補上(Codex review)。
         {"name": "FDA News", "url": "https://www.fda.gov.tw/TC/rssNews.ashx",
-         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=4"},
+         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=4", "org_key": "食藥署"},
         {"name": "FDA Announcements", "url": "https://www.fda.gov.tw/TC/rssAnnouncement.ashx",
-         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=5"},
+         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=5", "org_key": "食藥署"},
         {"name": "VGHTC News", "url": "https://www.vghtc.gov.tw/News.aspx?n=56",
          "html_url": "https://www.vghtc.gov.tw/News.aspx?n=56"},
         {"name": "NTUH News", "url": "https://www.ntuh.gov.tw/News.aspx?n=2576",
@@ -5704,6 +5706,9 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             "mentions_official_agency": mentions_official,
             "source_name": source_name or source.get("name", ""),
             "source_url": source_url or source.get("url", ""),
+            # 來源設定的機構鍵(如 TFDA 兩 feed 共用「食藥署」):
+            # 標題不含機關名時,每日一機構 cap 靠它辨識(Codex review)
+            "org_key": source.get("org_key"),
         })
 
     for kind, queries in TW_INTELLIGENCE_QUERIES.items():
@@ -5788,6 +5793,8 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                         "mentions_official_agency": mentions_official,
                         "source_name": source_name,
                         "source_url": source_url,
+                        # Google 查詢路徑無來源設定 → 無 org_key(媒體報導標題
+                        # 本就含機關名,靠 _tw_medical_org_key 標題辨識即可)
                     })
             except Exception as e:
                 stats["failed"] += 1
@@ -5855,7 +5862,10 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             seen_orgs: set = set()
             capped = []
             for item in ranked:
-                org = _tw_medical_org_key(item.get("title", ""))
+                # 標題辨識優先;標題不含機關名(如 TFDA 公告)退回來源設定的 org_key,
+                # 否則官方 feed 的多則公告會繞過 cap 佔滿醫界區(Codex review)。
+                org = (_tw_medical_org_key(item.get("title", ""))
+                       or item.get("org_key") or "")
                 if org and org in seen_orgs:
                     continue
                 if org:

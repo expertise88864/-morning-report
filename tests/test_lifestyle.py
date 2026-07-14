@@ -1549,4 +1549,34 @@ def test_fetch_nba_week_fixtures_matches_full_team_names(monkeypatch):
     texts = [g["text"] for g in out]
     assert "LAL @ BOS" in texts                       # 全名關鍵字命中兩隊之一
     assert "MIA @ NYK" not in texts                   # 非關注隊剔除
-    assert all("_search" not in g for g in out)       # 內部欄位不外洩
+    assert all("_competitors" not in g for g in out)  # 內部欄位不外洩
+
+
+def test_fetch_nba_week_fixtures_den_not_matching_golden_state(monkeypatch):
+    """單字關鍵字整詞比對:'den'(金塊)不得 substring 誤中 'Golden State'
+    (Codex review 第二輪;沿用 _nba_team_matches_favorite 既有規則)。"""
+    def ev(short, home_full, away_full, iso):
+        return {"shortName": short, "name": short, "date": iso,
+                "season": {"slug": "regular-season"},
+                "status": {"type": {"state": "pre"}},
+                "competitions": [{"competitors": [
+                    {"team": {"displayName": home_full, "abbreviation": short.split(" @ ")[1]}},
+                    {"team": {"displayName": away_full, "abbreviation": short.split(" @ ")[0]}},
+                ]}]}
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [
+                ev("GSW @ MIA", "Miami Heat", "Golden State Warriors", "2026-10-22T00:00Z"),
+                ev("DEN @ PHX", "Phoenix Suns", "Denver Nuggets", "2026-10-22T02:00Z"),
+            ]}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    monkeypatch.setenv("NBA_FAVORITE_TEAMS", "den")
+    out = mr.fetch_nba_week_fixtures()
+    texts = [g["text"] for g in out]
+    assert "DEN @ PHX" in texts                       # 縮寫整詞命中金塊
+    assert "GSW @ MIA" not in texts                   # 不誤中 Golden State

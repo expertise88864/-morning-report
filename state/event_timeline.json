@@ -1,38 +1,44 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 27,
-  "last_seen": "2026-07-14",
-  "latest_title": "UK bans support for Iran’s IRGC and a linked group over antisemitic attacks in Britain"
+  "days": 28,
+  "last_seen": "2026-07-15",
+  "latest_title": "‘Gus’ the T. rex fetches record US$50.1 million at US auction"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 15,
-  "last_seen": "2026-07-14",
-  "latest_title": "俄空襲惹怒國際 歐盟擬祭最大規模制裁 - 新唐人電視台"
+  "days": 16,
+  "last_seen": "2026-07-15",
+  "latest_title": "川普：對俄制裁法案或納入伊朗和真主黨 - 大纪元"
  },
  "litigation:": {
   "first_seen": "2026-07-11",
-  "days": 3,
-  "last_seen": "2026-07-14",
-  "latest_title": "Judge says Trump sued IRS for 'improper purpose'; refers his lawyer to bar"
- },
- "export_controls:NVDA": {
-  "first_seen": "2026-07-11",
-  "days": 1,
-  "last_seen": "2026-07-11",
-  "latest_title": "中國傳有限放行H200，輝達高階晶片能重返中國？4年出口管制與美中談判一次看懂 - 數位時代"
+  "days": 4,
+  "last_seen": "2026-07-15",
+  "latest_title": "Current and former employees sue Meta, alleging discrimination in using AI to conduct layo"
  },
  "litigation:AAPL": {
   "first_seen": "2026-07-13",
-  "days": 1,
-  "last_seen": "2026-07-13",
-  "latest_title": "OpenAI遭控竊取商業機密 看聰明人如何評論蘋果提起的訴訟 - Business Insider Taiwan"
+  "days": 2,
+  "last_seen": "2026-07-15",
+  "latest_title": "蘋果控OpenAI竊商業機密「不意外」！訴訟意外曝「前Apple員工」跳槽人數 - udn科技玩家"
  },
  "litigation:6446": {
   "first_seen": "2026-07-14",
   "days": 1,
   "last_seen": "2026-07-14",
   "latest_title": "生技拚專利財1／股王藥華藥躋「千金股」 48億國際訴訟激勵自建全球通路| 財經 - CTWANT"
+ },
+ "litigation:META": {
+  "first_seen": "2026-07-15",
+  "days": 1,
+  "last_seen": "2026-07-15",
+  "latest_title": "訴訟指控 Meta 利用 AI 職場工具 鎖定並針對請病假的員工 - Business Insider Taiwan"
+ },
+ "geopolitical:MSFT": {
+  "first_seen": "2026-07-15",
+  "days": 1,
+  "last_seen": "2026-07-15",
+  "latest_title": "微軟發出緊急安全警報 黑客利用AI加速網絡攻擊 官方：X天內需完成更新 - ezone.hk"
  }
 }

@@ -1,0 +1,143 @@
+{
+ "date": "2026-07-15 06:43",
+ "total_seconds": 473.0,
+ "budget_seconds": 1140.0,
+ "news_workers": 8,
+ "degraded_steps": [],
+ "phases": [
+  {
+   "label": "行情/總經/FX",
+   "seconds": 4.7
+  },
+  {
+   "label": "新聞+政策+體育",
+   "seconds": 143.4
+  },
+  {
+   "label": "TAIFEX/籌碼/預測",
+   "seconds": 12.7
+  },
+  {
+   "label": "TWSE universe/候選新聞",
+   "seconds": 128.5
+  },
+  {
+   "label": "事件抽取/模型/walk-forward",
+   "seconds": 106.7
+  },
+  {
+   "label": "LLM 主分析",
+   "seconds": 72.8
+  },
+  {
+   "label": "渲染",
+   "seconds": 4.2
+  }
+ ],
+ "feeds": {
+  "search.cnbc.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "feeds.bloomberg.com": {
+   "ok": 0,
+   "fail": 1
+  },
+  "finance.yahoo.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "news.google.com": {
+   "ok": 106,
+   "fail": 0
+  },
+  "feeds.feedburner.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "www.federalreserve.gov": {
+   "ok": 2,
+   "fail": 0
+  },
+  "home.treasury.gov": {
+   "ok": 0,
+   "fail": 1
+  },
+  "news.cnyes.com": {
+   "ok": 0,
+   "fail": 3
+  },
+  "www.chinatimes.com": {
+   "ok": 0,
+   "fail": 2
+  },
+  "money.udn.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "udn.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.scmp.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "asia.nikkei.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "feeds.bbci.co.uk": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.ey.gov.tw": {
+   "ok": 2,
+   "fail": 0
+  },
+  "www.mohw.gov.tw": {
+   "ok": 2,
+   "fail": 0
+  },
+  "www.nhi.gov.tw": {
+   "ok": 0,
+   "fail": 2
+  },
+  "www.fsc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.cbc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.moi.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.mol.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.moea.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.cdc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.fda.gov.tw": {
+   "ok": 2,
+   "fail": 0
+  },
+  "www.vghtc.gov.tw": {
+   "ok": 0,
+   "fail": 1
+  },
+  "www.ntuh.gov.tw": {
+   "ok": 0,
+   "fail": 1
+  }
+ }
+}

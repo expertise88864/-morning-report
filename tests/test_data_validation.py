@@ -725,3 +725,37 @@ def test_fetch_market_valuation_bands(monkeypatch):
     assert mr.fetch_market_valuation()["label"] == "偏貴"
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R(rows("15")[:50]))   # 樣本不足
     assert mr.fetch_market_valuation() == {}
+
+
+def test_txo_wall_requires_positive_side_oi(monkeypatch):
+    """牆的該側 OI 必須 >0:履約價只掛賣權時不得被當「上方壓力」(Codex review)。"""
+    def row(k, cp, oi):
+        return {"Contract": "TXO", "ContractMonth(Week)": "202607",
+                "StrikePrice": str(k), "CallPut": cp, "OpenInterest": str(oi)}
+    rows = []
+    for k in (19600, 19800, 20000, 20200, 20400):
+        rows.append(row(k, "賣權", 500))          # 全部只有賣權
+    rows.append(row(19800, "買權", 300))          # 僅一檔有買權(磁吸下方)
+    class R:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return rows
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_txo_magnet()
+    assert out["call_wall"] is None               # 磁吸上方無買權 OI → 無壓力牆,不得亂指
+
+
+def test_valuation_and_magnet_reach_prompt():
+    """兩項白話資料要進 LLM prompt 當背景(顯示+prompt,皆不進計分;Codex review)。"""
+    q = _empty_quotes()
+    q["VALUATION"] = {"median_pe": 20.5, "median_yield": 3.37, "label": "偏貴",
+                      "tsmc": {}, "n": 800}
+    q["TXO_MAGNET"] = {"magnet": 45500.0, "call_wall": 47000.0,
+                       "put_wall": 45000.0, "settle": "07/15", "month": "202607"}
+    p = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "台股估值溫度" in p and "偏貴" in p
+    assert "結算磁吸參考價約 45,500" in p and "07/15 結算" in p
+    # 無資料時不產生空段
+    p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "結算磁吸參考價" not in p2

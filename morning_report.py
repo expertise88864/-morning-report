@@ -3143,8 +3143,9 @@ def fetch_txo_magnet() -> dict:
         magnet = min(ks, key=_payout)
         # 壓力/支撐牆只在磁吸價 ±6% 內找:深價外(如 ±10%)履約價常掛最大未平倉
         # (避險/樂透倉),對隔日盤勢毫無參考性(實測:全域最大 OI 落在 50,000/40,000)。
-        near_up = [k for k in ks if magnet < k <= magnet * 1.06]
-        near_dn = [k for k in ks if magnet * 0.94 <= k < magnet]
+        # 且該側 OI 必須 >0:履約價可能只掛另一側(如僅有賣權),零 OI 不得當牆(Codex review)
+        near_up = [k for k in ks if magnet < k <= magnet * 1.06 and strikes[k][0] > 0]
+        near_dn = [k for k in ks if magnet * 0.94 <= k < magnet and strikes[k][1] > 0]
         call_wall = max(near_up, key=lambda k: strikes[k][0]) if near_up else None
         put_wall = max(near_dn, key=lambda k: strikes[k][1]) if near_dn else None
         settle = _third_wednesday(front)
@@ -9109,6 +9110,22 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     _yc_read = _yield_curve_read(macro)
     if _yc_read.get("detail"):
         macro_block += f"\n  美債利率環境(請用此白話、勿在信中寫「倒掛/殖利率曲線」術語):{_yc_read['detail']}"
+    # 台股估值溫度 + 選擇權磁吸參考(白話顯示資料,同步給 LLM 當背景;不進計分,
+    # 引用時用白話、勿寫 max pain/OI 術語)
+    _val_p = quotes.get("VALUATION") or {}
+    if _val_p.get("median_pe"):
+        macro_block += (f"\n  台股估值溫度:全市場本益比中位數 {_val_p['median_pe']} 倍"
+                        + (f"、殖利率中位數 {_val_p['median_yield']}%"
+                           if _val_p.get("median_yield") else "")
+                        + f" → {_val_p.get('label', '')}(長期經驗區間)")
+    _mag_p = quotes.get("TXO_MAGNET") or {}
+    if _mag_p.get("magnet"):
+        macro_block += (f"\n  選擇權籌碼參考({_mag_p.get('settle', '')} 結算):"
+                        f"結算磁吸參考價約 {_mag_p['magnet']:,.0f} 點"
+                        + (f",上方壓力參考 {_mag_p['call_wall']:,.0f}"
+                           if _mag_p.get("call_wall") else "")
+                        + (f",下方支撐參考 {_mag_p['put_wall']:,.0f}"
+                           if _mag_p.get("put_wall") else ""))
     # VIX 期限結構（VIX9D vs VIX）
     vix_term = macro.get("VIX_TERM") or {}
     if vix_term.get("ratio") is not None:
@@ -13060,36 +13077,37 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">※ 中位=該產業個股漲跌中位數;「九、其他類股」的行情觀察條目取材於此。</div>
         </div>
         """
-        # 台股估值溫度(A4,白話)+ 選擇權結算磁吸參考(A5,白話)——附掛廣度卡後,無資料自動略過
-        _val = quotes.get("VALUATION") or {}
-        if _val.get("median_pe"):
-            _vc = {"偏便宜": "#15803d", "合理區間": "#475569", "偏貴": "#b91c1c"}.get(
-                _val.get("label", ""), "#475569")
-            _tsmc = _val.get("tsmc") or {}
-            _tsmc_txt = ""
-            if _tsmc.get("pe"):
-                _tsmc_txt = (f"　|　台積電:本益比 {_tsmc['pe']:.1f}"
-                             + (f"、殖利率 {_tsmc['yield']:.2f}%" if _tsmc.get("yield") else "")
-                             + (f"、股價淨值比 {_tsmc['pb']:.2f}" if _tsmc.get("pb") else ""))
-            breadth_html += (
-                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
-                f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
-                f"<b style='color:#0f172a;'>台股估值溫度</b>　全市場本益比中位數 "
-                f"{_val['median_pe']} 倍"
-                + (f"、殖利率中位數 {_val['median_yield']}%" if _val.get("median_yield") else "")
-                + f" → <b style='color:{_vc};'>{_val.get('label', '')}</b>"
-                + "<span style='color:#94a3b8;font-size:11px;'>(長期經驗區間,僅供參考)</span>"
-                + _tsmc_txt + "</div>")
-        _mag = quotes.get("TXO_MAGNET") or {}
-        if _mag.get("magnet"):
-            breadth_html += (
-                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
-                f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
-                f"<b style='color:#0f172a;'>選擇權籌碼參考（{_mag.get('settle', '')} 結算）</b>　"
-                f"結算磁吸參考價約 <b>{_mag['magnet']:,.0f}</b> 點"
-                + (f"　|　上方壓力參考 {_mag['call_wall']:,.0f}" if _mag.get("call_wall") else "")
-                + (f"・下方支撐參考 {_mag['put_wall']:,.0f}" if _mag.get("put_wall") else "")
-                + "<span style='color:#94a3b8;font-size:11px;'>(依選擇權籌碼分布推算,僅供參考、非預測)</span></div>")
+    # 台股估值溫度(A4)+ 選擇權磁吸參考(A5):獨立資料源,刻意放在 breadth 條件之外
+    # ——廣度抓取失敗不得連帶讓這兩張卡消失(Codex review)。無資料各自略過。
+    _val = quotes.get("VALUATION") or {}
+    if _val.get("median_pe"):
+        _vc = {"偏便宜": "#15803d", "合理區間": "#475569", "偏貴": "#b91c1c"}.get(
+            _val.get("label", ""), "#475569")
+        _tsmc = _val.get("tsmc") or {}
+        _tsmc_txt = ""
+        if _tsmc.get("pe"):
+            _tsmc_txt = (f"　|　台積電:本益比 {_tsmc['pe']:.1f}"
+                         + (f"、殖利率 {_tsmc['yield']:.2f}%" if _tsmc.get("yield") else "")
+                         + (f"、股價淨值比 {_tsmc['pb']:.2f}" if _tsmc.get("pb") else ""))
+        breadth_html += (
+            f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+            f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
+            f"<b style='color:#0f172a;'>台股估值溫度</b>　全市場本益比中位數 "
+            f"{_val['median_pe']} 倍"
+            + (f"、殖利率中位數 {_val['median_yield']}%" if _val.get("median_yield") else "")
+            + f" → <b style='color:{_vc};'>{_val.get('label', '')}</b>"
+            + "<span style='color:#94a3b8;font-size:11px;'>(長期經驗區間,僅供參考)</span>"
+            + _tsmc_txt + "</div>")
+    _mag = quotes.get("TXO_MAGNET") or {}
+    if _mag.get("magnet"):
+        breadth_html += (
+            f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+            f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
+            f"<b style='color:#0f172a;'>選擇權籌碼參考（{_mag.get('settle', '')} 結算）</b>　"
+            f"結算磁吸參考價約 <b>{_mag['magnet']:,.0f}</b> 點"
+            + (f"　|　上方壓力參考 {_mag['call_wall']:,.0f}" if _mag.get("call_wall") else "")
+            + (f"・下方支撐參考 {_mag['put_wall']:,.0f}" if _mag.get("put_wall") else "")
+            + "<span style='color:#94a3b8;font-size:11px;'>(依選擇權籌碼分布推算,僅供參考、非預測)</span></div>")
 
     # === 中期展望:使用者要求刪除整段(改以「長線趨勢參考」MA200 卡為準)。===
     #     MIDTERM 仍於 main 計算並存於 quotes 供後台,只是不再於信中渲染。

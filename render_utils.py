@@ -538,8 +538,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     cpbl_fixtures = (sports or {}).get("cpbl_fixtures") or []
     if not (cpbl or cpbl_scores or cpbl_fixtures or nba or nba_fav or nba_offseason
             or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
-            or mlb_tw or tennis.get("tournaments")
-            or tennis.get("results") or any(news.values())):
+            or mlb_tw or tennis.get("tournaments") or tennis.get("results")
+            or (sports or {}).get("mlb_fixtures") or (sports or {}).get("nba_fixtures")
+            or any(news.values())):
         return ""
     blocks = []
     if wc_results or wc_groups or wc_fixtures or wc_knockout:
@@ -547,8 +548,24 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         # 淘汰賽對戰表(各回合完整賽果+未賽場次台北開球時間):存在時為世足主視圖,
         # 「近期戰績/今日賽程」(其內容是對戰表的子集)不再另列,只保留小組表收斂註記。
         if wc_knockout:
+            # 早期回合收斂:某回合「全部打完」且「後面已有回合開打」→ 它是舊聞(32 強足足
+            # 16 行 ≈ 1.2KB/日),收成一行;最新開打的回合與未來回合仍完整顯示。
+            # 102KB 天花板下,這些空間直接還給 Podcast(2026-07-14 使用者反映 podcast 變少)。
+            _round_done = [all(g.get("done") for g in (rd.get("games") or [])) and
+                           bool(rd.get("games")) for rd in wc_knockout]
+            _latest_active = -1
+            for _i, rd in enumerate(wc_knockout):
+                if any(g.get("done") for g in (rd.get("games") or [])):
+                    _latest_active = _i
             ko_parts = []
-            for rd in wc_knockout:
+            for _i, rd in enumerate(wc_knockout):
+                games = rd.get("games") or []
+                if _round_done[_i] and _i < _latest_active:
+                    ko_parts.append(
+                        f"<div style='margin:4px 0;font-size:12px;color:#94a3b8;'>"
+                        f"<b style='color:#475569;'>{htmllib.escape(rd.get('name', ''))}</b>"
+                        f"　已完賽 {len(games)} 場(賽果見先前信件)</div>")
+                    continue
                 glines = "".join(
                     "<div style='font-size:13px;color:#334155;line-height:1.85;'>"
                     f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
@@ -556,7 +573,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                        if g.get("done")
                        else f"<span style='color:#64748b;'>{htmllib.escape(g['text'])}</span>")
                     + "</div>"
-                    for g in rd.get("games") or [])
+                    for g in games)
                 ko_parts.append(
                     f"<div style='margin:4px 0;'><b style='color:#0f172a;font-size:13px;'>"
                     f"{htmllib.escape(rd.get('name', ''))}</b>{glines}</div>")
@@ -674,11 +691,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     if cpbl_fixtures:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
-            f"<span style='color:#94a3b8;'>{htmllib.escape(str(f.get('start', '')))}</span>　"
+            f"<span style='color:#94a3b8;'>"
+            f"{htmllib.escape((str(f.get('date', '')) + ' ' + str(f.get('start', ''))).strip())}</span>　"
             f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}</div>"
             for f in cpbl_fixtures)
         blocks.append(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 今日賽程（台北時間）</b>"
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 未來一週賽程（台北時間）</b>"
             + rows + "</div>")
     if cpbl:
         rows = "".join(
@@ -729,33 +747,72 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             f"<div style='font-size:13px;color:#64748b;margin-top:2px;'>"
             f"{htmllib.escape(nba_offseason)}</div></div>")
+    nba_fixtures = (sports or {}).get("nba_fixtures") or []
+    if nba_fixtures:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
+            f"{htmllib.escape(str(g.get('text', '')))}</div>"
+            for g in nba_fixtures)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 未來一週賽程（台北時間）</b>"
+            + rows + "</div>")
     if standings:
-        seg = "　|　".join(
-            f"<b>{lg}</b> " + "、".join(f"{t['team']} {t['record']}" for t in teams)
-            for lg, teams in standings.items())
-        blocks.append(f"<div style='margin:8px 0;font-size:12px;color:#475569;'>"
-                      f"MLB 戰績前三:{seg}</div>")
+        # MLB 戰績:兩聯盟各前 5(勝-敗、勝率);使用者要求完整戰績表而非一行前三
+        seg_rows = []
+        for lg, teams in standings.items():
+            cells = "、".join(
+                f"{t['team']} {t['record']}"
+                + (f"({t['pct']:.3f})" if t.get("pct") else "")
+                for t in teams)
+            seg_rows.append(
+                f"<div style='font-size:12px;color:#475569;line-height:1.8;'>"
+                f"<b style='color:#0f172a;'>{lg}</b>　{cells}</div>")
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 戰績（勝率前 5）</b>"
+            + "".join(seg_rows) + "</div>")
+    mlb_fixtures = (sports or {}).get("mlb_fixtures") or []
+    if mlb_fixtures:
+        rows = "".join(
+            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
+            f"{htmllib.escape(str(g.get('text', '')))}"
+            + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
+               if g.get("special") else "")
+            + "</div>"
+            for g in mlb_fixtures)
+        blocks.append(
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 未來一週焦點賽程（台北時間;強隊對戰）</b>"
+            + rows + "</div>")
     if tennis.get("tournaments") or tennis.get("results"):
         t_inner = []
+        if tennis.get("results"):
+            # 賽果:日期 + 巡迴 + 層級 + 勝負 + 賽事名(使用者反映舊版看不出何時/哪個賽事,混亂)
+            seg = "".join(
+                f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
+                f"<span style='color:#94a3b8;'>{htmllib.escape(str(r.get('date', '')))} "
+                f"{htmllib.escape(r['tour'])}</span>　"
+                + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
+                   if r.get("tier") else "")
+                + f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}"
+                + (f"<span style='color:#94a3b8;font-size:11px;'>（{htmllib.escape(r['event'])}）</span>"
+                   if r.get("event") else "")
+                + "</div>"
+                for r in tennis["results"])
+            t_inner.append(seg)
         if tennis.get("tournaments"):
+            # 進行中/即將開打的賽事(已完賽者不列——其賽果已在上方,列了只是雜訊)
             seg = "　|　".join(
                 f"{htmllib.escape(t['name'])}"
                 + (f"（{htmllib.escape(t['status'])}）" if t.get("status") else "")
                 for t in tennis["tournaments"])
-            t_inner.append(f"<div style='font-size:12px;color:#475569;line-height:1.7;'>{seg}</div>")
-        if tennis.get("results"):
-            seg = "".join(
-                f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
-                f"<span style='color:#94a3b8;'>{htmllib.escape(r['tour'])}</span>　"
-                + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
-                   if r.get("tier") else "")
-                + f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}</div>"
-                for r in tennis["results"])
-            t_inner.append(seg)
+            t_inner.append(
+                f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
+                f"<b>進行中/即將</b>　{seg}</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
             + "".join(t_inner)
-            + "<div style='font-size:11px;color:#94a3b8;'>※ 免費資料源未含逐盤比分</div></div>")
+            + "<div style='font-size:11px;color:#94a3b8;'>※ 免費資料源未含逐盤比分;時間均為台北時間</div></div>")
     for label in ("世足", "中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:

@@ -11533,8 +11533,9 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
       - 場次為舊→新,故各 tour 依時間新→舊取最近 3 場再合併。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
+    # 範圍涵蓋「過去 3 天(賽果)+ 未來 7 天(即將開打的賽事)」——使用者要求有未來賽程
     dates = (f"{(now_tpe - dt.timedelta(days=3)).strftime('%Y%m%d')}"
-             f"-{now_tpe.strftime('%Y%m%d')}")
+             f"-{(now_tpe + dt.timedelta(days=7)).strftime('%Y%m%d')}")
     out: dict = {"tournaments": [], "results": []}
 
     def _an(c):
@@ -11555,15 +11556,26 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             # Challenger 小賽)。大滿貫優先、同層保留原序,再取前 10。
             evs = sorted(r.json().get("events", []),
                          key=lambda e: _tennis_tier(
-                             str(e.get("shortName") or e.get("name") or ""))[0])[:10]
+                             str(e.get("shortName") or e.get("name") or ""))[0])[:12]
             for ev in evs:
-                status = (((ev.get("status") or {}).get("type")) or {}).get("shortDetail", "")
+                st_type = (((ev.get("status") or {}).get("type")) or {})
                 name = str(ev.get("shortName") or ev.get("name") or "")
                 tier_rank, tier_label = _tennis_tier(name)
-                if name and name not in seen_tourn:
+                # 賽事列表只列「進行中/即將開打」(已完賽的混在列表裡只是雜訊——賽果區已涵蓋;
+                # 舊版顯示 "7/5 - 11:05 AM EDT" 這種美東原始字串,使用者反映混亂,改台北日期)
+                state = str(st_type.get("state") or "")
+                if name and name not in seen_tourn and state in ("pre", "in"):
                     seen_tourn.add(name)
+                    if state == "in":
+                        when = "進行中"
+                    else:
+                        try:
+                            iso = str(ev.get("date") or "").replace("Z", "+00:00")
+                            when = dt.datetime.fromisoformat(iso).astimezone(TPE).strftime("%m/%d 起")
+                        except Exception:
+                            when = "即將"
                     out["tournaments"].append({"name": _cut_word(name, 40),
-                                               "status": _cut_word(str(status), 22),
+                                               "status": when,
                                                "tier": tier_label, "_tier": tier_rank})
                 for g in (ev.get("groupings") or []):
                     slug = str((g.get("grouping") or {}).get("slug") or "")
@@ -11604,6 +11616,12 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     combined.sort(key=lambda m: m["_ts"], reverse=True)
     combined.sort(key=lambda m: m["_tier"])     # 穩定排序:大滿貫 > 1000 > 其他,同層新→舊
     for m in combined:
+        # 賽果附台北日期(使用者反映賽果不知何時打的、區塊混亂)
+        try:
+            iso = str(m["_ts"]).replace("Z", "+00:00")
+            m["date"] = dt.datetime.fromisoformat(iso).astimezone(TPE).strftime("%m/%d")
+        except Exception:
+            m["date"] = ""
         m.pop("_ts", None)
         m.pop("_tier", None)
     out["results"] = combined[:6]
@@ -11673,50 +11691,124 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
-def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
-    """中華職棒「今日賽程」(對戰組合+台北開賽時間)。
+def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
+                              days: int = 7) -> list[dict]:
+    """中華職棒「未來一週賽程」(對戰組合+台北開賽日期時間)。
 
-    使用者需求:體育資訊要有開賽時間,不只賽果。與 fetch_cpbl_scores 同一 Yahoo
-    scoreboard 端點(免金鑰),只取今日「尚未開打」場次。抓不到回空(渲染端自動略過)。
+    使用者需求:體育要有未來一週賽程,不只賽果。與 fetch_cpbl_scores 同一 Yahoo
+    scoreboard 端點(免金鑰),逐日查未來 days 天、只取「尚未開打」場次。
+    單日失敗略過該日(graceful degrade),全失敗回空(渲染端自動略過)。
     """
     from email.utils import parsedate_to_datetime
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    day = now_tpe.strftime("%Y-%m-%d")
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                              "AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
                "Accept": "application/json"}
     out = []
-    try:
-        r = _http_get(
-            "https://api-secure.sports.yahoo.com/v1/editorial/s/scoreboard",
-            params={"leagues": "cpbl", "date": day}, headers=headers, timeout=15)
-        r.raise_for_status()
-        sb = ((r.json().get("service") or {}).get("scoreboard")) or {}
-        games = sb.get("games") or {}
-        teams = sb.get("teams") or {}
-        for g in games.values():
-            status = str(g.get("status_type") or "")
-            if "final" in status or "postponed" in status or "cancel" in status:
-                continue   # 只列未開打(進行中也略過:晨報寄出時中職不會在打)
-            try:
-                gdt = parsedate_to_datetime(str(g.get("start_time") or ""))
-                if gdt.tzinfo is None:
-                    gdt = gdt.replace(tzinfo=dt.timezone.utc)
-                gdt = gdt.astimezone(TPE)
-            except (ValueError, TypeError):
-                continue   # 沒有可靠開賽時間就不列(開賽時間是本區塊的存在意義)
-            if gdt.strftime("%Y-%m-%d") != day:
-                continue   # Yahoo 日期桶偶含跨日場,以台北開賽日為準
-            away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
-            home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
-            out.append({"away": away, "home": home,
-                        "start": gdt.strftime("%H:%M"), "_ko": gdt})
-    except Exception as e:
-        print(f"[sports] CPBL 今日賽程抓取失敗: {e}", file=sys.stderr)
+    seen: set = set()
+    for off in range(days):
+        day = (now_tpe + dt.timedelta(days=off)).strftime("%Y-%m-%d")
+        try:
+            r = _http_get(
+                "https://api-secure.sports.yahoo.com/v1/editorial/s/scoreboard",
+                params={"leagues": "cpbl", "date": day}, headers=headers, timeout=15)
+            r.raise_for_status()
+            sb = ((r.json().get("service") or {}).get("scoreboard")) or {}
+            games = sb.get("games") or {}
+            teams = sb.get("teams") or {}
+            for gid, g in games.items():
+                if gid in seen:
+                    continue   # Yahoo 日期桶偶重疊,依 game id 去重
+                status = str(g.get("status_type") or "")
+                if "final" in status or "postponed" in status or "cancel" in status:
+                    continue   # 只列未開打(進行中也略過:晨報寄出時中職不會在打)
+                try:
+                    gdt = parsedate_to_datetime(str(g.get("start_time") or ""))
+                    if gdt.tzinfo is None:
+                        gdt = gdt.replace(tzinfo=dt.timezone.utc)
+                    gdt = gdt.astimezone(TPE)
+                except (ValueError, TypeError):
+                    continue   # 沒有可靠開賽時間就不列(開賽時間是本區塊的存在意義)
+                if gdt < now_tpe or gdt.date() > (now_tpe + dt.timedelta(days=days)).date():
+                    continue   # 只留「現在之後、一週之內」
+                seen.add(gid)
+                away = str((teams.get(g.get("away_team_id")) or {}).get("display_name") or "?")
+                home = str((teams.get(g.get("home_team_id")) or {}).get("display_name") or "?")
+                out.append({"away": away, "home": home,
+                            "date": gdt.strftime("%m/%d"),
+                            "start": gdt.strftime("%H:%M"), "_ko": gdt})
+        except Exception as e:
+            print(f"[sports] CPBL 賽程 {day} 抓取失敗: {e}", file=sys.stderr)
     out.sort(key=lambda x: x["_ko"])
     for x in out:
         x.pop("_ko", None)
-    return out[:6]
+    return out[:16]
+
+
+def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
+                        cap: int = 8) -> list[dict]:
+    """ESPN scoreboard 範圍查詢 → 未來 days 天「未開打」場次(台北時間)。
+
+    使用者需求:體育要有未來一週賽程。共用 helper 供 MLB/NBA;失敗拋給呼叫端
+    (呼叫端各自 try 包,graceful degrade)。回 [{"text","when","special"}...] 依時間排序。
+    """
+    span = (f"{now_tpe.strftime('%Y%m%d')}"
+            f"-{(now_tpe + dt.timedelta(days=days)).strftime('%Y%m%d')}")
+    r = _http_get(f"https://site.api.espn.com/apis/site/v2/sports/{league_path}/scoreboard",
+                  params={"dates": span}, timeout=20)
+    r.raise_for_status()
+    out = []
+    for ev in r.json().get("events", []):
+        st = (((ev.get("status") or {}).get("type")) or {})
+        if st.get("state") != "pre":
+            continue   # 只列未開打
+        try:
+            iso = str(ev.get("date") or "").replace("Z", "+00:00")
+            ko = dt.datetime.fromisoformat(iso).astimezone(TPE)
+        except Exception:
+            continue   # 無可靠開賽時間就不列
+        name = str(ev.get("shortName") or ev.get("name") or "")
+        slug = str((ev.get("season") or {}).get("slug") or "").lower()
+        special = "all-star" in slug or "All-Star" in str(ev.get("name") or "")
+        out.append({"text": name, "when": ko.strftime("%m/%d %H:%M"),
+                    "special": special, "_ko": ko})
+    out.sort(key=lambda g: g["_ko"])
+    for g in out:
+        g.pop("_ko", None)
+    return out[:cap]
+
+
+def fetch_mlb_week_fixtures(now_tpe: Optional[dt.datetime] = None,
+                            top_teams: Optional[set] = None) -> list[dict]:
+    """MLB 未來一週「焦點」賽程:強隊(戰績前列)對戰 + 特別賽事(明星賽)。
+
+    一週例行賽 ~100 場全列是雜訊;只留兩隊任一在戰績前列者(top_teams 由
+    fetch_sports_digest 的戰績榜前三供給),或明星賽等特別場次。台北時間。
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    games = _espn_week_fixtures("baseball/mlb", now_tpe, cap=200)
+    tops = {str(t).upper() for t in (top_teams or set()) if t}
+    if tops:
+        def _keep(g):
+            if g.get("special"):
+                return True
+            # shortName 形如 "TB @ BOS" → 任一隊在強隊清單即保留
+            teams = {p.strip().upper() for p in str(g["text"]).replace("@", " ").split()}
+            return bool(teams & tops)
+        games = [g for g in games if _keep(g)]
+    return games[:8]
+
+
+def fetch_nba_week_fixtures(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """NBA 未來一週賽程(台北時間)。休賽季 ESPN 自然回空(渲染端顯示休賽季說明)。
+    有設 NBA_FAVORITE_TEAMS 時只列關注球隊場次;未設則列前 10 場。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    games = _espn_week_fixtures("basketball/nba", now_tpe, cap=100)
+    favs = _nba_favorite_teams()
+    if favs:
+        games = [g for g in games
+                 if g.get("special") or any(f in str(g["text"]).lower() for f in favs)]
+    return games[:10]
 
 
 def _nba_offseason_note(now_tpe: dt.datetime) -> str:
@@ -11884,7 +11976,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         _off = _nba_offseason_note(now_tpe)
         if _off:
             out["nba_offseason"] = _off
-    # MLB 戰績榜(AL/NL 前 3;NBA 6 月為季後賽,scoreboard 系列註記已涵蓋)
+    # MLB 戰績榜(AL/NL 各前 5,含勝率;使用者要求完整戰績而非只有一行前三)
+    _mlb_top_abbrs: set = set()
     try:
         r = _http_get("https://site.api.espn.com/apis/v2/sports/baseball/mlb/standings",
                          timeout=15)
@@ -11897,19 +11990,38 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             def _wins(en):
                 stats = {s.get("name"): s for s in en.get("stats", [])}
                 return float((stats.get("winPercent") or {}).get("value") or 0)
-            top = sorted(entries, key=_wins, reverse=True)[:3]
+            top = sorted(entries, key=_wins, reverse=True)[:5]
             standings[name] = [
                 {"team": (en.get("team") or {}).get("abbreviation", "?"),
                  "record": next((s.get("displayValue") for s in en.get("stats", [])
-                                 if s.get("name") == "overall"), "")}
+                                 if s.get("name") == "overall"), ""),
+                 "pct": round(_wins(en), 3)}
                 for en in top]
+            _mlb_top_abbrs |= {t["team"] for t in standings[name][:3]}
         out["standings"] = standings
     except Exception as e:
         print(f"[sports] MLB 戰績抓取失敗: {e}", file=sys.stderr)
-    # 世足(賽期內才有資料,非賽期回空,渲染端自動略過)
+    # MLB 未來一週焦點賽程(強隊對戰;台北時間)——使用者要求 MLB 也要有賽程
+    try:
+        mf = fetch_mlb_week_fixtures(now_tpe, _mlb_top_abbrs)
+        if mf:
+            out["mlb_fixtures"] = mf
+    except Exception as e:
+        print(f"[sports] MLB 賽程抓取失敗: {e}", file=sys.stderr)
+    # NBA 未來一週賽程(台北時間;休賽季自然為空,渲染端顯示休賽季說明)
+    try:
+        nf = fetch_nba_week_fixtures(now_tpe)
+        if nf:
+            out["nba_fixtures"] = nf
+    except Exception as e:
+        print(f"[sports] NBA 賽程抓取失敗: {e}", file=sys.stderr)
+    # 世足(賽期內才有資料,非賽期回空,渲染端自動略過)。
+    # knockout 必須列入條件:休賽日 results/fixtures 可能全空、groups 可能抓失敗,
+    # 漏了會把整張淘汰賽對戰表丟掉(2026-07-14 自查)。
     try:
         wc = fetch_worldcup(now_tpe)
-        if wc.get("results") or wc.get("groups") or wc.get("fixtures"):
+        if (wc.get("results") or wc.get("groups") or wc.get("fixtures")
+                or wc.get("knockout")):
             out["worldcup"] = wc
     except Exception as e:
         print(f"[sports] 世足抓取失敗: {e}", file=sys.stderr)
@@ -12429,30 +12541,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ 只列美股前 10 大市值 + 關鍵半導體/AI/設備/EDA（NVDA/AVGO/AMD/MRVL/AMAT/ASML/SNPS/ARM 等）+ 台積電;台股其餘公司的重大訊息見上方「MOPS 重大訊息」段。8-K 是 SEC 規定的「重大事件即時揭露」表單。</p>
         """
 
-    # === 台股重點公司 MOPS 重大訊息 ===
-    tw_mops = quotes.get("TW_MOPS", []) or []
-    mops_html = ""
-    if tw_mops:
-        mops_rows = "\n".join(
-            f"<tr>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;font-size:13px;'>{_htmllib.escape(str(m.get('code','')))}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#475569;font-size:13px;'>{_htmllib.escape(str(m.get('title',''))[:120])}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#94a3b8;font-size:12px;white-space:nowrap;'>{_htmllib.escape(str(m.get('published',''))[:16])}</td>"
-            f"</tr>"
-            for m in tw_mops[:20]
-        )
-        mops_html = f"""
-        <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">台股重點公司 MOPS 重大訊息（市值前 10 大 + 初步候選前 15，近 48 小時）</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
-          <tr style="background:#f1f5f9;">
-            <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">代號</th>
-            <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">標題</th>
-            <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">時間</th>
-          </tr>
-          {mops_rows}
-        </table>
-        <p style="font-size:12px;color:#94a3b8;margin:4px 0;">※ MOPS（公開資訊觀測站）為台灣上市公司法定即時揭露來源。</p>
-        """
+    # === 台股重點公司 MOPS 重大訊息:使用者要求刪除本區塊(2026-07-14)。===
+    #     TW_MOPS 資料仍抓取並餵 LLM prompt/事件抽取(公告內容經常成為科技脈動/事件連續劇
+    #     的素材),只是不再於信中渲染原始表格;約省 2KB 還給 Podcast(102KB 天花板下互擠)。
 
     # === 市場警告 Banner:使用者要求隱藏(費半急跌/外資台指期淨空等)。===
     #     ALERTS 資料仍計算並用於下方「開盤預測」的操作紀律判定,只是不再單獨渲染警告區塊。
@@ -13243,15 +13334,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
-            {journals_html}
-
             {podcast_html}
 
             {model_evidence_html}
 
             {night_html}
-
-            {mops_html}
 
             {taifex_html}
 
@@ -13260,6 +13347,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {smart_money_html}
 
             {tw_intelligence_html}
+
+            {journals_html}
 
           </td></tr>
 

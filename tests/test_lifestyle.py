@@ -45,7 +45,7 @@ def test_render_sports_html():
     assert "體育快訊" in h
     assert "中華職棒戰績" in h and "味全龍" in h and "33-0-16" in h
     assert "NBA 冠軍賽" in h and "NY leads series 3-1" in h
-    assert "MLB 戰績前三" in h and "TB 40-25" in h
+    assert "MLB 戰績" in h and "TB 40-25" in h
     assert "MLB 昨日比分" not in h          # 使用者要求移除逐場比分
     assert "兄弟逆轉勝" in h
     assert mr._render_sports_html({}, htmllib) == ""
@@ -149,8 +149,8 @@ def test_fetch_tennis_digest(monkeypatch):
 
     def fake_get(url, params=None, timeout=None, **k):
         return R({"events": [{
-            "shortName": "Boss Open",
-            "status": {"type": {"shortDetail": "Final"}},
+            "shortName": "Boss Open", "date": "2026-06-14T10:00Z",
+            "status": {"type": {"shortDetail": "2nd Round", "state": "in"}},
             "groupings": [{
                 "grouping": {"slug": "mens-singles"},
                 "competitions": [{
@@ -162,10 +162,13 @@ def test_fetch_tennis_digest(monkeypatch):
         }]})
     monkeypatch.setattr(mr.requests, "get", fake_get)
     out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
-    assert any(t["name"] == "Boss Open" for t in out["tournaments"])
-    # 兩端點都回同一場 → 用 competition id 去重,只算一次
+    # 進行中賽事列入「進行中/即將」清單(已完賽者不再列——賽果區已涵蓋)
+    t = next(t for t in out["tournaments"] if t["name"] == "Boss Open")
+    assert t["status"] == "進行中"
+    # 兩端點都回同一場 → 用 competition id 去重,只算一次;賽果帶台北日期
     matches = [r for r in out["results"] if r["winner"] == "A. Player"]
     assert len(matches) == 1 and matches[0]["tour"] == "ATP"
+    assert matches[0]["date"] == "06/14"
 
 
 def test_render_sports_cpbl_scores():
@@ -1180,8 +1183,9 @@ def test_fetch_tennis_slam_survives_event_cap(monkeypatch):
     實測 2026-07-12 週日信:溫網決賽週,ESPN 前 8 筆全是 Challenger → 溫網整個不見。
     """
     def ev(name):
-        return {"shortName": name, "name": name,
-                "status": {"type": {"shortDetail": "Final"}}, "groupings": []}
+        return {"shortName": name, "name": name, "date": "2026-07-12T10:00Z",
+                "status": {"type": {"shortDetail": "3rd Round", "state": "in"}},
+                "groupings": []}
 
     class R:
         def raise_for_status(self):
@@ -1301,41 +1305,65 @@ def test_render_sports_worldcup_knockout_bracket_supersedes():
     assert "隊0-0" not in html and "小組賽已結束" in html   # 小組表收斂
 
 
-def test_fetch_cpbl_today_fixtures(monkeypatch):
-    """今日未開打場次列開賽時間(台北);已完賽/非今日不列。"""
+def test_fetch_cpbl_week_fixtures(monkeypatch):
+    """未來一週未開打場次列日期+開賽時間(台北);已完賽不列;跨日查詢依 game id 去重。"""
     import datetime as dt
     now = dt.datetime.now(mr.TPE).replace(hour=6, minute=30)
     today_evening = now.replace(hour=18, minute=35)
-    rfc = today_evening.astimezone(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    day3_evening = (now + dt.timedelta(days=3)).replace(hour=17, minute=5)
+
+    def rfc(d):
+        return d.astimezone(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+    def payload_for(day):
+        games = {}
+        if day == now.strftime("%Y-%m-%d"):
+            games = {
+                "g1": {"status_type": "status.type.pregame", "start_time": rfc(today_evening),
+                       "away_team_id": "t1", "home_team_id": "t2"},
+                "g2": {"status_type": "status.type.final", "start_time": rfc(today_evening),
+                       "away_team_id": "t3", "home_team_id": "t4",
+                       "total_away_points": "3", "total_home_points": "5"},
+            }
+        elif day == day3_evening.strftime("%Y-%m-%d"):
+            # g1 重複出現在另一天的桶(Yahoo 偶發)→ 應被 id 去重;g3 為新場次
+            games = {
+                "g1": {"status_type": "status.type.pregame", "start_time": rfc(today_evening),
+                       "away_team_id": "t1", "home_team_id": "t2"},
+                "g3": {"status_type": "status.type.pregame", "start_time": rfc(day3_evening),
+                       "away_team_id": "t3", "home_team_id": "t4"},
+            }
+        return {"service": {"scoreboard": {
+            "teams": {"t1": {"display_name": "味全龍"}, "t2": {"display_name": "統一7-ELEVEn獅"},
+                      "t3": {"display_name": "樂天桃猿"}, "t4": {"display_name": "中信兄弟"}},
+            "games": games,
+        }}}
 
     class R:
+        def __init__(self, p):
+            self._p = p
+
         def raise_for_status(self):
             pass
 
         def json(self):
-            return {"service": {"scoreboard": {
-                "teams": {"t1": {"display_name": "味全龍"}, "t2": {"display_name": "統一7-ELEVEn獅"},
-                          "t3": {"display_name": "樂天桃猿"}, "t4": {"display_name": "中信兄弟"}},
-                "games": {
-                    "g1": {"status_type": "status.type.pregame", "start_time": rfc,
-                           "away_team_id": "t1", "home_team_id": "t2"},
-                    "g2": {"status_type": "status.type.final", "start_time": rfc,
-                           "away_team_id": "t3", "home_team_id": "t4",
-                           "total_away_points": "3", "total_home_points": "5"},
-                },
-            }}}
+            return self._p
 
-    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    monkeypatch.setattr(mr, "_http_get",
+                        lambda url, params=None, **k: R(payload_for((params or {}).get("date"))))
     out = mr.fetch_cpbl_today_fixtures(now)
-    assert len(out) == 1                              # final 不列
-    assert out[0]["away"] == "味全龍" and out[0]["home"] == "統一7-ELEVEn獅"
-    assert out[0]["start"] == "18:35"
+    assert len(out) == 2                              # final 不列;g1 只出現一次
+    assert out[0]["away"] == "味全龍" and out[0]["start"] == "18:35"
+    assert out[0]["date"] == now.strftime("%m/%d")
+    assert out[1]["away"] == "樂天桃猿" and out[1]["date"] == day3_evening.strftime("%m/%d")
 
 
 def test_render_cpbl_fixtures_block():
-    sports = {"cpbl_fixtures": [{"away": "味全龍", "home": "統一7-ELEVEn獅", "start": "18:35"}]}
+    sports = {"cpbl_fixtures": [{"away": "味全龍", "home": "統一7-ELEVEn獅",
+                                 "date": "07/14", "start": "18:35"}]}
     html = mr._render_sports_html(sports, htmllib)
-    assert "中華職棒 今日賽程" in html and "18:35" in html and "味全龍 vs 統一7-ELEVEn獅" in html
+    assert "中華職棒 未來一週賽程" in html and "07/14 18:35" in html
+    assert "味全龍 vs 統一7-ELEVEn獅" in html
 
 
 def test_wc_placeholder_zh():
@@ -1416,3 +1444,78 @@ def test_render_sports_worldcup_scheduled_bracket_keeps_groups_and_results():
     assert "墨西哥 1 : 0 南非" in html                 # 小組賽賽果未被吞
     assert "淘汰賽對戰表" in html and "06/29 03:00" in html
     assert "今日/近日賽程" not in html                 # 賽程已在對戰表,不重複
+
+
+# ===================== 07-14 信件調整批 =====================
+
+def test_render_worldcup_collapses_stale_early_rounds():
+    """已全部打完、且後面回合已開打的早期回合 → 收斂一行;最新回合與未來回合完整顯示。"""
+    ko = [
+        {"name": "32 強", "games": [{"text": f"a{i} 1 : 0 b{i}", "when": "06/29", "done": True}
+                                    for i in range(16)]},
+        {"name": "8 強", "games": [{"text": "阿根廷 3 : 1 瑞士", "when": "07/12", "done": True}]},
+        {"name": "4 強", "games": [{"text": "西班牙 vs 法國", "when": "07/15 03:00", "done": False}]},
+    ]
+    html = mr._render_sports_html({"worldcup": {"knockout": ko, "groups": [],
+                                                "results": [], "fixtures": []}}, htmllib)
+    assert "已完賽 16 場" in html and "a3 1 : 0 b3" not in html   # 32 強收斂
+    assert "阿根廷 3 : 1 瑞士" in html                            # 最新回合完整
+    assert "西班牙 vs 法國" in html                               # 未來回合完整
+
+
+def test_render_mlb_standings_and_fixtures():
+    sports = {
+        "standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
+        "mlb_fixtures": [{"text": "LAD @ NYY", "when": "07/17 23:05", "special": False},
+                         {"text": "AL All-Stars @ NL All-Stars", "when": "07/16 08:00",
+                          "special": True}],
+    }
+    html = mr._render_sports_html(sports, htmllib)
+    assert "MLB 戰績（勝率前 5）" in html and "TB 56-38(0.596)" in html
+    assert "MLB 未來一週焦點賽程" in html and "LAD @ NYY" in html
+    assert "特別賽事" in html                                     # 明星賽標記
+
+
+def test_render_nba_week_fixtures():
+    html = mr._render_sports_html(
+        {"nba_fixtures": [{"text": "LAL @ BOS", "when": "10/22 08:00"}]}, htmllib)
+    assert "NBA 未來一週賽程" in html and "LAL @ BOS" in html
+
+
+def test_render_tennis_cleaned_block():
+    """網球區:賽果帶日期+賽事名;賽事列表只列進行中/即將(台北日期),不再出現美東原始字串。"""
+    tennis = {
+        "results": [{"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
+                     "loser": "A. Zverev", "event": "Wimbledon", "date": "07/13"}],
+        "tournaments": [{"name": "Canadian Open", "status": "07/20 起", "tier": "1000"}],
+    }
+    html = mr._render_sports_html({"tennis": tennis}, htmllib)
+    assert "07/13 ATP" in html and "J. Sinner" in html and "（Wimbledon）" in html
+    assert "進行中/即將" in html and "Canadian Open（07/20 起）" in html
+    assert "EDT" not in html                                      # 美東字串不再出現
+
+
+def test_fetch_mlb_week_fixtures_filters_top_teams(monkeypatch):
+    """MLB 週賽程:只留強隊對戰或特別賽事(一週 ~100 場全列是雜訊)。"""
+    def ev(name, iso, slug="regular-season"):
+        return {"shortName": name, "name": name, "date": iso,
+                "season": {"slug": slug},
+                "status": {"type": {"state": "pre"}}}
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [
+                ev("TB @ BOS", "2026-07-17T17:35Z"),
+                ev("PIT @ CLE", "2026-07-17T23:10Z"),
+                ev("AL All-Stars @ NL All-Stars", "2026-07-16T00:00Z", "all-star"),
+            ]}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_mlb_week_fixtures(top_teams={"TB", "NYY", "LAD"})
+    texts = [g["text"] for g in out]
+    assert "TB @ BOS" in texts                        # 強隊對戰保留
+    assert "PIT @ CLE" not in texts                   # 非強隊剔除
+    assert any(g["special"] for g in out)             # 明星賽保留並標記

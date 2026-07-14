@@ -277,17 +277,25 @@ def test_render_html_keep_mode_reduces_episodes_one_at_a_time(monkeypatch):
     assert len(q["PODCAST_SHOWN_EPISODES"]) == 2       # shown 同步
 
 
-def test_render_html_medical_journals_before_podcast():
-    """醫學文獻速報移到 podcast 之前(2026-07-10 剪信事故:14 集 podcast 把醫學文獻擠到信末被
-    Gmail 剪掉)。醫師使用者重視的醫學內容須排在龐大 podcast 之前,才不會先被剪。"""
+def test_render_html_medical_journals_at_email_end():
+    """醫學文獻速報放信件最後(政策/醫界之後)——使用者 2026-07-14 明確拍板。
+
+    歷史:2026-07-10 曾因剪信事故把文獻移到 podcast 之前;使用者今反向決定「文獻放最後」
+    (與「低優先排信末、被 Gmail 剪先剪它們」的既定政策一致,接受此取捨)。
+    """
     q = {**_full_quotes(),
          "MEDICAL_JOURNALS": [{"journal": "JAAD", "pmid": "123", "zh": "測試皮膚醫學文獻",
                                "title": "Test Derm Article"}],
+         "TW_DAILY_INTELLIGENCE": {"policy": [{"title": "測試政策", "published": "2026-06-16",
+                                               "category": "其他政策", "importance": 5}]},
          "PODCAST_DIGEST": [{"show": "股癌", "title": "EPPOD",
                              "digest": {"summary_points": ["重點一"], "tickers": []}}]}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
     assert "醫學文獻速報" in html and "Podcast 重點" in html
-    assert html.index("醫學文獻速報") < html.index("Podcast 重點")
+    # 新順序:podcast → … → 政策/醫界 → 醫學文獻(信件最末內容區)
+    assert html.index("Podcast 重點") < html.index("醫學文獻速報")
+    if "台灣政策" in html:
+        assert html.index("台灣政策") < html.index("醫學文獻速報")
 
 
 def test_render_html_stays_within_gmail_ceiling_with_huge_podcast(monkeypatch):

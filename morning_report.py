@@ -8863,10 +8863,17 @@ def _git_commit_and_push_state(paths: list, message: str) -> None:
     if not (os.environ.get("GITHUB_ACTIONS") == "true"
             and os.environ.get("DRY_RUN") != "1"):
         return
+    # 只 add 實際存在的路徑:某 state 檔本次未產生(如 run_manifest 寫入失敗、或該檔為
+    # 尚未追蹤的新檔而本次沒建)時,`git add <不存在路徑>` 會以 check=True 拋錯,連帶
+    # 讓「整個 state push」被跳過(history/podcast/校準都不落地)——比少一個檔嚴重(Codex review)。
+    existing = [p for p in paths if os.path.exists(p)]
+    if not existing:
+        print("[state] 無任何存在的 state 檔可 push,跳過", file=sys.stderr)
+        return
     try:
         subprocess.run(["git", "config", "user.name", "morning-report-bot"], check=True, timeout=10)
         subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
-        subprocess.run(["git", "add", *paths], check=True, timeout=10)
+        subprocess.run(["git", "add", *existing], check=True, timeout=10)
         # 若無變動就跳過
         diff = subprocess.run(["git", "diff", "--cached", "--quiet"], timeout=10)
         if diff.returncode != 0:

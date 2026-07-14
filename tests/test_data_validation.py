@@ -849,3 +849,36 @@ def test_mark_phase_records():
     labels = [m[0] for m in mr._RUN_MANIFEST["marks"]]
     assert labels == ["x", "y"]
     mr._RUN_MANIFEST["marks"].clear()
+
+
+def test_git_push_skips_missing_paths_not_whole_push(tmp_path, monkeypatch):
+    """某 state 檔不存在(如 manifest 寫入失敗)不得讓整個 state push 被跳過(Codex review):
+    `git add` 只帶入存在的路徑,history/podcast 等仍照常 push。"""
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.delenv("DRY_RUN", raising=False)
+    real = tmp_path / "history.json"
+    real.write_text("[]", encoding="utf-8")
+    missing = tmp_path / "run_manifest.json"          # 不建立 → 不存在
+    added = {}
+
+    def fake_run(cmd, **kw):
+        if cmd[:2] == ["git", "add"]:
+            added["paths"] = cmd[2:]
+        class R:
+            returncode = 1                            # diff --cached --quiet → 有變動
+        return R()
+    monkeypatch.setattr(mr.subprocess, "run", fake_run)
+    mr._git_commit_and_push_state([str(real), str(missing)], "chore: test")
+    # 只 add 存在者;不存在的 manifest 被濾掉,git add 不會因它整批失敗
+    assert str(real) in added["paths"] and str(missing) not in added["paths"]
+
+
+def test_git_push_all_missing_returns_early(tmp_path, monkeypatch):
+    """全部路徑都不存在 → 早退,不呼叫 git。"""
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.delenv("DRY_RUN", raising=False)
+    called = {"n": 0}
+    monkeypatch.setattr(mr.subprocess, "run",
+                        lambda *a, **k: called.__setitem__("n", called["n"] + 1))
+    mr._git_commit_and_push_state([str(tmp_path / "nope.json")], "chore: test")
+    assert called["n"] == 0

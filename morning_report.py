@@ -9179,33 +9179,40 @@ def _compute_weekly_review_stats(history: Optional[list],
       n(樣本)、mae_pct(平均絕對誤差%)、bias_pct(平均帶號誤差%;正=實際高於預測、模型低估)、
       hit_rate_pct(方向命中率:以「前一筆實際開盤」為基準,預測方向 vs 實際方向同號比例;best-effort)。
     另彙整上週 critical_news 供 LLM 檢討哪些成真/落空。無資料回 {}。純函式、不動計分。"""
+    def _num(v):
+        return v if isinstance(v, (int, float)) and v > 0 else None
+
+    def _sgn(x):
+        return (x > 0) - (x < 0)
+
     hist = [h for h in (history or []) if isinstance(h, dict)]
     if today:
         hist = [h for h in hist if str(h.get("date") or "")[:10] < today]
     hist = sorted(hist, key=lambda h: str(h.get("target_session_date") or h.get("date") or ""))
-    hist = hist[-7:]
-
-    def _num(v):
-        return v if isinstance(v, (int, float)) and v > 0 else None
+    # 先建「已成熟」cohort(有任一實際開盤=該交易日已發生),再取最近 7 筆——否則週六尚未
+    # 成熟的紀錄會佔滿 last-7 slot、把更早的成熟紀錄擠出上週,且其事件被誤當上週(Codex review)。
+    mature = [h for h in hist
+              if _num(h.get("actual_open_taiex")) or _num(h.get("actual_open_2330"))]
+    mature = mature[-7:]
 
     def _stats(pred_k, act_k):
         errs: list = []
         dir_pairs: list = []
         prev_act = None
-        for h in hist:
+        for h in mature:
             pv = _num(h.get(pred_k))
             av = _num(h.get(act_k))
             if pv and av:
                 errs.append(av / pv - 1.0)
-                if prev_act:
-                    pd, ad = pv - prev_act, av - prev_act
-                    if pd != 0 and ad != 0:
-                        dir_pairs.append((pd > 0) == (ad > 0))
+                if prev_act is not None:
+                    # 三方向(-1/0/+1)比較:預測「不變」但實際變動(或反之)算「未命中」,
+                    # 不可略過(否則膨脹命中率);只有缺基準/缺數值時才不計(Codex review)。
+                    dir_pairs.append(_sgn(pv - prev_act) == _sgn(av - prev_act))
             if av:
                 prev_act = av
         if not errs:
             return None
-        out = {
+        return {
             "n": len(errs),
             "mae_pct": round(sum(abs(e) for e in errs) / len(errs) * 100, 2),
             "bias_pct": round(sum(errs) / len(errs) * 100, 2),
@@ -9213,21 +9220,21 @@ def _compute_weekly_review_stats(history: Optional[list],
                              if dir_pairs else None),
             "n_dir": len(dir_pairs),
         }
-        return out
 
     taiex = _stats("pred_taiex", "actual_open_taiex")
     tw2330 = _stats("weighted_final_2330", "actual_open_2330")
+    # 事件只從已成熟 cohort 收;且「無任何成熟預測配對」時整體回 {}(不讓純事件撐起七之五)。
+    if not taiex and not tw2330:
+        return {}
     crit: list = []
-    for h in hist:
+    for h in mature:
         for c in (h.get("critical_news") or []):
             c = str(c).strip()
             if c and c not in crit:
                 crit.append(c)
     crit = crit[:8]
-    if not taiex and not tw2330 and not crit:
-        return {}
     return {"taiex": taiex, "tw2330": tw2330,
-            "critical_events": crit, "n_days": len(hist)}
+            "critical_events": crit, "n_days": len(mature)}
 
 
 def _format_weekly_review(stats: Optional[dict]) -> str:

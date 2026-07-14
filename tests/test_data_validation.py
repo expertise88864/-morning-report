@@ -1111,3 +1111,29 @@ def test_build_prompt_weekly_review_section_present_and_absent():
     # 平日(無 WEEKLY_REVIEW)→ 整段不出現
     p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "七之五" not in p2
+
+
+def test_weekly_review_excludes_immature_records():
+    """未成熟(無實際開盤)的週六紀錄不得佔位,其 critical_news 不得被當上週(Codex review)。"""
+    # 只有未成熟紀錄 → {}(不讓純事件撐起七之五)
+    assert mr._compute_weekly_review_stats(
+        [{"date": "2026-07-11", "critical_news": ["週六事件"]}], today="2099-01-01") == {}
+    # 一筆成熟 + 一筆未成熟:只算成熟者,未成熟事件被排除
+    hist = [
+        {"date": "2026-07-08", "pred_taiex": 100, "actual_open_taiex": 101,
+         "critical_news": ["成熟事件"]},
+        {"date": "2026-07-11", "critical_news": ["未成熟事件"]},   # 無 actual → 未成熟
+    ]
+    s = mr._compute_weekly_review_stats(hist, today="2099-01-01")
+    assert "成熟事件" in s["critical_events"] and "未成熟事件" not in s["critical_events"]
+    assert s["n_days"] == 1
+
+
+def test_weekly_review_flat_prediction_counts_as_directional_miss():
+    """預測『不變』但實際變動 → 未命中,須計入 n_dir(不可略過膨脹命中率,Codex review)。"""
+    hist = [
+        {"date": "2026-07-06", "pred_taiex": 100, "actual_open_taiex": 100},
+        {"date": "2026-07-07", "pred_taiex": 100, "actual_open_taiex": 103},  # pred 平、實際漲
+    ]
+    t = mr._compute_weekly_review_stats(hist, today="2099-01-01")["taiex"]
+    assert t["n_dir"] == 1 and t["hit_rate_pct"] == 0

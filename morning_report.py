@@ -4649,21 +4649,24 @@ def fetch_news() -> list[dict]:
     for query, label in GOOGLE_NEWS_COMPANIES:
         work.append({"idx": len(work), "source": f"Google:{label}",
                      "url": _gnews_rss(query, when="2d"), "kind": "company", "label": label})
-    # 依 host 分組
-    groups: dict[str, list[dict]] = {}
-    for w in work:
-        host = urlparse(w["url"]).netloc or str(w["url"])
-        groups.setdefault(host, []).append(w)
-
-    def _run_group(items_in_group: list[dict]) -> dict:
-        return {w["idx"]: _process_feed_item(w, cutoff) for w in items_in_group}
-
     merged: dict[int, list[dict]] = {}
-    workers = max(1, min(NEWS_FETCH_WORKERS, len(groups)))
-    if workers <= 1 or len(groups) <= 1:
-        for g in groups.values():
-            merged.update(_run_group(g))
+    if NEWS_FETCH_WORKERS <= 1:
+        # 逃生門:完全退回舊序列行為——依「原始 work 順序」逐項處理(非 host 分組順序),
+        # 送出請求的順序與平行化前逐項相同(Codex review:分組後的序列會把 Google 擠成一團,
+        # 不等於舊行為)。
+        for w in work:
+            merged[w["idx"]] = _process_feed_item(w, cutoff)
     else:
+        # 依 host 分組:不同 host 平行、同 host 序列(見 docstring)
+        groups: dict[str, list[dict]] = {}
+        for w in work:
+            host = urlparse(w["url"]).netloc or str(w["url"])
+            groups.setdefault(host, []).append(w)
+
+        def _run_group(items_in_group: list[dict]) -> dict:
+            return {w["idx"]: _process_feed_item(w, cutoff) for w in items_in_group}
+
+        workers = max(1, min(NEWS_FETCH_WORKERS, len(groups)))
         with ThreadPoolExecutor(max_workers=workers) as ex:
             for part in ex.map(_run_group, list(groups.values())):
                 merged.update(part)

@@ -741,3 +741,34 @@ def test_fetch_news_circuit_breaker_still_trips_under_grouping(monkeypatch):
     mr.fetch_news()
     # 斷路器門檻 4:實際 HTTP 呼叫應遠少於 29(門檻後 fail-fast),證明未被平行繞過
     assert http_calls["n"] <= mr._FEED_HOST_CIRCUIT_BREAK + 1
+
+
+def test_fetch_news_serial_escape_hatch_uses_original_request_order(monkeypatch):
+    """NEWS_FETCH_WORKERS=1 逃生門:送出請求順序=原始 work 順序(RSS_FEEDS 逐項→公司),
+    非 host 分組順序(Codex review:分組序列會把 Google 擠成一團,不等於舊行為)。"""
+    order = []
+
+    class _F:
+        def __init__(self, url):
+            order.append(url)
+            self.entries = []
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", lambda url, timeout=12: _F(url))
+    monkeypatch.setattr(mr, "_http_get",
+                        lambda url, **k: order.append(url) or _RaiseJSON())
+    # 交錯不同 host,確保「分組順序 != 原始順序」可被偵測
+    monkeypatch.setattr(mr, "RSS_FEEDS", {
+        "A": "https://a.com/rss", "G1": "https://news.google.com/rss/1",
+        "B": "https://b.com/rss", "G2": "https://news.google.com/rss/2"})
+    monkeypatch.setattr(mr, "GOOGLE_NEWS_COMPANIES", [])
+    monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 1)
+    mr.fetch_news()
+    # 原始順序:a, google1, b, google2(交錯);若走分組會變 a,b,google1,google2
+    assert order == ["https://a.com/rss", "https://news.google.com/rss/1",
+                     "https://b.com/rss", "https://news.google.com/rss/2"]
+
+
+class _RaiseJSON:
+    status_code = 500
+
+    def json(self):
+        return {}

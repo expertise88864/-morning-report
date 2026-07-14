@@ -3094,6 +3094,111 @@ def fetch_twse_market_breadth() -> dict:
         return {}
 
 
+def _third_wednesday(yyyymm: str) -> Optional[dt.date]:
+    """台指選擇權月合約結算日=該月第三個星期三。"""
+    try:
+        y, m = int(yyyymm[:4]), int(yyyymm[4:6])
+        d = dt.date(y, m, 1)
+        offset = (2 - d.weekday()) % 7          # 週三 weekday=2
+        return d + dt.timedelta(days=offset + 14)
+    except (ValueError, IndexError):
+        return None
+
+
+def fetch_txo_magnet() -> dict:
+    """台指選擇權近月籌碼 → 結算磁吸參考價(白話呈現,不進計分)。
+
+    TAIFEX OpenAPI 選擇權日行情(免金鑰,實測 11,947 列):取 TXO 近月(六碼月份,
+    排除週別 W/F 合約),對每個可能結算價計算全體賣方總賠付,最低點=籌碼最集中的
+    「磁吸參考價」;另取買權/賣權未平倉最大的履約價當上下參考。失敗回 {}。
+    """
+    try:
+        r = _http_get("https://openapi.taifex.com.tw/v1/DailyMarketReportOpt",
+                      timeout=30, headers={"User-Agent": "Mozilla/5.0",
+                                           "Accept": "application/json"})
+        r.raise_for_status()
+        rows = [x for x in (r.json() or []) if x.get("Contract") == "TXO"]
+        months = sorted({str(x.get("ContractMonth(Week)") or "") for x in rows
+                         if len(str(x.get("ContractMonth(Week)") or "")) == 6})
+        if not months:
+            return {}
+        front = months[0]
+        strikes: dict[float, list] = {}    # K -> [call_oi, put_oi]
+        for x in rows:
+            if str(x.get("ContractMonth(Week)")) != front:
+                continue
+            oi = _to_float(x.get("OpenInterest"))
+            k = _to_float(x.get("StrikePrice"))
+            if not k or oi is None or oi <= 0:
+                continue   # 盤後列 OI 為 "-"、零 OI 履約價都略過
+            side = 0 if "買" in str(x.get("CallPut", "")) else 1
+            strikes.setdefault(k, [0.0, 0.0])[side] += oi
+        if len(strikes) < 5:
+            return {}
+        ks = sorted(strikes)
+        # 磁吸價=令「全體選擇權賣方總賠付」最小的結算價(籌碼最集中處)
+        def _payout(s: float) -> float:
+            return sum(c * max(0.0, s - k) + p * max(0.0, k - s)
+                       for k, (c, p) in strikes.items())
+        magnet = min(ks, key=_payout)
+        # 壓力/支撐牆只在磁吸價 ±6% 內找:深價外(如 ±10%)履約價常掛最大未平倉
+        # (避險/樂透倉),對隔日盤勢毫無參考性(實測:全域最大 OI 落在 50,000/40,000)。
+        near_up = [k for k in ks if magnet < k <= magnet * 1.06]
+        near_dn = [k for k in ks if magnet * 0.94 <= k < magnet]
+        call_wall = max(near_up, key=lambda k: strikes[k][0]) if near_up else None
+        put_wall = max(near_dn, key=lambda k: strikes[k][1]) if near_dn else None
+        settle = _third_wednesday(front)
+        out = {"magnet": magnet, "call_wall": call_wall, "put_wall": put_wall,
+               "month": front,
+               "settle": settle.strftime("%m/%d") if settle else ""}
+        print(f"[txo] 近月 {front} 磁吸參考 {magnet:,.0f}"
+              f"(壓力 {call_wall}/支撐 {put_wall},結算 {out['settle']})")
+        return out
+    except Exception as e:
+        print(f"[txo] 選擇權磁吸價計算失敗(不影響晨報): {e}", file=sys.stderr)
+        return {}
+
+
+def fetch_market_valuation() -> dict:
+    """台股估值溫度(白話,不進計分):全市場本益比/殖利率中位數 + 2330 個股估值。
+
+    TWSE BWIBBU_ALL(免金鑰,實測 1,078 檔):PEratio/DividendYield/PBratio。
+    溫度標籤用長期經驗區間(PE 中位 <13 偏便宜、13~18 合理、>18 偏貴)——啟發式
+    顯示判讀,非計分訊號。失敗回 {}。
+    """
+    try:
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL",
+                      timeout=20, headers={"User-Agent": "Mozilla/5.0",
+                                           "Accept": "application/json"})
+        r.raise_for_status()
+        rows = r.json() or []
+        pes, yields = [], []
+        tsmc = {}
+        for x in rows:
+            pe = _to_float(x.get("PEratio"))
+            dy = _to_float(x.get("DividendYield"))
+            if pe and 0 < pe < 500:
+                pes.append(pe)
+            if dy and 0 < dy < 30:
+                yields.append(dy)
+            if str(x.get("Code")) == "2330":
+                tsmc = {"pe": pe, "yield": dy, "pb": _to_float(x.get("PBratio"))}
+        if len(pes) < 100:
+            return {}
+        med_pe = statistics.median(pes)
+        med_dy = statistics.median(yields) if yields else None
+        label = ("偏便宜" if med_pe < 13 else ("合理區間" if med_pe <= 18 else "偏貴"))
+        out = {"median_pe": round(med_pe, 1),
+               "median_yield": round(med_dy, 2) if med_dy else None,
+               "n": len(pes), "label": label, "tsmc": tsmc}
+        print(f"[valuation] 全市場 PE 中位 {out['median_pe']}、"
+              f"殖利率中位 {out['median_yield']}% → {label}")
+        return out
+    except Exception as e:
+        print(f"[valuation] 估值溫度計算失敗(不影響晨報): {e}", file=sys.stderr)
+        return {}
+
+
 def fetch_sector_heat(top_leaders: int = 3, min_names: int = 3) -> dict:
     """按 TWSE 產業別彙整當日「類股熱度」——純計算,重用已快取的 STOCK_DAY_ALL(當日成交)
     與上市公司基本資料(產業別),**不新增網路請求、不進任何計分**。
@@ -12955,6 +13060,36 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <div style="font-size:11px;color:#94a3b8;margin-top:4px;">※ 中位=該產業個股漲跌中位數;「九、其他類股」的行情觀察條目取材於此。</div>
         </div>
         """
+        # 台股估值溫度(A4,白話)+ 選擇權結算磁吸參考(A5,白話)——附掛廣度卡後,無資料自動略過
+        _val = quotes.get("VALUATION") or {}
+        if _val.get("median_pe"):
+            _vc = {"偏便宜": "#15803d", "合理區間": "#475569", "偏貴": "#b91c1c"}.get(
+                _val.get("label", ""), "#475569")
+            _tsmc = _val.get("tsmc") or {}
+            _tsmc_txt = ""
+            if _tsmc.get("pe"):
+                _tsmc_txt = (f"　|　台積電:本益比 {_tsmc['pe']:.1f}"
+                             + (f"、殖利率 {_tsmc['yield']:.2f}%" if _tsmc.get("yield") else "")
+                             + (f"、股價淨值比 {_tsmc['pb']:.2f}" if _tsmc.get("pb") else ""))
+            breadth_html += (
+                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+                f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
+                f"<b style='color:#0f172a;'>台股估值溫度</b>　全市場本益比中位數 "
+                f"{_val['median_pe']} 倍"
+                + (f"、殖利率中位數 {_val['median_yield']}%" if _val.get("median_yield") else "")
+                + f" → <b style='color:{_vc};'>{_val.get('label', '')}</b>"
+                + "<span style='color:#94a3b8;font-size:11px;'>(長期經驗區間,僅供參考)</span>"
+                + _tsmc_txt + "</div>")
+        _mag = quotes.get("TXO_MAGNET") or {}
+        if _mag.get("magnet"):
+            breadth_html += (
+                f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+                f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
+                f"<b style='color:#0f172a;'>選擇權籌碼參考（{_mag.get('settle', '')} 結算）</b>　"
+                f"結算磁吸參考價約 <b>{_mag['magnet']:,.0f}</b> 點"
+                + (f"　|　上方壓力參考 {_mag['call_wall']:,.0f}" if _mag.get("call_wall") else "")
+                + (f"・下方支撐參考 {_mag['put_wall']:,.0f}" if _mag.get("put_wall") else "")
+                + "<span style='color:#94a3b8;font-size:11px;'>(依選擇權籌碼分布推算,僅供參考、非預測)</span></div>")
 
     # === 中期展望:使用者要求刪除整段(改以「長線趨勢參考」MA200 卡為準)。===
     #     MIDTERM 仍於 main 計算並存於 quotes 供後台,只是不再於信中渲染。
@@ -14327,6 +14462,17 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 類股熱度計算失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SECTOR_HEAT"] = {}
+    # 6.06 台股估值溫度(A4)+ 選擇權結算磁吸價(A5)——白話顯示層,皆不進計分
+    try:
+        quotes["VALUATION"] = fetch_market_valuation()
+    except Exception as e:
+        print(f"[main] 估值溫度失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["VALUATION"] = {}
+    try:
+        quotes["TXO_MAGNET"] = fetch_txo_magnet()
+    except Exception as e:
+        print(f"[main] 選擇權磁吸價失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["TXO_MAGNET"] = {}
 
     # 6.1 (籌碼悄悄站隊) 個股融資餘額(MI_MARGN ALL)+ TDCC 大戶 WoW 變化
     print("[main] 抓個股融資餘額(MI_MARGN ALL)…")

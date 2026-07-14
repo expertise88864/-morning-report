@@ -655,3 +655,73 @@ def test_basis_line_html_factual_no_sentiment():
     low = mr._basis_line_html({"fut_settle": 45300, "spot": 45400, "diff": -100, "div_season": False})
     assert "期貨低 <b>100</b>" in h.replace("184", "184") or "期貨低 <b>100</b>" in low
     assert mr._basis_line_html({}) == ""                    # 無資料 → 空
+
+
+# ===================== A4 估值溫度 + A5 選擇權磁吸價(2026-07-14)=====================
+
+def test_third_wednesday():
+    import datetime as dt
+    assert mr._third_wednesday("202607") == dt.date(2026, 7, 15)
+    assert mr._third_wednesday("202608") == dt.date(2026, 8, 19)
+    assert mr._third_wednesday("bad") is None
+
+
+def test_fetch_txo_magnet_math_and_wall_range(monkeypatch):
+    """磁吸價=賣方總賠付最小履約價;牆只在 ±6% 內找(深價外樂透倉不當壓力/支撐);
+    盤後 '-' 列與週別合約排除。"""
+    def row(month, k, cp, oi):
+        return {"Contract": "TXO", "ContractMonth(Week)": month, "StrikePrice": str(k),
+                "CallPut": cp, "OpenInterest": oi}
+    rows = []
+    # 近月:put OI 集中低檔、call OI 集中高檔 → 磁吸落中間
+    for k in (19000, 19500, 20000, 20500, 21000):
+        rows.append(row("202607", k, "買權", str(max(0, (k - 20000) // 100 * 50 + 100))))
+        rows.append(row("202607", k, "賣權", str(max(0, (20000 - k) // 100 * 50 + 100))))
+    rows.append(row("202607", 20500, "買權", "-"))          # 盤後列 → 略過
+    rows.append(row("202607W4", 20000, "買權", "99999"))    # 週別 → 略過
+    rows.append(row("202608", 20000, "買權", "99999"))      # 次月 → 略過
+    rows.append(row("202607", 26000, "買權", "50000"))      # 深價外(+30%)大 OI:不得當壓力牆
+    rows.append(row("202607", 15000, "賣權", "50000"))      # 深價外(-25%)大 OI:不得當支撐牆
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return rows
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_txo_magnet()
+    assert out["month"] == "202607" and out["settle"] == "07/15"
+    assert 19000 <= out["magnet"] <= 21000                 # 磁吸在近價區
+    for wall in (out["call_wall"], out["put_wall"]):
+        if wall is not None:
+            assert abs(wall - out["magnet"]) / out["magnet"] <= 0.06   # 牆在 ±6% 內
+
+
+def test_fetch_market_valuation_bands(monkeypatch):
+    """全市場 PE/殖利率中位數與溫度標籤;樣本不足回 {};2330 個股估值抽取。"""
+    def rows(pe):
+        out = [{"Code": f"{1000+i}", "PEratio": str(pe), "DividendYield": "3.5",
+                "PBratio": "1.5"} for i in range(150)]
+        out.append({"Code": "2330", "PEratio": "32.8", "DividendYield": "0.9",
+                    "PBratio": "10.7"})
+        return out
+
+    class R:
+        def __init__(self, d):
+            self._d = d
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._d
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R(rows("12")))
+    v = mr.fetch_market_valuation()
+    assert v["label"] == "偏便宜" and v["tsmc"]["pe"] == 32.8
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R(rows("20")))
+    assert mr.fetch_market_valuation()["label"] == "偏貴"
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R(rows("15")[:50]))   # 樣本不足
+    assert mr.fetch_market_valuation() == {}

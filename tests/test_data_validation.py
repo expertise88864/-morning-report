@@ -1059,3 +1059,55 @@ def test_format_narrative_delta_excludes_same_day_rerun_entry():
     assert "無昨日紀錄可對照" in mr._format_narrative_delta(
         [{"date": "2026-07-13", "stance_label": "偏多", "critical_news": ["今日事件"]}],
         today="2026-07-13")
+
+
+# ── G5 週報錯誤檢討 ──────────────────────────────────────────────────────────
+def test_compute_weekly_review_stats_math():
+    hist = [
+        {"date": "2026-07-06", "target_session_date": "2026-07-06",
+         "pred_taiex": 100, "actual_open_taiex": 102},
+        {"date": "2026-07-07", "target_session_date": "2026-07-07",
+         "pred_taiex": 100, "actual_open_taiex": 99},
+        {"date": "2026-07-08", "target_session_date": "2026-07-08",
+         "pred_taiex": 100, "actual_open_taiex": 100.5,
+         "critical_news": ["台積電法說優於預期"]},
+    ]
+    s = mr._compute_weekly_review_stats(hist, today="2099-01-01")
+    t = s["taiex"]
+    assert t["n"] == 3
+    assert abs(t["mae_pct"] - 1.17) < 0.01           # (2+1+0.5)/3
+    assert abs(t["bias_pct"] - 0.5) < 0.01           # (2-1+0.5)/3
+    assert t["hit_rate_pct"] == 100 and t["n_dir"] == 2   # 兩次方向皆命中
+    assert "台積電法說優於預期" in s["critical_events"]
+
+
+def test_compute_weekly_review_stats_empty_and_excludes_today():
+    assert mr._compute_weekly_review_stats([]) == {}
+    assert mr._compute_weekly_review_stats(None) == {}
+    # 只有今天的 entry → today 過濾後無資料
+    assert mr._compute_weekly_review_stats(
+        [{"date": "2026-07-13", "pred_taiex": 100, "actual_open_taiex": 101}],
+        today="2026-07-13") == {}
+
+
+def test_format_weekly_review_has_numbers():
+    stats = {"taiex": {"n": 3, "mae_pct": 1.17, "bias_pct": 0.5,
+                       "hit_rate_pct": 100, "n_dir": 2},
+             "tw2330": None, "critical_events": ["Fed 放鴿"], "n_days": 3}
+    out = mr._format_weekly_review(stats)
+    assert "平均絕對誤差 1.17%" in out and "持續偏誤 +0.50%" in out
+    assert "方向命中 100%" in out and "Fed 放鴿" in out
+    assert mr._format_weekly_review({}) == ""
+
+
+def test_build_prompt_weekly_review_section_present_and_absent():
+    stats = {"taiex": {"n": 3, "mae_pct": 1.17, "bias_pct": 0.5,
+                       "hit_rate_pct": 100, "n_dir": 2},
+             "tw2330": None, "critical_events": ["台積電法說"], "n_days": 3}
+    p = mr._build_prompt(_empty_quotes(WEEKLY_REVIEW=stats),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之五" in p and "平均絕對誤差 1.17%" in p and "台積電法說" in p
+    assert "本週要重點驗證" in p                        # 指引出現
+    # 平日(無 WEEKLY_REVIEW)→ 整段不出現
+    p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之五" not in p2

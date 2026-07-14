@@ -9171,6 +9171,88 @@ def _format_narrative_delta(history: Optional[list], today: Optional[str] = None
     return "\n".join(lines)
 
 
+def _compute_weekly_review_stats(history: Optional[list],
+                                 today: Optional[str] = None) -> dict:
+    """G5:上週預測 vs 實際的確定性統計(Python 算,非 LLM),供週一綜合報的「週報檢討」引用。
+
+    取近一週(≤7 筆)已成熟(有 actual_open)的紀錄,對加權與 2330 各算:
+      n(樣本)、mae_pct(平均絕對誤差%)、bias_pct(平均帶號誤差%;正=實際高於預測、模型低估)、
+      hit_rate_pct(方向命中率:以「前一筆實際開盤」為基準,預測方向 vs 實際方向同號比例;best-effort)。
+    另彙整上週 critical_news 供 LLM 檢討哪些成真/落空。無資料回 {}。純函式、不動計分。"""
+    hist = [h for h in (history or []) if isinstance(h, dict)]
+    if today:
+        hist = [h for h in hist if str(h.get("date") or "")[:10] < today]
+    hist = sorted(hist, key=lambda h: str(h.get("target_session_date") or h.get("date") or ""))
+    hist = hist[-7:]
+
+    def _num(v):
+        return v if isinstance(v, (int, float)) and v > 0 else None
+
+    def _stats(pred_k, act_k):
+        errs: list = []
+        dir_pairs: list = []
+        prev_act = None
+        for h in hist:
+            pv = _num(h.get(pred_k))
+            av = _num(h.get(act_k))
+            if pv and av:
+                errs.append(av / pv - 1.0)
+                if prev_act:
+                    pd, ad = pv - prev_act, av - prev_act
+                    if pd != 0 and ad != 0:
+                        dir_pairs.append((pd > 0) == (ad > 0))
+            if av:
+                prev_act = av
+        if not errs:
+            return None
+        out = {
+            "n": len(errs),
+            "mae_pct": round(sum(abs(e) for e in errs) / len(errs) * 100, 2),
+            "bias_pct": round(sum(errs) / len(errs) * 100, 2),
+            "hit_rate_pct": (round(sum(dir_pairs) / len(dir_pairs) * 100)
+                             if dir_pairs else None),
+            "n_dir": len(dir_pairs),
+        }
+        return out
+
+    taiex = _stats("pred_taiex", "actual_open_taiex")
+    tw2330 = _stats("weighted_final_2330", "actual_open_2330")
+    crit: list = []
+    for h in hist:
+        for c in (h.get("critical_news") or []):
+            c = str(c).strip()
+            if c and c not in crit:
+                crit.append(c)
+    crit = crit[:8]
+    if not taiex and not tw2330 and not crit:
+        return {}
+    return {"taiex": taiex, "tw2330": tw2330,
+            "critical_events": crit, "n_days": len(hist)}
+
+
+def _format_weekly_review(stats: Optional[dict]) -> str:
+    """把 _compute_weekly_review_stats 的結果整理成 prompt 文字。無資料回 ""。"""
+    if not stats:
+        return ""
+
+    def _line(name, s):
+        if not s:
+            return f"{name}:上週無可對照的成熟預測。"
+        hit = (f"、方向命中 {s['hit_rate_pct']:.0f}%(n={s['n_dir']})"
+               if s.get("hit_rate_pct") is not None else "")
+        return (f"{name}:樣本 {s['n']} 日、平均絕對誤差 {s['mae_pct']:.2f}%、"
+                f"持續偏誤 {s['bias_pct']:+.2f}%(正=實際高於預測=模型偏低估){hit}")
+
+    lines = ["【上週預測回顧(Python 統計,數字僅能引用此處)】",
+             _line("加權指數開盤", stats.get("taiex")),
+             _line("2330 開盤", stats.get("tw2330"))]
+    crit = stats.get("critical_events") or []
+    if crit:
+        lines.append("上週重點事件(供檢討哪些成真/落空/只是噪音):")
+        lines.extend(f"- {c}" for c in crit)
+    return "\n".join(lines)
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -9774,6 +9856,18 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     #     傳今日日期以排除同日重跑存下的「今天」紀錄(避免今天比今天)。
     narrative_delta_block = _format_narrative_delta(
         quotes.get("HISTORY"), today=dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+    # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之五、週報檢討」段。
+    weekly_review_block = _format_weekly_review(quotes.get("WEEKLY_REVIEW"))
+    weekly_review_section = (f"""## 七之五、上週檢討與本週假設（**僅週一綜合報**;有上週統計才寫）
+
+{weekly_review_block}
+
+依上方【上週預測回顧】,用 **≤6 行**寫:
+1. 上週預測整體準不準——**引用平均絕對誤差與持續偏誤數字**,一句總評(偏樂觀高估/偏保守低估/大致準)。
+2. 上週哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用上方事件清單與已知走勢,不杜撰。
+3. 本週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則 00662 補漲」)。
+**鐵則**:數字只能引用上方統計;事件只能引用上方清單或歷史;不得杜撰未發生的走勢或不存在的事件。
+""" if weekly_review_block else "")
 
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
@@ -10053,6 +10147,7 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 **鐵則**:昨日部分只能引用上方【昨日本報敘事回顧】的原文,**不可**替昨日補記它沒說過的話;今日部分必須引用今日新聞/數據。
 若上方為「(無昨日紀錄可對照)」,本段只寫一行「無昨日紀錄可對照」即可。
 
+{weekly_review_section}
 ## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
 
 **重要**:寫 7-10 條;只有 A 級具體事實很多時才可到 12 條。R12 已放寬:B 級資訊也可寫但須明確標註信心降級。
@@ -15240,6 +15335,10 @@ def main() -> int:
     quotes["WEEKLY"] = weekly
     quotes["EARNINGS_PROXIMITY"] = earnings_proximity
     quotes["HISTORY"] = history
+    # G5:僅週一綜合報加「上週檢討」確定性統計(供 LLM 週報檢討段引用;純統計、不動計分)。
+    if mode == "週末綜合":
+        quotes["WEEKLY_REVIEW"] = _compute_weekly_review_stats(
+            history, today=now_tpe.strftime("%Y-%m-%d"))
     quotes["NIGHT_TXF"] = night_txf
     quotes["TAIEX_PRED"] = taiex_pred
     quotes["TW0050_PRED"] = tw0050_pred

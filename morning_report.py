@@ -5195,8 +5195,14 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
         {"name": "CDC News", "url": "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFQFA",
          "html_url": "https://www.cdc.gov.tw/Category/ListContent/EmXW9Z9G5lXnKcSMacP7Mw"},
-        {"name": "FDA News", "url": "https://www.fda.gov.tw/TC/news.aspx?cid=4",
+        # G8 探活(2026-07-14):TFDA 有真 RSS(rssNews/rssAnnouncement .ashx 皆 200、
+        # 含日期與標題)→ 升級為主路徑,原 HTML 頁降為退化備援;另補「本署公告」
+        # (法規預告/下架/回收,對醫師讀者高相關)。健保署 rss 403 bot-block、
+        # 衛福部憑證缺 SKI 對 requests 驗證失敗 → 維持既有條目靠 HTML 退化,不新增。
+        {"name": "FDA News", "url": "https://www.fda.gov.tw/TC/rssNews.ashx",
          "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=4"},
+        {"name": "FDA Announcements", "url": "https://www.fda.gov.tw/TC/rssAnnouncement.ashx",
+         "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=5"},
         {"name": "VGHTC News", "url": "https://www.vghtc.gov.tw/News.aspx?n=56",
          "html_url": "https://www.vghtc.gov.tw/News.aspx?n=56"},
         {"name": "NTUH News", "url": "https://www.ntuh.gov.tw/News.aspx?n=2576",

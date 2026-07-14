@@ -4949,6 +4949,9 @@ def fetch_candidate_company_news(snapshot: list[dict],
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
+                # source_name/source_url 比照正規 Google 路徑抽取:G6 的「獨立來源數」
+                # 以 source_name 辨識發布者,缺了會把同查詢下不同媒體都當同一來源(Codex review)
+                source_name, source_url = _tw_entry_source(entry)
                 item = {
                     "source": f"Google:{code}",
                     "title": entry.get("title", ""),
@@ -4957,6 +4960,8 @@ def fetch_candidate_company_news(snapshot: list[dict],
                     "published": entry.get("published", ""),
                     "company_label": code,
                     "code": code,
+                    "source_name": source_name,
+                    "source_url": source_url,
                 }
                 items.append(_mark_news_date_quality(item, pub_dt))
                 hit += 1
@@ -5017,6 +5022,7 @@ def fetch_sector_leader_news(sector_heat: dict,
                     pub_dt = _entry_published_dt(entry)
                     if pub_dt and pub_dt < cutoff:
                         continue
+                    source_name, source_url = _tw_entry_source(entry)   # G6:發布者身分(同上)
                     item = {
                         "source": f"Google:{code}",
                         "title": entry.get("title", ""),
@@ -5026,6 +5032,8 @@ def fetch_sector_leader_news(sector_heat: dict,
                         "company_label": code,
                         "code": code,
                         "sector": sector,
+                        "source_name": source_name,
+                        "source_url": source_url,
                     }
                     items.append(_mark_news_date_quality(item, pub_dt))
                     hit += 1
@@ -5077,6 +5085,7 @@ def fetch_8k_company_news(sec_filings: list[dict],
                 pub_dt = _entry_published_dt(entry)
                 if pub_dt and pub_dt < cutoff:
                     continue
+                source_name, source_url = _tw_entry_source(entry)   # G6:發布者身分(同上)
                 item = {
                     "source": f"Google:{t}",
                     "title": entry.get("title", ""),
@@ -5084,6 +5093,8 @@ def fetch_8k_company_news(sec_filings: list[dict],
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "company_label": t,
+                    "source_name": source_name,
+                    "source_url": source_url,
                 }
                 items.append(_mark_news_date_quality(item, pub_dt))
                 hit += 1

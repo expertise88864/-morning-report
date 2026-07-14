@@ -848,3 +848,31 @@ def test_dedup_multi_call_preserves_merged_n():
     # 第三輪:同事件但來源是已算過的媒體(鉅亨)→ 不重複計,維持 4
     r3 = mr.dedup_news(r2 + [{"title": T, "source": "s5", "source_name": "鉅亨"}])
     assert r3[0]["merged_n"] == 4
+
+
+def test_dynamic_google_paths_retain_source_name(monkeypatch):
+    """三條動態 Google 路徑(候選股/類股領先股/8-K)須保留 source_name(發布者身分),
+    否則 G6 的獨立來源數把同查詢下不同媒體都當同一來源(Codex review 第三輪)。"""
+    import datetime as dt
+
+    class Feed:
+        entries = [{
+            "title": "測試公司 大單挹注 - 經濟日報",
+            "link": "https://news.google.com/x",
+            "published": dt.datetime.now(dt.timezone.utc).strftime(
+                "%a, %d %b %Y %H:%M:%S GMT"),
+            "source": {"title": "經濟日報", "href": "https://money.udn.com"},
+        }]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: Feed())
+
+    cand = mr.fetch_candidate_company_news(
+        [{"code": "3231", "name": "緯創", "breakout": {"score": 5}}], top_n=1)
+    sect = mr.fetch_sector_leader_news(
+        {"ranked": ["金融"],
+         "sectors": {"金融": {"leaders": [{"code": "2881", "name": "富邦金"}]}}})
+    eight_k = mr.fetch_8k_company_news([{"ticker": "QCOM"}])
+
+    for name, out in (("cand", cand), ("sector", sect), ("8k", eight_k)):
+        assert out, f"{name} 應回傳項目"
+        assert out[0].get("source_name") == "經濟日報", f"{name} 須保留 source_name"

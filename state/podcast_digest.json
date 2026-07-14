@@ -4242,6 +4242,50 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72969831",
+        "title": "Big banks fall despite upbeat earnings",
+        "published": "Tue, 14 Jul 2026 16:08:34 +0000",
+        "processed_at": "2026-07-14T20:39:58Z",
+        "digest": {
+          "summary_points": [
+            "大型銀行財報超出預期但市場賣出，因費用上升擔憂。",
+            "高盛因SpaceX IPO帶動投資銀行費用年增55%，成為例外表現強勁。",
+            "IBM意外警告第二季營收將低於預期，股價暴跌超過20%，拖累軟體與顧問類股。",
+            "6月消費者物價指數年增3.5%，低於預期的3.8%；核心CPI年增2.6%，低於預期的2.9%。",
+            "能源價格指數6月下跌5.7%，為通膨降溫主因。",
+            "Seeking Alpha分析師Justin Prohit認為汽油與油價下跌可能短暫，通膨仍是關鍵主題，聯準會政策收緊機率上升。",
+            "食品配送平台Wonder目標估值90億美元，計劃2027年前IPO，年營收目標50億美元。",
+            "Vanda Research指出散戶投資人開始獲利了結，賣出蘋果、特斯拉、輝達等強勢股，但整體交易活動仍處高檔。"
+          ],
+          "tickers": [
+            {
+              "name": "JPMorgan Chase",
+              "code": "JPM",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報優於預期但市場賣出，因費用上升擔憂。"
+            },
+            {
+              "name": "Goldman Sachs",
+              "code": "GS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "受惠SpaceX IPO，投資銀行費用年增55%，營收大幅優於預期。"
+            },
+            {
+              "name": "IBM",
+              "code": "IBM",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "意外警告第二季營收低於預期，股價暴跌超過20%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Justin Prohit said lower gasoline prices and oil, and inflation's recent improvement could prove short lived."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72965271",
         "title": "Saronic hits the front line",
         "published": "Tue, 14 Jul 2026 10:29:45 +0000",
@@ -4713,88 +4757,6 @@
           "notable_quote": "The distribution of forecasts suggests strategists continue to expect gains for the broader market through the end of the year, though the consensus points to a more modest advance than the sharp rally that has already pushed the S&P to record highs this year."
         },
         "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72828393",
-        "title": "Big catalyst week for SpaceX",
-        "published": "Sun, 05 Jul 2026 16:20:57 +0000",
-        "processed_at": "2026-07-05T20:38:15Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 本週將迎來兩個重大催化劑：週二靜默期結束，分析師可發布評級和目標價，同時股票將納入納斯達克100指數。",
-            "選擇權市場顯示交易者預期 SpaceX 股價波動約正負9%，180美元和190美元買權吸引最強勁的看多興趣。",
-            "PepsiCo 將於週四公佈財報，分析師預期每股盈餘221美元，營收約240億美元。",
-            "分析師 Monty Sapier（持有評級）表示，PepsiCo 需展現北美飲料和零食的明確成長、正自由現金流及成本控制能力，才能吸引多頭回歸。",
-            "Cody's Dividends（買進評級）認為 PepsiCo 仍具吸引力，是價值型收益投資，且能維持可持續的常規貨幣核心每股盈餘成長。",
-            "Levi Strauss 週三公佈財報，Delta Air Lines 週五公佈財報。",
-            "聯準會將於週三發布主席 Kevin Warsh 首次會議的會議紀錄，市場關注通膨持續性及勞動市場是否構成問題。",
-            "德州檢察總長調查 StubHub 涉嫌世界盃門票幽靈售票行為。",
-            "特斯拉限制員工對 AI 產品的支出為每週200美元，但不適用於 xAI。",
-            "本週除息股票包括 Micron、GE Aerospace、JPMorgan Chase、Cisco、Dollar General、紐約時報、Accenture、MasterCard、AT&T、Verizon、Marvell Technology、Toll Brothers、Oracle 和 Lennar。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "選擇權市場顯示強勁看多布局，因靜默期結束和納斯達克100納入。"
-            },
-            {
-              "name": "PepsiCo",
-              "code": "PEP",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師看法分歧，持有評級與買進評級並存。"
-            },
-            {
-              "name": "Levi Strauss",
-              "code": "LEVI",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "週三財報，無明確方向性看法。"
-            },
-            {
-              "name": "Delta Air Lines",
-              "code": "DAL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "週五財報，無明確方向性看法。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "限制AI支出，但未直接影響股價方向。"
-            },
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "除息事件，無方向性討論。"
-            },
-            {
-              "name": "JPMorgan Chase",
-              "code": "JPM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "除息事件，無方向性討論。"
-            },
-            {
-              "name": "Cisco Systems",
-              "code": "CSCO",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "除息事件，無方向性討論。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "SpaceX gets two major catalysts this week."
-        },
-        "shown_at": "2026-07-05T22:55:39Z"
       }
     ]
   },
@@ -6217,5 +6179,9 @@
         "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
+  },
+  "bg2": {
+    "name": "BG2 Pod",
+    "episodes": []
   }
 }

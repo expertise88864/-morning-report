@@ -809,10 +809,10 @@ def test_render_ma200_status_card():
                     "above": False, "dist_pct": -5.3, "leveraged": False}})
     assert "長線趨勢參考(200 日均線)" in h
     assert "站上(波段偏多)" in h and "跌破(波段轉弱)" in h
-    assert "非買賣訊號" in h
-    # 槓桿標的(00631L)應帶「槓桿」標記;定位措辭為控波動而非增報酬
+    assert "非買賣訊號" not in h     # 註腳已依使用者要求移除(2026-07-14)
+    # 槓桿標的(00631L)應帶「槓桿」標記
     assert "槓桿" in h
-    assert "抗回撤" in h
+    assert "抗回撤" not in h        # 定位說明註腳一併移除(2026-07-14)
 
 
 def test_render_html_includes_ma200_when_present():
@@ -840,17 +840,15 @@ def test_model_evidence_green_verdict():
                    "top5_avg_excess_pct": 0.3, "interval_coverage_pct": 80, "samples": 130}},
          "MODEL_MONITORING": {"status": "ok", "alerts": []}}
     h = mr._render_model_evidence_html(q)
-    # 使用者回饋:詳細表格隱藏,只留一句白話結論
-    assert "模型狀態" in h
-    assert "邊際優勢" in h          # 綠燈判決
-    assert "<table" not in h        # 不再輸出明細表格
+    # 使用者要求(2026-07-14):「模型狀態」白話結論也不顯示 → 整卡收掉。
+    # 指標仍在後台計算並驅動熔斷/品質警示,僅顯示層歸零。
+    assert h == ""
 
 
 def test_model_evidence_accumulating_verdict():
     q = {"MODEL_WALK_FORWARD": {"3d": {"direction_hit_pct": None, "samples": 0}},
          "MODEL_MONITORING": {"status": "fallback", "alerts": ["calibration samples < 30"]}}
-    h = mr._render_model_evidence_html(q)
-    assert "樣本累積中" in h         # 資料不足判決
+    assert mr._render_model_evidence_html(q) == ""   # 各判決狀態一律不顯示
 
 
 def test_model_evidence_weak_verdict():
@@ -858,8 +856,7 @@ def test_model_evidence_weak_verdict():
             "3d": {"direction_hit_pct": 47.0, "top5_avg_net_return_pct": -0.5,
                    "interval_coverage_pct": 70, "samples": 120}},
          "MODEL_MONITORING": {"status": "fallback", "alerts": []}}
-    h = mr._render_model_evidence_html(q)
-    assert "尚未穩定贏過基準" in h    # 黃燈判決
+    assert mr._render_model_evidence_html(q) == ""   # 黃燈判決也不顯示
 
 
 def test_new_high_signal_features_registered():
@@ -880,7 +877,7 @@ def test_cap_analysis_removes_orphan_header():
     """
     body = "A" * 5900 + "\n\n## 十、總體經濟與政策環境\n\n" + "B" * 400
     capped = mr._cap_analysis_text(body)
-    assert "已截斷" in capped
+    assert "已截斷" not in capped                  # 截斷註解文字已依使用者要求移除(2026-07-14)
     assert "十、總體經濟" not in capped            # 孤兒標題被清掉
     assert "B" not in capped
     # 短文原樣通過;上限 6000(2026-07-14 起僅防 LLM 跑飛,不再為信件大小服務)

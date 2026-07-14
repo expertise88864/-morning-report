@@ -10807,12 +10807,9 @@ def _render_ma200_html(status: dict) -> str:
         '<div style="background:#f1f5f9;color:#475569;padding:8px 14px;font-weight:700;font-size:14px;">'
         '長線趨勢參考(200 日均線)</div>'
         '<table style="width:100%;border-collapse:collapse;background:#ffffff;">'
-        + "".join(rows) + '</table>'
-        '<div style="padding:6px 14px;color:#94a3b8;font-size:12px;line-height:1.5;">'
-        '※ 定位為「抗回撤/控波動」參考,非「增報酬」工具:回測 5–10 年「站上才持有、跌破轉中性」'
-        '可把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)可能因離場成本而少賺、報酬反輸買進持有,'
-        '橫盤鋸齒市也易來回被巴(未計交易成本)。槓桿(00631L)長抱回撤最凶,趨勢紀律對它最關鍵。'
-        '僅長線波段參考,非買賣訊號。</div></div>')
+        + "".join(rows) + '</table></div>')
+    # 註:回測背景(抗回撤定位/槓桿長抱風險)保留在 fetch_ma200_status docstring,
+    # 信件註腳依使用者要求(2026-07-14)移除。
 
 
 def _render_etf_action_card(fair_00662, pred_0050) -> str:
@@ -10847,8 +10844,6 @@ def _render_etf_action_card(fair_00662, pred_0050) -> str:
         '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:15px;">'
         'ETF 今日進出參考價</div>'
         + "".join(cards) +
-        '<div style="padding:6px 14px;background:#f8fafc;font-size:12px;color:#94a3b8;">'
-        '※ 開盤前依模型合理價推算;盤中大幅偏離時以即時資訊為準。僅供參考,非投資建議。</div>'
         '</div>')
 
 
@@ -11425,6 +11420,11 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
                 if not end_d or end_d < today or (start_d and start_d > today + dt.timedelta(days=7)):
                     continue
                 code = str(row[idx.get("證券代號", 3)]).strip()
+                name = str(row[idx.get("證券名稱", 2)]).strip()
+                # 只留「股票」抽籤(上櫃轉上市等):公債/央債/公司債(代號含字母,
+                # 如 A151GA;或名稱含「債」)對讀者無抽籤價值,一律排除(使用者要求 2026-07-14)
+                if not code.isdigit() or "債" in name:
+                    continue
                 price = _to_float(str(row[idx.get("承銷價(元)", 9)]).replace(",", ""))
                 units = _to_float(str(row[idx.get("申購股數", 13)]).replace(",", "")) or 1000
                 market = _market_price(code)
@@ -11432,7 +11432,7 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
                 profit = (round((market - price) * units)
                           if (market and price and units) else None)
                 out["ipo"].append({
-                    "name": str(row[idx.get("證券名稱", 2)]),
+                    "name": name,
                     "code": code,
                     "start": start_d, "end": end_d,
                     "draw": _roc_to_date(row[idx.get("抽籤日期", 1)]),
@@ -11474,6 +11474,38 @@ def fetch_tw_calendar(now_tpe: Optional[dt.datetime] = None,
                 continue
     except Exception as e:
         print(f"[tw_calendar] 除權息預告抓取失敗: {e}", file=sys.stderr)
+
+    # ETF 配息補值:TWSE TWT48U 對 ETF 常整段是「待公告實際收益分配金額」文字
+    # (投信例於除息前數日才公告)。改以 FinMind TaiwanStockDividend 補實際金額——
+    # 公告一出下一封信就顯示數字,不會停在「待公告」;並帶發放日。逐檔失敗略過。
+    _fm_token = os.getenv("FINMIND_TOKEN", "").strip()
+    for v in out["dividends"]:
+        s = str(v.get("amount") or "").replace(",", "").strip()
+        try:
+            if s and math.isfinite(float(s)):
+                continue                      # TWSE 已有數字 → 不用補
+        except ValueError:
+            pass
+        try:
+            params = {"dataset": "TaiwanStockDividend", "data_id": v["code"],
+                      "start_date": (today - dt.timedelta(days=120)).isoformat()}
+            if _fm_token:
+                params["token"] = _fm_token
+            r = _http_get("https://api.finmindtrade.com/api/v4/data", params=params,
+                          timeout=12, headers={"User-Agent": "Mozilla/5.0"})
+            ex_iso = v["ex_date"].isoformat()
+            for rec in (r.json() or {}).get("data") or []:
+                if str(rec.get("CashExDividendTradingDate")) != ex_iso:
+                    continue
+                cash = rec.get("CashEarningsDistribution") or 0
+                if isinstance(cash, (int, float)) and cash > 0:
+                    v["amount"] = f"{cash:g}"
+                pay = str(rec.get("CashDividendPaymentDate") or "")
+                if len(pay) == 10:
+                    v["pay_date"] = pay
+                break
+        except Exception as e:
+            print(f"[tw_calendar] {v['code']} FinMind 配息補值略過: {e}", file=sys.stderr)
     return out
 
 
@@ -11515,10 +11547,13 @@ def _render_tw_calendar_html(cal: dict) -> str:
             except ValueError:
                 pass
             return "・配息待公告" if s and s.lower() not in ("nan", "inf", "-inf", "none") else ""
+        def _pay(v) -> str:
+            p = str(v.get("pay_date") or "")
+            return f"・發放 {p[5:].replace('-', '/')}" if len(p) == 10 else ""
         rows = "".join(
             f"<li style='margin:4px 0;'><b>{v['name']}（{v['code']}）</b>"
             f"　{v['ex_date'].strftime('%m/%d')} 除{v['kind']}"
-            + _div_amt(v.get("amount"))
+            + _div_amt(v.get("amount")) + _pay(v)
             + "</li>"
             for v in divs[:6])
         blocks.append(f"<div style='margin:6px 0;'><b style='color:#0f172a;'>關注標的除權息</b>"
@@ -11641,8 +11676,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
         'background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">'
         '醫學文獻速報（近 7 天・JAAD / JEADV / NEJM / AJO）</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;background:#ffffff;">'
-        + "".join(blocks) +
-        '<p style="font-size:12px;color:#94a3b8;">※ 中文為 AI 編譯重點,點擊可開 PubMed 原文。</p></div>')
+        + "".join(blocks) + '</div>')
 
 
 # ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
@@ -13004,8 +13038,8 @@ def _cap_analysis_text(text: str, max_chars: int = 6000) -> str:
     lines = out.split("\n")
     while lines and lines[-1].lstrip().startswith("#"):
         lines.pop()
-    out = "\n".join(lines).rstrip()
-    return out + "\n\n（…以下分析較長已截斷,完整數據與結論見上方卡片）"
+    # 截斷不再附註解文字(使用者要求 2026-07-14);截斷本身仍保留(防極端超長)
+    return "\n".join(lines).rstrip()
 
 
 def _estimated_email_kb(html: str) -> float:
@@ -13303,6 +13337,20 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # === 加權指數預測卡 (Task A) ===
     taiex_pred = quotes.get("TAIEX_PRED", {}) or {}
     taiex_html = ""
+    # 夜盤台指期列:依使用者要求(2026-07-14)併入「五、加權指數開盤預測」表格,
+    # 不再獨立成卡(第五段缺席的降級運行才退回獨立卡,見下方夜盤區)。
+    _night_for_taiex = quotes.get("NIGHT_TXF", {}) or {}
+    night_row_html = ""
+    if _night_for_taiex.get("night_pct") is not None:
+        _np = _night_for_taiex["night_pct"]
+        _nc = "#dc2626" if _np >= 0 else "#16a34a"
+        _ns = "+" if _np >= 0 else ""
+        night_row_html = f"""
+          <tr><td colspan="2" style="height:4px;"></td></tr>
+          <tr>
+            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">夜盤台指期（{_night_for_taiex.get('date','—')}）</td>
+            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{_night_for_taiex.get('night_close')} <b style="color:{_nc};">({_ns}{_np}%)</b></td>
+          </tr>"""
     if taiex_pred.get("pred_open"):
         # 使用者回饋:SOX/TSM/夜盤個別訊號屬內部計算,信件只顯示最終預測結果
         signal_rows = ""
@@ -13334,7 +13382,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <tr>
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;width:55%;">加權昨收</td>
             <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</td>
-          </tr>
+          </tr>{night_row_html}
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
             <td style="padding:10px 14px;background:#f8fafc;color:#475569;">加權預測漲跌</td>
@@ -13580,18 +13628,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 )
             top_score = max(_safe_number(item.get("ranking_score", item.get("attention_score")))
                             for item in top5)
-            # 使用者要求刪除冗長說明(中長線波段結構觀察);保留下方熔斷紅字與精簡圖例即可。
+            # 熔斷橫幅文字已依使用者要求(2026-07-14)移除;熔斷「機制」不變:
+            # suppress_ranking 時 ML 組件仍自排名移除(計分層,見 MODEL_MONITORING),只是不再顯示紅字說明。
             low_confidence_note = ""
-            # 熔斷橫幅:回測 Top5 淨報酬為負 → ML 組件已自排名移除,明示使用者本表僅為結構觀察
-            if (quotes.get("MODEL_MONITORING", {}) or {}).get("suppress_ranking"):
-                low_confidence_note = (
-                    "<p style='font-size:12px;color:#991b1b;background:#fef2f2;"
-                    "border-left:4px solid #dc2626;padding:8px 10px;margin:8px 0;line-height:1.6;'>"
-                    "<b>模型熔斷中：</b>rolling-origin 回測顯示 Top5 淨報酬為負，"
-                    "本表已<b>移除 ML 預測組件</b>（勝過大盤機率 / 預期報酬不計分），"
-                    "僅反映籌碼、動能與營收結構；下方預測價位僅供參考，<b>不構成選股訊號</b>。"
-                    "</p>"
-                ) + low_confidence_note
             # 使用者要求刪除「為何大漲日也都是觀察」說明段(門檻說明已足夠精簡於圖例)。
             title_text = (
                 f"台股波段觀察名單 Top {len(top5)}（中長線・相對排名）"
@@ -13664,7 +13703,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             上漲佔比 <b style="color:{b_color};">{adv_ratio:.1f}%</b>
             <span style="font-size:12px;color:{b_color};margin-left:8px;">（{b_label}）</span>
           </div>
-          <div style="font-size:12px;color:#94a3b8;margin-top:6px;">※ 上漲家數 ≥ 60% 為普漲、≤ 40% 為普跌；若指數漲但廣度低 = 少數權值股撐盤、健康度差。</div>
         </div>
         """
         # 類股熱度(前 5 熱門產業):附掛在廣度卡內。「九、其他類股」的行情觀察條目引用
@@ -13691,7 +13729,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;全市場口徑）</div>
           {''.join(_hrows)}
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px;">※ 中位=該產業個股漲跌中位數;「九、其他類股」的行情觀察條目取材於此。</div>
         </div>
         """
     # 台股估值溫度(A4)+ 選擇權磁吸參考(A5):獨立資料源,刻意放在 breadth 條件之外
@@ -13731,9 +13768,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     midterm_html = ""
 
     # === 夜盤台指期卡 (Task B) ===
+    # 夜盤已併入「五、加權指數開盤預測」表格(使用者要求 2026-07-14);
+    # 僅在第五段缺席(加權預測失敗的降級運行)才退回獨立卡,避免資料遺失。
     night = quotes.get("NIGHT_TXF", {}) or {}
     night_html = ""
-    if night.get("night_pct") is not None:
+    if night.get("night_pct") is not None and not taiex_pred.get("pred_open"):
         n_pct = night["night_pct"]
         n_color = "#dc2626" if n_pct >= 0 else "#16a34a"
         n_sign = "+" if n_pct >= 0 else ""
@@ -13983,13 +14022,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _wrap_stance(analysis_html)
-
-    if LLM_PROVIDER == "gemini":
-        llm_label = f"gemini/{GEMINI_MODEL}"
-    elif LLM_PROVIDER == "deepseek":
-        llm_label = f"deepseek/{DEEPSEEK_MODEL}"
-    else:
-        llm_label = f"anthropic/{CLAUDE_MODEL}"
+    # (llm_label 已隨信尾三行移除而不再需要,2026-07-14)
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
     # 取代原本分散的三、四、六大卡;頭部 KPI 已有頭條數字,這裡給昨收/預測/幅度即可。
@@ -14141,13 +14174,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           </td></tr>
 
-          <!-- FOOTER -->
+          <!-- FOOTER:免責/來源/產生方式三行依使用者要求(2026-07-14)移除,僅留收尾邊框 -->
           <tr>
-            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;line-height:1.7;">
-              本信件由自動化腳本於 GitHub Actions 產生。<br>
-              資料來源：Yahoo Finance、TWSE OpenAPI、Reuters、CNBC、Bloomberg、Federal Reserve、鉅亨網、經濟日報、工商時報、中央社。<br>
-              分析由 LLM ({llm_label}) 生成，僅供參考，不構成投資建議。
-            </td>
+            <td style="padding:10px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;"></td>
           </tr>
 
         </table>
@@ -14736,10 +14765,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
             {body}
           </td></tr>
           <tr>
-            <td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;line-height:1.7;">
-              本信件由自動化腳本於 GitHub Actions 產生。週日不開盤,僅彙整週末新增資訊。<br>
-              資料來源：ESPN、Open-Meteo、PubMed、中央社、鉅亨網、各 Podcast RSS。
-            </td>
+            <td style="padding:10px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;"></td>
           </tr>
         </table>
       </td>

@@ -233,6 +233,6 @@ def test_render_podcast_html(tmp_path, monkeypatch):
     assert "股癌" in html_out and "雙鴻" in html_out
     assert "看多" in html_out               # direction 中文化
     assert "與法人方向一致" in html_out      # 對照有出現
-    assert "非本報建議" in html_out          # 免責
+    assert "非本報建議" not in html_out      # 免責註腳已依使用者要求移除(2026-07-14)
     # 無集 → 空字串(信件不出現該區塊)
     assert mr._render_podcast_html([], snapshot, htmllib) == ""

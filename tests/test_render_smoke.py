@@ -47,7 +47,8 @@ def test_render_html_smoke_has_core_sections():
     assert isinstance(html, str) and len(html) > 2000          # 端到端有產出
     # 恆在的骨架
     assert "晨報" in html
-    assert ("不構成投資建議" in html or "非投資建議" in html)   # 免責
+    # 免責/來源/產生方式信尾三行已依使用者要求移除(2026-07-14),不再斷言存在
+    assert "不構成投資建議" not in html
     # 由 fixture 資料驅動的區段
     assert "QQQ" in html and "SOX" in html                     # 美股/總經
     assert "煙霧測試龍頭" in html                                # Top5 專屬 marker(fixture 唯一,防 Top5 段被移除)

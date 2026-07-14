@@ -393,14 +393,11 @@ def _render_model_evidence_html(quotes: dict) -> str:
         verdict_bg, verdict_c = "#fef9c3", "#a16207"
         verdict = (f"模型尚未穩定贏過基準（3 日方向命中 {dh3:.1f}%）。建議五檔以籌碼/基本面為主、"
                    f"ML 僅作輔助。")
-    # 使用者回饋:詳細表格(方向命中/淨報酬/區間涵蓋/樣本)屬內部驗證細節,
-    # 不顯示 — 只留一句白話結論;指標仍在後台計算並驅動熔斷與品質警示。
-    del rows
-    return f"""
-        <div style="background:{verdict_bg};border-radius:8px;padding:10px 14px;margin:18px 0 8px;font-size:13px;color:{verdict_c};line-height:1.6;">
-          <b>模型狀態：</b>{verdict}
-        </div>
-        """
+    # 使用者要求(2026-07-14):「模型狀態」白話結論也不顯示 → 整卡收掉。
+    # 指標仍在後台計算並驅動熔斷與品質警示(walk-forward/監測不受影響);
+    # verdict 邏輯保留(上方)供日後想恢復顯示或寫 log 時取用。
+    del rows, verdict_bg, verdict_c, verdict
+    return ""
 
 
 def _render_event_calendar_html(events: list[dict]) -> str:
@@ -512,10 +509,7 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#faf5ff;border-left:5px solid #9333ea;border-radius:4px;">'
         'Podcast 重點（台灣節目在前・國際在後）</h2>'
-        + "".join(cards)
-        + "<p style='font-size:12px;color:#94a3b8;margin:4px 0;'>"
-          "※ 以上為主持人個人觀點之摘要(AI 轉錄,可能有誤),非本報建議;"
-          "「對照」為與本報法人/動能資料的對照,不納入股價模型。</p>")
+        + "".join(cards))
 
 
 def _render_sports_html(sports: dict, htmllib) -> str:

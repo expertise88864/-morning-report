@@ -419,7 +419,8 @@ def test_cap_analysis_text():
     assert mr._cap_analysis_text(short, max_chars=999) == short   # 短的不動
     long = "\n\n".join(f"段落{i}内容文字" * 50 for i in range(20))
     capped = mr._cap_analysis_text(long, max_chars=400)
-    assert len(capped) < len(long) and "已截斷" in capped
+    assert len(capped) < len(long)          # 截斷仍生效
+    assert "已截斷" not in capped            # 截斷註解文字已依使用者要求移除(2026-07-14)
 
 
 def test_estimated_email_kb_measures_decoded_html():
@@ -1609,3 +1610,118 @@ def test_medical_org_cap_covers_source_org_key(monkeypatch):
         dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
     # 兩則標題皆無機關名 → 靠 org_key 歸同機構,每日最多 1 條
     assert len(out["medical"]) == 1
+
+
+# ═══ 信件調整批#2(2026-07-14)═══
+def test_ipo_filter_excludes_bonds(monkeypatch):
+    """公開申購只留股票抽籤:央債/公司債(代號含字母或名稱含「債」)一律排除。"""
+    import datetime as dt
+    today = dt.datetime.now(mr.TPE)
+    roc = f"{today.year - 1911}/{today.month:02d}/{today.day:02d}"
+    fields = ["序號", "抽籤日期", "證券名稱", "證券代號", "發行市場", "申購開始日",
+              "申購結束日", "x7", "x8", "承銷價(元)", "x10", "x11", "x12", "申購股數",
+              "x14", "x15", "中籤率(%)"]
+    def mk(name, code):
+        row = [""] * len(fields)
+        row[1] = row[5] = row[6] = roc
+        row[2], row[3] = name, code
+        row[9], row[13], row[16] = "100", "1000", "1.0"
+        return row
+    payload = {"fields": fields, "data": [
+        mk("115央債甲07", "A151GA"),          # 央債:代號含字母 → 排除
+        mk("某某公司債", "12345"),             # 名稱含「債」→ 排除
+        mk("測試生技", "6789"),                # 股票 → 保留
+    ]}
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return payload
+    def fake_get(url, **kw):
+        if "publicForm" in url:
+            return R()
+        raise RuntimeError("其他端點略過")     # TWT48U/市價查詢在本測試不需要
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    monkeypatch.setattr(mr, "_fetch_twse_stock_day_all", lambda: [])
+    out = mr.fetch_tw_calendar(today)
+    names = [i["name"] for i in out["ipo"]]
+    assert names == ["測試生技"]
+
+
+def test_dividend_finmind_fills_announced_amount(monkeypatch):
+    """TWSE 對 ETF 回「待公告」文字時,FinMind 已公告金額須補上(含發放日);
+    FinMind 也還沒有(=0)→ 維持待公告。"""
+    import datetime as dt
+    today = dt.datetime.now(mr.TPE)
+    ex = (today + dt.timedelta(days=7)).date()
+    roc_ex = f"{ex.year - 1911}年{ex.month:02d}月{ex.day:02d}日"
+    fields = ["除權除息日期", "股票代號", "名稱", "除權息", "無償配股率",
+              "現金增資配股率", "現金增資認購價", "現金股利"]
+    payload = {"fields": fields, "data": [
+        [roc_ex, "0050", "元大台灣50", "息", "0", "0", "0",
+         "<p style= text-align:center;>待公告實際收益分配金額</p>"],
+    ]}
+    fm = {"data": [{"stock_id": "0050",
+                    "CashExDividendTradingDate": ex.isoformat(),
+                    "CashEarningsDistribution": 1.35,
+                    "CashDividendPaymentDate": (ex + dt.timedelta(days=20)).isoformat()}]}
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+    def fake_get(url, **kw):
+        if "TWT48U" in url:
+            return R(payload)
+        if "finmindtrade" in url:
+            return R(fm)
+        if "publicForm" in url:
+            return R({"fields": [], "data": []})
+        raise RuntimeError("unexpected")
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    out = mr.fetch_tw_calendar(today)
+    d = out["dividends"][0]
+    assert d["amount"] == "1.35" and d["pay_date"]
+    html = mr._render_tw_calendar_html(out)
+    assert "每股 1.35 元" in html and "發放" in html
+    assert "待公告" not in html
+
+
+def _quotes_for_night():
+    def base(t):
+        return {"ticker": t, "date": "2026-07-13", "close": 100.0,
+                "prev_close": 99.0, "change_pct": 1.01}
+    return {
+        "QQQ": base("QQQ"), "TSM": base("TSM"), "SPY": base("SPY"),
+        "USDTWD": 31.0, "USDTWD_prev": 31.1, "MACRO": {},
+        "SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {}, "WEEKLY": {},
+        "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+    }
+
+
+def test_night_txf_embedded_in_taiex_section():
+    """夜盤台指期併入「五、加權指數開盤預測」表格;第五段存在時不再出現獨立夜盤卡。"""
+    q = {**_quotes_for_night(),
+         "TAIEX_PRED": {"pred_open": 46200, "last_close": 46000, "weighted_pct": 0.4,
+                        "ci_lower": 45900, "ci_upper": 46500, "consensus": "偏多"},
+         "NIGHT_TXF": {"date": "2026/07/14", "night_close": 45058.0, "night_pct": -1.11}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-14", "每日報")
+    i5 = html.find("五、加權指數開盤預測")
+    i_n = html.find("夜盤台指期")
+    i6 = html.find("個股開盤預測")
+    assert 0 < i5 < i_n < i6                 # 夜盤列位於第五段內
+    assert "45058" in html and "-1.11%" in html
+
+
+def test_night_txf_standalone_fallback_without_taiex_pred():
+    """加權預測失敗的降級運行 → 夜盤退回獨立卡,資料不遺失。"""
+    q = {**_quotes_for_night(), "TAIEX_PRED": {},
+         "NIGHT_TXF": {"date": "2026/07/14", "night_close": 45058.0, "night_pct": -1.11}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-14", "每日報")
+    assert "夜盤台指期" in html and "45058" in html

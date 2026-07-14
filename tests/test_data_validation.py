@@ -882,3 +882,47 @@ def test_git_push_all_missing_returns_early(tmp_path, monkeypatch):
                         lambda *a, **k: called.__setitem__("n", called["n"] + 1))
     mr._git_commit_and_push_state([str(tmp_path / "nope.json")], "chore: test")
     assert called["n"] == 0
+
+
+# ── G2 事件情境決策表(prompt 層) ────────────────────────────────────────────
+def test_format_event_scenarios_filters_window_and_keeps_notes():
+    import datetime as dt
+    now = dt.datetime.now(mr.TPE)
+    today = now.date()
+    cal = [
+        {"date": today, "time": "20:30", "title": "[USD] CPI y/y",
+         "note": "預期 3.1%、前值 3.2%", "impact": "high"},
+        {"date": today + dt.timedelta(days=1), "time": "盤後(美東)",
+         "title": "NVDA 財報", "note": "", "impact": "high"},
+        {"date": today + dt.timedelta(days=10), "time": "10:00",
+         "title": "[USD] 太遠的事件", "note": "預期 X", "impact": "high"},
+    ]
+    out = mr._format_event_scenarios(cal, now_tpe=now)
+    assert "CPI" in out and "預期 3.1%" in out       # 視窗內、保留預期/前值
+    assert "NVDA 財報" in out
+    assert "太遠的事件" not in out                    # 視窗外(>48h)剔除
+
+
+def test_format_event_scenarios_empty_returns_placeholder():
+    assert "無重大排程事件" in mr._format_event_scenarios([])
+    assert "無重大排程事件" in mr._format_event_scenarios(None)
+
+
+def test_build_prompt_has_event_scenario_section_with_injected_events():
+    import datetime as dt
+    today = dt.datetime.now(mr.TPE).date()
+    cal = [{"date": today, "time": "20:30", "title": "[USD] CPI y/y",
+            "note": "預期 3.1%、前值 3.2%", "impact": "high"}]
+    p = mr._build_prompt(_empty_quotes(EVENT_CALENDAR=cal),
+                         {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之三" in p                     # 新段標題存在
+    assert "CPI" in p and "預期 3.1%" in p    # 事件與預期值注入 prompt
+    assert "失效條件" in p                    # 指引出現
+    assert "嚴禁自己編一個數字" in p          # 防幻覺鐵律出現
+
+
+def test_build_prompt_event_scenario_section_present_when_no_events():
+    """無事件時段落仍在(帶佔位提示),指引 LLM 寫「無重大排程事件」一行。"""
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之三" in p
+    assert "未來 48 小時無重大排程事件" in p

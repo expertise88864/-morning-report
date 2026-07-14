@@ -9074,6 +9074,28 @@ def persist_delivered_report_state(entry: Optional[dict],
         save_history_state(entry, days_to_keep=450)
 
 
+def _format_event_scenarios(calendar: Optional[list],
+                            now_tpe: Optional[dt.datetime] = None) -> str:
+    """G2:把風險事件日曆篩成「未來約 48 小時(今日～後日)」的重要事件清單文字,
+    供 prompt 的「事件情境決策表」取材。每列:日期 時間｜標題(含既有的預期/前值 note)。
+    只輸出既有日曆事件(供 LLM 判讀),不新增/不編造;無事件回固定提示字串。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    today = now_tpe.date()
+    horizon = today + dt.timedelta(days=2)   # ~48h(含當日),日期粒度、留邊
+    rows: list[str] = []
+    for e in (calendar or []):
+        d = e.get("date")
+        if not isinstance(d, dt.date) or not (today <= d <= horizon):
+            continue
+        note = str(e.get("note") or "").strip()
+        t = str(e.get("time") or "").strip()
+        rows.append(f"- {d.isoformat()} {t}｜{str(e.get('title', '')).strip()}"
+                    + (f"（{note}）" if note else ""))
+        if len(rows) >= 6:
+            break
+    return "\n".join(rows) if rows else "（未來 48 小時無重大排程事件）"
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -9671,6 +9693,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         key_00662_line = "00662 估值資料未提供 → 寫「資料未提供」，嚴禁編造。"
 
+    # G2:未來 ~48h 重要行事曆事件(含既有預期/前值),供「七之三、事件情境決策表」取材。
+    event_scenario_lines = _format_event_scenarios(quotes.get("EVENT_CALENDAR"))
+
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
 【資料品質（最優先閱讀）】
@@ -9924,6 +9949,21 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 2. 七、已寫過的市場事件**不重複**——這段寫的是「市場之外的世界」;確有市場影響者以半句帶過並指向對應段落即可。
 3. **只寫「已發生」的事**:科學/醫藥只寫已完成的里程碑(發射成功/核准上市/試驗解盲/得獎),**禁止**把「研究中/有望/可能」寫成突破;災難寫具體災情數字(死傷/停班/規模),不誇大不渲染。
 4. 來源 A/B/C 分級照 R12;寧可 3 條紮實,不要 5 條灌水;昨日確無大事就寫「昨日世界相對平靜」一行帶過。
+
+## 七之三、未來 48 小時關鍵事件情境（**最多 3 個**;無事件則整段省略,不留空標題）
+
+未來約 1–2 個交易日的重要行事曆事件（**僅以下清單為準**,不可自行新增事件、不可編造未列出的數字）：
+{event_scenario_lines}
+
+若上方清單為「無重大排程事件」,則本段只寫一行「未來 48 小時無重大排程事件」即可。
+否則,挑出「最可能牽動台股/00662/2330」的 ≤3 個事件,每個事件寫成一小段(每段 ≤4 行):
+- **事件與時間**:照抄清單的名稱與日期時間。
+- **基準預期**:**只能引用**清單內的「預期 X / 前值 Y」;清單**沒有**預期值的事件,寫「無市場共識預期,僅關注方向」,**嚴禁自己編一個數字**。
+- **偏多情境 / 偏空情境**:只寫「數據高於/低於 預期(或前值)時,對成長股(00662/2330/加權)偏多或偏空」的**方向與一句話傳導機制**——例:「CPI 低於預期 → 降息預期升溫 → 成長股估值折扣收斂 → 偏多 00662」。**禁止**寫出「XX 以上就漲 Y%」這種自創的數字門檻。
+- **最受影響**:限 00662 / 0050 / 2330 / 加權 其中一或多個。
+- **失效條件**:一句話——什麼情況會讓上面的判斷作廢(如「若同日 Fed 官員鷹派發言蓋過數據」)。
+
+**鐵則**:本段是「若…則…」的條件式沙盤,不是預測;所有門檻一律以「相對預期/前值的高低方向」表述,不得出現任何自創的絕對數字目標。
 
 ## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
 

@@ -9378,14 +9378,25 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             if not filtered:
                 filtered = sorted(lst, key=_news_keep_score, reverse=True)[:1]
             per_label.append((label, tag, filtered[:_DEEP_COMPANY_LABELS.get(label, 3)]))
-        # 以「輪替」展平:先每家各取第 1 則,再各取第 2、3 則(深耕公司到第 5 則),
-        # 最後才套用全域上限——確保上限不會在前幾家各塞滿後、把後面公司整個吃掉。
+        # 三段式展平(Codex review:單純輪替在 30 家全有新聞的忙日,rank-0 就吃掉 30 行,
+        # 剩餘配額按清單序給前幾家的第 2 則 → 排在後段的深耕金控反而拿不到深度):
+        #   (1) 每家首則全數露出(30 家保底);
+        #   (2) 深耕公司(2330/2882/2891)的第 2-5 則優先保留(3 家 × 4 = 12 行);
+        #   (3) 還有餘裕才輪替遞補一般公司的第 2、3 則。42 行上限恰容納 (1)+(2)。
+        def _fmt_company_line(label, tag, n):
+            return f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）"
+
         lines = []
-        for rank in range(_max_rank):
+        for label, tag, items in per_label:                    # (1) 全員首則
+            if items:
+                lines.append(_fmt_company_line(label, tag, items[0]))
+        for label, tag, items in per_label:                    # (2) 深耕公司 2-5 則
+            if label in _DEEP_COMPANY_LABELS:
+                lines.extend(_fmt_company_line(label, tag, n) for n in items[1:])
+        for rank in range(1, _max_rank):                       # (3) 一般公司遞補
             for label, tag, items in per_label:
-                if rank < len(items):
-                    n = items[rank]
-                    lines.append(f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）")
+                if label not in _DEEP_COMPANY_LABELS and rank < len(items):
+                    lines.append(_fmt_company_line(label, tag, items[rank]))
         news_block += ("\n\n【重點公司最新新聞（Google News，供「科技板塊脈動」「九、其他類股」"
                        "與「關注三檔」取材;標 [對2330供應鏈] 者請在分析點出對 2330 的傳導）】\n"
                        + "\n".join(lines[:42]))

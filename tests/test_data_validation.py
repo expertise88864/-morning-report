@@ -1181,3 +1181,29 @@ def test_prompt_guidance_names_tsmc_depth_and_bank_holdings():
     assert "台積電自家動態優先" in p                     # 八:台積電深度指引
     assert "國泰金(2882)/中信金(2891) 為本段核心觀察" in p  # 九:金融核心觀察
     assert "金融條目另可取材【重點公司最新新聞】" in p       # 九:取材放行
+
+
+def test_prompt_deep_labels_survive_busy_day_with_30_companies():
+    """忙日回歸(Codex review):30 家全有新聞時,深耕公司(2330/2882/2891)的第 2-5 則
+    仍須優先保留,不得被一般公司的第 2 則按清單序擠掉。"""
+    news = []
+    for i in range(27):                                   # 27 家一般公司,各 3 則
+        label = f"C{i:02d}"
+        for j in range(3):
+            news.append({"company_label": label, "source": f"Google:{label}",
+                         "source_name": "鉅亨",
+                         "title": f"{label} 重大訂單進展第{j}案 金額{j}億",
+                         "summary": "客戶擴產"})
+    for label in ("2330", "2882", "2891"):                # 深耕公司排最後,各 5 則
+        for j in range(5):
+            news.append({"company_label": label, "source": f"Google:{label}",
+                         "source_name": "鉅亨",
+                         "title": f"{label} 深度事件第{j}案 數字{j}億",
+                         "summary": "財報/人事/投資"})
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, news, [], "")
+    block = p.split("【重點公司最新新聞")[1].split("【")[0]
+    for label in ("2330", "2882", "2891"):
+        n_lines = sum(1 for ln in block.split("\n") if ln.startswith(f"- [{label}]"))
+        assert n_lines == 5, f"{label} 應有 5 則,實得 {n_lines}"
+    # 30 家首則全數保底
+    assert sum(1 for ln in block.split("\n") if ln.startswith("- [C")) >= 27

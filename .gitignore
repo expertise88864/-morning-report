@@ -17,3 +17,5 @@ backtest_data/reports/*
 !backtest_data/reports/*.md
 .claude/
 OPTIMIZATION_PLAN.md
+# G7 歷史索引:本機查詢產物(由 tools/query_history.py index 隨時可重建)
+state/history_index.jsonl

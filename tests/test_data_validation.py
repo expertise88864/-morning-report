@@ -1042,3 +1042,20 @@ def test_build_prompt_narrative_delta_placeholder_without_history():
     p = mr._build_prompt(_empty_quotes(HISTORY=[]),
                          {"error": "x"}, {"error": "x"}, [], [], "")
     assert "七之四" in p and "無昨日紀錄可對照" in p
+
+
+def test_format_narrative_delta_excludes_same_day_rerun_entry():
+    """同日重跑會把「今天早上的報告」存進 history;傳 today 須排除,不可拿今天當昨日
+    (Codex review)。"""
+    hist = [
+        {"date": "2026-07-12", "stance_label": "偏空", "critical_news": ["前日事件"]},
+        {"date": "2026-07-13", "stance_label": "偏多", "critical_news": ["今日事件"]},
+    ]
+    # today=2026-07-13:末筆(今天)被排除,退回取前一日
+    out = mr._format_narrative_delta(hist, today="2026-07-13")
+    assert "昨日立場:偏空" in out and "前日事件" in out
+    assert "今日事件" not in out
+    # 只有今天一筆 → 排除後無可對照
+    assert "無昨日紀錄可對照" in mr._format_narrative_delta(
+        [{"date": "2026-07-13", "stance_label": "偏多", "critical_news": ["今日事件"]}],
+        today="2026-07-13")

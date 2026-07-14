@@ -9142,12 +9142,17 @@ def _format_event_scenarios(calendar: Optional[list],
     return "\n".join(rows) if rows else "（未來 48 小時無重大排程事件）"
 
 
-def _format_narrative_delta(history: Optional[list]) -> str:
+def _format_narrative_delta(history: Optional[list], today: Optional[str] = None) -> str:
     """G4:取最近一份歷史(=昨日報)的立場 + 重點事件,逐字整理成「昨日敘事回顧」供 prompt
-    做「昨日 vs 今日」差分。history 為時間升冪(最新在末),今日尚未存入 → history[-1] 即
-    最近一份完成報告。無可用紀錄回固定佔位字串(指引 LLM 整段略過)。防幻覺:只整理 history
-    原文,不新增判讀(判讀交給 LLM)。"""
+    做「昨日 vs 今日」差分。history 為時間升冪(最新在末)。無可用紀錄回固定佔位字串。
+    防幻覺:只整理 history 原文,不新增判讀(判讀交給 LLM)。
+
+    today('YYYY-MM-DD'):今日報告日期。**嚴格排除 date >= today 的 entry**——同日重跑
+    (手動 dispatch / retry / DRY_RUN 後正式跑)會把「今天早上的報告」存進 history,不排除
+    就會被當成「昨日」拿今天比今天、產生假的強化/推翻(Codex review)。"""
     hist = [h for h in (history or []) if isinstance(h, dict)]
+    if today:
+        hist = [h for h in hist if str(h.get("date") or "")[:10] < today]
     if not hist:
         return "（無昨日紀錄可對照）"
     last = hist[-1]
@@ -9766,7 +9771,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # G2:未來 ~48h 重要行事曆事件(含既有預期/前值),供「七之三、事件情境決策表」取材。
     event_scenario_lines = _format_event_scenarios(quotes.get("EVENT_CALENDAR"))
     # G4:昨日本報立場+重點事件(逐字),供「七之四、敘事變化」做昨日 vs 今日差分。
-    narrative_delta_block = _format_narrative_delta(quotes.get("HISTORY"))
+    #     傳今日日期以排除同日重跑存下的「今天」紀錄(避免今天比今天)。
+    narrative_delta_block = _format_narrative_delta(
+        quotes.get("HISTORY"), today=dt.datetime.now(TPE).strftime("%Y-%m-%d"))
 
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 

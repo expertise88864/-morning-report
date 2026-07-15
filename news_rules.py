@@ -124,6 +124,14 @@ TW_INTELLIGENCE_MAJOR_TERMS = {
 }
 
 
+# 任職醫院(使用者夫妻任職:太太彰基眼科、本人中國醫皮膚科;2026-07-15):
+# 這兩院的建設/決策/政策消息不受醫界「硬新聞」召回門檻限制,且重要性加成。
+# 刻意不收「中國醫」單獨詞(會誤中中國大陸醫療新聞)。
+TW_MEDICAL_EMPLOYER_TERMS = (
+    "彰化基督教醫院", "彰基",
+    "中國醫藥大學附設醫院", "中國醫藥大學", "中醫大附醫", "中國附醫",
+)
+
 TW_MEDICAL_HARD_NEWS_TERMS = (
     "停約", "解約", "抵扣停約", "裁罰", "罰鍰", "開罰", "重罰", "處分",
     "懲處", "違規", "違法", "停業", "勒令", "撤照", "廢止", "吊照",
@@ -190,11 +198,15 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
     if kind == "medical":
         # 醫界區只要「事件性硬新聞」(停約、裁罰、糾紛、缺藥、群聚感染…)。
         # 例行/行政/衛教(招考、空床數、義診、免費篩檢、衛教講座…)若無事件詞,一律剔除。
+        # 例外:任職醫院(彰基/中國醫,使用者夫妻任職 2026-07-15)的建設/決策/政策消息
+        # 不受「硬新聞」門檻限制——擴建/動土/新院區/人事這類對使用者是重大消息;
+        # 純衛教/義診仍由 importance 的例行扣分擋掉。
+        employer = any(token in text for token in TW_MEDICAL_EMPLOYER_TERMS)
         hard = any(token in text for token in TW_MEDICAL_HARD_NEWS_TERMS)
         capacity = any(token in text for token in TW_MEDICAL_CAPACITY_NEWS_TERMS)
-        if not (hard or capacity):
+        if not (hard or capacity or employer):
             return False
-        return specific or broad
+        return specific or broad or employer
     if kind == "policy":
         # 政策區必須「與財經/投資相關」(使用者回饋:宗教/毒駕/性平等雜訊太多)
         if not any(token in text for token in TW_POLICY_FINANCE_TERMS):
@@ -254,6 +266,9 @@ def _tw_intelligence_importance(kind: str,
         reasons.append(status)
     if kind == "medical":
         # 醫界:事件性硬新聞優先(停約/裁罰/糾紛/缺藥…),例行/行政/衛教重扣。
+        if any(token in title for token in TW_MEDICAL_EMPLOYER_TERMS):
+            score += 2.5
+            reasons.insert(0, "任職醫院")
         if any(token in title for token in TW_MEDICAL_HARD_NEWS_TERMS):
             score += 2.5
             reasons.insert(0, "重大事件")

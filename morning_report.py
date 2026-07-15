@@ -64,6 +64,7 @@ from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保
     _podcast_ticker_crosscheck,  # noqa: F401 — re-export:test_podcast 經 mr.* 呼叫,morning_report 本體未直接用
     _render_podcast_html,
     _render_sports_html,
+    _mlb_zh,  # noqa: F401 — re-export:tests 經 mr.* 驗證 MLB 中文隊名
 )
 from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已抽出。只 re-export morning_report
     # 本體/測試實際引用者;另 20 個常數與 2 個內部函式僅 news_rules 內部使用,不外露(已驗證零外部引用)。
@@ -75,6 +76,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _matches_any,
     _news_source_grade,
     _credibility_tag,
+    TW_MEDICAL_EMPLOYER_TERMS,  # noqa: F401 — re-export:tests 經 mr.* 驗證任職醫院白名單
     _news_keep_score,
     _strip_html,
     _is_low_value_tech_headline,
@@ -432,7 +434,7 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     # 房市在地(使用者 2026-07-15 指定:台中/彰化/南投草屯為主的房市+重大建設;
     # 供「九、營建資產」寫全台+在地雙軌,含買氣/交易量/公共建設)
     "房市-中彰投": "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案",
-    "建設-中彰投": "台中捷運 OR 彰化建設 OR 南投建設 OR 中部 重大建設",
+    "建設-中彰投": "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設",
     # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
     "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
     # 觀光內需:旅遊/航空客運/零售內需
@@ -476,7 +478,8 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     # 兩大金控加 OR 子公司名(使用者要求 2026-07-14:人事異動/重大投資/財報要更完整;
     # 壽險/銀行子公司新聞常不含母公司名,OR 已實測命中率大增)
     ("藥華藥", "6446"), ("富邦金", "2881"),
-    ("國泰金 OR 國泰人壽", "2882"), ("中信金 OR 中國信託", "2891"),
+    ("國泰金 OR 國泰人壽 OR 國泰世華 OR 國泰產險 OR 國泰投信", "2882"),
+    ("中信金 OR 中國信託 OR 台灣人壽 OR 中信銀", "2891"),
     # 兩金控深度主題查詢(使用者 2026-07-15:財報/政策/重大決策要更多)——
     # 名稱查詢抓日常新聞,主題查詢補「決策面」(併購/投資/裁罰/增資/法說)
     ("國泰金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2882"),
@@ -5142,6 +5145,10 @@ TW_INTELLIGENCE_QUERIES = {
         "醫院 疫情 OR 群聚感染 OR 院內感染",
         "醫師 罷工 OR 出走 OR 人力荒",
         "健保署 OR 衛福部 重大 OR 改革",
+        # 任職醫院(2026-07-15 使用者指定:太太彰基眼科/本人中國醫皮膚科)——
+        # 兩院的重大建設/決策/政策消息;召回豁免與加成見 news_rules.TW_MEDICAL_EMPLOYER_TERMS
+        "彰化基督教醫院 OR 彰基",
+        "中國醫藥大學附設醫院 OR 中國醫藥大學 OR 中醫大附醫",
         "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
         "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
     ),
@@ -12044,6 +12051,45 @@ def _wc_round_of(ev: dict) -> tuple[int, str]:
     return (9, slug.replace("-", " ") or "其他")
 
 
+def _espn_match_odds_line(comp: dict, zh_by_side: dict) -> str:
+    """把 ESPN 賽事的 DraftKings 賭盤轉成白話一行:「賭盤:甲 58%・和 24%・乙 18%」。
+
+    美式賠率→隱含機率(+175→100/275;-140→140/240),三向加總正規化成 100%
+    (去除莊家抽水的粗略近似)。無賠率/解析失敗回 ""(顯示層,失敗不影響賽程)。
+    使用者要求 2026-07-15:體育加入賭盤預測(如世足冠軍機率)。"""
+    try:
+        odds = (comp.get("odds") or [{}])[0]
+        ml = odds.get("moneyline") or {}
+
+        def _imp(o_str) -> Optional[float]:
+            try:
+                o = float(str(o_str).replace("+", ""))
+            except (TypeError, ValueError):
+                return None
+            if o > 0:
+                return 100.0 / (o + 100.0)
+            return -o / (-o + 100.0)
+
+        probs: list[tuple[str, float]] = []
+        for side in ("home", "away"):
+            o = ((ml.get(side) or {}).get("close") or {}).get("odds") \
+                or ((ml.get(side) or {}).get("open") or {}).get("odds")
+            p = _imp(o)
+            if p is not None and zh_by_side.get(side):
+                probs.append((zh_by_side[side], p))
+        draw = _imp((odds.get("drawOdds") or {}).get("moneyLine"))
+        if draw is not None:
+            probs.append(("和", draw))
+        if len(probs) < 2:
+            return ""
+        total = sum(p for _, p in probs)
+        parts = "・".join(f"{name} {p / total * 100:.0f}%" for name, p in probs)
+        provider = str((odds.get("provider") or {}).get("name") or "").strip()
+        return f"賭盤:{parts}" + (f"({provider})" if provider else "")
+    except Exception:
+        return ""
+
+
 def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
     """世足(FIFA World Cup):昨日/最新完賽戰績 + 各分組累計戰績表 + 淘汰賽對戰表。
 
@@ -12179,9 +12225,15 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                 names = [_wc_zh((t.get("team") or {}).get("displayName")
                                 or (t.get("team") or {}).get("name", "?")) for t in teams]
                 rnd = str((comp.get("notes") or [{}])[0].get("headline") or "")[:24]
+                # 賭盤隱含勝率(DraftKings;使用者要求 2026-07-15)——決賽場次的賭盤
+                # 即「誰會冠軍幾 %」;失敗回空字串不影響賽程
+                zh_by_side = {str(t.get("homeAway") or ""): _wc_zh(
+                    (t.get("team") or {}).get("displayName")
+                    or (t.get("team") or {}).get("name", "?")) for t in teams}
                 fixtures.append({"text": " vs ".join(names),
                                  "kickoff": ko.strftime("%m/%d %H:%M"),
-                                 "round": rnd, "_ko": ko})
+                                 "round": rnd, "_ko": ko,
+                                 "odds": _espn_match_odds_line(comp, zh_by_side)})
         except Exception as e:
             print(f"[sports] 世足賽程抓取失敗({day}): {e}", file=sys.stderr)
     fixtures.sort(key=lambda f: f["_ko"])

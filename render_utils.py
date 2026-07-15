@@ -10,6 +10,26 @@ from typing import Optional
 _WC_EXPECTED_GROUPS = 12
 _WC_TEAMS_PER_GROUP = 4
 
+# MLB 隊名縮寫 → 中文(城市+隊名;使用者要求 2026-07-15)。涵蓋 ESPN 30 隊縮寫。
+_MLB_TEAM_ZH = {
+    "NYY": "紐約洋基", "BOS": "波士頓紅襪", "TB": "坦帕灣光芒", "TOR": "多倫多藍鳥",
+    "BAL": "巴爾的摩金鶯", "CLE": "克里夫蘭守護者", "MIN": "明尼蘇達雙城",
+    "CHW": "芝加哥白襪", "DET": "底特律老虎", "KC": "堪薩斯皇家",
+    "HOU": "休士頓太空人", "SEA": "西雅圖水手", "TEX": "德州遊騎兵",
+    "LAA": "洛杉磯天使", "ATH": "運動家", "OAK": "奧克蘭運動家",
+    "LAD": "洛杉磯道奇", "SF": "舊金山巨人", "SD": "聖地牙哥教士",
+    "ARI": "亞利桑那響尾蛇", "COL": "科羅拉多落磯", "MIL": "密爾瓦基釀酒人",
+    "CHC": "芝加哥小熊", "STL": "聖路易紅雀", "CIN": "辛辛那提紅人",
+    "PIT": "匹茲堡海盜", "ATL": "亞特蘭大勇士", "NYM": "紐約大都會",
+    "PHI": "費城費城人", "MIA": "邁阿密馬林魚", "WSH": "華盛頓國民",
+}
+
+
+def _mlb_zh(text: str) -> str:
+    """把字串中的 MLB 隊名縮寫換成中文隊名(整詞比對,未知縮寫原樣保留)。"""
+    return re.sub(r"\b([A-Z]{2,3})\b",
+                  lambda m: _MLB_TEAM_ZH.get(m.group(1), m.group(1)), str(text or ""))
+
 
 def _format_macro_line(name: str, m: dict) -> str:
     """總經指標餵 LLM 的單行格式。明確帶「前值」避免 LLM 回推前值而編造數字
@@ -607,6 +627,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 f"{htmllib.escape(g['text'])}"
                 + (f"　<span style='color:#94a3b8;font-size:11px;'>{htmllib.escape(g['round'])}</span>"
                    if g.get("round") else "")
+                + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+                   f"{htmllib.escape(g['odds'])}</div>"
+                   if g.get("odds") else "")
                 + "</div>"
                 for g in wc_fixtures)
             wc_inner.append(
@@ -756,7 +779,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         seg_rows = []
         for lg, teams in standings.items():
             cells = "、".join(
-                f"{t['team']} {t['record']}"
+                f"{_mlb_zh(t['team'])} {t['record']}"
                 + (f"({t['pct']:.3f})" if t.get("pct") else "")
                 for t in teams)
             seg_rows.append(
@@ -771,7 +794,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         # 顯示首戰時間 + 對戰 + 系列場數與日期。保持首戰時間排序。
         series: dict[str, dict] = {}
         for g in mlb_fixtures:
-            key = str(g.get("text", ""))
+            key = _mlb_zh(g.get("text", ""))   # 中文隊名(使用者要求 2026-07-15)
             s = series.setdefault(key, {"first": str(g.get("when", "")),
                                         "dates": [], "special": False})
             when = str(g.get("when", ""))

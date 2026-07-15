@@ -45,7 +45,7 @@ def test_render_sports_html():
     assert "體育快訊" in h
     assert "中華職棒戰績" in h and "味全龍" in h and "33-0-16" in h
     assert "NBA 冠軍賽" in h and "NY leads series 3-1" in h
-    assert "MLB 戰績" in h and "TB 40-25" in h
+    assert "MLB 戰績" in h and "坦帕灣光芒 40-25" in h   # 中文隊名(2026-07-15)
     assert "MLB 昨日比分" not in h          # 使用者要求移除逐場比分
     assert "兄弟逆轉勝" in h
     assert mr._render_sports_html({}, htmllib) == ""
@@ -1474,8 +1474,10 @@ def test_render_mlb_standings_and_fixtures():
                           "special": True}],
     }
     html = mr._render_sports_html(sports, htmllib)
-    assert "MLB 戰績（勝率前 5）" in html and "TB 56-38(0.596)" in html
-    assert "MLB 未來一週焦點賽程" in html and "LAD @ NYY" in html
+    assert "MLB 戰績（勝率前 5）" in html
+    assert "坦帕灣光芒 56-38(0.596)" in html    # 中文隊名(2026-07-15)
+    assert "MLB 未來一週焦點賽程" in html
+    assert "洛杉磯道奇 @ 紐約洋基" in html    # 中文隊名(2026-07-15)
     assert "特別賽事" in html                                     # 明星賽標記
 
 
@@ -1755,9 +1757,9 @@ def test_mlb_fixtures_series_merged_into_one_line():
         {"when": "07/18 07:05", "text": "LAD @ NYY"},
     ]}
     h = mr._render_sports_html(sports, htmllib)
-    assert h.count("TB @ BOS") == 1                       # 系列合併成一行
+    assert h.count("坦帕灣光芒 @ 波士頓紅襪") == 1        # 系列合併成一行(中文隊名)
     assert "3 連戰" in h and "07/18、07/19" in h          # 場數+日期彙總
-    assert "LAD @ NYY" in h                                # 單場照常
+    assert "洛杉磯道奇 @ 紐約洋基" in h                    # 單場照常(中文隊名)
 
 
 def test_tennis_finished_event_collapses_to_champion_line():
@@ -1797,3 +1799,61 @@ def test_tennis_long_named_ongoing_event_not_falsely_collapsed():
     h = mr._render_sports_html({"tennis": tennis}, htmllib)
     assert "冠軍" not in h                    # 進行中 → 不得收斂成冠軍行
     assert "甲" in h and "勝 乙" in h          # 逐場列照常
+
+
+# ═══ 信件調整批#4(2026-07-15)═══
+def test_medical_employer_hospital_recall_and_boost():
+    """任職醫院(彰基/中國醫)的建設/決策消息:無「硬新聞」詞也要召回,且重要性加成;
+    純衛教仍被例行扣分擋掉。"""
+    # 建設消息無硬新聞詞 → 一般醫院被擋、任職醫院放行
+    assert mr._tw_intelligence_recall_hit("medical", "彰基新醫療大樓動土 打造中部醫療新地標") is True
+    assert mr._tw_intelligence_recall_hit("medical", "某醫院新醫療大樓動土") is False
+    assert mr._tw_intelligence_recall_hit("medical", "中國醫藥大學附設醫院擴建質子治療中心") is True
+    # 重要性:任職醫院加成入理由
+    imp, why = mr._tw_intelligence_importance("medical", "彰基宣布興建新院區", False, "昨日新訊", "")
+    assert imp >= 2.2 and "任職醫院" in why
+    # 任職醫院的純衛教:例行扣分 → 低於門檻
+    imp2, _ = mr._tw_intelligence_importance("medical", "彰基衛教講座:夏日防曬", False, "昨日新訊", "")
+    assert imp2 < 2.2
+
+
+def test_batch4_queries_present():
+    assert any("彰基" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
+    assert any("中醫大附醫" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
+    assert "中友百貨" in mr.OTHER_SECTOR_QUERIES["建設-中彰投"]
+    q2882 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2882" and "OR" in q)
+    q2891 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2891" and "OR" in q)
+    assert "國泰世華" in q2882 and "國泰產險" in q2882      # 子公司納入
+    assert "台灣人壽" in q2891 and "中信銀" in q2891
+
+
+def test_mlb_chinese_team_names():
+    import html as htmllib
+    assert mr._mlb_zh("TB @ BOS") == "坦帕灣光芒 @ 波士頓紅襪"
+    assert mr._mlb_zh("LAD 61-36") == "洛杉磯道奇 61-36"
+    assert mr._mlb_zh("XX @ YY") == "XX @ YY"              # 未知縮寫原樣保留
+    sports = {"standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
+              "mlb_fixtures": [{"when": "07/18 01:35", "text": "TB @ BOS"}]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "坦帕灣光芒 56-38" in h and "坦帕灣光芒 @ 波士頓紅襪" in h
+    assert ">TB<" not in h
+
+
+def test_wc_odds_line_conversion_and_render():
+    """美式賠率→隱含機率(正規化去抽水);世足賽程行附賭盤;無賠率不附。"""
+    import html as htmllib
+    comp = {"odds": [{
+        "provider": {"name": "DraftKings"},
+        "moneyline": {"home": {"close": {"odds": "+175"}},
+                      "away": {"close": {"odds": "-120"}}},
+        "drawOdds": {"moneyLine": 185},
+    }]}
+    line = mr._espn_match_odds_line(comp, {"home": "英格蘭", "away": "阿根廷"})
+    assert line.startswith("賭盤:") and "(DraftKings)" in line
+    # 隱含:home 100/275=.3636、away 120/220=.5455、draw 100/285=.3509;正規化後 ~29/44/28
+    assert "阿根廷 43%" in line and "英格蘭 29%" in line and "和 28%" in line
+    assert mr._espn_match_odds_line({}, {}) == ""           # 無賠率安全回空
+    wc = {"fixtures": [{"text": "阿根廷 vs 英格蘭", "kickoff": "07/16 03:00",
+                        "round": "4 強", "odds": line}]}
+    h = mr._render_sports_html({"worldcup": wc}, htmllib)
+    assert "賭盤:" in h and "DraftKings" in h

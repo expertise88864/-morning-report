@@ -5135,6 +5135,10 @@ TW_INTELLIGENCE_QUERIES = {
         "台灣 新青安 房貸 鬆綁 信用管制 青年安心成家",
         "台灣 少子化 育兒津貼 托育補助 長照 社福 政策",
         "台灣 政策 修法 草案 預告 上路 補貼 近月",
+        # 房貸利率追蹤(2026-07-15 使用者拍板;央行數值端點憑證/nid 未驗 → 新聞式,
+        # 央行決議/銀行調整=可行動訊號;實測 50 則)+ 托育/教育政策(實測 19 則)
+        "房貸利率 OR 五大銀行 房貸 OR 央行 理監事",
+        "托育補助 OR 育兒津貼 OR 公幼 OR 幼兒園 補助",
     ),
     "medical": (
         # 通用事件查詢(原本 3 條中榮專屬查詢使同一事件天天洗版 → 改廣);
@@ -11894,6 +11898,8 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
     ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
     ("學區/文教", "台中 學區 OR 彰化 學區 OR 斗六 學區 OR 雲林 學區"),
+    # 交通異動(2026-07-15 使用者拍板;泛「國道 彰化/台中」52 則含全台事故雜訊 → 用精準版)
+    ("交通", "台74 OR 國道1號 中部 OR 台中 道路 施工"),
 ]
 
 
@@ -11945,7 +11951,7 @@ def _render_local_news_html(local: dict) -> str:
         '<div style="border:1px solid #bae6fd;border-radius:10px;padding:8px 14px;'
         'margin:14px 0;background:#f0f9ff;">'
         '<div style="font-weight:700;font-size:14px;color:#0c4a6e;margin-bottom:2px;">'
-        '在地快訊（台中・彰化・南投・斗六）</div>'
+        '在地快訊</div>'
         + "".join(rows) + "</div>")
 
 
@@ -12742,8 +12748,18 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
         # 攤平成字串再 substring 又會讓 'den' 誤中 'Golden State'(Codex review 兩輪 P2)。
         # 一律交給既有 _nba_team_matches_favorite(單字整詞、多字子字串)判定。
         _competitors = list(((ev.get("competitions") or [{}])[0].get("competitors")) or [])
+        # 賭盤(DraftKings 隱含機率;使用者要求 2026-07-15 MLB/NBA 也要)——
+        # 以隊名縮寫組行(MLB 渲染端會再轉中文);無賠率回空字串不影響賽程
+        _abbr_by_side = {
+            str(c.get("homeAway") or ""): str(
+                (c.get("team") or {}).get("abbreviation")
+                or (c.get("team") or {}).get("shortDisplayName") or "")
+            for c in _competitors}
+        _odds = _espn_match_odds_line(
+            (ev.get("competitions") or [{}])[0], _abbr_by_side)
         out.append({"text": name, "when": ko.strftime("%m/%d %H:%M"),
-                    "special": special, "_competitors": _competitors, "_ko": ko})
+                    "special": special, "odds": _odds,
+                    "_competitors": _competitors, "_ko": ko})
     out.sort(key=lambda g: g["_ko"])
     for g in out:
         g.pop("_ko", None)
@@ -14298,8 +14314,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {weather_html}
 
-            {local_news_html}
-
             {alerts_html}
 
             {event_calendar_html}
@@ -14349,6 +14363,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {sports_html}
 
             {smart_money_html}
+
+            {local_news_html}
 
             {tw_intelligence_html}
 
@@ -14915,13 +14931,13 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
     """週日綜合輕量信:天氣/在地快訊/體育/Podcast/政策/醫界/文獻,不跑行情與預測。"""
     body = "".join(s for s in (
         weather_html,
-        local_news_html,
         '<div style="margin:8px 0 16px;padding:10px 14px;background:#f0fdf4;'
         'border-left:5px solid #16a34a;border-radius:4px;font-size:13px;color:#475569;">'
         '週日綜合:本日不開盤,僅彙整週末新增的體育戰績、Podcast、政策與醫界訊息。'
         '</div>',
         sports_html,
         podcast_html,
+        local_news_html,
         intel_html,
         journals_html,
         calendar_html,

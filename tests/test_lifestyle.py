@@ -1958,3 +1958,60 @@ def test_weekend_digest_includes_local_news_card(monkeypatch):
     rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
     assert rc == 0
     assert "在地快訊" in captured["html"] and "斗六長照大樓新進度" in captured["html"]
+
+
+# ═══ 批#6(2026-07-15)═══
+def test_batch6_queries_present():
+    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    assert "交通" in labels and "台74" in labels["交通"]          # 在地交通異動
+    pol = mr.TW_INTELLIGENCE_QUERIES["policy"]
+    assert any("房貸利率" in q for q in pol)                      # 房貸利率新聞式追蹤
+    assert any("托育補助" in q for q in pol)                      # 托育/教育政策
+
+
+def test_espn_week_fixtures_attach_odds(monkeypatch):
+    """MLB/NBA 週賽程附賭盤(縮寫組行,渲染端再中文化);無賠率場次 odds 為空。"""
+    import datetime as dt
+    now = dt.datetime.now(mr.TPE)
+    iso = (now + dt.timedelta(days=2)).astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"events": [{
+                "shortName": "TB @ BOS", "name": "TB @ BOS", "date": iso,
+                "season": {"slug": "regular-season"},
+                "status": {"type": {"state": "pre"}},
+                "competitions": [{
+                    "competitors": [
+                        {"homeAway": "home", "team": {"abbreviation": "BOS"}},
+                        {"homeAway": "away", "team": {"abbreviation": "TB"}}],
+                    "odds": [{"provider": {"name": "DraftKings"},
+                              "moneyline": {"home": {"close": {"odds": "-150"}},
+                                            "away": {"close": {"odds": "+130"}}}}],
+                }],
+            }]}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    out = mr.fetch_mlb_week_fixtures(top_teams={"TB", "BOS"})
+    assert out and out[0]["odds"].startswith("賭盤:")
+    assert "BOS" in out[0]["odds"] and "(DraftKings)" in out[0]["odds"]
+    # 渲染:系列行下方顯示賭盤且中文化
+    import html as htmllib
+    h = mr._render_sports_html({"mlb_fixtures": out}, htmllib)
+    assert "賭盤:" in h and "波士頓紅襪" in h.split("賭盤:")[1][:60]
+
+
+def test_local_card_renamed_and_above_policy_section():
+    """在地快訊卡:標題精簡為「在地快訊」;位置在台灣政策/醫界卡上方(每日報)。"""
+    quotes = {**_quotes_for_night(),
+              "LOCAL_NEWS": {"交通": [{"title": "台74 崇德匝道夜間交管", "link": "https://x/t"}]},
+              "TW_DAILY_INTELLIGENCE": {"policy": [], "medical": [],
+                                        "policy_window": "近一月", "medical_window": "昨日"}}
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
+    assert "在地快訊</div>" in html                    # 精簡標題(無城市後綴)
+    i_local = html.find("在地快訊")
+    i_policy = html.find("台灣政策近月走向")
+    assert 0 < i_local < i_policy or i_policy == -1    # 在政策卡上方
+    assert "台74 崇德匝道夜間交管" in html

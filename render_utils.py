@@ -769,7 +769,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
             f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
-            f"{htmllib.escape(str(g.get('text', '')))}</div>"
+            f"{htmllib.escape(str(g.get('text', '')))}"
+            + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+               f"{htmllib.escape(str(g.get('odds', '')))}</div>" if g.get("odds") else "")
+            + "</div>"
             for g in nba_fixtures)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 未來一週賽程（台北時間）</b>"
@@ -796,7 +799,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         for g in mlb_fixtures:
             key = _mlb_zh(g.get("text", ""))   # 中文隊名(使用者要求 2026-07-15)
             s = series.setdefault(key, {"first": str(g.get("when", "")),
-                                        "dates": [], "special": False})
+                                        "dates": [], "special": False,
+                                        "odds": _mlb_zh(g.get("odds", ""))})   # 首戰賭盤(中文隊名)
             when = str(g.get("when", ""))
             day = when.split(" ")[0] if when else ""
             if day and day not in s["dates"]:
@@ -812,6 +816,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if s.get("n", 1) > 1 else "")
             + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
                if s["special"] else "")
+            + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+               f"{htmllib.escape(s['odds'])}</div>" if s.get("odds") else "")
             + "</div>"
             for text, s in sorted(series.items(), key=lambda kv: kv[1]["first"]))
         blocks.append(

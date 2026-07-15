@@ -1901,3 +1901,57 @@ def test_medical_org_cap_canonicalizes_employer_aliases():
               "中醫大附醫手術突破", "中國附醫公告"):
         assert mr._tw_medical_org_key(t) == "中國附醫", t
     assert mr._tw_medical_org_key("台中榮總急診") == "中榮"   # 既有行為不變
+
+
+def test_local_news_keeps_25h_old_items(monkeypatch):
+    """回歸(Codex review):when=1d 伺服器端只回 24h 內,24-30h 新聞被吃掉——
+    改 when=2d 抓寬、cutoff 30h 精確過濾:25h 前的新聞須保留、31h 前的須剔除。"""
+    import datetime as dt
+
+    def parsed(hours_ago):
+        # 真 feedparser 會給 published_parsed(struct_time,UTC);cutoff 靠它過濾
+        ts = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours_ago)
+        return ts.timetuple()
+
+    captured = {}
+
+    class Feed:
+        def __init__(self, url):
+            captured["url"] = url
+            if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:   # 斗六 query
+                self.entries = [{"title": "25小時前的斗六建設新聞", "link": "https://x/a",
+                                 "published_parsed": parsed(25)},
+                                {"title": "31小時前的過期新聞", "link": "https://x/b",
+                                 "published_parsed": parsed(31)}]
+            else:
+                self.entries = []
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, *a, **k: Feed(url))
+    out = mr.fetch_local_news()
+    titles = [i["title"] for i in out.get("斗六/雲林", [])]
+    assert "25小時前的斗六建設新聞" in titles     # 24-30h 視窗保留
+    assert "31小時前的過期新聞" not in titles     # 30h cutoff 精確剔除
+    assert "when%3A2d" in captured["url"] or "when:2d" in captured["url"]   # 查詢抓寬一天
+
+
+def test_weekend_digest_includes_local_news_card(monkeypatch):
+    """週日綜合信也要有在地快訊卡(掛天氣後;Codex review:原先週日流程固定缺席)。"""
+    import datetime as dt
+    _stub_weekend_sources(monkeypatch, podcast=[{"show": "股癌", "guid": "ep1"}])
+    monkeypatch.setattr(mr, "fetch_local_news", lambda *a, **k: {
+        "斗六/雲林": [{"title": "斗六長照大樓新進度", "link": "https://x/d"}]})
+    monkeypatch.setattr(mr, "send_email", lambda *a: None)
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown", lambda e: None)
+    monkeypatch.setattr(mr, "save_history_state", lambda *a, **k: None)
+    monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
+    captured = {}
+    real_render = mr.render_weekend_digest_html
+
+    def spy(*a, **k):
+        html = real_render(*a, **k)
+        captured["html"] = html
+        return html
+    monkeypatch.setattr(mr, "render_weekend_digest_html", spy)
+    rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
+    assert rc == 0
+    assert "在地快訊" in captured["html"] and "斗六長照大樓新進度" in captured["html"]

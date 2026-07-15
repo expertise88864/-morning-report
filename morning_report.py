@@ -11906,7 +11906,9 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     out: dict = {}
     for label, query in LOCAL_NEWS_QUERIES:
         try:
-            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="1d"))
+            # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
+            # 抓寬一天、由下方 cutoff 精確限制 30h(Codex review)
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             items = []
             for entry in feed.entries:
                 if len(items) >= per_label:
@@ -13021,7 +13023,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
         try:
-            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="1d"))
+            # when=2d:同在地快訊——伺服器端 1d 過濾會吃掉 24-30h 新聞,cutoff 才是精確閘
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             titles = []
             for entry in feed.entries:
                 if len(titles) >= 3:
@@ -14907,10 +14910,12 @@ def _weekend_digest_has_content(sports: dict, podcast_eps: list,
 def render_weekend_digest_html(report_date: str, weather_html: str,
                                sports_html: str, podcast_html: str,
                                intel_html: str, journals_html: str,
-                               calendar_html: str) -> str:
-    """週日綜合輕量信:只含天氣/體育/Podcast/政策/醫界/文獻,不跑行情與預測。"""
+                               calendar_html: str,
+                               local_news_html: str = "") -> str:
+    """週日綜合輕量信:天氣/在地快訊/體育/Podcast/政策/醫界/文獻,不跑行情與預測。"""
     body = "".join(s for s in (
         weather_html,
+        local_news_html,
         '<div style="margin:8px 0 16px;padding:10px 14px;background:#f0fdf4;'
         'border-left:5px solid #16a34a;border-radius:4px;font-size:13px;color:#475569;">'
         '週日綜合:本日不開盤,僅彙整週末新增的體育戰績、Podcast、政策與醫界訊息。'
@@ -14987,6 +14992,11 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     except Exception as e:
         print(f"[weekend] 風險事件日曆失敗: {e}", file=sys.stderr)
         calendar = []
+    try:
+        local_news = fetch_local_news(now_tpe)   # 在地快訊週日也要有(Codex review)
+    except Exception as e:
+        print(f"[weekend] 在地快訊抓取失敗: {e}", file=sys.stderr)
+        local_news = {}
 
     if not _weekend_digest_has_content(sports, podcast_eps, intel, journals, now_tpe):
         print("[weekend] 無新增體育/Podcast/政策/醫界內容 → 本週日不寄信")
@@ -15002,9 +15012,11 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     intel_html = _render_tw_intelligence_html(intel or {}, _htmllib)
     journals_html = _render_journals_html(journals or [], _htmllib)
     calendar_html = _render_event_calendar_html(calendar or [])
+    local_news_html = _render_local_news_html(local_news or {})
     html = render_weekend_digest_html(
         report_date, weather_html, sports_html, podcast_html,
-        intel_html, journals_html, calendar_html)
+        intel_html, journals_html, calendar_html,
+        local_news_html=local_news_html)
 
     if os.environ.get("DRY_RUN") == "1":
         # 同時寫入晨報慣用的預覽路徑,讓 CI 的 dry-run-preview artifact 在週日也抓得到。

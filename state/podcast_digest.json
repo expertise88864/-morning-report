@@ -3,6 +3,64 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "23fa0bcd-2051-41e5-b7a8-ae58366f43a7",
+        "title": "EP679 | 🧌",
+        "published": "Wed, 15 Jul 2026 08:26:43 GMT",
+        "processed_at": "2026-07-15T10:23:27Z",
+        "digest": {
+          "summary_points": [
+            "近期台股大盤自高點回檔不到10%，但熱門股回檔達20-30%，融資餘額未明顯減少，市場哀鴻遍野。",
+            "韓國散戶高槓桿操作（指數波動為各國2-3倍，疊加槓桿ETF與信貸，實際槓桿可能達9-10倍），去槓桿引發全球連鎖賣壓。",
+            "台灣券商近期收緊融資額度與不限用途質押，壓抑高融資個股，但整體台股槓桿程度仍低於韓國。",
+            "台積電即將法說，展望仍佳，但短期毛利率難達市場最樂觀預期的70%，長期仍有機會，股價具支撐。",
+            "載板與CCL持續供不應求，漲價通知頻發，為市場最缺族群，但已走多時，籌碼可能較為擁擠。",
+            "封測族群轉強，力積電（6770）功率封裝產能滿載，京元電（2449）AI封測需求強勁，京鼎（3413）等台積電外包商強勢表態。",
+            "被動元件、功率元件、導線架等族群雖股價修正，但產業基本面無變化，Lead time仍拉長，部分有暫停交貨現象。",
+            "強勢族群如載板、CCL、封測在反彈中表態，但籌碼集中度高，後續可能輪動修正，追高風險加大。",
+            "主持人預期盤面將進入區間震盪，強勢股多已跌破季線，可操作範圍縮小，如同「地板減少」，須避免在震盪中賠光獲利。",
+            "財報季至七月底，IDM廠可望釋出功率元件等正面訊息，有機會帶動先前修正較多的族群反彈。",
+            "整體AI需求及產業基本面未見破壞性影響，本波修正屬資金面提款，非基本面反轉。",
+            "主持人策略：反彈若無法突破再破底，將先砍加碼單，逐步降低持股部位，提高現金水位，以控制回吐風險。",
+            "建議以「下跌時是否開心能加碼」測試對持股的信念（conviction），若無信心則應減碼。",
+            "記憶體族群過去炒作過度，但產業循環看法未變，股價需時間消化籌碼。",
+            "近期強勢股輪動過快，動能交易易被修理，主持人轉向關注業績股，等待大盤創高後再調整策略。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為法說展望不差，長期毛利率有機會朝70%邁進，股價具支撐。"
+            },
+            {
+              "name": "力積電",
+              "code": "6770",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "法說會釋出功率封裝產能滿載，客人要求擴產，營運展望樂觀。"
+            },
+            {
+              "name": "京元電",
+              "code": "2449",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "AI相關封測需求強勁，公司狀況很好。"
+            },
+            {
+              "name": "京鼎",
+              "code": "3413",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "為台積電OS外包商，近期股價強勢表態。"
+            }
+          ],
+          "market_view": "主持人認為大盤回檔主要是全球去槓桿的資金面影響，產業基本面未破壞，但短期將進入區間震盪，需控制風險。",
+          "action_view": "操作上傾向降低部位、不追高，減碼弱勢股（跌破季線、頭部成形者），轉向業績股，並準備在反彈無力時進一步降槓桿、扣現金。",
+          "notable_quote": "在下跌的時候你是開心的，你覺得你可以買更多，就是有faith跟conviction。"
+        }
+      },
+      {
         "guid": "233f8f4d-1bd8-49dd-9744-4867e9012965",
         "title": "EP678 | 🎮",
         "published": "Sat, 11 Jul 2026 07:59:57 GMT",
@@ -4838,6 +4896,43 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "b0947973-da0c-4120-9104-b4870172c604",
+        "title": "NY Governor Kathy Hochul on Her One Year Data Center Moratorium",
+        "published": "Wed, 15 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-15T10:31:21Z",
+        "digest": {
+          "summary_points": [
+            "紐約州長霍楚宣布為期一年的暫停令，暫停大型資料中心新項目，要求業者自備電力或支付電網使用溢價，並須對社區做出貢獻。",
+            "此暫停令旨在制定統一規範，可能提高資料中心建置成本，影響亞馬遜、Meta等雲端業者在紐約州的擴張。",
+            "紐約州積極爭取半導體製造，美光（Micron）投資1,000億美元設廠，將提供5萬個就業機會，州政府承諾協助電力供應。",
+            "霍楚計劃擴建核電，包含大型核反應爐與小型模組化反應爐（SMR），以因應AI與資料中心造成的電力需求激增。",
+            "紐約州因熱浪曾啟用備用化石燃料電廠，凸顯能源轉型迫切性；霍楚強調對核能、水力及離岸風電的「一切以上」策略。",
+            "州長認為資料中心應為電網基礎設施貢獻資金，否則不應取得用電；業者須「自帶電源」或支付保費。",
+            "紐約金融業雖有部份擴張至德州、佛州，但紐約仍是金融中心，商用租賃市場近期明顯回溫。",
+            "霍楚利用AI審查州法，已找出數千條過時法規，提升行政效率，但此舉不直接影響投資市場。"
+          ],
+          "tickers": [
+            {
+              "name": "美光科技",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "州長明確表示積極招商，提供電力支持，將其視為創造就業的核心產業。"
+            },
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "資料中心暫停令可能增加其擴建成本，但州長強調並非禁止，業者仍可依新規則進行。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "This is the US's first statewide moratorium on data centers, which means inevitably this is going to be seen as a test case or an experiment."
+        }
+      },
+      {
         "guid": "bf18344e-5dd0-4852-be82-b483013dfb22",
         "title": "Why AI Might Actually Create More Work for Lawyers",
         "published": "Mon, 13 Jul 2026 08:00:00 +0000",
@@ -5209,37 +5304,6 @@
           "notable_quote": "It was a very pragmatic business reason to start with. A lot of the labs have cited that, you know, for Western companies or Western developers to trust them, they needed to open source their models to build that trust and credibility."
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "af2e1113-d234-4b94-89ce-b46d0139fa3f",
-        "title": "How Substack Creators Are Covering This Strange Markets Era",
-        "published": "Sat, 20 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-20T10:26:15Z",
-        "digest": {
-          "summary_points": [
-            "James van Geelen 預測中國的「deepseek 時刻」將出現在硬體（記憶體）而非 AI 模型，可能影響 DRAM 市場。",
-            "他警告記憶體瓶頸遲早會被打破，暗示當前 DRAM 的高價可能因快閃記憶體頻寬匹配等創新而無法持續。",
-            "Van Geelen 主張美國應繼續對中國出口晶片，以避免刺激中國自建產能並失去對基礎設施供應鏈的控制。",
-            "Sam Rowe 強調承認市場下跌與壞消息的重要性，以建立韌性，而非為了長期投資而忽略它們。",
-            "James 指出大型語言模型已能模仿人類寫作風格，對傳統投資研究的價值主張構成挑戰。",
-            "中國的 AI 實驗室更傾向合作與開源，但受美國晶片管制侷限算力，導致安全對齊的資源較少。",
-            "亞馬遜目前僱用的機器人數量已達人類員工的兩倍，顯示加速中的工廠自動化可能重塑勞動市場。",
-            "關於 AI 安全的討論指出，即便是頂尖研究人員也擔心對齊問題，因為可控性與經濟效用密切相關。"
-          ],
-          "tickers": [
-            {
-              "name": "SK Hynix",
-              "code": "000660",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "James van Geelen 討論記憶體族群價格走勢，但警告瓶頸終將被拓寬，暗示當前漲勢可能面臨逆風。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
   },

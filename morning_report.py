@@ -429,6 +429,10 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     "傳產-台股": "中鋼 OR 台塑 OR 南亞 OR 台泥 OR 鋼價 OR 塑化 報價",
     # 營建資產:房市/預售/都更/資產股題材
     "營建-台股": "營建股 OR 房市 OR 預售屋 OR 資產股 OR 都更",
+    # 房市在地(使用者 2026-07-15 指定:台中/彰化/南投草屯為主的房市+重大建設;
+    # 供「九、營建資產」寫全台+在地雙軌,含買氣/交易量/公共建設)
+    "房市-中彰投": "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案",
+    "建設-中彰投": "台中捷運 OR 彰化建設 OR 南投建設 OR 中部 重大建設",
     # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
     "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
     # 觀光內需:旅遊/航空客運/零售內需
@@ -473,6 +477,10 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     # 壽險/銀行子公司新聞常不含母公司名,OR 已實測命中率大增)
     ("藥華藥", "6446"), ("富邦金", "2881"),
     ("國泰金 OR 國泰人壽", "2882"), ("中信金 OR 中國信託", "2891"),
+    # 兩金控深度主題查詢(使用者 2026-07-15:財報/政策/重大決策要更多)——
+    # 名稱查詢抓日常新聞,主題查詢補「決策面」(併購/投資/裁罰/增資/法說)
+    ("國泰金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2882"),
+    ("中信金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2891"),
     ("長榮 航運", "2603"),
 ]
 
@@ -10270,7 +10278,11 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
      獲利數字要給 YoY/EPS 等具體值,人事/投資要點出對後續營運的意涵,不可一句帶過。
    - **生技/醫療(本報讀者為醫師,請特別著墨且寫得具體)**:事件優先序 FDA/EMA 核准或里程碑 > 臨床試驗解盲/進度 > 健保給付 > 併購/授權;機制要明確——新藥上市→專利獨佔期營收、解盲成敗→股價常 ±15–30%、納入健保→營收確定性提升。**禁止**「生技基金看好」「長線可期」這類無事件、無機制的空話。
    - **傳產原物料(鋼鐵/塑化/水泥)**:機制走「報價/景氣循環」——鋼價或塑化利差變動→中鋼/台塑四寶毛利,中國需求/反傾銷/油價成本是背景;寫得出報價方向與利差傳導才算合格。
-   - **營建資產**:機制走「房市政策/預售買氣/資產題材」——升降息與選擇性信用管制→建商推案與去化,土地開發/都更/資產活化是個股催化。
+   - **營建資產/房市**:機制走「房市政策/預售買氣/資產題材」——升降息與選擇性信用管制→建商推案與去化,土地開發/都更/資產活化是個股催化。
+     **房市寫「全台+中彰投在地」雙軌**(使用者居住台中/彰化,2026-07-15 指定):
+     【房市-中彰投】【建設-中彰投】分組的素材——台中/彰化/南投草屯的房市買氣、交易熱區、
+     重大公共建設(如中捷藍線、中科擴建)——**有素材必寫 1 條**,寫清楚「哪一區、買氣/價格
+     方向、什麼建設題材」;此條屬生活+資產配置情報,可不綁個股、不用湊機制傳導。
    - **重電綠能**:機制走「電網強韌計畫/台電標案/儲能離岸風電」——電力基建資本支出→重電三雄(華城/士電/中興電)在手訂單能見度。
    - **觀光內需**:機制走「客流/客運量/內需消費」——來台/出國旅客與航空客運載客率→觀光航空營收,零售看內需景氣。
 5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
@@ -11112,7 +11124,7 @@ def _render_tw_intelligence_html(intelligence: dict, htmllib,
                 f"{htmllib.escape(str(item.get('status', '')))} ・ "
                 f"重要性 {htmllib.escape(str(item.get('importance', '—')))}</div>"
                 f"<a href='{htmllib.escape(str(item.get('link', '')))}' "
-                f"style='font-size:14px;line-height:1.65;color:#1d4ed8;text-decoration:underline;'>"
+                f"style='font-size:14px;line-height:1.65;color:#0f172a;text-decoration:none;'>"
                 f"{htmllib.escape(str(item.get('title', '')))}</a>"
                 f"<div style='font-size:12px;color:#94a3b8;line-height:1.5;margin-top:4px;'>"
                 f"入選原因：{htmllib.escape('、'.join(item.get('why') or ['寬召回分類']))}</div>"
@@ -11713,7 +11725,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
         items = "".join(
             f"<li style='margin:5px 0;'>"
             f"<a href='https://pubmed.ncbi.nlm.nih.gov/{a['pmid']}/' "
-            f"style='color:#1d4ed8;text-decoration:underline;'>"
+            f"style='color:#0f172a;text-decoration:none;'>"
             f"{htmllib.escape(a.get('zh') or a['title'])}</a>"
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(a['title'][:90])}</div>"
                if a.get("zh") else "")
@@ -12897,6 +12909,9 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
 
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
+# Top5 波段觀察卡渲染開關:使用者 2026-07-15 要求刪除(長線大盤型為主);
+# 排名/回測/state/prompt 素材照常運作,只關顯示。要復用改 True 即可。
+_RENDER_TOP5_CARD = False
 # 現行訂閱節目(2026-07-14 使用者拍板瘦身後)兼「顯示順序」:台灣節目優先、外國殿後。
 # 同時是 load_podcast_digest 的白名單——已刪節目(科技報橘/美股投資學/財經一路發/
 # WSJ What's News 等)的 state 殘留不再進信件。與 podcast_digest.PODCASTS 同步維護。
@@ -13255,7 +13270,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         max_episodes=max(1, len(_pod_eps_init)))
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
     ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
-    portfolio_risk_html = _render_portfolio_risk_html(quotes.get("PORTFOLIO_RISK") or {})
+    # G1 持倉曝險卡:使用者要求刪除(2026-07-15,上線一天後);引擎與測試保留,
+    # main() 已不再計算 PORTFOLIO_RISK(節省 ~秒級 yfinance 抓取)。
+    portfolio_risk_html = ""
     sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
     event_calendar_html = _render_event_calendar_html(quotes.get("EVENT_CALENDAR") or [])
     event_timeline_html = _render_event_timeline_html(
@@ -13494,11 +13511,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         """
 
     # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
-    # 手機版面:改成「每檔一列、列內 2 欄(分數 chip + 堆疊明細)」,避免 8 欄寬表在
-    # 手機 Gmail 擠爆跑版。
+    # 使用者要求刪除本卡(2026-07-15:「都買大盤市值型放長線」);排名計分/每日回測/
+    # state/prompt 的 Top5 素材**全部保留**(僅信件不渲染),旗標關閉、日後一行復用。
     smart_money_html = ""
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
-    if universe_snapshot:
+    if universe_snapshot and _RENDER_TOP5_CARD:
         scored = _rank_attention_candidates(universe_snapshot)
         top5 = scored[:5]
         if top5:
@@ -13788,37 +13805,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {''.join(_hrows)}
         </div>
         """
-    # 台股估值溫度(A4)+ 選擇權磁吸參考(A5):獨立資料源,刻意放在 breadth 條件之外
-    # ——廣度抓取失敗不得連帶讓這兩張卡消失(Codex review)。無資料各自略過。
-    _val = quotes.get("VALUATION") or {}
-    if _val.get("median_pe"):
-        _vc = {"偏便宜": "#15803d", "合理區間": "#475569", "偏貴": "#b91c1c"}.get(
-            _val.get("label", ""), "#475569")
-        _tsmc = _val.get("tsmc") or {}
-        _tsmc_txt = ""
-        if _tsmc.get("pe"):
-            _tsmc_txt = (f"　|　台積電:本益比 {_tsmc['pe']:.1f}"
-                         + (f"、殖利率 {_tsmc['yield']:.2f}%" if _tsmc.get("yield") else "")
-                         + (f"、股價淨值比 {_tsmc['pb']:.2f}" if _tsmc.get("pb") else ""))
-        breadth_html += (
-            f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
-            f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
-            f"<b style='color:#0f172a;'>台股估值溫度</b>　全市場本益比中位數 "
-            f"{_val['median_pe']} 倍"
-            + (f"、殖利率中位數 {_val['median_yield']}%" if _val.get("median_yield") else "")
-            + f" → <b style='color:{_vc};'>{_val.get('label', '')}</b>"
-            + "<span style='color:#94a3b8;font-size:11px;'>(長期經驗區間,僅供參考)</span>"
-            + _tsmc_txt + "</div>")
-    _mag = quotes.get("TXO_MAGNET") or {}
-    if _mag.get("magnet"):
-        breadth_html += (
-            f"<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
-            f"padding:10px 18px;margin:12px 0;font-size:13px;color:#334155;'>"
-            f"<b style='color:#0f172a;'>選擇權籌碼參考（{_mag.get('settle', '')} 結算）</b>　"
-            f"結算磁吸參考價約 <b>{_mag['magnet']:,.0f}</b> 點"
-            + (f"　|　上方壓力參考 {_mag['call_wall']:,.0f}" if _mag.get("call_wall") else "")
-            + (f"・下方支撐參考 {_mag['put_wall']:,.0f}" if _mag.get("put_wall") else "")
-            + "<span style='color:#94a3b8;font-size:11px;'>(依選擇權籌碼分布推算,僅供參考、非預測)</span></div>")
+    # 台股估值溫度(A4)+ 選擇權磁吸參考(A5)兩張卡:使用者要求刪除(2026-07-15)。
+    # VALUATION/TXO_MAGNET 資料仍照抓並餵 LLM prompt 當背景(見 _build_prompt macro_block),
+    # 僅信件不再顯示。
 
     # === 中期展望:使用者要求刪除整段(改以「長線趨勢參考」MA200 卡為準)。===
     #     MIDTERM 仍於 main 計算並存於 quotes 供後台,只是不再於信中渲染。
@@ -15503,13 +15492,8 @@ def main() -> int:
             print(f"[main] 持股昨日漲跌計算失敗(不影響晨報): {e}", file=sys.stderr)
             quotes["PORTFOLIO_ACTUAL"] = {}
 
-    # 6.655 G1 持倉曝險(白話):組合對台股/那斯達克/匯率的連動 + 情境 + 壓力測試。
-    #       只顯示比例(%),無任何持股明細;非核心步驟 → 走時間預算閘,不足則跳過保寄信。
-    if (PORTFOLIO_1 or PORTFOLIO_2) and _run_budget_ok(235, "持倉曝險"):
-        print("[main] 計算持倉曝險(白話)…")
-        # 兩帳戶同代號需「相加」股數(非 {**a,**b} 覆蓋),否則權重錯 → 曝險全錯
-        quotes["PORTFOLIO_RISK"] = fetch_portfolio_risk(
-            _merge_share_dicts(PORTFOLIO_1, PORTFOLIO_2))
+    # 6.655 G1 持倉曝險卡已依使用者要求移除(2026-07-15);引擎(portfolio_risk.py/
+    #       fetch_portfolio_risk)保留供日後復用,main 不再抓取計算。
 
     # 6.66 除息已在預測模型執行前套用，這裡只加入報告提醒。
     if ex_div:

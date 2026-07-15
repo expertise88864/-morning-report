@@ -290,13 +290,15 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 def test_other_sector_queries_precision():
     """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 12                               # 核心四類×2 + 傳產/營建/重電/觀光×1
+    assert len(q) == 14                               # 8 類 + 房市/建設-中彰投(2026-07-15 在地房市)
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
     assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
     # 新增四類齊備,以台股在地事件為主
-    for new in ("傳產-台股", "營建-台股", "重電-台股", "觀光-台股"):
+    for new in ("傳產-台股", "營建-台股", "重電-台股", "觀光-台股",
+                "房市-中彰投", "建設-中彰投"):
         assert new in q and q[new]
+    assert "台中" in q["房市-中彰投"] and "草屯" in q["房市-中彰投"]   # 在地房市涵蓋
 
 
 def test_tennis_tier_classification():
@@ -1491,7 +1493,9 @@ def test_render_tennis_cleaned_block():
         "tournaments": [{"name": "Canadian Open", "status": "07/20 起", "tier": "1000"}],
     }
     html = mr._render_sports_html({"tennis": tennis}, htmllib)
-    assert "07/13 ATP" in html and "J. Sinner" in html and "（Wimbledon）" in html
+    # Wimbledon 不在進行中列表=已結束 → 收斂成冠軍行(2026-07-15,比照世足)
+    assert "Wimbledon" in html and "冠軍" in html and "J. Sinner" in html
+    assert "決賽勝 A. Zverev" in html
     assert "進行中/即將" in html and "Canadian Open（07/20 起）" in html
     assert "EDT" not in html                                      # 美東字串不再出現
 
@@ -1736,5 +1740,43 @@ def test_sports_news_titles_render_as_hyperlinks():
     ]}}
     h = mr._render_sports_html(sports, htmllib)
     assert "<a href='https://news.example.com/ohtani'" in h
-    assert "text-decoration:underline" in h        # 看得出可點
+    assert "text-decoration:none" in h             # 黑字無底線但仍可點(使用者 2026-07-15)
+    assert "text-decoration:underline" not in h
     assert "舊格式純字串標題" in h                   # 舊 state 相容
+
+
+def test_mlb_fixtures_series_merged_into_one_line():
+    """同對戰系列賽合併一行(07/18 TB@BOS 連 3 行=雜訊,2026-07-15 使用者要求)。"""
+    import html as htmllib
+    sports = {"mlb_fixtures": [
+        {"when": "07/18 01:35", "text": "TB @ BOS"},
+        {"when": "07/18 07:10", "text": "TB @ BOS"},
+        {"when": "07/19 04:10", "text": "TB @ BOS"},
+        {"when": "07/18 07:05", "text": "LAD @ NYY"},
+    ]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert h.count("TB @ BOS") == 1                       # 系列合併成一行
+    assert "3 連戰" in h and "07/18、07/19" in h          # 場數+日期彙總
+    assert "LAD @ NYY" in h                                # 單場照常
+
+
+def test_tennis_finished_event_collapses_to_champion_line():
+    """已結束賽事(不在進行中列表)收斂成冠軍行;進行中賽事仍逐場列(2026-07-15)。"""
+    import html as htmllib
+    tennis = {
+        "results": [
+            {"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
+             "loser": "N. Djokovic", "event": "Wimbledon", "date": "07/10"},
+            {"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
+             "loser": "A. Zverev", "event": "Wimbledon", "date": "07/12"},   # 最後一場=決賽
+            {"tour": "WTA", "tier": "1000", "winner": "I. Swiatek",
+             "loser": "A. Sabalenka", "event": "Canadian Open", "date": "07/14"},
+        ],
+        "tournaments": [{"name": "Canadian Open", "status": "進行中"}],
+    }
+    h = mr._render_sports_html({"tennis": tennis}, htmllib)
+    # Wimbledon 已結束 → 只剩冠軍行(取日期最晚一場當決賽),早期輪次不再出現
+    assert "Wimbledon" in h and "冠軍" in h and "決賽勝 A. Zverev" in h
+    assert "N. Djokovic" not in h
+    # Canadian Open 進行中 → 逐場列
+    assert "I. Swiatek" in h and "勝 A. Sabalenka" in h

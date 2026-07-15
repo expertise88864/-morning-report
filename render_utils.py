@@ -767,22 +767,60 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + "".join(seg_rows) + "</div>")
     mlb_fixtures = (sports or {}).get("mlb_fixtures") or []
     if mlb_fixtures:
+        # 同一組對戰的系列賽合併成一行(使用者反映 07/18 TB@BOS 連列 3 行太混亂):
+        # 顯示首戰時間 + 對戰 + 系列場數與日期。保持首戰時間排序。
+        series: dict[str, dict] = {}
+        for g in mlb_fixtures:
+            key = str(g.get("text", ""))
+            s = series.setdefault(key, {"first": str(g.get("when", "")),
+                                        "dates": [], "special": False})
+            when = str(g.get("when", ""))
+            day = when.split(" ")[0] if when else ""
+            if day and day not in s["dates"]:
+                s["dates"].append(day)
+            s["special"] = s["special"] or bool(g.get("special"))
+            s["n"] = s.get("n", 0) + 1
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
-            f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
-            f"{htmllib.escape(str(g.get('text', '')))}"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(s['first'])}</span>　"
+            f"{htmllib.escape(text)}"
+            + (f"<span style='color:#94a3b8;font-size:11px;'>"
+               f"（{s['n']} 連戰:{htmllib.escape('、'.join(s['dates']))}）</span>"
+               if s.get("n", 1) > 1 else "")
             + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
-               if g.get("special") else "")
+               if s["special"] else "")
             + "</div>"
-            for g in mlb_fixtures)
+            for text, s in sorted(series.items(), key=lambda kv: kv[1]["first"]))
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 未來一週焦點賽程（台北時間;強隊對戰）</b>"
             + rows + "</div>")
     if tennis.get("tournaments") or tennis.get("results"):
         t_inner = []
-        if tennis.get("results"):
-            # 賽果:日期 + 巡迴 + 層級 + 勝負 + 賽事名(使用者反映舊版看不出何時/哪個賽事,混亂)
-            seg = "".join(
+        results = tennis.get("results") or []
+        ongoing_names = {str(t.get("name", "")) for t in (tennis.get("tournaments") or [])}
+        if results:
+            # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列(溫網 6 行舊賽果=雜訊),
+            # 收斂成「冠軍行」——各巡迴(ATP/WTA)取該賽事最後一場=決賽;進行中的賽事才逐場列。
+            by_event: dict[tuple, list] = {}
+            for r in results:
+                by_event.setdefault((str(r.get("event") or "—"), str(r.get("tour") or "")),
+                                    []).append(r)
+            done_lines, live_lines = [], []
+            for (event, tour), rs in by_event.items():
+                rs.sort(key=lambda r: str(r.get("date", "")))
+                if event and event in ongoing_names:
+                    live_lines.extend(rs[-4:])          # 進行中:列最近 4 場
+                    continue
+                fin = rs[-1]                            # 已結束:最後一場=決賽 → 冠軍行
+                tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
+                        if fin.get("tier") else "")
+                done_lines.append(
+                    f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
+                    f"{tier}<b>{htmllib.escape(event)}</b> {htmllib.escape(tour)} 冠軍:"
+                    f"<b>{htmllib.escape(fin['winner'])}</b>"
+                    f"<span style='color:#94a3b8;font-size:11px;'>"
+                    f"（決賽勝 {htmllib.escape(fin['loser'])},{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
+            live_seg = "".join(
                 f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
                 f"<span style='color:#94a3b8;'>{htmllib.escape(str(r.get('date', '')))} "
                 f"{htmllib.escape(r['tour'])}</span>　"
@@ -792,21 +830,20 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 + (f"<span style='color:#94a3b8;font-size:11px;'>（{htmllib.escape(r['event'])}）</span>"
                    if r.get("event") else "")
                 + "</div>"
-                for r in tennis["results"])
-            t_inner.append(seg)
+                for r in live_lines)
+            t_inner.append("".join(done_lines) + live_seg)
         if tennis.get("tournaments"):
-            # 進行中/即將開打的賽事(已完賽者不列——其賽果已在上方,列了只是雜訊)
+            # 進行中/即將開打的賽事(已完賽者不列;最多 5 個,防長尾雜訊)
             seg = "　|　".join(
                 f"{htmllib.escape(t['name'])}"
                 + (f"（{htmllib.escape(t['status'])}）" if t.get("status") else "")
-                for t in tennis["tournaments"])
+                for t in tennis["tournaments"][:5])
             t_inner.append(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
                 f"<b>進行中/即將</b>　{seg}</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
-            + "".join(t_inner)
-            + "<div style='font-size:11px;color:#94a3b8;'>※ 免費資料源未含逐盤比分;時間均為台北時間</div></div>")
+            + "".join(t_inner) + "</div>")
     for label in ("世足", "中華職棒", "網球", "MLB", "NBA"):
         titles = news.get(label) or []
         if not titles:
@@ -820,7 +857,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 link = htmllib.escape(str(t.get("link", "")))
                 if link:
                     return (f"<li style='margin:3px 0;'><a href='{link}' "
-                            f"style='color:#1d4ed8;text-decoration:underline;'>{title}</a></li>")
+                            f"style='color:#0f172a;text-decoration:none;'>{title}</a></li>")
                 return f"<li style='margin:3px 0;'>{title}</li>"
             return f"<li style='margin:3px 0;'>{htmllib.escape(str(t))}</li>"
 

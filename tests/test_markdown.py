@@ -643,7 +643,8 @@ def test_render_html_kpi_strip_degrades_gracefully():
     assert html.startswith("<!DOCTYPE html>")
 
 
-def test_render_html_shows_attention_candidate_price_forecast():
+def test_render_html_shows_attention_candidate_price_forecast(monkeypatch):
+    monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)   # 卡預設隱藏(2026-07-15),本測試驗保留的渲染碼
     q = _full_quotes()
     q["TW_UNIVERSE_SNAPSHOT"] = [{
         "code": "2330", "name": "台積電", "close": 1000.0, "day_pct": 1.0,
@@ -674,7 +675,8 @@ def test_render_html_shows_attention_candidate_price_forecast():
     assert "5日 1020.0 (960.0~1080.0)" in html
 
 
-def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
+def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkeypatch):
+    monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)   # 卡預設隱藏(2026-07-15),本測試驗保留的渲染碼
     q = _full_quotes()
     q["TAIFEX_OI"] = {
         "date": "2026/06/02", "foreign_oi_net": -21000,
@@ -728,7 +730,8 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections():
     assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
 
 
-def test_render_html_warns_when_watchlist_scores_are_low_confidence():
+def test_render_html_warns_when_watchlist_scores_are_low_confidence(monkeypatch):
+    monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)   # 卡預設隱藏(2026-07-15),本測試驗保留的渲染碼
     q = _full_quotes()
     q["TW_UNIVERSE_SNAPSHOT"] = [{
         "code": str(2300 + index), "name": f"測試{index}", "close": 100.0,
@@ -749,7 +752,8 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence():
     assert "隔日開" not in html                    # 移除隔日噪音價
 
 
-def test_render_html_top5_market_state_note_removed_on_big_up_day():
+def test_render_html_top5_market_state_note_removed_on_big_up_day(monkeypatch):
+    monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)   # 卡預設隱藏(2026-07-15),本測試驗保留的渲染碼
     """大漲(普漲)但 Top5 仍低分時,卡片仍正常渲染;『為何大漲日也都是觀察』冗長說明已移除。"""
     q = _full_quotes()
     q["BREADTH"] = {"advance_ratio": 67.1, "total": 1000}
@@ -901,3 +905,15 @@ def test_render_html_full_mode_default_never_compacts(monkeypatch):
     assert html.count("PTMARK") == 150                 # 條數完全沒壓(10 集 × 15 條)
     assert len(q["PODCAST_SHOWN_EPISODES"]) == 10      # 全部標記已顯示
     assert "已暫略" not in html                         # 無任何區塊被移除
+
+
+def test_top5_card_hidden_by_default():
+    """Top5 波段觀察卡預設不渲染(使用者 2026-07-15:長線大盤型為主);
+    排名/回測/state 資料管線照常,僅顯示關閉。"""
+    quotes = {**_full_quotes(), "TW_UNIVERSE_SNAPSHOT": [{
+        "code": "2330", "name": "台積電", "close": 2420.0, "day_pct": 0.0,
+        "ranking_score": 40.0, "smart_money": {"score": 55, "tags": []},
+    }]}
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-15", "每日報")
+    assert "波段觀察名單" not in html and "客觀關注排名" not in html
+    assert "資金輪動" not in html

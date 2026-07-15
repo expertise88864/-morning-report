@@ -51,7 +51,7 @@ def test_render_html_smoke_has_core_sections():
     assert "不構成投資建議" not in html
     # 由 fixture 資料驅動的區段
     assert "QQQ" in html and "SOX" in html                     # 美股/總經
-    assert "煙霧測試龍頭" in html                                # Top5 專屬 marker(fixture 唯一,防 Top5 段被移除)
+    assert "煙霧測試龍頭" not in html                            # Top5 卡已依使用者要求隱藏(2026-07-15)
     assert "124.43" in html                                      # 00662 公允價(六段)
     assert "個股開盤預測" in html                                # 六段結構標題(防整段被移除)
     assert "偏多" in html                                        # 立場(由 analysis 驅動)

@@ -246,6 +246,8 @@ def test_render_portfolio_risk_negative_beta_says_opposite_direction():
     # FX:驅動固定「貶值」,呈現的資產變動帶負號(受損),不出現「升值」字眼翻轉
     assert "台幣每貶值 1%" in html
     assert "-0.6%" in html or "−0.6%" in html
+    # 負值的機制說明不得寫「換匯受益」當主因(那必為正);須寫整體連動(07-15 信實見)
+    assert "外資賣超" in html and "美元計價海外部位的換匯受益)" not in html
 
 
 def test_portfolio_risk_card_stripped_on_archive():

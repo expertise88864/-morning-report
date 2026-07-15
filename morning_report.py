@@ -10921,8 +10921,12 @@ def _render_portfolio_risk_html(risk: dict) -> str:
     if fx is not None and abs(fx) >= 0.05:
         # 驅動固定為「台幣貶值(美元走強)」,方向由結果符號承載(正=資產受益、負=受損),
         # 不隨係數符號翻轉驅動字眼,避免「升值→負值」的雙重反轉錯誤(Codex review)。
+        # 機制說明依符號分開寫:負值不是「海外部位換匯效果」(那必為正),而是貶值日
+        # 常伴隨外資賣超/台股走弱,台股部位跌幅蓋過海外部位匯率受益(07-15 信實見 -1.8%)。
+        fx_why = ("美元計價海外部位的換匯受益" if fx >= 0
+                  else "貶值的日子常伴隨外資賣超、台股走弱,整體連動蓋過海外部位的換匯受益")
         lines.append(f"<b>匯率</b>:台幣每貶值 1%,你的資產約 "
-                     f"<span style='color:{_c(fx)}'>{fx:+.1f}%</span>(美元計價海外部位的匯率效果)。")
+                     f"<span style='color:{_c(fx)}'>{fx:+.1f}%</span>({fx_why})。")
     lines_html = "".join(
         f"<div style='padding:3px 0;color:#334155;'>{ln}</div>" for ln in lines)
 

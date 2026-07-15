@@ -797,14 +797,17 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     if tennis.get("tournaments") or tennis.get("results"):
         t_inner = []
         results = tennis.get("results") or []
-        ongoing_names = {str(t.get("name", "")) for t in (tennis.get("tournaments") or [])}
+        # 比對用 event_key(未截斷原名;顯示名 40/30 字截斷不一致,長名賽事會誤判已結束
+        # —— Codex review);舊 state 無 event_key 時退回顯示名。
+        ongoing_names = {str(t.get("event_key") or t.get("name") or "")
+                         for t in (tennis.get("tournaments") or [])}
         if results:
             # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列(溫網 6 行舊賽果=雜訊),
             # 收斂成「冠軍行」——各巡迴(ATP/WTA)取該賽事最後一場=決賽;進行中的賽事才逐場列。
             by_event: dict[tuple, list] = {}
             for r in results:
-                by_event.setdefault((str(r.get("event") or "—"), str(r.get("tour") or "")),
-                                    []).append(r)
+                key = str(r.get("event_key") or r.get("event") or "—")
+                by_event.setdefault((key, str(r.get("tour") or "")), []).append(r)
             done_lines, live_lines = [], []
             for (event, tour), rs in by_event.items():
                 rs.sort(key=lambda r: str(r.get("date", "")))
@@ -814,9 +817,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 fin = rs[-1]                            # 已結束:最後一場=決賽 → 冠軍行
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
                         if fin.get("tier") else "")
+                shown_event = str(fin.get("event") or event)   # 顯示用截斷名;比對用未截斷 key
                 done_lines.append(
                     f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
-                    f"{tier}<b>{htmllib.escape(event)}</b> {htmllib.escape(tour)} 冠軍:"
+                    f"{tier}<b>{htmllib.escape(shown_event)}</b> {htmllib.escape(tour)} 冠軍:"
                     f"<b>{htmllib.escape(fin['winner'])}</b>"
                     f"<span style='color:#94a3b8;font-size:11px;'>"
                     f"（決賽勝 {htmllib.escape(fin['loser'])},{htmllib.escape(str(fin.get('date', '')))}）</span></div>")

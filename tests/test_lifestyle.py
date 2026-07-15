@@ -1780,3 +1780,20 @@ def test_tennis_finished_event_collapses_to_champion_line():
     assert "N. Djokovic" not in h
     # Canadian Open 進行中 → 逐場列
     assert "I. Swiatek" in h and "勝 A. Sabalenka" in h
+
+
+def test_tennis_long_named_ongoing_event_not_falsely_collapsed():
+    """回歸(Codex review):長名賽事顯示名 40/30 字兩處截斷不一致——須以未截斷 event_key
+    比對「進行中」,否則長名進行中賽事被誤收斂成假冠軍行。"""
+    import html as htmllib
+    long_name = "Cerity Partners Hall of Fame Open presented by Amica Insurance"
+    tennis = {
+        "results": [{"tour": "ATP", "tier": "250", "winner": "甲",
+                     "loser": "乙", "event": long_name[:30] + "…",
+                     "event_key": long_name, "date": "07/14"}],
+        "tournaments": [{"name": long_name[:40] + "…", "event_key": long_name,
+                         "status": "進行中"}],
+    }
+    h = mr._render_sports_html({"tennis": tennis}, htmllib)
+    assert "冠軍" not in h                    # 進行中 → 不得收斂成冠軍行
+    assert "甲" in h and "勝 乙" in h          # 逐場列照常

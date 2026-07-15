@@ -12409,7 +12409,10 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                             when = dt.datetime.fromisoformat(iso).astimezone(TPE).strftime("%m/%d 起")
                         except Exception:
                             when = "即將"
+                    # event_key=未截斷原名:渲染端「已結束→冠軍行」收斂靠它與賽果比對;
+                    # 顯示名 40 字截斷 vs 賽果 30 字截斷不相等,長名賽事會被誤判已結束(Codex review)
                     out["tournaments"].append({"name": _cut_word(name, 40),
+                                               "event_key": name,
                                                "status": when,
                                                "tier": tier_label, "_tier": tier_rank})
                 for g in (ev.get("groupings") or []):
@@ -12432,8 +12435,8 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         seen_comp.add(cid)
                         by_label[label].append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
-                            "event": _cut_word(name, 30), "tier": tier_label,
-                            "_tier": tier_rank,
+                            "event": _cut_word(name, 30), "event_key": name,
+                            "tier": tier_label, "_tier": tier_rank,
                             "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:
             print(f"[sports] 網球 {tour} 抓取失敗: {e}", file=sys.stderr)

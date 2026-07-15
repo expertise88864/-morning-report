@@ -76,7 +76,6 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _matches_any,
     _news_source_grade,
     _credibility_tag,
-    TW_MEDICAL_EMPLOYER_TERMS,  # noqa: F401 — re-export:tests 經 mr.* 驗證任職醫院白名單
     _news_keep_score,
     _strip_html,
     _is_low_value_tech_headline,
@@ -478,8 +477,8 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     # 兩大金控加 OR 子公司名(使用者要求 2026-07-14:人事異動/重大投資/財報要更完整;
     # 壽險/銀行子公司新聞常不含母公司名,OR 已實測命中率大增)
     ("藥華藥", "6446"), ("富邦金", "2881"),
-    ("國泰金 OR 國泰人壽 OR 國泰世華 OR 國泰產險 OR 國泰投信", "2882"),
-    ("中信金 OR 中國信託 OR 台灣人壽 OR 中信銀", "2891"),
+    ("國泰金 OR 國泰人壽 OR 國泰世華 OR 國泰產險 OR 國泰投信 OR 國泰證券", "2882"),
+    ("中信金 OR 中國信託 OR 台灣人壽 OR 中信銀 OR 中信證券", "2891"),
     # 兩金控深度主題查詢(使用者 2026-07-15:財報/政策/重大決策要更多)——
     # 名稱查詢抓日常新聞,主題查詢補「決策面」(併購/投資/裁罰/增資/法說)
     ("國泰金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2882"),
@@ -5149,10 +5148,6 @@ TW_INTELLIGENCE_QUERIES = {
         "醫院 疫情 OR 群聚感染 OR 院內感染",
         "醫師 罷工 OR 出走 OR 人力荒",
         "健保署 OR 衛福部 重大 OR 改革",
-        # 任職醫院(2026-07-15 使用者指定:太太彰基眼科/本人中國醫皮膚科)——
-        # 兩院的重大建設/決策/政策消息;召回豁免與加成見 news_rules.TW_MEDICAL_EMPLOYER_TERMS
-        "彰化基督教醫院 OR 彰基",
-        "中國醫藥大學附設醫院 OR 中國醫藥大學 OR 中醫大附醫",
         "台灣 醫療 醫院 衛福部 健保署 疾管署 食藥署 site:gov.tw",
         "台灣 醫院 暫停 門診 住院 急診 醫療 人力 病安",
     ),
@@ -11893,13 +11888,16 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
 # 主題式查詢(縣市政府泛查詢實測 77 則但防空演習/二手書站雜訊多 → 捨棄);
 # 各查詢皆經 live 實測有召回且切題。純生活情報卡,不進計分、不餵 LLM。
 LOCAL_NEWS_QUERIES: list[tuple] = [
+    # 彰基/中國醫(使用者夫妻任職)整合於此(2026-07-15 拍板,自醫界卡遷入;
+    # 兩院的裁罰/感染等硬新聞仍會依一般規則上醫界卡,此處涵蓋建設/決策/一般消息)
+    ("彰基/中國醫", "彰化基督教醫院 OR 彰基 OR 中國醫藥大學附設醫院 OR 中醫大附醫"),
     ("斗六/雲林", "斗六 建設 OR 斗六 房市 OR 斗六市 OR 雲林 重大建設"),
-    ("建設/交通", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設"),
+    ("建設", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設"),
     ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
     ("學區/文教", "台中 學區 OR 彰化 學區 OR 斗六 學區 OR 雲林 學區"),
-    # 交通異動(2026-07-15 使用者拍板;泛「國道 彰化/台中」52 則含全台事故雜訊 → 用精準版)
-    ("交通", "台74 OR 國道1號 中部 OR 台中 道路 施工"),
+    # 交通異動(泛「國道 彰化/台中」52 則含全台事故雜訊 → 用精準版)
+    ("交通異動", "台74 OR 國道1號 中部 OR 台中 道路 施工"),
 ]
 
 
@@ -11910,6 +11908,7 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     del now_tpe   # 介面對齊其他 fetch;cutoff 用 UTC now
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
     out: dict = {}
+    seen_titles: set = set()   # 跨主題去重:同一新聞常同時命中房市+建設
     for label, query in LOCAL_NEWS_QUERIES:
         try:
             # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
@@ -11922,7 +11921,12 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
-                items.append({"title": str(entry.get("title", ""))[:90],
+                title = str(entry.get("title", ""))[:90]
+                norm = "".join(ch for ch in title.lower() if ch.isalnum())[:60]
+                if norm in seen_titles:
+                    continue
+                seen_titles.add(norm)
+                items.append({"title": title,
                               "link": str(entry.get("link", ""))})
             if items:
                 out[label] = items

@@ -1805,24 +1805,22 @@ def test_tennis_long_named_ongoing_event_not_falsely_collapsed():
 
 
 # ═══ 信件調整批#4(2026-07-15)═══
-def test_medical_employer_hospital_recall_and_boost():
-    """任職醫院(彰基/中國醫)的建設/決策消息:無「硬新聞」詞也要召回,且重要性加成;
-    純衛教仍被例行扣分擋掉。"""
-    # 建設消息無硬新聞詞 → 一般醫院被擋、任職醫院放行
-    assert mr._tw_intelligence_recall_hit("medical", "彰基新醫療大樓動土 打造中部醫療新地標") is True
-    assert mr._tw_intelligence_recall_hit("medical", "某醫院新醫療大樓動土") is False
-    assert mr._tw_intelligence_recall_hit("medical", "中國醫藥大學附設醫院擴建質子治療中心") is True
-    # 重要性:任職醫院加成入理由
-    imp, why = mr._tw_intelligence_importance("medical", "彰基宣布興建新院區", False, "昨日新訊", "")
-    assert imp >= 2.2 and "任職醫院" in why
-    # 任職醫院的純衛教:例行扣分 → 低於門檻
-    imp2, _ = mr._tw_intelligence_importance("medical", "彰基衛教講座:夏日防曬", False, "昨日新訊", "")
-    assert imp2 < 2.2
+def test_medical_employer_special_case_removed_covered_by_local_card():
+    """兩院(彰基/中國醫)一般/建設消息已整合到「在地快訊」卡(2026-07-15 拍板)——
+    醫界卡不再有豁免/加成,建設類回歸一般規則被擋;硬新聞(裁罰/感染)仍照常召回。"""
+    # 建設消息無硬新聞詞 → 與一般醫院同樣被擋(在地卡涵蓋,見 LOCAL_NEWS_QUERIES)
+    assert mr._tw_intelligence_recall_hit("medical", "彰基新醫療大樓動土 打造中部醫療新地標") is False
+    # 硬新聞仍走一般規則進醫界卡
+    assert mr._tw_intelligence_recall_hit("medical", "彰基遭健保署裁罰") is True
+    # 在地卡查詢涵蓋兩院
+    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    assert "彰基/中國醫" in labels
+    assert "彰化基督教醫院" in labels["彰基/中國醫"] and "中醫大附醫" in labels["彰基/中國醫"]
 
 
 def test_batch4_queries_present():
-    assert any("彰基" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
-    assert any("中醫大附醫" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
+    # 兩院查詢已自醫界遷至在地快訊(見 test_medical_employer_special_case_removed…)
+    assert not any("彰基" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
     assert "中友百貨" in mr.OTHER_SECTOR_QUERIES["建設-中彰投"]
     q2882 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2882" and "OR" in q)
     q2891 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2891" and "OR" in q)
@@ -1963,7 +1961,7 @@ def test_weekend_digest_includes_local_news_card(monkeypatch):
 # ═══ 批#6(2026-07-15)═══
 def test_batch6_queries_present():
     labels = dict(mr.LOCAL_NEWS_QUERIES)
-    assert "交通" in labels and "台74" in labels["交通"]          # 在地交通異動
+    assert "交通異動" in labels and "台74" in labels["交通異動"]   # 在地交通異動
     pol = mr.TW_INTELLIGENCE_QUERIES["policy"]
     assert any("房貸利率" in q for q in pol)                      # 房貸利率新聞式追蹤
     assert any("托育補助" in q for q in pol)                      # 托育/教育政策

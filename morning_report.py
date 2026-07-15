@@ -433,8 +433,8 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     "營建-台股": "營建股 OR 房市 OR 預售屋 OR 資產股 OR 都更",
     # 房市在地(使用者 2026-07-15 指定:台中/彰化/南投草屯為主的房市+重大建設;
     # 供「九、營建資產」寫全台+在地雙軌,含買氣/交易量/公共建設)
-    "房市-中彰投": "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案",
-    "建設-中彰投": "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設",
+    "房市-中彰投": "台中 房市 OR 彰化 房市 OR 斗六 房市 OR 草屯 OR 台中 建案",
+    "建設-中彰投": "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 斗六 建設",
     # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
     "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
     # 觀光內需:旅遊/航空客運/零售內需
@@ -5181,8 +5181,21 @@ TW_MEDICAL_ORG_TERMS = (
 )
 
 
+# \u91ab\u9662\u5225\u540d \u2192 \u6b63\u540d\u9375:\u5168\u540d/\u7c21\u7a31\u90fd\u6536\u6582\u5230\u540c\u4e00\u9375,\u300c\u6bcf\u65e5\u4e00\u6a5f\u69cb\u300dcap \u624d\u64cb\u5f97\u4f4f\u540c\u9662\u591a\u5831\u5c0e
+# (\u300c\u5f70\u5316\u57fa\u7763\u6559\u91ab\u9662\u300d\u4e0d\u542b\u300c\u5f70\u57fa\u300d\u5b50\u5b57\u4e32;\u4e2d\u570b\u91ab\u56db\u7a2e\u5beb\u6cd5\u5404\u81ea\u6210 key \u6703\u7e5e\u904e cap\u2014\u2014Codex review)\u3002
+_TW_MEDICAL_ORG_ALIASES: dict[str, str] = {
+    "\u5f70\u5316\u57fa\u7763\u6559\u91ab\u9662": "\u5f70\u57fa", "\u5f70\u57fa": "\u5f70\u57fa",
+    "\u4e2d\u570b\u91ab\u85e5\u5927\u5b78\u9644\u8a2d\u91ab\u9662": "\u4e2d\u570b\u9644\u91ab", "\u4e2d\u570b\u91ab\u85e5\u5927\u5b78": "\u4e2d\u570b\u9644\u91ab",
+    "\u4e2d\u91ab\u5927\u9644\u91ab": "\u4e2d\u570b\u9644\u91ab", "\u4e2d\u570b\u9644\u91ab": "\u4e2d\u570b\u9644\u91ab",
+}
+
+
 def _tw_medical_org_key(title: str) -> str:
     text = str(title or "")
+    # \u5148\u6bd4\u5225\u540d\u8868(\u9577\u5b57\u4e32\u512a\u5148,\u5168\u540d\u5148\u65bc\u7c21\u7a31),\u518d\u9000\u56de\u4e00\u822c\u6a5f\u69cb\u8a5e
+    for alias in sorted(_TW_MEDICAL_ORG_ALIASES, key=len, reverse=True):
+        if alias in text:
+            return _TW_MEDICAL_ORG_ALIASES[alias]
     for term in TW_MEDICAL_ORG_TERMS:
         if term in text:
             # \u4e2d\u69ae\u7684\u5404\u7a2e\u5beb\u6cd5\u7d71\u4e00\u6210\u540c\u4e00\u9375
@@ -10287,7 +10300,7 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
    - **傳產原物料(鋼鐵/塑化/水泥)**:機制走「報價/景氣循環」——鋼價或塑化利差變動→中鋼/台塑四寶毛利,中國需求/反傾銷/油價成本是背景;寫得出報價方向與利差傳導才算合格。
    - **營建資產/房市**:機制走「房市政策/預售買氣/資產題材」——升降息與選擇性信用管制→建商推案與去化,土地開發/都更/資產活化是個股催化。
      **房市寫「全台+中彰投在地」雙軌**(使用者居住台中/彰化,2026-07-15 指定):
-     【房市-中彰投】【建設-中彰投】分組的素材——台中/彰化/南投草屯的房市買氣、交易熱區、
+     【房市-中彰投】【建設-中彰投】分組的素材——台中/彰化/南投草屯/斗六的房市買氣、交易熱區、
      重大公共建設(如中捷藍線、中科擴建)——**有素材必寫 1 條**,寫清楚「哪一區、買氣/價格
      方向、什麼建設題材」;此條屬生活+資產配置情報,可不綁個股、不用湊機制傳導。
    - **重電綠能**:機制走「電網強韌計畫/台電標案/儲能離岸風電」——電力基建資本支出→重電三雄(華城/士電/中興電)在手訂單能見度。
@@ -11872,6 +11885,68 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
 
 
 # ===== 體育快訊(醫界區下方;ESPN 公開 API 比分 + Google News 消息) =====
+# 在地快訊(中彰投雲;使用者 2026-07-15:快速掌握在地建設/房市/產業/學區,含斗六)。
+# 主題式查詢(縣市政府泛查詢實測 77 則但防空演習/二手書站雜訊多 → 捨棄);
+# 各查詢皆經 live 實測有召回且切題。純生活情報卡,不進計分、不餵 LLM。
+LOCAL_NEWS_QUERIES: list[tuple] = [
+    ("斗六/雲林", "斗六 建設 OR 斗六 房市 OR 斗六市 OR 雲林 重大建設"),
+    ("建設/交通", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設"),
+    ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案"),
+    ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
+    ("學區/文教", "台中 學區 OR 彰化 學區 OR 斗六 學區 OR 雲林 學區"),
+]
+
+
+def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
+                     per_label: int = 2, hours: int = 30) -> dict:
+    """在地快訊:各主題抓近 hours 小時內最新 per_label 則(標題+連結)。
+    逐主題失敗略過(晨報不可斷);回 {label: [{"title","link"}...]}。"""
+    del now_tpe   # 介面對齊其他 fetch;cutoff 用 UTC now
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+    out: dict = {}
+    for label, query in LOCAL_NEWS_QUERIES:
+        try:
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="1d"))
+            items = []
+            for entry in feed.entries:
+                if len(items) >= per_label:
+                    break
+                pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                    continue
+                items.append({"title": str(entry.get("title", ""))[:90],
+                              "link": str(entry.get("link", ""))})
+            if items:
+                out[label] = items
+        except Exception as e:
+            print(f"[local] 在地快訊 {label} 抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def _render_local_news_html(local: dict) -> str:
+    """在地快訊卡(中彰投雲):主題分行、標題為黑字可點連結。無資料回空。"""
+    if not local:
+        return ""
+    import html as _h
+    rows = []
+    for label, items in local.items():
+        lines = "".join(
+            "<div style='font-size:13px;color:#334155;line-height:1.8;'>"
+            + (f"<a href='{_h.escape(str(i.get('link', '')))}' "
+               f"style='color:#0f172a;text-decoration:none;'>{_h.escape(str(i.get('title', '')))}</a>"
+               if i.get("link") else _h.escape(str(i.get("title", ""))))
+            + "</div>"
+            for i in items)
+        rows.append(f"<div style='margin:6px 0;'><b style='color:#0c4a6e;font-size:12px;'>"
+                    f"{_h.escape(label)}</b>{lines}</div>")
+    return (
+        '<div style="border:1px solid #bae6fd;border-radius:10px;padding:8px 14px;'
+        'margin:14px 0;background:#f0f9ff;">'
+        '<div style="font-weight:700;font-size:14px;color:#0c4a6e;margin-bottom:2px;">'
+        '在地快訊（台中・彰化・南投・斗六）</div>'
+        + "".join(rows) + "</div>")
+
+
 SPORTS_NEWS_QUERIES = [
     ("世足", "世界盃足球 OR FIFA World Cup"),
     ("MLB", "MLB 大聯盟"),
@@ -13324,6 +13399,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
         max_episodes=max(1, len(_pod_eps_init)))
     weather_html = _render_weather_html(quotes.get("WEATHER") or [])
+    local_news_html = _render_local_news_html(quotes.get("LOCAL_NEWS") or {})
     ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
     # G1 持倉曝險卡:使用者要求刪除(2026-07-15,上線一天後);引擎與測試保留,
     # main() 已不再計算 PORTFOLIO_RISK(節省 ~秒級 yfinance 抓取)。
@@ -14219,6 +14295,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {weather_html}
 
+            {local_news_html}
+
             {alerts_html}
 
             {event_calendar_html}
@@ -15060,6 +15138,7 @@ def main() -> int:
     print("[main] 抓天氣與體育快訊…")
     try:
         quotes["WEATHER"] = fetch_weather()
+        quotes["LOCAL_NEWS"] = fetch_local_news(now_tpe)   # 在地快訊(中彰投雲,2026-07-15)
     except Exception as e:
         print(f"[main] 天氣抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["WEATHER"] = []

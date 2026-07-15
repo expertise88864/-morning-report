@@ -1857,3 +1857,47 @@ def test_wc_odds_line_conversion_and_render():
                         "round": "4 強", "odds": line}]}
     h = mr._render_sports_html({"worldcup": wc}, htmllib)
     assert "賭盤:" in h and "DraftKings" in h
+
+
+def test_fetch_local_news_and_render(monkeypatch):
+    """在地快訊卡:各主題抓 2 則(標題+連結),渲染黑字可點;逐主題失敗略過、無資料回空。"""
+    import datetime as dt
+    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    class Feed:
+        def __init__(self, url):
+            # 判別詞用斗六 query 獨有的「重大建設」(斗六/雲林也出現在學區 query,會雙匹配)
+            if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:
+                self.entries = [{"title": "斗六長照大樓爭取9億經費",
+                                 "link": "https://news.example.com/douliu",
+                                 "published": now_gmt}]
+            else:
+                raise TimeoutError("其他主題模擬失敗")
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, *a, **k: Feed(url))
+    out = mr.fetch_local_news()
+    assert "斗六/雲林" in out and out["斗六/雲林"][0]["link"]
+    assert len(out) == 1                                   # 失敗主題略過不炸
+    h = mr._render_local_news_html(out)
+    assert "在地快訊" in h and "斗六長照大樓" in h
+    assert "<a href='https://news.example.com/douliu'" in h
+    assert "text-decoration:none" in h                     # 黑字可點
+    assert mr._render_local_news_html({}) == ""
+
+
+def test_local_queries_cover_douliu():
+    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    assert "斗六/雲林" in labels and "學區/文教" in labels and "產業/科技" in labels
+    assert "斗六" in mr.OTHER_SECTOR_QUERIES["房市-中彰投"]   # 九段素材也含斗六
+    assert "斗六" in mr.OTHER_SECTOR_QUERIES["建設-中彰投"]
+
+
+def test_medical_org_cap_canonicalizes_employer_aliases():
+    """回歸(Codex review):全名「彰化基督教醫院」與簡稱「彰基」須收斂同一鍵,
+    中國醫四種寫法亦同——否則任職醫院多篇報導繞過每日一機構 cap。"""
+    assert mr._tw_medical_org_key("彰化基督教醫院新大樓動土") == "彰基"
+    assert mr._tw_medical_org_key("彰基擴建計畫") == "彰基"
+    for t in ("中國醫藥大學附設醫院質子中心", "中國醫藥大學新校區",
+              "中醫大附醫手術突破", "中國附醫公告"):
+        assert mr._tw_medical_org_key(t) == "中國附醫", t
+    assert mr._tw_medical_org_key("台中榮總急診") == "中榮"   # 既有行為不變

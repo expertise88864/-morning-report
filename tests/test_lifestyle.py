@@ -774,6 +774,9 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     monkeypatch.setattr(mr, "fetch_medical_journal_articles", lambda: [])
     monkeypatch.setattr(mr, "translate_journal_titles", lambda a: [])
     monkeypatch.setattr(mr, "fetch_event_calendar", lambda now: [])
+    # 在地快訊(2026-07-15 新增於週日流程)也要 stub,否則既有週日測試打真 Google News
+    # ——5 條查詢的重試/逾時讓測試變慢且看網路臉色(Codex review)
+    monkeypatch.setattr(mr, "fetch_local_news", lambda *a, **k: {})
     for fn in ("_render_weather_html", "_render_event_calendar_html"):
         monkeypatch.setattr(mr, fn, lambda *a, **k: "")
     for fn in ("_render_sports_html", "_render_podcast_html",

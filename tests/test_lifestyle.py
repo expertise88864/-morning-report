@@ -1850,14 +1850,14 @@ def test_wc_odds_line_conversion_and_render():
         "drawOdds": {"moneyLine": 185},
     }]}
     line = mr._espn_match_odds_line(comp, {"home": "英格蘭", "away": "阿根廷"})
-    assert line.startswith("賭盤:") and "(DraftKings)" in line
+    assert line.startswith("賭盤(90分鐘):") and "(DraftKings)" in line   # 三向含和=90分鐘市場
     # 隱含:home 100/275=.3636、away 120/220=.5455、draw 100/285=.3509;正規化後 ~29/44/28
     assert "阿根廷 43%" in line and "英格蘭 29%" in line and "和 28%" in line
     assert mr._espn_match_odds_line({}, {}) == ""           # 無賠率安全回空
     wc = {"fixtures": [{"text": "阿根廷 vs 英格蘭", "kickoff": "07/16 03:00",
                         "round": "4 強", "odds": line}]}
     h = mr._render_sports_html({"worldcup": wc}, htmllib)
-    assert "賭盤:" in h and "DraftKings" in h
+    assert "賭盤(90分鐘):" in h and "DraftKings" in h
 
 
 def test_fetch_local_news_and_render(monkeypatch):
@@ -2022,9 +2022,13 @@ def test_typhoon_signal_thresholds():
     assert mr._typhoon_signal(calm) == ""
     near = [{"name": "彰化市", "wind": 42, "gust": 75, "rain_sum": 120}]
     out = mr._typhoon_signal(near)
-    assert "接近停班停課參考標準" in out and "留意晚間公告" in out
+    assert "接近停班停課參考標準" in out
     hit = [{"name": "台中北區", "wind": 55, "gust": 95, "rain_sum": 200}]
-    assert "已達停班停課參考標準" in mr._typhoon_signal(hit)
+    out2 = mr._typhoon_signal(hit)
+    assert "已達停班停課參考標準" in out2
+    # 免責固定附註(Codex review):任一警示都須聲明以公告為準
+    for o in (out, out2):
+        assert "以縣市政府公告為準" in o
 
 
 def test_fetch_suspension_news_filters_regions_and_noise(monkeypatch):
@@ -2070,10 +2074,54 @@ def test_wc_knockout_upcoming_rows_carry_odds():
     import html as htmllib
     wc = {"knockout": [{"name": "決賽", "games": [
         {"text": "阿根廷 vs 西班牙", "when": "07/20 03:00", "done": False,
-         "odds": "賭盤:阿根廷 45%・和 25%・西班牙 30%(DraftKings)"},
+         "odds": "賭盤(90分鐘):阿根廷 45%・和 25%・西班牙 30%(DraftKings)"},
         {"text": "法國 0 : 2 西班牙", "when": "07/15", "done": True,
          "odds": "賭盤:不該顯示"},
     ]}]}
     h = mr._render_sports_html({"worldcup": wc}, htmllib)
-    assert "賭盤:阿根廷 45%" in h
+    assert "賭盤(90分鐘):阿根廷 45%" in h            # 三向含和=90分鐘市場,明確標示
     assert "不該顯示" not in h                        # 已完賽列不附
+
+
+def test_wc_odds_line_labels_90min_when_draw_present():
+    """含和局=足球 90 分鐘三向市場 → 標「賭盤(90分鐘)」;無和局(美棒籃)標「賭盤」。"""
+    soccer = {"odds": [{"provider": {"name": "DK"},
+                        "moneyline": {"home": {"close": {"odds": "+175"}},
+                                      "away": {"close": {"odds": "-120"}}},
+                        "drawOdds": {"moneyLine": 185}}]}
+    assert mr._espn_match_odds_line(soccer, {"home": "甲", "away": "乙"}).startswith("賭盤(90分鐘):")
+    us = {"odds": [{"provider": {"name": "DK"},
+                    "moneyline": {"home": {"close": {"odds": "-150"}},
+                                  "away": {"close": {"odds": "+130"}}}}]}
+    assert mr._espn_match_odds_line(us, {"home": "甲", "away": "乙"}).startswith("賭盤:")
+
+
+def test_weather_card_suspension_only_still_renders():
+    """天氣源掛掉但有停班停課公告 → 卡仍渲染公告(重要資訊不可消失,Codex review)。"""
+    susp = [{"title": "彰化縣停止上班上課", "link": "https://x/chc"}]
+    h = mr._render_weather_html([], susp)
+    assert "彰化縣停止上班上課" in h and "天氣資料暫缺" in h
+    assert mr._render_weather_html([], []) == ""       # 兩者皆空才回空
+
+
+def test_suspension_window_excludes_stale_daytime_news(monkeypatch):
+    """昨日白天發布的「今日照常」(其今日=昨天)不得跨日顯示;昨晚 20 時公告要收
+    (Codex review:視窗=台北昨日 16:00 起)。"""
+    import datetime as dt
+    now_tpe = dt.datetime.now(mr.TPE)
+
+    def parsed_at_tpe(days_ago, hour):
+        ts = (now_tpe - dt.timedelta(days=days_ago)).replace(hour=hour, minute=0)
+        return ts.astimezone(dt.timezone.utc).timetuple()
+
+    class Feed:
+        entries = [
+            {"title": "彰化縣今日照常上班上課", "link": "https://x/stale",
+             "published_parsed": parsed_at_tpe(1, 10)},   # 昨日上午=指昨天 → 排除
+            {"title": "台中市明天停止上班上課", "link": "https://x/fresh",
+             "published_parsed": parsed_at_tpe(1, 20)},   # 昨晚 20 時=指今天 → 保留
+        ]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", lambda *a, **k: Feed())
+    titles = [i["title"] for i in mr.fetch_suspension_news()]
+    assert "台中市明天停止上班上課" in titles
+    assert "彰化縣今日照常上班上課" not in titles

@@ -11256,11 +11256,15 @@ def _typhoon_signal(locs: list[dict]) -> str:
                         f"(陣風 {gust}km/h、雨量 {rain}mm)")
         elif wind >= 40 or gust >= 71 or rain >= 280:
             hits.append(f"{loc['name']} 風雨接近停班停課參考標準"
-                        f"(陣風 {gust}km/h、雨量 {rain}mm),留意晚間公告")
-    return ";".join(hits)
+                        f"(陣風 {gust}km/h、雨量 {rain}mm)")
+    if not hits:
+        return ""
+    # 免責固定附註(Codex review:達標紅字不可讓讀者誤為停班定論)
+    return ";".join(hits) + "——預測僅供參考,是否停班停課以縣市政府公告為準"
 
 
 def fetch_suspension_news(hours: int = 30) -> list[dict]:
+    del hours   # 視窗改為固定「台北昨日 16:00 起」,參數保留介面相容
     """停班停課公告新聞(中彰投雲):人事總處頁面憑證缺 SKI 無法程式抓,改新聞源——
     縣市公告一出新聞秒發,晨報 06:00 一定抓得到前晚公告。過濾:標題須含在地縣市名
     且含停班/停課字樣(排除社論/評論雜訊)。失敗回空。"""
@@ -11268,7 +11272,11 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
     try:
         feed = _feedparser_parse_url_with_timeout(
             _gnews_rss("停班停課 OR 颱風假 OR 停止上班", when="2d"))
-        cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+        # 只收「台北昨日 16:00 之後」發布的公告新聞:今日停班的公告都在前晚 18-23 時
+        # 或今晨發布;更早的「今日照常/停班」其『今日』指昨天,跨日顯示會誤導(Codex review)
+        _now_tpe = dt.datetime.now(TPE)
+        cutoff = (_now_tpe - dt.timedelta(days=1)).replace(
+            hour=16, minute=0, second=0, microsecond=0).astimezone(dt.timezone.utc)
         items = []
         for entry in feed.entries:
             if len(items) >= 4:
@@ -11290,12 +11298,14 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
 
 def _render_weather_html(locs: list[dict],
                          suspension: Optional[list] = None) -> str:
-    if not locs:
+    # 天氣抓取失敗但有停班停課公告 → 公告仍須顯示(重要資訊不可因天氣源掛掉而消失,
+    # Codex review);兩者皆空才回空。
+    if not locs and not suspension:
         return ""
     import html as _h
     parts = "　|　".join(
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
-        for loc in locs)
+        for loc in locs) if locs else "(天氣資料暫缺)"
     # 颱風風雨門檻警示(達標/接近才出現;紅字)
     signal = _typhoon_signal(locs)
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
@@ -12234,7 +12244,10 @@ def _espn_match_odds_line(comp: dict, zh_by_side: dict) -> str:
         total = sum(p for _, p in probs)
         parts = "・".join(f"{name} {p / total * 100:.0f}%" for name, p in probs)
         provider = str((odds.get("provider") or {}).get("name") or "").strip()
-        return f"賭盤:{parts}" + (f"({provider})" if provider else "")
+        # 含「和」=足球 90 分鐘三向市場(非晉級/奪冠盤)——明確標示,
+        # 不可宣稱為冠軍機率(淘汰賽可能延長/PK;Codex review)
+        label = "賭盤(90分鐘)" if draw is not None else "賭盤"
+        return f"{label}:{parts}" + (f"({provider})" if provider else "")
     except Exception:
         return ""
 
@@ -12436,8 +12449,8 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
             else:
                 game = {"text": f"{at} vs {ht}",
                         "when": ko.strftime("%m/%d %H:%M"), "done": False,
-                        # 未賽場次附賭盤(使用者要求 2026-07-15 體育全面賭盤);
-                        # 決賽列的賭盤即冠軍機率。TBD 佔位對戰無賠率自然回空。
+                        # 未賽場次附賭盤(90 分鐘三向市場,非晉級/奪冠盤——
+                        # 顯示端已標示;TBD 佔位對戰無賠率自然回空)。
                         "odds": _espn_match_odds_line(comp, {"home": ht, "away": at})}
             game["_ko"] = ko
             rounds.setdefault(rname, {"rank": rank, "games": []})["games"].append(game)

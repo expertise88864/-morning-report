@@ -586,6 +586,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     + (f"{htmllib.escape(g['text'])}"
                        if g.get("done")
                        else f"<span style='color:#64748b;'>{htmllib.escape(g['text'])}</span>")
+                    + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+                       f"{htmllib.escape(g['odds'])}</div>"
+                       if g.get("odds") and not g.get("done") else "")
                     + "</div>"
                     for g in games)
                 ko_parts.append(

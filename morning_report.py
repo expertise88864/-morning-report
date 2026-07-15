@@ -11195,7 +11195,8 @@ def fetch_weather() -> list[dict]:
             r = _http_get("https://api.open-meteo.com/v1/forecast", params={
                 "latitude": lat, "longitude": lon,
                 "daily": ("temperature_2m_max,temperature_2m_min,"
-                          "precipitation_probability_max,weather_code"),
+                          "precipitation_probability_max,weather_code,"
+                          "precipitation_sum,wind_gusts_10m_max,wind_speed_10m_max"),
                 "timezone": "Asia/Taipei", "forecast_days": 1}, timeout=15)
             r.raise_for_status()
             d = r.json().get("daily", {})
@@ -11207,6 +11208,10 @@ def fetch_weather() -> list[dict]:
                 "t_max": round(float((d.get("temperature_2m_max") or [0])[0])),
                 "rain_prob": int((d.get("precipitation_probability_max") or [0])[0]),
                 "label": label,
+                # 颱風風雨評估用(km/h、mm;使用者要求 2026-07-15)
+                "rain_sum": round(float((d.get("precipitation_sum") or [0])[0] or 0), 1),
+                "gust": round(float((d.get("wind_gusts_10m_max") or [0])[0] or 0)),
+                "wind": round(float((d.get("wind_speed_10m_max") or [0])[0] or 0)),
             })
         except Exception as e:
             print(f"[weather] {name} 抓取失敗: {e}", file=sys.stderr)
@@ -11239,17 +11244,74 @@ def _weather_advice(locs: list[dict]) -> str:
     return f"{wear};{umbrella}。"
 
 
-def _render_weather_html(locs: list[dict]) -> str:
+def _typhoon_signal(locs: list[dict]) -> str:
+    """門檻式颱風風雨警示:預測值對照「停班停課參考標準」(平均風力 7 級≈50km/h、
+    陣風 10 級≈89km/h、24h 雨量 350mm),達標/接近(80%)才顯示白話一行;平日回空。
+    僅供參考——實際停班停課以各縣市政府晚間公告為準(見停班停課新聞列)。"""
+    hits = []
+    for loc in locs or []:
+        wind, gust, rain = loc.get("wind") or 0, loc.get("gust") or 0, loc.get("rain_sum") or 0
+        if wind >= 50 or gust >= 89 or rain >= 350:
+            hits.append(f"{loc['name']} 預測風雨已達停班停課參考標準"
+                        f"(陣風 {gust}km/h、雨量 {rain}mm)")
+        elif wind >= 40 or gust >= 71 or rain >= 280:
+            hits.append(f"{loc['name']} 風雨接近停班停課參考標準"
+                        f"(陣風 {gust}km/h、雨量 {rain}mm),留意晚間公告")
+    return ";".join(hits)
+
+
+def fetch_suspension_news(hours: int = 30) -> list[dict]:
+    """停班停課公告新聞(中彰投雲):人事總處頁面憑證缺 SKI 無法程式抓,改新聞源——
+    縣市公告一出新聞秒發,晨報 06:00 一定抓得到前晚公告。過濾:標題須含在地縣市名
+    且含停班/停課字樣(排除社論/評論雜訊)。失敗回空。"""
+    regions = ("彰化", "台中", "臺中", "南投", "雲林")
+    try:
+        feed = _feedparser_parse_url_with_timeout(
+            _gnews_rss("停班停課 OR 颱風假 OR 停止上班", when="2d"))
+        cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+        items = []
+        for entry in feed.entries:
+            if len(items) >= 4:
+                break
+            title = str(entry.get("title", ""))
+            if not any(r in title for r in regions):
+                continue
+            if not any(k in title for k in ("停班", "停課", "停止上班", "照常上班")):
+                continue
+            pub = entry.get("published_parsed") or entry.get("updated_parsed")
+            if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                continue
+            items.append({"title": title[:90], "link": str(entry.get("link", ""))})
+        return items
+    except Exception as e:
+        print(f"[weather] 停班停課新聞抓取失敗: {e}", file=sys.stderr)
+        return []
+
+
+def _render_weather_html(locs: list[dict],
+                         suspension: Optional[list] = None) -> str:
     if not locs:
         return ""
+    import html as _h
     parts = "　|　".join(
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
         for loc in locs)
+    # 颱風風雨門檻警示(達標/接近才出現;紅字)
+    signal = _typhoon_signal(locs)
+    signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
+                   if signal else "")
+    # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)
+    susp_html = "".join(
+        f"<br><a href='{_h.escape(str(i.get('link', '')))}' "
+        f"style='color:#0f172a;text-decoration:none;font-weight:700;'>"
+        f"🏫 {_h.escape(str(i.get('title', '')))}</a>"
+        for i in (suspension or []))
     return (
         f"<div style='background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;"
         f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
         f"<b>早安!</b>　{parts}<br>"
-        f"<span style='color:#0369a1;'>{_weather_advice(locs)}</span></div>")
+        f"<span style='color:#0369a1;'>{_weather_advice(locs)}</span>"
+        f"{signal_html}{susp_html}</div>")
 
 
 def _render_weekly_recap_html(history: list[dict]) -> str:
@@ -12373,7 +12435,10 @@ def fetch_worldcup(now_tpe: Optional[dt.datetime] = None) -> dict:
                 game = {"text": f"{at} vs {ht}", "when": "進行中", "done": False}
             else:
                 game = {"text": f"{at} vs {ht}",
-                        "when": ko.strftime("%m/%d %H:%M"), "done": False}
+                        "when": ko.strftime("%m/%d %H:%M"), "done": False,
+                        # 未賽場次附賭盤(使用者要求 2026-07-15 體育全面賭盤);
+                        # 決賽列的賭盤即冠軍機率。TBD 佔位對戰無賠率自然回空。
+                        "odds": _espn_match_odds_line(comp, {"home": ht, "away": at})}
             game["_ko"] = ko
             rounds.setdefault(rname, {"rank": rank, "games": []})["games"].append(game)
         ko_rounds = []
@@ -13421,7 +13486,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     podcast_html = _render_podcast_html(
         _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
         max_episodes=max(1, len(_pod_eps_init)))
-    weather_html = _render_weather_html(quotes.get("WEATHER") or [])
+    weather_html = _render_weather_html(quotes.get("WEATHER") or [],
+                                        quotes.get("SUSPENSION_NEWS") or [])
     local_news_html = _render_local_news_html(quotes.get("LOCAL_NEWS") or {})
     ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
     # G1 持倉曝險卡:使用者要求刪除(2026-07-15,上線一天後);引擎與測試保留,
@@ -15017,12 +15083,17 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     except Exception as e:
         print(f"[weekend] 在地快訊抓取失敗: {e}", file=sys.stderr)
         local_news = {}
+    try:
+        suspension = fetch_suspension_news()     # 颱風停班停課(週日晚間公告週一)
+    except Exception as e:
+        print(f"[weekend] 停班停課新聞抓取失敗: {e}", file=sys.stderr)
+        suspension = []
 
     if not _weekend_digest_has_content(sports, podcast_eps, intel, journals, now_tpe):
         print("[weekend] 無新增體育/Podcast/政策/醫界內容 → 本週日不寄信")
         return 0
 
-    weather_html = _render_weather_html(weather or [])
+    weather_html = _render_weather_html(weather or [], suspension or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
     # 與平日報對稱:渲染「全部」載入的集,再把「這些」集標成已顯示(見下方 deliver_report)。
     # 若沿用 renderer 預設 14 集上限卻對 deliver_report 傳入完整 podcast_eps,第 15 集起會被
@@ -15171,6 +15242,7 @@ def main() -> int:
     try:
         quotes["WEATHER"] = fetch_weather()
         quotes["LOCAL_NEWS"] = fetch_local_news(now_tpe)   # 在地快訊(中彰投雲,2026-07-15)
+        quotes["SUSPENSION_NEWS"] = fetch_suspension_news()   # 停班停課公告(颱風季)
     except Exception as e:
         print(f"[main] 天氣抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["WEATHER"] = []

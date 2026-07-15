@@ -2013,3 +2013,67 @@ def test_local_card_renamed_and_above_policy_section():
     i_policy = html.find("台灣政策近月走向")
     assert 0 < i_local < i_policy or i_policy == -1    # 在政策卡上方
     assert "台74 崇德匝道夜間交管" in html
+
+
+# ═══ 批#8(2026-07-15)═══
+def test_typhoon_signal_thresholds():
+    """颱風風雨門檻:達標(陣風≥89/風≥50/雨≥350)紅字警示、接近(80%)提醒、平日空。"""
+    calm = [{"name": "彰化市", "wind": 15, "gust": 41, "rain_sum": 9.8}]
+    assert mr._typhoon_signal(calm) == ""
+    near = [{"name": "彰化市", "wind": 42, "gust": 75, "rain_sum": 120}]
+    out = mr._typhoon_signal(near)
+    assert "接近停班停課參考標準" in out and "留意晚間公告" in out
+    hit = [{"name": "台中北區", "wind": 55, "gust": 95, "rain_sum": 200}]
+    assert "已達停班停課參考標準" in mr._typhoon_signal(hit)
+
+
+def test_fetch_suspension_news_filters_regions_and_noise(monkeypatch):
+    """停班停課新聞:須含在地縣市名+停班/停課字樣;社論與外縣市剔除。"""
+    import datetime as dt
+    ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=2)).timetuple()
+
+    class Feed:
+        entries = [
+            {"title": "彰化縣明日停止上班停止上課", "link": "https://x/chc",
+             "published_parsed": ts},
+            {"title": "台中市宣布明天照常上班上課", "link": "https://x/txg",
+             "published_parsed": ts},
+            {"title": "（社論）讓颱風假回歸科學治理", "link": "https://x/op",
+             "published_parsed": ts},
+            {"title": "台北市停班停課", "link": "https://x/tpe",
+             "published_parsed": ts},
+        ]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", lambda *a, **k: Feed())
+    out = mr.fetch_suspension_news()
+    titles = [i["title"] for i in out]
+    assert "彰化縣明日停止上班停止上課" in titles
+    assert "台中市宣布明天照常上班上課" in titles      # 照常公告也要顯示(確定性資訊)
+    assert all("社論" not in t and "台北市" not in t for t in titles)
+
+
+def test_weather_card_shows_signal_and_suspension():
+    locs = [{"name": "彰化市", "t_min": 25, "t_max": 30, "rain_prob": 90,
+             "label": "雷雨", "wind": 55, "gust": 95, "rain_sum": 200}]
+    susp = [{"title": "彰化縣停止上班上課", "link": "https://x/chc"}]
+    h = mr._render_weather_html(locs, susp)
+    assert "已達停班停課參考標準" in h and "#b91c1c" in h    # 紅字警示
+    assert "彰化縣停止上班上課" in h and "https://x/chc" in h  # 公告連結
+    # 平常日:無警示無公告
+    calm = [{"name": "彰化市", "t_min": 25, "t_max": 33, "rain_prob": 10,
+             "label": "晴", "wind": 10, "gust": 30, "rain_sum": 0}]
+    h2 = mr._render_weather_html(calm, [])
+    assert "停班停課" not in h2
+
+
+def test_wc_knockout_upcoming_rows_carry_odds():
+    """世足淘汰賽對戰表:未賽列附賭盤(決賽列賭盤=冠軍機率);已完賽列不附。"""
+    import html as htmllib
+    wc = {"knockout": [{"name": "決賽", "games": [
+        {"text": "阿根廷 vs 西班牙", "when": "07/20 03:00", "done": False,
+         "odds": "賭盤:阿根廷 45%・和 25%・西班牙 30%(DraftKings)"},
+        {"text": "法國 0 : 2 西班牙", "when": "07/15", "done": True,
+         "odds": "賭盤:不該顯示"},
+    ]}]}
+    h = mr._render_sports_html({"worldcup": wc}, htmllib)
+    assert "賭盤:阿根廷 45%" in h
+    assert "不該顯示" not in h                        # 已完賽列不附

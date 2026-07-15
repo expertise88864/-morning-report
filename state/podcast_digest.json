@@ -4342,6 +4342,54 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/72987854",
+        "title": "Stripe checks out PayPal",
+        "published": "Wed, 15 Jul 2026 10:24:43 +0000",
+        "processed_at": "2026-07-15T15:08:29Z",
+        "digest": {
+          "summary_points": [
+            "Stripe 與 Advent International 聯合出價以每股 60.50 美元收購 PayPal，溢價約 28%；PayPal 盤前上漲 15%。",
+            "Verizon 本週將宣布新一輪裁員，作為 2026 年節省 50 億美元營運支出計劃的一部分；第二季財報將於 7 月 24 日公布。",
+            "Lucid 否認破產傳聞，此前報導稱其被建議私有化或申請破產；股價週二下跌 16%。",
+            "AEHR (Air Test Systems) 第四季財報優於預期，營收年增 33%，股價飆漲 30%。",
+            "今日經濟數據：8:30 公布 PPI 與 Empire State 製造業指數，2:00 公布褐皮書。"
+          ],
+          "tickers": [
+            {
+              "name": "PayPal",
+              "code": "PYPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收到收購要約，溢價 28%，股價上漲。"
+            },
+            {
+              "name": "Verizon Communications",
+              "code": "VZ",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "宣布裁員以節省成本，影響待觀察。"
+            },
+            {
+              "name": "Lucid Group",
+              "code": "LCID",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "傳出破產疑慮，股價下跌。"
+            },
+            {
+              "name": "AEHR Test Systems",
+              "code": "AEHR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報優於預期，營收成長強勁。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Lucid confirms it is working with Alex Partners but reports of a possible bankruptcy are completely false."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72969831",
         "title": "Big banks fall despite upbeat earnings",
         "published": "Tue, 14 Jul 2026 16:08:34 +0000",
@@ -4825,40 +4873,6 @@
           "notable_quote": "Meta Platform said four US states are seeking about $1.4 trillion in civil penalties."
         },
         "shown_at": "2026-07-07T22:58:09Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72836861",
-        "title": "Wall Street’s bulls, few bears",
-        "published": "Mon, 06 Jul 2026 10:01:35 +0000",
-        "processed_at": "2026-07-06T11:51:29Z",
-        "digest": {
-          "summary_points": [
-            "Yardini Research是最看多的機構，標普500年底目標為80-50，隱含約10%漲幅。",
-            "Oppenheimer和Citigroup預測標普500為80-100，22V Research為80-60。",
-            "德意志銀行、高盛、摩根士丹利目標皆為8,000。",
-            "分析師平均預測標普500為77-16，隱含約3%漲幅。",
-            "Stiefel目標最低為7,000，暗示約6%下跌；美銀目標70-100。",
-            "比特幣兩週來首度突破63,000美元，受弱於預期的美國就業報告及聯準會評論支撐。",
-            "特斯拉將機器人計程車服務擴展至邁阿密，與Waymo競爭。",
-            "Comcast Sky將以超過20億美元收購ITV的媒體與娛樂部門。",
-            "一家蘋果與輝達供應商计划透過全球存託憑證募資14億美元。",
-            "OPEC+批准增產，因荷莫茲海峽重新開放提振供給前景。",
-            "Middleby分拆的Madeira食品加工業務今日生效。"
-          ],
-          "tickers": [
-            {
-              "name": "Strategy (MicroStrategy)",
-              "code": "MSTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "比特幣突破63,000後，MSTR上漲5%。"
-            }
-          ],
-          "market_view": "華爾街策略師普遍看好美股，但共識指向較溫和的漲幅（約3%）。",
-          "action_view": "",
-          "notable_quote": "The distribution of forecasts suggests strategists continue to expect gains for the broader market through the end of the year, though the consensus points to a more modest advance than the sharp rally that has already pushed the S&P to record highs this year."
-        },
-        "shown_at": "2026-07-06T23:02:03Z"
       }
     ]
   },

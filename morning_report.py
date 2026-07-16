@@ -12580,10 +12580,17 @@ _POLY_PULSE_BINARY: tuple[tuple, ...] = (
     ("美國 2026 年底前衰退", "us-recession-by-end-of-2026"),
     ("中國 2026 年內封鎖台海", "will-china-blockade-taiwan-by-in-2026"),
     ("中國 2026 年底前武力犯台", "will-china-invade-taiwan-before-2027"),
+    # 台灣政治(2026-07-16 使用者問台灣選舉盤;個別縣市長 Polymarket 無市場,實測)
+    ("賴清德總統 2026 年底前去職", "lai-ching-te-out-as-president-of-taiwan-in-2026"),
 )
 # 多選型盤(取市場最看好前 N;政治盤 2026-07-16 使用者要求。選後 slug 換屆更新)
 _POLY_PARTY_ZH = {"Democratic Party": "民主黨", "Republican Party": "共和黨",
                   "Democratic": "民主黨", "Republican": "共和黨"}
+_POLY_TW_PARTY_ZH = {   # 注意 TPP 原文撇號是 U+2019(照抄市場字串)
+    "Kuomintang (KMT)": "國民黨", "Democratic Progressive Party (DPP)": "民進黨",
+    "Taiwan People’s Party (TPP)": "民眾黨",
+    "Taiwan People's Party (TPP)": "民眾黨",
+}
 _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
     # (顯示名, slug, 對照表 or None, 取前 N)
     ("S&P 500 年底收盤區間", "spx-close-dec-2026", None, 2),
@@ -12591,6 +12598,9 @@ _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
     ("美國期中選舉參院多數黨", "which-party-will-win-the-senate-in-2026", _POLY_PARTY_ZH, 2),
     ("2028 美國總統大選執政黨", "which-party-wins-2028-us-presidential-election",
      _POLY_PARTY_ZH, 2),
+    # 台灣九合一(2026-11-28;實測 KMT 86%/DPP 14%/TPP 1%,Party A/Other 佔位自動剔除)
+    ("2026 台灣九合一選舉最大贏家", "2026-taiwanese-local-elections-party-winner",
+     _POLY_TW_PARTY_ZH, 3),
 )
 
 
@@ -12682,6 +12692,21 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                              "detail": f"機率 {p * 100:.0f}%"})
     except Exception as e:
         print(f"[poly] TSMC 財報盤略過: {e}", file=sys.stderr)
+    # 5) 台灣總統大選(2028 盤截至 2026-07 尚未開;動態搜尋,市場一開自動出現。
+    #    與 Fed 動態流程同款:取 endDate 最近的未來場,再以 slug 補抓 markets)
+    try:
+        tw = [e for e in _poly_search_events("Taiwan presidential election")
+              if not e.get("closed")
+              and "Taiwan Presidential Election" in str(e.get("title", ""))
+              and _poly_event_is_future(e, now_utc)]
+        tw.sort(key=lambda e: str(e.get("endDate") or "9999"))
+        if tw:
+            outs = _poly_outright(str(tw[0].get("slug") or ""),
+                                  _POLY_TW_PARTY_ZH, top=3, min_prob=0.03)
+            if outs:
+                rows.append({"label": "台灣總統大選", "detail": _poly_prob_line(outs)})
+    except Exception as e:
+        print(f"[poly] 台灣總統大選盤略過: {e}", file=sys.stderr)
     return rows
 
 

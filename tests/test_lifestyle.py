@@ -2609,3 +2609,46 @@ def test_poly_guard_budget_and_reset(monkeypatch):
     with pytest.raises(RuntimeError):
         mr._poly_events({"slug": "c"})
     assert mr._POLY_GUARD["tripped"] is True
+
+
+def test_pulse_taiwan_markets(monkeypatch):
+    """台灣政治盤(批#12,2026-07-16):九合一政黨盤(繁中黨名)+賴清德任期盤;
+    2028 總統大選盤未開時動態搜尋不出行、市場一開自動出現。"""
+    import datetime as dt
+
+    def fake_events(params):
+        slug = str(params.get("slug") or "")
+        if slug == "2026-taiwanese-local-elections-party-winner":
+            return [{"markets": [
+                {"groupItemTitle": "Kuomintang (KMT)", "outcomePrices": '["0.855", "0.145"]'},
+                {"groupItemTitle": "Democratic Progressive Party (DPP)",
+                 "outcomePrices": '["0.1425", "0.8575"]'},
+                {"groupItemTitle": "Taiwan People’s Party (TPP)",
+                 "outcomePrices": '["0.055", "0.945"]'},
+                {"groupItemTitle": "Party A", "outcomePrices": '["0.5", "0.5"]'},
+            ]}]
+        if slug == "lai-ching-te-out-as-president-of-taiwan-in-2026":
+            return [{"markets": [{"outcomePrices": '["0.0485", "0.9515"]'}]}]
+        if slug == "tw-2028":
+            return [{"markets": [
+                {"groupItemTitle": "Democratic Progressive Party (DPP)",
+                 "outcomePrices": '["0.5", "0.5"]'}]}]
+        return []
+
+    search_results = {"n": 0}
+
+    def fake_search(query, limit=8):
+        if "Taiwan presidential" in query and search_results["n"]:
+            return [{"title": "Taiwan Presidential Election 2028: Who will win?",
+                     "slug": "tw-2028", "endDate": "2028-01-13T00:00:00Z"}]
+        return []
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    monkeypatch.setattr(mr, "_poly_search_events", fake_search)
+    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+    rows = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
+    assert rows["2026 台灣九合一選舉最大贏家"] == "國民黨 86%・民進黨 14%・民眾黨 6%"
+    assert rows["賴清德總統 2026 年底前去職"] == "機率 5%"
+    assert "台灣總統大選" not in rows                      # 2028 盤未開 → 不出行
+    search_results["n"] = 1                               # 模擬市場開盤
+    rows2 = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
+    assert rows2["台灣總統大選"] == "民進黨 50%"           # 一開盤自動出現

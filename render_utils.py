@@ -616,6 +616,33 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 f"<b>{label}</b>:{_poly_line(rows)}"
                 f"<span style='color:#94a3b8;'>({note})</span></div>")
 
+    def _two_league_div(label: str, a_rows, b_rows, pa: str = "AL", pb: str = "NL") -> str:
+        """雙聯盟/雙分區合一行:「label:AL …;NL …(Polymarket)」。兩邊皆空回空。"""
+        segs = []
+        if a_rows:
+            segs.append(f"{pa} {_poly_line(a_rows)}")
+        if b_rows:
+            segs.append(f"{pb} {_poly_line(b_rows)}")
+        if not segs:
+            return ""
+        return (f"<div style='font-size:12px;color:#b45309;'>"
+                f"<b>{label}</b>:{';'.join(segs)}"
+                f"<span style='color:#94a3b8;'>(Polymarket)</span></div>")
+
+    def _mlb_poly_lines() -> str:
+        # 世界大賽冠軍 + 年度 MVP + 賽揚(批#11,2026-07-16)
+        return ((_poly_champ_div("世界大賽冠軍盤", poly["mlb_ws"])
+                 if poly.get("mlb_ws") else "")
+                + _two_league_div("年度 MVP 盤", poly.get("mlb_al_mvp"), poly.get("mlb_nl_mvp"))
+                + _two_league_div("賽揚獎盤", poly.get("mlb_al_cy"), poly.get("mlb_nl_cy")))
+
+    def _nba_poly_lines() -> str:
+        # 總冠軍 + 東西區冠軍(批#11,2026-07-16)
+        return ((_poly_champ_div("2026-27 冠軍盤", poly["nba_champ"])
+                 if poly.get("nba_champ") else "")
+                + _two_league_div("東西區冠軍盤", poly.get("nba_east"), poly.get("nba_west"),
+                                  "東", "西"))
+
     def _tennis_poly_div(p, line_fn) -> str:
         # 下一個大滿貫(美網)冠軍 futures;球星名附中文對照(2026-07-16)
         def _zh_rows(rows):
@@ -631,7 +658,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     # Polymarket 冠軍盤本身也是可渲染內容:傳統來源全掛時不可讓整張體育卡消失
     # (Codex review 批#9;cpbl_games 不算——沒賽程行可掛就無處顯示)
     _poly_renderable = any(poly.get(k) for k in (
-        "wc_champion", "mlb_ws", "nba_champ", "tennis_m", "tennis_w"))
+        "wc_champion", "mlb_ws", "nba_champ", "tennis_m", "tennis_w",
+        "mlb_al_mvp", "mlb_nl_mvp", "mlb_al_cy", "mlb_nl_cy", "nba_east", "nba_west"))
     if not (cpbl or cpbl_scores or cpbl_fixtures or nba or nba_fav or nba_offseason
             or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
             or mlb_tw or tennis.get("tournaments") or tennis.get("results")
@@ -853,10 +881,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for g in nba)
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}"
-            + (_poly_champ_div("2026-27 冠軍盤", poly["nba_champ"])
-               if poly.get("nba_champ") else "")
-            + "</div>")
-        _nba_champ_shown = bool(poly.get("nba_champ"))
+            + _nba_poly_lines() + "</div>")
+        _nba_champ_shown = True
     if nba_fav:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
@@ -871,10 +897,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             f"<div style='font-size:13px;color:#64748b;margin-top:2px;'>"
             f"{htmllib.escape(nba_offseason)}</div>"
-            + (_poly_champ_div("2026-27 冠軍盤", poly["nba_champ"])
-               if poly.get("nba_champ") else "")
-            + "</div>")
-        _nba_champ_shown = _nba_champ_shown or bool(poly.get("nba_champ"))
+            + _nba_poly_lines() + "</div>")
+        _nba_champ_shown = True
     nba_fixtures = (sports or {}).get("nba_fixtures") or []
     if nba_fixtures:
         rows = "".join(
@@ -889,11 +913,11 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 未來一週賽程（台北時間）</b>"
             + rows + "</div>")
-    if poly.get("nba_champ") and not _nba_champ_shown:
-        # 冠軍賽/休賽季說明都缺席(如 ESPN 掛掉)→ 冠軍盤獨立渲染(Codex review 批#9)
+    if (poly.get("nba_champ") or poly.get("nba_east") or poly.get("nba_west"))             and not _nba_champ_shown:
+        # 冠軍賽/休賽季說明都缺席(如 ESPN 掛掉)→ 各盤獨立渲染(Codex review 批#9)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
-            + _poly_champ_div("2026-27 冠軍盤", poly["nba_champ"]) + "</div>")
+            + _nba_poly_lines() + "</div>")
     if standings:
         # MLB 戰績:改表格排版(2026-07-16 使用者反映「、」串接一長行難讀)——
         # 聯盟分節列 + 每隊一列(排名/中文隊名/勝-敗/勝率),與中職戰績表同款式
@@ -919,14 +943,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "text-align:right;font-size:12px;color:#64748b;'>勝-敗</th>"
             "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th></tr>"
             + "".join(seg_rows) + "</table>"
-            + (_poly_champ_div("世界大賽冠軍盤", poly["mlb_ws"])
-               if poly.get("mlb_ws") else "")
-            + "</div>")
-    elif poly.get("mlb_ws"):
-        # ESPN 戰績掛掉但 Polymarket 活著 → 冠軍盤獨立渲染(Codex review 批#9)
+            + _mlb_poly_lines() + "</div>")
+    elif poly.get("mlb_ws") or poly.get("mlb_al_mvp") or poly.get("mlb_nl_mvp")             or poly.get("mlb_al_cy") or poly.get("mlb_nl_cy"):
+        # ESPN 戰績掛掉但 Polymarket 活著 → 各盤獨立渲染(Codex review 批#9)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB</b>"
-            + _poly_champ_div("世界大賽冠軍盤", poly["mlb_ws"]) + "</div>")
+            + _mlb_poly_lines() + "</div>")
     mlb_fixtures = (sports or {}).get("mlb_fixtures") or []
     if mlb_fixtures:
         # 同一組對戰的系列賽合併成一行(使用者反映 07/18 TB@BOS 連列 3 行太混亂):

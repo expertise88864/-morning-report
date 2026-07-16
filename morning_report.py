@@ -12309,14 +12309,28 @@ def _wc_zh(name: str) -> str:
 # MLB 世界大賽 / NBA 冠軍 / 網球大滿貫 futures。價格=Yes 合約成交價≈市場隱含機率。
 _POLYMARKET_GAMMA = "https://gamma-api.polymarket.com"
 
+# MLB 球星中文對照(MVP/賽揚盤;台灣熟知者才翻,其餘保留英文)
+_POLY_MLB_PLAYER_ZH = {
+    "Shohei Ohtani": "大谷翔平", "Aaron Judge": "賈吉",
+    "Yoshinobu Yamamoto": "山本由伸", "Paul Skenes": "斯金斯",
+}
+
 # futures 的 event slug 每季固定(Polymarket 慣例含年份),賽季結束市場自動 closed
 # → 該行自然消失,不降級;換季時更新此表(與 _WC_WINDOW 硬編慣例一致)。
+# zh 欄:None=原文;dict=名稱對照表(隊名/球星)。
 _POLYMARKET_FUTURES: tuple[tuple, ...] = (
-    # (輸出鍵, slug, 顯示標題, 取前 N 名)
-    ("mlb_ws", "mlb-world-series-champion-2026", "MLB 世界大賽冠軍盤", 5),
-    ("nba_champ", "nba-2027-champion", "NBA 2026-27 冠軍盤", 5),
-    ("tennis_m", "2026-mens-us-open-winner-tennis", "美網男單冠軍盤", 3),
-    ("tennis_w", "2026-womens-us-open-winner-tennis", "美網女單冠軍盤", 3),
+    # (輸出鍵, slug, 取前 N 名, 名稱對照表鍵)
+    ("mlb_ws", "mlb-world-series-champion-2026", 5, "mlb"),
+    ("nba_champ", "nba-2027-champion", 5, "nba"),
+    ("tennis_m", "2026-mens-us-open-winner-tennis", 3, None),
+    ("tennis_w", "2026-womens-us-open-winner-tennis", 3, None),
+    # 批#11(2026-07-16 使用者要求):MVP/賽揚 + NBA 東西區冠軍(皆 live 實測)
+    ("mlb_al_mvp", "pro-baseball-2026-al-mvp", 2, "mlb_player"),
+    ("mlb_nl_mvp", "mlb-2026-nl-mvp", 2, "mlb_player"),
+    ("mlb_al_cy", "mlb-2026-al-cy-young-winner", 2, "mlb_player"),
+    ("mlb_nl_cy", "mlb-2026-nl-cy-young-winner", 2, "mlb_player"),
+    ("nba_east", "nba-2027-eastern-conference-champion-20260624155838911", 2, "nba"),
+    ("nba_west", "nba-2027-western-conference-champion-20260624160106318", 2, "nba"),
 )
 
 # 中職隊名(Polymarket 英文 → 報內慣用簡稱)
@@ -12353,6 +12367,9 @@ _POLY_NBA_ZH = {
     "Sacramento Kings": "國王", "San Antonio Spurs": "馬刺", "Toronto Raptors": "暴龍",
     "Utah Jazz": "爵士", "Washington Wizards": "巫師",
 }
+# 名稱對照表註冊(futures 表以鍵引用;dict 需先定義完才能建)
+_POLY_ZH_MAPS = {"mlb": _POLY_MLB_ZH, "nba": _POLY_NBA_ZH,
+                 "mlb_player": _POLY_MLB_PLAYER_ZH}
 
 
 def _poly_events(params: dict) -> list:
@@ -12385,8 +12402,9 @@ def _poly_outright(slug: str, zh_map: Optional[dict] = None,
         if m.get("closed"):
             continue
         name = str(m.get("groupItemTitle") or "").strip()
-        if not name or name.lower() == "other" or name.startswith(("Team ", "Player ")):
-            continue
+        if (not name or name.lower() == "other"
+                or name.startswith(("Team ", "Player ", "Party "))):
+            continue   # 佔位項(Team A/Player A/Party A/Other)一律剔除
         p = _poly_yes_prob(m)
         if p is None or p < min_prob:
             continue
@@ -12436,11 +12454,9 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
             out["cpbl_games"] = games
     except Exception as e:
         print(f"[poly] 中職單場盤抓取失敗: {e}", file=sys.stderr)
-    for key, slug, _title, top in _POLYMARKET_FUTURES:
+    for key, slug, top, zh_key in _POLYMARKET_FUTURES:
         try:
-            zh = _POLY_MLB_ZH if key == "mlb_ws" else (
-                _POLY_NBA_ZH if key == "nba_champ" else None)
-            rows = _poly_outright(slug, zh, top=top)
+            rows = _poly_outright(slug, _POLY_ZH_MAPS.get(zh_key), top=top)
             if rows:
                 out[key] = rows
         except Exception as e:
@@ -12453,17 +12469,22 @@ def _poly_prob_line(rows: list[dict]) -> str:
     return "・".join(f"{r['name']} {r['prob']}%" for r in rows)
 
 
-# ESPN 縮寫 → Polymarket slug 縮寫(僅列已知差異;其餘小寫直用。
-# 白襪 ESPN=CHW、Polymarket=cws,實測 2026-07-16)
+# ESPN 縮寫 → Polymarket slug 縮寫(僅列已知差異;其餘小寫直用。皆 live 實測:
+# MLB 白襪 ESPN=CHW→cws;NBA ESPN 短碼 GS/NY/SA/UTAH/NO/WSH → 標準三碼,
+# 以上季已結算單場市場驗證 gsw/nyk/sas/uta/nop/was/phx/lac/okc 等)
 _POLY_MLB_ABBR_FIX = {"CHW": "cws"}
+_POLY_NBA_ABBR_FIX = {"GS": "gsw", "NY": "nyk", "SA": "sas",
+                      "UTAH": "uta", "NO": "nop", "WSH": "was"}
 
 
-def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
-    """MLB 焦點賽程掛 Polymarket 單場勝率(就地修改;使用者 2026-07-16 要求每場勝率)。
+def _attach_game_poly_odds(fixtures: list[dict], league: str,
+                           abbr_fix: dict, team_zh: dict, cap: int = 8) -> None:
+    """賽程掛 Polymarket 單場勝率(就地修改;使用者 2026-07-16 要求每場勝率)。
 
-    slug 格式 mlb-{客隊}-{主隊}-{美東日期}(實測 mlb-lad-nyy-2026-07-17 等 5 組)。
-    命中 → 覆蓋 ESPN/DraftKings 行(預測市場較即時);未命中(冷門縮寫/未開盤)→
-    保留原 DraftKings 行,雙重降級。逐場失敗略過。"""
+    slug 格式 {league}-{客隊}-{主隊}-{美東日期}(MLB/NBA 皆以真實市場實測)。
+    事件內只認「兩個結果都是已知隊名(team_zh 鍵)」的勝負盤——Yes/No、Over/Under、
+    球員對決等 prop 一律跳過(Codex review 批#10)。命中 → 覆蓋 ESPN/DraftKings 行
+    (預測市場較即時);未命中 → 保留原行,雙重降級。逐場失敗略過。"""
     done = 0
     for f in fixtures or []:
         if done >= cap:
@@ -12471,8 +12492,8 @@ def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
         a, h, d = f.get("away_abbr"), f.get("home_abbr"), f.get("date_us")
         if not (a and h and d):
             continue
-        slug = (f"mlb-{_POLY_MLB_ABBR_FIX.get(str(a), str(a).lower())}"
-                f"-{_POLY_MLB_ABBR_FIX.get(str(h), str(h).lower())}-{d}")
+        slug = (f"{league}-{abbr_fix.get(str(a), str(a).lower())}"
+                f"-{abbr_fix.get(str(h), str(h).lower())}-{d}")
         done += 1
         try:
             events = _poly_events({"slug": slug})
@@ -12486,20 +12507,27 @@ def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
                     prices = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
                 except (ValueError, TypeError):
                     continue
-                # 事件內含 Yes/No、Over/Under、球員對決等 prop 市場——只認「兩個
-                # 結果都是已知 MLB 隊名」的勝負盤,其餘一律跳過(Codex review 批#10:
-                # 光排除 "Yes" 不夠,Over/Under 排前面會被誤當兩隊勝率)
-                if len(outcomes) != 2 or not all(o in _POLY_MLB_ZH for o in outcomes):
+                if len(outcomes) != 2 or not all(o in team_zh for o in outcomes):
                     continue
                 if len(prices) != 2 or not all(0.0 < p < 1.0 for p in prices):
                     continue
                 total = prices[0] + prices[1]
-                zh = [_POLY_MLB_ZH.get(o, o) for o in outcomes]
+                zh = [team_zh.get(o, o) for o in outcomes]
                 f["odds"] = (f"賭盤:{zh[0]} {prices[0] / total * 100:.0f}%・"
                              f"{zh[1]} {prices[1] / total * 100:.0f}%(Polymarket)")
                 break
         except Exception as e:
-            print(f"[poly] MLB 單場 {slug} 略過: {e}", file=sys.stderr)
+            print(f"[poly] {league} 單場 {slug} 略過: {e}", file=sys.stderr)
+
+
+def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
+    _attach_game_poly_odds(fixtures, "mlb", _POLY_MLB_ABBR_FIX, _POLY_MLB_ZH, cap)
+
+
+def _attach_nba_poly_odds(fixtures: list[dict], cap: int = 10) -> None:
+    """NBA 版:slug 格式以上季已結算市場驗證(nba-ind-okc-2025-06-22 等);
+    休賽季自然全 MISS 不掛,2026-10 開季後自動生效(使用者 2026-07-16 交辦)。"""
+    _attach_game_poly_odds(fixtures, "nba", _POLY_NBA_ABBR_FIX, _POLY_NBA_ZH, cap)
 
 
 # ===== Polymarket 總經/地緣預測市場快照(2026-07-16 使用者要求「新聞/資訊/預測層面」)=====
@@ -12521,6 +12549,17 @@ _POLY_PULSE_BINARY: tuple[tuple, ...] = (
     ("美國 2026 年底前衰退", "us-recession-by-end-of-2026"),
     ("中國 2026 年內封鎖台海", "will-china-blockade-taiwan-by-in-2026"),
     ("中國 2026 年底前武力犯台", "will-china-invade-taiwan-before-2027"),
+)
+# 多選型盤(取市場最看好前 N;政治盤 2026-07-16 使用者要求。選後 slug 換屆更新)
+_POLY_PARTY_ZH = {"Democratic Party": "民主黨", "Republican Party": "共和黨",
+                  "Democratic": "民主黨", "Republican": "共和黨"}
+_POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
+    # (顯示名, slug, 對照表 or None, 取前 N)
+    ("S&P 500 年底收盤區間", "spx-close-dec-2026", None, 2),
+    ("美國期中選舉眾院多數黨", "which-party-will-win-the-house-in-2026", _POLY_PARTY_ZH, 2),
+    ("美國期中選舉參院多數黨", "which-party-will-win-the-senate-in-2026", _POLY_PARTY_ZH, 2),
+    ("2028 美國總統大選執政黨", "which-party-wins-2028-us-presidential-election",
+     _POLY_PARTY_ZH, 2),
 )
 
 
@@ -12590,13 +12629,14 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                 rows.append({"label": label, "detail": f"機率 {p * 100:.0f}%"})
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
-    # 3) S&P 500 年底收盤區間(多選盤,取市場最看好前 2 區間)
-    try:
-        outs = _poly_outright("spx-close-dec-2026", None, top=2, min_prob=0.05)
-        if outs:
-            rows.append({"label": "S&P 500 年底收盤區間", "detail": _poly_prob_line(outs)})
-    except Exception as e:
-        print(f"[poly] SPX 年底盤略過: {e}", file=sys.stderr)
+    # 3) 多選型盤(S&P 年底區間 + 政治盤,各取市場最看好前 N)
+    for label, slug, zh, top in _POLY_PULSE_OUTRIGHT:
+        try:
+            outs = _poly_outright(slug, zh, top=top, min_prob=0.05)
+            if outs:
+                rows.append({"label": label, "detail": _poly_prob_line(outs)})
+        except Exception as e:
+            print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
     # 4) 台積電本季財報 beat(財報季才有市場;slug 含日期 → 動態搜尋)
     try:
         tsm = [e for e in _poly_search_events("TSMC beat quarterly earnings")
@@ -13614,11 +13654,16 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                                now_tpe.strftime("%m/%d"))
     except Exception as e:
         print(f"[sports] Polymarket 賭盤抓取失敗: {e}", file=sys.stderr)
-    # MLB 焦點賽程掛 Polymarket 單場勝率(獨立 try:與上面盤別互不牽連)
+    # MLB / NBA 賽程掛 Polymarket 單場勝率(獨立 try:與上面盤別互不牽連;
+    # NBA 休賽季自然全 MISS,開季後自動生效)
     try:
         _attach_mlb_poly_odds(out.get("mlb_fixtures") or [])
     except Exception as e:
         print(f"[sports] MLB 單場賭盤抓取失敗: {e}", file=sys.stderr)
+    try:
+        _attach_nba_poly_odds(out.get("nba_fixtures") or [])
+    except Exception as e:
+        print(f"[sports] NBA 單場賭盤抓取失敗: {e}", file=sys.stderr)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:

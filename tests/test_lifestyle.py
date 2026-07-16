@@ -2469,3 +2469,92 @@ def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
     rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 20, 0, tzinfo=mr.TPE))
     tsm = [r for r in rows if "台積電" in r["label"]]
     assert tsm and tsm[0]["detail"] == "機率 70%"   # 取 tsm-next 而非已結束的 99.95%
+
+
+# ===== 批#11(2026-07-16):NBA 單場預接 / MVP・賽揚 / 東西區冠軍 / 政治盤 =====
+
+def test_attach_nba_poly_odds_abbrev_fix_and_membership(monkeypatch):
+    """NBA 單場:ESPN 短碼(GS/NY/SA/UTAH/NO/WSH)→ Polymarket 三碼;
+    兩結果都須為已知 NBA 隊名;休賽季全 MISS 不掛(開季自動生效)。"""
+    captured = []
+
+    def fake_events(params):
+        captured.append(params.get("slug"))
+        if params.get("slug") == "nba-gsw-lal-2026-10-22":
+            return [{"markets": [
+                {"outcomes": '["Over", "Under"]', "outcomePrices": '["0.5", "0.5"]'},
+                {"outcomes": '["Golden State Warriors", "Los Angeles Lakers"]',
+                 "outcomePrices": '["0.44", "0.56"]'},
+            ]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    fixtures = [
+        {"text": "GS @ LAL", "when": "10/23 10:30",
+         "away_abbr": "GS", "home_abbr": "LAL", "date_us": "2026-10-22"},
+        {"text": "NY @ UTAH", "when": "10/23 09:00", "odds": "賭盤:DK(DraftKings 運彩)",
+         "away_abbr": "NY", "home_abbr": "UTAH", "date_us": "2026-10-22"},
+    ]
+    mr._attach_nba_poly_odds(fixtures)
+    assert fixtures[0]["odds"] == "賭盤:勇士 44%・湖人 56%(Polymarket)"
+    assert "nba-nyk-uta-2026-10-22" in captured            # NY→nyk、UTAH→uta
+    assert fixtures[1]["odds"] == "賭盤:DK(DraftKings 運彩)"  # MISS → 保留原行
+
+
+def test_poly_outright_excludes_party_placeholder(monkeypatch):
+    """政治盤佔位項 Party A 要剔除(與 Team A/Player A 同規則)。"""
+    fake_event = {"markets": [
+        {"groupItemTitle": "Democratic Party", "outcomePrices": '["0.845", "0.155"]'},
+        {"groupItemTitle": "Republican Party", "outcomePrices": '["0.165", "0.835"]'},
+        {"groupItemTitle": "Party A", "outcomePrices": '["0.5", "0.5"]'},
+    ]}
+    monkeypatch.setattr(mr, "_poly_events", lambda params: [fake_event])
+    rows = mr._poly_outright("which-party-will-win-the-house-in-2026",
+                             mr._POLY_PARTY_ZH, top=2)
+    assert rows == [{"name": "民主黨", "prob": 84}, {"name": "共和黨", "prob": 16}]
+
+
+def test_render_mlb_awards_and_nba_conference_lines():
+    """MVP/賽揚合一行(AL;NL)、NBA 東西區冠軍合一行(東;西);
+    傳統源缺席時各自獨立渲染、不重複。"""
+    poly = {
+        "mlb_al_mvp": [{"name": "Yordan Alvarez", "prob": 61}],
+        "mlb_nl_mvp": [{"name": "大谷翔平", "prob": 85}],
+        "mlb_al_cy": [{"name": "Cam Schlittler", "prob": 46}],
+        "mlb_nl_cy": [{"name": "Jacob Misiorowski", "prob": 63}],
+        "nba_east": [{"name": "尼克", "prob": 22}],
+        "nba_west": [{"name": "雷霆", "prob": 34}],
+        "nba_champ": [{"name": "雷霆", "prob": 27}],
+    }
+    # 有戰績/休賽季說明 → 嵌入各自區塊
+    h = mr._render_sports_html({
+        "news": {}, "poly": poly,
+        "standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
+        "nba_offseason": "NBA 休賽季:自由市場進行中。"}, htmllib)
+    assert "年度 MVP 盤</b>:AL Yordan Alvarez 61%;NL 大谷翔平 85%" in h
+    assert "賽揚獎盤</b>:AL Cam Schlittler 46%;NL Jacob Misiorowski 63%" in h
+    assert "東西區冠軍盤</b>:東 尼克 22%;西 雷霆 34%" in h
+    assert h.count("東西區冠軍盤") == 1                    # 不重複渲染
+    # 傳統源全掛 → MLB/NBA 各自獨立 fallback 區塊,獎項盤仍在
+    h2 = mr._render_sports_html({"news": {}, "poly": poly}, htmllib)
+    assert "年度 MVP 盤" in h2 and "東西區冠軍盤" in h2
+    assert h2.count("東西區冠軍盤") == 1
+
+
+def test_pulse_includes_politics_rows(monkeypatch):
+    """政治盤入預測市場快照(眾院/參院/2028 執政黨,政黨名繁中)。"""
+    def fake_events(params):
+        slug = str(params.get("slug") or "")
+        if "house" in slug or "senate" in slug or "presidential" in slug:
+            return [{"markets": [
+                {"groupItemTitle": "Democratic Party", "outcomePrices": '["0.84", "0.16"]'},
+                {"groupItemTitle": "Republican Party", "outcomePrices": '["0.17", "0.83"]'},
+            ]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    monkeypatch.setattr(mr, "_poly_search_events", lambda q, limit=8: [])
+    import datetime as dt
+    rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE))
+    by_label = {r["label"]: r["detail"] for r in rows}
+    assert by_label["美國期中選舉眾院多數黨"] == "民主黨 84%・共和黨 17%"
+    assert "美國期中選舉參院多數黨" in by_label
+    assert "2028 美國總統大選執政黨" in by_label

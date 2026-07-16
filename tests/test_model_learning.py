@@ -55,10 +55,14 @@ def test_parse_twse_date_supports_roc_and_gregorian():
     assert mr._parse_twse_date("2026-06-02") == "2026-06-02"
 
 
-def test_save_model_history_compacts_before_dropping(monkeypatch, tmp_path):
-    path = tmp_path / "model_history.json"
-    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", path)
-    monkeypatch.setattr(mr, "MODEL_HISTORY_MAX_BYTES", 1600)
+def test_save_model_history_partitions_and_age_compacts(monkeypatch, tmp_path):
+    """地基批#1(GPT-5.6 P0):改按月分區 gzip;壓縮改「年齡制」——
+    最近 N 日保留完整欄位,更舊者壓縮但保留全部可訓練特徵;不再按大小刪資料。"""
+    import gzip
+    mh_dir = tmp_path / "model_history"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", tmp_path / "legacy.json")
+    monkeypatch.setattr(mr, "MODEL_HISTORY_DIR", mh_dir)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_COMPACT_AFTER_SESSIONS", 2)
     records = []
     for day in range(1, 4):
         records.append({
@@ -74,11 +78,20 @@ def test_save_model_history_compacts_before_dropping(monkeypatch, tmp_path):
                 for code in range(3)
             },
         })
-    mr.save_model_history_records(records, sessions_to_keep=3)
-    saved = json.loads(path.read_text(encoding="utf-8"))
-    assert saved
-    assert saved[0].get("compact") is True
+    mr.save_model_history_records(records, sessions_to_keep=520)
+    part = mh_dir / "2026-06.json.gz"
+    assert part.exists()
+    saved = json.loads(gzip.decompress(part.read_bytes()).decode("utf-8"))
+    assert len(saved) == 3                                   # 三天全保留(無大小刪除)
+    assert saved[0].get("compact") is True                   # 最舊(超出最近2日)被壓縮
     assert "large_unused_blob" not in saved[0]
+    assert saved[0]["stocks"]["0"]["close"]                  # 可訓練特徵仍在
+    assert not saved[-1].get("compact")                      # 最近的保留完整欄位
+    assert "large_unused_blob" in saved[-1]
+    # 內容不變的重寫 → 位元組不變(gzip mtime=0 可重現,不產生無謂 git diff)
+    before = part.read_bytes()
+    mr.save_model_history_records(records, sessions_to_keep=520)
+    assert part.read_bytes() == before
 
 
 def test_fetch_trading_sessions_merges_twse_and_long_history(monkeypatch):
@@ -240,18 +253,35 @@ def test_snapshot_compacts_news_evidence():
     assert "title" not in snap["2330"]["news_catalysts"][0]
 
 
-def test_save_model_history_caps_file_size(monkeypatch, tmp_path):
-    path = tmp_path / "model_history.json"
-    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", path)
-    monkeypatch.setattr(mr, "MODEL_HISTORY_MAX_BYTES", 300)
+def test_save_model_history_never_drops_by_size_and_merges_legacy(monkeypatch, tmp_path):
+    """回歸(GPT-5.6 P0):大體積資料不再觸發「從最舊刪起」;legacy 單檔凍結唯讀,
+    loader 合併讀取且分區同日優先;跨月資料分寫兩個分區。"""
+    legacy = tmp_path / "model_history.json"
+    mh_dir = tmp_path / "model_history"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", legacy)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_DIR", mh_dir)
+    legacy.write_text(json.dumps([
+        {"session_date": "2026-05-30", "taiex_close": 99, "stocks": {}},
+        {"session_date": "2026-06-01", "taiex_close": 0, "stocks": {}},   # 分區應覆蓋此日
+    ]), encoding="utf-8")
     for day in range(1, 8):
         mr.save_model_history({
             "session_date": f"2026-06-{day:02d}",
-            "stocks": {"2330": {"close": 100, "padding": "x" * 120}},
+            "taiex_close": 100 + day,
+            "stocks": {"2330": {"close": 100, "padding": "x" * 5000}},
         })
-    saved = json.loads(path.read_text(encoding="utf-8"))
-    assert len(path.read_bytes()) <= 300
-    assert saved[-1]["session_date"] == "2026-06-07"
+    mr.save_model_history({"session_date": "2026-07-01", "taiex_close": 200,
+                           "stocks": {"2330": {"close": 101}}})
+    assert (mh_dir / "2026-06.json.gz").exists()
+    assert (mh_dir / "2026-07.json.gz").exists()             # 跨月分寫
+    history = mr.load_model_history()
+    dates = [h["session_date"] for h in history]
+    assert dates == ["2026-05-30"] + [f"2026-06-{d:02d}" for d in range(1, 8)] + ["2026-07-01"]
+    assert history[1]["taiex_close"] == 101                  # 分區覆蓋 legacy 同日
+    assert legacy.read_text(encoding="utf-8")                # legacy 凍結未被改寫
+    # 壞分區只略過該檔,其餘照常
+    (mh_dir / "2026-08.json.gz").write_bytes(b"not gzip")
+    assert [h["session_date"] for h in mr.load_model_history()] == dates
 
 
 def test_parse_llm_event_json_recovers_fenced_array():

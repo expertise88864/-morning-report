@@ -6093,13 +6093,20 @@ def fetch_news_fulltext(news: list[dict],
 
 # ============= 多日歷史記憶 (Opt 1) =============
 STATE_FILE = Path("state/history.json")
-MODEL_HISTORY_FILE = Path("state/model_history.json")
+# model_history 儲存(2026-07-16 地基批#1,GPT-5.6 review P0):
+# 舊制單檔 + 14MB 上限「從最舊刪起」造成資料持續流失(190 日→143 日)。
+# 新制:按月分區 gzip(state/model_history/YYYY-MM.json.gz),不再按大小刪資料;
+# 舊單檔凍結唯讀(loader 仍合併讀取,分區同日優先),日後可手動刪除。
+MODEL_HISTORY_FILE = Path("state/model_history.json")   # legacy,唯讀
+MODEL_HISTORY_DIR = Path("state/model_history")
 TWSE_TOP100_ARCHIVE_FILE = Path(os.environ.get(
     "TWSE_TOP100_ARCHIVE_FILE", "state/twse_top100_archive.json"))
 REVENUE_CONSENSUS_FILE = Path(os.environ.get(
     "REVENUE_CONSENSUS_FILE", "state/revenue_consensus.json"))
 MODEL_HISTORY_SESSIONS = 520
-MODEL_HISTORY_MAX_BYTES = 14_000_000
+# 最近 N 個交易日保留完整欄位,更舊者寫入時壓縮(_compact_record 保留全部可訓練
+# 特徵,砍的是新聞全文等大體積欄位)——取代舊的「超過 14MB 才壓縮/刪除」
+MODEL_HISTORY_COMPACT_AFTER_SESSIONS = 30
 MODEL_BACKFILL_TARGET_SESSIONS = 180
 MODEL_BACKFILL_BATCH_DAYS = int(os.environ.get("MODEL_BACKFILL_BATCH_DAYS", "12"))
 MODEL_VERSION = "tw-top100-decay-regime-ridge-platt-quantile-v4"
@@ -6407,6 +6414,7 @@ def save_model_history_records(records: list[dict],
         return compact
 
     try:
+        import gzip
         merged = {
             item.get("session_date"): item for item in load_model_history()
             if item.get("session_date")
@@ -6414,21 +6422,36 @@ def save_model_history_records(records: list[dict],
         for record in records or []:
             if record.get("session_date"):
                 merged[record["session_date"]] = record
+        # 記憶體視圖仍以 sessions_to_keep 為界(更舊月份的分區檔不在本次合併範圍,
+        # 留在磁碟上原封不動——資料不會像舊制被「從最舊刪起」)
         history = sorted(merged.values(), key=lambda item: item.get("session_date", "")
                          )[-sessions_to_keep:]
-        payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
-        compact_index = 0
-        while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and compact_index < len(history):
-            if not history[compact_index].get("compact"):
-                history[compact_index] = _compact_record(history[compact_index])
-                payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
-            compact_index += 1
-        while len(payload.encode("utf-8")) > MODEL_HISTORY_MAX_BYTES and len(history) > 1:
-            history = history[1:]
-            payload = json.dumps(history, ensure_ascii=False, separators=(",", ":"))
-        MODEL_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        MODEL_HISTORY_FILE.write_text(payload, encoding="utf-8")
-        print(f"[model_state] 已寫入完整股票池快照（共 {len(history)} 個交易日）")
+        # 年齡制壓縮:最近 N 日保留完整欄位,更舊者壓縮(保留全部可訓練特徵)。
+        # 取代舊「14MB 上限→壓縮→刪最舊」:GPT-5.6 review P0,190→143 日的流失即出於此。
+        cutoff = max(0, len(history) - MODEL_HISTORY_COMPACT_AFTER_SESSIONS)
+        for i in range(cutoff):
+            if not history[i].get("compact"):
+                history[i] = _compact_record(history[i])
+        # 按月分區,只重寫「內容有變」的月份(gzip mtime=0 → 位元組級可重現,
+        # 內容不變就不會產生無謂的 git diff)
+        by_month: dict[str, list[dict]] = {}
+        for item in history:
+            by_month.setdefault(str(item.get("session_date", ""))[:7], []).append(item)
+        MODEL_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        written = 0
+        for month, items in by_month.items():
+            if not month:
+                continue
+            blob = gzip.compress(
+                json.dumps(items, ensure_ascii=False,
+                           separators=(",", ":")).encode("utf-8"), mtime=0)
+            path = MODEL_HISTORY_DIR / f"{month}.json.gz"
+            if path.exists() and path.read_bytes() == blob:
+                continue
+            path.write_bytes(blob)
+            written += 1
+        print(f"[model_state] 已寫入完整股票池快照(共 {len(history)} 個交易日,"
+              f"更新 {written} 個月分區)")
     except Exception as e:
         print(f"[model_state] 寫入失敗: {e}", file=sys.stderr)
 
@@ -7318,15 +7341,31 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30,
 
 
 def load_model_history() -> list[dict]:
-    """讀取 point-in-time 股票池歷史。"""
-    if not MODEL_HISTORY_FILE.exists():
-        return []
-    try:
-        data = json.loads(MODEL_HISTORY_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception as e:
-        print(f"[model_state] 載入失敗: {e}", file=sys.stderr)
-        return []
+    """讀取 point-in-time 股票池歷史:legacy 單檔(凍結唯讀)+ 按月分區 gzip 合併,
+    同一交易日以分區為準;回傳依日期排序的最近 MODEL_HISTORY_SESSIONS 筆。
+    單一分區壞檔只略過該檔,不影響其餘(晨報不可斷)。"""
+    import gzip
+    merged: dict[str, dict] = {}
+    if MODEL_HISTORY_FILE.exists():
+        try:
+            data = json.loads(MODEL_HISTORY_FILE.read_text(encoding="utf-8"))
+            for item in data if isinstance(data, list) else []:
+                if isinstance(item, dict) and item.get("session_date"):
+                    merged[item["session_date"]] = item
+        except Exception as e:
+            print(f"[model_state] legacy 載入失敗: {e}", file=sys.stderr)
+    if MODEL_HISTORY_DIR.exists():
+        for path in sorted(MODEL_HISTORY_DIR.glob("*.json.gz")):
+            try:
+                data = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
+                for item in data if isinstance(data, list) else []:
+                    if isinstance(item, dict) and item.get("session_date"):
+                        merged[item["session_date"]] = item   # 分區優先(較新)
+            except Exception as e:
+                print(f"[model_state] 分區 {path.name} 載入失敗(略過): {e}",
+                      file=sys.stderr)
+    history = sorted(merged.values(), key=lambda item: item.get("session_date", ""))
+    return history[-MODEL_HISTORY_SESSIONS:]
 
 
 def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
@@ -9245,6 +9284,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         # 在 GitHub Actions 環境中 commit + push 回 repo
         _git_commit_and_push_state(
             [str(STATE_FILE), str(MODEL_HISTORY_FILE),
+             str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
              str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
              str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
              str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗

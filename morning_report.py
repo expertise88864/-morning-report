@@ -12077,13 +12077,19 @@ def _local_title_is_dup(title: str, seen_bigrams: list[set],
     """同一事件常被媒體改寫標題或加「討論牆 |」式前綴(exact 比對擋不住,
     2026-07-16 使用者反映重複)。用 overlap coefficient(交集/較短集合)而非 Jaccard:
     前綴垃圾只灌水分母不灌交集,含入型重複仍拿高分。
-    實測:同事件改寫/加前綴 0.57~1.0、不同事件 0.00 → 門檻 0.50。"""
+    實測:同事件改寫/加前綴 0.57~1.0、不同事件 0.00 → 門檻 0.50。
+    短標題防誤殺(Codex review 批#9):兩者皆短(bigram<12,約 12 字)時,共用實體名
+    就能吃掉大半集合(「台中捷運藍線進度」vs「台中捷運藍線徵才」0.71)——不同事件
+    會被誤殺,改要求近乎全同(0.85)才算重複。"""
     grams = _local_title_bigrams(title)
     if not grams:
         return False
     for prev in seen_bigrams:
         m = min(len(grams), len(prev))
-        if m and len(grams & prev) / m >= threshold:
+        if not m:
+            continue
+        need = 0.85 if m < 12 else threshold
+        if len(grams & prev) / m >= need:
             return True
     return False
 
@@ -14876,6 +14882,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           f"移除區塊={'、'.join(dropped) if dropped else '無'}", file=sys.stderr)
     # 回報實際顯示的 Podcast 集,供寄信後只標記這些為 shown(被砍/縮掉的集留待下次再出現)。
     quotes["PODCAST_SHOWN_EPISODES"] = podcast_eps[:podcast_shown_n]
+    # 同理回報政策區是否真的在信中:trim 模式可能整塊移除政策區,此時不得把
+    # 收件人沒看到的條目標成「已顯示」而降序 5 天(Codex review 批#9)。
+    quotes["TW_INTEL_POLICY_SHOWN"] = inc_policy
     return html
 
 
@@ -16179,7 +16188,9 @@ def main() -> int:
         pending_state_entry,
         # 只把「實際出現在信中」的 Podcast 集標成已顯示;被尺寸守衛砍/縮掉的留待下次再出現。
         quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or [],
-        intelligence=quotes.get("TW_DAILY_INTELLIGENCE"),
+        # 政策區被 trim 整塊移除時不標「已顯示」(收件人沒看到,不得降序 5 天)
+        intelligence=(quotes.get("TW_DAILY_INTELLIGENCE")
+                      if quotes.get("TW_INTEL_POLICY_SHOWN", True) else None),
     )
     return 0
 

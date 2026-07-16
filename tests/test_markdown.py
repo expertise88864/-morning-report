@@ -202,6 +202,20 @@ def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypat
     assert "已暫略" in html and "政府政策" in html    # 橫幅標示砍了政策
     assert "中華職棒" in html                         # 體育保留
     assert "Podcast 重點" in html and "股癌" in html  # Podcast 保留
+    # 批#9 回歸:政策被 trim 整塊移除 → 回報未顯示,寄信端不得把沒看到的條目標成 shown
+    assert q["TW_INTEL_POLICY_SHOWN"] is False
+
+
+def test_render_html_reports_policy_shown_when_not_trimmed(monkeypatch):
+    """政策區正常出現在信中 → TW_INTEL_POLICY_SHOWN=True(寄信端據此記錄已顯示)。"""
+    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 full,不移除任何區塊
+    q = {**_full_quotes(),
+         "TW_DAILY_INTELLIGENCE": {
+             "policy": [{"title": "重大政策", "published": "2026-06-15", "link": "#"}],
+             "medical": []}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
+    assert "重大政策" in html
+    assert q["TW_INTEL_POLICY_SHOWN"] is True
 
 
 def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):

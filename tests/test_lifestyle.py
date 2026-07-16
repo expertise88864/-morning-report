@@ -2257,3 +2257,43 @@ def test_local_title_fuzzy_dedup(monkeypatch):
     out = mr.fetch_local_news()
     titles = [i["title"] for i in out.get("建設", [])]
     assert len(titles) == 2 and titles[0].startswith("中醫大附醫") and titles[1].startswith("中捷藍線")
+
+
+def test_render_sports_poly_survives_when_legacy_sources_all_fail():
+    """回歸(Codex review 批#9):傳統體育源全掛、只剩 Polymarket → 體育卡不得消失,
+    各冠軍盤獨立渲染(不依附戰績/休賽季/賽果區塊)。"""
+    sports = {"news": {}, "poly": {
+        "wc_champion": [{"name": "西班牙", "prob": 58}],
+        "mlb_ws": [{"name": "道奇", "prob": 30}],
+        "nba_champ": [{"name": "雷霆", "prob": 27}],
+        "tennis_m": [{"name": "Jannik Sinner", "prob": 52}],
+    }}
+    h = mr._render_sports_html(sports, htmllib)
+    assert h != ""                                         # 卡片存活
+    assert "世界盃足球賽" in h and "冠軍機率</b>:西班牙 58%" in h
+    assert "世界大賽冠軍盤</b>:道奇 30%" in h
+    assert "2026-27 冠軍盤</b>:雷霆 27%" in h
+    assert "美網冠軍盤</b>:男 Jannik Sinner 52%" in h
+    # 只有 cpbl_games(無賽程行可掛)→ 無可渲染內容,卡片仍回空
+    assert mr._render_sports_html(
+        {"news": {}, "poly": {"cpbl_games": [{"teams": ["樂天", "統一"],
+                                              "probs": [46, 54]}]}}, htmllib) == ""
+
+
+def test_render_sports_nba_champ_not_duplicated_when_embedded():
+    """冠軍盤已嵌進休賽季區塊 → 不得再獨立渲染一次(NBA 標題只出現一次)。"""
+    sports = {"news": {}, "nba_offseason": "NBA 休賽季:自由市場與夏季聯賽進行中。",
+              "poly": {"nba_champ": [{"name": "雷霆", "prob": 27}]}}
+    h = mr._render_sports_html(sports, htmllib)
+    assert h.count("2026-27 冠軍盤") == 1
+
+
+def test_local_short_titles_same_entity_not_deduped():
+    """回歸(Codex review 批#9):兩則短標題共用實體名(台中捷運藍線)但事件不同
+    → 不得誤殺;短標題(bigram<12)須近乎全同(≥0.85)才算重複。"""
+    a = "台中捷運藍線進度曝光"
+    b = "台中捷運藍線大舉徵才"
+    seen = [mr._local_title_bigrams(a)]
+    assert mr._local_title_is_dup(b, seen) is False        # 不同事件 → 保留
+    assert mr._local_title_is_dup("台中捷運藍線進度曝光", seen) is True   # 全同 → 重複
+    assert mr._local_title_is_dup("台中捷運藍線進度曝光 - 自由時報", seen) is True

@@ -2723,3 +2723,18 @@ def test_pulse_binary_detail_with_delta(monkeypatch, tmp_path):
     markets2 = [{"outcomePrices": '["0.59", "0.41"]', "volume24hr": 900}]
     assert mr._poly_binary_detail("pulse|升息", markets2, d2) == "機率 59%(↑7pp)(量低⚠)"
     assert mr._poly_binary_detail("pulse|升息", [], d2) is None
+
+
+def test_mlb_doubleheader_odds_not_duplicated():
+    """信件修正(2026-07-17):同日雙重賽兩場賭盤相同 → 合併列只印一次;
+    不同日/不同賠率仍各自保留。"""
+    line = "賭盤:光芒 46%・紅襪 54%(Polymarket)"
+    sports = {"mlb_fixtures": [
+        {"text": "TB @ BOS", "when": "07/18 01:35", "odds": line},
+        {"text": "TB @ BOS", "when": "07/18 07:05", "odds": line},          # 雙重賽同賠率
+        {"text": "TB @ BOS", "when": "07/19 01:35",
+         "odds": "賭盤:光芒 48%・紅襪 52%(Polymarket)"},
+    ]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert h.count("光芒 46%・紅襪 54%") == 1
+    assert "光芒 48%・紅襪 52%" in h

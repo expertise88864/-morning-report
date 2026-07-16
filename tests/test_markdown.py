@@ -1028,3 +1028,11 @@ def test_render_html_health_warning_line_and_heat_rank_arrows():
     q2 = {**_full_quotes(), "HEALTH_WARNINGS": []}
     assert "⚙ 系統健康" not in mr.render_html(
         q2, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
+
+
+def test_health_line_zwsp_breaks_gmail_autolink():
+    """信件修正(2026-07-17):健康行的網域插入零寬空白,Gmail 不再自動連結化。"""
+    q = {**_full_quotes(), "HEALTH_WARNINGS": ["來源連續失敗:news.cnyes.com(11天)"]}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-17", "每日報")
+    assert "news.​cnyes.​com" in html          # 每個點後有 ZWSP
+    assert "news.cnyes.com" not in html                  # 原始連續網域不再出現

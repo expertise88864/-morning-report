@@ -979,8 +979,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 s["dates"].append(day)
             if g.get("odds"):
                 # 每場賭盤各自保留(帶日期);合併列只留首戰賭盤會吞掉第 2、3 戰
-                # 各自的勝率(Codex review 批#10)
-                s["odds_list"].append((day, _mlb_zh(g.get("odds", ""))))
+                # 各自的勝率(Codex review 批#10)。同日雙重賽兩場的賭盤若相同
+                # (Polymarket 常只開一場或兩場同價)→ 去重,不重印同一行
+                # (2026-07-17 信件:光芒@紅襪同日兩行一模一樣)
+                entry = (day, _mlb_zh(g.get("odds", "")))
+                if entry not in s["odds_list"]:
+                    s["odds_list"].append(entry)
             s["special"] = s["special"] or bool(g.get("special"))
             s["n"] = s.get("n", 0) + 1
         rows = "".join(

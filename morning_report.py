@@ -449,14 +449,16 @@ RSS_FEEDS = {
     # === 央行 / 政策 ===
     "Federal Reserve":   "https://www.federalreserve.gov/feeds/press_all.xml",
     "Fed Monetary":      "https://www.federalreserve.gov/feeds/press_monetary.xml",
-    "Treasury":          "https://home.treasury.gov/news/press-releases/feed",
+    # Treasury RSS 已 404(連續失敗 11 天,2026-07-17 實測無替代 feed)→ 移除;
+    # 財政部聲明經 CNBC/Bloomberg/中央社覆蓋
 
     # === 台灣財經（中文）===
-    "鉅亨台股":           "https://news.cnyes.com/rss/cat/tw_stock",
-    "鉅亨美股":           "https://news.cnyes.com/rss/cat/wd_stock",
-    "鉅亨頭條":           "https://news.cnyes.com/rss/cat/headline",
-    "工商時報財經":       "https://www.chinatimes.com/rss/realtimenews-finance.xml",
-    "工商科技":           "https://www.chinatimes.com/rss/realtimenews-tech.xml",
+    # 鉅亨 RSS 三線全數 404(2026-07-17 實測)→ 換官方 JSON API
+    # (URL 以 &page=1 結尾 → fetch 端自動走既有 cnyes_json 解析器)
+    "鉅亨台股":           "https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?limit=30&page=1",
+    "鉅亨美股":           "https://api.cnyes.com/media/api/v1/newslist/category/wd_stock?limit=30&page=1",
+    "鉅亨頭條":           "https://api.cnyes.com/media/api/v1/newslist/category/headline?limit=30&page=1",
+    # 工商時報 RSS 兩線已 404(同日實測)→ 移除;工商內容經 Google News 各查詢大量覆蓋
     "經濟日報財經":       "https://money.udn.com/rssfeed/news/1001/5589?ch=money",
     "經濟日報國際":       "https://money.udn.com/rssfeed/news/1001/5599/12937?ch=money",
     "聯合新聞兩岸":       "https://udn.com/rssfeed/news/2/6638?ch=news",
@@ -5281,8 +5283,8 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.ey.gov.tw/Page/B31C61707D4FEEEF"},
         {"name": "MOHW News", "url": "https://www.mohw.gov.tw/rss-16-1.html",
          "html_url": "https://www.mohw.gov.tw/www/lp-16-1.html"},
-        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
-         "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
+        # NHI rss/HTML 皆 403 bot-block(健康警示連續 11 天,2026-07-17 移除;
+        # 健保重大訊息經 Google News 醫界查詢覆蓋)
         {"name": "FSC News", "url": "https://www.fsc.gov.tw/ch/home.jsp?id=2&parentpath=0",
          "html_url": "https://www.fsc.gov.tw/ch/home.jsp?id=2&parentpath=0"},
         {"name": "CBC News", "url": "https://www.cbc.gov.tw/tw/lp-302-1.html",
@@ -5299,8 +5301,7 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.mohw.gov.tw/www/lp-16-1.html"},
         {"name": "MOHW Notices", "url": "https://www.mohw.gov.tw/rss-18-1.html",
          "html_url": "https://www.mohw.gov.tw/www/lp-18-1.html"},
-        {"name": "NHI Regulations", "url": "https://www.nhi.gov.tw/ch/rss-3258-1.html",
-         "html_url": "https://www.nhi.gov.tw/ch/lp-3258-1.html"},
+        # NHI 同上移除(2026-07-17)
         {"name": "CDC News", "url": "https://www.cdc.gov.tw/RSS/RssXml/Hh094B49-DRwe2RR4eFQFA",
          "html_url": "https://www.cdc.gov.tw/Category/ListContent/EmXW9Z9G5lXnKcSMacP7Mw"},
         # G8 探活(2026-07-14):TFDA 有真 RSS(rssNews/rssAnnouncement .ashx 皆 200、
@@ -10255,7 +10256,8 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 對照上方昨日紀錄與今日的新聞/數據,用 **≤5 行**說明:昨日的哪些判斷/事件今日被**強化**(有新證據支持)、
 哪些被**推翻/降溫**(出現反向證據)、哪些**無進展**(今日沒有新消息);若今日立場與昨日不同,補一句「為何轉變」。
 **鐵則**:昨日部分只能引用上方【昨日本報敘事回顧】的原文,**不可**替昨日補記它沒說過的話;今日部分必須引用今日新聞/數據。
-若上方為「(無昨日紀錄可對照)」,本段只寫一行「無昨日紀錄可對照」即可。
+**只有**上方整段完全是佔位字串「(無昨日紀錄可對照)」時,本段才寫一行「無昨日紀錄可對照」;
+只要出現「【昨日(…)本報敘事回顧】」標頭,就**必須**逐項做昨日 vs 今日對照,禁止以「無紀錄」帶過。
 
 {weekly_review_section}
 ## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
@@ -15079,10 +15081,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     _hw = quotes.get("HEALTH_WARNINGS") or []
     health_html = ""
     if _hw:
+        # 網域後的「.」插入零寬空白:Gmail 會把 www.xxx.com 自動連結化並弄亂排版
+        # (2026-07-17 信件實見)——零寬空白破壞 linkify、視覺不變
         health_html = (
             "<div style='margin:20px 0 4px;padding:8px 14px;background:#fffbeb;"
             "border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e;'>"
-            "⚙ 系統健康:" + "；".join(_htmllib.escape(str(w)) for w in _hw[:4])
+            "⚙ 系統健康:" + "；".join(
+                _htmllib.escape(str(w)).replace(".", ".​") for w in _hw[:4])
             + "</div>")
 
     # 收件匣預覽文字(preheader):Gmail/iOS 主旨後那行灰字。不設則抓到信首(天氣/MARKET BRIEF 等

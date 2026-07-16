@@ -14898,7 +14898,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 _hspan = (f"/{_hdays}日"
                           if isinstance(_hdays, int) and _hdays > 1 else "")
                 if _hn in _hdelta and _hd is None:
-                    _hmove = "<span style='color:#b45309;font-size:11px;'>(新進)</span>"
+                    # 新進也是「相對前次快照」——基準非昨日同樣要標間隔(Codex review r2)
+                    _hmove = (f"<span style='color:#b45309;font-size:11px;'>"
+                              f"(新進{_hspan})</span>")
                 elif isinstance(_hd, int) and _hd != 0:
                     _hmove = (f"<span style='color:#b45309;font-size:11px;'>"
                               f"({'↑' if _hd > 0 else '↓'}{abs(_hd)}{_hspan})</span>")

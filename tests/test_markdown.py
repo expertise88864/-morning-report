@@ -1023,7 +1023,7 @@ def test_render_html_health_warning_line_and_heat_rank_arrows():
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
     assert "⚙ 系統健康:" in html and "模型歷史 143→130 日縮短" in html
     assert "(↑2)" in html                      # 半導體排名上升
-    assert "(新進)" in html                    # 金融新進榜
+    assert "(新進/3日)" in html                # 金融新進榜(基準非昨日 → 標間隔)
     # 無警示 → 行缺席
     q2 = {**_full_quotes(), "HEALTH_WARNINGS": []}
     assert "⚙ 系統健康" not in mr.render_html(

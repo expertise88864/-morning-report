@@ -12486,8 +12486,10 @@ def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
                     prices = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
                 except (ValueError, TypeError):
                     continue
-                # 事件內含其他 Yes/No prop 市場,只認「兩隊名」的勝負盤
-                if len(outcomes) != 2 or "Yes" in outcomes:
+                # 事件內含 Yes/No、Over/Under、球員對決等 prop 市場——只認「兩個
+                # 結果都是已知 MLB 隊名」的勝負盤,其餘一律跳過(Codex review 批#10:
+                # 光排除 "Yes" 不夠,Over/Under 排前面會被誤當兩隊勝率)
+                if len(outcomes) != 2 or not all(o in _POLY_MLB_ZH for o in outcomes):
                     continue
                 if len(prices) != 2 or not all(0.0 < p < 1.0 for p in prices):
                     continue
@@ -12530,17 +12532,42 @@ def _poly_search_events(query: str, limit: int = 8) -> list:
     return list(js.get("events") or []) if isinstance(js, dict) else []
 
 
+def _poly_event_is_future(event: dict, now_utc: dt.datetime) -> bool:
+    """事件 endDate 是否仍在未來(逐「時刻」比,不能只比日期:已結束但 closed 旗標
+    未翻的同日事件會把已結算的近 100% 機率當現況顯示——Codex review 批#10)。
+    純日期字串視為「當日末」;無法解析一律不取(保守)。"""
+    raw = str(event.get("endDate") or "").strip()
+    if not raw:
+        return False
+    if "T" not in raw:
+        # 純日期(fromisoformat 會解析成當日 00:00,直接比會把整天誤判過期)
+        # → 視為當日末(隔日 00:00 前有效)
+        try:
+            end = (dt.datetime.strptime(raw[:10], "%Y-%m-%d")
+                   .replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1))
+        except ValueError:
+            return False
+        return end >= now_utc
+    try:
+        end = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=dt.timezone.utc)
+    except ValueError:
+        return False
+    return end >= now_utc
+
+
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。逐項失敗略過,全失敗回空。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
-    today = now_tpe.astimezone(dt.timezone.utc).strftime("%Y-%m-%d")
+    now_utc = now_tpe.astimezone(dt.timezone.utc)
     rows: list[dict] = []
     # 1) 最近一次 Fed 利率決議(slug 含流水號 → 搜尋「Fed Decision in <月>?」取最近未來場)
     try:
         cands = [e for e in _poly_search_events("Fed decision")
                  if not e.get("closed")
                  and str(e.get("title", "")).startswith("Fed Decision in")
-                 and str(e.get("endDate") or "")[:10] >= today]
+                 and _poly_event_is_future(e, now_utc)]
         cands.sort(key=lambda e: str(e.get("endDate") or "9999"))
         if cands:
             slug = str(cands[0].get("slug") or "")
@@ -12575,7 +12602,7 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
         tsm = [e for e in _poly_search_events("TSMC beat quarterly earnings")
                if not e.get("closed")
                and "TSMC" in str(e.get("title", ""))
-               and str(e.get("endDate") or "")[:10] >= today]
+               and _poly_event_is_future(e, now_utc)]
         tsm.sort(key=lambda e: str(e.get("endDate") or "9999"))
         if tsm:
             events = _poly_events({"slug": str(tsm[0].get("slug") or "")})

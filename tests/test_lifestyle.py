@@ -2392,3 +2392,80 @@ def test_local_news_card_styled_like_other_sections():
     assert "border-radius:10px" in h                 # 白底框卡
     assert "background:#e0f2fe" in h                 # 主題色塊標籤
     assert "text-decoration:none" in h and "https://x/1" in h
+
+
+def test_attach_mlb_poly_odds_rejects_non_team_two_outcome_props(monkeypatch):
+    """回歸(Codex review 批#10):Over/Under 等兩結果 prop 排在勝負盤前面,
+    不得被誤當兩隊勝率——兩個結果都必須是已知 MLB 隊名。"""
+    def fake_events(params):
+        if params.get("slug") == "mlb-lad-nyy-2026-07-17":
+            return [{"markets": [
+                {"outcomes": '["Over", "Under"]', "outcomePrices": '["0.6", "0.4"]'},
+                {"outcomes": '["Los Angeles Dodgers", "New York Yankees"]',
+                 "outcomePrices": '["0.515", "0.485"]'},
+            ]}]
+        if params.get("slug") == "mlb-tb-bos-2026-07-17":
+            return [{"markets": [   # 只有 prop、沒有勝負盤 → 不掛,保留原行
+                {"outcomes": '["Over", "Under"]', "outcomePrices": '["0.6", "0.4"]'}]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    fixtures = [
+        {"text": "LAD @ NYY", "when": "07/18 07:05",
+         "away_abbr": "LAD", "home_abbr": "NYY", "date_us": "2026-07-17"},
+        {"text": "TB @ BOS", "when": "07/18 01:35", "odds": "賭盤:DK(DraftKings 運彩)",
+         "away_abbr": "TB", "home_abbr": "BOS", "date_us": "2026-07-17"},
+    ]
+    mr._attach_mlb_poly_odds(fixtures)
+    assert fixtures[0]["odds"] == "賭盤:道奇 52%・洋基 48%(Polymarket)"   # 跳過 O/U 取勝負盤
+    assert fixtures[1]["odds"] == "賭盤:DK(DraftKings 運彩)"              # 無勝負盤 → 保留
+
+
+def test_mlb_series_merge_keeps_per_game_odds():
+    """回歸(Codex review 批#10):同對戰連戰合併後,每場各自的賭盤都要渲染(帶日期),
+    不得只剩首戰。"""
+    sports = {"mlb_fixtures": [
+        {"text": "TB @ BOS", "when": "07/18 01:35",
+         "odds": "賭盤:光芒 55%・紅襪 45%(Polymarket)"},
+        {"text": "TB @ BOS", "when": "07/19 01:35",
+         "odds": "賭盤:光芒 48%・紅襪 52%(Polymarket)"},
+    ]}
+    h = mr._render_sports_html(sports, htmllib)
+    assert "2 連戰" in h
+    assert "光芒 55%・紅襪 45%" in h and "光芒 48%・紅襪 52%" in h   # 兩場賭盤都在
+    assert "07/18　賭盤:" in h and "07/19　賭盤:" in h              # 各自帶日期
+
+
+def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
+    """回歸(Codex review 批#10):同一 UTC 日但已結束(closed 旗標未翻)的事件
+    要被擋掉——比「時刻」而非只比日期;純日期字串視為當日末。"""
+    import datetime as dt
+    now = dt.datetime(2026, 7, 16, 12, 0, tzinfo=dt.timezone.utc)
+    assert mr._poly_event_is_future({"endDate": "2026-07-16T08:00:00Z"}, now) is False
+    assert mr._poly_event_is_future({"endDate": "2026-07-16T23:00:00Z"}, now) is True
+    assert mr._poly_event_is_future({"endDate": "2026-07-16"}, now) is True   # 當日末有效
+    assert mr._poly_event_is_future({"endDate": "2026-07-15"}, now) is False
+    assert mr._poly_event_is_future({"endDate": ""}, now) is False
+    assert mr._poly_event_is_future({"endDate": "garbage"}, now) is False
+
+    # 端到端:同日已結束的 TSMC 盤被跳過 → 取下一場未來盤
+    def fake_search(query, limit=8):
+        if "TSMC" in query:
+            return [
+                {"title": "Will TSMC (TSM) beat quarterly earnings?", "slug": "tsm-old",
+                 "endDate": "2026-07-16T08:00:00Z"},   # 今晨已結束(closed 未翻)
+                {"title": "Will TSMC (TSM) beat quarterly earnings?", "slug": "tsm-next",
+                 "endDate": "2026-10-16T23:00:00Z"},
+            ]
+        return []
+
+    def fake_events(params):
+        if params.get("slug") == "tsm-next":
+            return [{"markets": [{"outcomePrices": '["0.7", "0.3"]'}]}]
+        if params.get("slug") == "tsm-old":
+            return [{"markets": [{"outcomePrices": '["0.9995", "0.0005"]'}]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_search_events", fake_search)
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 20, 0, tzinfo=mr.TPE))
+    tsm = [r for r in rows if "台積電" in r["label"]]
+    assert tsm and tsm[0]["detail"] == "機率 70%"   # 取 tsm-next 而非已結束的 99.95%

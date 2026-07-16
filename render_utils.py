@@ -936,11 +936,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             key = _mlb_zh(g.get("text", ""))   # 中文隊名(使用者要求 2026-07-15)
             s = series.setdefault(key, {"first": str(g.get("when", "")),
                                         "dates": [], "special": False,
-                                        "odds": _mlb_zh(g.get("odds", ""))})   # 首戰賭盤(中文隊名)
+                                        "odds_list": []})
             when = str(g.get("when", ""))
             day = when.split(" ")[0] if when else ""
             if day and day not in s["dates"]:
                 s["dates"].append(day)
+            if g.get("odds"):
+                # 每場賭盤各自保留(帶日期);合併列只留首戰賭盤會吞掉第 2、3 戰
+                # 各自的勝率(Codex review 批#10)
+                s["odds_list"].append((day, _mlb_zh(g.get("odds", ""))))
             s["special"] = s["special"] or bool(g.get("special"))
             s["n"] = s.get("n", 0) + 1
         rows = "".join(
@@ -953,8 +957,11 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if s.get("n", 1) > 1 else "")
             + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
                if s["special"] else "")
-            + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
-               f"{htmllib.escape(s['odds'])}</div>" if s.get("odds") else "")
+            + "".join(
+                "<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+                + (f"{htmllib.escape(day)}　" if s.get("n", 1) > 1 and day else "")
+                + f"{htmllib.escape(o)}</div>"
+                for day, o in s.get("odds_list") or [])
             + "</div>"
             for text, s in sorted(series.items(), key=lambda kv: kv[1]["first"]))
         blocks.append(

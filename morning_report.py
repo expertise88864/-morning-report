@@ -12555,8 +12555,17 @@ def _poly_track_deltas(key: str, probs: dict, now_tpe: dt.datetime) -> dict:
         POLY_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
         POLY_HISTORY_FILE.write_text(
             json.dumps(store, ensure_ascii=False), encoding="utf-8")
-        prev_probs = ((ent.get("prev") or {}).get("probs")) or {}
-        return {name: probs[name] - prev_probs[name]
+        prev = ent.get("prev") or {}
+        prev_probs = prev.get("probs") or {}
+        # 基準未必是昨天(來源失敗日/寄信失敗日 state 未輪替)——揭露實際間隔天數,
+        # 不把多日變化偽裝成「前一日」(Codex review wave B P2;基準日期持久化於快照,
+        # 寄信失敗日 state 未推回 repo 時,遠端 prev 的日期仍為真,標示不會失真)
+        try:
+            prev_day = dt.datetime.strptime(str(prev.get("date")), "%Y-%m-%d").date()
+            days = max(1, (now_tpe.date() - prev_day).days)
+        except (ValueError, TypeError):
+            days = 1
+        return {name: {"pp": probs[name] - prev_probs[name], "days": days}
                 for name in probs
                 if name in prev_probs
                 and isinstance(probs[name], (int, float))
@@ -12575,8 +12584,9 @@ def _poly_annotate_deltas(key: str, rows: list[dict],
         key, {r["name"]: r["prob"] for r in rows if r.get("name")}, now_tpe)
     for r in rows:
         d = deltas.get(r.get("name"))
-        if d:
-            r["delta"] = d
+        if d and d.get("pp"):
+            r["delta"] = d["pp"]
+            r["delta_days"] = d.get("days", 1)
     return rows
 
 
@@ -12631,18 +12641,22 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
     return out
 
 
-def _poly_delta_suffix(delta) -> str:
-    """delta(pp)→「(↑7pp)」/「(↓3pp)」;無前值或 |d|<1 回空。"""
+def _poly_delta_suffix(delta, days: int = 1) -> str:
+    """delta(pp)→「(↑7pp)」;基準非昨日時標實際間隔「(↑7pp/3日)」。
+    無前值或 |d|<1 回空。"""
     if not isinstance(delta, (int, float)) or abs(delta) < 1:
         return ""
-    return f"(↑{delta:.0f}pp)" if delta > 0 else f"(↓{-delta:.0f}pp)"
+    arrow = f"↑{delta:.0f}" if delta > 0 else f"↓{-delta:.0f}"
+    span = f"/{days}日" if isinstance(days, int) and days > 1 else ""
+    return f"({arrow}pp{span})"
 
 
 def _poly_prob_line(rows: list[dict]) -> str:
     """[{'name','prob',delta?,low_vol?}] → 「甲 58%(↑7pp)・乙 42%」;
     24h 量低者附「量低⚠」(價格不宜當精確機率)。"""
     return "・".join(
-        f"{r['name']} {r['prob']}%{_poly_delta_suffix(r.get('delta'))}"
+        f"{r['name']} {r['prob']}%"
+        f"{_poly_delta_suffix(r.get('delta'), r.get('delta_days', 1))}"
         + ("(量低⚠)" if r.get("low_vol") else "")
         for r in rows)
 
@@ -12788,14 +12802,14 @@ def _poly_binary_detail(key: str, markets: list,
     if p is None:
         return None
     pct = round(p * 100)
-    deltas = _poly_track_deltas(key, {"yes": pct}, now_tpe)
+    d = _poly_track_deltas(key, {"yes": pct}, now_tpe).get("yes") or {}
     low_vol = False
     if markets[0].get("volume24hr") is not None:   # 欄位缺席=未知,不標
         try:
             low_vol = float(markets[0].get("volume24hr")) < _POLY_LOW_VOLUME_USD
         except (TypeError, ValueError):
             low_vol = False
-    return (f"機率 {pct}%" + _poly_delta_suffix(deltas.get("yes"))
+    return (f"機率 {pct}%" + _poly_delta_suffix(d.get("pp"), d.get("days", 1))
             + ("(量低⚠)" if low_vol else ""))
 
 
@@ -15420,8 +15434,9 @@ def _archive_sensitive_hits(redacted_html: str) -> list[str]:
                 and name in redacted_html:
             hits.append("portfolio_name")
             break
-    # 常見金鑰樣式(sk-/ghp_/AKIA):理論上不會進信,進了就絕不能存
-    if _re.search(r"\b(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})\b",
+    # 常見金鑰樣式(sk-/ghp_/AKIA):理論上不會進信,進了就絕不能存。
+    # sk- 後綴含連字號(sk-proj-… 專案金鑰,Codex review wave B P1)
+    if _re.search(r"\b(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})\b",
                   redacted_html):
         hits.append("secret_pattern")
     return hits

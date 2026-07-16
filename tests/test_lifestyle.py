@@ -2668,10 +2668,15 @@ def test_poly_track_deltas_day_over_day(monkeypatch, tmp_path):
     assert mr._poly_track_deltas("wc", {"西班牙": 60, "阿根廷": 40}, d1) == {}
     # 次日:vs 昨日 curr(60/40)
     deltas = mr._poly_track_deltas("wc", {"西班牙": 65, "阿根廷": 35}, d2)
-    assert deltas == {"西班牙": 5, "阿根廷": -5}
+    assert deltas == {"西班牙": {"pp": 5, "days": 1}, "阿根廷": {"pp": -5, "days": 1}}
     # 次日同日重跑:prev 仍是昨日 → delta 以昨日為基準
     deltas2 = mr._poly_track_deltas("wc", {"西班牙": 66, "阿根廷": 34}, d2)
-    assert deltas2 == {"西班牙": 6, "阿根廷": -6}
+    assert deltas2 == {"西班牙": {"pp": 6, "days": 1}, "阿根廷": {"pp": -6, "days": 1}}
+    # 跨多日(來源失敗/寄信失敗日未輪替)→ 揭露實際間隔,不偽裝成前一日
+    d5 = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    deltas3 = mr._poly_track_deltas("wc", {"西班牙": 70}, d5)
+    assert deltas3 == {"西班牙": {"pp": 4, "days": 3}}   # 基準=07/17 的 66
+    assert mr._poly_delta_suffix(4, 3) == "(↑4pp/3日)"
     # 新名字(昨日沒有)不回 delta
     assert "英格蘭" not in mr._poly_track_deltas("wc", {"英格蘭": 10}, d2)
     # 14 天沒更新的死盤被修剪

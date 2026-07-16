@@ -608,11 +608,14 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     poly = (sports or {}).get("poly") or {}   # Polymarket 賭盤(2026-07-16)
 
     def _poly_delta_sfx(r) -> str:
-        # 「vs 前一日」變化(↑↓pp)+ 24h 量低標記(地基批#4)
+        # 變化(↑↓pp)+ 24h 量低標記;基準非昨日時標實際間隔天數(地基批#4)
         d = r.get("delta")
         sfx = ""
         if isinstance(d, (int, float)) and abs(d) >= 1:
-            sfx = f"(↑{d:.0f}pp)" if d > 0 else f"(↓{-d:.0f}pp)"
+            days = r.get("delta_days", 1)
+            span = f"/{days}日" if isinstance(days, int) and days > 1 else ""
+            arrow = f"↑{d:.0f}" if d > 0 else f"↓{-d:.0f}"
+            sfx = f"({arrow}pp{span})"
         if r.get("low_vol"):
             sfx += "(量低⚠)"
         return sfx

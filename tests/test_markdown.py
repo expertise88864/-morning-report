@@ -943,10 +943,12 @@ def test_archive_fail_closed_sensitive_scan(monkeypatch, tmp_path):
     # 乾淨內容 → 存檔成功
     out = mr.archive_report_html("<html>正常晨報內容</html>", "2026-07-16")
     assert out is not None and out.exists()
-    # 金鑰樣式(redaction 不會處理)→ 拒存
+    # 金鑰樣式(redaction 不會處理)→ 拒存;含 sk-proj- 專案金鑰(Codex review)
     out2 = mr.archive_report_html(
         "<html>leak sk-" + "a" * 24 + "</html>", "2026-07-17")
     assert out2 is None
+    assert mr.archive_report_html(
+        "<html>leak sk-proj-" + "Ab1x" * 8 + "</html>", "2026-07-18") is None
     assert not (tmp_path / "2026-07-17.html.gz").exists()
     # 掃描器逐類別:持股標記殘留/私人信箱/金鑰
     assert mr._archive_sensitive_hits("<!--PF_ROW_START-->x") == ["pf_row_marker"]

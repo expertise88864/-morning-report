@@ -6432,8 +6432,15 @@ def save_model_history_records(records: list[dict],
         for i in range(cutoff):
             if not history[i].get("compact"):
                 history[i] = _compact_record(history[i])
-        # 按月分區,只重寫「內容有變」的月份(gzip mtime=0 → 位元組級可重現,
-        # 內容不變就不會產生無謂的 git diff)
+        # 按月分區,只重寫「內容有變」的月份。
+        # 寫入前先與該分區的既有完整內容合併:sessions_to_keep 視圖的界線若落在
+        # 某月中間,只寫視圖會物理刪除該月更舊的紀錄(Codex review 地基批 P1);
+        # 「有沒有變」以解壓後的 canonical payload 比對,不比壓縮位元組——
+        # gzip OS header byte 跨平台不定,位元組比對會在 Windows/Linux 間誤判
+        # 「有變」而天天重寫(Codex review 地基批 P2)。
+        def _dumps(items: list[dict]) -> str:
+            return json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+
         by_month: dict[str, list[dict]] = {}
         for item in history:
             by_month.setdefault(str(item.get("session_date", ""))[:7], []).append(item)
@@ -6442,13 +6449,29 @@ def save_model_history_records(records: list[dict],
         for month, items in by_month.items():
             if not month:
                 continue
-            blob = gzip.compress(
-                json.dumps(items, ensure_ascii=False,
-                           separators=(",", ":")).encode("utf-8"), mtime=0)
             path = MODEL_HISTORY_DIR / f"{month}.json.gz"
-            if path.exists() and path.read_bytes() == blob:
+            month_merged: dict[str, dict] = {}
+            old_payload = None
+            if path.exists():
+                try:
+                    for it in json.loads(gzip.decompress(path.read_bytes()).decode("utf-8")):
+                        if isinstance(it, dict) and it.get("session_date"):
+                            month_merged[it["session_date"]] = it
+                    old_payload = _dumps(sorted(
+                        month_merged.values(),
+                        key=lambda i: i.get("session_date", "")))
+                except Exception as e:
+                    # 壞檔:視為空(其內容 loader 也讀不到),以本次視圖重建
+                    print(f"[model_state] 分區 {path.name} 既有內容解析失敗,重建: {e}",
+                          file=sys.stderr)
+                    month_merged = {}
+            for it in items:
+                month_merged[it["session_date"]] = it
+            payload = _dumps(sorted(month_merged.values(),
+                                    key=lambda i: i.get("session_date", "")))
+            if payload == old_payload:
                 continue
-            path.write_bytes(blob)
+            path.write_bytes(gzip.compress(payload.encode("utf-8"), mtime=0))
             written += 1
         print(f"[model_state] 已寫入完整股票池快照(共 {len(history)} 個交易日,"
               f"更新 {written} 個月分區)")

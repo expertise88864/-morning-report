@@ -1328,3 +1328,28 @@ def test_backfill_heal_requires_taiex_corroboration(monkeypatch):
     mr.backfill_actual_opens(history)
     # ^TWII 有 mid → 只是單檔漏抓,合法值必須保留
     assert history[0]["actual_open_2330"] == 2405.0
+
+
+def test_partition_boundary_month_keeps_out_of_view_records(monkeypatch, tmp_path):
+    """回歸(Codex review 地基批 P1):歷史超過保留視窗、界線落在某月中間時,
+    重寫該月分區必須保留「視圖外」的更舊紀錄,不得物理刪除。"""
+    import gzip
+    mh_dir = tmp_path / "model_history"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", tmp_path / "legacy.json")
+    monkeypatch.setattr(mr, "MODEL_HISTORY_DIR", mh_dir)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_SESSIONS", 3)   # loader 視圖只留最近 3 筆
+    for day in range(1, 9):   # 同一個月寫 8 天,每天一筆(模擬每日累積)
+        mr.save_model_history(
+            {"session_date": f"2026-06-{day:02d}", "taiex_close": 100 + day,
+             "stocks": {}},
+            sessions_to_keep=3)
+    part = mh_dir / "2026-06.json.gz"
+    saved = json.loads(gzip.decompress(part.read_bytes()).decode("utf-8"))
+    dates = [r["session_date"] for r in saved]
+    assert dates == [f"2026-06-{d:02d}" for d in range(1, 9)]   # 8 天全在磁碟
+    assert [r["session_date"] for r in mr.load_model_history()] == dates[-3:]  # 視圖仍 3 筆
+    # 內容未變的再存 → 不重寫(以解壓後 payload 比對,跨平台 gzip 位元組差異免疫)
+    before = part.read_bytes()
+    mr.save_model_history({"session_date": "2026-06-08", "taiex_close": 108,
+                           "stocks": {}}, sessions_to_keep=3)
+    assert part.read_bytes() == before

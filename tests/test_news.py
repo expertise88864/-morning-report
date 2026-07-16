@@ -943,3 +943,65 @@ def test_policy_queries_or_form_covers_hsinchingan():
     qs = mr.TW_INTELLIGENCE_QUERIES["policy"]
     assert any("新青安 OR" in q for q in qs)
     assert not any(("新青安" in q and " OR " not in q) for q in qs)
+
+
+# ===== 修正批A(2026-07-17,GPT-5.6 二審語意五修) =====
+
+def test_parse_portfolio_rejects_lot_scale_input(capsys):
+    """P0 股/張防呆:單一標的 >1000 萬股=幾乎必是把張當股填 → 整組拒用+報錯。"""
+    assert mr._parse_portfolio('{"2330": 5000}') == {"2330": 5000.0}   # 正常股數
+    assert mr._parse_portfolio('{"0050": 20000000}') == {}             # 異常 → 整組拒用
+    assert "單位應為「股」" in capsys.readouterr().err
+    assert mr._parse_portfolio("2330:5000,0050:99999999") == {}        # 簡易格式同規則
+
+
+def test_poly_yes_prob_pairs_outcomes_not_position():
+    """P0:以 outcomes 配對找 Yes,不假設第一位;No 在前也要對;無 Yes 回 None。"""
+    m_normal = {"outcomes": '["Yes", "No"]', "outcomePrices": '["0.62", "0.38"]'}
+    assert mr._poly_yes_prob(m_normal) == 0.62
+    m_flipped = {"outcomes": '["No", "Yes"]', "outcomePrices": '["0.38", "0.62"]'}
+    assert mr._poly_yes_prob(m_flipped) == 0.62                        # 順序顛倒仍正確
+    m_no_yes = {"outcomes": '["Over", "Under"]', "outcomePrices": '["0.5", "0.5"]'}
+    assert mr._poly_yes_prob(m_no_yes) is None                         # 非 Yes/No 盤不取
+    m_mismatch = {"outcomes": '["Yes"]', "outcomePrices": '["0.6", "0.4"]'}
+    assert mr._poly_yes_prob(m_mismatch) is None                       # 長度不符不取
+    m_legacy = {"outcomePrices": '["0.55", "0.45"]'}
+    assert mr._poly_yes_prob(m_legacy) == 0.55                         # outcomes 缺席才退位置法
+
+
+def test_event_type_word_boundary_no_substring_false_hits():
+    """P1:award 不得誤中 war、steps 不得誤中 eps、disorder 不得誤中 order;
+    正常命中(含中文 substring)不受影響。"""
+    assert mr._event_type("Company wins industry award") == "general"
+    assert mr._event_type("Board approves next steps") == "general"
+    assert mr._event_type("Supply chain disorder continues") == "general"
+    assert mr._event_type("Russia declares war on inflation? missile tests") == "geopolitical"
+    assert mr._event_type("Q2 earnings beat estimates") == "earnings"
+    assert mr._event_type("台積電財報優於預期") == "earnings"
+    assert mr._event_type("新訂單湧入") == "orders"
+
+
+def test_event_timeline_quarterly_episode_and_withdrawn_restart():
+    """P0:同 entity 財報類事件按季分 episode——Q2 財報不因 Q1 已 confirmed 而權重歸零;
+    withdrawn 後的新動態開新 episode 重新起算。"""
+    q1 = {"entity": "2330", "event_type": "earnings", "lifecycle": "confirmed",
+          "published": "2026-04-17T08:00:00+00:00", "title": "Q1 財報"}
+    history = [{"session_date": "2026-04-17", "structured_events": [q1]}]
+    q2 = {"entity": "2330", "event_type": "earnings", "lifecycle": "confirmed",
+          "published": "2026-07-17T08:00:00+00:00", "title": "Q2 財報"}
+    out = mr.apply_event_timeline(history, [q2])[0]
+    assert out["timeline_key"] == "2330|earnings|2026Q3"      # 季度 bucket 分集
+    assert out["is_incremental"] is True                      # 不被 Q1 的 confirmed 吃掉
+    assert out["lifecycle_weight"] > 0
+    # 同一季重複報導仍被抑制(episode 內語意不變)
+    out2 = mr.apply_event_timeline(
+        history + [{"session_date": "2026-07-17", "structured_events": [q2]}], [dict(q2)])[0]
+    assert out2["lifecycle_weight"] == 0
+    # withdrawn 後新動態=新 episode
+    w = {"entity": "NVDA", "event_type": "orders", "lifecycle": "withdrawn",
+         "published": "2026-07-01T00:00:00+00:00", "title": "訂單傳聞撤回"}
+    hist_w = [{"session_date": "2026-07-01", "structured_events": [w]}]
+    revived = {"entity": "NVDA", "event_type": "orders", "lifecycle": "confirmed",
+               "published": "2026-07-17T00:00:00+00:00", "title": "新一輪訂單確認"}
+    out3 = mr.apply_event_timeline(hist_w, [revived])[0]
+    assert out3["is_incremental"] is True and out3["lifecycle_weight"] > 0

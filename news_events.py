@@ -4,7 +4,6 @@
 re-export 維持既有測試與呼叫端;驗證以 tools/refactor_audit.py verify-move 為準。
 """
 from num_utils import _safe_number
-from typing import Optional
 
 from news_rules import (
     NEWS_NEGATIVE_TERMS,
@@ -24,43 +23,27 @@ def _news_event_direction(text: str) -> int:
 
 def _event_type(text: str) -> str:
     """Map noisy headlines to a small, learnable event taxonomy."""
-    lower = (text or "").lower()
+    # 英文 token 需列出複數/變體:word boundary 下 "order" 不再命中 "orders"
+    # (舊 substring 靠副作用吃到複數,改法時一併補齊)
     rules = (
         ("guidance_raise", ("raises guidance", "raise guidance", "上修財測", "調高財測")),
         ("guidance_cut", ("cuts guidance", "cut guidance", "下修財測", "調降財測")),
-        ("orders", ("order", "訂單", "接單", "合約", "contract")),
+        ("orders", ("order", "orders", "訂單", "接單", "合約", "contract", "contracts")),
         ("earnings", ("earnings", "eps", "財報", "獲利", "盈餘")),
-        ("revenue_growth", ("revenue", "營收", "sales growth")),
-        ("export_controls", ("export control", "出口管制", "制裁", "sanction")),
-        ("litigation", ("lawsuit", "litigation", "訴訟", "裁罰")),
-        ("geopolitical", ("war", "missile", "attack", "戰爭", "飛彈", "攻擊")),
+        ("revenue_growth", ("revenue", "revenues", "營收", "sales growth")),
+        ("export_controls", ("export control", "export controls",
+                             "出口管制", "制裁", "sanction", "sanctions")),
+        ("litigation", ("lawsuit", "lawsuits", "litigation", "訴訟", "裁罰")),
+        ("geopolitical", ("war", "missile", "missiles", "attack", "attacks",
+                          "戰爭", "飛彈", "攻擊")),
     )
+    # 統一走 _matches_any(英文 word boundary、中文 substring):
+    # 舊 substring 比對會讓 award 誤中 war、steps 誤中 eps、disorder 誤中 order
+    # (GPT-5.6 二審 P1)。lower 化由 _matches_any 內部處理。
     for event_type, tokens in rules:
-        if any(token in lower for token in tokens):
+        if _matches_any(text or "", list(tokens)):
             return event_type
     return "general"
-
-def _parse_news_time(value, now: Optional[dt.datetime] = None) -> dt.datetime:
-    """Parse RSS and ISO dates; missing timestamps are treated as fresh but explicit."""
-    now = now or dt.datetime.now(dt.timezone.utc)
-    if isinstance(value, dt.datetime):
-        parsed = value
-    else:
-        parsed = None
-        raw = str(value or "").strip()
-        if raw:
-            try:
-                parsed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
-            except ValueError:
-                try:
-                    from email.utils import parsedate_to_datetime
-                    parsed = parsedate_to_datetime(raw)
-                except (TypeError, ValueError):
-                    parsed = None
-    parsed = parsed or now
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=dt.timezone.utc)
-    return parsed.astimezone(dt.timezone.utc)
 
 def _freshness_weight(age_hours: float) -> float:
     """Fresh events matter most; old duplicates fade quickly."""
@@ -121,8 +104,28 @@ def _event_lifecycle(event: dict) -> str:
         return "rumor"
     return "confirmed" if event.get("source_grade") == "A" else "rumor"
 
+# 天生按「季度集數」發生的事件型別:同 entity+type 不同季是不同 episode。
+# 舊鍵 (entity, type) 會把台積電 Q1/Q2/明年 Q1 財報全撞成同一事件,第二季起
+# lifecycle 增量被誤判為「無進展」而權重歸零(GPT-5.6 二審 P0)。
+_QUARTERLY_EVENT_TYPES = frozenset(
+    {"earnings", "guidance_raise", "guidance_cut", "revenue_growth"})
+
+
+def _event_quarter_bucket(event: dict) -> str:
+    """事件的季度 bucket(YYYYQn),取 published;無法解析回空(退回無 bucket 舊鍵)。"""
+    raw = str(event.get("published") or "").strip()
+    try:
+        d = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return f"{d.year}Q{(d.month - 1) // 3 + 1}"
+    except (ValueError, TypeError):
+        return ""
+
+
 def _event_timeline_key(event: dict) -> tuple[str, str]:
-    """Use a stable lineage key across rumor, confirmation and implementation coverage."""
+    """Use a stable lineage key across rumor, confirmation and implementation coverage.
+
+    財報/財測/營收類事件附季度 bucket 成獨立 episode(向後相容:previous map
+    每次由歷史事件 dict 重算本函式,舊紀錄會以同一規則重新分桶,無 state 遷移)。"""
     entity = str(event.get("entity") or "").strip()
     event_type = str(event.get("event_type") or "general").strip() or "general"
     if not entity or event_type == "general":
@@ -132,6 +135,10 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
             cluster = str(event.get("title") or event.get("summary") or "")
         digest = hashlib.sha1(cluster.encode("utf-8")).hexdigest()[:10]
         return entity or f"cluster:{digest}", event_type
+    if event_type in _QUARTERLY_EVENT_TYPES:
+        bucket = _event_quarter_bucket(event)
+        if bucket:
+            return entity, f"{event_type}|{bucket}"
     return entity, event_type
 
 
@@ -154,6 +161,9 @@ def apply_event_timeline(model_history: list[dict],
         prior = previous.get(key)
         is_incremental = prior != status and (
             prior is None or status == "withdrawn"
+            # withdrawn 不是不可逆終態:撤回後的新動態=新 episode 重新起算
+            # (GPT-5.6 二審 P0;否則撤回過的主題永遠拿 0 權重)
+            or prior == "withdrawn"
             or order.get(status, 0) > order.get(prior, 0))
         event["lifecycle"] = status
         event["previous_lifecycle"] = prior

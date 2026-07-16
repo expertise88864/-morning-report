@@ -87,7 +87,6 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     _news_event_direction,
     _event_type,
-    _parse_news_time,  # noqa: F401 — re-export:相容 mr.* 讀取
     _freshness_weight,
     _event_cluster_key,
     _event_surprise_score,
@@ -177,6 +176,15 @@ def _parse_portfolio(raw: str) -> dict[str, float]:
     except (ValueError, TypeError, json.JSONDecodeError) as e:
         print(f"[portfolio] 設定解析失敗(將略過持股預測): {e}", file=sys.stderr)
         return {}
+    # 單位防呆(GPT-5.6 二審 P0):曾有 workflow 註解誤寫「張數」——若把張填成股
+    # 會差 1000 倍。單一標的 >1000 萬股(市值動輒數十億)幾乎必是單位誤填,
+    # 整組拒用並大聲報錯(持倉列會消失,使用者立刻會發現),勝過默默算錯 1000 倍。
+    for code, shares in out.items():
+        if shares > 10_000_000:
+            print(f"[portfolio] {code} 股數 {shares:,.0f} 異常(>1000 萬股)——"
+                  f"單位應為「股」而非「張」,請修正 Secrets;本次略過全部持股顯示",
+                  file=sys.stderr)
+            return {}
     return out
 
 
@@ -12331,10 +12339,21 @@ def _poly_events(params: dict) -> list:
 
 
 def _poly_yes_prob(market: dict) -> Optional[float]:
-    """單一 market 的 Yes 價格(=隱含機率 0~1);解析失敗回 None。"""
+    """單一 market 的 Yes 價格(=隱含機率 0~1);解析失敗回 None。
+
+    以 outcomes 與 outcomePrices zip 配對找 "Yes",不假設第一個位置就是 Yes
+    (GPT-5.6 二審 P0:欄位順序不是 API contract)。outcomes 欄位缺席時
+    才退回舊行為取第一價(防 API 變體,並有 0~1 範圍檢查兜底)。"""
     try:
-        prices = json.loads(market.get("outcomePrices") or "[]")
-        p = float(prices[0])
+        prices = [float(x) for x in json.loads(market.get("outcomePrices") or "[]")]
+        outcomes = [str(x).strip().lower()
+                    for x in json.loads(market.get("outcomes") or "[]")]
+        if outcomes:
+            if len(outcomes) != len(prices) or "yes" not in outcomes:
+                return None
+            p = prices[outcomes.index("yes")]
+        else:
+            p = prices[0]
         return p if 0.0 <= p <= 1.0 else None
     except (ValueError, TypeError, IndexError):
         return None

@@ -959,3 +959,67 @@ def test_archive_fail_closed_sensitive_scan(monkeypatch, tmp_path):
     monkeypatch.setattr(mr, "PORTFOLIO_1_NAME", "老王退休金")
     assert "portfolio_name" in mr._archive_sensitive_hits("老王退休金 +2%")
     assert mr._archive_sensitive_hits("乾淨") == []
+
+
+# ===== 地基批#5(2026-07-16):預測 delta / 熱度排名 delta / 健康警示行 =====
+
+def test_prediction_delta_note_vs_yesterday():
+    history = [
+        {"date": "2026-07-14", "weighted_final_2330": 2400.0, "pred_taiex": 44000.0,
+         "fair_00662": 120.0, "pred_0050": 104.0},
+        {"date": "2026-07-15", "weighted_final_2330": 2440.0, "pred_taiex": 44500.0,
+         "fair_00662": 121.0, "pred_0050": 104.5},
+        {"date": "2026-07-16", "weighted_final_2330": 9999.0},   # 今日自己,不可當基準
+    ]
+    note = mr._prediction_delta_note(history, "2026-07-16 (Thu)", {
+        "2330": 2452.2, "加權": 44700.0, "00662": 120.5, "0050": 104.5})
+    assert "vs 昨日預測" in note and "基準 2026-07-15" in note
+    assert "2330 +0.50%" in note and "加權 +0.45%" in note
+    assert "00662 -0.41%" in note and "0050 +0.00%" in note
+    # 全部 |Δ|<0.05% → 無變化自動抑制
+    assert mr._prediction_delta_note(history, "2026-07-16", {
+        "2330": 2440.5, "加權": 44510.0, "00662": 121.02, "0050": 104.51}) == ""
+    # 無前日紀錄 → 空
+    assert mr._prediction_delta_note([], "2026-07-16", {"2330": 2452.0}) == ""
+
+
+def test_sector_rank_deltas_day_over_day(monkeypatch, tmp_path):
+    import datetime as dt
+    monkeypatch.setattr(mr, "SECTOR_RANK_FILE", tmp_path / "rank.json")
+    d1 = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+    d2 = dt.datetime(2026, 7, 17, 6, 0, tzinfo=mr.TPE)
+    assert mr._sector_rank_deltas(["半導體", "金融", "航運"], d1) == {}   # 首日無基準
+    deltas = mr._sector_rank_deltas(["金融", "半導體", "光電"], d2)
+    assert deltas["金融"] == 1        # 2→1 名(上升1)
+    assert deltas["半導體"] == -1     # 1→2 名(下降1)
+    assert deltas["光電"] is None     # 昨日不在榜 → 新進
+    # 同日重跑:prev 不動,delta 穩定
+    deltas2 = mr._sector_rank_deltas(["金融", "半導體"], d2)
+    assert deltas2["金融"] == 1
+    assert mr._sector_rank_deltas([], d2) == {}   # 空輸入不炸不寫
+
+
+def test_render_html_health_warning_line_and_heat_rank_arrows():
+    q = {**_full_quotes(),
+         "HEALTH_WARNINGS": ["模型歷史 143→130 日縮短", "來源連續失敗:TWSE"],
+         "BREADTH": {"total_value_raw": 3.5e11, "total_value_yi": 3500,
+                     "advance": 700, "decline": 200, "unchanged": 100, "total": 1000,
+                     "advance_ratio": 70.0, "breadth_state": "broad_rally"},
+         "SECTOR_HEAT": {"ranked": ["半導體", "金融"], "total_value_yi": 3500,
+                         "sectors": {
+                             "半導體": {"n": 50, "up": 30, "down": 15, "median_pct": 1.2,
+                                     "value_yi": 1500, "value_share_pct": 42.0,
+                                     "leaders": [{"code": "2330", "name": "台積電",
+                                                  "pct": 2.0, "value_yi": 900.0}]},
+                             "金融": {"n": 30, "up": 10, "down": 15, "median_pct": -0.5,
+                                    "value_yi": 500, "value_share_pct": 14.0,
+                                    "leaders": []}}},
+         "SECTOR_RANK_DELTA": {"半導體": 2, "金融": None}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
+    assert "⚙ 系統健康:" in html and "模型歷史 143→130 日縮短" in html
+    assert "(↑2)" in html                      # 半導體排名上升
+    assert "(新進)" in html                    # 金融新進榜
+    # 無警示 → 行缺席
+    q2 = {**_full_quotes(), "HEALTH_WARNINGS": []}
+    assert "⚙ 系統健康" not in mr.render_html(
+        q2, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")

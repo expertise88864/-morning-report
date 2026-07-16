@@ -235,6 +235,8 @@ def _write_run_manifest(now_tpe) -> None:
             "degraded_steps": list(dict.fromkeys(_DEGRADED_STEPS)),
             "phases": phases,
             "feeds": feeds,
+            # 地基批#5:供次日比對「模型歷史是否縮短」的健康警示
+            "model_history_days": _RUN_MANIFEST.get("model_history_days"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         RUN_MANIFEST_FILE.write_text(
@@ -9314,6 +9316,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
              str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
              str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
              str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
+             str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
              str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
@@ -12219,6 +12222,74 @@ def _render_poly_pulse_html(rows: list[dict]) -> str:
         "僅供參考,不納入本報任何模型計分</div></div>")
 
 
+def _prediction_delta_note(history: list, report_date: str,
+                           current: dict) -> str:
+    """「vs 昨日預測」一行(地基批#5 Delta-first):current 鍵=顯示名、值=今日預測。
+    以 history.json 前一日 entry 為基準;無前日紀錄或全部 |Δ|<0.05% → 回空
+    (無變化自動抑制,不佔版面)。顯示用,不入模型。"""
+    key_map = {"2330": "weighted_final_2330", "加權": "pred_taiex",
+               "00662": "fair_00662", "0050": "pred_0050"}
+    today = str(report_date or "")[:10]
+    prev = None
+    for e in reversed(history or []):
+        if str(e.get("date", "")) < today:
+            prev = e
+            break
+    if not prev:
+        return ""
+    parts: list[str] = []
+    any_move = False
+    for label, cur in current.items():
+        pv = prev.get(key_map.get(label, ""))
+        if (isinstance(cur, (int, float)) and isinstance(pv, (int, float)) and pv):
+            pct = (cur - pv) / pv * 100
+            if abs(pct) >= 0.05:
+                any_move = True
+            parts.append(f"{label} {pct:+.2f}%")
+    if not parts or not any_move:
+        return ""
+    return (f"<div style='font-size:12px;color:#64748b;margin:2px 0 12px;'>"
+            f"vs 昨日預測:{'・'.join(parts)}"
+            f"<span style='color:#94a3b8;'>(基準 {prev.get('date')})</span></div>")
+
+
+# ===== 類股熱度排名 delta(地基批#5):昨日名次 → 今日顯示 ↑↓/新進 =====
+SECTOR_RANK_FILE = Path("state/sector_rank_history.json")
+
+
+def _sector_rank_deltas(ranked: list[str], now_tpe: dt.datetime) -> dict:
+    """記錄今日類股成交值排名並回傳 {產業: 名次變化};正數=名次上升,
+    不在昨日榜(前 20)= None(顯示「新進」)。prev/curr 兩槽同 poly 快照語意:
+    同日重跑覆蓋 curr、跨日輪替;失敗回空。顯示用,不入模型。"""
+    if not ranked:
+        return {}
+    try:
+        today = now_tpe.strftime("%Y-%m-%d")
+        ranks = {ind: i + 1 for i, ind in enumerate(ranked[:20])}
+        store: dict = {}
+        if SECTOR_RANK_FILE.exists():
+            data = json.loads(SECTOR_RANK_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                store = data
+        curr = store.get("curr") if isinstance(store.get("curr"), dict) else {}
+        if str(curr.get("date")) != today:
+            store = {"prev": curr, "curr": {"date": today, "ranks": ranks}}
+        else:
+            store = {"prev": store.get("prev"), "curr": {"date": today, "ranks": ranks}}
+        store = {k: v for k, v in store.items() if v}
+        SECTOR_RANK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SECTOR_RANK_FILE.write_text(
+            json.dumps(store, ensure_ascii=False), encoding="utf-8")
+        prev_ranks = ((store.get("prev") or {}).get("ranks")) or {}
+        if not prev_ranks:
+            return {}
+        return {ind: (prev_ranks[ind] - rank if ind in prev_ranks else None)
+                for ind, rank in ranks.items()}
+    except Exception as e:
+        print(f"[sector] 排名 delta 追蹤失敗(不影響顯示): {e}", file=sys.stderr)
+        return {}
+
+
 def _render_local_news_html(local: dict) -> str:
     """在地快訊卡(台中/彰化/南投/雲林):與其他區塊一致的 h2 標題+白底框卡
     (2026-07-16 使用者要求整體美化)。主題為色塊標籤、標題黑字可點。無資料回空。"""
@@ -14801,6 +14872,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         # 純渲染 quotes["SECTOR_HEAT"](main 已算好,零網路);無資料自動略過。
         _heat = quotes.get("SECTOR_HEAT") or {}
         _hsec, _hrank = _heat.get("sectors") or {}, _heat.get("ranked") or []
+        _hdelta = quotes.get("SECTOR_RANK_DELTA") or {}
         if _hsec and _hrank:
             _hrows = []
             for _hn in _hrank[:5]:
@@ -14810,9 +14882,18 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 _hlead = "、".join(
                     f"{m['code']} {m['name']} {m['pct']:+.1f}%"
                     for m in (_hs.get("leaders") or [])[:2])
+                # 排名變化(地基批#5):↑↓=vs 昨日名次;新進=昨日不在前 20
+                _hd = _hdelta.get(_hn, 0) if _hn in _hdelta else 0
+                if _hn in _hdelta and _hdelta[_hn] is None:
+                    _hmove = "<span style='color:#b45309;font-size:11px;'>(新進)</span>"
+                elif isinstance(_hd, int) and _hd != 0:
+                    _hmove = (f"<span style='color:#b45309;font-size:11px;'>"
+                              f"({'↑' if _hd > 0 else '↓'}{abs(_hd)})</span>")
+                else:
+                    _hmove = ""
                 _hrows.append(
                     f"<div style='font-size:12px;color:#334155;line-height:1.8;'>"
-                    f"<b>{_hn}</b>　成交 {_hs.get('value_yi', 0):,.0f} 億"
+                    f"<b>{_hn}</b>{_hmove}　成交 {_hs.get('value_yi', 0):,.0f} 億"
                     f"({_hs.get('value_share_pct', 0):.1f}%)・中位 "
                     f"<b style='color:{_hc};'>{_hs.get('median_pct', 0):+.1f}%</b>"
                     f"　領先:{_hlead or '-'}</div>")
@@ -15127,10 +15208,24 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
           {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
+        {_prediction_delta_note(quotes.get("HISTORY") or [], report_date, {
+            "2330": _p_mid, "加權": (quotes.get("TAIEX_PRED") or {}).get("pred_open"),
+            "00662": _f_price, "0050": _t_pred})}
         {_render_etf_action_card(_f_price, _t_pred)}
         """
 
     truncation_notice = ""
+
+    # 系統健康警示行(地基批#5):只在異常時出現(模型歷史縮短/來源連續失敗),
+    # 平日空字串不佔版面;放信末不干擾閱讀。
+    _hw = quotes.get("HEALTH_WARNINGS") or []
+    health_html = ""
+    if _hw:
+        health_html = (
+            "<div style='margin:20px 0 4px;padding:8px 14px;background:#fffbeb;"
+            "border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e;'>"
+            "⚙ 系統健康:" + "；".join(_htmllib.escape(str(w)) for w in _hw[:4])
+            + "</div>")
 
     # 收件匣預覽文字(preheader):Gmail/iOS 主旨後那行灰字。不設則抓到信首(天氣/MARKET BRIEF 等
     # 雜訊)。放當日最重要數字,一眼可判今日盤勢。隱私:僅公開預測(加權/2330/0050/00662),絕無持股。
@@ -15238,6 +15333,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {tw_intelligence_html}
 
             {journals_html}
+
+            {health_html}
 
           </td></tr>
 
@@ -16288,6 +16385,9 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 類股熱度計算失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SECTOR_HEAT"] = {}
+    # 排名 delta(地基批#5):昨日名次對照 → 熱度表顯示 ↑↓/新進
+    quotes["SECTOR_RANK_DELTA"] = _sector_rank_deltas(
+        (quotes["SECTOR_HEAT"] or {}).get("ranked") or [], now_tpe)
     # 6.06 台股估值溫度(A4)+ 選擇權結算磁吸價(A5)——白話顯示層,皆不進計分
     try:
         quotes["VALUATION"] = fetch_market_valuation()
@@ -16443,6 +16543,23 @@ def main() -> int:
             print(f"[health] 連續失敗來源: {', '.join(_persist)}", file=sys.stderr)
     except Exception as e:
         print(f"[health] 歷史更新略過: {e}", file=sys.stderr)
+    # 健康警示行(地基批#5):只在異常時於信末出現一行——模型歷史縮短(對照前次
+    # run manifest 記錄的天數)+ 來源連續失敗。平日空,不佔注意力。
+    warnings: list[str] = []
+    try:
+        _RUN_MANIFEST["model_history_days"] = len(model_history)
+        prev_days = None
+        if RUN_MANIFEST_FILE.exists():
+            prev_days = (json.loads(RUN_MANIFEST_FILE.read_text(encoding="utf-8"))
+                         or {}).get("model_history_days")
+        if isinstance(prev_days, int) and len(model_history) < prev_days:
+            warnings.append(f"模型歷史 {prev_days}→{len(model_history)} 日縮短")
+    except Exception as e:
+        print(f"[health] 模型歷史天數比對略過: {e}", file=sys.stderr)
+    _persist_srcs = (quotes.get("SOURCE_HEALTH") or {}).get("persistent_failures") or []
+    if _persist_srcs:
+        warnings.append(f"來源連續失敗:{'、'.join(map(str, _persist_srcs[:4]))}")
+    quotes["HEALTH_WARNINGS"] = warnings
     print(f"[main] 事件/來源健康完成 ({time.monotonic()-_ml_t0:.1f}s);跑 walk-forward…")
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(
         model_history, trading_sessions)

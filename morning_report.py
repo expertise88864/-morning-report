@@ -15403,20 +15403,51 @@ def _redact_private_for_archive(html: str) -> str:
     return out
 
 
+def _archive_sensitive_hits(redacted_html: str) -> list[str]:
+    """去識別後的存檔內容仍含敏感資訊 → 回命中類別清單(fail-closed 掃描,
+    GPT-5.6 review P1:denylist redaction 未來新增個人化欄位時容易漏)。
+    只回類別名,不回內容,避免敏感值進 log。"""
+    import re as _re
+    hits: list[str] = []
+    if "<!--PF_ROW_START-->" in redacted_html:
+        hits.append("pf_row_marker")          # 持股列標記殘留=去識別失敗
+    for addr in {GMAIL_USER, *RECIPIENTS}:
+        if addr and str(addr) in redacted_html:
+            hits.append("private_email")
+            break
+    for name in (PORTFOLIO_1_NAME, PORTFOLIO_2_NAME):
+        if name and name not in ("持倉1", "持倉2") and len(name) >= 2 \
+                and name in redacted_html:
+            hits.append("portfolio_name")
+            break
+    # 常見金鑰樣式(sk-/ghp_/AKIA):理論上不會進信,進了就絕不能存
+    if _re.search(r"\b(sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})\b",
+                  redacted_html):
+        hits.append("secret_pattern")
+    return hits
+
+
 def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optional[Path]:
     """把寄出的信件 HTML(去識別後)存成 state/emails/<date>.html.gz,供日後檢索/RAG。
     §B:先前 state 只存結構化數字,無法回溯「當天信實際說了什麼」。gzip 後每日 ~15-25KB、
-    年約 6-9MB;保留近 keep_days 天,超過者刪除。任何失敗都不影響寄信(晨報不可斷)。"""
+    年約 6-9MB;保留近 keep_days 天,超過者刪除。任何失敗都不影響寄信(晨報不可斷)。
+    寫入前跑敏感掃描,命中即拒存(fail-closed):存檔缺一天可接受,外洩不可逆。"""
     import gzip
     import re as _re
     if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date_str or "")):   # 檔名安全:僅收 YYYY-MM-DD
         print(f"[archive] 日期格式異常({date_str!r}),略過存檔", file=sys.stderr)
         return None
     try:
+        redacted = _redact_private_for_archive(html)
+        hits = _archive_sensitive_hits(redacted)
+        if hits:
+            print(f"[archive] 敏感掃描命中 {hits},拒絕存檔(fail-closed;不影響寄信)",
+                  file=sys.stderr)
+            return None
         EMAIL_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
         out = EMAIL_ARCHIVE_DIR / f"{date_str}.html.gz"
         with gzip.open(out, "wt", encoding="utf-8") as f:
-            f.write(_redact_private_for_archive(html))
+            f.write(redacted)
         cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=keep_days)).strftime("%Y-%m-%d")
         for p in EMAIL_ARCHIVE_DIR.glob("*.html.gz"):
             stem = p.name.split(".")[0]   # 只修剪合法日期檔名,異常檔名不動(Codex nit)

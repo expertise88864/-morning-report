@@ -934,3 +934,26 @@ def test_top5_card_hidden_by_default():
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-15", "每日報")
     assert "波段觀察名單" not in html and "客觀關注排名" not in html
     assert "資金輪動" not in html
+
+
+def test_archive_fail_closed_sensitive_scan(monkeypatch, tmp_path):
+    """地基批#6(GPT-5.6 P1):去識別後仍含敏感內容 → 拒絕存檔(fail-closed),
+    乾淨內容照常存;拒存不影響寄信流程(回 None 而非拋錯)。"""
+    monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path)
+    # 乾淨內容 → 存檔成功
+    out = mr.archive_report_html("<html>正常晨報內容</html>", "2026-07-16")
+    assert out is not None and out.exists()
+    # 金鑰樣式(redaction 不會處理)→ 拒存
+    out2 = mr.archive_report_html(
+        "<html>leak sk-" + "a" * 24 + "</html>", "2026-07-17")
+    assert out2 is None
+    assert not (tmp_path / "2026-07-17.html.gz").exists()
+    # 掃描器逐類別:持股標記殘留/私人信箱/金鑰
+    assert mr._archive_sensitive_hits("<!--PF_ROW_START-->x") == ["pf_row_marker"]
+    monkeypatch.setattr(mr, "GMAIL_USER", "me@example.com")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com"])
+    assert "private_email" in mr._archive_sensitive_hits("mail me@example.com")
+    assert "private_email" in mr._archive_sensitive_hits("to a@example.com")
+    monkeypatch.setattr(mr, "PORTFOLIO_1_NAME", "老王退休金")
+    assert "portfolio_name" in mr._archive_sensitive_hits("老王退休金 +2%")
+    assert mr._archive_sensitive_hits("乾淨") == []

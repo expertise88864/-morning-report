@@ -1035,3 +1035,43 @@ def test_corrective_a_round2_fixes():
     # list 型別的 outcomes 也要能配對
     assert mr._poly_yes_prob(
         {"outcomes": ["No", "Yes"], "outcomePrices": '["0.4", "0.6"]'}) == 0.6
+
+
+def test_cnyes_json_branch_parses_epoch_and_tracks_health(monkeypatch):
+    """信件修正批 r2(Codex):cnyes JSON 的 publishAt(Unix 秒)須轉可解析時間並套
+    30h cutoff;非 200/例外須進 _FEED_STATS(來源健康才看得到 cnyes 掛掉)。"""
+    import datetime as dt
+    now = dt.datetime.now(dt.timezone.utc)
+    cutoff = now - dt.timedelta(hours=30)
+    fresh_ts = int((now - dt.timedelta(hours=2)).timestamp())
+    stale_ts = int((now - dt.timedelta(hours=40)).timestamp())
+
+    class R:
+        status_code = 200
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"items": {"data": [
+                {"newsId": 1, "title": "新鮮新聞", "summary": "s", "publishAt": fresh_ts},
+                {"newsId": 2, "title": "過期新聞", "summary": "s", "publishAt": stale_ts},
+                {"newsId": 3, "title": "無時間戳", "summary": "s", "publishAt": None},
+            ]}}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    mr._FEED_STATS.clear()
+    w = {"idx": 0, "source": "鉅亨台股",
+         "url": "https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?limit=30&page=1",
+         "kind": "cnyes_json"}
+    items = mr._process_feed_item(w, cutoff)
+    titles = [i["title"] for i in items]
+    assert "新鮮新聞" in titles and "過期新聞" not in titles   # cutoff 生效
+    assert "無時間戳" in titles                                # 無法解析→保留但 published 空
+    fresh = next(i for i in items if i["title"] == "新鮮新聞")
+    assert mr._parse_news_time_required(fresh["published"]) is not None   # ISO 可解析
+    assert mr._FEED_STATS["api.cnyes.com"]["ok"] == 1
+    # 失敗路徑:HTTP 例外 → stats fail+streak,外層吞掉回空(晨報不可斷)
+    def boom(*a, **k):
+        raise mr.requests.ConnectionError("down")
+    monkeypatch.setattr(mr, "_http_get", boom)
+    assert mr._process_feed_item(w, cutoff) == []
+    assert mr._FEED_STATS["api.cnyes.com"]["fail"] == 1
+    assert mr._FEED_STATS["api.cnyes.com"]["streak"] == 1

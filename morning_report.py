@@ -4876,24 +4876,45 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
     source, url, kind = w["source"], w["url"], w["kind"]
     out: list[dict] = []
     try:
-        if kind == "cnyes_json":       # 鉅亨美股 JSON 特例
-            r = _http_get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-            if r.status_code == 200:
+        if kind == "cnyes_json":       # 鉅亨 JSON API(台股/美股/頭條三線)
+            # 與 RSS 路徑同等的 per-host 健康記帳:非 200/例外要進 _FEED_STATS,
+            # 否則來源健康警示永遠看不到 cnyes API 掛掉(Codex review)
+            stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0, "streak": 0})
+            try:
+                r = _http_get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                r.raise_for_status()
                 payload = r.json() or {}
-                items_obj = payload.get("items") or {}
-                data = items_obj.get("data") if isinstance(items_obj, dict) else None
-                if not isinstance(data, list):
-                    data = []
-                for d in data[:10]:
-                    if not isinstance(d, dict):
-                        continue
-                    out.append({
-                        "source": source,
-                        "title": d.get("title", ""),
-                        "summary": (d.get("summary") or "")[:800],
-                        "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
-                        "published": d.get("publishAt", ""),
-                    })
+            except Exception:
+                stat["fail"] += 1
+                stat["streak"] = stat.get("streak", 0) + 1
+                raise   # 交給外層統一記 log(與 RSS 失敗同路徑)
+            stat["ok"] += 1
+            stat["streak"] = 0
+            items_obj = payload.get("items") or {}
+            data = items_obj.get("data") if isinstance(items_obj, dict) else None
+            if not isinstance(data, list):
+                data = []
+            for d in data[:10]:
+                if not isinstance(d, dict):
+                    continue
+                # publishAt 是 Unix 秒:轉 ISO 供 _parse_news_time_required 解析,
+                # 並套與 RSS 相同的 cutoff——否則每則被判 date_missing、拿 7 天
+                # fallback 年齡且不受 30h 窗限制(Codex review)
+                pub_dt = None
+                try:
+                    pub_dt = dt.datetime.fromtimestamp(
+                        float(d.get("publishAt")), tz=dt.timezone.utc)
+                except (TypeError, ValueError, OSError):
+                    pass
+                if pub_dt and pub_dt < cutoff:
+                    continue
+                out.append({
+                    "source": source,
+                    "title": d.get("title", ""),
+                    "summary": (d.get("summary") or "")[:800],
+                    "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
+                    "published": pub_dt.isoformat() if pub_dt else "",
+                })
             return out
         if kind == "company":          # 重點公司 Google News 查詢(補個股新聞)
             feed = _feedparser_parse_url_with_timeout(url)

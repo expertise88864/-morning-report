@@ -1,221 +1,249 @@
-# 美股晨報自動化（GitHub Actions 雲端版）
+# 個人化晨報系統(GitHub Actions 雲端版)
 
-每天台灣時間 **約 06:00–06:20** 自動寄送晨報到你信箱，包含：
-- 昨夜美股 QQQ / TSM (台積電 ADR) / SPY 收盤
-- USD/TWD 匯率、VIX / SOX / 10Y / DXY / 13W / 日經225 / 上證 等總經與國際指標 + 10Y−13W 殖利率曲線利差
-- **00662 公允價估值**（QQQ beta + USD/TWD 變動 + 歷史平均偏離修正）
-- **2330 三模型開盤價預測**（漲跌幅 1:1 + 60日比值回歸 + ADR 衰減模型）
-- 加權指數開盤預測、TAIFEX 外資台指期未平倉、TWSE 法人籌碼
-- **台股市值前 100 大**動態 universe（每日自 TWSE OpenAPI 重算市值排名）+ 三大法人 + 30 日累積籌碼 + **月營收年增率** + **大戶持股比例**（TDCC 集保），LLM 從中挑選「今日關注三檔」
-- **預測自我校正**：每日把預測寫入歷史（保留 450 天），隔天用實際開盤誤差做模型加權 + bias 修正（見第四節），並在信中附「預測準確度回顧」表
-- 新聞自動去重（同事件多來源重貼只留一則）
-- 24 小時內國際與台灣財經新聞速報、SEC 8-K 公告
-- LLM（預設 DeepSeek）撰寫的繁體中文分析與明確立場
-- **資料品質區塊**：列出每個資料來源是 ok / 降級 / 失敗，避免把「抓取失敗」誤判成「市場沒訊號」
+每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
+**個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
+天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 680+ 單元測試。
 
 ---
 
-## 一、你需要做的事（一次性，約 30 分鐘）
+## 〇、信件內容總覽(2026-07 現況)
 
-### 步驟 1：申請 Gmail App Password
+依信中出現順序:
 
-1. 進入 https://myaccount.google.com/security
-2. 確認「兩步驟驗證」已開啟（必須）
-3. 進入 https://myaccount.google.com/apppasswords
-4. 「應用程式名稱」填 `Morning Report`，按建立
-5. **複製 16 碼密碼**（去掉空格），等下要用
+| 區塊 | 內容 | 資料源 |
+|---|---|---|
+| KPI 條 | 立場、2330/00662/0050 預測、加權預測、持倉昨日帳上損益 | 內部模型 |
+| 今日結論 | LLM 立場、關鍵價位、操作建議、主要風險 | DeepSeek(預設) |
+| 天氣卡 | 彰化市/台中北區逐日天氣;**颱風風雨門檻警示**(對照停班停課參考標準)+ 停班停課公告新聞列 | Open-Meteo、Google News |
+| 風險事件日曆 | 未來 7 天 CPI/FOMC/結算日/三巫/重點財報(台北時間) | 內建行事曆+財報 API |
+| 一、美股收盤 | QQQ / TSM / SPY | Yahoo Finance |
+| 二、總經指標 | VIX/SOX/DXY/日經/**KOSPI**/上證/黃金/銅 + 1Y 百分位 + 美債利率環境白話(WTI/BTC 照抓餵模型,僅不顯示) | Yahoo Finance |
+| **預測市場觀點** | Polymarket:Fed 最近決議、2026 再升息、美國衰退、台海封鎖/犯台、賴清德任期、S&P 年底區間、美國期中選舉/2028 總統、**台灣九合一政黨盤**、台積電財報 beat(財報季);顯示用,**不入任何模型** | Polymarket Gamma API |
+| 五、加權指數開盤預測 | 夜盤台指期、預測點位、合理區間、訊號共識 | TAIFEX+內部模型 |
+| 六、個股預測 | 2330 開盤 / 00662 公允價 / 0050 + ETF 進出參考價 + MA200 長線參考 | 三模型+校準 |
+| 台股行事曆 | 股票申購(排除債券)、0050/0056 除息與配息(FinMind 自動補值) | TWSE、FinMind |
+| 七、昨夜三大重點/世界大事/48h 情境/敘事變化 | LLM 從結構化新聞事件撰寫 | RSS+SEC+抽取器 |
+| 八、科技板塊脈動 | 2330 供應鏈美股(NVDA/AMD/AVGO/MU/ASML/AAPL 等)逐檔,附證據分級 | Google News+8-K |
+| 九、其他類股 | 金融(含 2882/2891 深追蹤)/生技/航運/傳產/重電/觀光/**房市與建商-中彰投** | Google News、MOPS |
+| 十、總經與政策環境 | 美國利率/Fed/地緣,含匯率與 FX 對持倉語意 | LLM 綜合 |
+| 十一、台灣本地動態 | 台股當日焦點(法說、外資動向) | LLM 綜合 |
+| Podcast 重點 | 11 檔節目白名單(股癌/游庭皓/Wall Street Breakfast/Odd Lots/BG2 等),每集重點+個股觀點與本報資料對照 | 獨立轉錄排程 |
+| 體育快訊 | 世足(淘汰表+**冠軍機率**+90分鐘賭盤)、中職(比分/賽程/**單場賭盤**/戰績)、MLB(戰績表/焦點賽程/單場賭盤/世界大賽/MVP/賽揚盤)、NBA(**開季自動啟用單場賭盤**/總冠軍/東西區盤)、網球(冠軍收斂+美網冠軍盤);隊名全繁中 | ESPN、Yahoo、Wikipedia、Polymarket |
+| 在地快訊 | 彰基/中國醫、建設、房市、產業/科技、學區/文教、交通異動、**選情(2026 九合一)**——台中/彰化/南投/斗六,同事件模糊去重 | Google News |
+| 台灣政策/醫界 | 政策近月走向(**已顯示條目 5 日內降序防重複**)+ 醫界昨日;與股價模型完全隔離 | Google News+官方 RSS(TFDA) |
+| 醫學文獻速報 | JAAD/JEADV/BJD/JAMA Derm/NEJM/AJO 近 7 天,標題中譯 | 期刊 RSS |
 
-### 步驟 2：申請 LLM API Key
+另有:**週日綜合輕量信**(僅體育/Podcast/政策/醫界有新內容才寄)、
+**股癌雷達獨立信**(`gooaye_radar.py`,新集偵測後族群萃取+個股驗證)、
+**週一晨報含上週預測錯誤檢討**。
 
-workflow 預設 `LLM_PROVIDER: deepseek`（中文分析品質佳、每月約 NT$1–6）。三種可選：
+### 賭盤語意鐵律
+
+- 「賭盤(90分鐘)」= 足球三向含和的單場市場(DraftKings 運彩),**不可**稱冠軍機率。
+- 「冠軍機率」= Polymarket 整屆奪冠市場(含延長/PK)。
+- 兩者並列顯示、來源分別標示「(DraftKings 運彩)」「(Polymarket)」。
+
+---
+
+## 一、初次設定(一次性,約 30 分鐘)
+
+### 步驟 1:申請 Gmail App Password
+
+1. https://myaccount.google.com/security 確認兩步驟驗證已開啟
+2. https://myaccount.google.com/apppasswords 建立「Morning Report」,複製 16 碼密碼
+
+### 步驟 2:申請 LLM API Key
 
 | Provider | 申請處 | 月成本 | 備註 |
 |---|---|---|---|
-| `deepseek`（**預設**） | https://platform.deepseek.com | NT$5–15 | 設 `DEEPSEEK_API_KEY`；預設 `deepseek-v4-pro` 並開啟思考模式 |
-| `gemini`（免費備援） | https://aistudio.google.com/apikey | NT$0 | 設 `GEMINI_API_KEY`，免費層每日 1500 req |
-| `anthropic`（品質最佳） | https://console.anthropic.com | NT$30–46 | 設 `ANTHROPIC_API_KEY`，並取消 requirements.txt 中 anthropic 註解 |
+| `deepseek`(**預設**) | https://platform.deepseek.com | NT$5–15 | `DEEPSEEK_API_KEY`;預設 `deepseek-v4-pro` + 思考模式 |
+| `gemini`(免費備援) | https://aistudio.google.com/apikey | NT$0 | `GEMINI_API_KEY` |
+| `anthropic`(品質最佳) | https://console.anthropic.com | NT$30–46 | `ANTHROPIC_API_KEY` |
 
-> DeepSeek 思考模式：workflow 的 `DEEPSEEK_REASONING_EFFORT`（預設 `high`）控制 v4-pro 的推理深度，可設 `medium` / `low` 省成本，或 `off` 完全關閉。
+> 建議同時設 `GEMINI_API_KEY` 當免費備援;全部 LLM 失敗仍會寄出含行情與新聞的基本版。
 
-> 💡 建議至少同時設定 `GEMINI_API_KEY` 當免費備援——主 provider 失敗時程式會嘗試切到 Gemini，Gemini 內部也有多模型降級鏈。若所有 LLM 都失敗，仍會寄出含原始行情與新聞清單的基本版晨報。
+### 步驟 3:建 GitHub repo(**建議 Private**)並上傳全部檔案
 
-### 步驟 3：建 GitHub repo 並上傳檔案
+包含 `morning_report.py`、各模組(見「三、程式架構」)、`requirements.txt`、
+`.github/workflows/*.yml`、`tests/`。
 
-1. 註冊 / 登入 https://github.com
-2. 右上 ➕ → **New repository**
-3. 名稱填 `morning-report`，**選 Private**（私人，重要！），按 Create
-4. 把這資料夾的所有檔案上傳：
-   - 在 GitHub 新 repo 頁，按 **uploading an existing file**
-   - 拖入 `morning_report.py`、`requirements.txt`、`README.md`
-   - 按 **Commit changes**
-5. 上傳 `.github/workflows/morning-report.yml`：
-   - 在 repo 頁按 **Add file** → **Create new file**
-   - 檔名輸入 `.github/workflows/morning-report.yml`（含斜線會自動建資料夾）
-   - 把本機 `.github/workflows/morning-report.yml` 內容整個複製貼上
-   - 按 **Commit changes**
+### 步驟 4:設定 GitHub Secrets / Variables
 
-### 步驟 4：設定 GitHub Secrets
-
-在 repo 頁面：**Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-
-依序新增 Secret：
-
-| Name | 必填 | 放哪 | Value |
+| Name | 必填 | 放哪 | 說明 |
 |---|---|---|---|
-| `GMAIL_USER` | ✅ | Secret | 你的 Gmail 位址 |
-| `GMAIL_APP_PASSWORD` | ✅ | Secret | 步驟 1 拿到的 16 碼密碼 |
-| `RECIPIENT` | 選填 | **Variable** 或 Secret | 收件人；**支援多位，以逗號分隔**（`a@x.com,b@y.com`）。不設則寄給自己 |
-| `DEEPSEEK_API_KEY` | ✅（預設 provider） | Secret | 步驟 2 拿到的 DeepSeek key |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | ✅ | Secret | 寄信帳號與 App Password |
+| `RECIPIENT` | 選填 | Variable 或 Secret | 收件人,逗號分隔多位;不設寄給自己 |
+| `DEEPSEEK_API_KEY` | ✅(預設 provider) | Secret | |
 | `GEMINI_API_KEY` | 建議 | Secret | 免費備援 |
-| `ANTHROPIC_API_KEY` | 選填 | Secret | 只有 `LLM_PROVIDER=anthropic` 才需要 |
-| `CONTACT_EMAIL` | 選填 | Secret | SEC EDGAR API 的 User-Agent 聯絡信箱；不設則自動用 `GMAIL_USER` |
+| `ANTHROPIC_API_KEY` | 選填 | Secret | |
+| `CONTACT_EMAIL` | 選填 | Secret | SEC EDGAR User-Agent;預設用 GMAIL_USER |
+| `PORTFOLIO_1` / `PORTFOLIO_2` | 選填 | Secret | 持股(`2330:5,0050:10` 或 JSON);信中只顯示彙總 %,**明細絕不落地** |
+| `PORTFOLIO_1_NAME` / `PORTFOLIO_2_NAME` | 選填 | Variable | 倉位顯示名 |
+| `FINMIND_TOKEN` | 選填 | Secret | 提高 FinMind 配息 API 額度 |
+| `NBA_FAVORITE_TEAMS` | 選填 | Variable | 逗號分隔關注隊(如 `Celtics,Lakers`) |
+| `EMAIL_OVERFLOW_MODE` | 選填 | Variable | `full`(預設,不砍內容)/`keep`/`trim` |
 
-> `RECIPIENT` 可放在 **Settings → Secrets and variables → Actions → Variables**（明碼、可多位收件者）或 Secrets，workflow 兩者都讀（`vars` 優先）。
-
-> 程式 import 時**不再**強制要求 Gmail secret 存在（方便本機 / CI 測試），但實際寄信前若缺 `GMAIL_USER` / `GMAIL_APP_PASSWORD` 會明確報錯。
-
-### 步驟 5：手動跑一次測試
-
-1. 進入 repo 的 **Actions** tab
-2. 左側選 **Morning Report**
-3. 右側按 **Run workflow** → **Run workflow**
-4. 約 1-2 分鐘後完成，去信箱確認收到了
+### 步驟 5:Actions tab 手動 Run workflow 測試一次
 
 ---
 
-## 二、排程說明
+## 二、排程與 Workflows
 
-預設 cron：`0 22 * * *`（UTC，每日）
-
-| GitHub Actions 觸發 (UTC) | 台灣時間 | 報告類型 |
+| Workflow | 排程(UTC) | 功能 |
 |---|---|---|
-| 週日 22:00 | 週一 06:00 | 週末綜合報（涵蓋週五美股 + 週末動態） |
-| 週一 22:00 | 週二 06:00 | 一般日報（週一美股收盤） |
-| 週二 22:00 | 週三 06:00 | 一般日報 |
-| 週三 22:00 | 週四 06:00 | 一般日報 |
-| 週四 22:00 | 週五 06:00 | 一般日報 |
-| 週五 22:00 | 週六 06:00 | 一般日報（週五美股收盤） |
-| 週六 22:00 | 週日 06:00 | 週日綜合輕量信（不開盤；**僅在有新體育/Podcast/政策/醫界時才寄**） |
+| `morning-report.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
+| `podcast-digest.yml` | 每日 4 次 | faster-whisper 本地轉錄 + DeepSeek 摘要 → `state/podcast_digest.json` |
+| `gooaye-radar.yml` | 週三/六下午 | 股癌新集偵測 → 族群雷達獨立信 |
+| `ci.yml` | push/PR | ruff + py_compile + pytest;另有手動 dry-run-preview |
+| `monthly-ic-report.yml` | 每月 | 因子 IC / 計分回測報告(離線,不寄信) |
 
-> 週日早上美股沒開盤，故走輕量綜合信：略過行情與預測，只彙整週末新增的世足/體育戰績、Podcast、政策與醫界訊息；若週末無新內容則當天不寄信。
-
-> ⚠️ GitHub Actions cron 偶爾會延遲 5-15 分鐘，這是平台特性，不可避免。如極在意準時，可改部署在 Render / Railway 排程。
+> GitHub Actions cron 可能延遲 5–15 分鐘,平台特性。
 
 ---
 
-## 三、本地測試
+## 三、程式架構
+
+```
+morning_report.py     主程式:資料抓取、三模型預測、校準、prompt、渲染、寄信、state
+render_utils.py       渲染輔助:體育卡、Podcast 卡、MLB/NBA/網球中文隊名、Markdown→HTML
+news_rules.py         新聞召回/去重/白名單規則(政策財經白名單、發布者去重)
+llm_postprocess.py    LLM 輸出後處理(段落截斷、字數配額)
+num_utils.py          數值工具
+session_calendar.py   台股交易日推算
+portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要求隱藏)
+podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
+gooaye_radar.py       股癌雷達獨立信
+tests/                680+ 測試(不連網;conftest 隔離 state 寫入)
+state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
+```
+
+### state/ 檔案
+
+| 檔案 | 用途 |
+|---|---|
+| `history.json` | 每日預測與實際開盤(450 天),供 MAE 加權與 bias 校正 |
+| `model_history.json` | 市值前百 point-in-time 快照(上限 520 交易日/14MB) |
+| `event_timeline.json` | 新聞事件生命週期(rumor→confirmed→implemented) |
+| `podcast_digest.json` | Podcast 摘要與已顯示標記 |
+| `conformal_intervals.json` | 預測區間校準 |
+| `intel_shown.json` | 政策區已顯示條目(5 日降序防連日重複) |
+| `source_health_history.json` | 來源健康 30 天史 |
+| `run_manifest.json` | 每次執行耗時/來源結果(觀測用) |
+| `emails/` | 寄出信件去識別存檔(gzip,供檢索) |
+| `twse_top100_archive.json` / `revenue_consensus.json` | 選填外部資料 |
+
+---
+
+## 四、預測模型(計分與係數凍結,改動需回測)
+
+### 2330 三模型 + 自我校正
+
+| 模型 | 邏輯 |
+|---|---|
+| 漲跌幅 1:1 | 昨收 × (1 + TSM ADR%) |
+| 60 日比值回歸 | `2330/(TSM×FX÷5)` 均值反推 |
+| ADR 衰減 | 昨收 × (1 + TSM% × 實證 decay ≈0.75) |
+
+三模型近 20 日 MAE 反比加權;00662/2330/加權另做 bias 修正(±2% 夾限,
+需 5+ 交易日樣本)。回測證實 beta 0.31 近最佳;信中附準確度回顧。
+
+### 00662 公允價
+
+QQQ/00662/TWD 近 3 月估實證 beta 與平均偏離;樣本不足降級 beta=1 並標示。
+
+### 台股關注五檔(內部資料,卡片已隱藏)
+
+point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 模型 +
+產業中性化 + regime 權重 + Platt 校準;walk-forward 監控 Brier/ECE/覆蓋率。
+**Top5 卡與估值溫度/選擇權/持倉曝險卡皆依使用者要求隱藏,資料照算餵 LLM。**
+
+---
+
+## 五、Polymarket 預測市場整合
+
+- **免金鑰** Gamma API(`gamma-api.polymarket.com`);全部呼叫走統一
+  `_poly_get_json` 護欄:單次嘗試 + 8s timeout + **連 2 敗斷路** + 整包 **90s
+  硬預算**——賭盤是加值資訊,寧缺勿拖垮晨報。
+- 單場:MLB(slug=`mlb-{客}-{主}-{美東日}`)、NBA(開季自動生效)、中職
+  (`tag_slug=cpbl`);市場挑選要求「兩結果都是已知隊名」,排除 Over/Under 等 prop。
+- Futures:世足冠軍、MLB 世界大賽/MVP/賽揚、NBA 總冠軍/東西區、美網男女單
+  (slug 含年份,`_POLYMARKET_FUTURES` 每季更新)。
+- 總經/政治(`fetch_polymarket_pulse`):Fed 決議與台積電財報盤動態搜尋;
+  年度型 slug 每年更新;佔位項 Team A/Player A/Party A/Other 自動剔除;
+  endDate 逐時刻比對防已結算盤誤現。
+- **本專案為 read-only 情報工具**:不下單、不自動交易(Polymarket 將台灣列為
+  限制開新倉地區);所有機率顯示用、不入模型計分。
+
+---
+
+## 六、個人化區塊備忘
+
+- 天氣卡:彰化市/台中北區;颱風門檻(平均風 50/陣風 89/雨量 350 km·h/mm)
+  達標紅字+固定免責「以縣市政府公告為準」;人事總處 dgpa.gov.tw 憑證缺 SKI
+  程式抓不到 → 停班停課走新聞源(視窗=台北昨日 16:00 起)。
+- 在地快訊七主題(彰基/中國醫、建設、房市、產業/科技、學區/文教、交通異動、
+  選情);同事件模糊去重(bigram overlap ≥0.5,短標題 ≥0.85)。
+- 政策區:AND 語意查詢已全面改 OR;`intel_shown.json` 防連日重複。
+- Email 大小:`EMAIL_OVERFLOW_MODE=full`(預設)接受 Gmail 102KB 摺疊不砍內容;
+  `trim` 模式會依優先序縮減,且被砍掉的 Podcast/政策**不會**被誤標已顯示。
+
+---
+
+## 七、本地測試
 
 ```bash
 pip install -r requirements.txt
+pytest -q                        # 680+ 測試,不連網、不寄信
 
-# (A) 跑單元測試（不連網、不寄信）
-pytest -q
-
-# (B) 跑完整流程預覽（會連 Yahoo / TWSE / LLM，但不寄信）
-#     PowerShell：
-$env:DRY_RUN="1"            # 不寄信，只輸出 HTML 預覽
-$env:LLM_PROVIDER="deepseek"
-$env:DEEPSEEK_API_KEY="sk-..."
-python morning_report.py
-# 預覽會寫到 /tmp/morning_report_preview.html
+# 完整流程預覽(連真實資料,不寄信);PowerShell:
+$env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."
+python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 ```
 
-`DRY_RUN=1` 時不需要 Gmail secret。`pytest` 完全不連網，靠 mock 驗證計算與渲染邏輯。
-
 ---
 
-## 四、2330 三模型開盤預測 + 校準
-
-| 模型 | 邏輯 | 何時較準 |
-|---|---|---|
-| **模型 1：漲跌幅 1:1** | 昨日 2330 收盤 × (1 + TSM ADR 漲跌幅) | 一般情況、無重大新聞 |
-| **模型 2：60日比值回歸** | 用 60 日 `2330 / (TSM × FX ÷ 5)` 平均比值反推今日合理價 | 看「結構性溢/折價」 |
-| **模型 3：ADR 衰減** | 昨收 × (1 + TSM% × decay)，`decay` 用近 60 日實證係數（約 0.75） | ADR 漲跌不會 100% 反映到台股開盤時 |
-
-三個模型可用就取中位數。再經 **`calibrate_predictions()` 自我校正**（見下節）。
-
-### 預測自我校正（`calibrate_predictions`）
-
-晨報每天會把預測寫進 `state/history.json`（保留 **450 天**），隔天自動讀回做兩件事：
-
-1. **三模型 MAE 反比加權**：用各 model 近 20 日的平均絕對誤差，誤差越小權重越高，算出 `weighted_final`。樣本不足時退回等權中位數。
-2. **bias 修正**：對 00662 合理價、2330 `weighted_final`、加權指數開盤，各自算近 20 日「(實際開盤 − 預測) / 預測」的平均偏誤，套 `修正後 = 原值 × (1 + 偏誤)`（偏誤夾在 ±2%）。
-
-`calibration` 欄位會說明是否套用、偏誤幅度、樣本數。**需累積約 5+ 個交易日**才會開始套用，在那之前用未校正值（晨報「資料品質」區塊會標示）。
-
----
-
-## 五、00662 公允價估值說明
-
-00662 追蹤 NASDAQ-100（與 QQQ 同），但有申購贖回限制、隔日匯率波動、期貨升貼水等溢/折價變數。
-
-估算邏輯（非單純套 QQQ%）：
-1. 從 yfinance 抓 QQQ / 00662.TW / TWD=X 近 3 個月對照，估出 **實證 beta**（00662 對 QQQ 的敏感度）與 **歷史平均偏離**
-2. `合理價 = 昨收 × (1 + QQQ% × beta + 匯率變動% + 平均偏離%)`
-3. 樣本 < 15 筆時自動降級為簡化版（beta=1、無偏離修正），並在 `method` 欄位標示
-4. 最後再經 `calibrate_predictions()` 的 bias 自我校正（見第四節）
-
-若實際開盤偏離合理價過大，可能存在套利空間。
-
----
-
-## 六、成本估算
+## 八、成本估算
 
 | 項目 | 月成本 |
 |---|---|
-| GitHub Actions（Private repo 2000 分鐘/月免費，本任務每次 ~2 分鐘 × 22 次 = 44 分鐘） | **NT$0** |
-| **DeepSeek API**（預設 provider，22 次/月） | **NT$1–6** |
-| Gmail SMTP / Yahoo Finance / TWSE / TAIFEX / SEC | **NT$0** |
-| **合計** | **約 NT$1–6 / 月** |
-
-> 📌 改用 `gemini` 為 **NT$0**；改用 `anthropic` 為每月約 NT$30–46。
-
----
-
-## 七、台股五檔預測學習與新聞事件管線
-
-- 每日保存市值前 100 大完整 point-in-time 快照至 `state/model_history.json`，最多保留 520 個交易日，並設 14 MB 上限避免 repo 無限成長。
-- 冷啟動時每次最多回填 12 個 TWSE `MI_INDEX` 官方歷史交易日，分批累積到 60 日，不會讓每日 GitHub Actions 超時。免費端點沒有歷史每日發行股數，因此免費回填會標記為 `estimated_current_shares`；若放入 `state/twse_top100_archive.json` 正式 archive，則會優先使用真正 point-in-time 市值資料，完整處理倖存者偏誤。
-- 交易日使用 TWSE `FMTQIK` 官方資料，並合併 `^TWII` 兩年歷史索引補足回測區間。
-- 五檔候選分開預測「勝過大盤機率」與「預期報酬」，使用標準化 ridge 模型；樣本不足時才退回保守公式。
-- 排名加入產業中性化與 risk-on / neutral / risk-off / stale-US regime 權重。
-- 關注五檔改用固定且可解釋的客觀排名分，由高至低選出：結構分（籌碼、動能、營收、EPS，正規化後最高 70 分）+ 新聞事件 + 產業中性 + 勝過大盤機率 + 3 日預期報酬 − 模型品質、流動性、機率校準、feature drift 與來源健康度折扣。晨報會逐項顯示，LLM 只能解釋，不能自行換股或重排。
-- 新聞先由抽取器轉成結構化事件，再交給晨報寫作者；事件會聚類、按新鮮度衰減，並優先採用 MOPS、TWSE、TAIFEX、SEC 等官方來源。
-- 新聞影響會隨歷史標籤累積改用事件研究平均超額報酬，不再永久依賴固定加分。
-- 新聞事件會保存生命週期：`rumor → confirmed → implemented → withdrawn`。同一事件重複轉載不再每天加分，只有狀態真正推進時才計入增量影響。
-- 營收驚喜分優先讀取選填的 `state/revenue_consensus.json` 外部共識檔；未提供時，使用 TWSE 實際營收的累計 YoY 趨勢作保守 proxy，並清楚標記來源。
-- 關注五檔細分為隔日開盤、隔日收盤、3 日及 5 日收盤預測；勝過大盤機率會在樣本足夠後套用 Platt 校準，價格區間使用正規化 quantile regression。
-- 模型訓練保留 2 個交易日 purge gap，事件研究會去除重複事件，降低資料洩漏與重複計分。
-- 每檔預測會揭露模型版本、訓練樣本數、近期方向命中率、價格區間方法、單邊滑價估計與 fallback 狀態。walk-forward 會按模型版本分組，並監控 Brier score、ECE、價格區間覆蓋率、Top 5 毛報酬及扣除雙邊滑價後淨報酬。
-- 模型會監控 feature drift 與來源健康度；資料分布偏移、新聞不足、法人資料缺漏、營收覆蓋率不足或流動性過低時，自動降低排名分數。
-- 晨報新增「台灣政策昨日走向」與「台灣醫界昨日走向」兩個快速情報段落；兩者與股價模型完全隔離，不會改變選股或價格預測。
-- 每日 workflow 只做一次 state commit/push；dry-run 不 push。Production workflow 有 concurrency 保護與 15 分鐘上限。
-
-## 八、測試與 CI
-
-- `pytest -q`：本機跑單元測試，全程不連網、不寄信（mock 掉 yfinance）。
-- CI 同時執行 `py_compile`（晨報與 Podcast）及 Ruff，避免獨立 Podcast 排程未經檢查就上線。
-- `.github/workflows/ci.yml`：每次 push / PR 自動跑 `py_compile` + Ruff + `pytest`。
-- CI 另有一個手動觸發（workflow_dispatch）的 `dry-run-preview` job，會用真實資料跑一次並把 HTML 預覽上傳成 artifact，但**不寄信**；此 job 失敗不影響 CI 綠燈。
-- 排程寄信的 workflow（`morning-report.yml`）與 CI 完全獨立，CI 改動不會影響每日自動寄信。
+| GitHub Actions(每次 2–8 分 × 每日) | NT$0(免費額度內) |
+| DeepSeek API(晨報+Podcast 摘要+雷達) | NT$5–15 |
+| 其餘資料源(Yahoo/TWSE/ESPN/Polymarket/Open-Meteo/FinMind 免費層) | NT$0 |
 
 ---
 
 ## 九、故障排查
 
-- **沒收到信** → 進 repo 的 Actions tab 看 `Morning Report` 最後一次 run 是否紅燈，點進去看 log。即使資料源失敗，程式也會降級寄出（該區塊顯示「資料缺失」），所以「完全沒收到信」通常是寄信或排程問題。
-- **Yahoo Finance 失敗** → 偶爾限流；`fetch_quote` 已內建 3 次重試。QQQ/TSM 真的抓不到時，00662 估值 / 2330 預測會降級顯示「資料缺失」，其餘區塊照常。
-- **TWSE / TAIFEX 失敗** → 官方端點偶爾改版或當日未更新；程式會往前找最近交易日，全失敗則該區塊標示抓取失敗，不影響寄信。
-- **Gemini 429 / 503** → 已內建多模型降級鏈（flash → flash-lite → 2.0）與指數退避重試；全失敗會降級寄出基本版。
-- **Gmail SMTP 失敗** → 確認 App Password 沒過期、兩步驟驗證沒關掉；缺 `GMAIL_USER` / `GMAIL_APP_PASSWORD` 會明確報錯。
-- **GitHub Actions push state 失敗** → `save_history_state` 的 git push 失敗只會印警告，不影響當天寄信；workflow 需保留 `permissions: contents: write` 與 `actions/checkout` 的 `fetch-depth: 0`。
-- **新聞抓不到** → RSS 來源可能變動，編輯 `morning_report.py` 中 `RSS_FEEDS` 字典。
-- **資料品質區塊** → 晨報內含「資料品質」表，列出每個來源是 ok / 降級 / 失敗，可一眼判斷當天哪些資料可信。
+- **沒收到信** → Actions tab 看最後一次 run;資料源失敗會降級寄出,「完全沒信」
+  通常是 SMTP 或排程問題。
+- **資料品質區塊** → 信內列出每來源 ok/降級/失敗;LLM prompt 同步收到,
+  不會把「抓不到」誤判成「沒訊號」。
+- **Polymarket 全缺** → 看 log 是否斷路器觸發(連 2 敗/90s 預算);隔天自動恢復。
+- **政策/醫界一模一樣** → 檢查 `state/intel_shown.json` 是否有 commit 回 repo。
+- **state push 失敗** → 只印警告不影響寄信;workflow 需 `contents: write` +
+  `fetch-depth: 0`。
+- **中職比分/官網 geo-block** → 已固定走 Yahoo 運動 API + Wikipedia 戰績備援。
+- **政府網站(dgpa/mohw/cbc)** → 憑證缺 Subject Key Identifier,python 全環境
+  驗不過,一律走新聞源替代,**勿 verify=False**。
 
 ---
 
-## 十、自訂
+## 十、開發紀律(給協作 AI / 未來的自己)
 
-- 想加 BTC / ETH / NVDA 等其他標的：在 `main()` 內 `quotes` 字典加一行 `"NVDA": fetch_quote("NVDA"),`
-- 想改寄送時間：編輯 `.github/workflows/morning-report.yml` 的 `cron` 欄位（注意是 UTC 時間）
-- 想改 LLM 分析語氣：編輯 `morning_report.py` 內 `_build_prompt()` 的 prompt
+1. **計分/預測係數凍結**:任何改動需先回測(`backtest_data/`、monthly IC)。
+2. **端點先探活**:新資料源/查詢一律先 live 實測召回與結構,才寫程式。
+3. **外部 code review**:非瑣碎改動需經 `tools/codex_review.sh`(GPT-5.6,
+   read-only)審到 APPROVE 才 push;文件/測試-only 可跳過。
+4. **隱私**:持股明細只存在 Secrets;信件存檔去識別;個人任職/房產資訊
+   不落地於信件、log 或公開檔案。
+5. **顯示層與模型層分離**:使用者要求隱藏的卡片(Top5/曝險/估值溫度/選擇權)
+   關顯示不關計算;新增資訊(Polymarket/政策/在地)一律不餵計分。
+6. **降級優先**:每個來源獨立 try;晨報必達,內容寧缺。
+
+## 已知限制
+
+- repo 若為 Public,state 與查詢主題會暴露個人關注領域(建議轉 Private)。
+- `state/model_history.json` 受 14MB 上限截斷,長史回測需另存 archive。
+- state 每日 commit 回 repo,長期會膨脹 git 歷史(遷移外部儲存為中期方向)。
+- NBA 單場賭盤 slug 已以上季市場驗證,開季首日仍應目視確認一次。

@@ -163,7 +163,11 @@ def _sanitize_untrusted_text(text: str) -> str:
             r"|系統提示|洩漏.{0,10}(提示|金鑰|指令))")
     kept = [line for line in str(text or "").splitlines()
             if not _INJECTION_LINE_RE.search(line)]
-    return "\n".join(kept)
+    out = "\n".join(kept)
+    # 中和偽造的隔離標籤:內文若帶 </UNTRUSTED_SOURCE_DATA> 會提前關閉邊界、
+    # 讓後續內容逃出不可信區(Codex review 批B)——大小寫不拘一律改寫成無害詞
+    out = _re.sub(r"(?i)UNTRUSTED_SOURCE_DATA", "UNTRUSTED-SOURCE-DATA", out)
+    return out
 
 
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -9312,7 +9316,7 @@ def _format_weekly_review(stats: Optional[dict]) -> str:
              _line("2330 開盤", stats.get("tw2330"))]
     crit = stats.get("critical_events") or []
     if crit:
-        lines.append("上週重點事件(供檢討哪些成真/落空/只是噪音):")
+        lines.append("這批預測期間的重點事件(供檢討哪些成真/落空/只是噪音):")
         lines.extend(f"- {c}" for c in crit)
     return "\n".join(lines)
 
@@ -9963,13 +9967,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         quotes.get("HISTORY"), today=dt.datetime.now(TPE).strftime("%Y-%m-%d"))
     # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之五、週報檢討」段。
     weekly_review_block = _format_weekly_review(quotes.get("WEEKLY_REVIEW"))
-    weekly_review_section = (f"""## 七之五、上週檢討與本週假設（**僅週一綜合報**;有上週統計才寫）
+    weekly_review_section = (f"""## 七之五、近期預測檢討與本週假設（**僅週一綜合報**;有已結算統計才寫）
 
 {weekly_review_block}
 
 依上方【最近 7 個已結算預測回顧】,用 **≤6 行**寫:
 1. 這批預測整體準不準——**引用平均絕對誤差與持續偏誤數字**,一句總評(偏樂觀高估/偏保守低估/大致準)。
-2. 上週哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用上方事件清單與已知走勢,不杜撰。
+2. 這批預測期間哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用上方事件清單與已知走勢,不杜撰。
 3. 本週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則 00662 補漲」)。
 **鐵則**:數字只能引用上方統計;事件只能引用上方清單或歷史;不得杜撰未發生的走勢或不存在的事件。
 """ if weekly_review_block else "")

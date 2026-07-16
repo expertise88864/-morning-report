@@ -2558,3 +2558,54 @@ def test_pulse_includes_politics_rows(monkeypatch):
     assert by_label["美國期中選舉眾院多數黨"] == "民主黨 84%・共和黨 17%"
     assert "美國期中選舉參院多數黨" in by_label
     assert "2028 美國總統大選執政黨" in by_label
+
+
+def test_poly_guard_trips_after_consecutive_failures(monkeypatch):
+    """回歸(Codex review 批#11 P1):Polymarket 逾時級聯不可拖垮晨報——
+    連續 2 次失敗即斷路,其後呼叫瞬時拋錯不再打 HTTP;成功會歸零連敗計數。"""
+    import pytest
+    calls = []
+
+    def boom(url, **kwargs):
+        calls.append(url)
+        raise mr.requests.ConnectionError("timeout")
+    monkeypatch.setattr(mr, "_http_get", boom)
+    for _ in range(2):
+        with pytest.raises(Exception):
+            mr._poly_events({"slug": "x"})
+    assert mr._POLY_GUARD["tripped"] is True
+    with pytest.raises(RuntimeError):
+        mr._poly_events({"slug": "y"})       # 斷路後不再打 HTTP
+    assert len(calls) == 2
+    # 呼叫端(fetch_polymarket_sports/pulse)靠既有 try 全面降級,不炸
+    assert mr.fetch_polymarket_sports() == {}
+    assert mr.fetch_polymarket_pulse() == []
+
+
+def test_poly_guard_budget_and_reset(monkeypatch):
+    """總時間預算用罄 → 斷路;單次成功會歸零連敗(1 敗 1 成不斷路)。"""
+    import pytest
+
+    class R:
+        status_code = 200
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return []
+    seq = [mr.requests.ConnectionError("t"), R()]
+
+    def flaky(url, **kwargs):
+        item = seq.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+    monkeypatch.setattr(mr, "_http_get", flaky)
+    with pytest.raises(Exception):
+        mr._poly_events({"slug": "a"})       # 第 1 敗
+    assert mr._poly_events({"slug": "b"}) == []   # 成功 → 連敗歸零
+    assert mr._POLY_GUARD["tripped"] is False
+    # 預算用罄 → 立即斷路
+    mr._POLY_GUARD["spent"] = 999.0
+    with pytest.raises(RuntimeError):
+        mr._poly_events({"slug": "c"})
+    assert mr._POLY_GUARD["tripped"] is True

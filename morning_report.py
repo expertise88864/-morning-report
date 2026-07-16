@@ -12372,11 +12372,42 @@ _POLY_ZH_MAPS = {"mlb": _POLY_MLB_ZH, "nba": _POLY_NBA_ZH,
                  "mlb_player": _POLY_MLB_PLAYER_ZH}
 
 
+# Polymarket 共用護欄(Codex review 批#11 P1):賽季中全部盤別加總最多 ~40 個
+# 「循序」呼叫,若供應商收連線但逾時,_http_get 預設 3 次嘗試 × 多路徑最壞可吃掉
+# 25 分鐘 CI 上限 → 統一閘門:單次嘗試+短 timeout、連續 2 次失敗即斷路、
+# 整包 90 秒硬預算;斷路後所有後續呼叫瞬時拋錯,由各呼叫端既有 try 降級
+# (賭盤是加值資訊,寧缺勿拖垮晨報)。
+_POLY_GUARD = {"spent": 0.0, "consecutive_failures": 0, "tripped": False}
+_POLY_TIME_BUDGET_SECONDS = 90.0
+_POLY_FAILURE_TRIP = 2
+
+
+def _poly_get_json(path: str, params: dict):
+    if _POLY_GUARD["tripped"]:
+        raise RuntimeError("Polymarket 斷路器已觸發,本次執行跳過後續賭盤呼叫")
+    if _POLY_GUARD["spent"] >= _POLY_TIME_BUDGET_SECONDS:
+        _POLY_GUARD["tripped"] = True
+        raise RuntimeError(f"Polymarket 總時間預算 {_POLY_TIME_BUDGET_SECONDS:.0f}s 用罄")
+    t0 = time.monotonic()
+    try:
+        r = _http_get(f"{_POLYMARKET_GAMMA}{path}", params=params,
+                      timeout=8, retries=0)   # 單次嘗試:失敗交給斷路器,不重試
+        r.raise_for_status()
+        _POLY_GUARD["consecutive_failures"] = 0
+        return r.json()
+    except Exception:
+        _POLY_GUARD["consecutive_failures"] += 1
+        if _POLY_GUARD["consecutive_failures"] >= _POLY_FAILURE_TRIP:
+            _POLY_GUARD["tripped"] = True
+            print("[poly] 連續失敗達上限,斷路器觸發——後續賭盤全數跳過", file=sys.stderr)
+        raise
+    finally:
+        _POLY_GUARD["spent"] += time.monotonic() - t0
+
+
 def _poly_events(params: dict) -> list:
     """Gamma /events 查詢;非 list 回空(API 偶回 dict 錯誤體)。"""
-    r = _http_get(f"{_POLYMARKET_GAMMA}/events", params=params, timeout=12)
-    r.raise_for_status()
-    js = r.json()
+    js = _poly_get_json("/events", params)
     return js if isinstance(js, list) else []
 
 
@@ -12564,10 +12595,7 @@ _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
 
 
 def _poly_search_events(query: str, limit: int = 8) -> list:
-    r = _http_get(f"{_POLYMARKET_GAMMA}/public-search",
-                  params={"q": query, "limit_per_type": limit}, timeout=12)
-    r.raise_for_status()
-    js = r.json()
+    js = _poly_get_json("/public-search", {"q": query, "limit_per_type": limit})
     return list(js.get("events") or []) if isinstance(js, dict) else []
 
 

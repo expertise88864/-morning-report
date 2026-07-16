@@ -33,6 +33,8 @@ def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
     # 政策「已顯示」記錄同理導到 tmp(deliver_report 內會呼叫 mark_intel_shown)
     monkeypatch.setattr(mr, "INTEL_SHOWN_FILE",
                         tmp_path_factory.mktemp("intel") / "intel_shown.json")
+    # Polymarket 護欄(斷路器/時間預算)測試間重置,避免跨測試污染
+    mr._POLY_GUARD.update({"spent": 0.0, "consecutive_failures": 0, "tripped": False})
     yield
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)

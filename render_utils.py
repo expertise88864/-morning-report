@@ -31,6 +31,61 @@ def _mlb_zh(text: str) -> str:
                   lambda m: _MLB_TEAM_ZH.get(m.group(1), m.group(1)), str(text or ""))
 
 
+# NBA 隊名縮寫 → 繁中(ESPN scoreboard 縮寫;含常見別體,未知縮寫原樣保留。
+# 使用者 2026-07-16:英文隊名之外也要有繁中名稱)
+_NBA_TEAM_ZH = {
+    "ATL": "亞特蘭大老鷹", "BOS": "波士頓塞爾提克", "BKN": "布魯克林籃網",
+    "CHA": "夏洛特黃蜂", "CHI": "芝加哥公牛", "CLE": "克里夫蘭騎士",
+    "DAL": "達拉斯獨行俠", "DEN": "丹佛金塊", "DET": "底特律活塞",
+    "GS": "金州勇士", "GSW": "金州勇士", "HOU": "休士頓火箭", "IND": "印第安納溜馬",
+    "LAC": "洛杉磯快艇", "LAL": "洛杉磯湖人", "MEM": "曼菲斯灰熊",
+    "MIA": "邁阿密熱火", "MIL": "密爾瓦基公鹿", "MIN": "明尼蘇達灰狼",
+    "NO": "紐奧良鵜鶘", "NOP": "紐奧良鵜鶘", "NY": "紐約尼克", "NYK": "紐約尼克",
+    "OKC": "奧克拉荷馬雷霆", "ORL": "奧蘭多魔術", "PHI": "費城76人",
+    "PHX": "鳳凰城太陽", "POR": "波特蘭拓荒者", "SAC": "沙加緬度國王",
+    "SA": "聖安東尼奧馬刺", "SAS": "聖安東尼奧馬刺", "TOR": "多倫多暴龍",
+    "UTAH": "猶他爵士", "UTA": "猶他爵士", "WSH": "華盛頓巫師", "WAS": "華盛頓巫師",
+}
+
+
+def _nba_zh(text: str) -> str:
+    """把字串中的 NBA 隊名縮寫換成中文隊名(整詞比對;UTAH 為 4 字母故 {2,4})。"""
+    return re.sub(r"\b([A-Z]{2,4})\b",
+                  lambda m: _NBA_TEAM_ZH.get(m.group(1), m.group(1)), str(text or ""))
+
+
+# 網球:賽事/球星中文對照(常見者;查無對照維持英文,不硬翻小賽事與新秀)
+_TENNIS_EVENT_ZH = {
+    "Wimbledon": "溫網", "US Open": "美網", "Australian Open": "澳網",
+    "Roland Garros": "法網", "French Open": "法網",
+}
+_TENNIS_PLAYER_ZH = {   # 以「姓氏」比對(賽果常見 "J. Sinner" 縮寫格式)
+    "Sinner": "辛納", "Alcaraz": "艾卡拉茲", "Djokovic": "喬科維奇",
+    "Zverev": "茲維列夫", "Medvedev": "梅德維傑夫", "Fritz": "弗里茨",
+    "Rune": "魯內", "Musetti": "穆塞提", "Draper": "德雷珀", "Fonseca": "馮塞卡",
+    "Sabalenka": "莎巴倫卡", "Swiatek": "斯瓦泰克", "Gauff": "高芙",
+    "Rybakina": "雷巴金娜", "Pegula": "佩古拉", "Keys": "凱斯",
+    "Osaka": "大坂直美", "Paolini": "保里尼", "Andreeva": "安德蕾娃",
+}
+
+
+def _tennis_zh(name: str) -> str:
+    """球員名補中文:姓氏在對照表 → 「J. Sinner(辛納)」;否則原樣。"""
+    name = str(name or "").strip()
+    surname = name.split()[-1] if name else ""
+    zh = _TENNIS_PLAYER_ZH.get(surname)
+    return f"{name}({zh})" if zh else name
+
+
+def _tennis_event_zh(event: str) -> str:
+    """賽事名補中文:大滿貫等常見賽事 → 「Wimbledon(溫網)」;否則原樣。"""
+    event = str(event or "").strip()
+    for en, zh in _TENNIS_EVENT_ZH.items():
+        if en.lower() in event.lower():
+            return f"{event}({zh})"
+    return event
+
+
 def _format_macro_line(name: str, m: dict) -> str:
     """總經指標餵 LLM 的單行格式。明確帶「前值」避免 LLM 回推前值而編造數字
     (曾出現「VIX 從 22.2 跳水」幻覺);僅在 change_pct 確為數字時才反推前值。"""
@@ -562,12 +617,14 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 f"<span style='color:#94a3b8;'>({note})</span></div>")
 
     def _tennis_poly_div(p, line_fn) -> str:
-        # 下一個大滿貫(美網)冠軍 futures;球員名維持英文(與賽果區一致)
+        # 下一個大滿貫(美網)冠軍 futures;球星名附中文對照(2026-07-16)
+        def _zh_rows(rows):
+            return [{**r, "name": _tennis_zh(r.get("name"))} for r in rows or []]
         segs = []
         if p.get("tennis_m"):
-            segs.append(f"男 {line_fn(p['tennis_m'])}")
+            segs.append(f"男 {line_fn(_zh_rows(p['tennis_m']))}")
         if p.get("tennis_w"):
-            segs.append(f"女 {line_fn(p['tennis_w'])}")
+            segs.append(f"女 {line_fn(_zh_rows(p['tennis_w']))}")
         return (f"<div style='font-size:12px;color:#b45309;line-height:1.7;'>"
                 f"<b>美網冠軍盤</b>:{';'.join(segs)}"
                 f"<span style='color:#94a3b8;'>(Polymarket)</span></div>")
@@ -787,8 +844,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     if nba:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
-            f"{g.get('date', '')}　{g['text']}"
-            + (f"　<span style='color:#b91c1c;font-weight:700;'>{htmllib.escape(g['series'])}</span>"
+            f"{g.get('date', '')}　{_nba_zh(g['text'])}"
+            + (f"　<span style='color:#b91c1c;font-weight:700;'>{htmllib.escape(_nba_zh(g['series']))}</span>"
                if g.get("series") else "")
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
                if g.get("note") else "")
@@ -803,7 +860,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     if nba_fav:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
-            f"<span style='color:#94a3b8;'>{htmllib.escape(g.get('date', ''))}</span>　{g['text']}"
+            f"<span style='color:#94a3b8;'>{htmllib.escape(g.get('date', ''))}</span>　{_nba_zh(g['text'])}"
             + (f"<div style='font-size:12px;color:#94a3b8;'>{htmllib.escape(g['note'])}</div>"
                if g.get("note") else "")
             + "</div>"
@@ -821,11 +878,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     nba_fixtures = (sports or {}).get("nba_fixtures") or []
     if nba_fixtures:
         rows = "".join(
-            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<div style='padding:6px 0;border-bottom:1px dashed #f1f5f9;"
+            f"font-size:13px;color:#334155;line-height:1.7;'>"
             f"<span style='color:#94a3b8;'>{htmllib.escape(str(g.get('when', '')))}</span>　"
-            f"{htmllib.escape(str(g.get('text', '')))}"
+            f"<b>{htmllib.escape(_nba_zh(str(g.get('text', ''))))}</b>"
             + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
-               f"{htmllib.escape(str(g.get('odds', '')))}</div>" if g.get("odds") else "")
+               f"{htmllib.escape(_nba_zh(str(g.get('odds', ''))))}</div>" if g.get("odds") else "")
             + "</div>"
             for g in nba_fixtures)
         blocks.append(
@@ -837,19 +895,30 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             + _poly_champ_div("2026-27 冠軍盤", poly["nba_champ"]) + "</div>")
     if standings:
-        # MLB 戰績:兩聯盟各前 5(勝-敗、勝率);使用者要求完整戰績表而非一行前三
+        # MLB 戰績:改表格排版(2026-07-16 使用者反映「、」串接一長行難讀)——
+        # 聯盟分節列 + 每隊一列(排名/中文隊名/勝-敗/勝率),與中職戰績表同款式
         seg_rows = []
         for lg, teams in standings.items():
-            cells = "、".join(
-                f"{_mlb_zh(t['team'])} {t['record']}"
-                + (f"({t['pct']:.3f})" if t.get("pct") else "")
-                for t in teams)
             seg_rows.append(
-                f"<div style='font-size:12px;color:#475569;line-height:1.8;'>"
-                f"<b style='color:#0f172a;'>{lg}</b>　{cells}</div>")
+                f"<tr><td colspan='3' style='padding:6px 10px;background:#f8fafc;"
+                f"font-size:12px;font-weight:700;color:#475569;'>{htmllib.escape(lg)}</td></tr>")
+            for i, t in enumerate(teams, 1):
+                pct = f"{t['pct']:.3f}" if t.get("pct") else "-"
+                seg_rows.append(
+                    f"<tr><td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
+                    f"font-size:13px;color:#0f172a;'>{i}. <b>{htmllib.escape(_mlb_zh(t['team']))}</b></td>"
+                    f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
+                    f"text-align:right;font-size:13px;'>{htmllib.escape(str(t['record']))}</td>"
+                    f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
+                    f"text-align:right;font-size:13px;color:#64748b;'>{pct}</td></tr>")
         blocks.append(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 戰績（勝率前 5）</b>"
-            + "".join(seg_rows)
+            "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 戰績（兩聯盟勝率前 5）</b>"
+            "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
+            "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
+            "font-size:12px;color:#64748b;'>排名 / 球隊</th><th style='padding:4px 10px;"
+            "text-align:right;font-size:12px;color:#64748b;'>勝-敗</th>"
+            "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th></tr>"
+            + "".join(seg_rows) + "</table>"
             + (_poly_champ_div("世界大賽冠軍盤", poly["mlb_ws"])
                if poly.get("mlb_ws") else "")
             + "</div>")
@@ -875,11 +944,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             s["special"] = s["special"] or bool(g.get("special"))
             s["n"] = s.get("n", 0) + 1
         rows = "".join(
-            f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
+            f"<div style='padding:6px 0;border-bottom:1px dashed #f1f5f9;"
+            f"font-size:13px;color:#334155;line-height:1.7;'>"
             f"<span style='color:#94a3b8;'>{htmllib.escape(s['first'])}</span>　"
-            f"{htmllib.escape(text)}"
-            + (f"<span style='color:#94a3b8;font-size:11px;'>"
-               f"（{s['n']} 連戰:{htmllib.escape('、'.join(s['dates']))}）</span>"
+            f"<b>{htmllib.escape(text)}</b>"
+            + (f"　<span style='color:#94a3b8;font-size:11px;'>"
+               f"{s['n']} 連戰:{htmllib.escape('、'.join(s['dates']))}</span>"
                if s.get("n", 1) > 1 else "")
             + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
                if s["special"] else "")
@@ -915,32 +985,37 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                         if fin.get("tier") else "")
                 shown_event = str(fin.get("event") or event)   # 顯示用截斷名;比對用未截斷 key
                 done_lines.append(
-                    f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
-                    f"{tier}<b>{htmllib.escape(shown_event)}</b> {htmllib.escape(tour)} 冠軍:"
-                    f"<b>{htmllib.escape(fin['winner'])}</b>"
+                    f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
+                    f"font-size:12px;color:#334155;line-height:1.7;'>"
+                    f"{tier}<b>{htmllib.escape(_tennis_event_zh(shown_event))}</b> {htmllib.escape(tour)} 冠軍:"
+                    f"<b>{htmllib.escape(_tennis_zh(fin['winner']))}</b>"
                     f"<span style='color:#94a3b8;font-size:11px;'>"
-                    f"（決賽勝 {htmllib.escape(fin['loser'])},{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
+                    f"（決賽勝 {htmllib.escape(_tennis_zh(fin['loser']))},{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
             live_seg = "".join(
-                f"<div style='font-size:12px;color:#334155;line-height:1.7;'>"
+                f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
+                f"font-size:12px;color:#334155;line-height:1.7;'>"
                 f"<span style='color:#94a3b8;'>{htmllib.escape(str(r.get('date', '')))} "
                 f"{htmllib.escape(r['tour'])}</span>　"
                 + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
                    if r.get("tier") else "")
-                + f"<b>{htmllib.escape(r['winner'])}</b> 勝 {htmllib.escape(r['loser'])}"
-                + (f"<span style='color:#94a3b8;font-size:11px;'>（{htmllib.escape(r['event'])}）</span>"
+                + f"<b>{htmllib.escape(_tennis_zh(r['winner']))}</b> 勝 {htmllib.escape(_tennis_zh(r['loser']))}"
+                + (f"<span style='color:#94a3b8;font-size:11px;'>（{htmllib.escape(_tennis_event_zh(r['event']))}）</span>"
                    if r.get("event") else "")
                 + "</div>"
                 for r in live_lines)
             t_inner.append("".join(done_lines) + live_seg)
         if tennis.get("tournaments"):
-            # 進行中/即將開打的賽事(已完賽者不列;最多 5 個,防長尾雜訊)
-            seg = "　|　".join(
-                f"{htmllib.escape(t['name'])}"
-                + (f"（{htmllib.escape(t['status'])}）" if t.get("status") else "")
+            # 進行中/即將開打的賽事:逐行列(原「|」串接一長行難讀,2026-07-16)
+            seg = "".join(
+                f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
+                f"<span style='color:#94a3b8;'>・</span>{htmllib.escape(_tennis_event_zh(t['name']))}"
+                + (f"<span style='color:#94a3b8;'>（{htmllib.escape(t['status'])}）</span>"
+                   if t.get("status") else "")
+                + "</div>"
                 for t in tennis["tournaments"][:5])
             t_inner.append(
-                f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
-                f"<b>進行中/即將</b>　{seg}</div>")
+                f"<div style='font-size:12px;color:#475569;line-height:1.7;margin-top:4px;'>"
+                f"<b>進行中/即將</b>{seg}</div>")
         if poly.get("tennis_m") or poly.get("tennis_w"):
             t_inner.append(_tennis_poly_div(poly, _poly_line))
         blocks.append(

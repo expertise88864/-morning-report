@@ -44,8 +44,8 @@ def test_render_sports_html():
     h = mr._render_sports_html(sports, htmllib)
     assert "體育快訊" in h
     assert "中華職棒戰績" in h and "味全龍" in h and "33-0-16" in h
-    assert "NBA 冠軍賽" in h and "NY leads series 3-1" in h
-    assert "MLB 戰績" in h and "坦帕灣光芒 40-25" in h   # 中文隊名(2026-07-15)
+    assert "NBA 冠軍賽" in h and "紐約尼克 leads series 3-1" in h   # 縮寫轉繁中(2026-07-16)
+    assert "MLB 戰績" in h and "坦帕灣光芒" in h and "40-25" in h   # 表格化,中文隊名
     assert "MLB 昨日比分" not in h          # 使用者要求移除逐場比分
     assert "兄弟逆轉勝" in h
     assert mr._render_sports_html({}, htmllib) == ""
@@ -548,7 +548,7 @@ def test_render_nba_favorite_block():
     sports = {"news": {}, "nba_fav": [
         {"text": "<b>BOS</b> 110:105 NYK", "date": "06/14", "note": "Finals G5"}]}
     h = mr._render_sports_html(sports, htmllib)
-    assert "NBA 關注球隊近況" in h and "BOS" in h and "Finals G5" in h
+    assert "NBA 關注球隊近況" in h and "波士頓塞爾提克" in h and "Finals G5" in h
 
 
 def test_nba_favorite_teams_env(monkeypatch):
@@ -1478,8 +1478,8 @@ def test_render_mlb_standings_and_fixtures():
                           "special": True}],
     }
     html = mr._render_sports_html(sports, htmllib)
-    assert "MLB 戰績（勝率前 5）" in html
-    assert "坦帕灣光芒 56-38(0.596)" in html    # 中文隊名(2026-07-15)
+    assert "MLB 戰績（兩聯盟勝率前 5）" in html         # 表格化(2026-07-16)
+    assert "坦帕灣光芒" in html and "56-38" in html and "0.596" in html
     assert "MLB 未來一週焦點賽程" in html
     assert "洛杉磯道奇 @ 紐約洋基" in html    # 中文隊名(2026-07-15)
     assert "特別賽事" in html                                     # 明星賽標記
@@ -1488,7 +1488,8 @@ def test_render_mlb_standings_and_fixtures():
 def test_render_nba_week_fixtures():
     html = mr._render_sports_html(
         {"nba_fixtures": [{"text": "LAL @ BOS", "when": "10/22 08:00"}]}, htmllib)
-    assert "NBA 未來一週賽程" in html and "LAL @ BOS" in html
+    assert "NBA 未來一週賽程" in html
+    assert "洛杉磯湖人 @ 波士頓塞爾提克" in html   # 縮寫轉繁中(2026-07-16)
 
 
 def test_render_tennis_cleaned_block():
@@ -1500,9 +1501,10 @@ def test_render_tennis_cleaned_block():
     }
     html = mr._render_sports_html({"tennis": tennis}, htmllib)
     # Wimbledon 不在進行中列表=已結束 → 收斂成冠軍行(2026-07-15,比照世足)
-    assert "Wimbledon" in html and "冠軍" in html and "J. Sinner" in html
-    assert "決賽勝 A. Zverev" in html
-    assert "進行中/即將" in html and "Canadian Open（07/20 起）" in html
+    assert "Wimbledon(溫網)" in html and "冠軍" in html   # 大滿貫附中文(2026-07-16)
+    assert "J. Sinner(辛納)" in html
+    assert "決賽勝 A. Zverev(茲維列夫)" in html
+    assert "進行中/即將" in html and "Canadian Open" in html and "（07/20 起）" in html
     assert "EDT" not in html                                      # 美東字串不再出現
 
 
@@ -1837,7 +1839,7 @@ def test_mlb_chinese_team_names():
     sports = {"standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
               "mlb_fixtures": [{"when": "07/18 01:35", "text": "TB @ BOS"}]}
     h = mr._render_sports_html(sports, htmllib)
-    assert "坦帕灣光芒 56-38" in h and "坦帕灣光芒 @ 波士頓紅襪" in h
+    assert "坦帕灣光芒" in h and "56-38" in h and "坦帕灣光芒 @ 波士頓紅襪" in h
     assert ">TB<" not in h
 
 
@@ -1851,7 +1853,7 @@ def test_wc_odds_line_conversion_and_render():
         "drawOdds": {"moneyLine": 185},
     }]}
     line = mr._espn_match_odds_line(comp, {"home": "英格蘭", "away": "阿根廷"})
-    assert line.startswith("賭盤(90分鐘):") and "(DraftKings)" in line   # 三向含和=90分鐘市場
+    assert line.startswith("賭盤(90分鐘):") and "(DraftKings 運彩)" in line   # 標明運彩來源(2026-07-16)
     # 隱含:home 100/275=.3636、away 120/220=.5455、draw 100/285=.3509;正規化後 ~29/44/28
     assert "阿根廷 43%" in line and "英格蘭 29%" in line and "和 28%" in line
     assert mr._espn_match_odds_line({}, {}) == ""           # 無賠率安全回空
@@ -2002,7 +2004,7 @@ def test_espn_week_fixtures_attach_odds(monkeypatch):
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
     out = mr.fetch_mlb_week_fixtures(top_teams={"TB", "BOS"})
     assert out and out[0]["odds"].startswith("賭盤:")
-    assert "BOS" in out[0]["odds"] and "(DraftKings)" in out[0]["odds"]
+    assert "BOS" in out[0]["odds"] and "(DraftKings 運彩)" in out[0]["odds"]
     # 渲染:系列行下方顯示賭盤且中文化
     import html as htmllib
     h = mr._render_sports_html({"mlb_fixtures": out}, htmllib)
@@ -2016,7 +2018,7 @@ def test_local_card_renamed_and_above_policy_section():
               "TW_DAILY_INTELLIGENCE": {"policy": [], "medical": [],
                                         "policy_window": "近一月", "medical_window": "昨日"}}
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
-    assert "在地快訊</div>" in html                    # 精簡標題(無城市後綴)
+    assert "在地快訊</h2>" in html                    # 精簡標題(無城市後綴);h2 卡片化(2026-07-16)
     i_local = html.find("在地快訊")
     i_policy = html.find("台灣政策近月走向")
     assert 0 < i_local < i_policy or i_policy == -1    # 在政策卡上方
@@ -2219,7 +2221,7 @@ def test_render_sports_poly_lines():
     assert "冠軍機率</b>:西班牙 58%・阿根廷 42%" in h and "Polymarket 預測市場" in h
     assert "世界大賽冠軍盤</b>:道奇 30%・洋基 13%" in h
     assert "2026-27 冠軍盤</b>:雷霆 27%・馬刺 19%" in h
-    assert "美網冠軍盤</b>:男 Jannik Sinner 52%;女 Aryna Sabalenka 22%" in h
+    assert "美網冠軍盤</b>:男 Jannik Sinner(辛納) 52%;女 Aryna Sabalenka(莎巴倫卡) 22%" in h
     assert "賭盤:統一 54%・樂天 46%(Polymarket)" in h
     # 沒有 poly 資料 → 各行自然缺席,不崩
     sports.pop("poly")
@@ -2273,7 +2275,7 @@ def test_render_sports_poly_survives_when_legacy_sources_all_fail():
     assert "世界盃足球賽" in h and "冠軍機率</b>:西班牙 58%" in h
     assert "世界大賽冠軍盤</b>:道奇 30%" in h
     assert "2026-27 冠軍盤</b>:雷霆 27%" in h
-    assert "美網冠軍盤</b>:男 Jannik Sinner 52%" in h
+    assert "美網冠軍盤</b>:男 Jannik Sinner(辛納) 52%" in h
     # 只有 cpbl_games(無賽程行可掛)→ 無可渲染內容,卡片仍回空
     assert mr._render_sports_html(
         {"news": {}, "poly": {"cpbl_games": [{"teams": ["樂天", "統一"],
@@ -2297,3 +2299,96 @@ def test_local_short_titles_same_entity_not_deduped():
     assert mr._local_title_is_dup(b, seen) is False        # 不同事件 → 保留
     assert mr._local_title_is_dup("台中捷運藍線進度曝光", seen) is True   # 全同 → 重複
     assert mr._local_title_is_dup("台中捷運藍線進度曝光 - 自由時報", seen) is True
+
+
+# ===== 批#10(2026-07-16):MLB 單場 Polymarket / 預測市場快照 / 排版中文化 =====
+
+def test_attach_mlb_poly_odds_slug_and_market_pick(monkeypatch):
+    """MLB 單場:slug=mlb-{客}-{主}-{美東日};CHW→cws 縮寫修正;只認兩隊名市場
+    (跳過 Yes/No prop);未命中保留原 DraftKings 行。"""
+    captured = []
+
+    def fake_events(params):
+        captured.append(params.get("slug"))
+        if params.get("slug") == "mlb-lad-nyy-2026-07-17":
+            return [{"markets": [
+                {"outcomes": '["Yes", "No"]', "outcomePrices": '["0.51", "0.49"]'},
+                {"outcomes": '["Los Angeles Dodgers", "New York Yankees"]',
+                 "outcomePrices": '["0.515", "0.485"]'},
+            ]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    fixtures = [
+        {"text": "LAD @ NYY", "when": "07/18 07:05", "odds": "賭盤:舊行",
+         "away_abbr": "LAD", "home_abbr": "NYY", "date_us": "2026-07-17"},
+        {"text": "CHW @ TOR", "when": "07/18 07:15", "odds": "賭盤:DK行(DraftKings 運彩)",
+         "away_abbr": "CHW", "home_abbr": "TOR", "date_us": "2026-07-17"},
+    ]
+    mr._attach_mlb_poly_odds(fixtures)
+    assert fixtures[0]["odds"] == "賭盤:道奇 52%・洋基 48%(Polymarket)"   # 正規化+暱稱中文
+    assert "mlb-cws-tor-2026-07-17" in captured                       # CHW→cws
+    assert fixtures[1]["odds"] == "賭盤:DK行(DraftKings 運彩)"          # 未命中保留 DraftKings
+
+
+def test_fetch_polymarket_pulse_rows(monkeypatch):
+    """快照:Fed 決議動態取最近未來場、二元盤 Yes 機率、SPX 前2區間、TSMC 財報盤。"""
+    def fake_search(query, limit=8):
+        if "Fed" in query:
+            return [
+                {"title": "Fed Decision in July?", "slug": "fed-jul",
+                 "endDate": "2026-07-01T00:00:00Z"},          # 已過 → 不取
+                {"title": "Fed Decision in September?", "slug": "fed-sep",
+                 "endDate": "2026-09-16T00:00:00Z"},
+                {"title": "Fed Decision in October?", "slug": "fed-oct",
+                 "endDate": "2026-10-28T00:00:00Z"},
+            ]
+        if "TSMC" in query:
+            return [{"title": "Will TSMC (TSM) beat quarterly earnings?",
+                     "slug": "tsm-beat", "endDate": "2026-07-16T23:00:00Z"}]
+        return []
+
+    def fake_events(params):
+        slug = params.get("slug")
+        if slug == "fed-sep":
+            return [{"markets": [
+                {"groupItemTitle": "No change", "outcomePrices": '["0.655", "0.345"]'},
+                {"groupItemTitle": "25 bps increase", "outcomePrices": '["0.285", "0.715"]'},
+                {"groupItemTitle": "25 bps decrease", "outcomePrices": '["0.04", "0.96"]'},
+            ]}]
+        if slug == "fed-rate-hike-in-2026":
+            return [{"markets": [{"outcomePrices": '["0.515", "0.485"]'}]}]
+        if slug == "spx-close-dec-2026":
+            return [{"markets": [
+                {"groupItemTitle": ">$8,000", "outcomePrices": '["0.275", "0.725"]'},
+                {"groupItemTitle": "$7,500-$8,000", "outcomePrices": '["0.195", "0.805"]'},
+                {"groupItemTitle": "<$6,000", "outcomePrices": '["0.14", "0.86"]'},
+            ]}]
+        if slug == "tsm-beat":
+            return [{"markets": [{"outcomePrices": '["0.9995", "0.0005"]'}]}]
+        return []
+    monkeypatch.setattr(mr, "_poly_search_events", fake_search)
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    import datetime as dt
+    rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE))
+    by_label = {r["label"]: r["detail"] for r in rows}
+    assert by_label["Fed 9月決議"] == "利率不變 66%・升息1碼 28%・降息1碼 4%"
+    assert by_label["2026 年內 Fed 再升息"] == "機率 52%"
+    assert by_label["S&P 500 年底收盤區間"] == ">$8,000 28%・$7,500-$8,000 20%"
+    assert by_label["台積電本季財報優於市場預期"] == "機率 100%"
+    # 其餘固定 slug fake 回空 → 該行自然缺席,不炸
+    assert "美國 2026 年底前衰退" not in by_label
+
+    h = mr._render_poly_pulse_html(rows)
+    assert "預測市場觀點(Polymarket)" in h and "Fed 9月決議" in h
+    assert "不納入本報任何模型計分" in h
+    assert mr._render_poly_pulse_html([]) == ""
+
+
+def test_local_news_card_styled_like_other_sections():
+    """在地卡美化(2026-07-16):h2 標題 + 白底框 + 主題色塊標籤;連結仍黑字可點。"""
+    h = mr._render_local_news_html(
+        {"建設": [{"title": "中捷藍線決標", "link": "https://x/1"}]})
+    assert "在地快訊</h2>" in h                      # 與其他區塊同款 h2
+    assert "border-radius:10px" in h                 # 白底框卡
+    assert "background:#e0f2fe" in h                 # 主題色塊標籤
+    assert "text-decoration:none" in h and "https://x/1" in h

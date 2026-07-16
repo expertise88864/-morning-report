@@ -12129,28 +12129,56 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     return out
 
 
+def _render_poly_pulse_html(rows: list[dict]) -> str:
+    """預測市場快照卡(Polymarket):Fed 決議/衰退/台海/S&P 年底/台積電財報 beat。
+    顯示用情報,不入任何模型;無資料回空(卡片自動缺席)。"""
+    if not rows:
+        return ""
+    import html as _h
+    lines = "".join(
+        f"<tr><td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;"
+        f"font-size:13px;color:#0f172a;font-weight:700;'>{_h.escape(str(r.get('label', '')))}</td>"
+        f"<td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;"
+        f"font-size:13px;color:#b45309;font-weight:700;'>{_h.escape(str(r.get('detail', '')))}</td></tr>"
+        for r in rows)
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#fefce8;border-left:5px solid #ca8a04;border-radius:4px;">'
+        '預測市場觀點(Polymarket)</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">'
+        '<table style="width:100%;border-collapse:collapse;">' + lines + "</table>"
+        "<div style='padding:8px 14px;font-size:11px;color:#94a3b8;'>"
+        "※ Polymarket 為真金押注的預測市場,價格≈市場共識機率,即時但可能劇烈變動;"
+        "僅供參考,不納入本報任何模型計分</div></div>")
+
+
 def _render_local_news_html(local: dict) -> str:
-    """在地快訊卡(中彰投雲):主題分行、標題為黑字可點連結。無資料回空。"""
+    """在地快訊卡(台中/彰化/南投/雲林):與其他區塊一致的 h2 標題+白底框卡
+    (2026-07-16 使用者要求整體美化)。主題為色塊標籤、標題黑字可點。無資料回空。"""
     if not local:
         return ""
     import html as _h
     rows = []
     for label, items in local.items():
         lines = "".join(
-            "<div style='font-size:13px;color:#334155;line-height:1.8;'>"
+            "<div style='font-size:13px;color:#334155;line-height:1.85;margin-top:4px;'>"
+            "<span style='color:#94a3b8;'>・</span>"
             + (f"<a href='{_h.escape(str(i.get('link', '')))}' "
                f"style='color:#0f172a;text-decoration:none;'>{_h.escape(str(i.get('title', '')))}</a>"
                if i.get("link") else _h.escape(str(i.get("title", ""))))
             + "</div>"
             for i in items)
-        rows.append(f"<div style='margin:6px 0;'><b style='color:#0c4a6e;font-size:12px;'>"
-                    f"{_h.escape(label)}</b>{lines}</div>")
+        rows.append(
+            "<div style='padding:10px 14px;border-bottom:1px solid #e2e8f0;'>"
+            f"<span style='background:#e0f2fe;color:#0c4a6e;padding:2px 10px;"
+            f"border-radius:10px;font-size:12px;font-weight:700;'>{_h.escape(label)}</span>"
+            + lines + "</div>")
     return (
-        '<div style="border:1px solid #bae6fd;border-radius:10px;padding:8px 14px;'
-        'margin:14px 0;background:#f0f9ff;">'
-        '<div style="font-weight:700;font-size:14px;color:#0c4a6e;margin-bottom:2px;">'
-        '在地快訊</div>'
-        + "".join(rows) + "</div>")
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#f0f9ff;border-left:5px solid #0284c7;border-radius:4px;">'
+        '在地快訊</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;'
+        'background:#ffffff;">' + "".join(rows) + "</div>")
 
 
 SPORTS_NEWS_QUERIES = [
@@ -12425,6 +12453,143 @@ def _poly_prob_line(rows: list[dict]) -> str:
     return "・".join(f"{r['name']} {r['prob']}%" for r in rows)
 
 
+# ESPN 縮寫 → Polymarket slug 縮寫(僅列已知差異;其餘小寫直用。
+# 白襪 ESPN=CHW、Polymarket=cws,實測 2026-07-16)
+_POLY_MLB_ABBR_FIX = {"CHW": "cws"}
+
+
+def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
+    """MLB 焦點賽程掛 Polymarket 單場勝率(就地修改;使用者 2026-07-16 要求每場勝率)。
+
+    slug 格式 mlb-{客隊}-{主隊}-{美東日期}(實測 mlb-lad-nyy-2026-07-17 等 5 組)。
+    命中 → 覆蓋 ESPN/DraftKings 行(預測市場較即時);未命中(冷門縮寫/未開盤)→
+    保留原 DraftKings 行,雙重降級。逐場失敗略過。"""
+    done = 0
+    for f in fixtures or []:
+        if done >= cap:
+            break
+        a, h, d = f.get("away_abbr"), f.get("home_abbr"), f.get("date_us")
+        if not (a and h and d):
+            continue
+        slug = (f"mlb-{_POLY_MLB_ABBR_FIX.get(str(a), str(a).lower())}"
+                f"-{_POLY_MLB_ABBR_FIX.get(str(h), str(h).lower())}-{d}")
+        done += 1
+        try:
+            events = _poly_events({"slug": slug})
+            if not events:
+                continue
+            for m in events[0].get("markets") or []:
+                if m.get("closed"):
+                    continue
+                try:
+                    outcomes = [str(x) for x in json.loads(m.get("outcomes") or "[]")]
+                    prices = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
+                except (ValueError, TypeError):
+                    continue
+                # 事件內含其他 Yes/No prop 市場,只認「兩隊名」的勝負盤
+                if len(outcomes) != 2 or "Yes" in outcomes:
+                    continue
+                if len(prices) != 2 or not all(0.0 < p < 1.0 for p in prices):
+                    continue
+                total = prices[0] + prices[1]
+                zh = [_POLY_MLB_ZH.get(o, o) for o in outcomes]
+                f["odds"] = (f"賭盤:{zh[0]} {prices[0] / total * 100:.0f}%・"
+                             f"{zh[1]} {prices[1] / total * 100:.0f}%(Polymarket)")
+                break
+        except Exception as e:
+            print(f"[poly] MLB 單場 {slug} 略過: {e}", file=sys.stderr)
+
+
+# ===== Polymarket 總經/地緣預測市場快照(2026-07-16 使用者要求「新聞/資訊/預測層面」)=====
+# 顯示用情報卡,**不納入任何模型計分**(計分/預測係數凍結)。
+# 年度型 slug(2026)每年更新一次;Fed 決議與台積電財報盤 slug 含流水號 → 動態搜尋。
+_POLY_FED_OUTCOME_ZH = {
+    "No change": "利率不變", "25 bps increase": "升息1碼", "25 bps decrease": "降息1碼",
+    "50+ bps increase": "升息2碼+", "50+ bps decrease": "降息2碼+",
+    "25+ bps increase": "升息1碼+", "25+ bps decrease": "降息1碼+",
+}
+_POLY_MONTH_ZH = {
+    "January": "1月", "February": "2月", "March": "3月", "April": "4月",
+    "May": "5月", "June": "6月", "July": "7月", "August": "8月",
+    "September": "9月", "October": "10月", "November": "11月", "December": "12月",
+}
+_POLY_PULSE_BINARY: tuple[tuple, ...] = (
+    # (顯示名, slug)——Yes 價=機率
+    ("2026 年內 Fed 再升息", "fed-rate-hike-in-2026"),
+    ("美國 2026 年底前衰退", "us-recession-by-end-of-2026"),
+    ("中國 2026 年內封鎖台海", "will-china-blockade-taiwan-by-in-2026"),
+    ("中國 2026 年底前武力犯台", "will-china-invade-taiwan-before-2027"),
+)
+
+
+def _poly_search_events(query: str, limit: int = 8) -> list:
+    r = _http_get(f"{_POLYMARKET_GAMMA}/public-search",
+                  params={"q": query, "limit_per_type": limit}, timeout=12)
+    r.raise_for_status()
+    js = r.json()
+    return list(js.get("events") or []) if isinstance(js, dict) else []
+
+
+def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
+    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。逐項失敗略過,全失敗回空。"""
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    today = now_tpe.astimezone(dt.timezone.utc).strftime("%Y-%m-%d")
+    rows: list[dict] = []
+    # 1) 最近一次 Fed 利率決議(slug 含流水號 → 搜尋「Fed Decision in <月>?」取最近未來場)
+    try:
+        cands = [e for e in _poly_search_events("Fed decision")
+                 if not e.get("closed")
+                 and str(e.get("title", "")).startswith("Fed Decision in")
+                 and str(e.get("endDate") or "")[:10] >= today]
+        cands.sort(key=lambda e: str(e.get("endDate") or "9999"))
+        if cands:
+            slug = str(cands[0].get("slug") or "")
+            month_en = str(cands[0].get("title", "")).replace(
+                "Fed Decision in", "").strip(" ?")
+            outs = _poly_outright(slug, _POLY_FED_OUTCOME_ZH, top=3, min_prob=0.03)
+            if outs:
+                rows.append({"label": f"Fed {_POLY_MONTH_ZH.get(month_en, month_en)}決議",
+                             "detail": _poly_prob_line(outs)})
+    except Exception as e:
+        print(f"[poly] Fed 決議盤略過: {e}", file=sys.stderr)
+    # 2) 年度二元盤(Yes 機率)
+    for label, slug in _POLY_PULSE_BINARY:
+        try:
+            events = _poly_events({"slug": slug})
+            markets = [m for m in (events[0].get("markets") or [])
+                       if not m.get("closed")] if events else []
+            p = _poly_yes_prob(markets[0]) if markets else None
+            if p is not None:
+                rows.append({"label": label, "detail": f"機率 {p * 100:.0f}%"})
+        except Exception as e:
+            print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
+    # 3) S&P 500 年底收盤區間(多選盤,取市場最看好前 2 區間)
+    try:
+        outs = _poly_outright("spx-close-dec-2026", None, top=2, min_prob=0.05)
+        if outs:
+            rows.append({"label": "S&P 500 年底收盤區間", "detail": _poly_prob_line(outs)})
+    except Exception as e:
+        print(f"[poly] SPX 年底盤略過: {e}", file=sys.stderr)
+    # 4) 台積電本季財報 beat(財報季才有市場;slug 含日期 → 動態搜尋)
+    try:
+        tsm = [e for e in _poly_search_events("TSMC beat quarterly earnings")
+               if not e.get("closed")
+               and "TSMC" in str(e.get("title", ""))
+               and str(e.get("endDate") or "")[:10] >= today]
+        tsm.sort(key=lambda e: str(e.get("endDate") or "9999"))
+        if tsm:
+            events = _poly_events({"slug": str(tsm[0].get("slug") or "")})
+            markets = [m for m in (events[0].get("markets") or [])
+                       if not m.get("closed")] if events else []
+            p = _poly_yes_prob(markets[0]) if markets else None
+            if p is not None:
+                rows.append({"label": "台積電本季財報優於市場預期",
+                             "detail": f"機率 {p * 100:.0f}%"})
+    except Exception as e:
+        print(f"[poly] TSMC 財報盤略過: {e}", file=sys.stderr)
+    return rows
+
+
 def _attach_cpbl_poly_odds(fixtures: list[dict], poly: dict, today_md: str) -> None:
     """中職「今日」場次掛 Polymarket 單場賭盤(就地修改 fixtures)。
     以「簡稱包含於隊名」雙向比對:Yahoo 賽程隊名可能是全名「統一7-ELEVEn獅」
@@ -12534,7 +12699,9 @@ def _espn_match_odds_line(comp: dict, zh_by_side: dict) -> str:
         # 含「和」=足球 90 分鐘三向市場(非晉級/奪冠盤)——明確標示,
         # 不可宣稱為冠軍機率(淘汰賽可能延長/PK;Codex review)
         label = "賭盤(90分鐘)" if draw is not None else "賭盤"
-        return f"{label}:{parts}" + (f"({provider})" if provider else "")
+        # 標明來源性質:DraftKings 等為美國運彩商開盤(使用者 2026-07-16 問「DraftKings
+        # 是什麼」→ 顯示層直接註明),與 Polymarket 預測市場區分
+        return f"{label}:{parts}" + (f"({provider} 運彩)" if provider else "")
     except Exception:
         return ""
 
@@ -13126,8 +13293,15 @@ def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,
             for c in _competitors}
         _odds = _espn_match_odds_line(
             (ev.get("competitions") or [{}])[0], _abbr_by_side)
+        # 美東比賽日(Polymarket 單場 slug 以美國當地日期命名;7 月為 EDT=UTC-4。
+        # 冬季 EST 差 1 小時,但晚間開賽場次日期不受影響,邊界誤差可接受)
+        _date_us = (ko.astimezone(dt.timezone.utc)
+                    - dt.timedelta(hours=4)).strftime("%Y-%m-%d")
         out.append({"text": name, "when": ko.strftime("%m/%d %H:%M"),
                     "special": special, "odds": _odds,
+                    "away_abbr": _abbr_by_side.get("away", ""),
+                    "home_abbr": _abbr_by_side.get("home", ""),
+                    "date_us": _date_us,
                     "_competitors": _competitors, "_ko": ko})
     out.sort(key=lambda g: g["_ko"])
     for g in out:
@@ -13413,6 +13587,11 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                                now_tpe.strftime("%m/%d"))
     except Exception as e:
         print(f"[sports] Polymarket 賭盤抓取失敗: {e}", file=sys.stderr)
+    # MLB 焦點賽程掛 Polymarket 單場勝率(獨立 try:與上面盤別互不牽連)
+    try:
+        _attach_mlb_poly_odds(out.get("mlb_fixtures") or [])
+    except Exception as e:
+        print(f"[sports] MLB 單場賭盤抓取失敗: {e}", file=sys.stderr)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
@@ -14378,6 +14557,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {macro_rows}
         </table>
         """
+    # 預測市場快照(Polymarket;2026-07-16 使用者要求「預測層面資訊」。顯示用不入模型)
+    macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [])
     # G3 世界證據門檻警示(平日空字串;異常時掛總經卡下方一則白話)
     world_evidence_html = _render_world_evidence_html(
         _world_evidence_signals(quotes.get("MACRO") or {}, quotes.get("SPY") or {}))
@@ -15550,6 +15731,12 @@ def main() -> int:
     print(f"[main] 抓到 {len(news)} 則新聞")
     print("[main] 整理台灣政策與醫界昨日走向…")
     quotes["TW_DAILY_INTELLIGENCE"] = fetch_tw_daily_intelligence(now_tpe)
+    # Polymarket 總經/地緣預測市場快照(顯示卡,不入模型;失敗回空、卡片自動缺席)
+    try:
+        quotes["POLY_PULSE"] = fetch_polymarket_pulse(now_tpe)
+    except Exception as e:
+        print(f"[main] 預測市場快照略過: {e}", file=sys.stderr)
+        quotes["POLY_PULSE"] = []
     # Podcast 摘要由獨立排程(podcast-digest.yml)預先產生,這裡只讀檔,失敗不影響晨報
     quotes["PODCAST_DIGEST"] = load_podcast_digest()
     if quotes["PODCAST_DIGEST"]:

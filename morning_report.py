@@ -12280,10 +12280,19 @@ def _sector_rank_deltas(ranked: list[str], now_tpe: dt.datetime) -> dict:
         SECTOR_RANK_FILE.parent.mkdir(parents=True, exist_ok=True)
         SECTOR_RANK_FILE.write_text(
             json.dumps(store, ensure_ascii=False), encoding="utf-8")
-        prev_ranks = ((store.get("prev") or {}).get("ranks")) or {}
+        prev = store.get("prev") or {}
+        prev_ranks = prev.get("ranks") or {}
         if not prev_ranks:
             return {}
-        return {ind: (prev_ranks[ind] - rank if ind in prev_ranks else None)
+        # 基準未必是昨天(空榜日/state 未推回)——與 poly delta 同語意,
+        # 揭露實際間隔天數,不把多日變化偽裝成前一日(Codex review 地基批#5)
+        try:
+            prev_day = dt.datetime.strptime(str(prev.get("date")), "%Y-%m-%d").date()
+            days = max(1, (now_tpe.date() - prev_day).days)
+        except (ValueError, TypeError):
+            days = 1
+        return {ind: {"d": (prev_ranks[ind] - rank if ind in prev_ranks else None),
+                      "days": days}
                 for ind, rank in ranks.items()}
     except Exception as e:
         print(f"[sector] 排名 delta 追蹤失敗(不影響顯示): {e}", file=sys.stderr)
@@ -14882,13 +14891,17 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 _hlead = "、".join(
                     f"{m['code']} {m['name']} {m['pct']:+.1f}%"
                     for m in (_hs.get("leaders") or [])[:2])
-                # 排名變化(地基批#5):↑↓=vs 昨日名次;新進=昨日不在前 20
-                _hd = _hdelta.get(_hn, 0) if _hn in _hdelta else 0
-                if _hn in _hdelta and _hdelta[_hn] is None:
+                # 排名變化(地基批#5):↑↓=vs 前次快照名次;新進=前次不在前 20;
+                # 基準非昨日時標實際間隔(↑2/3日),與 poly delta 同語意
+                _he = _hdelta.get(_hn) or {}
+                _hd, _hdays = _he.get("d", 0), _he.get("days", 1)
+                _hspan = (f"/{_hdays}日"
+                          if isinstance(_hdays, int) and _hdays > 1 else "")
+                if _hn in _hdelta and _hd is None:
                     _hmove = "<span style='color:#b45309;font-size:11px;'>(新進)</span>"
                 elif isinstance(_hd, int) and _hd != 0:
                     _hmove = (f"<span style='color:#b45309;font-size:11px;'>"
-                              f"({'↑' if _hd > 0 else '↓'}{abs(_hd)})</span>")
+                              f"({'↑' if _hd > 0 else '↓'}{abs(_hd)}{_hspan})</span>")
                 else:
                     _hmove = ""
                 _hrows.append(

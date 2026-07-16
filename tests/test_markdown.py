@@ -990,13 +990,17 @@ def test_sector_rank_deltas_day_over_day(monkeypatch, tmp_path):
     d2 = dt.datetime(2026, 7, 17, 6, 0, tzinfo=mr.TPE)
     assert mr._sector_rank_deltas(["半導體", "金融", "航運"], d1) == {}   # 首日無基準
     deltas = mr._sector_rank_deltas(["金融", "半導體", "光電"], d2)
-    assert deltas["金融"] == 1        # 2→1 名(上升1)
-    assert deltas["半導體"] == -1     # 1→2 名(下降1)
-    assert deltas["光電"] is None     # 昨日不在榜 → 新進
+    assert deltas["金融"] == {"d": 1, "days": 1}      # 2→1 名(上升1)
+    assert deltas["半導體"] == {"d": -1, "days": 1}   # 1→2 名(下降1)
+    assert deltas["光電"]["d"] is None                # 昨日不在榜 → 新進
     # 同日重跑:prev 不動,delta 穩定
     deltas2 = mr._sector_rank_deltas(["金融", "半導體"], d2)
-    assert deltas2["金融"] == 1
+    assert deltas2["金融"] == {"d": 1, "days": 1}
     assert mr._sector_rank_deltas([], d2) == {}   # 空輸入不炸不寫
+    # 跨多日(空榜日/未推回)→ 揭露實際間隔(Codex review:不偽裝成前一日)
+    d5 = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    deltas3 = mr._sector_rank_deltas(["半導體", "金融"], d5)
+    assert deltas3["半導體"] == {"d": 1, "days": 3}   # 基準=07/17 快照
 
 
 def test_render_html_health_warning_line_and_heat_rank_arrows():
@@ -1014,7 +1018,8 @@ def test_render_html_health_warning_line_and_heat_rank_arrows():
                              "金融": {"n": 30, "up": 10, "down": 15, "median_pct": -0.5,
                                     "value_yi": 500, "value_share_pct": 14.0,
                                     "leaders": []}}},
-         "SECTOR_RANK_DELTA": {"半導體": 2, "金融": None}}
+         "SECTOR_RANK_DELTA": {"半導體": {"d": 2, "days": 1},
+                               "金融": {"d": None, "days": 3}}}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-16", "每日報")
     assert "⚙ 系統健康:" in html and "模型歷史 143→130 日縮短" in html
     assert "(↑2)" in html                      # 半導體排名上升

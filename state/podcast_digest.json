@@ -4920,6 +4920,24 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "4859579a-2313-42f7-9c12-b488014fc4d7",
+        "title": "Why Soccer Analytics Works Like Volatility Arbitrage Trading",
+        "published": "Thu, 16 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-16T09:43:04Z",
+        "digest": {
+          "summary_points": [
+            "足球分析與波動率交易相似，都是在不完全資訊下進行高槓桿賭注。",
+            "MLS 薪資上限結構類似於投資組合配置，需要根據球員槽位進行相對價值評估。",
+            "數據分析可能導致運動策略的同質化，如同金融市場中的過度最佳化問題。",
+            "好的模型不會公開，而是直接用於打敗賭盤，類似於量化交易中的策略保密。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "if you have a good model you wouldn't publish it you would just beat the bookies"
+        }
+      },
+      {
         "guid": "b0947973-da0c-4120-9104-b4870172c604",
         "title": "NY Governor Kathy Hochul on Her One Year Data Center Moratorium",
         "published": "Wed, 15 Jul 2026 08:00:00 +0000",
@@ -5246,89 +5264,6 @@
           "notable_quote": "FIFA is a vehicle for funneling money from advertisers and TV to member associations."
         },
         "shown_at": "2026-06-25T23:12:20Z"
-      },
-      {
-        "guid": "ec8ef41e-9021-43ba-a6fb-b46d013a0fc5",
-        "title": "Grace Shao on What the World Should Know About Chinese AI",
-        "published": "Mon, 22 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-22T18:29:24Z",
-        "digest": {
-          "summary_points": [
-            "中國AI開源策略最初出於實用商業原因（建立西方信任），後形成多個實驗室協作的生態系統，但競爭依然激烈。",
-            "DeepSeek V4延遲發佈，將推理遷移至華為硬體棧，成為開源生態的基礎層，降低對其他晶片的依賴。",
-            "四大AI初創實驗室各有側重：DeepSeek（前沿）、Moonshot（代理）、智譜/GLM（編碼）、MiniMax（多模態）。",
-            "MiniMax和智譜已上市，IPO估值約60-80億美元，目前市值約200-300億美元；月營收已與去年全年持平，年化ARR達10-12億美元。",
-            "盈利模式為通過API提供推理服務（開源但不免費），類似開源軟體的管理服務。",
-            "由於資本和晶片出口限制，中國實驗室更注重後訓練，等待美國前沿方向後以低成本獲取數據（如等獨佔期後購買便宜數據集）。",
-            "能源不是主要瓶頸：中國電網新、有東數西算工程，低成本可再生能源充足，可支撐AI算力需求。",
-            "中國政府推行AI+政策，各省作為風投支持初創，並設立AI試點區；但公司對接收政府資金態度謹慎。",
-            "中國製造業生態系統優勢顯著：硬體成本低於全球50%，創新速度快（新車型從概念到生產不足15個月），且技術人才密集。",
-            "美國應用層公司（如Cursor、Harvey）開始混合使用中國開源模型與前沿閉源模型，以降低成本並保持性能。",
-            "中國社會對技術接受度高，但政府快速監管（如禁止以AI為由解僱員工），安撫公眾焦慮。"
-          ],
-          "tickers": [
-            {
-              "name": "DeepSeek",
-              "code": "",
-              "market": "CN",
-              "direction": "neutral",
-              "reason": "開源前沿模型，推遲發佈以兼容華為硬體，但未上市且商業前景待觀察。"
-            },
-            {
-              "name": "MiniMax",
-              "code": "",
-              "market": "HK",
-              "direction": "neutral",
-              "reason": "已上市，市值約200-300億，營收增長快，但估值相對美國同行較低。"
-            },
-            {
-              "name": "Moonshot",
-              "code": "",
-              "market": "CN",
-              "direction": "neutral",
-              "reason": "專注於AI代理，準備上市，但尚未盈利且面臨競爭。"
-            },
-            {
-              "name": "智譜AI (Zhipu AI)",
-              "code": "",
-              "market": "HK",
-              "direction": "neutral",
-              "reason": "已上市，聚焦編碼能力，通過API盈利，但受限於資本和晶片。"
-            },
-            {
-              "name": "騰訊控股",
-              "code": "0700",
-              "market": "HK",
-              "direction": "neutral",
-              "reason": "在WeChat中集成AI代理，但內部阻力大；整體AI進展落後於同行。"
-            },
-            {
-              "name": "華為",
-              "code": "",
-              "market": "CN",
-              "direction": "neutral",
-              "reason": "為DeepSeek提供硬體棧替代方案，但完全替代NVIDIA仍困難。"
-            },
-            {
-              "name": "阿里巴巴",
-              "code": "9988",
-              "market": "HK",
-              "direction": "neutral",
-              "reason": "參與AI競賽，但節目提及不多，僅作為場景提及。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "中國AI無法完全依賴其晶片，但仍是開發者首選。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "It was a very pragmatic business reason to start with. A lot of the labs have cited that, you know, for Western companies or Western developers to trust them, they needed to open source their models to build that trust and credibility."
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
       }
     ]
   },

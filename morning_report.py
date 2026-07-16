@@ -431,8 +431,12 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     # 營建資產:房市/預售/都更/資產股題材
     "營建-台股": "營建股 OR 房市 OR 預售屋 OR 資產股 OR 都更",
     # 房市在地(使用者 2026-07-15 指定:台中/彰化/南投草屯為主的房市+重大建設;
-    # 供「九、營建資產」寫全台+在地雙軌,含買氣/交易量/公共建設)
-    "房市-中彰投": "台中 房市 OR 彰化 房市 OR 斗六 房市 OR 草屯 OR 台中 建案",
+    # 供「九、營建資產」寫全台+在地雙軌,含買氣/交易量/公共建設。
+    # 2026-07-16 加深:預售屋/營建成本/買氣 + 中彰投主要建商動態,實測召回 15~24 則)
+    "房市-中彰投": ("台中 房市 OR 彰化 房市 OR 斗六 房市 OR 草屯 OR 台中 建案 "
+                "OR 台中 預售屋 OR 房市 買氣 OR 營建成本"),
+    "建商-中彰投": ("精銳建設 OR 總太 OR 富宇 OR 順天建設 OR 惠宇建設 OR 陸府 "
+                "OR 聚合發 OR 龍寶建設 OR 國雄建設 OR 合新建設 OR 台中 建商"),
     "建設-中彰投": "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 斗六 建設",
     # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
     "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
@@ -1674,6 +1678,7 @@ def fetch_macro_indicators() -> dict:
     - DXY：美元指數
     - 13W：3 個月國庫券殖利率
     - N225：日經 225（亞股開盤領先參考）
+    - KOSPI：韓國綜合指數（記憶體/半導體出口結構與台股最像，亞股情緒參考）
     - SSE：上證綜合指數（中國盤面，影響台股資金面與情緒）
     - NQ：Nasdaq-100 期貨（US 收盤後到 TW 開盤的連續訊號）
     - ES：S&P 500 期貨（同上，廣度確認）
@@ -1691,6 +1696,7 @@ def fetch_macro_indicators() -> dict:
         "5Y":    "^FVX",     # 美債 5 年期(完整化殖利率曲線判讀,白話呈現)
         "30Y":   "^TYX",     # 美債 30 年期
         "N225":  "^N225",
+        "KOSPI": "^KS11",     # 韓國綜合指數(2026-07-16 使用者要求;記憶體/半導體與台股連動)
         "SSE":   "000001.SS",
         "NQ":    "NQ=F",
         "ES":    "ES=F",
@@ -5130,8 +5136,10 @@ TW_INTELLIGENCE_QUERIES = {
         "台灣 政策 勞動部 勞保 基本工資 就業 補助 site:gov.tw",
         "台灣 政策 經濟部 能源 電價 產業 補助 site:gov.tw",
         "台灣 政策 教育部 托育 育兒 少子化 補助 site:gov.tw",
-        "台灣 新青安 育兒津貼 長照 電價 租屋 補助 政策",
-        "台灣 新青安 房貸 鬆綁 信用管制 青年安心成家",
+        # 舊「台灣 新青安 房貸 鬆綁 信用管制 青年安心成家」等多詞查詢是 AND 語意
+        # (Google News 空格=AND)、召回近零,新青安 3.0 等大事完全漏抓(2026-07-16
+        # 使用者反映)→ 改 OR 精準版,實測 36 則
+        "新青安 OR 青年安心成家 OR 打炒房 OR 囤房稅 OR 信用管制",
         "台灣 少子化 育兒津貼 托育補助 長照 社福 政策",
         "台灣 政策 修法 草案 預告 上路 補貼 近月",
         # 房貸利率追蹤(2026-07-15 使用者拍板;央行數值端點憑證/nid 未驗 → 新聞式,
@@ -5644,6 +5652,81 @@ def _official_source_entries(source: dict, stats: dict) -> list[dict]:
         return []
 
 
+# ===== 政策區「已顯示」記憶(2026-07-16 使用者反映政策區連日一模一樣)=====
+# 政策窗是「近一月」+依重要性排序 → 同一批高分官方公告天天霸榜。
+# 解法:寄信成功後記錄實際顯示的 timeline_key;次日同 key 且「無更新報導」者降到隊尾
+# (不剔除——淡日仍有東西可顯示),讓新青安/央行等新事件浮上前 3。
+# 醫界窗只有「昨日」,天然不重複,不需此機制。
+INTEL_SHOWN_FILE = Path("state/intel_shown.json")
+INTEL_SHOWN_SUPPRESS_DAYS = 5    # 顯示過的條目 5 天內降序
+INTEL_SHOWN_KEEP_DAYS = 14       # 紀錄保留上限(修剪用)
+
+
+def _load_intel_shown() -> dict:
+    """{timeline_key: {"date": "YYYY-MM-DD", "published": "YYYY-MM-DD HH:MM"}};壞檔回空。"""
+    try:
+        if INTEL_SHOWN_FILE.exists():
+            data = json.loads(INTEL_SHOWN_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+    except Exception as e:
+        print(f"[tw-intelligence] intel_shown 讀取失敗(當作無紀錄): {e}", file=sys.stderr)
+    return {}
+
+
+def mark_intel_shown(intelligence: Optional[dict],
+                     now_tpe: Optional[dt.datetime] = None,
+                     top_n: int = 3) -> None:
+    """寄信成功後記錄政策區「實際顯示」的前 top_n 條(渲染端固定取前 3),並修剪過期紀錄。
+    失敗只記 log,不影響寄信流程。"""
+    try:
+        items = (intelligence or {}).get("policy") or []
+        if not items:
+            return
+        now_tpe = now_tpe or dt.datetime.now(TPE)
+        today = now_tpe.strftime("%Y-%m-%d")
+        shown = _load_intel_shown()
+        for item in items[:top_n]:
+            key = str(item.get("timeline_key") or "").strip()
+            if key:
+                shown[key] = {"date": today,
+                              "published": str(item.get("published") or "")}
+        cutoff = (now_tpe - dt.timedelta(days=INTEL_SHOWN_KEEP_DAYS)).strftime("%Y-%m-%d")
+        shown = {k: v for k, v in shown.items()
+                 if str((v or {}).get("date") or "") >= cutoff}
+        INTEL_SHOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        INTEL_SHOWN_FILE.write_text(
+            json.dumps(shown, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:
+        print(f"[tw-intelligence] intel_shown 寫入失敗: {e}", file=sys.stderr)
+
+
+def _demote_recently_shown_policy(ranked: list[dict],
+                                  now_tpe: dt.datetime) -> list[dict]:
+    """把「近 INTEL_SHOWN_SUPPRESS_DAYS 天顯示過、且沒有更新報導」的政策條目移到隊尾。
+    同 key 但 published 比顯示當時新(事件有新發展)→ 視為新訊,不降序。穩定排序保留原相對順序。"""
+    shown = _load_intel_shown()
+    if not shown:
+        return ranked
+
+    def _is_repeat(item: dict) -> bool:
+        rec = shown.get(str(item.get("timeline_key") or "").strip())
+        if not isinstance(rec, dict):
+            return False
+        try:
+            shown_day = dt.datetime.strptime(str(rec.get("date")), "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return False
+        if (now_tpe.date() - shown_day).days > INTEL_SHOWN_SUPPRESS_DAYS:
+            return False
+        # published 為 "YYYY-MM-DD HH:MM" 字串,字典序=時間序
+        return str(item.get("published") or "") <= str(rec.get("published") or "")
+
+    fresh = [i for i in ranked if not _is_repeat(i)]
+    repeat = [i for i in ranked if _is_repeat(i)]
+    return fresh + repeat
+
+
 def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
                                 per_kind_limit: int = 8) -> dict:
     """Fetch policy and medical headlines for awareness only; never feed stock models."""
@@ -5891,6 +5974,9 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
             ),
             reverse=True,
         )
+        if kind == "policy":
+            # 近日顯示過且無更新報導的條目降到隊尾(2026-07-16:政策區連日一模一樣)
+            ranked = _demote_recently_shown_policy(ranked, now_tpe)
         if kind == "medical":
             # 同一機構每天最多 1 條:中榮代刀這類延燒事件的多角度報導
             # timeline_key 不同(anchor 不同)而躲過 dedup,曾連日洗版整個醫界區。
@@ -9163,6 +9249,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
              str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
              str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
              str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
+             str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
              str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
@@ -9621,7 +9708,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         return _format_macro_line(name, macro.get(name) or {})
     macro_block = "\n".join(
         [f"  {fmt_m(n)}" for n in
-         ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "SSE",
+         ["VIX", "VIX9D", "SOX", "10Y", "DXY", "13W", "N225", "KOSPI", "SSE",
           "NQ", "ES", "WTI", "GOLD"]])
     # 殖利率曲線 10Y − 13W 利差（由已抓資料推導，倒掛為衰退領先訊號）。
     # 給 LLM 完整技術資訊以利判斷,但另附白話結論——信件呈現請用白話、避免術語(使用者要求)。
@@ -9998,6 +10085,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 - DXY 升 → 美元強 → 新興市場資金流出
 - 13W (3M 國庫券) 殖利率變動反映 Fed 短期利率預期
 - N225 (日經 225) 與台股同屬亞股、開盤時間相近，是台股開盤情緒的同步參考
+- KOSPI (韓國綜合) 出口結構(記憶體/半導體)與台股最像，韓股重挫常領先反映半導體風險；資料抓不到時忽略即可
 - SSE (上證綜指) 反映中國盤面，影響台股資金面與兩岸題材；中國重挫常壓抑台股風險偏好
 - 殖利率曲線倒掛（10Y−13W 為負）是經典衰退領先訊號；由負轉正回升則為景氣回溫訊號
 - **NQ 期貨**（NQ=F）反映美股收盤後到 TW 開盤之間的「夜盤美股」變動。NQ > 0 表示 US 收盤後資金續強、會帶動 TW 開高;NQ < 0 反向。是美股 cash market 已收後最重要的領先訊號之一。
@@ -10299,9 +10387,10 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
    - **傳產原物料(鋼鐵/塑化/水泥)**:機制走「報價/景氣循環」——鋼價或塑化利差變動→中鋼/台塑四寶毛利,中國需求/反傾銷/油價成本是背景;寫得出報價方向與利差傳導才算合格。
    - **營建資產/房市**:機制走「房市政策/預售買氣/資產題材」——升降息與選擇性信用管制→建商推案與去化,土地開發/都更/資產活化是個股催化。
      **房市寫「全台+中彰投在地」雙軌**(使用者居住台中/彰化,2026-07-15 指定):
-     【房市-中彰投】【建設-中彰投】分組的素材——台中/彰化/南投草屯/斗六的房市買氣、交易熱區、
+     【房市-中彰投】【建商-中彰投】【建設-中彰投】分組的素材——台中/彰化/南投草屯/斗六的
+     房市買氣、交易熱區、預售屋/營建成本動態、在地建商(精銳/總太/富宇/順天等)推案與完銷、
      重大公共建設(如中捷藍線、中科擴建)——**有素材必寫 1 條**,寫清楚「哪一區、買氣/價格
-     方向、什麼建設題材」;此條屬生活+資產配置情報,可不綁個股、不用湊機制傳導。
+     方向、什麼建設或建商題材」;此條屬生活+資產配置情報,可不綁個股、不用湊機制傳導。
    - **重電綠能**:機制走「電網強韌計畫/台電標案/儲能離岸風電」——電力基建資本支出→重電三雄(華城/士電/中興電)在手訂單能見度。
    - **觀光內需**:機制走「客流/客運量/內需消費」——來台/出國旅客與航空客運載客率→觀光航空營收,零售看內需景氣。
 5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
@@ -11963,14 +12052,40 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
     # 彰基/中國醫(使用者夫妻任職)整合於此(2026-07-15 拍板,自醫界卡遷入;
     # 兩院的裁罰/感染等硬新聞仍會依一般規則上醫界卡,此處涵蓋建設/決策/一般消息)
     ("彰基/中國醫", "彰化基督教醫院 OR 彰基 OR 中國醫藥大學附設醫院 OR 中醫大附醫"),
-    ("斗六/雲林", "斗六 建設 OR 斗六 房市 OR 斗六市 OR 雲林 重大建設"),
-    ("建設", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設"),
-    ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 草屯 OR 台中 建案"),
+    # 斗六/雲林獨立主題已撤(2026-07-16 使用者要求):斗六詞併入建設/房市/學區,
+    # 各主題統一涵蓋台中/彰化/南投/斗六
+    ("建設", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
+    ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 斗六 房市 OR 台中 建案 OR 台中 預售屋"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
     ("學區/文教", "台中 學區 OR 彰化 學區 OR 斗六 學區 OR 雲林 學區"),
     # 交通異動(泛「國道 彰化/台中」52 則含全台事故雜訊 → 用精準版)
     ("交通異動", "台74 OR 國道1號 中部 OR 台中 道路 施工"),
 ]
+
+
+def _local_title_bigrams(title: str) -> set:
+    """標題 → 字元 bigram 集合(去掉「 - 媒體名」尾綴與非文數字)。"""
+    t = str(title or "")
+    if " - " in t:   # 去媒體名尾綴,避免同媒體墊高相似度
+        t = t.rsplit(" - ", 1)[0]
+    t = "".join(ch for ch in t.lower() if ch.isalnum())
+    return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) > 1 else ({t} if t else set())
+
+
+def _local_title_is_dup(title: str, seen_bigrams: list[set],
+                        threshold: float = 0.50) -> bool:
+    """同一事件常被媒體改寫標題或加「討論牆 |」式前綴(exact 比對擋不住,
+    2026-07-16 使用者反映重複)。用 overlap coefficient(交集/較短集合)而非 Jaccard:
+    前綴垃圾只灌水分母不灌交集,含入型重複仍拿高分。
+    實測:同事件改寫/加前綴 0.57~1.0、不同事件 0.00 → 門檻 0.50。"""
+    grams = _local_title_bigrams(title)
+    if not grams:
+        return False
+    for prev in seen_bigrams:
+        m = min(len(grams), len(prev))
+        if m and len(grams & prev) / m >= threshold:
+            return True
+    return False
 
 
 def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
@@ -11980,7 +12095,9 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     del now_tpe   # 介面對齊其他 fetch;cutoff 用 UTC now
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
     out: dict = {}
-    seen_titles: set = set()   # 跨主題去重:同一新聞常同時命中房市+建設
+    # 跨主題+同主題模糊去重:同一事件常被兩家媒體改寫不同標題(exact 擋不住),
+    # 也常同時命中房市+建設 → bigram Jaccard(2026-07-16 使用者反映重複)
+    seen_bigrams: list[set] = []
     for label, query in LOCAL_NEWS_QUERIES:
         try:
             # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
@@ -11994,10 +12111,9 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
                 title = str(entry.get("title", ""))[:90]
-                norm = "".join(ch for ch in title.lower() if ch.isalnum())[:60]
-                if norm in seen_titles:
+                if _local_title_is_dup(title, seen_bigrams):
                     continue
-                seen_titles.add(norm)
+                seen_bigrams.append(_local_title_bigrams(title))
                 items.append({"title": title,
                               "link": str(entry.get("link", ""))})
             if items:
@@ -12152,6 +12268,171 @@ _WC_TEAM_ZH = {
 def _wc_zh(name: str) -> str:
     name = (name or "").strip()
     return _WC_TEAM_ZH.get(name, name)
+
+
+# ===== Polymarket 預測市場(免金鑰公開 API;2026-07-16 使用者要求「其他賭盤/polymarket」)=====
+# 補 ESPN/DraftKings 沒有的盤:世足「冠軍」機率(非 90 分鐘市場)、中職單場、
+# MLB 世界大賽 / NBA 冠軍 / 網球大滿貫 futures。價格=Yes 合約成交價≈市場隱含機率。
+_POLYMARKET_GAMMA = "https://gamma-api.polymarket.com"
+
+# futures 的 event slug 每季固定(Polymarket 慣例含年份),賽季結束市場自動 closed
+# → 該行自然消失,不降級;換季時更新此表(與 _WC_WINDOW 硬編慣例一致)。
+_POLYMARKET_FUTURES: tuple[tuple, ...] = (
+    # (輸出鍵, slug, 顯示標題, 取前 N 名)
+    ("mlb_ws", "mlb-world-series-champion-2026", "MLB 世界大賽冠軍盤", 5),
+    ("nba_champ", "nba-2027-champion", "NBA 2026-27 冠軍盤", 5),
+    ("tennis_m", "2026-mens-us-open-winner-tennis", "美網男單冠軍盤", 3),
+    ("tennis_w", "2026-womens-us-open-winner-tennis", "美網女單冠軍盤", 3),
+)
+
+# 中職隊名(Polymarket 英文 → 報內慣用簡稱)
+_CPBL_EN_ZH = {
+    "Rakuten Monkeys": "樂天", "Uni-President Lions": "統一",
+    "CTBC Brothers": "中信", "Chinatrust Brothers": "中信",
+    "Wei Chuan Dragons": "味全", "TSG Hawks": "台鋼", "Fubon Guardians": "富邦",
+}
+
+# MLB / NBA 全名 → 繁中(Polymarket 回全名;查無對照回原文,不漏資料)
+_POLY_MLB_ZH = {
+    "Arizona Diamondbacks": "響尾蛇", "Atlanta Braves": "勇士", "Baltimore Orioles": "金鶯",
+    "Boston Red Sox": "紅襪", "Chicago Cubs": "小熊", "Chicago White Sox": "白襪",
+    "Cincinnati Reds": "紅人", "Cleveland Guardians": "守護者", "Colorado Rockies": "洛磯",
+    "Detroit Tigers": "老虎", "Houston Astros": "太空人", "Kansas City Royals": "皇家",
+    "Los Angeles Angels": "天使", "Los Angeles Dodgers": "道奇", "Miami Marlins": "馬林魚",
+    "Milwaukee Brewers": "釀酒人", "Minnesota Twins": "雙城", "New York Mets": "大都會",
+    "New York Yankees": "洋基", "Oakland Athletics": "運動家", "Athletics": "運動家",
+    "Philadelphia Phillies": "費城人", "Pittsburgh Pirates": "海盜",
+    "San Diego Padres": "教士", "San Francisco Giants": "巨人", "Seattle Mariners": "水手",
+    "St. Louis Cardinals": "紅雀", "Tampa Bay Rays": "光芒", "Texas Rangers": "遊騎兵",
+    "Toronto Blue Jays": "藍鳥", "Washington Nationals": "國民",
+}
+_POLY_NBA_ZH = {
+    "Atlanta Hawks": "老鷹", "Boston Celtics": "塞爾提克", "Brooklyn Nets": "籃網",
+    "Charlotte Hornets": "黃蜂", "Chicago Bulls": "公牛", "Cleveland Cavaliers": "騎士",
+    "Dallas Mavericks": "獨行俠", "Denver Nuggets": "金塊", "Detroit Pistons": "活塞",
+    "Golden State Warriors": "勇士", "Houston Rockets": "火箭", "Indiana Pacers": "溜馬",
+    "LA Clippers": "快艇", "Los Angeles Clippers": "快艇", "Los Angeles Lakers": "湖人",
+    "Memphis Grizzlies": "灰熊", "Miami Heat": "熱火", "Milwaukee Bucks": "公鹿",
+    "Minnesota Timberwolves": "灰狼", "New Orleans Pelicans": "鵜鶘",
+    "New York Knicks": "尼克", "Oklahoma City Thunder": "雷霆", "Orlando Magic": "魔術",
+    "Philadelphia 76ers": "76人", "Phoenix Suns": "太陽", "Portland Trail Blazers": "拓荒者",
+    "Sacramento Kings": "國王", "San Antonio Spurs": "馬刺", "Toronto Raptors": "暴龍",
+    "Utah Jazz": "爵士", "Washington Wizards": "巫師",
+}
+
+
+def _poly_events(params: dict) -> list:
+    """Gamma /events 查詢;非 list 回空(API 偶回 dict 錯誤體)。"""
+    r = _http_get(f"{_POLYMARKET_GAMMA}/events", params=params, timeout=12)
+    r.raise_for_status()
+    js = r.json()
+    return js if isinstance(js, list) else []
+
+
+def _poly_yes_prob(market: dict) -> Optional[float]:
+    """單一 market 的 Yes 價格(=隱含機率 0~1);解析失敗回 None。"""
+    try:
+        prices = json.loads(market.get("outcomePrices") or "[]")
+        p = float(prices[0])
+        return p if 0.0 <= p <= 1.0 else None
+    except (ValueError, TypeError, IndexError):
+        return None
+
+
+def _poly_outright(slug: str, zh_map: Optional[dict] = None,
+                   top: int = 5, min_prob: float = 0.02) -> list[dict]:
+    """單一 outright event(每個候選一個 Yes/No market)→ [{'name','prob'}] 依機率降序。
+    佔位項(Team A / Player A / Other)與已 closed(=已定案或撤盤)一律剔除。"""
+    events = _poly_events({"slug": slug})
+    if not events:
+        return []
+    rows = []
+    for m in events[0].get("markets") or []:
+        if m.get("closed"):
+            continue
+        name = str(m.get("groupItemTitle") or "").strip()
+        if not name or name.lower() == "other" or name.startswith(("Team ", "Player ")):
+            continue
+        p = _poly_yes_prob(m)
+        if p is None or p < min_prob:
+            continue
+        rows.append({"name": (zh_map or {}).get(name, name), "prob": round(p * 100)})
+    rows.sort(key=lambda r: -r["prob"])
+    return rows[:top]
+
+
+def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
+    """Polymarket 體育賭盤總表。逐項失敗略過(體育區不可斷);全失敗回空 dict。
+
+    回傳鍵:
+      wc_champion  世足「冠軍」機率(整屆奪冠,含延長/PK;與 DraftKings 90 分鐘市場語意不同,
+                   顯示端必須標「冠軍機率」而非「賭盤(90分鐘)」)
+      cpbl_games   中職今日單場 [{'teams':[甲,乙],'probs':[p甲,p乙]}](ESPN 無中職盤,僅此有)
+      mlb_ws / nba_champ / tennis_m / tennis_w   futures [{'name','prob'}]
+    """
+    now_tpe = now_tpe or dt.datetime.now(TPE)
+    out: dict = {}
+    try:
+        wc = _poly_outright("world-cup-winner", _WC_TEAM_ZH, top=4)
+        if wc and now_tpe.date() <= _WC_WINDOW[1]:   # 賽期外不顯示(決賽後市場結清)
+            out["wc_champion"] = wc
+    except Exception as e:
+        print(f"[poly] 世足冠軍盤抓取失敗: {e}", file=sys.stderr)
+    try:
+        today = now_tpe.strftime("%Y-%m-%d")
+        games = []
+        for ev in _poly_events({"tag_slug": "cpbl", "closed": "false", "limit": 40}):
+            if not str(ev.get("slug", "")).endswith(today):
+                continue   # 只取今日場次(closed=false 會殘留少數延賽未結清的舊場)
+            for m in ev.get("markets") or []:
+                if m.get("closed"):
+                    continue
+                try:
+                    outcomes = json.loads(m.get("outcomes") or "[]")
+                    prices = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
+                except (ValueError, TypeError):
+                    continue
+                if len(outcomes) != 2 or len(prices) != 2:
+                    continue
+                if not all(0.0 < p < 1.0 for p in prices):
+                    continue   # 0/1 = 已定案或無報價
+                games.append({"teams": [_CPBL_EN_ZH.get(str(o), str(o)) for o in outcomes],
+                              "probs": [round(p * 100) for p in prices]})
+        if games:
+            out["cpbl_games"] = games
+    except Exception as e:
+        print(f"[poly] 中職單場盤抓取失敗: {e}", file=sys.stderr)
+    for key, slug, _title, top in _POLYMARKET_FUTURES:
+        try:
+            zh = _POLY_MLB_ZH if key == "mlb_ws" else (
+                _POLY_NBA_ZH if key == "nba_champ" else None)
+            rows = _poly_outright(slug, zh, top=top)
+            if rows:
+                out[key] = rows
+        except Exception as e:
+            print(f"[poly] {key} 抓取失敗: {e}", file=sys.stderr)
+    return out
+
+
+def _poly_prob_line(rows: list[dict]) -> str:
+    """[{'name','prob'}] → 「甲 58%・乙 42%」。"""
+    return "・".join(f"{r['name']} {r['prob']}%" for r in rows)
+
+
+def _attach_cpbl_poly_odds(fixtures: list[dict], poly: dict, today_md: str) -> None:
+    """中職「今日」場次掛 Polymarket 單場賭盤(就地修改 fixtures)。
+    以「簡稱包含於隊名」雙向比對:Yahoo 賽程隊名可能是全名「統一7-ELEVEn獅」
+    或簡稱「統一」,Polymarket 轉出固定簡稱(_CPBL_EN_ZH)。"""
+    for f in fixtures or []:
+        if f.get("date") != today_md:
+            continue
+        names = (str(f.get("away", "")), str(f.get("home", "")))
+        for g in (poly or {}).get("cpbl_games") or []:
+            t1, t2 = g["teams"]
+            if all(any(t in n or n in t for n in names) for t in (t1, t2)):
+                f["odds"] = (f"賭盤:{t1} {g['probs'][0]}%・"
+                             f"{t2} {g['probs'][1]}%(Polymarket)")
+                break
 
 
 # 2026 世界盃賽期(美/加/墨,2026-06-11 ~ 2026-07-19)。賽期外不抓,避免 ESPN
@@ -13117,6 +13398,15 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
             out["tennis"] = tennis
     except Exception as e:
         print(f"[sports] 網球抓取失敗: {e}", file=sys.stderr)
+    # Polymarket 賭盤(世足冠軍/中職單場/MLB/NBA/網球 futures;2026-07-16 使用者要求)
+    try:
+        poly = fetch_polymarket_sports(now_tpe)
+        if poly:
+            out["poly"] = poly
+        _attach_cpbl_poly_odds(out.get("cpbl_fixtures") or [], poly,
+                               now_tpe.strftime("%m/%d"))
+    except Exception as e:
+        print(f"[sports] Polymarket 賭盤抓取失敗: {e}", file=sys.stderr)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
@@ -13578,15 +13868,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 f"color:#94a3b8;font-size:12px;'>{hint}</td></tr>")
     # 信件只顯示「一般投資人看得懂」的指標;艱澀的 VIX9D / NQ・ES 期貨 / 10Y・13W 殖利率
     # 已從 email 移除,但仍在 MACRO dict + LLM prompt 內(後台保留餵立場評分與模型,品質不降)。
+    # WTI / BTC 顯示列已刪(2026-07-16 使用者要求);兩者資料照抓、照餵 11 維計分與 prompt。
     macro_rows = (
         fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
         fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
         fmt_macro_row("DXY 美元指數", "DXY", "升→外資易匯出、台股偏壓") +
         fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
+        fmt_macro_row("韓國 KOSPI", "KOSPI", "記憶體/半導體出口國,與台股連動") +
         fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
-        fmt_macro_row("WTI 原油", "WTI", "通膨/地緣風險定價") +
         fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫") +
-        fmt_macro_row("BTC 比特幣", "BTC", "風險偏好溫度計,24h 交易") +
         fmt_macro_row("銅期貨", "COPPER", "景氣領先指標,與台股出口連動")
     )
     # 美債利率環境:白話結論(隱藏殖利率曲線/倒掛術語,只給結果)。跨兩欄放表末。
@@ -14654,12 +14944,15 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
 
 
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
-                   podcast_episodes: list[dict]) -> None:
+                   podcast_episodes: list[dict],
+                   intelligence: Optional[dict] = None) -> None:
     """Send first, then commit delivery state for at-least-once semantics."""
     send_email(html, subject)
     archive_report_html(
         html,
         (state_entry or {}).get("date") or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+    # 政策區「已顯示」記錄要在 persist(內含 git push)之前落檔,才會被同一次 commit 帶回
+    mark_intel_shown(intelligence)
     persist_delivered_report_state(
         state_entry,
         podcast_episodes,
@@ -14741,7 +15034,7 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
     # VIX_TERM 是 derived,不算實際抓取項目;5Y/30Y 為選配(僅供美債利率白話卡),
     # MOVE/RSP 為 G3 世界證據選配(門檻式白話,平日不顯示)——
     # 抓不到不應把整個總經來源判成 fallback、誤入 LLM 資料品質區塊(Codex review / A2 教訓)。
-    _MACRO_OPTIONAL = {"VIX_TERM", "5Y", "30Y", "MOVE", "RSP"}
+    _MACRO_OPTIONAL = {"VIX_TERM", "5Y", "30Y", "MOVE", "RSP", "KOSPI"}
     countable = {k: v for k, v in macro.items() if k not in _MACRO_OPTIONAL}
     ok_n = sum(1 for v in countable.values()
                if isinstance(v, dict) and not v.get("error") and v.get("close") is not None)
@@ -15136,9 +15429,10 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # 寄信成功後才標記 podcast 已顯示(避免漏寄)。週日不寫入預測歷史:weekend 筆記的
     # target_session_date 會指向週一,與週六晨報的「週一預測」撞號,save_history_state
     # 去重時會誤刪週六的真實預測紀錄。因此這裡 entry=None,只單獨 push podcast 狀態檔。
-    deliver_report(html, subject, None, podcast_eps)
+    deliver_report(html, subject, None, podcast_eps, intelligence=intel)
     _git_commit_and_push_state(
-        [str(PODCAST_DIGEST_FILE), str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
+        [str(PODCAST_DIGEST_FILE), str(INTEL_SHOWN_FILE),   # 政策已顯示記錄週日也要帶回
+         str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")
     return 0
@@ -15885,6 +16179,7 @@ def main() -> int:
         pending_state_entry,
         # 只把「實際出現在信中」的 Podcast 集標成已顯示;被尺寸守衛砍/縮掉的留待下次再出現。
         quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or [],
+        intelligence=quotes.get("TW_DAILY_INTELLIGENCE"),
     )
     return 0
 

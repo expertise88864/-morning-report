@@ -611,6 +611,7 @@ def test_render_html_shows_new_macro_indicators_and_breadth():
         "ES":    {"close": 5800,  "change_pct": 0.5},
         "WTI":   {"close": 75.0,  "change_pct": 1.2},
         "GOLD":  {"close": 2400,  "change_pct": -0.3},
+        "KOSPI": {"close": 3900,  "change_pct": 1.1},
         "VIX_TERM": {"ratio": 1.029, "spread": 0.5, "state": "backwardation"},
     }
     q["BREADTH"] = {
@@ -620,11 +621,13 @@ def test_render_html_shows_new_macro_indicators_and_breadth():
     }
     html = mr.render_html(q, {"error": "x"}, {"error": "x"},
                           "x", "2026-05-21", "每日報")
-    # 信件只留「看得懂」的指標:VIX/SOX/DXY/日經/上證/WTI/黃金
-    for label in ("VIX 恐慌指數", "SOX 費半指數", "DXY 美元指數", "WTI 原油", "黃金"):
+    # 信件只留「看得懂」的指標:VIX/SOX/DXY/日經/KOSPI/上證/黃金/銅
+    for label in ("VIX 恐慌指數", "SOX 費半指數", "DXY 美元指數", "韓國 KOSPI", "黃金"):
         assert label in html, f"missing macro row: {label}"
-    # 艱澀指標已從信件移除(但仍在 MACRO dict + LLM prompt 後台保留)
-    for hidden in ("VIX9D", "NQ 期貨", "ES 期貨", "10Y 殖利率", "13W 國庫券"):
+    # 艱澀指標已從信件移除;WTI/BTC 顯示列 2026-07-16 使用者要求刪除
+    # (資料仍在 MACRO dict + LLM prompt 後台保留,照餵 11 維計分)
+    for hidden in ("VIX9D", "NQ 期貨", "ES 期貨", "10Y 殖利率", "13W 國庫券",
+                   "WTI 原油", "BTC 比特幣"):
         assert hidden not in html, f"should be hidden from email: {hidden}"
     # 廣度卡片
     assert "大盤成交額與市場廣度" in html

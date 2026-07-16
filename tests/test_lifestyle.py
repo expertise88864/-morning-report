@@ -290,7 +290,7 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 def test_other_sector_queries_precision():
     """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 14                               # 8 類 + 房市/建設-中彰投(2026-07-15 在地房市)
+    assert len(q) == 15                               # 8 類 + 房市/建商/建設-中彰投(2026-07-16 批#9)
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
     assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
@@ -808,8 +808,9 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert ("marked", 1) in events
     assert "history!" not in events                       # 關鍵:不污染預測歷史
     pushes = [e for e in events if isinstance(e, tuple) and e[0] == "push"]
-    # §B:週末也 push 信件存檔目錄(仍不含 history/model_history,故不污染預測歷史)
-    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE), str(mr.EMAIL_ARCHIVE_DIR)]
+    # §B:週末也 push 信件存檔目錄+政策已顯示記錄(仍不含 history/model_history,不污染預測歷史)
+    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE),
+                                       str(mr.INTEL_SHOWN_FILE), str(mr.EMAIL_ARCHIVE_DIR)]
     # 寄信必須早於標記/ push(at-least-once:寄成功才落狀態)
     assert events.index("sent") < events.index(("marked", 1))
 
@@ -1867,7 +1868,7 @@ def test_fetch_local_news_and_render(monkeypatch):
 
     class Feed:
         def __init__(self, url):
-            # 判別詞用斗六 query 獨有的「重大建設」(斗六/雲林也出現在學區 query,會雙匹配)
+            # 判別詞用建設 query 獨有的「重大建設」(斗六/雲林已併入建設主題,2026-07-16)
             if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:
                 self.entries = [{"title": "斗六長照大樓爭取9億經費",
                                  "link": "https://news.example.com/douliu",
@@ -1877,7 +1878,7 @@ def test_fetch_local_news_and_render(monkeypatch):
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
                         lambda url, *a, **k: Feed(url))
     out = mr.fetch_local_news()
-    assert "斗六/雲林" in out and out["斗六/雲林"][0]["link"]
+    assert "建設" in out and out["建設"][0]["link"]
     assert len(out) == 1                                   # 失敗主題略過不炸
     h = mr._render_local_news_html(out)
     assert "在地快訊" in h and "斗六長照大樓" in h
@@ -1888,9 +1889,16 @@ def test_fetch_local_news_and_render(monkeypatch):
 
 def test_local_queries_cover_douliu():
     labels = dict(mr.LOCAL_NEWS_QUERIES)
-    assert "斗六/雲林" in labels and "學區/文教" in labels and "產業/科技" in labels
+    # 斗六/雲林獨立主題已撤(2026-07-16):斗六詞散入建設/房市/學區主題
+    assert "斗六/雲林" not in labels
+    assert "斗六" in labels["建設"] and "斗六" in labels["房市"] and "斗六" in labels["學區/文教"]
     assert "斗六" in mr.OTHER_SECTOR_QUERIES["房市-中彰投"]   # 九段素材也含斗六
     assert "斗六" in mr.OTHER_SECTOR_QUERIES["建設-中彰投"]
+    # 批#9:房市加深(預售屋/營建成本)+ 中彰投建商動態查詢
+    assert "預售屋" in mr.OTHER_SECTOR_QUERIES["房市-中彰投"]
+    assert "營建成本" in mr.OTHER_SECTOR_QUERIES["房市-中彰投"]
+    assert "建商-中彰投" in mr.OTHER_SECTOR_QUERIES
+    assert "總太" in mr.OTHER_SECTOR_QUERIES["建商-中彰投"]
 
 
 def test_medical_org_cap_canonicalizes_employer_aliases():
@@ -1929,7 +1937,7 @@ def test_local_news_keeps_25h_old_items(monkeypatch):
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
                         lambda url, *a, **k: Feed(url))
     out = mr.fetch_local_news()
-    titles = [i["title"] for i in out.get("斗六/雲林", [])]
+    titles = [i["title"] for i in out.get("建設", [])]
     assert "25小時前的斗六建設新聞" in titles     # 24-30h 視窗保留
     assert "31小時前的過期新聞" not in titles     # 30h cutoff 精確剔除
     assert "when%3A2d" in captured["url"] or "when:2d" in captured["url"]   # 查詢抓寬一天
@@ -1940,7 +1948,7 @@ def test_weekend_digest_includes_local_news_card(monkeypatch):
     import datetime as dt
     _stub_weekend_sources(monkeypatch, podcast=[{"show": "股癌", "guid": "ep1"}])
     monkeypatch.setattr(mr, "fetch_local_news", lambda *a, **k: {
-        "斗六/雲林": [{"title": "斗六長照大樓新進度", "link": "https://x/d"}]})
+        "建設": [{"title": "斗六長照大樓新進度", "link": "https://x/d"}]})
     monkeypatch.setattr(mr, "send_email", lambda *a: None)
     monkeypatch.setattr(mr, "mark_podcast_episodes_shown", lambda e: None)
     monkeypatch.setattr(mr, "save_history_state", lambda *a, **k: None)
@@ -2125,3 +2133,127 @@ def test_suspension_window_excludes_stale_daytime_news(monkeypatch):
     titles = [i["title"] for i in mr.fetch_suspension_news()]
     assert "台中市明天停止上班上課" in titles
     assert "彰化縣今日照常上班上課" not in titles
+
+
+# ===== 批#9(2026-07-16):Polymarket 賭盤 / 在地模糊去重 =====
+
+def test_poly_outright_parses_sorts_and_filters(monkeypatch):
+    """outright 解析:Yes 價→機率%、依機率降序、剔除 closed/佔位項/低機率;中文對照。"""
+    fake_event = {"markets": [
+        {"groupItemTitle": "Argentina", "outcomePrices": '["0.4195", "0.5805"]'},
+        {"groupItemTitle": "Spain", "outcomePrices": '["0.5795", "0.4205"]'},
+        {"groupItemTitle": "France", "outcomePrices": '["0", "1"]', "closed": True},
+        {"groupItemTitle": "Team AG", "outcomePrices": '["0.5", "0.5"]'},
+        {"groupItemTitle": "Other", "outcomePrices": '["0.02", "0.98"]'},
+        {"groupItemTitle": "England", "outcomePrices": '["0.001", "0.999"]'},   # < min_prob
+        {"groupItemTitle": "Brazil", "outcomePrices": None},                    # 解析失敗
+    ]}
+    monkeypatch.setattr(mr, "_poly_events", lambda params: [fake_event])
+    rows = mr._poly_outright("world-cup-winner", mr._WC_TEAM_ZH, top=4)
+    assert rows == [{"name": "西班牙", "prob": 58}, {"name": "阿根廷", "prob": 42}]
+    assert mr._poly_prob_line(rows) == "西班牙 58%・阿根廷 42%"
+    # event 缺席安全回空
+    monkeypatch.setattr(mr, "_poly_events", lambda params: [])
+    assert mr._poly_outright("no-such-slug") == []
+
+
+def test_fetch_polymarket_sports_cpbl_today_only(monkeypatch):
+    """中職單場:只取 slug 日期=今天的場次;0/1 價(已定案/無報價)剔除;隊名轉繁中簡稱。"""
+    import datetime as dt
+    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+
+    def fake_events(params):
+        if params.get("tag_slug") == "cpbl":
+            return [
+                {"slug": "cpbl-rak-uni-2026-07-16", "markets": [
+                    {"outcomes": '["Rakuten Monkeys", "Uni-President Lions"]',
+                     "outcomePrices": '["0.46", "0.54"]'}]},
+                {"slug": "cpbl-chi-wei-2026-07-10", "markets": [       # 舊場次(延賽殘留)
+                    {"outcomes": '["Chinatrust Brothers", "Wei Chuan Dragons"]',
+                     "outcomePrices": '["0.4", "0.6"]'}]},
+                {"slug": "cpbl-tsg-fub-2026-07-16", "markets": [       # 已定案 0/1 → 剔除
+                    {"outcomes": '["TSG Hawks", "Fubon Guardians"]',
+                     "outcomePrices": '["0", "1"]'}]},
+            ]
+        return []   # 其他盤(世足/futures)這裡不測
+    monkeypatch.setattr(mr, "_poly_events", fake_events)
+    out = mr.fetch_polymarket_sports(now)
+    assert out.get("cpbl_games") == [
+        {"teams": ["樂天", "統一"], "probs": [46, 54]}]
+
+
+def test_attach_cpbl_poly_odds_matches_full_and_short_names():
+    """賭盤掛載:Yahoo 全名「統一7-ELEVEn獅」與簡稱「樂天」都要能對上;非今日不掛。"""
+    fixtures = [
+        {"away": "統一7-ELEVEn獅", "home": "樂天桃猿", "date": "07/16", "start": "18:35"},
+        {"away": "台鋼", "home": "中信", "date": "07/21", "start": "18:35"},
+    ]
+    poly = {"cpbl_games": [{"teams": ["樂天", "統一"], "probs": [46, 54]},
+                           {"teams": ["台鋼", "中信"], "probs": [50, 50]}]}
+    mr._attach_cpbl_poly_odds(fixtures, poly, "07/16")
+    assert fixtures[0]["odds"] == "賭盤:樂天 46%・統一 54%(Polymarket)"
+    assert "odds" not in fixtures[1]                       # 非今日場次不掛
+    mr._attach_cpbl_poly_odds([], {}, "07/16")             # 空輸入不炸
+
+
+def test_render_sports_poly_lines():
+    """渲染:世足「冠軍機率」(語意≠90分鐘賭盤)、MLB 世界大賽/NBA/美網冠軍盤、中職賽程賭盤。"""
+    sports = {
+        "worldcup": {"knockout": [{"name": "決賽", "games": [
+            {"when": "07/20 03:00", "text": "阿根廷 vs 西班牙", "done": False}]}]},
+        "cpbl_fixtures": [{"away": "統一", "home": "樂天", "date": "07/16",
+                           "start": "18:35",
+                           "odds": "賭盤:統一 54%・樂天 46%(Polymarket)"}],
+        "standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
+        "nba_offseason": "NBA 休賽季:自由市場與夏季聯賽進行中。",
+        "tennis": {"tournaments": [{"name": "Generali Open", "status": "07/20 起"}]},
+        "poly": {
+            "wc_champion": [{"name": "西班牙", "prob": 58}, {"name": "阿根廷", "prob": 42}],
+            "mlb_ws": [{"name": "道奇", "prob": 30}, {"name": "洋基", "prob": 13}],
+            "nba_champ": [{"name": "雷霆", "prob": 27}, {"name": "馬刺", "prob": 19}],
+            "tennis_m": [{"name": "Jannik Sinner", "prob": 52}],
+            "tennis_w": [{"name": "Aryna Sabalenka", "prob": 22}],
+        },
+    }
+    h = mr._render_sports_html(sports, htmllib)
+    assert "冠軍機率</b>:西班牙 58%・阿根廷 42%" in h and "Polymarket 預測市場" in h
+    assert "世界大賽冠軍盤</b>:道奇 30%・洋基 13%" in h
+    assert "2026-27 冠軍盤</b>:雷霆 27%・馬刺 19%" in h
+    assert "美網冠軍盤</b>:男 Jannik Sinner 52%;女 Aryna Sabalenka 22%" in h
+    assert "賭盤:統一 54%・樂天 46%(Polymarket)" in h
+    # 沒有 poly 資料 → 各行自然缺席,不崩
+    sports.pop("poly")
+    h2 = mr._render_sports_html(sports, htmllib)
+    assert "冠軍機率" not in h2 and "世界大賽冠軍盤" not in h2
+
+
+def test_local_title_fuzzy_dedup(monkeypatch):
+    """同一事件被兩家媒體改寫不同標題 → 第二則剔除;不同事件不誤殺(overlap≥0.50)。"""
+    a = "中醫大附醫修正性手術 助婦人重拾自然嗓音 - Yahoo新聞"
+    b = ("女子甲狀腺手術後失聲二十多年 中醫大附醫修正性手術協助重拾自然嗓音 "
+         "| 中廣新聞網 - LINE TODAY")
+    b2 = "討論牆 | 中醫大附醫修正性手術 助婦人重拾自然嗓音 - LINE TODAY"
+    c = "中捷藍線首件主線土建工程決標 預計8月開工 - 自由時報"
+    seen = [mr._local_title_bigrams(a)]
+    assert mr._local_title_is_dup(b, seen) is True         # 同事件改寫 → 重複
+    assert mr._local_title_is_dup(b2, seen) is True        # 同標題加「討論牆 |」前綴 → 重複
+    assert mr._local_title_is_dup(c, seen) is False        # 不同事件 → 保留
+    assert mr._local_title_is_dup("", seen) is False       # 空標題安全
+
+    # 端到端:同事件兩則進 feed,只留一則
+    import datetime as dt
+    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    class Feed:
+        def __init__(self, url):
+            if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:   # 建設 query
+                self.entries = [{"title": a, "link": "https://x/1", "published": now_gmt},
+                                {"title": b, "link": "https://x/2", "published": now_gmt},
+                                {"title": c, "link": "https://x/3", "published": now_gmt}]
+            else:
+                self.entries = []
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, *a_, **k: Feed(url))
+    out = mr.fetch_local_news()
+    titles = [i["title"] for i in out.get("建設", [])]
+    assert len(titles) == 2 and titles[0].startswith("中醫大附醫") and titles[1].startswith("中捷藍線")

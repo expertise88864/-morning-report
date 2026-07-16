@@ -30,6 +30,9 @@ def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
     # §B:信件存檔目錄導到 tmp,避免經 deliver_report 的測試把 *.html.gz 寫進真實 state/emails/
     monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path_factory.mktemp("emails"))
+    # 政策「已顯示」記錄同理導到 tmp(deliver_report 內會呼叫 mark_intel_shown)
+    monkeypatch.setattr(mr, "INTEL_SHOWN_FILE",
+                        tmp_path_factory.mktemp("intel") / "intel_shown.json")
     yield
     mr._TWSE_STOCK_DAY_ALL_CACHE["data"] = None
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)

@@ -550,6 +550,11 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     mlb_tw = (sports or {}).get("mlb_tw") or []
     tennis = (sports or {}).get("tennis") or {}
     cpbl_fixtures = (sports or {}).get("cpbl_fixtures") or []
+    poly = (sports or {}).get("poly") or {}   # Polymarket 賭盤(2026-07-16)
+
+    def _poly_line(rows) -> str:
+        return "・".join(f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%"
+                         for r in rows or [])
     if not (cpbl or cpbl_scores or cpbl_fixtures or nba or nba_fav or nba_offseason
             or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
             or mlb_tw or tennis.get("tournaments") or tennis.get("results")
@@ -597,6 +602,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             wc_inner.append(
                 "<div style='margin:6px 0;'><b style='color:#0f172a;'>淘汰賽對戰表(台北時間;灰字=未開賽)</b>"
                 + "".join(ko_parts) + "</div>")
+        if poly.get("wc_champion"):
+            # 「冠軍」機率=整屆奪冠(含延長/PK),與單場「賭盤(90分鐘)」語意不同,
+            # 標題必須寫「冠軍機率」——不可與 DraftKings 90 分鐘市場混用措辭。
+            wc_inner.append(
+                f"<div style='margin:4px 0;font-size:12px;color:#b45309;'>"
+                f"<b>冠軍機率</b>:{_poly_line(poly['wc_champion'])}"
+                f"<span style='color:#94a3b8;'>(Polymarket 預測市場)</span></div>")
         # 淘汰賽是否已開打:對戰表中「有已完賽場次」、或任一賽果/賽程帶「非小組賽」
         # 回合標籤。刻意不以「對戰表存在」為準——淘汰賽首日早上對戰表全是未賽場次,
         # 一場未打就收掉小組最終積分表、吞掉末日小組賽賽果都太早(Codex review)。
@@ -713,7 +725,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
             f"<span style='color:#94a3b8;'>"
             f"{htmllib.escape((str(f.get('date', '')) + ' ' + str(f.get('start', ''))).strip())}</span>　"
-            f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}</div>"
+            f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}"
+            + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+               f"{htmllib.escape(str(f['odds']))}</div>" if f.get("odds") else "")
+            + "</div>"
             for f in cpbl_fixtures)
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 未來一週賽程（台北時間）</b>"
@@ -752,7 +767,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if g.get("note") else "")
             + "</div>"
             for g in nba)
-        blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}</div>")
+        blocks.append(
+            f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}"
+            + (f"<div style='font-size:12px;color:#b45309;'>"
+               f"<b>2026-27 冠軍盤</b>:{_poly_line(poly['nba_champ'])}"
+               f"<span style='color:#94a3b8;'>(Polymarket)</span></div>"
+               if poly.get("nba_champ") else "")
+            + "</div>")
     if nba_fav:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.9;'>"
@@ -766,7 +787,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             f"<div style='font-size:13px;color:#64748b;margin-top:2px;'>"
-            f"{htmllib.escape(nba_offseason)}</div></div>")
+            f"{htmllib.escape(nba_offseason)}</div>"
+            + (f"<div style='font-size:12px;color:#b45309;'>"
+               f"<b>2026-27 冠軍盤</b>:{_poly_line(poly['nba_champ'])}"
+               f"<span style='color:#94a3b8;'>(Polymarket)</span></div>"
+               if poly.get("nba_champ") else "")
+            + "</div>")
     nba_fixtures = (sports or {}).get("nba_fixtures") or []
     if nba_fixtures:
         rows = "".join(
@@ -793,7 +819,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 f"<b style='color:#0f172a;'>{lg}</b>　{cells}</div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 戰績（勝率前 5）</b>"
-            + "".join(seg_rows) + "</div>")
+            + "".join(seg_rows)
+            + (f"<div style='font-size:12px;color:#b45309;'>"
+               f"<b>世界大賽冠軍盤</b>:{_poly_line(poly['mlb_ws'])}"
+               f"<span style='color:#94a3b8;'>(Polymarket)</span></div>"
+               if poly.get("mlb_ws") else "")
+            + "</div>")
     mlb_fixtures = (sports or {}).get("mlb_fixtures") or []
     if mlb_fixtures:
         # 同一組對戰的系列賽合併成一行(使用者反映 07/18 TB@BOS 連列 3 行太混亂):
@@ -877,6 +908,17 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             t_inner.append(
                 f"<div style='font-size:12px;color:#475569;line-height:1.7;'>"
                 f"<b>進行中/即將</b>　{seg}</div>")
+        if poly.get("tennis_m") or poly.get("tennis_w"):
+            # 下一個大滿貫(美網)冠軍 futures;球員名維持英文(與賽果區一致)
+            segs = []
+            if poly.get("tennis_m"):
+                segs.append(f"男 {_poly_line(poly['tennis_m'])}")
+            if poly.get("tennis_w"):
+                segs.append(f"女 {_poly_line(poly['tennis_w'])}")
+            t_inner.append(
+                f"<div style='font-size:12px;color:#b45309;line-height:1.7;'>"
+                f"<b>美網冠軍盤</b>:{';'.join(segs)}"
+                f"<span style='color:#94a3b8;'>(Polymarket)</span></div>")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
             + "".join(t_inner) + "</div>")

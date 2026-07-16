@@ -876,3 +876,70 @@ def test_dynamic_google_paths_retain_source_name(monkeypatch):
     for name, out in (("cand", cand), ("sector", sect), ("8k", eight_k)):
         assert out, f"{name} 應回傳項目"
         assert out[0].get("source_name") == "經濟日報", f"{name} 須保留 source_name"
+
+
+# ===== 批#9(2026-07-16):政策區新鮮度(連日一模一樣 → 已顯示條目降序) =====
+
+def _mk_policy_item(key, published, title="測試政策"):
+    return {"timeline_key": key, "published": published, "title": title,
+            "importance": 5.0, "official": True, "scope": "昨日新訊"}
+
+
+def test_demote_recently_shown_policy(monkeypatch, tmp_path):
+    import datetime as dt
+    import json
+    f = tmp_path / "intel_shown.json"
+    monkeypatch.setattr(mr, "INTEL_SHOWN_FILE", f)
+    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+    f.write_text(json.dumps({
+        "policy|托育補助": {"date": "2026-07-15", "published": "2026-07-15 00:00"},
+        "policy|舊制勞退": {"date": "2026-07-09", "published": "2026-07-02 00:00"},
+    }), encoding="utf-8")
+    ranked = [
+        _mk_policy_item("policy|托育補助", "2026-07-15 00:00"),   # 昨天顯示過、無新報導 → 降序
+        _mk_policy_item("policy|舊制勞退", "2026-07-02 00:00"),   # 7 天前顯示(>5 天)→ 不降
+        _mk_policy_item("policy|新青安", "2026-07-15 20:00"),     # 沒顯示過 → 不降
+    ]
+    out = mr._demote_recently_shown_policy(ranked, now)
+    assert [i["timeline_key"] for i in out] == [
+        "policy|舊制勞退", "policy|新青安", "policy|托育補助"]
+    # 同 key 但有更新報導(published 比顯示當時新)→ 視為新訊,不降
+    fresh_again = _mk_policy_item("policy|托育補助", "2026-07-15 21:00")
+    out2 = mr._demote_recently_shown_policy([fresh_again], now)
+    assert out2[0]["timeline_key"] == "policy|托育補助"
+    # 無紀錄檔 → 原樣返回
+    f.unlink()
+    assert mr._demote_recently_shown_policy(ranked, now) == ranked
+
+
+def test_mark_intel_shown_records_top3_and_prunes(monkeypatch, tmp_path):
+    import datetime as dt
+    import json
+    f = tmp_path / "intel_shown.json"
+    monkeypatch.setattr(mr, "INTEL_SHOWN_FILE", f)
+    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+    # 既有一筆 20 天前的舊紀錄 → 應被修剪
+    f.write_text(json.dumps({
+        "policy|遠古": {"date": "2026-06-26", "published": "2026-06-26 00:00"}}),
+        encoding="utf-8")
+    intel = {"policy": [
+        _mk_policy_item("policy|A", "2026-07-15 10:00"),
+        _mk_policy_item("policy|B", "2026-07-15 11:00"),
+        _mk_policy_item("policy|C", "2026-07-15 12:00"),
+        _mk_policy_item("policy|D", "2026-07-15 13:00"),   # 第 4 條未顯示 → 不記
+    ]}
+    mr.mark_intel_shown(intel, now)
+    data = json.loads(f.read_text(encoding="utf-8"))
+    assert set(data) == {"policy|A", "policy|B", "policy|C"}
+    assert data["policy|A"] == {"date": "2026-07-16", "published": "2026-07-15 10:00"}
+    # 空 intelligence / 無 policy → 不寫不炸
+    mr.mark_intel_shown(None, now)
+    mr.mark_intel_shown({"policy": []}, now)
+
+
+def test_policy_queries_or_form_covers_hsinchingan():
+    """回歸:舊多詞查詢是 AND 語意(空格=AND)召回近零,新青安 3.0 漏抓——
+    必須存在 OR 形式的新青安/打炒房查詢。"""
+    qs = mr.TW_INTELLIGENCE_QUERIES["policy"]
+    assert any("新青安 OR" in q for q in qs)
+    assert not any(("新青安" in q and " OR " not in q) for q in qs)

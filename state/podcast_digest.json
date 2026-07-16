@@ -4315,6 +4315,65 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73012153",
+        "title": "TSMC chips in $100B more",
+        "published": "Thu, 16 Jul 2026 10:25:15 +0000",
+        "processed_at": "2026-07-16T15:18:02Z",
+        "digest": {
+          "summary_points": [
+            "台積電計劃額外投資1000億美元擴建美國晶片產能，總投資規模達2650億美元，將新建四座2奈米製程晶圓廠。",
+            "台積電首座美國鳳凰城晶圓廠已於2024年底量產4奈米晶片；第二座廠預計2025年下半年開始生產更先進的3奈米晶片。",
+            "優步（Uber）對德國Delivery Hero發起公開收購要約，每股現金41.50歐元，估值約148億美元。",
+            "優步目前持有Delivery Hero約37%經濟利益（含股權衍生品）；持股17%的Prosus已同意參與要約。",
+            "Delivery Hero同意將14個市場的業務出售給紐約投資公司SSW Partners，交易金額約14億歐元；優步將收購涵蓋50個市場的業務，2022年總訂單金額約420億美元。",
+            "聯合航空（United Airlines）將在新型A321XLR飛機上推出「經濟艙Plus」選項，移除中間座位改為共用桌，另計劃推出「RelaxRows」可將三座變沙發。",
+            "EOS Energy Enterprises（EOSE）因獲得美國戰爭部合約，盤前股價上漲14%。",
+            "美股期指盤前走低；原油下跌0.2%至每桶79美元。",
+            "今日經濟數據包含：初請失業金人數、零售銷售、房地產市場指數、待售房屋指數。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "TSM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "大規模擴張美國產能，顯示長期成長前景。"
+            },
+            {
+              "name": "優步",
+              "code": "UBER",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收購Delivery Hero擴大餐飲外送版圖。"
+            },
+            {
+              "name": "Delivery Hero",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "面臨收購要約，同時出售部分業務。"
+            },
+            {
+              "name": "聯合航空控股",
+              "code": "UAL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "推出新經濟艙座位選項，可能增加營收。"
+            },
+            {
+              "name": "EOS Energy Enterprises",
+              "code": "EOSE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "獲得美國政府合約，盤前大漲。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/72994694",
         "title": "Dan Ives launches merchant bank",
         "published": "Wed, 15 Jul 2026 16:29:56 +0000",
@@ -4863,26 +4922,6 @@
           "notable_quote": "Fuel cell energy is on our biggest movers list. FCEEL is down 18% after the company priced an up-sized public offering of 10.7 million shares at $21 a share."
         },
         "shown_at": "2026-07-09T23:10:08Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72858350",
-        "title": "We are in a bubble",
-        "published": "Tue, 07 Jul 2026 20:15:11 +0000",
-        "processed_at": "2026-07-07T21:07:55Z",
-        "digest": {
-          "summary_points": [
-            "6月的市場波動是由於季度末的再平衡所致，基金調整因AI和記憶體晶片獲利而過度集中的持倉。",
-            "基金經理被迫在季度末前重新平衡，並在新的季度開始時再次調整，造成「洗牌」效應。",
-            "當前市場類似1997-1998年的網路泡沫，而非2000年的崩盤，預期仍有上漲空間。",
-            "泡沫可能持續約16個月，若能謹慎操作並制定退場計畫，可獲得可觀報酬。",
-            "三星和南韓市場的極端表現加劇了國際基金的投資組合集中度問題。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "順勢操作泡沫，但需有退場計畫；在不認為泡沫會永遠持續的前提下掌握波動。",
-          "notable_quote": "if you know you're in a bubble, then you can ride it as long as you don't believe that it's going to go on forever"
-        },
-        "shown_at": "2026-07-07T22:58:09Z"
       }
     ]
   },

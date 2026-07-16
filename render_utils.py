@@ -607,9 +607,20 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     cpbl_fixtures = (sports or {}).get("cpbl_fixtures") or []
     poly = (sports or {}).get("poly") or {}   # Polymarket 賭盤(2026-07-16)
 
+    def _poly_delta_sfx(r) -> str:
+        # 「vs 前一日」變化(↑↓pp)+ 24h 量低標記(地基批#4)
+        d = r.get("delta")
+        sfx = ""
+        if isinstance(d, (int, float)) and abs(d) >= 1:
+            sfx = f"(↑{d:.0f}pp)" if d > 0 else f"(↓{-d:.0f}pp)"
+        if r.get("low_vol"):
+            sfx += "(量低⚠)"
+        return sfx
+
     def _poly_line(rows) -> str:
-        return "・".join(f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%"
-                         for r in rows or [])
+        return "・".join(
+            f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%{_poly_delta_sfx(r)}"
+            for r in rows or [])
 
     def _poly_champ_div(label: str, rows, note: str = "Polymarket") -> str:
         return (f"<div style='font-size:12px;color:#b45309;'>"

@@ -35,6 +35,9 @@ def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
                         tmp_path_factory.mktemp("intel") / "intel_shown.json")
     # Polymarket 護欄(斷路器/時間預算)測試間重置,避免跨測試污染
     mr._POLY_GUARD.update({"spent": 0.0, "consecutive_failures": 0, "tripped": False})
+    # Polymarket delta 快照導到 tmp(地基批#4)
+    monkeypatch.setattr(mr, "POLY_HISTORY_FILE",
+                        tmp_path_factory.mktemp("poly") / "poly_history.json")
     # model_history 分區目錄與 legacy 檔導到 tmp:防測試讀寫真實 state/(地基批#1)
     _mh = tmp_path_factory.mktemp("mh")
     monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", _mh / "model_history.json")

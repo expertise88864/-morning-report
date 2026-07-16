@@ -9313,6 +9313,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
              str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
              str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
              str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
+             str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
              str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
@@ -12487,10 +12488,16 @@ def _poly_yes_prob(market: dict) -> Optional[float]:
         return None
 
 
+# 24h 成交量低於此值 → 標「量低⚠」:機率上升但流動性極低可能只是少數交易,
+# 不應把價格當精確機率(GPT-5.6 建議「機率品質」的縮小版,地基批#4)
+_POLY_LOW_VOLUME_USD = 10_000.0
+
+
 def _poly_outright(slug: str, zh_map: Optional[dict] = None,
                    top: int = 5, min_prob: float = 0.02) -> list[dict]:
-    """單一 outright event(每個候選一個 Yes/No market)→ [{'name','prob'}] 依機率降序。
-    佔位項(Team A / Player A / Other)與已 closed(=已定案或撤盤)一律剔除。"""
+    """單一 outright event(每個候選一個 Yes/No market)→
+    [{'name','prob','low_vol'}] 依機率降序。
+    佔位項(Team A / Player A / Party A / Other)與已 closed 一律剔除。"""
     events = _poly_events({"slug": slug})
     if not events:
         return []
@@ -12505,9 +12512,72 @@ def _poly_outright(slug: str, zh_map: Optional[dict] = None,
         p = _poly_yes_prob(m)
         if p is None or p < min_prob:
             continue
-        rows.append({"name": (zh_map or {}).get(name, name), "prob": round(p * 100)})
+        # 欄位缺席=未知,不標(只有「確知量低」才提醒,避免對假陰性喊狼來了)
+        low_vol = False
+        if m.get("volume24hr") is not None:
+            try:
+                low_vol = float(m.get("volume24hr")) < _POLY_LOW_VOLUME_USD
+            except (TypeError, ValueError):
+                low_vol = False
+        rows.append({"name": (zh_map or {}).get(name, name), "prob": round(p * 100),
+                     "low_vol": low_vol})
     rows.sort(key=lambda r: -r["prob"])
     return rows[:top]
+
+
+# ===== Polymarket delta(地基批#4):昨日機率快照 → 今日顯示 ↑↓pp =====
+# 「變化」比「快照」更有情報價值(GPT-5.6 Delta-first 的縮小版)。
+# 結構 {key: {"prev": {"date","probs"}, "curr": {"date","probs"}}};
+# 同日重跑只覆蓋 curr(delta 穩定),跨日輪替 prev←curr。顯示用,不入模型。
+POLY_HISTORY_FILE = Path("state/poly_history.json")
+POLY_HISTORY_KEEP_DAYS = 14   # 死盤(世足決賽後等)的紀錄修剪
+
+
+def _poly_track_deltas(key: str, probs: dict, now_tpe: dt.datetime) -> dict:
+    """記錄今日機率並回傳 {name: 與前一日的差(pp)}。失敗回空(delta 缺席不影響顯示)。"""
+    try:
+        today = now_tpe.strftime("%Y-%m-%d")
+        store: dict = {}
+        if POLY_HISTORY_FILE.exists():
+            data = json.loads(POLY_HISTORY_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                store = data
+        ent = store.get(key) if isinstance(store.get(key), dict) else {}
+        curr = ent.get("curr") if isinstance(ent.get("curr"), dict) else {}
+        if str(curr.get("date")) != today:
+            ent = {"prev": curr, "curr": {"date": today, "probs": probs}}
+        else:
+            ent = {"prev": ent.get("prev"), "curr": {"date": today, "probs": probs}}
+        store[key] = {k: v for k, v in ent.items() if v}
+        cutoff = (now_tpe - dt.timedelta(days=POLY_HISTORY_KEEP_DAYS)).strftime("%Y-%m-%d")
+        store = {k: v for k, v in store.items()
+                 if str(((v or {}).get("curr") or {}).get("date") or "") >= cutoff}
+        POLY_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        POLY_HISTORY_FILE.write_text(
+            json.dumps(store, ensure_ascii=False), encoding="utf-8")
+        prev_probs = ((ent.get("prev") or {}).get("probs")) or {}
+        return {name: probs[name] - prev_probs[name]
+                for name in probs
+                if name in prev_probs
+                and isinstance(probs[name], (int, float))
+                and isinstance(prev_probs[name], (int, float))}
+    except Exception as e:
+        print(f"[poly] delta 追蹤失敗({key},不影響顯示): {e}", file=sys.stderr)
+        return {}
+
+
+def _poly_annotate_deltas(key: str, rows: list[dict],
+                          now_tpe: dt.datetime) -> list[dict]:
+    """對 [{'name','prob'}...] 附上 delta 欄位(就地),並記錄今日快照。"""
+    if not rows:
+        return rows
+    deltas = _poly_track_deltas(
+        key, {r["name"]: r["prob"] for r in rows if r.get("name")}, now_tpe)
+    for r in rows:
+        d = deltas.get(r.get("name"))
+        if d:
+            r["delta"] = d
+    return rows
 
 
 def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
@@ -12524,7 +12594,7 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
     try:
         wc = _poly_outright("world-cup-winner", _WC_TEAM_ZH, top=4)
         if wc and now_tpe.date() <= _WC_WINDOW[1]:   # 賽期外不顯示(決賽後市場結清)
-            out["wc_champion"] = wc
+            out["wc_champion"] = _poly_annotate_deltas("wc_champion", wc, now_tpe)
     except Exception as e:
         print(f"[poly] 世足冠軍盤抓取失敗: {e}", file=sys.stderr)
     try:
@@ -12555,15 +12625,26 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
         try:
             rows = _poly_outright(slug, _POLY_ZH_MAPS.get(zh_key), top=top)
             if rows:
-                out[key] = rows
+                out[key] = _poly_annotate_deltas(key, rows, now_tpe)
         except Exception as e:
             print(f"[poly] {key} 抓取失敗: {e}", file=sys.stderr)
     return out
 
 
+def _poly_delta_suffix(delta) -> str:
+    """delta(pp)→「(↑7pp)」/「(↓3pp)」;無前值或 |d|<1 回空。"""
+    if not isinstance(delta, (int, float)) or abs(delta) < 1:
+        return ""
+    return f"(↑{delta:.0f}pp)" if delta > 0 else f"(↓{-delta:.0f}pp)"
+
+
 def _poly_prob_line(rows: list[dict]) -> str:
-    """[{'name','prob'}] → 「甲 58%・乙 42%」。"""
-    return "・".join(f"{r['name']} {r['prob']}%" for r in rows)
+    """[{'name','prob',delta?,low_vol?}] → 「甲 58%(↑7pp)・乙 42%」;
+    24h 量低者附「量低⚠」(價格不宜當精確機率)。"""
+    return "・".join(
+        f"{r['name']} {r['prob']}%{_poly_delta_suffix(r.get('delta'))}"
+        + ("(量低⚠)" if r.get("low_vol") else "")
+        for r in rows)
 
 
 # ESPN 縮寫 → Polymarket slug 縮寫(僅列已知差異;其餘小寫直用。皆 live 實測:
@@ -12700,8 +12781,27 @@ def _poly_event_is_future(event: dict, now_utc: dt.datetime) -> bool:
     return end >= now_utc
 
 
+def _poly_binary_detail(key: str, markets: list,
+                        now_tpe: dt.datetime) -> Optional[str]:
+    """二元盤 → 「機率 52%(↑3pp)」;附 24h 量低標記。無法取價回 None。"""
+    p = _poly_yes_prob(markets[0]) if markets else None
+    if p is None:
+        return None
+    pct = round(p * 100)
+    deltas = _poly_track_deltas(key, {"yes": pct}, now_tpe)
+    low_vol = False
+    if markets[0].get("volume24hr") is not None:   # 欄位缺席=未知,不標
+        try:
+            low_vol = float(markets[0].get("volume24hr")) < _POLY_LOW_VOLUME_USD
+        except (TypeError, ValueError):
+            low_vol = False
+    return (f"機率 {pct}%" + _poly_delta_suffix(deltas.get("yes"))
+            + ("(量低⚠)" if low_vol else ""))
+
+
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
-    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。逐項失敗略過,全失敗回空。"""
+    """總經/地緣/事件預測市場快照 → [{"label","detail"}...]。逐項失敗略過,全失敗回空。
+    每列附「vs 前一日」變化(↑↓pp)與 24h 量低標記(地基批#4,顯示用不入模型)。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
     now_utc = now_tpe.astimezone(dt.timezone.utc)
     rows: list[dict] = []
@@ -12718,8 +12818,9 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                 "Fed Decision in", "").strip(" ?")
             outs = _poly_outright(slug, _POLY_FED_OUTCOME_ZH, top=3, min_prob=0.03)
             if outs:
-                rows.append({"label": f"Fed {_POLY_MONTH_ZH.get(month_en, month_en)}決議",
-                             "detail": _poly_prob_line(outs)})
+                label = f"Fed {_POLY_MONTH_ZH.get(month_en, month_en)}決議"
+                _poly_annotate_deltas(f"pulse|{label}", outs, now_tpe)
+                rows.append({"label": label, "detail": _poly_prob_line(outs)})
     except Exception as e:
         print(f"[poly] Fed 決議盤略過: {e}", file=sys.stderr)
     # 2) 年度二元盤(Yes 機率)
@@ -12728,9 +12829,9 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             events = _poly_events({"slug": slug})
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
-            p = _poly_yes_prob(markets[0]) if markets else None
-            if p is not None:
-                rows.append({"label": label, "detail": f"機率 {p * 100:.0f}%"})
+            detail = _poly_binary_detail(f"pulse|{label}", markets, now_tpe)
+            if detail:
+                rows.append({"label": label, "detail": detail})
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
     # 3) 多選型盤(S&P 年底區間 + 政治盤,各取市場最看好前 N)
@@ -12738,6 +12839,7 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
         try:
             outs = _poly_outright(slug, zh, top=top, min_prob=0.05)
             if outs:
+                _poly_annotate_deltas(f"pulse|{label}", outs, now_tpe)
                 rows.append({"label": label, "detail": _poly_prob_line(outs)})
         except Exception as e:
             print(f"[poly] {slug} 略過: {e}", file=sys.stderr)
@@ -12752,10 +12854,11 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             events = _poly_events({"slug": str(tsm[0].get("slug") or "")})
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
-            p = _poly_yes_prob(markets[0]) if markets else None
-            if p is not None:
+            detail = _poly_binary_detail("pulse|台積電本季財報優於市場預期",
+                                         markets, now_tpe)
+            if detail:
                 rows.append({"label": "台積電本季財報優於市場預期",
-                             "detail": f"機率 {p * 100:.0f}%"})
+                             "detail": detail})
     except Exception as e:
         print(f"[poly] TSMC 財報盤略過: {e}", file=sys.stderr)
     # 5) 台灣總統大選(2028 盤截至 2026-07 尚未開;動態搜尋,市場一開自動出現。
@@ -12770,6 +12873,7 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             outs = _poly_outright(str(tw[0].get("slug") or ""),
                                   _POLY_TW_PARTY_ZH, top=3, min_prob=0.03)
             if outs:
+                _poly_annotate_deltas("pulse|台灣總統大選", outs, now_tpe)
                 rows.append({"label": "台灣總統大選", "detail": _poly_prob_line(outs)})
     except Exception as e:
         print(f"[poly] 台灣總統大選盤略過: {e}", file=sys.stderr)
@@ -15813,6 +15917,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     deliver_report(html, subject, None, podcast_eps, intelligence=intel)
     _git_commit_and_push_state(
         [str(PODCAST_DIGEST_FILE), str(INTEL_SHOWN_FILE),   # 政策已顯示記錄週日也要帶回
+         str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
          str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")

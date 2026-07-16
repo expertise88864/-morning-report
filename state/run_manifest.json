@@ -1,37 +1,37 @@
 {
- "date": "2026-07-16 06:45",
- "total_seconds": 529.2,
+ "date": "2026-07-17 06:45",
+ "total_seconds": 472.5,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 36.9
+   "seconds": 7.8
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 132.7
+   "seconds": 140.7
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 20.1
+   "seconds": 7.7
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 144.3
+   "seconds": 126.9
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 104.7
+   "seconds": 102.0
   },
   {
    "label": "LLM 主分析",
-   "seconds": 87.2
+   "seconds": 86.3
   },
   {
    "label": "渲染",
-   "seconds": 3.3
+   "seconds": 1.2
   }
  ],
  "feeds": {
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 107,
+   "ok": 117,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -139,5 +139,6 @@
    "ok": 0,
    "fail": 1
   }
- }
+ },
+ "model_history_days": 154
 }

@@ -1,21 +1,21 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 29,
-  "last_seen": "2026-07-16",
-  "latest_title": "World Cup gave bars and restaurants a needed boost as consumers flash warning signs, Fed s"
+  "days": 30,
+  "last_seen": "2026-07-17",
+  "latest_title": "How the Iran War Is Rewiring the Oil Market"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 17,
-  "last_seen": "2026-07-16",
-  "latest_title": "川普警告伊朗：不談判就炸電廠、橋樑！美再祭新制裁、伊朗稱反擊美軍基地 - news.cnyes.com"
+  "days": 18,
+  "last_seen": "2026-07-17",
+  "latest_title": "Beijing denounces US chip curbs as threat to global supply chains"
  },
  "litigation:": {
   "first_seen": "2026-07-11",
-  "days": 4,
-  "last_seen": "2026-07-15",
-  "latest_title": "Current and former employees sue Meta, alleging discrimination in using AI to conduct layo"
+  "days": 5,
+  "last_seen": "2026-07-17",
+  "latest_title": "Elon Musk's Memphis AI empire is the epicenter of the data center backlash"
  },
  "litigation:AAPL": {
   "first_seen": "2026-07-13",
@@ -40,5 +40,11 @@
   "days": 1,
   "last_seen": "2026-07-15",
   "latest_title": "微軟發出緊急安全警報 黑客利用AI加速網絡攻擊 官方：X天內需完成更新 - ezone.hk"
+ },
+ "litigation:2882": {
+  "first_seen": "2026-07-17",
+  "days": 1,
+  "last_seen": "2026-07-17",
+  "latest_title": "代子公司國泰人壽保險股份有限公司公告總稽核異動。"
  }
 }

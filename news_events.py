@@ -31,12 +31,16 @@ def _event_type(text: str) -> str:
         ("orders", ("order", "orders", "訂單", "接單", "合約", "contract", "contracts")),
         ("earnings", ("earnings", "eps", "財報", "獲利", "盈餘")),
         ("revenue_growth", ("revenue", "revenues", "營收", "sales growth")),
-        ("export_controls", ("export control", "export controls",
-                             "出口管制", "制裁", "sanction", "sanctions")),
+        ("export_controls", ("export control", "export controls", "出口管制",
+                             "制裁", "sanction", "sanctions", "sanctioned",
+                             "sanctioning")),
         ("litigation", ("lawsuit", "lawsuits", "litigation", "訴訟", "裁罰")),
         ("geopolitical", ("war", "missile", "missiles", "attack", "attacks",
-                          "戰爭", "飛彈", "攻擊")),
+                          "attacked", "attacking", "戰爭", "飛彈", "攻擊")),
     )
+    # 動詞變形也要列(sanctioned/attacked 等,Codex review):刻意不加語意含混的
+    # ordered(court ordered)/contracted(economy contracted)——word boundary 的
+    # 目的就是擋這類誤中,寧可少收
     # 統一走 _matches_any(英文 word boundary、中文 substring):
     # 舊 substring 比對會讓 award 誤中 war、steps 誤中 eps、disorder 誤中 order
     # (GPT-5.6 二審 P1)。lower 化由 _matches_any 內部處理。
@@ -104,21 +108,26 @@ def _event_lifecycle(event: dict) -> str:
         return "rumor"
     return "confirmed" if event.get("source_grade") == "A" else "rumor"
 
-# 天生按「季度集數」發生的事件型別:同 entity+type 不同季是不同 episode。
+# 天生按「集數」發生的事件型別:同 entity+type 不同期是不同 episode。
 # 舊鍵 (entity, type) 會把台積電 Q1/Q2/明年 Q1 財報全撞成同一事件,第二季起
 # lifecycle 增量被誤判為「無進展」而權重歸零(GPT-5.6 二審 P0)。
-_QUARTERLY_EVENT_TYPES = frozenset(
-    {"earnings", "guidance_raise", "guidance_cut", "revenue_growth"})
+# 財報/財測=季頻;營收=**月頻**(台股月營收每月公布,若用季 bucket,同季第
+# 二、三個月的營收事件會被吃成 0 權重——Codex review)。
+_QUARTERLY_EVENT_TYPES = frozenset({"earnings", "guidance_raise", "guidance_cut"})
+_MONTHLY_EVENT_TYPES = frozenset({"revenue_growth"})
 
 
-def _event_quarter_bucket(event: dict) -> str:
-    """事件的季度 bucket(YYYYQn),取 published;無法解析回空(退回無 bucket 舊鍵)。"""
+def _event_period_bucket(event: dict, monthly: bool) -> str:
+    """事件的期別 bucket(月頻 YYYY-MM / 季頻 YYYYQn),取 published;
+    無法解析回空(退回無 bucket 舊鍵)。"""
     raw = str(event.get("published") or "").strip()
     try:
         d = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return f"{d.year}Q{(d.month - 1) // 3 + 1}"
     except (ValueError, TypeError):
         return ""
+    if monthly:
+        return f"{d.year}-{d.month:02d}"
+    return f"{d.year}Q{(d.month - 1) // 3 + 1}"
 
 
 def _event_timeline_key(event: dict) -> tuple[str, str]:
@@ -135,8 +144,8 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
             cluster = str(event.get("title") or event.get("summary") or "")
         digest = hashlib.sha1(cluster.encode("utf-8")).hexdigest()[:10]
         return entity or f"cluster:{digest}", event_type
-    if event_type in _QUARTERLY_EVENT_TYPES:
-        bucket = _event_quarter_bucket(event)
+    if event_type in _QUARTERLY_EVENT_TYPES or event_type in _MONTHLY_EVENT_TYPES:
+        bucket = _event_period_bucket(event, monthly=event_type in _MONTHLY_EVENT_TYPES)
         if bucket:
             return entity, f"{event_type}|{bucket}"
     return entity, event_type

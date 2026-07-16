@@ -12346,14 +12346,18 @@ def _poly_yes_prob(market: dict) -> Optional[float]:
     才退回舊行為取第一價(防 API 變體,並有 0~1 範圍檢查兜底)。"""
     try:
         prices = [float(x) for x in json.loads(market.get("outcomePrices") or "[]")]
-        outcomes = [str(x).strip().lower()
-                    for x in json.loads(market.get("outcomes") or "[]")]
-        if outcomes:
-            if len(outcomes) != len(prices) or "yes" not in outcomes:
+        raw_outcomes = market.get("outcomes")
+        if raw_outcomes is None:
+            p = prices[0]   # 欄位「缺席」才允許位置法(API 變體防禦)
+        else:
+            # 欄位「存在」就必須配對成功:空字串/空陣列/長度不符/無 Yes 一律 None
+            # (存在但空 ≠ 缺席,不得退位置法——Codex review)
+            parsed = raw_outcomes if isinstance(raw_outcomes, list) \
+                else json.loads(raw_outcomes)
+            outcomes = [str(x).strip().lower() for x in (parsed or [])]
+            if not outcomes or len(outcomes) != len(prices) or "yes" not in outcomes:
                 return None
             p = prices[outcomes.index("yes")]
-        else:
-            p = prices[0]
         return p if 0.0 <= p <= 1.0 else None
     except (ValueError, TypeError, IndexError):
         return None

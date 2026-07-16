@@ -1005,3 +1005,33 @@ def test_event_timeline_quarterly_episode_and_withdrawn_restart():
                "published": "2026-07-17T00:00:00+00:00", "title": "新一輪訂單確認"}
     out3 = mr.apply_event_timeline(hist_w, [revived])[0]
     assert out3["is_incremental"] is True and out3["lifecycle_weight"] > 0
+
+
+def test_corrective_a_round2_fixes():
+    """修正批A r2:動詞變形命中/月營收按月分集/outcomes 存在但空不得走位置法。"""
+    # F2:sanctioned/attacked 等動詞變形
+    assert mr._event_type("US sanctioned chipmaker under new ban") == "export_controls"
+    assert mr._event_type("Facility attacked overnight") == "geopolitical"
+    # 語意含混詞刻意不收:economy contracted 不是接單
+    assert mr._event_type("Economy contracted sharply") == "general"
+    # F3:同季兩個月的月營收=不同 episode,第二個月不得 0 權重
+    jan = {"entity": "2330", "event_type": "revenue_growth", "lifecycle": "confirmed",
+           "published": "2026-01-10T08:00:00+00:00", "title": "12月營收"}
+    feb = {"entity": "2330", "event_type": "revenue_growth", "lifecycle": "confirmed",
+           "published": "2026-02-10T08:00:00+00:00", "title": "1月營收"}
+    hist = [{"session_date": "2026-01-10", "structured_events": [jan]}]
+    out = mr.apply_event_timeline(hist, [feb])[0]
+    assert out["timeline_key"] == "2330|revenue_growth|2026-02"
+    assert out["lifecycle_weight"] > 0
+    # 同月重複報導仍抑制
+    out2 = mr.apply_event_timeline(
+        hist + [{"session_date": "2026-02-10", "structured_events": [feb]}],
+        [dict(feb)])[0]
+    assert out2["lifecycle_weight"] == 0
+    # F4:outcomes 存在但空(""/"[]"/[])→ None,不得退位置法
+    for empty in ("", "[]", []):
+        assert mr._poly_yes_prob(
+            {"outcomes": empty, "outcomePrices": '["0.6", "0.4"]'}) is None
+    # list 型別的 outcomes 也要能配對
+    assert mr._poly_yes_prob(
+        {"outcomes": ["No", "Yes"], "outcomePrices": '["0.4", "0.6"]'}) == 0.6

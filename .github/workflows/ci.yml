@@ -24,11 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt "ruff==0.15.15"
 
+      # 全 repo 掃描,不再手寫模組清單(GPT-5.6 review P2:清單曾漏掉
+      # render_utils/news_rules/session_calendar 等拆出模組,每次拆檔都要記得更新)
       - name: Syntax check
-        run: python -m py_compile morning_report.py podcast_digest.py gooaye_radar.py backtest_runner.py valuation.py fz_score.py factor_ic.py overfit_check.py alpha_factors.py backtest_data/*.py
+        run: python -m compileall -q . -x '(\.git|\.venv|__pycache__)'
 
       - name: Lint
-        run: python -m ruff check morning_report.py podcast_digest.py gooaye_radar.py backtest_runner.py valuation.py fz_score.py factor_ic.py overfit_check.py alpha_factors.py tests backtest_data
+        run: python -m ruff check .
 
       - name: Run unit tests
         run: python -m pytest -q

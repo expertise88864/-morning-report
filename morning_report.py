@@ -15796,6 +15796,26 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     return 0
 
 
+def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
+    """天氣/在地快訊/停班停課:逐項獨立抓取,任一失敗不連坐、key 一律初始化
+    (GPT-5.6 review P1:原本三項同一個 try,天氣先失敗會吞掉後兩項)。"""
+    try:
+        quotes["WEATHER"] = fetch_weather()
+    except Exception as e:
+        print(f"[main] 天氣抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["WEATHER"] = []
+    try:
+        quotes["LOCAL_NEWS"] = fetch_local_news(now_tpe)   # 在地快訊(中彰投雲,2026-07-15)
+    except Exception as e:
+        print(f"[main] 在地快訊抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["LOCAL_NEWS"] = {}
+    try:
+        quotes["SUSPENSION_NEWS"] = fetch_suspension_news()   # 停班停課公告(颱風季)
+    except Exception as e:
+        print(f"[main] 停班停課抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["SUSPENSION_NEWS"] = []
+
+
 # ---------- 主流程 ----------
 def main() -> int:
     global _RUN_DEADLINE
@@ -15910,13 +15930,7 @@ def main() -> int:
     if quotes["PODCAST_DIGEST"]:
         print(f"[main] 載入 {len(quotes['PODCAST_DIGEST'])} 集 podcast 摘要")
     print("[main] 抓天氣與體育快訊…")
-    try:
-        quotes["WEATHER"] = fetch_weather()
-        quotes["LOCAL_NEWS"] = fetch_local_news(now_tpe)   # 在地快訊(中彰投雲,2026-07-15)
-        quotes["SUSPENSION_NEWS"] = fetch_suspension_news()   # 停班停課公告(颱風季)
-    except Exception as e:
-        print(f"[main] 天氣抓取失敗(不影響晨報): {e}", file=sys.stderr)
-        quotes["WEATHER"] = []
+    _fetch_lifestyle_quotes(quotes, now_tpe)
     try:
         quotes["SPORTS"] = fetch_sports_digest(now_tpe)
     except Exception as e:

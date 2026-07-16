@@ -215,3 +215,27 @@ def test_budget_gate_skips_and_records_under_pressure(monkeypatch):
         assert "大步驟" in budget_row["detail"]
     finally:
         mr._DEGRADED_STEPS.clear()
+
+
+def test_lifestyle_sources_fail_independently(monkeypatch):
+    """故障矩陣(GPT-5.6 review P1):天氣/在地快訊/停班停課逐項獨立——
+    任一先失敗不連坐其餘,且三個 key 一律初始化(渲染端不會 KeyError)。"""
+    import datetime as dt
+    import itertools
+    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
+    for fail in itertools.product([False, True], repeat=3):
+        def _mk(value, should_fail):
+            def f(*a, **k):
+                if should_fail:
+                    raise ConnectionError("boom")
+                return value
+            return f
+        monkeypatch.setattr(mr, "fetch_weather", _mk([{"name": "彰化市"}], fail[0]))
+        monkeypatch.setattr(mr, "fetch_local_news", _mk({"建設": []}, fail[1]))
+        monkeypatch.setattr(mr, "fetch_suspension_news", _mk([{"title": "x"}], fail[2]))
+        quotes = {}
+        mr._fetch_lifestyle_quotes(quotes, now)
+        assert set(quotes) == {"WEATHER", "LOCAL_NEWS", "SUSPENSION_NEWS"}, fail
+        assert quotes["WEATHER"] == ([] if fail[0] else [{"name": "彰化市"}]), fail
+        assert quotes["LOCAL_NEWS"] == ({} if fail[1] else {"建設": []}), fail
+        assert quotes["SUSPENSION_NEWS"] == ([] if fail[2] else [{"title": "x"}]), fail

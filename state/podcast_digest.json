@@ -4400,6 +4400,50 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73025372",
+        "title": "Starship stall weighs on SpaceX",
+        "published": "Fri, 17 Jul 2026 10:40:01 +0000",
+        "processed_at": "2026-07-17T14:57:40Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 股價早盤下跌 4.2%，因星艦發射中止，引擎問題導致；IPO 價格為 135 美元。",
+            "Netflix 第二季營收 125.6 億美元，低於共識預期 2000 萬美元，營業利益優於預期，自由現金流 15.3 億美元不及預期。",
+            "Wayfair 宣布將於 7 月 23 日舉辦夏季銷售活動，盤前下跌 2.7%。",
+            "Star Surgical (STAA) 儘管第二季初步營收年增約一倍，但因地緣政治與營運挑戰，股價下跌 12%。",
+            "PayPal 據報導認為 Stripe 與 Advent 的 530 億美元收購報價不足。",
+            "Michael Burry 表示現在是尋找港股便宜貨的好時機。",
+            "美股期貨指數走低，原油上漲 2.8% 至每桶 80 美元。",
+            "今日經濟數據：8:30 房屋開工、營建許可、進出口物價；10:00 消費者信心指數。"
+          ],
+          "tickers": [
+            {
+              "name": "Netflix",
+              "code": "NFLX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "營收略低於預期，盤前交易下跌，儘管營業利益優於預期。"
+            },
+            {
+              "name": "Wayfair",
+              "code": "W",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "儘管宣布夏季銷售活動，盤前仍下跌 2.7%。"
+            },
+            {
+              "name": "Star Surgical",
+              "code": "STAA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因地緣政治與營運挑戰，股價下跌 12%。"
+            }
+          ],
+          "market_view": "美股期貨指數開盤前走低，顯示今日偏空。",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73012153",
         "title": "TSMC chips in $100B more",
         "published": "Thu, 16 Jul 2026 10:25:15 +0000",
@@ -4975,38 +5019,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": ""
-        },
-        "shown_at": "2026-07-09T23:10:08Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72866816",
-        "title": "Oil futures surge on strikes",
-        "published": "Wed, 08 Jul 2026 10:21:34 +0000",
-        "processed_at": "2026-07-08T15:45:30Z",
-        "digest": {
-          "summary_points": [
-            "美國對伊朗發動軍事打擊，攻擊其防空系統、指揮控制網路及60餘艘小型船隻，原油期貨大漲6.3%至近75美元/桶。",
-            "俄克拉荷馬州總檢察長起訴Allstate保險，指控其透過「災難支付最小化計畫」不當減少理賠支付以增加利潤。",
-            "多家媒體公司（Netflix、迪士尼、Google旗下YouTube、亞馬遜、蘋果）有意競標2030年和2034年世界盃美國轉播權，預計總價在15-20億美元。",
-            "預測市場認為那斯達克100指數在AI熱潮後可能降溫。",
-            "韓國KOSPI指數因AI拋售加深進入熊市。",
-            "埃克森美孚暗示Q2盈利將因油價上漲而提高。",
-            "強生和ArrowVirment將分別在神經肌肉疾病大會和投資者日發布重要數據。",
-            "FuelCell Energy因增發1070萬股（每股21美元）導致股價下跌18%。",
-            "今日經濟數據關注MBA抵押貸款申請及FOMC會議紀要。"
-          ],
-          "tickers": [
-            {
-              "name": "FuelCell Energy",
-              "code": "FCEEL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "公司定價增發1070萬股，股價大跌18%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Fuel cell energy is on our biggest movers list. FCEEL is down 18% after the company priced an up-sized public offering of 10.7 million shares at $21 a share."
         },
         "shown_at": "2026-07-09T23:10:08Z"
       }

@@ -1075,3 +1075,16 @@ def test_cnyes_json_branch_parses_epoch_and_tracks_health(monkeypatch):
     assert mr._process_feed_item(w, cutoff) == []
     assert mr._FEED_STATS["api.cnyes.com"]["fail"] == 1
     assert mr._FEED_STATS["api.cnyes.com"]["streak"] == 1
+
+
+def test_policy_user_focus_terms_boost_housing_policy():
+    """批#14:新青安/打炒房等房市政策條目獲個人化加權,不再被官方行政公告壓死。"""
+    imp, why = mr._tw_intelligence_importance(
+        "policy", "「新青安3.0」拍板 設排富條款", False, "昨日新訊",
+        mr._tw_intelligence_status("「新青安3.0」拍板 設排富條款"))
+    assert imp >= 5.0                                # 2.9 → 5.4+,可進前三
+    assert why[0] == "使用者關注:房市政策"
+    # 非房市政策媒體條目不受影響
+    imp2, why2 = mr._tw_intelligence_importance(
+        "policy", "行政院討論一般行政事項", False, "昨日新訊", "媒體報導")
+    assert "使用者關注:房市政策" not in why2 and imp2 < imp

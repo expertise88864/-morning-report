@@ -504,6 +504,9 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
                 "OR 台中 預售屋 OR 房市 買氣 OR 營建成本"),
     "建商-中彰投": ("精銳建設 OR 總太 OR 富宇 OR 順天建設 OR 惠宇建設 OR 陸府 "
                 "OR 聚合發 OR 龍寶建設 OR 國雄建設 OR 合新建設 OR 台中 建商"),
+    # 房市政策(2026-07-17 使用者兩度反映新青安 3.0 沒見報:政策區被官方行政公告
+    # 壓分之外,九段也缺專屬素材 → 開專用查詢,實測「新青安 OR 打炒房…」36 則)
+    "房市政策-台股": "新青安 OR 限貸 OR 打炒房 OR 囤房稅 OR 央行 房市 信用管制",
     "建設-中彰投": "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 斗六 建設",
     # 重電綠能:電網強韌/台電/儲能/離岸風電(近年主升段族群,原本完全沒覆蓋)
     "重電-台股": "重電 OR 電網 OR 台電 強韌 OR 儲能 OR 離岸風電",
@@ -10333,6 +10336,8 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
      房市買氣、交易熱區、預售屋/營建成本動態、在地建商(精銳/總太/富宇/順天等)推案與完銷、
      重大公共建設(如中捷藍線、中科擴建)——**有素材必寫 1 條**,寫清楚「哪一區、買氣/價格
      方向、什麼建設或建商題材」;此條屬生活+資產配置情報,可不綁個股、不用湊機制傳導。
+     **【房市政策-台股】有新青安/限貸/打炒房/囤房稅/央行信用管制素材時必寫 1 條**
+     (使用者高度關注,2026-07-17):寫清楚政策內容、適用對象/門檻與對買方或建商的影響方向。
    - **重電綠能**:機制走「電網強韌計畫/台電標案/儲能離岸風電」——電力基建資本支出→重電三雄(華城/士電/中興電)在手訂單能見度。
    - **觀光內需**:機制走「客流/客運量/內需消費」——來台/出國旅客與航空客運載客率→觀光航空營收,零售看內需景氣。
 5. **可信度分級**:來源可用 A(主管機關/公司公告/法說)、B(主流財經媒體)、C(聚合/未具名來源)三級;C 級或僅方向性者必須明確標「信心:低」。
@@ -12686,13 +12691,16 @@ def _poly_delta_suffix(delta, days: int = 1) -> str:
 
 
 def _poly_prob_line(rows: list[dict]) -> str:
-    """[{'name','prob',delta?,low_vol?}] → 「甲 58%(↑7pp)・乙 42%」;
-    24h 量低者附「量低⚠」(價格不宜當精確機率)。"""
-    return "・".join(
+    """[{'name','prob',delta?,low_vol?}] → 「甲 58%(↑7pp)・乙 42%」。
+    量低標記改「行級聚合」:任一名量低 → 行尾一次「(部分量低⚠)」——
+    逐名標記讓每行塞滿⚠難以閱讀(2026-07-17 使用者反映)。"""
+    body = "・".join(
         f"{r['name']} {r['prob']}%"
         f"{_poly_delta_suffix(r.get('delta'), r.get('delta_days', 1))}"
-        + ("(量低⚠)" if r.get("low_vol") else "")
         for r in rows)
+    if any(r.get("low_vol") for r in rows):
+        body += "(部分量低⚠)"
+    return body
 
 
 # ESPN 縮寫 → Polymarket slug 縮寫(僅列已知差異;其餘小寫直用。皆 live 實測:
@@ -12770,13 +12778,9 @@ _POLY_MONTH_ZH = {
     "September": "9月", "October": "10月", "November": "11月", "December": "12月",
 }
 _POLY_PULSE_BINARY: tuple[tuple, ...] = (
-    # (顯示名, slug)——Yes 價=機率
+    # (顯示名, slug)——Yes 價=機率。
+    # 2026-07-17 使用者刪減:衰退/台海封鎖/武力犯台/賴清德任期 四列移除
     ("2026 年內 Fed 再升息", "fed-rate-hike-in-2026"),
-    ("美國 2026 年底前衰退", "us-recession-by-end-of-2026"),
-    ("中國 2026 年內封鎖台海", "will-china-blockade-taiwan-by-in-2026"),
-    ("中國 2026 年底前武力犯台", "will-china-invade-taiwan-before-2027"),
-    # 台灣政治(2026-07-16 使用者問台灣選舉盤;個別縣市長 Polymarket 無市場,實測)
-    ("賴清德總統 2026 年底前去職", "lai-ching-te-out-as-president-of-taiwan-in-2026"),
 )
 # 多選型盤(取市場最看好前 N;政治盤 2026-07-16 使用者要求。選後 slug 換屆更新)
 _POLY_PARTY_ZH = {"Democratic Party": "民主黨", "Republican Party": "共和黨",
@@ -12787,10 +12791,8 @@ _POLY_TW_PARTY_ZH = {   # 注意 TPP 原文撇號是 U+2019(照抄市場字串)
     "Taiwan People's Party (TPP)": "民眾黨",
 }
 _POLY_PULSE_OUTRIGHT: tuple[tuple, ...] = (
-    # (顯示名, slug, 對照表 or None, 取前 N)
-    ("S&P 500 年底收盤區間", "spx-close-dec-2026", None, 2),
-    ("美國期中選舉眾院多數黨", "which-party-will-win-the-house-in-2026", _POLY_PARTY_ZH, 2),
-    ("美國期中選舉參院多數黨", "which-party-will-win-the-senate-in-2026", _POLY_PARTY_ZH, 2),
+    # (顯示名, slug, 對照表 or None, 取前 N)。
+    # 2026-07-17 使用者刪減:S&P 年底/眾院/參院 三列移除
     ("2028 美國總統大選執政黨", "which-party-wins-2028-us-presidential-election",
      _POLY_PARTY_ZH, 2),
     # 台灣九合一(2026-11-28;實測 KMT 86%/DPP 14%/TPP 1%,Party A/Other 佔位自動剔除)

@@ -587,6 +587,23 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         + "".join(cards))
 
 
+def _mlb_series_odds_div(s: dict, htmllib) -> str:
+    """MLB 系列賽賭盤:合併成單一小字行(批#14 使用者反映多行「賭盤:…」重複難讀)。
+    單場:「賭盤:道奇 52%・洋基 48%(Polymarket)」照舊;
+    連戰:「賭盤(Polymarket):07/18 光芒 46%・紅襪 54%;07/19 光芒 48%・紅襪 52%」。"""
+    odds_list = s.get("odds_list") or []
+    if not odds_list:
+        return ""
+    if len(odds_list) == 1 and s.get("n", 1) == 1:
+        return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+                f"{htmllib.escape(odds_list[0][1])}</div>")
+    def _strip(o: str) -> str:
+        return (str(o).replace("賭盤:", "").replace("(Polymarket)", "").strip())
+    parts = [((f"{day} " if day else "") + _strip(o)) for day, o in odds_list]
+    return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
+            f"賭盤(Polymarket):{htmllib.escape(';'.join(parts))}</div>")
+
+
 def _render_sports_html(sports: dict, htmllib) -> str:
     """體育快訊卡:CPBL 戰績表 + NBA 冠軍賽 + MLB 戰績榜 + 新聞標題。無資料回空。"""
     news = (sports or {}).get("news") or {}
@@ -608,22 +625,23 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     poly = (sports or {}).get("poly") or {}   # Polymarket 賭盤(2026-07-16)
 
     def _poly_delta_sfx(r) -> str:
-        # 變化(↑↓pp)+ 24h 量低標記;基準非昨日時標實際間隔天數(地基批#4)
+        # 變化(↑↓pp);基準非昨日時標實際間隔天數(地基批#4)。
+        # 量低標記移到行級聚合(批#14:逐名⚠塞滿整行難讀)
         d = r.get("delta")
-        sfx = ""
         if isinstance(d, (int, float)) and abs(d) >= 1:
             days = r.get("delta_days", 1)
             span = f"/{days}日" if isinstance(days, int) and days > 1 else ""
             arrow = f"↑{d:.0f}" if d > 0 else f"↓{-d:.0f}"
-            sfx = f"({arrow}pp{span})"
-        if r.get("low_vol"):
-            sfx += "(量低⚠)"
-        return sfx
+            return f"({arrow}pp{span})"
+        return ""
 
     def _poly_line(rows) -> str:
-        return "・".join(
+        body = "・".join(
             f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%{_poly_delta_sfx(r)}"
             for r in rows or [])
+        if any(r.get("low_vol") for r in rows or []):
+            body += "(部分量低⚠)"
+        return body
 
     def _poly_champ_div(label: str, rows, note: str = "Polymarket") -> str:
         return (f"<div style='font-size:12px;color:#b45309;'>"
@@ -658,9 +676,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                                   "東", "西"))
 
     def _tennis_poly_div(p, line_fn) -> str:
-        # 下一個大滿貫(美網)冠軍 futures;球星名附中文對照(2026-07-16)
+        # 下一個大滿貫(美網)冠軍 futures;球星名以中文為主(批#14:
+        # 「EN(中文)」逐名並列讓整行過長難讀),查無對照才保留英文
         def _zh_rows(rows):
-            return [{**r, "name": _tennis_zh(r.get("name"))} for r in rows or []]
+            def _short(name):
+                surname = str(name or "").split()[-1] if name else ""
+                return _TENNIS_PLAYER_ZH.get(surname, str(name or ""))
+            return [{**r, "name": _short(r.get("name"))} for r in rows or []]
         segs = []
         if p.get("tennis_m"):
             segs.append(f"男 {line_fn(_zh_rows(p['tennis_m']))}")
@@ -997,11 +1019,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if s.get("n", 1) > 1 else "")
             + ("　<span style='color:#b45309;font-size:11px;'>特別賽事</span>"
                if s["special"] else "")
-            + "".join(
-                "<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
-                + (f"{htmllib.escape(day)}　" if s.get("n", 1) > 1 and day else "")
-                + f"{htmllib.escape(o)}</div>"
-                for day, o in s.get("odds_list") or [])
+            + _mlb_series_odds_div(s, htmllib)
             + "</div>"
             for text, s in sorted(series.items(), key=lambda kv: kv[1]["first"]))
         blocks.append(

@@ -290,7 +290,8 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 def test_other_sector_queries_precision():
     """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 15                               # 8 類 + 房市/建商/建設-中彰投(2026-07-16 批#9)
+    assert len(q) == 16                               # + 房市政策-台股(2026-07-17 批#14)
+    assert "新青安" in q["房市政策-台股"]
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
     assert "投資收益" in q["金融-台股"] or "淨息差" in q["金融-台股"]
@@ -2222,7 +2223,7 @@ def test_render_sports_poly_lines():
     assert "冠軍機率</b>:西班牙 58%・阿根廷 42%" in h and "Polymarket 預測市場" in h
     assert "世界大賽冠軍盤</b>:道奇 30%・洋基 13%" in h
     assert "2026-27 冠軍盤</b>:雷霆 27%・馬刺 19%" in h
-    assert "美網冠軍盤</b>:男 Jannik Sinner(辛納) 52%;女 Aryna Sabalenka(莎巴倫卡) 22%" in h
+    assert "美網冠軍盤</b>:男 辛納 52%;女 莎巴倫卡 22%" in h   # 批#14:中文為主
     assert "賭盤:統一 54%・樂天 46%(Polymarket)" in h
     # 沒有 poly 資料 → 各行自然缺席,不崩
     sports.pop("poly")
@@ -2276,7 +2277,7 @@ def test_render_sports_poly_survives_when_legacy_sources_all_fail():
     assert "世界盃足球賽" in h and "冠軍機率</b>:西班牙 58%" in h
     assert "世界大賽冠軍盤</b>:道奇 30%" in h
     assert "2026-27 冠軍盤</b>:雷霆 27%" in h
-    assert "美網冠軍盤</b>:男 Jannik Sinner(辛納) 52%" in h
+    assert "美網冠軍盤</b>:男 辛納 52%" in h
     # 只有 cpbl_games(無賽程行可掛)→ 無可渲染內容,卡片仍回空
     assert mr._render_sports_html(
         {"news": {}, "poly": {"cpbl_games": [{"teams": ["樂天", "統一"],
@@ -2374,10 +2375,11 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
     by_label = {r["label"]: r["detail"] for r in rows}
     assert by_label["Fed 9月決議"] == "利率不變 66%・升息1碼 28%・降息1碼 4%"
     assert by_label["2026 年內 Fed 再升息"] == "機率 52%"
-    assert by_label["S&P 500 年底收盤區間"] == ">$8,000 28%・$7,500-$8,000 20%"
     assert by_label["台積電本季財報優於市場預期"] == "機率 100%"
-    # 其餘固定 slug fake 回空 → 該行自然缺席,不炸
-    assert "美國 2026 年底前衰退" not in by_label
+    # 批#14 使用者刪減:衰退/台海/賴清德/S&P/眾參院 不再出現
+    for gone in ("美國 2026 年底前衰退", "S&P 500 年底收盤區間",
+                 "美國期中選舉眾院多數黨", "中國 2026 年內封鎖台海"):
+        assert gone not in by_label
 
     h = mr._render_poly_pulse_html(rows)
     assert "預測市場觀點(Polymarket)" in h and "Fed 9月決議" in h
@@ -2433,7 +2435,9 @@ def test_mlb_series_merge_keeps_per_game_odds():
     h = mr._render_sports_html(sports, htmllib)
     assert "2 連戰" in h
     assert "光芒 55%・紅襪 45%" in h and "光芒 48%・紅襪 52%" in h   # 兩場賭盤都在
-    assert "07/18　賭盤:" in h and "07/19　賭盤:" in h              # 各自帶日期
+    # 批#14:連戰賭盤合併為單一「賭盤(Polymarket):07/18 …;07/19 …」行
+    assert "賭盤(Polymarket):07/18 " in h and ";07/19 " in h
+    assert h.count("賭盤(Polymarket)") == 1
 
 
 def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
@@ -2556,9 +2560,9 @@ def test_pulse_includes_politics_rows(monkeypatch):
     import datetime as dt
     rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE))
     by_label = {r["label"]: r["detail"] for r in rows}
-    assert by_label["美國期中選舉眾院多數黨"] == "民主黨 84%・共和黨 17%"
-    assert "美國期中選舉參院多數黨" in by_label
-    assert "2028 美國總統大選執政黨" in by_label
+    assert "2028 美國總統大選執政黨" in by_label            # 保留
+    for gone in ("美國期中選舉眾院多數黨", "美國期中選舉參院多數黨"):
+        assert gone not in by_label                        # 批#14 使用者刪減
 
 
 def test_poly_guard_trips_after_consecutive_failures(monkeypatch):
@@ -2648,7 +2652,7 @@ def test_pulse_taiwan_markets(monkeypatch):
     now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
     rows = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
     assert rows["2026 台灣九合一選舉最大贏家"] == "國民黨 86%・民進黨 14%・民眾黨 6%"
-    assert rows["賴清德總統 2026 年底前去職"] == "機率 5%"
+    assert "賴清德總統 2026 年底前去職" not in rows        # 批#14 使用者刪減
     assert "台灣總統大選" not in rows                      # 2028 盤未開 → 不出行
     search_results["n"] = 1                               # 模擬市場開盤
     rows2 = {r["label"]: r["detail"] for r in mr.fetch_polymarket_pulse(now)}
@@ -2696,7 +2700,9 @@ def test_poly_prob_line_renders_delta_and_low_volume():
         {"name": "英格蘭", "prob": 3, "low_vol": True},
         {"name": "法國", "prob": 2, "delta": 0.4},   # |d|<1 不顯示
     ])
-    assert line == "西班牙 58%(↑16pp)・阿根廷 42%(↓16pp)・英格蘭 3%(量低⚠)・法國 2%"
+    # 批#14:量低改行級聚合,不再逐名標
+    assert line == "西班牙 58%(↑16pp)・阿根廷 42%(↓16pp)・英格蘭 3%・法國 2%(部分量低⚠)"
+    assert mr._poly_prob_line([{"name": "甲", "prob": 60}]) == "甲 60%"
 
 
 def test_poly_outright_marks_low_volume(monkeypatch):

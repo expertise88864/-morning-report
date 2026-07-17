@@ -110,6 +110,11 @@ TW_INTELLIGENCE_NOISE = {
 }
 
 
+# 使用者關注的房市政策詞(命中即政策區加權;2026-07-17 使用者要求新青安 3.0 必見)
+TW_POLICY_USER_FOCUS_TERMS = (
+    "新青安", "打炒房", "囤房稅", "限貸", "信用管制", "青年安心成家",
+)
+
 TW_INTELLIGENCE_MAJOR_TERMS = {
     "policy": (
         "通過", "核定", "公告", "上路", "修法", "草案", "預告", "補助",
@@ -270,6 +275,13 @@ def _tw_intelligence_importance(kind: str,
     if major_hits:
         score += min(2.5, 0.7 * len(major_hits))
         reasons.append("重大詞:" + "、".join(major_hits[:3]))
+    if kind == "policy" and any(
+            token in title for token in TW_POLICY_USER_FOCUS_TERMS):
+        # 使用者關注主題加權(2026-07-17:兩度反映「新青安 3.0 沒看到」——媒體房市
+        # 政策條目 2.9 分被官方行政公告 6+ 分壓死,永遠擠不進前 3)。顯示層個人化,
+        # 與股價模型無關。
+        score += 2.5
+        reasons.insert(0, "使用者關注:房市政策")
     topic = _tw_intelligence_topic(kind, title)
     if topic not in ("其他政策", "其他醫界"):
         score += 0.7

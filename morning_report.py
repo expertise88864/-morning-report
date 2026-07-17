@@ -92,6 +92,7 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _event_surprise_score,
     _event_lifecycle,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_timeline_key,  # noqa: F401 — re-export:相容 mr.* 讀取
+    _event_instance_id,
     apply_event_timeline,
     _event_study_dedupe_key,
     _shrunk_event_impact,
@@ -300,6 +301,9 @@ def _write_run_manifest(now_tpe) -> None:
             "feeds": feeds,
             # 地基批#5:供次日比對「模型歷史是否縮短」的健康警示
             "model_history_days": _RUN_MANIFEST.get("model_history_days"),
+            # PR-2 雙軌:LLM vs Python 立場比對(三審 P1-4:先前只設進記憶體
+            # dict,這裡的白名單沒輸出 → manifest 追蹤不到一致率)
+            "stance_dual": _RUN_MANIFEST.get("stance_dual"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
@@ -7430,8 +7434,8 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30,
     hist = hist[-keep_days:]
     try:
         SOURCE_HEALTH_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        SOURCE_HEALTH_HISTORY_FILE.write_text(
-            json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+        _atomic_write_text(SOURCE_HEALTH_HISTORY_FILE,
+                           json.dumps(hist, ensure_ascii=False, indent=1))
     except Exception as e:
         print(f"[health] 歷史寫入失敗: {e}", file=sys.stderr)
 
@@ -7454,31 +7458,12 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30,
 
 
 def load_model_history() -> list[dict]:
-    """讀取 point-in-time 股票池歷史:legacy 單檔(凍結唯讀)+ 按月分區 gzip 合併,
-    同一交易日以分區為準;回傳依日期排序的最近 MODEL_HISTORY_SESSIONS 筆。
-    單一分區壞檔只略過該檔,不影響其餘(晨報不可斷)。"""
-    import gzip
-    merged: dict[str, dict] = {}
-    if MODEL_HISTORY_FILE.exists():
-        try:
-            data = json.loads(MODEL_HISTORY_FILE.read_text(encoding="utf-8"))
-            for item in data if isinstance(data, list) else []:
-                if isinstance(item, dict) and item.get("session_date"):
-                    merged[item["session_date"]] = item
-        except Exception as e:
-            print(f"[model_state] legacy 載入失敗: {e}", file=sys.stderr)
-    if MODEL_HISTORY_DIR.exists():
-        for path in sorted(MODEL_HISTORY_DIR.glob("*.json.gz")):
-            try:
-                data = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
-                for item in data if isinstance(data, list) else []:
-                    if isinstance(item, dict) and item.get("session_date"):
-                        merged[item["session_date"]] = item   # 分區優先(較新)
-            except Exception as e:
-                print(f"[model_state] 分區 {path.name} 載入失敗(略過): {e}",
-                      file=sys.stderr)
-    history = sorted(merged.values(), key=lambda item: item.get("session_date", ""))
-    return history[-MODEL_HISTORY_SESSIONS:]
+    """讀取 point-in-time 股票池歷史(legacy+分區合併,分區優先)。
+    實作抽至 model_history_store(三審 P1:與 backtest_data 離線腳本共用同一
+    loader,回測/月報不再讀凍結的 legacy 單檔);這裡以本模組的路徑常數呼叫,
+    保留 tests/conftest 對 mr.MODEL_HISTORY_FILE/DIR 的 monkeypatch 相容。"""
+    from model_history_store import load_model_history as _impl
+    return _impl(MODEL_HISTORY_FILE, MODEL_HISTORY_DIR, MODEL_HISTORY_SESSIONS)
 
 
 def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
@@ -7883,7 +7868,6 @@ def extract_structured_events(news: list[dict],
                               llm_events: Optional[list[dict]] = None,
                               now: Optional[dt.datetime] = None) -> list[dict]:
     """Extract, merge and cluster events with official-source priority and decay."""
-    import hashlib
     now = now or dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=dt.timezone.utc)
@@ -7920,8 +7904,9 @@ def extract_structured_events(news: list[dict],
         }
         event["surprise_score"] = _event_surprise_score(
             dict(event, surprise_score=item.get("surprise_score"), summary=item.get("summary")))
-        raw_id = "|".join(str(v) for v in _event_cluster_key(event))
-        event["event_id"] = hashlib.sha1(raw_id.encode("utf-8")).hexdigest()[:12]
+        # episodic instance ID(三審 P0-1:舊 cluster-key ID 讓不同季度財報永久同 ID,
+        # event study 去重把後續季度樣本全數擋掉)
+        event["event_id"] = _event_instance_id(event)
         candidates.append(event)
 
     for item in mops or []:
@@ -7930,7 +7915,10 @@ def extract_structured_events(news: list[dict],
         append(item)
     for item in llm_events or []:
         if isinstance(item, dict):
-            append(dict(item, source=item.get("source") or "LLM extractor"))
+            # source/source_grade 強制固定:LLM 屬二手抽取,不得沿用(或自報)
+            # 官方來源身分——_validate_llm_events 已剝除名單外欄位,這裡再釘死
+            # (三審 P1-1;若同事件確有官方公告,MOPS 路徑自然會以 A 級勝出)
+            append(dict(item, source="LLM extractor", source_grade="C"))
 
     clustered: dict[tuple, dict] = {}
     for event in candidates:
@@ -8122,8 +8110,8 @@ def _load_conformal_state() -> dict:
 def _save_conformal_state(state: dict) -> None:
     try:
         CONFORMAL_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CONFORMAL_STATE_FILE.write_text(
-            json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8")
+        _atomic_write_text(CONFORMAL_STATE_FILE,
+                           json.dumps(state, ensure_ascii=True, indent=2))
     except Exception as e:
         print(f"[conformal] 寫入失敗(不影響晨報): {e}", file=sys.stderr)
 
@@ -9365,8 +9353,12 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         grade = n.get("source_grade") or _news_source_grade(n)
         # G6:critical/high(with_full)附可信度確定性標記——獨立來源數 + 是否含官方來源。
         cred = _credibility_tag(n) if with_full else ""
+        # 標題與摘要同樣是外部不可信資料(RSS 標題本身可帶指令),與全文走同一
+        # sanitizer——先前只包全文,title/summary 直接插 prompt(GPT-5.6 三審 P1)
+        safe_title = _sanitize_untrusted_text(str(n.get("title") or ""))
+        safe_summary = _sanitize_untrusted_text(str(n.get("summary") or ""))[:600]
         text = (f"- {prefix}[來源{grade}:{n['source']}]{cred} "
-                f"{n['title']}（{n.get('summary','')[:600]}）")
+                f"{safe_title}（{safe_summary}）")
         if with_full and n.get("fulltext"):
             # 網頁全文=不可信外部資料:剝除疑似注入指令句,並以標籤隔離
             # (修正批B,GPT-5.6 二審:間接 prompt injection 攻擊面)
@@ -11875,8 +11867,8 @@ def update_event_timeline(structured_events: list[dict],
     state = {k: v for k, v in state.items() if v.get("last_seen", "") >= cutoff}
     try:
         EVENT_TIMELINE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        EVENT_TIMELINE_FILE.write_text(
-            json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
+        _atomic_write_text(EVENT_TIMELINE_FILE,
+                           json.dumps(state, ensure_ascii=False, indent=1))
     except Exception as e:
         print(f"[timeline] 寫入失敗: {e}", file=sys.stderr)
     active = [{"key": k, **v} for k, v in state.items()
@@ -12161,9 +12153,18 @@ def _compute_stance_score(quotes: dict) -> dict:
         lambda v: v >= 60, lambda v: v <= 40)
 
     total = sum(components.values())
-    label = "偏多" if total >= 5 else ("偏空" if total <= -5 else "中性")
+    # coverage=實際取得資料的維度比例(missing 不算;休市強制 0 的維度視為有資料——
+    # 那是明確的「無新資訊」,不是缺值)。coverage<70% 時「沒有資料≠市場中性」,
+    # 標 abstain 並以「資料不足」取代方向標籤(GPT-5.6 三審 P1-5)。
+    coverage = round(1 - len(missing) / max(1, len(components)), 3) if components else 0.0
+    abstain = coverage < 0.7
+    if abstain:
+        label = "資料不足"
+    else:
+        label = "偏多" if total >= 5 else ("偏空" if total <= -5 else "中性")
     return {"total": total, "label": label, "components": components,
-            "missing": missing, "flags": flags, "stale_us": stale_us}
+            "missing": missing, "flags": flags, "stale_us": stale_us,
+            "coverage": coverage, "abstain": abstain}
 
 
 def _prediction_delta_note(history: list, report_date: str,
@@ -12833,18 +12834,32 @@ def _poly_event_is_future(event: dict, now_utc: dt.datetime) -> bool:
     return end >= now_utc
 
 
-def _poly_binary_detail(key: str, markets: list,
-                        now_tpe: dt.datetime) -> Optional[str]:
-    """二元盤 → 「機率 52%(↑3pp)」;附 24h 量低標記。無法取價回 None。"""
-    p = _poly_yes_prob(markets[0]) if markets else None
-    if p is None:
+def _poly_binary_detail(key: str, markets: list, now_tpe: dt.datetime,
+                        question_re: str = "") -> Optional[str]:
+    """二元盤 → 「機率 52%(↑3pp)」;附 24h 量低標記。無法取價回 None。
+
+    market 依內容確定性選擇,不吃 API 回傳順序(三審 P1-7:盲取 markets[0],
+    event 若含 EPS/營收/不同門檻多個子盤會讀錯):有 question_re 先過濾;
+    可取價候選唯一才用,多於一個=無從辨識 → 寧缺勿錯回 None。"""
+    cands = [m for m in (markets or []) if _poly_yes_prob(m) is not None]
+    if question_re:
+        import re as _re
+        cands = [m for m in cands
+                 if _re.search(question_re, str(m.get("question") or ""), _re.I)]
+    if not cands:
         return None
+    if len(cands) > 1:
+        print(f"[poly] {key}: {len(cands)} 個可取價子盤無從辨識,略過(寧缺勿錯)",
+              file=sys.stderr)
+        return None
+    market = cands[0]
+    p = _poly_yes_prob(market)
     pct = round(p * 100)
     d = _poly_track_deltas(key, {"yes": round(p * 100, 2)}, now_tpe).get("yes") or {}
     low_vol = False
-    if markets[0].get("volume24hr") is not None:   # 欄位缺席=未知,不標
+    if market.get("volume24hr") is not None:   # 欄位缺席=未知,不標
         try:
-            low_vol = float(markets[0].get("volume24hr")) < _POLY_LOW_VOLUME_USD
+            low_vol = float(market.get("volume24hr")) < _POLY_LOW_VOLUME_USD
         except (TypeError, ValueError):
             low_vol = False
     return (f"機率 {pct}%" + _poly_delta_suffix(d.get("pp"), d.get("days", 1))
@@ -12907,7 +12922,8 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
             markets = [m for m in (events[0].get("markets") or [])
                        if not m.get("closed")] if events else []
             detail = _poly_binary_detail("pulse|台積電本季財報優於市場預期",
-                                         markets, now_tpe)
+                                         markets, now_tpe,
+                                         question_re=r"beat.*earnings")
             if detail:
                 rows.append({"label": "台積電本季財報優於市場預期",
                              "detail": detail})
@@ -14136,8 +14152,8 @@ def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
                     ep["shown_at"] = now_iso
                     marked += 1
         if marked:
-            PODCAST_DIGEST_FILE.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            _atomic_write_text(PODCAST_DIGEST_FILE,
+                               json.dumps(data, ensure_ascii=False, indent=2))
             print(f"[podcast] 已標記 {marked} 集為已顯示(下次信件不再重複)")
     except Exception as e:
         print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
@@ -15534,8 +15550,9 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
             return None
         EMAIL_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
         out = EMAIL_ARCHIVE_DIR / f"{date_str}.html.gz"
-        with gzip.open(out, "wt", encoding="utf-8") as f:
-            f.write(redacted)
+        # mtime=0:gzip header 含時間戳,不歸零會讓「內容相同」的重寫每天產生新 bytes
+        _atomic_write_bytes(out, gzip.compress(
+            redacted.encode("utf-8"), mtime=0))
         cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=keep_days)).strftime("%Y-%m-%d")
         for p in EMAIL_ARCHIVE_DIR.glob("*.html.gz"):
             stem = p.name.split(".")[0]   # 只修剪合法日期檔名,異常檔名不動(Codex nit)
@@ -16749,7 +16766,11 @@ def main() -> int:
                   f"({_sp.get('label')}) → {_agree}")
             _RUN_MANIFEST["stance_dual"] = {
                 "llm": _stance_state.get("score"), "py": _sp.get("total"),
-                "agree": _sp["total"] == _stance_state["score"]}
+                "agree": _sp["total"] == _stance_state["score"],
+                # 追蹤一致率所需的品質欄位(三審 P1-4):缺哪些維度、旗標、覆蓋率
+                "coverage": _sp.get("coverage"), "missing": _sp.get("missing"),
+                "flags": _sp.get("flags"), "abstain": _sp.get("abstain"),
+                "stale_us": _sp.get("stale_us")}
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
             "stance_label": _stance_state.get("label"),
@@ -16758,6 +16779,8 @@ def main() -> int:
             "stance_score_py": _sp.get("total"),
             "stance_label_py": _sp.get("label"),
             "stance_components_py": _sp.get("components"),
+            "stance_coverage_py": _sp.get("coverage"),
+            "stance_missing_py": _sp.get("missing"),
             "generated_at": now_tpe.isoformat(),
             "target_session_date": target_session_date,
             "weekday": now_tpe.strftime("%a"),

@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 680+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 700+ 單元測試。
 
 ---
 
@@ -19,7 +19,7 @@
 | 風險事件日曆 | 未來 7 天 CPI/FOMC/結算日/三巫/重點財報(台北時間) | 內建行事曆+財報 API |
 | 一、美股收盤 | QQQ / TSM / SPY | Yahoo Finance |
 | 二、總經指標 | VIX/SOX/DXY/日經/**KOSPI**/上證/黃金/銅 + 1Y 百分位 + 美債利率環境白話(WTI/BTC 照抓餵模型,僅不顯示) | Yahoo Finance |
-| **預測市場觀點** | Polymarket:Fed 最近決議、2026 再升息、美國衰退、台海封鎖/犯台、賴清德任期、S&P 年底區間、美國期中選舉/2028 總統、**台灣九合一政黨盤**、台積電財報 beat(財報季);顯示用,**不入任何模型** | Polymarket Gamma API |
+| **預測市場觀點** | Polymarket:Fed 最近決議、2026 再升息、2028 美國總統、**台灣九合一政黨盤**、台積電財報 beat(財報季);顯示用,**不入任何模型** | Polymarket Gamma API |
 | 五、加權指數開盤預測 | 夜盤台指期、預測點位、合理區間、訊號共識 | TAIFEX+內部模型 |
 | 六、個股預測 | 2330 開盤 / 00662 公允價 / 0050 + ETF 進出參考價 + MA200 長線參考 | 三模型+校準 |
 | 台股行事曆 | 股票申購(排除債券)、0050/0056 除息與配息(FinMind 自動補值) | TWSE、FinMind |
@@ -36,7 +36,7 @@
 
 另有:**週日綜合輕量信**(僅體育/Podcast/政策/醫界有新內容才寄)、
 **股癌雷達獨立信**(`gooaye_radar.py`,新集偵測後族群萃取+個股驗證)、
-**週一晨報含上週預測錯誤檢討**。
+**週一晨報含最近 7 個已結算預測的錯誤檢討**。
 
 ### 賭盤語意鐵律
 
@@ -114,7 +114,7 @@ session_calendar.py   台股交易日推算
 portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要求隱藏)
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
-tests/                680+ 測試(不連網;conftest 隔離 state 寫入)
+tests/                700+ 測試(不連網;conftest 隔離 state 寫入)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -123,7 +123,7 @@ state/                執行期狀態(見下);由 workflow 於寄信成功後 co
 | 檔案 | 用途 |
 |---|---|
 | `history.json` | 每日預測與實際開盤(450 天),供 MAE 加權與 bias 校正 |
-| `model_history.json` | 市值前百 point-in-time 快照(上限 520 交易日/14MB) |
+| `model_history/YYYY-MM.json.gz` | 市值前百 point-in-time 快照,按月分區 gzip(上限 520 交易日);舊單檔 `model_history.json` 凍結唯讀 |
 | `event_timeline.json` | 新聞事件生命週期(rumor→confirmed→implemented) |
 | `podcast_digest.json` | Podcast 摘要與已顯示標記 |
 | `conformal_intervals.json` | 預測區間校準 |
@@ -194,7 +194,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 
 ```bash
 pip install -r requirements.txt
-pytest -q                        # 680+ 測試,不連網、不寄信
+pytest -q                        # 700+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."
@@ -244,6 +244,6 @@ python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 ## 已知限制
 
 - repo 若為 Public,state 與查詢主題會暴露個人關注領域(建議轉 Private)。
-- `state/model_history.json` 受 14MB 上限截斷,長史回測需另存 archive。
+- `state/model_history/` 月分區保存 520 交易日;更長歷史需另存 archive。
 - state 每日 commit 回 repo,長期會膨脹 git 歷史(遷移外部儲存為中期方向)。
 - NBA 單場賭盤 slug 已以上季市場驗證,開季首日仍應目視確認一次。

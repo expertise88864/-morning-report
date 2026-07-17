@@ -17,9 +17,12 @@ on:
 permissions:
   contents: write   # 允許 push 回 state/history.json
 
+# 排程與手動觸發分 group:共用 group + cancel-in-progress 會讓 06:00 前後的
+# 手動測試與正式排程互相取消(GPT-5.6 三審 P1-10)。排程 run 絕不可被取消
+# (cancel-in-progress: false → 同 group 排隊);手動測試彼此仍互相取代。
 concurrency:
-  group: morning-report
-  cancel-in-progress: true
+  group: morning-report-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   send-report:

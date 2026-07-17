@@ -3,6 +3,7 @@
 只依 stdlib(各函式內部自行 import re/difflib)。morning_report 以 re-export 保相容,
 既有測試零修改。後續 news_events(B5)如需 NEWS_POSITIVE/NEGATIVE_TERMS 由此 import。
 """
+import re
 from typing import Optional
 
 
@@ -292,17 +293,28 @@ def _tw_intelligence_importance(kind: str,
     return round(max(0.0, score), 2), reasons[:4]
 
 
-def _grade_from_text(text: str) -> str:
-    """從單一字串(source / source_name / 標題)判斷來源等級;無法判斷回空字串。"""
+# 英文 token 一律 word boundary:舊寫法 "sec" in text 是子字串比對,
+# "second"/"sector"/"insecure" 都會被誤判成 SEC 官方 A 級(GPT-5.6 三審 P1,
+# 實際比 review 指出的更糟)。中文詞無詞界問題,維持 substring。
+_A_GRADE_EN = re.compile(r"\b(federal reserve|treasury|sec|mops|twse|taifex)\b")
+_A_GRADE_ZH = ("中央銀行", "證交所", "公開資訊觀測站")
+_B_GRADE_EN = re.compile(
+    r"\b(cnbc|bloomberg|reuters|cnyes|udn|cna|scmp|nikkei|bbc"
+    r"|moneydj|technews|digitimes|yahoo)\b")
+_B_GRADE_ZH = ("鉅亨", "工商", "經濟日報", "聯合", "中央社", "南華",
+               "科技新報")
+
+
+def _grade_from_text(text: str, allow_a: bool = True) -> str:
+    """從單一字串判斷來源等級;無法判斷回空字串。
+    allow_a=False 用於「標題」欄位:標題提到 SEC/央行只代表事件主角是官方機構,
+    不代表發布者是官方來源——A 級只能由 source/source_name(發布者身分)判定;
+    標題僅用於辨識 Google News 尾綴的主流媒體名(B 級)(GPT-5.6 三審 P1)。"""
     text = (text or "").lower()
-    if any(token in text for token in (
-            "federal reserve", "treasury", "sec", "mops", "twse", "taifex",
-            "中央銀行", "證交所", "公開資訊觀測站")):
+    if allow_a and (_A_GRADE_EN.search(text)
+                    or any(token in text for token in _A_GRADE_ZH)):
         return "A"
-    if any(token in text for token in (
-            "cnbc", "bloomberg", "reuters", "鉅亨", "cnyes", "工商", "經濟日報",
-            "udn", "聯合", "中央社", "cna", "南華", "scmp", "nikkei", "bbc",
-            "moneydj", "technews", "科技新報", "digitimes", "yahoo")):
+    if _B_GRADE_EN.search(text) or any(token in text for token in _B_GRADE_ZH):
         return "B"
     return ""
 
@@ -311,10 +323,11 @@ def _news_source_grade(item: dict) -> str:
     """新聞來源分級：官方 A、主流媒體 B、聚合或未識別來源 C。
     Google News / 類股 feed 的 source 只是聚合器代號(如 Google:NVDA、類股-金融-台股),
     真正的發布媒體在 source_name、或 Google 標題結尾「- 經濟日報」。三者一起看,
-    否則正版個股新聞會被誤判為 C → 去重時輸給舊版、且被當低可信度。"""
+    否則正版個股新聞會被誤判為 C → 去重時輸給舊版、且被當低可信度。
+    標題只允許升到 B(見 _grade_from_text 的 allow_a 說明)。"""
     return (_grade_from_text(item.get("source"))
             or _grade_from_text(item.get("source_name"))
-            or _grade_from_text(item.get("title"))
+            or _grade_from_text(item.get("title"), allow_a=False)
             or "C")
 
 

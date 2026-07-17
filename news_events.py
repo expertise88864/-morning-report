@@ -60,12 +60,17 @@ def _freshness_weight(age_hours: float) -> float:
     return 0.20
 
 def _event_cluster_key(event: dict) -> tuple:
+    # 跑內跨來源聚合鍵:有 entity 的型別事件抹掉標題(不同媒體同一事件標題不同,
+    # 靠 entity+type+direction 聚合);entityless 型別事件必須保留標題指紋——
+    # 否則同型別+同方向的所有無主體事件(常見:地緣)全撞成一鍵,互相吞併
+    # (GPT-5.6 三審 P0:實際 state 中同鍵重複 29 次)。
     import re as _re
     title = _re.sub(r"\W+", "", str(event.get("title") or "").lower())[:48]
-    if event.get("event_type") != "general":
+    entity = str(event.get("entity") or "")
+    if event.get("event_type") != "general" and entity:
         title = ""
     return (
-        str(event.get("entity") or ""),
+        entity,
         str(event.get("event_type") or "general"),
         int(_safe_number(event.get("direction"))),
         title,
@@ -143,12 +148,39 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
         if not cluster.strip("|"):
             cluster = str(event.get("title") or event.get("summary") or "")
         digest = hashlib.sha1(cluster.encode("utf-8")).hexdigest()[:10]
-        return entity or f"cluster:{digest}", event_type
+        if entity:
+            # 有 entity 的 general 事件:標題 digest 必須進 key——否則同公司所有
+            # 雜項公告(董事異動/子公司投資…)全撞 (entity, "general") 一鍵,
+            # 實際 state 中單一金控 16 則不同公告互吞(三審 P0-1 殘餘碰撞)
+            return entity, f"general|{digest}"
+        return f"cluster:{digest}", event_type
     if event_type in _QUARTERLY_EVENT_TYPES or event_type in _MONTHLY_EVENT_TYPES:
         bucket = _event_period_bucket(event, monthly=event_type in _MONTHLY_EVENT_TYPES)
-        if bucket:
-            return entity, f"{event_type}|{bucket}"
+    else:
+        # 其餘型別(orders/litigation/export_controls/geopolitical…)一律掛「月」bucket:
+        # 舊鍵 (entity, type) 讓同公司三月與六月的兩張訂單永久共用 lineage,第二張
+        # 的 confirmed 被判「無進展」權重歸零(GPT-5.6 三審 P0-2)。不用「日」bucket——
+        # rumor→confirmed 常跨數日,日 bucket 會把同一事件的生命週期切斷。
+        # 代價:同公司同月兩件同型別事件仍共 lineage(寧可少計,不灌水)。
+        bucket = _event_period_bucket(event, monthly=True)
+    if bucket:
+        return entity, f"{event_type}|{bucket}"
     return entity, event_type
+
+
+def _event_instance_id(event: dict) -> str:
+    """Episodic 事件實體 ID(GPT-5.6 三審 P0-1)。
+
+    舊 event_id = sha1(cluster key),非 general 事件的 cluster key 抹掉標題且無期別
+    → 台積電 2026Q1/Q2/2027Q1 財報全撞同一 ID,event study 去重(event_id 優先)
+    把後續季度樣本永遠擋在門外,learned impact 累積不到樣本。
+    新 ID 由 timeline 身分衍生(entity 或 entityless 標題指紋 + type|期別 bucket)
+    再加 direction:同一事件跨來源同 ID(可去重)、不同季/月/主體不同 ID(不互吞)。"""
+    import hashlib
+    ident, type_key = _event_timeline_key(event)
+    raw = "|".join((ident, type_key,
+                    str(int(_safe_number(event.get("direction"))))))
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
 
 def apply_event_timeline(model_history: list[dict],
@@ -233,7 +265,11 @@ def _shrunk_event_impact(event_study: dict[tuple, dict],
         weight = n / (n + prior_strength)
         weighted += _safe_number(stats.get("avg_excess_pct")) * weight
         total_weight += weight
-        samples += n
+        # 樣本數取「最寬層」而非跨層加總:company ⊆ industry/supply_chain ⊆ global
+        # 是巢狀子集,同一事件會同時進多層;加總會把 2 個真實事件灌成 8 個樣本,
+        # 讓下游「study_samples >= 5 才用 learned impact」門檻形同虛設
+        # (GPT-5.6 三審 P0-3)。max = 支撐這次估計的不重複觀測數上界。
+        samples = max(samples, n)
         used.append(scope)
     if not total_weight:
         return 0.0, 0, "conservative_fallback"
@@ -243,9 +279,22 @@ def _shrunk_event_impact(event_study: dict[tuple, dict],
 _LLM_EVENT_TYPES = {"guidance_raise", "guidance_cut", "orders", "earnings",
                     "revenue_growth", "export_controls", "litigation", "geopolitical", "general"}
 
+# LLM 抽取事件的欄位白名單=extractor prompt 明文要求的欄位。名單外的欄位
+# (source/source_grade/official/quality_score…)一律剝除:LLM(或藏在新聞裡的
+# 注入指令)不得自封官方 A 級來源或高品質分(GPT-5.6 三審 P1-1)。
+_LLM_EVENT_FIELDS = frozenset({
+    "entity", "event_type", "direction", "confidence", "surprise_score",
+    "lifecycle", "title", "summary", "published"})
+_LLM_LIFECYCLES = frozenset({"rumor", "confirmed", "implemented", "withdrawn"})
+# LLM 二手抽取的自報信心上限=一般媒體項的預設信心(0.65):不得高於一手媒體、
+# 更不得逼近官方(0.90)。
+_LLM_CONFIDENCE_CAP = 0.65
+
+
 def _validate_llm_events(events: list) -> tuple[list, int]:
     """驗證 LLM 抽取事件 schema:event_type 屬允許集合、direction ∈ {-1,0,1}、entity 為字串或缺。
-    回 (合格清單, 丟棄數)。不合格項丟棄(寧缺勿濫,避免髒事件污染下游計分/去重)。"""
+    回 (合格清單, 丟棄數)。不合格項丟棄(寧缺勿濫,避免髒事件污染下游計分/去重)。
+    合格項只保留白名單欄位,lifecycle 限合法值、confidence 上限 0.65(見上)。"""
     valid, dropped = [], 0
     for ev in events or []:
         if not isinstance(ev, dict):
@@ -259,7 +308,15 @@ def _validate_llm_events(events: list) -> tuple[list, int]:
         if (str(ev.get("event_type") or "") in _LLM_EVENT_TYPES
                 and direction in (-1, 0, 1)
                 and isinstance(entity, (str, type(None)))):
-            valid.append(ev)
+            clean = {k: v for k, v in ev.items() if k in _LLM_EVENT_FIELDS}
+            if str(clean.get("lifecycle") or "") not in _LLM_LIFECYCLES:
+                clean.pop("lifecycle", None)
+            try:
+                clean["confidence"] = min(_LLM_CONFIDENCE_CAP,
+                                          float(clean["confidence"]))
+            except (KeyError, TypeError, ValueError):
+                clean.pop("confidence", None)
+            valid.append(clean)
         else:
             dropped += 1
     return valid, dropped

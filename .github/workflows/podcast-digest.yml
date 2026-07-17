@@ -19,9 +19,10 @@ on:
 permissions:
   contents: write
 
+# 同 morning-report:排程/手動分 group,排程不可被手動測試取消(三審 P1-10)
 concurrency:
-  group: podcast-digest
-  cancel-in-progress: true
+  group: podcast-digest-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
   digest:

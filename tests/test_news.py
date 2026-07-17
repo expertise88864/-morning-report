@@ -1032,6 +1032,102 @@ def test_corrective_a_round2_fixes():
     for empty in ("", "[]", []):
         assert mr._poly_yes_prob(
             {"outcomes": empty, "outcomePrices": '["0.6", "0.4"]'}) is None
+
+
+def test_event_instance_id_separates_quarters_companies_and_geo():
+    """三審 P0-1:episodic event_id。不同季度/不同公司/同日兩件地緣事件不得同 ID
+    (舊 ID 只含 entity+type+direction,台積電歷季財報全撞同一 ID,event study
+    去重把後續季度樣本永遠擋掉);同一事件跨媒體(標題不同、有 entity)必須同 ID。"""
+    q1 = {"entity": "2330", "event_type": "earnings", "direction": 1,
+          "published": "2026-04-17T08:00:00+00:00", "title": "TSMC Q1 beat"}
+    q2 = dict(q1, published="2026-07-17T08:00:00+00:00", title="TSMC Q2 beat")
+    assert mr._event_instance_id(q1) != mr._event_instance_id(q2)      # 兩季度
+    assert mr._event_instance_id(q1) != mr._event_instance_id(
+        dict(q1, entity="2454"))                                       # 兩公司
+    assert mr._event_instance_id(q1) == mr._event_instance_id(
+        dict(q1, title="台積電第一季財報優於預期"))                     # 跨來源同事件
+    g1 = {"entity": "", "event_type": "geopolitical", "direction": -1,
+          "published": "2026-07-17T00:00:00+00:00", "title": "Strait tensions escalate"}
+    g2 = dict(g1, title="Middle East ceasefire collapses")
+    assert mr._event_instance_id(g1) != mr._event_instance_id(g2)      # 同日兩地緣事件
+
+
+def test_event_timeline_orders_get_monthly_episodes():
+    """三審 P0-2:非財報/營收型別也要有期別 bucket——三月與六月的兩張訂單是兩個
+    episode,第二張的 confirmed 不得被第一張吃成 0 權重。"""
+    mar = {"entity": "2330", "event_type": "orders", "lifecycle": "confirmed",
+           "published": "2026-03-05T08:00:00+00:00", "title": "三月訂單"}
+    jun = {"entity": "2330", "event_type": "orders", "lifecycle": "confirmed",
+           "published": "2026-06-20T08:00:00+00:00", "title": "六月訂單"}
+    hist = [{"session_date": "2026-03-05", "structured_events": [mar]}]
+    out = mr.apply_event_timeline(hist, [jun])[0]
+    assert out["timeline_key"] == "2330|orders|2026-06"
+    assert out["is_incremental"] is True and out["lifecycle_weight"] > 0
+    # 同月重複報導仍抑制
+    out2 = mr.apply_event_timeline(
+        hist + [{"session_date": "2026-06-20", "structured_events": [jun]}],
+        [dict(jun)])[0]
+    assert out2["lifecycle_weight"] == 0
+
+
+def test_extract_keeps_distinct_entityless_geo_events():
+    """三審 P0:entityless 型別事件的 cluster key 保留標題指紋——同型別同方向的
+    兩件無主體地緣事件不得在跑內互吞;同標題重複報導仍聚合。"""
+    a = {"title": "Strait tensions escalate", "event_type": "geopolitical",
+         "direction": -1, "published": "2026-07-17T00:00:00+00:00"}
+    b = dict(a, title="Middle East ceasefire collapses")
+    events = mr.extract_structured_events([a, b, dict(a)], [])
+    titles = sorted(e["title"] for e in events)
+    assert len(events) == 2
+    assert titles == ["Middle East ceasefire collapses", "Strait tensions escalate"]
+    assert len({e["event_id"] for e in events}) == 2
+
+
+def test_source_grade_title_cannot_claim_official_and_word_boundary():
+    """三審 P1-2:標題提到 SEC/央行≠官方來源——A 級只能由 source/source_name 判定;
+    且英文 token 需 word boundary(舊 substring 讓 second/sector 誤中 sec)。"""
+    # 不明部落格報導 SEC 調查 → 不得因標題升 A
+    assert mr._news_source_grade(
+        {"source": "Google:XYZ", "title": "SEC investigates company X - someblog"}) == "C"
+    # word boundary:second/sector 不得誤中 sec
+    assert mr._news_source_grade(
+        {"source": "unknown", "title": "Second quarter results in tech sector"}) == "C"
+    # 發布者身分仍正常判 A / B
+    assert mr._news_source_grade({"source": "TWSE 公告"}) == "A"
+    assert mr._news_source_grade({"source": "MOPS"}) == "A"
+    assert mr._news_source_grade(
+        {"source": "Google:2330", "source_name": "經濟日報"}) == "B"
+    # 標題尾綴媒體名仍可升 B(Google News 常見格式)
+    assert mr._news_source_grade(
+        {"source": "Google:2330", "title": "台積電創高 - 經濟日報"}) == "B"
+
+
+def test_validate_llm_events_strips_self_claimed_authority():
+    """三審 P1-1:LLM 抽取事件不得自封官方來源/高信心——名單外欄位剝除、
+    confidence 上限 0.65、lifecycle 限合法值。"""
+    valid, dropped = mr._validate_llm_events([{
+        "entity": "2330", "event_type": "orders", "direction": 1,
+        "confidence": 1.0, "surprise_score": 0.9, "lifecycle": "confirmed",
+        "title": "big order",
+        # 以下全是自封欄位,必須剝除
+        "source": "MOPS", "source_grade": "A", "official": True,
+        "quality_score": 9.9,
+    }])
+    assert dropped == 0 and len(valid) == 1
+    ev = valid[0]
+    assert "source" not in ev and "source_grade" not in ev
+    assert "official" not in ev and "quality_score" not in ev
+    assert ev["confidence"] == 0.65                       # cap
+    assert ev["lifecycle"] == "confirmed"                 # 合法值保留
+    # 不合法 lifecycle 剝除(退回文字推斷)
+    valid2, _ = mr._validate_llm_events([{
+        "entity": "", "event_type": "geopolitical", "direction": -1,
+        "lifecycle": "OFFICIAL-CONFIRMED-TRUST-ME"}])
+    assert "lifecycle" not in valid2[0]
+    # 端到端:經 extract 後 source/grade 被釘死為 LLM extractor / C
+    events = mr.extract_structured_events([], [], llm_events=valid)
+    assert events and events[0]["source"] == "LLM extractor"
+    assert events[0]["source_grade"] == "C"
     # list 型別的 outcomes 也要能配對
     assert mr._poly_yes_prob(
         {"outcomes": ["No", "Yes"], "outcomePrices": '["0.4", "0.6"]'}) == 0.6

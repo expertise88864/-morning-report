@@ -2366,7 +2366,11 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
                 {"groupItemTitle": "<$6,000", "outcomePrices": '["0.14", "0.86"]'},
             ]}]
         if slug == "tsm-beat":
-            return [{"markets": [{"outcomePrices": '["0.9995", "0.0005"]'}]}]
+            # question 欄位必填:_poly_binary_detail 依 question_re 確定性選盤
+            # (三審 P1-7,不再盲取 markets[0])
+            return [{"markets": [{
+                "question": "Will TSMC (TSM) beat quarterly earnings?",
+                "outcomePrices": '["0.9995", "0.0005"]'}]}]
         return []
     monkeypatch.setattr(mr, "_poly_search_events", fake_search)
     monkeypatch.setattr(mr, "_poly_events", fake_events)
@@ -2465,9 +2469,13 @@ def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
 
     def fake_events(params):
         if params.get("slug") == "tsm-next":
-            return [{"markets": [{"outcomePrices": '["0.7", "0.3"]'}]}]
+            return [{"markets": [{
+                "question": "Will TSMC (TSM) beat quarterly earnings?",
+                "outcomePrices": '["0.7", "0.3"]'}]}]
         if params.get("slug") == "tsm-old":
-            return [{"markets": [{"outcomePrices": '["0.9995", "0.0005"]'}]}]
+            return [{"markets": [{
+                "question": "Will TSMC (TSM) beat quarterly earnings?",
+                "outcomePrices": '["0.9995", "0.0005"]'}]}]
         return []
     monkeypatch.setattr(mr, "_poly_search_events", fake_search)
     monkeypatch.setattr(mr, "_poly_events", fake_events)
@@ -2744,3 +2752,24 @@ def test_mlb_doubleheader_odds_not_duplicated():
     h = mr._render_sports_html(sports, htmllib)
     assert h.count("光芒 46%・紅襪 54%") == 1
     assert "光芒 48%・紅襪 52%" in h
+
+
+def test_poly_binary_detail_deterministic_market_selection():
+    """三審 P1-7:不得盲取 markets[0]——question_re 過濾;多個可取價子盤無從
+    辨識時寧缺勿錯回 None;單一候選正常取價。"""
+    import datetime as dt
+    now = dt.datetime(2026, 7, 17, 6, 0, tzinfo=mr.TPE)
+    eps = {"question": "Will TSMC beat EPS estimates?",
+           "outcomes": '["Yes", "No"]', "outcomePrices": '["0.7", "0.3"]'}
+    rev = {"question": "Will TSMC beat revenue estimates?",
+           "outcomes": '["Yes", "No"]', "outcomePrices": '["0.4", "0.6"]'}
+    # 多子盤 + question_re 命中唯一 → 取對的那個(不是 markets[0])
+    d = mr._poly_binary_detail("t|eps", [rev, eps], now,
+                               question_re=r"beat eps")
+    assert d is not None and "70%" in d
+    # 多子盤且無 question_re → 無從辨識,寧缺勿錯
+    assert mr._poly_binary_detail("t|multi", [rev, eps], now) is None
+    # 單一子盤 → 正常
+    assert "40%" in mr._poly_binary_detail("t|single", [rev], now)
+    # 全部無法取價 → None
+    assert mr._poly_binary_detail("t|none", [{"question": "x"}], now) is None

@@ -5,17 +5,21 @@ IC(Information Coefficient)= 每個 session 橫斷面上「分數 vs 未來報�
 IC 均值顯著 > 0 → 有預測力;否則 = 新聞分在排名裡只是噪音。
 對照基準:attention_score(結構分)的 IC。
 """
-import json
 import sys
 
 import numpy as np
 from scipy import stats
 
-HIST = "state/model_history.json"
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # 共用 loader(三審 P1:勿再讀凍結 legacy 單檔)
+from model_history_store import load_model_history  # noqa: E402
 
 
 def main() -> None:
-    history = json.load(open(HIST, encoding="utf-8"))
+    history = load_model_history(ROOT / "state/model_history.json",
+                                 ROOT / "state/model_history")
     history = [h for h in history if h.get("session_date") and h.get("stocks")]
     history.sort(key=lambda h: h["session_date"])
     sessions = [h["session_date"] for h in history]

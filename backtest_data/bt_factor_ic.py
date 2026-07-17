@@ -9,11 +9,14 @@ Spearman 為等級相關,因子原始尺度(市值、PER 等)不需標準化。c
    _attach_listing_fundamentals 與 _snapshot_for_model);在累積足夠交易日前,其 20 日 IC 會顯示「樣本不足」,
    屬正常——這正是「鋪路先存、夠長再驗、通過才改 radar_score 權重」的設計。
 """
-import json
+import sys
 import statistics
 from pathlib import Path
 
-MH = Path(__file__).resolve().parent.parent / "state" / "model_history.json"
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # 共用 loader(三審 P1:勿再讀凍結 legacy 單檔)
+from model_history_store import load_model_history  # noqa: E402
+
 #   涵蓋 morning_report.MODEL_FEATURES 全 22 項(缺一項 D1 驗收時該因子就拿不出 IC 證據)
 #   + 額外基本面/估值因子(op_margin/per… 非模型特徵,但鋪路供日後評估)。
 #   凡列於此的名稱都必須是 _snapshot_for_model 的 keep 欄位,否則整欄樣本為 0。
@@ -62,7 +65,8 @@ def _spearman(xs, ys):
 
 
 def main():
-    days = json.load(open(MH, encoding="utf-8"))
+    days = load_model_history(ROOT / "state/model_history.json",
+                          ROOT / "state/model_history")
     days = [d for d in days if isinstance(d.get("stocks"), dict)]
     days.sort(key=lambda d: d.get("session_date", ""))
     print(f"model_history 交易日 n={len(days)}  期間 {days[0]['session_date']}..{days[-1]['session_date']}")

@@ -14,11 +14,14 @@ close→close、因子用 d 日、報酬用 d→d+H,無前視。
 ⚠ 僅技術/市值因子有長歷史(~130+ 日)可信;營收/籌碼僅 ~8-13 日、估值/獲利率僅 1 日(見 bt_factor_ic),
    故本檔聚焦『有長歷史』的方案;基本面方案待資料累積數月後再驗。
 """
-import json
+import sys
 import statistics
 from pathlib import Path
 
-MH = Path(__file__).resolve().parent.parent / "state" / "model_history.json"
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # 共用 loader(三審 P1:勿再讀凍結 legacy 單檔)
+from model_history_store import load_model_history  # noqa: E402
+
 HORIZON = 20          # 波段視角(專案既有結論:約 20 日才有訊號)
 QUANTILE = 0.20       # 上/下分位各取 20%
 
@@ -70,7 +73,8 @@ def _spearman(xs, ys):
 
 
 def main():
-    days = json.load(open(MH, encoding="utf-8"))
+    days = load_model_history(ROOT / "state/model_history.json",
+                          ROOT / "state/model_history")
     days = [d for d in days if isinstance(d.get("stocks"), dict)]
     days.sort(key=lambda d: d.get("session_date", ""))
     print(f"model_history 交易日 n={len(days)}  期間 {days[0]['session_date']}..{days[-1]['session_date']}")

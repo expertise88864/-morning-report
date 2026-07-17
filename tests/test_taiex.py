@@ -283,7 +283,9 @@ def test_stance_py_us_holiday_and_missing():
         assert c[k] == 0, k
     assert out["stale_us"] is True
     assert out["total"] == -3      # 外資前十/台指期/廣度三維皆 -1
-    # 缺資料 → 0 + missing 名單,不炸
+    # 缺資料 → 0 + missing 名單,不炸;coverage<70% 時「沒有資料≠市場中性」,
+    # 標 abstain 並以「資料不足」取代方向標籤(三審 P1-5)
     out2 = mr._compute_stance_score({})
-    assert out2["total"] == 0 and out2["label"] == "中性"
+    assert out2["total"] == 0 and out2["label"] == "資料不足"
+    assert out2["abstain"] is True and out2["coverage"] < 0.7
     assert len(out2["missing"]) >= 9

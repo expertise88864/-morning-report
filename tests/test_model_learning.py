@@ -602,7 +602,8 @@ def test_hierarchical_event_study_shrinks_sparse_company_signal():
     impact, samples, method = mr._shrunk_event_impact(
         study, "2330", "半導體", "", "orders", 1)
     assert 0.5 < impact < 3
-    assert samples == 72
+    # 樣本數=最寬層(50),不跨層加總(2+20+50=72 會把巢狀子集灌水,三審 P0-3)
+    assert samples == 50
     assert method == "hierarchical_event_study:company+industry+global"
 
 

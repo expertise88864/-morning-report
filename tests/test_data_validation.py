@@ -813,9 +813,16 @@ def test_run_manifest_and_step_summary(tmp_path, monkeypatch):
     monkeypatch.setitem(mr._RUN_MANIFEST, "marks",
                         [("行情", t), ("新聞", t + 30), ("預測", t + 80),
                          ("LLM", t + 260), ("完成", t + 300)])
+    # PR-2 雙軌:stance_dual 必須被序列化輸出(三審 P1-4:先前只設進記憶體 dict,
+    # 白名單沒輸出 → manifest 追蹤不到一致率)——序列化回歸測試,不只測計分函式
+    monkeypatch.setitem(mr._RUN_MANIFEST, "stance_dual",
+                        {"llm": -8, "py": -7, "agree": False,
+                         "coverage": 1.0, "missing": [], "flags": [],
+                         "abstain": False, "stale_us": False})
     mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50))
     m = _json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
     assert m["total_seconds"] == 300.0
+    assert m["stance_dual"]["agree"] is False and m["stance_dual"]["py"] == -7
     labels = {p["label"]: p["seconds"] for p in m["phases"]}
     # marks 相鄰差:行情30、新聞50、預測180、LLM40(完成為終點,不產生階段)
     assert labels["行情"] == 30.0 and labels["新聞"] == 50.0

@@ -7966,10 +7966,20 @@ def build_event_study(model_history: list[dict],
                     continue
                 seen_events.add(event_key)
                 value = _safe_number(row.get("future_excess_pct"))
-                # 事件身分=去重鍵拿掉 code 維度(index 2):同一事件映射 20 檔股票
-                # 是 20 筆 event-stock 觀測、但只有 1 個獨立事件——這些股票報酬被
-                # 同一事件與同日市場共同驅動,不是獨立樣本(GPT-5.6 四審 P0-1)
-                event_ident = event_key[:2] + event_key[3:]
+                # 事件身分:同一事件映射 20 檔股票是 20 筆 event-stock 觀測、但只有
+                # 1 個獨立事件(GPT-5.6 四審 P0-1)。event_id/timeline 鍵拿掉 code
+                # (index 2)即股票無關;fallback 鍵不行——其 scope_company/industry
+                # 也是 per-stock 欄位(Codex r1 P1),須改用「session+舊 ID 指紋」:
+                # 舊 event_id/timeline_key 跨股票穩定,可分開同日兩個不同舊事件;
+                # 兩者皆缺時退回 session+type+direction(同日同型別算一件,寧少勿灌)。
+                if event_key[0] in ("event_id", "timeline"):
+                    event_ident = event_key[:2] + event_key[3:]
+                else:
+                    legacy_fp = str(evidence.get("event_id")
+                                    or evidence.get("timeline_key") or "")
+                    event_ident = ("fallback", str(row.get("session_date") or ""),
+                                   event_type, direction, legacy_fp,
+                                   str(evidence.get("lifecycle") or ""))
                 keys = [
                     ("global", "", event_type, direction),
                     (event_type, direction),  # backward-compatible alias

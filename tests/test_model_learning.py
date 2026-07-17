@@ -647,6 +647,29 @@ def test_event_study_legacy_evidence_falls_back_to_session_key():
     assert study[("orders", 1)]["unique_events"] == study[("orders", 1)]["samples"]
 
 
+def test_event_study_legacy_multi_stock_still_one_unique_event_per_session():
+    """Codex r1 P1:legacy fallback 的事件身分不得含 per-stock 欄位
+    (scope_company=code)——同一舊事件映射 6 檔股票,每個 session 仍只算
+    1 個獨立事件,不得靠股票數灌過 study_samples>=5 門檻。"""
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
+    codes = ("2330", "2454", "2303", "3711", "3034", "2379")
+    history = []
+    for index, session in enumerate(sessions):
+        history.append({
+            "session_date": session,
+            "taiex_close": 100,
+            "stocks": {code: dict(_stock(100 + index), code=code, news_catalysts=[{
+                "event_id": "old-collided", "event_type": "export_controls",
+                "direction": -1, "scope_company": code, "scope_industry": "半導體"}])
+                for code in codes},
+        })
+    study = mr.build_event_study(history, sessions, horizon=1)
+    g = study[("global", "", "export_controls", -1)]
+    assert g["samples"] == g["unique_events"] * len(codes)   # 觀測=事件×股票數
+    assert g["unique_events"] < 6                            # 一天 6 檔≠6 個事件
+    assert g["unique_events"] == g["samples"] // len(codes)
+
+
 def test_event_study_one_event_many_stocks_counts_one_unique_event():
     """四審 P0-1:同一事件映射多檔股票=多筆 event-stock 觀測、1 個獨立事件;
     learned-impact 門檻(unique_events)不得被單一事件觸發。"""
@@ -1383,3 +1406,44 @@ def test_partition_boundary_month_keeps_out_of_view_records(monkeypatch, tmp_pat
     mr.save_model_history({"session_date": "2026-06-08", "taiex_close": 108,
                            "stocks": {}}, sessions_to_keep=3)
     assert part.read_bytes() == before
+
+
+def test_history_store_strict_rejects_structurally_invalid_partition(tmp_path):
+    """Codex r1 P1:語法合法但結構錯(整檔 {})≠空歷史——strict 必炸;
+    production(strict=False)維持降級續跑。"""
+    import gzip as _gzip
+    import pytest
+    from model_history_store import HistoryIntegrityError, load_model_history
+    pdir = tmp_path / "parts"
+    pdir.mkdir()
+    (pdir / "2026-07.json.gz").write_bytes(_gzip.compress(b"{}"))
+    with pytest.raises(HistoryIntegrityError):
+        load_model_history(tmp_path / "none.json", pdir, strict=True)
+    assert load_model_history(tmp_path / "none.json", pdir, strict=False) == []
+
+
+def test_monthly_report_propagates_history_integrity_error(monkeypatch):
+    """Codex r1 P2:月報不得把完整性錯誤吞成報告文字後照常 commit——
+    HistoryIntegrityError 必須從 _run 傳播(job 非零退出,commit 步驟不跑)。"""
+    import sys as _sys
+    import types
+    import pytest
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(mr.__file__).resolve().parent / "backtest_data"))
+    import monthly_report
+    from model_history_store import HistoryIntegrityError
+
+    broken = types.ModuleType("fake_bt_broken")
+    def _boom():
+        raise HistoryIntegrityError("分區 2026-07.json.gz 損壞")
+    broken.main = _boom
+    monkeypatch.setitem(_sys.modules, "fake_bt_broken", broken)
+    with pytest.raises(HistoryIntegrityError):
+        monthly_report._run("fake_bt_broken")
+    # 一般錯誤仍吞進報告文字(單一腳本失敗不擋整份報告)
+    plain = types.ModuleType("fake_bt_plain")
+    def _oops():
+        raise ValueError("x")
+    plain.main = _oops
+    monkeypatch.setitem(_sys.modules, "fake_bt_plain", plain)
+    assert "執行失敗" in monthly_report._run("fake_bt_plain")

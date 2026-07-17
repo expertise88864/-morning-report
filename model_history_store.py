@@ -15,6 +15,11 @@ DEFAULT_PARTITION_DIR = Path("state/model_history")
 DEFAULT_SESSIONS = 520
 
 
+class HistoryIntegrityError(RuntimeError):
+    """strict 模式下的歷史資料完整性錯誤——離線消費端(月報/回測)必須讓它
+    傳播中止,不得吞進報告文字後照常 commit(Codex r1 P2)。"""
+
+
 def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
                        partition_dir: Path = DEFAULT_PARTITION_DIR,
                        sessions: int = DEFAULT_SESSIONS,
@@ -29,23 +34,35 @@ def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
     if legacy_file.exists():
         try:
             data = json.loads(legacy_file.read_text(encoding="utf-8"))
+            # 語法合法但結構錯(如整檔是 {})不是「空歷史」:strict 必炸——
+            # 否則回測靜默少掉整段樣本(Codex r1 P1)
+            if strict and not isinstance(data, list):
+                raise HistoryIntegrityError(
+                    f"legacy model_history 結構錯誤: {type(data).__name__} 非 list")
             for item in data if isinstance(data, list) else []:
                 if isinstance(item, dict) and item.get("session_date"):
                     merged[item["session_date"]] = item
+        except HistoryIntegrityError:
+            raise
         except Exception as e:
             if strict:
-                raise RuntimeError(f"legacy model_history 損壞: {e}") from e
+                raise HistoryIntegrityError(f"legacy model_history 損壞: {e}") from e
             print(f"[model_state] legacy 載入失敗: {e}", file=sys.stderr)
     if partition_dir.exists():
         for path in sorted(partition_dir.glob("*.json.gz")):
             try:
                 data = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
+                if strict and not isinstance(data, list):
+                    raise HistoryIntegrityError(
+                        f"分區 {path.name} 結構錯誤: {type(data).__name__} 非 list")
                 for item in data if isinstance(data, list) else []:
                     if isinstance(item, dict) and item.get("session_date"):
                         merged[item["session_date"]] = item   # 分區優先(較新)
+            except HistoryIntegrityError:
+                raise
             except Exception as e:
                 if strict:
-                    raise RuntimeError(f"分區 {path.name} 損壞: {e}") from e
+                    raise HistoryIntegrityError(f"分區 {path.name} 損壞: {e}") from e
                 print(f"[model_state] 分區 {path.name} 載入失敗(略過): {e}",
                       file=sys.stderr)
     history = sorted(merged.values(), key=lambda item: item.get("session_date", ""))

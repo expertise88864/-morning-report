@@ -18,6 +18,8 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(errors="replace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from model_history_store import HistoryIntegrityError  # noqa: E402
 
 
 def _run(module_name: str) -> str:
@@ -26,7 +28,11 @@ def _run(module_name: str) -> str:
         mod = __import__(module_name)
         with contextlib.redirect_stdout(buf):
             mod.main()
-    except Exception as e:   # 單一腳本失敗不擋整份報告
+    except HistoryIntegrityError:
+        # 歷史資料完整性錯誤必須傳播:寫成「部分失敗報告」再被 workflow commit
+        # = 月報路徑 fail-open(Codex r1 P2)。讓 job 直接非零退出,commit 步驟不執行。
+        raise
+    except Exception as e:   # 其餘單一腳本失敗不擋整份報告
         buf.write(f"\n(執行失敗: {type(e).__name__}: {e})\n")
     return buf.getvalue().strip() or "(無輸出)"
 

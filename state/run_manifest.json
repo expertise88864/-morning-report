@@ -1,37 +1,37 @@
 {
- "date": "2026-07-17 06:45",
- "total_seconds": 472.5,
+ "date": "2026-07-18 06:37",
+ "total_seconds": 472.9,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 7.8
+   "seconds": 5.8
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 140.7
+   "seconds": 184.7
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 7.7
+   "seconds": 12.4
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 126.9
+   "seconds": 126.1
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 102.0
+   "seconds": 79.2
   },
   {
    "label": "LLM 主分析",
-   "seconds": 86.3
+   "seconds": 63.6
   },
   {
    "label": "渲染",
-   "seconds": 1.2
+   "seconds": 1.3
   }
  ],
  "feeds": {
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 117,
+   "ok": 122,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -59,17 +59,9 @@
    "ok": 2,
    "fail": 0
   },
-  "home.treasury.gov": {
-   "ok": 0,
-   "fail": 1
-  },
-  "news.cnyes.com": {
-   "ok": 0,
-   "fail": 3
-  },
-  "www.chinatimes.com": {
-   "ok": 0,
-   "fail": 2
+  "api.cnyes.com": {
+   "ok": 3,
+   "fail": 0
   },
   "money.udn.com": {
    "ok": 2,
@@ -98,10 +90,6 @@
   "www.mohw.gov.tw": {
    "ok": 2,
    "fail": 0
-  },
-  "www.nhi.gov.tw": {
-   "ok": 0,
-   "fail": 2
   },
   "www.fsc.gov.tw": {
    "ok": 1,
@@ -140,5 +128,17 @@
    "fail": 1
   }
  },
- "model_history_days": 154
+ "model_history_days": 210,
+ "stance_dual": {
+  "llm": -8,
+  "py": -8,
+  "agree": true,
+  "coverage": 1.0,
+  "missing": [],
+  "flags": [],
+  "abstain": false,
+  "stale_us": false,
+  "mode": "global_full",
+  "rule_version": 2
+ }
 }

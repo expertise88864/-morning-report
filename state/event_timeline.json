@@ -1,33 +1,27 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 30,
-  "last_seen": "2026-07-17",
-  "latest_title": "How the Iran War Is Rewiring the Oil Market"
+  "days": 31,
+  "last_seen": "2026-07-18",
+  "latest_title": "美伊戰爭打不完？專家：追根究柢只剩1個問題- 國際 - 中時新聞網"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 18,
-  "last_seen": "2026-07-17",
-  "latest_title": "Beijing denounces US chip curbs as threat to global supply chains"
+  "days": 19,
+  "last_seen": "2026-07-18",
+  "latest_title": "Xi Jinping calls for ‘openness’, opposes ‘one country’ rule in AI – as it happened"
  },
  "litigation:": {
   "first_seen": "2026-07-11",
-  "days": 5,
-  "last_seen": "2026-07-17",
-  "latest_title": "Elon Musk's Memphis AI empire is the epicenter of the data center backlash"
+  "days": 6,
+  "last_seen": "2026-07-18",
+  "latest_title": "長榮海運內線交易案延燒　律師籲投保中心提解任董事訴訟 - ETtoday新聞雲"
  },
  "litigation:AAPL": {
   "first_seen": "2026-07-13",
   "days": 2,
   "last_seen": "2026-07-15",
   "latest_title": "蘋果控OpenAI竊商業機密「不意外」！訴訟意外曝「前Apple員工」跳槽人數 - udn科技玩家"
- },
- "litigation:6446": {
-  "first_seen": "2026-07-14",
-  "days": 1,
-  "last_seen": "2026-07-14",
-  "latest_title": "生技拚專利財1／股王藥華藥躋「千金股」 48億國際訴訟激勵自建全球通路| 財經 - CTWANT"
  },
  "litigation:META": {
   "first_seen": "2026-07-15",

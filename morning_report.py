@@ -12071,6 +12071,94 @@ def _render_poly_pulse_html(rows: list[dict]) -> str:
         "僅供參考,不納入本報任何模型計分</div></div>")
 
 
+def _compute_stance_score(quotes: dict) -> dict:
+    """PR-2 第一階段(雙軌驗證):11 維立場分的 Python 確定性實作。
+
+    規則**逐字對齊** prompt §C「立場判斷 11 維加減分」(門檻與方向完全一致);
+    R13 美股休市 → 美股八維(QQQ/SOX/VIX/TSM/10Y/NQ/VIX9D/WTI)強制 0 並標 stale。
+    VIX 第 3 維的雙條件(絕對值 vs 百分位)同時滿足多空兩邊時記 0 並標 conflict
+    (prompt 未定義優先序,Python 端取保守 0)。缺資料的維度記 0 並列入 missing。
+
+    **輸出僅供 log/state/manifest 與 LLM 自算分數比對,不進 prompt、不進顯示、
+    不入任何計分**——一致率確認後才會切換(切換屬顯示層決策,另批)。"""
+    macro = quotes.get("MACRO") or {}
+
+    def _m(name, key="change_pct"):
+        v = (macro.get(name) or {}).get(key)
+        return v if isinstance(v, (int, float)) else None
+
+    stale_us = bool(quotes.get("US_HOLIDAY"))
+    components: dict[str, int] = {}
+    missing: list[str] = []
+    flags: list[str] = []
+
+    def put(name, value, pos, neg, us_dim: bool = False):
+        """value 為 None → 0+missing;US 休市且屬美股維度 → 0+stale。"""
+        if us_dim and stale_us:
+            components[name] = 0
+            return
+        if value is None:
+            components[name] = 0
+            missing.append(name)
+            return
+        components[name] = 1 if pos(value) else (-1 if neg(value) else 0)
+
+    q = (quotes.get("QQQ") or {}).get("change_pct")
+    put("qqq", q if isinstance(q, (int, float)) else None,
+        lambda v: v > 0.5, lambda v: v < -0.5, us_dim=True)
+    put("sox", _m("SOX"), lambda v: v > 1, lambda v: v < -1, us_dim=True)
+    # 3. VIX:close<18 或 rank<30 → +1;close>22 或 rank>70 → -1;衝突 → 0
+    if stale_us:
+        components["vix"] = 0
+    else:
+        v_close, v_rank = _m("VIX", "close"), _m("VIX", "pct_rank_252d")
+        if v_close is None and v_rank is None:
+            components["vix"] = 0
+            missing.append("vix")
+        else:
+            bull = (v_close is not None and v_close < 18) or \
+                   (v_rank is not None and v_rank < 30)
+            bear = (v_close is not None and v_close > 22) or \
+                   (v_rank is not None and v_rank > 70)
+            if bull and bear:
+                components["vix"] = 0
+                flags.append("vix_conflict")
+            else:
+                components["vix"] = 1 if bull else (-1 if bear else 0)
+    t = (quotes.get("TSM") or {}).get("change_pct")
+    put("tsm_adr", t if isinstance(t, (int, float)) else None,
+        lambda v: v > 0, lambda v: v < 0, us_dim=True)
+    f10 = quotes.get("FOREIGN_TOP10_TOTAL")
+    put("foreign_top10", f10 if isinstance(f10, (int, float)) else None,
+        lambda v: v > 0, lambda v: v < 0)
+    oi = (quotes.get("TAIFEX_OI") or {}).get("foreign_oi_net")
+    put("taifex_foreign_oi", oi if isinstance(oi, (int, float)) else None,
+        lambda v: v > 5000, lambda v: v < -5000)
+    # 7. 10Y 變動(bps):close 為百分點(如 4.57),差 ×100 = bps
+    y_c, y_p = _m("10Y", "close"), _m("10Y", "prev_close")
+    dy_bps = (y_c - y_p) * 100 if (y_c is not None and y_p is not None) else None
+    put("10y", dy_bps, lambda v: v < -2, lambda v: v > 2, us_dim=True)
+    put("nq", _m("NQ"), lambda v: v > 0.5, lambda v: v < -0.5, us_dim=True)
+    # 9. VIX 期限結構:backwardation(ratio>1.0)= -1;contango/缺值 = 0
+    ratio = (macro.get("VIX_TERM") or {}).get("ratio")
+    if stale_us:
+        components["vix_term"] = 0
+    elif isinstance(ratio, (int, float)):
+        components["vix_term"] = -1 if ratio > 1.0 else 0
+    else:
+        components["vix_term"] = 0
+        missing.append("vix_term")
+    put("wti", _m("WTI"), lambda v: v < -3, lambda v: v > 3, us_dim=True)   # 油跌=+1
+    br = (quotes.get("BREADTH") or {}).get("advance_ratio")
+    put("breadth", br if isinstance(br, (int, float)) else None,
+        lambda v: v >= 60, lambda v: v <= 40)
+
+    total = sum(components.values())
+    label = "偏多" if total >= 5 else ("偏空" if total <= -5 else "中性")
+    return {"total": total, "label": label, "components": components,
+            "missing": missing, "flags": flags, "stale_us": stale_us}
+
+
 def _prediction_delta_note(history: list, report_date: str,
                            current: dict) -> str:
     """「vs 昨日預測」一行(地基批#5 Delta-first):current 鍵=顯示名、值=今日預測。
@@ -16624,6 +16712,17 @@ def main() -> int:
     # 7. LLM 分析
     _mark_phase("LLM 主分析")
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
+    # PR-2 雙軌:Python 端 11 維立場分(規則對齊 prompt §C;僅記錄比對,不影響輸出)
+    try:
+        quotes["STANCE_PY"] = _compute_stance_score(quotes)
+        _sp = quotes["STANCE_PY"]
+        print(f"[stance-py] Python 11 維 = {_sp['total']:+d}({_sp['label']})"
+              f" components={_sp['components']}"
+              + (f" missing={_sp['missing']}" if _sp['missing'] else "")
+              + (" [美股休市 stale]" if _sp['stale_us'] else ""))
+    except Exception as e:
+        print(f"[stance-py] 計算失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["STANCE_PY"] = {}
     analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050, calibration)
 
     # 8. 組信
@@ -16637,10 +16736,24 @@ def main() -> int:
         crit_titles = [n["title"] for n in news if n.get("importance") == "critical"][:5]
         # G4:存今日 LLM 立場,供明日「敘事變化」段逐字對照(顯示層產物,非凍結計分模型)。
         _stance_state = _extract_stance(analysis) if isinstance(analysis, str) else {}
+        # PR-2 雙軌:LLM 分數 vs Python 分數並列記錄與比對 log(切換前的證據累積)
+        _sp = quotes.get("STANCE_PY") or {}
+        if _sp.get("total") is not None and _stance_state.get("score") is not None:
+            _agree = "一致" if _sp["total"] == _stance_state["score"] else "不一致"
+            print(f"[stance-dual] LLM={_stance_state['score']:+d}"
+                  f"({_stance_state.get('label')}) vs Python={_sp['total']:+d}"
+                  f"({_sp.get('label')}) → {_agree}")
+            _RUN_MANIFEST["stance_dual"] = {
+                "llm": _stance_state.get("score"), "py": _sp.get("total"),
+                "agree": _sp["total"] == _stance_state["score"]}
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
             "stance_label": _stance_state.get("label"),
             "stance_score": _stance_state.get("score"),
+            # PR-2 雙軌欄位(Python 確定性 11 維;比對用,未切換顯示)
+            "stance_score_py": _sp.get("total"),
+            "stance_label_py": _sp.get("label"),
+            "stance_components_py": _sp.get("components"),
             "generated_at": now_tpe.isoformat(),
             "target_session_date": target_session_date,
             "weekday": now_tpe.strftime("%a"),

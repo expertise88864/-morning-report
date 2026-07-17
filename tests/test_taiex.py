@@ -210,3 +210,77 @@ def test_taiex_prediction_shrinks_bullish_forecast_on_conflicts(fake_yf, mkdf):
     assert conflicted["weighted_pct"] < base["weighted_pct"]
     assert conflicted["conflict_shrink_factor"] < 1
     assert "foreign_oi_short" in conflicted["conflict_reasons"]
+
+
+import morning_report as mr  # noqa: E402 — 延後 import 沿用本檔慣例
+
+# ===== PR-2 雙軌(2026-07-17):11 維立場分 Python 化 =====
+
+def _stance_quotes(**over):
+    q = {
+        "QQQ": {"change_pct": -1.64}, "TSM": {"change_pct": -2.32},
+        "MACRO": {
+            "SOX": {"change_pct": -4.29},
+            "VIX": {"close": 16.73, "pct_rank_252d": 45},
+            "10Y": {"close": 4.57, "prev_close": 4.54},
+            "NQ": {"change_pct": -1.8},
+            "VIX_TERM": {"ratio": 0.84},
+            "WTI": {"change_pct": 1.2},
+        },
+        "FOREIGN_TOP10_TOTAL": -12000.0,
+        "TAIFEX_OI": {"foreign_oi_net": -84453},
+        "BREADTH": {"advance_ratio": 34.2},
+        "US_HOLIDAY": None,
+    }
+    q.update(over)
+    return q
+
+def test_stance_py_matches_prompt_rules_bearish_day():
+    """以 2026-07-17 實際盤面驗證:各維依 §C 規則給分,總分/標籤正確。"""
+    out = mr._compute_stance_score(_stance_quotes())
+    c = out["components"]
+    assert c == {"qqq": -1,            # -1.64 < -0.5
+                 "sox": -1,            # -4.29 < -1
+                 "vix": 1,             # 16.73 < 18(rank 45 中性,不衝突)
+                 "tsm_adr": -1,        # < 0
+                 "foreign_top10": -1,  # 賣超
+                 "taifex_foreign_oi": -1,   # -84453 < -5000
+                 "10y": -1,            # +3 bps > +2
+                 "nq": -1,             # -1.8 < -0.5
+                 "vix_term": 0,        # contango
+                 "wti": 0,             # |1.2| < 3
+                 "breadth": -1}        # 34.2 <= 40
+    assert out["total"] == -7 and out["label"] == "偏空"
+    # 註:當日 LLM 自算 -8(把 VIX 16.73<18 誤判為負分)——雙軌要抓的正是這種偏差
+    assert out["missing"] == [] and out["flags"] == []
+
+def test_stance_py_vix_conflict_and_thresholds():
+    # VIX 絕對值看多(<18)但百分位看空(>70)→ 衝突記 0
+    out = mr._compute_stance_score(_stance_quotes(
+        MACRO={**_stance_quotes()["MACRO"],
+               "VIX": {"close": 17.0, "pct_rank_252d": 75}}))
+    assert out["components"]["vix"] == 0 and "vix_conflict" in out["flags"]
+    # 標籤門檻:+4 中性、+5 偏多
+    base = _stance_quotes(
+        QQQ={"change_pct": 1.0}, TSM={"change_pct": 1.0},
+        FOREIGN_TOP10_TOTAL=5000.0, TAIFEX_OI={"foreign_oi_net": 9000},
+        BREADTH={"advance_ratio": 70},
+        MACRO={"SOX": {"change_pct": 2.0}, "VIX": {"close": 25, "pct_rank_252d": 80},
+               "10Y": {"close": 4.50, "prev_close": 4.54},   # -4bps → +1
+               "NQ": {"change_pct": 1.0}, "VIX_TERM": {"ratio": 0.9},
+               "WTI": {"change_pct": 0.0}})
+    out2 = mr._compute_stance_score(base)   # 8個+1、vix -1 → +7 偏多
+    assert out2["total"] == 7 and out2["label"] == "偏多"
+
+def test_stance_py_us_holiday_and_missing():
+    # R13:美股休市 → 美股八維全 0,只剩台方三維
+    out = mr._compute_stance_score(_stance_quotes(US_HOLIDAY={"name": "獨立日"}))
+    c = out["components"]
+    for k in ("qqq", "sox", "vix", "tsm_adr", "10y", "nq", "vix_term", "wti"):
+        assert c[k] == 0, k
+    assert out["stale_us"] is True
+    assert out["total"] == -3      # 外資前十/台指期/廣度三維皆 -1
+    # 缺資料 → 0 + missing 名單,不炸
+    out2 = mr._compute_stance_score({})
+    assert out2["total"] == 0 and out2["label"] == "中性"
+    assert len(out2["missing"]) >= 9

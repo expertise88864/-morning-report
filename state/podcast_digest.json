@@ -5046,6 +5046,30 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "4e48ebd0-0b41-4721-8e45-b489014fc1c7",
+        "title": "Lev Menand and Nathan Tankus on Why Fed Independence Is Now Hanging by a Thread",
+        "published": "Fri, 17 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-17T09:41:32Z",
+        "digest": {
+          "summary_points": [
+            "美國最高法院在 Cook 案中裁定總統不能隨意解僱聯準會理事，引用歷史傳統（亞歷山大·漢彌爾頓）作為例外，但其他獨立機構如 FTC、SEC 失去保護。",
+            "該裁決以 5:4 通過，其中只有兩位大法官（Roberts 和 Kavanaugh）完全認同這一例外，其餘七位要麼認為所有機構都應保護，要麼認為聯準會也不應例外。",
+            "裁決邏輯藉用了第二修正案案例 Rahimi 的「歷史與傳統」分析法，但被批評為誤讀歷史，因為漢彌爾頓主張的是私有商業銀行而非政府機構。",
+            "Humphreys Executor 案（1935年）確立的獨立機構免職保護被推翻，僅保留聯準會的例外，導致專家行政機構的法律基礎被削弱。",
+            "聯準會的獨立性還源於其不受國會撥款程序控制的融資方式（透過評估聯準會銀行），這使其能獨立於總統和國會，但也成為爭議焦點。",
+            "討論指出，聯準會的監管職能與貨幣政策職能難以分離，未來可能面臨法律挑戰，比如其資本規則被質疑不符合歷史傳統。",
+            "法院的裁決使聯準會成為唯一享有高度獨立性的監管機構，這可能導致政治壓力集中，並引發未來司法變動。",
+            "主持人認為聯準會獨立性當前處於危險狀態，裁決雖短期保護但長期不穩定，僅靠兩位大法官維持。",
+            "對話提到，如果總統能控制聯準會，理論上可透過非追索貸款等方式進行財政擴張，威脅憲法分權。",
+            "歷史案例顯示，美國法院曾因金融穩定考量而避免推翻貨幣體系（如州銀行發行信用券），類比當前可能因市場反應而維持聯準會獨立性。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為聯準會獨立性在司法上得到短期強化，但整體行政機構獨立性被削弱，增加了政策不確定性，可能影響金融市場穩定。",
+          "action_view": "",
+          "notable_quote": "The Fed is not safe, it's an endangered species now."
+        }
+      },
+      {
         "guid": "4859579a-2313-42f7-9c12-b488014fc4d7",
         "title": "Why Soccer Analytics Works Like Volatility Arbitrage Trading",
         "published": "Thu, 16 Jul 2026 08:00:00 +0000",
@@ -5366,31 +5390,6 @@
           "notable_quote": "Everyone's bullish, but no one's buying."
         },
         "shown_at": "2026-06-26T23:04:32Z"
-      },
-      {
-        "guid": "c2695185-bd74-4f28-9efa-b47300f4a97a",
-        "title": "How the 1994 World Cup Transformed the Business of Football Forever",
-        "published": "Thu, 25 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-25T10:38:03Z",
-        "digest": {
-          "summary_points": [
-            "1994年美國世界盃是商業化轉折點，首次引入麥當勞、通用汽車等全球贊助商，每筆交易高達2000萬美元，開啟世界盃收入指數增長的趨勢。",
-            "FIFA雖是非營利組織，但透過世界盃將數十億美元廣告和轉播收入分配給200多個會員協會，形成『一會員一票』的權力結構，小國與大國投票權相等。",
-            "英超聯賽的升降級制度使俱樂部估值存在『左尾風險』，熱刺接近降級時段影響曼聯、切爾西等隊的估值上限，而美國職業體育聯盟（如MLS）無升降級，估值較穩定。",
-            "歐洲足球球迷忠誠度以俱樂部為核心，但全球化下梅西、C羅等個人球星影響力超越俱樂部，球衣銷售和贊助更依賴明星個人IP。",
-            "石油美元與地緣政治深入足球：沙烏地PIF收購紐卡索聯、俄羅斯天然氣工業股份公司贊助沙爾克04，後者因俄烏戰爭失去合約後降級，年損失1000萬歐元。",
-            "球衣贊助反映政治敏感度：海地國家隊因球衣印有革命英雄圖案被FIFA認定『太政治』而需修改，凸顯審查標準的任意性。",
-            "MLS擴張特許經營權：貝克漢2007年合約中獲得低價購入邁阿密國際隊權利的條款，該隊現估值已增長數十倍，展現美國體育聯盟的投資機會。",
-            "世界盃門票定價遵循美國市場化模式（二級市場價格飆升），而歐洲俱樂部仍堅持低於市場出清的固定票價，反映文化差異。",
-            "國際足總以球員健康為名引入強制飲水暫停，實際增加廣告時段，但此舉破壞比賽節奏，可能長期損害賽事吸引力。",
-            "英超電視收入形成『贏家通吃』：即使AC米蘭等傳統豪門，財務實力已不及許多英超小球會，加劇歐洲聯賽實力不均。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為世界盃是「人類文明巔峰的文化盛事」，短期內商業化仍可大幅榨取現金，但過度干預（如飲水暫停、擴軍）可能慢慢侵蝕年輕觀眾的興趣。",
-          "action_view": "",
-          "notable_quote": "FIFA is a vehicle for funneling money from advertisers and TV to member associations."
-        },
-        "shown_at": "2026-06-25T23:12:20Z"
       }
     ]
   },
@@ -5956,6 +5955,37 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-the-continuing-adventures-of-open-ai-apples-trade-secrets-lawsuit-q-a-on-mainframes-meta-daylight-savings-time",
+        "title": "(Preview) The Continuing Adventures of OpenAI, Apple’s Trade Secrets Lawsuit, Q&amp;A on Mainframes, Meta, Daylight Savi",
+        "published": "Fri, 17 Jul 2026 08:59:26 +0000",
+        "processed_at": "2026-07-17T09:31:06Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI 計劃推出首款硬體設備：一款無螢幕、可移動的 AI 智慧音箱，定位為家庭 AI 伴侶，可控制智慧家居、播放媒體等。",
+            "該設備為電池供電，可隨身攜帶，不同於 Amazon Echo 等傳統智慧音箱需插電使用。",
+            "討論認為，在 AI 時代，硬體業務的核心挑戰在於：若 OpenAI 的目標是成為通用 AI 服務提供商，自研硬體會限制市場覆蓋（類比 Meta 的困境）。",
+            "OpenAI 自研硬體的戰略動機之一是：與 Apple 的競爭關係（Apple 不會讓 OpenAI 成為其設備的預設 AI），因此需要自建硬體入口以掌握消費者觸點。",
+            "模型 commoditization 的趨勢下，AI 公司需透過掌控終端使用者體驗來綁定使用者，防止被替換。",
+            "OpenAI 硬體定位於「附加設備」而非替代手機，初期可能以高定價面向科技愛好者，作為市場測試。",
+            "該設備可能會成為送禮佳品，因為使用者無需自己購買，但收到後會樂於嘗試。",
+            "產品成功的關鍵在於麥克風品質（互動體驗）而非揚聲器（與 Alexa 等音樂播放為主的使用場景不同）。",
+            "OpenAI 硬體策略需解決的核心問題：是追求成為下一個 Apple（硬體利潤），還是像 Google 一樣透過服務盈利（低價甚至虧本銷售硬體以獲取使用者）。"
+          ],
+          "tickers": [
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Apple 被視為 OpenAI 在 AI 設備領域的潛在競爭對手，且 Apple 不會讓 OpenAI 成為其設備的預設 AI。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "This is the story in tech. There is a brewing fight for consumer touch points and these companies are coming for it."
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-meta-and-its-messaging-problem-the-xbox-reset-q-a-on-token-costs-american-soccer-starlink-in-nature",
         "title": "(Preview) Meta and Its Messaging Problem, The XBOX Reset, Q&amp;A on Token Costs, American Soccer, Starlink in Nature",

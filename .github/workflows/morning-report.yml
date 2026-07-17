@@ -17,12 +17,13 @@ on:
 permissions:
   contents: write   # 允許 push 回 state/history.json
 
-# 排程與手動觸發分 group:共用 group + cancel-in-progress 會讓 06:00 前後的
-# 手動測試與正式排程互相取消(GPT-5.6 三審 P1-10)。排程 run 絕不可被取消
-# (cancel-in-progress: false → 同 group 排隊);手動測試彼此仍互相取代。
+# 所有會寫 state 的高頻 workflow(morning/podcast)共用單一 group、一律不取消:
+# 誰先到誰先跑,其餘排隊序列化。前版「排程/手動分 group」只解決互相取消,
+# 但兩者可同時跑=同時寄信+同時 push state(GPT-5.6 四審 P1-6);morning 與
+# podcast 也都寫 state/podcast_digest.json,必須互斥。卡死由 timeout-minutes 兜底。
 concurrency:
-  group: morning-report-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
+  group: state-writers
+  cancel-in-progress: false
 
 jobs:
   send-report:

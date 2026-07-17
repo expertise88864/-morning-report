@@ -13,6 +13,10 @@ import re
 import sys
 from pathlib import Path
 
+# Windows cp950 終端印非 BMP 符號(⚠ 等)會 UnicodeEncodeError(GPT-5.6 四審 P3)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 

@@ -12,14 +12,18 @@ from scipy import stats
 
 from pathlib import Path
 
+# Windows cp950 終端印非 BMP 符號(⚠ 等)會 UnicodeEncodeError(GPT-5.6 四審 P3)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))  # 共用 loader(三審 P1:勿再讀凍結 legacy 單檔)
 from model_history_store import load_model_history  # noqa: E402
 
 
 def main() -> None:
-    history = load_model_history(ROOT / "state/model_history.json",
-                                 ROOT / "state/model_history")
+    history = load_model_history(ROOT / "state/model_history.json",  # strict:壞分區即中止
+                                 ROOT / "state/model_history", strict=True)
     history = [h for h in history if h.get("session_date") and h.get("stocks")]
     history.sort(key=lambda h: h["session_date"])
     sessions = [h["session_date"] for h in history]

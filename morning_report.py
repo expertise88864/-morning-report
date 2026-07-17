@@ -171,6 +171,14 @@ def _sanitize_untrusted_text(text: str) -> str:
     return out
 
 
+def _external_text(value: object, limit: int = 0) -> str:
+    """外部字串進 prompt 的唯一入口(GPT-5.6 四審 P0-3):所有 RSS/新聞/事件
+    標題與摘要一律經此 sanitize——先前 fmt_news 有包但公司區/類股區/世界區/
+    catalyst 區直接插原始字串,注入內容從旁路重新進 prompt。"""
+    text = _sanitize_untrusted_text(str(value or ""))
+    return text[:limit] if limit else text
+
+
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
     """原子寫檔(修正批B,GPT-5.6 二審):先寫 .tmp 再 os.replace——
     runner 中止/磁碟寫一半不會留下損壞的 state 檔(讀端頂多讀到舊版完整內容)。"""
@@ -7493,8 +7501,8 @@ def _snapshot_for_model(snapshot: list[dict]) -> dict[str, dict]:
         row = {k: item.get(k) for k in keep if k in item}
         row["news_catalysts"] = [{
             key: evidence.get(key)
-            for key in ("event_id", "event_type", "direction", "relation",
-                        "score_delta", "source_grade", "surprise_score",
+            for key in ("event_id", "event_schema", "event_type", "direction",
+                        "relation", "score_delta", "source_grade", "surprise_score",
                         "revenue_surprise_pct", "lifecycle", "lifecycle_weight",
                         "scope_company", "scope_industry", "scope_supply_chain",
                         "timeline_key")
@@ -7944,7 +7952,7 @@ def build_event_study(model_history: list[dict],
                       sessions: list[str],
                       horizon: int = 3) -> dict[tuple, dict]:
     """Estimate company, industry, supply-chain and global post-event excess returns."""
-    grouped: dict[tuple, list[float]] = {}
+    grouped: dict[tuple, dict] = {}
     seen_events = set()
     rows = _purge_recent_rows(
         build_model_training_rows(model_history, sessions, horizon), sessions)
@@ -7958,6 +7966,10 @@ def build_event_study(model_history: list[dict],
                     continue
                 seen_events.add(event_key)
                 value = _safe_number(row.get("future_excess_pct"))
+                # 事件身分=去重鍵拿掉 code 維度(index 2):同一事件映射 20 檔股票
+                # 是 20 筆 event-stock 觀測、但只有 1 個獨立事件——這些股票報酬被
+                # 同一事件與同日市場共同驅動,不是獨立樣本(GPT-5.6 四審 P0-1)
+                event_ident = event_key[:2] + event_key[3:]
                 keys = [
                     ("global", "", event_type, direction),
                     (event_type, direction),  # backward-compatible alias
@@ -7969,11 +7981,16 @@ def build_event_study(model_history: list[dict],
                 if evidence.get("scope_supply_chain"):
                     keys.append(("supply_chain", str(evidence["scope_supply_chain"]), event_type, direction))
                 for key in keys:
-                    grouped.setdefault(key, []).append(value)
+                    bucket = grouped.setdefault(key, {"values": [], "events": set()})
+                    bucket["values"].append(value)
+                    bucket["events"].add(event_ident)
     output = {}
-    for key, values in grouped.items():
+    for key, bucket in grouped.items():
+        values = bucket["values"]
         output[key] = {
             "samples": len(values),
+            # 不重複事件數:learned-impact 門檻與 shrink 權重的誠實分母
+            "unique_events": len(bucket["events"]),
             "avg_excess_pct": round(sum(values) / len(values), 4),
             "win_rate_pct": round(sum(value > 0 for value in values) / len(values) * 100, 1),
         }
@@ -8034,6 +8051,9 @@ def _stock_news_catalysts(snapshot: list[dict],
         result["score"] += delta
         result["evidence"].append({
             "event_id": event.get("event_id"),
+            # episodic ID 世代標記:event study 去重憑此決定信任 event_id
+            # 或退回 session 級 fallback(四審 P1,舊碰撞 ID 遷移)
+            "event_schema": 2,
             "event_type": event.get("event_type"),
             "relation": relation,
             "title": event.get("title"),
@@ -9434,7 +9454,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         #   (2) 深耕公司(2330/2882/2891)的第 2-5 則優先保留(3 家 × 4 = 12 行);
         #   (3) 還有餘裕才輪替遞補一般公司的第 2、3 則。42 行上限恰容納 (1)+(2)。
         def _fmt_company_line(label, tag, n):
-            return f"- [{label}] {tag}{n['title']}（{n.get('summary','')[:300]}）"
+            return (f"- [{label}] {tag}{_external_text(n['title'])}"
+                    f"（{_external_text(n.get('summary'), 300)}）")
 
         lines = []
         for label, tag, items in per_label:                    # (1) 全員首則
@@ -9463,7 +9484,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         for label, lst in sector_news.items():
             sec_lines.append(f"\n■ {label}")
             for n in lst[:6]:  # 每類股最多 6 則;Google News 標題末已含來源媒體,摘要多為 HTML 雜訊故不放
-                sec_lines.append(f"- {n['title']}")
+                sec_lines.append(f"- {_external_text(n['title'])}")
         news_block += ("\n\n【其他類股最新新聞（Google News，供「九、其他類股資訊」取材;"
                        "依類股分組,標題末為來源媒體;此處為「新聞」非股價數據）】\n"
                        + "\n".join(sec_lines))
@@ -9485,7 +9506,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             continue
         for n in lst[:6]:
             published = str(n.get("published_dt") or n.get("published") or "")[:19]
-            sec_lines.append(f"- [{published}] {n['title']}")
+            sec_lines.append(f"- [{published}] {_external_text(n['title'])}")
     news_block += ("\n\n[Other sector coverage: dated headlines only; if a label says no dated material, "
                    "write that no major news was found and do not invent details.]\n"
                    + "\n".join(sec_lines))
@@ -9503,7 +9524,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         if _world_per_cat[cat] > 4:
             continue
         published = str(n.get("published_dt") or n.get("published") or "")[:16]
-        world_lines.append(f"- [{published}][{cat}] {n['title']}")
+        world_lines.append(f"- [{published}][{cat}] {_external_text(n['title'])}")
     if world_lines:
         news_block += ("\n\n【昨日世界大事新聞(非市場導向,供「世界大事速覽」取材;"
                        "[類別] 標示,標題末為來源媒體)】\n" + "\n".join(world_lines[:18]))
@@ -9612,7 +9633,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             f5 = forecast.get("5d") or {}
             catalysts = stock.get("news_catalysts") or []
             catalyst_text = "；".join(
-                f"[{c.get('relation')}/{c.get('source_grade')}] {c.get('title')}"
+                f"[{c.get('relation')}/{c.get('source_grade')}] {_external_text(c.get('title'))}"
                 for c in catalysts[:2]) or "無直接催化"
             attention_rows.append(
                 f"{rank}. {stock['code']} {stock['name']}｜客觀排名分 {stock.get('ranking_score', stock.get('attention_score',0)):.1f} "
@@ -12153,18 +12174,29 @@ def _compute_stance_score(quotes: dict) -> dict:
         lambda v: v >= 60, lambda v: v <= 40)
 
     total = sum(components.values())
-    # coverage=實際取得資料的維度比例(missing 不算;休市強制 0 的維度視為有資料——
-    # 那是明確的「無新資訊」,不是缺值)。coverage<70% 時「沒有資料≠市場中性」,
-    # 標 abstain 並以「資料不足」取代方向標籤(GPT-5.6 三審 P1-5)。
-    coverage = round(1 - len(missing) / max(1, len(components)), 3) if components else 0.0
+    # 休市 regime(GPT-5.6 四審 P0-4,rule_version 2):
+    # - 美股休市 → taiwan_only 模式:適用維度只剩台方 3 維,休市 8 維是
+    #   not_applicable(不是「有資料」也不是「缺資料」),不得進 coverage 分母
+    #   ——否則台灣三維全缺時 coverage 仍 8/11=72.7% 不 abstain(錯誤 A);
+    # - 門檻隨模式縮放:3 維最高 ±3,沿用 ±5 門檻等於休市日永遠中性(錯誤 B),
+    #   taiwan_only 用 ±2。coverage<70% →「資料不足」(沒有資料≠市場中性)。
+    _us_dims = frozenset(("qqq", "sox", "vix", "tsm_adr", "10y", "nq",
+                          "vix_term", "wti"))
+    mode = "taiwan_only" if stale_us else "global_full"
+    applicable = [k for k in components if not (stale_us and k in _us_dims)]
+    coverage = (round(1 - len(missing) / max(1, len(applicable)), 3)
+                if applicable else 0.0)
     abstain = coverage < 0.7
+    threshold = 2 if mode == "taiwan_only" else 5
     if abstain:
         label = "資料不足"
     else:
-        label = "偏多" if total >= 5 else ("偏空" if total <= -5 else "中性")
+        label = ("偏多" if total >= threshold
+                 else ("偏空" if total <= -threshold else "中性"))
     return {"total": total, "label": label, "components": components,
             "missing": missing, "flags": flags, "stale_us": stale_us,
-            "coverage": coverage, "abstain": abstain}
+            "coverage": coverage, "abstain": abstain,
+            "mode": mode, "rule_version": 2}
 
 
 def _prediction_delta_note(history: list, report_date: str,
@@ -16770,7 +16802,8 @@ def main() -> int:
                 # 追蹤一致率所需的品質欄位(三審 P1-4):缺哪些維度、旗標、覆蓋率
                 "coverage": _sp.get("coverage"), "missing": _sp.get("missing"),
                 "flags": _sp.get("flags"), "abstain": _sp.get("abstain"),
-                "stale_us": _sp.get("stale_us")}
+                "stale_us": _sp.get("stale_us"), "mode": _sp.get("mode"),
+                "rule_version": _sp.get("rule_version")}
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
             "stance_label": _stance_state.get("label"),

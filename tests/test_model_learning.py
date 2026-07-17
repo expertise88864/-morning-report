@@ -608,6 +608,7 @@ def test_hierarchical_event_study_shrinks_sparse_company_signal():
 
 
 def test_event_study_counts_same_event_id_once_per_stock():
+    """event_schema 2(episodic ID 世代)的 event_id 才可信,跨日重複報導去重為 1。"""
     sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
     history = []
     for index, session in enumerate(sessions):
@@ -616,14 +617,18 @@ def test_event_study_counts_same_event_id_once_per_stock():
             "taiex_close": 100,
             "stocks": {"2330": _stock(
                 100 + index,
-                news_catalysts=[{"event_id": "same", "event_type": "orders", "direction": 1}],
+                news_catalysts=[{"event_id": "same", "event_schema": 2,
+                                 "event_type": "orders", "direction": 1}],
             )},
         })
     study = mr.build_event_study(history, sessions, horizon=1)
     assert study[("orders", 1)]["samples"] == 1
 
 
-def test_event_study_dedupes_legacy_events_without_event_id():
+def test_event_study_legacy_evidence_falls_back_to_session_key():
+    """四審 P1(舊 ID 遷移):無 event_schema 的舊 evidence,其 event_id 是碰撞的
+    cluster 雜湊(不同季度同 ID),不得再拿來去重——改走 session 級 fallback。
+    同一舊 ID 跨多日 → 各日獨立樣本(寧過切勿互吞);timeline_key 同理不可信。"""
     sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
     history = []
     for index, session in enumerate(sessions):
@@ -632,15 +637,39 @@ def test_event_study_dedupes_legacy_events_without_event_id():
             "taiex_close": 100,
             "stocks": {"2330": _stock(
                 100 + index,
-                news_catalysts=[{
-                    "event_type": "orders",
-                    "direction": 1,
-                    "timeline_key": "2330:orders:gb300",
-                }],
+                news_catalysts=[{"event_id": "old-collided", "event_type": "orders",
+                                 "direction": 1,
+                                 "timeline_key": "2330:orders:gb300"}],
             )},
         })
     study = mr.build_event_study(history, sessions, horizon=1)
-    assert study[("orders", 1)]["samples"] == 1
+    assert study[("orders", 1)]["samples"] >= 2          # 不再被舊 ID 壓成 1
+    assert study[("orders", 1)]["unique_events"] == study[("orders", 1)]["samples"]
+
+
+def test_event_study_one_event_many_stocks_counts_one_unique_event():
+    """四審 P0-1:同一事件映射多檔股票=多筆 event-stock 觀測、1 個獨立事件;
+    learned-impact 門檻(unique_events)不得被單一事件觸發。"""
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
+    codes = ("2330", "2454", "2303", "3711", "3034", "2379")
+    history = []
+    for index, session in enumerate(sessions):
+        history.append({
+            "session_date": session,
+            "taiex_close": 100,
+            "stocks": {code: dict(_stock(100 + index), code=code, news_catalysts=[{
+                "event_id": "chip-export-ban", "event_schema": 2,
+                "event_type": "export_controls", "direction": -1}])
+                for code in codes},
+        })
+    study = mr.build_event_study(history, sessions, horizon=1)
+    g = study[("global", "", "export_controls", -1)]
+    assert g["samples"] == 6                 # 6 檔 event-stock 觀測
+    assert g["unique_events"] == 1           # 但只有 1 個獨立事件
+    # shrink 的樣本數走 unique_events → 1,遠低於門檻 5 → conservative fallback
+    impact, n, method = mr._shrunk_event_impact(study, "2330", "半導體", "",
+                                                "export_controls", -1)
+    assert n == 1
 
 
 def test_feature_matrix_imputes_missing_values_with_training_mean():

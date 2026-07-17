@@ -1,7 +1,7 @@
 """離線回測:雷達/Top5 計分『方案』的前瞻報酬力(分位數價差 + IC)。
 
 回答兩個問題:
-  (1) 目前評分方式真的有準嗎?——把「現行雷達唯一有長歷史的成分(未過熱=懲罰距MA20)」
+  (1) 目前評分方式真的有準嗎?——把「MA20 乖離單因子(注意:非正式 ranking_score 公式——正式公式是動能正向計分+極端門檻才扣過熱罰分,此處僅取其唯一有長歷史的『反向乖離』成分做方向診斷)」
       與動能、波動、大型股等方案,放在同一個前瞻報酬框架下比較。
   (2) 「進場時機/買相對低點(避過熱)」這個建議,加進去到底有沒有幫助?——直接做成一個方案
       (偏好『還沒漲、距MA20低』者),看它 vs 動能 vs 大盤平均的前瞻報酬。
@@ -15,19 +15,23 @@ close→close、因子用 d 日、報酬用 d→d+H,無前視。
    故本檔聚焦『有長歷史』的方案;基本面方案待資料累積數月後再驗。
 """
 import sys
-import statistics
 from pathlib import Path
+
+# Windows cp950 終端印非 BMP 符號(⚠ 等)會 UnicodeEncodeError(GPT-5.6 四審 P3)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))  # 共用 loader(三審 P1:勿再讀凍結 legacy 單檔)
 from model_history_store import load_model_history  # noqa: E402
+from backtest_data.bt_stats import newey_west_t  # noqa: E402
 
 HORIZON = 20          # 波段視角(專案既有結論:約 20 日才有訊號)
 QUANTILE = 0.20       # 上/下分位各取 20%
 
 # 方案:{名稱: [(欄位, 方向)]};方向 +1=高者分數高、-1=低者分數高(等權合成各因子的 rank)
 SCHEMES = {
-    "現行雷達·未過熱(懲罰距MA20)": [("ma20_dist_pct", -1)],
+    "MA20乖離單因子(非正式公式)": [("ma20_dist_pct", -1)],
     "動能(5日漲幅高)":            [("pct_5d", +1)],
     "進場時機/買低(距MA20低+未漲)": [("ma20_dist_pct", -1), ("pct_5d", -1)],
     "波動度(高Beta)":             [("daily_vol_pct", +1)],
@@ -73,8 +77,8 @@ def _spearman(xs, ys):
 
 
 def main():
-    days = load_model_history(ROOT / "state/model_history.json",
-                          ROOT / "state/model_history")
+    days = load_model_history(ROOT / "state/model_history.json",  # strict:壞分區即中止
+                          ROOT / "state/model_history", strict=True)
     days = [d for d in days if isinstance(d.get("stocks"), dict)]
     days.sort(key=lambda d: d.get("session_date", ""))
     print(f"model_history 交易日 n={len(days)}  期間 {days[0]['session_date']}..{days[-1]['session_date']}")
@@ -139,8 +143,8 @@ def main():
             te = sum(top_ex) / len(top_ex) * 100
             ls = sum(ls_spread) / len(ls_spread) * 100
             mic = sum(ics) / len(ics)
-            sd = statistics.pstdev(ics) or 1e-9
-            t = mic / (sd / len(ics) ** 0.5)
+            # 20 日重疊視窗 → Newey-West lag=19 為準(四審 P1)
+            t = newey_west_t(ics, HORIZON - 1) or 0.0
             win = sum(1 for x in top_ex if x > 0) / len(top_ex) * 100
             print(f"{name:<26}{te:>+9.2f}%{ls:>+9.2f}%{mic:>+9.4f}{t:>+8.1f}{win:>6.0f}%")
         else:

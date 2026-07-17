@@ -324,8 +324,13 @@ def _news_source_grade(item: dict) -> str:
     Google News / 類股 feed 的 source 只是聚合器代號(如 Google:NVDA、類股-金融-台股),
     真正的發布媒體在 source_name、或 Google 標題結尾「- 經濟日報」。三者一起看,
     否則正版個股新聞會被誤判為 C → 去重時輸給舊版、且被當低可信度。
-    標題只允許升到 B(見 _grade_from_text 的 allow_a 說明)。"""
-    return (_grade_from_text(item.get("source"))
+    標題只允許升到 B(見 _grade_from_text 的 allow_a 說明)。
+    聚合器代號(Google:xxx / 類股-xxx)是內部查詢別名,不是發布者身分——
+    「Google:SEC」這類別名不得升 A(四審 P1-2);別名整段跳過,只看
+    source_name 與標題尾綴。"""
+    source = str(item.get("source") or "")
+    is_aggregator = source.lower().startswith("google:") or source.startswith("類股-")
+    return ((_grade_from_text(source) if not is_aggregator else "")
             or _grade_from_text(item.get("source_name"))
             or _grade_from_text(item.get("title"), allow_a=False)
             or "C")

@@ -17,9 +17,14 @@ DEFAULT_SESSIONS = 520
 
 def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
                        partition_dir: Path = DEFAULT_PARTITION_DIR,
-                       sessions: int = DEFAULT_SESSIONS) -> list[dict]:
+                       sessions: int = DEFAULT_SESSIONS,
+                       strict: bool = False) -> list[dict]:
     """讀取 point-in-time 股票池歷史:legacy + 分區合併(分區優先),
-    回傳依日期排序的最近 sessions 筆。單一分區壞檔只略過該檔(晨報不可斷)。"""
+    回傳依日期排序的最近 sessions 筆。
+
+    strict=False(晨報 production):單一分區壞檔只略過該檔(晨報不可斷)。
+    strict=True(離線回測/月報):任一檔損壞直接 raise fail-closed——
+    靜默少一個月的樣本會讓 IC/回測指標無聲漂移,寧可中止(四審 P1-4)。"""
     merged: dict[str, dict] = {}
     if legacy_file.exists():
         try:
@@ -28,6 +33,8 @@ def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
                 if isinstance(item, dict) and item.get("session_date"):
                     merged[item["session_date"]] = item
         except Exception as e:
+            if strict:
+                raise RuntimeError(f"legacy model_history 損壞: {e}") from e
             print(f"[model_state] legacy 載入失敗: {e}", file=sys.stderr)
     if partition_dir.exists():
         for path in sorted(partition_dir.glob("*.json.gz")):
@@ -37,6 +44,8 @@ def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
                     if isinstance(item, dict) and item.get("session_date"):
                         merged[item["session_date"]] = item   # 分區優先(較新)
             except Exception as e:
+                if strict:
+                    raise RuntimeError(f"分區 {path.name} 損壞: {e}") from e
                 print(f"[model_state] 分區 {path.name} 載入失敗(略過): {e}",
                       file=sys.stderr)
     history = sorted(merged.values(), key=lambda item: item.get("session_date", ""))

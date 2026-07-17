@@ -19,10 +19,11 @@ on:
 permissions:
   contents: write
 
-# 同 morning-report:排程/手動分 group,排程不可被手動測試取消(三審 P1-10)
+# 與 morning-report 共用 state-writers group(四審 P1-6):兩者都寫
+# state/podcast_digest.json,必須互斥序列化;一律不取消,卡死由 timeout 兜底
 concurrency:
-  group: podcast-digest-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
+  group: state-writers
+  cancel-in-progress: false
 
 jobs:
   digest:

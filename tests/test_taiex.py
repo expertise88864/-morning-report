@@ -283,6 +283,15 @@ def test_stance_py_us_holiday_and_missing():
         assert c[k] == 0, k
     assert out["stale_us"] is True
     assert out["total"] == -3      # 外資前十/台指期/廣度三維皆 -1
+    # 四審 P0-4:休市 → taiwan_only regime,門檻 ±2(3 維最高 ±3,沿用 ±5
+    # 等於休市日永遠中性);台方三維全 -1 → 必須判偏空
+    assert out["mode"] == "taiwan_only" and out["label"] == "偏空"
+    assert out["coverage"] == 1.0 and out["abstain"] is False
+    # 休市 + 台灣三維也全缺 → 適用維度 0/3,必須 abstain(舊 coverage 以 11 維
+    # 計會得 8/11=72.7% 而不 abstain——「沒有資料≠中性」)
+    out3 = mr._compute_stance_score({"US_HOLIDAY": {"detected": True}})
+    assert out3["mode"] == "taiwan_only"
+    assert out3["abstain"] is True and out3["label"] == "資料不足"
     # 缺資料 → 0 + missing 名單,不炸;coverage<70% 時「沒有資料≠市場中性」,
     # 標 abstain 並以「資料不足」取代方向標籤(三審 P1-5)
     out2 = mr._compute_stance_score({})

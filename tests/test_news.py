@@ -1092,6 +1092,9 @@ def test_source_grade_title_cannot_claim_official_and_word_boundary():
     # word boundary:second/sector 不得誤中 sec
     assert mr._news_source_grade(
         {"source": "unknown", "title": "Second quarter results in tech sector"}) == "C"
+    # 聚合器查詢別名不是發布者身分:Google:SEC 不得升 A(四審 P1-2)
+    assert mr._news_source_grade({"source": "Google:SEC", "title": "某站文章"}) == "C"
+    assert mr._news_source_grade({"source": "類股-金融-台股", "title": "x"}) == "C"
     # 發布者身分仍正常判 A / B
     assert mr._news_source_grade({"source": "TWSE 公告"}) == "A"
     assert mr._news_source_grade({"source": "MOPS"}) == "A"

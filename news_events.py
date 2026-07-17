@@ -222,12 +222,19 @@ def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:
     event_type = str(evidence.get("event_type") or "")
     direction = int(_safe_number(evidence.get("direction")))
     code = str(row.get("code") or "")
-    event_id = str(evidence.get("event_id") or "").strip()
-    if event_id:
-        return ("event_id", event_id, code, event_type, direction)
-    timeline_key = str(evidence.get("timeline_key") or "").strip()
-    if timeline_key:
-        return ("timeline", timeline_key, code, event_type, direction)
+    # event_schema >= 2 = episodic ID 世代(2026-07-17 起)。舊 evidence 的
+    # event_id 是無期別的 cluster 雜湊——歷史上不同季度/月份的事件共用同一 ID,
+    # event study 全史重算時會永久壓掉後續 episode 的樣本(不會「自然癒合」,
+    # GPT-5.6 四審 P1);舊 timeline_key 同樣缺 bucket。因此舊 evidence 一律走
+    # session 級 fallback:同事件跨日報導會略為過切(可控),但不同 episode
+    # 不再互吞(方向:寧過切勿互吞,配合 unique_events 誠實計數)。
+    if int(_safe_number(evidence.get("event_schema"))) >= 2:
+        event_id = str(evidence.get("event_id") or "").strip()
+        if event_id:
+            return ("event_id", event_id, code, event_type, direction)
+        timeline_key = str(evidence.get("timeline_key") or "").strip()
+        if timeline_key:
+            return ("timeline", timeline_key, code, event_type, direction)
     return (
         "fallback",
         str(row.get("session_date") or ""),
@@ -259,7 +266,11 @@ def _shrunk_event_impact(event_study: dict[tuple, dict],
         if scope != "global" and not scope_id:
             continue
         stats = event_study.get((scope, scope_id, event_type, direction)) or {}
-        n = int(stats.get("samples", 0))
+        # 樣本數用「不重複事件數」而非 event-stock 觀測數:一個出口管制事件映射
+        # 20 檔股票不是 20 個獨立樣本——同一事件+同日市場共同驅動,直接用觀測數
+        # 會讓 study_samples>=5 門檻被單一事件觸發(GPT-5.6 四審 P0-1)。
+        # 舊快取無 unique_events 時退回 samples(study 每次重建,實務不會發生)。
+        n = int(stats.get("unique_events", stats.get("samples", 0)))
         if not n:
             continue
         weight = n / (n + prior_strength)
@@ -300,15 +311,21 @@ def _validate_llm_events(events: list) -> tuple[list, int]:
         if not isinstance(ev, dict):
             dropped += 1
             continue
-        try:
-            direction = int(ev.get("direction"))
-        except (TypeError, ValueError):
+        # direction 嚴格限 -1/0/1:舊 int() 轉型會把 1.9 收成 1、0.5 收成 0、
+        # True 收成 1(bool 是 int 子類,in (-1,0,1) 也擋不住)——LLM 輸出的
+        # 模糊方向必須整筆丟棄,不得靜默捨入(GPT-5.6 四審 P3)
+        direction = ev.get("direction")
+        if isinstance(direction, bool) or not isinstance(direction, (int, float)) \
+                or direction not in (-1, 0, 1):
             direction = None
+        else:
+            direction = int(direction)
         entity = ev.get("entity")
         if (str(ev.get("event_type") or "") in _LLM_EVENT_TYPES
                 and direction in (-1, 0, 1)
                 and isinstance(entity, (str, type(None)))):
             clean = {k: v for k, v in ev.items() if k in _LLM_EVENT_FIELDS}
+            clean["direction"] = direction   # 正規化為 int(1.0 → 1)
             if str(clean.get("lifecycle") or "") not in _LLM_LIFECYCLES:
                 clean.pop("lifecycle", None)
             try:

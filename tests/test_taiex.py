@@ -230,7 +230,9 @@ def _stance_quotes(**over):
         "FOREIGN_TOP10_TOTAL": -12000.0,
         "TAIFEX_OI": {"foreign_oi_net": -84453},
         "BREADTH": {"advance_ratio": 34.2},
-        "US_HOLIDAY": None,
+        # 平日的真實 runtime 形狀:dict 且 detected=False(Codex review:
+        # truthiness 判斷曾天天誤判休市)
+        "US_HOLIDAY": {"detected": False},
     }
     q.update(over)
     return q
@@ -274,7 +276,8 @@ def test_stance_py_vix_conflict_and_thresholds():
 
 def test_stance_py_us_holiday_and_missing():
     # R13:美股休市 → 美股八維全 0,只剩台方三維
-    out = mr._compute_stance_score(_stance_quotes(US_HOLIDAY={"name": "獨立日"}))
+    out = mr._compute_stance_score(_stance_quotes(
+        US_HOLIDAY={"detected": True, "weekday": "Fri"}))
     c = out["components"]
     for k in ("qqq", "sox", "vix", "tsm_adr", "10y", "nq", "vix_term", "wti"):
         assert c[k] == 0, k

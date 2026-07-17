@@ -12092,7 +12092,9 @@ def _compute_stance_score(quotes: dict) -> dict:
         v = (macro.get(name) or {}).get(key)
         return v if isinstance(v, (int, float)) else None
 
-    stale_us = bool(quotes.get("US_HOLIDAY"))
+    # US_HOLIDAY 平日也是 dict({"detected": False, …}),必須看 detected 欄位——
+    # truthiness 判斷會天天誤判休市、美股八維全 0(Codex review 批#14)
+    stale_us = bool((quotes.get("US_HOLIDAY") or {}).get("detected"))
     components: dict[str, int] = {}
     missing: list[str] = []
     flags: list[str] = []

@@ -9566,6 +9566,21 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         news_block += ("\n\n【昨日世界大事新聞(非市場導向,供「世界大事速覽」取材;"
                        "[類別] 標示,標題末為來源媒體)】\n" + "\n".join(world_lines[:18]))
 
+    # 批#16:AI 前沿模型動態(新模型/跑分排名/API 定價,供「八、科技板塊」
+    # 的『AI 模型競賽』條目取材;標題與模型 id 均為外部字串,一律過 sanitizer)
+    _ai = quotes.get("AI_MODELS") or {}
+    _ai_lines = [f"- {_external_text(n.get('title'), 110)}"
+                 for n in (_ai.get("news") or [])[:8]]
+    _ai_price = [f"- {_external_text(r, 110)}"
+                 for r in (_ai.get("pricing") or [])[:8]]
+    if _ai_lines or _ai_price:
+        news_block += ("\n\n【AI 前沿模型動態(供「八、科技板塊」的『AI 模型競賽』"
+                       "條目取材;標題末為來源媒體)】\n" + "\n".join(_ai_lines))
+        if _ai_price:
+            news_block += ("\n[OpenRouter 近 14 日新上架模型與 API 定價"
+                           "(USD/百萬 tokens;官方目錄硬數據,可直接引用)]\n"
+                           + "\n".join(_ai_price))
+
     # 類股熱度表(純行情數據,供「九、其他類股」判斷哪些類股在動、誰領漲;不進計分)
     heat_block = _format_sector_heat_block(quotes.get("SECTOR_HEAT") or {})
     if heat_block:
@@ -10342,6 +10357,15 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 法說會(展望/資本支出/毛利率指引)、先進製程(N2/A16)、CoWoS 先進封裝、海內外擴產、大客戶訂單**,
 一律優先入選,可寫 **2-3 條**深入分析(其他公司仍每家至多 1 條);法說/財報季時把「數字 vs 市場預期」
 的差距講清楚,不可只寫「符合預期」帶過。
+
+**固定條目「AI 模型競賽」(批#16;有新料時寫 1-2 條,無新料可整條略過)**:取材
+【AI 前沿模型動態】——新模型發布(Kimi/DeepSeek/GPT/Claude/Gemini)、評測跑分與
+排行變化(Arena/SWE-bench 等)、API 定價與算力成本對比。鐵則:(1) 必須引用**具體
+分數/價格數字與對比**(如「K3 輸入 $3/M vs GPT-5.6 Sol $5/M」——OpenRouter 定價
+清單可直接引用);(2) 必須寫出對**算力需求 → 台積電先進製程/CoWoS/AI 供應鏈**的
+傳導方向;(3) 開源低成本模型衝擊(如 Kimi K3 嚇跌半導體)要分清「情緒/估值修正」
+與「實際訂單/產能」兩個層次,不可混為一談;(4) 格式與本段其他條目一致
+(事件+數字+來源 → 傳導機制 → 方向+信心)。
 
 **深度鐵則（每條必須三段式因果鏈，否則就是填充垃圾）**：
 1. **事件**：發生什麼——具體產品 / 合約 / 財報數字 / 法說發言 / SEC 表單 / MOPS 公告 ＋ 來源。
@@ -12231,6 +12255,77 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
         except Exception as e:
             print(f"[local] 在地快訊 {label} 抓取失敗: {e}", file=sys.stderr)
     return out
+
+
+# ── 批#16:AI 前沿模型動態(2026-07-18 使用者要求)────────────────────
+# 科技板塊固定「AI 模型競賽」條目的素材:新模型發布/跑分排名/API 定價與算力成本
+# (Kimi K3 vs GPT-5.6 這類對比)。新聞走 Google News 中文(2026-07-18 探活:
+# 3 天 100/43/46 則,Kimi K3、Gemini 3.5 Pro 延期、Arena 榜單全命中);
+# 定價走 OpenRouter 免金鑰目錄 API(344 模型,created+每 token 價格)。
+_AI_MODEL_NEWS_QUERIES = (
+    "Kimi OR DeepSeek OR GPT-5.6 OR Claude OR Gemini 模型",
+    "AI 模型 跑分 OR 評測 OR 排行 OR 定價",
+)
+
+
+def fetch_ai_model_news(hours: int = 30) -> list[dict]:
+    """AI 前沿模型新聞(近 hours 小時,最多 8 則);逐查詢失敗略過,全失敗回空。
+    去重共用在地快訊的標題模糊比對(跨查詢同事件常見)。"""
+    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+    out: list[dict] = []
+    seen: list[tuple] = []
+    for query in _AI_MODEL_NEWS_QUERIES:
+        try:
+            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
+            for entry in feed.entries:
+                if len(out) >= 8:
+                    return out
+                pub = entry.get("published_parsed") or entry.get("updated_parsed")
+                if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                    continue
+                title = str(entry.get("title", ""))[:110]
+                if not title or _local_title_is_dup(title, seen):
+                    continue
+                seen.append(_local_seen_entry(title))
+                out.append({"title": title})
+        except Exception as e:
+            print(f"[ai-models] 新聞查詢失敗(略過): {e}", file=sys.stderr)
+    return out
+
+
+def fetch_openrouter_new_models(days: int = 14, limit: int = 8) -> list[str]:
+    """OpenRouter 目錄近 days 天新上架模型 + API 定價(USD/百萬 tokens)。
+    免金鑰官方硬數據,供 prompt 直接引用(如 kimi-k3 輸入 $3/M・輸出 $15/M);
+    失敗回空(條目自動缺席)。排除路由別名(auto)與 :free 重複掛牌。"""
+    try:
+        r = _http_get("https://openrouter.ai/api/v1/models", timeout=12,
+                      headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        models = (r.json() or {}).get("data") or []
+    except Exception as e:
+        print(f"[ai-models] OpenRouter 目錄失敗(略過): {e}", file=sys.stderr)
+        return []
+    now_ts = dt.datetime.now(dt.timezone.utc).timestamp()
+    rows: list[str] = []
+    for m in sorted(models, key=lambda x: x.get("created") or 0, reverse=True):
+        if len(rows) >= limit:
+            break
+        mid = str(m.get("id") or "")
+        created = m.get("created") or 0
+        if not mid or "auto" in mid or mid.endswith(":free"):
+            continue
+        if not isinstance(created, (int, float)) or now_ts - created > days * 86400:
+            break   # 依 created 降冪,一過窗即可停
+        p = m.get("pricing") or {}
+        try:
+            pin, pout = float(p.get("prompt")), float(p.get("completion"))
+        except (TypeError, ValueError):
+            continue
+        if pin < 0 or pout < 0:   # -1 = 動態路由,無固定價
+            continue
+        date = dt.datetime.fromtimestamp(created, tz=dt.timezone.utc).strftime("%m-%d")
+        rows.append(f"{date} 上架 {mid}:輸入 ${pin * 1e6:g}/M・輸出 ${pout * 1e6:g}/M")
+    return rows
 
 
 def _render_poly_pulse_html(rows: list[dict]) -> str:
@@ -16277,6 +16372,17 @@ def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
     except Exception as e:
         print(f"[main] 停班停課抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SUSPENSION_NEWS"] = []
+    # 批#16:AI 前沿模型動態(新聞與 OpenRouter 定價各自獨立降級)
+    try:
+        quotes["AI_MODELS"] = {"news": fetch_ai_model_news()}
+    except Exception as e:
+        print(f"[main] AI 模型新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["AI_MODELS"] = {"news": []}
+    try:
+        quotes["AI_MODELS"]["pricing"] = fetch_openrouter_new_models()
+    except Exception as e:
+        print(f"[main] OpenRouter 定價抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["AI_MODELS"]["pricing"] = []
 
 
 # ---------- 主流程 ----------

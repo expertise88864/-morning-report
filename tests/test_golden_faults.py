@@ -223,7 +223,7 @@ def test_lifestyle_sources_fail_independently(monkeypatch):
     import datetime as dt
     import itertools
     now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
-    for fail in itertools.product([False, True], repeat=3):
+    for fail in itertools.product([False, True], repeat=4):
         def _mk(value, should_fail):
             def f(*a, **k):
                 if should_fail:
@@ -233,12 +233,18 @@ def test_lifestyle_sources_fail_independently(monkeypatch):
         monkeypatch.setattr(mr, "fetch_weather", _mk([{"name": "彰化市"}], fail[0]))
         monkeypatch.setattr(mr, "fetch_local_news", _mk({"建設": []}, fail[1]))
         monkeypatch.setattr(mr, "fetch_suspension_news", _mk([{"title": "x"}], fail[2]))
+        # 批#16:AI 模型素材同屬獨立降級(測試中一律 mock,不連網)
+        monkeypatch.setattr(mr, "fetch_ai_model_news", _mk([{"title": "K3"}], fail[3]))
+        monkeypatch.setattr(mr, "fetch_openrouter_new_models", _mk(["07-16 上架 x"], fail[3]))
         quotes = {}
         mr._fetch_lifestyle_quotes(quotes, now)
-        assert set(quotes) == {"WEATHER", "LOCAL_NEWS", "SUSPENSION_NEWS"}, fail
+        assert set(quotes) == {"WEATHER", "LOCAL_NEWS", "SUSPENSION_NEWS",
+                               "AI_MODELS"}, fail
         assert quotes["WEATHER"] == ([] if fail[0] else [{"name": "彰化市"}]), fail
         assert quotes["LOCAL_NEWS"] == ({} if fail[1] else {"建設": []}), fail
         assert quotes["SUSPENSION_NEWS"] == ([] if fail[2] else [{"title": "x"}]), fail
+        assert quotes["AI_MODELS"]["news"] == ([] if fail[3] else [{"title": "K3"}]), fail
+        assert quotes["AI_MODELS"]["pricing"] == ([] if fail[3] else ["07-16 上架 x"]), fail
 
 
 def test_atomic_write_replaces_not_partial(tmp_path):

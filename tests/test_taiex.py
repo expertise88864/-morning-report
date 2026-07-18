@@ -298,3 +298,73 @@ def test_stance_py_us_holiday_and_missing():
     assert out2["total"] == 0 and out2["label"] == "資料不足"
     assert out2["abstain"] is True and out2["coverage"] < 0.7
     assert len(out2["missing"]) >= 9
+
+
+def test_stance_py_block_and_attribution_formatting():
+    """PR-2 第二階段:系統計分區塊格式+Decision Attribution。"""
+    sp = {"total": -8, "label": "偏空",
+          "components": {"qqq": -1, "sox": -1, "vix": -1, "tsm_adr": -1,
+                         "foreign_top10": -1, "taifex_foreign_oi": -1,
+                         "10y": 0, "nq": -1, "vix_term": 0, "wti": -1,
+                         "breadth": -1},
+          "missing": ["10y"], "flags": [], "stale_us": False}
+    hist = [{"date": "2026-07-17", "stance_score_py": -7,
+             "stance_components_py": {**sp["components"], "vix": 0}}]
+    at = mr._stance_attribution(sp, hist)
+    assert at["prev_total"] == -7 and at["curr_total"] == -8
+    assert at["changes"] == [("vix", 0, -1)]
+    block = mr._format_stance_py_block(sp, at)
+    assert "淨分 -8" in block and "偏空" in block
+    assert "QQQ [-1]" in block and "10Y [0]" in block
+    assert "缺資料(記0):10Y" in block
+    assert "立場變化歸因:2026-07-17 -7 → 今日 -8" in block
+    assert "VIX +0→-1" in block or "VIX 0→-1" in block.replace("+0", "0")
+    # 空 → 空字串(prompt 降級)
+    assert mr._format_stance_py_block({}, {}) == ""
+    # 無可比基準 → 空 dict
+    assert mr._stance_attribution(sp, []) == {}
+
+
+def test_prompt_uses_python_stance_authority():
+    """PR-2 第二階段:prompt 含【系統立場計分】權威區塊與抄錄指令;
+    Python 計分缺席時降級為 LLM 自算+標註。"""
+    quotes = _stance_quotes()
+    quotes["STANCE_PY"] = mr._compute_stance_score(quotes)
+    quotes.update({"SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {},
+                   "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [],
+                   "NIGHT_TXF": {}, "TAIEX_PRED": {}, "BACKTEST": "",
+                   "ALERTS": [], "DATA_QUALITY": [], "USDTWD_prev": 31.1})
+    p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "【系統立場計分" in p and "原樣採用" in p
+    assert "淨分" in p
+    quotes["STANCE_PY"] = {}
+    p2 = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "系統計分缺席" in p2
+
+
+def test_render_stance_display_prefers_python(monkeypatch):
+    """PR-2 第二階段:KPI 立場以 Python 分數為權威——LLM 文字寫不同立場也不採。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 720, "prev_close": 718, "change_pct": 0.3,
+                "high": 721, "low": 717, "volume": 1, "date": "2026-07-18"},
+        "TSM": {"ticker": "TSM", "close": 420, "prev_close": 410, "change_pct": 2.4,
+                "high": 422, "low": 415, "volume": 1, "date": "2026-07-18"},
+        "SPY": {"ticker": "SPY", "close": 750, "prev_close": 749, "change_pct": 0.1,
+                "high": 751, "low": 748, "volume": 1, "date": "2026-07-18"},
+        "MACRO": {}, "USDTWD": 31.4, "USDTWD_prev": 31.4,
+        "SEC_FILINGS": [], "TW_MOPS": [], "TAIFEX_OI": {}, "MARGIN": {},
+        "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "TW0050_PRED": {}, "BREADTH": {}, "MIDTERM": {},
+        "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+        "TW_UNIVERSE_SNAPSHOT": [], "US_HOLIDAY": {},
+    }
+    quotes["STANCE_PY"] = {"total": -8, "label": "偏空",
+                           "components": {"qqq": -1}}
+    quotes["STANCE_ATTRIB"] = {"prev_date": "2026-07-17", "prev_total": -6,
+                               "curr_total": -8,
+                               "changes": [("qqq", 0, -1), ("vix", 0, -1)]}
+    analysis = "## 十二、我的明確立場\n> **立場:偏多**(淨分 +6)\n## 十三、一句話總結\n偏多操作"
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-07-18 (Sat)", "每日報")
+    assert "偏空 -8" in html or ("偏空" in html and "-8" in html)
+    assert "立場變化歸因" in html and "-6 → -8" in html.replace("+", "")

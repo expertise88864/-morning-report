@@ -1334,3 +1334,42 @@ def test_macro_vintage_singleton_only_fails_closed(monkeypatch):
             ]}
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
     assert mr.fetch_macro_vintage() == []
+
+
+def test_prompt_r15_bans_user_mentions_globally():
+    """批#21:R15 全域禁令在 prompt 中;render 防線把 LLM echo 的「使用者」
+    替換為「本報」。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 520, "prev_close": 515, "change_pct": 0.97},
+        "TSM": {"ticker": "TSM", "close": 220, "prev_close": 218, "change_pct": 0.92},
+        "SPY": {"ticker": "SPY", "close": 580, "prev_close": 578, "change_pct": 0.35},
+        "USDTWD": 31.0, "USDTWD_prev": 31.1, "MACRO": {},
+        "SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {}, "WEEKLY": {},
+        "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+    }
+    p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "R15" in p and "全信禁止提及「使用者/讀者」" in p
+
+
+def test_render_replaces_user_mentions_from_llm(monkeypatch):
+    """批#21 render 防線:LLM 輸出的「使用者關注」等字樣不得進信。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 720, "prev_close": 718, "change_pct": 0.3,
+                "high": 721, "low": 717, "volume": 1, "date": "2026-07-18"},
+        "TSM": {"ticker": "TSM", "close": 420, "prev_close": 410, "change_pct": 2.4,
+                "high": 422, "low": 415, "volume": 1, "date": "2026-07-18"},
+        "SPY": {"ticker": "SPY", "close": 750, "prev_close": 749, "change_pct": 0.1,
+                "high": 751, "low": 748, "volume": 1, "date": "2026-07-18"},
+        "MACRO": {}, "USDTWD": 31.4, "USDTWD_prev": 31.4,
+        "SEC_FILINGS": [], "TW_MOPS": [], "TAIFEX_OI": {}, "MARGIN": {},
+        "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "TW0050_PRED": {}, "BREADTH": {}, "MIDTERM": {},
+        "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+        "TW_UNIVERSE_SNAPSHOT": [], "US_HOLIDAY": {},
+    }
+    analysis = "## 八、科技板塊脈動\n國泰金(2882,使用者核心觀察):子公司公告。"
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-07-18 (Sat)", "每日報")
+    assert "使用者" not in html
+    assert "本報核心觀察" in html

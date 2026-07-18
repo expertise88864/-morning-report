@@ -1623,11 +1623,12 @@ def test_top5_ledger_create_resolve_and_stats():
     top5 = [{"code": c, "close": prices[c][2]} for c in prices]  # base=第3個 session?
     # 立名單:base_session 取 model_history 最後一日 → 用前 3 天的 mh 模擬「當時」
     now = dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE)
-    out = mr.update_top5_ledger(mh[:3], top5, now, "2026-07-04")
+    out = mr.update_top5_ledger(mh[:3], top5, now, "2026-07-04",
+                                sessions=dates[:3])
     assert out["created"] is True
-    # 5 sessions 後(mh 完整)結算
+    # 5 sessions 後(mh 完整)結算(sessions=權威序列)
     out2 = mr.update_top5_ledger(mh, [], dt.datetime(
-        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09")
+        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09", sessions=dates)
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     t5 = [e for e in stored if e.get("type") == "top5"]
     assert t5 and t5[0]["res"]["5"].get("excess_pct") is not None
@@ -1638,8 +1639,41 @@ def test_top5_ledger_create_resolve_and_stats():
     # 開盤後(10:00)不立名單
     mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
     out3 = mr.update_top5_ledger(mh, top5, dt.datetime(
-        2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04")
+        2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04", sessions=dates)
     assert out3["created"] is False
+
+
+def test_top5_ledger_session_gap_waits_then_voids():
+    """Codex 批#20:model_history 缺中間紀錄不得壓縮缺口拿錯日結算——
+    第 h 個 session 由權威 sessions 定位;該日紀錄缺=等待,逾 10 天 void。"""
+    import datetime as dt
+    import json as _json
+    dates = [f"2026-07-{d:02d}" for d in range(1, 10)]
+    prices = {"1101": [100 + i for i in range(9)],
+              "2202": [200 + 2 * i for i in range(9)],
+              "3303": [50 + 0.5 * i for i in range(9)]}
+    taiex = [10000 + 10 * i for i in range(9)]
+    mh = [{"session_date": d, "taiex_close": taiex[i],
+           "stocks": {c: {"close": p[i]} for c, p in prices.items()}}
+          for i, d in enumerate(dates)]
+    top5 = [{"code": c, "close": prices[c][2]} for c in prices]
+    mr.update_top5_ledger(mh[:3], top5, dt.datetime(
+        2026, 7, 4, 6, 0, tzinfo=mr.TPE), "2026-07-04", sessions=dates[:3])
+    # 第 5 個 session(07-08)的紀錄缺席 → 不結算、不拿 07-09 頂替
+    mh_gap = [r for r in mh if r["session_date"] != "2026-07-08"]
+    out = mr.update_top5_ledger(mh_gap, [], dt.datetime(
+        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09", sessions=dates)
+    assert not out["stats"].get("5")
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = next(e for e in stored if e.get("type") == "top5")
+    assert t5["res"].get("5") is None                    # 等待中
+    # 逾 10 天仍缺 → void(reason=record_missing)
+    out2 = mr.update_top5_ledger(mh_gap, [], dt.datetime(
+        2026, 7, 25, 6, 0, tzinfo=mr.TPE), "2026-07-25", sessions=dates)
+    stored2 = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5b = next(e for e in stored2 if e.get("type") == "top5")
+    assert t5b["res"]["5"] == {"void": True, "reason": "record_missing"}
+    assert not (out2["stats"] or {}).get("5")
 
 
 def test_d1_fundamental_samples_counting():

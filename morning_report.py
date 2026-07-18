@@ -10283,6 +10283,12 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 代表你把美股 ADR 美元價誤當成台股新台幣價 = **失敗報告**。00662/0050/加權同理,一律新台幣、需與上方數字一致。
 所有金額/目標價/點位一律用**正常數字與千分位**(如 3,242 元、45,577 點),**嚴禁出現位數錯位或多餘逗號**(如『3,2424』『1,2,345』);不確定的具體數字寧可不寫,不可亂湊。
 
+R15. **全信禁止提及「使用者/讀者」**(批#21,2026-07-18):任何段落**不得**出現
+「使用者要求/使用者關注/使用者指定/讀者要求/為您/依您需求」等暗示「內容因
+讀者要求而入選」的表述——金控、學校(葳格/明道)、地區(斗六/彰化)、醫院等
+題材一律**直接寫新聞事實**,不解釋入選緣由;需要標註來由時只能用中性的
+「本報固定追蹤/本報關注」。違反=失敗報告。
+
 ═══════════════════════════════════════════════════════════
 # 分析框架（按此順序在腦中執行，但不寫進報告）
 ═══════════════════════════════════════════════════════════
@@ -12607,10 +12613,16 @@ def _d1_fundamental_samples(model_history: list) -> int:
 
 
 def update_top5_ledger(model_history: list, top5: list[dict],
-                       now_tpe: dt.datetime, target_session: str) -> dict:
+                       now_tpe: dt.datetime, target_session: str,
+                       sessions: Optional[list] = None) -> dict:
     """Top5 追蹤帳本(#2):記每日 Top5 名單,5/20 個 session 後以 model_history
     收盤結算「等權平均報酬 − 大盤報酬」的超額。與 Forecast Ledger 同檔
-    (type=top5 條目);顯示+state,不回饋任何計分。回 {"stats", "created"}。"""
+    (type=top5 條目);顯示+state,不回饋任何計分。回 {"stats", "created"}。
+
+    sessions=權威交易日序列(Codex 批#20:model_history 可能缺中間紀錄,
+    以「第 h 筆現存紀錄」當「第 h 個 session」會把缺口壓縮、拿錯日結算)——
+    第 h 個 session 由 sessions 定位,該日紀錄缺席則等待補值,逾 10 天 void;
+    未提供 sessions 時不結算(只立題),不退回會壓縮缺口的舊行為。"""
     ledger: list = []
     if FORECAST_LEDGER_FILE.exists():
         try:
@@ -12626,35 +12638,50 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                   key=lambda r: r["session_date"])
     dates = [r["session_date"] for r in recs]
     by_date = {r["session_date"]: r for r in recs}
-    # 1) 結算(每個 horizon 獨立;成分股報價不足 3 檔 → 該 horizon void)
+    # 1) 結算(每個 horizon 獨立;成分股報價不足 3 檔 → 該 horizon void)。
+    #    第 h 個 session 以權威 sessions 序列定位;該日紀錄缺席=等待,不壓縮缺口
+    seq = sorted(str(s) for s in sessions or [] if s)
     for e in ledger:
-        if e.get("type") != "top5":
+        if e.get("type") != "top5" or not seq:
             continue
         base_s = str(e.get("base_session") or "")
-        if base_s not in by_date:
+        if base_s not in seq:
             continue
-        i0 = dates.index(base_s)
+        i0 = seq.index(base_s)
         for h in (5, 20):
             hk = str(h)
             if (e.get("res") or {}).get(hk) is not None:
                 continue
-            if i0 + h >= len(dates):
+            if i0 + h >= len(seq):
                 continue
-            rec_h = by_date[dates[i0 + h]]
-            t0, th = by_date[base_s].get("taiex_close"), rec_h.get("taiex_close")
+            tgt_d = seq[i0 + h]
+            rec_h = by_date.get(tgt_d)
+            e.setdefault("res", {})
+            if rec_h is None:
+                # 該 session 紀錄尚未入庫(backfill 上限/抓取失敗)→ 等待;
+                # 逾 10 天仍缺 → void(不拿別日紀錄替代)
+                try:
+                    if (dt.date.fromisoformat(today)
+                            - dt.date.fromisoformat(tgt_d)).days > 10:
+                        e["res"][hk] = {"void": True, "reason": "record_missing"}
+                except (ValueError, TypeError):
+                    pass
+                continue
+            t0 = e.get("taiex_base")
+            if not isinstance(t0, (int, float)):
+                t0 = (by_date.get(base_s) or {}).get("taiex_close")
+            th = rec_h.get("taiex_close")
             rets = []
             for code, base in (e.get("bases") or {}).items():
                 ch = ((rec_h.get("stocks") or {}).get(code) or {}).get("close")
                 if all(isinstance(v, (int, float)) and v for v in (base, ch)):
                     rets.append(ch / base - 1)
-            e.setdefault("res", {})
             if len(rets) < 3 or not all(
                     isinstance(v, (int, float)) and v for v in (t0, th)):
                 e["res"][hk] = {"void": True}
                 continue
             excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
-            e["res"][hk] = {"excess_pct": round(excess, 2),
-                            "session": dates[i0 + h]}
+            e["res"][hk] = {"excess_pct": round(excess, 2), "session": tgt_d}
     # 2) 立今日名單(僅目標 session 開盤前;同 created 重跑覆蓋)
     created = False
     try:
@@ -12670,6 +12697,7 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         if len(bases) >= 3:
             entry = {"type": "top5", "created": today,
                      "base_session": dates[-1],
+                     "taiex_base": by_date[dates[-1]].get("taiex_close"),
                      "codes": list(bases), "bases": bases,
                      "res": {}}
             ledger = [e for e in ledger
@@ -15358,6 +15386,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
     # 一般畸形數字(如「3,2424」逗號後 4+ 位)全文遮蔽——2330 專用修正管不到的其它段落(如科技脈動目標價)
     analysis_for_render = _mask_malformed_numbers(analysis_for_render)
+    # 批#21(2026-07-18 使用者規範):信件不得出現「使用者…」表述(prompt R15
+    # 已禁;此為 render 防線)——LLM 偶發 echo 時整詞替換為「本報」並記 log
+    if "使用者" in analysis_for_render:
+        print("[render] ⚠ LLM 輸出含「使用者」字樣(違反 R15),已替換為「本報」",
+              file=sys.stderr)
+        analysis_for_render = analysis_for_render.replace("使用者", "本報")
     # 敘述-數字交叉驗證(僅記錄):戲劇性漲跌詞與實際幅度不符 → 印警告供監看
     try:
         _drama = _audit_dramatic_macro_claims(analysis_for_render, quotes.get("MACRO") or {})
@@ -16461,7 +16495,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           </td></tr>
 
-          <!-- FOOTER:免責/來源/產生方式三行依使用者要求(2026-07-14)移除,僅留收尾邊框 -->
+          <!-- FOOTER:免責/來源/產生方式三行已移除(2026-07-14 規範),僅留收尾邊框 -->
           <tr>
             <td style="padding:10px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;"></td>
           </tr>
@@ -17851,9 +17885,11 @@ def main() -> int:
                 _s.update(_fm5.get(str(_s.get("code", "")), {}))
         if _t5_ex:
             print(f"[top5] 可執行性排除:{_t5_ex}")
-        # 批#20 #2:Top5 追蹤帳本(結算 5/20 日超額+立今日名單)
+        # 批#20 #2:Top5 追蹤帳本(結算 5/20 日超額+立今日名單;
+        # trading_sessions=權威交易日序列,缺紀錄日不壓縮)
         quotes["TOP5_TRACK"] = update_top5_ledger(
-            model_history, _top5, now_tpe, target_session_date)
+            model_history, _top5, now_tpe, target_session_date,
+            sessions=trading_sessions)
     except Exception as e:
         print(f"[main] Top5 FinMind/追蹤帳本略過: {e}", file=sys.stderr)
         quotes.setdefault("TOP5_TRACK", {})

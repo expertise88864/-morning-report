@@ -1256,9 +1256,10 @@ def test_prompt_has_no_positive_user_references():
     for banned in ("使用者核心持股", "使用者熟悉", "使用者居住",
                    "使用者高度關注", "推到使用者持股"):
         assert banned not in p, banned
-    # 「使用者核心觀察/使用者指定」只允許出現在負面禁止規則的列舉裡(各一次)
+    # 「使用者核心觀察/使用者指定」只允許出現在負面禁止規則的列舉裡
+    # (九段規則一次;R15 全域禁令再一次,批#21)
     assert p.count("使用者核心觀察") == 1
-    assert p.count("使用者指定") == 1
+    assert p.count("使用者指定") == 2
 
 
 def test_local_dup_numeric_rule_respects_short_title_guard():

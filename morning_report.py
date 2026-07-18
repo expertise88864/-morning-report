@@ -9231,6 +9231,7 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
              str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
              str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
              str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
+             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
              str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
             f"chore: update state {date_str} [skip ci]")
     except Exception as e:
@@ -12590,6 +12591,14 @@ def _fred_vintages(series_id: str) -> dict[str, list]:
             continue
     for v in by_date.values():
         v.sort()
+    # 防禦性檢查:realtime 全區間(1776→9999 慣例的縮短版)+預設 output_type
+    # 即 ALFRED 官方「取全部 vintage」用法——每個觀測日應有多列(每個 realtime
+    # 視窗一列)。若月修頻繁的序列(如 PAYEMS)整包都只有單一 vintage,代表
+    # API 行為與預期不符,大聲警告而非默默把事後值當首值(Codex 批#18 審查點;
+    # 註:output_type=2 是「每 vintage 一欄」的另一種輸出形狀,與本解析器不相容)
+    if by_date and all(len(v) <= 1 for v in by_date.values()):
+        print(f"[vintage] ⚠ {series_id} 未取得多 vintage 列——首值/修正語意"
+              f"可能失真,請檢查 FRED API 回應格式", file=sys.stderr)
     return by_date
 
 
@@ -17642,7 +17651,17 @@ def main() -> int:
         print(f"[vintage] 抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["MACRO_VINTAGE"] = []
     # Forecast Ledger(2026-07-18):結算到期預測+立今日預測(顯示+state,
-    # 不回饋任何模型);失敗不影響晨報
+    # 不回饋任何模型);失敗不影響晨報。
+    # 先回填已成熟交易日的實際開盤(Codex 批#18 P2:backfill 原本只在寄信後的
+    # save_history_state 做,週一的預測要到週三才結算得出來;此處提前對同一份
+    # in-memory history 回填,寄信後的 backfill 對已填欄位為 no-op)
+    try:
+        filled = backfill_actual_opens(quotes.get("HISTORY") or [])
+        if filled:
+            print(f"[ledger] 預先回填 {filled} 筆實際開盤(供當日結算)")
+    except Exception as e:
+        print(f"[ledger] 預先回填失敗(結算延後一日,不影響晨報): {e}",
+              file=sys.stderr)
     try:
         quotes["FORECAST_LEDGER"] = update_forecast_ledger(
             quotes.get("HISTORY") or [], predictions,

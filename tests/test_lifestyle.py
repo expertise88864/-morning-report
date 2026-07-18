@@ -2837,7 +2837,8 @@ def test_local_region_tokens_cover_township_only_titles():
                   # r4:歧義地名的無歧義複合形式必須收
                   "田中鎮火車站周邊開發案動工",
                   "東勢林場聯外道路改善工程啟動",
-                  "大城鄉海堤補強計畫核定"):
+                  "大城鄉海堤補強計畫核定",
+                  "斗南車站周邊開發案動工"):   # r12:斗南曾漏列
         assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
     # r9:歧義台中區名複合形式收、裸詞不收
     for title in ("太平區公所遷建案通過", "清水區海線綠廊啟用", "新社花海11月登場"):

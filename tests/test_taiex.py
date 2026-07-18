@@ -434,3 +434,29 @@ def test_summary_stance_word_also_enforced():
                           "2026-07-18 (Sat)", "每日報")
     assert "中性觀望 等待更多資料再進場" not in html   # 總結立場詞不一致 → 移除
     assert "依系統計分" in html and "資料不足" in html
+
+
+def test_summary_stance_word_uses_first_position():
+    """Codex r4:多立場詞句取「字串位置最前」者——「偏空風險升高,偏多仍可
+    加碼」在權威=偏多時必須觸發替換(位置最前的詞是偏空)。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 720, "prev_close": 718, "change_pct": 0.3,
+                "high": 721, "low": 717, "volume": 1, "date": "2026-07-18"},
+        "TSM": {"ticker": "TSM", "close": 420, "prev_close": 410, "change_pct": 2.4,
+                "high": 422, "low": 415, "volume": 1, "date": "2026-07-18"},
+        "SPY": {"ticker": "SPY", "close": 750, "prev_close": 749, "change_pct": 0.1,
+                "high": 751, "low": 748, "volume": 1, "date": "2026-07-18"},
+        "MACRO": {}, "USDTWD": 31.4, "USDTWD_prev": 31.4,
+        "SEC_FILINGS": [], "TW_MOPS": [], "TAIFEX_OI": {}, "MARGIN": {},
+        "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "TW0050_PRED": {}, "BREADTH": {}, "MIDTERM": {},
+        "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+        "TW_UNIVERSE_SNAPSHOT": [], "US_HOLIDAY": {},
+        "STANCE_PY": {"total": 6, "label": "偏多", "components": {"qqq": 1}},
+    }
+    analysis = ("## 十二、我的明確立場\n> **立場：偏多**(淨分 +6)\n"
+                "## 十三、一句話總結\n偏空風險升高,偏多仍可加碼 00662")
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-07-18 (Sat)", "每日報")
+    assert "偏空風險升高,偏多仍可加碼 00662" not in html
+    assert "依系統計分" in html

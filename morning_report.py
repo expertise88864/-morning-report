@@ -14868,9 +14868,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _llm_stance = _extract_stance(analysis_for_render)
         _llm_label = str(_llm_stance.get("label") or "")
         # 一句話總結也要驗(Codex r2:十二段抄對、十三段仍可能寫出別的立場詞
-        # ——如「資料不足」被寫成「中性」);取 summary 中第一個出現的立場詞比對
-        _sum_word = next((w for w in ("資料不足", "偏多", "偏空", "中性")
-                          if w in str(summary_text or "")), "")
+        # ——如「資料不足」被寫成「中性」);取 summary 中**字串位置最前**的
+        # 立場詞比對(Codex r4:依 tuple 順序找會被「偏空風險升高,偏多仍可
+        # 加碼」這類多詞句選錯詞)
+        _sum_txt = str(summary_text or "")
+        _sum_hits = [(i, w) for w in ("資料不足", "偏多", "偏空", "中性")
+                     if (i := _sum_txt.find(w)) >= 0]
+        _sum_word = min(_sum_hits)[1] if _sum_hits else ""
         _py_label = str(_sp_render["label"])
         if ((_llm_label and _llm_label != _py_label)
                 or (_sum_word and _sum_word != _py_label)):
@@ -17362,14 +17366,21 @@ def main() -> int:
         _stance_state = _extract_stance(analysis) if isinstance(analysis, str) else {}
         # PR-2 雙軌:LLM 分數 vs Python 分數並列記錄與比對 log(切換前的證據累積)
         _sp = quotes.get("STANCE_PY") or {}
-        if _sp.get("total") is not None and _stance_state.get("score") is not None:
-            _agree = "一致" if _sp["total"] == _stance_state["score"] else "不一致"
-            print(f"[stance-dual] LLM={_stance_state['score']:+d}"
+        # echo 合規監控(Codex r4 P3):Python 權威存在時**固定**產生紀錄——
+        # score/label 任一不一致或 LLM 漏寫皆 agree=False(舊寫法 LLM 漏寫時
+        # 整筆缺席、抄錯標籤但分數對仍 agree=True,不合規率被低估)
+        if _sp.get("total") is not None:
+            _echo_ok = (_stance_state.get("score") == _sp["total"]
+                        and str(_stance_state.get("label") or "")
+                        == str(_sp.get("label") or ""))
+            print(f"[stance-dual] LLM={_stance_state.get('score')}"
                   f"({_stance_state.get('label')}) vs Python={_sp['total']:+d}"
-                  f"({_sp.get('label')}) → {_agree}")
+                  f"({_sp.get('label')}) → {'一致' if _echo_ok else '不一致'}")
             _RUN_MANIFEST["stance_dual"] = {
-                "llm": _stance_state.get("score"), "py": _sp.get("total"),
-                "agree": _sp["total"] == _stance_state["score"],
+                "llm": _stance_state.get("score"),
+                "llm_label": _stance_state.get("label"),
+                "py": _sp.get("total"), "py_label": _sp.get("label"),
+                "agree": _echo_ok,
                 # 追蹤一致率所需的品質欄位(三審 P1-4):缺哪些維度、旗標、覆蓋率
                 "coverage": _sp.get("coverage"), "missing": _sp.get("missing"),
                 "flags": _sp.get("flags"), "abstain": _sp.get("abstain"),
@@ -17378,10 +17389,19 @@ def main() -> int:
                 # PR-2 第二階段起 Python 為權威;agree=False 代表 LLM 未遵守
                 # 「原樣抄錄」指令(echo 合規監控,非計分分歧)
                 "authority": "python"}
+        # 主立場欄位以 Python 權威為準(Codex r4 P2:存 LLM 不合規立場會讓
+        # 明日 narrative delta 宣稱「昨日立場:偏多」的虛假翻轉);Python 缺席
+        # 才回退 LLM;LLM 原話另存 _llm 欄供 echo 歷史
+        _authority_label = (_sp.get("label") if _sp.get("total") is not None
+                            else _stance_state.get("label"))
+        _authority_score = (_sp.get("total") if _sp.get("total") is not None
+                            else _stance_state.get("score"))
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
-            "stance_label": _stance_state.get("label"),
-            "stance_score": _stance_state.get("score"),
+            "stance_label": _authority_label,
+            "stance_score": _authority_score,
+            "stance_label_llm": _stance_state.get("label"),
+            "stance_score_llm": _stance_state.get("score"),
             # PR-2 雙軌欄位(Python 確定性 11 維;比對用,未切換顯示)
             "stance_score_py": _sp.get("total"),
             "stance_label_py": _sp.get("label"),

@@ -2815,6 +2815,11 @@ def test_local_dup_landmark_prefix_not_killed_but_rewrites_still_are():
     p2 = "彰化市大埔截水溝堤岸道路拓寬工程第二期動工"
     seen_p = [mr._local_seen_entry(p1)]
     assert mr._local_title_is_dup(p2, seen_p) is False
+    # r9:語意後綴(延期/取消)是事件更新,含入不得誤殺;樣板前綴(快訊)才算同一則
+    q1 = "彰化百貨開幕"
+    seen_q = [mr._local_seen_entry(q1)]
+    assert mr._local_title_is_dup("彰化百貨開幕延期", seen_q) is False
+    assert mr._local_title_is_dup("快訊/彰化百貨開幕", seen_q) is True
 
 
 def test_local_region_tokens_cover_township_only_titles():
@@ -2828,10 +2833,15 @@ def test_local_region_tokens_cover_township_only_titles():
                   "東勢林場聯外道路改善工程啟動",
                   "大城鄉海堤補強計畫核定"):
         assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
-    # 跨區誤收樣本仍被擋(含歧義裸詞:台北信義區/日本姓氏田中/「大城市」)
+    # r9:歧義台中區名複合形式收、裸詞不收
+    for title in ("太平區公所遷建案通過", "清水區海線綠廊啟用", "新社花海11月登場"):
+        assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
+    # 跨區誤收樣本仍被擋(含歧義裸詞:台北信義區/日本姓氏田中/「大城市」/
+    # 宜蘭太平山/建築工法清水模)
     for title in ("板橋租屋要住哪？車站旁套房溢價17%仍搶手",
                   "信義區豪宅成交創高", "高雄輕軌新進度",
-                  "日本首相田中發表談話", "全球大城市房價比較"):
+                  "日本首相田中發表談話", "全球大城市房價比較",
+                  "宜蘭太平山道路施工封閉", "清水模建築美學特展"):
         assert not any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
 
 

@@ -12058,9 +12058,12 @@ _LOCAL_REGION_TOKENS = (
     "福興", "伸港", "線西", "花壇", "芬園", "大村", "埔鹽", "埔心", "永靖",
     "社頭", "二水", "溪州", "竹塘", "秀水", "彰濱",
     # 台中市
-    "烏日", "北屯", "西屯", "南屯", "霧峰", "大里", "太平", "豐原", "沙鹿",
-    "清水", "大甲", "大雅", "潭子", "神岡", "后里", "新社", "石岡", "外埔",
+    "烏日", "北屯", "西屯", "南屯", "霧峰", "大里", "豐原", "沙鹿",
+    "大甲", "大雅", "潭子", "神岡", "后里", "石岡", "外埔",
     "龍井", "梧棲", "大肚", "中科",
+    # 歧義台中區名收複合形式(r9:裸「太平」撞宜蘭太平山、「清水」撞清水模/
+    # 京都清水寺、「新社」低辨識——完整區名或在地地標無此問題)
+    "太平區", "清水區", "新社區", "新社花海",
     # 南投縣
     "草屯", "埔里", "竹山", "集集", "名間", "魚池", "國姓", "水里", "鹿谷",
     # 雲林縣
@@ -12106,6 +12109,18 @@ def _shared_bigram_runs(title: str, prev_grams: set) -> int:
     return runs
 
 
+# 聚合平台/媒體加掛的樣板前綴詞(不帶語意):剝除後相等=同一則。
+# 「延期/取消/停工」等語意詞刻意不列——那是事件更新,必須保留(Codex r9)。
+_TITLE_BOILERPLATE_TOKENS = ("討論牆", "影音", "獨家", "有影片", "快訊",
+                             "最新快訊", "組圖", "圖輯", "更新")
+
+
+def _strip_title_boilerplate(norm: str) -> str:
+    for tok in _TITLE_BOILERPLATE_TOKENS:
+        norm = norm.replace(tok, "")
+    return norm
+
+
 def _local_seen_entry(title: str) -> tuple:
     """去重快取項:(bigram 集合, 非年份數字集合, 正規化字串)。"""
     import re as _re
@@ -12123,7 +12138,8 @@ def _local_title_is_dup(title: str, seen_bigrams: list,
     判重複的兩條路(Codex 批#15 r3/r6/r7 演進,不再有純門檻無條件線——
     任何門檻都可能被超長專案名前綴衝破,如「大埔截水溝堤岸道路拓寬工程」
     第一期 vs 第二期):
-      (a) 正規化後互為含入(「討論牆 |」式前綴垃圾、加媒體尾綴);
+      (a) 剝除樣板詞(討論牆/影音/獨家…)後正規化相等——語意後綴
+          (延期/取消)非樣板,更新事件不會被誤殺;
       (b) overlap 達門檻 且 共享內容散佈 ≥2 個不連續區段(同事件改寫的樣貌;
           單一區段=共用地標/專案名前綴,是同實體不同事件,保留)。
     短標題防誤殺(批#9):bigram<12 時門檻 0.85。"""
@@ -12142,8 +12158,10 @@ def _local_title_is_dup(title: str, seen_bigrams: list,
         m = min(len(grams), len(prev))
         if not m:
             continue
-        # (a) 含入:一方正規化字串完整包含另一方 → 必為同一則的前綴/尾綴變體
-        if prev_norm and norm and (norm in prev_norm or prev_norm in norm):
+        # (a) 樣板剝除後相等(Codex r9:裸含入會把「開幕」vs「開幕延期」這類
+        # 語意更新誤殺——多出來的字必須是已知樣板詞才算同一則)
+        if prev_norm and norm and _strip_title_boilerplate(norm) \
+                == _strip_title_boilerplate(prev_norm):
             return True
         overlap = len(grams & prev) / m
         need = 0.85 if m < 12 else threshold

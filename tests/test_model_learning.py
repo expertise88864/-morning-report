@@ -1539,6 +1539,9 @@ def test_forecast_ledger_post_open_rerun_guard():
     led2 = mr.update_forecast_ledger([], {"mid": 9999.0, "last_2330": 2290.0},
                                      {}, post, "2026-07-20")
     assert len(led2["today"]) == 1 and led2["today"][0]["prob"] == p0
+    # 開盤後補跑且「當次預測失敗」(specs 空)→ 既有盤前題仍須顯示(Codex r6)
+    led2b = mr.update_forecast_ledger([], {}, {}, post, "2026-07-20")
+    assert len(led2b["today"]) == 1 and led2b["today"][0]["prob"] == p0
     # 開盤後且無既有題 → 不立題
     mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
     led3 = mr.update_forecast_ledger([], preds, {}, post, "2026-07-20")

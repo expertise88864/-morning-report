@@ -12843,14 +12843,15 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
         _after_open = now_tpe >= _tgt_open
     except (ValueError, TypeError):
         _after_open = True   # 目標日無法解析 → 保守不立題
+    if _after_open:
+        # 盤後補跑:既有盤前題「整組」自 ledger 復原顯示——不得依賴當次 specs
+        # (當次預測抓取失敗時 specs 缺題,合法盤前題會從信中消失,Codex r6);
+        # 不立題、不覆蓋
+        today_qs = [dict(e) for e in ledger
+                    if str(e.get("target")) == str(target_session or "")
+                    and e.get("resolved") is None]
+        specs = []
     for question, label, pred_pct, threshold in specs:
-        existing = [e for e in ledger
-                    if e.get("question") == question
-                    and str(e.get("target")) == str(target_session or "")]
-        if _after_open:
-            if existing:
-                today_qs.extend(dict(e) for e in existing)   # 顯示既有盤前題
-            continue
         sigma, n_sig = _forecast_sigma(history, question)
         prob = _forecast_prob_up(pred_pct, sigma)
         past = [e for e in resolved_all

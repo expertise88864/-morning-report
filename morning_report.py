@@ -14888,9 +14888,9 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
 
 PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
-# Top5 波段觀察卡渲染開關:使用者 2026-07-15 要求刪除(長線大盤型為主);
-# 排名/回測/state/prompt 素材照常運作,只關顯示。要復用改 True 即可。
-_RENDER_TOP5_CARD = False
+# Top5 波段觀察卡渲染開關:2026-07-15 使用者要求刪除 → 2026-07-18 要求加回
+# (位置改 Podcast 卡上方)。排名/回測/state/prompt 素材從未中斷。
+_RENDER_TOP5_CARD = True
 # 現行訂閱節目(2026-07-14 使用者拍板瘦身後)兼「顯示順序」:台灣節目優先、外國殿後。
 # 同時是 load_podcast_digest 的白名單——已刪節目(科技報橘/美股投資學/財經一路發/
 # WSJ What's News 等)的 state 殘留不再進信件。與 podcast_digest.PODCASTS 同步維護。
@@ -15527,8 +15527,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         """
 
     # === 台股客觀關注排名 Top 5（固定公式分項 + 可回測價格預測）===
-    # 使用者要求刪除本卡(2026-07-15:「都買大盤市值型放長線」);排名計分/每日回測/
-    # state/prompt 的 Top5 素材**全部保留**(僅信件不渲染),旗標關閉、日後一行復用。
+    # 2026-07-15 使用者刪 → 2026-07-18 使用者要求加回,位置=Podcast 卡上方。
     smart_money_html = ""
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
     if universe_snapshot and _RENDER_TOP5_CARD:
@@ -16269,6 +16268,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             <div style="margin-top:32px;">{analysis_html}</div>
 
+            {smart_money_html}
+
             {podcast_html}
 
             {model_evidence_html}
@@ -16278,8 +16279,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {taifex_html}
 
             {sports_html}
-
-            {smart_money_html}
 
             {local_news_html}
 

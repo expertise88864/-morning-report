@@ -925,16 +925,20 @@ def test_render_html_full_mode_default_never_compacts(monkeypatch):
     assert "已暫略" not in html                         # 無任何區塊被移除
 
 
-def test_top5_card_hidden_by_default():
-    """Top5 波段觀察卡預設不渲染(使用者 2026-07-15:長線大盤型為主);
-    排名/回測/state 資料管線照常,僅顯示關閉。"""
+def test_top5_card_rendered_above_podcast():
+    """Top5 卡已加回(使用者 2026-07-18),位置=Podcast 卡上方。"""
     quotes = {**_full_quotes(), "TW_UNIVERSE_SNAPSHOT": [{
         "code": "2330", "name": "台積電", "close": 2420.0, "day_pct": 0.0,
         "ranking_score": 40.0, "smart_money": {"score": 55, "tags": []},
-    }]}
-    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-15", "每日報")
-    assert "波段觀察名單" not in html and "客觀關注排名" not in html
-    assert "資金輪動" not in html
+    }], "PODCAST_DIGEST": [{"show": "股癌", "title": "x", "points": ["a"]}]}
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "x", "2026-07-18", "每日報")
+    assert "台積電" in html
+    i_top5 = html.find("客觀關注排名")
+    if i_top5 < 0:
+        i_top5 = html.find("波段觀察")
+    i_pod = html.find("Podcast 重點")
+    assert i_top5 >= 0, "Top5 卡必須渲染"
+    assert i_pod < 0 or i_top5 < i_pod, "Top5 卡必須在 Podcast 卡上方"
 
 
 def test_archive_fail_closed_sensitive_scan(monkeypatch, tmp_path):

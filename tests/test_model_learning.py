@@ -1498,3 +1498,48 @@ def test_forecast_sigma_fallback_and_estimation():
     assert mr._forecast_prob_up(2.0, 1.0) > 0.9
     assert mr._forecast_prob_up(-2.0, 1.0) < 0.1
     assert mr._forecast_prob_up(50.0, 1.0) == 0.98
+
+
+def test_forecast_ledger_holiday_alignment_and_void():
+    """Codex 批#18 r4:名目目標日臨時休市 → 對齊 7 天內第一個真實開盤結算
+    (threshold 昨收不變);超過 10 天無法對齊 → void 且不進統計。"""
+    import datetime as dt
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20")   # 目標=颱風假
+    # 7/20 停市:history 只有 7/21 的實際開盤
+    hist = [{"target_session_date": "2026-07-21", "actual_open_2330": 2310.0}]
+    led = mr.update_forecast_ledger(
+        hist, {}, {}, dt.datetime(2026, 7, 22, 6, 0, tzinfo=mr.TPE), "2026-07-22")
+    assert len(led["resolved"]) == 1
+    assert led["resolved"][0]["outcome"] is True     # 2310 > 2290(原 threshold)
+    # 逾期 void:目標過 10 天無任何實際開盤
+    mr.update_forecast_ledger([], preds, {}, dt.datetime(
+        2026, 8, 1, 6, 0, tzinfo=mr.TPE), "2026-08-01")
+    led2 = mr.update_forecast_ledger([], {}, {}, dt.datetime(
+        2026, 8, 20, 6, 0, tzinfo=mr.TPE), "2026-08-20")
+    import json as _json
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    voided = [e for e in stored if e.get("void")]
+    assert voided and all(e["outcome"] is None for e in voided)
+    assert not led2.get("stats") or all(
+        e.get("void") is not True for e in (led2.get("resolved") or []))
+
+
+def test_forecast_ledger_post_open_rerun_guard():
+    """Codex 批#18 r4:目標 session 開盤(09:00)後的補跑不得立題/覆蓋——
+    既有盤前題原樣保留(機率不變),無既有題則整題缺席。"""
+    import datetime as dt
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    pre = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    led1 = mr.update_forecast_ledger([], preds, {}, pre, "2026-07-20")
+    p0 = led1["today"][0]["prob"]
+    # 10:30 補跑,預測值已含盤中資訊 → 保留原題
+    post = dt.datetime(2026, 7, 20, 10, 30, tzinfo=mr.TPE)
+    led2 = mr.update_forecast_ledger([], {"mid": 9999.0, "last_2330": 2290.0},
+                                     {}, post, "2026-07-20")
+    assert len(led2["today"]) == 1 and led2["today"][0]["prob"] == p0
+    # 開盤後且無既有題 → 不立題
+    mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
+    led3 = mr.update_forecast_ledger([], preds, {}, post, "2026-07-20")
+    assert led3["today"] == []

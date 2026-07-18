@@ -12757,13 +12757,51 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
             actuals[("2330_open_up", tgt)] = float(rec["actual_open_2330"])
         if isinstance(rec.get("actual_open_taiex"), (int, float)):
             actuals[("taiex_open_up", tgt)] = float(rec["actual_open_taiex"])
+    # 依 question 排序的 (target, actual) 供休市對齊查找
+    q_actuals: dict[str, list] = {}
+    for (q, tgt), a in actuals.items():
+        q_actuals.setdefault(q, []).append((tgt, a))
+    for v in q_actuals.values():
+        v.sort()
+
+    def _lookup_actual(question: str, target: str) -> Optional[float]:
+        exact = actuals.get((question, target))
+        if exact is not None:
+            return exact
+        # 名目目標日臨時休市(颱風/假日,Codex 批#18 r4):預測語意=「下一個
+        # 真實交易 session 的開盤 vs 昨收」→ 對齊其後 7 天內第一個有實際
+        # 開盤的交易日;threshold(昨收)不變,題目語意不變
+        try:
+            t0 = dt.date.fromisoformat(target)
+        except (ValueError, TypeError):
+            return None
+        for t2, a in q_actuals.get(question, []):
+            try:
+                d2 = dt.date.fromisoformat(t2)
+            except (ValueError, TypeError):
+                continue
+            if t0 < d2 <= t0 + dt.timedelta(days=7):
+                return a
+        return None
+
     resolved_today = []
     for e in ledger:
         if e.get("resolved") is not None:
             continue
-        actual = actuals.get((str(e.get("question")), str(e.get("target"))))
+        tgt = str(e.get("target"))
+        actual = _lookup_actual(str(e.get("question")), tgt)
         thr = e.get("threshold")
         if actual is None or not isinstance(thr, (int, float)):
+            # 逾期 void:目標日過 10 天仍無實際開盤可對齊 → 標記不可結算,
+            # 排除於統計之外(不留永久懸置)
+            try:
+                if (dt.date.fromisoformat(today)
+                        - dt.date.fromisoformat(tgt)).days > 10:
+                    e["resolved"] = today
+                    e["outcome"] = None
+                    e["void"] = True
+            except (ValueError, TypeError):
+                pass
             continue
         outcome = actual > thr
         e["resolved"] = today
@@ -12785,13 +12823,32 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     if isinstance(pt, (int, float)) and isinstance(lt, (int, float)) and lt:
         specs.append(("taiex_open_up", "加權指數開盤高於昨收",
                       (pt / lt - 1) * 100, lt))
+    # 開盤時間守門(Codex 批#18 r4):目標 session 已開盤(09:00 TPE)後的
+    # 手動補跑不得立題或覆蓋既有題——盤後的預測可看到當日行情,會污染
+    # live 計分的誠實性;既有盤前題原樣保留
+    try:
+        _tgt_open = dt.datetime.strptime(
+            str(target_session or ""), "%Y-%m-%d").replace(
+            hour=9, minute=0, tzinfo=TPE)
+        _after_open = now_tpe >= _tgt_open
+    except (ValueError, TypeError):
+        _after_open = True   # 目標日無法解析 → 保守不立題
     for question, label, pred_pct, threshold in specs:
+        existing = [e for e in ledger
+                    if e.get("question") == question
+                    and str(e.get("target")) == str(target_session or "")]
+        if _after_open:
+            if existing:
+                today_qs.extend(dict(e) for e in existing)   # 顯示既有盤前題
+            continue
         sigma, n_sig = _forecast_sigma(history, question)
         prob = _forecast_prob_up(pred_pct, sigma)
-        past = [e for e in resolved_all if e.get("question") == question]
+        past = [e for e in resolved_all
+                if e.get("question") == question and not e.get("void")]
         base = (round(sum(1 for e in past if e.get("outcome")) / len(past), 3)
                 if len(past) >= 10 else 0.5)
         entry = {"question": question, "label": label, "created": today,
+                 "created_at": now_tpe.isoformat(),
                  "target": str(target_session or ""), "threshold": threshold,
                  "pred_pct": round(pred_pct, 3), "prob": prob,
                  "sigma": round(sigma, 3), "sigma_n": n_sig, "base_rate": base}
@@ -12804,8 +12861,9 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(FORECAST_LEDGER_FILE,
                        json.dumps(ledger, ensure_ascii=False, indent=1))
-    # 3) 統計(近 30 筆已結算)
-    recent = [e for e in ledger if e.get("resolved") is not None][-30:]
+    # 3) 統計(近 30 筆已結算;void 不計)
+    recent = [e for e in ledger
+              if e.get("resolved") is not None and not e.get("void")][-30:]
     stats = {}
     if recent:
         hits = sum(1 for e in recent

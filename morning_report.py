@@ -12132,11 +12132,14 @@ def _local_title_is_dup(title: str, seen_bigrams: list[set],
         overlap = len(grams & prev) / m
         need = 0.85 if m < 12 else threshold
         if overlap >= need:
-            # 0.35–0.50 弱重疊帶(Codex 批#15 r3):共享內容若只集中在單一連續
-            # 區段(=共用地標/實體名前綴,如「台中捷運藍線」工程 vs 徵才 0.385),
+            # 弱重疊帶(Codex 批#15 r3/r6):共享內容若只集中在單一連續區段
+            # (=共用地標/實體名前綴,如「台中捷運藍線工程」進度 vs 經費 0.54),
             # 是同實體不同事件,不算重複;真正的同事件改寫共享內容會散佈多處
-            # (二林運動館 0.391/0.435 = 三段)。≥0.50 維持無條件重複。
-            if overlap >= 0.50 or _shared_bigram_runs(title, prev) >= 2:
+            # (二林運動館 0.391/0.435 = 三段)。無條件重複線提高到 0.70——
+            # 「討論牆 |」式前綴垃圾是整段含入(overlap≈1.0),仍被無條件線抓住;
+            # 長專案名前綴最多吃到 ~0.55,不再繞過區段條件(r6)。
+            if (overlap >= max(need, 0.70)
+                    or _shared_bigram_runs(title, prev) >= 2):
                 return True
         # 數字二級規則不適用短標題(Codex 批#15:「台74線車禍」vs「台74線拓寬」
         # 共享 74 且短標題 overlap 3/5=0.6,會誤殺——短標題仍走 0.85 防護);
@@ -12177,8 +12180,11 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                     continue
                 title = str(entry.get("title", ""))[:90]
                 # 批#15 地區過濾:標題須含中彰投雲地名或追蹤實體詞
-                # (「台中 學區」查詢曾回板橋租屋文)
-                if not any(tok in title for tok in _LOCAL_REGION_TOKENS):
+                # (「台中 學區」查詢曾回板橋租屋文)。「中科院」先剝除再比對:
+                # 國防新聞的「中科院」會撞裸「中科」token(Codex r6);剝除後
+                # 若標題另含真正的中科/其他地名詞仍可通過。
+                region_check = title.replace("中科院", "")
+                if not any(tok in region_check for tok in _LOCAL_REGION_TOKENS):
                     continue
                 if _local_title_is_dup(title, seen_bigrams):
                     continue

@@ -2800,6 +2800,15 @@ def test_local_dup_landmark_prefix_not_killed_but_rewrites_still_are():
     h2 = "台74線大里段深夜連環車禍釀三傷"
     seen_h = [(mr._local_title_bigrams(h1), {"74"})]
     assert mr._local_title_is_dup(h2, seen_h) is False
+    # r6:長專案名前綴可衝破 0.50(「台中捷運藍線工程」進度 vs 經費 ≈0.54)——
+    # 無條件線提高到 0.70,單段前綴仍不得誤殺
+    j1 = "台中捷運藍線工程進度最新曝光"
+    j2 = "台中捷運藍線工程經費追加通過"
+    seen_j = [(mr._local_title_bigrams(j1), set())]
+    assert mr._local_title_is_dup(j2, seen_j) is False
+    # 「討論牆 |」式整段含入(overlap≈1.0)仍被無條件線抓住
+    k = "討論牆 | 台中捷運藍線工程進度最新曝光 - LINE TODAY"
+    assert mr._local_title_is_dup(k, seen_j) is True
 
 
 def test_local_region_tokens_cover_township_only_titles():
@@ -2818,3 +2827,29 @@ def test_local_region_tokens_cover_township_only_titles():
                   "信義區豪宅成交創高", "高雄輕軌新進度",
                   "日本首相田中發表談話", "全球大城市房價比較"):
         assert not any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
+
+
+def test_local_region_filter_rejects_ncsist_collision(monkeypatch):
+    """Codex 批#15 r6:「中科院」(國防)撞裸「中科」token——剝除後再比對;
+    真正的中科園區新聞(中科擴線)不受影響。"""
+    import datetime as dt
+    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    class Feed:
+        def __init__(self, url):
+            if "%E5%BD%B0%E6%BF%B1%E5%B7%A5%E6%A5%AD%E5%8D%80" in url:  # 產業/科技 query
+                self.entries = [
+                    {"title": "中科院無人機飛彈試射成功", "link": "https://x/1",
+                     "published": now_gmt},                       # 國防新聞 → 擋
+                    {"title": "李長榮先進材料中科擴線動土", "link": "https://x/2",
+                     "published": now_gmt},                       # 真中科 → 收
+                ]
+            else:
+                self.entries = []
+
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda url, *a, **k: Feed(url))
+    out = mr.fetch_local_news()
+    titles = [t["title"] for v in out.values() for t in v]
+    assert "中科院無人機飛彈試射成功" not in titles
+    assert "李長榮先進材料中科擴線動土" in titles

@@ -1187,3 +1187,65 @@ def test_policy_user_focus_terms_boost_housing_policy():
     imp2, why2 = mr._tw_intelligence_importance(
         "policy", "行政院討論一般行政事項", False, "昨日新訊", "媒體報導")
     assert "使用者關注:房市政策" not in why2 and imp2 < imp
+
+
+def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):
+    """Codex 批#15 P1:金控 OR 查詢的決策詞子句(BOT/人事/投資)會獨立命中無關
+    新聞——標題/摘要不含公司詞者不得掛 company_label(掛了會進事件歸因計分)。"""
+    import datetime as dt
+
+    class Feed:
+        entries = [
+            {"title": "台中運動園區 BOT 案動工 市府樂觀", "summary": "",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 無公司詞 → 擋
+            {"title": "台灣人壽參與台中 BOT 案 投資 258 億", "summary": "",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 含台灣人壽 → 收
+            {"title": "某公司高層人事異動", "summary": "中信金子公司公告",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 摘要含中信 → 收
+        ]
+
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: Feed())
+    cutoff = dt.datetime(2026, 7, 16, tzinfo=dt.timezone.utc)
+    out = mr._process_feed_item(
+        {"source": "Google:2891", "url": "https://x", "kind": "company",
+         "label": "2891"}, cutoff)
+    titles = [n["title"] for n in out]
+    assert all(n["company_label"] == "2891" for n in out)
+    assert "台中運動園區 BOT 案動工 市府樂觀" not in titles
+    assert len(out) == 2
+    # 非金控查詢(無守門詞)行為不變
+    out2 = mr._process_feed_item(
+        {"source": "Google:2330", "url": "https://x", "kind": "company",
+         "label": "2330"}, cutoff)
+    assert len(out2) == 3
+
+
+def test_prompt_has_no_positive_user_references():
+    """Codex 批#15 P2:prompt 的正向敘述不得再出現「使用者核心持股/使用者指定/
+    使用者熟悉/使用者居住」——禁止詞只允許出現在負面規則(「不得出現…」)中。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 520, "prev_close": 515, "change_pct": 0.97},
+        "TSM": {"ticker": "TSM", "close": 220, "prev_close": 218, "change_pct": 0.92},
+        "SPY": {"ticker": "SPY", "close": 580, "prev_close": 578, "change_pct": 0.35},
+        "USDTWD": 31.0, "USDTWD_prev": 31.1, "MACRO": {},
+        "SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {}, "WEEKLY": {},
+        "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+    }
+    p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    for banned in ("使用者核心持股", "使用者熟悉", "使用者居住",
+                   "使用者高度關注", "推到使用者持股"):
+        assert banned not in p, banned
+    # 「使用者核心觀察/使用者指定」只允許出現在負面禁止規則的列舉裡(各一次)
+    assert p.count("使用者核心觀察") == 1
+    assert p.count("使用者指定") == 1
+
+
+def test_local_dup_numeric_rule_respects_short_title_guard():
+    """Codex 批#15 P2:共享路線號碼的兩則「短標題、不同事件」不得被數字二級
+    規則誤殺(數字規則僅適用 bigram>=12 的長標題)。"""
+    a = "台74線車禍1死"
+    b = "台74線拓寬工程"
+    seen = [(mr._local_title_bigrams(a), {"74", "1"})]
+    assert mr._local_title_is_dup(b, seen) is False

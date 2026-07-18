@@ -1330,3 +1330,14 @@ def test_ai_model_block_in_prompt_sanitized(monkeypatch):
     quotes["AI_MODELS"] = {"news": [], "pricing": []}
     p2 = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
     assert "【AI 前沿模型動態(供" not in p2   # 素材塊缺席(指引文字仍引用該名稱)
+
+
+def test_ai_model_news_does_not_touch_shared_feed_breaker(monkeypatch):
+    """Codex 批#16 P2:AI 素材查詢失敗不得推進共用 news.google.com 熔斷
+    streak——否則連坐稍後會影響計分的候選股/類股新聞查詢。"""
+    def boom(*a, **k):
+        raise ConnectionError("down")
+    monkeypatch.setattr(mr, "_http_get", boom)
+    before = {h: dict(s) for h, s in mr._FEED_STATS.items()}
+    assert mr.fetch_ai_model_news() == []
+    assert {h: dict(s) for h, s in mr._FEED_STATS.items()} == before

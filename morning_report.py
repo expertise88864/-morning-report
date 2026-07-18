@@ -12270,13 +12270,22 @@ _AI_MODEL_NEWS_QUERIES = (
 
 def fetch_ai_model_news(hours: int = 30) -> list[dict]:
     """AI 前沿模型新聞(近 hours 小時,最多 8 則);逐查詢失敗略過,全失敗回空。
-    去重共用在地快訊的標題模糊比對(跨查詢同事件常見)。"""
+    去重共用在地快訊的標題模糊比對(跨查詢同事件常見)。
+
+    ⚠ 不走 _feedparser_parse_url_with_timeout:該 helper 依 host 共用
+    news.google.com 的 _FEED_STATS streak/熔斷器——AI 素材查詢若連續失敗,
+    會把熔斷器推向門檻、連坐稍後「會影響計分」的候選股/類股新聞查詢
+    (Codex 批#16 P2:違反「純素材不動計分」)。顯示層素材自走 _http_get
+    +feedparser.parse,失敗只 log,不進任何共用健康統計。"""
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
     out: list[dict] = []
     seen: list[tuple] = []
     for query in _AI_MODEL_NEWS_QUERIES:
         try:
-            feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
+            r = _http_get(_gnews_rss(query, when="2d"), timeout=12,
+                          headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            feed = feedparser.parse(r.content)
             for entry in feed.entries:
                 if len(out) >= 8:
                     return out

@@ -1818,7 +1818,7 @@ def test_medical_employer_special_case_removed_covered_by_local_card():
     # 硬新聞仍走一般規則進醫界卡
     assert mr._tw_intelligence_recall_hit("medical", "彰基遭健保署裁罰") is True
     # 在地卡查詢涵蓋兩院
-    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    labels = {r[0]: r[1] for r in mr.LOCAL_NEWS_QUERIES}
     assert "彰基/中國醫" in labels
     assert "彰化基督教醫院" in labels["彰基/中國醫"] and "中醫大附醫" in labels["彰基/中國醫"]
 
@@ -1892,7 +1892,7 @@ def test_fetch_local_news_and_render(monkeypatch):
 
 
 def test_local_queries_cover_douliu():
-    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    labels = {r[0]: r[1] for r in mr.LOCAL_NEWS_QUERIES}
     # 斗六/雲林獨立主題已撤(2026-07-16):斗六詞散入建設/房市/學區主題
     assert "斗六/雲林" not in labels
     assert "斗六" in labels["建設"] and "斗六" in labels["房市"] and "斗六" in labels["學區/文教"]
@@ -1972,7 +1972,7 @@ def test_weekend_digest_includes_local_news_card(monkeypatch):
 
 # ═══ 批#6(2026-07-15)═══
 def test_batch6_queries_present():
-    labels = dict(mr.LOCAL_NEWS_QUERIES)
+    labels = {r[0]: r[1] for r in mr.LOCAL_NEWS_QUERIES}
     assert "交通異動" in labels and "台74" in labels["交通異動"]   # 在地交通異動
     pol = mr.TW_INTELLIGENCE_QUERIES["policy"]
     assert any("房貸利率" in q for q in pol)                      # 房貸利率新聞式追蹤
@@ -2220,10 +2220,10 @@ def test_render_sports_poly_lines():
         },
     }
     h = mr._render_sports_html(sports, htmllib)
-    assert "冠軍機率</b>:西班牙 58%・阿根廷 42%" in h and "Polymarket 預測市場" in h
-    assert "世界大賽冠軍盤</b>:道奇 30%・洋基 13%" in h
-    assert "2026-27 冠軍盤</b>:雷霆 27%・馬刺 19%" in h
-    assert "美網冠軍盤</b>:男 辛納 52%;女 莎巴倫卡 22%" in h   # 批#14:中文為主
+    assert "冠軍機率" in h and "西班牙 58% ・ 阿根廷 42%" in h and "Polymarket 預測市場" in h
+    assert "世界大賽冠軍盤" in h and "道奇 30% ・ 洋基 13%" in h
+    assert "2026-27 冠軍盤" in h and "雷霆 27% ・ 馬刺 19%" in h
+    assert "美網冠軍盤" in h and "男:辛納 52%" in h and "女:莎巴倫卡 22%" in h   # 批#14:中文為主;批#15:男女各一行
     assert "賭盤:統一 54%・樂天 46%(Polymarket)" in h
     # 沒有 poly 資料 → 各行自然缺席,不崩
     sports.pop("poly")
@@ -2238,7 +2238,7 @@ def test_local_title_fuzzy_dedup(monkeypatch):
          "| 中廣新聞網 - LINE TODAY")
     b2 = "討論牆 | 中醫大附醫修正性手術 助婦人重拾自然嗓音 - LINE TODAY"
     c = "中捷藍線首件主線土建工程決標 預計8月開工 - 自由時報"
-    seen = [mr._local_title_bigrams(a)]
+    seen = [(mr._local_title_bigrams(a), set())]
     assert mr._local_title_is_dup(b, seen) is True         # 同事件改寫 → 重複
     assert mr._local_title_is_dup(b2, seen) is True        # 同標題加「討論牆 |」前綴 → 重複
     assert mr._local_title_is_dup(c, seen) is False        # 不同事件 → 保留
@@ -2274,10 +2274,10 @@ def test_render_sports_poly_survives_when_legacy_sources_all_fail():
     }}
     h = mr._render_sports_html(sports, htmllib)
     assert h != ""                                         # 卡片存活
-    assert "世界盃足球賽" in h and "冠軍機率</b>:西班牙 58%" in h
-    assert "世界大賽冠軍盤</b>:道奇 30%" in h
-    assert "2026-27 冠軍盤</b>:雷霆 27%" in h
-    assert "美網冠軍盤</b>:男 辛納 52%" in h
+    assert "世界盃足球賽" in h and "冠軍機率" in h and "西班牙 58%" in h
+    assert "世界大賽冠軍盤" in h and "道奇 30%" in h
+    assert "2026-27 冠軍盤" in h and "雷霆 27%" in h
+    assert "美網冠軍盤" in h and "男:辛納 52%" in h
     # 只有 cpbl_games(無賽程行可掛)→ 無可渲染內容,卡片仍回空
     assert mr._render_sports_html(
         {"news": {}, "poly": {"cpbl_games": [{"teams": ["樂天", "統一"],
@@ -2297,7 +2297,7 @@ def test_local_short_titles_same_entity_not_deduped():
     → 不得誤殺;短標題(bigram<12)須近乎全同(≥0.85)才算重複。"""
     a = "台中捷運藍線進度曝光"
     b = "台中捷運藍線大舉徵才"
-    seen = [mr._local_title_bigrams(a)]
+    seen = [(mr._local_title_bigrams(a), set())]
     assert mr._local_title_is_dup(b, seen) is False        # 不同事件 → 保留
     assert mr._local_title_is_dup("台中捷運藍線進度曝光", seen) is True   # 全同 → 重複
     assert mr._local_title_is_dup("台中捷運藍線進度曝光 - 自由時報", seen) is True
@@ -2438,10 +2438,10 @@ def test_mlb_series_merge_keeps_per_game_odds():
     ]}
     h = mr._render_sports_html(sports, htmllib)
     assert "2 連戰" in h
-    assert "光芒 55%・紅襪 45%" in h and "光芒 48%・紅襪 52%" in h   # 兩場賭盤都在
+    assert "光芒 55% ・ 紅襪 45%" in h and "光芒 48% ・ 紅襪 52%" in h   # 兩場賭盤都在
     # 批#14:連戰賭盤合併為單一「賭盤(Polymarket):07/18 …;07/19 …」行
-    assert "賭盤(Polymarket):07/18 " in h and ";07/19 " in h
-    assert h.count("賭盤(Polymarket)") == 1
+    assert "07/18:" in h and "07/19:" in h   # 批#15:各比賽日獨立一行
+    assert h.count("(Polymarket)") == 1   # 批#15:標籤行只出現一次
 
 
 def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
@@ -2543,9 +2543,9 @@ def test_render_mlb_awards_and_nba_conference_lines():
         "news": {}, "poly": poly,
         "standings": {"美聯": [{"team": "TB", "record": "56-38", "pct": 0.596}]},
         "nba_offseason": "NBA 休賽季:自由市場進行中。"}, htmllib)
-    assert "年度 MVP 盤</b>:AL Yordan Alvarez 61%;NL 大谷翔平 85%" in h
-    assert "賽揚獎盤</b>:AL Cam Schlittler 46%;NL Jacob Misiorowski 63%" in h
-    assert "東西區冠軍盤</b>:東 尼克 22%;西 雷霆 34%" in h
+    assert "年度 MVP 盤" in h and "AL:Yordan Alvarez 61%" in h and "NL:大谷翔平 85%" in h
+    assert "賽揚獎盤" in h and "AL:Cam Schlittler 46%" in h and "NL:Jacob Misiorowski 63%" in h
+    assert "東西區冠軍盤" in h and "東:尼克 22%" in h and "西:雷霆 34%" in h
     assert h.count("東西區冠軍盤") == 1                    # 不重複渲染
     # 傳統源全掛 → MLB/NBA 各自獨立 fallback 區塊,獎項盤仍在
     h2 = mr._render_sports_html({"news": {}, "poly": poly}, htmllib)
@@ -2750,8 +2750,8 @@ def test_mlb_doubleheader_odds_not_duplicated():
          "odds": "賭盤:光芒 48%・紅襪 52%(Polymarket)"},
     ]}
     h = mr._render_sports_html(sports, htmllib)
-    assert h.count("光芒 46%・紅襪 54%") == 1
-    assert "光芒 48%・紅襪 52%" in h
+    assert h.count("光芒 46% ・ 紅襪 54%") == 1
+    assert "光芒 48% ・ 紅襪 52%" in h
 
 
 def test_poly_binary_detail_deterministic_market_selection():

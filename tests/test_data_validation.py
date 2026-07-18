@@ -1210,7 +1210,8 @@ def test_prompt_company_roundrobin_deep_labels_get_five_slots():
 def test_prompt_guidance_names_tsmc_depth_and_bank_holdings():
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "台積電自家動態優先" in p                     # 八:台積電深度指引
-    assert "國泰金(2882)/中信金(2891) 為本段核心觀察" in p  # 九:金融核心觀察
+    assert "國泰金(2882)/中信金(2891) 為本段固定深度追蹤標的" in p  # 九:金融深度追蹤
+    assert "不得**出現" in p or "不得" in p           # 批#15:禁提及使用者字樣
     assert "金融條目另可取材【重點公司最新新聞】" in p       # 九:取材放行
 
 

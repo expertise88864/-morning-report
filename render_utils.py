@@ -372,9 +372,12 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
                 f'</td>')
 
     portfolio_row = ""
+    # 批#15(2026-07-18 使用者):持倉1/持倉2 兩格直接隱藏,不再顯示於信件。
+    # 計算與去識別存檔邏輯保留(未來要恢復只需翻回 True)。
+    _SHOW_PORTFOLIO_ROW = False
     p1 = pf.get("p1") or {}
     p2 = pf.get("p2") or {}
-    if p1 or p2:
+    if _SHOW_PORTFOLIO_ROW and (p1 or p2):
         p1_name = pf.get("p1_name", "持倉1")
         p2_name = pf.get("p2_name", "持倉2")
         # 兩格各佔一半;若只設一個,另一格顯示「未設定」佔位以維持版面
@@ -594,14 +597,26 @@ def _mlb_series_odds_div(s: dict, htmllib) -> str:
     odds_list = s.get("odds_list") or []
     if not odds_list:
         return ""
-    if len(odds_list) == 1 and s.get("n", 1) == 1:
-        return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
-                f"{htmllib.escape(odds_list[0][1])}</div>")
+
     def _strip(o: str) -> str:
-        return (str(o).replace("賭盤:", "").replace("(Polymarket)", "").strip())
-    parts = [((f"{day} " if day else "") + _strip(o)) for day, o in odds_list]
-    return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
-            f"賭盤(Polymarket):{htmllib.escape(';'.join(parts))}</div>")
+        # 批#15:條目分隔「・」前後補空,不再整串黏在一起
+        return (str(o).replace("賭盤:", "").replace("(Polymarket)", "")
+                .replace("・", " ・ ").strip())
+
+    if len(odds_list) == 1 and s.get("n", 1) == 1:
+        return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;"
+                f"line-height:1.8;'>賭盤:{htmllib.escape(_strip(odds_list[0][1]))}"
+                f"<span style='color:#94a3b8;'>　(Polymarket)</span></div>")
+    # 連戰:每個比賽日各自一行(舊版以「;」串成一長行難讀,批#15)
+    rows = "".join(
+        "<div style='color:#b45309;padding-left:10px;'>"
+        + (f"{htmllib.escape(day)}:" if day else "")
+        + htmllib.escape(_strip(o)) + "</div>"
+        for day, o in odds_list)
+    return (f"<div style='font-size:11px;line-height:1.8;margin-left:2px;'>"
+            f"<span style='color:#0f172a;font-weight:700;'>賭盤"
+            f"<span style='color:#94a3b8;font-weight:400;'>　(Polymarket)</span></span>"
+            f"{rows}</div>")
 
 
 def _render_sports_html(sports: dict, htmllib) -> str:
@@ -636,30 +651,40 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         return ""
 
     def _poly_line(rows) -> str:
-        body = "・".join(
+        # 批#15 排版:條目間用「 ・ 」(前後留空),名稱與機率間以空格相連,
+        # 量低註記前加全形空——原本全部黏成一長串難讀(使用者三度反映)
+        body = " ・ ".join(
             f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%{_poly_delta_sfx(r)}"
             for r in rows or [])
         if any(r.get("low_vol") for r in rows or []):
-            body += "(部分量低⚠)"
+            body += "　(部分量低⚠)"
         return body
 
+    def _poly_odds_block(label: str, content_lines: list, note: str = "Polymarket") -> str:
+        """賭盤小卡通用版式(批#15):標籤獨立一行(深色粗體+淡色註記),
+        內容逐行縮排列在下方,行距 1.9——取代舊「label:A 26%・B 18%…(note)」
+        全擠一行的寫法。"""
+        rows_html = "".join(
+            f"<div style='color:#b45309;padding-left:10px;'>{line}</div>"
+            for line in content_lines if line)
+        if not rows_html:
+            return ""
+        return (f"<div style='font-size:12px;line-height:1.9;margin:6px 0 4px;'>"
+                f"<div style='color:#0f172a;font-weight:700;'>{label}"
+                f"<span style='color:#94a3b8;font-weight:400;font-size:11px;'>"
+                f"　({note})</span></div>{rows_html}</div>")
+
     def _poly_champ_div(label: str, rows, note: str = "Polymarket") -> str:
-        return (f"<div style='font-size:12px;color:#b45309;'>"
-                f"<b>{label}</b>:{_poly_line(rows)}"
-                f"<span style='color:#94a3b8;'>({note})</span></div>")
+        return _poly_odds_block(label, [_poly_line(rows)], note)
 
     def _two_league_div(label: str, a_rows, b_rows, pa: str = "AL", pb: str = "NL") -> str:
-        """雙聯盟/雙分區合一行:「label:AL …;NL …(Polymarket)」。兩邊皆空回空。"""
-        segs = []
+        """雙聯盟/雙分區:標籤一行,AL/NL(或東/西)各自獨立一行。兩邊皆空回空。"""
+        lines = []
         if a_rows:
-            segs.append(f"{pa} {_poly_line(a_rows)}")
+            lines.append(f"{pa}:{_poly_line(a_rows)}")
         if b_rows:
-            segs.append(f"{pb} {_poly_line(b_rows)}")
-        if not segs:
-            return ""
-        return (f"<div style='font-size:12px;color:#b45309;'>"
-                f"<b>{label}</b>:{';'.join(segs)}"
-                f"<span style='color:#94a3b8;'>(Polymarket)</span></div>")
+            lines.append(f"{pb}:{_poly_line(b_rows)}")
+        return _poly_odds_block(label, lines)
 
     def _mlb_poly_lines() -> str:
         # 世界大賽冠軍 + 年度 MVP + 賽揚(批#11,2026-07-16)
@@ -683,14 +708,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 surname = str(name or "").split()[-1] if name else ""
                 return _TENNIS_PLAYER_ZH.get(surname, str(name or ""))
             return [{**r, "name": _short(r.get("name"))} for r in rows or []]
-        segs = []
+        lines = []
         if p.get("tennis_m"):
-            segs.append(f"男 {line_fn(_zh_rows(p['tennis_m']))}")
+            lines.append(f"男:{line_fn(_zh_rows(p['tennis_m']))}")
         if p.get("tennis_w"):
-            segs.append(f"女 {line_fn(_zh_rows(p['tennis_w']))}")
-        return (f"<div style='font-size:12px;color:#b45309;line-height:1.7;'>"
-                f"<b>美網冠軍盤</b>:{';'.join(segs)}"
-                f"<span style='color:#94a3b8;'>(Polymarket)</span></div>")
+            lines.append(f"女:{line_fn(_zh_rows(p['tennis_w']))}")
+        return _poly_odds_block("美網冠軍盤", lines)
     # Polymarket 冠軍盤本身也是可渲染內容:傳統來源全掛時不可讓整張體育卡消失
     # (Codex review 批#9;cpbl_games 不算——沒賽程行可掛就無處顯示)
     _poly_renderable = any(poly.get(k) for k in (
@@ -1052,10 +1075,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 done_lines.append(
                     f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
                     f"font-size:12px;color:#334155;line-height:1.7;'>"
-                    f"{tier}<b>{htmllib.escape(_tennis_event_zh(shown_event))}</b> {htmllib.escape(tour)} 冠軍:"
+                    f"{tier}<b>{htmllib.escape(_tennis_event_zh(shown_event))}</b>"
+                    f"　{htmllib.escape(tour)} 冠軍:"
                     f"<b>{htmllib.escape(_tennis_zh(fin['winner']))}</b>"
                     f"<span style='color:#94a3b8;font-size:11px;'>"
-                    f"（決賽勝 {htmllib.escape(_tennis_zh(fin['loser']))},{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
+                    f"　（決賽勝 {htmllib.escape(_tennis_zh(fin['loser']))}"
+                    f"・{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
             live_seg = "".join(
                 f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
                 f"font-size:12px;color:#334155;line-height:1.7;'>"

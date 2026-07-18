@@ -567,8 +567,12 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     ("中信金 OR 中國信託 OR 台灣人壽 OR 中信銀 OR 中信證券", "2891"),
     # 兩金控深度主題查詢(使用者 2026-07-15:財報/政策/重大決策要更多)——
     # 名稱查詢抓日常新聞,主題查詢補「決策面」(併購/投資/裁罰/增資/法說)
-    ("國泰金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2882"),
-    ("中信金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資", "2891"),
+    # 批#15:補「人事(董事長/總經理)」與「BOT/標售」重大決策詞——台壽 BOT 案、
+    # 國泰世華董座人事這類使用者點名的重大消息常只以子公司+決策詞出現
+    ("國泰金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資 OR 董事長 OR 總經理", "2882"),
+    ("中信金 併購 OR 投資 OR 裁罰 OR 法說 OR 增資 OR 董事長 OR 總經理", "2891"),
+    ("國泰人壽 OR 國泰世華 投資 OR BOT OR 標售 OR 人事", "2882"),
+    ("台灣人壽 OR 中國信託 投資 OR BOT OR 標售 OR 人事", "2891"),
     ("長榮 航運", "2603"),
 ]
 
@@ -5350,10 +5354,10 @@ TW_INTELLIGENCE_DIRECT_SOURCES = {
          "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=4", "org_key": "食藥署"},
         {"name": "FDA Announcements", "url": "https://www.fda.gov.tw/TC/rssAnnouncement.ashx",
          "html_url": "https://www.fda.gov.tw/TC/news.aspx?cid=5", "org_key": "食藥署"},
-        {"name": "VGHTC News", "url": "https://www.vghtc.gov.tw/News.aspx?n=56",
-         "html_url": "https://www.vghtc.gov.tw/News.aspx?n=56"},
-        {"name": "NTUH News", "url": "https://www.ntuh.gov.tw/News.aspx?n=2576",
-         "html_url": "https://www.ntuh.gov.tw/News.aspx?n=2576"},
+        # VGHTC/NTUH 官網移除(2026-07-18 批#15):兩站 TLS 憑證缺 Subject Key
+        # Identifier,新版 Python/OpenSSL 拒絕握手(本地+CI 連續失敗 12 天實測
+        # CERTIFICATE_VERIFY_FAILED,站方憑證問題非本程式可修);兩院硬新聞由
+        # 媒體查詢與在地快訊(彰基/中國醫)涵蓋。
     ),
 }
 
@@ -10346,7 +10350,9 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 4. **影響說明必須具體**：要寫「利多/利空了誰、透過什麼機制、幅度多大」。**禁止**「對 X 類股有帶動作用」「情緒帶動」「中性偏正」這類無機制空話——沒講出機制就等於沒分析。
    - **航運**判斷「利多/利空幅度」時可援引油價(WTI,燃油成本)與匯率(USD/TWD)作背景(上方總經區有數據),但「新聞事件」本身仍須是運價/航商/塞港動態,油價匯率只當佐證、不可單獨充當航運新聞。
    - **金融(壽險/金控)**請扣連使用者熟悉的傳導鏈:美股/美債走勢→壽險投資收益、央行利率→銀行淨息差;能寫出這條鏈才算合格。
-     **國泰金(2882)/中信金(2891) 為本段核心觀察**(使用者指定):【重點公司最新新聞】與
+     **國泰金(2882)/中信金(2891) 為本段固定深度追蹤標的**(輸出中**不得**出現
+     「使用者核心觀察」「使用者指定」「持股核心」等提及使用者或暗示讀者持股的
+     字樣——本報所有標的一律稱「追蹤標的」,批#15):【重點公司最新新聞】與
      【台股重點公司 MOPS 重大訊息】中凡屬這兩家的**月獲利/財報數字、人事異動(董總/子公司高層)、
      重大投資或併購、增資/配息、金管會裁罰**,優先入選且各可獨立成條——MOPS 公告(代號 2882/2891
      開頭者)為公司自行申報的 A 級來源,人事異動與重大投資公告多只出現在這裡,務必檢查、有就寫;
@@ -11992,22 +11998,39 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
 # 在地快訊(中彰投雲;使用者 2026-07-15:快速掌握在地建設/房市/產業/學區,含斗六)。
 # 主題式查詢(縣市政府泛查詢實測 77 則但防空演習/二手書站雜訊多 → 捨棄);
 # 各查詢皆經 live 實測有召回且切題。純生活情報卡,不進計分、不餵 LLM。
+# (label, query[, per_label 上限])。批#15(2026-07-18):新增「彰化重點追蹤」
+# 高優先主題(中友百貨彰化店/鐵路高架化/大埔截水溝——使用者點名「若有消息則要
+# 顯示」,上限 3)與「建商動態」(合新建設/國雄建設);學區改精準校名
+# (明道中學/葳格/斗六高中)。全部查詢 2026-07-18 live 探活(36/14/8/84 則)。
 LOCAL_NEWS_QUERIES: list[tuple] = [
     # 彰基/中國醫(使用者夫妻任職)整合於此(2026-07-15 拍板,自醫界卡遷入;
     # 兩院的裁罰/感染等硬新聞仍會依一般規則上醫界卡,此處涵蓋建設/決策/一般消息)
     ("彰基/中國醫", "彰化基督教醫院 OR 彰基 OR 中國醫藥大學附設醫院 OR 中醫大附醫"),
+    ("彰化重點追蹤",
+     "中友百貨 彰化 OR 彰化 百貨 OR 彰化 鐵路高架 OR 大埔截水溝", 3),
     # 斗六/雲林獨立主題已撤(2026-07-16 使用者要求):斗六詞併入建設/房市/學區,
     # 各主題統一涵蓋台中/彰化/南投/斗六
-    ("建設", "中友百貨 OR 台中捷運 OR 彰化市 建設 OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
+    ("建設", "台中捷運 OR 彰化市 建設 OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
+    ("建商動態", "合新建設 OR 國雄建設 OR 台中 建商 OR 彰化 建商"),
     ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 斗六 房市 OR 台中 建案 OR 台中 預售屋"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
-    ("學區/文教", "台中 學區 OR 彰化 學區 OR 斗六 學區 OR 雲林 學區"),
+    ("學區/文教", "明道中學 OR 葳格 OR 斗六高中 OR 台中 學區 OR 彰化 學區"),
     # 交通異動(泛「國道 彰化/台中」52 則含全台事故雜訊 → 用精準版)
     ("交通異動", "台74 OR 國道1號 中部 OR 台中 道路 施工"),
     # 2026 九合一選情(使用者 2026-07-16:台中市長民調類新聞;實測 58 則且切題。
     # 選後(2026-11-28)此主題自然乾涸,屆時可撤)
     ("選情", "台中市長 選舉 OR 台中市長 民調 OR 彰化縣長 選舉 OR 雲林縣長 選舉 OR 南投縣長 選舉"),
 ]
+
+# 批#15 地區相關性過濾:Google News 對「台中 學區」這類查詢會模糊回全台文章
+# (板橋租屋文實際上信),標題必須含中彰投雲地名或追蹤實體詞才收。
+_LOCAL_REGION_TOKENS = (
+    "彰化", "台中", "臺中", "中捷", "南投", "斗六", "雲林", "中彰投", "草屯", "二林",
+    "員林", "鹿港", "彰濱", "中科", "烏日", "北屯", "西屯", "霧峰", "大里",
+    "太平", "豐原", "沙鹿", "清水", "大甲", "中友", "鐵路高架", "大埔截水溝",
+    "合新建設", "國雄建設", "明道中學", "葳格", "斗六高中", "彰基", "中國醫",
+    "中醫大", "台74",
+)
 
 
 def _local_title_bigrams(title: str) -> set:
@@ -12020,23 +12043,33 @@ def _local_title_bigrams(title: str) -> set:
 
 
 def _local_title_is_dup(title: str, seen_bigrams: list[set],
-                        threshold: float = 0.50) -> bool:
+                        threshold: float = 0.35) -> bool:
     """同一事件常被媒體改寫標題或加「討論牆 |」式前綴(exact 比對擋不住,
     2026-07-16 使用者反映重複)。用 overlap coefficient(交集/較短集合)而非 Jaccard:
     前綴垃圾只灌水分母不灌交集,含入型重複仍拿高分。
-    實測:同事件改寫/加前綴 0.57~1.0、不同事件 0.00 → 門檻 0.50。
+    實測:同事件改寫/加前綴 0.435~1.0、不同事件 ≤0.13 → 門檻 0.35(0.40 仍漏掉觀傳媒改寫版 0.391;安全邊際仍 2.7 倍)
+    (批#15 再校:「二林運動館動土」兩媒體改寫僅 0.435,舊門檻 0.50 漏殺)。
     短標題防誤殺(Codex review 批#9):兩者皆短(bigram<12,約 12 字)時,共用實體名
     就能吃掉大半集合(「台中捷運藍線進度」vs「台中捷運藍線徵才」0.71)——不同事件
     會被誤殺,改要求近乎全同(0.85)才算重複。"""
     grams = _local_title_bigrams(title)
     if not grams:
         return False
-    for prev in seen_bigrams:
+    # 批#15 二級規則:同事件被大幅改寫時 bigram 重疊常掉到 0.3-0.5(「71歲硬漢
+    # 彰基揪直腸癌」vs「癌藏體內沒感覺 71歲男檢查揪直腸癌」),但關鍵數字
+    # (年齡/金額/戶數)會共通——共享非年份數字 + 重疊 ≥0.30 即視為重複。
+    import re as _re
+    nums = {n for n in _re.findall(r"\d+(?:\.\d+)?", str(title or ""))
+            if not _re.fullmatch(r"(?:19|20)\d{2}", n)}
+    for prev, prev_nums in seen_bigrams:
         m = min(len(grams), len(prev))
         if not m:
             continue
+        overlap = len(grams & prev) / m
         need = 0.85 if m < 12 else threshold
-        if len(grams & prev) / m >= need:
+        if overlap >= need:
+            return True
+        if nums and prev_nums and (nums & prev_nums) and overlap >= 0.30:
             return True
     return False
 
@@ -12049,24 +12082,34 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
     out: dict = {}
     # 跨主題+同主題模糊去重:同一事件常被兩家媒體改寫不同標題(exact 擋不住),
-    # 也常同時命中房市+建設 → bigram Jaccard(2026-07-16 使用者反映重複)
-    seen_bigrams: list[set] = []
-    for label, query in LOCAL_NEWS_QUERIES:
+    # 也常同時命中房市+建設 → bigram overlap + 共享數字二級規則(批#15)。
+    # seen_bigrams 元素為 (bigram 集合, 非年份數字集合)。
+    import re as _re
+    seen_bigrams: list[tuple] = []
+    for row in LOCAL_NEWS_QUERIES:
+        label, query = row[0], row[1]
+        topic_limit = row[2] if len(row) > 2 else per_label
         try:
             # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
             # 抓寬一天、由下方 cutoff 精確限制 30h(Codex review)
             feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))
             items = []
             for entry in feed.entries:
-                if len(items) >= per_label:
+                if len(items) >= topic_limit:
                     break
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
                 if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
                 title = str(entry.get("title", ""))[:90]
+                # 批#15 地區過濾:標題須含中彰投雲地名或追蹤實體詞
+                # (「台中 學區」查詢曾回板橋租屋文)
+                if not any(tok in title for tok in _LOCAL_REGION_TOKENS):
+                    continue
                 if _local_title_is_dup(title, seen_bigrams):
                     continue
-                seen_bigrams.append(_local_title_bigrams(title))
+                nums = {n for n in _re.findall(r"\d+(?:\.\d+)?", title)
+                        if not _re.fullmatch(r"(?:19|20)\d{2}", n)}
+                seen_bigrams.append((_local_title_bigrams(title), nums))
                 items.append({"title": title,
                               "link": str(entry.get("link", ""))})
             if items:

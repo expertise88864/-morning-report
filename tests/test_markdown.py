@@ -122,7 +122,8 @@ def test_render_html_portfolio_redacted_in_archive_but_present_in_email():
         "p1": {"gain_pct": 1.5, "gain_amount": 12000},
         "p1_name": "持倉1", "p2": {}, "p2_name": "持倉2"}}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    assert "昨日帳上" in html and "PF_ROW_START" in html          # 信中有(寄本人)
+    # 批#15:持倉列連信件本體都隱藏(使用者要求);去識別存檔自然也無
+    assert "昨日帳上" not in html and "PF_ROW_START" not in html
     redacted = mr._redact_private_for_archive(html)
     assert "昨日帳上" not in redacted and "PF_ROW_START" not in redacted  # 存檔去識別
     assert "一、美股收盤行情" in redacted                          # 其餘保留

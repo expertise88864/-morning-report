@@ -127,7 +127,7 @@ def _min_quotes(**over):
     return base
 
 
-def test_render_shows_portfolio_row_and_hides_holdings():
+def test_portfolio_row_hidden_entirely():
     pf = {
         "p1": {"gain_pct": 1.23, "gain_amount": 35200, "prev_value": 2824800,
                "last_value": 2860000, "n_holdings": 3, "n_priced": 3},
@@ -138,14 +138,13 @@ def test_render_shows_portfolio_row_and_hides_holdings():
     quotes = _min_quotes(PORTFOLIO_ACTUAL=pf)
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, "分析",
                           "2026-05-28 (Thu)", "每日報")
-    # 持倉列只顯示名稱 + 昨日損益%/金額，不揭露總市值。
-    assert "主帳戶" in html
-    assert "定存股" in html
+    # 批#15(2026-07-18 使用者):持倉列直接隱藏——名稱/損益/金額一律不得出現於信件
+    assert "主帳戶" not in html
+    assert "定存股" not in html
+    assert "昨日帳上" not in html
     assert "總市值" not in html
-    assert "286.0萬" not in html
-    assert "195.5萬" not in html
-    assert "+1.23%" in html
-    assert "3.5萬" in html               # +NT$3.5萬
+    assert "286.0萬" not in html and "195.5萬" not in html
+    assert "+1.23%" not in html and "3.5萬" not in html
 
 
 def test_render_no_portfolio_row_when_absent():

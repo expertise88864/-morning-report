@@ -363,8 +363,48 @@ def test_render_stance_display_prefers_python(monkeypatch):
     quotes["STANCE_ATTRIB"] = {"prev_date": "2026-07-17", "prev_total": -6,
                                "curr_total": -8,
                                "changes": [("qqq", 0, -1), ("vix", 0, -1)]}
-    analysis = "## 十二、我的明確立場\n> **立場:偏多**(淨分 +6)\n## 十三、一句話總結\n偏多操作"
+    analysis = ("## 十二、我的明確立場\n> **立場：偏多**(淨分 +6)\n"
+                "## 十三、一句話總結\n偏多操作 00662 逢低加碼")
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
-    assert "偏空 -8" in html or ("偏空" in html and "-8" in html)
+    assert "偏空" in html and "-8" in html
+    # Codex r1 P1 合規防線:LLM 相反立場的結論/方向性建議不得殘留
+    assert "偏多操作 00662 逢低加碼" not in html
+    assert "依系統計分" in html
+    # Codex r1 P2:歸因卡包 <tr><td>(裸 div 是 table 非法子元素)
     assert "立場變化歸因" in html and "-6 → -8" in html.replace("+", "")
+    import re as _re
+    assert _re.search(r"<tr><td[^>]*>\s*<div[^>]*'>\s*<b>立場變化歸因", html), \
+        "歸因卡必須包在 <tr><td> 內"
+
+
+def test_stance_attribution_skips_same_day_entries():
+    """Codex r1 P2:同日重跑存下的今日 entry 不得當基準(今天比今天)。"""
+    sp = {"total": -8, "label": "偏空", "components": {"qqq": -1, "vix": -1}}
+    hist = [
+        {"date": "2026-07-17", "stance_score_py": -6,
+         "stance_components_py": {"qqq": 0, "vix": -1}},
+        {"date": "2026-07-18", "stance_score_py": -7,
+         "stance_components_py": {"qqq": -1, "vix": 0}},   # 今日較早版本
+    ]
+    at = mr._stance_attribution(sp, hist, today="2026-07-18")
+    assert at["prev_date"] == "2026-07-17" and at["prev_total"] == -6
+    assert ("qqq", 0, -1) in at["changes"]
+
+
+def test_prompt_degraded_mode_instructions_consistent():
+    """Codex r1 P2:降級模式(Python 計分缺席)不得殘留「原樣抄錄/禁止自算」
+    互斥指令;權威模式反之不得出現「強制自算標註」。"""
+    quotes = _stance_quotes()
+    quotes.update({"SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {},
+                   "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [],
+                   "NIGHT_TXF": {}, "TAIEX_PRED": {}, "BACKTEST": "",
+                   "ALERTS": [], "DATA_QUALITY": [], "USDTWD_prev": 31.1})
+    quotes["STANCE_PY"] = mr._compute_stance_score(quotes)
+    p_auth = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "原樣抄錄" in p_auth and "禁止自行計算" in p_auth
+    assert "系統計分缺席,本行為 LLM 自算" not in p_auth
+    quotes["STANCE_PY"] = {}
+    p_deg = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "系統計分缺席" in p_deg and "自行計算" in p_deg
+    assert "原樣抄錄" not in p_deg and "禁止自行計算" not in p_deg

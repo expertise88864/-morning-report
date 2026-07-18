@@ -10061,11 +10061,25 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 計算失敗時降級回「LLM 自行計算」舊路徑並要求標註,晨報不可斷。
     _sp_block = _format_stance_py_block(quotes.get("STANCE_PY") or {},
                                         quotes.get("STANCE_ATTRIB") or {})
-    stance_py_block_section = (
-        "【系統立場計分(Python 確定性計算=本報權威立場,你必須原樣採用)】\n"
-        + _sp_block if _sp_block else
-        "(【系統立場計分】今日不可用——例外情況:依下方規則自行計算 11 維,"
-        "並在計分行末標註「(系統計分缺席,本行為 LLM 自算)」)")
+    # 權威/降級兩模式的指令必須整組切換,不可混用(Codex r1 P2:降級時先要求
+    # 自算、後面又「禁止自算+抄錄不存在的區塊」= 無一致可遵守的指令)
+    if _sp_block:
+        stance_py_block_section = (
+            "【系統立場計分(Python 確定性計算=本報權威立場,你必須原樣採用)】\n"
+            + _sp_block + "\n\n**以下規則清單僅供你撰寫理由時理解分數來源;"
+            "分數本身以上方區塊為準,禁止自行計算、更動或重新判定。**")
+        stance_line1_rule = ("**原樣抄錄上方【系統立場計分】的 11 維行**;"
+                             "可在各維度旁補實際數值如「QQQ -1.5% [-1]」,"
+                             "但每維的 [±1/0]、淨分與標籤**一字不可改、不可自行重算**")
+        stance_line2_rule = "=【系統立場計分】的標籤,不可更動"
+    else:
+        stance_py_block_section = (
+            "(【系統立場計分】今日不可用——降級模式:**由你依下方規則自行計算"
+            "全部 11 維(強制執行,每個訊號引用資料區真實數字)**,"
+            "並在計分行末標註「(系統計分缺席,本行為 LLM 自算)」)")
+        stance_line1_rule = ("強制顯示全部 11 維,不可省略、不可憑感覺給分;"
+                             "行末標註「(系統計分缺席,本行為 LLM 自算)」")
+        stance_line2_rule = "按淨分自動判定"
 
     # G2:未來 ~48h 重要行事曆事件(含既有預期/前值),供「七之三、事件情境決策表」取材。
     event_scenario_lines = _format_event_scenarios(quotes.get("EVENT_CALENDAR"))
@@ -10292,12 +10306,9 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 **規則 4**：13W 殖利率明顯下降 → 降息預期升溫，有利成長股
 **規則 5**：DXY 升 0.5% 以上 → 外資匯出壓力，台股當日易現賣壓
 
-## C. 立場判斷 11 維加減分（PR-2:系統計分,你不計分）
+## C. 立場判斷 11 維加減分（PR-2:系統計分為權威）
 
 {stance_py_block_section}
-
-**分數規則參考(僅供撰寫理由時理解分數來源;分數本身以上方【系統立場計分】
-為準,禁止自行計算、更動或重新判定)**:
 
 **原 7 維**：
 1. QQQ 漲幅 > 0.5%: +1；< -0.5%: -1
@@ -10319,9 +10330,8 @@ R14. **2330 / 0050 / 加權一律新台幣計價，且數字必須合理**:2330 
 - 淨分 ≤ -5 → **偏空**
 - −4 ~ +4 → **中性**（門檻提高是因為訊號變多,需更高一致性才下重判)
 
-**「我的明確立場」段的計分行=原樣抄錄【系統立場計分】的 11 維行**(可補上
-各維度的實際數值,但 [±1/0] 貢獻與淨分、標籤**一字不可改**)。
-**你的工作是第 3 行的「理由與傳導機制」——解釋分數,不是產生分數**。
+**「我的明確立場」段的計分行規則:{stance_line1_rule}**。
+**你的核心工作是第 3 行的「理由與傳導機制」——解釋分數的成因**。
 
 ═══════════════════════════════════════════════════════════
 # 輸出結構（嚴格按此順序與標題，不可增減段落）
@@ -10479,15 +10489,13 @@ FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等�
 
 ## 十二、我的明確立場（**最重要段**）
 
-**第 1 行 — 11 維計分行**（**原樣抄錄上方【系統立場計分】的 11 維行**;
-可在各維度旁補實際數值如「QQQ -1.5% [-1]」,但每維的 [±1/0]、淨分與標籤
-**一字不可改、不可自行重算**):
+**第 1 行 — 11 維計分行**（{stance_line1_rule}):
 ```
 QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外資市值前10大合計 [±1/0]、外資台指期 [±1/0]、10Y X bps [±1/0]、NQ X.X% [±1/0]、VIX9D/VIX X.XX [±1/0]、WTI X.X% [±1/0]、市場廣度 X% [±1/0] = 淨分 X
 ```
 
 **第 2 行 — 立場標籤**：
-> **立場：偏多 / 偏空 / 中性 / 資料不足**（=【系統立場計分】的標籤,不可更動）
+> **立場：偏多 / 偏空 / 中性 / 資料不足**（{stance_line2_rule}）
 
 **第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報追蹤標的,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
 
@@ -12588,14 +12596,19 @@ def _format_stance_py_block(sp: dict, attrib: Optional[dict] = None) -> str:
     return "\n".join(lines)
 
 
-def _stance_attribution(sp: dict, history: list) -> dict:
+def _stance_attribution(sp: dict, history: list,
+                        today: str = "") -> dict:
     """今日 vs 最近一筆含 Python 分項的歷史 entry:哪些維度變了(Decision
-    Attribution,PR-2 第二階段)。無可比基準回空。"""
+    Attribution,PR-2 第二階段)。無可比基準回空。
+    today(YYYY-MM-DD)排除同日 entry——同日重跑會存下今天較早版本,
+    不排除會變成「今天比今天」(Codex r1;同 _format_narrative_delta 慣例)。"""
     curr_c = (sp or {}).get("components") or {}
     if not curr_c:
         return {}
     for e in reversed(history or []):
         if not isinstance(e, dict):
+            continue
+        if today and str(e.get("date") or "") >= today:
             continue
         pc = e.get("stance_components_py")
         if isinstance(pc, dict) and e.get("stance_score_py") is not None:
@@ -14836,7 +14849,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # PR-2 第二階段:顯示立場以 Python 分數為權威(LLM 只負責解釋);
     # Python 計算失敗才退回解析 LLM 文字,再退 Python 訊號共識保底
     _sp_render = quotes.get("STANCE_PY") or {}
-    if isinstance(_sp_render.get("total"), int) and _sp_render.get("label"):
+    _py_authority = (isinstance(_sp_render.get("total"), int)
+                     and bool(_sp_render.get("label")))
+    if _py_authority:
         stance = {"score": _sp_render["total"], "label": _sp_render["label"],
                   "source": "python"}
     else:
@@ -14845,6 +14860,22 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         if stance.get("score") is None and not stance.get("label"):
             stance = _fallback_stance_from_signals(quotes) or stance
     summary_text = _extract_summary(analysis_for_render)
+    # PR-2 第二階段合規防線(Codex r1 P1):LLM 若未遵守「原樣採用」而寫出
+    # 相反立場,KPI 已顯示 Python 權威,但結論卡/立場詳情仍是 LLM 文字——
+    # 同一封信兩個方向。不合規時以確定性摘要取代、移除矛盾的方向性敘述。
+    if _py_authority:
+        _llm_stance = _extract_stance(analysis_for_render)
+        _llm_label = str(_llm_stance.get("label") or "")
+        if _llm_label and _llm_label != str(_sp_render["label"]):
+            print(f"[stance-echo] ⚠ LLM 立場「{_llm_label}」未遵守系統標籤"
+                  f"「{_sp_render['label']}」→ 結論卡改用確定性摘要,"
+                  f"立場詳情已移除", file=sys.stderr)
+            summary_text = (f"依系統計分:{_sp_render['label']}"
+                            f"(淨分 {_sp_render['total']:+d})。"
+                            f"LLM 摘要與系統立場不一致,已略過其方向性建議;"
+                            f"價位區間見下方預測表。")
+            analysis_for_render = _strip_llm_sections(
+                analysis_for_render, ("我的明確立場", "一句話總結"))
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
     # 十二(立場敘述/價位/操作/風險)上移到頂端結論卡,body 中移除十二、十三避免重複
@@ -15676,9 +15707,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
     # PR-2 第二階段:Decision Attribution——立場為何變(昨日 vs 今日分項),
-    # 確定性計算,緊貼結論卡下方;無可比基準或無變化自動缺席
-    summary_bar += _render_stance_attrib_html(quotes.get("STANCE_ATTRIB") or {},
+    # 確定性計算,緊貼結論卡下方;無可比基準或無變化自動缺席。
+    # summary_bar 是 <tr>,插進外層 <table>——歸因卡必須同樣包 <tr><td>,
+    # 裸 <div> 是 table 非法子元素,郵件客戶端會搬移或丟棄(Codex r1 P2)
+    _attrib_html = _render_stance_attrib_html(quotes.get("STANCE_ATTRIB") or {},
                                               _htmllib)
+    if _attrib_html:
+        summary_bar += (f"<tr><td style='padding:0 8px;'>{_attrib_html}"
+                        f"</td></tr>")
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
     analysis_for_render = _cap_analysis_text(analysis_for_render)
@@ -17296,7 +17332,8 @@ def main() -> int:
               + (f" missing={_sp['missing']}" if _sp['missing'] else "")
               + (" [美股休市 stale]" if _sp['stale_us'] else ""))
         quotes["STANCE_ATTRIB"] = _stance_attribution(
-            quotes["STANCE_PY"], quotes.get("HISTORY") or [])
+            quotes["STANCE_PY"], quotes.get("HISTORY") or [],
+            today=now_tpe.strftime("%Y-%m-%d"))
         if quotes["STANCE_ATTRIB"].get("changes"):
             print(f"[stance-attrib] {quotes['STANCE_ATTRIB']}")
     except Exception as e:

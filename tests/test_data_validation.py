@@ -1316,3 +1316,21 @@ def test_macro_vintage_first_release_vs_revision(monkeypatch):
     assert r["prev_revised"] is True
     html = mr._render_macro_vintage_html(rows)
     assert "非農就業" in html and "+180K" in html and "下修" in html
+
+
+def test_macro_vintage_singleton_only_fails_closed(monkeypatch):
+    """Codex 批#18 r2:整包只有單一 vintage(API 行為異常)→ 該序列略過,
+    不得把事後值當首值渲染。"""
+    monkeypatch.setattr(mr, "FRED_API_KEY", "test-key")
+
+    class R:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"observations": [
+                {"date": "2026-04-01", "realtime_start": "2026-07-01", "value": "1"},
+                {"date": "2026-05-01", "realtime_start": "2026-07-01", "value": "2"},
+                {"date": "2026-06-01", "realtime_start": "2026-07-01", "value": "3"},
+            ]}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: R())
+    assert mr.fetch_macro_vintage() == []

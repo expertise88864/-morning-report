@@ -12597,8 +12597,11 @@ def _fred_vintages(series_id: str) -> dict[str, list]:
     # API 行為與預期不符,大聲警告而非默默把事後值當首值(Codex 批#18 審查點;
     # 註:output_type=2 是「每 vintage 一欄」的另一種輸出形狀,與本解析器不相容)
     if by_date and all(len(v) <= 1 for v in by_date.values()):
+        # fail-closed(Codex r2):只警告仍會把事後值當首值渲染——整包丟棄,
+        # 該序列本日缺席,錯誤資訊不進信
         print(f"[vintage] ⚠ {series_id} 未取得多 vintage 列——首值/修正語意"
-              f"可能失真,請檢查 FRED API 回應格式", file=sys.stderr)
+              f"無法保證,本序列略過(請檢查 FRED API 回應格式)", file=sys.stderr)
+        return {}
     return by_date
 
 

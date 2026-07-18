@@ -1447,3 +1447,54 @@ def test_monthly_report_propagates_history_integrity_error(monkeypatch):
     plain.main = _oops
     monkeypatch.setitem(_sys.modules, "fake_bt_plain", plain)
     assert "執行失敗" in monthly_report._run("fake_bt_plain")
+
+
+def test_forecast_ledger_create_resolve_and_stats():
+    """Forecast Ledger v1:立題(機率/門檻)→ 隔日結算(Brier)→ 統計;
+    同 (question, target) 重跑覆蓋;顯示卡渲染。"""
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}          # +1.45%
+    taiex = {"pred_open": 42391.0, "last_close": 42671.27}  # -0.66%
+    import datetime as dt
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    led = mr.update_forecast_ledger([], preds, taiex, now, "2026-07-20")
+    assert len(led["today"]) == 2
+    by = {e["question"]: e for e in led["today"]}
+    assert by["2330_open_up"]["prob"] > 0.5           # 預測 +1.45% → 看漲
+    assert by["taiex_open_up"]["prob"] < 0.5          # 預測 -0.66% → 看跌
+    assert by["2330_open_up"]["threshold"] == 2290.0
+    assert 0.02 <= by["2330_open_up"]["prob"] <= 0.98
+    # 同日重跑覆蓋(不重複立題)
+    led2 = mr.update_forecast_ledger([], preds, taiex, now, "2026-07-20")
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    assert len(stored) == 2 and len(led2["today"]) == 2
+    # 隔日結算:history 回填實際開盤(2330 漲=命中、加權跌=命中)
+    hist = [{"target_session_date": "2026-07-20",
+             "actual_open_2330": 2310.0, "actual_open_taiex": 42100.0,
+             "actual_taiex_prev_close": 42671.27}]
+    now2 = dt.datetime(2026, 7, 21, 6, 0, tzinfo=mr.TPE)
+    led3 = mr.update_forecast_ledger(hist, {}, {}, now2, "2026-07-21")
+    assert len(led3["resolved"]) == 2
+    r = {e["question"]: e for e in led3["resolved"]}
+    assert r["2330_open_up"]["outcome"] is True
+    assert r["taiex_open_up"]["outcome"] is False
+    assert 0 <= r["2330_open_up"]["brier_model"] <= 1
+    assert led3["stats"]["n"] == 2 and led3["stats"]["hit_rate"] == 100.0
+    # 渲染卡
+    html = mr._render_forecast_ledger_html(led3)
+    assert "預測記分卡" in html and "命中" in html
+    assert mr._render_forecast_ledger_html({}) == ""
+
+
+def test_forecast_sigma_fallback_and_estimation():
+    """殘差樣本 <10 → 保守預設;>=10 → 實際 stdev。"""
+    s, n = mr._forecast_sigma([], "2330_open_up")
+    assert s == 1.3 and n == 0
+    hist = [{"weighted_final_2330": 100.0, "actual_open_2330": 100.0 + (i % 3 - 1)}
+            for i in range(20)]
+    s2, n2 = mr._forecast_sigma(hist, "2330_open_up")
+    assert n2 == 20 and 0.5 < s2 < 1.2
+    # 機率換算方向正確且夾尾
+    assert mr._forecast_prob_up(2.0, 1.0) > 0.9
+    assert mr._forecast_prob_up(-2.0, 1.0) < 0.1
+    assert mr._forecast_prob_up(50.0, 1.0) == 0.98

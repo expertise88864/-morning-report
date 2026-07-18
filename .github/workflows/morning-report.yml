@@ -63,6 +63,8 @@ jobs:
 
           # DeepSeek（推薦）— 走 OpenAI 相容 API
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          # Macro Vintage(選配):FRED/ALFRED 免費 key,未設則功能休眠
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           # 模型選項：
           #   deepseek-v4-pro    → V4 旗艦版（推薦，分析最深，支援思考模式）
           #   deepseek-v4-flash  → V4 輕量版（便宜，品質尚可）

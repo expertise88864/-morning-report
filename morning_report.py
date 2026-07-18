@@ -12558,6 +12558,305 @@ def _compute_stance_score(quotes: dict) -> dict:
             "mode": mode, "rule_version": 2}
 
 
+# ── Macro Vintage(2026-07-18 使用者核准)─────────────────────────────
+# CPI/非農的「首次公布值 vs 事後修正值」:媒體只報最新值,修正資訊常被忽略
+# (前值大幅下修時,表面 surprise 會誤導)。資料源 FRED/ALFRED 官方 API
+# (免費 key);未設 FRED_API_KEY 時整個功能休眠(卡片缺席)。顯示用,不入模型。
+FRED_API_KEY = os.environ.get("FRED_API_KEY", "").strip()
+_MACRO_VINTAGE_SERIES = (
+    # (series_id, 中文名, 顯示模式)  diff=月變動(千人);pct=月增率%
+    ("PAYEMS", "非農就業", "diff"),
+    ("CPIAUCSL", "CPI", "pct"),
+)
+
+
+def _fred_vintages(series_id: str) -> dict[str, list]:
+    """ALFRED 全 vintage 觀測:{obs_date: [(realtime_start, value)...]}(升冪)。"""
+    r = _http_get(
+        "https://api.stlouisfed.org/fred/series/observations",
+        params={"series_id": series_id, "api_key": FRED_API_KEY,
+                "file_type": "json", "realtime_start": "2000-01-01",
+                "realtime_end": "9999-12-31",
+                "observation_start": (dt.date.today()
+                                      - dt.timedelta(days=210)).isoformat()},
+        timeout=15)
+    r.raise_for_status()
+    by_date: dict[str, list] = {}
+    for o in (r.json() or {}).get("observations") or []:
+        try:
+            by_date.setdefault(str(o["date"]), []).append(
+                (str(o["realtime_start"]), float(o["value"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+    for v in by_date.values():
+        v.sort()
+    return by_date
+
+
+def _vintage_asof(vints: list, asof: str) -> Optional[float]:
+    """某觀測在 asof 時點已知的值(realtime_start <= asof 的最新 vintage)。"""
+    val = None
+    for rs, v in vints or []:
+        if rs <= asof:
+            val = v
+    return val
+
+
+def fetch_macro_vintage() -> list[dict]:
+    """各序列:最新一期的「首值變動」+ 前一期的「首值 vs 最新修正」。
+    無 key 回空(休眠);單一序列失敗略過。"""
+    if not FRED_API_KEY:
+        return []
+    out: list[dict] = []
+    for sid, zh, mode in _MACRO_VINTAGE_SERIES:
+        try:
+            by_date = _fred_vintages(sid)
+            dates = sorted(by_date)
+            if len(dates) < 3:
+                continue
+            d, p, p2 = dates[-1], dates[-2], dates[-3]
+
+            def _chg(a: float, b: float) -> float:
+                return (a / b - 1) * 100 if mode == "pct" else a - b
+
+            first_rs_d = by_date[d][0][0]
+            first_d = by_date[d][0][1]
+            base_at_first = _vintage_asof(by_date[p], first_rs_d)
+            first_rs_p = by_date[p][0][0]
+            first_p = by_date[p][0][1]
+            base_p_at_first = _vintage_asof(by_date[p2], first_rs_p)
+            latest_p = by_date[p][-1][1]
+            latest_p2 = by_date[p2][-1][1]
+            if None in (base_at_first, base_p_at_first):
+                continue
+            row = {"series": sid, "zh": zh, "mode": mode,
+                   "period": d, "prev_period": p,
+                   "first_change": round(_chg(first_d, base_at_first), 2),
+                   "prev_first_change": round(_chg(first_p, base_p_at_first), 2),
+                   "prev_latest_change": round(_chg(latest_p, latest_p2), 2)}
+            row["prev_revised"] = (abs(row["prev_latest_change"]
+                                       - row["prev_first_change"]) >= 0.05)
+            out.append(row)
+        except Exception as e:
+            print(f"[vintage] {sid} 略過: {e}", file=sys.stderr)
+    return out
+
+
+def _render_macro_vintage_html(rows: list[dict]) -> str:
+    """總經數據首值 vs 修正卡。無資料(含未設 key)回空。"""
+    if not rows:
+        return ""
+    import html as _h
+
+    def _fmt(v: float, mode: str) -> str:
+        return f"{v:+.1f}%" if mode == "pct" else f"{v:+,.0f}K"
+
+    lines = []
+    for r in rows:
+        mode = str(r.get("mode"))
+        rev = ""
+        if r.get("prev_revised"):
+            direction = ("下修" if r["prev_latest_change"] < r["prev_first_change"]
+                         else "上修")
+            rev = (f";前期({_h.escape(str(r.get('prev_period', ''))[:7])})由首值 "
+                   f"{_fmt(r['prev_first_change'], mode)} {direction}至 "
+                   f"{_fmt(r['prev_latest_change'], mode)}")
+        lines.append(
+            f"<tr><td style='padding:6px 14px;font-size:13px;color:#0f172a;"
+            f"font-weight:700;'>{_h.escape(str(r.get('zh', '')))}"
+            f"<span style='color:#94a3b8;font-weight:400;font-size:11px;'>"
+            f"({_h.escape(str(r.get('period', ''))[:7])})</span></td>"
+            f"<td style='padding:6px 14px;text-align:right;font-size:12px;"
+            f"color:#334155;'>首值 {_fmt(r['first_change'], mode)}{rev}</td></tr>")
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#f5f3ff;border-left:5px solid #7c3aed;border-radius:4px;">'
+        '總經數據:首值 vs 修正(FRED/ALFRED)</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;'
+        'background:#ffffff;"><table style="width:100%;border-collapse:collapse;">'
+        + "".join(lines) + "</table>"
+        "<div style='padding:6px 14px;font-size:11px;color:#94a3b8;'>"
+        "※ 首值=當期第一次公布的變動;修正=事後 vintage 差異——前值大幅下修時,"
+        "表面 surprise 會高估經濟動能。無共識預估來源,不標「優於/低於預期」</div></div>")
+
+
+# ── Forecast Ledger v1(2026-07-18 使用者核准)────────────────────────
+# 每日自動立「可結算」的機率預測(2330/加權開盤方向),隔日以實際開盤結算,
+# 累積 Brier 分數與命中率,並與歷史基準率(base rate)對照——把晨報從「每天的
+# 觀點」變成「可驗證的預測系統」。顯示+state 專用,不回饋任何預測/計分模型。
+FORECAST_LEDGER_FILE = Path("state/forecast_ledger.json")
+_FORECAST_LEDGER_KEEP = 400
+# 殘差樣本不足時的保守預設波動(%):歷史 |開盤-預測| 的量級,僅用於
+# 機率換算的 sigma 起點,非計分係數(樣本 >=10 後改用實際殘差 stdev)
+_FORECAST_DEFAULT_SIGMA = {"2330_open_up": 1.3, "taiex_open_up": 0.9}
+
+
+def _forecast_sigma(history: list, question: str) -> tuple[float, int]:
+    """近 60 筆已回填紀錄的「預測 vs 實際開盤」殘差 stdev(%)。
+    樣本 <10 → 保守預設。回 (sigma, n)。"""
+    errs: list[float] = []
+    for rec in (history or [])[-90:]:
+        if not isinstance(rec, dict):
+            continue
+        if question == "2330_open_up":
+            pred, actual = rec.get("weighted_final_2330"), rec.get("actual_open_2330")
+            denom = pred
+        else:
+            pred, actual = rec.get("pred_taiex"), rec.get("actual_open_taiex")
+            denom = rec.get("actual_taiex_prev_close") or pred
+        if all(isinstance(v, (int, float)) and v for v in (pred, actual, denom)):
+            errs.append((actual - pred) / denom * 100)
+    errs = errs[-60:]
+    if len(errs) >= 10:
+        return (statistics.pstdev(errs) or _FORECAST_DEFAULT_SIGMA[question],
+                len(errs))
+    return _FORECAST_DEFAULT_SIGMA[question], len(errs)
+
+
+def _forecast_prob_up(pred_pct: float, sigma: float) -> float:
+    """點預測(%)+殘差 sigma → P(開盤 > 昨收),常態 CDF;夾在 [0.02, 0.98]
+    (尾端保守,避免宣稱近乎確定)。"""
+    from statistics import NormalDist
+    p = NormalDist(0.0, max(sigma, 0.05)).cdf(pred_pct)
+    return round(min(0.98, max(0.02, p)), 3)
+
+
+def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
+                           now_tpe: dt.datetime,
+                           target_session: str) -> dict:
+    """結算到期預測+立今日新預測+算累積統計。回顯示用 dict
+    {"resolved": [...], "stats": {...}, "today": [...]};失敗由呼叫端吞。"""
+    ledger: list = []
+    if FORECAST_LEDGER_FILE.exists():
+        try:
+            data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                ledger = data
+        except Exception as e:
+            print(f"[ledger] 載入失敗,重建: {e}", file=sys.stderr)
+    today = now_tpe.strftime("%Y-%m-%d")
+    # 1) 結算:target 已過且 history 有回填實際開盤
+    actuals: dict[tuple, float] = {}
+    for rec in history or []:
+        tgt = str(rec.get("target_session_date") or "")
+        if not tgt:
+            continue
+        if isinstance(rec.get("actual_open_2330"), (int, float)):
+            actuals[("2330_open_up", tgt)] = float(rec["actual_open_2330"])
+        if isinstance(rec.get("actual_open_taiex"), (int, float)):
+            actuals[("taiex_open_up", tgt)] = float(rec["actual_open_taiex"])
+    resolved_today = []
+    for e in ledger:
+        if e.get("resolved") is not None:
+            continue
+        actual = actuals.get((str(e.get("question")), str(e.get("target"))))
+        thr = e.get("threshold")
+        if actual is None or not isinstance(thr, (int, float)):
+            continue
+        outcome = actual > thr
+        e["resolved"] = today
+        e["outcome"] = bool(outcome)
+        e["actual"] = actual
+        y = 1.0 if outcome else 0.0
+        e["brier_model"] = round((e.get("prob", 0.5) - y) ** 2, 4)
+        e["brier_base"] = round((e.get("base_rate", 0.5) - y) ** 2, 4)
+        resolved_today.append(dict(e))
+    # 2) 立今日預測(同 (question, target) 重跑覆蓋)
+    resolved_all = [e for e in ledger if e.get("resolved") is not None]
+    today_qs = []
+    specs = []
+    p2330, l2330 = predictions.get("mid"), predictions.get("last_2330")
+    if isinstance(p2330, (int, float)) and isinstance(l2330, (int, float)) and l2330:
+        specs.append(("2330_open_up", "2330 開盤高於昨收",
+                      (p2330 / l2330 - 1) * 100, l2330))
+    pt, lt = taiex_pred.get("pred_open"), taiex_pred.get("last_close")
+    if isinstance(pt, (int, float)) and isinstance(lt, (int, float)) and lt:
+        specs.append(("taiex_open_up", "加權指數開盤高於昨收",
+                      (pt / lt - 1) * 100, lt))
+    for question, label, pred_pct, threshold in specs:
+        sigma, n_sig = _forecast_sigma(history, question)
+        prob = _forecast_prob_up(pred_pct, sigma)
+        past = [e for e in resolved_all if e.get("question") == question]
+        base = (round(sum(1 for e in past if e.get("outcome")) / len(past), 3)
+                if len(past) >= 10 else 0.5)
+        entry = {"question": question, "label": label, "created": today,
+                 "target": str(target_session or ""), "threshold": threshold,
+                 "pred_pct": round(pred_pct, 3), "prob": prob,
+                 "sigma": round(sigma, 3), "sigma_n": n_sig, "base_rate": base}
+        ledger = [e for e in ledger
+                  if not (e.get("question") == question
+                          and str(e.get("target")) == entry["target"])]
+        ledger.append(entry)
+        today_qs.append(entry)
+    ledger = ledger[-_FORECAST_LEDGER_KEEP:]
+    FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(FORECAST_LEDGER_FILE,
+                       json.dumps(ledger, ensure_ascii=False, indent=1))
+    # 3) 統計(近 30 筆已結算)
+    recent = [e for e in ledger if e.get("resolved") is not None][-30:]
+    stats = {}
+    if recent:
+        hits = sum(1 for e in recent
+                   if (e.get("prob", 0.5) >= 0.5) == bool(e.get("outcome")))
+        stats = {"n": len(recent),
+                 "hit_rate": round(hits / len(recent) * 100, 1),
+                 "brier_model": round(statistics.mean(
+                     e.get("brier_model", 0.25) for e in recent), 4),
+                 "brier_base": round(statistics.mean(
+                     e.get("brier_base", 0.25) for e in recent), 4)}
+    return {"resolved": resolved_today, "today": today_qs, "stats": stats}
+
+
+def _render_forecast_ledger_html(led: dict) -> str:
+    """預測記分卡:今日新立預測+昨日結算+累積 Brier/命中率。無資料回空。"""
+    if not led or not (led.get("today") or led.get("resolved")):
+        return ""
+    import html as _h
+    rows = []
+    for e in led.get("today") or []:
+        rows.append(
+            f"<tr><td style='padding:6px 14px;font-size:13px;color:#0f172a;'>"
+            f"{_h.escape(str(e.get('label', '')))}"
+            f"<span style='color:#94a3b8;font-size:11px;'>"
+            f"(結算日 {_h.escape(str(e.get('target', '')))})</span></td>"
+            f"<td style='padding:6px 14px;text-align:right;font-size:13px;"
+            f"color:#b45309;font-weight:700;'>本報 {round(e.get('prob', 0.5) * 100)}%"
+            f"<span style='color:#94a3b8;font-weight:400;font-size:11px;'>"
+            f"　基準 {round(e.get('base_rate', 0.5) * 100)}%</span></td></tr>")
+    for e in led.get("resolved") or []:
+        ok = (e.get("prob", 0.5) >= 0.5) == bool(e.get("outcome"))
+        mark = "命中" if ok else "未中"
+        color = "#15803d" if ok else "#b91c1c"
+        rows.append(
+            f"<tr><td style='padding:6px 14px;font-size:12px;color:#475569;'>"
+            f"結算:{_h.escape(str(e.get('label', '')))}"
+            f"({_h.escape(str(e.get('target', '')))})</td>"
+            f"<td style='padding:6px 14px;text-align:right;font-size:12px;"
+            f"color:{color};font-weight:700;'>{mark}"
+            f"<span style='color:#94a3b8;font-weight:400;font-size:11px;'>"
+            f"　當時本報 {round(e.get('prob', 0.5) * 100)}%・"
+            f"實際{'上漲' if e.get('outcome') else '下跌/持平'}</span></td></tr>")
+    stats = led.get("stats") or {}
+    foot = ""
+    if stats:
+        edge = stats.get("brier_base", 0) - stats.get("brier_model", 0)
+        foot = (f"<div style='padding:8px 14px;font-size:11px;color:#64748b;'>"
+                f"近 {stats['n']} 題:命中率 {stats['hit_rate']}%・"
+                f"Brier {stats['brier_model']:.3f}(基準 {stats['brier_base']:.3f},"
+                f"{'優於' if edge > 0 else '落後'}基準 {abs(edge):.3f})"
+                f"——Brier 越低越好,基準=歷史頻率/50%</div>")
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#f0f9ff;border-left:5px solid #0369a1;border-radius:4px;">'
+        '預測記分卡(Forecast Ledger)</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;'
+        'background:#ffffff;"><table style="width:100%;border-collapse:collapse;">'
+        + "".join(rows) + "</table>" + foot +
+        "<div style='padding:6px 14px;font-size:11px;color:#94a3b8;'>"
+        "※ 機率由點預測+歷史殘差換算(顯示用,不回饋任何模型);"
+        "隔日以實際開盤自動結算</div></div>")
+
+
 # PR-2 第二階段(2026-07-18 使用者拍板):Python 立場分成為權威——進 prompt
 # (LLM 原樣採用並負責解釋)與顯示(KPI/總結),LLM 不再自行計分。
 _STANCE_DIM_ZH = (("qqq", "QQQ"), ("sox", "SOX"), ("vix", "VIX"),
@@ -15504,6 +15803,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 預測市場快照(Polymarket;2026-07-16 使用者要求「預測層面資訊」。顯示用不入模型)
     macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [],
                                                 stance=stance)
+    # Forecast Ledger 記分卡(2026-07-18):緊接預測市場卡之後
+    macro_table_html += _render_forecast_ledger_html(
+        quotes.get("FORECAST_LEDGER") or {})
+    # Macro Vintage 卡(未設 FRED key 自動缺席)
+    macro_table_html += _render_macro_vintage_html(
+        quotes.get("MACRO_VINTAGE") or [])
     # G3 世界證據門檻警示(平日空字串;異常時掛總經卡下方一則白話)
     world_evidence_html = _render_world_evidence_html(
         _world_evidence_signals(quotes.get("MACRO") or {}, quotes.get("SPY") or {}))
@@ -17330,6 +17635,27 @@ def main() -> int:
     quotes["DATA_QUALITY"] = build_data_quality(quotes, fair, predictions, news, tw0050)
 
     # 7. LLM 分析
+    # Macro Vintage(2026-07-18):CPI/非農首值 vs 修正(FRED key 未設=休眠)
+    try:
+        quotes["MACRO_VINTAGE"] = fetch_macro_vintage()
+    except Exception as e:
+        print(f"[vintage] 抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["MACRO_VINTAGE"] = []
+    # Forecast Ledger(2026-07-18):結算到期預測+立今日預測(顯示+state,
+    # 不回饋任何模型);失敗不影響晨報
+    try:
+        quotes["FORECAST_LEDGER"] = update_forecast_ledger(
+            quotes.get("HISTORY") or [], predictions,
+            quotes.get("TAIEX_PRED") or {}, now_tpe, target_session_date)
+        _fl = quotes["FORECAST_LEDGER"]
+        print(f"[ledger] 今日立 {len(_fl.get('today') or [])} 題、"
+              f"結算 {len(_fl.get('resolved') or [])} 題"
+              + (f"、近{_fl['stats']['n']}題 Brier {_fl['stats']['brier_model']}"
+                 if _fl.get("stats") else ""))
+    except Exception as e:
+        print(f"[ledger] 更新失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["FORECAST_LEDGER"] = {}
+
     _mark_phase("LLM 主分析")
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
     # PR-2 第二階段(2026-07-18 使用者拍板):Python 11 維立場分=權威——

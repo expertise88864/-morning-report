@@ -1270,3 +1270,49 @@ def test_mops_deep_company_summary_included_for_generic_titles():
                          {"error": "x"}, {"error": "x"}, [], [], "")
     assert "王小明" in p and "115/08/01" in p        # 深耕公司摘要入 prompt
     assert "其他公司的說明不該進 prompt" not in p     # 一般公司仍僅標題(控長度)
+
+
+def test_macro_vintage_dormant_without_key(monkeypatch):
+    """Macro Vintage:未設 FRED_API_KEY → 休眠(空+卡片缺席),不打 API。"""
+    monkeypatch.setattr(mr, "FRED_API_KEY", "")
+    def boom(*a, **k):
+        raise AssertionError("不得呼叫 API")
+    monkeypatch.setattr(mr, "_http_get", boom)
+    assert mr.fetch_macro_vintage() == []
+    assert mr._render_macro_vintage_html([]) == ""
+
+
+def test_macro_vintage_first_release_vs_revision(monkeypatch):
+    """首值變動用「當時已知的前期值」;前期修正=首 vintage vs 最新 vintage。"""
+    monkeypatch.setattr(mr, "FRED_API_KEY", "test-key")
+
+    class R:
+        def __init__(self, obs):
+            self._obs = obs
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"observations": self._obs}
+
+    # PAYEMS(diff):5月首發時 4月值=100165;6月首發 +180K(vs 修正後 4月?
+    # 不——vs 6月首發當時已知的 5月值 100140(已被下修));5月首值 +165 → 修正 +140
+    payems = [
+        {"date": "2026-04-01", "realtime_start": "2026-05-02", "value": "100000"},
+        {"date": "2026-05-01", "realtime_start": "2026-06-06", "value": "100165"},  # 首值 +165
+        {"date": "2026-05-01", "realtime_start": "2026-07-03", "value": "100140"},  # 下修 → +140
+        {"date": "2026-06-01", "realtime_start": "2026-07-03", "value": "100320"},  # 首值 vs 已知5月
+    ]
+    calls = []
+    def fake_get(url, params=None, timeout=None):
+        calls.append(params["series_id"])
+        return R(payems if params["series_id"] == "PAYEMS" else [])
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    rows = mr.fetch_macro_vintage()
+    assert len(rows) == 1 and rows[0]["series"] == "PAYEMS"
+    r = rows[0]
+    assert r["first_change"] == 180.0          # 100320 - 100140(首發當時已知值)
+    assert r["prev_first_change"] == 165.0     # 100165 - 100000
+    assert r["prev_latest_change"] == 140.0    # 100140 - 100000
+    assert r["prev_revised"] is True
+    html = mr._render_macro_vintage_html(rows)
+    assert "非農就業" in html and "+180K" in html and "下修" in html

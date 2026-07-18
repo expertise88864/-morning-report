@@ -6100,6 +6100,52 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "643dd7f8-9888-4093-bc89-acfdd4362fce",
+        "title": "Can the AI Industry Regulate Itself? Stripe Wants PayPal, China Catches Up, NY Bans Datacenters",
+        "published": "Sat, 18 Jul 2026 00:36:00 +0000",
+        "processed_at": "2026-07-18T04:43:21Z",
+        "digest": {
+          "summary_points": [
+            "DeepMind 的 Demis Hassabis 提出 AI 自我監管組織 (SRO) 提案，仿照 FINRA 模式，獲得業界廣泛支持，旨在避免政府直接監管。",
+            "Stripe、Advent 與 Block 聯手以每股約 60 美元收購 PayPal，目標結合 Stripe 的商家關係與 PayPal 的 4.39 億消費者帳戶，挑戰 Visa 和 Mastercard。",
+            "Apple 對 OpenAI 提起商業機密竊盜訴訟，指控其前員工在面試時帶走 Apple 元件與設計，涉及硬體研發。",
+            "企業 AI token 支出在 Ramp 客戶中成長 21 倍；不同模型每百萬 token 成本從 56 美元 (Anthropic) 到 1.50 美元 (Grok) 到 0.50 美元 (中國模型) 不等，財務長需嚴控開支。",
+            "紐約州長 Kathy Hochul 簽署全美首個超大規模資料中心暫停令，可能拖慢 AI 基礎建設並推高成本。",
+            "反對資料中心的運動被指受到俄羅斯與中國影響，類似過去反 GMO 的宣傳策略，目的在弱化美國 AI 競爭力。",
+            "美國電網拍賣嚴重供不應求，需求 8 GW 僅收到 156 MW 投標，顯示能源短缺將限制 AI 擴張。",
+            "Apple 的 M7 Ultra 晶片預計支援 1.5 TB RAM，使頂尖 AI 模型可本地運行，可能大幅降低雲端 AI 成本。",
+            "科學家利用 AlphaFold 與定向演化創造出一種酵素，可清除細胞外基質中的糖化終產物 (CML)，將老年皮膚回復至 31 歲狀態，預計首波應用於化妝品。",
+            "Anthropic 被揭露在各州推動更嚴格的 AI 法規（如加州 SB 53），被指控進行監管俘獲，以鞏固其市場地位。"
+          ],
+          "tickers": [
+            {
+              "name": "PayPal",
+              "code": "PYPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "收購要約顯示價值低估，且合併後可創造與 Visa/Mastercard 競爭的支付生態系。"
+            },
+            {
+              "name": "Block",
+              "code": "SQ",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "參與收購 PayPal，提供 170 億美元股權，但其角色與長期效益尚未明朗。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "M7 Ultra 晶片可實現本地 AI 推理，有望大幅拉開競爭優勢，被主持人稱為「狂買」。"
+            }
+          ],
+          "market_view": "主持人認為 AI 產業前景巨大，但美國面臨監管過度與能源短缺的雙重風險；若不妥善處理，可能失去對中國的領先優勢。",
+          "action_view": "建議企業採用本地運算（如 Mac Studio）以降低 AI 成本，並嚴格控管 token 支出；同時支持資料中心建設，避免被外國影響誤導。",
+          "notable_quote": "They have a very simple straightforward strategy: Number one, brand yourself as a safe AI company. Number two, ban unsafe AI. Three, profit."
+        }
+      },
+      {
         "guid": "e55cd042-2dc9-45cc-861d-c2c70c36f835",
         "title": "Former Intel CEO on What Went Wrong, What's Next + Lovable CEO on the Real Promise of Vibe Coding",
         "published": "Wed, 15 Jul 2026 20:55:00 +0000",

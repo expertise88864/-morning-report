@@ -658,6 +658,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for r in rows or [])
         if any(r.get("low_vol") for r in rows or []):
             body += "　(部分量低⚠)"
+        if any(r.get("wide") for r in rows or []):   # 批#17:價差寬=顯示價不可盡信
+            body += "　(部分價差寬⚠)"
         return body
 
     def _poly_odds_block(label: str, content_lines: list, note: str = "Polymarket") -> str:

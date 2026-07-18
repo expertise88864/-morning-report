@@ -2878,3 +2878,56 @@ def test_local_region_filter_rejects_ncsist_collision(monkeypatch):
     titles = [t["title"] for v in out.values() for t in v]
     assert "中科院無人機飛彈試射成功" not in titles
     assert "李長榮先進材料中科擴線動土" in titles
+
+
+def test_poly_outright_stable_ids_and_wide_spread(monkeypatch):
+    """批#17:rows 帶 hist_key(market id)與 wide(spread>=5pp);
+    delta 以 id 為 key,舊快照譯名 key 走 alias 回退不斷線。"""
+    import datetime as dt
+    monkeypatch.setattr(mr, "_poly_events", lambda p: [{"markets": [
+        {"id": "111", "groupItemTitle": "Anthropic", "closed": False,
+         "outcomes": '["Yes","No"]', "outcomePrices": '["0.655","0.345"]',
+         "spread": 0.01, "volume24hr": 50000},
+        {"id": "222", "groupItemTitle": "Google", "closed": False,
+         "outcomes": '["Yes","No"]', "outcomePrices": '["0.125","0.875"]',
+         "spread": 0.08, "volume24hr": 50000},
+    ]}])
+    rows = mr._poly_outright("x", top=5)
+    by = {r["name"]: r for r in rows}
+    assert by["Anthropic"]["hist_key"] == "111" and by["Anthropic"]["wide"] is False
+    assert by["Google"]["hist_key"] == "222" and by["Google"]["wide"] is True
+    assert "(部分價差寬⚠)" in mr._poly_prob_line(rows)
+    # alias 回退:昨日快照以「譯名」為 key → 今日改 id 仍算得出 delta
+    now = dt.datetime(2026, 7, 18, 6, tzinfo=mr.TPE)
+    hist = {"pulse|x": {"curr": {"date": "2026-07-17",
+                                 "probs": {"Anthropic": 60.0, "Google": 14.0}}}}
+    mr.POLY_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    mr.POLY_HISTORY_FILE.write_text(__import__("json").dumps(hist), encoding="utf-8")
+    out = mr._poly_annotate_deltas("pulse|x", rows, now)
+    assert {r["name"]: r.get("delta") for r in out} == {
+        "Anthropic": 5.5, "Google": -1.5}
+
+
+def test_poly_binary_detail_spread_note(monkeypatch):
+    """批#17:價差 ≥5pp 時二元盤附可成交價(買=ask/賣=bid);窄價差不附。"""
+    import datetime as dt
+    now = dt.datetime(2026, 7, 18, 6, tzinfo=mr.TPE)
+    wide = {"question": "q", "outcomes": '["Yes","No"]',
+            "outcomePrices": '["0.58","0.42"]',
+            "spread": 0.06, "bestBid": 0.56, "bestAsk": 0.62}
+    d = mr._poly_binary_detail("t|w", [wide], now)
+    assert "機率 58%" in d and "(買62/賣56)" in d
+    narrow = dict(wide, spread=0.02)
+    assert "買" not in mr._poly_binary_detail("t|n", [narrow], now)
+
+
+def test_poly_divergence_note_rules():
+    """批#17:Fed 再升息定價與本報立場分歧才提示;一致/非方向立場不提示。"""
+    rows = [{"label": "2026 年內 Fed 再升息", "detail": "機率 62%(↑3pp)"}]
+    assert "分歧提示" in mr._poly_divergence_note(rows, {"label": "偏多"})
+    assert mr._poly_divergence_note(rows, {"label": "偏空"}) == ""
+    assert mr._poly_divergence_note(rows, {"label": "中性"}) == ""
+    low = [{"label": "2026 年內 Fed 再升息", "detail": "機率 8%"}]
+    assert "分歧提示" in mr._poly_divergence_note(low, {"label": "偏空"})
+    assert mr._poly_divergence_note(low, {"label": "偏多"}) == ""
+    assert mr._poly_divergence_note([], {"label": "偏多"}) == ""

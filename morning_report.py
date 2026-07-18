@@ -9580,6 +9580,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
             news_block += ("\n[OpenRouter 近 14 日新上架模型與 API 定價"
                            "(USD/百萬 tokens;官方目錄硬數據,可直接引用)]\n"
                            + "\n".join(_ai_price))
+        # 批#17:Polymarket 最佳 AI 模型盤(市場真金定價,與新聞敘事互補)
+        _ai_mkt = [f"- {_external_text(r, 130)}"
+                   for r in (_ai.get("market") or [])[:3]]
+        if _ai_mkt:
+            news_block += ("\n[Polymarket 最佳 AI 模型盤(市場定價,可直接引用;"
+                           "與新聞敘事對照——市場沒動=事件被視為噪音)]\n"
+                           + "\n".join(_ai_mkt))
 
     # 類股熱度表(純行情數據,供「九、其他類股」判斷哪些類股在動、誰領漲;不進計分)
     heat_block = _format_sector_heat_block(quotes.get("SECTOR_HEAT") or {})
@@ -12337,8 +12344,33 @@ def fetch_openrouter_new_models(days: int = 14, limit: int = 8) -> list[str]:
     return rows
 
 
-def _render_poly_pulse_html(rows: list[dict]) -> str:
-    """預測市場快照卡(Polymarket):Fed 決議/衰退/台海/S&P 年底/台積電財報 beat。
+def _poly_divergence_note(rows: list[dict], stance: Optional[dict]) -> str:
+    """批#17 分歧標記:Polymarket 定價方向與本報立場明顯相反時提示一行。
+    規則表可擴充;v1 只看「年內 Fed 再升息」(升息=貨幣逆風,偏空訊號)。
+    純顯示,不入模型。"""
+    import re as _re
+    label = str((stance or {}).get("label") or "")
+    if label not in ("偏多", "偏空"):
+        return ""
+    for r in rows or []:
+        if str(r.get("label")) != "2026 年內 Fed 再升息":
+            continue
+        m = _re.search(r"機率 (\d+)%", str(r.get("detail") or ""))
+        if not m:
+            return ""
+        prob = int(m.group(1))
+        if label == "偏多" and prob >= 55:
+            return (f"分歧提示:市場對年內 Fed 再升息定價 {prob}%(貨幣面逆風),"
+                    f"與本報今日「偏多」立場相左——兩者至少一方將被證偽,宜降低倉位信心")
+        if label == "偏空" and prob <= 15:
+            return (f"分歧提示:市場僅對年內 Fed 再升息定價 {prob}%(貨幣面壓力有限),"
+                    f"若本報「偏空」理由主要繫於利率,與市場定價分歧")
+    return ""
+
+
+def _render_poly_pulse_html(rows: list[dict],
+                            stance: Optional[dict] = None) -> str:
+    """預測市場快照卡(Polymarket):Fed 決議/最佳 AI 模型/台積電財報 beat 等。
     顯示用情報,不入任何模型;無資料回空(卡片自動缺席)。"""
     if not rows:
         return ""
@@ -12349,12 +12381,17 @@ def _render_poly_pulse_html(rows: list[dict]) -> str:
         f"<td style='padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;"
         f"font-size:13px;color:#b45309;font-weight:700;'>{_h.escape(str(r.get('detail', '')))}</td></tr>"
         for r in rows)
+    div_note = _poly_divergence_note(rows, stance)
+    div_html = (f"<div style='padding:8px 14px;font-size:12px;color:#b45309;"
+                f"background:#fffbeb;border-top:1px solid #fde68a;font-weight:700;'>"
+                f"{_h.escape(div_note)}</div>") if div_note else ""
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#fefce8;border-left:5px solid #ca8a04;border-radius:4px;">'
         '預測市場觀點(Polymarket)</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">'
         '<table style="width:100%;border-collapse:collapse;">' + lines + "</table>"
+        + div_html +
         "<div style='padding:8px 14px;font-size:11px;color:#94a3b8;'>"
         "※ Polymarket 為真金押注的預測市場,價格≈市場共識機率,即時但可能劇烈變動;"
         "僅供參考,不納入本報任何模型計分</div></div>")
@@ -12834,6 +12871,9 @@ def _poly_yes_prob(market: dict) -> Optional[float]:
 # 24h 成交量低於此值 → 標「量低⚠」:機率上升但流動性極低可能只是少數交易,
 # 不應把價格當精確機率(GPT-5.6 建議「機率品質」的縮小版,地基批#4)
 _POLY_LOW_VOLUME_USD = 10_000.0
+# 批#17:bid-ask 價差 ≥5pp = 顯示價(midpoint)不可精確解讀為機率
+# (Polymarket 官方文件:spread>0.10 時前端甚至改顯示 last trade)
+_POLY_WIDE_SPREAD = 0.05
 
 
 def _poly_outright(slug: str, zh_map: Optional[dict] = None,
@@ -12862,9 +12902,20 @@ def _poly_outright(slug: str, zh_map: Optional[dict] = None,
                 low_vol = float(m.get("volume24hr")) < _POLY_LOW_VOLUME_USD
             except (TypeError, ValueError):
                 low_vol = False
-        rows.append({"name": (zh_map or {}).get(name, name), "prob": round(p * 100),
+        # 批#17 品質欄:gamma 自帶 spread(bid-ask,0-1)——價差寬=顯示價不可
+        # 盡信(midpoint 夾在寬買賣價之間);歷史身分改用 market id(hist_key),
+        # 中文譯名改動不再讓 delta 歷史斷線
+        wide = False
+        if m.get("spread") is not None:
+            try:
+                wide = float(m.get("spread")) >= _POLY_WIDE_SPREAD
+            except (TypeError, ValueError):
+                wide = False
+        rows.append({"name": (zh_map or {}).get(name, name),
+                     "hist_key": str(m.get("id") or name),
+                     "prob": round(p * 100),
                      "prob_raw": round(p * 100, 2),   # 全精度供 delta(修正批B)
-                     "low_vol": low_vol})
+                     "low_vol": low_vol, "wide": wide})
     rows.sort(key=lambda r: -r["prob"])
     return rows[:top]
 
@@ -12877,8 +12928,11 @@ POLY_HISTORY_FILE = Path("state/poly_history.json")
 POLY_HISTORY_KEEP_DAYS = 14   # 死盤(世足決賽後等)的紀錄修剪
 
 
-def _poly_track_deltas(key: str, probs: dict, now_tpe: dt.datetime) -> dict:
-    """記錄今日機率並回傳 {name: 與前一日的差(pp)}。失敗回空(delta 缺席不影響顯示)。"""
+def _poly_track_deltas(key: str, probs: dict, now_tpe: dt.datetime,
+                       aliases: Optional[dict] = None) -> dict:
+    """記錄今日機率並回傳 {key: 與前一日的差(pp)}。失敗回空(delta 缺席不影響顯示)。
+    批#17:probs 的 key 改用穩定 market id;aliases={id: 顯示名}供轉換期回退——
+    舊快照以譯名為 key,id 查不到時退查譯名,delta 不斷線。"""
     try:
         today = now_tpe.strftime("%Y-%m-%d")
         store: dict = {}
@@ -12909,11 +12963,14 @@ def _poly_track_deltas(key: str, probs: dict, now_tpe: dt.datetime) -> dict:
             days = max(1, (now_tpe.date() - prev_day).days)
         except (ValueError, TypeError):
             days = 1
-        return {name: {"pp": probs[name] - prev_probs[name], "days": days}
-                for name in probs
-                if name in prev_probs
-                and isinstance(probs[name], (int, float))
-                and isinstance(prev_probs[name], (int, float))}
+        out: dict = {}
+        for name, val in probs.items():
+            pv = prev_probs.get(name)
+            if pv is None and aliases and aliases.get(name):
+                pv = prev_probs.get(aliases[name])   # 轉換期:舊快照以譯名為 key
+            if isinstance(val, (int, float)) and isinstance(pv, (int, float)):
+                out[name] = {"pp": val - pv, "days": days}
+        return out
     except Exception as e:
         print(f"[poly] delta 追蹤失敗({key},不影響顯示): {e}", file=sys.stderr)
         return {}
@@ -12924,11 +12981,16 @@ def _poly_annotate_deltas(key: str, rows: list[dict],
     """對 [{'name','prob'}...] 附上 delta 欄位(就地),並記錄今日快照。"""
     if not rows:
         return rows
-    deltas = _poly_track_deltas(
-        key, {r["name"]: r.get("prob_raw", r["prob"])
-              for r in rows if r.get("name")}, now_tpe)
+    probs, aliases = {}, {}
     for r in rows:
-        d = deltas.get(r.get("name"))
+        k = str(r.get("hist_key") or r.get("name") or "")
+        if not k:
+            continue
+        probs[k] = r.get("prob_raw", r["prob"])
+        aliases[k] = r.get("name")
+    deltas = _poly_track_deltas(key, probs, now_tpe, aliases=aliases)
+    for r in rows:
+        d = deltas.get(str(r.get("hist_key") or r.get("name")))
         if d and d.get("pp"):
             r["delta"] = d["pp"]
             r["delta_days"] = d.get("days", 1)
@@ -13006,6 +13068,9 @@ def _poly_prob_line(rows: list[dict]) -> str:
         for r in rows)
     if any(r.get("low_vol") for r in rows):
         body += "(部分量低⚠)"
+    # 批#17:bid-ask 價差寬=顯示價不可精確解讀,行級聚合提示
+    if any(r.get("wide") for r in rows):
+        body += "(部分價差寬⚠)"
     return body
 
 
@@ -13165,8 +13230,19 @@ def _poly_binary_detail(key: str, markets: list, now_tpe: dt.datetime,
             low_vol = float(market.get("volume24hr")) < _POLY_LOW_VOLUME_USD
         except (TypeError, ValueError):
             low_vol = False
+    # 批#17 品質升級:價差 ≥5pp 時附可成交價(買=ask、賣=bid)——midpoint
+    # 夾在寬買賣價之間時,「機率 58%」不可精確解讀
+    spread_note = ""
+    try:
+        if (float(market.get("spread")) >= _POLY_WIDE_SPREAD
+                and market.get("bestBid") is not None
+                and market.get("bestAsk") is not None):
+            spread_note = (f"(買{round(float(market['bestAsk']) * 100)}"
+                           f"/賣{round(float(market['bestBid']) * 100)})")
+    except (TypeError, ValueError):
+        spread_note = ""
     return (f"機率 {pct}%" + _poly_delta_suffix(d.get("pp"), d.get("days", 1))
-            + ("(量低⚠)" if low_vol else ""))
+            + spread_note + ("(量低⚠)" if low_vol else ""))
 
 
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
@@ -13248,6 +13324,40 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                 rows.append({"label": "台灣總統大選", "detail": _poly_prob_line(outs)})
     except Exception as e:
         print(f"[poly] 台灣總統大選盤略過: {e}", file=sys.stderr)
+    # 6) 最佳 AI 模型盤(批#17,2026-07-18 使用者要求;呼應科技板塊「AI 模型
+    #    競賽」條目)。年度=固定 slug;當月=動態搜尋(slug 帶流水號,如
+    #    which-company-has-best-ai-model-end-of-july-299,live 實測)。
+    try:
+        ai_rows = _poly_outright("which-company-has-best-ai-model-end-of-2026",
+                                 top=5, min_prob=0.03)
+        if ai_rows:
+            _poly_annotate_deltas("pulse|年底最佳AI模型", ai_rows, now_tpe)
+            rows.append({"label": "年底最佳 AI 模型",
+                         "detail": _poly_prob_line(ai_rows)})
+    except Exception as e:
+        print(f"[poly] 年度 AI 模型盤略過: {e}", file=sys.stderr)
+    try:
+        cands = [e for e in _poly_search_events("best AI model end of")
+                 if not e.get("closed")
+                 and str(e.get("title", "")).startswith(
+                     "Which company has best AI model end of")
+                 and "end of 2026" not in str(e.get("title", ""))
+                 and _poly_event_is_future(e, now_utc)]
+        cands.sort(key=lambda e: str(e.get("endDate") or "9999"))
+        if cands:
+            ev = cands[0]
+            ai_rows = _poly_outright(str(ev.get("slug") or ""), top=5, min_prob=0.03)
+            if ai_rows:
+                try:
+                    month = dt.datetime.fromisoformat(
+                        str(ev.get("endDate")).replace("Z", "+00:00")).month
+                    label = f"{month}月底最佳 AI 模型"
+                except (ValueError, TypeError):
+                    label = "當月最佳 AI 模型"
+                _poly_annotate_deltas("pulse|當月最佳AI模型", ai_rows, now_tpe)
+                rows.append({"label": label, "detail": _poly_prob_line(ai_rows)})
+    except Exception as e:
+        print(f"[poly] 當月 AI 模型盤略過: {e}", file=sys.stderr)
     return rows
 
 
@@ -15240,7 +15350,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </table>
         """
     # 預測市場快照(Polymarket;2026-07-16 使用者要求「預測層面資訊」。顯示用不入模型)
-    macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [])
+    macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [],
+                                                stance=stance)
     # G3 世界證據門檻警示(平日空字串;異常時掛總經卡下方一則白話)
     world_evidence_html = _render_world_evidence_html(
         _world_evidence_signals(quotes.get("MACRO") or {}, quotes.get("SPY") or {}))
@@ -16381,17 +16492,20 @@ def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
     except Exception as e:
         print(f"[main] 停班停課抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SUSPENSION_NEWS"] = []
-    # 批#16:AI 前沿模型動態(新聞與 OpenRouter 定價各自獨立降級)
+    # 批#16:AI 前沿模型動態(新聞與 OpenRouter 定價各自獨立降級)。
+    # setdefault 合併:POLY_PULSE 已先寫入 AI_MODELS["market"](批#17),
+    # 這裡不得整個 dict 覆寫
+    ai_models = quotes.setdefault("AI_MODELS", {})
     try:
-        quotes["AI_MODELS"] = {"news": fetch_ai_model_news()}
+        ai_models["news"] = fetch_ai_model_news()
     except Exception as e:
         print(f"[main] AI 模型新聞抓取失敗(不影響晨報): {e}", file=sys.stderr)
-        quotes["AI_MODELS"] = {"news": []}
+        ai_models["news"] = []
     try:
-        quotes["AI_MODELS"]["pricing"] = fetch_openrouter_new_models()
+        ai_models["pricing"] = fetch_openrouter_new_models()
     except Exception as e:
         print(f"[main] OpenRouter 定價抓取失敗(不影響晨報): {e}", file=sys.stderr)
-        quotes["AI_MODELS"]["pricing"] = []
+        ai_models["pricing"] = []
 
 
 # ---------- 主流程 ----------
@@ -16503,6 +16617,16 @@ def main() -> int:
     except Exception as e:
         print(f"[main] 預測市場快照略過: {e}", file=sys.stderr)
         quotes["POLY_PULSE"] = []
+    # 批#17:最佳 AI 模型盤同步餵給「AI 模型競賽」條目的 prompt 素材
+    # (市場真金定價與新聞敘事互補;失敗只是少一段素材)
+    try:
+        ai_mkt = [f"{r['label']}:{r['detail']}"
+                  for r in (quotes.get("POLY_PULSE") or [])
+                  if "最佳 AI 模型" in str(r.get("label", ""))]
+        if ai_mkt:
+            quotes.setdefault("AI_MODELS", {})["market"] = ai_mkt
+    except Exception as e:
+        print(f"[main] AI 模型盤素材略過: {e}", file=sys.stderr)
     # Podcast 摘要由獨立排程(podcast-digest.yml)預先產生,這裡只讀檔,失敗不影響晨報
     quotes["PODCAST_DIGEST"] = load_podcast_digest()
     if quotes["PODCAST_DIGEST"]:

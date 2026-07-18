@@ -2807,9 +2807,14 @@ def test_local_region_tokens_cover_township_only_titles():
     for title in ("和美新建案公開 每坪站上3字頭",
                   "埔里外環道拓寬工程動工",
                   "虎尾產業園區今動土 引進智慧農業",
-                  "溪湖果菜市場改建案通過"):
+                  "溪湖果菜市場改建案通過",
+                  # r4:歧義地名的無歧義複合形式必須收
+                  "田中鎮火車站周邊開發案動工",
+                  "東勢林場聯外道路改善工程啟動",
+                  "大城鄉海堤補強計畫核定"):
         assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
-    # 跨區誤收樣本仍被擋
+    # 跨區誤收樣本仍被擋(含歧義裸詞:台北信義區/日本姓氏田中/「大城市」)
     for title in ("板橋租屋要住哪？車站旁套房溢價17%仍搶手",
-                  "信義區豪宅成交創高", "高雄輕軌新進度"):
+                  "信義區豪宅成交創高", "高雄輕軌新進度",
+                  "日本首相田中發表談話", "全球大城市房價比較"):
         assert not any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title

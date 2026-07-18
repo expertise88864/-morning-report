@@ -12764,13 +12764,20 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     for v in q_actuals.values():
         v.sort()
 
-    def _lookup_actual(question: str, target: str) -> Optional[float]:
+    def _lookup_actual(question: str, target: str) -> Optional[tuple]:
+        """回 (actual, 實際結算 session) 或 None。"""
         exact = actuals.get((question, target))
         if exact is not None:
-            return exact
+            return exact, target
         # 名目目標日臨時休市(颱風/假日,Codex 批#18 r4):預測語意=「下一個
         # 真實交易 session 的開盤 vs 昨收」→ 對齊其後 7 天內第一個有實際
-        # 開盤的交易日;threshold(昨收)不變,題目語意不變
+        # 開盤的交易日;threshold(昨收)不變。
+        # 對齊前提(r5):當日「加權指數」實際開盤也缺席=大盤確實沒交易——
+        # 單檔 Yahoo 漏抓不是休市證據,誤對齊會拿別日開盤結算錯題
+        # (與 backfill 自癒的 ^TWII 佐證慣例一致);大盤有交易而單檔缺
+        # → 留待(資料補齊或逾期 void),不替代。
+        if actuals.get(("taiex_open_up", target)) is not None:
+            return None
         try:
             t0 = dt.date.fromisoformat(target)
         except (ValueError, TypeError):
@@ -12781,7 +12788,7 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
             except (ValueError, TypeError):
                 continue
             if t0 < d2 <= t0 + dt.timedelta(days=7):
-                return a
+                return a, t2
         return None
 
     resolved_today = []
@@ -12789,7 +12796,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
         if e.get("resolved") is not None:
             continue
         tgt = str(e.get("target"))
-        actual = _lookup_actual(str(e.get("question")), tgt)
+        hit = _lookup_actual(str(e.get("question")), tgt)
+        actual, actual_session = hit if hit else (None, None)
         thr = e.get("threshold")
         if actual is None or not isinstance(thr, (int, float)):
             # 逾期 void:目標日過 10 天仍無實際開盤可對齊 → 標記不可結算,
@@ -12807,6 +12815,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
         e["resolved"] = today
         e["outcome"] = bool(outcome)
         e["actual"] = actual
+        if actual_session and actual_session != tgt:
+            e["resolved_session"] = actual_session   # 休市對齊後的實際結算日
         y = 1.0 if outcome else 0.0
         e["brier_model"] = round((e.get("prob", 0.5) - y) ** 2, 4)
         e["brier_base"] = round((e.get("base_rate", 0.5) - y) ** 2, 4)

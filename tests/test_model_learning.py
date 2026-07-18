@@ -1543,3 +1543,34 @@ def test_forecast_ledger_post_open_rerun_guard():
     mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
     led3 = mr.update_forecast_ledger([], preds, {}, post, "2026-07-20")
     assert led3["today"] == []
+
+
+def test_forecast_ledger_alignment_requires_market_closure_evidence():
+    """Codex 批#18 r5:大盤當日有交易(taiex 實際開盤存在)而單檔缺 →
+    是 Yahoo 漏抓非休市,不得對齊別日開盤結算;大盤也缺才可對齊,
+    並持久化 resolved_session。"""
+    import datetime as dt
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20")
+    # 情境 A:7/20 大盤有開(taiex actual 在)但 2330 缺 → 不對齊、留待
+    hist_gap = [
+        {"target_session_date": "2026-07-20", "actual_open_taiex": 42000.0},
+        {"target_session_date": "2026-07-21", "actual_open_2330": 2310.0,
+         "actual_open_taiex": 42100.0},
+    ]
+    led = mr.update_forecast_ledger(
+        hist_gap, {}, {}, dt.datetime(2026, 7, 22, 6, 0, tzinfo=mr.TPE),
+        "2026-07-22")
+    assert [e for e in led["resolved"] if e["question"] == "2330_open_up"] == []
+    # 情境 B:7/20 大盤也沒開 → 對齊 7/21 並記 resolved_session
+    hist_closed = [
+        {"target_session_date": "2026-07-21", "actual_open_2330": 2310.0,
+         "actual_open_taiex": 42100.0},
+    ]
+    led2 = mr.update_forecast_ledger(
+        hist_closed, {}, {}, dt.datetime(2026, 7, 23, 6, 0, tzinfo=mr.TPE),
+        "2026-07-23")
+    r = [e for e in led2["resolved"] if e["question"] == "2330_open_up"]
+    assert r and r[0]["outcome"] is True
+    assert r[0]["resolved_session"] == "2026-07-21"

@@ -2931,3 +2931,36 @@ def test_poly_divergence_note_rules():
     assert "分歧提示" in mr._poly_divergence_note(low, {"label": "偏空"})
     assert mr._poly_divergence_note(low, {"label": "偏多"}) == ""
     assert mr._poly_divergence_note([], {"label": "偏多"}) == ""
+
+
+def test_monthly_ai_market_search_excludes_variants(monkeypatch):
+    """批#17 r2(Codex F1 反證+回歸):second/third/年度變體即使 endDate 較早
+    也不得被選為當月盤——startswith 過濾本就擋掉 second/third,以測試釘死。"""
+    import datetime as dt
+    fake_events = [
+        {"title": "Which company has the third best AI model end of July?",
+         "slug": "third-july", "closed": False, "endDate": "2026-07-30T00:00:00Z"},
+        {"title": "Which company has second best AI model end of July?",
+         "slug": "second-july", "closed": False, "endDate": "2026-07-30T00:00:00Z"},
+        {"title": "Which company has best AI model end of 2026?",
+         "slug": "annual", "closed": False, "endDate": "2026-12-31T00:00:00Z"},
+        {"title": "Which company has best AI model end of July?",
+         "slug": "primary-july", "closed": False, "endDate": "2026-07-31T00:00:00Z"},
+    ]
+    seen_slugs = []
+    def fake_search(q, limit=8):
+        return fake_events
+    def fake_outright(slug, zh_map=None, top=5, min_prob=0.02):
+        seen_slugs.append(slug)
+        if slug == "primary-july":
+            return [{"name": "Anthropic", "prob": 98, "prob_raw": 98.0,
+                     "hist_key": "1", "low_vol": False, "wide": False}]
+        return []
+    monkeypatch.setattr(mr, "_poly_search_events", fake_search)
+    monkeypatch.setattr(mr, "_poly_outright", fake_outright)
+    monkeypatch.setattr(mr, "_poly_events", lambda p: [])
+    rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 18, 6, tzinfo=mr.TPE))
+    monthly = [r for r in rows if "月底最佳 AI 模型" in r["label"]]
+    assert len(monthly) == 1 and monthly[0]["label"] == "7月底最佳 AI 模型"
+    # 動態搜尋只以 primary 盤 slug 取價,variant slug 不得出現
+    assert "second-july" not in seen_slugs and "third-july" not in seen_slugs

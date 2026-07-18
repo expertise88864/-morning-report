@@ -9573,16 +9573,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                  for n in (_ai.get("news") or [])[:8]]
     _ai_price = [f"- {_external_text(r, 110)}"
                  for r in (_ai.get("pricing") or [])[:8]]
-    if _ai_lines or _ai_price:
+    # 批#17:Polymarket 最佳 AI 模型盤——放進區塊條件(Codex r1:只有市場盤
+    # 有料而新聞/定價全空時,market 行曾被外層條件擋住不進 prompt)
+    _ai_mkt = [f"- {_external_text(r, 130)}"
+               for r in (_ai.get("market") or [])[:3]]
+    if _ai_lines or _ai_price or _ai_mkt:
         news_block += ("\n\n【AI 前沿模型動態(供「八、科技板塊」的『AI 模型競賽』"
                        "條目取材;標題末為來源媒體)】\n" + "\n".join(_ai_lines))
         if _ai_price:
             news_block += ("\n[OpenRouter 近 14 日新上架模型與 API 定價"
                            "(USD/百萬 tokens;官方目錄硬數據,可直接引用)]\n"
                            + "\n".join(_ai_price))
-        # 批#17:Polymarket 最佳 AI 模型盤(市場真金定價,與新聞敘事互補)
-        _ai_mkt = [f"- {_external_text(r, 130)}"
-                   for r in (_ai.get("market") or [])[:3]]
         if _ai_mkt:
             news_block += ("\n[Polymarket 最佳 AI 模型盤(市場定價,可直接引用;"
                            "與新聞敘事對照——市場沒動=事件被視為噪音)]\n"
@@ -12360,8 +12361,11 @@ def _poly_divergence_note(rows: list[dict], stance: Optional[dict]) -> str:
             return ""
         prob = int(m.group(1))
         if label == "偏多" and prob >= 55:
-            return (f"分歧提示:市場對年內 Fed 再升息定價 {prob}%(貨幣面逆風),"
-                    f"與本報今日「偏多」立場相左——兩者至少一方將被證偽,宜降低倉位信心")
+            # 措辭限定為「條件性逆風」:升息與股市走多可並存,僅憑總立場標籤
+            # 推不出「必有一方錯」(Codex r1 P2)
+            return (f"分歧提示:市場對年內 Fed 再升息定價 {prob}%(貨幣面條件性"
+                    f"逆風)——本報今日「偏多」若倚重利率寬鬆預期,與市場定價相左,"
+                    f"宜自行檢視偏多理由是否依賴利率面")
         if label == "偏空" and prob <= 15:
             return (f"分歧提示:市場僅對年內 Fed 再升息定價 {prob}%(貨幣面壓力有限),"
                     f"若本報「偏空」理由主要繫於利率,與市場定價分歧")

@@ -1577,3 +1577,76 @@ def test_forecast_ledger_alignment_requires_market_closure_evidence():
     r = [e for e in led2["resolved"] if e["question"] == "2330_open_up"]
     assert r and r[0]["outcome"] is True
     assert r[0]["resolved_session"] == "2026-07-21"
+
+
+def test_top5_tradeable_filter_rules():
+    """批#20 #3:漲/跌停鎖死與近日除權息排除,遞補下一名;排除清單透明。"""
+    import datetime as dt
+    scored = [
+        {"code": "1111", "day_pct": 9.8, "close": 100},    # 漲停 → 排除
+        {"code": "2222", "day_pct": -9.7, "close": 100},   # 跌停 → 排除
+        {"code": "3333", "day_pct": 1.0, "close": 100},    # 明日除息 → 排除
+        {"code": "4444", "day_pct": 2.0, "close": 100},
+        {"code": "5555", "day_pct": 0.5, "close": 100},
+        {"code": "6666", "day_pct": -1.0, "close": 100},
+        {"code": "7777", "day_pct": 0.1, "close": 100},
+        {"code": "8888", "day_pct": 0.2, "close": 100},
+    ]
+    tomorrow = dt.datetime.now(mr.TPE).date() + dt.timedelta(days=1)
+    quotes = {"TW_CALENDAR": {"dividends": [
+        {"code": "3333", "ex_date": tomorrow}]}}
+    top5, excluded = mr._top5_tradeable_filter(scored, quotes)
+    assert [s["code"] for s in top5] == ["4444", "5555", "6666", "7777", "8888"]
+    assert ("1111", "漲停鎖死") in excluded
+    assert ("2222", "跌停") in excluded
+    assert ("3333", "近日除權息") in excluded
+
+
+def test_top5_ledger_create_resolve_and_stats():
+    """批#20 #2:Top5 帳本立名單 → 5 個 session 後結算等權超額 vs 大盤;
+    開盤後不立;成分不足 3 檔 void。"""
+    import datetime as dt
+    import json as _json
+
+    def _mh(dates, price_by_code, taiex):
+        return [{"session_date": d,
+                 "taiex_close": taiex[i],
+                 "stocks": {c: {"close": p[i]} for c, p in price_by_code.items()}}
+                for i, d in enumerate(dates)]
+
+    dates = [f"2026-07-{d:02d}" for d in range(1, 10)]      # 9 sessions
+    prices = {"1101": [100 + i for i in range(9)],           # +5% over 5 sess
+              "2202": [200 + 2 * i for i in range(9)],
+              "3303": [50 + 0.5 * i for i in range(9)]}
+    taiex = [10000 + 10 * i for i in range(9)]               # +0.5% over 5
+    mh = _mh(dates, prices, taiex)
+    top5 = [{"code": c, "close": prices[c][2]} for c in prices]  # base=第3個 session?
+    # 立名單:base_session 取 model_history 最後一日 → 用前 3 天的 mh 模擬「當時」
+    now = dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE)
+    out = mr.update_top5_ledger(mh[:3], top5, now, "2026-07-04")
+    assert out["created"] is True
+    # 5 sessions 後(mh 完整)結算
+    out2 = mr.update_top5_ledger(mh, [], dt.datetime(
+        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09")
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = [e for e in stored if e.get("type") == "top5"]
+    assert t5 and t5[0]["res"]["5"].get("excess_pct") is not None
+    st = out2["stats"].get("5")
+    assert st and st["n"] == 1
+    # 等權報酬 ≈ (5/102 + 10/204 + 2.5/51)/3 ≈ 4.9%;大盤 50/10020 ≈ 0.5% → 超額 ≈ +4.4%
+    assert 3.5 < st["mean_excess_pct"] < 5.5 and st["win_rate"] == 100.0
+    # 開盤後(10:00)不立名單
+    mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
+    out3 = mr.update_top5_ledger(mh, top5, dt.datetime(
+        2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04")
+    assert out3["created"] is False
+
+
+def test_d1_fundamental_samples_counting():
+    """批#20 #1:D1 樣本=含基本面欄位的 session 數 − 20。"""
+    mh = ([{"session_date": f"2026-06-{d:02d}", "stocks": {"2330": {}}}
+           for d in range(1, 10)]
+          + [{"session_date": f"2026-07-{d:02d}",
+              "stocks": {"2330": {"op_margin": 45.0}}} for d in range(1, 26)])
+    assert mr._d1_fundamental_samples(mh) == 5      # 25 - 20
+    assert mr._d1_fundamental_samples([]) == 0

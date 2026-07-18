@@ -309,6 +309,9 @@ def _write_run_manifest(now_tpe) -> None:
             "feeds": feeds,
             # 地基批#5:供次日比對「模型歷史是否縮短」的健康警示
             "model_history_days": _RUN_MANIFEST.get("model_history_days"),
+            # 批#20 #1:D1 因子驗收樣本數與就緒旗標(首次達標提醒的比對基準)
+            "d1_samples": _RUN_MANIFEST.get("d1_samples"),
+            "d1_ready": _RUN_MANIFEST.get("d1_ready"),
             # PR-2 雙軌:LLM vs Python 立場比對(三審 P1-4:先前只設進記憶體
             # dict,這裡的白名單沒輸出 → manifest 追蹤不到一致率)
             "stance_dual": _RUN_MANIFEST.get("stance_dual"),
@@ -12559,6 +12562,141 @@ def _compute_stance_score(quotes: dict) -> dict:
             "mode": mode, "rule_version": 2}
 
 
+# ── Top5 準確度批(批#20,2026-07-18 使用者核准 #1/#2/#3/#6)──────────
+def _top5_tradeable_filter(scored: list[dict], quotes: dict,
+                           top: int = 5) -> tuple[list[dict], list[tuple]]:
+    """卡片與追蹤帳本用的「可執行性」過濾(#3;不影響 prompt Top15 與任何計分):
+    (a) 漲/跌停鎖死(|day_pct| >= 9.5:漲停追不到、跌停不該接)
+    (b) 明日除權息(僅 tw_calendar watchlist 覆蓋範圍——全市場除權息行事曆
+        未接,屬已知限制;除權息日的價格跳空是機械性事件,非因子訊號)。
+    回 (前 top 檔, 排除清單 [(code, 原因)…])。"""
+    div_codes = set()
+    tomorrow = (dt.datetime.now(TPE).date() + dt.timedelta(days=1))
+    for d in (quotes.get("TW_CALENDAR") or {}).get("dividends") or []:
+        ex_d = d.get("ex_date")
+        if isinstance(ex_d, dt.date) and (ex_d - tomorrow).days in (0, 1, 2):
+            div_codes.add(str(d.get("code") or ""))
+    picked, excluded = [], []
+    for s in scored or []:
+        if len(picked) >= top:
+            break
+        code = str(s.get("code") or "")
+        pct = s.get("day_pct")
+        if isinstance(pct, (int, float)) and pct >= 9.5:
+            excluded.append((code, "漲停鎖死"))
+            continue
+        if isinstance(pct, (int, float)) and pct <= -9.5:
+            excluded.append((code, "跌停"))
+            continue
+        if code in div_codes:
+            excluded.append((code, "近日除權息"))
+            continue
+        picked.append(s)
+    return picked, excluded
+
+
+def _d1_fundamental_samples(model_history: list) -> int:
+    """D1 因子驗收(#1)可用樣本估計:含基本面欄位(op_margin)的 session 數 − 20
+    (20 日前瞻視窗吃掉尾端)。月報 bt_factor_ic 的 n_days 是權威值,此為
+    每日輕量估計,只用於「就緒提醒」。"""
+    fund_days = sum(
+        1 for rec in model_history or []
+        if any(isinstance((s or {}).get("op_margin"), (int, float))
+               for s in (rec.get("stocks") or {}).values()))
+    return max(0, fund_days - 20)
+
+
+def update_top5_ledger(model_history: list, top5: list[dict],
+                       now_tpe: dt.datetime, target_session: str) -> dict:
+    """Top5 追蹤帳本(#2):記每日 Top5 名單,5/20 個 session 後以 model_history
+    收盤結算「等權平均報酬 − 大盤報酬」的超額。與 Forecast Ledger 同檔
+    (type=top5 條目);顯示+state,不回饋任何計分。回 {"stats", "created"}。"""
+    ledger: list = []
+    if FORECAST_LEDGER_FILE.exists():
+        try:
+            data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                ledger = data
+        except Exception as e:
+            print(f"[top5-ledger] 載入失敗,重建: {e}", file=sys.stderr)
+    today = now_tpe.strftime("%Y-%m-%d")
+    # session 索引(依日期升冪)
+    recs = sorted((r for r in model_history or []
+                   if isinstance(r, dict) and r.get("session_date")),
+                  key=lambda r: r["session_date"])
+    dates = [r["session_date"] for r in recs]
+    by_date = {r["session_date"]: r for r in recs}
+    # 1) 結算(每個 horizon 獨立;成分股報價不足 3 檔 → 該 horizon void)
+    for e in ledger:
+        if e.get("type") != "top5":
+            continue
+        base_s = str(e.get("base_session") or "")
+        if base_s not in by_date:
+            continue
+        i0 = dates.index(base_s)
+        for h in (5, 20):
+            hk = str(h)
+            if (e.get("res") or {}).get(hk) is not None:
+                continue
+            if i0 + h >= len(dates):
+                continue
+            rec_h = by_date[dates[i0 + h]]
+            t0, th = by_date[base_s].get("taiex_close"), rec_h.get("taiex_close")
+            rets = []
+            for code, base in (e.get("bases") or {}).items():
+                ch = ((rec_h.get("stocks") or {}).get(code) or {}).get("close")
+                if all(isinstance(v, (int, float)) and v for v in (base, ch)):
+                    rets.append(ch / base - 1)
+            e.setdefault("res", {})
+            if len(rets) < 3 or not all(
+                    isinstance(v, (int, float)) and v for v in (t0, th)):
+                e["res"][hk] = {"void": True}
+                continue
+            excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
+            e["res"][hk] = {"excess_pct": round(excess, 2),
+                            "session": dates[i0 + h]}
+    # 2) 立今日名單(僅目標 session 開盤前;同 created 重跑覆蓋)
+    created = False
+    try:
+        _tgt_open = dt.datetime.strptime(
+            str(target_session or ""), "%Y-%m-%d").replace(
+            hour=9, minute=0, tzinfo=TPE)
+        _pre_open = now_tpe < _tgt_open
+    except (ValueError, TypeError):
+        _pre_open = False
+    if _pre_open and top5 and dates:
+        bases = {str(s.get("code")): s.get("close") for s in top5
+                 if isinstance(s.get("close"), (int, float))}
+        if len(bases) >= 3:
+            entry = {"type": "top5", "created": today,
+                     "base_session": dates[-1],
+                     "codes": list(bases), "bases": bases,
+                     "res": {}}
+            ledger = [e for e in ledger
+                      if not (e.get("type") == "top5"
+                              and e.get("created") == today)]
+            ledger.append(entry)
+            created = True
+    ledger = ledger[-_FORECAST_LEDGER_KEEP:]
+    FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(FORECAST_LEDGER_FILE,
+                       json.dumps(ledger, ensure_ascii=False, indent=1))
+    # 3) 統計(各 horizon 近 12 筆已結算、非 void)
+    stats: dict = {}
+    for h in ("5", "20"):
+        done = [e["res"][h] for e in ledger
+                if e.get("type") == "top5"
+                and isinstance((e.get("res") or {}).get(h), dict)
+                and not e["res"][h].get("void")][-12:]
+        if done:
+            ex = [d["excess_pct"] for d in done]
+            stats[h] = {"n": len(done),
+                        "mean_excess_pct": round(statistics.mean(ex), 2),
+                        "win_rate": round(
+                            sum(1 for v in ex if v > 0) / len(ex) * 100, 0)}
+    return {"stats": stats, "created": created}
+
+
 # ── Macro Vintage(2026-07-18 使用者核准)─────────────────────────────
 # CPI/非農的「首次公布值 vs 事後修正值」:媒體只報最新值,修正資訊常被忽略
 # (前值大幅下修時,表面 surprise 會誤導)。資料源 FRED/ALFRED 官方 API
@@ -15532,7 +15670,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     universe_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT", []) or []
     if universe_snapshot and _RENDER_TOP5_CARD:
         scored = _rank_attention_candidates(universe_snapshot)
-        top5 = scored[:5]
+        # 批#20 #3:可執行性過濾(漲跌停鎖死/近日除權息)——與 main 的追蹤
+        # 帳本用同一個確定性 helper,卡片與帳本名單必然一致
+        top5, _t5_excluded = _top5_tradeable_filter(scored, quotes)
         if top5:
             # FinMind 補值(EPS年增/外資持股)已於 main 抓取階段併入 snapshot;render 只讀不抓(避免寄信前 live HTTP)
             rows_html = []
@@ -15749,13 +15889,44 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f'<div style="font-size:11px;color:#94a3b8;margin-top:6px;">'
                     f'※ 各類股成分股近 5 日漲幅中位數；「相對」為減去全市場中位數（&gt;0＝資金相對流入）。純參考、非買賣訊號。</div>'
                     f'</div>')
+            # 批#20 #6:普跌日誠實標註(不改分數——regime 調的是「可靠度認知」)
+            _adv = (quotes.get("BREADTH") or {}).get("advance_ratio")
+            regime_note = ""
+            if isinstance(_adv, (int, float)) and _adv <= 40:
+                regime_note = (
+                    f'<div style="background:#fef2f2;border-left:4px solid #dc2626;'
+                    f'border-radius:6px;padding:8px 12px;margin:8px 0;font-size:12px;'
+                    f'color:#991b1b;">今日市場普跌(上漲佔比 {_adv:.1f}%)——'
+                    f'動能類訊號在普跌日可靠度顯著下降,本名單參考價值打折,'
+                    f'不宜逆勢接刀</div>')
+            # 批#20 #3:排除透明化
+            excluded_note = ""
+            if _t5_excluded:
+                _ex_txt = "、".join(f"{c}({r})" for c, r in _t5_excluded[:4])
+                excluded_note = (
+                    f'<div style="font-size:11px;color:#94a3b8;margin:4px 0;">'
+                    f'已排除不可執行標的:{_ex_txt}</div>')
+            # 批#20 #2:Top5 追蹤成績(帳本統計;無結算資料時顯示累積中)
+            _tk = (quotes.get("TOP5_TRACK") or {}).get("stats") or {}
+            if _tk:
+                _seg = ";".join(
+                    f"{h}日 超額 {s['mean_excess_pct']:+.2f}%・勝率 {s['win_rate']:.0f}%"
+                    f"(近{s['n']}期)" for h, s in sorted(_tk.items(), key=lambda kv: int(kv[0])))
+                track_note = (f'<div style="font-size:12px;color:#475569;margin:6px 0;">'
+                              f'<b>Top5 追蹤成績</b>(等權 vs 大盤):{_seg}</div>')
+            else:
+                track_note = ('<div style="font-size:11px;color:#94a3b8;margin:4px 0;">'
+                              'Top5 追蹤帳本已啟動,5/20 日超額成績累積中</div>')
             smart_money_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
+        {regime_note}
         {sector_rotation_html}
         {low_confidence_note}
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:12px 0;">
           {''.join(rows_html)}
         </table>
+        {track_note}
+        {excluded_note}
         <p style="font-size:12px;color:#94a3b8;margin:6px 0;line-height:1.6;">
           ※ 分數 <b>≥80 強關注(紅)</b>、≥60 中度關注(橘)、其餘為觀察(藍)。
           大戶 ΔWoW = 大戶持股比例週變化;量比20d = 今日量 / 近 20 日均量(&lt; 0.8 量縮、&gt; 1.5 放量)。<br>
@@ -17533,6 +17704,22 @@ def main() -> int:
             warnings.append(f"模型歷史 {prev_days}→{len(model_history)} 日縮短")
     except Exception as e:
         print(f"[health] 模型歷史天數比對略過: {e}", file=sys.stderr)
+    # 批#20 #1:D1 因子驗收就緒提醒——基本面因子 20 日 IC 樣本 >= 30 首次達標
+    # 時提示一次(比對前次 manifest 的 d1_ready;之後由月報接手詳情)
+    try:
+        _d1 = _d1_fundamental_samples(model_history)
+        _RUN_MANIFEST["d1_samples"] = _d1
+        _RUN_MANIFEST["d1_ready"] = _d1 >= 30
+        _prev_ready = False
+        if RUN_MANIFEST_FILE.exists():
+            _prev_ready = bool((json.loads(
+                RUN_MANIFEST_FILE.read_text(encoding="utf-8")) or {}).get("d1_ready"))
+        if _RUN_MANIFEST["d1_ready"] and not _prev_ready:
+            warnings.append(
+                f"D1 就緒:基本面因子 20 日 IC 樣本已達 {_d1} 個——"
+                f"可啟動因子權重驗收(月報將附 NW t 值詳情,通過者提權重提案)")
+    except Exception as e:
+        print(f"[health] D1 就緒偵測略過: {e}", file=sys.stderr)
     _persist_srcs = (quotes.get("SOURCE_HEALTH") or {}).get("persistent_failures") or []
     if _persist_srcs:
         warnings.append(f"來源連續失敗:{'、'.join(map(str, _persist_srcs[:4]))}")
@@ -17652,15 +17839,24 @@ def main() -> int:
     # Top5 的 FinMind 補值(EPS年增/外資持股)在此(渲染前、抓取階段)先做,
     # 避免 render_html 於寄信前才同步打 FinMind live HTTP(慢會拖到寄信)。失敗略過不影響晨報。
     try:
-        _top5 = _rank_attention_candidates(tw0050)[:5]
+        # 批#20:與卡片同一過濾器(漲跌停/近日除權息),FinMind 補值與追蹤帳本
+        # 都以「過濾後」名單為準
+        _top5, _t5_ex = _top5_tradeable_filter(
+            _rank_attention_candidates(tw0050), quotes)
         if _top5:
             _fm5 = _finmind_top5_extras(
                 [str(s.get("code", "")) for s in _top5],
                 prices={str(s.get("code", "")): s.get("close") for s in _top5})
             for _s in _top5:
                 _s.update(_fm5.get(str(_s.get("code", "")), {}))
+        if _t5_ex:
+            print(f"[top5] 可執行性排除:{_t5_ex}")
+        # 批#20 #2:Top5 追蹤帳本(結算 5/20 日超額+立今日名單)
+        quotes["TOP5_TRACK"] = update_top5_ledger(
+            model_history, _top5, now_tpe, target_session_date)
     except Exception as e:
-        print(f"[main] Top5 FinMind 補值略過: {e}", file=sys.stderr)
+        print(f"[main] Top5 FinMind/追蹤帳本略過: {e}", file=sys.stderr)
+        quotes.setdefault("TOP5_TRACK", {})
 
     # 6.65 個人持股「昨日帳上漲跌」(用 前天收盤 vs 昨天收盤,非預測)
     #      隱私:只算彙總 % + 金額,不揭露任何個股明細。

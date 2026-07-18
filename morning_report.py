@@ -10513,7 +10513,8 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 ## 十三、一句話總結
 
 20 字內。給一句**具體可執行**的結論（含立場 + 動作）。
-**立場用詞必須與第十二段「立場標籤」完全一致（偏多／偏空／中性）——不可另創說法**
+**立場用詞必須與第十二段「立場標籤」完全一致（偏多／偏空／中性／資料不足）
+——不可另創說法**(標籤為「資料不足」時動作寫觀望或等資料,不可硬給方向)
 （不要用「樂觀/保守/審慎」等同義詞改寫,讓讀者一眼看到同一個立場詞；
  風險或操作紀律可在動作裡補述,但開頭立場詞要一致）。
 
@@ -14866,10 +14867,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     if _py_authority:
         _llm_stance = _extract_stance(analysis_for_render)
         _llm_label = str(_llm_stance.get("label") or "")
-        if _llm_label and _llm_label != str(_sp_render["label"]):
-            print(f"[stance-echo] ⚠ LLM 立場「{_llm_label}」未遵守系統標籤"
-                  f"「{_sp_render['label']}」→ 結論卡改用確定性摘要,"
-                  f"立場詳情已移除", file=sys.stderr)
+        # 一句話總結也要驗(Codex r2:十二段抄對、十三段仍可能寫出別的立場詞
+        # ——如「資料不足」被寫成「中性」);取 summary 中第一個出現的立場詞比對
+        _sum_word = next((w for w in ("資料不足", "偏多", "偏空", "中性")
+                          if w in str(summary_text or "")), "")
+        _py_label = str(_sp_render["label"])
+        if ((_llm_label and _llm_label != _py_label)
+                or (_sum_word and _sum_word != _py_label)):
+            print(f"[stance-echo] ⚠ LLM 立場詞(十二段「{_llm_label}」/"
+                  f"總結「{_sum_word}」)未遵守系統標籤「{_py_label}」"
+                  f"→ 結論卡改用確定性摘要,立場詳情已移除", file=sys.stderr)
             summary_text = (f"依系統計分:{_sp_render['label']}"
                             f"(淨分 {_sp_render['total']:+d})。"
                             f"LLM 摘要與系統立場不一致,已略過其方向性建議;"

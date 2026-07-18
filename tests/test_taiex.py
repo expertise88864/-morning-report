@@ -408,3 +408,29 @@ def test_prompt_degraded_mode_instructions_consistent():
     p_deg = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
     assert "系統計分缺席" in p_deg and "自行計算" in p_deg
     assert "原樣抄錄" not in p_deg and "禁止自行計算" not in p_deg
+
+
+def test_summary_stance_word_also_enforced():
+    """Codex r2:十二段抄對但一句話總結寫別的立場詞 → 仍觸發確定性摘要;
+    「資料不足」為合法立場詞(十三段詞表已補)。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 720, "prev_close": 718, "change_pct": 0.3,
+                "high": 721, "low": 717, "volume": 1, "date": "2026-07-18"},
+        "TSM": {"ticker": "TSM", "close": 420, "prev_close": 410, "change_pct": 2.4,
+                "high": 422, "low": 415, "volume": 1, "date": "2026-07-18"},
+        "SPY": {"ticker": "SPY", "close": 750, "prev_close": 749, "change_pct": 0.1,
+                "high": 751, "low": 748, "volume": 1, "date": "2026-07-18"},
+        "MACRO": {}, "USDTWD": 31.4, "USDTWD_prev": 31.4,
+        "SEC_FILINGS": [], "TW_MOPS": [], "TAIFEX_OI": {}, "MARGIN": {},
+        "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "TW0050_PRED": {}, "BREADTH": {}, "MIDTERM": {},
+        "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+        "TW_UNIVERSE_SNAPSHOT": [], "US_HOLIDAY": {},
+        "STANCE_PY": {"total": 0, "label": "資料不足", "components": {"qqq": 0}},
+    }
+    analysis = ("## 十二、我的明確立場\n> **立場：資料不足**(淨分 0)\n"
+                "## 十三、一句話總結\n中性觀望 等待更多資料再進場")
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-07-18 (Sat)", "每日報")
+    assert "中性觀望 等待更多資料再進場" not in html   # 總結立場詞不一致 → 移除
+    assert "依系統計分" in html and "資料不足" in html

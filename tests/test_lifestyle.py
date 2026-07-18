@@ -2820,6 +2820,12 @@ def test_local_dup_landmark_prefix_not_killed_but_rewrites_still_are():
     seen_q = [mr._local_seen_entry(q1)]
     assert mr._local_title_is_dup("彰化百貨開幕延期", seen_q) is False
     assert mr._local_title_is_dup("快訊/彰化百貨開幕", seen_q) is True
+    assert mr._local_title_is_dup("最新快訊｜彰化百貨開幕", seen_q) is True   # 長樣板詞優先
+    # r10:樣板詞只剝前綴——標題中段的「更新」是語意內容,不得剝除;
+    # 前綴位置的「更新/最新快訊」才是樣板(可連續剝多層)
+    assert mr._strip_title_boilerplate("彰化百貨更新營業時間") == "彰化百貨更新營業時間"
+    assert mr._strip_title_boilerplate("更新彰化百貨開幕") == "彰化百貨開幕"
+    assert mr._strip_title_boilerplate("最新快訊討論牆彰化百貨開幕") == "彰化百貨開幕"
 
 
 def test_local_region_tokens_cover_township_only_titles():
@@ -2836,6 +2842,8 @@ def test_local_region_tokens_cover_township_only_titles():
     # r9:歧義台中區名複合形式收、裸詞不收
     for title in ("太平區公所遷建案通過", "清水區海線綠廊啟用", "新社花海11月登場"):
         assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
+    for title in ("板橋打造新社區公園完工啟用",):   # r10:「新社區」=泛用語,不得誤收
+        assert not any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
     # 跨區誤收樣本仍被擋(含歧義裸詞:台北信義區/日本姓氏田中/「大城市」/
     # 宜蘭太平山/建築工法清水模)
     for title in ("板橋租屋要住哪？車站旁套房溢價17%仍搶手",

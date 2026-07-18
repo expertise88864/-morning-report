@@ -12062,8 +12062,9 @@ _LOCAL_REGION_TOKENS = (
     "大甲", "大雅", "潭子", "神岡", "后里", "石岡", "外埔",
     "龍井", "梧棲", "大肚", "中科",
     # 歧義台中區名收複合形式(r9:裸「太平」撞宜蘭太平山、「清水」撞清水模/
-    # 京都清水寺、「新社」低辨識——完整區名或在地地標無此問題)
-    "太平區", "清水區", "新社區", "新社花海",
+    # 京都清水寺;r10:「新社區」是「新的社區」泛用語也不可收,新社靠
+    # 「台中」字樣或新社花海地標兜底)
+    "太平區", "清水區", "新社花海",
     # 南投縣
     "草屯", "埔里", "竹山", "集集", "名間", "魚池", "國姓", "水里", "鹿谷",
     # 雲林縣
@@ -12111,13 +12112,22 @@ def _shared_bigram_runs(title: str, prev_grams: set) -> int:
 
 # 聚合平台/媒體加掛的樣板前綴詞(不帶語意):剝除後相等=同一則。
 # 「延期/取消/停工」等語意詞刻意不列——那是事件更新,必須保留(Codex r9)。
-_TITLE_BOILERPLATE_TOKENS = ("討論牆", "影音", "獨家", "有影片", "快訊",
-                             "最新快訊", "組圖", "圖輯", "更新")
+# 長詞在前(「最新快訊」須先於「快訊」比對,r10)。
+_TITLE_BOILERPLATE_TOKENS = ("最新快訊", "討論牆", "有影片", "影音", "獨家",
+                             "快訊", "組圖", "圖輯", "更新")
 
 
 def _strip_title_boilerplate(norm: str) -> str:
-    for tok in _TITLE_BOILERPLATE_TOKENS:
-        norm = norm.replace(tok, "")
+    """只剝「前綴位置」的樣板詞(Codex r10:全域 replace 會把標題中段的
+    「更新」剝掉,「更新營業時間」這類語意內容被誤判相等);可連續剝
+    (「討論牆|快訊|…」多層前綴)。"""
+    changed = True
+    while changed:
+        changed = False
+        for tok in _TITLE_BOILERPLATE_TOKENS:
+            if norm.startswith(tok):
+                norm = norm[len(tok):]
+                changed = True
     return norm
 
 

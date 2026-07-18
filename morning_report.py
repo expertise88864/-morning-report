@@ -12106,41 +12106,49 @@ def _shared_bigram_runs(title: str, prev_grams: set) -> int:
     return runs
 
 
-def _local_title_is_dup(title: str, seen_bigrams: list[set],
+def _local_seen_entry(title: str) -> tuple:
+    """去重快取項:(bigram 集合, 非年份數字集合, 正規化字串)。"""
+    import re as _re
+    nums = {n for n in _re.findall(r"\d+(?:\.\d+)?", str(title or ""))
+            if not _re.fullmatch(r"(?:19|20)\d{2}", n)}
+    return (_local_title_bigrams(title), nums, _local_title_norm(title))
+
+
+def _local_title_is_dup(title: str, seen_bigrams: list,
                         threshold: float = 0.35) -> bool:
     """同一事件常被媒體改寫標題或加「討論牆 |」式前綴(exact 比對擋不住,
     2026-07-16 使用者反映重複)。用 overlap coefficient(交集/較短集合)而非 Jaccard:
     前綴垃圾只灌水分母不灌交集,含入型重複仍拿高分。
-    實測:同事件改寫/加前綴 0.435~1.0、不同事件 ≤0.13 → 門檻 0.35(0.40 仍漏掉觀傳媒改寫版 0.391;安全邊際仍 2.7 倍)
-    (批#15 再校:「二林運動館動土」兩媒體改寫僅 0.435,舊門檻 0.50 漏殺)。
-    短標題防誤殺(Codex review 批#9):兩者皆短(bigram<12,約 12 字)時,共用實體名
-    就能吃掉大半集合(「台中捷運藍線進度」vs「台中捷運藍線徵才」0.71)——不同事件
-    會被誤殺,改要求近乎全同(0.85)才算重複。"""
+    實測:同事件改寫 0.263~0.435、不同事件 ≤0.13。
+    判重複的兩條路(Codex 批#15 r3/r6/r7 演進,不再有純門檻無條件線——
+    任何門檻都可能被超長專案名前綴衝破,如「大埔截水溝堤岸道路拓寬工程」
+    第一期 vs 第二期):
+      (a) 正規化後互為含入(「討論牆 |」式前綴垃圾、加媒體尾綴);
+      (b) overlap 達門檻 且 共享內容散佈 ≥2 個不連續區段(同事件改寫的樣貌;
+          單一區段=共用地標/專案名前綴,是同實體不同事件,保留)。
+    短標題防誤殺(批#9):bigram<12 時門檻 0.85。"""
     grams = _local_title_bigrams(title)
+    norm = _local_title_norm(title)
     if not grams:
         return False
-    # 批#15 二級規則:同事件被大幅改寫時 bigram 重疊常掉到 0.3-0.5(「71歲硬漢
-    # 彰基揪直腸癌」vs「癌藏體內沒感覺 71歲男檢查揪直腸癌」),但關鍵數字
-    # (年齡/金額/戶數)會共通——共享非年份數字 + 重疊 ≥0.30 即視為重複。
+    # 批#15 二級規則:同事件被大幅改寫時 bigram 重疊常掉到 0.25-0.45,但關鍵
+    # 數字(年齡/金額/戶數)會共通——共享非年份數字可降低 overlap 門檻。
     import re as _re
     nums = {n for n in _re.findall(r"\d+(?:\.\d+)?", str(title or ""))
             if not _re.fullmatch(r"(?:19|20)\d{2}", n)}
-    for prev, prev_nums in seen_bigrams:
+    for entry in seen_bigrams:
+        prev, prev_nums = entry[0], entry[1]
+        prev_norm = entry[2] if len(entry) > 2 else ""
         m = min(len(grams), len(prev))
         if not m:
             continue
+        # (a) 含入:一方正規化字串完整包含另一方 → 必為同一則的前綴/尾綴變體
+        if prev_norm and norm and (norm in prev_norm or prev_norm in norm):
+            return True
         overlap = len(grams & prev) / m
         need = 0.85 if m < 12 else threshold
-        if overlap >= need:
-            # 弱重疊帶(Codex 批#15 r3/r6):共享內容若只集中在單一連續區段
-            # (=共用地標/實體名前綴,如「台中捷運藍線工程」進度 vs 經費 0.54),
-            # 是同實體不同事件,不算重複;真正的同事件改寫共享內容會散佈多處
-            # (二林運動館 0.391/0.435 = 三段)。無條件重複線提高到 0.70——
-            # 「討論牆 |」式前綴垃圾是整段含入(overlap≈1.0),仍被無條件線抓住;
-            # 長專案名前綴最多吃到 ~0.55,不再繞過區段條件(r6)。
-            if (overlap >= max(need, 0.70)
-                    or _shared_bigram_runs(title, prev) >= 2):
-                return True
+        if overlap >= need and _shared_bigram_runs(title, prev) >= 2:
+            return True
         # 數字二級規則不適用短標題(Codex 批#15:「台74線車禍」vs「台74線拓寬」
         # 共享 74 且短標題 overlap 3/5=0.6,會誤殺——短標題仍走 0.85 防護);
         # 同樣要求共享內容 ≥2 區段(長標題共用「台74線」單段+路線號也不算)
@@ -12160,9 +12168,8 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
     out: dict = {}
     # 跨主題+同主題模糊去重:同一事件常被兩家媒體改寫不同標題(exact 擋不住),
-    # 也常同時命中房市+建設 → bigram overlap + 共享數字二級規則(批#15)。
-    # seen_bigrams 元素為 (bigram 集合, 非年份數字集合)。
-    import re as _re
+    # 也常同時命中房市+建設。seen 元素=_local_seen_entry 三元組
+    # (bigrams, 非年份數字, 正規化字串)。
     seen_bigrams: list[tuple] = []
     for row in LOCAL_NEWS_QUERIES:
         label, query = row[0], row[1]
@@ -12188,9 +12195,7 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                     continue
                 if _local_title_is_dup(title, seen_bigrams):
                     continue
-                nums = {n for n in _re.findall(r"\d+(?:\.\d+)?", title)
-                        if not _re.fullmatch(r"(?:19|20)\d{2}", n)}
-                seen_bigrams.append((_local_title_bigrams(title), nums))
+                seen_bigrams.append(_local_seen_entry(title))
                 items.append({"title": title,
                               "link": str(entry.get("link", ""))})
             if items:

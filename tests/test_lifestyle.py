@@ -2238,7 +2238,7 @@ def test_local_title_fuzzy_dedup(monkeypatch):
          "| 中廣新聞網 - LINE TODAY")
     b2 = "討論牆 | 中醫大附醫修正性手術 助婦人重拾自然嗓音 - LINE TODAY"
     c = "中捷藍線首件主線土建工程決標 預計8月開工 - 自由時報"
-    seen = [(mr._local_title_bigrams(a), set())]
+    seen = [mr._local_seen_entry(a)]
     assert mr._local_title_is_dup(b, seen) is True         # 同事件改寫 → 重複
     assert mr._local_title_is_dup(b2, seen) is True        # 同標題加「討論牆 |」前綴 → 重複
     assert mr._local_title_is_dup(c, seen) is False        # 不同事件 → 保留
@@ -2297,7 +2297,7 @@ def test_local_short_titles_same_entity_not_deduped():
     → 不得誤殺;短標題(bigram<12)須近乎全同(≥0.85)才算重複。"""
     a = "台中捷運藍線進度曝光"
     b = "台中捷運藍線大舉徵才"
-    seen = [(mr._local_title_bigrams(a), set())]
+    seen = [mr._local_seen_entry(a)]
     assert mr._local_title_is_dup(b, seen) is False        # 不同事件 → 保留
     assert mr._local_title_is_dup("台中捷運藍線進度曝光", seen) is True   # 全同 → 重複
     assert mr._local_title_is_dup("台中捷運藍線進度曝光 - 自由時報", seen) is True
@@ -2781,34 +2781,40 @@ def test_local_dup_landmark_prefix_not_killed_but_rewrites_still_are():
     真正同事件的多段式改寫(二林運動館)仍須判重複。"""
     a = "台中捷運藍線工程進度最新曝光"
     b = "台中捷運藍線徵才簡章正式公布"
-    seen = [(mr._local_title_bigrams(a), set())]
+    seen = [mr._local_seen_entry(a)]
     assert mr._local_title_is_dup(b, seen) is False        # 同地標不同事件 → 保留
     # 同事件多段改寫(實際案例,overlap 0.391/0.435)仍判重複
     c = "活化西南角閒置土地 彰化「二林樂活運動館」斥資3.8億動土 - 全國廣播"
     d = "（有影片）／二林樂活運動館動土 打造西南角首座大型運動場館 - 觀傳媒"
     e = "彰化縣西南角首座大型運動場館 二林樂活運動館工程動土 - 警政時報"
-    seen_c = [(mr._local_title_bigrams(c), {"3.8"})]
+    seen_c = [mr._local_seen_entry(c)]
     assert mr._local_title_is_dup(d, seen_c) is True
     assert mr._local_title_is_dup(e, seen_c) is True
     # 71歲直腸癌兩改寫(共享數字+多區段)仍判重複
     f = "71歲劉姓硬漢，二度檢查終於由彰基找出直腸癌位置。（照片彰基提供）"
     g = "癌藏體內沒感覺 71歲男靠一次檢查揪直腸癌"
-    seen_f = [(mr._local_title_bigrams(f), {"71"})]
+    seen_f = [mr._local_seen_entry(f)]
     assert mr._local_title_is_dup(g, seen_f) is True
     # 長標題共享路線號但事件不同(單段+數字)不得誤殺
     h1 = "台74線崇德匝道拓寬工程週五動工改道"
     h2 = "台74線大里段深夜連環車禍釀三傷"
-    seen_h = [(mr._local_title_bigrams(h1), {"74"})]
+    seen_h = [mr._local_seen_entry(h1)]
     assert mr._local_title_is_dup(h2, seen_h) is False
     # r6:長專案名前綴可衝破 0.50(「台中捷運藍線工程」進度 vs 經費 ≈0.54)——
     # 無條件線提高到 0.70,單段前綴仍不得誤殺
     j1 = "台中捷運藍線工程進度最新曝光"
     j2 = "台中捷運藍線工程經費追加通過"
-    seen_j = [(mr._local_title_bigrams(j1), set())]
+    seen_j = [mr._local_seen_entry(j1)]
     assert mr._local_title_is_dup(j2, seen_j) is False
-    # 「討論牆 |」式整段含入(overlap≈1.0)仍被無條件線抓住
+    # 「討論牆 |」式整段含入(正規化 containment)仍判重複
     k = "討論牆 | 台中捷運藍線工程進度最新曝光 - LINE TODAY"
     assert mr._local_title_is_dup(k, seen_j) is True
+    # r7:超長專案名前綴可衝破任何純門檻(「大埔截水溝堤岸道路拓寬工程」
+    # 第一期完工 vs 第二期動工)——非含入且單一區段,不得誤殺
+    p1 = "彰化市大埔截水溝堤岸道路拓寬工程第一期完工"
+    p2 = "彰化市大埔截水溝堤岸道路拓寬工程第二期動工"
+    seen_p = [mr._local_seen_entry(p1)]
+    assert mr._local_title_is_dup(p2, seen_p) is False
 
 
 def test_local_region_tokens_cover_township_only_titles():

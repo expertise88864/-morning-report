@@ -1201,7 +1201,9 @@ def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):
             {"title": "台灣人壽參與台中 BOT 案 投資 258 億", "summary": "",
              "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 含台灣人壽 → 收
             {"title": "某公司高層人事異動", "summary": "中信金子公司公告",
-             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 摘要含中信 → 收
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 摘要含中信金 → 收
+            {"title": "中信兄弟人事異動 教練團調整", "summary": "",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},          # 中職球隊 → 擋
         ]
 
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
@@ -1213,12 +1215,29 @@ def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):
     titles = [n["title"] for n in out]
     assert all(n["company_label"] == "2891" for n in out)
     assert "台中運動園區 BOT 案動工 市府樂觀" not in titles
+    assert "中信兄弟人事異動 教練團調整" not in titles     # 裸「中信」前綴不放行
     assert len(out) == 2
+    # 前綴碰撞回歸(Codex r2):「國泰航空」不得歸因 2882
+    class CathayFeed:
+        entries = [
+            {"title": "國泰航空人事異動 新任 CEO 上任", "summary": "",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},
+            {"title": "國泰金控投資部位調整", "summary": "",
+             "published": "Fri, 17 Jul 2026 08:00:00 GMT"},
+        ]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: CathayFeed())
+    out_c = mr._process_feed_item(
+        {"source": "Google:2882", "url": "https://x", "kind": "company",
+         "label": "2882"}, cutoff)
+    assert [n["title"] for n in out_c] == ["國泰金控投資部位調整"]
     # 非金控查詢(無守門詞)行為不變
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: Feed())
     out2 = mr._process_feed_item(
         {"source": "Google:2330", "url": "https://x", "kind": "company",
          "label": "2330"}, cutoff)
-    assert len(out2) == 3
+    assert len(out2) == 4
 
 
 def test_prompt_has_no_positive_user_references():

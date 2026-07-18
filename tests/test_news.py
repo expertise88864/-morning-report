@@ -1182,11 +1182,11 @@ def test_policy_user_focus_terms_boost_housing_policy():
         "policy", "「新青安3.0」拍板 設排富條款", False, "昨日新訊",
         mr._tw_intelligence_status("「新青安3.0」拍板 設排富條款"))
     assert imp >= 5.0                                # 2.9 → 5.4+,可進前三
-    assert why[0] == "使用者關注:房市政策"
+    assert why[0] == "本報關注:房市政策"   # 批#15 r3:顯示文案不得提使用者
     # 非房市政策媒體條目不受影響
     imp2, why2 = mr._tw_intelligence_importance(
         "policy", "行政院討論一般行政事項", False, "昨日新訊", "媒體報導")
-    assert "使用者關注:房市政策" not in why2 and imp2 < imp
+    assert "本報關注:房市政策" not in why2 and imp2 < imp
 
 
 def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):

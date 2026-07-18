@@ -12047,22 +12047,59 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
 
 # 批#15 地區相關性過濾:Google News 對「台中 學區」這類查詢會模糊回全台文章
 # (板橋租屋文實際上信),標題必須含中彰投雲地名或追蹤實體詞才收。
+# r3 補齊四縣市主要行政區(和美新案/埔里拓寬/虎尾園區這類只寫鄉鎮名的合法
+# 標題曾被漏收);歧義地名刻意不收:信義/仁愛/大安/和平(台北區名或常用詞)、
+# 田中(日本姓氏)、大城(「大城市」子串)、東勢/中寮等低頻者靠縣市名兜底。
 _LOCAL_REGION_TOKENS = (
-    "彰化", "台中", "臺中", "中捷", "南投", "斗六", "雲林", "中彰投", "草屯", "二林",
-    "員林", "鹿港", "彰濱", "中科", "烏日", "北屯", "西屯", "霧峰", "大里",
-    "太平", "豐原", "沙鹿", "清水", "大甲", "中友", "鐵路高架", "大埔截水溝",
-    "合新建設", "國雄建設", "明道中學", "葳格", "斗六高中", "彰基", "中國醫",
-    "中醫大", "台74",
+    "彰化", "台中", "臺中", "中捷", "南投", "斗六", "雲林", "中彰投",
+    # 彰化縣
+    "二林", "員林", "鹿港", "和美", "溪湖", "北斗", "田尾", "埤頭", "芳苑",
+    "福興", "伸港", "線西", "花壇", "芬園", "大村", "埔鹽", "埔心", "永靖",
+    "社頭", "二水", "溪州", "竹塘", "秀水", "彰濱",
+    # 台中市
+    "烏日", "北屯", "西屯", "南屯", "霧峰", "大里", "太平", "豐原", "沙鹿",
+    "清水", "大甲", "大雅", "潭子", "神岡", "后里", "新社", "石岡", "外埔",
+    "龍井", "梧棲", "大肚", "中科",
+    # 南投縣
+    "草屯", "埔里", "竹山", "集集", "名間", "魚池", "國姓", "水里", "鹿谷",
+    # 雲林縣
+    "虎尾", "西螺", "北港", "土庫", "麥寮", "林內", "古坑", "莿桐", "二崙",
+    "崙背", "褒忠", "四湖", "口湖", "水林", "元長", "大埤", "台西", "臺西",
+    # 追蹤實體
+    "中友", "鐵路高架", "大埔截水溝", "合新建設", "國雄建設", "明道中學",
+    "葳格", "斗六高中", "彰基", "中國醫", "中醫大", "台74",
 )
 
 
-def _local_title_bigrams(title: str) -> set:
-    """標題 → 字元 bigram 集合(去掉「 - 媒體名」尾綴與非文數字)。"""
+def _local_title_norm(title: str) -> str:
+    """標題正規化(去「 - 媒體名」尾綴與非文數字,小寫)。"""
     t = str(title or "")
     if " - " in t:   # 去媒體名尾綴,避免同媒體墊高相似度
         t = t.rsplit(" - ", 1)[0]
-    t = "".join(ch for ch in t.lower() if ch.isalnum())
+    return "".join(ch for ch in t.lower() if ch.isalnum())
+
+
+def _local_title_bigrams(title: str) -> set:
+    """標題 → 字元 bigram 集合。"""
+    t = _local_title_norm(title)
     return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) > 1 else ({t} if t else set())
+
+
+def _shared_bigram_runs(title: str, prev_grams: set) -> int:
+    """新標題中「所有 bigram 都落在 prev 集合」的極大連續區段數。
+    單一區段=兩標題只共享一條連續字串(通常是地標/實體名前綴,如「台中捷運藍線」)
+    ——那是同實體不同事件的典型樣貌;≥2 區段=共享內容散佈標題多處,才像同一事件
+    的改寫(「二林樂活運動館…西南角…動土」三段)。(Codex 批#15 r3)"""
+    t = _local_title_norm(title)
+    runs, i = 0, 0
+    while i < len(t) - 1:
+        if t[i:i + 2] in prev_grams:
+            runs += 1
+            while i < len(t) - 1 and t[i:i + 2] in prev_grams:
+                i += 1
+        else:
+            i += 1
+    return runs
 
 
 def _local_title_is_dup(title: str, seen_bigrams: list[set],
@@ -12091,10 +12128,19 @@ def _local_title_is_dup(title: str, seen_bigrams: list[set],
         overlap = len(grams & prev) / m
         need = 0.85 if m < 12 else threshold
         if overlap >= need:
-            return True
+            # 0.35–0.50 弱重疊帶(Codex 批#15 r3):共享內容若只集中在單一連續
+            # 區段(=共用地標/實體名前綴,如「台中捷運藍線」工程 vs 徵才 0.385),
+            # 是同實體不同事件,不算重複;真正的同事件改寫共享內容會散佈多處
+            # (二林運動館 0.391/0.435 = 三段)。≥0.50 維持無條件重複。
+            if overlap >= 0.50 or _shared_bigram_runs(title, prev) >= 2:
+                return True
         # 數字二級規則不適用短標題(Codex 批#15:「台74線車禍」vs「台74線拓寬」
-        # 共享 74 且短標題 overlap 3/5=0.6,會誤殺——短標題仍走 0.85 防護)
-        if m >= 12 and nums and prev_nums and (nums & prev_nums) and overlap >= 0.30:
+        # 共享 74 且短標題 overlap 3/5=0.6,會誤殺——短標題仍走 0.85 防護);
+        # 同樣要求共享內容 ≥2 區段(長標題共用「台74線」單段+路線號也不算)
+        # 門檻 0.25:71歲直腸癌兩改寫實測 0.263(r3 加上 runs>=2+共享數字
+        # 雙條件後,0.25 仍擋得住台74線這類單段+路線號的不同事件)
+        if (m >= 12 and nums and prev_nums and (nums & prev_nums)
+                and overlap >= 0.25 and _shared_bigram_runs(title, prev) >= 2):
             return True
     return False
 

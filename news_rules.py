@@ -282,7 +282,9 @@ def _tw_intelligence_importance(kind: str,
         # 政策條目 2.9 分被官方行政公告 6+ 分壓死,永遠擠不進前 3)。顯示層個人化,
         # 與股價模型無關。
         score += 2.5
-        reasons.insert(0, "使用者關注:房市政策")
+        # 顯示文案中性化(Codex 批#15 r3:「使用者關注」會原樣渲染進信件,
+        # 違反「不得提及使用者」規範)
+        reasons.insert(0, "本報關注:房市政策")
     topic = _tw_intelligence_topic(kind, title)
     if topic not in ("其他政策", "其他醫界"):
         score += 0.7

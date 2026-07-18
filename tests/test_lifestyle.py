@@ -2773,3 +2773,43 @@ def test_poly_binary_detail_deterministic_market_selection():
     assert "40%" in mr._poly_binary_detail("t|single", [rev], now)
     # 全部無法取價 → None
     assert mr._poly_binary_detail("t|none", [{"question": "x"}], now) is None
+
+
+def test_local_dup_landmark_prefix_not_killed_but_rewrites_still_are():
+    """Codex 批#15 r3:0.35-0.50 弱重疊帶要求共享內容 ≥2 區段——
+    同地標不同事件(單一「台中捷運藍線」前綴段)不得誤殺;
+    真正同事件的多段式改寫(二林運動館)仍須判重複。"""
+    a = "台中捷運藍線工程進度最新曝光"
+    b = "台中捷運藍線徵才簡章正式公布"
+    seen = [(mr._local_title_bigrams(a), set())]
+    assert mr._local_title_is_dup(b, seen) is False        # 同地標不同事件 → 保留
+    # 同事件多段改寫(實際案例,overlap 0.391/0.435)仍判重複
+    c = "活化西南角閒置土地 彰化「二林樂活運動館」斥資3.8億動土 - 全國廣播"
+    d = "（有影片）／二林樂活運動館動土 打造西南角首座大型運動場館 - 觀傳媒"
+    e = "彰化縣西南角首座大型運動場館 二林樂活運動館工程動土 - 警政時報"
+    seen_c = [(mr._local_title_bigrams(c), {"3.8"})]
+    assert mr._local_title_is_dup(d, seen_c) is True
+    assert mr._local_title_is_dup(e, seen_c) is True
+    # 71歲直腸癌兩改寫(共享數字+多區段)仍判重複
+    f = "71歲劉姓硬漢，二度檢查終於由彰基找出直腸癌位置。（照片彰基提供）"
+    g = "癌藏體內沒感覺 71歲男靠一次檢查揪直腸癌"
+    seen_f = [(mr._local_title_bigrams(f), {"71"})]
+    assert mr._local_title_is_dup(g, seen_f) is True
+    # 長標題共享路線號但事件不同(單段+數字)不得誤殺
+    h1 = "台74線崇德匝道拓寬工程週五動工改道"
+    h2 = "台74線大里段深夜連環車禍釀三傷"
+    seen_h = [(mr._local_title_bigrams(h1), {"74"})]
+    assert mr._local_title_is_dup(h2, seen_h) is False
+
+
+def test_local_region_tokens_cover_township_only_titles():
+    """Codex 批#15 r3:只寫鄉鎮名的合法中彰投雲標題不得被地區過濾漏收。"""
+    for title in ("和美新建案公開 每坪站上3字頭",
+                  "埔里外環道拓寬工程動工",
+                  "虎尾產業園區今動土 引進智慧農業",
+                  "溪湖果菜市場改建案通過"):
+        assert any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title
+    # 跨區誤收樣本仍被擋
+    for title in ("板橋租屋要住哪？車站旁套房溢價17%仍搶手",
+                  "信義區豪宅成交創高", "高雄輕軌新進度"):
+        assert not any(tok in title for tok in mr._LOCAL_REGION_TOKENS), title

@@ -4493,6 +4493,33 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73057716",
+        "title": "Tesla reports as earnings season revs up",
+        "published": "Sun, 19 Jul 2026 18:19:43 +0000",
+        "processed_at": "2026-07-19T20:24:41Z",
+        "digest": {
+          "summary_points": [
+            "特斯拉將於週三公佈第二季財報，預期營收264億美元、每股盈餘0.54美元，汽車毛利率（不含積分）略高於18%；已揭露第二季交車480,126輛與生產451,758輛。",
+            "分析師Yanis Zumpanos看好特斯拉，認為動能與低估潛力；而Agar Capital看空，主張1.5兆美元市值高估約1兆美元。",
+            "本週其他重要財報：週一達美樂披薩、AMC娛樂；週二諾華、3M、通用汽車、哈里伯頓；週三Alphabet、德州儀器、IBM、AT&T、ServiceNow、菲利普莫里斯、金德摩根；週四英特爾、T-Mobile、洛克希德馬丁、聯合太平洋、康卡斯特；週五美國運通、威瑞森、特許通訊。",
+            "經濟事件包括AMD的Advancing AI活動（週三）、范堡羅國際航空展（週一開幕）以及聖地牙哥國際漫畫展（週四開幕）。",
+            "除息日：卡特彼勒與高露潔棕欖（週一，分別於8/19與8/14發放）；戴爾（週二，7/31發放）；輝瑞（週五，9/1發放）。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "在財報前同時呈現看好（Yanis Zumpanos）與看空（Agar Capital）的觀點。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Seeking Alpha analysts, Yanis Zumpanos says Tesla enters earnings with momentum on its side."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73025372",
         "title": "Starship stall weighs on SpaceX",
         "published": "Fri, 17 Jul 2026 10:40:01 +0000",
@@ -5057,64 +5084,6 @@
           "notable_quote": "The consumer is worse than we'd anticipated and it's driven mainly by gas."
         },
         "shown_at": "2026-07-10T22:59:35Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72885787",
-        "title": "Levi's frayed forecast",
-        "published": "Thu, 09 Jul 2026 10:25:58 +0000",
-        "processed_at": "2026-07-09T10:43:45Z",
-        "digest": {
-          "summary_points": [
-            "Levi Strauss 第二季財報優於預期，但全年展望保守，因美國關稅影響，股價下跌6%。",
-            "Monster Beverage 宣布一股分割為兩股的股票分割，生效日為2026年8月。",
-            "Michael Burry 揭露持有 DraftKings 和 Flutter 股份，看好營運轉折點與規模，股價上漲。",
-            "SK hynix 美國上市據稱超額認購逾7倍。",
-            "Ampco Pittsburgh 股價飆升14%，因2026年上半年客戶訂單年增32%。",
-            "美股期指開盤前上漲；原油跌0.75%，比特幣漲0.9%，黃金漲0.8%。",
-            "今日經濟數據：初次申請失業救濟金人數與成屋銷售。"
-          ],
-          "tickers": [
-            {
-              "name": "Levi Strauss",
-              "code": "LEVI",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "因關稅因素展望保守，股價下跌6%。"
-            },
-            {
-              "name": "Monster Beverage",
-              "code": "MNST",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布股票分割，無明確方向。"
-            },
-            {
-              "name": "DraftKings",
-              "code": "DKNG",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Michael Burry 揭露持股，認為營運正處於轉折點。"
-            },
-            {
-              "name": "Flutter Entertainment",
-              "code": "FLUT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Michael Burry 揭露持股，認為基本面良好且具規模。"
-            },
-            {
-              "name": "Ampco Pittsburgh",
-              "code": "AP",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上半年客戶訂單年增32%，股價上漲14%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-09T23:10:08Z"
       }
     ]
   },

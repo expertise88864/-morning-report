@@ -6705,25 +6705,32 @@ def _active_top5_codes() -> set:
         for e in data if isinstance(data, list) else []:
             if e.get("type") != "top5":
                 continue
-            if e.get("status") == "awaiting_entry" or (
-                    e.get("status") == "entered"
+            if e.get("status") == "awaiting_entry":
+                out.update(str(c) for c in e.get("codes") or [])
+            elif (e.get("status") == "entered"
                     and any((e.get("res") or {}).get(h) is None
                             for h in ("5", "20"))):
-                out.update(str(c) for c in e.get("codes") or [])
+                # entered 只追實際進場的持倉(entry.keys());進場時湊不滿的
+                # 候選碼不再抓(Codex r2:停牌候選碼會拖累完整性)
+                out.update(str(c) for c in (e.get("entry") or {}))
         return out
     except Exception:
         return set()
 
 
 def _current_label_prices(model_history: list[dict]) -> tuple[dict[str, dict], bool]:
-    """Capture today's prices for prior universes, including stocks that left Top 100."""
-    needed_codes = {
+    """Capture today's prices for prior universes, including stocks that left Top 100.
+
+    批#23 r2/r3:Top5 未結算持倉(20 日視窗 > 5 日回看)一併抓價,但
+    **completeness 契約只對 training_codes 評定**——ledger-only 碼(可能停牌)
+    缺價若污染 label_prices_complete,會讓 build_model_training_rows 整段拒收
+    訓練標籤(顯示層帳本不得影響模型訓練可用性,Codex r2 P1)。"""
+    training_codes = {
         str(code)
         for record in (model_history or [])[-5:]
         for code in (record.get("stocks") or {})
     }
-    # 批#23 r2:Top5 未結算持倉(20 日視窗 > 5 日回看)也要持續抓價
-    needed_codes |= _active_top5_codes()
+    needed_codes = training_codes | _active_top5_codes()
     if not needed_codes:
         return {}, True
     rows = []
@@ -6737,7 +6744,9 @@ def _current_label_prices(model_history: list[dict]) -> tuple[dict[str, dict], b
             "close": _to_float(raw.get("ClosingPrice") or raw.get("收盤價")),
         })
     label_prices = _market_day_label_prices(rows, needed_codes)
-    return label_prices, len(label_prices) == len(needed_codes)
+    # completeness 只看 training_codes(見 docstring;ledger-only 缺價不污染)
+    complete = all(c in label_prices for c in training_codes)
+    return label_prices, complete
 
 
 def _latest_completed_session(sessions: list[str], target_session_date: str) -> Optional[str]:

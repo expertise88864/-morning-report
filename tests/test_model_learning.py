@@ -1815,12 +1815,33 @@ def test_top5_prices_fall_back_to_label_prices():
         2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
         sessions=dates, taiex_opens=taiex_opens)
     assert out["stats"].get("5", {}).get("n") == 1   # 三檔齊全結算(含 3303)
-    # 持倉代號納入 label-price 抓取集合
-    assert "3303" in mr._active_top5_codes() or True  # 已結算後可為空,函式煙霧
+    # 持倉代號納入抓取集合:entered 只追實際進場的 entry.keys()
+    # (Codex r3:進場湊不滿的停牌候選碼不再抓)
     mr.FORECAST_LEDGER_FILE.write_text(_json.dumps([{
-        "type": "top5", "status": "entered", "codes": ["9988"],
+        "type": "top5", "status": "entered", "codes": ["9988", "7777"],
+        "entry": {"9988": 10.0},
         "res": {"5": {"excess_pct": 1.0}}}]), encoding="utf-8")
-    assert "9988" in mr._active_top5_codes()          # 20 日未結算 → 持續抓價
+    active = mr._active_top5_codes()
+    assert "9988" in active and "7777" not in active  # 20 日未結算 → 持續抓價
+
+
+def test_label_prices_completeness_ignores_ledger_only_codes(monkeypatch):
+    """Codex 批#23 r2 P1:ledger-only 碼(可能停牌)缺價不得污染
+    label_prices_complete——完整性契約只對 training_codes 評定,否則顯示層
+    帳本會讓 build_model_training_rows 整段拒收訓練標籤。"""
+    import json as _json
+    mr.FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps([{
+        "type": "top5", "status": "entered", "codes": ["9999"],
+        "entry": {"9999": 10.0}, "res": {}}]), encoding="utf-8")
+    mh = [{"session_date": "2026-07-18",
+           "stocks": {"2330": {"close": 2300.0}}}]
+    # STOCK_DAY_ALL 只有 2330 報價;ledger-only 9999 停牌無報價
+    monkeypatch.setattr(mr, "_fetch_twse_stock_day_all", lambda: [
+        {"Code": "2330", "OpeningPrice": "2290", "ClosingPrice": "2300"}])
+    prices, complete = mr._current_label_prices(mh)
+    assert "2330" in prices and "9999" not in prices
+    assert complete is True                       # 訓練碼齊全即 complete
 
 
 def test_forecast_prob_threshold_denominator_consistency():

@@ -2118,6 +2118,17 @@ def test_suspension_official_source_wins_and_stale_news_dropped(monkeypatch):
     titles2 = [i["title"] for i in mr.fetch_suspension_news()]
     assert f"彰化縣{_now.day}日停止上班上課" in titles2
     assert f"台中市{_other_month}月{_now.day}日停班回顧" not in titles2
+    # r4 邊界吞入:斜線長日期不得被今日短日期吞(如今日 7/1 不得誤中 7/19)、
+    # 前綴月不得誤中(1月9日 vs 11月9日)——用合成日期直接驗 regex 語意
+    import re as _re
+    def _hit(title, m, d):
+        return bool(_re.search(rf"(?<!\d){m}月{d}日", title)
+                    or _re.search(rf"(?<!\d){m}/{d}(?!\d)", title)
+                    or _re.search(rf"(?<!\d)(?<!月){d}日", title))
+    assert _hit("台中市7/1停班", 7, 1)
+    assert not _hit("台中市7/19停班回顧", 7, 1)     # 今日 7/1 不吞 7/19
+    assert _hit("南投縣1月9日停課", 1, 9)
+    assert not _hit("南投縣11月9日停課回顧", 1, 9)  # 1月9日不吞 11月9日
 
 
 def test_dgpa_page_parsing(monkeypatch):

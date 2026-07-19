@@ -144,10 +144,14 @@ def main():
             ls = sum(ls_spread) / len(ls_spread) * 100
             mic = sum(ics) / len(ics)
             # 20 日重疊視窗 → Newey-West lag=19 為準(四審 P1);
-            # 五審:n<24 HAC 不可靠 → t 記 0 並於輸出標示樣本不足
-            t = (newey_west_t(ics, HORIZON - 1) or 0.0) if len(ics) >= 24 else 0.0
+            # 五審 r2:n<24 HAC 不可靠 → 顯示「n不足」而非數字 0
+            # (讀者無法區分「估出 t=0」與「拒絕估計」,Codex)
+            if len(ics) >= 24:
+                t_txt = f"{(newey_west_t(ics, HORIZON - 1) or 0.0):+8.1f}"
+            else:
+                t_txt = "   n不足"
             win = sum(1 for x in top_ex if x > 0) / len(top_ex) * 100
-            print(f"{name:<26}{te:>+9.2f}%{ls:>+9.2f}%{mic:>+9.4f}{t:>+8.1f}{win:>6.0f}%")
+            print(f"{name:<26}{te:>+9.2f}%{ls:>+9.2f}%{mic:>+9.4f}{t_txt}{win:>6.0f}%")
         else:
             print(f"{name:<26}{'樣本不足(此方案因子歷史太短)':>20}")
 

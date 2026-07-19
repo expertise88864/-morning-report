@@ -6694,6 +6694,27 @@ def backfill_model_history(model_history: list[dict],
     return merged, report
 
 
+def _active_top5_codes() -> set:
+    """Top5 帳本仍需後續價格的持倉代號(批#23 r2,Codex P1):跌出 Top100 的
+    弱勢持倉若不持續抓價,結算時被靜默剔除=倖存者偏誤讓 executable 成績偏高。"""
+    try:
+        if not FORECAST_LEDGER_FILE.exists():
+            return set()
+        data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+        out: set = set()
+        for e in data if isinstance(data, list) else []:
+            if e.get("type") != "top5":
+                continue
+            if e.get("status") == "awaiting_entry" or (
+                    e.get("status") == "entered"
+                    and any((e.get("res") or {}).get(h) is None
+                            for h in ("5", "20"))):
+                out.update(str(c) for c in e.get("codes") or [])
+        return out
+    except Exception:
+        return set()
+
+
 def _current_label_prices(model_history: list[dict]) -> tuple[dict[str, dict], bool]:
     """Capture today's prices for prior universes, including stocks that left Top 100."""
     needed_codes = {
@@ -6701,6 +6722,8 @@ def _current_label_prices(model_history: list[dict]) -> tuple[dict[str, dict], b
         for record in (model_history or [])[-5:]
         for code in (record.get("stocks") or {})
     }
+    # 批#23 r2:Top5 未結算持倉(20 日視窗 > 5 日回看)也要持續抓價
+    needed_codes |= _active_top5_codes()
     if not needed_codes:
         return {}, True
     rows = []
@@ -12764,6 +12787,15 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         except (ValueError, TypeError):
             return 0
 
+    def _px(rec: dict, code: str, field: str) -> Optional[float]:
+        """個股價格:當日 Top100(stocks)→ label_prices(prior-universe 持倉,
+        Codex 批#23 r2:跌出股票池的弱勢股只查 stocks 會被靜默剔除=倖存者偏誤)。"""
+        for src_key in ("stocks", "label_prices"):
+            v = ((rec.get(src_key) or {}).get(code) or {}).get(field)
+            if isinstance(v, (int, float)) and v:
+                return float(v)
+        return None
+
     for e in ledger:
         if e.get("type") != "top5":
             continue
@@ -12780,8 +12812,8 @@ def update_top5_ledger(model_history: list, top5: list[dict],
             if rec is not None and isinstance(t_open, (int, float)) and t_open:
                 entry = {}
                 for code in e.get("codes") or []:
-                    op = ((rec.get("stocks") or {}).get(str(code)) or {}).get("open")
-                    if isinstance(op, (int, float)) and op:
+                    op = _px(rec, str(code), "open")
+                    if op:
                         entry[str(code)] = op
                 if len(entry) >= 3:
                     e["entry"] = entry
@@ -12814,7 +12846,7 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 t0 = e.get("taiex_entry")
                 rets = []
                 for code, ep in (e.get("entry") or {}).items():
-                    ch = ((rec_h.get("stocks") or {}).get(code) or {}).get("close")
+                    ch = _px(rec_h, code, "close")
                     if all(isinstance(v, (int, float)) and v for v in (ep, ch)):
                         rets.append(ch / ep - 1)
                 if len(rets) < 3 or not all(
@@ -13047,19 +13079,23 @@ def _forecast_residuals(history: list, question: str) -> list[float]:
 
 
 def _forecast_prob_up(pred_pct: float, sigma: float,
-                      residuals: Optional[list] = None) -> float:
-    """點預測(%)→ P(開盤 > 昨收),夾 [0.02, 0.98](尾端保守)。
+                      residuals: Optional[list] = None,
+                      resid_threshold: Optional[float] = None) -> float:
+    """點預測 → P(開盤 > 昨收),夾 [0.02, 0.98](尾端保守)。
 
     批#23(五審 P1-2):殘差樣本 >= 30 時改 **empirical residual CDF**——
-    P(actual > 0) = P(residual > −pred) 用歷史殘差經驗分布直接數,不再假設
-    零均值常態(台股開盤 gap 肥尾/偏態,模型也可能有持續 bias);
-    樣本不足退回常態 CDF。"""
+    P(actual > 昨收) = P(residual > resid_threshold) 用歷史殘差經驗分布直接
+    數,不假設零均值常態。resid_threshold 必須與殘差同分母(r2,Codex P3:
+    2330 殘差分母=預測價,門檻 −pred_pct 的分母=昨收,尺度不一致——正確
+    門檻=(昨收−預測)/預測);未提供時退 −pred_pct(taiex 殘差分母=昨收,
+    兩者一致)。常態 fallback 同用 resid_threshold(1−CDF)。"""
+    thr = resid_threshold if isinstance(resid_threshold, (int, float))         else -pred_pct
     res = residuals or []
     if len(res) >= 30:
-        p = sum(1 for r in res if r > -pred_pct) / len(res)
+        p = sum(1 for r in res if r > thr) / len(res)
     else:
         from statistics import NormalDist
-        p = NormalDist(0.0, max(sigma, 0.05)).cdf(pred_pct)
+        p = 1.0 - NormalDist(0.0, max(sigma, 0.05)).cdf(thr)
     return round(min(0.98, max(0.02, p)), 3)
 
 
@@ -13162,13 +13198,16 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     today_qs = []
     specs = []
     p2330, l2330 = predictions.get("mid"), predictions.get("last_2330")
-    if isinstance(p2330, (int, float)) and isinstance(l2330, (int, float)) and l2330:
+    if isinstance(p2330, (int, float)) and isinstance(l2330, (int, float))             and l2330 and p2330:
+        # resid_threshold 與殘差同分母(=預測價;r2,Codex P3)
         specs.append(("2330_open_up", "2330 開盤高於昨收",
-                      (p2330 / l2330 - 1) * 100, l2330))
+                      (p2330 / l2330 - 1) * 100, l2330,
+                      (l2330 - p2330) / p2330 * 100))
     pt, lt = taiex_pred.get("pred_open"), taiex_pred.get("last_close")
     if isinstance(pt, (int, float)) and isinstance(lt, (int, float)) and lt:
+        pct_t = (pt / lt - 1) * 100
         specs.append(("taiex_open_up", "加權指數開盤高於昨收",
-                      (pt / lt - 1) * 100, lt))
+                      pct_t, lt, -pct_t))   # taiex 殘差分母=昨收,門檻=−pred_pct
     # 開盤時間守門(Codex 批#18 r4):目標 session 已開盤(09:00 TPE)後的
     # 手動補跑不得立題或覆蓋既有題——盤後的預測可看到當日行情,會污染
     # live 計分的誠實性;既有盤前題原樣保留
@@ -13187,10 +13226,11 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                     if str(e.get("target")) == str(target_session or "")
                     and e.get("resolved") is None]
         specs = []
-    for question, label, pred_pct, threshold in specs:
+    for question, label, pred_pct, threshold, resid_thr in specs:
         residuals = _forecast_residuals(history, question)
         sigma, n_sig = _forecast_sigma(history, question)
-        prob = _forecast_prob_up(pred_pct, sigma, residuals=residuals)
+        prob = _forecast_prob_up(pred_pct, sigma, residuals=residuals,
+                                 resid_threshold=resid_thr)
         past = [e for e in resolved_all
                 if e.get("question") == question and not e.get("void")]
         base = (round(sum(1 for e in past if e.get("outcome")) / len(past), 3)

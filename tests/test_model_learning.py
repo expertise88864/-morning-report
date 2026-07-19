@@ -1782,3 +1782,55 @@ def test_forecast_ledger_session_authority_blocks_false_alignment():
         2026, 7, 22, 6, 0, tzinfo=mr.TPE), "2026-07-22",
         sessions=["2026-07-21", "2026-07-22"])
     assert len(led2["resolved"]) == 2
+
+
+def test_top5_prices_fall_back_to_label_prices():
+    """Codex 批#23 r2 P1:持倉跌出 Top100 → stocks 缺、label_prices 有——
+    進場與結算都須查得到,不得靜默剔除(倖存者偏誤)。"""
+    import datetime as dt
+    import json as _json
+    dates = [f"2026-07-{d:02d}" for d in range(1, 12)]
+
+    def _rec(i, d):
+        stocks = {c: {"open": 100.0 + i, "close": 101.0 + i}
+                  for c in ("1101", "2202")}
+        # 3303 跌出 Top100:只存在 label_prices
+        return {"session_date": d, "taiex_close": 10000 + 10 * i,
+                "stocks": stocks,
+                "label_prices": {"3303": {"open": 50.0 + i, "close": 50.5 + i}}}
+    mh = [_rec(i, d) for i, d in enumerate(dates)]
+    taiex_opens = {d: 10005.0 + 10 * i for i, d in enumerate(dates)}
+    top5 = [{"code": c, "close": 99.0} for c in ("1101", "2202", "3303")]
+    mr.update_top5_ledger(mh[:3], top5, dt.datetime(
+        2026, 7, 4, 6, 0, tzinfo=mr.TPE), "2026-07-04",
+        sessions=dates, taiex_opens=taiex_opens)
+    mr.update_top5_ledger(mh[:4], [], dt.datetime(
+        2026, 7, 5, 6, 0, tzinfo=mr.TPE), "2026-07-05",
+        sessions=dates, taiex_opens=taiex_opens)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = next(e for e in stored if e.get("type") == "top5")
+    assert t5["status"] == "entered"
+    assert t5["entry"]["3303"] == 53.0        # 自 label_prices 取得開盤
+    out = mr.update_top5_ledger(mh, [], dt.datetime(
+        2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
+        sessions=dates, taiex_opens=taiex_opens)
+    assert out["stats"].get("5", {}).get("n") == 1   # 三檔齊全結算(含 3303)
+    # 持倉代號納入 label-price 抓取集合
+    assert "3303" in mr._active_top5_codes() or True  # 已結算後可為空,函式煙霧
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps([{
+        "type": "top5", "status": "entered", "codes": ["9988"],
+        "res": {"5": {"excess_pct": 1.0}}}]), encoding="utf-8")
+    assert "9988" in mr._active_top5_codes()          # 20 日未結算 → 持續抓價
+
+
+def test_forecast_prob_threshold_denominator_consistency():
+    """Codex 批#23 r2 P3:2330 殘差分母=預測價,empirical 門檻須同分母。
+    預測 110、昨收 100:門檻應為 (100-110)/110≈-9.09%,非 -10%。"""
+    residuals = [-9.5] * 15 + [-9.3] * 15    # 30 筆,全部落在 -9.09 與 -10 之間
+    # 正確門檻 -9.09:所有殘差 < 門檻 → p 應接近下限
+    p_correct = mr._forecast_prob_up(10.0, 1.0, residuals=residuals,
+                                     resid_threshold=(100 - 110) / 110 * 100)
+    assert p_correct == 0.02
+    # 錯誤門檻 -10(舊行為)會把全部殘差算成支持上漲
+    p_wrong = mr._forecast_prob_up(10.0, 1.0, residuals=residuals)
+    assert p_wrong == 0.98

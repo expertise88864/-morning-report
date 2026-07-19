@@ -6631,6 +6631,13 @@ def save_model_history_records(records: list[dict],
                 continue
             _atomic_write_bytes(path, gzip.compress(payload.encode("utf-8"), mtime=0))
             written += 1
+        # 批#25:分區寫完後重建完整性 manifest(checksum/筆數/日期範圍)——
+        # 供 loader strict 驗證截斷/竄改;失敗不影響晨報(下次補上)
+        try:
+            from model_history_store import write_partition_manifest
+            write_partition_manifest(MODEL_HISTORY_DIR)
+        except Exception as e:
+            print(f"[model_state] manifest 產生略過: {e}", file=sys.stderr)
         print(f"[model_state] 已寫入完整股票池快照(共 {len(history)} 個交易日,"
               f"更新 {written} 個月分區)")
     except Exception as e:
@@ -18049,6 +18056,19 @@ def main() -> int:
     _persist_srcs = (quotes.get("SOURCE_HEALTH") or {}).get("persistent_failures") or []
     if _persist_srcs:
         warnings.append(f"來源連續失敗:{'、'.join(map(str, _persist_srcs[:4]))}")
+    # 批#25:模型歷史分區完整性(production 不擋——晨報仍寄,但健康行提示且
+    # MODEL_MONITORING 標記,供人工檢查是否有分區遭截斷/竄改)
+    try:
+        from model_history_store import verify_history_integrity
+        _integ = verify_history_integrity(MODEL_HISTORY_DIR, strict=False)
+        quotes["HISTORY_INTEGRITY"] = _integ
+        if not _integ.get("ok"):
+            _kinds = sorted({i["kind"] for i in _integ.get("issues") or []})
+            warnings.append(f"模型歷史完整性異常:{'、'.join(_kinds)}(見 log)")
+            for _i in _integ.get("issues") or []:
+                print(f"[integrity] {_i['kind']}: {_i['detail']}", file=sys.stderr)
+    except Exception as e:
+        print(f"[integrity] 完整性檢查略過: {e}", file=sys.stderr)
     quotes["HEALTH_WARNINGS"] = warnings
     print(f"[main] 事件/來源健康完成 ({time.monotonic()-_ml_t0:.1f}s);跑 walk-forward…")
     quotes["MODEL_WALK_FORWARD"] = evaluate_model_walk_forward(

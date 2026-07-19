@@ -1855,3 +1855,98 @@ def test_forecast_prob_threshold_denominator_consistency():
     # 錯誤門檻 -10(舊行為)會把全部殘差算成支持上漲
     p_wrong = mr._forecast_prob_up(10.0, 1.0, residuals=residuals)
     assert p_wrong == 0.98
+
+
+def _write_partition(pdir, name, items):
+    import gzip as _gz
+    import json as _js
+    pdir.mkdir(parents=True, exist_ok=True)
+    payload = _js.dumps(items, ensure_ascii=False, separators=(",", ":"))
+    (pdir / name).write_bytes(_gz.compress(payload.encode("utf-8"), mtime=0))
+
+
+def test_history_manifest_write_and_verify_clean(tmp_path):
+    """批#25:manifest 產生 + 乾淨驗證(checksum/筆數/月份全對)。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"2330": {"close": 1}}},
+        {"session_date": "2026-07-02", "stocks": {"2330": {"close": 2}}}])
+    m = mh.write_partition_manifest(pdir)
+    assert m["schema_version"] == mh.HISTORY_SCHEMA_VERSION
+    assert m["partitions"]["2026-07.json.gz"]["row_count"] == 2
+    assert m["partitions"]["2026-07.json.gz"]["min_date"] == "2026-07-01"
+    rep = mh.verify_history_integrity(pdir)
+    assert rep["ok"] is True and rep["has_manifest"] is True and rep["issues"] == []
+
+
+def test_history_integrity_detects_tamper_and_truncation(tmp_path):
+    """批#25:manifest 產生後,分區內容遭竄改(仍可解析)→ checksum_mismatch;
+    被截斷 → row_count_mismatch;strict 模式 raise。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"2330": {"close": 1}}},
+        {"session_date": "2026-07-02", "stocks": {"2330": {"close": 2}}},
+        {"session_date": "2026-07-03", "stocks": {"2330": {"close": 3}}}])
+    mh.write_partition_manifest(pdir)
+    # 竄改:改一筆收盤(仍是合法 JSON)
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"2330": {"close": 999}}},
+        {"session_date": "2026-07-02", "stocks": {"2330": {"close": 2}}},
+        {"session_date": "2026-07-03", "stocks": {"2330": {"close": 3}}}])
+    rep = mh.verify_history_integrity(pdir)
+    assert not rep["ok"]
+    assert any(i["kind"] == "checksum_mismatch" for i in rep["issues"])
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.verify_history_integrity(pdir, strict=True)
+    # 截斷:剩一筆
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"2330": {"close": 1}}}])
+    rep2 = mh.verify_history_integrity(pdir)
+    assert any(i["kind"] == "row_count_mismatch" for i in rep2["issues"])
+
+
+def test_history_integrity_month_mismatch_and_missing_manifest(tmp_path):
+    """批#25:分區含非本月日期 → month_mismatch(無需 manifest);
+    無 manifest(轉換期)→ 只做結構檢查、has_manifest=False。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {}},
+        {"session_date": "2026-06-30", "stocks": {}}])   # 六月日期在七月分區
+    rep = mh.verify_history_integrity(pdir)
+    assert rep["has_manifest"] is False
+    assert any(i["kind"] == "month_mismatch" for i in rep["issues"])
+
+
+def test_history_integrity_missing_partition_detected(tmp_path):
+    """批#25:manifest 登錄但檔案消失 → missing_partition。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [{"session_date": "2026-07-01", "stocks": {}}])
+    mh.write_partition_manifest(pdir)
+    (pdir / "2026-07.json.gz").unlink()
+    rep = mh.verify_history_integrity(pdir)
+    assert any(i["kind"] == "missing_partition" for i in rep["issues"])
+
+
+def test_load_model_history_strict_raises_on_integrity_violation(tmp_path):
+    """批#25:load_model_history(strict=True) 除可解析外,也驗完整性——
+    竄改分區(manifest 不同步)即 raise。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {}},
+        {"session_date": "2026-07-02", "stocks": {}}])
+    mh.write_partition_manifest(pdir)
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"x": 1}},
+        {"session_date": "2026-07-02", "stocks": {}}])
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.load_model_history(tmp_path / "none.json", pdir, strict=True)
+    # 非 strict(production):不 raise,回得出資料
+    out = mh.load_model_history(tmp_path / "none.json", pdir, strict=False)
+    assert len(out) == 2

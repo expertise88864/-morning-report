@@ -1,0 +1,71 @@
+{
+ "schema_version": 3,
+ "partitions": {
+  "2025-09.json.gz": {
+   "row_count": 20,
+   "min_date": "2025-09-02",
+   "max_date": "2025-09-30",
+   "sha256": "d214e8e7101b99c6d5bb52fe61f8db67be32f66fc8d0fe4f1cbc43ac8466b1a1"
+  },
+  "2025-10.json.gz": {
+   "row_count": 20,
+   "min_date": "2025-10-01",
+   "max_date": "2025-10-31",
+   "sha256": "c938ea349c7fa9abf01eaf2fc720e2cea4620b6038d8f1328bef929cf6b2caa6"
+  },
+  "2025-11.json.gz": {
+   "row_count": 20,
+   "min_date": "2025-11-03",
+   "max_date": "2025-11-28",
+   "sha256": "92d297474f90b6b0553f433741284e7c1269b3cf07db86634b0eaa90fdd9a888"
+  },
+  "2025-12.json.gz": {
+   "row_count": 22,
+   "min_date": "2025-12-01",
+   "max_date": "2025-12-31",
+   "sha256": "44e9763ea7b82915604e5b5f18421877910cb21a33aaac60273363963176fc84"
+  },
+  "2026-01.json.gz": {
+   "row_count": 21,
+   "min_date": "2026-01-02",
+   "max_date": "2026-01-30",
+   "sha256": "50877d4855b1dbd8068ec41fe52fc9431d3423e34a4c246662fc87225136a5eb"
+  },
+  "2026-02.json.gz": {
+   "row_count": 12,
+   "min_date": "2026-02-02",
+   "max_date": "2026-02-26",
+   "sha256": "cad14cb9d39fa5997e68e14f4dd004e3fee91b0466995888c39d095ea34b0bd9"
+  },
+  "2026-03.json.gz": {
+   "row_count": 22,
+   "min_date": "2026-03-02",
+   "max_date": "2026-03-31",
+   "sha256": "402ba6707af935dce0e9285a2878794bdf43f7887d867e68b3c11c52a8646f44"
+  },
+  "2026-04.json.gz": {
+   "row_count": 20,
+   "min_date": "2026-04-01",
+   "max_date": "2026-04-30",
+   "sha256": "ff5b3dcbb47001764ef3fa8c38e50337eb4d1ecfbc51634760740bc89d710a63"
+  },
+  "2026-05.json.gz": {
+   "row_count": 20,
+   "min_date": "2026-05-04",
+   "max_date": "2026-05-29",
+   "sha256": "040ebd3efc328a819916fa57af71a4c6e27ab4cf82536a96eb56d5191579544d"
+  },
+  "2026-06.json.gz": {
+   "row_count": 21,
+   "min_date": "2026-06-01",
+   "max_date": "2026-06-30",
+   "sha256": "34b8c59b535d4cbbb3fba3e3500b579ddd9e3099e002cf88b74fe2da1189247a"
+  },
+  "2026-07.json.gz": {
+   "row_count": 12,
+   "min_date": "2026-07-01",
+   "max_date": "2026-07-17",
+   "sha256": "09fa9edb9c6efb9d2229411bbe76307e9109f286b8a3cccda1331b92ba5de2ce"
+  }
+ }
+}

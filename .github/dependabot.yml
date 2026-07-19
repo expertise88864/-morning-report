@@ -1,0 +1,11 @@
+# 批#24:pip 與 GitHub Actions 依賴的每週更新 PR(lock 檔的升級入口)。
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

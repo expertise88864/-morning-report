@@ -5653,6 +5653,32 @@ _OFFICIAL_HTTP_HEADERS = {
 }
 
 
+_RELAXED_STRICT_SESSION: dict = {}
+
+
+def _relaxed_strict_session():
+    """requests Session(掛 relaxed-strict TLS adapter):只放寬 3.13 的
+    VERIFY_X509_STRICT 旗標,鏈+主機名驗證保留(批#24;與
+    _http_get_relaxed_strict 同語意,requests 版)。lazy 單例。"""
+    if "s" not in _RELAXED_STRICT_SESSION:
+        import ssl
+
+        class _Adapter(requests.adapters.HTTPAdapter):
+            def init_poolmanager(self, *args, **kwargs):
+                ctx = ssl.create_default_context()
+                try:
+                    ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+                except AttributeError:
+                    pass
+                kwargs["ssl_context"] = ctx
+                return super().init_poolmanager(*args, **kwargs)
+
+        s = requests.Session()
+        s.mount("https://", _Adapter())
+        _RELAXED_STRICT_SESSION["s"] = s
+    return _RELAXED_STRICT_SESSION["s"]
+
+
 def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
     """抓官方來源,回傳 response 物件(呼叫端可取 .content 餵 feedparser 或 .text 解 HTML)。"""
     from urllib.parse import urlsplit
@@ -5664,14 +5690,14 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
         response = _http_get(url, timeout=timeout, headers=headers)
     except requests.exceptions.SSLError:
         stats["ssl_error"] = stats.get("ssl_error", 0) + 1
-        if os.environ.get("ALLOW_INSECURE_OFFICIAL_SSL") != "1":
-            raise
+        # 批#24:SSLError 改 relaxed-strict 重試(只放寬 Python 3.13 對缺
+        # Subject Key Identifier 老憑證的 strict 檢查;**憑證鏈與主機名驗證
+        # 全部保留**)——取代舊的 ALLOW_INSECURE_OFFICIAL_SSL verify=False
+        # 後門(完全跳過驗證,不安全,已移除)。政府老憑證(dgpa/mohw 等)
+        # 的正解,批#22 已於 dgpa 驗證。
+        response = _relaxed_strict_session().get(
+            url, timeout=timeout, headers=headers)
         stats["ssl_relaxed"] = stats.get("ssl_relaxed", 0) + 1
-        import warnings
-        import urllib3
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
-            response = _http_get(url, timeout=timeout, headers=headers, verify=False)
     stats["http_status"] = response.status_code
     stats["content_type"] = response.headers.get("content-type", "")
     response.raise_for_status()

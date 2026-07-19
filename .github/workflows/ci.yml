@@ -22,7 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt "ruff==0.15.15"
+          pip install -r requirements.lock
+          pip install "ruff==0.15.15"
 
       # 全 repo 掃描,不再手寫模組清單(GPT-5.6 review P2:清單曾漏掉
       # render_utils/news_rules/session_calendar 等拆出模組,每次拆檔都要記得更新)
@@ -55,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.lock
 
       - name: Run morning report (DRY_RUN, no email)
         env:

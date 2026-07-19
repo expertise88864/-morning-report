@@ -11503,13 +11503,15 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
                 if pub_dt < cutoff:
                     continue
                 # 昨日發布 → 標題必須明指今天才收:「明天/明日/明起」相對詞,
-                # 或與台北今日相符的絕對日期(「7月19日」「7/19」——Codex r1:
-                # 縣市公告常用絕對日期,只認相對詞會漏真公告)
-                _today_forms = (f"{_now_tpe.month}月{_now_tpe.day}日",
-                                f"{_now_tpe.month}/{_now_tpe.day}")
-                if pub_dt < midnight and not any(
-                        k in title for k in ("明天", "明日", "明起",
-                                             *_today_forms)):
+                # 或與台北今日相符的絕對日期——「7月19日」「7/19」,以及裸
+                # 「19日」(r2:須不被數字或「月」前綴,擋「6月19日」他月誤中)
+                import re as _re
+                _today_hit = (
+                    f"{_now_tpe.month}月{_now_tpe.day}日" in title
+                    or f"{_now_tpe.month}/{_now_tpe.day}" in title
+                    or _re.search(rf"(?<!\d)(?<!月){_now_tpe.day}日", title))
+                if pub_dt < midnight and not (_today_hit or any(
+                        k in title for k in ("明天", "明日", "明起"))):
                     continue
             items.append({"title": title[:90], "link": str(entry.get("link", ""))})
         return items

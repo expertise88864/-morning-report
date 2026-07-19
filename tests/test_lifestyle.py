@@ -2107,6 +2107,17 @@ def test_suspension_official_source_wins_and_stale_news_dropped(monkeypatch):
     assert "致災性豪雨強襲!台中市今晚停班停課 林佳龍說明原因" not in titles
     assert "南投縣宣布明天停止上班上課" in titles
     assert f"雲林縣宣布{_now.month}月{_now.day}日停止上班上課" in titles
+    # r2 裸日形式:「19日停班」收;「6月19日」他月不收(月前綴擋)
+    Feed.entries.append(
+        {"title": f"彰化縣{_now.day}日停止上班上課", "link": "https://x/bare",
+         "published_parsed": yesterday_evening})
+    _other_month = 6 if _now.month != 6 else 5
+    Feed.entries.append(
+        {"title": f"台中市{_other_month}月{_now.day}日停班回顧", "link": "https://x/om",
+         "published_parsed": yesterday_evening})
+    titles2 = [i["title"] for i in mr.fetch_suspension_news()]
+    assert f"彰化縣{_now.day}日停止上班上課" in titles2
+    assert f"台中市{_other_month}月{_now.day}日停班回顧" not in titles2
 
 
 def test_dgpa_page_parsing(monkeypatch):

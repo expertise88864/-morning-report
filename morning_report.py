@@ -6604,6 +6604,7 @@ def save_model_history_records(records: list[dict],
             by_month.setdefault(str(item.get("session_date", ""))[:7], []).append(item)
         MODEL_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
         written = 0
+        rewritten_names: set = set()
         for month, items in by_month.items():
             if not month:
                 continue
@@ -6631,11 +6632,13 @@ def save_model_history_records(records: list[dict],
                 continue
             _atomic_write_bytes(path, gzip.compress(payload.encode("utf-8"), mtime=0))
             written += 1
-        # 批#25:分區寫完後重建完整性 manifest(checksum/筆數/日期範圍)——
-        # 供 loader strict 驗證截斷/竄改;失敗不影響晨報(下次補上)
+            rewritten_names.add(path.name)
+        # 批#25:分區寫完後重建完整性 manifest;只把「本次刻意重寫」的分區
+        # 當新基線(rewritten_names)——未重寫卻異動的分區保留舊 checksum,
+        # 不 baseline 損壞(Codex r1 P1)。失敗不影響晨報(下次補上)
         try:
             from model_history_store import write_partition_manifest
-            write_partition_manifest(MODEL_HISTORY_DIR)
+            write_partition_manifest(MODEL_HISTORY_DIR, rewritten=rewritten_names)
         except Exception as e:
             print(f"[model_state] manifest 產生略過: {e}", file=sys.stderr)
         print(f"[model_state] 已寫入完整股票池快照(共 {len(history)} 個交易日,"

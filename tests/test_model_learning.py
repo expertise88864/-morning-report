@@ -1950,3 +1950,55 @@ def test_load_model_history_strict_raises_on_integrity_violation(tmp_path):
     # 非 strict(production):不 raise,回得出資料
     out = mh.load_model_history(tmp_path / "none.json", pdir, strict=False)
     assert len(out) == 2
+
+
+def test_manifest_does_not_baseline_unrewritten_damage(tmp_path):
+    """Codex 批#25 r1 P1:未重寫卻被外部竄改的分區,重建 manifest 時不得當新
+    基線——舊 checksum 保留,strict verify 仍抓得到。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-06.json.gz", [
+        {"session_date": "2026-06-01", "stocks": {"a": 1}}])
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {"a": 1}}])
+    mh.write_partition_manifest(pdir, rewritten={"2026-06.json.gz", "2026-07.json.gz"})
+    # 六月分區被外部竄改;本次 save 只重寫七月(六月不在 rewritten)
+    _write_partition(pdir, "2026-06.json.gz", [
+        {"session_date": "2026-06-01", "stocks": {"a": 999}}])
+    mh.write_partition_manifest(pdir, rewritten={"2026-07.json.gz"})
+    # manifest 的六月條目仍是舊 checksum → verify 抓到 checksum_mismatch
+    rep = mh.verify_history_integrity(pdir)
+    assert any(i["kind"] == "checksum_mismatch" and "2026-06" in i["detail"]
+               for i in rep["issues"])
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.verify_history_integrity(pdir, strict=True)
+    # 對照:七月是刻意重寫,採納新內容(不誤報)
+    assert not any(i["kind"] == "checksum_mismatch" and "2026-07" in i["detail"]
+                   for i in rep["issues"])
+
+
+def test_manifest_structurally_malformed_flagged_corrupt(tmp_path):
+    """Codex 批#25 r1 P2:合法 JSON 但結構錯(partitions 是 list、entry 非 dict)
+    → corrupt,不得 AttributeError;strict raise。"""
+    import json as _js
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    pdir.mkdir(parents=True)
+    _write_partition(pdir, "2026-07.json.gz", [{"session_date": "2026-07-01", "stocks": {}}])
+    # partitions 是 list
+    (pdir / mh.MANIFEST_NAME).write_text(
+        _js.dumps({"schema_version": 3, "partitions": []}), encoding="utf-8")
+    rep = mh.verify_history_integrity(pdir)
+    assert any(i["kind"] == "corrupt" for i in rep["issues"])
+    # entry 非 dict
+    (pdir / mh.MANIFEST_NAME).write_text(
+        _js.dumps({"schema_version": 3,
+                   "partitions": {"2026-07.json.gz": "bad"}}), encoding="utf-8")
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.verify_history_integrity(pdir, strict=True)
+    # root 非 dict
+    (pdir / mh.MANIFEST_NAME).write_text(_js.dumps([1, 2, 3]), encoding="utf-8")
+    assert any(i["kind"] == "corrupt"
+               for i in mh.verify_history_integrity(pdir)["issues"])

@@ -45,20 +45,62 @@ def _partition_entry(items: list) -> dict:
     }
 
 
-def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR) -> dict:
-    """讀取所有分區、產生完整性 manifest(state/model_history/manifest.json)。
-    寫入端(morning_report save 路徑)於分區寫完後呼叫一次;回寫出的 manifest。
-    失敗回空(不影響晨報,只是本次無 manifest,下次補上)。"""
+def _read_manifest_partitions(partition_dir: Path) -> dict:
+    """讀既有 manifest 的 partitions 區(結構錯誤回空)。"""
+    mpath = partition_dir / MANIFEST_NAME
+    if not mpath.exists():
+        return {}
+    try:
+        m = json.loads(mpath.read_text(encoding="utf-8"))
+        parts = m.get("partitions") if isinstance(m, dict) else None
+        return parts if isinstance(parts, dict) else {}
+    except Exception:
+        return {}
+
+
+def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
+                             rewritten: "set | None" = None) -> dict:
+    """產生完整性 manifest(state/model_history/manifest.json)。
+
+    Codex 批#25 r1 P1:**不得把已損壞的分區重新當成新基線**——只有本次
+    「刻意且成功重寫」的分區(rewritten,以檔名指定)才計算新 sha256;
+    未重寫的分區與既有 manifest 比對:相符→沿用舊條目;不符(=被外部
+    截斷/竄改)→**保留舊條目**(讓後續 strict verify 持續抓到),不 baseline。
+    rewritten=None(相容舊呼叫)則全部重算——僅供一次性初始化用。
+    失敗回空(不影響晨報,只是本次無新 manifest)。"""
     manifest: dict = {"schema_version": HISTORY_SCHEMA_VERSION, "partitions": {}}
     if not partition_dir.exists():
         return manifest
+    old = _read_manifest_partitions(partition_dir)
+    baseline_all = rewritten is None
+    rewritten = set(rewritten or [])
+    damaged: list = []
     for path in sorted(partition_dir.glob("*.json.gz")):
+        name = path.name
         try:
             data = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
-            if isinstance(data, list):
-                manifest["partitions"][path.name] = _partition_entry(data)
+            if not isinstance(data, list):
+                raise ValueError("非 list")
+            entry = _partition_entry(data)
         except Exception as e:
-            print(f"[model_state] manifest 略過 {path.name}: {e}", file=sys.stderr)
+            # 損壞:保留舊條目(strict 仍會抓 checksum/筆數),不接受損壞版
+            if name in old:
+                manifest["partitions"][name] = old[name]
+            damaged.append(f"{name}({e})")
+            continue
+        if baseline_all or name in rewritten:
+            manifest["partitions"][name] = entry          # 刻意重寫 → 新基線
+        elif name in old:
+            if entry.get("sha256") == old[name].get("sha256"):
+                manifest["partitions"][name] = old[name]   # 未變 → 沿用
+            else:
+                manifest["partitions"][name] = old[name]   # 未重寫卻變了=損壞
+                damaged.append(f"{name}(未重寫卻與 manifest 不符)")
+        else:
+            manifest["partitions"][name] = entry           # 全新分區
+    if damaged:
+        print(f"[model_state] ⚠ manifest 偵測到未重寫卻異動/損壞的分區,"
+              f"保留舊 checksum 供 strict 稽核: {damaged[:4]}", file=sys.stderr)
     tmp = partition_dir / (MANIFEST_NAME + ".tmp")
     tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=1),
                    encoding="utf-8")
@@ -86,7 +128,20 @@ def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
         report["has_manifest"] = True
         try:
             manifest = json.loads(mpath.read_text(encoding="utf-8"))
-            if manifest.get("schema_version") != HISTORY_SCHEMA_VERSION:
+            # 結構防呆(Codex 批#25 r1 P2:合法 JSON 但結構錯——root/partitions
+            # 非 dict、entry 非 dict——直接存取 .items()/.get() 會拋
+            # AttributeError 被 production 吞掉、strict 月報也不當作完整性錯誤)
+            if not isinstance(manifest, dict):
+                _flag("corrupt", f"manifest root 非 dict: {type(manifest).__name__}")
+                manifest = None
+            elif not isinstance(manifest.get("partitions"), dict):
+                _flag("corrupt", "manifest partitions 非 dict")
+                manifest = None
+            elif any(not isinstance(v, dict)
+                     for v in manifest["partitions"].values()):
+                _flag("corrupt", "manifest 有非 dict 的 partition 條目")
+                manifest = None
+            elif manifest.get("schema_version") != HISTORY_SCHEMA_VERSION:
                 _flag("schema_mismatch",
                       f"manifest schema {manifest.get('schema_version')} "
                       f"!= {HISTORY_SCHEMA_VERSION}")

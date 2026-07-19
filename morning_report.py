@@ -11414,20 +11414,80 @@ def _typhoon_signal(locs: list[dict]) -> str:
     return ";".join(hits) + "——預測僅供參考,是否停班停課以縣市政府公告為準"
 
 
+_DGPA_NDS_URL = "https://www.dgpa.gov.tw/typh/daily/nds.html"
+
+
+def _http_get_relaxed_strict(url: str, timeout: int = 15) -> bytes:
+    """政府老憑證專用抓取:dgpa.gov.tw 等站的 TLS 憑證缺 Subject Key Identifier,
+    Python 3.13 預設 VERIFY_X509_STRICT 會拒絕。只放寬 strict 旗標——
+    **憑證鏈與主機名驗證全部保留**,非跳過驗證。"""
+    import ssl
+    import urllib.request as _ur
+    ctx = ssl.create_default_context()
+    try:
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    except AttributeError:
+        pass   # 舊版 Python 本就無 strict,行為相同
+    req = _ur.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with _ur.urlopen(req, timeout=timeout, context=ctx) as r:
+        return r.read()
+
+
+def fetch_dgpa_suspension() -> Optional[list[dict]]:
+    """人事行政總處「天然災害停止上班及上課情形」官方頁(批#22,2026-07-19):
+    停班停課的**唯一權威來源**。回中彰投雲相關列 [{"title","link"}...];
+    官方頁正常且無中彰投雲公告 → 回 [](=確定沒有,卡片缺席);
+    抓取/解析失敗或頁面日期非今日 → 回 None(未知,由呼叫端走新聞備援)。"""
+    import re as _re
+    try:
+        body = _http_get_relaxed_strict(_DGPA_NDS_URL).decode("utf-8", "replace")
+        # 頁面日期(民國年)必須是今天——非今日頁面寧可當「未知」也不當「無公告」
+        md = _re.search(r"(\d{2,3})年\s*(\d{1,2})月\s*(\d{1,2})日\s*天然災害", body)
+        if not md:
+            return None
+        page_date = dt.date(int(md.group(1)) + 1911,
+                            int(md.group(2)), int(md.group(3)))
+        if page_date != dt.datetime.now(TPE).date():
+            return None
+        m = _re.search(r'<TABLE id="Table".*?</TABLE>', body, _re.S | _re.I)
+        if not m:
+            return None
+        out: list[dict] = []
+        for row in _re.findall(r"<TR[^>]*>(.*?)</TR>", m.group(0), _re.S | _re.I):
+            cells = [_re.sub(r"<[^>]+>", "", c).strip() for c in _re.findall(
+                r"<TD[^>]*>(.*?)</TD>", row, _re.S | _re.I)]
+            if len(cells) < 2:
+                continue
+            county, status = cells[0], _re.sub(r"\s+", " ", cells[1])[:120]
+            if any(r in county for r in ("彰化", "台中", "臺中", "南投", "雲林")):
+                out.append({"title": f"人事總處公告:{county} {status}",
+                            "link": _DGPA_NDS_URL})
+        return out
+    except Exception as e:
+        print(f"[weather] 人事總處停班停課頁抓取失敗(退新聞備援): {e}",
+              file=sys.stderr)
+        return None
+
+
 def fetch_suspension_news(hours: int = 30) -> list[dict]:
-    del hours   # 視窗改為固定「台北昨日 16:00 起」,參數保留介面相容
-    """停班停課公告新聞(中彰投雲):人事總處頁面憑證缺 SKI 無法程式抓,改新聞源——
-    縣市公告一出新聞秒發,晨報 06:00 一定抓得到前晚公告。過濾:標題須含在地縣市名
-    且含停班/停課字樣(排除社論/評論雜訊)。失敗回空。"""
+    del hours   # 視窗改為固定語意,參數保留介面相容
+    """停班停課(中彰投雲):**官方(人事總處)為準**——官方頁正常時完全以其
+    為據(無公告=卡片缺席,新聞一概不收);官方頁抓不到才退新聞備援。
+
+    新聞備援語意(批#22,2026-07-19 使用者回報:週六晚「台中市今晚停班停課」
+    新聞在週日早上仍被當今日公告顯示):昨日發布的新聞其「今晚/今日」指昨天,
+    必須含「明天/明日/明起」才可能指今天;今日 00:00(TPE)後發布者照收。"""
+    official = fetch_dgpa_suspension()
+    if official is not None:
+        return official[:4]
     regions = ("彰化", "台中", "臺中", "南投", "雲林")
     try:
         feed = _feedparser_parse_url_with_timeout(
             _gnews_rss("停班停課 OR 颱風假 OR 停止上班", when="2d"))
-        # 只收「台北昨日 16:00 之後」發布的公告新聞:今日停班的公告都在前晚 18-23 時
-        # 或今晨發布;更早的「今日照常/停班」其『今日』指昨天,跨日顯示會誤導(Codex review)
         _now_tpe = dt.datetime.now(TPE)
-        cutoff = (_now_tpe - dt.timedelta(days=1)).replace(
-            hour=16, minute=0, second=0, microsecond=0).astimezone(dt.timezone.utc)
+        midnight = _now_tpe.replace(hour=0, minute=0, second=0,
+                                    microsecond=0).astimezone(dt.timezone.utc)
+        cutoff = midnight - dt.timedelta(hours=8)   # 前晚 16:00 起才可能是今日公告
         items = []
         for entry in feed.entries:
             if len(items) >= 4:
@@ -11438,8 +11498,14 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
             if not any(k in title for k in ("停班", "停課", "停止上班", "照常上班")):
                 continue
             pub = entry.get("published_parsed") or entry.get("updated_parsed")
-            if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
-                continue
+            if pub:
+                pub_dt = dt.datetime(*pub[:6], tzinfo=dt.timezone.utc)
+                if pub_dt < cutoff:
+                    continue
+                # 昨日發布 → 標題必須明指「明天」才收(「今晚/今日」指昨天)
+                if pub_dt < midnight and not any(
+                        k in title for k in ("明天", "明日", "明起")):
+                    continue
             items.append({"title": title[:90], "link": str(entry.get("link", ""))})
         return items
     except Exception as e:

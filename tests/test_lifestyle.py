@@ -2060,11 +2060,75 @@ def test_fetch_suspension_news_filters_regions_and_noise(monkeypatch):
              "published_parsed": ts},
         ]
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", lambda *a, **k: Feed())
+    monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: None)   # 官方失敗→新聞備援
     out = mr.fetch_suspension_news()
     titles = [i["title"] for i in out]
     assert "彰化縣明日停止上班停止上課" in titles
     assert "台中市宣布明天照常上班上課" in titles      # 照常公告也要顯示(確定性資訊)
     assert all("社論" not in t and "台北市" not in t for t in titles)
+
+
+def test_suspension_official_source_wins_and_stale_news_dropped(monkeypatch):
+    """批#22(2026-07-19 使用者回報):官方(人事總處)為準——官方頁正常且
+    中彰投雲無公告 → 空(新聞一概不收,週六晚「今晚停班停課」不再誤上);
+    官方失敗 → 新聞備援,但昨日發布且無「明天/明日」字樣者剔除。"""
+    import datetime as dt
+    # 官方頁:只有花蓮 → 中彰投雲=確定無公告 → []
+    yesterday_evening = (dt.datetime.now(mr.TPE).replace(
+        hour=0, minute=0) - dt.timedelta(hours=4)).astimezone(
+        dt.timezone.utc).timetuple()   # 昨日 20:00 TPE
+
+    class Feed:
+        entries = [
+            {"title": "致災性豪雨強襲!台中市今晚停班停課 林佳龍說明原因",
+             "link": "https://x/stale", "published_parsed": yesterday_evening},
+            {"title": "南投縣宣布明天停止上班上課", "link": "https://x/ok",
+             "published_parsed": yesterday_evening},
+        ]
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: Feed())
+    monkeypatch.setattr(mr, "fetch_dgpa_suspension",
+                        lambda: [])   # 官方正常、無中彰投雲公告
+    assert mr.fetch_suspension_news() == []
+    # 官方有中彰投雲公告 → 原樣採用
+    official = [{"title": "人事總處公告:臺中市 今天停止上班、停止上課",
+                 "link": mr._DGPA_NDS_URL}]
+    monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: official)
+    assert mr.fetch_suspension_news() == official
+    # 官方失敗 → 新聞備援:昨日「今晚」剔除、昨日「明天」保留
+    monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: None)
+    titles = [i["title"] for i in mr.fetch_suspension_news()]
+    assert "致災性豪雨強襲!台中市今晚停班停課 林佳龍說明原因" not in titles
+    assert "南投縣宣布明天停止上班上課" in titles
+
+
+def test_dgpa_page_parsing(monkeypatch):
+    """人事總處頁解析:今日頁+中彰投雲列 → 收;只有外縣市 → [];
+    頁面日期非今日 → None(未知,退備援)。"""
+    import datetime as dt
+    today = dt.datetime.now(mr.TPE).date()
+    roc = f"{today.year - 1911}年 {today.month}月 {today.day}日 天然災害停止上班及上課情形"
+
+    def page(date_str, rows):
+        trs = "".join(f"<TR><TD>{c}</TD><TD>{s}</TD></TR>" for c, s in rows)
+        return (f"<html>{date_str}"
+                f'<TABLE id="Table"><TR><TH>縣市名稱</TH><TH>情形</TH></TR>'
+                f"{trs}</TABLE></html>").encode("utf-8")
+
+    monkeypatch.setattr(mr, "_http_get_relaxed_strict",
+                        lambda url, timeout=15: page(roc, [
+                            ("花蓮縣", "萬榮鄉今天停止上班、停止上課。"),
+                            ("臺中市", "今天停止上班、停止上課。")]))
+    out = mr.fetch_dgpa_suspension()
+    assert out and "臺中市" in out[0]["title"] and "花蓮" not in str(out)
+    monkeypatch.setattr(mr, "_http_get_relaxed_strict",
+                        lambda url, timeout=15: page(roc, [
+                            ("花蓮縣", "萬榮鄉今天停止上班、停止上課。")]))
+    assert mr.fetch_dgpa_suspension() == []
+    stale = "114年 7月 18日 天然災害停止上班及上課情形"
+    monkeypatch.setattr(mr, "_http_get_relaxed_strict",
+                        lambda url, timeout=15: page(stale, []))
+    assert mr.fetch_dgpa_suspension() is None
 
 
 def test_weather_card_shows_signal_and_suspension():
@@ -2134,6 +2198,7 @@ def test_suspension_window_excludes_stale_daytime_news(monkeypatch):
              "published_parsed": parsed_at_tpe(1, 20)},   # 昨晚 20 時=指今天 → 保留
         ]
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", lambda *a, **k: Feed())
+    monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: None)   # 批#22:備援路徑
     titles = [i["title"] for i in mr.fetch_suspension_news()]
     assert "台中市明天停止上班上課" in titles
     assert "彰化縣今日照常上班上課" not in titles

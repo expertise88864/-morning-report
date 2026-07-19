@@ -162,6 +162,16 @@ def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
                 if not isinstance(data, list):
                     _flag("corrupt", f"{path.name} 非 list")
                     continue
+                # 逐列結構驗證(Codex r3 P2:純量/空 dict/缺 session_date 的列
+                # 會被 _partition_entry 靜默過濾,manifest-less 路徑就漏檢)
+                bad_rows = [i for i, it in enumerate(data)
+                            if not (isinstance(it, dict)
+                                    and str(it.get("session_date") or "").strip())]
+                if bad_rows:
+                    _flag("corrupt",
+                          f"{path.name} 含 {len(bad_rows)} 個結構錯誤列"
+                          f"(非 dict 或缺 session_date),index {bad_rows[:3]}")
+                    continue
                 present[path.name] = _partition_entry(data)
                 # 分區月份與內容日期一致(YYYY-MM.json.gz 內容都應屬該月)
                 month = path.name[:7]

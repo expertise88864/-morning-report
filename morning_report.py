@@ -6615,6 +6615,7 @@ def save_model_history_records(records: list[dict],
             month_merged: dict[str, dict] = {}
             old_payload = None
             tampered = False
+            _has_old_entry = path.name in _old_manifest
             if path.exists():
                 try:
                     for it in json.loads(gzip.decompress(path.read_bytes()).decode("utf-8")):
@@ -6634,10 +6635,19 @@ def save_model_history_records(records: list[dict],
                               f"manifest 不符(疑遭竄改)——本次寫入不 baseline,"
                               f"保留舊 checksum 供稽核", file=sys.stderr)
                 except Exception as e:
-                    # 壞檔:視為空(其內容 loader 也讀不到),以本次視圖重建
+                    # 壞檔:視為空(其內容 loader 也讀不到),以本次視圖重建。
+                    # 但若 manifest 曾登錄此分區→這是「解析失敗的損毀」,不得
+                    # 拿記憶體殘缺視圖 baseline 成乾淨(Codex r3 P1)
                     print(f"[model_state] 分區 {path.name} 既有內容解析失敗,重建: {e}",
                           file=sys.stderr)
                     month_merged = {}
+                    if _has_old_entry:
+                        tampered = True
+            elif _has_old_entry:
+                # manifest 登錄過但檔案消失=遺失,同樣不得 baseline 記憶體重建版
+                tampered = True
+                print(f"[model_state] ⚠ 分區 {path.name} 已於 manifest 登錄卻消失"
+                      f"——重建版不 baseline,保留舊 checksum 供稽核", file=sys.stderr)
             for it in items:
                 month_merged[it["session_date"]] = it
             payload = _dumps(sorted(month_merged.values(),

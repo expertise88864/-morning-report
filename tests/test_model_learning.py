@@ -2043,3 +2043,44 @@ def test_save_path_does_not_baseline_same_month_tamper(monkeypatch, tmp_path):
     # 新 session 仍寫入(今日資料不丟)
     hist = mh.load_model_history(tmp_path / "legacy.json", pdir)
     assert any(r.get("session_date") == "2026-07-02" for r in hist)
+
+
+def test_save_path_flags_missing_and_unparseable_partition(monkeypatch, tmp_path):
+    """Codex 批#25 r3 P1:manifest 登錄過的分區被刪/損毀,save 有同月新紀錄時
+    不得拿記憶體重建版 baseline——保留舊 checksum,verify 持續 flag。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_DIR", pdir)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", tmp_path / "legacy.json")
+    rec1 = {"session_date": "2026-07-01", "taiex_close": 100,
+            "stocks": {"2330": {"code": "2330", "close": 2300.0}}}
+    mr.save_model_history_records([rec1])
+    orig = mh._read_manifest_partitions(pdir)["2026-07.json.gz"]["sha256"]
+    # 損毀分區(寫入非 gzip 垃圾),但 legacy 保留 07-01 讓記憶體仍有該月
+    (tmp_path / "legacy.json").write_text(
+        __import__("json").dumps([rec1]), encoding="utf-8")
+    (pdir / "2026-07.json.gz").write_bytes(b"not gzip at all")
+    rec2 = {"session_date": "2026-07-02", "taiex_close": 101,
+            "stocks": {"2330": {"code": "2330", "close": 2310.0}}}
+    mr.save_model_history_records([rec2])
+    # manifest 七月條目仍是原始 sha(未 baseline 重建版)
+    assert mh._read_manifest_partitions(pdir)["2026-07.json.gz"]["sha256"] == orig
+    assert any(i["kind"] == "checksum_mismatch"
+               for i in mh.verify_history_integrity(pdir)["issues"])
+
+
+def test_verify_flags_malformed_partition_rows(tmp_path):
+    """Codex 批#25 r3 P2:manifest-less 路徑,分區列含純量/空 dict/缺
+    session_date → corrupt(不得靜默過濾);strict raise。"""
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    _write_partition(pdir, "2026-07.json.gz", [
+        {"session_date": "2026-07-01", "stocks": {}},
+        {"stocks": {}},          # 缺 session_date
+        42])                     # 純量
+    rep = mh.verify_history_integrity(pdir)
+    assert not rep["ok"]
+    assert any(i["kind"] == "corrupt" for i in rep["issues"])
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.verify_history_integrity(pdir, strict=True)

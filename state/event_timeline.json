@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 31,
-  "last_seen": "2026-07-18",
-  "latest_title": "美伊戰爭打不完？專家：追根究柢只剩1個問題- 國際 - 中時新聞網"
+  "days": 32,
+  "last_seen": "2026-07-20",
+  "latest_title": "美伊戰爭／停火協議破局油價逼90美元，美發旅遊警訊！穆吉塔巴嗆川普簽名不值錢，美軍遭轟2死預告炸電廠 - 今周刊"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 19,
-  "last_seen": "2026-07-18",
-  "latest_title": "Xi Jinping calls for ‘openness’, opposes ‘one country’ rule in AI – as it happened"
+  "days": 20,
+  "last_seen": "2026-07-20",
+  "latest_title": "川普：共和黨應將伊朗納入俄羅斯制裁法案"
  },
  "litigation:": {
   "first_seen": "2026-07-11",
@@ -17,28 +17,16 @@
   "last_seen": "2026-07-18",
   "latest_title": "長榮海運內線交易案延燒　律師籲投保中心提解任董事訴訟 - ETtoday新聞雲"
  },
- "litigation:AAPL": {
-  "first_seen": "2026-07-13",
-  "days": 2,
-  "last_seen": "2026-07-15",
-  "latest_title": "蘋果控OpenAI竊商業機密「不意外」！訴訟意外曝「前Apple員工」跳槽人數 - udn科技玩家"
- },
- "litigation:META": {
-  "first_seen": "2026-07-15",
-  "days": 1,
-  "last_seen": "2026-07-15",
-  "latest_title": "訴訟指控 Meta 利用 AI 職場工具 鎖定並針對請病假的員工 - Business Insider Taiwan"
- },
- "geopolitical:MSFT": {
-  "first_seen": "2026-07-15",
-  "days": 1,
-  "last_seen": "2026-07-15",
-  "latest_title": "微軟發出緊急安全警報 黑客利用AI加速網絡攻擊 官方：X天內需完成更新 - ezone.hk"
- },
  "litigation:2882": {
   "first_seen": "2026-07-17",
   "days": 1,
   "last_seen": "2026-07-17",
   "latest_title": "代子公司國泰人壽保險股份有限公司公告總稽核異動。"
+ },
+ "litigation:6515": {
+  "first_seen": "2026-07-20",
+  "days": 1,
+  "last_seen": "2026-07-20",
+  "latest_title": "公告本公司民事訴訟案件一審判決主文"
  }
 }

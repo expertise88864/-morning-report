@@ -1,0 +1,61 @@
+[
+ {
+  "type": "top5",
+  "created": "2026-07-20",
+  "created_at": "2026-07-20T06:38:56.781726+08:00",
+  "target_session": "2026-07-20",
+  "base_session": "2026-07-17",
+  "codes": [
+   "6949",
+   "2357",
+   "2404",
+   "2603",
+   "6505"
+  ],
+  "raw_codes": [
+   "6949",
+   "2357",
+   "2404",
+   "6515",
+   "2603"
+  ],
+  "excluded": [
+   [
+    "6515",
+    "跌停"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-07-20",
+  "created_at": "2026-07-20T06:38:56.781726+08:00",
+  "target": "2026-07-20",
+  "threshold": 2290.0,
+  "pred_pct": -1.804,
+  "prob": 0.116,
+  "sigma": 1.37,
+  "sigma_n": 43,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "d3af2b0b5cb3"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-07-20",
+  "created_at": "2026-07-20T06:38:56.781726+08:00",
+  "target": "2026-07-20",
+  "threshold": 42671.27,
+  "pred_pct": 0.564,
+  "prob": 0.744,
+  "sigma": 1.465,
+  "sigma_n": 43,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "d3af2b0b5cb3"
+ }
+]

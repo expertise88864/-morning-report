@@ -1,37 +1,37 @@
 {
- "date": "2026-07-18 06:37",
- "total_seconds": 472.9,
+ "date": "2026-07-20 06:38",
+ "total_seconds": 555.4,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 5.8
+   "seconds": 9.4
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 184.7
+   "seconds": 143.5
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 12.4
+   "seconds": 19.9
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 126.1
+   "seconds": 212.8
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 79.2
+   "seconds": 63.4
   },
   {
    "label": "LLM 主分析",
-   "seconds": 63.6
+   "seconds": 104.4
   },
   {
    "label": "渲染",
-   "seconds": 1.3
+   "seconds": 2.1
   }
  ],
  "feeds": {
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 122,
+   "ok": 125,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -118,20 +118,16 @@
   "www.fda.gov.tw": {
    "ok": 2,
    "fail": 0
-  },
-  "www.vghtc.gov.tw": {
-   "ok": 0,
-   "fail": 1
-  },
-  "www.ntuh.gov.tw": {
-   "ok": 0,
-   "fail": 1
   }
  },
  "model_history_days": 210,
+ "d1_samples": 0,
+ "d1_ready": false,
  "stance_dual": {
-  "llm": -8,
-  "py": -8,
+  "llm": -6,
+  "llm_label": "偏空",
+  "py": -6,
+  "py_label": "偏空",
   "agree": true,
   "coverage": 1.0,
   "missing": [],
@@ -139,6 +135,7 @@
   "abstain": false,
   "stale_us": false,
   "mode": "global_full",
-  "rule_version": 2
+  "rule_version": 2,
+  "authority": "python"
  }
 }

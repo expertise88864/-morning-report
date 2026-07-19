@@ -32,6 +32,12 @@ def _canonical_payload(items: list) -> str:
     return json.dumps(ordered, ensure_ascii=False, separators=(",", ":"))
 
 
+def payload_sha256(items: list) -> str:
+    """分區 canonical payload 的 sha256——供寫入端在合併前比對磁碟現有內容
+    與舊 manifest(偵測跨執行間的外部竄改)。"""
+    return hashlib.sha256(_canonical_payload(items).encode("utf-8")).hexdigest()
+
+
 def _partition_entry(items: list) -> dict:
     """單一分區的 manifest 條目:筆數、日期範圍、payload sha256。"""
     payload = _canonical_payload(items)

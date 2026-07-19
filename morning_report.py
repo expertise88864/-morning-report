@@ -6603,6 +6603,9 @@ def save_model_history_records(records: list[dict],
         for item in history:
             by_month.setdefault(str(item.get("session_date", ""))[:7], []).append(item)
         MODEL_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        from model_history_store import (
+            _read_manifest_partitions, payload_sha256, write_partition_manifest)
+        _old_manifest = _read_manifest_partitions(MODEL_HISTORY_DIR)
         written = 0
         rewritten_names: set = set()
         for month, items in by_month.items():
@@ -6611,6 +6614,7 @@ def save_model_history_records(records: list[dict],
             path = MODEL_HISTORY_DIR / f"{month}.json.gz"
             month_merged: dict[str, dict] = {}
             old_payload = None
+            tampered = False
             if path.exists():
                 try:
                     for it in json.loads(gzip.decompress(path.read_bytes()).decode("utf-8")):
@@ -6619,6 +6623,16 @@ def save_model_history_records(records: list[dict],
                     old_payload = _dumps(sorted(
                         month_merged.values(),
                         key=lambda i: i.get("session_date", "")))
+                    # 合併前先驗:磁碟現有內容應與舊 manifest 一致(當月分區跨
+                    # 執行間不該被改動)。不符=外部竄改——即使今天有新 session,
+                    # 也不得把「舊列的竄改」隨新資料一起 baseline(Codex r1 r2 P1)。
+                    _rec = _old_manifest.get(path.name)
+                    if _rec and _rec.get("sha256") != payload_sha256(
+                            list(month_merged.values())):
+                        tampered = True
+                        print(f"[model_state] ⚠ 分區 {path.name} 合併前內容與 "
+                              f"manifest 不符(疑遭竄改)——本次寫入不 baseline,"
+                              f"保留舊 checksum 供稽核", file=sys.stderr)
                 except Exception as e:
                     # 壞檔:視為空(其內容 loader 也讀不到),以本次視圖重建
                     print(f"[model_state] 分區 {path.name} 既有內容解析失敗,重建: {e}",
@@ -6632,12 +6646,14 @@ def save_model_history_records(records: list[dict],
                 continue
             _atomic_write_bytes(path, gzip.compress(payload.encode("utf-8"), mtime=0))
             written += 1
-            rewritten_names.add(path.name)
-        # 批#25:分區寫完後重建完整性 manifest;只把「本次刻意重寫」的分區
-        # 當新基線(rewritten_names)——未重寫卻異動的分區保留舊 checksum,
-        # 不 baseline 損壞(Codex r1 P1)。失敗不影響晨報(下次補上)
+            # tampered 分區:仍寫入(不丟今日資料)但不列入 rewritten——
+            # manifest 保留舊條目,verify 持續 flag 直到人工修復
+            if not tampered:
+                rewritten_names.add(path.name)
+        # 批#25:分區寫完後重建完整性 manifest;只把「本次刻意重寫且合併前
+        # 內容與 manifest 相符」的分區當新基線(rewritten_names)——未重寫或
+        # 竄改的分區保留舊 checksum,不 baseline 損壞(Codex r1/r2 P1)。
         try:
-            from model_history_store import write_partition_manifest
             write_partition_manifest(MODEL_HISTORY_DIR, rewritten=rewritten_names)
         except Exception as e:
             print(f"[model_state] manifest 產生略過: {e}", file=sys.stderr)

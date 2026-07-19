@@ -2002,3 +2002,44 @@ def test_manifest_structurally_malformed_flagged_corrupt(tmp_path):
     (pdir / mh.MANIFEST_NAME).write_text(_js.dumps([1, 2, 3]), encoding="utf-8")
     assert any(i["kind"] == "corrupt"
                for i in mh.verify_history_integrity(pdir)["issues"])
+
+
+def test_save_path_does_not_baseline_same_month_tamper(monkeypatch, tmp_path):
+    """Codex 批#25 r2 P1:當月分區舊列遭竄改+同月有新 session,save 合併重寫
+    後不得把竄改當新基線——manifest 保留舊 checksum,verify 持續 flag。"""
+    import gzip as _gz
+    import json as _js
+    import model_history_store as mh
+    pdir = tmp_path / "mh"
+    monkeypatch.setattr(mr, "MODEL_HISTORY_DIR", pdir)
+    monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", tmp_path / "legacy.json")
+
+    def _clean(code_close):
+        return {"session_date": "2026-07-01", "taiex_close": 100,
+                "stocks": {"2330": {"code": "2330", "close": code_close}}}
+
+    # 建立乾淨當月分區(session 07-01)+ manifest
+    mr.save_model_history_records([_clean(2300.0)])
+    rep0 = mh.verify_history_integrity(pdir)
+    assert rep0["ok"] is True
+    orig_sha = mh._read_manifest_partitions(pdir)["2026-07.json.gz"]["sha256"]
+    # 外部竄改 07-01(改收盤),不動 manifest
+    tampered = [{"session_date": "2026-07-01", "taiex_close": 100,
+                 "stocks": {"2330": {"code": "2330", "close": 9999.0}}}]
+    (pdir / "2026-07.json.gz").write_bytes(
+        _gz.compress(_js.dumps(tampered, ensure_ascii=False,
+                               separators=(",", ":")).encode("utf-8"), mtime=0))
+    # 同月新 session 07-02 → save 合併重寫
+    new_rec = {"session_date": "2026-07-02", "taiex_close": 101,
+               "stocks": {"2330": {"code": "2330", "close": 2310.0}}}
+    mr.save_model_history_records([new_rec])
+    # manifest 的七月條目仍是原始 sha(未 baseline 竄改)→ verify flag mismatch
+    assert mh._read_manifest_partitions(pdir)["2026-07.json.gz"]["sha256"] == orig_sha
+    rep = mh.verify_history_integrity(pdir)
+    assert any(i["kind"] == "checksum_mismatch" for i in rep["issues"])
+    import pytest
+    with pytest.raises(mh.HistoryIntegrityError):
+        mh.verify_history_integrity(pdir, strict=True)
+    # 新 session 仍寫入(今日資料不丟)
+    hist = mh.load_model_history(tmp_path / "legacy.json", pdir)
+    assert any(r.get("session_date") == "2026-07-02" for r in hist)

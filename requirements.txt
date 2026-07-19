@@ -1,6 +1,6 @@
 yfinance>=0.2.40
 numpy>=1.26.0
-pandas>=2.2.0
+pandas>=3.0.3
 requests>=2.31.0
 feedparser>=6.0.10
 opencc-python-reimplemented>=0.1.7   # 簡體→繁體(台灣用語):延燒事件等外部中文標題正名

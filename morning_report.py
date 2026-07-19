@@ -8020,19 +8020,34 @@ def build_event_study(model_history: list[dict],
                     keys.append(("industry", str(evidence["scope_industry"]), event_type, direction))
                 if evidence.get("scope_supply_chain"):
                     keys.append(("supply_chain", str(evidence["scope_supply_chain"]), event_type, direction))
+                is_v2 = int(_safe_number(evidence.get("event_schema"))) >= 2
                 for key in keys:
-                    bucket = grouped.setdefault(key, {"values": [], "events": set()})
+                    bucket = grouped.setdefault(
+                        key, {"values": [], "events": set(), "events_v2": set(),
+                              "by_event": {}})
                     bucket["values"].append(value)
                     bucket["events"].add(event_ident)
+                    if is_v2:
+                        bucket["events_v2"].add(event_ident)
+                    bucket["by_event"].setdefault(event_ident, []).append(value)
     output = {}
     for key, bucket in grouped.items():
         values = bucket["values"]
+        # 效果值=事件層聚合(GPT-5.6 五審 P0-1):先對每個事件取其映射股票的
+        # 平均反應,再跨事件平均——舊的 per-stock 平均會讓映射 20 檔的事件
+        # 權重是映射 2 檔事件的 10 倍(權重由映射廣度決定,非資訊量),
+        # 且與 shrink 用 unique_events 當分母的統計單位不一致
+        event_means = [statistics.mean(v) for v in bucket["by_event"].values()]
         output[key] = {
             "samples": len(values),
-            # 不重複事件數:learned-impact 門檻與 shrink 權重的誠實分母
             "unique_events": len(bucket["events"]),
-            "avg_excess_pct": round(sum(values) / len(values), 4),
-            "win_rate_pct": round(sum(value > 0 for value in values) / len(values) * 100, 1),
+            # schema-2 世代的獨立事件數(五審:legacy 走 session fallback 會
+            # 「過切」——每日重複報導灌成多個事件,可能提早灌過 learned-impact
+            # 門檻;正式遷移前,門檻只認 v2 世代)
+            "unique_events_v2": len(bucket["events_v2"]),
+            "avg_excess_pct": round(statistics.mean(event_means), 4),
+            "win_rate_pct": round(
+                sum(m > 0 for m in event_means) / len(event_means) * 100, 1),
         }
     return output
 
@@ -9815,12 +9830,14 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         _mops_pick = _deep_mops + _other_mops[:max(0, 20 - len(_deep_mops))]
 
         def _mops_line(m: dict) -> str:
-            line = f"- {m.get('code','')} {m.get('title','')[:80]}"
+            # MOPS 標題/摘要同屬外部字串,過 sanitizer(五審 P1:injection 旁路)
+            line = f"- {m.get('code','')} {_external_text(m.get('title'), 80)}"
             # 深耕公司附「說明」摘要:人事異動的人名/生效日、投資案的金額/交易對象
             # 常只在 summary、標題僅泛稱「公告總經理異動」——不附摘要 LLM 寫不出
             # 具體內容甚至瞎編(Codex review P1)。其他公司維持標題,控 prompt 長度。
             if m in _deep_mops:
-                summary = " ".join(str(m.get("summary") or "").split())[:400]
+                summary = " ".join(
+                    _external_text(m.get("summary"), 500).split())[:400]
                 if summary:
                     line += f"\n  說明:{summary}"
             return line
@@ -9990,8 +10007,19 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         dq_block = "（未提供資料品質資訊）"
 
+    # 結構化事件的 title/summary 為外部字串,序列化前逐欄 sanitize
+    # (五審 P1:injection 旁路——JSON 包裝不是信任邊界)
+    def _sanitize_event_for_prompt(ev: dict) -> dict:
+        out = dict(ev)
+        for k in ("title", "summary", "entity", "source"):
+            if k in out:
+                out[k] = _external_text(out[k], 180)
+        return out
+
     structured_news_block = json.dumps(
-        (quotes.get("STRUCTURED_NEWS_EVENTS") or [])[:25],
+        [_sanitize_event_for_prompt(e)
+         for e in (quotes.get("STRUCTURED_NEWS_EVENTS") or [])[:25]
+         if isinstance(e, dict)],
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -10000,12 +10028,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     podcast_lines = []
     for ep in (quotes.get("PODCAST_DIGEST") or [])[:3]:
         d = ep.get("digest") or {}
-        pts = "; ".join(str(p) for p in (d.get("summary_points") or [])[:3])
+        # Podcast 摘要=下游 LLM 產物+外部節目文字,同屬不可信,過 sanitizer
+        # (五審 P1:injection 旁路)
+        pts = "; ".join(_external_text(p, 120)
+                        for p in (d.get("summary_points") or [])[:3])
         tk = ", ".join(
-            f"{t.get('name')}({t.get('direction')})"
+            f"{_external_text(t.get('name'), 30)}({_external_text(t.get('direction'), 10)})"
             for t in (d.get("tickers") or [])[:5])
-        podcast_lines.append(f"- {ep.get('show')}「{str(ep.get('title', ''))[:40]}」:{pts}"
-                             + (f" | 個股觀點: {tk}" if tk else ""))
+        podcast_lines.append(
+            f"- {_external_text(ep.get('show'), 30)}"
+            f"「{_external_text(ep.get('title'), 40)}」:{pts}"
+            + (f" | 個股觀點: {tk}" if tk else ""))
     podcast_block = "\n".join(podcast_lines) if podcast_lines else "(近 48 小時無新集)"
     walk_forward_block = json.dumps(
         quotes.get("MODEL_WALK_FORWARD") or {},
@@ -12653,10 +12686,15 @@ def _top5_tradeable_filter(scored: list[dict], quotes: dict,
         未接,屬已知限制;除權息日的價格跳空是機械性事件,非因子訊號)。
     回 (前 top 檔, 排除清單 [(code, 原因)…])。"""
     div_codes = set()
-    tomorrow = (dt.datetime.now(TPE).date() + dt.timedelta(days=1))
+    # 批#23(五審 P1-1):除權息比對「正式目標交易日」,不是系統時鐘的明天
+    # (週六跑的報告目標是週一,用明天=週日會漏掉週一除息)
+    try:
+        anchor = dt.date.fromisoformat(str(quotes.get("TARGET_SESSION") or ""))
+    except (ValueError, TypeError):
+        anchor = dt.datetime.now(TPE).date() + dt.timedelta(days=1)
     for d in (quotes.get("TW_CALENDAR") or {}).get("dividends") or []:
         ex_d = d.get("ex_date")
-        if isinstance(ex_d, dt.date) and (ex_d - tomorrow).days in (0, 1, 2):
+        if isinstance(ex_d, dt.date) and 0 <= (ex_d - anchor).days <= 2:
             div_codes.add(str(d.get("code") or ""))
     picked, excluded = [], []
     for s in scored or []:
@@ -12690,15 +12728,20 @@ def _d1_fundamental_samples(model_history: list) -> int:
 
 def update_top5_ledger(model_history: list, top5: list[dict],
                        now_tpe: dt.datetime, target_session: str,
-                       sessions: Optional[list] = None) -> dict:
-    """Top5 追蹤帳本(#2):記每日 Top5 名單,5/20 個 session 後以 model_history
-    收盤結算「等權平均報酬 − 大盤報酬」的超額。與 Forecast Ledger 同檔
-    (type=top5 條目);顯示+state,不回饋任何計分。回 {"stats", "created"}。
+                       sessions: Optional[list] = None,
+                       taiex_opens: Optional[dict] = None,
+                       raw_codes: Optional[list] = None,
+                       excluded: Optional[list] = None) -> dict:
+    """Top5 追蹤帳本 v2(五審 P0-2):**executable return**——晨報 06:00 只立
+    pending 名單(awaiting_entry);目標交易日紀錄入庫後回填「目標日開盤」
+    進場價(entered);其後第 5/20 個 session 以收盤結算「等權報酬 −
+    大盤(開盤進場)報酬」。舊 v1 用前一日收盤當成本,隔夜跳空(往往正是
+    入選原因)被灌進績效——不可執行的成績比沒有成績更危險。
 
-    sessions=權威交易日序列(Codex 批#20:model_history 可能缺中間紀錄,
-    以「第 h 筆現存紀錄」當「第 h 個 session」會把缺口壓縮、拿錯日結算)——
-    第 h 個 session 由 sessions 定位,該日紀錄缺席則等待補值,逾 10 天 void;
-    未提供 sessions 時不結算(只立題),不退回會壓縮缺口的舊行為。"""
+    同時保存 raw_codes(未過濾名單)與 excluded:模型表現與過濾器影響可分辨。
+    sessions=權威交易日序列(缺紀錄不壓縮);taiex_opens={session: 大盤實際
+    開盤}(來自 history.json 回填)。與 Forecast Ledger 同檔(type=top5)。
+    顯示+state,不回饋任何計分。回 {"stats", "created"}。"""
     ledger: list = []
     if FORECAST_LEDGER_FILE.exists():
         try:
@@ -12708,57 +12751,81 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         except Exception as e:
             print(f"[top5-ledger] 載入失敗,重建: {e}", file=sys.stderr)
     today = now_tpe.strftime("%Y-%m-%d")
-    # session 索引(依日期升冪)
     recs = sorted((r for r in model_history or []
                    if isinstance(r, dict) and r.get("session_date")),
                   key=lambda r: r["session_date"])
     dates = [r["session_date"] for r in recs]
     by_date = {r["session_date"]: r for r in recs}
-    # 1) 結算(每個 horizon 獨立;成分股報價不足 3 檔 → 該 horizon void)。
-    #    第 h 個 session 以權威 sessions 序列定位;該日紀錄缺席=等待,不壓縮缺口
     seq = sorted(str(s) for s in sessions or [] if s)
+
+    def _days_past(d: str) -> int:
+        try:
+            return (dt.date.fromisoformat(today) - dt.date.fromisoformat(d)).days
+        except (ValueError, TypeError):
+            return 0
+
     for e in ledger:
-        if e.get("type") != "top5" or not seq:
+        if e.get("type") != "top5":
             continue
-        base_s = str(e.get("base_session") or "")
-        if base_s not in seq:
+        # v1 舊格式(有 bases 無 status/entry 生命週期)一律作廢——其成本基準
+        # 是不可成交的前日收盤,不得混入 executable 統計
+        if "status" not in e:
+            e["status"] = "void_legacy"
             continue
-        i0 = seq.index(base_s)
-        for h in (5, 20):
-            hk = str(h)
-            if (e.get("res") or {}).get(hk) is not None:
+        # 1) 回填進場價:目標日紀錄入庫 → 開盤價進場
+        if e.get("status") == "awaiting_entry":
+            tgt = str(e.get("target_session") or "")
+            rec = by_date.get(tgt)
+            t_open = (taiex_opens or {}).get(tgt)
+            if rec is not None and isinstance(t_open, (int, float)) and t_open:
+                entry = {}
+                for code in e.get("codes") or []:
+                    op = ((rec.get("stocks") or {}).get(str(code)) or {}).get("open")
+                    if isinstance(op, (int, float)) and op:
+                        entry[str(code)] = op
+                if len(entry) >= 3:
+                    e["entry"] = entry
+                    e["taiex_entry"] = t_open
+                    e["status"] = "entered"
+                else:
+                    e["status"] = "void"   # 目標日紀錄在但開盤價湊不滿 3 檔
+            elif _days_past(tgt) > 10:
+                e["status"] = "void"       # 目標日過 10 天仍無紀錄/大盤開盤
+        # 2) 結算:entered 後第 h 個 session 收盤(sessions 權威定位)
+        if e.get("status") == "entered" and seq:
+            tgt = str(e.get("target_session") or "")
+            if tgt not in seq:
                 continue
-            if i0 + h >= len(seq):
-                continue
-            tgt_d = seq[i0 + h]
-            rec_h = by_date.get(tgt_d)
-            e.setdefault("res", {})
-            if rec_h is None:
-                # 該 session 紀錄尚未入庫(backfill 上限/抓取失敗)→ 等待;
-                # 逾 10 天仍缺 → void(不拿別日紀錄替代)
-                try:
-                    if (dt.date.fromisoformat(today)
-                            - dt.date.fromisoformat(tgt_d)).days > 10:
+            i0 = seq.index(tgt)
+            for h in (5, 20):
+                hk = str(h)
+                if (e.get("res") or {}).get(hk) is not None:
+                    continue
+                if i0 + h >= len(seq):
+                    continue
+                exit_d = seq[i0 + h]
+                rec_h = by_date.get(exit_d)
+                e.setdefault("res", {})
+                if rec_h is None:
+                    if _days_past(exit_d) > 10:
                         e["res"][hk] = {"void": True, "reason": "record_missing"}
-                except (ValueError, TypeError):
-                    pass
-                continue
-            t0 = e.get("taiex_base")
-            if not isinstance(t0, (int, float)):
-                t0 = (by_date.get(base_s) or {}).get("taiex_close")
-            th = rec_h.get("taiex_close")
-            rets = []
-            for code, base in (e.get("bases") or {}).items():
-                ch = ((rec_h.get("stocks") or {}).get(code) or {}).get("close")
-                if all(isinstance(v, (int, float)) and v for v in (base, ch)):
-                    rets.append(ch / base - 1)
-            if len(rets) < 3 or not all(
-                    isinstance(v, (int, float)) and v for v in (t0, th)):
-                e["res"][hk] = {"void": True}
-                continue
-            excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
-            e["res"][hk] = {"excess_pct": round(excess, 2), "session": tgt_d}
-    # 2) 立今日名單(僅目標 session 開盤前;同 created 重跑覆蓋)
+                    continue
+                th = rec_h.get("taiex_close")
+                t0 = e.get("taiex_entry")
+                rets = []
+                for code, ep in (e.get("entry") or {}).items():
+                    ch = ((rec_h.get("stocks") or {}).get(code) or {}).get("close")
+                    if all(isinstance(v, (int, float)) and v for v in (ep, ch)):
+                        rets.append(ch / ep - 1)
+                if len(rets) < 3 or not all(
+                        isinstance(v, (int, float)) and v for v in (t0, th)):
+                    e["res"][hk] = {"void": True}
+                    continue
+                excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
+                e["res"][hk] = {"excess_pct": round(excess, 2),
+                                "session": exit_d}
+    # 3) 立今日 pending 名單(僅目標 session 開盤前;同 target_session 去重——
+    #    v1 只按 created 去重,週六/週一會對同一週一 session 立兩筆雙倍權重)
     created = False
     try:
         _tgt_open = dt.datetime.strptime(
@@ -12767,29 +12834,31 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         _pre_open = now_tpe < _tgt_open
     except (ValueError, TypeError):
         _pre_open = False
-    if _pre_open and top5 and dates:
-        bases = {str(s.get("code")): s.get("close") for s in top5
-                 if isinstance(s.get("close"), (int, float))}
-        if len(bases) >= 3:
-            entry = {"type": "top5", "created": today,
-                     "base_session": dates[-1],
-                     "taiex_base": by_date[dates[-1]].get("taiex_close"),
-                     "codes": list(bases), "bases": bases,
-                     "res": {}}
-            ledger = [e for e in ledger
-                      if not (e.get("type") == "top5"
-                              and e.get("created") == today)]
-            ledger.append(entry)
-            created = True
+    codes = [str(s.get("code")) for s in top5 or [] if s.get("code")]
+    if _pre_open and len(codes) >= 3:
+        entry = {"type": "top5", "created": today,
+                 "created_at": now_tpe.isoformat(),
+                 "target_session": str(target_session or ""),
+                 "base_session": dates[-1] if dates else "",
+                 "codes": codes,
+                 "raw_codes": [str(c) for c in raw_codes or codes],
+                 "excluded": [list(x) for x in excluded or []],
+                 "status": "awaiting_entry", "res": {}}
+        ledger = [x for x in ledger
+                  if not (x.get("type") == "top5"
+                          and str(x.get("target_session")) == entry["target_session"]
+                          and x.get("status") == "awaiting_entry")]
+        ledger.append(entry)
+        created = True
     ledger = ledger[-_FORECAST_LEDGER_KEEP:]
     FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(FORECAST_LEDGER_FILE,
                        json.dumps(ledger, ensure_ascii=False, indent=1))
-    # 3) 統計(各 horizon 近 12 筆已結算、非 void)
+    # 4) 統計(executable;各 horizon 近 12 筆已結算、非 void)
     stats: dict = {}
     for h in ("5", "20"):
         done = [e["res"][h] for e in ledger
-                if e.get("type") == "top5"
+                if e.get("type") == "top5" and e.get("status") == "entered"
                 and isinstance((e.get("res") or {}).get(h), dict)
                 and not e["res"][h].get("void")][-12:]
         if done:
@@ -12807,9 +12876,11 @@ def update_top5_ledger(model_history: list, top5: list[dict],
 # (免費 key);未設 FRED_API_KEY 時整個功能休眠(卡片缺席)。顯示用,不入模型。
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "").strip()
 _MACRO_VINTAGE_SERIES = (
-    # (series_id, 中文名, 顯示模式)  diff=月變動(千人);pct=月增率%
-    ("PAYEMS", "非農就業", "diff"),
-    ("CPIAUCSL", "CPI", "pct"),
+    # (series_id, 中文名, 顯示模式, 修正門檻)  diff=月變動(千人);pct=月增率%。
+    # 門檻依單位訂(五審 P1-6):PAYEMS 0.05K=50 人也標「已修正」但顯示四捨五入
+    # 後數字完全相同——千人單位至少 1K、百分比至少 0.05pp 才算有意義修正
+    ("PAYEMS", "非農就業", "diff", 1.0),
+    ("CPIAUCSL", "CPI", "pct", 0.05),
 )
 
 
@@ -12862,7 +12933,7 @@ def fetch_macro_vintage() -> list[dict]:
     if not FRED_API_KEY:
         return []
     out: list[dict] = []
-    for sid, zh, mode in _MACRO_VINTAGE_SERIES:
+    for sid, zh, mode, rev_threshold in _MACRO_VINTAGE_SERIES:
         try:
             by_date = _fred_vintages(sid)
             dates = sorted(by_date)
@@ -12889,7 +12960,8 @@ def fetch_macro_vintage() -> list[dict]:
                    "prev_first_change": round(_chg(first_p, base_p_at_first), 2),
                    "prev_latest_change": round(_chg(latest_p, latest_p2), 2)}
             row["prev_revised"] = (abs(row["prev_latest_change"]
-                                       - row["prev_first_change"]) >= 0.05)
+                                       - row["prev_first_change"])
+                                       >= rev_threshold)
             out.append(row)
         except Exception as e:
             print(f"[vintage] {sid} 略過: {e}", file=sys.stderr)
@@ -12946,8 +13018,19 @@ _FORECAST_DEFAULT_SIGMA = {"2330_open_up": 1.3, "taiex_open_up": 0.9}
 
 
 def _forecast_sigma(history: list, question: str) -> tuple[float, int]:
-    """近 60 筆已回填紀錄的「預測 vs 實際開盤」殘差 stdev(%)。
-    樣本 <10 → 保守預設。回 (sigma, n)。"""
+    """殘差 stdev(%);樣本 <10 → 保守預設。回 (sigma, n)。"""
+    errs = _forecast_residuals(history, question)
+    if len(errs) >= 10:
+        return (statistics.pstdev(errs) or _FORECAST_DEFAULT_SIGMA[question],
+                len(errs))
+    return _FORECAST_DEFAULT_SIGMA[question], len(errs)
+
+
+_FORECAST_VERSION = "prob-v2"   # 機率規則版本(批#23:empirical CDF;統計分版本)
+
+
+def _forecast_residuals(history: list, question: str) -> list[float]:
+    """近 60 筆「實際開盤 − 預測」殘差(%)——empirical CDF 與 sigma 的共同原料。"""
     errs: list[float] = []
     for rec in (history or [])[-90:]:
         if not isinstance(rec, dict):
@@ -12960,26 +13043,34 @@ def _forecast_sigma(history: list, question: str) -> tuple[float, int]:
             denom = rec.get("actual_taiex_prev_close") or pred
         if all(isinstance(v, (int, float)) and v for v in (pred, actual, denom)):
             errs.append((actual - pred) / denom * 100)
-    errs = errs[-60:]
-    if len(errs) >= 10:
-        return (statistics.pstdev(errs) or _FORECAST_DEFAULT_SIGMA[question],
-                len(errs))
-    return _FORECAST_DEFAULT_SIGMA[question], len(errs)
+    return errs[-60:]
 
 
-def _forecast_prob_up(pred_pct: float, sigma: float) -> float:
-    """點預測(%)+殘差 sigma → P(開盤 > 昨收),常態 CDF;夾在 [0.02, 0.98]
-    (尾端保守,避免宣稱近乎確定)。"""
-    from statistics import NormalDist
-    p = NormalDist(0.0, max(sigma, 0.05)).cdf(pred_pct)
+def _forecast_prob_up(pred_pct: float, sigma: float,
+                      residuals: Optional[list] = None) -> float:
+    """點預測(%)→ P(開盤 > 昨收),夾 [0.02, 0.98](尾端保守)。
+
+    批#23(五審 P1-2):殘差樣本 >= 30 時改 **empirical residual CDF**——
+    P(actual > 0) = P(residual > −pred) 用歷史殘差經驗分布直接數,不再假設
+    零均值常態(台股開盤 gap 肥尾/偏態,模型也可能有持續 bias);
+    樣本不足退回常態 CDF。"""
+    res = residuals or []
+    if len(res) >= 30:
+        p = sum(1 for r in res if r > -pred_pct) / len(res)
+    else:
+        from statistics import NormalDist
+        p = NormalDist(0.0, max(sigma, 0.05)).cdf(pred_pct)
     return round(min(0.98, max(0.02, p)), 3)
 
 
 def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                            now_tpe: dt.datetime,
-                           target_session: str) -> dict:
+                           target_session: str,
+                           sessions: Optional[list] = None) -> dict:
     """結算到期預測+立今日新預測+算累積統計。回顯示用 dict
-    {"resolved": [...], "stats": {...}, "today": [...]};失敗由呼叫端吞。"""
+    {"resolved": [...], "stats": {...}, "today": [...]};失敗由呼叫端吞。
+    sessions=權威交易日序列(批#23,五審 P2):目標日在日曆內但資料缺=
+    Yahoo 漏抓非休市,只能等待/逾期 void;不在日曆內才可對齊下一 session。"""
     ledger: list = []
     if FORECAST_LEDGER_FILE.exists():
         try:
@@ -13006,19 +13097,22 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     for v in q_actuals.values():
         v.sort()
 
+    _seq = set(str(s) for s in sessions or [] if s)
+
     def _lookup_actual(question: str, target: str) -> Optional[tuple]:
         """回 (actual, 實際結算 session) 或 None。"""
         exact = actuals.get((question, target))
         if exact is not None:
             return exact, target
-        # 名目目標日臨時休市(颱風/假日,Codex 批#18 r4):預測語意=「下一個
-        # 真實交易 session 的開盤 vs 昨收」→ 對齊其後 7 天內第一個有實際
-        # 開盤的交易日;threshold(昨收)不變。
-        # 對齊前提(r5):當日「加權指數」實際開盤也缺席=大盤確實沒交易——
-        # 單檔 Yahoo 漏抓不是休市證據,誤對齊會拿別日開盤結算錯題
-        # (與 backfill 自癒的 ^TWII 佐證慣例一致);大盤有交易而單檔缺
-        # → 留待(資料補齊或逾期 void),不替代。
-        if actuals.get(("taiex_open_up", target)) is not None:
+        # 名目目標日臨時休市 → 對齊其後 7 天內第一個真實 session(threshold
+        # 昨收不變)。休市判定優先序(批#23,五審 P2):
+        # (a) 有權威交易日序列 → 目標日「在」日曆內=Yahoo 漏抓非休市,只能
+        #     等待/逾期 void;「不在」日曆內=確定休市,可對齊;
+        # (b) 無序列 → 退回舊佐證:同日大盤實際開盤也缺席才視為休市。
+        if _seq:
+            if target in _seq:
+                return None
+        elif actuals.get(("taiex_open_up", target)) is not None:
             return None
         try:
             t0 = dt.date.fromisoformat(target)
@@ -13094,8 +13188,9 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                     and e.get("resolved") is None]
         specs = []
     for question, label, pred_pct, threshold in specs:
+        residuals = _forecast_residuals(history, question)
         sigma, n_sig = _forecast_sigma(history, question)
-        prob = _forecast_prob_up(pred_pct, sigma)
+        prob = _forecast_prob_up(pred_pct, sigma, residuals=residuals)
         past = [e for e in resolved_all
                 if e.get("question") == question and not e.get("void")]
         base = (round(sum(1 for e in past if e.get("outcome")) / len(past), 3)
@@ -13104,7 +13199,10 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                  "created_at": now_tpe.isoformat(),
                  "target": str(target_session or ""), "threshold": threshold,
                  "pred_pct": round(pred_pct, 3), "prob": prob,
-                 "sigma": round(sigma, 3), "sigma_n": n_sig, "base_rate": base}
+                 "sigma": round(sigma, 3), "sigma_n": n_sig, "base_rate": base,
+                 # 版本血統(五審 P1-4):混版本統計會讓新模型退步被舊成績掩蓋
+                 "forecast_version": _FORECAST_VERSION,
+                 "git_sha": os.environ.get("GITHUB_SHA", "")[:12]}
         ledger = [e for e in ledger
                   if not (e.get("question") == question
                           and str(e.get("target")) == entry["target"])]
@@ -13114,14 +13212,29 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(FORECAST_LEDGER_FILE,
                        json.dumps(ledger, ensure_ascii=False, indent=1))
-    # 3) 統計(近 30 筆已結算;void 不計)
+    # 3) 統計(近 30 筆已結算;void 不計)。批#23(五審 P1-3):兩題高度相關
+    # (2330≈加權最大權值),分題各自統計;混合統計限「現行機率規則版本」
+    # (無版本欄的舊紀錄不進 headline,避免混版本掩蓋退步)
     recent = [e for e in ledger
-              if e.get("resolved") is not None and not e.get("void")][-30:]
+              if e.get("resolved") is not None and not e.get("void")
+              and e.get("forecast_version") == _FORECAST_VERSION][-30:]
     stats = {}
     if recent:
+        by_q: dict = {}
+        for q in sorted({str(e.get("question")) for e in recent}):
+            sub = [e for e in recent if str(e.get("question")) == q]
+            by_q[q] = {"n": len(sub),
+                       "hit_rate": round(sum(
+                           1 for e in sub
+                           if (e.get("prob", 0.5) >= 0.5) == bool(e.get("outcome")))
+                           / len(sub) * 100, 1),
+                       "brier": round(statistics.mean(
+                           e.get("brier_model", 0.25) for e in sub), 4)}
         hits = sum(1 for e in recent
                    if (e.get("prob", 0.5) >= 0.5) == bool(e.get("outcome")))
         stats = {"n": len(recent),
+                 "by_question": by_q,
+                 "version": _FORECAST_VERSION,
                  "hit_rate": round(hits / len(recent) * 100, 1),
                  "brier_model": round(statistics.mean(
                      e.get("brier_model", 0.25) for e in recent), 4),
@@ -13163,11 +13276,19 @@ def _render_forecast_ledger_html(led: dict) -> str:
     foot = ""
     if stats:
         edge = stats.get("brier_base", 0) - stats.get("brier_model", 0)
-        foot = (f"<div style='padding:8px 14px;font-size:11px;color:#64748b;'>"
-                f"近 {stats['n']} 題:命中率 {stats['hit_rate']}%・"
+        # 分題統計(五審 P1-3:兩題高度相關,合併數字會高估獨立樣本)
+        _qzh = {"2330_open_up": "2330", "taiex_open_up": "加權"}
+        _per_q = "・".join(
+            f"{_qzh.get(q, q)} 命中 {s['hit_rate']}%/Brier {s['brier']:.3f}(n={s['n']})"
+            for q, s in (stats.get("by_question") or {}).items())
+        foot = (f"<div style='padding:8px 14px;font-size:11px;color:#64748b;"
+                f"line-height:1.8;'>"
+                f"近 {stats['n']} 題(規則 {stats.get('version', '')}):"
+                f"命中率 {stats['hit_rate']}%・"
                 f"Brier {stats['brier_model']:.3f}(基準 {stats['brier_base']:.3f},"
                 f"{'優於' if edge > 0 else '落後'}基準 {abs(edge):.3f})"
-                f"——Brier 越低越好,基準=歷史頻率/50%</div>")
+                + (f"<br>分題:{_per_q}" if _per_q else "")
+                + "——Brier 越低越好;兩題同日高度相關,分題數字較能反映真實樣本</div>")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#f0f9ff;border-left:5px solid #0369a1;border-radius:4px;">'
@@ -17949,10 +18070,12 @@ def main() -> int:
     # Top5 的 FinMind 補值(EPS年增/外資持股)在此(渲染前、抓取階段)先做,
     # 避免 render_html 於寄信前才同步打 FinMind live HTTP(慢會拖到寄信)。失敗略過不影響晨報。
     try:
-        # 批#20:與卡片同一過濾器(漲跌停/近日除權息),FinMind 補值與追蹤帳本
-        # 都以「過濾後」名單為準
-        _top5, _t5_ex = _top5_tradeable_filter(
-            _rank_attention_candidates(tw0050), quotes)
+        # 批#20:與卡片同一過濾器(漲跌停/除權息),FinMind 補值與追蹤帳本
+        # 都以「過濾後」名單為準;批#23:同時保存 raw 名單供模型 vs 過濾器分辨
+        quotes["TARGET_SESSION"] = str(target_session_date or "")
+        _scored5 = _rank_attention_candidates(tw0050)
+        _top5, _t5_ex = _top5_tradeable_filter(_scored5, quotes)
+        _raw5 = [str(s.get("code")) for s in _scored5[:5] if s.get("code")]
         if _top5:
             _fm5 = _finmind_top5_extras(
                 [str(s.get("code", "")) for s in _top5],
@@ -17961,11 +18084,15 @@ def main() -> int:
                 _s.update(_fm5.get(str(_s.get("code", "")), {}))
         if _t5_ex:
             print(f"[top5] 可執行性排除:{_t5_ex}")
-        # 批#20 #2:Top5 追蹤帳本(結算 5/20 日超額+立今日名單;
-        # trading_sessions=權威交易日序列,缺紀錄日不壓縮)
+        # 批#23:Top5 executable 帳本(pending → 目標日開盤進場 → 5/20 日結算)
+        _tx_opens = {str(r.get("target_session_date")): r.get("actual_open_taiex")
+                     for r in (quotes.get("HISTORY") or [])
+                     if isinstance(r, dict) and r.get("target_session_date")
+                     and isinstance(r.get("actual_open_taiex"), (int, float))}
         quotes["TOP5_TRACK"] = update_top5_ledger(
             model_history, _top5, now_tpe, target_session_date,
-            sessions=trading_sessions)
+            sessions=trading_sessions, taiex_opens=_tx_opens,
+            raw_codes=_raw5, excluded=_t5_ex)
     except Exception as e:
         print(f"[main] Top5 FinMind/追蹤帳本略過: {e}", file=sys.stderr)
         quotes.setdefault("TOP5_TRACK", {})
@@ -18044,7 +18171,8 @@ def main() -> int:
     try:
         quotes["FORECAST_LEDGER"] = update_forecast_ledger(
             quotes.get("HISTORY") or [], predictions,
-            quotes.get("TAIEX_PRED") or {}, now_tpe, target_session_date)
+            quotes.get("TAIEX_PRED") or {}, now_tpe, target_session_date,
+            sessions=trading_sessions)
         _fl = quotes["FORECAST_LEDGER"]
         print(f"[ledger] 今日立 {len(_fl.get('today') or [])} 題、"
               f"結算 {len(_fl.get('resolved') or [])} 題"

@@ -99,10 +99,16 @@ def main():
             if len(ics) >= 5:
                 mean_ic = sum(ics) / len(ics)
                 # 前瞻 h 日視窗重疊 → 相鄰 IC 強自相關,naive t 嚴重高估;
-                # 一律用 Newey-West(lag=h-1)為準(GPT-5.6 四審 P1)
-                t = newey_west_t(ics, h - 1) or 0.0
+                # 一律用 Newey-West(lag=h-1)為準(GPT-5.6 四審 P1)。
+                # 五審:n<24 時 HAC 變異估計不可靠(曾出現 n=12 t=7.7 假顯著)
+                # → 不顯示 t 值,標「n不足」
                 pos = sum(1 for x in ics if x > 0) / len(ics) * 100
-                print(f"  {f:16}  {mean_ic:+.4f}  {t:+5.1f}   {pos:4.0f}%    ({len(ics)})")
+                if len(ics) >= 24:
+                    t = newey_west_t(ics, h - 1) or 0.0
+                    t_txt = f"{t:+5.1f}"
+                else:
+                    t_txt = " n不足"
+                print(f"  {f:16}  {mean_ic:+.4f}  {t_txt}   {pos:4.0f}%    ({len(ics)})")
             else:
                 print(f"  {f:16}  樣本不足")
     print("\n註:|t|>2 約達顯著。負 IC = 高因子值後續較弱(均值回歸/過熱),"

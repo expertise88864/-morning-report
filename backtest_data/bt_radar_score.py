@@ -143,8 +143,9 @@ def main():
             te = sum(top_ex) / len(top_ex) * 100
             ls = sum(ls_spread) / len(ls_spread) * 100
             mic = sum(ics) / len(ics)
-            # 20 日重疊視窗 → Newey-West lag=19 為準(四審 P1)
-            t = newey_west_t(ics, HORIZON - 1) or 0.0
+            # 20 日重疊視窗 → Newey-West lag=19 為準(四審 P1);
+            # 五審:n<24 HAC 不可靠 → t 記 0 並於輸出標示樣本不足
+            t = (newey_west_t(ics, HORIZON - 1) or 0.0) if len(ics) >= 24 else 0.0
             win = sum(1 for x in top_ex if x > 0) / len(top_ex) * 100
             print(f"{name:<26}{te:>+9.2f}%{ls:>+9.2f}%{mic:>+9.4f}{t:>+8.1f}{win:>6.0f}%")
         else:

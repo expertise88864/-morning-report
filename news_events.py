@@ -267,10 +267,12 @@ def _shrunk_event_impact(event_study: dict[tuple, dict],
             continue
         stats = event_study.get((scope, scope_id, event_type, direction)) or {}
         # 樣本數用「不重複事件數」而非 event-stock 觀測數:一個出口管制事件映射
-        # 20 檔股票不是 20 個獨立樣本——同一事件+同日市場共同驅動,直接用觀測數
-        # 會讓 study_samples>=5 門檻被單一事件觸發(GPT-5.6 四審 P0-1)。
-        # 舊快取無 unique_events 時退回 samples(study 每次重建,實務不會發生)。
-        n = int(stats.get("unique_events", stats.get("samples", 0)))
+        # 20 檔股票不是 20 個獨立樣本(GPT-5.6 四審 P0-1)。五審再收斂:只認
+        # schema-2 世代(unique_events_v2)——legacy 走 session fallback 會過切
+        # 灌數;缺欄退階 unique_events → samples(舊快取相容,study 每次重建
+        # 實務不會發生)。
+        n = int(stats.get("unique_events_v2",
+                          stats.get("unique_events", stats.get("samples", 0))))
         if not n:
             continue
         weight = n / (n + prior_strength)

@@ -10,8 +10,10 @@ on:
 permissions:
   contents: write   # push 回 backtest_data/reports/YYYY-MM.md
 
+# 批#23(五審 P2):與 morning/podcast 共用 state-writers group——月報也
+# push main,不同 group 會與 09:30 podcast(最長 95 分)競態
 concurrency:
-  group: monthly-ic-report
+  group: state-writers
   cancel-in-progress: false
 
 jobs:
@@ -35,5 +37,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add backtest_data/reports/*.md || true
-          git commit -m "chore(report): 月度因子 IC 報告 [skip ci]" || echo "no changes to commit"
-          git push || echo "push skipped"
+          git commit -m "chore(report): 月度因子 IC 報告 [skip ci]" || { echo "no changes to commit"; exit 0; }
+          # push 失敗不得吞掉保持綠燈(五審 P2):fetch/rebase 重試三次,仍敗即紅
+          for i in 1 2 3; do
+            git push && exit 0
+            git fetch origin main && git rebase origin/main || exit 1
+          done
+          echo "push failed after retries" >&2
+          exit 1

@@ -220,7 +220,9 @@ def test_event_study_replaces_fallback_after_five_labels():
     sessions = [f"2026-06-{day:02d}" for day in range(1, 10)]
     history = []
     for index, session in enumerate(sessions):
-        evidence = ([{"event_type": "orders", "direction": 1}] if index < 5 else [])
+        # 批#23:門檻只認 schema-2 世代的獨立事件——五個相異 episodic ID
+        evidence = ([{"event_id": f"ev{index}", "event_schema": 2,
+                      "event_type": "orders", "direction": 1}] if index < 5 else [])
         history.append({
             "session_date": session,
             "taiex_close": 100,
@@ -228,6 +230,7 @@ def test_event_study_replaces_fallback_after_five_labels():
         })
     study = mr.build_event_study(history, sessions, horizon=1)
     assert study[("orders", 1)]["samples"] == 5
+    assert study[("orders", 1)]["unique_events_v2"] == 5
     event = mr.extract_structured_events(
         [{"source": "MOPS", "company_label": "2330", "title": "2330 new orders"}],
         [],
@@ -1602,78 +1605,104 @@ def test_top5_tradeable_filter_rules():
     assert ("3333", "近日除權息") in excluded
 
 
-def test_top5_ledger_create_resolve_and_stats():
-    """批#20 #2:Top5 帳本立名單 → 5 個 session 後結算等權超額 vs 大盤;
-    開盤後不立;成分不足 3 檔 void。"""
+def test_top5_ledger_executable_lifecycle():
+    """批#23(五審 P0-2):executable 帳本——pending → 目標日「開盤」進場 →
+    entry 後第 5 個 session 收盤結算;隔夜跳空不得進績效;
+    同 target_session 去重(週六/週一不得雙立);開盤後不立。"""
     import datetime as dt
     import json as _json
 
-    def _mh(dates, price_by_code, taiex):
-        return [{"session_date": d,
-                 "taiex_close": taiex[i],
-                 "stocks": {c: {"close": p[i]} for c, p in price_by_code.items()}}
-                for i, d in enumerate(dates)]
+    dates = [f"2026-07-{d:02d}" for d in range(1, 12)]     # 11 sessions
+    # 07-04(目標日)開盤 108=跳空;之後每日 +1 收盤
+    def _rec(i, d):
+        stocks = {c: {"open": 108.0 + i, "close": 109.0 + i}
+                  for c in ("1101", "2202", "3303")}
+        return {"session_date": d, "taiex_close": 10000 + 10 * i,
+                "stocks": stocks}
+    mh_full = [_rec(i, d) for i, d in enumerate(dates)]
+    top5 = [{"code": c, "close": 100.0} for c in ("1101", "2202", "3303")]
+    taiex_opens = {d: 10005.0 + 10 * i for i, d in enumerate(dates)}
 
-    dates = [f"2026-07-{d:02d}" for d in range(1, 10)]      # 9 sessions
-    prices = {"1101": [100 + i for i in range(9)],           # +5% over 5 sess
-              "2202": [200 + 2 * i for i in range(9)],
-              "3303": [50 + 0.5 * i for i in range(9)]}
-    taiex = [10000 + 10 * i for i in range(9)]               # +0.5% over 5
-    mh = _mh(dates, prices, taiex)
-    top5 = [{"code": c, "close": prices[c][2]} for c in prices]  # base=第3個 session?
-    # 立名單:base_session 取 model_history 最後一日 → 用前 3 天的 mh 模擬「當時」
+    # 06:00 立 pending(目標 07-04;當時 history 只有前三天)
     now = dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE)
-    out = mr.update_top5_ledger(mh[:3], top5, now, "2026-07-04",
-                                sessions=dates[:3])
+    out = mr.update_top5_ledger(mh_full[:3], top5, now, "2026-07-04",
+                                sessions=dates, taiex_opens=taiex_opens,
+                                raw_codes=["1101", "2202", "3303", "9999"],
+                                excluded=[("9999", "漲停鎖死")])
     assert out["created"] is True
-    # 5 sessions 後(mh 完整)結算(sessions=權威序列)
-    out2 = mr.update_top5_ledger(mh, [], dt.datetime(
-        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09", sessions=dates)
-    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
-    t5 = [e for e in stored if e.get("type") == "top5"]
-    assert t5 and t5[0]["res"]["5"].get("excess_pct") is not None
-    st = out2["stats"].get("5")
-    assert st and st["n"] == 1
-    # 等權報酬 ≈ (5/102 + 10/204 + 2.5/51)/3 ≈ 4.9%;大盤 50/10020 ≈ 0.5% → 超額 ≈ +4.4%
-    assert 3.5 < st["mean_excess_pct"] < 5.5 and st["win_rate"] == 100.0
-    # 開盤後(10:00)不立名單
-    mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
-    out3 = mr.update_top5_ledger(mh, top5, dt.datetime(
-        2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04", sessions=dates)
-    assert out3["created"] is False
-
-
-def test_top5_ledger_session_gap_waits_then_voids():
-    """Codex 批#20:model_history 缺中間紀錄不得壓縮缺口拿錯日結算——
-    第 h 個 session 由權威 sessions 定位;該日紀錄缺=等待,逾 10 天 void。"""
-    import datetime as dt
-    import json as _json
-    dates = [f"2026-07-{d:02d}" for d in range(1, 10)]
-    prices = {"1101": [100 + i for i in range(9)],
-              "2202": [200 + 2 * i for i in range(9)],
-              "3303": [50 + 0.5 * i for i in range(9)]}
-    taiex = [10000 + 10 * i for i in range(9)]
-    mh = [{"session_date": d, "taiex_close": taiex[i],
-           "stocks": {c: {"close": p[i]} for c, p in prices.items()}}
-          for i, d in enumerate(dates)]
-    top5 = [{"code": c, "close": prices[c][2]} for c in prices]
-    mr.update_top5_ledger(mh[:3], top5, dt.datetime(
-        2026, 7, 4, 6, 0, tzinfo=mr.TPE), "2026-07-04", sessions=dates[:3])
-    # 第 5 個 session(07-08)的紀錄缺席 → 不結算、不拿 07-09 頂替
-    mh_gap = [r for r in mh if r["session_date"] != "2026-07-08"]
-    out = mr.update_top5_ledger(mh_gap, [], dt.datetime(
-        2026, 7, 9, 6, 0, tzinfo=mr.TPE), "2026-07-09", sessions=dates)
-    assert not out["stats"].get("5")
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     t5 = next(e for e in stored if e.get("type") == "top5")
-    assert t5["res"].get("5") is None                    # 等待中
-    # 逾 10 天仍缺 → void(reason=record_missing)
+    assert t5["status"] == "awaiting_entry" and "entry" not in t5
+    assert t5["raw_codes"] == ["1101", "2202", "3303", "9999"]
+    # 同 target_session 重複立(如週六與週一皆指向週一)→ 覆蓋不疊加
+    mr.update_top5_ledger(mh_full[:3], top5, now, "2026-07-04",
+                          sessions=dates, taiex_opens=taiex_opens)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    assert sum(1 for e in stored if e.get("type") == "top5") == 1
+    # 目標日紀錄入庫 → 以「開盤 108」進場(不是昨收 100:跳空不進績效)
+    mr.update_top5_ledger(mh_full[:4], [], dt.datetime(
+        2026, 7, 5, 6, 0, tzinfo=mr.TPE), "2026-07-05",
+        sessions=dates, taiex_opens=taiex_opens)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = next(e for e in stored if e.get("type") == "top5")
+    assert t5["status"] == "entered"
+    assert t5["entry"]["1101"] == 111.0        # 07-04=index 3 → open 111
+    assert t5["taiex_entry"] == taiex_opens["2026-07-04"]
+    # entry 後第 5 個 session(07-09)收盤結算 executable excess
+    out3 = mr.update_top5_ledger(mh_full, [], dt.datetime(
+        2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
+        sessions=dates, taiex_opens=taiex_opens)
+    st = out3["stats"].get("5")
+    assert st and st["n"] == 1
+    # 個股 (117-111)/111≈5.41%;大盤 (10080-10035)/10035≈0.45% → 超額 ≈ +4.96%
+    assert 4.0 < st["mean_excess_pct"] < 6.0
+    # 開盤後(10:00)不立
+    mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
+    out4 = mr.update_top5_ledger(mh_full, top5, dt.datetime(
+        2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04",
+        sessions=dates, taiex_opens=taiex_opens)
+    assert out4["created"] is False
+
+
+def test_top5_ledger_v1_entries_voided_and_gap_waits():
+    """批#23:v1 舊格式(bases/無 status)一律 void_legacy 不進統計;
+    entry 後第 h 個 session 紀錄缺=等待(sessions 權威,不壓縮缺口)。"""
+    import datetime as dt
+    import json as _json
+    dates = [f"2026-07-{d:02d}" for d in range(1, 12)]
+    def _rec(i, d):
+        return {"session_date": d, "taiex_close": 10000 + 10 * i,
+                "stocks": {c: {"open": 100.0 + i, "close": 101.0 + i}
+                           for c in ("1101", "2202", "3303")}}
+    mh = [_rec(i, d) for i, d in enumerate(dates)]
+    taiex_opens = {d: 10005.0 + 10 * i for i, d in enumerate(dates)}
+    # 植入 v1 舊格式條目
+    legacy = {"type": "top5", "created": "2026-07-03",
+              "base_session": "2026-07-03",
+              "codes": ["1101"], "bases": {"1101": 100.0}, "res": {}}
+    mr.FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
+    mr.FORECAST_LEDGER_FILE.write_text(
+        _json.dumps([legacy]), encoding="utf-8")
+    out = mr.update_top5_ledger(mh, [], dt.datetime(
+        2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
+        sessions=dates, taiex_opens=taiex_opens)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    assert stored[0]["status"] == "void_legacy"
+    assert not out["stats"]
+    # gap:entered 條目 exit session 缺紀錄 → 等待
+    entered = {"type": "top5", "created": "2026-07-04",
+               "target_session": "2026-07-04", "base_session": "2026-07-03",
+               "codes": ["1101", "2202", "3303"],
+               "entry": {"1101": 100.0, "2202": 100.0, "3303": 100.0},
+               "taiex_entry": 10000.0, "status": "entered", "res": {}}
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps([entered]), encoding="utf-8")
+    mh_gap = [r for r in mh if r["session_date"] != "2026-07-09"]   # 缺 exit 日
     out2 = mr.update_top5_ledger(mh_gap, [], dt.datetime(
-        2026, 7, 25, 6, 0, tzinfo=mr.TPE), "2026-07-25", sessions=dates)
+        2026, 7, 10, 6, 0, tzinfo=mr.TPE), "2026-07-10",
+        sessions=dates, taiex_opens=taiex_opens)
     stored2 = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
-    t5b = next(e for e in stored2 if e.get("type") == "top5")
-    assert t5b["res"]["5"] == {"void": True, "reason": "record_missing"}
-    assert not (out2["stats"] or {}).get("5")
+    assert stored2[0]["res"].get("5") is None      # 等待,不拿 07-10 頂替
+    assert not out2["stats"]
 
 
 def test_d1_fundamental_samples_counting():
@@ -1684,3 +1713,72 @@ def test_d1_fundamental_samples_counting():
               "stocks": {"2330": {"op_margin": 45.0}}} for d in range(1, 26)])
     assert mr._d1_fundamental_samples(mh) == 5      # 25 - 20
     assert mr._d1_fundamental_samples([]) == 0
+
+
+def test_event_study_effect_is_event_level_aggregated():
+    """批#23(五審 P0-1):效果值=事件層聚合——映射 20 檔與映射 2 檔的兩個
+    事件在 global avg 中權重相同(各貢獻一個 event mean)。"""
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
+    codes_a = [f"11{i:02d}" for i in range(20)]     # 事件 A:20 檔,各 +2%
+    codes_b = ["2202", "3303"]                       # 事件 B:2 檔,各 -4%
+    history = []
+    for idx, session in enumerate(sessions):
+        stocks = {}
+        for c in codes_a:
+            stocks[c] = dict(_stock(100 * (1.02 ** idx)), code=c,
+                             news_catalysts=[{"event_id": "evA", "event_schema": 2,
+                                              "event_type": "orders",
+                                              "direction": 1}] if idx == 0 else [])
+        for c in codes_b:
+            stocks[c] = dict(_stock(100 * (0.96 ** idx)), code=c,
+                             news_catalysts=[{"event_id": "evB", "event_schema": 2,
+                                              "event_type": "orders",
+                                              "direction": 1}] if idx == 0 else [])
+        history.append({"session_date": session, "taiex_close": 100,
+                        "stocks": stocks})
+    study = mr.build_event_study(history, sessions, horizon=1)
+    g = study[("global", "", "orders", 1)]
+    assert g["unique_events"] == 2 and g["unique_events_v2"] == 2
+    assert g["samples"] == 22
+    # per-stock 平均會是 (20×2% + 2×-4%)/22 ≈ +1.45%;事件層=(2% + -4%)/2 = -1%
+    assert -1.6 < g["avg_excess_pct"] < -0.4
+    assert g["win_rate_pct"] == 50.0                 # 兩事件一正一負
+
+
+def test_learned_impact_gate_ignores_legacy_unique_events():
+    """批#23:legacy(無 schema)evidence 的 session 過切不得灌過門檻——
+    _shrunk 樣本數只認 unique_events_v2。"""
+    stats = {("global", "", "orders", 1): {
+        "samples": 30, "unique_events": 12, "unique_events_v2": 2,
+        "avg_excess_pct": 2.0}}
+    impact, n, method = mr._shrunk_event_impact(stats, "2330", "", "", "orders", 1)
+    assert n == 2      # 12 個 legacy 過切事件不算,只認 2 個 v2
+
+
+def test_forecast_ledger_session_authority_blocks_false_alignment():
+    """批#23(五審 P2):目標日「在」權威交易日曆內但 actual 缺=Yahoo 漏抓,
+    不得對齊隔日結算;「不在」日曆內=確定休市,可對齊。"""
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    sessions = ["2026-07-20", "2026-07-21", "2026-07-22"]
+    mr.update_forecast_ledger([], preds,
+                              {"pred_open": 42391.0, "last_close": 42671.27},
+                              now, "2026-07-20", sessions=sessions)
+    hist = [{"target_session_date": "2026-07-21",
+             "actual_open_2330": 2310.0, "actual_open_taiex": 42100.0}]
+    # 07-20 在日曆內、actual 缺 → 等待(不對齊 07-21)
+    led = mr.update_forecast_ledger(hist, {}, {}, dt.datetime(
+        2026, 7, 22, 6, 0, tzinfo=mr.TPE), "2026-07-22", sessions=sessions)
+    assert led["resolved"] == []
+    # 若 07-20 不在日曆內(臨時休市)→ 對齊 07-21 結算
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    for e in stored:
+        for k in ("resolved", "outcome", "void"):
+            e.pop(k, None)
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps(stored), encoding="utf-8")
+    led2 = mr.update_forecast_ledger(hist, {}, {}, dt.datetime(
+        2026, 7, 22, 6, 0, tzinfo=mr.TPE), "2026-07-22",
+        sessions=["2026-07-21", "2026-07-22"])
+    assert len(led2["resolved"]) == 2

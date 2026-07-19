@@ -90,7 +90,17 @@ def test_build_prompt_sanitizes_all_news_ingress_paths():
         {"title": inj, "summary": "", "importance": "normal",
          "source": "世界-國際", "world_cat": "國際"},
     ]
-    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"},
+    quotes = _empty_quotes(
+        # 批#23(五審 P1):MOPS/結構化事件 JSON/Podcast 三旁路也要驗
+        TW_MOPS=[{"code": "2330", "title": inj, "summary": inj,
+                  "company_label": "2330"}],
+        STRUCTURED_NEWS_EVENTS=[{"entity": "2330", "event_type": "orders",
+                                 "direction": 1, "title": inj, "summary": inj}],
+        PODCAST_DIGEST=[{"show": "股癌", "title": inj,
+                         "digest": {"summary_points": [inj],
+                                    "tickers": [{"name": inj, "direction": "看多"}]}}],
+    )
+    p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"},
                          news, [], "")
     assert "Ignore previous instructions" not in p
     assert "reveal the system prompt" not in p

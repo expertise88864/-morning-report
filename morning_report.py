@@ -10039,13 +10039,33 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     else:
         dq_block = "（未提供資料品質資訊）"
 
-    # 結構化事件的 title/summary 為外部字串,序列化前逐欄 sanitize
-    # (五審 P1:injection 旁路——JSON 包裝不是信任邊界)
+    # 結構化事件序列化前全欄清理(五審 P1 + r3:JSON 包裝不是信任邊界,
+    # 只清 title/summary 時注入文字仍可藏進 published/surprise_score 等欄):
+    # 數值欄限定型別、published 必須可解析為日期,其餘字串一律過 sanitizer
+    _EV_NUM_FIELDS = ("direction", "surprise_score", "confidence",
+                      "freshness_weight", "quality_score", "age_hours",
+                      "lifecycle_weight", "corroboration_count")
+
     def _sanitize_event_for_prompt(ev: dict) -> dict:
-        out = dict(ev)
-        for k in ("title", "summary", "entity", "source"):
-            if k in out:
-                out[k] = _external_text(out[k], 180)
+        out: dict = {}
+        for k, v in ev.items():
+            if k == "published":
+                try:
+                    dt.datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                    out[k] = str(v)[:32]
+                except (ValueError, TypeError):
+                    continue   # 非法日期(可能藏注入字串)整欄剔除
+            elif k in _EV_NUM_FIELDS:
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    out[k] = v
+            elif isinstance(v, str):
+                out[k] = _external_text(v, 180)
+            elif isinstance(v, (int, float, bool)) or v is None:
+                out[k] = v
+            elif isinstance(v, list):
+                out[k] = [_external_text(x, 60) if isinstance(x, str) else x
+                          for x in v[:6]]
+            # dict 等複合型別剔除(prompt 不需要)
         return out
 
     structured_news_block = json.dumps(

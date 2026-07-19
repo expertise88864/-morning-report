@@ -95,7 +95,10 @@ def test_build_prompt_sanitizes_all_news_ingress_paths():
         TW_MOPS=[{"code": "2330", "title": inj, "summary": inj,
                   "company_label": "2330"}],
         STRUCTURED_NEWS_EVENTS=[{"entity": "2330", "event_type": "orders",
-                                 "direction": 1, "title": inj, "summary": inj}],
+                                 "direction": 1, "title": inj, "summary": inj,
+                                 # r3:注入文字藏進 schema 欄位也要被剔除/擋下
+                                 "published": inj, "surprise_score": inj,
+                                 "sources": [inj]}],
         PODCAST_DIGEST=[{"show": "股癌", "title": inj,
                          "digest": {"summary_points": [inj],
                                     "tickers": [{"name": inj, "direction": "看多"}]}}],

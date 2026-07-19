@@ -2095,11 +2095,18 @@ def test_suspension_official_source_wins_and_stale_news_dropped(monkeypatch):
                  "link": mr._DGPA_NDS_URL}]
     monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: official)
     assert mr.fetch_suspension_news() == official
-    # 官方失敗 → 新聞備援:昨日「今晚」剔除、昨日「明天」保留
+    # 官方失敗 → 新聞備援:昨日「今晚」剔除、昨日「明天」保留、
+    # 昨日「絕對日期=今日」保留(Codex r1:縣市公告常用絕對日期)
+    import datetime as _dt
+    _now = _dt.datetime.now(mr.TPE)
+    Feed.entries.append(
+        {"title": f"雲林縣宣布{_now.month}月{_now.day}日停止上班上課",
+         "link": "https://x/abs", "published_parsed": yesterday_evening})
     monkeypatch.setattr(mr, "fetch_dgpa_suspension", lambda: None)
     titles = [i["title"] for i in mr.fetch_suspension_news()]
     assert "致災性豪雨強襲!台中市今晚停班停課 林佳龍說明原因" not in titles
     assert "南投縣宣布明天停止上班上課" in titles
+    assert f"雲林縣宣布{_now.month}月{_now.day}日停止上班上課" in titles
 
 
 def test_dgpa_page_parsing(monkeypatch):

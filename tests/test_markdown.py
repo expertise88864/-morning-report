@@ -1101,3 +1101,14 @@ def test_batch26_stance_internals_scoped_to_stance_section():
                           "2026-06-02", "每日報")
     assert "距突破門檻 2%" in html and "量能回升" in html   # 八段正當子句保留
     assert "11 維中" not in html                            # 立場段計分內部仍被移除
+
+
+def test_batch26_stance_label_line_keeps_label(monkeypatch):
+    """Codex 批#26 r8:立場標籤行帶淨分「**立場：偏空**（淨分 -6）」時,
+    整段刪除會丟掉「偏空」並留畸形「**立場：」——改外科式,標籤保留。"""
+    from llm_postprocess import _strip_stance_internals
+    assert _strip_stance_internals("> **立場：偏空**（淨分 -6）") == "> **立場：偏空**"
+    assert _strip_stance_internals("立場：中性（淨分 +3，觀望）") == "立場：中性（觀望）"
+    # 理由行仍整段刪(計分子句去、傳導鏈留;clause 策略會 strip 尾標點)
+    assert (_strip_stance_internals("> 理由：11 維中 7 項偏空。核心：SOX 壓制。")
+            == "> 理由：核心：SOX 壓制")

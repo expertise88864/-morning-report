@@ -67,10 +67,15 @@ def _strip_stance_internals(text: str) -> str:
             k in text for k in ("維中", "項偏", "淨分", "門檻")):
         return text
     _bad = _re.compile(r"(維中|項偏空|項偏多|淨分|距.{0,6}門檻)")
+    # 立場標籤行(**立場:偏空**、立場:中性…)必須外科式移除計分片語——整段
+    # 刪除會把標籤本身丟掉、留下畸形「**立場:」(Codex 批#26 r8)
+    _label = _re.compile(r"立場\**\s*[：:]")
 
     def _clean_line(line: str) -> str:
         if not _bad.search(line):
             return line
+        if _label.search(line):
+            return _strip_score_phrases(line)
         # 前綴(如「理由：」「> **理由**：」)保留;冒號後的內容切子句過濾
         head, sep, body = line.partition("：")
         if not sep:

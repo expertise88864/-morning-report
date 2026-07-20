@@ -4525,6 +4525,33 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73066688",
+        "title": "FDA's lettuce u-turn",
+        "published": "Mon, 20 Jul 2026 10:51:27 +0000",
+        "processed_at": "2026-07-20T15:27:27Z",
+        "digest": {
+          "summary_points": [
+            "三星電子在美國裁員739人，因總部從紐澤西遷至德州，其中約100人在普萊諾被解僱。",
+            "蘋果在日本調漲多款iPhone價格，漲幅最高達11%，包含iPhone 17、iPhone Air和iPhone 16。",
+            "Fervo Energy (FRVO) 獲Jefferies調升至買進，認為自IPO高點回跌40%後提供具吸引力的進場點；盤前上漲5%。",
+            "開盤前股指期貨走高，原油下跌0.7%，FTSE 100下跌0.4%，DAX上漲0.3%。",
+            "Seeking Alpha分析師質疑記憶體晶片製造商是否擴產過度。"
+          ],
+          "tickers": [
+            {
+              "name": "Fervo Energy",
+              "code": "FRVO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Jefferies 在該股自IPO高點回跌40%後調升至買進。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73057716",
         "title": "Tesla reports as earnings season revs up",
         "published": "Sun, 19 Jul 2026 18:19:43 +0000",
@@ -5079,44 +5106,6 @@
           "notable_quote": "I think 2026 is sort of the realization that there's going to be winners and losers in the AI trade rather than just sort of, you know, all lines go up situation."
         },
         "shown_at": "2026-07-10T22:59:35Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72912653",
-        "title": "SK Hynix lands record U.S. debut",
-        "published": "Fri, 10 Jul 2026 11:20:25 +0000",
-        "processed_at": "2026-07-10T15:45:19Z",
-        "digest": {
-          "summary_points": [
-            "SK海力士在美國ADR首發上市募資265億美元，成為外國公司在美最大IPO，但低於SpaceX的857億美元。",
-            "花旗銀行從SK海力士股票發行中賺取超過7000萬美元費用，整個承銷團總費用近2.6億美元。",
-            "百事可樂執行長表示，油價上漲導致消費者支出比預期更差，影響便利商店等衝動型購買。",
-            "截至五月，美國汽油與能源支出占消費比例升至2.51%，三個月移動增幅創2009年以來最大。",
-            "伊朗戰爭干擾中東生產與出口後，全球石油需求自2020年以來首次面臨下滑，但IEA預期年底前將反彈。",
-            "IEA預測全球石油市場年底將重返供過於求，前提是海峽油輪交通逐步恢復，使生產商重啟油田。",
-            "盤前交易：那斯達克100期貨下跌超過0.5%，標普500期貨微跌，道瓊期貨接近平盤。",
-            "美國未對伊朗發動新的打擊，持續透過技術談判尋求外交解決方案。"
-          ],
-          "tickers": [
-            {
-              "name": "SK海力士",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上市可能有助於重新評價韓國股票，使其至少與美光持平甚至溢價交易。"
-            },
-            {
-              "name": "百事可樂",
-              "code": "PEP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "執行長表示消費者因油價上漲支出減少，影響便利商店銷售。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The consumer is worse than we'd anticipated and it's driven mainly by gas."
-        },
-        "shown_at": "2026-07-10T22:59:35Z"
       }
     ]
   },
@@ -5153,6 +5142,29 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "ef32f81a-cd8d-4184-8eb6-b48a015709b4",
+        "title": "The Creator of Claude Code on The Hottest Piece of Software in the World",
+        "published": "Mon, 20 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-20T15:36:07Z",
+        "digest": {
+          "summary_points": [
+            "Opus 4.5 和 Opus 4.6 等模型版本大幅提升 Claude Code 的程式碼生成能力，帶動用戶數在每個版本發布後飆升。",
+            "Anthropic 內部約 90% 的程式碼由 Claude Code 生成，包括產品、基礎設施和研究程式碼。",
+            "軟體工程角色正從編碼轉向原型設計、建構、維護和擴展等更高層級的抽象工作。",
+            "企業採用 AI 程式設計工具遵循階梯：從個人試用、單會話到多會話、再到全公司普及，安全與治理是主要瓶頸。",
+            "AI 降低軟體切換成本，但企業的競爭壁壘仍依賴網路效應、規模經濟等組合護城河。",
+            "Claude Code 能高效完成 COBOL 等老舊程式碼的遷移，成本降至傳統方式的極小部分。",
+            "模型安全（如防止提示注入）成為差異化優勢，Anthropic 透過對齊與沙盒實現領先。",
+            "未來人機互動將從圖形介面轉向對話式協作，AI 代理能主動參與工作流程並生成設計。",
+            "程式語言的重要性下降，模型可處理任意語言，可能導致新程式語言的爆發。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The way that I would think about it is, do you guys know this like seven powers framework? No."
+        }
+      },
       {
         "guid": "4e48ebd0-0b41-4721-8e45-b489014fc1c7",
         "title": "Lev Menand and Nathan Tankus on Why Fed Independence Is Now Hanging by a Thread",
@@ -5474,31 +5486,6 @@
           "notable_quote": "Overall, the commitment that we see in the market, particularly for data center space, for equipment, for other things, is really a multi-year commitment. And I think people see this as a critical infrastructure they learn from the internet era in terms of the cloud service providers, how much data can be generated."
         },
         "shown_at": "2026-06-27T22:52:53Z"
-      },
-      {
-        "guid": "774dd005-8b31-4ba1-9549-b474011e8753",
-        "title": "Rory Johnston on Why His $200 Oil Prediction Didn't Turn Out Right",
-        "published": "Fri, 26 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-26T10:52:51Z",
-        "digest": {
-          "summary_points": [
-            "布蘭特原油跌至每桶74美元以下，儘管荷莫茲海峽關閉，但並未如預測般飆升至200美元。",
-            "荷莫茲海峽關閉導致每日約1300萬桶的波斯灣石油產量中斷，為史上最大的供應干擾事件。",
-            "中國原油進口量每日減少高達500萬桶，吸收了亞洲現貨市場一半的供給衝擊，避免價格飆升。",
-            "中國進口減少很可能來自戰略石油儲備（SPR）釋放，而非需求破壞，因為流動性指標保持穩定。",
-            "美國及其他國際能源署（IEA）成員國在危機期間總共釋放了約4億桶戰略儲備。",
-            "中國進口減少與川普政府的「口頭干預」（威脅增加供應）相結合，阻止了預期的價格暴漲。",
-            "近期布蘭特原油近月價差轉為正價差（contango），顯示供應相對需求充裕。",
-            "石油市場在危機前處於供過於求狀態，這限制了大型供應干擾對價格的影響。",
-            "交易員的模型顯示看漲訊號，但3月至4月期間重複虧損導致風險限額大幅降低，限制了買盤。",
-            "危機後各國可能重建戰略儲備，但此需求需等到市場寬鬆後才會顯現。"
-          ],
-          "tickers": [],
-          "market_view": "石油市場目前供應過剩，布蘭特原油低於74美元，時間價差為正價差，且中國需求仍疲弱。市場對大規模供給衝擊的韌性超出預期。",
-          "action_view": "",
-          "notable_quote": "Everyone's bullish, but no one's buying."
-        },
-        "shown_at": "2026-06-26T23:04:32Z"
       }
     ]
   },

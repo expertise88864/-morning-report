@@ -1085,6 +1085,9 @@ def test_batch26_summary_strips_net_score():
     # Codex r6:門檻片語與動作間無標點時也不得吞掉動作
     assert (_strip_score_phrases("偏空（淨分 -6，距偏空門檻 2 分建議減碼 00662）")
             == "偏空（建議減碼 00662）")
+    # Codex r6(二):較長維中片語(>8 字)不得截成碎片
+    assert (_strip_score_phrases("偏空（11 維中共有 7 項指標偏空，建議減碼 00662）")
+            == "偏空（建議減碼 00662）")
 
 
 def test_batch26_stance_internals_scoped_to_stance_section():

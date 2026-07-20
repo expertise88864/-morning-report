@@ -15757,15 +15757,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 analysis_for_render, ("我的明確立場", "一句話總結"))
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
-    # 批#26:理由散文裡的計分內部(「11 維中 X 項」「淨分 ±N」)也移除(雙保險)。
-    # summary_text 已於上方獨立擷取,不受此後的 analysis 過濾影響——單獨過濾
-    # (Codex 批#26 r1:一句話總結含「淨分 -6」會殘留在頂部結論卡)
-    analysis_for_render = _strip_stance_internals(analysis_for_render)
-    # 一句話總結是「立場+動作」單行,用外科式移除(保留開頭立場標籤,
-    # Codex 批#26 r2);理由段是多子句才用 _strip_stance_internals 整段刪
+    # 一句話總結是「立場+動作」單行,用外科式移除(保留開頭立場標籤,批#26 r2/r4)
     summary_text = _strip_score_phrases(summary_text)
     # 十二(立場敘述/價位/操作/風險)上移到頂端結論卡,body 中移除十二、十三避免重複
     stance_detail = _extract_stance_section(analysis_for_render)
+    # 批#26:計分內部(「11 維中 X 項」「淨分 ±N」)只在「立場詳情段」過濾——
+    # **不套整份 analysis**(Codex r4:八段的「距突破門檻 2%」等正當子句會被誤刪)
+    stance_detail = _strip_stance_internals(stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
     tw_intelligence_html = _render_tw_intelligence_html(

@@ -93,20 +93,30 @@ def _strip_stance_internals(text: str) -> str:
 
 
 def _strip_score_phrases(text: str) -> str:
-    """外科式移除計分片語,保留其餘文字(Codex 批#26 r2:一句話總結是
-    「立場+動作」單行,不能用 _strip_stance_internals 的整段刪除——會把開頭
-    的「偏空」標籤也丟掉)。只挖「(淨分 -6…)」括號組、裸「淨分 ±N 距…門檻…」、
-    「N 維中 X 項」「N 項偏空/偏多」,並清理殘留空括號與連續標點。"""
+    """外科式移除計分片語,保留立場標籤與動作(Codex 批#26 r2/r4:一句話總結是
+    「立場+動作」單行)。只挖「淨分 ±N 距…門檻」「N 維中 X 項」「N 項偏空/多」;
+    括號組只清內部計分片語,**清完仍有內容(如動作建議)則保留括號**,只有清
+    到空才連括號刪。"""
     import re as _re
     if not isinstance(text, str) or not any(
             k in text for k in ("維中", "項偏", "淨分", "門檻")):
         return text
-    text = _re.sub(r"[（(]\s*淨分[^）)]*[）)]", "", text)           # (淨分 -6, …)
-    text = _re.sub(r"淨分\s*[:：=為]?\s*[+\-]?\d+(?:\s*距[^，、；。,;]*)?",
-                   "", text)                                       # 裸 淨分 ±N 距…門檻
-    text = _re.sub(r"\d+\s*維中[^，、；。,;]*", "", text)
-    text = _re.sub(r"\d+\s*項偏[空多]", "", text)
-    text = _re.sub(r"[（(]\s*[）)]", "", text)                     # 殘留空括號
+
+    def _clean_inner(s: str) -> str:
+        # 到下一個標點或括號止(不吃過括號邊界)
+        s = _re.sub(r"淨分\s*[:：=為]?\s*[+\-]?\d+(?:\s*距[^，、；。,;）)]*)?", "", s)
+        s = _re.sub(r"\d+\s*維中[^，、；。,;）)]*", "", s)
+        s = _re.sub(r"\d+\s*項偏[空多]", "", s)
+        return s
+
+    def _paren(m: "_re.Match") -> str:
+        open_c, inner, close_c = m.group(0)[0], m.group(1), m.group(0)[-1]
+        cleaned = _clean_inner(inner)
+        if not _re.sub(r"[，、；。,;\s]", "", cleaned):   # 清完只剩標點/空白 → 整組刪
+            return ""
+        return open_c + cleaned.strip("，、；。,; ") + close_c
+    text = _re.sub(r"[（(]([^）)]*)[）)]", _paren, text)   # 括號組
+    text = _clean_inner(text)                              # 括號外裸片語
     text = _re.sub(r"([，、；。,;])\s*(?=[，、；。,;])", "", text)   # 連續標點去重
     return text.strip("，、；。,; ")
 

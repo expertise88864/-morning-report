@@ -1077,3 +1077,18 @@ def test_batch26_summary_strips_net_score():
     from llm_postprocess import _strip_score_phrases
     assert _strip_score_phrases("偏空（淨分 -6）減碼 00662") == "偏空減碼 00662"
     assert _strip_score_phrases("偏多操作 00662") == "偏多操作 00662"  # 無片語不動
+    # Codex r4:括號內含動作建議時,只挖淨分、保留動作與括號
+    assert _strip_score_phrases("偏空（淨分 -6，建議減碼 00662）") == "偏空（建議減碼 00662）"
+
+
+def test_batch26_stance_internals_scoped_to_stance_section():
+    """Codex 批#26 r4:非立場段的正當「距突破門檻 2%」子句不得被計分過濾誤刪
+    (_strip_stance_internals 只套立場詳情段,不套整份 analysis)。"""
+    q = _full_quotes()
+    analysis = ("## 八、科技板塊脈動\n台積電距突破門檻 2%，量能回升→2330 有撐。\n"
+                "## 十二、我的明確立場\n> **立場：偏空**\n> 理由：11 維中 7 項偏空。\n"
+                "## 十三、一句話總結\n偏空觀望")
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-06-02", "每日報")
+    assert "距突破門檻 2%" in html and "量能回升" in html   # 八段正當子句保留
+    assert "11 維中" not in html                            # 立場段計分內部仍被移除

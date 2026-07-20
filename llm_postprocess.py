@@ -103,11 +103,14 @@ def _strip_score_phrases(text: str) -> str:
         return text
 
     def _clean_inner(s: str) -> str:
-        # 到下一個標點或括號止(不吃過括號邊界)
-        s = _re.sub(r"淨分\s*[:：=為]?\s*[+\-]?\d+(?:\s*距[^，、；。,;）)]*)?", "", s)
+        # 各計分片語各自到下一個標點或括號止(不吃過邊界,保留後續動作)
+        s = _re.sub(r"淨分\s*[:：=為]?\s*[+\-]?\d+", "", s)
+        # 獨立「距…門檻…」子句(逗號分隔或直接接淨分皆可,Codex r5)
+        s = _re.sub(r"距[^，、；。,;）)]{0,10}門檻[^，、；。,;）)]{0,8}", "", s)
         s = _re.sub(r"\d+\s*維中[^，、；。,;）)]*", "", s)
         s = _re.sub(r"\d+\s*項偏[空多]", "", s)
-        return s
+        # 清完後段內連續標點去重(避免留下「，，」)
+        return _re.sub(r"([，、；。,;])\s*(?=[，、；。,;])", "", s)
 
     def _paren(m: "_re.Match") -> str:
         open_c, inner, close_c = m.group(0)[0], m.group(1), m.group(0)[-1]

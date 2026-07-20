@@ -1079,6 +1079,9 @@ def test_batch26_summary_strips_net_score():
     assert _strip_score_phrases("偏多操作 00662") == "偏多操作 00662"  # 無片語不動
     # Codex r4:括號內含動作建議時,只挖淨分、保留動作與括號
     assert _strip_score_phrases("偏空（淨分 -6，建議減碼 00662）") == "偏空（建議減碼 00662）"
+    # Codex r5:逗號分隔的獨立「距…門檻…」子句也移除,動作仍保留
+    assert (_strip_score_phrases("偏空（淨分 -6，距偏空門檻 2 分，建議減碼 00662）")
+            == "偏空（建議減碼 00662）")
 
 
 def test_batch26_stance_internals_scoped_to_stance_section():

@@ -92,6 +92,25 @@ def _strip_stance_internals(text: str) -> str:
     return "\n".join(_clean_line(ln) for ln in text.split("\n"))
 
 
+def _strip_score_phrases(text: str) -> str:
+    """外科式移除計分片語,保留其餘文字(Codex 批#26 r2:一句話總結是
+    「立場+動作」單行,不能用 _strip_stance_internals 的整段刪除——會把開頭
+    的「偏空」標籤也丟掉)。只挖「(淨分 -6…)」括號組、裸「淨分 ±N 距…門檻…」、
+    「N 維中 X 項」「N 項偏空/偏多」,並清理殘留空括號與連續標點。"""
+    import re as _re
+    if not isinstance(text, str) or not any(
+            k in text for k in ("維中", "項偏", "淨分", "門檻")):
+        return text
+    text = _re.sub(r"[（(]\s*淨分[^）)]*[）)]", "", text)           # (淨分 -6, …)
+    text = _re.sub(r"淨分\s*[:：=為]?\s*[+\-]?\d+(?:\s*距[^，、；。,;]*)?",
+                   "", text)                                       # 裸 淨分 ±N 距…門檻
+    text = _re.sub(r"\d+\s*維中[^，、；。,;]*", "", text)
+    text = _re.sub(r"\d+\s*項偏[空多]", "", text)
+    text = _re.sub(r"[（(]\s*[）)]", "", text)                     # 殘留空括號
+    text = _re.sub(r"([，、；。,;])\s*(?=[，、；。,;])", "", text)   # 連續標點去重
+    return text.strip("，、；。,; ")
+
+
 def _extract_stance(text: str) -> dict:
     """從 LLM markdown 分析中擷取「立場」與「淨分」，用於頂部 KPI 條。失敗回 {}。"""
     import re as _re

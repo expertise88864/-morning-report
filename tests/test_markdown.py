@@ -1071,4 +1071,9 @@ def test_batch26_summary_strips_net_score():
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-06-02", "每日報")
     assert "淨分" not in html
+    assert "偏空" in html                     # 立場標籤必須保留(Codex r2)
     assert "減碼 00662 待戰事明朗" in html    # 結論主體保留
+    # 無分隔情況:「偏空（淨分 -6）減碼」→ 立場+動作都在
+    from llm_postprocess import _strip_score_phrases
+    assert _strip_score_phrases("偏空（淨分 -6）減碼 00662") == "偏空減碼 00662"
+    assert _strip_score_phrases("偏多操作 00662") == "偏多操作 00662"  # 無片語不動

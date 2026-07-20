@@ -49,6 +49,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_llm_sections,
     _strip_stance_calculation,
     _strip_stance_internals,
+    _strip_score_phrases,
     _extract_stance,
     _extract_summary,
     _extract_stance_section,
@@ -15760,7 +15761,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # summary_text 已於上方獨立擷取,不受此後的 analysis 過濾影響——單獨過濾
     # (Codex 批#26 r1:一句話總結含「淨分 -6」會殘留在頂部結論卡)
     analysis_for_render = _strip_stance_internals(analysis_for_render)
-    summary_text = _strip_stance_internals(summary_text)
+    # 一句話總結是「立場+動作」單行,用外科式移除(保留開頭立場標籤,
+    # Codex 批#26 r2);理由段是多子句才用 _strip_stance_internals 整段刪
+    summary_text = _strip_score_phrases(summary_text)
     # 十二(立場敘述/價位/操作/風險)上移到頂端結論卡,body 中移除十二、十三避免重複
     stance_detail = _extract_stance_section(analysis_for_render)
     analysis_for_render = _strip_llm_sections(

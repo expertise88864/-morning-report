@@ -3058,4 +3058,8 @@ def test_batch26_display_removals():
     out = _strip_stance_internals(txt)
     assert "11 維" not in out and "淨分" not in out and "門檻" not in out
     assert "核心傳導鏈：SOX 壓制 2330" in out
+    # Codex r2:ASCII 逗號也是子句分隔——傳導鏈保留、計分內部丟、千分位不受害
+    a = _strip_stance_internals("理由：SOX 承壓, 11 維中 7 項偏空, 淨分 -6")
+    assert a == "理由：SOX 承壓"
+    assert _strip_stance_internals("理由：成交 1,234 億, 淨分 -6") == "理由：成交 1,234 億"
 

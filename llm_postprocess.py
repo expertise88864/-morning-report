@@ -76,14 +76,17 @@ def _strip_stance_internals(text: str) -> str:
         if not sep:
             head, sep, body = line, "", ""
             body, head = head, ""
-        segs = _re.split(r"([，、；。])", body)
+        # 中文+ASCII 標點皆為子句分隔(Codex 批#26 r2:LLM 常混用半形逗號,
+        # 只認全形會把整句當一段而全數丟掉,連傳導鏈一起被誤刪)。
+        # 千分位「1,234」不受害:分隔後兩側皆非壞子句 → 保留並補回逗號。
+        segs = _re.split(r"([，、；。,;])", body)
         kept = []
         for i in range(0, len(segs), 2):
             seg = segs[i]
             delim = segs[i + 1] if i + 1 < len(segs) else ""
             if seg and not _bad.search(seg):
                 kept.append(seg + delim)
-        cleaned = "".join(kept).lstrip("，、；。 ")
+        cleaned = "".join(kept).strip("，、；。,; ")
         return (head + sep + cleaned) if (head or sep) else cleaned
 
     return "\n".join(_clean_line(ln) for ln in text.split("\n"))

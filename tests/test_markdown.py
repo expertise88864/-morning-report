@@ -1061,3 +1061,14 @@ def test_batch26_hidden_display_elements():
     assert "銅期貨" not in html
     assert "預測記分卡" not in html
     assert "立場變化歸因" not in html
+
+
+def test_batch26_summary_strips_net_score():
+    """Codex 批#26 r1:一句話總結若含「淨分 -6」,頂部結論卡不得殘留。"""
+    q = _full_quotes()
+    analysis = ("## 十二、我的明確立場\n> **立場：偏空**\n"
+                "## 十三、一句話總結\n偏空(淨分 -6),減碼 00662 待戰事明朗")
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-06-02", "每日報")
+    assert "淨分" not in html
+    assert "減碼 00662 待戰事明朗" in html    # 結論主體保留

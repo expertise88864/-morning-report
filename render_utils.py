@@ -258,20 +258,19 @@ def _render_kpi_strip(quotes: dict, fair: dict, predictions: dict, stance: dict)
     (VIX 移到「總經指標」表內，騰出 KPI 位置給 0050。)"""
     import html as _htmllib_kpi   # 持倉名稱可能是 user 自訂字串,需 escape
     # === 立場 ===
+    # 批#26 使用者要求:立場只顯示標籤(偏多/偏空/中性),**不顯示淨分數字**
+    # ——分數計算仍在後台(STANCE_PY)決定顏色與標籤,只是不外露。
     score = stance.get("score")
     label = stance.get("label") or "—"
+    score_str = ""
     if score is None:
         stance_color = "#94a3b8"
-        score_str = ""
     elif score >= 4:
         stance_color = "#fb7185"   # 偏多 → 暖紅（TW 慣例）
-        score_str = f" {score:+d}"
     elif score <= -4:
         stance_color = "#86efac"   # 偏空 → 綠
-        score_str = f" {score:+d}"
     else:
         stance_color = "#fcd34d"   # 中性 → 黃
-        score_str = f" {score:+d}"
 
     # === 2330 ===
     mid_2330 = predictions.get("mid") if isinstance(predictions, dict) else None

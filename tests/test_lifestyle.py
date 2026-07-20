@@ -3027,34 +3027,35 @@ def test_poly_divergence_note_rules():
     assert mr._poly_divergence_note([], {"label": "偏多"}) == ""
 
 
-def test_monthly_ai_market_search_excludes_variants(monkeypatch):
-    """批#17 r2(Codex F1 反證+回歸):second/third/年度變體即使 endDate 較早
-    也不得被選為當月盤——startswith 過濾本就擋掉 second/third,以測試釘死。"""
+def test_monthly_ai_market_removed_annual_kept(monkeypatch):
+    """批#26:當月最佳 AI 模型盤已移除(月底盤常一家獨大、資訊量低);
+    年底盤保留。"""
     import datetime as dt
-    fake_events = [
-        {"title": "Which company has the third best AI model end of July?",
-         "slug": "third-july", "closed": False, "endDate": "2026-07-30T00:00:00Z"},
-        {"title": "Which company has second best AI model end of July?",
-         "slug": "second-july", "closed": False, "endDate": "2026-07-30T00:00:00Z"},
-        {"title": "Which company has best AI model end of 2026?",
-         "slug": "annual", "closed": False, "endDate": "2026-12-31T00:00:00Z"},
-        {"title": "Which company has best AI model end of July?",
-         "slug": "primary-july", "closed": False, "endDate": "2026-07-31T00:00:00Z"},
-    ]
-    seen_slugs = []
-    def fake_search(q, limit=8):
-        return fake_events
     def fake_outright(slug, zh_map=None, top=5, min_prob=0.02):
-        seen_slugs.append(slug)
-        if slug == "primary-july":
-            return [{"name": "Anthropic", "prob": 98, "prob_raw": 98.0,
+        if "2026" in slug:                      # 年度盤
+            return [{"name": "Anthropic", "prob": 66, "prob_raw": 66.0,
                      "hist_key": "1", "low_vol": False, "wide": False}]
-        return []
-    monkeypatch.setattr(mr, "_poly_search_events", fake_search)
+        return []   # 若當月盤仍被查(不該),回空
     monkeypatch.setattr(mr, "_poly_outright", fake_outright)
+    monkeypatch.setattr(mr, "_poly_search_events", lambda q, limit=8: [])
     monkeypatch.setattr(mr, "_poly_events", lambda p: [])
     rows = mr.fetch_polymarket_pulse(dt.datetime(2026, 7, 18, 6, tzinfo=mr.TPE))
-    monthly = [r for r in rows if "月底最佳 AI 模型" in r["label"]]
-    assert len(monthly) == 1 and monthly[0]["label"] == "7月底最佳 AI 模型"
-    # 動態搜尋只以 primary 盤 slug 取價,variant slug 不得出現
-    assert "second-july" not in seen_slugs and "third-july" not in seen_slugs
+    labels = [r["label"] for r in rows]
+    assert "年底最佳 AI 模型" in labels
+    assert not any("月底最佳 AI 模型" in x for x in labels)
+
+
+def test_batch26_display_removals():
+    """批#26 顯示刪除彙總:銅期貨/預測記分卡/立場歸因卡不進信;世足賽期窗
+    延到決賽後。"""
+    import datetime as dt
+    # 世足賽期窗上界=決賽(07/20)後,07/20 當天仍在窗內
+    assert mr._WC_WINDOW[1] >= dt.date(2026, 7, 20)
+    assert dt.date(2026, 7, 20) <= mr._WC_WINDOW[1]
+    # 立場理由散文層過濾:計分內部被移除、傳導鏈保留
+    from llm_postprocess import _strip_stance_internals
+    txt = "理由：11 維中 7 項偏空、淨分 -6 距門檻尚有空間。核心傳導鏈：SOX 壓制 2330。"
+    out = _strip_stance_internals(txt)
+    assert "11 維" not in out and "淨分" not in out and "門檻" not in out
+    assert "核心傳導鏈：SOX 壓制 2330" in out
+

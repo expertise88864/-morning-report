@@ -57,6 +57,38 @@ def _strip_stance_calculation(text: str) -> str:
     return "\n".join(out)
 
 
+def _strip_stance_internals(text: str) -> str:
+    """散文層安全網(批#26 使用者:理由不要出現計分內部):在「我的明確立場」
+    理由句裡移除「11 維中 X 項偏空」「N 項偏多」「淨分 ±N」「距門檻…」等
+    計分細節子句(以中文標點切段,丟含關鍵詞的子句)。prompt 已禁,此為雙保險。
+    **必須在 _extract_stance 之後才呼叫**(擷取依賴「淨分」)。"""
+    import re as _re
+    if not isinstance(text, str) or not any(
+            k in text for k in ("維中", "項偏", "淨分", "門檻")):
+        return text
+    _bad = _re.compile(r"(維中|項偏空|項偏多|淨分|距.{0,6}門檻)")
+
+    def _clean_line(line: str) -> str:
+        if not _bad.search(line):
+            return line
+        # 前綴(如「理由：」「> **理由**：」)保留;冒號後的內容切子句過濾
+        head, sep, body = line.partition("：")
+        if not sep:
+            head, sep, body = line, "", ""
+            body, head = head, ""
+        segs = _re.split(r"([，、；。])", body)
+        kept = []
+        for i in range(0, len(segs), 2):
+            seg = segs[i]
+            delim = segs[i + 1] if i + 1 < len(segs) else ""
+            if seg and not _bad.search(seg):
+                kept.append(seg + delim)
+        cleaned = "".join(kept).lstrip("，、；。 ")
+        return (head + sep + cleaned) if (head or sep) else cleaned
+
+    return "\n".join(_clean_line(ln) for ln in text.split("\n"))
+
+
 def _extract_stance(text: str) -> dict:
     """從 LLM markdown 分析中擷取「立場」與「淨分」，用於頂部 KPI 條。失敗回 {}。"""
     import re as _re

@@ -367,15 +367,14 @@ def test_render_stance_display_prefers_python(monkeypatch):
                 "## 十三、一句話總結\n偏多操作 00662 逢低加碼")
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
-    assert "偏空" in html and "-8" in html
+    assert "偏空" in html                          # 批#26:標籤顯示、淨分不外露
+    # (KPI 不顯示淨分數字由 test_render_html_includes_kpi_strip_with_full_data
+    #  以 -4 乾淨覆蓋;-8 會誤中 charset=utf-8,此處不重複脆弱檢查)
     # Codex r1 P1 合規防線:LLM 相反立場的結論/方向性建議不得殘留
     assert "偏多操作 00662 逢低加碼" not in html
     assert "依系統計分" in html
-    # Codex r1 P2:歸因卡包 <tr><td>(裸 div 是 table 非法子元素)
-    assert "立場變化歸因" in html and "-6 → -8" in html.replace("+", "")
-    import re as _re
-    assert _re.search(r"<tr><td[^>]*>\s*<div[^>]*'>\s*<b>立場變化歸因", html), \
-        "歸因卡必須包在 <tr><td> 內"
+    # 批#26:立場變化歸因卡已自信件移除(仍在後台計算)
+    assert "立場變化歸因" not in html
 
 
 def test_stance_attribution_skips_same_day_entries():

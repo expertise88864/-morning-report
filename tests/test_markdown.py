@@ -593,8 +593,10 @@ def test_render_html_includes_kpi_strip_with_full_data():
              "mid": 2192.5, "range": (2187.38, 2229.2)}
     analysis = "## 十二、我的明確立場\n淨分 -4\n**立場：偏空**\n\n## 十四、一句話總結\nSOX 暴跌減碼 00662。"
     html = mr.render_html(q, fair, preds, analysis, "2026-05-16", "每日報")
-    # KPI 條：5 個欄位都顯示
-    assert "偏空" in html and "-4" in html
+    # KPI 條:5 個欄位都顯示;批#26 立場只顯示標籤、不顯示淨分數字
+    assert "偏空" in html
+    _kpi = html.split("一、美股收盤行情")[0]
+    assert "-4" not in _kpi                       # 淨分不外露於 KPI
     assert "2192.5" in html
     assert "116.99" in html
     assert "40,487" in html
@@ -688,9 +690,10 @@ def test_render_html_shows_attention_candidate_price_forecast(monkeypatch):
     assert "勝過大盤" not in html
     assert "近期方向命中" not in html
     assert "None%" not in html
-    # 預測價位行保留
-    assert "3日 1010.0 (970.0~1050.0)" in html
-    assert "5日 1020.0 (960.0~1080.0)" in html
+    # 批#26:短期參考行(3/5 日)與財報品質已依使用者要求自信件隱藏
+    assert "短期參考" not in html
+    assert "3日 1010.0" not in html
+    assert "財報品質" not in html
 
 
 def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkeypatch):
@@ -1041,3 +1044,20 @@ def test_health_line_zwsp_breaks_gmail_autolink():
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-07-17", "每日報")
     assert "news.​cnyes.​com" in html          # 每個點後有 ZWSP
     assert "news.cnyes.com" not in html                  # 原始連續網域不再出現
+
+
+def test_batch26_hidden_display_elements():
+    """批#26:銅期貨/預測記分卡/立場歸因卡自信件移除。"""
+    q = _full_quotes()
+    q["MACRO"] = {**(q.get("MACRO") or {}),
+                  "COPPER": {"close": 6.26, "change_pct": 0.59}}
+    q["FORECAST_LEDGER"] = {"today": [{"label": "2330 開盤高於昨收",
+                                       "prob": 0.12, "base_rate": 0.5,
+                                       "target": "2026-06-03"}], "stats": {}}
+    q["STANCE_ATTRIB"] = {"prev_date": "2026-06-01", "prev_total": -6,
+                          "curr_total": -8, "changes": [("qqq", 0, -1)]}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x",
+                          "2026-06-02", "每日報")
+    assert "銅期貨" not in html
+    assert "預測記分卡" not in html
+    assert "立場變化歸因" not in html

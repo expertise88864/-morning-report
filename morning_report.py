@@ -48,6 +48,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_llm_watchlist_section,
     _strip_llm_sections,
     _strip_stance_calculation,
+    _strip_stance_internals,
     _extract_stance,
     _extract_summary,
     _extract_stance_section,
@@ -10655,6 +10656,9 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 > **立場：偏多 / 偏空 / 中性 / 資料不足**（{stance_line2_rule}）
 
 **第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報追蹤標的,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
+**批#26 鐵律:理由**只寫「哪些關鍵指標+透過什麼機制+推向什麼結論」,**嚴禁**出現
+「11 維中 X 項偏空/偏多」「N 項偏空僅 M 項偏多」「淨分 ±N」「距門檻多少」這類
+計分內部細節——那是後台計算,讀者只要看到結論與傳導鏈,不要看到幾維幾分。
 
 **第 4-6 行**（**每行獨立成段，中間空行**）：
 
@@ -14327,28 +14331,8 @@ def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
                          "detail": _poly_prob_line(ai_rows)})
     except Exception as e:
         print(f"[poly] 年度 AI 模型盤略過: {e}", file=sys.stderr)
-    try:
-        cands = [e for e in _poly_search_events("best AI model end of")
-                 if not e.get("closed")
-                 and str(e.get("title", "")).startswith(
-                     "Which company has best AI model end of")
-                 and "end of 2026" not in str(e.get("title", ""))
-                 and _poly_event_is_future(e, now_utc)]
-        cands.sort(key=lambda e: str(e.get("endDate") or "9999"))
-        if cands:
-            ev = cands[0]
-            ai_rows = _poly_outright(str(ev.get("slug") or ""), top=5, min_prob=0.03)
-            if ai_rows:
-                try:
-                    month = dt.datetime.fromisoformat(
-                        str(ev.get("endDate")).replace("Z", "+00:00")).month
-                    label = f"{month}月底最佳 AI 模型"
-                except (ValueError, TypeError):
-                    label = "當月最佳 AI 模型"
-                _poly_annotate_deltas("pulse|當月最佳AI模型", ai_rows, now_tpe)
-                rows.append({"label": label, "detail": _poly_prob_line(ai_rows)})
-    except Exception as e:
-        print(f"[poly] 當月 AI 模型盤略過: {e}", file=sys.stderr)
+    # 「當月最佳 AI 模型」盤已依使用者要求移除(批#26:月底盤常一家獨大 97%,
+    # 資訊量低);年底盤保留。
     return rows
 
 
@@ -14371,7 +14355,10 @@ def _attach_cpbl_poly_odds(fixtures: list[dict], poly: dict, today_md: str) -> N
 # 2026 世界盃賽期(美/加/墨,2026-06-11 ~ 2026-07-19)。賽期外不抓,避免 ESPN
 # 殘留上屆分組戰績被誤當「目前累計」顯示(stale standings)。下屆需更新此區間,
 # 與既有 FOMC_2026 硬編慣例一致。
-_WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 19))
+# 賽期窗:下界=開幕、上界=**決賽後數日**(不是決賽日)。批#26 bug:原上界
+# 設 07/19 但決賽是 07/20 03:00(台北),導致決賽當天整個世足區被判「賽期外」
+# 隱藏、看不到冠軍。上界延到決賽後 3 天,讓冠軍結果與淘汰賽對戰表續顯示。
+_WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 23))
 # 淘汰賽(32 強)首日:對戰表範圍查詢的固定下界。不可用「今天−N 天」滾動窗——
 # 小組賽 72 場+淘汰賽 32 場(未賽 fixtures 也算 events)=104 場會超過 ESPN 單次
 # 回覆 100 場上限而截尾(Codex review P1:06/28 查 06/03→07/20 正好全包)。
@@ -15761,14 +15748,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             print(f"[stance-echo] ⚠ LLM 立場詞(十二段「{_llm_label}」/"
                   f"總結「{_sum_word}」)未遵守系統標籤「{_py_label}」"
                   f"→ 結論卡改用確定性摘要,立場詳情已移除", file=sys.stderr)
-            summary_text = (f"依系統計分:{_sp_render['label']}"
-                            f"(淨分 {_sp_render['total']:+d})。"
+            # 批#26:不外露淨分,只給標籤
+            summary_text = (f"依系統計分:{_sp_render['label']}。"
                             f"LLM 摘要與系統立場不一致,已略過其方向性建議;"
                             f"價位區間見下方預測表。")
             analysis_for_render = _strip_llm_sections(
                 analysis_for_render, ("我的明確立場", "一句話總結"))
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
+    # 批#26:理由散文裡的計分內部(「11 維中 X 項」「淨分 ±N」)也移除(雙保險)
+    analysis_for_render = _strip_stance_internals(analysis_for_render)
     # 十二(立場敘述/價位/操作/風險)上移到頂端結論卡,body 中移除十二、十三避免重複
     stance_detail = _extract_stance_section(analysis_for_render)
     analysis_for_render = _strip_llm_sections(
@@ -15869,8 +15858,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
         fmt_macro_row("韓國 KOSPI", "KOSPI", "記憶體/半導體出口國,與台股連動") +
         fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
-        fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫") +
-        fmt_macro_row("銅期貨", "COPPER", "景氣領先指標,與台股出口連動")
+        fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫")
+        # 銅期貨已依使用者要求移除(批#26);COPPER 仍抓取供內部參考,只是不顯示
     )
     # 美債利率環境:白話結論(隱藏殖利率曲線/倒掛術語,只給結果)。跨兩欄放表末。
     _yc = _yield_curve_read(macro)
@@ -16100,13 +16089,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f" ・ 單邊滑價估計 {s.get('slippage_bps', '—')} bps"
                     f" ・ {'fallback' if quality.get('fallback_enabled', True) else quality.get('interval_method', 'model')}"
                 )
-                # 回測:隔日~數日幾乎無預測力(IC≈0)→ 不再顯示「隔日」噪音價,只留 3/5 日參考區間
-                # 並標短期信心低;真正略有訊號在 ~月線(見區塊說明的波段框架)。
-                forecast_line = (
-                    f"短期參考(信心低): 3日 {f3.get('expected_price','—')} "
-                    f"({f3.get('lower','—')}~{f3.get('upper','—')})"
-                    f" ・ 5日 {f5.get('expected_price','—')} ({f5.get('lower','—')}~{f5.get('upper','—')})"
-                    f" ・ 信心 {forecast.get('confidence','低')}")
+                # 短期參考行(3/5 日)批#26 移除顯示;f3/f5/forecast 仍保留供
+                # 內部(state/log)——回測顯示隔日幾乎無預測力,本就只是低信心參考。
+                _ = (f3, f5)
 
                 # 基本面/估值/籌碼擴充欄(取得到才顯示;與股癌雷達同口徑,純參考、不計入排名分數)
                 def _num(v):
@@ -16188,11 +16173,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                         else:
                             mtag = "⚠留意操弄"
                         fz_bits.append(f"M-score {msc}({mtag})")
-                fz_line = ("財報品質: " + " ・ ".join(fz_bits)) if fz_bits else (
-                    "財報品質: 金融業·F/Z/M-score 不適用" if is_fin else "")
+                # 財報品質(F/Z/M-score)行:批#26 使用者要求自信件隱藏——
+                # 仍計算並保留於 state/log,只是不進 ext_html。
+                del fz_bits
                 ext_html = "".join(
                     f"<div style='margin-top:4px;font-size:12px;color:#475569;'>{_htmllib.escape(x)}</div>"
-                    for x in (fund_line, val_line, chip2_line, fz_line) if x)
+                    for x in (fund_line, val_line, chip2_line) if x)
                 rows_html.append(
                     f"<tr>"
                     f"<td style='padding:12px 8px 12px 0;border-bottom:1px solid #e2e8f0;"
@@ -16211,9 +16197,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<div style='margin-top:5px;font-size:12px;color:#94a3b8;'>{metrics_line}</div>"
                     # 基本面/估值/籌碼擴充(與股癌雷達同口徑,純參考、不計入排名分數)
                     f"{ext_html}"
-                    # 排名分解(ranking_line)與模型技術行(quality_line)屬內部計算細節,
-                    # 使用者回饋不需顯示 — 隱藏(資料仍在 state/log 供除錯)
-                    f"<div style='margin-top:5px;font-size:12px;color:#0369a1;'>{forecast_line}</div>"
+                    # 排名分解/模型技術行/短期參考(forecast_line)/財報品質皆屬
+                    # 內部細節,批#26 使用者要求不顯示(資料仍在 state/log)
                     f"</td>"
                     f"</tr>"
                 )
@@ -16416,9 +16401,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 預測市場快照(Polymarket;2026-07-16 使用者要求「預測層面資訊」。顯示用不入模型)
     macro_table_html += _render_poly_pulse_html(quotes.get("POLY_PULSE") or [],
                                                 stance=stance)
-    # Forecast Ledger 記分卡(2026-07-18):緊接預測市場卡之後
-    macro_table_html += _render_forecast_ledger_html(
-        quotes.get("FORECAST_LEDGER") or {})
+    # Forecast Ledger 記分卡:批#26 使用者要求自信件移除顯示——帳本仍在後台
+    # 累積結算(state/forecast_ledger.json),要恢復顯示改 True 即可。
+    _SHOW_FORECAST_LEDGER_CARD = False
+    if _SHOW_FORECAST_LEDGER_CARD:
+        macro_table_html += _render_forecast_ledger_html(
+            quotes.get("FORECAST_LEDGER") or {})
     # Macro Vintage 卡(未設 FRED key 自動缺席)
     macro_table_html += _render_macro_vintage_html(
         quotes.get("MACRO_VINTAGE") or [])
@@ -16635,15 +16623,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # ===== 3.7 頂部 KPI 一覽條 + 結論橫條（從 LLM markdown 擷取後渲染） =====
     kpi_strip = _render_kpi_strip(quotes, fair, predictions, stance)
     summary_bar = _render_summary_bar(summary_text, stance_detail, _htmllib)
-    # PR-2 第二階段:Decision Attribution——立場為何變(昨日 vs 今日分項),
-    # 確定性計算,緊貼結論卡下方;無可比基準或無變化自動缺席。
-    # summary_bar 是 <tr>,插進外層 <table>——歸因卡必須同樣包 <tr><td>,
-    # 裸 <div> 是 table 非法子元素,郵件客戶端會搬移或丟棄(Codex r1 P2)
-    _attrib_html = _render_stance_attrib_html(quotes.get("STANCE_ATTRIB") or {},
-                                              _htmllib)
-    if _attrib_html:
-        summary_bar += (f"<tr><td style='padding:0 8px;'>{_attrib_html}"
-                        f"</td></tr>")
+    # Decision Attribution 卡:批#26 使用者要求自信件移除顯示——歸因仍在後台
+    # 計算(STANCE_ATTRIB 供 log/prompt),要恢復顯示改 True 即可。
+    _SHOW_STANCE_ATTRIB_CARD = False
+    if _SHOW_STANCE_ATTRIB_CARD:
+        _attrib_html = _render_stance_attrib_html(
+            quotes.get("STANCE_ATTRIB") or {}, _htmllib)
+        if _attrib_html:
+            summary_bar += (f"<tr><td style='padding:0 8px;'>{_attrib_html}"
+                            f"</td></tr>")
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
     analysis_for_render = _cap_analysis_text(analysis_for_render)

@@ -1150,11 +1150,29 @@ def test_build_prompt_weekly_review_section_present_and_absent():
              "tw2330": None, "critical_events": ["台積電法說"], "n_days": 3}
     p = mr._build_prompt(_empty_quotes(WEEKLY_REVIEW=stats),
                          {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "七之五" in p and "平均絕對誤差 1.17%" in p and "台積電法說" in p
+    assert "七之六" in p and "平均絕對誤差 1.17%" in p and "台積電法說" in p
     assert "本週要重點驗證" in p                        # 指引出現
-    # 平日(無 WEEKLY_REVIEW)→ 整段不出現
+    # 平日(無 WEEKLY_REVIEW)→ 週報段整段不出現(七之六=週報;七之五=多空交鋒每日固定)
     p2 = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "七之五" not in p2
+    assert "七之六" not in p2 and "近期預測檢討" not in p2
+
+
+def test_batch28_debate_section_daily_fixed():
+    """批#28:多空交鋒(七之五)為每日固定段,平日也在;七之六(週報)平日不在。"""
+    p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "七之五" in p and "多空交鋒" in p
+    assert "多方最強" in p and "空方最強" in p
+    assert "七之六" not in p   # 平日無週報,編號不因此跳號
+
+
+def test_batch28_debate_does_not_confuse_stance_extraction():
+    """批#28:多空交鋒段含多方/空方偏多偏空字眼,不得被 _extract_stance 誤抓成
+    LLM 立場(擷取錨定「我的明確立場」段 + 行首『立場：X』)。"""
+    from llm_postprocess import _extract_stance
+    text = ("## 七之五、多空交鋒\n- **多方最強**：SOX 反彈，偏多可加碼\n"
+            "- **空方最強**：油價飆升，偏空觀望\n"
+            "## 十二、我的明確立場\n> **立場：中性**\n> 理由：多空拉鋸")
+    assert _extract_stance(text).get("label") == "中性"   # 抓十二段,非辯論段
 
 
 def test_weekly_review_excludes_immature_records():

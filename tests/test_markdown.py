@@ -15,6 +15,26 @@ def test_md_basic_formatting():
     assert "<strong>" in out
 
 
+def test_dim_source_citations_keeps_confidence():
+    """批#27:來源引用括號淡化為小灰字,信心標「[X 級・信心:…]」保留原樣。"""
+    from render_utils import _dim_source_citations
+    html = ("獲 Anthropic 訂單 [CNBC／鉅亨網]。傳導到 2330 CoWoS。"
+            "[A 級・信心:高] 另一條 [財經皓角] [B 級・信心:中-低,資訊有限]")
+    out = _dim_source_citations(html)
+    # 來源 → 小灰字括號,原方括號消失
+    assert "[CNBC／鉅亨網]" not in out and "（CNBC／鉅亨網）" in out
+    assert "[財經皓角]" not in out and "（財經皓角）" in out
+    assert "color:#94a3b8" in out and "font-size:12px" in out
+    # 信心標原樣保留(含方括號)
+    assert "[A 級・信心:高]" in out
+    assert "[B 級・信心:中-低,資訊有限]" in out
+
+
+def test_dim_source_citations_noop_without_brackets():
+    from render_utils import _dim_source_citations
+    assert _dim_source_citations("純文字無括號") == "純文字無括號"
+
+
 def _full_quotes():
     def base(t):
         return {"ticker": t, "date": "2026-05-13", "close": 100.0,

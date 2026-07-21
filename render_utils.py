@@ -228,6 +228,24 @@ def _style_analysis_html(html: str) -> str:
     return html
 
 
+def _dim_source_citations(html: str) -> str:
+    """新聞來源標註淡化(使用者批#27:來源保留但淡化,不干擾閱讀)。
+    把敘述中的來源引用括號「[Bloomberg／鉅亨網]」縮小、轉灰、去粗;
+    **信心標「[A 級・信心:高]」保留原樣**(以括號內是否含「信心」二字辨識)。
+    在 _md_to_html(已 HTML-escape)之後執行,故方括號為字面值、可安全比對。"""
+    import re as _re
+
+    def _repl(m: "_re.Match") -> str:
+        inner = m.group(1)
+        if "信心" in inner:          # 信心標:保留(使用者要求留)
+            return m.group(0)
+        # 其餘方括號視為來源引用 → 條末小灰字
+        return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;'
+                'font-variant-numeric:normal;">（' + inner + "）</span>")
+    # 括號內不再含方括號、長度上限 60(避免誤吞跨句內容)
+    return _re.sub(r"\[([^\[\]]{1,60})\]", _repl, html)
+
+
 def _wrap_stance(html: str) -> str:
     """把『我的明確立場』段做更醒目的藍色 callout box。"""
     marker = "我的明確立場"

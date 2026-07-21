@@ -1,26 +1,32 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 33,
-  "last_seen": "2026-07-21",
-  "latest_title": "Stocks, Bonds Fall as US-Iran Risks Whipsaw Oil: Markets Wrap"
+  "days": 34,
+  "last_seen": "2026-07-22",
+  "latest_title": "美伊戰局逼近十字路口！特朗普考慮恢復全面戰爭，10天停火方案 - capitalfutures.com.tw"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 20,
-  "last_seen": "2026-07-20",
-  "latest_title": "川普：共和黨應將伊朗納入俄羅斯制裁法案"
- },
- "litigation:": {
-  "first_seen": "2026-07-11",
-  "days": 6,
-  "last_seen": "2026-07-18",
-  "latest_title": "長榮海運內線交易案延燒　律師籲投保中心提解任董事訴訟 - ETtoday新聞雲"
+  "days": 21,
+  "last_seen": "2026-07-22",
+  "latest_title": "As US-Chinese AI model gap narrows, what next for Washington?"
  },
  "litigation:6515": {
   "first_seen": "2026-07-20",
   "days": 1,
   "last_seen": "2026-07-20",
   "latest_title": "公告本公司民事訴訟案件一審判決主文"
+ },
+ "export_controls:QCOM": {
+  "first_seen": "2026-07-22",
+  "days": 1,
+  "last_seen": "2026-07-22",
+  "latest_title": "防台積電 傳大陸擬收緊AI與半導體出口管制 - 經濟日報"
+ },
+ "litigation:2887": {
+  "first_seen": "2026-07-22",
+  "days": 1,
+  "last_seen": "2026-07-22",
+  "latest_title": "2887 台新新光金- 裁罰台新證- 股市爆料同學會 - CMoney"
  }
 }

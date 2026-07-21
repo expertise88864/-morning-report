@@ -25,8 +25,16 @@
     "跌停"
    ]
   ],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "6949": 1030.0,
+   "2357": 705.0,
+   "2404": 1160.0,
+   "2603": 201.0,
+   "6505": 84.0
+  },
+  "taiex_entry": 42793.15
  },
  {
   "question": "2330_open_up",
@@ -105,7 +113,12 @@
   "sigma_n": 44,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "77ab1844a680"
+  "git_sha": "77ab1844a680",
+  "resolved": "2026-07-22",
+  "outcome": true,
+  "actual": 2350.0,
+  "brier_model": 0.0625,
+  "brier_base": 0.25
  },
  {
   "question": "taiex_open_up",
@@ -120,6 +133,70 @@
   "sigma_n": 44,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "77ab1844a680"
+  "git_sha": "77ab1844a680",
+  "resolved": "2026-07-22",
+  "outcome": true,
+  "actual": 42566.93,
+  "brier_model": 0.0625,
+  "brier_base": 0.25
+ },
+ {
+  "type": "top5",
+  "created": "2026-07-22",
+  "created_at": "2026-07-22T06:42:57.734028+08:00",
+  "target_session": "2026-07-22",
+  "base_session": "2026-07-21",
+  "codes": [
+   "2357",
+   "8210",
+   "2615",
+   "2207",
+   "2347"
+  ],
+  "raw_codes": [
+   "2357",
+   "8210",
+   "3653",
+   "2615",
+   "2207"
+  ],
+  "excluded": [
+   [
+    "3653",
+    "漲停鎖死"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-07-22",
+  "created_at": "2026-07-22T06:42:57.734028+08:00",
+  "target": "2026-07-22",
+  "threshold": 2410.0,
+  "pred_pct": 2.837,
+  "prob": 0.956,
+  "sigma": 1.381,
+  "sigma_n": 45,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "567a9456003f"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-07-22",
+  "created_at": "2026-07-22T06:42:57.734028+08:00",
+  "target": "2026-07-22",
+  "threshold": 44232.87,
+  "pred_pct": 1.227,
+  "prob": 0.867,
+  "sigma": 1.435,
+  "sigma_n": 45,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "567a9456003f"
  }
 ]

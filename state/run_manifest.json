@@ -1,33 +1,33 @@
 {
- "date": "2026-07-21 06:44",
- "total_seconds": 415.8,
+ "date": "2026-07-22 06:42",
+ "total_seconds": 513.4,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 11.8
+   "seconds": 10.4
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 130.1
+   "seconds": 151.7
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 10.5
+   "seconds": 35.3
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 108.8
+   "seconds": 111.8
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 69.6
+   "seconds": 94.0
   },
   {
    "label": "LLM 主分析",
-   "seconds": 82.8
+   "seconds": 107.9
   },
   {
    "label": "渲染",
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 125,
+   "ok": 124,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -120,14 +120,14 @@
    "fail": 0
   }
  },
- "model_history_days": 211,
+ "model_history_days": 212,
  "d1_samples": 0,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -4,
-  "llm_label": "中性",
-  "py": -4,
-  "py_label": "中性",
+  "llm": 5,
+  "llm_label": "偏多",
+  "py": 5,
+  "py_label": "偏多",
   "agree": true,
   "coverage": 1.0,
   "missing": [],

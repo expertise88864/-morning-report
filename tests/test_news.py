@@ -1262,6 +1262,30 @@ def test_prompt_has_no_positive_user_references():
     assert p.count("使用者指定") == 2
 
 
+def test_batch27_prompt_source_format_and_rules_consistent():
+    """批#27 prompt 一致性(Codex r1):(1)九段來源範例改用 [媒體名] 方括號,
+    不再有全形括號來源;(2)R10b 全域來源方括號規則存在;(3)R16 敘事連貫存在;
+    (4)動能外露禁令存在。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "close": 520, "prev_close": 515, "change_pct": 0.97},
+        "TSM": {"ticker": "TSM", "close": 220, "prev_close": 218, "change_pct": 0.92},
+        "SPY": {"ticker": "SPY", "close": 580, "prev_close": 578, "change_pct": 0.35},
+        "USDTWD": 31.0, "USDTWD_prev": 31.1, "MACRO": {},
+        "SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {}, "WEEKLY": {},
+        "EARNINGS_PROXIMITY": {}, "HISTORY": [], "NIGHT_TXF": {},
+        "TAIEX_PRED": {}, "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
+    }
+    p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
+    # (1)九段範例來源改方括號;舊全形括號來源不再出現
+    assert "[經濟日報]" in p and "[工商時報]" in p and "[MoneyDJ]" in p
+    for old in ("（經濟日報）", "（鉅亨）", "（工商時報）", "（UDN）", "（MoneyDJ）"):
+        assert old not in p, old
+    # (2)(3)(4)關鍵規則在位
+    assert "R10b" in p and "新聞來源一律用半形方括號" in p
+    assert "R16" in p and "敘事連貫" in p
+    assert "分析師評等動能" in p and "不得只憑分析師評等動能單獨寫成一條" in p
+
+
 def test_local_dup_numeric_rule_respects_short_title_guard():
     """Codex 批#15 P2:共享路線號碼的兩則「短標題、不同事件」不得被數字二級
     規則誤殺(數字規則僅適用 bigram>=12 的長標題)。"""

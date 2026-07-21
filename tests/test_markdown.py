@@ -1175,16 +1175,19 @@ def test_batch28_render_strips_noncompliant_debate_internals():
     """批#28(Codex r1):LLM 若在多空交鋒段違規寫計分內部,render 後 HTML 不得
     出現「淨分/11 維」,但多空論點本體保留。"""
     q = _full_quotes()
+    # Codex r4:含 R10b 規定的 [媒體名] 來源 + 違規「淨分」——不得被 calc-strip
+    # (淨分+[ 整行刪)連論點+來源一起誤刪;辯論 sanitizer 須在 calc-strip 之前跑
     analysis = ("## 七之五、多空交鋒\n"
-                "- **多方最強**：TSM ADR +0.99%，淨分 +6 撐盤\n"
+                "- **多方最強**：[Reuters] TSM ADR +0.99%，淨分 +6 撐盤\n"
                 "- **空方最強**：10Y 升至 4.6%，11 維中 7 項偏空壓估值\n"
                 "## 十二、我的明確立場\n> **立場：中性**\n"
                 "## 十三、一句話總結\n中性觀望")
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-06-02", "每日報")
     assert "淨分" not in html and "11 維" not in html          # 計分內部不外露
-    assert "多方最強" in html and "空方最強" in html            # 論點結構保留
+    assert "多方最強" in html and "空方最強" in html            # 論點結構保留(兩行都在)
     assert "TSM ADR" in html and "10Y 升至 4.6%" in html        # 論點本體保留
+    assert "Reuters" in html                                    # 合規來源保留(未被整行誤刪)
 
 
 def test_batch26_stance_label_line_keeps_label(monkeypatch):

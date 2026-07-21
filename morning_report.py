@@ -15782,6 +15782,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                             f"價位區間見下方預測表。")
             analysis_for_render = _strip_llm_sections(
                 analysis_for_render, ("我的明確立場", "一句話總結"))
+    # 批#28(Codex r1/r4):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)。
+    # **必須在 _strip_stance_calculation 之前**——否則辯論行「[來源] …，淨分 +6」同時
+    # 含「淨分」與「[」會被 calc-strip 整行誤刪(連論點本體+來源一起消失,Codex r4)。
+    analysis_for_render = _sanitize_debate_section(analysis_for_render)
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
     # 一句話總結是「立場+動作」單行,用外科式移除(保留開頭立場標籤,批#26 r2/r4)
@@ -15793,8 +15797,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     stance_detail = _strip_stance_internals(stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
-    # 批#28(Codex r1):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)
-    analysis_for_render = _sanitize_debate_section(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
     # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,

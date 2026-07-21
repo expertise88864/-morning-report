@@ -4507,6 +4507,64 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73084229",
+        "title": "Nebius gets NVDA lift",
+        "published": "Tue, 21 Jul 2026 10:30:30 +0000",
+        "processed_at": "2026-07-21T15:22:34Z",
+        "digest": {
+          "summary_points": [
+            "Nebius 盤前上漲 6%，因 Nvidia 取得其 9.3% 股權，包括先前宣布的 20 億美元投資及認股權證，合作部署超過 5 GW 的 Nvidia 系統至 2030 年。",
+            "三星推出三星 Galaxy 卡，由 Barclays 發行於 Visa 網路，提供最高 5% 現金回饋（三星直接消費）、3%（Samsung Wallet）及 2%（串流服務）。",
+            "Cracker Barrel 預期達成或超越營收預期高標及調整後 EBITDA 展望；完成 26 家店面售後租回及出售 Maple Street Biscuit Company，淨獲利約 7700 萬美元用於減債。",
+            "Snap 據報導就社交媒體成癮訴訟達成和解（趨勢話題）。",
+            "原油價格在五個月戰爭期間漲幅不如預期（主要話題）。",
+            "台積電據報導將在 2027 年將晶片製造價格提高最多 10%。",
+            "Magnolia Oil & Gas 下跌 6%，因定價公開發行逾 4600 萬股 A 類股，每股 23.75 美元，籌資約 11 億美元。",
+            "股指期貨開盤前走高，原油上漲 0.3%，FTSE 100 漲 0.2%，DAX 漲 0.3%。"
+          ],
+          "tickers": [
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Nvidia 持股及合作提升 AI 基礎設施展望，股價正面反應。"
+            },
+            {
+              "name": "Cracker Barrel",
+              "code": "CBRL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "正面財測及資產活化（售後租回、出售事業）改善財務狀況。"
+            },
+            {
+              "name": "Magnolia Oil & Gas",
+              "code": "MGY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "股權稀釋導致股價下跌。"
+            },
+            {
+              "name": "Taiwan Semiconductor Manufacturing",
+              "code": "TSM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "報導計劃漲價，影響待觀察。"
+            },
+            {
+              "name": "Snap",
+              "code": "SNAP",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "訴訟和解消息無明確方向性。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Nebius is up 6% in pre-market action after disclosing that Nvidia has taken a stake in the company."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73066688",
         "title": "FDA's lettuce u-turn",
         "published": "Mon, 20 Jul 2026 10:51:27 +0000",
@@ -5006,89 +5064,6 @@
           "notable_quote": "Barring major disappointments from the banks, market attention is likely to shift quickly to chip equipment companies for the latest read on AI demand."
         },
         "shown_at": "2026-07-12T22:44:03Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72917294",
-        "title": "Wall Street Roundup: carving up the AI trade",
-        "published": "Fri, 10 Jul 2026 17:15:46 +0000",
-        "processed_at": "2026-07-10T20:52:50Z",
-        "digest": {
-          "summary_points": [
-            "本週市場因獨立日假期交投清淡，伊朗地緣風險持續但市場已大致適應。",
-            "SK海力士ADR IPO籌資265億美元，定價每股149美元，將於週一上市，被視為AI新股需求的測試。",
-            "美光股價自高點下跌22%，顯示AI記憶體晶片領域可能已過度擴張。",
-            "台積電將於下週公布財報，為亞洲晶片及AI領域提供重要訊號。",
-            "美光近期日波動劇烈（如跌10%、漲5%），反映市場對AI前景的不確定性。",
-            "百事可樂財報營收優於預期但股價跌3%，公司警告消費者因通膨減少衝動購買。",
-            "達美航空財報後下跌，但強調強勁旅遊需求，顯示高收入消費者支出仍穩健。",
-            "消費者出現分化：百事可樂代表低階消費者緊縮，達美航空代表高階需求強勁。",
-            "金融股將在下週進入財報季，花旗、高盛、摩根大通、美國銀行、富國銀行等將公布業績。",
-            "金融板塊自3月以來上漲約17%，但個股表現分歧：花旗與高盛今年漲約20%，富國銀行跌6%。",
-            "嘉賓Clem Chambers認為AI價值鏈中投資銀行如高盛將受益，因它們將主導AI基礎建設融資。"
-          ],
-          "tickers": [
-            {
-              "name": "SK海力士",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "其ADR IPO將測試AI新股需求，但尚未交易，看法中立。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股價自高點下跌22%，顯示AI記憶體領域可能過熱。"
-            },
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "下週財報將提供AI晶片需求線索，目前觀望。"
-            },
-            {
-              "name": "百事可樂",
-              "code": "PEP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "財報顯示消費者因通膨減少衝動購買，營運面臨壓力。"
-            },
-            {
-              "name": "達美航空",
-              "code": "DAL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報顯示強勁旅遊需求，高收入消費者支出穩健。"
-            },
-            {
-              "name": "高盛",
-              "code": "GS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "嘉賓認為其將在AI基礎建設融資中受益，且股價相對便宜。"
-            },
-            {
-              "name": "花旗集團",
-              "code": "C",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "今年以來上漲約20%，但財報前看法中立。"
-            },
-            {
-              "name": "富國銀行",
-              "code": "WFC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "今年以來下跌6%，表現落後同業。"
-            }
-          ],
-          "market_view": "市場處於夏季低迷期，AI板塊出現分化，消費者支出亦呈現高低階分歧。",
-          "action_view": "",
-          "notable_quote": "I think 2026 is sort of the realization that there's going to be winners and losers in the AI trade rather than just sort of, you know, all lines go up situation."
-        },
-        "shown_at": "2026-07-10T22:59:35Z"
       }
     ]
   },

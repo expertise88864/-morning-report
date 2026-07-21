@@ -42,6 +42,10 @@ def test_dim_source_citations_preserves_semantic_tags():
     out = _dim_source_citations("QQQ [stale] 延續值 [geo_critical] 事件 [中央社]")
     assert "[stale]" in out and "[geo_critical]" in out   # 語義標籤原樣保留
     assert "[中央社]" not in out and "（中央社）" in out    # 媒體來源淡化
+    # Codex r5:小寫 ASCII 媒體名仍是來源,必須淡化(不可被語義標籤白名單誤豁免)
+    low = _dim_source_citations("報導 [cnbc] 與 [reuters]")
+    assert "[cnbc]" not in low and "（cnbc）" in low
+    assert "[reuters]" not in low and "（reuters）" in low
 
 
 def _full_quotes():

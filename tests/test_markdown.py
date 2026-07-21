@@ -35,6 +35,15 @@ def test_dim_source_citations_noop_without_brackets():
     assert _dim_source_citations("純文字無括號") == "純文字無括號"
 
 
+def test_dim_source_citations_preserves_semantic_tags():
+    """批#27 r4(Codex):語義/風險標籤 [stale]、[geo_critical] 不得被誤當來源
+    淡化(R13 休市要求輸出醒目 [stale]);媒體來源仍淡化。"""
+    from render_utils import _dim_source_citations
+    out = _dim_source_citations("QQQ [stale] 延續值 [geo_critical] 事件 [中央社]")
+    assert "[stale]" in out and "[geo_critical]" in out   # 語義標籤原樣保留
+    assert "[中央社]" not in out and "（中央社）" in out    # 媒體來源淡化
+
+
 def _full_quotes():
     def base(t):
         return {"ticker": t, "date": "2026-05-13", "close": 100.0,

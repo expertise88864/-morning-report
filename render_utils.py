@@ -237,7 +237,13 @@ def _dim_source_citations(html: str) -> str:
 
     def _repl(m: "_re.Match") -> str:
         inner = m.group(1)
-        if "信心" in inner:          # 信心標:保留(使用者要求留)
+        stripped = inner.strip()
+        # 保留(不淡化):①信心標(含「信心」「級」);②內部/語義標籤——全小寫
+        # ASCII 底線詞,如 [stale]、[geo_critical](Codex 批#27 r4:R13 休市要求
+        # 輸出 [stale] 風險標籤,不可被誤當來源縮成小灰字)。媒體來源為 CJK 或
+        # 含大寫/斜線(CNBC／鉅亨網),不會誤中 [a-z_]+ 規則。
+        if ("信心" in inner or "級" in inner
+                or _re.fullmatch(r"[a-z_]+", stripped)):
             return m.group(0)
         # 其餘方括號視為來源引用 → 條末小灰字
         return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;'

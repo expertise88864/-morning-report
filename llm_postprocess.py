@@ -57,16 +57,20 @@ def _strip_stance_calculation(text: str) -> str:
     return "\n".join(out)
 
 
-def _strip_stance_internals(text: str) -> str:
+def _strip_stance_internals(text: str, extra_bad: str = "") -> str:
     """散文層安全網(批#26 使用者:理由不要出現計分內部):在「我的明確立場」
     理由句裡移除「11 維中 X 項偏空」「N 項偏多」「淨分 ±N」「距門檻…」等
     計分細節子句(以中文標點切段,丟含關鍵詞的子句)。prompt 已禁,此為雙保險。
-    **必須在 _extract_stance 之後才呼叫**(擷取依賴「淨分」)。"""
+    **必須在 _extract_stance 之後才呼叫**(擷取依賴「淨分」)。
+    extra_bad:額外壞詞 regex(OR 進 _bad),供呼叫端加段落專屬禁詞而不影響其他段
+    ——批#28 r2:多空交鋒段另禁獨立「11 維」(_strip_stance_internals 原本只認「維中」)。"""
     import re as _re
     if not isinstance(text, str) or not any(
-            k in text for k in ("維中", "項偏", "淨分", "門檻")):
+            k in text for k in ("維", "項偏", "淨分", "門檻")):
         return text
-    _bad = _re.compile(r"(維中|項偏空|項偏多|淨分|距.{0,6}門檻)")
+    _pat = r"(維中|項偏空|項偏多|淨分|距.{0,6}門檻"
+    _pat += ("|" + extra_bad) if extra_bad else ""
+    _bad = _re.compile(_pat + ")")
     # 立場標籤行(**立場:偏空**、立場:中性…)必須外科式移除計分片語——整段
     # 刪除會把標籤本身丟掉、留下畸形「**立場:」(Codex 批#26 r8)
     _label = _re.compile(r"立場\**\s*[：:]")
@@ -109,7 +113,10 @@ def _sanitize_debate_section(text: str) -> str:
     m = _re.search(r"(?ms)^(#{1,6}[^\n]*多空交鋒.*?)(?=^#{1,6}\s|\Z)", text)
     if not m:
         return text
-    return text[:m.start(1)] + _strip_stance_internals(m.group(1)) + text[m.end(1):]
+    # 辯論段另禁獨立「11 維(度/模型/計分…)」(prompt 禁詞;基本組只認「維中」);
+    # 負向前瞻排除「11 維持」(如「VIX 11 維持低檔」為正當論點,勿誤刪)
+    cleaned = _strip_stance_internals(m.group(1), extra_bad=r"11\s*維(?!持)")
+    return text[:m.start(1)] + cleaned + text[m.end(1):]
 
 
 def _strip_score_phrases(text: str) -> str:

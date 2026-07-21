@@ -1157,6 +1157,20 @@ def test_batch28_sanitize_debate_section_scoped():
         "## 八、只有科技段\n距突破門檻 2%"
 
 
+def test_batch28_debate_strips_bare_11_dim_but_not_maintain():
+    """批#28 r2(Codex):辯論段獨立「11 維(模型/度)」也移除(基本組只認「維中」);
+    但「11 維持」(如 VIX 11 維持低檔)為正當論點,不得誤刪。"""
+    from llm_postprocess import _sanitize_debate_section, _strip_stance_internals
+    t = ("## 七之五、多空交鋒\n"
+         "- **多方最強**：11 維模型顯示多方佔優，SOX +2.1%\n"
+         "- **空方最強**：VIX 11 維持低檔但油價升，偏空\n## 八、科技\n量能回升")
+    d = _sanitize_debate_section(t).split("## 八")[0]
+    assert "11 維模型" not in d and "SOX +2.1%" in d      # 計分維度移除、市場數據保留
+    assert "維持低檔" in d                                 # 「11 維持」不誤刪
+    # 其他段(不傳 extra_bad)行為不變:基本組不刪獨立「11 維」
+    assert "11 維模型" in _strip_stance_internals("理由：11 維模型顯示多方")
+
+
 def test_batch28_render_strips_noncompliant_debate_internals():
     """批#28(Codex r1):LLM 若在多空交鋒段違規寫計分內部,render 後 HTML 不得
     出現「淨分/11 維」,但多空論點本體保留。"""

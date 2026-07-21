@@ -1140,6 +1140,39 @@ def test_batch26_stance_internals_scoped_to_stance_section():
     assert "11 維中" not in html                            # 立場段計分內部仍被移除
 
 
+def test_batch28_sanitize_debate_section_scoped():
+    """批#28(Codex r1):多空交鋒段的計分內部安全網——只過濾該段,八段門檻語言保留。"""
+    from llm_postprocess import _sanitize_debate_section
+    t = ("## 七之五、多空交鋒\n"
+         "- **多方最強**：SOX 反彈，淨分 +6，11 維中 7 項偏多\n"
+         "- **空方最強**：油價飆升壓成長股，偏空觀望\n"
+         "## 八、科技板塊脈動\n台積電距突破門檻 2%，量能回升→2330 有撐。")
+    out = _sanitize_debate_section(t)
+    debate = out.split("## 八")[0]
+    assert "淨分 +6" not in debate and "11 維" not in debate   # 計分內部移除
+    assert "SOX 反彈" in debate and "油價飆升" in debate and "偏空觀望" in debate
+    assert "距突破門檻 2%" in out and "量能回升" in out         # 八段不受影響
+    # 無多空交鋒段 → 原樣返回
+    assert _sanitize_debate_section("## 八、只有科技段\n距突破門檻 2%") == \
+        "## 八、只有科技段\n距突破門檻 2%"
+
+
+def test_batch28_render_strips_noncompliant_debate_internals():
+    """批#28(Codex r1):LLM 若在多空交鋒段違規寫計分內部,render 後 HTML 不得
+    出現「淨分/11 維」,但多空論點本體保留。"""
+    q = _full_quotes()
+    analysis = ("## 七之五、多空交鋒\n"
+                "- **多方最強**：TSM ADR +0.99%，淨分 +6 撐盤\n"
+                "- **空方最強**：10Y 升至 4.6%，11 維中 7 項偏空壓估值\n"
+                "## 十二、我的明確立場\n> **立場：中性**\n"
+                "## 十三、一句話總結\n中性觀望")
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-06-02", "每日報")
+    assert "淨分" not in html and "11 維" not in html          # 計分內部不外露
+    assert "多方最強" in html and "空方最強" in html            # 論點結構保留
+    assert "TSM ADR" in html and "10Y 升至 4.6%" in html        # 論點本體保留
+
+
 def test_batch26_stance_label_line_keeps_label(monkeypatch):
     """Codex 批#26 r8:立場標籤行帶淨分「**立場：偏空**（淨分 -6）」時,
     整段刪除會丟掉「偏空」並留畸形「**立場：」——改外科式,標籤保留。"""

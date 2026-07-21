@@ -97,6 +97,21 @@ def _strip_stance_internals(text: str) -> str:
     return "\n".join(_clean_line(ln) for ln in text.split("\n"))
 
 
+def _sanitize_debate_section(text: str) -> str:
+    """批#28(Codex r1):多空交鋒段(七之五)的計分內部安全網——只抽出「多空交鋒」
+    段套 _strip_stance_internals(clause 刪除計分子句),**其餘段落不動**(八段的
+    正當「距突破門檻」等語言要保留,批#26 F2)。prompt 已禁 LLM 在此段寫計分
+    內部,此為 render 端雙保險:若 LLM 違規寫「淨分 +6」「11 維中 7 項偏多」即移除。"""
+    import re as _re
+    if not isinstance(text, str) or "多空交鋒" not in text:
+        return text
+    # 抽「## …多空交鋒…」標頭到下一個標頭(或文末)的整段,只過濾這段
+    m = _re.search(r"(?ms)^(#{1,6}[^\n]*多空交鋒.*?)(?=^#{1,6}\s|\Z)", text)
+    if not m:
+        return text
+    return text[:m.start(1)] + _strip_stance_internals(m.group(1)) + text[m.end(1):]
+
+
 def _strip_score_phrases(text: str) -> str:
     """外科式移除計分片語,保留立場標籤與動作(Codex 批#26 r2/r4:一句話總結是
     「立場+動作」單行)。只挖「淨分 ±N 距…門檻」「N 維中 X 項」「N 項偏空/多」;

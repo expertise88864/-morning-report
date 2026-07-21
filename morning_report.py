@@ -49,6 +49,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_llm_sections,
     _strip_stance_calculation,
     _strip_stance_internals,
+    _sanitize_debate_section,
     _strip_score_phrases,
     _extract_stance,
     _extract_summary,
@@ -15792,6 +15793,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     stance_detail = _strip_stance_internals(stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
+    # 批#28(Codex r1):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)
+    analysis_for_render = _sanitize_debate_section(analysis_for_render)
     tw_intelligence_html = _render_tw_intelligence_html(
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
     # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,

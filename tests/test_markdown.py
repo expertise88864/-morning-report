@@ -46,6 +46,10 @@ def test_dim_source_citations_preserves_semantic_tags():
     low = _dim_source_citations("報導 [cnbc] 與 [reuters]")
     assert "[cnbc]" not in low and "（cnbc）" in low
     assert "[reuters]" not in low and "（reuters）" in low
+    # Codex r6:含「級」的評級機構來源仍是來源,必須淡化(不可被誤當信心標)
+    rate = _dim_source_citations("引用 [惠譽評級] 與 [標普全球評級]")
+    assert "[惠譽評級]" not in rate and "（惠譽評級）" in rate
+    assert "[標普全球評級]" not in rate and "（標普全球評級）" in rate
 
 
 def _full_quotes():

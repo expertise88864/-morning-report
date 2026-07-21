@@ -237,11 +237,12 @@ def _dim_source_citations(html: str) -> str:
 
     def _repl(m: "_re.Match") -> str:
         inner = m.group(1)
-        # 保留(不淡化):①信心標(含「信心」「級」);②明確列舉的內部/語義標籤
-        # [stale]、[geo_critical](Codex 批#27 r4:R13 休市要求輸出醒目 [stale];
-        # r5:不可用「全小寫 ASCII」豁免,否則 [cnbc]/[reuters] 這類小寫媒體名會被
-        # 誤判為語義標籤而不淡化——改白名單精確比對)。
-        if ("信心" in inner or "級" in inner
+        # 保留(不淡化):①信心標——一律含「信心」二字([X 級・信心:…]/[行情觀察・
+        # 信心:…]),故只認「信心」即足(Codex 批#27 r6:不可加「級」豁免,否則
+        # [惠譽評級]/[標普全球評級] 等評級機構來源會被誤當信心標而不淡化);
+        # ②明確列舉的內部/語義標籤 [stale]、[geo_critical](R13 休市要求輸出醒目
+        # [stale];r5:不用「全小寫 ASCII」豁免,否則 [cnbc]/[reuters] 小寫媒體名誤中)。
+        if ("信心" in inner
                 or inner.strip().lower() in {"stale", "geo_critical"}):
             return m.group(0)
         # 其餘方括號視為來源引用 → 條末小灰字

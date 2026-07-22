@@ -15799,7 +15799,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 整句抄進 00662 建議行;prompt 已改寫,此為確定性替換雙保險。
     # 用正則容忍 markdown 強調符與空白(Codex r8:「在此基礎上**明確寫**：」的
     # 粗體會讓純字串替換撲空,反而渲染成醒目 <b>明確寫</b>)
-    stance_detail = re.sub(
+    import re as _re_echo   # 本檔慣例:函式內 local import(模組層無 import re)
+    stance_detail = _re_echo.sub(
         r"在此基礎上\s*[*_]{0,3}\s*明確寫\s*[*_]{0,3}\s*[:：]?",
         "在此基礎上，", stance_detail)
     analysis_for_render = _strip_llm_sections(

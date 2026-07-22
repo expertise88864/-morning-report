@@ -259,9 +259,14 @@ def _dim_source_citations(html: str) -> str:
                     "巴隆周刊", "金融時報", "南華早報", "大紀元", "住展", "非凡新聞",
                     "豐雲學堂", "工商時報", "自由財經", "自由時報", "蕃新聞",
                     "好房網", "富房網", "鉅亨網", "經理人", "商周"}
-    # 泛稱「××報」不是媒體名(「財報/晨報/本報」被「報」後綴誤判 → 明列排除)
-    _not_media = {"財報", "晨報", "本報", "週報", "周報", "年報", "季報", "月報",
-                  "半年報", "法說會", "官網"}
+    # 泛稱/語義詞不是媒體名(Codex 批#29 r5:精確比對擋不住「最新財報/法說簡報/
+    # 無重大新聞」等複合詞 → 改樣式拒絕:①語義後綴(財報/簡報/年報…——「報」
+    # 後綴規則的既知誤區);②泛稱修飾開頭(無/最新/重大/相關…——「××新聞」
+    # 泛稱片語,非媒體名)。媒體名(經濟日報/非凡新聞/Yahoo 新聞)不受影響)
+    _not_media = {"本報", "官網", "法說會"}
+    _not_media_pat = _re.compile(
+        r"(財報|簡報|年報|季報|月報|週報|周報|半年報|晨報)$"
+        r"|^(無|最新|重大|相關|昨日|今日|利多|利空|負面|正面)")
     # 拉丁媒體白名單(Codex 批#29 r1:不可「純拉丁=媒體」——（backwardation）
     # （AVGO）（contango）等術語/代號會被誤淡化;改明確列舉,未知拉丁詞不動)
     _latin_media = {"cnbc", "bloomberg", "reuters", "udn", "yahoo", "cmoney",
@@ -285,7 +290,7 @@ def _dim_source_citations(html: str) -> str:
         toks = [t.strip() for t in _re.split(r"[／/、]", s) if t.strip()]
         if not toks:
             return False
-        return all(t not in _not_media
+        return all(t not in _not_media and not _not_media_pat.search(t)
                    and not _re.match(r"(僅|如|依|含|詳見|參見)", t)  # 指示性開頭≠媒體名
                    and (t in _media_known or t.lower() in _latin_media
                         or _domain_tok.match(t)

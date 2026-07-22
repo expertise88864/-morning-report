@@ -55,7 +55,9 @@ def test_batch29_dim_fullwidth_paren_sources():
                    # Codex r2:帶點的代號/小數不是網域,不得淡化
                    "（2330.TW）", "（1.029）", "（Vera.CPU）",
                    # Codex r4:裸「網」結尾的短簡介不是媒體
-                   "（全球最大社群網）", "（電商平台網）"]
+                   "（全球最大社群網）", "（電商平台網）",
+                   # Codex r5:複合語義詞(報/新聞結尾)不是媒體
+                   "（最新財報）", "（法說簡報）", "（無重大新聞）"]
     for c in should_dim:
         assert "span" in dim(c), f"應淡化未淡化: {c}"
     for c in should_keep:

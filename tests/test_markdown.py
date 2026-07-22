@@ -47,7 +47,10 @@ def test_batch29_dim_fullwidth_paren_sources():
     should_keep = ["（2330，全球晶圓代工龍頭，先進製程市佔逾 90%）", "（新台幣計價）",
                    "（+2.8% 於昨收）", "（按兵不動）", "（精銳、總太、順天等）",
                    "（詳見十-C）", "（和大、貿聯-KY）", "（財報）", "（僅週一綜合報）",
-                   "（美東）", "（百分位 100%）", "（法說會）"]
+                   "（美東）", "（百分位 100%）", "（法說會）",
+                   # Codex r1:裸拉丁術語/代號不是媒體,不得淡化(白名單制)
+                   "（backwardation）", "（contango）", "（AVGO）", "（CoWoS）",
+                   "（Helios）", "（NASDAQ-100）"]
     for c in should_dim:
         assert "span" in dim(c), f"應淡化未淡化: {c}"
     for c in should_keep:

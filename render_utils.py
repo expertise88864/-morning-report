@@ -261,7 +261,14 @@ def _dim_source_citations(html: str) -> str:
     # 泛稱「××報」不是媒體名(「財報/晨報/本報」被「報」後綴誤判 → 明列排除)
     _not_media = {"財報", "晨報", "本報", "週報", "周報", "年報", "季報", "月報",
                   "半年報", "法說會", "官網"}
-    _latin_tok = _re.compile(r"^[A-Za-z][A-Za-z0-9 .&\-]{0,19}$")
+    # 拉丁媒體白名單(Codex 批#29 r1:不可「純拉丁=媒體」——（backwardation）
+    # （AVGO）（contango）等術語/代號會被誤淡化;改明確列舉,未知拉丁詞不動)
+    _latin_media = {"cnbc", "bloomberg", "reuters", "udn", "yahoo", "cmoney",
+                    "moneydj", "rfi", "marketwatch", "wsj", "ft", "nikkei",
+                    "ap", "afp", "bbc", "sec 8-k", "sec", "cme fedwatch",
+                    "fedwatch", "barron's", "barrons", "newtalk", "ettoday",
+                    "msn", "line today", "dazn"}
+    _domain_tok = _re.compile(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")   # news.cnyes.com
     _suffix_tok = _re.compile(r"(報|新聞|周刊|週刊|雜誌|通訊社|日報|時報|網)$")
 
     def _is_media_group(inner: str) -> bool:
@@ -274,7 +281,8 @@ def _dim_source_citations(html: str) -> str:
             return False
         return all(t not in _not_media
                    and not _re.match(r"(僅|如|依|含|詳見|參見)", t)  # 指示性開頭≠媒體名
-                   and (t in _media_known or _latin_tok.match(t)
+                   and (t in _media_known or t.lower() in _latin_media
+                        or _domain_tok.match(t)
                         or (_suffix_tok.search(t) and not _re.search(r"[0-9%％]", t)))
                    for t in toks)
 

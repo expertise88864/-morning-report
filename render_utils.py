@@ -268,7 +268,10 @@ def _dim_source_citations(html: str) -> str:
                     "ap", "afp", "bbc", "sec 8-k", "sec", "cme fedwatch",
                     "fedwatch", "barron's", "barrons", "newtalk", "ettoday",
                     "msn", "line today", "dazn"}
-    _domain_tok = _re.compile(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")   # news.cnyes.com
+    # 網域:開頭字母+至少兩個點+字母 TLD(Codex 批#29 r2:泛化「有點就算網域」會
+    # 誤吃（2330.TW）代號與（1.029）小數;news.cnyes.com ✓、單點 cnyes.com 寧漏)
+    _domain_tok = _re.compile(
+        r"^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z0-9-]+)+\.[A-Za-z]{2,4}$")
     _suffix_tok = _re.compile(r"(報|新聞|周刊|週刊|雜誌|通訊社|日報|時報|網)$")
 
     def _is_media_group(inner: str) -> bool:

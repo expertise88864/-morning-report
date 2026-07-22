@@ -50,7 +50,9 @@ def test_batch29_dim_fullwidth_paren_sources():
                    "（美東）", "（百分位 100%）", "（法說會）",
                    # Codex r1:裸拉丁術語/代號不是媒體,不得淡化(白名單制)
                    "（backwardation）", "（contango）", "（AVGO）", "（CoWoS）",
-                   "（Helios）", "（NASDAQ-100）"]
+                   "（Helios）", "（NASDAQ-100）",
+                   # Codex r2:帶點的代號/小數不是網域,不得淡化
+                   "（2330.TW）", "（1.029）", "（Vera.CPU）"]
     for c in should_dim:
         assert "span" in dim(c), f"應淡化未淡化: {c}"
     for c in should_keep:

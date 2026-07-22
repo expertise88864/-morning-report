@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 34,
-  "last_seen": "2026-07-22",
-  "latest_title": "美伊戰局逼近十字路口！特朗普考慮恢復全面戰爭，10天停火方案 - capitalfutures.com.tw"
+  "days": 35,
+  "last_seen": "2026-07-23",
+  "latest_title": "烏俄戰爭向臺灣示範的一堂課：真正需要防護的不只是關鍵設施，而是支撐國家運作的依賴網路 - iThome"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 21,
-  "last_seen": "2026-07-22",
-  "latest_title": "As US-Chinese AI model gap narrows, what next for Washington?"
+  "days": 22,
+  "last_seen": "2026-07-23",
+  "latest_title": "US levels AI sanctions threat as China models gain"
  },
  "litigation:6515": {
   "first_seen": "2026-07-20",
@@ -28,5 +28,11 @@
   "days": 1,
   "last_seen": "2026-07-22",
   "latest_title": "2887 台新新光金- 裁罰台新證- 股市爆料同學會 - CMoney"
+ },
+ "litigation:META": {
+  "first_seen": "2026-07-23",
+  "days": 1,
+  "last_seen": "2026-07-23",
+  "latest_title": "控訴社群媒體成癮 美國青少年撤回對Meta訴訟 | 民視新聞網 - LINE TODAY"
  }
 }

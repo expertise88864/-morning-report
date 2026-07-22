@@ -97,8 +97,16 @@
    "2347"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "6949": 1000.0,
+   "2357": 700.0,
+   "6515": 6160.0,
+   "2603": 198.0,
+   "2347": 84.0
+  },
+  "taiex_entry": 42566.93
  },
  {
   "question": "2330_open_up",
@@ -182,7 +190,12 @@
   "sigma_n": 45,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "567a9456003f"
+  "git_sha": "567a9456003f",
+  "resolved": "2026-07-23",
+  "outcome": true,
+  "actual": 2440.0,
+  "brier_model": 0.0019,
+  "brier_base": 0.25
  },
  {
   "question": "taiex_open_up",
@@ -197,6 +210,70 @@
   "sigma_n": 45,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "567a9456003f"
+  "git_sha": "567a9456003f",
+  "resolved": "2026-07-23",
+  "outcome": true,
+  "actual": 44513.75,
+  "brier_model": 0.0177,
+  "brier_base": 0.25
+ },
+ {
+  "type": "top5",
+  "created": "2026-07-23",
+  "created_at": "2026-07-23T06:50:45.815319+08:00",
+  "target_session": "2026-07-23",
+  "base_session": "2026-07-22",
+  "codes": [
+   "2357",
+   "2603",
+   "6531",
+   "2615",
+   "2347"
+  ],
+  "raw_codes": [
+   "2357",
+   "2603",
+   "3231",
+   "6531",
+   "2615"
+  ],
+  "excluded": [
+   [
+    "3231",
+    "漲停鎖死"
+   ]
+  ],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-07-23",
+  "created_at": "2026-07-23T06:50:45.815319+08:00",
+  "target": "2026-07-23",
+  "threshold": 2400.0,
+  "pred_pct": -0.5,
+  "prob": 0.413,
+  "sigma": 1.388,
+  "sigma_n": 46,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "fd55447ea7cb"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-07-23",
+  "created_at": "2026-07-23T06:50:45.815319+08:00",
+  "target": "2026-07-23",
+  "threshold": 44825.78,
+  "pred_pct": 0.152,
+  "prob": 0.543,
+  "sigma": 1.423,
+  "sigma_n": 46,
+  "base_rate": 0.5,
+  "forecast_version": "prob-v2",
+  "git_sha": "fd55447ea7cb"
  }
 ]

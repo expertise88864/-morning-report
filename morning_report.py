@@ -15796,10 +15796,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # **不套整份 analysis**(Codex r4:八段的「距突破門檻 2%」等正當子句會被誤刪)
     stance_detail = _strip_stance_internals(stance_detail)
     # 批#29:prompt 指令回音保險——2026-07-22 實信曾把指令「在此基礎上明確寫」
-    # 整句抄進 00662 建議行;prompt 已改寫,此為確定性替換雙保險
-    stance_detail = stance_detail.replace("在此基礎上明確寫：", "在此基礎上，") \
-                                 .replace("在此基礎上明確寫:", "在此基礎上，") \
-                                 .replace("在此基礎上明確寫", "在此基礎上")
+    # 整句抄進 00662 建議行;prompt 已改寫,此為確定性替換雙保險。
+    # 用正則容忍 markdown 強調符與空白(Codex r8:「在此基礎上**明確寫**：」的
+    # 粗體會讓純字串替換撲空,反而渲染成醒目 <b>明確寫</b>)
+    stance_detail = re.sub(
+        r"在此基礎上\s*[*_]{0,3}\s*明確寫\s*[*_]{0,3}\s*[:：]?",
+        "在此基礎上，", stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
     tw_intelligence_html = _render_tw_intelligence_html(

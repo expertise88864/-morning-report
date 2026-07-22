@@ -80,6 +80,11 @@ def test_batch29_instruction_echo_stripped():
                           "2026-06-02", "每日報")
     assert "明確寫" not in html                       # 指令詞不外露
     assert "在此基礎上" in html and "可加碼" in html   # 建議本體保留
+    # Codex r8:markdown 粗體包裹的回音「**明確寫**」也要清(純字串替換會撲空)
+    analysis_b = analysis.replace("在此基礎上明確寫：", "在此基礎上**明確寫**：")
+    html_b = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis_b,
+                            "2026-06-02", "每日報")
+    assert "明確寫" not in html_b and "可加碼" in html_b
 
 
 def test_dim_source_citations_preserves_semantic_tags():

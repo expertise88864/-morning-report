@@ -4527,6 +4527,41 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73105266",
+        "title": "Super Micro heats up",
+        "published": "Wed, 22 Jul 2026 10:54:15 +0000",
+        "processed_at": "2026-07-22T15:20:23Z",
+        "digest": {
+          "summary_points": [
+            "Super Micro Computer (SMCI) 預估 FY26 Q4 營收接近 $110 億至 $125 億的低端，但毛利率預估大幅提升至 15-17%（先前指引 8.2-8.4%），主因客戶和產品組合有利，盤前漲 16%。",
+            "SMCI 在 FY26 Q4 收到合計逾 600 億美元的新訂單，創紀錄新高，預計在未來季度交貨。",
+            "美國總統川普宣布自 8/1 起進口學名藥享兩年零關稅，之後關稅將逐步升至 100%（2028 年 8 月）及 200%（2029 年），以鼓勵生產回流美國。",
+            "Nike 宣布自明年 1 月起削減中國線上經銷商，轉向官方網站、App 及天貓、京東等平台，可能衝擊實體合作伙伴。",
+            "PEGA Systems (PEGA) 因 Q2 財報營收獲利不如預期，且 AI 帶動的市場不確定性延遲客戶決策，股價盤前大跌 15%。",
+            "美股期指盤前走低，原油期貨漲 5% 至每桶 88 美元，歐股英國 FTSE 100 漲 0.8%，德國 DAX 漲 0.5%。"
+          ],
+          "tickers": [
+            {
+              "name": "Super Micro Computer",
+              "code": "SMCI",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q4 初步指引顯示毛利率大幅提升，新訂單創紀錄，盤前漲 16%。"
+            },
+            {
+              "name": "PEGA Systems",
+              "code": "PEGA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 財報低於預期，AI 不確定性延遲客戶決策，股價下跌 15%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73084229",
         "title": "Nebius gets NVDA lift",
         "published": "Tue, 21 Jul 2026 10:30:30 +0000",
@@ -5027,64 +5062,6 @@
           "action_view": "",
           "notable_quote": ""
         }
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72939757",
-        "title": "Earnings, inflation take center stage",
-        "published": "Sun, 12 Jul 2026 16:32:41 +0000",
-        "processed_at": "2026-07-12T20:23:46Z",
-        "digest": {
-          "summary_points": [
-            "本週財報季由大型銀行股揭幕，包括摩根大通、花旗、富國銀行、高盛和摩根士丹利，華爾街分析師普遍看多，無賣出評級。",
-            "Seeking Alpha分析師Ian Brezhik對花旗(C)罕見給予賣出評級，認為2027-2028年共識EPS預估過高，若金融市場轉弱可能面臨下修風險。",
-            "市場焦點將迅速轉向晶片設備商，台積電(TSM)和ASML(ASML)即將公佈財報，重點在於AI需求相關的先進封裝、2nm製程毛利率稀釋及供應是否仍受限。",
-            "本週經濟數據以通膨為主，6月CPI預計年增率降至3.7%（核心CPI維持2.8%），PPI接續公佈，分析師認為核心服務通膨應會放緩。",
-            "地緣政治風險升溫：美國對伊朗發動新一輪空襲，伊朗以飛彈攻擊波斯灣盟國，預測市場顯示油價週一可能漲逾3%。",
-            "MGM Resorts據報已成立特別委員會評估Barry Diller旗下媒體公司124億美元的收購要約，認為出價低估公司價值。",
-            "Netflix(NFLX)被Seeking Alpha分析師Louis Gerard評為「強力買進」，認為公司估值具吸引力，且競爭對手Paramount在高槓桿下整合，Netflix未參與該「愚蠢行為」。"
-          ],
-          "tickers": [
-            {
-              "name": "花旗集團",
-              "code": "C",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "分析師給予罕見賣出評級，認為未來EPS預估過高。"
-            },
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "AI需求焦點，市場關注其先進封裝及展望。"
-            },
-            {
-              "name": "ASML",
-              "code": "ASML",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "晶片設備商，AI需求帶動，財報指引為關鍵。"
-            },
-            {
-              "name": "Netflix",
-              "code": "NFLX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "分析師視為強力買進，估值具吸引力，競爭環境有利。"
-            },
-            {
-              "name": "MGM Resorts",
-              "code": "MGM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收到收購要約，但公司認為出價低估，成立委員會評估。"
-            }
-          ],
-          "market_view": "市場預期大型銀行股財報穩健，但通膨數據及中東地緣風險將主導本週波動，焦點可能迅速轉向AI相關的半導體設備商。",
-          "action_view": "關注銀行股財報有無驚喜，並聚焦台積電與ASML的AI需求指引；留意CPI與PPI對聯準會政策的暗示；油價因地緣政治風險可能短線波動。",
-          "notable_quote": "Barring major disappointments from the banks, market attention is likely to shift quickly to chip equipment companies for the latest read on AI demand."
-        },
-        "shown_at": "2026-07-12T22:44:03Z"
       }
     ]
   },

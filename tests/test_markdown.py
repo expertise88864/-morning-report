@@ -58,7 +58,9 @@ def test_batch29_dim_fullwidth_paren_sources():
                    # Codex r4:裸「網」結尾的短簡介不是媒體
                    "（全球最大社群網）", "（電商平台網）",
                    # Codex r5:複合語義詞(報/新聞結尾)不是媒體
-                   "（最新財報）", "（法說簡報）", "（無重大新聞）"]
+                   "（最新財報）", "（法說簡報）", "（無重大新聞）",
+                   # Codex r10:語義「報」尾(情報/警報/申報…)不是媒體
+                   "（快速情報）", "（風險警報）", "（尚未申報）", "（氣象預報）"]
     for c in should_dim:
         assert "span" in dim(c), f"應淡化未淡化: {c}"
     for c in should_keep:
@@ -85,6 +87,11 @@ def test_batch29_instruction_echo_stripped():
     html_b = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis_b,
                             "2026-06-02", "每日報")
     assert "明確寫" not in html_b and "可加碼" in html_b
+    # Codex r10:逗號變體「在此基礎上，明確寫：」也要清
+    analysis_c = analysis.replace("在此基礎上明確寫：", "在此基礎上，**明確寫**：")
+    html_c = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis_c,
+                            "2026-06-02", "每日報")
+    assert "明確寫" not in html_c and "可加碼" in html_c
 
 
 def test_dim_source_citations_preserves_semantic_tags():

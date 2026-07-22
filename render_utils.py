@@ -258,7 +258,8 @@ def _dim_source_citations(html: str) -> str:
     _media_known = {"日經", "日經亞洲", "路透", "彭博", "鉅亨", "中央社", "惠譽",
                     "巴隆周刊", "金融時報", "南華早報", "大紀元", "住展", "非凡新聞",
                     "豐雲學堂", "工商時報", "自由財經", "自由時報", "蕃新聞",
-                    "好房網", "富房網", "鉅亨網", "經理人", "商周"}
+                    "好房網", "富房網", "鉅亨網", "經理人", "商周",
+                    "今日新聞", "NOWnews"}
     # 泛稱/語義詞不是媒體名(Codex 批#29 r5:精確比對擋不住「最新財報/法說簡報/
     # 無重大新聞」等複合詞 → 改樣式拒絕:①語義後綴(財報/簡報/年報…——「報」
     # 後綴規則的既知誤區);②泛稱修飾開頭(無/最新/重大/相關…——「××新聞」
@@ -290,12 +291,18 @@ def _dim_source_citations(html: str) -> str:
         toks = [t.strip() for t in _re.split(r"[／/、]", s) if t.strip()]
         if not toks:
             return False
-        return all(t not in _not_media and not _not_media_pat.search(t)
-                   and not _re.match(r"(僅|如|依|含|詳見|參見)", t)  # 指示性開頭≠媒體名
-                   and (t in _media_known or t.lower() in _latin_media
-                        or _domain_tok.match(t)
+        def _tok_ok(t: str) -> bool:
+            # 已知媒體白名單**優先於拒絕樣式**(Codex 批#29 r6:「今日新聞」是真
+            # 媒體(NOWnews),不可被 ^今日 泛稱開頭誤拒)
+            if t in _media_known or t.lower() in _latin_media:
+                return True
+            if t in _not_media or _not_media_pat.search(t):
+                return False
+            if _re.match(r"(僅|如|依|含|詳見|參見)", t):   # 指示性開頭≠媒體名
+                return False
+            return bool(_domain_tok.match(t)
                         or (_suffix_tok.search(t) and not _re.search(r"[0-9%％]", t)))
-                   for t in toks)
+        return all(_tok_ok(t) for t in toks)
 
     def _repl_paren(m: "_re.Match") -> str:
         inner = m.group(1)

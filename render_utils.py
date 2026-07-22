@@ -248,6 +248,45 @@ def _dim_source_citations(html: str) -> str:
         # 其餘方括號視為來源引用 → 條末小灰字
         return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;'
                 'font-variant-numeric:normal;">（' + inner + "）</span>")
+
+    # ===== 全形括號來源 fallback(批#29:2026-07-22 實信驗收發現 LLM 無視 R10b,
+    # 全信來源仍寫「（CNBC）（日經 / 巴隆周刊）」→ 淡化完全沒生效。prompt 管不住,
+    # render 端補保守辨識:**只有括號內「每個 token 都像媒體名」才淡化**,其餘
+    # 全形括號(公司簡介/價位/計價註記)原樣保留。)=====
+    # 媒體 token:純拉丁短詞(CNBC/Bloomberg/UDN/news.cnyes.com/CME FedWatch)
+    # 或 已知媒體名 或 帶媒體後綴(××報/新聞/周刊/雜誌/通訊社/日報/時報/網)
+    _media_known = {"日經", "日經亞洲", "路透", "彭博", "鉅亨", "中央社", "惠譽",
+                    "巴隆周刊", "金融時報", "南華早報", "大紀元", "住展", "非凡新聞",
+                    "豐雲學堂", "工商時報", "自由財經", "自由時報", "蕃新聞"}
+    # 泛稱「××報」不是媒體名(「財報/晨報/本報」被「報」後綴誤判 → 明列排除)
+    _not_media = {"財報", "晨報", "本報", "週報", "周報", "年報", "季報", "月報",
+                  "半年報", "法說會", "官網"}
+    _latin_tok = _re.compile(r"^[A-Za-z][A-Za-z0-9 .&\-]{0,19}$")
+    _suffix_tok = _re.compile(r"(報|新聞|周刊|週刊|雜誌|通訊社|日報|時報|網)$")
+
+    def _is_media_group(inner: str) -> bool:
+        s = inner.strip()
+        # 快篩:過長、含全形逗號/冒號(公司簡介/價位敘述特徵)一律不是來源
+        if not s or len(s) > 30 or _re.search(r"[，：:]", s):
+            return False
+        toks = [t.strip() for t in _re.split(r"[／/、]", s) if t.strip()]
+        if not toks:
+            return False
+        return all(t not in _not_media
+                   and not _re.match(r"(僅|如|依|含|詳見|參見)", t)  # 指示性開頭≠媒體名
+                   and (t in _media_known or _latin_tok.match(t)
+                        or (_suffix_tok.search(t) and not _re.search(r"[0-9%％]", t)))
+                   for t in toks)
+
+    def _repl_paren(m: "_re.Match") -> str:
+        inner = m.group(1)
+        if not _is_media_group(inner):
+            return m.group(0)
+        return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;'
+                'font-variant-numeric:normal;">（' + inner.strip() + "）</span>")
+    # 順序:先跑全形括號 pass,再跑方括號 pass——方括號 pass 產出的 span 內含
+    # （…）,若順序顛倒會被全形 pass 重複包一層(nested span)
+    html = _re.sub(r"（([^（）]{1,30})）", _repl_paren, html)
     # 括號內不再含方括號、長度上限 60(避免誤吞跨句內容)
     return _re.sub(r"\[([^\[\]]{1,60})\]", _repl, html)
 

@@ -35,6 +35,42 @@ def test_dim_source_citations_noop_without_brackets():
     assert _dim_source_citations("純文字無括號") == "純文字無括號"
 
 
+def test_batch29_dim_fullwidth_paren_sources():
+    """批#29(2026-07-22 實信驗收):LLM 無視 R10b 用全形括號標來源「（CNBC）」,
+    淡化沒生效——render 端 fallback:括號內每個 token 都像媒體名才淡化,
+    公司簡介/價位/計價註記等全形括號原樣保留。案例取自實信。"""
+    from render_utils import _dim_source_citations as dim
+    should_dim = ["（CNBC）", "（日經 / 巴隆周刊）", "（路透）", "（CNBC / SEC 8-K）",
+                  "（經濟日報 / Yahoo 新聞）", "（金融時報 / 中央社）", "（惠譽）",
+                  "（UDN / 住展）", "（news.cnyes.com）", "（工商時報）",
+                  "（非凡新聞 / 大紀元）", "（好房網）"]
+    should_keep = ["（2330，全球晶圓代工龍頭，先進製程市佔逾 90%）", "（新台幣計價）",
+                   "（+2.8% 於昨收）", "（按兵不動）", "（精銳、總太、順天等）",
+                   "（詳見十-C）", "（和大、貿聯-KY）", "（財報）", "（僅週一綜合報）",
+                   "（美東）", "（百分位 100%）", "（法說會）"]
+    for c in should_dim:
+        assert "span" in dim(c), f"應淡化未淡化: {c}"
+    for c in should_keep:
+        assert "span" not in dim(c), f"不該淡化被淡化: {c}"
+    # 順序:先全形後方括號——方括號 pass 產出的（…）span 不被重複包(nested)
+    mix = dim("事件 [中央社]。[A 級・信心:高] 另 （路透） 完")
+    assert "（中央社）" in mix and "[A 級・信心:高]" in mix
+    assert mix.count("<span") == mix.count("</span>")
+
+
+def test_batch29_instruction_echo_stripped():
+    """批#29:prompt 指令「在此基礎上明確寫」曾被 LLM 整句回音進 00662 建議行;
+    render 端確定性替換兜底。"""
+    q = _full_quotes()
+    analysis = ("## 十二、我的明確立場\n> **立場：偏多**\n"
+                "> **00662 操作建議**：合理估值 122.4 元。在此基礎上明確寫：若開盤"
+                "價低於 121.8 元可加碼。\n## 十三、一句話總結\n偏多操作")
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-06-02", "每日報")
+    assert "明確寫" not in html                       # 指令詞不外露
+    assert "在此基礎上" in html and "可加碼" in html   # 建議本體保留
+
+
 def test_dim_source_citations_preserves_semantic_tags():
     """批#27 r4(Codex):語義/風險標籤 [stale]、[geo_critical] 不得被誤當來源
     淡化(R13 休市要求輸出醒目 [stale]);媒體來源仍淡化。"""

@@ -10692,7 +10692,7 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 
 > **2330 開盤關鍵價位**：{key_2330_line}
 
-> **00662 操作建議**：{key_00662_line} 在此基礎上明確寫「加碼 / 觀望 / 減碼」。
+> **00662 操作建議**：{key_00662_line} 接著只寫你的結論動作——「加碼 / 觀望 / 減碼」擇一(可附條件價位);**動作前不要複述任何指示語**(如「在此基礎上明確寫」——那是給你的指令,不是報告內容,批#29 實信曾整句回音)。
 
 （上兩行的價位數字由 Python 計算:**原樣引用、不可自行更動、不可改用 ADR 美元價**;
  這段括號說明是給你的指令,**不要抄進輸出**。）
@@ -15795,6 +15795,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 批#26:計分內部(「11 維中 X 項」「淨分 ±N」)只在「立場詳情段」過濾——
     # **不套整份 analysis**(Codex r4:八段的「距突破門檻 2%」等正當子句會被誤刪)
     stance_detail = _strip_stance_internals(stance_detail)
+    # 批#29:prompt 指令回音保險——2026-07-22 實信曾把指令「在此基礎上明確寫」
+    # 整句抄進 00662 建議行;prompt 已改寫,此為確定性替換雙保險
+    stance_detail = stance_detail.replace("在此基礎上明確寫：", "在此基礎上，") \
+                                 .replace("在此基礎上明確寫:", "在此基礎上，") \
+                                 .replace("在此基礎上明確寫", "在此基礎上")
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
     tw_intelligence_html = _render_tw_intelligence_html(

@@ -77,6 +77,18 @@ def _tennis_zh(name: str) -> str:
     return f"{name}({zh})" if zh else name
 
 
+def _tennis_round_zh(name: str) -> str:
+    """輪次中文(批#30):Final→決賽、Semifinal→準決賽、Quarterfinal→8強、
+    Round N→第N輪;未知/缺回空字串(顯示端略過)。"""
+    import re as _re
+    m = {"Final": "決賽", "Semifinal": "準決賽", "Quarterfinal": "8強"}
+    name = str(name or "").strip()
+    if name in m:
+        return m[name]
+    mm = _re.match(r"Round (\d+)$", name)
+    return f"第{mm.group(1)}輪" if mm else ""
+
+
 def _tennis_event_zh(event: str) -> str:
     """賽事名補中文:大滿貫等常見賽事 → 「Wimbledon(溫網)」;否則原樣。"""
     event = str(event or "").strip()
@@ -1142,13 +1154,12 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     if tennis.get("tournaments") or tennis.get("results"):
         t_inner = []
         results = tennis.get("results") or []
-        # 比對用 event_key(未截斷原名;顯示名 40/30 字截斷不一致,長名賽事會誤判已結束
-        # —— Codex review);舊 state 無 event_key 時退回顯示名。
-        ongoing_names = {str(t.get("event_key") or t.get("name") or "")
-                         for t in (tennis.get("tournaments") or [])}
         if results:
-            # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列(溫網 6 行舊賽果=雜訊),
-            # 收斂成「冠軍行」——各巡迴(ATP/WTA)取該賽事最後一場=決賽;進行中的賽事才逐場列。
+            # 比照世足收斂(使用者 2026-07-15):已結束的賽事不再逐場列,收斂成「冠軍行」。
+            # 批#30:冠軍判定改**輪次**——只有 round=="Final" 的場次才是決賽→冠軍行;
+            # 無 Final 賽果=賽事未打完→逐場列。舊消去法(不在進行中列表=已結束)誤判:
+            # ESPN 對進行中賽事當日打完也標 post,三天出了三個「冠軍」(07/21-23 實信,
+            # Palermo/Estoril 每天換冠軍——其實是把當日場次當決賽)。
             by_event: dict[tuple, list] = {}
             for r in results:
                 key = str(r.get("event_key") or r.get("event") or "—")
@@ -1156,10 +1167,11 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             done_lines, live_lines = [], []
             for (event, tour), rs in by_event.items():
                 rs.sort(key=lambda r: str(r.get("date", "")))
-                if event and event in ongoing_names:
-                    live_lines.extend(rs[-4:])          # 進行中:列最近 4 場
+                fin = next((r for r in reversed(rs)
+                            if str(r.get("round") or "") == "Final"), None)
+                if fin is None:
+                    live_lines.extend(rs[-4:])          # 未見決賽:列最近 4 場
                     continue
-                fin = rs[-1]                            # 已結束:最後一場=決賽 → 冠軍行
                 tier = (f"<span style='color:#b45309;'>[{htmllib.escape(fin['tier'])}]</span> "
                         if fin.get("tier") else "")
                 shown_event = str(fin.get("event") or event)   # 顯示用截斷名;比對用未截斷 key
@@ -1172,18 +1184,28 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     f"<span style='color:#94a3b8;font-size:11px;'>"
                     f"　（決賽勝 {htmllib.escape(_tennis_zh(fin['loser']))}"
                     f"・{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
-            live_seg = "".join(
-                f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
-                f"font-size:12px;color:#334155;line-height:1.7;'>"
-                f"<span style='color:#94a3b8;'>{htmllib.escape(str(r.get('date', '')))} "
-                f"{htmllib.escape(r['tour'])}</span>　"
-                + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
-                   if r.get("tier") else "")
-                + f"<b>{htmllib.escape(_tennis_zh(r['winner']))}</b> 勝 {htmllib.escape(_tennis_zh(r['loser']))}"
-                + (f"<span style='color:#94a3b8;font-size:11px;'>（{htmllib.escape(_tennis_event_zh(r['event']))}）</span>"
-                   if r.get("event") else "")
-                + "</div>"
-                for r in live_lines)
+            live_parts = []
+            for r in live_lines:
+                rd = _tennis_round_zh(str(r.get("round") or ""))   # 批#30:標輪次
+                ev_note = ""
+                if r.get("event"):
+                    ev_note = (f"<span style='color:#94a3b8;font-size:11px;'>"
+                               f"（{htmllib.escape(_tennis_event_zh(r['event']))}"
+                               + (f"・{rd}" if rd else "") + "）</span>")
+                elif rd:
+                    ev_note = (f"<span style='color:#94a3b8;font-size:11px;'>"
+                               f"（{rd}）</span>")
+                live_parts.append(
+                    f"<div style='padding:4px 0;border-bottom:1px dashed #f1f5f9;"
+                    f"font-size:12px;color:#334155;line-height:1.7;'>"
+                    f"<span style='color:#94a3b8;'>{htmllib.escape(str(r.get('date', '')))} "
+                    f"{htmllib.escape(r['tour'])}</span>　"
+                    + (f"<span style='color:#b45309;'>[{htmllib.escape(r['tier'])}]</span> "
+                       if r.get("tier") else "")
+                    + f"<b>{htmllib.escape(_tennis_zh(r['winner']))}</b> 勝 "
+                      f"{htmllib.escape(_tennis_zh(r['loser']))}"
+                    + ev_note + "</div>")
+            live_seg = "".join(live_parts)
             t_inner.append("".join(done_lines) + live_seg)
         if tennis.get("tournaments"):
             # 進行中/即將開打的賽事:逐行列(原「|」串接一長行難讀,2026-07-16)

@@ -14876,6 +14876,13 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         cs = comp.get("competitors", [])
                         if len(cs) != 2 or not st.get("completed"):
                             continue
+                        # 批#30:記錄輪次(冠軍行判定的依據——實測 ESPN 有
+                        # Qualifying 1st/2nd Round、Qualifying Final、Round 1-4、
+                        # Quarterfinal、Semifinal、Final);資格賽=雜訊不進賽果
+                        round_name = str(((comp.get("round") or {})
+                                          .get("displayName")) or "")
+                        if round_name.startswith("Qualifying"):
+                            continue
                         win = next((c for c in cs if c.get("winner")), None)
                         lose = next((c for c in cs if not c.get("winner")), None)
                         if not (win and lose):
@@ -14884,6 +14891,7 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                         by_label[label].append({
                             "tour": label, "winner": _an(win), "loser": _an(lose),
                             "event": _cut_word(name, 30), "event_key": name,
+                            "round": round_name,
                             "tier": tier_label, "_tier": tier_rank,
                             "_ts": str(comp.get("date") or ev.get("date") or "")})
         except Exception as e:

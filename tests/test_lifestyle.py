@@ -155,20 +155,29 @@ def test_fetch_tennis_digest(monkeypatch):
                 "grouping": {"slug": "mens-singles"},
                 "competitions": [{
                     "id": "c1", "date": "2026-06-14T12:00Z",
+                    "round": {"displayName": "Round 2"},
                     "status": {"type": {"completed": True}},
                     "competitors": [
                         {"athlete": {"shortName": "A. Player"}, "winner": True},
-                        {"athlete": {"shortName": "B. Loser"}, "winner": False}]}]}],
+                        {"athlete": {"shortName": "B. Loser"}, "winner": False}]},
+                   {"id": "c2", "date": "2026-06-14T09:00Z",
+                    "round": {"displayName": "Qualifying 1st Round"},   # 批#30:資格賽濾掉
+                    "status": {"type": {"completed": True}},
+                    "competitors": [
+                        {"athlete": {"shortName": "Q. Winner"}, "winner": True},
+                        {"athlete": {"shortName": "Q. Loser"}, "winner": False}]}]}],
         }]})
     monkeypatch.setattr(mr.requests, "get", fake_get)
     out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
     # 進行中賽事列入「進行中/即將」清單(已完賽者不再列——賽果區已涵蓋)
     t = next(t for t in out["tournaments"] if t["name"] == "Boss Open")
     assert t["status"] == "進行中"
-    # 兩端點都回同一場 → 用 competition id 去重,只算一次;賽果帶台北日期
+    # 兩端點都回同一場 → 用 competition id 去重,只算一次;賽果帶台北日期+輪次
     matches = [r for r in out["results"] if r["winner"] == "A. Player"]
     assert len(matches) == 1 and matches[0]["tour"] == "ATP"
     assert matches[0]["date"] == "06/14"
+    assert matches[0]["round"] == "Round 2"                       # 批#30:輪次記錄
+    assert not any(r["winner"] == "Q. Winner" for r in out["results"])  # 資格賽不進賽果
 
 
 def test_render_sports_cpbl_scores():
@@ -1498,11 +1507,12 @@ def test_render_tennis_cleaned_block():
     """網球區:賽果帶日期+賽事名;賽事列表只列進行中/即將(台北日期),不再出現美東原始字串。"""
     tennis = {
         "results": [{"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
-                     "loser": "A. Zverev", "event": "Wimbledon", "date": "07/13"}],
+                     "loser": "A. Zverev", "event": "Wimbledon", "date": "07/13",
+                     "round": "Final"}],   # 批#30:冠軍行以 round=Final 判定
         "tournaments": [{"name": "Canadian Open", "status": "07/20 起", "tier": "1000"}],
     }
     html = mr._render_sports_html({"tennis": tennis}, htmllib)
-    # Wimbledon 不在進行中列表=已結束 → 收斂成冠軍行(2026-07-15,比照世足)
+    # Wimbledon 有 Final 賽果 → 收斂成冠軍行(批#30 改輪次判定,比照世足)
     assert "Wimbledon(溫網)" in html and "冠軍" in html   # 大滿貫附中文(2026-07-16)
     assert "J. Sinner(辛納)" in html
     assert "決賽勝 A. Zverev(茲維列夫)" in html
@@ -1771,42 +1781,73 @@ def test_mlb_fixtures_series_merged_into_one_line():
 
 
 def test_tennis_finished_event_collapses_to_champion_line():
-    """已結束賽事(不在進行中列表)收斂成冠軍行;進行中賽事仍逐場列(2026-07-15)。"""
+    """有 round=Final 賽果的賽事收斂成冠軍行;無 Final 者逐場列
+    (批#30:冠軍判定改輪次,不再用「不在進行中列表」消去法)。"""
     import html as htmllib
     tennis = {
         "results": [
             {"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
-             "loser": "N. Djokovic", "event": "Wimbledon", "date": "07/10"},
+             "loser": "N. Djokovic", "event": "Wimbledon", "date": "07/10",
+             "round": "Semifinal"},
             {"tour": "ATP", "tier": "大滿貫", "winner": "J. Sinner",
-             "loser": "A. Zverev", "event": "Wimbledon", "date": "07/12"},   # 最後一場=決賽
+             "loser": "A. Zverev", "event": "Wimbledon", "date": "07/12",
+             "round": "Final"},                                  # 決賽 → 冠軍行
             {"tour": "WTA", "tier": "1000", "winner": "I. Swiatek",
-             "loser": "A. Sabalenka", "event": "Canadian Open", "date": "07/14"},
+             "loser": "A. Sabalenka", "event": "Canadian Open", "date": "07/14",
+             "round": "Quarterfinal"},
         ],
         "tournaments": [{"name": "Canadian Open", "status": "進行中"}],
     }
     h = mr._render_sports_html({"tennis": tennis}, htmllib)
-    # Wimbledon 已結束 → 只剩冠軍行(取日期最晚一場當決賽),早期輪次不再出現
+    # Wimbledon 有 Final → 只剩冠軍行,早期輪次不再出現
     assert "Wimbledon" in h and "冠軍" in h and "決賽勝 A. Zverev" in h
     assert "N. Djokovic" not in h
-    # Canadian Open 進行中 → 逐場列
-    assert "I. Swiatek" in h and "勝 A. Sabalenka" in h
+    # Canadian Open 無 Final → 逐場列,附輪次標籤
+    assert "I. Swiatek" in h and "勝 A. Sabalenka" in h and "8強" in h
 
 
 def test_tennis_long_named_ongoing_event_not_falsely_collapsed():
-    """回歸(Codex review):長名賽事顯示名 40/30 字兩處截斷不一致——須以未截斷 event_key
-    比對「進行中」,否則長名進行中賽事被誤收斂成假冠軍行。"""
+    """回歸:進行中賽事(無 Final 賽果)不得收斂成假冠軍行——批#30 起判定看
+    輪次,與顯示名截斷/進行中列表完全脫鉤。"""
     import html as htmllib
     long_name = "Cerity Partners Hall of Fame Open presented by Amica Insurance"
     tennis = {
         "results": [{"tour": "ATP", "tier": "250", "winner": "甲",
                      "loser": "乙", "event": long_name[:30] + "…",
-                     "event_key": long_name, "date": "07/14"}],
+                     "event_key": long_name, "date": "07/14", "round": "Round 2"}],
         "tournaments": [{"name": long_name[:40] + "…", "event_key": long_name,
                          "status": "進行中"}],
     }
     h = mr._render_sports_html({"tennis": tennis}, htmllib)
-    assert "冠軍" not in h                    # 進行中 → 不得收斂成冠軍行
+    assert "冠軍" not in h                    # 無 Final → 不得收斂成冠軍行
     assert "甲" in h and "勝 乙" in h          # 逐場列照常
+
+
+def test_batch30_tennis_no_daily_rotating_champions():
+    """批#30 回歸(07/21-23 實信):進行中賽事每天的最新場次被當決賽,三天出三個
+    「冠軍」。修正後:無 round=Final 一律不稱冠軍(即使賽事不在進行中列表——
+    ESPN 對進行中賽事當日打完也標 post,消去法不可靠)。"""
+    import html as htmllib
+    tennis = {
+        "results": [
+            {"tour": "WTA", "tier": "250", "winner": "Y. Kabbaj",
+             "loser": "E. Gorgodze", "event": "Palermo Ladies Open",
+             "date": "07/23", "round": "Round 1"},
+        ],
+        "tournaments": [],   # ESPN 標 post → 不在進行中列表(舊邏輯會誤判已結束)
+    }
+    h = mr._render_sports_html({"tennis": tennis}, htmllib)
+    assert "冠軍" not in h and "決賽勝" not in h
+    assert "Y. Kabbaj" in h and "第1輪" in h   # 以一般賽果行呈現+輪次標籤
+
+
+def test_batch30_tennis_round_zh():
+    from render_utils import _tennis_round_zh
+    assert _tennis_round_zh("Final") == "決賽"
+    assert _tennis_round_zh("Semifinal") == "準決賽"
+    assert _tennis_round_zh("Quarterfinal") == "8強"
+    assert _tennis_round_zh("Round 3") == "第3輪"
+    assert _tennis_round_zh("") == "" and _tennis_round_zh("Qualifying Final") == ""
 
 
 # ═══ 信件調整批#4(2026-07-15)═══

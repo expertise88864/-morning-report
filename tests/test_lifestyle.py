@@ -775,6 +775,49 @@ def test_fetch_tennis_orders_latest_first_per_tour(monkeypatch):
                for r in out["results"])
 
 
+def test_batch30_fetch_final_survives_per_tour_cap(monkeypatch):
+    """批#30 r2(Codex):繁忙賽週,某賽事 Final 之後同 tour 又有 3 場更新的普通
+    賽果——Final 不得被每巡迴 3 場配額擠掉(否則冠軍行消失、反而逐場列普通輪次)。"""
+    import datetime as dt
+
+    class R:
+        def __init__(self, p):
+            self._p = p
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self._p
+
+    def _match(cid, winner, day, rnd):
+        return {"id": cid, "date": f"2026-06-{day}T12:00Z",
+                "round": {"displayName": rnd},
+                "status": {"type": {"completed": True}},
+                "competitors": [{"athlete": {"shortName": winner}, "winner": True},
+                                {"athlete": {"shortName": "Loser"}, "winner": False}]}
+
+    def fake_get(url, params=None, timeout=None, **k):
+        if "/atp/" in url:
+            return R({"events": [
+                {"shortName": "Estoril Open", "status": {"type": {}},
+                 "groupings": [{"grouping": {"slug": "mens-singles"},
+                                "competitions": [_match("f1", "CHAMP", 10, "Final")]}]},
+                {"shortName": "Kitzbühel Open", "status": {"type": {}},
+                 "groupings": [{"grouping": {"slug": "mens-singles"},
+                                "competitions": [
+                                    _match(f"r{d}", f"REG{d}", d, "Round 1")
+                                    for d in (11, 12, 13)]}]},
+            ]})
+        return R({"events": []})
+    monkeypatch.setattr(mr.requests, "get", fake_get)
+    out = mr.fetch_tennis_digest(dt.datetime(2026, 6, 15, 8, 0, tzinfo=mr.TPE))
+    winners = [r["winner"] for r in out["results"]]
+    assert "CHAMP" in winners                 # Final 雖最舊仍保留(冠軍行不消失)
+    assert sum(1 for r in out["results"]) <= 6 and len(
+        [w for w in winners if w != "CHAMP"]) <= 2   # 配額仍 3/tour:普通賽果讓位
+
+
 def _stub_weekend_sources(monkeypatch, *, podcast):
     """把週日綜合的抓取/渲染都換成輕量 stub,只測控制流。"""
     monkeypatch.setattr(mr, "fetch_weather", lambda: [])

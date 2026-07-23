@@ -14906,7 +14906,12 @@ def fetch_tennis_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     for label in ("ATP", "WTA"):
         ms = sorted(by_label[label], key=lambda m: m["_ts"], reverse=True)  # 新→舊
         ms.sort(key=lambda m: m["_tier"])                                   # 穩定:大滿貫優先
-        combined += ms[:3]
+        # 批#30 r2(Codex):**決賽優先保留**——繁忙賽週 Final 會被 3 場更新的普通
+        # 賽果擠出配額,冠軍行消失、反而逐場列普通輪次;先收 Final 再以普通賽果
+        # 補滿(維持各自的層級/時間序)
+        finals = [m for m in ms if m.get("round") == "Final"]
+        rest = [m for m in ms if m.get("round") != "Final"]
+        combined += (finals + rest)[:3]
     combined.sort(key=lambda m: m["_ts"], reverse=True)
     combined.sort(key=lambda m: m["_tier"])     # 穩定排序:大滿貫 > 1000 > 其他,同層新→舊
     for m in combined:

@@ -4682,6 +4682,71 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73142508",
+        "title": "Intel flexes on Q2 beat",
+        "published": "Fri, 24 Jul 2026 10:10:26 +0000",
+        "processed_at": "2026-07-24T15:13:31Z",
+        "digest": {
+          "summary_points": [
+            "英特爾第二季非GAAP每股盈餘優於預期0.20美元，營收超出16.5億美元，並上調第三季財測高於市場預期。",
+            "川普政府對60個貿易夥伴（包括歐盟）加徵10%及12.5%新關稅，涵蓋99.4%美國進口商品，但排除石油、天然氣、肥料及部分食品。",
+            "甲骨文獲得美國國防部為期10年、最高70億美元的軟體服務合約，盤前股價上漲2.7%。",
+            "艾馬克科技（AMKR）宣布與輝達（NVDA）簽訂多年策略合作夥伴關係，股價上漲9%。",
+            "特斯拉獲利不佳，今年空頭累積紙上獲利超過90億美元。",
+            "Stripe據報正洽談以100億美元收購AI新創OpenRouter。",
+            "SanDisk遭分析師調降目標價，展望轉趨負面。",
+            "美股期貨盤前全面上漲，原油價格下跌3.2%至每桶89美元。"
+          ],
+          "tickers": [
+            {
+              "name": "英特爾",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "第二季財報與第三季財測皆優於預期，AI需求帶動成長。"
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "獲得國防部大型合約，盤前股價上揚。"
+            },
+            {
+              "name": "艾馬克科技",
+              "code": "AMKR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與輝達策略合作消息激勵股價大漲9%。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "與艾馬克合作消息，但無直接股價影響評論。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "獲利表現不佳，空頭獲利可觀。"
+            },
+            {
+              "name": "SanDisk",
+              "code": "WDC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "目標價遭調降，市場看法負面。"
+            }
+          ],
+          "market_view": "美股期貨盤前全面上漲，原油價格下跌3.2%至每桶89美元。",
+          "action_view": "",
+          "notable_quote": "AI is driving unprecedented demand for compute and as they continue to execute, Intel is well positioned to capture sustainable growth across their CPU franchise."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73122829",
         "title": "ServiceNow's answer to rogue AI",
         "published": "Thu, 23 Jul 2026 10:28:15 +0000",
@@ -5198,42 +5263,6 @@
           "notable_quote": "SK Hynex fought off a massive morning sell-off to stabilize by the close."
         },
         "shown_at": "2026-07-14T22:51:49Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72952243",
-        "title": "Trump says U.S. will run Hormuz for 20% fee",
-        "published": "Mon, 13 Jul 2026 17:08:35 +0000",
-        "processed_at": "2026-07-13T20:41:17Z",
-        "digest": {
-          "summary_points": [
-            "特朗普宣布对通过霍尔木兹海峡的货物徵收20%補償費，並重啟「伊朗封鎖」，推動WTI和布倫特原油價格上漲超過4%。",
-            "記憶體與AI相關股票承壓，SK海力士在首爾暴跌15%，三星電子下跌近11%，拖累韓國KOSPI指數下跌9%。",
-            "傑富瑞將Shopify評級上調至買入，認為其獨特定位為代理商務和商家代理賦能工具的基礎設施層，股價上漲。",
-            "包括加州在內的多個州預計提起訴訟，尋求阻止派拉蒙-天空舞者以1100億美元收購華納兄弟探索，稱合併將形成反競爭力量。",
-            "Jersey Mike's Subs計劃上市，估值超120億美元，擁有超過3300家門店，近期在美國客戶滿意度指數中超越Chick-fil-A成為最高評價快餐品牌。",
-            "SpaceX股價再次下跌至140美元以下，接近135美元的IPO價格；資深投資者喬治·諾布爾警告未來幾個月將出現內部人拋售潮，認為IPO是最大的退出流動性操作。"
-          ],
-          "tickers": [
-            {
-              "name": "Shopify",
-              "code": "SHOP",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "傑富瑞將其評級上調至買入，認為其獨特定位為代理商務和商家代理賦能工具的基礎設施層。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "資深投資者喬治·諾布爾警告內部人拋售潮，認為IPO是最大的退出流動性操作，股價下跌。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-16T22:53:17Z"
       }
     ]
   },

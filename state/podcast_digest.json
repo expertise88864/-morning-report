@@ -5271,6 +5271,28 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "2050514a-2131-40e9-bc90-b48f0113d17c",
+        "title": "How Franchise Restaurants Opened the Door to the Gig Economy",
+        "published": "Fri, 24 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-24T09:52:19Z",
+        "digest": {
+          "summary_points": [
+            "加盟模式是一種商標授權：加盟總部（如麥當勞）將品牌授權給獨立經營者（加盟者），加盟者繳納營業額的6%-20%作為權利金，並須嚴格遵守總部對價格、營業時間、產品組合、員工招呼用語等細節的規定。",
+            "現代速食加盟起源於二戰後，由雷·克洛克（麥當勞）和桑德斯上校（肯德基）開創；他們坦承此模式最初在反托拉斯法下可能違法，因此積極遊說修改法律，讓控制獨立加盟店的行為合法化。",
+            "1960至1970年代，加盟總部透過訴訟和遊說成功改變反托拉斯法，使其能夠對加盟店設定價格與區域限制，同時在勞工法上主張加盟店是獨立企業，藉此迴避雇主責任，形成「雙重豁免」。",
+            "加盟者能自主調整的空間極小；主要利潤來源是壓低勞動成本（薪資、人力配置），其他投入皆受總部控制。",
+            "加盟店之間的「不挖角協議」禁止員工未經原店主同意轉至其他加盟店；研究顯示此類協議會壓低薪資，部分州已加以限制。",
+            "科技進步（寬頻網路、銷售點系統、人工智慧）讓加盟總部對加盟店的即時控制力超越傳統垂直整合企業（如美國鋼鐵對工廠的控制）。",
+            "同一連鎖品牌中，加盟店的薪資較公司直營店低、升遷機會少，且職業安全違規率更高；但加盟店員工的工資與工時仍高於完全獨立的小型餐館。",
+            "加盟模式為零工經濟（如Uber、Lyft、亞馬遜配送夥伴）鋪路，這些平台利用類似的獨立承包商架構來避免雇主責任。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "0d6108b3-8435-4010-9141-b48f0145a86f",
         "title": "Why Apple Is Heading Into a Pivotal Moment",
         "published": "Thu, 23 Jul 2026 08:00:00 +0000",
@@ -5573,43 +5595,6 @@
           "notable_quote": "I think that the central contradiction as the Marxists like to call it now is that what I feel on this trip is that this is kind of people have a bit of a serene discontent with their lives."
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "f5c05315-7559-4fa4-a6da-b47400f7cb90",
-        "title": "Baidu's CFO on How It Became a Full-Stack AI Player",
-        "published": "Mon, 29 Jun 2026 08:00:00 +0000",
-        "processed_at": "2026-06-29T13:19:38Z",
-        "digest": {
-          "summary_points": [
-            "百度認為 AI 正從基礎設施轉向應用，從模型轉向代理，80% 的增量 Token 需求來自推理。",
-            "財務長何亨利指出雲端是必爭之地，因為它託管文心一言及其他模型，並透過 MCP 平台連接推理。",
-            "百度雲端營收年增 79%，約為中國整體雲端市場成長率的兩倍。",
-            "百度營業利潤季增近一倍，且自 2023 年第三季以來營運現金流轉正，顯示資本效率改善。",
-            "百度正擴大校園招聘，並推廣「一人公司」文化，利用內部 AI 工具提升員工自主性與生產力。",
-            "百度自研晶片專注於推理與應用工作負載，利用中國的成本效率與生態系統優勢。",
-            "百度搜尋營收占比降至 48% 以下，新成長動力來自數位人與 AI 軟體應用。",
-            "Apollo Go 自動駕駛計程車每週完成約 35 萬趟行程，僅比 Waymo 少 25%，並計劃進軍倫敦，與 Uber/Lyft 合作。",
-            "百度透過任務完成與結果付費模式衡量 AI 投資報酬率，例如為港口安裝代理提升物流效率並分享利潤。",
-            "百度已在香港提交晶片業務分拆的保密申請，旨在打造更中立且開放的生態系統。",
-            "每日活躍代理（DAA）成為衡量 AI 成功的新指標，取代傳統 DAU，因代理能自主完成複雜任務。",
-            "AI 代理透過收益共享模式變現，例如數位員工協助電商賣家 24 小時銷售。",
-            "文心一言 5.1 基礎模型在 OpenClaw 平台上全球分類第一、搜尋技能排名第五。",
-            "百度強調以負責任的方式配置資本，平衡 AI 投資密度與股東回報。"
-          ],
-          "tickers": [
-            {
-              "name": "百度",
-              "code": "BIDU",
-              "market": "US",
-              "direction": "看多",
-              "reason": "百度雲端營收高速成長、AI 代理商業模式逐漸成熟、自駕計程車擴張，財務長展現資本配置紀律。"
-            }
-          ],
-          "market_view": "財務長認為 AI 產業正從預訓練轉向推理與應用，成本快速下降將推動更多落地場景，中國市場公有雲滲透率仍低但未來可望快速提升。",
-          "action_view": "百度將持續投資 AI 基礎設施，但會以負責任的方式控制節奏，同時提升營運效率與現金流，並透過分拆晶片業務釋放價值。",
-          "notable_quote": "So I think the unique thing today is I think the entire AI has been shifting from infrastructure to applications and from model to agents."
-        },
-        "shown_at": "2026-06-29T22:52:55Z"
       }
     ]
   },

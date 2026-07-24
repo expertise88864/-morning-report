@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 36,
-  "last_seen": "2026-07-24",
-  "latest_title": "美伊戰爭最新消息》開新戰線！美擴大攻伊青年運動轟紅海沙國油輪- 國際 - 中時新聞網"
+  "days": 37,
+  "last_seen": "2026-07-25",
+  "latest_title": "美伊戰爭惡化 波斯灣運費大漲7.45％ - 自由財經"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 23,
-  "last_seen": "2026-07-24",
-  "latest_title": "歐盟同意對俄第21輪制裁 打擊金融機構和影子艦隊 - rti.org.tw"
+  "days": 24,
+  "last_seen": "2026-07-25",
+  "latest_title": "美參院制裁俄法案納入伊朗 歐盟制裁五伊法官 - 新唐人電視台"
  },
  "export_controls:QCOM": {
   "first_seen": "2026-07-22",
@@ -28,5 +28,17 @@
   "days": 1,
   "last_seen": "2026-07-23",
   "latest_title": "控訴社群媒體成癮 美國青少年撤回對Meta訴訟 | 民視新聞網 - LINE TODAY"
+ },
+ "litigation:2882": {
+  "first_seen": "2026-07-25",
+  "days": 1,
+  "last_seen": "2026-07-25",
+  "latest_title": "代子公司國泰人壽保險股份有限公司公告受監理機關裁罰之說明"
+ },
+ "litigation:": {
+  "first_seen": "2026-07-25",
+  "days": 1,
+  "last_seen": "2026-07-25",
+  "latest_title": "US small businesses sue Trump administration over new ‘forced labour’ tariffs"
  }
 }

@@ -57,12 +57,34 @@ def test_idle_developing_story_demotes_not_promotes():
     led = sl.update_ledger([], [_ev("2330", "earnings", "法說")], "2026-07-20")
     led = sl.update_ledger(led, [_ev("2330", "earnings", "續報")], "2026-07-21")
     assert led[0]["state"] == "developing"
-    for idle_days, expect in ((2, "resolving"), (4, "resolving"), (6, "resolving")):
-        day = f"2026-07-{21 + idle_days:02d}"
-        out = sl.update_ledger(led, [], day)
-        assert out[0]["state"] == expect, (
-            f"閒置 {idle_days} 天得到 {out[0]['state']},應為 {expect}"
-            "(得到 peak 代表降級走成了升級)")
+    out = sl.update_ledger(led, [], "2026-07-23")   # 閒置 2 天
+    assert out[0]["state"] == "resolving", (
+        f"閒置 2 天得到 {out[0]['state']}(得到 peak 代表降級走成了升級)")
+
+
+def test_idle_demotion_is_applied_daily_to_persisted_ledger():
+    """r2(Codex):降級表是**每日**套用在持久化的帳本上,不是一次算到底。
+
+    先前的測試把第 2/4/6 天各自套在同一個快照上,漏掉了真實的序列行為:
+    第 2 天 developing→resolving,第 3 天若 resolving→dormant,線索閒置三天就
+    消失,而設計是七天。何時沉寂只能由 DORMANT_AFTER_DAYS 那條決定。
+    """
+    led = sl.update_ledger([], [_ev("2330", "earnings", "法說")], "2026-07-20")
+    led = sl.update_ledger(led, [_ev("2330", "earnings", "續報")], "2026-07-21")
+    assert led[0]["state"] == "developing"
+
+    seen = {}
+    for day in range(22, 32):                      # 07-22 ~ 07-31 逐日推進
+        led = sl.update_ledger(led, [], f"2026-07-{day:02d}")
+        seen[day] = led[0]["state"] if led else "gone"
+
+    assert seen[22] == "developing", "閒置 1 天不該降級(週末誤殺)"
+    assert seen[23] == "resolving", f"閒置 2 天應降到 resolving,得到 {seen[23]}"
+    for day in (24, 25, 26, 27):
+        assert seen[day] == "resolving", (
+            f"第 {day} 日(閒置 {day - 21} 天)提前變成 {seen[day]};"
+            "沉寂只能由 DORMANT_AFTER_DAYS=7 決定")
+    assert seen[28] == "dormant", f"閒置 7 天應沉寂,得到 {seen[28]}"
 
 
 def test_same_day_rerun_does_not_advance_state():

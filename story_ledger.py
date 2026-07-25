@@ -54,11 +54,16 @@ STATE_WEIGHT = {"peak": 3.0, "developing": 2.0, "resolving": 1.2,
 # 閒置降級的**顯式**對照表。刻意不用 STATES 的相鄰元素:那個 tuple 是「熱度
 # 由低到高再收斂」的順序,developing 的下一個是 peak,拿來當降級會把冷掉的線索
 # 升級成高潮(r1 Codex F1 實際發生過)。
+#
+# r2(Codex):這張表是**每日**套用在持久化的帳本上,不是一次算到底。所以
+# resolving 不能再往 dormant 掉——否則第 2 天 developing→resolving、第 3 天
+# resolving→dormant,線索閒置三天就消失,而設計是七天(DORMANT_AFTER_DAYS)。
+# 何時沉寂交給 _advance 裡的 days_idle >= DORMANT_AFTER_DAYS 那條唯一決定。
 _IDLE_DEMOTION = {
-    "brewing": "dormant",        # 從未成形的線索,沒動就沉寂
+    "brewing": "dormant",        # 從未成形的線索,沒動就沉寂(刻意較嚴)
     "developing": "resolving",
     "peak": "resolving",
-    "resolving": "dormant",
+    "resolving": "resolving",    # 停在收斂,等 DORMANT_AFTER_DAYS 才沉寂
     "dormant": "dormant",
 }
 

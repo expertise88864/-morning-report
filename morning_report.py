@@ -7452,18 +7452,39 @@ def _probability_calibration_metrics(values: list[tuple[float, float]],
 def evaluate_model_rolling_origin(model_history: list[dict],
                                   sessions: list[str],
                                   max_origins: int = 16,
-                                  min_train_rows: int = 180) -> dict:
-    """Offline purged rolling-origin backtest using only prior realized rows."""
+                                  min_train_rows: int = 180,
+                                  exclude_estimated_universe: bool = False) -> dict:
+    """Offline purged rolling-origin backtest using only prior realized rows.
+
+    ``exclude_estimated_universe`` drops rows whose source session was backfilled
+    with ``universe_method == 'estimated_current_shares'`` (today's issued shares x
+    past close, currently-listed names only). Those rows carry market-cap look-ahead
+    and survivorship bias, so excluding them removes biased signal at the cost of
+    sample size.
+
+    診斷用,預設關閉——**目前樣本量還不夠支撐它**:2026-07-25 實測 215 筆歷史中
+    179 筆是 estimated_current_shares,排除後只剩 36 筆,遠低於 min_train_rows=180,
+    每個 target 都會因訓練列不足而產出空結果(不是壞掉,是資料還沒累積夠)。
+    隨 daily_point_in_time_top100 逐日累積(每交易日 +1),約需再 150 個交易日
+    才會跨過門檻。屆時可用它比對「無前視偏誤的子樣本」與全樣本的績效落差,
+    量化目前回測被高估多少。
+    """
     output = {
         "model_version": MODEL_VERSION,
         "max_origins": max_origins,
         "min_train_rows": min_train_rows,
         "purge_gap_sessions": MODEL_PURGE_GAP,
+        "exclude_estimated_universe": exclude_estimated_universe,
     }
     for forecast_key, config in MODEL_TARGETS.items():
         horizon = config["horizon"]
         target_key = config["target"]
         rows = build_model_training_rows(model_history, sessions, horizon)
+        if exclude_estimated_universe:
+            rows = [
+                row for row in rows
+                if str(row.get("universe_method") or "") != "estimated_current_shares"
+            ]
         by_session: dict[str, list[dict]] = {}
         for row in rows:
             by_session.setdefault(str(row.get("session_date") or ""), []).append(row)
@@ -7852,6 +7873,7 @@ def build_model_training_rows(model_history: list[dict],
                 "future_session_date": future_date,
                 "model_version": current.get("model_version") or "legacy",
                 "market_regime": current.get("market_regime") or "neutral",
+                "universe_method": current.get("universe_method"),
                 "code": code,
                 "future_return_pct": stock_return,
                 "future_close_return_pct": stock_return,

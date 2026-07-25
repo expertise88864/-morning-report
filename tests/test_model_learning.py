@@ -2663,3 +2663,68 @@ def test_batch38_no_nested_fences_in_prompt():
         depth += 1 if m.group(0) == "<UNTRUSTED_SOURCE_DATA>" else -1
         assert depth in (0, 1), f"圍欄巢狀或未配對(depth={depth},位置 {m.start()})"
     assert depth == 0, "圍欄標籤未成對關閉"
+
+
+def _rolling_origin_history(sessions, universe_method_by_session):
+    """建同一組歷史,只有 universe_method 依 session 不同——用來驗排除旗標。"""
+    history = []
+    for day_index, session in enumerate(sessions):
+        stocks = {}
+        for code_index in range(12):
+            stocks[str(2300 + code_index)] = _stock(
+                100 + day_index + code_index * 0.1,
+                ranking_score=float(code_index),
+                liquidity_eligible=True,
+                slippage_bps=5,
+                pct_5d=float(code_index % 5),
+                rev_yoy_pct=float(code_index),
+            )
+        history.append({
+            "session_date": session,
+            "taiex_close": 100 + day_index,
+            "stocks": stocks,
+            "universe_method": universe_method_by_session(session, day_index),
+            # 帶 universe_method 即被視為 production universe(build_model_training_rows),
+            # 此時未來 session 必須標記標籤價完整,否則整個 session 會被完整性契約
+            # 剔除、訓練列歸零(批#23)——這裡是要驗排除旗標,不是驗完整性契約。
+            "label_prices_complete": True,
+        })
+    return history
+
+
+def test_rolling_origin_can_exclude_estimated_universe():
+    """`estimated_current_shares` 是用「今日在市股數 × 過去收盤」回填的,
+    帶市值前視與倖存者偏誤(只含目前仍上市的名字)。診斷旗標要能把它排掉,
+    才能量化回測被高估多少。"""
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 10)]
+    # 前半段是回填的估算宇宙,後半段是逐日 point-in-time
+    hist = _rolling_origin_history(
+        sessions,
+        lambda s, i: "estimated_current_shares" if i < 5 else "daily_point_in_time_top100")
+
+    full = mr.evaluate_model_rolling_origin(
+        hist, sessions, max_origins=3, min_train_rows=20)
+    excl = mr.evaluate_model_rolling_origin(
+        hist, sessions, max_origins=3, min_train_rows=20,
+        exclude_estimated_universe=True)
+
+    assert full["exclude_estimated_universe"] is False
+    assert excl["exclude_estimated_universe"] is True
+    # 排除後樣本必須真的變少,否則旗標等於沒作用(過濾條件打錯欄位就會這樣)
+    assert excl["1d_close"]["samples"] < full["1d_close"]["samples"], \
+        "排除旗標沒有濾掉任何列——過濾欄位可能沒對上 build_model_training_rows 的輸出"
+
+
+def test_rolling_origin_exclude_degrades_to_empty_not_crash():
+    """全歷史都是估算宇宙時,排除後訓練列歸零。這是目前真實 state 的處境
+    (2026-07-25:215 筆中 179 筆是 estimated),必須乾淨地產出空結果而非炸掉,
+    否則日後有人開了旗標會以為程式壞了。"""
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 10)]
+    hist = _rolling_origin_history(sessions, lambda s, i: "estimated_current_shares")
+
+    out = mr.evaluate_model_rolling_origin(
+        hist, sessions, max_origins=3, min_train_rows=20,
+        exclude_estimated_universe=True)
+    assert out["exclude_estimated_universe"] is True
+    assert out["1d_close"]["samples"] == 0
+    assert out["1d_close"]["origins"] == 0

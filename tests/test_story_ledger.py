@@ -448,13 +448,36 @@ def test_us_ticker_entities_get_aliases_too():
     assert led[0]["prev_delta"] == "", "美股 entity 的公司名沒被剝掉,拿到錯誤前情"
 
 
-def test_material_facts_ignore_ticker_and_date_noise():
-    """r7(Codex,P1):純 ASCII 數字集合會把代號、日期、季別當成「事實」。
-    同一則 10 億訂單的兩篇稿子,一篇帶代號 2317 或日期,數字集合就不同 →
-    改寫稿被誤判成更新。"""
+def test_material_facts_ignore_ticker_and_publication_date():
+    """r7:代號與**出版日期**是版面雜訊,不是事實變化。
+    r9:日期只有在**等於該篇發布日**時才算雜訊(見下一條測試)。"""
+    pub = "2026-07-25T00:00:00+00:00"
     a = "鴻海(2317)接獲車用大單 金額 10 億美元"
     b = "外電:鴻海拿下車廠訂單 規模 10 億美元 7月25日公告"
-    assert sl._material_facts(a, "2317", ["鴻海"]) == sl._material_facts(b, "2317", ["鴻海"])
+    assert (sl._material_facts(a, "2317", ["鴻海"], pub)
+            == sl._material_facts(b, "2317", ["鴻海"], pub))
+
+
+def test_schedule_change_counts_as_progress():
+    """r9(Codex,P1):**日期不能一律當雜訊剝掉**。「交易預計 8 月完成」→
+    「延後至 9 月完成」是 R16b 明列的實質進展(時程改變);把日期剝光會讓它被判
+    沒進展,線索在持續發展中被降級沉寂。只有等於發布日的日期才是版面雜訊。"""
+    story = {"last_delta": "100 億交易預計 8 月完成",
+             "last_published": "2026-07-25T00:00:00+00:00", "entity": "2317"}
+    ev = {"title": "100 億交易延後至 9 月完成", "published": "2026-08-01T00:00:00+00:00"}
+    assert sl._content_changed(story, ev), "時程改變沒被當成進展"
+
+
+def test_rerun_is_idempotent_with_multiple_same_key_events():
+    """r9(Codex,P1):同一批若有兩則同 key 的不同更新,第二則被 touched 壓下卻
+    沒記簽章 → 重跑時第一則被認出是重播、第二則卻被當成新的而套用,
+    同樣的輸入跑兩次結果不同。"""
+    batch = [_ev_full("2317", "orders", "接獲大單 金額 10 億"),
+             _ev_full("2317", "orders", "追加訂單 金額 30 億")]
+    led = sl.update_ledger([], batch, "2026-07-25")
+    snapshot = (led[0]["updates"], led[0]["state"], led[0]["last_delta"])
+    rerun = sl.update_ledger(led, batch, "2026-07-25")
+    assert (rerun[0]["updates"], rerun[0]["state"], rerun[0]["last_delta"]) == snapshot,         "同樣的輸入跑兩次得到不同結果(重跑非冪等)"
 
 
 def test_material_facts_detect_chinese_numeral_updates():

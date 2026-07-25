@@ -187,17 +187,20 @@ def _is_same_subject(story: dict, ev: dict) -> bool:
 
 
 _NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
-# 日期/年度/季別等版面雜訊:同一則事件的不同稿子常各自帶或不帶這些,
-# 拿它們當「事實變了」會把改寫稿誤判成更新。
-_DATE_NOISE_RE = re.compile(
-    r"\d{4}\s*年|\d{1,2}\s*月\d{1,2}\s*日|\d{1,2}/\d{1,2}|"
-    r"\d{4}\s*[Qq]\d|第?\s*\d\s*季|\d{1,2}\s*月(?!\s*營收)")
+# r9(Codex,P1):**日期不能一律當雜訊剝掉**。「交易預計 8 月完成」→「延後至
+# 9 月完成」是 R16b 明列的實質進展(時程改變),把日期剝光會讓它被判成沒進展、
+# 線索在持續發展中被降級沉寂。
+# 精準的區分:**只剝掉與該篇發布日相同的日期**——那才是「稿子自己帶的出版日期」
+# 這種版面雜訊;標題裡其他的日期是內容(時程、期限、生效日)。
+_PUB_DATE_PATTERNS = (
+    "{m}月{d}日", "{m}/{d}", "{m}月 {d}日", "{y}年{m}月{d}日",
+)
 # 中文數量詞:「百億 → 兩百億」這種只用中文寫的更新,純 ASCII 數字抽取看不到。
 _CJK_NUM_RE = re.compile(
     r"[一二兩三四五六七八九十百千萬億兆]+(?=\s*(?:億|萬|千|百|元|口|股|成|倍|%|percent))")
 
 
-def _material_facts(text: str, entity: str = "", alias="") -> set:
+def _material_facts(text: str, entity: str = "", alias="", published: str = "") -> set:
     """標題裡的**數字事實**(金額/百分比/口數/日期…)。
 
     r6(Codex,P1):不能拿「標題文字有沒有變」當內容更新的判準——跨媒體改寫本來
@@ -210,8 +213,27 @@ def _material_facts(text: str, entity: str = "", alias="") -> set:
     for token in [str(entity or "")] + [str(x or "") for x in aliases]:
         if token:
             raw = raw.replace(token, " ")
-    raw = _DATE_NOISE_RE.sub(" ", raw)
+    for pat in _pub_date_tokens(published):
+        raw = raw.replace(pat, " ")
     return set(_NUM_RE.findall(raw)) | set(_CJK_NUM_RE.findall(raw))
+
+
+def _pub_date_tokens(published: str) -> list[str]:
+    """該篇發布日的各種中文/數字寫法,用來從標題剝掉出版日期雜訊。"""
+    import datetime as dt
+    raw = str(published or "").strip()
+    if not raw:
+        return []
+    try:
+        d = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return []
+    out = []
+    for pat in _PUB_DATE_PATTERNS:
+        out.append(pat.format(y=d.year, m=d.month, d=d.day))
+        out.append(pat.format(y=d.year, m=f"{d.month:02d}", d=f"{d.day:02d}"))
+    out.append(f"{d.year}年")
+    return out
 
 
 def _content_changed(story: dict, ev: dict) -> bool:
@@ -225,8 +247,10 @@ def _content_changed(story: dict, ev: dict) -> bool:
         return True
     entity = str(story.get("entity") or "")
     alias = str(story.get("entity_name") or "").split()
-    before = _material_facts(prev, entity, alias)
-    after = _material_facts(ev.get("title"), entity, alias)
+    before = _material_facts(prev, entity, alias,
+                             str(story.get("last_published") or ""))
+    after = _material_facts(ev.get("title"), entity, alias,
+                            str(ev.get("published") or ""))
     if not after:
         return False
     return before != after
@@ -379,6 +403,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "prev_delta": "",
                 "max_surprise": round(surprise, 3),
                 "seen_sigs": [_event_signature(ev)],
+                "last_published": str(ev.get("published") or ""),
             }
             seen_sigs[key] = {_event_signature(ev)}
             touched.add(key)
@@ -388,6 +413,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         if replayed or key in touched or not _is_real_progress(ev, story):
             # 完全相同的重播、當次呼叫已推進過、或上游判定非增量且無實質更新:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
+            # r9(Codex,P1):**被壓下的事件也必須記簽章**。同一批若有兩則同 key
+            # 的不同更新,第二則被 touched 壓下卻沒記簽章 → 下次重跑時第一則被
+            # 認出是重播、第二則卻被當成新的而套用,同樣的輸入跑兩次結果不同。
+            sigs = seen_sigs.setdefault(key, set())
+            sigs.add(sig)
+            story["seen_sigs"] = list(sigs)[-SEEN_SIG_KEEP:]
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             continue
@@ -398,6 +429,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 只清掉前情,線索本身照常推進——寧可少給脈絡,不可給錯脈絡。
         story["prev_delta"] = (story.get("last_delta") or "")             if _is_same_subject(story, ev) else ""
         story["last_delta"] = title[:160]
+        story["last_published"] = str(ev.get("published") or "")
         story["headline"] = title[:120]
         story["updates"] = int(story.get("updates") or 0) + 1
         story["max_surprise"] = round(

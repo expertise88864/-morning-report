@@ -50,7 +50,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          # 批#35 r2(Codex):**不**升級 pip——未鎖版 pip 會被下載並立即執行,
+          # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
           # 批#35:改用鎖版+hash。原本是未鎖版 `pip install feedparser requests
           # faster-whisper`,一天 4 班每次重新解析最新版,而本 job 同時持有
           # contents: write 與 DEEPSEEK_API_KEY——相依鏈(ctranslate2/tokenizers/

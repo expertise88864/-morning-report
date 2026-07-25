@@ -20,7 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          # 批#35 r2(Codex):**不**升級 pip——未鎖版 pip 會被下載並立即執行,
+          # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
           pip install -r requirements.lock
 
       - name: Run long-window backtest (us_beta / night-blend / strategies)

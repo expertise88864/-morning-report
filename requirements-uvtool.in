@@ -1,0 +1,4 @@
+# 批#35 r1(Codex):lock-refresh 用的建置工具本身也必須鎖版+hash——
+# 否則「修供應鏈的 workflow」自己就是供應鏈洞(未鎖版 uv 在持有 contents: write
+# 的 job 內執行)。產生:uv pip compile requirements-uvtool.in ... -o requirements-uvtool.lock
+uv>=0.11,<0.12

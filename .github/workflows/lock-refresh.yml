@@ -5,7 +5,15 @@ name: Lock Refresh
 # 而 production 實際安裝的是 requirements*.lock —— Dependabot 不把 .lock 當作
 # 可辨識的 manifest,且既有 >= 範圍已涵蓋新版,幾乎不會開 PR。
 # 淨效果:真正跑在 production 的鎖版清單,既收不到版本更新 PR、也收不到安全更新通知。
-# 這支每月重跑 uv pip compile 並開 PR,由人審後合併(仍走 Codex 閘門)。
+#
+# 批#35 r1(Codex)三項修正:
+#  F1 建置工具本身也鎖版+hash(requirements-uvtool.lock)——否則「修供應鏈的
+#     workflow」自己就是供應鏈洞;且 checkout 用 persist-credentials: false,
+#     讓 uv 執行時工作區內**沒有** repo 寫入憑證。
+#  F2 由 GITHUB_TOKEN 建立的 PR **不會觸發** ci.yml(GitHub 迴圈防護),PR 內文卻
+#     要求「確認 CI 綠」= 承諾跳票。改為**在本 job 內就實裝新 lock 並跑測試**,
+#     驗證結果寫進 PR 內文(這也順帶補上「lock 可安裝性本機無法驗證」的缺口)。
+#  F3 分支名加 run_id,避免同日重跑撞到既有遠端分支而 non-fast-forward 卡死。
 
 on:
   schedule:
@@ -23,17 +31,21 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45   # 含三份 lock 的實裝驗證(faster-whisper 相依較大)
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false   # F1:編譯/安裝階段不讓工作區帶著寫入憑證
 
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.11"
 
-      - name: Install uv
-        run: python -m pip install --upgrade pip uv
+      - name: Install uv (pinned + hashed)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements-uvtool.lock
 
       - name: Recompile locks
         run: |
@@ -42,23 +54,59 @@ jobs:
           uv pip compile requirements.txt          $COMMON -o requirements.lock
           uv pip compile requirements-podcast.in   $COMMON -o requirements-podcast.lock
           uv pip compile requirements-radar.in     $COMMON -o requirements-radar.lock
+          uv pip compile requirements-uvtool.in    $COMMON -o requirements-uvtool.lock
 
-      - name: Open PR if changed
+      - name: Detect changes
+        id: diff
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- requirements.lock requirements-podcast.lock \
+                                 requirements-radar.lock requirements-uvtool.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "[lock-refresh] 無更新"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # F2:在本 job 內驗證,不依賴「PR 會觸發 CI」(GITHUB_TOKEN 建立的 PR 不會)
+      - name: Verify locks install & tests pass
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/venv-main
+          /tmp/venv-main/bin/pip install --require-hashes -r requirements.lock
+          /tmp/venv-main/bin/python -m pytest -q
+          python -m venv /tmp/venv-podcast
+          /tmp/venv-podcast/bin/pip install --require-hashes -r requirements-podcast.lock
+          /tmp/venv-podcast/bin/python -c "import faster_whisper, feedparser, requests"
+          python -m venv /tmp/venv-radar
+          /tmp/venv-radar/bin/pip install --require-hashes -r requirements-radar.lock
+          /tmp/venv-radar/bin/python -c "import faster_whisper, yfinance, pandas"
+
+      - name: Open PR
+        if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- requirements.lock requirements-podcast.lock requirements-radar.lock; then
-            echo "[lock-refresh] 無更新"
-            exit 0
-          fi
-          BRANCH="chore/lock-refresh-$(date -u +%Y%m%d)"
+          BRANCH="chore/lock-refresh-$(date -u +%Y%m%d)-${{ github.run_id }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git checkout -b "$BRANCH"
-          git add requirements.lock requirements-podcast.lock requirements-radar.lock
+          git add requirements.lock requirements-podcast.lock \
+                  requirements-radar.lock requirements-uvtool.lock
           git commit -m "chore(deps): 每月重編譯依賴 lock(含 hash)"
           git push -u origin "$BRANCH"
+          BODY=$(printf '%s\n' \
+            '自動重跑 uv pip compile --generate-hashes(uv 本身亦鎖版+hash)。' \
+            '' \
+            '已在本 workflow 內驗證(GITHUB_TOKEN 建立的 PR 不會觸發 ci.yml,故不依賴它):' \
+            '- 三份 lock 皆以 --require-hashes 實際安裝成功' \
+            '- 主 lock 環境跑過完整 pytest' \
+            '- podcast / radar 環境通過 import 冒煙測試' \
+            '' \
+            '合併前仍請依 CLAUDE.md 走 Codex 閘門。')
           gh pr create --title "chore(deps): 每月 lock 重編譯" \
-            --body "自動重跑 uv pip compile --generate-hashes。**合併前請確認 CI 綠**,並依 CLAUDE.md 走 Codex 閘門。" \
-            --base main --head "$BRANCH"
+            --body "$BODY" --base main --head "$BRANCH"

@@ -1690,3 +1690,54 @@ def test_twse_news_non_list_payload_counts_as_failure(monkeypatch):
     assert out == []
     assert stat["fail"] >= 1 and stat["streak"] >= 1, f"未記為失敗:{stat}"
     assert stat["ok"] == 0, "形狀錯誤不得被記成一次成功"
+
+
+_ARTICLE_HTML = """<html><head><title>t</title></head><body>
+<nav>首頁 財經 政治 立刻加入 本網站使用相關技術提供更好的閱讀體驗</nav>
+<div class="cookie">當您關閉此視窗,代表您同意上述規範。App 下載</div>
+<article><h1>台積電法說會優於預期</h1>
+<p>台積電今日召開法說會,毛利率上修至五八%,董事長表示先進製程需求強勁,
+資本支出維持原訂計畫,並看好人工智慧相關訂單延續至明年。</p>
+<p>法人指出,此一展望優於市場預期,可望帶動供應鏈同步受惠。</p></article>
+<aside>相關新聞:某某某 | 熱門排行:一二三 | 版權所有</aside></body></html>"""
+
+
+def test_article_extraction_drops_boilerplate():
+    """批#43:_strip_html 是整頁去標籤不是正文抽取——導覽列、cookie 聲明、
+    相關新聞全留著。實測中央社頁面前 300 字全是樣板,而管線在 2,500 字截斷,
+    等於大半素材預算餵給 LLM 的是版面雜訊。"""
+    out = mr._extract_article_text(_ARTICLE_HTML)
+    assert "毛利率上修至五八%" in out, "正文遺失"
+    assert "本網站使用相關技術" not in out, "cookie 聲明未濾除"
+    assert "熱門排行" not in out, "側欄未濾除"
+    # 對照組:去標籤法會把樣板全留下
+    assert "本網站使用相關技術" in mr._strip_html(_ARTICLE_HTML)
+
+
+def test_article_extraction_falls_back_when_extractor_returns_nothing(monkeypatch):
+    """抽取器對版面異常的站可能整個失手。此時「有雜訊的內容」仍勝過「沒有內容」。"""
+    import trafilatura
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: None)
+    out = mr._extract_article_text(_ARTICLE_HTML)
+    assert "毛利率上修至五八%" in out, "未退回去標籤法"
+
+
+def test_article_extraction_falls_back_on_too_short_output(monkeypatch):
+    """回傳過短視為抽取失敗(可能只抓到標題或一段導覽)。"""
+    import trafilatura
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: "短")
+    out = mr._extract_article_text(_ARTICLE_HTML)
+    assert len(out) > mr._ARTICLE_MIN_CHARS
+    assert "毛利率上修至五八%" in out
+
+
+def test_article_extraction_survives_extractor_exception(monkeypatch):
+    """單篇抽取炸掉不得讓整條新聞管線停。"""
+    import trafilatura
+
+    def _boom(*a, **k):
+        raise RuntimeError("parser exploded")
+
+    monkeypatch.setattr(trafilatura, "extract", _boom)
+    out = mr._extract_article_text(_ARTICLE_HTML)
+    assert "毛利率上修至五八%" in out

@@ -10,3 +10,5 @@ pytest>=8.0.0
 # 若要切回 Claude（LLM_PROVIDER=anthropic）才需取消下行註解：
 # anthropic>=0.40.0
 # ⚠ production 依賴由 requirements.lock 鎖定(uv pip compile --python-version 3.11 --python-platform linux 產生);本檔為人工維護的允許範圍,只有 deps-canary 與本機開發直接安裝。更新 lock:改本檔後重跑 uv pip compile(見 lock 檔首行指令)。
+# 批#43:新聞正文抽取(取代整頁去標籤;實測台媒樣板雜訊佔比達 78%)
+trafilatura>=2.1.0

@@ -5153,6 +5153,45 @@ def _roc_date_to_tpe_datetime(roc: str):
         return None
 
 
+_ARTICLE_MIN_CHARS = 80          # 低於此視為抽取失敗,退回去標籤法
+_TRAFILATURA_UNAVAILABLE = False   # 匯入失敗只印一次,不要每篇都吵
+
+
+def _extract_article_text(html: str) -> str:
+    """從網頁 HTML 取出**正文**。
+
+    批#43:先前直接用 _strip_html——那是「整頁去標籤」不是正文抽取,導覽列、
+    cookie 聲明、語言切換、App 下載、相關新聞全都留著。實測中央社頁面
+    _strip_html 得到 5,329 字,而**前 300 字全是樣板**;管線在 2,500 字截斷,
+    等於大半的素材預算餵給 LLM 的是版面雜訊。
+
+    2026-07-25 以 15 篇真實台媒新聞(自由財經/科技新報/中央社)做 A/B:
+    trafilatura 平均縮減 78%(55,988 → 12,467 字),人工比對確認縮掉的是樣板、
+    正文完整保留。刻意用 favor_precision=True:寧可少抓邊角,不要把相關新聞
+    連結區當正文。
+
+    抽取失敗(回 None 或過短)才退回 _strip_html——正文抽取器對版面異常的站
+    可能整個失手,此時「有雜訊的內容」仍勝過「沒有內容」。
+    """
+    global _TRAFILATURA_UNAVAILABLE
+    if not _TRAFILATURA_UNAVAILABLE:
+        try:
+            import trafilatura
+            text = trafilatura.extract(html, favor_precision=True) or ""
+            if len(text.strip()) >= _ARTICLE_MIN_CHARS:
+                return text.strip()
+        except ImportError:
+            _TRAFILATURA_UNAVAILABLE = True
+            print("[news_full] 未安裝 trafilatura,改用去標籤法(素材含版面雜訊)",
+                  file=sys.stderr)
+            _DEGRADED_STEPS.append("article_extractor")
+        except Exception as e:
+            # 單篇抽取炸掉不該讓整條新聞管線停;退回去標籤法即可
+            print(f"[news_full] 正文抽取失敗({type(e).__name__}),改用去標籤法",
+                  file=sys.stderr)
+    return _strip_html(html)
+
+
 def _cnyes_body(d: dict) -> str:
     """鉅亨新聞正文。
 
@@ -6605,7 +6644,7 @@ def fetch_news_fulltext(news: list[dict],
                               allow_redirects=True)
             if r.status_code != 200:
                 continue
-            text = _strip_html(r.text)
+            text = _extract_article_text(r.text)
             if len(text) > 100:
                 n["fulltext"] = text[:2500]
                 crit_fetched += 1
@@ -6631,7 +6670,7 @@ def fetch_news_fulltext(news: list[dict],
                               allow_redirects=True)
             if r.status_code != 200:
                 continue
-            text = _strip_html(r.text)
+            text = _extract_article_text(r.text)
             if len(text) > 100:
                 n["fulltext"] = text[:2000]    # high 全文略短(2000 vs critical 2500)
                 high_fetched += 1

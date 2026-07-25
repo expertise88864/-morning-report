@@ -1587,3 +1587,46 @@ def test_ey_sources_have_distinct_html_fallback_pages():
     urls = [s.get("html_url") for s in ey]
     assert len(urls) == len(set(urls)), f"EY 頻道 html_url 重複:{urls}"
     assert len(ey) >= 4, "四個 EY 頻道(院會決議/部會/澄清/本院新聞)都要在"
+
+
+def test_company_bucket_cap_counts_publisher_family_not_channel_name():
+    """批#39 r2:鉅亨有七個分類,每個是不同的 source 字串。以原始字串當鍵時
+    per-source 上限形同虛設——鉅亨仍能用三個分類吃光整個配額。"""
+    items = [_company_item("鉅亨台股", "A"), _company_item("鉅亨頭條", "B"),
+             _company_item("鉅亨台灣總經", "C"), _company_item("鉅亨期貨", "D"),
+             _company_item("Google:2330", "G")]
+    picked = mr._rank_company_bucket(items, quota=3)
+    families = [mr._source_family(i["source"]) for i in picked]
+    assert families.count("鉅亨") <= 2, f"鉅亨仍吃光配額:{families}"
+    assert "Google" in families, "其他發布者被完全擠掉"
+
+
+def test_source_family_groups_channels():
+    assert mr._source_family("鉅亨台股") == mr._source_family("鉅亨匯率") == "鉅亨"
+    assert mr._source_family("Google:2330") == mr._source_family("Google:AAPL") == "Google"
+    # 非家族來源維持原樣,不得被過度合併
+    assert mr._source_family("自由財經") == "自由財經"
+    assert mr._source_family("科技新報") != mr._source_family("自由財經")
+
+
+def test_deterministic_extractor_emits_events_for_all_tracked_codes():
+    """批#39 r2:編輯標註的多代號關聯在**確定性路徑**也要生效——LLM 抽取
+    關掉/無金鑰/預算不足/失敗時全都退回這條路,多公司歸因不能整個消失。"""
+    tracked = [lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES][:2]
+    news = [{
+        "source": "鉅亨台股", "title": "兩家同時受影響的消息", "summary": "內容",
+        "published": "2026-07-25T00:00:00+00:00",
+        "company_label": tracked[0], "cnyes_stocks": [tracked[0], tracked[1], "9999"],
+    }]
+    events = mr.extract_structured_events(news, [])
+    entities = {e["entity"] for e in events}
+    assert tracked[0] in entities and tracked[1] in entities, \
+        f"第二個追蹤代號沒有產生事件:{entities}"
+    assert "9999" not in entities, "未追蹤的代號不得產生事件"
+
+
+def test_extra_tracked_codes_excludes_primary_and_unknown():
+    tracked = [lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES][:2]
+    item = {"cnyes_stocks": [tracked[0], tracked[1], "9999"]}
+    assert mr._extra_tracked_codes(item, exclude=tracked[0]) == [tracked[1]]
+    assert mr._extra_tracked_codes({}, exclude="") == []

@@ -8481,6 +8481,13 @@ def extract_structured_events(news: list[dict],
         append(dict(item, source=item.get("source") or "MOPS"), official=True)
     for item in news or []:
         append(item)
+        # 批#39 r2(Codex F2):編輯人工標註的多代號關聯,在**確定性路徑**也要生效。
+        # 先前只把 editor_stock_codes 加進 LLM payload,但 LLM 抽取關掉/無金鑰/
+        # 時間預算不足/呼叫失敗時全都退回本函式,多公司歸因就整個消失。
+        # 只為「company_label 之外的其他追蹤代號」補事件,避免與上面那則重複。
+        primary = str(item.get("company_label") or "")
+        for extra in _extra_tracked_codes(item, exclude=primary):
+            append(dict(item, company_label=extra, entity=extra))
     for item in llm_events or []:
         if isinstance(item, dict):
             # source/source_grade 強制固定:LLM 屬二手抽取,不得沿用(或自報)
@@ -10028,7 +10035,37 @@ def _format_weekly_review(stats: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
+def _extra_tracked_codes(item: dict, exclude: str = "") -> list[str]:
+    """新聞被編輯標註、且本報有在追蹤、但不是主 company_label 的其他代號。
+
+    批#39 r2:一則新聞常同時實質影響多家(例如「台積電、美光壓力來了」),
+    鉅亨的 `stock` 欄位是人工標註、比模型猜測可靠。company_label 只掛得住第一個,
+    其餘要靠這裡補,否則多公司歸因在確定性路徑上整個消失。
+    """
+    known = {lbl for _, lbl in GOOGLE_NEWS_COMPANIES}
+    out: list[str] = []
+    for code in (item.get("cnyes_stocks") or []):
+        c = str(code).strip()
+        if c and c != exclude and c in known and c not in out:
+            out.append(c)
+    return out[:4]
+
+
+# 單一公司桶內的來源多樣性上限。**以「發布者家族」計數而非原始 source 字串**
+# ——批#39 r2(Codex):鉅亨有七個分類(鉅亨台股/鉅亨頭條/鉅亨台灣總經…),
+# 每個是不同的 source 名稱,用原始字串當鍵時上限形同虛設,鉅亨仍能吃光整個配額。
 _COMPANY_BUCKET_PER_SOURCE_CAP = 2
+
+_SOURCE_FAMILY_PREFIXES = ("鉅亨", "Google:", "類股-")
+
+
+def _source_family(source: str) -> str:
+    """把同一發布者的多個頻道歸成同一家族,供多樣性計數使用。"""
+    s = str(source or "")
+    for prefix in _SOURCE_FAMILY_PREFIXES:
+        if s.startswith(prefix):
+            return prefix.rstrip(":-")
+    return s
 
 
 def _rank_company_bucket(items: list[dict], quota: int) -> list[dict]:
@@ -10050,7 +10087,7 @@ def _rank_company_bucket(items: list[dict], quota: int) -> list[dict]:
     picked: list[dict] = []
     used: dict[str, int] = {}
     for item in ranked:
-        src = str(item.get("source") or "")
+        src = _source_family(item.get("source"))
         if used.get(src, 0) >= _COMPANY_BUCKET_PER_SOURCE_CAP:
             continue
         picked.append(item)

@@ -1,0 +1,11 @@
+# Podcast 轉錄 / 股癌雷達的專用依賴來源檔(批#35)。
+# 這兩支 workflow 原本用未鎖版 `pip install feedparser requests faster-whisper`,
+# 卻同時持有 contents: write、GMAIL_APP_PASSWORD 與 LLM 金鑰——相依鏈一旦被投毒,
+# 可用本人身分寄信、也能直接 commit 進 main(下一班晨報就會執行)。
+# 產生 lock:
+#   uv pip compile requirements-podcast.in --python-version 3.11 \
+#       --python-platform x86_64-unknown-linux-gnu --generate-hashes \
+#       -o requirements-podcast.lock
+feedparser>=6.0.10
+requests>=2.31.0
+faster-whisper>=1.0.0

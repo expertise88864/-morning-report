@@ -51,7 +51,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install feedparser requests faster-whisper
+          # 批#35:改用鎖版+hash。原本是未鎖版 `pip install feedparser requests
+          # faster-whisper`,一天 4 班每次重新解析最新版,而本 job 同時持有
+          # contents: write 與 DEEPSEEK_API_KEY——相依鏈(ctranslate2/tokenizers/
+          # huggingface-hub/onnxruntime/av…)任一被投毒即可在安裝或 import 時
+          # 以 GITHUB_TOKEN 身分 commit 進 main(下一班晨報就會執行它)。
+          # requirements.lock 的 hash 保護在這條路徑上原本完全被繞過。
+          pip install -r requirements-podcast.lock
 
       - name: Prefetch whisper models
         # 一律下載 small + medium,確保 cache miss 時兩個模型一起被存進快取

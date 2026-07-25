@@ -45,7 +45,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt faster-whisper
+          # 批#35:改用鎖版+hash。本 job 是全 repo 最敏感的一組 env
+          # (GMAIL_APP_PASSWORD 可用本人身分寄信 + DEEPSEEK_API_KEY + FINMIND_TOKEN
+          #  + contents: write),而 gooaye_radar.py 會 `import morning_report`
+          # 直接載入生產主程式。原本 `-r requirements.txt`(全是 >= 下限)加上
+          # 未鎖版 faster-whisper,每次執行都解析到當下最新版 → 供應鏈完全不設防。
+          # 用**合併編譯**的單一 lock:兩份 lock 各自解析會釘出不同的共用套件版本
+          # (實測 certifi 2026.6.17 vs 2026.7.22),hash-checking 模式不接受同一
+          # 套件兩個版本 → 安裝會直接失敗。requirements-radar.lock 由
+          # requirements-radar.in(= requirements.txt + faster-whisper)一次解出。
+          pip install -r requirements-radar.lock
 
       - name: Prefetch whisper model (medium, 股癌 high-accuracy)
         run: |

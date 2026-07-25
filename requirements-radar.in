@@ -1,0 +1,11 @@
+# 股癌雷達(gooaye_radar.py)的專用依賴來源檔(批#35)。
+# radar 會 `import morning_report`,故需要晨報主依賴 + whisper 轉錄依賴。
+# **必須合併編譯成單一 lock**:兩份 lock 各自解析會釘出不同的共用套件版本
+# (實測 certifi 2026.6.17 vs 2026.7.22),而 pip 的 hash-checking 模式
+# 不接受同一套件兩個版本 → 安裝直接失敗。
+# 產生:
+#   uv pip compile requirements-radar.in --python-version 3.11 \
+#       --python-platform x86_64-unknown-linux-gnu --generate-hashes \
+#       -o requirements-radar.lock
+-r requirements.txt
+faster-whisper>=1.0.0

@@ -6,36 +6,43 @@ name: Lock Refresh
 # 可辨識的 manifest,且既有 >= 範圍已涵蓋新版,幾乎不會開 PR。
 # 淨效果:真正跑在 production 的鎖版清單,既收不到版本更新 PR、也收不到安全更新通知。
 #
-# 批#35 r1(Codex)三項修正:
-#  F1 建置工具本身也鎖版+hash(requirements-uvtool.lock)——否則「修供應鏈的
-#     workflow」自己就是供應鏈洞;且 checkout 用 persist-credentials: false,
-#     讓 uv 執行時工作區內**沒有** repo 寫入憑證。
-#  F2 由 GITHUB_TOKEN 建立的 PR **不會觸發** ci.yml(GitHub 迴圈防護),PR 內文卻
-#     要求「確認 CI 綠」= 承諾跳票。改為**在本 job 內就實裝新 lock 並跑測試**,
-#     驗證結果寫進 PR 內文(這也順帶補上「lock 可安裝性本機無法驗證」的缺口)。
-#  F3 分支名加 run_id,避免同日重跑撞到既有遠端分支而 non-fast-forward 卡死。
+# Codex 三輪修正後的結構:
+#  F1 建置工具本身鎖版+hash(requirements-uvtool.lock);不升級 pip(未鎖版 pip
+#     會被下載並立即執行)。
+#  F2 由 GITHUB_TOKEN 建立的 PR **不會觸發** ci.yml(GitHub 迴圈防護)→ 驗證改在
+#     workflow 內自己做,不承諾「合併前看 CI」。
+#  F3 分支名加 run_id,避免同日重跑撞既有遠端分支。
+#  r3 **權限隔離(關鍵)**:執行「新解析出來的依賴」與「持有寫入 token 做 push」
+#     必須分屬不同 job。被投毒的套件在 import 時即可裝 git hook 或改 GITHUB_PATH,
+#     若同 job 稍後拿到 GH_TOKEN,persist-credentials: false 也擋不住。
+#     故:compile-and-verify 為唯讀 job(contents: read),只把產出的 lock 檔
+#     以 artifact 交棒;open-pr 為乾淨 job,**不執行任何新依賴**,只 commit/push/PR。
 
 on:
   schedule:
     - cron: "0 3 1 * *"   # 每月 1 日 UTC 03:00(台北 11:00)
   workflow_dispatch:
 
+# 預設最小權限;需要寫入的只有 open-pr job(於該 job 內宣告)
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: lock-refresh
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  compile-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45   # 含三份 lock 的實裝驗證(faster-whisper 相依較大)
+    permissions:
+      contents: read      # 唯讀:此 job 會執行新解析的依賴,不得握有任何寫入能力
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
-          persist-credentials: false   # F1:編譯/安裝階段不讓工作區帶著寫入憑證
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
@@ -44,8 +51,8 @@ jobs:
 
       - name: Install uv (pinned + hashed)
         run: |
-          # 批#35 r2(Codex):**不**升級 pip——未鎖版 pip 會被下載並立即執行,
-          # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
+          # 不升級 pip:未鎖版 pip 會被下載並立即執行;runner 內建 pip 已足以
+          # 做 --require-hashes 安裝。
           pip install --require-hashes -r requirements-uvtool.lock
 
       - name: Recompile locks
@@ -69,7 +76,8 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # F2:在本 job 內驗證,不依賴「PR 會觸發 CI」(GITHUB_TOKEN 建立的 PR 不會)
+      # 在唯讀 job 內驗證(不依賴 PR 觸發 CI);新依賴的 import-time 程式碼在此執行,
+      # 但本 job 沒有任何寫入權限與 token,即使被投毒也拿不到東西。
       - name: Verify locks install & tests pass
         if: steps.diff.outputs.changed == 'true'
         run: |
@@ -84,8 +92,36 @@ jobs:
           /tmp/venv-radar/bin/pip install --require-hashes -r requirements-radar.lock
           /tmp/venv-radar/bin/python -c "import faster_whisper, yfinance, pandas"
 
-      - name: Open PR
+      - name: Upload refreshed locks
         if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: refreshed-locks
+          path: |
+            requirements.lock
+            requirements-podcast.lock
+            requirements-radar.lock
+            requirements-uvtool.lock
+          retention-days: 7
+
+  open-pr:
+    needs: compile-and-verify
+    if: needs.compile-and-verify.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # 乾淨 runner:只取 repo 與 artifact,**不安裝也不執行任何新解析的依賴**
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Download refreshed locks
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: refreshed-locks
+
+      - name: Open PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -93,8 +129,6 @@ jobs:
           BRANCH="chore/lock-refresh-$(date -u +%Y%m%d)-${{ github.run_id }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git checkout -b "$BRANCH"
           git add requirements.lock requirements-podcast.lock \
                   requirements-radar.lock requirements-uvtool.lock
@@ -103,11 +137,11 @@ jobs:
           BODY=$(printf '%s\n' \
             '自動重跑 uv pip compile --generate-hashes(uv 本身亦鎖版+hash)。' \
             '' \
-            '已在本 workflow 內驗證(GITHUB_TOKEN 建立的 PR 不會觸發 ci.yml,故不依賴它):' \
+            '已在唯讀 job 內驗證(GITHUB_TOKEN 建立的 PR 不會觸發 ci.yml,故不依賴它):' \
             '- 三份 lock 皆以 --require-hashes 實際安裝成功' \
             '- 主 lock 環境跑過完整 pytest' \
             '- podcast / radar 環境通過 import 冒煙測試' \
             '' \
-            '合併前仍請依 CLAUDE.md 走 Codex 閘門。')
+            '本 job 未執行任何新解析的依賴(權限隔離)。合併前仍請依 CLAUDE.md 走 Codex 閘門。')
           gh pr create --title "chore(deps): 每月 lock 重編譯" \
             --body "$BODY" --base main --head "$BRANCH"

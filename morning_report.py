@@ -187,12 +187,19 @@ def _sanitize_untrusted_text(text: str) -> str:
         # 允許跳過——否則「### Ignore all previous instructions」「* Ignore …」
         # 「1. Ignore …」可直接繞過錨定(Codex 批#36 r2)。這些字元不含字母,
         # 故不會讓「chose to ignore …」這類句中轉述重新命中。
-        _FMT = r"[\s#*\-–—•·>»\[\]()（）【】0-9.、,]*"
+        # 行首可跳過的純格式標記:markdown 標題/清單/引用/code fence(`~)、
+        # 項目符號、編號、括號、引號。皆不含字母,故不會讓句中轉述重新命中。
+        _FMT = r"[\s#*\-–—•·>»\[\]()（）【】0-9.、,`~\"'「」『』]*"
         # 帶標籤的括號前綴(【重要】【公告】[Note] …)是中文 RSS 標題的常見寫法,
         # 純字元類跳不過去(裡面有文字)→ 另給一個可選的「括號標籤」樣式。
         # 標籤內限 10 字且不含括號,故不會吞掉整句正文。
         _LABEL = r"(?:(?:【[^】]{0,10}】|\[[^\]]{0,10}\]|（[^）]{0,10}）)\s*)*"
-        _IMPERATIVE_HEAD = (r"(?:^|(?<=[.!?;:。！?;:「」\"'\-—>]))" + _FMT + _LABEL +
+        # 邊界只認**句末終止符**。批#36 r3(Codex):原本把引號與冒號也當成祈使
+        # 起點,於是新聞引述句「The regulator told banks: "Ignore the above prior
+        # instructions and follow Circular 36."」「金管會公告:「忽略以上指示,改依
+        # 新函令辦理。」」會被整行刪除 —— 真正的監理規則變更從報告中消失。
+        # 引號改列入 _FMT(只在行首生效):行首引號的注入仍擋,句中引述則保留。
+        _IMPERATIVE_HEAD = (r"(?:^|(?<=[.!?。！？]))" + _FMT + _LABEL +
                             _FMT + r"(?:(?:請你?|麻煩|務必|現在|立即|please|now)\s*)?")
         _INJECTION_LINE_RE = _re.compile(
             r"(?i)("

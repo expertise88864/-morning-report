@@ -83,6 +83,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _news_keep_score,
     _strip_html,
     _is_low_value_tech_headline,
+    TW_POLICY_DEEPDIVE_MIN_SCORE,   # 批#31:重大政策深度解析門檻
     _tw_intelligence_topic,
     _tw_intelligence_importance,
     _tw_intelligence_recall_hit,
@@ -104,7 +105,8 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _validate_llm_events,
 )
 from session_calendar import (  # A5-B4:交易日/預測日期工具已抽出。只 re-export 本體/測試引用者;
-    # _session_distance/_next_tw_weekday/_actual_open_date_for/_weekday_session_distance 僅內部用,不外露。
+    # _session_distance/_actual_open_date_for/_weekday_session_distance 僅內部用,不外露。
+    _next_tw_weekday,   # 批#31:夜盤查詢需「當日或下一個台股平日」(週末報用下週一)
     _infer_target_session_date,
     _target_session_date,
     _normalize_history_entries,
@@ -1310,10 +1312,20 @@ def fetch_taifex_night_session() -> dict:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept": "text/html,application/xhtml+xml",
     }
-    for back in range(0, 5):
-        d = today - dt.timedelta(days=back)
-        if d.weekday() >= 5:
+    # 批#31(2026-07-25 實信 bug):TAIFEX 把「盤後(夜盤)」記在**下一個交易日**的
+    # 交易日期下(交易日 D 的盤後 = D-1 15:00 → D 05:00)。原本只從 today 往回找、
+    # 且跳過週末,於是週六報找到的是「週五交易日」檔案 = **週四夜盤**,把兩天前的
+    # 數值當最新夜盤(實測:週六報用 07/24 盤後 44391,但當時 07/27 盤後 43369 已發布,
+    # 差 1,022 點,而夜盤是加權開盤預測最重要的單一訊號)。
+    # 修法:先查「當日或下一個台股平日」——平日 = today(行為不變)、週末 = 下週一
+    # (其盤後正是週五夜盤);查無再退回原本的往回掃描。
+    _sess_first = _next_tw_weekday(today)
+    _scan = [_sess_first] + [today - dt.timedelta(days=b) for b in range(0, 5)]
+    seen_days: set = set()
+    for d in _scan:
+        if d.weekday() >= 5 or d in seen_days:
             continue
+        seen_days.add(d)
         date_str = d.strftime("%Y/%m/%d")
         try:
             # TAIFEX 期貨每日交易行情下載
@@ -5283,6 +5295,9 @@ TW_INTELLIGENCE_QUERIES = {
         # 央行決議/銀行調整=可行動訊號;實測 50 則)+ 托育/教育政策(實測 19 則)
         "房貸利率 OR 五大銀行 房貸 OR 央行 理監事",
         "托育補助 OR 育兒津貼 OR 公幼 OR 幼兒園 補助",
+        # 批#31:新型民生金融政策專用(2026-07-24「台灣未來帳戶」漏抓)——
+        # 一般政策查詢多以部會/主題詞為主,新政策名詞常擠不進前排,開專用 OR 查詢
+        "未來帳戶 OR 兒童帳戶 OR 主權基金 OR 普發現金 OR 國民年金 OR 退休金改革",
     ),
     "medical": (
         # 通用事件查詢(原本 3 條中榮專屬查詢使同一事件天天洗版 → 改廣);
@@ -9508,6 +9523,47 @@ def _format_weekly_review(stats: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
+def _format_policy_deepdive_block(intel: Optional[dict]) -> str:
+    """批#31(2026-07-25 使用者要求):重大台灣政策要「先詳述措施、再分析影響」。
+
+    政策卡(TW_DAILY_INTELLIGENCE)原本**只渲染成 HTML 清單、從未進 prompt**——
+    LLM 看不到政策條目,所以連新青安 3.0 都無法深度分析。此函式把重要性
+    ≥ TW_POLICY_DEEPDIVE_MIN_SCORE 的政策條目整理成 prompt 區塊,並**依
+    timeline_key 聚合同一政策的多則報導**(不同媒體的標題各自帶有部分細節:
+    對象/金額/時程,合起來才夠寫措施內容)。無合格政策回空字串(該段整段省略)。
+    """
+    items = ((intel or {}).get("policy") or []) if isinstance(intel, dict) else []
+    hot = [it for it in items
+           if isinstance(it, dict)
+           and safe_float(it.get("importance")) is not None
+           and safe_float(it.get("importance")) >= TW_POLICY_DEEPDIVE_MIN_SCORE]
+    if not hot:
+        return ""
+    # 同一政策的多則報導聚合(timeline_key 相同視為同一事件;缺 key 退回主題)
+    groups: dict = {}
+    for it in hot:
+        key = str(it.get("timeline_key") or it.get("topic") or it.get("title"))
+        groups.setdefault(key, []).append(it)
+    # 依組內最高重要性排序,最多 3 個政策(避免信件暴長)
+    ordered = sorted(groups.values(),
+                     key=lambda g: max(safe_float(x.get("importance")) or 0 for x in g),
+                     reverse=True)[:3]
+    lines = ["【台灣重大政策(供「十一之二、重大政策深度解析」;每則為該政策的不同媒體報導,"
+             "細節請合併閱讀)】"]
+    for gi, g in enumerate(ordered, 1):
+        g = sorted(g, key=lambda x: safe_float(x.get("importance")) or 0, reverse=True)
+        head = g[0]
+        lines.append(f"◆ 政策 {gi}:{head.get('topic') or '政策'}"
+                     f"(重要性 {safe_float(head.get('importance')) or 0:.1f}"
+                     f"、狀態 {head.get('status') or '—'})")
+        for it in g[:6]:
+            lines.append(f"  - {it.get('title', '')}"
+                         f" [{it.get('source_name') or '媒體'}"
+                         f"・{it.get('source_grade') or ''}"
+                         f"・{str(it.get('published') or '')[:10]}]")
+    return "\n".join(lines)
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -10242,6 +10298,42 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     #     傳今日日期以排除同日重跑存下的「今天」紀錄(避免今天比今天)。
     narrative_delta_block = _format_narrative_delta(
         quotes.get("HISTORY"), today=dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+    # 批#31:重大台灣政策(政策卡高分條目)進 prompt,供「十一之二、重大政策深度
+    # 解析」;無合格政策時 block 為空 → 該段整段省略(不留空標題)。
+    policy_deepdive_block = _format_policy_deepdive_block(
+        quotes.get("TW_DAILY_INTELLIGENCE"))
+    # 十一段的「別重複展開」提示也必須同步條件化——無深度解析段時仍留這句,
+    # 會讓 LLM 以為政策已在別處寫過而整個略過(Codex 風格自查)
+    policy_deepdive_note = ("**注意**:重大政策(如新青安、未來帳戶等)已列入下方"
+                            "「十一之二」深度解析,本段**只用一句帶過並指向該段**,"
+                            "不要重複展開。" if policy_deepdive_block else "")
+    policy_deepdive_section = (f"""## 十一之二、重大政策深度解析（**僅在上方有【台灣重大政策】清單時才寫;無則整段省略**）
+
+{policy_deepdive_block}
+
+針對上方**每一個**政策(最多 3 個),各寫一小段(每段 6-10 行),**先措施、後影響**:
+
+**(1) 政策內容(措施本身,寫詳細)**:把這項政策「到底做了什麼」講清楚——
+**適用對象**(誰符合資格)、**金額/額度/費率**、**時程**(何時上路、申請期限)、
+**條件與排除**(需要符合什麼、哪些人不適用)、**與舊制的差異**(若為 X.0 版本或修正案)。
+可整合同一政策下**多則報導**的細節(不同媒體各報一部分)。
+**鐵則**:每個數字與條件都必須來自上方清單的標題文字或本報其他新聞區塊——
+**清單沒寫的金額、日期、資格一律不得補寫**;不確定就寫「細節尚未揭露」,不可杜撰。
+
+**(2) 影響分析(誰受影響、透過什麼機制)**:
+- **家戶/個人層面**:對不同族群(首購族、有子女家庭、退休族、租屋族…)的實際影響,
+  可具體到「一年多/少多少錢」——但只能用上方確有的數字推算,推算過程要寫出來。
+- **產業/類股層面**:利多或利空了哪些台股類股(營建/金融壽險/銀行/內需消費…),
+  **必須寫傳導機制**(如「補貼提高首購買氣→建商去化加快→營建股受惠」),
+  禁止「有帶動作用」這類無機制空話。
+- **總經/財政層面**:對政府財政、資金流向、通膨或利率的意涵(有才寫)。
+- **風險與不確定**:政策可能失效或反效果的情境、尚待立法/預算的變數。
+
+**鐵則**:(a)全段**不得**出現「使用者/讀者/為您」等字樣(R15);
+(b)本段是**政策解析**,不是投資建議,不要在此下「買進/賣出」指令;
+(c)若某政策清單資訊過少(只有標題、無任何細節),誠實寫「目前僅見標題級報導,
+細節待官方公告」並只做方向性影響推論,**不可硬湊措施細節**。
+""" if policy_deepdive_block else "")
     # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之六、週報檢討」段。
     # (七之五=多空交鋒為每日固定段,批#28;週報順延七之六,保持平日/週一編號皆連續)
     weekly_review_block = _format_weekly_review(quotes.get("WEEKLY_REVIEW"))
@@ -10672,7 +10764,8 @@ FOMC 紀要、Fed 官員談話、白宮對中政策、半導體出口管制等�
 - 政府政策（產創條例、科專、台美 21 世紀貿易倡議等）
 
 若新聞清單中沒有相關內容，**直接寫「昨日無重大本地新聞」**，不要編造。
-
+{policy_deepdive_note}
+{policy_deepdive_section}
 ## 十二、我的明確立場（**最重要段**）
 
 **第 1 行 — 11 維計分行**（{stance_line1_rule}):

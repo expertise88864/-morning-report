@@ -2084,3 +2084,107 @@ def test_verify_flags_malformed_partition_rows(tmp_path):
     import pytest
     with pytest.raises(mh.HistoryIntegrityError):
         mh.verify_history_integrity(pdir, strict=True)
+
+
+# ═══ 批#31(2026-07-25 使用者反映「未來帳戶」整個沒出現)═══
+def test_batch31_major_livelihood_policy_recalled_and_ranked():
+    """新型民生金融政策(未來帳戶/主權基金/普發現金/年金改革)必須:
+    (1) 通過財經白名單召回——原本白名單只認舊詞,新政策名詞一律被剔除;
+    (2) 重要性達深度解析門檻(否則召回了也擠不進政策卡前 3);
+    (3) 標籤依命中詞正確(不可把未來帳戶標成「房市政策」);
+    (4) 與投資無關的雜訊仍被擋。"""
+    from news_rules import TW_POLICY_DEEPDIVE_MIN_SCORE
+    for title in ("行政院拍板「台灣未來帳戶」 每名新生兒開戶政府每年存1.2萬",
+                  "未來帳戶上路 0至18歲兒童每年最高存2.4萬元"):
+        assert mr._tw_intelligence_recall_hit("policy", title) is True
+        score, reasons = mr._tw_intelligence_importance(
+            "policy", title, True, "昨日新訊", "已公告")
+        assert score >= TW_POLICY_DEEPDIVE_MIN_SCORE, (title, score)
+        assert "本報關注:重大民生政策" in reasons        # 標籤正確
+        assert "本報關注:房市政策" not in reasons
+    # 房市政策標籤不受影響
+    _, r_house = mr._tw_intelligence_importance(
+        "policy", "新青安3.0 8月上路", True, "昨日新訊", "已公告")
+    assert "本報關注:房市政策" in r_house
+    # 雜訊仍擋(白名單放寬不得放進宗教/交通/性平)
+    for noise in ("媽祖遶境活動宗教宣導", "毒駕修法三讀通過", "性平教育課綱調整"):
+        assert mr._tw_intelligence_recall_hit("policy", noise) is False
+
+
+def test_batch31_policy_deepdive_block_groups_and_filters():
+    """深度解析區塊:低分條目排除、同一政策多則報導聚合、無政策回空字串。"""
+    intel = {"policy": [
+        {"title": "行政院拍板台灣未來帳戶 每名新生兒每年存1.2萬", "importance": 5.9,
+         "timeline_key": "k1", "topic": "民生金融", "status": "已公告",
+         "source_name": "中央社", "source_grade": "官方", "published": "2026-07-24 10:00"},
+        {"title": "未來帳戶 0至18歲每年最高存2.4萬", "importance": 5.9,
+         "timeline_key": "k1", "topic": "民生金融", "status": "已公告",
+         "source_name": "經濟日報", "source_grade": "媒體", "published": "2026-07-24 12:00"},
+        {"title": "勞動部規劃提高補助工漁會勞保行政費", "importance": 4.1,
+         "timeline_key": "k2", "topic": "育兒社福", "status": "研議中",
+         "source_name": "勞動部", "source_grade": "官方", "published": "2026-07-24 09:00"},
+    ]}
+    blk = mr._format_policy_deepdive_block(intel)
+    assert blk.count("◆ 政策") == 1                 # 同 timeline_key 聚合成一個政策
+    assert "1.2萬" in blk and "2.4萬" in blk         # 兩則細節都保留(合併閱讀)
+    assert "勞動部" not in blk                       # 低於門檻不進深度解析
+    assert mr._format_policy_deepdive_block({"policy": []}) == ""
+    assert mr._format_policy_deepdive_block(None) == ""
+
+
+def test_batch31_policy_deepdive_section_toggles_in_prompt():
+    """有重大政策才出現「十一之二」段;無政策時連段標題與提示都不得出現
+    (否則 LLM 會以為政策已在他處寫過而略過)。"""
+    from tests.test_data_validation import _empty_quotes
+    base = _empty_quotes()
+    p_no = mr._build_prompt(dict(base), {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "## 十一之二" not in p_no and "十一之二" not in p_no
+    q = dict(base)
+    q["TW_DAILY_INTELLIGENCE"] = {"policy": [
+        {"title": "行政院拍板台灣未來帳戶 每名新生兒每年存1.2萬", "importance": 5.9,
+         "timeline_key": "k1", "topic": "民生金融", "status": "已公告",
+         "source_name": "中央社", "source_grade": "官方", "published": "2026-07-24 10:00"}]}
+    p_yes = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "## 十一之二、重大政策深度解析" in p_yes
+    assert "未來帳戶" in p_yes                                   # 清單進 prompt
+    assert "清單沒寫的金額、日期、資格一律不得補寫" in p_yes      # 禁杜撰鐵則
+    assert p_yes.index("## 十一、") < p_yes.index("## 十一之二") < p_yes.index("## 十二、")
+
+
+def test_batch31_night_txf_weekend_uses_next_trading_day(monkeypatch):
+    """批#31:TAIFEX 盤後(夜盤)記在**下一交易日**的檔案下。週末報若只往回找,
+    會拿到兩天前的夜盤(2026-07-25 實信:用 07/24 的 44391,但 07/27 盤後 43369
+    已發布,差 1,022 點且夜盤是加權開盤預測最重要訊號)。"""
+    asked = []
+
+    class R:
+        status_code = 200
+        text = "x" * 300
+
+        def __init__(self, day):
+            self._day = day
+
+        @property
+        def content(self):
+            # 只有「下一交易日 07/27」的檔案含最新夜盤;07/24 是兩天前的舊夜盤
+            close = "43369" if self._day == "2026/07/27" else "44391"
+            pct = "-1.02" if self._day == "2026/07/27" else "-1.16"
+            csv_text = (
+                "交易日期,契約,到期月份,開盤價,最高價,最低價,收盤價,漲跌價,漲跌%,交易時段\n"
+                f"{self._day},TX,202608,1,1,1,{close},-1,{pct},盤後\n")
+            return csv_text.encode("big5")
+
+    def fake_post(url, data=None, timeout=None, headers=None, **k):
+        asked.append(data["queryStartDate"])
+        return R(data["queryStartDate"])
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+
+    class _FixedDT(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return dt.datetime(2026, 7, 25, 6, 58, tzinfo=mr.TPE)   # 週六早晨
+    monkeypatch.setattr(mr.dt, "datetime", _FixedDT)
+    out = mr.fetch_taifex_night_session()
+    assert asked[0] == "2026/07/27", asked        # 先查下一交易日
+    assert out.get("night_close") == 43369.0      # 取到最新夜盤,非兩天前的 44391

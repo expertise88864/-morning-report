@@ -482,6 +482,41 @@ def test_batch32r1_partial_refusal_is_recorded(monkeypatch):
         def send_message(self, msg):
             return {"b@example.com": (550, b"rejected")}
     monkeypatch.setattr(mr.smtplib, "SMTP_SSL", PartialRefuse)
-    mr._DEGRADED_STEPS.clear()
+    mr._MAIL_UNRESOLVED.clear()
     mr.send_email("<p>x</p>", "subj")
-    assert any("被拒" in s for s in mr._DEGRADED_STEPS), mr._DEGRADED_STEPS
+    # r2(Codex):永久拒收(5xx)不重送,但必須登記 → main 以非零退出碼觸發告警
+    assert mr._MAIL_UNRESOLVED == ["b@example.com"], mr._MAIL_UNRESOLVED
+
+
+def test_batch32r2_transient_refusal_is_retried_then_cleared(monkeypatch):
+    """暫時性拒收(4xx)只對被拒地址重送一次;成功後不得留下未解決記錄。"""
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com", "b@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    seen = {"n": 0, "to_addrs": None}
+
+    class TransientThenOK:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg, to_addrs=None):
+            seen["n"] += 1
+            if seen["n"] == 1:
+                return {"b@example.com": (451, b"try again")}
+            seen["to_addrs"] = to_addrs        # 第二次只對被拒地址重送
+            return {}
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", TransientThenOK)
+    mr._MAIL_UNRESOLVED.clear()
+    mr.send_email("<p>x</p>", "subj")
+    assert seen["n"] == 2 and seen["to_addrs"] == ["b@example.com"]
+    assert mr._MAIL_UNRESOLVED == []           # 已解決 → 不觸發告警

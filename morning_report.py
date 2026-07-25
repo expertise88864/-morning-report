@@ -148,6 +148,11 @@ RECIPIENT = ", ".join(RECIPIENTS)
 # 信沒寄出、state 也沒 push。設 60s 搭配 send_email 的 3 次指數退避重試。
 SMTP_TIMEOUT_SEC = float(os.environ.get("SMTP_TIMEOUT_SEC", "60"))
 
+# 批#32 r2:最終未收到信的收件者(部分拒收且重送無效)。main 在 state 持久化**之後**
+# 讀它並以非零退出碼結束 → 觸發 workflow 的 alert-on-failure job。
+# 用「先落 state 再標紅」而非 raise:不丟當天資料,又保證漏收一定被通知。
+_MAIL_UNRESOLVED: list = []
+
 # SEC EDGAR 要求 User-Agent 內含聯絡 email；不寫死在原始碼，改讀環境變數。
 CONTACT_EMAIL = (os.environ.get("CONTACT_EMAIL") or GMAIL_USER
                  or "morning-report-bot@users.noreply.github.com")
@@ -17309,14 +17314,35 @@ def send_email(html: str, subject: str) -> None:
                 # workflow 告警處理,也不要寄出多份彼此矛盾的晨報)。
                 _submitted = True
                 refused = s.send_message(msg)
-            # 部分收件者被拒不會拋例外(全部被拒才 raise)。不靜默:明確告警並記入
-            # 降級步驟(進資料品質區),讓「某人沒收到」不會無聲無息。
-            # 刻意不 raise:主收件人已成功,拋掉會連 state 持久化一起放棄(Codex F5,
-            # 取捨已在 context 說明)。
+            # 部分收件者被拒不會拋例外(全部被拒才 raise)。
+            # 批#32 r2(Codex F5):先前只記 _DEGRADED_STEPS 是**死碼**——資料品質區與
+            # run manifest 都在 send_email 之前產生,那筆記錄不會出現在任何地方,
+            # 被拒的收件人仍是靜默漏收。改為:(a)暫時性拒收(4xx)對「只剩被拒地址」
+            # 重送一次;(b)仍未解決者登記到 _MAIL_UNRESOLVED,由 main 在 **state
+            # 持久化之後** 以非零退出碼結束 → 觸發 alert-on-failure job。
+            # 這樣既不丟失當天 state(不 raise),又確保「有人沒收到」一定會通知。
             if refused:
-                _n = len(refused)
-                print(f"[mail] ⚠ 有 {_n} 位收件者被拒收(其餘已寄出)", file=sys.stderr)
-                _DEGRADED_STEPS.append(f"寄信-{_n}位收件者被拒")
+                _transient = {a: c for a, c in refused.items()
+                              if 400 <= int(c[0] or 0) < 500}
+                if _transient:
+                    print(f"[mail] {len(_transient)} 位暫時性拒收,重送一次",
+                          file=sys.stderr)
+                    try:
+                        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx,
+                                              timeout=SMTP_TIMEOUT_SEC) as s2:
+                            s2.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                            again = s2.send_message(
+                                msg, to_addrs=list(_transient.keys()))
+                        refused = {a: c for a, c in refused.items()
+                                   if a not in _transient or a in (again or {})}
+                    except Exception as e2:      # noqa: BLE001 — 重送失敗不影響已成功者
+                        print(f"[mail] 暫時性拒收重送失敗: {type(e2).__name__}",
+                              file=sys.stderr)
+            if refused:
+                _MAIL_UNRESOLVED.clear()
+                _MAIL_UNRESOLVED.extend(sorted(refused))
+                print(f"[mail] ⚠ 有 {len(refused)} 位收件者最終未收到(其餘已寄出)"
+                      f"——將以非零退出碼結束以觸發告警", file=sys.stderr)
             break
         except smtplib.SMTPAuthenticationError:
             raise                                  # 憑證/授權錯:重試無意義
@@ -18869,6 +18895,13 @@ def main() -> int:
         intelligence=(quotes.get("TW_DAILY_INTELLIGENCE")
                       if quotes.get("TW_INTEL_POLICY_SHOWN", True) else None),
     )
+    # 批#32 r2(Codex F5):deliver_report 已完成(信寄出、state 落地+push),此時才
+    # 依「是否有人最終沒收到」決定退出碼——非零會讓 alert-on-failure job 發告警信。
+    # 順序很重要:先持久化再標紅,兩者都要,不能為了告警而丟掉當天 state。
+    if _MAIL_UNRESOLVED:
+        print(f"[main] ⚠ {len(_MAIL_UNRESOLVED)} 位收件者最終未收到晨報 → 退出碼 1",
+              file=sys.stderr)
+        return 1
     return 0
 
 

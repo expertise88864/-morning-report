@@ -1379,3 +1379,45 @@ def test_ai_model_news_does_not_touch_shared_feed_breaker(monkeypatch):
     before = {h: dict(s) for h, s in mr._FEED_STATS.items()}
     assert mr.fetch_ai_model_news() == []
     assert {h: dict(s) for h, s in mr._FEED_STATS.items()} == before
+
+
+def test_cnyes_body_prefers_content_over_empty_summary():
+    """批#39:鉅亨 summary 實測幾乎總是空字串,真正內容在 content。
+    先前只讀 summary → 鉅亨新聞進 LLM 時只剩標題、內容是空的。"""
+    item = {"summary": "", "content": "&lt;p&gt;台積電法說會優於預期&lt;/p&gt;"}
+    body = mr._cnyes_body(item)
+    assert "台積電法說會優於預期" in body
+    assert body, "content 有內容時不得回空字串"
+
+
+def test_cnyes_body_unescapes_before_stripping_tags():
+    """content 是**雙重轉義**的 HTML(字面含 &lt;p&gt; 而非 <p>)。
+    只做 _strip_html 會把字面標籤留在文字裡送進 prompt。"""
+    item = {"content": "&lt;p&gt;毛利率 58%&lt;/p&gt;&lt;div&gt;續增&lt;/div&gt;"}
+    body = mr._cnyes_body(item)
+    assert "<p>" not in body and "&lt;" not in body, f"標籤殘留:{body!r}"
+    assert "毛利率 58%" in body and "續增" in body
+
+
+def test_cnyes_body_falls_back_to_summary():
+    """content 缺席時才退回 summary,不得直接回空。"""
+    assert mr._cnyes_body({"content": "", "summary": "備援摘要"}) == "備援摘要"
+    assert mr._cnyes_body({}) == ""
+
+
+def test_cnyes_stock_field_sets_company_label_only_for_tracked_codes():
+    """stock 是編輯人工標註的代號 → 天然 entity linking。
+    但只認本報已追蹤的代號,不自行擴充 universe。"""
+    tracked = next(lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES)
+    out = mr._cnyes_company_label({"stock": [tracked]})
+    assert out.get("company_label") == tracked
+    assert out.get("cnyes_stocks") == [tracked]
+
+    # 未追蹤代號:保留原始清單供日後使用,但不得掛 company_label
+    # (否則會把任意個股塞進「重點公司」段)
+    out2 = mr._cnyes_company_label({"stock": ["9999"]})
+    assert "company_label" not in out2
+    assert out2.get("cnyes_stocks") == ["9999"]
+
+    assert mr._cnyes_company_label({"stock": []}) == {}
+    assert mr._cnyes_company_label({}) == {}

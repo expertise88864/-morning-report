@@ -536,6 +536,13 @@ RSS_FEEDS = {
     "鉅亨台股":           "https://api.cnyes.com/media/api/v1/newslist/category/tw_stock?limit=30&page=1",
     "鉅亨美股":           "https://api.cnyes.com/media/api/v1/newslist/category/wd_stock?limit=30&page=1",
     "鉅亨頭條":           "https://api.cnyes.com/media/api/v1/newslist/category/headline?limit=30&page=1",
+    # 批#39:同一支 API 原本只吃 9 個分類中的 3 個。以下四個分類與本報既有區塊
+    # 直接對應(美股個股→科技板塊、期貨→夜盤/台指、台灣總經→總經段、匯率→USDTWD),
+    # 且共用同一 host 的熔斷器與健康記帳,新增成本近乎為零。
+    "鉅亨美股個股":       "https://api.cnyes.com/media/api/v1/newslist/category/us_stock?limit=30&page=1",
+    "鉅亨期貨":           "https://api.cnyes.com/media/api/v1/newslist/category/future?limit=30&page=1",
+    "鉅亨台灣總經":       "https://api.cnyes.com/media/api/v1/newslist/category/tw_macro?limit=30&page=1",
+    "鉅亨匯率":           "https://api.cnyes.com/media/api/v1/newslist/category/forex?limit=30&page=1",
     # 工商時報 RSS 兩線已 404(同日實測)→ 移除;工商內容經 Google News 各查詢大量覆蓋
     "經濟日報財經":       "https://money.udn.com/rssfeed/news/1001/5589?ch=money",
     "經濟日報國際":       "https://money.udn.com/rssfeed/news/1001/5599/12937?ch=money",
@@ -5043,6 +5050,41 @@ def _trend_label(metrics: dict) -> str:
     return "盤整"
 
 
+def _cnyes_body(d: dict) -> str:
+    """鉅亨新聞正文。
+
+    批#39:原本只取 `summary`,但實測該欄位**幾乎總是空字串**(2026-07-25 抽樣
+    三筆全為 ""),真正的內容在 `content`(實測 700~5,600 字導言全文)。
+    也就是說鉅亨新聞先前進 LLM 時內容是空的,只剩標題。
+
+    `content` 是**雙重轉義**的 HTML(欄位值字面含 `&lt;p&gt;` 而非 `<p>`),
+    必須先 unescape 再去標籤——只做 _strip_html 會把字面 `<p>` 標籤留在文字裡
+    送進 prompt。
+    """
+    import html as _html
+    body = str(d.get("content") or "")
+    if body:
+        return _strip_html(_html.unescape(body)).strip()
+    return str(d.get("summary") or "")
+
+
+def _cnyes_company_label(d: dict) -> dict:
+    """鉅亨 `stock` 欄位(編輯人工標註的代號)對上本報追蹤清單時,標成公司新聞。
+
+    批#39:這些新聞多半被分類為 normal,原本易被 norm[:30] 截掉;掛上
+    company_label 後會進「重點公司最新新聞」段,確保個股素材露出。
+    只認**本報已在追蹤**的代號,不自行擴充 universe。
+    """
+    codes = [str(c).strip() for c in (d.get("stock") or []) if str(c).strip()]
+    if not codes:
+        return {}
+    known = {lbl for _, lbl in GOOGLE_NEWS_COMPANIES}
+    for code in codes:
+        if code in known:
+            return {"company_label": code, "cnyes_stocks": codes}
+    return {"cnyes_stocks": codes}
+
+
 def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
     """處理單一 feed 工作項 → 該 feed 的 news 清單。本體逐字沿用舊 fetch_news 兩迴圈,
     行為不變;抽出以便依 host 分組平行(P0-1)。同 host 由單一執行緒序列處理,
@@ -5050,7 +5092,7 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
     source, url, kind = w["source"], w["url"], w["kind"]
     out: list[dict] = []
     try:
-        if kind == "cnyes_json":       # 鉅亨 JSON API(台股/美股/頭條三線)
+        if kind == "cnyes_json":       # 鉅亨 JSON API(七個分類)
             # 與 RSS 路徑同等的 per-host 健康記帳:非 200/例外要進 _FEED_STATS,
             # 否則來源健康警示永遠看不到 cnyes API 掛掉(Codex review)
             stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0, "streak": 0})
@@ -5085,9 +5127,14 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                 out.append({
                     "source": source,
                     "title": d.get("title", ""),
-                    "summary": (d.get("summary") or "")[:800],
+                    "summary": _cnyes_body(d)[:800],
                     "link": f"https://news.cnyes.com/news/id/{d.get('newsId')}",
                     "published": pub_dt.isoformat() if pub_dt else "",
+                    # 批#39:編輯人工標註的主題詞與股票代號。keyword 供事件抽取器
+                    # 當 entity 候選;stock 是天然的 entity→ticker linking。
+                    "cnyes_keywords": [str(k) for k in (d.get("keyword") or [])[:12]
+                                       if isinstance(k, (str, int))],
+                    **_cnyes_company_label(d),
                 })
             return out
         if kind == "company":          # 重點公司 Google News 查詢(補個股新聞)

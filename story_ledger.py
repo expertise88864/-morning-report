@@ -370,8 +370,14 @@ def _content_changed(story: dict, ev: dict, vocab=None) -> bool:
     # 決策極性/階段有變 = 實質進展(無數字也算)
     if _decision_terms(prev) != _decision_terms(ev.get("title")):
         return True
-    # 參與者有變(新公司加入/退出)= 實質進展
-    if vocab and _participants(prev, vocab) != _participants(ev.get("title"), vocab):
+    # 參與者有變(新公司加入/退出)= 實質進展。
+    # r14(Codex,P1):**必須排除 story 自身的公司名**——改寫稿常常一則寫
+    # 「公告本公司董事會通過」、另一則寫「台積電董事會通過」,只因主體有沒有被
+    # 寫出來就判成參與者變化,重複稿又能推進 story。數字事實那邊早就剝了,
+    # 這裡漏掉。
+    own = {_norm(entity)} | {_norm(x) for x in alias}
+    others = {v for v in vocab if _norm(v) not in own} if vocab else set()
+    if others and _participants(prev, others) != _participants(ev.get("title"), others):
         return True
     if not after:
         return False
@@ -389,6 +395,25 @@ def _remember_sig(seen: dict, key: str, sig: str) -> list:
     sigs.append(sig)
     del sigs[:-SEEN_SIG_KEEP]
     return list(sigs)
+
+
+_LIFECYCLE_RANK = {"rumor": 0, "confirmed": 1, "implemented": 2, "withdrawn": 3}
+
+
+def _is_more_authoritative(ev: dict, story: dict) -> bool:
+    """這則事件是否比 story 目前記錄的更新/更權威。
+
+    r14(Codex,P1):同批次同 key 時**不可 last-write-wins**。生產端把
+    structured_events 按 quality_score **降序**排序,所以迭代到的最後一則通常是
+    品質最低的那則,不是時間最新的——官方「取消」公告先處理、舊媒體「成立」稿
+    反而最後覆寫,晨報就會顯示過時狀態。
+    以 (發布時間, lifecycle 權威度) 決定。
+    """
+    def _key(published, lifecycle):
+        return (str(published or ""), _LIFECYCLE_RANK.get(_norm(lifecycle), -1))
+
+    return _key(ev.get("published"), ev.get("lifecycle")) >= _key(
+        story.get("last_published"), story.get("lifecycle"))
 
 
 def _remember_today(today_sigs: dict, key: str, sig: str, today: str) -> dict:
@@ -578,11 +603,13 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 修:當日只推進一次狀態(避免灌到高潮),但**內容仍要更新到最新那則**。
         if (key in touched and not replayed
                 and _is_real_progress(ev, story, vocab)):
-            story["prev_delta"] = (story.get("last_delta") or "")                 if _is_same_subject(story, ev) else ""
-            story["last_delta"] = title[:160]
-            story["last_published"] = str(ev.get("published") or "")
-            story["headline"] = title[:120]
-            story["lifecycle"] = str(ev.get("lifecycle") or story.get("lifecycle") or "")
+            if _is_more_authoritative(ev, story):
+                story["prev_delta"] = (story.get("last_delta") or "")                     if _is_same_subject(story, ev) else ""
+                story["last_delta"] = title[:160]
+                story["last_published"] = str(ev.get("published") or "")
+                story["headline"] = title[:120]
+                story["lifecycle"] = str(
+                    ev.get("lifecycle") or story.get("lifecycle") or "")
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)

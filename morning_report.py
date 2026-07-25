@@ -5232,7 +5232,7 @@ _ARTICLE_MIN_CHARS = 100
 _TRAFILATURA_UNAVAILABLE = False   # 匯入失敗只印一次,不要每篇都吵
 
 
-def _extract_article_text(html: str) -> str:
+def _extract_article_text(html: str) -> tuple[str, bool]:
     """從網頁 HTML 取出**正文**。
 
     批#43:先前直接用 _strip_html——那是「整頁去標籤」不是正文抽取,導覽列、
@@ -5245,8 +5245,12 @@ def _extract_article_text(html: str) -> str:
     正文完整保留。刻意用 favor_precision=True:寧可少抓邊角,不要把相關新聞
     連結區當正文。
 
-    抽取失敗(回 None 或過短)才退回 _strip_html——正文抽取器對版面異常的站
-    可能整個失手,此時「有雜訊的內容」仍勝過「沒有內容」。
+    抽取失敗(完全沒抓到)才退回 _strip_html——正文抽取器對版面異常的站可能整個
+    失手,此時「有雜訊的內容」仍勝過「沒有內容」。
+
+    回傳 (正文, 是否來自正文抽取器)。r14(Codex):呼叫端必須分得出來——
+    抽取成功的短新聞(樂透開獎、短快訊)只有幾十字,若套用給整頁去標籤用的
+    100 字門檻會被**無聲丟棄**,等於白抽。
     """
     global _TRAFILATURA_UNAVAILABLE
     if not _TRAFILATURA_UNAVAILABLE:
@@ -5254,13 +5258,13 @@ def _extract_article_text(html: str) -> str:
             import trafilatura
             text = (trafilatura.extract(html, favor_precision=True) or "").strip()
             if len(text) >= _ARTICLE_MIN_CHARS:
-                return text
+                return text, True
             # r13(Codex):**短但有效的正文不該被含樣板的整頁版本取代**。
             # 抽取器回傳非空但偏短時(如樂透開獎、短快訊),去標籤版雖然更長,
             # 多出來的都是導覽/cookie/相關新聞——換過去等於用雜訊換長度。
             # 只有抽取器**完全沒抓到**(空字串)才退回去標籤法。
             if text:
-                return text
+                return text, True
         except ImportError:
             _TRAFILATURA_UNAVAILABLE = True
             print("[news_full] 未安裝 trafilatura,改用去標籤法(素材含版面雜訊)",
@@ -5270,7 +5274,7 @@ def _extract_article_text(html: str) -> str:
             # 單篇抽取炸掉不該讓整條新聞管線停;退回去標籤法即可
             print(f"[news_full] 正文抽取失敗({type(e).__name__}),改用去標籤法",
                   file=sys.stderr)
-    return _strip_html(html)
+    return _strip_html(html), False
 
 
 def _cnyes_body(d: dict) -> str:
@@ -6729,8 +6733,9 @@ def fetch_news_fulltext(news: list[dict],
                               allow_redirects=True)
             if r.status_code != 200:
                 continue
-            text = _extract_article_text(r.text)
-            if len(text) >= _ARTICLE_MIN_CHARS:
+            text, extracted = _extract_article_text(r.text)
+            # 抽取成功的短新聞不套 100 字門檻(那是給整頁去標籤用的)
+            if text and (extracted or len(text) >= _ARTICLE_MIN_CHARS):
                 n["fulltext"] = text[:2500]
                 crit_fetched += 1
         except Exception as e:
@@ -6755,8 +6760,8 @@ def fetch_news_fulltext(news: list[dict],
                               allow_redirects=True)
             if r.status_code != 200:
                 continue
-            text = _extract_article_text(r.text)
-            if len(text) >= _ARTICLE_MIN_CHARS:
+            text, extracted = _extract_article_text(r.text)
+            if text and (extracted or len(text) >= _ARTICLE_MIN_CHARS):
                 n["fulltext"] = text[:2000]    # high 全文略短(2000 vs critical 2500)
                 high_fetched += 1
         except Exception as e:

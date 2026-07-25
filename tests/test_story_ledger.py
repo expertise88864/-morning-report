@@ -675,3 +675,30 @@ def test_participant_change_counts_as_progress():
     assert sl._content_changed(story, {"title": "微軟加入鴻海合作案"}, vocab)
     # 同一批參與者的改寫不算進展
     assert not sl._content_changed(story, {"title": "蘋果與鴻海的合作案持續洽談"}, vocab)
+
+
+def test_authoritative_event_wins_not_last_write():
+    """r14(Codex,P1):生產端把 structured_events 按 **quality_score 降序**排序,
+    所以迭代到的最後一則通常是品質最低的,不是時間最新的。last-write-wins 會讓
+    官方「取消」公告先處理、舊媒體「成立」稿最後覆寫,晨報顯示過時狀態。"""
+    newer = _ev_full("2317", "orders", "官方公告:客戶取消該筆車用訂單",
+                     published="2026-07-25T09:00:00+00:00")
+    older = _ev_full("2317", "orders", "媒體報導:車用訂單簽約成立",
+                     published="2026-07-25T01:00:00+00:00")
+    # 生產順序:品質高的(官方、較新)在前,舊的在後
+    led = sl.update_ledger([], [newer, older], "2026-07-25")
+    assert "取消" in led[0]["headline"], (
+        f"較舊的一則覆寫了較新的:{led[0]['headline']}")
+
+
+def test_participant_check_excludes_story_own_company():
+    """r14(Codex,P1):改寫稿常一則寫「公告本公司…」、另一則寫「台積電…」,
+    只因主體有沒有被寫出來就判成參與者變化 → 重複稿又能推進 story。
+    數字事實那邊早就剝了實體名,參與者比對漏掉。"""
+    vocab = {"台積電", "聯發科"}
+    story = {"last_delta": "公告本公司董事會通過合作案",
+             "entity": "2330", "entity_name": "台積電"}
+    assert not sl._content_changed(story, {"title": "台積電董事會通過合作案"}, vocab), \
+        "只是把主體寫出來就被判成參與者變化"
+    # 真的多了一個參與者才算
+    assert sl._content_changed(story, {"title": "台積電與聯發科董事會通過合作案"}, vocab)

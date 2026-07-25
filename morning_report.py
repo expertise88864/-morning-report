@@ -17346,6 +17346,22 @@ def send_email(html: str, subject: str) -> None:
             break
         except smtplib.SMTPAuthenticationError:
             raise                                  # 憑證/授權錯:重試無意義
+        except smtplib.SMTPRecipientsRefused as e:
+            # 批#32 r3(Codex F1):send_message 內含 MAIL/RCPT/DATA 三階段,而
+            # _submitted 是在呼叫前就設 True。全體收件者在 **RCPT 階段**被拒時會拋
+            # SMTPRecipientsRefused——此時 DATA 根本沒送出,重試不會重複寄信,
+            # 但原本的 _submitted 判斷會誤判為「投遞狀態未知」而直接放棄 → 當天不寄信。
+            # 故在通用處理之前特判:全為 4xx(暫時性)才重試,含 5xx 永久拒絕直接拋。
+            _codes = [int((c[0] if isinstance(c, (tuple, list)) else 0) or 0)
+                      for c in (getattr(e, "recipients", {}) or {}).values()]
+            if _codes and all(400 <= c < 500 for c in _codes) and _attempt < len(_delays):
+                _wait = _delays[_attempt]
+                print(f"[mail] 全體收件者暫時被拒(RCPT 4xx),{_wait}s 後重試 "
+                      f"({_attempt + 1}/{len(_delays)});DATA 未送出故不會重複寄信",
+                      file=sys.stderr)
+                time.sleep(_wait)
+                continue
+            raise
         except (smtplib.SMTPException, OSError) as e:
             if _submitted:
                 print(f"[mail] ⚠ 訊息已送出但回應異常({type(e).__name__}),"

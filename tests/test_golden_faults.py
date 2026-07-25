@@ -520,3 +520,71 @@ def test_batch32r2_transient_refusal_is_retried_then_cleared(monkeypatch):
     mr.send_email("<p>x</p>", "subj")
     assert seen["n"] == 2 and seen["to_addrs"] == ["b@example.com"]
     assert mr._MAIL_UNRESOLVED == []           # 已解決 → 不觸發告警
+
+
+def test_batch32r3_all_recipients_transient_refusal_is_retried(monkeypatch):
+    """r3(Codex F1):send_message 內含 RCPT 階段。全體收件者在 RCPT 被 4xx 拒時
+    拋 SMTPRecipientsRefused——DATA 未送出,重試安全;但 _submitted 旗標在呼叫前
+    就設 True,會誤判成「投遞狀態未知」而放棄 → 當天不寄信。須特判重試。"""
+    import smtplib as _smtp
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    n = {"send": 0}
+
+    class RcptRefuse:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg, to_addrs=None):
+            n["send"] += 1
+            if n["send"] == 1:
+                raise _smtp.SMTPRecipientsRefused(
+                    {"a@example.com": (451, b"try later")})
+            return {}
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", RcptRefuse)
+    mr._MAIL_UNRESOLVED.clear()
+    mr.send_email("<p>x</p>", "subj")          # 不得拋例外
+    assert n["send"] == 2, "全體 4xx RCPT 拒收必須重試(DATA 未送出,不會重複)"
+    assert mr._MAIL_UNRESOLVED == []
+
+
+def test_batch32r3_permanent_rcpt_refusal_not_retried(monkeypatch):
+    """5xx 永久拒絕重試無意義 → 直接拋(由 workflow 告警處理)。"""
+    import smtplib as _smtp
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    n = {"send": 0}
+
+    class HardRefuse:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg, to_addrs=None):
+            n["send"] += 1
+            raise _smtp.SMTPRecipientsRefused({"a@example.com": (550, b"no such user")})
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", HardRefuse)
+    with pytest.raises(_smtp.SMTPRecipientsRefused):
+        mr.send_email("<p>x</p>", "subj")
+    assert n["send"] == 1

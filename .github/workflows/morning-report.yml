@@ -116,8 +116,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # 批#32 r3(Codex F2):不再 continue-on-error——告警若寄不出去(例如 Gmail
+      # secrets 遺失/改名,而那恰好就是 send-report 失敗的原因),這個 job 必須
+      # 「紅」,才會走 GitHub 對 default branch 排程失敗的內建通知作為最後管道。
+      # 靜默成功的告警等於沒有告警。
       - name: 失敗告警信
-        continue-on-error: true
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -129,7 +132,11 @@ jobs:
           from email.message import EmailMessage
           user, pw = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
           if not (user and pw):
-              raise SystemExit(0)
+              # 缺憑證時**不可**靜默成功:這正是 send-report 失敗的常見原因之一,
+              # 靜默 exit 0 會讓告警 job 顯示綠燈而實際沒通知任何人(Codex r3 F2)。
+              print("::error title=alert-secrets-missing::"
+                    "GMAIL_USER / GMAIL_APP_PASSWORD 未設定,無法寄出晨報失敗告警")
+              raise SystemExit(1)
           result = os.environ.get("JOB_RESULT", "unknown")
           m = EmailMessage()
           m["Subject"] = f"⚠ 晨報未寄出({result})"

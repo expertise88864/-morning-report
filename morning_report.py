@@ -5282,11 +5282,17 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                     "summary": "",   # 端點只給標題與連結,不編造摘要
                     "link": str(row.get("Url") or ""),
                     "published": pub_dt.isoformat(),
-                    # r3(Codex F1):**必須顯式標 A 級**。_A_GRADE_EN 用 \b 邊界比對
-                    # "twse",而來源名「TWSE交易所公告」的 E 後面緊接中文字(同屬
-                    # word character)→ 邊界不成立 → 交易所官方公告被判 C 級,
-                    # 在去重優先序、可信度標記、抽取器 35 則預算裡全被當成聚合器。
-                    # 這是本報**唯一**直接打交易所 API 的來源,身分不該靠名稱猜。
+                    # r4(Codex):交易所官方公告必須是 A 級。顯示用的來源名
+                    # 「TWSE交易所公告」會讓 _A_GRADE_EN 的 \b 邊界失效(E 後面
+                    # 緊接中文字,同屬 word character)→ 實測被判 C 級。
+                    #
+                    # r3 只補了 source_grade 欄位,但 _news_keep_score 與
+                    # _credibility_tag 是**直接呼叫 _news_source_grade**、不看該欄位
+                    # → 去重時仍會輸給 B 級重複稿、也拿不到「含官方來源」標記。
+                    # 正解是用 _news_source_grade 本來就設計好的鉤子:source_name
+                    # =真正的發布者身分(與顯示用的聚合別名分離)。兩者都給,
+                    # 讓顯示名日後怎麼改都不會再影響分級。
+                    "source_name": "TWSE",
                     "source_grade": "A",
                 })
             return out

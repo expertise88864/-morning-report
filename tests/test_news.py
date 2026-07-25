@@ -1647,9 +1647,28 @@ def test_twse_news_items_are_marked_official_grade(monkeypatch):
         {"idx": 0, "source": "TWSE交易所公告",
          "url": "https://openapi.twse.com.tw/v1/news/newsList", "kind": "twse_news"},
         _dt.datetime(2026, 7, 24, tzinfo=_dt.timezone.utc))
-    assert out and out[0]["source_grade"] == "A"
-    # 佐證問題確實存在:光靠名稱推導會是 C 級
+    item = out[0]
+    assert item["source_grade"] == "A"
+    # 佐證問題確實存在:光靠顯示名推導會是 C 級
     assert mr._news_source_grade({"source": "TWSE交易所公告"}) == "C"
+    # r4(Codex):真正要驗的是**下游**——_news_keep_score / _credibility_tag
+    # 直接呼叫 _news_source_grade,不看 source_grade 欄位。故必須用
+    # source_name(該函式本來就設計的「發布者身分」鉤子)。
+    assert mr._news_source_grade(item) == "A", "下游分級仍是 C,顯式欄位沒用"
+    assert mr._news_keep_score(item)[0] == 3, "去重優先序仍被當聚合器"
+
+
+def test_official_twse_beats_media_duplicate_in_dedup():
+    """交易所公告與媒體重複稿並存時,官方版本必須勝出。"""
+    official = {"source": "TWSE交易所公告", "source_name": "TWSE",
+                "source_grade": "A", "title": "台積電恢復交易", "summary": "",
+                "link": "https://twse/1", "published": "2026-07-25T00:00:00+00:00"}
+    media = {"source": "自由財經", "title": "台積電恢復交易", "summary": "內容" * 50,
+             "link": "https://ltn/1", "published": "2026-07-25T00:00:00+00:00"}
+    import news_rules as nr
+    kept = nr.dedup_news([media, official])
+    assert len(kept) == 1
+    assert kept[0]["source"] == "TWSE交易所公告",         f"官方公告被媒體重複稿取代:{kept[0]['source']}"
 
 
 def test_twse_news_non_list_payload_counts_as_failure(monkeypatch):

@@ -19629,6 +19629,15 @@ def main() -> int:
             "last_0050": tw0050_pred.get("last") if isinstance(tw0050_pred, dict) else None,
             "night_txf_pct": night_txf.get("night_pct"),
             "taifex_foreign_oi": taifex_oi.get("foreign_oi_net"),
+            # 批#45:期權部位訊號**只餵 LLM、從未存進歷史** → 沒有時序就算不出 IC,
+            # MCS/事件研究永遠評估不了它們,也就永遠無法拿證據決定要不要納入計分。
+            # 先讓它們可被量測(存);**刻意不動 11 維計分**——記憶裡的定案是
+            # 「別貿然改計分/預測係數」,而我自己在 MCS 那批的結論也是「沒有把關前
+            # 新維度只是新的過擬合來源」。等累積足夠樣本、用 MCS 驗過再談納入。
+            "taifex_top10_net": (taifex_large or {}).get("top10_net"),
+            "taifex_spec_top10_net": (taifex_large or {}).get("spec_top10_net"),
+            "taifex_top10_concentration_pct": (taifex_large or {}).get("concentration_pct"),
+            "txo_pc_oi_ratio": (taifex_pcr or {}).get("pc_oi_ratio"),
             "critical_news": crit_titles,
             "earnings_proximity": earnings_proximity.get("impact"),
             "ex_div_today": ex_div,

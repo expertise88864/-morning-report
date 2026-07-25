@@ -88,3 +88,32 @@ def test_large_traders_failsafe_on_missing_fields(monkeypatch):
                 "TypeOfTraders": "0", "Top10Buy": "100", "Top10Sell": "90", "OIOfMarket": "0"}]
     monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _Resp(zero_oi))
     assert mr.fetch_taifex_large_traders() == {}      # OI=0 不可當分母
+
+
+def test_chip_signals_are_persisted_to_history():
+    """批#45:大額交易人與 TXO P/C ratio 先前**只餵 LLM、從未存進歷史**
+    → 沒有時序就算不出 IC,MCS/事件研究永遠評估不了,也就永遠無法拿證據
+    決定要不要納入計分。這條測試釘住「可被量測」這個前提。"""
+    from pathlib import Path
+    import morning_report as mr
+    src = Path(mr.__file__).read_text(encoding="utf-8")
+    entry_start = src.index('"taifex_foreign_oi": taifex_oi.get("foreign_oi_net")')
+    entry_block = src[entry_start:entry_start + 2000]
+    for field in ("taifex_top10_net", "taifex_spec_top10_net",
+                  "taifex_top10_concentration_pct", "txo_pc_oi_ratio"):
+        assert f'"{field}"' in entry_block, f"{field} 未寫入歷史 entry"
+
+
+def test_chip_signals_stay_out_of_stance_scoring():
+    """**刻意不納入 11 維計分**。記憶裡的定案是「別貿然改計分/預測係數」,
+    而 MCS 那批的結論也是「沒有把關前,新維度只是新的過擬合來源」。
+    這條測試是防止日後有人(包括我)在沒有證據的情況下悄悄把它接進計分。"""
+    import morning_report as mr
+    import inspect
+    src = inspect.getsource(mr._compute_stance_score)
+    for field in ("taifex_top10_net", "spec_top10_net", "pc_oi_ratio",
+                  "txo_pc_oi_ratio"):
+        assert field not in src, (
+            f"{field} 進了立場計分。若這是刻意的,必須先有 MCS/IC 證據並更新本測試"
+            "與 model_version——立場分是信件頂部 KPI 的權威來源,不可無聲變動。"
+        )

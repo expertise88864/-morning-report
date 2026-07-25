@@ -407,6 +407,20 @@ def _lifecycle_regresses(ev: dict, story: dict) -> bool:
     return a >= 0 and b >= 0 and a < b
 
 
+def _delta_is_unconfirmed(ev: dict, story: dict) -> bool:
+    """這筆 delta 是否「未經權威來源證實」。
+
+    情境:story 目前的權威狀態來自較高分級來源(如 MOPS 官方撤回),而今天這則
+    較低分級的報導與之相反(lifecycle 倒退)。內容仍要寫進帳本——它是今日真的
+    發生的報導——但不得改寫權威狀態,且必須在 prompt 標明未經證實,
+    否則 LLM 會把單一低分級稿當成官方翻案。
+    """
+    _GRADE = {"A": 3, "B": 2, "C": 1}
+    return (_GRADE.get(str(ev.get("source_grade") or "").upper(), 0)
+            < _GRADE.get(str(story.get("source_grade") or "").upper(), 0)
+            and _lifecycle_regresses(ev, story))
+
+
 def _is_more_authoritative(ev: dict, story: dict) -> bool:
     """這則事件是否有資格覆寫 story 目前的內容。
 
@@ -422,9 +436,13 @@ def _is_more_authoritative(ev: dict, story: dict) -> bool:
       不能被較晚的 B/C 級真實進展更新,線索被標成「今日無新進展」並逐日沉寂。
 
     定案規則(不是單一排序鍵,而是兩種情境分開判斷):
-      - 事件**較新**:原則上允許更新(那是新消息);
-        唯一例外是「**較低分級且 lifecycle 倒退**」——那是低品質稿在推翻
-        高品質來源的既有結論,擋下。
+      - 事件**較新**:一律允許更新內容(那是今天真的發生的報導)。
+        r20(Codex,P1):先前把「較低分級且 lifecycle 倒退」整個擋下,結果
+        **官方撤回後、較低分級來源報導的真實重啟也被永久封鎖**——而
+        news_events 明訂 withdrawn 非終態、撤回後 lifecycle 應重新起算。
+        單憑分級無法分辨「陳舊誤報」與「真實重啟」,故改為:內容照常更新
+        (它是今日事實),但**權威狀態保留較高分級那一方**(見
+        _delta_is_unconfirmed),並在 prompt 標明未經證實。
       - 事件**較舊**:必須分級**嚴格更高**才可覆寫。等級相同的舊訊息不得蓋掉
         較新的內容(r14 的情境:同批次裡較舊的媒體稿排在官方公告之後)。
     """
@@ -434,8 +452,6 @@ def _is_more_authoritative(ev: dict, story: dict) -> bool:
     newer = str(ev.get("published") or "") >= str(story.get("last_published") or "")
     if not newer:
         return ev_grade > st_grade
-    if ev_grade < st_grade and _lifecycle_regresses(ev, story):
-        return False
     return True
 
 
@@ -629,14 +645,17 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         if (key in touched and not replayed
                 and _is_real_progress(ev, story, vocab)):
             if _is_more_authoritative(ev, story):
+                _unconf = _delta_is_unconfirmed(ev, story)
                 story["prev_delta"] = (story.get("last_delta") or "")                     if _is_same_subject(story, ev) else ""
                 story["last_delta"] = title[:160]
                 story["last_published"] = str(ev.get("published") or "")
                 story["headline"] = title[:120]
-                story["lifecycle"] = str(
-                    ev.get("lifecycle") or story.get("lifecycle") or "")
-                story["source_grade"] = str(
-                    ev.get("source_grade") or story.get("source_grade") or "")
+                story["delta_unconfirmed"] = _unconf
+                if not _unconf:
+                    story["lifecycle"] = str(
+                        ev.get("lifecycle") or story.get("lifecycle") or "")
+                    story["source_grade"] = str(
+                        ev.get("source_grade") or story.get("source_grade") or "")
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
@@ -672,15 +691,20 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
             story["today_sigs"] = _remember_today(today_sigs, key, sig, today)
             continue
+        unconfirmed = _delta_is_unconfirmed(ev, story)
         story["prev_delta"] = (story.get("last_delta") or "") \
             if _is_same_subject(story, ev) else ""
         story["last_delta"] = title[:160]
         story["last_published"] = str(ev.get("published") or "")
-        story["lifecycle"] = str(
-            ev.get("lifecycle") or story.get("lifecycle") or "")
-        story["source_grade"] = str(
-            ev.get("source_grade") or story.get("source_grade") or "")
         story["headline"] = title[:120]
+        story["delta_unconfirmed"] = unconfirmed
+        if not unconfirmed:
+            # 權威狀態(lifecycle / source_grade)只由「不低於現況分級」的來源改寫;
+            # 較低分級且與官方結論相反的報導,內容照收但不得改寫權威狀態。
+            story["lifecycle"] = str(
+                ev.get("lifecycle") or story.get("lifecycle") or "")
+            story["source_grade"] = str(
+                ev.get("source_grade") or story.get("source_grade") or "")
         story["updates"] = int(story.get("updates") or 0) + 1
         story["max_surprise"] = round(
             max(float(story.get("max_surprise") or 0.0), surprise), 3)
@@ -745,6 +769,8 @@ def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STO
         fresh = ("今日有新進展"
                  if today and str(s.get("last_update") or "")[:10] == str(today)[:10]
                  else "今日無新進展(僅供脈絡,不要單獨成條)")
+        if s.get("delta_unconfirmed"):
+            fresh += "|今日報導未經權威來源證實,與官方既有結論不一致,須註明"
         lines.append(
             f"- [{state_zh}|{fresh}|已追蹤 {int(s.get('updates') or 1)} 次|"
             f"起於 {sanitize(s.get('first_seen'), 12)}] {ent}:"

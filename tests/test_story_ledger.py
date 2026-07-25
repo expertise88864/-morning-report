@@ -715,9 +715,12 @@ def test_lifecycle_authority_beats_later_publication_time():
                           published="2026-07-25T10:00:00+00:00"),
                  lifecycle="confirmed", source_grade="C")
     led = sl.update_ledger([], [withdrawn, stale], "2026-07-25")
-    assert "撤回" in led[0]["headline"], (
-        f"較晚但較不權威的轉載覆寫了官方撤回:{led[0]['headline']}")
-    assert led[0]["lifecycle"] == "withdrawn"
+    # r20:內容會更新(那是今日真的發生的報導),但**權威狀態必須保留官方版本**,
+    # 並標記未經證實——單憑分級無法分辨「陳舊誤報」與「真實重啟」,
+    # 全擋會讓官方撤回後的真實重啟被永久封鎖。
+    assert led[0]["lifecycle"] == "withdrawn", "低分級稿改寫了權威 lifecycle"
+    assert led[0]["source_grade"] == "A", "權威來源分級被降級"
+    assert led[0]["delta_unconfirmed"] is True
 
 
 def test_same_grade_restart_after_withdrawal_wins():
@@ -750,6 +753,7 @@ def test_cross_day_update_also_respects_authority():
                  lifecycle="confirmed", source_grade="C")
     updates_before, state_before = led[0]["updates"], led[0]["state"]
     led2 = sl.update_ledger(led, [stale], "2026-07-26")
+    # 這則是**較舊**(07-24)且分級較低 → 完全擋下(與 r20 的「較新低分級」情境不同)
     assert "撤回" in led2[0]["headline"], (
         f"C 級舊稿跨日覆寫了 A 級官方撤回:{led2[0]['headline']}")
     # r18(Codex,P1):權威不足時**什麼進度都不能動**。先前只擋住內容覆寫,
@@ -793,8 +797,12 @@ def test_later_lower_grade_genuine_update_is_allowed():
     assert led2[0]["last_update"] == "2026-07-25"
 
 
-def test_later_lower_grade_lifecycle_regression_still_blocked():
-    """但「較低分級 + lifecycle 倒退」仍要擋:低品質稿不得推翻官方撤回。"""
+def test_later_lower_grade_regression_keeps_authoritative_state():
+    """較低分級且 lifecycle 倒退的**較新**報導:內容照收(它是今日事實),
+    但權威狀態保留官方版本並標記未經證實。
+
+    r20 前的做法是整個擋下,結果連「官方撤回後的真實重啟」也被永久封鎖——
+    單憑分級無法分辨陳舊誤報與真實重啟,故改為分離權威狀態與今日 delta。"""
     withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
                               published="2026-07-25T09:00:00+00:00"),
                      lifecycle="withdrawn", source_grade="A")
@@ -803,4 +811,55 @@ def test_later_lower_grade_lifecycle_regression_still_blocked():
                           published="2026-07-25T10:00:00+00:00"),
                  lifecycle="confirmed", source_grade="C")
     led2 = sl.update_ledger(led, [stale], "2026-07-26")
-    assert "撤回" in led2[0]["headline"]
+    assert led2[0]["lifecycle"] == "withdrawn", "低分級稿改寫了權威 lifecycle"
+    assert led2[0]["source_grade"] == "A"
+    assert led2[0]["delta_unconfirmed"] is True
+    block = sl.format_story_block(led2, lambda x, n=0: str(x or ""),
+                                  today="2026-07-26")
+    assert "未經權威來源證實" in block
+
+
+def test_lower_grade_restart_updates_delta_but_not_authoritative_state():
+    """r20(Codex,P1):官方撤回後,較低分級來源報導的**真實重啟**不該被永久封鎖
+    ——news_events 明訂 withdrawn 非終態、撤回後 lifecycle 應重新起算。
+    但單憑分級無法分辨「陳舊誤報」與「真實重啟」,故:內容照常更新(它是今日
+    事實),權威狀態保留較高分級那一方,並標記未經證實。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    led = sl.update_ledger([], [withdrawn], "2026-07-25")
+
+    restart = dict(_ev_full("2317", "orders", "媒體報導:併購案重啟 雙方重回談判桌",
+                            published="2026-07-26T09:00:00+00:00"),
+                   lifecycle="confirmed", source_grade="C")
+    led2 = sl.update_ledger(led, [restart], "2026-07-26")
+
+    assert "重啟" in led2[0]["last_delta"], "真實重啟被永久封鎖,線索停在已撤回"
+    assert led2[0]["last_update"] == "2026-07-26"
+    assert led2[0]["lifecycle"] == "withdrawn", "低分級稿改寫了權威 lifecycle"
+    assert led2[0]["source_grade"] == "A", "權威來源分級被降級"
+    assert led2[0]["delta_unconfirmed"] is True
+
+    block = sl.format_story_block(led2, lambda x, n=0: str(x or ""),
+                                  today="2026-07-26")
+    assert "未經權威來源證實" in block, "prompt 未標明未經證實"
+
+
+def test_same_grade_update_clears_unconfirmed_flag():
+    """後續有同級以上來源證實時,未經證實的標記要消失。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    led = sl.update_ledger([], [withdrawn], "2026-07-25")
+    led = sl.update_ledger(led, [dict(
+        _ev_full("2317", "orders", "媒體報導:併購案重啟",
+                 published="2026-07-26T09:00:00+00:00"),
+        lifecycle="confirmed", source_grade="C")], "2026-07-26")
+    assert led[0]["delta_unconfirmed"] is True
+
+    led = sl.update_ledger(led, [dict(
+        _ev_full("2317", "orders", "官方公告:併購案正式重啟並簽署意向書",
+                 published="2026-07-27T09:00:00+00:00"),
+        lifecycle="confirmed", source_grade="A")], "2026-07-27")
+    assert led[0]["delta_unconfirmed"] is False
+    assert led[0]["lifecycle"] == "confirmed"

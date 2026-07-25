@@ -938,7 +938,7 @@ def test_tw_intelligence_official_html_fallback(monkeypatch):
     assert out["policy"]
     assert out["policy"][0]["source_grade"] == "\u5b98\u65b9"
     assert out["diagnostics"]["policy"]["official_entries"] > 0
-    assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_fallback_ok"] >= 1
+    assert out["diagnostics"]["policy"]["sources"]["EY Cabinet Resolutions"]["html_fallback_ok"] >= 1
 
 
 def test_official_html_parser_reads_date_from_parent_block():
@@ -949,7 +949,7 @@ def test_official_html_parser_reads_date_from_parent_block():
     )
     stats = {}
     entries = mr._official_html_entries(
-        html, "https://www.ey.gov.tw/Page/list", "EY News", stats=stats)
+        html, "https://www.ey.gov.tw/Page/list", "EY Cabinet Resolutions", stats=stats)
     assert entries[0]["published"].startswith("2026-06-03")
 
 
@@ -962,7 +962,7 @@ def test_official_html_parser_checks_multiple_links_in_block():
     )
     stats = {}
     entries = mr._official_html_entries(
-        html, "https://www.ey.gov.tw/Page/list", "EY News", stats=stats)
+        html, "https://www.ey.gov.tw/Page/list", "EY Cabinet Resolutions", stats=stats)
     assert entries[0]["link"] == "https://www.ey.gov.tw/Page/policy"
 
 
@@ -999,7 +999,7 @@ def test_tw_intelligence_skips_undated_official_html(monkeypatch):
     out = mr.fetch_tw_daily_intelligence(
         dt.datetime(2026, 6, 4, 6, tzinfo=mr.TPE), per_kind_limit=3)
     assert out["policy"] == []
-    assert out["diagnostics"]["policy"]["sources"]["EY News"]["html_undated"] >= 1
+    assert out["diagnostics"]["policy"]["sources"]["EY Cabinet Resolutions"]["html_undated"] >= 1
 
 
 def test_tw_intelligence_html_hides_diagnostics_by_default(monkeypatch):
@@ -1015,7 +1015,7 @@ def test_tw_intelligence_html_hides_diagnostics_by_default(monkeypatch):
                 "official_entries": 0,
                 "official_empty": 1,
                 "sources": {
-                    "EY News": {
+                    "EY Cabinet Resolutions": {
                         "html_undated": 1,
                         "date_missing": 0,
                         "errors": ["URLError"],

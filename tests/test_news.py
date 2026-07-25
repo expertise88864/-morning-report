@@ -1630,3 +1630,44 @@ def test_extra_tracked_codes_excludes_primary_and_unknown():
     item = {"cnyes_stocks": [tracked[0], tracked[1], "9999"]}
     assert mr._extra_tracked_codes(item, exclude=tracked[0]) == [tracked[1]]
     assert mr._extra_tracked_codes({}, exclude="") == []
+
+
+def test_twse_news_items_are_marked_official_grade(monkeypatch):
+    """r3(Codex):來源名「TWSE交易所公告」的 E 後面緊接中文字,_A_GRADE_EN 的
+    \b 邊界不成立 → 交易所官方公告被判 C 級,在去重優先序、可信度標記、抽取器
+    35 則預算裡全被當成聚合器。身分必須顯式標,不能靠名稱猜。"""
+    import datetime as _dt
+
+    class _R:
+        def raise_for_status(self): pass
+        def json(self): return [{"Title": "恢復交易公告", "Url": "u", "Date": "1150724"}]
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    out = mr._process_feed_item(
+        {"idx": 0, "source": "TWSE交易所公告",
+         "url": "https://openapi.twse.com.tw/v1/news/newsList", "kind": "twse_news"},
+        _dt.datetime(2026, 7, 24, tzinfo=_dt.timezone.utc))
+    assert out and out[0]["source_grade"] == "A"
+    # 佐證問題確實存在:光靠名稱推導會是 C 級
+    assert mr._news_source_grade({"source": "TWSE交易所公告"}) == "C"
+
+
+def test_twse_news_non_list_payload_counts_as_failure(monkeypatch):
+    """r3(Codex):形狀驗證必須在「記成功」之前。端點回 200 但 payload 變成錯誤
+    物件時,若先記 ok 就會清空失敗連續數 → schema 長期壞掉對來源健康警示隱形。"""
+    import datetime as _dt
+
+    class _R:
+        def raise_for_status(self): pass
+        def json(self): return {"error": "oops"}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    url = "https://openapi.twse.com.tw/v1/news/newsList"
+    mr._FEED_STATS.clear()
+    out = mr._process_feed_item(
+        {"idx": 0, "source": "TWSE交易所公告", "url": url, "kind": "twse_news"},
+        _dt.datetime(2026, 7, 24, tzinfo=_dt.timezone.utc))
+    stat = mr._FEED_STATS[mr._feed_label(url)]
+    assert out == []
+    assert stat["fail"] >= 1 and stat["streak"] >= 1, f"未記為失敗:{stat}"
+    assert stat["ok"] == 0, "形狀錯誤不得被記成一次成功"

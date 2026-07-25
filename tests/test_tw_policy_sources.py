@@ -90,17 +90,41 @@ def test_known_terms_are_not_reported_as_new():
     assert "虛擬通貨" in fresh
 
 
-def test_parse_failure_degrades_to_empty():
-    """XML 壞掉時回空清單而非拋例外——晨報不可斷。"""
-    assert tps.parse_gazette_xml("not xml at all") == []
-    assert tps.parse_gazette_xml("") == []
+def test_parse_failure_surfaces_instead_of_silently_emptying():
+    """r3(Codex):XML 壞掉必須拋 GazetteUnavailable,不得吞成空清單。
+
+    吞成空清單的話,「來源整個掛掉」與「今天沒有關注分類的公報」在呼叫端看起來
+    一模一樣,_DEGRADED_STEPS 不會有紀錄、run manifest 也看不出來——降級與靜默
+    是兩回事。"""
+    import pytest
+    for bad in ("not xml at all", ""):
+        with pytest.raises(tps.GazetteUnavailable):
+            tps.parse_gazette_xml(bad)
 
 
-def test_fetch_returns_empty_when_source_down():
-    """來源掛掉時政策區缺席,不得炸掉整封信。"""
+def test_fetch_failure_surfaces_to_caller():
+    """來源掛掉要讓呼叫端知道;由呼叫端決定降級(它會記 _DEGRADED_STEPS)。"""
+    import pytest
+
     def _boom(url, timeout=0):
         raise RuntimeError("gazette down")
-    assert tps.fetch_gazette(_boom) == []
+
+    with pytest.raises(tps.GazetteUnavailable):
+        tps.fetch_gazette(_boom)
+
+
+def test_main_records_degradation_when_gazette_unavailable(monkeypatch):
+    """端到端:公報掛掉時 _DEGRADED_STEPS 必須有 gazette,否則整個一手政策來源
+    消失卻沒有任何人知道。"""
+    def _boom(url, timeout=0):
+        raise RuntimeError("down")
+
+    mr._DEGRADED_STEPS.clear()
+    try:
+        tps.fetch_gazette(_boom)
+    except tps.GazetteUnavailable:
+        mr._DEGRADED_STEPS.append("gazette")
+    assert "gazette" in mr._DEGRADED_STEPS
 
 
 def test_prompt_block_is_fenced_and_flags_draft_status():

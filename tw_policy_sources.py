@@ -92,12 +92,26 @@ def _text(node, tag: str) -> str:
     return (node.findtext(tag) or "").strip()
 
 
+class GazetteUnavailable(RuntimeError):
+    """公報抓取或解析失敗。
+
+    r3(Codex F2):**刻意讓失敗浮出來**。原本 fetch/parse 各自把例外吞成空清單,
+    於是 main 裡那個 try/except 對這兩種失敗是**死碼**——來源整個消失時,程式只會
+    印「公報 0 筆」,和「今日公報沒有關注分類」長得一模一樣,`_DEGRADED_STEPS`
+    也不會有紀錄,run manifest 完全看不出來。
+
+    這是同一個錯誤模式的第三次(批#32 的 _DEGRADED_STEPS、批#33 的
+    save_history_state 都是「在自己吞例外的函式外面包 try」)。正解是讓呼叫端
+    拿得到失敗事實,再由呼叫端決定降級——降級與靜默是兩回事。
+    """
+
+
 def parse_gazette_xml(raw: bytes | str) -> list[dict]:
-    """把公報 XML 轉成記錄清單。解析失敗回空清單(不拋例外,晨報不可斷)。"""
+    """把公報 XML 轉成記錄清單。XML 壞掉時拋 GazetteUnavailable。"""
     try:
         root = ET.fromstring(raw)
-    except ET.ParseError:
-        return []
+    except ET.ParseError as e:
+        raise GazetteUnavailable(f"公報 XML 解析失敗: {type(e).__name__}") from e
     out: list[dict] = []
     for rec in list(root)[:MAX_RECORDS]:
         title = _text(rec, "Title")
@@ -137,12 +151,14 @@ def fetch_gazette(fetch) -> list[dict]:
 
     `fetch` 是注入的抓取函式(url, timeout) -> bytes,由呼叫端提供
     ——刻意用依賴注入而非 import morning_report:避免循環匯入,也讓測試不必碰網路。
-    任何失敗都回空清單:政策區缺席好過整封信炸掉。
+
+    失敗時拋 GazetteUnavailable(見該類別說明):降級是呼叫端的決定,本函式
+    只負責把「拿不到」與「拿到但今天沒東西」區分開來。空清單只代表後者。
     """
     try:
         raw = fetch(GAZETTE_XML_URL, timeout=30)
-    except Exception:
-        return []
+    except Exception as e:
+        raise GazetteUnavailable(f"公報抓取失敗: {type(e).__name__}") from e
     return parse_gazette_xml(raw)
 
 

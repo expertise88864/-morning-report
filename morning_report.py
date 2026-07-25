@@ -5252,11 +5252,16 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                 stat["fail"] += 1
                 stat["streak"] = stat.get("streak", 0) + 1
                 raise
-            stat["ok"] += 1
-            stat["streak"] = 0
+            # r3(Codex F3):**先驗形狀再記成功**。原本先 ok+=1 再檢查 isinstance,
+            # 端點回 200 但 payload 變成錯誤物件時會被記成一次成功並清空失敗連續數
+            # → schema/API 長期壞掉對來源健康警示完全隱形。
             if not isinstance(data, list):
+                stat["fail"] += 1
+                stat["streak"] = stat.get("streak", 0) + 1
                 print(f"[twse_news] 回傳非清單({type(data).__name__}),略過", file=sys.stderr)
                 return out
+            stat["ok"] += 1
+            stat["streak"] = 0
             # 端點一次回傳約 476 筆、橫跨數月,且**只有日期沒有時間**。
             # 故以「日期 ≥ cutoff 當日」過濾,並取 published 為當日 08:00 TPE
             # (交易所公告多為盤前/盤中發布;不假裝有更精確的時間)。
@@ -5277,6 +5282,12 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                     "summary": "",   # 端點只給標題與連結,不編造摘要
                     "link": str(row.get("Url") or ""),
                     "published": pub_dt.isoformat(),
+                    # r3(Codex F1):**必須顯式標 A 級**。_A_GRADE_EN 用 \b 邊界比對
+                    # "twse",而來源名「TWSE交易所公告」的 E 後面緊接中文字(同屬
+                    # word character)→ 邊界不成立 → 交易所官方公告被判 C 級,
+                    # 在去重優先序、可信度標記、抽取器 35 則預算裡全被當成聚合器。
+                    # 這是本報**唯一**直接打交易所 API 的來源,身分不該靠名稱猜。
+                    "source_grade": "A",
                 })
             return out
         if kind == "company":          # 重點公司 Google News 查詢(補個股新聞)

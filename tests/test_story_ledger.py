@@ -748,9 +748,16 @@ def test_cross_day_update_also_respects_authority():
     stale = dict(_ev_full("2317", "orders", "轉載:併購案仍在進行 金額 50 億",
                           published="2026-07-24T10:00:00+00:00"),
                  lifecycle="confirmed", source_grade="C")
+    updates_before, state_before = led[0]["updates"], led[0]["state"]
     led2 = sl.update_ledger(led, [stale], "2026-07-26")
     assert "撤回" in led2[0]["headline"], (
         f"C 級舊稿跨日覆寫了 A 級官方撤回:{led2[0]['headline']}")
+    # r18(Codex,P1):權威不足時**什麼進度都不能動**。先前只擋住內容覆寫,
+    # updates/state/last_update 仍照樣更新 → 撤回會被標成「今日有新進展」、
+    # 可能被推向高潮,並因 touched 躲過閒置降級。
+    assert led2[0]["updates"] == updates_before, "權威不足卻增加了進展次數"
+    assert led2[0]["state"] == state_before, "權威不足卻推進了狀態"
+    assert led2[0]["last_update"] != "2026-07-26", "權威不足卻被標成今日有新進展"
 
 
 def test_prompt_block_marks_freshness_and_prioritizes_updated():

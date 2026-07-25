@@ -653,15 +653,25 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 路徑檢查,於是昨天的 A 級官方撤回,今天可以被 C 級舊稿覆寫回「已確認」
         # ——apply_event_timeline 把 withdrawn 之後的任何報導都視為增量,
         # 所以這條路徑必然會走到。
-        if _is_more_authoritative(ev, story):
-            story["prev_delta"] = (story.get("last_delta") or "")                 if _is_same_subject(story, ev) else ""
-            story["last_delta"] = title[:160]
-            story["last_published"] = str(ev.get("published") or "")
-            story["lifecycle"] = str(
-                ev.get("lifecycle") or story.get("lifecycle") or "")
-            story["source_grade"] = str(
-                ev.get("source_grade") or story.get("source_grade") or "")
-            story["headline"] = title[:120]
+        if not _is_more_authoritative(ev, story):
+            # r18(Codex,P1):權威不足時**什麼進度都不能動**。先前只擋住內容覆寫,
+            # 但 updates / state / last_update / touched 仍照樣更新 → 昨天的官方
+            # 撤回會被今天的 C 級舊稿標成「今日有新進展」、還可能被推向高潮,
+            # 並因為 touched 而躲過閒置降級。只記簽章與 surprise 上界。
+            story["max_surprise"] = round(
+                max(float(story.get("max_surprise") or 0.0), surprise), 3)
+            story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
+            story["today_sigs"] = _remember_today(today_sigs, key, sig, today)
+            continue
+        story["prev_delta"] = (story.get("last_delta") or "") \
+            if _is_same_subject(story, ev) else ""
+        story["last_delta"] = title[:160]
+        story["last_published"] = str(ev.get("published") or "")
+        story["lifecycle"] = str(
+            ev.get("lifecycle") or story.get("lifecycle") or "")
+        story["source_grade"] = str(
+            ev.get("source_grade") or story.get("source_grade") or "")
+        story["headline"] = title[:120]
         story["updates"] = int(story.get("updates") or 0) + 1
         story["max_surprise"] = round(
             max(float(story.get("max_surprise") or 0.0), surprise), 3)

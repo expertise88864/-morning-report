@@ -1749,6 +1749,10 @@ def test_junk_extraction_artifact_is_not_marked_successful(monkeypatch):
     monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: "請先登入以繼續閱讀")
     out, extracted = mr._extract_article_text(_ARTICLE_HTML)
     assert extracted is False, "疑似殘渣被標記成抽取成功"
+    # r21(Codex):殘渣不得被原樣回傳——呼叫端會因長度不足丟棄,該篇全文整個消失,
+    # 連去標籤版都沒試過。應改用去標籤版讓呼叫端還有東西可用。
+    assert "毛利率上修至五八%" in out, "殘渣被原樣回傳,未改用去標籤版"
+    assert "請先登入" not in out
 
 
 def test_empty_extraction_falls_back_to_strip(monkeypatch):

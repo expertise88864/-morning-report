@@ -141,7 +141,10 @@ def test_chip_signals_survive_history_compaction():
     keep_start = src.index("keep_record = {")
     keep_block = src[keep_start:keep_start + 700]
     for f in ("taifex_top10_net", "taifex_spec_top10_net",
-              "taifex_top10_concentration_pct", "txo_pc_oi_ratio"):
+              "taifex_top10_concentration_pct", "txo_pc_oi_ratio",
+              # r21(Codex):來源日期欄位存在的理由就是日後對帳,壓縮時裁掉
+              # 等於把它們的用途取消
+              "taifex_chip_source_date", "txo_pcr_source_date"):
         assert f'"{f}"' in keep_block, f"{f} 不在壓縮白名單"
 
 

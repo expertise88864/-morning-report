@@ -5308,8 +5308,10 @@ def _extract_article_text(html: str) -> tuple[str, bool]:
             if len(text) >= _ARTICLE_EXTRACT_FLOOR:
                 return text, True
             if text:
-                # 疑似非正文殘渣:仍回傳(總比空的好),但不標記為抽取成功
-                return text, False
+                # 疑似非正文殘渣(登入提示/錯誤頁):**改用去標籤版**。
+                # r21(Codex):原本直接回傳這段殘渣並標記 extracted=False,
+                # 呼叫端再因長度不足而丟棄 → 該篇全文整個消失,連去標籤版都沒試過。
+                return _strip_html(html), False
         except ImportError:
             _TRAFILATURA_UNAVAILABLE = True
             print("[news_full] 未安裝 trafilatura,改用去標籤法(素材含版面雜訊)",
@@ -7116,6 +7118,9 @@ def save_model_history_records(records: list[dict],
             # 被裁掉,長期時序又出現空洞。
             "taifex_top10_net", "taifex_spec_top10_net",
             "taifex_top10_concentration_pct", "txo_pc_oi_ratio",
+            # r21(Codex):來源日期欄位存在的理由就是日後對帳,壓縮時一併裁掉
+            # 等於把它們的用途取消。
+            "taifex_chip_source_date", "txo_pcr_source_date",
         }
         keep_stock = {
             "code", "name", "industry", "open", "close", "day_pct", "pct_5d",

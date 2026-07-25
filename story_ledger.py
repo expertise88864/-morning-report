@@ -140,7 +140,7 @@ def _bigrams(text: str) -> set:
     return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) >= 2 else ({t} if t else set())
 
 
-def _subject_overlap(a: str, b: str, entity: str = "", alias: str = "") -> float:
+def _subject_overlap(a: str, b: str, entity: str = "", alias="") -> float:
     """兩則標題的主體重疊度(字元 bigram Jaccard;先剝掉公司識別)。
 
     剝除是關鍵:同一公司的兩件事標題都含公司名,不剝的話任何兩則都有基礎重疊。
@@ -151,7 +151,8 @@ def _subject_overlap(a: str, b: str, entity: str = "", alias: str = "") -> float
     故必須連公司名(alias)一起剝;alias 由呼叫端以代號→名稱對照表提供。
     """
     ta, tb = _norm(a), _norm(b)
-    for token in (_norm(entity), _norm(alias)):
+    aliases = alias if isinstance(alias, (list, tuple, set)) else [alias]
+    for token in [_norm(entity)] + [_norm(x) for x in aliases]:
         if token:
             ta, tb = ta.replace(token, ""), tb.replace(token, "")
     ga, gb = _bigrams(ta), _bigrams(tb)
@@ -178,25 +179,39 @@ def _is_same_subject(story: dict, ev: dict) -> bool:
     """
     title = str(ev.get("title") or "")
     entity = str(story.get("entity") or ev.get("entity") or "")
-    alias = str(story.get("entity_name") or ev.get("entity_name") or "")
+    alias = str(story.get("entity_name") or ev.get("entity_name") or "").split()
     best = max(_subject_overlap(story.get("headline") or "", title, entity, alias),
                _subject_overlap(story.get("last_delta") or "", title, entity, alias))
     return best >= SUBJECT_OVERLAP_MIN
 
 
-NEAR_IDENTICAL_OVERLAP = 0.85   # 高於此視為「同一則稿子」,不算內容更新
+_NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _material_facts(text: str) -> set:
+    """標題裡的**數字事實**(金額/百分比/口數/日期…)。
+
+    r6(Codex,P1):不能拿「標題文字有沒有變」當內容更新的判準——跨媒體改寫本來
+    就會換措辭,任何相似度門檻都會把改寫稿誤判成新進展,重複推進的問題就回來了。
+    真正可靠的訊號是**數字**:改寫稿會保留同樣的數字,而「金額由 10 億上修至
+    20 億」這種實質更新必然帶來不同的數字集合。
+    """
+    return set(_NUM_RE.findall(str(text or "").replace(",", "")))
 
 
 def _content_changed(story: dict, ev: dict) -> bool:
-    """今日這則的內容相對該線索上一次是否真的變了。"""
+    """今日這則相對該線索上一次是否有**實質**更新。
+
+    判準是數字事實的集合有變。標題沒有數字時回 False——此時只剩 lifecycle
+    可以判斷,保守地不把改寫稿當進展(寧可少推進,不要每天重複升級)。
+    """
     prev = str(story.get("last_delta") or "")
-    title = str(ev.get("title") or "")
     if not prev:
         return True
-    if _norm(prev) == _norm(title):
+    before, after = _material_facts(prev), _material_facts(ev.get("title"))
+    if not after:
         return False
-    return _subject_overlap(prev, title, str(story.get("entity") or ""),
-                            str(story.get("entity_name") or "")) < NEAR_IDENTICAL_OVERLAP
+    return before != after
 
 
 def _is_real_progress(ev: dict, story: dict | None = None) -> bool:

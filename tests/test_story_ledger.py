@@ -366,3 +366,45 @@ def test_alias_stripping_changes_the_verdict():
     with_alias = sl._subject_overlap(a, b, "2317", "鴻海")
     assert without_alias > with_alias
     assert with_alias < sl.SUBJECT_OVERLAP_MIN <= without_alias
+
+
+def test_reworded_duplicate_from_another_outlet_does_not_advance():
+    """r6(Codex,P1):跨媒體改寫稿措辭不同但事實相同。用「標題文字有沒有變」
+    當內容更新的判準,任何相似度門檻都會把改寫稿誤判成新進展——重複推進的問題
+    就回來了。判準改為**數字事實**:改寫稿保留同樣的數字。"""
+    led = sl.update_ledger(
+        [], [_ev_full("2317", "orders", "鴻海接獲車用大單 金額 10 億美元",
+                      is_incremental=True)], "2026-07-24")
+    state_before, updates_before = led[0]["state"], led[0]["updates"]
+    led2 = sl.update_ledger(
+        led, [_ev_full("2317", "orders", "外電報導:鴻海拿下車廠訂單 規模達 10 億美元",
+                       is_incremental=False)], "2026-07-25")
+    assert led2[0]["updates"] == updates_before, "跨媒體改寫稿被算成新進展"
+    assert led2[0]["state"] == state_before, "跨媒體改寫稿推進了狀態"
+
+
+def test_number_change_is_treated_as_material_update():
+    """數字變了才是實質更新。"""
+    assert sl._content_changed({"last_delta": "金額 10 億"}, {"title": "金額上修至 20 億"})
+    assert not sl._content_changed({"last_delta": "金額 10 億"},
+                                   {"title": "訂單規模 10 億 據悉"})
+
+
+def test_titles_without_numbers_fall_back_to_lifecycle_only():
+    """標題沒有數字時保守不當進展——此時只剩 lifecycle 可判斷。"""
+    assert not sl._content_changed({"last_delta": "傳將擴廠"}, {"title": "擴廠案有進展"})
+
+
+def test_us_ticker_entities_get_aliases_too():
+    """r6(Codex,P1):GOOGLE_NEWS_COMPANIES 有大量美股代號。alias map 只建台股表
+    的話,NVDA/AAPL 這些 entity 拿不到別名,英文標題裡的 NVIDIA/Apple 沒被剝掉。"""
+    name_map = {q_lbl[1]: q_lbl[0] for q_lbl in mr.GOOGLE_NEWS_COMPANIES}
+    assert "NVDA" in name_map and "輝達" in name_map["NVDA"]
+    led = sl.update_ledger(
+        [], [_ev_full("NVDA", "orders", "NVIDIA 輝達傳獲雲端大單")], "2026-07-10",
+        name_map=name_map)
+    assert led[0]["entity_name"]
+    led = sl.update_ledger(
+        led, [_ev_full("NVDA", "orders", "NVIDIA 輝達遭歐盟展開反壟斷調查")],
+        "2026-07-20", name_map=name_map)
+    assert led[0]["prev_delta"] == "", "美股 entity 的公司名沒被剝掉,拿到錯誤前情"

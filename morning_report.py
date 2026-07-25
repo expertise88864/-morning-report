@@ -19205,8 +19205,16 @@ def main() -> int:
         _ledger = load_story_ledger()
         # r5:代號→公司名對照。主體比對必須連公司名一起剝——生產環境的 entity 是
         # 股票代號,而中文標題寫的是公司名,只剝代號等於沒剝。
+        # 涵蓋**所有會進事件抽取器的追蹤實體**:台股 top-100 的中文名,以及
+        # GOOGLE_NEWS_COMPANIES 的美股代號別名(r6 Codex:只建台股表的話,
+        # NVDA/AMD/AAPL 這些 entity 拿不到別名,英文標題裡的 NVIDIA/Apple 沒被剝掉,
+        # 同月不同事件仍可能拿到錯誤前情)。查詢字串本身就帶中英文公司名
+        # (如「輝達 NVIDIA」「蘋果 Apple」),直接拿來當別名來源。
         _name_map = {str(s_.get("code")): str(s_.get("name") or "")
                      for s_ in (tw0050 or []) if s_.get("code")}
+        for _q, _lbl in GOOGLE_NEWS_COMPANIES:
+            if _lbl and not _name_map.get(str(_lbl)):
+                _name_map[str(_lbl)] = str(_q)
         _ledger = _sl.update_ledger(_ledger, structured_events,
                                     now_tpe.strftime("%Y-%m-%d"),
                                     name_map=_name_map)

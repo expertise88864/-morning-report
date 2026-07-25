@@ -196,8 +196,40 @@ _PUB_DATE_PATTERNS = (
     "{m}月{d}日", "{m}/{d}", "{m}月 {d}日", "{y}年{m}月{d}日",
 )
 # 中文數量詞:「百億 → 兩百億」這種只用中文寫的更新,純 ASCII 數字抽取看不到。
-_CJK_NUM_RE = re.compile(
-    r"[一二兩三四五六七八九十百千萬億兆]+(?=\s*(?:億|萬|千|百|元|口|股|成|倍|%|percent))")
+_CJK_NUM_RE = re.compile(r"[一二兩三四五六七八九十百千萬億兆]+")
+_MIXED_NUM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*([萬億兆])")
+_CJK_DIGITS = {"零": 0, "一": 1, "二": 2, "兩": 2, "三": 3, "四": 4,
+               "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CJK_UNITS = {"十": 10, "百": 100, "千": 1000, "萬": 10000,
+              "億": 10 ** 8, "兆": 10 ** 12}
+
+
+def _cjk_to_int(text: str):
+    """中文數字 → 整數(涵蓋十/百/千/萬/億的常見寫法);無法解析回 None。
+
+    r11(Codex,P1):「金額 10 億」與「金額十億」是同一個事實的兩種寫法,
+    不正規化就會被判成實質更新——跨媒體改寫稿又能推進狀態,繞回老問題。
+    """
+    total, section, current = 0, 0, 0
+    seen = False
+    for ch in str(text or ""):
+        if ch in _CJK_DIGITS:
+            current = _CJK_DIGITS[ch]
+            seen = True
+        elif ch in _CJK_UNITS:
+            unit = _CJK_UNITS[ch]
+            seen = True
+            if unit >= 10 ** 4:
+                base = section + current
+                section = (base if base else 1) * unit
+                total += section
+                section, current = 0, 0
+            else:
+                section += (current or 1) * unit
+                current = 0
+        else:
+            return None
+    return (total + section + current) if seen else None
 
 
 def _material_facts(text: str, entity: str = "", alias="", published: str = "") -> set:
@@ -215,7 +247,30 @@ def _material_facts(text: str, entity: str = "", alias="", published: str = "") 
             raw = raw.replace(token, " ")
     for pat in _pub_date_tokens(published):
         raw = raw.replace(pat, " ")
-    return set(_NUM_RE.findall(raw)) | set(_CJK_NUM_RE.findall(raw))
+    # 先把「阿拉伯數字 + 中文單位」(如「10 億」)換算成單一數值,
+    # 才能與純中文寫法(「十億」)得到相同的事實。
+    def _mixed(m):
+        try:
+            return f" {int(float(m.group(1)) * _CJK_UNITS[m.group(2)])} "
+        except (TypeError, ValueError, KeyError):
+            return m.group(0)
+
+    raw = _MIXED_NUM_RE.sub(_mixed, raw)
+    # 再把純中文數字換算掉
+    def _cjk(m):
+        val = _cjk_to_int(m.group(0))
+        return f" {val} " if val is not None else m.group(0)
+
+    raw = _CJK_NUM_RE.sub(_cjk, raw)
+    return {str(int(float(x))) if _is_intlike(x) else x
+            for x in _NUM_RE.findall(raw)}
+
+
+def _is_intlike(x: str) -> bool:
+    try:
+        return float(x) == int(float(x))
+    except (TypeError, ValueError):
+        return False
 
 
 def _pub_date_tokens(published: str) -> list[str]:
@@ -241,17 +296,26 @@ def _pub_date_tokens(published: str) -> list[str]:
 # 決策/極性詞:同一事實的改寫稿會沿用同一個動詞,而「支持→否決」「核准→駁回」
 # 這種反轉是 R16b 明列的實質進展,卻不帶任何數字。
 # r10(Codex,P1):純數字判準對這類無數字的立場翻轉完全無感。
-_DECISION_TERMS = (
-    "支持", "反對", "同意", "否決", "通過", "駁回", "核准", "撤回", "撤銷",
-    "暫緩", "中止", "終止", "延後", "推遲", "提前", "擴大", "縮減",
-    "上修", "下修", "調高", "調降", "看好", "看壞", "警示", "解除",
-    "獲准", "遭拒", "成立", "破局", "簽約", "解約", "增資", "減資",
-)
+# r11(Codex,P1):比較的是**語意類別**而非字面詞。「上修」與「調高」是同義改寫,
+# 字面不同但事實相同;拿字面比會把改寫稿判成更新,又繞回重複推進的老問題。
+_DECISION_CATEGORIES = {
+    "approve": ("支持", "同意", "通過", "核准", "獲准", "成立", "簽約", "拍板"),
+    "reject": ("反對", "否決", "駁回", "遭拒", "破局", "解約", "撤回", "撤銷",
+               "中止", "終止"),
+    "delay": ("暫緩", "延後", "推遲", "遞延"),
+    "advance": ("提前",),
+    "up": ("上修", "調高", "擴大", "看好", "增資", "加碼", "上調"),
+    "down": ("下修", "調降", "縮減", "看壞", "減資", "減碼", "下調"),
+    "alert": ("警示", "示警"),
+    "clear": ("解除", "排除"),
+}
 
 
 def _decision_terms(text: str) -> set:
+    """標題命中的決策**語意類別**(不是字面詞)。"""
     t = _norm(text)
-    return {w for w in _DECISION_TERMS if w in t}
+    return {cat for cat, words in _DECISION_CATEGORIES.items()
+            if any(w in t for w in words)}
 
 
 def _content_changed(story: dict, ev: dict) -> bool:
@@ -275,6 +339,19 @@ def _content_changed(story: dict, ev: dict) -> bool:
     if not after:
         return False
     return before != after
+
+
+def _remember_sig(seen: dict, key: str, sig: str) -> list:
+    """把簽章記到有序清單尾端(已存在則移到尾端),只保留最近 N 個。
+
+    順序必須由**插入序**決定,不能靠 set——見 update_ledger 內的說明。
+    """
+    sigs = seen.setdefault(key, [])
+    if sig in sigs:
+        sigs.remove(sig)
+    sigs.append(sig)
+    del sigs[:-SEEN_SIG_KEEP]
+    return list(sigs)
 
 
 def _event_signature(ev: dict) -> str:
@@ -384,8 +461,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     # 會讓 headline/delta/狀態全部停在舊值。改記**事件簽章**:完全相同的重播是
     # no-op,同日的實質更新仍可套用。
     touched: set[str] = set()
-    seen_sigs: dict[str, set] = {
-        k: set(st.get("seen_sigs") or []) for k, st in by_key.items()}
+    # r11(Codex,P1):簽章必須用**有序 list**。原本轉成 set 再 `list(sigs)[-12:]`
+    # 截斷——set 沒有順序,而 Python 的字串 hash 每個 process 都不同(hash
+    # randomization),截斷會**隨機**丟掉近期簽章;跨天執行時被丟掉的那則若數字
+    # 事實不同,重跑就會再次推進狀態,冪等性破功。
+    seen_sigs: dict[str, list] = {
+        k: [str(x) for x in (st.get("seen_sigs") or [])] for k, st in by_key.items()}
 
     for ev in events or []:
         if not isinstance(ev, dict):
@@ -426,20 +507,18 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "seen_sigs": [_event_signature(ev)],
                 "last_published": str(ev.get("published") or ""),
             }
-            seen_sigs[key] = {_event_signature(ev)}
+            seen_sigs[key] = [_event_signature(ev)]
             touched.add(key)
             continue
         sig = _event_signature(ev)
-        replayed = sig in seen_sigs.get(key, set())
+        replayed = sig in seen_sigs.get(key, [])
         if replayed or key in touched or not _is_real_progress(ev, story):
             # 完全相同的重播、當次呼叫已推進過、或上游判定非增量且無實質更新:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
             # r9(Codex,P1):**被壓下的事件也必須記簽章**。同一批若有兩則同 key
             # 的不同更新,第二則被 touched 壓下卻沒記簽章 → 下次重跑時第一則被
             # 認出是重播、第二則卻被當成新的而套用,同樣的輸入跑兩次結果不同。
-            sigs = seen_sigs.setdefault(key, set())
-            sigs.add(sig)
-            story["seen_sigs"] = list(sigs)[-SEEN_SIG_KEEP:]
+            story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             continue
@@ -458,10 +537,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["state"] = _advance(str(story.get("state") or "brewing"),
                                   has_delta=True, days_idle=0, surprise=surprise)
         story["last_update"] = today
-        sigs = seen_sigs.setdefault(key, set())
-        sigs.add(sig)
-        # 只留最近 N 個簽章:重播判定只需要近期記憶,無限成長會讓 state 檔膨脹
-        story["seen_sigs"] = list(sigs)[-SEEN_SIG_KEEP:]
+        story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
         touched.add(key)
 
     # 今日沒被碰到的 story:依閒置天數降級

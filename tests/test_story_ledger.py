@@ -563,3 +563,48 @@ def test_row_level_corruption_is_rejected(tmp_path, monkeypatch):
                  encoding="utf-8")
     with pytest.raises(mr.StoryLedgerCorrupt):
         mr.load_story_ledger()
+
+
+def test_cjk_numeral_conversion():
+    """中文數字換算(十億曾被算成 11 億)。"""
+    assert sl._cjk_to_int("十") == 10
+    assert sl._cjk_to_int("十億") == 10 ** 9
+    assert sl._cjk_to_int("兩百億") == 2 * 10 ** 10
+    assert sl._cjk_to_int("二十五") == 25
+    assert sl._cjk_to_int("一萬") == 10000
+    assert sl._cjk_to_int("非數字") is None
+
+
+def test_equivalent_number_notations_are_not_progress():
+    """r11(Codex,P1):「金額 10 億」與「金額十億」是同一事實的兩種寫法。
+    不正規化就會被判成實質更新,跨媒體改寫稿又能推進狀態。"""
+    assert sl._material_facts("金額 10 億") == sl._material_facts("金額十億")
+    assert not sl._content_changed({"last_delta": "訂單金額 10 億", "entity": "2317"},
+                                   {"title": "訂單金額十億"})
+    # 真正的數量改變仍要偵測到
+    assert sl._content_changed({"last_delta": "上看百億", "entity": "2317"},
+                               {"title": "上修至兩百億"})
+
+
+def test_decision_synonyms_are_not_progress():
+    """「上修」與「調高」是同義改寫,比字面會把改寫稿判成更新——比的是語意類別。"""
+    assert sl._decision_terms("上修財測") == sl._decision_terms("調高財測")
+    assert not sl._content_changed({"last_delta": "上修財測", "entity": "2330"},
+                                   {"title": "調高財測"})
+    # 極性反轉仍要偵測到
+    assert sl._content_changed({"last_delta": "董事會支持", "entity": "2330"},
+                               {"title": "董事會否決"})
+
+
+def test_signature_memory_is_insertion_ordered():
+    """r11(Codex,P1):簽章用 set 再截斷會**隨機**丟掉近期項(str hash 每個
+    process 都不同),跨天重跑就不再冪等。必須以插入序保留最近 N 個。"""
+    seen = {}
+    for i in range(sl.SEEN_SIG_KEEP + 5):
+        out = sl._remember_sig(seen, "k", f"sig{i}")
+    assert len(out) == sl.SEEN_SIG_KEEP
+    assert out[-1] == f"sig{sl.SEEN_SIG_KEEP + 4}", "最新的簽章沒被保留"
+    assert out == sorted(out, key=lambda x: int(x[3:])), "順序不是插入序"
+    # 重複出現時移到尾端,不佔兩個位置
+    before = len(sl._remember_sig(seen, "k", out[0]))
+    assert before == sl.SEEN_SIG_KEEP

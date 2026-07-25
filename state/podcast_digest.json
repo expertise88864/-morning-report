@@ -6342,6 +6342,39 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "d2e9f5ad-85fb-49f6-bc5c-65f32868b632",
+        "title": "The Fight Over Open Source AI, Anthropic's $1.5B Payout, NYC Socialists: Evictions = Violence?",
+        "published": "Fri, 24 Jul 2026 20:46:00 +0000",
+        "processed_at": "2026-07-25T05:02:52Z",
+        "digest": {
+          "summary_points": [
+            "中國開源模型 Kimmy K3 性能與美國前沿模型相當，但成本低 50%，引發白宮關於禁止中國開源模型的討論。",
+            "David Sacks 警告禁止開源將傷害美國 AI 領導地位，並指控 Anthropic 試圖進行監管捕獲以保護利潤。",
+            "蒸餾爭議：Anthropic 指控中國模型蒸餾其輸出，但 Sacks 和 Friedberg 指出虛偽，因為 Anthropic 和 OpenAI 自己也用版權內容訓練。",
+            "開源 AI 快速商品化，價值正從基礎模型轉移到應用層和基礎設施層（雲端、晶片）。",
+            "Google 本季財報優於預期，但資本支出飆升至 1950-2050 億美元，首次出現自由現金流為負，股價跌 7-10%；Chamath 和 Sacks 仍長期看多。",
+            "Tesla 資本支出年增 140%，自由現金流轉負，股價跌 14%；主持人未明確表達對 Tesla 的看法。",
+            "SpaceX IPO 較首日收盤價下跌 30%，市值 1.5 兆美元，面臨鎖定期到期壓力。",
+            "Anthropic 因盜版 700 萬本書籍以 15 億美元和解版權訴訟，凸顯合理使用的不確定性及對 AI 訓練成本的潛在風險。",
+            "Friedberg 認為中國的長期策略是商品化知識經濟，利用龐大的製造和能源優勢，在分子轉換領域掌握價值。",
+            "Sacks 反駁美國仍領先六個月；Anthropic 和 OpenAI 營收仍快速成長（Anthropic 年化營收 700 億美元，OpenAI 加速增長）。",
+            "所有主持人同意開源將持續存在，但前沿實驗室可透過向上移動到應用層和企業服務來獲勝。"
+          ],
+          "tickers": [
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "最佳定位從 AI 基礎設施和雲端獲取價值；碎片化有利於 Google 的晶片和雲端業務。"
+            }
+          ],
+          "market_view": "市場對 Google 和 Tesla 的巨額資本支出感到失望，但主持人認為長期投資 AI 基礎設施是正確策略，尤其看好 Google 的複合效應。",
+          "action_view": "建議投資者關注 Google 等擁有基礎設施和雲端業務的公司，而非僅押注前沿模型。",
+          "notable_quote": "This is why the 1% that controls open source, if they have it, that the oligarchs are going to get their clocks wrong and we don't need to have a wealth tax."
+        }
+      },
+      {
         "guid": "d4e4932a-4eb5-4007-8f84-4d386c3a22ce",
         "title": "Mark Cuban on the AI Bubble: Who Actually Gets Wiped Out?",
         "published": "Mon, 20 Jul 2026 18:51:00 +0000",

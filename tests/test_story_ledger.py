@@ -19,13 +19,73 @@ def _ev(entity, event_type, title, surprise=0.3):
             "title": title, "surprise_score": surprise}
 
 
-def test_story_key_ignores_dates_and_numbers():
-    """同一條線索的後續報導金額會變、日期會變。把它們放進 key 等於每天開新 story。"""
-    a = sl.story_key("2330", "earnings", "台積電法說 毛利率 58%")
-    b = sl.story_key("2330", "earnings", "台積電法說 毛利率上修至 60%,7月25日")
-    assert a == b, "同實體同事件類型應視為同一條線索"
-    c = sl.story_key("2454", "earnings", "聯發科法說")
+def test_story_key_ignores_numbers_in_title():
+    """同一條線索的後續報導金額會變。把標題數字放進 key 等於每天開新 story。"""
+    a = sl.story_key("2330", "earnings", "台積電法說 毛利率 58%", "2026-07-24T00:00:00+00:00")
+    b = sl.story_key("2330", "earnings", "台積電法說 毛利率上修至 60%", "2026-07-25T00:00:00+00:00")
+    assert a == b, "同一季同實體同型別應視為同一條線索"
+    c = sl.story_key("2454", "earnings", "聯發科法說", "2026-07-25T00:00:00+00:00")
     assert a != c
+
+
+def test_story_key_separates_quarterly_episodes():
+    """r1(Codex F3):財報/財測是「按集數發生」的事件——台積電 Q1 與 Q2 是兩件事。
+    共用一把 key 會讓 Q2 被當成 Q1 的續報、還餵給 LLM 錯誤的前情。
+    分桶規則直接重用 news_events 的期別 bucket,不另造一份會走樣的。"""
+    q1 = sl.story_key("2330", "earnings", "台積電法說", "2026-02-15T00:00:00+00:00")
+    q3 = sl.story_key("2330", "earnings", "台積電法說", "2026-08-15T00:00:00+00:00")
+    assert q1 != q3, "不同季的財報被當成同一條線索"
+    # 營收是月頻(台股月營收每月公布)
+    m7 = sl.story_key("2330", "revenue_growth", "月營收", "2026-07-10T00:00:00+00:00")
+    m8 = sl.story_key("2330", "revenue_growth", "月營收", "2026-08-10T00:00:00+00:00")
+    assert m7 != m8
+
+
+def test_story_key_does_not_split_long_running_sagas():
+    """**只對 episodic 型別分桶**。orders/litigation 這類長線在 news_events 掛月
+    bucket 是為了 event study 的樣本獨立性;story ledger 要的是跨週敘事連續性,
+    在月界切斷併購案會直接破壞本模組的目的。"""
+    a = sl.story_key("2317", "orders", "收購案洽談", "2026-07-28T00:00:00+00:00")
+    b = sl.story_key("2317", "orders", "收購案進展", "2026-08-03T00:00:00+00:00")
+    assert a == b, "跨月的同一條併購線索被切成兩條"
+
+
+def test_idle_developing_story_demotes_not_promotes():
+    """r1(Codex F1,P1):STATES 是「熱度由低到高再收斂」的順序,developing 的
+    下一個元素是 peak——用相鄰元素當降級,會把閒置兩天的線索**升級成高潮**
+    並搶到最高版面權重,與降級意圖完全相反。"""
+    led = sl.update_ledger([], [_ev("2330", "earnings", "法說")], "2026-07-20")
+    led = sl.update_ledger(led, [_ev("2330", "earnings", "續報")], "2026-07-21")
+    assert led[0]["state"] == "developing"
+    for idle_days, expect in ((2, "resolving"), (4, "resolving"), (6, "resolving")):
+        day = f"2026-07-{21 + idle_days:02d}"
+        out = sl.update_ledger(led, [], day)
+        assert out[0]["state"] == expect, (
+            f"閒置 {idle_days} 天得到 {out[0]['state']},應為 {expect}"
+            "(得到 peak 代表降級走成了升級)")
+
+
+def test_same_day_rerun_does_not_advance_state():
+    """r1(Codex F2):帳本會持久化,workflow 手動重跑會拿同一批事件再跑一次。
+    touched 若從空集合開始,重跑一次就能把線索灌到高潮。"""
+    evs = [_ev("2330", "earnings", "法說")]
+    led = sl.update_ledger([], evs, "2026-07-24")
+    led = sl.update_ledger(led, [_ev("2330", "earnings", "續報")], "2026-07-25")
+    state_after = led[0]["state"]
+    updates_after = led[0]["updates"]
+    rerun = sl.update_ledger(led, [_ev("2330", "earnings", "續報")], "2026-07-25")
+    assert rerun[0]["state"] == state_after, "同日重跑推進了狀態"
+    assert rerun[0]["updates"] == updates_after, "同日重跑多算了一次進展"
+
+
+def test_new_story_with_high_surprise_starts_at_peak():
+    """r1(Codex F5):重大突發事件第一天最該當主線,原本一律 brewing 會被 R16b
+    判為「不當主線」。"""
+    led = sl.update_ledger([], [_ev("2330", "litigation", "遭美方調查", 0.9)],
+                           "2026-07-25")
+    assert led[0]["state"] == "peak"
+    led2 = sl.update_ledger([], [_ev("2330", "general", "例行公告", 0.2)], "2026-07-25")
+    assert led2[0]["state"] == "brewing"
 
 
 def test_story_key_falls_back_to_title_fingerprint():

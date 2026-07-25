@@ -5202,7 +5202,11 @@ def _roc_date_to_tpe_datetime(roc: str):
         return None
 
 
-_ARTICLE_MIN_CHARS = 80          # 低於此視為抽取失敗,退回去標籤法
+# 正文可用的最低長度。**抽取器與呼叫端必須共用同一個門檻**——r1(Codex F4):
+# 原本抽取器收 80 字、呼叫端要 >100,80~100 字的文章會被抽取器判為成功
+# (於是不退回去標籤法),又被呼叫端判為太短(於是不寫 fulltext),兩邊都不要,
+# 該篇的全文就這樣無聲消失。
+_ARTICLE_MIN_CHARS = 100
 _TRAFILATURA_UNAVAILABLE = False   # 匯入失敗只印一次,不要每篇都吵
 
 
@@ -6698,7 +6702,7 @@ def fetch_news_fulltext(news: list[dict],
             if r.status_code != 200:
                 continue
             text = _extract_article_text(r.text)
-            if len(text) > 100:
+            if len(text) >= _ARTICLE_MIN_CHARS:
                 n["fulltext"] = text[:2500]
                 crit_fetched += 1
         except Exception as e:
@@ -6724,7 +6728,7 @@ def fetch_news_fulltext(news: list[dict],
             if r.status_code != 200:
                 continue
             text = _extract_article_text(r.text)
-            if len(text) > 100:
+            if len(text) >= _ARTICLE_MIN_CHARS:
                 n["fulltext"] = text[:2000]    # high 全文略短(2000 vs critical 2500)
                 high_fetched += 1
         except Exception as e:

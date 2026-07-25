@@ -51,6 +51,18 @@ STATE_ZH = {
 STATE_WEIGHT = {"peak": 3.0, "developing": 2.0, "resolving": 1.2,
                 "brewing": 1.0, "dormant": 0.0}
 
+# 閒置降級的**顯式**對照表。刻意不用 STATES 的相鄰元素:那個 tuple 是「熱度
+# 由低到高再收斂」的順序,developing 的下一個是 peak,拿來當降級會把冷掉的線索
+# 升級成高潮(r1 Codex F1 實際發生過)。
+_IDLE_DEMOTION = {
+    "brewing": "dormant",        # 從未成形的線索,沒動就沉寂
+    "developing": "resolving",
+    "peak": "resolving",
+    "resolving": "dormant",
+    "dormant": "dormant",
+}
+
+HIGH_SURPRISE_PEAK = 0.75     # 超過此 surprise 直接視為高潮(新開或續報皆適用)
 STALE_DAYS_TO_DEMOTE = 2      # 連續幾天沒有新進展就降一級
 DORMANT_AFTER_DAYS = 7        # 超過幾天完全沒動就直接沉寂
 MAX_ACTIVE_STORIES = 12       # 進 prompt 的活躍 story 上限
@@ -63,19 +75,47 @@ def _norm(text: str) -> str:
     return _PUNCT_RE.sub("", str(text or "")).lower()
 
 
-def story_key(entity: str, event_type: str, title: str = "") -> str:
-    """story 身分:實體 + 事件類型為主,兩者皆缺才退回標題指紋。
+def story_key(entity: str, event_type: str, title: str = "",
+              published: str = "") -> str:
+    """story 身分:實體 + 事件類型(+ episodic 型別的期別 bucket),皆缺才退標題指紋。
 
-    刻意**不**把日期或數字放進 key——同一條線索的後續報導金額會變、日期會變,
+    刻意**不**把標題裡的金額或日期放進 key——同一條線索的後續報導數字會變,
     放進去等於每天都開新 story,連續性就沒了。
+
+    r1(Codex F3):但**財報/財測/營收是「按集數發生」的事件**——台積電 Q1 與 Q2
+    財報是兩件事,共用一把 key 會讓 Q2 被當成 Q1 的續報、還餵給 LLM 錯誤的前情。
+    news_events 早就為此建了期別 bucket(財報/財測=季、營收=月),這裡直接重用
+    同一套規則,不另造一份會走樣的。
+
+    **只對 episodic 型別分桶**:orders/litigation/geopolitical 等在 news_events
+    是掛「月」bucket,但那是為了 event study 的樣本獨立性;story ledger 要的是
+    跨週敘事連續性,把併購案這種長線在月界切斷會直接破壞本模組的目的。
     """
     ent, et = _norm(entity), _norm(event_type)
     if ent and et:
-        return f"e:{ent}|t:{et}"
+        bucket = _episodic_bucket(event_type, published)
+        return f"e:{ent}|t:{et}" + (f"|p:{bucket}" if bucket else "")
     if ent:
         return f"e:{ent}"
     digest = hashlib.sha256(_norm(title).encode("utf-8")).hexdigest()[:16]
     return f"h:{digest}"
+
+
+def _episodic_bucket(event_type: str, published: str) -> str:
+    """財報/財測 → 季 bucket;營收 → 月 bucket;其餘 → 無 bucket。
+
+    規則與 news_events._event_timeline_key 一致(直接取用該模組的型別集合與
+    分桶函式,避免兩份規則日後走樣)。
+    """
+    try:
+        import news_events as _ne
+    except ImportError:
+        return ""
+    et = str(event_type or "").strip()
+    monthly = et in _ne._MONTHLY_EVENT_TYPES
+    if not monthly and et not in _ne._QUARTERLY_EVENT_TYPES:
+        return ""
+    return _ne._event_period_bucket({"published": published}, monthly=monthly)
 
 
 def _days_between(a: str, b: str) -> int:
@@ -98,7 +138,7 @@ def _advance(state: str, has_delta: bool, days_idle: int,
     """
     idx = STATES.index(state) if state in STATES else 0
     if has_delta:
-        if surprise >= 0.75:
+        if surprise >= HIGH_SURPRISE_PEAK:
             return "peak"
         # 已在收斂的線索有新進展 → 回到發展(事情又有變化),不是再往下掉
         if state == "resolving":
@@ -109,10 +149,11 @@ def _advance(state: str, has_delta: bool, days_idle: int,
     if days_idle >= DORMANT_AFTER_DAYS:
         return "dormant"
     if days_idle >= STALE_DAYS_TO_DEMOTE:
-        # peak → resolving → dormant;brewing 沒動就直接沉寂(從未成形的線索)
-        if state == "brewing":
-            return "dormant"
-        return STATES[min(idx + 1, len(STATES) - 1)]
+        # r1(Codex F1):**不可用 STATES 的下一個元素當降級**。STATES 是「熱度
+        # 由低到高再收斂」的順序,developing 的下一個是 peak——閒置兩天的線索
+        # 會被**升級成高潮**並搶到最高版面權重,與降級意圖完全相反。
+        # 改用顯式的降級對照表。
+        return _IDLE_DEMOTION.get(state, "dormant")
     return state
 
 
@@ -123,7 +164,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
     同一 story 當日多則報導只算一次 delta(避免同事件跨媒體重複推進狀態)。
     """
     by_key = {str(s.get("key")): dict(s) for s in (ledger or []) if s.get("key")}
-    touched: set[str] = set()
+    # r1(Codex F2):**當日已處理過的 story 視同已推進**。帳本會被持久化,
+    # workflow 手動重跑(或補跑)時會拿同一批事件再跑一次 update_ledger,
+    # touched 若從空集合開始,每條既有 story 都會再被推進一次、updates 也多加一次
+    # ——重跑一次就能把線索灌到高潮。以 last_update == today 當同日守衛。
+    touched: set[str] = {k for k, s in by_key.items()
+                         if str(s.get("last_update") or "")[:10] == str(today)[:10]}
 
     for ev in events or []:
         if not isinstance(ev, dict):
@@ -131,7 +177,8 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
         title = str(ev.get("title") or "").strip()
         if not title:
             continue
-        key = story_key(ev.get("entity"), ev.get("event_type"), title)
+        key = story_key(ev.get("entity"), ev.get("event_type"), title,
+                        str(ev.get("published") or ""))
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
         if story is None:
@@ -140,7 +187,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
                 "entity": str(ev.get("entity") or ""),
                 "event_type": str(ev.get("event_type") or ""),
                 "headline": title[:120],
-                "state": "brewing",
+                # r1(Codex F5):高 surprise 的**新**線索直接是高潮。原本新開
+                # 一律 brewing,等於重大突發事件第一天被 R16b 判為「不當主線」
+                # ——那正是最該當主線的時候。
+                # 注意**不能**直接套 _advance:它對任何有進展的都升一級,會讓
+                # 所有新線索都從 developing 起跳(自測抓到)。只在高 surprise 時跳。
+                "state": "peak" if surprise >= HIGH_SURPRISE_PEAK else "brewing",
                 "first_seen": today,
                 "last_update": today,
                 "updates": 1,

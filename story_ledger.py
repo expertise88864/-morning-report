@@ -233,8 +233,15 @@ def _content_changed(story: dict, ev: dict) -> bool:
 
 
 def _event_signature(ev: dict) -> str:
-    """單一事件的重播簽章(正規化標題)。完全相同的稿子再進來一次即為重播。"""
-    return hashlib.sha256(_norm(ev.get("title")).encode("utf-8")).hexdigest()[:16]
+    """單一事件的重播簽章。
+
+    r8(Codex,P1):**必須含 lifecycle**。只雜湊標題的話,「傳聞→證實」這種
+    lifecycle 有推進但標題沒變的情況會被判成重播、直接短路掉,
+    連 _is_real_progress 都走不到 → delta、last_update、狀態全部停在舊值。
+    lifecycle 轉移正是 news_events 明訂的「真增量」。
+    """
+    raw = _norm(ev.get("title")) + "|" + _norm(ev.get("lifecycle"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 def _is_real_progress(ev: dict, story: dict | None = None) -> bool:

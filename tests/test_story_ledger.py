@@ -483,3 +483,40 @@ def test_same_day_rerun_applies_genuinely_newer_report():
         led, [_ev_full("2317", "orders", "金額上修 官方公告 20 億")], d)
     assert "20" in newer[0]["last_delta"], "同日的實質更新沒有進到帳本"
     assert newer[0]["updates"] == updates_after_first + 1
+
+
+def test_lifecycle_transition_with_same_headline_is_not_replay():
+    """r8(Codex,P1):簽章只雜湊標題的話,「傳聞→證實」這種 lifecycle 有推進但
+    標題沒變的情況會被判成重播、直接短路,連 _is_real_progress 都走不到,
+    delta/last_update/狀態全停在舊值。lifecycle 轉移正是既有系統明訂的真增量。"""
+    ev_rumor = dict(_ev_full("2317", "orders", "傳接獲車用大單"),
+                    lifecycle="rumor", is_incremental=True)
+    ev_conf = dict(_ev_full("2317", "orders", "傳接獲車用大單"),
+                   lifecycle="confirmed", is_incremental=True)
+    led = sl.update_ledger([], [ev_rumor], "2026-07-24")
+    updates_before = led[0]["updates"]
+    led2 = sl.update_ledger(led, [ev_conf], "2026-07-25")
+    assert led2[0]["updates"] == updates_before + 1, "lifecycle 推進被當成重播"
+    assert led2[0]["last_update"] == "2026-07-25"
+
+
+def test_row_level_corruption_is_rejected(tmp_path, monkeypatch):
+    """r8(Codex):列級損壞同樣造成不可逆的歷史遺失,只是比整檔損壞更難察覺——
+    載入靜默過濾非 dict、update_ledger 靜默丟掉沒有 key 的列,main 再把縮水後的
+    帳本存回去。任何一列不合格就整份判定損壞。"""
+    import pytest
+    f = tmp_path / "story_ledger.json"
+    monkeypatch.setattr(mr, "STORY_LEDGER_FILE", f)
+    good = sl.update_ledger([], [_ev("2330", "earnings", "法說")], "2026-07-25")
+    assert mr.save_story_ledger(good) is True
+    assert mr.load_story_ledger()          # 前置條件:正常檔可讀
+
+    import json as _json
+    f.write_text(_json.dumps(good + ["不是物件"], ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(mr.StoryLedgerCorrupt):
+        mr.load_story_ledger()
+
+    f.write_text(_json.dumps(good + [{"entity": "2330"}], ensure_ascii=False),
+                 encoding="utf-8")
+    with pytest.raises(mr.StoryLedgerCorrupt):
+        mr.load_story_ledger()

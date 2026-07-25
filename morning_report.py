@@ -5122,10 +5122,21 @@ def load_story_ledger() -> list[dict]:
     except Exception as e:
         raise StoryLedgerCorrupt(f"JSON 解析失敗: {type(e).__name__}") from e
     if isinstance(data, list):
-        return [s for s in data if isinstance(s, dict)]
-    if isinstance(data, dict) and isinstance(data.get("stories"), list):
-        return [s for s in data["stories"] if isinstance(s, dict)]
-    raise StoryLedgerCorrupt(f"形狀不符(得到 {type(data).__name__})")
+        rows = data
+    elif isinstance(data, dict) and isinstance(data.get("stories"), list):
+        rows = data["stories"]
+    else:
+        raise StoryLedgerCorrupt(f"形狀不符(得到 {type(data).__name__})")
+    # r8(Codex):**逐列驗證**。原本靜默過濾非 dict、而 update_ledger 又會靜默丟掉
+    # 沒有 key 的列,接著 main 把「縮水後的帳本」存回去 → 列級損壞同樣造成
+    # 不可逆的歷史遺失,只是比整檔損壞更難察覺。任何一列不合格就整份判定損壞,
+    # 由呼叫端降級並跳過存檔。
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise StoryLedgerCorrupt(f"第 {i} 列不是物件({type(row).__name__})")
+        if not str(row.get("key") or "").strip():
+            raise StoryLedgerCorrupt(f"第 {i} 列缺少 key")
+    return list(rows)
 
 
 def save_story_ledger(ledger: list[dict]) -> bool:

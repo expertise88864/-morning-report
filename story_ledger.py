@@ -71,6 +71,7 @@ HIGH_SURPRISE_PEAK = 0.75     # 超過此 surprise 直接視為高潮(新開或�
 STALE_DAYS_TO_DEMOTE = 2      # 連續幾天沒有新進展就降一級
 DORMANT_AFTER_DAYS = 7        # 超過幾天完全沒動就直接沉寂
 MAX_ACTIVE_STORIES = 12       # 進 prompt 的活躍 story 上限
+SEEN_SIG_KEEP = 12            # 每條線索保留的重播簽章數
 KEEP_DAYS = 120               # 帳本保留天數(沉寂的也留著,供日後復燃接回)
 
 _PUNCT_RE = re.compile(r"[\s，。、；：！？「」『』()（）\[\]【】<>《》,.;:!?\"'`~\-—–]+")
@@ -186,9 +187,17 @@ def _is_same_subject(story: dict, ev: dict) -> bool:
 
 
 _NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
+# 日期/年度/季別等版面雜訊:同一則事件的不同稿子常各自帶或不帶這些,
+# 拿它們當「事實變了」會把改寫稿誤判成更新。
+_DATE_NOISE_RE = re.compile(
+    r"\d{4}\s*年|\d{1,2}\s*月\d{1,2}\s*日|\d{1,2}/\d{1,2}|"
+    r"\d{4}\s*[Qq]\d|第?\s*\d\s*季|\d{1,2}\s*月(?!\s*營收)")
+# 中文數量詞:「百億 → 兩百億」這種只用中文寫的更新,純 ASCII 數字抽取看不到。
+_CJK_NUM_RE = re.compile(
+    r"[一二兩三四五六七八九十百千萬億兆]+(?=\s*(?:億|萬|千|百|元|口|股|成|倍|%|percent))")
 
 
-def _material_facts(text: str) -> set:
+def _material_facts(text: str, entity: str = "", alias="") -> set:
     """標題裡的**數字事實**(金額/百分比/口數/日期…)。
 
     r6(Codex,P1):不能拿「標題文字有沒有變」當內容更新的判準——跨媒體改寫本來
@@ -196,7 +205,13 @@ def _material_facts(text: str) -> set:
     真正可靠的訊號是**數字**:改寫稿會保留同樣的數字,而「金額由 10 億上修至
     20 億」這種實質更新必然帶來不同的數字集合。
     """
-    return set(_NUM_RE.findall(str(text or "").replace(",", "")))
+    raw = str(text or "").replace(",", "")
+    aliases = alias if isinstance(alias, (list, tuple, set)) else [alias]
+    for token in [str(entity or "")] + [str(x or "") for x in aliases]:
+        if token:
+            raw = raw.replace(token, " ")
+    raw = _DATE_NOISE_RE.sub(" ", raw)
+    return set(_NUM_RE.findall(raw)) | set(_CJK_NUM_RE.findall(raw))
 
 
 def _content_changed(story: dict, ev: dict) -> bool:
@@ -208,10 +223,18 @@ def _content_changed(story: dict, ev: dict) -> bool:
     prev = str(story.get("last_delta") or "")
     if not prev:
         return True
-    before, after = _material_facts(prev), _material_facts(ev.get("title"))
+    entity = str(story.get("entity") or "")
+    alias = str(story.get("entity_name") or "").split()
+    before = _material_facts(prev, entity, alias)
+    after = _material_facts(ev.get("title"), entity, alias)
     if not after:
         return False
     return before != after
+
+
+def _event_signature(ev: dict) -> str:
+    """單一事件的重播簽章(正規化標題)。完全相同的稿子再進來一次即為重播。"""
+    return hashlib.sha256(_norm(ev.get("title")).encode("utf-8")).hexdigest()[:16]
 
 
 def _is_real_progress(ev: dict, story: dict | None = None) -> bool:
@@ -304,8 +327,13 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     # workflow 手動重跑(或補跑)時會拿同一批事件再跑一次 update_ledger,
     # touched 若從空集合開始,每條既有 story 都會再被推進一次、updates 也多加一次
     # ——重跑一次就能把線索灌到高潮。以 last_update == today 當同日守衛。
-    touched: set[str] = {k for k, s in by_key.items()
-                         if str(s.get("last_update") or "")[:10] == str(today)[:10]}
+    # r7(Codex F2):同日守衛不能整條 story 一起鎖。手動重跑時若某條線索當日
+    # **確實有更新的報導**(首跑 10 億、重跑拿到官方 20 億),整條被 touched 擋住
+    # 會讓 headline/delta/狀態全部停在舊值。改記**事件簽章**:完全相同的重播是
+    # no-op,同日的實質更新仍可套用。
+    touched: set[str] = set()
+    seen_sigs: dict[str, set] = {
+        k: set(st.get("seen_sigs") or []) for k, st in by_key.items()}
 
     for ev in events or []:
         if not isinstance(ev, dict):
@@ -343,11 +371,15 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "last_delta": title[:160],
                 "prev_delta": "",
                 "max_surprise": round(surprise, 3),
+                "seen_sigs": [_event_signature(ev)],
             }
+            seen_sigs[key] = {_event_signature(ev)}
             touched.add(key)
             continue
-        if key in touched or not _is_real_progress(ev, story):
-            # 當日已推進過、或上游判定為「非增量」的重複報導:
+        sig = _event_signature(ev)
+        replayed = sig in seen_sigs.get(key, set())
+        if replayed or key in touched or not _is_real_progress(ev, story):
+            # 完全相同的重播、當次呼叫已推進過、或上游判定非增量且無實質更新:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
@@ -366,6 +398,10 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["state"] = _advance(str(story.get("state") or "brewing"),
                                   has_delta=True, days_idle=0, surprise=surprise)
         story["last_update"] = today
+        sigs = seen_sigs.setdefault(key, set())
+        sigs.add(sig)
+        # 只留最近 N 個簽章:重播判定只需要近期記憶,無限成長會讓 state 檔膨脹
+        story["seen_sigs"] = list(sigs)[-SEEN_SIG_KEEP:]
         touched.add(key)
 
     # 今日沒被碰到的 story:依閒置天數降級

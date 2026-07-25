@@ -5098,23 +5098,34 @@ def _trend_label(metrics: dict) -> str:
     return "盤整"
 
 
+class StoryLedgerCorrupt(RuntimeError):
+    """線索帳本無法讀取或形狀不對。
+
+    r7(Codex):**必須讓呼叫端知道**。原本讀檔失敗回空清單,main 接著用今日事件
+    重建一份局部帳本並無條件覆寫存檔——**120 天的線索歷史就這樣被一個暫時性的
+    讀檔錯誤永久抹掉**。而且形狀不對的合法 JSON(如 `{}`)連降級都不會記。
+    降級可以接受(今天退回單日快照),覆寫不行。
+    """
+
+
 def load_story_ledger() -> list[dict]:
-    """線索帳本。讀檔失敗回空清單並記入降級——空帳本的後果是「今天所有線索都
-    變成新開」,敘事會退回單日快照,那是要被看見的降級而非正常狀態。"""
+    """線索帳本。檔案不存在=首次執行(回空清單);損壞或形狀不對則拋
+    StoryLedgerCorrupt,由呼叫端決定降級並**跳過存檔**。"""
     try:
-        data = json.loads(STORY_LEDGER_FILE.read_text(encoding="utf-8"))
+        raw = STORY_LEDGER_FILE.read_text(encoding="utf-8")
     except FileNotFoundError:
         return []
     except Exception as e:
-        print(f"[story] 線索帳本讀取失敗({type(e).__name__}),敘事退回單日快照",
-              file=sys.stderr)
-        _DEGRADED_STEPS.append("story_ledger_load")
-        return []
+        raise StoryLedgerCorrupt(f"讀取失敗: {type(e).__name__}") from e
+    try:
+        data = json.loads(raw)
+    except Exception as e:
+        raise StoryLedgerCorrupt(f"JSON 解析失敗: {type(e).__name__}") from e
     if isinstance(data, list):
         return [s for s in data if isinstance(s, dict)]
     if isinstance(data, dict) and isinstance(data.get("stories"), list):
         return [s for s in data["stories"] if isinstance(s, dict)]
-    return []
+    raise StoryLedgerCorrupt(f"形狀不符(得到 {type(data).__name__})")
 
 
 def save_story_ledger(ledger: list[dict]) -> bool:
@@ -19202,7 +19213,16 @@ def main() -> int:
     # 「Python 權威、LLM 只能抄錄」);LLM 只負責在寫作時接上前情。
     try:
         import story_ledger as _sl
-        _ledger = load_story_ledger()
+        try:
+            _ledger = load_story_ledger()
+            _ledger_readable = True
+        except StoryLedgerCorrupt as e:
+            # 讀不到就**不存檔**:寧可今天沒有線索脈絡,也不能拿局部重建的帳本
+            # 覆蓋掉 120 天歷史(那是不可逆的資料遺失)。
+            print(f"[story] 線索帳本損壞({e}),本次不寫入以免覆蓋歷史",
+                  file=sys.stderr)
+            _DEGRADED_STEPS.append("story_ledger_corrupt")
+            _ledger, _ledger_readable = [], False
         # r5:代號→公司名對照。主體比對必須連公司名一起剝——生產環境的 entity 是
         # 股票代號,而中文標題寫的是公司名,只剝代號等於沒剝。
         # 涵蓋**所有會進事件抽取器的追蹤實體**:台股 top-100 的中文名,以及
@@ -19219,7 +19239,7 @@ def main() -> int:
                                     now_tpe.strftime("%Y-%m-%d"),
                                     name_map=_name_map)
         quotes["STORY_LEDGER"] = _ledger
-        if not save_story_ledger(_ledger):
+        if _ledger_readable and not save_story_ledger(_ledger):
             _DEGRADED_STEPS.append("story_ledger_save")
         _active = _sl.active_stories(_ledger)
         print(f"[story] 線索 {len(_ledger)} 條,活躍 {len(_active)} 條"

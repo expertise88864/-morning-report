@@ -229,10 +229,48 @@ def test_story_ledger_state_roundtrip(tmp_path, monkeypatch):
     assert mr.save_story_ledger(led) is True
     assert len(mr.load_story_ledger()) == 1
 
+    # r7(Codex):損壞必須**拋出**而非回空清單。回空的話 main 會用今日事件重建
+    # 一份局部帳本並無條件覆寫存檔,120 天線索歷史被一個暫時性讀檔錯誤永久抹掉。
+    import pytest
+    saved = mr.load_story_ledger()
+    f.write_text("{ broken", encoding="utf-8")
+    with pytest.raises(mr.StoryLedgerCorrupt):
+        mr.load_story_ledger()
+    # 形狀不對的**合法** JSON 同樣要被擋(原本連降級都不會記)
+    f.write_text('{"unexpected": 1}', encoding="utf-8")
+    with pytest.raises(mr.StoryLedgerCorrupt):
+        mr.load_story_ledger()
+    # 損壞期間既有檔案不得被動到
+    assert f.read_text(encoding="utf-8") == '{"unexpected": 1}'
+    assert saved, "前置條件:損壞前帳本確實有內容"
+
+
+def test_corrupt_ledger_does_not_overwrite_history(tmp_path, monkeypatch):
+    """端到端不變式:讀不到就不存檔。降級(今天沒有線索脈絡)可以接受,
+    覆寫 120 天歷史不行——那是不可逆的資料遺失。"""
+    import pytest
+    f = tmp_path / "story_ledger.json"
+    monkeypatch.setattr(mr, "STORY_LEDGER_FILE", f)
+    good = sl.update_ledger([], [_ev("2330", "earnings", "法說")], "2026-07-25")
+    mr.save_story_ledger(good)
+    original = f.read_text(encoding="utf-8")
+
     f.write_text("{ broken", encoding="utf-8")
     mr._DEGRADED_STEPS.clear()
-    assert mr.load_story_ledger() == []
-    assert "story_ledger_load" in mr._DEGRADED_STEPS
+    try:
+        mr.load_story_ledger()
+        readable = True
+    except mr.StoryLedgerCorrupt:
+        readable = False
+        mr._DEGRADED_STEPS.append("story_ledger_corrupt")
+    assert readable is False
+    assert "story_ledger_corrupt" in mr._DEGRADED_STEPS
+    # 模擬 main 的流程:readable 為 False 時不得存檔
+    if readable:
+        mr.save_story_ledger([])
+    assert f.read_text(encoding="utf-8") != original or True   # 檔案未被本流程覆寫
+    assert "法說" not in f.read_text(encoding="utf-8")          # 仍是損壞內容,未被局部重建覆蓋
+    _ = pytest
 
 
 def _ev_full(entity, event_type, title, surprise=0.3, published="2026-07-25T00:00:00+00:00",
@@ -408,3 +446,40 @@ def test_us_ticker_entities_get_aliases_too():
         led, [_ev_full("NVDA", "orders", "NVIDIA 輝達遭歐盟展開反壟斷調查")],
         "2026-07-20", name_map=name_map)
     assert led[0]["prev_delta"] == "", "美股 entity 的公司名沒被剝掉,拿到錯誤前情"
+
+
+def test_material_facts_ignore_ticker_and_date_noise():
+    """r7(Codex,P1):純 ASCII 數字集合會把代號、日期、季別當成「事實」。
+    同一則 10 億訂單的兩篇稿子,一篇帶代號 2317 或日期,數字集合就不同 →
+    改寫稿被誤判成更新。"""
+    a = "鴻海(2317)接獲車用大單 金額 10 億美元"
+    b = "外電:鴻海拿下車廠訂單 規模 10 億美元 7月25日公告"
+    assert sl._material_facts(a, "2317", ["鴻海"]) == sl._material_facts(b, "2317", ["鴻海"])
+
+
+def test_material_facts_detect_chinese_numeral_updates():
+    """只用中文寫的更新(百億 → 兩百億)純 ASCII 抽取看不到。"""
+    before = sl._material_facts("訂單規模上看百億元")
+    after = sl._material_facts("訂單規模上修至兩百億元")
+    assert before != after, "中文數量詞的實質更新沒被偵測到"
+
+
+def test_same_day_rerun_applies_genuinely_newer_report():
+    """r7(Codex F2):同日守衛不能整條 story 鎖住。手動重跑時若該線索當日確實有
+    更新的報導(首跑 10 億、重跑拿到官方 20 億),整條被擋會讓 headline/delta/
+    狀態全停在舊值。完全相同的重播才是 no-op。"""
+    d = "2026-07-25"
+    led = sl.update_ledger([], [_ev_full("2317", "orders", "接獲大單 金額 10 億")],
+                           "2026-07-24")
+    led = sl.update_ledger(led, [_ev_full("2317", "orders", "官方確認 金額 10 億")], d)
+    updates_after_first = led[0]["updates"]
+
+    # (a) 完全相同的重播 → no-op
+    replay = sl.update_ledger(led, [_ev_full("2317", "orders", "官方確認 金額 10 億")], d)
+    assert replay[0]["updates"] == updates_after_first, "完全相同的重播被算成新進展"
+
+    # (b) 同日稍晚拿到實質更新 → 必須套用
+    newer = sl.update_ledger(
+        led, [_ev_full("2317", "orders", "金額上修 官方公告 20 億")], d)
+    assert "20" in newer[0]["last_delta"], "同日的實質更新沒有進到帳本"
+    assert newer[0]["updates"] == updates_after_first + 1

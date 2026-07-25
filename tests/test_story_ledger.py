@@ -642,3 +642,36 @@ def test_rerun_idempotent_beyond_signature_cap():
     rerun = sl.update_ledger(led, batch, "2026-07-25")
     assert (rerun[0]["updates"], rerun[0]["state"], rerun[0]["last_delta"]) == snap, \
         f"超過簽章上限({n} 則)的批次重跑後結果改變,冪等性未成立"
+
+
+def test_second_real_update_in_same_batch_updates_content():
+    """r13(Codex,P1):story key 不含 direction,而上游 cluster key 含 direction,
+    所以「訂單成立」與「訂單取消」可以同批共存。第二則若被整個丟掉、簽章還被記成
+    已消費,重跑也補不回來——晨報會繼續寫「成立」而漏掉「取消」。
+    當日只推進一次狀態(避免灌到高潮),但內容要更新到最新那則。"""
+    batch = [_ev_full("2317", "orders", "車用訂單簽約成立"),
+             _ev_full("2317", "orders", "客戶取消該筆車用訂單")]
+    led = sl.update_ledger([], batch, "2026-07-25")
+    assert "取消" in led[0]["headline"], f"最新的一則沒有反映:{led[0]['headline']}"
+    assert led[0]["updates"] == 1, "同批次不得重複推進狀態"
+
+
+def test_publication_date_uses_taipei_not_utc():
+    """r13(Codex,P1):published 是 UTC,台灣凌晨 00:00–07:59 的稿子在 UTC 會落到
+    前一天 → 產生的 token 是前一日,標題裡的當日日期沒被剝掉、被當成內容事實。"""
+    # 台北 2026-07-25 01:00 == UTC 2026-07-24 17:00
+    pub_utc = "2026-07-24T17:00:00+00:00"
+    tokens = sl._pub_date_tokens(pub_utc)
+    assert any("7月25日" in t for t in tokens), f"未轉台北時區:{tokens}"
+    a = sl._material_facts("鴻海接單 金額 10 億 7月25日", "2317", ["鴻海"], pub_utc)
+    b = sl._material_facts("鴻海接單 金額 10 億", "2317", ["鴻海"], pub_utc)
+    assert a == b, "台北日期沒被當成出版雜訊剝掉"
+
+
+def test_participant_change_counts_as_progress():
+    """r13(Codex,P1):R16b 明列「參與者的改變」是進展,但先前判準只有數字與決策詞。"""
+    vocab = {"鴻海", "蘋果", "微軟"}
+    story = {"last_delta": "鴻海與蘋果洽談合作", "entity": "2317"}
+    assert sl._content_changed(story, {"title": "微軟加入鴻海合作案"}, vocab)
+    # 同一批參與者的改寫不算進展
+    assert not sl._content_changed(story, {"title": "蘋果與鴻海的合作案持續洽談"}, vocab)

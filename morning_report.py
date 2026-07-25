@@ -5252,9 +5252,15 @@ def _extract_article_text(html: str) -> str:
     if not _TRAFILATURA_UNAVAILABLE:
         try:
             import trafilatura
-            text = trafilatura.extract(html, favor_precision=True) or ""
-            if len(text.strip()) >= _ARTICLE_MIN_CHARS:
-                return text.strip()
+            text = (trafilatura.extract(html, favor_precision=True) or "").strip()
+            if len(text) >= _ARTICLE_MIN_CHARS:
+                return text
+            # r13(Codex):**短但有效的正文不該被含樣板的整頁版本取代**。
+            # 抽取器回傳非空但偏短時(如樂透開獎、短快訊),去標籤版雖然更長,
+            # 多出來的都是導覽/cookie/相關新聞——換過去等於用雜訊換長度。
+            # 只有抽取器**完全沒抓到**(空字串)才退回去標籤法。
+            if text:
+                return text
         except ImportError:
             _TRAFILATURA_UNAVAILABLE = True
             print("[news_full] 未安裝 trafilatura,改用去標籤法(素材含版面雜訊)",

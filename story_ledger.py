@@ -291,6 +291,12 @@ def _pub_date_tokens(published: str) -> list[str]:
         d = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return []
+    # r13(Codex,P1):`published` 是 **UTC** ISO 字串,但台媒標題寫的是**台北**日期。
+    # 台灣凌晨 00:00–07:59 發的稿子在 UTC 會落到前一天,產生的 token 是「7月24日」
+    # 而標題寫「7月25日」→ 出版日期沒被剝掉,被當成內容事實,跨媒體重複稿因此
+    # 被誤判成新進展。轉回台北時區再取年月日。
+    if d.tzinfo is not None:
+        d = d.astimezone(dt.timezone(dt.timedelta(hours=8)))
     out = []
     for pat in _PUB_DATE_PATTERNS:
         out.append(pat.format(y=d.year, m=d.month, d=d.day))
@@ -332,7 +338,21 @@ def _decision_terms(text: str) -> set:
             if any(w in t for w in words)}
 
 
-def _content_changed(story: dict, ev: dict) -> bool:
+def _participants(text: str, vocab) -> set:
+    """標題中出現的**已知**組織/公司名。
+
+    r13(Codex,P1):R16b 明列「參與者的改變」是進展,但先前判準只有數字與決策詞
+    ——「鴻海與蘋果洽談合作」→「微軟加入鴻海合作案」兩邊都無數字、無決策詞,
+    被判成沒進展,線索即使有新參與者仍逐日降級。
+    用**已知名稱詞彙表**比對(不是任意專有名詞抽取),確定性且不會亂認詞。
+    """
+    if not vocab:
+        return set()
+    t = _norm(text)
+    return {name for name in vocab if name and _norm(name) in t}
+
+
+def _content_changed(story: dict, ev: dict, vocab=None) -> bool:
     """今日這則相對該線索上一次是否有**實質**更新。
 
     判準是數字事實的集合有變。標題沒有數字時回 False——此時只剩 lifecycle
@@ -347,8 +367,11 @@ def _content_changed(story: dict, ev: dict) -> bool:
                              str(story.get("last_published") or ""))
     after = _material_facts(ev.get("title"), entity, alias,
                             str(ev.get("published") or ""))
-    # 決策極性有變 = 實質進展(無數字也算)
+    # 決策極性/階段有變 = 實質進展(無數字也算)
     if _decision_terms(prev) != _decision_terms(ev.get("title")):
+        return True
+    # 參與者有變(新公司加入/退出)= 實質進展
+    if vocab and _participants(prev, vocab) != _participants(ev.get("title"), vocab):
         return True
     if not after:
         return False
@@ -387,7 +410,7 @@ def _event_signature(ev: dict) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
-def _is_real_progress(ev: dict, story: dict | None = None) -> bool:
+def _is_real_progress(ev: dict, story: dict | None = None, vocab=None) -> bool:
     """這則事件是否代表**真的有新進展**。
 
     r2(Codex):`apply_event_timeline()` 算好的 `is_incremental` 可用來擋掉跨日的
@@ -406,7 +429,7 @@ def _is_real_progress(ev: dict, story: dict | None = None) -> bool:
     lifecycle_incremental = ev.get("is_incremental") is not False
     if story is None:
         return lifecycle_incremental
-    return _content_changed(story, ev) or lifecycle_incremental
+    return _content_changed(story, ev, vocab) or lifecycle_incremental
 
 
 def _episodic_bucket(event_type: str, published: str) -> str:
@@ -481,6 +504,9 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     # **確實有更新的報導**(首跑 10 億、重跑拿到官方 20 億),整條被 touched 擋住
     # 會讓 headline/delta/狀態全部停在舊值。改記**事件簽章**:完全相同的重播是
     # no-op,同日的實質更新仍可套用。
+    # 參與者比對用的已知名稱詞彙表(公司名/別名)。空的話該訊號自動停用。
+    vocab = {v for val in (name_map or {}).values()
+             for v in str(val or "").split() if len(v) >= 2}
     touched: set[str] = set()
     # r11(Codex,P1):簽章必須用**有序 list**。原本轉成 set 再 `list(sigs)[-12:]`
     # 截斷——set 沒有順序,而 Python 的字串 hash 每個 process 都不同(hash
@@ -545,7 +571,24 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         sig = _event_signature(ev)
         replayed = (sig in seen_sigs.get(key, [])
                     or sig in today_sigs.get(key, set()))
-        if replayed or key in touched or not _is_real_progress(ev, story):
+        # r13(Codex,P1):同批次同 key 的**第二則真進展**不能整個丟掉。
+        # story key 不含 direction,而上游的 cluster key 含 direction,所以
+        # 「訂單成立」與「訂單取消」可以同批共存;原本第二則被 touched 壓掉、
+        # 簽章還被記成已消費 → 重跑也補不回來,晨報會繼續寫「成立」而漏掉「取消」。
+        # 修:當日只推進一次狀態(避免灌到高潮),但**內容仍要更新到最新那則**。
+        if (key in touched and not replayed
+                and _is_real_progress(ev, story, vocab)):
+            story["prev_delta"] = (story.get("last_delta") or "")                 if _is_same_subject(story, ev) else ""
+            story["last_delta"] = title[:160]
+            story["last_published"] = str(ev.get("published") or "")
+            story["headline"] = title[:120]
+            story["lifecycle"] = str(ev.get("lifecycle") or story.get("lifecycle") or "")
+            story["max_surprise"] = round(
+                max(float(story.get("max_surprise") or 0.0), surprise), 3)
+            story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
+            story["today_sigs"] = _remember_today(today_sigs, key, sig, today)
+            continue
+        if replayed or key in touched or not _is_real_progress(ev, story, vocab):
             # 完全相同的重播、當次呼叫已推進過、或上游判定非增量且無實質更新:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
             # r9(Codex,P1):**被壓下的事件也必須記簽章**。同一批若有兩則同 key

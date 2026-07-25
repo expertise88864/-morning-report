@@ -1722,12 +1722,23 @@ def test_article_extraction_falls_back_when_extractor_returns_nothing(monkeypatc
     assert "毛利率上修至五八%" in out, "未退回去標籤法"
 
 
-def test_article_extraction_falls_back_on_too_short_output(monkeypatch):
-    """回傳過短視為抽取失敗(可能只抓到標題或一段導覽)。"""
+def test_short_but_valid_extraction_is_kept(monkeypatch):
+    """r13(Codex):**短但有效的正文不該被含樣板的整頁版本取代**。
+    抽取器回傳非空但偏短時(樂透開獎、短快訊),去標籤版雖然更長,多出來的都是
+    導覽/cookie/相關新聞——換過去等於用雜訊換長度。"""
     import trafilatura
-    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: "短")
+    short_valid = "台積電今日召開法說會,毛利率上修。"
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: short_valid)
     out = mr._extract_article_text(_ARTICLE_HTML)
-    assert len(out) > mr._ARTICLE_MIN_CHARS
+    assert out == short_valid, "短正文被含樣板的整頁版本取代"
+    assert "本網站使用相關技術" not in out
+
+
+def test_empty_extraction_falls_back_to_strip(monkeypatch):
+    """只有**完全沒抓到**時才退回去標籤法。"""
+    import trafilatura
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: "   ")
+    out = mr._extract_article_text(_ARTICLE_HTML)
     assert "毛利率上修至五八%" in out
 
 

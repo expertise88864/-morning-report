@@ -400,34 +400,43 @@ def _remember_sig(seen: dict, key: str, sig: str) -> list:
 _LIFECYCLE_RANK = {"rumor": 0, "confirmed": 1, "implemented": 2, "withdrawn": 3}
 
 
+def _lifecycle_regresses(ev: dict, story: dict) -> bool:
+    """新事件的 lifecycle 是否比 story 目前記錄的**倒退**(如 withdrawn→confirmed)。"""
+    a = _LIFECYCLE_RANK.get(_norm(ev.get("lifecycle")), -1)
+    b = _LIFECYCLE_RANK.get(_norm(story.get("lifecycle")), -1)
+    return a >= 0 and b >= 0 and a < b
+
+
 def _is_more_authoritative(ev: dict, story: dict) -> bool:
-    """這則事件是否比 story 目前記錄的更新/更權威。
+    """這則事件是否有資格覆寫 story 目前的內容。
 
-    r14(Codex,P1):同批次同 key 時**不可 last-write-wins**。生產端把
-    structured_events 按 quality_score **降序**排序,所以迭代到的最後一則通常是
-    品質最低的那則,不是時間最新的——官方「取消」公告先處理、舊媒體「成立」稿
-    反而最後覆寫,晨報就會顯示過時狀態。
-    以 (lifecycle 權威度, 來源分級, 發布時間) 決定。
+    這條規則收斂了四輪,把每一輪的失敗情境一起記下來,避免日後又擺回去:
 
-    r15(Codex,P1):**時間不能當第一順位**——官方 09:00 發撤回、低品質轉載
-    10:00 仍寫「已確認」,以時間為主會讓過時訊息覆寫官方撤回。
-    r16(Codex,P1):但 **lifecycle 也不能當第一順位**——那會讓 withdrawn 永久
-    最高,而 news_events 明確把「撤回後重啟」當成新集數(withdrawn 非終態),
-    同等級的重啟消息會被舊的撤回壓住,晨報停在過時的取消狀態。
-    定案順序:**來源分級 → 發布時間 → lifecycle(僅作最終決勝)**。
-    兩個情境都成立:A 級撤回勝過 C 級舊轉載(分級);A 級重啟勝過較早的 A 級撤回(時間)。
+    r14:不可 last-write-wins——生產端 structured_events 按 quality_score
+      **降序**排序,迭代到的最後一則通常品質最低,不是時間最新。
+    r15:不可以時間為第一順位——官方 09:00 撤回會被低品質轉載 10:00 的
+      「已確認」覆寫。
+    r16:不可以 lifecycle 為第一順位——那會讓 withdrawn 永久最高,而
+      news_events 明確把「撤回後重啟」當新集數(withdrawn 非終態)。
+    r19:**不可以來源分級為第一順位**——A 級(MOPS 官方)建立的線索會永遠
+      不能被較晚的 B/C 級真實進展更新,線索被標成「今日無新進展」並逐日沉寂。
+
+    定案規則(不是單一排序鍵,而是兩種情境分開判斷):
+      - 事件**較新**:原則上允許更新(那是新消息);
+        唯一例外是「**較低分級且 lifecycle 倒退**」——那是低品質稿在推翻
+        高品質來源的既有結論,擋下。
+      - 事件**較舊**:必須分級**嚴格更高**才可覆寫。等級相同的舊訊息不得蓋掉
+        較新的內容(r14 的情境:同批次裡較舊的媒體稿排在官方公告之後)。
     """
     _GRADE = {"A": 3, "B": 2, "C": 1}
-
-    def _key(grade, published, lifecycle):
-        return (_GRADE.get(str(grade or "").upper(), 0),
-                str(published or ""),
-                _LIFECYCLE_RANK.get(_norm(lifecycle), -1))
-
-    return _key(ev.get("source_grade"), ev.get("published"),
-                ev.get("lifecycle")) >= _key(
-        story.get("source_grade"), story.get("last_published"),
-        story.get("lifecycle"))
+    ev_grade = _GRADE.get(str(ev.get("source_grade") or "").upper(), 0)
+    st_grade = _GRADE.get(str(story.get("source_grade") or "").upper(), 0)
+    newer = str(ev.get("published") or "") >= str(story.get("last_published") or "")
+    if not newer:
+        return ev_grade > st_grade
+    if ev_grade < st_grade and _lifecycle_regresses(ev, story):
+        return False
+    return True
 
 
 def _remember_today(today_sigs: dict, key: str, sig: str, today: str) -> dict:

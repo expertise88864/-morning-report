@@ -1217,6 +1217,42 @@ _MOPS_CLAUSE_EVENT_TYPE = {
 }
 
 
+def _taifex_date_matches(raw_date, session: str) -> bool:
+    """TAIFEX 回傳的日期(如 "20260622")是否等於該交易日("2026-06-22")。"""
+    d = str(raw_date or "").strip().replace("-", "").replace("/", "")
+    return bool(d) and d == str(session or "").replace("-", "")
+
+
+def _chip_fields_for_session(large: Optional[dict], pcr: Optional[dict],
+                             session: str) -> dict:
+    """期權籌碼訊號欄位;**來源日期對不上該交易日時一律存 None**。
+
+    r19(Codex,P1):兩個端點各自可能延遲,回傳的 date 不一定等於 completed_session。
+    把舊值歸到新 session 會讓長期 IC/event study 用到錯位特徵——那正好摧毀
+    批#45「讓它可被量測」的目的。寧可留空(可辨識的缺值)也不要錯位。
+    """
+    large = large or {}
+    pcr = pcr or {}
+    large_ok = _taifex_date_matches(large.get("date"), session)
+    pcr_ok = _taifex_date_matches(pcr.get("date"), session)
+    if large and not large_ok:
+        print(f"[chips] 大額交易人日期 {large.get('date')} != {session},本列存 None",
+              file=sys.stderr)
+    if pcr and not pcr_ok:
+        print(f"[chips] TXO P/C 日期 {pcr.get('date')} != {session},本列存 None",
+              file=sys.stderr)
+    return {
+        "taifex_top10_net": large.get("top10_net") if large_ok else None,
+        "taifex_spec_top10_net": large.get("spec_top10_net") if large_ok else None,
+        "taifex_top10_concentration_pct": (
+            large.get("concentration_pct") if large_ok else None),
+        "txo_pc_oi_ratio": pcr.get("pc_oi_ratio") if pcr_ok else None,
+        # 來源日期一併留存,日後對帳/除錯不必回頭猜
+        "taifex_chip_source_date": large.get("date") if large_ok else None,
+        "txo_pcr_source_date": pcr.get("date") if pcr_ok else None,
+    }
+
+
 def _mops_clause_event_type(clause: str) -> Optional[str]:
     """法定款別 → 權威 event_type;未收錄的款別回 None(不錨定)。"""
     return _MOPS_CLAUSE_EVENT_TYPE.get(str(clause or "").strip()) or None
@@ -19706,10 +19742,6 @@ def main() -> int:
             # 先讓它們可被量測(存);**刻意不動 11 維計分**——記憶裡的定案是
             # 「別貿然改計分/預測係數」,而我自己在 MCS 那批的結論也是「沒有把關前
             # 新維度只是新的過擬合來源」。等累積足夠樣本、用 MCS 驗過再談納入。
-            "taifex_top10_net": (taifex_large or {}).get("top10_net"),
-            "taifex_spec_top10_net": (taifex_large or {}).get("spec_top10_net"),
-            "taifex_top10_concentration_pct": (taifex_large or {}).get("concentration_pct"),
-            "txo_pc_oi_ratio": (taifex_pcr or {}).get("pc_oi_ratio"),
             "critical_news": crit_titles,
             "earnings_proximity": earnings_proximity.get("impact"),
             "ex_div_today": ex_div,
@@ -19721,6 +19753,11 @@ def main() -> int:
             trading_sessions if 'trading_sessions' in locals() else [],
             target_session_date,
         )
+        # 籌碼訊號的來源日期必須對上該交易日,故等 completed_session 算出來再補進去
+        # (r19 Codex:對不上就存 None,不可把舊值歸到新 session)
+        pending_state_entry.update(_chip_fields_for_session(
+            taifex_large, taifex_pcr,
+            completed_session or target_session_date))
         if completed_session:
             # 基本面已於上方 _attach_listing_fundamentals(tw0050) 附加,此處直接存史累積
             label_prices, label_prices_complete = _current_label_prices(model_history)
@@ -19744,11 +19781,13 @@ def main() -> int:
                 # model_history 保留 520 個 session。本批的整個立論是「先讓它可被
                 # 量測」,資料在 90 天就被裁掉的話,長期 IC/MCS/event study 根本
                 # 做不成——等於沒有可量測化。
-                "taifex_top10_net": (taifex_large or {}).get("top10_net"),
-                "taifex_spec_top10_net": (taifex_large or {}).get("spec_top10_net"),
-                "taifex_top10_concentration_pct": (
-                    taifex_large or {}).get("concentration_pct"),
-                "txo_pc_oi_ratio": (taifex_pcr or {}).get("pc_oi_ratio"),
+                # r19(Codex,P1):**必須驗來源日期**。TAIFEX 兩個端點各自可能延遲或
+                # 落後,回傳的 date 不一定等於 completed_session;直接寫入等於把舊
+                # 訊號歸到較新的交易日,兩端點日期不同時甚至會把不同日的期貨與
+                # 選擇權放進同一列——後續 IC/MCS/event study 會用到錯位特徵,
+                # 那正好摧毀批#45「讓它可被量測」的目的。對不上就存 None。
+                **_chip_fields_for_session(taifex_large, taifex_pcr,
+                                           completed_session),
             })
     except Exception as e:
         print(f"[main] 準備歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)

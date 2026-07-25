@@ -773,3 +773,34 @@ def test_prompt_block_marks_freshness_and_prioritizes_updated():
     assert "今日有新進展" in block and "今日無新進展" in block, "缺新鮮度標記"
     assert block.index("今日新進展") < block.index("舊高潮"), \
         "今天沒動的舊高潮排在有進展的線索前面"
+
+
+def test_later_lower_grade_genuine_update_is_allowed():
+    """r19(Codex,P1):以來源分級為第一順位會讓 A 級(MOPS 官方)建立的線索
+    **永遠**不能被較晚的 B/C 級真實進展更新——線索被標成「今日無新進展」並逐日
+    沉寂。較新的消息原則上該被採用,只有「較低分級且 lifecycle 倒退」才擋。"""
+    official = dict(_ev_full("2317", "orders", "公告取得車用訂單 金額 10 億",
+                             published="2026-07-24T09:00:00+00:00"),
+                    lifecycle="confirmed", source_grade="A")
+    led = sl.update_ledger([], [official], "2026-07-24")
+
+    media_update = dict(_ev_full("2317", "orders", "訂單金額上修至 30 億 客戶追加",
+                                 published="2026-07-25T09:00:00+00:00"),
+                        lifecycle="confirmed", source_grade="B")
+    led2 = sl.update_ledger(led, [media_update], "2026-07-25")
+    assert "30" in led2[0]["last_delta"], (
+        f"A 級建立的線索擋掉了較晚的 B 級真實進展:{led2[0]['last_delta']}")
+    assert led2[0]["last_update"] == "2026-07-25"
+
+
+def test_later_lower_grade_lifecycle_regression_still_blocked():
+    """但「較低分級 + lifecycle 倒退」仍要擋:低品質稿不得推翻官方撤回。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    led = sl.update_ledger([], [withdrawn], "2026-07-25")
+    stale = dict(_ev_full("2317", "orders", "轉載:併購案仍在進行 金額 50 億",
+                          published="2026-07-25T10:00:00+00:00"),
+                 lifecycle="confirmed", source_grade="C")
+    led2 = sl.update_ledger(led, [stale], "2026-07-26")
+    assert "撤回" in led2[0]["headline"]

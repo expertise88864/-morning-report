@@ -90,25 +90,65 @@ def test_large_traders_failsafe_on_missing_fields(monkeypatch):
     assert mr.fetch_taifex_large_traders() == {}      # OI=0 不可當分母
 
 
-def test_chip_signals_are_persisted_to_history():
-    """批#45:大額交易人與 TXO P/C ratio 先前**只餵 LLM、從未存進歷史**
-    → 沒有時序就算不出 IC,MCS/事件研究永遠評估不了,也就永遠無法拿證據
-    決定要不要納入計分。這條測試釘住「可被量測」這個前提。"""
+def test_chip_fields_require_matching_source_date():
+    """r19(Codex,P1):TAIFEX 兩個端點各自可能延遲,回傳的 date 不一定等於該交易日。
+    直接寫入等於把舊訊號歸到較新的交易日,兩端點日期不同時甚至會把不同日的期貨與
+    選擇權放進同一列——後續 IC/MCS/event study 會用到錯位特徵,那正好摧毀
+    批#45「讓它可被量測」的目的。對不上就存 None(可辨識的缺值)。"""
+    large = {"date": "20260622", "top10_net": -6212, "spec_top10_net": -8241,
+             "concentration_pct": 71.3}
+    pcr = {"date": "20260622", "pc_oi_ratio": 147.65}
+
+    ok = mr._chip_fields_for_session(large, pcr, "2026-06-22")
+    assert ok["taifex_top10_net"] == -6212
+    assert ok["txo_pc_oi_ratio"] == 147.65
+    assert ok["taifex_chip_source_date"] == "20260622"
+
+    # 期貨端落後一天 → 期貨欄位全 None,選擇權不受影響
+    stale = mr._chip_fields_for_session(
+        {**large, "date": "20260620"}, pcr, "2026-06-22")
+    assert stale["taifex_top10_net"] is None
+    assert stale["taifex_spec_top10_net"] is None
+    assert stale["taifex_top10_concentration_pct"] is None
+    assert stale["txo_pc_oi_ratio"] == 147.65, "不該因期貨落後而牽連選擇權"
+
+    # 兩端都對不上
+    none_all = mr._chip_fields_for_session(
+        {**large, "date": "20260620"}, {**pcr, "date": "20260621"}, "2026-06-22")
+    assert all(none_all[k] is None for k in
+               ("taifex_top10_net", "txo_pc_oi_ratio"))
+
+    # 空 payload 不得爆
+    assert mr._chip_fields_for_session(None, None, "2026-06-22")[
+        "taifex_top10_net"] is None
+
+
+def test_chip_signals_reach_both_state_and_model_history():
+    """訊號要同時進 state/history.json(90 天)與 model_history(520 session)。
+    只進前者的話,長期 IC/MCS 在 90 天後就沒有資料可用——那等於沒有可量測化。"""
     from pathlib import Path
-    import morning_report as mr
     src = Path(mr.__file__).read_text(encoding="utf-8")
-    entry_start = src.index('"taifex_foreign_oi": taifex_oi.get("foreign_oi_net")')
-    entry_block = src[entry_start:entry_start + 2000]
-    for field in ("taifex_top10_net", "taifex_spec_top10_net",
-                  "taifex_top10_concentration_pct", "txo_pc_oi_ratio"):
-        assert f'"{field}"' in entry_block, f"{field} 未寫入歷史 entry"
+    assert src.count("_chip_fields_for_session(") >= 3, (
+        "應有:函式定義 + state entry + model_history 各一處")
+    mh_start = src.index('"universe_method": "daily_point_in_time_top100"')
+    assert "_chip_fields_for_session(" in src[mh_start:mh_start + 1500],         "model_history 紀錄沒有籌碼訊號"
+
+
+def test_chip_signals_survive_history_compaction():
+    """壓縮白名單必須涵蓋,否則舊 session 在壓縮階段被裁掉,時序又出現空洞。"""
+    from pathlib import Path
+    src = Path(mr.__file__).read_text(encoding="utf-8")
+    keep_start = src.index("keep_record = {")
+    keep_block = src[keep_start:keep_start + 700]
+    for f in ("taifex_top10_net", "taifex_spec_top10_net",
+              "taifex_top10_concentration_pct", "txo_pc_oi_ratio"):
+        assert f'"{f}"' in keep_block, f"{f} 不在壓縮白名單"
 
 
 def test_chip_signals_stay_out_of_stance_scoring():
     """**刻意不納入 11 維計分**。記憶裡的定案是「別貿然改計分/預測係數」,
     而 MCS 那批的結論也是「沒有把關前,新維度只是新的過擬合來源」。
     這條測試是防止日後有人(包括我)在沒有證據的情況下悄悄把它接進計分。"""
-    import morning_report as mr
     import inspect
     src = inspect.getsource(mr._compute_stance_score)
     for field in ("taifex_top10_net", "spec_top10_net", "pc_oi_ratio",
@@ -117,26 +157,3 @@ def test_chip_signals_stay_out_of_stance_scoring():
             f"{field} 進了立場計分。若這是刻意的,必須先有 MCS/IC 證據並更新本測試"
             "與 model_version——立場分是信件頂部 KPI 的權威來源,不可無聲變動。"
         )
-
-
-def test_chip_signals_persist_to_model_history_and_survive_compaction():
-    """批#45 r15(Codex,P1):訊號**必須進 model_history**。先前只寫進
-    state/history.json,而那裡只保留 90 天;model_history 保留 520 個 session。
-    本批的整個立論是「先讓它可被量測」——資料在 90 天就被裁掉,長期 IC/MCS/
-    event study 根本做不成,等於沒有可量測化。壓縮白名單也必須涵蓋,
-    否則舊 session 在壓縮階段被裁掉,時序又出現空洞。"""
-    from pathlib import Path
-    import morning_report as mr
-    src = Path(mr.__file__).read_text(encoding="utf-8")
-    fields = ("taifex_top10_net", "taifex_spec_top10_net",
-              "taifex_top10_concentration_pct", "txo_pc_oi_ratio")
-
-    mh_start = src.index('"universe_method": "daily_point_in_time_top100"')
-    mh_block = src[mh_start:mh_start + 1800]
-    for f in fields:
-        assert f'"{f}"' in mh_block, f"{f} 未寫入 model_history 紀錄"
-
-    keep_start = src.index("keep_record = {")
-    keep_block = src[keep_start:keep_start + 700]
-    for f in fields:
-        assert f'"{f}"' in keep_block, f"{f} 不在壓縮白名單,舊 session 會被裁掉"

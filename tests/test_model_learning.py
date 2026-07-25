@@ -2247,6 +2247,35 @@ def test_batch31r1_distinct_livelihood_policies_get_distinct_keys():
     assert "未來帳戶" in k_fut and "普發現金" in k_cash
 
 
+def test_batch31r2_policy_alias_shares_one_timeline_anchor():
+    """r2(Codex):媒體對同一兒少儲蓄政策有「台灣未來帳戶」「兒童帳戶」兩種寫法,
+    錨點不同會拆成兩個政策、各佔一個深度解析名額且細節不合併。別名須收斂;
+    但語意相近而制度不同者(國民年金 vs 年金改革)不可誤併。"""
+    a1 = mr._tw_intelligence_timeline_key("policy", "台灣未來帳戶開辦").split(":")[2]
+    a2 = mr._tw_intelligence_timeline_key("policy", "兒童帳戶開辦").split(":")[2]
+    assert a1 == a2 == "未來帳戶"
+    assert (mr._tw_intelligence_timeline_key("policy", "退休金改革方案").split(":")[2]
+            == mr._tw_intelligence_timeline_key("policy", "年金改革方案").split(":")[2])
+    assert (mr._tw_intelligence_timeline_key("policy", "國民年金保費調整").split(":")[2]
+            != mr._tw_intelligence_timeline_key("policy", "年金改革方案").split(":")[2])
+    # 別名兩則在深度解析中合成一個政策,細節合併
+    items = [
+        {"title": "行政院拍板台灣未來帳戶 每年存1.2萬", "importance": 8.4,
+         "timeline_key": mr._tw_intelligence_timeline_key(
+             "policy", "行政院拍板台灣未來帳戶 每年存1.2萬"),
+         "topic": "民生金融", "status": "已公告", "source_name": "中央社",
+         "source_grade": "官方", "published": "2026-07-24"},
+        {"title": "兒童帳戶最高每年存2.4萬 8月開辦", "importance": 7.7,
+         "timeline_key": mr._tw_intelligence_timeline_key(
+             "policy", "兒童帳戶最高每年存2.4萬 8月開辦"),
+         "topic": "民生金融", "status": "已公告", "source_name": "經濟日報",
+         "source_grade": "媒體", "published": "2026-07-24"},
+    ]
+    blk = mr._format_policy_deepdive_block({"policy": items})
+    assert blk.count("◆ 政策") == 1
+    assert "1.2萬" in blk and "2.4萬" in blk
+
+
 def test_batch31r1_night_txf_skips_holiday_monday(monkeypatch):
     """F4:週一逢國定假日時,週五夜盤記在週二。只查週一會撲空、退回往回掃描
     又拿到週四夜盤舊值——須往前多探幾個平日。"""

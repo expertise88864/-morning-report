@@ -254,6 +254,15 @@ def _tw_intelligence_entity_key(title: str) -> str:
     return ""
 
 
+# 政策錨點別名 → 正名(批#31 r2):同一政策的不同媒體稱呼收斂到同一 timeline。
+# 只收「確定是同一項政策」的別名;語意相近但實為不同制度者(如國民年金 vs
+# 軍公教退撫)**不可**併,否則會把兩個政策的細節混寫成一段。
+_TW_POLICY_ANCHOR_ALIASES: dict[str, str] = {
+    "兒童帳戶": "未來帳戶",      # 台灣未來帳戶 / 兒童(未來)帳戶為同一兒少儲蓄政策
+    "退休金": "年金",            # 退休金改革 / 年金改革,媒體混用
+}
+
+
 def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
     """Group developing policy/medical stories into stable, human-scale timelines."""
     topic = _tw_intelligence_topic(kind, title)
@@ -271,6 +280,10 @@ def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
         "公共衛生": ("疫情", "疫苗", "疾管署", "傳染病"),
     }.get(topic, ())
     anchor = next((token for token in anchors if token in title), topic)
+    # 同一政策的別名收斂到同一錨點(Codex 批#31 r2:媒體對同一兒少儲蓄政策
+    # 有「台灣未來帳戶」「兒童帳戶」兩種寫法,錨點不同會拆成兩個政策、
+    # 各佔一個深度解析名額且細節無法合併)。比照 _TW_MEDICAL_ORG_ALIASES 作法。
+    anchor = _TW_POLICY_ANCHOR_ALIASES.get(anchor, anchor)
     entity = _tw_intelligence_entity_key(title)
     return f"{kind}:{topic}:{anchor}:{entity}"
 

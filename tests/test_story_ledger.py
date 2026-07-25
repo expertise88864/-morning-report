@@ -233,3 +233,58 @@ def test_story_ledger_state_roundtrip(tmp_path, monkeypatch):
     mr._DEGRADED_STEPS.clear()
     assert mr.load_story_ledger() == []
     assert "story_ledger_load" in mr._DEGRADED_STEPS
+
+
+def _ev_full(entity, event_type, title, surprise=0.3, published="2026-07-25T00:00:00+00:00",
+             is_incremental=None):
+    ev = {"entity": entity, "event_type": event_type, "title": title,
+          "surprise_score": surprise, "published": published}
+    if is_incremental is not None:
+        ev["is_incremental"] = is_incremental
+    return ev
+
+
+def test_non_incremental_repeat_does_not_advance_story():
+    """r2(Codex F1):apply_event_timeline 早就算好 is_incremental——跨日的重複
+    報導(同一 lifecycle 再被報一次)標成 False。帳本原本無條件當成 delta,於是
+    **沒有新進展的線索照樣升到主線版面**,而那正是本模組要消滅的東西。"""
+    led = sl.update_ledger(
+        [], [_ev_full("2330", "orders", "接獲大單", is_incremental=True)], "2026-07-24")
+    state_before, updates_before = led[0]["state"], led[0]["updates"]
+
+    led2 = sl.update_ledger(
+        led, [_ev_full("2330", "orders", "接獲大單(重複報導)", is_incremental=False)],
+        "2026-07-25")
+    assert led2[0]["state"] == state_before, "非增量報導推進了狀態"
+    assert led2[0]["updates"] == updates_before, "非增量報導被算成一次進展"
+
+
+def test_incremental_flag_absent_is_treated_as_progress():
+    """欄位缺席時保守視為有進展——不要因為上游沒標就整條線索凍住。"""
+    led = sl.update_ledger([], [_ev_full("2330", "orders", "第一則")], "2026-07-24")
+    led = sl.update_ledger(led, [_ev_full("2330", "orders", "第二則")], "2026-07-25")
+    assert led[0]["updates"] == 2
+
+
+def test_distinct_general_announcements_do_not_collide():
+    """r2(Codex F2):news_events 記載過 (entity,"general") 讓單一金控 16 則不同
+    公告互吞。story ledger 沿用同一套身分規則後,不同公告必須是不同線索。"""
+    evs = [_ev_full("2882", "general", "國泰金公告董事異動"),
+           _ev_full("2882", "general", "國泰金公告子公司增資")]
+    led = sl.update_ledger([], evs, "2026-07-25")
+    assert len(led) == 2, f"兩則不同公告撞成一條:{[s['headline'] for s in led]}"
+
+
+def test_story_identity_matches_news_events_rules():
+    """身分規則直接沿用 news_events._event_timeline_key,不另造一份會走樣的。"""
+    import news_events as ne
+    ev = _ev_full("2330", "earnings", "台積電法說")
+    entity, lineage = ne._event_timeline_key(ev)
+    assert sl.story_key_for_event(ev) == f"e:{sl._norm(entity)}|l:{sl._norm(lineage)}"
+
+
+def test_quarterly_episodes_still_separate_under_new_identity():
+    """換身分規則後,不同季財報仍必須是不同線索(r1 F3 的性質不可回退)。"""
+    q1 = sl.story_key_for_event(_ev_full("2330", "earnings", "法說", published="2026-02-15T00:00:00+00:00"))
+    q3 = sl.story_key_for_event(_ev_full("2330", "earnings", "法說", published="2026-08-15T00:00:00+00:00"))
+    assert q1 != q3

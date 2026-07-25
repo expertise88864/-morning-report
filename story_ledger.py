@@ -106,6 +106,46 @@ def story_key(entity: str, event_type: str, title: str = "",
     return f"h:{digest}"
 
 
+def story_key_for_event(ev: dict) -> str:
+    """事件 → story 身分。**直接沿用 news_events 的事件身分規則**。
+
+    r2(Codex F2):我原本只對財報/財測/營收分桶,其餘同 entity+type 共用一把 key。
+    但 news_events 早就記載過這個碰撞的實害——`(entity, "general")` 曾讓單一金控
+    的 16 則不同公告互吞。我等於把同一個已知缺陷重新引入,而且同日還會因 touched
+    直接忽略第二件、跨日則餵給 LLM 錯誤的前情。
+
+    改為整套沿用 `_event_timeline_key`(那是經過三輪審查收斂的既有身分規則:
+    general 帶標題 digest、財報/財測掛季、營收掛月、其餘掛月)。
+
+    **已知代價**(明確記錄,不假裝沒有):非 episodic 型別掛月 bucket,表示跨月的
+    同一條長線(如併購案 7 月洽談 → 8 月進展)會被切成兩條 story,連續性在月界斷開。
+    先前我為了避開這點而不分桶,但兩害相權:**把兩件不同的事寫成同一條的續報是
+    事實錯誤,把一條長線切兩段只是連續性變差**。錯誤輸出比退化嚴重,故取一致性。
+    """
+    try:
+        import news_events as _ne
+        entity, lineage = _ne._event_timeline_key(ev)
+        return f"e:{_norm(entity)}|l:{_norm(lineage)}"
+    except Exception:
+        # news_events 不可用時退回本地規則(仍優於完全沒有身分)
+        return story_key(ev.get("entity"), ev.get("event_type"),
+                         str(ev.get("title") or ""), str(ev.get("published") or ""))
+
+
+def _is_real_progress(ev: dict) -> bool:
+    """這則事件是否代表**真的有新進展**。
+
+    r2(Codex F1):`apply_event_timeline()` 早就算好了 `is_incremental`——跨日的
+    重複報導(同一 lifecycle 再被報一次)會被標成 False、lifecycle_weight=0。
+    帳本原本無條件把每則都當 delta,於是**沒有新進展的線索照樣
+    brewing→developing→peak 拿到主線版面**,prev_delta 與 last_delta 甚至可能是
+    同一則標題——那正是這個模組要消滅的「每天寫一樣的東西」。
+
+    欄位缺席時視為有進展(保守:寧可多推進,不要因為上游沒標就整條線索凍住)。
+    """
+    return ev.get("is_incremental") is not False
+
+
 def _episodic_bucket(event_type: str, published: str) -> str:
     """財報/財測 → 季 bucket;營收 → 月 bucket;其餘 → 無 bucket。
 
@@ -182,8 +222,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
         title = str(ev.get("title") or "").strip()
         if not title:
             continue
-        key = story_key(ev.get("entity"), ev.get("event_type"), title,
-                        str(ev.get("published") or ""))
+        key = story_key_for_event(ev)
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
         if story is None:
@@ -207,8 +246,9 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
             }
             touched.add(key)
             continue
-        if key in touched:
-            # 當日已推進過:只更新 headline 的可讀性與 surprise 上界,不再推進狀態
+        if key in touched or not _is_real_progress(ev):
+            # 當日已推進過、或上游判定為「非增量」的重複報導:
+            # 只更新 surprise 上界,不推進狀態、不增加 updates。
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             continue

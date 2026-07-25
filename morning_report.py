@@ -9572,8 +9572,11 @@ def _format_policy_deepdive_block(intel: Optional[dict]) -> str:
     # (勞工退休金新制 vs 軍公教年金改革,Codex 批#31 r3),一律用完整 key,
     # 寧可拆成兩條也不要把不同制度的資格/金額混寫成一段。
     _MERGEABLE_ANCHORS = {
-        "未來帳戶", "普發現金", "主權基金", "國安基金", "國民年金",
+        "未來帳戶", "普發現金", "主權基金", "國安基金",
         "新青安", "囤房稅", "青年安心成家",
+        # 退休/年金已按「制度對象」正規化(news_rules._TW_PENSION_SCHEME_TERMS),
+        # 具名到制度者可安全合併;泛稱「年金」「退休金」(標題未點明對象)不列入
+        "國民年金", "軍公教年金", "勞工退休金",
     }
     groups: dict = {}
     for it in hot:

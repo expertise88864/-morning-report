@@ -259,9 +259,18 @@ def _tw_intelligence_entity_key(title: str) -> str:
 # 軍公教退撫)**不可**併,否則會把兩個政策的細節混寫成一段。
 _TW_POLICY_ANCHOR_ALIASES: dict[str, str] = {
     "兒童帳戶": "未來帳戶",      # 台灣未來帳戶 / 兒童(未來)帳戶為同一兒少儲蓄政策
-    # **不可**把「退休金」併入「年金」(Codex 批#31 r3):勞工退休金新制與軍公教
-    # 年金改革是兩套不同制度,併了會讓 LLM 把兩者的資格/金額/影響混寫成一段。
 }
+
+# 退休/年金類政策的正規化(Codex 批#31 r3/r4):媒體對**同一制度**混用
+# 「退休金改革」與「年金改革」(→ 該併),但不同制度(軍公教 / 勞工 / 國民年金)
+# **絕不可**併(資格與金額完全不同)。故不以「退休金 vs 年金」字面判斷,而是
+# 取「制度對象」為正規識別:軍公教退休金改革 與 軍公教年金改革 → 同一 anchor。
+_TW_PENSION_SCHEME_TERMS = (
+    ("軍公教", "軍公教年金"), ("公教", "軍公教年金"),
+    ("勞工", "勞工退休金"), ("勞退", "勞工退休金"),
+    ("國民年金", "國民年金"),
+)
+_TW_PENSION_GENERIC_ANCHORS = {"年金", "退休金", "國民年金"}
 
 
 def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
@@ -285,6 +294,12 @@ def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
     # 有「台灣未來帳戶」「兒童帳戶」兩種寫法,錨點不同會拆成兩個政策、
     # 各佔一個深度解析名額且細節無法合併)。比照 _TW_MEDICAL_ORG_ALIASES 作法。
     anchor = _TW_POLICY_ANCHOR_ALIASES.get(anchor, anchor)
+    # 退休/年金:改以「制度對象」為正規識別(見 _TW_PENSION_SCHEME_TERMS)。
+    # 標題未點明對象者維持泛稱 anchor(年金/退休金),下游不跨 entity 合併——
+    # 不知道是哪一套制度時,寧可拆開也不要混寫。
+    if anchor in _TW_PENSION_GENERIC_ANCHORS:
+        anchor = next((canon for kw, canon in _TW_PENSION_SCHEME_TERMS
+                       if kw in title), anchor)
     entity = _tw_intelligence_entity_key(title)
     return f"{kind}:{topic}:{anchor}:{entity}"
 

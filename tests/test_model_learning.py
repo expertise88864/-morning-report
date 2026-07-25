@@ -2354,3 +2354,30 @@ def test_batch31r3_night_txf_probe_covers_long_holiday():
         fwd.append(cur)
         cur = mr._next_tw_weekday(cur + dt.timedelta(days=1))
     assert (fwd[-1] - fwd[0]).days >= 14
+
+def test_batch31r4_pension_canonicalized_by_scheme_not_wording():
+    """r4(Codex):退休/年金政策不可用「退休金 vs 年金」字面判斷合併——媒體對
+    **同一制度**混用兩詞(軍公教退休金改革 / 軍公教年金改革)須併;**不同制度**
+    (軍公教 / 勞工 / 國民年金)絕不可併。改以「制度對象」為正規識別。"""
+    def anc(t):
+        return mr._tw_intelligence_timeline_key("policy", t).split(":")[2]
+    # 同制度、不同用詞 → 同錨點
+    assert anc("軍公教退休金改革方案") == anc("軍公教年金改革第二階段") == "軍公教年金"
+    # 不同制度 → 三個相異錨點
+    assert len({anc("軍公教年金改革"), anc("勞工退休金新制"),
+                anc("國民年金保費調整")}) == 3
+    # 標題未點明對象 → 維持泛稱,下游不跨 entity 合併(不知哪套制度時寧可拆開)
+    assert anc("年金改革方案出爐") == "年金"
+
+    def mk(t, i=8.0):
+        return {"title": t, "importance": i,
+                "timeline_key": mr._tw_intelligence_timeline_key("policy", t),
+                "topic": "民生金融", "status": "已公告", "source_name": "中央社",
+                "source_grade": "官方", "published": "2026-07-24"}
+    same = mr._format_policy_deepdive_block({"policy": [
+        mk("軍公教退休金改革方案 月領調整"),
+        mk("軍公教年金改革第二階段 所得替代率", 7.9)]})
+    assert same.count("◆ 政策") == 1        # 同制度合併,細節聚合
+    diff = mr._format_policy_deepdive_block({"policy": [
+        mk("軍公教年金改革方案"), mk("勞工退休金新制提撥率調高", 7.9)]})
+    assert diff.count("◆ 政策") == 2        # 不同制度不混寫

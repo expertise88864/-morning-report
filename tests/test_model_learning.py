@@ -2381,3 +2381,31 @@ def test_batch31r4_pension_canonicalized_by_scheme_not_wording():
     diff = mr._format_policy_deepdive_block({"policy": [
         mk("軍公教年金改革方案"), mk("勞工退休金新制提撥率調高", 7.9)]})
     assert diff.count("◆ 政策") == 2        # 不同制度不混寫
+
+def test_batch31r5_recall_matrix_policies_in_admin_rules_out():
+    """r5(Codex):裸「開戶/儲蓄/存款/信託」讓行政規則(政治獻金專戶開戶規範、
+    公益信託辦法)混入政策區;而真退休政策(勞退新制)因無「行政院/上路」等
+    重大詞反被剔除。收斂白名單為複合詞 + 民生金融主題一律召回後的完整矩陣。"""
+    real = ("行政院拍板台灣未來帳戶 每年存1.2萬", "普發現金一萬元 8月入帳",
+            "新青安3.0 8月上路", "勞退新制自提上限調整",
+            "勞工退休金新制提撥率調高", "軍公教年金改革第二階段",
+            "國民年金保費調整")
+    noise = ("內政部公告政治獻金專戶開戶規範修正", "銀行存款保險費率調整公告",
+             "公益信託監督管理辦法修正", "立法院三讀通過公職人員財產申報法修正案",
+             "國有資產活化方案", "現金流量表編製準則修正",
+             "政府基金管理辦法修正", "媽祖遶境活動宗教宣導")
+    for t in real:
+        assert mr._tw_intelligence_recall_hit("policy", t) is True, t
+    for t in noise:
+        assert mr._tw_intelligence_recall_hit("policy", t) is False, t
+
+
+def test_batch31r5_pension_abbreviation_aggregates_with_full_name():
+    """r5(Codex):「勞退新制」簡稱原本落入其他政策、走不到制度正規化,無法與
+    「勞工退休金新制」聚合。簡稱須同樣歸到 勞工退休金;非退休政策不得誤掛。"""
+    def anc(t):
+        return mr._tw_intelligence_timeline_key("policy", t).split(":")[2]
+    assert anc("勞退新制自提上限調整") == anc("勞工退休金新制提撥率調高") == "勞工退休金"
+    assert anc("軍公教退休金改革") == anc("軍公教年金改革") == "軍公教年金"
+    # 非退休脈絡:不得因出現「勞工」就掛到勞退制度
+    assert anc("勞工儲蓄帳戶開辦試辦") != "勞工退休金"

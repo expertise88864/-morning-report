@@ -64,10 +64,12 @@ TW_POLICY_FINANCE_TERMS = (
     # 被整條剔除。補民生金融語族——**一律用複合詞,不放裸詞**(Codex 批#31 r1 F5:
     # 裸「財產/資產/基金/現金」會讓「公職人員財產申報法」「資產活化」等行政法案
     # 混進政策區,官方來源+重大詞即可衝到 5.9 分進深度解析)。
-    "未來帳戶", "兒童帳戶", "儲蓄帳戶", "個人帳戶", "開戶",
-    "普發現金", "現金發放", "定期定額", "儲蓄", "存款", "信託",
+    # 一律複合詞:裸「開戶/儲蓄/存款/信託」會讓「政治獻金專戶開戶規範」等行政
+    # 規則混入(Codex 批#31 r5;比照先前移除裸「財產/資產」)。
+    "未來帳戶", "兒童帳戶", "儲蓄帳戶", "個人帳戶", "安養信託",
+    "普發現金", "現金發放", "定期定額",
     "主權基金", "國安基金", "退撫基金", "勞退基金",
-    "年金", "退休金", "國民年金",
+    "年金", "退休金", "國民年金", "勞退", "退撫",
 )
 
 
@@ -194,8 +196,11 @@ def _tw_intelligence_topic(kind: str, text: str) -> str:
         ("住宅金融", ("新青安", "房貸", "租屋", "房價", "信用管制")),
         # 批#31:新型民生金融政策(未來帳戶/主權基金/普發現金/年金)原本落入
         # 「其他政策」而少 0.7 分,擠不進政策卡前 3
-        ("民生金融", ("未來帳戶", "兒童帳戶", "主權基金", "普發", "年金",
-                      "退休金", "儲蓄", "開戶", "信託")),
+        # 同樣只放複合/專名詞(裸「儲蓄/開戶/信託」會誤分類行政規則,Codex r5);
+        # 「勞退」「退撫」為勞工/軍公教退休制度的常見簡稱,必須收(否則「勞退新制」
+        # 落入其他政策、無法與「勞工退休金新制」聚合)
+        ("民生金融", ("未來帳戶", "兒童帳戶", "儲蓄帳戶", "主權基金", "國安基金",
+                      "普發現金", "年金", "退休金", "勞退", "退撫", "定期定額")),
         ("育兒社福", ("育兒", "津貼", "托育", "長照", "勞保", "社福")),
         ("產業能源", ("半導體", "能源", "電價", "AI", "出口", "產業")),
         ("醫院營運", ("醫院", "住院", "急診", "停診", "門診", "人力", "停約", "中榮", "神外")),
@@ -234,6 +239,11 @@ def _tw_intelligence_recall_hit(kind: str, text: str) -> bool:
         # (批#31:「普發現金一萬元 8月入帳」原本 broad/major 皆不中而被剔除)
         if any(token in text for token in TW_POLICY_USER_FOCUS_TERMS):
             return True
+        # 民生金融主題同理(批#31 r5:「勞退新制自提上限調整」是真退休政策但無重大詞
+        # 而被剔除)。此主題的分類詞本身已是專名/複合詞(未來帳戶/年金/勞退/退撫…),
+        # 且上方財經白名單已先過濾,故不會放進行政規則雜訊。
+        if _tw_intelligence_topic(kind, text) == "民生金融":
+            return True
     return specific or (broad and major)
 
 
@@ -271,6 +281,9 @@ _TW_PENSION_SCHEME_TERMS = (
     ("國民年金", "國民年金"),
 )
 _TW_PENSION_GENERIC_ANCHORS = {"年金", "退休金", "國民年金"}
+# 「退休/年金脈絡」:有這些詞才把制度對象(軍公教/勞工…)當退休制度正規化,
+# 避免「勞工儲蓄帳戶」「軍公教加薪」這類非退休政策被誤掛到年金 timeline
+_TW_PENSION_CONTEXT_TERMS = ("年金", "退休金", "勞退", "退撫", "退休")
 
 
 def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
@@ -295,11 +308,17 @@ def _tw_intelligence_timeline_key(kind: str, title: str, link: str = "") -> str:
     # 各佔一個深度解析名額且細節無法合併)。比照 _TW_MEDICAL_ORG_ALIASES 作法。
     anchor = _TW_POLICY_ANCHOR_ALIASES.get(anchor, anchor)
     # 退休/年金:改以「制度對象」為正規識別(見 _TW_PENSION_SCHEME_TERMS)。
-    # 標題未點明對象者維持泛稱 anchor(年金/退休金),下游不跨 entity 合併——
-    # 不知道是哪一套制度時,寧可拆開也不要混寫。
-    if anchor in _TW_PENSION_GENERIC_ANCHORS:
-        anchor = next((canon for kw, canon in _TW_PENSION_SCHEME_TERMS
-                       if kw in title), anchor)
+    # **直接由標題判斷**,不要求先落在泛稱 anchor(Codex 批#31 r5:「勞退新制」
+    # 標題沒有「退休金」三字,原本走不到正規化,與「勞工退休金新制」無法聚合)。
+    # 但必須同時具備「退休/年金脈絡」才正規化——否則「勞工儲蓄帳戶」這類非退休
+    # 政策會被誤掛到勞退制度。標題未點明對象者維持泛稱,下游不跨 entity 合併
+    # (不知道是哪一套制度時,寧可拆開也不要混寫)。
+    if anchor in _TW_PENSION_GENERIC_ANCHORS or any(
+            ctx in title for ctx in _TW_PENSION_CONTEXT_TERMS):
+        _scheme = next((canon for kw, canon in _TW_PENSION_SCHEME_TERMS
+                        if kw in title), "")
+        if _scheme and any(ctx in title for ctx in _TW_PENSION_CONTEXT_TERMS):
+            anchor = _scheme
     entity = _tw_intelligence_entity_key(title)
     return f"{kind}:{topic}:{anchor}:{entity}"
 

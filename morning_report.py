@@ -543,6 +543,15 @@ RSS_FEEDS = {
     "鉅亨期貨":           "https://api.cnyes.com/media/api/v1/newslist/category/future?limit=30&page=1",
     "鉅亨台灣總經":       "https://api.cnyes.com/media/api/v1/newslist/category/tw_macro?limit=30&page=1",
     "鉅亨匯率":           "https://api.cnyes.com/media/api/v1/newslist/category/forex?limit=30&page=1",
+    # 批#40:交易所官方公告(A 級)。內容是「恢復交易」「處置股」「送件申請上市」
+    # 這類硬事實,先前完全沒接——媒體不一定報,但漏掉會直接影響個股判讀。
+    "TWSE交易所公告":     "https://openapi.twse.com.tw/v1/news/newsList",
+    # 批#40:四個實測當日更新的台媒 feed,補主流媒體寬度與 merged_n 交叉驗證。
+    # 注意 ec.ltn.com.tw/rss/business.xml 雖回 200 但內容是「網址錯誤」頁,不可用。
+    "自由財經":           "https://news.ltn.com.tw/rss/business.xml",
+    "科技新報":           "https://technews.tw/feed/",
+    "Yahoo股市":          "https://tw.stock.yahoo.com/rss?category=news",
+    "ETtoday財經":        "https://feeds.feedburner.com/ettoday/finance",
     # 工商時報 RSS 兩線已 404(同日實測)→ 移除;工商內容經 Google News 各查詢大量覆蓋
     "經濟日報財經":       "https://money.udn.com/rssfeed/news/1001/5589?ch=money",
     "經濟日報國際":       "https://money.udn.com/rssfeed/news/1001/5599/12937?ch=money",
@@ -5050,6 +5059,23 @@ def _trend_label(metrics: dict) -> str:
     return "盤整"
 
 
+def _roc_date_to_tpe_datetime(roc: str):
+    """民國日期字串(如 "1150724")→ 該日 08:00 的台北時間 datetime;無法解析回 None。
+
+    批#40:TWSE 公告端點只給日期不給時間,固定取 08:00 TPE 當發布時刻——
+    交易所公告多為盤前/盤中發布。刻意不取 00:00:那會讓公告在 30 小時窗的
+    邊界上比實際更早出局。也刻意不假裝有更精確的時間。
+    """
+    s = str(roc or "").strip()
+    if len(s) != 7 or not s.isdigit():
+        return None
+    try:
+        return dt.datetime(int(s[:3]) + 1911, int(s[3:5]), int(s[5:7]),
+                           8, 0, tzinfo=TPE)
+    except ValueError:
+        return None
+
+
 def _cnyes_body(d: dict) -> str:
     """鉅亨新聞正文。
 
@@ -5137,6 +5163,45 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                     **_cnyes_company_label(d),
                 })
             return out
+        if kind == "twse_news":        # 批#40:交易所官方公告(A 級硬事實)
+            stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0, "streak": 0})
+            try:
+                r = _http_get(url, timeout=15,
+                              headers={"User-Agent": "Mozilla/5.0",
+                                       "Accept": "application/json"})
+                r.raise_for_status()
+                data = r.json() or []
+            except Exception:
+                stat["fail"] += 1
+                stat["streak"] = stat.get("streak", 0) + 1
+                raise
+            stat["ok"] += 1
+            stat["streak"] = 0
+            if not isinstance(data, list):
+                print(f"[twse_news] 回傳非清單({type(data).__name__}),略過", file=sys.stderr)
+                return out
+            # 端點一次回傳約 476 筆、橫跨數月,且**只有日期沒有時間**。
+            # 故以「日期 ≥ cutoff 當日」過濾,並取 published 為當日 08:00 TPE
+            # (交易所公告多為盤前/盤中發布;不假裝有更精確的時間)。
+            cutoff_date = cutoff.astimezone(TPE).date()
+            for row in data:
+                if not isinstance(row, dict):
+                    continue
+                d_roc = str(row.get("Date") or "").strip()
+                pub_dt = _roc_date_to_tpe_datetime(d_roc)
+                if pub_dt is None or pub_dt.date() < cutoff_date:
+                    continue
+                title = str(row.get("Title") or "").strip()
+                if not title:
+                    continue
+                out.append({
+                    "source": source,
+                    "title": title,
+                    "summary": "",   # 端點只給標題與連結,不編造摘要
+                    "link": str(row.get("Url") or ""),
+                    "published": pub_dt.isoformat(),
+                })
+            return out
         if kind == "company":          # 重點公司 Google News 查詢(補個股新聞)
             feed = _feedparser_parse_url_with_timeout(url)
             label = w["label"]
@@ -5212,7 +5277,9 @@ def fetch_news() -> list[dict]:
     # 組工作清單(保留原順序:RSS_FEEDS 先、公司查詢後),各項帶 idx 供重組回原序
     work: list[dict] = []
     for source, url in RSS_FEEDS.items():
-        kind = "cnyes_json" if url.endswith("&page=1") else "rss"
+        kind = ("cnyes_json" if url.endswith("&page=1")
+                else "twse_news" if url.endswith("/v1/news/newsList")
+                else "rss")
         work.append({"idx": len(work), "source": source, "url": url, "kind": kind})
     for query, label in GOOGLE_NEWS_COMPANIES:
         work.append({"idx": len(work), "source": f"Google:{label}",

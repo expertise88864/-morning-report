@@ -1421,3 +1421,62 @@ def test_cnyes_stock_field_sets_company_label_only_for_tracked_codes():
 
     assert mr._cnyes_company_label({"stock": []}) == {}
     assert mr._cnyes_company_label({}) == {}
+
+
+def test_roc_date_parsing_rejects_malformed():
+    """民國日期只認 7 位數字;格式不對一律回 None,不得猜。"""
+    assert mr._roc_date_to_tpe_datetime("1150724").date().isoformat() == "2026-07-24"
+    for bad in ("999", "abcdefg", "1151332", "", None, "11507240"):
+        assert mr._roc_date_to_tpe_datetime(bad) is None, f"{bad!r} 應判為無法解析"
+
+
+def test_roc_date_uses_0800_not_midnight():
+    """TWSE 公告端點只給日期。取 08:00 TPE 而非 00:00——後者會讓公告在
+    30 小時窗的邊界上比實際更早出局。"""
+    d = mr._roc_date_to_tpe_datetime("1150724")
+    assert (d.hour, d.minute) == (8, 0)
+    assert d.utcoffset().total_seconds() == 8 * 3600
+
+
+def test_twse_news_feed_filters_by_date_and_keeps_official_fields(monkeypatch):
+    """交易所公告:僅保留 cutoff 當日之後者;端點只有標題與連結,不得編造摘要。"""
+    import datetime as _dt
+
+    payload = [
+        {"Title": "英柏得科技送件申請股票上市", "Url": "https://twse/a", "Date": "1150724"},
+        {"Title": "很久以前的公告", "Url": "https://twse/b", "Date": "1150101"},
+        {"Title": "", "Url": "https://twse/c", "Date": "1150724"},          # 無標題 → 剔除
+        {"Title": "壞日期", "Url": "https://twse/d", "Date": "bad"},         # 無法解析 → 剔除
+    ]
+
+    class _R:
+        def raise_for_status(self): pass
+        def json(self): return payload
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    cutoff = _dt.datetime(2026, 7, 24, 0, 0, tzinfo=_dt.timezone.utc)
+    out = mr._process_feed_item(
+        {"idx": 0, "source": "TWSE交易所公告",
+         "url": "https://openapi.twse.com.tw/v1/news/newsList", "kind": "twse_news"},
+        cutoff)
+
+    assert len(out) == 1, f"應只留當日且有標題的那筆,得到 {[o['title'] for o in out]}"
+    assert out[0]["title"] == "英柏得科技送件申請股票上市"
+    assert out[0]["summary"] == "", "端點無摘要欄位,不得編造"
+    assert out[0]["link"] == "https://twse/a"
+
+
+def test_twse_news_non_list_payload_degrades_quietly(monkeypatch):
+    """回傳形狀非預期時降級為空清單,不得拋例外炸掉整條新聞管線。"""
+    import datetime as _dt
+
+    class _R:
+        def raise_for_status(self): pass
+        def json(self): return {"error": "oops"}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    out = mr._process_feed_item(
+        {"idx": 0, "source": "TWSE交易所公告",
+         "url": "https://openapi.twse.com.tw/v1/news/newsList", "kind": "twse_news"},
+        _dt.datetime(2026, 7, 24, tzinfo=_dt.timezone.utc))
+    assert out == []

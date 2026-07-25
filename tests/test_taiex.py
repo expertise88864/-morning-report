@@ -459,3 +459,55 @@ def test_summary_stance_word_uses_first_position():
                           "2026-07-18 (Sat)", "每日報")
     assert "偏空風險升高,偏多仍可加碼 00662" not in html
     assert "依系統計分" in html
+
+
+# ═══ 批#34:預測正確性(review findings)═══
+def test_batch34_open_map_filters_typhoon_ghost_bars(monkeypatch):
+    """颱風臨時休市時 yfinance 回「開=收=前收、量 0」的假 bar。backfill 早就濾了
+    (註解寫明 2026-07-10 實際發生),但**真正驅動 bias 自我校正的 _fetch_open_map**
+    漏了同一道濾網 → 幽靈日注入「誤差 0%」假完美樣本,實測會讓 bias 翻號。"""
+    import pandas as pd
+    idx = pd.to_datetime(["2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13"])
+    df = pd.DataFrame({"Open": [100.0, 101.0, 102.0, 103.0],
+                       "Volume": [5000, 6000, 0, 7000]}, index=idx)   # 07-10 幽靈
+
+    class T:
+        def __init__(self, *a, **k):
+            pass
+
+        def history(self, **k):
+            return df
+    monkeypatch.setattr(mr.yf, "Ticker", T)
+    # 個股/ETF:必須濾掉量 0 的幽靈日
+    got = mr._fetch_open_map("2330.TW", require_volume=True)
+    assert "2026-07-10" not in got
+    assert set(got) == {"2026-07-08", "2026-07-09", "2026-07-13"}
+    # 指數:量值語意不同,維持不濾(否則會誤刪合法日)
+    assert "2026-07-10" in mr._fetch_open_map("^TWII")
+
+
+def test_batch34_stance_defense_catches_unparseable_label():
+    """PR-2 合規防線原本是 `(X and X != Y) or (Z and Z != Y)`,兩個條件都被短路
+    → 「無法解析」被當成合規。LLM 若把標籤寫成英文且總結無中文立場詞,
+    會出現「KPI 偏空 / 結論卡全面加碼」同封信兩個相反立場。"""
+    quotes = {
+        "QQQ": {"ticker": "QQQ", "date": "2026-06-02", "close": 100.0,
+                "prev_close": 99.0, "change_pct": 1.0},
+        "TSM": {"ticker": "TSM", "date": "2026-06-02", "close": 100.0,
+                "prev_close": 99.0, "change_pct": 1.0},
+        "SPY": {"ticker": "SPY", "date": "2026-06-02", "close": 100.0,
+                "prev_close": 99.0, "change_pct": 1.0},
+        "STANCE_PY": {"total": -6, "label": "偏空", "components": {},
+                      "coverage": 1.0, "missing": []},
+        "MACRO": {}, "TAIEX_PRED": {}, "HISTORY": [], "NIGHT_TXF": {},
+    }
+    analysis = ("## 十二、我的明確立場\n"
+                "QQQ +1.0% [+1] = 淨分 +7\n"
+                "> **Stance: Bullish**\n"            # 英文標籤 → 解析不出來
+                "> 理由:半導體全面走強\n"
+                "## 十三、一句話總結\n全面加碼 00662,2330 站上 2400 元續抱")
+    html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
+                          "2026-06-02", "每日報")
+    assert "全面加碼" not in html            # LLM 的反向建議必須被移除
+    assert "依系統計分" in html               # 改用確定性摘要
+    assert "偏空" in html                     # 仍呈現 Python 權威立場

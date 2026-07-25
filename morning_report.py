@@ -4750,7 +4750,7 @@ def calibrate_0050_bias(tw0050_pred: dict, history: list[dict],
         tw0050_pred.setdefault("calibration", {"applied": False, "reason": "歷史樣本不足"})
         return tw0050_pred
     try:
-        opens = _fetch_open_map("0050.TW")
+        opens = _fetch_open_map("0050.TW", require_volume=True)
     except Exception as e:
         tw0050_pred.setdefault("calibration", {"applied": False, "reason": f"無法取得 0050 開盤:{e}"})
         return tw0050_pred
@@ -9064,10 +9064,21 @@ def build_prediction_backtest(history: list[dict]) -> str:
         return f"（回溯失敗: {e}）"
 
 
-def _fetch_open_map(symbol: str) -> dict:
-    """抓單一標的近 3 月「開盤價」對照表 {YYYY-MM-DD: open}。供自我校正比對用。"""
+def _fetch_open_map(symbol: str, require_volume: bool = False) -> dict:
+    """抓單一標的近 3 月「開盤價」對照表 {YYYY-MM-DD: open}。供自我校正比對用。
+
+    require_volume(批#34):個股/ETF 要求成交量 > 0。yfinance 在台股「臨時休市日」
+    (颱風)會回一根**開=收=前收、量 0** 的假持平 bar(Yahoo 行事曆不知道臨時停市)。
+    backfill_actual_opens 的 _ohlc 早就有這道濾網,註解也寫明「不濾會污染 MAE/bias
+    自我校正(讓校正以為預測完美)。2026-07-10 颱風日實際發生」——但**真正驅動
+    bias 校正的就是本函式**,卻漏了同一道濾網:幽靈 bar 的「誤差 0%」樣本會混進
+    EMA bias,實測會讓 00662/0050 的 bias 正負號翻轉。
+    ^TWII 指數的量值語意不同(可為 0/NaN),不套此濾(實測指數源不產生假 bar)。
+    """
     d = yf.Ticker(symbol).history(period="3mo", auto_adjust=False)
     d = d.dropna(subset=["Open"])
+    if require_volume and "Volume" in getattr(d, "columns", []):
+        d = d[d["Volume"] > 0]
     out: dict[str, float] = {}
     for idx, v in d["Open"].items():
         key = (idx.tz_localize(None) if getattr(idx, "tz", None) else idx
@@ -9135,9 +9146,10 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         return fair, predictions, taiex_pred
 
     try:
+        # 批#34:個股/ETF 濾掉颱風休市的量 0 幽靈 bar;^TWII 指數量值語意不同不濾
         twii_o = _fetch_open_map("^TWII")
-        t2330_o = _fetch_open_map("2330.TW")
-        t00662_o = _fetch_open_map("00662.TW")
+        t2330_o = _fetch_open_map("2330.TW", require_volume=True)
+        t00662_o = _fetch_open_map("00662.TW", require_volume=True)
     except Exception as e:
         print(f"[calib] 抓實際開盤失敗，跳過校正: {e}", file=sys.stderr)
         _mark_unapplied(f"無法取得實際開盤：{e}")
@@ -16114,8 +16126,14 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                      if (i := _sum_txt.find(w)) >= 0]
         _sum_word = min(_sum_hits)[1] if _sum_hits else ""
         _py_label = str(_sp_render["label"])
-        if ((_llm_label and _llm_label != _py_label)
-                or (_sum_word and _sum_word != _py_label)):
+        # 批#34:原本是 `(X and X != Y) or (Z and Z != Y)`——兩個條件都被 `X and`
+        # 短路,於是「**無法解析**」被當成合規。實測重現:LLM 把標籤寫成英文
+        # (「> **Stance: Bullish**」,_extract_stance 的 regex 只吃中文 → None)
+        # 且一句話總結不含四個立場詞之一(如「全面加碼 00662,2330 站上 2400 元續抱」)
+        # → 防線不觸發 → KPI 顯示 Python 權威「偏空」,同一畫面下方結論卡卻是
+        # LLM 的「全面加碼」= 同一封信兩個相反立場,正是 PR-2 要防的事。
+        # 改為「必須各自成功解析**且**相符」才算合規;解析不出來一律走確定性摘要。
+        if (_llm_label != _py_label) or (_sum_word != _py_label):
             print(f"[stance-echo] ⚠ LLM 立場詞(十二段「{_llm_label}」/"
                   f"總結「{_sum_word}」)未遵守系統標籤「{_py_label}」"
                   f"→ 結論卡改用確定性摘要,立場詳情已移除", file=sys.stderr)

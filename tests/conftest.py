@@ -30,6 +30,11 @@ def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
     mr._HTTP_HOST_STATS.clear()     # 批#32:_http_get per-host 熔斷計數同理
     mr._DEGRADED_STEPS.clear()      # 批#32:模組級可變 list,不重置會跨測試污染資料品質區
     monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
+    # 批#37:_http_get 的退避用自己的 backoff 參數 + 裸 time.sleep,不受
+    # _TWSE_RETRY_SLEEP_BASE 影響——實測全套 103s 有約 84s 是真的在睡
+    # (單一「全失敗」測試就睡 18s)。測試不需要真的等待;需要驗「重試次數」的
+    # 測試本來就自己 patch mr.time.sleep 並計數,不受影響。
+    monkeypatch.setattr(mr.time, "sleep", lambda _s: None)
     # §B:信件存檔目錄導到 tmp,避免經 deliver_report 的測試把 *.html.gz 寫進真實 state/emails/
     monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path_factory.mktemp("emails"))
     # 政策「已顯示」記錄同理導到 tmp(deliver_report 內會呼叫 mark_intel_shown)

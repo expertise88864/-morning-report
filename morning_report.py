@@ -11494,7 +11494,15 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
         if LLM_PROVIDER != "gemini" and GEMINI_API_KEY:
             try:
                 print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
-                return _call_gemini(prompt)
+                # 批#37:備援輸出也要過完整性檢查。同函式上方兩處(主呼叫、concise
+                # 重試)都有 _analysis_complete_enough,唯獨這條**生產實際會走的**
+                # 備援路徑沒有——Gemini 若也截斷會被原樣送出,頂部 KPI/結論卡變「—」,
+                # 而那正是該函式存在的理由。截斷則退回確定性備援文字。
+                _g = _call_gemini(prompt)
+                if _analysis_complete_enough(_g):
+                    return _g
+                print("[llm] Gemini 備援輸出疑似截斷 → 改用備援文字", file=sys.stderr)
+                return _fallback_analysis_text(news, e)
             except Exception as e2:
                 print(f"[llm] Gemini 備援也失敗: {_redact_secret_text(str(e2))}",
                       file=sys.stderr)

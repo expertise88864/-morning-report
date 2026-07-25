@@ -27,6 +27,8 @@ def _reset_twse_stock_day_all_cache(monkeypatch, tmp_path_factory):
     mr._TWSE_STOCK_DAY_ALL_CACHE.pop("failed", None)
     mr._RSS_CONTENT_CACHE.clear()   # N5:RSS 內容快取也必須測試間清空,避免跨測試污染
     mr._FEED_STATS.clear()          # V2-N1:per-host feed 統計同理
+    mr._HTTP_HOST_STATS.clear()     # 批#32:_http_get per-host 熔斷計數同理
+    mr._DEGRADED_STEPS.clear()      # 批#32:模組級可變 list,不重置會跨測試污染資料品質區
     monkeypatch.setattr(mr, "_TWSE_RETRY_SLEEP_BASE", 0.0)
     # §B:信件存檔目錄導到 tmp,避免經 deliver_report 的測試把 *.html.gz 寫進真實 state/emails/
     monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path_factory.mktemp("emails"))

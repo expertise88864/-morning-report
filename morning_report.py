@@ -144,6 +144,10 @@ RECIPIENTS = _parse_recipients(os.environ.get("RECIPIENT", "")) or (
     [GMAIL_USER] if GMAIL_USER else [])
 RECIPIENT = ", ".join(RECIPIENTS)
 
+# 批#32:SMTP 連線逾時(秒)。原本未設 → TCP 半開/防火牆黑洞會卡到 job timeout 被砍,
+# 信沒寄出、state 也沒 push。設 60s 搭配 send_email 的 3 次指數退避重試。
+SMTP_TIMEOUT_SEC = float(os.environ.get("SMTP_TIMEOUT_SEC", "60"))
+
 # SEC EDGAR 要求 User-Agent 內含聯絡 email；不寫死在原始碼，改讀環境變數。
 CONTACT_EMAIL = (os.environ.get("CONTACT_EMAIL") or GMAIL_USER
                  or "morning-report-bot@users.noreply.github.com")
@@ -1035,14 +1039,46 @@ def fetch_sec_filings() -> list[dict]:
     return filings
 
 
+# 批#32:_http_get 的 per-host 熔斷(比照 RSS 路徑的 _FEED_HOST_CIRCUIT_BREAK)。
+# 起因:2026-07-08 學到的熔斷只裝在 RSS,_http_get(TWSE/TAIFEX/SEC/FinMind 全部走它)沒有。
+# 上游若「連線卡住」而非快速報錯,天數掃描迴圈會把逾時放大:實測
+# fetch_twse_institutional_cumulative 全失敗 = 35 個平日 × (3 次嘗試×15s + 退避 3.6s)
+# = 28.4 分 > workflow 的 25 分上限 → job 被 SIGKILL,而 sys.exit(main()) 沒有降級寄信
+# → 整封信不寄(違反「寧可少一塊資料,不可整封信失敗」)。同 host 另有 margin/
+# short_balance/backfill/recent_closes 等五個同類迴圈會疊加。
+# 語意:同一 host 本 run「連續」失敗達門檻(任一次成功即歸零)→ 後續同 host 直接快速失敗。
+_HTTP_HOST_STATS: dict = {}      # {host: {"fail": n, "streak": n}};測試間由 conftest 清空
+_HTTP_HOST_CIRCUIT_BREAK = 4
+
+
+def _http_host_label(url) -> str:
+    """把 URL 聚合成 host 標籤(如 www.twse.com.tw);無法解析回 unknown。"""
+    try:
+        return (str(url).split("/", 3)[2] or "unknown").lower()
+    except IndexError:
+        return "unknown"
+
+
 def _http_get(url, *, retries=2, backoff=1.2,
               retry_status=(429, 500, 502, 503, 504), **kwargs):
     """帶重試/退避的 GET(沿用 requests.get 介面、回傳 Response)。
     連線例外或 retry_status(429/5xx)才重試(指數退避);404 等其餘直接回;
     全數失敗則拋最後一次例外(呼叫端沿用既有 try/except)。
     內部走 requests.get(而非獨立 Session),讓既有 monkeypatch(mr.requests.get)測試仍可攔截;
-    以 getattr 取 status_code,測試假物件無此屬性時視為 200(直接回、不重試)。"""
+    以 getattr 取 status_code,測試假物件無此屬性時視為 200(直接回、不重試)。
+    批#32:加 per-host 熔斷——同 host 連續失敗達 _HTTP_HOST_CIRCUIT_BREAK 次即快速失敗,
+    避免單一上游卡住吃光 job 時間預算(熔斷時拋 ConnectionError,既有 except 一律接得住)。"""
     kwargs.setdefault("timeout", 20)
+    _host = _http_host_label(url)
+    _stat = _HTTP_HOST_STATS.setdefault(_host, {"fail": 0, "streak": 0})
+    if _stat["streak"] >= _HTTP_HOST_CIRCUIT_BREAK:
+        raise requests.exceptions.ConnectionError(
+            f"[circuit-break] {_host} 本 run 已連續 {_stat['streak']} 次失敗 → 快速失敗跳過")
+
+    def _mark_fail():
+        _stat["fail"] += 1
+        _stat["streak"] += 1
+
     last_exc = None
     for attempt in range(retries + 1):
         try:
@@ -1052,12 +1088,20 @@ def _http_get(url, *, retries=2, backoff=1.2,
             if attempt < retries:
                 time.sleep(backoff * (attempt + 1))
                 continue
+            _mark_fail()
             raise
         if getattr(r, "status_code", 200) in retry_status and attempt < retries:
             time.sleep(backoff * (attempt + 1))
             continue
+        # 重試耗盡仍是 retry_status(429/5xx)→ 視為該 host 一次失敗(呼叫端多半會
+        # raise_for_status);其餘(2xx/3xx/404…)視為 host 可用,連續失敗計數歸零。
+        if getattr(r, "status_code", 200) in retry_status:
+            _mark_fail()
+        else:
+            _stat["streak"] = 0
         return r
     if last_exc:
+        _mark_fail()
         raise last_exc
 
 
@@ -15887,6 +15931,64 @@ def _sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> di
     return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak}
 
 
+def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
+                         analysis: str, report_date: str, mode: str) -> str:
+    """批#32:主渲染失敗時的極簡信(最後防線)。只用最基本的字串拼接與 escape,
+    不碰任何可能是例外來源的卡片邏輯——目標是「一定寄得出去」而非好看。"""
+    import html as _h
+
+    def _num(v, dec=2):
+        n = _safe_number(v)
+        return f"{n:,.{dec}f}" if n is not None else "—"
+    rows = []
+    for key, label in (("QQQ", "QQQ"), ("TSM", "TSM"), ("SPY", "SPY")):
+        q = (quotes or {}).get(key) or {}
+        if isinstance(q, dict) and q.get("close") is not None:
+            rows.append(f"<tr><td>{_h.escape(label)}</td><td>{_num(q.get('close'))}</td>"
+                        f"<td>{_num(q.get('change_pct'))}%</td></tr>")
+    preds = []
+    _p = predictions if isinstance(predictions, dict) else {}
+    _f = fair if isinstance(fair, dict) else {}
+    if _p.get("weighted_final") is not None:
+        preds.append(f"2330 預測開盤 {_num(_p.get('weighted_final'))}")
+    if _f.get("fair_price") is not None:
+        preds.append(f"00662 合理價 {_num(_f.get('fair_price'))}")
+    _t = (quotes or {}).get("TAIEX_PRED") or {}
+    if isinstance(_t, dict) and _t.get("pred_open") is not None:
+        preds.append(f"加權預測 {_num(_t.get('pred_open'), 0)}")
+    body = _md_to_html(str(analysis or "")) if analysis else "<p>（分析未產出）</p>"
+    return (
+        "<div style=\"font-family:-apple-system,'Noto Sans TC',sans-serif;"
+        "max-width:680px;margin:0 auto;padding:16px;color:#1f2937;\">"
+        f"<h2 style=\"color:#b45309;\">美股晨報 {_h.escape(str(report_date))}"
+        f"（{_h.escape(str(mode))}・極簡版）</h2>"
+        "<p style=\"background:#fef3c7;border-left:4px solid #f59e0b;padding:10px;"
+        "font-size:13px;\">今日主渲染發生例外,已自動退化為極簡版以確保晨報不中斷;"
+        "行情與預測數字仍為正式計算結果,卡片區塊(體育/政策/Podcast 等)本日從缺。</p>"
+        + (f"<table border='1' cellpadding='6' style='border-collapse:collapse;'>"
+           f"<tr><th>標的</th><th>收盤</th><th>漲跌</th></tr>{''.join(rows)}</table>"
+           if rows else "")
+        + (f"<p><b>{_h.escape('・'.join(preds))}</b></p>" if preds else "")
+        + f"<div style='margin-top:18px;'>{body}</div></div>")
+
+
+def _safe_block(label: str, fn, *args, **kwargs) -> str:
+    """批#32:可缺席卡片的渲染保護——單一卡片例外只讓那張卡消失,不讓整封信失敗。
+
+    抓取層每一步都有 try/degrade,但渲染層原本裸奔:render_html 內大量直接索引外部
+    資料(t['pts']、fin['winner']、taiex_pred['ci_lower']…),任一上游欄位改名就會
+    KeyError/TypeError 穿出 render_html → main 例外 → sys.exit 非 0 → 當天整封信不寄。
+    這違反「寧可少一塊資料,不可整封信失敗」。**只用於可缺席的卡片**;行情/預測/立場
+    等核心區塊不套(那些缺了信也沒意義,由 main 的外層 fallback 兜底)。"""
+    try:
+        return fn(*args, **kwargs) or ""
+    except Exception as e:      # noqa: BLE001 — 渲染任何例外都不得讓晨報整封失敗
+        print(f"[render] {label} 卡片渲染失敗(略過該卡): {type(e).__name__}: {e}",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append(f"渲染-{label}")
+        return ""
+
+
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
@@ -15971,31 +16073,41 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         "在此基礎上，", stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
-    tw_intelligence_html = _render_tw_intelligence_html(
+    tw_intelligence_html = _safe_block(
+        "政策/醫界", _render_tw_intelligence_html,
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
     # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,
     # 若這裡再砍集數,排序靠後的節目會永遠輪不到、96h 後過期消失(Codex review)。
     # 超標時改由下方 keep/trim 分支「先壓條數、必要時才減集數並同步下修 shown 數」處理。
     _pod_eps_init = quotes.get("PODCAST_DIGEST") or []
-    podcast_html = _render_podcast_html(
+    podcast_html = _safe_block(
+        "Podcast", _render_podcast_html,
         _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
         max_episodes=max(1, len(_pod_eps_init)))
-    weather_html = _render_weather_html(quotes.get("WEATHER") or [],
-                                        quotes.get("SUSPENSION_NEWS") or [])
-    local_news_html = _render_local_news_html(quotes.get("LOCAL_NEWS") or {})
-    ma200_html = _render_ma200_html(quotes.get("MA200_STATUS") or {})
+    weather_html = _safe_block("天氣", _render_weather_html,
+                               quotes.get("WEATHER") or [],
+                               quotes.get("SUSPENSION_NEWS") or [])
+    local_news_html = _safe_block("在地快訊", _render_local_news_html,
+                                  quotes.get("LOCAL_NEWS") or {})
+    ma200_html = _safe_block("MA200", _render_ma200_html,
+                             quotes.get("MA200_STATUS") or {})
     # G1 持倉曝險卡:使用者要求刪除(2026-07-15,上線一天後);引擎與測試保留,
     # main() 已不再計算 PORTFOLIO_RISK(節省 ~秒級 yfinance 抓取)。
     portfolio_risk_html = ""
-    sports_html = _render_sports_html(quotes.get("SPORTS") or {}, _htmllib)
-    event_calendar_html = _render_event_calendar_html(quotes.get("EVENT_CALENDAR") or [])
-    event_timeline_html = _render_event_timeline_html(
-        quotes.get("EVENT_TIMELINE") or [], _htmllib)
-    tw_calendar_html = _render_tw_calendar_html(quotes.get("TW_CALENDAR") or {})
-    journals_html = _render_journals_html(quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
-    weekly_recap_html = (_render_weekly_recap_html(quotes.get("HISTORY") or [])
+    sports_html = _safe_block("體育", _render_sports_html,
+                              quotes.get("SPORTS") or {}, _htmllib)
+    event_calendar_html = _safe_block("風險事件日曆", _render_event_calendar_html,
+                                      quotes.get("EVENT_CALENDAR") or [])
+    event_timeline_html = _safe_block("事件延燒", _render_event_timeline_html,
+                                      quotes.get("EVENT_TIMELINE") or [], _htmllib)
+    tw_calendar_html = _safe_block("台股行事曆", _render_tw_calendar_html,
+                                   quotes.get("TW_CALENDAR") or {})
+    journals_html = _safe_block("醫學文獻", _render_journals_html,
+                                quotes.get("MEDICAL_JOURNALS") or [], _htmllib)
+    weekly_recap_html = (_safe_block("週回顧", _render_weekly_recap_html,
+                                     quotes.get("HISTORY") or [])
                          if "週末" in str(mode) else "")
-    model_evidence_html = _render_model_evidence_html(quotes)
+    model_evidence_html = _safe_block("模型實證", _render_model_evidence_html, quotes)
 
     # ===== 1. 行情表格 =====
     def fmt_quote(q: dict) -> str:
@@ -17173,11 +17285,34 @@ def send_email(html: str, subject: str) -> None:
     msg.set_content("此郵件需以 HTML 模式檢視。")
     msg.add_alternative(html, subtype="html")
 
+    # 批#32:SMTP 加 timeout + 指數退避重試。原本是裸的 SMTP_SSL/login/send_message——
+    # 無 timeout(TCP 半開會卡到 job timeout 被砍)、無重試(Gmail 一次 421/451 暫時性
+    # 錯誤就是當天沒信),違反「晨報不可斷」。憑證錯誤(5xx)不重試、直接拋。
     ctx = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx) as s:
-        s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        s.send_message(msg)
-    print(f"[mail] 已寄出 → {', '.join(RECIPIENTS)}")
+    _delays = (5, 15, 45)
+    for _attempt in range(len(_delays) + 1):
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx,
+                                  timeout=SMTP_TIMEOUT_SEC) as s:
+                s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                refused = s.send_message(msg)
+            # 部分收件者被拒不會拋例外(全部被拒才 raise)→ 明確告警,否則靜默漏寄
+            if refused:
+                print(f"[mail] ⚠ 有 {len(refused)} 位收件者被拒收(其餘已寄出)",
+                      file=sys.stderr)
+            break
+        except smtplib.SMTPAuthenticationError:
+            raise                                  # 憑證/授權錯:重試無意義
+        except (smtplib.SMTPException, OSError) as e:
+            if _attempt >= len(_delays):
+                raise
+            _wait = _delays[_attempt]
+            print(f"[mail] 寄信失敗({type(e).__name__}),{_wait}s 後重試 "
+                  f"({_attempt + 1}/{len(_delays)})", file=sys.stderr)
+            time.sleep(_wait)
+    # 隱私:不印收件者位址(RECIPIENT 可能走 GitHub Variables → log 不會被遮蔽;
+    # 且本程式的 _archive_sensitive_hits 已把收件者列為 private_email,不該自打嘴巴)
+    print(f"[mail] 已寄出 → {len(RECIPIENTS)} 位收件者")
 
 
 EMAIL_ARCHIVE_DIR = Path("state/emails")
@@ -18549,7 +18684,17 @@ def main() -> int:
 
     # 8. 組信
     _mark_phase("渲染")
-    html = render_html(quotes, fair, predictions, analysis, report_date, mode)
+    # 批#32:渲染整體 fallback——單張卡片有 _safe_block 兜底,但若 render_html 本體
+    # (行情表/KPI/尺寸守衛…)仍拋例外,原本會讓 main 直接退出、當天整封信不寄。
+    # 改為退化成「極簡信」(行情+預測+分析全文),確保收件人一定收得到東西。
+    try:
+        html = render_html(quotes, fair, predictions, analysis, report_date, mode)
+    except Exception as e:      # noqa: BLE001 — 晨報不可斷
+        print(f"[render] ⚠ 主渲染失敗,改寄極簡版: {type(e).__name__}: {e}",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append("渲染-主體(改寄極簡版)")
+        html = _render_minimal_html(quotes, fair, predictions, analysis,
+                                    report_date, mode)
 
     # 8.5 (Opt 1) 準備今日記憶。Production 必須等 SMTP 成功後才提交，
     # 否則寄信失敗卻先標記 Podcast shown_at，會造成永久漏寄。

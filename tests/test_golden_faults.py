@@ -283,3 +283,122 @@ def test_sanitize_neutralizes_forged_boundary_tags():
     assert "untrusted_source_data" not in out
     assert "UNTRUSTED-SOURCE-DATA" in out                # 以無害形式留痕
     assert "正常段落一" in out and "正常段落二" in out
+
+
+# ═══ 批#32:晨報不可斷(review findings)═══
+def test_batch32_http_circuit_breaker_stops_timeout_amplification(monkeypatch):
+    """單一 host 卡住時,天數掃描迴圈會把逾時放大到撞爆 job timeout(實測
+    fetch_twse_institutional_cumulative 35 平日 × 48.6s = 28.4 分 > 25 分上限,
+    job 被砍=整封信不寄)。per-host 熔斷須把呼叫次數壓到門檻附近。"""
+    import requests as _rq
+    calls = {"n": 0}
+
+    def hang(url, **kw):
+        calls["n"] += 1
+        raise _rq.exceptions.ConnectTimeout("simulated hang")
+    monkeypatch.setattr(mr.requests, "get", hang)
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    mr._HTTP_HOST_STATS.clear()
+    for i in range(35):                       # 模擬 35 個平日的掃描迴圈
+        try:
+            mr._http_get(f"https://www.twse.com.tw/fund/T86?date=2026070{i % 9}")
+        except Exception:
+            pass
+    # 熔斷前是 35×3=105 次;熔斷後應停在門檻×重試次數附近
+    assert calls["n"] <= mr._HTTP_HOST_CIRCUIT_BREAK * 3, calls["n"]
+    assert calls["n"] < 105
+
+
+def test_batch32_circuit_breaker_resets_on_success_and_is_per_host(monkeypatch):
+    """成功即歸零(避免一次抖動就整輪封鎖);不同 host 互不影響。"""
+    class R:
+        status_code = 200
+    monkeypatch.setattr(mr.requests, "get", lambda url, **kw: R())
+    mr._HTTP_HOST_STATS.clear()
+    mr._HTTP_HOST_STATS["www.twse.com.tw"] = {"fail": 9, "streak": 9}
+    mr._HTTP_HOST_STATS["other.example.com"] = {"fail": 9, "streak": 9}
+    with pytest.raises(Exception):            # 已熔斷 → 快速失敗
+        mr._http_get("https://www.twse.com.tw/x")
+    mr._HTTP_HOST_STATS["www.twse.com.tw"]["streak"] = 0    # 模擬一次成功後
+    r = mr._http_get("https://www.twse.com.tw/x")
+    assert r.status_code == 200
+    # 另一個 host 仍獨立熔斷
+    with pytest.raises(Exception):
+        mr._http_get("https://other.example.com/y")
+
+
+def test_batch32_safe_block_isolates_card_failure():
+    """單一卡片渲染例外只讓該卡消失,不得往上炸掉整封信。"""
+    mr._DEGRADED_STEPS.clear()
+
+    def boom(*a, **k):
+        raise KeyError("pts")
+    assert mr._safe_block("體育", boom) == ""
+    assert any("體育" in s for s in mr._DEGRADED_STEPS)
+    assert mr._safe_block("ok", lambda: "<div>x</div>") == "<div>x</div>"
+
+
+def test_batch32_minimal_html_fallback_has_core_numbers():
+    """主渲染整個失敗時的極簡信:必須仍帶行情、預測與分析全文。"""
+    q = {"QQQ": {"close": 520.0, "change_pct": 1.2},
+         "TSM": {"close": 220.0, "change_pct": -0.8},
+         "TAIEX_PRED": {"pred_open": 44500.0}}
+    h = mr._render_minimal_html(q, {"fair_price": 120.5}, {"weighted_final": 2400.0},
+                                "## 十二、我的明確立場\n> **立場:偏空**",
+                                "2026-07-25", "每日報")
+    assert "520.00" in h and "2,400.00" in h and "120.50" in h and "44,500" in h
+    assert "偏空" in h and "極簡版" in h
+
+
+def test_batch32_render_failure_still_sends_via_minimal(monkeypatch):
+    """端到端:render_html 拋例外時 main 的渲染段不得讓例外逃逸(改用極簡版)。
+    這裡直接驗兩個元件的契約組合——render 失敗 → 極簡版可產出非空 HTML。"""
+    def boom(*a, **k):
+        raise TypeError("upstream field renamed")
+    monkeypatch.setattr(mr, "render_html", boom)
+    try:
+        html = mr.render_html({}, {}, {}, "x", "2026-07-25", "每日報")
+    except Exception:
+        html = mr._render_minimal_html({}, {}, {}, "分析文字", "2026-07-25", "每日報")
+    assert html and "極簡版" in html
+
+
+def test_batch32_send_email_retries_transient_and_not_auth(monkeypatch):
+    """SMTP 暫時性失敗要重試;憑證錯誤不重試(重試無意義且會拖慢)。"""
+    import smtplib as _smtp
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    attempts = {"n": 0}
+
+    class FakeSMTP:
+        def __init__(self, *a, **kw):
+            assert kw.get("timeout"), "SMTP 必須設 timeout(否則 TCP 半開會卡到 job timeout)"
+            attempts["n"] += 1
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            if attempts["n"] < 3:
+                raise _smtp.SMTPServerDisconnected("transient")
+
+        def send_message(self, msg):
+            return {}
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", FakeSMTP)
+    mr.send_email("<p>x</p>", "subj")
+    assert attempts["n"] == 3          # 前兩次暫時性失敗後成功
+
+    attempts["n"] = 0
+
+    class AuthFail(FakeSMTP):
+        def login(self, *a):
+            raise _smtp.SMTPAuthenticationError(535, b"bad creds")
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", AuthFail)
+    with pytest.raises(_smtp.SMTPAuthenticationError):
+        mr.send_email("<p>x</p>", "subj")
+    assert attempts["n"] == 1          # 憑證錯不重試

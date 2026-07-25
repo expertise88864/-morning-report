@@ -5159,7 +5159,8 @@ def _format_story_prompt_block(ledger) -> str:
     if not isinstance(ledger, list) or not ledger:
         return ""
     import story_ledger as _sl
-    body = _sl.format_story_block(ledger, _external_text)
+    body = _sl.format_story_block(
+        ledger, _external_text, today=dt.datetime.now(TPE).strftime("%Y-%m-%d"))
     if not body:
         return ""
     return ("【進行中的線索(跨日追蹤)】\n"
@@ -5229,6 +5230,11 @@ def _roc_date_to_tpe_datetime(roc: str):
 # (於是不退回去標籤法),又被呼叫端判為太短(於是不寫 fulltext),兩邊都不要,
 # 該篇的全文就這樣無聲消失。
 _ARTICLE_MIN_CHARS = 100
+# r17(Codex):抽取器回傳非空**不代表**那是正文——可能只是頁面標題、登入提示或
+# 錯誤訊息。低於此長度不標記為「抽取成功」,呼叫端會改用整頁去標籤的 100 字門檻,
+# 讓這類殘渣不會憑「抽取成功」的身分繞過門檻、佔掉抓取配額。
+# 60 字是實測分界:真實短新聞(樂透開獎)約 180 字,頁面標題/提示多在 40 字以內。
+_ARTICLE_EXTRACT_FLOOR = 60
 _TRAFILATURA_UNAVAILABLE = False   # 匯入失敗只印一次,不要每篇都吵
 
 
@@ -5263,8 +5269,11 @@ def _extract_article_text(html: str) -> tuple[str, bool]:
             # 抽取器回傳非空但偏短時(如樂透開獎、短快訊),去標籤版雖然更長,
             # 多出來的都是導覽/cookie/相關新聞——換過去等於用雜訊換長度。
             # 只有抽取器**完全沒抓到**(空字串)才退回去標籤法。
-            if text:
+            if len(text) >= _ARTICLE_EXTRACT_FLOOR:
                 return text, True
+            if text:
+                # 疑似非正文殘渣:仍回傳(總比空的好),但不標記為抽取成功
+                return text, False
         except ImportError:
             _TRAFILATURA_UNAVAILABLE = True
             print("[news_full] 未安裝 trafilatura,改用去標籤法(素材含版面雜訊)",

@@ -649,13 +649,19 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 刻意不分岔成新線索:續報本來就會換措辭,以標題相似度決定身分會把真正的
         # 長線切碎(自測否決過),那是拿模組核心價值換一個較小的風險。
         # 只清掉前情,線索本身照常推進——寧可少給脈絡,不可給錯脈絡。
-        story["prev_delta"] = (story.get("last_delta") or "")             if _is_same_subject(story, ev) else ""
-        story["last_delta"] = title[:160]
-        story["last_published"] = str(ev.get("published") or "")
-        story["lifecycle"] = str(ev.get("lifecycle") or story.get("lifecycle") or "")
-        story["source_grade"] = str(
-            ev.get("source_grade") or story.get("source_grade") or "")
-        story["headline"] = title[:120]
+        # r17(Codex,P1):**跨日的內容覆寫同樣要過權威檢查**。先前只有同批次那條
+        # 路徑檢查,於是昨天的 A 級官方撤回,今天可以被 C 級舊稿覆寫回「已確認」
+        # ——apply_event_timeline 把 withdrawn 之後的任何報導都視為增量,
+        # 所以這條路徑必然會走到。
+        if _is_more_authoritative(ev, story):
+            story["prev_delta"] = (story.get("last_delta") or "")                 if _is_same_subject(story, ev) else ""
+            story["last_delta"] = title[:160]
+            story["last_published"] = str(ev.get("published") or "")
+            story["lifecycle"] = str(
+                ev.get("lifecycle") or story.get("lifecycle") or "")
+            story["source_grade"] = str(
+                ev.get("source_grade") or story.get("source_grade") or "")
+            story["headline"] = title[:120]
         story["updates"] = int(story.get("updates") or 0) + 1
         story["max_surprise"] = round(
             max(float(story.get("max_surprise") or 0.0), surprise), 3)
@@ -683,30 +689,45 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     return out
 
 
-def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES) -> list[dict]:
-    """會進 prompt 的 story:排除沉寂者。
+def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES,
+                   today: str = "") -> list[dict]:
+    """會進 prompt 的 story:排除沉寂者,**今日有更新的優先**。
 
     沉寂的**不刪除**——同一條線索日後復燃時(例如併購案重啟)還要接得回去。
+
+    r17(Codex):版面上限是 12 條,而閒置一天的線索仍停在 peak/developing,
+    權重排序會讓「今天沒動的舊高潮」擠掉「今天真的有進展的線索」——那正好違反
+    R16b「沒有新進展整條不要寫」。故今日有更新者一律排在前面。
     """
-    return [s for s in (ledger or []) if s.get("state") != "dormant"][:limit]
+    alive = [s for s in (ledger or []) if s.get("state") != "dormant"]
+    if today:
+        alive.sort(key=lambda s: str(s.get("last_update") or "")[:10] == str(today)[:10],
+                   reverse=True)
+    return alive[:limit]
 
 
-def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STORIES) -> str:
+def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STORIES,
+                       today: str = "") -> str:
     """組給 LLM 的敘事脈絡塊。回傳空字串代表今日無活躍線索,呼叫端整段省略。
 
     `sanitize` 由呼叫端注入(_external_text)——story 的 headline/delta 來自
     外部新聞標題,且會**跨日回流**進 prompt,屬於存放式注入的高風險路徑
     (批#36 的教訓)。模組不得自行繞過消毒入口。
     """
-    picked = active_stories(ledger, limit)
+    picked = active_stories(ledger, limit, today)
     if not picked:
         return ""
     lines = []
     for s in picked:
         state_zh = STATE_ZH.get(str(s.get("state")), "發展")
         ent = sanitize(s.get("entity"), 40) or "(未指名)"
+        # r17(Codex):標明**今日有無新進展**。沒標的話,今天沒動的線索看起來與
+        # 有進展的一樣新,LLM 會照樣重述 → 正是 R16b 要消滅的每日重複。
+        fresh = ("今日有新進展"
+                 if today and str(s.get("last_update") or "")[:10] == str(today)[:10]
+                 else "今日無新進展(僅供脈絡,不要單獨成條)")
         lines.append(
-            f"- [{state_zh}|已追蹤 {int(s.get('updates') or 1)} 次|"
+            f"- [{state_zh}|{fresh}|已追蹤 {int(s.get('updates') or 1)} 次|"
             f"起於 {sanitize(s.get('first_seen'), 12)}] {ent}:"
             f"{sanitize(s.get('headline'), 120)}")
         prev = sanitize(s.get("prev_delta"), 160)

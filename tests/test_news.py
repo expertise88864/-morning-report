@@ -1729,12 +1729,26 @@ def test_short_but_valid_extraction_is_kept(monkeypatch):
     抽取器回傳非空但偏短時(樂透開獎、短快訊),去標籤版雖然更長,多出來的都是
     導覽/cookie/相關新聞——換過去等於用雜訊換長度。"""
     import trafilatura
-    short_valid = "台積電今日召開法說會,毛利率上修。"
+    # 長度須跨過 _ARTICLE_EXTRACT_FLOOR(60),否則視為疑似非正文殘渣——
+    # 真實短新聞(如樂透開獎)約 180 字,頁面標題/登入提示多在 40 字以內。
+    short_valid = ("台積電今日召開法說會,毛利率上修至五八%,並表示先進製程需求"
+                   "強勁、資本支出維持原訂計畫,法人普遍認為此一展望優於市場預期,"
+                   "可望帶動供應鏈同步受惠。")
     monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: short_valid)
     out, extracted = mr._extract_article_text(_ARTICLE_HTML)
     assert extracted is True
     assert out == short_valid, "短正文被含樣板的整頁版本取代"
     assert "本網站使用相關技術" not in out
+
+
+def test_junk_extraction_artifact_is_not_marked_successful(monkeypatch):
+    """r17(Codex):抽取器回傳非空**不代表**那是正文——可能只是頁面標題、登入
+    提示或錯誤訊息。若標記為抽取成功,呼叫端會讓它繞過 100 字門檻、成為 fulltext
+    並佔掉抓取配額。"""
+    import trafilatura
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **k: "請先登入以繼續閱讀")
+    out, extracted = mr._extract_article_text(_ARTICLE_HTML)
+    assert extracted is False, "疑似殘渣被標記成抽取成功"
 
 
 def test_empty_extraction_falls_back_to_strip(monkeypatch):

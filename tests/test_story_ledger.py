@@ -733,3 +733,36 @@ def test_same_grade_restart_after_withdrawal_wins():
     led = sl.update_ledger([], [withdrawn, restart], "2026-07-25")
     assert "重啟" in led[0]["headline"], (
         f"同等級的重啟被舊的撤回壓住:{led[0]['headline']}")
+
+
+def test_cross_day_update_also_respects_authority():
+    """r17(Codex,P1):**跨日的內容覆寫同樣要過權威檢查**。先前只有同批次那條
+    路徑檢查,於是昨天的 A 級官方撤回,今天可以被 C 級舊稿覆寫回「已確認」——
+    apply_event_timeline 把 withdrawn 之後的任何報導都視為增量,這條路徑必然會走到。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    led = sl.update_ledger([], [withdrawn], "2026-07-25")
+    assert "撤回" in led[0]["headline"]
+
+    stale = dict(_ev_full("2317", "orders", "轉載:併購案仍在進行 金額 50 億",
+                          published="2026-07-24T10:00:00+00:00"),
+                 lifecycle="confirmed", source_grade="C")
+    led2 = sl.update_ledger(led, [stale], "2026-07-26")
+    assert "撤回" in led2[0]["headline"], (
+        f"C 級舊稿跨日覆寫了 A 級官方撤回:{led2[0]['headline']}")
+
+
+def test_prompt_block_marks_freshness_and_prioritizes_updated():
+    """r17(Codex):版面上限 12 條,而閒置一天的線索仍停在 peak/developing,
+    權重排序會讓「今天沒動的舊高潮」擠掉「今天真的有進展的線索」,
+    正好違反 R16b「沒有新進展整條不要寫」。"""
+    stale = sl.update_ledger([], [_ev_full("2330", "earnings", "舊高潮", 0.9)],
+                             "2026-07-24")
+    both = sl.update_ledger(stale, [_ev_full("2317", "orders", "今日新進展")],
+                            "2026-07-25")
+    block = sl.format_story_block(both, lambda x, n=0: str(x or ""),
+                                  today="2026-07-25")
+    assert "今日有新進展" in block and "今日無新進展" in block, "缺新鮮度標記"
+    assert block.index("今日新進展") < block.index("舊高潮"), \
+        "今天沒動的舊高潮排在有進展的線索前面"

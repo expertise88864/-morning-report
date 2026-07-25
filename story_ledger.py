@@ -196,7 +196,15 @@ _PUB_DATE_PATTERNS = (
     "{m}月{d}日", "{m}/{d}", "{m}月 {d}日", "{y}年{m}月{d}日",
 )
 # 中文數量詞:「百億 → 兩百億」這種只用中文寫的更新,純 ASCII 數字抽取看不到。
-_CJK_NUM_RE = re.compile(r"[一二兩三四五六七八九十百千萬億兆]+")
+# r12(Codex,P1):**必須要求數量語境**。上一輪把單位 lookahead 拿掉後,任何
+# 「一二兩…」字元都會被當成數字事實——「董事會通過」→「董事會一致通過」的
+# 「一致」會產生 {1},同一個決策被判成實質更新。
+# 規則:數字串必須含十/百/千/萬/億/兆其一,且以單位字結尾或後接量詞。
+_CJK_UNIT_WORDS = "億|萬|千|百|元|口|股|成|倍|%|月|日|季|次|家|名|人|美元|台幣"
+_CJK_NUM_RE = re.compile(
+    r"(?:[一二兩三四五六七八九十百千萬億兆]*[十百千萬億兆]"
+    r"[一二兩三四五六七八九十百千萬億兆]*)"
+    r"(?=\s*(?:" + _CJK_UNIT_WORDS + r")|$)")
 _MIXED_NUM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*([萬億兆])")
 _CJK_DIGITS = {"零": 0, "一": 1, "二": 2, "兩": 2, "三": 3, "四": 4,
                "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
@@ -298,8 +306,14 @@ def _pub_date_tokens(published: str) -> list[str]:
 # r10(Codex,P1):純數字判準對這類無數字的立場翻轉完全無感。
 # r11(Codex,P1):比較的是**語意類別**而非字面詞。「上修」與「調高」是同義改寫,
 # 字面不同但事實相同;拿字面比會把改寫稿判成更新,又繞回重複推進的老問題。
+# r12(Codex,P1):**只合併真正等價的詞,保留階段**。上一輪把支持/通過/核准/簽約
+# 全壓成 approve,於是「董事會支持併購案」→「主管機關核准併購案」這種同方向但
+# 階段推進的真實里程碑被判成沒變化,ledger 完全不更新。
 _DECISION_CATEGORIES = {
-    "approve": ("支持", "同意", "通過", "核准", "獲准", "成立", "簽約", "拍板"),
+    "support": ("支持", "同意", "看好", "贊成"),
+    "board_approve": ("通過", "拍板", "決議", "核定"),
+    "regulator_approve": ("核准", "獲准", "許可", "放行"),
+    "contract": ("簽約", "成立", "簽署", "定案"),
     "reject": ("反對", "否決", "駁回", "遭拒", "破局", "解約", "撤回", "撤銷",
                "中止", "終止"),
     "delay": ("暫緩", "延後", "推遲", "遞延"),
@@ -352,6 +366,13 @@ def _remember_sig(seen: dict, key: str, sig: str) -> list:
     sigs.append(sig)
     del sigs[:-SEEN_SIG_KEEP]
     return list(sigs)
+
+
+def _remember_today(today_sigs: dict, key: str, sig: str, today: str) -> dict:
+    """當日批次簽章(**不截斷**)——重跑冪等性靠它。"""
+    bucket = today_sigs.setdefault(key, set())
+    bucket.add(sig)
+    return {"date": str(today)[:10], "sigs": sorted(bucket)}
 
 
 def _event_signature(ev: dict) -> str:
@@ -467,6 +488,15 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     # 事實不同,重跑就會再次推進狀態,冪等性破功。
     seen_sigs: dict[str, list] = {
         k: [str(x) for x in (st.get("seen_sigs") or [])] for k, st in by_key.items()}
+    # r12(Codex,P1):跨日記憶會截斷到 SEEN_SIG_KEEP,但**當日批次不能截斷**——
+    # 若某條線索當天有超過 12 則不同簽章,最舊的會被淘汰,重跑時那幾則又被當成
+    # 新進展套用一次,冪等性仍然破功。故當日簽章另存一份完整清單,跨日再合併進
+    # 有上限的歷史記憶。
+    today_sigs: dict[str, set] = {}
+    for k, st in by_key.items():
+        day = st.get("today_sigs") or {}
+        if str(day.get("date") or "")[:10] == str(today)[:10]:
+            today_sigs[k] = {str(x) for x in (day.get("sigs") or [])}
 
     for ev in events or []:
         if not isinstance(ev, dict):
@@ -505,13 +535,16 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "prev_delta": "",
                 "max_surprise": round(surprise, 3),
                 "seen_sigs": [_event_signature(ev)],
+                "today_sigs": {"date": today, "sigs": [_event_signature(ev)]},
                 "last_published": str(ev.get("published") or ""),
             }
             seen_sigs[key] = [_event_signature(ev)]
+            today_sigs[key] = {_event_signature(ev)}
             touched.add(key)
             continue
         sig = _event_signature(ev)
-        replayed = sig in seen_sigs.get(key, [])
+        replayed = (sig in seen_sigs.get(key, [])
+                    or sig in today_sigs.get(key, set()))
         if replayed or key in touched or not _is_real_progress(ev, story):
             # 完全相同的重播、當次呼叫已推進過、或上游判定非增量且無實質更新:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
@@ -519,6 +552,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
             # 的不同更新,第二則被 touched 壓下卻沒記簽章 → 下次重跑時第一則被
             # 認出是重播、第二則卻被當成新的而套用,同樣的輸入跑兩次結果不同。
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
+            story["today_sigs"] = _remember_today(today_sigs, key, sig, today)
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             continue
@@ -538,6 +572,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                                   has_delta=True, days_idle=0, surprise=surprise)
         story["last_update"] = today
         story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
+        story["today_sigs"] = _remember_today(today_sigs, key, sig, today)
         touched.add(key)
 
     # 今日沒被碰到的 story:依閒置天數降級

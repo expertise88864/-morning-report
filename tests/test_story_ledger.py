@@ -608,3 +608,37 @@ def test_signature_memory_is_insertion_ordered():
     # 重複出現時移到尾端,不佔兩個位置
     before = len(sl._remember_sig(seen, "k", out[0]))
     assert before == sl.SEEN_SIG_KEEP
+
+
+def test_cjk_numerals_need_quantity_context():
+    """r12(Codex,P1):「董事會通過」→「董事會一致通過」的「一致」不是數量。
+    上一輪拿掉單位 lookahead 後,任何「一二兩…」字元都被當成事實,
+    同一個決策被判成實質更新。"""
+    assert sl._material_facts("董事會一致通過") == set()
+    assert sl._material_facts("第一季展望") == set() or "1" not in sl._material_facts("一般而言")
+    assert sl._material_facts("一般而言") == set()
+    # 真正的數量仍要抓到
+    assert sl._material_facts("金額十億") == {"1000000000"}
+
+
+def test_decision_stages_are_not_over_merged():
+    """r12(Codex,P1):「董事會支持併購案」→「主管機關核准併購案」是同方向但
+    **階段推進**的真實里程碑。全壓成 approve 會讓它被判沒變化,ledger 不更新。"""
+    assert sl._decision_terms("董事會支持併購") != sl._decision_terms("主管機關核准併購")
+    assert sl._content_changed({"last_delta": "董事會支持併購案", "entity": "2317"},
+                               {"title": "主管機關核准併購案"})
+    # 真同義詞仍要視為未變
+    assert sl._decision_terms("上修財測") == sl._decision_terms("調高財測")
+
+
+def test_rerun_idempotent_beyond_signature_cap():
+    """r12(Codex,P1):跨日記憶截斷到 SEEN_SIG_KEEP,但**當日批次不能截斷**——
+    某條線索當天若有超過上限的不同簽章,最舊的會被淘汰,重跑時那幾則又被當成
+    新進展套用一次。"""
+    n = sl.SEEN_SIG_KEEP + 4
+    batch = [_ev_full("2317", "orders", f"訂單金額 {i + 1} 億") for i in range(n)]
+    led = sl.update_ledger([], batch, "2026-07-25")
+    snap = (led[0]["updates"], led[0]["state"], led[0]["last_delta"])
+    rerun = sl.update_ledger(led, batch, "2026-07-25")
+    assert (rerun[0]["updates"], rerun[0]["state"], rerun[0]["last_delta"]) == snap, \
+        f"超過簽章上限({n} 則)的批次重跑後結果改變,冪等性未成立"

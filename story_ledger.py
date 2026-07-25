@@ -407,13 +407,23 @@ def _is_more_authoritative(ev: dict, story: dict) -> bool:
     structured_events 按 quality_score **降序**排序,所以迭代到的最後一則通常是
     品質最低的那則,不是時間最新的——官方「取消」公告先處理、舊媒體「成立」稿
     反而最後覆寫,晨報就會顯示過時狀態。
-    以 (發布時間, lifecycle 權威度) 決定。
-    """
-    def _key(published, lifecycle):
-        return (str(published or ""), _LIFECYCLE_RANK.get(_norm(lifecycle), -1))
+    以 (lifecycle 權威度, 來源分級, 發布時間) 決定。
 
-    return _key(ev.get("published"), ev.get("lifecycle")) >= _key(
-        story.get("last_published"), story.get("lifecycle"))
+    r15(Codex,P1):**時間不能當第一順位**。官方 09:00 發撤回,
+    低品質轉載 10:00 仍寫「已確認」,若以時間為主,較晚的舊訊息會覆寫掉官方撤回,
+    晨報顯示過時的 lifecycle。順序改為 lifecycle 權威度 → 來源分級 → 時間。
+    """
+    _GRADE = {"A": 3, "B": 2, "C": 1}
+
+    def _key(lifecycle, grade, published):
+        return (_LIFECYCLE_RANK.get(_norm(lifecycle), -1),
+                _GRADE.get(str(grade or "").upper(), 0),
+                str(published or ""))
+
+    return _key(ev.get("lifecycle"), ev.get("source_grade"),
+                ev.get("published")) >= _key(
+        story.get("lifecycle"), story.get("source_grade"),
+        story.get("last_published"))
 
 
 def _remember_today(today_sigs: dict, key: str, sig: str, today: str) -> dict:
@@ -588,6 +598,8 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "seen_sigs": [_event_signature(ev)],
                 "today_sigs": {"date": today, "sigs": [_event_signature(ev)]},
                 "last_published": str(ev.get("published") or ""),
+                "lifecycle": str(ev.get("lifecycle") or ""),
+                "source_grade": str(ev.get("source_grade") or ""),
             }
             seen_sigs[key] = [_event_signature(ev)]
             today_sigs[key] = {_event_signature(ev)}
@@ -610,6 +622,8 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 story["headline"] = title[:120]
                 story["lifecycle"] = str(
                     ev.get("lifecycle") or story.get("lifecycle") or "")
+                story["source_grade"] = str(
+                    ev.get("source_grade") or story.get("source_grade") or "")
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
@@ -634,6 +648,9 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["prev_delta"] = (story.get("last_delta") or "")             if _is_same_subject(story, ev) else ""
         story["last_delta"] = title[:160]
         story["last_published"] = str(ev.get("published") or "")
+        story["lifecycle"] = str(ev.get("lifecycle") or story.get("lifecycle") or "")
+        story["source_grade"] = str(
+            ev.get("source_grade") or story.get("source_grade") or "")
         story["headline"] = title[:120]
         story["updates"] = int(story.get("updates") or 0) + 1
         story["max_surprise"] = round(

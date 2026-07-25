@@ -117,3 +117,26 @@ def test_chip_signals_stay_out_of_stance_scoring():
             f"{field} 進了立場計分。若這是刻意的,必須先有 MCS/IC 證據並更新本測試"
             "與 model_version——立場分是信件頂部 KPI 的權威來源,不可無聲變動。"
         )
+
+
+def test_chip_signals_persist_to_model_history_and_survive_compaction():
+    """批#45 r15(Codex,P1):訊號**必須進 model_history**。先前只寫進
+    state/history.json,而那裡只保留 90 天;model_history 保留 520 個 session。
+    本批的整個立論是「先讓它可被量測」——資料在 90 天就被裁掉,長期 IC/MCS/
+    event study 根本做不成,等於沒有可量測化。壓縮白名單也必須涵蓋,
+    否則舊 session 在壓縮階段被裁掉,時序又出現空洞。"""
+    from pathlib import Path
+    import morning_report as mr
+    src = Path(mr.__file__).read_text(encoding="utf-8")
+    fields = ("taifex_top10_net", "taifex_spec_top10_net",
+              "taifex_top10_concentration_pct", "txo_pc_oi_ratio")
+
+    mh_start = src.index('"universe_method": "daily_point_in_time_top100"')
+    mh_block = src[mh_start:mh_start + 1800]
+    for f in fields:
+        assert f'"{f}"' in mh_block, f"{f} 未寫入 model_history 紀錄"
+
+    keep_start = src.index("keep_record = {")
+    keep_block = src[keep_start:keep_start + 700]
+    for f in fields:
+        assert f'"{f}"' in keep_block, f"{f} 不在壓縮白名單,舊 session 會被裁掉"

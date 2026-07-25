@@ -702,3 +702,19 @@ def test_participant_check_excludes_story_own_company():
         "只是把主體寫出來就被判成參與者變化"
     # 真的多了一個參與者才算
     assert sl._content_changed(story, {"title": "台積電與聯發科董事會通過合作案"}, vocab)
+
+
+def test_lifecycle_authority_beats_later_publication_time():
+    """r15(Codex,P1):**時間不能當第一順位**。官方 09:00 發撤回,低品質轉載
+    10:00 仍寫「已確認」——以時間為主的話,較晚的舊訊息會覆寫掉官方撤回,
+    晨報顯示過時的 lifecycle。順序:lifecycle 權威度 → 來源分級 → 時間。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    stale = dict(_ev_full("2317", "orders", "轉載:併購案已確認 金額 50 億",
+                          published="2026-07-25T10:00:00+00:00"),
+                 lifecycle="confirmed", source_grade="C")
+    led = sl.update_ledger([], [withdrawn, stale], "2026-07-25")
+    assert "撤回" in led[0]["headline"], (
+        f"較晚但較不權威的轉載覆寫了官方撤回:{led[0]['headline']}")
+    assert led[0]["lifecycle"] == "withdrawn"

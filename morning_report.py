@@ -7067,6 +7067,10 @@ def save_model_history_records(records: list[dict],
             "session_date", "model_version", "market_regime", "taiex_close",
             "universe_method", "structured_events", "label_prices",
             "label_prices_complete", "label_prices_attempts",
+            # 批#45 r15:壓縮時必須保留,否則舊 session 的籌碼訊號會在壓縮階段
+            # 被裁掉,長期時序又出現空洞。
+            "taifex_top10_net", "taifex_spec_top10_net",
+            "taifex_top10_concentration_pct", "txo_pc_oi_ratio",
         }
         keep_stock = {
             "code", "name", "industry", "open", "close", "day_pct", "pct_5d",
@@ -19726,6 +19730,16 @@ def main() -> int:
                 "label_prices_complete": label_prices_complete,
                 "structured_events": (
                     quotes.get("STRUCTURED_NEWS_EVENTS") or [])[:40],
+                # 批#45 r15(Codex,P1):期權籌碼訊號**必須存進 model_history**。
+                # 先前只寫進 state/history.json,而那裡只保留 90 天;
+                # model_history 保留 520 個 session。本批的整個立論是「先讓它可被
+                # 量測」,資料在 90 天就被裁掉的話,長期 IC/MCS/event study 根本
+                # 做不成——等於沒有可量測化。
+                "taifex_top10_net": (taifex_large or {}).get("top10_net"),
+                "taifex_spec_top10_net": (taifex_large or {}).get("spec_top10_net"),
+                "taifex_top10_concentration_pct": (
+                    taifex_large or {}).get("concentration_pct"),
+                "txo_pc_oi_ratio": (taifex_pcr or {}).get("pc_oi_ratio"),
             })
     except Exception as e:
         print(f"[main] 準備歷史記憶失敗（不影響寄信）: {e}", file=sys.stderr)

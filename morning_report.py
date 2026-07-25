@@ -238,17 +238,24 @@ def _parse_portfolio(raw: str) -> dict[str, float]:
                 if code and shares > 0:
                     out[code] = shares
     except (ValueError, TypeError, json.JSONDecodeError) as e:
-        print(f"[portfolio] 設定解析失敗(將略過持股預測): {e}", file=sys.stderr)
+        # 批#33 隱私:例外訊息會回顯原始 token(如 float() 的
+        # "could not convert string to float: '5000x'"),那是 Secret 內容。
+        # Actions log 只遮蔽 Secret 原字串,遮不到被拆解過的片段 → 只印型別。
+        print(f"[portfolio] 設定解析失敗(將略過持股預測): {type(e).__name__}",
+              file=sys.stderr)
         return {}
     # 單位防呆(GPT-5.6 二審 P0):曾有 workflow 註解誤寫「張數」——若把張填成股
     # 會差 1000 倍。單一標的 >1000 萬股(市值動輒數十億)幾乎必是單位誤填,
     # 整組拒用並大聲報錯(持倉列會消失,使用者立刻會發現),勝過默默算錯 1000 倍。
-    for code, shares in out.items():
-        if shares > 10_000_000:
-            print(f"[portfolio] {code} 股數 {shares:,.0f} 異常(>1000 萬股)——"
-                  f"單位應為「股」而非「張」,請修正 Secrets;本次略過全部持股顯示",
-                  file=sys.stderr)
-            return {}
+    _bad = sum(1 for shares in out.values() if shares > 10_000_000)
+    if _bad:
+        # 批#33 隱私(P0):原本印「{code} 股數 {shares:,.0f}」= 持股代號 + 精確股數
+        # 直接進 Actions log。GitHub 只遮蔽 Secret **原字串**,遮不到解析後、帶
+        # 千分位格式的欄位,log 又永久保留。本函式 docstring 明訂持股「絕不寫進
+        # HTML / LLM prompt / state 檔」——log 同屬外流面,一併納管:只印彙總數量。
+        print(f"[portfolio] 有 {_bad} 檔股數超過門檻(>1000 萬股),疑把「張」填成"
+              f"「股」;請修正 Secrets。本次略過全部持股顯示", file=sys.stderr)
+        return {}
     return out
 
 
@@ -3228,7 +3235,12 @@ def fetch_twse_recent_closes(code: str, want: int = 3) -> list:
                         if c:
                             month_rows.append((str(row[0]), c))
         except Exception as e:
-            print(f"[recent_close] STOCK_DAY {ym} 失敗(略過): {e}", file=sys.stderr)
+            # 批#33 隱私:requests 的 HTTPError/ConnectionError 訊息含完整 URL,
+            # 而本函式的 URL 帶 stockNo=<持股代號> → 代號會進 Actions log,
+            # 直接違反本函式 docstring 的「log 不印代號」保證(代號不是 Secret
+            # 原字串,GitHub 的遮蔽機制完全不會命中)。只印例外型別。
+            print(f"[recent_close] STOCK_DAY {ym} 失敗(略過): {type(e).__name__}",
+                  file=sys.stderr)
         rows = month_rows + rows          # 較早的月份接在前面 → 維持升序
         if len(rows) >= want:
             break
@@ -9385,13 +9397,43 @@ def _git_commit_and_push_state(paths: list, message: str) -> None:
         else:
             print("[state] 無變動，跳過 commit")
     except subprocess.SubprocessError as e:
+        # 批#33:原本只有這一行 stderr,job 仍全綠 → 當天預測/回測資料集靜默缺一天,
+        # 可能連續數日沒人發現(2026-07-09 即為此類)。改印 GitHub annotation
+        # (Actions 摘要頁會直接顯示黃色警告)並記入降級步驟。
         print(f"[state] git push 失敗（不影響寄信）: {e}", file=sys.stderr)
+        print("::warning title=state-push-failed::"
+              "當日 state 未能提交回 repo(信已寄出);預測/回測資料集會缺這一天")
+        _DEGRADED_STEPS.append("state-push 失敗")
 
 
-def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
+def _state_push_paths() -> list[str]:
+    """批#33:所有需要 commit 回 repo 的 state 路徑(單一事實來源)。
+    抽出來讓 push 可以脫離 save_history_state 獨立呼叫(見該函式與
+    persist_delivered_report_state 的說明),也方便測試核對登錄完整性。"""
+    return [str(STATE_FILE), str(MODEL_HISTORY_FILE),
+            str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
+            str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
+            str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
+            str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
+            str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
+            str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
+            str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
+            str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
+            str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
+            str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
+
+
+def save_history_state(entry: dict, days_to_keep: int = 90,
+                       push: bool = True) -> None:
     """
     新增一筆當日記憶，並維持只保留近 N 天。
     寫入後嘗試 git commit + push 回 repo。
+
+    批#33:push=False 供 persist_delivered_report_state 使用——原本 push 是本函式
+    的最後一步,一旦 entry 為 None 或本函式中途拋例外,**當天所有 state 都不會
+    落地**(2026-07-09 實際發生:podcast 照常 commit、信也寄出,但沒有
+    `update state 2026-07-09`,history.json 直接從 07-08 跳到 07-10)。
+    改由呼叫端無論如何都執行一次 push。
     """
     try:
         existing = []
@@ -9427,31 +9469,43 @@ def save_history_state(entry: dict, days_to_keep: int = 90) -> None:
         print(f"[state] 已寫入記憶（共 {len(existing)} 筆）")
 
         # 在 GitHub Actions 環境中 commit + push 回 repo
-        _git_commit_and_push_state(
-            [str(STATE_FILE), str(MODEL_HISTORY_FILE),
-             str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
-             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
-             str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
-             str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
-             str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
-             str(INTEL_SHOWN_FILE),   # 政策區已顯示記錄,需跨日持久化才能防連日重複
-             str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
-             str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
-             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
-             str(EMAIL_ARCHIVE_DIR)],   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
-            f"chore: update state {date_str} [skip ci]")
+        if push:
+            _git_commit_and_push_state(
+                _state_push_paths(), f"chore: update state {date_str} [skip ci]")
     except Exception as e:
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)
 
 
 def persist_delivered_report_state(entry: Optional[dict],
                                    podcast_episodes: list[dict],
-                                   mark_podcasts: bool) -> None:
-    """Persist delivery state; production callers invoke this only after SMTP succeeds."""
+                                   mark_podcasts: bool,
+                                   push: bool = True) -> None:
+    """Persist delivery state; production callers invoke this only after SMTP succeeds.
+
+    批#33:push 不再掛在 save_history_state 內部。原本只要 entry 為 None
+    (「準備歷史記憶」那段 try 提早拋例外)或 save_history_state 中途失敗,
+    當天**所有** state(model_history 快照、forecast_ledger、conformal 校準、
+    source_health、intel_shown、podcast 標記、信件存檔)就全部不落地,而 log
+    只有一行「(不影響寄信)」——語意誤導,且 2026-07-09 實際發生過一次。
+    現在改成:history 寫入失敗不影響其餘 state 的 commit;push 一定會執行一次。
+    """
     if mark_podcasts:
         mark_podcast_episodes_shown(podcast_episodes)
     if entry:
-        save_history_state(entry, days_to_keep=450)
+        try:
+            save_history_state(entry, days_to_keep=450, push=False)
+        except Exception as e:      # noqa: BLE001 — 單一 state 寫入失敗不得拖垮其餘
+            print(f"[state] ⚠ history 寫入失敗(其餘 state 仍會提交): "
+                  f"{type(e).__name__}: {e}", file=sys.stderr)
+            _DEGRADED_STEPS.append("state-history 寫入失敗")
+    # 無論 entry 是否存在、history 是否寫成功,都要把當天已產生的 state 提交回 repo。
+    # push=False 給「自己另有 push 且刻意只推子集」的呼叫端(週末綜合報:不得把
+    # history/model_history 帶進去,否則會與週六的『週一預測』撞 target 被去重誤刪)。
+    if push:
+        _date_str = ((entry or {}).get("date")
+                     or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+        _git_commit_and_push_state(
+            _state_push_paths(), f"chore: update state {_date_str} [skip ci]")
 
 
 def _format_event_scenarios(calendar: Optional[list],
@@ -17455,8 +17509,12 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
 
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
                    podcast_episodes: list[dict],
-                   intelligence: Optional[dict] = None) -> None:
-    """Send first, then commit delivery state for at-least-once semantics."""
+                   intelligence: Optional[dict] = None,
+                   push_state: bool = True) -> None:
+    """Send first, then commit delivery state for at-least-once semantics.
+
+    push_state=False:呼叫端自己會 push(且只推子集)——週末綜合報用,見該處說明。
+    """
     send_email(html, subject)
     archive_report_html(
         html,
@@ -17467,6 +17525,7 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
         state_entry,
         podcast_episodes,
         mark_podcasts=True,
+        push=push_state,
     )
 
 
@@ -17939,7 +17998,10 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # 寄信成功後才標記 podcast 已顯示(避免漏寄)。週日不寫入預測歷史:weekend 筆記的
     # target_session_date 會指向週一,與週六晨報的「週一預測」撞號,save_history_state
     # 去重時會誤刪週六的真實預測紀錄。因此這裡 entry=None,只單獨 push podcast 狀態檔。
-    deliver_report(html, subject, None, podcast_eps, intelligence=intel)
+    # push_state=False:下面這次 push 才是週末的正解(只推子集,不含 history/
+    # model_history),不可讓 persist 再推一次完整清單(批#33)
+    deliver_report(html, subject, None, podcast_eps, intelligence=intel,
+                   push_state=False)
     _git_commit_and_push_state(
         [str(PODCAST_DIGEST_FILE), str(INTEL_SHOWN_FILE),   # 政策已顯示記錄週日也要帶回
          str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照

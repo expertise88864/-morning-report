@@ -951,8 +951,21 @@ def test_parse_portfolio_rejects_lot_scale_input(capsys):
     """P0 股/張防呆:單一標的 >1000 萬股=幾乎必是把張當股填 → 整組拒用+報錯。"""
     assert mr._parse_portfolio('{"2330": 5000}') == {"2330": 5000.0}   # 正常股數
     assert mr._parse_portfolio('{"0050": 20000000}') == {}             # 異常 → 整組拒用
-    assert "單位應為「股」" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "疑把「張」填成「股」" in err                                 # 仍要大聲報錯
+    # 批#33 隱私(P0):防呆訊息**不得**印出持股代號與股數——Actions log 只遮蔽
+    # Secret 原字串,遮不到解析後帶千分位的欄位,且 log 永久保留。
+    assert "0050" not in err and "20,000,000" not in err and "20000000" not in err
     assert mr._parse_portfolio("2330:5000,0050:99999999") == {}        # 簡易格式同規則
+
+
+def test_batch33_portfolio_parse_error_does_not_echo_secret(capsys):
+    """解析失敗的例外訊息會回顯原始 token(float() 的 'could not convert ...'),
+    那是 Secret 內容 → 只印例外型別。"""
+    assert mr._parse_portfolio("2330:5000x") == {}
+    err = capsys.readouterr().err
+    assert "5000x" not in err and "could not convert" not in err
+    assert "ValueError" in err          # 仍看得出是什麼錯
 
 
 def test_poly_yes_prob_pairs_outcomes_not_position():

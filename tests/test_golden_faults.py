@@ -588,3 +588,48 @@ def test_batch32r3_permanent_rcpt_refusal_not_retried(monkeypatch):
     with pytest.raises(_smtp.SMTPRecipientsRefused):
         mr.send_email("<p>x</p>", "subj")
     assert n["send"] == 1
+
+
+# ═══ 批#33:state push 脫離單一閘門 ═══
+def test_batch33_state_pushed_even_without_history_entry(monkeypatch):
+    """2026-07-09 實際事故:entry 為 None(「準備歷史記憶」那段提早拋例外)時,
+    原本 push 掛在 save_history_state 內部 → 當天**所有** state 都不落地
+    (git log 無 update state 2026-07-09、history.json 從 07-08 跳到 07-10)。
+    現在 entry 缺席仍必須 push 其餘 state。"""
+    pushes = []
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown", lambda eps: None)
+    monkeypatch.setattr(mr, "_git_commit_and_push_state",
+                        lambda paths, msg: pushes.append((list(paths), msg)))
+    mr.persist_delivered_report_state(None, [], mark_podcasts=False)
+    assert pushes, "entry 缺席時仍須提交其餘 state"
+    paths = pushes[0][0]
+    for must in (str(mr.FORECAST_LEDGER_FILE), str(mr.CONFORMAL_STATE_FILE),
+                 str(mr.MODEL_HISTORY_DIR), str(mr.INTEL_SHOWN_FILE)):
+        assert must in paths, must
+
+
+def test_batch33_history_write_failure_does_not_block_other_state(monkeypatch):
+    """history 寫入失敗不得拖垮其餘 state 的提交(原本同一個 try 內、一起陣亡)。"""
+    pushes = []
+    monkeypatch.setattr(mr, "mark_podcast_episodes_shown", lambda eps: None)
+    monkeypatch.setattr(mr, "_git_commit_and_push_state",
+                        lambda paths, msg: pushes.append(msg))
+
+    def boom(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(mr, "save_history_state", boom)
+    mr._DEGRADED_STEPS.clear()
+    mr.persist_delivered_report_state({"date": "2026-07-09"}, [], mark_podcasts=False)
+    assert pushes and "2026-07-09" in pushes[0]
+    assert any("history" in s for s in mr._DEGRADED_STEPS)
+
+
+def test_batch33_push_paths_single_source_of_truth():
+    """_state_push_paths 是 push 清單的單一事實來源;新增 state 檔必須登錄於此
+    (CLAUDE.md:已踩兩次——N4、V2-N1)。"""
+    paths = mr._state_push_paths()
+    assert len(paths) == len(set(paths)), "清單不得重複"
+    for must in (str(mr.STATE_FILE), str(mr.MODEL_HISTORY_DIR),
+                 str(mr.PODCAST_DIGEST_FILE), str(mr.FORECAST_LEDGER_FILE),
+                 str(mr.EMAIL_ARCHIVE_DIR)):
+        assert must in paths, must

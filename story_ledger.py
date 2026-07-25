@@ -232,8 +232,26 @@ def _pub_date_tokens(published: str) -> list[str]:
     for pat in _PUB_DATE_PATTERNS:
         out.append(pat.format(y=d.year, m=d.month, d=d.day))
         out.append(pat.format(y=d.year, m=f"{d.month:02d}", d=f"{d.day:02d}"))
-    out.append(f"{d.year}年")
+    # r10(Codex,P1):**不剝裸年份**。「預計 2027 年完成」→「提前至 2026 年完成」
+    # 若把 2026年 當出版雜訊剝掉,事實集合會空掉、時程提前被判成沒進展。
+    # 只剝完整的出版日期形式。
     return out
+
+
+# 決策/極性詞:同一事實的改寫稿會沿用同一個動詞,而「支持→否決」「核准→駁回」
+# 這種反轉是 R16b 明列的實質進展,卻不帶任何數字。
+# r10(Codex,P1):純數字判準對這類無數字的立場翻轉完全無感。
+_DECISION_TERMS = (
+    "支持", "反對", "同意", "否決", "通過", "駁回", "核准", "撤回", "撤銷",
+    "暫緩", "中止", "終止", "延後", "推遲", "提前", "擴大", "縮減",
+    "上修", "下修", "調高", "調降", "看好", "看壞", "警示", "解除",
+    "獲准", "遭拒", "成立", "破局", "簽約", "解約", "增資", "減資",
+)
+
+
+def _decision_terms(text: str) -> set:
+    t = _norm(text)
+    return {w for w in _DECISION_TERMS if w in t}
 
 
 def _content_changed(story: dict, ev: dict) -> bool:
@@ -251,6 +269,9 @@ def _content_changed(story: dict, ev: dict) -> bool:
                              str(story.get("last_published") or ""))
     after = _material_facts(ev.get("title"), entity, alias,
                             str(ev.get("published") or ""))
+    # 決策極性有變 = 實質進展(無數字也算)
+    if _decision_terms(prev) != _decision_terms(ev.get("title")):
+        return True
     if not after:
         return False
     return before != after

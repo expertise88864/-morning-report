@@ -428,9 +428,29 @@ def test_number_change_is_treated_as_material_update():
                                    {"title": "訂單規模 10 億 據悉"})
 
 
-def test_titles_without_numbers_fall_back_to_lifecycle_only():
-    """標題沒有數字時保守不當進展——此時只剩 lifecycle 可判斷。"""
-    assert not sl._content_changed({"last_delta": "傳將擴廠"}, {"title": "擴廠案有進展"})
+def test_titles_without_numbers_or_decision_change_fall_back_to_lifecycle():
+    """既無數字變化也無決策極性變化時保守不當進展——只剩 lifecycle 可判斷。"""
+    assert not sl._content_changed({"last_delta": "傳將蓋新廠"}, {"title": "新廠案有動靜"})
+
+
+def test_decision_polarity_reversal_counts_as_progress():
+    """r10(Codex,P1):「董事會支持併購案」→「董事會否決併購案」不帶任何數字,
+    純數字判準完全無感,但那是 R16b 明列的實質進展(立場改變)。"""
+    story = {"last_delta": "董事會支持併購案", "entity": "2317"}
+    assert sl._content_changed(story, {"title": "董事會否決併購案"})
+    # 同一決策的改寫稿仍不算進展
+    assert not sl._content_changed(
+        {"last_delta": "董事會支持併購案", "entity": "2317"},
+        {"title": "併購案獲董事會支持"})
+
+
+def test_bare_year_is_not_stripped_as_publication_noise():
+    """r10(Codex,P1):「預計 2027 年完成」→「提前至 2026 年完成」,若把 2026年
+    當出版雜訊剝掉,事實集合會空掉、時程提前被判成沒進展。"""
+    pub = "2026-07-25T00:00:00+00:00"
+    story = {"last_delta": "預計 2027 年完成", "last_published": pub, "entity": "2317"}
+    ev = {"title": "提前至 2026 年完成", "published": pub}
+    assert sl._content_changed(story, ev), "裸年份被誤剝,時程提前沒被偵測到"
 
 
 def test_us_ticker_entities_get_aliases_too():

@@ -168,19 +168,36 @@ def _sanitize_untrusted_text(text: str) -> str:
     global _INJECTION_LINE_RE
     import re as _re
     if _INJECTION_LINE_RE is None:
+        # 批#36:修飾詞原本只允許**一個**(`(all\s+|previous\s+|…)?`),於是最
+        # 常見的「ignore all previous instructions」「ignore the above prior
+        # instructions」兩個以上修飾詞的寫法直接漏掉 → 改成可重複 0..n 次。
+        #
+        # 批#36 r1(Codex):放寬修飾詞後會誤殺**第三人稱轉述**的正當財經新聞,
+        # 例如「The bank chose to ignore the above prior instructions from the
+        # regulator.」——命中即刪**整行**,監理事件會整條消失。
+        # 故祈使型樣式(要求模型做某事)一律加「祈使位置」前綴:必須位於行首,
+        # 或緊接句末標點/引號/破折號之後。攻擊 payload 幾乎都是祈使句且置於行首
+        # 或句子開頭;而「chose to ignore …」這種句中受詞位置不再命中。
+        # 名詞型樣式(system prompt / 系統提示 …)維持全行搜尋——它們本來就少見於
+        # 一般財經敘述,且是注入的強訊號。
+        # 祈使位置 = 行首 或 句末標點/引號之後;並允許常見的祈使引導詞
+        # (請/請你/麻煩/務必/現在/立即/please/now)——「**請**忽略以上指示」是中文
+        # 最典型的注入寫法,若只認行首會整個放行(自測發現)。
+        _IMPERATIVE_HEAD = (r"(?:^|(?<=[.!?;:。！?;:「」\"'\-—>]))\s*"
+                            r"(?:(?:請你?|麻煩|務必|現在|立即|please|now)\s*)?")
         _INJECTION_LINE_RE = _re.compile(
-            # 批#36:修飾詞原本只允許**一個**(`(all\s+|previous\s+|…)?`),於是最
-            # 常見的「ignore all previous instructions」「ignore the above prior
-            # instructions」兩個以上修飾詞的寫法直接漏掉。改成可重複 0..n 次。
-            r"(?i)(ignore\s+(?:(?:all|previous|above|prior|the|any|earlier)\s+)*"
-            r"instructions"
-            r"|disregard\s+(the\s+)?(previous|above|prior)"
-            r"|system\s+prompt|developer\s+message"
+            r"(?i)("
+            + _IMPERATIVE_HEAD + r"(?:"
+            r"ignore\s+(?:(?:all|previous|above|prior|the|any|earlier)\s+)*instructions"
+            r"|disregard\s+(?:the\s+)?(?:previous|above|prior)"
             r"|you\s+are\s+now\s+|act\s+as\s+an?\s+"
-            r"|reveal\s+.{0,30}(prompt|instruction|secret|api\s*key)"
+            r"|reveal\s+.{0,30}(?:prompt|instruction|secret|api\s*key)"
             r"|output\s+the\s+user"
-            r"|忽略(以上|之前|上述|先前)|無視(以上|之前|上述)"
-            r"|系統提示|洩漏.{0,10}(提示|金鑰|指令))")
+            r"|忽略(?:以上|之前|上述|先前)|無視(?:以上|之前|上述)"
+            r"|洩漏.{0,10}(?:提示|金鑰|指令)"
+            r")"
+            r"|system\s+prompt|developer\s+message|系統提示"
+            r")")
     kept = [line for line in str(text or "").splitlines()
             if not _INJECTION_LINE_RE.search(line)]
     out = "\n".join(kept)

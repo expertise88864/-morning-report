@@ -140,15 +140,20 @@ def _bigrams(text: str) -> set:
     return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) >= 2 else ({t} if t else set())
 
 
-def _subject_overlap(a: str, b: str, entity: str = "") -> float:
-    """兩則標題的主體重疊度(字元 bigram Jaccard;先剝掉實體名)。
+def _subject_overlap(a: str, b: str, entity: str = "", alias: str = "") -> float:
+    """兩則標題的主體重疊度(字元 bigram Jaccard;先剝掉公司識別)。
 
-    剝實體名是關鍵:同一公司的兩件事標題都含公司名,不剝的話任何兩則都有基礎重疊。
+    剝除是關鍵:同一公司的兩件事標題都含公司名,不剝的話任何兩則都有基礎重疊。
+
+    r5(Codex,P1):**生產環境的 entity 是股票代號**(extract_structured_events
+    優先取 code / company_label),而中文標題寫的是公司名——只剝「2317」等於沒剝,
+    「鴻海」仍留在兩則標題裡撐高重疊度,短標題就可能越過門檻、拿到錯誤前情。
+    故必須連公司名(alias)一起剝;alias 由呼叫端以代號→名稱對照表提供。
     """
-    ent = _norm(entity)
     ta, tb = _norm(a), _norm(b)
-    if ent:
-        ta, tb = ta.replace(ent, ""), tb.replace(ent, "")
+    for token in (_norm(entity), _norm(alias)):
+        if token:
+            ta, tb = ta.replace(token, ""), tb.replace(token, "")
     ga, gb = _bigrams(ta), _bigrams(tb)
     if not ga or not gb:
         return 1.0          # 無從判斷時不分岔(保連續性)
@@ -173,23 +178,47 @@ def _is_same_subject(story: dict, ev: dict) -> bool:
     """
     title = str(ev.get("title") or "")
     entity = str(story.get("entity") or ev.get("entity") or "")
-    best = max(_subject_overlap(story.get("headline") or "", title, entity),
-               _subject_overlap(story.get("last_delta") or "", title, entity))
+    alias = str(story.get("entity_name") or ev.get("entity_name") or "")
+    best = max(_subject_overlap(story.get("headline") or "", title, entity, alias),
+               _subject_overlap(story.get("last_delta") or "", title, entity, alias))
     return best >= SUBJECT_OVERLAP_MIN
 
 
-def _is_real_progress(ev: dict) -> bool:
+NEAR_IDENTICAL_OVERLAP = 0.85   # 高於此視為「同一則稿子」,不算內容更新
+
+
+def _content_changed(story: dict, ev: dict) -> bool:
+    """今日這則的內容相對該線索上一次是否真的變了。"""
+    prev = str(story.get("last_delta") or "")
+    title = str(ev.get("title") or "")
+    if not prev:
+        return True
+    if _norm(prev) == _norm(title):
+        return False
+    return _subject_overlap(prev, title, str(story.get("entity") or ""),
+                            str(story.get("entity_name") or "")) < NEAR_IDENTICAL_OVERLAP
+
+
+def _is_real_progress(ev: dict, story: dict | None = None) -> bool:
     """這則事件是否代表**真的有新進展**。
 
-    r2(Codex F1):`apply_event_timeline()` 早就算好了 `is_incremental`——跨日的
-    重複報導(同一 lifecycle 再被報一次)會被標成 False、lifecycle_weight=0。
-    帳本原本無條件把每則都當 delta,於是**沒有新進展的線索照樣
-    brewing→developing→peak 拿到主線版面**,prev_delta 與 last_delta 甚至可能是
-    同一則標題——那正是這個模組要消滅的「每天寫一樣的東西」。
+    r2(Codex):`apply_event_timeline()` 算好的 `is_incremental` 可用來擋掉跨日的
+    純重複報導——帳本原本無條件把每則都當 delta,沒有新進展的線索照樣升到主線版面。
 
-    欄位缺席時視為有進展(保守:寧可多推進,不要因為上游沒標就整條線索凍住)。
+    r5(Codex,P1):**但 `is_incremental` 只比較 lifecycle,不看內容**。
+    「訂單金額 10 億(confirmed)」→「金額上修 20 億(confirmed)」這種真實進展
+    會被標成 False,若拿它當唯一門檻,線索會在持續發展中被判為停滯、照樣降級沉寂,
+    LLM 也看不到今日真正的 delta。那比原本的問題更糟。
+
+    故兩個訊號分開用:
+      有進展 = 內容變了 **或** lifecycle 有推進
+      沒進展 = 內容沒變 **且** lifecycle 也沒推進(才是真正的重複稿)
+    新線索(story=None)只看 lifecycle:陳舊的重複報導不該憑空建出活躍線索。
     """
-    return ev.get("is_incremental") is not False
+    lifecycle_incremental = ev.get("is_incremental") is not False
+    if story is None:
+        return lifecycle_incremental
+    return _content_changed(story, ev) or lifecycle_incremental
 
 
 def _episodic_bucket(event_type: str, published: str) -> str:
@@ -248,7 +277,8 @@ def _advance(state: str, has_delta: bool, days_idle: int,
     return state
 
 
-def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[dict]:
+def update_ledger(ledger: list[dict], events: list[dict], today: str,
+                  name_map: dict | None = None) -> list[dict]:
     """把今日事件併入帳本,回傳更新後的帳本(不改動輸入)。
 
     `events` 需含 entity / event_type / title,可選 surprise_score 與 summary。
@@ -280,6 +310,10 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
             by_key[key] = {
                 "key": key,
                 "entity": str(ev.get("entity") or ""),
+                # r5:公司名(代號→名稱)。主體比對必須連名稱一起剝,
+                # 否則同公司的兩件事只靠共同的公司名就能撐過門檻。
+                "entity_name": str((name_map or {}).get(
+                    str(ev.get("entity") or ""), "") or ev.get("entity_name") or ""),
                 "event_type": str(ev.get("event_type") or ""),
                 "headline": title[:120],
                 # r1(Codex F5):高 surprise 的**新**線索直接是高潮。原本新開
@@ -297,7 +331,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
             }
             touched.add(key)
             continue
-        if key in touched or not _is_real_progress(ev):
+        if key in touched or not _is_real_progress(ev, story):
             # 當日已推進過、或上游判定為「非增量」的重複報導:
             # 只更新 surprise 上界,不推進狀態、不增加 updates。
             story["max_surprise"] = round(

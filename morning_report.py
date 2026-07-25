@@ -19203,8 +19203,13 @@ def main() -> int:
     try:
         import story_ledger as _sl
         _ledger = load_story_ledger()
+        # r5:代號→公司名對照。主體比對必須連公司名一起剝——生產環境的 entity 是
+        # 股票代號,而中文標題寫的是公司名,只剝代號等於沒剝。
+        _name_map = {str(s_.get("code")): str(s_.get("name") or "")
+                     for s_ in (tw0050 or []) if s_.get("code")}
         _ledger = _sl.update_ledger(_ledger, structured_events,
-                                    now_tpe.strftime("%Y-%m-%d"))
+                                    now_tpe.strftime("%Y-%m-%d"),
+                                    name_map=_name_map)
         quotes["STORY_LEDGER"] = _ledger
         if not save_story_ledger(_ledger):
             _DEGRADED_STEPS.append("story_ledger_save")

@@ -252,11 +252,29 @@ def test_non_incremental_repeat_does_not_advance_story():
         [], [_ev_full("2330", "orders", "接獲大單", is_incremental=True)], "2026-07-24")
     state_before, updates_before = led[0]["state"], led[0]["updates"]
 
+    # 純重複稿 = 同一則標題再被報一次(lifecycle 也沒推進)
     led2 = sl.update_ledger(
-        led, [_ev_full("2330", "orders", "接獲大單(重複報導)", is_incremental=False)],
+        led, [_ev_full("2330", "orders", "接獲大單", is_incremental=False)],
         "2026-07-25")
-    assert led2[0]["state"] == state_before, "非增量報導推進了狀態"
-    assert led2[0]["updates"] == updates_before, "非增量報導被算成一次進展"
+    assert led2[0]["state"] == state_before, "純重複稿推進了狀態"
+    assert led2[0]["updates"] == updates_before, "純重複稿被算成一次進展"
+
+
+def test_content_update_with_same_lifecycle_still_counts_as_progress():
+    """r5(Codex,P1):is_incremental **只比 lifecycle 不看內容**。
+    「訂單金額 10 億(confirmed)」→「金額上修 20 億(confirmed)」是真實進展,
+    卻會被標成 is_incremental=False。若拿它當唯一門檻,線索會在持續發展中被判停滯、
+    照樣降級沉寂,LLM 也看不到今日真正的 delta——比原本的問題更糟。"""
+    led = sl.update_ledger(
+        [], [_ev_full("2317", "orders", "鴻海接獲車用大單 金額約 10 億美元",
+                      is_incremental=True)], "2026-07-24")
+    updates_before = led[0]["updates"]
+    led2 = sl.update_ledger(
+        led, [_ev_full("2317", "orders", "鴻海車用大單金額上修至 20 億美元 客戶追加",
+                       is_incremental=False)], "2026-07-25")
+    assert led2[0]["updates"] == updates_before + 1, "內容確實更新卻被當成重複稿"
+    assert "20" in led2[0]["last_delta"], "今日的 delta 沒有進到帳本"
+    assert led2[0]["last_update"] == "2026-07-25", "last_update 沒更新,線索會被誤判停滯"
 
 
 def test_incremental_flag_absent_is_treated_as_progress():
@@ -322,3 +340,29 @@ def test_subject_overlap_strips_entity_before_comparing():
     low = sl._subject_overlap("鴻海遭控違反個資法", "鴻海接獲車用大單", "鴻海")
     assert high > low
     assert low < sl.SUBJECT_OVERLAP_MIN
+
+
+def test_production_shape_code_entity_with_chinese_titles():
+    """r5(Codex,P1):生產環境的 entity 是**股票代號**(extract_structured_events
+    優先取 code/company_label),中文標題寫的是公司名。只剝「2317」等於沒剝——
+    「鴻海」仍留在兩則標題撐高重疊度,短標題就可能越過門檻拿到錯誤前情。"""
+    name_map = {"2317": "鴻海"}
+    led = sl.update_ledger(
+        [], [_ev_full("2317", "orders", "鴻海傳接獲蘋果訂單")], "2026-07-10",
+        name_map=name_map)
+    assert led[0]["entity_name"] == "鴻海"
+    led = sl.update_ledger(
+        led, [_ev_full("2317", "orders", "鴻海公告取得車用訂單")], "2026-07-20",
+        name_map=name_map)
+    assert led[0]["prev_delta"] == "", (
+        f"同月同型別的另一件事被寫成前情:{led[0]['prev_delta']!r}"
+        "(公司名沒被剝掉時,兩則短標題只靠「鴻海」與「訂單」就會越過門檻)")
+
+
+def test_alias_stripping_changes_the_verdict():
+    """直接佐證:不剝公司名時兩則會被判為同主體,剝了才判為不同。"""
+    a, b = "鴻海傳接獲蘋果訂單", "鴻海公告取得車用訂單"
+    without_alias = sl._subject_overlap(a, b, "2317", "")
+    with_alias = sl._subject_overlap(a, b, "2317", "鴻海")
+    assert without_alias > with_alias
+    assert with_alias < sl.SUBJECT_OVERLAP_MIN <= without_alias

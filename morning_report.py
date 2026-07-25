@@ -3971,12 +3971,21 @@ def fetch_tw0050_snapshot(universe: Optional[dict] = None,
 
 
 def fetch_2330_recent() -> Optional[pd.DataFrame]:
-    """抓 2330.TW 近 60 日收盤，供回歸用。已過濾 nan。"""
+    """抓 2330.TW 近 60 日收盤，供回歸用。已過濾 nan 與臨時休市的幽靈 bar。
+
+    批#34 r1(Codex):同樣要濾成交量 0——颱風臨時休市日 yfinance 會回一根
+    開=收=前收、量 0 的假 bar,它會以「開盤跳空 0%、但 TSM 當日有非零報酬」的
+    樣本進入 model3 的 60 日 OLS,扭曲 decay_factor;而 model3 依 500 日回測結果
+    **直接被採用為 weighted_final**,所以會直接影響信上公布的 2330 預測價。
+    失真幅度隨幽靈日當天 TSM 報酬的平方成長(單一取樣點看起來小不代表上限小)。
+    """
     for attempt in range(3):
         try:
             d = yf.Ticker("2330.TW").history(period="6mo", auto_adjust=False)
             d = d.dropna(subset=["Close"])
             d = d[d["Close"] > 0]
+            if "Volume" in getattr(d, "columns", []):
+                d = d[d["Volume"] > 0]
             if not d.empty:
                 return d
         except Exception as e:

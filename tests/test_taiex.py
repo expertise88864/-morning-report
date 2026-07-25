@@ -511,3 +511,27 @@ def test_batch34_stance_defense_catches_unparseable_label():
     assert "全面加碼" not in html            # LLM 的反向建議必須被移除
     assert "依系統計分" in html               # 改用確定性摘要
     assert "偏空" in html                     # 仍呈現 Python 權威立場
+
+
+def test_batch34r1_fetch_2330_recent_drops_ghost_bars(monkeypatch):
+    """r1(Codex):model3 的 60 日 OLS 也吃 yfinance 原始列。颱風幽靈 bar 會以
+    「跳空 0% 但 TSM 有非零報酬」進迴歸,扭曲 decay_factor——而 model3 依 500 日
+    回測直接被採用為 weighted_final,故會影響信上公布的 2330 預測價。"""
+    import pandas as pd
+    idx = pd.to_datetime(["2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13"])
+    df = pd.DataFrame({"Open": [100.0, 101.0, 102.0, 103.0],
+                       "Close": [100.5, 101.5, 102.0, 103.5],
+                       "Volume": [5000, 6000, 0, 7000]}, index=idx)   # 07-10 幽靈
+
+    class T:
+        def __init__(self, *a, **k):
+            pass
+
+        def history(self, **k):
+            return df
+    monkeypatch.setattr(mr.yf, "Ticker", T)
+    got = mr.fetch_2330_recent()
+    assert got is not None
+    days = [i.strftime("%Y-%m-%d") for i in got.index]
+    assert "2026-07-10" not in days, "臨時休市的量 0 幽靈 bar 不得進 model3 迴歸"
+    assert len(days) == 3

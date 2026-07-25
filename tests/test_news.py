@@ -1480,3 +1480,57 @@ def test_twse_news_non_list_payload_degrades_quietly(monkeypatch):
          "url": "https://openapi.twse.com.tw/v1/news/newsList", "kind": "twse_news"},
         _dt.datetime(2026, 7, 24, tzinfo=_dt.timezone.utc))
     assert out == []
+
+
+def test_mops_clause_maps_only_evidence_backed_clauses():
+    """批#42:「符合條款」是金管會法定的事件類型本體 = 免費的 ground truth。
+    但只映射有實際樣本佐證的款別;沒觀察過的一律回 None,不憑想像替法定款別
+    編造語意。"""
+    assert mr._mops_clause_event_type("第12款") == "earnings"    # 法人說明會
+    assert mr._mops_clause_event_type("第19款") == "litigation"  # 檢調搜索
+    assert mr._mops_clause_event_type("第14款") == "general"     # 除息基準日(例行)
+    for unknown in ("第99款", "", None, "   ", "第7款"):
+        assert mr._mops_clause_event_type(unknown) is None, \
+            f"{unknown!r} 未收錄,應回 None 讓既有啟發式決定"
+
+
+def test_mops_clause_maps_to_allowed_event_types_only():
+    """錨定值必須落在抽取器的允許清單內,否則會被 _validate_llm_events 剔除,
+    等於錨定悄悄失效。"""
+    import news_events as ne
+    for clause, et in mr._MOPS_CLAUSE_EVENT_TYPE.items():
+        assert et in ne._LLM_EVENT_TYPES, f"{clause} 映射到不存在的 {et}"
+
+
+def test_mops_announcement_carries_clause_and_anchor(monkeypatch):
+    """重大訊息輸出必須帶 clause 與由它推得的 event_type,下游才錨得到。"""
+    rows = [{
+        "公司代號": "2330", "主旨 ": "公告本公司召開法人說明會相關內容",
+        "說明": "說明內容", "符合條款": "第12款",
+        "發言日期": "1150725", "發言時間": "100000",
+    }]
+
+    class _R:
+        def json(self): return rows
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    out = mr.fetch_tw_major_announcements(["2330"], hours=24 * 3650)
+    assert len(out) == 1
+    assert out[0]["clause"] == "第12款"
+    assert out[0]["event_type"] == "earnings"
+
+
+def test_mops_unknown_clause_leaves_event_type_blank(monkeypatch):
+    """未收錄款別不得硬塞 event_type——空字串代表「不錨定」,
+    讓 extract_structured_events 的文字啟發式接手。"""
+    rows = [{
+        "公司代號": "2330", "主旨 ": "某項未知類型公告", "說明": "x",
+        "符合條款": "第99款", "發言日期": "1150725", "發言時間": "100000",
+    }]
+
+    class _R:
+        def json(self): return rows
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    out = mr.fetch_tw_major_announcements(["2330"], hours=24 * 3650)
+    assert out[0]["event_type"] == ""

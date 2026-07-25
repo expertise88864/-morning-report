@@ -1321,9 +1321,12 @@ def fetch_taifex_night_session() -> dict:
     # (其盤後正是週五夜盤);查無再退回原本的往回掃描。
     # 往前找數個平日(Codex 批#31 r1 F4:_next_tw_weekday 只跳週末、不跳國定假日
     # ——週一逢連假時,週五夜盤會記在週二(下一個「實際交易日」)。只查週一會撲空、
-    # 退回往回掃描又拿到週四夜盤的舊值)。最多往前 4 個平日,再退回往回掃描。
+    # 退回往回掃描又拿到週四夜盤的舊值)。
+    # 探測長度須覆蓋**最長休市**(農曆年約 9 個日曆日 ≈ 7 個平日;Codex r3:原本
+    # 4 個平日在年假期間仍會全數撲空而退回舊值)→ 取 12 個平日,留足餘裕。
+    # 成本:正常日第 1 次就命中(平日=today、週末=下週一),只有休市期間才多打幾次。
     _fwd, _cursor = [], _next_tw_weekday(today)
-    while len(_fwd) < 4:
+    while len(_fwd) < 12:
         _fwd.append(_cursor)
         _cursor = _next_tw_weekday(_cursor + dt.timedelta(days=1))
     _scan = _fwd + [today - dt.timedelta(days=b) for b in range(0, 5)]
@@ -9562,14 +9565,24 @@ def _format_policy_deepdive_block(intel: Optional[dict]) -> str:
            and safe_float(it.get("importance")) >= TW_POLICY_DEEPDIVE_MIN_SCORE]
     if not hot:
         return ""
-    # 同一政策的多則報導聚合。timeline_key 格式為 kind:topic:anchor:entity——
-    # **只取前 3 段(去掉 entity)**:同一政策的不同報導 entity 常不同(有的標題
-    # 含「行政院」有的沒有),用完整 key 會把同一政策拆成兩個「政策」條目。
+    # 同一政策的多則報導聚合。timeline_key 格式為 kind:topic:anchor:entity。
+    # 跨 entity 合併(取前 3 段)**只用於「具名單一政策」錨點**——同一政策的不同
+    # 報導 entity 常不同(有的標題含「行政院」有的沒有),不合併會拆成兩條。
+    # 但泛稱錨點(年金/退休金/儲蓄/信託/房貸…)底下可能是**多個不同制度**
+    # (勞工退休金新制 vs 軍公教年金改革,Codex 批#31 r3),一律用完整 key,
+    # 寧可拆成兩條也不要把不同制度的資格/金額混寫成一段。
+    _MERGEABLE_ANCHORS = {
+        "未來帳戶", "普發現金", "主權基金", "國安基金", "國民年金",
+        "新青安", "囤房稅", "青年安心成家",
+    }
     groups: dict = {}
     for it in hot:
         raw = str(it.get("timeline_key") or "")
-        key = ":".join(raw.split(":")[:3]) if raw else str(
-            it.get("topic") or it.get("title") or "")
+        parts = raw.split(":")
+        if len(parts) >= 4 and parts[2] in _MERGEABLE_ANCHORS:
+            key = ":".join(parts[:3])          # 具名政策:跨 entity 合併
+        else:
+            key = raw or str(it.get("topic") or it.get("title") or "")
         groups.setdefault(key, []).append(it)
     # 依組內最高重要性排序,最多 3 個政策(避免信件暴長)
     ordered = sorted(groups.values(),

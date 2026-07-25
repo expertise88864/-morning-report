@@ -2254,10 +2254,12 @@ def test_batch31r2_policy_alias_shares_one_timeline_anchor():
     a1 = mr._tw_intelligence_timeline_key("policy", "台灣未來帳戶開辦").split(":")[2]
     a2 = mr._tw_intelligence_timeline_key("policy", "兒童帳戶開辦").split(":")[2]
     assert a1 == a2 == "未來帳戶"
-    assert (mr._tw_intelligence_timeline_key("policy", "退休金改革方案").split(":")[2]
-            == mr._tw_intelligence_timeline_key("policy", "年金改革方案").split(":")[2])
-    assert (mr._tw_intelligence_timeline_key("policy", "國民年金保費調整").split(":")[2]
-            != mr._tw_intelligence_timeline_key("policy", "年金改革方案").split(":")[2])
+    # r3 修正:退休金 **不再**併入年金——勞工退休金新制與軍公教年金改革是兩套
+    # 制度,併了會讓 LLM 把資格/金額混寫(Codex r3);國民年金亦維持獨立。
+    _pension = {mr._tw_intelligence_timeline_key("policy", t).split(":")[2]
+                for t in ("勞工退休金新制提撥率調高", "軍公教年金改革方案",
+                          "國民年金保費調整")}
+    assert len(_pension) == 3
     # 別名兩則在深度解析中合成一個政策,細節合併
     items = [
         {"title": "行政院拍板台灣未來帳戶 每年存1.2萬", "importance": 8.4,
@@ -2323,3 +2325,32 @@ def test_batch31r1_admin_finance_homonyms_stay_out():
     for real in ("行政院拍板台灣未來帳戶 每年存1.2萬", "普發現金一萬元 8月入帳",
                  "新青安3.0 8月上路"):
         assert mr._tw_intelligence_recall_hit("policy", real) is True, real
+
+def test_batch31r3_distinct_pension_schemes_not_merged():
+    """r3(Codex):勞工退休金新制與軍公教年金改革是兩套制度,若別名收斂或
+    跨 entity 合併把它們併成一個政策,LLM 會把資格/金額/影響混寫成錯誤分析。
+    泛稱錨點一律用完整 key;具名單一政策(未來帳戶)才跨 entity 合併。"""
+    def mk(title, imp=8.0):
+        return {"title": title, "importance": imp,
+                "timeline_key": mr._tw_intelligence_timeline_key("policy", title),
+                "topic": "民生金融", "status": "已公告", "source_name": "中央社",
+                "source_grade": "官方", "published": "2026-07-24"}
+    blk = mr._format_policy_deepdive_block({"policy": [
+        mk("勞工退休金新制提撥率調高"), mk("軍公教年金改革第二階段方案", 7.9)]})
+    assert blk.count("◆ 政策") == 2          # 不同制度不得混成一段
+    # 具名政策(含別名)仍合併,細節不流失
+    blk2 = mr._format_policy_deepdive_block({"policy": [
+        mk("行政院拍板台灣未來帳戶 每年存1.2萬"),
+        mk("兒童帳戶最高每年存2.4萬 8月開辦", 7.7)]})
+    assert blk2.count("◆ 政策") == 1 and "1.2萬" in blk2 and "2.4萬" in blk2
+
+
+def test_batch31r3_night_txf_probe_covers_long_holiday():
+    """r3(Codex):農曆年休市可達 9 個日曆日,4 個平日的探測窗會全數撲空而退回
+    舊值。探測窗須覆蓋最長休市(12 平日 ≥ 15 日曆日)。"""
+    cur = mr._next_tw_weekday(dt.date(2026, 2, 14))
+    fwd = []
+    while len(fwd) < 12:
+        fwd.append(cur)
+        cur = mr._next_tw_weekday(cur + dt.timedelta(days=1))
+    assert (fwd[-1] - fwd[0]).days >= 14

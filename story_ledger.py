@@ -409,21 +409,25 @@ def _is_more_authoritative(ev: dict, story: dict) -> bool:
     反而最後覆寫,晨報就會顯示過時狀態。
     以 (lifecycle 權威度, 來源分級, 發布時間) 決定。
 
-    r15(Codex,P1):**時間不能當第一順位**。官方 09:00 發撤回,
-    低品質轉載 10:00 仍寫「已確認」,若以時間為主,較晚的舊訊息會覆寫掉官方撤回,
-    晨報顯示過時的 lifecycle。順序改為 lifecycle 權威度 → 來源分級 → 時間。
+    r15(Codex,P1):**時間不能當第一順位**——官方 09:00 發撤回、低品質轉載
+    10:00 仍寫「已確認」,以時間為主會讓過時訊息覆寫官方撤回。
+    r16(Codex,P1):但 **lifecycle 也不能當第一順位**——那會讓 withdrawn 永久
+    最高,而 news_events 明確把「撤回後重啟」當成新集數(withdrawn 非終態),
+    同等級的重啟消息會被舊的撤回壓住,晨報停在過時的取消狀態。
+    定案順序:**來源分級 → 發布時間 → lifecycle(僅作最終決勝)**。
+    兩個情境都成立:A 級撤回勝過 C 級舊轉載(分級);A 級重啟勝過較早的 A 級撤回(時間)。
     """
     _GRADE = {"A": 3, "B": 2, "C": 1}
 
-    def _key(lifecycle, grade, published):
-        return (_LIFECYCLE_RANK.get(_norm(lifecycle), -1),
-                _GRADE.get(str(grade or "").upper(), 0),
-                str(published or ""))
+    def _key(grade, published, lifecycle):
+        return (_GRADE.get(str(grade or "").upper(), 0),
+                str(published or ""),
+                _LIFECYCLE_RANK.get(_norm(lifecycle), -1))
 
-    return _key(ev.get("lifecycle"), ev.get("source_grade"),
-                ev.get("published")) >= _key(
-        story.get("lifecycle"), story.get("source_grade"),
-        story.get("last_published"))
+    return _key(ev.get("source_grade"), ev.get("published"),
+                ev.get("lifecycle")) >= _key(
+        story.get("source_grade"), story.get("last_published"),
+        story.get("lifecycle"))
 
 
 def _remember_today(today_sigs: dict, key: str, sig: str, today: str) -> dict:

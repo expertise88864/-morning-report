@@ -718,3 +718,18 @@ def test_lifecycle_authority_beats_later_publication_time():
     assert "撤回" in led[0]["headline"], (
         f"較晚但較不權威的轉載覆寫了官方撤回:{led[0]['headline']}")
     assert led[0]["lifecycle"] == "withdrawn"
+
+
+def test_same_grade_restart_after_withdrawal_wins():
+    """r16(Codex,P1):lifecycle 也不能當第一順位——那會讓 withdrawn 永久最高,
+    而 news_events 明確把「撤回後重啟」當成新集數(withdrawn 非終態)。
+    同等級的重啟消息若被舊的撤回壓住,晨報會停在過時的取消狀態。"""
+    withdrawn = dict(_ev_full("2317", "orders", "官方公告:併購案撤回",
+                              published="2026-07-25T09:00:00+00:00"),
+                     lifecycle="withdrawn", source_grade="A")
+    restart = dict(_ev_full("2317", "orders", "官方公告:併購案重啟並簽署意向書",
+                            published="2026-07-25T10:00:00+00:00"),
+                   lifecycle="confirmed", source_grade="A")
+    led = sl.update_ledger([], [withdrawn, restart], "2026-07-25")
+    assert "重啟" in led[0]["headline"], (
+        f"同等級的重啟被舊的撤回壓住:{led[0]['headline']}")

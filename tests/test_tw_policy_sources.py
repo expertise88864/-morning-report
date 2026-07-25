@@ -167,3 +167,39 @@ def test_policy_keywords_state_roundtrip(tmp_path, monkeypatch):
     assert mr.load_policy_keywords() == []
     assert "policy_keywords_load" in mr._DEGRADED_STEPS, \
         "讀檔失敗必須進降級步驟——否則新詞偵測整個失效卻無人知道"
+
+
+def test_gazette_only_policy_still_activates_deepdive_section():
+    """r5(Codex):這批的核心目的是讓公報獨有的政策也能被深度解析。
+    若段落規則仍寫「僅在有【台灣重大政策】清單時才寫」,公報獨有的政策會被略過,
+    整個一手法令來源等於白接。"""
+    from tests.test_data_validation import _empty_quotes
+    recs = tps.parse_gazette_xml(_XML)
+    # 媒體政策清單為空,只有公報素材
+    q = _empty_quotes(GAZETTE_RECORDS=recs, TW_DAILY_INTELLIGENCE={"policy": []})
+    prompt = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
+
+    assert "十一之二、重大政策深度解析" in prompt, "公報獨有政策時整段消失"
+    assert "行政院公報" in prompt
+    # 啟用條件必須明確含公報,否則 LLM 會照舊條件略過
+    head = prompt[prompt.index("十一之二、重大政策深度解析"):][:120]
+    assert "公報" in head, f"段落啟用條件未涵蓋公報:{head}"
+
+
+def test_gazette_absent_and_no_policy_omits_section():
+    """兩者皆無時仍要整段省略,不留空標題。"""
+    from tests.test_data_validation import _empty_quotes
+    q = _empty_quotes(GAZETTE_RECORDS=[], TW_DAILY_INTELLIGENCE={"policy": []})
+    prompt = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "十一之二、重大政策深度解析" not in prompt
+
+
+def test_gazette_is_declared_authoritative_over_media():
+    """公報是一手法令原文,細節權威性高於媒體轉述——prompt 必須明講,
+    否則 LLM 遇到兩邊數字不一致時無所適從。"""
+    from tests.test_data_validation import _empty_quotes
+    recs = tps.parse_gazette_xml(_XML)
+    prompt = mr._build_prompt(_empty_quotes(GAZETTE_RECORDS=recs),
+                              {"error": "x"}, {"error": "x"}, [], [], "")
+    assert "一手法令原文" in prompt
+    assert "以公報為準" in prompt

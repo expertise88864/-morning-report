@@ -2178,7 +2178,9 @@ def test_batch31_policy_deepdive_section_toggles_in_prompt():
     p_yes = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
     assert "## 十一之二、重大政策深度解析" in p_yes
     assert "未來帳戶" in p_yes                                   # 清單進 prompt
-    assert "清單沒寫的金額、日期、資格一律不得補寫" in p_yes      # 禁杜撰鐵則
+    # 禁杜撰鐵則(批#41 r5:素材來源由「清單」擴為「公報/清單/其他新聞區塊」三者,
+    # 措辭隨之改為「三者都沒寫的…」;此處驗的是鐵則仍在,不是驗字面)
+    assert "金額、日期、資格一律不得補寫" in p_yes
     assert p_yes.index("## 十一、") < p_yes.index("## 十一之二") < p_yes.index("## 十二、")
 
 

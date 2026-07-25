@@ -16076,6 +16076,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     tw_intelligence_html = _safe_block(
         "政策/醫界", _render_tw_intelligence_html,
         quotes.get("TW_DAILY_INTELLIGENCE") or {}, _htmllib)
+    # 批#32 r1(Codex F3):政策卡若渲染失敗被 _safe_block 吞成空字串,inc_policy
+    # 仍會是 True → 條目被標「已顯示」而降序 5 天,但收件人根本沒看到。
+    # 記錄「這張卡是否真的產出內容」,供下方 inc_policy 初始化使用。
+    _policy_card_ok = bool(tw_intelligence_html)
     # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,
     # 若這裡再砍集數,排序靠後的節目會永遠輪不到、96h 後過期消失(Codex review)。
     # 超標時改由下方 keep/trim 分支「先壓條數、必要時才減集數並同步下修 shown 數」處理。
@@ -17158,7 +17162,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     LIMIT_KB = 95.0
     overflow_mode = os.environ.get("EMAIL_OVERFLOW_MODE", "full").strip().lower()
     intel_data = quotes.get("TW_DAILY_INTELLIGENCE") or {}
-    inc_policy = inc_medical = True
+    # 批#32 r1(Codex F3):政策卡渲染失敗(_safe_block 吞成空字串)時不得標「已顯示」
+    inc_policy = _policy_card_ok
+    inc_medical = True
     podcast_eps = quotes.get("PODCAST_DIGEST") or []
     pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
     # 追蹤「實際出現在信中的 Podcast 集數」:局部縮減/整塊移除後,只有真正顯示的集才該被
@@ -17291,23 +17297,38 @@ def send_email(html: str, subject: str) -> None:
     ctx = ssl.create_default_context()
     _delays = (5, 15, 45)
     for _attempt in range(len(_delays) + 1):
+        _submitted = False        # 已把 DATA 交給伺服器?交出去之後就不可重送
         try:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx,
                                   timeout=SMTP_TIMEOUT_SEC) as s:
+                # 連線/登入階段的失敗**確定沒送出**,可安全重試
                 s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+                # 批#32 r1(Codex F4):send_message 之後的例外屬「投遞狀態未知」——
+                # Gmail 可能已收下 DATA 但回應遺失,重送會讓收件人收到重複晨報。
+                # 故只有這個旗標之前的失敗才重試,之後一律直接拋(寧可漏寄一次由
+                # workflow 告警處理,也不要寄出多份彼此矛盾的晨報)。
+                _submitted = True
                 refused = s.send_message(msg)
-            # 部分收件者被拒不會拋例外(全部被拒才 raise)→ 明確告警,否則靜默漏寄
+            # 部分收件者被拒不會拋例外(全部被拒才 raise)。不靜默:明確告警並記入
+            # 降級步驟(進資料品質區),讓「某人沒收到」不會無聲無息。
+            # 刻意不 raise:主收件人已成功,拋掉會連 state 持久化一起放棄(Codex F5,
+            # 取捨已在 context 說明)。
             if refused:
-                print(f"[mail] ⚠ 有 {len(refused)} 位收件者被拒收(其餘已寄出)",
-                      file=sys.stderr)
+                _n = len(refused)
+                print(f"[mail] ⚠ 有 {_n} 位收件者被拒收(其餘已寄出)", file=sys.stderr)
+                _DEGRADED_STEPS.append(f"寄信-{_n}位收件者被拒")
             break
         except smtplib.SMTPAuthenticationError:
             raise                                  # 憑證/授權錯:重試無意義
         except (smtplib.SMTPException, OSError) as e:
+            if _submitted:
+                print(f"[mail] ⚠ 訊息已送出但回應異常({type(e).__name__}),"
+                      f"投遞狀態未知——不重送以免重複寄信", file=sys.stderr)
+                raise
             if _attempt >= len(_delays):
                 raise
             _wait = _delays[_attempt]
-            print(f"[mail] 寄信失敗({type(e).__name__}),{_wait}s 後重試 "
+            print(f"[mail] 連線/登入失敗({type(e).__name__}),{_wait}s 後重試 "
                   f"({_attempt + 1}/{len(_delays)})", file=sys.stderr)
             time.sleep(_wait)
     # 隱私:不印收件者位址(RECIPIENT 可能走 GitHub Variables → log 不會被遮蔽;
@@ -18695,6 +18716,12 @@ def main() -> int:
         _DEGRADED_STEPS.append("渲染-主體(改寄極簡版)")
         html = _render_minimal_html(quotes, fair, predictions, analysis,
                                     report_date, mode)
+        # 批#32 r1(Codex F2):極簡信裡**沒有**任何 Podcast 集與政策條目,若沿用
+        # deliver 端的預設值(PODCAST_DIGEST 全集 / 政策 shown=True),就會把收件人
+        # 根本沒看到的內容標成「已顯示」→ podcast 集數餓死、政策條目降序 5 天,
+        # 正是 repo 早有回歸測試的那個 bug 類。明確標成「一集都沒顯示」。
+        quotes["PODCAST_SHOWN_EPISODES"] = []
+        quotes["TW_INTEL_POLICY_SHOWN"] = False
 
     # 8.5 (Opt 1) 準備今日記憶。Production 必須等 SMTP 成功後才提交，
     # 否則寄信失敗卻先標記 Podcast shown_at，會造成永久漏寄。

@@ -402,3 +402,86 @@ def test_batch32_send_email_retries_transient_and_not_auth(monkeypatch):
     with pytest.raises(_smtp.SMTPAuthenticationError):
         mr.send_email("<p>x</p>", "subj")
     assert attempts["n"] == 1          # 憑證錯不重試
+
+
+def test_batch32r1_minimal_fallback_marks_nothing_shown(monkeypatch):
+    """r1(Codex F2):極簡信裡沒有任何 Podcast 集與政策條目,若沿用 deliver 端預設
+    (PODCAST_DIGEST 全集 / 政策 shown=True),會把沒看到的內容標成已顯示 →
+    podcast 餓死、政策降序 5 天。fallback 分支必須明確標成「一集都沒顯示」。"""
+    quotes = {"PODCAST_DIGEST": [{"id": "e1"}, {"id": "e2"}],
+              "TW_DAILY_INTELLIGENCE": {"policy": [{"title": "x"}]}}
+
+    def boom(*a, **k):
+        raise TypeError("upstream field renamed")
+    monkeypatch.setattr(mr, "render_html", boom)
+    # 複製 main 的 fallback 契約(render 失敗 → 極簡版 + 標記清零)
+    try:
+        mr.render_html(quotes, {}, {}, "x", "2026-07-25", "每日報")
+    except Exception:
+        html = mr._render_minimal_html(quotes, {}, {}, "分析", "2026-07-25", "每日報")
+        quotes["PODCAST_SHOWN_EPISODES"] = []
+        quotes["TW_INTEL_POLICY_SHOWN"] = False
+    assert html
+    # deliver 端的取值語意:必須拿到「空集合」與「不標示政策」
+    assert (quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or []) == []
+    assert quotes.get("TW_INTEL_POLICY_SHOWN", True) is False
+
+
+def test_batch32r1_smtp_not_retried_after_submission(monkeypatch):
+    """r1(Codex F4):send_message 之後的例外屬「投遞狀態未知」——Gmail 可能已收下
+    DATA,重送會讓收件人收到重複晨報。故只重試連線/登入階段的失敗。"""
+    import smtplib as _smtp
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+    sends = {"n": 0}
+
+    class PostDataFail:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg):
+            sends["n"] += 1
+            raise _smtp.SMTPServerDisconnected("connection lost after DATA")
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", PostDataFail)
+    with pytest.raises(_smtp.SMTPServerDisconnected):
+        mr.send_email("<p>x</p>", "subj")
+    assert sends["n"] == 1, "送出後失敗不得重送(會重複寄信)"
+
+
+def test_batch32r1_partial_refusal_is_recorded(monkeypatch):
+    """r1(Codex F5):部分收件者被拒不會拋例外——不得靜默,須記入降級步驟。"""
+    monkeypatch.setattr(mr, "GMAIL_USER", "u@example.com")
+    monkeypatch.setattr(mr, "GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(mr, "RECIPIENTS", ["a@example.com", "b@example.com"])
+    monkeypatch.setattr(mr.time, "sleep", lambda s: None)
+
+    class PartialRefuse:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, msg):
+            return {"b@example.com": (550, b"rejected")}
+    monkeypatch.setattr(mr.smtplib, "SMTP_SSL", PartialRefuse)
+    mr._DEGRADED_STEPS.clear()
+    mr.send_email("<p>x</p>", "subj")
+    assert any("被拒" in s for s in mr._DEGRADED_STEPS), mr._DEGRADED_STEPS

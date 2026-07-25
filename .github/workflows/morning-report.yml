@@ -107,19 +107,22 @@ jobs:
           TZ: Asia/Taipei
         run: python morning_report.py
 
-      # 批#32:失敗/取消告警。原本七支 workflow 都沒有任何告警,而最要命的三種
-      # 失敗模式恰好都不會觸發 GitHub 內建通知:被 concurrency 取消(cancelled ≠
-      # failure)、job timeout 被砍、以及程式內部吞掉的錯誤。對「每天 06:00 必須
-      # 到信」的系統,靜默失效等同功能消失卻無人知曉。
-      # 這一步只用 stdlib(不需額外依賴),且自身失敗不影響 job 結論。
+  # 批#32 r1(Codex F1):告警必須是**獨立 job**。原本放在 send-report 的最後一步,
+  # 但 job 撞 timeout-minutes: 25 被 GitHub 終止時,整個 job(含後續步驟)一起被殺
+  # ——恰好是最該告警的那種失敗完全不會通知。改用 needs + always() 另起一個 job。
+  alert-on-failure:
+    needs: send-report
+    if: ${{ always() && (needs.send-report.result == 'failure' || needs.send-report.result == 'cancelled' || needs.send-report.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: 失敗告警信
-        if: ${{ failure() || cancelled() }}
         continue-on-error: true
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          JOB_STATUS: ${{ job.status }}
+          JOB_RESULT: ${{ needs.send-report.result }}
         run: |
           python - <<'PY'
           import os, smtplib, ssl
@@ -127,18 +130,20 @@ jobs:
           user, pw = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
           if not (user and pw):
               raise SystemExit(0)
+          result = os.environ.get("JOB_RESULT", "unknown")
           m = EmailMessage()
-          m["Subject"] = f"⚠ 晨報未寄出({os.environ.get('JOB_STATUS','unknown')})"
+          m["Subject"] = f"⚠ 晨報未寄出({result})"
           m["From"] = user
-          m["To"] = user          # 只寄給自己,不外流其他收件者位址
+          m["To"] = user          # 只寄給自己
           m.set_content(
-              "今日晨報 workflow 未成功完成,收件人可能沒有收到信。\n\n"
-              f"狀態: {os.environ.get('JOB_STATUS','unknown')}\n"
-              f"執行紀錄: {os.environ.get('RUN_URL','')}\n\n"
-              "常見原因:上游來源卡住撞 job timeout、被 concurrency 取消、寄信失敗。")
+              "今日晨報 workflow 未成功完成，收件人可能沒有收到信。"
+              + os.linesep * 2
+              + f"結果: {result}" + os.linesep
+              + f"執行紀錄: {os.environ.get('RUN_URL','')}" + os.linesep * 2
+              + "常見原因：上游來源卡住撞 job timeout、被 concurrency 取消、寄信失敗。")
           with smtplib.SMTP_SSL("smtp.gmail.com", 465,
                                 context=ssl.create_default_context(), timeout=60) as s:
               s.login(user, pw)
               s.send_message(m)
-          print("[alert] 已寄出失敗告警")
+          print("[alert] sent")
           PY

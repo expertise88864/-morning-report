@@ -1534,3 +1534,56 @@ def test_mops_unknown_clause_leaves_event_type_blank(monkeypatch):
     monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
     out = mr.fetch_tw_major_announcements(["2330"], hours=24 * 3650)
     assert out[0]["event_type"] == ""
+
+
+def _company_item(source, title, summary="內容" * 30, link=None):
+    return {"source": source, "title": title, "summary": summary,
+            "link": link or f"https://x/{title}", "company_label": "2330",
+            "published": "2026-07-25T08:00:00+00:00"}
+
+
+def test_company_bucket_reserves_room_for_other_sources():
+    """批#39 r1:鉅亨帶 company_label 後排在 Google 之前,原本用插入順序取前 N
+    會讓單一來源吃光配額,把「保證個股素材露出」的 Google 查詢整個擠掉。"""
+    items = [_company_item("鉅亨台股", f"鉅亨{i}") for i in range(5)]
+    items += [_company_item("Google:2330", f"谷歌{i}") for i in range(3)]
+    picked = mr._rank_company_bucket(items, quota=3)
+    sources = {it["source"] for it in picked}
+    assert len(picked) == 3
+    assert len(sources) >= 2, f"單一來源吃光配額:{[i['title'] for i in picked]}"
+    assert sum(1 for i in picked if i["source"] == "鉅亨台股") <= 2
+
+
+def test_company_bucket_fills_quota_even_if_single_source():
+    """只有一個來源有料時,多樣性上限不得讓配額空著。"""
+    items = [_company_item("鉅亨台股", f"鉅亨{i}") for i in range(5)]
+    picked = mr._rank_company_bucket(items, quota=3)
+    assert len(picked) == 3, "寧可同源也不要少給"
+
+
+def test_company_bucket_ranks_by_keep_score_not_arrival_order():
+    """排序依既有的 _news_keep_score 而非到達順序。
+
+    注意該分數是 (來源分級, 內容長度) 的字典序——**分級優先**。故此處用同一
+    來源的兩則比對長度,才驗得到「不是照到達順序」;跨來源比較會被分級主導,
+    那是正確行為(可信度優先),保多樣性的責任在 per-source 上限那條規則。
+    """
+    weak = _company_item("鉅亨台股", "短", summary="短")
+    strong = _company_item("鉅亨台股", "完整", summary="內容" * 200)
+    picked = mr._rank_company_bucket([weak, strong], quota=1)
+    assert picked[0]["title"] == "完整"
+
+
+def test_company_bucket_edge_cases():
+    assert mr._rank_company_bucket([], 3) == []
+    assert mr._rank_company_bucket([_company_item("a", "t")], 0) == []
+
+
+def test_ey_sources_have_distinct_html_fallback_pages():
+    """html_url 是 RSS 掛掉時的退化來源;兩個頻道共用同一頁會讓退化路徑
+    抓到別的頻道內容卻掛著本頻道的名字(錯誤歸因)。"""
+    policy = mr.TW_INTELLIGENCE_DIRECT_SOURCES["policy"]
+    ey = [s for s in policy if s["name"].startswith("EY ")]
+    urls = [s.get("html_url") for s in ey]
+    assert len(urls) == len(set(urls)), f"EY 頻道 html_url 重複:{urls}"
+    assert len(ey) >= 4, "四個 EY 頻道(院會決議/部會/澄清/本院新聞)都要在"

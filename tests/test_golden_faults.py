@@ -608,20 +608,42 @@ def test_batch33_state_pushed_even_without_history_entry(monkeypatch):
         assert must in paths, must
 
 
-def test_batch33_history_write_failure_does_not_block_other_state(monkeypatch):
-    """history 寫入失敗不得拖垮其餘 state 的提交(原本同一個 try 內、一起陣亡)。"""
+def test_batch33_history_write_failure_does_not_block_other_state(
+        monkeypatch, capsys, tmp_path):
+    """history 寫入失敗不得拖垮其餘 state 的提交(原本同一個 try 內、一起陣亡)。
+
+    r1(Codex):**不可** monkeypatch 整個 save_history_state——它內部就 catch-all,
+    patch 掉整支會繞過真正的內部路徑而給出假信心。這裡改成讓真正的落盤動作失敗。
+    """
     pushes = []
     monkeypatch.setattr(mr, "mark_podcast_episodes_shown", lambda eps: None)
     monkeypatch.setattr(mr, "_git_commit_and_push_state",
                         lambda paths, msg: pushes.append(msg))
+    monkeypatch.setattr(mr, "STATE_FILE", tmp_path / "history.json")
 
-    def boom(*a, **k):
+    def boom_write(*a, **k):
         raise OSError("disk full")
-    monkeypatch.setattr(mr, "save_history_state", boom)
-    mr._DEGRADED_STEPS.clear()
+    monkeypatch.setattr(mr, "_atomic_write_text", boom_write)   # 真實內部失敗點
     mr.persist_delivered_report_state({"date": "2026-07-09"}, [], mark_podcasts=False)
+    # 其餘 state 仍必須提交
     assert pushes and "2026-07-09" in pushes[0]
-    assert any("history" in s for s in mr._DEGRADED_STEPS)
+    # 失敗必須可見(annotation 走 stdout,不依賴後續渲染)
+    out = capsys.readouterr().out
+    assert "::warning title=state-history-write-failed::" in out
+
+
+def test_batch33_save_history_state_reports_failure(monkeypatch, tmp_path):
+    """save_history_state 內部 catch-all 後必須回報成功與否,否則呼叫端無從得知。"""
+    monkeypatch.setattr(mr, "STATE_FILE", tmp_path / "history.json")
+    monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
+    assert mr.save_history_state({"date": "2026-07-09"}, days_to_keep=450,
+                                 push=False) is True
+
+    def boom_write(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(mr, "_atomic_write_text", boom_write)
+    assert mr.save_history_state({"date": "2026-07-09"}, days_to_keep=450,
+                                 push=False) is False
 
 
 def test_batch33_push_paths_single_source_of_truth():

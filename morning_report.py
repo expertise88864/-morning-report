@@ -9424,7 +9424,7 @@ def _state_push_paths() -> list[str]:
 
 
 def save_history_state(entry: dict, days_to_keep: int = 90,
-                       push: bool = True) -> None:
+                       push: bool = True) -> bool:
     """
     新增一筆當日記憶，並維持只保留近 N 天。
     寫入後嘗試 git commit + push 回 repo。
@@ -9472,8 +9472,14 @@ def save_history_state(entry: dict, days_to_keep: int = 90,
         if push:
             _git_commit_and_push_state(
                 _state_push_paths(), f"chore: update state {date_str} [skip ci]")
+        return True
     except Exception as e:
+        # 批#33 r1(Codex):本函式**內部就吞掉例外**,呼叫端的 try 永遠不會觸發
+        # → 當日 history 遺失卻沒有任何可見訊號(job 全綠)。改回傳成功旗標,
+        # 由呼叫端負責發 ::warning::(annotation 走 stdout,不依賴後續渲染,
+        # 不會像 _DEGRADED_STEPS 那樣變成死碼)。
         print(f"[state] 寫入失敗: {e}", file=sys.stderr)
+        return False
 
 
 def persist_delivered_report_state(entry: Optional[dict],
@@ -9492,12 +9498,22 @@ def persist_delivered_report_state(entry: Optional[dict],
     if mark_podcasts:
         mark_podcast_episodes_shown(podcast_episodes)
     if entry:
+        _ok = True
         try:
-            save_history_state(entry, days_to_keep=450, push=False)
+            # save_history_state 內部已 catch-all,正常情況回傳 True/False;
+            # 這層 try 只防它未來新增未被涵蓋的失敗路徑(縱深防禦)。
+            _ok = save_history_state(entry, days_to_keep=450, push=False)
         except Exception as e:      # noqa: BLE001 — 單一 state 寫入失敗不得拖垮其餘
-            print(f"[state] ⚠ history 寫入失敗(其餘 state 仍會提交): "
-                  f"{type(e).__name__}: {e}", file=sys.stderr)
-            _DEGRADED_STEPS.append("state-history 寫入失敗")
+            print(f"[state] history 寫入拋例外: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+            _ok = False
+        if not _ok:
+            # 走 stdout annotation:Actions 摘要頁直接看得到,不依賴後續渲染
+            # (批#32 r2 教訓:資料品質區與 run manifest 都在此之前產生,
+            #  只記 _DEGRADED_STEPS 等於死碼)
+            print("::warning title=state-history-write-failed::"
+                  "當日 history 未寫入(其餘 state 仍會提交);"
+                  "預測回測資料集會缺這一天")
     # 無論 entry 是否存在、history 是否寫成功,都要把當天已產生的 state 提交回 repo。
     # push=False 給「自己另有 push 且刻意只推子集」的呼叫端(週末綜合報:不得把
     # history/model_history 帶進去,否則會與週六的『週一預測』撞 target 被去重誤刪)。

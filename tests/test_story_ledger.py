@@ -288,3 +288,37 @@ def test_quarterly_episodes_still_separate_under_new_identity():
     q1 = sl.story_key_for_event(_ev_full("2330", "earnings", "法說", published="2026-02-15T00:00:00+00:00"))
     q3 = sl.story_key_for_event(_ev_full("2330", "earnings", "法說", published="2026-08-15T00:00:00+00:00"))
     assert q1 != q3
+
+
+def test_unrelated_same_month_event_does_not_get_wrong_prev_delta():
+    """r3(Codex):_event_timeline_key 對 orders/litigation 只掛月 bucket,同公司
+    同月的兩件不同事會共用 lineage。news_events 接受這代價是因為那裡的後果是
+    event study 少計(保守);在 story ledger 裡後果是**錯誤的前情被當事實餵給 LLM**。
+
+    修法刻意不是分岔成新線索——續報本來就會換措辭,以標題相似度決定身分會把真正的
+    長線切碎(自測否決過)。只清掉對不上的前情:寧可少給脈絡,不可給錯脈絡。"""
+    led = sl.update_ledger(
+        [], [_ev_full("2882", "litigation", "國泰金遭控違反個資法遭裁罰")], "2026-07-10")
+    led = sl.update_ledger(
+        led, [_ev_full("2882", "litigation", "國泰金與海外再保商仲裁案開庭")], "2026-07-20")
+    assert led[0]["prev_delta"] == "", (
+        f"不相干的事件被寫成前情:{led[0]['prev_delta']!r}")
+
+
+def test_genuine_followup_keeps_prev_delta_even_if_reworded():
+    """真正的續報會換措辭,不得因此丟掉前情——那是本模組的核心價值。"""
+    led = sl.update_ledger(
+        [], [_ev_full("2317", "orders", "鴻海洽談收購案 傳金額達百億")], "2026-07-10")
+    led = sl.update_ledger(
+        led, [_ev_full("2317", "orders", "鴻海收購案傳金額上修 洽談進入最後階段")],
+        "2026-07-20")
+    assert led[0]["prev_delta"] == "鴻海洽談收購案 傳金額達百億", \
+        "換了措辭的續報丟失前情"
+
+
+def test_subject_overlap_strips_entity_before_comparing():
+    """剝實體名是關鍵:同公司的兩件事標題都含公司名,不剝的話任何兩則都有基礎重疊。"""
+    high = sl._subject_overlap("鴻海收購案洽談中", "鴻海收購案進入最後階段", "鴻海")
+    low = sl._subject_overlap("鴻海遭控違反個資法", "鴻海接獲車用大單", "鴻海")
+    assert high > low
+    assert low < sl.SUBJECT_OVERLAP_MIN

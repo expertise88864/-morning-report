@@ -132,6 +132,52 @@ def story_key_for_event(ev: dict) -> str:
                          str(ev.get("title") or ""), str(ev.get("published") or ""))
 
 
+SUBJECT_OVERLAP_MIN = 0.10     # 低於此視為「不是同一件事」,分出新線索
+
+
+def _bigrams(text: str) -> set:
+    t = _norm(text)
+    return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) >= 2 else ({t} if t else set())
+
+
+def _subject_overlap(a: str, b: str, entity: str = "") -> float:
+    """兩則標題的主體重疊度(字元 bigram Jaccard;先剝掉實體名)。
+
+    剝實體名是關鍵:同一公司的兩件事標題都含公司名,不剝的話任何兩則都有基礎重疊。
+    """
+    ent = _norm(entity)
+    ta, tb = _norm(a), _norm(b)
+    if ent:
+        ta, tb = ta.replace(ent, ""), tb.replace(ent, "")
+    ga, gb = _bigrams(ta), _bigrams(tb)
+    if not ga or not gb:
+        return 1.0          # 無從判斷時不分岔(保連續性)
+    return len(ga & gb) / len(ga | gb)
+
+
+def _is_same_subject(story: dict, ev: dict) -> bool:
+    """新事件是否真的是這條線索的續報。
+
+    r3(Codex):`_event_timeline_key` 對 orders/litigation/geopolitical 等只掛「月」
+    bucket,同公司同月的兩宗不同訴訟/兩張不同訂單會共用 lineage。news_events 接受
+    這個代價,是因為那裡的後果是 event study **少計**(保守、無害);但在 story
+    ledger 裡後果是**把錯誤的前情當事實餵給 LLM**,那是輸出錯誤而非保守。
+
+    **不用標題雜湊當 key**(先做過、自測否決):續報本來就會換標題措辭,
+    雜湊會把「鴻海洽談收購案 → 鴻海收購案重啟」也切開,等於廢掉本模組的核心價值。
+    改用相似度:只有當新事件與該線索**幾乎毫無內容交集**時才判定為另一件事。
+    門檻刻意訂得寬鬆(0.10),偏向保住連續性;要分岔必須是明顯不相干的主體。
+
+    比對對象取 headline 與 last_delta 兩者的較高者——線索演進時,新報導可能接近
+    最近一次的措辭而非最初的標題。
+    """
+    title = str(ev.get("title") or "")
+    entity = str(story.get("entity") or ev.get("entity") or "")
+    best = max(_subject_overlap(story.get("headline") or "", title, entity),
+               _subject_overlap(story.get("last_delta") or "", title, entity))
+    return best >= SUBJECT_OVERLAP_MIN
+
+
 def _is_real_progress(ev: dict) -> bool:
     """這則事件是否代表**真的有新進展**。
 
@@ -226,6 +272,11 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
         if story is None:
+            # r3(Codex):**建立新線索前也要確認是真進展**。原本只在既有 story 的
+            # 分支檢查 is_incremental,於是首次部署或 story 被清掉之後,一則陳舊的
+            # 重複報導會憑空建出一條「活躍」線索。真正的首次出現會在下一次真增量時進來。
+            if not _is_real_progress(ev):
+                continue
             by_key[key] = {
                 "key": key,
                 "entity": str(ev.get("entity") or ""),
@@ -252,7 +303,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str) -> list[di
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             continue
-        story["prev_delta"] = story.get("last_delta") or ""
+        # r3(Codex):同 lineage 但主體明顯不同(同公司同月的另一件訴訟/訂單)時,
+        # **不得輸出前情**——Codex 指的實害正是「錯誤的前情被當事實餵給 LLM」。
+        # 刻意不分岔成新線索:續報本來就會換措辭,以標題相似度決定身分會把真正的
+        # 長線切碎(自測否決過),那是拿模組核心價值換一個較小的風險。
+        # 只清掉前情,線索本身照常推進——寧可少給脈絡,不可給錯脈絡。
+        story["prev_delta"] = (story.get("last_delta") or "")             if _is_same_subject(story, ev) else ""
         story["last_delta"] = title[:160]
         story["headline"] = title[:120]
         story["updates"] = int(story.get("updates") or 0) + 1

@@ -3169,7 +3169,13 @@ def test_two_way_odds_degrade_without_inventing_probabilities():
 
 
 def _sports_news_labels_queried(monkeypatch, when):
-    """跑 fetch_sports_digest,回傳實際發出的體育新聞查詢標籤。"""
+    """跑 fetch_sports_digest,回傳實際發出的體育新聞查詢。
+
+    r2(Codex):先前用 hasattr 守衛去 patch 一串**不存在**的函式名,結果全被靜默
+    跳過,測試實際在打真網路(套件時間從 23s 變 53s)。改為從底層切斷:
+    _http_get / requests.get 一律拋連線錯誤(各 fetcher 本來就會降級成空),
+    feedparser 一律回空 feed。這樣不必追每個 fetcher 的名字,也不會因日後改名而失效。
+    """
     import morning_report as mr
     asked = []
 
@@ -3181,18 +3187,15 @@ def _sports_news_labels_queried(monkeypatch, when):
         entries = []
         bozo = False
 
+    def _no_network(*a, **k):
+        raise mr.requests.exceptions.ConnectionError("blocked in test")
+
     monkeypatch.setattr(mr, "_gnews_rss", _fake_gnews)
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
                         lambda *a, **k: _EmptyFeed())
-    # 其餘抓取全部短路,只留新聞查詢那段
-    for fn in ("fetch_cpbl_digest", "fetch_nba_digest", "fetch_mlb_digest",
-               "fetch_worldcup", "fetch_tennis_digest"):
-        if hasattr(mr, fn):
-            monkeypatch.setattr(mr, fn, lambda *a, **k: {})
-    for fn in ("fetch_polymarket_sports", "_attach_cpbl_poly_odds",
-               "_attach_nba_poly_odds", "_attach_mlb_poly_odds"):
-        if hasattr(mr, fn):
-            monkeypatch.setattr(mr, fn, lambda *a, **k: {} if "fetch" in fn else None)
+    monkeypatch.setattr(mr, "_http_get", _no_network)
+    monkeypatch.setattr(mr.requests, "get", _no_network)
+    monkeypatch.setattr(mr.requests, "post", _no_network)
     mr.fetch_sports_digest(now_tpe=when)
     return asked
 

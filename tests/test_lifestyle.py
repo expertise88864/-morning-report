@@ -3147,3 +3147,38 @@ def test_batch26_display_removals():
     assert a == "理由：SOX 承壓"
     assert _strip_stance_internals("理由：成交 1,234 億, 淨分 -6") == "理由：成交 1,234 億"
 
+
+
+def test_two_way_odds_normalize_to_100():
+    """批#47:Polymarket 兩邊的最佳報價各自含買賣價差,直接並列會出現
+    「台鋼 55%・味全 46%」=101%(2026-07-26 實信)。NBA 單場那條路徑本來就有
+    正規化,中職這條沒有——同一個 repo 裡兩種處理。"""
+    import morning_report as mr
+    a, b = mr._normalized_two_way([55, 46])
+    assert a + b == 100, f"未正規化:{a}+{b}"
+    a, b = mr._normalized_two_way([49, 51])
+    assert a + b == 100
+
+
+def test_two_way_odds_degrade_without_inventing_probabilities():
+    """資料異常時原樣回傳——寧可顯示原始報價,也不要造出假的機率。"""
+    import morning_report as mr
+    assert mr._normalized_two_way([0, 0]) == (0, 0)
+    assert mr._normalized_two_way(["x", "y"]) == ("x", "y")
+    assert mr._normalized_two_way([]) == ("—", "—")
+
+
+def test_out_of_season_sport_skips_news_query(monkeypatch):
+    """批#47:賽期外的賽事不再抓新聞。實信 2026-07-26(決賽後六天)仍有世足專區,
+    且混進宗教評論——賽果/賭盤區早就受 _WC_WINDOW 管,新聞查詢卻沒有,
+    是同一條防線只裝一半。"""
+    import datetime as _dt
+    import morning_report as mr
+    lo, hi = mr._SEASONAL_SPORT_WINDOWS["世足"]
+    assert lo < hi
+    # 賽期外
+    monkeypatch.setattr(mr, "_now_tpe_date", lambda: hi + _dt.timedelta(days=3))
+    assert not (lo <= mr._now_tpe_date() <= hi)
+    # 賽期內
+    monkeypatch.setattr(mr, "_now_tpe_date", lambda: lo + _dt.timedelta(days=1))
+    assert lo <= mr._now_tpe_date() <= hi

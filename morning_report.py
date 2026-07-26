@@ -14655,6 +14655,12 @@ def _render_local_news_html(local: dict) -> str:
         'background:#ffffff;">' + "".join(rows) + "</div>")
 
 
+def _now_tpe_date():
+    return dt.datetime.now(TPE).date()
+
+
+# 有明確賽期的賽事:賽期外連新聞查詢都停掉(不只停賽果與賭盤)。
+# 值直接沿用既有的硬編賽期窗,避免兩處各自維護而走樣。
 SPORTS_NEWS_QUERIES = [
     ("世足", "世界盃足球 OR FIFA World Cup"),
     ("MLB", "MLB 大聯盟"),
@@ -15171,6 +15177,26 @@ def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
     _attach_game_poly_odds(fixtures, "mlb", _POLY_MLB_ABBR_FIX, _POLY_MLB_ZH, cap)
 
 
+def _normalized_two_way(probs) -> tuple:
+    """把兩邊的市場報價正規化成合計 100%。
+
+    批#47:Polymarket 兩邊的最佳報價各自含買賣價差,直接並列會出現
+    「台鋼 55%・味全 46%」=101% 這種看起來像算錯的組合(2026-07-26 實信)。
+    NBA 單場那條路徑本來就有做正規化(prices[0]/total),中職這條沒有
+    ——同一個 repo 裡兩種處理,統一成 NBA 的做法。
+
+    合計為 0 或資料異常時原樣回傳(寧可顯示原始報價,也不要造出假的機率)。
+    """
+    try:
+        a, b = float(probs[0]), float(probs[1])
+    except (TypeError, ValueError, IndexError):
+        return tuple(probs)[:2] if probs else ("—", "—")
+    total = a + b
+    if total <= 0:
+        return probs[0], probs[1]
+    return round(a / total * 100), round(b / total * 100)
+
+
 def _attach_nba_poly_odds(fixtures: list[dict], cap: int = 10) -> None:
     """NBA 版:slug 格式以上季已結算市場驗證(nba-ind-okc-2025-06-22 等);
     休賽季自然全 MISS 不掛,2026-10 開季後自動生效(使用者 2026-07-16 交辦)。"""
@@ -15394,8 +15420,8 @@ def _attach_cpbl_poly_odds(fixtures: list[dict], poly: dict, today_md: str) -> N
         for g in (poly or {}).get("cpbl_games") or []:
             t1, t2 = g["teams"]
             if all(any(t in n or n in t for n in names) for t in (t1, t2)):
-                f["odds"] = (f"賭盤:{t1} {g['probs'][0]}%・"
-                             f"{t2} {g['probs'][1]}%(Polymarket)")
+                p1, p2 = _normalized_two_way(g["probs"])
+                f["odds"] = (f"賭盤:{t1} {p1}%・{t2} {p2}%(Polymarket)")
                 break
 
 
@@ -15406,6 +15432,9 @@ def _attach_cpbl_poly_odds(fixtures: list[dict], poly: dict, today_md: str) -> N
 # 設 07/19 但決賽是 07/20 03:00(台北),導致決賽當天整個世足區被判「賽期外」
 # 隱藏、看不到冠軍。上界延到決賽後 3 天,讓冠軍結果與淘汰賽對戰表續顯示。
 _WC_WINDOW = (dt.date(2026, 6, 11), dt.date(2026, 7, 23))
+# 批#47:有明確賽期的賽事,**賽期外連新聞查詢也停掉**(先前只有賽果與賭盤受管)。
+# 直接引用同一個窗,避免兩處各自維護而走樣;換季時只需更新 _WC_WINDOW。
+_SEASONAL_SPORT_WINDOWS = {"世足": _WC_WINDOW}
 # 淘汰賽(32 強)首日:對戰表範圍查詢的固定下界。不可用「今天−N 天」滾動窗——
 # 小組賽 72 場+淘汰賽 32 場(未賽 fixtures 也算 events)=104 場會超過 ESPN 單次
 # 回覆 100 場上限而截尾(Codex review P1:06/28 查 06/03→07/20 正好全包)。
@@ -16409,6 +16438,14 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)
     for label, query in SPORTS_NEWS_QUERIES:
+        # 批#47:賽期外的賽事不再抓新聞。實信 2026-07-26(決賽後六天)仍有世足專區,
+        # 且混進「超越 1-0 的勝敗真諦…尋見永恆盼望 - 基督教今日報」這種宗教評論
+        # ——賽事結束後 Google News 查詢只剩回顧與蹭熱度的文章,佔版面且無資訊量。
+        # 賽果/賭盤區早就受 _WC_WINDOW 管,新聞查詢卻沒有,是同一條防線只裝一半。
+        if label in _SEASONAL_SPORT_WINDOWS:
+            lo, hi = _SEASONAL_SPORT_WINDOWS[label]
+            if not (lo <= _now_tpe_date() <= hi):
+                continue
         try:
             # when=2d:同在地快訊——伺服器端 1d 過濾會吃掉 24-30h 新聞,cutoff 才是精確閘
             feed = _feedparser_parse_url_with_timeout(_gnews_rss(query, when="2d"))

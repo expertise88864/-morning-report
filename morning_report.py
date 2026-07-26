@@ -378,6 +378,11 @@ def _write_run_manifest(now_tpe) -> None:
             # PR-2 雙軌:LLM vs Python 立場比對(三審 P1-4:先前只設進記憶體
             # dict,這裡的白名單沒輸出 → manifest 追蹤不到一致率)
             "stance_dual": _RUN_MANIFEST.get("stance_dual"),
+            # Codex r1(P2)**確認**:批#50 設了 _RUN_MANIFEST["data_checks"],
+            # 但這個 writer 是**重建白名單 dict**,沒列到的鍵一律丟掉 →
+            # warn 級的品質問題只存在於當次 stderr,無法累積成承諾的趨勢。
+            # (與三審 P1-4 的 stance_dual 完全同一個坑。)
+            "data_checks": _RUN_MANIFEST.get("data_checks"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
@@ -8741,7 +8746,14 @@ def extract_structured_events(news: list[dict],
             continue
         _ot = str(item.get("event_type") or "").strip()
         if _ot:
-            _key = (str(item.get("company_label") or item.get("entity") or ""),
+            # Codex r1(P1)**確認**:生產的 MOPS 記錄用 `code`
+            # (fetch_tw_major_announcements 建的是 {"code": ...}),不是
+            # company_label/entity → 原本的查表鍵在生產環境**全是空字串**,
+            # 覆寫從來不會生效。我的測試會過只因為 fixture 裡手寫了 company_label
+            # ——測試驗的是我蓋的東西,不是生產送進來的東西。
+            # 與 append() 的 entity 推導完全對齊(entity → code → company_label)。
+            _key = (str(item.get("entity") or item.get("code")
+                        or item.get("company_label") or ""),
                     _norm_title_key(str(item.get("title")
                                         or item.get("headline") or "")))
             _official_types[_key] = _ot
@@ -8751,7 +8763,8 @@ def extract_structured_events(news: list[dict],
             # 官方來源身分——_validate_llm_events 已剝除名單外欄位,這裡再釘死
             # (三審 P1-1;若同事件確有官方公告,MOPS 路徑自然會以 A 級勝出)
             item = dict(item, source="LLM extractor", source_grade="C")
-            _k = (str(item.get("entity") or item.get("company_label") or ""),
+            _k = (str(item.get("entity") or item.get("code")
+                      or item.get("company_label") or ""),
                   _norm_title_key(str(item.get("title")
                                       or item.get("headline") or "")))
             _forced = _official_types.get(_k)
@@ -18433,6 +18446,19 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
 
     def add(name: str, status: str, detail: str = "") -> None:
         dq.append({"name": name, "status": status, "detail": str(detail)[:80]})
+
+    # 批#50 r1(Codex,P1)**確認**:資料品質閘原本**只是觀測**——記了降級標籤,
+    # 但被污染的 tw0050 照樣往下游流(MOPS 選股、候選新聞、關注度排名、Top5),
+    # 這個閘要防的污染仍然完整抵達輸出與 state。
+    # 不採用 Codex 建議的「換 last-known-good / 整段省略」:丟掉 tw0050 會連帶
+    # 殺掉 Top5 與關注度排名,違反「晨報不可斷」這條更高階的不變式。
+    # 改為讓錯誤**進到這個區塊**——它同時渲染進信件、也進 LLM prompt,
+    # 於是污染對讀信的人與模型都不再隱形,由人判斷該不該信當天的排名。
+    _checks = (quotes.get("SOURCE_DATA_CHECKS") or {})
+    for _e in (_checks.get("errors") or []):
+        add(f"資料品質:{_e.get('source')}", "error", _e.get("detail") or "")
+    for _w in (_checks.get("warnings") or []):
+        add(f"資料品質:{_w.get('source')}", "fallback", _w.get("detail") or "")
 
     # P0-2 時間預算降級:本次跑因時間不足跳過的非核心步驟(供 LLM 知悉、資料品質透明)
     if _DEGRADED_STEPS:

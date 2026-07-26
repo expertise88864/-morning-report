@@ -344,8 +344,14 @@ _DECISION_CATEGORIES = {
 }
 
 
-#: 否定前綴。中文最常見的極性反轉寫法是加否定詞而非換動詞。
-_NEGATORS = ("未", "不", "沒", "無", "遭", "拒")
+#: 真正的否定詞。Codex r1(P1)**確認**:原本把「遭」也列進來,結果
+#: 「遭否決」被判成 negated_reject —— 但「遭否決」就是否決,極性沒有反轉,
+#: 於是從「否決」改寫成「遭否決」會被誤判為進展。「遭」是**被動標記**不是否定詞。
+_NEGATORS = ("未", "不", "沒", "無", "非", "否")
+#: 否定詞與決策動詞之間常插入副詞或受詞:「尚未獲董事會通過」「並未正式核准」。
+#: Codex r1(P1):原本只看**緊鄰前一字**,這些常見寫法一律漏判。
+#: 用有界視窗(往前 6 字)而非無界,避免「通過…但未…」這種跨子句誤配。
+_NEG_WINDOW = 6
 
 
 def _decision_terms(text: str) -> set:
@@ -364,11 +370,27 @@ def _decision_terms(text: str) -> set:
         for w in words:
             i = t.find(w)
             while i >= 0:
-                # 只看緊鄰的前一個字:「未通過」反轉,「通過」不反轉。
-                neg = i > 0 and t[i - 1] in _NEGATORS
-                out.add(f"negated_{cat}" if neg else cat)
+                out.add(f"negated_{cat}" if _is_negated(t, i) else cat)
                 i = t.find(w, i + 1)
     return out
+
+
+def _is_negated(text: str, idx: int) -> bool:
+    """決策動詞是否被否定。用**有界視窗**而非只看緊鄰前一字。
+
+    Codex r1(P1):「尚未獲董事會通過」「並未正式核准」這類寫法,否定詞與動詞
+    之間隔著副詞或受詞,只看前一字一律漏判——而漏判的後果正是這條修正要防的
+    (帳本不更新、headline 停在相反結論)。視窗有界(6 字)以免跨子句誤配。
+    """
+    window = text[max(0, idx - _NEG_WINDOW):idx]
+    if any(n in window for n in _NEGATORS):
+        # 「不」在「不但/不僅/不只」裡是遞進連接詞,不是否定該動詞
+        for false_pos in ("不但", "不僅", "不只", "不外", "無論", "不管"):
+            if false_pos in window and not any(
+                    n in window.replace(false_pos, "") for n in _NEGATORS):
+                return False
+        return True
+    return "not " in window.lower() or "fail" in window.lower()
 
 
 def _participants(text: str, vocab) -> set:

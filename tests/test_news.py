@@ -1775,3 +1775,36 @@ def test_article_extraction_survives_extractor_exception(monkeypatch):
     out, extracted = mr._extract_article_text(_ARTICLE_HTML)
     assert extracted is False
     assert "毛利率上修至五八%" in out
+
+
+def test_mops_authority_override_uses_production_record_schema():
+    """r1(Codex,P1)**確認**:生產的 MOPS 記錄用 `code`
+    (fetch_tw_major_announcements 建的是 {"code": ...}),不是 company_label/
+    entity → 原本的查表鍵在生產環境**全是空字串**,權威覆寫從來不會生效。
+    先前的測試會過,只因為 fixture 裡手寫了 company_label
+    ——**測試驗的是我蓋的東西,不是生產送進來的東西**。
+
+    這裡刻意用與 fetch_tw_major_announcements 相同的欄位組合。
+    """
+    mops = [{                       # 生產 schema:只有 code,沒有 company_label
+        "code": "2330",
+        "title": "台積電公告訂定除息基準日",
+        "summary": "本公司董事會決議訂定除息基準日",
+        "link": "https://mops.twse.com.tw/mops/#/web/t05st01",
+        "published": "2026-07-25T01:00:00+00:00",
+        "clause": "第14款",
+        "event_type": "general",
+    }]
+    llm = [{                        # LLM 把例行公告寫成戲劇性事件
+        "entity": "2330",
+        "title": "台積電公告訂定除息基準日",
+        "event_type": "earnings",
+        "surprise_score": 0.7,
+        "published": "2026-07-25T01:00:00+00:00",
+    }]
+    events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
+    assert len(events) == 1, (
+        "權威版與 LLM 版落到不同 cluster、兩者都存活 —— "
+        f"法定款別覆寫沒生效:{[(e.get('entity'), e.get('event_type')) for e in events]}")
+    assert events[0]["event_type"] == "general", "法定款別沒有勝出"
+    assert events[0]["source_grade"] == "A"

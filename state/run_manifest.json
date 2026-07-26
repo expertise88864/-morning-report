@@ -9,5 +9,30 @@
  "model_history_days": null,
  "d1_samples": null,
  "d1_ready": null,
- "stance_dual": null
+ "stance_dual": null,
+ "data_checks": {
+  "all": [
+   {
+    "source": "u",
+    "check": "value_range",
+    "severity": "warn",
+    "passed": false,
+    "detail": "100% 的值落在 [0, 1] 之外(上限 5%)",
+    "observed": 1.0
+   }
+  ],
+  "errors": [],
+  "warnings": [
+   {
+    "source": "u",
+    "check": "value_range",
+    "severity": "warn",
+    "passed": false,
+    "detail": "100% 的值落在 [0, 1] 之外(上限 5%)",
+    "observed": 1.0
+   }
+  ],
+  "checked": 1,
+  "failed": 1
+ }
 }

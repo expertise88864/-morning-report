@@ -109,13 +109,17 @@ def _event_lifecycle(event: dict) -> str:
     # 純子字串比對會把否決判成 confirmed。story_ledger._decision_terms 已修同一
     # 缺陷,但兩處都要修才有效——兩個訊號同時說「沒進展」時帳本完全不更新,
     # 送進 LLM 的前情會與今天的新聞相反。
+    # Codex r1(P1):否定詞與動詞常隔著副詞/受詞(「尚未獲董事會通過」),
+    # 只看緊鄰前一字會漏判;改用與 story_ledger._is_negated 相同的有界視窗。
+    # 「遭」是被動標記不是否定詞(「遭否決」就是否決),已移除。
     _CONFIRM_TOKENS = ("confirmed", "announced", "approved",
                        "公告", "核定", "通過", "證實")
-    _NEG = ("未", "不", "沒", "無", "遭", "拒")
+    _NEG = ("未", "不", "沒", "無", "非", "否", "not ", "fail")
     for token in _CONFIRM_TOKENS:
         i = text.find(token)
         while i >= 0:
-            if not (i > 0 and text[i - 1] in _NEG):
+            window = text[max(0, i - 6):i]
+            if not any(n in window for n in _NEG):
                 return "confirmed"
             i = text.find(token, i + 1)
     if any(token in text for token in (

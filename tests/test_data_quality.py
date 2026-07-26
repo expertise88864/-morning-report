@@ -97,3 +97,47 @@ def test_check_result_serialises_for_manifest():
     d = r.as_dict()
     assert set(d) == {"source", "check", "severity", "passed", "detail", "observed"}
     assert d["observed"] == 3
+
+
+def test_failed_checks_reach_the_email_and_the_prompt():
+    """r1(Codex,P1)**確認**:品質閘原本**只是觀測**——記了降級標籤,但被污染的
+    tw0050 照樣流向 MOPS 選股、候選新聞、關注度排名、Top5,這個閘要防的污染
+    仍然完整抵達輸出與 state。
+
+    不採用「換 last-known-good / 整段省略」:丟掉 tw0050 會連帶殺掉 Top5 與
+    關注度排名,違反「晨報不可斷」這條更高階的不變式。改為讓錯誤進到既有的
+    資料品質區——它同時渲染進信件、也進 LLM prompt,污染因此對人與模型都可見。
+    """
+    from tests.test_data_validation import _empty_quotes
+    summary = dq.summarize([
+        dq.check_row_count("tw_universe", _rows(3), min_rows=30),
+        dq.check_value_range("tw_universe", [99.0] * 10, lo=-11, hi=11,
+                             severity=dq.WARN),
+    ])
+    q = _empty_quotes(SOURCE_DATA_CHECKS=summary)
+    rows = mr.build_data_quality(q, {}, {}, [], [])
+    names = [r["name"] for r in rows]
+    assert any("資料品質:tw_universe" in n for n in names), \
+        f"品質檢查失敗沒進資料品質區:{names}"
+    err = [r for r in rows if r["status"] == "error"]
+    assert err and "只有 3 筆" in err[0]["detail"]
+    # warn 級也要出現,但不得升級成 error
+    assert any(r["status"] == "fallback" and "tw_universe" in r["name"]
+               for r in rows)
+
+
+def test_data_checks_survive_into_the_persisted_manifest(tmp_path, monkeypatch):
+    """r1(Codex,P2)**確認**:_write_run_manifest 是**重建白名單 dict**,
+    沒列到的鍵一律丟掉 → warn 級品質問題只存在於當次 stderr,無法累積成趨勢。
+    (與三審 P1-4 的 stance_dual 完全同一個坑。)"""
+    import datetime as dt
+    import json
+    f = tmp_path / "run_manifest.json"
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", f)
+    summary = dq.summarize([dq.check_value_range("u", [99.0] * 10, lo=0, hi=1,
+                                                 severity=dq.WARN)])
+    mr._RUN_MANIFEST["data_checks"] = summary
+    mr._write_run_manifest(dt.datetime(2026, 7, 26, 6, 0))
+    saved = json.loads(f.read_text(encoding="utf-8"))
+    assert "data_checks" in saved, "manifest 白名單漏了 data_checks"
+    assert saved["data_checks"]["warnings"], "warn 級沒被保存下來"

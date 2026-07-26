@@ -967,10 +967,12 @@ def test_both_lifecycle_signals_share_one_negation_judgement():
             ("尚未獲董事會通過", False),         # 否定詞隔著副詞/受詞
             ("並未正式核准", False),
             ("董事會未通過收購案", False)]:
-        neg = any(t.startswith("negated_") for t in sl._decision_terms(title))
+        terms = sl._decision_terms(title)
+        # r7:多了 pending_ 類別(待決 ≠ 否決),兩者都算「非正向結論」
+        not_positive = any(t.startswith(("negated_", "pending_")) for t in terms)
         confirmed = ne._event_lifecycle({"title": title}) == "confirmed"
         assert confirmed == want_confirmed, f"{title}: lifecycle 判斷錯誤"
-        assert neg != want_confirmed, f"{title}: 兩個訊號結論不一致"
+        assert not_positive != want_confirmed, f"{title}: 兩個訊號結論不一致"
 
 
 def test_run_loader_is_the_one_that_ships(tmp_path, monkeypatch):
@@ -1059,3 +1061,32 @@ def test_rejection_end_to_end_weight_for_direct_wording():
     e = _timeline("confirmed", "公告董事會否決收購案")
     assert e["lifecycle"] == "rejected"
     assert e["is_incremental"] is True and e["lifecycle_weight"] > 0
+
+
+def test_negated_rejection_is_not_a_rejection():
+    """r7(Codex,P1):否決詞本身也必須過否定守衛。我上一輪用了裸 `in`,於是
+    「收購案未遭否決」「申請並未被駁回」都被判成 rejected 並拿到**最高**
+    lifecycle 權重(1.0),等於憑空造出一個不存在的反轉。
+    而 story_ledger 對同一句話給的是 negated_reject ——兩個訊號又一次相反,
+    正是我前幾輪才修掉的那個病。**我自己剛立的原則沒有貫徹到新加的路徑上。**"""
+    import news_events as ne
+    for title in ("收購案未遭否決", "申請並未被駁回"):
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"})             != "rejected", f"{title} 被判成否決"
+        assert "negated_reject" in sl._decision_terms(title)
+    # 端到端:不得因此拿到反轉的最高權重
+    e = _timeline("confirmed", "公告收購案未遭否決")
+    assert e["lifecycle_weight"] == 0.0, "憑空造出的反轉拿到了權重"
+
+
+def test_pending_is_distinguished_from_rejection_in_both_signals():
+    """待決 ≠ 否決,而且**兩個訊號必須一致**。
+    先前「尚未獲董事會核准」在 ledger 算 negated_(等同否決),
+    在 lifecycle 卻是 rumor ——同一句話兩種結論。"""
+    import news_events as ne
+    for title in ("尚未獲董事會核准", "仍未通過審查"):
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"}) == "rumor"
+        terms = sl._decision_terms(title)
+        assert any(t.startswith("pending_") for t in terms), terms
+        assert not any(t.startswith("negated_") for t in terms),             f"{title} 被當成否決:{terms}"
+    # 但「待決 → 核准」仍必須被認成進展
+    assert sl._decision_terms("尚未獲董事會核准") != sl._decision_terms("董事會核准")

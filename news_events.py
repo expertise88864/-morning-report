@@ -125,10 +125,23 @@ def _event_lifecycle(event: dict) -> str:
     # 我的測試只用了「未通過」,所以整個直接否決的類別沒被覆蓋到。
     if explicit in ("rejected", "denied", "declined", "否決", "駁回"):
         return "rejected"
-    _REJECT_TOKENS = ("否決", "駁回", "退回", "不予核准", "不予備查",
-                      "rejected", "reject", "denied", "deny", "declined")
-    if any(tok in text for tok in _REJECT_TOKENS):
+    # r7(Codex,P1):**否決詞本身也必須過否定守衛**——我上一輪用了裸 `in`,
+    # 於是「收購案未遭否決」「申請並未被駁回」都被判成 rejected 並拿到**最高**
+    # lifecycle 權重(1.0),等於憑空造出一個不存在的反轉。
+    # 而 story_ledger._decision_terms 對同一句話給的是 negated_reject
+    # ——兩個訊號又一次相反,正是我前幾輪才修掉的那個病。
+    # 我自己剛立的原則(否定要用有界視窗判)沒有貫徹到新加的這條路徑上。
+    # 「不予核准」是整體否定詞,不拆(其中的「核准」被「不予」否定,語意即否決)。
+    _REJECT_TOKENS = ("否決", "駁回", "退回", "rejected", "reject",
+                      "denied", "deny", "declined")
+    if any(tok in text for tok in ("不予核准", "不予備查", "不予通過")):
         return "rejected"
+    for tok in _REJECT_TOKENS:
+        i = text.find(tok)
+        while i >= 0:
+            if not is_negated_decision(text, i):
+                return "rejected"
+            i = text.find(tok, i + 1)
 
     _DECISION_TOKENS = ("通過", "核准", "核定", "同意", "批准",
                         "approved", "approve", "confirmed")
@@ -139,9 +152,7 @@ def _event_lifecycle(event: dict) -> str:
                 # r6:區分「正式否決」與「**尚未**核准」的待決狀態——
                 # 「尚未核准」是流程還在跑,不是被否決,判成 rejected 會讓
                 # 「後來核准了」看起來像翻案而非正常進度。
-                _win = text[max(0, i - 6):i]
-                if any(w in _win for w in ("尚未", "還沒", "仍未", "暫未",
-                                           "not yet", "pending")):
+                if is_pending_decision(text, i):
                     return "rumor"
                 return "rejected"      # 明確的否決結論,不得再被 fallback 蓋掉
             i = text.find(token, i + 1)
@@ -408,6 +419,17 @@ _NEGATORS = ("未", "不", "沒", "無", "非", "否")
 #: Codex r1(P1):原本只看**緊鄰前一字**,這些常見寫法一律漏判。
 #: 用有界視窗(往前 6 字)而非無界,避免「通過…但未…」這種跨子句誤配。
 _NEG_WINDOW = 6
+
+
+#: 「尚未X」是流程還在跑,不是被否決。判成否決會讓「後來核准了」看起來像翻案
+#: 而不是正常進度(r6 Codex 提出,r7 一併套到 story_ledger 以消除兩邊分歧)。
+_PENDING_MARKERS = ("尚未", "還沒", "仍未", "暫未", "尚待", "not yet", "pending")
+
+
+def is_pending_decision(text: str, idx: int) -> bool:
+    """決策動詞前是否為「待決」語氣(而非否決)。與否定判定共用視窗寬度。"""
+    window = text[max(0, idx - _NEG_WINDOW):idx]
+    return any(m in window for m in _PENDING_MARKERS)
 
 
 def is_negated_decision(text: str, idx: int) -> bool:

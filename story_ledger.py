@@ -39,7 +39,7 @@ import re
 
 # Codex r2(P1):否定判準**只有一份**,定義在 news_events(無第一方相依)。
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
-from news_events import is_negated_decision
+from news_events import is_negated_decision, is_pending_decision
 
 # 狀態機:值為「連續幾天沒有 delta 就往下掉一級」的容忍天數
 STATES = ("brewing", "developing", "peak", "resolving", "dormant")
@@ -366,7 +366,16 @@ def _decision_terms(text: str) -> set:
         for w in words:
             i = t.find(w)
             while i >= 0:
-                out.add(f"negated_{cat}" if is_negated_decision(t, i) else cat)
+                # r7(Codex,P1 延伸):待決 ≠ 否決。先前「尚未獲董事會核准」
+                # 在 ledger 算 negated_(等同否決),在 lifecycle 卻是 rumor
+                # ——兩個訊號又分歧。分出 pending_ 類別後兩邊一致,
+                # 而且「待決 → 核准」仍會被正確認成進展。
+                if is_pending_decision(t, i):
+                    out.add(f"pending_{cat}")
+                elif is_negated_decision(t, i):
+                    out.add(f"negated_{cat}")
+                else:
+                    out.add(cat)
                 i = t.find(w, i + 1)
     return out
 

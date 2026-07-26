@@ -802,7 +802,11 @@ def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STO
         fresh = ("今日有新進展"
                  if today and str(s.get("last_update") or "")[:10] == str(today)[:10]
                  else "今日無新進展(僅供脈絡,不要單獨成條)")
-        if s.get("delta_unconfirmed"):
+        # r2(七維度審查,P2):**這是黏著旗標**——設定後若隔天該線索沒有新聞就
+        # 永不清除,prompt 會同時出現「今日無新進展」與「今日報導未經權威來源
+        # 證實」兩句自相矛盾的標註。旗標描述的是「今日這則」,所以只有今天真的
+        # 有更新時才該掛。
+        if s.get("delta_unconfirmed") and fresh.startswith("今日有新進展"):
             fresh += "|今日報導未經權威來源證實,與官方既有結論不一致,須註明"
         lines.append(
             f"- [{state_zh}|{fresh}|已追蹤 {int(s.get('updates') or 1)} 次|"

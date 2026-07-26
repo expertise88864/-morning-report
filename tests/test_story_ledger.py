@@ -918,3 +918,21 @@ def test_event_lifecycle_also_guards_negation():
     import news_events as ne
     assert ne._event_lifecycle({"title": "董事會通過收購案"}) == "confirmed"
     assert ne._event_lifecycle({"title": "董事會未通過收購案"}) != "confirmed"
+
+
+def test_unconfirmed_flag_is_not_sticky_across_idle_days():
+    """r2(七維度審查,P2):`delta_unconfirmed` 是黏著旗標——設定後若隔天該線索
+    沒有新聞就永不清除,prompt 會同時出現「今日無新進展」與「今日報導未經權威
+    來源證實」兩句**自相矛盾**的標註。旗標描述的是「今日這則」。"""
+    st = [{"key": "k1", "entity": "2330", "headline": "某案",
+           "state": "developing", "updates": 2, "first_seen": "2026-07-20",
+           "last_update": "2026-07-24", "delta_unconfirmed": True}]
+    idle = sl.format_story_block(st, today="2026-07-26",
+                                 sanitize=lambda s, n=200: str(s)[:n])
+    assert "今日無新進展" in idle
+    assert "未經權威來源證實" not in idle, "閒置日仍掛著昨天的未證實標註"
+
+    st[0]["last_update"] = "2026-07-26"
+    active = sl.format_story_block(st, today="2026-07-26",
+                                   sanitize=lambda s, n=200: str(s)[:n])
+    assert "今日有新進展" in active and "未經權威來源證實" in active

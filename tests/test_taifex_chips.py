@@ -160,3 +160,15 @@ def test_chip_signals_stay_out_of_stance_scoring():
             f"{field} 進了立場計分。若這是刻意的,必須先有 MCS/IC 證據並更新本測試"
             "與 model_version——立場分是信件頂部 KPI 的權威來源,不可無聲變動。"
         )
+
+
+def test_cpbl_odds_normalise_before_rounding():
+    """r2(七維度審查,P2):中職賠率原本先各自 round(p*100) 成整數,才在下游
+    正規化;NBA 那條是對**原始 float** 正規化。批#47 宣稱「統一成 NBA 的做法」,
+    實際只抽出了函式、沒統一取整時機。實測 raw=[0.554,0.456] 顯示成 (54,46),
+    正確為 (55,45),差 1pp。"""
+    import morning_report as mr
+    assert mr._normalized_two_way([55.4, 45.6]) == (55, 45)
+    assert sum(mr._normalized_two_way([55.4, 45.6])) == 100
+    # 先取整再正規化會得到的錯誤結果
+    assert mr._normalized_two_way([55.0, 46.0]) != (55, 45)

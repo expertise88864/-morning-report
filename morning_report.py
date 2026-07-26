@@ -5335,6 +5335,19 @@ def _extract_article_text(html: str) -> tuple[str, bool]:
             # 單篇抽取炸掉不該讓整條新聞管線停;退回去標籤法即可
             print(f"[news_full] 正文抽取失敗({type(e).__name__}),改用去標籤法",
                   file=sys.stderr)
+            # r2(七維度審查,P2)**實跑確認**:這條路徑原本**零痕跡**。
+            # trafilatura API 一變(requirements 是 >=2.1.0,deps-canary 每週裝
+            # 最新版;favor_precision 被移除即 TypeError),最多 26 篇全文全部
+            # 退回 _strip_html,批#43 宣稱的 78% 樣板縮減整個消失,而
+            # _DEGRADED_STEPS 空、manifest 無紀錄、資料品質區無條目、測試全綠。
+            # 實測:抽取後 fulltext 反而從 600 字變成 872 字(樣板回來了)、
+            # 素材含「登入」等雜訊,而降級紀錄 0 筆。降級不得靜默(AGENTS.md #3)。
+            if "article_extractor" not in _DEGRADED_STEPS:
+                _DEGRADED_STEPS.append("article_extractor")
+            # import 若拋**非 ImportError**(如 lxml 二進位壞掉的 OSError),
+            # _TRAFILATURA_UNAVAILABLE 不會被設 → 每篇都重試 import。
+            if isinstance(e, (OSError, SystemError)):
+                _TRAFILATURA_UNAVAILABLE = True
     return _strip_html(html), False
 
 
@@ -5432,7 +5445,12 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                               headers={"User-Agent": "Mozilla/5.0",
                                        "Accept": "application/json"})
                 r.raise_for_status()
-                data = r.json() or []
+                # r2(七維度審查,P2)**實跑確認**:原本是 `r.json() or []`,
+                # 那個 `or []` 把 `null` 轉成合法空清單,直接跳過下面的
+                # isinstance 失敗分支 → 端點長期回 null 時會被**記成成功**
+                # (實測 stats ok=1 fail=0),A 級官方公告來源歸零而來源健康
+                # 完全隱形。r3 那次修的正是這個方向,卻被 `or []` 抵銷掉。
+                data = r.json()
             except Exception:
                 stat["fail"] += 1
                 stat["streak"] = stat.get("streak", 0) + 1
@@ -15134,8 +15152,14 @@ def fetch_polymarket_sports(now_tpe: Optional[dt.datetime] = None) -> dict:
                     continue
                 if not all(0.0 < p < 1.0 for p in prices):
                     continue   # 0/1 = 已定案或無報價
+                # r2(七維度審查,P2):原本是 `round(p*100)` ——**先各自四捨五入
+                # 成整數,才在下游正規化**,而 NBA 那條是對原始 float 正規化。
+                # 批#47 宣稱「統一成 NBA 的做法」,實際只抽出了函式、沒統一取整
+                # 時機。實測 raw=[0.554,0.456] 顯示成 (54,46),正確為 (55,45),
+                # 差 1pp。把正規化提前到取整**之前**。
                 games.append({"teams": [_CPBL_EN_ZH.get(str(o), str(o)) for o in outcomes],
-                              "probs": [round(p * 100) for p in prices]})
+                              "probs": list(_normalized_two_way(
+                                  [p * 100 for p in prices]))})
         if games:
             out["cpbl_games"] = games
     except Exception as e:
@@ -18945,8 +18969,17 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     except Exception as e:
         print(f"[weekend] 行政院公報略過: {type(e).__name__}: {e}", file=sys.stderr)
         _DEGRADED_STEPS.append("weekend_gazette")
-    policy_analysis_html = _render_weekend_policy_html(
-        analyze_weekend_policy(intel, gazette_records), _htmllib)
+    # r2(七維度審查):同函式其餘八個抓取步驟每個都有 try,只有這步沒有。
+    # 逐項查過內部找不到真實觸發條件(prompt 組裝全走 safe_float/_external_text、
+    # _md_to_html 純 stdlib、LLM 呼叫本身已被包住),但一旦逸出就是**整封信不寄**
+    # ——與同函式其餘步驟保持一致比賭它不會炸划算。
+    try:
+        policy_analysis_html = _render_weekend_policy_html(
+            analyze_weekend_policy(intel, gazette_records), _htmllib)
+    except Exception as e:
+        print(f"[weekend] 政策解析略過: {type(e).__name__}: {e}", file=sys.stderr)
+        _DEGRADED_STEPS.append("weekend_policy_analysis")
+        policy_analysis_html = ""
 
     weather_html = _render_weather_html(weather or [], suspension or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
@@ -18988,6 +19021,16 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
          str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
          str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
+    # r2(七維度審查,P2):**週日路徑的降級紀錄原本是死寫入。**
+    # _DEGRADED_STEPS 只有兩個讀取端(_write_run_manifest 與資料品質區),
+    # 兩者都在 main() 的平日分支;run_weekend_digest 從不呼叫 _write_run_manifest,
+    # 所以週日公報失敗或政策解析失敗,除了 Actions log 一行 stderr,
+    # manifest / Step Summary / 信件本身**完全看不到**。
+    # 這是 AGENTS.md 不變式 #3 的變體:降級有記錄,但那個記錄在這條路徑上沒人讀。
+    try:
+        _write_run_manifest(now_tpe)
+    except Exception as e:
+        print(f"[weekend] run manifest 寫入失敗: {type(e).__name__}", file=sys.stderr)
     print("[weekend] 週日綜合已寄出")
     return 0
 

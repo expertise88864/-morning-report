@@ -18604,6 +18604,87 @@ def _published_within_hours(pub_str, hours: float = 30,
     return -6 * 3600 <= age <= hours * 3600
 
 
+def _build_weekend_policy_prompt(intel: Optional[dict], gazette_records) -> str:
+    """週日綜合專用的**政策深度解析** prompt。
+
+    批#46:週日走的是輕量路徑(render_weekend_digest_html),不呼叫 _build_prompt,
+    所以批#41 的公報一手法令與「十一之二、重大政策深度解析」在週日全都不會執行
+    ——政策區只剩標題級清單。而**週末正是政策消息最容易累積的時候**
+    (立院三讀、行政院核定常在週四五),那些消息在週日只會以標題出現一次,
+    週一又因「已顯示」記錄不會再深入寫,等於永久錯過。
+
+    刻意做成獨立的輕量 prompt 而非重用主 prompt:週日沒有行情、預測、籌碼,
+    主 prompt 的多數素材與規則都不適用,硬套只會讓 LLM 拿一堆空欄位。
+    """
+    media = _format_policy_deepdive_block(intel)
+    gazette = _format_gazette_prompt_block(gazette_records)
+    if not (media or gazette):
+        return ""
+    blocks = "\n\n".join(b for b in (media, gazette) if b)
+    return f"""你是台灣財經政策分析師。以下是週末期間的台灣重大政策素材。
+
+{blocks}
+
+請針對上方**每一個**政策(最多 3 個)各寫一小段(每段 6-10 行),**先措施、後影響**:
+
+**(1) 政策內容(措施本身,寫詳細)**:適用對象(誰符合資格)、金額/額度/費率、
+時程(何時上路、申請期限)、條件與排除、與舊制的差異(若為 X.0 版本或修正案)。
+可整合同一政策下多則報導的細節。
+**素材優先序**:【行政院公報】是一手法令原文(政府自己發布的令函/公告,含法條
+逐點、生效日、修正說明),其細節的權威性**高於**媒體轉述;同一政策兩邊都有時
+以公報為準。公報獨有的政策(媒體尚未報導)一樣要寫。
+標「法規草案預告,尚未定案」者必須在文中註明狀態,不可寫成已上路。
+
+**(2) 影響分析**:
+- **家戶/個人層面**:對不同族群(首購族、有子女家庭、退休族、租屋族…)的實際影響,
+  可具體到「一年多/少多少錢」——但只能用上方確有的數字推算,推算過程要寫出來。
+- **產業/類股層面**:利多或利空了哪些台股類股,**必須寫傳導機制**
+  (如「補貼提高首購買氣→建商去化加快→營建股受惠」),禁止「有帶動作用」這類空話。
+- **總經/財政層面**:對政府財政、資金流向、通膨或利率的意涵(有才寫)。
+- **風險與不確定**:政策可能失效或反效果的情境、尚待立法/預算的變數。
+
+**鐵則**:
+(a) 每個數字與條件都必須來自上方素材——**素材沒寫的金額、日期、資格一律不得補寫**;
+    不確定就寫「細節尚未揭露」,不可杜撰。
+(b) 全段不得出現「使用者/讀者/為您」等字樣。
+(c) 本段是政策解析,不是投資建議,不要下「買進/賣出」指令。
+(d) 若某政策資訊過少(只有標題、無任何細節),誠實寫「目前僅見標題級報導,
+    細節待官方公告」並只做方向性影響推論,**不可硬湊措施細節**。
+(e) 只輸出分析內容,不要加開場白或結語。用 Markdown,每個政策以 `### 政策名稱` 起頭。
+"""
+
+
+def analyze_weekend_policy(intel: Optional[dict], gazette_records) -> str:
+    """跑週日政策深度解析。任何失敗都回空字串(該段整段省略,週報不可斷)。"""
+    prompt = _build_weekend_policy_prompt(intel, gazette_records)
+    if not prompt:
+        return ""
+    if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
+        print("[weekend] 無 LLM 金鑰,略過政策深度解析", file=sys.stderr)
+        return ""
+    try:
+        text = (_call_llm_text(prompt) or "").strip()
+    except Exception as e:
+        print(f"[weekend] 政策深度解析失敗({type(e).__name__}),整段省略",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append("weekend_policy_analysis")
+        return ""
+    return text
+
+
+def _render_weekend_policy_html(analysis_md: str, htmllib) -> str:
+    """把政策解析 markdown 轉成信件區塊;空字串時整段省略(不留空標題)。"""
+    if not (analysis_md or "").strip():
+        return ""
+    from render_utils import _md_to_html, _style_analysis_html
+    inner = _style_analysis_html(_md_to_html(analysis_md))
+    return (
+        '<h2 style="font-size:17px;margin:22px 0 10px;padding-bottom:6px;'
+        'border-bottom:2px solid #0f766e;color:#0f766e;">重大政策深度解析</h2>'
+        '<div style="font-size:14px;line-height:1.75;color:#1f2937;">'
+        f'{inner}</div>')
+
+
 def _weekend_digest_has_content(sports: dict, podcast_eps: list,
                                 intel: dict, journals: list,
                                 now_tpe: Optional[dt.datetime] = None) -> bool:
@@ -18641,7 +18722,8 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
                                sports_html: str, podcast_html: str,
                                intel_html: str, journals_html: str,
                                calendar_html: str,
-                               local_news_html: str = "") -> str:
+                               local_news_html: str = "",
+                               policy_analysis_html: str = "") -> str:
     """週日綜合輕量信:天氣/在地快訊/體育/Podcast/政策/醫界/文獻,不跑行情與預測。"""
     body = "".join(s for s in (
         weather_html,
@@ -18652,6 +18734,9 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
         sports_html,
         podcast_html,
         local_news_html,
+        # 批#46:深度解析放在政策清單**之前**——清單是索引、解析才是內容,
+        # 讀者先看到結論比先看到一排標題有用。
+        policy_analysis_html,
         intel_html,
         journals_html,
         calendar_html,
@@ -18737,6 +18822,20 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         print("[weekend] 無新增體育/Podcast/政策/醫界內容 → 本週日不寄信")
         return 0
 
+    # 批#46:週日也跑政策深度解析。先抓公報一手法令(與平日同一條 relaxed-strict
+    # 路徑),抓不到就只用媒體清單——政策區缺席好過整封信炸掉。
+    gazette_records = []
+    try:
+        import tw_policy_sources as _tps
+        gazette_records = _tps.fetch_gazette(_http_get_relaxed_strict)
+        print(f"[weekend] 公報 {len(gazette_records)} 筆,關注分類 "
+              f"{sum(1 for r in gazette_records if _tps.is_focus_record(r))} 筆")
+    except Exception as e:
+        print(f"[weekend] 行政院公報略過: {type(e).__name__}: {e}", file=sys.stderr)
+        _DEGRADED_STEPS.append("weekend_gazette")
+    policy_analysis_html = _render_weekend_policy_html(
+        analyze_weekend_policy(intel, gazette_records), _htmllib)
+
     weather_html = _render_weather_html(weather or [], suspension or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
     # 與平日報對稱:渲染「全部」載入的集,再把「這些」集標成已顯示(見下方 deliver_report)。
@@ -18751,7 +18850,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     html = render_weekend_digest_html(
         report_date, weather_html, sports_html, podcast_html,
         intel_html, journals_html, calendar_html,
-        local_news_html=local_news_html)
+        local_news_html=local_news_html,
+        policy_analysis_html=policy_analysis_html)
 
     if os.environ.get("DRY_RUN") == "1":
         # 同時寫入晨報慣用的預覽路徑,讓 CI 的 dry-run-preview artifact 在週日也抓得到。

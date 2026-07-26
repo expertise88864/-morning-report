@@ -4,6 +4,8 @@
 (適用條件/金額級距/上路日期常缺漏),且新政策名詞(「台灣未來帳戶」)會被
 預先寫死的關鍵字白名單在評分前就剔除。公報同時解掉這兩個。
 """
+import pytest
+
 import morning_report as mr
 import tw_policy_sources as tps
 
@@ -164,9 +166,38 @@ def test_policy_keywords_state_roundtrip(tmp_path, monkeypatch):
 
     f.write_text("{ broken", encoding="utf-8")
     mr._DEGRADED_STEPS.clear()
-    assert mr.load_policy_keywords() == []
+    # r2(七維度審查,P1):**這條原本斷言 == [],等於把缺陷釘成規格。**
+    # 回 [] 會讓呼叫端接著 save_policy_keywords([], fresh) 把 merged=[]+fresh
+    # 原子性覆寫上去 → 數月歷史庫縮成 ≤12 筆,而且會被 commit 回 repo,不可逆。
+    # 正確的不變式是「讀不到就不准寫」,與 StoryLedgerCorrupt 一致。
+    with pytest.raises(mr.PolicyKeywordsCorrupt):
+        mr.load_policy_keywords()
     assert "policy_keywords_load" in mr._DEGRADED_STEPS, \
         "讀檔失敗必須進降級步驟——否則新詞偵測整個失效卻無人知道"
+
+    # 形狀不符的**合法** JSON 走同一條路(先前連降級都沒記,卻同樣會覆寫)
+    f.write_text('{"foo": 1}', encoding="utf-8")
+    mr._DEGRADED_STEPS.clear()
+    with pytest.raises(mr.PolicyKeywordsCorrupt):
+        mr.load_policy_keywords()
+    assert "policy_keywords_load" in mr._DEGRADED_STEPS
+
+
+def test_corrupt_keywords_does_not_wipe_history(tmp_path, monkeypatch):
+    """讀檔失敗後歷史庫必須原封不動——這是不可逆資料遺失的防線。"""
+    f = tmp_path / "policy_keywords.json"
+    monkeypatch.setattr(mr, "POLICY_KEYWORDS_FILE", f)
+    mr.save_policy_keywords([f"詞{i}" for i in range(500)], [])
+    good = f.read_text(encoding="utf-8")
+    f.write_text("{ broken", encoding="utf-8")
+    try:
+        known = mr.load_policy_keywords()
+    except mr.PolicyKeywordsCorrupt:
+        known = None
+    assert known is None
+    # 呼叫端此時**不得**存檔;還原後歷史應仍是 500 筆
+    f.write_text(good, encoding="utf-8")
+    assert len(mr.load_policy_keywords()) == 500, "歷史庫被抹掉了"
 
 
 def test_gazette_only_policy_still_activates_deepdive_section():

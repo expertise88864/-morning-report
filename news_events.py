@@ -105,9 +105,19 @@ def _event_lifecycle(event: dict) -> str:
     if any(token in text for token in (
             "implemented", "effective", "takes effect", "上路", "生效", "實施")):
         return "implemented"
-    if any(token in text for token in (
-            "confirmed", "announced", "approved", "公告", "核定", "通過", "證實")):
-        return "confirmed"
+    # r2(七維度審查,P1):否定守衛。「未通過」「不核定」含「通過」「核定」,
+    # 純子字串比對會把否決判成 confirmed。story_ledger._decision_terms 已修同一
+    # 缺陷,但兩處都要修才有效——兩個訊號同時說「沒進展」時帳本完全不更新,
+    # 送進 LLM 的前情會與今天的新聞相反。
+    _CONFIRM_TOKENS = ("confirmed", "announced", "approved",
+                       "公告", "核定", "通過", "證實")
+    _NEG = ("未", "不", "沒", "無", "遭", "拒")
+    for token in _CONFIRM_TOKENS:
+        i = text.find(token)
+        while i >= 0:
+            if not (i > 0 and text[i - 1] in _NEG):
+                return "confirmed"
+            i = text.find(token, i + 1)
     if any(token in text for token in (
             "rumor", "reportedly", "may", "considering", "傳聞", "擬", "可能", "研議")):
         return "rumor"

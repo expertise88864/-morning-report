@@ -304,7 +304,20 @@ def _pub_date_tokens(published: str) -> list[str]:
     # r10(Codex,P1):**不剝裸年份**。「預計 2027 年完成」→「提前至 2026 年完成」
     # 若把 2026年 當出版雜訊剝掉,事實集合會空掉、時程提前被判成沒進展。
     # 只剝完整的出版日期形式。
-    return out
+    #
+    # 民國年:台灣官方公告普遍寫「115年7月25日」,漏了這式會讓年份洩漏成事實。
+    for pat in _PUB_DATE_PATTERNS:
+        if "{y}" in pat:
+            out.append(pat.format(y=d.year - 1911, m=d.month, d=d.day))
+            out.append(pat.format(y=d.year - 1911,
+                                  m=f"{d.month:02d}", d=f"{d.day:02d}"))
+    # r2(七維度審查,P1)**實跑確認**:呼叫端是逐一 `raw.replace(tok, " ")`,
+    # 所以**順序決定結果**。短式「7月25日」先命中,會把「2026年7月25日」切成
+    # 「2026年 」,完整式那條 pattern 於是永遠匹配不到 → **裸年份留在事實集合裡**。
+    # 後果:同一事實的兩則稿子(一則寫完整日期、一則寫短式)事實集合不同 →
+    # 判成實質更新 → 實測重複稿三天衝到 peak、九天仍不沉寂,拿最高版面權重,
+    # 正是本模組要消滅的「每天寫一樣的東西」。**長的先剝**即可。
+    return sorted(set(out), key=len, reverse=True)
 
 
 # 決策/極性詞:同一事實的改寫稿會沿用同一個動詞,而「支持→否決」「核准→駁回」
@@ -331,11 +344,31 @@ _DECISION_CATEGORIES = {
 }
 
 
+#: 否定前綴。中文最常見的極性反轉寫法是加否定詞而非換動詞。
+_NEGATORS = ("未", "不", "沒", "無", "遭", "拒")
+
+
 def _decision_terms(text: str) -> set:
-    """標題命中的決策**語意類別**(不是字面詞)。"""
+    """標題命中的決策**語意類別**(不是字面詞)。
+
+    r2(七維度審查,P1)**實跑確認**:先前是純子字串比對,「未通過」含「通過」
+    → 與「通過」同判為 board_approve。配上 news_events._event_lifecycle 同樣
+    只認「通過」(也把「未通過」判成 confirmed、is_incremental=False),兩個訊號
+    同時說「沒進展」→ 帳本完全不更新,headline 停在昨天的**相反**結論,
+    還標成「今日無新進展」。送進 LLM 的前情與今天的新聞恰好相反——
+    這是**輸出錯誤**,不是保守降級。
+    """
     t = _norm(text)
-    return {cat for cat, words in _DECISION_CATEGORIES.items()
-            if any(w in t for w in words)}
+    out = set()
+    for cat, words in _DECISION_CATEGORIES.items():
+        for w in words:
+            i = t.find(w)
+            while i >= 0:
+                # 只看緊鄰的前一個字:「未通過」反轉,「通過」不反轉。
+                neg = i > 0 and t[i - 1] in _NEGATORS
+                out.add(f"negated_{cat}" if neg else cat)
+                i = t.find(w, i + 1)
+    return out
 
 
 def _participants(text: str, vocab) -> set:

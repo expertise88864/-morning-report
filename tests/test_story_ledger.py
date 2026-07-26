@@ -863,3 +863,58 @@ def test_same_grade_update_clears_unconfirmed_flag():
         lifecycle="confirmed", source_grade="A")], "2026-07-27")
     assert led[0]["delta_unconfirmed"] is False
     assert led[0]["lifecycle"] == "confirmed"
+
+
+# ============ r2(七維度審查)確認的 P1 ============
+
+def test_publication_date_stripping_order_longest_first():
+    """**剝除順序寫反**:呼叫端是逐一 replace,短式「7月25日」先命中會把
+    「2026年7月25日」切成「2026年 」,完整式那條 pattern 於是永遠匹配不到,
+    **裸年份留在事實集合裡**。後果:同一事實的兩則稿子(一則寫完整日期、
+    一則寫短式)事實集合不同 → 判成實質更新 → 實測重複稿三天衝到 peak、
+    九天仍不沉寂,拿最高版面權重,正是本模組要消滅的「每天寫一樣的東西」。"""
+    P = "2026-07-25"
+    full = sl._material_facts("鴻海2026年7月25日公告斥資100億擴廠", published=P)
+    short = sl._material_facts("鴻海7月25日公告斥資100億擴廠", published=P)
+    assert full == short, f"完整日期版洩漏了年份:{full - short}"
+    assert "2026" not in full
+
+
+def test_roc_year_publication_date_is_stripped():
+    """台灣官方公告普遍寫民國年「115年7月25日」——同一條洩漏路徑。"""
+    assert sl._material_facts("台積電公告115年7月25日董事會決議",
+                               published="2026-07-25") == set()
+
+
+def test_content_year_still_survives_date_stripping():
+    """但**內容**年份不能剝:時程提前是真正的進展(既有不變式,不得回歸)。"""
+    facts = sl._material_facts("預計2027年完成", published="2026-07-25")
+    assert "2027" in facts
+
+
+def test_negated_decision_is_not_the_same_as_the_decision():
+    """**否定詞未處理**:純子字串比對讓「未通過」含「通過」→ 同判 board_approve。
+    配上 news_events._event_lifecycle 同樣只認「通過」(也把「未通過」判成
+    confirmed、is_incremental=False),兩個訊號同時說「沒進展」→ 帳本完全不更新,
+    headline 停在昨天的**相反**結論,還標成「今日無新進展」。
+    送進 LLM 的前情與今天的新聞恰好相反——這是**輸出錯誤**,不是保守降級。"""
+    yes = sl._decision_terms("鴻海董事會通過收購案")
+    no = sl._decision_terms("鴻海董事會未通過收購案")
+    assert yes != no, "極性反轉沒被偵測到"
+    assert yes == {"board_approve"}
+    assert no == {"negated_board_approve"}
+
+
+def test_negation_guard_covers_common_chinese_forms():
+    for neg in ("未通過", "不同意", "沒核准", "遭否決"):
+        terms = sl._decision_terms(f"董事會{neg}該案")
+        assert terms, f"{neg} 應命中某個類別"
+        assert all(t.startswith("negated_") or t == "reject" for t in terms), \
+            f"{neg} 被判成正向:{terms}"
+
+
+def test_event_lifecycle_also_guards_negation():
+    """兩處都要修才有效——只修一半,另一個訊號仍會說「沒進展」。"""
+    import news_events as ne
+    assert ne._event_lifecycle({"title": "董事會通過收購案"}) == "confirmed"
+    assert ne._event_lifecycle({"title": "董事會未通過收購案"}) != "confirmed"

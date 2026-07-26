@@ -352,6 +352,15 @@ def _betainc(a: float, b: float, x: float) -> float:
         return 0.0
     if x >= 1:
         return 1.0
+    # r2(七維度審查,P1)**實跑確認**:Lentz 連分數只在 x < (a+1)/(a+b+2) 收斂,
+    # 否則必須用對稱式 I_x(a,b) = 1 − I_{1−x}(b,a)。這裡 x = dof/(dof+t²),
+    # **t→0 時 x→1**,恆在收斂域外,300 次迭代遠不足以收斂。
+    # 實測 dof=49、t=0.001 時本函式回 p=0.0227,真值 0.4996 ——
+    # 會把「毫無證據」報成 p<0.05 顯著。失敗方向是**假陽性**,
+    # 恰好是這支工具最不該犯的方向(現有測試取樣的 t=1.96/2.086/0.0 三點
+    # 剛好全部避開失效帶:前兩點在收斂域內,t=0 走 x>=1 短路分支碰巧正確)。
+    if x > (a + 1.0) / (a + b + 2.0):
+        return 1.0 - _betainc(b, a, 1.0 - x)
     lbeta = (math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b))
     front = math.exp(math.log(x) * a + math.log(1 - x) * b - lbeta) / a
     f, c, d = 1.0, 1.0, 0.0
@@ -464,8 +473,19 @@ def mincer_zarnowitz(actual, pred):
     hints = []
     if b_t is not None and b_t < -2.0:
         hints.append("預測過度反應(b<1),建議往均值收縮(改用 a + b*pred)")
-    if a_t is not None and abs(a_t) > 2.0:
-        hints.append("預測有系統性偏誤(a≠0),應先扣掉截距")
+    # r2(七維度審查)**實跑確認,原建議是有害的**:本檢定跑在**價格水準**上,
+    # 而水準迴歸中 a ≈ ȳ − b·x̄,截距與斜率幾乎完全負相關——「a≠0」是「b≠1」的
+    # 機械推論,不是獨立的加法偏誤。真實資料(n=48、平均價位 2364.9)實測:
+    #   真實平均偏誤只有 +2.02 元,水準版卻報 a=422.12(t=3.67)
+    #   照原建議「扣掉截距」:MAE 25.66 → 424.14(**惡化 16 倍**)
+    #   改用 a+b*pred 校準:    MAE 25.66 → 21.89(有效)
+    #   差分版 MZ 對照:a=2.36(t=0.54)→ 無加法偏誤,證實水準版截距是假訊號
+    # 既有測試用 truth~N(100,10)(白噪音、非 I(1)、均值離 0 不遠),那個設定下
+    # 水準迴歸沒問題——測試等於針對實作校準過,真實序列才露餡。
+    # 只在**斜率沒有顯著偏離 1** 時,a≠0 才可能是真的加法偏誤。
+    if (a_t is not None and abs(a_t) > 2.0
+            and b_t is not None and abs(b_t) <= 2.0):
+        hints.append("預測有系統性偏誤(a≠0 且 b≈1),建議整體平移 a")
     return {
         "a": a, "a_se": a_se, "a_t_vs_0": a_t,
         "b": b, "b_se": b_se, "b_t_vs_1": b_t, "n": n,

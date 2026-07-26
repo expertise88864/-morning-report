@@ -99,9 +99,30 @@ def _event_lifecycle(event: dict) -> str:
     """Classify event progression so repeated coverage does not repeatedly add score."""
     explicit = str(event.get("lifecycle") or event.get("status") or "").lower()
     text = f"{explicit} {event.get('title', '')} {event.get('summary', '')}".lower()
+    # r10(Codex,P1):**explicit lifecycle 與明確否決結論必須排在最前面**。
+    # 先前 implemented 的關鍵字(生效/實施/effective)排在否決判定之前,於是:
+    #   「主管機關駁回已生效許可之展延申請」→ implemented(實測)
+    #   explicit lifecycle="rejected" 但標題含「生效」→ 也是 implemented
+    # 明確的否決被改判成已實施,拿到錯誤的 transition 與權重,並把錯誤 lifecycle
+    # 寫進 ledger/state。我上一輪的註解宣稱「先判否決」,實際上只排在 confirmed
+    # 之前,**沒排在 withdrawn/implemented 之前**——順序只對了一半。
+    if explicit in ("rejected", "denied", "declined", "否決", "駁回"):
+        return "rejected"
+    if explicit in ("withdrawn", "撤回", "cancelled", "canceled"):
+        return "withdrawn"
     if any(token in text for token in (
             "withdrawn", "withdraw", "cancelled", "canceled", "撤回", "取消", "暫緩")):
         return "withdrawn"
+    # 明確否決結論優先於泛用的 implemented 關鍵字
+    if any(tok in text for tok in ("不予核准", "不予備查", "不予通過")):
+        return "rejected"
+    for _tok in ("否決", "駁回", "退回", "rejected", "reject",
+                 "denied", "deny", "declined"):
+        _i = text.find(_tok)
+        while _i >= 0:
+            if not is_negated_decision(text, _i):
+                return "rejected"
+            _i = text.find(_tok, _i + 1)
     if any(token in text for token in (
             "implemented", "effective", "takes effect", "上路", "生效", "實施")):
         return "implemented"
@@ -123,25 +144,10 @@ def _event_lifecycle(event: dict) -> str:
     # 都被判成 confirmed(落到 A 級 fallback),explicit lifecycle="rejected"
     # 也一樣。而「否決」「駁回」正是官方公告最常見的寫法。
     # 我的測試只用了「未通過」,所以整個直接否決的類別沒被覆蓋到。
-    if explicit in ("rejected", "denied", "declined", "否決", "駁回"):
-        return "rejected"
-    # r7(Codex,P1):**否決詞本身也必須過否定守衛**——我上一輪用了裸 `in`,
-    # 於是「收購案未遭否決」「申請並未被駁回」都被判成 rejected 並拿到**最高**
-    # lifecycle 權重(1.0),等於憑空造出一個不存在的反轉。
-    # 而 story_ledger._decision_terms 對同一句話給的是 negated_reject
-    # ——兩個訊號又一次相反,正是我前幾輪才修掉的那個病。
-    # 我自己剛立的原則(否定要用有界視窗判)沒有貫徹到新加的這條路徑上。
-    # 「不予核准」是整體否定詞,不拆(其中的「核准」被「不予」否定,語意即否決)。
-    _REJECT_TOKENS = ("否決", "駁回", "退回", "rejected", "reject",
-                      "denied", "deny", "declined")
-    if any(tok in text for tok in ("不予核准", "不予備查", "不予通過")):
-        return "rejected"
-    for tok in _REJECT_TOKENS:
-        i = text.find(tok)
-        while i >= 0:
-            if not is_negated_decision(text, i):
-                return "rejected"
-            i = text.find(tok, i + 1)
+    # (r7 的否決守衛與 explicit 判定已由 r10 前移到 withdrawn/implemented 之前,
+    #  見本函式開頭。保留在那裡的理由:明確的否決結論不得被泛用的「生效/實施」
+    #  關鍵字蓋掉。r7 的原始理由——否決詞本身也必須過否定守衛,免得
+    #  「收購案未遭否決」被判成 rejected 並拿最高權重——一併搬過去。)
 
     _DECISION_TOKENS = ("通過", "核准", "核定", "同意", "批准",
                         "approved", "approve", "confirmed")

@@ -1163,3 +1163,57 @@ def test_clause_separators_include_full_width_punctuation():
     assert ne._event_lifecycle(
         {"title": "本案尚待主管機關進一步審查後核准",
          "source_grade": "A"}) == "rumor"
+
+
+def test_rejection_beats_generic_implemented_keywords():
+    """r10(Codex,P1):implemented 的關鍵字(生效/實施/effective)原本排在否決
+    判定**之前**,於是「主管機關駁回已生效許可之展延申請」被判成 implemented,
+    連 explicit lifecycle="rejected" 都會被標題裡的「生效」蓋掉。
+    明確否決被改判成已實施 → 錯誤的 transition 與權重寫進 ledger/state。
+
+    我 r6 的註解宣稱「先判否決」,實際上**只排在 confirmed 之前**,
+    沒排在 withdrawn/implemented 之前 —— 順序只對了一半。
+    """
+    import news_events as ne
+    assert ne._event_lifecycle(
+        {"title": "主管機關駁回已生效許可之展延申請",
+         "source_grade": "A"}) == "rejected"
+    assert ne._event_lifecycle(
+        {"title": "某案已生效", "lifecycle": "rejected",
+         "source_grade": "A"}) == "rejected", "explicit 否決被標題的「生效」蓋掉"
+    # 對照:純粹的生效/撤回仍必須正確
+    assert ne._event_lifecycle(
+        {"title": "新制7月上路生效", "source_grade": "A"}) == "implemented"
+    assert ne._event_lifecycle(
+        {"title": "公司撤回申請", "source_grade": "A"}) == "withdrawn"
+
+
+def test_decision_scope_survives_normalisation_of_full_width_clauses():
+    """r10(Codex,P1):_norm() 會剝掉逗號等子句分隔符,而 is_pending_decision
+    正是靠那些分隔符界定作用域 → 「本案尚待主管機關審議,董事會已通過」
+    被 ledger 判成 pending_board_approve,而 lifecycle 對原文判 confirmed。
+    兩訊號分歧,而且媒體只要**調換相同子句的順序**,ledger 就會誤判為實質更新。
+    """
+    import news_events as ne
+    title = "本案尚待主管機關審議" + chr(0xFF0C) + "董事會已通過"
+    terms = sl._decision_terms(title)
+    assert "board_approve" in terms, f"後一子句的「通過」被前一子句的「尚待」污染:{terms}"
+    assert not any(t.startswith("pending_") for t in terms), terms
+    assert ne._event_lifecycle({"title": title, "source_grade": "A"}) == "confirmed"
+
+    # 同一子句內仍必須生效(不得因為保留分隔符就整個失效)
+    same_clause = "本案尚待董事會核准"
+    assert any(t.startswith("pending_")
+               for t in sl._decision_terms(same_clause))
+
+
+def test_ledger_authority_covers_rejected_like_withdrawn():
+    """r10(Codex,P1):`rejected` 原本不在 _LIFECYCLE_RANK 裡 → A 級官方標成
+    rejected 後,隔日較新的 C 級媒體稿仍稱 confirmed 時 _lifecycle_regresses()
+    回 False,那則低分級稿不會被標成未經證實,還會**覆寫官方 lifecycle**,
+    使帳本與 prompt 從「官方否決」翻回「已確認」。
+    同一套保護早就為 withdrawn 做了,只有 ledger 的比較表停在四種舊狀態。"""
+    assert sl._LIFECYCLE_RANK.get("rejected") == sl._LIFECYCLE_RANK.get("withdrawn")
+    story = {"lifecycle": "rejected", "source_grade": "A"}
+    assert sl._lifecycle_regresses({"lifecycle": "confirmed"}, story),         "C 級 confirmed 相對官方 rejected 未被判為倒退"
+    assert not sl._lifecycle_regresses({"lifecycle": "rejected"}, story)

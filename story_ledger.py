@@ -348,6 +348,18 @@ _DECISION_CATEGORIES = {
 }
 
 
+def _norm_keep_clauses(text: str) -> str:
+    """與 _norm 相同,但**保留子句分隔符**(供作用域判斷用)。
+
+    r10(Codex,P1):_norm 的 _PUNCT_RE 正好剝除 is_pending_decision 依賴的
+    那些字元,兩者直接串起來會讓子句邊界失效。
+    """
+    from news_events import _CLAUSE_SEPARATORS
+    return "".join(
+        ch for ch in str(text or "").lower()
+        if ch in _CLAUSE_SEPARATORS or not _PUNCT_RE.match(ch))
+
+
 def _decision_terms(text: str) -> set:
     """標題命中的決策**語意類別**(不是字面詞)。
 
@@ -360,7 +372,13 @@ def _decision_terms(text: str) -> set:
 
     否定判準見 news_events.is_negated_decision(**只有一份**,兩邊共用)。
     """
-    t = _norm(text)
+    # r10(Codex,P1):**_norm() 會剝掉逗號等子句分隔符**,而 is_pending_decision
+    # 正是靠那些分隔符界定作用域 → 「本案尚待主管機關審議,董事會已通過」
+    # 被判成 pending_board_approve,而 news_events 對原文判 confirmed。
+    # 兩訊號又分歧,而且媒體只要調換相同子句的順序,ledger 就會誤判為實質更新
+    # 並推進狀態。作用域判斷要看得到分隔符,故此處保留它們;
+    # 詞彙比對本身不受影響(決策詞裡不含標點)。
+    t = _norm_keep_clauses(text)
     out = set()
     for cat, words in _DECISION_CATEGORIES.items():
         for w in words:
@@ -439,7 +457,15 @@ def _remember_sig(seen: dict, key: str, sig: str) -> list:
     return list(sigs)
 
 
-_LIFECYCLE_RANK = {"rumor": 0, "confirmed": 1, "implemented": 2, "withdrawn": 3}
+# r10(Codex,P1):**rejected 原本不在這張表裡**。後果:A 級官方把線索標成
+# rejected 後,隔日較新的 C 級媒體稿仍稱 confirmed 時 _lifecycle_regresses()
+# 回 False → 那則低分級稿不會被標成 delta_unconfirmed,還會覆寫官方 lifecycle
+# 與來源級別,**使持久化帳本與 prompt 從「官方否決」翻回「已確認」**。
+# 同一套保護早就為 withdrawn 做了,news_events 的狀態機也已納入 rejected,
+# 只有 ledger 的權威比較表停在四種舊狀態——我加 rejected 時沒推廣到這裡。
+# rejected 與 withdrawn 同階:兩者都是「結論被推翻」的權威終局。
+_LIFECYCLE_RANK = {"rumor": 0, "confirmed": 1, "implemented": 2,
+                   "withdrawn": 3, "rejected": 3}
 
 
 def _lifecycle_regresses(ev: dict, story: dict) -> bool:

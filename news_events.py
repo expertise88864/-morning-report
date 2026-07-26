@@ -111,16 +111,14 @@ def _event_lifecycle(event: dict) -> str:
     # 送進 LLM 的前情會與今天的新聞相反。
     # Codex r1(P1):否定詞與動詞常隔著副詞/受詞(「尚未獲董事會通過」),
     # 只看緊鄰前一字會漏判。「遭」是被動標記不是否定詞(「遭否決」就是否決)。
-    # Codex r2(P1):兩處**必須共用同一個判準**——我 r1 只在 story_ledger 排除
-    # 了「不但/不僅/不只」,這裡沒排,於是「董事會不但通過收購案」在兩個
-    # lifecycle 訊號上結論相反。改為直接呼叫同一個函式,消滅分歧的可能。
-    from story_ledger import is_negated_decision as _is_neg
+    # Codex r2(P1):判準只有一份(見本檔尾 is_negated_decision),
+    # story_ledger 匯入它——單一方向,不可能形成循環,也不可能再分歧。
     _CONFIRM_TOKENS = ("confirmed", "announced", "approved",
                        "公告", "核定", "通過", "證實")
     for token in _CONFIRM_TOKENS:
         i = text.find(token)
         while i >= 0:
-            if not _is_neg(text, i):
+            if not is_negated_decision(text, i):
                 return "confirmed"
             i = text.find(token, i + 1)
     if any(token in text for token in (
@@ -354,3 +352,36 @@ def _validate_llm_events(events: list) -> tuple[list, int]:
         else:
             dropped += 1
     return valid, dropped
+
+
+#: 真正的否定詞。Codex r1(P1):原本把「遭」也列進來,結果「遭否決」被判成
+#: negated_reject —— 但「遭否決」就是否決,極性沒有反轉,於是從「否決」改寫成
+#: 「遭否決」會被誤判為進展。「遭」是**被動標記**不是否定詞。
+_NEGATORS = ("未", "不", "沒", "無", "非", "否")
+#: 否定詞與決策動詞之間常插入副詞或受詞:「尚未獲董事會通過」「並未正式核准」。
+#: Codex r1(P1):原本只看**緊鄰前一字**,這些常見寫法一律漏判。
+#: 用有界視窗(往前 6 字)而非無界,避免「通過…但未…」這種跨子句誤配。
+_NEG_WINDOW = 6
+
+
+def is_negated_decision(text: str, idx: int) -> bool:
+    """text[idx:] 起的決策動詞是否被否定。用**有界視窗**而非只看緊鄰前一字。
+
+    Codex r1(P1):「尚未獲董事會通過」「並未正式核准」這類寫法,否定詞與動詞
+    之間隔著副詞或受詞,只看前一字一律漏判——而漏判的後果正是這條修正要防的
+    (帳本不更新、headline 停在相反結論)。視窗有界(6 字)以免跨子句誤配。
+
+    Codex r2(P1):**這個判準必須只有一份**。我上一輪只在 story_ledger 排除了
+    「不但/不僅/不只」,news_events 沒排 → 同一句話在兩個 lifecycle 訊號上結論
+    相反。定義放在 news_events(無第一方相依),story_ledger 匯入它——
+    單一方向,不可能形成循環,也不可能再分歧。
+    """
+    window = text[max(0, idx - _NEG_WINDOW):idx]
+    if any(n in window for n in _NEGATORS):
+        # 「不」在「不但/不僅/不只」裡是遞進連接詞,不是否定該動詞
+        for false_pos in ("不但", "不僅", "不只", "不外", "無論", "不管"):
+            if false_pos in window and not any(
+                    n in window.replace(false_pos, "") for n in _NEGATORS):
+                return False
+        return True
+    return "not " in window.lower() or "fail" in window.lower()

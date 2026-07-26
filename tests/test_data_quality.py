@@ -141,3 +141,35 @@ def test_data_checks_survive_into_the_persisted_manifest(tmp_path, monkeypatch):
     saved = json.loads(f.read_text(encoding="utf-8"))
     assert "data_checks" in saved, "manifest 白名單漏了 data_checks"
     assert saved["data_checks"]["warnings"], "warn 級沒被保存下來"
+
+
+def test_untrusted_universe_is_blocked_from_model_state_and_top5():
+    """r2(Codex,P1)**接受**:「讓污染可見」不等於「阻止它傳播」。
+
+    決定性的理由是**自我毒化迴圈**:髒資料會寫進 model_history 的 stocks 快照,
+    而本閘的自動門檻正是拿 model_history 的歷史中位數推出來的 → 一個 3 筆的髒日
+    會拉低中位數、削弱這個閘本身;而且 state 會 commit 回 repo,往後每天的
+    計分/學習都吃它。**state 污染是不可逆的,信件當天略差可以復原。**
+
+    折衷:擋住 state 寫入與排名輸出,信照常寄——兩條不變式都保住。
+    """
+    from pathlib import Path
+    src = Path(mr.__file__).read_text(encoding="utf-8")
+    assert 'quotes["UNIVERSE_UNTRUSTED"]' in src
+    # model_history 的 stocks 快照必須受旗標保護
+    assert ('"stocks": ([] if quotes.get("UNIVERSE_UNTRUSTED")' in src), \
+        "髒股票池仍會寫進 model_history —— 自我毒化迴圈沒有斷開"
+    # Top5 排名同樣不得從 3 檔裡選前 5 名
+    assert '_scored5 = ([] if quotes.get("UNIVERSE_UNTRUSTED")' in src, \
+        "股票池不可信時仍在出 Top5"
+
+
+def test_gate_flag_only_trips_on_universe_errors_not_warnings():
+    """warn 級不得擋 state——分級的意義就在這裡,否則單一離群值就會停掉學習。"""
+    warn_only = dq.summarize([
+        dq.check_value_range("tw_universe", [99.0] * 10, lo=-11, hi=11,
+                             severity=dq.WARN)])
+    assert not any(e.get("source") == "tw_universe"
+                   for e in warn_only.get("errors", []))
+    err = dq.summarize([dq.check_row_count("tw_universe", _rows(3), min_rows=30)])
+    assert any(e.get("source") == "tw_universe" for e in err.get("errors", []))

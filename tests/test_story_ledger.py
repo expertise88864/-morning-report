@@ -936,3 +936,21 @@ def test_unconfirmed_flag_is_not_sticky_across_idle_days():
     active = sl.format_story_block(st, today="2026-07-26",
                                    sanitize=lambda s, n=200: str(s)[:n])
     assert "今日有新進展" in active and "未經權威來源證實" in active
+
+
+def test_both_lifecycle_signals_share_one_negation_judgement():
+    """r2(Codex,P1):我 r1 只在 story_ledger 排除了「不但/不僅/不只」,
+    news_events 沒排 → 「董事會不但通過收購案」在兩個 lifecycle 訊號上結論相反。
+    兩處**必須共用同一個判準**,故改為直接呼叫同一個函式。"""
+    import news_events as ne
+    assert ne._event_lifecycle.__module__ == "news_events"
+    for title, want_confirmed in [
+            ("董事會通過收購案", True),
+            ("董事會不但通過收購案", True),      # 遞進連接詞,不是否定
+            ("尚未獲董事會通過", False),         # 否定詞隔著副詞/受詞
+            ("並未正式核准", False),
+            ("董事會未通過收購案", False)]:
+        neg = any(t.startswith("negated_") for t in sl._decision_terms(title))
+        confirmed = ne._event_lifecycle({"title": title}) == "confirmed"
+        assert confirmed == want_confirmed, f"{title}: lifecycle 判斷錯誤"
+        assert neg != want_confirmed, f"{title}: 兩個訊號結論不一致"

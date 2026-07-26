@@ -19508,6 +19508,16 @@ def main() -> int:
         for _label in _dq.degraded_labels(_dq_summary):
             _DEGRADED_STEPS.append(_label)
             print(f"[dq] ERROR {_label}", file=sys.stderr)
+        # r2(Codex,P1)**接受**:「讓污染可見」不等於「阻止它傳播」,
+        # 我上一輪的回應只擋得住「整段刪掉」這個選項,擋不住真正該擋的東西。
+        # 決定性的理由是**自我毒化迴圈**:髒資料會寫進 model_history
+        # (下面的 "stocks": _snapshot_for_model(tw0050)),而本閘的自動門檻
+        # 正是拿 model_history 的歷史中位數推出來的 → 一個 3 筆的髒日會拉低
+        # 中位數,削弱這個閘本身,而且**state 污染是不可逆的**(會 commit 回 repo,
+        # 且往後每天的計分/學習都吃它)。信件當天略差可以復原,state 壞掉不行。
+        # 折衷:**擋住 state 寫入與排名輸出,信照常寄**——兩條不變式都保住。
+        quotes["UNIVERSE_UNTRUSTED"] = any(
+            e.get("source") == "tw_universe" for e in _dq_summary.get("errors", []))
         for _w in _dq_summary.get("warnings", []):
             print(f"[dq] warn {_w['source']}/{_w['check']}: {_w['detail']}",
                   file=sys.stderr)
@@ -19832,7 +19842,11 @@ def main() -> int:
         # 批#20:與卡片同一過濾器(漲跌停/除權息),FinMind 補值與追蹤帳本
         # 都以「過濾後」名單為準;批#23:同時保存 raw 名單供模型 vs 過濾器分辨
         quotes["TARGET_SESSION"] = str(target_session_date or "")
-        _scored5 = _rank_attention_candidates(tw0050)
+        # r2(Codex,P1):股票池未通過品質閘時不出 Top5——從 3 檔裡選前 5 名
+        # 是**看起來正常但完全無意義**的輸出,比缺這一段更糟。
+        # 其餘區塊照常(晨報不可斷),資料品質區已寫明原因。
+        _scored5 = ([] if quotes.get("UNIVERSE_UNTRUSTED")
+                    else _rank_attention_candidates(tw0050))
         _top5, _t5_ex = _top5_tradeable_filter(_scored5, quotes)
         _raw5 = [str(s.get("code")) for s in _scored5[:5] if s.get("code")]
         if _top5:
@@ -20101,7 +20115,12 @@ def main() -> int:
                     or (twse_taiex_close if 'twse_taiex_close' in locals() else None)
                 ),
                 "market_regime": quotes.get("MARKET_REGIME"),
-                "stocks": _snapshot_for_model(tw0050),
+                # r2(Codex,P1):股票池未通過品質閘時**不寫入快照**。
+                # 寫進去會污染 model_history,而本閘的自動門檻正是拿它的歷史
+                # 中位數推出來的——髒日會拉低中位數、削弱閘本身(自我毒化),
+                # 且 state 會 commit 回 repo,往後每天的計分/學習都吃它。
+                "stocks": ([] if quotes.get("UNIVERSE_UNTRUSTED")
+                           else _snapshot_for_model(tw0050)),
                 "label_prices": label_prices,
                 "label_prices_complete": label_prices_complete,
                 "structured_events": (

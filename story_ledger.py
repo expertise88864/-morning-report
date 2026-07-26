@@ -370,12 +370,12 @@ def _decision_terms(text: str) -> set:
         for w in words:
             i = t.find(w)
             while i >= 0:
-                out.add(f"negated_{cat}" if _is_negated(t, i) else cat)
+                out.add(f"negated_{cat}" if is_negated_decision(t, i) else cat)
                 i = t.find(w, i + 1)
     return out
 
 
-def _is_negated(text: str, idx: int) -> bool:
+def is_negated_decision(text: str, idx: int) -> bool:
     """決策動詞是否被否定。用**有界視窗**而非只看緊鄰前一字。
 
     Codex r1(P1):「尚未獲董事會通過」「並未正式核准」這類寫法,否定詞與動詞

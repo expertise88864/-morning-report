@@ -110,16 +110,17 @@ def _event_lifecycle(event: dict) -> str:
     # 缺陷,但兩處都要修才有效——兩個訊號同時說「沒進展」時帳本完全不更新,
     # 送進 LLM 的前情會與今天的新聞相反。
     # Codex r1(P1):否定詞與動詞常隔著副詞/受詞(「尚未獲董事會通過」),
-    # 只看緊鄰前一字會漏判;改用與 story_ledger._is_negated 相同的有界視窗。
-    # 「遭」是被動標記不是否定詞(「遭否決」就是否決),已移除。
+    # 只看緊鄰前一字會漏判。「遭」是被動標記不是否定詞(「遭否決」就是否決)。
+    # Codex r2(P1):兩處**必須共用同一個判準**——我 r1 只在 story_ledger 排除
+    # 了「不但/不僅/不只」,這裡沒排,於是「董事會不但通過收購案」在兩個
+    # lifecycle 訊號上結論相反。改為直接呼叫同一個函式,消滅分歧的可能。
+    from story_ledger import is_negated_decision as _is_neg
     _CONFIRM_TOKENS = ("confirmed", "announced", "approved",
                        "公告", "核定", "通過", "證實")
-    _NEG = ("未", "不", "沒", "無", "非", "否", "not ", "fail")
     for token in _CONFIRM_TOKENS:
         i = text.find(token)
         while i >= 0:
-            window = text[max(0, i - 6):i]
-            if not any(n in window for n in _NEG):
+            if not _is_neg(text, i):
                 return "confirmed"
             i = text.find(token, i + 1)
     if any(token in text for token in (

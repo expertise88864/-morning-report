@@ -8,6 +8,7 @@ pytest 共用設定與 fixtures。
   測試完全不連 Yahoo Finance。
 """
 import os
+import socket as _socket
 
 os.environ.setdefault("GMAIL_USER", "test@example.com")
 os.environ.setdefault("GMAIL_APP_PASSWORD", "dummy")
@@ -119,3 +120,52 @@ def fake_yf(monkeypatch):
     yield set_data
     FakeTicker.data_map = {}
     FakeTicker.div_map = {}
+
+
+# ============================================================================
+# 網路封鎖(r3 突變測試審查,P2-1)
+#
+# 實測發現 5 個測試會打**真實網路**:gazette.nat.gov.tw、news.google.com、
+# openapi.twse.com.tw、www.twse.com.tw、www.dgpa.gov.tw。也就是 CI 每次
+# push/PR 都在真的打政府網站與 TWSE。而且——**打通或打不通,斷言完全一樣**,
+# 這些網路呼叫對測試零價值,只承擔風險。
+#
+# 風險是具體的:把這些 host 導到黑洞 IP(模擬「站在、但不回應」)後,
+# 光兩個測試檔就跑了 12 分 29 秒 > ci.yml 的 timeout-minutes: 10
+# → job 被 GitHub 砍掉、CI 紅燈,而且**與程式碼完全無關**。
+# 時間來源:_http_get 預設 timeout=20 × retries=2(3 次)= 60s/次。
+#
+# 封鎖之後,任何新測試意外打網路都會**當場失敗並指名 host**,而不是變成
+# 一個偶爾很慢、偶爾在 CI 掛掉的謎題。
+# ============================================================================
+_ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
+_real_getaddrinfo = _socket.getaddrinfo
+_real_create_connection = _socket.create_connection
+
+
+class NetworkBlockedInTests(RuntimeError):
+    """測試意外嘗試連外。請 patch 掉該路徑的 _http_get / requests / feedparser。"""
+
+
+def _blocked(host):
+    return NetworkBlockedInTests(
+        f"測試嘗試連線 {host} —— 測試不得打真實網路。"
+        "請 patch 該路徑的 _http_get / requests.get / feedparser。"
+    )
+
+
+@pytest.fixture(autouse=True)
+def _block_outbound_network(monkeypatch):
+    def guard_getaddrinfo(host, port, *a, **kw):
+        if str(host) not in _ALLOWED_HOSTS:
+            raise _blocked(host)
+        return _real_getaddrinfo(host, port, *a, **kw)
+
+    def guard_create_connection(address, *a, **kw):
+        host = address[0] if isinstance(address, tuple) else address
+        if str(host) not in _ALLOWED_HOSTS:
+            raise _blocked(host)
+        return _real_create_connection(address, *a, **kw)
+
+    monkeypatch.setattr(_socket, "getaddrinfo", guard_getaddrinfo)
+    monkeypatch.setattr(_socket, "create_connection", guard_create_connection)

@@ -3,9 +3,16 @@
  "total_seconds": 0.0,
  "budget_seconds": 1140.0,
  "news_workers": 8,
- "degraded_steps": [],
+ "degraded_steps": [
+  "weekend_gazette"
+ ],
  "phases": [],
- "feeds": {},
+ "feeds": {
+  "news.google.com": {
+   "ok": 0,
+   "fail": 1
+  }
+ },
  "model_history_days": null,
  "d1_samples": null,
  "d1_ready": null,

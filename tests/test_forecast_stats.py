@@ -136,3 +136,67 @@ def test_nw_se_is_positive_and_handles_short_series():
     assert mc._nw_se([1.0]) is None
     assert mc._nw_se([5.0] * 10) is None      # 零變異 → 無法給標準誤,不得回 0
     _ = pytest
+
+
+def test_clark_west_p_uses_hln_corrected_statistic():
+    """r1(Codex):p 值必須由**修正後**的統計量、以 t(n-1) 算。
+    先前回傳未修正統計量 + 常態 CDF,而 docstring 聲稱「HLN 修正後」——
+    門檻附近會給出與宣稱不同的結論。"""
+    r = _rng()
+    n = 40                                    # 小樣本,修正才看得出差別
+    truth = r.normal(0, 1, n)
+    small = np.zeros(n)
+    big = 0.3 * truth + r.normal(0, 0.9, n)
+    stat, p, _ = mc.clark_west(truth, big, small)
+    # 回傳的 stat 必須已縮小(HLN 的作用)
+    raw_like = stat / mc.hln_correction(1.0, n)
+    assert stat < raw_like, "回傳的統計量沒有套用 HLN 修正"
+    # p 必須與 t(n-1) 一致,而非常態
+    assert abs(p - mc._t_sf(stat, n - 1)) < 1e-9
+    assert abs(p - (1 - mc._norm_cdf(stat))) > 1e-12 or n > 1000
+
+
+def test_t_sf_matches_known_values():
+    """t 分布上尾機率的正確性(無 scipy,自行實作,必須對得上已知值)。"""
+    assert abs(mc._t_sf(1.96, 10 ** 6) - 0.025) < 0.002
+    assert abs(mc._t_sf(2.086, 20) - 0.025) < 0.002
+    assert abs(mc._t_sf(0.0, 30) - 0.5) < 1e-6
+
+
+def test_mincer_zarnowitz_detects_pure_additive_bias():
+    """r1(Codex):MZ 的虛無假設是 **(a,b)=(0,1) 兩個限制**。只驗 b 會漏掉純加法
+    偏誤(actual ≈ pred + 10 時 b≈1、只有 a 偏離)——那是實打實的預測無效率,
+    卻會靜默通過。"""
+    r = _rng()
+    n = 300
+    truth = r.normal(100, 10, n)
+    biased = truth - 10 + r.normal(0, 0.5, n)      # 系統性低估 10
+    out = mc.mincer_zarnowitz(truth, biased)
+    assert out
+    assert abs(out["b"] - 1.0) < 0.1, "前提:斜率接近 1,只有截距偏"
+    assert out["joint_p"] is not None and out["joint_p"] < 0.01, \
+        f"純加法偏誤沒被聯合檢定抓到:joint_p={out['joint_p']}"
+    assert "偏誤" in out["shrink_hint"]
+
+
+def test_mincer_zarnowitz_joint_test_quiet_on_efficient_forecast():
+    r = _rng()
+    n = 300
+    truth = r.normal(100, 10, n)
+    good = truth + r.normal(0, 1, n)
+    out = mc.mincer_zarnowitz(truth, good)
+    assert out["joint_p"] > 0.01
+    assert out["shrink_hint"] == ""
+
+
+def test_run_reports_nested_diagnostics_not_only_spa():
+    """r1(Codex):新診斷先前定義在 __main__ 之後且沒被 run() 呼叫——
+    跑文件裡那行 `python model_confidence.py` 只會看到舊的 SPA 結論,
+    而那正是本批要指出「因巢狀比較而不成立」的那個結論。"""
+    import inspect
+    src = inspect.getsource(mc.run)
+    assert "_print_nested_diagnostics" in src, "run() 沒有呼叫巢狀診斷"
+    assert "巢狀比較" in src or "不成立" in src, "run() 未標註 SPA 對巢狀不適用"
+    # __main__ 守衛必須在所有定義之後
+    full = inspect.getsource(mc)
+    assert full.index('if __name__ == "__main__"') > full.index("def clark_west")

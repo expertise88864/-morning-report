@@ -176,6 +176,11 @@ def run(confidence: float = CONFIDENCE) -> int:
           f" / upper {pv['upper']:.3f}")
     print("  (虛無假設=沒有任何模型優於基準;p 大 → 無法宣稱贏過隨機漫步)")
 
+    # r1(Codex):**新診斷必須由 run() 呼叫**。先前它們定義在 __main__ 之後且
+    # 沒被呼叫,跑文件裡那行 `python model_confidence.py` 只會看到舊的 SPA 結論
+    # ——而那正是本批要指出「因巢狀比較而不成立」的那個結論。
+    _print_nested_diagnostics()
+
     print("\n=== 判讀 ===")
     if len(included) == len(losses.columns):
         print(f"  MCS 保留全部 {len(included)} 個模型 → 目前樣本無法區分它們的優劣。")
@@ -186,17 +191,76 @@ def run(confidence: float = CONFIDENCE) -> int:
     else:
         print(f"  MCS 留下 {len(included)} 個:{included}。這些之間無法區分,"
               "應在其中選最簡單/最穩健者。")
-    if pv["consistent"] > 0.10:
-        print(f"  SPA consistent p={pv['consistent']:.3f} > 0.10 → "
-              "**尚無法宣稱任何模型贏過隨機漫步**(這對短期價格預測是常見結果,"
-              "不代表系統無用——方向與區間的價值不在點預測誤差裡)。")
-    else:
-        print(f"  SPA consistent p={pv['consistent']:.3f} → 最佳模型顯著優於隨機漫步。")
+    print(f"  SPA consistent p={pv['consistent']:.3f} —— **但 SPA 對巢狀比較"
+          "(合成模型 vs 隨機漫步)在理論上不成立**,此處僅列出供對照,"
+          "結論以上方 Clark-West 為準。")
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(run())
+def build_price_frame():
+    """(實際開盤, weighted_final 預測, 隨機漫步基準)三組**價格**序列。
+
+    CW 與 MZ 都需要**有號**的實際值與預測值,不能用 build_loss_frame() 的絕對
+    百分誤差——絕對值失去正負號後,CW 公式裡的 (small−big)² 那一項就不再等於
+    「兩個預測之間的距離」,算出來的東西沒有意義。這是接線時自測抓到的。
+    """
+    sys.path.insert(0, str(Path(__file__).parent))
+    import morning_report as mr
+    mh = {r.get("session_date"): r for r in mr.load_model_history()}
+    sessions = sorted(s for s in mh if s)
+    act, pred, base = [], [], []
+    for entry in _load_history():
+        target = entry.get("target_session_date")
+        if not target:
+            continue
+        a = _actual_open(mh, target)
+        prev = _prev_close(mh, sessions, target)
+        w = entry.get("weighted_final_2330")
+        if None in (a, prev, w) or a <= 0 or prev <= 0:
+            continue
+        act.append(float(a))
+        pred.append(float(w))
+        base.append(float(prev))
+    return act, pred, base
+
+
+def _print_nested_diagnostics() -> None:
+    """巢狀比較與預測效率診斷。SPA/MCS 對巢狀模型不成立,這裡才是正確的比較。"""
+    act, pred, base = build_price_frame()
+    print(f"\n=== Clark-West:合成模型 vs 隨機漫步(巢狀正確檢定,n={len(act)})===")
+    stat, p, mean = clark_west(act, pred, base)
+    if stat is None:
+        print("  樣本不足")
+    else:
+        verdict = ("合成模型顯著含有隨機漫步以外的資訊"
+                   if p is not None and p < 0.05 else "尚無法宣稱")
+        print(f"  CW stat={stat:.3f}(已含 HLN 小樣本修正)單尾 p={p:.4f} → {verdict}")
+        print("  註:SPA/MCS 對此比較在理論上不成立,結論以本項為準。")
+
+    print("\n=== Mincer-Zarnowitz:預測是否無偏且有效率 ===")
+    mz = mincer_zarnowitz(act, pred)
+    if not mz:
+        print("  樣本不足")
+    else:
+        print(f"  a={mz['a']:.2f}(t vs 0 = {mz['a_t_vs_0']:.2f})  "
+              f"b={mz['b']:.4f}(t vs 1 = {mz['b_t_vs_1']:.2f})")
+        print(f"  聯合檢定 (a,b)=(0,1):Wald={mz['joint_wald']:.2f} p={mz['joint_p']:.4f}")
+        print(f"  {mz['shrink_hint'] or '未偵測到系統性偏誤或過度反應'}")
+
+    print("\n=== Pesaran-Timmermann:方向預測能力 ===")
+    import numpy as np
+    a = np.asarray(act) - np.asarray(base)
+    q = np.asarray(pred) - np.asarray(base)
+    s, pp, hit, exp = pesaran_timmermann(a, q)
+    if s is None:
+        print(f"  樣本不足或變異數退化(命中率 {hit:.1%} 期望 {exp:.1%})"
+              if hit is not None else "  樣本不足")
+    else:
+        print(f"  命中率 {hit:.1%} vs 邊際分布期望 {exp:.1%};stat={s:.3f} p={pp:.4f}")
+        print("  (PT 已校正「指數本來就偏漲、每天猜漲也有高命中率」的假象)")
+
+    print("\n=== 區間鋒利度 ===")
+    print("  Interval/Winkler score 需要區間上下界;接上 forecast ledger 後啟用。")
 
 
 # ============================================================================
@@ -211,7 +275,7 @@ if __name__ == "__main__":
 # 結論,可能是被錯誤的檢定壓出來的,而不是模型真的不夠好。
 # ============================================================================
 
-def clark_west(actual, big, small):
+def clark_west(actual, big, small, horizon: int = 1):
     """Clark-West adjusted MSPE(Clark & West 2007):巢狀模型的正確比較。
 
     核心想法:大模型在 H0 下多估了一堆真值為 0 的參數,這些純噪音會**抬高**它的
@@ -221,6 +285,9 @@ def clark_west(actual, big, small):
 
     正的平均值代表大模型真的有訊息,再對 f_t 做單尾 t 檢定(H0: E[f]=0)。
     刻意用單尾:CW 的虛無假設是「小模型才是真模型」,對立假設只有一個方向。
+
+    **統計量已內含 HLN 小樣本修正,p 值以 t(n-1) 計算**(不是常態)——
+    這兩件事必須一起做,否則回傳的 p 與宣稱的檢定不一致。
 
     回傳 (cw 統計量, 單尾 p 值, 平均調整後差值)。樣本不足回 (None, None, None)。
     """
@@ -236,8 +303,13 @@ def clark_west(actual, big, small):
     se = _nw_se(f)
     if not se:
         return None, None, mean
-    stat = mean / se
-    return stat, float(1.0 - _norm_cdf(stat)), mean
+    n = len(f)
+    # r1(Codex):**p 值必須由修正後的統計量、以 t(n-1) 算**。先前回傳的是未修正
+    # 統計量搭常態 CDF,而 docstring 與 commit 都聲稱「HLN 修正後」——在門檻附近
+    # 會給出與宣稱不同的結論。
+    raw = mean / se
+    stat = hln_correction(raw, n, horizon)
+    return stat, _t_sf(stat, n - 1), mean
 
 
 def _nw_se(x, lags: int | None = None) -> float | None:
@@ -260,6 +332,46 @@ def _nw_se(x, lags: int | None = None) -> float | None:
     if s <= 0:
         return None
     return float((s / n) ** 0.5)
+
+
+def _t_sf(t: float, dof: int) -> float:
+    """t 分布的單尾上尾機率。無 scipy 依賴,用不完全 beta 的連分數展開。"""
+    if dof <= 0:
+        return float("nan")
+    x = dof / (dof + t * t)
+    a, b = dof / 2.0, 0.5
+    ib = _betainc(a, b, x)
+    p = 0.5 * ib
+    return p if t > 0 else 1.0 - p
+
+
+def _betainc(a: float, b: float, x: float) -> float:
+    """正則化不完全 beta 函數 I_x(a,b)(Lentz 連分數;僅供 t 分布用)。"""
+    import math
+    if x <= 0:
+        return 0.0
+    if x >= 1:
+        return 1.0
+    lbeta = (math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b))
+    front = math.exp(math.log(x) * a + math.log(1 - x) * b - lbeta) / a
+    f, c, d = 1.0, 1.0, 0.0
+    for i in range(0, 300):
+        m = i // 2
+        if i == 0:
+            num = 1.0
+        elif i % 2 == 0:
+            num = (m * (b - m) * x) / ((a + 2 * m - 1) * (a + 2 * m))
+        else:
+            num = -((a + m) * (a + b + m) * x) / ((a + 2 * m) * (a + 2 * m + 1))
+        d = 1.0 + num * d
+        d = 1e-30 if abs(d) < 1e-30 else d
+        d = 1.0 / d
+        c = 1.0 + num / c
+        c = 1e-30 if abs(c) < 1e-30 else c
+        f *= c * d
+        if abs(1.0 - c * d) < 1e-10:
+            break
+    return front * (f - 1.0)
 
 
 def _norm_cdf(x: float) -> float:
@@ -334,13 +446,31 @@ def mincer_zarnowitz(actual, pred):
     except np.linalg.LinAlgError:
         return {}
     b_se = float(cov[1, 1] ** 0.5)
-    b = float(beta[1])
+    a_se = float(cov[0, 0] ** 0.5)
+    a, b = float(beta[0]), float(beta[1])
+    # r1(Codex):**MZ 的虛無假設是 (a,b)=(0,1) 兩個限制**,只驗 b 會漏掉純加法
+    # 偏誤(actual ≈ pred + 10 時 b≈1、只有 a 偏離)——那是實打實的預測無效率,
+    # 卻會靜默通過。補聯合 Wald 檢定。
+    r = np.array([a - 0.0, b - 1.0])
+    try:
+        wald = float(r @ np.linalg.inv(cov) @ r)
+    except np.linalg.LinAlgError:
+        wald = None
+    # W ~ chi2(2);chi2(2) 的上尾機率有封閉解 exp(-W/2)
+    import math
+    joint_p = float(math.exp(-wald / 2.0)) if wald is not None else None
+    b_t = (b - 1.0) / b_se if b_se else None
+    a_t = a / a_se if a_se else None
+    hints = []
+    if b_t is not None and b_t < -2.0:
+        hints.append("預測過度反應(b<1),建議往均值收縮(改用 a + b*pred)")
+    if a_t is not None and abs(a_t) > 2.0:
+        hints.append("預測有系統性偏誤(a≠0),應先扣掉截距")
     return {
-        "a": float(beta[0]), "b": b, "b_se": b_se, "n": n,
-        "b_t_vs_1": (b - 1.0) / b_se if b_se else None,
-        # b<1 → 預測過度反應;最佳收縮係數即 b(把 ŷ 換成 a + b·ŷ)
-        "shrink_hint": ("預測過度反應,建議往均值收縮(乘上 b 再加 a)"
-                        if b_se and (b - 1.0) / b_se < -2.0 else ""),
+        "a": a, "a_se": a_se, "a_t_vs_0": a_t,
+        "b": b, "b_se": b_se, "b_t_vs_1": b_t, "n": n,
+        "joint_wald": wald, "joint_p": joint_p,
+        "shrink_hint": ";".join(hints),
     }
 
 
@@ -371,3 +501,7 @@ def pesaran_timmermann(actual_dir, pred_dir):
         return None, None, hit, exp
     stat = (hit - exp) / (denom ** 0.5)
     return float(stat), float(2 * (1 - _norm_cdf(abs(stat)))), hit, exp
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())

@@ -78,7 +78,7 @@ MAX_ACTIVE_STORIES = 12       # 進 prompt 的活躍 story 上限
 SEEN_SIG_KEEP = 12            # 每條線索保留的重播簽章數
 KEEP_DAYS = 120               # 帳本保留天數(沉寂的也留著,供日後復燃接回)
 
-_PUNCT_RE = re.compile(r"[\s，。、；：！？「」『』()（）\[\]【】<>《》,.;:!?\"'`~\-—–]+")
+_PUNCT_RE = re.compile(r"[\s，。、；：！？「」『』()（）\[\]【】<>《》,.;:!?\"'`~\-—–－]+")
 
 
 def _norm(text: str) -> str:

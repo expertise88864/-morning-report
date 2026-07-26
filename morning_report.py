@@ -16658,7 +16658,7 @@ _PODCAST_KEEP_COMPACT_STEPS = (10, 8, 6, 4)
 def _norm_podcast_point(s) -> str:
     """重點句正規化(去空白/標點/全形符號),供跨集去重比對。"""
     import re as _re
-    return _re.sub(r"[\s，。、！？,.!?:：;；…()（）「」【】\"'`%　|｜]+", "", str(s)).lower()
+    return _re.sub(r"[\s，。、！？,.!?:：;；…()（）「」【】\"'`%　|｜－]+", "", str(s)).lower()
 
 
 def _podcast_bigrams(s) -> set:

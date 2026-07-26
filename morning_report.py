@@ -18604,6 +18604,11 @@ def _published_within_hours(pub_str, hours: float = 30,
     return -6 * 3600 <= age <= hours * 3600
 
 
+# 週日政策解析之後還要渲染與寄信,先從剩餘執行預算裡保留這段時間,
+# 避免 LLM 把整個 job 的時間吃光導致信寄不出去。
+_WEEKEND_RENDER_RESERVE = 60.0
+
+
 def _build_weekend_policy_prompt(intel: Optional[dict], gazette_records) -> str:
     """週日綜合專用的**政策深度解析** prompt。
 
@@ -18662,6 +18667,17 @@ def analyze_weekend_policy(intel: Optional[dict], gazette_records) -> str:
     if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
         print("[weekend] 無 LLM 金鑰,略過政策深度解析", file=sys.stderr)
         return ""
+    # r1(Codex,P1):**必須在共用的 LLM 總預算內執行**。直接呼叫 _call_llm_text
+    # 會讓 _LLM_DEADLINE 維持未設定,而 _llm_request_timeout() 只在該值有設時才
+    # 收斂單次逾時——Gemini 備援路徑最多可連打九次、每次 75 秒再加重試睡眠,
+    # 整個繞過 180 秒上限。這發生在渲染與寄信**之前**,夠慢的週日就會撞上
+    # workflow 的 25 分鐘上限,結果不是「政策段缺席」而是**整封信沒寄出**。
+    # 另以剩餘執行預算再收一次上界,避免週日前段已耗掉大半時間時仍放行滿額。
+    global _LLM_DEADLINE
+    previous_deadline = _LLM_DEADLINE
+    budget = max(1.0, min(float(LLM_TOTAL_TIMEOUT_SECONDS),
+                          max(1.0, _run_seconds_left() - _WEEKEND_RENDER_RESERVE)))
+    _LLM_DEADLINE = time.monotonic() + budget
     try:
         text = (_call_llm_text(prompt) or "").strip()
     except Exception as e:
@@ -18669,6 +18685,8 @@ def analyze_weekend_policy(intel: Optional[dict], gazette_records) -> str:
               file=sys.stderr)
         _DEGRADED_STEPS.append("weekend_policy_analysis")
         return ""
+    finally:
+        _LLM_DEADLINE = previous_deadline
     return text
 
 

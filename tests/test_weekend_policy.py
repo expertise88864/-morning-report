@@ -89,3 +89,37 @@ def test_weekend_digest_omits_section_when_analysis_empty():
         "2026-07-26", "", "", "", intel_html="<h2>台灣政策近月走向</h2>",
         journals_html="", calendar_html="", policy_analysis_html="")
     assert "重大政策深度解析" not in full
+
+
+def test_analysis_runs_inside_shared_llm_deadline(monkeypatch):
+    """r1(Codex,P1):直接呼叫 _call_llm_text 會讓 _LLM_DEADLINE 維持未設定,
+    而 _llm_request_timeout() 只在該值有設時才收斂單次逾時——Gemini 備援最多可
+    連打九次、每次 75 秒再加重試睡眠,整個繞過 180 秒上限。這發生在渲染與寄信
+    **之前**,夠慢的週日會撞上 workflow 25 分鐘上限,結果是**整封信沒寄出**。"""
+    recs = tps.parse_gazette_xml(_XML)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+    seen = {}
+
+    def _capture(_p):
+        seen["deadline"] = mr._LLM_DEADLINE
+        return "### 測試\n內容"
+
+    monkeypatch.setattr(mr, "_call_llm_text", _capture)
+    before = mr._LLM_DEADLINE
+    out = mr.analyze_weekend_policy(_INTEL, recs)
+    assert out
+    assert seen["deadline"] is not None, "呼叫時未設定共用 LLM 總預算"
+    assert mr._LLM_DEADLINE == before, "預算未在 finally 還原"
+
+
+def test_deadline_restored_even_when_llm_raises(monkeypatch):
+    recs = tps.parse_gazette_xml(_XML)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+
+    def _boom(_p):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(mr, "_call_llm_text", _boom)
+    before = mr._LLM_DEADLINE
+    assert mr.analyze_weekend_policy(_INTEL, recs) == ""
+    assert mr._LLM_DEADLINE == before, "例外路徑未還原預算"

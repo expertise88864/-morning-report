@@ -218,9 +218,20 @@ def apply_event_timeline(model_history: list[dict],
         for event in record.get("structured_events") or []:
             previous[_event_timeline_key(event)] = str(
                 event.get("lifecycle") or _event_lifecycle(event))
-    order = {"rumor": 1, "confirmed": 2, "implemented": 3, "withdrawn": 4}
-    base_weight = {"rumor": 0.35, "confirmed": 1.0, "implemented": 0.55, "withdrawn": 1.0}
-    transitions = {("rumor", "confirmed"): 0.65, ("confirmed", "implemented"): 0.45}
+    # r5(Codex,P1):**`rejected` 原本沒進這三張表**,所以 confirmed → rejected
+    # 拿到 is_incremental=False、權重 0 —— 與 F9 修正前的後果一模一樣,
+    # 缺陷只是換了個名字。「董事會否決收購案」是**最該被寫出來**的那種消息,
+    # 而它的權重是 0。
+    # 定位:rejected 與 withdrawn 同屬「結論被推翻」,在 order 中放最高階
+    # (可從任何前態抵達),base_weight 給 1.0(與 withdrawn 一致)。
+    order = {"rumor": 1, "confirmed": 2, "implemented": 3,
+             "withdrawn": 4, "rejected": 4}
+    base_weight = {"rumor": 0.35, "confirmed": 1.0, "implemented": 0.55,
+                   "withdrawn": 1.0, "rejected": 1.0}
+    transitions = {("rumor", "confirmed"): 0.65, ("confirmed", "implemented"): 0.45,
+                   # 已確認的事被官方否決,是**反轉**,資訊量最高
+                   ("confirmed", "rejected"): 1.0,
+                   ("implemented", "rejected"): 1.0}
     output = []
     for raw in events or []:
         event = dict(raw)
@@ -228,10 +239,12 @@ def apply_event_timeline(model_history: list[dict],
         status = _event_lifecycle(event)
         prior = previous.get(key)
         is_incremental = prior != status and (
-            prior is None or status == "withdrawn"
-            # withdrawn 不是不可逆終態:撤回後的新動態=新 episode 重新起算
-            # (GPT-5.6 二審 P0;否則撤回過的主題永遠拿 0 權重)
-            or prior == "withdrawn"
+            prior is None or status in ("withdrawn", "rejected")
+            # withdrawn/rejected 都不是不可逆終態:撤回或否決後的新動態
+            # = 新 episode 重新起算(GPT-5.6 二審 P0;否則撤回過的主題永遠拿
+            # 0 權重)。r5:rejected 一併納入,否則被否決過的案子重啟時
+            # 永遠拿不到權重——而「否決後重新提案」正是值得寫的續報。
+            or prior in ("withdrawn", "rejected")
             or order.get(status, 0) > order.get(prior, 0))
         event["lifecycle"] = status
         event["previous_lifecycle"] = prior

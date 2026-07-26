@@ -990,3 +990,43 @@ def test_run_loader_is_the_one_that_ships(tmp_path, monkeypatch):
     # 正常情況必須 readable=True,否則線索永遠存不下來
     f.write_text("[]", encoding="utf-8")
     assert mr.load_story_ledger_for_run() == ([], True)
+
+
+def _timeline(prior_lifecycle, title, grade="A"):
+    import news_events as ne
+    hist = [{"session_date": "2026-07-24", "structured_events": [{
+        "entity": "2330", "event_type": "orders", "title": "董事會通過收購案",
+        "lifecycle": prior_lifecycle,
+        "published": "2026-07-24T01:00:00+00:00"}]}]
+    ev = [{"entity": "2330", "event_type": "orders", "title": title,
+           "source_grade": grade, "published": "2026-07-24T01:00:00+00:00"}]
+    return ne.apply_event_timeline(hist, ev)[0]
+
+
+def test_official_rejection_is_not_silently_zero_weighted():
+    """r5(Codex,P1):我 r4 讓否決回傳 "rejected",但**沒把它加進狀態機的
+    order/base_weight/transitions** → confirmed → rejected 仍拿
+    is_incremental=False、權重 0,與修正前的後果**一模一樣**,缺陷只是換了名字。
+
+    既有測試只斷言「不是 confirmed」,所以完全漏掉這個端到端後果。
+    「董事會否決收購案」是最該被寫出來的那種消息,它的權重不能是 0。
+    """
+    e = _timeline("confirmed", "公告董事會未通過收購案")
+    assert e["lifecycle"] == "rejected"
+    assert e["is_incremental"] is True, "官方否決被判為「無進展」"
+    assert e["lifecycle_weight"] > 0, "官方否決拿到 0 權重 —— 不會被寫進晨報"
+    assert _timeline("implemented", "公告董事會未通過收購案")["lifecycle_weight"] > 0
+
+
+def test_rejection_is_not_an_irreversible_terminal_state():
+    """否決後重新提案 = 新 episode,必須重新起算——否則被否決過的案子重啟時
+    永遠拿不到權重,而「否決後重新提案」正是值得寫的續報。
+    (與 withdrawn 的既有處理一致。)"""
+    e = _timeline("rejected", "公告董事會通過收購案")
+    assert e["is_incremental"] is True and e["lifecycle_weight"] > 0
+
+
+def test_repeated_confirmation_still_scores_zero():
+    """對照組:一般的重複確認仍必須拿 0 —— 修正不得把抑制重複的機制打壞。"""
+    e = _timeline("confirmed", "公告董事會通過收購案")
+    assert e["is_incremental"] is False and e["lifecycle_weight"] == 0.0

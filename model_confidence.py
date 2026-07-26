@@ -197,3 +197,177 @@ def run(confidence: float = CONFIDENCE) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(run())
+
+
+# ============================================================================
+# 批#48:巢狀比較、小樣本修正、區間鋒利度、預測效率
+#
+# 為什麼需要這一段(這是**正確性**問題,不是新功能):
+#
+# DM / SPA / MCS 對「巢狀模型」在理論上不成立。「多模型合成 vs 隨機漫步(前日
+# 收盤)」正是典型的巢狀比較——大模型在虛無假設下等價於小模型,loss differential
+# 的極限分布**不是常態**,統計量會系統性偏向「無法拒絕」。
+# 也就是說,本檔上半部跑出的「SPA consistent p=0.121、尚無法宣稱贏過基準」這個
+# 結論,可能是被錯誤的檢定壓出來的,而不是模型真的不夠好。
+# ============================================================================
+
+def clark_west(actual, big, small):
+    """Clark-West adjusted MSPE(Clark & West 2007):巢狀模型的正確比較。
+
+    核心想法:大模型在 H0 下多估了一堆真值為 0 的參數,這些純噪音會**抬高**它的
+    MSPE。CW 把這個「估計噪音」項從 MSPE 差值中扣掉,還原出乾淨的比較:
+
+        f_t = (y-small)² − [(y-big)² − (small-big)²]
+
+    正的平均值代表大模型真的有訊息,再對 f_t 做單尾 t 檢定(H0: E[f]=0)。
+    刻意用單尾:CW 的虛無假設是「小模型才是真模型」,對立假設只有一個方向。
+
+    回傳 (cw 統計量, 單尾 p 值, 平均調整後差值)。樣本不足回 (None, None, None)。
+    """
+    import numpy as np
+    y = np.asarray(actual, dtype=float)
+    b = np.asarray(big, dtype=float)
+    s = np.asarray(small, dtype=float)
+    if min(len(y), len(b), len(s)) < MIN_PAIRS:
+        return None, None, None
+    f = (y - s) ** 2 - ((y - b) ** 2 - (s - b) ** 2)
+    mean = float(f.mean())
+    # 用 HAC(Newey-West)標準誤:單日預測仍可能有序列相關
+    se = _nw_se(f)
+    if not se:
+        return None, None, mean
+    stat = mean / se
+    return stat, float(1.0 - _norm_cdf(stat)), mean
+
+
+def _nw_se(x, lags: int | None = None) -> float | None:
+    """Newey-West HAC 標準誤(平均數的)。lags 預設用 floor(4*(n/100)^(2/9))。"""
+    import numpy as np
+    a = np.asarray(x, dtype=float)
+    n = len(a)
+    if n < 3:
+        return None
+    if lags is None:
+        lags = int(4 * (n / 100.0) ** (2.0 / 9.0))
+    d = a - a.mean()
+    gamma0 = float((d * d).sum() / n)
+    s = gamma0
+    for k in range(1, max(1, lags) + 1):
+        if k >= n:
+            break
+        gk = float((d[k:] * d[:-k]).sum() / n)
+        s += 2.0 * (1.0 - k / (lags + 1.0)) * gk
+    if s <= 0:
+        return None
+    return float((s / n) ** 0.5)
+
+
+def _norm_cdf(x: float) -> float:
+    import math
+    return 0.5 * (1.0 + math.erf(float(x) / math.sqrt(2.0)))
+
+
+def hln_correction(stat: float, n: int, horizon: int = 1) -> float:
+    """Harvey-Leybourne-Newbold 小樣本修正。
+
+    DM 在小樣本下**過度拒絕虛無假設**。HLN 把統計量乘上
+        sqrt((T + 1 - 2h + h(h-1)/T) / T)
+    並改用 t(T-1) 而非常態臨界值。文獻建議 T<20 或 h>1 時必用——本系統的 T 只有
+    數十到數百,加上去等於免費降低假陽性。
+    """
+    if n <= 1:
+        return stat
+    h = max(1, int(horizon))
+    adj = (n + 1 - 2 * h + h * (h - 1) / n) / n
+    return float(stat * (max(adj, 1e-9) ** 0.5))
+
+
+def interval_score(actual, lower, upper, alpha: float = 0.2):
+    """Interval(Winkler)score:**同時**懲罰過寬與漏失。越小越好。
+
+        (u−l) + (2/α)(l−y)·1{y<l} + (2/α)(y−u)·1{y>u}
+
+    為什麼需要:conformal PID 保證覆蓋率收斂到目標,但**一個無窮寬的區間也能
+    通過**。現有評估只驗覆蓋率、沒驗鋒利度,等於有一半沒在看。
+    這個分數讓「窄但偶爾漏」與「寬但總是包住」變成可比的**單一數字**,
+    可以直接進 forecast ledger 逐日累積。
+    """
+    import numpy as np
+    y = np.asarray(actual, dtype=float)
+    lo = np.asarray(lower, dtype=float)
+    hi = np.asarray(upper, dtype=float)
+    if not (len(y) == len(lo) == len(hi)) or len(y) == 0:
+        return None
+    width = hi - lo
+    below = np.where(y < lo, (2.0 / alpha) * (lo - y), 0.0)
+    above = np.where(y > hi, (2.0 / alpha) * (y - hi), 0.0)
+    return float((width + below + above).mean())
+
+
+def mincer_zarnowitz(actual, pred):
+    """Mincer-Zarnowitz 迴歸 y = a + b·ŷ,檢定 a=0, b=1。
+
+    **這是唯一一個能直接改善預測本身的診斷**:其他方法只告訴你「好不好」,
+    這個告訴你「怎麼改」——若 b 顯著小於 1,代表預測**過度反應**,
+    把預測往均值收縮(shrink)就能立刻降低 MSE。
+
+    回傳 dict(a, b, b_se, b_t_vs_1, n, shrink_hint)。樣本不足回 {}。
+    """
+    import numpy as np
+    y = np.asarray(actual, dtype=float)
+    x = np.asarray(pred, dtype=float)
+    n = len(y)
+    if n < MIN_PAIRS or n != len(x):
+        return {}
+    X = np.column_stack([np.ones(n), x])
+    try:
+        beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+    except np.linalg.LinAlgError:
+        return {}
+    resid = y - X @ beta
+    dof = n - 2
+    if dof <= 0:
+        return {}
+    sigma2 = float((resid ** 2).sum() / dof)
+    try:
+        cov = sigma2 * np.linalg.inv(X.T @ X)
+    except np.linalg.LinAlgError:
+        return {}
+    b_se = float(cov[1, 1] ** 0.5)
+    b = float(beta[1])
+    return {
+        "a": float(beta[0]), "b": b, "b_se": b_se, "n": n,
+        "b_t_vs_1": (b - 1.0) / b_se if b_se else None,
+        # b<1 → 預測過度反應;最佳收縮係數即 b(把 ŷ 換成 a + b·ŷ)
+        "shrink_hint": ("預測過度反應,建議往均值收縮(乘上 b 再加 a)"
+                        if b_se and (b - 1.0) / b_se < -2.0 else ""),
+    }
+
+
+def pesaran_timmermann(actual_dir, pred_dir):
+    """Pesaran-Timmermann 方向準確度檢定。
+
+    命中率的 sign test,但**校正了兩序列各自邊際分布造成的假象**——指數本來就
+    55% 的天數上漲,你每天猜「漲」就有 55% 命中率,那不是預測力。
+    n≈50 就有意義,適合本系統的樣本量。
+
+    回傳 (統計量, 雙尾 p 值, 實際命中率, 期望命中率)。樣本不足回四個 None。
+    """
+    import numpy as np
+    a = (np.asarray(actual_dir) > 0).astype(float)
+    p = (np.asarray(pred_dir) > 0).astype(float)
+    n = len(a)
+    if n < MIN_PAIRS or n != len(p):
+        return None, None, None, None
+    hit = float((a == p).mean())
+    pa, pp = float(a.mean()), float(p.mean())
+    exp = pa * pp + (1 - pa) * (1 - pp)
+    var_hit = exp * (1 - exp) / n
+    var_exp = (((2 * pa - 1) ** 2) * pp * (1 - pp) / n
+               + ((2 * pp - 1) ** 2) * pa * (1 - pa) / n
+               + 4 * pp * pa * (1 - pp) * (1 - pa) / (n ** 2))
+    denom = var_hit - var_exp
+    if denom <= 0:
+        return None, None, hit, exp
+    stat = (hit - exp) / (denom ** 0.5)
+    return float(stat), float(2 * (1 - _norm_cdf(abs(stat)))), hit, exp

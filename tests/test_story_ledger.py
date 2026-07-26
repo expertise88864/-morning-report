@@ -1134,3 +1134,32 @@ def test_long_mops_title_can_still_be_overridden():
     events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
     assert len(events) == 1, f"超長標題讓權威覆寫失效:{events}"
     assert events[0]["event_type"] == "general"
+
+
+def test_clause_separators_include_full_width_punctuation():
+    """r9(Codex,P1):我上一輪以為寫了「全形 + 半形」成對,但**字元在編輯管線中
+    被轉成 ASCII** —— 實際存進檔案的是四組重複的半形,全形 ，；！？ 一個都不在。
+    中文標題用的正是全形,所以整個子句邊界對真實輸入幾乎失效。
+
+    而我加的邊界測試用的是 **ASCII 逗號**,所以完全測不到這件事
+    ——「測試輸入不夠真實」這個病,這是本輪第四次。
+
+    這條測試刻意用 chr(0xFF0C) 之類的碼位建字串,避免同一個編碼轉換
+    把測試資料也一起弄壞(那樣測試會再次通過而缺陷還在)。
+    """
+    import news_events as ne
+    FULL_COMMA, FULL_SEMI, FULL_COLON = chr(0xFF0C), chr(0xFF1B), chr(0xFF1A)
+    for sep, name in [(FULL_COMMA, "全形逗號"), (FULL_SEMI, "全形分號"),
+                      (FULL_COLON, "全形冒號")]:
+        assert sep in ne._CLAUSE_SEPARATORS, f"{name}不在子句分隔符裡"
+        title = f"尚待主管機關進一步審議{sep}另案已核准"
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"})             == "confirmed", f"「尚待」跨過{name}把已核准的事判成待決"
+
+    # 半形同樣要在(混用是常態)
+    for sep in (",", ";", ":"):
+        assert sep in ne._CLAUSE_SEPARATORS
+
+    # 對照:沒有分隔符時,同一子句內的「尚待」仍必須生效
+    assert ne._event_lifecycle(
+        {"title": "本案尚待主管機關進一步審查後核准",
+         "source_grade": "A"}) == "rumor"

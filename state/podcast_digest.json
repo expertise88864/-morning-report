@@ -5367,6 +5367,23 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "6027c695-2425-4510-bd41-b491014d8b7a",
+        "title": "How Financial Advisors Can Grow During the Great Wealth Transfer (Sponsored Content)",
+        "published": "Sun, 26 Jul 2026 10:00:00 +0000",
+        "processed_at": "2026-07-26T14:50:41Z",
+        "digest": {
+          "summary_points": [
+            "根據 Cerule 報告，未來 25 年將有超過 100 兆美元的財富轉移給下一代。",
+            "約 81% 的下一代表示不會繼續使用父母的理財顧問。",
+            "顧問與客戶在溝通保護、退休規劃等話題上存在巨大認知差距。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "only about 19-ish percent say they're going to stay with their advisor going forward"
+        }
+      },
+      {
         "guid": "2050514a-2131-40e9-bc90-b48f0113d17c",
         "title": "How Franchise Restaurants Opened the Door to the Gig Economy",
         "published": "Fri, 24 Jul 2026 08:00:00 +0000",
@@ -5672,26 +5689,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-03T23:00:25Z"
-      },
-      {
-        "guid": "6f683bb0-bf70-4fb7-8c81-b47a013f78c2",
-        "title": "What Dan Wang Saw on His Last Trip to China",
-        "published": "Thu, 02 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-02T10:27:34Z",
-        "digest": {
-          "summary_points": [
-            "中國一線城市房價自高點下跌25-30%，民眾財富約3/4集中在房產，對消費信心造成壓力。",
-            "中國青年失業率官方公布超過15%，接近20%，使年輕人就業困難。",
-            "上海總和生育率(TFR)僅0.6，全國為1.0，人口老化嚴峻，預估20年後半數人口超過65歲。",
-            "中國政府優先發展半導體與電池等高技術產業，即便經濟放緩仍持續投入資源。",
-            "電動車滿電行駛約600公里，充電成本僅約12美元，顯示能源成本優勢。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "I think that the central contradiction as the Marxists like to call it now is that what I feel on this trip is that this is kind of people have a bit of a serene discontent with their lives."
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },

@@ -1,6 +1,6 @@
 {
- "date": "2026-07-25 06:50",
- "total_seconds": 468.2,
+ "date": "2026-07-27 06:47",
+ "total_seconds": 550.0,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
@@ -11,23 +11,23 @@
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 173.9
+   "seconds": 232.5
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 7.3
+   "seconds": 14.7
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 119.6
+   "seconds": 130.7
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 81.9
+   "seconds": 74.7
   },
   {
    "label": "LLM 主分析",
-   "seconds": 77.8
+   "seconds": 89.6
   },
   {
    "label": "渲染",
@@ -48,11 +48,11 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 124,
+   "ok": 123,
    "fail": 0
   },
   "feeds.feedburner.com": {
-   "ok": 3,
+   "ok": 4,
    "fail": 0
   },
   "www.federalreserve.gov": {
@@ -60,7 +60,23 @@
    "fail": 0
   },
   "api.cnyes.com": {
-   "ok": 3,
+   "ok": 7,
+   "fail": 0
+  },
+  "openapi.twse.com.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "news.ltn.com.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "technews.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "tw.stock.yahoo.com": {
+   "ok": 1,
    "fail": 0
   },
   "money.udn.com": {
@@ -84,7 +100,7 @@
    "fail": 0
   },
   "www.ey.gov.tw": {
-   "ok": 2,
+   "ok": 4,
    "fail": 0
   },
   "www.mohw.gov.tw": {
@@ -124,10 +140,10 @@
  "d1_samples": 0,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -6,
-  "llm_label": "偏空",
-  "py": -6,
-  "py_label": "偏空",
+  "llm": -3,
+  "llm_label": "中性",
+  "py": -3,
+  "py_label": "中性",
   "agree": true,
   "coverage": 1.0,
   "missing": [],
@@ -137,5 +153,37 @@
   "mode": "global_full",
   "rule_version": 2,
   "authority": "python"
+ },
+ "data_checks": {
+  "all": [
+   {
+    "source": "tw_universe",
+    "check": "row_count",
+    "severity": "error",
+    "passed": true,
+    "detail": "100 筆",
+    "observed": 100
+   },
+   {
+    "source": "tw_universe",
+    "check": "required_fields",
+    "severity": "error",
+    "passed": true,
+    "detail": "必要欄位齊全",
+    "observed": 0.0
+   },
+   {
+    "source": "tw_universe",
+    "check": "value_range",
+    "severity": "warn",
+    "passed": true,
+    "detail": "值域正常",
+    "observed": 0.0
+   }
+  ],
+  "errors": [],
+  "warnings": [],
+  "checked": 3,
+  "failed": 0
  }
 }

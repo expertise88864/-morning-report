@@ -323,8 +323,16 @@
    "3653"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "2357": 760.0,
+   "3665": 2235.0,
+   "3231": 175.0,
+   "8210": 1150.0,
+   "3653": 3650.0
+  },
+  "taiex_entry": 44769.39
  },
  {
   "question": "2330_open_up",
@@ -368,8 +376,8 @@
  },
  {
   "type": "top5",
-  "created": "2026-07-25",
-  "created_at": "2026-07-25T06:50:10.919271+08:00",
+  "created": "2026-07-27",
+  "created_at": "2026-07-27T06:47:09.108648+08:00",
   "target_session": "2026-07-27",
   "base_session": "2026-07-24",
   "codes": [
@@ -393,31 +401,31 @@
  {
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
-  "created": "2026-07-25",
-  "created_at": "2026-07-25T06:50:10.919271+08:00",
+  "created": "2026-07-27",
+  "created_at": "2026-07-27T06:47:09.108648+08:00",
   "target": "2026-07-27",
   "threshold": 2350.0,
-  "pred_pct": -1.696,
+  "pred_pct": -1.693,
   "prob": 0.125,
   "sigma": 1.375,
   "sigma_n": 48,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "e3ad3bc0cdba"
+  "git_sha": "2abc7c382dd4"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
-  "created": "2026-07-25",
-  "created_at": "2026-07-25T06:50:10.919271+08:00",
+  "created": "2026-07-27",
+  "created_at": "2026-07-27T06:47:09.108648+08:00",
   "target": "2026-07-27",
   "threshold": 43654.84,
-  "pred_pct": -1.087,
+  "pred_pct": -1.045,
   "prob": 0.208,
   "sigma": 1.394,
   "sigma_n": 48,
   "base_rate": 0.5,
   "forecast_version": "prob-v2",
-  "git_sha": "e3ad3bc0cdba"
+  "git_sha": "2abc7c382dd4"
  }
 ]

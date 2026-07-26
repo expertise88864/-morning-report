@@ -1,33 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 37,
-  "last_seen": "2026-07-25",
-  "latest_title": "美伊戰爭惡化 波斯灣運費大漲7.45％ - 自由財經"
+  "days": 38,
+  "last_seen": "2026-07-27",
+  "latest_title": "美軍彈藥見底？范斯憂川普升級伊朗戰爭 - 自由時報"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
   "days": 24,
   "last_seen": "2026-07-25",
   "latest_title": "美參院制裁俄法案納入伊朗 歐盟制裁五伊法官 - 新唐人電視台"
- },
- "export_controls:QCOM": {
-  "first_seen": "2026-07-22",
-  "days": 1,
-  "last_seen": "2026-07-22",
-  "latest_title": "防台積電 傳大陸擬收緊AI與半導體出口管制 - 經濟日報"
- },
- "litigation:2887": {
-  "first_seen": "2026-07-22",
-  "days": 1,
-  "last_seen": "2026-07-22",
-  "latest_title": "2887 台新新光金- 裁罰台新證- 股市爆料同學會 - CMoney"
- },
- "litigation:META": {
-  "first_seen": "2026-07-23",
-  "days": 1,
-  "last_seen": "2026-07-23",
-  "latest_title": "控訴社群媒體成癮 美國青少年撤回對Meta訴訟 | 民視新聞網 - LINE TODAY"
  },
  "litigation:2882": {
   "first_seen": "2026-07-25",
@@ -40,5 +22,11 @@
   "days": 1,
   "last_seen": "2026-07-25",
   "latest_title": "US small businesses sue Trump administration over new ‘forced labour’ tariffs"
+ },
+ "export_controls:META": {
+  "first_seen": "2026-07-27",
+  "days": 1,
+  "last_seen": "2026-07-27",
+  "latest_title": "Meta出招了！宣布FB將推「免費黑勾勾」真人驗證 制裁AI假帳號 - Yahoo新聞"
  }
 }

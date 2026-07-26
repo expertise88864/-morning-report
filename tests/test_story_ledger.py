@@ -1030,3 +1030,32 @@ def test_repeated_confirmation_still_scores_zero():
     """對照組:一般的重複確認仍必須拿 0 —— 修正不得把抑制重複的機制打壞。"""
     e = _timeline("confirmed", "公告董事會通過收購案")
     assert e["is_incremental"] is False and e["lifecycle_weight"] == 0.0
+
+
+def test_direct_rejection_wording_is_recognised():
+    """r6(Codex,P1):我 r5 只從「未通過/未核准」這種**否定形式**推導 rejected,
+    完全沒匹配**直接否決措辭**。實測「董事會否決收購案」「主管機關駁回申請」
+    都被判成 confirmed(落到 A 級 fallback)——而「否決」「駁回」正是官方公告
+    最常見的寫法。我 r5 的測試只用了「未通過」,整個直接否決的類別沒被覆蓋。"""
+    import news_events as ne
+    for title in ("董事會否決收購案", "主管機關駁回申請", "申請遭退回",
+                  "董事會未通過收購案", "公告本公司董事會未通過收購案"):
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"})             == "rejected", f"{title} 沒被判為否決"
+    # explicit lifecycle 也要認
+    assert ne._event_lifecycle(
+        {"title": "某案", "lifecycle": "rejected", "source_grade": "A"}) == "rejected"
+
+
+def test_pending_is_not_the_same_as_rejected():
+    """「尚未核准」是流程還在跑,不是被否決。判成 rejected 會讓「後來核准了」
+    看起來像翻案而非正常進度。"""
+    import news_events as ne
+    for title in ("尚未獲董事會核准", "仍未通過審查"):
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"}) == "rumor"
+
+
+def test_rejection_end_to_end_weight_for_direct_wording():
+    """端到端:直接否決措辭也要拿到非零權重(不只是 lifecycle 字串對)。"""
+    e = _timeline("confirmed", "公告董事會否決收購案")
+    assert e["lifecycle"] == "rejected"
+    assert e["is_incremental"] is True and e["lifecycle_weight"] > 0

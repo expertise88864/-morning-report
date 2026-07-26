@@ -1849,3 +1849,25 @@ def test_extractor_payload_carries_the_stock_code():
     # 且必須經過消毒(payload 全欄位都是外部文字)
     i = src.index('"code": _external_text')
     assert "_external_text" in src[i:i + 80]
+
+
+def test_mops_override_survives_llm_punctuation_drift():
+    """r6(Codex,P1):標題 fallback 的標點正規化**漏了全形驚嘆號等**,
+    LLM 抄錄時加一個「!」就讓覆寫失效(實測 2 個事件並存)。
+    我 r5 的測試所有案例都用**完全相同**的標題,所以驗不到抄錄漂移。
+
+    同檔 _norm_podcast_point 早就有更完整的標點集——改為沿用同一套,
+    不要再手抄一份(手抄正是這次漏掉的原因)。
+    """
+    mops = [{"code": "2330", "title": "台積電公告訂定除息基準日", "summary": "x",
+             "published": "2026-07-25T01:00:00+00:00",
+             "clause": "第14款", "event_type": "general"}]
+    for variant in ("台積電:公告訂定除息基準日",
+                    "台積電公告訂定除息基準日!",
+                    "台積電(公告)訂定除息基準日",
+                    "台積電、公告訂定除息基準日?"):
+        llm = [{"entity": "台積電", "title": variant, "event_type": "earnings",
+                "surprise_score": 0.7, "published": "2026-07-25T01:00:00+00:00"}]
+        events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
+        assert len(events) == 1, f"標點變體 {variant!r} 讓覆寫失效:{events}"
+        assert events[0]["event_type"] == "general"

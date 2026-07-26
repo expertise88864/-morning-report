@@ -202,3 +202,23 @@ def test_gate_flag_only_trips_on_universe_errors_not_warnings():
                    for e in warn_only.get("errors", []))
     err = dq.summarize([dq.check_row_count("tw_universe", _rows(3), min_rows=30)])
     assert any(e.get("source") == "tw_universe" for e in err.get("errors", []))
+
+
+def test_universe_derived_values_are_cleared_too():
+    """r6(Codex,P1):**清空原始清單還不夠**——由 universe 算出的衍生值在品質
+    檢查**之前**就已寫進 quotes。FOREIGN_TOP10_TOTAL 清空 tw0050 不會動到它,
+    污染值仍會進晨報、進 Python 立場計分(13941),並寫入跨日 state(20135)。
+
+    而我上一版的測試用 3 筆資料,`_foreign_top10_total()` 對 3 筆本來就回 None
+    ——**對照組是假的**,完全驗不到這條(要 10-29 筆才露餡)。
+    """
+    from pathlib import Path as _P
+    # 先證明對照組是真的:足夠多的列時衍生值不是 None
+    rows = [dict(r, code=f"2{330 + i}", foreign_net=1e8, market_cap=1e12)
+            for i, r in enumerate(_rows(20))]
+    assert mr._foreign_top10_total(rows) is not None,         "對照組無效 —— 這批資料本來就算不出衍生值,測不到清除行為"
+
+    src = _P(mr.__file__).read_text(encoding="utf-8")
+    i = src.index('quotes["UNIVERSE_UNTRUSTED"]')
+    window = src[i:i + 1600]
+    assert "FOREIGN_TOP10_TOTAL" in window,         "衍生值未在 error 分支清除 —— 污染仍會進立場計分與 state"

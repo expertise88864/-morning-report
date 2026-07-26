@@ -8770,9 +8770,14 @@ def extract_structured_events(news: list[dict],
     def _norm_title_key(s: str) -> str:
         """比對用的標題鍵:去空白與常見標點,只保留可比對的字元。
         LLM 抄錄時常改動空白/全半形標點,嚴格相等會讓覆寫失效。"""
+        # r6(Codex,P1):原本的字元集**漏了全形驚嘆號等標點**,LLM 抄錄時
+        # 加一個「!」就會讓標題 fallback 失效(實測 2 個事件並存)。
+        # 同檔 _norm_podcast_point 早就有更完整的集合——直接沿用同一套,
+        # 不要再手抄一份(手抄正是這次漏掉的原因)。
         import re as _re
-        return _re.sub(r"[\s　,,、。..::;;「」『』()()\[\]【】\-—－_]+", "",
-                       str(s or "")).lower()
+        return _re.sub(
+            r"[\s，。、！？,.!?:：;；…()（）「」『』【】\[\]<>《》"
+            r"\"'`%　|｜\-—–－_~]+", "", str(s or "")).lower()
 
     _official_types: dict[tuple, str] = {}
     for item in mops or []:
@@ -19586,6 +19591,14 @@ def main() -> int:
             print(f"[dq] 股票池不可信({len(tw0050)} 筆),清空後續所有排名與 state",
                   file=sys.stderr)
             tw0050 = []
+            # r6(Codex,P1):**清空原始清單還不夠**——由 universe 算出的衍生值
+            # 在品質檢查**之前**就已寫進 quotes。FOREIGN_TOP10_TOTAL 是在
+            # 上面幾行算的,清空 tw0050 不會動到它,污染值仍會進晨報、
+            # 進 Python 立場計分,並寫入跨日 state。
+            # 我的測試用 3 筆資料,而 _foreign_top10_total() 對 3 筆本來就回 None
+            # ——所以對照組是假的,完全驗不到這條(10-29 筆才會露餡)。
+            for _derived in ("FOREIGN_TOP10_TOTAL",):
+                quotes[_derived] = None
         for _w in _dq_summary.get("warnings", []):
             print(f"[dq] warn {_w['source']}/{_w['check']}: {_w['detail']}",
                   file=sys.stderr)

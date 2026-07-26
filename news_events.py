@@ -118,12 +118,31 @@ def _event_lifecycle(event: dict) -> str:
     #
     # 正確順序:**先判定有沒有被否定的決策結果**,有就直接回非 confirmed,
     # 再套用一般公告/A 級 fallback。「公告」是文件類型,不是結論。
+    # r6(Codex,P1):我 r5 只從「未通過/未核准」這種**否定形式**推導 rejected,
+    # 完全沒匹配**直接否決措辭**——實測「董事會否決收購案」「主管機關駁回申請」
+    # 都被判成 confirmed(落到 A 級 fallback),explicit lifecycle="rejected"
+    # 也一樣。而「否決」「駁回」正是官方公告最常見的寫法。
+    # 我的測試只用了「未通過」,所以整個直接否決的類別沒被覆蓋到。
+    if explicit in ("rejected", "denied", "declined", "否決", "駁回"):
+        return "rejected"
+    _REJECT_TOKENS = ("否決", "駁回", "退回", "不予核准", "不予備查",
+                      "rejected", "reject", "denied", "deny", "declined")
+    if any(tok in text for tok in _REJECT_TOKENS):
+        return "rejected"
+
     _DECISION_TOKENS = ("通過", "核准", "核定", "同意", "批准",
                         "approved", "approve", "confirmed")
     for token in _DECISION_TOKENS:
         i = text.find(token)
         while i >= 0:
             if is_negated_decision(text, i):
+                # r6:區分「正式否決」與「**尚未**核准」的待決狀態——
+                # 「尚未核准」是流程還在跑,不是被否決,判成 rejected 會讓
+                # 「後來核准了」看起來像翻案而非正常進度。
+                _win = text[max(0, i - 6):i]
+                if any(w in _win for w in ("尚未", "還沒", "仍未", "暫未",
+                                           "not yet", "pending")):
+                    return "rumor"
                 return "rejected"      # 明確的否決結論,不得再被 fallback 蓋掉
             i = text.find(token, i + 1)
 

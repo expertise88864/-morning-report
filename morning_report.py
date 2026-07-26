@@ -14655,10 +14655,6 @@ def _render_local_news_html(local: dict) -> str:
         'background:#ffffff;">' + "".join(rows) + "</div>")
 
 
-def _now_tpe_date():
-    return dt.datetime.now(TPE).date()
-
-
 # 有明確賽期的賽事:賽期外連新聞查詢都停掉(不只停賽果與賭盤)。
 # 值直接沿用既有的硬編賽期窗,避免兩處各自維護而走樣。
 SPORTS_NEWS_QUERIES = [
@@ -16444,7 +16440,10 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         # 賽果/賭盤區早就受 _WC_WINDOW 管,新聞查詢卻沒有,是同一條防線只裝一半。
         if label in _SEASONAL_SPORT_WINDOWS:
             lo, hi = _SEASONAL_SPORT_WINDOWS[label]
-            if not (lo <= _now_tpe_date() <= hi):
+            # r1(Codex):用**本次已解析的 now_tpe**,不可另讀牆上時鐘——
+            # fetch_worldcup 的賽果閘走 now_tpe.date(),兩處讀不同來源時,
+            # 重放舊日期會出現「賽果照出但新聞被跳過」(或反之)的錯位。
+            if not (lo <= now_tpe.date() <= hi):
                 continue
         try:
             # when=2d:同在地快訊——伺服器端 1d 過濾會吃掉 24-30h 新聞,cutoff 才是精確閘

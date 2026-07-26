@@ -3168,17 +3168,54 @@ def test_two_way_odds_degrade_without_inventing_probabilities():
     assert mr._normalized_two_way([]) == ("—", "—")
 
 
+def _sports_news_labels_queried(monkeypatch, when):
+    """跑 fetch_sports_digest,回傳實際發出的體育新聞查詢標籤。"""
+    import morning_report as mr
+    asked = []
+
+    def _fake_gnews(query, when="2d"):
+        asked.append(query)
+        return "https://news.google.com/rss/fake"
+
+    class _EmptyFeed:
+        entries = []
+        bozo = False
+
+    monkeypatch.setattr(mr, "_gnews_rss", _fake_gnews)
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
+                        lambda *a, **k: _EmptyFeed())
+    # 其餘抓取全部短路,只留新聞查詢那段
+    for fn in ("fetch_cpbl_digest", "fetch_nba_digest", "fetch_mlb_digest",
+               "fetch_worldcup", "fetch_tennis_digest"):
+        if hasattr(mr, fn):
+            monkeypatch.setattr(mr, fn, lambda *a, **k: {})
+    for fn in ("fetch_polymarket_sports", "_attach_cpbl_poly_odds",
+               "_attach_nba_poly_odds", "_attach_mlb_poly_odds"):
+        if hasattr(mr, fn):
+            monkeypatch.setattr(mr, fn, lambda *a, **k: {} if "fetch" in fn else None)
+    mr.fetch_sports_digest(now_tpe=when)
+    return asked
+
+
 def test_out_of_season_sport_skips_news_query(monkeypatch):
     """批#47:賽期外的賽事不再抓新聞。實信 2026-07-26(決賽後六天)仍有世足專區,
-    且混進宗教評論——賽果/賭盤區早就受 _WC_WINDOW 管,新聞查詢卻沒有,
-    是同一條防線只裝一半。"""
+    且混進宗教評論——賽果/賭盤區早就受 _WC_WINDOW 管,新聞查詢卻沒有。
+
+    r1(Codex):閘必須用**本次已解析的 now_tpe**,不可另讀牆上時鐘——
+    fetch_worldcup 的賽果閘走 now_tpe.date(),兩處讀不同來源時,重放舊日期會出現
+    「賽果照出但新聞被跳過」的錯位。故本測試直接跑 fetch_sports_digest 並傳入
+    明確日期,而非只驗日期述詞。"""
     import datetime as _dt
     import morning_report as mr
     lo, hi = mr._SEASONAL_SPORT_WINDOWS["世足"]
-    assert lo < hi
-    # 賽期外
-    monkeypatch.setattr(mr, "_now_tpe_date", lambda: hi + _dt.timedelta(days=3))
-    assert not (lo <= mr._now_tpe_date() <= hi)
-    # 賽期內
-    monkeypatch.setattr(mr, "_now_tpe_date", lambda: lo + _dt.timedelta(days=1))
-    assert lo <= mr._now_tpe_date() <= hi
+
+    out_of_season = _dt.datetime.combine(hi + _dt.timedelta(days=3),
+                                         _dt.time(8, 0), tzinfo=mr.TPE)
+    asked = _sports_news_labels_queried(monkeypatch, out_of_season)
+    assert not any("World Cup" in q or "世界盃" in q for q in asked),         f"賽期外仍查了世足新聞:{asked}"
+    assert any("MLB" in q for q in asked), "其他賽事不該被連坐"
+
+    in_season = _dt.datetime.combine(lo + _dt.timedelta(days=1),
+                                     _dt.time(8, 0), tzinfo=mr.TPE)
+    asked = _sports_news_labels_queried(monkeypatch, in_season)
+    assert any("World Cup" in q or "世界盃" in q for q in asked),         f"賽期內卻沒查世足新聞:{asked}"

@@ -8786,11 +8786,12 @@ def extract_structured_events(news: list[dict],
             # 覆寫從來不會生效。我的測試會過只因為 fixture 裡手寫了 company_label
             # ——測試驗的是我蓋的東西,不是生產送進來的東西。
             # 與 append() 的 entity 推導完全對齊(entity → code → company_label)。
-            _key = (str(item.get("entity") or item.get("code")
-                        or item.get("company_label") or ""),
+            _ent = str(item.get("entity") or item.get("code")
+                       or item.get("company_label") or "")
+            _key = (_ent,
                     _norm_title_key(str(item.get("title")
                                         or item.get("headline") or "")))
-            _official_types[_key] = _ot
+            _official_types[_key] = (_ot, _ent)
     for item in llm_events or []:
         if isinstance(item, dict):
             # source/source_grade 強制固定:LLM 屬二手抽取,不得沿用(或自報)
@@ -8802,9 +8803,26 @@ def extract_structured_events(news: list[dict],
                   _norm_title_key(str(item.get("title")
                                       or item.get("headline") or "")))
             _forced = _official_types.get(_k)
-            if _forced and str(item.get("event_type") or "") != _forced:
-                # 同一則公告 → 用法定款別覆寫,兩版才會落進同一 cluster 由 A 級勝出
-                item["event_type"] = _forced
+            if _forced is None:
+                # r4(Codex,P1):不能拿「模型自行推導的 entity」當唯一 join key
+                # ——它取決於 LLM 是否照抄。標題在同一次執行內足以識別公告
+                # (MOPS 標題是官方原文,抽取器只被要求抄錄),故以標題唯一命中
+                # 作後備。刻意要求**唯一**:多筆同標題時寧可不覆寫,不亂猜。
+                _t = _norm_title_key(str(item.get("title")
+                                         or item.get("headline") or ""))
+                _hits = {v for (_e, _ti), v in _official_types.items() if _ti == _t}
+                if len(_hits) == 1:
+                    _forced = _hits.pop()
+            if _forced:
+                _ftype, _fent = _forced
+                # 同一則公告 → 用法定款別覆寫;**entity 也要一併採用官方版**。
+                # r4 自測補抓:只改 event_type 不夠——_event_cluster_key 也含
+                # entity,LLM 回「台積電」而官方是「2330」時兩版仍落到不同
+                # cluster、都存活(實測 2 個事件)。兩者都對齊才會由 A 級勝出。
+                if str(item.get("event_type") or "") != _ftype:
+                    item["event_type"] = _ftype
+                if _fent and str(item.get("entity") or "") != _fent:
+                    item["entity"] = _fent
             append(item)
 
     clustered: dict[tuple, dict] = {}
@@ -12112,6 +12130,12 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         "source_grade": _external_text(
             item.get("source_grade") or _news_source_grade(item), 8),
         "company_label": _external_text(item.get("company_label"), 40),
+        # r4(Codex,P1)**確認**:生產 MOPS 記錄只有 `code`,payload 卻只送
+        # company_label(對 MOPS 而言是空的)→ 模型依「只能使用 supplied
+        # evidence」根本拿不到代號,回傳的 entity 是公司名或空字串,
+        # 而 Python 端卻拿 2330 這種代號查表 → **覆寫在真實 LLM 路徑必然失效**。
+        # 我上一輪的測試手工把 LLM entity 寫成 2330,繞過了真正的 payload。
+        "code": _external_text(item.get("code") or item.get("company_label"), 12),
         "published": _external_text(item.get("published"), 32),
         "title": _external_text(item.get("title"), 180),
         "summary": _external_text(item.get("fulltext") or item.get("summary"), 360),
@@ -19549,6 +19573,19 @@ def main() -> int:
         # 折衷:**擋住 state 寫入與排名輸出,信照常寄**——兩條不變式都保住。
         quotes["UNIVERSE_UNTRUSTED"] = any(
             e.get("source") == "tw_universe" for e in _dq_summary.get("errors", []))
+        if quotes["UNIVERSE_UNTRUSTED"]:
+            # r4(Codex,P1)**確認我上一輪只擋了四條路徑中的一條**:
+            # render_html 會從 TW_UNIVERSE_SNAPSHOT **重新**呼叫
+            # _rank_attention_candidates(信件 Top5 卡片照常出現)、
+            # _build_prompt 照常產生 Top15/Top5、
+            # pending_state_entry["breakout_candidates"] 仍把排名寫進跨日 state。
+            # 我的測試只用字串比對確認 _scored5 與 model_history 兩處,
+            # 沒有渲染信件、沒有建 prompt、沒有檢查 history state,所以全部漏掉。
+            # 正解是在**共用邊界**把它清空——所有下游一次到位,
+            # 不必去數還有幾個消費點(那正是上一輪數漏的原因)。
+            print(f"[dq] 股票池不可信({len(tw0050)} 筆),清空後續所有排名與 state",
+                  file=sys.stderr)
+            tw0050 = []
         for _w in _dq_summary.get("warnings", []):
             print(f"[dq] warn {_w['source']}/{_w['check']}: {_w['detail']}",
                   file=sys.stderr)
@@ -19867,8 +19904,7 @@ def main() -> int:
         # r2(Codex,P1):股票池未通過品質閘時不出 Top5——從 3 檔裡選前 5 名
         # 是**看起來正常但完全無意義**的輸出,比缺這一段更糟。
         # 其餘區塊照常(晨報不可斷),資料品質區已寫明原因。
-        _scored5 = ([] if quotes.get("UNIVERSE_UNTRUSTED")
-                    else _rank_attention_candidates(tw0050))
+        _scored5 = _rank_attention_candidates(tw0050)
         _top5, _t5_ex = _top5_tradeable_filter(_scored5, quotes)
         _raw5 = [str(s.get("code")) for s in _scored5[:5] if s.get("code")]
         if _top5:
@@ -20141,8 +20177,7 @@ def main() -> int:
                 # 寫進去會污染 model_history,而本閘的自動門檻正是拿它的歷史
                 # 中位數推出來的——髒日會拉低中位數、削弱閘本身(自我毒化),
                 # 且 state 會 commit 回 repo,往後每天的計分/學習都吃它。
-                "stocks": ([] if quotes.get("UNIVERSE_UNTRUSTED")
-                           else _snapshot_for_model(tw0050)),
+                "stocks": _snapshot_for_model(tw0050),
                 "label_prices": label_prices,
                 "label_prices_complete": label_prices_complete,
                 "structured_events": (

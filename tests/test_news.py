@@ -1808,3 +1808,44 @@ def test_mops_authority_override_uses_production_record_schema():
         f"法定款別覆寫沒生效:{[(e.get('entity'), e.get('event_type')) for e in events]}")
     assert events[0]["event_type"] == "general", "法定款別沒有勝出"
     assert events[0]["source_grade"] == "A"
+
+
+def test_mops_override_survives_realistic_llm_entity_variants():
+    """r4(Codex,P1):不能拿「模型自行推導的 entity」當唯一 join key。
+
+    生產 MOPS 記錄只有 `code`,而抽取器 payload 先前**只送 company_label**
+    (對 MOPS 而言是空的)→ 模型依「只能使用 supplied evidence」根本拿不到代號,
+    回傳的 entity 是公司名或空字串,Python 端卻拿 2330 查表 →
+    **覆寫在真實 LLM 路徑必然失效**。我上一輪的測試手工把 LLM entity 寫成
+    2330,繞過了真正的 payload。
+
+    修:(a) payload 補 code;(b) entity 對不上時以**標題唯一命中**為後備;
+    (c) 覆寫時 entity 也採用官方版——只改 event_type 不夠,_event_cluster_key
+    也含 entity,兩版仍會落到不同 cluster 都存活(自測實跑 2 個事件時抓到)。
+    """
+    mops = [{"code": "2330", "title": "台積電公告訂定除息基準日",
+             "summary": "本公司董事會決議訂定除息基準日",
+             "published": "2026-07-25T01:00:00+00:00",
+             "clause": "第14款", "event_type": "general"}]
+    for label, ent in [("公司名", "台積電"), ("代號", "2330"), ("空字串", "")]:
+        llm = [{"entity": ent, "title": "台積電公告訂定除息基準日",
+                "event_type": "earnings", "surprise_score": 0.7,
+                "published": "2026-07-25T01:00:00+00:00"}]
+        events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
+        assert len(events) == 1, f"LLM 回{label}時仍有兩個事件並存:{events}"
+        assert events[0]["event_type"] == "general", f"LLM 回{label}:法定款別沒勝出"
+        assert events[0]["source_grade"] == "A"
+
+
+def test_extractor_payload_carries_the_stock_code():
+    """payload 沒有 code,模型就不可能回傳代號——這是 F8 的根因。
+
+    生產 MOPS 記錄只有 code;payload 先前只送 company_label(對 MOPS 是空的),
+    模型依「只能使用 supplied evidence」拿不到代號,於是回公司名或空字串。
+    """
+    import inspect
+    src = inspect.getsource(mr.call_llm_event_extractor)
+    assert '"code": _external_text(item.get("code")' in src,         "抽取器 payload 未帶 code —— 模型看不到代號,權威覆寫的 join 必然失效"
+    # 且必須經過消毒(payload 全欄位都是外部文字)
+    i = src.index('"code": _external_text')
+    assert "_external_text" in src[i:i + 80]

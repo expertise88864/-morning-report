@@ -1,45 +1,141 @@
 {
- "date": "2026-06-14 06:00",
- "total_seconds": 0.0,
+ "date": "2026-07-25 06:50",
+ "total_seconds": 468.2,
  "budget_seconds": 1140.0,
  "news_workers": 8,
- "degraded_steps": [
-  "weekend_gazette"
+ "degraded_steps": [],
+ "phases": [
+  {
+   "label": "行情/總經/FX",
+   "seconds": 5.2
+  },
+  {
+   "label": "新聞+政策+體育",
+   "seconds": 173.9
+  },
+  {
+   "label": "TAIFEX/籌碼/預測",
+   "seconds": 7.3
+  },
+  {
+   "label": "TWSE universe/候選新聞",
+   "seconds": 119.6
+  },
+  {
+   "label": "事件抽取/模型/walk-forward",
+   "seconds": 81.9
+  },
+  {
+   "label": "LLM 主分析",
+   "seconds": 77.8
+  },
+  {
+   "label": "渲染",
+   "seconds": 2.5
+  }
  ],
- "phases": [],
  "feeds": {
+  "search.cnbc.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "feeds.bloomberg.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "finance.yahoo.com": {
+   "ok": 1,
+   "fail": 0
+  },
   "news.google.com": {
-   "ok": 0,
-   "fail": 1
+   "ok": 124,
+   "fail": 0
+  },
+  "feeds.feedburner.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "www.federalreserve.gov": {
+   "ok": 2,
+   "fail": 0
+  },
+  "api.cnyes.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "money.udn.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "udn.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.scmp.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "asia.nikkei.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "feeds.bbci.co.uk": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.ey.gov.tw": {
+   "ok": 2,
+   "fail": 0
+  },
+  "www.mohw.gov.tw": {
+   "ok": 2,
+   "fail": 0
+  },
+  "www.fsc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.cbc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.moi.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.mol.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.moea.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.cdc.gov.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.fda.gov.tw": {
+   "ok": 2,
+   "fail": 0
   }
  },
- "model_history_days": null,
- "d1_samples": null,
- "d1_ready": null,
- "stance_dual": null,
- "data_checks": {
-  "all": [
-   {
-    "source": "u",
-    "check": "value_range",
-    "severity": "warn",
-    "passed": false,
-    "detail": "100% 的值落在 [0, 1] 之外(上限 5%)",
-    "observed": 1.0
-   }
-  ],
-  "errors": [],
-  "warnings": [
-   {
-    "source": "u",
-    "check": "value_range",
-    "severity": "warn",
-    "passed": false,
-    "detail": "100% 的值落在 [0, 1] 之外(上限 5%)",
-    "observed": 1.0
-   }
-  ],
-  "checked": 1,
-  "failed": 1
+ "model_history_days": 215,
+ "d1_samples": 0,
+ "d1_ready": false,
+ "stance_dual": {
+  "llm": -6,
+  "llm_label": "偏空",
+  "py": -6,
+  "py_label": "偏空",
+  "agree": true,
+  "coverage": 1.0,
+  "missing": [],
+  "flags": [],
+  "abstain": false,
+  "stale_us": false,
+  "mode": "global_full",
+  "rule_version": 2,
+  "authority": "python"
  }
 }

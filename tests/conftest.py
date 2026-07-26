@@ -169,3 +169,21 @@ def _block_outbound_network(monkeypatch):
 
     monkeypatch.setattr(_socket, "getaddrinfo", guard_getaddrinfo)
     monkeypatch.setattr(_socket, "create_connection", guard_create_connection)
+
+
+@pytest.fixture(autouse=True)
+def _never_write_repo_state(monkeypatch, tmp_path_factory):
+    """測試不得寫入 repo 的真實 state 檔。
+
+    r4(Codex,P2)**確認**:批#52 給 run_weekend_digest 補了 _write_run_manifest,
+    而週日測試沒有 monkeypatch RUN_MANIFEST_FILE → **測試把 2026-07-25 的真實
+    manifest(total_seconds 468.2)覆寫成測試資料**,再被 `git add -A` 提交。
+    後果是下一次 production run 讀到 model_history_days: null,失去前次歷史長度
+    基準(無法偵測 history 縮短),d1_ready: null 也會讓就緒提醒重新觸發。
+
+    個別測試各自 monkeypatch 是防不住的——漏一個就中。改為在 conftest 統一把
+    寫入型 state 路徑導到暫存目錄,新增的寫入點自動受保護。
+    """
+    d = tmp_path_factory.mktemp("state_guard")
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", d / "run_manifest.json",
+                        raising=False)

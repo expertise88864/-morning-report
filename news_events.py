@@ -105,14 +105,28 @@ def _event_lifecycle(event: dict) -> str:
     if any(token in text for token in (
             "implemented", "effective", "takes effect", "上路", "生效", "實施")):
         return "implemented"
-    # r2(七維度審查,P1):否定守衛。「未通過」「不核定」含「通過」「核定」,
-    # 純子字串比對會把否決判成 confirmed。story_ledger._decision_terms 已修同一
-    # 缺陷,但兩處都要修才有效——兩個訊號同時說「沒進展」時帳本完全不更新,
-    # 送進 LLM 的前情會與今天的新聞相反。
-    # Codex r1(P1):否定詞與動詞常隔著副詞/受詞(「尚未獲董事會通過」),
-    # 只看緊鄰前一字會漏判。「遭」是被動標記不是否定詞(「遭否決」就是否決)。
-    # Codex r2(P1):判準只有一份(見本檔尾 is_negated_decision),
-    # story_ledger 匯入它——單一方向,不可能形成循環,也不可能再分歧。
+    # r2(七維度審查,P1)+ r4(Codex,P1):否定守衛。
+    #
+    # r4 指出我 r2 的作法有**兩個漏洞**,兩個都實測重現:
+    # (a)「公告本公司董事會未通過收購案」——「公告」本身沒被否定,迴圈一命中
+    #     就立刻回 confirmed,內文的「未通過」根本沒機會被看到。
+    #     官方公告的標題**幾乎都以「公告」開頭**,所以這不是邊角情況。
+    # (b) 就算標題沒有「公告」,迴圈跳過「未通過」後仍會落到最後一行的
+    #     A 級來源 fallback → 一樣回 confirmed。而 MOPS 正是 A 級。
+    # 兩者的後果相同:既有 confirmed lineage 拿到 is_incremental=False、權重歸零,
+    # 這條修正要救的「官方相反結論」還是被壓掉。
+    #
+    # 正確順序:**先判定有沒有被否定的決策結果**,有就直接回非 confirmed,
+    # 再套用一般公告/A 級 fallback。「公告」是文件類型,不是結論。
+    _DECISION_TOKENS = ("通過", "核准", "核定", "同意", "批准",
+                        "approved", "approve", "confirmed")
+    for token in _DECISION_TOKENS:
+        i = text.find(token)
+        while i >= 0:
+            if is_negated_decision(text, i):
+                return "rejected"      # 明確的否決結論,不得再被 fallback 蓋掉
+            i = text.find(token, i + 1)
+
     _CONFIRM_TOKENS = ("confirmed", "announced", "approved",
                        "公告", "核定", "通過", "證實")
     for token in _CONFIRM_TOKENS:

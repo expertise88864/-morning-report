@@ -147,25 +147,50 @@ def test_data_checks_survive_into_the_persisted_manifest(tmp_path, monkeypatch):
     assert saved["data_checks"]["warnings"], "warn 級沒被保存下來"
 
 
-def test_untrusted_universe_is_blocked_from_model_state_and_top5():
+def test_untrusted_universe_is_emptied_at_the_shared_boundary():
     """r2(Codex,P1)**接受**:「讓污染可見」不等於「阻止它傳播」。
+    決定性理由是**自我毒化迴圈**:髒股票池寫進 model_history 的 stocks 快照,
+    而本閘的自動門檻正是拿 model_history 的歷史中位數推出來的 → 髒日拉低中位數、
+    削弱閘本身;且 state 會 commit 回 repo。state 污染不可逆。
 
-    決定性的理由是**自我毒化迴圈**:髒資料會寫進 model_history 的 stocks 快照,
-    而本閘的自動門檻正是拿 model_history 的歷史中位數推出來的 → 一個 3 筆的髒日
-    會拉低中位數、削弱這個閘本身;而且 state 會 commit 回 repo,往後每天的
-    計分/學習都吃它。**state 污染是不可逆的,信件當天略差可以復原。**
+    r4(Codex,P1)**再確認我只擋了四條路徑中的一條**:render_html 會從
+    TW_UNIVERSE_SNAPSHOT **重新**呼叫 _rank_attention_candidates(信件 Top5
+    卡片照常出現)、_build_prompt 照常產生 Top15/Top5、
+    pending_state_entry["breakout_candidates"] 仍把排名寫進跨日 state。
+    **而我上一版的測試是字串比對**,沒有渲染信件、沒有建 prompt、沒有檢查
+    history state,所以那三條全部漏掉——正是「測試驗的是我蓋的東西」再犯一次。
 
-    折衷:擋住 state 寫入與排名輸出,信照常寄——兩條不變式都保住。
+    正解是在**共用邊界**把 tw0050 清空:所有下游一次到位,不必去數還有幾個
+    消費點(數漏就是上一輪的失敗原因)。這條測試因此驗**行為**而非原始碼文字。
     """
-    from pathlib import Path
-    src = Path(mr.__file__).read_text(encoding="utf-8")
-    assert 'quotes["UNIVERSE_UNTRUSTED"]' in src
-    # model_history 的 stocks 快照必須受旗標保護
-    assert ('"stocks": ([] if quotes.get("UNIVERSE_UNTRUSTED")' in src), \
-        "髒股票池仍會寫進 model_history —— 自我毒化迴圈沒有斷開"
-    # Top5 排名同樣不得從 3 檔裡選前 5 名
-    assert '_scored5 = ([] if quotes.get("UNIVERSE_UNTRUSTED")' in src, \
-        "股票池不可信時仍在出 Top5"
+    from tests.test_data_validation import _empty_quotes
+    # 要能排名就得有 ranking_score(_rank_attention_candidates 的門檻);
+    # 自測時第一版用了沒有分數的列,對照組因此恆為空 —— 那會讓這條測試恆真。
+    dirty = [dict(r, ranking_score=5.0 - i, code=f"233{i}")
+             for i, r in enumerate(_rows(3))]
+
+    # 排名類函式吃到空清單時必須回空,而不是回「3 檔裡的前 5 名」
+    assert mr._rank_attention_candidates([]) == []
+    assert mr._breakout_candidates_for_state([]) in ([], {}, None)
+    assert mr._snapshot_for_model([]) in ([], {}, None)
+
+    # 渲染層:空 universe 不得產生 Top5 卡片
+    q = _empty_quotes(TW_UNIVERSE_SNAPSHOT=[])
+    assert mr._rank_attention_candidates(
+        q.get("TW_UNIVERSE_SNAPSHOT") or []) == []
+
+    # 而未清空時,同樣的髒資料**確實**會產生排名(證明這條測試分得出差別,
+    # 不是恆真)
+    assert mr._rank_attention_candidates(dirty),         "髒資料本來就會產生排名 —— 所以必須在邊界清空"
+
+
+def test_gate_empties_universe_in_source_not_just_flags_it():
+    """閘必須真的把 tw0050 清掉,而不是只設旗標讓每個消費點自己記得檢查。"""
+    from pathlib import Path as _P
+    src = _P(mr.__file__).read_text(encoding="utf-8")
+    i = src.index('quotes["UNIVERSE_UNTRUSTED"]')
+    window = src[i:i + 1200]
+    assert "tw0050 = []" in window,         "旗標設了但沒在共用邊界清空 —— 下游每多一個消費點就多一個漏洞"
 
 
 def test_gate_flag_only_trips_on_universe_errors_not_warnings():

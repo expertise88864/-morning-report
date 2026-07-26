@@ -19345,6 +19345,47 @@ def main() -> int:
         tw0050 = []
     quotes["FOREIGN_TOP10_TOTAL"] = _foreign_top10_total(tw0050)
 
+    # 批#50:資料品質閘。既有韌性擋的是「來源掛掉」;這裡擋的是
+    # 「HTTP 回 200、熔斷不觸發、來源健康滿分,但內容是壞的」——例如某天股票池
+    # 只抓到 3 檔而非往常的 100 檔,所有既有防線都不會響,但預測/計分/Top5
+    # 全部已被污染,而且不會有人知道。門檻由歷史中位數自動推出,不寫死魔術數字。
+    try:
+        import data_quality as _dq
+        # 這個位置 model_history 還沒載入(ruff F821 抓到,而測試全綠——
+        # 因為它被外層 try 吞掉,品質閘會整個不執行:又是一次靜默失效)。
+        # 直接讀歷史檔取得筆數,失敗就退回硬門檻。
+        try:
+            _hist_counts = [len(r.get("stocks") or {})
+                            for r in load_model_history()[-60:]]
+        except Exception:
+            _hist_counts = []
+        _dq_results = [
+            _dq.check_row_count("tw_universe", tw0050, min_rows=30,
+                                history=_hist_counts),
+            _dq.check_required_fields(
+                "tw_universe", tw0050,
+                fields=("code", "close", "market_cap"), max_missing_ratio=0.15),
+            _dq.check_value_range(
+                "tw_universe", [s_.get("day_pct") for s_ in (tw0050 or [])],
+                lo=-11.0, hi=11.0, severity=_dq.WARN),   # 台股漲跌停 ±10%
+        ]
+        _dq_summary = _dq.summarize(_dq_results)
+        # **不可用 DATA_QUALITY 這個 key**:它已被既有的 build_data_quality() 佔用
+        # (是給 LLM 看「哪些來源失敗」的 list),而且會在後面被覆蓋 →
+        # 本檢查的結果會進不了 prompt 也進不了 manifest。自測接線時抓到。
+        quotes["SOURCE_DATA_CHECKS"] = _dq_summary
+        _RUN_MANIFEST["data_checks"] = _dq_summary
+        for _label in _dq.degraded_labels(_dq_summary):
+            _DEGRADED_STEPS.append(_label)
+            print(f"[dq] ERROR {_label}", file=sys.stderr)
+        for _w in _dq_summary.get("warnings", []):
+            print(f"[dq] warn {_w['source']}/{_w['check']}: {_w['detail']}",
+                  file=sys.stderr)
+    except Exception as e:
+        # 品質閘自己壞掉不得影響晨報
+        print(f"[dq] 資料品質檢查略過: {type(e).__name__}: {e}", file=sys.stderr)
+        quotes["SOURCE_DATA_CHECKS"] = {}
+
     # 6.2 市值前 15 大 + 爆發力前 30 檔 MOPS 重大訊息(擴大覆蓋,讓五檔候選抓得到自家重訊;
     #     每檔一支 RSS,故合計上限 40 檔以控制請求量與 Actions 時間)
     print("[main] 抓台股重點公司 MOPS 重大訊息…")

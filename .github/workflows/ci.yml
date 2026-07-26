@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# r3(突變測試審查):全 8 個 workflow 中只有本檔與另一個沒宣告 permissions,
+# 等於吃 repo 預設值。這兩個都不需要寫入權限。
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

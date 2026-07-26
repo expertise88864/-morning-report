@@ -190,14 +190,22 @@ def test_corrupt_keywords_does_not_wipe_history(tmp_path, monkeypatch):
     mr.save_policy_keywords([f"詞{i}" for i in range(500)], [])
     good = f.read_text(encoding="utf-8")
     f.write_text("{ broken", encoding="utf-8")
-    try:
-        known = mr.load_policy_keywords()
-    except mr.PolicyKeywordsCorrupt:
-        known = None
-    assert known is None
-    # 呼叫端此時**不得**存檔;還原後歷史應仍是 500 筆
+    # r3(突變測試,P1):**這裡原本是測試自己重寫一份 try/except 再斷言自己
+    # 剛寫下的 None** —— 生產那行改成 `[]` 也不會紅。實測把守衛改掉後 4000 筆
+    # 歷史被覆寫成 3 筆,而全套測試仍全綠。改為呼叫真正上線的那個函式。
+    assert mr.load_policy_keywords_for_run() is None,         "讀檔失敗必須回 None(呼叫端據此跳過存檔),不得回空清單"
+    # 檔案內容必須維持原樣(斷言的是磁碟狀態,不是測試自己設的變數)
+    assert f.read_text(encoding="utf-8") == "{ broken", "壞檔被覆寫了"
     f.write_text(good, encoding="utf-8")
     assert len(mr.load_policy_keywords()) == 500, "歷史庫被抹掉了"
+
+
+def test_run_loader_returns_list_when_readable(tmp_path, monkeypatch):
+    """正常情況必須回 list(而非 None),否則新詞永遠不會被存下來。"""
+    f = tmp_path / "policy_keywords.json"
+    monkeypatch.setattr(mr, "POLICY_KEYWORDS_FILE", f)
+    mr.save_policy_keywords(["新青安3.0"], [])
+    assert mr.load_policy_keywords_for_run() == ["新青安3.0"]
 
 
 def test_gazette_only_policy_still_activates_deepdive_section():

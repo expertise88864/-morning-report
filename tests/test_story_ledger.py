@@ -873,11 +873,28 @@ def test_publication_date_stripping_order_longest_first():
     **裸年份留在事實集合裡**。後果:同一事實的兩則稿子(一則寫完整日期、
     一則寫短式)事實集合不同 → 判成實質更新 → 實測重複稿三天衝到 peak、
     九天仍不沉寂,拿最高版面權重,正是本模組要消滅的「每天寫一樣的東西」。"""
-    P = "2026-07-25"
-    full = sl._material_facts("鴻海2026年7月25日公告斥資100億擴廠", published=P)
-    short = sl._material_facts("鴻海7月25日公告斥資100億擴廠", published=P)
-    assert full == short, f"完整日期版洩漏了年份:{full - short}"
-    assert "2026" not in full
+    # r3(突變測試):**原本只用 2026-07-25,而那個日期讓這條測試自己失效**——
+    # 字典序下 '2026年7月25日' 的 '2' 排在 '7月25日' 的 '7' 前面,所以就算沒有
+    # key=len 修正,長式也剛好先被剝掉。只有月/日首位數字大於年份首位的日期
+    # (11/05、01/09…)才暴露得出這個回歸。實測:拿掉 key=len 後 07-25 仍 PASS,
+    # 11-05 與 01-09 則 FAIL。
+    for P, m, d in [("2026-07-25", 7, 25), ("2026-11-05", 11, 5),
+                    ("2026-01-09", 1, 9)]:
+        y = 2026
+        full = sl._material_facts(
+            f"鴻海{y}年{m}月{d}日公告斥資100億擴廠", published=P)
+        short = sl._material_facts(
+            f"鴻海{m}月{d}日公告斥資100億擴廠", published=P)
+        assert full == short, f"{P}:完整日期版洩漏了年份:{full - short}"
+        assert str(y) not in full, f"{P}:裸年份留在事實集合裡"
+
+    # 更直接的不變式:剝除是逐一 replace,所以任何 token 都不得是另一個的子字串
+    # 而排在它前面——長的必須先剝。
+    for P in ("2026-07-25", "2026-11-05", "2026-01-09"):
+        toks = sl._pub_date_tokens(P)
+        for i, a in enumerate(toks):
+            for b in toks[i + 1:]:
+                assert a not in b, f"{P}:{a!r} 排在含它的 {b!r} 之前"
 
 
 def test_roc_year_publication_date_is_stripped():
@@ -954,3 +971,22 @@ def test_both_lifecycle_signals_share_one_negation_judgement():
         confirmed = ne._event_lifecycle({"title": title}) == "confirmed"
         assert confirmed == want_confirmed, f"{title}: lifecycle 判斷錯誤"
         assert neg != want_confirmed, f"{title}: 兩個訊號結論不一致"
+
+
+def test_run_loader_is_the_one_that_ships(tmp_path, monkeypatch):
+    """r3(突變測試,P1):`test_corrupt_ledger_does_not_overwrite_history`
+    **在測試裡自己重寫了一份 try/except**,斷言的是測試自己設的變數,
+    不是上線的那份邏輯。實測把 main() 的守衛改掉後,60 條線索被覆寫成 1 條,
+    而全套測試仍全綠。這條驗真正上線的 load_story_ledger_for_run。"""
+    f = tmp_path / "story_ledger.json"
+    monkeypatch.setattr(mr, "STORY_LEDGER_FILE", f)
+    f.write_text("{ broken", encoding="utf-8")
+    mr._DEGRADED_STEPS.clear()
+    ledger, readable = mr.load_story_ledger_for_run()
+    assert ledger == [] and readable is False,         "帳本損壞時 readable 必須為 False —— 呼叫端據此跳過存檔"
+    assert "story_ledger_corrupt" in mr._DEGRADED_STEPS
+    assert f.read_text(encoding="utf-8") == "{ broken", "壞檔被覆寫了"
+
+    # 正常情況必須 readable=True,否則線索永遠存不下來
+    f.write_text("[]", encoding="utf-8")
+    assert mr.load_story_ledger_for_run() == ([], True)

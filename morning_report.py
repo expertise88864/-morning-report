@@ -5211,6 +5211,40 @@ def _format_story_prompt_block(ledger) -> str:
             "<UNTRUSTED_SOURCE_DATA>\n" + body + "\n</UNTRUSTED_SOURCE_DATA>")
 
 
+def load_story_ledger_for_run():
+    """本次執行要用的線索帳本;回 (ledger, readable)。**readable 為 False 時
+    呼叫端不得存檔**——寧可今天沒有線索脈絡,也不能拿局部重建的帳本覆蓋掉
+    120 天歷史(那是不可逆的資料遺失)。
+
+    r3(突變測試,P1):這段守衛原本直接寫在 main() 裡,而
+    `test_corrupt_ledger_does_not_overwrite_history` **在測試裡自己重寫了一份
+    try/except**,斷言的是測試自己設的變數,不是上線的那份邏輯。
+    實測把守衛改掉後,60 條線索被覆寫成 1 條,而全套測試仍全綠。
+    """
+    try:
+        return load_story_ledger(), True
+    except StoryLedgerCorrupt as e:
+        print(f"[story] 線索帳本損壞({e}),本次不寫入以免覆蓋歷史",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append("story_ledger_corrupt")
+        return [], False
+
+
+def load_policy_keywords_for_run():
+    """本次執行要用的政策名詞歷史庫;讀不到回 **None**(呼叫端據此跳過存檔)。
+
+    r3(突變測試,P1):這段守衛原本直接寫在 main() 裡,而
+    `test_corrupt_keywords_does_not_wipe_history` **在測試裡自己重寫了一份
+    try/except 再斷言自己剛寫下的 None** —— 生產那行改成 `[]` 也不會紅。
+    實測把守衛改掉後,4000 筆歷史被覆寫成 3 筆,而 1026 個測試全綠。
+    抽成函式,測試才驗得到真正上線的那份邏輯。
+    """
+    try:
+        return load_policy_keywords()
+    except PolicyKeywordsCorrupt:
+        return None      # 讀不到 → 今天不存檔,絕不覆蓋歷史
+
+
 class PolicyKeywordsCorrupt(Exception):
     """政策名詞歷史庫讀不到或格式不符。呼叫端必須據此**跳過存檔**,
     比照 StoryLedgerCorrupt——讀取失敗不得覆蓋歷史。"""
@@ -19205,10 +19239,7 @@ def main() -> int:
         import tw_policy_sources as _tps
         _gazette = _tps.fetch_gazette(_http_get_relaxed_strict)
         quotes["GAZETTE_RECORDS"] = _gazette
-        try:
-            _known_kw = load_policy_keywords()
-        except PolicyKeywordsCorrupt:
-            _known_kw = None      # 讀不到 → 今天不存檔,絕不覆蓋歷史
+        _known_kw = load_policy_keywords_for_run()
         _fresh_kw = _tps.discover_new_keywords(_gazette, set(_known_kw or []))
         quotes["POLICY_NEW_KEYWORDS"] = _fresh_kw
         if _fresh_kw and _known_kw is not None:
@@ -19624,16 +19655,7 @@ def main() -> int:
     # 「Python 權威、LLM 只能抄錄」);LLM 只負責在寫作時接上前情。
     try:
         import story_ledger as _sl
-        try:
-            _ledger = load_story_ledger()
-            _ledger_readable = True
-        except StoryLedgerCorrupt as e:
-            # 讀不到就**不存檔**:寧可今天沒有線索脈絡,也不能拿局部重建的帳本
-            # 覆蓋掉 120 天歷史(那是不可逆的資料遺失)。
-            print(f"[story] 線索帳本損壞({e}),本次不寫入以免覆蓋歷史",
-                  file=sys.stderr)
-            _DEGRADED_STEPS.append("story_ledger_corrupt")
-            _ledger, _ledger_readable = [], False
+        _ledger, _ledger_readable = load_story_ledger_for_run()
         # r5:代號→公司名對照。主體比對必須連公司名一起剝——生產環境的 entity 是
         # 股票代號,而中文標題寫的是公司名,只剝代號等於沒剝。
         # 涵蓋**所有會進事件抽取器的追蹤實體**:台股 top-100 的中文名,以及

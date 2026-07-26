@@ -36,8 +36,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add backtest_data/reports/*.md || true
-          git commit -m "chore(report): 月度因子 IC 報告 [skip ci]" || { echo "no changes to commit"; exit 0; }
+          git add backtest_data/reports/*.md
+          # r3(突變測試審查):原本是 `git commit … || { echo "no changes"; exit 0; }`
+          # ——**任何** commit 失敗(pre-commit hook 失敗、設定錯誤)都被說成
+          # 「沒有變更」並回 0,報告靜默沒 push 而 workflow 綠燈。實測重現。
+          # 改為先判斷有無變更,再讓 commit 自己的失敗真的失敗。
+          if git diff --cached --quiet; then
+            echo "no changes to commit"; exit 0
+          fi
+          git commit -m "chore(report): 月度因子 IC 報告 [skip ci]"
           # push 失敗不得吞掉保持綠燈(五審 P2):fetch/rebase 重試三次,仍敗即紅
           for i in 1 2 3; do
             git push && exit 0

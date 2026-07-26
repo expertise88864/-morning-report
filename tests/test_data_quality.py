@@ -27,8 +27,12 @@ def test_row_count_uses_median_not_mean():
     """用中位數而非平均:單日異常值會把平均拉低,讓門檻自己跟著壞掉
     ——那正是這個檢查要防的情況。"""
     hist = [100, 100, 100, 100, 100, 3]     # 有一天壞掉
-    r = dq.check_row_count("u", _rows(20), min_rows=5, history=hist)
-    assert not r.passed, "被異常值拉低的門檻放行了壞資料"
+    # r3(突變測試):**原本餵 20 筆,而中位數門檻 50 與平均門檻 41 都 > 20,
+    # 兩種基準都會判失敗 → 這條測試分不出中位數和平均**(把 median 改成 mean
+    # 的突變存活)。餵 45 筆才落在兩個門檻之間,真正區分得出來。
+    r = dq.check_row_count("u", _rows(45), min_rows=5, history=hist)
+    assert not r.passed, "被異常值拉低的門檻放行了壞資料(用了平均而非中位數?)"
+    assert "歷史中位數 100" in r.detail, f"門檻基準不是中位數:{r.detail}"
 
 
 def test_row_count_falls_back_when_history_too_short():

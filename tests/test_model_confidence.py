@@ -121,3 +121,15 @@ def test_mz_still_flags_genuine_additive_bias():
     r = mc.mincer_zarnowitz(actual, pred)
     assert abs(r["b_t_vs_1"]) <= 2.5, f"斜率不該顯著偏離 1:{r['b_t_vs_1']}"
     assert "系統性偏誤" in r["shrink_hint"], f"漏報真實加法偏誤:{r}"
+
+
+def test_t_sf_handles_negative_statistics():
+    """r3(突變測試):`return p if t > 0 else 1.0 - p` 的後半段**完全沒有測試**
+    ——既有取樣點全是非負數。負的 CW 統計量是可達的(mean/se,mean<0 代表合成
+    模型**比隨機漫步還差**),把它報成小 p 就是「模型更差」被說成「顯著更好」,
+    正是這支工具最不該犯的假陽性方向。批#51 補測試時只往正的方向加密。"""
+    assert mc._t_sf(-2.0, 47) > 0.9, "負統計量被報成顯著"
+    assert mc._t_sf(-3.0, 47) > 0.99
+    # 對稱性:單尾上尾機率必須滿足 sf(-t) = 1 - sf(t)
+    for t in (0.5, 1.5, 2.5):
+        assert abs(mc._t_sf(-t, 47) - (1.0 - mc._t_sf(t, 47))) < 1e-9

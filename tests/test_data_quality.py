@@ -222,3 +222,21 @@ def test_universe_derived_values_are_cleared_too():
     i = src.index('quotes["UNIVERSE_UNTRUSTED"]')
     window = src[i:i + 1600]
     assert "FOREIGN_TOP10_TOTAL" in window,         "衍生值未在 error 分支清除 —— 污染仍會進立場計分與 state"
+
+
+def test_all_universe_derived_state_is_gated_at_persistence():
+    """r8(Codex,P1):TDCC 快照同樣衍生自 universe,而我上一輪是**逐個列舉
+    衍生值**去清 —— 這輪就漏了它。後果:部分 universe 的快照被存成「完整比較
+    基準」,calc_tdcc_wow_delta 之後拿它比對時,不在該快照裡的代號**整週失去
+    籌碼週變化**,靜默劣化關注度排名。
+
+    逐個列舉行不通(已是第二次漏),改在**單一持久化邊界**擋。
+    """
+    from pathlib import Path as _P
+    src = _P(mr.__file__).read_text(encoding="utf-8")
+    i = src.index('"tdcc_snapshot":')
+    window = src[i:i + 300]
+    assert "UNIVERSE_UNTRUSTED" in window,         "TDCC 快照未受品質閘保護 —— 部分 universe 會被存成完整比較基準"
+    # model_history 的 stocks 快照與 breakout 同樣走 tw0050,已由邊界清空覆蓋
+    j = src.index('quotes["UNIVERSE_UNTRUSTED"]')
+    assert "tw0050 = []" in src[j:j + 1600]

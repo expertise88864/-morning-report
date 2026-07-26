@@ -1090,3 +1090,47 @@ def test_pending_is_distinguished_from_rejection_in_both_signals():
         assert not any(t.startswith("negated_") for t in terms),             f"{title} 被當成否決:{terms}"
     # 但「待決 → 核准」仍必須被認成進展
     assert sl._decision_terms("尚未獲董事會核准") != sl._decision_terms("董事會核准")
+
+
+def test_pending_marker_without_any_negator_is_reachable():
+    """r8(Codex,P1):我上一輪把 pending 判定**巢狀在 `if is_negated_decision()`
+    底下**,於是「尚待」這種**不含任何否定詞**的待決標記永遠到不了那個分支。
+    實測「本案尚待董事會核准」落到 A 級 fallback 判成 confirmed,可能造成假的
+    rumor → confirmed 轉移並拿到權重;而 story_ledger 直接呼叫 pending 判定,
+    給的是 pending_* ——**又是同一句話兩種結論**。"""
+    import news_events as ne
+    for title in ("本案尚待董事會核准", "尚待主管機關核准"):
+        assert ne._event_lifecycle({"title": title, "source_grade": "A"}) == "rumor",             f"{title} 沒被判為待決"
+        assert any(t.startswith("pending_") for t in sl._decision_terms(title))
+
+
+def test_pending_uses_clause_boundary_not_a_fixed_window():
+    """r8(Codex):固定 6 字視窗抓不到「本案尚待主管機關進一步審查後核准」
+    (中間隔 11 個字)。待決標記在中文裡管的是**整個子句**。
+
+    但仍以子句為界,不是無界回看——「已核准,尚待備查」的「尚待」在逗號之後,
+    不該回頭把前一子句的「核准」判成待決。
+    """
+    import news_events as ne
+    assert ne._event_lifecycle(
+        {"title": "本案尚待主管機關進一步審查後核准", "source_grade": "A"}) == "rumor"
+    assert ne._event_lifecycle(
+        {"title": "已核准,尚待主管機關備查", "source_grade": "A"}) == "confirmed",         "跨子句誤判:前一子句的核准被後一子句的尚待影響"
+
+
+def test_long_mops_title_can_still_be_overridden():
+    """r8(Codex,P1):payload 把標題截到 180 字並過消毒,而官方查表鍵原本用
+    **完整原始標題** → 超長 MOPS 標題就算 LLM 逐字照抄也永遠對不上。
+    兩邊必須用同一份轉換。"""
+    long_title = "台積電公告訂定除息基準日" + "補充說明事項" * 40
+    assert len(long_title) > 180
+    mops = [{"code": "2330", "title": long_title, "summary": "x",
+             "published": "2026-07-25T01:00:00+00:00",
+             "clause": "第14款", "event_type": "general"}]
+    # LLM 只看得到截斷後的版本,逐字照抄
+    llm = [{"entity": "台積電", "title": mr._extractor_title({"title": long_title}),
+            "event_type": "earnings", "surprise_score": 0.7,
+            "published": "2026-07-25T01:00:00+00:00"}]
+    events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
+    assert len(events) == 1, f"超長標題讓權威覆寫失效:{events}"
+    assert events[0]["event_type"] == "general"

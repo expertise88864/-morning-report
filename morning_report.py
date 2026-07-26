@@ -8702,6 +8702,17 @@ def build_model_monitoring_report(walk_forward: dict,
     }
 
 
+def _extractor_title(item: dict) -> str:
+    """送進抽取器 payload 的標題(截斷 + 消毒後)。
+
+    r8(Codex,P1):payload 與官方查表鍵**必須用同一份轉換**——先前 payload
+    截到 180 字而查表用完整原始標題,超長 MOPS 標題即使 LLM 逐字照抄也對不上,
+    權威覆寫因此失效。定義在模組層讓兩個函式共用同一份實作
+    (自測時先寫成巢狀函式,payload 那端會 NameError)。
+    """
+    return _external_text(item.get("title") or item.get("headline"), 180)
+
+
 def extract_structured_events(news: list[dict],
                               mops: list[dict],
                               llm_events: Optional[list[dict]] = None,
@@ -8793,9 +8804,11 @@ def extract_structured_events(news: list[dict],
             # 與 append() 的 entity 推導完全對齊(entity → code → company_label)。
             _ent = str(item.get("entity") or item.get("code")
                        or item.get("company_label") or "")
-            _key = (_ent,
-                    _norm_title_key(str(item.get("title")
-                                        or item.get("headline") or "")))
+            # r8(Codex,P1):查表鍵原本用**完整原始標題**,但 payload 在 12145
+            # 把標題截到 180 字並過 _external_text → 超長 MOPS 標題就算 LLM
+            # **逐字照抄**也永遠對不上,權威覆寫失效。
+            # 改用「實際送進 payload 的那個標題」當鍵,兩邊看到的才是同一份。
+            _key = (_ent, _norm_title_key(_extractor_title(item)))
             _official_types[_key] = (_ot, _ent)
     for item in llm_events or []:
         if isinstance(item, dict):
@@ -12142,7 +12155,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         # 我上一輪的測試手工把 LLM entity 寫成 2330,繞過了真正的 payload。
         "code": _external_text(item.get("code") or item.get("company_label"), 12),
         "published": _external_text(item.get("published"), 32),
-        "title": _external_text(item.get("title"), 180),
+        "title": _extractor_title(item),
         "summary": _external_text(item.get("fulltext") or item.get("summary"), 360),
         # 批#42:官方法定款別對應的權威 event_type。有值時 LLM 必須採用
         # (見 prompt 規則),因為那是金管會的法定分類、不是模型的猜測。
@@ -19597,8 +19610,7 @@ def main() -> int:
             # 進 Python 立場計分,並寫入跨日 state。
             # 我的測試用 3 筆資料,而 _foreign_top10_total() 對 3 筆本來就回 None
             # ——所以對照組是假的,完全驗不到這條(10-29 筆才會露餡)。
-            for _derived in ("FOREIGN_TOP10_TOTAL",):
-                quotes[_derived] = None
+            quotes["FOREIGN_TOP10_TOTAL"] = None
         for _w in _dq_summary.get("warnings", []):
             print(f"[dq] warn {_w['source']}/{_w['check']}: {_w['detail']}",
                   file=sys.stderr)
@@ -20162,7 +20174,16 @@ def main() -> int:
             "ex_div_today": ex_div,
             "breakout_candidates": _breakout_candidates_for_state(tw0050),
             # 籌碼悄悄站隊:本次 TDCC 大戶持股快照,供下次 WoW Δ% 比較
-            "tdcc_snapshot": tdcc_snapshot_for_state if 'tdcc_snapshot_for_state' in locals() else {},
+            # r8(Codex,P1):TDCC 快照同樣衍生自 universe(19518 行),
+            # 而我上一輪是**逐個列舉衍生值**去清——這輪就漏了它。
+            # 後果:部分 universe 的快照被存成「完整比較基準」,
+            # calc_tdcc_wow_delta 之後拿它比對時,不在該快照裡的代號
+            # **整週失去籌碼週變化**,靜默劣化關注度排名。
+            # 逐個列舉是行不通的(這已是第二次漏),改在**單一持久化邊界**擋:
+            # universe 不可信 → 所有 universe 衍生的 state 一律不寫。
+            "tdcc_snapshot": ({} if quotes.get("UNIVERSE_UNTRUSTED")
+                              else (tdcc_snapshot_for_state
+                                    if 'tdcc_snapshot_for_state' in locals() else {})),
         }
         completed_session = _latest_completed_session(
             trading_sessions if 'trading_sessions' in locals() else [],

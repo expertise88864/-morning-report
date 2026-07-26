@@ -148,12 +148,18 @@ def _event_lifecycle(event: dict) -> str:
     for token in _DECISION_TOKENS:
         i = text.find(token)
         while i >= 0:
+            # r8(Codex,P1):**pending 必須先判,不能巢狀在 negated 底下**。
+            # 我上一輪把它放進 `if is_negated_decision(...)` 裡,於是「尚待」
+            # 這種**不含任何否定詞**的待決標記永遠到不了——實測
+            # 「本案尚待董事會核准」落到 A 級 fallback 判成 confirmed,
+            # 可能造成假的 rumor → confirmed 轉移並拿到權重;
+            # 而 story_ledger 直接呼叫 pending 判定,給的是 pending_*
+            # ——**又是同一句話兩種結論**。
+            # 「尚未核准」是流程還在跑,不是被否決;判成 rejected 會讓
+            # 「後來核准了」看起來像翻案而非正常進度。
+            if is_pending_decision(text, i):
+                return "rumor"
             if is_negated_decision(text, i):
-                # r6:區分「正式否決」與「**尚未**核准」的待決狀態——
-                # 「尚未核准」是流程還在跑,不是被否決,判成 rejected 會讓
-                # 「後來核准了」看起來像翻案而非正常進度。
-                if is_pending_decision(text, i):
-                    return "rumor"
                 return "rejected"      # 明確的否決結論,不得再被 fallback 蓋掉
             i = text.find(token, i + 1)
 
@@ -426,10 +432,26 @@ _NEG_WINDOW = 6
 _PENDING_MARKERS = ("尚未", "還沒", "仍未", "暫未", "尚待", "not yet", "pending")
 
 
+#: 子句分隔符。待決標記管的是**整個子句**,不像否定詞那樣緊貼動詞。
+_CLAUSE_SEPARATORS = "。;;,,、!!??\n"
+
+
 def is_pending_decision(text: str, idx: int) -> bool:
-    """決策動詞前是否為「待決」語氣(而非否決)。與否定判定共用視窗寬度。"""
-    window = text[max(0, idx - _NEG_WINDOW):idx]
-    return any(m in window for m in _PENDING_MARKERS)
+    """決策動詞前是否為「待決」語氣(而非否決)。
+
+    r8(Codex):**用子句邊界而非固定字數**。「本案尚待主管機關進一步審查後核准」
+    的「尚待」離「核准」有 11 個字,固定 6 字視窗抓不到 → 落到 A 級 fallback
+    判成 confirmed。而待決標記在中文裡管的是整個子句,不像否定詞那樣緊貼動詞。
+
+    仍以子句為界(不是無界回看):「已核准,尚待備查」的「尚待」在逗號之後,
+    不該回頭把前一子句的「核准」判成待決。
+    """
+    start = 0
+    for i in range(idx - 1, -1, -1):
+        if text[i] in _CLAUSE_SEPARATORS:
+            start = i + 1
+            break
+    return any(m in text[start:idx] for m in _PENDING_MARKERS)
 
 
 def is_negated_decision(text: str, idx: int) -> bool:

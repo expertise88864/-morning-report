@@ -1,0 +1,18 @@
+# 批#49:把 state/ 標成「不產生文字 diff」的產物。
+#
+# 為什麼:近 30 天 390 個 commit 裡有 124 個是純 state 更新(32%)。
+# 這些 diff 動輒數千行 JSON,而 GPT-5.6 外審是**自己跑 git status / git diff**
+# 讀 repo 狀態的——state 噪音會直接吃掉它的 context 與注意力,
+# 很可能是「新功能要 10~20 輪 review 才收斂」的隱藏成因之一。
+#
+# `-diff` 讓 git 把這些路徑當二進位處理,`git diff` 只印一行
+# 「Binary files differ」而非整份 JSON。**檔案本身照常版本化、照常可還原**,
+# 只是不再產生文字 diff。需要看內容時用 `git show <ref>:<path>` 或
+# `git diff --text -- state/...`。
+#
+# 刻意不做 orphan branch 遷移:那要動 state 持久化路徑,而那正是
+# 2026-07-09 整天 state 靜默遺失的地方。這個做法拿到八成效益、零風險。
+state/**/*.json -diff
+state/**/*.json.gz -diff binary
+state/*.json -diff
+state/emails/** -diff binary

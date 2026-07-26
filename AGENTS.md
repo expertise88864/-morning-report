@@ -61,3 +61,12 @@
 - **靜默失效**(不拋例外、不讓測試變紅,只是讓輸出悄悄變差)
 - **測試固化了錯誤行為**(測試與程式由同一輪產生,編碼的是實作現況而非規格)
 - **前視偏誤**(用當日或未來資訊回測過去)
+
+## state/ 的 diff 被刻意抑制
+
+`.gitattributes` 把 `state/` 標成 `-diff`,`git diff` 只印
+「Binary files differ」而非整份 JSON。**檔案本身照常版本化、照常可還原。**
+需要看內容時用 `git show <ref>:<path>` 或 `git diff --text -- state/...`。
+
+理由:近 30 天 390 個 commit 有 124 個是純 state 更新(32%),而外部審查代理是
+自己跑 `git diff` 讀 repo 的——那些噪音會直接吃掉審查的 context。

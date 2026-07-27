@@ -68,6 +68,7 @@ from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保
     _podcast_ticker_crosscheck,  # noqa: F401 — re-export:test_podcast 經 mr.* 呼叫,morning_report 本體未直接用
     _render_podcast_html,
     _render_sports_html,
+    _render_story_timeline_html,
     _mlb_zh,  # noqa: F401 — re-export:tests 經 mr.* 驗證 MLB 中文隊名
 )
 from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已抽出。只 re-export morning_report
@@ -5636,7 +5637,7 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
         return out
 
 
-def fetch_news() -> list[dict]:
+def fetch_news(followups: Optional[list] = None) -> list[dict]:
     """抓 RSS 摘要,回最近 30 小時內的新聞(涵蓋跨日凌晨的 Fed/美股盤後)。
 
     P0-1:依 host 分組平行抓取——不同 host 平行(消除 2026-07-08 的序列瓶頸),
@@ -5655,6 +5656,15 @@ def fetch_news() -> list[dict]:
     for query, label in GOOGLE_NEWS_COMPANIES:
         work.append({"idx": len(work), "source": f"Google:{label}",
                      "url": _gnews_rss(query, when="2d"), "kind": "company", "label": label})
+    # 批#57:**線索驅動的主動追蹤**。先前完全是被動的——一條正在發展的線索
+    # 能不能拿到後續消息,取決於它有沒有剛好出現在那幾十個固定 feed 裡。
+    # 若當天只有產業媒體報導而不在我們訂的來源,線索會被判「今日無新進展」
+    # 並開始降級,最後沉寂——**不是因為事情停了,是因為我們沒去找**。
+    # when=3d:追蹤是為了補「昨天漏掉的」,窗口比一般 feed 略寬。
+    import story_ledger as _sl_mod
+    for _key, _q in (followups or [])[:_sl_mod.FOLLOWUP_MAX_QUERIES]:
+        work.append({"idx": len(work), "source": f"追蹤:{_q}",
+                     "url": _gnews_rss(_q, when="3d"), "kind": "rss"})
     merged: dict[int, list[dict]] = {}
     if NEWS_FETCH_WORKERS <= 1:
         # 逃生門:完全退回舊序列行為——依「原始 work 順序」逐項處理(非 host 分組順序),
@@ -11628,6 +11638,12 @@ R16b. **線索狀態(批#44)**:上方【進行中的線索(跨日追蹤)】列�
 - **狀態=高潮**的線索優先給版面;**收斂**的用一句話交代結果即可;
   **醞釀**的可短提但不要當主線。
 - 線索清單裡沒有、今日才出現的事件,照常寫(那是新線索的開端),不必硬扯前情。
+- **軌跡(批#57)**:部分線索附「軌跡:日期 標題(數字) → 日期 標題(數字) → …」,
+  那是本報一路追下來的實際紀錄。有軌跡的線索**必須用它寫出跨日/跨週的比較**,
+  尤其是**數字的變化**(「7/20 斥資 100 億 → 7/23 上修至 200 億」)——
+  那是讀者最想知道、而單日新聞看不出來的東西。
+  只有兩個時間點時寫「從 X 到 Y」;三點以上可寫成一句演進。
+  **軌跡上沒有的日期或數字一律不得出現**(那是捏造,不是推論)。
 - **鐵則**:前情只能引用上方清單裡確有的文字,**不得補寫清單沒有的過往細節**。
 
 ═══════════════════════════════════════════════════════════
@@ -17207,6 +17223,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # G1 持倉曝險卡:使用者要求刪除(2026-07-15,上線一天後);引擎與測試保留,
     # main() 已不再計算 PORTFOLIO_RISK(節省 ~秒級 yfinance 抓取)。
     portfolio_risk_html = ""
+    # 批#57:線索追蹤卡(連結與日期由 Python 渲染,不經 LLM ——
+    # 模型可以敘述,不可以生成事實,而 URL 是最容易被捏造的一種)。
+    story_timeline_html = _safe_block(
+        "線索追蹤", _render_story_timeline_html,
+        quotes.get("STORY_LEDGER") or [], _htmllib)
     sports_html = _safe_block("體育", _render_sports_html,
                               quotes.get("SPORTS") or {}, _htmllib)
     event_calendar_html = _safe_block("風險事件日曆", _render_event_calendar_html,
@@ -18233,6 +18254,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {night_html}
 
             {taifex_html}
+
+            {story_timeline_html}
 
             {sports_html}
 
@@ -19344,7 +19367,21 @@ def main() -> int:
     # 5. 抓新聞
     _mark_phase("新聞+政策+體育")
     print("[main] 抓新聞中…")
-    news = fetch_news()
+    # 批#57:先讀線索帳本,為追蹤中的線索組主動查詢,一起併進本次抓取。
+    # 讀不到帳本不影響抓取(只是退回被動模式),故獨立 try。
+    _followups = []
+    try:
+        import story_ledger as _sl_early
+        _led_early, _readable_early = load_story_ledger_for_run()
+        if _readable_early:
+            _followups = _sl_early.followup_queries(
+                _led_early, today=now_tpe.strftime("%Y-%m-%d"))
+            if _followups:
+                print("[story] 主動追蹤查詢 "
+                      + "、".join(q for _, q in _followups))
+    except Exception as e:
+        print(f"[story] 追蹤查詢略過: {type(e).__name__}: {e}", file=sys.stderr)
+    news = fetch_news(_followups)
     print(f"[main] 抓到 {len(news)} 則新聞")
     print("[main] 整理台灣政策與醫界昨日走向…")
     quotes["TW_DAILY_INTELLIGENCE"] = fetch_tw_daily_intelligence(now_tpe)

@@ -1299,3 +1299,74 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         f'{title}</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
         'background:#ffffff;">' + "".join(blocks) + "</div>")
+
+
+def _render_story_timeline_html(ledger, htmllib, limit: int = 6) -> str:
+    """線索追蹤卡:每條追蹤中的線索,列出它一路走來的時間點與**原文連結**。
+
+    批#57(使用者要求「前後連貫性、後續閱讀與比較」):
+    信裡的「七之四、敘事變化」是 LLM 寫的散文,說得出「昨天說 X → 今天 Y」,
+    但**讀者沒有辦法回去讀原文**,也看不到跨週的完整脈絡(帳本先前只存
+    last_delta / prev_delta 兩步)。
+
+    **連結與日期一律由 Python 渲染,不經 LLM** —— 與計分/立場同一條原則:
+    模型可以敘述,不可以生成事實。URL 是最容易被捏造的一種事實。
+    """
+    rows = []
+    for s in (ledger or [])[:max(1, limit)]:
+        if not isinstance(s, dict):
+            continue
+        tl = [x for x in (s.get("timeline") or []) if isinstance(x, dict)]
+        if len(tl) < 2:          # 只有一個時間點 = 沒有「前後」可言,不佔版面
+            continue
+        state = str(s.get("state") or "")
+        if state == "dormant":
+            continue
+        ent = htmllib.escape(str(s.get("entity_name") or s.get("entity") or ""))
+        head = htmllib.escape(str(s.get("headline") or "")[:60])
+        badge = {"peak": ("高潮", "#dc2626"), "developing": ("發展", "#ea580c"),
+                 "resolving": ("收斂", "#0891b2"),
+                 "brewing": ("醞釀", "#64748b")}.get(state, ("追蹤", "#64748b"))
+        steps = []
+        for e in tl[-4:]:
+            date = htmllib.escape(str(e.get("d") or "")[5:])     # MM-DD
+            title = htmllib.escape(str(e.get("t") or "")[:44])
+            src = htmllib.escape(str(e.get("s") or "")[:12])
+            link = str(e.get("l") or "")
+            facts = "・".join(_fmt_fact(f) for f in (e.get("f") or [])[:2])
+            label = f"{title}" + (f"<b style='color:#b45309;'> {htmllib.escape(facts)}</b>"
+                                  if facts else "")
+            body = (f"<a href='{htmllib.escape(link)}' style='color:#1d4ed8;"
+                    f"text-decoration:none;'>{label}</a>" if link.startswith("http")
+                    else label)
+            steps.append(
+                f"<li style='margin:3px 0;'><span style='color:#64748b;"
+                f"font-variant-numeric:tabular-nums;'>{date}</span> "
+                f"{body}<span style='color:#94a3b8;font-size:11px;'> {src}</span></li>")
+        rows.append(
+            f"<div style='padding:8px 0;border-bottom:1px dashed #e2e8f0;'>"
+            f"<div style='font-size:13px;font-weight:700;color:#0f172a;'>"
+            f"<span style='color:{badge[1]};font-size:11px;'>[{badge[0]}]</span> "
+            f"{ent}：{head}"
+            f"<span style='font-weight:400;color:#94a3b8;font-size:11px;'>"
+            f" ・已追蹤 {int(s.get('updates') or 1)} 次"
+            f"・起於 {htmllib.escape(str(s.get('first_seen') or ''))}</span></div>"
+            f"<ul style='margin:4px 0;padding-left:18px;font-size:12px;"
+            f"line-height:1.7;'>{''.join(steps)}</ul></div>")
+    if not rows:
+        return ""
+    return (
+        '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
+        'background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">'
+        '線索追蹤（同一條事情一路怎麼走的・可點回原文）</h2>'
+        '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
+        'background:#ffffff;">' + "".join(rows) + "</div>")
+
+
+def _fmt_fact(raw) -> str:
+    """數字事實 → 可讀字串。與 story_ledger.format_fact 同一份實作(避免分歧)。"""
+    try:
+        from story_ledger import format_fact
+        return format_fact(raw)
+    except Exception:
+        return str(raw)

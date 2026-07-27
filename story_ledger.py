@@ -76,6 +76,12 @@ STALE_DAYS_TO_DEMOTE = 2      # 連續幾天沒有新進展就降一級
 DORMANT_AFTER_DAYS = 7        # 超過幾天完全沒動就直接沉寂
 MAX_ACTIVE_STORIES = 12       # 進 prompt 的活躍 story 上限
 SEEN_SIG_KEEP = 12            # 每條線索保留的重播簽章數
+#: 每條線索保留幾個「時間點」。批#57:先前只存 last_delta / prev_delta 兩步,
+#: 讀者看不到「上週說什麼」,也沒有連結可以回去讀。六步約可涵蓋一到兩週的
+#: 報導節奏(同一條線索不會天天有實質更新)。
+TIMELINE_KEEP = 6
+#: 沉寂線索只留頭尾兩點——479 條線索若每條都留六點,state 檔會膨脹一倍。
+TIMELINE_KEEP_DORMANT = 2
 KEEP_DAYS = 120               # 帳本保留天數(沉寂的也留著,供日後復燃接回)
 
 _PUNCT_RE = re.compile(r"[\s，。、；：！？「」『』()（）\[\]【】<>《》,.;:!?\"'`~\-—–－]+")
@@ -620,6 +626,52 @@ def _advance(state: str, has_delta: bool, days_idle: int,
     return state
 
 
+def format_fact(raw) -> str:
+    """數字事實 → 可讀字串(10000000000 → 「100億」)。
+
+    帳本裡存的是正規化後的**純數字字串**(中文與阿拉伯寫法都換算成同一個值,
+    才能比對出「金額有沒有變」)。直接印給讀者看是一串零,故渲染時換回中文單位。
+    """
+    try:
+        n = float(raw)
+    except (TypeError, ValueError):
+        return str(raw)
+    for unit, div in (("兆", 10 ** 12), ("億", 10 ** 8), ("萬", 10 ** 4)):
+        if abs(n) >= div:
+            v = n / div
+            return f"{v:.10g}{unit}"
+    return f"{n:.10g}"
+
+
+def _timeline_entry(ev: dict, today: str, facts) -> dict:
+    """一個時間點。刻意用短鍵名(d/t/l/s/f):479 條線索 × 6 點,
+    鍵名長度直接反映在 state 檔大小與每日 commit 的 diff 量上。"""
+    return {
+        "d": str(today)[:10],
+        "t": str(ev.get("title") or ev.get("headline") or "")[:80],
+        "l": str(ev.get("link") or "")[:200],
+        "s": str(ev.get("source_name") or ev.get("source") or "")[:24],
+        "f": sorted(facts)[:4] if facts else [],
+    }
+
+
+def _push_timeline(story: dict, entry: dict) -> None:
+    """把時間點併入線索軌跡(同日只留最後一筆,避免同日多則把軌跡塞滿)。"""
+    tl = [x for x in (story.get("timeline") or []) if isinstance(x, dict)]
+    tl = [x for x in tl if str(x.get("d")) != str(entry.get("d"))]
+    tl.append(entry)
+    story["timeline"] = tl[-TIMELINE_KEEP:]
+
+
+def prune_timeline(story: dict) -> None:
+    """沉寂線索只留頭尾兩點(復燃時仍接得回「最初是什麼、最後停在哪」)。"""
+    if str(story.get("state")) != "dormant":
+        return
+    tl = [x for x in (story.get("timeline") or []) if isinstance(x, dict)]
+    if len(tl) > TIMELINE_KEEP_DORMANT:
+        story["timeline"] = [tl[0], tl[-1]]
+
+
 def update_ledger(ledger: list[dict], events: list[dict], today: str,
                   name_map: dict | None = None) -> list[dict]:
     """把今日事件併入帳本,回傳更新後的帳本(不改動輸入)。
@@ -697,6 +749,13 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 "last_published": str(ev.get("published") or ""),
                 "lifecycle": str(ev.get("lifecycle") or ""),
                 "source_grade": str(ev.get("source_grade") or ""),
+                # 批#57:軌跡第一點。先前只留 last_delta/prev_delta 兩步,
+                # 讀者看不到「上週說什麼」,也沒有連結可以回去讀原文。
+                "timeline": [_timeline_entry(
+                    ev, today,
+                    _material_facts(title, str(ev.get("entity") or ""),
+                                    str(ev.get("entity_name") or "").split(),
+                                    str(ev.get("published") or "")))],
             }
             seen_sigs[key] = [_event_signature(ev)]
             today_sigs[key] = {_event_signature(ev)}
@@ -766,6 +825,11 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["last_published"] = str(ev.get("published") or "")
         story["headline"] = title[:120]
         story["delta_unconfirmed"] = unconfirmed
+        _push_timeline(story, _timeline_entry(
+            ev, today,
+            _material_facts(title, str(story.get("entity") or ""),
+                            str(story.get("entity_name") or "").split(),
+                            str(ev.get("published") or ""))))
         if not unconfirmed:
             # 權威狀態(lifecycle / source_grade)只由「不低於現況分級」的來源改寫;
             # 較低分級且與官方結論相反的報導,內容照收但不得改寫權威狀態。
@@ -790,6 +854,10 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         idle = _days_between(story.get("last_update") or today, today)
         story["state"] = _advance(str(story.get("state") or "brewing"),
                                   has_delta=False, days_idle=idle)
+        # 批#57:沉寂後修剪軌跡。479 條線索若每條都留六點,state 檔會膨脹一倍
+        # 而且每天的 commit diff 也跟著變大;沉寂線索留頭尾兩點即可
+        # (復燃時仍接得回「最初是什麼、最後停在哪」)。
+        prune_timeline(story)
 
     out = list(by_key.values())
     out = [s for s in out
@@ -847,7 +915,95 @@ def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STO
             f"- [{state_zh}|{fresh}|已追蹤 {int(s.get('updates') or 1)} 次|"
             f"起於 {sanitize(s.get('first_seen'), 12)}] {ent}:"
             f"{sanitize(s.get('headline'), 120)}")
+        # 批#57:把**軌跡**餵進去,LLM 才寫得出「上週說 X → 前天 Y → 今天 Z」。
+        # 先前只有 prev_delta 一步,跨週的比較根本無從寫起。
+        # 數字換回中文單位(帳本存的是正規化後的純數字,直接印是一串零)。
+        tl = [x for x in (s.get("timeline") or []) if isinstance(x, dict)][-4:]
+        if len(tl) >= 2:
+            steps = []
+            for e in tl:
+                facts = "・".join(format_fact(f) for f in (e.get("f") or [])[:2])
+                steps.append(
+                    f"{sanitize(e.get('d'), 10)} {sanitize(e.get('t'), 60)}"
+                    + (f"({facts})" if facts else ""))
+            lines.append("    軌跡:" + " → ".join(steps))
         prev = sanitize(s.get("prev_delta"), 160)
         if prev:
             lines.append(f"    前情:{prev}")
     return "\n".join(lines)
+
+
+#: 每天最多為幾條線索發追蹤查詢。每條是一次 Google News RSS 請求,
+#: 而新聞抓取本來就是 wall-clock 主導者(Google News 一組已有 65 個請求)。
+#: 五條是「涵蓋當日主線」與「不拖垮 25 分鐘預算」的折衷。
+FOLLOWUP_MAX_QUERIES = 5
+#: 只追高潮/發展中的線索——醞釀中的還不確定是不是真的,收斂與沉寂的不需要再追。
+FOLLOWUP_STATES = ("peak", "developing")
+#: 這些詞當關鍵字會抓回整片雜訊,不放進查詢。
+_FOLLOWUP_STOPWORDS = frozenset({
+    "公司", "集團", "股份", "有限", "宣布", "表示", "指出", "傳出", "傳",
+    "報導", "消息", "新聞", "今日", "昨日", "本週", "上週", "台灣", "美國",
+    "中國", "全球", "市場", "業者", "相關", "可能", "預計", "分析",
+})
+
+
+#: event_type → 中文檢索詞。**用語意標籤而不是切標題**:
+#: 中文沒有空白分詞,按固定字數硬切必然產生「Fed決」「特斯拉股」這種垃圾片段
+#: (自測第一版就是這樣,實際帳本跑出「台女攀富 反覆失去」)。
+#: event_type 是 Python 端已經算好的分類,拿它當第二個關鍵字既準確又可預測。
+_FOLLOWUP_TOPIC = {
+    "orders": "訂單",
+    "earnings": "財報",
+    "revenue_growth": "營收",
+    "guidance_raise": "財測",
+    "guidance_cut": "財測",
+    "litigation": "訴訟",
+    "export_controls": "出口管制",
+    "geopolitical": "",          # 地緣事件沒有穩定的公司錨,只用實體
+    "general": "",
+}
+
+
+def followup_queries(ledger: list[dict], limit: int = FOLLOWUP_MAX_QUERIES,
+                     today: str = "") -> list[tuple]:
+    """為追蹤中的線索組**主動查詢**。回傳 [(story_key, 查詢字串), ...]。
+
+    批#57(使用者要求「新聞抓取的深度優化」):
+    先前完全是**被動**的——線索能不能拿到後續消息,取決於它有沒有剛好出現在
+    那幾十個固定 feed 裡。一條正在發展的併購案,若當天只有產業媒體報導而不在
+    我們訂的來源,線索就會被判成「今日無新進展」並開始降級,最後沉寂
+    ——**不是因為事情停了,是因為我們沒去找**。
+
+    **必須有實體才發查詢**:沒有公司名/代號可以錨定的線索(cluster 型 key),
+    查詢只能由標題片段組成,而中文切不出乾淨的詞——自測時實際帳本跑出
+    「台女攀富 反覆失去」這種查詢,撈回來的必然是雜訊。寧可不查。
+    """
+    picked = []
+    seen_q = set()
+    for s in active_stories(ledger, limit=limit * 6, today=today):
+        if str(s.get("state")) not in FOLLOWUP_STATES:
+            continue
+        ent = _followup_entity(s)
+        if not ent:
+            continue          # 無實體錨 → 不查(見 docstring)
+        topic = _FOLLOWUP_TOPIC.get(str(s.get("event_type") or ""), "")
+        q = f"{ent} {topic}".strip()
+        if q in seen_q:
+            continue          # 同公司同類型只查一次
+        seen_q.add(q)
+        picked.append((str(s.get("key") or ""), q))
+        if len(picked) >= limit:
+            break
+    return picked
+
+
+def _followup_entity(story: dict) -> str:
+    """線索的檢索錨:優先用公司名(中文標題寫的是名字不是代號),退回代號。"""
+    name = str(story.get("entity_name") or "").split()
+    for n in name:
+        if len(n) >= 2 and n not in _FOLLOWUP_STOPWORDS:
+            return n
+    code = str(story.get("entity") or "").strip()
+    # 純代號(2330)也可以查——Google News 對台股代號有命中率;
+    # 但 cluster: 開頭的合成 key 不是實體。
+    return code if code and not code.startswith("cluster") else ""

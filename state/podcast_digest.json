@@ -1836,6 +1836,69 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2ddb8de0-0571-47d0-ab5f-1297a3976cf6",
+        "title": "EP323. Opus 5 正式發表、星艦第十三飛達標、開放模型的公開信 | M觀點",
+        "published": "Mon, 27 Jul 2026 07:07:47 GMT",
+        "processed_at": "2026-07-27T11:56:20Z",
+        "digest": {
+          "summary_points": [
+            "Anthropic 推出 Cloud Opus 5，AAII 評分 61 分超越 Fable 5 的 60 分，且成本便宜 26%。",
+            "Opus 5 在 AACAI（coding agent index）以 extra high 模式得 67 分與 GPT5.6 並列第一，成本比 Fable 5 低 30%。",
+            "Opus 5 雖性能與 Fable 5 同級且成本較低，但主持人認為仍無法根本解決 Anthropic 面臨的價格戰困境，因為 CP 值仍不及 GPT5.6 soul 與 Grock 4.5。",
+            "XAI 預告未來兩週推出 Grock 4.6（2 兆參數模型），四周後推出 Grock 4.7，主持人預估 AAII 評分可望提升至 57-58 分，AACAI 提升至 66-67 分，將具競爭力。",
+            "SpaceX 星艦第 13 次試飛成功部署 Starlink V3 衛星並完美軟濺落，馬斯克預告下次將嘗試用筷子夾星艦。",
+            "SpaceX 股價從高點腰斬至 115 美元，主持人認為合理估值 84 美元，加上馬斯克信仰溢價目標 92 美元，上下 25% 區間（70-115 美元）已進入守備範圍，上週小幅加碼。",
+            "輝達、微軟、Meta、Palantir 等 25 家科技公司簽署聯名公開信支持開放權重模型，反對美國政府禁止開源模型。",
+            "公開信主張不應禁止中國開源模型，但可對最嚴重蒸餾行為以商業訴訟處理，主持人認為川普政府可能將特定中國公司列入實體清單但不會全面封鎖。",
+            "模型商品化趨勢下，輝達、微軟等平台層受益，而 Anthropic、OpenAI 等模型研發商面臨利潤率壓縮。",
+            "主持人認為美國本土開源模型如 Nemotron 與 Thinking Machine Lab 的 Inkling 有潛力，輝達應加速更新 Nemotron 版本以維持競爭力。",
+            "亞馬遜未簽署公開信，主持人猜測因先前與 Anthropic 的關係不願再次背刺，但雲業務利益上應支持開放模型。",
+            "主持人對 SpaceX 操作思路：已從部位 1% 小幅加碼至 1.5%，若股價續跌至 90 幾美元將買滿至目標 3-4% 部位。",
+            "模型競爭進入成本效率時代，主持人預期未來企業將採混合模式：頂級任務用封閉模型、主力工作用 CP 值高模型、機密工作用本地開源模型。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "模型競爭越激烈對輝達賣硬體越有利，為公開信帶頭大哥。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "公有雲平台將受益於模型通用商品化。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "企業端 AI 平台價值在模型商品化下更凸顯。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "立場尷尬但最終簽署公開信，雲業務受益但自研模型可能受衝擊。"
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "未簽署公開信，但公有雲業務利益上應支持，可能因與 Anthropic 關係而保持觀望。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "SpaceX 股價若跌至 90 幾美元將買滿至目標 3-4% 部位，目前已在 110 幾元小幅加碼至 1.5%。",
+          "notable_quote": "模型越接近通用商品，那這些 AI 研發公司就不能賺這麼好的利潤了，那誰會獲益呢，就是平台層。"
+        }
+      },
+      {
         "guid": "54c8fc5a-e730-4cd6-8f93-37a7a2fb199d",
         "title": "EP322. 谷歌新模型不夠力、川普要查中國 AI、OpenAI 模型越獄 | M觀點",
         "published": "Thu, 23 Jul 2026 16:41:27 GMT",
@@ -2355,70 +2418,6 @@
           "notable_quote": "我覺得買對公司比買對價格重要。"
         },
         "shown_at": "2026-06-17T23:21:49Z"
-      },
-      {
-        "guid": "15035c9f-d784-41c8-adda-b03dcedac78d",
-        "title": "EP310. 蘋果 WWDC 重點、Anthropic 最強模型、SpaceX AI 衛星 | M觀點",
-        "published": "Thu, 11 Jun 2026 16:03:57 GMT",
-        "processed_at": "2026-06-12T04:36:48Z",
-        "digest": {
-          "summary_points": [
-            "蘋果在WWDC發表AFFM系列AI模型，包含30億參數手機端模型及200億參數混合專家模型，但整體評分僅70分，AI進展務實但仍落後對手。",
-            "Anthropic推出Claude Fable 5模型，在多項基準測試如SWE-bench Pro、GPQA、Human's Last Exam等全面大幅超越GPT-5.5和Claude Opus 4.8，但API價格為Opus兩倍，且30天數據保留政策可能阻礙企業採用。",
-            "SpaceX公布AI衛星AI1，配備150kW太陽能板與NVL72機櫃，計劃2027年部署，未來可能搭載輝達GPU、Google TPU或特斯拉自研晶片，加速太空資料中心落地。",
-            "美股與台股近期從高點回調約5-10%，主持人認為屬小型或中型修正，但不排除更深修正，建議投資者控管風險、避免重倉賭注。",
-            "蘋果Siri將整合AFFM模型及外部模型（如Gemini、ChatGPT），實現個人資料理解、螢幕感知與App操作，但該功能尚未正式推出。",
-            "中國開源模型目前落後美國前沿模型約半年，但未來因防蒸餾技術與算力限制，差距可能進一步擴大。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "AI策略務實但非領先，模型能力可能不及Gemini，Siri新功能尚待驗證，整體評分70分。"
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "SpaceX AI1衛星計劃使用NVL72機櫃（含GP300 GPU），帶動太空運算需求。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "未來可能將自研AI5/AI6晶片用於太空資料中心，能源效率為輝達Blackwell的三倍，單位成本僅十分之一。"
-            },
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "內部員工禁用Claude Fable 5，因30天數據保留政策影響企業機密安全。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "與蘋果合作提供模型訓練技術，並計劃與SpaceX合作在AI1衛星上部署TPU版本。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "模型開發優先智能眼鏡與廣告系統，而非前沿模型競爭，短期內未推出對抗Fable的模型。"
-            }
-          ],
-          "market_view": "美股及台股從高點回調超5%但未達10%，屬小型或中型修正，但仍有進一步下探可能，投資者需控管風險。",
-          "action_view": "主持人建議投資是馬拉松，避免重倉賭注，應控管風險以防看錯時重創資產。",
-          "notable_quote": "Cloud Fable 5是市面上第一名毫無疑問，全面點壓之前的模型。"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
       }
     ]
   },
@@ -4778,6 +4777,60 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73191023",
+        "title": "A fine mess for Waymo",
+        "published": "Mon, 27 Jul 2026 10:47:03 +0000",
+        "processed_at": "2026-07-27T10:55:35Z",
+        "digest": {
+          "summary_points": [
+            "NVIDIA 計劃投資 10 億美元，取得韓國 NAVER 4.5% 的股權，此投資與擴建 NAVER 的 AI 工廠有關，該工廠目標在 2028 年達到 200 百萬瓦，並使用 NVIDIA 的 Blackwell 和 Vera Rubin 平台。",
+            "聯合航空與達美航空去年曾進行初步合併談判，但最終未取得進展；若合併，兩家公司去年佔據航空業超過 90% 的利潤。",
+            "美股期指盤前上漲，原油價格下跌 8% 至每桶 83 美元，布蘭特原油下跌 9% 至每桶 89 美元，英國 FTSE 100 指數上漲 0.4%，德國 DAX 指數上漲 1.6%。",
+            "Fort Bio Sciences (FBRX) 股價大漲 39%，因 Arjen X 同意以每股 77 美元現金收購該公司，交易估值 22 億美元。"
+          ],
+          "tickers": [
+            {
+              "name": "NAVER",
+              "code": "",
+              "market": "KR",
+              "direction": "bullish",
+              "reason": "股價因 NVIDIA 投資 10 億美元取得 4.5% 股權而大漲約 10%。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "投資 10 億美元參與 NAVER 的 AI 工廠擴建。"
+            },
+            {
+              "name": "United Airlines",
+              "code": "UAL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "曾與達美航空探索合併但未成功。"
+            },
+            {
+              "name": "Delta Air Lines",
+              "code": "DAL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "收到聯合航空的合併提議但未進一步推進。"
+            },
+            {
+              "name": "Fort Bio Sciences",
+              "code": "FBRX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "被 Arjen X 以每股 77 美元收購，股價上漲 39%。"
+            }
+          ],
+          "market_view": "美股期指盤前上漲；原油價格下跌；歐洲指數上漲。",
+          "action_view": "",
+          "notable_quote": "NVIDIA announced plans to invest $1 billion for a 4.5 percent stake in the internet company."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73142508",
         "title": "Intel flexes on Q2 beat",
         "published": "Fri, 24 Jul 2026 10:10:26 +0000",
@@ -5306,58 +5359,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "Justin Prohit said lower gasoline prices and oil, and inflation's recent improvement could prove short lived."
-        },
-        "shown_at": "2026-07-14T22:51:49Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72965271",
-        "title": "Saronic hits the front line",
-        "published": "Tue, 14 Jul 2026 10:29:45 +0000",
-        "processed_at": "2026-07-14T15:08:54Z",
-        "digest": {
-          "summary_points": [
-            "SK海力士在連續兩日暴跌後出現劇烈反彈，週一暴跌15%，週二早盤再跌9%，但逢低買盤湧入，收盤持平。",
-            "三星電子從波段低點反彈，盤中一度上漲4.3%。",
-            "Chipotle Mexican Grill宣布將於7月16日在墨西哥蒙特雷開設首家門店，股價週一上漲3.9%。",
-            "Tower Semiconductor宣布投資30億美元擴張日本先進半導體製造產能，股價大漲18%。",
-            "美國6月預算赤字達1200億美元。",
-            "阿斯利康簽署15億美元許可協議，獲得一款肺癌藥物權利。",
-            "原油價格上漲2.7%至每桶80美元。",
-            "三項經濟數據焦點：上午8:30公布CPI。"
-          ],
-          "tickers": [
-            {
-              "name": "SK Hynix",
-              "code": "",
-              "market": "",
-              "direction": "neutral",
-              "reason": "股價在暴跌後因逢低買盤回穩，收盤持平。"
-            },
-            {
-              "name": "Samsung Electronics",
-              "code": "",
-              "market": "",
-              "direction": "neutral",
-              "reason": "從低點反彈，但無明確方向性看法。"
-            },
-            {
-              "name": "Chipotle Mexican Grill",
-              "code": "CMG",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布墨西哥首店開張，股價上漲，但主持人未發表觀點。"
-            },
-            {
-              "name": "Tower Semiconductor",
-              "code": "TSEM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布30億美元日本投資，股價大漲18%，但主持人未明確看多。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "SK Hynex fought off a massive morning sell-off to stabilize by the close."
         },
         "shown_at": "2026-07-14T22:51:49Z"
       }

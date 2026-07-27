@@ -625,6 +625,32 @@ def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
     return f"{tag}({'、'.join(facts)})"
 
 
+def _episode_age_tag(ep: dict) -> str:
+    """節目發布日 + 過舊提示。
+
+    2026-07-27 實信:財經M平方 EP.208 講「台股創單日最大漲點」「高檔震盪」,
+    而當天實際是普跌(上漲佔比 30.7%)——讀者會以為那是對今天盤勢的判讀。
+    這不是 bug(podcast 本來就有時間差,收錄取決於節目排程),但**沒標日期
+    就看不出它在講哪一天**。標出發布日;超過一週再加一句提示。
+    """
+    import datetime as _dt
+    raw = str(ep.get("published") or "").strip()
+    if not raw:
+        return ""
+    try:
+        d = _dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return ""
+    if d.tzinfo is not None:
+        d = d.astimezone(_dt.timezone(_dt.timedelta(hours=8)))
+    now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8)))
+    days = (now.date() - d.date()).days
+    stamp = d.strftime("%m/%d")
+    if days >= 7:
+        return f" ・{stamp} 錄製（約 {days} 天前，內容可能已非當前盤勢）"
+    return f" ・{stamp}"
+
+
 def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
                          max_episodes: int = 14, compact_points: Optional[int] = None) -> str:
     """「Podcast 重點」卡片:每集重點摘要 + 個股觀點與本報資料對照。
@@ -680,7 +706,8 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
             f"<div style='font-size:14px;font-weight:700;color:#0f172a;'>"
             f"{htmllib.escape(str(ep.get('show', '')))}"
             f"<span style='font-weight:400;color:#64748b;font-size:12px;'> ・ "
-            f"{htmllib.escape(str(ep.get('title', ''))[:60])}</span></div>"
+            f"{htmllib.escape(str(ep.get('title', ''))[:60])}"
+            f"{_episode_age_tag(ep)}</span></div>"
             f"<ul style='margin:8px 0;padding-left:20px;font-size:13px;color:#1f2937;"
             f"line-height:1.7;'>{points}</ul>"
             f"{ticker_rows}{extras}</div>")
@@ -1251,9 +1278,24 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{label} 消息</b>"
             f"<ul style='margin:4px 0;padding-left:20px;font-size:12px;color:#475569;"
             f"line-height:1.6;'>{items}</ul></div>")
+    # 標題由**實際有內容的項目**推出,不再寫死。
+    # 2026-07-27 實信:世足賽期已於 7/19 結束、整個區塊不出現,標題卻仍寫著
+    # 「世足 / MLB / NBA / 中職 / 網球」——讀者會去找一個不存在的區塊。
+    # 賽季性項目本來就會輪流缺席(NBA 休賽季、世足四年一次),寫死必然對不上。
+    present = []
+    for label, has in (("世足", bool(wc_results or wc_groups or wc_fixtures
+                                    or wc_knockout)),
+                       ("MLB", bool(standings.get("mlb") or mlb_tw
+                                    or (sports or {}).get("mlb_fixtures"))),
+                       ("NBA", bool(nba or nba_fav or nba_offseason)),
+                       ("中職", bool(cpbl or cpbl_scores or cpbl_fixtures)),
+                       ("網球", bool(tennis))):
+        if has:
+            present.append(label)
+    title = "體育快訊" + (f"（{' / '.join(present)}）" if present else "")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
         'background:#f0fdf4;border-left:5px solid #16a34a;border-radius:4px;">'
-        '體育快訊（世足 / MLB / NBA / 中職 / 網球）</h2>'
+        f'{title}</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
         'background:#ffffff;">' + "".join(blocks) + "</div>")

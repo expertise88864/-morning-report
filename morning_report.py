@@ -5425,6 +5425,36 @@ def _cnyes_company_label(d: dict) -> dict:
     return {"cnyes_stocks": codes}
 
 
+def _sector_query_terms(label: str) -> list:
+    """該類股查詢字串拆成「詞組清單」。每個詞組內以空白分隔者為 AND。
+
+    Google News 的 OR 查詢在實務上會漂移——2026-07-27 實信裡,
+    「汽車-全球」(特斯拉 OR 電動車 OR 車市 銷量)抓到了**航空業**的
+    「美國航空燃油成本飆升、Southwest 包船運油」,結果那段以「汽車｜全球」
+    為標題寫進信裡。分類錯了不是 LLM 的問題,是**素材一開始就進錯桶**。
+    """
+    q = OTHER_SECTOR_QUERIES.get(label) or ""
+    groups = []
+    for part in str(q).split(" OR "):
+        words = [w for w in part.strip().split() if w]
+        if words:
+            groups.append(words)
+    return groups
+
+
+def _sector_item_matches(label: str, title: str, summary: str) -> bool:
+    """文章是否真的屬於該類股(標題或摘要命中任一詞組)。
+
+    無法取得查詢詞時**回 True**(寧可放行也不要因設定缺漏而整個類股斷料);
+    這與「來源掛掉」不同,不記降級。
+    """
+    groups = _sector_query_terms(label)
+    if not groups:
+        return True
+    text = f"{title} {summary}".lower()
+    return any(all(w.lower() in text for w in g) for g in groups)
+
+
 def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
     """處理單一 feed 工作項 → 該 feed 的 news 清單。本體逐字沿用舊 fetch_news 兩迴圈,
     行為不變;抽出以便依 host 分組平行(P0-1)。同 host 由單一執行緒序列處理,
@@ -5582,6 +5612,11 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
             if pub_dt and pub_dt < cutoff:
                 continue
             if requires_date and pub_dt is None:
+                continue
+            # 類股桶:查詢詞漂移時把不相干的文章擋在桶外(見 _sector_item_matches)。
+            _sec = _other_sector_label_from_source(_src_s)
+            if _sec and not _sector_item_matches(
+                    _sec, entry.get("title", ""), entry.get("summary", "") or ""):
                 continue
             item = {
                 "source": source,

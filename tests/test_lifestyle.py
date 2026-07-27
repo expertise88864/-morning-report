@@ -65,7 +65,11 @@ def test_render_sports_worldcup_block():
         "news": {"世足": ["世界盃32強賽程出爐"]},
     }
     h = mr._render_sports_html(sports, htmllib)
-    assert "世足 / MLB" in h                      # 區塊標題已含世足
+    # 2026-07-27:標題改由**實際有內容的項目**推出,不再寫死。
+    # 實信裡世足賽期已於 7/19 結束、整個區塊不出現,標題卻仍寫著
+    # 「世足 / MLB / NBA / 中職 / 網球」——讀者會去找一個不存在的區塊。
+    assert "世足" in h, "有世足資料時標題必須列出它"
+    assert "MLB" not in h.split("</h2>")[0], "沒有 MLB 資料卻列進標題"
     assert "世界盃足球賽" in h
     assert "近期戰績" in h and "美國 4 : 1 巴拉圭" in h
     assert "今日/近日賽程" in h and "西班牙 vs 維德角" in h and "06/16 00:00" in h
@@ -3222,3 +3226,52 @@ def test_out_of_season_sport_skips_news_query(monkeypatch):
                                      _dt.time(8, 0), tzinfo=mr.TPE)
     asked = _sports_news_labels_queried(monkeypatch, in_season)
     assert any("World Cup" in q or "世界盃" in q for q in asked),         f"賽期內卻沒查世足新聞:{asked}"
+
+
+def test_sports_header_lists_only_present_sections():
+    """賽季性項目本來就會輪流缺席(NBA 休賽季、世足四年一次),標題寫死必然
+    對不上。2026-07-27 實信即為此:世足賽期已過、區塊不存在,標題仍列著它。"""
+    import html as _h
+    import render_utils as ru
+
+    # 自測踩到:cpbl 列需要 rank/gb 等欄位,少給會 KeyError
+    # ——用完整結構,免得對照組其實是「渲染失敗」而非「沒有該項目」。
+    row = {"rank": 1, "team": "味全龍", "wdl": "46-0-28",
+           "pct": "0.622", "gb": "-"}
+    only_cpbl = ru._render_sports_html({"cpbl": [row]}, _h)
+    head = only_cpbl.split("</h2>")[0]
+    assert "中職" in head
+    for absent in ("世足", "MLB", "NBA", "網球"):
+        assert absent not in head, f"沒有{absent}資料卻列進標題"
+
+    both = ru._render_sports_html(
+        {"cpbl": [row], "tennis": {"atp": [{"name": "x"}]}}, _h)
+    head2 = both.split("</h2>")[0]
+    assert "中職" in head2 and "網球" in head2
+
+    # 全空時整個區塊不出現(既有行為,不得回歸)
+    assert ru._render_sports_html({}, _h) == ""
+
+
+def test_podcast_card_shows_episode_date_and_flags_stale():
+    """2026-07-27 實信:財經M平方 EP.208 講「台股創單日最大漲點」「高檔震盪」,
+    而當天實際是普跌(上漲佔比 30.7%)——讀者會以為那是對今天盤勢的判讀。
+    這不是 bug(podcast 本來就有時間差),但**沒標日期就看不出它在講哪一天**。"""
+    import datetime as _dt
+    import render_utils as ru
+    TPE = _dt.timezone(_dt.timedelta(hours=8))
+    now = _dt.datetime.now(TPE)
+
+    fresh = ru._episode_age_tag(
+        {"published": (now - _dt.timedelta(days=2)).isoformat()})
+    assert fresh.strip().startswith("・") and "天前" not in fresh, \
+        f"近期節目不該掛過舊提示:{fresh}"
+
+    stale = ru._episode_age_tag(
+        {"published": (now - _dt.timedelta(days=9)).isoformat()})
+    assert "9 天前" in stale and "非當前盤勢" in stale
+
+    # 缺日期或壞日期一律不顯示(不得炸掉整張卡)
+    assert ru._episode_age_tag({}) == ""
+    assert ru._episode_age_tag({"published": "not-a-date"}) == ""
+    assert ru._episode_age_tag({"published": None}) == ""

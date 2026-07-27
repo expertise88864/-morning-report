@@ -1871,3 +1871,38 @@ def test_mops_override_survives_llm_punctuation_drift():
         events = mr.extract_structured_events(news=[], mops=mops, llm_events=llm)
         assert len(events) == 1, f"標點變體 {variant!r} 讓覆寫失效:{events}"
         assert events[0]["event_type"] == "general"
+
+
+def test_sector_bucket_rejects_articles_that_miss_the_query():
+    """2026-07-27 實信:「汽車-全球」(特斯拉 OR 電動車 OR 車市 銷量)抓到了
+    **航空業**的「美國航空燃油成本飆升、Southwest 包船運油」,結果那段以
+    「汽車｜全球」為標題寫進信裡。
+
+    分類錯不是 LLM 的問題,是**素材一開始就進錯桶** —— Google News 的 OR
+    查詢在實務上會漂移。在入桶前檢查文章是否真的命中該類股的查詢詞。
+    """
+    assert not mr._sector_item_matches(
+        "汽車-全球", "美國航空燃油成本飆升 Southwest 包船運油至西岸",
+        "燃油成本上升壓縮航空業獲利")
+    # 真正的汽車新聞照過
+    assert mr._sector_item_matches("汽車-全球", "特斯拉Q2交車量創高", "電動車市場")
+    assert mr._sector_item_matches("汽車-台股", "和泰車7月銷量出爐", "車市")
+    assert mr._sector_item_matches("航運-台股", "長榮陽明萬海貨櫃三雄走強", "SCFI")
+    assert mr._sector_item_matches("生技-台股", "藥華藥新藥解盲成功", "臨床試驗")
+
+
+def test_sector_filter_uses_and_within_a_group():
+    """查詢裡的「車市 銷量」是 AND 詞組,只命中一半不算數。"""
+    groups = mr._sector_query_terms("汽車-全球")
+    assert ["車市", "銷量"] in groups, groups
+    # 只命中「車市」不算數(自測第一版用了含「銷量」二字的反例,等於兩個都中)
+    assert not mr._sector_item_matches("汽車-全球", "某國車市概況", "文中未提數量")
+    # 兩個都中才算
+    assert mr._sector_item_matches("汽車-全球", "某國車市概況", "全年銷量成長")
+
+
+def test_unknown_sector_passes_through_rather_than_starving():
+    """取不到查詢詞時放行——寧可放行,也不要因設定缺漏讓整個類股斷料。
+    這與「來源掛掉」不同(那要記降級),故不記降級。"""
+    assert mr._sector_item_matches("不存在的類股", "任意標題", "任意內容")
+    assert mr._sector_query_terms("不存在的類股") == []

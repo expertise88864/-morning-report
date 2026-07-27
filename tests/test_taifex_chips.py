@@ -172,3 +172,38 @@ def test_cpbl_odds_normalise_before_rounding():
     assert sum(mr._normalized_two_way([55.4, 45.6])) == 100
     # 先取整再正規化會得到的錯誤結果
     assert mr._normalized_two_way([55.0, 46.0]) != (55, 45)
+
+
+def test_all_odds_paths_always_sum_to_100():
+    """2026-07-27 實信:三條賭盤路徑都是「先正規化、再**各自**四捨五入」,
+    浮點誤差加上 banker's rounding 讓合計變成 99% 或 101%,看起來像算錯。
+    實信同時出現「遊騎兵 42%・光芒 57%」(99%)與「釀酒人 55%・巨人 46%」(101%)。
+
+    批#52 只把中職那條從「未正規化」改成「正規化」,**取整方式沒改**
+    ——同一個病換個地方。這條測試窮舉兩方與三方,釘死「合計必然 100」。
+    """
+    import morning_report as mr
+    # 兩方:窮舉 0.01% 粒度(修正前有 16 組破功,含實信那兩組)
+    bad = [i / 10000 for i in range(1, 10000)
+           if sum(mr._pct_split([i / 10000, 1 - i / 10000])) != 100]
+    assert not bad, f"兩方合計不為 100 的比例:{bad[:5]}"
+    # 實信的那一組
+    assert sum(mr._pct_split([0.425, 0.575])) == 100
+
+    # 三方(足球含和局)
+    bad3 = [(i, j) for i in range(1, 99) for j in range(1, 100 - i)
+            if sum(mr._pct_split([i / 100, j / 100, (100 - i - j) / 100])) != 100]
+    assert not bad3, f"三方合計不為 100:{bad3[:5]}"
+
+    # 中職那條也要走同一套
+    assert sum(mr._normalized_two_way([55.4, 45.6])) == 100
+    assert sum(mr._normalized_two_way([42.5, 57.5])) == 100
+
+
+def test_pct_split_degrades_safely_on_bad_input():
+    """壞輸入回空清單,呼叫端據此跳過該場——寧可不顯示賭盤,不要造出假機率。"""
+    import morning_report as mr
+    assert mr._pct_split([]) == []
+    assert mr._pct_split([0, 0]) == []
+    assert mr._pct_split(["x", "y"]) == []
+    assert mr._pct_split(None) == []

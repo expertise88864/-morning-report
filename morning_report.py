@@ -15331,10 +15331,13 @@ def _attach_game_poly_odds(fixtures: list[dict], league: str,
                     continue
                 if len(prices) != 2 or not all(0.0 < p < 1.0 for p in prices):
                     continue
-                total = prices[0] + prices[1]
                 zh = [team_zh.get(o, o) for o in outcomes]
-                f["odds"] = (f"賭盤:{zh[0]} {prices[0] / total * 100:.0f}%・"
-                             f"{zh[1]} {prices[1] / total * 100:.0f}%(Polymarket)")
+                # 各自 :.0f 會在 .5 邊界讓合計變成 99/101(2026-07-27 實信)
+                pcts = _pct_split(prices)
+                if len(pcts) != 2:
+                    continue
+                f["odds"] = (f"賭盤:{zh[0]} {pcts[0]}%・"
+                             f"{zh[1]} {pcts[1]}%(Polymarket)")
                 break
         except Exception as e:
             print(f"[poly] {league} 單場 {slug} 略過: {e}", file=sys.stderr)
@@ -15342,6 +15345,36 @@ def _attach_game_poly_odds(fixtures: list[dict], league: str,
 
 def _attach_mlb_poly_odds(fixtures: list[dict], cap: int = 8) -> None:
     _attach_game_poly_odds(fixtures, "mlb", _POLY_MLB_ABBR_FIX, _POLY_MLB_ZH, cap)
+
+
+def _pct_split(values) -> list:
+    """一組正值 → **整數百分比,且保證加總為 100**(最大餘數法)。
+
+    2026-07-27 實信抓到:三條賭盤路徑都是「先正規化、再**各自**四捨五入」,
+    浮點誤差加上 banker's rounding 會讓 42.5/57.5 變成 42/57。實信同時出現
+    「遊騎兵 42%・光芒 57%」(99%)與「釀酒人 55%・巨人 46%」(101%),
+    看起來就像算錯。窮舉 10000 組正規化後的兩方比例,有 16 組會破功。
+
+    批#52 只把中職那條從「未正規化」改成「正規化」,但**取整方式沒改**
+    ——同一個病換個地方。這裡一次解決:先取整數部分,再把差額按小數餘數
+    由大到小補回,合計必然是 100。適用兩方與三方(足球含和局)。
+    """
+    try:
+        nums = [max(0.0, float(v)) for v in values]
+    except (TypeError, ValueError):
+        return []
+    total = sum(nums)
+    if total <= 0 or not nums:
+        return []
+    scaled = [v / total * 100.0 for v in nums]
+    floors = [int(v) for v in scaled]
+    remainder = 100 - sum(floors)
+    # 餘數大的先補;同餘數時取原值大的(穩定且偏向多數方)
+    order = sorted(range(len(scaled)),
+                   key=lambda i: (scaled[i] - floors[i], scaled[i]), reverse=True)
+    for i in order[:max(0, remainder)]:
+        floors[i] += 1
+    return floors
 
 
 def _normalized_two_way(probs) -> tuple:
@@ -15361,7 +15394,10 @@ def _normalized_two_way(probs) -> tuple:
     total = a + b
     if total <= 0:
         return probs[0], probs[1]
-    return round(a / total * 100), round(b / total * 100)
+    # 兩邊各自 round 會在 .5 邊界破功(見 _pct_split 說明);改用最大餘數法。
+    out = _pct_split([a, b])
+    return (out[0], out[1]) if len(out) == 2 else (round(a / total * 100),
+                                                   round(b / total * 100))
 
 
 def _attach_nba_poly_odds(fixtures: list[dict], cap: int = 10) -> None:
@@ -15685,8 +15721,11 @@ def _espn_match_odds_line(comp: dict, zh_by_side: dict) -> str:
             probs.append(("和", draw))
         if len(probs) < 2:
             return ""
-        total = sum(p for _, p in probs)
-        parts = "・".join(f"{name} {p / total * 100:.0f}%" for name, p in probs)
+        pcts = _pct_split([p for _, p in probs])
+        if len(pcts) != len(probs):
+            return ""
+        parts = "・".join(f"{name} {pc}%"
+                          for (name, _), pc in zip(probs, pcts))
         provider = str((odds.get("provider") or {}).get("name") or "").strip()
         # 含「和」=足球 90 分鐘三向市場(非晉級/奪冠盤)——明確標示,
         # 不可宣稱為冠軍機率(淘汰賽可能延長/PK;Codex review)

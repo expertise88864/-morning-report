@@ -4839,6 +4839,60 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73195573",
+        "title": "OpenAI agent went rogue for days",
+        "published": "Mon, 27 Jul 2026 16:27:03 +0000",
+        "processed_at": "2026-07-27T20:52:49Z",
+        "digest": {
+          "summary_points": [
+            "原油價格跌破每桶90美元，石油股隨之下跌。",
+            "D-Wave Quantum因宣布與AT&T達成協議，將利用其量子計算技術，股價上漲。",
+            "Rocket Lab獲得美國太空軍價值2.66億美元的多重發射合約，股價走高。",
+            "6月耐久財訂單月增0.3%，低於預期的1.7%，但被認為因AI驅動訂單和庫存積累而強勁。"
+          ],
+          "tickers": [
+            {
+              "name": "ExxonMobil",
+              "code": "XOM",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "油價下跌導致股價走低"
+            },
+            {
+              "name": "BP",
+              "code": "BP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "油價下跌導致股價走低"
+            },
+            {
+              "name": "Chevron",
+              "code": "CVX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "油價下跌導致股價走低"
+            },
+            {
+              "name": "D-Wave Quantum",
+              "code": "QBTS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "取得AT&T合作案"
+            },
+            {
+              "name": "Rocket Lab",
+              "code": "RKLB",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "取得大型太空軍合約"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The price action in oil this morning clearly reflects the market's desperation for positive news."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73191023",
         "title": "A fine mess for Waymo",
         "published": "Mon, 27 Jul 2026 10:47:03 +0000",
@@ -5378,51 +5432,6 @@
           "notable_quote": "Lucid confirms it is working with Alex Partners but reports of a possible bankruptcy are completely false."
         },
         "shown_at": "2026-07-15T22:54:24Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72969831",
-        "title": "Big banks fall despite upbeat earnings",
-        "published": "Tue, 14 Jul 2026 16:08:34 +0000",
-        "processed_at": "2026-07-14T20:39:58Z",
-        "digest": {
-          "summary_points": [
-            "大型銀行財報超出預期但市場賣出，因費用上升擔憂。",
-            "高盛因SpaceX IPO帶動投資銀行費用年增55%，成為例外表現強勁。",
-            "IBM意外警告第二季營收將低於預期，股價暴跌超過20%，拖累軟體與顧問類股。",
-            "6月消費者物價指數年增3.5%，低於預期的3.8%；核心CPI年增2.6%，低於預期的2.9%。",
-            "能源價格指數6月下跌5.7%，為通膨降溫主因。",
-            "Seeking Alpha分析師Justin Prohit認為汽油與油價下跌可能短暫，通膨仍是關鍵主題，聯準會政策收緊機率上升。",
-            "食品配送平台Wonder目標估值90億美元，計劃2027年前IPO，年營收目標50億美元。",
-            "Vanda Research指出散戶投資人開始獲利了結，賣出蘋果、特斯拉、輝達等強勢股，但整體交易活動仍處高檔。"
-          ],
-          "tickers": [
-            {
-              "name": "JPMorgan Chase",
-              "code": "JPM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "財報優於預期但市場賣出，因費用上升擔憂。"
-            },
-            {
-              "name": "Goldman Sachs",
-              "code": "GS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "受惠SpaceX IPO，投資銀行費用年增55%，營收大幅優於預期。"
-            },
-            {
-              "name": "IBM",
-              "code": "IBM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "意外警告第二季營收低於預期，股價暴跌超過20%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Justin Prohit said lower gasoline prices and oil, and inflation's recent improvement could prove short lived."
-        },
-        "shown_at": "2026-07-14T22:51:49Z"
       }
     ]
   },
@@ -5459,6 +5468,31 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "dac96181-5b1e-4549-a0f9-b491013fe961",
+        "title": "Branko Milanovic on What Comes After Globalization",
+        "published": "Mon, 27 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-27T21:03:35Z",
+        "digest": {
+          "summary_points": [
+            "當前全球經濟秩序正從新自由主義全球化轉向「國家市場自由主義」，國內維持新自由主義政策，但國際貿易轉為重商主義且零和博弈。",
+            "中國崛起導致西方國家低層與中產階級的全球經濟地位相對下降，助長民粹反彈，並使焦點轉向貿易保護主義而非國內再分配。",
+            "「大象圖」顯示全球不平等因中國成長而下降，但西方中產階級停滯，政治壓力導向指責中國而非處理國內不平等。",
+            "中國消費佔GDP比率偏低（約40-45%），原因包括薪資壓縮及國有企業保留盈餘用於策略性投資（如AI、太空、航空）。",
+            "美國出現新型精英階級（homo plautia），兼具高勞動收入與高資本收入，強化功績主義自我認知，形成難以撼動的上層階級。",
+            "中國精英階級的收入來源已從國有部門快速轉向私營部門，40年內重現英國資本主義階級150年的演變。",
+            "美國與歐洲大體延續川普時代對中國的政策，拜登繼續關稅與科技限制，反映兩黨對經濟民族主義的共識。",
+            "歐洲面臨結構性困境：切斷廉價俄羅斯能源、限制移民（儘管人口下降）、以及中國在電動車與製造業的競爭。",
+            "中國成長如今增加全球不平等，因其拉大與貧窮國家的差距；未來不平等下降取決於印度與非洲的成長。",
+            "對極端財富課稅被提議作為「教訓性」工具，用以傳達億萬富翁不能控制國家的訊息，但國內再分配政策仍被忽略。",
+            "習近平已清除共產黨內的富裕企業家，明確表示富人不得參與決策，這與江澤民時期的「三個代表」政策形成對比。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為全球化正在退潮，轉向國家市場自由主義，但未對大盤提出明確看法。",
+          "action_view": "",
+          "notable_quote": "What is happening now is that we take this entire international part, chop it off, and say, wait, these rules do not apply anymore. What applies now is essentially national sort of mercantilist policy."
+        }
+      },
       {
         "guid": "6027c695-2425-4510-bd41-b491014d8b7a",
         "title": "How Financial Advisors Can Grow During the Great Wealth Transfer (Sponsored Content)",
@@ -5755,34 +5789,6 @@
           "notable_quote": "If you are listening to this, and you think you're gonna make money, you probably aren't unless you actually have some reason to think that you're putting in work."
         },
         "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "8e5cf07d-8bf4-43a2-9703-b47b014a5166",
-        "title": "How a Major Grocery Store Chain Can Dramatically Lower the Cost of Food",
-        "published": "Fri, 03 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-03T10:24:24Z",
-        "digest": {
-          "summary_points": [
-            "Aldi 在時代廣場附近開設一家 25,000 平方英尺的新門市，目標是盈利，儘管曼哈頓租金高昂且物流複雜。",
-            "Aldi 使用展示就緒包裝和多重條碼來加速補貨與結帳，降低人力成本。",
-            "Aldi 每店僅約 2,000 個品項，遠低於一般超市的 40,000 個，專注自有品牌以掌控品質與供應鏈。",
-            "自有品牌產品讓 Aldi 能快速因應潮流（例如因食譜爆紅的菲達起司需求），直接與製造商合作。",
-            "Aldi 的電子貨架標籤（數位價格牌）每店每週節省 3-4 小時人力，且全美門市價格一致（曼哈頓與康乃狄克州相同）。",
-            "「恥辱通道」（一般商品區）每週引進約 100 種新品，引發社群媒體熱潮，Facebook 社團擁有 400 萬名成員。",
-            "Aldi 正將 90 多個自有品牌整合至約 23 個，並在包裝正面加上 Aldi logo 以提升品牌辨識度。",
-            "牛肉價格處於 70 年高點，促使部分消費者改用雞肉或火雞肉替代，但整體蛋白質需求仍強勁。",
-            "減肥藥 GLP-1 帶動蛋白質產品銷售（蛋白質貝果、爆米花、氣泡水），同時纖維趨勢（豆類、鷹嘴豆）也正在崛起。",
-            "掃描技術創新：Aldi 率先採用雙面掃描器與多重條碼設計，實現極高的每分鐘掃描件數效率。",
-            "自助結帳僅設置於約三分之一門市；時代廣場新店僅使用人工收銀檯，理由是員工結帳速度更快。",
-            "Aldi 直接與農民合作（例如葡萄），挑選特定品種以確保最佳風味與貨架壽命，而非在公開市場採購。",
-            "Aldi 曼哈頓的供應鏈採用較短貨車，每趟需兩名司機以應付狹窄街道。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-03T23:00:25Z"
       }
     ]
   },

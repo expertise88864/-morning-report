@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 38,
-  "last_seen": "2026-07-27",
-  "latest_title": "美軍彈藥見底？范斯憂川普升級伊朗戰爭 - 自由時報"
+  "days": 39,
+  "last_seen": "2026-07-28",
+  "latest_title": "Ukraine, Russia Black Sea attacks push wheat prices to 2-year high"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 24,
-  "last_seen": "2026-07-25",
-  "latest_title": "美參院制裁俄法案納入伊朗 歐盟制裁五伊法官 - 新唐人電視台"
+  "days": 25,
+  "last_seen": "2026-07-28",
+  "latest_title": "貝森特控中竊AI模型揚言制裁 北京批「典型AI霸權主義」 - 世界新聞網"
  },
  "litigation:2882": {
   "first_seen": "2026-07-25",
@@ -28,5 +28,11 @@
   "days": 1,
   "last_seen": "2026-07-27",
   "latest_title": "Meta出招了！宣布FB將推「免費黑勾勾」真人驗證 制裁AI假帳號 - Yahoo新聞"
+ },
+ "export_controls:ASML": {
+  "first_seen": "2026-07-28",
+  "days": 1,
+  "last_seen": "2026-07-28",
+  "latest_title": "中國DUV量產傳聞重擊ASML 美光、SK海力士ADR、SanDisk全面下殺"
  }
 }

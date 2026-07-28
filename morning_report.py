@@ -5628,6 +5628,11 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                 "source_name": source_name,
                 "source_url": source_url,
             }
+            # 追蹤查詢的結果掛上發起線索的實體,讓確定性路徑也接得回去
+            # (實體來自帳本、由 Python 產生,不是外部文字)。
+            if w.get("followup_entity"):
+                item["company_label"] = str(w["followup_entity"])
+                item["followup_key"] = str(w.get("followup_key") or "")
             if world_cat:
                 item["world_cat"] = world_cat
             out.append(_mark_news_date_quality(item, pub_dt))
@@ -5662,9 +5667,18 @@ def fetch_news(followups: Optional[list] = None) -> list[dict]:
     # 並開始降級,最後沉寂——**不是因為事情停了,是因為我們沒去找**。
     # when=3d:追蹤是為了補「昨天漏掉的」,窗口比一般 feed 略寬。
     import story_ledger as _sl_mod
-    for _key, _q in (followups or [])[:_sl_mod.FOLLOWUP_MAX_QUERIES]:
+    for _fu in (followups or [])[:_sl_mod.FOLLOWUP_MAX_QUERIES]:
+        # r1(Codex,P1):**結果必須接得回發起查詢的那條線索**。
+        # 原本只留查詢文字、丟掉 story key 與實體 → 抓回來的文章在
+        # extract_structured_events 只能從 entity/code/company_label 推 entity,
+        # 而 RSS 項目沒有那些欄位 → 產生一條**無主的新線索**。
+        # 於是 LLM 抽取關掉/無金鑰/時間預算不足時,追蹤查詢等於白做:
+        # 拿回來的新聞推不動它原本要追的那條線索。
+        _key, _q = _fu[0], _fu[1]
+        _ent = _fu[2] if len(_fu) > 2 else ""
         work.append({"idx": len(work), "source": f"追蹤:{_q}",
-                     "url": _gnews_rss(_q, when="3d"), "kind": "rss"})
+                     "url": _gnews_rss(_q, when="3d"), "kind": "rss",
+                     "followup_entity": _ent, "followup_key": _key})
     merged: dict[int, list[dict]] = {}
     if NEWS_FETCH_WORKERS <= 1:
         # 逃生門:完全退回舊序列行為——依「原始 work 順序」逐項處理(非 host 分組順序),
@@ -8758,6 +8772,27 @@ def _extractor_title(item: dict) -> str:
     return _external_text(item.get("title") or item.get("headline"), 180)
 
 
+def _safe_source_url(raw) -> str:
+    """外部連結 → 只允許 http/https 的乾淨 URL,其餘回空字串。
+
+    r1(Codex,P2):渲染端原本只檢查 `startswith("http")` —— `httpx://`、
+    `httpjavascript:` 都會通過並變成可點的 href,可觸發外部協定處理程式。
+    改在**存進 state 之前**就篩掉,渲染端另有第二道(縱深防禦):
+    這個值會跨日回流,越早收斂越好。
+    """
+    from urllib.parse import urlsplit
+    u = str(raw or "").strip()
+    if not u or len(u) > 500:
+        return ""
+    try:
+        parts = urlsplit(u)
+    except ValueError:
+        return ""
+    if parts.scheme.lower() not in ("http", "https") or not parts.netloc:
+        return ""
+    return u
+
+
 def extract_structured_events(news: list[dict],
                               mops: list[dict],
                               llm_events: Optional[list[dict]] = None,
@@ -8793,6 +8828,14 @@ def extract_structured_events(news: list[dict],
             "title": title[:180],
             "published": published.isoformat(),
             "date_missing": parsed_published is None,
+            # r1(Codex,P1)**確認且全滅**:批#57 的軌跡要存原文連結,但
+            # `link` 從未被保留到事件裡 → 生產帳本 **539/539 個軌跡點的 `l` 都是空的**,
+            # 「可點回原文」這個賣點從第一天就沒生效。
+            # 我的測試直接餵 link 給 update_ledger,繞過了這個正規化步驟
+            # ——**測試驗的是我蓋的東西,不是生產送進來的東西**(本專案第四次)。
+            # 只收 http(s),其餘視同沒有連結(存進 state 會跨日回流,不可信任)。
+            "link": _safe_source_url(item.get("link")),
+            "source_name": str(item.get("source_name") or "")[:40],
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
             "lifecycle": item.get("lifecycle"),

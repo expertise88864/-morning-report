@@ -144,8 +144,10 @@ def test_followup_requires_an_entity_anchor():
          "event_type": "general", "state": "peak", "headline": "某模糊標題",
          "updates": 2, "last_update": "2026-07-27"},
     ]
-    qs = [q for _, q in sl.followup_queries(ledger, today="2026-07-27")]
-    assert qs == ["鴻海 訂單"], qs
+    out = sl.followup_queries(ledger, today="2026-07-27")
+    assert [q for _, q, _e in out] == ["鴻海 訂單"], out
+    # r1(Codex,P1):必須連**實體**一起回傳,結果才接得回這條線索
+    assert [e for _, _q, e in out] == ["鴻海"], out
 
 
 def test_followup_uses_event_type_not_sliced_headline():
@@ -173,7 +175,7 @@ def test_followup_only_tracks_live_stories_and_dedupes():
          "event_type": "earnings", "state": "brewing", "updates": 1,
          "last_update": "2026-07-27", "headline": "z"},     # 醞釀中不追
     ]
-    qs = [q for _, q in sl.followup_queries(ledger, today="2026-07-27")]
+    qs = [q for _, q, _e in sl.followup_queries(ledger, today="2026-07-27")]
     assert qs == ["台積電 財報"], qs
 
 
@@ -206,3 +208,100 @@ def test_fetch_news_accepts_followups_without_network(monkeypatch):
     seen.clear()
     mr.fetch_news()
     assert not [w for w in seen if str(w["source"]).startswith("追蹤:")]
+
+
+# ===== r1(Codex 補審)確認的五條 =====
+
+def test_link_survives_the_production_normaliser():
+    """r1(Codex,P1)**確認且全滅**:批#57 的軌跡要存原文連結,但 `link` 從未被
+    保留到 extract_structured_events 產生的事件裡 → 生產帳本
+    **539/539 個軌跡點的 `l` 都是空的**,「可點回原文」從第一天就沒生效。
+
+    我原本的測試直接餵 link 給 update_ledger,**繞過了會把它丟掉的正規化步驟**
+    ——測試驗的是我蓋的東西,不是生產送進來的東西(本專案第四次)。
+    這條走真正的生產路徑。
+    """
+    import morning_report as mr
+    events = mr.extract_structured_events(news=[{
+        "source": "Google:鴻海", "title": "鴻海收購案有新進展", "summary": "x",
+        "link": "https://example.com/a", "source_name": "某報",
+        "company_label": "2317",
+        "published": "2026-07-27T02:00:00+00:00"}], mops=[])
+    assert events and events[0].get("link") == "https://example.com/a", \
+        f"link 沒被保留:{events}"
+
+    led = sl.update_ledger([], events, "2026-07-27", {"2317": "鴻海"})
+    assert led[0]["timeline"][0]["l"] == "https://example.com/a", \
+        "軌跡點的連結是空的 —— 讀者無法回去讀原文"
+
+
+def test_only_http_urls_reach_the_ledger():
+    """連結會跨日回流進 state 與 HTML,越早收斂越好。
+    r1(Codex,P2):`startswith("http")` 會放行 `httpx://`、`httpjavascript:`。"""
+    import morning_report as mr
+    for bad in ("httpx://evil", "httpjavascript:alert(1)", "javascript:alert(1)",
+                "ftp://x/y", "http://", "", None):
+        assert mr._safe_source_url(bad) == "", f"{bad!r} 被放行"
+    for good in ("https://a.com/1", "http://a.com/1"):
+        assert mr._safe_source_url(good) == good
+
+
+def test_render_layer_also_rejects_deceptive_schemes():
+    """縱深防禦:舊資料與手動編輯的 state 都可能帶著不合格的連結回流。"""
+    for bad in ("httpx://evil", "httpjavascript:alert(1)", "javascript:x"):
+        led = [{"state": "peak", "entity_name": "X", "headline": "h",
+                "updates": 2, "first_seen": "2026-07-20",
+                "timeline": [{"d": "2026-07-20", "t": "a", "l": bad, "s": "s",
+                              "f": []},
+                             {"d": "2026-07-27", "t": "b", "l": bad, "s": "s",
+                              "f": []}]}]
+        html = ru._render_story_timeline_html(led, _html)
+        assert "<a href=" not in html, f"{bad!r} 變成可點連結"
+    assert not ru._is_web_url("httpx://evil")
+    assert ru._is_web_url("https://a.com")
+
+
+def test_followup_results_carry_the_target_entity(monkeypatch):
+    """r1(Codex,P1):結果必須接得回發起查詢的那條線索。
+    原本只留查詢文字、丟掉 story key 與實體 → 抓回來的文章在
+    extract_structured_events 只能從 entity/code/company_label 推 entity,
+    而 RSS 項目沒有那些欄位 → 產生一條**無主的新線索**。
+    於是 LLM 抽取關掉/無金鑰/時間預算不足時,追蹤查詢等於白做。"""
+    import morning_report as mr
+    seen = []
+
+    def _fake(w, cutoff):
+        seen.append(w)
+        return []
+
+    monkeypatch.setattr(mr, "_process_feed_item", _fake)
+    monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 1)
+    mr.fetch_news([("k1", "鴻海 訂單", "鴻海")])
+    tracked = [w for w in seen if str(w["source"]).startswith("追蹤:")][0]
+    assert tracked["followup_entity"] == "鴻海"
+    assert tracked["followup_key"] == "k1"
+
+
+def test_same_batch_authoritative_replacement_also_moves_the_timeline():
+    """r1(Codex,P2):同一次 update_ledger 裡同 key 的兩則事件,後一則權威到足以
+    取代前一則時,原本 headline/last_delta 換了、**當天的軌跡點卻還指向第一則**
+    ——「先成立、後取消」會顯示成自相矛盾的軌跡。"""
+    base = {"entity": "2317", "entity_name": "鴻海", "event_type": "orders",
+            "published": "2026-07-27T01:00:00+00:00"}
+    led = sl.update_ledger([], [dict(base, title="鴻海收購案成立",
+                                     link="https://a/1", source_name="某媒體",
+                                     source_grade="C", surprise_score=0.6)],
+                           "2026-07-27", {"2317": "鴻海"})
+    led = sl.update_ledger(led, [
+        dict(base, title="鴻海收購案成立", link="https://a/1",
+             source_name="某媒體", source_grade="C", surprise_score=0.6,
+             direction=1),
+        dict(base, title="鴻海公告收購案取消", link="https://a/2",
+             source_name="MOPS", source_grade="A", surprise_score=0.8,
+             direction=-1)], "2026-07-27", {"2317": "鴻海"})
+    story = led[0]
+    today_pt = [e for e in story["timeline"] if e["d"] == "2026-07-27"]
+    assert len(today_pt) == 1
+    assert "取消" in today_pt[0]["t"], "軌跡點沒跟著換 —— 與 headline 自相矛盾"
+    assert today_pt[0]["l"] == "https://a/2"
+    assert "取消" in story["headline"]

@@ -3244,10 +3244,20 @@ def test_sports_header_lists_only_present_sections():
     for absent in ("世足", "MLB", "NBA", "網球"):
         assert absent not in head, f"沒有{absent}資料卻列進標題"
 
+    # r1(Codex,P2):**我原本用 {"tennis": {"atp": [...]}}——那個形狀不會產生
+    # 任何網球區塊**,等於把「標題列了但區塊沒出」這個缺陷釘成規格。
+    # 標題現在由已渲染的區塊推出,所以測試也必須用會真正產生區塊的資料。
     both = ru._render_sports_html(
-        {"cpbl": [row], "tennis": {"atp": [{"name": "x"}]}}, _h)
+        {"cpbl": [row],
+         "standings": {"美聯": [{"rank": 1, "team": "光芒",
+                                 "record": "62-43", "pct": 0.590}]}}, _h)
     head2 = both.split("</h2>")[0]
-    assert "中職" in head2 and "網球" in head2
+    assert "中職" in head2 and "MLB" in head2
+
+    # 生產環境的空網球形狀不得被列進標題(這正是實信裡世足那個問題的同型)
+    empty_tennis = ru._render_sports_html(
+        {"cpbl": [row], "tennis": {"tournaments": [], "results": []}}, _h)
+    assert "網球" not in empty_tennis.split("</h2>")[0]
 
     # 全空時整個區塊不出現(既有行為,不得回歸)
     assert ru._render_sports_html({}, _h) == ""

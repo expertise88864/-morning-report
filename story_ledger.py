@@ -783,6 +783,17 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                         ev.get("lifecycle") or story.get("lifecycle") or "")
                     story["source_grade"] = str(
                         ev.get("source_grade") or story.get("source_grade") or "")
+                # r1(Codex,P2):**這條分支換了 headline 卻沒換軌跡點**。
+                # 同一次 update_ledger 裡同 key 的兩則事件(上游的 cluster key 含
+                # direction 而 story key 不含,所以這是允許的),後一則權威到足以
+                # 取代前一則時,headline/last_delta 描述的是第二則,而當天的軌跡點
+                # 仍指向第一則 —— 「先成立、後取消」會顯示成自相矛盾的軌跡。
+                # _push_timeline 本身就會替換同日的點,直接呼叫即可。
+                _push_timeline(story, _timeline_entry(
+                    ev, today,
+                    _material_facts(title, str(story.get("entity") or ""),
+                                    str(story.get("entity_name") or "").split(),
+                                    str(ev.get("published") or ""))))
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)
@@ -991,7 +1002,8 @@ def followup_queries(ledger: list[dict], limit: int = FOLLOWUP_MAX_QUERIES,
         if q in seen_q:
             continue          # 同公司同類型只查一次
         seen_q.add(q)
-        picked.append((str(s.get("key") or ""), q))
+        # r1(Codex,P1):**同時回傳實體**,呼叫端才能把抓回來的文章接回這條線索。
+        picked.append((str(s.get("key") or ""), q, ent))
         if len(picked) >= limit:
             break
     return picked

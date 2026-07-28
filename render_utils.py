@@ -1282,16 +1282,14 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     # 2026-07-27 實信:世足賽期已於 7/19 結束、整個區塊不出現,標題卻仍寫著
     # 「世足 / MLB / NBA / 中職 / 網球」——讀者會去找一個不存在的區塊。
     # 賽季性項目本來就會輪流缺席(NBA 休賽季、世足四年一次),寫死必然對不上。
-    present = []
-    for label, has in (("世足", bool(wc_results or wc_groups or wc_fixtures
-                                    or wc_knockout)),
-                       ("MLB", bool(standings.get("mlb") or mlb_tw
-                                    or (sports or {}).get("mlb_fixtures"))),
-                       ("NBA", bool(nba or nba_fav or nba_offseason)),
-                       ("中職", bool(cpbl or cpbl_scores or cpbl_fixtures)),
-                       ("網球", bool(tennis))):
-        if has:
-            present.append(label)
+    # r1(Codex,P2)**確認**:我上一批用「資料存不存在」當判斷,但那與 blocks
+    # 實際渲染的條件不同——tennis 正常回的是 {"tournaments":[],"results":[]},
+    # `bool(tennis)` 為真卻不會渲染任何網球區塊;MLB 戰績表的鍵是「美聯」不是
+    # 「mlb」,只有戰績可用時反而不會列進標題。**而我的測試用
+    # {"tennis":{"atp":[...]}} 這種不會產生區塊的形狀,等於把缺陷釘成規格。**
+    # 正解:標題直接由**已經渲染出來的區塊**推出,兩者不可能再分歧。
+    present = [label for label, marker in _SPORTS_SECTION_MARKERS
+               if any(marker in b for b in blocks)]
     title = "體育快訊" + (f"（{' / '.join(present)}）" if present else "")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
@@ -1299,6 +1297,28 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         f'{title}</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 16px;'
         'background:#ffffff;">' + "".join(blocks) + "</div>")
+
+
+#: 體育各項目在**已渲染區塊**裡的辨識字串。標題由區塊推出,兩者不可能分歧
+#: (r1 Codex,P2:先前用「資料存不存在」判斷,與實際渲染條件不同)。
+#: 順序即標題顯示順序。
+_SPORTS_SECTION_MARKERS = (
+    ("世足", "世足"),
+    ("MLB", "MLB"),
+    ("NBA", "NBA"),
+    ("中職", "中華職棒"),
+    ("網球", "網球"),
+)
+
+
+def _is_web_url(raw) -> str:
+    """只有 http/https 才算可點的網址(scheme 需完全相等,不是 startswith)。"""
+    from urllib.parse import urlsplit
+    try:
+        parts = urlsplit(str(raw or "").strip())
+    except ValueError:
+        return False
+    return parts.scheme.lower() in ("http", "https") and bool(parts.netloc)
 
 
 def _render_story_timeline_html(ledger, htmllib, limit: int = 6) -> str:
@@ -1336,8 +1356,13 @@ def _render_story_timeline_html(ledger, htmllib, limit: int = 6) -> str:
             facts = "・".join(_fmt_fact(f) for f in (e.get("f") or [])[:2])
             label = f"{title}" + (f"<b style='color:#b45309;'> {htmllib.escape(facts)}</b>"
                                   if facts else "")
+            # r1(Codex,P2):`startswith("http")` 會放行 `httpx://`、
+            # `httpjavascript:` 等以 http 開頭的自訂協定 → 變成可點的 href、
+            # 可觸發外部協定處理程式。改為**解析後比對 scheme 完全相等**。
+            # 存入 state 前已篩過一次(_safe_source_url),這裡是縱深防禦:
+            # 舊資料與手動編輯的 state 都可能帶著不合格的連結回流。
             body = (f"<a href='{htmllib.escape(link)}' style='color:#1d4ed8;"
-                    f"text-decoration:none;'>{label}</a>" if link.startswith("http")
+                    f"text-decoration:none;'>{label}</a>" if _is_web_url(link)
                     else label)
             steps.append(
                 f"<li style='margin:3px 0;'><span style='color:#64748b;"

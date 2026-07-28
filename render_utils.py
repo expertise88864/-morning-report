@@ -1288,8 +1288,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     # 「mlb」,只有戰績可用時反而不會列進標題。**而我的測試用
     # {"tennis":{"atp":[...]}} 這種不會產生區塊的形狀,等於把缺陷釘成規格。**
     # 正解:標題直接由**已經渲染出來的區塊**推出,兩者不可能再分歧。
-    present = [label for label, marker in _SPORTS_SECTION_MARKERS
-               if any(marker in b for b in blocks)]
+    present = [label for label, marker, news_key in _SPORTS_SECTION_MARKERS
+               if any(marker in b for b in blocks) or (news.get(news_key) or [])]
     title = "體育快訊" + (f"（{' / '.join(present)}）" if present else "")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
@@ -1306,12 +1306,16 @@ def _render_sports_html(sports: dict, htmllib) -> str:
 #: r2(Codex,P2):世足區塊寫的是「世界盃足球賽」而我找的是「世足」——
 #: 只有世足資料時區塊會出現、標題卻漏掉它,正好是這條修正要防的反向落差。
 #: **辨識字串必須逐字對應區塊實際輸出的標題**,不能憑印象寫簡稱。
+#: (標題顯示名, 結構化區塊的辨識字串, 新聞區塊的字典鍵)
+#: r3(Codex,P2):只掃結構化區塊的字串不夠——世足在**沒有結構化賽果、只有新聞**
+#: 時會渲染出「世足 消息」區塊,而辨識字串是「世界盃足球賽」→ 區塊出現、標題卻
+#: 漏掉它。新聞區塊的標籤直接來自 news 字典的鍵,拿鍵去判斷比掃 HTML 可靠。
 _SPORTS_SECTION_MARKERS = (
-    ("世足", "世界盃足球賽"),
-    ("MLB", "MLB"),
-    ("NBA", "NBA"),
-    ("中職", "中華職棒"),
-    ("網球", "網球"),
+    ("世足", "世界盃足球賽", "世足"),
+    ("MLB", "MLB", "MLB"),
+    ("NBA", "NBA", "NBA"),
+    ("中職", "中華職棒", "中華職棒"),
+    ("網球", "網球", "網球"),
 )
 
 

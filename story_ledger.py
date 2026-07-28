@@ -133,13 +133,6 @@ def story_key_for_event(ev: dict) -> str:
     先前我為了避開這點而不分桶,但兩害相權:**把兩件不同的事寫成同一條的續報是
     事實錯誤,把一條長線切兩段只是連續性變差**。錯誤輸出比退化嚴重,故取一致性。
     """
-    # r2(Codex,P1):主動追蹤抓回來的文章**直接帶著發起查詢的那條線索的 key**。
-    # 否則 event_type 由標題推導(常是 general 且帶標題 digest),算出來的 key
-    # 與原線索不同,照樣開出新線索——主動追蹤等於白做。
-    # 這個值由本模組產生的 key 經由本系統的抓取工作項傳遞,不是外部文字。
-    followed = str(ev.get("followup_key") or "").strip()
-    if followed.startswith(("e:", "h:", "cluster:")):
-        return followed
     try:
         import news_events as _ne
         entity, lineage = _ne._event_timeline_key(ev)
@@ -679,6 +672,29 @@ def prune_timeline(story: dict) -> None:
         story["timeline"] = [tl[0], tl[-1]]
 
 
+def _resolve_story_key(ev: dict, by_key: dict) -> str:
+    """事件歸屬哪條線索。主動追蹤帶回來的 `followup_key` 只是**提示**。
+
+    r2(Codex,P1):追蹤查詢直接帶著發起它的線索 key,否則 event_type 由標題推導
+    (常是 general 且帶標題 digest),算出來的 key 與原線索不同,主動追蹤等於白做。
+
+    r3(Codex,P1)**但無條件採用是危險的**:Google News 查詢本來就會撈回不相干或
+    只是「沾到同一家公司」的文章,而那些文章會被強制掛進該線索、**取代它的
+    headline 與軌跡點、把它標成今日有更新**,還影響公司催化評分。
+    (這正是我自己列進 review focus 的風險,而它成真了。)
+
+    故採用前必須通過既有的主體比對——那是本模組原本就用來判斷「這則是不是這條
+    線索的續報」的判準,直接重用,不另造一套會走樣的。不通過就退回正常推導,
+    讓它自己去開一條線索(那是誠實的:它確實是另一件事)。
+    """
+    followed = str(ev.get("followup_key") or "").strip()
+    if followed.startswith(("e:", "h:", "cluster:")):
+        target = by_key.get(followed)
+        if target and _is_same_subject(target, ev):
+            return followed
+    return story_key_for_event(ev)
+
+
 def update_ledger(ledger: list[dict], events: list[dict], today: str,
                   name_map: dict | None = None) -> list[dict]:
     """把今日事件併入帳本,回傳更新後的帳本(不改動輸入)。
@@ -721,7 +737,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         title = str(ev.get("title") or "").strip()
         if not title:
             continue
-        key = story_key_for_event(ev)
+        key = _resolve_story_key(ev, by_key)
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
         if story is None:

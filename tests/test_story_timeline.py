@@ -330,7 +330,10 @@ def test_followup_article_reconnects_to_the_originating_story():
         "summary": "x", "link": "https://a/9", "source_name": "某報",
         "company_label": ent, "followup_key": key,
         "published": "2026-07-27T02:00:00+00:00"}], mops=[])
-    assert sl.story_key_for_event(events[0]) == KEY, "算出來的 key 與原線索不同"
+    # r3(Codex,P1):採用點從 story_key_for_event 移到 update_ledger ——
+    # 只有在那裡才拿得到目標線索,能先比對主體再決定要不要採用這個提示。
+    # 單看事件本身推導出來的 key 仍是 general(那正是要靠提示補救的原因)。
+    assert sl.story_key_for_event(events[0]) != KEY
 
     out = sl.update_ledger(led, events, "2026-07-27", {"2317": "鴻海"})
     assert len(out) == 1, f"開出了新線索而不是接回原本那條:{[s['key'] for s in out]}"
@@ -364,3 +367,63 @@ def test_followup_log_line_does_not_lie(monkeypatch, capsys):
     fus = [("e:2317|l:orders", "鴻海 訂單", "2317")]
     line = "[story] 主動追蹤查詢 " + "、".join(f[1] for f in fus)
     assert line.endswith("鴻海 訂單")
+
+
+def test_followup_key_is_only_a_hint_not_a_forced_attribution():
+    """r3(Codex,P1)**我自己列進 review focus 的風險成真了**:
+    Google News 查詢本來就會撈回不相干或只是「沾到同一家公司」的文章。
+    無條件採用 followup_key 會讓那些文章被強制掛進該線索、**取代它的 headline
+    與軌跡點、把它標成今日有更新**,還影響公司催化評分。
+
+    採用前必須通過既有的主體比對(本模組原本就用來判斷「這則是不是續報」的
+    判準,直接重用不另造一套)。不通過就退回正常推導,讓它自己開一條線索
+    ——那是誠實的:它確實是另一件事。
+    """
+    import morning_report as mr
+    KEY = "e:2317|l:orders"
+
+    def _ledger():
+        return [{"key": KEY, "entity": "2317", "entity_name": "鴻海",
+                 "event_type": "orders", "state": "peak",
+                 "headline": "鴻海洽談收購A公司", "updates": 3,
+                 "last_update": "2026-07-26", "last_delta": "鴻海洽談收購A公司",
+                 "timeline": [{"d": "2026-07-26", "t": "鴻海洽談收購A公司",
+                               "l": "https://a/1", "s": "某報", "f": []}]}]
+
+    def _run(title):
+        events = mr.extract_structured_events(news=[{
+            "source": "追蹤:鴻海 訂單", "title": title, "summary": "x",
+            "link": "https://a/9", "source_name": "某報",
+            "company_label": "2317", "followup_key": KEY,
+            "published": "2026-07-27T02:00:00+00:00"}], mops=[])
+        out = sl.update_ledger(_ledger(), events, "2026-07-27", {"2317": "鴻海"})
+        target = [s for s in out if s["key"] == KEY][0]
+        return len(out), target["headline"]
+
+    # 相關的續報 → 接回原線索
+    n, head = _run("鴻海收購A公司案新進展 金額200億")
+    assert n == 1 and "新進展" in head
+
+    # 只是沾到同一家公司的雜訊 → **不得**污染原線索
+    n2, head2 = _run("鴻海尾牙抽獎最大獎百萬")
+    assert n2 == 2, "不相干的文章被強制掛進線索"
+    assert head2 == "鴻海洽談收購A公司", f"原線索 headline 被雜訊取代:{head2}"
+
+
+def test_sports_header_covers_news_only_blocks():
+    """r3(Codex,P2):世足在**沒有結構化賽果、只有新聞**時會渲染「世足 消息」,
+    而辨識字串是「世界盃足球賽」→ 區塊出現、標題卻漏掉它。
+    新聞區塊的標籤直接來自 news 字典的鍵,拿鍵判斷比掃 HTML 可靠。"""
+    import html as _h2
+    only_news = ru._render_sports_html(
+        {"news": {"世足": [{"title": "世足新聞", "link": "https://a"}]}}, _h2)
+    assert "世足" in only_news.split("</h2>")[0], "只有新聞時標題漏了世足"
+    assert "世足 消息" in only_news, "區塊本身應該有出現"
+
+    row = {"rank": 1, "team": "味全龍", "wdl": "46-0-28",
+           "pct": "0.622", "gb": "-"}
+    both = ru._render_sports_html(
+        {"cpbl": [row],
+         "news": {"網球": [{"title": "網球新聞", "link": "https://a"}]}}, _h2)
+    head = both.split("</h2>")[0]
+    assert "中職" in head and "網球" in head

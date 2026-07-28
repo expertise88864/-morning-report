@@ -218,10 +218,10 @@ def test_gazette_only_policy_still_activates_deepdive_section():
     q = _empty_quotes(GAZETTE_RECORDS=recs, TW_DAILY_INTELLIGENCE={"policy": []})
     prompt = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
 
-    assert "十一之二、重大政策深度解析" in prompt, "公報獨有政策時整段消失"
+    assert "十之二、重大政策深度解析" in prompt, "公報獨有政策時整段消失"
     assert "行政院公報" in prompt
     # 啟用條件必須明確含公報,否則 LLM 會照舊條件略過
-    head = prompt[prompt.index("十一之二、重大政策深度解析"):][:120]
+    head = prompt[prompt.index("十之二、重大政策深度解析"):][:120]
     assert "公報" in head, f"段落啟用條件未涵蓋公報:{head}"
 
 
@@ -230,7 +230,7 @@ def test_gazette_absent_and_no_policy_omits_section():
     from tests.test_data_validation import _empty_quotes
     q = _empty_quotes(GAZETTE_RECORDS=[], TW_DAILY_INTELLIGENCE={"policy": []})
     prompt = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "十一之二、重大政策深度解析" not in prompt
+    assert "十之二、重大政策深度解析" not in prompt
 
 
 def test_gazette_is_declared_authoritative_over_media():

@@ -2164,24 +2164,24 @@ def test_batch31_policy_deepdive_block_groups_and_filters():
 
 
 def test_batch31_policy_deepdive_section_toggles_in_prompt():
-    """有重大政策才出現「十一之二」段;無政策時連段標題與提示都不得出現
+    """有重大政策才出現「十之二」段;無政策時連段標題與提示都不得出現
     (否則 LLM 會以為政策已在他處寫過而略過)。"""
     from tests.test_data_validation import _empty_quotes
     base = _empty_quotes()
     p_no = mr._build_prompt(dict(base), {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "## 十一之二" not in p_no and "十一之二" not in p_no
+    assert "## 十之二" not in p_no and "十之二" not in p_no
     q = dict(base)
     q["TW_DAILY_INTELLIGENCE"] = {"policy": [
         {"title": "行政院拍板台灣未來帳戶 每名新生兒每年存1.2萬", "importance": 5.9,
          "timeline_key": "k1", "topic": "民生金融", "status": "已公告",
          "source_name": "中央社", "source_grade": "官方", "published": "2026-07-24 10:00"}]}
     p_yes = mr._build_prompt(q, {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "## 十一之二、重大政策深度解析" in p_yes
+    assert "## 十之二、重大政策深度解析" in p_yes
     assert "未來帳戶" in p_yes                                   # 清單進 prompt
     # 禁杜撰鐵則(批#41 r5:素材來源由「清單」擴為「公報/清單/其他新聞區塊」三者,
     # 措辭隨之改為「三者都沒寫的…」;此處驗的是鐵則仍在,不是驗字面)
     assert "金額、日期、資格一律不得補寫" in p_yes
-    assert p_yes.index("## 十一、") < p_yes.index("## 十一之二") < p_yes.index("## 十二、")
+    assert p_yes.index("## 十、") < p_yes.index("## 十之二") < p_yes.index("## 十一、")
 
 
 def test_batch31_night_txf_weekend_uses_next_trading_day(monkeypatch):
@@ -2730,3 +2730,33 @@ def test_rolling_origin_exclude_degrades_to_empty_not_crash():
     assert out["exclude_estimated_universe"] is True
     assert out["1d_close"]["samples"] == 0
     assert out["1d_close"]["origins"] == 0
+
+
+def test_macro_policy_section_is_gone_and_numbering_is_contiguous():
+    """批#58(2026-07-28 使用者要求刪除):「十、總體經濟與政策環境」整段與前面重複。
+
+    實信對照:
+      (A) 的 SOX -2.23%、10Y 4.641%、VIX 18.67 → 二、總經指標表與立場段已有
+      (B) 的 FOMC 7/29、FedWatch 38%        → 七之三與未來 7 天風險事件表已有
+      (C) 的美伊停火/油價、中國 DUV          → 七、七之二、七之四各寫了一次
+
+    **而且重複是被規則強制的**:R11 原文要求同一個 geo_critical 事件
+    「必須在『昨夜三大重點』**且**『總體經濟與政策環境 (C)』段」都寫。
+    刪段時一併把 R11 收斂成只寫一次,否則那條鐵律會失去著落。
+    """
+    import re
+    from tests.test_data_validation import _empty_quotes
+    prompt = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"},
+                              [], [], "")
+    assert "總體經濟與政策環境" not in prompt, "整段又回來了"
+
+    # R11 仍在,但只要求一處
+    assert "R11." in prompt
+    r11 = prompt[prompt.index("R11."):][:400]
+    assert "昨夜三大重點" in r11, "R11 失去著落"
+    assert "總體經濟與政策環境" not in r11
+
+    # 段落編號不得出現斷層(刪段後把後面的往前挪)
+    nums = re.findall(r"^## ([一二三四五六七八九十]+)、", prompt, re.M)
+    order = ["七", "八", "九", "十", "十一", "十二"]
+    assert [n for n in nums if n in order] == order, nums

@@ -706,10 +706,18 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     # `general`(標題看不出類型),算出來的 key 因而與原線索不同。
     # 但若它**自己就推導出一個明確且不同的類型**(litigation vs orders),
     # 那正是「這是另一件事」的證據——此時應該相信它自己的判斷,而不是提示。
+    # r5(Codex,P2)**這正是我送審時自己標記的邊界,確認過嚴了**:
+    # 線索常以 general 起頭(早期標題看不出類型),之後的後續報導才把它講清楚
+    # (orders / litigation…)。原本的條件會把那則**正確的後續報導**判為矛盾、
+    # 另開一條線索,反而把軌跡切斷、讓原線索停在舊值。
+    # 只有**雙方都明確且不同**才算矛盾;目標仍是 general 時,新的明確分類
+    # 是資訊增加而不是衝突 —— 接回去,並把線索的型別一起升級。
     ev_type = str(ev.get("event_type") or "").strip() or "general"
     tgt_type = str(target.get("event_type") or "").strip() or "general"
-    if ev_type != "general" and ev_type != tgt_type:
+    if ev_type != "general" and tgt_type != "general" and ev_type != tgt_type:
         return story_key_for_event(ev)
+    if ev_type != "general" and tgt_type == "general":
+        target["event_type"] = ev_type      # 型別升級,後續比對才有依據
     return followed
 
 

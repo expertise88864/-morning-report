@@ -5456,6 +5456,38 @@ def _sector_item_matches(label: str, title: str, summary: str) -> bool:
     return any(all(w.lower() in text for w in g) for g in groups)
 
 
+def _mentions_company(text: str, name: str, code: str) -> bool:
+    """文章是否**真的提到**這家公司。
+
+    r5(Codex,P1):我上一版用無限制的子字串比對,而且把代號本身當證據。
+    反例:`MU` 出現在任何大寫詞裡(MUSIC、AMUSE)、`2317` 出現在價格或時間裡,
+    文章就會被判為提到該公司 → 貼上 company_label → 變成**直接**公司事件,
+    污染催化評分、排名、預測與存檔的 model history。
+
+    規則:
+    - **中文名**(含 CJK):直接子字串比對。中文沒有詞界,而公司名夠獨特。
+    - **拉丁字母名/代號**:需詞界比對(避免 MU 命中 MUSIC),且長度 ≥ 2。
+    - **純數字代號**(台股 2317):**單獨不足以當證據**——數字在財經文章裡
+      到處都是(價格、時間、張數)。必須另有公司名佐證。
+    """
+    import re as _re
+    blob = str(text or "")
+    if not blob:
+        return False
+    for token in (str(name or ""), str(code or "")):
+        t = token.strip()
+        if len(t) < 2 or t.isdigit():
+            continue                     # 純數字代號不單獨採信(見 docstring)
+        if any("一" <= ch <= "鿿" for ch in t):
+            if t in blob:
+                return True
+            continue
+        if _re.search(rf"(?<![A-Za-z0-9]){_re.escape(t)}(?![A-Za-z0-9])",
+                      blob, _re.IGNORECASE):
+            return True
+    return False
+
+
 def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
     """處理單一 feed 工作項 → 該 feed 的 news 清單。本體逐字沿用舊 fetch_news 兩迴圈,
     行為不變;抽出以便依 host 分組平行(P0-1)。同 host 由單一執行緒序列處理,
@@ -5639,13 +5671,12 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
             # 實測:一則沒提到鴻海的廣達新聞,貼標後 relation=direct、分數 0.39;
             # 不貼標則是 ai_server industry、0.1 —— **假歸因讓分數膨脹近四倍**。
             # 貼標前先確認標題或摘要真的提到那家公司(名稱或代號)。
-            if w.get("followup_entity"):
-                _blob = f"{entry.get('title', '')} {entry.get('summary', '') or ''}"
-                _anchors = [a for a in (str(w.get("followup_name") or ""),
-                                        str(w.get("followup_entity") or "")) if a]
-                if any(a in _blob for a in _anchors):
-                    item["company_label"] = str(w["followup_entity"])
-                    item["followup_key"] = str(w.get("followup_key") or "")
+            if w.get("followup_entity") and _mentions_company(
+                    f"{entry.get('title', '')} {entry.get('summary', '') or ''}",
+                    str(w.get("followup_name") or ""),
+                    str(w.get("followup_entity") or "")):
+                item["company_label"] = str(w["followup_entity"])
+                item["followup_key"] = str(w.get("followup_key") or "")
             if world_cat:
                 item["world_cat"] = world_cat
             out.append(_mark_news_date_quality(item, pub_dt))

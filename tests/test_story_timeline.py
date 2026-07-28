@@ -546,3 +546,51 @@ def test_followup_label_gate_runs_where_the_article_text_is(monkeypatch):
     keys = {n["title"]: n.get("followup_key") for n in items}
     assert keys.get("鴻海收購案新進展") == "e:2317|l:orders"
     assert keys.get("廣達獲AI伺服器大單") is None
+
+
+def test_general_target_can_be_upgraded_by_a_specific_followup():
+    """r5(Codex,P2)**這正是我送審時自己標記的邊界,確認過嚴了**:
+    線索常以 general 起頭(早期標題看不出類型),之後的後續報導才把它講清楚。
+    原本的條件會把那則**正確的後續報導**判為矛盾、另開一條,反而切斷軌跡、
+    讓原線索停在舊值。只有雙方都明確且不同才算矛盾。"""
+    KEY = "e:2317|l:general|abc"
+
+    def _target(t):
+        return {"key": KEY, "entity": "2317", "entity_name": "鴻海",
+                "event_type": t, "state": "peak", "headline": "鴻海傳有大動作",
+                "updates": 2, "last_update": "2026-07-26",
+                "last_delta": "鴻海傳有大動作"}
+
+    def _resolve(ev_type, tgt_type):
+        target = _target(tgt_type)
+        ev = {"entity": "2317", "entity_name": "鴻海", "event_type": ev_type,
+              "title": "鴻海大動作為收購案 已簽約",
+              "published": "2026-07-27T01:00:00+00:00", "followup_key": KEY}
+        return sl._resolve_story_key(ev, {KEY: target}) == KEY, target["event_type"]
+
+    # general 線索被講清楚 → 接回,且型別跟著升級(後續比對才有依據)
+    reconnected, new_type = _resolve("orders", "general")
+    assert reconnected, "正確的後續報導被判為矛盾"
+    assert new_type == "orders", "線索型別沒有升級"
+
+    # 雙方都明確且不同 → 仍視為另一件事
+    assert not _resolve("litigation", "orders")[0]
+    # 一方 general → 接回
+    assert _resolve("general", "orders")[0]
+    assert _resolve("general", "general")[0]
+
+
+def test_company_mention_gate_rejects_incidental_ticker_matches():
+    """r5(Codex,P1):我上一版用無限制子字串比對,而且把代號本身當證據。
+    反例:`MU` 出現在任何大寫詞裡(MUSIC)、`2317` 出現在價格或時間裡。"""
+    import morning_report as mr
+    assert mr._mentions_company("鴻海收購案新進展", "鴻海", "2317")
+    assert not mr._mentions_company("廣達獲AI伺服器大單", "鴻海", "2317")
+    # 拉丁代號需詞界
+    assert not mr._mentions_company("APPLE MUSIC revenue up", "Micron", "MU")
+    assert mr._mentions_company("MU guides higher", "Micron", "MU")
+    assert mr._mentions_company("the mu parameter", "Micron", "MU")   # 大小寫不敏感
+    # **純數字代號單獨不足以當證據**(數字在財經文章裡到處都是)
+    assert not mr._mentions_company("某股收在 2317 元", "鴻海", "2317")
+    assert not mr._mentions_company("成交量 2317 張", "", "2317")
+    assert mr._mentions_company("", "鴻海", "2317") is False

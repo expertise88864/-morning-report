@@ -427,3 +427,48 @@ def test_sports_header_covers_news_only_blocks():
          "news": {"網球": [{"title": "網球新聞", "link": "https://a"}]}}, _h2)
     head = both.split("</h2>")[0]
     assert "中職" in head and "網球" in head
+
+
+def test_followup_hint_rejected_when_event_type_disagrees():
+    """r3(Codex,P1):**_is_same_subject 一個人擋不住**。它的門檻
+    (SUBJECT_OVERLAP_MIN=0.10)是**刻意寬鬆**的——設計目的是「已經同 key 時
+    要不要保留前情」,偏向保住連續性;拿它當歸屬閘門是用寬鬆的檢查做嚴格的事。
+
+    Codex 的反例:AI 伺服器**專利訴訟**與 AI 伺服器**訂單**的標題重疊度足以越過
+    0.10,於是訴訟被強制掛進 orders 線索、取代它的 headline 與軌跡。
+
+    關鍵在於**為什麼需要這個提示**:追蹤抓回來的文章 event_type 常被推導成
+    general(標題看不出類型),key 因而與原線索不同。但若它**自己就推導出一個
+    明確且不同的類型**,那正是「這是另一件事」的證據——此時相信它自己的判斷。
+    """
+    KEY = "e:2317|l:orders"
+
+    def _target():
+        return {"key": KEY, "entity": "2317", "entity_name": "鴻海",
+                "event_type": "orders", "state": "peak",
+                "headline": "鴻海獲AI伺服器大單", "updates": 3,
+                "last_update": "2026-07-26", "last_delta": "鴻海獲AI伺服器大單"}
+
+    def _resolve(event_type, title):
+        ev = {"entity": "2317", "entity_name": "鴻海",
+              "event_type": event_type, "title": title,
+              "published": "2026-07-27T01:00:00+00:00", "followup_key": KEY}
+        return sl._resolve_story_key(ev, {KEY: _target()})
+
+    # 同型續報 → 接回
+    assert _resolve("orders", "鴻海AI伺服器訂單再加碼") == KEY
+    # 型別不明(這正是需要提示的情況)→ 接回
+    assert _resolve("general", "鴻海AI伺服器最新進展") == KEY
+    # **Codex 反例**:明確且不同的型別 → 相信它自己,另開線索
+    assert _resolve("litigation", "鴻海AI伺服器專利訴訟開庭") != KEY
+    assert _resolve("earnings", "鴻海AI伺服器業務財報表現") != KEY
+    # 主體完全不相干 → 另開線索(第一道防線仍在)
+    assert _resolve("general", "鴻海尾牙抽獎百萬") != KEY
+
+
+def test_followup_hint_ignored_when_target_story_is_gone():
+    """目標線索已被清掉(超過 KEEP_DAYS)時,提示不得憑空指向不存在的 key。"""
+    ev = {"entity": "2317", "entity_name": "鴻海", "event_type": "general",
+          "title": "鴻海某進展", "published": "2026-07-27T01:00:00+00:00",
+          "followup_key": "e:2317|l:orders"}
+    assert sl._resolve_story_key(ev, {}) == sl.story_key_for_event(ev)

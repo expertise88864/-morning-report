@@ -688,11 +688,29 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     讓它自己去開一條線索(那是誠實的:它確實是另一件事)。
     """
     followed = str(ev.get("followup_key") or "").strip()
-    if followed.startswith(("e:", "h:", "cluster:")):
-        target = by_key.get(followed)
-        if target and _is_same_subject(target, ev):
-            return followed
-    return story_key_for_event(ev)
+    if not followed.startswith(("e:", "h:", "cluster:")):
+        return story_key_for_event(ev)
+    target = by_key.get(followed)
+    if not target:
+        return story_key_for_event(ev)
+    # 條件一:主體要對得上。
+    if not _is_same_subject(target, ev):
+        return story_key_for_event(ev)
+    # 條件二(r3 Codex,P1):**_is_same_subject 一個人擋不住**。它的門檻
+    # (SUBJECT_OVERLAP_MIN=0.10)是**刻意寬鬆**的——設計目的是「已經同 key 時
+    # 要不要保留前情」,偏向保住連續性;拿它當歸屬閘門,等於用寬鬆的檢查做嚴格
+    # 的事。Codex 的反例:AI 伺服器**專利訴訟**與 AI 伺服器**訂單**的標題重疊度
+    # 足以越過 0.10,於是訴訟被強制掛進 orders 線索、取代它的 headline 與軌跡。
+    #
+    # 關鍵在於**我們為什麼需要這個提示**:追蹤抓回來的文章 event_type 常被推導成
+    # `general`(標題看不出類型),算出來的 key 因而與原線索不同。
+    # 但若它**自己就推導出一個明確且不同的類型**(litigation vs orders),
+    # 那正是「這是另一件事」的證據——此時應該相信它自己的判斷,而不是提示。
+    ev_type = str(ev.get("event_type") or "").strip() or "general"
+    tgt_type = str(target.get("event_type") or "").strip() or "general"
+    if ev_type != "general" and ev_type != tgt_type:
+        return story_key_for_event(ev)
+    return followed
 
 
 def update_ledger(ledger: list[dict], events: list[dict], today: str,

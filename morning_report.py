@@ -384,6 +384,11 @@ def _write_run_manifest(now_tpe) -> None:
             # warn 級的品質問題只存在於當次 stderr,無法累積成承諾的趨勢。
             # (與三審 P1-4 的 stance_dual 完全同一個坑。)
             "data_checks": _RUN_MANIFEST.get("data_checks"),
+            # r1(Codex,P1):**這是同一個坑的第三次** —— 三審 P1-4 的 stance_dual、
+            # 批#50 r1 的 data_checks,現在是 mz_shadow。這個 writer 是**重建白名單
+            # dict**,沒列到的鍵一律丟掉。影子模式的**唯一目的**就是累積樣本外資料,
+            # 不落地等於整個功能白做,而且失敗是靜默的(記憶體裡有值、檔案裡沒有)。
+            "mz_shadow": _RUN_MANIFEST.get("mz_shadow"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,

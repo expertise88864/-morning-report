@@ -270,3 +270,30 @@ def test_mz_shadow_degrades_safely():
     assert mr._mz_shadow_prediction(None, 2350.0) == {}
     assert mr._mz_shadow_prediction(2336.0, None) == {}
     assert mr._mz_shadow_prediction("x", "y") == {}
+
+
+def test_mz_shadow_survives_into_the_persisted_manifest(tmp_path, monkeypatch):
+    """r1(Codex,P1):**同一個坑的第三次** —— 三審 P1-4 的 stance_dual、
+    批#50 r1 的 data_checks,現在是 mz_shadow。_write_run_manifest 是**重建
+    白名單 dict**,沒列到的鍵一律丟掉。
+
+    影子模式的**唯一目的**就是累積樣本外資料;不落地等於整個功能白做,
+    而且失敗是靜默的(記憶體裡有值、檔案裡沒有)。
+
+    這條測試讀**序列化後的 JSON**,不是記憶體裡的 dict —— 前一版的測試只驗了
+    賦值與數學,所以完全漏掉。
+    """
+    import datetime as dt
+    import json
+    import morning_report as mr
+
+    f = tmp_path / "run_manifest.json"
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", f)
+    mr._RUN_MANIFEST["mz_shadow"] = {"n": 49, "applied": True, "b": 0.6865,
+                                     "raw": 2336.0, "shadow": 2342.85,
+                                     "delta": 6.85}
+    mr._write_run_manifest(dt.datetime(2026, 7, 28, 6, 0))
+    saved = json.loads(f.read_text(encoding="utf-8"))
+    assert "mz_shadow" in saved, "影子預測沒落地 —— 樣本永遠累積不起來"
+    assert saved["mz_shadow"]["shadow"] == 2342.85
+    assert saved["mz_shadow"]["raw"] == 2336.0, "原始值也要留,否則無法事後比較"

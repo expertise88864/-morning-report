@@ -19,6 +19,7 @@
 
 指標:MAE、RMSE、方向命中率、以及「有多少天被改壞」。
 """
+import math
 import sys
 from pathlib import Path
 
@@ -97,28 +98,43 @@ def main():
         mae, rmse, hit = _metrics(actual[ev], series[ev], base[ev])
         print(f"{name:30s} {mae:8.2f} {rmse:8.2f} {hit:8.1%}")
 
-    # 逐日:被改好 vs 改壞
+    # 逐日:被改好 vs 改壞。
+    # r1(Codex,P2):**原本用的是水準版 wf**,而結論依據的是變動量版 wfd ——
+    # 報出來的「15/29 改好」與最大惡化描述的是另一個模型,不能拿來支持結論。
     better = worse = 0
     worst = 0.0
-    for a, p, w in zip(actual[ev], pred[ev], wf[ev]):
+    diffs = []
+    for a, p, w in zip(actual[ev], pred[ev], wfd[ev]):
         d = abs(a - w) - abs(a - p)
+        diffs.append(-d)                       # 正值 = 收縮較好
         if d < -1e-9:
             better += 1
         elif d > 1e-9:
             worse += 1
             worst = max(worst, d)
-    print(f"\n逐日:改好 {better} 天、改壞 {worse} 天;單日最大惡化 {worst:.2f} 元")
+    print(f"\n逐日(變動量版):改好 {better} 天、改壞 {worse} 天;"
+          f"單日最大惡化 {worst:.2f} 元")
+    if len(diffs) > 2:
+        m = sum(diffs) / len(diffs)
+        sd = (sum((x - m) ** 2 for x in diffs) / (len(diffs) - 1)) ** 0.5
+        se = sd / math.sqrt(len(diffs))
+        print(f"配對檢定:平均改善 {m:+.2f} 元、t={(m / se if se else 0):+.2f}"
+              f"(|t|>2 才算有訊號)")
 
-    # 係數穩定度
+    # 係數穩定度 —— 同樣要用**變動量**的迴歸,而不是價格水準。
     coeffs = []
     for t in range(MIN_TRAIN, n):
-        coeffs.append(_ols(pred[:t], actual[:t]))
+        dx = [pred[i] - base[i] for i in range(t)]
+        dy = [actual[i] - base[i] for i in range(t)]
+        coeffs.append(_ols(dx, dy))
     if coeffs:
         bs = [b for _, b in coeffs]
         as_ = [a for a, _ in coeffs]
-        print(f"係數穩定度:b 介於 {min(bs):.3f}~{max(bs):.3f}"
-              f"(全樣本 {b_is:.3f});a 介於 {min(as_):.1f}~{max(as_):.1f}"
-              f"(全樣本 {a_is:.1f})")
+        a_full, b_full = _ols([p - b for p, b in zip(pred, base)],
+                              [a - b for a, b in zip(actual, base)])
+        print(f"係數穩定度(變動量):b 介於 {min(bs):.3f}~{max(bs):.3f}"
+              f"(全樣本 {b_full:.3f});a 介於 {min(as_):.1f}~{max(as_):.1f}"
+              f"(全樣本 {a_full:.1f})")
 
 
 if __name__ == "__main__":

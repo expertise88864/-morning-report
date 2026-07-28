@@ -1049,8 +1049,12 @@ def followup_queries(ledger: list[dict], limit: int = FOLLOWUP_MAX_QUERIES,
         # `e:2317|l:orders`,抓回來的文章因此開出一條 entity=鴻海 的**新線索**,
         # 原本的缺陷完全沒解掉。查詢仍用公司名(中文標題寫的是名字),
         # 但接回去要用代號。
-        picked.append((str(s.get("key") or ""), q,
-                       str(s.get("entity") or ent)))
+        # r4(Codex,P1):**同時帶顯示名**,呼叫端才驗得出「這篇文章有沒有真的提到
+        # 這家公司」。改用 dict:這個結構已經因為需求換過兩次形狀
+        # (2-tuple → 3-tuple),再用 tuple 只會再壞一次解包。
+        picked.append({"key": str(s.get("key") or ""), "query": q,
+                       "entity": str(s.get("entity") or ent),
+                       "name": ent})
         if len(picked) >= limit:
             break
     return picked

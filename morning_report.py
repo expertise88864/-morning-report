@@ -5630,9 +5630,22 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
             }
             # 追蹤查詢的結果掛上發起線索的實體,讓確定性路徑也接得回去
             # (實體來自帳本、由 Python 產生,不是外部文字)。
+            #
+            # r4(Codex,P1)**但不能無條件貼**:Google News 查詢會漂移,撈回
+            # 完全沒提到該公司的文章。貼上 company_label 之後,
+            # extract_structured_events 會把它變成事件的 entity,
+            # _stock_news_catalysts 隨即以 `entity == code` 判為**直接**公司事件
+            # ——影響催化評分、排名、價格預測與存檔的 model history。
+            # 實測:一則沒提到鴻海的廣達新聞,貼標後 relation=direct、分數 0.39;
+            # 不貼標則是 ai_server industry、0.1 —— **假歸因讓分數膨脹近四倍**。
+            # 貼標前先確認標題或摘要真的提到那家公司(名稱或代號)。
             if w.get("followup_entity"):
-                item["company_label"] = str(w["followup_entity"])
-                item["followup_key"] = str(w.get("followup_key") or "")
+                _blob = f"{entry.get('title', '')} {entry.get('summary', '') or ''}"
+                _anchors = [a for a in (str(w.get("followup_name") or ""),
+                                        str(w.get("followup_entity") or "")) if a]
+                if any(a in _blob for a in _anchors):
+                    item["company_label"] = str(w["followup_entity"])
+                    item["followup_key"] = str(w.get("followup_key") or "")
             if world_cat:
                 item["world_cat"] = world_cat
             out.append(_mark_news_date_quality(item, pub_dt))
@@ -5674,11 +5687,12 @@ def fetch_news(followups: Optional[list] = None) -> list[dict]:
         # 而 RSS 項目沒有那些欄位 → 產生一條**無主的新線索**。
         # 於是 LLM 抽取關掉/無金鑰/時間預算不足時,追蹤查詢等於白做:
         # 拿回來的新聞推不動它原本要追的那條線索。
-        _key, _q = _fu[0], _fu[1]
-        _ent = _fu[2] if len(_fu) > 2 else ""
+        _q = str(_fu.get("query") or "")
         work.append({"idx": len(work), "source": f"追蹤:{_q}",
                      "url": _gnews_rss(_q, when="3d"), "kind": "rss",
-                     "followup_entity": _ent, "followup_key": _key})
+                     "followup_entity": str(_fu.get("entity") or ""),
+                     "followup_name": str(_fu.get("name") or ""),
+                     "followup_key": str(_fu.get("key") or "")})
     merged: dict[int, list[dict]] = {}
     if NEWS_FETCH_WORKERS <= 1:
         # 逃生門:完全退回舊序列行為——依「原始 work 順序」逐項處理(非 host 分組順序),
@@ -19428,7 +19442,7 @@ def main() -> int:
                 # 被下面的 except 吞掉並印出「追蹤查詢略過」,
                 # 但清單其實照樣送進 fetch_news:**日誌在說謊**。
                 print("[story] 主動追蹤查詢 "
-                      + "、".join(f[1] for f in _followups))
+                      + "、".join(str(f.get("query") or "") for f in _followups))
     except Exception as e:
         print(f"[story] 追蹤查詢略過: {type(e).__name__}: {e}", file=sys.stderr)
     news = fetch_news(_followups)

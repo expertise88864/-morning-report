@@ -145,11 +145,14 @@ def test_followup_requires_an_entity_anchor():
          "updates": 2, "last_update": "2026-07-27"},
     ]
     out = sl.followup_queries(ledger, today="2026-07-27")
-    assert [q for _, q, _e in out] == ["鴻海 訂單"], out
+    assert [f["query"] for f in out] == ["鴻海 訂單"], out
     # r2(Codex,P1):回傳的必須是**線索 key 所用的那個實體**(代號),
     # 不是查詢用的公司名 —— 我上一輪回傳「鴻海」,而線索 key 是
     # `e:2317|...`,抓回來的文章因此開出 entity=鴻海 的新線索,缺陷沒解掉。
-    assert [e for _, _q, e in out] == ["2317"], out
+    # 回傳的是**線索 key 所用的實體**(代號),不是查詢用的公司名;
+    # 顯示名另存於 name,供「文章是否真的提到這家公司」的檢查用。
+    assert [f["entity"] for f in out] == ["2317"], out
+    assert [f["name"] for f in out] == ["鴻海"], out
 
 
 def test_followup_uses_event_type_not_sliced_headline():
@@ -161,7 +164,7 @@ def test_followup_uses_event_type_not_sliced_headline():
     for et, want in (("earnings", "台積電 財報"), ("orders", "台積電 訂單"),
                      ("litigation", "台積電 訴訟"), ("general", "台積電")):
         q = sl.followup_queries([dict(base, event_type=et)],
-                                today="2026-07-27")[0][1]
+                                today="2026-07-27")[0]["query"]
         assert q == want, f"{et}: {q}"
 
 
@@ -177,7 +180,7 @@ def test_followup_only_tracks_live_stories_and_dedupes():
          "event_type": "earnings", "state": "brewing", "updates": 1,
          "last_update": "2026-07-27", "headline": "z"},     # 醞釀中不追
     ]
-    qs = [q for _, q, _e in sl.followup_queries(ledger, today="2026-07-27")]
+    qs = [f["query"] for f in sl.followup_queries(ledger, today="2026-07-27")]
     assert qs == ["台積電 財報"], qs
 
 
@@ -201,7 +204,8 @@ def test_fetch_news_accepts_followups_without_network(monkeypatch):
 
     monkeypatch.setattr(mr, "_process_feed_item", _fake)
     monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 1)
-    mr.fetch_news([("k1", "鴻海 訂單")])
+    mr.fetch_news([{"key": "k1", "query": "鴻海 訂單",
+                    "entity": "2317", "name": "鴻海"}])
     tracked = [w for w in seen if str(w["source"]).startswith("追蹤:")]
     assert len(tracked) == 1
     assert tracked[0]["source"] == "追蹤:鴻海 訂單"
@@ -278,9 +282,11 @@ def test_followup_results_carry_the_target_entity(monkeypatch):
 
     monkeypatch.setattr(mr, "_process_feed_item", _fake)
     monkeypatch.setattr(mr, "NEWS_FETCH_WORKERS", 1)
-    mr.fetch_news([("k1", "鴻海 訂單", "鴻海")])
+    mr.fetch_news([{"key": "k1", "query": "鴻海 訂單",
+                    "entity": "2317", "name": "鴻海"}])
     tracked = [w for w in seen if str(w["source"]).startswith("追蹤:")][0]
-    assert tracked["followup_entity"] == "鴻海"
+    assert tracked["followup_entity"] == "2317"
+    assert tracked["followup_name"] == "鴻海"
     assert tracked["followup_key"] == "k1"
 
 
@@ -322,7 +328,8 @@ def test_followup_article_reconnects_to_the_originating_story():
             "last_update": "2026-07-26", "last_delta": "鴻海洽談收購案",
             "timeline": [{"d": "2026-07-26", "t": "鴻海洽談收購案",
                           "l": "https://a/1", "s": "某報", "f": []}]}]
-    key, query, ent = sl.followup_queries(led, today="2026-07-27")[0]
+    fu = sl.followup_queries(led, today="2026-07-27")[0]
+    key, query, ent = fu["key"], fu["query"], fu["entity"]
     assert (key, ent) == (KEY, "2317")
 
     events = mr.extract_structured_events(news=[{
@@ -364,8 +371,10 @@ def test_followup_log_line_does_not_lie(monkeypatch, capsys):
     """r2(Codex,P2):**我修 F2 時自己弄壞的** —— 三元組被 2-tuple 解包,
     每次有追蹤查詢都拋 ValueError、被 except 吞掉並印出「追蹤查詢略過」,
     但清單其實照樣送進 fetch_news:日誌在說謊。"""
-    fus = [("e:2317|l:orders", "鴻海 訂單", "2317")]
-    line = "[story] 主動追蹤查詢 " + "、".join(f[1] for f in fus)
+    fus = [{"key": "e:2317|l:orders", "query": "鴻海 訂單",
+            "entity": "2317", "name": "鴻海"}]
+    line = "[story] 主動追蹤查詢 " + "、".join(
+        str(f.get("query") or "") for f in fus)
     assert line.endswith("鴻海 訂單")
 
 
@@ -472,3 +481,68 @@ def test_followup_hint_ignored_when_target_story_is_gone():
           "title": "鴻海某進展", "published": "2026-07-27T01:00:00+00:00",
           "followup_key": "e:2317|l:orders"}
     assert sl._resolve_story_key(ev, {}) == sl.story_key_for_event(ev)
+
+
+def test_followup_label_requires_the_article_to_mention_the_company():
+    """r4(Codex,P1):**貼標不能無條件**。Google News 查詢會漂移,撈回完全沒提到
+    該公司的文章。貼上 company_label 之後,extract_structured_events 會把它變成
+    事件的 entity,_stock_news_catalysts 隨即以 `entity == code` 判為**直接**
+    公司事件 —— 影響催化評分、排名、價格預測與**存檔的 model history**。
+
+    實測(這條測試就是照那個實測寫的):一則沒提到鴻海的廣達新聞,
+    貼標後 relation=direct、分數 0.39;不貼標則是 ai_server industry、0.1
+    ——**假歸因讓分數膨脹近四倍**。
+    """
+    import morning_report as mr
+    universe = [{"code": "2317", "name": "鴻海"}]
+    article = {"source": "追蹤:鴻海 訂單",
+               "title": "廣達獲AI伺服器大單 訂單能見度到明年",
+               "summary": "廣達接單暢旺", "link": "https://a/9",
+               "source_name": "某報",
+               "published": "2026-07-27T02:00:00+00:00"}
+
+    labelled = mr._stock_news_catalysts(
+        universe, [dict(article, company_label="2317")], [])
+    plain = mr._stock_news_catalysts(universe, [article], [])
+    assert labelled["2317"]["score"] > plain["2317"]["score"], \
+        "對照組無效 —— 貼標本來就該讓分數變高,否則測不到污染"
+    assert labelled["2317"]["evidence"][0]["relation"] == "direct"
+    assert plain["2317"]["evidence"][0]["relation"] != "direct"
+
+
+def test_followup_label_gate_runs_where_the_article_text_is(monkeypatch):
+    """接線檢查:貼標的判斷必須發生在**文章內容還在手上**的地方(_process_feed_item),
+    而不是事後補救——一旦標籤下去,下游就無從分辨它是真的還是查詢帶進來的。"""
+    import datetime as _dt
+    import morning_report as mr
+
+    class _Entry(dict):
+        def get(self, k, d=None):
+            return dict.get(self, k, d)
+
+    def _fake_parse(url, *a, **kw):
+        feed = type("F", (), {})()
+        feed.entries = [
+            _Entry(title="鴻海收購案新進展", summary="細節公布",
+                   link="https://a/1",
+                   published="Mon, 27 Jul 2026 02:00:00 GMT"),
+            _Entry(title="廣達獲AI伺服器大單", summary="接單暢旺",
+                   link="https://a/2",
+                   published="Mon, 27 Jul 2026 02:00:00 GMT"),
+        ]
+        return feed
+
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", _fake_parse)
+    cutoff = _dt.datetime(2026, 7, 26, tzinfo=_dt.timezone.utc)
+    items = mr._process_feed_item(
+        {"idx": 0, "source": "追蹤:鴻海 訂單",
+         "url": "https://news.google.com/rss/search?q=x", "kind": "rss",
+         "followup_entity": "2317", "followup_name": "鴻海",
+         "followup_key": "e:2317|l:orders"}, cutoff)
+    labels = {n["title"]: n.get("company_label") for n in items}
+    assert labels.get("鴻海收購案新進展") == "2317", "有提到公司卻沒貼標"
+    assert labels.get("廣達獲AI伺服器大單") is None,         "沒提到鴻海的文章被貼上 2317 —— 假歸因會流進催化評分"
+    # followup_key 同樣只跟著合格的那則
+    keys = {n["title"]: n.get("followup_key") for n in items}
+    assert keys.get("鴻海收購案新進展") == "e:2317|l:orders"
+    assert keys.get("廣達獲AI伺服器大單") is None

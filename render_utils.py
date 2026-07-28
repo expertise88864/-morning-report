@@ -856,6 +856,14 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             or _poly_renderable or any(news.values())):
         return ""
     blocks = []
+    # 區塊身分:在 append 的當下記下,標題再由它推出。
+    # 掃 HTML 找關鍵字永遠會有假陽性(中職新聞標題提到 NBA → 標題冒出 NBA)。
+    sections: set = set()
+
+    def _mark(section: str) -> None:
+        if section:
+            sections.add(section)
+
     if wc_results or wc_groups or wc_fixtures or wc_knockout:
         wc_inner = []
         # 淘汰賽對戰表(各回合完整賽果+未賽場次台北開球時間):存在時為世足主視圖,
@@ -987,11 +995,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 "<div style='font-size:11px;color:#94a3b8;'>隊名 積分(勝-和-敗);"
                 f"<span style='color:#16a34a;'>綠字</span>={_grp_note}</div>"
                 + grp_lines + "</div>")
+        _mark("世足")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"
             + "".join(wc_inner) + "</div>")
     elif poly.get("wc_champion"):
         # ESPN 世足資料全掛但 Polymarket 活著 → 冠軍機率仍要出現(Codex review 批#9)
+        _mark("世足")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;font-size:14px;'>世界盃足球賽</b>"
             + _poly_champ_div("冠軍機率", poly["wc_champion"], "Polymarket 預測市場")
@@ -1004,6 +1014,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<span style='color:#64748b;font-size:11px;'>（{htmllib.escape(p.get('role', ''))}）</span>　"
             f"{htmllib.escape(p.get('summary', ''))}</div>"
             for p in mlb_tw)
+        _mark("MLB")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 台灣旅外球員（近期出賽）</b>"
             + rows + "</div>")
@@ -1017,6 +1028,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"{_side(s['away'], s['away_score'], s.get('winner') == 'away')}"
             f"　:　{_side(s['home'], s['home_score'], s.get('winner') == 'home')}</div>"
             for s in cpbl_scores)
+        _mark("中職")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 最新賽果</b>"
             + rows + "</div>")
@@ -1030,6 +1042,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                f"{htmllib.escape(str(f['odds']))}</div>" if f.get("odds") else "")
             + "</div>"
             for f in cpbl_fixtures)
+        _mark("中職")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 未來一週賽程（台北時間）</b>"
             + rows + "</div>")
@@ -1048,6 +1061,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         if cpbl_source == "Wikipedia 備援":
             src_note = ("<div style='font-size:11px;color:#94a3b8;margin-top:2px;'>"
                         "※ 中職官網海外連線受限,本表為 Wikipedia 備援(社群更新,可能稍有遲滯)</div>")
+        _mark("中職")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒戰績</b>"
             "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
@@ -1068,6 +1082,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if g.get("note") else "")
             + "</div>"
             for g in nba)
+        _mark("NBA")
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 冠軍賽</b>{rows}"
             + _nba_poly_lines() + "</div>")
@@ -1080,8 +1095,10 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                if g.get("note") else "")
             + "</div>"
             for g in nba_fav)
+        _mark("NBA")
         blocks.append(f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 關注球隊近況</b>{rows}</div>")
     if nba_offseason and not nba and not nba_fav:
+        _mark("NBA")
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             f"<div style='font-size:13px;color:#64748b;margin-top:2px;'>"
@@ -1099,11 +1116,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                f"{htmllib.escape(_nba_zh(str(g.get('odds', ''))))}</div>" if g.get("odds") else "")
             + "</div>"
             for g in nba_fixtures)
+        _mark("NBA")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA 未來一週賽程（台北時間）</b>"
             + rows + "</div>")
     if (poly.get("nba_champ") or poly.get("nba_east") or poly.get("nba_west"))             and not _nba_champ_shown:
         # 冠軍賽/休賽季說明都缺席(如 ESPN 掛掉)→ 各盤獨立渲染(Codex review 批#9)
+        _mark("NBA")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>NBA</b>"
             + _nba_poly_lines() + "</div>")
@@ -1124,6 +1143,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     f"text-align:right;font-size:13px;'>{htmllib.escape(str(t['record']))}</td>"
                     f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
                     f"text-align:right;font-size:13px;color:#64748b;'>{pct}</td></tr>")
+        _mark("MLB")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 戰績（兩聯盟勝率前 5）</b>"
             "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
@@ -1135,6 +1155,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + _mlb_poly_lines() + "</div>")
     elif poly.get("mlb_ws") or poly.get("mlb_al_mvp") or poly.get("mlb_nl_mvp")             or poly.get("mlb_al_cy") or poly.get("mlb_nl_cy"):
         # ESPN 戰績掛掉但 Polymarket 活著 → 各盤獨立渲染(Codex review 批#9)
+        _mark("MLB")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB</b>"
             + _mlb_poly_lines() + "</div>")
@@ -1175,6 +1196,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             + _mlb_series_odds_div(s, htmllib)
             + "</div>"
             for text, s in sorted(series.items(), key=lambda kv: kv[1]["first"]))
+        _mark("MLB")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>MLB 未來一週焦點賽程（台北時間;強隊對戰）</b>"
             + rows + "</div>")
@@ -1248,11 +1270,13 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                 f"<b>進行中/即將</b>{seg}</div>")
         if poly.get("tennis_m") or poly.get("tennis_w"):
             t_inner.append(_tennis_poly_div(poly, _poly_line))
+        _mark("網球")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
             + "".join(t_inner) + "</div>")
     elif poly.get("tennis_m") or poly.get("tennis_w"):
         # ESPN 網球資料掛掉但 Polymarket 活著 → 冠軍盤獨立渲染(Codex review 批#9)
+        _mark("網球")
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>網球 ATP / WTA</b>"
             + _tennis_poly_div(poly, _poly_line) + "</div>")
@@ -1274,6 +1298,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             return f"<li style='margin:3px 0;'>{htmllib.escape(str(t))}</li>"
 
         items = "".join(_sports_item(t) for t in titles)
+        _mark(_NEWS_LABEL_TO_SECTION.get(label, label))
         blocks.append(
             f"<div style='margin:8px 0;'><b style='color:#0f172a;'>{label} 消息</b>"
             f"<ul style='margin:4px 0;padding-left:20px;font-size:12px;color:#475569;"
@@ -1288,8 +1313,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     # 「mlb」,只有戰績可用時反而不會列進標題。**而我的測試用
     # {"tennis":{"atp":[...]}} 這種不會產生區塊的形狀,等於把缺陷釘成規格。**
     # 正解:標題直接由**已經渲染出來的區塊**推出,兩者不可能再分歧。
-    present = [label for label, marker, news_key in _SPORTS_SECTION_MARKERS
-               if any(marker in b for b in blocks) or (news.get(news_key) or [])]
+    present = [s for s in _SPORTS_SECTION_ORDER if s in sections]
     title = "體育快訊" + (f"（{' / '.join(present)}）" if present else "")
     return (
         '<h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;'
@@ -1310,13 +1334,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
 #: r3(Codex,P2):只掃結構化區塊的字串不夠——世足在**沒有結構化賽果、只有新聞**
 #: 時會渲染出「世足 消息」區塊,而辨識字串是「世界盃足球賽」→ 區塊出現、標題卻
 #: 漏掉它。新聞區塊的標籤直接來自 news 字典的鍵,拿鍵去判斷比掃 HTML 可靠。
-_SPORTS_SECTION_MARKERS = (
-    ("世足", "世界盃足球賽", "世足"),
-    ("MLB", "MLB", "MLB"),
-    ("NBA", "NBA", "NBA"),
-    ("中職", "中華職棒", "中華職棒"),
-    ("網球", "網球", "網球"),
-)
+#: 標題顯示順序。
+#: r5(Codex,P2,**同一件事他講了三次**):前兩版我都在掃區塊的 HTML 找關鍵字,
+#: 於是「中職新聞的標題裡剛好提到 NBA」就會讓 NBA 出現在標題裡,而根本沒有
+#: NBA 區塊。掃內容永遠會有這種假陽性——正解是**在 append 的當下記下身分**,
+#: 標題與區塊因此不可能再分歧。我兩次都選了比較省事的做法,這次照做。
+_SPORTS_SECTION_ORDER = ("世足", "MLB", "NBA", "中職", "網球")
+#: 新聞區塊用的字典鍵 → 標題顯示名
+_NEWS_LABEL_TO_SECTION = {"世足": "世足", "中華職棒": "中職", "網球": "網球",
+                          "MLB": "MLB", "NBA": "NBA"}
 
 
 def _is_web_url(raw) -> str:

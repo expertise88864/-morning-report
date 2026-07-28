@@ -3285,3 +3285,24 @@ def test_podcast_card_shows_episode_date_and_flags_stale():
     assert ru._episode_age_tag({}) == ""
     assert ru._episode_age_tag({"published": "not-a-date"}) == ""
     assert ru._episode_age_tag({"published": None}) == ""
+
+
+def test_sports_header_is_not_fooled_by_words_inside_other_blocks():
+    """r5(Codex,P2,**同一件事他講了三次**):前兩版我都在掃區塊的 HTML 找關鍵字,
+    於是「中職新聞的標題裡剛好提到 NBA」就會讓 NBA 出現在標題,而根本沒有 NBA
+    區塊。掃內容永遠會有這種假陽性——正解是**在 append 的當下記下身分**。
+    我兩次都選了比較省事的做法(先是寫死字串、再是掃 HTML)。"""
+    import html as _h2
+    import render_utils as ru
+    row = {"rank": 1, "team": "味全龍", "wdl": "46-0-28",
+           "pct": "0.622", "gb": "-"}
+    out = ru._render_sports_html(
+        {"cpbl": [row],
+         "news": {"中華職棒": [{"title": "中職球星赴NBA開球 MLB球團也來訪",
+                              "link": "https://a"}]}}, _h2)
+    head = out.split("</h2>")[0]
+    assert "中職" in head
+    for ghost in ("NBA", "MLB"):
+        assert ghost not in head, f"區塊內文提到 {ghost} 就被列進標題"
+    # 內文本身照常保留(只是不影響標題)
+    assert "NBA開球" in out

@@ -52,3 +52,24 @@ def test_real_fetchers_degrade_instead_of_hanging():
     import tw_policy_sources as tps
     with pytest.raises(tps.GazetteUnavailable):
         tps.fetch_gazette(mr._http_get_relaxed_strict)
+
+
+def test_previously_networked_tests_now_exercise_the_success_path():
+    """批#54 封鎖網路後,五個測試固定走**降級**路徑(斷言不依賴網路結果,所以照樣綠,
+    但驗的是失敗分支)。批#60 補上確定性 stub,讓它們走**成功**路徑。
+
+    這條測試釘住那些 stub 還在:少了任何一個,對應的測試就會退回驗降級分支,
+    而那是靜默的(測試仍然綠)。
+    """
+    from pathlib import Path
+    life = Path(__file__).with_name("test_lifestyle.py").read_text(encoding="utf-8")
+    for fn in ("fetch_suspension_news", "fetch_gazette", "analyze_weekend_policy"):
+        assert fn in life, f"週日流程的 {fn} 沒有 stub —— 會退回降級路徑"
+    # 公報用的是**成功**路徑的資料(不是空清單/例外)
+    assert "_GAZETTE_STUB" in life
+    assert "category_codes" in life, "公報 stub 缺欄位 → 會被當成無關注分類"
+
+    uni = Path(__file__).with_name("test_universe.py").read_text(encoding="utf-8")
+    for fn in ("_fetch_twse_stock_day_all", "fetch_tw_eps",
+               "fetch_twse_short_balance"):
+        assert fn in uni, f"universe 快照的 {fn} 沒有 stub —— 會打真實 TWSE"

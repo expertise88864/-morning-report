@@ -313,6 +313,19 @@ def test_snapshot_uses_universe_codes(monkeypatch):
     monkeypatch.setattr(mr, "fetch_tw_monthly_revenue", lambda: {})
     monkeypatch.setattr(mr, "fetch_tdcc_major_holders", lambda tc=None: {})
     monkeypatch.setattr(mr.yf, "download", fake_download)
+    # 2026-07-28:這條先前漏 patch 內部走 TWSE 的路徑 —— 批#54 封鎖網路之前它會
+    # **打真實的 openapi.twse.com.tw / www.twse.com.tw**(實測 9 次),封鎖之後則
+    # 固定走降級路徑。給確定性資料,讓它驗的是**成功**路徑而不是失敗分支。
+    monkeypatch.setattr(mr, "fetch_tw_eps", lambda *a, **k: {})
+    monkeypatch.setattr(mr, "fetch_twse_short_balance", lambda *a, **k: {})
+    monkeypatch.setattr(mr, "_fetch_twse_stock_day_all",
+                        lambda *a, **k: [{"Code": "2330", "ClosingPrice": "1050",
+                                          "TradeValue": "1050000",
+                                          "TradeVolume": "1000"},
+                                         {"Code": "2454", "ClosingPrice": "1200",
+                                          "TradeValue": "600000",
+                                          "TradeVolume": "500"}])
+
 
     universe = {"2330": {"name": "台積電", "industry": "半導體業", "market_cap": 1e13},
                 "2454": {"name": "聯發科", "industry": "半導體業", "market_cap": 2e12}}

@@ -15,7 +15,8 @@
 #   * 絕不把完整 diff 放進 prompt 或 argv;Codex 在 repo 內自行跑 git。
 #   * --ignore-user-config 隔離 ~/.codex/config.toml(不載 plugins/apps/browser/notify/node_repl)。
 #   * --sandbox read-only:Codex 不得寫檔、commit、跑 tests/build/lint/probe。
-#   * 每個 task 最多兩輪;第二輪必須 resume 同一 session,不得重建。
+#   * 迭代到 APPROVE 為止,無輪數上限(使用者定案 2026-07-13,取代舊「最多兩輪」);
+#     每一輪都必須 resume 同一 session,不得重建。
 #   * 結果只讀「最後一則訊息」(-o),不掃整份輸出 —— 否則 prompt 回顯裡的
 #     "APPROVE or REQUEST_CHANGES" 會被誤判(舊 gate script 的真實 bug)。
 #
@@ -128,15 +129,30 @@ if [ "$MODE" = "resume" ]; then
     SID="$(cat "$SESSION_FILE")"
   fi
   PREV_PASS="$(cat "$PASS_FILE" 2>/dev/null || echo 0)"
-  [ "$PREV_PASS" = "1" ] || die "第二輪只能在完成第一輪之後執行(目前 pass=$PREV_PASS)。每個 task 最多兩輪。"
+  case "$PREV_PASS" in (''|*[!0-9]*) PREV_PASS=0 ;; esac
+  # 2026-07-28:舊版硬性 `[ "$PREV_PASS" = "1" ]`,即「每個 task 最多兩輪」——
+  # 那與 CLAUDE.md 現行「迭代到 APPROVE 為止、無輪數上限」(使用者 2026-07-13 定案)
+  # 衝突。實務上只能靠**開新 session 繞過**,而那會丟掉前一輪的上下文、
+  # 讓審查者重新探索整個 repo(更貴,而且會重複回報已修的東西)。
+  # 改為只要求「至少完成過第一輪」。
+  [ "$PREV_PASS" -ge 1 ] || die "續審只能在完成第一輪之後執行(目前 pass=$PREV_PASS)。"
+  THIS_PASS=$((PREV_PASS + 1))
+  # 軟性提醒:每一輪都要花 token,而且「把審查者跑到綠燈」不是目的。
+  # 若某條 finding 經證據判定為 REJECTED,應該據理說明而不是再跑一輪。
+  if [ "$THIS_PASS" -ge 6 ]; then
+    echo "[codex-review] 提醒:這是第 $THIS_PASS 輪。每輪約 0.1-0.2M tokens;" >&2
+    echo "               若剩下的 finding 已是邊角推測,請用判斷收尾,不要迴圈到綠燈。" >&2
+  fi
 
   # 第二輪的 effort 沿用第一輪(從 usage.tsv 最後一筆讀回),預設 medium。
   RESUME_EFFORT="$(tail -1 "$USAGE_TSV" | cut -f5)"; [ -n "$RESUME_EFFORT" ] || RESUME_EFFORT="medium"
   RESUME_BASE="$(tail -1 "$USAGE_TSV" | cut -f6)";   [ -n "$RESUME_BASE" ] || RESUME_BASE="unavailable"
   build_flags "$RESUME_EFFORT" resume
 
-  read -r -d '' RESUME_PROMPT <<'RP' || true
-Second and final review pass. Inspect only the corrections made for CONFIRMED
+  # 舊版寫死 "Second and final review pass" —— 那會誘導審查者收尾,
+  # 而現在的規則是跑到 APPROVE 為止。改成標明實際輪次、不宣稱是最後一輪。
+  read -r -d '' RESUME_PROMPT <<RP || true
+Follow-up review pass #$THIS_PASS. Inspect only the corrections made for CONFIRMED
 findings from the previous review. Verify that those defects are resolved and
 that the corrections introduced no concrete regression. Do not repeat the
 original full repository exploration. Remain strictly read-only: do not modify
@@ -145,18 +161,18 @@ probes, and do not use web search, browser, apps, connectors, or external MCP
 tools. End with exactly APPROVE or REQUEST_CHANGES.
 RP
 
-  echo "[codex-review] resume session=$SID effort=$RESUME_EFFORT (pass 2/2)"
+  echo "[codex-review] resume session=$SID effort=$RESUME_EFFORT (pass $THIS_PASS)"
   : > "$LAST_MSG"
   # resume 無 --cd:改在 subshell 內 cd 進 repo,讓 Codex 在正確目錄跑 git。
   ( cd "$REPO_ROOT" && codex exec resume "$SID" "${FLAGS[@]}" "$RESUME_PROMPT" ) 2>&1 | tee "$RAW_LOG"
   CODEX_RC=${PIPESTATUS[0]}
   # codex 啟動失敗(參數錯誤等)且完全沒產生 review → 不消耗額度、不計為第二輪。
   if [ "$CODEX_RC" -ne 0 ] && [ ! -s "$LAST_MSG" ]; then
-    die "codex exec resume 啟動失敗(exit=$CODEX_RC),未產生任何 review;不計為第二輪(pass 仍為 1,修正後可再試)。"
+    die "codex exec resume 啟動失敗(exit=$CODEX_RC),未產生任何 review;不計為一輪(pass 仍為 $PREV_PASS,修正後可再試)。"
   fi
-  echo 2 > "$PASS_FILE"
-  RESULT="$(log_usage "resume" "$RESUME_EFFORT" "$RESUME_BASE" 2)"
-  echo; echo "[codex-review] result=$RESULT (pass 2/2)"
+  echo "$THIS_PASS" > "$PASS_FILE"
+  RESULT="$(log_usage "resume" "$RESUME_EFFORT" "$RESUME_BASE" "$THIS_PASS")"
+  echo; echo "[codex-review] result=$RESULT (pass $THIS_PASS)"
   # 限流只在「沒有取得明確裁決」時才有意義:transcript 內文提到 rate limit 字樣
   # (例如 review 對象本身在討論限流)不可推翻已完成的裁決(2026-07-12 實際誤判過)。
   case "$RESULT" in
@@ -317,7 +333,7 @@ sed -i -e "/{{TASK_CONTEXT}}/r $TMP/ctx.txt" -e "/{{TASK_CONTEXT}}/d" "$TMP/prom
 sed -i -e "/{{VERIFICATION_RESULTS}}/r $TMP/ver.txt" -e "/{{VERIFICATION_RESULTS}}/d" "$TMP/prompt.txt"
 
 build_flags "$EFFORT"
-echo "[codex-review] mode=$MODE effort=$EFFORT base=$BASE model=$MODEL (pass 1/2, read-only, user-config ignored)"
+echo "[codex-review] mode=$MODE effort=$EFFORT base=$BASE model=$MODEL (pass 1, read-only, user-config ignored)"
 : > "$LAST_MSG"
 codex exec "${FLAGS[@]}" "$(cat "$TMP/prompt.txt")" 2>&1 | tee "$RAW_LOG"
 CODEX_RC=${PIPESTATUS[0]}
@@ -328,7 +344,7 @@ fi
 
 echo 1 > "$PASS_FILE"
 RESULT="$(log_usage "$MODE" "$EFFORT" "$BASE" 1)"
-echo; echo "[codex-review] result=$RESULT (pass 1/2)  usage → $USAGE_TSV"
+echo; echo "[codex-review] result=$RESULT (pass 1)  usage → $USAGE_TSV"
 # 限流只在「沒有取得明確裁決」時才有意義(理由同 resume 區塊;曾實際誤判)。
 case "$RESULT" in
   APPROVE) exit 0 ;;

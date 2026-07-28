@@ -822,6 +822,18 @@ def test_batch30_fetch_final_survives_per_tour_cap(monkeypatch):
         [w for w in winners if w != "CHAMP"]) <= 2   # 配額仍 3/tour:普通賽果讓位
 
 
+#: 週日測試用的公報記錄(結構取自 tw_policy_sources.parse_gazette_xml 的實際輸出)。
+#: 用**成功**路徑的資料,而不是讓抓取失敗走降級——否則測試驗的是失敗分支。
+_GAZETTE_STUB = [{
+    "meta_id": "167273", "publisher": "財政部",
+    "date_published": "中華民國115年7月24日", "comment_deadline": "",
+    "title": "財政部令:修正「金融機構執行稅務用途金融帳戶資訊申報作業要點」",
+    "theme_subject": "修正作業要點第8點", "keywords": ["青年安心成家方案"],
+    "explain": "配合實務需要修正", "category_codes": ["510"],
+    "content": "第一點 適用對象為……", "url": "https://gazette.example/1",
+}]
+
+
 def _stub_weekend_sources(monkeypatch, *, podcast):
     """把週日綜合的抓取/渲染都換成輕量 stub,只測控制流。"""
     monkeypatch.setattr(mr, "fetch_weather", lambda: [])
@@ -834,6 +846,15 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     # 在地快訊(2026-07-15 新增於週日流程)也要 stub,否則既有週日測試打真 Google News
     # ——5 條查詢的重試/逾時讓測試變慢且看網路臉色(Codex review)
     monkeypatch.setattr(mr, "fetch_local_news", lambda *a, **k: {})
+    # 2026-07-28:批#41/#46 之後週日流程多了三個抓取,先前沒 stub ——
+    # 批#54 封鎖網路之前它們會**打真實的 gazette.nat.gov.tw / dgpa.gov.tw**;
+    # 封鎖之後則固定走降級路徑(測試照樣綠,但驗的是失敗分支)。
+    # 這裡給**成功**路徑的確定性資料,讓測試驗的是實際會寄出的那條路。
+    monkeypatch.setattr(mr, "fetch_suspension_news", lambda *a, **k: [])
+    import tw_policy_sources as _tps_mod
+    monkeypatch.setattr(_tps_mod, "fetch_gazette", lambda *a, **k: _GAZETTE_STUB)
+    monkeypatch.setattr(mr, "analyze_weekend_policy",
+                        lambda *a, **k: "### 測試政策\n測試內容。")
     for fn in ("_render_weather_html", "_render_event_calendar_html"):
         monkeypatch.setattr(mr, fn, lambda *a, **k: "")
     for fn in ("_render_sports_html", "_render_podcast_html",

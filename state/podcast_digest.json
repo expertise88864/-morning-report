@@ -4876,6 +4876,62 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73218508",
+        "title": "Amazon revamps AI strategy",
+        "published": "Tue, 28 Jul 2026 17:25:24 +0000",
+        "processed_at": "2026-07-28T20:45:45Z",
+        "digest": {
+          "summary_points": [
+            "亞馬遜重組AI策略，逐步終止多款自研NOVA模型，轉而專注於由研究員Peter Abil主導的新邊疆模型，預計在re:Invent大會上亮相。",
+            "康寧 (GLW) 發布混合展望，Q3營收指引49-50億美元略低於市場預期的50億美元，儘管Q2業績強勁，股價仍下跌。",
+            "波音 (BA) Q2營收優於預期，受商用飛機交付強勁帶動，但空軍一號替換計畫相關費用導致調整後虧損擴大，股價仍上漲。",
+            "PayPal (PYPL) Q2獲利優於預期，上調全年財測，儘管Q3展望疲軟；分析師認為財測上調可作為與Stripe收購案談判的籌碼。",
+            "蘋果 (AAPL) 市值突破5兆美元，成為史上第二家達此里程碑的公司，股價年內漲約24%，過去12個月漲近60%；執行長庫克將於9月1日交棒給John Tarnas。",
+            "分析師提出SpaceX與特斯拉合併假設，若以每股480美元溢價50%交易，合併公司估值約3.3兆美元，特斯拉股東將持有54%。"
+          ],
+          "tickers": [
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "亞馬遜重組AI策略，終止部分模型，轉向邊疆模型。"
+            },
+            {
+              "name": "康寧",
+              "code": "GLW",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q3營收指引略低於預期，股價下跌。"
+            },
+            {
+              "name": "波音",
+              "code": "BA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2營收優於預期，股價上漲。"
+            },
+            {
+              "name": "PayPal",
+              "code": "PYPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2獲利優於預期並上調全年財測。"
+            },
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "市值突破5兆美元里程碑，CEO將交接。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "\"The guidance boost is a great bargaining chip to push the $53 billion offer much higher.\""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73212016",
         "title": "Chips drag Korea lower",
         "published": "Tue, 28 Jul 2026 10:29:40 +0000",
@@ -5421,66 +5477,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-16T22:53:17Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72994694",
-        "title": "Dan Ives launches merchant bank",
-        "published": "Wed, 15 Jul 2026 16:29:56 +0000",
-        "processed_at": "2026-07-15T20:35:38Z",
-        "digest": {
-          "summary_points": [
-            "知名科技分析師 Dan Ives 與 Yorkville Securities 合作成立新型商人銀行 Yorkville Ives，專注於科技領域。",
-            "半導體設備商 ASML 因 AI 需求強勁，第二次上調全年銷售預測，第二季業績優於預期。",
-            "強生 J&J 第二季獲利優於預期，並調高財測，但每股盈餘年減，市場反應平淡。",
-            "貝萊德 BlackRock 第二季獲利優於預期，過去12個月吸引8680億美元淨流入，有機基礎費用成長10%。",
-            "6月生產者物價指數 PPI 月減0.3%，低於預期，年增率降至5.5%。",
-            "核心 PPI 月增0.2%，低於預期，年增率降至4.7%。",
-            "聯準會今年升息機率從一週前的85%降至75%，因CPI與PPI均顯示通膨壓力緩解。",
-            "CoreWeave 考慮使用衍生品避險，對沖記憶體與儲存晶片價格下跌風險，凸顯AI熱潮對晶片市場波動的影響。",
-            "美銀全球基金經理人調查顯示，做多半導體已成為最擁擠的交易（82%），做多科技七雄降至7%。"
-          ],
-          "tickers": [
-            {
-              "name": "ASML",
-              "code": "ASML",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上調全年銷售預測，AI需求帶動"
-            },
-            {
-              "name": "Johnson & Johnson",
-              "code": "JNJ",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "獲利優於預期但每股盈餘年減，市場反應平淡"
-            },
-            {
-              "name": "BlackRock",
-              "code": "BLK",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "獲利優於預期，資金流入強勁"
-            },
-            {
-              "name": "Micron",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "CoreWeave考慮避險，提及作為供應商，但無明確方向"
-            },
-            {
-              "name": "Western Digital",
-              "code": "WDC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "CoreWeave考慮避險，提及Sandisk品牌，但無明確方向"
-            }
-          ],
-          "market_view": "通膨壓力持續緩解，PPI數據低於預期，聯準會升息機率下降，但核心PCE可能仍偏強。",
-          "action_view": "",
-          "notable_quote": "The fourth industrial revolution is here and it needs a new kind of bank."
-        },
-        "shown_at": "2026-07-15T22:54:24Z"
       }
     ]
   },

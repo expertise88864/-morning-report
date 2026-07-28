@@ -889,9 +889,32 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["delta_unconfirmed"] = unconfirmed
         # r6(Codex,P1):型別升級在**事件通過所有驗收之後**才做(見
         # _resolve_story_key 的說明)。線索常以 general 起頭,被講清楚是資訊增加。
+        # r7(Codex,P2):升級**必須連 key 一起遷移**。story_key_for_event 由
+        # event_type 推導身分,只改型別會讓 story["key"] 停在舊的 general lineage
+        # → 之後從一般 feed(沒有 followup_key)進來的同一件事會算出型別化的 key,
+        # **開出第二條線索**:軌跡分裂、卡片重複、原線索還可能因此沉寂。
+        # (Codex 在 F15 的建議裡就寫了 "update/migrate ... consistently",
+        #  我當時只做了 update。)
         if (str(story.get("event_type") or "general") == "general"
                 and str(ev.get("event_type") or "general") != "general"):
-            story["event_type"] = str(ev.get("event_type"))
+            _new_key = story_key_for_event(
+                {k: v for k, v in ev.items() if k != "followup_key"})
+            # 目標 key 已被別條線索佔用時**不升級**——合併兩條線索的風險高於
+            # 維持現狀,而維持現狀只是型別偏保守,不會產生錯誤輸出。
+            if _new_key and _new_key != key and _new_key not in by_key:
+                story["event_type"] = str(ev.get("event_type"))
+                story["key"] = _new_key
+                by_key[_new_key] = story
+                by_key.pop(key, None)
+                seen_sigs[_new_key] = seen_sigs.pop(key, [])
+                if key in today_sigs:
+                    today_sigs[_new_key] = today_sigs.pop(key)
+                if key in touched:
+                    touched.discard(key)
+                    touched.add(_new_key)
+                key = _new_key
+            elif _new_key == key:
+                story["event_type"] = str(ev.get("event_type"))
         _push_timeline(story, _timeline_entry(
             ev, today,
             _material_facts(title, str(story.get("entity") or ""),

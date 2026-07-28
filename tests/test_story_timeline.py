@@ -622,3 +622,67 @@ def test_company_mention_gate_rejects_incidental_ticker_matches():
     assert not mr._mentions_company("某股收在 2317 元", "鴻海", "2317")
     assert not mr._mentions_company("成交量 2317 張", "", "2317")
     assert mr._mentions_company("", "鴻海", "2317") is False
+
+
+def test_type_upgrade_migrates_the_story_key():
+    """r7(Codex,P2):升級**必須連 key 一起遷移**。story_key_for_event 由
+    event_type 推導身分,只改型別會讓 story["key"] 停在舊的 general lineage
+    → 之後從一般 feed(**沒有 followup_key**)進來的同一件事會算出型別化的 key,
+    **開出第二條線索**:軌跡分裂、卡片重複、原線索還可能因此沉寂。
+
+    (Codex 在 F15 的建議裡就寫了 "update/migrate ... consistently",
+     我當時只做了 update。)
+    """
+    OLD = "e:2317|l:general|abc"
+    led = [{"key": OLD, "entity": "2317", "entity_name": "鴻海",
+            "event_type": "general", "state": "peak",
+            "headline": "鴻海傳有大動作", "updates": 2,
+            "first_seen": "2026-07-25", "last_update": "2026-07-26",
+            "last_delta": "鴻海傳有大動作",
+            "timeline": [{"d": "2026-07-26", "t": "鴻海傳有大動作",
+                          "l": "https://a/1", "s": "某報", "f": []}]}]
+
+    # 第一則:帶 followup_key 的明確型別 → 接回並升級
+    led = sl.update_ledger(led, [{
+        "entity": "2317", "entity_name": "鴻海", "event_type": "orders",
+        "title": "鴻海大動作為接獲大單 金額100億", "followup_key": OLD,
+        "surprise_score": 0.6, "source_grade": "A", "link": "https://a/2",
+        "source_name": "某報",
+        "published": "2026-07-27T01:00:00+00:00"}], "2026-07-27",
+        {"2317": "鴻海"})
+    assert len(led) == 1
+    assert led[0]["event_type"] == "orders"
+    assert led[0]["key"] != OLD, "型別升級了但 key 沒遷移"
+
+    # 第二則:一般 feed,**沒有** followup_key —— 必須接回同一條
+    led = sl.update_ledger(led, [{
+        "entity": "2317", "entity_name": "鴻海", "event_type": "orders",
+        "title": "鴻海大單再加碼 上修至200億", "surprise_score": 0.6,
+        "source_grade": "A", "link": "https://a/3", "source_name": "某報",
+        "published": "2026-07-28T01:00:00+00:00"}], "2026-07-28",
+        {"2317": "鴻海"})
+    assert len(led) == 1, f"軌跡分裂成兩條:{[s['key'] for s in led]}"
+    assert len(led[0]["timeline"]) == 3, "軌跡沒有續上"
+
+
+def test_type_upgrade_skipped_when_target_key_is_taken():
+    """目標 key 已被別條線索佔用時**不升級** —— 合併兩條線索的風險高於維持現狀,
+    而維持現狀只是型別偏保守,不會產生錯誤輸出。"""
+    OLD = "e:2317|l:general|abc"
+    ev = {"entity": "2317", "entity_name": "鴻海", "event_type": "orders",
+          "title": "鴻海接獲大單", "followup_key": OLD, "surprise_score": 0.6,
+          "source_grade": "A", "published": "2026-07-27T01:00:00+00:00"}
+    taken = sl.story_key_for_event({k: v for k, v in ev.items()
+                                    if k != "followup_key"})
+    led = [{"key": OLD, "entity": "2317", "entity_name": "鴻海",
+            "event_type": "general", "state": "peak", "headline": "鴻海傳有大動作",
+            "updates": 2, "first_seen": "2026-07-25",
+            "last_update": "2026-07-26", "last_delta": "鴻海傳有大動作"},
+           {"key": taken, "entity": "2317", "entity_name": "鴻海",
+            "event_type": "orders", "state": "peak", "headline": "另一筆訂單案",
+            "updates": 1, "first_seen": "2026-07-26",
+            "last_update": "2026-07-26", "last_delta": "另一筆訂單案"}]
+    out = sl.update_ledger(led, [ev], "2026-07-27", {"2317": "鴻海"})
+    keys = {s["key"] for s in out}
+    assert OLD in keys and taken in keys, "兩條線索被合併了"
+    assert len(out) == 2

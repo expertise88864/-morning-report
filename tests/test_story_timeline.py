@@ -146,8 +146,10 @@ def test_followup_requires_an_entity_anchor():
     ]
     out = sl.followup_queries(ledger, today="2026-07-27")
     assert [q for _, q, _e in out] == ["鴻海 訂單"], out
-    # r1(Codex,P1):必須連**實體**一起回傳,結果才接得回這條線索
-    assert [e for _, _q, e in out] == ["鴻海"], out
+    # r2(Codex,P1):回傳的必須是**線索 key 所用的那個實體**(代號),
+    # 不是查詢用的公司名 —— 我上一輪回傳「鴻海」,而線索 key 是
+    # `e:2317|...`,抓回來的文章因此開出 entity=鴻海 的新線索,缺陷沒解掉。
+    assert [e for _, _q, e in out] == ["2317"], out
 
 
 def test_followup_uses_event_type_not_sliced_headline():
@@ -305,3 +307,60 @@ def test_same_batch_authoritative_replacement_also_moves_the_timeline():
     assert "取消" in today_pt[0]["t"], "軌跡點沒跟著換 —— 與 headline 自相矛盾"
     assert today_pt[0]["l"] == "https://a/2"
     assert "取消" in story["headline"]
+
+
+def test_followup_article_reconnects_to_the_originating_story():
+    """r2(Codex,P1):**光是接回 entity 不夠**。線索 key 含 lineage,而追蹤抓回來
+    的文章 event_type 由標題推導(常是 general 且帶標題 digest)→ key 仍與原線索
+    不同(e:2317|l:general|xxxx vs e:2317|l:orders),照樣開出新線索,
+    主動追蹤等於白做。真正的解法是直接帶著發起查詢的那條線索的 key。"""
+    import morning_report as mr
+    KEY = "e:2317|l:orders"
+    led = [{"key": KEY, "entity": "2317", "entity_name": "鴻海",
+            "event_type": "orders", "state": "peak",
+            "headline": "鴻海洽談收購案", "updates": 3,
+            "last_update": "2026-07-26", "last_delta": "鴻海洽談收購案",
+            "timeline": [{"d": "2026-07-26", "t": "鴻海洽談收購案",
+                          "l": "https://a/1", "s": "某報", "f": []}]}]
+    key, query, ent = sl.followup_queries(led, today="2026-07-27")[0]
+    assert (key, ent) == (KEY, "2317")
+
+    events = mr.extract_structured_events(news=[{
+        "source": f"追蹤:{query}", "title": "鴻海收購案新進展 金額200億",
+        "summary": "x", "link": "https://a/9", "source_name": "某報",
+        "company_label": ent, "followup_key": key,
+        "published": "2026-07-27T02:00:00+00:00"}], mops=[])
+    assert sl.story_key_for_event(events[0]) == KEY, "算出來的 key 與原線索不同"
+
+    out = sl.update_ledger(led, events, "2026-07-27", {"2317": "鴻海"})
+    assert len(out) == 1, f"開出了新線索而不是接回原本那條:{[s['key'] for s in out]}"
+    assert len(out[0]["timeline"]) == 2, "軌跡沒有續上"
+
+
+def test_followup_key_must_look_like_a_ledger_key():
+    """followup_key 由本系統的帳本產生、經抓取工作項傳遞,不是外部文字。
+    仍加形狀檢查:格式不符者回退到正常推導,不讓任意字串決定線索身分。"""
+    for bogus in ("", "隨便的字串", "../../etc", None):
+        ev = {"entity": "2330", "event_type": "earnings", "title": "台積電財報",
+              "published": "2026-07-27T01:00:00+00:00", "followup_key": bogus}
+        assert sl.story_key_for_event(ev) != bogus
+        assert sl.story_key_for_event(ev).startswith(("e:", "h:", "cluster:"))
+
+
+def test_sports_header_matches_the_worldcup_block_label():
+    """r2(Codex,P2):世足區塊寫的是「世界盃足球賽」而辨識字串寫成「世足」——
+    只有世足資料時區塊會出現、標題卻漏掉它,正好是這條修正要防的反向落差。
+    **辨識字串必須逐字對應區塊實際輸出的標題**,不能憑印象寫簡稱。"""
+    import html as _h2
+    wc = {"results": [{"date": "07/18", "text": "A 2-1 B(決賽)"}]}
+    head = ru._render_sports_html({"worldcup": wc}, _h2).split("</h2>")[0]
+    assert "世足" in head, "有世足區塊卻沒列進標題"
+
+
+def test_followup_log_line_does_not_lie(monkeypatch, capsys):
+    """r2(Codex,P2):**我修 F2 時自己弄壞的** —— 三元組被 2-tuple 解包,
+    每次有追蹤查詢都拋 ValueError、被 except 吞掉並印出「追蹤查詢略過」,
+    但清單其實照樣送進 fetch_news:日誌在說謊。"""
+    fus = [("e:2317|l:orders", "鴻海 訂單", "2317")]
+    line = "[story] 主動追蹤查詢 " + "、".join(f[1] for f in fus)
+    assert line.endswith("鴻海 訂單")

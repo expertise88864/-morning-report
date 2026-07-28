@@ -133,6 +133,13 @@ def story_key_for_event(ev: dict) -> str:
     先前我為了避開這點而不分桶,但兩害相權:**把兩件不同的事寫成同一條的續報是
     事實錯誤,把一條長線切兩段只是連續性變差**。錯誤輸出比退化嚴重,故取一致性。
     """
+    # r2(Codex,P1):主動追蹤抓回來的文章**直接帶著發起查詢的那條線索的 key**。
+    # 否則 event_type 由標題推導(常是 general 且帶標題 digest),算出來的 key
+    # 與原線索不同,照樣開出新線索——主動追蹤等於白做。
+    # 這個值由本模組產生的 key 經由本系統的抓取工作項傳遞,不是外部文字。
+    followed = str(ev.get("followup_key") or "").strip()
+    if followed.startswith(("e:", "h:", "cluster:")):
+        return followed
     try:
         import news_events as _ne
         entity, lineage = _ne._event_timeline_key(ev)
@@ -1003,7 +1010,13 @@ def followup_queries(ledger: list[dict], limit: int = FOLLOWUP_MAX_QUERIES,
             continue          # 同公司同類型只查一次
         seen_q.add(q)
         # r1(Codex,P1):**同時回傳實體**,呼叫端才能把抓回來的文章接回這條線索。
-        picked.append((str(s.get("key") or ""), q, ent))
+        # r2(Codex,P1):回傳的必須是**線索 key 所用的那個實體**(通常是股票代號),
+        # 不是查詢用的公司名 —— 我上一輪回傳「鴻海」,而線索的 key 是
+        # `e:2317|l:orders`,抓回來的文章因此開出一條 entity=鴻海 的**新線索**,
+        # 原本的缺陷完全沒解掉。查詢仍用公司名(中文標題寫的是名字),
+        # 但接回去要用代號。
+        picked.append((str(s.get("key") or ""), q,
+                       str(s.get("entity") or ent)))
         if len(picked) >= limit:
             break
     return picked

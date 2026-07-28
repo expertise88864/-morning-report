@@ -8835,6 +8835,13 @@ def extract_structured_events(news: list[dict],
             # ——**測試驗的是我蓋的東西,不是生產送進來的東西**(本專案第四次)。
             # 只收 http(s),其餘視同沒有連結(存進 state 會跨日回流,不可信任)。
             "link": _safe_source_url(item.get("link")),
+            # r2(Codex,P1):**光是接回 entity 不夠**。線索 key 含 lineage,
+            # 而追蹤抓回來的文章 event_type 由標題推導(常是 general,還帶標題
+            # digest)→ key 仍與原線索不同(e:2317|l:general|xxxx vs e:2317|l:orders),
+            # 照樣開出新線索。真正的解法是**直接帶著發起查詢的那條線索的 key**。
+            # 這個值由本系統的帳本產生、經 work 項目傳遞,**不是外部文字**;
+            # 外部素材無法自行填入(_process_feed_item 只在追蹤工作項上設它)。
+            "followup_key": str(item.get("followup_key") or "")[:120],
             "source_name": str(item.get("source_name") or "")[:40],
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
@@ -19416,8 +19423,12 @@ def main() -> int:
             _followups = _sl_early.followup_queries(
                 _led_early, today=now_tpe.strftime("%Y-%m-%d"))
             if _followups:
+                # r2(Codex,P2):**這行是我修 F2 時自己弄壞的** ——
+                # 三元組被 2-tuple 解包 → 每次有追蹤查詢都拋 ValueError,
+                # 被下面的 except 吞掉並印出「追蹤查詢略過」,
+                # 但清單其實照樣送進 fetch_news:**日誌在說謊**。
                 print("[story] 主動追蹤查詢 "
-                      + "、".join(q for _, q in _followups))
+                      + "、".join(f[1] for f in _followups))
     except Exception as e:
         print(f"[story] 追蹤查詢略過: {type(e).__name__}: {e}", file=sys.stderr)
     news = fetch_news(_followups)

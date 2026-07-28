@@ -716,8 +716,10 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     tgt_type = str(target.get("event_type") or "").strip() or "general"
     if ev_type != "general" and tgt_type != "general" and ev_type != tgt_type:
         return story_key_for_event(ev)
-    if ev_type != "general" and tgt_type == "general":
-        target["event_type"] = ev_type      # 型別升級,後續比對才有依據
+    # r6(Codex,P1):**升級不能在這裡做**。_resolve_story_key 只是「決定歸屬」,
+    # 在它之後還有重播偵測、_is_real_progress、權威比較等關卡;在這裡改型別,
+    # 等於讓一則**被拒收的低分級或重播事件**也悄悄把線索重新分類,
+    # 進而影響之後的歸屬判斷與追蹤查詢。改到事件真的被接受之後才升級。
     return followed
 
 
@@ -885,6 +887,11 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["last_published"] = str(ev.get("published") or "")
         story["headline"] = title[:120]
         story["delta_unconfirmed"] = unconfirmed
+        # r6(Codex,P1):型別升級在**事件通過所有驗收之後**才做(見
+        # _resolve_story_key 的說明)。線索常以 general 起頭,被講清楚是資訊增加。
+        if (str(story.get("event_type") or "general") == "general"
+                and str(ev.get("event_type") or "general") != "general"):
+            story["event_type"] = str(ev.get("event_type"))
         _push_timeline(story, _timeline_entry(
             ev, today,
             _material_facts(title, str(story.get("entity") or ""),
@@ -1075,6 +1082,11 @@ def _followup_entity(story: dict) -> str:
         if len(n) >= 2 and n not in _FOLLOWUP_STOPWORDS:
             return n
     code = str(story.get("entity") or "").strip()
-    # 純代號(2330)也可以查——Google News 對台股代號有命中率;
-    # 但 cluster: 開頭的合成 key 不是實體。
-    return code if code and not code.startswith("cluster") else ""
+    if not code or code.startswith("cluster"):
+        return ""
+    # r6(Codex,P1):純數字代號**不發查詢**。
+    # 貼標閘門(_mentions_company)刻意不採信單獨的數字——數字在財經文章裡到處
+    # 都是(價格、時間、張數)。於是「用代號查、再用代號驗」必然驗不過,
+    # 抓回來的東西一律接不回線索:查了等於白查,還多打一次外部請求。
+    # 有名字才查;沒名字的線索走被動路徑(那是誠實的:我們沒有可靠的錨)。
+    return "" if code.isdigit() else code

@@ -551,8 +551,8 @@ def test_followup_label_gate_runs_where_the_article_text_is(monkeypatch):
 def test_general_target_can_be_upgraded_by_a_specific_followup():
     """r5(Codex,P2)**這正是我送審時自己標記的邊界,確認過嚴了**:
     線索常以 general 起頭(早期標題看不出類型),之後的後續報導才把它講清楚。
-    原本的條件會把那則**正確的後續報導**判為矛盾、另開一條,反而切斷軌跡、
-    讓原線索停在舊值。只有雙方都明確且不同才算矛盾。"""
+    原本的條件會把那則**正確的後續報導**判為矛盾、另開一條,反而切斷軌跡。
+    只有雙方都明確且不同才算矛盾。"""
     KEY = "e:2317|l:general|abc"
 
     def _target(t):
@@ -561,23 +561,51 @@ def test_general_target_can_be_upgraded_by_a_specific_followup():
                 "updates": 2, "last_update": "2026-07-26",
                 "last_delta": "鴻海傳有大動作"}
 
-    def _resolve(ev_type, tgt_type):
-        target = _target(tgt_type)
+    def _reconnects(ev_type, tgt_type):
         ev = {"entity": "2317", "entity_name": "鴻海", "event_type": ev_type,
               "title": "鴻海大動作為收購案 已簽約",
               "published": "2026-07-27T01:00:00+00:00", "followup_key": KEY}
-        return sl._resolve_story_key(ev, {KEY: target}) == KEY, target["event_type"]
+        return sl._resolve_story_key(ev, {KEY: _target(tgt_type)}) == KEY
 
-    # general 線索被講清楚 → 接回,且型別跟著升級(後續比對才有依據)
-    reconnected, new_type = _resolve("orders", "general")
-    assert reconnected, "正確的後續報導被判為矛盾"
-    assert new_type == "orders", "線索型別沒有升級"
+    assert _reconnects("orders", "general"), "正確的後續報導被判為矛盾"
+    assert not _reconnects("litigation", "orders"), "真正的矛盾應另開線索"
+    assert _reconnects("general", "orders")
+    assert _reconnects("general", "general")
 
-    # 雙方都明確且不同 → 仍視為另一件事
-    assert not _resolve("litigation", "orders")[0]
-    # 一方 general → 接回
-    assert _resolve("general", "orders")[0]
-    assert _resolve("general", "general")[0]
+
+def test_type_upgrade_happens_only_after_the_event_is_accepted():
+    """r6(Codex,P1):**升級不能在 key 解析時做**。_resolve_story_key 只是決定
+    歸屬,在它之後還有重播偵測、_is_real_progress、權威比較等關卡;在那裡改型別
+    等於讓一則**被拒收的低分級或重播事件**也悄悄把線索重新分類,
+    進而影響之後的歸屬判斷與追蹤查詢。"""
+    KEY = "e:2317|l:general|abc"
+    target = {"key": KEY, "entity": "2317", "entity_name": "鴻海",
+              "event_type": "general", "state": "peak",
+              "headline": "鴻海傳有大動作", "updates": 2,
+              "last_update": "2026-07-26", "last_delta": "鴻海傳有大動作"}
+    ev = {"entity": "2317", "entity_name": "鴻海", "event_type": "litigation",
+          "title": "鴻海大動作其實是訴訟案", "surprise_score": 0.6,
+          "source_grade": "A", "published": "2026-07-27T01:00:00+00:00",
+          "followup_key": KEY}
+
+    sl._resolve_story_key(ev, {KEY: dict(target)})
+    assert target["event_type"] == "general", "解析 key 就改了型別"
+
+    out = sl.update_ledger([dict(target)], [ev], "2026-07-27", {"2317": "鴻海"})
+    assert [s["event_type"] for s in out] == ["litigation"],         "通過驗收後應升級型別"
+
+
+def test_code_only_stories_do_not_emit_followup_queries():
+    """r6(Codex,P1):純數字代號的線索不發查詢。貼標閘門刻意不採信單獨的數字
+    (價格、時間、張數到處都是),於是「用代號查、再用代號驗」必然驗不過
+    ——查了等於白查,還多打一次外部請求。有名字才查。"""
+    code_only = [{"key": "k", "entity": "2317", "entity_name": "",
+                  "event_type": "orders", "state": "peak", "headline": "x",
+                  "updates": 3, "last_update": "2026-07-27"}]
+    assert sl.followup_queries(code_only, today="2026-07-27") == []
+
+    named = [dict(code_only[0], entity_name="鴻海")]
+    assert [f["query"] for f in sl.followup_queries(named, today="2026-07-27")]         == ["鴻海 訂單"]
 
 
 def test_company_mention_gate_rejects_incidental_ticker_matches():

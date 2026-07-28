@@ -200,3 +200,73 @@ def test_run_reports_nested_diagnostics_not_only_spa():
     # __main__ 守衛必須在所有定義之後
     full = inspect.getsource(mc)
     assert full.index('if __name__ == "__main__"') > full.index("def clark_west")
+
+
+def test_mz_shadow_never_changes_the_emitted_prediction():
+    """批#61:MZ 收縮走**影子模式** —— 算出來記錄,**不改寄出的數字**。
+
+    walk-forward 驗證(2026-07-28、n=49、評估區間 29 天):
+        原始預測    MAE 29.71  方向命中 77.8%
+        水準收縮    MAE 29.10  方向命中 74.1%  ← 方向反而變差
+        變動量收縮  MAE 27.26  方向命中 85.2%  ← 兩項都更好
+    但配對檢定 t=+1.07(改好 15/29 天)——**樣本太小,還不能排除是運氣**。
+    """
+    import morning_report as mr
+    from pathlib import Path
+    src = Path(mr.__file__).read_text(encoding="utf-8")
+    i = src.index('_RUN_MANIFEST["mz_shadow"]')
+    window = src[max(0, i - 900):i + 400]
+    # 影子值只能寫進 manifest,不得回寫進 predictions 的任何輸出欄位
+    for emitted in ('predictions["weighted_final"] = _mz',
+                    'predictions["mid"] = _mz',
+                    'predictions["mid"] = shrunk'):
+        assert emitted not in src, f"影子值被寫進寄出的預測:{emitted}"
+    assert "不改寄出的數字" in window
+
+
+def test_mz_shadow_uses_the_shared_price_frame(monkeypatch):
+    """歷史配對必須沿用 build_price_frame —— 它已處理 forecast ledger 與
+    model_history 的接合,以及**前視偏誤防護**(嚴格取前一個 session 的收盤)。
+
+    自測踩到:第一版我猜 row["predictions"]["weighted_final"],實測 **n=0**
+    ——那些欄位根本不在 model_history 裡。**又是自己猜 schema。**
+    (測試環境的 state 被導到暫存目錄,所以這裡注入合成序列驗數學。)
+    """
+    import model_confidence as mc
+    import morning_report as mr
+
+    # 合成:實際變動 = 預測變動 × 0.5(即預測過度反應一倍)。
+    # **變動量必須有變異** —— 第一版我讓每天都是 +20,sxx=0、斜率不可估,
+    # 函式正確地回 applied=False(那個保護是對的,是我的 fixture 不對)。
+    base = [2300.0 + i for i in range(30)]
+    deltas = [(-1) ** i * (5 + i) for i in range(30)]
+    pred = [b + d for b, d in zip(base, deltas)]
+    act = [b + d * 0.5 for b, d in zip(base, deltas)]
+    monkeypatch.setattr(mc, "build_price_frame", lambda: (act, pred, base))
+
+    out = mr._mz_shadow_prediction(2340.0, 2300.0)
+    assert out["n"] == 30 and out["applied"] is True
+    assert abs(out["b"] - 0.5) < 0.02, f"收縮係數沒抓到過度反應:{out}"
+    # +40 的預測變動應被收縮成約 +20
+    assert abs(out["shadow"] - 2320.0) < 1.0, out
+    # **必然**更靠近基準
+    assert abs(out["shadow"] - 2300.0) < abs(out["raw"] - 2300.0)
+
+
+def test_mz_shadow_needs_enough_history(monkeypatch):
+    """樣本不足時不調整 —— 與 walk-forward 驗證腳本的 MIN_TRAIN=20 一致。"""
+    import model_confidence as mc
+    import morning_report as mr
+    short = ([2300.0 + i * 0.5 for i in range(10)],
+             [2300.0 + i for i in range(10)],
+             [2300.0] * 10)
+    monkeypatch.setattr(mc, "build_price_frame", lambda: short)
+    out = mr._mz_shadow_prediction(2340.0, 2300.0)
+    assert out == {"n": 10, "applied": False}
+
+
+def test_mz_shadow_degrades_safely():
+    import morning_report as mr
+    assert mr._mz_shadow_prediction(None, 2350.0) == {}
+    assert mr._mz_shadow_prediction(2336.0, None) == {}
+    assert mr._mz_shadow_prediction("x", "y") == {}

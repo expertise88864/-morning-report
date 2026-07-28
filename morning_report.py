@@ -10070,6 +10070,19 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
         # mid 同步成校正後最終值，讓既有 render 卡片直接反映
         predictions["mid_raw"] = predictions.get("mid")
         predictions["mid"] = predictions["weighted_final"]
+        # 批#61:MZ 收縮的**影子模式** —— 算出來記錄,**不改寄出的數字**。
+        # walk-forward 驗證顯示變動量收縮兩項指標都更好,但 t=+1.07、n=29,
+        # 還不能排除是運氣(細節見 _mz_shadow_prediction)。
+        try:
+            _mz = _mz_shadow_prediction(predictions.get("weighted_final"),
+                                        predictions.get("last_2330"))
+            if _mz:
+                _RUN_MANIFEST["mz_shadow"] = _mz
+                if _mz.get("applied"):
+                    print(f"[mz] 影子預測 {_mz['raw']} → {_mz['shadow']} "
+                          f"(Δ{_mz['delta']:+.2f}、b={_mz['b']}、n={_mz['n']})")
+        except Exception as e:
+            print(f"[mz] 影子預測略過: {type(e).__name__}: {e}", file=sys.stderr)
 
     # ---- (B) bias 修正 00662(帶昨收做方向翻轉防護)----
     if isinstance(fair, dict) and not fair.get("error"):
@@ -10707,6 +10720,60 @@ def _format_policy_deepdive_block(intel: Optional[dict]) -> str:
 # 段落編號同步前挪(十一→十、十一之二→十之二、十二→十一、十三→十二),
 # 不留斷層。說明刻意寫在這裡而不是 prompt 裡:在 prompt 提一個已刪除的段名,
 # 等於叫 LLM 去想它。
+def _mz_shadow_prediction(pred, base) -> dict:
+    """Mincer-Zarnowitz 收縮的**影子預測**:算出來記錄,但**不改寄出的數字**。
+
+    批#48 的 MZ 檢定指出預測過度反應(b<1),建議往均值收縮。批#51 進一步確認:
+    **必須在「變動量」上做,不能在價格水準上做** —— 水準迴歸中 a ≈ ȳ − b·x̄,
+    截距與斜率幾乎完全負相關,「a≠0」是「b≠1」的機械推論而非真實偏誤
+    (照那個算會讓 MAE 從 25.66 惡化到 424.14)。
+
+    **walk-forward 驗證結果(2026-07-28,n=49、評估區間 29 天)**:
+        原始預測      MAE 29.71   方向命中 77.8%
+        水準收縮      MAE 29.10   方向命中 74.1%   ← 方向反而變差
+        變動量收縮    MAE 27.26   方向命中 85.2%   ← 兩項都更好
+      但配對檢定 t=+1.07(改好 15/29 天)—— **樣本太小,還不能排除是運氣**。
+
+    所以走影子模式,而不是直接上線:每天把兩個數字都記進 run manifest,
+    累積足夠樣本後用**真正的樣本外資料**再判一次。這與 PR-2 當初「雙軌記錄
+    LLM vs Python 立場、確認一致率後才切換」是同一個作法。
+
+    係數同樣以 walk-forward 估(只用當下已知的歷史),不得用全樣本——
+    那會把 in-sample 的樂觀帶進來(對照組實測 MAE 26.27、命中 81.5%,
+    明顯優於真正的樣本外表現)。
+    """
+    try:
+        p0 = float(pred)
+        b0 = float(base)
+    except (TypeError, ValueError):
+        return {}
+    # 歷史配對(實際開盤 / 預測 / 前日收盤)由 model_confidence.build_price_frame
+    # 提供 —— 它已經處理好 forecast ledger 與 model_history 的接合、以及
+    # **前視偏誤防護**(嚴格取前一個 session 的收盤,不是當日)。
+    # 自己再抽一次必然走樣:我第一版猜 row["predictions"]["weighted_final"],
+    # 實測 n=0 —— 那些欄位根本不在 model_history 裡。
+    try:
+        import model_confidence as _mc
+        h_act, h_pred, h_base = _mc.build_price_frame()
+    except Exception:
+        return {"n": 0, "applied": False}
+    xs = [p - b for p, b in zip(h_pred, h_base)]
+    ys = [a - b for a, b in zip(h_act, h_base)]
+    if len(xs) < 20:            # 樣本不足不調整(與驗證腳本的 MIN_TRAIN 一致)
+        return {"n": len(xs), "applied": False}
+    mx = sum(xs) / len(xs)
+    my = sum(ys) / len(ys)
+    sxx = sum((x - mx) ** 2 for x in xs)
+    if sxx <= 0:
+        return {"n": len(xs), "applied": False}
+    b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    a = my - b * mx
+    shrunk = b0 + a + b * (p0 - b0)
+    return {"n": len(xs), "applied": True, "a": round(a, 3), "b": round(b, 4),
+            "raw": round(p0, 2), "shadow": round(shrunk, 2),
+            "delta": round(shrunk - p0, 2)}
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:

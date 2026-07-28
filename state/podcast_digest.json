@@ -4876,6 +4876,65 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73212016",
+        "title": "Chips drag Korea lower",
+        "published": "Tue, 28 Jul 2026 10:29:40 +0000",
+        "processed_at": "2026-07-28T15:42:58Z",
+        "digest": {
+          "summary_points": [
+            "韓國 KOSPI 指數暴跌 10%，創下 3 月以來最差單日表現，SK Hynix 下跌 13%、三星下跌 12%，這兩家公司合佔指數權重超過一半。",
+            "人工智慧投資支出疑慮再起，加上來自低成本中國企業的競爭，引發全球半導體股拋售，日本日經指數也下跌 4.1%。",
+            "福特、通用汽車和 B.C. Customs 正在競爭國防部合約，為美國陸軍打造一款基於 F-Series Super Duty 皮卡的戰術卡車原型，國防部預計至少採購 600 輛，每輛成本 33 萬美元。",
+            "Cracker Barrel 執行長 Julie Messino 在任不到三年後宣布卸任，該公司股價較她上任時下跌 45%，今年表現落後標普 500 指數 34 個百分點。",
+            "美國聯邦航空總署要求對波音 737 MAX 飛機進行檢查，原因是座椅安裝不當。",
+            "BuzzFeed 裁減三分之一員工，截至錄音時股價上漲兩位數。",
+            "台灣據報導調查輝達辦公室，涉嫌將 AI 晶片走私至中國。",
+            "Applied Digital (APLD) 股價上漲 4%，因其高運算業務爆炸性成長，第四季營收與獲利均優於預期。",
+            "聯準會為期兩天的政策會議今日開始，預計明天下午公布利率決議。"
+          ],
+          "tickers": [
+            {
+              "name": "福特汽車",
+              "code": "F",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "正在競爭國防部卡車合約，結果不確定。"
+            },
+            {
+              "name": "通用汽車",
+              "code": "GM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "正在競爭國防部卡車合約，結果不確定。"
+            },
+            {
+              "name": "Cracker Barrel",
+              "code": "CBRL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "執行長卸任，股價較上任時下跌 45%，表現落後大盤。"
+            },
+            {
+              "name": "波音",
+              "code": "BA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "FAA 要求檢查 737 MAX 座椅安裝問題。"
+            },
+            {
+              "name": "Applied Digital",
+              "code": "APLD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "高運算業務爆炸性成長，第四季財報優於預期。"
+            }
+          ],
+          "market_view": "南韓股市因半導體股暴跌而重挫，全球對AI支出與中國競爭的擔憂主導市場，聯準會會議即將展開，市場觀望。",
+          "action_view": "",
+          "notable_quote": "Deutsche Bank strategist Jim Reid said renewed concerns over AI investment spending and competition from lower-cost Chinese companies were the dominant driver of Asian markets, triggering another sell-off in global semiconductor stocks."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73195573",
         "title": "OpenAI agent went rogue for days",
         "published": "Mon, 27 Jul 2026 16:27:03 +0000",
@@ -5420,55 +5479,6 @@
           "market_view": "通膨壓力持續緩解，PPI數據低於預期，聯準會升息機率下降，但核心PCE可能仍偏強。",
           "action_view": "",
           "notable_quote": "The fourth industrial revolution is here and it needs a new kind of bank."
-        },
-        "shown_at": "2026-07-15T22:54:24Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/72987854",
-        "title": "Stripe checks out PayPal",
-        "published": "Wed, 15 Jul 2026 10:24:43 +0000",
-        "processed_at": "2026-07-15T15:08:29Z",
-        "digest": {
-          "summary_points": [
-            "Stripe 與 Advent International 聯合出價以每股 60.50 美元收購 PayPal，溢價約 28%；PayPal 盤前上漲 15%。",
-            "Verizon 本週將宣布新一輪裁員，作為 2026 年節省 50 億美元營運支出計劃的一部分；第二季財報將於 7 月 24 日公布。",
-            "Lucid 否認破產傳聞，此前報導稱其被建議私有化或申請破產；股價週二下跌 16%。",
-            "AEHR (Air Test Systems) 第四季財報優於預期，營收年增 33%，股價飆漲 30%。",
-            "今日經濟數據：8:30 公布 PPI 與 Empire State 製造業指數，2:00 公布褐皮書。"
-          ],
-          "tickers": [
-            {
-              "name": "PayPal",
-              "code": "PYPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "收到收購要約，溢價 28%，股價上漲。"
-            },
-            {
-              "name": "Verizon Communications",
-              "code": "VZ",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "宣布裁員以節省成本，影響待觀察。"
-            },
-            {
-              "name": "Lucid Group",
-              "code": "LCID",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "傳出破產疑慮，股價下跌。"
-            },
-            {
-              "name": "AEHR Test Systems",
-              "code": "AEHR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報優於預期，營收成長強勁。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Lucid confirms it is working with Alex Partners but reports of a possible bankruptcy are completely false."
         },
         "shown_at": "2026-07-15T22:54:24Z"
       }

@@ -823,5 +823,47 @@
    "www.cdc.gov.tw": true,
    "www.fda.gov.tw": true
   }
+ },
+ {
+  "date": "2026-07-29",
+  "checks": {
+   "universe": true,
+   "institutional": true,
+   "revenue": true,
+   "liquidity": true,
+   "news": true,
+   "structured_events": true,
+   "tw_policy_intelligence": true,
+   "tw_medical_intelligence": true,
+   "tw_policy_official_sources": true,
+   "tw_medical_official_sources": true
+  },
+  "feeds": {
+   "search.cnbc.com": true,
+   "feeds.bloomberg.com": true,
+   "finance.yahoo.com": true,
+   "news.google.com": true,
+   "feeds.feedburner.com": true,
+   "www.federalreserve.gov": true,
+   "api.cnyes.com": true,
+   "openapi.twse.com.tw": true,
+   "news.ltn.com.tw": true,
+   "technews.tw": true,
+   "tw.stock.yahoo.com": true,
+   "money.udn.com": true,
+   "udn.com": true,
+   "www.scmp.com": true,
+   "asia.nikkei.com": true,
+   "feeds.bbci.co.uk": true,
+   "www.ey.gov.tw": true,
+   "www.mohw.gov.tw": true,
+   "www.fsc.gov.tw": true,
+   "www.cbc.gov.tw": true,
+   "www.moi.gov.tw": true,
+   "www.mol.gov.tw": true,
+   "www.moea.gov.tw": true,
+   "www.cdc.gov.tw": true,
+   "www.fda.gov.tw": true
+  }
  }
 ]

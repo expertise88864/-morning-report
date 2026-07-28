@@ -1,37 +1,37 @@
 {
- "date": "2026-07-28 06:48",
- "total_seconds": 493.6,
+ "date": "2026-07-29 06:48",
+ "total_seconds": 455.5,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 9.4
+   "seconds": 5.5
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 162.4
+   "seconds": 148.5
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 14.8
+   "seconds": 14.6
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 131.4
+   "seconds": 116.3
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 82.5
+   "seconds": 86.5
   },
   {
    "label": "LLM 主分析",
-   "seconds": 90.6
+   "seconds": 81.4
   },
   {
    "label": "渲染",
-   "seconds": 2.6
+   "seconds": 2.7
   }
  ],
  "feeds": {
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 125,
+   "ok": 127,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -136,14 +136,14 @@
    "fail": 0
   }
  },
- "model_history_days": 216,
- "d1_samples": 0,
+ "model_history_days": 217,
+ "d1_samples": 1,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -1,
-  "llm_label": "中性",
-  "py": -1,
-  "py_label": "中性",
+  "llm": -6,
+  "llm_label": "偏空",
+  "py": -6,
+  "py_label": "偏空",
   "agree": true,
   "coverage": 1.0,
   "missing": [],
@@ -185,5 +185,14 @@
   "warnings": [],
   "checked": 3,
   "failed": 0
+ },
+ "mz_shadow": {
+  "n": 49,
+  "applied": true,
+  "a": 2.465,
+  "b": 0.6865,
+  "raw": 2246.4,
+  "shadow": 2259.4,
+  "delta": 13.0
  }
 }

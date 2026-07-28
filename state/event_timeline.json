@@ -1,27 +1,21 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 39,
-  "last_seen": "2026-07-28",
-  "latest_title": "Ukraine, Russia Black Sea attacks push wheat prices to 2-year high"
+  "days": 40,
+  "last_seen": "2026-07-29",
+  "latest_title": "〈紐約匯市〉美元小漲 Fed利率決策成市場焦點"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 25,
-  "last_seen": "2026-07-28",
-  "latest_title": "貝森特控中竊AI模型揚言制裁 北京批「典型AI霸權主義」 - 世界新聞網"
- },
- "litigation:2882": {
-  "first_seen": "2026-07-25",
-  "days": 1,
-  "last_seen": "2026-07-25",
-  "latest_title": "代子公司國泰人壽保險股份有限公司公告受監理機關裁罰之說明"
+  "days": 26,
+  "last_seen": "2026-07-29",
+  "latest_title": "美《制裁俄羅斯法案》對中印伊朗有何影響 - 大纪元"
  },
  "litigation:": {
   "first_seen": "2026-07-25",
-  "days": 1,
-  "last_seen": "2026-07-25",
-  "latest_title": "US small businesses sue Trump administration over new ‘forced labour’ tariffs"
+  "days": 2,
+  "last_seen": "2026-07-29",
+  "latest_title": "諾和諾德因CagriSema臨床試驗面臨美國股東提起的訴訟 - TradingView"
  },
  "export_controls:META": {
   "first_seen": "2026-07-27",
@@ -31,8 +25,8 @@
  },
  "export_controls:ASML": {
   "first_seen": "2026-07-28",
-  "days": 1,
-  "last_seen": "2026-07-28",
-  "latest_title": "中國DUV量產傳聞重擊ASML 美光、SK海力士ADR、SanDisk全面下殺"
+  "days": 2,
+  "last_seen": "2026-07-29",
+  "latest_title": "美制裁反噬？中國自製 DUV 曝光機量產，ASML 護城河遭市場重新定價 - inside.com.tw"
  }
 }

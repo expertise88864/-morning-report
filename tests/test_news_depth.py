@@ -326,3 +326,19 @@ def test_column_branch_only_matches_session_columns():
                  "〈能源盤後〉美國暫停空襲 原油挫8%",
                  "盤中速報 - 勤誠大跌7.2%"):
         assert sl.is_market_wrap(wrap, _NAMES), wrap
+
+
+def test_market_column_yields_to_a_named_company():
+    """r8(Codex,P2):把市場詞從欄目分支整個拿掉,會讓「【美股】道瓊漲500點」
+    漏判(「漲」不在方向詞裡)。但市場詞欄目必須**讓給具名公司**,
+    否則【美股焦點】輝達財報後大漲 又會被誤殺。
+
+    最終結構的三條規則用**同一個原則**:有具名公司就不是綜覽。
+      (a) 場次欄目(〈台股盤後〉)—— 絕對成立
+      (b) 市場詞欄目(【美股】)—— 讓給具名公司
+      (c) 市場主體+方向        —— 讓給具名公司
+    """
+    assert sl.is_market_wrap("【美股】道瓊漲500點", _NAMES)
+    assert not sl.is_market_wrap("【美股焦點】輝達財報後大漲", _NAMES)
+    # 場次欄目即使有公司名仍成立(那是總結文章提到的例子)
+    assert sl.is_market_wrap("〈台股盤後〉台積電穩盤 回測4萬3", _NAMES)

@@ -174,7 +174,19 @@ def is_market_wrap(title: str, known_names=()) -> bool:
         return True
     # 欄目型標題:〈美股盤後〉〈能源盤後〉【盤後】… —— 這個格式本身就是「綜覽」,
     # 不必是哪個市場(自測抓到:〈能源盤後〉的「能源」不在市場詞清單裡)。
-    if t[:1] in _WRAP_PREFIX and any(m in t[:14] for m in _WRAP_COLUMN_WORDS):
+    # 欄目型標題分兩種:
+    #  (a) **場次欄目**(〈台股盤後〉〈能源盤後〉)—— 那就是一篇場次總結,絕對成立。
+    #  (b) **市場欄目**(【美股】)—— r8(Codex,P2):把市場詞從欄目分支整個拿掉
+    #      會讓「【美股】道瓊漲500點」漏判(「漲」不在方向詞裡)。但它必須
+    #      **讓給具名公司**,否則【美股焦點】輝達財報後大漲 又會被誤殺。
+    #      與主規則同一個原則:有具名公司就不是綜覽。
+    _bracketed = t[:1] in _WRAP_PREFIX
+    if _bracketed and any(m in t[:14] for m in _WRAP_COLUMN_WORDS):
+        return True
+    _named = any(n and len(str(n)) >= 2 and str(n) in t
+                 for n in (known_names or ()))
+    if _bracketed and not _named and any(
+            m in t[:14] for m in _WRAP_MARKET_SUBJECTS):
         return True
     # **沒有詞彙表就不套市場規則**:那條規則靠「標題裡沒有已知公司名」當證據,
     # 詞彙表空的時候「沒有公司名」是必然成立的,會把所有市場相關標題都判成綜覽
@@ -184,8 +196,7 @@ def is_market_wrap(title: str, known_names=()) -> bool:
     if not (any(m in t for m in _WRAP_MARKET_SUBJECTS)
             and any(d in t for d in _WRAP_DIRECTION)):
         return False
-    return not any(n and len(str(n)) >= 2 and str(n) in t
-                   for n in known_names)
+    return not _named
 
 
 def story_key_for_event(ev: dict) -> str:

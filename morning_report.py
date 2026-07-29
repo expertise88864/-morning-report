@@ -12676,10 +12676,18 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
                 "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
             _stat["valid"] = len(valid)
         merged = extract_structured_events(news, mops, llm_events=valid)
-        # 真正要看的是「有幾則活到輸出」——通過 schema 不代表沒有在聚合階段
-        # 被更高品質的確定性版本吃掉(那也是一種「等於沒產出」)。
+        # 真正要看的是「有幾則**以 LLM 版勝出**」。r1(Codex,P2):我原本數的是
+        # `"LLM extractor" in sources`,但聚合時確定性版本勝出後仍會保留輸家的
+        # source 進 `sources` —— 於是「被吃掉」反而被計成存活,指標在它唯一
+        # 該說話的情境下說了反話(而我自己的註解就寫著那也算等於沒產出)。
+        # 勝出者看 `source`,貢獻但落敗看 `sources`,兩個都記才分得出
+        # 「抽取器沒產出」與「有產出但每次都輸」。
         _stat["survived"] = sum(
-            1 for e in merged if "LLM extractor" in (e.get("sources") or []))
+            1 for e in merged if e.get("source") == "LLM extractor")
+        _stat["merged_away"] = sum(
+            1 for e in merged
+            if e.get("source") != "LLM extractor"
+            and "LLM extractor" in (e.get("sources") or []))
         _stat["outcome"] = "ok"
         return merged
     except Exception as e:

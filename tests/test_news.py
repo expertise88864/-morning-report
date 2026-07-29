@@ -1996,3 +1996,32 @@ def test_ambiguous_title_does_not_get_a_guessed_published():
     kept = [e for e in out if e["source"] == "LLM extractor"]
     assert kept, "LLM 事件應自成一群"
     assert kept[0]["published"].startswith("2026-07-28"), "多筆同標題時亂猜了"
+
+
+def test_extractor_stats_do_not_count_events_that_lost_the_merge(monkeypatch):
+    """r1(Codex,P2):`survived` 原本數 `"LLM extractor" in sources`,但聚合時
+    確定性版本勝出後仍會把輸家的 source 併進 `sources` —— 於是「被吃掉」反而
+    被計成存活,指標在它**唯一該說話的情境**下說了反話。
+
+    這個指標存在的理由就是回答「抽取器為什麼在生產沒有產出」,
+    而「有產出但每次都輸給確定性版本」正是待驗證的假設之一。
+    """
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    title = "台積電獲輝達追加訂單"
+    body = {"title": title, "entity": "2330", "event_type": "orders",
+            "direction": 1, "published": "2026-07-30T01:00:00+00:00"}
+    # 同 bucket、同標題 → 合併;B 級新聞版(0.8)勝過 C 級 LLM 版(0.55)
+    out = mr.extract_structured_events(
+        [dict(body, source="經濟日報財經")], [],
+        [dict(body, summary="x", confidence=0.6)], now)
+    assert len(out) == 1
+    winner = out[0]
+    assert winner["source"] == "經濟日報財經", "對照組無效:LLM 版不該勝出"
+    assert "LLM extractor" in winner["sources"]      # 出處仍保留
+    survived = sum(1 for e in out if e.get("source") == "LLM extractor")
+    merged_away = sum(1 for e in out
+                      if e.get("source") != "LLM extractor"
+                      and "LLM extractor" in (e.get("sources") or []))
+    assert survived == 0, "被吃掉的事件被計成存活"
+    assert merged_away == 1, "貢獻但落敗沒有被記錄,分不出兩種失敗模式"

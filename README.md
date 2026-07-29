@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 700+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,100+ 單元測試。
 
 ---
 
@@ -26,8 +26,7 @@
 | 七、昨夜三大重點/世界大事/48h 情境/敘事變化 | LLM 從結構化新聞事件撰寫 | RSS+SEC+抽取器 |
 | 八、科技板塊脈動 | 2330 供應鏈美股(NVDA/AMD/AVGO/MU/ASML/AAPL 等)逐檔,附證據分級 | Google News+8-K |
 | 九、其他類股 | 金融(含 2882/2891 深追蹤)/生技/航運/傳產/重電/觀光/**房市與建商-中彰投** | Google News、MOPS |
-| 十、總經與政策環境 | 美國利率/Fed/地緣,含匯率與 FX 對持倉語意 | LLM 綜合 |
-| 十一、台灣本地動態 | 台股當日焦點(法說、外資動向) | LLM 綜合 |
+| 十、台灣本地動態 | 台股當日焦點(法說、外資動向) | LLM 綜合 |
 | Podcast 重點 | 11 檔節目白名單(股癌/游庭皓/Wall Street Breakfast/Odd Lots/BG2 等),每集重點+個股觀點與本報資料對照 | 獨立轉錄排程 |
 | 體育快訊 | 世足(淘汰表+**冠軍機率**+90分鐘賭盤)、中職(比分/賽程/**單場賭盤**/戰績)、MLB(戰績表/焦點賽程/單場賭盤/世界大賽/MVP/賽揚盤)、NBA(**開季自動啟用單場賭盤**/總冠軍/東西區盤)、網球(冠軍收斂+美網冠軍盤);隊名全繁中 | ESPN、Yahoo、Wikipedia、Polymarket |
 | 在地快訊 | 彰基/中國醫、建設、房市、產業/科技、學區/文教、交通異動、**選情(2026 九合一)**——台中/彰化/南投/斗六,同事件模糊去重 | Google News |
@@ -108,13 +107,26 @@
 morning_report.py     主程式:資料抓取、三模型預測、校準、prompt、渲染、寄信、state
 render_utils.py       渲染輔助:體育卡、Podcast 卡、MLB/NBA/網球中文隊名、Markdown→HTML
 news_rules.py         新聞召回/去重/白名單規則(政策財經白名單、發布者去重)
-llm_postprocess.py    LLM 輸出後處理(段落截斷、字數配額)
+news_events.py        事件身分/聚合/生命週期(cluster key、期別 bucket、否決與待決判定)
+story_ledger.py       線索帳本:敘事狀態機(醞釀→發展→高潮→收斂→沉寂)、軌跡、主旨比對
+llm_postprocess.py    LLM 輸出後處理(段落截斷、字數配額、選文理由剝除)
 num_utils.py          數值工具
 session_calendar.py   台股交易日推算
+data_quality.py       來源資料契約(筆數/必要欄位/值域/長期填充率)
+model_history_store.py  model_history 分區儲存與完整性稽核(checksum/manifest)
+model_confidence.py   預測診斷(Clark-West、Mincer-Zarnowitz、價格序列組裝)
+factor_ic.py          因子 IC 計算
+alpha_factors.py      因子定義
+overfit_check.py      過擬合檢定(SPA/MCS)
+fz_score.py           財務體質分數
+valuation.py          估值模型
+backtest_runner.py    回測執行器(獨立排程)
+tw_policy_sources.py  台灣政策一手來源(行政院公報、院會)
 portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要求隱藏)
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
-tests/                700+ 測試(不連網;conftest 隔離 state 寫入)
+tools/                稽核與驗證腳本(codex_review、mz_walkforward、report_watchdog…)
+tests/                1,100+ 測試(不連網;conftest 隔離 state 寫入與網路)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -194,7 +206,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 
 ```bash
 pip install -r requirements.txt
-pytest -q                        # 700+ 測試,不連網、不寄信
+pytest -q                        # 1,100+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."

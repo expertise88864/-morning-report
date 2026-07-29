@@ -1003,7 +1003,10 @@ def test_event_timeline_quarterly_episode_and_withdrawn_restart():
     q2 = {"entity": "2330", "event_type": "earnings", "lifecycle": "confirmed",
           "published": "2026-07-17T08:00:00+00:00", "title": "Q2 財報"}
     out = mr.apply_event_timeline(history, [q2])[0]
-    assert out["timeline_key"] == "2330|earnings|2026Q3"      # 季度 bucket 分集
+    # 批#67(P1-2):期別改取標題寫明的**會計期間**,不再取 published。
+    # 這個 fixture 自己就寫著「Q2 財報」而發布於七月 —— 舊碼掛 2026Q3,
+    # 也就是**把 bug 寫成了期望值**。分集的語意不變(Q1/Q2 仍是兩集)。
+    assert out["timeline_key"] == "2330|earnings|2026Q2"
     assert out["is_incremental"] is True                      # 不被 Q1 的 confirmed 吃掉
     assert out["lifecycle_weight"] > 0
     # 同一季重複報導仍被抑制(episode 內語意不變)

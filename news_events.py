@@ -262,14 +262,82 @@ _QUARTERLY_EVENT_TYPES = frozenset({"earnings", "guidance_raise", "guidance_cut"
 _MONTHLY_EVENT_TYPES = frozenset({"revenue_growth"})
 
 
+#: 標題裡的會計期間。民國年(115年6月)與西元年(2026年6月)都收。
+_FISCAL_MONTH_RE = _re_module.compile(
+    r"(?:民國)?(\d{3,4})\s*年\s*(\d{1,2})\s*月")
+_FISCAL_QUARTER_RE = _re_module.compile(
+    r"(?:(\d{3,4})\s*年[^0-9]{0,6})?第\s*([一二三四1-4])\s*季"
+    r"|(?:(\d{4})\s*)?[Qq]([1-4])(?![0-9])")
+_CN_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4}
+
+
+def _norm_year(raw) -> int:
+    """3 位數視為民國年(115 → 2026),4 位數視為西元年。"""
+    try:
+        y = int(raw)
+    except (TypeError, ValueError):
+        return 0
+    return y + 1911 if 100 <= y <= 199 else (y if 1990 <= y <= 2100 else 0)
+
+
+def _fiscal_period_from_text(text: str, ref: dt.datetime, monthly: bool) -> str:
+    """從標題/摘要解析**會計期間**。解析不到或不合理回空字串。
+
+    批#67(P1-2):原本期別 bucket 直接取 `published` —— 那是**新聞發布時間**,
+    不是報表所屬期間。台股月營收固定在次月 10 日前公告,所以「115年6月營收」
+    永遠被掛到 `2026-07`;季報同理(Q1 財報四月公布 → 掛 2026Q2)。
+    整條序列的期別標籤系統性偏一期,而同一期別的**更正公告**跨月出現時,
+    還會被切成兩個 episode。
+
+    `ref` = published,用途有二:①標題只寫「第二季」沒寫年份時補年份;
+    ②合理性守衛 —— 解析結果距離 published 超過 18 個月就不採信
+    (標題裡提到別的年份、或根本是誤判)。
+    """
+    t = str(text or "")
+    if not t:
+        return ""
+    if monthly:
+        m = _FISCAL_MONTH_RE.search(t)
+        if not m:
+            return ""
+        year, mon = _norm_year(m.group(1)), int(m.group(2))
+        if not year or not 1 <= mon <= 12:
+            return ""
+        got = dt.date(year, mon, 1)
+        bucket = f"{year}-{mon:02d}"
+    else:
+        m = _FISCAL_QUARTER_RE.search(t)
+        if not m:
+            return ""
+        raw_y = m.group(1) or m.group(3)
+        raw_q = m.group(2) or m.group(4)
+        q = _CN_DIGITS.get(str(raw_q), 0) or (
+            int(raw_q) if str(raw_q).isdigit() else 0)
+        year = _norm_year(raw_y) if raw_y else ref.year
+        if not year or not 1 <= q <= 4:
+            return ""
+        got = dt.date(year, (q - 1) * 3 + 1, 1)
+        bucket = f"{year}Q{q}"
+    months_off = (ref.year - got.year) * 12 + (ref.month - got.month)
+    return bucket if -18 <= months_off <= 18 else ""
+
+
 def _event_period_bucket(event: dict, monthly: bool) -> str:
-    """事件的期別 bucket(月頻 YYYY-MM / 季頻 YYYYQn),取 published;
-    無法解析回空(退回無 bucket 舊鍵)。"""
+    """事件的期別 bucket(月頻 YYYY-MM / 季頻 YYYYQn)。
+
+    優先採標題/摘要裡寫明的**會計期間**;解析不到才退回 published
+    (那是發布時間,對月營收與季報系統性偏一期,只能當後備)。
+    無法解析回空(退回無 bucket 舊鍵)。
+    """
     raw = str(event.get("published") or "").strip()
     try:
         d = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return ""
+    stated = _fiscal_period_from_text(
+        f"{event.get('title') or ''} {event.get('summary') or ''}", d, monthly)
+    if stated:
+        return stated
     if monthly:
         return f"{d.year}-{d.month:02d}"
     return f"{d.year}Q{(d.month - 1) // 3 + 1}"

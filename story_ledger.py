@@ -39,7 +39,8 @@ import re
 
 # Codex r2(P1):否定判準**只有一份**,定義在 news_events(無第一方相依)。
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
-from news_events import is_negated_decision, is_pending_decision
+from news_events import (is_negated_decision, is_pending_decision,
+                         _content_bigrams)
 
 # 狀態機:值為「連續幾天沒有 delta 就往下掉一級」的容忍天數
 STATES = ("brewing", "developing", "peak", "resolving", "dormant")
@@ -729,6 +730,12 @@ def format_fact(raw) -> str:
     return f"{n:.10g}"
 
 
+def _norm_point_title(raw) -> str:
+    """軌跡點的標題比對鍵:去空白與標點,避免同一則因全半形差異被當成兩件事。"""
+    import re as _re
+    return _re.sub(r"[\s\W_]+", "", str(raw or "")).lower()[:60]
+
+
 def _timeline_entry(ev: dict, today: str, facts) -> dict:
     """一個時間點。刻意用短鍵名(d/t/l/s/f):479 條線索 × 6 點,
     鍵名長度直接反映在 state 檔大小與每日 commit 的 diff 量上。"""
@@ -741,10 +748,38 @@ def _timeline_entry(ev: dict, today: str, facts) -> dict:
     }
 
 
-def _push_timeline(story: dict, entry: dict) -> None:
-    """把時間點併入線索軌跡(同日只留最後一筆,避免同日多則把軌跡塞滿)。"""
+#: 同一天最多留幾個軌跡點。1 會讓同日的第二件事**靜默消失**;
+#: 太多則單日就能塞滿整條軌跡(TIMELINE_KEEP=6)。
+TIMELINE_MAX_PER_DAY = 2
+
+
+def _push_timeline(story: dict, entry: dict,
+                   supersede_today: bool = False) -> None:
+    """把時間點併入線索軌跡。
+
+    批#67(P1-4):原本是「同日只留最後一筆」——同一天的第二件事會把第一件
+    整個刪掉。批#64 讓同一天同一家公司的兩件不同事件不再互相吞併之後,
+    這個缺陷變得具體:蘋果訂單與輝達訂單同日進來,軌跡上只會剩後者,
+    而「敘事連貫性」正是這條軌跡存在的理由。
+
+    改為:同日**同標題**視為同一件事(較後者勝出,通常是更完整的版本);
+    同日不同標題可並存,但每日上限 `TIMELINE_MAX_PER_DAY`——事件是依
+    quality_score 由高到低處理的,所以超額時捨棄的是品質較低的那些。
+    """
     tl = [x for x in (story.get("timeline") or []) if isinstance(x, dict)]
-    tl = [x for x in tl if str(x.get("d")) != str(entry.get("d"))]
+    day = str(entry.get("d"))
+    key = _norm_point_title(entry.get("t"))
+    if supersede_today:
+        # 呼叫端明說「這一則取代了線索今天的看法」(權威來源推翻先前報導)。
+        # 這種取代**必須靠呼叫端的知識**,不能靠標題相似度猜:
+        # 「收購案成立」與「收購案取消」字面上差很遠,卻正是同一件事的翻轉。
+        tl = [x for x in tl if str(x.get("d")) != day]
+    else:
+        tl = [x for x in tl
+              if not (str(x.get("d")) == day
+                      and _norm_point_title(x.get("t")) == key)]
+        if len([x for x in tl if str(x.get("d")) == day]) >= TIMELINE_MAX_PER_DAY:
+            return                  # 當日已滿:保留先到的(品質較高的)那些
     tl.append(entry)
     story["timeline"] = tl[-TIMELINE_KEEP:]
 
@@ -756,6 +791,99 @@ def prune_timeline(story: dict) -> None:
     tl = [x for x in (story.get("timeline") or []) if isinstance(x, dict)]
     if len(tl) > TIMELINE_KEEP_DORMANT:
         story["timeline"] = [tl[0], tl[-1]]
+
+
+#: 標題裡的媒體名/欄目/版型雜訊。剝掉之後才比得出「講的是不是同一件事」。
+_SUBJECT_SEP = re.compile(r"\s+[-|｜–—]\s+|\s*\|\s*")
+_SUBJECT_BOILERPLATE = ("股市爆料同學會", "提供者", "作者", "討論牆",
+                        "盤中速報", "產業即時新聞", "Investing.com", "CMoney")
+#: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個。
+_SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
+                       "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}
+_SUBJECT_LATIN = re.compile(r"[A-Za-z]{2,}")
+#: 句尾的來源標註(分隔符不是 " - ",剝段落剝不到)
+_SUBJECT_CREDIT = re.compile(r"\s*(?:提供者|作者|編譯|記者)\s*\S{0,12}\s*$")
+#: 有主體時可以放寬(主體本身已經是很強的錨);無主體時沒有錨,必須保守。
+#: 兩個門檻都由 1502 條真實線索校準,見 `_same_story_subject`。
+STORY_MATCH_THRESHOLD = 0.45
+STORY_MATCH_THRESHOLD_NO_ENTITY = 0.65
+#: 共同 bigram 少於這個數就不算,免得極短的通用主旨(「營收公布」)四處攀親
+STORY_MATCH_MIN_SHARED = 5
+
+
+def _story_subject(title, entity="", entity_name="") -> str:
+    """把標題化簡成「主旨」:去掉媒體名、欄目版型與主體本身。
+
+    實測依據:未剝版型時,相似度 0.5~0.6 那一段被版型雜訊主宰——
+    「中信銀行 沈強副行長任職資格」與「中信證券:二次原油衝擊」只因為共用
+    「提供者 智通財經 - Investing」後綴就拿到 0.54,兩者毫不相干。
+    """
+    parts = [x.strip() for x in _SUBJECT_SEP.split(str(title or "")) if x.strip()]
+    # 尾端的片段(不含數字)幾乎都是媒體名/欄目,不是內容。
+    # 長度上限 24:原本寫 12,而「Business Insider Taiwan」(23)、
+    # 「鏡週刊Mirror Media」(17)因此留在主旨裡 —— 實測造成兩組假陽性
+    # (同一家媒體的兩則不相干報導只因共用媒體名就被判成同一條敘事)。
+    # 最多剝兩段,避免把真內容吃掉。
+    for _ in range(2):
+        if len(parts) > 1 and len(parts[-1]) <= 24 and not any(
+                c.isdigit() for c in parts[-1]):
+            parts.pop()
+    out = " ".join(parts)
+    # 「提供者 智通財經」「作者 XXX」這種掛在句尾的來源標註,分隔符不是 " - ",
+    # 剝段落剝不到 —— 實測「中信銀行副行長任職」與「中信證券原油衝擊」
+    # 只因共用「提供者 智通財經」就拿到 0.54。
+    out = _SUBJECT_CREDIT.sub("", out)
+    for b in _SUBJECT_BOILERPLATE:
+        out = out.replace(b, "")
+    for x in (entity, entity_name):
+        if x and len(str(x)) >= 2:
+            out = out.replace(str(x), "")
+    return out.strip()
+
+
+def _subject_latin_tokens(text: str) -> set:
+    return {w.upper() for w in _SUBJECT_LATIN.findall(str(text or ""))}         - _SUBJECT_LATIN_STOP
+
+
+def _same_story_subject(a: str, b: str, threshold: float) -> bool:
+    """兩個主旨是否屬於**同一條敘事**。
+
+    批#67(P1-3)。診斷:真實 state 裡 1502 條線索有 1485 條只有 1 次更新,
+    **沒有任何一條累積到 3 個軌跡點**——「敘事連貫」這個功能實際上沒有在運作。
+    根因是 `general` 事件的線索 key 內含**標題 digest**:換一個標題就開新線索,
+    續報永遠接不回去(881 條無主體線索更是每篇文章一條)。
+
+    分母取**較短**的一邊、門檻由那 1502 條線索校準:
+      - 有主體 0.45:0.45~0.55 這一段人工核對全部是真的同一條敘事
+        (中信銀亞灣分行六家媒體、高通晶片漲價、廣達買友達廠房、
+        Meta/BlackRock 140 億、蘋果服務中斷、特斯拉電池…),
+        再往下到 0.36 也仍然乾淨——取 0.45 是留餘裕,不是那裡開始出錯。
+      - 無主體 0.65:沒有主體當錨,而無主體線索有 881 條、配對數量級大得多,
+        誤判機會相應變高,所以保守。
+
+    兩道守衛(缺一不可,校準時兩者都出現過反例):
+      1. **具辨識力的英文詞完全互斥 → 不同主體**。抓的是「同一份制式公告、
+         不同子公司」:CHANNEL PILOT vs ASUS INTERNATIONAL 相似度 0.56,
+         比該合併的廣達那組(0.46)還高,純門檻切不開。
+      2. **共同 bigram 至少 5 個**,免得極短的通用主旨四處攀親。
+
+    另外主旨必須先剝掉媒體名/欄目/來源標註(見 `_story_subject`)——
+    未剝之前「蘋果超越輝達重返市值最高」與「蘋果調漲產品售價」只因共用
+    「Business Insider Taiwan」就被判成同一條。
+    """
+    ga, gb = _content_bigrams(a), _content_bigrams(b)
+    shared = ga & gb
+    if len(shared) < STORY_MATCH_MIN_SHARED:
+        return False
+    # 分母取**較短**的一邊 —— 與批#64 的事件去重刻意相反。續報常常把內容
+    # 變長(「收購案成立」→「收購案完成交割 細節公布 金額300億」),
+    # 用較長的一邊當分母會被長度稀釋成 0.13,敘事就接不起來。
+    # 兩邊的取捨方向本來就不同:事件去重錯了會**消滅一則真事件**,
+    # 線索歸屬錯了只是把兩條敘事併在一起,後者可回復、前者不可。
+    if len(shared) / min(len(ga), len(gb)) < threshold:
+        return False
+    la, lb = _subject_latin_tokens(a), _subject_latin_tokens(b)
+    return not (la and lb and not (la & lb))
 
 
 def _resolve_story_key(ev: dict, by_key: dict) -> str:
@@ -775,13 +903,13 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     """
     followed = str(ev.get("followup_key") or "").strip()
     if not followed.startswith(("e:", "h:", "cluster:")):
-        return story_key_for_event(ev)
+        return _match_open_story(ev, by_key) or story_key_for_event(ev)
     target = by_key.get(followed)
     if not target:
-        return story_key_for_event(ev)
+        return _match_open_story(ev, by_key) or story_key_for_event(ev)
     # 條件一:主體要對得上。
     if not _is_same_subject(target, ev):
-        return story_key_for_event(ev)
+        return _match_open_story(ev, by_key) or story_key_for_event(ev)
     # 條件二(r3 Codex,P1):**_is_same_subject 一個人擋不住**。它的門檻
     # (SUBJECT_OVERLAP_MIN=0.10)是**刻意寬鬆**的——設計目的是「已經同 key 時
     # 要不要保留前情」,偏向保住連續性;拿它當歸屬閘門,等於用寬鬆的檢查做嚴格
@@ -801,12 +929,60 @@ def _resolve_story_key(ev: dict, by_key: dict) -> str:
     ev_type = str(ev.get("event_type") or "").strip() or "general"
     tgt_type = str(target.get("event_type") or "").strip() or "general"
     if ev_type != "general" and tgt_type != "general" and ev_type != tgt_type:
-        return story_key_for_event(ev)
+        return _match_open_story(ev, by_key) or story_key_for_event(ev)
     # r6(Codex,P1):**升級不能在這裡做**。_resolve_story_key 只是「決定歸屬」,
     # 在它之後還有重播偵測、_is_real_progress、權威比較等關卡;在這裡改型別,
     # 等於讓一則**被拒收的低分級或重播事件**也悄悄把線索重新分類,
     # 進而影響之後的歸屬判斷與追蹤查詢。改到事件真的被接受之後才升級。
     return followed
+
+
+def _match_open_story(ev: dict, by_key: dict) -> str:
+    """在既有線索裡找出**同一條敘事**,找到回它的 key,否則回空字串。
+
+    批#67(P1-3)。這是「敘事縱向連貫」真正的缺口:`story_key_for_event` 對
+    `general` 事件把**標題 digest** 放進 key,換一個標題就開新線索。實測 1502 條
+    線索有 1485 條只有 1 次更新、沒有任何一條累積到 3 個軌跡點——功能形同虛設。
+
+    比對範圍限定**同一個主體**(無主體者彼此比),因為主體是最強的錨;
+    型別不設限——線索常以 general 起頭,之後的報導才把類型講清楚,
+    要求型別相同會把正確的後續報導擋在外面(這正是 r5 已經記載過的教訓)。
+
+    多條命中時取相似度最高的那條;完全沒命中就讓它自己開一條(那是誠實的)。
+    """
+    ent = str(ev.get("entity") or "")
+    subject = _story_subject(str(ev.get("title") or ev.get("headline") or ""),
+                             ent, str(ev.get("entity_name") or ""))
+    if not subject:
+        return ""
+    threshold = (STORY_MATCH_THRESHOLD if ent
+                 else STORY_MATCH_THRESHOLD_NO_ENTITY)
+    best_key, best_score = "", 0.0
+    for key, story in by_key.items():
+        if str(story.get("entity") or "") != ent:
+            continue
+        for cand in _story_match_candidates(story):
+            cs = _story_subject(cand, ent, str(story.get("entity_name") or ""))
+            if not _same_story_subject(subject, cs, threshold):
+                continue
+            ga, gb = _content_bigrams(subject), _content_bigrams(cs)
+            score = len(ga & gb) / max(1, min(len(ga), len(gb)))
+            if score > best_score:
+                best_key, best_score = key, score
+            break
+    return best_key
+
+
+def _story_match_candidates(story: dict) -> list:
+    """一條線索可用來比對的文字:目前的 headline + 軌跡點標題。
+
+    只比 headline 不夠——線索會隨時間漂移(傳聞標題 → 公告標題),
+    新的後續報導可能比較像早期的某一點而不是最新那一點。
+    """
+    out = [str(story.get("headline") or "")]
+    out += [str(x.get("t") or "")
+            for x in (story.get("timeline") or []) if isinstance(x, dict)]
+    return [x for x in out if x]
 
 
 def update_ledger(ledger: list[dict], events: list[dict], today: str,
@@ -929,12 +1105,14 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 # direction 而 story key 不含,所以這是允許的),後一則權威到足以
                 # 取代前一則時,headline/last_delta 描述的是第二則,而當天的軌跡點
                 # 仍指向第一則 —— 「先成立、後取消」會顯示成自相矛盾的軌跡。
-                # _push_timeline 本身就會替換同日的點,直接呼叫即可。
+                # 批#67:同日改為可留兩點,所以這裡必須**明說是取代**——
+                # 「收購案成立」與「收購案取消」字面差很遠,靠相似度猜不出來。
                 _push_timeline(story, _timeline_entry(
                     ev, today,
                     _material_facts(title, str(story.get("entity") or ""),
                                     str(story.get("entity_name") or "").split(),
-                                    str(ev.get("published") or ""))))
+                                    str(ev.get("published") or ""))),
+                    supersede_today=True)
             story["max_surprise"] = round(
                 max(float(story.get("max_surprise") or 0.0), surprise), 3)
             story["seen_sigs"] = _remember_sig(seen_sigs, key, sig)

@@ -44,7 +44,12 @@ def test_timeline_records_each_step_with_link_and_facts():
 
 
 def test_same_day_repeats_do_not_fill_the_timeline():
-    """同日多則報導只留最後一筆,否則忙碌的一天就會把軌跡塞滿、擠掉上週。"""
+    """同日多則報導有上限,否則忙碌的一天就會把軌跡塞滿、擠掉上週。
+
+    批#67(P1-4):上限從 1 放寬到 `TIMELINE_MAX_PER_DAY`。原本「同日只留最後
+    一筆」會讓同一天的第二件事**靜默消失** —— 批#64 讓同日同公司的兩件不同
+    事件不再互相吞併之後,這個缺陷才變得具體(蘋果訂單與輝達訂單同日進來,
+    軌跡上只會剩後者),而軌跡存在的理由正是敘事連貫。"""
     led = _run(_DAYS)
     led = sl.update_ledger(led, [{
         "entity": "2317", "entity_name": "鴻海", "event_type": "orders",
@@ -53,8 +58,10 @@ def test_same_day_repeats_do_not_fill_the_timeline():
         "published": "2026-07-27T05:00:00+00:00", "surprise_score": 0.6,
     }], "2026-07-27", {"2317": "鴻海"})
     tl = led[0]["timeline"]
-    assert len([e for e in tl if e["d"] == "2026-07-27"]) == 1
-    assert tl[-1]["l"] == "https://a/4", "同日應留最後一筆"
+    same_day = [e for e in tl if e["d"] == "2026-07-27"]
+    assert 1 <= len(same_day) <= sl.TIMELINE_MAX_PER_DAY
+    assert tl[-1]["l"] == "https://a/4", "最新的一則必須在最後"
+    assert len(tl) <= sl.TIMELINE_KEEP
 
 
 def test_timeline_is_capped():
@@ -309,9 +316,15 @@ def test_same_batch_authoritative_replacement_also_moves_the_timeline():
              direction=-1)], "2026-07-27", {"2317": "鴻海"})
     story = led[0]
     today_pt = [e for e in story["timeline"] if e["d"] == "2026-07-27"]
-    assert len(today_pt) == 1
-    assert "取消" in today_pt[0]["t"], "軌跡點沒跟著換 —— 與 headline 自相矛盾"
-    assert today_pt[0]["l"] == "https://a/2"
+    # 批#67:同日可留兩點,於是「成立 → 取消」會以兩點並列呈現。
+    # 想清楚之後這比舊行為誠實:那正是當天真實發生的事(先傳出成立、
+    # 後由 MOPS 公告取消),把前一點刪掉反而是抹掉歷史。
+    #
+    # 真正該保護的不變式不是「只有一點」,而是**最後一點必須與 headline 一致**
+    # ——原始缺陷是 headline 換成「取消」而軌跡仍停在「成立」,自相矛盾。
+    assert 1 <= len(today_pt) <= sl.TIMELINE_MAX_PER_DAY
+    assert "取消" in today_pt[-1]["t"], "軌跡尾端沒跟著換 —— 與 headline 自相矛盾"
+    assert today_pt[-1]["l"] == "https://a/2"
     assert "取消" in story["headline"]
 
 
@@ -686,3 +699,62 @@ def test_type_upgrade_skipped_when_target_key_is_taken():
     keys = {s["key"] for s in out}
     assert OLD in keys and taken in keys, "兩條線索被合併了"
     assert len(out) == 2
+
+
+# --------------------------------------------------------------------------
+# 批#67(P1-3):線索身分改用主旨相似度
+# --------------------------------------------------------------------------
+
+def test_follow_up_coverage_joins_the_existing_story_instead_of_opening_a_new_one():
+    """診斷依據:真實 state 裡 1502 條線索有 1485 條只有 1 次更新,
+    **沒有任何一條累積到 3 個軌跡點** —— 敘事連貫功能形同虛設。
+
+    根因是 `general` 事件的線索 key 內含**標題 digest**:換一個標題就開新線索,
+    續報永遠接不回去(881 條無主體線索更是每篇文章一條)。
+    """
+    base = {"entity": "2382", "entity_name": "廣達", "event_type": "general"}
+    led = sl.update_ledger([], [dict(
+        base, title="AI伺服器ODM廠砸錢擴產 廣達斥資197億元買友達廠房 - UDN",
+        link="https://a/1", source_name="經濟日報",
+        published="2026-07-27T01:00:00+00:00", surprise_score=0.6)],
+        "2026-07-27", {"2382": "廣達"})
+    assert len(led) == 1
+    led = sl.update_ledger(led, [dict(
+        base, title="廣達砸197億元買友達華亞廠 AI伺服器產能再擴張 - 自由財經",
+        link="https://a/2", source_name="自由財經",
+        published="2026-07-28T01:00:00+00:00", surprise_score=0.6)],
+        "2026-07-28", {"2382": "廣達"})
+    assert len(led) == 1, f"同一件事開了兩條線索:{[s['headline'] for s in led]}"
+    assert len(led[0]["timeline"]) == 2, "軌跡沒有累積"
+
+
+def test_different_subsidiaries_do_not_share_a_story():
+    """校準時的關鍵反例:同一份制式公告、**不同子公司**。純門檻切不開
+    (0.56,而 0.46 有該合併的),靠「具辨識力的英文詞完全互斥」擋下。"""
+    base = {"entity": "2357", "entity_name": "華碩", "event_type": "general",
+            "published": "2026-07-27T01:00:00+00:00", "surprise_score": 0.5}
+    led = sl.update_ledger([], [
+        dict(base, title="代子公司CHANNEL PILOT LIMITED公告通過股利分配基準日",
+             link="https://a/1", source_name="MOPS"),
+        dict(base, title="代子公司ASUS INTERNATIONAL LIMITED公告通過股利分配基準日",
+             link="https://a/2", source_name="MOPS"),
+    ], "2026-07-27", {"2357": "華碩"})
+    assert len(led) == 2, "兩家不同子公司被併成同一條敘事"
+
+
+def test_unrelated_news_sharing_only_boilerplate_stay_apart():
+    """未剝版型時,相似度 0.5~0.6 那一段被媒體後綴主宰:
+    「中信銀行 沈強副行長任職資格」與「中信證券:二次原油衝擊」只因為共用
+    「提供者 智通財經 - Investing」就拿到 0.54,兩者毫不相干。"""
+    a = "中信銀行(00998):沈強擔任副行長的任職資格獲覈准 提供者 智通財經 - Investing"
+    b = "中信證券:二次原油衝擊不改8月行情修復趨勢 提供者 智通財經 - Investing"
+    sa = sl._story_subject(a, "2891", "中信金")
+    sb = sl._story_subject(b, "2891", "中信金")
+    assert "智通財經" not in sa and "Investing" not in sa
+    assert not sl._same_story_subject(sa, sb, sl.STORY_MATCH_THRESHOLD)
+
+
+def test_story_matching_needs_enough_shared_content():
+    """極短的通用主旨不得四處攀親。"""
+    assert not sl._same_story_subject("營收公布", "營收公布再創高",
+                                      sl.STORY_MATCH_THRESHOLD)

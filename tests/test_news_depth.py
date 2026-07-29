@@ -482,3 +482,32 @@ def test_llm_extractor_is_not_counted_as_an_independent_publisher():
     assert len(out) == 1
     assert "LLM extractor" in out[0]["sources"]      # 出處仍完整保留
     assert out[0]["corroboration_count"] == 1        # 但不計入交叉驗證
+
+
+def test_fiscal_period_comes_from_the_report_not_the_publication_date():
+    """批#67(P1-2):期別 bucket 原本直接取 `published` —— 那是**新聞發布時間**,
+    不是報表所屬期間。台股月營收固定在次月 10 日前公告,所以「115年6月營收」
+    永遠被掛到 2026-07;季報同理(Q1 財報四月公布 → 掛 2026Q2)。
+    整條序列的期別標籤系統性偏一期,同期別的更正公告跨月出現時還會被切成兩集。
+    """
+    import news_events as ne
+
+    def bucket(title, published, monthly):
+        return ne._event_period_bucket(
+            {"title": title, "published": published}, monthly)
+
+    # MOPS 月營收:標題寫民國年月
+    assert bucket("公告本公司115年6月份自結合併營收",
+                  "2026-07-06T00:00:00+00:00", True) == "2026-06"
+    assert bucket("台積公司2026年6月營收報告",
+                  "2026-07-13T00:00:00+00:00", True) == "2026-06"
+    # 季報:標題寫第 N 季 / QN
+    assert bucket("台積電第二季獲利創高",
+                  "2026-07-16T00:00:00+00:00", False) == "2026Q2"
+    assert bucket("鴻海Q3財報優於預期",
+                  "2026-11-14T00:00:00+00:00", False) == "2026Q3"
+    # 標題沒寫期別 → 退回 published(後備,不是主要來源)
+    assert bucket("某公司營收成長", "2026-07-06T00:00:00+00:00", True) == "2026-07"
+    # 合理性守衛:標題提到很久以前的年月不採信
+    assert bucket("回顧2019年12月的那場危機",
+                  "2026-07-06T00:00:00+00:00", True) == "2026-07"

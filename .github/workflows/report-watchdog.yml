@@ -1,0 +1,79 @@
+name: Morning Report Watchdog
+
+# 台北 07:30(UTC 23:30)——晨報排程是 22:00 UTC,Actions 常延遲 5-15 分,
+# 給足緩衝再檢查,避免因為排隊延遲就誤報。
+on:
+  schedule:
+    - cron: "30 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read   # 唯讀:看門狗不參與 state 競爭,否則自己會變成問題來源
+
+# **刻意不用 `state-writers`**。morning 與 podcast 共用那個 group 且不取消,
+# 一旦某個 run 在 pending 階段被擠掉,job 根本不會啟動、連 workflow 內的告警
+# 步驟也不會執行 —— 那正是這個看門狗要覆蓋的失敗模式。若它也排進同一個 group,
+# 就會排在它要監看的那個 run 後面,等輪到它時對方早已結束(或它自己也被擠掉)。
+concurrency:
+  group: report-watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      - name: Check last run
+        id: check
+        run: |
+          if python tools/report_watchdog.py; then
+            echo "stale=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Alert
+        if: steps.check.outputs.stale == '1'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+        run: |
+          python - <<'PY'
+          import os, smtplib, ssl, datetime as dt
+          from email.message import EmailMessage
+          user = os.environ.get("GMAIL_USER", "")
+          pwd = os.environ.get("GMAIL_APP_PASSWORD", "")
+          to = os.environ.get("RECIPIENT", "") or user
+          if not (user and pwd and to):
+              raise SystemExit("[watchdog] 缺少寄信憑證,無法告警")
+          tpe = dt.timezone(dt.timedelta(hours=8))
+          now = dt.datetime.now(tpe).strftime("%Y-%m-%d %H:%M")
+          msg = EmailMessage()
+          msg["Subject"] = f"[晨報看門狗] {now} 今天的晨報可能沒有跑起來"
+          msg["From"], msg["To"] = user, to
+          msg.set_content(
+              "看門狗在台北 07:30 檢查 state/run_manifest.json,發現最後一次執行的\n"
+              "時間戳超過門檻。可能原因:\n"
+              "  - 排程 run 在 pending 階段被 state-writers group 的其他 run 擠掉\n"
+              "    (job 不會啟動,workflow 內的告警步驟也不會執行)\n"
+              "  - GitHub Actions 排程延遲或當機\n"
+              "  - 執行中途失敗且未寫入 manifest\n\n"
+              "請到 Actions 頁面查看 Morning Report 的最近一次執行。\n")
+          with smtplib.SMTP("smtp.gmail.com", 587) as s:
+              s.starttls(context=ssl.create_default_context())
+              s.login(user, pwd)
+              s.send_message(msg)
+          print("[watchdog] 告警信已寄出")
+          PY
+
+      - name: Fail the run so it is visible in the Actions list
+        if: steps.check.outputs.stale == '1'
+        run: exit 1

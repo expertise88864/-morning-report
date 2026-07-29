@@ -15219,9 +15219,24 @@ def _mz_shadow_oos_stats(ledger: list) -> dict:
            "worse": sum(1 for d in diffs if d < -1e-9),
            "mean_gain": round(mean, 3)}
     if n > 2:
+        # 批#69:標準誤改用 **Newey-West(HAC)**。古典 SE 假設逐日誤差獨立,
+        # 而預測誤差有序列相關(同一段行情連續好幾天一起偏高或偏低)——
+        # 那會低估標準誤、放大 t,讓「收縮有效」看起來比實際更確定。
+        # 這條 t 值正是日後決定要不要把影子模式轉正的依據,寧可保守。
         var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
-        se = (var / n) ** 0.5
-        out["t"] = round(mean / se, 2) if se > 0 else None
+        lag = max(1, int(4 * (n / 100.0) ** (2.0 / 9.0)))     # Newey-West 經驗法則
+        gamma0 = sum((d - mean) ** 2 for d in diffs) / n
+        s2 = gamma0
+        for k in range(1, min(lag, n - 1) + 1):
+            gamma = sum((diffs[i] - mean) * (diffs[i - k] - mean)
+                        for i in range(k, n)) / n
+            s2 += 2.0 * (1.0 - k / (lag + 1.0)) * gamma
+        se_hac = (max(s2, 0.0) / n) ** 0.5
+        se_ols = (var / n) ** 0.5
+        out["lag"] = lag
+        out["t"] = round(mean / se_hac, 2) if se_hac > 0 else None
+        # 兩個都記:差距本身就是「序列相關有多嚴重」的診斷
+        out["t_ols"] = round(mean / se_ols, 2) if se_ols > 0 else None
     return out
 
 
@@ -20496,11 +20511,29 @@ def main() -> int:
         # 因為它被外層 try 吞掉,品質閘會整個不執行:又是一次靜默失效)。
         # 直接讀歷史檔取得筆數,失敗就退回硬門檻。
         try:
+            _recent_hist = [r for r in load_model_history()[-30:]
+                            if isinstance(r, dict)]
             _hist_counts = [len(r.get("stocks") or {})
                             for r in load_model_history()[-60:]]
         except Exception:
-            _hist_counts = []
+            _recent_hist, _hist_counts = [], []
+        # 批#69:**長期填充率**契約。前面幾批連續量測到同一種失敗——功能寫好、
+        # 測試全綠、外審通過,但在生產環境從來沒有產出過任何東西,而且完全無聲
+        # (LLM 事件抽取器 0 則 C 級事件;台指期籌碼 `taifex_top10_net` 143 筆全 None,
+        # 而它的 fail-closed 設計是對的,只是沒人發現它一直是關的)。
+        # 既有的 row_count / required_fields / value_range 都抓不到這一類:
+        # 紀錄有、筆數夠、欄位在 schema 裡,只是永遠沒有值。
+        #
+        # 刻意只列**已經上線一段時間、應該常態有值**的欄位。剛上線的欄位
+        # (如批#66 的 taiex_total_return)不列——歷史必然是空的,列了只會
+        # 連續數週噪音;等它累積起來再納入才有意義。
+        _fill_specs = (("taifex_top10_net", 0.5), ("txo_pc_oi_ratio", 0.5),
+                       ("taiex_close", 0.9), ("structured_events", 0.8))
         _dq_results = [
+            _dq.check_fill_rate("model_history", _recent_hist,
+                                field=_f, min_ratio=_r)
+            for _f, _r in _fill_specs
+        ] + [
             _dq.check_row_count("tw_universe", tw0050, min_rows=30,
                                 history=_hist_counts),
             _dq.check_required_fields(

@@ -148,3 +148,35 @@ def degraded_labels(summary: dict) -> list[str]:
     分級的意義就在這裡:不是所有品質問題都該擋下整封信。
     """
     return [f"dq:{e['source']}:{e['check']}" for e in (summary or {}).get("errors", [])]
+
+
+def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
+                    severity: str = WARN) -> CheckResult:
+    """某個欄位在最近 N 筆紀錄裡的**填充率**。
+
+    批#69。前面幾批連續量測到同一種失敗:功能寫好、測試全綠、外審通過,
+    但在生產環境**從來沒有產出過任何東西**,而且完全無聲——
+      - LLM 事件抽取器:1160 則歷史事件裡沒有一則是 C 級
+      - 台指期籌碼:`taifex_top10_net` 在 143 筆歷史中 0/143
+        (`_chip_fields_for_session` 的 fail-closed 是對的,但沒人發現它一直是關的)
+
+    這一類問題共同的形狀是「**應該被填的欄位長期是 None**」,而既有的
+    row_count / required_fields / value_range 都抓不到:紀錄有、筆數夠、
+    欄位在 schema 裡,只是永遠沒有值。
+
+    刻意用**比率而非「今天有沒有」**:單日缺值本來就正常(來源延遲、假日),
+    要抓的是「長期都沒有」。
+    """
+    rows = [r for r in (rows or []) if isinstance(r, dict)]
+    if not rows:
+        return CheckResult(source, f"fill_rate:{field}", severity, False,
+                           "沒有任何紀錄可檢查", 0)
+    filled = sum(1 for r in rows if r.get(field) not in (None, "", [], {}))
+    ratio = filled / len(rows)
+    ok = ratio >= min_ratio
+    return CheckResult(
+        source, f"fill_rate:{field}", severity, ok, observed=round(ratio, 3),
+        detail=(f"`{field}` 填充率 {ratio:.0%}({filled}/{len(rows)})" if ok else
+                f"`{field}` 最近 {len(rows)} 筆只填了 {filled} 筆"
+                f"({ratio:.0%},低於 {min_ratio:.0%})"
+                "——功能可能在生產環境從未真正產出"))

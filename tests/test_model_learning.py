@@ -3215,3 +3215,78 @@ def test_strict_integrity_rejects_a_missing_manifest():
     empty = pathlib.Path(tempfile.mkdtemp()) / "none"
     empty.mkdir()
     assert mhs.verify_history_integrity(empty, strict=True)["ok"] is True
+
+
+def test_fill_rate_contract_catches_a_field_that_is_never_populated():
+    """批#69:前面幾批連續量測到同一種失敗——功能寫好、測試全綠、外審通過,
+    但在生產環境**從來沒有產出過任何東西**,而且完全無聲:
+      - LLM 事件抽取器:1160 則歷史事件裡沒有一則是 C 級
+      - 台指期籌碼:`taifex_top10_net` 在 143 筆歷史中 0/143
+
+    既有的 row_count / required_fields / value_range 都抓不到這一類:
+    紀錄有、筆數夠、欄位在 schema 裡,只是永遠沒有值。
+    """
+    import data_quality as dq
+    rows = [{"session_date": f"2026-07-{d:02d}", "taiex_close": 100.0 + d,
+             "taifex_top10_net": None} for d in range(1, 21)]
+    good = dq.check_fill_rate("model_history", rows,
+                              field="taiex_close", min_ratio=0.9)
+    assert good.passed and good.observed == 1.0
+    bad = dq.check_fill_rate("model_history", rows,
+                             field="taifex_top10_net", min_ratio=0.5)
+    assert not bad.passed and bad.observed == 0.0
+    assert "從未真正產出" in bad.detail
+    # 單日缺值不算問題(來源延遲/假日本來就會發生)
+    rows[3]["taiex_close"] = None
+    assert dq.check_fill_rate("model_history", rows,
+                              field="taiex_close", min_ratio=0.9).passed
+    # 沒有紀錄時不得靜默通過
+    assert not dq.check_fill_rate("model_history", [],
+                                  field="taiex_close", min_ratio=0.9).passed
+
+
+def test_mz_oos_uses_hac_standard_errors():
+    """批#69:古典 SE 假設逐日誤差獨立,而預測誤差有序列相關(同一段行情
+    連續好幾天一起偏高或偏低)——那會低估標準誤、放大 t,讓「收縮有效」
+    看起來比實際更確定。這條 t 值正是日後決定要不要把影子轉正的依據。"""
+    # 構造**正**自相關的逐日改善量(同一段行情連續數日一起偏高/偏低)。
+    # 注意:負自相關時 HAC 反而會給出較小的標準誤,那是正確行為不是 bug
+    # ——第一版 fixture 寫成振盪序列,測到的正好是那個情況。
+    diffs = [0.2, 0.25, 0.3, 0.28, 0.32, 0.35, 0.33, 0.31, 0.36, 0.34,
+             1.8, 1.85, 1.9, 1.88, 1.92, 1.95, 1.93, 1.91, 1.96, 1.94]
+    ledger = [{"type": "mz_shadow", "resolved": "2026-07-30",
+               "err_raw": 10.0 + d, "err_shadow": 10.0} for d in diffs]
+    out = mr._mz_shadow_oos_stats(ledger)
+    assert out["n"] == len(diffs)
+    assert out["t"] is not None and out["t_ols"] is not None
+    assert out["lag"] >= 1
+    assert abs(out["t"]) < abs(out["t_ols"]), \
+        "HAC 沒有把序列相關算進去 —— t 值與古典 SE 一樣就等於沒改"
+
+
+def test_watchdog_flags_a_stale_manifest(tmp_path):
+    """看門狗必須跑在**不同的 concurrency group**:morning 與 podcast 共用
+    `state-writers` 且不取消,一旦某個 run 在 pending 階段被擠掉,job 根本不會
+    啟動、連 workflow 內的告警步驟也不會執行——那正是它要覆蓋的失敗模式。"""
+    import datetime as dt
+    import json as _json
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(mr.__file__).parent / "tools"))
+    import report_watchdog as rw
+
+    now = dt.datetime(2026, 7, 30, 7, 30, tzinfo=rw.TPE)
+    p = tmp_path / "run_manifest.json"
+    p.write_text(_json.dumps({"date": "2026-07-30 06:48"}), encoding="utf-8")
+    age, info = rw.manifest_age_hours(now, p)
+    assert age is not None and age < 1 and info == "2026-07-30 06:48"
+    # 昨天的時間戳 → 逾時
+    p.write_text(_json.dumps({"date": "2026-07-29 06:48"}), encoding="utf-8")
+    age, _ = rw.manifest_age_hours(now, p)
+    assert age > rw.MAX_AGE_HOURS
+    # 檔案不存在 / 壞檔 / 無 date 都必須回 None(視為異常),不得靜默通過
+    assert rw.manifest_age_hours(now, tmp_path / "nope.json")[0] is None
+    p.write_text("{", encoding="utf-8")
+    assert rw.manifest_age_hours(now, p)[0] is None
+    p.write_text("{}", encoding="utf-8")
+    assert rw.manifest_age_hours(now, p)[0] is None

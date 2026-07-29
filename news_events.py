@@ -102,7 +102,8 @@ def _event_bucket_key(event: dict) -> tuple:
 #: (93 則無主體多來源事件都是靠標題完全相等才合併的),不是改寫。
 #: 而語料中重疊率落在 0.86~0.92 的配對——富邦金「總經理選任」vs「董事長選任」、
 #: 威力彩第 115050 期 vs 第 115051 期——**都是不同事件**。
-#: 所以門檻必須高:0.9 搭配數字守衛,對語料中六組邊界案例全部判對。
+#: 所以門檻必須高:0.9 搭配數字守衛與「較長標題當分母」,對語料中
+#: 七組邊界案例(含包含關係)全部判對。
 _MERGE_OVERLAP = 0.9
 #: 少於這個 bigram 數的標題不套重疊率(太短時任何兩則都容易高分),改要求完全相同
 _MERGE_MIN_GRAMS = 4
@@ -131,10 +132,19 @@ def same_event_title(a: str, b: str) -> bool:
     ga, gb = _content_bigrams(a), _content_bigrams(b)
     if not ga or not gb:
         return False
-    smaller = min(len(ga), len(gb))
-    if smaller < _MERGE_MIN_GRAMS:
+    if min(len(ga), len(gb)) < _MERGE_MIN_GRAMS:
         return ga == gb
-    return len(ga & gb) / smaller >= _MERGE_OVERLAP
+    # 分母取**較長**的那一邊。r1(Codex,P2):原本除以較短的一邊(overlap
+    # coefficient),於是「A 完全包含於 B」會得到 1.0 —— 實測
+    # 「公告本公司董事會決議增資發行新股」與「⋯之資金用途變更」重疊率 1.000,
+    # 兩件不同的公告會被併掉一件。MOPS 標題共用大量制式前綴,這種包含關係
+    # 並不罕見。改用較長的一邊當分母後同一組降到 0.682。
+    #
+    # 代價講明白:短標題被長標題吸收的情況現在會**留成兩則**
+    # (「台積電法說會」vs「台積電法說會登場」→ 0.714,不合併)。
+    # 這個方向是刻意的 —— 多留一則重複的代價,遠小於靜默消滅一則真事件
+    # 再幫倖存者偽造交叉驗證。
+    return len(ga & gb) / max(len(ga), len(gb)) >= _MERGE_OVERLAP
 
 
 def _event_surprise_score(event: dict) -> float:

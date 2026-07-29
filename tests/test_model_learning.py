@@ -2760,3 +2760,96 @@ def test_macro_policy_section_is_gone_and_numbering_is_contiguous():
     nums = re.findall(r"^## ([一二三四五六七八九十]+)、", prompt, re.M)
     order = ["七", "八", "九", "十", "十一", "十二"]
     assert [n for n in nums if n in order] == order, nums
+
+
+def test_mz_shadow_is_recorded_and_settled_out_of_sample():
+    """批#65:MZ 影子預測併進 forecast ledger,才**事後可檢驗**。
+
+    原本只把當次數字寫進 run_manifest,而那個檔每天整份覆寫——只有一張今日
+    快照、沒有目標日、沒有實際值,累積再久都做不出樣本外評估。影子模式當初
+    的承諾就是「累積足夠樣本後用真正的樣本外資料再判一次」,沒有帳本就等於
+    這個承諾永遠無法兌現。
+    """
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    mz = {"applied": True, "n": 49, "a": 1.2, "b": 0.62,
+          "raw": 2323.2, "shadow": 2312.5, "delta": -10.7}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20", mz_shadow=mz)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    rows = [e for e in stored if e.get("type") == "mz_shadow"]
+    assert len(rows) == 1
+    assert rows[0]["target"] == "2026-07-20"
+    assert rows[0]["raw"] == 2323.2 and rows[0]["shadow"] == 2312.5
+    assert rows[0].get("resolved") is None
+
+    # 同日重跑不得重複立
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20", mz_shadow=mz)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    assert len([e for e in stored if e.get("type") == "mz_shadow"]) == 1
+
+    # 隔日結算:實際開盤 2310 → 原始誤差 13.2、影子誤差 2.5(影子較好)
+    hist = [{"target_session_date": "2026-07-20", "actual_open_2330": 2310.0}]
+    now2 = dt.datetime(2026, 7, 21, 6, 0, tzinfo=mr.TPE)
+    out = mr.update_forecast_ledger(hist, {}, {}, now2, "2026-07-21")
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    row = [e for e in stored if e.get("type") == "mz_shadow"][0]
+    assert row["resolved"] == "2026-07-21"
+    assert row["actual"] == 2310.0
+    assert row["err_raw"] == 13.2 and row["err_shadow"] == 2.5
+    stats = out["mz_shadow"]
+    assert stats["n"] == 1 and stats["better"] == 1 and stats["worse"] == 0
+    # **樣本不足要明說不足**,不是靜默回空讓人以為沒跑
+    assert stats["enough"] is False
+
+
+def test_mz_shadow_is_not_recorded_after_market_open():
+    """盤後補跑看得到當日行情,立進去的影子預測會污染樣本外評估的誠實性
+    ——與既有題目共用同一道 `_after_open` 守門。"""
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    mz = {"applied": True, "n": 49, "a": 1.2, "b": 0.62,
+          "raw": 2323.2, "shadow": 2312.5}
+    after = dt.datetime(2026, 7, 20, 10, 30, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, after, "2026-07-20", mz_shadow=mz)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    assert not [e for e in stored if e.get("type") == "mz_shadow"]
+
+
+def test_mz_shadow_unsettled_entry_voids_after_ten_days():
+    """目標日過久仍無實際開盤 → void,不留永久懸置(與題目同一規則)。"""
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    mz = {"applied": True, "n": 49, "raw": 2323.2, "shadow": 2312.5}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20", mz_shadow=mz)
+    later = dt.datetime(2026, 8, 5, 6, 0, tzinfo=mr.TPE)
+    out = mr.update_forecast_ledger([], {}, {}, later, "2026-08-05")
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    row = [e for e in stored if e.get("type") == "mz_shadow"][0]
+    assert row.get("void") is True
+    assert out["mz_shadow"]["n"] == 0        # void 不進統計
+
+
+def test_mz_shadow_is_actually_wired_into_the_ledger_call():
+    """接線檢查:main 呼叫 `update_forecast_ledger` 時必須真的把影子預測傳進去。
+
+    `mz_shadow` 是**選填參數**——漏傳不會壞、不會報錯、測試全綠,帳本只是
+    永遠不長紀錄。本專案已經有過同型的教訓(功能寫好但接線沒接上,而測試
+    驗的是我蓋的東西不是生產送進來的東西),所以這一條用 AST 直接盯呼叫點。
+
+    這只證明「參數有傳」,不證明傳的值正確——值的行為由上面幾個測試涵蓋。
+    """
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call)
+             and isinstance(n.func, ast.Name)
+             and n.func.id == "update_forecast_ledger"]
+    assert calls, "找不到 update_forecast_ledger 的呼叫點"
+    assert all(any(kw.arg == "mz_shadow" for kw in c.keywords) for c in calls), \
+        "有呼叫點沒把 mz_shadow 傳進去 —— 帳本會永遠空著且完全無聲"

@@ -9026,8 +9026,15 @@ def extract_structured_events(news: list[dict],
         # news.google.com,CNBC 有三個頻道、中央社三個、經濟日報與聯合報同一家。
         # 舊法直接數 `sources` 長度 → 實測有事件宣稱 10 個來源交叉驗證,其中
         # 6 個是同一個 Google News 的不同查詢。
-        event["corroboration_count"] = len(
-            {_source_family(s) for s in (event.get("sources") or []) if s})
+        # r1(Codex,P2):**合成來源不是發布者**。LLM 抽取器的 source 被統一
+        # 釘成 "LLM extractor",而它的輸入正是同一批新聞——把它算成一個獨立
+        # 來源,等於讓「我們自己讀了一遍」變成一次交叉驗證。
+        _real = {_source_family(s) for s in (event.get("sources") or [])
+                 if s and s not in _SYNTHETIC_SOURCES}
+        # 有來源就至少算 1(維持「1 = 單一來源、無交叉驗證」的語意),
+        # 但永遠不因合成來源而灌水。
+        event["corroboration_count"] = (
+            max(1, len(_real)) if event.get("sources") else 0)
     return sorted(output, key=lambda event: event["quality_score"], reverse=True)
 
 
@@ -10632,6 +10639,8 @@ def _build_source_family_map() -> dict:
 _SOURCE_FAMILY_BY_LABEL = _build_source_family_map()
 #: 動態產生的來源標籤(逐股/追蹤查詢)都是 Google News
 _GOOGLE_QUERY_PREFIXES = ("Google:", "Google-", "追蹤:", "類股-", "世界-")
+#: **不是發布者**的來源標籤:本系統自己產生的,不得計入交叉驗證
+_SYNTHETIC_SOURCES = ("LLM extractor", "unknown", "")
 
 
 def _source_family(source: str) -> str:
@@ -14766,7 +14775,8 @@ def _render_macro_vintage_html(rows: list[dict]) -> str:
 # 累積 Brier 分數與命中率,並與歷史基準率(base rate)對照——把晨報從「每天的
 # 觀點」變成「可驗證的預測系統」。顯示+state 專用,不回饋任何預測/計分模型。
 FORECAST_LEDGER_FILE = Path("state/forecast_ledger.json")
-_FORECAST_LEDGER_KEEP = 400
+#: 每日產生 2 題 + 1 筆 top5 + 1 筆 mz_shadow,600 約等於 150 個交易日
+_FORECAST_LEDGER_KEEP = 600
 # 殘差樣本不足時的保守預設波動(%):歷史 |開盤-預測| 的量級,僅用於
 # 機率換算的 sigma 起點,非計分係數(樣本 >=10 後改用實際殘差 stdev)
 _FORECAST_DEFAULT_SIGMA = {"2330_open_up": 1.3, "taiex_open_up": 0.9}
@@ -14822,10 +14832,46 @@ def _forecast_prob_up(pred_pct: float, sigma: float,
     return round(min(0.98, max(0.02, p)), 3)
 
 
+def _mz_shadow_oos_stats(ledger: list) -> dict:
+    """MZ 影子預測的**樣本外**成績。批#65。
+
+    影子模式當初的承諾是「累積足夠樣本後用真正的樣本外資料再判一次」,
+    但當時只把當次係數寫進 run_manifest —— 那個檔每天整份覆寫,累積再久
+    也只有一張今日快照。這裡才是那個承諾的兌現處:逐日立、逐日結算、
+    只看已結算且非 void 的紀錄。
+
+    回 {"n", "mae_raw", "mae_shadow", "better", "worse", "t"};
+    n < 20 時仍回統計但 `"enough": False` —— **不足就明說不足**,
+    不是靜默回空讓人以為沒跑。
+    """
+    done = [e for e in ledger or []
+            if isinstance(e, dict) and e.get("type") == "mz_shadow"
+            and e.get("resolved") is not None and not e.get("void")
+            and isinstance(e.get("err_raw"), (int, float))
+            and isinstance(e.get("err_shadow"), (int, float))]
+    if not done:
+        return {"n": 0, "enough": False}
+    diffs = [float(e["err_raw"]) - float(e["err_shadow"]) for e in done]
+    n = len(diffs)
+    mean = sum(diffs) / n
+    out = {"n": n, "enough": n >= 20,
+           "mae_raw": round(sum(float(e["err_raw"]) for e in done) / n, 3),
+           "mae_shadow": round(sum(float(e["err_shadow"]) for e in done) / n, 3),
+           "better": sum(1 for d in diffs if d > 1e-9),
+           "worse": sum(1 for d in diffs if d < -1e-9),
+           "mean_gain": round(mean, 3)}
+    if n > 2:
+        var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
+        se = (var / n) ** 0.5
+        out["t"] = round(mean / se, 2) if se > 0 else None
+    return out
+
+
 def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                            now_tpe: dt.datetime,
                            target_session: str,
-                           sessions: Optional[list] = None) -> dict:
+                           sessions: Optional[list] = None,
+                           mz_shadow: Optional[dict] = None) -> dict:
     """結算到期預測+立今日新預測+算累積統計。回顯示用 dict
     {"resolved": [...], "stats": {...}, "today": [...]};失敗由呼叫端吞。
     sessions=權威交易日序列(批#23,五審 P2):目標日在日曆內但資料缺=
@@ -14916,6 +14962,33 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
         e["brier_model"] = round((e.get("prob", 0.5) - y) ** 2, 4)
         e["brier_base"] = round((e.get("base_rate", 0.5) - y) ** 2, 4)
         resolved_today.append(dict(e))
+    # 1b) 結算 MZ 影子預測(批#65)。**影子模式的重點就是事後可檢驗**,
+    # 而原本只把當次數字寫進 run_manifest —— 那個檔每天整份覆寫,永遠只有
+    # 一張今日快照、沒有目標日、沒有實際值,累積再久也做不出樣本外評估。
+    # 併進本帳本沿用既有機制:target_session、休市對齊、逾期 void 全部共用。
+    for e in ledger:
+        if e.get("type") != "mz_shadow" or e.get("resolved") is not None:
+            continue
+        tgt = str(e.get("target") or "")
+        hit = _lookup_actual("2330_open_up", tgt)
+        if not hit:
+            try:
+                if (dt.date.fromisoformat(today)
+                        - dt.date.fromisoformat(tgt)).days > 10:
+                    e["resolved"] = today
+                    e["void"] = True
+            except (ValueError, TypeError):
+                pass
+            continue
+        actual, actual_session = hit
+        e["resolved"] = today
+        e["actual"] = round(float(actual), 2)
+        if actual_session and actual_session != tgt:
+            e["resolved_session"] = actual_session
+        for tag in ("raw", "shadow"):
+            v = e.get(tag)
+            if isinstance(v, (int, float)):
+                e[f"err_{tag}"] = round(abs(float(actual) - float(v)), 3)
     # 2) 立今日預測(同 (question, target) 重跑覆蓋)
     resolved_all = [e for e in ledger if e.get("resolved") is not None]
     today_qs = []
@@ -14971,6 +15044,27 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                           and str(e.get("target")) == entry["target"])]
         ledger.append(entry)
         today_qs.append(entry)
+    # 立今日 MZ 影子紀錄。共用 `_after_open` 盤前守門:盤後補跑看得到當日行情,
+    # 立進去的影子預測會污染樣本外評估的誠實性。
+    if (not _after_open and isinstance(mz_shadow, dict)
+            and mz_shadow.get("applied")
+            and isinstance(mz_shadow.get("raw"), (int, float))
+            and isinstance(mz_shadow.get("shadow"), (int, float))):
+        mz_entry = {"type": "mz_shadow", "created": today,
+                    "created_at": now_tpe.isoformat(),
+                    "target": str(target_session or ""),
+                    "raw": mz_shadow.get("raw"),
+                    "shadow": mz_shadow.get("shadow"),
+                    "base": predictions.get("last_2330"),
+                    "a": mz_shadow.get("a"), "b": mz_shadow.get("b"),
+                    "n_train": mz_shadow.get("n"),
+                    "forecast_version": _FORECAST_VERSION,
+                    "git_sha": os.environ.get("GITHUB_SHA", "")[:12]}
+        ledger = [e for e in ledger
+                  if not (e.get("type") == "mz_shadow"
+                          and str(e.get("target")) == mz_entry["target"]
+                          and e.get("resolved") is None)]
+        ledger.append(mz_entry)
     ledger = ledger[-_FORECAST_LEDGER_KEEP:]
     FORECAST_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(FORECAST_LEDGER_FILE,
@@ -15003,7 +15097,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                      e.get("brier_model", 0.25) for e in recent), 4),
                  "brier_base": round(statistics.mean(
                      e.get("brier_base", 0.25) for e in recent), 4)}
-    return {"resolved": resolved_today, "today": today_qs, "stats": stats}
+    return {"resolved": resolved_today, "today": today_qs, "stats": stats,
+            "mz_shadow": _mz_shadow_oos_stats(ledger)}
 
 
 def _render_forecast_ledger_html(led: dict) -> str:
@@ -20511,8 +20606,17 @@ def main() -> int:
         quotes["FORECAST_LEDGER"] = update_forecast_ledger(
             quotes.get("HISTORY") or [], predictions,
             quotes.get("TAIEX_PRED") or {}, now_tpe, target_session_date,
-            sessions=trading_sessions)
+            sessions=trading_sessions,
+            mz_shadow=_RUN_MANIFEST.get("mz_shadow"))
         _fl = quotes["FORECAST_LEDGER"]
+        _mzo = _fl.get("mz_shadow") or {}
+        if _mzo.get("n"):
+            _RUN_MANIFEST.setdefault("mz_shadow", {})["oos"] = _mzo
+            print(f"[mz] 樣本外 n={_mzo['n']}"
+                  f"(足夠={'是' if _mzo.get('enough') else '否'})"
+                  f" MAE 原始 {_mzo.get('mae_raw')} / 影子 {_mzo.get('mae_shadow')}"
+                  f"、改好 {_mzo.get('better')} / 改壞 {_mzo.get('worse')}"
+                  f"、t={_mzo.get('t')}")
         print(f"[ledger] 今日立 {len(_fl.get('today') or [])} 題、"
               f"結算 {len(_fl.get('resolved') or [])} 題"
               + (f"、近{_fl['stats']['n']}題 Brier {_fl['stats']['brier_model']}"

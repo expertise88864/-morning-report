@@ -128,14 +128,18 @@ if [ "$MODE" = "resume" ]; then
     [ -s "$SESSION_FILE" ] || die "找不到第一輪 session id($SESSION_FILE 不存在)。請以明確 session id 執行:$0 resume <session-id>。不要用 --last(可能 resume 到別的專案)。"
     SID="$(cat "$SESSION_FILE")"
   fi
-  # session id 必須長得像 UUID。少了這道守衛時,把別的東西(例如 task-context
+  # session id 必須是完整 UUID。少了這道守衛時,把別的東西(例如 task-context
   # 檔路徑)誤傳進來會**靜默開一個全新 session**,而輸出看起來與正常 resume
   # 完全相同 —— 等於在不知情的情況下違反「每輪必須 resume 同一 session」。
-  case "$SID" in
-    [0-9a-fA-F]*-*-*-*-*) : ;;
-    *) die "session id 格式不正確:'$SID'。用法:$0 resume [session-id];
-     省略時會讀 $SESSION_FILE。不要把 task-context 檔傳到這個位置。" ;;
-  esac
+  #
+  # **實測驗證**:`codex exec resume dead-beef-cafe-babe-not-a-uuid` 不會報錯,
+  # 它開了一個全新 session(019faec7…,與被指定的 019faeb3… 無關)並照常產出
+  # 一份 review。所以這裡必須是錨定的 8-4-4-4-12 十六進位比對,
+  # 不能用寬鬆 glob(第一版寫 `[0-9a-fA-F]*-*-*-*-*`,上面那個字串照樣通過)。
+  if ! printf '%s' "$SID" | grep -Eq \
+      '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'; then
+    die "session id 格式不正確:'$SID'(需為 UUID)。用法:$0 resume [session-id];省略時會讀 $SESSION_FILE。不要把 task-context 檔傳到這個位置。"
+  fi
   PREV_PASS="$(cat "$PASS_FILE" 2>/dev/null || echo 0)"
   case "$PREV_PASS" in (''|*[!0-9]*) PREV_PASS=0 ;; esac
   # 2026-07-28:舊版硬性 `[ "$PREV_PASS" = "1" ]`,即「每個 task 最多兩輪」——

@@ -449,3 +449,36 @@ def test_serial_draws_are_not_merged_by_the_digit_guard():
         _ev("威力彩第115051期　頭獎槓龜", "中央社政治", event_type="general"),
     ])
     assert len(out) == 2
+
+
+def test_containing_title_does_not_swallow_the_shorter_filing():
+    """r1(Codex,P2):相似度原本除以**較短**的一邊(overlap coefficient),
+    於是「A 完全包含於 B」必得 1.0——實測
+    「公告本公司董事會決議增資發行新股」與「⋯之資金用途變更」重疊率 1.000,
+    兩件不同的公告會被併掉一件。MOPS 標題共用大量制式前綴,這種包含關係不罕見。
+    改用較長的一邊當分母後同一組降到 0.682。
+    """
+    out = _events([
+        _ev("公告本公司董事會決議增資發行新股", "MOPS",
+            entity="2884", event_type="general", direction=0),
+        _ev("公告本公司董事會決議增資發行新股之資金用途變更", "MOPS",
+            entity="2884", event_type="general", direction=0),
+    ])
+    assert len(out) == 2
+
+
+def test_llm_extractor_is_not_counted_as_an_independent_publisher():
+    """r1(Codex,P2):LLM 抽取器的 source 被統一釘成 "LLM extractor",而它的
+    輸入正是同一批新聞。把它算成一個獨立來源,等於讓「我們自己讀了一遍」
+    變成一次交叉驗證。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    body = {"title": "台積電獲輝達追加訂單", "entity": "2330",
+            "event_type": "orders", "direction": 1,
+            "published": "2026-07-30T00:00:00+00:00"}
+    out = mr.extract_structured_events(
+        [dict(body, source="經濟日報財經")], [],
+        [dict(body, summary="x", confidence=0.7, surprise_score=0.6)], now)
+    assert len(out) == 1
+    assert "LLM extractor" in out[0]["sources"]      # 出處仍完整保留
+    assert out[0]["corroboration_count"] == 1        # 但不計入交叉驗證

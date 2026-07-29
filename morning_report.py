@@ -19993,6 +19993,20 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
 
     if not _weekend_digest_has_content(sports, podcast_eps, intel, journals, now_tpe):
         print("[weekend] 無新增體育/Podcast/政策/醫界內容 → 本週日不寄信")
+        # r2(Codex,P1):**這條路徑也必須更新 manifest**。批#69 的看門狗判定
+        # 「今天有沒有跑」靠的就是它,而我寫在看門狗裡的理由正是
+        # 「週日不寄信是正常的,但 manifest 只要跑過就會更新,不會假警報」——
+        # 沒有這幾行,那句話在它唯一適用的情境下是假的。
+        # 只推 manifest:不動 podcast/history/intel 狀態(沒寄信就不該標記已顯示)。
+        try:
+            _write_run_manifest(now_tpe)
+            _git_commit_and_push_state(
+                [str(RUN_MANIFEST_FILE)],
+                f"chore: weekend no-content manifest "
+                f"{now_tpe.strftime('%Y-%m-%d')} [skip ci]")
+        except Exception as e:
+            print(f"[weekend] 無內容路徑的 manifest 更新失敗: {type(e).__name__}",
+                  file=sys.stderr)
         return 0
 
     # 批#46:週日也跑政策深度解析。先抓公報一手法令(與平日同一條 relaxed-strict

@@ -932,7 +932,15 @@ def test_run_weekend_digest_renders_and_marks_all_loaded_episodes(monkeypatch):
 
 
 def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
-    """無新內容 → 不寄信、不動任何狀態。"""
+    """無新內容 → 不寄信、不動 podcast/history 狀態,但**仍要更新 manifest**。
+
+    批#69 r2(Codex,P1):看門狗判定「今天有沒有跑」靠的就是 manifest,
+    而我寫在看門狗裡的理由正是「週日不寄信是正常的,但 manifest 只要跑過
+    就會更新,不會假警報」—— 少了這段,那句話在它**唯一適用的情境**下是假的,
+    每個沒有新內容的週日都會收到一封失敗告警。
+
+    只推 manifest:沒寄信就不該標記 podcast 已顯示、也不該動歷史。
+    """
     import datetime as dt
     events = []
     _stub_weekend_sources(monkeypatch, podcast=[])
@@ -940,12 +948,15 @@ def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
     monkeypatch.setattr(mr, "mark_podcast_episodes_shown",
                         lambda eps: events.append("marked"))
     monkeypatch.setattr(mr, "save_history_state", lambda *a, **k: events.append("history"))
+    pushes = []
     monkeypatch.setattr(mr, "_git_commit_and_push_state",
-                        lambda *a, **k: events.append("push"))
+                        lambda paths, msg: pushes.append(list(paths)))
 
     rc = mr.run_weekend_digest(dt.datetime(2026, 6, 14, 6, 0, tzinfo=mr.TPE))
 
-    assert rc == 0 and events == []                       # 完全不動作
+    assert rc == 0
+    assert events == [], "不寄信的路徑不得動 podcast/history 狀態"
+    assert pushes == [[str(mr.RUN_MANIFEST_FILE)]],         "無內容的週日沒有更新 manifest → 看門狗會誤報"
 
 
 def test_fetch_worldcup_off_season_returns_empty(monkeypatch):

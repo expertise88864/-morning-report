@@ -1269,10 +1269,13 @@ def test_prompt_has_no_positive_user_references():
     for banned in ("使用者核心持股", "使用者熟悉", "使用者居住",
                    "使用者高度關注", "推到使用者持股"):
         assert banned not in p, banned
-    # 「使用者核心觀察/使用者指定」只允許出現在負面禁止規則的列舉裡
-    # (九段規則一次;R15 全域禁令再一次,批#21)
-    assert p.count("使用者核心觀察") == 1
-    assert p.count("使用者指定") == 2
+    # 2026-07-29(R15b):禁令改為**描述性**而非逐字列舉違規詞 ——
+    # 在 prompt 裡列出「使用者指定」「使用者核心觀察」等範例,等於把那些寫法
+    # 示範給模型看(批#58 踩過同型的坑)。所以不再數它們出現幾次,
+    # 而是驗「禁令本身存在」且「prompt 完全不含那些詞」。
+    assert p.count("暗示讀者持股") == 1
+    for enumerated in ("使用者指定", "使用者核心觀察", "持股核心"):
+        assert enumerated not in p, f"禁令仍逐字列舉違規寫法:{enumerated}"
 
 
 def test_batch27_prompt_source_format_and_rules_consistent():

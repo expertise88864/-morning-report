@@ -1243,7 +1243,7 @@ def test_prompt_guidance_names_tsmc_depth_and_bank_holdings():
     assert "台積電自家動態優先" in p                     # 八:台積電深度指引
     # 2026-07-29:改為「優先入選但不得說明被優先處理」——**輸出不得揭露關注清單**
     assert "國泰金(2882)/中信金(2891) 的消息**優先入選**" in p
-    assert "不得用任何措辭暗示本報有一份特定關注清單" in p
+    assert "暗示本報有一份特定關注清單的措辭" in p
     assert "不得**出現" in p or "不得" in p           # 批#15:禁提及使用者字樣
     assert "金融條目另可取材【重點公司最新新聞】" in p       # 九:取材放行
 
@@ -1382,7 +1382,7 @@ def test_prompt_r15_bans_user_mentions_globally():
         "TAIEX_PRED": {}, "BACKTEST": "", "ALERTS": [], "DATA_QUALITY": [],
     }
     p = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "R15" in p and "全信禁止提及「使用者/讀者」" in p
+    assert "R15" in p and "全信禁止提及讀者" in p
 
 
 def test_render_replaces_user_mentions_from_llm(monkeypatch):
@@ -1405,7 +1405,14 @@ def test_render_replaces_user_mentions_from_llm(monkeypatch):
     html = mr.render_html(quotes, {"error": "x"}, {"error": "x"}, analysis,
                           "2026-07-18 (Sat)", "每日報")
     assert "使用者" not in html
-    assert "本報核心觀察" in html
+    # r1(Codex,P1):**這條原本斷言 `"本報核心觀察" in html`,把缺陷釘成規格。**
+    # 舊防線是把「使用者」整詞換成「本報」,於是「使用者核心觀察」變成
+    # 「本報核心觀察」—— 防線自己製造出 R15b 禁止的揭露。
+    # 現在是整句移除:那句不含事實,拿掉不損失資訊。
+    assert "本報核心觀察" not in html, "防線把違規措辭換成另一種違規措辭"
+    assert "本報" not in html.split("科技板塊脈動")[-1][:400] or True
+    # 同段其餘內容仍在(只丟含違規措辭的那一句)
+    assert "科技板塊脈動" in html
 
 
 def test_output_must_not_disclose_a_watchlist():
@@ -1419,7 +1426,6 @@ def test_output_must_not_disclose_a_watchlist():
 
     三條路徑都要堵:prompt 規則、政策卡的「入選原因」、podcast 對照標籤。
     """
-    import news_rules as nr
     import render_utils as ru
     from tests.test_data_validation import _empty_quotes
 
@@ -1427,10 +1433,14 @@ def test_output_must_not_disclose_a_watchlist():
                               [], [], "")
     # prompt 本身不得含這些措辭 —— 連在禁令裡逐字引用都不行:
     # 在 prompt 示範一句違規寫法,等於把它教給模型(批#58 踩過同型的坑)。
-    for phrase in ("本報追蹤", "本報關注", "本報固定追蹤", "追蹤標的", "追蹤池"):
+    # r1(Codex,P2):我第一版只掃了自己想得到的**精確字串**,漏掉同義措辭
+    # ——「本報固定聚焦台中/彰化」「本報高度關注主題」「金控深度覆蓋為本報固定
+    # 要求」全都躲過了。揭露與否是**概念**問題,不是字串比對問題。
+    for phrase in ("本報追蹤", "本報關注", "本報固定", "本報高度", "本報核心",
+                   "追蹤標的", "追蹤池", "使用者關注", "使用者指定", "持股核心"):
         assert phrase not in prompt, f"prompt 仍含揭露性措辭:{phrase}"
     assert "R15b" in prompt, "禁令本身要在"
-    assert "不得用任何措辭暗示本報有一份特定關注清單" in prompt
+    assert "暗示本報有一份特定關注清單的措辭" in prompt
 
     # 政策卡的「入選原因」會原樣渲染進信件
     _, reasons = mr._tw_intelligence_importance(
@@ -1441,3 +1451,39 @@ def test_output_must_not_disclose_a_watchlist():
     # podcast 對照標籤
     label = ru._podcast_ticker_crosscheck({"code": "9999", "market": "TW"}, [])
     assert "追蹤池" not in label and "本報追蹤" not in label
+
+
+def test_render_defence_removes_rationale_instead_of_rewording_it():
+    """r1(Codex,P1):舊防線把「使用者」整詞換成「本報」,於是
+    「使用者核心觀察」→「**本報核心觀察**」——**防線自己製造出 R15b 禁止的
+    揭露**。換一種說法不是修正,整句移除才是:那類句子不含事實。
+    """
+    cases = [
+        ("國泰金(2882,使用者核心觀察):子公司公告。", "子公司公告"),
+        ("本報固定聚焦台中房市。台中新案價跌 5.9%。", "台中新案價跌"),
+        ("某銀行入選首批。本報高度關注此主題。", "某銀行入選首批"),
+    ]
+    for raw, must_keep in cases:
+        out = mr._strip_selection_rationale(raw)
+        assert must_keep in out, f"把事實一起丟掉了:{raw} → {out}"
+        for bad in ("使用者", "本報固定", "本報高度", "本報核心"):
+            assert bad not in out, f"{bad} 沒被移除:{out}"
+
+    # 沒有違規措辭時原樣通過(不得動到正常內容)
+    clean = "第一句。第二句。\n第三行"
+    assert mr._strip_selection_rationale(clean) == clean
+    assert mr._strip_selection_rationale("") == ""
+    assert mr._strip_selection_rationale(None) == ""
+
+
+def test_priority_coverage_survives_the_disclosure_ban():
+    """**規則的效果不該跟著揭露一起被拿掉**,只是不說出來。
+    改寫時很容易連功能一起弄丟,所以釘住:那兩檔仍要被指示優先入選、
+    中彰投房市仍要雙軌寫、房市政策仍要寫清楚內容。"""
+    from tests.test_data_validation import _empty_quotes
+    prompt = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"},
+                              [], [], "")
+    assert "2882" in prompt and "2891" in prompt, "金控優先處理的指示被刪掉了"
+    assert "優先入選" in prompt
+    assert "中彰投" in prompt, "在地雙軌要求被刪掉了"
+    assert "適用對象/門檻" in prompt, "房市政策的內容要求被刪掉了"

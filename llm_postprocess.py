@@ -278,3 +278,48 @@ def _sanitize_llm_2330_prices(text: str, predictions: dict) -> str:
 
     return "\n".join(_fix_line(ln) for ln in text.split("\n"))
 
+
+
+#: 「解釋為什麼寫這一則」的措辭 —— 那類句子的功能就是交代入選緣由,
+#: 而入選緣由正是不該出現在信裡的東西(R15/R15b)。
+_RATIONALE_MARKERS = ("使用者", "本報固定", "本報高度", "本報核心",
+                      "本報追蹤", "本報關注", "讀者要求", "為您")
+
+
+def _strip_selection_rationale(text: str) -> str:
+    """移除揭露入選緣由/關注清單的句子。
+
+    r1(Codex,P1):render 防線先前是把「使用者」整詞替換成「本報」,結果
+    「使用者核心觀察」→「**本報核心觀察**」——**防線自己製造出 R15b 禁止的
+    揭露**(等於公開一份關注清單)。而既有測試還斷言了那個結果,把缺陷釘成規格。
+
+    正解是**整句移除**而不是換個說法:這類句子不含任何事實,拿掉不會損失資訊。
+    以中文句界切句,只丟含標記的那一句,其餘原樣保留。
+    """
+    import re as _re
+    raw = str(text or "")
+    if not any(m in raw for m in _RATIONALE_MARKERS):
+        return raw
+    _aside = _re.compile(
+        r"[((][^()（）]*(?:%s)[^()（）]*[))]"
+        % "|".join(_re.escape(m) for m in _RATIONALE_MARKERS))
+
+    out, dropped = [], 0
+    for line in raw.split("\n"):
+        parts = _re.split(r"(?<=[。;；!！?？])", line)
+        kept = []
+        for seg in parts:
+            # 先剝掉**括號註記**裡的緣由(如「(2882,使用者核心觀察)」)。
+            # 這類措辭多半寄生在括號裡,整句丟會把同一句的事實一起丟掉
+            # ——自測踩到:「國泰金(2882,使用者核心觀察):子公司公告。」整句消失。
+            cleaned = _aside.sub("", seg)
+            if any(m in cleaned for m in _RATIONALE_MARKERS):
+                dropped += 1          # 剝完仍違規 → 整句丟(它本身就是一句緣由)
+                continue
+            kept.append(cleaned)
+        out.append("".join(kept))
+    if dropped:
+        import sys as _sys
+        print(f"[render] ⚠ LLM 輸出含入選緣由措辭(違反 R15/R15b),"
+              f"已移除 {dropped} 句", file=_sys.stderr)
+    return "\n".join(out)

@@ -2131,12 +2131,12 @@ def test_batch31_major_livelihood_policy_recalled_and_ranked():
         score, reasons = mr._tw_intelligence_importance(
             "policy", title, True, "昨日新訊", "已公告")
         assert score >= TW_POLICY_DEEPDIVE_MIN_SCORE, (title, score)
-        assert "本報關注:重大民生政策" in reasons        # 標籤正確
-        assert "本報關注:房市政策" not in reasons
+        assert "重大民生政策" in reasons        # 標籤正確
+        assert "房市政策" not in reasons
     # 房市政策標籤不受影響
     _, r_house = mr._tw_intelligence_importance(
         "policy", "新青安3.0 8月上路", True, "昨日新訊", "已公告")
-    assert "本報關注:房市政策" in r_house
+    assert "房市政策" in r_house
     # 雜訊仍擋(白名單放寬不得放進宗教/交通/性平)
     for noise in ("媽祖遶境活動宗教宣導", "毒駕修法三讀通過", "性平教育課綱調整"):
         assert mr._tw_intelligence_recall_hit("policy", noise) is False

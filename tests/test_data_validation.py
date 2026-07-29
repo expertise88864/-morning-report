@@ -1241,7 +1241,9 @@ def test_prompt_company_roundrobin_deep_labels_get_five_slots():
 def test_prompt_guidance_names_tsmc_depth_and_bank_holdings():
     p = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
     assert "台積電自家動態優先" in p                     # 八:台積電深度指引
-    assert "國泰金(2882)/中信金(2891) 為本段固定深度追蹤標的" in p  # 九:金融深度追蹤
+    # 2026-07-29:改為「優先入選但不得說明被優先處理」——**輸出不得揭露關注清單**
+    assert "國泰金(2882)/中信金(2891) 的消息**優先入選**" in p
+    assert "不得用任何措辭暗示本報有一份特定關注清單" in p
     assert "不得**出現" in p or "不得" in p           # 批#15:禁提及使用者字樣
     assert "金融條目另可取材【重點公司最新新聞】" in p       # 九:取材放行
 
@@ -1404,3 +1406,38 @@ def test_render_replaces_user_mentions_from_llm(monkeypatch):
                           "2026-07-18 (Sat)", "每日報")
     assert "使用者" not in html
     assert "本報核心觀察" in html
+
+
+def test_output_must_not_disclose_a_watchlist():
+    """2026-07-29 使用者要求:**不得透露「本報在追蹤/關注什麼」**。
+
+    實信出現「本報追蹤的 <兩檔金控> 均為直接受惠標的」——那等於公開一份關注
+    清單,讀者或任何被轉寄到的人可以從中反推持股。
+
+    根源是 R15 原本留了「需要標註來由時可用『本報固定追蹤/本報關注』」這個出口。
+    R15 的用意是擋掉「使用者要求」這類措辭,但那個中性替代品仍然揭露清單。
+
+    三條路徑都要堵:prompt 規則、政策卡的「入選原因」、podcast 對照標籤。
+    """
+    import news_rules as nr
+    import render_utils as ru
+    from tests.test_data_validation import _empty_quotes
+
+    prompt = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"},
+                              [], [], "")
+    # prompt 本身不得含這些措辭 —— 連在禁令裡逐字引用都不行:
+    # 在 prompt 示範一句違規寫法,等於把它教給模型(批#58 踩過同型的坑)。
+    for phrase in ("本報追蹤", "本報關注", "本報固定追蹤", "追蹤標的", "追蹤池"):
+        assert phrase not in prompt, f"prompt 仍含揭露性措辭:{phrase}"
+    assert "R15b" in prompt, "禁令本身要在"
+    assert "不得用任何措辭暗示本報有一份特定關注清單" in prompt
+
+    # 政策卡的「入選原因」會原樣渲染進信件
+    _, reasons = mr._tw_intelligence_importance(
+        "policy", "行政院拍板台灣未來帳戶", True, "昨日新訊", "已公告")
+    for r in reasons:
+        assert "本報" not in str(r), f"入選原因洩漏關注清單:{r}"
+
+    # podcast 對照標籤
+    label = ru._podcast_ticker_crosscheck({"code": "9999", "market": "TW"}, [])
+    assert "追蹤池" not in label and "本報追蹤" not in label

@@ -607,7 +607,9 @@ def _podcast_ticker_crosscheck(t: dict, snapshot: list[dict]) -> str:
         return ""
     row = next((s for s in snapshot or [] if str(s.get("code")) == code), None)
     if row is None:
-        return "不在本報追蹤池"
+        # 2026-07-29 使用者要求:不得透露有「追蹤池」這種東西存在。
+        # 只說「本報無對照資料」——那是事實陳述,不揭露清單。
+        return "本報無對照資料"
     f30 = row.get("foreign_30d_lot")
     p5 = row.get("pct_5d")
     facts = []

@@ -131,7 +131,7 @@ def test_podcast_ticker_crosscheck_rules():
     # 不在追蹤池
     out = mr._podcast_ticker_crosscheck(
         {"name": "X", "code": "9999", "market": "TW", "direction": "bullish"}, snapshot)
-    assert "不在本報追蹤池" in out
+    assert "本報無對照資料" in out
     # 美股/無代號 → 不對照
     assert mr._podcast_ticker_crosscheck(
         {"name": "TSLA", "code": "TSLA", "market": "US", "direction": "bullish"},

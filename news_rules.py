@@ -366,9 +366,12 @@ def _tw_intelligence_importance(kind: str,
         # 違反「不得提及使用者」規範);標籤依實際命中詞給(批#31:未來帳戶等
         # 民生金融政策也走這條加權,不可一律標成「房市政策」)
         _housing = ("新青安", "打炒房", "囤房稅", "限貸", "信用管制", "青年安心成家")
-        reasons.insert(0, "本報關注:房市政策"
+        # 2026-07-29 使用者要求:**不得透露「本報在關注什麼」**。
+        # 「本報關注:房市政策」會原樣渲染進信件的「入選原因」,等於公開一份
+        # 關注清單。改成只陳述**題材類別**(那是新聞本身的屬性,不是我們的偏好)。
+        reasons.insert(0, "房市政策"
                        if any(t in title for t in _housing)
-                       else "本報關注:重大民生政策")
+                       else "重大民生政策")
     topic = _tw_intelligence_topic(kind, title)
     if topic not in ("其他政策", "其他醫界"):
         score += 0.7

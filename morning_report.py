@@ -14832,6 +14832,25 @@ def _forecast_prob_up(pred_pct: float, sigma: float,
     return round(min(0.98, max(0.02, p)), 3)
 
 
+def _is_question_row(e) -> bool:
+    """這一列是不是「機率題」(2330/加權開盤漲跌)。
+
+    `state/forecast_ledger.json` 是**共用帳本**,同時放機率題、Top5 名單
+    (`type=top5`)與 MZ 影子(`type=mz_shadow`)。r2(Codex,P1)抓到的正是
+    這件事:批#65 的影子列有 `resolved` 也有 `forecast_version`,於是整批
+    混進了機率題的命中率/Brier 統計——多一個 "None" 題別、每一列都算成
+    未命中、還帶預設 Brier 0.25。
+
+    自查後發現同一個病灶共**三處**(另外兩處 Codex 未列):題目結算迴圈會對
+    影子列查一個不存在的 question,盤後補跑的題目復原也會把影子列當成題目
+    渲染進信裡。
+
+    所以這裡用**正面判定**(有 question 才算題目),而不是「排除已知的
+    type」——後者每新增一種列型就要記得回頭改三個地方,而漏改是靜默的。
+    """
+    return isinstance(e, dict) and bool(e.get("question"))
+
+
 def _mz_shadow_oos_stats(ledger: list) -> dict:
     """MZ 影子預測的**樣本外**成績。批#65。
 
@@ -14934,7 +14953,7 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
 
     resolved_today = []
     for e in ledger:
-        if e.get("resolved") is not None:
+        if not _is_question_row(e) or e.get("resolved") is not None:
             continue
         tgt = str(e.get("target"))
         hit = _lookup_actual(str(e.get("question")), tgt)
@@ -15019,7 +15038,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
         # (當次預測抓取失敗時 specs 缺題,合法盤前題會從信中消失,Codex r6);
         # 不立題、不覆蓋
         today_qs = [dict(e) for e in ledger
-                    if str(e.get("target")) == str(target_session or "")
+                    if _is_question_row(e)
+                    and str(e.get("target")) == str(target_session or "")
                     and e.get("resolved") is None]
         specs = []
     for question, label, pred_pct, threshold, resid_thr in specs:
@@ -15073,7 +15093,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     # (2330≈加權最大權值),分題各自統計;混合統計限「現行機率規則版本」
     # (無版本欄的舊紀錄不進 headline,避免混版本掩蓋退步)
     recent = [e for e in ledger
-              if e.get("resolved") is not None and not e.get("void")
+              if _is_question_row(e)
+              and e.get("resolved") is not None and not e.get("void")
               and e.get("forecast_version") == _FORECAST_VERSION][-30:]
     stats = {}
     if recent:

@@ -2853,3 +2853,45 @@ def test_mz_shadow_is_actually_wired_into_the_ledger_call():
     assert calls, "找不到 update_forecast_ledger 的呼叫點"
     assert all(any(kw.arg == "mz_shadow" for kw in c.keywords) for c in calls), \
         "有呼叫點沒把 mz_shadow 傳進去 —— 帳本會永遠空著且完全無聲"
+
+
+def test_mz_shadow_rows_never_leak_into_question_statistics():
+    """r2(Codex,P1):`forecast_ledger.json` 是**共用帳本**,同時放機率題、
+    Top5 名單與 MZ 影子。影子列有 `resolved` 也有 `forecast_version`,於是
+    整批混進機率題的命中率/Brier 統計——多一個 "None" 題別、每一列都算成
+    未命中、還帶預設 Brier 0.25。
+
+    自查後同一病灶共三處(另兩處 Codex 未列),本測試把三處都蓋住:
+      (a) 累積統計不得含影子列
+      (b) 盤後補跑的題目復原不得把影子列當題目渲染進信裡
+      (c) 題目結算迴圈不得對影子列查一個不存在的 question
+    """
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    taiex = {"pred_open": 42391.0, "last_close": 42671.27}
+    mz = {"applied": True, "n": 49, "raw": 2323.2, "shadow": 2312.5}
+    pre = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, taiex, pre, "2026-07-20", mz_shadow=mz)
+
+    # (b) 同日盤後補跑:今日題目只能有兩題,影子列不得混進來
+    after = dt.datetime(2026, 7, 20, 10, 30, tzinfo=mr.TPE)
+    led_after = mr.update_forecast_ledger(
+        [], preds, taiex, after, "2026-07-20", mz_shadow=mz)
+    assert len(led_after["today"]) == 2
+    assert all(e.get("question") for e in led_after["today"])
+
+    # (a)(c) 隔日結算後,統計只認機率題
+    hist = [{"target_session_date": "2026-07-20",
+             "actual_open_2330": 2310.0, "actual_open_taiex": 42100.0}]
+    nxt = dt.datetime(2026, 7, 21, 6, 0, tzinfo=mr.TPE)
+    led = mr.update_forecast_ledger(hist, {}, {}, nxt, "2026-07-21")
+    stats = led["stats"]
+    assert stats["n"] == 2, f"影子列混進統計:n={stats['n']}"
+    assert set(stats["by_question"]) == {"2330_open_up", "taiex_open_up"}
+    assert "None" not in stats["by_question"]
+    assert len(led["resolved"]) == 2
+    # 影子列自己仍正常結算(沒有被題目迴圈搶先 void)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    row = [e for e in stored if e.get("type") == "mz_shadow"][0]
+    assert row.get("void") is not True and row.get("actual") == 2310.0

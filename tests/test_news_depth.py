@@ -282,3 +282,26 @@ def test_market_index_moves_are_wraps_regardless_of_position():
     for real in ("台股上市公司某某獲利創高",
                  "台積電董事會通過收購案"):
         assert not sl.is_market_wrap(real), real
+
+
+def test_market_direction_still_yields_to_a_concrete_company_event():
+    """r4(Codex,P2):市場主體+方向雖是強訊號,**仍要讓給具體公司事件**。
+    我 r3 把它提前判斷,結果繞過了豁免 —— 「美股焦點:輝達財報後大漲」含
+    「美股+大漲」就被排除,但那是輝達的財報故事。兩個分支現在套同一個判斷。
+    """
+    for real in ("美股焦點:輝達財報後大漲",
+                 "美股大漲 台積電ADR收購案通過"):
+        assert not sl.is_market_wrap(real), real
+    # 純市場級的仍要擋
+    for wrap in ("美股標普那指收黑!科技財報週將登場",
+                 "台股大盤重挫 電子權值股領跌"):
+        assert sl.is_market_wrap(wrap), wrap
+
+
+def test_season_suffix_survives_a_connector_character():
+    """自測抓到:「法說**會**旺季」的事件詞是「法說」,兩字後綴視窗只看到
+    「會旺」而看不到「旺季」,於是整句被當成有公司事件而放行。
+    後綴視窗放寬到 4 字並允許「會/週」當連接字。"""
+    assert sl.is_market_wrap("台股盤後收紅 法說會旺季登場")
+    # 但真的法說會消息不得誤傷
+    assert not sl.is_market_wrap("台積電法說會展望樂觀")

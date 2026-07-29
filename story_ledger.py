@@ -145,6 +145,27 @@ _WRAP_EVENT_WORDS = ("財報", "業績", "展望", "法說", "營收", "獲利",
                      "人事", "上修", "下修", "公告", "宣布", "宣佈", "發布")
 
 
+def _has_company_event(title: str) -> bool:
+    """標題是否有**具體公司事件**的證據(而不只是出現關鍵字)。
+
+    事件詞若接「週/季/旺季/行情/來臨/登場」等時節後綴,那是**期間**不是事件
+    (「財報週」是時節,「公布財報」才是事件)。
+    """
+    import re as _re
+    t = str(title or "")
+    # 時節後綴可能隔著一個連接字:「法說**會**旺季」的事件詞是「法說」,
+    # 兩字視窗只看到「會旺」而看不到「旺季」(自測抓到)。放寬到 4 字並允許
+    # 「會/週」當連接字。
+    _season = _re.compile(r"^(?:會|周|週)?(?:[週周季月]|旺季|行情|來臨|登場)")
+    for w in _WRAP_EVENT_WORDS:
+        i = t.find(w)
+        while i >= 0:
+            if not _season.match(t[i + len(w):i + len(w) + 4]):
+                return True
+            i = t.find(w, i + 1)
+    return False
+
+
 def is_market_wrap(title: str) -> bool:
     """標題是否為「大盤/類股總結」——這種文章不該開線索。
 
@@ -176,24 +197,19 @@ def is_market_wrap(title: str) -> bool:
     #  實跑 15 passed)。但它的**直覺是對的**:
     # 「美股標普那指收黑!科技財報週將登場」本來就是大盤總結,沒有單一主體。
     # **我從第一版就把那個案例的期望值寫成 False,四個版本一路帶著這個錯誤假設。**
-    if any(m in t for m in _WRAP_MARKET_SUBJECTS) and any(
-            d in t for d in _WRAP_DIRECTION):
+    # r4(Codex,P2):市場主體+方向雖是強訊號,**仍要讓給具體公司事件**。
+    # 我 r3 把它提前,結果繞過了豁免:「美股焦點:輝達財報後大漲」含
+    # 「美股+大漲」就被排除,但那是輝達的財報故事。兩個分支套同一個判斷。
+    if (any(m in t for m in _WRAP_MARKET_SUBJECTS)
+            and any(d in t for d in _WRAP_DIRECTION)
+            and not _has_company_event(t)):
         return True
     if not any(m in head for m in _WRAP_WEAK):
         return False
     # r2(Codex,P2):**豁免要證明「有具體公司事件」,不是出現關鍵字就算**。
     # 「美股盤後收黑,科技財報週將登場」因為含「財報」被放行 —— 但那是
     # **市場級**標題:「財報週」是時節不是某家公司的事。
-    # 事件詞若接「週/季/旺季/行情」等時節後綴,那是期間不是事件
-    import re as _re
-    for w in _WRAP_EVENT_WORDS:
-        i = t.find(w)
-        while i >= 0:
-            nxt = t[i + len(w):i + len(w) + 2]
-            if not _re.match(r"[週周季月]|旺季|行情|來臨|登場", nxt):
-                return False          # 找到一個真正的公司事件詞 → 不是總結
-            i = t.find(w, i + 1)
-    return True
+    return not _has_company_event(t)
 
 
 def story_key_for_event(ev: dict) -> str:

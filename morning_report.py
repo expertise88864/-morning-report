@@ -7294,6 +7294,9 @@ def save_model_history_records(records: list[dict],
     def _compact_record(record: dict) -> dict:
         keep_record = {
             "session_date", "model_version", "market_regime", "taiex_close",
+            # 批#66:壓縮白名單漏列=長期序列出現空洞,而本欄的**全部價值**
+            # 就是長度。本專案已在 run manifest 白名單上踩過三次同樣的坑。
+            "taiex_total_return",
             "universe_method", "structured_events", "label_prices",
             "label_prices_complete", "label_prices_attempts",
             # 批#45 r15:壓縮時必須保留,否則舊 session 的籌碼訊號會在壓縮階段
@@ -10313,6 +10316,7 @@ def _state_push_paths() -> list[str]:
             str(POLY_HISTORY_FILE),   # Polymarket 昨日機率快照(delta 顯示,地基批#4)
             str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
+            str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
 
 
@@ -14486,7 +14490,8 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                        sessions: Optional[list] = None,
                        taiex_opens: Optional[dict] = None,
                        raw_codes: Optional[list] = None,
-                       excluded: Optional[list] = None) -> dict:
+                       excluded: Optional[list] = None,
+                       exdiv_history: Optional[list] = None) -> dict:
     """Top5 追蹤帳本 v2(五審 P0-2):**executable return**——晨報 06:00 只立
     pending 名單(awaiting_entry);目標交易日紀錄入庫後回填「目標日開盤」
     進場價(entered);其後第 5/20 個 session 以收盤結算「等權報酬 −
@@ -14505,6 +14510,9 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 ledger = data
         except Exception as e:
             print(f"[top5-ledger] 載入失敗,重建: {e}", file=sys.stderr)
+    # 除權息事件史:呼叫端沒給就自己讀 state(測試可注入,生產不必改接線)
+    if exdiv_history is None:
+        exdiv_history = load_exdiv_history()
     today = now_tpe.strftime("%Y-%m-%d")
     recs = sorted((r for r in model_history or []
                    if isinstance(r, dict) and r.get("session_date")),
@@ -14547,12 +14555,21 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                     op = _px(rec, str(code), "open")
                     if op:
                         entry[str(code)] = op
-                if len(entry) >= 3:
+                # 批#66:**必須全員到齊**。舊碼只要湊到 3 檔就進場,等於把
+                # 一份 5 檔名單當成 3 檔投組計分——而查不到價的那幾檔,
+                # 往往正是跌出 Top100 股票池的弱勢股。`_px` 之所以要回頭查
+                # `label_prices`,理由就是防這個倖存者偏誤;`>= 3` 的門檻
+                # 把同一個洞又開回來。少一筆樣本,好過一筆偏誤樣本。
+                codes_n = len([c for c in (e.get("codes") or []) if c])
+                if codes_n and len(entry) == codes_n:
                     e["entry"] = entry
                     e["taiex_entry"] = t_open
                     e["status"] = "entered"
                 else:
-                    e["status"] = "void"   # 目標日紀錄在但開盤價湊不滿 3 檔
+                    e["status"] = "void"
+                    e["void_reason"] = "entry_prices_incomplete"
+                    e["n_priced"] = len(entry)
+                    e["n_codes"] = codes_n
             elif _days_past(tgt) > 10:
                 e["status"] = "void"       # 目標日過 10 天仍無紀錄/大盤開盤
         # 2) 結算:entered 後第 h 個 session 收盤(sessions 權威定位)
@@ -14581,9 +14598,36 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                     ch = _px(rec_h, code, "close")
                     if all(isinstance(v, (int, float)) and v for v in (ep, ch)):
                         rets.append(ch / ep - 1)
-                if len(rets) < 3 or not all(
+                # 同理:結算也要全員到齊(進場時已確認全員有價,出場少人
+                # 代表該檔當日資料缺,不是它「不存在」)
+                held = len(e.get("entry") or {})
+                if len(rets) != held or not held or not all(
                         isinstance(v, (int, float)) and v for v in (t0, th)):
-                    e["res"][hk] = {"void": True}
+                    e["res"][hk] = {"void": True,
+                                    "reason": "exit_prices_incomplete",
+                                    "n_priced": len(rets), "n_held": held}
+                    continue
+                # 批#66(P0-2)**除權息**:報酬是用原始收盤價算的,個股除權息
+                # 當日的價格斷點會被當成下跌。台股 7-8 月是除權息旺季,
+                # 一檔配息 4~5% 的個股會在窗口內憑空「跌」掉那一截。
+                #
+                # 這裡**不做半套校正**。把個股加回股利、基準卻仍是價格指數
+                # (加權指數本身在同期也因成分股除息而下跌約 2%),
+                # 誤差不會變小,只會從低估翻成高估。要正確比較必須兩邊都用
+                # 總報酬——基準需要「發行量加權股價報酬指數」,而本系統目前
+                # 沒有累積那條序列(已於本批開始記錄,見 taiex_total_return)。
+                #
+                # 在那之前:窗口內有成分股除權息就**作廢這個橫向**,並記下是
+                # 哪幾檔哪一天。錯的數字比沒有數字更危險——這是本專案既有原則。
+                _ex = exdiv_events_in_window(
+                    exdiv_history, list((e.get("entry") or {}).keys()), tgt, exit_d)
+                if _ex:
+                    e["res"][hk] = {
+                        "void": True, "reason": "corporate_action",
+                        "session": exit_d,
+                        "events": [{"code": x.get("code"),
+                                    "ex_date": x.get("ex_date"),
+                                    "kind": x.get("kind")} for x in _ex[:8]]}
                     continue
                 excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
                 e["res"][hk] = {"excess_pct": round(excess, 2),
@@ -14774,6 +14818,145 @@ def _render_macro_vintage_html(rows: list[dict]) -> str:
 # 每日自動立「可結算」的機率預測(2330/加權開盤方向),隔日以實際開盤結算,
 # 累積 Brier 分數與命中率,並與歷史基準率(base rate)對照——把晨報從「每天的
 # 觀點」變成「可驗證的預測系統」。顯示+state 專用,不回饋任何預測/計分模型。
+#: 除權息事件史(批#66,P0-2)。Top5 的 5/20 日報酬用**原始收盤價**計算,
+#: 個股除權息當日的價格斷點會被當成下跌 —— 台股 7-8 月是除權息旺季,
+#: 一檔配息 4~5% 的個股會在窗口內憑空「跌」掉那一截。
+EXDIV_HISTORY_FILE = Path("state/exdiv_history.json")
+_EXDIV_KEEP_DAYS = 400
+
+
+def fetch_taiex_total_return() -> Optional[float]:
+    """發行量加權股價**報酬**指數收盤(批#66,P0-2)。抓不到回 None。
+
+    **本欄目前沒有任何消費者,是刻意的**:Top5 的超額報酬要正確計算,
+    個股與基準必須同時是總報酬——個股那側可用除權息還原,基準這側則需要
+    這條序列,而本系統從未累積過它。在累積足夠長度之前,窗口內有除權息的
+    橫向一律作廢(見 `update_top5_ledger`)。
+
+    現在開始每日記錄,幾個月後就能把那些作廢換成正確的比較;
+    不記錄的話,那個作廢會是**永久的**。與 MZ 影子模式同一個思路:
+    先累積可驗證的資料,再改行為。
+
+    與 `fetch_twse_taiex_close` 用同一支 MI_INDEX,但名稱不同列
+    (「發行量加權股價指數」不是「發行量加權股價報酬指數」的子字串,不會誤取)。
+    """
+    try:
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX",
+                      timeout=20, headers={"User-Agent": "Mozilla/5.0",
+                                           "Accept": "application/json"})
+        r.raise_for_status()
+        for row in r.json() or []:
+            if not isinstance(row, dict):
+                continue
+            name = str(row.get("指數") or row.get("Name") or "").strip()
+            if "發行量加權股價報酬指數" not in name:
+                continue
+            for k in ("收盤指數", "ClosingIndex", "Close"):
+                v = _to_float(row.get(k))
+                if v and v > 1000:
+                    return round(v, 2)
+    except Exception as e:
+        print(f"[twse_tr] 報酬指數抓取略過: {e}", file=sys.stderr)
+    return None
+
+
+def _roc_to_iso(raw) -> str:
+    """民國日期(1140715 / 114/07/15 / 114年7月15日)→ ISO。無法解析回空字串。"""
+    import re as _re
+    t = str(raw or "").strip()
+    m = _re.fullmatch(r"(\d{3})(\d{2})(\d{2})", t)
+    if not m:
+        m = _re.search(r"(\d{2,3})[/年.-](\d{1,2})[/月.-](\d{1,2})", t)
+    if not m:
+        return ""
+    try:
+        y, mo, d = int(m.group(1)) + 1911, int(m.group(2)), int(m.group(3))
+        return dt.date(y, mo, d).isoformat()
+    except ValueError:
+        return ""
+
+
+def fetch_exdiv_preview() -> list:
+    """TWSE 除權除息預告表 → [{code, ex_date, kind, cash}]。失敗回空清單。
+
+    欄位名沿用 `gooaye_radar.fetch_exdiv_calendar` 已在生產跑通的那一組
+    (Code / Date / Exdividend / CashDividend),不另外猜。
+
+    這是**預告**表:除權息日之前數日就會列出,所以每日抓一次即可在事件發生前
+    先把它記進歷史,不需要事後回補。
+    """
+    out: list = []
+    try:
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL",
+                      timeout=20, headers={"User-Agent": "Mozilla/5.0",
+                                           "Accept": "application/json"})
+        r.raise_for_status()
+        rows = r.json() or []
+    except Exception as e:
+        print(f"[exdiv] 除權息預告抓取失敗(本次略過): {e}", file=sys.stderr)
+        return out
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("Code") or "").strip()
+        ex_date = _roc_to_iso(row.get("Date"))
+        if not (code and ex_date):
+            continue
+        out.append({"code": code, "ex_date": ex_date,
+                    "kind": str(row.get("Exdividend") or "").strip()[:8],
+                    "cash": _to_float(row.get("CashDividend"))})
+    return out
+
+
+def load_exdiv_history() -> list:
+    if not EXDIV_HISTORY_FILE.exists():
+        return []
+    try:
+        data = json.loads(EXDIV_HISTORY_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        print(f"[exdiv] 歷史載入失敗,視為空: {e}", file=sys.stderr)
+        return []
+
+
+def update_exdiv_history(records: list, now_tpe: dt.datetime) -> list:
+    """把本次抓到的除權息預告併進歷史(依 (code, ex_date) 去重)並修剪。
+
+    **新資料不覆蓋舊資料**:預告表在除權息日之後會把該筆移除,若採覆蓋語意
+    就等於每天把剛過去的事件忘掉一次,結算時反而查不到——那正好是這個檔案
+    存在的理由。同鍵重複時保留**先記到**的那筆。
+    """
+    merged = {(str(r.get("code")), str(r.get("ex_date"))): r
+              for r in load_exdiv_history() if isinstance(r, dict)}
+    for r in records or []:
+        key = (str(r.get("code")), str(r.get("ex_date")))
+        if not all(key):
+            continue
+        merged.setdefault(key, r)
+    cutoff = (now_tpe.date() - dt.timedelta(days=_EXDIV_KEEP_DAYS)).isoformat()
+    out = sorted((r for k, r in merged.items() if k[1] >= cutoff),
+                 key=lambda r: (str(r.get("ex_date")), str(r.get("code"))))
+    EXDIV_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(EXDIV_HISTORY_FILE,
+                       json.dumps(out, ensure_ascii=False, indent=1))
+    return out
+
+
+def exdiv_events_in_window(history: list, codes, start: str, end: str) -> list:
+    """窗口 (start, end] 內、屬於 codes 的除權息事件。
+
+    邊界:進場價是 start 當日的**開盤**,所以 start 當日除權息(開盤已是
+    除權息後參考價)不影響本次報酬;end 當日的收盤則已含當日除權息斷點,
+    必須算進來。故區間為左開右閉。
+    """
+    want = {str(c) for c in codes or []}
+    if not (want and start and end):
+        return [] if start and end else []
+    return [r for r in history or []
+            if isinstance(r, dict) and str(r.get("code")) in want
+            and start < str(r.get("ex_date") or "") <= end]
+
+
 FORECAST_LEDGER_FILE = Path("state/forecast_ledger.json")
 #: 每日產生 2 題 + 1 筆 top5 + 1 筆 mz_shadow,600 約等於 150 個交易日
 _FORECAST_LEDGER_KEEP = 600
@@ -20544,10 +20727,18 @@ def main() -> int:
                      for r in (quotes.get("HISTORY") or [])
                      if isinstance(r, dict) and r.get("target_session_date")
                      and isinstance(r.get("actual_open_taiex"), (int, float))}
+        # 除權息預告每日抓一次併進歷史(批#66,P0-2)。抓取失敗只是本次不更新,
+        # 帳本仍會用既有歷史結算——**不能因為抓不到就當作沒有除權息**,
+        # 那正是這個檔案要防的錯誤方向。
+        try:
+            _exdiv = update_exdiv_history(fetch_exdiv_preview(), now_tpe)
+        except Exception as e:
+            print(f"[exdiv] 歷史更新略過: {e}", file=sys.stderr)
+            _exdiv = load_exdiv_history()
         quotes["TOP5_TRACK"] = update_top5_ledger(
             model_history, _top5, now_tpe, target_session_date,
             sessions=trading_sessions, taiex_opens=_tx_opens,
-            raw_codes=_raw5, excluded=_t5_ex)
+            raw_codes=_raw5, excluded=_t5_ex, exdiv_history=_exdiv)
     except Exception as e:
         print(f"[main] Top5 FinMind/追蹤帳本略過: {e}", file=sys.stderr)
         quotes.setdefault("TOP5_TRACK", {})
@@ -20805,6 +20996,7 @@ def main() -> int:
         if completed_session:
             # 基本面已於上方 _attach_listing_fundamentals(tw0050) 附加,此處直接存史累積
             label_prices, label_prices_complete = _current_label_prices(model_history)
+            _taiex_tr = fetch_taiex_total_return()
             save_model_history({
                 "session_date": completed_session,
                 "generated_at": now_tpe.isoformat(),
@@ -20814,6 +21006,8 @@ def main() -> int:
                     taiex_pred.get("last_close")
                     or (twse_taiex_close if 'twse_taiex_close' in locals() else None)
                 ),
+                # 批#66:只記錄、無消費者(見 fetch_taiex_total_return 說明)
+                "taiex_total_return": _taiex_tr,
                 "market_regime": quotes.get("MARKET_REGIME"),
                 # r2(Codex,P1):股票池未通過品質閘時**不寫入快照**。
                 # 寫進去會污染 model_history,而本閘的自動門檻正是拿它的歷史

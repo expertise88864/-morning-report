@@ -131,21 +131,34 @@ def test_chip_signals_reach_both_state_and_model_history():
     assert src.count("_chip_fields_for_session(") >= 3, (
         "應有:函式定義 + state entry + model_history 各一處")
     mh_start = src.index('"universe_method": "daily_point_in_time_top100"')
-    assert "_chip_fields_for_session(" in src[mh_start:mh_start + 1500],         "model_history 紀錄沒有籌碼訊號"
+    assert "_chip_fields_for_session(" in src[mh_start:mh_start + 2500],         "model_history 紀錄沒有籌碼訊號"
 
 
 def test_chip_signals_survive_history_compaction():
     """壓縮白名單必須涵蓋,否則舊 session 在壓縮階段被裁掉,時序又出現空洞。"""
     from pathlib import Path
     src = Path(mr.__file__).read_text(encoding="utf-8")
-    keep_start = src.index("keep_record = {")
-    keep_block = src[keep_start:keep_start + 700]
+    # 批#66:原本用「從 `keep_record = {` 起算 700 個字元」切原始碼比對,
+    # 被一段無關的新註解推出視窗就會誤報。改用 AST 取**真正的集合字面值**
+    # ——同一個不變式,但不會因為排版或註解而壞掉。
+    import ast
+    tree = ast.parse(src)
+    keep = None
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "keep_record"
+                        for t in node.targets)
+                and isinstance(node.value, ast.Set)):
+            keep = {e.value for e in node.value.elts
+                    if isinstance(e, ast.Constant)}
+            break
+    assert keep, "找不到 keep_record 集合"
     for f in ("taifex_top10_net", "taifex_spec_top10_net",
               "taifex_top10_concentration_pct", "txo_pc_oi_ratio",
               # r21(Codex):來源日期欄位存在的理由就是日後對帳,壓縮時裁掉
               # 等於把它們的用途取消
               "taifex_chip_source_date", "txo_pcr_source_date"):
-        assert f'"{f}"' in keep_block, f"{f} 不在壓縮白名單"
+        assert f in keep, f"{f} 不在壓縮白名單"
 
 
 def test_chip_signals_stay_out_of_stance_scoring():

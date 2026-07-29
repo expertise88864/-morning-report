@@ -2895,3 +2895,165 @@ def test_mz_shadow_rows_never_leak_into_question_statistics():
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     row = [e for e in stored if e.get("type") == "mz_shadow"][0]
     assert row.get("void") is not True and row.get("actual") == 2310.0
+
+
+def _top5_frame(codes, drop_at_entry=(), drop_at_exit=()):
+    """建 11 個 session 的迷你行情;可指定某些代號在進場日/出場日缺價。"""
+    dates = [f"2026-07-{d:02d}" for d in range(1, 12)]
+    mh = []
+    for i, d in enumerate(dates):
+        stocks = {}
+        for c in codes:
+            if d == "2026-07-04" and c in drop_at_entry:
+                continue
+            if d == "2026-07-09" and c in drop_at_exit:
+                continue
+            stocks[c] = {"open": 108.0 + i, "close": 109.0 + i}
+        mh.append({"session_date": d, "taiex_close": 10000 + 10 * i,
+                   "stocks": stocks})
+    return dates, mh, {d: 10005.0 + 10 * i for i, d in enumerate(dates)}
+
+
+def test_top5_entry_requires_every_constituent_to_be_priced():
+    """批#66(P0-1):舊碼只要湊到 3 檔就進場,等於把一份 5 檔名單當成 3 檔
+    投組計分——而查不到價的那幾檔,往往正是跌出 Top100 股票池的**弱勢股**。
+    `_px` 之所以要回頭查 `label_prices`,理由就是防這個倖存者偏誤;
+    `>= 3` 的門檻把同一個洞又開回來。少一筆樣本,好過一筆偏誤樣本。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes, drop_at_entry=("4404", "5505"))
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", sessions=dates, taiex_opens=topens)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", sessions=dates, taiex_opens=topens)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = next(e for e in stored if e.get("type") == "top5")
+    assert t5["status"] == "void"
+    assert t5["void_reason"] == "entry_prices_incomplete"
+    assert t5["n_priced"] == 3 and t5["n_codes"] == 5
+
+
+def test_top5_settlement_requires_every_holding_to_be_priced():
+    """同理:進場時已確認全員有價,出場少人代表該檔當日資料缺,
+    不是它「不存在」——不得拿倖存的那幾檔充當整組績效。"""
+    import datetime as dt
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes, drop_at_exit=("5505",))
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", sessions=dates, taiex_opens=topens)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", sessions=dates, taiex_opens=topens)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", sessions=dates,
+                                taiex_opens=topens)
+    import json as _json
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    t5 = next(e for e in stored if e.get("type") == "top5")
+    assert t5["status"] == "entered"
+    res5 = t5["res"]["5"]
+    assert res5["void"] is True
+    assert res5["reason"] == "exit_prices_incomplete"
+    assert res5["n_priced"] == 4 and res5["n_held"] == 5
+    assert not out["stats"].get("5"), "void 的橫向不得進統計"
+
+
+def test_top5_full_coverage_still_settles():
+    """對照組:全員有價時照常結算——否則上面兩條可能只是把功能關掉。"""
+    import datetime as dt
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", sessions=dates, taiex_opens=topens)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", sessions=dates, taiex_opens=topens)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", sessions=dates,
+                                taiex_opens=topens)
+    st = out["stats"].get("5")
+    assert st and st["n"] == 1 and 4.0 < st["mean_excess_pct"] < 6.0
+
+
+def test_exdiv_history_keeps_the_first_record_and_prunes_old_ones():
+    """批#66(P0-2):除權息**預告**表在除權息日之後會把該筆移除。若採覆蓋語意,
+    等於每天把剛過去的事件忘掉一次——而結算正是在事件過去之後才發生,
+    那樣就永遠查不到。所以同鍵保留**先記到**的那筆。"""
+    import datetime as dt
+    import json as _json
+    now = dt.datetime(2026, 7, 30, 6, 0, tzinfo=mr.TPE)
+    mr.update_exdiv_history(
+        [{"code": "2330", "ex_date": "2026-07-15", "kind": "息", "cash": 5.0}],
+        now)
+    # 第二天預告表已看不到 2330,但歷史不得因此遺失
+    out = mr.update_exdiv_history(
+        [{"code": "2454", "ex_date": "2026-08-05", "kind": "息", "cash": 20.0}],
+        now)
+    codes = {r["code"] for r in out}
+    assert codes == {"2330", "2454"}
+    # 同鍵重覆記錄不得被後來的空值蓋掉
+    out = mr.update_exdiv_history(
+        [{"code": "2330", "ex_date": "2026-07-15", "kind": "", "cash": None}],
+        now)
+    row = next(r for r in out if r["code"] == "2330")
+    assert row["cash"] == 5.0 and row["kind"] == "息"
+    # 修剪:超過保留天數的舊事件移除
+    out = mr.update_exdiv_history([], dt.datetime(2028, 1, 1, tzinfo=mr.TPE))
+    assert out == []
+    assert _json.loads(
+        mr.EXDIV_HISTORY_FILE.read_text(encoding="utf-8")) == []
+
+
+def test_exdiv_window_is_left_open_right_closed():
+    """進場價是 start 當日的**開盤**(已是除權息後參考價)→ 當日除權息不影響;
+    end 當日的收盤已含當日除權息斷點 → 必須算進來。"""
+    hist = [{"code": "2330", "ex_date": "2026-07-04", "kind": "息", "cash": 5.0},
+            {"code": "2330", "ex_date": "2026-07-09", "kind": "息", "cash": 5.0},
+            {"code": "2454", "ex_date": "2026-07-06", "kind": "息", "cash": 3.0}]
+    f = mr.exdiv_events_in_window
+    assert [r["ex_date"] for r in f(hist, ["2330"], "2026-07-04", "2026-07-09")] \
+        == ["2026-07-09"]
+    assert f(hist, ["1101"], "2026-07-01", "2026-07-31") == []
+    assert len(f(hist, ["2330", "2454"], "2026-07-01", "2026-07-31")) == 3
+
+
+def test_top5_horizon_is_voided_when_a_holding_goes_ex_dividend():
+    """報酬用原始收盤價算,個股除權息當日的價格斷點會被當成下跌。
+
+    這裡**不做半套校正**:把個股加回股利、基準卻仍是價格指數(加權指數本身
+    同期也因成分股除息而下跌約 2%),誤差不會變小,只會從低估翻成高估。
+    在累積出報酬指數序列之前,窗口內有除權息就作廢該橫向並記下是哪幾檔。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    hist = [{"code": "3303", "ex_date": "2026-07-07", "kind": "息", "cash": 4.5}]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=hist)
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", **kw)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "corporate_action"
+    assert res5["events"] == [{"code": "3303", "ex_date": "2026-07-07",
+                               "kind": "息"}]
+    assert not out["stats"].get("5")

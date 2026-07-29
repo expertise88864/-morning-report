@@ -40,7 +40,7 @@ def test_company_news_is_not_mistaken_for_a_wrap():
                   "台積電盤後宣布擴產",
                   "台積電董事會通過收購案",
                   "聯發科法說會展望樂觀",
-                  "美股標普那指收黑!科技財報週將登場"):
+                  ):
         assert not sl.is_market_wrap(title), title
 
 
@@ -169,7 +169,7 @@ def test_wrap_uses_strong_and_weak_markers():
     for real in ("恩智浦半導體盤後下跌,儘管季度業績及展望均超預期",
                  "鴻海盤後公告 斥資100億擴廠",
                  "台積電董事會通過收購案",
-                 "美股標普那指收黑!科技財報週將登場"):
+                 ):
         assert not sl.is_market_wrap(real), real
 
 
@@ -260,4 +260,25 @@ def test_event_word_exemption_needs_a_real_company_event():
     for real in ("恩智浦半導體盤後下跌,儘管季度業績及展望均超預期",
                  "聯發科盤後公布財報 EPS 創高",
                  "鴻海盤後公告 斥資100億擴廠"):
+        assert not sl.is_market_wrap(real), real
+
+
+def test_market_index_moves_are_wraps_regardless_of_position():
+    """r3:**「市場主體 + 漲跌方向」是獨立的強訊號**,不該被弱標記關卡擋在前面。
+
+    Codex 這一輪主張兩條既有斷言必然失敗 —— 那個**機制判斷是錯的**
+    (標題含「收黑」不是「收盤」,前 16 字沒有弱標記,函式在更早就 return False,
+     實跑全過)。但它的**直覺是對的**:「美股標普那指收黑!科技財報週將登場」
+    本來就是大盤總結,沒有單一主體。
+    **我從第一版就把那個案例的期望值寫成 False,四個版本一路帶著這個錯誤假設。**
+    """
+    for wrap in ("美股標普那指收黑!科技財報週將登場",
+                 "台股大盤重挫 電子權值股領跌",
+                 "費半指數大跌 亞股同步走低"):
+        assert sl.is_market_wrap(wrap), wrap
+
+    # 但「台股上市公司某某…」這種以市場詞開頭的**個股**標題不得誤傷
+    # (送審時我自己列的擔心點)
+    for real in ("台股上市公司某某獲利創高",
+                 "台積電董事會通過收購案"):
         assert not sl.is_market_wrap(real), real

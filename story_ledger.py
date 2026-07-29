@@ -170,16 +170,21 @@ def is_market_wrap(title: str) -> bool:
     head = t[:16]
     if t[:1] in _WRAP_PREFIX and any(m in t[:14] for m in _WRAP_WEAK):
         return True
+    # r3:**市場主體 + 漲跌方向是獨立的強訊號**,不該被弱標記關卡擋在前面。
+    # Codex 這一輪主張兩條既有斷言必然失敗 —— 那個**機制判斷是錯的**
+    # (標題含「收黑」不是「收盤」,前 16 字沒有弱標記,函式在上面就 return False,
+    #  實跑 15 passed)。但它的**直覺是對的**:
+    # 「美股標普那指收黑!科技財報週將登場」本來就是大盤總結,沒有單一主體。
+    # **我從第一版就把那個案例的期望值寫成 False,四個版本一路帶著這個錯誤假設。**
+    if any(m in t for m in _WRAP_MARKET_SUBJECTS) and any(
+            d in t for d in _WRAP_DIRECTION):
+        return True
     if not any(m in head for m in _WRAP_WEAK):
         return False
     # r2(Codex,P2):**豁免要證明「有具體公司事件」,不是出現關鍵字就算**。
     # 「美股盤後收黑,科技財報週將登場」因為含「財報」被放行 —— 但那是
     # **市場級**標題:「財報週」是時節不是某家公司的事。
-    # (a) 市場主體 + 漲跌方向 → 一律總結,事件詞不得豁免
-    if any(m in t for m in _WRAP_MARKET_SUBJECTS) and any(
-            d in t for d in _WRAP_DIRECTION):
-        return True
-    # (b) 事件詞若接「週/季/旺季/行情」等時節後綴,那是期間不是事件
+    # 事件詞若接「週/季/旺季/行情」等時節後綴,那是期間不是事件
     import re as _re
     for w in _WRAP_EVENT_WORDS:
         i = t.find(w)

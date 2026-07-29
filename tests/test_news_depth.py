@@ -310,3 +310,19 @@ def test_wrap_detection_fails_open_without_a_vocabulary():
     assert sl.is_market_wrap("本週操盤筆記:Fed決策", ())
 
 
+def test_column_branch_only_matches_session_columns():
+    """r7(Codex,P1):欄目分支原本還收「速報/快訊」與市場詞,於是
+    【美股焦點】輝達財報後大漲、【財報快訊】台積電獲利創高 在檢查公司名**之前**
+    就被判成綜覽而**靜默丟棄** —— 「焦點/快訊」是版面標籤,不是市場總結。
+
+    只認**場次詞**(盤後/盤前/盤中/收盤/開盤);「盤中速報」這類完整欄目名
+    仍由強標記抓。
+    """
+    for real in ("【美股焦點】輝達財報後大漲",
+                 "【財報快訊】台積電獲利創高",
+                 "【財報快報】台積電第二季獲利創高"):
+        assert not sl.is_market_wrap(real, _NAMES), real
+    for wrap in ("〈台股盤後〉台積電穩盤 回測4萬3",
+                 "〈能源盤後〉美國暫停空襲 原油挫8%",
+                 "盤中速報 - 勤誠大跌7.2%"):
+        assert sl.is_market_wrap(wrap, _NAMES), wrap

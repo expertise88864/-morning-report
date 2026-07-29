@@ -14510,9 +14510,20 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 ledger = data
         except Exception as e:
             print(f"[top5-ledger] 載入失敗,重建: {e}", file=sys.stderr)
-    # 除權息事件史:呼叫端沒給就自己讀 state(測試可注入,生產不必改接線)
+    # 除權息事件史:呼叫端沒給就自己讀 state(測試可注入,生產不必改接線)。
+    # 讀不出來時**不是**當成空的——那會讓所有橫向誤判成「沒有除權息」;
+    # 空覆蓋範圍會讓 exdiv_coverage_ok 全數回 False,橫向一律作廢(fail-closed)。
     if exdiv_history is None:
-        exdiv_history = load_exdiv_history()
+        try:
+            exdiv_history = load_exdiv_history()
+        except ExdivHistoryUnreadable as _e:
+            print(f"[top5-ledger] 除權息歷史不可讀,本次橫向一律作廢: {_e}",
+                  file=sys.stderr)
+            exdiv_history = {"since": "", "days": [], "records": []}
+    if isinstance(exdiv_history, list):     # 測試/舊呼叫端只給事件清單
+        exdiv_history = {"since": "", "days": [], "records": exdiv_history}
+    _exdiv_days = list((exdiv_history or {}).get("days") or [])
+    _exdiv_records = list((exdiv_history or {}).get("records") or [])
     today = now_tpe.strftime("%Y-%m-%d")
     recs = sorted((r for r in model_history or []
                    if isinstance(r, dict) and r.get("session_date")),
@@ -14619,8 +14630,17 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 #
                 # 在那之前:窗口內有成分股除權息就**作廢這個橫向**,並記下是
                 # 哪幾檔哪一天。錯的數字比沒有數字更危險——這是本專案既有原則。
+                # r3(Codex,P1):**先確認這段期間真的有收集過**。預告表看不到
+                # 已經過去的除權息,所以上線當下(或排程連續失敗數日之後)
+                # 「查不到事件」不等於「沒有事件」——那正是最危險的誤判方向。
+                if not exdiv_coverage_ok(_exdiv_days, tgt, exit_d):
+                    e["res"][hk] = {"void": True,
+                                    "reason": "exdiv_coverage_gap",
+                                    "session": exit_d}
+                    continue
                 _ex = exdiv_events_in_window(
-                    exdiv_history, list((e.get("entry") or {}).keys()), tgt, exit_d)
+                    _exdiv_records, list((e.get("entry") or {}).keys()),
+                    tgt, exit_d)
                 if _ex:
                     e["res"][hk] = {
                         "void": True, "reason": "corporate_action",
@@ -14908,38 +14928,103 @@ def fetch_exdiv_preview() -> list:
     return out
 
 
-def load_exdiv_history() -> list:
+class ExdivHistoryUnreadable(RuntimeError):
+    """除權息歷史讀得到檔案卻解析不出來。**不得降級為空**。"""
+
+
+def load_exdiv_history() -> dict:
+    """回 `{"since": ISO, "days": [ISO...], "records": [...]}`。
+
+    r1(Codex,P1):原本 `except: return []`,而呼叫端拿到空清單後會**原子覆寫**
+    同一個檔案 —— 一次讀取失敗就永久刪掉最多 400 天的事件,而且此後的 Top5
+    結算會誤判「窗口內沒有除權息」。這正是本專案反覆出現的病灶
+    (讀檔失敗被當成沒有資料,再被覆蓋)。
+
+    改為:檔案不存在 → 空(那是真的還沒開始收集);
+    檔案存在但讀不出來/格式不對 → **拋 ExdivHistoryUnreadable**,
+    由呼叫端決定,絕不代它把檔案清掉。
+    """
+    empty = {"since": "", "days": [], "records": []}
     if not EXDIV_HISTORY_FILE.exists():
-        return []
+        return empty
     try:
         data = json.loads(EXDIV_HISTORY_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
     except Exception as e:
-        print(f"[exdiv] 歷史載入失敗,視為空: {e}", file=sys.stderr)
-        return []
+        raise ExdivHistoryUnreadable(f"{EXDIV_HISTORY_FILE}: {e}") from e
+    if isinstance(data, list):        # 舊格式(僅事件清單,無覆蓋範圍)
+        return {"since": "", "days": [], "records": data}
+    if not isinstance(data, dict) or not isinstance(data.get("records"), list):
+        raise ExdivHistoryUnreadable(f"{EXDIV_HISTORY_FILE}: 格式不是預期的物件")
+    return {"since": str(data.get("since") or ""),
+            "days": [str(x) for x in (data.get("days") or []) if x],
+            "records": data["records"]}
 
 
-def update_exdiv_history(records: list, now_tpe: dt.datetime) -> list:
+def update_exdiv_history(records: list, now_tpe: dt.datetime) -> dict:
     """把本次抓到的除權息預告併進歷史(依 (code, ex_date) 去重)並修剪。
 
     **新資料不覆蓋舊資料**:預告表在除權息日之後會把該筆移除,若採覆蓋語意
     就等於每天把剛過去的事件忘掉一次,結算時反而查不到——那正好是這個檔案
     存在的理由。同鍵重複時保留**先記到**的那筆。
+
+    同時記錄「哪幾天成功收集過」(`days`)與「從哪天開始收集」(`since`):
+    r3(Codex,P1)——上線當下歷史是空的,而預告表**看不到已經過去的除權息**,
+    於是上線前就已進場的部位會被誤判成「窗口內沒有除權息」而照常結算。
+    有了覆蓋範圍,那些窗口才能被誠實地作廢而不是給出錯的數字。
     """
+    prev = load_exdiv_history()       # 讀不出來會拋,呼叫端負責不覆寫
     merged = {(str(r.get("code")), str(r.get("ex_date"))): r
-              for r in load_exdiv_history() if isinstance(r, dict)}
+              for r in prev["records"] if isinstance(r, dict)}
     for r in records or []:
         key = (str(r.get("code")), str(r.get("ex_date")))
         if not all(key):
             continue
         merged.setdefault(key, r)
+    today = now_tpe.date().isoformat()
     cutoff = (now_tpe.date() - dt.timedelta(days=_EXDIV_KEEP_DAYS)).isoformat()
-    out = sorted((r for k, r in merged.items() if k[1] >= cutoff),
-                 key=lambda r: (str(r.get("ex_date")), str(r.get("code"))))
+    out = {
+        "since": prev["since"] or today,
+        "days": sorted({d for d in prev["days"] + [today] if d >= cutoff}),
+        "records": sorted((r for k, r in merged.items() if k[1] >= cutoff),
+                          key=lambda r: (str(r.get("ex_date")), str(r.get("code")))),
+    }
     EXDIV_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(EXDIV_HISTORY_FILE,
                        json.dumps(out, ensure_ascii=False, indent=1))
     return out
+
+
+#: 除權息**預告**表往前看的天數。實際約兩週,取 7 天當保守值:
+#: 只要 D 之前 7 天內有成功收集過一次,D 當天的除權息就一定被記下來了。
+_EXDIV_PREVIEW_LOOKAHEAD_DAYS = 7
+
+
+def exdiv_coverage_ok(days, start: str, end: str) -> bool:
+    """(start, end] 這段期間的除權息事件,是否確定都已被收集到。
+
+    判準:區間內**每一天** D,都要在 [D − lookahead, D] 之內有過一次成功收集
+    ——因為預告表只往前看,收集日在 D 之後才開始的話,D 當天的除權息早已從
+    表上消失。這也順帶擋掉「排程連續失敗數日」造成的空洞,不只是上線那一刻。
+    """
+    have = sorted({str(x) for x in days or [] if x})
+    if not (have and start and end):
+        return False
+    try:
+        d0 = dt.date.fromisoformat(start)
+        d1 = dt.date.fromisoformat(end)
+    except (ValueError, TypeError):
+        return False
+    if d1 < d0:
+        return False
+    have_set = set(have)
+    day = d0 + dt.timedelta(days=1)
+    while day <= d1:
+        window = {(day - dt.timedelta(days=k)).isoformat()
+                  for k in range(_EXDIV_PREVIEW_LOOKAHEAD_DAYS + 1)}
+        if not (window & have_set):
+            return False
+        day += dt.timedelta(days=1)
+    return True
 
 
 def exdiv_events_in_window(history: list, codes, start: str, end: str) -> list:
@@ -20732,9 +20817,17 @@ def main() -> int:
         # 那正是這個檔案要防的錯誤方向。
         try:
             _exdiv = update_exdiv_history(fetch_exdiv_preview(), now_tpe)
+        except ExdivHistoryUnreadable as e:
+            # r1(Codex,P1):讀不出來時**絕不覆寫**——那會永久刪掉最多 400 天的
+            # 事件。改為原檔保留、本次以空覆蓋範圍進帳本(橫向 fail-closed 作廢)。
+            print(f"[exdiv] 歷史不可讀,保留原檔不覆寫: {e}", file=sys.stderr)
+            _exdiv = {"since": "", "days": [], "records": []}
         except Exception as e:
             print(f"[exdiv] 歷史更新略過: {e}", file=sys.stderr)
-            _exdiv = load_exdiv_history()
+            try:
+                _exdiv = load_exdiv_history()
+            except ExdivHistoryUnreadable:
+                _exdiv = {"since": "", "days": [], "records": []}
         quotes["TOP5_TRACK"] = update_top5_ledger(
             model_history, _top5, now_tpe, target_session_date,
             sessions=trading_sessions, taiex_opens=_tx_opens,
@@ -20996,7 +21089,17 @@ def main() -> int:
         if completed_session:
             # 基本面已於上方 _attach_listing_fundamentals(tw0050) 附加,此處直接存史累積
             label_prices, label_prices_complete = _current_label_prices(model_history)
+            # r2(Codex,P1):同一個 completed_session 會被存好幾次(週六/週日/
+            # 週一晨報都指向同一個完成日),而 `save_model_history` 是**整筆
+            # 取代**。週末 TWSE 沒有當日資料,這次抓不到就會把先前抓到的值
+            # 抹成 None —— 而本欄的全部價值就是序列長度。抓不到時沿用舊值。
             _taiex_tr = fetch_taiex_total_return()
+            if _taiex_tr is None:
+                _taiex_tr = next(
+                    (r.get("taiex_total_return") for r in reversed(model_history or [])
+                     if isinstance(r, dict)
+                     and r.get("session_date") == completed_session
+                     and r.get("taiex_total_return") is not None), None)
             save_model_history({
                 "session_date": completed_session,
                 "generated_at": now_tpe.isoformat(),

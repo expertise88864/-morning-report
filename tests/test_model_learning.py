@@ -1659,7 +1659,8 @@ def test_top5_ledger_executable_lifecycle():
     out = mr.update_top5_ledger(mh_full[:3], top5, now, "2026-07-04",
                                 sessions=dates, taiex_opens=taiex_opens,
                                 raw_codes=["1101", "2202", "3303", "9999"],
-                                excluded=[("9999", "漲停鎖死")])
+                                excluded=[("9999", "漲停鎖死")],
+                                exdiv_history=_exdiv_cover())
     assert out["created"] is True
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     t5 = next(e for e in stored if e.get("type") == "top5")
@@ -1667,13 +1668,14 @@ def test_top5_ledger_executable_lifecycle():
     assert t5["raw_codes"] == ["1101", "2202", "3303", "9999"]
     # 同 target_session 重複立(如週六與週一皆指向週一)→ 覆蓋不疊加
     mr.update_top5_ledger(mh_full[:3], top5, now, "2026-07-04",
-                          sessions=dates, taiex_opens=taiex_opens)
+                          sessions=dates, taiex_opens=taiex_opens, exdiv_history=_exdiv_cover())
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     assert sum(1 for e in stored if e.get("type") == "top5") == 1
     # 目標日紀錄入庫 → 以「開盤 108」進場(不是昨收 100:跳空不進績效)
     mr.update_top5_ledger(mh_full[:4], [], dt.datetime(
         2026, 7, 5, 6, 0, tzinfo=mr.TPE), "2026-07-05",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     t5 = next(e for e in stored if e.get("type") == "top5")
     assert t5["status"] == "entered"
@@ -1682,7 +1684,8 @@ def test_top5_ledger_executable_lifecycle():
     # entry 後第 5 個 session(07-09)收盤結算 executable excess
     out3 = mr.update_top5_ledger(mh_full, [], dt.datetime(
         2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     st = out3["stats"].get("5")
     assert st and st["n"] == 1
     # 個股 (117-111)/111≈5.41%;大盤 (10080-10035)/10035≈0.45% → 超額 ≈ +4.96%
@@ -1691,7 +1694,8 @@ def test_top5_ledger_executable_lifecycle():
     mr.FORECAST_LEDGER_FILE.write_text("[]", encoding="utf-8")
     out4 = mr.update_top5_ledger(mh_full, top5, dt.datetime(
         2026, 7, 4, 10, 0, tzinfo=mr.TPE), "2026-07-04",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     assert out4["created"] is False
 
 
@@ -1716,7 +1720,8 @@ def test_top5_ledger_v1_entries_voided_and_gap_waits():
         _json.dumps([legacy]), encoding="utf-8")
     out = mr.update_top5_ledger(mh, [], dt.datetime(
         2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     assert stored[0]["status"] == "void_legacy"
     assert not out["stats"]
@@ -1730,7 +1735,8 @@ def test_top5_ledger_v1_entries_voided_and_gap_waits():
     mh_gap = [r for r in mh if r["session_date"] != "2026-07-09"]   # 缺 exit 日
     out2 = mr.update_top5_ledger(mh_gap, [], dt.datetime(
         2026, 7, 10, 6, 0, tzinfo=mr.TPE), "2026-07-10",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     stored2 = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     assert stored2[0]["res"].get("5") is None      # 等待,不拿 07-10 頂替
     assert not out2["stats"]
@@ -1834,17 +1840,20 @@ def test_top5_prices_fall_back_to_label_prices():
     top5 = [{"code": c, "close": 99.0} for c in ("1101", "2202", "3303")]
     mr.update_top5_ledger(mh[:3], top5, dt.datetime(
         2026, 7, 4, 6, 0, tzinfo=mr.TPE), "2026-07-04",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     mr.update_top5_ledger(mh[:4], [], dt.datetime(
         2026, 7, 5, 6, 0, tzinfo=mr.TPE), "2026-07-05",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     t5 = next(e for e in stored if e.get("type") == "top5")
     assert t5["status"] == "entered"
     assert t5["entry"]["3303"] == 53.0        # 自 label_prices 取得開盤
     out = mr.update_top5_ledger(mh, [], dt.datetime(
         2026, 7, 11, 6, 0, tzinfo=mr.TPE), "2026-07-11",
-        sessions=dates, taiex_opens=taiex_opens)
+        sessions=dates, taiex_opens=taiex_opens,
+        exdiv_history=_exdiv_cover())
     assert out["stats"].get("5", {}).get("n") == 1   # 三檔齊全結算(含 3303)
     # 持倉代號納入抓取集合:entered 只追實際進場的 entry.keys()
     # (Codex r3:進場湊不滿的停牌候選碼不再抓)
@@ -2897,6 +2906,15 @@ def test_mz_shadow_rows_never_leak_into_question_statistics():
     assert row.get("void") is not True and row.get("actual") == 2310.0
 
 
+def _exdiv_cover(records=(), days=None):
+    """測試用的除權息歷史:預設「每天都成功收集過」,把覆蓋範圍守衛讓開,
+    好讓測試專注在它各自要驗的事。要驗守衛本身的另有專門測試。"""
+    return {"since": "2026-06-01",
+            "days": list(days) if days is not None
+            else [f"2026-{m:02d}-{d:02d}" for m in (6, 7, 8) for d in range(1, 32)],
+            "records": list(records)}
+
+
 def _top5_frame(codes, drop_at_entry=(), drop_at_exit=()):
     """建 11 個 session 的迷你行情;可指定某些代號在進場日/出場日缺價。"""
     dates = [f"2026-07-{d:02d}" for d in range(1, 12)]
@@ -2981,7 +2999,8 @@ def test_top5_full_coverage_still_settles():
     out = mr.update_top5_ledger(mh, [],
                                 dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
                                 "2026-07-11", sessions=dates,
-                                taiex_opens=topens)
+                                taiex_opens=topens,
+                                exdiv_history=_exdiv_cover())
     st = out["stats"].get("5")
     assert st and st["n"] == 1 and 4.0 < st["mean_excess_pct"] < 6.0
 
@@ -2991,7 +3010,6 @@ def test_exdiv_history_keeps_the_first_record_and_prunes_old_ones():
     等於每天把剛過去的事件忘掉一次——而結算正是在事件過去之後才發生,
     那樣就永遠查不到。所以同鍵保留**先記到**的那筆。"""
     import datetime as dt
-    import json as _json
     now = dt.datetime(2026, 7, 30, 6, 0, tzinfo=mr.TPE)
     mr.update_exdiv_history(
         [{"code": "2330", "ex_date": "2026-07-15", "kind": "息", "cash": 5.0}],
@@ -3000,19 +3018,84 @@ def test_exdiv_history_keeps_the_first_record_and_prunes_old_ones():
     out = mr.update_exdiv_history(
         [{"code": "2454", "ex_date": "2026-08-05", "kind": "息", "cash": 20.0}],
         now)
-    codes = {r["code"] for r in out}
-    assert codes == {"2330", "2454"}
+    assert {r["code"] for r in out["records"]} == {"2330", "2454"}
+    assert out["since"] == "2026-07-30"
     # 同鍵重覆記錄不得被後來的空值蓋掉
     out = mr.update_exdiv_history(
         [{"code": "2330", "ex_date": "2026-07-15", "kind": "", "cash": None}],
         now)
-    row = next(r for r in out if r["code"] == "2330")
+    row = next(r for r in out["records"] if r["code"] == "2330")
     assert row["cash"] == 5.0 and row["kind"] == "息"
     # 修剪:超過保留天數的舊事件移除
     out = mr.update_exdiv_history([], dt.datetime(2028, 1, 1, tzinfo=mr.TPE))
-    assert out == []
-    assert _json.loads(
-        mr.EXDIV_HISTORY_FILE.read_text(encoding="utf-8")) == []
+    assert out["records"] == [] and out["days"] == ["2028-01-01"]
+
+
+def test_exdiv_history_never_overwrites_an_unreadable_file():
+    """r1(Codex,P1):原本讀檔失敗回空清單,呼叫端接著**原子覆寫**同一個檔——
+    一次讀取失敗就永久刪掉最多 400 天的事件,此後結算還會誤判「窗口內沒有
+    除權息」。這正是本專案反覆出現的病灶(讀檔失敗被當成沒有資料再被覆蓋)。
+    """
+    import datetime as dt
+    import pytest as _pytest
+    now = dt.datetime(2026, 7, 30, 6, 0, tzinfo=mr.TPE)
+    mr.EXDIV_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    mr.EXDIV_HISTORY_FILE.write_text('{"records": [', encoding="utf-8")  # 截斷
+    with _pytest.raises(mr.ExdivHistoryUnreadable):
+        mr.load_exdiv_history()
+    with _pytest.raises(mr.ExdivHistoryUnreadable):
+        mr.update_exdiv_history([{"code": "2330", "ex_date": "2026-07-15"}], now)
+    assert mr.EXDIV_HISTORY_FILE.read_text(encoding="utf-8") == '{"records": ['
+    # 根不是預期物件也算完整性失敗
+    mr.EXDIV_HISTORY_FILE.write_text('{"oops": 1}', encoding="utf-8")
+    with _pytest.raises(mr.ExdivHistoryUnreadable):
+        mr.load_exdiv_history()
+    # 檔案**不存在**才是真的還沒開始收集
+    mr.EXDIV_HISTORY_FILE.unlink()
+    assert mr.load_exdiv_history() == {"since": "", "days": [], "records": []}
+
+
+def test_exdiv_coverage_gate_voids_windows_we_never_watched():
+    """r3(Codex,P1):預告表**看不到已經過去的除權息**。上線當下歷史是空的,
+    於是上線前就已進場的部位會被誤判成「窗口內沒有除權息」而照常結算——
+    那正是最危險的誤判方向。排程連續失敗數日造成的空洞同理。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    # 只從 07-10 才開始收集 → 07-04 進場的窗口從未被監看
+    late = _exdiv_cover(days=[f"2026-07-{d:02d}" for d in range(10, 20)])
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=late)
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", **kw)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "exdiv_coverage_gap"
+    assert not out["stats"].get("5")
+
+
+def test_exdiv_coverage_needs_a_collection_within_the_lookahead():
+    """判準:區間內每一天 D 都要在 [D − lookahead, D] 內有過一次成功收集,
+    因為預告表只往前看。收集日全在 D 之後,D 當天的除權息早已從表上消失。"""
+    f = mr.exdiv_coverage_ok
+    every_day = [f"2026-07-{d:02d}" for d in range(1, 32)]
+    assert f(every_day, "2026-07-04", "2026-07-09")
+    # 每 7 天收集一次仍足夠(lookahead=7)
+    assert f(["2026-07-01", "2026-07-08", "2026-07-15"], "2026-07-04", "2026-07-09")
+    # 中間停了 10 天 → 不足
+    assert not f(["2026-07-01", "2026-07-20"], "2026-07-04", "2026-07-15")
+    # 收集全在窗口之後 → 不足(預告表看不到過去)
+    assert not f(["2026-07-20", "2026-07-21"], "2026-07-04", "2026-07-09")
+    assert not f([], "2026-07-04", "2026-07-09")
 
 
 def test_exdiv_window_is_left_open_right_closed():
@@ -3040,7 +3123,8 @@ def test_top5_horizon_is_voided_when_a_holding_goes_ex_dividend():
     codes = ["1101", "2202", "3303", "4404", "5505"]
     dates, mh, topens = _top5_frame(codes)
     top5 = [{"code": c, "close": 100.0} for c in codes]
-    hist = [{"code": "3303", "ex_date": "2026-07-07", "kind": "息", "cash": 4.5}]
+    hist = _exdiv_cover(
+        [{"code": "3303", "ex_date": "2026-07-07", "kind": "息", "cash": 4.5}])
     kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=hist)
     mr.update_top5_ledger(mh[:3], top5,
                           dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),

@@ -1600,16 +1600,44 @@ def test_company_bucket_cap_counts_publisher_family_not_channel_name():
              _company_item("Google:2330", "G")]
     picked = mr._rank_company_bucket(items, quota=3)
     families = [mr._source_family(i["source"]) for i in picked]
-    assert families.count("鉅亨") <= 2, f"鉅亨仍吃光配額:{families}"
-    assert "Google" in families, "其他發布者被完全擠掉"
+    cnyes = mr._source_family("鉅亨台股")
+    assert families.count(cnyes) <= 2, f"鉅亨仍吃光配額:{families}"
+    assert mr._source_family("Google:2330") in families, "其他發布者被完全擠掉"
 
 
 def test_source_family_groups_channels():
-    assert mr._source_family("鉅亨台股") == mr._source_family("鉅亨匯率") == "鉅亨"
-    assert mr._source_family("Google:2330") == mr._source_family("Google:AAPL") == "Google"
+    """批#64:族群識別字串從「標籤前綴」改為「發布者網域」,所以這裡斷言的是
+    **歸不歸成同一族**這個真正該保護的性質,而不是族群叫什麼名字。"""
+    cnyes = mr._source_family("鉅亨台股")
+    assert cnyes == mr._source_family("鉅亨匯率") == mr._source_family("鉅亨頭條")
+    google = mr._source_family("Google:2330")
+    assert google == mr._source_family("Google:AAPL")
+    # 舊前綴表寫的是 "Google:",而 RSS_FEEDS 裡實際叫 "Google-半導體"(連字號),
+    # 於是 58 個 feed 中 29 個 news.google.com 從來沒有歸族成功過。
+    assert google == mr._source_family("Google-半導體")
+    assert google == mr._source_family("類股-航運-台股")
+    assert google == mr._source_family("世界-AI大事")
+    # 同發布者的多個頻道
+    assert mr._source_family("CNBC Tech") == mr._source_family("CNBC Top News")
+    assert mr._source_family("經濟日報財經") == mr._source_family("聯合新聞兩岸")
     # 非家族來源維持原樣,不得被過度合併
-    assert mr._source_family("自由財經") == "自由財經"
-    assert mr._source_family("科技新報") != mr._source_family("自由財經")
+    assert mr._source_family("自由財經") != mr._source_family("科技新報")
+    assert mr._source_family("MOPS") == "MOPS"
+
+
+def test_source_family_does_not_merge_publishers_sharing_a_feed_host():
+    """feedburner 是**代管服務不是發布者**:中央社三個 feed 與 ETtoday 同掛
+    feeds.feedburner.com,只看網域會把兩家不同的媒體併成一族。"""
+    cna = mr._source_family("中央社財經")
+    assert cna == mr._source_family("中央社政治") == mr._source_family("中央社國際")
+    assert cna != mr._source_family("ETtoday財經")
+
+
+def test_every_feed_resolves_to_a_publisher_family():
+    """全部 feed 都要能解析出族群,且不得塌成單一族(過度合併同樣是錯的)。"""
+    families = {mr._source_family(k) for k in mr.RSS_FEEDS}
+    assert all(families), "有 feed 解析不出發布者"
+    assert 10 <= len(families) < len(mr.RSS_FEEDS)
 
 
 def test_deterministic_extractor_emits_events_for_all_tracked_codes():

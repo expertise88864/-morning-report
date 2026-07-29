@@ -358,3 +358,94 @@ def test_market_column_respects_the_fail_open_contract():
     assert not sl.is_market_wrap("美股盤後收黑 財報登場", ())
     assert sl.is_market_wrap("〈台股盤後〉台積電穩盤", ())      # 場次欄目
     assert sl.is_market_wrap("台股收跌1195.97點", ())           # 強標記
+
+
+# --------------------------------------------------------------------------
+# 批#64:事件聚合誠實化
+# --------------------------------------------------------------------------
+
+def _ev(title, source, **kw):
+    base = {"title": title, "source": source,
+            "published": "2026-07-30T00:00:00+00:00"}
+    base.update(kw)
+    return base
+
+
+def _events(items):
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    return mr.extract_structured_events(items, [], None, now)
+
+
+def test_two_different_events_for_one_company_do_not_swallow_each_other():
+    """舊聚合鍵對「有主體的型別事件」會**抹掉標題**,於是同一天同一家公司
+    同型別同方向的所有事件塌成一則:輸的那則靜默消失,活下來的還宣稱
+    自己被多來源交叉驗證(實測 corroboration_count=2)。
+
+    真實 state 佐證:2884 同桶並存的兩個標題是「115年6月自結盈餘」與
+    「董事會決議增資發行新股」——兩件毫不相干的公告。
+    """
+    out = _events([
+        _ev("台積電獲蘋果2奈米大單", "經濟日報財經",
+            entity="2330", event_type="orders", direction=1),
+        _ev("台積電獲輝達CoWoS追加訂單", "中央社財經",
+            entity="2330", event_type="orders", direction=1),
+    ])
+    assert len(out) == 2, f"不同事件被互吞:{[e['title'] for e in out]}"
+    assert {e["corroboration_count"] for e in out} == {1}
+
+
+def test_mops_style_different_filings_stay_separate():
+    """真實語料中同桶並存的那一組(2884/earnings),重疊率 0.27。"""
+    out = _events([
+        _ev("公告本公司暨子公司115年6月自結盈餘", "MOPS",
+            entity="2884", event_type="earnings", direction=0),
+        _ev("公告本公司董事會決議增資發行新股", "MOPS",
+            entity="2884", event_type="earnings", direction=0),
+    ])
+    assert len(out) == 2
+
+
+def test_same_event_across_outlets_still_merges():
+    out = _events([
+        _ev("台積電法說會展望樂觀 上調全年財測", src,
+            entity="2330", event_type="guidance_raise", direction=1)
+        for src in ("CNBC Tech", "經濟日報財經", "中央社財經")
+    ])
+    assert len(out) == 1
+
+
+def test_corroboration_counts_publishers_not_feed_labels():
+    """58 個 feed 裡有 29 個是 news.google.com,CNBC 三個頻道、聯合報系兩家報。
+    舊法直接數 sources 長度 → 實測有事件宣稱 10 個來源交叉驗證,其中 6 個
+    是同一個 Google News 的不同查詢。"""
+    srcs = ("CNBC Tech", "CNBC Top News", "CNBC Economy",
+            "Google-半導體", "類股-金融-台股", "經濟日報財經", "聯合新聞兩岸")
+    out = _events([
+        _ev("台積電法說會展望樂觀 上調全年財測", s,
+            entity="2330", event_type="guidance_raise", direction=1)
+        for s in srcs
+    ])
+    assert len(out) == 1
+    assert len(out[0]["sources"]) == len(srcs)          # 原始來源全部保留
+    assert out[0]["corroboration_count"] == 3           # cnbc / google / udn
+
+
+def test_near_duplicate_wire_copy_merges_even_without_an_entity():
+    """無主體事件舊法要求正規化後前 48 字元完全相同,轉載改一個字就漏掉。"""
+    out = _events([
+        _ev("Trump Accounts for kids launch July 4: What parents need to know",
+            "CNBC Tech", event_type="general"),
+        _ev("Trump Accounts for kids launched July 4: What parents need to know",
+            "Bloomberg Markets", event_type="general"),
+    ])
+    assert len(out) == 1
+
+
+def test_serial_draws_are_not_merged_by_the_digit_guard():
+    """字元重疊率高達 0.92,但期別不同就是兩次開獎——數字守衛負責擋下。"""
+    out = _events([
+        _ev("威力彩第115050期　頭獎槓龜", "中央社財經", event_type="general"),
+        _ev("威力彩第115051期　頭獎槓龜", "中央社政治", event_type="general"),
+    ])
+    assert len(out) == 2

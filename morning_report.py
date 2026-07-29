@@ -95,11 +95,12 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _news_event_direction,
     _event_type,
     _freshness_weight,
-    _event_cluster_key,
+    _event_bucket_key,
     _event_surprise_score,
     _event_lifecycle,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_timeline_key,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_instance_id,
+    same_event_title,
     apply_event_timeline,
     _event_study_dedupe_key,
     _shrunk_event_impact,
@@ -8989,23 +8990,44 @@ def extract_structured_events(news: list[dict],
                     item["entity"] = _fent
             append(item)
 
-    clustered: dict[tuple, dict] = {}
+    # 批#64:聚合改成「粗桶 + 標題相似度」兩段式。
+    #
+    # 舊法把 `_event_cluster_key` 當聚合鍵,而該鍵對「有主體的型別事件」會**抹掉
+    # 標題**——同一天同一家公司同型別同方向的所有事件因此塌成一則,輸的那則靜默
+    # 消失,活下來的還宣稱自己被多來源交叉驗證。實測:兩則不同的台積電訂單新聞
+    # 合併成 1 則、`corroboration_count=2`;真實 state 中 2884 同桶並存的兩個標題是
+    # 「115年6月自結盈餘」與「董事會決議增資發行新股」——兩件毫不相干的公告。
+    #
+    # 抹掉標題原本是為了讓不同媒體對同一事件的不同下標能合併。但語料證據不支持
+    # 這個前提:143 次執行裡跨來源重複幾乎全是**標題完全相同**的轉載(93 則無主體
+    # 多來源事件都是靠標題完全相等合併的)。所以改用高門檻相似度(見
+    # `same_event_title`),對有無主體一視同仁——順帶讓
+    # launch/launched 這類無主體的近似轉載也能併掉(舊法要求前 48 字元完全相同)。
+    buckets: dict[tuple, list[dict]] = {}
     for event in candidates:
-        key = _event_cluster_key(event)
         quality = {"A": 1.0, "B": 0.8, "C": 0.55}.get(event["source_grade"], 0.5)
         event["quality_score"] = round(
             quality * event["freshness_weight"] * event["confidence"], 4)
-        previous = clustered.get(key)
-        if previous is None or event["quality_score"] > previous["quality_score"]:
-            replacement = dict(event)
-            replacement["sources"] = sorted(set(
-                (previous or {}).get("sources", []) + [event["source"]]))
-            clustered[key] = replacement
+        group = buckets.setdefault(_event_bucket_key(event), [])
+        for idx, previous in enumerate(group):
+            if not same_event_title(previous.get("title"), event.get("title")):
+                continue
+            merged = sorted(set(previous.get("sources") or []) | {event["source"]})
+            if event["quality_score"] > previous["quality_score"]:
+                group[idx] = dict(event, sources=merged)
+            else:
+                previous["sources"] = merged
+            break
         else:
-            previous["sources"] = sorted(set(previous.get("sources", []) + [event["source"]]))
-    output = list(clustered.values())
+            group.append(dict(event, sources=[event["source"]]))
+    output = [event for group in buckets.values() for event in group]
     for event in output:
-        event["corroboration_count"] = len(event.get("sources") or [])
+        # **交叉驗證要算獨立發布者,不是 feed 標籤**:58 個 feed 裡有 29 個都是
+        # news.google.com,CNBC 有三個頻道、中央社三個、經濟日報與聯合報同一家。
+        # 舊法直接數 `sources` 長度 → 實測有事件宣稱 10 個來源交叉驗證,其中
+        # 6 個是同一個 Google News 的不同查詢。
+        event["corroboration_count"] = len(
+            {_source_family(s) for s in (event.get("sources") or []) if s})
     return sorted(output, key=lambda event: event["quality_score"], reverse=True)
 
 
@@ -10564,15 +10586,79 @@ def _extra_tracked_codes(item: dict, exclude: str = "") -> list[str]:
 # 每個是不同的 source 名稱,用原始字串當鍵時上限形同虛設,鉅亨仍能吃光整個配額。
 _COMPANY_BUCKET_PER_SOURCE_CAP = 2
 
-_SOURCE_FAMILY_PREFIXES = ("鉅亨", "Google:", "類股-")
+#: 兩段式公共後綴(com.tw / co.jp …):註冊網域要多取一層才不會全部塌成 "com.tw"
+_TWO_LABEL_SUFFIXES = ("com.tw", "org.tw", "gov.tw", "net.tw", "edu.tw",
+                       "com.hk", "com.cn", "com.au", "co.jp", "co.uk",
+                       "co.kr", "com.sg")
+
+
+#: RSS **代管服務**:網域屬於代管商而非發布者,必須再往下取一層路徑才分得開
+#: (實測:中央社三個 feed 與 ETtoday 都掛 feeds.feedburner.com,只看網域會錯併)
+_FEED_HOST_DOMAINS = ("feedburner.com", "feedproxy.google.com", "rss.app")
+
+
+def _registrable_domain(url: str) -> str:
+    """從 URL 取發布者身分(news.google.com → google.com、money.udn.com → udn.com)。
+
+    代管網域(feedburner)再加第一段路徑:
+    `feeds.feedburner.com/rsscna/finance` → `feedburner.com/rsscna`。
+    """
+    try:
+        parts_url = urlparse(str(url or ""))
+    except ValueError:
+        return ""
+    host = parts_url.netloc.split("@")[-1].split(":")[0].lower().strip(".")
+    if not host:
+        return ""
+    parts = host.split(".")
+    if len(parts) <= 2:
+        domain = host
+    elif ".".join(parts[-2:]) in _TWO_LABEL_SUFFIXES:
+        domain = ".".join(parts[-3:])
+    else:
+        domain = ".".join(parts[-2:])
+    if domain in _FEED_HOST_DOMAINS:
+        segment = next((x for x in parts_url.path.split("/") if x), "")
+        if segment:
+            return f"{domain}/{segment.lower()}"
+    return domain
+
+
+def _build_source_family_map() -> dict:
+    return {label: _registrable_domain(url)
+            for label, url in RSS_FEEDS.items() if _registrable_domain(url)}
+
+
+_SOURCE_FAMILY_BY_LABEL = _build_source_family_map()
+#: 動態產生的來源標籤(逐股/追蹤查詢)都是 Google News
+_GOOGLE_QUERY_PREFIXES = ("Google:", "Google-", "追蹤:", "類股-", "世界-")
 
 
 def _source_family(source: str) -> str:
-    """把同一發布者的多個頻道歸成同一家族,供多樣性計數使用。"""
-    s = str(source or "")
-    for prefix in _SOURCE_FAMILY_PREFIXES:
+    """把同一發布者的多個頻道歸成同一家族,供多樣性計數與交叉驗證計數使用。
+
+    批#64:原本靠一份手寫前綴表 `("鉅亨", "Google:", "類股-")` 比對**標籤字串**,
+    而 RSS_FEEDS 裡的 Google 查詢實際叫 `Google-半導體`(半形連字號)——
+    前綴表寫的是 `Google:`,**從來沒有歸族成功過**。真實影響:58 個 feed 裡
+    有 28 個(`Google-*` 4 + `類股-*` 15 + `世界-*` 4 + `Google-*` 其餘)全是
+    news.google.com,卻被當成 28 個獨立來源。
+
+    改成**由 feed 的 URL 推導註冊網域**:客觀、不需維護、新增 feed 自動生效。
+    `CNBC Top News`/`CNBC Tech`/`CNBC Economy` → cnbc.com;
+    `經濟日報財經`/`聯合新聞兩岸` → udn.com;`Fed Monetary`/`Federal Reserve`
+    → federalreserve.gov。查不到的標籤(MOPS、LLM extractor…)原樣回傳。
+    """
+    s = str(source or "").strip()
+    if not s:
+        return ""
+    known = _SOURCE_FAMILY_BY_LABEL.get(s)
+    if known:
+        return known
+    for prefix in _GOOGLE_QUERY_PREFIXES:
         if s.startswith(prefix):
-            return prefix.rstrip(":-")
+            return "google.com"
+    if s.startswith("鉅亨"):
+        return "cnyes.com"
     return s
 
 

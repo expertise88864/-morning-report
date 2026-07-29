@@ -11,6 +11,7 @@ from news_rules import (
     _matches_any,
 )
 import datetime as dt
+import re as _re_module
 
 
 def _news_event_direction(text: str) -> int:
@@ -75,6 +76,66 @@ def _event_cluster_key(event: dict) -> tuple:
         int(_safe_number(event.get("direction"))),
         title,
     )
+
+def _event_bucket_key(event: dict) -> tuple:
+    """跑內聚合的**粗桶**:主體 + 型別 + 方向,不含標題。
+
+    批#64:舊的 `_event_cluster_key` 直接把桶當成聚合鍵——有主體的型別事件
+    標題被整個抹掉,於是同一天同一家公司同型別同方向的**所有**事件塌成一則,
+    輸的那則靜默消失,活下來的那則還會宣稱自己有多來源交叉驗證。
+
+    **實測**:兩則不同的台積電訂單新聞合併成 1 則、`corroboration_count=2`;
+    真實 state 裡 2884 同桶並存的兩個標題是「115年6月自結盈餘」與
+    「董事會決議增資發行新股」——**兩件毫不相干的公告**,只是碰巧同桶。
+
+    改法:桶只負責粗分,是否真的是同一件事交給 `same_event_title` 判斷。
+    """
+    return (
+        str(event.get("entity") or ""),
+        str(event.get("event_type") or "general"),
+        int(_safe_number(event.get("direction"))),
+    )
+
+
+#: 標題重疊率門檻。**由真實語料校準**,不是憑感覺挑的:
+#: 143 次執行的歷史事件裡,跨來源重複幾乎全是**標題完全相同**的轉載
+#: (93 則無主體多來源事件都是靠標題完全相等才合併的),不是改寫。
+#: 而語料中重疊率落在 0.86~0.92 的配對——富邦金「總經理選任」vs「董事長選任」、
+#: 威力彩第 115050 期 vs 第 115051 期——**都是不同事件**。
+#: 所以門檻必須高:0.9 搭配數字守衛,對語料中六組邊界案例全部判對。
+_MERGE_OVERLAP = 0.9
+#: 少於這個 bigram 數的標題不套重疊率(太短時任何兩則都容易高分),改要求完全相同
+_MERGE_MIN_GRAMS = 4
+
+
+def _content_bigrams(title: str) -> set:
+    s = _re_module.sub(r"[\W_]+", "", str(title or "").lower())
+    if len(s) < 2:
+        return {s} if s else set()
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
+def _digit_signature(title: str) -> tuple:
+    """標題裡的數字串集合。期別/月份/季別/金額不同 → 一定是不同事件。"""
+    return tuple(sorted(_re_module.findall(r"\d+", str(title or ""))))
+
+
+def same_event_title(a: str, b: str) -> bool:
+    """兩個標題是否在講**同一件事**(供跑內跨來源去重使用)。
+
+    數字守衛先行:「威力彩第115050期」與「第115051期」字元重疊率高達 0.92,
+    但期別不同就是兩次開獎。任何數字集合不同的配對一律不合併。
+    """
+    if _digit_signature(a) != _digit_signature(b):
+        return False
+    ga, gb = _content_bigrams(a), _content_bigrams(b)
+    if not ga or not gb:
+        return False
+    smaller = min(len(ga), len(gb))
+    if smaller < _MERGE_MIN_GRAMS:
+        return ga == gb
+    return len(ga & gb) / smaller >= _MERGE_OVERLAP
+
 
 def _event_surprise_score(event: dict) -> float:
     """Estimate how much genuinely new information an event carries."""

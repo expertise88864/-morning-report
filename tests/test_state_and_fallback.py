@@ -158,3 +158,32 @@ def test_all_providers_down_still_returns_text(monkeypatch, _args, _force_fallba
 
     monkeypatch.setattr(mr, "_call_gemini", _boom)
     assert mr.call_llm_analysis(*_args)
+
+
+def test_weekend_path_writes_the_manifest_before_pushing_it():
+    """r1(Codex,P1):週日路徑原本先 push、後寫 manifest,而那次 push 的**明確
+    路徑清單也不含 run_manifest** —— 於是週日寫出來的 manifest 永遠不會被
+    commit,repo 裡的檔案停在週六。批#69 的看門狗正是讀這個檔判定「今天有沒有
+    跑」,週日必然誤報一封失敗告警。
+
+    這條用 AST 盯**呼叫順序與參數**:兩者都對才有效,而且都是「錯了不會壞、
+    只會靜默失準」的那種——單元測試若只驗看門狗自己的判定邏輯照樣全綠
+    (第一版測試正是如此)。
+    """
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "run_weekend_digest")
+    manifest_at, push_at, push_call = None, None, None
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            continue
+        if node.func.id == "_write_run_manifest" and manifest_at is None:
+            manifest_at = node.lineno
+        elif node.func.id == "_git_commit_and_push_state" and push_at is None:
+            push_at, push_call = node.lineno, node
+    assert manifest_at and push_at, "週日路徑少了寫 manifest 或 push"
+    assert manifest_at < push_at, "manifest 寫在 push 之後 → 永遠不會被 commit"
+    src = ast.unparse(push_call)
+    assert "RUN_MANIFEST_FILE" in src, "push 清單不含 manifest → 寫了也是白寫"

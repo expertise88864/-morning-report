@@ -887,9 +887,15 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert "history!" not in events                       # 關鍵:不污染預測歷史
     pushes = [e for e in events if isinstance(e, tuple) and e[0] == "push"]
     # §B:週末也 push 信件存檔目錄+政策已顯示記錄(仍不含 history/model_history,不污染預測歷史)
+    # 批#69 r1(Codex,P1):`run_manifest` 加進週日的 push 清單。原本不在裡面,
+    # 而它又寫在 push **之後** → 週日寫出來的 manifest 永遠不會被 commit,
+    # repo 裡的檔案停在週六;看門狗讀那個檔判定「今天有沒有跑」,週日必然誤報。
     assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE),
                                        str(mr.INTEL_SHOWN_FILE),
-                                       str(mr.POLY_HISTORY_FILE), str(mr.EMAIL_ARCHIVE_DIR)]
+                                       str(mr.POLY_HISTORY_FILE),
+                                       str(mr.RUN_MANIFEST_FILE),
+                                       str(mr.EMAIL_ARCHIVE_DIR)]
+    assert str(mr.RUN_MANIFEST_FILE) in pushes[0][1], "manifest 沒被 push = 寫了白寫"
     # 寄信必須早於標記/ push(at-least-once:寄成功才落狀態)
     assert events.index("sent") < events.index(("marked", 1))
 

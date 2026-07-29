@@ -20053,21 +20053,27 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # model_history),不可讓 persist 再推一次完整清單(批#33)
     deliver_report(html, subject, None, podcast_eps, intelligence=intel,
                    push_state=False)
-    _git_commit_and_push_state(
-        [str(PODCAST_DIGEST_FILE), str(INTEL_SHOWN_FILE),   # 政策已顯示記錄週日也要帶回
-         str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
-         str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
-        f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     # r2(七維度審查,P2):**週日路徑的降級紀錄原本是死寫入。**
     # _DEGRADED_STEPS 只有兩個讀取端(_write_run_manifest 與資料品質區),
     # 兩者都在 main() 的平日分支;run_weekend_digest 從不呼叫 _write_run_manifest,
     # 所以週日公報失敗或政策解析失敗,除了 Actions log 一行 stderr,
     # manifest / Step Summary / 信件本身**完全看不到**。
     # 這是 AGENTS.md 不變式 #3 的變體:降級有記錄,但那個記錄在這條路徑上沒人讀。
+    #
+    # r1(Codex,P1)**必須寫在 push 之前**:原本排在 push 之後,於是週日寫出來的
+    # manifest **永遠不會被 commit** —— repo 裡的 run_manifest 停在週六。
+    # 批#69 的看門狗正是讀這個檔判定「今天有沒有跑」,週日必然誤報。
+    # (平日分支早就是「先寫 manifest 再 push」,見該處註解;週日這條漏了。)
     try:
         _write_run_manifest(now_tpe)
     except Exception as e:
         print(f"[weekend] run manifest 寫入失敗: {type(e).__name__}", file=sys.stderr)
+    _git_commit_and_push_state(
+        [str(PODCAST_DIGEST_FILE), str(INTEL_SHOWN_FILE),   # 政策已顯示記錄週日也要帶回
+         str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
+         str(RUN_MANIFEST_FILE),   # r1(Codex,P1):不列進來就等於沒寫(看門狗讀 repo)
+         str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
+        f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")
     return 0
 

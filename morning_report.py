@@ -14896,26 +14896,43 @@ def _roc_to_iso(raw) -> str:
         return ""
 
 
+class ExdivFetchFailed(RuntimeError):
+    """除權息預告抓取失敗。**不得與「今天沒有除權息」混為一談**。"""
+
+
 def fetch_exdiv_preview() -> list:
-    """TWSE 除權除息預告表 → [{code, ex_date, kind, cash}]。失敗回空清單。
+    """TWSE 除權除息預告表 → [{code, ex_date, kind, cash}]。
+
+    **失敗時拋 `ExdivFetchFailed`,不回空清單。** r2(Codex,P1):原本失敗回 [],
+    與「預告表目前是空的」無法區分,而 `update_exdiv_history` 會照樣把今天記成
+    「成功收集過」→ 覆蓋守衛在最需要它的時候(連線壞掉那幾天)失效,
+    之後反而放行結算。
 
     欄位名沿用 `gooaye_radar.fetch_exdiv_calendar` 已在生產跑通的那一組
     (Code / Date / Exdividend / CashDividend),不另外猜。
 
     這是**預告**表:除權息日之前數日就會列出,所以每日抓一次即可在事件發生前
     先把它記進歷史,不需要事後回補。
+
+    已知殘餘風險:若 TWSE 改版成「HTTP 200 + 空陣列」,這裡會判成成功且覆蓋
+    當天。空陣列本身會印警告,但不會擋——冬季預告表確實可能是空的,
+    若把空陣列一律當失敗,淡季就永遠結算不了。
     """
-    out: list = []
     try:
         r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL",
                       timeout=20, headers={"User-Agent": "Mozilla/5.0",
                                            "Accept": "application/json"})
         r.raise_for_status()
-        rows = r.json() or []
+        rows = r.json()
     except Exception as e:
-        print(f"[exdiv] 除權息預告抓取失敗(本次略過): {e}", file=sys.stderr)
-        return out
-    for row in rows if isinstance(rows, list) else []:
+        raise ExdivFetchFailed(f"除權息預告抓取失敗: {e}") from e
+    if not isinstance(rows, list):
+        raise ExdivFetchFailed(f"除權息預告格式非預期: {type(rows).__name__}")
+    if not rows:
+        print("[exdiv] ⚠ 預告表回空陣列(淡季可能正常,改版也會如此)",
+              file=sys.stderr)
+    out: list = []
+    for row in rows:
         if not isinstance(row, dict):
             continue
         code = str(row.get("Code") or "").strip()
@@ -20815,19 +20832,30 @@ def main() -> int:
         # 除權息預告每日抓一次併進歷史(批#66,P0-2)。抓取失敗只是本次不更新,
         # 帳本仍會用既有歷史結算——**不能因為抓不到就當作沒有除權息**,
         # 那正是這個檔案要防的錯誤方向。
+        _blank = {"since": "", "days": [], "records": []}
         try:
             _exdiv = update_exdiv_history(fetch_exdiv_preview(), now_tpe)
+        except ExdivFetchFailed as e:
+            # r2(Codex,P1):抓取失敗**不得把今天記成已覆蓋**。沿用既有歷史
+            # (它的 days 不含今天),覆蓋守衛因此會誠實地把跨越今天的窗口作廢。
+            print(f"[exdiv] {e};沿用既有歷史,今日不計入覆蓋範圍",
+                  file=sys.stderr)
+            try:
+                _exdiv = load_exdiv_history()
+            except ExdivHistoryUnreadable as e2:
+                print(f"[exdiv] 歷史亦不可讀: {e2}", file=sys.stderr)
+                _exdiv = _blank
         except ExdivHistoryUnreadable as e:
             # r1(Codex,P1):讀不出來時**絕不覆寫**——那會永久刪掉最多 400 天的
             # 事件。改為原檔保留、本次以空覆蓋範圍進帳本(橫向 fail-closed 作廢)。
             print(f"[exdiv] 歷史不可讀,保留原檔不覆寫: {e}", file=sys.stderr)
-            _exdiv = {"since": "", "days": [], "records": []}
+            _exdiv = _blank
         except Exception as e:
             print(f"[exdiv] 歷史更新略過: {e}", file=sys.stderr)
             try:
                 _exdiv = load_exdiv_history()
             except ExdivHistoryUnreadable:
-                _exdiv = {"since": "", "days": [], "records": []}
+                _exdiv = _blank
         quotes["TOP5_TRACK"] = update_top5_ledger(
             model_history, _top5, now_tpe, target_session_date,
             sessions=trading_sessions, taiex_opens=_tx_opens,

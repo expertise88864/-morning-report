@@ -3141,3 +3141,46 @@ def test_top5_horizon_is_voided_when_a_holding_goes_ex_dividend():
     assert res5["events"] == [{"code": "3303", "ex_date": "2026-07-07",
                                "kind": "息"}]
     assert not out["stats"].get("5")
+
+
+def test_exdiv_fetch_failure_is_not_recorded_as_coverage(monkeypatch):
+    """r2(Codex,P1):抓取失敗原本回 `[]`,與「預告表目前是空的」無法區分,
+    而 `update_exdiv_history` 會照樣把今天記成成功收集 —— 覆蓋守衛在最需要它的
+    時候(連線壞掉那幾天)失效,之後反而放行結算。
+    """
+    import datetime as dt
+    import pytest as _pytest
+
+    class _Boom:
+        def raise_for_status(self):
+            raise RuntimeError("503")
+
+        def json(self):
+            return []
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Boom())
+    with _pytest.raises(mr.ExdivFetchFailed):
+        mr.fetch_exdiv_preview()
+
+    # 格式改版(回 dict 而非 list)同樣算失敗,不得當成空表
+    class _Shape:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"unexpected": True}
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Shape())
+    with _pytest.raises(mr.ExdivFetchFailed):
+        mr.fetch_exdiv_preview()
+
+    # 成功但空表 → 視為成功(淡季確實可能為空),覆蓋範圍照記
+    class _Empty(_Shape):
+        def json(self):
+            return []
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Empty())
+    assert mr.fetch_exdiv_preview() == []
+    out = mr.update_exdiv_history(
+        mr.fetch_exdiv_preview(), dt.datetime(2026, 7, 30, tzinfo=mr.TPE))
+    assert out["days"] == ["2026-07-30"]

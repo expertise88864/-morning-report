@@ -3184,3 +3184,34 @@ def test_exdiv_fetch_failure_is_not_recorded_as_coverage(monkeypatch):
     out = mr.update_exdiv_history(
         mr.fetch_exdiv_preview(), dt.datetime(2026, 7, 30, tzinfo=mr.TPE))
     assert out["days"] == ["2026-07-30"]
+
+
+def test_strict_integrity_rejects_a_missing_manifest():
+    """批#68:manifest 不存在時,`verify_history_integrity` 底下所有 checksum/
+    筆數比對**整段跳過**而 `ok` 仍是 True —— 也就是「刪掉 manifest」等於關掉
+    全部竄改偵測,而嚴格模式不會發現。這正好是完整性檢查最不該有的失敗模式。
+    """
+    import gzip
+    import json as _json
+    import pathlib
+    import tempfile
+    import pytest as _pytest
+    import model_history_store as mhs
+
+    pdir = pathlib.Path(tempfile.mkdtemp()) / "parts"
+    pdir.mkdir()
+    rows = [{"session_date": "2026-07-01", "taiex_close": 1.0}]
+    (pdir / "2026-07.json.gz").write_bytes(
+        gzip.compress(_json.dumps(rows).encode("utf-8")))
+
+    # production(strict=False)仍寬容:首次建檔/舊 repo 尚未產生 manifest,晨報不可斷
+    assert mhs.verify_history_integrity(pdir, strict=False)["ok"] is True
+    # 離線稽核(strict=True)必須擋下
+    with _pytest.raises(mhs.HistoryIntegrityError):
+        mhs.verify_history_integrity(pdir, strict=True)
+    rep = mhs.verify_history_integrity(pdir, require_manifest=True)
+    assert any(i["kind"] == "missing_manifest" for i in rep["issues"])
+    # 全新 repo(連分區都沒有)沒東西可驗,不得因此失敗
+    empty = pathlib.Path(tempfile.mkdtemp()) / "none"
+    empty.mkdir()
+    assert mhs.verify_history_integrity(empty, strict=True)["ok"] is True

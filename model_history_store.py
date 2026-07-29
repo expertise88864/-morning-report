@@ -115,13 +115,22 @@ def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
 
 
 def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
-                             strict: bool = False) -> dict:
+                             strict: bool = False,
+                             require_manifest: bool | None = None) -> dict:
     """比對分區實體與 manifest,回完整性報告 dict:
     {"ok": bool, "issues": [...], "has_manifest": bool}。
     issues 型別:checksum_mismatch / row_count_mismatch / missing_partition /
-    extra_partition / month_mismatch / schema_mismatch / corrupt。
+    extra_partition / month_mismatch / schema_mismatch / corrupt /
+    missing_manifest。
     strict=True 時有任一 issue 即 raise HistoryIntegrityError(離線 fail-closed);
-    strict=False 只回報告(production 由呼叫端降級提示,晨報仍寄)。"""
+    strict=False 只回報告(production 由呼叫端降級提示,晨報仍寄)。
+
+    require_manifest(批#68):**manifest 不存在時,下面所有 checksum/筆數比對
+    整段跳過而 `ok` 仍是 True** —— 也就是「刪掉 manifest」等於關掉全部竄改
+    偵測,而嚴格模式不會發現。這正好是完整性檢查最不該有的失敗模式。
+    預設跟隨 strict:離線稽核(月報/回測)要求 manifest 必須在;production
+    仍寬容(首次建檔、舊 repo 尚未產生 manifest 時晨報不可斷)。
+    且只在**分區檔案存在**時才要求——全新 repo 沒東西可驗,不該因此失敗。"""
     report: dict = {"ok": True, "issues": [], "has_manifest": False}
 
     def _flag(kind: str, detail: str) -> None:
@@ -200,6 +209,15 @@ def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
         for name in present:
             if name not in recorded:
                 _flag("extra_partition", f"{name} 未登錄於 manifest")
+    # 批#68:manifest 缺席時,上面所有 checksum/筆數比對**整段跳過**而 ok 仍是
+    # True —— 「刪掉 manifest」等於關掉全部竄改偵測,而嚴格模式不會發現。
+    # 只有在分區檔案存在時才要求(全新 repo 沒東西可驗,不該因此失敗)。
+    if require_manifest is None:
+        require_manifest = strict
+    if require_manifest and present and not report["has_manifest"]:
+        _flag("missing_manifest",
+              f"{len(present)} 個分區存在但無 {MANIFEST_NAME}"
+              "——完整性比對整段未執行,不得視為通過")
     if strict and not report["ok"]:
         raise HistoryIntegrityError(
             "分區完整性違規: " + "; ".join(

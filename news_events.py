@@ -520,8 +520,17 @@ _LLM_EVENT_TYPES = {"guidance_raise", "guidance_cut", "orders", "earnings",
 # LLM 抽取事件的欄位白名單=extractor prompt 明文要求的欄位。名單外的欄位
 # (source/source_grade/official/quality_score…)一律剝除:LLM(或藏在新聞裡的
 # 注入指令)不得自封官方 A 級來源或高品質分(GPT-5.6 三審 P1-1)。
+# 批#68:`surprise_score` 移出白名單 —— 那是**評分**不是抄錄。程式碼裡批#42 r2
+# 的註解已經記載過實測後果:「LLM 版 surprise_score 由它自報(實測 0.7)高於
+# 權威版的啟發式(0.35),**戲劇化的那版反而更醒目**」。當時只從 event_type
+# 那一側修,分數本身仍讓模型自訂。依本專案既有原則(Python 權威、LLM 只能
+# 抄錄)收回,一律由 `_event_surprise_score` 的啟發式決定。
+#
+# `published` 保留在白名單裡,但**會被來源項的權威時間覆寫**(見
+# morning_report.extract_structured_events 的標題唯一命中回填):
+# 直接刪掉欄位會讓事件退回「七天前」的預設值,新鮮度反而更失真。
 _LLM_EVENT_FIELDS = frozenset({
-    "entity", "event_type", "direction", "confidence", "surprise_score",
+    "entity", "event_type", "direction", "confidence",
     "lifecycle", "title", "summary", "published"})
 _LLM_LIFECYCLES = frozenset({"rumor", "confirmed", "implemented", "withdrawn"})
 # LLM 二手抽取的自報信心上限=一般媒體項的預設信心(0.65):不得高於一手媒體、

@@ -1940,3 +1940,59 @@ def test_unknown_sector_passes_through_rather_than_starving():
     這與「來源掛掉」不同(那要記降級),故不記降級。"""
     assert mr._sector_item_matches("不存在的類股", "任意標題", "任意內容")
     assert mr._sector_query_terms("不存在的類股") == []
+
+
+def test_llm_cannot_set_its_own_surprise_score():
+    """批#68:`surprise_score` 是**評分**不是抄錄。程式碼裡批#42 r2 的註解已經
+    記載過實測後果:「LLM 版自報 0.7 高於權威版啟發式的 0.35,**戲劇化的那版
+    反而更醒目**」——當時只從 event_type 那一側修,分數本身仍讓模型自訂。
+    依既有原則(Python 權威、LLM 只能抄錄)收回。"""
+    import news_events as ne
+    valid, dropped = ne._validate_llm_events([{
+        "entity": "2330", "event_type": "orders", "direction": 1,
+        "title": "台積電獲追加訂單", "surprise_score": 0.95,
+        "confidence": 0.6, "lifecycle": "confirmed"}])
+    assert dropped == 0 and len(valid) == 1
+    assert "surprise_score" not in valid[0], "LLM 自報的驚喜分沒有被剝除"
+
+
+def test_llm_published_is_overridden_by_the_source_item():
+    """`published` 決定新鮮度權重、age_hours,批#67 之後還決定期別 bucket。
+    讓模型自報等於讓它的抄錄誤差直接改動評分與分集。與 MOPS 款別覆寫同一個
+    機制(標題唯一命中),不直接刪欄位——刪掉會退回「七天前」的預設值,更失真。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    title = "台積電獲輝達追加訂單"
+    news = [{"title": title, "source": "經濟日報財經", "entity": "2330",
+             "event_type": "orders", "direction": 1,
+             "published": "2026-07-30T01:00:00+00:00"}]
+    llm = [{"title": title, "entity": "2330", "event_type": "orders",
+            "direction": 1, "summary": "x", "confidence": 0.6,
+            "published": "2026-01-05T00:00:00+00:00"}]     # 模型抄錯半年
+    out = mr.extract_structured_events(news, [], llm, now)
+    assert len(out) == 1
+    assert out[0]["published"].startswith("2026-07-30")
+    assert out[0]["age_hours"] < 48, "抄錯的日期讓新鮮度權重整個走樣"
+
+
+def test_ambiguous_title_does_not_get_a_guessed_published():
+    """刻意要求**唯一命中**:多筆同標題不同時間時寧可不覆寫,不亂猜。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    title = "台積電獲輝達追加訂單"
+    # 兩則同標題、不同發布時間的來源項 → 查表命中兩筆,不得挑一個來覆寫。
+    # LLM 事件給不同 entity 讓它自成一群,才驗得到它自己的 published
+    # (同 entity 會被合併掉,`source` 就不再是 LLM extractor)。
+    news = [{"title": title, "source": "A報", "entity": "2330",
+             "event_type": "orders", "direction": 1,
+             "published": "2026-07-30T01:00:00+00:00"},
+            {"title": title, "source": "B報", "entity": "2330",
+             "event_type": "orders", "direction": 1,
+             "published": "2026-07-29T01:00:00+00:00"}]
+    llm = [{"title": title, "entity": "3231", "event_type": "orders",
+            "direction": 1, "summary": "x", "confidence": 0.6,
+            "published": "2026-07-28T00:00:00+00:00"}]
+    out = mr.extract_structured_events(news, [], llm, now)
+    kept = [e for e in out if e["source"] == "LLM extractor"]
+    assert kept, "LLM 事件應自成一群"
+    assert kept[0]["published"].startswith("2026-07-28"), "多筆同標題時亂猜了"

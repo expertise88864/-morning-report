@@ -391,6 +391,9 @@ def _write_run_manifest(now_tpe) -> None:
             # dict**,沒列到的鍵一律丟掉。影子模式的**唯一目的**就是累積樣本外資料,
             # 不落地等於整個功能白做,而且失敗是靜默的(記憶體裡有值、檔案裡沒有)。
             "mz_shadow": _RUN_MANIFEST.get("mz_shadow"),
+            # 批#68:同一個坑的第四次。漏列這一行,診斷資料每天都會被這個
+            # writer 靜默丟掉 —— 而它存在的唯一理由就是回答「抽取器為什麼沒產出」。
+            "llm_extractor": _RUN_MANIFEST.get("llm_extractor"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
@@ -8940,6 +8943,21 @@ def extract_structured_events(news: list[dict],
             r"[\s，。、！？,.!?:：;；…()（）「」『』【】\[\]<>《》"
             r"\"'`%　|｜\-—–－_~]+", "", str(s or "")).lower()
 
+    # 批#68:來源項的**權威發布時間**,供 LLM 事件回填。
+    # `published` 決定新鮮度權重、age_hours,批#67 之後還決定期別 bucket——
+    # 讓模型自報等於讓它的抄錄誤差直接改動評分與分集。與 MOPS 款別覆寫同一個
+    # 機制(標題唯一命中),刻意要求**唯一**:多筆同標題時寧可不覆寫,不亂猜。
+    # 不直接把欄位從白名單刪掉:那會讓事件退回「七天前」的預設值,更失真。
+    _published_by_title: dict[str, set] = {}
+    for _src in (news or [], mops or []):
+        for _it in _src:
+            if not isinstance(_it, dict):
+                continue
+            _t = _norm_title_key(_extractor_title(_it))
+            _pub = str(_it.get("published") or "").strip()
+            if _t and _pub:
+                _published_by_title.setdefault(_t, set()).add(_pub)
+
     _official_types: dict[tuple, str] = {}
     for item in mops or []:
         if not isinstance(item, dict):
@@ -8966,6 +8984,13 @@ def extract_structured_events(news: list[dict],
             # 官方來源身分——_validate_llm_events 已剝除名單外欄位,這裡再釘死
             # (三審 P1-1;若同事件確有官方公告,MOPS 路徑自然會以 A 級勝出)
             item = dict(item, source="LLM extractor", source_grade="C")
+            # 發布時間以來源項為準(標題唯一命中才覆寫)。模型抄錄日期出錯時,
+            # 錯的不只是顯示——新鮮度權重、age_hours 與期別 bucket 全會跟著錯。
+            _pubs = _published_by_title.get(
+                _norm_title_key(str(item.get("title")
+                                    or item.get("headline") or "")))
+            if _pubs and len(_pubs) == 1:
+                item["published"] = next(iter(_pubs))
             _k = (str(item.get("entity") or item.get("code")
                       or item.get("company_label") or ""),
                   _norm_title_key(str(item.get("title")
@@ -12626,19 +12651,40 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
         return (_call_deepseek_extractor(p) if LLM_PROVIDER == "deepseek"
                 else _call_llm_text(p))
 
+    # 批#68:**這條路徑目前在生產沒有任何產出**。1160 則歷史事件裡沒有一則是
+    # C 級(LLM 抽取器的固定等級),`sources` 也從未出現 "LLM extractor",
+    # 而抽取階段確實有跑(86.5 秒、無降級)。可能是呼叫失敗被 except 吞掉、
+    # schema 全數丟棄、或 provider 回空——**離線分不出來是哪一段**。
+    # 先把每一段的結果記進 run manifest,下一次生產執行就會直接告訴我們。
+    _stat = _RUN_MANIFEST.setdefault("llm_extractor", {})
+    _stat.update({"called": True, "items": len(compact_items),
+                  "parsed": 0, "valid": 0, "dropped": 0, "retried": False,
+                  "outcome": "unknown"})
     try:
         parsed = _parse_llm_event_json(_call(prompt))
+        _stat["parsed"] = len(parsed or [])
         valid, dropped = _validate_llm_events(parsed)
+        _stat["valid"], _stat["dropped"] = len(valid), dropped
         if dropped:
             print(f"[llm-extractor] 丟棄 {dropped} 個不合格事件(schema)", file=sys.stderr)
         # 有解析出事件卻全數不合格 → 帶嚴格提醒重試一次(空陣列=合法「無事件」,不重試;成本上限 +1)
         if parsed and not valid:
             print("[llm-extractor] 全數不合格 → 重試一次", file=sys.stderr)
+            _stat["retried"] = True
             valid = _validate_llm_events(_parse_llm_event_json(_call(
                 prompt + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
                 "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
-        return extract_structured_events(news, mops, llm_events=valid)
+            _stat["valid"] = len(valid)
+        merged = extract_structured_events(news, mops, llm_events=valid)
+        # 真正要看的是「有幾則活到輸出」——通過 schema 不代表沒有在聚合階段
+        # 被更高品質的確定性版本吃掉(那也是一種「等於沒產出」)。
+        _stat["survived"] = sum(
+            1 for e in merged if "LLM extractor" in (e.get("sources") or []))
+        _stat["outcome"] = "ok"
+        return merged
     except Exception as e:
+        _stat["outcome"] = f"error:{type(e).__name__}"
+        _stat["error"] = str(e)[:120]
         print(f"[llm-extractor] fallback to deterministic events: {e}", file=sys.stderr)
         return deterministic
 

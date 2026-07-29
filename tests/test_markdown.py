@@ -947,7 +947,11 @@ def test_render_html_includes_ma200_when_present():
 def test_build_prompt_biotech_and_transmission_rules():
     """prompt 應要求生技/醫療專門著墨,且立場理由要寫傳導機制。"""
     p = mr._build_prompt(_full_quotes(), {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "生技/醫療(本報讀者為醫師" in p
+    # r2(Codex,P1):原文是「生技/醫療(本報讀者為醫師,請特別著墨…)」——
+    # **那直接揭露了讀者身分**,比關注清單更敏感,而且 render 防線也攔不到
+    # (它不含「使用者/本報追蹤」等標記)。改成不交代為什麼要寫得具體。
+    assert "讀者為醫師" not in p, "prompt 洩漏讀者身分"
+    assert "生技/醫療" in p and "FDA/EMA" in p, "生技段的內容要求不得一起被拿掉"
     assert "傳導機制" in p and "成長股估值折扣" in p
 
 

@@ -1487,3 +1487,35 @@ def test_priority_coverage_survives_the_disclosure_ban():
     assert "優先入選" in prompt
     assert "中彰投" in prompt, "在地雙軌要求被刪掉了"
     assert "適用對象/門檻" in prompt, "房市政策的內容要求被刪掉了"
+
+
+def test_prompt_does_not_disclose_reader_identity():
+    """r2(Codex,P1):prompt 原本寫「生技/醫療(**本報讀者為醫師**,請特別著墨)」
+    —— 那直接揭露讀者身分,比關注清單更敏感;而且 render 防線攔不到它
+    (不含「使用者/本報追蹤」等標記,是完全另一種措辭)。
+
+    這也說明為什麼 R15b 要寫成**概念性禁令**而不是字串清單:
+    揭露的形式是列舉不完的。
+    """
+    from tests.test_data_validation import _empty_quotes
+    prompt = mr._build_prompt(_empty_quotes(), {"error": "x"}, {"error": "x"},
+                              [], [], "")
+    for leak in ("讀者為醫師", "讀者是醫師", "您是醫師", "讀者身分",
+                 "讀者職業", "本報讀者"):
+        assert leak not in prompt, f"prompt 洩漏讀者身分:{leak}"
+
+
+def test_rationale_strip_handles_full_width_parentheses():
+    """r2(Codex,P2):我上一版**直接打全形括號**寫字元類,但字元在編輯管線中被
+    轉成 ASCII —— 全形括號的註記完全不被辨識,整句(連同事實)被丟掉。
+    **批#54 才因為同一個原因(子句分隔符被轉成半形)踩過一次**,
+    當時的結論就是「用碼位,不要直接打字元」。
+    """
+    LP, RP = chr(0xFF08), chr(0xFF09)
+    for label, text in (
+            ("半形", "國泰金(2882,使用者核心觀察):子公司公告。"),
+            ("全形", f"國泰金{LP}2882,使用者核心觀察{RP}:子公司公告。"),
+            ("混用", f"國泰金{LP}2882,使用者核心觀察):子公司公告。")):
+        out = mr._strip_selection_rationale(text)
+        assert "子公司公告" in out, f"{label}:事實被丟掉了 → {out}"
+        assert "使用者" not in out, f"{label}:緣由沒被移除 → {out}"

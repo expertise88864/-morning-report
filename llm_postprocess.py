@@ -300,9 +300,16 @@ def _strip_selection_rationale(text: str) -> str:
     raw = str(text or "")
     if not any(m in raw for m in _RATIONALE_MARKERS):
         return raw
-    _aside = _re.compile(
-        r"[((][^()（）]*(?:%s)[^()（）]*[))]"
-        % "|".join(_re.escape(m) for m in _RATIONALE_MARKERS))
+    # r2(Codex,P2):**字元類必須用碼位寫**。我上一版直接打全形括號,
+    # 但字元在編輯管線中被轉成 ASCII —— 於是全形括號的註記完全不被辨識,
+    # 整句(連同事實)被丟掉。批#54 才因為同一個原因(子句分隔符全形被轉成
+    # 半形)踩過一次,當時的結論就是「用碼位,不要直接打字元」。
+    _LP, _RP = chr(0xFF08), chr(0xFF09)          # 全形左右括號
+    _open, _close = "[(" + _LP + "]", "[)" + _RP + "]"
+    _inner = "[^()" + _LP + _RP + "]*"
+    _markers = "|".join(_re.escape(m) for m in _RATIONALE_MARKERS)
+    _aside = _re.compile(_open + _inner + "(?:" + _markers + ")"
+                         + _inner + _close)
 
     out, dropped = [], 0
     for line in raw.split("\n"):

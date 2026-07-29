@@ -240,3 +240,24 @@ def test_prompt_never_quotes_the_thing_it_forbids():
     # 但規則本身必須在
     assert "鐵則 3" in prompt and "鐵則 4" in prompt
     assert "只在指定段落深寫一次" in prompt
+
+
+def test_event_word_exemption_needs_a_real_company_event():
+    """r2(Codex,P2):**豁免要證明「有具體公司事件」,不是出現關鍵字就算**。
+    「美股盤後收黑,科技財報週將登場」因為含「財報」而被放行 —— 但那是
+    **市場級**標題:「財報週」是時節,不是某家公司的事。
+
+    兩個條件收緊:
+      (a) 市場主體(美股/台股/費半/道瓊…)+ 漲跌方向 → 一律總結,事件詞不得豁免
+      (b) 事件詞若接「週/季/旺季/行情/來臨/登場」等時節後綴,那是期間不是事件
+    """
+    for wrap in ("美股盤後收黑,科技財報週將登場",
+                 "台股盤後收紅 法說會旺季登場",
+                 "〈美股盤後〉費半重挫 財報週來臨"):
+        assert sl.is_market_wrap(wrap), wrap
+
+    # 具體公司事件仍要放行
+    for real in ("恩智浦半導體盤後下跌,儘管季度業績及展望均超預期",
+                 "聯發科盤後公布財報 EPS 創高",
+                 "鴻海盤後公告 斥資100億擴廠"):
+        assert not sl.is_market_wrap(real), real

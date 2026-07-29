@@ -131,6 +131,11 @@ _WRAP_STRONG = ("操盤筆記", "看盤", "盤勢", "盤中速報", "盤後速�
 _WRAP_WEAK = ("盤後", "盤前", "盤中", "收盤", "開盤")
 #: 欄目型標題的前綴(〈美股盤後〉…)
 _WRAP_PREFIX = ("〈", "【", "《")
+#: 市場級主體 + 漲跌方向 → 一律是綜覽,事件詞不得豁免(r2 Codex,P2)。
+_WRAP_MARKET_SUBJECTS = ("美股", "台股", "大盤", "指數", "費半", "道瓊",
+                         "那指", "標普", "韓股", "日股", "陸股", "亞股")
+_WRAP_DIRECTION = ("收黑", "收紅", "收盤", "收漲", "收跌", "重挫", "大漲",
+                   "大跌", "走高", "走低", "止穩", "反彈", "回檔")
 #: 有這些事件詞就是**一則真新聞**,不是綜覽 —— 但只對弱標記生效。
 #: 自驗(對 621 條有實體的線索實跑)抓到:「恩智浦盤後下跌,儘管季度業績及
 #: 展望均超預期」被判成總結 —— 那是財報故事,排除掉等於**線索永遠開不起來,
@@ -167,7 +172,23 @@ def is_market_wrap(title: str) -> bool:
         return True
     if not any(m in head for m in _WRAP_WEAK):
         return False
-    return not any(w in t for w in _WRAP_EVENT_WORDS)
+    # r2(Codex,P2):**豁免要證明「有具體公司事件」,不是出現關鍵字就算**。
+    # 「美股盤後收黑,科技財報週將登場」因為含「財報」被放行 —— 但那是
+    # **市場級**標題:「財報週」是時節不是某家公司的事。
+    # (a) 市場主體 + 漲跌方向 → 一律總結,事件詞不得豁免
+    if any(m in t for m in _WRAP_MARKET_SUBJECTS) and any(
+            d in t for d in _WRAP_DIRECTION):
+        return True
+    # (b) 事件詞若接「週/季/旺季/行情」等時節後綴,那是期間不是事件
+    import re as _re
+    for w in _WRAP_EVENT_WORDS:
+        i = t.find(w)
+        while i >= 0:
+            nxt = t[i + len(w):i + len(w) + 2]
+            if not _re.match(r"[週周季月]|旺季|行情|來臨|登場", nxt):
+                return False          # 找到一個真正的公司事件詞 → 不是總結
+            i = t.find(w, i + 1)
+    return True
 
 
 def story_key_for_event(ev: dict) -> str:

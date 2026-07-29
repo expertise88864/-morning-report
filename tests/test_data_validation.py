@@ -1519,3 +1519,36 @@ def test_rationale_strip_handles_full_width_parentheses():
         out = mr._strip_selection_rationale(text)
         assert "子公司公告" in out, f"{label}:事實被丟掉了 → {out}"
         assert "使用者" not in out, f"{label}:緣由沒被移除 → {out}"
+
+
+def test_rationale_strip_does_not_eat_legitimate_user_news():
+    """**我送審時自己標記的風險,實測成真了。**
+
+    第一版的標記清單裡只寫「使用者」,而「使用者付費/使用者體驗/使用者數」
+    在科技新聞極常見 —— 實測四則正常新聞**全部被整句刪掉**。
+    這道防線的目的是擋「指涉這封信的讀者」,不是擋所有含該詞的句子。
+
+    (Codex 這一輪回了 APPROVE,但這條是我自己列進 review focus、
+     然後自己驗出來的 —— 通過外審不等於沒問題。)
+    """
+    legit = [
+        "Netflix 宣布使用者付費方案調漲 15%。",
+        "蘋果強調使用者體驗優先,新版 iOS 上線。",
+        "該平台使用者數突破一億。",
+        "某公司使用者成長趨緩,股價下跌 5%。",
+    ]
+    for text in legit:
+        out = mr._strip_selection_rationale(text)
+        assert out.strip() == text.strip(), f"合法新聞被誤刪:{text} → {out!r}"
+
+    # 真正該擋的仍要擋
+    LP, RP = chr(0xFF08), chr(0xFF09)
+    blocked = [
+        ("國泰金(2882,使用者核心觀察):子公司公告。", "國泰金:子公司公告。"),
+        (f"國泰金{LP}2882,使用者核心觀察{RP}:子公司公告。", "國泰金:子公司公告。"),
+        ("此為使用者要求追蹤的標的。台股收黑。", "台股收黑。"),
+        ("為您整理今日重點。大盤下跌。", "大盤下跌。"),
+        ("本報高度關注此主題。某銀行入選首批。", "某銀行入選首批。"),
+    ]
+    for raw, want in blocked:
+        assert mr._strip_selection_rationale(raw) == want, raw

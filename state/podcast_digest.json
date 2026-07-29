@@ -4848,6 +4848,57 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73231963",
+        "title": "Meta, Microsoft earnings test",
+        "published": "Wed, 29 Jul 2026 10:26:43 +0000",
+        "processed_at": "2026-07-29T15:27:26Z",
+        "digest": {
+          "summary_points": [
+            "Meta Platforms (META) 將在收盤後公布第二季財報，股價已連跌九個交易日，從7月盤中高點680.19美元下滑近12%至593.41美元，選擇權市場預期波動幅度約6.95%。",
+            "市場預期Meta每股盈餘7.40美元，營收602.9億美元，投資人關注AI廣告工具、AI基建支出、資本支出及展望。",
+            "微軟 (MSFT) 同日盤後公布第四季財報，市場預期每股盈餘4.24美元，營收876.3億美元，年增14.8%，焦點放在Azure雲端業務及全年資本支出。",
+            "微軟計劃2026年資本支出約1900億美元，超出分析師預期的逾1500億美元，投資人密切關注Copilot變現進展。",
+            "亞馬遜 (AMZN) 在美國雜貨市佔率一年內增幅最大，Costco、沃爾瑪、Trader Joe's及Aldi也增加市佔，克羅格、Albertsons及山姆會員店則流失市佔。",
+            "油價因伊朗攻擊美軍並拒絕阿曼提議而上漲逾3%，西德州原油升至近82美元，布蘭特原油升至87美元。",
+            "Avis Budget Group (CAR) 因第二季營收與獲利不如預期，盤前股價下跌13%。",
+            "摩根大通策略師表示當前股市處於世代交易（generational trade）的早期階段。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報公布前股價連跌，選擇權市場預期波動大，但無明確多空方向。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報公布前市場關注AI投資回報及Copilot變現，無明確方向。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "美國雜貨市佔率增幅最大，顯示業務成長。"
+            },
+            {
+              "name": "Avis Budget Group",
+              "code": "CAR",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "第二季營收與獲利不如預期，股價下跌13%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "One JP Morgan strategist says the current stock market is in the early stages of a generational trade."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73218508",
         "title": "Amazon revamps AI strategy",
         "published": "Tue, 28 Jul 2026 17:25:24 +0000",
@@ -5391,66 +5442,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-17T22:45:02Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73012153",
-        "title": "TSMC chips in $100B more",
-        "published": "Thu, 16 Jul 2026 10:25:15 +0000",
-        "processed_at": "2026-07-16T15:18:02Z",
-        "digest": {
-          "summary_points": [
-            "台積電計劃額外投資1000億美元擴建美國晶片產能，總投資規模達2650億美元，將新建四座2奈米製程晶圓廠。",
-            "台積電首座美國鳳凰城晶圓廠已於2024年底量產4奈米晶片；第二座廠預計2025年下半年開始生產更先進的3奈米晶片。",
-            "優步（Uber）對德國Delivery Hero發起公開收購要約，每股現金41.50歐元，估值約148億美元。",
-            "優步目前持有Delivery Hero約37%經濟利益（含股權衍生品）；持股17%的Prosus已同意參與要約。",
-            "Delivery Hero同意將14個市場的業務出售給紐約投資公司SSW Partners，交易金額約14億歐元；優步將收購涵蓋50個市場的業務，2022年總訂單金額約420億美元。",
-            "聯合航空（United Airlines）將在新型A321XLR飛機上推出「經濟艙Plus」選項，移除中間座位改為共用桌，另計劃推出「RelaxRows」可將三座變沙發。",
-            "EOS Energy Enterprises（EOSE）因獲得美國戰爭部合約，盤前股價上漲14%。",
-            "美股期指盤前走低；原油下跌0.2%至每桶79美元。",
-            "今日經濟數據包含：初請失業金人數、零售銷售、房地產市場指數、待售房屋指數。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "大規模擴張美國產能，顯示長期成長前景。"
-            },
-            {
-              "name": "優步",
-              "code": "UBER",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "收購Delivery Hero擴大餐飲外送版圖。"
-            },
-            {
-              "name": "Delivery Hero",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "面臨收購要約，同時出售部分業務。"
-            },
-            {
-              "name": "聯合航空控股",
-              "code": "UAL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "推出新經濟艙座位選項，可能增加營收。"
-            },
-            {
-              "name": "EOS Energy Enterprises",
-              "code": "EOSE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "獲得美國政府合約，盤前大漲。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-16T22:53:17Z"
       }
     ]
   },
@@ -6523,6 +6514,33 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "a23359d3-8299-49b5-aada-ef230f27193b",
+        "title": "The $1/Hour Worker: Four Robotics CEOs on Humanoids at Home, China's Threat, and the End of Dangerous Jobs",
+        "published": "Tue, 28 Jul 2026 20:21:00 +0000",
+        "processed_at": "2026-07-29T15:38:15Z",
+        "digest": {
+          "summary_points": [
+            "Nibotics 的 NEMO 四足機器人專注於關鍵基礎設施的數據收集與檢測，售價在 10 萬至 30 萬美元之間，電池續航 2 小時，部分客戶每天執行 40 次任務。",
+            "Nibotics 執行長表示其機器人零組件零來自中國，並強調在地採購與客戶對數據安全的顧慮。",
+            "OneX 的 Neo 人形機器人預購在數天內售罄首批 1 萬台，月費 500 美元，目標 2026 年出貨。",
+            "OneX 計劃將 Neo 打造為開放平台，允許第三方開發技能與應用，並支援遠端遙控操作。",
+            "OneX 認為透過網際網路上的大量影像資料進行預訓練是提升機器人智慧的關鍵，並預測硬起飛（hard takeoff）可能在 3 年內發生。",
+            "Boston Dynamics 的 Spot 四足機器人已在 46 個國家超過 500 個客戶部署，主要用於工業檢測與巡邏，ROI 目標在 2 年內。",
+            "Spot 售價依配置從 10 萬到 30 萬美元，電池續航約 90 分鐘，平均每 3,000 小時才需人類干預一次。",
+            "Boston Dynamics 表示其機器人 100% 在美國製造，並反對將機器人武器化，但接受 EOD（爆裂物處理）等非攻擊性軍事應用。",
+            "Boston Dynamics 的 Atlas 人形機器人採用機上與雲端雙腦架構，並將提供機器人即服務（RaaS）模式。",
+            "Agility Robotics 的 Digit 人形機器人專注於倉儲搬運，預計 V5 版本將實現無實體屏障的安全性，可工作 20 小時/天。",
+            "Agility 提供 CAPEX 與 RaaS 兩種商業模式，認為機器人價值將由人力成本定價，長期具備成本優勢。",
+            "Agility 共同創辦人認為機器人產業正處於指數成長階段，主要應用於骯髒、枯燥、危險的工作，並看好未來在零售、醫療、物流等領域的潛力。",
+            "多位執行長一致認為中國的低價機器人構成威脅，但強調完整解決方案、數據安全與在地供應鏈是競爭關鍵。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "We are all in on pre-training our own models on this video data on the internet."
+        }
+      },
+      {
         "guid": "d2e9f5ad-85fb-49f6-bc5c-65f32868b632",
         "title": "The Fight Over Open Source AI, Anthropic's $1.5B Payout, NYC Socialists: Evictions = Violence?",
         "published": "Fri, 24 Jul 2026 20:46:00 +0000",
@@ -6991,39 +7009,6 @@
           "notable_quote": "There's nothing more American than basically risking your own capital."
         },
         "shown_at": "2026-06-23T23:05:24Z"
-      },
-      {
-        "guid": "fe009dce-e1b0-43e5-b9c3-ac8169bd39eb",
-        "title": "World's First Trillionaire, Anthropic Fable Banned, The New Oligarchs, Iran Peace Deal",
-        "published": "Fri, 19 Jun 2026 22:07:00 +0000",
-        "processed_at": "2026-06-20T10:39:02Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 進行了史上最大規模的 IPO，籌資 850 億美元，股價收漲 19% 至 161 美元，市值一度突破 2 兆美元，短暫超越亞馬遜和微軟。",
-            "SpaceX 以 600 億美元收購 AI 程式碼代理 Cursor，交易估值約為其 40 億美元營收的 15 倍，並以股票互換方式避開 S-1 文件過時問題。",
-            "Elon Musk 的財富主要來自公司股權，IPO 並未為他帶來現金；財富是市場對其創造未來價值能力的貼現。",
-            "美國政府要求 Anthropic 因國安疑慮關閉其最新模型 Fable 5（原代號 Mythos），原因是 Amazon 通報該模型存在越獄漏洞。",
-            "Anthropic 在未諮詢白宮的情況下將 Mythos 預覽版提供給南韓 SK Telecom，導致政府對其信任受損。",
-            "白宮官員試圖與 Anthropic CEO Dario Amodei 溝通修復漏洞，但遭對方以「漏洞不嚴重」為由拒絕，最終發出出口管制函。",
-            "此事件可能強化雲端巨頭（AWS、Google Cloud）的閘道角色，迫使使用者須通過 KYC 驗證才能使用高階 AI 模型，形成寡頭壟斷。",
-            "伊朗戰爭暫停：美伊達成初步協議（MoU），伊朗同意放棄核武、銷毀濃縮鈾庫存、凍結核計畫 60 天，換取制裁解除及 3000 億美元重建資金。",
-            "美國無須負擔重建費用，且取得荷姆茲海峽重新開放，確保全球石油運輸暢通；但彈道飛彈計畫與以色列立場仍未解決。",
-            "Friedberg 表示市場將因伊朗和平協議而大漲（「市場要去月球了」），但 Sacks 強調仍需謹慎觀察細節。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "史上最大 IPO 成功，擴張與收購 Cursor 展現強勁成長動能。"
-            }
-          ],
-          "market_view": "Friedberg 認為伊朗和平協議將帶動市場大漲，但 Sacks 提醒需注意協議細節與不確定性。",
-          "action_view": "",
-          "notable_quote": "This was the biggest IPO of all time."
-        },
-        "shown_at": "2026-06-20T22:57:53Z"
       }
     ]
   },

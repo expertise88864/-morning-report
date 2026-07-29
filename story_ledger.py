@@ -117,6 +117,48 @@ def story_key(entity: str, event_type: str, title: str = "",
     return f"h:{digest}"
 
 
+#: 「大盤/類股總結」類標題 —— 這種文章**沒有單一主體**,它講的是一整天的市場。
+#: 實測(2026-07-29 帳本):〈美股盤後〉的市場總結被掛到「聯電」名下開成線索,
+#: 因為文中提到了那檔股票;它的「數字事實」抽出來是道瓊漲點(260 → 500),
+#: 於是「線索追蹤」卡把兩則不同日的大盤總結並列,看起來像同一件事在演進
+#: —— 那是**完全沒有意義的軌跡**,而且它排在卡片第一條。
+_WRAP_TITLE_MARKERS = (
+    "盤後", "盤中", "收盤", "早盤", "開盤", "美股四大指數", "台股收",
+    "盤前", "操盤筆記", "股市收", "指數收", "快報", "看盤", "盤勢",
+)
+#: 這些詞出現時即使含「盤」字也可能是真的個股新聞(例如「法說會盤後」),
+#: 故要求標題**以總結型式開頭或帶書名號欄目標記**才算。
+_WRAP_PREFIX = ("〈", "【", "《")
+
+
+def is_market_wrap(title: str) -> bool:
+    """標題是否為「大盤/類股總結」——這種文章不該開線索。
+
+    判準刻意保守:必須是**欄目型標題**(〈美股盤後〉…)或標題前段就出現總結詞,
+    才判為總結。個股新聞裡偶然提到「盤後」(如「某公司盤後公告」)不受影響。
+    """
+    t = str(title or "").strip()
+    if not t:
+        return False
+    head = t[:14]
+    # (a) 欄目型標題:〈美股盤後〉…、【盤後】…
+    if t[:1] in _WRAP_PREFIX and any(m in t[:12] for m in _WRAP_TITLE_MARKERS):
+        return True
+    # (b) 標題前段就是總結詞(自測補:「本週操盤筆記:…」以「本週」開頭,
+    #     原本只比對開頭字元會漏掉,改為在前 14 字內找)
+    if not any(m in head for m in _WRAP_TITLE_MARKERS):
+        return False
+    # **但時間標記不算總結**:「鴻海盤後公告 斥資100億擴廠」是合法的個股新聞,
+    # 「盤後」只是說明什麼時候發布的。自測時我一度把這個案例的期望值改成 True
+    # 讓測試通過 —— 那是把缺陷釘成規格,正是本專案反覆犯的錯。
+    # 判準:總結詞後面若緊接公司動作詞,視為時間標記而非欄目。
+    import re as _re
+    if _re.search(r"(?:盤後|盤前|盤中|收盤)\s*(?:公告|宣布|宣佈|發布|公布|釋出|"
+                  r"揭露|申報|重訊)", t):
+        return False
+    return True
+
+
 def story_key_for_event(ev: dict) -> str:
     """事件 → story 身分。**直接沿用 news_events 的事件身分規則**。
 
@@ -765,6 +807,10 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         title = str(ev.get("title") or "").strip()
         if not title:
             continue
+        # 大盤總結不開線索(見 is_market_wrap):它沒有單一主體,
+        # 掛到任一提及的個股上會產生毫無意義的「軌跡」。
+        if is_market_wrap(title):
+            continue
         key = _resolve_story_key(ev, by_key)
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
@@ -950,6 +996,9 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         prune_timeline(story)
 
     out = list(by_key.values())
+    # 既有帳本的清理:批#63 之前存進來的大盤總結線索仍在(實測 47/1502),
+    # 其中一條還排在「線索追蹤」卡第一位。新規則只擋新增,舊的要在這裡掃掉。
+    out = [s for s in out if not is_market_wrap(str(s.get("headline") or ""))]
     out = [s for s in out
            if _days_between(s.get("last_update") or today, today) <= KEEP_DAYS]
     out.sort(key=lambda s: (STATE_WEIGHT.get(s.get("state"), 0.0),

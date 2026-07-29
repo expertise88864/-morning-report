@@ -183,16 +183,20 @@ def is_market_wrap(title: str, known_names=()) -> bool:
     _bracketed = t[:1] in _WRAP_PREFIX
     if _bracketed and any(m in t[:14] for m in _WRAP_COLUMN_WORDS):
         return True
-    _named = any(n and len(str(n)) >= 2 and str(n) in t
-                 for n in (known_names or ()))
-    if _bracketed and not _named and any(
-            m in t[:14] for m in _WRAP_MARKET_SUBJECTS):
-        return True
     # **沒有詞彙表就不套市場規則**:那條規則靠「標題裡沒有已知公司名」當證據,
     # 詞彙表空的時候「沒有公司名」是必然成立的,會把所有市場相關標題都判成綜覽
     # ——那是最危險的方向(線索永遠開不起來且完全無聲)。刻意偏向放行。
     if not known_names:
         return False
+    _named = any(n and len(str(n)) >= 2 and str(n) in t
+                 for n in known_names)
+    # (b) 市場詞欄目 —— r9(Codex,P1):這一支原本被我寫在 fail-open 守衛
+    #     **前面**,於是無詞彙表時反而變成「偏向丟棄」,跟上面那段註解寫的契約
+    #     正好相反。它跟主規則一樣是靠「沒有已知公司名」當證據的,就必須跟主規則
+    #     待在同一側。
+    if _bracketed and not _named and any(
+            m in t[:14] for m in _WRAP_MARKET_SUBJECTS):
+        return True
     if not (any(m in t for m in _WRAP_MARKET_SUBJECTS)
             and any(d in t for d in _WRAP_DIRECTION)):
         return False

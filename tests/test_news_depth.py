@@ -342,3 +342,19 @@ def test_market_column_yields_to_a_named_company():
     assert not sl.is_market_wrap("【美股焦點】輝達財報後大漲", _NAMES)
     # 場次欄目即使有公司名仍成立(那是總結文章提到的例子)
     assert sl.is_market_wrap("〈台股盤後〉台積電穩盤 回測4萬3", _NAMES)
+
+
+def test_market_column_respects_the_fail_open_contract():
+    """r9(Codex,P1):市場詞欄目那一支原本被寫在 fail-open 守衛**前面**,
+    於是無詞彙表時反而變成「偏向丟棄」——跟守衛上方那段註解寫的契約正好相反,
+    而且是最危險的方向:線索永遠開不起來,且完全無聲。
+
+    判準:它跟主規則一樣靠「標題裡沒有已知公司名」當證據,而空詞彙表下
+    「沒有公司名」必然成立,所以它必須跟主規則待在守衛的同一側。
+    """
+    # 無詞彙表:只有場次欄目與強標記能丟,市場詞欄目一律放行
+    assert not sl.is_market_wrap("【美股焦點】輝達財報後大漲", ())
+    assert not sl.is_market_wrap("【美股】道瓊漲500點", ())
+    assert not sl.is_market_wrap("美股盤後收黑 財報登場", ())
+    assert sl.is_market_wrap("〈台股盤後〉台積電穩盤", ())      # 場次欄目
+    assert sl.is_market_wrap("台股收跌1195.97點", ())           # 強標記

@@ -27,7 +27,7 @@ def test_market_wrap_articles_do_not_open_stories():
                   "〈能源盤後〉美國暫停空襲 原油挫8%",
                   "本週操盤筆記:Fed決策、AI支出大戶財報",
                   "台股收盤跌破半年線 成交量萎縮"):
-        assert sl.is_market_wrap(title), title
+        assert sl.is_market_wrap(title, _NAMES), title
 
 
 def test_company_news_is_not_mistaken_for_a_wrap():
@@ -41,7 +41,7 @@ def test_company_news_is_not_mistaken_for_a_wrap():
                   "台積電董事會通過收購案",
                   "聯發科法說會展望樂觀",
                   ):
-        assert not sl.is_market_wrap(title), title
+        assert not sl.is_market_wrap(title, _NAMES), title
 
 
 def test_wrap_events_are_skipped_by_update_ledger():
@@ -61,6 +61,11 @@ def test_wrap_events_are_skipped_by_update_ledger():
 
 
 # ===== 橫向:段落歸屬 =====
+
+#: v7 起 is_market_wrap 需要**已知公司名詞彙表** —— 那是它判斷「這篇有沒有
+#: 單一主體」的直接訊號,取代前六版的關鍵字/詞性後綴堆疊。
+_NAMES = ("台積電", "聯發科", "鴻海", "輝達", "恩智浦", "勤誠", "緯創",
+          "廣達", "國泰金", "中信金")
 
 _UNIVERSE = [{"code": "2330", "industry": "半導體業"},
              {"code": "2882", "industry": "金融保險業"},
@@ -164,13 +169,13 @@ def test_wrap_uses_strong_and_weak_markers():
                  "本週操盤筆記:Fed決策、AI支出大戶財報",
                  "台股收盤跌破半年線", "台股收跌1195.97點",
                  "盤中速報 - 勤誠(8210)大跌7.2%"):
-        assert sl.is_market_wrap(wrap), wrap
+        assert sl.is_market_wrap(wrap, _NAMES), wrap
 
     for real in ("恩智浦半導體盤後下跌,儘管季度業績及展望均超預期",
                  "鴻海盤後公告 斥資100億擴廠",
                  "台積電董事會通過收購案",
                  ):
-        assert not sl.is_market_wrap(real), real
+        assert not sl.is_market_wrap(real, _NAMES), real
 
 
 def test_generic_flash_prefix_is_not_a_wrap():
@@ -179,7 +184,7 @@ def test_generic_flash_prefix_is_not_a_wrap():
     誤判的後果是**線索永遠開不起來,而且是靜默的**。"""
     for real in ("【財報快報】台積電第二季獲利創高",
                  "重訊快報:某公司取得百億訂單"):
-        assert not sl.is_market_wrap(real), real
+        assert not sl.is_market_wrap(real, _NAMES), real
 
 
 def test_all_tech_industries_go_to_the_tech_section():
@@ -242,27 +247,6 @@ def test_prompt_never_quotes_the_thing_it_forbids():
     assert "只在指定段落深寫一次" in prompt
 
 
-def test_event_word_exemption_needs_a_real_company_event():
-    """r2(Codex,P2):**豁免要證明「有具體公司事件」,不是出現關鍵字就算**。
-    「美股盤後收黑,科技財報週將登場」因為含「財報」而被放行 —— 但那是
-    **市場級**標題:「財報週」是時節,不是某家公司的事。
-
-    兩個條件收緊:
-      (a) 市場主體(美股/台股/費半/道瓊…)+ 漲跌方向 → 一律總結,事件詞不得豁免
-      (b) 事件詞若接「週/季/旺季/行情/來臨/登場」等時節後綴,那是期間不是事件
-    """
-    for wrap in ("美股盤後收黑,科技財報週將登場",
-                 "台股盤後收紅 法說會旺季登場",
-                 "〈美股盤後〉費半重挫 財報週來臨"):
-        assert sl.is_market_wrap(wrap), wrap
-
-    # 具體公司事件仍要放行
-    for real in ("恩智浦半導體盤後下跌,儘管季度業績及展望均超預期",
-                 "聯發科盤後公布財報 EPS 創高",
-                 "鴻海盤後公告 斥資100億擴廠"):
-        assert not sl.is_market_wrap(real), real
-
-
 def test_market_index_moves_are_wraps_regardless_of_position():
     """r3:**「市場主體 + 漲跌方向」是獨立的強訊號**,不該被弱標記關卡擋在前面。
 
@@ -275,13 +259,13 @@ def test_market_index_moves_are_wraps_regardless_of_position():
     for wrap in ("美股標普那指收黑!科技財報週將登場",
                  "台股大盤重挫 電子權值股領跌",
                  "費半指數大跌 亞股同步走低"):
-        assert sl.is_market_wrap(wrap), wrap
+        assert sl.is_market_wrap(wrap, _NAMES), wrap
 
     # 但「台股上市公司某某…」這種以市場詞開頭的**個股**標題不得誤傷
     # (送審時我自己列的擔心點)
     for real in ("台股上市公司某某獲利創高",
                  "台積電董事會通過收購案"):
-        assert not sl.is_market_wrap(real), real
+        assert not sl.is_market_wrap(real, _NAMES), real
 
 
 def test_market_direction_still_yields_to_a_concrete_company_event():
@@ -291,33 +275,38 @@ def test_market_direction_still_yields_to_a_concrete_company_event():
     """
     for real in ("美股焦點:輝達財報後大漲",
                  "美股大漲 台積電ADR收購案通過"):
-        assert not sl.is_market_wrap(real), real
+        assert not sl.is_market_wrap(real, _NAMES), real
     # 純市場級的仍要擋
     for wrap in ("美股標普那指收黑!科技財報週將登場",
                  "台股大盤重挫 電子權值股領跌"):
-        assert sl.is_market_wrap(wrap), wrap
+        assert sl.is_market_wrap(wrap, _NAMES), wrap
 
 
-def test_season_suffix_survives_a_connector_character():
-    """自測抓到:「法說**會**旺季」的事件詞是「法說」,兩字後綴視窗只看到
-    「會旺」而看不到「旺季」,於是整句被當成有公司事件而放行。
-    後綴視窗放寬到 4 字並允許「會/週」當連接字。"""
-    assert sl.is_market_wrap("台股盤後收紅 法說會旺季登場")
-    # 但真的法說會消息不得誤傷
-    assert not sl.is_market_wrap("台積電法說會展望樂觀")
+def test_v7_replaces_the_whole_keyword_stack_with_a_direct_signal():
+    """**這個函式改了七版。** 前六版都在加關鍵字與詞性後綴,每一版都被下一個
+    反例打破:單一清單 → 事件詞豁免 → 強/弱兩級 → 市場主體+方向 →
+    時節後綴(含動詞)→ 拿掉動詞。每次都是同一個病:
+    **用「有沒有出現某個詞」代替「這篇有沒有單一主體」。**
 
-
-def test_verbs_are_not_seasonal_suffixes():
-    """r5(Codex,P1):**動詞不能當時節後綴**。我上一輪把「登場/來臨」放進清單,
-    於是「台積電盤後**法說會登場**」的「法說」後面接到「會登場」→ 被判成時節,
-    整句變成大盤總結而被靜默丟棄。
-
-    真正的時節標記是**期間名詞**(週/季/月/旺季/行情);
-    「財報週將登場」的季節性來自「週」,不是「登場」。
+    v7 改用直接訊號:**標題裡有沒有具名公司**(呼叫端提供詞彙表)。
+    這幾組正是把前六版逐一打破的反例。
     """
-    for real in ("台積電盤後法說會登場", "台積電法說會展望樂觀",
-                 "聯發科盤後公布財報 EPS 創高"):
-        assert not sl.is_market_wrap(real), real
-    for wrap in ("台股盤後收紅 法說會旺季登場",
-                 "美股盤後收黑,科技財報週將登場"):
-        assert sl.is_market_wrap(wrap), wrap
+    for wrap in ("台股盤後收紅 法說會旺季登場",   # v6 的反例
+                 "美股盤後收黑 財報登場",          # v6 的反向反例
+                 "美股標普那指收黑!科技財報週將登場"):
+        assert sl.is_market_wrap(wrap, _NAMES), wrap
+    for real in ("台積電法說會展望樂觀",
+                 "台積電盤後法說會登場",          # v5 的反例
+                 "美股焦點:輝達財報後大漲"):      # v4 的反例
+        assert not sl.is_market_wrap(real, _NAMES), real
+
+
+def test_wrap_detection_fails_open_without_a_vocabulary():
+    """沒有詞彙表時偏向**放行** —— 誤判成綜覽會讓線索永遠開不起來且完全無聲;
+    誤放行只是多一條雜訊線索,而卡片本來就要求 ≥2 個時間點。"""
+    assert not sl.is_market_wrap("美股焦點:輝達財報後大漲", ())
+    # 但強標記與欄目型不需詞彙表就能判
+    assert sl.is_market_wrap("〈美股盤後〉油價下滑", ())
+    assert sl.is_market_wrap("本週操盤筆記:Fed決策", ())
+
+

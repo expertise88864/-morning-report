@@ -972,7 +972,7 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
         # 我當初刻意不加數字守衛,是為了讓「ETF 每日持股變動摘要」這類連續
         # 線索接得起來。那個判斷對**非期別型**仍然成立,所以這裡只擋期別型,
         # 也因此 general→明確型別的升級、跨月的同一樁併購案都不受影響。
-        cand_period = _episodic_period(_story_as_event(story))
+        cand_period = _episodic_period_of_story(story)
         if (ev_period and cand_period
                 and ev_period[0] == cand_period[0]
                 and ev_period[1] != cand_period[1]):
@@ -1006,20 +1006,37 @@ def _episodic_period(obj: dict) -> tuple:
         return ()
     bucket = _ne_module._event_period_bucket(
         obj, monthly=et in _ne_module._MONTHLY_EVENT_TYPES)
-    return (et, bucket) if bucket else ()
+    # 與 key 內的寫法對齊(key 用 _norm 去標點:2026-06 → 202606),
+    # 否則從 key 讀到的 bucket 永遠比不上從事件算出來的
+    return (et, _norm(bucket)) if bucket else ()
 
 
-def _story_as_event(story: dict) -> dict:
-    """把線索轉成 `_event_period_bucket` 看得懂的形狀。
+def _episodic_period_of_story(story: dict) -> tuple:
+    """線索的期別。**優先從 key 讀**,那才是權威值。
 
-    **自測抓到**:線索存的是 `last_published` 與 `headline`,不是 `published`
-    與 `title`。少了這層轉換,`_episodic_period(story)` 會一律回空 tuple,
-    上面那道跨期守衛**完全不會生效**——功能寫了但沒接上,而測試若只驗
-    `_episodic_period(event)` 也照樣全綠。
+    r2(Codex,P1):我上一版從 `headline` 與 `last_published` 重算——但那兩個
+    欄位會隨後續報導改變。六月營收的線索被追蹤報導接手後,headline 不再寫
+    「115年6月」、`last_published` 變成七月,於是候選期別被誤算成七月;
+    八月來的「115年7月營收」與它「同期」,跨期守衛因此不會擋,又併回去了。
+
+    而 story key 本身早就永久保存了權威期別(`e:2884|l:revenue_growth|202606`)
+    —— 用會漂移的欄位去重算一個已經寫死的事實,本來就是錯的方向。
+    只有舊 key 沒有 bucket 時才退回推導。
     """
-    return {"event_type": story.get("event_type"),
-            "published": story.get("last_published"),
-            "title": story.get("headline"), "summary": ""}
+    key = str(story.get("key") or "")
+    marker = "|l:"
+    if marker in key:
+        lineage = key.split(marker, 1)[1]
+        if "|" in lineage:
+            etype, bucket = lineage.split("|", 1)
+            if bucket and (etype in _ne_module._QUARTERLY_EVENT_TYPES
+                           or etype in _ne_module._MONTHLY_EVENT_TYPES):
+                return (etype, bucket)
+    # 舊 key(無 bucket)才後備推導。線索存的是 last_published/headline,
+    # 不是 published/title —— 少了這層轉換整道守衛不會生效。
+    return _episodic_period({"event_type": story.get("event_type"),
+                             "published": story.get("last_published"),
+                             "title": story.get("headline"), "summary": ""})
 
 
 def _story_match_candidates(story: dict) -> list:

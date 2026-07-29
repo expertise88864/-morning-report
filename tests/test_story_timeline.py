@@ -820,3 +820,38 @@ def test_story_match_picks_the_globally_best_candidate():
           "title": "台積電美國亞利桑那二廠試產良率達標 進度超前"}
     key = sl._match_open_story(ev, {right["key"]: right, wrong["key"]: wrong})
     assert key == right["key"], f"挑到分數較低的線索:{key}"
+
+
+def test_period_guard_reads_the_key_not_the_drifting_headline():
+    """r2(Codex,P1):線索的 headline 與 last_published 會隨後續報導改變。
+    六月營收線索被追蹤報導接手後,headline 不再寫「115年6月」、
+    `last_published` 變成七月——若從這兩個欄位重算候選期別,它會被誤判成七月,
+    八月來的「115年7月營收」與它「同期」,跨期守衛就不會擋。
+
+    而 story key 本身早就永久保存了權威期別(`…|l:revenue_growth|202606`)。
+    用會漂移的欄位去重算一個已經寫死的事實,本來就是錯的方向。
+    """
+    base = {"entity": "2884", "entity_name": "玉山金",
+            "event_type": "revenue_growth", "surprise_score": 0.5}
+    led = sl.update_ledger([], [dict(
+        base, title="公告本公司115年6月份自結合併營收", link="https://a/1",
+        source_name="MOPS", published="2026-07-06T01:00:00+00:00")],
+        "2026-07-06", {"2884": "玉山金"})
+    june_key = led[0]["key"]
+    # 追蹤報導接手 → headline 漂移、last_published 前進到七月
+    led = sl.update_ledger(led, [dict(
+        base, title="公告本公司自結合併營收較上月成長 法人看好下半年",
+        link="https://a/1b", source_name="經濟日報",
+        published="2026-07-20T01:00:00+00:00", followup_key=june_key)],
+        "2026-07-20", {"2884": "玉山金"})
+    drifted = next(s for s in led if s["key"] == june_key)
+    assert "115年6月" not in drifted["headline"]
+    assert str(drifted["last_published"])[:7] == "2026-07"
+    # 期別守衛仍必須認得它是六月那一集
+    assert sl._episodic_period_of_story(drifted) == ("revenue_growth", "202606")
+    led = sl.update_ledger(led, [dict(
+        base, title="公告本公司115年7月份自結合併營收", link="https://a/2",
+        source_name="MOPS", published="2026-08-06T01:00:00+00:00")],
+        "2026-08-06", {"2884": "玉山金"})
+    assert len(led) == 2, f"七月營收又被併回六月:{[s['key'] for s in led]}"
+    assert {s["key"] for s in led} == {june_key, "e:2884|l:revenue_growth|202607"}

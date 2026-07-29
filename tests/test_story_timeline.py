@@ -758,3 +758,65 @@ def test_story_matching_needs_enough_shared_content():
     """極短的通用主旨不得四處攀親。"""
     assert not sl._same_story_subject("營收公布", "營收公布再創高",
                                       sl.STORY_MATCH_THRESHOLD)
+
+
+def test_consecutive_periods_do_not_merge_into_one_episode():
+    """r1(Codex,P1):「公告本公司115年6月份自結合併營收」與「⋯115年7月份⋯」
+    幾乎是同一個字串,分數遠超門檻,於是七月營收會在 `story_key_for_event`
+    建立新月份 key 之前就被模糊配對掛回六月那條——而「不同期=不同集」
+    正是月/季分桶存在的理由。
+
+    我當初刻意不加數字守衛,是為了讓「ETF 每日持股變動摘要」這類連續線索
+    接得起來;那個判斷對**非期別型**仍然成立,所以只擋期別型(見對照組)。
+    """
+    base = {"entity": "2884", "entity_name": "玉山金",
+            "event_type": "revenue_growth", "surprise_score": 0.5}
+    led = sl.update_ledger([], [dict(
+        base, title="公告本公司115年6月份自結合併營收", link="https://a/1",
+        source_name="MOPS", published="2026-07-06T01:00:00+00:00")],
+        "2026-07-06", {"2884": "玉山金"})
+    led = sl.update_ledger(led, [dict(
+        base, title="公告本公司115年7月份自結合併營收", link="https://a/2",
+        source_name="MOPS", published="2026-08-06T01:00:00+00:00")],
+        "2026-08-06", {"2884": "玉山金"})
+    assert len(led) == 2, f"跨期被併成同一集:{[s['key'] for s in led]}"
+    assert {s["key"].rsplit("|", 1)[-1] for s in led} == {"202606", "202607"}
+
+
+def test_non_episodic_stories_still_span_months():
+    """對照組:跨期守衛只擋期別型。同一樁併購案七月洽談、八月通過審查,
+    仍必須是同一條敘事——否則上面那條測試可能只是把功能整個關掉。"""
+    base = {"entity": "2317", "entity_name": "鴻海", "event_type": "general",
+            "surprise_score": 0.5}
+    led = sl.update_ledger([], [dict(
+        base, title="鴻海收購案細節公布 金額300億元 進入審查", link="https://b/1",
+        source_name="經濟日報", published="2026-07-06T01:00:00+00:00")],
+        "2026-07-06", {"2317": "鴻海"})
+    led = sl.update_ledger(led, [dict(
+        base, title="鴻海收購案細節公布 金額300億元 通過審查", link="https://b/2",
+        source_name="中央社", published="2026-08-06T01:00:00+00:00")],
+        "2026-08-06", {"2317": "鴻海"})
+    assert len(led) == 1
+    assert len(led[0]["timeline"]) == 2
+
+
+def test_story_match_picks_the_globally_best_candidate():
+    """r3(Codex,P2):原本一命中就 break,記下的是該線索**第一個**達標的候選
+    文字而不是最好的,線索之間可能因此排錯序。這裡兩條線索競爭,正確的那條
+    最佳匹配落在 timeline 的較早一點。"""
+    right = {"key": "e:2330|l:general|aaa", "entity": "2330",
+             "entity_name": "台積電", "event_type": "general",
+             "headline": "台積電先進封裝產能規劃傳出調整",
+             "last_published": "2026-07-01T00:00:00+00:00",
+             "timeline": [{"d": "2026-06-30",
+                           "t": "台積電美國亞利桑那二廠試產良率達標"},
+                          {"d": "2026-07-01", "t": "台積電先進封裝產能規劃傳出調整"}]}
+    wrong = {"key": "e:2330|l:general|bbb", "entity": "2330",
+             "entity_name": "台積電", "event_type": "general",
+             "headline": "台積電美國亞利桑那廠獲補助",
+             "last_published": "2026-07-01T00:00:00+00:00",
+             "timeline": [{"d": "2026-07-01", "t": "台積電美國亞利桑那廠獲補助"}]}
+    ev = {"entity": "2330", "entity_name": "台積電", "event_type": "general",
+          "title": "台積電美國亞利桑那二廠試產良率達標 進度超前"}
+    key = sl._match_open_story(ev, {right["key"]: right, wrong["key"]: wrong})
+    assert key == right["key"], f"挑到分數較低的線索:{key}"

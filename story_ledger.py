@@ -39,6 +39,7 @@ import re
 
 # Codex r2(P1):否定判準**只有一份**,定義在 news_events(無第一方相依)。
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
+import news_events as _ne_module
 from news_events import (is_negated_decision, is_pending_decision,
                          _content_bigrams)
 
@@ -957,20 +958,68 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
         return ""
     threshold = (STORY_MATCH_THRESHOLD if ent
                  else STORY_MATCH_THRESHOLD_NO_ENTITY)
+    ev_period = _episodic_period(ev)
+    subject_grams = _content_bigrams(subject)
     best_key, best_score = "", 0.0
     for key, story in by_key.items():
         if str(story.get("entity") or "") != ent:
             continue
+        # r1(Codex,P1):**期別型事件跨期不得合併**。「公告本公司115年6月份
+        # 自結合併營收」與「⋯115年7月份⋯」幾乎是同一個字串,分數遠超門檻,
+        # 於是七月營收會在 `story_key_for_event` 建立新月份 key 之前就被掛回
+        # 六月那條——而「不同期=不同集」正是月/季分桶存在的理由。
+        #
+        # 我當初刻意不加數字守衛,是為了讓「ETF 每日持股變動摘要」這類連續
+        # 線索接得起來。那個判斷對**非期別型**仍然成立,所以這裡只擋期別型,
+        # 也因此 general→明確型別的升級、跨月的同一樁併購案都不受影響。
+        cand_period = _episodic_period(_story_as_event(story))
+        if (ev_period and cand_period
+                and ev_period[0] == cand_period[0]
+                and ev_period[1] != cand_period[1]):
+            continue
+        # r3(Codex,P2):原本一命中就 break,記下的是該線索**第一個**達標的
+        # 候選文字而不是最好的——與「取相似度最高」的宣稱不符,線索之間可能
+        # 因此排錯序。改為算完全部候選再取該線索的最高分。
+        score = 0.0
         for cand in _story_match_candidates(story):
             cs = _story_subject(cand, ent, str(story.get("entity_name") or ""))
             if not _same_story_subject(subject, cs, threshold):
                 continue
-            ga, gb = _content_bigrams(subject), _content_bigrams(cs)
-            score = len(ga & gb) / max(1, min(len(ga), len(gb)))
-            if score > best_score:
-                best_key, best_score = key, score
-            break
+            gb = _content_bigrams(cs)
+            score = max(score, len(subject_grams & gb)
+                        / max(1, min(len(subject_grams), len(gb))))
+        if score > best_score:
+            best_key, best_score = key, score
     return best_key
+
+
+def _episodic_period(obj: dict) -> tuple:
+    """期別型事件的 (event_type, 期別 bucket);非期別型回空 tuple。
+
+    期別型=news_events 明確要求按季/按月隔離成獨立 episode 的那幾種
+    (財報/財測按季、月營收按月)。對這幾種而言「不同期」在定義上就是
+    「不同事件」,不是敘事的延續。
+    """
+    et = str(obj.get("event_type") or "").strip()
+    if not et or (et not in _ne_module._QUARTERLY_EVENT_TYPES
+                  and et not in _ne_module._MONTHLY_EVENT_TYPES):
+        return ()
+    bucket = _ne_module._event_period_bucket(
+        obj, monthly=et in _ne_module._MONTHLY_EVENT_TYPES)
+    return (et, bucket) if bucket else ()
+
+
+def _story_as_event(story: dict) -> dict:
+    """把線索轉成 `_event_period_bucket` 看得懂的形狀。
+
+    **自測抓到**:線索存的是 `last_published` 與 `headline`,不是 `published`
+    與 `title`。少了這層轉換,`_episodic_period(story)` 會一律回空 tuple,
+    上面那道跨期守衛**完全不會生效**——功能寫了但沒接上,而測試若只驗
+    `_episodic_period(event)` 也照樣全綠。
+    """
+    return {"event_type": story.get("event_type"),
+            "published": story.get("last_published"),
+            "title": story.get("headline"), "summary": ""}
 
 
 def _story_match_candidates(story: dict) -> list:

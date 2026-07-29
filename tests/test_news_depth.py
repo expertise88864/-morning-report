@@ -305,3 +305,19 @@ def test_season_suffix_survives_a_connector_character():
     assert sl.is_market_wrap("台股盤後收紅 法說會旺季登場")
     # 但真的法說會消息不得誤傷
     assert not sl.is_market_wrap("台積電法說會展望樂觀")
+
+
+def test_verbs_are_not_seasonal_suffixes():
+    """r5(Codex,P1):**動詞不能當時節後綴**。我上一輪把「登場/來臨」放進清單,
+    於是「台積電盤後**法說會登場**」的「法說」後面接到「會登場」→ 被判成時節,
+    整句變成大盤總結而被靜默丟棄。
+
+    真正的時節標記是**期間名詞**(週/季/月/旺季/行情);
+    「財報週將登場」的季節性來自「週」,不是「登場」。
+    """
+    for real in ("台積電盤後法說會登場", "台積電法說會展望樂觀",
+                 "聯發科盤後公布財報 EPS 創高"):
+        assert not sl.is_market_wrap(real), real
+    for wrap in ("台股盤後收紅 法說會旺季登場",
+                 "美股盤後收黑,科技財報週將登場"):
+        assert sl.is_market_wrap(wrap), wrap

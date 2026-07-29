@@ -1,37 +1,37 @@
 {
- "date": "2026-07-29 06:48",
- "total_seconds": 455.5,
+ "date": "2026-07-30 06:45",
+ "total_seconds": 505.1,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 5.5
+   "seconds": 5.8
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 148.5
+   "seconds": 160.5
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 14.6
+   "seconds": 14.1
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 116.3
+   "seconds": 137.8
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 86.5
+   "seconds": 112.7
   },
   {
    "label": "LLM 主分析",
-   "seconds": 81.4
+   "seconds": 70.8
   },
   {
    "label": "渲染",
-   "seconds": 2.7
+   "seconds": 3.5
   }
  ],
  "feeds": {
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 127,
+   "ok": 131,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -136,13 +136,13 @@
    "fail": 0
   }
  },
- "model_history_days": 217,
- "d1_samples": 1,
+ "model_history_days": 218,
+ "d1_samples": 2,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -6,
+  "llm": -7,
   "llm_label": "偏空",
-  "py": -6,
+  "py": -7,
   "py_label": "偏空",
   "agree": true,
   "coverage": 1.0,
@@ -156,6 +156,38 @@
  },
  "data_checks": {
   "all": [
+   {
+    "source": "model_history",
+    "check": "fill_rate:taifex_top10_net",
+    "severity": "warn",
+    "passed": false,
+    "detail": "`taifex_top10_net` 最近 30 筆只填了 3 筆(10%,低於 50%)——功能可能在生產環境從未真正產出",
+    "observed": 0.1
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:txo_pc_oi_ratio",
+    "severity": "warn",
+    "passed": false,
+    "detail": "`txo_pc_oi_ratio` 最近 30 筆只填了 1 筆(3%,低於 50%)——功能可能在生產環境從未真正產出",
+    "observed": 0.033
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:taiex_close",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`taiex_close` 填充率 100%(30/30)",
+    "observed": 1.0
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:structured_events",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`structured_events` 填充率 97%(29/30)",
+    "observed": 0.967
+   },
    {
     "source": "tw_universe",
     "check": "row_count",
@@ -182,17 +214,44 @@
    }
   ],
   "errors": [],
-  "warnings": [],
-  "checked": 3,
-  "failed": 0
+  "warnings": [
+   {
+    "source": "model_history",
+    "check": "fill_rate:taifex_top10_net",
+    "severity": "warn",
+    "passed": false,
+    "detail": "`taifex_top10_net` 最近 30 筆只填了 3 筆(10%,低於 50%)——功能可能在生產環境從未真正產出",
+    "observed": 0.1
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:txo_pc_oi_ratio",
+    "severity": "warn",
+    "passed": false,
+    "detail": "`txo_pc_oi_ratio` 最近 30 筆只填了 1 筆(3%,低於 50%)——功能可能在生產環境從未真正產出",
+    "observed": 0.033
+   }
+  ],
+  "checked": 7,
+  "failed": 2
  },
  "mz_shadow": {
-  "n": 49,
+  "n": 50,
   "applied": true,
-  "a": 2.465,
-  "b": 0.6865,
-  "raw": 2246.4,
-  "shadow": 2259.4,
-  "delta": 13.0
+  "a": 1.008,
+  "b": 0.6958,
+  "raw": 2147.29,
+  "shadow": 2164.33,
+  "delta": 17.04
+ },
+ "llm_extractor": {
+  "called": true,
+  "items": 35,
+  "parsed": 0,
+  "valid": 0,
+  "dropped": 0,
+  "retried": false,
+  "outcome": "error:RuntimeError",
+  "error": "DeepSeek extractor 回應缺少 content"
  }
 }

@@ -62,10 +62,10 @@
    "sha256": "34b8c59b535d4cbbb3fba3e3500b579ddd9e3099e002cf88b74fe2da1189247a"
   },
   "2026-07.json.gz": {
-   "row_count": 19,
+   "row_count": 20,
    "min_date": "2026-07-01",
-   "max_date": "2026-07-28",
-   "sha256": "361352c623f1bb665a3ebc3d58f009f69c9e0bbeb2bacf17f0f1759806af233c"
+   "max_date": "2026-07-29",
+   "sha256": "adc575fa5e6b356804985a14d62333e032de07507e4e9f68ecc2a6771ec72008"
   }
  }
 }

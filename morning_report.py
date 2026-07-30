@@ -15329,6 +15329,35 @@ def _forecast_sigma(history: list, question: str) -> tuple[float, int]:
     return _FORECAST_DEFAULT_SIGMA[question], len(errs)
 
 
+#: **模型版本登錄表**(批#75,第七輪 P1-1)。
+#: 問題:帳本裡的 18 筆機率題橫跨 **9 個不同 git SHA**,全部標著同一個
+#: `prob-v2` —— 而 `prob-v2` 只代表機率換算規則,不代表 2330 點預測模型、
+#: 特徵集、bias 修正,更不代表 MZ 收縮規則。用單一字串包住所有變更,
+#: 等於把不同模型世代的殘差與 MZ 成績混在同一組統計裡。
+#:
+#: **最具體的實害**:`_mz_shadow_oos_stats` 原本完全沒有版本過濾 ——
+#: 哪天改了收縮公式,新舊兩代的 shadow 列會混在同一個 MAE 與配對 t 裡算,
+#: 而那條 t 值正是「要不要把影子模式轉正」的判準,混了完全無聲。
+#:
+#: 每個元件各自命名、各自遞增;改動任一元件時**只需要改這裡一行**,
+#: 而依賴它的統計會自動只採當代樣本。
+def model_versions() -> dict:
+    """本次執行的模型版本組合。刻意做成函式而非模組層 dict:
+    `git_sha` 由環境變數決定,而測試會改它。"""
+    return {
+        "point_model": MODEL_VERSION,          # 2330/加權點預測(含 bias 修正)
+        "probability_rule": _FORECAST_VERSION,  # 點預測 → 機率(empirical CDF)
+        "mz_rule": _MZ_RULE_VERSION,            # MZ 收縮的形式(變動量 vs 水準)
+        "event_schema": EVENT_SCHEMA_VERSION,   # 事件身分公式世代
+        "ledger_schema": TOP5_LEDGER_SCHEMA_VERSION,
+        "git_sha": os.environ.get("GITHUB_SHA", "")[:12],
+    }
+
+
+#: MZ 收縮規則的版本。批#51 確認必須在**變動量**上做(水準迴歸的截距是
+#: 共線性假象,照那個算 MAE 會從 25.66 惡化到 424.14);批#69 把標準誤改成
+#: Newey-West。改動公式或訓練視窗時遞增,否則新舊樣本會混算。
+_MZ_RULE_VERSION = "delta-mz-hac-v1"
 _FORECAST_VERSION = "prob-v2"   # 機率規則版本(批#23:empirical CDF;統計分版本)
 
 
@@ -15401,17 +15430,29 @@ def _mz_shadow_oos_stats(ledger: list) -> dict:
     n < 20 時仍回統計但 `"enough": False` —— **不足就明說不足**,
     不是靜默回空讓人以為沒跑。
     """
+    # 批#75(第七輪 P1-1):**只採當代 MZ 規則的樣本。**
+    # 原本完全沒有版本過濾 —— 改了收縮公式之後,新舊兩代的 shadow 列會混在
+    # 同一個 MAE 與配對 t 裡算,而那條 t 正是「要不要把影子轉正」的判準。
+    # 舊列(批#75 之前)沒有 `mz_rule` 欄位;它們是**當時的**規則產生的,
+    # 而當時的規則就是現在這一版(delta + HAC),所以視為當代 —— 這是刻意的
+    # 相容,不是漏判:日後真的改公式時,新列會帶新版本號而舊列仍是舊的,
+    # 屆時舊列自然被排除。
+    current = _MZ_RULE_VERSION
     done = [e for e in ledger or []
             if isinstance(e, dict) and e.get("type") == "mz_shadow"
             and e.get("resolved") is not None and not e.get("void")
             and isinstance(e.get("err_raw"), (int, float))
-            and isinstance(e.get("err_shadow"), (int, float))]
+            and isinstance(e.get("err_shadow"), (int, float))
+            and str(e.get("mz_rule") or current) == current]
     if not done:
-        return {"n": 0, "enough": False}
+        return {"n": 0, "enough": False, "mz_rule": current}
     diffs = [float(e["err_raw"]) - float(e["err_shadow"]) for e in done]
     n = len(diffs)
     mean = sum(diffs) / n
     out = {"n": n, "enough": n >= 20,
+           # 統計屬於**哪一版規則**必須跟著輸出走 —— 只寫在無樣本的那條分支
+           # 等於在有樣本時反而看不到(自測抓到)。
+           "mz_rule": current,
            "mae_raw": round(sum(float(e["err_raw"]) for e in done) / n, 3),
            "mae_shadow": round(sum(float(e["err_shadow"]) for e in done) / n, 3),
            "better": sum(1 for d in diffs if d > 1e-9),
@@ -15609,8 +15650,11 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                  "target": str(target_session or ""), "threshold": threshold,
                  "pred_pct": round(pred_pct, 3), "prob": prob,
                  "sigma": round(sigma, 3), "sigma_n": n_sig, "base_rate": base,
-                 # 版本血統(五審 P1-4):混版本統計會讓新模型退步被舊成績掩蓋
+                 # 版本血統(五審 P1-4):混版本統計會讓新模型退步被舊成績掩蓋。
+                 # 批#75:`forecast_version` 只代表機率規則 —— 完整組合另存
+                 # `versions`,讓「哪一個元件變了」事後看得出來。
                  "forecast_version": _FORECAST_VERSION,
+                 "versions": model_versions(),
                  "git_sha": os.environ.get("GITHUB_SHA", "")[:12]}
         ledger = [e for e in ledger
                   if not (e.get("question") == question
@@ -15632,6 +15676,9 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                     "a": mz_shadow.get("a"), "b": mz_shadow.get("b"),
                     "n_train": mz_shadow.get("n"),
                     "forecast_version": _FORECAST_VERSION,
+                    # 批#75:MZ 規則版本必須逐列記,否則改公式後新舊樣本混算
+                    "mz_rule": _MZ_RULE_VERSION,
+                    "versions": model_versions(),
                     "git_sha": os.environ.get("GITHUB_SHA", "")[:12]}
         ledger = [e for e in ledger
                   if not (e.get("type") == "mz_shadow"
@@ -15649,6 +15696,18 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
               if _is_question_row(e)
               and e.get("resolved") is not None and not e.get("void")
               and e.get("forecast_version") == _FORECAST_VERSION][-30:]
+    # 批#75(第七輪 P1-1):`forecast_version` 只鎖住機率規則,而樣本可能橫跨
+    # 不同的**點預測模型**世代(生產帳本實測:18 筆題橫跨 9 個 git SHA,
+    # 全部標同一個 prob-v2)。這裡不改過濾條件(那會在點模型每次微調時清空
+    # 統計、比混算更糟),但把「混了哪些元件版本」明確列出來 ——
+    # 靜默混算與誠實揭露的差別。
+    _mixed = {}
+    for _k in ("point_model", "mz_rule", "event_schema"):
+        _vals = {str((e.get("versions") or {}).get(_k))
+                 for e in recent if e.get("versions")}
+        _vals.discard("None")
+        if len(_vals) > 1:
+            _mixed[_k] = sorted(_vals)
     stats = {}
     if recent:
         by_q: dict = {}
@@ -15671,6 +15730,8 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
                      e.get("brier_model", 0.25) for e in recent), 4),
                  "brier_base": round(statistics.mean(
                      e.get("brier_base", 0.25) for e in recent), 4)}
+    if stats and _mixed:
+        stats["mixed_versions"] = _mixed
     return {"resolved": resolved_today, "today": today_qs, "stats": stats,
             "mz_shadow": _mz_shadow_oos_stats(ledger)}
 

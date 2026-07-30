@@ -3564,3 +3564,72 @@ def test_new_top5_rows_are_versioned_at_creation():
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     row = next(e for e in stored if e.get("type") == "top5")
     assert row["ledger_schema_version"] == mr.TOP5_LEDGER_SCHEMA_VERSION
+
+
+def test_mz_oos_stats_only_use_the_current_shrink_rule():
+    """第七輪 P1-1(最具體的實害):`_mz_shadow_oos_stats` 原本**完全沒有版本
+    過濾** —— 改了收縮公式之後,新舊兩代的 shadow 列會混在同一個 MAE 與配對 t
+    裡算,而那條 t 正是「要不要把影子模式轉正」的判準,混了完全無聲。
+    """
+    cur = mr._MZ_RULE_VERSION
+    ledger = (
+        [{"type": "mz_shadow", "resolved": "2026-07-30", "mz_rule": cur,
+          "err_raw": 12.0, "err_shadow": 10.0} for _ in range(4)]
+        + [{"type": "mz_shadow", "resolved": "2026-07-30",
+            "mz_rule": "some-old-rule",
+            "err_raw": 99.0, "err_shadow": 1.0} for _ in range(6)]
+    )
+    out = mr._mz_shadow_oos_stats(ledger)
+    assert out["n"] == 4, f"混進了舊規則的樣本:n={out['n']}"
+    assert out["mae_raw"] == 12.0 and out["mae_shadow"] == 10.0
+    assert out["mz_rule"] == cur
+    # 沒有 mz_rule 欄位的舊列視為當代(刻意相容:它們就是這一版產生的)
+    legacy = [{"type": "mz_shadow", "resolved": "2026-07-30",
+               "err_raw": 12.0, "err_shadow": 10.0}]
+    assert mr._mz_shadow_oos_stats(legacy)["n"] == 1
+
+
+def test_ledger_rows_record_the_full_version_combination():
+    """生產帳本實測:18 筆機率題橫跨 **9 個不同 git SHA**,全部標著同一個
+    `prob-v2` —— 而它只代表機率換算規則,不代表點預測模型、特徵集、bias 修正
+    或 MZ 規則。用單一字串包住所有變更,等於把不同模型世代的成績混在一起。"""
+    import datetime as dt
+    import json as _json
+    preds = {"mid": 2323.2, "last_2330": 2290.0}
+    mz = {"applied": True, "n": 49, "raw": 2323.2, "shadow": 2312.5}
+    now = dt.datetime(2026, 7, 20, 6, 0, tzinfo=mr.TPE)
+    mr.update_forecast_ledger([], preds, {}, now, "2026-07-20", mz_shadow=mz)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    for row in stored:
+        v = row.get("versions") or {}
+        assert v.get("point_model") == mr.MODEL_VERSION, row.get("type")
+        assert v.get("mz_rule") == mr._MZ_RULE_VERSION
+        assert v.get("event_schema") == mr.EVENT_SCHEMA_VERSION
+    mzrow = next(r for r in stored if r.get("type") == "mz_shadow")
+    assert mzrow["mz_rule"] == mr._MZ_RULE_VERSION
+
+
+def test_mixed_point_model_versions_are_surfaced_not_hidden():
+    """不改過濾條件(那會在點模型每次微調時清空統計、比混算更糟),
+    但「混了哪些元件版本」必須明確列出來 —— 靜默混算與誠實揭露的差別。"""
+    import datetime as dt
+    import json as _json
+    rows = []
+    for i, pm in enumerate(("model-a", "model-a", "model-b")):
+        rows.append({"question": "2330_open_up", "label": "x",
+                     "created": "2026-07-1%d" % i,
+                     "target": "2026-07-1%d" % i, "threshold": 100.0,
+                     "prob": 0.6, "base_rate": 0.5, "pred_pct": 1.0,
+                     "resolved": "2026-07-2%d" % i, "outcome": True,
+                     "brier_model": 0.16, "brier_base": 0.25,
+                     "forecast_version": mr._FORECAST_VERSION,
+                     "versions": {"point_model": pm,
+                                  "mz_rule": mr._MZ_RULE_VERSION,
+                                  "event_schema": mr.EVENT_SCHEMA_VERSION}})
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps(rows), encoding="utf-8")
+    out = mr.update_forecast_ledger(
+        [], {}, {}, dt.datetime(2026, 7, 25, 10, 0, tzinfo=mr.TPE),
+        "2026-07-25")
+    mixed = (out["stats"] or {}).get("mixed_versions") or {}
+    assert mixed.get("point_model") == ["model-a", "model-b"]
+    assert "mz_rule" not in mixed, "同一版本不該被列為混版"

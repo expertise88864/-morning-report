@@ -356,3 +356,24 @@ def test_no_workflow_overrides_state_root():
     assert not offenders, (
         "workflow 設定了 STATE_ROOT,但 `git add state/…` 仍硬寫舊路徑:\n  "
         + "\n  ".join(offenders))
+
+
+def test_state_schema_contract_has_a_daily_trigger():
+    """r1(Codex,P1):**契約需要每日觸發點。**
+
+    `tests/test_state_schema_contract.py` 原本只由 pytest 跑,而 pytest 只在
+    push/PR 觸發;每日的 state commit 帶 `[skip ci]`,所以今天寫壞的 state 要等到
+    下一次有人 push 程式碼才可能被發現 —— 期間損毀資料會直接餵給後續晨報。
+
+    這條釘住:每日 workflow 必須在跑完晨報之後執行那組契約。
+    (放在寄信之後,所以契約失敗不影響「晨報不可斷」;失敗會讓 job 變紅,
+     既有的 alert-on-failure job 據此發告警信。)
+    """
+    from pathlib import Path
+    text = Path(".github/workflows/morning-report.yml").read_text(encoding="utf-8")
+    assert "tests/test_state_schema_contract.py" in text, \
+        "每日 workflow 沒有執行 state schema 契約 —— 它只會在有人 push 時被跑到"
+    # 必須在跑完晨報**之後**(信已寄出),否則契約失敗會擋掉當天的信
+    assert text.index("python morning_report.py") < \
+        text.index("tests/test_state_schema_contract.py"), \
+        "契約排在晨報之前 —— 失敗會擋掉當天的信,違反「晨報不可斷」"

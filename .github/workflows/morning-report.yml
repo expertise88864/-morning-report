@@ -108,6 +108,20 @@ jobs:
           TZ: Asia/Taipei
         run: python morning_report.py
 
+      # 批#77 r1(Codex,P1):**已落地 state 的 schema 契約需要每日觸發點。**
+      # 那組契約原本只由 pytest 跑,而 pytest 只在 push/PR 觸發;
+      # 每日的 state commit 帶 `[skip ci]`,所以今天寫壞的 state 要等到下一次
+      # 有人 push 程式碼才可能被發現 —— 期間損毀資料會直接餵給後續晨報。
+      #
+      # 放在寄信**之後**:此時信已寄出,不違反「晨報不可斷」;契約失敗會讓
+      # 這個 job 變紅,既有的 alert-on-failure job 會據此發告警信。
+      # `continue-on-error: false`(預設)是刻意的 —— 靜默通過的契約等於沒有契約。
+      - name: 驗證落地 state 的 schema 契約
+        if: ${{ always() && !cancelled() }}
+        env:
+          TZ: Asia/Taipei
+        run: python -m pytest tests/test_state_schema_contract.py -q
+
   # 批#32 r1(Codex F1):告警必須是**獨立 job**。原本放在 send-report 的最後一步,
   # 但 job 撞 timeout-minutes: 25 被 GitHub 終止時,整個 job(含後續步驟)一起被殺
   # ——恰好是最該告警的那種失敗完全不會通知。改用 needs + always() 另起一個 job。

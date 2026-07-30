@@ -154,7 +154,14 @@ def test_forecast_ledger_rows_are_internally_consistent():
             if e.get("resolved") and not e.get("void"):
                 assert isinstance(e.get("actual"), (int, float))
         elif e.get("question"):
-            assert 0.0 <= float(e.get("prob", 0.5)) <= 1.0
+            # r1(Codex,P2):**不得用預設值。** 原本寫 `e.get("prob", 0.5)`,
+            # 那讓「欄位不見了」變成合法值 —— 契約掩蓋了它該抓的漂移。
+            # 而結算端在同一個地方也用 0.5 當預設,會產生**虛構的 Brier 分數**
+            # 並污染預測績效統計。缺欄位必須當場失敗。
+            prob = e.get("prob")
+            assert isinstance(prob, (int, float)) and not isinstance(prob, bool),                 f"機率題 {e.get('question')}/{e.get('target')} 缺 prob 或型別錯:{prob!r}"
+            assert prob == prob and abs(prob) != float("inf"), "prob 非有限數"
+            assert 0.0 <= float(prob) <= 1.0, f"prob 超出 [0,1]:{prob}"
             assert e.get("forecast_version"), "機率題缺版本血統"
 
 

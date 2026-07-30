@@ -776,7 +776,12 @@ _LLM_EVENT_TYPES = {"guidance_raise", "guidance_cut", "orders", "earnings",
 # 直接刪掉欄位會讓事件退回「七天前」的預設值,新鮮度反而更失真。
 _LLM_EVENT_FIELDS = frozenset({
     "entity", "event_type", "direction", "confidence",
-    "lifecycle", "title", "summary", "published"})
+    "lifecycle", "title", "summary", "published",
+    # 批#76(第七輪 P1-3):**來源項 ID**。這是把 provenance 收回 Python 的鑰匙
+    # ——有了它,`published` / `source_grade` / 交叉驗證都可以由 Python 從
+    # 來源項直接取,不必再依賴模型抄錄標題後由我們反查(標題稍微改寫或多筆
+    # 同標題時,反查就失效,而失效是靜默的:模型自報的時間會被留下來)。
+    "source_item_ids"})
 _LLM_LIFECYCLES = frozenset({"rumor", "confirmed", "implemented", "withdrawn"})
 # LLM 二手抽取的自報信心上限=一般媒體項的預設信心(0.65):不得高於一手媒體、
 # 更不得逼近官方(0.90)。
@@ -807,6 +812,16 @@ def _validate_llm_events(events: list) -> tuple[list, int]:
                 and isinstance(entity, (str, type(None)))):
             clean = {k: v for k, v in ev.items() if k in _LLM_EVENT_FIELDS}
             clean["direction"] = direction   # 正規化為 int(1.0 → 1)
+            # 批#76:`source_item_ids` 只收「看起來像本次 payload 發出的 ID」
+            # 的短字串清單。它是 provenance 的依據,不能讓模型塞任意內容
+            # (下游會拿它去查表;查不到就當作沒給,不會憑空造出來源)。
+            ids = clean.get("source_item_ids")
+            if isinstance(ids, str):
+                ids = [ids]
+            if isinstance(ids, (list, tuple)):
+                ids = [str(x)[:16] for x in ids
+                       if isinstance(x, (str, int)) and str(x).strip()][:6]
+            clean["source_item_ids"] = ids or []
             if str(clean.get("lifecycle") or "") not in _LLM_LIFECYCLES:
                 clean.pop("lifecycle", None)
             try:

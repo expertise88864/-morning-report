@@ -9019,6 +9019,13 @@ def extract_structured_events(news: list[dict],
             # 外部素材無法自行填入(_process_feed_item 只在追蹤工作項上設它)。
             "followup_key": str(item.get("followup_key") or "")[:120],
             "source_name": str(item.get("source_name") or "")[:40],
+            # 批#76(第七輪 P1-3):**provenance 必須傳到事件裡。**
+            # 自測抓到:`append()` 是逐欄位重建 dict 的,我在 item 上設的
+            # `provenance` 直接被丟掉 —— 於是「這則的時間到底是權威值還是
+            # 模型自報」在下游完全看不到,而那正是這一項要建立的東西。
+            "provenance": str(item.get("provenance") or "source_feed"),
+            "source_item_ids": [str(x)[:16] for x in
+                                (item.get("source_item_ids") or [])][:6],
             "age_hours": round(age_hours, 1),
             "freshness_weight": _freshness_weight(age_hours),
             "lifecycle": item.get("lifecycle"),
@@ -9074,10 +9081,17 @@ def extract_structured_events(news: list[dict],
     # 機制(標題唯一命中),刻意要求**唯一**:多筆同標題時寧可不覆寫,不亂猜。
     # 不直接把欄位從白名單刪掉:那會讓事件退回「七天前」的預設值,更失真。
     _published_by_title: dict[str, set] = {}
+    # 批#76(第七輪 P1-3):**以來源項 ID 為主的 provenance 索引。**
+    # 標題反查是後備:模型稍微改寫標題、或多筆同標題時它就失效,而失效是靜默的
+    # (模型自報的時間會被留下來,而 published 決定新鮮度權重、age_hours 與期別)。
+    _item_by_id: dict[str, dict] = {}
     for _src in (news or [], mops or []):
         for _it in _src:
             if not isinstance(_it, dict):
                 continue
+            _sid = str(_it.get("source_item_id") or "").strip()
+            if _sid:
+                _item_by_id.setdefault(_sid, _it)
             _t = _norm_title_key(_extractor_title(_it))
             _pub = str(_it.get("published") or "").strip()
             if _t and _pub:
@@ -9111,11 +9125,28 @@ def extract_structured_events(news: list[dict],
             item = dict(item, source="LLM extractor", source_grade="C")
             # 發布時間以來源項為準(標題唯一命中才覆寫)。模型抄錄日期出錯時,
             # 錯的不只是顯示——新鮮度權重、age_hours 與期別 bucket 全會跟著錯。
-            _pubs = _published_by_title.get(
-                _norm_title_key(str(item.get("title")
-                                    or item.get("headline") or "")))
-            if _pubs and len(_pubs) == 1:
-                item["published"] = next(iter(_pubs))
+            # 優先走 ID:模型回傳的 source_item_ids 命中本次 payload 時,
+            # published 直接取來源項的權威值(多筆命中時取最新的那一筆 ——
+            # 事件由多則報導共同支撐時,最新的那則才代表事件的當前時點)。
+            _sids = [str(x) for x in (item.get("source_item_ids") or [])]
+            _hits = [_item_by_id[x] for x in _sids if x in _item_by_id]
+            _pub_from_id = sorted(
+                (str(h.get("published") or "").strip() for h in _hits),
+                reverse=True)
+            _pub_from_id = [x for x in _pub_from_id if x]
+            if _pub_from_id:
+                item["published"] = _pub_from_id[0]
+                item["provenance"] = "source_item_id"
+            else:
+                # 後備:標題唯一命中(刻意要求唯一,多筆同標題寧可不覆寫)
+                _pubs = _published_by_title.get(
+                    _norm_title_key(str(item.get("title")
+                                        or item.get("headline") or "")))
+                if _pubs and len(_pubs) == 1:
+                    item["published"] = next(iter(_pubs))
+                    item["provenance"] = "title_match"
+                else:
+                    item["provenance"] = "llm_self_reported"
             _k = (str(item.get("entity") or item.get("code")
                       or item.get("company_label") or ""),
                   _norm_title_key(str(item.get("title")
@@ -11759,7 +11790,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 數值欄限定型別、published 必須可解析為日期,其餘字串一律過 sanitizer
     # 批#72:`subject_key` 是**內部身分欄位**(由標題推導),不是給 LLM 的證據。
     # 送進去只會佔 token 並誘導模型去解讀一串內部識別碼。
-    _EV_INTERNAL_FIELDS = ("subject_key",)
+    _EV_INTERNAL_FIELDS = ("subject_key", "source_item_ids", "provenance")
     _EV_NUM_FIELDS = ("direction", "surprise_score", "confidence",
                       "freshness_weight", "quality_score", "age_hours",
                       "lifecycle_weight", "corroboration_count")
@@ -12771,6 +12802,11 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         # 而 Python 端卻拿 2330 這種代號查表 → **覆寫在真實 LLM 路徑必然失效**。
         # 我上一輪的測試手工把 LLM entity 寫成 2330,繞過了真正的 payload。
         "code": _external_text(item.get("code") or item.get("company_label"), 12),
+        # 批#76(第七輪 P1-3):**穩定的來源項 ID**。模型回傳它之後,
+        # `published` 等事實欄位就由 Python 依 ID 直接取,不必再靠「標題唯一命中」
+        # 反查 —— 那條反查在模型稍微改寫標題或多筆同標題時會失效,
+        # 而失效是靜默的(模型自報的時間會被留下來)。
+        "source_item_id": f"n{_idx}",
         "published": _external_text(item.get("published"), 32),
         "title": _extractor_title(item),
         "summary": _external_text(item.get("fulltext") or item.get("summary"), 360),
@@ -12785,7 +12821,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                             for k in (item.get("cnyes_keywords") or [])[:8]],
         "editor_stock_codes": [_external_text(c, 10)
                                for c in (item.get("cnyes_stocks") or [])[:6]],
-    } for item in ranked_items[:35]]
+    } for _idx, item in enumerate(ranked_items[:35])]
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
         # 批#71:**不要再索取一律被丟棄的欄位**。批#68 把 `surprise_score` 移出
@@ -12794,7 +12830,10 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         # 白花 token(而 token 上限正是這條路徑沒有產出的原因),
         # 以及叫模型做一件我們明知會忽略的事。
         "30 objects. Each object must have entity, event_type, direction, confidence, "
-        "lifecycle, title, published. direction is -1, 0, or 1. Use only supplied evidence. "
+        "lifecycle, title, and source_item_ids. source_item_ids is the list of "
+        "source_item_id values (e.g. [\"n3\",\"n17\"]) of the supplied items the event "
+        "is extracted from; copy them verbatim and do not invent ids. "
+        "direction is -1, 0, or 1. Use only supplied evidence. "
         "Prefer official disclosures over media rewrites. Merge duplicates. "
         "lifecycle must be rumor, confirmed, implemented, or withdrawn. "
         "Allowed event_type: guidance_raise, guidance_cut, orders, earnings, "
@@ -12855,6 +12894,16 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
             1 for e in merged
             if e.get("source") != "LLM extractor"
             and "LLM extractor" in (e.get("sources") or []))
+        # 批#76:**有多少則的時間是模型自報的**,必須看得見。
+        # provenance=llm_self_reported 表示 ID 與標題都沒對上 —— 那則的
+        # published 是模型講的,而它決定新鮮度權重、age_hours 與期別 bucket。
+        _by_prov: dict = {}
+        for _e in merged:
+            if _e.get("source") != "LLM extractor":
+                continue
+            _k = str(_e.get("provenance") or "")
+            _by_prov[_k] = _by_prov.get(_k, 0) + 1
+        _stat["provenance"] = _by_prov
         _stat["outcome"] = "ok"
         return merged
     except Exception as e:

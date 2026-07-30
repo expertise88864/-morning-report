@@ -2123,7 +2123,12 @@ def test_extractor_prompt_does_not_ask_for_discarded_fields():
                    and "Each object must have" in n.value), None)
     assert schema, "找不到 prompt 的欄位清單"
     assert "surprise_score" not in schema, "prompt 仍索取已被剝除的欄位"
-    assert "source" not in schema, "prompt 仍索取已被強制覆寫的欄位"
+    # 批#76:改用**詞界**比對。原本是子字串檢查,而新增的合法欄位
+    # `source_item_ids` 含有 "source" —— 子字串斷言在那時才暴露出它一直太鬆
+    # (它本來也擋不住 `source_grade` 之類的變體)。
+    import re as _re
+    assert not _re.search(r"source", schema),         "prompt 仍索取已被強制覆寫的 source 欄位"
+    assert "source_item_ids" in schema, "prompt 沒有要求回傳來源項 ID"
 
 
 # ---------- 批#72(第七輪 P0-1):Event Identity v3 ----------
@@ -2383,3 +2388,75 @@ def test_extraction_alias_map_is_wired_at_both_call_sites():
     for c in calls:
         assert any(kw.arg == "known_names" for kw in c.keywords), \
             f"{ast.unparse(c.func)} 沒傳 known_names"
+
+
+def test_published_comes_from_source_item_ids_even_when_the_title_drifts():
+    """第七輪 P1-3:`published` 原本只在「標題唯一命中」時才由來源項覆寫 ——
+    模型稍微改寫標題、或有多筆同標題時反查就失效,而失效是**靜默的**:
+    模型自報的時間會被留下來,而它決定新鮮度權重、age_hours 與期別 bucket。
+
+    改為以來源項 ID 為主(payload 每筆帶 `source_item_id`,模型回傳
+    `source_item_ids`),標題反查降為後備。
+    """
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    news = [{"source_item_id": "n0", "title": "台積電獲輝達追加訂單",
+             "source": "經濟日報財經", "entity": "2330",
+             "event_type": "orders", "direction": 1,
+             "published": "2026-07-30T01:00:00+00:00"},
+            {"source_item_id": "n1", "title": "台積電獲輝達追加訂單",
+             "source": "中央社財經", "entity": "2330",
+             "event_type": "orders", "direction": 1,
+             "published": "2026-07-30T05:00:00+00:00"}]
+    base = {"title": "台積電確認接獲輝達追加訂單",   # 標題被改寫 → 反查會失效
+            "entity": "3231", "event_type": "orders", "direction": 1,
+            "summary": "x", "confidence": 0.6,
+            "published": "2026-01-05T00:00:00+00:00"}   # 模型自報,錯半年
+
+    def _llm(ids):
+        return mr.extract_structured_events(
+            news, [], [dict(base, source_item_ids=ids)], now)
+
+    hit = [e for e in _llm(["n0", "n1"]) if e["source"] == "LLM extractor"][0]
+    # 多筆命中取**最新**的那一筆(事件由多則報導共同支撐時,最新的才代表當前時點)
+    assert hit["published"].startswith("2026-07-30T05:00")
+    assert hit["provenance"] == "source_item_id"
+    assert hit["age_hours"] < 48
+
+    miss = [e for e in _llm([]) if e["source"] == "LLM extractor"][0]
+    # 沒有 ID、標題也對不上 → 誠實標記為模型自報,不假裝有權威來源
+    assert miss["published"].startswith("2026-01-05")
+    assert miss["provenance"] == "llm_self_reported"
+
+
+def test_provenance_is_carried_into_the_event_and_counted():
+    """自測抓到:`append()` 是逐欄位重建 dict 的,我在 item 上設的 `provenance`
+    直接被丟掉 —— 於是「這則的時間到底是權威值還是模型自報」在下游完全看不到,
+    而那正是這一項要建立的東西。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    out = mr.extract_structured_events(
+        [{"source_item_id": "n0", "title": "台積電獲輝達追加訂單",
+          "source": "經濟日報財經", "entity": "2330", "event_type": "orders",
+          "direction": 1, "published": "2026-07-30T01:00:00+00:00"}], [], None,
+        now)
+    # 確定性路徑的事件也要有 provenance(來自 feed 本身)
+    assert out[0]["provenance"] == "source_feed"
+
+
+def test_source_item_ids_are_sanitised_not_trusted():
+    """`source_item_ids` 是下游查表的依據,不能讓模型塞任意內容。
+    非字串元素剔除、長度截斷、上限 6 筆;查不到的 ID 就當作沒給
+    (不會憑空造出來源)。"""
+    import news_events as ne
+    valid, dropped = ne._validate_llm_events([{
+        "entity": "2330", "event_type": "orders", "direction": 1,
+        "title": "x", "source_item_ids": [{"evil": 1}, "n9", "n" * 40] + ["n1"] * 9}])
+    assert dropped == 0
+    ids = valid[0]["source_item_ids"]
+    assert len(ids) <= 6 and all(isinstance(i, str) and len(i) <= 16 for i in ids)
+    assert "n9" in ids
+    # 字串也接受(模型常回單一 id 而非清單)
+    assert ne._validate_llm_events([{
+        "entity": "2330", "event_type": "orders", "direction": 1,
+        "title": "y", "source_item_ids": "n3"}])[0][0]["source_item_ids"] == ["n3"]

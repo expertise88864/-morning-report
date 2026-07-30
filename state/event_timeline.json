@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 41,
-  "last_seen": "2026-07-30",
-  "latest_title": "4500英里外的美伊戰爭，如何嚴重打擊亞洲數億人的餐桌、電力與生計？ - thenewslens.com"
+  "days": 42,
+  "last_seen": "2026-07-31",
+  "latest_title": "中東戰爭推升油價 IEA：第二季全球電動車銷量暴增35% - 民視新聞網"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 27,
-  "last_seen": "2026-07-30",
-  "latest_title": "India's Adani reports loss on payment to US over alleged sanctions breach"
+  "days": 28,
+  "last_seen": "2026-07-31",
+  "latest_title": "晶片制裁悄悄出手？南非打壓台灣代價來了 數據揭驚人變化 - 自由財經"
  },
  "litigation:": {
   "first_seen": "2026-07-25",
@@ -17,16 +17,16 @@
   "last_seen": "2026-07-29",
   "latest_title": "諾和諾德因CagriSema臨床試驗面臨美國股東提起的訴訟 - TradingView"
  },
- "export_controls:META": {
-  "first_seen": "2026-07-27",
-  "days": 1,
-  "last_seen": "2026-07-27",
-  "latest_title": "Meta出招了！宣布FB將推「免費黑勾勾」真人驗證 制裁AI假帳號 - Yahoo新聞"
- },
  "export_controls:ASML": {
   "first_seen": "2026-07-28",
   "days": 2,
   "last_seen": "2026-07-29",
   "latest_title": "美制裁反噬？中國自製 DUV 曝光機量產，ASML 護城河遭市場重新定價 - inside.com.tw"
+ },
+ "geopolitical:AVGO": {
+  "first_seen": "2026-07-31",
+  "days": 1,
+  "last_seen": "2026-07-31",
+  "latest_title": "博通修補VMware三項重大漏洞，攻擊者恐繞過身分驗證，或在vCenter與ESX主機執行程式碼 - iThome"
  }
 }

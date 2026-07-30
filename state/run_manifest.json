@@ -1,37 +1,39 @@
 {
- "date": "2026-07-30 06:45",
- "total_seconds": 505.1,
+ "date": "2026-07-31 06:54",
+ "total_seconds": 572.6,
  "budget_seconds": 1140.0,
  "news_workers": 8,
- "degraded_steps": [],
+ "degraded_steps": [
+  "chips:source_date_mismatch"
+ ],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 5.8
+   "seconds": 13.9
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 160.5
+   "seconds": 166.3
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 14.1
+   "seconds": 8.4
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 137.8
+   "seconds": 137.0
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 112.7
+   "seconds": 145.5
   },
   {
    "label": "LLM 主分析",
-   "seconds": 70.8
+   "seconds": 98.6
   },
   {
    "label": "渲染",
-   "seconds": 3.5
+   "seconds": 2.7
   }
  ],
  "feeds": {
@@ -136,14 +138,14 @@
    "fail": 0
   }
  },
- "model_history_days": 218,
- "d1_samples": 2,
+ "model_history_days": 219,
+ "d1_samples": 3,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -7,
-  "llm_label": "偏空",
-  "py": -7,
-  "py_label": "偏空",
+  "llm": 1,
+  "llm_label": "中性",
+  "py": 1,
+  "py_label": "中性",
   "agree": true,
   "coverage": 1.0,
   "missing": [],
@@ -160,17 +162,17 @@
     "source": "model_history",
     "check": "fill_rate:taifex_top10_net",
     "severity": "warn",
-    "passed": false,
-    "detail": "`taifex_top10_net` 最近 30 筆只填了 3 筆(10%,低於 50%)——功能可能在生產環境從未真正產出",
-    "observed": 0.1
+    "passed": true,
+    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 27/30 筆,之後 3/4 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.75
    },
    {
     "source": "model_history",
     "check": "fill_rate:txo_pc_oi_ratio",
     "severity": "warn",
-    "passed": false,
-    "detail": "`txo_pc_oi_ratio` 最近 30 筆只填了 1 筆(3%,低於 50%)——功能可能在生產環境從未真正產出",
-    "observed": 0.033
+    "passed": true,
+    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 27/30 筆,之後 2/4 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.5
    },
    {
     "source": "model_history",
@@ -214,35 +216,28 @@
    }
   ],
   "errors": [],
-  "warnings": [
-   {
-    "source": "model_history",
-    "check": "fill_rate:taifex_top10_net",
-    "severity": "warn",
-    "passed": false,
-    "detail": "`taifex_top10_net` 最近 30 筆只填了 3 筆(10%,低於 50%)——功能可能在生產環境從未真正產出",
-    "observed": 0.1
-   },
-   {
-    "source": "model_history",
-    "check": "fill_rate:txo_pc_oi_ratio",
-    "severity": "warn",
-    "passed": false,
-    "detail": "`txo_pc_oi_ratio` 最近 30 筆只填了 1 筆(3%,低於 50%)——功能可能在生產環境從未真正產出",
-    "observed": 0.033
-   }
-  ],
+  "warnings": [],
   "checked": 7,
-  "failed": 2
+  "failed": 0
  },
  "mz_shadow": {
-  "n": 50,
+  "n": 51,
   "applied": true,
-  "a": 1.008,
-  "b": 0.6958,
-  "raw": 2147.29,
-  "shadow": 2164.33,
-  "delta": 17.04
+  "a": 1.054,
+  "b": 0.6951,
+  "raw": 2282.46,
+  "shadow": 2259.89,
+  "delta": -22.57,
+  "oos": {
+   "n": 1,
+   "enough": false,
+   "mz_rule": "delta-mz-hac-v1",
+   "mae_raw": 57.71,
+   "mae_shadow": 40.67,
+   "better": 1,
+   "worse": 0,
+   "mean_gain": 17.04
+  }
  },
  "llm_extractor": {
   "called": true,
@@ -252,6 +247,45 @@
   "dropped": 0,
   "retried": false,
   "outcome": "error:RuntimeError",
-  "error": "DeepSeek extractor 回應缺少 content"
+  "error": "DeepSeek extractor 回應缺少 content(finish_reason=length、completion_tokens=4000、有 reasoning_content=True、choices=1)"
+ },
+ "delivery": {
+  "attempted": true,
+  "success": true,
+  "run_kind": "schedule"
+ },
+ "capability_health": {
+  "fatal": [],
+  "inactive_capabilities": [
+   "llm_event_extractor"
+  ],
+  "warnings": []
+ },
+ "forecast_mixed_versions": null,
+ "exdiv_preview": {
+  "rows": 113,
+  "min_ex_date": "2026-07-29",
+  "max_ex_date": "2026-10-06",
+  "days_back": 2,
+  "days_forward": 67,
+  "lead_observed": 5,
+  "lead_censored": 0,
+  "lead_unmeasurable": 115,
+  "lead_min_days": 13,
+  "lead_short_count": 0
+ },
+ "corporate_actions": {
+  "rows": 1,
+  "min_halt_date": "2026-07-23",
+  "max_halt_date": "2026-07-23",
+  "days_back": 8,
+  "days_forward": -8
+ },
+ "chips": {
+  "session": "2026-07-30",
+  "large_source_date": "20260729",
+  "pcr_source_date": "20260729",
+  "large_matched": false,
+  "pcr_matched": false
  }
 }

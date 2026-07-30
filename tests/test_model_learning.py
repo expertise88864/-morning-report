@@ -4706,3 +4706,68 @@ def test_extractor_halves_the_input_when_the_budget_runs_out(monkeypatch):
         assert stat.get("retried") is True and stat.get("retry_items") == retry_items
     finally:
         mr._RUN_MANIFEST.pop("llm_extractor", None)
+
+
+def test_truncated_but_non_empty_content_is_still_truncation(monkeypatch):
+    """r1(Codex,P2):**`finish_reason` 要無條件檢查。**
+
+    模型先吐了一半 JSON 才用完額度時,`content` 是**非空但被截斷**的。
+    原本只在 content 為空時才看 `finish_reason`,於是這條路會:
+    解析失敗回 `[]` → `outcome` 記成 "ok" → 靜默沒有任何事件 →
+    **而且不觸發減量重試**。那正是這個功能一直以來的失敗形狀換了件衣服。
+    """
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"finish_reason": "length",
+                                 "message": {"content":
+                                             '[{"entity":"2330","event_typ'}}],
+                    "usage": {"completion_tokens": 16000}}
+
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _Resp())
+    with pytest.raises(mr.ExtractorOutputTruncated) as e:
+        mr._call_deepseek_extractor("x")
+    assert "content_len=" in str(e.value), "診斷要看得出吐了多少才斷"
+
+
+def test_strict_retry_reuses_the_reduced_prompt(monkeypatch):
+    """r1(Codex,P2):減量成功後若事件全數不合格,嚴格重試要沿用**減量後**的
+    prompt —— 用回原始滿載 prompt 等於重建剛把額度撐爆的條件,而且會讓
+    「成本上限 +1」的宣稱不成立(變成第三次呼叫仍在滿載)。
+    """
+    news = [{"title": f"台積電消息 {i}", "summary": "內容", "source": "測試",
+             "link": f"https://example.com/{i}",
+             "published": "2026-07-31T08:00:00+08:00"} for i in range(20)]
+    seen = []
+
+    def _fake(prompt):
+        seen.append(prompt)
+        if len(seen) == 1:
+            raise mr.ExtractorOutputTruncated("額度用完(測試)")
+        # 減量後解析得出來,但 event_type 不合法 → 觸發嚴格重試
+        return '[{"entity":"2330","event_type":"NOT_ALLOWED","direction":0,' \
+               '"confidence":0.9,"lifecycle":"confirmed","title":"x",' \
+               '"source_item_ids":["n0"]}]'
+
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _fake)
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    try:
+        mr.call_llm_event_extractor(news, [])
+        assert len(seen) == 3, f"應為 滿載→減量→嚴格,實際 {len(seen)} 次"
+        full = seen[0].count('"source_item_id"')
+        reduced = seen[1].count('"source_item_id"')
+        strict = seen[2].count('"source_item_id"')
+        assert reduced == max(1, full // 2)
+        assert strict == reduced, \
+            f"嚴格重試回頭用了滿載 prompt({strict} 則,應為 {reduced} 則)"
+        assert "STRICT REMINDER" in seen[2]
+    finally:
+        mr._RUN_MANIFEST.pop("llm_extractor", None)

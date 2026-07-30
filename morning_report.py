@@ -12814,22 +12814,25 @@ def _call_deepseek_extractor(prompt: str) -> str:
     choices = payload.get("choices") or []
     message = (choices[0].get("message") or {}) if choices else {}
     content = message.get("content")
+    # 可辨識的線索一併帶進錯誤訊息 —— 批#68 加診斷之前,這裡只留一句
+    # 「缺少 content」,查了好幾輪才從 run manifest 看出它每天都在發生。
+    finish = str((choices[0].get("finish_reason") if choices else "") or "?")
+    usage = payload.get("usage") or {}
+    detail = (f"(finish_reason={finish}、completion_tokens="
+              f"{usage.get('completion_tokens')}、有 reasoning_content="
+              f"{bool(message.get('reasoning_content'))}、"
+              f"choices={len(choices)}、content_len={len(content or '')})")
+    # r1(Codex,P2):**`finish_reason` 要無條件檢查,不能只在 content 空的時候看。**
+    # 模型先吐了一半 JSON 才用完額度時,`content` 是**非空但被截斷**的 ——
+    # `_parse_llm_event_json` 需要收尾的 `]`,於是回 `[]`、`outcome` 記成 "ok",
+    # 靜默地沒有任何事件,而且**不會觸發減量重試**。
+    # 那正是這個功能一直以來的失敗形狀(沉默歸零)換了一件衣服。
+    if finish == "length":
+        raise ExtractorOutputTruncated(
+            f"DeepSeek extractor 額度用完{detail}")
     if not content:
-        # 空 content 的原因不只一種(token 上限、reasoning 吃光額度、
-        # 內容過濾、模型回了別的欄位)。**把可辨識的線索一併帶進錯誤訊息**
-        # ——批#68 加診斷之前,這裡只留一句「缺少 content」,查了好幾輪才
-        # 從 run manifest 看出它每天都在發生。
-        finish = str((choices[0].get("finish_reason") if choices else "") or "?")
-        usage = payload.get("usage") or {}
-        has_reasoning = bool(message.get("reasoning_content"))
-        detail = (f"(finish_reason={finish}、completion_tokens="
-                  f"{usage.get('completion_tokens')}、有 reasoning_content="
-                  f"{has_reasoning}、choices={len(choices)})")
-        # 批#85:**額度用完**與**呼叫失敗**要分開 —— 前者減量重試有救,
-        # 後者(網路/認證/服務)重試同樣的東西沒有意義。
-        if str(finish) == "length":
-            raise ExtractorOutputTruncated(
-                f"DeepSeek extractor 額度用完仍未輸出內容{detail}")
+        # 空 content 的原因不只一種(內容過濾、模型回了別的欄位…),
+        # 但都不是「減量就有救」的那一類。
         raise RuntimeError(f"DeepSeek extractor 回應缺少 content{detail}")
     return content
 
@@ -12956,6 +12959,12 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
             json.dumps(compact_items, ensure_ascii=False, separators=(",", ":")),
             json.dumps(items, ensure_ascii=False, separators=(",", ":")), 1)
 
+    #: 實際成功的那份 prompt。r1(Codex,P2):**後續重試要沿用它,不能回頭用
+    #: 原始的滿載 prompt** —— 減量成功之後,若事件全數不合格而觸發嚴格重試,
+    #: 用回原 prompt 等於重建剛剛才把額度撐爆的條件,不但很可能再失敗,
+    #: 還會讓「成本上限 +1」的宣稱不成立(變成第三次呼叫)。
+    _effective = {"prompt": prompt}
+
     def _call_or_halve(p: str) -> str:
         """額度用完 → **把輸入減半**再試一次。
 
@@ -12972,7 +12981,8 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                   file=sys.stderr)
             _stat["retried"] = True
             _stat["retry_items"] = half
-            return _call(_prompt_for(compact_items[:half]))
+            _effective["prompt"] = _prompt_for(compact_items[:half])
+            return _call(_effective["prompt"])
 
     try:
         parsed = _parse_llm_event_json(_call_or_halve(prompt))
@@ -12985,8 +12995,11 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         if parsed and not valid:
             print("[llm-extractor] 全數不合格 → 重試一次", file=sys.stderr)
             _stat["retried"] = True
+            # r1(Codex,P2):用**實際成功的那份** prompt(可能已經減量過),
+            # 不是原始的滿載 prompt —— 否則會重建剛把額度撐爆的條件。
             valid = _validate_llm_events(_parse_llm_event_json(_call(
-                prompt + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
+                _effective["prompt"]
+                + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
                 "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
             _stat["valid"] = len(valid)
         merged = extract_structured_events(

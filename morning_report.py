@@ -100,6 +100,7 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _event_lifecycle,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_timeline_key,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_instance_id,
+    event_subject_key,
     same_event_title,
     apply_event_timeline,
     _event_study_dedupe_key,
@@ -8879,10 +8880,31 @@ def _safe_source_url(raw) -> str:
     return u
 
 
+def _tracked_name_map(tw0050) -> dict:
+    """代號 → 公司名。**單一定義**,事件抽取與線索帳本共用。
+
+    批#72:原本只有線索帳本那邊建這張表,而批#72 的對象指紋也需要同一份詞彙表。
+    複製一份是漂移的開始(本專案在「同一份判準寫兩遍」上已經栽過幾次),
+    所以抽成函式。
+
+    涵蓋**所有會進事件抽取器的追蹤實體**:台股 top-100 的中文名,以及
+    GOOGLE_NEWS_COMPANIES 的美股代號別名 —— 只建台股表的話,NVDA/AMD/AAPL
+    這些 entity 拿不到別名,英文標題裡的 NVIDIA/Apple 沒被辨識出來
+    (r6 Codex 在線索帳本那邊已記載過同一個問題)。
+    """
+    out = {str(s_.get("code")): str(s_.get("name") or "")
+           for s_ in (tw0050 or []) if s_.get("code")}
+    for _q, _lbl in GOOGLE_NEWS_COMPANIES:
+        if _lbl and not out.get(str(_lbl)):
+            out[str(_lbl)] = str(_q)
+    return out
+
+
 def extract_structured_events(news: list[dict],
                               mops: list[dict],
                               llm_events: Optional[list[dict]] = None,
-                              now: Optional[dt.datetime] = None) -> list[dict]:
+                              now: Optional[dt.datetime] = None,
+                              known_names: Optional[dict] = None) -> list[dict]:
     """Extract, merge and cluster events with official-source priority and decay."""
     now = now or dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None:
@@ -8933,6 +8955,13 @@ def extract_structured_events(news: list[dict],
             "freshness_weight": _freshness_weight(age_hours),
             "lifecycle": item.get("lifecycle"),
         }
+        # 批#72(第七輪 P0-1):**對象指紋在這裡算好存進事件**。
+        # 只有這裡拿得到公司名詞彙表(身分層拿不到),而它一旦存進 state 就
+        # 跨日穩定,身分層直接讀不必再算一次。
+        event["subject_key"] = event_subject_key(
+            title, event["entity"],
+            str((known_names or {}).get(event["entity"], "")),
+            tuple((known_names or {}).values()))
         event["surprise_score"] = _event_surprise_score(
             dict(event, surprise_score=item.get("surprise_score"), summary=item.get("summary")))
         # episodic instance ID(三審 P0-1:舊 cluster-key ID 讓不同季度財報永久同 ID,
@@ -11649,6 +11678,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 結構化事件序列化前全欄清理(五審 P1 + r3:JSON 包裝不是信任邊界,
     # 只清 title/summary 時注入文字仍可藏進 published/surprise_score 等欄):
     # 數值欄限定型別、published 必須可解析為日期,其餘字串一律過 sanitizer
+    # 批#72:`subject_key` 是**內部身分欄位**(由標題推導),不是給 LLM 的證據。
+    # 送進去只會佔 token 並誘導模型去解讀一串內部識別碼。
+    _EV_INTERNAL_FIELDS = ("subject_key",)
     _EV_NUM_FIELDS = ("direction", "surprise_score", "confidence",
                       "freshness_weight", "quality_score", "age_hours",
                       "lifecycle_weight", "corroboration_count")
@@ -11656,6 +11688,8 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     def _sanitize_event_for_prompt(ev: dict) -> dict:
         out: dict = {}
         for k, v in ev.items():
+            if k in _EV_INTERNAL_FIELDS:
+                continue
             if k == "published":
                 try:
                     dt.datetime.fromisoformat(str(v).replace("Z", "+00:00"))
@@ -12609,9 +12643,11 @@ def _call_deepseek_extractor(prompt: str) -> str:
     return content
 
 
-def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
+def call_llm_event_extractor(news: list[dict], mops: list[dict],
+                             known_names: Optional[dict] = None) -> list[dict]:
     """Run one bounded extractor call, then merge its output with deterministic events."""
-    deterministic = extract_structured_events(news, mops)
+    deterministic = extract_structured_events(news, mops,
+                                              known_names=known_names)
     if os.environ.get("LLM_EVENT_EXTRACTION", "1") != "1":
         return deterministic
     if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
@@ -12726,7 +12762,8 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
                 prompt + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
                 "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
             _stat["valid"] = len(valid)
-        merged = extract_structured_events(news, mops, llm_events=valid)
+        merged = extract_structured_events(news, mops, llm_events=valid,
+                                           known_names=known_names)
         # 真正要看的是「有幾則**以 LLM 版勝出**」。r1(Codex,P2):我原本數的是
         # `"LLM extractor" in sources`,但聚合時確定性版本勝出後仍會保留輸家的
         # source 進 `sources` —— 於是「被吃掉」反而被計成存活,指標在它唯一
@@ -20751,9 +20788,12 @@ def main() -> int:
     # (Codex review;違反計分凍結)。(P0-2)
     if _run_budget_ok(260, "LLM 新聞事件抽取(豐富化)"):
         print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
-        _events = call_llm_event_extractor(news, tw_mops)
+        _events = call_llm_event_extractor(news, tw_mops,
+                                           known_names=_tracked_name_map(tw0050))
     else:
-        _events = extract_structured_events(news, tw_mops)   # 確定性 baseline,無 LLM/網路
+        # 確定性 baseline,無 LLM/網路
+        _events = extract_structured_events(
+            news, tw_mops, known_names=_tracked_name_map(tw0050))
     structured_events = apply_event_timeline(model_history, _events)
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     # 批#44:把今日事件併入線索帳本。狀態機轉移由 Python 決定(比照 PR-2 的
@@ -20768,11 +20808,7 @@ def main() -> int:
         # NVDA/AMD/AAPL 這些 entity 拿不到別名,英文標題裡的 NVIDIA/Apple 沒被剝掉,
         # 同月不同事件仍可能拿到錯誤前情)。查詢字串本身就帶中英文公司名
         # (如「輝達 NVIDIA」「蘋果 Apple」),直接拿來當別名來源。
-        _name_map = {str(s_.get("code")): str(s_.get("name") or "")
-                     for s_ in (tw0050 or []) if s_.get("code")}
-        for _q, _lbl in GOOGLE_NEWS_COMPANIES:
-            if _lbl and not _name_map.get(str(_lbl)):
-                _name_map[str(_lbl)] = str(_q)
+        _name_map = _tracked_name_map(tw0050)
         _ledger = _sl.update_ledger(_ledger, structured_events,
                                     now_tpe.strftime("%Y-%m-%d"),
                                     name_map=_name_map)

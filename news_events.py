@@ -347,6 +347,81 @@ def _event_period_bucket(event: dict, monthly: bool) -> str:
     return f"{d.year}Q{(d.month - 1) // 3 + 1}"
 
 
+#: 不具辨識力的英文詞:留著會讓兩件不同的事看起來像同一件
+_SUBJECT_LATIN_STOP = {
+    "THE", "AND", "FOR", "NEW", "INC", "CORP", "LTD", "CO", "AI", "ETF",
+    "US", "CEO", "CFO", "IPO", "EPS", "USD", "TWD", "GDP", "CPI", "PCE",
+    "ADR", "OEM", "ODM", "IDC", "API", "NEWS",
+}
+_SUBJECT_LATIN_RE = _re_module.compile(r"[A-Za-z][A-Za-z0-9]{2,}")
+#: 製程節點/規格(2奈米、3nm、HBM3E):它們是事件的**對象**,鑑別力很高
+_SUBJECT_SPEC_RE = _re_module.compile(r"\d+\s*(?:奈米|nm|吋|GW|MW)", _re_module.I)
+
+
+def event_subject_key(title: str, entity: str = "", entity_name: str = "",
+                      known_names=()) -> str:
+    """事件的**對象指紋**:標題裡除了自己之外的可辨識主體。
+
+    批#72(第七輪 P0-1 錯誤A)。實測問題:台積電 7/05「獲蘋果2奈米大單」與
+    7/25「獲輝達CoWoS追加訂單」共用 `timeline_key ('2330','orders|2026-07')`
+    與同一個 `event_id`,於是第二張真訂單的 `lifecycle_weight` 被歸零
+    (`is_incremental=False`)—— 批#64 只修了跑內聚合,生命週期層仍然塌掉。
+
+    這裡刻意用**確定性的 token 集合**而不是相似度比對:身分必須可重現,
+    而且同一事件的 rumor→confirmed→implemented 三種標題寫法不同,
+    相似度會飄、token 集合(交易對手/規格)不會。
+      「台積電獲蘋果2奈米大單」    → apple 系 + 2奈米
+      「台積電確認蘋果2奈米訂單」  → 同上(接得起來)
+      「台積電獲輝達CoWoS追加訂單」→ 輝達 + cowos(分得開)
+
+    取不到對象時回空字串 —— 那時退回原本的月 bucket 行為(誠實的降級:
+    沒有可辨識對象的事件本來就無法區分)。
+    """
+    text = str(title or "")
+    if not text:
+        return ""
+    mine = {str(x).strip().lower() for x in (entity, entity_name) if str(x).strip()}
+    tokens = set()
+    # 詞彙表的值可能是**多 token 的查詢字串**(GOOGLE_NEWS_COMPANIES 的
+    # 「輝達 NVIDIA」「蘋果 Apple」),必須逐 token 比對。
+    # 自測抓到:第一版把整串當單一 token,於是所有美股別名都比不中,
+    # 英文/中英混寫的標題完全取不到對象 —— 與批#71 的 `_8K_QUERY_BY_TICKER`
+    # 是同一個坑(那邊已經處理過,這裡又犯了一次)。
+    candidates = []
+    for raw in known_names or ():
+        for piece in str(raw or "").split():
+            candidates.append(piece)
+    for raw in candidates:
+        nm = str(raw or "").strip()
+        if len(nm) < 2 or nm.lower() in mine or nm.isdigit():
+            continue
+        if any("一" <= ch <= "鿿" for ch in nm):
+            if nm in text:
+                tokens.add(nm.lower())
+            continue
+        if _re_module.search(
+                rf"(?<![A-Za-z0-9]){_re_module.escape(nm)}(?![A-Za-z0-9])",
+                text, _re_module.I):
+            tokens.add(nm.lower())
+    # 拉丁字母只收**專有名詞/型號**,不收普通字詞。自測抓到:原本什麼都收,
+    # 「TSMC wins Apple 2nm order」的指紋是 `2nm,apple,order,tsmc,wins` ——
+    # 換個動詞(secures/lands)指紋就變了,身分完全不穩,而身分必須可重現。
+    # 判準:全大寫(HBM、ABF)或**內部**有大寫(CoWoS、HBM3E)才算型號/縮寫;
+    # 普通首字大寫的英文詞(Apple、Order)只有出現在詞彙表裡才採信(上面那圈)。
+    for m in _SUBJECT_LATIN_RE.findall(text):
+        up = m.upper()
+        if up in _SUBJECT_LATIN_STOP or up.lower() in mine:
+            continue
+        if not (m.isupper() or any(ch.isupper() for ch in m[1:])):
+            continue
+        tokens.add(up.lower())
+    for m in _SUBJECT_SPEC_RE.findall(text):
+        tokens.add(_re_module.sub(r"\s+", "", m).lower())
+    if not tokens:
+        return ""
+    return ",".join(sorted(tokens))[:60]
+
+
 def _event_timeline_key(event: dict) -> tuple[str, str]:
     """Use a stable lineage key across rumor, confirmation and implementation coverage.
 
@@ -374,6 +449,25 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
         # 的 confirmed 被判「無進展」權重歸零(GPT-5.6 三審 P0-2)。不用「日」bucket——
         # rumor→confirmed 常跨數日,日 bucket 會把同一事件的生命週期切斷。
         # 代價:同公司同月兩件同型別事件仍共 lineage(寧可少計,不灌水)。
+        # 批#72(第七輪 P0-1 錯誤A):**有可辨識對象時用對象,不用月份。**
+        # 月 bucket 有兩個相反的毛病,實測都會發生:
+        #   (a) 同公司**同月**兩件不同事件共用 lineage → 第二件真事件的
+        #       lifecycle_weight 被歸零(台積電 7/05 蘋果單 vs 7/25 輝達單)
+        #   (b) 同一樁事情**跨月**被切成兩集 → rumor 在七月、confirmed 在八月
+        #       就接不起來(舊註解已記載這個代價)
+        # 對象指紋同時解掉兩邊:它在同一事件的 rumor→confirmed→implemented
+        # 之間穩定,在兩件不同事件之間相異,而且是**確定性**的(見
+        # `event_subject_key` 說明:身分不能靠相似度)。
+        # 取不到對象時退回月 bucket —— 誠實的降級,行為與改動前完全相同。
+        subject = str(event.get("subject_key") or "")
+        if subject:
+            # **年份仍然要留。** 拿掉月份是為了讓同一樁事情跨月接得起來,
+            # 但完全不帶時間會讓「每年同一批產能訂單」永久共用 lineage
+            # ——第二年的真訂單會再次被判為無進展而歸零,等於把同一個 bug
+            # 推到一年後。年界的代價只是「跨年的同一樁事情被切成兩集」
+            # (多算一次),方向上比「少算一次真事件」安全。
+            year = _event_period_bucket(event, monthly=True)[:4]
+            return entity, f"{event_type}|s:{subject}|{year}"
         bucket = _event_period_bucket(event, monthly=True)
     if bucket:
         return entity, f"{event_type}|{bucket}"
@@ -390,8 +484,15 @@ def _event_instance_id(event: dict) -> str:
     再加 direction:同一事件跨來源同 ID(可去重)、不同季/月/主體不同 ID(不互吞)。"""
     import hashlib
     ident, type_key = _event_timeline_key(event)
-    raw = "|".join((ident, type_key,
-                    str(int(_safe_number(event.get("direction"))))))
+    # 批#72(第七輪 P0-1 錯誤B):**direction 不進事件身分。**
+    # 實測:同一樁事情的傳聞(+1)與否認(−1)拿到不同的 event_id
+    # (1978c729d568 vs a12f2f577fbc)卻是同一個 timeline_key —— 身分定義
+    # 自相矛盾,event-study 會把同一事件的兩次觀測算成兩個 unique events。
+    # direction 是**可修訂的觀測屬性**(信念會被下一則報導推翻),不是身分。
+    # 不會因此失去區分能力:event-study 的去重鍵本來就另外帶 direction
+    # (`("event_id", event_id, code, event_type, direction)`),所以拿掉之後
+    # 正負事件仍分得開,只是同一事件的翻轉不再被當成兩件事。
+    raw = "|".join((ident, type_key))
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
 

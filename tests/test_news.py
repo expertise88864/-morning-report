@@ -2124,3 +2124,133 @@ def test_extractor_prompt_does_not_ask_for_discarded_fields():
     assert schema, "找不到 prompt 的欄位清單"
     assert "surprise_score" not in schema, "prompt 仍索取已被剝除的欄位"
     assert "source" not in schema, "prompt 仍索取已被強制覆寫的欄位"
+
+
+# ---------- 批#72(第七輪 P0-1):Event Identity v3 ----------
+
+_ID_VOCAB = {"2330": "台積電", "2317": "鴻海", "AAPL": "蘋果 Apple",
+             "NVDA": "輝達 NVIDIA"}
+
+
+def _id_event(title, entity="2330", direction=1, lifecycle="confirmed",
+              published="2026-07-05T00:00:00+00:00", event_type="orders"):
+    import news_events as ne
+    ev = {"entity": entity, "entity_name": _ID_VOCAB.get(entity, ""),
+          "event_type": event_type, "direction": direction,
+          "lifecycle": lifecycle, "published": published, "title": title}
+    ev["subject_key"] = ne.event_subject_key(
+        title, entity, _ID_VOCAB.get(entity, ""), tuple(_ID_VOCAB.values()))
+    return ev
+
+
+def test_same_month_different_events_no_longer_share_a_lifecycle():
+    """第七輪 P0-1 錯誤A(實測確認):台積電 7/05「獲蘋果2奈米大單」與 7/25
+    「獲輝達CoWoS追加訂單」共用 `timeline_key ('2330','orders|2026-07')`
+    與**同一個 event_id**,於是第二張真訂單被判為非增量、`lifecycle_weight`
+    歸零 —— 批#64 只修了跑內聚合,生命週期層仍然塌掉。
+    """
+    import news_events as ne
+    a = _id_event("台積電獲蘋果2奈米大單")
+    b = _id_event("台積電獲輝達CoWoS追加訂單",
+                  published="2026-07-25T00:00:00+00:00")
+    assert ne._event_timeline_key(a) != ne._event_timeline_key(b)
+    assert ne._event_instance_id(a) != ne._event_instance_id(b)
+    out = mr.apply_event_timeline(
+        [{"session_date": "2026-07-05", "structured_events": [a]}], [b])[0]
+    assert out["is_incremental"] is True
+    assert out["lifecycle_weight"] > 0, "第二張真訂單仍被歸零"
+
+
+def test_direction_is_not_part_of_event_identity():
+    """第七輪 P0-1 錯誤B(實測確認):同一樁事情的傳聞(+1)與否認(−1)拿到
+    不同的 event_id 卻是同一個 timeline_key —— 身分定義自相矛盾,event-study
+    會把同一事件的兩次觀測算成兩個 unique events。
+
+    direction 是**可修訂的觀測屬性**(信念會被下一則報導推翻),不是身分。
+    拿掉不會失去區分能力:event-study 的去重鍵本來就另外帶 direction。
+    """
+    import news_events as ne
+    rumor = _id_event("鴻海傳獲蘋果大單", entity="2317", lifecycle="rumor")
+    denied = _id_event("鴻海否認獲蘋果大單", entity="2317",
+                       direction=-1, lifecycle="withdrawn")
+    assert ne._event_instance_id(rumor) == ne._event_instance_id(denied)
+    # 去重鍵仍然分得開正負(區分能力沒有喪失)
+    row = {"code": "2317"}
+    assert (ne._event_study_dedupe_key(
+                row, {"event_id": "x", "event_type": "orders", "direction": 1})
+            != ne._event_study_dedupe_key(
+                row, {"event_id": "x", "event_type": "orders", "direction": -1}))
+
+
+def test_one_event_spanning_two_months_stays_one_episode():
+    """順帶修好舊註解記載的代價:rumor 在七月、confirmed 在八月時,
+    月 bucket 會把同一樁事情切成兩集。對象指紋在生命週期之間是穩定的。"""
+    import news_events as ne
+    jul = _id_event("台積電獲蘋果2奈米大單", lifecycle="rumor")
+    aug = _id_event("台積電確認蘋果2奈米訂單投片",
+                    published="2026-08-10T00:00:00+00:00")
+    assert ne._event_timeline_key(jul) == ne._event_timeline_key(aug)
+
+
+def test_subject_key_is_stable_across_rewordings():
+    """身分**不能靠相似度**:同一事件的 rumor/confirmed 標題寫法不同,
+    相似度會飄,而交易對手/規格的 token 集合不會。
+
+    自測抓到:第一版什麼英文字都收,「TSMC wins Apple 2nm order」的指紋是
+    `2nm,apple,order,tsmc,wins` —— 換個動詞(secures)指紋就變了。
+    """
+    import news_events as ne
+    f = ne.event_subject_key
+    V = tuple(_ID_VOCAB.values())
+    assert (f("台積電獲蘋果2奈米大單", "2330", "台積電", V)
+            == f("台積電確認蘋果2奈米訂單全數投片", "2330", "台積電", V))
+    assert (f("TSMC wins Apple 2nm order", "2330", "台積電", V)
+            == f("TSMC secures Apple 2nm order", "2330", "台積電", V))
+    # 取不到對象時回空 → 退回月 bucket(誠實降級,行為與改動前相同)
+    assert f("台積電董事會通過收購案", "2330", "台積電", V) == ""
+
+
+def test_subject_key_is_computed_in_the_production_extraction_path():
+    """接線檢查:指紋必須由 `extract_structured_events` 算好存進事件 ——
+    身分層拿不到公司名詞彙表,漏接的話所有事件的 subject_key 都是空的,
+    整個修正等於沒生效而且完全無聲。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, tzinfo=_dt.timezone.utc)
+    out = mr.extract_structured_events(
+        [{"title": "台積電獲蘋果2奈米大單", "source": "經濟日報財經",
+          "entity": "2330", "event_type": "orders", "direction": 1,
+          "published": "2026-07-30T01:00:00+00:00"}], [], None, now,
+        known_names={"2330": "台積電", "AAPL": "蘋果 Apple"})
+    assert out and out[0].get("subject_key"), "生產路徑沒有算出對象指紋"
+    assert "蘋果" in out[0]["subject_key"]
+
+
+def test_subject_lineage_is_bounded_by_year():
+    """對象指紋拿掉月份是為了讓同一樁事情跨月接得起來,但完全不帶時間會讓
+    「每年同一批產能訂單」永久共用 lineage —— 第二年的真訂單會再次被判為
+    無進展而歸零,等於把同一個 bug 推到一年後。
+
+    年界的代價只是「跨年的同一樁事情被切成兩集」(多算一次),
+    方向上比「少算一次真事件」安全。
+    """
+    import news_events as ne
+    jul26 = _id_event("台積電獲蘋果2奈米大單",
+                      published="2026-07-05T00:00:00+00:00")
+    aug26 = _id_event("台積電確認蘋果2奈米訂單投片",
+                      published="2026-08-10T00:00:00+00:00")
+    jul27 = _id_event("台積電獲蘋果2奈米大單",
+                      published="2027-07-05T00:00:00+00:00")
+    assert ne._event_timeline_key(jul26) == ne._event_timeline_key(aug26)
+    assert ne._event_timeline_key(jul26) != ne._event_timeline_key(jul27)
+
+
+def test_subject_key_handles_multi_token_vocabulary_entries():
+    """`_tracked_name_map` 的值來自 GOOGLE_NEWS_COMPANIES,是「輝達 NVIDIA」
+    這種**多 token 查詢字串**。自測抓到:第一版把整串當單一 token,所有美股
+    別名都比不中,英文/中英混寫標題完全取不到對象 —— 與批#71 的
+    `_8K_QUERY_BY_TICKER` 是同一個坑(那邊處理過,這裡又犯一次)。"""
+    import news_events as ne
+    V = ("蘋果 Apple", "輝達 NVIDIA")
+    assert "蘋果" in ne.event_subject_key("台積電獲蘋果大單", "2330", "台積電", V)
+    assert "nvidia" in ne.event_subject_key(
+        "TSMC lands NVIDIA order", "2330", "台積電", V).lower()

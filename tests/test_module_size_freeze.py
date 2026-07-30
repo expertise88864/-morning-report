@@ -49,10 +49,24 @@ MODULE_CEILINGS = {
 }
 
 
+#: repo 根目錄。r1(Codex,P2):**路徑不能相依於 process CWD。**
+#: 原本寫 `Path(name)`,從 repo 根目錄以外啟動 pytest 時檔案「不存在」→
+#: `pytest.skip` → 三條尺寸測試全部跳過,凍結靜默失效。
+#: 我在這個檔的 docstring 裡才剛寫過「永遠不會觸發的上限只是裝飾」。
+_ROOT = Path(__file__).resolve().parents[1]
+
+
 def _lines(name: str) -> int:
-    path = Path(name)
+    """受控檔案的行數。**不存在就失敗,不跳過。**
+
+    這些是 repo 裡必然存在的檔;`skip` 會讓整個凍結機制無聲消失,
+    而那正是它要防的東西。真的要移除某個葉模組時,連同這裡的清單一起改 ——
+    那是一個應該被看見的動作。
+    """
+    path = _ROOT / name
     if not path.exists():
-        pytest.skip(f"{name} 不存在")
+        pytest.fail(f"{name} 不存在於 repo 根目錄({_ROOT})——"
+                    "尺寸凍結的受控檔案清單需要同步更新")
     return len(path.read_text(encoding="utf-8").splitlines())
 
 
@@ -73,12 +87,23 @@ def test_main_module_does_not_grow_past_the_ceiling():
 
 
 def test_leaf_modules_do_not_absorb_the_bloat():
-    """葉模組也有上限 —— 否則「抽出去」只是把膨脹換個檔案繼續。"""
-    over = {name: (_lines(name), cap)
-            for name, cap in MODULE_CEILINGS.items()
-            if _lines(name) > cap}
-    assert not over, "、".join(
-        f"{k} {v[0]} 行 > 上限 {v[1]}" for k, v in over.items())
+    """葉模組也有上限 —— 否則「抽出去」只是把膨脹換個檔案繼續。
+
+    r1(Codex,P2):**逐檔收集,不要讓一個問題檔跳過整組。**
+    原本整組寫在一個 comprehension 裡,任一檔缺失就 skip 掉全部 ——
+    其他仍然存在**且超標**的模組不再被檢查。
+    """
+    missing, over = [], []
+    for name, cap in MODULE_CEILINGS.items():
+        path = _ROOT / name
+        if not path.exists():
+            missing.append(name)
+            continue
+        n = len(path.read_text(encoding="utf-8").splitlines())
+        if n > cap:
+            over.append(f"{name} {n} 行 > 上限 {cap}")
+    problems = ([f"缺少受控檔案:{'、'.join(missing)}"] if missing else []) + over
+    assert not problems, ";".join(problems)
 
 
 def test_the_ceiling_is_not_far_above_reality():

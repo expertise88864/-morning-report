@@ -215,7 +215,7 @@ def test_no_module_state_path_points_into_the_repo_during_tests():
     from pathlib import Path
     import model_history_store as mhs
 
-    repo_state = Path("state").resolve()
+    repo_state = Path(__file__).resolve().parents[1] / "state"
     leaked = []
     for mod in (mr, mhs):
         for attr in dir(mod):
@@ -345,7 +345,13 @@ def test_no_workflow_overrides_state_root():
     """
     from pathlib import Path
     offenders = []
-    for wf in sorted(Path(".github/workflows").glob("*.yml")):
+    # 批#78 r1:glob 相對於 CWD —— 從別處啟動 pytest 時會掃到**空集合**,
+    # 迴圈整段不執行、測試無聲通過。空集合的真空通過比 skip 更危險
+    # (skip 至少會在報告裡看得到),所以下面同時釘住「有掃到東西」。
+    wf_dir = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    workflows = sorted(wf_dir.glob("*.yml"))
+    assert workflows, f"{wf_dir} 沒有任何 workflow —— 這條檢查會真空通過"
+    for wf in workflows:
         text = wf.read_text(encoding="utf-8")
         for line in text.splitlines():
             stripped = line.strip()
@@ -370,7 +376,9 @@ def test_state_schema_contract_has_a_daily_trigger():
      既有的 alert-on-failure job 據此發告警信。)
     """
     from pathlib import Path
-    text = Path(".github/workflows/morning-report.yml").read_text(encoding="utf-8")
+    text = (Path(__file__).resolve().parents[1]
+            / ".github" / "workflows" / "morning-report.yml"
+            ).read_text(encoding="utf-8")
     assert "tests/test_state_schema_contract.py" in text, \
         "每日 workflow 沒有執行 state schema 契約 —— 它只會在有人 push 時被跑到"
     # 必須在跑完晨報**之後**(信已寄出),否則契約失敗會擋掉當天的信

@@ -198,7 +198,11 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
     """
     from pathlib import Path as _Path
     d = tmp_path_factory.mktemp("state_guard")
-    repo_state = _Path("state").resolve()
+    # 批#78 r1(Codex,P2 的同類):**不能寫 `Path("state")`。**
+    # 那是相對於 process CWD 的,從 repo 根目錄以外啟動 pytest 時會解析到
+    # 別的地方 —— 於是這道守衛「保護」了一個不存在的目錄,真實 state 全裸。
+    # 守衛的位置必須由**這個檔案的位置**決定,那是唯一不會動的錨。
+    repo_state = _Path(__file__).resolve().parents[1] / "state"
 
     # 批#74(第七輪 P1-10):**OS 層寫入守衛。**
     # 上面那套「掃描指向 repo state 的 Path 常數」比逐一 monkeypatch 好,

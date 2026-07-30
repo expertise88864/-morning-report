@@ -26,7 +26,11 @@ import pytest
 import morning_report as mr
 import story_ledger as sl
 
-STATE = Path("state")
+# 批#78 r1:**位置由這個檔案決定,不由 CWD 決定。** 寫 `Path("state")` 的話,
+# 從 repo 根目錄以外啟動 pytest 會全部走進「檔案不存在 → skip」,
+# 整套契約無聲消失 —— 而它存在的理由正是抓「無聲的漂移」。
+# (「不存在就跳過」的語意本身保留:全新 repo 確實還沒有 state。)
+STATE = Path(__file__).resolve().parents[1] / "state"
 
 
 def _load(name):

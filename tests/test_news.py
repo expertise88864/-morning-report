@@ -2460,3 +2460,70 @@ def test_source_item_ids_are_sanitised_not_trusted():
     assert ne._validate_llm_events([{
         "entity": "2330", "event_type": "orders", "direction": 1,
         "title": "y", "source_item_ids": "n3"}])[0][0]["source_item_ids"] == ["n3"]
+
+
+def test_source_id_mapping_survives_the_real_extractor_wiring(monkeypatch):
+    """r1(Codex,P1):**ID 只存在於 payload 的副本裡。**
+    `source_item_id` 是建 payload 時才加上去的,而 `extract_structured_events`
+    收到的是**原始**的 news/mops —— 索引全空、每次查表都 miss,整個 provenance
+    機制在生產是死的,而事件會退到「七天前」的預設時間(新鮮度/期別/身分全走樣)。
+
+    **而我上一版的測試手動把 ID 塞進 `news`,繞過了真正的接線** —— 正是
+    「測試要用生產的呼叫形狀」那條教訓。這一條走 `call_llm_event_extractor()`
+    的完整路徑:mock 掉模型回應,讓 payload 由生產程式自己組。
+    """
+    import json as _json
+    news = [
+        {"title": "台積電獲輝達追加訂單", "source": "經濟日報財經",
+         "entity": "2330", "event_type": "orders", "direction": 1,
+         "published": "Wed, 30 Jul 2026 01:00:00 GMT"},        # RFC 格式
+        {"title": "台積電獲輝達追加訂單", "source": "中央社財經",
+         "entity": "2330", "event_type": "orders", "direction": 1,
+         "published": "2026-07-30T05:00:00+00:00"},            # ISO 格式
+    ]
+    captured = {}
+
+    def _fake_call(prompt):
+        captured["prompt"] = prompt
+        # 模型改寫標題(標題反查必失效)、自報一個錯半年的時間、回傳 ID
+        return _json.dumps([{
+            "entity": "3231", "event_type": "orders", "direction": 1,
+            "title": "台積電確認接獲輝達追加訂單", "summary": "x",
+            "confidence": 0.6, "lifecycle": "confirmed",
+            "published": "2026-01-05T00:00:00+00:00",
+            "source_item_ids": ["n0", "n1"]}])
+
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _fake_call)
+    out = mr.call_llm_event_extractor(news, [])
+
+    assert "source_item_id" in captured["prompt"], "payload 沒有帶 ID"
+    hit = [e for e in out if e["source"] == "LLM extractor"]
+    assert hit, "LLM 事件沒有活到輸出"
+    # 權威時間必須來自來源項,而不是模型自報的 2026-01-05
+    assert hit[0]["provenance"] == "source_item_id", hit[0].get("provenance")
+    assert not hit[0]["published"].startswith("2026-01-05")
+    # r2(Codex,P2):**兩筆時間戳格式不同**(RFC vs ISO)。字串反向排序會把
+    # RFC 那筆("Wed, ...")排在 ISO("2026-...")前面而選成「最新」——
+    # 實際上 05:00 才是最新的。必須解析成 datetime 再比。
+    assert hit[0]["published"].startswith("2026-07-30T05:00")
+
+
+def test_latest_of_multiple_sources_is_chosen_by_parsed_time_not_string():
+    """r2(Codex,P2)的最小重現:同一事件由兩則報導支撐,一則 RFC 一則 ISO。
+    字串比較會選錯,解析後比較才對。"""
+    import datetime as _dt
+    now = _dt.datetime(2026, 7, 30, 12, tzinfo=_dt.timezone.utc)
+    by_id = {
+        "n0": {"title": "A", "published": "Wed, 30 Jul 2026 09:00:00 GMT"},
+        "n1": {"title": "A", "published": "2026-07-30T02:00:00+00:00"},
+    }
+    out = mr.extract_structured_events(
+        [], [], [{"entity": "2330", "event_type": "orders", "direction": 1,
+                  "title": "改寫過的標題", "summary": "x", "confidence": 0.6,
+                  "source_item_ids": ["n0", "n1"]}], now,
+        source_items_by_id=by_id)
+    assert out[0]["provenance"] == "source_item_id"
+    # 09:00 (RFC) 才是最新;字串反向排序會誤選 "2026-07-30T02:00"
+    assert mr._parse_news_time_required(out[0]["published"]).hour == 9

@@ -8972,7 +8972,9 @@ def extract_structured_events(news: list[dict],
                               mops: list[dict],
                               llm_events: Optional[list[dict]] = None,
                               now: Optional[dt.datetime] = None,
-                              known_names: Optional[dict] = None) -> list[dict]:
+                              known_names: Optional[dict] = None,
+                              source_items_by_id: Optional[dict] = None,
+                              ) -> list[dict]:
     """Extract, merge and cluster events with official-source priority and decay."""
     now = now or dt.datetime.now(dt.timezone.utc)
     if now.tzinfo is None:
@@ -9084,7 +9086,15 @@ def extract_structured_events(news: list[dict],
     # 批#76(第七輪 P1-3):**以來源項 ID 為主的 provenance 索引。**
     # 標題反查是後備:模型稍微改寫標題、或多筆同標題時它就失效,而失效是靜默的
     # (模型自報的時間會被留下來,而 published 決定新鮮度權重、age_hours 與期別)。
-    _item_by_id: dict[str, dict] = {}
+    # r1(Codex,P1):**ID 只存在於 payload 的副本裡。**
+    # `source_item_id` 是建 payload 時才加上去的,而這個函式收到的是**原始**的
+    # news/mops —— 掃描它們永遠掃不到 ID,索引全空,整個 provenance 機制在生產
+    # 是死的(而事件會退到「七天前」的預設時間,新鮮度/期別/身分全走樣)。
+    # 而我的測試手動把 ID 塞進 news,繞過了真正的接線。
+    # 改為由呼叫端**明確傳入** id → 原始項 的對照。
+    _item_by_id: dict[str, dict] = {
+        str(k): v for k, v in (source_items_by_id or {}).items()
+        if isinstance(v, dict)}
     for _src in (news or [], mops or []):
         for _it in _src:
             if not isinstance(_it, dict):
@@ -9130,12 +9140,18 @@ def extract_structured_events(news: list[dict],
             # 事件由多則報導共同支撐時,最新的那則才代表事件的當前時點)。
             _sids = [str(x) for x in (item.get("source_item_ids") or [])]
             _hits = [_item_by_id[x] for x in _sids if x in _item_by_id]
-            _pub_from_id = sorted(
-                (str(h.get("published") or "").strip() for h in _hits),
-                reverse=True)
-            _pub_from_id = [x for x in _pub_from_id if x]
-            if _pub_from_id:
-                item["published"] = _pub_from_id[0]
+            # r2(Codex,P2):**用解析後的 datetime 比,不是字串。**
+            # 來源適配器有的保留 RSS/RFC 原始時間戳、有的輸出 ISO;
+            # 字串反向排序會把較舊的那筆選成「最新」,published/新鮮度/期別全錯。
+            # `_parse_news_time_required` 本來就兩種格式都吃。
+            _cands = []
+            for _h in _hits:
+                _raw = str(_h.get("published") or "").strip()
+                _dtv = _parse_news_time_required(_raw) if _raw else None
+                if _dtv is not None:
+                    _cands.append((_dtv, _raw))
+            if _cands:
+                item["published"] = max(_cands, key=lambda x: x[0])[1]
                 item["provenance"] = "source_item_id"
             else:
                 # 後備:標題唯一命中(刻意要求唯一,多筆同標題寧可不覆寫)
@@ -12822,6 +12838,10 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         "editor_stock_codes": [_external_text(c, 10)
                                for c in (item.get("cnyes_stocks") or [])[:6]],
     } for _idx, item in enumerate(ranked_items[:35])]
+    # 同一份枚舉建出 id → **原始項**的對照,連同 payload 一起往下傳。
+    # payload 是副本(欄位經過 _external_text 截斷),不能拿它當權威來源。
+    _source_items_by_id = {f"n{_i}": _it
+                           for _i, _it in enumerate(ranked_items[:35])}
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
         # 批#71:**不要再索取一律被丟棄的欄位**。批#68 把 `surprise_score` 移出
@@ -12880,8 +12900,9 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                 prompt + "\nSTRICT REMINDER: output ONLY a JSON array; every event_type MUST be one of "
                 "the allowed list above; direction MUST be exactly -1, 0, or 1.")))[0] or valid
             _stat["valid"] = len(valid)
-        merged = extract_structured_events(news, mops, llm_events=valid,
-                                           known_names=known_names)
+        merged = extract_structured_events(
+            news, mops, llm_events=valid, known_names=known_names,
+            source_items_by_id=_source_items_by_id)
         # 真正要看的是「有幾則**以 LLM 版勝出**」。r1(Codex,P2):我原本數的是
         # `"LLM extractor" in sources`,但聚合時確定性版本勝出後仍會保留輸家的
         # source 進 `sources` —— 於是「被吃掉」反而被計成存活,指標在它唯一

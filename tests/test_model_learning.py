@@ -3953,3 +3953,201 @@ def test_long_lead_is_never_censored():
         assert stats["lead_short_count"] == 0
     finally:
         mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def _corpact_hist(records):
+    """公司行動史的最小形狀(停牌史目前不參與覆蓋守衛,days 只是紀錄)。"""
+    return {"since": "2026-07-01",
+            "days": ["2026-07-0%d" % d for d in range(1, 10)],
+            "records": records}
+
+
+def test_top5_horizon_is_voided_when_a_holding_was_halted():
+    """**減資/合併/股票分割是「看起來正常、實際錯誤」的那一類。**
+
+    批#82(第七輪 P1-7)。終止上市會讓收盤價查不到,落進
+    `stock_exit_prices_incomplete`,至少不會給錯數字。但減資/分割後**照常有
+    一個收盤價**,只是參考價基準已經不同 —— 於是超額報酬會被算出來、
+    看起來完全正常、而且是錯的。這比缺資料危險。
+
+    TWSE 沒有減資/分割/合併各自的端點(批#81 掃過 openapi 全部 143 個),
+    但它們的共同表現是「暫停交易數日後以新參考價復牌」,所以用停牌當統一訊號。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              corpact_history=_corpact_hist(
+                  [{"code": "4404", "halt_date": "2026-07-07",
+                    "resume_date": "2026-07-09", "first_seen": "2026-07-07"}]))
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "trading_halt"
+    assert res5["events"] == [{"code": "4404", "halt_date": "2026-07-07",
+                               "resume_date": "2026-07-09"}]
+    assert not out["stats"].get("5"), "作廢的橫向不得進統計"
+
+
+def test_top5_horizon_is_voided_when_a_holding_is_delisted():
+    """終止上市是**歷史表**(不需跨日累積),所以可以事後判定並給出精確理由,
+    而不是留下一個語焉不詳的 `stock_exit_prices_incomplete`。"""
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              delisted={"2202": "2026-07-08", "9999": "2026-07-08"})
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh, [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "delisted"
+    assert res5["events"] == [{"code": "2202", "delisting_date": "2026-07-08"}], \
+        "不持有的代號(9999)不得害整個橫向作廢"
+
+
+def test_top5_is_not_voided_by_corporate_actions_outside_the_window():
+    """**反向:窗口外的公司行動不得作廢。**
+
+    沒有這條的話,「一律作廢」也會讓上面兩條通過,而那等於把 Top5 量測關掉。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              corpact_history=_corpact_hist(
+                  [{"code": "4404", "halt_date": "2026-06-20",   # 窗口之前
+                    "resume_date": "2026-06-22", "first_seen": "2026-06-20"}]),
+              delisted={"3303": "2026-09-01"})                   # 窗口之後
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh, [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert not res5.get("void"), f"窗口外的公司行動不該作廢:{res5}"
+    assert isinstance(res5.get("excess_pct"), (int, float))
+
+
+def test_corporate_action_history_accumulates_and_backfills_resume_date(
+        tmp_path, monkeypatch):
+    """停牌當下常還沒定復牌日,之後才補上 —— `resume_date` 要**只回填空值**,
+    其餘欄位維持「新資料不覆蓋舊資料」(否則每天把剛過去的停牌忘掉一次)。"""
+    import datetime as dt
+    import json as _json
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE",
+                        tmp_path / "corporate_actions.json")
+    day1 = dt.datetime(2026, 7, 23, 6, 45, tzinfo=mr.TPE)
+    day2 = dt.datetime(2026, 7, 24, 6, 45, tzinfo=mr.TPE)
+    try:
+        mr.update_corporate_actions(
+            [{"code": "4169", "halt_date": "2026-07-23", "resume_date": ""}], day1)
+        out = mr.update_corporate_actions(
+            [{"code": "4169", "halt_date": "2026-07-23",
+              "resume_date": "2026-07-24"}], day2)
+        rec = out["records"][0]
+        assert rec["resume_date"] == "2026-07-24", "復牌日要回填"
+        assert rec["first_seen"] == "2026-07-23", "首見日不得被後來的抓取改寫"
+        assert out["since"] == "2026-07-23" and out["days"] == [
+            "2026-07-23", "2026-07-24"]
+        landed = _json.loads(
+            (tmp_path / "corporate_actions.json").read_text(encoding="utf-8"))
+        assert landed == out, "落地內容要與回傳一致"
+    finally:
+        mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+def test_trading_halt_fetch_uses_the_real_response_shape(monkeypatch):
+    """**用 TWSE 2026-07-30 真實回應的欄位形狀**,不是我構想的形狀。
+
+    這一輪已經有多次「測試餵自己造的資料、生產拿到別的形狀」。實測回應:
+    `{Number, Code, Name, TradingHaltDate, TradingHaltTime,
+      TradingResumptionDate, TradingResumptionTime}`,日期是民國(1150723)。
+    """
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"Number": "1", "Code": "4169", "Name": "泰宗",
+                     "TradingHaltDate": "1150723", "TradingHaltTime": "080000",
+                     "TradingResumptionDate": "1150724",
+                     "TradingResumptionTime": "080000"}]
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+    mr._RUN_MANIFEST.pop("corporate_actions", None)
+    try:
+        out = mr.fetch_trading_halts("2026-07-30")
+        assert out == [{"code": "4169", "halt_date": "2026-07-23",
+                        "resume_date": "2026-07-24"}]
+        span = mr._RUN_MANIFEST.get("corporate_actions")
+        assert span and span["days_back"] == 7, \
+            f"停牌表的涵蓋範圍要記進 manifest:{span}"
+    finally:
+        mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+def test_trading_halt_fetch_never_degrades_to_empty(monkeypatch):
+    """抓不到**不等於**今天沒有停牌。回空清單會讓「抓不到」被記成「沒事發生」,
+    而那正是這個檔案要防的方向(同 exdiv r2 的教訓)。"""
+    def _boom(*_a, **_k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(mr, "_http_get", _boom)
+    with pytest.raises(mr.CorpActFetchFailed):
+        mr.fetch_trading_halts("2026-07-30")
+
+    class _Shape:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"stat": "OK"}          # 改版成 dict
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Shape())
+    with pytest.raises(mr.CorpActFetchFailed):
+        mr.fetch_trading_halts("2026-07-30")
+
+
+def test_delisted_fetch_parses_the_slash_roc_date(monkeypatch):
+    """終止上市表的日期是 `115/06/23`(帶斜線),與停牌表的 `1150723` 不同格式
+    —— 兩邊都要能吃。抓不到時回空 dict 不拋:下市判定只是**額外**理由,
+    缺它不會給出錯的數字(下市股本來就查不到收盤價)。"""
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"DelistingDate": "115/06/23", "Company": "森崴能源",
+                     "Code": "6806"},
+                    {"DelistingDate": "", "Company": "壞資料", "Code": "0000"}]
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+    assert mr.fetch_delisted_codes() == {"6806": "2026-06-23"}
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(mr, "_http_get", _boom)
+    assert mr.fetch_delisted_codes() == {}, "下市表失敗要降級為空,不得中斷晨報"

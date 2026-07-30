@@ -375,6 +375,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
+    "corporate_actions",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -10550,6 +10551,7 @@ def _state_push_paths() -> list[str]:
             str(SECTOR_RANK_FILE),   # 類股熱度昨日排名快照(delta 顯示,地基批#5)
             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
+            str(CORPORATE_ACTION_FILE),   # 批#82:暫停交易/復牌史。TWTAWU 是**快照**,不跨日累積則結算當下查不到
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
 
 
@@ -14807,7 +14809,9 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                        taiex_opens: Optional[dict] = None,
                        raw_codes: Optional[list] = None,
                        excluded: Optional[list] = None,
-                       exdiv_history: Optional[list] = None) -> dict:
+                       exdiv_history: Optional[list] = None,
+                       corpact_history: Optional[dict] = None,
+                       delisted: Optional[dict] = None) -> dict:
     """Top5 追蹤帳本 v2(五審 P0-2):**executable return**——晨報 06:00 只立
     pending 名單(awaiting_entry);目標交易日紀錄入庫後回填「目標日開盤」
     進場價(entered);其後第 5/20 個 session 以收盤結算「等權報酬 −
@@ -14840,6 +14844,8 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         exdiv_history = {"since": "", "days": [], "records": exdiv_history}
     _exdiv_days = list((exdiv_history or {}).get("days") or [])
     _exdiv_records = list((exdiv_history or {}).get("records") or [])
+    _corpact = corpact_history if isinstance(corpact_history, dict) else {}
+    _delisted = delisted if isinstance(delisted, dict) else {}
     today = now_tpe.strftime("%Y-%m-%d")
     recs = sorted((r for r in model_history or []
                    if isinstance(r, dict) and r.get("session_date")),
@@ -14987,12 +14993,41 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                     _exdiv_records, list((e.get("entry") or {}).keys()),
                     tgt, exit_d)
                 if _ex:
+                    # 名稱保留 `corporate_action` 以免既有帳本列的理由分類斷裂,
+                    # 但它實際只代表**除權息**;真正的其他公司行動走下面兩條
+                    # (批#82)。
                     e["res"][hk] = {
                         "void": True, "reason": "corporate_action",
                         "session": exit_d,
                         "events": [{"code": x.get("code"),
                                     "ex_date": x.get("ex_date"),
                                     "kind": x.get("kind")} for x in _ex[:8]]}
+                    continue
+                # 批#82(第七輪 P1-7):**除權息以外的公司行動。**
+                # 減資/合併/股票分割最危險 —— 它們不像終止上市會讓收盤價
+                # 查不到而落入 `stock_exit_prices_incomplete`,而是照常有一個
+                # **基準不同**的價格,於是這裡會算出看起來正常、實際錯誤的
+                # 超額報酬。共同表現是「暫停交易數日後以新參考價復牌」,
+                # 所以用停牌當統一訊號,不逐項列舉行動類型。
+                _codes = list((e.get("entry") or {}).keys())
+                _halt = halts_in_window(_corpact, _codes, tgt, exit_d)
+                if _halt:
+                    e["res"][hk] = {
+                        "void": True, "reason": "trading_halt",
+                        "session": exit_d,
+                        "events": [{"code": x.get("code"),
+                                    "halt_date": x.get("halt_date"),
+                                    "resume_date": x.get("resume_date")}
+                                   for x in _halt[:8]]}
+                    continue
+                _gone = sorted({c: d for c, d in _delisted.items()
+                                if c in _codes and tgt < d <= exit_d}.items())
+                if _gone:
+                    e["res"][hk] = {
+                        "void": True, "reason": "delisted",
+                        "session": exit_d,
+                        "events": [{"code": c, "delisting_date": d}
+                                   for c, d in _gone[:8]]}
                     continue
                 excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
                 e["res"][hk] = {"excess_pct": round(excess, 2),
@@ -15192,6 +15227,15 @@ def _render_macro_vintage_html(rows: list[dict]) -> str:
 #: 一檔配息 4~5% 的個股會在窗口內憑空「跌」掉那一截。
 EXDIV_HISTORY_FILE = STATE_ROOT / "exdiv_history.json"
 _EXDIV_KEEP_DAYS = 400
+
+#: 公司行動史(暫停交易 → 復牌)。批#82(第七輪 P1-7)。
+#: 除權息只是公司行動的一種。**減資/合併/股票分割最危險**:它們不像終止上市
+#: 會讓收盤價查不到而落入 `stock_exit_prices_incomplete`,而是照常有一個
+#: **基準不同**的價格 —— Top5 於是算出一個看起來正常、實際錯誤的超額報酬。
+#: 這一類在 TWSE 沒有各自的端點,但共同表現是「暫停交易數日後以新參考價復牌」,
+#: 所以用暫停交易表當統一訊號,不逐項列舉行動類型。
+CORPORATE_ACTION_FILE = STATE_ROOT / "corporate_actions.json"
+_CORPACT_KEEP_DAYS = 400
 
 
 def fetch_taiex_total_return() -> Optional[float]:
@@ -15498,6 +15542,180 @@ def _record_exdiv_lead_stats(history: dict) -> dict:
                   file=sys.stderr)
     _RUN_MANIFEST.setdefault("exdiv_preview", {}).update(stats)
     return stats
+
+
+class CorpActFetchFailed(RuntimeError):
+    """公司行動抓取失敗。**不得降級為空清單**——與「今天真的沒有暫停交易」
+    無法區分,而後者是常態,一混淆就會把「抓不到」記成「沒事發生」。"""
+
+
+class CorpActUnreadable(RuntimeError):
+    """公司行動史讀得到檔案卻解析不出來。**不得降級為空**(同 exdiv 的教訓:
+    讀檔失敗被當成沒有資料,再被原子覆寫,永久刪掉累積的歷史)。"""
+
+
+def fetch_trading_halts(today_iso: str = "") -> list:
+    """TWSE 暫停交易證券表 → [{code, halt_date, resume_date}]。
+
+    批#82(第七輪 P1-7)。**為什麼用暫停交易當公司行動的統一訊號:**
+    減資、合併、股票分割在 TWSE 沒有各自的 API(批#81 掃過 openapi 全部 143 個
+    端點,與公司行動相關的只有暫停交易 `TWTAWU`、變更交易 `TWT85U`、
+    終止上市 `suspendListingCsvAndHtml`)。但這幾類行動的共同表現是
+    **暫停交易數日後以新參考價復牌** —— 用它當訊號就不必逐項列舉行動類型,
+    也不會漏掉沒想到的類型。
+
+    2026-07-30 實測欄位:
+    `{Number, Code, Name, TradingHaltDate, TradingHaltTime,
+      TradingResumptionDate, TradingResumptionTime}`,日期是民國(1150723)。
+
+    這是**快照**(當時只有 1 筆:泰宗 4169,1150723 停 → 1150724 復),
+    所以跟除權息預告一樣必須每日收集累積,否則結算當下查不到。
+    """
+    try:
+        r = _http_get("https://openapi.twse.com.tw/v1/exchangeReport/TWTAWU",
+                      timeout=20, headers={"User-Agent": "Mozilla/5.0",
+                                           "Accept": "application/json"})
+        r.raise_for_status()
+        rows = r.json()
+    except Exception as e:
+        raise CorpActFetchFailed(f"暫停交易表抓取失敗: {e}") from e
+    if not isinstance(rows, list):
+        raise CorpActFetchFailed(f"暫停交易表格式非預期: {type(rows).__name__}")
+    out: list = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("Code") or "").strip()
+        halt = _roc_to_iso(row.get("TradingHaltDate"))
+        if not (code and halt):
+            continue
+        out.append({"code": code, "halt_date": halt,
+                    "resume_date": _roc_to_iso(row.get("TradingResumptionDate"))})
+    _record_corpact_span(out, today_iso)
+    return out
+
+
+def _record_corpact_span(rows: list, today_iso: str = "") -> dict:
+    """把暫停交易表**實際**涵蓋的日期範圍記進 manifest。
+
+    刻意先量再定門檻:批#81 的教訓是「守衛賴以成立的假設不能只寫在註解裡」。
+    這張表的保留窗口(往回幾天、往前幾天)目前未知,**所以本批不替它加覆蓋
+    守衛** —— 用猜的窗口做 fail-closed,不是把所有 Top5 橫向都作廢
+    (等於功能關掉),就是給出沒有根據的信心。先累積這個量測,有了分佈再定。
+    """
+    halts = sorted({str(r.get("halt_date") or "") for r in rows or []
+                    if r.get("halt_date")})
+    span = {"rows": len(rows or []),
+            "min_halt_date": halts[0] if halts else "",
+            "max_halt_date": halts[-1] if halts else ""}
+    if halts and today_iso:
+        try:
+            today = dt.date.fromisoformat(today_iso)
+            span["days_back"] = (today - dt.date.fromisoformat(halts[0])).days
+            span["days_forward"] = (dt.date.fromisoformat(halts[-1]) - today).days
+        except (ValueError, TypeError):
+            pass
+    _RUN_MANIFEST["corporate_actions"] = span
+    return span
+
+
+def load_corporate_actions() -> dict:
+    """回 `{"since": ISO, "days": [ISO...], "records": [...]}`。
+
+    失敗語意完全比照 `load_exdiv_history`:檔案不存在 → 空(真的還沒開始收集);
+    存在但解析不出來 → **拋**,絕不代呼叫端把檔案清掉。
+    """
+    empty = {"since": "", "days": [], "records": []}
+    if not CORPORATE_ACTION_FILE.exists():
+        return empty
+    try:
+        data = json.loads(CORPORATE_ACTION_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise CorpActUnreadable(f"公司行動史無法解析: {e}") from e
+    if not isinstance(data, dict) or not isinstance(data.get("records"), list):
+        raise CorpActUnreadable(f"公司行動史格式非預期: {type(data).__name__}")
+    return {"since": str(data.get("since") or ""),
+            "days": [str(d) for d in (data.get("days") or []) if d],
+            "records": [r for r in data["records"] if isinstance(r, dict)]}
+
+
+def update_corporate_actions(records: list, now_tpe: dt.datetime) -> dict:
+    """把本次抓到的暫停交易併進歷史(依 (code, halt_date) 去重)並修剪。
+
+    **新資料不覆蓋舊資料**,同 `update_exdiv_history`:表上的紀錄會在復牌後
+    消失,採覆蓋語意等於每天把剛過去的停牌忘掉一次。
+    例外是 `resume_date`:停牌當下常是空的(還沒定復牌日),之後才補上,
+    所以**只回填空值**,不改寫已有的值。
+    """
+    prev = load_corporate_actions()
+    today = now_tpe.date().isoformat()
+    merged = {(str(r.get("code")), str(r.get("halt_date"))): r
+              for r in prev["records"]}
+    for r in records or []:
+        key = (str(r.get("code")), str(r.get("halt_date")))
+        if not all(key):
+            continue
+        if key not in merged:
+            merged[key] = {**r, "first_seen": today}
+        elif not merged[key].get("resume_date") and r.get("resume_date"):
+            merged[key]["resume_date"] = r["resume_date"]
+    cutoff = (now_tpe.date() - dt.timedelta(days=_CORPACT_KEEP_DAYS)).isoformat()
+    out = {
+        "since": prev["since"] or today,
+        "days": sorted({d for d in prev["days"] + [today] if d >= cutoff}),
+        "records": sorted((r for k, r in merged.items() if k[1] >= cutoff),
+                          key=lambda r: (str(r.get("halt_date")),
+                                         str(r.get("code")))),
+    }
+    CORPORATE_ACTION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(CORPORATE_ACTION_FILE,
+                       json.dumps(out, ensure_ascii=False, indent=1))
+    return out
+
+
+def halts_in_window(history: dict, codes, start: str, end: str) -> list:
+    """窗口 (start, end] 內、屬於 codes 的暫停交易。
+
+    比對用**停牌日**:復牌後的參考價與停牌前不可比,而不可比是從停牌那一刻
+    開始的。復牌日晚於窗口(還沒復牌)一樣算 —— 那更嚴重,連出場價都沒有。
+    """
+    want = {str(c) for c in (codes or []) if c}
+    if not (want and start and end):
+        return []
+    return [r for r in (history or {}).get("records") or []
+            if str(r.get("code")) in want
+            and start < str(r.get("halt_date") or "") <= end]
+
+
+def fetch_delisted_codes() -> dict:
+    """TWSE 終止上市公司 → `{code: delisting_date_iso}`。
+
+    與暫停交易不同,**這是歷史表**(2026-07-30 實測 264 筆,`DelistingDate`
+    是民國 `115/06/23` 格式),所以不需要跨日累積,查得到過去的下市。
+    抓不到時回空 dict 並示警:下市判定只是**額外**的作廢理由,
+    缺它不會給出錯的數字(下市股的收盤價本來就查不到,會落入
+    `stock_exit_prices_incomplete`),所以這裡不 fail-closed。
+    """
+    try:
+        r = _http_get(
+            "https://openapi.twse.com.tw/v1/company/suspendListingCsvAndHtml",
+            timeout=20, headers={"User-Agent": "Mozilla/5.0",
+                                 "Accept": "application/json"})
+        r.raise_for_status()
+        rows = r.json()
+    except Exception as e:
+        print(f"[corpact] ⚠ 終止上市表抓取失敗({e});本次不判定下市",
+              file=sys.stderr)
+        return {}
+    out: dict = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("Code") or "").strip()
+        iso = _roc_to_iso(str(row.get("DelistingDate") or "").replace("/", ""))
+        if code and iso:
+            out[code] = iso
+    return out
 
 
 #: 除權息**預告**表往前看的天數。實際約兩週,取 7 天當保守值:
@@ -21598,10 +21816,36 @@ def main() -> int:
                 _exdiv = load_exdiv_history()
             except ExdivHistoryUnreadable:
                 _exdiv = _blank
+        # 批#82(第七輪 P1-7):除權息以外的公司行動。失敗語意與除權息一致 ——
+        # **抓不到不等於沒發生**,所以沿用既有歷史而不是當成空的。
+        # 差別在停牌史目前**不參與覆蓋守衛**(TWTAWU 的保留窗口未知,
+        # 見 `_record_corpact_span`),所以抓取失敗只是本次少一個作廢理由,
+        # 不會讓已知的停牌被忽略。
+        try:
+            _corpact = update_corporate_actions(
+                fetch_trading_halts(now_tpe.date().isoformat()), now_tpe)
+        except (CorpActFetchFailed, CorpActUnreadable) as e:
+            print(f"[corpact] {e};沿用既有歷史", file=sys.stderr)
+            try:
+                _corpact = load_corporate_actions()
+            except CorpActUnreadable:
+                _corpact = _blank
+        except Exception as e:
+            print(f"[corpact] 公司行動史更新略過: {e}", file=sys.stderr)
+            try:
+                _corpact = load_corporate_actions()
+            except CorpActUnreadable:
+                _corpact = _blank
+        try:
+            _delisted = fetch_delisted_codes()
+        except Exception as e:
+            print(f"[corpact] 終止上市表略過: {e}", file=sys.stderr)
+            _delisted = {}
         quotes["TOP5_TRACK"] = update_top5_ledger(
             model_history, _top5, now_tpe, target_session_date,
             sessions=trading_sessions, taiex_opens=_tx_opens,
-            raw_codes=_raw5, excluded=_t5_ex, exdiv_history=_exdiv)
+            raw_codes=_raw5, excluded=_t5_ex, exdiv_history=_exdiv,
+            corpact_history=_corpact, delisted=_delisted)
     except Exception as e:
         print(f"[main] Top5 FinMind/追蹤帳本略過: {e}", file=sys.stderr)
         quotes.setdefault("TOP5_TRACK", {})

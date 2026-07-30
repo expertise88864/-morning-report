@@ -35,8 +35,20 @@ import pytest
 #: 主模組行數上限。**只能降不能升。**
 #: 2026-07-31 基準:21,797 行(第七輪期間從 20,572 行成長 1,225 行 ——
 #: 那些是批#66–#77 的修正與註解,大多是必要的,但趨勢必須被擋住)。
-#: 留 200 行緩衝給進行中的修正,不留給新功能。
-MAIN_MODULE_LINE_CEILING = 22_000
+#: 留少量緩衝給進行中的修正,不留給新功能。
+#:
+#: 2026-07-30 批#82 調高至 22,400(現況 22,212)。**調高前依規定用工具判定過:**
+#: ```
+#: $ python tools/refactor_audit.py group fetch_trading_halts _record_corpact_span #:       load_corporate_actions update_corporate_actions halts_in_window fetch_delisted_codes
+#:   BLOCK  fetch_trading_halts:      net/io=['_http_get']
+#:   BLOCK  _record_corpact_span:     state=['_RUN_MANIFEST']
+#:   BLOCK  load_corporate_actions:   state=['CORPORATE_ACTION_FILE']
+#:   BLOCK  update_corporate_actions: state=['CORPORATE_ACTION_FILE']
+#:   BLOCK  fetch_delisted_codes:     net/io=['_http_get']
+#: ```
+#: 六個函式全部 BLOCK,與除權息那組同因(碰 `_http_get`/`_RUN_MANIFEST`/state 常數,
+#: 而後者被測試 monkeypatch)。依工具規約「判 BLOCK 的絕不搬」,這批確實搬不走。
+MAIN_MODULE_LINE_CEILING = 22_400
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

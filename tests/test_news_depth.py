@@ -666,3 +666,69 @@ def test_entity_upgrade_happens_in_a_single_update_ledger_call():
         f"線索仍是 entityless 萬用牌:{[(s.get('entity'), s['key']) for s in led]}")
     assert set(by_ent) == {"2303", "2330"}, f"公司被錯併:{set(by_ent)}"
     assert by_ent["2303"]["key"].startswith("e:2303|"), "key 沒跟著遷移"
+
+
+def test_story_card_is_gone_but_the_narrative_source_survives():
+    """批#86:線索追蹤**卡片**移除,但**帳本與 prompt 注入必須留著**。
+
+    使用者要的是「像科技板塊那樣前後連貫的敘述」,而那種寫法的素材來源正是
+    `format_story_block` 產生的【進行中的線索(跨日追蹤)】—— 前情與軌跡數字。
+    只刪卡片、順手把帳本一起砍掉的話,會把使用者真正想要的東西一起砍掉;
+    這條測試就是為了讓那種「順手」當場失敗。
+    """
+    import ast
+    import pathlib
+
+    import morning_report as mr
+    import render_utils as ru
+
+    src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
+    assert not hasattr(ru, "_render_story_timeline_html"), \
+        "渲染器仍在 —— 卡片沒有真的移除"
+    assert "story_timeline_html" not in src, "email 組裝仍引用線索追蹤卡"
+
+    # 反向:prompt 注入與帳本維護都必須還在
+    assert "【進行中的線索(跨日追蹤)】" in src, \
+        "prompt 的線索區塊被一起砍掉了 —— 敘事連貫的素材來源沒了"
+    tree = ast.parse(src)
+    names = {n.name for n in ast.walk(tree)
+             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    for fn in ("load_story_ledger", "save_story_ledger",
+               "load_story_ledger_for_run"):
+        assert fn in names, f"{fn} 不見了 —— 帳本不再跨日累積"
+
+
+def test_other_sectors_section_carries_the_tech_section_discipline():
+    """批#86:九段(其他類股)要與八段(科技)同一套深度紀律與敘事寫法。
+
+    使用者指出八段的寫法正是他要的「前後連貫」,九段則還停在各自獨立的公告。
+    這條釘住九段的 prompt 真的帶著那套規矩 —— 否則改動只存在於我的說明裡。
+    """
+    import morning_report as mr
+
+    prompt = mr._build_prompt({}, {}, {}, [], [], "")
+    nine = prompt[prompt.index("## 九、其他類股資訊"):
+                  prompt.index("## 十、台灣本地動態")]
+    for must in ("三段式因果鏈", "傳導機制", "半句承接",
+                 "資訊強度", "信心"):
+        assert must in nine, f"九段缺少「{must}」的要求"
+    # 八段的三段式紀律是來源,兩段要一致
+    eight = prompt[prompt.index("## 八、科技板塊脈動"):
+                   prompt.index("## 九、其他類股資訊")]
+    assert "三段式因果鏈" in eight
+
+
+def test_sections_do_not_re_expand_what_belongs_elsewhere():
+    """批#86:使用者回報「前後有一些重複的訊息」。
+
+    七段是標題層、十段只寫八/九沒寫過的 —— 兩條排除規則都要真的在 prompt 裡。
+    """
+    import morning_report as mr
+
+    prompt = mr._build_prompt({}, {}, {}, [], [], "")
+    seven = prompt[prompt.index("## 七、昨夜三大重點"):
+                   prompt.index("## 七之二")]
+    assert "標題層" in seven and "不得展開傳導機制" in seven
+    ten = prompt[prompt.index("## 十、台灣本地動態"):
+                 prompt.index("## 十一、")]
+    assert "整條不要出現" in ten and "八段" in ten and "九段" in ten

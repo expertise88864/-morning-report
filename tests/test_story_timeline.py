@@ -11,8 +11,6 @@
 線索會被判「今日無新進展」並開始降級,最後沉寂——**不是因為事情停了,
 是因為我們沒去找**。
 """
-import html as _html
-
 import render_utils as ru
 import story_ledger as sl
 
@@ -102,42 +100,6 @@ def test_fact_numbers_are_rendered_in_chinese_units():
     assert sl.format_fact("3.5") == "3.5"
     assert sl.format_fact("x") == "x"
 
-
-def test_timeline_card_renders_links_and_skips_single_point_stories():
-    html = ru._render_story_timeline_html(_run(_DAYS), _html)
-    assert "線索追蹤" in html
-    for url in ("https://a/1", "https://a/2", "https://a/3"):
-        assert url in html, f"{url} 沒出現 —— 讀者無法回去讀原文"
-    assert "100億" in html and "200億" in html
-
-    # 只有一個時間點 = 沒有「前後」可言,不佔版面
-    assert ru._render_story_timeline_html(
-        [{"state": "peak", "timeline": [{"d": "2026-07-27", "t": "x"}]}],
-        _html) == ""
-    assert ru._render_story_timeline_html([], _html) == ""
-    # 沉寂線索不進卡片
-    assert ru._render_story_timeline_html(
-        [{"state": "dormant", "timeline": [{"d": "a", "t": "x"},
-                                           {"d": "b", "t": "y"}]}], _html) == ""
-
-
-def test_timeline_card_escapes_untrusted_text():
-    """標題與來源都是外部文字,且會跨日回流——與 prompt 同一條注入路徑。"""
-    led = [{"state": "peak", "entity_name": "<script>x</script>",
-            "headline": "<img onerror=1>", "updates": 2,
-            "first_seen": "2026-07-20",
-            "timeline": [{"d": "2026-07-20", "t": "<b>a</b>", "l": "https://a/1",
-                          "s": "<i>s</i>", "f": []},
-                         {"d": "2026-07-27", "t": "b", "l": "javascript:alert(1)",
-                          "s": "x", "f": []}]}]
-    html = ru._render_story_timeline_html(led, _html)
-    assert "<script>" not in html and "<img onerror" not in html
-    assert "&lt;script&gt;" in html
-    # 非 http 開頭的連結不得變成可點的 href
-    assert "href='javascript:" not in html
-
-
-# ===== 主動追蹤查詢 =====
 
 def test_followup_requires_an_entity_anchor():
     """沒有公司名/代號可以錨定的線索(cluster 型 key),查詢只能由標題片段組成,
@@ -259,19 +221,19 @@ def test_only_http_urls_reach_the_ledger():
         assert mr._safe_source_url(good) == good
 
 
-def test_render_layer_also_rejects_deceptive_schemes():
-    """縱深防禦:舊資料與手動編輯的 state 都可能帶著不合格的連結回流。"""
-    for bad in ("httpx://evil", "httpjavascript:alert(1)", "javascript:x"):
-        led = [{"state": "peak", "entity_name": "X", "headline": "h",
-                "updates": 2, "first_seen": "2026-07-20",
-                "timeline": [{"d": "2026-07-20", "t": "a", "l": bad, "s": "s",
-                              "f": []},
-                             {"d": "2026-07-27", "t": "b", "l": bad, "s": "s",
-                              "f": []}]}]
-        html = ru._render_story_timeline_html(led, _html)
-        assert "<a href=" not in html, f"{bad!r} 變成可點連結"
-    assert not ru._is_web_url("httpx://evil")
-    assert ru._is_web_url("https://a.com")
+def test_url_scheme_check_still_rejects_deceptive_schemes():
+    """縱深防禦的判準本身。
+
+    批#86:線索追蹤**卡片**已移除(敘事連貫改由八/九段的「前情 → 今日進展」
+    寫法承擔),原本驗渲染層的那半段隨之刪除。但 `_is_web_url` 仍是帳本與
+    其他渲染共用的判準,而舊資料與手動編輯的 state 都可能帶著不合格的連結
+    回流 —— 這條繼續釘住它。
+    """
+    for bad in ("httpx://evil", "httpjavascript:alert(1)", "javascript:x",
+                "ftp://x", "", None):
+        assert not ru._is_web_url(bad), f"{bad!r} 被放行"
+    for good in ("https://a.com", "http://a.com/1"):
+        assert ru._is_web_url(good)
 
 
 def test_followup_results_carry_the_target_entity(monkeypatch):

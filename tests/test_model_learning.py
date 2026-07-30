@@ -3444,7 +3444,6 @@ def test_watchdog_requires_successful_delivery_not_just_freshness(tmp_path):
       - manifest 更新了,但在寄信那一步失敗
     而看門狗存在的理由正是後者。
     """
-    import datetime as dt
     import json as _json
     import sys as _sys
     from pathlib import Path as _P
@@ -3494,3 +3493,74 @@ def test_delivery_outcome_is_written_before_the_state_push():
     assert (seq.index("_mark_delivery_in_manifest")
             < seq.index("persist_delivered_report_state")), \
         "寄送結果補寫在 push 之後 → 帶不回 repo,看門狗看不到"
+
+
+def test_capability_health_is_refreshed_after_event_extraction():
+    """r1(Codex,P1):第一版只在資料品質閘那裡算**一次**,而那裡在 main 的
+    20819 行、事件抽取器要到 20951 才跑 —— 算的時候 `llm_extractor` 還不存在,
+    所以抽取器**永遠不會**出現在 `inactive_capabilities` 裡。
+
+    我原本的測試預先塞了 `_RUN_MANIFEST` 或直接注入 `extra_inactive`,
+    繞過了真實的 main 順序 —— 又一次「驗的不是生產送進來的東西」。
+    這條驗兩件事:①函式可重複呼叫且會反映最新的 llm_extractor;
+    ②main 裡在抽取之後真的有補算(AST)。
+    """
+    import ast
+    import pathlib
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    mr._RUN_MANIFEST["data_checks"] = {"errors": [], "warnings": []}
+    try:
+        # 抽取器還沒跑過 → 不算失效(沒跑過不是失效)
+        assert "llm_event_extractor" not in mr._refresh_capability_health(
+            )["inactive_capabilities"]
+        # 跑過且零產出 → 必須被列為失效
+        mr._RUN_MANIFEST["llm_extractor"] = {"called": True, "survived": 0}
+        assert "llm_event_extractor" in mr._refresh_capability_health(
+            )["inactive_capabilities"]
+        # 跑過且有產出 → 不列
+        mr._RUN_MANIFEST["llm_extractor"] = {"called": True, "survived": 3}
+        assert "llm_event_extractor" not in mr._refresh_capability_health(
+            )["inactive_capabilities"]
+    finally:
+        mr._RUN_MANIFEST.pop("llm_extractor", None)
+        mr._RUN_MANIFEST.pop("data_checks", None)
+        mr._RUN_MANIFEST.pop("capability_health", None)
+
+    # main 必須在事件抽取**之後**補算一次
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    main_fn = next(n for n in ast.walk(tree)
+                   if isinstance(n, ast.FunctionDef) and n.name == "main")
+    seq = sorted((n.lineno, n.func.id) for n in ast.walk(main_fn)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                 and n.func.id in ("call_llm_event_extractor",
+                                   "extract_structured_events",
+                                   "_refresh_capability_health",
+                                   "build_data_quality"))
+    names = [nm for _, nm in seq]
+    last_extract = max(i for i, nm in enumerate(names)
+                       if nm in ("call_llm_event_extractor",
+                                 "extract_structured_events"))
+    refreshes = [i for i, nm in enumerate(names)
+                 if nm == "_refresh_capability_health"]
+    assert any(i > last_extract for i in refreshes), \
+        "抽取之後沒有補算能力健康 —— 抽取器失效永遠不會被呈現"
+    assert names.index("build_data_quality") > max(refreshes), \
+        "補算發生在 build_data_quality 之後 → 信件區塊看不到"
+
+
+def test_new_top5_rows_are_versioned_at_creation():
+    """r1(Codex,P2):原本只在遍歷**既有**列時補 `ledger_schema_version`,
+    於是剛寫進去的列要等下一次執行才有版本 —— 生產帳本會一直有未版本化的列,
+    而 schema 契約的目的就是讓下游不必猜格式。"""
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", sessions=dates, taiex_opens=topens,
+                          exdiv_history=_exdiv_cover())
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    row = next(e for e in stored if e.get("type") == "top5")
+    assert row["ledger_schema_version"] == mr.TOP5_LEDGER_SCHEMA_VERSION

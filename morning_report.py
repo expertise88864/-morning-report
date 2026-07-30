@@ -14899,6 +14899,10 @@ def update_top5_ledger(model_history: list, top5: list[dict],
     codes = [str(s.get("code")) for s in top5 or [] if s.get("code")]
     if _pre_open and len(codes) >= 3:
         entry = {"type": "top5", "created": today,
+                 # r1(Codex,P2):**新建時就要帶版本**。原本只在遍歷既有列時
+                 # 補,於是剛寫進去的列要等下一次執行才有版本 —— 生產帳本會
+                 # 一直有未版本化的列,而 schema 契約的目的就是讓下游不必猜。
+                 "ledger_schema_version": TOP5_LEDGER_SCHEMA_VERSION,
                  "created_at": now_tpe.isoformat(),
                  "target_session": str(target_session or ""),
                  "base_session": dates[-1] if dates else "",
@@ -19667,6 +19671,37 @@ def determine_mode(now_tpe: dt.datetime) -> str:
     return "週末綜合" if wd == 0 else "每日報"
 
 
+def _refresh_capability_health(dq_summary: Optional[dict] = None) -> dict:
+    """重算並寫回 `_RUN_MANIFEST["capability_health"]`。
+
+    r1(Codex,P1):第一版只在資料品質閘那裡算**一次**,而那裡在 main 的
+    20819 行,事件抽取器要到 20951 才跑 —— 算的時候 `_RUN_MANIFEST
+    ["llm_extractor"]` 還不存在,所以抽取器**永遠不會**出現在
+    `inactive_capabilities` 裡,manifest 與信件都看不到它失效。
+    (我的測試預先塞了 `_RUN_MANIFEST` 或直接注入 `extra_inactive`,
+     繞過了真實的 main 順序 —— 又一次「驗的不是生產送進來的東西」。)
+
+    改成可重複呼叫:抽取器跑完之後再補算一次。`dq_summary` 省略時沿用
+    上次寫進 manifest 的那份。
+    """
+    summary = dq_summary if dq_summary is not None else (
+        _RUN_MANIFEST.get("data_checks") or {})
+    extra = []
+    lx = _RUN_MANIFEST.get("llm_extractor") or {}
+    # 只有在抽取器**真的跑過**(有 called 記錄)時才判定;沒跑過不是失效
+    if lx.get("called") and not int(_safe_number(lx.get("survived"))):
+        extra.append("llm_event_extractor")
+    try:
+        import data_quality as _dqm
+        health = _dqm.capability_health(summary, extra_inactive=extra)
+    except Exception as e:
+        print(f"[capability] 健康狀態彙整略過: {type(e).__name__}: {e}",
+              file=sys.stderr)
+        return _RUN_MANIFEST.get("capability_health") or {}
+    _RUN_MANIFEST["capability_health"] = health
+    return health
+
+
 def build_data_quality(quotes: dict, fair: dict, predictions: dict,
                         news: list[dict], tw0050: list[dict]) -> list[dict]:
     """
@@ -20812,12 +20847,7 @@ def main() -> int:
         # 而頂層健康語意仍顯示沒有降級。「不擋信」不等於「可以不呈現」。
         # LLM 抽取器的失敗不是品質檢查抓的(它記在 llm_extractor.outcome),
         # 所以另外補進來。
-        _extra_inactive = []
-        _lx = _RUN_MANIFEST.get("llm_extractor") or {}
-        if _lx and not int(_safe_number(_lx.get("survived"))):
-            _extra_inactive.append("llm_event_extractor")
-        _RUN_MANIFEST["capability_health"] = _dq.capability_health(
-            _dq_summary, extra_inactive=_extra_inactive)
+        _refresh_capability_health(_dq_summary)
         for _label in _dq.degraded_labels(_dq_summary):
             _DEGRADED_STEPS.append(_label)
             print(f"[dq] ERROR {_label}", file=sys.stderr)
@@ -20959,6 +20989,10 @@ def main() -> int:
     #  「錯了完全無聲」的接線,已由 AST 測試盯住)。
     structured_events = apply_event_timeline(model_history, _events,
                                             known_names=_entity_alias_map(tw0050))
+    # r1(Codex,P1):抽取器跑完才知道它有沒有產出 —— 能力健康必須在這裡**補算**,
+    # 否則 `llm_event_extractor` 永遠不會出現在 inactive_capabilities 裡
+    # (資料品質閘那次計算發生在抽取之前)。
+    _refresh_capability_health()
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     # 批#44:把今日事件併入線索帳本。狀態機轉移由 Python 決定(比照 PR-2 的
     # 「Python 權威、LLM 只能抄錄」);LLM 只負責在寫作時接上前情。

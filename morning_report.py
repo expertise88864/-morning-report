@@ -9212,14 +9212,22 @@ def build_event_study(model_history: list[dict],
                     keys.append(("industry", str(evidence["scope_industry"]), event_type, direction))
                 if evidence.get("scope_supply_chain"):
                     keys.append(("supply_chain", str(evidence["scope_supply_chain"]), event_type, direction))
-                is_v2 = int(_safe_number(evidence.get("event_schema"))) >= 2
+                # r2(Codex,P1):**可信計數的門檻必須跟著世代走。**
+                # `_event_study_dedupe_key` 已把舊世代降為 session 級 fallback,
+                # 但這裡仍硬寫 `>= 2` → 同一個 schema-2 事件在五個 session 重複
+                # 出現時,五個 fallback episode 全被算成「可信事件」,
+                # `unique_events_v2` 達到 5,`_shrunk_event_impact` 的
+                # `study_samples >= 5` 閘門被錯誤打開,啟用錯的 learned impact。
+                # 名稱裡的 v2 是歷史遺留,語意是「當代可信」。
+                is_current_gen = (int(_safe_number(evidence.get("event_schema")))
+                                  >= EVENT_SCHEMA_VERSION)
                 for key in keys:
                     bucket = grouped.setdefault(
                         key, {"values": [], "events": set(), "events_v2": set(),
                               "by_event": {}})
                     bucket["values"].append(value)
                     bucket["events"].add(event_ident)
-                    if is_v2:
+                    if is_current_gen:
                         bucket["events_v2"].add(event_ident)
                     bucket["by_event"].setdefault(event_ident, []).append(value)
     output = {}
@@ -20844,7 +20852,11 @@ def main() -> int:
         # 確定性 baseline,無 LLM/網路
         _events = extract_structured_events(
             news, tw_mops, known_names=_entity_alias_map(tw0050))
-    structured_events = apply_event_timeline(model_history, _events)
+    # 別名表一併傳入:歷史事件沒有 subject_key,補算 v3 身分才能讓兩代主鍵對齊
+    # (漏傳不會壞、不會報錯,只是改寫過的重複報導會重新拿到權重 —— 又是一條
+    #  「錯了完全無聲」的接線,已由 AST 測試盯住)。
+    structured_events = apply_event_timeline(model_history, _events,
+                                            known_names=_entity_alias_map(tw0050))
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     # 批#44:把今日事件併入線索帳本。狀態機轉移由 Python 決定(比照 PR-2 的
     # 「Python 權威、LLM 只能抄錄」);LLM 只負責在寫作時接上前情。

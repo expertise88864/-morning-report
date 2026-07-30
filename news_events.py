@@ -578,14 +578,29 @@ def _event_instance_id(event: dict) -> str:
 
 
 def apply_event_timeline(model_history: list[dict],
-                         events: list[dict]) -> list[dict]:
-    """Annotate incremental lifecycle transitions and suppress repeated event scoring."""
+                         events: list[dict],
+                         known_names=None) -> list[dict]:
+    """Annotate incremental lifecycle transitions and suppress repeated event scoring.
+
+    `known_names`(批#72 r2,Codex P1):代號→別名 tuple。歷史 state 裡的事件沒有
+    `subject_key`(那是本批新增的),若只靠標題橋接,**改寫過的重複報導**
+    (「獲蘋果2奈米大單」→「確認獲蘋果2奈米訂單」)橋不起來,confirmed 會重新
+    拿到 1.0 權重。有了別名表就能直接**為歷史事件補算 v3 身分**,兩代主鍵對齊,
+    改寫與換媒體都不影響。拿不到別名表時仍退回標題橋接(至少擋住逐字重複)。
+    """
     previous: dict[tuple[str, str], str] = {}
     #: 跨世代橋接表(見下方 `_event_generation_bridge_key` 說明)
     previous_bridge: dict[tuple, str] = {}
     for record in sorted(model_history or [], key=lambda item: item.get("session_date", "")):
         for event in record.get("structured_events") or []:
             lifecycle = str(event.get("lifecycle") or _event_lifecycle(event))
+            # 為缺 subject_key 的歷史事件補算 v3 身分(見 docstring)。
+            # 不寫回 state —— 這裡只是為了讓兩代主鍵在本次比對中對齊。
+            if known_names and not str(event.get("subject_key") or ""):
+                _ent = str(event.get("entity") or "")
+                event = dict(event, subject_key=event_subject_key(
+                    str(event.get("title") or ""), _ent,
+                    (known_names or {}).get(_ent) or (), known_names))
             previous[_event_timeline_key(event)] = lifecycle
             # r1(Codex,P1):**歷史紀錄沒有 `subject_key`。**
             # 批#72 之前存下來的事件算出的是月 bucket 鍵(`orders|2026-07`),

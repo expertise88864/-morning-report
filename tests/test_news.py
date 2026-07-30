@@ -2325,16 +2325,61 @@ def test_cross_generation_repeat_does_not_regain_weight():
         return ev
 
     hist = [{"session_date": "2026-07-05",
-             "structured_events": [mk("台積電獲蘋果2奈米大單", subject=False)]}]
-    repeat = mr.apply_event_timeline(hist, [mk("台積電獲蘋果2奈米大單")])[0]
+             "structured_events": [mk("台積電獲蘋果2奈米大單 - 經濟日報",
+                                      subject=False)]}]
+    # r2(Codex,P1):**改寫過的重複報導也必須橋接**。原本只用標題當橋
+    # (去標點後前 48 字完全相等),而 v3 的重複報導常常換了措辭與媒體尾綴
+    # → 橋不起來、confirmed 重新拿 1.0。而我上一版的測試恰好只用**逐字相同**
+    # 的標題,改寫案例又順手把 lifecycle 改成 implemented 且只斷言權重 > 0
+    # ——**橋接完全失效也會通過**。修法是為歷史事件補算 v3 身分(需要別名表)。
+    repeat = mr.apply_event_timeline(
+        hist, [mk("台積電確認獲蘋果2奈米訂單 - DIGITIMES")], known_names=V)[0]
     assert repeat["is_incremental"] is False and repeat["lifecycle_weight"] == 0
+    # 逐字相同的重複(不給別名表時靠標題橋接)也要擋住
+    verbatim = mr.apply_event_timeline(
+        hist, [mk("台積電獲蘋果2奈米大單 - 經濟日報")])[0]
+    assert verbatim["is_incremental"] is False
     # 同月**不同**事件仍要拿到權重(對照組:否則只是把功能關掉)
     other = mr.apply_event_timeline(
         hist, [mk("台積電獲輝達CoWoS追加訂單",
-                  published="2026-07-25T00:00:00+00:00")])[0]
+                  published="2026-07-25T00:00:00+00:00")], known_names=V)[0]
     assert other["is_incremental"] is True and other["lifecycle_weight"] > 0
-    # 跨世代的**真進展**(rumor→implemented)也要拿到權重
+    # 跨世代的**真進展**(confirmed→implemented)也要拿到權重
     prog = mr.apply_event_timeline(
-        hist, [mk("台積電確認蘋果2奈米訂單投片", lifecycle="implemented",
-                  published="2026-08-10T00:00:00+00:00")])[0]
+        hist, [mk("台積電蘋果2奈米訂單開始投片", lifecycle="implemented",
+                  published="2026-08-10T00:00:00+00:00")], known_names=V)[0]
     assert prog["is_incremental"] is True and prog["lifecycle_weight"] > 0
+
+
+def test_alias_map_is_wired_into_apply_event_timeline():
+    """接線檢查:`known_names` 是**選填**參數 —— 漏傳不會壞、不會報錯、
+    測試全綠,只是改寫過的重複報導會重新拿到 1.0 權重。又是一條
+    「錯了完全無聲」的接線,所以用 AST 直接盯生產呼叫點。"""
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "apply_event_timeline"]
+    assert calls, "找不到 apply_event_timeline 的呼叫點"
+    assert all(any(kw.arg == "known_names" for kw in c.keywords) for c in calls), \
+        "有呼叫點沒傳 known_names —— 歷史事件補算不到 v3 身分"
+
+
+def test_extraction_alias_map_is_wired_at_both_call_sites():
+    """同理:事件抽取的兩條路徑(有 LLM / 純確定性)都必須拿到別名表,
+    否則 `subject_key` 全空,整個 Event Identity v3 靜默失效。"""
+    import ast
+    import pathlib
+    src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    main_fn = next(n for n in ast.walk(tree)
+                   if isinstance(n, ast.FunctionDef) and n.name == "main")
+    names = ("extract_structured_events", "call_llm_event_extractor")
+    calls = [n for n in ast.walk(main_fn)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id in names]
+    assert len(calls) >= 2, f"main 裡只找到 {len(calls)} 個抽取呼叫點"
+    for c in calls:
+        assert any(kw.arg == "known_names" for kw in c.keywords), \
+            f"{ast.unparse(c.func)} 沒傳 known_names"

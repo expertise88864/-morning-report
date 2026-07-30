@@ -3328,3 +3328,52 @@ def test_event_study_isolates_older_identity_generations():
     assert k_cur != k_old
     # 同一代的相同 ID 仍然去重
     assert k_cur == ne._event_study_dedupe_key(row, dict(cur))
+
+
+def test_older_schema_repeats_do_not_open_the_learned_impact_gate():
+    """r2(Codex,P1):`_event_study_dedupe_key` 已把舊世代降為 session 級 fallback,
+    但 `build_event_study` 仍硬寫 `event_schema >= 2` 來決定「可信事件」——
+    同一個 schema-2 事件在五個 session 重複出現時,五個 fallback episode 全被算成
+    可信事件,`unique_events_v2` 達到 5,`_shrunk_event_impact` 的
+    `study_samples >= 5` 閘門被錯誤打開,啟用錯的 learned impact。
+
+    這條**真的跑 build_event_study**並斷言 `unique_events_v2` ——
+    我第一版只驗去重鍵加一個恆真式,docstring 卻宣稱走了完整管線,
+    那正是「測試比它宣稱的弱」(本輪已犯過幾次)。
+    """
+    import news_events as ne
+    old_gen = ne.EVENT_SCHEMA_VERSION - 1
+    sessions = [f"2026-06-{day:02d}" for day in range(1, 10)]
+    history = []
+    for index, session in enumerate(sessions):
+        # 同一個舊世代 event_id 連續五天重複出現
+        evidence = ([{"event_id": "same-old", "event_schema": old_gen,
+                      "event_type": "orders", "direction": 1}]
+                    if index < 5 else [])
+        history.append({
+            "session_date": session,
+            "taiex_close": 100,
+            "stocks": {"2330": _stock(100 + index * 2, news_catalysts=evidence)},
+        })
+    study = mr.build_event_study(history, sessions, horizon=1)
+    bucket = study[("orders", 1)]
+    # session fallback 本來就會過切(已記載為「寧過切勿互吞」)
+    assert bucket["samples"] == 5
+    # 但**不得**被算進當代可信樣本 —— 否則 learned impact 閘門被錯誤打開
+    assert bucket["unique_events_v2"] == 0, (
+        f"舊世代重複報導被算成 {bucket['unique_events_v2']} 個可信事件")
+
+    # 對照組:當代世代的五個相異 ID 才應該打開閘門
+    history_cur = []
+    for index, session in enumerate(sessions):
+        evidence = ([{"event_id": f"ev{index}",
+                      "event_schema": ne.EVENT_SCHEMA_VERSION,
+                      "event_type": "orders", "direction": 1}]
+                    if index < 5 else [])
+        history_cur.append({
+            "session_date": session,
+            "taiex_close": 100,
+            "stocks": {"2330": _stock(100 + index * 2, news_catalysts=evidence)},
+        })
+    assert mr.build_event_study(
+        history_cur, sessions, horizon=1)[("orders", 1)]["unique_events_v2"] == 5

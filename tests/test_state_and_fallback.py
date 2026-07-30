@@ -34,8 +34,16 @@ _SRC = Path(mr.__file__).read_text(encoding="utf-8")
 # 由外部工具或人工維護。故不該出現在 push 清單。
 _READ_ONLY_STATE = {"REVENUE_CONSENSUS_FILE", "TWSE_TOP100_ARCHIVE_FILE"}
 
+# 批#74(第七輪 P1-10):state 路徑改為由 `STATE_ROOT` 衍生,宣告形式因此有兩種:
+#   舊:`FOO_FILE = Path("state/foo.json")`
+#   新:`FOO_FILE = STATE_ROOT / "foo.json"`
+# 掃描器只認舊形式的話會**靜默回傳幾乎空的集合** —— 而下面兩條登錄檢查
+# 依賴它,空集合會讓它們變成永遠通過的空斷言。
+# (`test_state_const_scan_finds_the_known_ones` 存在的理由正是這個,
+#  而它這次確實抓到了:改完只找到 2 個常數。)
 _PATH_CONST_RE = re.compile(
-    r"^([A-Z][A-Z0-9_]*)\s*=\s*Path\((?:[^()]|\([^()]*\))*\)",
+    r"^([A-Z][A-Z0-9_]*)\s*=\s*(?:Path\((?:[^()]|\([^()]*\))*\)"
+    r"|STATE_ROOT\s*/\s*\"[^\"]+\")",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -44,7 +52,10 @@ def _declared_state_consts() -> set[str]:
     """原始碼中預設值指向 state/ 的模組級 Path 常數名稱。"""
     return {
         m.group(1) for m in _PATH_CONST_RE.finditer(_SRC)
-        if "state/" in m.group(0)
+        if ("state/" in m.group(0) or "STATE_ROOT" in m.group(0))
+        # `STATE_ROOT` 本身是**根目錄**而不是一份 state 檔,不需要登錄 push
+        # (它底下的每一個檔各自登錄)。
+        and m.group(1) != "STATE_ROOT"
     }
 
 
@@ -221,3 +232,39 @@ def test_no_module_state_path_points_into_the_repo_during_tests():
     assert not leaked, (
         "測試期間這些 state 路徑仍指向 repo,會覆寫真實資料:\n  "
         + "\n  ".join(leaked))
+
+
+def test_os_level_guard_blocks_dynamically_built_state_paths():
+    """批#74(第七輪 P1-10):**與命名/宣告位置無關的守衛。**
+
+    「掃描指向 repo state 的 Path 常數」比逐一 monkeypatch 好,但仍漏兩類:
+      (a) 函式內動態組出的路徑(模組層掃不到)
+      (b) 直接 `open("state/…", "w")`
+    批#71 r1 那次真實資料損毀(exdiv_history.json 115 筆被清空並提交)
+    就是被這兩類漏掉的。這條驗守衛對兩者都會當場拋。
+    """
+    import pytest as _pytest
+    from pathlib import Path as _P
+
+    target = _P("state") / "should_never_be_written.json"
+    with _pytest.raises(AssertionError, match="真實 state"):
+        target.write_text("x", encoding="utf-8")
+    with _pytest.raises(AssertionError, match="真實 state"):
+        target.write_bytes(b"x")
+    with _pytest.raises(AssertionError, match="真實 state"):
+        open("state/should_never_be_written.json", "w").close()
+    # 唯讀不受影響(測試要能讀真實 state 當語料)
+    assert _P("state").exists()
+    # tmp 路徑完全不受影響
+    import tempfile
+    tmp = _P(tempfile.mkdtemp()) / "ok.json"
+    tmp.write_text("{}", encoding="utf-8")
+    assert tmp.read_text(encoding="utf-8") == "{}"
+
+
+def test_all_state_paths_derive_from_state_root():
+    """state 路徑必須由 `STATE_ROOT` 衍生 —— 硬寫 `Path("state/…")` 的話,
+    換根(測試用 tmp root)就換不掉,而那正是「新增 state 檔忘記隔離」的來源。"""
+    import re as _re
+    hard = _re.findall(r'Path\("state/[^"]+"\)', _SRC)
+    assert not hard, f"仍有硬寫的 state 路徑:{hard}"

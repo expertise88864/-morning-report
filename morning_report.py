@@ -240,6 +240,18 @@ def _external_text(value: object, limit: int = 0) -> str:
     return text[:limit] if limit else text
 
 
+#: 所有執行期 state 的根目錄。**單一來源**。
+#: 批#74(第七輪 P1-10):原本 17 個 state 路徑各自寫死 `STATE_ROOT / "…"`,
+#: 於是「測試不得寫入 repo state」這條不變式只能靠**逐一 monkeypatch** 或
+#: 靠「名稱以 _FILE/_DIR 結尾」的掃描來維護 —— 兩者都會漏:
+#:   - 批#66 新增的 `EXDIV_HISTORY_FILE` 不在任何清單裡,測試把真實檔案
+#:     **115 筆除權息事件清成空陣列**,再被 `git add -A` 提交(批#71 r1)
+#:   - 函式內動態組出的 `STATE_ROOT / "gooaye_radar.json"` 連掃描都看不到
+#: 集中成一個根之後,測試只要換掉這個根就整批生效;而更強的保證由
+#: `tests/conftest.py` 的 OS 層寫入守衛提供(任何指向 repo state 的寫入直接拋)。
+STATE_ROOT = Path(os.environ.get("STATE_ROOT") or "state")
+
+
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
     """原子寫檔(修正批B,GPT-5.6 二審):先寫 .tmp 再 os.replace——
     runner 中止/磁碟寫一半不會留下損壞的 state 檔(讀端頂多讀到舊版完整內容)。"""
@@ -349,7 +361,7 @@ NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
 # 記錄每階段耗時、時間預算降級、各來源抓取結果 → state/run_manifest.json + GitHub Actions
 # Step Summary(在 Actions 執行頁直接看得到「時間花在哪、平行化有沒有幫助、哪個來源在掛」)。
 # 純市場中性資料(耗時/計數/來源健康),不含任何個人化內容。失敗不影響晨報。
-RUN_MANIFEST_FILE = Path("state/run_manifest.json")
+RUN_MANIFEST_FILE = STATE_ROOT / "run_manifest.json"
 _RUN_MANIFEST: dict = {"marks": []}
 
 
@@ -6581,12 +6593,12 @@ def _official_source_entries(source: dict, stats: dict) -> list[dict]:
 # 每天所有詞都是新詞,偵測完全失效(批#37 的登錄不變式測試會擋住漏登錄)。
 # 批#44:story ledger。線索的跨日狀態(醞釀→發展→高潮→收斂→沉寂)必須跨日
 # 累積才有「連續劇」可言;不入 push 清單則 CI 每天都是第一天,敘事連續性歸零。
-STORY_LEDGER_FILE = Path("state/story_ledger.json")
+STORY_LEDGER_FILE = STATE_ROOT / "story_ledger.json"
 
-POLICY_KEYWORDS_FILE = Path("state/policy_keywords.json")
+POLICY_KEYWORDS_FILE = STATE_ROOT / "policy_keywords.json"
 POLICY_KEYWORDS_KEEP = 4000      # 上限:超過則丟最舊(公報每日約 100 個詞)
 
-INTEL_SHOWN_FILE = Path("state/intel_shown.json")
+INTEL_SHOWN_FILE = STATE_ROOT / "intel_shown.json"
 INTEL_SHOWN_SUPPRESS_DAYS = 5    # 顯示過的條目 5 天內降序
 INTEL_SHOWN_KEEP_DAYS = 14       # 紀錄保留上限(修剪用)
 
@@ -7039,13 +7051,13 @@ def fetch_news_fulltext(news: list[dict],
 
 
 # ============= 多日歷史記憶 (Opt 1) =============
-STATE_FILE = Path("state/history.json")
+STATE_FILE = STATE_ROOT / "history.json"
 # model_history 儲存(2026-07-16 地基批#1,GPT-5.6 review P0):
 # 舊制單檔 + 14MB 上限「從最舊刪起」造成資料持續流失(190 日→143 日)。
 # 新制:按月分區 gzip(state/model_history/YYYY-MM.json.gz),不再按大小刪資料;
 # 舊單檔凍結唯讀(loader 仍合併讀取,分區同日優先),日後可手動刪除。
-MODEL_HISTORY_FILE = Path("state/model_history.json")   # legacy,唯讀
-MODEL_HISTORY_DIR = Path("state/model_history")
+MODEL_HISTORY_FILE = STATE_ROOT / "model_history.json"   # legacy,唯讀
+MODEL_HISTORY_DIR = STATE_ROOT / "model_history"
 TWSE_TOP100_ARCHIVE_FILE = Path(os.environ.get(
     "TWSE_TOP100_ARCHIVE_FILE", "state/twse_top100_archive.json"))
 REVENUE_CONSENSUS_FILE = Path(os.environ.get(
@@ -8357,7 +8369,7 @@ def build_source_health_report(snapshot: list[dict],
     }
 
 
-SOURCE_HEALTH_HISTORY_FILE = Path("state/source_health_history.json")
+SOURCE_HEALTH_HISTORY_FILE = STATE_ROOT / "source_health_history.json"
 
 
 def update_source_health_history(report: dict, today: str, keep_days: int = 30,
@@ -9373,7 +9385,7 @@ def _stock_news_catalysts(snapshot: list[dict],
 # ── Conformal 區間校準(借鏡 Angelopoulos "Conformal PID Control",MIT;inline ~單一純量更新)──
 # 80% 區間實際命中率 < 80%(台股肥尾/跳空常見)→ 把 band 加寬;> 80% → 收窄。
 # P-control:q_{t+1} = clamp(q_t + η·(目標覆蓋 − 實際覆蓋)/100);q 為 band 的加性調整(%)。
-CONFORMAL_STATE_FILE = Path("state/conformal_intervals.json")
+CONFORMAL_STATE_FILE = STATE_ROOT / "conformal_intervals.json"
 CONFORMAL_TARGET_COV = 80.0
 CONFORMAL_LR = 2.0
 CONFORMAL_Q_LO, CONFORMAL_Q_HI = -2.0, 6.0
@@ -14058,7 +14070,7 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
 
 
 # ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
-EVENT_TIMELINE_FILE = Path("state/event_timeline.json")
+EVENT_TIMELINE_FILE = STATE_ROOT / "event_timeline.json"
 _TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
 
 
@@ -15079,7 +15091,7 @@ def _render_macro_vintage_html(rows: list[dict]) -> str:
 #: 除權息事件史(批#66,P0-2)。Top5 的 5/20 日報酬用**原始收盤價**計算,
 #: 個股除權息當日的價格斷點會被當成下跌 —— 台股 7-8 月是除權息旺季,
 #: 一檔配息 4~5% 的個股會在窗口內憑空「跌」掉那一截。
-EXDIV_HISTORY_FILE = Path("state/exdiv_history.json")
+EXDIV_HISTORY_FILE = STATE_ROOT / "exdiv_history.json"
 _EXDIV_KEEP_DAYS = 400
 
 
@@ -15297,7 +15309,7 @@ def exdiv_events_in_window(history: list, codes, start: str, end: str) -> list:
             and start < str(r.get("ex_date") or "") <= end]
 
 
-FORECAST_LEDGER_FILE = Path("state/forecast_ledger.json")
+FORECAST_LEDGER_FILE = STATE_ROOT / "forecast_ledger.json"
 #: 每日產生 2 題 + 1 筆 top5 + 1 筆 mz_shadow,600 約等於 150 個交易日
 #: Top5 帳本列的 schema 世代(批#73)。新增欄位時遞增,
 #: 讓渲染/統計端分得出世代而不是猜格式。
@@ -15819,7 +15831,7 @@ def _prediction_delta_note(history: list, report_date: str,
 
 
 # ===== 類股熱度排名 delta(地基批#5):昨日名次 → 今日顯示 ↑↓/新進 =====
-SECTOR_RANK_FILE = Path("state/sector_rank_history.json")
+SECTOR_RANK_FILE = STATE_ROOT / "sector_rank_history.json"
 
 
 def _sector_rank_deltas(ranked: list[str], now_tpe: dt.datetime) -> dict:
@@ -16206,7 +16218,7 @@ def _poly_outright(slug: str, zh_map: Optional[dict] = None,
 # 「變化」比「快照」更有情報價值(GPT-5.6 Delta-first 的縮小版)。
 # 結構 {key: {"prev": {"date","probs"}, "curr": {"date","probs"}}};
 # 同日重跑只覆蓋 curr(delta 穩定),跨日輪替 prev←curr。顯示用,不入模型。
-POLY_HISTORY_FILE = Path("state/poly_history.json")
+POLY_HISTORY_FILE = STATE_ROOT / "poly_history.json"
 POLY_HISTORY_KEEP_DAYS = 14   # 死盤(世足決賽後等)的紀錄修剪
 
 
@@ -17747,7 +17759,7 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
     return out
 
 
-PODCAST_DIGEST_FILE = Path("state/podcast_digest.json")
+PODCAST_DIGEST_FILE = STATE_ROOT / "podcast_digest.json"
 # Top5 波段觀察卡渲染開關:2026-07-15 使用者要求刪除 → 2026-07-18 要求加回
 # (位置改 Podcast 卡上方)。排名/回測/state/prompt 素材從未中斷。
 _RENDER_TOP5_CARD = True
@@ -17844,7 +17856,7 @@ def _radar_processed_guids() -> set:
     (不碰 podcast_digest.json,避免兩 workflow 競寫),晨報讀它來去重:雷達已處理的股癌集,
     晨報 Podcast 段不再重複。讀檔失敗一律回空集(降級為不去重,最壞重複一次)。"""
     try:
-        p = Path("state/gooaye_radar.json")
+        p = STATE_ROOT / "gooaye_radar.json"
         if not p.exists():
             return set()
         data = json.loads(p.read_text(encoding="utf-8"))
@@ -19531,7 +19543,7 @@ def send_email(html: str, subject: str) -> None:
     print(f"[mail] 已寄出 → {len(RECIPIENTS)} 位收件者")
 
 
-EMAIL_ARCHIVE_DIR = Path("state/emails")
+EMAIL_ARCHIVE_DIR = STATE_ROOT / "emails"
 
 
 def _redact_private_for_archive(html: str) -> str:

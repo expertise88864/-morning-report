@@ -9,10 +9,16 @@ import gzip
 import hashlib
 import json
 import sys
+import os
 from pathlib import Path
 
-DEFAULT_LEGACY_FILE = Path("state/model_history.json")
-DEFAULT_PARTITION_DIR = Path("state/model_history")
+#: 批#74(第七輪 P1-10):state 根目錄由環境變數集中控制,與 morning_report
+#: 共用同一個機制。這裡刻意**不 import morning_report**(那會製造循環相依,
+#: 而本模組是被它匯入的下層),改為讀同一個環境變數 —— 單一事實來源仍是
+#: `STATE_ROOT`,只是兩邊各自解析。
+STATE_ROOT = Path(os.environ.get("STATE_ROOT") or "state")
+DEFAULT_LEGACY_FILE = STATE_ROOT / "model_history.json"
+DEFAULT_PARTITION_DIR = STATE_ROOT / "model_history"
 DEFAULT_SESSIONS = 520
 
 MANIFEST_NAME = "manifest.json"

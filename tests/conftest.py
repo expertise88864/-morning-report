@@ -199,6 +199,58 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
     from pathlib import Path as _Path
     d = tmp_path_factory.mktemp("state_guard")
     repo_state = _Path("state").resolve()
+
+    # 批#74(第七輪 P1-10):**OS 層寫入守衛。**
+    # 上面那套「掃描指向 repo state 的 Path 常數」比逐一 monkeypatch 好,
+    # 但仍然漏兩類:
+    #   (a) 函式內動態組出的路徑(例如 `STATE_ROOT / "gooaye_radar.json"`
+    #       出現在函式體內,模組層掃不到)
+    #   (b) 直接 `open("state/…", "w")`
+    # 所以再加一道**與命名/宣告位置無關**的守衛:任何指向 repo `state/` 的
+    # 寫入型操作直接拋。這才是真正的不變式 —— 批#71 r1 那次
+    # (真實 exdiv_history.json 115 筆被清空並提交)就是被上述兩類漏掉的。
+    def _blocked(target) -> bool:
+        try:
+            rp = _Path(target).resolve()
+        except (OSError, ValueError, TypeError):
+            return False
+        return rp == repo_state or repo_state in rp.parents
+
+    def _guard(name, orig, path_of=lambda a, kw: a[0]):
+        def wrapper(*args, **kwargs):
+            try:
+                target = path_of(args, kwargs)
+            except Exception:
+                target = None
+            if target is not None and _blocked(target):
+                raise AssertionError(
+                    f"測試試圖寫入 repo 的真實 state:{name} → {target}"
+                    " / 請改用 tmp 路徑(conftest 已把模組層 state 常數導走);"
+                    " 若是新增的 state 路徑,請確認它由 STATE_ROOT 衍生。")
+            return orig(*args, **kwargs)
+        return wrapper
+
+    import builtins as _builtins
+    import os as _os
+    for _cls, _name in ((_Path, "write_text"), (_Path, "write_bytes"),
+                        (_Path, "unlink"), (_Path, "replace"),
+                        (_Path, "rename")):
+        _orig = getattr(_cls, _name)
+        monkeypatch.setattr(_cls, _name,
+                            _guard(f"Path.{_name}", _orig), raising=False)
+    _orig_replace = _os.replace
+    monkeypatch.setattr(_os, "replace",
+                        _guard("os.replace", _orig_replace,
+                               lambda a, kw: a[1] if len(a) > 1 else None))
+    _orig_open = _builtins.open
+
+    def _open_guard(file, mode="r", *a, **kw):
+        if any(ch in str(mode) for ch in ("w", "a", "x", "+")) and _blocked(file):
+            raise AssertionError(
+                f"測試試圖以 {mode!r} 開啟 repo 的真實 state:{file}")
+        return _orig_open(file, mode, *a, **kw)
+
+    monkeypatch.setattr(_builtins, "open", _open_guard)
     modules = [mr]
     try:
         import model_history_store as _mhs

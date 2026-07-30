@@ -12964,6 +12964,12 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     #: 用回原 prompt 等於重建剛剛才把額度撐爆的條件,不但很可能再失敗,
     #: 還會讓「成本上限 +1」的宣稱不成立(變成第三次呼叫)。
     _effective = {"prompt": prompt}
+    #: r2(Codex,P2):**共用一份重試預算。** 我宣稱「成本上限 +1」,實作卻是
+    #: 截斷重試一次、schema 重試一次 —— 兩條救援路徑各自數自己的,加起來是 +2。
+    #: (而且我 r1 的新測試還明確斷言三次呼叫,等於把錯的行為釘死。)
+    #: 截斷用掉預算之後就不再做 schema 重試:那次重試本來就是為了同一件事
+    #: (再要一次輸出),而剛才已經要過了。
+    _retry = {"left": 1}
 
     def _call_or_halve(p: str) -> str:
         """額度用完 → **把輸入減半**再試一次。
@@ -12975,10 +12981,13 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         """
         try:
             return _call(p)
-        except ExtractorOutputTruncated as e:
+        except ExtractorOutputTruncated:
+            if _retry["left"] <= 0:
+                raise
+            _retry["left"] -= 1
             half = max(1, len(compact_items) // 2)
-            print(f"[llm-extractor] {e};改用 {half}/{len(compact_items)} 則重試",
-                  file=sys.stderr)
+            print(f"[llm-extractor] 額度用完;改用 "
+                  f"{half}/{len(compact_items)} 則重試", file=sys.stderr)
             _stat["retried"] = True
             _stat["retry_items"] = half
             _effective["prompt"] = _prompt_for(compact_items[:half])
@@ -12992,8 +13001,14 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         if dropped:
             print(f"[llm-extractor] 丟棄 {dropped} 個不合格事件(schema)", file=sys.stderr)
         # 有解析出事件卻全數不合格 → 帶嚴格提醒重試一次(空陣列=合法「無事件」,不重試;成本上限 +1)
-        if parsed and not valid:
+        if parsed and not valid and _retry["left"] <= 0:
+            # 預算已被截斷重試用掉。記下來,否則「為什麼沒重試」只能猜。
+            print("[llm-extractor] 全數不合格,但重試預算已用於減量 → 不再重試",
+                  file=sys.stderr)
+            _stat["schema_retry_skipped"] = "budget_spent_on_truncation"
+        elif parsed and not valid:
             print("[llm-extractor] 全數不合格 → 重試一次", file=sys.stderr)
+            _retry["left"] -= 1
             _stat["retried"] = True
             # r1(Codex,P2):用**實際成功的那份** prompt(可能已經減量過),
             # 不是原始的滿載 prompt —— 否則會重建剛把額度撐爆的條件。

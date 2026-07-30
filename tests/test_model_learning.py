@@ -4233,6 +4233,12 @@ def test_corporate_actions_for_settlement_distinguishes_absent_from_unreadable(
         keep = mr.corporate_actions_for_settlement(now)
         assert not keep.get("unreadable"), "抓不到不等於歷史壞掉"
         assert len(keep["records"]) == 1, "既有停牌不得因今天抓不到而消失"
+        # r3(Codex,P2):**抓取失敗要留持久訊號。** 停牌覆蓋刻意不 fail-closed,
+        # 所以抓不到時 Top5 仍會照常結算 —— 沒有這個訊號的話,manifest 上
+        # 分辨不出「今天真的沒有停牌」與「今天沒抓到」。
+        assert "corpact:fetch_failed" in mr._DEGRADED_STEPS
+        assert "corpact:history_unreadable" not in [
+            x for x in mr._DEGRADED_STEPS[-1:]], "抓取失敗不得被標成歷史損毀"
     finally:
         mr._DEGRADED_STEPS[:] = saved
         mr._RUN_MANIFEST.pop("corporate_actions", None)

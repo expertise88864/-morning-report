@@ -15726,15 +15726,31 @@ def corporate_actions_for_settlement(now_tpe: dt.datetime) -> dict:
               file=sys.stderr)
         _DEGRADED_STEPS.append("corpact:history_unreadable")
         return dict(CORPACT_UNREADABLE)
+    except CorpActFetchFailed as e:
+        # r3(Codex,P2):**抓取失敗要留持久訊號。** 停牌覆蓋是刻意不做
+        # fail-closed 的(窗口未知,見 `_record_corpact_span`),所以抓不到時
+        # Top5 仍會照常結算 —— 一筆今天才出現的停牌就這樣被漏掉,而 manifest
+        # 上看不出任何異常。stderr 不是這個 repo 認可的持久降級管道
+        # (`_write_run_manifest` 落地的是 `_DEGRADED_STEPS`),讀者無從分辨
+        # 「今天真的沒有停牌」與「今天沒抓到」。
+        _DEGRADED_STEPS.append("corpact:fetch_failed")
+        return _corpact_history_or_sentinel(f"{e};沿用既有歷史")
     except Exception as e:
-        print(f"[corpact] {e};沿用既有歷史", file=sys.stderr)
-        try:
-            return load_corporate_actions()
-        except CorpActUnreadable as e2:
-            print(f"[corpact] 既有歷史也不可讀,本次橫向作廢: {e2}",
-                  file=sys.stderr)
-            _DEGRADED_STEPS.append("corpact:history_unreadable")
-            return dict(CORPACT_UNREADABLE)
+        # 與抓取失敗分開標記:外部服務掛掉 vs 我們自己的程式出錯,
+        # 排查方向完全不同(批#73 拆分作廢理由的同一個道理)。
+        _DEGRADED_STEPS.append("corpact:update_failed")
+        return _corpact_history_or_sentinel(f"公司行動史更新失敗: {e}")
+
+
+def _corpact_history_or_sentinel(why: str) -> dict:
+    """沿用既有公司行動史;連它都讀不出來就回哨兵讓結算 fail-closed。"""
+    print(f"[corpact] {why}", file=sys.stderr)
+    try:
+        return load_corporate_actions()
+    except CorpActUnreadable as e:
+        print(f"[corpact] 既有歷史也不可讀,本次橫向作廢: {e}", file=sys.stderr)
+        _DEGRADED_STEPS.append("corpact:history_unreadable")
+        return dict(CORPACT_UNREADABLE)
 
 
 def fetch_delisted_codes() -> dict:

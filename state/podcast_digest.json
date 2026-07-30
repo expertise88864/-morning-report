@@ -1920,6 +1920,71 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "7875bac9-764f-4858-9c5d-a812cec46a2f",
+        "title": "EP324. AI 基建股大跌中、調控 AI 公開信、美國禁中國機器人 | M觀點",
+        "published": "Thu, 30 Jul 2026 17:23:45 GMT",
+        "processed_at": "2026-07-30T21:43:45Z",
+        "digest": {
+          "summary_points": [
+            "過去一個月AI基礎建設股大幅修正，美光跌27%、Sendisk跌48%、Cradle跌19%、Lumentum跌20%，整體平均跌約25%，吐回上半年部分漲幅。",
+            "市場擔憂科技巨頭AI資本支出能否持續，雖然目前三大公有雲資本支出回收週期約3-4年仍健康，但未來若不再大幅成長，AI infra股的高估值將受挑戰。",
+            "主持人分析亞馬遜AWS資本支出回收效率，2024年支出533億美元，2025年新增營收搭配折舊與營業利益約140億，約3年回收；2025年支出965億美元，預計約4年回收，仍屬合理。",
+            "微軟與Google財報顯示AI資本支出沉重，Google自由現金流轉負，市場對其未來支出能力存疑，但微軟仍維持正向現金流，盤後大漲15%。",
+            "主持人認為AI算力需求未來10年可能成長100倍，但消費者支付能力、電力限制、技術效率提升等變數多，難以預測AI infra長期成長率。",
+            "主持人透露自己主動投資部位中AI infra佔比約25%，從科技巨頭移轉，近期修正仍感疼痛，但長期看好，於修正時小量加碼。",
+            "記憶體、光通訊等AI infra子族群均重挫，反映市場對AI資本支出循環的疑慮，可能進入空頭走勢。",
+            "公開信《Pacing the Frontier》由1100多名AI研究員連署，呼籲政府介入調控AI發展速度，因擔憂AI自我進化超乎人類控制，但主持人認為美中競爭下國際合作不現實。",
+            "美國FCC宣布禁止中國先進機器人及逆變器，涵蓋掃地機器人、割草機器人等連網設備，因國安疑慮，可能給台灣相關供應鏈帶來機會。",
+            "主持人提醒投資人，AI生產力最大價值可能來自裁員而非創造新營收，企業獲利能力存疑，需審慎評估投資。",
+            "台股一度跌破四萬點，主持人於修正時分批加碼0050，認為長期投資需有接刀能力，並控制風險，避免過度槓桿。",
+            "主持人提及自己也曾犯錯，例如6月加碼AI infra後即遇暴跌，強調投資犯錯難免，關鍵是從中學習。",
+            "微軟財報優於預期，盤後大漲15%，主因自由現金流仍正向，顯示其雲業務成長強勁，市場對其AI支出較有信心。",
+            "Meta財報因資本支出增加引發下跌，但主持人認為Meta投入AI雲業務長期可能為利多，待深入分析。",
+            "主持人觀察到市場心理扭曲，一個月跌7%已覺得受傷輕微，因對比AI infra股暴跌，但提醒應保持客觀。"
+          ],
+          "tickers": [
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人提到美光過去一個月跌27%，上半年漲250%，作為AI記憶體代表，近期修正大，但未明確表示看好或看壞。"
+            },
+            {
+              "name": "Sendisk",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人小幅買入後即暴跌48%，但認為AI infra長期仍有機會，可能逢低布局。"
+            },
+            {
+              "name": "Cradle",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人長期持有，過去一個月跌19%，上半年漲89%，仍屬AI infra部位。"
+            },
+            {
+              "name": "Lumintem",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "光通訊公司，過去一個月跌20%，為AI infra族群修正例證，主持人未持有。"
+            },
+            {
+              "name": "元大台灣50",
+              "code": "0050",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人於台股修正時分批加碼買進0050，看好台股長期，認為AI供應鏈長期仍佳。"
+            }
+          ],
+          "market_view": "主持人認為AI基礎建設長期趨勢不變，但短期市場擔憂科技巨頭資本支出能否持續以及未來成長不確定性，導致修正；投資人應樂觀但謹慎，避免過度槓桿或追高。",
+          "action_view": "主持人採左側交易，於修正時分批加碼台股0050，並認為投資人應控制風險，避免過度槓桿。",
+          "notable_quote": "我覺得這次的修正，就是在修正說，到底這些AI infra，能不能維持，我們前幾個月，認為它們會有的這個超高的成長率。"
+        }
+      },
+      {
         "guid": "2ddb8de0-0571-47d0-ab5f-1297a3976cf6",
         "title": "EP323. Opus 5 正式發表、星艦第十三飛達標、開放模型的公開信 | M觀點",
         "published": "Mon, 27 Jul 2026 07:07:47 GMT",
@@ -2471,38 +2536,6 @@
           "notable_quote": "很多科技公司發現這樣搞不行，燒了很多錢但是怎麼樣賺更多錢是個問題。"
         },
         "shown_at": "2026-06-18T23:34:37Z"
-      },
-      {
-        "guid": "48c0f3b1-736e-4d76-a554-b07374c5fa39",
-        "title": "EP311. Anthropic 作繭自縛、SPCX 風光上市、AI 時代電商怎麼做 | M觀點",
-        "published": "Mon, 15 Jun 2026 07:48:04 GMT",
-        "processed_at": "2026-06-17T22:50:47Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為近期台股與美股回檔可能是小型（5-7%）到中型（10-12%）回檔，建議投資人不要追高殺低，適度控制風險並抱住持股較為簡單。",
-            "美國政府因安全漏洞對 Anthropic 的 Cloud FaberFi 模型下達出口禁令，導致模型暫時下線，市場關注此事件可能加速全球 AI 監管框架的建立。",
-            "SpaceX 以每股 135 美元 IPO，上市首日收在 160 美元，市值突破 2.1 兆美元，主持人認為此估值已明顯高於其自行估算的合理價值（約 1 兆美元），但長期仍看好公司發展。",
-            "主持人已買入 SpaceX 股票，均價約 160 多美元，計畫讓該股占主動持股的 4-5%，目前僅買入約 3-4 成部位，若股價下跌將持續加碼以降低平均成本。",
-            "主持人拆解 SpaceX 各業務估值：火箭發射約 1,000 億美元、Starlink 約 2,000 億美元、xAI 模型約 2,000 億美元、xAI 地面資料中心約 1,000 億美元、太空資料中心約 3,000 億美元，整體合理估值約 1 兆美元。",
-            "隨著 SpaceX 上市，馬斯克身價達 1.1 兆美元，成為人類史上首位「兆萬富翁」。",
-            "主持人強調投資原則是「買到對的公司比買到對的價格更重要」，認為好公司即使一時買貴，可透過持續投入壓低平均成本，長期仍能獲利。",
-            "亞馬遜內部研究團隊成功越獄 Cloud FaberFi 的安全機制並向白宮示警，亞馬遜同時為 Anthropic 的大股東，但主持人認為亞馬遜與 Anthropic 並非競爭對手，且亞馬遜應無意打擊 Anthropic。",
-            "主持人預測未來兩年內，美國可能針對最先進 AI 模型建立更嚴格的監管框架，包含 KYC（實名認證）及第三方申訴機制，將深刻影響 AI 產業發展。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好其長期發展，認為雖上市初期估值偏高但各業務具成長潛力，已於160多美元買入並計畫分批加碼。"
-            }
-          ],
-          "market_view": "近期台股與美股回檔可能僅為小型至中型回檔，無需追高殺低，建議持股續抱並適度控制風險。",
-          "action_view": "對好公司可採取分批買進策略，即使初期買貴，只要持續投入壓低平均成本，長期仍能獲利；目前已對 SpaceX 開始執行此操作。",
-          "notable_quote": "我覺得買對公司比買對價格重要。"
-        },
-        "shown_at": "2026-06-17T23:21:49Z"
       }
     ]
   },
@@ -4862,6 +4895,58 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73263214",
+        "title": "High-flying AI fund forced to dump stocks",
+        "published": "Thu, 30 Jul 2026 20:13:34 +0000",
+        "processed_at": "2026-07-30T20:44:32Z",
+        "digest": {
+          "summary_points": [
+            "AI 對沖基金 Situational Awareness 在遭受巨額損失後，將其大量股票投資組合出售給 Citadel，但其已披露的持股（Nebius Group、Sandisk、CoreWeave、Micron）今日大幅反彈。",
+            "ARM 公佈穩健的第一季財報並給出樂觀指引後股價上漲；摩根大通分析師認為 AGI 商用矽 CPU 敘事持續鞏固。",
+            "Fair Isaac 因第三季營收低於預期而下跌；執行長指出利率高企和負擔能力挑戰繼續打壓抵押貸款市場。",
+            "MarketAxess 因同意接受洲際交易所的收購要約（溢價 33%）而飆升。",
+            "Jersey Mike's Subs 開盤價低於 IPO 發行價，以 21 美元交易（發行價 23 美元）。",
+            "第二季 GDP 年化季率初值為 1.5%，遠低於共識預期的 2.3%，也低於第一季的 2.1%。",
+            "6 月核心 PCE 物價指數月增 0.1%（低於預期 0.2%），年增率降至 3.3%，符合預期。",
+            "30 年期公債殖利率維持在 5.2% 以上，是 17 年高點，聯準會主席 Warsh 記者會後達到此水準。",
+            "聯準會主席 Warsh 表示市場參與者正在學習「打球而不是裁判」，呼應了馬拉度納效應。"
+          ],
+          "tickers": [
+            {
+              "name": "ARM Holdings",
+              "code": "ARM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "第一季業績穩健且指引樂觀；分析師認為 AI 晶片敘事持續增強。"
+            },
+            {
+              "name": "Fair Isaac Corporation",
+              "code": "FICO",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "第三季營收不如預期；執行長歸因於利率與房貸市場逆風。"
+            },
+            {
+              "name": "MarketAxess Holdings",
+              "code": "MKTX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因洲際交易所溢價 33% 收購要約而大漲。"
+            },
+            {
+              "name": "Jersey Mike's Subs",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "上市首日收盤價低於 IPO 發行價，表現疲弱。"
+            }
+          ],
+          "market_view": "GDP 成長放緩至 1.5%，遠低於預期，但核心 PCE 略低於預期，顯示通膨壓力溫和。債券殖利率維持高檔，市場關注聯準會動向。",
+          "action_view": "",
+          "notable_quote": "Warsh said, market participants are learning to play the ball, not the referee."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73256142",
         "title": "Jersey Mike’s prices at $23",
         "published": "Thu, 30 Jul 2026 10:29:09 +0000",
@@ -5430,34 +5515,6 @@
           "notable_quote": "Nebius is up 6% in pre-market action after disclosing that Nvidia has taken a stake in the company."
         },
         "shown_at": "2026-07-21T22:51:32Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73066688",
-        "title": "FDA's lettuce u-turn",
-        "published": "Mon, 20 Jul 2026 10:51:27 +0000",
-        "processed_at": "2026-07-20T15:27:27Z",
-        "digest": {
-          "summary_points": [
-            "三星電子在美國裁員739人，因總部從紐澤西遷至德州，其中約100人在普萊諾被解僱。",
-            "蘋果在日本調漲多款iPhone價格，漲幅最高達11%，包含iPhone 17、iPhone Air和iPhone 16。",
-            "Fervo Energy (FRVO) 獲Jefferies調升至買進，認為自IPO高點回跌40%後提供具吸引力的進場點；盤前上漲5%。",
-            "開盤前股指期貨走高，原油下跌0.7%，FTSE 100下跌0.4%，DAX上漲0.3%。",
-            "Seeking Alpha分析師質疑記憶體晶片製造商是否擴產過度。"
-          ],
-          "tickers": [
-            {
-              "name": "Fervo Energy",
-              "code": "FRVO",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Jefferies 在該股自IPO高點回跌40%後調升至買進。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-20T22:51:16Z"
       }
     ]
   },

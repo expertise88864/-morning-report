@@ -14959,7 +14959,8 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 # 而「用歷史表把下市從模糊理由精確分類」正是本批的宣稱。
                 # 價格缺失退回當「沒有已知公司行動可解釋」時的理由。
                 _codes = list((e.get("entry") or {}).keys())
-                _halt = ([] if _corpact.get("unreadable")
+                _halt = ([] if (_corpact.get("unreadable")
+                                or _corpact.get("fetch_failed"))
                          else halts_in_window(_corpact, _codes, tgt, exit_d))
                 _gone = sorted({c: d for c, d in _delisted.items()
                                 if c in _codes and tgt < d <= exit_d}.items())
@@ -14969,6 +14970,10 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 elif _corpact.get("unreadable"):
                     # 歷史不可讀 ≠ 沒有停牌(r1)。未知必須 fail-closed。
                     _bad = ("corpact_history_unreadable", {})
+                elif _corpact.get("fetch_failed"):
+                    # r4(Codex,P1):今天沒抓到 = 今天新出現的停牌是未知。
+                    # 結果永不重算,所以寧可作廢也不寫一個修不回來的數字。
+                    _bad = ("corpact_fetch_failed", {})
                 elif _halt:
                     _bad = ("trading_halt",
                             {"events": [{"code": x.get("code"),
@@ -15391,6 +15396,12 @@ def fetch_exdiv_preview(today_iso: str = "") -> list:
         out.append({"code": code, "ex_date": ex_date,
                     "kind": str(row.get("Exdividend") or "").strip()[:8],
                     "cash": _to_float(row.get("CashDividend"))})
+    # 批#82 r4:同一個洞在除權息也在(Codex 這次是對停牌表提的,但形狀相同)。
+    # 非空來源卻一筆都解析不出來 = 改版;回空清單會讓今天被記成「成功收集」,
+    # 覆蓋守衛因此放行,而那正是它要擋的事。空 list 仍維持淡季的合法語意。
+    if rows and not out:
+        raise ExdivFetchFailed(
+            f"除權息預告有 {len(rows)} 列卻無一可解析(欄位或日期格式可能改版)")
     _record_exdiv_preview_span(out, today_iso)
     return out
 
@@ -15589,6 +15600,14 @@ def fetch_trading_halts(today_iso: str = "") -> list:
             continue
         out.append({"code": code, "halt_date": halt,
                     "resume_date": _roc_to_iso(row.get("TradingResumptionDate"))})
+    # r4(Codex,P2):**非空來源卻一筆都解析不出來 = 改版,不是「今天沒有停牌」。**
+    # 欄位改名、日期格式改版、或回傳 list 包著的錯誤物件(`[{"stat":"OK"}]`)
+    # 都會走到這裡;回空清單的話呼叫端會把今天登錄為**成功收集**,
+    # 沒有任何降級痕跡,而停牌被漏掉又會寫進錯的績效。
+    # 真正的空 list 維持合法的「零事件」語意。
+    if rows and not out:
+        raise CorpActFetchFailed(
+            f"暫停交易表有 {len(rows)} 列卻無一可解析(欄位或日期格式可能改版)")
     _record_corpact_span(out, today_iso)
     return out
 
@@ -15734,7 +15753,15 @@ def corporate_actions_for_settlement(now_tpe: dt.datetime) -> dict:
         # (`_write_run_manifest` 落地的是 `_DEGRADED_STEPS`),讀者無從分辨
         # 「今天真的沒有停牌」與「今天沒抓到」。
         _DEGRADED_STEPS.append("corpact:fetch_failed")
-        return _corpact_history_or_sentinel(f"{e};沿用既有歷史")
+        # r4(Codex,P1):**結算結果寫一次就永不重算**(既有 horizon 有值就跳過),
+        # 所以在「已知有未知」的狀態下寫入績效是**永久**錯誤 —— 隔天抓到那筆
+        # 停牌也不會回頭更正。上面那段註解自己承認抓取失敗會漏掉今天出現的
+        # 停牌,那就不該讓今天到期的橫向照常寫值。
+        # 沿用既有歷史仍然有用(已知停牌不會消失),但要讓結算端看得見這個未知。
+        hist = _corpact_history_or_sentinel(f"{e};沿用既有歷史")
+        if not hist.get("unreadable"):
+            hist = {**hist, "fetch_failed": True}
+        return hist
     except Exception as e:
         # 與抓取失敗分開標記:外部服務掛掉 vs 我們自己的程式出錯,
         # 排查方向完全不同(批#73 拆分作廢理由的同一個道理)。

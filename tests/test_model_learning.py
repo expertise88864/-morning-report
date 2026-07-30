@@ -4334,3 +4334,109 @@ def test_halt_persist_failure_does_not_discard_what_was_fetched(
     finally:
         mr._DEGRADED_STEPS[:] = saved
         mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+def test_top5_horizon_is_voided_when_todays_halt_fetch_failed():
+    """r4(Codex,P1):**結算結果寫一次就永不重算。**
+
+    既有 horizon 有值就會被跳過,所以在「今天沒抓到停牌表」這種**已知有未知**
+    的狀態下寫入績效,是修不回來的錯 —— 隔天抓到那筆停牌也不會回頭更正,
+    帳本與統計會永久保留錯誤數字。
+
+    沿用既有歷史仍然有用(已知停牌不會消失),但今天新出現的停牌是未知,
+    今天到期的橫向就不該照常寫值。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              corpact_history={**_corpact_hist([]), "fetch_failed": True})
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "corpact_fetch_failed"
+    assert not out["stats"].get("5")
+
+
+def test_fetch_failure_marks_the_history_so_settlement_can_see_it(
+        tmp_path, monkeypatch):
+    """降級訊號要**傳到結算端**,不是只記在 `_DEGRADED_STEPS` 裡。
+
+    r3 只補了持久訊號,結算仍照常寫值 —— 訊號存在但沒有人依它行動,
+    等於這一輪反覆出現的「機制存在卻沒有出口」的鏡像:有出口、沒有效果。
+    """
+    import datetime as dt
+    target = tmp_path / "corporate_actions.json"
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE", target)
+    target.write_text('{"since":"2026-07-01","days":["2026-07-01"],'
+                      '"records":[{"code":"4169","halt_date":"2026-07-23"}]}',
+                      encoding="utf-8")
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(mr, "_http_get", _boom)
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        out = mr.corporate_actions_for_settlement(
+            dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE))
+        assert out.get("fetch_failed") is True, "結算端看不到這個未知"
+        assert not out.get("unreadable"), "抓不到不等於歷史壞掉"
+        assert len(out["records"]) == 1, "既有停牌仍要保留"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+def test_non_empty_but_unparseable_source_is_a_fetch_failure(monkeypatch):
+    """r4(Codex,P2):**非空來源卻一筆都解析不出來 = 改版,不是「今天沒事」。**
+
+    欄位改名、日期格式改版、或回傳 list 包著的錯誤物件都會走到這裡。
+    回空清單的話呼叫端會把今天登錄為**成功收集**、沒有任何降級痕跡,
+    而漏掉的停牌又會寫進錯的績效。真正的空 list 維持合法的零事件語意。
+    """
+    def _resp(payload):
+        class _R:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return payload
+        return _R()
+
+    # (a) list 包著的錯誤物件
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _resp([{"stat": "OK"}]))
+    with pytest.raises(mr.CorpActFetchFailed):
+        mr.fetch_trading_halts("2026-07-30")
+
+    # (b) 欄位改名
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _resp(
+        [{"code": "4169", "haltDate": "1150723"}]))
+    with pytest.raises(mr.CorpActFetchFailed):
+        mr.fetch_trading_halts("2026-07-30")
+
+    # (c) 真正的空表仍然合法(多數日子本來就沒有停牌)
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _resp([]))
+    try:
+        assert mr.fetch_trading_halts("2026-07-30") == []
+    finally:
+        mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+    # 同一個守衛在除權息也要有(形狀相同的洞)
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _resp([{"stat": "OK"}]))
+    with pytest.raises(mr.ExdivFetchFailed):
+        mr.fetch_exdiv_preview("2026-07-30")
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _resp([]))
+    try:
+        assert mr.fetch_exdiv_preview("2026-07-30") == []
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)

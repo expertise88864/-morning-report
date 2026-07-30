@@ -4368,23 +4368,27 @@ def test_halt_persist_failure_does_not_discard_what_was_fetched(
         mr._RUN_MANIFEST.pop("corporate_actions", None)
 
 
-def test_top5_horizon_is_voided_when_todays_halt_fetch_failed():
-    """r4(Codex,P1):**結算結果寫一次就永不重算。**
+def test_top5_horizon_is_voided_when_the_window_has_a_collection_gap():
+    """r6(Codex,P1):**收集空洞必須跨日保留。**
 
-    既有 horizon 有值就會被跳過,所以在「今天沒抓到停牌表」這種**已知有未知**
-    的狀態下寫入績效,是修不回來的錯 —— 隔天抓到那筆停牌也不會回頭更正,
-    帳本與統計會永久保留錯誤數字。
+    r4 只用**今天**的 `fetch_failed` 旗標擋,那是暫態的。一個 D+3 到期的橫向,
+    窗口涵蓋 D..D+3;若 **D+1** 那天抓取失敗,那個空洞沒有任何東西記住 ——
+    到了 D+3 抓取成功、旗標是 False,於是照常寫值,而我們從來沒有觀察過
+    D+1 那天新出現的停牌。結算結果又是**永不重算**的,所以那是永久錯誤。
 
-    沿用既有歷史仍然有用(已知停牌不會消失),但今天新出現的停牌是未知,
-    今天到期的橫向就不該照常寫值。
+    抓取失敗當天不會被寫進 `days`(`update_corporate_actions` 沒被呼叫),
+    所以窗口覆蓋判準自動涵蓋了原本的 `fetch_failed` 情境。
     """
     import datetime as dt
     import json as _json
     codes = ["1101", "2202", "3303", "4404", "5505"]
     dates, mh, topens = _top5_frame(codes)
     top5 = [{"code": c, "close": 100.0} for c in codes]
+    # 窗口是 (2026-07-04, 2026-07-09];把 07-06 從收集日拿掉 = 那天沒抓到。
+    # 到期日 07-09 有抓到,所以「只看今天」的舊判準會放行。
+    gapped = [d for d in _corpact_hist([])["days"] if d != "2026-07-06"]
     kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
-              corpact_history={**_corpact_hist([]), "fetch_failed": True})
+              corpact_history={**_corpact_hist([]), "days": gapped})
     mr.update_top5_ledger(mh[:3], top5,
                           dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
                           "2026-07-04", **kw)
@@ -4393,8 +4397,66 @@ def test_top5_horizon_is_voided_when_todays_halt_fetch_failed():
                                 "2026-07-11", **kw)
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
-    assert res5["void"] is True and res5["reason"] == "corpact_fetch_failed"
+    assert res5["void"] is True and res5["reason"] == "corpact_coverage_gap"
     assert not out["stats"].get("5")
+
+
+def test_corpact_coverage_needs_every_day_in_the_window():
+    """判準本身:窗口內每一天都要有收集紀錄。
+
+    刻意最保守 —— 停牌表是**回顧性**的,不像除權息預告往前看數十天,
+    所以「收集日 C 可以代表 C-k」的放寬在拿到保留窗口分佈之前都是猜的。
+    """
+    days = ["2026-07-05", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"]
+    assert mr.corpact_coverage_ok(days, "2026-07-04", "2026-07-09")
+    assert not mr.corpact_coverage_ok(
+        [d for d in days if d != "2026-07-07"], "2026-07-04", "2026-07-09")
+    assert not mr.corpact_coverage_ok([], "2026-07-04", "2026-07-09")
+    assert not mr.corpact_coverage_ok(days, "", "2026-07-09")
+    # 起點當天不需要(窗口是左開右閉,與 exdiv 一致)
+    assert mr.corpact_coverage_ok(days, "2026-07-04", "2026-07-09")
+
+
+def test_corporate_actions_are_skipped_when_the_caller_does_not_supply_history():
+    """**「沒傳」與「傳了但有空洞」是兩件事。**
+
+    沒傳代表這個呼叫端沒接公司行動資料源,對它套 fail-closed 只是把功能關掉;
+    生產端一定會傳,由下一條 AST 測試釘住。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]))
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh, [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert not res5.get("void"), f"沒接資料源不該被當成有空洞:{res5}"
+
+
+def test_production_call_site_supplies_corporate_action_history():
+    """生產端必須真的把公司行動史傳進去。
+
+    上面那條讓「沒傳」等於不檢查 —— 那個寬容只有在**生產一定會傳**時才安全。
+    接線掉了的話,`update_top5_ledger` 會靜默退回「不檢查公司行動」而所有測試
+    照樣全綠(這一輪已經有一次「功能只存在於 payload 副本裡」)。
+    """
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "update_top5_ledger"]
+    assert calls, "找不到 update_top5_ledger 的呼叫 —— 掃描器壞了,本測試無效"
+    for call in calls:
+        kwargs = {k.arg for k in call.keywords}
+        assert "corpact_history" in kwargs and "delisted" in kwargs,             (f"第 {call.lineno} 行的 update_top5_ledger 沒傳公司行動資料 —— "
+             "會靜默退回不檢查")
 
 
 def test_fetch_failure_marks_the_history_so_settlement_can_see_it(
@@ -4472,3 +4534,52 @@ def test_non_empty_but_unparseable_source_is_a_fetch_failure(monkeypatch):
         assert mr.fetch_exdiv_preview("2026-07-30") == []
     finally:
         mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_malformed_records_are_not_silently_dropped_then_overwritten(
+        tmp_path, monkeypatch):
+    """r6(Codex,P1):**壞紀錄不得被靜默濾掉。**
+
+    原本用 `[r for r in records if isinstance(r, dict)]` 把非 dict 的列丟掉,
+    而 `update_corporate_actions` 隨即把過濾後的結果**原子回寫** ——
+    一次局部損毀就永久刪掉那些列,而且完全無聲。
+
+    這是本 repo 反覆出現病灶的第三種變形:前兩種是「整個檔讀不出來」與
+    「格式不對」(都已 fail-closed),這是「單列壞掉」。
+    """
+    target = tmp_path / "corporate_actions.json"
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE", target)
+    target.write_text(
+        '{"since":"2026-07-01","days":["2026-07-01"],'
+        '"records":[{"code":"4169","halt_date":"2026-07-23"},'
+        '"這一列壞掉了",{"code":"2330","halt_date":"2026-07-25"}]}',
+        encoding="utf-8")
+    before = target.read_text(encoding="utf-8")
+
+    with pytest.raises(mr.CorpActUnreadable):
+        mr.load_corporate_actions()
+
+    # 生產路徑必須因此走到哨兵,而**原檔一個 byte 都不能動**
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        import datetime as dt
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return [{"Code": "4169", "TradingHaltDate": "1150723"}]
+
+        monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+        out = mr.corporate_actions_for_settlement(
+            dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE))
+        assert out.get("unreadable") is True
+        assert target.read_text(encoding="utf-8") == before, \
+            "壞檔被覆寫了 —— 那兩列合法紀錄就此永久消失"
+        assert "corpact:history_unreadable" in mr._DEGRADED_STEPS
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("corporate_actions", None)

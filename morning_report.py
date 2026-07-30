@@ -14844,7 +14844,12 @@ def update_top5_ledger(model_history: list, top5: list[dict],
         exdiv_history = {"since": "", "days": [], "records": exdiv_history}
     _exdiv_days = list((exdiv_history or {}).get("days") or [])
     _exdiv_records = list((exdiv_history or {}).get("records") or [])
-    _corpact = corpact_history if isinstance(corpact_history, dict) else {}
+    # r6:**「沒傳」與「傳了但有空洞」是兩件事。** 沒傳代表這個呼叫端沒接
+    # 公司行動資料源(舊測試、其他工具),對它套 fail-closed 只是把功能關掉;
+    # 傳了才有「覆蓋是否完整」可言。生產端一定會傳 —— 由
+    # `test_production_call_site_supplies_corporate_action_history` 用 AST 釘住,
+    # 免得哪天接線掉了而這裡靜默退回「不檢查」。
+    _corpact = corpact_history if isinstance(corpact_history, dict) else None
     _delisted = delisted if isinstance(delisted, dict) else {}
     today = now_tpe.strftime("%Y-%m-%d")
     recs = sorted((r for r in model_history or []
@@ -14959,21 +14964,26 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 # 而「用歷史表把下市從模糊理由精確分類」正是本批的宣稱。
                 # 價格缺失退回當「沒有已知公司行動可解釋」時的理由。
                 _codes = list((e.get("entry") or {}).keys())
-                _halt = ([] if (_corpact.get("unreadable")
-                                or _corpact.get("fetch_failed"))
+                _halt = ([] if (_corpact is None
+                                or _corpact.get("unreadable")
+                                or not corpact_coverage_ok(
+                                    _corpact.get("days"), tgt, exit_d))
                          else halts_in_window(_corpact, _codes, tgt, exit_d))
                 _gone = sorted({c: d for c, d in _delisted.items()
                                 if c in _codes and tgt < d <= exit_d}.items())
                 _bad = None
                 if not held:
                     _bad = ("no_holdings", {})
-                elif _corpact.get("unreadable"):
+                elif _corpact is not None and _corpact.get("unreadable"):
                     # 歷史不可讀 ≠ 沒有停牌(r1)。未知必須 fail-closed。
                     _bad = ("corpact_history_unreadable", {})
-                elif _corpact.get("fetch_failed"):
-                    # r4(Codex,P1):今天沒抓到 = 今天新出現的停牌是未知。
-                    # 結果永不重算,所以寧可作廢也不寫一個修不回來的數字。
-                    _bad = ("corpact_fetch_failed", {})
+                elif _corpact is not None and not corpact_coverage_ok(
+                        _corpact.get("days"), tgt, exit_d):
+                    # r6(Codex,P1):**收集空洞必須跨日保留。** 原本只看今天的
+                    # `fetch_failed`,那是暫態的 —— 窗口中間某天沒抓到,到期日
+                    # 抓成功就照常寫值,而結果永不重算。改用窗口覆蓋判準,
+                    # 抓取失敗當天本來就不會進 `days`,自然被涵蓋。
+                    _bad = ("corpact_coverage_gap", {"session": exit_d})
                 elif _halt:
                     _bad = ("trading_halt",
                             {"events": [{"code": x.get("code"),
@@ -15651,9 +15661,20 @@ def load_corporate_actions() -> dict:
         raise CorpActUnreadable(f"公司行動史無法解析: {e}") from e
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
         raise CorpActUnreadable(f"公司行動史格式非預期: {type(data).__name__}")
+    # r6(Codex,P1):**壞紀錄不得被靜默濾掉。** 原本用
+    # `[r for r in records if isinstance(r, dict)]` 把非 dict 的列丟掉,
+    # 而 `update_corporate_actions` 隨即把過濾後的結果**原子回寫** ——
+    # 一次局部損毀就永久刪掉那些列,而且完全無聲。這正是本 repo 反覆出現的
+    # 病灶(讀檔失敗被當成沒有資料,再被覆蓋)的第三種變形:
+    # 前兩種是「整個檔讀不出來」與「格式不對」,這是「單列壞掉」。
+    bad = [i for i, r in enumerate(data["records"]) if not isinstance(r, dict)]
+    if bad:
+        raise CorpActUnreadable(
+            f"公司行動史第 {bad[:5]} 列不是物件(共 {len(bad)} 列);"
+            "拒絕載入以免回寫時把它們永久刪掉")
     return {"since": str(data.get("since") or ""),
             "days": [str(d) for d in (data.get("days") or []) if d],
-            "records": [r for r in data["records"] if isinstance(r, dict)]}
+            "records": list(data["records"])}
 
 
 def update_corporate_actions(records: list, now_tpe: dt.datetime) -> dict:
@@ -15699,6 +15720,42 @@ def update_corporate_actions(records: list, now_tpe: dt.datetime) -> dict:
               file=sys.stderr)
         _DEGRADED_STEPS.append("corpact:persist_failed")
     return out
+
+
+def corpact_coverage_ok(days, start: str, end: str) -> bool:
+    """(start, end] 這段期間的公司行動,是否確定都已被收集到。
+
+    r6(Codex,P1):原本只用**今天**的 `fetch_failed` 旗標擋 —— 那是**暫態**的。
+    一個 D+3 到期的橫向,窗口涵蓋 D..D+3;若 D+1 那天抓取失敗,那個空洞不會被
+    任何東西記住,到了 D+3 抓取成功、`fetch_failed` 是 False,於是照常寫值 ——
+    而我們從來沒有觀察過 D+1 那天新出現的停牌。結算結果又是**永不重算**的,
+    所以那是永久錯誤。
+
+    判準刻意最保守:窗口內**每一天**都要有成功收集紀錄。
+    `_record_corpact_span` 目前還量不出 TWTAWU 的保留窗口(往回幾天),
+    在拿到那個分佈之前,任何「收集日 C 可以代表 C-k 那天」的放寬都是猜的。
+    (除權息那邊之所以能用 7 天 lookahead,是因為預告表**往前**看,
+     一次收集就涵蓋未來數十天;停牌表是**回顧性**的,方向相反。)
+
+    抓取失敗當天不會被寫進 `days`(`update_corporate_actions` 沒被呼叫),
+    所以這條判準自動涵蓋了原本的 `fetch_failed` 情境,不需要另一個暫態旗標。
+    """
+    have = {str(x) for x in days or [] if x}
+    if not (have and start and end):
+        return False
+    try:
+        d0 = dt.date.fromisoformat(start)
+        d1 = dt.date.fromisoformat(end)
+    except (ValueError, TypeError):
+        return False
+    if d1 < d0:
+        return False
+    day = d0 + dt.timedelta(days=1)
+    while day <= d1:
+        if day.isoformat() not in have:
+            return False
+        day += dt.timedelta(days=1)
+    return True
 
 
 def halts_in_window(history: dict, codes, start: str, end: str) -> list:

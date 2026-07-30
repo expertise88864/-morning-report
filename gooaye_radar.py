@@ -26,7 +26,14 @@ import requests
 import morning_report as mr
 import podcast_digest as pdg
 
-RADAR_STATE_FILE = Path("state/gooaye_radar.json")
+#: 批#74 r1(Codex,P2):**生產者與消費者必須共用同一個 state 根。**
+#: 晨報的 state 路徑已改由 `STATE_ROOT` 衍生,而這裡仍硬寫 `state/…` ——
+#: 設定 `STATE_ROOT` 之後生產者寫舊路徑、晨報讀新路徑,兩邊靜默分家
+#: (podcast 內容變空/過期、radar 的 GUID 去重失效讓已寄過的集數再出現)。
+#: 刻意讀同一個環境變數而不 import morning_report:那會把獨立排程的
+#: 生產者綁上整支主程式的匯入成本與相依。
+STATE_ROOT = Path(os.environ.get("STATE_ROOT") or "state")
+RADAR_STATE_FILE = STATE_ROOT / "gooaye_radar.json"
 RADAR_RECIPIENT = os.getenv("RADAR_RECIPIENT", "")            # 留空 → 用晨報同一批收件者
 RADAR_MAX_BULLISH_SECTORS = int(os.getenv("RADAR_MAX_BULLISH_SECTORS", "6"))
 TOP_N_PER_SECTOR = int(os.getenv("RADAR_TOP_N_PER_SECTOR", "5"))

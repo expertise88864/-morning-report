@@ -82,6 +82,9 @@ jobs:
           git config user.name "morning-report-bot"
           git config user.email "actions@github.com"
           # 只 push 雷達自有 state;不碰 podcast_digest.json(去重由晨報讀本檔 radar_sent_at 達成,避免競寫)
+          # 批#74:這裡硬寫 state/ —— 因此本 workflow **假設** STATE_ROOT
+          # 維持預設值。`test_no_workflow_overrides_state_root` 把這個
+          # 假設釘住:一旦有人在 workflow 設了 STATE_ROOT 就會失敗。
           git add state/gooaye_radar.json 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: update gooaye radar state [skip ci]"

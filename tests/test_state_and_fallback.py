@@ -268,3 +268,91 @@ def test_all_state_paths_derive_from_state_root():
     import re as _re
     hard = _re.findall(r'Path\("state/[^"]+"\)', _SRC)
     assert not hard, f"仍有硬寫的 state 路徑:{hard}"
+
+
+def test_os_level_guard_blocks_move_destinations_not_just_sources():
+    """r1(Codex,P1):`Path.replace`/`rename` 是以類別方法被呼叫的,wrapper 收到
+    `(self, target)` —— `args[0]` 是**來源**。第一版守衛用預設的 `args[0]`,
+    於是 `tmp.replace(Path("state/x.json"))` 完全不會被擋,而那正是本批要防的
+    那一類不可回復損毀:`model_history_store.write_partition_manifest` 就是這樣
+    寫 manifest 的(`tmp.replace(partition_dir / MANIFEST_NAME)`)。
+    """
+    import tempfile
+    import pytest as _pytest
+    from pathlib import Path as _P
+
+    src = _P(tempfile.mkdtemp()) / "tmp.json"
+    src.write_text("{}", encoding="utf-8")
+    with _pytest.raises(AssertionError, match="搬動 repo"):
+        src.replace(_P("state") / "should_never_be_replaced.json")
+    with _pytest.raises(AssertionError, match="搬動 repo"):
+        src.rename(_P("state") / "should_never_be_renamed.json")
+    # 來源在 repo state 也要擋(把真實 state 搬走一樣是損毀)
+    with _pytest.raises(AssertionError, match="搬動 repo"):
+        (_P("state") / "exdiv_history.json").replace(src)
+    # tmp → tmp 完全不受影響
+    dst = src.with_name("moved.json")
+    src.replace(dst)
+    assert dst.read_text(encoding="utf-8") == "{}"
+
+
+def test_producers_and_consumer_share_one_state_root(tmp_path, monkeypatch):
+    """r1(Codex,P2):**生產者與消費者必須共用同一個 state 根。**
+
+    晨報的 state 路徑改由 `STATE_ROOT` 衍生後,`podcast_digest.py` 與
+    `gooaye_radar.py` 仍硬寫 `state/…` —— 設定 `STATE_ROOT` 之後生產者寫舊路徑、
+    晨報讀新路徑,兩邊靜默分家(podcast 內容變空/過期、radar 的 GUID 去重失效
+    讓已寄過的集數再出現)。而新的原始碼掃描只讀 `morning_report.py`,看不到它們。
+
+    這條用**獨立匯入**驗:設好環境變數後重新匯入三個模組,比對解析結果。
+    """
+    import importlib
+    import sys as _sys
+
+    root = tmp_path / "iso_state"
+    monkeypatch.setenv("STATE_ROOT", str(root))
+    saved = {n: _sys.modules.pop(n, None)
+             for n in ("morning_report", "podcast_digest", "gooaye_radar",
+                       "model_history_store")}
+    try:
+        mr2 = importlib.import_module("morning_report")
+        pod = importlib.import_module("podcast_digest")
+        rad = importlib.import_module("gooaye_radar")
+        mhs = importlib.import_module("model_history_store")
+        assert mr2.STATE_ROOT == root
+        assert pod.STATE_FILE == root / "podcast_digest.json"
+        assert rad.RADAR_STATE_FILE == root / "gooaye_radar.json"
+        assert mhs.DEFAULT_PARTITION_DIR == root / "model_history"
+        # 生產者寫的、晨報讀的,必須是**同一個檔**
+        assert pod.STATE_FILE == mr2.PODCAST_DIGEST_FILE
+    finally:
+        for name, mod in saved.items():
+            if mod is not None:
+                _sys.modules[name] = mod
+            else:
+                _sys.modules.pop(name, None)
+
+
+def test_no_workflow_overrides_state_root():
+    """workflow 的 `git add state/…` 是硬寫的,因此它們**假設** `STATE_ROOT`
+    維持預設值 `state`。這個假設目前成立(生產不設該變數),但它是沉默的:
+    哪天有人在 workflow 裡設了 `STATE_ROOT`,生產者會寫到新根、而 `git add`
+    仍指向舊路徑 → state 從此不再被 commit 回 repo,而 CI 每天都是新 runner,
+    次日就讀不到,本機卻一切正常(這個 repo 的經典失敗形狀)。
+
+    要嘛 workflow 一起改成用變數,要嘛不准設 —— 選後者並在這裡釘住,
+    因為 shell 端的間接層更容易出錯而收益有限。
+    """
+    from pathlib import Path
+    offenders = []
+    for wf in sorted(Path(".github/workflows").glob("*.yml")):
+        text = wf.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "STATE_ROOT" in stripped:
+                offenders.append(f"{wf.name}: {stripped[:70]}")
+    assert not offenders, (
+        "workflow 設定了 STATE_ROOT,但 `git add state/…` 仍硬寫舊路徑:\n  "
+        + "\n  ".join(offenders))

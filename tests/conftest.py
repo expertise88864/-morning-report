@@ -233,11 +233,33 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
     import builtins as _builtins
     import os as _os
     for _cls, _name in ((_Path, "write_text"), (_Path, "write_bytes"),
-                        (_Path, "unlink"), (_Path, "replace"),
-                        (_Path, "rename")):
+                        (_Path, "unlink")):
         _orig = getattr(_cls, _name)
         monkeypatch.setattr(_cls, _name,
                             _guard(f"Path.{_name}", _orig), raising=False)
+
+    # r1(Codex,P1):**`Path.replace`/`rename` 要守的是「目的地」。**
+    # 這兩個是以類別方法被呼叫的,wrapper 收到 `(self, target)` ——
+    # `args[0]` 是**來源**。第一版用預設的 `args[0]` 取路徑,於是
+    # `tmp.replace(Path("state/exdiv_history.json"))` 完全不會被擋,
+    # 而那正是本批要防的那一類不可回復損毀
+    # (`model_history_store.write_partition_manifest` 就是這樣寫 manifest 的:
+    #  `tmp.replace(partition_dir / MANIFEST_NAME)`)。
+    # 來源與目的地**兩邊都要檢查**:把 repo state 搬走一樣是損毀。
+    def _guard_move(name, orig):
+        def wrapper(self, target, *a, **kw):
+            for candidate in (self, target):
+                if _blocked(candidate):
+                    raise AssertionError(
+                        f"測試試圖搬動 repo 的真實 state:{name} "
+                        f"{self} → {target}")
+            return orig(self, target, *a, **kw)
+        return wrapper
+
+    for _name in ("replace", "rename"):
+        _orig = getattr(_Path, _name)
+        monkeypatch.setattr(_Path, _name,
+                            _guard_move(f"Path.{_name}", _orig), raising=False)
     _orig_replace = _os.replace
     monkeypatch.setattr(_os, "replace",
                         _guard("os.replace", _orig_replace,

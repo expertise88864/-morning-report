@@ -31,7 +31,14 @@ DEEPSEEK_MODEL = os.getenv("PODCAST_DEEPSEEK_MODEL", "deepseek-v4-flash")
 DEEPSEEK_MODEL_HIGH = os.getenv("PODCAST_DEEPSEEK_MODEL_HIGH", "deepseek-v4-pro")
 WHISPER_MODEL = os.getenv("PODCAST_WHISPER_MODEL", "small")   # small 中文夠用
 WHISPER_MODEL_HIGH = os.getenv("PODCAST_WHISPER_MODEL_HIGH", "medium")  # 中文/公司名更準,慢約一倍
-STATE_FILE = Path("state/podcast_digest.json")
+#: 批#74 r1(Codex,P2):**生產者與消費者必須共用同一個 state 根。**
+#: 晨報的 state 路徑已改由 `STATE_ROOT` 衍生,而這裡仍硬寫 `state/…` ——
+#: 設定 `STATE_ROOT` 之後生產者寫舊路徑、晨報讀新路徑,兩邊靜默分家
+#: (podcast 內容變空/過期、radar 的 GUID 去重失效讓已寄過的集數再出現)。
+#: 刻意讀同一個環境變數而不 import morning_report:那會把獨立排程的
+#: 生產者綁上整支主程式的匯入成本與相依。
+STATE_ROOT = Path(os.environ.get("STATE_ROOT") or "state")
+STATE_FILE = STATE_ROOT / "podcast_digest.json"
 # 72h:涵蓋「被每日預算擋掉的集隔天補轉」與「清空重轉」情境(48h 曾讓兩者永遠錯過)
 MAX_EPISODE_AGE_HOURS = float(os.getenv("PODCAST_MAX_AGE_H", "72"))
 MAX_AUDIO_MB = 200

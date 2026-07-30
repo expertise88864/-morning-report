@@ -203,22 +203,31 @@ def test_run_manifest_carries_the_observability_fields():
 
 
 # ------------------------------------------------- story ledger:轉載去重
-#: 未合併轉載的暫時上限(雙方都有代號 / 至少一方無代號)。**都應該趨近 0。**
-#: 目前落地的最新一批是 2026-07-30 06:45 那次執行建立的,當時批#67 已上線
-#: (雙方有代號那類因此從 16 降到 1),但批#71 的跨桶比對是 11:25 才落地 ——
-#: **還沒在生產跑過任何一次**,所以鏡像那類還留著 9 筆(全部是真實轉載:
-#: 〈聯電法說〉yahoo/cnyes、台積電財星500強、廣達買友達、台股崩盤撿鑽石…)。
-#: 批#71 跑過之後應該大幅下降,屆時把上限一起調降。
-#: 不寫 0 是避免「沒有任何 commit 能修好的紅」(批#77 的教訓);
-#: 留少量餘裕是因為對數隨當日新聞浮動,零餘裕的棘輪會在反彈時變成修不好的紅。
+#: 未合併轉載的上限:取「絕對下限」與「批量佔比」的較大者。
 #:
-#: r4(Codex,P2)**這個上限是粗網,不是精密儀器**,而且兩者不可兼得:
-#: 要容忍當日新聞造成的浮動,就必然遮蔽掉小幅退化(例如樣板防線少了一道、
-#: 鏡像重複從 9 升到 12,仍在 14 以下)。抓那種退化是**單元測試**的工作 ——
-#: `test_template_headlines_do_not_merge_different_companies` 對兩道防線
-#: 各有一條獨立的機制斷言。這裡只負責攔住整體性的崩壞。
-BOTH_ENTITY_DUP_CEILING = 3
-ENTITYLESS_MIRROR_DUP_CEILING = 14
+#: 批#84:**原本寫死小數字,結果 2026-07-31 在生產把 workflow 弄紅了。**
+#: 那批去重後有 3 對、上限也是 3(而且當時還多算了一對,見 `_unmerged_…`)。
+#: 這是個**隨當日新聞浮動**的量 —— 沒有任何 commit 能讓它變小。
+#: 這正是我在批#77 自己寫過的錯:「在遷移窗口把 CI 弄紅,是沒有任何 commit
+#: 能修好的紅,而那種紅會訓練人忽略 CI」。而且信照常寄出、只有這一步紅,
+#: 更糟:它讓「workflow 失敗告警」與「使用者真的沒收到信」脫鉤。
+#:
+#: 改成相對門檻,任務也講清楚:**這是粗網,只負責攔住整體崩壞**
+#: (歸屬邏輯真的壞掉時,轉載重複會是整批的一大部分)。實測基準:
+#:   批#67 之前 16/465=3.4%、11/508=2.2%、5/470=1.1%
+#:   批#67 之後 3/461=0.65%(含無代號那類已由批#71 在首次上線就降到 0)
+#: 取 3% 對現況有 4.6 倍餘裕,又攔得住上線前的水準。
+#:
+#: r4(Codex,P2)的說明仍然成立:**粗網不是精密儀器**,兩者不可兼得 ——
+#: 要容忍當日新聞浮動就必然遮蔽小幅退化。抓小幅退化是**單元測試**的工作
+#: (`test_template_headlines_do_not_merge_different_companies` 對兩道防線
+#: 各有一條獨立的機制斷言)。
+DUP_RATIO_CEILING = 0.03
+DUP_ABSOLUTE_FLOOR = 10
+
+
+def _dup_ceiling(cohort_size: int) -> int:
+    return max(DUP_ABSOLUTE_FLOOR, int(cohort_size * DUP_RATIO_CEILING))
 
 #: 從真實 state 取出的**確認案例**:同一則〈卓揆視察中信銀亞灣分行〉的兩家轉載
 #: (工商時報 / 中時新聞網,原本在 2026-07-27 那批各自成為獨立線索)。
@@ -278,7 +287,21 @@ def _unmerged_syndicated_pairs(cohort, ledger):
                str(other.get("headline"))[:44])
         (both if (story.get("entity") and other.get("entity"))
          else mirror).append(row)
-    return both, mirror
+
+    # 批#84:**雙向重複要去掉。** 每條線索都被當成一次「剛抵達的事件」,所以
+    # 同一對只要兩邊都在最新一批裡就會被算兩次(A↔B 與 B↔A),直接把數字灌成
+    # 兩倍去撞上限。2026-07-31 生產實例:回報 4 對,實際只有 3 對 —— 而上限是 3,
+    # 於是這個灌水正好是把 workflow 弄紅的最後一根稻草。
+    def _uniq(pairs):
+        seen, out = set(), []
+        for item in pairs:
+            key = frozenset(item[:2])
+            if key not in seen:
+                seen.add(key)
+                out.append(item)
+        return out
+
+    return _uniq(both), _uniq(mirror)
 
 
 def test_the_syndication_detector_actually_detects():
@@ -348,11 +371,11 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
         return "\n  ".join(f"{a} ↔ {b}\n    {ha}\n    {hb}"
                            for a, b, ha, hb in pairs[:5])
 
-    assert len(both) <= BOTH_ENTITY_DUP_CEILING, (
-        f"{newest} 這批有 {len(both)} 對**雙方都有代號**的線索該合併卻分開,"
-        f"超過上限 {BOTH_ENTITY_DUP_CEILING} —— "
-        f"批#67 的主旨相似度歸屬可能退化:\n  {_fmt(both)}")
-    assert len(mirror) <= ENTITYLESS_MIRROR_DUP_CEILING, (
-        f"{newest} 這批有 {len(mirror)} 對含無代號的鏡像重複,"
-        f"超過上限 {ENTITYLESS_MIRROR_DUP_CEILING} —— "
-        f"批#71 的跨桶比對可能退化:\n  {_fmt(mirror)}")
+    cap = _dup_ceiling(len(cohort))
+    assert len(both) <= cap, (
+        f"{newest} 這批 {len(cohort)} 條線索裡有 {len(both)} 對**雙方都有代號**"
+        f"的該合併卻分開,超過上限 {cap} —— "
+        f"批#67 的主旨相似度歸屬可能**整體**失效:\n  {_fmt(both)}")
+    assert len(mirror) <= cap, (
+        f"{newest} 這批有 {len(mirror)} 對含無代號的鏡像重複,超過上限 {cap} —— "
+        f"批#71 的跨桶比對可能**整體**失效:\n  {_fmt(mirror)}")

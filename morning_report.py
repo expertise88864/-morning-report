@@ -375,7 +375,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions",
+    "corporate_actions", "chips",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -1306,6 +1306,19 @@ def _chip_fields_for_session(large: Optional[dict], pcr: Optional[dict],
     if pcr and not pcr_ok:
         print(f"[chips] TXO P/C 日期 {pcr.get('date')} != {session},本列存 None",
               file=sys.stderr)
+    # 批#83:**缺值的原因要留下持久痕跡。** 日期對不上時,原本連
+    # `taifex_chip_source_date` 也一起存 None —— 事後分不出「來源日期錯位
+    # (且錯到哪一天)」與「整個抓取失敗」,而生產填充率正好是 3/4 與 2/4,
+    # 沒有這筆紀錄就只能猜。這是批#82 修過四次的同一形狀:降級沒有出口。
+    _RUN_MANIFEST["chips"] = {
+        "session": str(session or ""),
+        "large_source_date": str(large.get("date") or ""),
+        "pcr_source_date": str(pcr.get("date") or ""),
+        "large_matched": bool(large_ok),
+        "pcr_matched": bool(pcr_ok),
+    }
+    if (large and not large_ok) or (pcr and not pcr_ok):
+        _DEGRADED_STEPS.append("chips:source_date_mismatch")
     return {
         "taifex_top10_net": large.get("top10_net") if large_ok else None,
         "taifex_spec_top10_net": large.get("spec_top10_net") if large_ok else None,

@@ -1,0 +1,29 @@
+[
+ {
+  "Date": "20260729",
+  "PutVolume": "456929",
+  "CallVolume": "455977",
+  "PutCallVolumeRatio%": "100.21",
+  "PutOI": "49714",
+  "CallOI": "58979",
+  "PutCallOIRatio%": "84.29"
+ },
+ {
+  "Date": "20260728",
+  "PutVolume": "203999",
+  "CallVolume": "221822",
+  "PutCallVolumeRatio%": "91.97",
+  "PutOI": "87529",
+  "CallOI": "97943",
+  "PutCallOIRatio%": "89.37"
+ },
+ {
+  "Date": "20260727",
+  "PutVolume": "149664",
+  "CallVolume": "141537",
+  "PutCallVolumeRatio%": "105.74",
+  "PutOI": "74054",
+  "CallOI": "67417",
+  "PutCallOIRatio%": "109.84"
+ }
+]

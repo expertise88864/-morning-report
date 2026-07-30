@@ -1,0 +1,38 @@
+[
+ {
+  "Date": "20260729",
+  "Contract": "TX",
+  "ContractName": "臺股期貨(TX+MTX/4)",
+  "SettlementMonth": "999912",
+  "TypeOfTraders": "0",
+  "Top5Buy": "72381",
+  "Top5Sell": "59711",
+  "Top10Buy": "84346",
+  "Top10Sell": "84362",
+  "OIOfMarket": "124519"
+ },
+ {
+  "Date": "20260729",
+  "Contract": "TX",
+  "ContractName": "臺股期貨(TX+MTX/4)",
+  "SettlementMonth": "999912",
+  "TypeOfTraders": "1",
+  "Top5Buy": "72381",
+  "Top5Sell": "59711",
+  "Top10Buy": "79351",
+  "Top10Sell": "84362",
+  "OIOfMarket": "124519"
+ },
+ {
+  "Date": "20260729",
+  "Contract": "TX",
+  "ContractName": "臺股期貨(TX+MTX/4)",
+  "SettlementMonth": "202608",
+  "TypeOfTraders": "0",
+  "Top5Buy": "72381",
+  "Top5Sell": "56652",
+  "Top10Buy": "83225",
+  "Top10Sell": "79982",
+  "OIOfMarket": "116651"
+ }
+]

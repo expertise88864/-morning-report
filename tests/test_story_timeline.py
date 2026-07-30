@@ -892,6 +892,17 @@ def test_template_headlines_do_not_merge_different_companies():
          "鉅亨速報 - Factset 最新調查:漢諾威保險集團THG-US的目標價調升至230元,"
          "幅度約4.55%"),
     )
+    # r4(Codex,P2):**兩道防線要各自被釘住。** 上面的 fixture 光靠拉丁詞互斥
+    # 就會被擋(`LAD` vs `TW`、`TW` vs `THG`),所以拿掉「鉅亨速報」剝除之後
+    # 測試照樣綠,而生產會從 0 對回到 3 對 —— 宣稱「缺一不可」卻只驗到一道。
+    # 端對端斷言擋不住這種遮蔽,只能直接斷言各自的機制。
+    assert "鉅亨速報" not in sl._story_subject(template_pairs[0][0]), \
+        "「鉅亨速報」樣板沒有被剝除 —— 它會替不同公司的標題貢獻大量共同 bigram"
+    _tokens = sl._subject_latin_tokens(sl._story_subject(template_pairs[0][0]))
+    assert "FACTSET" not in _tokens and "EPS" not in _tokens, \
+        (f"樣板詞仍被當成具辨識力的英文詞:{sorted(_tokens)} —— "
+         "互斥守衛會因為交集非空而不觸發")
+
     for ta, tb in template_pairs:
         sa, sb = sl._story_subject(ta), sl._story_subject(tb)
         assert not sl._same_story_subject(

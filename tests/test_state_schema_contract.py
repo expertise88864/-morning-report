@@ -211,6 +211,12 @@ def test_run_manifest_carries_the_observability_fields():
 #: 批#71 跑過之後應該大幅下降,屆時把上限一起調降。
 #: 不寫 0 是避免「沒有任何 commit 能修好的紅」(批#77 的教訓);
 #: 留少量餘裕是因為對數隨當日新聞浮動,零餘裕的棘輪會在反彈時變成修不好的紅。
+#:
+#: r4(Codex,P2)**這個上限是粗網,不是精密儀器**,而且兩者不可兼得:
+#: 要容忍當日新聞造成的浮動,就必然遮蔽掉小幅退化(例如樣板防線少了一道、
+#: 鏡像重複從 9 升到 12,仍在 14 以下)。抓那種退化是**單元測試**的工作 ——
+#: `test_template_headlines_do_not_merge_different_companies` 對兩道防線
+#: 各有一條獨立的機制斷言。這裡只負責攔住整體性的崩壞。
 BOTH_ENTITY_DUP_CEILING = 3
 ENTITYLESS_MIRROR_DUP_CEILING = 14
 

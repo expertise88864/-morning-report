@@ -4151,3 +4151,88 @@ def test_delisted_fetch_parses_the_slash_roc_date(monkeypatch):
 
     monkeypatch.setattr(mr, "_http_get", _boom)
     assert mr.fetch_delisted_codes() == {}, "下市表失敗要降級為空,不得中斷晨報"
+
+
+def test_top5_horizon_is_voided_when_corpact_history_is_unreadable():
+    """r1(Codex,P1):**歷史不可讀 ≠ 沒有停牌。**
+
+    `halts_in_window` 對空歷史回 `[]`,意思是「這段期間乾淨」。於是「檔案讀不
+    出來」會被讀成「沒有公司行動」,Top5 照常給出一個看起來正常的超額報酬 ——
+    **正是本批要防的那個失敗**。這是本 repo 反覆出現的病灶(讀檔失敗被當成
+    沒有資料),除權息那條靠空覆蓋範圍強制作廢,公司行動沒有覆蓋概念,
+    所以用哨兵。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              corpact_history=dict(mr.CORPACT_UNREADABLE))
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    out = mr.update_top5_ledger(mh, [],
+                                dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                                "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["void"] is True and res5["reason"] == "corpact_history_unreadable"
+    assert not out["stats"].get("5")
+
+
+def test_corporate_actions_for_settlement_distinguishes_absent_from_unreadable(
+        tmp_path, monkeypatch):
+    """**檔案不存在是合法的「還沒開始收集」;檔案在卻解析不出來是未知。**
+
+    走生產實際呼叫的那個函式,不是我自己組的資料 —— 這一輪已經多次踩到
+    「測試驗的是我餵的東西,生產走另一條路」。
+    """
+    import datetime as dt
+    target = tmp_path / "corporate_actions.json"
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE", target)
+    now = dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE)
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"Code": "4169", "TradingHaltDate": "1150723",
+                     "TradingResumptionDate": "1150724"}]
+
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        # (a) 檔案不存在 + 抓得到 → 正常累積,不是降級
+        monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+        ok = mr.corporate_actions_for_settlement(now)
+        assert not ok.get("unreadable") and len(ok["records"]) == 1
+        assert not [s for s in mr._DEGRADED_STEPS if s.startswith("corpact:")]
+
+        # (b) 檔案在但壞掉 → 哨兵 + 降級紀錄 + **原檔不得被覆寫**
+        target.write_text("{ 這不是 JSON", encoding="utf-8")
+        before = target.read_text(encoding="utf-8")
+        bad = mr.corporate_actions_for_settlement(now)
+        assert bad.get("unreadable") is True
+        assert target.read_text(encoding="utf-8") == before, \
+            "讀不出來時絕不覆寫原檔(可能只是暫時性損毀,覆寫就永久失去歷史)"
+        assert "corpact:history_unreadable" in mr._DEGRADED_STEPS, \
+            "降級要被記下來,否則靜默作廢無從排查"
+
+        # (c) 抓取失敗但既有歷史可讀 → 沿用歷史,**不得**當成不可讀
+        target.write_text('{"since":"2026-07-01","days":["2026-07-01"],'
+                          '"records":[{"code":"4169","halt_date":"2026-07-23"}]}',
+                          encoding="utf-8")
+
+        def _boom(*_a, **_k):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(mr, "_http_get", _boom)
+        keep = mr.corporate_actions_for_settlement(now)
+        assert not keep.get("unreadable"), "抓不到不等於歷史壞掉"
+        assert len(keep["records"]) == 1, "既有停牌不得因今天抓不到而消失"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("corporate_actions", None)

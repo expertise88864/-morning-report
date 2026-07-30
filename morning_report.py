@@ -15010,6 +15010,15 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 # 超額報酬。共同表現是「暫停交易數日後以新參考價復牌」,
                 # 所以用停牌當統一訊號,不逐項列舉行動類型。
                 _codes = list((e.get("entry") or {}).keys())
+                # r1(Codex,P1):**歷史不可讀 ≠ 沒有停牌。**
+                # `halts_in_window` 對空歷史回 [],於是「讀不出來」會被讀成
+                # 「這段期間乾淨」→ 照常給出一個看起來正常的超額報酬,
+                # 正是本批要防的那個失敗。未知必須作廢。
+                if _corpact.get("unreadable"):
+                    e["res"][hk] = {"void": True,
+                                    "reason": "corpact_history_unreadable",
+                                    "session": exit_d}
+                    continue
                 _halt = halts_in_window(_corpact, _codes, tgt, exit_d)
                 if _halt:
                     e["res"][hk] = {
@@ -15685,6 +15694,47 @@ def halts_in_window(history: dict, codes, start: str, end: str) -> list:
     return [r for r in (history or {}).get("records") or []
             if str(r.get("code")) in want
             and start < str(r.get("halt_date") or "") <= end]
+
+
+#: 公司行動史「讀不出來」的哨兵。r1(Codex,P1):**空歷史與不可讀必須分得開。**
+#: `halts_in_window` 對空歷史回 [] —— 意思是「沒有停牌」,於是 Top5 照常算出
+#: 一個看起來正常的超額報酬,而那正是本批要防的失敗。檔案不存在是合法的
+#: 「還沒開始收集」;檔案在卻解析不出來是**未知**,未知必須 fail-closed。
+#: (這是本 repo 反覆出現的病灶:讀檔失敗被當成沒有資料。除權息那條靠
+#:  空覆蓋範圍強制 `exdiv_coverage_gap`,公司行動沒有覆蓋概念,所以要哨兵。)
+CORPACT_UNREADABLE = {"unreadable": True, "since": "", "days": [], "records": []}
+
+
+def corporate_actions_for_settlement(now_tpe: dt.datetime) -> dict:
+    """抓取 + 併入公司行動史;失敗時回**可判讀的**降級狀態。
+
+    抽成獨立函式是為了讓生產路徑本身可測 —— 這一輪已經多次踩到
+    「測試驗的是我自己餵的資料,生產走的是另一條路」。
+
+    三種失敗語意刻意不同:
+      - 抓取失敗(`CorpActFetchFailed`)→ 沿用既有歷史。已知的停牌不會消失,
+        只是今天沒有新增。
+      - 歷史不可讀(`CorpActUnreadable`)→ 回 `CORPACT_UNREADABLE` 哨兵,
+        **原檔不覆寫**,並讓結算端作廢。
+      - 其他例外 → 同上,先試讀既有歷史,讀不出來一樣回哨兵。
+    """
+    try:
+        return update_corporate_actions(
+            fetch_trading_halts(now_tpe.date().isoformat()), now_tpe)
+    except CorpActUnreadable as e:
+        print(f"[corpact] 歷史不可讀,保留原檔不覆寫,本次橫向作廢: {e}",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append("corpact:history_unreadable")
+        return dict(CORPACT_UNREADABLE)
+    except Exception as e:
+        print(f"[corpact] {e};沿用既有歷史", file=sys.stderr)
+        try:
+            return load_corporate_actions()
+        except CorpActUnreadable as e2:
+            print(f"[corpact] 既有歷史也不可讀,本次橫向作廢: {e2}",
+                  file=sys.stderr)
+            _DEGRADED_STEPS.append("corpact:history_unreadable")
+            return dict(CORPACT_UNREADABLE)
 
 
 def fetch_delisted_codes() -> dict:
@@ -21821,21 +21871,7 @@ def main() -> int:
         # 差別在停牌史目前**不參與覆蓋守衛**(TWTAWU 的保留窗口未知,
         # 見 `_record_corpact_span`),所以抓取失敗只是本次少一個作廢理由,
         # 不會讓已知的停牌被忽略。
-        try:
-            _corpact = update_corporate_actions(
-                fetch_trading_halts(now_tpe.date().isoformat()), now_tpe)
-        except (CorpActFetchFailed, CorpActUnreadable) as e:
-            print(f"[corpact] {e};沿用既有歷史", file=sys.stderr)
-            try:
-                _corpact = load_corporate_actions()
-            except CorpActUnreadable:
-                _corpact = _blank
-        except Exception as e:
-            print(f"[corpact] 公司行動史更新略過: {e}", file=sys.stderr)
-            try:
-                _corpact = load_corporate_actions()
-            except CorpActUnreadable:
-                _corpact = _blank
+        _corpact = corporate_actions_for_settlement(now_tpe)
         try:
             _delisted = fetch_delisted_codes()
         except Exception as e:

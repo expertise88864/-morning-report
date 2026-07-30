@@ -4862,6 +4862,57 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73256142",
+        "title": "Jersey Mike’s prices at $23",
+        "published": "Thu, 30 Jul 2026 10:29:09 +0000",
+        "processed_at": "2026-07-30T15:31:03Z",
+        "digest": {
+          "summary_points": [
+            "Jersey Mike's Subs 以每股23美元的價格進行IPO，在紐約證交所上市，估值約73億美元，為近年來最大的餐廳IPO之一。",
+            "Meta Platforms 第二季自由現金流量降至7.84億美元，為2022年第三季以來最低，主因AI基礎設施支出大增。",
+            "Meta公布第三季營收展望低於預期，投資人對其數十億美元AI投資何時產生回報感到擔憂，股價盤前下跌9%。",
+            "Starbucks 第三財季同店銷售成長7.9%，經調整每股盈餘0.85美元優於預期，並上調2026財年展望，股價上漲4.7%。",
+            "Microsoft 第四季財報優於預期，Azure營收突破1000億美元，股價盤前上漲。",
+            "Samsung 預測AI驅動的記憶體短缺將持續至2028年。",
+            "Intel 據報向一家新創公司開放其晶片設計資源。",
+            "Teladoc Health 第二季營收未達預期並發布疲弱展望，股價下跌17%。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "自由現金流量下降，AI支出大增，營收展望不如預期，股價下跌。"
+            },
+            {
+              "name": "Starbucks",
+              "code": "SBUX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "同店銷售成長、獲利優於預期，並上調財測，股價上漲。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報優於預期，Azure營收突破千億美元，股價正面。"
+            },
+            {
+              "name": "Teladoc Health",
+              "code": "TDOC",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "營收未達標，財測疲弱，股價大跌17%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Meta Platforms reported mixed second quarter results beating on the bottom line, but missing profit expectations."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73244300",
         "title": "Fed holds rates and markets ain't happy",
         "published": "Wed, 29 Jul 2026 20:37:55 +0000",
@@ -5407,34 +5458,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-20T22:51:16Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73057716",
-        "title": "Tesla reports as earnings season revs up",
-        "published": "Sun, 19 Jul 2026 18:19:43 +0000",
-        "processed_at": "2026-07-19T20:24:41Z",
-        "digest": {
-          "summary_points": [
-            "特斯拉將於週三公佈第二季財報，預期營收264億美元、每股盈餘0.54美元，汽車毛利率（不含積分）略高於18%；已揭露第二季交車480,126輛與生產451,758輛。",
-            "分析師Yanis Zumpanos看好特斯拉，認為動能與低估潛力；而Agar Capital看空，主張1.5兆美元市值高估約1兆美元。",
-            "本週其他重要財報：週一達美樂披薩、AMC娛樂；週二諾華、3M、通用汽車、哈里伯頓；週三Alphabet、德州儀器、IBM、AT&T、ServiceNow、菲利普莫里斯、金德摩根；週四英特爾、T-Mobile、洛克希德馬丁、聯合太平洋、康卡斯特；週五美國運通、威瑞森、特許通訊。",
-            "經濟事件包括AMD的Advancing AI活動（週三）、范堡羅國際航空展（週一開幕）以及聖地牙哥國際漫畫展（週四開幕）。",
-            "除息日：卡特彼勒與高露潔棕欖（週一，分別於8/19與8/14發放）；戴爾（週二，7/31發放）；輝瑞（週五，9/1發放）。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "在財報前同時呈現看好（Yanis Zumpanos）與看空（Agar Capital）的觀點。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Seeking Alpha analysts, Yanis Zumpanos says Tesla enters earnings with momentum on its side."
-        },
-        "shown_at": "2026-07-19T22:48:13Z"
       }
     ]
   },

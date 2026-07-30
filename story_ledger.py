@@ -962,8 +962,20 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
     subject_grams = _content_bigrams(subject)
     best_key, best_score = "", 0.0
     for key, story in by_key.items():
-        if str(story.get("entity") or "") != ent:
+        cand_ent = str(story.get("entity") or "")
+        # 批#71:**「有掛代號」與「沒掛代號」的同一則新聞必須互相比得到。**
+        # 2026-07-30 實信的實害:同一篇〈聯電法說〉AI營收三年拚逾10億美元
+        # 在 yahoo 與 cnyes 兩個鏡像站各開一條線索,一條 entity=2303、
+        # 一條 entityless(`cluster…`)——因為原本要求 entity **完全相等**才比,
+        # 兩者落在不同桶、永遠不會互相比較。聯電相關線索因此散成 26 條。
+        #
+        # 代號是**額外資訊**,不是衝突:一邊有、一邊沒有,仍可能是同一件事。
+        # 兩邊都有卻不同才是真的衝突(不同公司)。
+        # 有一邊 entityless 時採較嚴的門檻——少了代號這個錨,證據本來就較弱。
+        if ent and cand_ent and cand_ent != ent:
             continue
+        pair_threshold = (threshold if (ent and cand_ent)
+                          else STORY_MATCH_THRESHOLD_NO_ENTITY)
         # r1(Codex,P1):**期別型事件跨期不得合併**。「公告本公司115年6月份
         # 自結合併營收」與「⋯115年7月份⋯」幾乎是同一個字串,分數遠超門檻,
         # 於是七月營收會在 `story_key_for_event` 建立新月份 key 之前就被掛回
@@ -982,8 +994,13 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
         # 因此排錯序。改為算完全部候選再取該線索的最高分。
         score = 0.0
         for cand in _story_match_candidates(story):
-            cs = _story_subject(cand, ent, str(story.get("entity_name") or ""))
-            if not _same_story_subject(subject, cs, threshold):
+            # 主旨正規化時把**兩邊都知道的**代號/名稱都剝掉:一邊有掛代號、
+            # 一邊沒有時,若只剝自己那一側,對照文字會殘留「聯電」而本側已被
+            # 剝除,重疊率被硬生生壓低。
+            cs = _story_subject(cand, cand_ent or ent,
+                                str(story.get("entity_name")
+                                    or ev.get("entity_name") or ""))
+            if not _same_story_subject(subject, cs, pair_threshold):
                 continue
             gb = _content_bigrams(cs)
             score = max(score, len(subject_grams & gb)
@@ -1288,6 +1305,30 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
     # 其中一條還排在「線索追蹤」卡第一位。新規則只擋新增,舊的要在這裡掃掉。
     out = [s for s in out
            if not is_market_wrap(str(s.get("headline") or ""), vocab)]
+    # 批#71:**軌跡點也要掃**。2026-07-30 實信的實害——
+    #   [高潮] 聯電:Factset…EPS預估上修  ・已追蹤 3 次
+    #     07-28 〈美股盤後〉油價大幅回落 道瓊漲逾260點…   ← 大盤總結
+    #     07-29 〈美股盤後〉油價下滑 道瓊漲逾500點…       ← 大盤總結
+    #     07-30 Factset 最新調查:聯電 ADR…
+    # 上面那道清掃只看 `headline`,而這條線索的 headline 已經換成聯電那則
+    # (乾淨),於是整條被放行、軌跡卻是兩則跟聯電無關的大盤總結。
+    # 實測全帳本 23/1476 個軌跡點是這種殘留。
+    _swept_empty = []
+    for s in out:
+        tl = [p for p in (s.get("timeline") or []) if isinstance(p, dict)]
+        kept = [p for p in tl
+                if not is_market_wrap(str(p.get("t") or ""), vocab)]
+        if len(kept) != len(tl):
+            s["timeline"] = kept
+            if not kept:
+                _swept_empty.append(id(s))
+    # 只丟「**本次被掃空**」的線索——它整條軌跡都是大盤總結,留著就是一行沒有
+    # 來歷的標題。**不能**用「timeline 為空」當條件:批#57 之前建立的線索本來
+    # 就沒有 timeline 欄位(真實帳本 466/1502),那樣會把它們全部刪掉。
+    # (自測抓到:第一版寫成 `if s.get("timeline") or not s.get("updates")`,
+    #  一條完全正常的 e:2330|l:orders 線索直接消失。)
+    if _swept_empty:
+        out = [s for s in out if id(s) not in set(_swept_empty)]
     out = [s for s in out
            if _days_between(s.get("last_update") or today, today) <= KEEP_DAYS]
     out.sort(key=lambda s: (STATE_WEIGHT.get(s.get("state"), 0.0),

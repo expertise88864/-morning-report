@@ -272,10 +272,25 @@ def test_fetch_news_fulltext_resolves_google_news_target(monkeypatch):
 def test_fetch_candidate_company_news(monkeypatch):
     import time as _t
 
+    # 批#71:原本的 fixture **對每個查詢都回同一篇「緯創」文章** —— 那正好複製了
+    # 要修的缺陷(一家公司的查詢結果被掛到另一家)。2026-07-30 實信的實害:
+    # 講聯電的文章被掛到 6415 矽力*-KY、5876 上海商銀、4904 遠傳、2881 富邦金、
+    # 3034 聯詠,並各自開出線索。
+    # 改為依查詢字串回對應公司的文章,另外保留一篇「漂移」文章驗證它會被丟掉。
+    from urllib.parse import unquote
+
     class _Feed:
         def __init__(self, url):
+            q = unquote(url)
+            if "緯創" in q:
+                title, summary = "緯創 GB300 出貨超預期", "訂單能見度到 2027"
+            elif "力積電" in q:
+                title, summary = "力積電 12 吋廠稼動率回升", "記憶體代工回溫"
+            else:
+                # Google News 查詢漂移:回一篇完全沒提到該公司的文章
+                title, summary = "台積電法說會展望樂觀", "先進製程供不應求"
             self.entries = [{
-                "title": "緯創 GB300 出貨超預期", "summary": "訂單能見度到 2027",
+                "title": title, "summary": summary,
                 "link": "https://news.google.com/rss/articles/X",
                 "published": "Mon, 01 Jun 2026 01:00:00 GMT",
                 "published_parsed": _t.gmtime(),
@@ -293,6 +308,11 @@ def test_fetch_candidate_company_news(monkeypatch):
     assert labels == {"3231", "6770"}                  # 排除 2330、跳過 0 分
     assert all(n.get("company_label") and n.get("code") for n in out)
     assert all(n["source"].startswith("Google:") for n in out)
+
+    # 漂移的文章必須被丟掉,不得貼上該公司的標
+    drifted = mr.fetch_candidate_company_news(
+        [{"code": "6415", "name": "矽力-KY", "breakout": {"score": 80}}], top_n=1)
+    assert drifted == [], "沒提到該公司的文章被貼上 company_label —— 假歸因"
 
 
 def test_fetch_candidate_company_news_empty():
@@ -645,8 +665,19 @@ class _SectorNewsFeed:
 
 
 def test_fetch_sector_leader_news_skips_tech_and_excludes(monkeypatch):
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda u: _SectorNewsFeed(["長榮運價大漲", "長榮法說"]))
+    # 批#71:fixture 原本固定回「長榮」標題,而新的相關性守衛(見
+    # test_fetch_candidate_company_news)會把沒提到該公司的文章丟掉 ——
+    # 改為依查詢回對應公司的標題,測試驗的才是「哪些公司會被查」這件事本身。
+    from urllib.parse import unquote
+
+    def _sector_feed(u):
+        q = unquote(u)
+        for nm in ("長榮", "陽明", "國泰金", "富邦金", "台積電"):
+            if nm in q:
+                return _SectorNewsFeed([f"{nm}運價大漲", f"{nm}法說"])
+        return _SectorNewsFeed(["某公司運價大漲"])
+
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", _sector_feed)
     monkeypatch.setattr(mr, "_entry_published_dt", lambda e: None)
     heat = {"sectors": {
         "半導體業": {"leaders": [{"code": "2330", "name": "台積電"}]},
@@ -855,16 +886,23 @@ def test_dynamic_google_paths_retain_source_name(monkeypatch):
     否則 G6 的獨立來源數把同查詢下不同媒體都當同一來源(Codex review 第三輪)。"""
     import datetime as dt
 
-    class Feed:
-        entries = [{
-            "title": "測試公司 大單挹注 - 經濟日報",
+    # 批#71:標題要真的提到被查的公司,否則新的相關性守衛會把它丟掉
+    # (本測試驗的是 source_name 有沒有保留,不該被歸因守衛干擾)。
+    from urllib.parse import unquote
+
+    def _feed(url, *a, **k):
+        q = unquote(str(url))
+        nm = next((x for x in ("緯創", "富邦金", "高通", "Qualcomm") if x in q),
+                  "測試公司")
+        return type("F", (), {"entries": [{
+            "title": f"{nm} 大單挹注 - 經濟日報",
             "link": "https://news.google.com/x",
             "published": dt.datetime.now(dt.timezone.utc).strftime(
                 "%a, %d %b %Y %H:%M:%S GMT"),
             "source": {"title": "經濟日報", "href": "https://money.udn.com"},
-        }]
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda *a, **k: Feed())
+        }]})()
+
+    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout", _feed)
 
     cand = mr.fetch_candidate_company_news(
         [{"code": "3231", "name": "緯創", "breakout": {"score": 5}}], top_n=1)
@@ -2025,3 +2063,64 @@ def test_extractor_stats_do_not_count_events_that_lost_the_merge(monkeypatch):
                       and "LLM extractor" in (e.get("sources") or []))
     assert survived == 0, "被吃掉的事件被計成存活"
     assert merged_away == 1, "貢獻但落敗沒有被記錄,分不出兩種失敗模式"
+
+
+def test_deepseek_extractor_token_budget_fits_the_requested_schema():
+    """批#71:`max_tokens` 1200 連一半的輸出都放不下。
+
+    批#68 加的診斷在 2026-07-30 的 run manifest 上直接給出答案:
+        called: True, items: 35, parsed: 0,
+        outcome: error:RuntimeError, error: "DeepSeek extractor 回應缺少 content"
+    HTTP 沒有錯(`raise_for_status` 沒擋)→ 模型有回,但 content 是空的。
+
+    這條是**算出來的**:prompt 要求最多 30 個物件,每個含 entity/event_type/
+    direction/confidence/lifecycle/title/published,單一物件光 JSON 就約
+    80-100 token → 30 × 90 ≈ 2700,加上陣列結構與中文標題(每字約 1 token 起)。
+    """
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef)
+              and n.name == "_call_deepseek_extractor")
+    src = ast.unparse(fn)
+    assert "'max_tokens': 1200" not in src and '"max_tokens": 1200' not in src
+    budget = None
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Dict):
+            continue
+        for k, v in zip(node.keys, node.values):
+            if (isinstance(k, ast.Constant) and k.value == "max_tokens"
+                    and isinstance(v, ast.Constant)):
+                budget = v.value
+    assert isinstance(budget, int) and budget >= 2700, \
+        f"max_tokens {budget} 放不下 30 個物件(約需 2700+)"
+    # 空 content 時必須帶出可辨識的線索,否則又要靠好幾輪才查得出原因
+    for hint in ("finish_reason", "completion_tokens", "reasoning_content"):
+        assert hint in src, f"錯誤訊息缺少 {hint},空 content 無法診斷"
+
+
+def test_extractor_prompt_does_not_ask_for_discarded_fields():
+    """批#71:批#68 把 `surprise_score` 移出白名單(那是評分不是抄錄),
+    而 `source` 一直被強制釘成 "LLM extractor" —— 兩者送回來都會被
+    `_validate_llm_events` 剝掉。繼續索取會白花 token,而 token 上限
+    正是這條路徑沒有產出的原因。"""
+    import news_events as ne
+    assert "surprise_score" not in ne._LLM_EVENT_FIELDS
+    assert "source" not in ne._LLM_EVENT_FIELDS
+    # 用 AST 取**字串常數**而不是搜原始碼:註解不會進 AST。
+    # (自測抓到:第一版直接切原始碼,斷言命中的是我新寫的那段
+    #  「為什麼移除 surprise_score」的註解,而不是 prompt 本身。)
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef)
+              and n.name == "call_llm_event_extractor")
+    schema = next((n.value for n in ast.walk(fn)
+                   if isinstance(n, ast.Constant)
+                   and isinstance(n.value, str)
+                   and "Each object must have" in n.value), None)
+    assert schema, "找不到 prompt 的欄位清單"
+    assert "surprise_score" not in schema, "prompt 仍索取已被剝除的欄位"
+    assert "source" not in schema, "prompt 仍索取已被強制覆寫的欄位"

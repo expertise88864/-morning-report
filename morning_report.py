@@ -5809,6 +5809,19 @@ def fetch_candidate_company_news(snapshot: list[dict],
                 # source_name/source_url 比照正規 Google 路徑抽取:G6 的「獨立來源數」
                 # 以 source_name 辨識發布者,缺了會把同查詢下不同媒體都當同一來源(Codex review)
                 source_name, source_url = _tw_entry_source(entry)
+                # 批#71:**不能無條件貼 company_label**。Google News 查詢會漂移,
+                # 撈回完全沒提到該公司的文章;貼標之後 extract_structured_events
+                # 會把它變成事件的 entity,`_stock_news_catalysts` 隨即判為
+                # **直接**公司事件——影響催化評分、排名、預測與存檔的 model history。
+                #
+                # 2026-07-30 實信的實害:講**聯電**的文章被掛到 6415 矽力*-KY、
+                # 5876 上海商銀、4904 遠傳、2881 富邦金、3034 聯詠,並各自開出線索。
+                # 追蹤查詢路徑(`_process_feed_item`)早就有這道守衛(r4,實測假歸因
+                # 讓分數膨脹近四倍),而這三條逐股查詢路徑一直沒有。直接重用同一個判準。
+                if not _mentions_company(
+                        f"{entry.get('title', '')} {entry.get('summary', '') or ''}",
+                        str(name or ""), str(code or "")):
+                    continue
                 item = {
                     "source": f"Google:{code}",
                     "title": entry.get("title", ""),
@@ -5880,6 +5893,11 @@ def fetch_sector_leader_news(sector_heat: dict,
                     if pub_dt and pub_dt < cutoff:
                         continue
                     source_name, source_url = _tw_entry_source(entry)   # G6:發布者身分(同上)
+                    # 批#71:同上,逐股查詢會漂移,貼標前先確認文章真的提到該公司
+                    if not _mentions_company(
+                            f"{entry.get('title', '')} {entry.get('summary', '') or ''}",
+                            str(name or ""), str(code or "")):
+                        continue
                     item = {
                         "source": f"Google:{code}",
                         "title": entry.get("title", ""),
@@ -5943,6 +5961,16 @@ def fetch_8k_company_news(sec_filings: list[dict],
                 if pub_dt and pub_dt < cutoff:
                     continue
                 source_name, source_url = _tw_entry_source(entry)   # G6:發布者身分(同上)
+                # 批#71:同上,逐股查詢會漂移,貼標前先確認文章真的提到該公司。
+                # 這裡的名稱來自 `_8K_QUERY_BY_TICKER`(如 "高通 Qualcomm"),
+                # 是**多個名稱變體**;`_mentions_company` 一次只吃一個 token,
+                # 所以逐個試——只認 ticker 會漏掉寫全名不寫代號的報導。
+                _blob = f"{entry.get('title', '')} {entry.get('summary', '') or ''}"
+                _names = [x for x in str(
+                    _8K_QUERY_BY_TICKER.get(t, "")).split() if len(x) >= 2]
+                if not any(_mentions_company(_blob, nm, t)
+                           for nm in (_names or [""])):
+                    continue
                 item = {
                     "source": f"Google:{t}",
                     "title": entry.get("title", ""),
@@ -12544,7 +12572,14 @@ def _call_deepseek_extractor(prompt: str) -> str:
             "model": DEEPSEEK_EXTRACTOR_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
-            "max_tokens": 1200,
+            # 批#71:1200 → 4000。**這是算出來的,不是試的**:prompt 要求最多
+            # 30 個物件,每個含 entity/event_type/direction/confidence/lifecycle/
+            # title/published 等欄位,單一物件光 JSON 就約 80-100 token
+            # → 30 × 90 ≈ 2700,加上陣列結構與中文標題(每字約 1 token 起)
+            # 1200 連一半都放不下。批#68 的診斷實測結果正是
+            # `parsed: 0` + 「回應缺少 content」,而 HTTP 沒有錯
+            # ——也就是模型有回、但內容被 token 上限吃掉。
+            "max_tokens": 4000,
             "stream": False,
         },
         headers={
@@ -12554,10 +12589,23 @@ def _call_deepseek_extractor(prompt: str) -> str:
         timeout=45,
     )
     response.raise_for_status()
-    choices = (response.json().get("choices") or [])
-    content = (choices[0].get("message") or {}).get("content") if choices else None
+    payload = response.json() or {}
+    choices = payload.get("choices") or []
+    message = (choices[0].get("message") or {}) if choices else {}
+    content = message.get("content")
     if not content:
-        raise RuntimeError("DeepSeek extractor 回應缺少 content")
+        # 空 content 的原因不只一種(token 上限、reasoning 吃光額度、
+        # 內容過濾、模型回了別的欄位)。**把可辨識的線索一併帶進錯誤訊息**
+        # ——批#68 加診斷之前,這裡只留一句「缺少 content」,查了好幾輪才
+        # 從 run manifest 看出它每天都在發生。
+        finish = str((choices[0].get("finish_reason") if choices else "") or "?")
+        usage = payload.get("usage") or {}
+        has_reasoning = bool(message.get("reasoning_content"))
+        raise RuntimeError(
+            f"DeepSeek extractor 回應缺少 content"
+            f"(finish_reason={finish}、completion_tokens="
+            f"{usage.get('completion_tokens')}、有 reasoning_content="
+            f"{has_reasoning}、choices={len(choices)})")
     return content
 
 
@@ -12625,12 +12673,15 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict]) -> list[dict]:
     } for item in ranked_items[:35]]
     prompt = (
         "You are a financial-news event extractor. Return JSON only: an array of at most "
+        # 批#71:**不要再索取一律被丟棄的欄位**。批#68 把 `surprise_score` 移出
+        # 白名單(那是評分不是抄錄),而 `source` 一直被強制釘成 "LLM extractor"
+        # ——兩者送回來都會被 `_validate_llm_events` 剝掉。繼續索取有兩個壞處:
+        # 白花 token(而 token 上限正是這條路徑沒有產出的原因),
+        # 以及叫模型做一件我們明知會忽略的事。
         "30 objects. Each object must have entity, event_type, direction, confidence, "
-        "surprise_score, lifecycle, "
-        "title, source, published. direction is -1, 0, or 1. Use only supplied evidence. "
+        "lifecycle, title, published. direction is -1, 0, or 1. Use only supplied evidence. "
         "Prefer official disclosures over media rewrites. Merge duplicates. "
         "lifecycle must be rumor, confirmed, implemented, or withdrawn. "
-        "surprise_score is 0.1 to 1.0: use a low score for already-expected news. "
         "Allowed event_type: guidance_raise, guidance_cut, orders, earnings, "
         "revenue_growth, export_controls, litigation, geopolitical, general.\n"
         "AUTHORITY: when an input item has a non-empty official_event_type, that value "

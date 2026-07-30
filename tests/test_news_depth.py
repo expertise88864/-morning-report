@@ -511,3 +511,88 @@ def test_fiscal_period_comes_from_the_report_not_the_publication_date():
     # 合理性守衛:標題提到很久以前的年月不採信
     assert bucket("回顧2019年12月的那場危機",
                   "2026-07-06T00:00:00+00:00", True) == "2026-07"
+
+
+# --------------------------------------------------------------------------
+# 批#71:2026-07-30 實信抓到的四項
+# --------------------------------------------------------------------------
+
+def test_market_wrap_timeline_points_are_swept_from_existing_stories():
+    """2026-07-30 實信的實害——「線索追蹤」卡第一條:
+
+        [高潮] 聯電:Factset…EPS預估上修至0.78元 ・已追蹤 3 次
+          07-28 〈美股盤後〉油價大幅回落 道瓊漲逾260點…   ← 大盤總結
+          07-29 〈美股盤後〉油價下滑 道瓊漲逾500點…       ← 大盤總結
+          07-30 Factset 最新調查:聯電 ADR…
+
+    批#63 只擋新增的大盤總結**線索**,而輸出時的清掃也只看 `headline`。
+    這條線索的 headline 已經換成聯電那則(乾淨),於是整條被放行、
+    軌跡卻是兩則跟聯電無關的大盤總結。實測全帳本 23/1476 個軌跡點是這種殘留。
+    """
+    stale = {
+        "key": "e:2303|l:earnings|2026q3", "entity": "2303",
+        "entity_name": "聯電", "event_type": "earnings", "state": "peak",
+        "updates": 3, "last_update": "2026-07-30", "max_surprise": 0.6,
+        "headline": "Factset 最新調查:聯電 ADR(UMC-US)EPS預估上修至0.78元",
+        "last_published": "2026-07-30T01:00:00+00:00",
+        "timeline": [
+            {"d": "2026-07-28", "t": "〈美股盤後〉油價大幅回落 道瓊漲逾260點 美光、SK海力士ADR、ASML同步重挫"},
+            {"d": "2026-07-29", "t": "〈美股盤後〉油價下滑 道瓊漲逾500點 全球晶片股慘遭血洗 費半狂瀉近5%"},
+            {"d": "2026-07-30", "t": "Factset 最新調查:聯電 ADR(UMC-US)EPS預估上修至0.78元"},
+        ],
+    }
+    out = sl.update_ledger([stale], [], "2026-07-30", {"2303": "聯電"})
+    story = next(s for s in out if s["key"] == stale["key"])
+    kept = [p["t"] for p in story["timeline"]]
+    assert len(kept) == 1 and "Factset" in kept[0], f"大盤總結軌跡點沒掃掉:{kept}"
+
+
+def test_stories_without_any_timeline_are_not_deleted_by_the_sweep():
+    """對照組(**自測抓到**):第一版的條件寫成「timeline 為空就丟」,
+    而批#57 之前建立的線索本來就沒有 timeline 欄位(真實帳本 466/1502)
+    —— 那一版把一條完全正常的線索直接刪掉了。只能丟「本次被掃空」的。
+    """
+    legacy = {"key": "e:2330|l:orders|202607", "entity": "2330",
+              "entity_name": "台積電", "event_type": "orders",
+              "state": "developing", "updates": 2, "last_update": "2026-07-30",
+              "max_surprise": 0.6, "headline": "台積電獲追加訂單"}
+    out = sl.update_ledger([legacy], [], "2026-07-30", {"2330": "台積電"})
+    assert [s["key"] for s in out] == [legacy["key"]]
+
+
+def test_labelled_and_unlabelled_versions_of_one_story_merge():
+    """2026-07-30 實信:同一篇〈聯電法說〉AI營收三年拚逾10億美元在 yahoo 與
+    cnyes 兩個鏡像站各開一條線索,一條 entity=2303、一條 entityless —— 因為
+    比對原本要求 entity **完全相等**,兩者落在不同桶、永遠不會互相比較。
+    聯電相關線索因此散成 26 條。
+
+    代號是**額外資訊**不是衝突:一邊有、一邊沒有仍可能是同一件事。
+    """
+    base = {"event_type": "revenue_growth", "surprise_score": 0.5,
+            "published": "2026-07-30T01:00:00+00:00"}
+    title = "〈聯電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機"
+    led = sl.update_ledger([], [dict(
+        base, entity="", title=f"{title} - tw.stock.yahoo.com",
+        link="https://a/1", source_name="Yahoo股市")], "2026-07-30",
+        {"2303": "聯電"})
+    led = sl.update_ledger(led, [dict(
+        base, entity="2303", entity_name="聯電",
+        title=f"{title} - news.cnyes.com",
+        link="https://a/2", source_name="鉅亨台股")], "2026-07-30",
+        {"2303": "聯電"})
+    assert len(led) == 1, f"鏡像站開了兩條:{[s['key'] for s in led]}"
+
+
+def test_two_named_companies_still_do_not_merge():
+    """對照組:兩邊都有代號卻不同,那才是真的衝突(不同公司),不得合併。"""
+    base = {"event_type": "revenue_growth", "surprise_score": 0.5,
+            "published": "2026-07-30T01:00:00+00:00"}
+    body = "Q2每股賺3.39元 宣布台南、新加坡同步擴產 資本支出上調至20億美元"
+    vocab = {"2303": "聯電", "2330": "台積電"}
+    led = sl.update_ledger([], [dict(base, entity="2303", entity_name="聯電",
+                                     title=f"聯電{body}", link="https://b/1",
+                                     source_name="財訊")], "2026-07-30", vocab)
+    led = sl.update_ledger(led, [dict(base, entity="2330", entity_name="台積電",
+                                      title=f"台積電{body}", link="https://b/2",
+                                      source_name="財訊")], "2026-07-30", vocab)
+    assert len(led) == 2

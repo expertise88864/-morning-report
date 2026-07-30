@@ -22,6 +22,15 @@ import morning_report as mr
 
 _SRC = Path(mr.__file__).read_text(encoding="utf-8")
 
+#: repo 的真實 `state/`。r2(Codex,P2):**守衛測試的目標端也必須是絕對路徑。**
+#: r1 只把 `conftest.py` 的守衛「保護範圍」改成由 `__file__` 定位,卻留下這裡的
+#: `Path("state")` 目標端 —— 從 repo 外執行時,寫入打在別的目錄上,守衛不會命中:
+#: 目錄不存在就 `FileNotFoundError`,存在就**真的寫進去**而測試因「沒有拋
+#: AssertionError」失敗。範圍與目標必須用同一個錨,否則兩邊會各自漂移。
+#: (r1 的 repo 外驗證只跑了另外兩個檔,沒跑守衛測試自己 —— 驗證沒有覆蓋到
+#:  被修的那類不變式,漏洞才留到 r2。)
+_REPO_STATE = Path(__file__).resolve().parents[1] / "state"
+
 
 # ---------------------------------------------------------------- A. state 登錄
 #
@@ -246,15 +255,15 @@ def test_os_level_guard_blocks_dynamically_built_state_paths():
     import pytest as _pytest
     from pathlib import Path as _P
 
-    target = _P("state") / "should_never_be_written.json"
+    target = _REPO_STATE / "should_never_be_written.json"
     with _pytest.raises(AssertionError, match="真實 state"):
         target.write_text("x", encoding="utf-8")
     with _pytest.raises(AssertionError, match="真實 state"):
         target.write_bytes(b"x")
     with _pytest.raises(AssertionError, match="真實 state"):
-        open("state/should_never_be_written.json", "w").close()
+        open(str(_REPO_STATE / "should_never_be_written.json"), "w").close()
     # 唯讀不受影響(測試要能讀真實 state 當語料)
-    assert _P("state").exists()
+    assert _REPO_STATE.exists()
     # tmp 路徑完全不受影響
     import tempfile
     tmp = _P(tempfile.mkdtemp()) / "ok.json"
@@ -268,6 +277,50 @@ def test_all_state_paths_derive_from_state_root():
     import re as _re
     hard = _re.findall(r'Path\("state/[^"]+"\)', _SRC)
     assert not hard, f"仍有硬寫的 state 路徑:{hard}"
+
+
+def test_no_test_file_reads_repo_files_through_a_cwd_relative_path():
+    """r2:**同一個病灶在兩輪裡出現兩次,所以擋成類別而不是逐點修。**
+
+    測試檔用 `Path("state/…")` / `Path(".github/…")` 這種相對字面值時,只有
+    「從 repo 根目錄啟動 pytest」才會對。從別處啟動時的失敗形狀都很難看:
+
+      - `pytest.skip` → 整組檢查消失,報告裡只剩一排 `s`
+      - `glob()` 掃到空集合 → 迴圈不執行 → **無聲通過**(連 `s` 都沒有)
+      - 寫入守衛的目標打在別的目錄 → 守衛不命中,真實 state 反而全裸
+
+    正確的錨只有一個:`Path(__file__).resolve().parents[1]`。檔案位置不會因為
+    誰在哪裡啟動 pytest 而改變,CWD 會。
+
+    (`mr.__file__` / `tmp_path` / 絕對路徑都不在此列 —— 它們本來就與 CWD 無關。)
+    """
+    import ast as _ast
+
+    root = Path(__file__).resolve().parents[1]
+    top = {e.name for e in root.iterdir()}
+    offenders = []
+    for src in sorted(Path(__file__).resolve().parent.glob("*.py")):
+        tree = _ast.parse(src.read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if not isinstance(node, _ast.Call) or not node.args:
+                continue
+            fn = node.func
+            name = (fn.attr if isinstance(fn, _ast.Attribute)
+                    else getattr(fn, "id", ""))
+            if name not in {"Path", "_P", "_Path", "open"}:
+                continue
+            first = node.args[0]
+            if not (isinstance(first, _ast.Constant)
+                    and isinstance(first.value, str)):
+                continue
+            head = first.value.replace("\\", "/").split("/")[0]
+            if head in top:
+                offenders.append(
+                    f"{src.name}:{node.lineno} → {first.value!r}")
+    assert not offenders, (
+        "測試檔用了相對 CWD 的 repo 路徑,從 repo 根目錄以外執行會靜默失效:\n  "
+        + "\n  ".join(offenders)
+        + "\n  請改用 `Path(__file__).resolve().parents[1] / ...`。")
 
 
 def test_os_level_guard_blocks_move_destinations_not_just_sources():
@@ -284,12 +337,12 @@ def test_os_level_guard_blocks_move_destinations_not_just_sources():
     src = _P(tempfile.mkdtemp()) / "tmp.json"
     src.write_text("{}", encoding="utf-8")
     with _pytest.raises(AssertionError, match="搬動 repo"):
-        src.replace(_P("state") / "should_never_be_replaced.json")
+        src.replace(_REPO_STATE / "should_never_be_replaced.json")
     with _pytest.raises(AssertionError, match="搬動 repo"):
-        src.rename(_P("state") / "should_never_be_renamed.json")
+        src.rename(_REPO_STATE / "should_never_be_renamed.json")
     # 來源在 repo state 也要擋(把真實 state 搬走一樣是損毀)
     with _pytest.raises(AssertionError, match="搬動 repo"):
-        (_P("state") / "exdiv_history.json").replace(src)
+        (_REPO_STATE / "exdiv_history.json").replace(src)
     # tmp → tmp 完全不受影響
     dst = src.with_name("moved.json")
     src.replace(dst)

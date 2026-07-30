@@ -1,18 +1,25 @@
 # -*- coding: utf-8 -*-
-"""**外部 payload 的真實形狀契約**(第七輪 P1-9)。
+"""**外部 payload 的真實形狀契約:raw payload → state**(第七輪 P1-9)。
 
 第七輪要求「從原始 payload 跑到 state」的契約測試。它一直卡在「取不到真實
 回應」—— 而這一輪已經有兩次「猜欄位形狀」的代價,所以不猜。
 2026-07-30 直接向各來源取回真實回應,截成小樣本存進 `tests/fixtures/`,
-由本檔驗生產解析器吃得下它們。
+由本檔驗**生產程式碼**吃得下它們。
+
+r1(Codex,P2):第一版**停在 `fetch_*` 的回傳值**,而這個檔案的名字宣稱的是
+「到 state」—— 下游對應或接線改掉時,`txo_pc_oi_ratio` 可以在歷史列裡缺失或
+錯位,而這份「契約」照樣全綠。現在每個案例都跑到真正的 state 邊界:
+籌碼走 `_chip_fields_for_session`(產生實際存進歷史列的欄位名),
+除權息/停牌走各自的 `update_*`(寫檔並用 loader 讀回)。
 
 **為什麼是 fixture 而不是即時打 API**:CI 不該依賴外部服務的可用性
 (那會讓 CI 的紅綠反映對方機房而不是我們的程式碼);而 schema 漂移的訊號
 本來就該在**更新 fixture 時**被看見 —— 更新 fixture 是一個需要有人看過的動作。
 
-fixture 內容全是公開市場資料,無個資。每份都註明取得日期與原始筆數,
-截樣本是為了測試可讀,不是為了讓它通過。
+fixture 內容全是公開市場資料,無個資;截樣本是為了測試可讀,不是為了讓它通過
+(見 `taifex_large_traders.json` 刻意保留的誘餌列)。
 """
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -21,6 +28,7 @@ import pytest
 import morning_report as mr
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_NOW = dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE)
 
 
 def _load(name):
@@ -45,91 +53,141 @@ class _Resp:
         return self._payload
 
 
-# ------------------------------------------------------------------ TAIFEX
-def test_put_call_ratio_parses_the_real_payload(monkeypatch):
-    """`txo_pc_oi_ratio` 的來源。2026-07-30 實測欄位:
-    `Date / PutVolume / CallVolume / PutCallVolumeRatio% / PutOI / CallOI /
-     PutCallOIRatio%`,值全部是**字串**(含 `%` 欄名的百分比字串)。
+def _serve(monkeypatch, fixture):
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp(_load(fixture)))
+
+
+# --------------------------------------------------------------- 各來源案例
+# 每個案例都必須跑到**真正的 state 邊界**,不是只看 fetcher 的回傳值。
+
+def _case_put_call_ratio(monkeypatch, tmp_path):
+    """`txo_pc_oi_ratio` 的來源 → 歷史列欄位。
+
+    2026-07-30 實測欄位:`Date / PutVolume / CallVolume / PutCallVolumeRatio% /
+    PutOI / CallOI / PutCallOIRatio%`,值全部是**字串**。
     """
-    monkeypatch.setattr(mr, "_http_get",
-                        lambda *a, **k: _Resp(_load("taifex_put_call_ratio.json")))
-    out = mr.fetch_taifex_options_pc_ratio()
-    assert out["date"] == "20260729"
-    assert out["pc_oi_ratio"] == 84.29 and out["pc_vol_ratio"] == 100.21
+    _serve(monkeypatch, "taifex_put_call_ratio.json")
+    pcr = mr.fetch_taifex_options_pc_ratio()
+    assert pcr["date"] == "20260729"
+
+    fields = mr._chip_fields_for_session(None, pcr, "2026-07-29")
+    assert fields["txo_pc_oi_ratio"] == 84.29, "解析對了但沒進到歷史列欄位"
+    assert fields["txo_pcr_source_date"] == "20260729"
+    # 日期對不上該交易日時必須留空(錯位特徵比缺值更糟)
+    off = mr._chip_fields_for_session(None, pcr, "2026-07-30")
+    assert off["txo_pc_oi_ratio"] is None
 
 
-def test_large_traders_parses_the_real_payload(monkeypatch):
-    """`taifex_top10_net` / `spec_top10_net` / 集中度的來源。
+def _case_large_traders(monkeypatch, tmp_path):
+    """`taifex_top10_net` 等 → 歷史列欄位。
 
-    真實回應是**全市場 1366 筆**(各種契約),解析器要自己挑出 TX 並分辨
-    `TypeOfTraders`(0=全部、1=特定法人)。fixture 刻意留一筆非 TX 的列,
-    確認過濾真的有在做 —— 不然「挑錯契約」會靜默算出別的商品的籌碼。
+    真實回應是**全市場 1366 筆**;解析器要挑出 `Contract=TX` 且
+    `SettlementMonth=999912`(所有契約合計),再依 `TypeOfTraders` 分辨
+    全部(0)與特定法人(1)。fixture 刻意留一列單月份(202608)當**誘餌**:
+    它的數字完全不同(Top10Buy 83225 / Top10Sell 79982 / OI 116651),
+    合計過濾一壞就會拿到 +3243 與 116651 —— 別的東西的籌碼,而且看起來正常。
     """
-    monkeypatch.setattr(mr, "_http_get",
-                        lambda *a, **k: _Resp(_load("taifex_large_traders.json")))
-    out = mr.fetch_taifex_large_traders()
-    assert out["date"] == "20260729"
-    for f in ("top10_net", "spec_top10_net", "concentration_pct", "oi_market"):
-        assert isinstance(out[f], (int, float)), f"{f} 沒解析出來:{out.get(f)!r}"
-    # **釘住是哪一列被採用**,不只是「有值」。fixture 裡的單月份列
-    # (202608:Top10Buy 83225 / Top10Sell 79982 / OI 116651)數字完全不同,
-    # 若合計過濾壞掉就會拿到 +3243 與 116651 —— 那是別的東西的籌碼,
-    # 而且看起來完全正常。
-    assert out["top10_net"] == 84346 - 84362, "採用了非 999912(所有契約合計)的列"
-    assert out["oi_market"] == 124519
-    assert out["spec_top10_net"] == 79351 - 84362, "特定法人(type=1)那列沒取到"
+    _serve(monkeypatch, "taifex_large_traders.json")
+    large = mr.fetch_taifex_large_traders()
+    assert large["date"] == "20260729"
+    assert large["top10_net"] == 84346 - 84362, "採用了非 999912(合計)的列"
+    assert large["oi_market"] == 124519
+    assert large["spec_top10_net"] == 79351 - 84362, "特定法人(type=1)沒取到"
+
+    fields = mr._chip_fields_for_session(large, None, "2026-07-29")
+    assert fields["taifex_top10_net"] == -16
+    assert fields["taifex_spec_top10_net"] == -5011
+    assert isinstance(fields["taifex_top10_concentration_pct"], (int, float))
+    assert fields["taifex_chip_source_date"] == "20260729"
 
 
-# -------------------------------------------------------------------- TWSE
-def test_exdiv_preview_parses_the_real_payload(monkeypatch):
-    """除權息預告。民國日期 `1150805`、`CashDividend` 常是空字串(ETF 待公告)。"""
-    monkeypatch.setattr(mr, "_http_get",
-                        lambda *a, **k: _Resp(_load("twse_exdiv_preview.json")))
-    mr._RUN_MANIFEST.pop("exdiv_preview", None)
-    try:
-        out = mr.fetch_exdiv_preview("2026-07-30")
-        assert out and all(r["ex_date"].count("-") == 2 for r in out)
-        assert all(r["code"] for r in out)
-    finally:
-        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+def _case_exdiv_preview(monkeypatch, tmp_path):
+    """除權息預告 → `state/exdiv_history.json`。
+
+    民國日期 `1150805`;`CashDividend` 常是空字串(ETF 待公告實際配息)。
+    """
+    _serve(monkeypatch, "twse_exdiv_preview.json")
+    monkeypatch.setattr(mr, "EXDIV_HISTORY_FILE", tmp_path / "exdiv_history.json")
+    landed = mr.update_exdiv_history(mr.fetch_exdiv_preview("2026-07-30"), _NOW)
+    assert landed["records"], "抓到了卻沒有落地"
+    assert all(r["ex_date"].count("-") == 2 and r["code"]
+               for r in landed["records"])
+    assert landed["days"] == ["2026-07-30"]
+    # 落地的檔案必須能被 loader 讀回來(批#82 r7 的形狀守衛在這裡把關)
+    assert mr.load_exdiv_history()["records"] == landed["records"]
 
 
-def test_trading_halt_parses_the_real_payload(monkeypatch):
-    """暫停交易表。欄位是 `TradingHaltDate` / `TradingResumptionDate`,民國格式。"""
-    monkeypatch.setattr(mr, "_http_get",
-                        lambda *a, **k: _Resp(_load("twse_trading_halt.json")))
-    mr._RUN_MANIFEST.pop("corporate_actions", None)
-    try:
-        out = mr.fetch_trading_halts("2026-07-30")
-        assert out and all(r["halt_date"].count("-") == 2 for r in out)
-    finally:
-        mr._RUN_MANIFEST.pop("corporate_actions", None)
+def _case_trading_halt(monkeypatch, tmp_path):
+    """暫停交易 → `state/corporate_actions.json`。
+
+    欄位是 `TradingHaltDate` / `TradingResumptionDate`,民國格式(1150723)。
+    """
+    _serve(monkeypatch, "twse_trading_halt.json")
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE",
+                        tmp_path / "corporate_actions.json")
+    landed = mr.update_corporate_actions(
+        mr.fetch_trading_halts("2026-07-30"), _NOW)
+    assert landed["records"] and all(
+        r["halt_date"].count("-") == 2 and r["code"] for r in landed["records"])
+    assert all(r["first_seen"] == "2026-07-30" for r in landed["records"])
+    assert mr.load_corporate_actions()["records"] == landed["records"]
 
 
-def test_delisted_parses_the_real_payload(monkeypatch):
-    """終止上市表。日期是**帶斜線**的民國 `115/06/23` —— 與上面兩張表不同格式,
-    這正是「猜形狀」最容易錯的地方。"""
-    monkeypatch.setattr(mr, "_http_get",
-                        lambda *a, **k: _Resp(_load("twse_delisted.json")))
+def _case_delisted(monkeypatch, tmp_path):
+    """終止上市 → Top5 結算用的 `{code: ISO 日期}` 對照。
+
+    日期是**帶斜線**的民國 `115/06/23` —— 與上面兩張表不同格式,
+    這正是「猜形狀」最容易錯的地方。這張表不落地(它是歷史表,每次重抓),
+    所以它的 state 邊界就是這個對照本身,由 `update_top5_ledger` 直接消費。
+    """
+    _serve(monkeypatch, "twse_delisted.json")
     saved = list(mr._DEGRADED_STEPS)
     try:
-        out = mr.fetch_delisted_codes()
-        assert out and all(d.count("-") == 2 for d in out.values())
+        table = mr.fetch_delisted_codes()
+        assert table and all(d.count("-") == 2 for d in table.values())
+        assert all(c.isdigit() for c in table)
         assert "corpact:delisted_fetch_failed" not in mr._DEGRADED_STEPS, \
             "真實 payload 不該被判成改版"
     finally:
         mr._DEGRADED_STEPS[:] = saved
 
 
-def test_every_fixture_is_actually_exercised():
-    """**fixture 不得只是躺在那裡。** 沒有這條的話,某個 fixture 對應的測試被
-    刪掉或改名之後,檔案還在、看起來有覆蓋,實際上沒有人讀它。
+#: fixture → 案例。r1(Codex,P3):**用明確的表,不用文字搜尋。**
+#: 第一版靠「在自己的原始碼裡 grep `_load("x.json")`」判斷 fixture 有沒有被用到,
+#: 那把「文字裡提到」當成「執行到」—— 測試被改名而不再被 pytest 收集、
+#: 或呼叫留在死分支/註解裡,它照樣通過。這張表是被 parametrize 真正執行的。
+CASES = [
+    ("taifex_put_call_ratio.json", _case_put_call_ratio),
+    ("taifex_large_traders.json", _case_large_traders),
+    ("twse_exdiv_preview.json", _case_exdiv_preview),
+    ("twse_trading_halt.json", _case_trading_halt),
+    ("twse_delisted.json", _case_delisted),
+]
+
+_MANIFEST_KEYS = ("chips", "exdiv_preview", "corporate_actions")
+
+
+@pytest.mark.parametrize("fixture,case", CASES, ids=[c[0] for c in CASES])
+def test_real_payload_reaches_state(fixture, case, monkeypatch, tmp_path):
+    """每份真實 payload 都要能走到它的 state 邊界。"""
+    for key in _MANIFEST_KEYS:
+        mr._RUN_MANIFEST.pop(key, None)
+    try:
+        case(monkeypatch, tmp_path)
+    finally:
+        for key in _MANIFEST_KEYS:
+            mr._RUN_MANIFEST.pop(key, None)
+
+
+def test_every_fixture_has_a_case_and_every_case_has_a_fixture():
+    """**fixture 不得只是躺在那裡,案例也不得指向不存在的檔。**
+
+    兩個方向都要驗:多出來的 fixture 代表有人存了樣本卻沒寫契約(看起來有覆蓋、
+    實際沒有);多出來的案例代表 fixture 被刪掉而測試會在執行時才炸。
     """
-    used = set()
-    src = Path(__file__).read_text(encoding="utf-8")
-    for path in sorted(FIXTURES.glob("*.json")):
-        if f'_load("{path.name}")' in src:
-            used.add(path.name)
-    missing = sorted({p.name for p in FIXTURES.glob("*.json")} - used)
-    assert not missing, f"這些 fixture 沒有任何測試在讀:{missing}"
-    assert used, "一份 fixture 都沒被使用 —— 掃描器可能壞了"
+    on_disk = {p.name for p in FIXTURES.glob("*.json")}
+    in_table = {name for name, _ in CASES}
+    assert on_disk, "fixtures 目錄是空的 —— 掃描器或路徑錯了"
+    assert on_disk == in_table, (
+        f"沒有案例的 fixture:{sorted(on_disk - in_table)};"
+        f"沒有 fixture 的案例:{sorted(in_table - on_disk)}")

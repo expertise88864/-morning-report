@@ -221,7 +221,7 @@ def test_event_study_replaces_fallback_after_five_labels():
     history = []
     for index, session in enumerate(sessions):
         # 批#23:門檻只認 schema-2 世代的獨立事件——五個相異 episodic ID
-        evidence = ([{"event_id": f"ev{index}", "event_schema": 2,
+        evidence = ([{"event_id": f"ev{index}", "event_schema": mr.EVENT_SCHEMA_VERSION,
                       "event_type": "orders", "direction": 1}] if index < 5 else [])
         history.append({
             "session_date": session,
@@ -611,7 +611,14 @@ def test_hierarchical_event_study_shrinks_sparse_company_signal():
 
 
 def test_event_study_counts_same_event_id_once_per_stock():
-    """event_schema 2(episodic ID 世代)的 event_id 才可信,跨日重複報導去重為 1。"""
+    """**當代** episodic ID 世代的 event_id 才可信,跨日重複報導去重為 1。
+
+    批#72 r1(Codex,P1):身分公式換代(v3:direction 移出 event_id、非期別型
+    改用對象指紋)之後,同一樁事情在部署前後會拿到兩個不同的 event_id;
+    若舊世代也一律信任 event_id,event-study 會**永久**把它算成兩個獨立事件。
+    因此 fixture 改為引用 `mr.EVENT_SCHEMA_VERSION` —— 硬寫數字的話,
+    下次換代時測試會綠著騙人。
+    """
     sessions = [f"2026-06-{day:02d}" for day in range(1, 8)]
     history = []
     for index, session in enumerate(sessions):
@@ -620,7 +627,7 @@ def test_event_study_counts_same_event_id_once_per_stock():
             "taiex_close": 100,
             "stocks": {"2330": _stock(
                 100 + index,
-                news_catalysts=[{"event_id": "same", "event_schema": 2,
+                news_catalysts=[{"event_id": "same", "event_schema": mr.EVENT_SCHEMA_VERSION,
                                  "event_type": "orders", "direction": 1}],
             )},
         })
@@ -684,7 +691,7 @@ def test_event_study_one_event_many_stocks_counts_one_unique_event():
             "session_date": session,
             "taiex_close": 100,
             "stocks": {code: dict(_stock(100 + index), code=code, news_catalysts=[{
-                "event_id": "chip-export-ban", "event_schema": 2,
+                "event_id": "chip-export-ban", "event_schema": mr.EVENT_SCHEMA_VERSION,
                 "event_type": "export_controls", "direction": -1}])
                 for code in codes},
         })
@@ -1763,12 +1770,12 @@ def test_event_study_effect_is_event_level_aggregated():
         stocks = {}
         for c in codes_a:
             stocks[c] = dict(_stock(100 * (1.02 ** idx)), code=c,
-                             news_catalysts=[{"event_id": "evA", "event_schema": 2,
+                             news_catalysts=[{"event_id": "evA", "event_schema": mr.EVENT_SCHEMA_VERSION,
                                               "event_type": "orders",
                                               "direction": 1}] if idx == 0 else [])
         for c in codes_b:
             stocks[c] = dict(_stock(100 * (0.96 ** idx)), code=c,
-                             news_catalysts=[{"event_id": "evB", "event_schema": 2,
+                             news_catalysts=[{"event_id": "evB", "event_schema": mr.EVENT_SCHEMA_VERSION,
                                               "event_type": "orders",
                                               "direction": 1}] if idx == 0 else [])
         history.append({"session_date": session, "taiex_close": 100,
@@ -3290,3 +3297,34 @@ def test_watchdog_flags_a_stale_manifest(tmp_path):
     assert rw.manifest_age_hours(now, p)[0] is None
     p.write_text("{}", encoding="utf-8")
     assert rw.manifest_age_hours(now, p)[0] is None
+
+
+def test_event_study_isolates_older_identity_generations():
+    """批#72 r1(Codex,P1):v3 身分公式(direction 移出 event_id、非期別型改用
+    對象指紋)讓同一樁事情在部署前後拿到兩個不同的 event_id。若兩代都被當成
+    可信 ID,event-study 會**永久**把它算成兩個獨立的可信事件。
+
+    改為只信任**當代**:更舊世代的 evidence 走 session 級 fallback
+    (與 schema<2 的既有處理一致,已記載為「寧過切勿互吞」),
+    且世代編號放進去重鍵,兩代 ID 永不意外相撞。
+
+    殘留代價講明白:跨越部署那一刻的同一事件會被多算一次 —— 一次性、有界,
+    且隨 model_history 修剪自然退場;比「永久兩個可信事件」好。
+    """
+    import news_events as ne
+    row = {"code": "2330", "session_date": "2026-07-30"}
+    cur = {"event_id": "same", "event_schema": ne.EVENT_SCHEMA_VERSION,
+           "event_type": "orders", "direction": 1}
+    old = {"event_id": "same", "event_schema": ne.EVENT_SCHEMA_VERSION - 1,
+           "event_type": "orders", "direction": 1}
+    k_cur = ne._event_study_dedupe_key(row, cur)
+    k_old = ne._event_study_dedupe_key(row, old)
+    assert k_cur[0] == "event_id" and k_cur[-1] == ne.EVENT_SCHEMA_VERSION
+    # 世代編號必須在**尾端**:消費端(build_event_study)用位置切片
+    # `event_key[:2] + event_key[3:]` 丟掉 code,插在中間會變成丟掉 event_id
+    # (自測抓到:5 個不同 ID 塌成 1 個)。
+    assert k_cur[1] == "same" and k_cur[2] == "2330"
+    assert k_old[0] == "fallback", "舊世代仍被當成可信 ID"
+    assert k_cur != k_old
+    # 同一代的相同 ID 仍然去重
+    assert k_cur == ne._event_study_dedupe_key(row, dict(cur))

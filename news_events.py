@@ -347,6 +347,50 @@ def _event_period_bucket(event: dict, monthly: bool) -> str:
     return f"{d.year}Q{(d.month - 1) // 3 + 1}"
 
 
+_SUBJECT_SEP = _re_module.compile(r"\s+[-|｜–—]\s+|\s*\|\s*")
+_SUBJECT_BOILERPLATE = ("股市爆料同學會", "提供者", "作者", "討論牆",
+                        "盤中速報", "產業即時新聞", "Investing.com", "CMoney")
+#: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個。
+_SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
+                       "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}
+_SUBJECT_LATIN = _re_module.compile(r"[A-Za-z]{2,}")
+#: 句尾的來源標註(分隔符不是 " - ",剝段落剝不到)
+_SUBJECT_CREDIT = _re_module.compile(r"\s*(?:提供者|作者|編譯|記者)\s*\S{0,12}\s*$")
+#: 有主體時可以放寬(主體本身已經是很強的錨);無主體時沒有錨,必須保守。
+#: 兩個門檻都由 1502 條真實線索校準,見 `_same_story_subject`。
+STORY_MATCH_THRESHOLD = 0.45
+STORY_MATCH_THRESHOLD_NO_ENTITY = 0.65
+#: 共同 bigram 少於這個數就不算,免得極短的通用主旨(「營收公布」)四處攀親
+STORY_MATCH_MIN_SHARED = 5
+
+
+
+
+def strip_outlet_suffix(title: str) -> str:
+    """剝掉 Google News 標題尾端的媒體名/欄目/來源標註。
+
+    r1(Codex,P1):批#72 第一版的對象指紋直接吃原始標題,於是
+    「台積電獲蘋果2奈米大單 - CNBC」與「⋯ - DIGITIMES」拿到不同指紋
+    (`2奈米,cnbc,蘋果` vs `2奈米,digitimes,蘋果`)→ 同一訂單在不同媒體
+    或隔日轉載會變成不同 `event_id`,跨月 rumor→confirmed 又接不起來。
+
+    **這套剝除規則 repo 早就有**(原本寫在 story_ledger 的 `_story_subject`
+    裡,含 24 字上限與「提供者 X」句尾標註的處理,都是實測校準過的)。
+    我沒有重用它就是重複造輪子 —— 下移到這一層,story_ledger 改為匯入,
+    兩邊共用同一份判準。
+    """
+    parts = [x.strip() for x in _SUBJECT_SEP.split(str(title or "")) if x.strip()]
+    for _ in range(2):
+        if len(parts) > 1 and len(parts[-1]) <= 24 and not any(
+                c.isdigit() for c in parts[-1]):
+            parts.pop()
+    out = " ".join(parts)
+    out = _SUBJECT_CREDIT.sub("", out)
+    for b in _SUBJECT_BOILERPLATE:
+        out = out.replace(b, "")
+    return out.strip()
+
+
 #: 不具辨識力的英文詞:留著會讓兩件不同的事看起來像同一件
 _SUBJECT_LATIN_STOP = {
     "THE", "AND", "FOR", "NEW", "INC", "CORP", "LTD", "CO", "AI", "ETF",
@@ -358,8 +402,8 @@ _SUBJECT_LATIN_RE = _re_module.compile(r"[A-Za-z][A-Za-z0-9]{2,}")
 _SUBJECT_SPEC_RE = _re_module.compile(r"\d+\s*(?:奈米|nm|吋|GW|MW)", _re_module.I)
 
 
-def event_subject_key(title: str, entity: str = "", entity_name: str = "",
-                      known_names=()) -> str:
+def event_subject_key(title: str, entity: str = "",
+                      entity_aliases=(), known_names=None) -> str:
     """事件的**對象指紋**:標題裡除了自己之外的可辨識主體。
 
     批#72(第七輪 P0-1 錯誤A)。實測問題:台積電 7/05「獲蘋果2奈米大單」與
@@ -377,20 +421,35 @@ def event_subject_key(title: str, entity: str = "", entity_name: str = "",
     取不到對象時回空字串 —— 那時退回原本的月 bucket 行為(誠實的降級:
     沒有可辨識對象的事件本來就無法區分)。
     """
-    text = str(title or "")
+    # r1(Codex,P1):先剝媒體尾綴。原本直接吃原始標題,「⋯ - CNBC」與「⋯ - DIGITIMES」
+    # 會拿到不同指紋 → 同一訂單跨媒體/隔日轉載變成不同 event_id。
+    text = strip_outlet_suffix(title)
     if not text:
         return ""
-    mine = {str(x).strip().lower() for x in (entity, entity_name) if str(x).strip()}
+    # r1(Codex,P1):**自身的每一個別名都要排除**,不是只排除整串。
+    # `entity_aliases` 現在是 tuple(例如 ("輝達","NVIDIA")),原本傳整個查詢字串
+    # 進來、只比對整串 → NVDA 自己的標題會以 `nvidia` 當「對象」。
+    mine = {str(entity).strip().lower()} if str(entity).strip() else set()
+    if isinstance(entity_aliases, str):
+        entity_aliases = (entity_aliases,)
+    for alias in entity_aliases or ():
+        for piece in str(alias or "").split():
+            if piece:
+                mine.add(piece.lower())
     tokens = set()
     # 詞彙表的值可能是**多 token 的查詢字串**(GOOGLE_NEWS_COMPANIES 的
     # 「輝達 NVIDIA」「蘋果 Apple」),必須逐 token 比對。
     # 自測抓到:第一版把整串當單一 token,於是所有美股別名都比不中,
     # 英文/中英混寫的標題完全取不到對象 —— 與批#71 的 `_8K_QUERY_BY_TICKER`
     # 是同一個坑(那邊已經處理過,這裡又犯了一次)。
+    # `known_names` 是 {code: (別名, ...)};別名表**獨立於搜尋查詢**,
+    # 不含主題詞與查詢運算子(見 morning_report._US_ENTITY_ALIASES 的說明)。
     candidates = []
-    for raw in known_names or ():
-        for piece in str(raw or "").split():
-            candidates.append(piece)
+    values = (known_names or {}).values() if hasattr(known_names, "values")         else (known_names or ())
+    for raw in values:
+        for alias in ((raw,) if isinstance(raw, str) else (raw or ())):
+            for piece in str(alias or "").split():
+                candidates.append(piece)
     for raw in candidates:
         nm = str(raw or "").strip()
         if len(nm) < 2 or nm.lower() in mine or nm.isdigit():
@@ -474,6 +533,28 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
     return entity, event_type
 
 
+def _event_generation_bridge_key(event: dict) -> tuple:
+    """跨世代橋接鍵:(主體, 型別, 正規化標題)。
+
+    r1(Codex,P1):歷史 state 裡的事件沒有 `subject_key`,算出來的是月 bucket 鍵;
+    部署後同一樁事情的重複報導算出的是對象鍵 → 在 previous 裡找不到前態,
+    重複的 confirmed 會**重新拿到 1.0 權重**,event-study 又因 event_id 不同
+    把它當第二個獨立事件,永久灌進可信樣本。
+
+    **為什麼用標題而不是舊的月 bucket 當相容鍵**:自測抓到——用月 bucket 會把
+    同月的**不同**事件(蘋果單 vs 輝達單)也一起壓成非增量,那是拿錯誤B換錯誤A。
+    重複報導的標題相同、不同事件的標題不同,所以標題才是能分開兩者的橋。
+
+    只在主鍵查不到時查它,且隨歷史滾動自然退場,不留永久分支。
+    """
+    title = _re_module.sub(
+        r"\W+", "", str(event.get("title") or "").lower())[:48]
+    if not title:
+        return ()
+    return (str(event.get("entity") or ""),
+            str(event.get("event_type") or "general"), title)
+
+
 def _event_instance_id(event: dict) -> str:
     """Episodic 事件實體 ID(GPT-5.6 三審 P0-1)。
 
@@ -500,10 +581,27 @@ def apply_event_timeline(model_history: list[dict],
                          events: list[dict]) -> list[dict]:
     """Annotate incremental lifecycle transitions and suppress repeated event scoring."""
     previous: dict[tuple[str, str], str] = {}
+    #: 跨世代橋接表(見下方 `_event_generation_bridge_key` 說明)
+    previous_bridge: dict[tuple, str] = {}
     for record in sorted(model_history or [], key=lambda item: item.get("session_date", "")):
         for event in record.get("structured_events") or []:
-            previous[_event_timeline_key(event)] = str(
-                event.get("lifecycle") or _event_lifecycle(event))
+            lifecycle = str(event.get("lifecycle") or _event_lifecycle(event))
+            previous[_event_timeline_key(event)] = lifecycle
+            # r1(Codex,P1):**歷史紀錄沒有 `subject_key`。**
+            # 批#72 之前存下來的事件算出的是月 bucket 鍵(`orders|2026-07`),
+            # 而部署後同一樁事情的重複報導算出的是對象鍵
+            # (`orders|s:2奈米,蘋果|2026`)→ 在 previous 裡找不到前態,
+            # 重複的 confirmed 會**重新拿到 1.0 權重**,而 event-study 又因
+            # event_id 不同把它當成第二個獨立事件,永久灌進可信樣本。
+            #
+            # 不做 state 遷移(要重算指紋就得有詞彙表,而這一層拿不到,
+            # 硬塞會讓身分層依賴上層資料)。改為**同時登錄相容鍵**:
+            # 歷史事件即使有 subject_key 也一併以月 bucket 形式登錄一次,
+            # 新事件查不到主鍵時再查相容鍵。兩代身分因此接得起來,
+            # 而且隨著歷史滾動自然退場,不留永久分支。
+            bridge = _event_generation_bridge_key(event)
+            if bridge:
+                previous_bridge[bridge] = lifecycle
     # r5(Codex,P1):**`rejected` 原本沒進這三張表**,所以 confirmed → rejected
     # 拿到 is_incremental=False、權重 0 —— 與 F9 修正前的後果一模一樣,
     # 缺陷只是換了個名字。「董事會否決收購案」是**最該被寫出來**的那種消息,
@@ -522,8 +620,17 @@ def apply_event_timeline(model_history: list[dict],
     for raw in events or []:
         event = dict(raw)
         key = _event_timeline_key(event)
+        bridged_prior = None
+        if key not in previous:
+            # 主鍵查不到時,用**標題**橋接到舊世代(見
+            # `_event_generation_bridge_key`)。刻意不用舊的月 bucket 當相容鍵:
+            # 那會把同月的**不同**事件也一起壓掉,等於拿錯誤B換錯誤A。
+            bridged_prior = previous_bridge.get(
+                _event_generation_bridge_key(event))
         status = _event_lifecycle(event)
         prior = previous.get(key)
+        if prior is None and bridged_prior is not None:
+            prior = bridged_prior      # 跨世代橋接(見上方說明)
         is_incremental = prior != status and (
             prior is None or status in ("withdrawn", "rejected")
             # withdrawn/rejected 都不是不可逆終態:撤回或否決後的新動態
@@ -544,6 +651,12 @@ def apply_event_timeline(model_history: list[dict],
         output.append(event)
     return output
 
+#: 事件身分公式的世代。批#72 起為 3(direction 移出 event_id、非期別型改用
+#: 對象指紋)。event-study 只信任**當代**的 event_id;更舊的 evidence 走
+#: session 級 fallback,避免兩代 ID 把同一事件算成兩個可信事件。
+EVENT_SCHEMA_VERSION = 3
+
+
 def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:
     event_type = str(evidence.get("event_type") or "")
     direction = int(_safe_number(evidence.get("direction")))
@@ -554,13 +667,29 @@ def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:
     # GPT-5.6 四審 P1);舊 timeline_key 同樣缺 bucket。因此舊 evidence 一律走
     # session 級 fallback:同事件跨日報導會略為過切(可控),但不同 episode
     # 不再互吞(方向:寧過切勿互吞,配合 unique_events 誠實計數)。
-    if int(_safe_number(evidence.get("event_schema"))) >= 2:
+    # 批#72 r1(Codex,P1):**身分公式換代了,舊 ID 不能再當可信 ID 用。**
+    # v3(本批)把 direction 移出 event_id 並改用對象指紋,所以同一樁事情在部署
+    # 前後會拿到兩個不同的 event_id;若兩代都標 `event_schema: 2` 而一律信任
+    # event_id,event-study 會**永久**把它算成兩個獨立的可信事件。
+    # 改為只信任**當代**:舊世代 evidence 一律走 session 級 fallback
+    # (與 schema<2 的處理一致,已記載為「寧過切勿互吞」)。
+    # 世代編號也放進鍵裡,兩代 ID 永不意外相撞。
+    # 殘留代價講明白:跨越部署那一刻的同一事件會被多算一次 —— 一次性、有界,
+    # 且隨 model_history 修剪自然退場;比「永久兩個可信事件」好。
+    if int(_safe_number(evidence.get("event_schema"))) >= EVENT_SCHEMA_VERSION:
         event_id = str(evidence.get("event_id") or "").strip()
+        # 世代編號放在**尾端**。自測抓到:第一版插在 index 1,而消費端
+        # (`build_event_study` 的 `event_key[:2] + event_key[3:]`)用**位置切片**
+        # 丟掉 code —— 插在中間會變成丟掉 event_id、保留 code,5 個不同 ID
+        # 直接塌成 1 個。這種位置耦合很脆,但改消費端的切片風險更大,
+        # 所以維持既有的 (標籤, 身分, code, type, direction) 前綴不動,只加尾巴。
         if event_id:
-            return ("event_id", event_id, code, event_type, direction)
+            return ("event_id", event_id, code, event_type, direction,
+                    EVENT_SCHEMA_VERSION)
         timeline_key = str(evidence.get("timeline_key") or "").strip()
         if timeline_key:
-            return ("timeline", timeline_key, code, event_type, direction)
+            return ("timeline", timeline_key, code, event_type, direction,
+                    EVENT_SCHEMA_VERSION)
     return (
         "fallback",
         str(row.get("session_date") or ""),

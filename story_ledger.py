@@ -41,7 +41,7 @@ import re
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
 import news_events as _ne_module
 from news_events import (is_negated_decision, is_pending_decision,
-                         _content_bigrams)
+                         _content_bigrams, strip_outlet_suffix)
 
 # 狀態機:值為「連續幾天沒有 delta 就往下掉一級」的容忍天數
 STATES = ("brewing", "developing", "peak", "resolving", "dormant")
@@ -795,15 +795,12 @@ def prune_timeline(story: dict) -> None:
 
 
 #: 標題裡的媒體名/欄目/版型雜訊。剝掉之後才比得出「講的是不是同一件事」。
-_SUBJECT_SEP = re.compile(r"\s+[-|｜–—]\s+|\s*\|\s*")
-_SUBJECT_BOILERPLATE = ("股市爆料同學會", "提供者", "作者", "討論牆",
-                        "盤中速報", "產業即時新聞", "Investing.com", "CMoney")
 #: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個。
+#: (與 news_events 那份同名集合**用途不同**:這一份給「線索身分的英文互斥
+#:  守衛」,那一份給「事件對象指紋」;兩者的取捨方向相反,刻意不共用。)
 _SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
                        "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}
 _SUBJECT_LATIN = re.compile(r"[A-Za-z]{2,}")
-#: 句尾的來源標註(分隔符不是 " - ",剝段落剝不到)
-_SUBJECT_CREDIT = re.compile(r"\s*(?:提供者|作者|編譯|記者)\s*\S{0,12}\s*$")
 #: 有主體時可以放寬(主體本身已經是很強的錨);無主體時沒有錨,必須保守。
 #: 兩個門檻都由 1502 條真實線索校準,見 `_same_story_subject`。
 STORY_MATCH_THRESHOLD = 0.45
@@ -819,23 +816,9 @@ def _story_subject(title, entity="", entity_name="") -> str:
     「中信銀行 沈強副行長任職資格」與「中信證券:二次原油衝擊」只因為共用
     「提供者 智通財經 - Investing」後綴就拿到 0.54,兩者毫不相干。
     """
-    parts = [x.strip() for x in _SUBJECT_SEP.split(str(title or "")) if x.strip()]
-    # 尾端的片段(不含數字)幾乎都是媒體名/欄目,不是內容。
-    # 長度上限 24:原本寫 12,而「Business Insider Taiwan」(23)、
-    # 「鏡週刊Mirror Media」(17)因此留在主旨裡 —— 實測造成兩組假陽性
-    # (同一家媒體的兩則不相干報導只因共用媒體名就被判成同一條敘事)。
-    # 最多剝兩段,避免把真內容吃掉。
-    for _ in range(2):
-        if len(parts) > 1 and len(parts[-1]) <= 24 and not any(
-                c.isdigit() for c in parts[-1]):
-            parts.pop()
-    out = " ".join(parts)
-    # 「提供者 智通財經」「作者 XXX」這種掛在句尾的來源標註,分隔符不是 " - ",
-    # 剝段落剝不到 —— 實測「中信銀行副行長任職」與「中信證券原油衝擊」
-    # 只因共用「提供者 智通財經」就拿到 0.54。
-    out = _SUBJECT_CREDIT.sub("", out)
-    for b in _SUBJECT_BOILERPLATE:
-        out = out.replace(b, "")
+    # 批#72 r1:媒體尾綴/欄目/來源標註的剝除已下移到 news_events 供兩層共用
+    # (事件對象指紋也需要同一套規則)。原本這裡有一份,那就是重複造輪子。
+    out = strip_outlet_suffix(title)
     for x in (entity, entity_name):
         if x and len(str(x)) >= 2:
             out = out.replace(str(x), "")

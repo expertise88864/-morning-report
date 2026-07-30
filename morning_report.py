@@ -100,6 +100,7 @@ from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 r
     _event_lifecycle,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_timeline_key,  # noqa: F401 — re-export:相容 mr.* 讀取
     _event_instance_id,
+    EVENT_SCHEMA_VERSION,
     event_subject_key,
     same_event_title,
     apply_event_timeline,
@@ -8880,6 +8881,52 @@ def _safe_source_url(raw) -> str:
     return u
 
 
+#: 美股實體的**公司名別名**。r1(Codex,P1):批#72 第一版把 `GOOGLE_NEWS_COMPANIES`
+#: 的**搜尋查詢字串**當公司名用,而那些字串含主題詞與查詢運算子:
+#:   MU  → ('美光', 'Micron', '記憶體')
+#:   MSFT→ ('微軟', 'Microsoft', 'AI')
+#:   2330→ ('台積電', '財報', 'OR', '法說', 'OR', '資本支出')
+#: 逐 token 拆開之後,「AI」「記憶體」「OR」全都變成候選對象 —— 實測 MSFT 自己的
+#: 標題指紋是 `ai,微軟`(自己的名字 + 主題詞),而只要有非空指紋就會切換成
+#: 全年 lineage,同公司同年多件無關事件反而共用生命週期,真事件又被歸零。
+#: 所以**別名表必須獨立於搜尋查詢**,只放公司名。
+_US_ENTITY_ALIASES: dict[str, tuple] = {
+    "NVDA": ("輝達", "NVIDIA"),
+    "AMD": ("超微", "AMD"),
+    "AVGO": ("博通", "Broadcom"),
+    "MU": ("美光", "Micron"),
+    "ASML": ("艾司摩爾", "ASML"),
+    "AAPL": ("蘋果", "Apple"),
+    "MSFT": ("微軟", "Microsoft"),
+    "TSLA": ("特斯拉", "Tesla"),
+    "QCOM": ("高通", "Qualcomm"),
+    "MRVL": ("邁威爾", "Marvell"),
+    "AMAT": ("應用材料", "Applied Materials"),
+    "ARM": ("安謀", "Arm"),
+    "SMCI": ("美超微", "Supermicro"),
+    "GOOGL": ("Alphabet", "Google"),
+    "META": ("Meta",),
+}
+
+
+def _entity_alias_map(tw0050) -> dict:
+    """代號 → 公司名別名 tuple。**供事件對象指紋使用,不含主題詞。**
+
+    與 `_tracked_name_map` 分開是刻意的:那一張表給線索帳本剝除文字用,
+    多收幾個詞只是多剝一點(無害);這一張表決定**事件身分**,多收一個
+    主題詞就會讓身分錯亂(見 `_US_ENTITY_ALIASES` 的說明)。
+    """
+    out: dict[str, tuple] = {}
+    for s_ in (tw0050 or []):
+        code = str(s_.get("code") or "")
+        name = str(s_.get("name") or "").strip()
+        if code and name:
+            out[code] = (name,)
+    for code, aliases in _US_ENTITY_ALIASES.items():
+        out.setdefault(code, aliases)
+    return out
+
+
 def _tracked_name_map(tw0050) -> dict:
     """代號 → 公司名。**單一定義**,事件抽取與線索帳本共用。
 
@@ -8960,8 +9007,8 @@ def extract_structured_events(news: list[dict],
         # 跨日穩定,身分層直接讀不必再算一次。
         event["subject_key"] = event_subject_key(
             title, event["entity"],
-            str((known_names or {}).get(event["entity"], "")),
-            tuple((known_names or {}).values()))
+            (known_names or {}).get(event["entity"]) or (),
+            known_names or {})
         event["surprise_score"] = _event_surprise_score(
             dict(event, surprise_score=item.get("surprise_score"), summary=item.get("summary")))
         # episodic instance ID(三審 P0-1:舊 cluster-key ID 讓不同季度財報永久同 ID,
@@ -9252,8 +9299,11 @@ def _stock_news_catalysts(snapshot: list[dict],
         result["evidence"].append({
             "event_id": event.get("event_id"),
             # episodic ID 世代標記:event study 去重憑此決定信任 event_id
-            # 或退回 session 級 fallback(四審 P1,舊碰撞 ID 遷移)
-            "event_schema": 2,
+            # 或退回 session 級 fallback(四審 P1,舊碰撞 ID 遷移)。
+            # 批#72:改為引用 `EVENT_SCHEMA_VERSION` 而非硬寫數字 ——
+            # 身分公式換代時漏改這裡,兩代 ID 會被一起當成可信,
+            # 同一事件永久算成兩個獨立事件(r1 Codex P1 指出的正是這個)。
+            "event_schema": EVENT_SCHEMA_VERSION,
             "event_type": event.get("event_type"),
             "relation": relation,
             "title": event.get("title"),
@@ -20789,11 +20839,11 @@ def main() -> int:
     if _run_budget_ok(260, "LLM 新聞事件抽取(豐富化)"):
         print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
         _events = call_llm_event_extractor(news, tw_mops,
-                                           known_names=_tracked_name_map(tw0050))
+                                           known_names=_entity_alias_map(tw0050))
     else:
         # 確定性 baseline,無 LLM/網路
         _events = extract_structured_events(
-            news, tw_mops, known_names=_tracked_name_map(tw0050))
+            news, tw_mops, known_names=_entity_alias_map(tw0050))
     structured_events = apply_event_timeline(model_history, _events)
     quotes["STRUCTURED_NEWS_EVENTS"] = structured_events
     # 批#44:把今日事件併入線索帳本。狀態機轉移由 Python 決定(比照 PR-2 的

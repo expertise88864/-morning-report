@@ -2254,3 +2254,87 @@ def test_subject_key_handles_multi_token_vocabulary_entries():
     assert "蘋果" in ne.event_subject_key("台積電獲蘋果大單", "2330", "台積電", V)
     assert "nvidia" in ne.event_subject_key(
         "TSMC lands NVIDIA order", "2330", "台積電", V).lower()
+
+
+def test_subject_key_excludes_the_entity_own_aliases_and_topic_words():
+    """r1(Codex,P1):第一版把 `GOOGLE_NEWS_COMPANIES` 的**搜尋查詢字串**當公司名,
+    而那些字串含主題詞與查詢運算子(MU→('美光','Micron','記憶體')、
+    MSFT→('微軟','Microsoft','AI')、2330→('台積電','財報','OR','法說',…))。
+    逐 token 拆開之後,「AI」「記憶體」「OR」都變成候選對象 —— 實測 MSFT 自己的
+    標題指紋是 `ai,微軟`(自己的名字 + 主題詞),而只要有非空指紋就會切換成
+    全年 lineage,同公司同年多件無關事件反而共用生命週期。
+    """
+    import news_events as ne
+    V = mr._entity_alias_map(None)
+    f = lambda t, e: ne.event_subject_key(t, e, V.get(e, ()), V)  # noqa: E731
+    assert f("NVIDIA Blackwell 出貨超預期", "NVDA") == "", "自身別名被當成對象"
+    assert f("美光記憶體報價調漲", "MU") == "", "主題詞被當成對象"
+    assert f("微軟 AI 資本支出上調", "MSFT") == "", "AI 被當成對象"
+    # 對照組:真正的第三方對象仍要抓到
+    assert "蘋果" in f("台積電獲蘋果2奈米大單", "2330")
+
+
+def test_alias_map_is_separate_from_search_queries():
+    """別名表**必須獨立於搜尋查詢**。查詢字串是為了召回而寫的(含主題詞、
+    OR 運算子);別名表決定事件身分,多收一個主題詞就會讓身分錯亂。"""
+    aliases = mr._entity_alias_map(None)
+    flat = {t for v in aliases.values() for t in v}
+    for junk in ("記憶體", "AI", "OR", "財報", "法說", "資本支出"):
+        assert junk not in flat, f"別名表含主題詞/運算子 {junk}"
+    assert aliases["NVDA"] == ("輝達", "NVIDIA")
+
+
+def test_subject_key_ignores_outlet_suffixes():
+    """r1(Codex,P1):指紋原本直接吃原始 Google News 標題,任何全大寫 token 都
+    被當成型號 → 「⋯ - CNBC」與「⋯ - DIGITIMES」拿到不同指紋,同一訂單跨媒體
+    或隔日轉載變成不同 `event_id`,跨月 rumor→confirmed 又接不起來。
+
+    **這套剝除規則 repo 早就有**(story_ledger 的 `_story_subject`,含 24 字上限
+    與「提供者 X」句尾標註,都是實測校準過的)。沒有重用它就是重複造輪子 ——
+    已下移到 news_events 供兩層共用。
+    """
+    import news_events as ne
+    V = mr._entity_alias_map(None)
+    base = "台積電獲蘋果2奈米大單"
+    keys = {ne.event_subject_key(t, "2330", V.get("2330", ()), V)
+            for t in (base, f"{base} - CNBC", f"{base} - DIGITIMES",
+                      f"{base} - 經濟日報")}
+    assert len(keys) == 1, f"媒體尾綴讓指紋分裂:{keys}"
+    assert "cnbc" not in next(iter(keys))
+
+
+def test_cross_generation_repeat_does_not_regain_weight():
+    """r1(Codex,P1):歷史 state 裡的事件沒有 `subject_key`,算出的是月 bucket 鍵;
+    部署後同一樁事情的重複報導算出的是對象鍵 → previous 裡找不到前態,
+    重複的 confirmed **重新拿到 1.0 權重**。
+
+    橋接刻意用**標題**而不是舊的月 bucket:自測抓到,用月 bucket 會把同月的
+    **不同**事件(蘋果單 vs 輝達單)也一起壓成非增量,那是拿錯誤B換錯誤A。
+    """
+    import news_events as ne
+    V = mr._entity_alias_map(None)
+
+    def mk(title, subject=True, lifecycle="confirmed",
+           published="2026-07-05T00:00:00+00:00"):
+        ev = {"entity": "2330", "entity_name": "台積電", "event_type": "orders",
+              "direction": 1, "lifecycle": lifecycle, "published": published,
+              "title": title}
+        if subject:
+            ev["subject_key"] = ne.event_subject_key(
+                title, "2330", V.get("2330", ()), V)
+        return ev
+
+    hist = [{"session_date": "2026-07-05",
+             "structured_events": [mk("台積電獲蘋果2奈米大單", subject=False)]}]
+    repeat = mr.apply_event_timeline(hist, [mk("台積電獲蘋果2奈米大單")])[0]
+    assert repeat["is_incremental"] is False and repeat["lifecycle_weight"] == 0
+    # 同月**不同**事件仍要拿到權重(對照組:否則只是把功能關掉)
+    other = mr.apply_event_timeline(
+        hist, [mk("台積電獲輝達CoWoS追加訂單",
+                  published="2026-07-25T00:00:00+00:00")])[0]
+    assert other["is_incremental"] is True and other["lifecycle_weight"] > 0
+    # 跨世代的**真進展**(rumor→implemented)也要拿到權重
+    prog = mr.apply_event_timeline(
+        hist, [mk("台積電確認蘋果2奈米訂單投片", lifecycle="implemented",
+                  published="2026-08-10T00:00:00+00:00")])[0]
+    assert prog["is_incremental"] is True and prog["lifecycle_weight"] > 0

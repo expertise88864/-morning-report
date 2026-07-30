@@ -357,3 +357,50 @@ def test_fill_rate_separates_never_produced_from_not_yet_judgeable():
     res = dq.check_fill_rate("model_history", rows, field="chip", min_ratio=0.5)
     assert not res.passed, f"樣本達 {n} 筆就該開始判定,不得停在觀察中"
     assert "觀察中" not in res.detail
+
+
+def test_fill_rate_is_not_reset_by_a_stray_hit_late_in_the_window():
+    """r1(Codex,P2):**偶發產出不得重置樣本門檻。**
+
+    第一版把「視窗內最早的非空值」當成上線日。一個上線很久、最近 30 筆只在
+    第 22 筆冒出一次值的成熟功能,視窗只剩 9 筆 → 未達 `min_samples` →
+    回報「觀察中」且 `passed=True` → 實際 1/30 的死亡功能既不會進 warning,
+    也不會進 `inactive_capabilities`。**那正是這個檢查存在的理由。**
+
+    我原本的「產出後死亡」測試把命中放在視窗開頭,分母仍是完整 30 筆,
+    剛好避開這條路徑 —— 測試涵蓋了結論,沒涵蓋機制。
+    """
+    import data_quality as dq
+
+    history = ([{"session_date": f"2026-04-{d:02d}", "chip": 1} for d in range(1, 21)]
+               + [{"session_date": f"2026-06-{d:02d}"} for d in range(1, 23)]
+               + [{"session_date": "2026-06-23", "chip": 7}]
+               + [{"session_date": f"2026-07-{d:02d}"} for d in range(1, 8)])
+    res = dq.check_fill_rate("model_history", history,
+                             field="chip", min_ratio=0.5, window=30)
+    assert not res.passed, "成熟欄位不得因視窗後段偶發一次產出而變成「觀察中」"
+    assert "觀察中" not in res.detail
+    assert res.observed == round(1 / 30, 3), \
+        f"分母應保留完整視窗 30 筆,實得 {res.observed}"
+    assert "衰退" in res.detail
+
+    # 同一份資料若沒有前史(欄位真的剛上線),才允許「觀察中」
+    fresh = history[20:]
+    res2 = dq.check_fill_rate("model_history", fresh,
+                              field="chip", min_ratio=0.5, window=30)
+    assert res2.passed and "觀察中" in res2.detail
+
+
+def test_fill_rate_flags_a_mature_field_that_went_completely_silent():
+    """成熟欄位在整個視窗內**一次都沒有值** —— 這是最嚴重的情形,
+    不得因為「視窗內找不到首見」而走進「從未產出」的分支(措辭會是錯的),
+    也絕不能通過。"""
+    import data_quality as dq
+
+    history = ([{"session_date": f"2026-04-{d:02d}", "chip": 1} for d in range(1, 21)]
+               + [{"session_date": f"2026-06-{d:02d}"} for d in range(1, 31)])
+    res = dq.check_fill_rate("model_history", history,
+                             field="chip", min_ratio=0.5, window=30)
+    assert not res.passed and res.observed == 0.0
+    assert "從未真正產出" not in res.detail, "產出過的欄位不得被說成從未產出"
+    assert "衰退" in res.detail

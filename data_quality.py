@@ -158,7 +158,8 @@ FILL_RATE_MIN_SAMPLES = 10
 
 def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
                     severity: str = WARN,
-                    min_samples: int = FILL_RATE_MIN_SAMPLES) -> CheckResult:
+                    min_samples: int = FILL_RATE_MIN_SAMPLES,
+                    window: int | None = None) -> CheckResult:
     """某個欄位在最近 N 筆紀錄裡的**填充率**。
 
     批#69。前面幾批連續量測到同一種失敗:功能寫好、測試全綠、外審通過,
@@ -197,9 +198,19 @@ def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
     改由檢查本身處理,順帶也涵蓋了策展規則涵蓋不到的「上線很久後才死掉」。
 
     三種狀態分開表達:
-      - 整個視窗**完全沒有值** → 「從未產出」(這才是 LLM 抽取器那一類)
-      - 首見之後樣本 < `min_samples` → 「觀察中」,**不算失敗**(證據不足)
+      - **從未產出**(這才是 LLM 抽取器那一類)
+      - 首次產出之後樣本 < `min_samples` → 「觀察中」,**不算失敗**(證據不足)
       - 樣本足夠而比率偏低 → 「產出後衰退」,這是真正該報的降級
+
+    ## 「首次產出」必須由完整歷史認定,不能由視窗認定(r1)
+    第一版把「視窗內最早的非空值」當成上線日,那會被**偶發產出重置**:
+    一個上線很久、最近 30 筆只在第 22 筆冒出一次值的成熟功能,視窗只剩 9 筆
+    → 未達門檻 → 回報「觀察中」而 `passed=True` → 實際 1/30 的死亡功能既不會
+    進 warning 也不會進 `inactive_capabilities`。那正是這個檢查要抓的東西。
+
+    所以呼叫端傳**完整歷史**並用 `window` 指定近端視窗大小;視窗之前只要出現過
+    值,就認定為成熟欄位:分母保留完整視窗,且「觀察中」不再適用。
+    不給 `window` 時代表「傳進來的就是全部」,此時視窗內首見即為真正首見。
     """
     rows = [r for r in (rows or []) if isinstance(r, dict)]
     if not rows:
@@ -209,29 +220,36 @@ def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
     def _filled(row) -> bool:
         return row.get(field) not in (None, "", [], {})
 
-    # rows 依 session_date 由舊到新(`load_model_history()[-30:]`)
-    first = next((i for i, r in enumerate(rows) if _filled(r)), None)
-    if first is None:
+    # rows 依 session_date 由舊到新(`load_model_history()`)
+    if window and window > 0:
+        prior, recent = rows[:-window], rows[-window:]
+    else:
+        prior, recent = [], rows
+    mature = any(_filled(r) for r in prior)      # 視窗之前就產出過 = 成熟欄位
+    first = next((i for i, r in enumerate(recent) if _filled(r)), None)
+
+    if first is None and not mature:
         return CheckResult(
             source, f"fill_rate:{field}", severity, False, observed=0.0,
-            detail=(f"`{field}` 最近 {len(rows)} 筆完全沒有值"
+            detail=(f"`{field}` {len(rows)} 筆紀錄裡完全沒有值"
                     "——功能可能在生產環境從未真正產出"))
 
-    window = rows[first:]
-    filled = sum(1 for r in window if _filled(r))
-    ratio = filled / len(window)
-    if len(window) < min_samples:
+    measured = recent if mature else recent[first:]
+    filled = sum(1 for r in measured if _filled(r))
+    ratio = filled / len(measured)
+
+    if not mature and len(measured) < min_samples:
         return CheckResult(
             source, f"fill_rate:{field}", severity, True, observed=round(ratio, 3),
-            detail=(f"`{field}` 觀察中:首見於視窗第 {first + 1}/{len(rows)} 筆,"
-                    f"之後 {filled}/{len(window)} 筆有值"
+            detail=(f"`{field}` 觀察中:首見於視窗第 {first + 1}/{len(recent)} 筆,"
+                    f"之後 {filled}/{len(measured)} 筆有值"
                     f"——樣本未達 {min_samples} 筆,尚不足以判定"))
 
     ok = ratio >= min_ratio
     return CheckResult(
         source, f"fill_rate:{field}", severity, ok, observed=round(ratio, 3),
-        detail=(f"`{field}` 填充率 {ratio:.0%}({filled}/{len(window)})" if ok else
-                f"`{field}` 首見之後 {len(window)} 筆只填了 {filled} 筆"
+        detail=(f"`{field}` 填充率 {ratio:.0%}({filled}/{len(measured)})" if ok else
+                f"`{field}` 首次產出之後 {len(measured)} 筆只填了 {filled} 筆"
                 f"({ratio:.0%},低於 {min_ratio:.0%})"
                 "——功能產出後衰退,或長期空轉"))
 

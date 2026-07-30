@@ -20980,7 +20980,10 @@ def main() -> int:
         # 因為它被外層 try 吞掉,品質閘會整個不執行:又是一次靜默失效)。
         # 直接讀歷史檔取得筆數,失敗就退回硬門檻。
         try:
-            _recent_hist = [r for r in load_model_history()[-30:]
+            # 批#79 r1:傳**完整歷史**(不是切好的近 30 筆)。切好再傳的話,
+            # 檢查無從知道欄位在視窗之前是否產出過,成熟功能只要在視窗後段
+            # 偶發產出一次就會被誤判成「剛上線、觀察中」而靜默通過。
+            _recent_hist = [r for r in load_model_history()
                             if isinstance(r, dict)]
             _hist_counts = [len(r.get("stocks") or {})
                             for r in load_model_history()[-60:]]
@@ -21003,7 +21006,7 @@ def main() -> int:
                        ("taiex_close", 0.9), ("structured_events", 0.8))
         _dq_results = [
             _dq.check_fill_rate("model_history", _recent_hist,
-                                field=_f, min_ratio=_r)
+                                field=_f, min_ratio=_r, window=30)
             for _f, _r in _fill_specs
         ] + [
             _dq.check_row_count("tw_universe", tw0050, min_rows=30,

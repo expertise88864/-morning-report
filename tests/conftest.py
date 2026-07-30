@@ -183,7 +183,38 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
 
     個別測試各自 monkeypatch 是防不住的——漏一個就中。改為在 conftest 統一把
     寫入型 state 路徑導到暫存目錄,新增的寫入點自動受保護。
+
+    批#71:**上面這段是原本的宣稱,但程式碼只導了 `RUN_MANIFEST_FILE` 一個檔。**
+    實害:批#66 新增的 `EXDIV_HISTORY_FILE` 不在任何隔離清單裡,而我的測試
+    `test_exdiv_history_keeps_the_first_record_and_prunes_old_ones` 會呼叫
+    `update_exdiv_history([], 2028-01-01)` 把保留期外的紀錄修剪掉 ——
+    於是真實的 `state/exdiv_history.json` **115 筆除權息事件被清成空陣列**,
+    而 `days` 仍宣稱當天收集成功。那是最危險的組合:覆蓋檢查判定完整、
+    紀錄卻是空的 → Top5 會用原始價格照常結算而不是作廢。再被 `git add -A` 提交。
+
+    (與 r4 那次是**同一個病灶的第二次**:註解宣稱了一個通用性質,程式碼只做了
+     一個特例。這次改成真的通用——列舉模組裡所有指向 repo `state/` 的
+     Path 常數並全部導走,下次新增 state 檔自動受保護,不需要記得改這裡。)
     """
+    from pathlib import Path as _Path
     d = tmp_path_factory.mktemp("state_guard")
-    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", d / "run_manifest.json",
-                        raising=False)
+    repo_state = _Path("state").resolve()
+    modules = [mr]
+    try:
+        import model_history_store as _mhs
+        modules.append(_mhs)
+    except Exception:
+        pass
+    for mod in modules:
+        for attr in dir(mod):
+            if not (attr.endswith("_FILE") or attr.endswith("_DIR")):
+                continue
+            value = getattr(mod, attr, None)
+            if not isinstance(value, _Path):
+                continue
+            try:
+                inside = value.resolve().is_relative_to(repo_state)
+            except (OSError, ValueError):
+                inside = False
+            if inside:
+                monkeypatch.setattr(mod, attr, d / value.name, raising=False)

@@ -596,3 +596,41 @@ def test_two_named_companies_still_do_not_merge():
                                       title=f"台積電{body}", link="https://b/2",
                                       source_name="財訊")], "2026-07-30", vocab)
     assert len(led) == 2
+
+
+def test_entityless_story_upgrades_its_entity_and_stops_absorbing_others():
+    """r1(Codex,P2):批#71 讓 entityless 線索可以跟有代號的事件合併(修鏡像站
+    散成兩條),但合併後線索的 `entity` 仍是空的 → 它變成一張**萬用牌**:
+    之後另一家公司的高相似度標題進來時,衝突檢查(要求兩邊都有代號)不會擋,
+    可能被錯併、覆寫標題。
+
+    三步序列:entityless A → 有代號 A(升級)→ 有代號 B(必須擋下)。
+    """
+    base = {"event_type": "revenue_growth", "surprise_score": 0.5,
+            "published": "2026-07-30T01:00:00+00:00"}
+    title = "〈聯電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機"
+    vocab = {"2303": "聯電", "2330": "台積電"}
+    # (1) entityless 先開一條
+    led = sl.update_ledger([], [dict(base, entity="",
+                                     title=f"{title} - tw.stock.yahoo.com",
+                                     link="https://a/1",
+                                     source_name="Yahoo股市")],
+                           "2026-07-30", vocab)
+    assert len(led) == 1 and not led[0].get("entity")
+    # (2) 有代號版接上 → entity 必須升級(否則它一直是萬用牌)
+    led = sl.update_ledger(led, [dict(base, entity="2303", entity_name="聯電",
+                                      title=f"{title} - news.cnyes.com",
+                                      link="https://a/2",
+                                      source_name="鉅亨台股")],
+                           "2026-07-30", vocab)
+    assert len(led) == 1
+    assert led[0]["entity"] == "2303", "entity 沒升級 —— 線索仍是萬用牌"
+    assert led[0]["key"].startswith("e:2303|"), "key 沒跟著遷移(r7 的教訓)"
+    # (3) 另一家公司的同型標題不得被吸進去
+    led = sl.update_ledger(led, [dict(
+        base, entity="2330", entity_name="台積電",
+        title="〈台積電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機",
+        link="https://a/3", source_name="鉅亨台股")], "2026-07-31", vocab)
+    keys = {s["key"] for s in led}
+    assert len(led) == 2, f"另一家公司被萬用牌吸走:{keys}"
+    assert any(k.startswith("e:2330|") for k in keys)

@@ -187,3 +187,37 @@ def test_weekend_path_writes_the_manifest_before_pushing_it():
     assert manifest_at < push_at, "manifest 寫在 push 之後 → 永遠不會被 commit"
     src = ast.unparse(push_call)
     assert "RUN_MANIFEST_FILE" in src, "push 清單不含 manifest → 寫了也是白寫"
+
+
+def test_no_module_state_path_points_into_the_repo_during_tests():
+    """批#71:**這條測試存在的理由是「守衛宣稱通用、實作只有一個特例」**。
+
+    `_never_write_repo_state` 的 docstring 寫著「統一把寫入型 state 路徑導到
+    暫存目錄,新增的寫入點自動受保護」,但程式碼只導了 `RUN_MANIFEST_FILE`。
+    實害:批#66 新增的 `EXDIV_HISTORY_FILE` 不在任何清單裡,測試把真實的
+    `state/exdiv_history.json` **115 筆除權息事件清成空陣列**,而 `days` 仍宣稱
+    當天收集成功 —— 覆蓋檢查判定完整、紀錄卻是空的,Top5 會用原始價格照常結算。
+
+    改成通用之後,這條測試負責讓它**保持**通用:任何新增的 state 路徑若沒被
+    導走,這裡立刻失敗,而不是等某天靜靜地覆寫真實資料。
+    """
+    from pathlib import Path
+    import model_history_store as mhs
+
+    repo_state = Path("state").resolve()
+    leaked = []
+    for mod in (mr, mhs):
+        for attr in dir(mod):
+            if not (attr.endswith("_FILE") or attr.endswith("_DIR")):
+                continue
+            value = getattr(mod, attr, None)
+            if not isinstance(value, Path):
+                continue
+            try:
+                if value.resolve().is_relative_to(repo_state):
+                    leaked.append(f"{mod.__name__}.{attr} → {value}")
+            except (OSError, ValueError):
+                continue
+    assert not leaked, (
+        "測試期間這些 state 路徑仍指向 repo,會覆寫真實資料:\n  "
+        + "\n  ".join(leaked))

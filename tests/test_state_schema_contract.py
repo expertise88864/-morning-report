@@ -203,76 +203,128 @@ def test_run_manifest_carries_the_observability_fields():
 
 
 # ------------------------------------------------- story ledger:轉載去重
+#: 「有代號 vs 無代號」鏡像重複的暫時上限。**這個數字應該變成 0。**
+#: 修這一類的是批#71 的跨桶比對(2026-07-30 11:25 落地),而目前落地的最新一批
+#: 線索是 06:45 那次執行建立的 —— **批#71 還沒在生產跑過任何一次**。
+#: 07-31 之後的執行若如預期把它降到 0,就把這裡改成 0 並刪掉這段說明。
+#: 不現在就寫 0,是因為那會製造「沒有任何 commit 能修好的紅」(批#77 的教訓);
+#: 不寫成嚴格棘輪(低於上限就要求調降),是因為重複對數隨當日新聞浮動,
+#: 嚴格棘輪會在下一天反彈時變成修不好的紅 —— 那個模式只適合單調可控的量。
+ENTITYLESS_MIRROR_DUP_CEILING = 3
+
+
+def _unmerged_syndicated_pairs(cohort):
+    """回傳 (雙方都有代號的重複, 至少一方無代號的重複)。
+
+    判準完全比照 `_match_open_story` 的候選與門檻規則,不自己另寫一套:
+      - 兩邊都有代號且不同 → 不同公司,跳過
+      - 期別型且同型不同期 → 不同集,本來就該分開(6 月營收 vs 7 月營收)
+      - 門檻:雙方都有代號用 `STORY_MATCH_THRESHOLD`,否則用較嚴的
+        `STORY_MATCH_THRESHOLD_NO_ENTITY`
+    """
+    prepared = []
+    for r in cohort:
+        subject = sl._story_subject(str(r.get("headline") or ""),
+                                    str(r.get("entity") or ""),
+                                    str(r.get("entity_name") or ""))
+        if subject:
+            prepared.append((r, str(r.get("entity") or ""), subject,
+                             sl._episodic_period_of_story(r)))
+    both, mirror = [], []
+    for i, (a, ea, sa, pa) in enumerate(prepared):
+        for b, eb, sb, pb in prepared[i + 1:]:
+            if ea and eb and ea != eb:
+                continue
+            if pa and pb and pa[0] == pb[0] and pa[1] != pb[1]:
+                continue
+            threshold = (sl.STORY_MATCH_THRESHOLD if (ea and eb)
+                         else sl.STORY_MATCH_THRESHOLD_NO_ENTITY)
+            if sl._same_story_subject(sa, sb, threshold):
+                (both if (ea and eb) else mirror).append(
+                    (str(a.get("key")), str(b.get("key")),
+                     str(a.get("headline"))[:44], str(b.get("headline"))[:44]))
+    return both, mirror
+
+
 def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
     """**同一批建立的線索裡,不得有「該合併卻分開」的轉載重複。**
 
-    批#80。批#67 的 `_match_open_story` 上線後,我用真實 state 逐日量了
-    「同實體、同日、主旨相似度超過門檻卻仍是兩條線索」的配對數:
+    批#80。用真實落地的 state 逐批量測(判準見 `_unmerged_syndicated_pairs`):
 
     ```
-    first_seen  未合併/總配對
-    2026-07-26     18/279     批#67 上線前
-    2026-07-27     13/408     批#67 上線前
-    2026-07-28      5/354     批#67 上線前
-    2026-07-29      0/355  ←  批#67 上線後的第一次執行
+    first_seen   新建   雙方有代號   含無代號     生產時的程式碼
+    2026-07-27    465       16          17        批#67 之前
+    2026-07-28    508       11          19        批#67 之前
+    2026-07-29    470        5           8        批#67 之前
+    2026-07-30    451        0           3        批#67 有、批#71 無
     ```
 
-    典型的漏網樣本(全部相似度 1.00,只差媒體名):
-      「肯定留財引資 卓揆視察中信銀行亞灣分行」工商時報 / 中時新聞網 / 翻爆
-      「股息來了!國泰金今發513億 富邦金周五入帳」非凡新聞台 / Yahoo股市
-      「超微推新品 台鏈動起來」經濟日報 / UDN
+    漏網樣本全是相似度 1.00、只差媒體名的轉載:
+    「肯定留財引資 卓揆視察中信銀行亞灣分行」工商時報 / 中時新聞網 / 翻爆、
+    「股息來了!國泰金今發513億」非凡新聞台 / Yahoo股市。
 
-    功能有效,但**沒有任何東西會在它退化時通知我們** —— 而這一輪已經量到
-    太多次「功能寫好、測試綠、生產不產出」。所以把這個量測變成常設檢查。
+    **兩類要分開驗,因為修它們的是不同批、上線時間也不同:**
+      - 雙方都有代號 → 批#67 的主旨相似度歸屬(01:39 落地,已跑過一次)
+        實測 5 → 0,所以硬性要求 0。
+      - 至少一方無代號 → 批#71 的跨桶比對(11:25 落地,**還沒跑過**)。
+        剩下的 3 對全是它的目標,包括它 docstring 裡點名的那一則:
+        `e:clusterfaa9b7b77c|l:revenue_growth`(yahoo)與
+        `e:2303|l:revenue_growth|202607`(cnyes)是同一篇〈聯電法說〉。
 
-    刻意只驗**最新一批**(`first_seen` 最大的那天):
-      - 舊資料是批#67 之前留下的,永遠修不好 → 驗它就是製造「沒有任何 commit
-        能修好的紅」(批#77 已經踩過一次,那種紅會訓練人忽略 CI)
-      - 而最新一批每天都會換,退化的隔天就會紅
-
-    判準直接呼叫 `_same_story_subject`(含共同 bigram 下限與拉丁詞互斥守衛),
-    不自己重寫一套相似度 —— 重寫的那套遲早會跟本尊漂移。
+    r1(Codex,P2):第一版用 `key.split("|")[0]` 分組,而無代號線索的 key 前綴是
+    `e:cluster<digest>`(每條唯一)—— 於是無代號線索彼此不比、有代號與無代號的
+    鏡像對也不比,**恰好排除了批#71 修的那個情境**。當時報出的「0 對」是在
+    排除掉問題本體之後量的。改用 `entity` 欄位並比照 `_match_open_story` 的
+    候選規則,重測才看到那 3 對。
     """
     rows = _load("story_ledger.json")
     if not rows:
         pytest.skip("線索帳本是空的")
-
     newest = max(str(r.get("first_seen") or "")[:10] for r in rows)
     if not newest:
         pytest.skip("線索帳本沒有 first_seen 欄位(舊格式)")
+
+    # 只驗**最新一批**:舊資料是修正上線前留下的,永遠修不好,
+    # 驗它就是製造「沒有任何 commit 能修好的紅」(批#77 已經踩過一次)。
     cohort = [r for r in rows if str(r.get("first_seen") or "")[:10] == newest]
+    both, mirror = _unmerged_syndicated_pairs(cohort)
+    print(f"[state-contract] {newest} 新建 {len(cohort)} 條線索;"
+          f"未合併轉載:雙方有代號 {len(both)} 對、含無代號 {len(mirror)} 對")
 
-    def _entity(r):
-        return str(r.get("key") or "").split("|")[0]
+    def _fmt(pairs):
+        return "\n  ".join(f"{a} ↔ {b}\n    {ha}\n    {hb}"
+                           for a, b, ha, hb in pairs[:5])
 
-    def _subject(r):
-        return sl._story_subject(str(r.get("headline") or ""),
-                                 _entity(r)[2:], str(r.get("entity_name") or ""))
+    assert not both, (
+        f"{newest} 這批有 {len(both)} 對**雙方都有代號**的線索該合併卻分開 —— "
+        f"批#67 的主旨相似度歸屬可能退化:\n  {_fmt(both)}")
+    assert len(mirror) <= ENTITYLESS_MIRROR_DUP_CEILING, (
+        f"{newest} 這批有 {len(mirror)} 對含無代號的鏡像重複,"
+        f"超過暫時上限 {ENTITYLESS_MIRROR_DUP_CEILING} —— "
+        f"批#71 的跨桶比對可能退化:\n  {_fmt(mirror)}")
 
-    by_entity = {}
-    for r in cohort:
-        by_entity.setdefault(_entity(r), []).append(r)
 
-    dupes = []
-    for group in by_entity.values():
-        for i, a in enumerate(group):
-            for b in group[i + 1:]:
-                # 期別不同就是不同集,本來就該分開(月營收 6 月 vs 7 月)
-                pa = sl._episodic_period_of_story(a)
-                pb = sl._episodic_period_of_story(b)
-                if pa and pb and pa[0] == pb[0] and pa[1] != pb[1]:
-                    continue
-                sa, sb = _subject(a), _subject(b)
-                if sa and sb and sl._same_story_subject(
-                        sa, sb, sl.STORY_MATCH_THRESHOLD):
-                    dupes.append((a.get("key"), b.get("key"),
-                                  str(a.get("headline"))[:40],
-                                  str(b.get("headline"))[:40]))
+def test_the_syndication_detector_actually_detects():
+    """**這條檢查自己不能是真空通過。**
 
-    print(f"[state-contract] {newest} 新建 {len(cohort)} 條線索,"
-          f"未合併的轉載重複 {len(dupes)} 對")
-    assert not dupes, (
-        f"{newest} 這批有 {len(dupes)} 對線索應該合併卻分開了 —— "
-        "轉載去重(_match_open_story)可能退化:\n  "
-        + "\n  ".join(f"{a} ↔ {b}\n    {ha}\n    {hb}"
-                      for a, b, ha, hb in dupes[:5]))
+    上面那條在最新一批上回報 0/3 —— 但「回報 0」也可能是因為判準壞了、
+    分組錯了、或資料讀不到(r1 那次就是分組把問題本體排除掉了)。
+    所以用同一份真實 state 的**舊批次**(修正上線之前建立的)反向確認:
+    偵測器在那裡必須找得到重複,否則它報的 0 沒有意義。
+    """
+    rows = _load("story_ledger.json")
+    if not rows:
+        pytest.skip("線索帳本是空的")
+    days = sorted({str(r.get("first_seen") or "")[:10] for r in rows} - {""})
+    if len(days) < 2:
+        pytest.skip("帳本只有一批線索,沒有可對照的舊批次")
+
+    for day in days[:-1]:                     # 最新一批以外的任一批
+        cohort = [r for r in rows if str(r.get("first_seen") or "")[:10] == day]
+        if len(cohort) < 50:
+            continue
+        both, mirror = _unmerged_syndicated_pairs(cohort)
+        if both or mirror:
+            return                            # 偵測器有效
+    pytest.skip("所有舊批次都沒有重複——偵測器無法用真實資料反向確認"
+                "(帳本已完全汰換成修正後的資料,屬正常演進)")

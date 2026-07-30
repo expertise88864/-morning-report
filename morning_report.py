@@ -15224,7 +15224,42 @@ class ExdivFetchFailed(RuntimeError):
     """除權息預告抓取失敗。**不得與「今天沒有除權息」混為一談**。"""
 
 
-def fetch_exdiv_preview() -> list:
+def _record_exdiv_preview_span(rows: list, today_iso: str = "") -> dict:
+    """把預告表**實際**涵蓋的日期範圍記進 manifest。
+
+    批#81。`exdiv_coverage_ok` 的整套判斷建立在一個假設上:「收集日 C 一次抓取
+    就能知道 C 之後至少 `_EXDIV_PREVIEW_LOOKAHEAD_DAYS` 天內的除權息」。
+    那個假設原本只寫在註解裡(「除權息日之前**數日**就會列出」),從未量過 ——
+    而它一旦不成立,守衛會**高估**覆蓋、放行本該作廢的結算,而且完全無聲。
+
+    2026-07-30 對 `TWT48U_ALL` 的實測:115 筆,涵蓋 1150728 ~ 1151006,
+    也就是往回 2 天、**往前 68 天**。假設成立且餘裕很大,但那是「今天成立」,
+    不是「永遠成立」—— TWSE 改版縮短預告期時必須看得見,所以每次執行都量。
+    """
+    dates = sorted({str(r.get("ex_date") or "") for r in rows or []
+                    if r.get("ex_date")})
+    span = {"rows": len(rows or []),
+            "min_ex_date": dates[0] if dates else "",
+            "max_ex_date": dates[-1] if dates else ""}
+    if dates and today_iso:
+        try:
+            today = dt.date.fromisoformat(today_iso)
+            span["days_back"] = (today - dt.date.fromisoformat(dates[0])).days
+            span["days_forward"] = (dt.date.fromisoformat(dates[-1]) - today).days
+        except (ValueError, TypeError):
+            pass
+    _RUN_MANIFEST["exdiv_preview"] = span
+    forward = span.get("days_forward")
+    if forward is not None and forward < _EXDIV_PREVIEW_LOOKAHEAD_DAYS:
+        # 這正是讓守衛失效的條件:預告期比守衛假設的還短時,
+        # 「D 之前 7 天內有收集過」不再蘊含「D 當天的除權息已被記錄」。
+        print(f"[exdiv] ⚠ 預告表只往前 {forward} 天,短於覆蓋守衛假設的 "
+              f"{_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天——守衛可能高估覆蓋範圍",
+              file=sys.stderr)
+    return span
+
+
+def fetch_exdiv_preview(today_iso: str = "") -> list:
     """TWSE 除權除息預告表 → [{code, ex_date, kind, cash}]。
 
     **失敗時拋 `ExdivFetchFailed`,不回空清單。** r2(Codex,P1):原本失敗回 [],
@@ -15235,8 +15270,26 @@ def fetch_exdiv_preview() -> list:
     欄位名沿用 `gooaye_radar.fetch_exdiv_calendar` 已在生產跑通的那一組
     (Code / Date / Exdividend / CashDividend),不另外猜。
 
-    這是**預告**表:除權息日之前數日就會列出,所以每日抓一次即可在事件發生前
-    先把它記進歷史,不需要事後回補。
+    這是**預告**表:除權息日之前就會列出,所以每日抓一次即可在事件發生前先把它
+    記進歷史。批#81 實測(2026-07-30):115 筆,涵蓋 1150728 ~ 1151006,
+    即往回 2 天、**往前 68 天** —— 覆蓋守衛假設的 7 天餘裕很大。
+    但那是「今天成立」不是「永遠成立」,所以 `_record_exdiv_preview_span`
+    每次執行都把實際範圍記進 manifest,縮短時會示警。
+
+    **事後回補是做不到的,不是沒做。** 批#81 實測 TWSE 的除權除息計算結果表
+    `TWT49U`(第七輪 P0-2 原本指望的「事後權威表」):任何落在過去的 endDate
+    都被夾成 `end < start` 而回
+    `查詢結束日期小於查詢開始日期,請重新查詢!` ——
+    ```
+    strDate=20260720 endDate=20260730  → 錯誤(過去)
+    strDate=20250801 endDate=20250831  → 錯誤(去年)
+    strDate=20260731 endDate=20260831  → OK
+    ```
+    RWD 路徑 `/rwd/zh/exRight/TWT49U` 行為相同;openapi 沒有 TWT49U/TWT48U
+    端點(回 HTML)。openapi 全部 143 個端點裡與除權息相關的只有
+    `t187ap45_L`(股利分派情形,是董事會決議而非除權息日)與本函式用的
+    `TWT48U_ALL`。**TWSE 不提供歷史除權息查詢**,所以「開始收集之前」的期間
+    永遠補不回來,`exdiv_coverage_ok` 對那段期間作廢是唯一誠實的做法。
 
     已知殘餘風險:若 TWSE 改版成「HTTP 200 + 空陣列」,這裡會判成成功且覆蓋
     當天。空陣列本身會印警告,但不會擋——冬季預告表確實可能是空的,
@@ -15266,6 +15319,7 @@ def fetch_exdiv_preview() -> list:
         out.append({"code": code, "ex_date": ex_date,
                     "kind": str(row.get("Exdividend") or "").strip()[:8],
                     "cash": _to_float(row.get("CashDividend"))})
+    _record_exdiv_preview_span(out, today_iso)
     return out
 
 
@@ -21410,7 +21464,8 @@ def main() -> int:
         # 那正是這個檔案要防的錯誤方向。
         _blank = {"since": "", "days": [], "records": []}
         try:
-            _exdiv = update_exdiv_history(fetch_exdiv_preview(), now_tpe)
+            _exdiv = update_exdiv_history(
+                fetch_exdiv_preview(now_tpe.date().isoformat()), now_tpe)
         except ExdivFetchFailed as e:
             # r2(Codex,P1):抓取失敗**不得把今天記成已覆蓋**。沿用既有歷史
             # (它的 days 不含今天),覆蓋守衛因此會誠實地把跨越今天的窗口作廢。

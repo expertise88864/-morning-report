@@ -3714,3 +3714,108 @@ def test_mixed_versions_reach_the_run_manifest():
             for k in n.keys if isinstance(k, ast.Constant)]
     assert "forecast_mixed_versions" in keys, \
         "混版本資訊不在 manifest 重建白名單裡 → 寫了也會被丟掉"
+
+
+def test_exdiv_preview_span_is_measured_not_assumed():
+    """**覆蓋守衛賴以成立的假設,必須每次執行都被量到。**
+
+    批#81。`exdiv_coverage_ok` 的判斷是「D 之前
+    `_EXDIV_PREVIEW_LOOKAHEAD_DAYS` 天內有收集過 ⇒ D 當天的除權息已被記錄」。
+    那個蘊含只有在**預告表往前看的天數 ≥ 那個常數**時才成立,而它原本只是
+    註解裡的一句「除權息日之前數日就會列出」,從未量過。
+
+    假設一旦不成立(TWSE 縮短預告期),守衛會**高估**覆蓋、放行本該作廢的
+    Top5 結算,而且完全無聲 —— 這一輪已經量到太多次這種形狀。
+    """
+    import morning_report as mr
+
+    rows = [{"code": "2330", "ex_date": "2026-07-28"},
+            {"code": "0050", "ex_date": "2026-10-06"}]
+    try:
+        span = mr._record_exdiv_preview_span(rows, "2026-07-30")
+        assert span["rows"] == 2
+        assert span["min_ex_date"] == "2026-07-28"
+        assert span["max_ex_date"] == "2026-10-06"
+        assert span["days_back"] == 2
+        assert span["days_forward"] == 68
+        assert mr._RUN_MANIFEST.get("exdiv_preview") == span, \
+            "量到的範圍必須有出口(manifest),否則只存在當次記憶體"
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_preview_span_warns_when_the_horizon_shrinks(capsys):
+    """預告期短於守衛假設時要示警 —— 那正是守衛失效的條件。"""
+    import morning_report as mr
+
+    short = [{"code": "2330", "ex_date": "2026-07-31"}]   # 只往前 1 天
+    try:
+        span = mr._record_exdiv_preview_span(short, "2026-07-30")
+        assert span["days_forward"] == 1
+        err = capsys.readouterr().err
+        assert "短於覆蓋守衛假設" in err, f"沒有示警:{err!r}"
+        assert str(mr._EXDIV_PREVIEW_LOOKAHEAD_DAYS) in err
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+    # 餘裕充足時不得吵(每天都示警等於沒有示警)
+    try:
+        mr._record_exdiv_preview_span(
+            [{"code": "2330", "ex_date": "2026-10-06"}], "2026-07-30")
+        assert "短於覆蓋守衛假設" not in capsys.readouterr().err
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_preview_span_survives_missing_or_bad_dates():
+    """空表與壞日期不得讓整段抓取炸掉 —— 它只是觀測,不該有否決權。"""
+    import morning_report as mr
+    try:
+        empty = mr._record_exdiv_preview_span([], "2026-07-30")
+        assert empty["rows"] == 0 and empty["min_ex_date"] == ""
+        assert "days_forward" not in empty, "沒有日期就不該編出天數"
+
+        bad = mr._record_exdiv_preview_span(
+            [{"code": "2330", "ex_date": "不是日期"}], "2026-07-30")
+        assert bad["rows"] == 1 and "days_forward" not in bad
+
+        # 沒有今天的日期時仍要記下 min/max(範圍本身仍有診斷價值)
+        nod = mr._record_exdiv_preview_span(
+            [{"code": "2330", "ex_date": "2026-08-05"}], "")
+        assert nod["max_ex_date"] == "2026-08-05" and "days_back" not in nod
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_preview_span_is_wired_into_the_real_fetch(monkeypatch):
+    """**量測必須真的長在生產路徑上。**
+
+    這一輪已經有一次「功能只存在於 payload 副本裡、生產完全沒走到」
+    (批#76 的 source_item_id),而當時的測試是自己把資料塞進去驗的。
+    所以這裡走 `fetch_exdiv_preview` 本尊,只換掉 HTTP 那一層,
+    用 `TWT48U_ALL` 真實回應的欄位形狀(Date 是民國、CashDividend 是字串)。
+    """
+    import morning_report as mr
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"Date": "1150728", "Code": "2330", "Name": "台積電",
+                     "Exdividend": "息", "CashDividend": "5.0"},
+                    {"Date": "1151006", "Code": "0050", "Name": "元大台灣50",
+                     "Exdividend": "息", "CashDividend": "1.2"}]
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+    mr._RUN_MANIFEST.pop("exdiv_preview", None)
+    try:
+        out = mr.fetch_exdiv_preview("2026-07-30")
+        assert [r["ex_date"] for r in out] == ["2026-07-28", "2026-10-06"]
+        span = mr._RUN_MANIFEST.get("exdiv_preview")
+        assert span, "抓取走完之後 manifest 沒有 exdiv_preview —— 量測沒接上"
+        assert span["days_back"] == 2 and span["days_forward"] == 68
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)

@@ -212,6 +212,20 @@ def test_run_manifest_carries_the_observability_fields():
 #: 嚴格棘輪會在下一天反彈時變成修不好的紅 —— 那個模式只適合單調可控的量。
 ENTITYLESS_MIRROR_DUP_CEILING = 3
 
+#: 從真實 state 取出的**確認案例**:同一則〈卓揆視察中信銀亞灣分行〉的兩家轉載
+#: (工商時報 / 中時新聞網,原本在 2026-07-27 那批各自成為獨立線索)。
+#: r2(Codex,P2):非真空確認**不能靠掃描舊批次**——「舊批次也找不到重複」有
+#: 兩種解釋(偵測器壞了 / 舊資料已汰換),而分不出來時只能 `pytest.skip`,
+#: 那正是這一輪最該避免的靜默失效。釘住樣本就沒有這個歧義:它永遠會執行。
+_KNOWN_SYNDICATED_PAIR = (
+    {"key": "e:2891|l:general|known-a", "entity": "2891",
+     "entity_name": "中信金", "state": "brewing", "updates": 1,
+     "headline": "肯定留財引資卓揆視察中信銀行亞灣分行- 產業 - 工商時報"},
+    {"key": "e:2891|l:general|known-b", "entity": "2891",
+     "entity_name": "中信金", "state": "brewing", "updates": 1,
+     "headline": "肯定留財引資 卓揆視察中信銀行亞灣分行 - 中時新聞網"},
+)
+
 
 def _unmerged_syndicated_pairs(cohort):
     """回傳 (雙方都有代號的重複, 至少一方無代號的重複)。
@@ -221,29 +235,72 @@ def _unmerged_syndicated_pairs(cohort):
       - 期別型且同型不同期 → 不同集,本來就該分開(6 月營收 vs 7 月營收)
       - 門檻:雙方都有代號用 `STORY_MATCH_THRESHOLD`,否則用較嚴的
         `STORY_MATCH_THRESHOLD_NO_ENTITY`
+      - 比對文字取 `_story_match_candidates`(headline **加軌跡點標題**),
+        並用**兩邊都知道的**代號/名稱做剝除(`cand_ent or ent`)
+
+    r1(Codex,P2):第一版用 `key.split("|")[0]` 分組,無代號線索的 key 前綴是
+    `e:cluster<digest>`(每條唯一)→ 恰好把批#71 修的鏡像情境整個排除掉。
+    r2(Codex,P2):第二版只比 `headline`,而生產比的是候選清單 ——
+    線索的 headline 會隨後續報導漂移(傳聞標題 → 公告標題),兩條重複線索
+    各自漂移之後 headline 可能不像了,但軌跡裡仍留著一模一樣的轉載標題。
     """
-    prepared = []
-    for r in cohort:
-        subject = sl._story_subject(str(r.get("headline") or ""),
-                                    str(r.get("entity") or ""),
-                                    str(r.get("entity_name") or ""))
-        if subject:
-            prepared.append((r, str(r.get("entity") or ""), subject,
-                             sl._episodic_period_of_story(r)))
+    memo = {}
+
+    def _subjects(idx, story, ent, name):
+        hit = memo.get((idx, ent, name))
+        if hit is None:
+            hit = [s for s in (sl._story_subject(c, ent, name)
+                               for c in sl._story_match_candidates(story)) if s]
+            memo[(idx, ent, name)] = hit
+        return hit
+
+    prepared = [(i, r, str(r.get("entity") or ""),
+                 str(r.get("entity_name") or ""),
+                 sl._episodic_period_of_story(r))
+                for i, r in enumerate(cohort)]
     both, mirror = [], []
-    for i, (a, ea, sa, pa) in enumerate(prepared):
-        for b, eb, sb, pb in prepared[i + 1:]:
+    for pos, (ia, a, ea, na, pa) in enumerate(prepared):
+        for ib, b, eb, nb, pb in prepared[pos + 1:]:
             if ea and eb and ea != eb:
                 continue
             if pa and pb and pa[0] == pb[0] and pa[1] != pb[1]:
                 continue
             threshold = (sl.STORY_MATCH_THRESHOLD if (ea and eb)
                          else sl.STORY_MATCH_THRESHOLD_NO_ENTITY)
-            if sl._same_story_subject(sa, sb, threshold):
+            ent, name = (ea or eb), (na or nb)
+            if any(sl._same_story_subject(sa, sb, threshold)
+                   for sa in _subjects(ia, a, ent, name)
+                   for sb in _subjects(ib, b, ent, name)):
                 (both if (ea and eb) else mirror).append(
                     (str(a.get("key")), str(b.get("key")),
                      str(a.get("headline"))[:44], str(b.get("headline"))[:44]))
     return both, mirror
+
+
+def test_the_syndication_detector_actually_detects():
+    """**這條檢查自己不能是真空通過。**
+
+    下面那條在最新一批上回報 0 —— 但「回報 0」也可能是因為判準壞了、分組錯了、
+    或資料讀不到。r1 那次正是如此:分組把問題本體排除掉,於是報出漂亮的 0。
+
+    所以用一組**從真實 state 取出的確認重複**釘住偵測器。刻意不掃描舊批次:
+    掃不到時分不出「偵測器壞了」與「舊資料已汰換」,只能 skip,而 skip 就是
+    靜默失效——那是這條測試存在的理由本身。
+    """
+    both, mirror = _unmerged_syndicated_pairs(list(_KNOWN_SYNDICATED_PAIR))
+    assert len(both) == 1 and not mirror, (
+        "偵測器認不出已確認的轉載重複(工商時報 / 中時新聞網 的同一則)——"
+        f"雙方有代號 {len(both)} 對、含無代號 {len(mirror)} 對;"
+        "在這種狀態下,主檢查回報的 0 沒有意義")
+
+    # 軌跡點也要納入比對:兩條線索的 headline 各自漂移之後,
+    # 生產仍會拿軌跡裡的舊標題去比(`_story_match_candidates`)。
+    a, b = ({**_KNOWN_SYNDICATED_PAIR[0], "headline": "中信金今日法說會重點整理"},
+            dict(_KNOWN_SYNDICATED_PAIR[1]))
+    a["timeline"] = [{"d": "2026-07-27",
+                      "t": _KNOWN_SYNDICATED_PAIR[0]["headline"]}]
+    drifted, _ = _unmerged_syndicated_pairs([a, b])
+    assert len(drifted) == 1, "headline 漂移後,軌跡裡的原標題仍必須被比對到"
 
 
 def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
@@ -263,7 +320,7 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
     「肯定留財引資 卓揆視察中信銀行亞灣分行」工商時報 / 中時新聞網 / 翻爆、
     「股息來了!國泰金今發513億」非凡新聞台 / Yahoo股市。
 
-    **兩類要分開驗,因為修它們的是不同批、上線時間也不同:**
+    **兩類分開驗,因為修它們的是不同批、上線時間也不同:**
       - 雙方都有代號 → 批#67 的主旨相似度歸屬(01:39 落地,已跑過一次)
         實測 5 → 0,所以硬性要求 0。
       - 至少一方無代號 → 批#71 的跨桶比對(11:25 落地,**還沒跑過**)。
@@ -271,11 +328,8 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
         `e:clusterfaa9b7b77c|l:revenue_growth`(yahoo)與
         `e:2303|l:revenue_growth|202607`(cnyes)是同一篇〈聯電法說〉。
 
-    r1(Codex,P2):第一版用 `key.split("|")[0]` 分組,而無代號線索的 key 前綴是
-    `e:cluster<digest>`(每條唯一)—— 於是無代號線索彼此不比、有代號與無代號的
-    鏡像對也不比,**恰好排除了批#71 修的那個情境**。當時報出的「0 對」是在
-    排除掉問題本體之後量的。改用 `entity` 欄位並比照 `_match_open_story` 的
-    候選規則,重測才看到那 3 對。
+    只驗**最新一批**:舊資料是修正上線前留下的、永遠修不好,驗它就是製造
+    「沒有任何 commit 能修好的紅」(批#77 已經踩過一次)。
     """
     rows = _load("story_ledger.json")
     if not rows:
@@ -284,8 +338,6 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
     if not newest:
         pytest.skip("線索帳本沒有 first_seen 欄位(舊格式)")
 
-    # 只驗**最新一批**:舊資料是修正上線前留下的,永遠修不好,
-    # 驗它就是製造「沒有任何 commit 能修好的紅」(批#77 已經踩過一次)。
     cohort = [r for r in rows if str(r.get("first_seen") or "")[:10] == newest]
     both, mirror = _unmerged_syndicated_pairs(cohort)
     print(f"[state-contract] {newest} 新建 {len(cohort)} 條線索;"
@@ -302,29 +354,3 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
         f"{newest} 這批有 {len(mirror)} 對含無代號的鏡像重複,"
         f"超過暫時上限 {ENTITYLESS_MIRROR_DUP_CEILING} —— "
         f"批#71 的跨桶比對可能退化:\n  {_fmt(mirror)}")
-
-
-def test_the_syndication_detector_actually_detects():
-    """**這條檢查自己不能是真空通過。**
-
-    上面那條在最新一批上回報 0/3 —— 但「回報 0」也可能是因為判準壞了、
-    分組錯了、或資料讀不到(r1 那次就是分組把問題本體排除掉了)。
-    所以用同一份真實 state 的**舊批次**(修正上線之前建立的)反向確認:
-    偵測器在那裡必須找得到重複,否則它報的 0 沒有意義。
-    """
-    rows = _load("story_ledger.json")
-    if not rows:
-        pytest.skip("線索帳本是空的")
-    days = sorted({str(r.get("first_seen") or "")[:10] for r in rows} - {""})
-    if len(days) < 2:
-        pytest.skip("帳本只有一批線索,沒有可對照的舊批次")
-
-    for day in days[:-1]:                     # 最新一批以外的任一批
-        cohort = [r for r in rows if str(r.get("first_seen") or "")[:10] == day]
-        if len(cohort) < 50:
-            continue
-        both, mirror = _unmerged_syndicated_pairs(cohort)
-        if both or mirror:
-            return                            # 偵測器有效
-    pytest.skip("所有舊批次都沒有重複——偵測器無法用真實資料反向確認"
-                "(帳本已完全汰換成修正後的資料,屬正常演進)")

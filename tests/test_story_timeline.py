@@ -855,3 +855,62 @@ def test_period_guard_reads_the_key_not_the_drifting_headline():
         "2026-08-06", {"2884": "玉山金"})
     assert len(led) == 2, f"七月營收又被併回六月:{[s['key'] for s in led]}"
     assert {s["key"] for s in led} == {june_key, "e:2884|l:revenue_growth|202607"}
+
+
+def test_template_headlines_do_not_merge_different_companies():
+    """**樣板標題不得把不同公司併成同一條敘事。**
+
+    批#80 r3。在真實 state 上重播 `_match_open_story` 時發現的:
+    「鉅亨速報 - Factset 最新調查:X(代號)EPS 預估上修至…」是**逐檔量產的
+    樣板**,帳本裡有 9 條。樣板佔掉主旨的大半,不同公司之間重疊度衝到
+    0.65~0.77(門檻 0.45 / 0.65),於是
+
+        利西亞車行(LAD-US)   ↔  穎崴(6515-TW)
+        台塑(1301-TW)        ↔  漢諾威保險集團(THG-US)
+
+    會被判成同一條敘事。而拉丁詞互斥守衛**擋不住**——它靠「具辨識力的英文詞
+    完全互斥」判定,但雙方都含 `FACTSET` 與 `EPS`,交集非空,守衛不觸發。
+    樣板詞混進了「具辨識力」的集合,守衛因此自己失效。
+
+    這在生產尚未成災的唯一原因是:這些配對都是「有代號 vs 無代號」,而跨桶
+    比對是批#71(2026-07-30 11:25 落地)才加的,**還沒跑過任何一次**。
+    也就是說這是我自己的改動埋下、尚未引爆的退化 —— 下一次執行就會開始誤併。
+
+    兩道獨立防線(實測缺一不可,9 → 3 / 9 → 4,兩者齊上才 9 → 0):
+      1. `FACTSET` / `EPS` 進 `_SUBJECT_LATIN_STOP`(讓互斥守衛恢復作用)
+      2. 「鉅亨速報」進 `_SUBJECT_BOILERPLATE`(讓樣板不再貢獻重疊度)
+    """
+    import story_ledger as sl
+
+    template_pairs = (
+        ("鉅亨速報 - Factset 最新調查:利西亞車行(LAD-US)EPS預估上修至34.95元,"
+         "預估目標價為390.00元",
+         "討論牆| 鉅亨速報- Factset 最新調查:穎崴(6515-TW)EPS預估下修至97.85元,"
+         "預估目標價為12600元"),
+        ("鉅亨速報 - Factset 最新調查:台塑(1301-TW)目標價調升至70元,幅度約3.7%"
+         " - TradingView",
+         "鉅亨速報 - Factset 最新調查:漢諾威保險集團THG-US的目標價調升至230元,"
+         "幅度約4.55%"),
+    )
+    for ta, tb in template_pairs:
+        sa, sb = sl._story_subject(ta), sl._story_subject(tb)
+        assert not sl._same_story_subject(
+            sa, sb, sl.STORY_MATCH_THRESHOLD_NO_ENTITY), (
+            f"樣板標題把不同公司併成同一條敘事:\n  {ta[:50]}\n  {tb[:50]}")
+        # 較寬的有主體門檻也不能通過(有代號那一側會用它)
+        assert not sl._same_story_subject(sa, sb, sl.STORY_MATCH_THRESHOLD)
+
+    # **反向**:真正的轉載仍然要合併得起來,否則這個修正是用連貫性換來的
+    real = (("〈聯電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機"
+             " - tw.stock.yahoo.com",
+             "〈聯電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機"
+             " - news.cnyes.com"),
+            ("廣達拚擴產 砸197億買友達桃園廠房 - 台視全球資訊網",
+             "AI伺服器ODM廠砸錢擴產 廣達斥資197億元買友達廠房 - UDN"),
+            ("肯定留財引資卓揆視察中信銀行亞灣分行- 產業 - 工商時報",
+             "肯定留財引資 卓揆視察中信銀行亞灣分行 - 中時新聞網"))
+    for ta, tb in real:
+        assert sl._same_story_subject(
+            sl._story_subject(ta), sl._story_subject(tb),
+            sl.STORY_MATCH_THRESHOLD), \
+            f"真實轉載被擋掉了(修正過頭):\n  {ta[:50]}\n  {tb[:50]}"

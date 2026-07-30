@@ -349,7 +349,13 @@ def _event_period_bucket(event: dict, monthly: bool) -> str:
 
 _SUBJECT_SEP = _re_module.compile(r"\s+[-|｜–—]\s+|\s*\|\s*")
 _SUBJECT_BOILERPLATE = ("股市爆料同學會", "提供者", "作者", "討論牆",
-                        "盤中速報", "產業即時新聞", "Investing.com", "CMoney")
+                        "盤中速報", "產業即時新聞", "Investing.com", "CMoney",
+                        # 批#80 r3:「鉅亨速報 - Factset 最新調查:X(代號)EPS 預估
+                        # 上修至…」是**逐檔量產的樣板**,帳本裡就有 9 條。
+                        # 樣板本身佔掉主旨的大半,不同公司之間重疊度衝到
+                        # 0.65~0.77(門檻 0.45/0.65),於是「利西亞車行 LAD-US」
+                        # 與「穎崴 6515-TW」會被判成同一條敘事。
+                        "鉅亨速報")
 #: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個。
 _SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
                        "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}

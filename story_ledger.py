@@ -799,7 +799,12 @@ def prune_timeline(story: dict) -> None:
 #: (與 news_events 那份同名集合**用途不同**:這一份給「線索身分的英文互斥
 #:  守衛」,那一份給「事件對象指紋」;兩者的取捨方向相反,刻意不共用。)
 _SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
-                       "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}
+                       "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO",
+                       # 批#80 r3:樣板詞混進「具辨識力的英文詞」會讓**互斥守衛
+                       # 自己失效** —— 兩則不同公司的鉅亨速報都含 FACTSET/EPS,
+                       # 交集非空,守衛因此不觸發。這一格存在的目的就是收容
+                       # 這種「常見但不辨識」的詞,它們正是最典型的例子。
+                       "FACTSET", "EPS"}
 _SUBJECT_LATIN = re.compile(r"[A-Za-z]{2,}")
 #: 有主體時可以放寬(主體本身已經是很強的錨);無主體時沒有錨,必須保守。
 #: 兩個門檻都由 1502 條真實線索校準,見 `_same_story_subject`。

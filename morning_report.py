@@ -15258,8 +15258,13 @@ def _record_exdiv_preview_span(rows: list, today_iso: str = "") -> dict:
     而它一旦不成立,守衛會**高估**覆蓋、放行本該作廢的結算,而且完全無聲。
 
     2026-07-30 對 `TWT48U_ALL` 的實測:115 筆,涵蓋 1150728 ~ 1151006,
-    也就是往回 2 天、**往前 68 天**。假設成立且餘裕很大,但那是「今天成立」,
-    不是「永遠成立」—— TWSE 改版縮短預告期時必須看得見,所以每次執行都量。
+    也就是往回 2 天、往前 68 天。
+
+    r2(Codex,P2):**這個 68 天不足以宣告假設成立。** 它是整張表最晚的一筆,
+    由單一 `2614 / 2026-10-06` 撐起來;只要另有一筆只提前 1 天出現,這個數字
+    仍是 68、不會示警,而守衛會拿「事件還沒出現時的成功收集日」放行。
+    所以這裡只當**必要條件**看(整張表都排不到 7 天後 → 假設一定不成立),
+    真正的充分條件由 `_record_exdiv_lead_stats` 逐筆量提前量。
     """
     dates = sorted({str(r.get("ex_date") or "") for r in rows or []
                     if r.get("ex_date")})
@@ -15393,14 +15398,18 @@ def update_exdiv_history(records: list, now_tpe: dt.datetime) -> dict:
     有了覆蓋範圍,那些窗口才能被誠實地作廢而不是給出錯的數字。
     """
     prev = load_exdiv_history()       # 讀不出來會拋,呼叫端負責不覆寫
+    today = now_tpe.date().isoformat()
     merged = {(str(r.get("code")), str(r.get("ex_date"))): r
               for r in prev["records"] if isinstance(r, dict)}
     for r in records or []:
         key = (str(r.get("code")), str(r.get("ex_date")))
         if not all(key):
             continue
-        merged.setdefault(key, r)
-    today = now_tpe.date().isoformat()
+        if key not in merged:
+            # r2(Codex,P2):記下**這筆事件第一次被看到的日子**。
+            # 沒有它就只能量「整張表最遠排到哪天」,而那是被單一遠期事件
+            # 撐起來的數字,證不到守衛真正需要的「每一筆都提前夠久出現」。
+            merged[key] = {**r, "first_seen": today}
     cutoff = (now_tpe.date() - dt.timedelta(days=_EXDIV_KEEP_DAYS)).isoformat()
     out = {
         "since": prev["since"] or today,
@@ -15411,7 +15420,57 @@ def update_exdiv_history(records: list, now_tpe: dt.datetime) -> dict:
     EXDIV_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_text(EXDIV_HISTORY_FILE,
                        json.dumps(out, ensure_ascii=False, indent=1))
+    _record_exdiv_lead_stats(out)
     return out
+
+
+def _record_exdiv_lead_stats(history: dict) -> dict:
+    """量每一筆除權息事件的**實際提前量**(ex_date − 第一次被看到的日子)。
+
+    r2(Codex,P2)。`_record_exdiv_preview_span` 的 `days_forward` 取的是整張表
+    最晚的一筆,只能證明「有某一筆排得很遠」——現有 68 天正是被單一
+    `2614 / 2026-10-06` 撐起來的。守衛需要的卻是**每一筆**都至少提前
+    `_EXDIV_PREVIEW_LOOKAHEAD_DAYS` 天出現:只要有一筆只提前 1 天,
+    再碰上抓取中斷,`exdiv_coverage_ok` 就會拿「事件還沒出現時的成功收集日」
+    放行,而 `days_forward` 仍是 68、完全不會示警。
+
+    **只計 `first_seen > since` 的紀錄。** 收集起點那一批的 `first_seen`
+    只是「我們開始看的日子」,不是事件的公告時間,拿來當提前量會低估;
+    舊格式沒有 `first_seen` 的紀錄同理,一律計入 `unmeasurable`。
+    所以剛上線時 `observed` 會是 0 —— 那是誠實的「還不知道」,
+    不是「假設成立」。
+
+    現階段**只示警不擋**:要把它變成 fail-closed,得先有真實的提前量分佈,
+    而這正是本函式開始累積的東西。這是刻意的延後,不是漏做。
+    """
+    since = str(history.get("since") or "")
+    leads, unmeasurable = [], 0
+    for r in history.get("records") or []:
+        if not isinstance(r, dict):
+            unmeasurable += 1
+            continue
+        seen, ex = str(r.get("first_seen") or ""), str(r.get("ex_date") or "")
+        if not (seen and ex) or (since and seen <= since):
+            unmeasurable += 1
+            continue
+        try:
+            leads.append((dt.date.fromisoformat(ex)
+                          - dt.date.fromisoformat(seen)).days)
+        except (ValueError, TypeError):
+            unmeasurable += 1
+    stats = {"lead_observed": len(leads), "lead_unmeasurable": unmeasurable}
+    if leads:
+        stats["lead_min_days"] = min(leads)
+        short = [n for n in leads if n < _EXDIV_PREVIEW_LOOKAHEAD_DAYS]
+        stats["lead_short_count"] = len(short)
+        if short:
+            print(f"[exdiv] ⚠ 有 {len(short)} 筆除權息只提前 "
+                  f"{min(short)}~{max(short)} 天出現,短於覆蓋守衛假設的 "
+                  f"{_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天"
+                  "——抓取一中斷,那些事件就會被漏記而守衛仍放行",
+                  file=sys.stderr)
+    _RUN_MANIFEST.setdefault("exdiv_preview", {}).update(stats)
+    return stats
 
 
 #: 除權息**預告**表往前看的天數。實際約兩週,取 7 天當保守值:

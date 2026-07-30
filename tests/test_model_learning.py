@@ -3819,3 +3819,83 @@ def test_exdiv_preview_span_is_wired_into_the_real_fetch(monkeypatch):
         assert span["days_back"] == 2 and span["days_forward"] == 68
     finally:
         mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_lead_stats_measure_each_event_not_just_the_furthest():
+    """**逐筆提前量,不是整張表最遠的那一筆。**
+
+    r2(Codex,P2)。`days_forward` 取 max(ex_date) − today,只能證明「有某一筆
+    排得很遠」。現有 state 的 68 天正是被單一 `2614 / 2026-10-06` 撐起來的:
+    只要另有一筆只提前 1 天出現,`days_forward` 仍是 68、不會示警,而
+    `exdiv_coverage_ok` 會拿「事件還沒出現時的成功收集日」放行 →
+    Top5 用未調整價格結算。
+    """
+    import morning_report as mr
+
+    history = {"since": "2026-07-01", "days": [], "records": [
+        {"code": "2614", "ex_date": "2026-10-06", "first_seen": "2026-07-30"},
+        {"code": "2330", "ex_date": "2026-08-02", "first_seen": "2026-08-01"},
+    ]}
+    try:
+        stats = mr._record_exdiv_lead_stats(history)
+        assert stats["lead_observed"] == 2
+        assert stats["lead_min_days"] == 1, \
+            "最小提前量必須反映最短的那一筆,不是整張表最遠的那一筆"
+        assert stats["lead_short_count"] == 1
+        assert mr._RUN_MANIFEST["exdiv_preview"]["lead_min_days"] == 1, \
+            "量到的提前量必須有出口(manifest),否則只存在當次記憶體"
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_lead_stats_do_not_count_the_starting_batch(capsys):
+    """**收集起點那一批不算提前量。**
+
+    它們的 `first_seen` 只是「我們開始看的日子」,不是事件公告時間;
+    當成提前量會低估,於是每次上線都噴一堆假警報 —— 而假警報會訓練人
+    忽略真警報。剛上線時 `observed` 應該是 0(誠實的「還不知道」)。
+    """
+    import morning_report as mr
+
+    history = {"since": "2026-07-30", "days": [], "records": [
+        {"code": "2330", "ex_date": "2026-07-31", "first_seen": "2026-07-30"},
+        {"code": "2454", "ex_date": "2026-08-01", "first_seen": "2026-07-30"},
+        {"code": "2317", "ex_date": "2026-08-05"},          # 舊格式,無 first_seen
+    ]}
+    try:
+        stats = mr._record_exdiv_lead_stats(history)
+        assert stats["lead_observed"] == 0
+        assert stats["lead_unmeasurable"] == 3
+        assert "lead_min_days" not in stats, "沒有可量的樣本就不該編出數字"
+        assert "短於覆蓋守衛假設" not in capsys.readouterr().err, \
+            "起點那一批不得觸發警報"
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_exdiv_first_seen_is_stamped_by_the_real_update(tmp_path, monkeypatch):
+    """`first_seen` 必須由生產的 `update_exdiv_history` 蓋上,而且**不覆蓋舊值**。
+
+    提前量的整套量測都建立在這個欄位上;它若沒被寫進去,上面兩條測試驗的是
+    我自己餵的資料,生產卻永遠是 `lead_observed: 0`。
+    """
+    import datetime as _dt
+    import json as _json
+    import morning_report as mr
+
+    target = tmp_path / "exdiv_history.json"
+    monkeypatch.setattr(mr, "EXDIV_HISTORY_FILE", target)
+    day1 = _dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE)
+    day2 = _dt.datetime(2026, 8, 1, 6, 45, tzinfo=mr.TPE)
+    try:
+        mr.update_exdiv_history(
+            [{"code": "2330", "ex_date": "2026-08-20", "kind": "息"}], day1)
+        mr.update_exdiv_history(
+            [{"code": "2330", "ex_date": "2026-08-20", "kind": "息"},
+             {"code": "2454", "ex_date": "2026-08-25", "kind": "息"}], day2)
+        landed = _json.loads(target.read_text(encoding="utf-8"))
+        seen = {r["code"]: r.get("first_seen") for r in landed["records"]}
+        assert seen["2330"] == "2026-07-30", "重複出現的事件不得被改成後來的日期"
+        assert seen["2454"] == "2026-08-01", "新出現的事件要蓋上當天"
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)

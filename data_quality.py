@@ -150,8 +150,15 @@ def degraded_labels(summary: dict) -> list[str]:
     return [f"dq:{e['source']}:{e['check']}" for e in (summary or {}).get("errors", [])]
 
 
+#: 判定填充率所需的最小樣本數(以「該欄位首次出現之後」的紀錄計)。
+#: 取 10 個交易日 ≈ 兩週。偏大是刻意的:誤報的代價(連續數週噪音 → 訓練人忽略
+#: 警告)遠高於漏報的代價(真的壞掉的功能晚一天被指出來)。
+FILL_RATE_MIN_SAMPLES = 10
+
+
 def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
-                    severity: str = WARN) -> CheckResult:
+                    severity: str = WARN,
+                    min_samples: int = FILL_RATE_MIN_SAMPLES) -> CheckResult:
     """某個欄位在最近 N 筆紀錄裡的**填充率**。
 
     批#69。前面幾批連續量測到同一種失敗:功能寫好、測試全綠、外審通過,
@@ -166,20 +173,67 @@ def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
 
     刻意用**比率而非「今天有沒有」**:單日缺值本來就正常(來源延遲、假日),
     要抓的是「長期都沒有」。
+
+    ## 分母必須從「欄位首次出現」起算(批#79)
+    2026-07-30 的生產 manifest 說 `taifex_top10_net` 填充率 10%、
+    `txo_pc_oi_ratio` 3%,並附上「功能可能在生產環境從未真正產出」。
+    去合併視圖(218 筆)實測後,真相是相反的:
+
+    ```
+    taifex_top10_net   全期 3/218 | 首見 2026-07-24 起 3/4 | 近30筆 3/30
+    txo_pc_oi_ratio    全期 2/218 | 首見 2026-07-24 起 2/4 | 近30筆 2/30
+    ```
+
+    四個籌碼欄位**首見都是 2026-07-24**(功能落地那天),落地後 4 個交易日
+    命中 3/4 與 2/4 —— 它產出得很正常。10% 這個數字裡有 26 筆早於功能存在。
+
+    固定的尾端視窗因此**無法區分兩種相反的狀態**:「剛上線、正常運作」與
+    「上線很久、已經死掉」。而區分這兩者正是這個檢查存在的理由。更糟的是
+    它會讓每個新欄位上線後連續數週報警,把人訓練成忽略警告
+    (跟批#77「沒有任何 commit 能修好的紅」是同一個道理)。
+
+    呼叫端原本用「只列已上線一段時間的欄位」這條**人工策展規則**來迴避,
+    但清單裡放的正是 4 天前才上線的欄位 —— 規則寫在註解裡就不會被執行。
+    改由檢查本身處理,順帶也涵蓋了策展規則涵蓋不到的「上線很久後才死掉」。
+
+    三種狀態分開表達:
+      - 整個視窗**完全沒有值** → 「從未產出」(這才是 LLM 抽取器那一類)
+      - 首見之後樣本 < `min_samples` → 「觀察中」,**不算失敗**(證據不足)
+      - 樣本足夠而比率偏低 → 「產出後衰退」,這是真正該報的降級
     """
     rows = [r for r in (rows or []) if isinstance(r, dict)]
     if not rows:
         return CheckResult(source, f"fill_rate:{field}", severity, False,
                            "沒有任何紀錄可檢查", 0)
-    filled = sum(1 for r in rows if r.get(field) not in (None, "", [], {}))
-    ratio = filled / len(rows)
+
+    def _filled(row) -> bool:
+        return row.get(field) not in (None, "", [], {})
+
+    # rows 依 session_date 由舊到新(`load_model_history()[-30:]`)
+    first = next((i for i, r in enumerate(rows) if _filled(r)), None)
+    if first is None:
+        return CheckResult(
+            source, f"fill_rate:{field}", severity, False, observed=0.0,
+            detail=(f"`{field}` 最近 {len(rows)} 筆完全沒有值"
+                    "——功能可能在生產環境從未真正產出"))
+
+    window = rows[first:]
+    filled = sum(1 for r in window if _filled(r))
+    ratio = filled / len(window)
+    if len(window) < min_samples:
+        return CheckResult(
+            source, f"fill_rate:{field}", severity, True, observed=round(ratio, 3),
+            detail=(f"`{field}` 觀察中:首見於視窗第 {first + 1}/{len(rows)} 筆,"
+                    f"之後 {filled}/{len(window)} 筆有值"
+                    f"——樣本未達 {min_samples} 筆,尚不足以判定"))
+
     ok = ratio >= min_ratio
     return CheckResult(
         source, f"fill_rate:{field}", severity, ok, observed=round(ratio, 3),
-        detail=(f"`{field}` 填充率 {ratio:.0%}({filled}/{len(rows)})" if ok else
-                f"`{field}` 最近 {len(rows)} 筆只填了 {filled} 筆"
+        detail=(f"`{field}` 填充率 {ratio:.0%}({filled}/{len(window)})" if ok else
+                f"`{field}` 首見之後 {len(window)} 筆只填了 {filled} 筆"
                 f"({ratio:.0%},低於 {min_ratio:.0%})"
-                "——功能可能在生產環境從未真正產出"))
+                "——功能產出後衰退,或長期空轉"))
 
 
 def capability_health(summary: dict, extra_inactive=()) -> dict:

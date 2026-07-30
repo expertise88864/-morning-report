@@ -20993,9 +20993,12 @@ def main() -> int:
         # 既有的 row_count / required_fields / value_range 都抓不到這一類:
         # 紀錄有、筆數夠、欄位在 schema 裡,只是永遠沒有值。
         #
-        # 刻意只列**已經上線一段時間、應該常態有值**的欄位。剛上線的欄位
-        # (如批#66 的 taiex_total_return)不列——歷史必然是空的,列了只會
-        # 連續數週噪音;等它累積起來再納入才有意義。
+        # 批#79:原本靠一條**人工策展規則**迴避新欄位的噪音(「只列已上線一段
+        # 時間的欄位」),但清單裡放的正是 4 天前才上線的 taifex_top10_net /
+        # txo_pc_oi_ratio —— 規則寫在註解裡就不會被執行,於是 manifest 報出
+        # 「10%,功能可能從未真正產出」,而實測是首見後 3/4 個交易日都有值。
+        # 現在改由 `check_fill_rate` 自己從「欄位首次出現」起算分母,
+        # 樣本不足時回報「觀察中」而非失敗,新欄位可以直接列進來。
         _fill_specs = (("taifex_top10_net", 0.5), ("txo_pc_oi_ratio", 0.5),
                        ("taiex_close", 0.9), ("structured_events", 0.8))
         _dq_results = [

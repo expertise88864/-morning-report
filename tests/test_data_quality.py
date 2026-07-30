@@ -281,3 +281,79 @@ def test_inactive_capabilities_reach_the_email_quality_block():
     hit = [d for d in dq if d.get("name") == "能力狀態"]
     assert hit, "失效能力沒有進到信件的資料品質區塊"
     assert "taifex_top10_net" in hit[0]["detail"]
+
+
+def test_fill_rate_window_starts_at_the_fields_first_appearance():
+    """批#79:**分母不能包含欄位還不存在的日子。**
+
+    2026-07-30 的生產 manifest 報 `taifex_top10_net` 填充率 10% 並附上
+    「功能可能在生產環境從未真正產出」。去合併視圖(218 筆)實測後真相相反:
+
+    ```
+    taifex_top10_net  全期 3/218 | 首見 2026-07-24 起 3/4 | 近30筆 3/30
+    txo_pc_oi_ratio   全期 2/218 | 首見 2026-07-24 起 2/4 | 近30筆 2/30
+    ```
+
+    四個籌碼欄位首見都是功能落地那天,之後 4 個交易日命中 3/4 與 2/4 ——
+    它產出得很正常,10% 裡有 26 筆早於功能存在。
+    """
+    import data_quality as dq
+
+    # 26 天沒有這個欄位,之後 4 天有 3 天有值(重現生產現場)
+    rows = ([{"session_date": f"2026-06-{d:02d}"} for d in range(1, 27)]
+            + [{"session_date": "2026-07-24", "taifex_top10_net": -6212},
+               {"session_date": "2026-07-27", "taifex_top10_net": -5100},
+               {"session_date": "2026-07-28", "taifex_top10_net": -4880},
+               {"session_date": "2026-07-29"}])
+    res = dq.check_fill_rate("model_history", rows,
+                             field="taifex_top10_net", min_ratio=0.5)
+    assert res.passed, "剛上線且正常產出的欄位不得被報成失效"
+    assert res.observed == 0.75, f"分母應從首見起算(3/4),實得 {res.observed}"
+    assert "觀察中" in res.detail and "尚不足以判定" in res.detail
+
+    # 舊行為的對照:固定尾端視窗會算成 3/30 = 10% 並判失敗。
+    # 這是這批要修掉的誤報,釘住它確保不會回頭。
+    naive = sum(1 for r in rows if r.get("taifex_top10_net") is not None) / len(rows)
+    assert naive == 0.1 and naive < 0.5, "對照組數字對不上,測試前提已漂移"
+
+
+def test_fill_rate_still_fails_a_field_that_produced_then_died():
+    """**策展規則涵蓋不到的那一類。**
+
+    呼叫端原本的迴避方式是人工維護「只列已上線一段時間的欄位」,那條規則
+    (即使有人執行)也抓不到「上線很久、產出過、後來死掉」——而那正是最需要
+    被抓到的狀態,因為它沒有任何其他徵兆。
+    """
+    import data_quality as dq
+
+    rows = ([{"session_date": f"2026-05-{d:02d}", "chip": 1} for d in range(1, 6)]
+            + [{"session_date": f"2026-06-{d:02d}"} for d in range(1, 26)])
+    res = dq.check_fill_rate("model_history", rows, field="chip", min_ratio=0.5)
+    assert not res.passed
+    assert res.observed == 0.167, f"應為 5/30,實得 {res.observed}"
+    assert "衰退" in res.detail
+    assert "從未真正產出" not in res.detail, "產出過的欄位不得被說成從未產出"
+
+
+def test_fill_rate_separates_never_produced_from_not_yet_judgeable():
+    """三種狀態必須可分辨:從未產出 / 觀察中 / 產出後衰退。
+
+    收斂成同一個數字正是 2026-07-30 那次誤判的成因 —— 檢查存在的理由就是
+    區分「剛上線、正常」與「上線很久、已死」,而固定視窗讓兩者長得一模一樣。
+    """
+    import data_quality as dq
+
+    never = dq.check_fill_rate(
+        "model_history", [{"session_date": f"2026-07-{d:02d}"} for d in range(1, 21)],
+        field="ghost", min_ratio=0.5)
+    assert not never.passed and never.observed == 0.0
+    assert "從未真正產出" in never.detail
+
+    # 邊界:樣本剛好達到門檻就要開始判定,不得永遠停在「觀察中」
+    n = dq.FILL_RATE_MIN_SAMPLES
+    rows = ([{"session_date": f"2026-06-{d:02d}"} for d in range(1, 6)]
+            + [{"session_date": f"2026-07-{d:02d}", "chip": None} for d in range(1, n + 1)])
+    rows[5]["chip"] = 1                      # 首見在第 6 筆,之後剛好 n 筆
+    res = dq.check_fill_rate("model_history", rows, field="chip", min_ratio=0.5)
+    assert not res.passed, f"樣本達 {n} 筆就該開始判定,不得停在觀察中"
+    assert "觀察中" not in res.detail

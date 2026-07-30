@@ -438,3 +438,94 @@ def test_state_schema_contract_has_a_daily_trigger():
     assert text.index("python morning_report.py") < \
         text.index("tests/test_state_schema_contract.py"), \
         "契約排在晨報之前 —— 失敗會擋掉當天的信,違反「晨報不可斷」"
+
+
+def test_every_manifest_key_written_is_also_persisted():
+    """**寫進 `_RUN_MANIFEST` 的診斷鍵,都必須真的落地。**
+
+    批#81 r1(Codex,P2)。`_write_run_manifest` 是**重建白名單 dict**,
+    沒列到的鍵一律被靜默丟掉 —— 記憶體裡有值、檔案裡沒有,而診斷欄位存在的
+    唯一理由就是累積成趨勢。這個坑至今發生**八次**,每一次都在 writer 裡
+    留下一行「同一個坑的第 N 次」的註解,然後下一次還是有人忘記。
+
+    逐點補一行等於預約第九次。這條測試用 AST 掃出所有
+    `_RUN_MANIFEST["x"] = ...` 與 `_RUN_MANIFEST.setdefault("x", ...)` 的鍵,
+    比對 `_MANIFEST_DIAGNOSTIC_KEYS`(落地)與 `_MANIFEST_TRANSIENT_KEYS`
+    (刻意不落地),漏列時**指名是哪一個鍵**。
+    """
+    import ast
+    import morning_report as mr
+
+    tree = ast.parse(Path(mr.__file__).read_text(encoding="utf-8"))
+    written = set()
+    for node in ast.walk(tree):
+        # _RUN_MANIFEST["x"] = ...
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AugAssign):
+            targets = [node.target]
+        for t in targets:
+            if (isinstance(t, ast.Subscript)
+                    and isinstance(t.value, ast.Name)
+                    and t.value.id == "_RUN_MANIFEST"
+                    and isinstance(t.slice, ast.Constant)
+                    and isinstance(t.slice.value, str)):
+                written.add(t.slice.value)
+        # _RUN_MANIFEST.setdefault("x", ...)
+        if (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "setdefault"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "_RUN_MANIFEST"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)):
+            written.add(node.args[0].value)
+
+    assert written, "AST 掃不到任何 _RUN_MANIFEST 寫入 —— 掃描器壞了,本測試無效"
+    known = set(mr._MANIFEST_DIAGNOSTIC_KEYS) | set(mr._MANIFEST_TRANSIENT_KEYS)
+    missing = sorted(written - known)
+    assert not missing, (
+        f"這些鍵有寫進 _RUN_MANIFEST 卻不會落地:{missing}\n"
+        "  請加進 `_MANIFEST_DIAGNOSTIC_KEYS`(要落地)或 "
+        "`_MANIFEST_TRANSIENT_KEYS`(刻意不落地)。\n"
+        "  writer 是重建白名單 dict,漏列的鍵會被**靜默**丟掉。")
+
+    # 反向:宣告了卻沒有人寫的鍵 = 死宣告,同樣要被看見
+    stale = sorted(set(mr._MANIFEST_DIAGNOSTIC_KEYS) - written)
+    assert not stale, (
+        f"這些鍵列在 _MANIFEST_DIAGNOSTIC_KEYS 卻沒有任何地方寫入:{stale} —— "
+        "功能可能已移除,宣告要一起清掉")
+
+
+def test_manifest_diagnostic_keys_survive_serialisation(tmp_path, monkeypatch):
+    """**驗序列化後的檔案,不是記憶體裡的 dict。**
+
+    r1 的 finding 之所以成立,正是因為既有測試都只看 `_RUN_MANIFEST`
+    ——那是 writer 的**輸入**,不是它的輸出。
+    """
+    import datetime as _dt
+    import json as _json
+    import morning_report as mr
+
+    target = tmp_path / "run_manifest.json"
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", target)
+    probe = {"rows": 115, "min_ex_date": "2026-07-28",
+             "max_ex_date": "2026-10-06", "days_back": 2, "days_forward": 68}
+    saved = {k: mr._RUN_MANIFEST.get(k) for k in mr._MANIFEST_DIAGNOSTIC_KEYS}
+    try:
+        for key in mr._MANIFEST_DIAGNOSTIC_KEYS:
+            mr._RUN_MANIFEST[key] = probe if key == "exdiv_preview" else {"probe": key}
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        assert target.exists(), "manifest 沒有被寫出來"
+        landed = _json.loads(target.read_text(encoding="utf-8"))
+        for key in mr._MANIFEST_DIAGNOSTIC_KEYS:
+            assert key in landed, f"{key} 沒有落地 —— 又被重建白名單丟掉了"
+        assert landed["exdiv_preview"] == probe
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                mr._RUN_MANIFEST.pop(k, None)
+            else:
+                mr._RUN_MANIFEST[k] = v

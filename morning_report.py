@@ -364,6 +364,22 @@ NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
 RUN_MANIFEST_FILE = STATE_ROOT / "run_manifest.json"
 _RUN_MANIFEST: dict = {"marks": []}
 
+#: 各階段寫進 `_RUN_MANIFEST` 的**診斷鍵**,由 `_write_run_manifest` 統一落地。
+#: 這個 writer 是重建白名單 dict,沒列到的鍵一律被靜默丟掉 ——
+#: 記憶體裡有值、檔案裡沒有,而診斷欄位存在的唯一理由就是累積成趨勢。
+#: 這個坑至今發生八次(stance_dual / data_checks / mz_shadow / llm_extractor /
+#: delivery / capability_health / forecast_mixed_versions / exdiv_preview),
+#: 所以改成「一處宣告 + AST 掃描比對」,不再靠人記得同步修改兩個地方。
+#: 新增鍵時只要加進這裡;忘了加,測試會指名是哪一個鍵。
+_MANIFEST_DIAGNOSTIC_KEYS = (
+    "model_history_days", "d1_samples", "d1_ready", "stance_dual",
+    "data_checks", "mz_shadow", "llm_extractor", "delivery",
+    "capability_health", "forecast_mixed_versions", "exdiv_preview",
+)
+#: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
+#: 原樣寫出去只是重複且龐大。
+_MANIFEST_TRANSIENT_KEYS = ("marks",)
+
 
 def _mark_phase(label: str) -> None:
     """在 main() 階段邊界插一個時間標記(相鄰標記差=該階段耗時)。純觀測,不影響流程。"""
@@ -418,6 +434,15 @@ def _write_run_manifest(now_tpe) -> None:
             "forecast_mixed_versions": _RUN_MANIFEST.get(
                 "forecast_mixed_versions"),
         }
+        # 批#81 r1(Codex,P2):**同一個坑的第八次,改成擋一整類。**
+        # 上面每一行的註解都是同一件事:writer 是重建白名單 dict,
+        # 沒列到的鍵一律被靜默丟掉(記憶體裡有值、檔案裡沒有)。
+        # 逐點補一行等於預約第九次,所以改由 `_MANIFEST_DIAGNOSTIC_KEYS` 統一帶出,
+        # 並由 `test_every_manifest_key_written_is_also_persisted` 用 AST
+        # 掃描所有 `_RUN_MANIFEST[...] = ` / `.setdefault(...)` 的鍵,
+        # 少列就當場失敗 —— 不再靠人記得改這裡。
+        manifest.update({k: _RUN_MANIFEST.get(k)
+                         for k in _MANIFEST_DIAGNOSTIC_KEYS})
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
                            json.dumps(manifest, ensure_ascii=False, indent=1))

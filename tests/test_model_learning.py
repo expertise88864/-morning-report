@@ -4583,3 +4583,52 @@ def test_malformed_records_are_not_silently_dropped_then_overwritten(
     finally:
         mr._DEGRADED_STEPS[:] = saved
         mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+@pytest.mark.parametrize("payload,why", [
+    ('{"since":"2026-07-01","days":["2026-07-01"],'
+     '"records":[{"code":"4169"}]}', "缺 halt_date"),
+    ('{"since":"2026-07-01","days":["2026-07-01"],'
+     '"records":[{"code":"4169","halt_date":"not-a-date"}]}', "halt_date 非 ISO"),
+    ('{"since":"2026-07-01","days":["2026-07-01"],'
+     '"records":[{"code":"","halt_date":"2026-07-23"}]}', "缺 code"),
+    ('{"since":"2026-07-01","days":"2026-07-01","records":[]}', "days 是字串"),
+    ('{"since":"2026-07-01","days":["not-a-date"],"records":[]}', "days 非 ISO"),
+])
+def test_corpact_history_rejects_every_shape_of_corruption(
+        payload, why, tmp_path, monkeypatch):
+    """r7(Codex,P2):只擋「非 dict 的列」不夠。
+
+    - `{"code":"4169"}`(缺日期)會被組成 `("4169", "None")` 這種鍵,變成永遠
+      對不上任何窗口的廢列,而**覆蓋範圍看起來仍然完整** → 受影響的橫向
+      照常結算,拿到一個錯的超額報酬。
+    - `days` 若是字串,`[str(d) for d in days]` 會**逐字元**拆開
+      (`"2026-07-01"` → `['2','0','2',…`)然後被原子回寫 → 靜默失去收集紀錄。
+    """
+    target = tmp_path / "corporate_actions.json"
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE", target)
+    target.write_text(payload, encoding="utf-8")
+    with pytest.raises(mr.CorpActUnreadable):
+        mr.load_corporate_actions()
+
+
+def test_exdiv_history_rejects_the_same_corruption(tmp_path, monkeypatch):
+    """同一類壞資料在除權息更直接:缺 code 或 ex_date 非 ISO 的列永遠對不上
+    `start < ex_date <= end`,於是那筆除權息被**漏掉**而覆蓋範圍看起來完整,
+    Top5 就用未調整價格結算 —— 正是這個檔案存在的理由。"""
+    target = tmp_path / "exdiv_history.json"
+    monkeypatch.setattr(mr, "EXDIV_HISTORY_FILE", target)
+    for payload in (
+            '{"since":"2026-07-01","days":["2026-07-01"],'
+            '"records":[{"code":"2330"}]}',
+            '{"since":"2026-07-01","days":"2026-07-01","records":[]}'):
+        target.write_text(payload, encoding="utf-8")
+        with pytest.raises(mr.ExdivHistoryUnreadable):
+            mr.load_exdiv_history()
+
+    # 真實形狀仍必須讀得過(守衛不得把生產資料擋在外面)
+    target.write_text(
+        '{"since":"2026-07-30","days":["2026-07-30"],'
+        '"records":[{"code":"2330","ex_date":"2026-08-20","kind":"息",'
+        '"cash":5.0,"first_seen":"2026-07-30"}]}', encoding="utf-8")
+    assert len(mr.load_exdiv_history()["records"]) == 1

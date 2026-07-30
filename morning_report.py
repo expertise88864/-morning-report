@@ -15443,8 +15443,17 @@ def load_exdiv_history() -> dict:
         return {"since": "", "days": [], "records": data}
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
         raise ExdivHistoryUnreadable(f"{EXDIV_HISTORY_FILE}: 格式不是預期的物件")
+    # 批#82 r7:同一類壞資料在除權息也危險 —— 缺 code 或 ex_date 非 ISO 的列
+    # 永遠對不上 `start < ex_date <= end`,於是那筆除權息被**漏掉**而覆蓋範圍
+    # 看起來完整,Top5 就用未調整價格結算(正是本檔存在的理由)。
+    # `days` 若是字串更糟:逐字元拆開後被回寫,收集紀錄靜默消失。
+    from data_quality import validate_history_shape as _vhs
+    try:
+        _vhs(data, "records", "ex_date")
+    except ValueError as e:
+        raise ExdivHistoryUnreadable(f"{EXDIV_HISTORY_FILE}: {e}") from e
     return {"since": str(data.get("since") or ""),
-            "days": [str(x) for x in (data.get("days") or []) if x],
+            "days": [str(x) for x in (data.get("days") or [])],
             "records": data["records"]}
 
 
@@ -15661,19 +15670,23 @@ def load_corporate_actions() -> dict:
         raise CorpActUnreadable(f"公司行動史無法解析: {e}") from e
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
         raise CorpActUnreadable(f"公司行動史格式非預期: {type(data).__name__}")
-    # r6(Codex,P1):**壞紀錄不得被靜默濾掉。** 原本用
+    # r6/r7(Codex,P1→P2):**壞資料不得被靜默濾掉。** 原本用
     # `[r for r in records if isinstance(r, dict)]` 把非 dict 的列丟掉,
     # 而 `update_corporate_actions` 隨即把過濾後的結果**原子回寫** ——
     # 一次局部損毀就永久刪掉那些列,而且完全無聲。這正是本 repo 反覆出現的
     # 病灶(讀檔失敗被當成沒有資料,再被覆蓋)的第三種變形:
     # 前兩種是「整個檔讀不出來」與「格式不對」,這是「單列壞掉」。
-    bad = [i for i, r in enumerate(data["records"]) if not isinstance(r, dict)]
-    if bad:
+    # r7 補完:缺 code / 日期非 ISO / `days` 不是清單 也都算壞
+    # (見 `data_quality.validate_history_shape` 的說明)。
+    from data_quality import validate_history_shape as _vhs
+    try:
+        _vhs(data, "records", "halt_date",
+             optional_dates=("resume_date", "first_seen"))
+    except ValueError as e:
         raise CorpActUnreadable(
-            f"公司行動史第 {bad[:5]} 列不是物件(共 {len(bad)} 列);"
-            "拒絕載入以免回寫時把它們永久刪掉")
+            f"公司行動史{e};拒絕載入以免回寫時把資料永久刪掉") from e
     return {"since": str(data.get("since") or ""),
-            "days": [str(d) for d in (data.get("days") or []) if d],
+            "days": [str(d) for d in (data.get("days") or [])],
             "records": list(data["records"])}
 
 

@@ -21,7 +21,10 @@
 - **門檻盡量由歷史自動推出**,而不是在程式碼裡寫魔術數字。呼叫端可提供歷史統計,
   沒有歷史時才退回保守的硬門檻。
 """
+
 from __future__ import annotations
+
+import datetime as _dt
 
 WARN = "warn"
 ERROR = "error"
@@ -293,3 +296,47 @@ def capability_health(summary: dict, extra_inactive=()) -> dict:
         "inactive_capabilities": sorted(set(inactive)),
         "warnings": sorted(set(rest)),
     }
+
+
+def iso_date_ok(value) -> bool:
+    """字串是否為可解析的 ISO 日期。空字串不算(呼叫端自行決定可不可空)。"""
+    try:
+        _dt.date.fromisoformat(str(value))
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def validate_history_shape(data: dict, records_key: str, date_field: str,
+                            optional_dates=()) -> None:
+    """跨日累積型 state 的共同形狀檢查;不合格就讓呼叫端拋。
+
+    批#82 r7(Codex,P2):只擋「非 dict 的列」不夠 ——
+      - `{"code": "4169"}`(缺日期)會被組成 `("4169", "None")` 這種鍵,
+        變成永遠對不上任何窗口的廢列,而**覆蓋範圍看起來仍然完整**,
+        於是受影響的橫向照常結算。
+      - `days` 若是字串,`[str(d) for d in days]` 會**逐字元**拆開
+        (`"2026-07-01"` → `['2','0','2',…`),然後被原子回寫 → 靜默失去狀態。
+
+    回傳 None;有問題時拋 `ValueError`,由各自的 loader 包成自己的例外型別
+    (兩個 loader 的錯誤型別不同,呼叫端的處置也不同)。
+    """
+    if not isinstance(data.get("days"), (list, type(None))):
+        raise ValueError(
+            f"`days` 應是清單,實為 {type(data.get('days')).__name__} —— "
+            "字串會被逐字元拆開再回寫,等於靜默失去收集紀錄")
+    bad_days = [d for d in (data.get("days") or []) if not iso_date_ok(d)]
+    if bad_days:
+        raise ValueError(f"`days` 含非 ISO 日期:{bad_days[:5]}")
+    for i, r in enumerate(data.get(records_key) or []):
+        if not isinstance(r, dict):
+            raise ValueError(f"第 {i} 列不是物件({type(r).__name__})")
+        if not str(r.get("code") or "").strip():
+            raise ValueError(f"第 {i} 列缺 code")
+        if not iso_date_ok(r.get(date_field)):
+            raise ValueError(
+                f"第 {i} 列的 {date_field} 非 ISO 日期:{r.get(date_field)!r}")
+        for f in optional_dates:
+            v = r.get(f)
+            if v not in (None, "") and not iso_date_ok(v):
+                raise ValueError(f"第 {i} 列的 {f} 非 ISO 日期:{v!r}")

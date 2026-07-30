@@ -14952,9 +14952,33 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                 _missing = [code for code, ep in (e.get("entry") or {}).items()
                             if not (_px(rec_h, code, "close")
                                     and isinstance(ep, (int, float)) and ep)]
+                # r2(Codex,P2):**公司行動要排在價格完整性之前判定。**
+                # 下市股在出場日本來就沒有收盤價,結算日仍停牌也一樣 ——
+                # 排在後面的話,`stock_exit_prices_incomplete` 會先寫進去並
+                # continue,於是本批新增的精確理由**永遠不會出現**,
+                # 而「用歷史表把下市從模糊理由精確分類」正是本批的宣稱。
+                # 價格缺失退回當「沒有已知公司行動可解釋」時的理由。
+                _codes = list((e.get("entry") or {}).keys())
+                _halt = ([] if _corpact.get("unreadable")
+                         else halts_in_window(_corpact, _codes, tgt, exit_d))
+                _gone = sorted({c: d for c, d in _delisted.items()
+                                if c in _codes and tgt < d <= exit_d}.items())
                 _bad = None
                 if not held:
                     _bad = ("no_holdings", {})
+                elif _corpact.get("unreadable"):
+                    # 歷史不可讀 ≠ 沒有停牌(r1)。未知必須 fail-closed。
+                    _bad = ("corpact_history_unreadable", {})
+                elif _halt:
+                    _bad = ("trading_halt",
+                            {"events": [{"code": x.get("code"),
+                                         "halt_date": x.get("halt_date"),
+                                         "resume_date": x.get("resume_date")}
+                                        for x in _halt[:8]]})
+                elif _gone:
+                    _bad = ("delisted",
+                            {"events": [{"code": c, "delisting_date": d}
+                                        for c, d in _gone[:8]]})
                 elif len(rets) != held:
                     _bad = ("stock_exit_prices_incomplete",
                             {"n_priced": len(rets), "n_held": held,
@@ -15002,41 +15026,6 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                         "events": [{"code": x.get("code"),
                                     "ex_date": x.get("ex_date"),
                                     "kind": x.get("kind")} for x in _ex[:8]]}
-                    continue
-                # 批#82(第七輪 P1-7):**除權息以外的公司行動。**
-                # 減資/合併/股票分割最危險 —— 它們不像終止上市會讓收盤價
-                # 查不到而落入 `stock_exit_prices_incomplete`,而是照常有一個
-                # **基準不同**的價格,於是這裡會算出看起來正常、實際錯誤的
-                # 超額報酬。共同表現是「暫停交易數日後以新參考價復牌」,
-                # 所以用停牌當統一訊號,不逐項列舉行動類型。
-                _codes = list((e.get("entry") or {}).keys())
-                # r1(Codex,P1):**歷史不可讀 ≠ 沒有停牌。**
-                # `halts_in_window` 對空歷史回 [],於是「讀不出來」會被讀成
-                # 「這段期間乾淨」→ 照常給出一個看起來正常的超額報酬,
-                # 正是本批要防的那個失敗。未知必須作廢。
-                if _corpact.get("unreadable"):
-                    e["res"][hk] = {"void": True,
-                                    "reason": "corpact_history_unreadable",
-                                    "session": exit_d}
-                    continue
-                _halt = halts_in_window(_corpact, _codes, tgt, exit_d)
-                if _halt:
-                    e["res"][hk] = {
-                        "void": True, "reason": "trading_halt",
-                        "session": exit_d,
-                        "events": [{"code": x.get("code"),
-                                    "halt_date": x.get("halt_date"),
-                                    "resume_date": x.get("resume_date")}
-                                   for x in _halt[:8]]}
-                    continue
-                _gone = sorted({c: d for c, d in _delisted.items()
-                                if c in _codes and tgt < d <= exit_d}.items())
-                if _gone:
-                    e["res"][hk] = {
-                        "void": True, "reason": "delisted",
-                        "session": exit_d,
-                        "events": [{"code": c, "delisting_date": d}
-                                   for c, d in _gone[:8]]}
                     continue
                 excess = (statistics.mean(rets) - (th / t0 - 1)) * 100
                 e["res"][hk] = {"excess_pct": round(excess, 2),
@@ -15676,9 +15665,20 @@ def update_corporate_actions(records: list, now_tpe: dt.datetime) -> dict:
                           key=lambda r: (str(r.get("halt_date")),
                                          str(r.get("code")))),
     }
-    CORPORATE_ACTION_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write_text(CORPORATE_ACTION_FILE,
-                       json.dumps(out, ensure_ascii=False, indent=1))
+    # r2(Codex,P1):**持久化與合併要分開。** 寫檔失敗(權限/磁碟/replace)
+    # 原本會讓整個函式拋,呼叫端的廣義 except 於是回頭讀**舊**歷史,
+    # 把本次已經成功抓到的停牌整批丟掉 —— 若那筆正好落在結算窗口,
+    # Top5 就會寫進一個錯的超額報酬(首次建檔時回退甚至是全空歷史)。
+    # 合併結果本身是有效的,今天的結算該用它;寫不進去是**明天**的問題,
+    # 記成降級讓它看得見即可。
+    try:
+        CORPORATE_ACTION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(CORPORATE_ACTION_FILE,
+                           json.dumps(out, ensure_ascii=False, indent=1))
+    except Exception as e:
+        print(f"[corpact] 歷史寫入失敗(本次結算仍用已合併資料): {e}",
+              file=sys.stderr)
+        _DEGRADED_STEPS.append("corpact:persist_failed")
     return out
 
 

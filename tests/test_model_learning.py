@@ -4236,3 +4236,95 @@ def test_corporate_actions_for_settlement_distinguishes_absent_from_unreadable(
     finally:
         mr._DEGRADED_STEPS[:] = saved
         mr._RUN_MANIFEST.pop("corporate_actions", None)
+
+
+def test_delisted_reason_wins_over_the_vague_missing_price_reason():
+    """r2(Codex,P2):**下市股在出場日本來就沒有收盤價。**
+
+    公司行動判定原本排在價格完整性之後,於是 `stock_exit_prices_incomplete`
+    會先寫進去並 continue —— 本批新增的精確理由**永遠不會出現**,而
+    「用歷史表把下市從模糊理由精確分類」正是本批的宣稱。
+    既有測試給五檔都補了合成出場價,剛好避開真實的缺價形狀。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes, drop_at_exit=("2202",))
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              delisted={"2202": "2026-07-08"})
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh, [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["reason"] == "delisted", \
+        f"缺價的下市股應報精確理由,實得 {res5.get('reason')}"
+    assert res5["events"] == [{"code": "2202", "delisting_date": "2026-07-08"}]
+
+
+def test_missing_price_stays_the_reason_when_no_corporate_action_explains_it():
+    """**反向:沒有已知公司行動時,價格缺失仍是理由。**
+
+    沒有這條的話,「一律報公司行動」也會讓上一條通過,而那會把真正的
+    資料缺口藏起來。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes, drop_at_exit=("2202",))
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens, exdiv_history=_exdiv_cover([]),
+              delisted={"9999": "2026-07-08"})       # 不是持股
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh, [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["reason"] == "stock_exit_prices_incomplete"
+    assert res5["missing_codes"] == ["2202"]
+
+
+def test_halt_persist_failure_does_not_discard_what_was_fetched(
+        tmp_path, monkeypatch):
+    """r2(Codex,P1):**寫檔失敗不得丟掉本次已抓到的停牌。**
+
+    原本寫檔例外會讓整個函式拋,呼叫端的廣義 except 回頭讀**舊**歷史 ——
+    本次抓到的停牌整批消失,若那筆正好落在結算窗口,Top5 會寫進一個錯的
+    超額報酬(首次建檔時回退甚至是全空歷史)。
+    合併結果本身有效,今天的結算該用它;寫不進去是**明天**的問題。
+    """
+    import datetime as dt
+    monkeypatch.setattr(mr, "CORPORATE_ACTION_FILE",
+                        tmp_path / "corporate_actions.json")
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [{"Code": "4169", "TradingHaltDate": "1150723",
+                     "TradingResumptionDate": "1150724"}]
+
+    def _no_write(*_a, **_k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _Resp())
+    monkeypatch.setattr(mr, "_atomic_write_text", _no_write)
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        out = mr.corporate_actions_for_settlement(
+            dt.datetime(2026, 7, 30, 6, 45, tzinfo=mr.TPE))
+        assert not out.get("unreadable")
+        assert [r["code"] for r in out["records"]] == ["4169"], \
+            "寫檔失敗時本次抓到的停牌仍必須交給結算"
+        assert "corpact:persist_failed" in mr._DEGRADED_STEPS
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("corporate_actions", None)

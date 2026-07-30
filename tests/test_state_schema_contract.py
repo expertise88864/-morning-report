@@ -200,3 +200,79 @@ def test_run_manifest_carries_the_observability_fields():
         if m.get(optional) is not None:
             assert isinstance(m[optional], dict), \
                 f"manifest 的 {optional} 型別錯:{type(m[optional]).__name__}"
+
+
+# ------------------------------------------------- story ledger:轉載去重
+def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
+    """**同一批建立的線索裡,不得有「該合併卻分開」的轉載重複。**
+
+    批#80。批#67 的 `_match_open_story` 上線後,我用真實 state 逐日量了
+    「同實體、同日、主旨相似度超過門檻卻仍是兩條線索」的配對數:
+
+    ```
+    first_seen  未合併/總配對
+    2026-07-26     18/279     批#67 上線前
+    2026-07-27     13/408     批#67 上線前
+    2026-07-28      5/354     批#67 上線前
+    2026-07-29      0/355  ←  批#67 上線後的第一次執行
+    ```
+
+    典型的漏網樣本(全部相似度 1.00,只差媒體名):
+      「肯定留財引資 卓揆視察中信銀行亞灣分行」工商時報 / 中時新聞網 / 翻爆
+      「股息來了!國泰金今發513億 富邦金周五入帳」非凡新聞台 / Yahoo股市
+      「超微推新品 台鏈動起來」經濟日報 / UDN
+
+    功能有效,但**沒有任何東西會在它退化時通知我們** —— 而這一輪已經量到
+    太多次「功能寫好、測試綠、生產不產出」。所以把這個量測變成常設檢查。
+
+    刻意只驗**最新一批**(`first_seen` 最大的那天):
+      - 舊資料是批#67 之前留下的,永遠修不好 → 驗它就是製造「沒有任何 commit
+        能修好的紅」(批#77 已經踩過一次,那種紅會訓練人忽略 CI)
+      - 而最新一批每天都會換,退化的隔天就會紅
+
+    判準直接呼叫 `_same_story_subject`(含共同 bigram 下限與拉丁詞互斥守衛),
+    不自己重寫一套相似度 —— 重寫的那套遲早會跟本尊漂移。
+    """
+    rows = _load("story_ledger.json")
+    if not rows:
+        pytest.skip("線索帳本是空的")
+
+    newest = max(str(r.get("first_seen") or "")[:10] for r in rows)
+    if not newest:
+        pytest.skip("線索帳本沒有 first_seen 欄位(舊格式)")
+    cohort = [r for r in rows if str(r.get("first_seen") or "")[:10] == newest]
+
+    def _entity(r):
+        return str(r.get("key") or "").split("|")[0]
+
+    def _subject(r):
+        return sl._story_subject(str(r.get("headline") or ""),
+                                 _entity(r)[2:], str(r.get("entity_name") or ""))
+
+    by_entity = {}
+    for r in cohort:
+        by_entity.setdefault(_entity(r), []).append(r)
+
+    dupes = []
+    for group in by_entity.values():
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                # 期別不同就是不同集,本來就該分開(月營收 6 月 vs 7 月)
+                pa = sl._episodic_period_of_story(a)
+                pb = sl._episodic_period_of_story(b)
+                if pa and pb and pa[0] == pb[0] and pa[1] != pb[1]:
+                    continue
+                sa, sb = _subject(a), _subject(b)
+                if sa and sb and sl._same_story_subject(
+                        sa, sb, sl.STORY_MATCH_THRESHOLD):
+                    dupes.append((a.get("key"), b.get("key"),
+                                  str(a.get("headline"))[:40],
+                                  str(b.get("headline"))[:40]))
+
+    print(f"[state-contract] {newest} 新建 {len(cohort)} 條線索,"
+          f"未合併的轉載重複 {len(dupes)} 對")
+    assert not dupes, (
+        f"{newest} 這批有 {len(dupes)} 對線索應該合併卻分開了 —— "
+        "轉載去重(_match_open_story)可能退化:\n  "
+        + "\n  ".join(f"{a} ↔ {b}\n    {ha}\n    {hb}"
+                      for a, b, ha, hb in dupes[:5]))

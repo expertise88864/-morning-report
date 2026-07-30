@@ -48,7 +48,13 @@ import pytest
 #: ```
 #: 六個函式全部 BLOCK,與除權息那組同因(碰 `_http_get`/`_RUN_MANIFEST`/state 常數,
 #: 而後者被測試 monkeypatch)。依工具規約「判 BLOCK 的絕不搬」,這批確實搬不走。
-MAIN_MODULE_LINE_CEILING = 22_400
+#:
+#: 2026-07-31 批#85 調高至 22,600(現況 22,438)。**這次工具幫不上忙:**
+#: 新增的 `_prompt_for` / `_call_or_halve` 是 `call_llm_event_extractor` 裡的
+#: **巢狀閉包**,捕捉 `prompt` / `compact_items` / `_call` / `_stat` 這些區域狀態,
+#: `refactor_audit.py` 只認頂層函式(回報「找不到頂層函式」)。
+#: 把它們提到頂層就得把那四個東西全部改成參數,等於為了搬而搬。
+MAIN_MODULE_LINE_CEILING = 22_600
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

@@ -4632,3 +4632,77 @@ def test_exdiv_history_rejects_the_same_corruption(tmp_path, monkeypatch):
         '"records":[{"code":"2330","ex_date":"2026-08-20","kind":"息",'
         '"cash":5.0,"first_seen":"2026-07-30"}]}', encoding="utf-8")
     assert len(mr.load_exdiv_history()["records"]) == 1
+
+
+def test_extractor_truncation_is_a_distinct_failure(monkeypatch):
+    """**額度用完 ≠ 呼叫失敗。** 批#85。
+
+    2026-07-31 的生產 manifest 證明抽取器 0 產出的根因是:
+    `finish_reason=length`、`completion_tokens=4000`(正好用滿)、
+    而且**全部進了 `reasoning_content`** —— 模型把整個額度花在推理上,
+    `content` 是空的。這種要**減量重試**;網路/認證失敗重試同樣的東西沒意義,
+    所以兩者必須是不同的例外型別。
+    """
+    class _Resp:
+        status_code = 200
+
+        def __init__(self, finish):
+            self._finish = finish
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"finish_reason": self._finish,
+                                 "message": {"content": "",
+                                             "reasoning_content": "想了很久"}}],
+                    "usage": {"completion_tokens": 4000}}
+
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _Resp("length"))
+    with pytest.raises(mr.ExtractorOutputTruncated) as e:
+        mr._call_deepseek_extractor("x")
+    assert "reasoning_content=True" in str(e.value), "診斷要留下 reasoning 的證據"
+
+    # 其他原因的空 content 仍是一般失敗(不該觸發減量重試)
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _Resp("stop"))
+    with pytest.raises(RuntimeError) as e2:
+        mr._call_deepseek_extractor("x")
+    assert not isinstance(e2.value, mr.ExtractorOutputTruncated)
+
+
+def test_extractor_halves_the_input_when_the_budget_runs_out(monkeypatch):
+    """額度用完時要**減半重試**,而且真的送比較少的新聞進去。
+
+    調高 `max_tokens` 是針對已量到的原因,但那個係數是估的;減量是與係數
+    無關的結構性退路。這條驗第二次呼叫的 prompt 裡確實只剩一半的來源項 ——
+    不是只驗「有重試」(那會被「重試但送一樣多」蒙混過去)。
+    """
+    news = [{"title": f"台積電消息 {i}", "summary": "內容",
+             "source": "測試", "link": f"https://example.com/{i}",
+             "published": "2026-07-31T08:00:00+08:00"} for i in range(20)]
+    seen = []
+
+    def _fake(prompt):
+        seen.append(prompt)
+        if len(seen) == 1:
+            raise mr.ExtractorOutputTruncated("額度用完(測試)")
+        return "[]"
+
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _fake)
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    try:
+        mr.call_llm_event_extractor(news, [])
+        assert len(seen) == 2, f"應該重試一次,實際呼叫 {len(seen)} 次"
+        first_items = seen[0].count('"source_item_id"')
+        retry_items = seen[1].count('"source_item_id"')
+        assert first_items > 0, "第一次就沒有來源項 —— 測試前提壞了"
+        assert retry_items == max(1, first_items // 2), \
+            f"重試沒有減半:{first_items} → {retry_items}"
+        stat = mr._RUN_MANIFEST.get("llm_extractor") or {}
+        assert stat.get("retried") is True and stat.get("retry_items") == retry_items
+    finally:
+        mr._RUN_MANIFEST.pop("llm_extractor", None)

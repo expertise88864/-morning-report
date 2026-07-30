@@ -12762,8 +12762,27 @@ def _call_llm_text(prompt: str) -> str:
     return _call_gemini(prompt)
 
 
+class ExtractorOutputTruncated(RuntimeError):
+    """抽取器把 token 額度用完卻沒吐出內容(`finish_reason=length`)。
+
+    批#85:與「呼叫失敗」分開,因為處置完全不同 —— 這種要**減量重試**,
+    網路/認證失敗重試也沒用。
+    """
+
+
 def _call_deepseek_extractor(prompt: str) -> str:
-    """Use one short, non-reasoning call so extraction stays bounded in Actions."""
+    """單次呼叫抽取新聞事件。
+
+    批#85:原本這行 docstring 寫「Use one short, **non-reasoning** call」——
+    2026-07-31 的生產 manifest 證明那是錯的:
+    ```
+    finish_reason=length、completion_tokens=4000、有 reasoning_content=True
+    ```
+    模型把**整整 4000 個 completion token 全部花在 reasoning 上**,
+    一個字都沒進 `content`。也就是說 `max_tokens` 是 reasoning + 答案的**總額**,
+    而批#71 那次 1200 → 4000 的計算只算了答案(30 物件 × 90 ≈ 2700),
+    完全沒把 reasoning 算進去 —— 因為當時相信了這行 docstring。
+    """
     if not DEEPSEEK_API_KEY:
         raise RuntimeError("缺少 DEEPSEEK_API_KEY 環境變數")
     response = requests.post(
@@ -12772,14 +12791,16 @@ def _call_deepseek_extractor(prompt: str) -> str:
             "model": DEEPSEEK_EXTRACTOR_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
-            # 批#71:1200 → 4000。**這是算出來的,不是試的**:prompt 要求最多
-            # 30 個物件,每個含 entity/event_type/direction/confidence/lifecycle/
-            # title/published 等欄位,單一物件光 JSON 就約 80-100 token
-            # → 30 × 90 ≈ 2700,加上陣列結構與中文標題(每字約 1 token 起)
-            # 1200 連一半都放不下。批#68 的診斷實測結果正是
-            # `parsed: 0` + 「回應缺少 content」,而 HTTP 沒有錯
-            # ——也就是模型有回、但內容被 token 上限吃掉。
-            "max_tokens": 4000,
+            # 批#71:1200 → 4000(答案本身約 30 × 90 ≈ 2700)。
+            # 批#85:4000 → 16000。**前一次的算術漏了 reasoning。**
+            # 2026-07-31 生產實測:`completion_tokens=4000`(正好用滿)、
+            # `finish_reason=length`、而且**全部進了 `reasoning_content`**,
+            # `content` 是空的。所以這個上限是 reasoning + 答案的總額,
+            # 光答案就要 ~2700,推理又吃掉 4000 以上 → 至少要留出數倍餘裕。
+            # 16000 不是試出來的,是「已知 reasoning ≥ 4000、答案 ~2700」再取
+            # 約 4 倍安全係數;真正的收斂值等下一次執行的 manifest 告訴我們
+            # (`completion_tokens` 會顯示實際用了多少)。
+            "max_tokens": 16000,
             "stream": False,
         },
         headers={
@@ -12801,11 +12822,15 @@ def _call_deepseek_extractor(prompt: str) -> str:
         finish = str((choices[0].get("finish_reason") if choices else "") or "?")
         usage = payload.get("usage") or {}
         has_reasoning = bool(message.get("reasoning_content"))
-        raise RuntimeError(
-            f"DeepSeek extractor 回應缺少 content"
-            f"(finish_reason={finish}、completion_tokens="
-            f"{usage.get('completion_tokens')}、有 reasoning_content="
-            f"{has_reasoning}、choices={len(choices)})")
+        detail = (f"(finish_reason={finish}、completion_tokens="
+                  f"{usage.get('completion_tokens')}、有 reasoning_content="
+                  f"{has_reasoning}、choices={len(choices)})")
+        # 批#85:**額度用完**與**呼叫失敗**要分開 —— 前者減量重試有救,
+        # 後者(網路/認證/服務)重試同樣的東西沒有意義。
+        if str(finish) == "length":
+            raise ExtractorOutputTruncated(
+                f"DeepSeek extractor 額度用完仍未輸出內容{detail}")
+        raise RuntimeError(f"DeepSeek extractor 回應缺少 content{detail}")
     return content
 
 
@@ -12925,8 +12950,32 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     _stat.update({"called": True, "items": len(compact_items),
                   "parsed": 0, "valid": 0, "dropped": 0, "retried": False,
                   "outcome": "unknown"})
+    def _prompt_for(items: list) -> str:
+        """同一份 prompt、換掉 UNTRUSTED_SOURCE_DATA 裡的清單(只出現一次)。"""
+        return prompt.replace(
+            json.dumps(compact_items, ensure_ascii=False, separators=(",", ":")),
+            json.dumps(items, ensure_ascii=False, separators=(",", ":")), 1)
+
+    def _call_or_halve(p: str) -> str:
+        """額度用完 → **把輸入減半**再試一次。
+
+        批#85:調高 `max_tokens` 是針對已量到的原因(reasoning 吃光額度),
+        但那個係數是估的。減量是與係數無關的結構性退路:不論每則新聞的推理
+        成本是多少,少一半就少一半。只重試一次(成本上限 +1),仍失敗就讓
+        例外往上走,由既有的 except 記進 manifest。
+        """
+        try:
+            return _call(p)
+        except ExtractorOutputTruncated as e:
+            half = max(1, len(compact_items) // 2)
+            print(f"[llm-extractor] {e};改用 {half}/{len(compact_items)} 則重試",
+                  file=sys.stderr)
+            _stat["retried"] = True
+            _stat["retry_items"] = half
+            return _call(_prompt_for(compact_items[:half]))
+
     try:
-        parsed = _parse_llm_event_json(_call(prompt))
+        parsed = _parse_llm_event_json(_call_or_halve(prompt))
         _stat["parsed"] = len(parsed or [])
         valid, dropped = _validate_llm_events(parsed)
         _stat["valid"], _stat["dropped"] = len(valid), dropped

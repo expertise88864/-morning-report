@@ -15789,6 +15789,17 @@ def fetch_delisted_codes() -> dict:
     缺它不會給出錯的數字(下市股的收盤價本來就查不到,會落入
     `stock_exit_prices_incomplete`),所以這裡不 fail-closed。
     """
+    def _degrade(why: str) -> dict:
+        # r5(Codex,P2):**每一種降級都要留持久痕跡。** 另外三條抓取路徑
+        # (停牌 fetch/update/persist)都記了 `_DEGRADED_STEPS`,唯獨這條
+        # 靜默回 `{}` —— manifest 上看起來一切正常,而 Top5 已經失去
+        # `delisted` 這個精確分類,退回模糊的 `stock_exit_prices_incomplete`。
+        # 仍然回 `{}` 而不是拋:下市判定只是**額外**理由,缺它不會給出錯的
+        # 數字(下市股本來就查不到收盤價),晨報可用性優先。
+        print(f"[corpact] ⚠ 終止上市表{why};本次不判定下市", file=sys.stderr)
+        _DEGRADED_STEPS.append("corpact:delisted_fetch_failed")
+        return {}
+
     try:
         r = _http_get(
             "https://openapi.twse.com.tw/v1/company/suspendListingCsvAndHtml",
@@ -15797,17 +15808,20 @@ def fetch_delisted_codes() -> dict:
         r.raise_for_status()
         rows = r.json()
     except Exception as e:
-        print(f"[corpact] ⚠ 終止上市表抓取失敗({e});本次不判定下市",
-              file=sys.stderr)
-        return {}
+        return _degrade(f"抓取失敗({e})")
+    if not isinstance(rows, list):
+        return _degrade(f"格式非預期({type(rows).__name__})")
     out: dict = {}
-    for row in rows if isinstance(rows, list) else []:
+    for row in rows:
         if not isinstance(row, dict):
             continue
         code = str(row.get("Code") or "").strip()
         iso = _roc_to_iso(str(row.get("DelistingDate") or "").replace("/", ""))
         if code and iso:
             out[code] = iso
+    if rows and not out:
+        # 同停牌/除權息:非空來源卻一筆都解析不出來 = 改版,不是「沒有下市公司」
+        return _degrade(f"有 {len(rows)} 列卻無一可解析(欄位或日期格式可能改版)")
     return out
 
 

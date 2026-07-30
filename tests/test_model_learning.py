@@ -4149,8 +4149,40 @@ def test_delisted_fetch_parses_the_slash_roc_date(monkeypatch):
     def _boom(*_a, **_k):
         raise RuntimeError("down")
 
-    monkeypatch.setattr(mr, "_http_get", _boom)
-    assert mr.fetch_delisted_codes() == {}, "下市表失敗要降級為空,不得中斷晨報"
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        monkeypatch.setattr(mr, "_http_get", _boom)
+        assert mr.fetch_delisted_codes() == {}, "下市表失敗要降級為空,不得中斷晨報"
+        # r5(Codex,P2):**降級要留持久痕跡。** 另外三條抓取路徑都記了,
+        # 唯獨這條靜默回 {} → manifest 看起來一切正常,而 Top5 已失去
+        # `delisted` 這個精確分類。
+        assert "corpact:delisted_fetch_failed" in mr._DEGRADED_STEPS
+
+        class _NotList:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"stat": "OK"}
+
+        class _Unparseable:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return [{"code": "6806", "delistDate": "115/06/23"}]  # 欄位改名
+
+        for resp in (_NotList(), _Unparseable()):
+            mr._DEGRADED_STEPS[:] = saved
+            monkeypatch.setattr(mr, "_http_get", lambda *a, **k: resp)
+            assert mr.fetch_delisted_codes() == {}
+            assert "corpact:delisted_fetch_failed" in mr._DEGRADED_STEPS,                 f"{type(resp).__name__} 沒有留下降級痕跡"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
 
 
 def test_top5_horizon_is_voided_when_corpact_history_is_unreadable():

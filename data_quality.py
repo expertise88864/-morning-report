@@ -180,3 +180,44 @@ def check_fill_rate(source: str, rows, *, field: str, min_ratio: float,
                 f"`{field}` 最近 {len(rows)} 筆只填了 {filled} 筆"
                 f"({ratio:.0%},低於 {min_ratio:.0%})"
                 "——功能可能在生產環境從未真正產出"))
+
+
+def capability_health(summary: dict, extra_inactive=()) -> dict:
+    """把品質檢查結果整理成**能力健康狀態**,分成三層。
+
+    批#73(第七輪 P1-8)。2026-07-30 的 manifest 同時出現這兩件事:
+    ```
+    degraded_steps: []
+    taifex_top10_net 填充率 10%、txo_pc_oi_ratio 填充率 3%
+    ```
+    也就是說品質閘**成功抓到問題**,而頂層健康語意仍顯示「沒有降級」——
+    讀者(和我)看到 `degraded_steps: []` 會以為一切正常,實際上有兩個功能
+    幾乎沒有產出。`degraded_labels()` 只收 error 級是刻意的(warn 不該擋信),
+    但「不擋信」不等於「可以不呈現」。
+
+    三層的語意:
+      - `fatal`:error 級失敗。會進 `_DEGRADED_STEPS`,信裡明說。
+      - `inactive`:填充率低於門檻的**能力**。它不是「今天壞了」,而是
+        「這個功能實質上沒在運作」——最該被獨立列出來的一類,因為既有的
+        error/warn 兩級都表達不出「長期空轉」。
+      - `warnings`:其餘 warn 級。
+    `extra_inactive` 供呼叫端補上非品質檢查來源的失效能力(例如 LLM 抽取器
+    的 outcome 是 error)。
+    """
+    errors = list((summary or {}).get("errors") or [])
+    warnings = list((summary or {}).get("warnings") or [])
+    inactive, rest = [], []
+    for w in warnings:
+        check = str(w.get("check") or "")
+        if check.startswith("fill_rate:"):
+            inactive.append(check.split(":", 1)[1])
+        else:
+            rest.append(f"{w.get('source')}:{check}")
+    for name in extra_inactive or ():
+        if name and name not in inactive:
+            inactive.append(str(name))
+    return {
+        "fatal": [f"{e.get('source')}:{e.get('check')}" for e in errors],
+        "inactive_capabilities": sorted(set(inactive)),
+        "warnings": sorted(set(rest)),
+    }

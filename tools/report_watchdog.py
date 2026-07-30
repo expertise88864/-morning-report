@@ -51,6 +51,16 @@ def manifest_age_hours(now: dt.datetime, path: Path = MANIFEST):
     return None, f"run_manifest.json 的 date 無法解析: {stamp!r}"
 
 
+def delivery_state(path: Path = MANIFEST) -> dict:
+    """manifest 裡的寄送結果。讀不到或舊格式沒有這個欄位時回 {}。"""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+    d = raw.get("delivery")
+    return d if isinstance(d, dict) else {}
+
+
 def main() -> int:
     now = dt.datetime.now(TPE)
     age, info = manifest_age_hours(now)
@@ -62,7 +72,30 @@ def main() -> int:
               f"({age:.1f} 小時前,上限 {MAX_AGE_HOURS} 小時)"
               "——今天的晨報可能整個沒有跑起來", file=sys.stderr)
         return 1
-    print(f"[watchdog] 正常:最後一次執行 {info}({age:.1f} 小時前)")
+    # 批#73(第七輪 P2-2):**「有跑過」不等於「有寄到」。**
+    # 只看時間戳的話,這些情境會被誤判成正常:
+    #   - 05:30 手動跑過、06:00 正式排程在 pending 被擠掉 → 07:30 時 age < 3h
+    #   - manifest 更新了,但在寄信那一步失敗
+    # 而看門狗存在的理由正是後者。
+    delivery = delivery_state()
+    if not delivery:
+        # 舊格式 manifest 沒有這個欄位。**不當成異常**——那會在部署當天
+        # 產生一次確定的假警報,而假警報會訓練人忽略告警。
+        print(f"[watchdog] 正常(舊格式 manifest,無寄送欄位):{info}"
+              f"({age:.1f} 小時前)")
+        return 0
+    if delivery.get("skipped_reason"):
+        # 刻意不寄(週日無新內容)。批#69 r2 才剛修掉同型的假警報。
+        print(f"[watchdog] 正常:{info} 刻意未寄信"
+              f"({delivery.get('skipped_reason')})")
+        return 0
+    if not delivery.get("success"):
+        print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
+              f"(attempted={delivery.get('attempted')}、"
+              f"run_kind={delivery.get('run_kind')})", file=sys.stderr)
+        return 1
+    print(f"[watchdog] 正常:{info} 已寄出({age:.1f} 小時前、"
+          f"run_kind={delivery.get('run_kind')})")
     return 0
 
 

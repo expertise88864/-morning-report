@@ -2986,8 +2986,12 @@ def test_top5_settlement_requires_every_holding_to_be_priced():
     assert t5["status"] == "entered"
     res5 = t5["res"]["5"]
     assert res5["void"] is True
-    assert res5["reason"] == "exit_prices_incomplete"
+    # 批#73(第七輪 P1-6):個股與 benchmark 的缺失分開報 —— 原本三個條件擠在
+    # 同一個 if 裡統一寫 `exit_prices_incomplete`,生產帳本 2026-07-22 那筆
+    # 因此是「n_priced=5, n_held=5」卻說個股出場價不完整,排查方向全錯。
+    assert res5["reason"] == "stock_exit_prices_incomplete"
     assert res5["n_priced"] == 4 and res5["n_held"] == 5
+    assert res5["missing_codes"] == ["5505"]
     assert not out["stats"].get("5"), "void 的橫向不得進統計"
 
 
@@ -3377,3 +3381,116 @@ def test_older_schema_repeats_do_not_open_the_learned_impact_gate():
         })
     assert mr.build_event_study(
         history_cur, sessions, horizon=1)[("orders", 1)]["unique_events_v2"] == 5
+
+
+def test_top5_void_reasons_distinguish_stock_from_benchmark():
+    """第七輪 P1-6:生產帳本 2026-07-22 那筆是
+    `{"reason": "exit_prices_incomplete", "n_priced": 5, "n_held": 5}` ——
+    五檔全部有價卻說個股出場價不完整,語意自相矛盾,排查方向會被帶到
+    完全錯的地方(真正缺的是大盤基準)。三個條件原本擠在同一個 `if` 裡。
+    """
+    import datetime as dt
+    import json as _json
+    codes = ["1101", "2202", "3303", "4404", "5505"]
+    dates, mh, topens = _top5_frame(codes)
+    top5 = [{"code": c, "close": 100.0} for c in codes]
+    kw = dict(sessions=dates, taiex_opens=topens,
+              exdiv_history=_exdiv_cover())
+    mr.update_top5_ledger(mh[:3], top5,
+                          dt.datetime(2026, 7, 4, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-04", **kw)
+    mr.update_top5_ledger(mh[:4], [],
+                          dt.datetime(2026, 7, 5, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-05", **kw)
+    # 個股全員有價,但出場日的大盤收盤缺 → 必須指向 benchmark
+    mh_nobench = [dict(r) for r in mh]
+    for r in mh_nobench:
+        if r["session_date"] == "2026-07-09":
+            r.pop("taiex_close", None)
+    out = mr.update_top5_ledger(mh_nobench, [],
+                               dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                               "2026-07-11", **kw)
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    res5 = next(e for e in stored if e.get("type") == "top5")["res"]["5"]
+    assert res5["reason"] == "benchmark_exit_missing", res5
+    assert res5["benchmark_session"] == "2026-07-09"
+    assert not out["stats"].get("5")
+
+
+def test_legacy_void_rows_are_labelled_and_versioned():
+    """第七輪 P2-3:舊 void 列只有 `{"void": true}`(生產帳本 2026-07-20 那筆),
+    渲染端與統計端只能猜格式 —— 而「猜」在這個 repo 已經出過幾次事。"""
+    import datetime as dt
+    import json as _json
+    legacy = {"type": "top5", "created": "2026-07-04",
+              "target_session": "2026-07-04", "base_session": "2026-07-03",
+              "codes": ["1101"], "entry": {"1101": 100.0},
+              "taiex_entry": 10000.0, "status": "entered",
+              "res": {"5": {"void": True}}}
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps([legacy]), encoding="utf-8")
+    dates = [f"2026-07-{d:02d}" for d in range(1, 12)]
+    mr.update_top5_ledger([], [], dt.datetime(2026, 7, 11, 6, 0, tzinfo=mr.TPE),
+                          "2026-07-11", sessions=dates,
+                          exdiv_history=_exdiv_cover())
+    stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
+    row = next(e for e in stored if e.get("type") == "top5")
+    assert row["res"]["5"]["reason"] == "legacy_unclassified_void"
+    assert row["ledger_schema_version"] == mr.TOP5_LEDGER_SCHEMA_VERSION
+
+
+def test_watchdog_requires_successful_delivery_not_just_freshness(tmp_path):
+    """第七輪 P2-2:「有跑過」不等於「有寄到」。只看時間戳的話這些會被誤判正常:
+      - 05:30 手動跑過、06:00 正式排程在 pending 被擠掉 → 07:30 時 age < 3h
+      - manifest 更新了,但在寄信那一步失敗
+    而看門狗存在的理由正是後者。
+    """
+    import datetime as dt
+    import json as _json
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(mr.__file__).parent / "tools"))
+    import report_watchdog as rw
+
+    p = tmp_path / "run_manifest.json"
+
+    def write(delivery=None):
+        body = {"date": "2026-07-30 06:48"}
+        if delivery is not None:
+            body["delivery"] = delivery
+        p.write_text(_json.dumps(body), encoding="utf-8")
+
+    # 有執行、但沒有成功寄出 → 必須是異常
+    write({"attempted": True, "success": False, "run_kind": "schedule"})
+    assert rw.delivery_state(p) == {"attempted": True, "success": False,
+                                    "run_kind": "schedule"}
+    # 刻意不寄(週日無新內容)→ 正常,不得誤報(批#69 r2 修過同型假警報)
+    write({"attempted": False, "success": False,
+           "skipped_reason": "weekend_no_new_content"})
+    assert rw.delivery_state(p)["skipped_reason"] == "weekend_no_new_content"
+    # 成功寄出 → 正常
+    write({"attempted": True, "success": True, "run_kind": "schedule"})
+    assert rw.delivery_state(p)["success"] is True
+    # **舊格式 manifest 沒有這個欄位時不得當成異常** —— 那會在部署當天產生
+    # 一次確定的假警報,而假警報會訓練人忽略告警。
+    write(None)
+    assert rw.delivery_state(p) == {}
+
+
+def test_delivery_outcome_is_written_before_the_state_push():
+    """接線檢查:manifest 刻意寫在寄信之前(P1-4),所以寄送結果只能**補寫**;
+    而補寫必須早於 `persist_delivered_report_state`(那裡才 push),
+    否則帶不回 repo —— 看門狗讀的是 repo 裡的檔案。"""
+    import ast
+    import pathlib
+    tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "deliver_report")
+    order = [(n.lineno, n.func.id) for n in ast.walk(fn)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id in ("send_email", "_mark_delivery_in_manifest",
+                               "persist_delivered_report_state")]
+    seq = [name for _, name in sorted(order)]
+    assert seq.index("send_email") < seq.index("_mark_delivery_in_manifest")
+    assert (seq.index("_mark_delivery_in_manifest")
+            < seq.index("persist_delivered_report_state")), \
+        "寄送結果補寫在 push 之後 → 帶不回 repo,看門狗看不到"

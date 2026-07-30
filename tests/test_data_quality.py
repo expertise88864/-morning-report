@@ -240,3 +240,44 @@ def test_all_universe_derived_state_is_gated_at_persistence():
     # model_history 的 stocks 快照與 breakout 同樣走 tw0050,已由邊界清空覆蓋
     j = src.index('quotes["UNIVERSE_UNTRUSTED"]')
     assert "tw0050 = []" in src[j:j + 1600]
+
+
+def test_capability_health_separates_inactive_from_fatal_and_warn():
+    """第七輪 P1-8:2026-07-30 的 manifest 同時是
+    `degraded_steps: []` 與「taifex_top10_net 10%、txo_pc_oi_ratio 3%」——
+    品質閘**成功抓到問題**,而頂層健康語意仍顯示沒有降級。
+
+    `degraded_labels()` 只收 error 級是刻意的(warn 不該擋信),但「不擋信」
+    不等於「可以不呈現」。error/warn 兩級表達不出「長期空轉」這第三種狀態。
+    """
+    import data_quality as dq
+    summary = dq.summarize([
+        dq.check_fill_rate("model_history",
+                           [{"taifex_top10_net": None}] * 20,
+                           field="taifex_top10_net", min_ratio=0.5),
+        dq.check_row_count("tw_universe", [1] * 100, min_rows=30),
+        dq.check_value_range("tw_universe", [999.0], lo=-11.0, hi=11.0),
+    ])
+    health = dq.capability_health(summary, extra_inactive=("llm_event_extractor",))
+    assert "taifex_top10_net" in health["inactive_capabilities"]
+    assert "llm_event_extractor" in health["inactive_capabilities"]
+    # 值域是 warn 但不是「能力失效」,不得混進 inactive
+    assert any("value_range" in w for w in health["warnings"])
+    assert not any("value_range" in c for c in health["inactive_capabilities"])
+    assert health["fatal"] == []
+
+
+def test_inactive_capabilities_reach_the_email_quality_block():
+    """接線檢查:只寫進 manifest 的話讀信的人與 LLM 都看不到 ——
+    而這一區塊的存在理由正是「不讓抓取失敗被誤讀成市場沒有訊號」。"""
+    import morning_report as mr
+    mr._RUN_MANIFEST["capability_health"] = {
+        "fatal": [], "warnings": [],
+        "inactive_capabilities": ["taifex_top10_net", "llm_event_extractor"]}
+    try:
+        dq = mr.build_data_quality({}, {}, {}, [], [])
+    finally:
+        mr._RUN_MANIFEST.pop("capability_health", None)
+    hit = [d for d in dq if d.get("name") == "能力狀態"]
+    assert hit, "失效能力沒有進到信件的資料品質區塊"
+    assert "taifex_top10_net" in hit[0]["detail"]

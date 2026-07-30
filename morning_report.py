@@ -396,6 +396,11 @@ def _write_run_manifest(now_tpe) -> None:
             # 批#68:同一個坑的第四次。漏列這一行,診斷資料每天都會被這個
             # writer 靜默丟掉 —— 而它存在的唯一理由就是回答「抽取器為什麼沒產出」。
             "llm_extractor": _RUN_MANIFEST.get("llm_extractor"),
+            # 批#73:寄送結果由 `_mark_delivery_in_manifest` 於寄信後補寫;
+            # 這個重建白名單若漏列,補寫的值會在**下一次執行**被丟掉。
+            "delivery": _RUN_MANIFEST.get("delivery"),
+            # 批#73:漏列的話能力健康狀態每天都會被這個重建白名單丟掉
+            "capability_health": _RUN_MANIFEST.get("capability_health"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
@@ -14750,6 +14755,14 @@ def update_top5_ledger(model_history: list, top5: list[dict],
     for e in ledger:
         if e.get("type") != "top5":
             continue
+        # 批#73(第七輪 P2-3):舊 void 列只有 `{"void": true}`、沒有 reason
+        # (生產帳本 2026-07-20 那筆)。渲染端與統計端只能猜格式,
+        # 而「猜」在這個 repo 已經出過幾次事。補上明確的 legacy 標記與
+        # schema 版本,日後新增欄位時分得出世代。
+        e.setdefault("ledger_schema_version", TOP5_LEDGER_SCHEMA_VERSION)
+        for _hk, _r in (e.get("res") or {}).items():
+            if isinstance(_r, dict) and _r.get("void") and not _r.get("reason"):
+                _r["reason"] = "legacy_unclassified_void"
         # v1 舊格式(有 bases 無 status/entry 生命週期)一律作廢——其成本基準
         # 是不可成交的前日收盤,不得混入 executable 統計
         if "status" not in e:
@@ -14811,12 +14824,33 @@ def update_top5_ledger(model_history: list, top5: list[dict],
                         rets.append(ch / ep - 1)
                 # 同理:結算也要全員到齊(進場時已確認全員有價,出場少人
                 # 代表該檔當日資料缺,不是它「不存在」)
+                #
+                # 批#73(第七輪 P1-6):**個股與 benchmark 的缺失要分開報。**
+                # 原本三個條件擠在同一個 `if` 裡、統一寫成
+                # `exit_prices_incomplete` —— 生產帳本 2026-07-22 那筆因此是
+                # `{"reason": "exit_prices_incomplete", "n_priced": 5, "n_held": 5}`,
+                # 五檔全部有價卻說個股出場價不完整,語意自相矛盾,
+                # 排查方向會被帶到完全錯的地方(真正缺的是大盤基準)。
                 held = len(e.get("entry") or {})
-                if len(rets) != held or not held or not all(
-                        isinstance(v, (int, float)) and v for v in (t0, th)):
-                    e["res"][hk] = {"void": True,
-                                    "reason": "exit_prices_incomplete",
-                                    "n_priced": len(rets), "n_held": held}
+                _missing = [code for code, ep in (e.get("entry") or {}).items()
+                            if not (_px(rec_h, code, "close")
+                                    and isinstance(ep, (int, float)) and ep)]
+                _bad = None
+                if not held:
+                    _bad = ("no_holdings", {})
+                elif len(rets) != held:
+                    _bad = ("stock_exit_prices_incomplete",
+                            {"n_priced": len(rets), "n_held": held,
+                             "missing_codes": _missing[:8]})
+                elif not (isinstance(t0, (int, float)) and t0):
+                    _bad = ("benchmark_entry_missing",
+                            {"benchmark_session": tgt})
+                elif not (isinstance(th, (int, float)) and th):
+                    _bad = ("benchmark_exit_missing",
+                            {"benchmark_session": exit_d})
+                if _bad:
+                    e["res"][hk] = {"void": True, "reason": _bad[0],
+                                    "session": exit_d, **_bad[1]}
                     continue
                 # 批#66(P0-2)**除權息**:報酬是用原始收盤價算的,個股除權息
                 # 當日的價格斷點會被當成下跌。台股 7-8 月是除權息旺季,
@@ -15261,6 +15295,9 @@ def exdiv_events_in_window(history: list, codes, start: str, end: str) -> list:
 
 FORECAST_LEDGER_FILE = Path("state/forecast_ledger.json")
 #: 每日產生 2 題 + 1 筆 top5 + 1 筆 mz_shadow,600 約等於 150 個交易日
+#: Top5 帳本列的 schema 世代(批#73)。新增欄位時遞增,
+#: 讓渲染/統計端分得出世代而不是猜格式。
+TOP5_LEDGER_SCHEMA_VERSION = 2
 _FORECAST_LEDGER_KEEP = 600
 # 殘差樣本不足時的保守預設波動(%):歷史 |開盤-預測| 的量級,僅用於
 # 機率換算的 sigma 起點,非計分係數(樣本 >=10 後改用實際殘差 stdev)
@@ -19565,6 +19602,40 @@ def archive_report_html(html: str, date_str: str, keep_days: int = 365) -> Optio
         return None
 
 
+def _mark_delivery_in_manifest(**fields) -> None:
+    """把「這次到底有沒有寄出」補寫進已落檔的 run manifest。
+
+    批#73(第七輪 P2-2):看門狗原本只看 `date` 的新鮮度,於是這些情境會被
+    誤判成正常:
+      - 05:30 手動跑過、06:00 正式排程在 pending 被擠掉 → 07:30 時 age < 3h
+      - 腳本更新了 manifest,但在寄信那一步失敗
+    「有跑過」不等於「有寄到」,而看門狗存在的理由是後者。
+
+    **為什麼是補寫而不是一開始就寫**:manifest 刻意寫在寄信/push 之前
+    (見 `_write_run_manifest` 呼叫點的 P1-4 說明),那時還不知道寄信結果。
+    這裡在 `send_email` 成功之後、`persist_delivered_report_state`(內含 push)
+    之前補寫,所以同一次 commit 會把它帶回 repo。
+    """
+    try:
+        base = {}
+        if RUN_MANIFEST_FILE.exists():
+            base = json.loads(RUN_MANIFEST_FILE.read_text(encoding="utf-8")) or {}
+        if not isinstance(base, dict):
+            return
+        delivery = dict(base.get("delivery") or {})
+        delivery.update(fields)
+        delivery.setdefault("run_kind",
+                            os.environ.get("GITHUB_EVENT_NAME") or "local")
+        base["delivery"] = delivery
+        _RUN_MANIFEST["delivery"] = delivery
+        RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(RUN_MANIFEST_FILE,
+                           json.dumps(base, ensure_ascii=False, indent=1))
+    except Exception as e:
+        print(f"[manifest] 寄送結果補寫失敗(不影響晨報): {type(e).__name__}",
+              file=sys.stderr)
+
+
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
                    podcast_episodes: list[dict],
                    intelligence: Optional[dict] = None,
@@ -19574,6 +19645,9 @@ def deliver_report(html: str, subject: str, state_entry: Optional[dict],
     push_state=False:呼叫端自己會 push(且只推子集)——週末綜合報用,見該處說明。
     """
     send_email(html, subject)
+    # 寄出成功才補寫(send_email 失敗會拋,不會走到這裡)。必須在
+    # persist_delivered_report_state 之前 —— 那裡才 push,順序錯了就帶不回 repo。
+    _mark_delivery_in_manifest(attempted=True, success=True)
     archive_report_html(
         html,
         (state_entry or {}).get("date") or dt.datetime.now(TPE).strftime("%Y-%m-%d"))
@@ -19617,6 +19691,16 @@ def build_data_quality(quotes: dict, fair: dict, predictions: dict,
         add(f"資料品質:{_e.get('source')}", "error", _e.get("detail") or "")
     for _w in (_checks.get("warnings") or []):
         add(f"資料品質:{_w.get('source')}", "fallback", _w.get("detail") or "")
+
+    # 批#73(第七輪 P1-8):**長期失效的能力也要出現在這一區。**
+    # 2026-07-30 的 manifest 是 `degraded_steps: []` 而同時有兩個功能填充率
+    # 10%/3% —— 品質閘抓到了,但讀信的人與 LLM 都看不到。error/warn 兩級表達
+    # 不出「長期空轉」這第三種狀態,所以獨立成一列。
+    _cap = (_RUN_MANIFEST.get("capability_health") or {})
+    _inactive = list(_cap.get("inactive_capabilities") or [])
+    if _inactive:
+        add("能力狀態", "fallback",
+            f"下列功能長期無產出(非今日故障):{'、'.join(_inactive[:6])}")
 
     # P0-2 時間預算降級:本次跑因時間不足跳過的非核心步驟(供 LLM 知悉、資料品質透明)
     if _DEGRADED_STEPS:
@@ -20147,6 +20231,12 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         # 只推 manifest:不動 podcast/history/intel 狀態(沒寄信就不該標記已顯示)。
         try:
             _write_run_manifest(now_tpe)
+            # 批#73:明確標記「刻意不寄」。看門狗改為檢查寄送結果之後,
+            # 沒有這個標記的話這條路徑又會變成假警報來源
+            # ——批#69 r2 才剛修掉同型的一次。
+            _mark_delivery_in_manifest(
+                attempted=False, success=False,
+                skipped_reason="weekend_no_new_content")
             _git_commit_and_push_state(
                 [str(RUN_MANIFEST_FILE)],
                 f"chore: weekend no-content manifest "
@@ -20716,6 +20806,18 @@ def main() -> int:
         # 本檢查的結果會進不了 prompt 也進不了 manifest。自測接線時抓到。
         quotes["SOURCE_DATA_CHECKS"] = _dq_summary
         _RUN_MANIFEST["data_checks"] = _dq_summary
+        # 批#73(第七輪 P1-8):**填充率過低的能力要獨立列出來。**
+        # 2026-07-30 的 manifest 同時是 `degraded_steps: []` 與
+        # 「taifex_top10_net 10%、txo_pc_oi_ratio 3%」—— 品質閘抓到了,
+        # 而頂層健康語意仍顯示沒有降級。「不擋信」不等於「可以不呈現」。
+        # LLM 抽取器的失敗不是品質檢查抓的(它記在 llm_extractor.outcome),
+        # 所以另外補進來。
+        _extra_inactive = []
+        _lx = _RUN_MANIFEST.get("llm_extractor") or {}
+        if _lx and not int(_safe_number(_lx.get("survived"))):
+            _extra_inactive.append("llm_event_extractor")
+        _RUN_MANIFEST["capability_health"] = _dq.capability_health(
+            _dq_summary, extra_inactive=_extra_inactive)
         for _label in _dq.degraded_labels(_dq_summary):
             _DEGRADED_STEPS.append(_label)
             print(f"[dq] ERROR {_label}", file=sys.stderr)

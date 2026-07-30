@@ -634,3 +634,35 @@ def test_entityless_story_upgrades_its_entity_and_stops_absorbing_others():
     keys = {s["key"] for s in led}
     assert len(led) == 2, f"另一家公司被萬用牌吸走:{keys}"
     assert any(k.startswith("e:2330|") for k in keys)
+
+
+def test_entity_upgrade_happens_in_a_single_update_ledger_call():
+    """r2(Codex,P2):**生產是一次把整份 structured_events 傳進 update_ledger。**
+
+    同一批裡 entityless 鏡像事件先建立線索並把 key 標成 `touched`,有代號的那則
+    隨即在 `key in touched` 分支提前 continue —— 永遠到不了(當時放在函式尾端的)
+    代號升級,線索因此一直是 entityless 萬用牌,之後別家公司的相似標題會被吸走。
+
+    我上一版的測試把兩則拆成**兩次**呼叫,`touched` 重新變空,所以測不到 ——
+    又一次「驗的是我蓋的東西,不是生產送進來的東西」。這條用**一次呼叫**
+    餵入 [entityless A, labelled A, labelled B],完全照生產路徑。
+    """
+    base = {"event_type": "revenue_growth", "surprise_score": 0.5,
+            "published": "2026-07-30T01:00:00+00:00"}
+    title = "〈聯電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機"
+    vocab = {"2303": "聯電", "2330": "台積電"}
+    led = sl.update_ledger([], [
+        dict(base, entity="", title=f"{title} - tw.stock.yahoo.com",
+             link="https://a/1", source_name="Yahoo股市"),
+        dict(base, entity="2303", entity_name="聯電",
+             title=f"{title} - news.cnyes.com",
+             link="https://a/2", source_name="鉅亨台股"),
+        dict(base, entity="2330", entity_name="台積電",
+             title="〈台積電法說〉AI營收三年拚逾10億美元 搶先進封裝、矽光子商機",
+             link="https://a/3", source_name="鉅亨台股"),
+    ], "2026-07-30", vocab)
+    by_ent = {s.get("entity"): s for s in led}
+    assert "" not in by_ent, (
+        f"線索仍是 entityless 萬用牌:{[(s.get('entity'), s['key']) for s in led]}")
+    assert set(by_ent) == {"2303", "2330"}, f"公司被錯併:{set(by_ent)}"
+    assert by_ent["2303"]["key"].startswith("e:2303|"), "key 沒跟著遷移"

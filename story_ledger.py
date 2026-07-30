@@ -1068,6 +1068,49 @@ def _story_match_candidates(story: dict) -> list:
     return [x for x in out if x]
 
 
+def _adopt_entity_from_event(story: dict, ev: dict, key: str, by_key: dict,
+                             seen_sigs: dict, today_sigs: dict,
+                             touched: set) -> str:
+    """entityless 線索接到有代號的事件時,把代號(與 key)一起升級。回新 key。
+
+    為什麼一定要升級:批#71 讓 entityless 線索可以跟有代號的事件合併
+    (修「同一篇文章在兩個鏡像站散成兩條」),但如果 `entity` 留空,那條線索就是
+    一張**萬用牌** —— 之後另一家公司的高相似度標題進來時,衝突檢查(要求兩邊
+    都有代號)不會擋,會被錯併並覆寫標題。
+
+    為什麼要連 key 遷移:r7 的教訓 —— 只改欄位不遷移 key,之後從一般 feed
+    (沒有 followup_key)進來的同一件事會算出含代號的 key,**開出第二條線索**。
+
+    為什麼**不**順便升級型別:r6 的教訓 —— 型別改了會影響後續的
+    `_is_real_progress` / 權威比較 / 追蹤查詢,那個升級刻意留在「事件通過全部
+    驗收之後」。所以這裡算新 key 時**沿用線索現有的型別**,只換代號。
+
+    目標 key 已被別條線索佔用時不升級:錯併兩條既有線索是立即且不可回復的
+    (維持 r7 的取捨),殘留的萬用牌風險刻意接受。
+    """
+    if str(story.get("entity") or "") or not str(ev.get("entity") or ""):
+        return key
+    probe = {k: v for k, v in ev.items() if k != "followup_key"}
+    probe["event_type"] = str(story.get("event_type")
+                              or ev.get("event_type") or "general")
+    new_key = story_key_for_event(probe)
+    if not new_key or new_key == key or new_key in by_key:
+        return key
+    story["entity"] = str(ev.get("entity"))
+    story["entity_name"] = str(ev.get("entity_name")
+                               or story.get("entity_name") or "")
+    story["key"] = new_key
+    by_key[new_key] = story
+    by_key.pop(key, None)
+    seen_sigs[new_key] = seen_sigs.pop(key, [])
+    if key in today_sigs:
+        today_sigs[new_key] = today_sigs.pop(key)
+    if key in touched:
+        touched.discard(key)
+        touched.add(new_key)
+    return new_key
+
+
 def update_ledger(ledger: list[dict], events: list[dict], today: str,
                   name_map: dict | None = None) -> list[dict]:
     """把今日事件併入帳本,回傳更新後的帳本(不改動輸入)。
@@ -1117,6 +1160,17 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         key = _resolve_story_key(ev, by_key)
         surprise = float(ev.get("surprise_score") or 0.0)
         story = by_key.get(key)
+        if story is not None:
+            # r2(Codex,P2):**代號升級必須在所有提前返回之前做。**
+            # 上一版把它放在型別升級旁邊(事件通過全部驗收之後),而生產是
+            # **一次**把整份 structured_events 傳進 update_ledger ——
+            # 同一批裡 entityless 鏡像事件先建立線索並把 key 標成 touched,
+            # 有代號的那則隨即在 `key in touched` 分支提前 continue,
+            # 永遠到不了升級。線索因此一直是 entityless 萬用牌。
+            # 我的測試把兩則拆成兩次呼叫,touched 重新變空 —— 又一次
+            # 「驗的是我蓋的東西,不是生產送進來的東西」。
+            key = _adopt_entity_from_event(
+                story, ev, key, by_key, seen_sigs, today_sigs, touched)
         if story is None:
             # r3(Codex):**建立新線索前也要確認是真進展**。原本只在既有 story 的
             # 分支檢查 is_incremental,於是首次部署或 story 被清掉之後,一則陳舊的
@@ -1253,22 +1307,17 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         # 可能被錯併、覆寫標題。
         # 用既有的 `story_key_for_event` + key 遷移(r7 的教訓:只改欄位不遷移 key
         # 會讓之後從一般 feed 進來的同一件事算出不同的 key、開出第二條線索)。
-        _needs_entity = (not str(story.get("entity") or "")
-                         and str(ev.get("entity") or ""))
+        # 代號升級已在迴圈開頭的 `_adopt_entity_from_event` 處理(必須早於所有
+        # 提前返回,見該函式說明);這裡只留型別升級。
         _needs_type = (str(story.get("event_type") or "general") == "general"
                        and str(ev.get("event_type") or "general") != "general")
-        if _needs_entity or _needs_type:
+        if _needs_type:
             _new_key = story_key_for_event(
                 {k: v for k, v in ev.items() if k != "followup_key"})
             # 目標 key 已被別條線索佔用時**不升級**——合併兩條線索的風險高於
             # 維持現狀,而維持現狀只是型別偏保守,不會產生錯誤輸出。
             if _new_key and _new_key != key and _new_key not in by_key:
-                if _needs_type:
-                    story["event_type"] = str(ev.get("event_type"))
-                if _needs_entity:
-                    story["entity"] = str(ev.get("entity"))
-                    story["entity_name"] = str(ev.get("entity_name")
-                                               or story.get("entity_name") or "")
+                story["event_type"] = str(ev.get("event_type"))
                 story["key"] = _new_key
                 by_key[_new_key] = story
                 by_key.pop(key, None)
@@ -1280,16 +1329,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                     touched.add(_new_key)
                 key = _new_key
             elif _new_key == key:
-                if _needs_type:
-                    story["event_type"] = str(ev.get("event_type"))
-                if _needs_entity:
-                    story["entity"] = str(ev.get("entity"))
-                    story["entity_name"] = str(ev.get("entity_name")
-                                               or story.get("entity_name") or "")
-            # 目標 key 已被佔用時**不升級**(維持 r7 的取捨:合併兩條線索的風險
-            # 高於維持現狀)。殘留風險已知並刻意接受:該線索仍是 entityless
-            # 萬用牌,但另一家公司的事件還必須先通過相似度門檻才可能誤併,
-            # 而錯併兩條既有線索是立即且不可回復的。
+                story["event_type"] = str(ev.get("event_type"))
         _push_timeline(story, _timeline_entry(
             ev, today,
             _material_facts(title, str(story.get("entity") or ""),

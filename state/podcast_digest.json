@@ -5472,6 +5472,30 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "519b7338-f6ec-4d99-a8a2-b496012a0db1",
+        "title": "How the Iranian Economy Actually Works",
+        "published": "Thu, 30 Jul 2026 08:00:00 +0000",
+        "processed_at": "2026-07-30T10:08:04Z",
+        "digest": {
+          "summary_points": [
+            "伊朗的經濟是「黑手黨國家」，公民根據對體系的忠誠度獲得回報，而非平等。",
+            "石油仍是主要收入來源，但伊朗也擁有鋼鐵、農業等多元化的產業。",
+            "國營企業（宗教基金會）和革命衛隊控制經濟的很大部分，能免稅進口貨物且不受審計。",
+            "科技新創產業在2015年核協議後蓬勃發展，但成功的公司被迫將股份出售給與安全部門相關的實體以換取保護。",
+            "新創公司如DigiKala（伊朗的亞馬遜）和Snap（叫車服務）最終將股權讓給了宗教基金會等實體。",
+            "政府內部的派系鬥爭造成混亂；即使與某個實體達成協議，也無法保證不受其他派系侵害。",
+            "伊朗的最高領袖優先考慮意識形態而非經濟成長，即使有利也拒絕外國投資。",
+            "在2025年的伊朗戰爭中，伊朗較高的痛苦承受力（高通膨、高失業率）使其能比美國撐得更久。",
+            "美國假設經濟整合會帶來自由化，但失敗了，因為伊朗優先考慮軍事和意識形態目標。",
+            "來自競爭派系（革命衛隊、宗教基金會、神職人員）的不確定性比單純的腐敗對企業更有害。"
+          ],
+          "tickers": [],
+          "market_view": "伊朗經濟由類似黑手黨的國家結構主導，忠誠度決定獲取資源的機會，而相互競爭的派系為企業帶來極大的不確定性。",
+          "action_view": "",
+          "notable_quote": "Iran's Supreme Leader didn't have the absolute power. He needs to manage between all different gods and goddesses. In the case of Odysseus, you see that he is supported by some gods to go back home, but some angry gods are trying to block his return... a businessman in Iran is just like, it's a real odyssey."
+        }
+      },
+      {
         "guid": "dac96181-5b1e-4549-a0f9-b491013fe961",
         "title": "Branko Milanovic on What Comes After Globalization",
         "published": "Mon, 27 Jul 2026 08:00:00 +0000",
@@ -5768,31 +5792,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-10T22:59:35Z"
-      },
-      {
-        "guid": "7ed31c1e-3cf5-467d-a302-b47b014db8c5",
-        "title": "These Are the Sharps Actually Making Money on Prediction Markets",
-        "published": "Mon, 06 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-06T16:53:00Z",
-        "digest": {
-          "summary_points": [
-            "預測市場是零和遊戲，多數參與者賠錢，只有少數『sharps』能持續獲利。",
-            "Los Angeles 市長初選中，Spencer Pratt 的勝率因媒體炒作而被高估，實際民主黨優勢 +42 使共和黨不可能贏。",
-            "Brian Golden 重建 BLS 通膨計算公式，用 Excel 模型預測 CPI，過去兩年平均絕對誤差優於彭博共識。",
-            "預測市場的效率取決於流動性與參與者類型：政治選舉仍受情緒主導，存在套利空間。",
-            "AI 模型（如 ChatGPT）在預測市場中無優勢，因它會迎合提問且依賴過時的專家意見，容易反向操作。",
-            "Sharps 的優勢來自原創研究（電話訪問、實地調查、自建模型），而非公開資訊或 AI。",
-            "Romanian 選舉中，Sharps 因忽略當地媒體氛圍而慘賠，顯示在地化資訊的重要性。",
-            "預測市場的『評論區』通常是反向指標：越多人討論的一方越可能是錯的。",
-            "預測市場的價格訊號價值在於『後果』（輸贏有代價），而非絕對準確度高於專家。",
-            "長期來看，業餘玩家（dumb money）會因持續虧損而退出，使市場變得更難獲利（類似線上撲克泡沫）。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "If you are listening to this, and you think you're gonna make money, you probably aren't unless you actually have some reason to think that you're putting in work."
-        },
-        "shown_at": "2026-07-06T23:02:03Z"
       }
     ]
   },

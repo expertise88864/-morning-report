@@ -3832,10 +3832,15 @@ def test_exdiv_lead_stats_measure_each_event_not_just_the_furthest():
     """
     import morning_report as mr
 
-    history = {"since": "2026-07-01", "days": [], "records": [
-        {"code": "2614", "ex_date": "2026-10-06", "first_seen": "2026-07-30"},
-        {"code": "2330", "ex_date": "2026-08-02", "first_seen": "2026-08-01"},
-    ]}
+    # `days` 要含一次「窗口內成功收集卻沒看到 2330」的紀錄(2026-07-28),
+    # 否則依 r3 的設限規則,那筆短提前量無法確認、會被歸為 lead_censored。
+    history = {"since": "2026-07-01",
+               "days": ["2026-07-01", "2026-07-28", "2026-08-01"], "records": [
+                   {"code": "2614", "ex_date": "2026-10-06",
+                    "first_seen": "2026-07-30"},
+                   {"code": "2330", "ex_date": "2026-08-02",
+                    "first_seen": "2026-08-01"},
+               ]}
     try:
         stats = mr._record_exdiv_lead_stats(history)
         assert stats["lead_observed"] == 2
@@ -3897,5 +3902,54 @@ def test_exdiv_first_seen_is_stamped_by_the_real_update(tmp_path, monkeypatch):
         seen = {r["code"]: r.get("first_seen") for r in landed["records"]}
         assert seen["2330"] == "2026-07-30", "重複出現的事件不得被改成後來的日期"
         assert seen["2454"] == "2026-08-01", "新出現的事件要蓋上當天"
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_short_lead_is_censored_when_collection_had_a_gap(capsys):
+    """**收集空洞造成的低估,不得被當成 TWSE 的短提前量。**
+
+    r3(Codex,P2)。`first_seen` 是「第一次**成功看到**」。若 08-13 抓取失敗、
+    08-14 才成功,一筆 TWSE 在 08-13 就上表(提前 7 天)的 08-20 除權息,
+    會被算成提前 6 天並永久噴警報 —— 那是我們的空洞,不是 TWSE 的。
+
+    判準:短提前量只有在「first_seen 之前、且落在 lookahead 窗口內確實成功
+    收集過」時才算確認(那一次沒看到它 ⇒ 它當時真的還沒上表)。
+    """
+    import morning_report as mr
+
+    record = [{"code": "2330", "ex_date": "2026-08-20",
+               "first_seen": "2026-08-14"}]          # 提前 6 天 < 7
+    try:
+        # (a) 窗口內(08-13~08-19)完全沒有成功收集 → 設限,不得警報
+        gap = mr._record_exdiv_lead_stats(
+            {"since": "2026-07-30", "days": ["2026-07-30", "2026-08-14"],
+             "records": record})
+        assert gap["lead_censored"] == 1 and gap["lead_observed"] == 0
+        assert "lead_short_count" not in gap
+        assert "短於覆蓋守衛假設" not in capsys.readouterr().err
+
+        # (b) 窗口內 08-15 有成功收集卻沒看到它 → 確認是真的短提前量
+        confirmed = mr._record_exdiv_lead_stats(
+            {"since": "2026-07-30",
+             "days": ["2026-07-30", "2026-08-15", "2026-08-16"],
+             "records": [{"code": "2330", "ex_date": "2026-08-20",
+                          "first_seen": "2026-08-16"}]})
+        assert confirmed["lead_short_count"] == 1 and confirmed["lead_censored"] == 0
+        assert "短於覆蓋守衛假設" in capsys.readouterr().err
+    finally:
+        mr._RUN_MANIFEST.pop("exdiv_preview", None)
+
+
+def test_long_lead_is_never_censored():
+    """提前量 ≥ 門檻不受空洞影響:`first_seen` 是**下界**,下界達標就是達標。"""
+    import morning_report as mr
+    try:
+        stats = mr._record_exdiv_lead_stats(
+            {"since": "2026-07-30", "days": ["2026-07-30"],
+             "records": [{"code": "2614", "ex_date": "2026-10-06",
+                          "first_seen": "2026-08-14"}]})
+        assert stats["lead_observed"] == 1 and stats["lead_censored"] == 0
+        assert stats["lead_short_count"] == 0
     finally:
         mr._RUN_MANIFEST.pop("exdiv_preview", None)

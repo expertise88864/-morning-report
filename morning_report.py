@@ -15440,11 +15440,20 @@ def _record_exdiv_lead_stats(history: dict) -> dict:
     所以剛上線時 `observed` 會是 0 —— 那是誠實的「還不知道」,
     不是「假設成立」。
 
+    r3(Codex,P2):**短提前量是區間設限(interval-censored)的。**
+    `first_seen` 是「第一次成功看到」,抓取中斷過的話,TWSE 提前 7 天公告的
+    事件也可能到第 6 天才被我們看到 —— 那是我們的空洞,不是 TWSE 的,
+    而誤報會永久留在 manifest 裡。所以短提前量只有在
+    「`first_seen` 之前、且落在 lookahead 窗口內確實成功收集過」時才算確認
+    (那一次沒看到它 ⇒ 它當時真的還沒上表),否則計入 `lead_censored`。
+    提前量 ≥ 門檻的則不受影響:`first_seen` 是下界,下界已達標就是達標。
+
     現階段**只示警不擋**:要把它變成 fail-closed,得先有真實的提前量分佈,
     而這正是本函式開始累積的東西。這是刻意的延後,不是漏做。
     """
     since = str(history.get("since") or "")
-    leads, unmeasurable = [], 0
+    days = sorted({str(d) for d in (history.get("days") or []) if d})
+    leads, short, censored, unmeasurable = [], [], 0, 0
     for r in history.get("records") or []:
         if not isinstance(r, dict):
             unmeasurable += 1
@@ -15454,19 +15463,37 @@ def _record_exdiv_lead_stats(history: dict) -> dict:
             unmeasurable += 1
             continue
         try:
-            leads.append((dt.date.fromisoformat(ex)
-                          - dt.date.fromisoformat(seen)).days)
+            ex_date = dt.date.fromisoformat(ex)
+            lead = (ex_date - dt.date.fromisoformat(seen)).days
         except (ValueError, TypeError):
             unmeasurable += 1
-    stats = {"lead_observed": len(leads), "lead_unmeasurable": unmeasurable}
+            continue
+        if lead >= _EXDIV_PREVIEW_LOOKAHEAD_DAYS:
+            # `first_seen` 是「第一次**成功看到**」,真實公告只可能更早,
+            # 所以 lead 是下界 —— 下界已達門檻就確定這一筆符合假設。
+            leads.append(lead)
+            continue
+        # r3(Codex,P2):**短提前量是區間設限的,不能直接當成確認。**
+        # 抓取中斷過的話,TWSE 提前 7 天公告的事件也可能到第 6 天才被我們看到,
+        # 那是我們的空洞而不是 TWSE 的,誤報會永久留在 manifest 裡。
+        # 只有在「first_seen 之前、且落在 lookahead 窗口內確實成功收集過」時
+        # 才算確認:那一次收集沒看到它 ⇒ 它當時真的還沒上表。
+        floor = (ex_date - dt.timedelta(
+            days=_EXDIV_PREVIEW_LOOKAHEAD_DAYS)).isoformat()
+        if any(floor <= c < seen for c in days):
+            leads.append(lead)
+            short.append(lead)
+        else:
+            censored += 1
+    stats = {"lead_observed": len(leads), "lead_censored": censored,
+             "lead_unmeasurable": unmeasurable}
     if leads:
         stats["lead_min_days"] = min(leads)
-        short = [n for n in leads if n < _EXDIV_PREVIEW_LOOKAHEAD_DAYS]
         stats["lead_short_count"] = len(short)
         if short:
             print(f"[exdiv] ⚠ 有 {len(short)} 筆除權息只提前 "
-                  f"{min(short)}~{max(short)} 天出現,短於覆蓋守衛假設的 "
-                  f"{_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天"
+                  f"{min(short)}~{max(short)} 天出現(已排除收集空洞造成的低估),"
+                  f"短於覆蓋守衛假設的 {_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天"
                   "——抓取一中斷,那些事件就會被漏記而守衛仍放行",
                   file=sys.stderr)
     _RUN_MANIFEST.setdefault("exdiv_preview", {}).update(stats)

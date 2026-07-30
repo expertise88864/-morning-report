@@ -413,6 +413,10 @@ def _write_run_manifest(now_tpe) -> None:
             "delivery": _RUN_MANIFEST.get("delivery"),
             # 批#73:漏列的話能力健康狀態每天都會被這個重建白名單丟掉
             "capability_health": _RUN_MANIFEST.get("capability_health"),
+            # 批#75 r1:混版本揭露如果漏列白名單,就會退回「只存在記憶體裡」
+            # 的狀態 —— 那正是這一項 finding 的內容。
+            "forecast_mixed_versions": _RUN_MANIFEST.get(
+                "forecast_mixed_versions"),
         }
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
@@ -15345,7 +15349,16 @@ def model_versions() -> dict:
     """本次執行的模型版本組合。刻意做成函式而非模組層 dict:
     `git_sha` 由環境變數決定,而測試會改它。"""
     return {
-        "point_model": MODEL_VERSION,          # 2330/加權點預測(含 bias 修正)
+        # r1(Codex,P1):**原本填 `MODEL_VERSION`,那是語意錯接。**
+        # 該常數的值是 `tw-top100-decay-regime-ridge-platt-quantile-v4`,
+        # 版本化的是**Top100 股票池排名模型**(用在 model_history 快照與排名);
+        # 而機率題的點預測來自 2330 的 ADR/動能/bias 管線與加權指數的夜盤管線,
+        # 是完全不同的東西。錯接的後果是:那兩條管線的公式/特徵/bias 規則改了
+        # 而 Top100 模型沒改時,新舊題目仍記成同一個版本,`mixed_versions`
+        # 揭露不出混代 —— 正是本批要消除的靜默混算。
+        "point_2330": _POINT_2330_VERSION,
+        "point_taiex": _POINT_TAIEX_VERSION,
+        "universe_model": MODEL_VERSION,        # Top100 排名(與點預測無關)
         "probability_rule": _FORECAST_VERSION,  # 點預測 → 機率(empirical CDF)
         "mz_rule": _MZ_RULE_VERSION,            # MZ 收縮的形式(變動量 vs 水準)
         "event_schema": EVENT_SCHEMA_VERSION,   # 事件身分公式世代
@@ -15358,6 +15371,19 @@ def model_versions() -> dict:
 #: 共線性假象,照那個算 MAE 會從 25.66 惡化到 424.14);批#69 把標準誤改成
 #: Newey-West。改動公式或訓練視窗時遞增,否則新舊樣本會混算。
 _MZ_RULE_VERSION = "delta-mz-hac-v1"
+#: 批#75 之前寫入的 shadow 列沒有 `mz_rule` 欄位。它們是**當時的**規則產生的,
+#: 而當時的規則就是 `delta-mz-hac-v1` —— 所以永久映射到這個**字面常數**。
+#: r1(Codex,P1):第一版寫成 `e.get("mz_rule") or current`,那是動態的:
+#: 下次把 `_MZ_RULE_VERSION` 遞增時,所有無欄位的舊列會**跟著被視為新版本**,
+#: 與我註解裡宣稱的「屆時舊列自然被排除」正好相反 —— 新舊公式又會混算。
+#: 註解宣稱了程式碼沒有的性質,這個 repo 已經栽過好幾次。
+_MZ_RULE_LEGACY = "delta-mz-hac-v1"
+
+#: 2330 開盤點預測管線(ADR/動能/結構分 + bias 修正)。改動公式、特徵集或
+#: bias 規則時遞增 —— 它與 Top100 排名模型(`MODEL_VERSION`)是不同的東西。
+_POINT_2330_VERSION = "2330-open-adr-momentum-bias-v1"
+#: 加權指數開盤點預測管線(夜盤台指期 + 訊號共識)。同上。
+_POINT_TAIEX_VERSION = "taiex-open-nightfut-v1"
 _FORECAST_VERSION = "prob-v2"   # 機率規則版本(批#23:empirical CDF;統計分版本)
 
 
@@ -15443,7 +15469,7 @@ def _mz_shadow_oos_stats(ledger: list) -> dict:
             and e.get("resolved") is not None and not e.get("void")
             and isinstance(e.get("err_raw"), (int, float))
             and isinstance(e.get("err_shadow"), (int, float))
-            and str(e.get("mz_rule") or current) == current]
+            and str(e.get("mz_rule") or _MZ_RULE_LEGACY) == current]
     if not done:
         return {"n": 0, "enough": False, "mz_rule": current}
     diffs = [float(e["err_raw"]) - float(e["err_shadow"]) for e in done]
@@ -15702,10 +15728,18 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     # 統計、比混算更糟),但把「混了哪些元件版本」明確列出來 ——
     # 靜默混算與誠實揭露的差別。
     _mixed = {}
-    for _k in ("point_model", "mz_rule", "event_schema"):
-        _vals = {str((e.get("versions") or {}).get(_k))
-                 for e in recent if e.get("versions")}
-        _vals.discard("None")
+    for _k in ("point_2330", "point_taiex", "probability_rule",
+               "mz_rule", "event_schema"):
+        # r1(Codex,P2):**沒有 `versions` 的舊列不能跳過。** 部署後的最近 30 筆
+        # 會同時有無版本的舊列與有版本的新列,而原本的 `if e.get("versions")`
+        # 讓集合只看到新列的那一個版本 → 不會產生 mixed_versions,
+        # 題述中橫跨 9 個 SHA 的既有混代資料仍然無聲參與統計。
+        # 標成明確的 legacy/unknown,讓「不可判定」本身可見。
+        _vals = set()
+        for e in recent:
+            v = e.get("versions")
+            _vals.add("legacy/unknown" if not isinstance(v, dict)
+                      else str(v.get(_k) or "legacy/unknown"))
         if len(_vals) > 1:
             _mixed[_k] = sorted(_vals)
     stats = {}
@@ -21420,6 +21454,20 @@ def main() -> int:
               f"結算 {len(_fl.get('resolved') or [])} 題"
               + (f"、近{_fl['stats']['n']}題 Brier {_fl['stats']['brier_model']}"
                  if _fl.get("stats") else ""))
+        # r1(Codex,P2):**混版本資訊必須有可觀察的出口。**
+        # 原本它只存在當次的記憶體回傳值裡:forecast ledger 卡片固定關閉、
+        # 這行日誌只印題數與 Brier、run manifest 只收 MZ OOS 統計 ——
+        # 也就是實際運行仍然是靜默混算。而「不收緊過濾、改用誠實揭露」
+        # 這個決定的**全部正當性**就建立在揭露真的看得到。
+        _mixed_v = (_fl.get("stats") or {}).get("mixed_versions") or {}
+        if _mixed_v:
+            _RUN_MANIFEST["forecast_mixed_versions"] = _mixed_v
+            _msg = "、".join(f"{k}={v}" for k, v in sorted(_mixed_v.items()))
+            print(f"[ledger] ⚠ 累積統計橫跨多個模型世代:{_msg}"
+                  "(統計仍照算,但比較性受限)", file=sys.stderr)
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                print(f"::warning title=Forecast stats span model "
+                      f"generations::{_msg}")
     except Exception as e:
         print(f"[ledger] 更新失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["FORECAST_LEDGER"] = {}

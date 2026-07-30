@@ -3602,7 +3602,13 @@ def test_ledger_rows_record_the_full_version_combination():
     stored = _json.loads(mr.FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
     for row in stored:
         v = row.get("versions") or {}
-        assert v.get("point_model") == mr.MODEL_VERSION, row.get("type")
+        # r1(Codex,P1):原本斷言 `point_model == MODEL_VERSION` —— 而那個常數
+        # (`tw-top100-decay-regime-ridge-platt-quantile-v4`)版本化的是
+        # **Top100 排名模型**,不是機率題的點預測管線。測試只驗「等於同一個
+        # 錯誤常數」,所以偵測不到語意錯接。點預測改用獨立版本常數。
+        assert v.get("point_2330") == mr._POINT_2330_VERSION, row.get("type")
+        assert v.get("point_taiex") == mr._POINT_TAIEX_VERSION
+        assert v.get("universe_model") == mr.MODEL_VERSION
         assert v.get("mz_rule") == mr._MZ_RULE_VERSION
         assert v.get("event_schema") == mr.EVENT_SCHEMA_VERSION
     mzrow = next(r for r in stored if r.get("type") == "mz_shadow")
@@ -3614,22 +3620,97 @@ def test_mixed_point_model_versions_are_surfaced_not_hidden():
     但「混了哪些元件版本」必須明確列出來 —— 靜默混算與誠實揭露的差別。"""
     import datetime as dt
     import json as _json
-    rows = []
-    for i, pm in enumerate(("model-a", "model-a", "model-b")):
-        rows.append({"question": "2330_open_up", "label": "x",
-                     "created": "2026-07-1%d" % i,
-                     "target": "2026-07-1%d" % i, "threshold": 100.0,
-                     "prob": 0.6, "base_rate": 0.5, "pred_pct": 1.0,
-                     "resolved": "2026-07-2%d" % i, "outcome": True,
-                     "brier_model": 0.16, "brier_base": 0.25,
-                     "forecast_version": mr._FORECAST_VERSION,
-                     "versions": {"point_model": pm,
-                                  "mz_rule": mr._MZ_RULE_VERSION,
-                                  "event_schema": mr.EVENT_SCHEMA_VERSION}})
+    def _row(i, versions):
+        row = {"question": "2330_open_up", "label": "x",
+               "created": "2026-07-1%d" % i,
+               "target": "2026-07-1%d" % i, "threshold": 100.0,
+               "prob": 0.6, "base_rate": 0.5, "pred_pct": 1.0,
+               "resolved": "2026-07-2%d" % i, "outcome": True,
+               "brier_model": 0.16, "brier_base": 0.25,
+               "forecast_version": mr._FORECAST_VERSION}
+        if versions is not None:
+            row["versions"] = versions
+        return row
+
+    def _v(point):
+        return {"point_2330": point, "point_taiex": mr._POINT_TAIEX_VERSION,
+                "probability_rule": mr._FORECAST_VERSION,
+                "mz_rule": mr._MZ_RULE_VERSION,
+                "event_schema": mr.EVENT_SCHEMA_VERSION}
+
+    rows = [_row(0, _v("model-a")), _row(1, _v("model-a")),
+            _row(2, _v("model-b"))]
     mr.FORECAST_LEDGER_FILE.write_text(_json.dumps(rows), encoding="utf-8")
     out = mr.update_forecast_ledger(
         [], {}, {}, dt.datetime(2026, 7, 25, 10, 0, tzinfo=mr.TPE),
         "2026-07-25")
     mixed = (out["stats"] or {}).get("mixed_versions") or {}
-    assert mixed.get("point_model") == ["model-a", "model-b"]
+    assert mixed.get("point_2330") == ["model-a", "model-b"]
     assert "mz_rule" not in mixed, "同一版本不該被列為混版"
+
+    # r1(Codex,P2):**部署遷移窗口** —— 沒有 `versions` 的舊列不能被跳過,
+    # 否則集合只看到新列的那一個版本、不會產生 mixed_versions,
+    # 而既有橫跨 9 個 SHA 的混代資料仍然無聲參與統計。
+    rows2 = [_row(0, None), _row(1, _v(mr._POINT_2330_VERSION))]
+    mr.FORECAST_LEDGER_FILE.write_text(_json.dumps(rows2), encoding="utf-8")
+    out2 = mr.update_forecast_ledger(
+        [], {}, {}, dt.datetime(2026, 7, 25, 10, 0, tzinfo=mr.TPE),
+        "2026-07-25")
+    mixed2 = (out2["stats"] or {}).get("mixed_versions") or {}
+    assert "legacy/unknown" in mixed2.get("point_2330", []),         "遷移窗口的無版本舊列沒有被標為不可判定"
+
+
+def test_legacy_mz_rows_stay_pinned_when_the_rule_version_bumps(monkeypatch):
+    """r1(Codex,P1):第一版寫成 `e.get("mz_rule") or current` —— **那是動態的**。
+    下次把 `_MZ_RULE_VERSION` 遞增時,所有批#75 之前的無欄位舊列會**跟著被視為
+    新版本**,與我註解裡宣稱的「屆時舊列自然被排除」正好相反,新舊收縮公式
+    又會混進同一個 MAE 與配對 t。
+
+    註解宣稱了程式碼沒有的性質 —— 這個 repo 已經栽過好幾次,所以這條測試
+    直接**模擬版本遞增**。
+    """
+    legacy_rows = [{"type": "mz_shadow", "resolved": "2026-07-30",
+                    "err_raw": 12.0, "err_shadow": 10.0} for _ in range(3)]
+    # 現況:無欄位舊列被視為當代(它們確實是這一版產生的)
+    assert mr._mz_shadow_oos_stats(legacy_rows)["n"] == 3
+    # 模擬日後遞增公式版本 → 舊列必須被排除
+    monkeypatch.setattr(mr, "_MZ_RULE_VERSION", "delta-mz-hac-v2")
+    out = mr._mz_shadow_oos_stats(legacy_rows)
+    assert out["n"] == 0, "版本遞增後,無欄位的舊列仍被算進新版統計"
+    assert out["mz_rule"] == "delta-mz-hac-v2"
+    # 新版列照算
+    new_rows = [{"type": "mz_shadow", "resolved": "2026-07-30",
+                 "mz_rule": "delta-mz-hac-v2",
+                 "err_raw": 12.0, "err_shadow": 11.0}]
+    assert mr._mz_shadow_oos_stats(legacy_rows + new_rows)["n"] == 1
+
+
+def test_mixed_versions_reach_the_run_manifest():
+    """r1(Codex,P2):`mixed_versions` 原本**只存在當次的記憶體回傳值**裡 ——
+    forecast ledger 卡片固定關閉、日誌只印題數與 Brier、run manifest 只收
+    MZ OOS 統計。也就是實際運行仍然是靜默混算。
+
+    而「不收緊過濾、改用誠實揭露」這個決定的**全部正當性**就建立在揭露真的
+    看得到 —— 沒有出口的話我兩件事都沒做。這條用 AST 盯住 manifest 出口。
+    """
+    import ast
+    import pathlib
+    src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    main_fn = next(n for n in ast.walk(tree)
+                   if isinstance(n, ast.FunctionDef) and n.name == "main")
+    writes = [n for n in ast.walk(main_fn)
+              if isinstance(n, ast.Subscript)
+              and isinstance(n.value, ast.Name)
+              and n.value.id == "_RUN_MANIFEST"
+              and isinstance(n.slice, ast.Constant)
+              and n.slice.value == "forecast_mixed_versions"]
+    assert writes, "混版本資訊沒有寫進 run manifest"
+    # 也必須列在重建白名單裡,否則寫了會被下一次執行丟掉(本專案第五次同型坑)
+    writer = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef)
+                  and n.name == "_write_run_manifest")
+    keys = [k.value for n in ast.walk(writer) if isinstance(n, ast.Dict)
+            for k in n.keys if isinstance(k, ast.Constant)]
+    assert "forecast_mixed_versions" in keys, \
+        "混版本資訊不在 manifest 重建白名單裡 → 寫了也會被丟掉"

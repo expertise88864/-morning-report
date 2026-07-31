@@ -208,64 +208,139 @@ def test_openai_reasoning_effort_is_sent_and_degrades_on_400(monkeypatch):
     assert sent[1]["model"] == "gpt-5.6-luna", "重試不得換掉模型"
 
 
-def test_manifest_records_which_model_actually_wrote_the_report(monkeypatch):
-    """批#90d:**信件本身看不出是哪個模型寫的。**
+def test_manifest_separates_roles_and_only_records_accepted_calls(monkeypatch):
+    """批#91(第九輪 P0-2):**telemetry 必須依角色分槽,且只記通過驗收的。**
 
-    `LLM_PROVIDER` 是 repo variable,設錯時(拼字、設成 Secret 而不是 Variable)
-    的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。那是最難發現的
-    一種失敗,所以要有每天都看得到的紀錄。
+    批#90d 的第一版把 primary / extractor / shadow 寫進同一個槽位,每次呼叫
+    覆蓋 provider 與 model。實際執行順序是抽取器 → 主分析 → 影子,所以開了
+    影子之後 manifest 會宣稱**「這封信由影子模型撰寫」** —— 而影子輸出根本
+    沒進信件。**錯誤的可觀測性比沒有更危險**:它給的是看似精確、語意卻錯的答案。
 
-    順帶累加 token 用量:推理 token 以 output 計價、是成本主要來源,
-    而它到底用了多少只有 API 回的 usage 知道。
+    另外原本在 `r.json()` 之後就登記,於是 `finish_reason=length` 的失敗呼叫
+    也被記成「實際模型」,而真正寫出信的可能是後面的備援。
     """
     import morning_report as mr
 
+    def _resp(payload, code=200):
+        class _R:
+            status_code = code
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return payload
+        return _R()
+
+    ok = {"choices": [{"finish_reason": "stop", "message": {"content": "文"}}],
+          "usage": {"prompt_tokens": 21000, "completion_tokens": 9000,
+                    "completion_tokens_details": {"reasoning_tokens": 4200}}}
+    truncated = {"choices": [{"finish_reason": "length",
+                              "message": {"content": ""}}],
+                 "usage": {"completion_tokens": 98000}}
+
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _resp(ok))
+        mr._call_openai("p", model="gpt-5.6-luna", reasoning="xhigh",
+                        role="extractor")
+        mr._call_openai("p", model="gpt-5.6-terra", reasoning="medium",
+                        role="primary")
+        mr._call_openai("p", model="gpt-5.6-luna", reasoning="low",
+                        role="shadow")
+        rec = mr._RUN_MANIFEST["llm"]
+        assert rec["primary"]["model"] == "gpt-5.6-terra",             f"影子/抽取器蓋掉了主分析:{rec['primary']}"
+        assert rec["extractor"]["model"] == "gpt-5.6-luna"
+        assert rec["shadow"]["model"] == "gpt-5.6-luna"
+        # 推理 token **擇一不相加**(provider 兩種欄位都給時會憑空翻倍)
+        assert rec["primary"]["reasoning_tokens"] == 4200
+
+        # 截斷的呼叫不得被當成 writer,但要留在 attempts 裡
+        monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _resp(truncated))
+        try:
+            mr._call_openai("p", model="gpt-5.6-sol", reasoning="max",
+                            role="primary")
+        except mr.ExtractorOutputTruncated:
+            pass
+        rec = mr._RUN_MANIFEST["llm"]
+        assert rec["primary"]["model"] == "gpt-5.6-terra",             "失敗的呼叫覆蓋了實際 writer"
+        assert any(a["role"] == "primary" and a["model"] == "gpt-5.6-sol"
+                   for a in rec["attempts"]), "失敗嘗試沒有留下紀錄"
+    finally:
+        mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_requested_and_applied_reasoning_effort_are_distinguished(monkeypatch):
+    """批#91(第九輪 P1-1):400 退讓後用的是 provider 預設,不是使用者要的強度。
+
+    原本只記 requested,於是 manifest 會顯示 `reasoning_effort: "max"`
+    而實際那次呼叫**根本沒帶這個參數** —— 看起來像有生效。
+    """
+    import morning_report as mr
+
+    n = []
+
     class _R:
-        status_code = 200
+        def __init__(self, code):
+            self.status_code = code
+            self.text = "unsupported parameter"
 
         def raise_for_status(self):
             pass
 
         def json(self):
             return {"choices": [{"finish_reason": "stop",
-                                 "message": {"content": "分析內容"}}],
-                    "usage": {"prompt_tokens": 21000, "completion_tokens": 9000,
-                              "completion_tokens_details": {"reasoning_tokens": 4200}}}
+                                 "message": {"content": "文"}}],
+                    "usage": {}}
 
     monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
-    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _R())
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda *a, **k: (n.append(1), _R(400 if len(n) == 1 else 200))[1])
     mr._RUN_MANIFEST.pop("llm", None)
     try:
-        mr._call_openai("p", model="gpt-5.6-terra", reasoning="medium")
-        rec = mr._RUN_MANIFEST.get("llm") or {}
-        assert rec["provider"] == "openai" and rec["model"] == "gpt-5.6-terra"
-        assert rec["reasoning_effort"] == "medium"
-        assert rec["prompt_tokens"] == 21000
-        assert rec["reasoning_tokens"] == 4200, "推理 token 沒記到 —— 成本看不出來"
-        # 多次呼叫(重試/短版)要累加,否則帳單對不上
-        mr._call_openai("p", model="gpt-5.6-terra", reasoning="medium")
-        rec = mr._RUN_MANIFEST["llm"]
-        assert rec["calls"] == 2 and rec["prompt_tokens"] == 42000
+        mr._call_openai("p", model="gpt-5.6-terra", reasoning="max")
+        rec = mr._RUN_MANIFEST["llm"]["primary"]
+        assert rec["requested_effort"] == "max"
+        assert rec["applied_effort"] is None,             f"退讓後仍宣稱套用了 {rec['applied_effort']} —— 那是假的"
     finally:
         mr._RUN_MANIFEST.pop("llm", None)
 
 
-def test_output_cap_scales_with_reasoning_effort():
-    """批#90e:額度必須隨推理強度放大。
+def test_extractor_provider_matrix_is_explicit_and_fails_fast(monkeypatch):
+    """批#91(第九輪 P0-1):**每個 provider 都要明確分派,未知就當場失敗。**
 
-    `max_completion_tokens` 是 **reasoning + 答案的總額**。固定 4 倍(28,000)
-    在推理達答案的 3 倍時就會被截斷 —— 那正是 2026-07-31 抽取器 1560 則事件
-    0 產出的成因,而設 xhigh 等於保證重演。
+    原本 deepseek/openai 之外一律落到 `_call_llm_text`,而那個函式讀的是全域
+    `LLM_PROVIDER` —— 於是 `LLM_PROVIDER=openai` + `EXTRACTOR_PROVIDER=gemini`
+    會**兩邊都走 OpenAI**,症狀是「看起來有分開設定、實際沒有」。
     """
     import morning_report as mr
 
-    caps = {e: mr._openai_output_cap(e)
-            for e in ("none", "low", "medium", "high", "xhigh", "max")}
-    assert caps["low"] < caps["medium"] < caps["high"] < caps["xhigh"]
-    # xhigh 要放得下「答案 + 4 倍推理」(= 5 × 可見答案 7,800 ≈ 39,000)
-    assert caps["xhigh"] >= 39_000, f"xhigh 額度不足會被截斷:{caps['xhigh']}"
-    # 不得超過官方 max output
-    assert all(v <= 128_000 for v in caps.values())
-    # 未知強度取 medium,不猜高也不猜低
-    assert mr._openai_output_cap("不存在的強度") == caps["medium"]
-    assert mr._openai_output_cap("") == caps["medium"]
+    news = [{"title": "台積電消息", "summary": "內容", "source": "測試",
+             "link": "https://example.com/1",
+             "published": "2026-07-31T08:00:00+08:00"}]
+    for main, ext, expect in (("openai", "gemini", "gemini"),
+                              ("openai", "anthropic", "anthropic"),
+                              ("deepseek", "openai", "openai"),
+                              ("gemini", "deepseek", "deepseek")):
+        used = []
+        monkeypatch.setattr(mr, "LLM_PROVIDER", main)
+        monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", ext)
+        monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+        monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+        for name, fn in (("deepseek", "_call_deepseek_extractor"),
+                         ("openai", "_call_openai"), ("gemini", "_call_gemini"),
+                         ("anthropic", "_call_anthropic")):
+            monkeypatch.setattr(mr, fn,
+                                lambda *a, _n=name, **k: used.append(_n) or "[]")
+        mr._RUN_MANIFEST.pop("llm_extractor", None)
+        mr.call_llm_event_extractor(news, [])
+        assert used == [expect], f"{main}→{ext} 走到 {used},應為 {expect}"
+
+    # 無效值**不得靜默落到別人身上**
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "typo-provider")
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    mr.call_llm_event_extractor(news, [])
+    stat = mr._RUN_MANIFEST.get("llm_extractor") or {}
+    assert "typo-provider" in str(stat.get("error") or ""),         f"無效 provider 沒有當場失敗:{stat}"
+    mr._RUN_MANIFEST.pop("llm_extractor", None)

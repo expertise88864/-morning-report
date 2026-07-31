@@ -1119,7 +1119,11 @@ def test_llm_event_extractor_prioritizes_official_critical_items(monkeypatch):
         captured["prompt"] = prompt
         return "[]"
 
-    monkeypatch.setattr(mr, "_call_llm_text", fake_call)
+    # 批#91:抽取器改為每個 provider 明確分派(第九輪 P0-1),
+    # 這裡的預設 provider 是 gemini,所以要 patch 它實際會呼叫的那一個 ——
+    # 原本靠「未知就落到 `_call_llm_text`」的 fallthrough 正是被修掉的 bug。
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "gemini")
+    monkeypatch.setattr(mr, "_call_gemini", fake_call)
     news = [{
         "source": "Blog",
         "source_grade": "C",
@@ -1153,7 +1157,8 @@ def test_batch36_extractor_input_is_sanitized_and_fenced(monkeypatch):
     captured = {}
     monkeypatch.setattr(mr, "LLM_PROVIDER", "gemini")
     monkeypatch.setattr(mr, "GEMINI_API_KEY", "token")
-    monkeypatch.setattr(mr, "_call_llm_text",
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "gemini")
+    monkeypatch.setattr(mr, "_call_gemini",
                         lambda p: captured.setdefault("prompt", p) and "[]" or "[]")
     news = [{
         "source": "Blog", "source_grade": "C", "importance": "critical",
@@ -1286,7 +1291,8 @@ def test_llm_event_extractor_retries_once_when_zero_valid(monkeypatch):
             return '[{"entity":"2330","event_type":"BOGUS","direction":9}]'   # 全不合格
         return '[{"entity":"2330","event_type":"orders","direction":1,"title":"x"}]'
 
-    monkeypatch.setattr(mr, "_call_llm_text", fake)
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "gemini")
+    monkeypatch.setattr(mr, "_call_gemini", fake)
     news = [{"source": "MOPS", "company_label": "2330", "title": "2330 new orders",
              "importance": "critical", "published": "Tue, 02 Jul 2026 00:00:00 GMT"}]
     mr.call_llm_event_extractor(news, [])

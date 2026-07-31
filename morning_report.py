@@ -12734,7 +12734,7 @@ def _call_anthropic(prompt: str) -> str:
     return msg.content[0].text
 
 
-def _call_deepseek(prompt: str) -> str:
+def _call_deepseek(prompt: str, role: str = "primary") -> str:
     """
     DeepSeek API (OpenAI 相容 chat completions 介面)。
     支援重試與降級：deepseek-v4-pro → deepseek-v4-flash。
@@ -12795,8 +12795,11 @@ def _call_deepseek(prompt: str) -> str:
                 if not content:
                     raise RuntimeError(f"DeepSeek 回應無 content: {data}")
                 usage = data.get("usage", {})
-                _record_llm_call("deepseek", model, DEEPSEEK_REASONING_EFFORT,
-                                 usage or {})
+                _record_llm_call(
+                    role, "deepseek", model,
+                    requested_effort=DEEPSEEK_REASONING_EFFORT,
+                    applied_effort=payload.get("reasoning_effort", ""),
+                    usage=usage or {}, accepted=True)
                 print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
                       f"completion={usage.get('completion_tokens')} "
                       f"cache_hit={usage.get('prompt_cache_hit_tokens', 0)}")
@@ -12871,51 +12874,42 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
-#: 推理強度 → 輸出額度倍數(相對於 `LLM_REPORT_MAX_TOKENS` 的可見答案長度)。
-#: 依實測推得:抽取器在**機械性**任務上推理量已達答案的 1.5 倍,
-#: 主分析這種複雜推理只會更多;而 GPT-5.6 的 max output 是 128K,給寬不吃虧
-#: (額度是上限,沒用到不計費)。
-_OPENAI_CAP_MULTIPLIER = {"none": 2, "low": 4, "medium": 6,
-                          "high": 10, "xhigh": 14, "max": 16}
-#: 模型硬上限(官方文件:GPT-5.6 系列 max output 128K)。
-_OPENAI_MAX_OUTPUT = 128_000
-
-
 def _openai_output_cap(effort: str) -> int:
-    """依推理強度算輸出額度。未知強度取 medium 的倍數(不猜高也不猜低)。"""
-    mult = _OPENAI_CAP_MULTIPLIER.get((effort or "").strip().lower(), 6)
-    return min(LLM_REPORT_MAX_TOKENS * mult, _OPENAI_MAX_OUTPUT)
+    """依推理強度算輸出額度(實作見 `llm_telemetry.output_cap`)。"""
+    import llm_telemetry as _lt
+    return _lt.output_cap(effort, LLM_REPORT_MAX_TOKENS)
 
 
-def _record_llm_call(provider: str, model: str, effort: str, usage: dict) -> None:
-    """把**這封信實際是哪個模型寫的**記進 manifest(批#90d)。
+def _record_llm_call(role: str, provider: str, model: str, *,
+                     requested_effort: str = "", applied_effort: str = "",
+                     usage: Optional[dict] = None, accepted: bool = False,
+                     finish_reason: str = "", error: str = "") -> None:
+    """記錄一次 LLM 呼叫。**依角色分槽**(批#91,第九輪 P0-2)。
 
-    切換 provider 之後,信件本身看不出來是否切成功 —— 而 `LLM_PROVIDER` 是
-    repo variable,設錯(拼字、設在 Secrets 而不是 Variables)時的症狀是
-    「一切照舊」,沒有任何錯誤。那正是最難發現的一種失敗。
+    批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,每次呼叫
+    覆蓋 provider 與 model、token 全部相加。實際執行順序是
+    抽取器 → 主分析 → 影子,所以開了影子之後 manifest 會宣稱
+    **「這封信由影子模型撰寫」** —— 而影子的輸出根本沒有進信件。
+    token 也混成一團:不同模型單價不同,加總之後算不出成本。
+    **錯誤的可觀測性比沒有更危險**,它給的是一個看似精確、語意卻錯的答案。
 
-    每次呼叫都覆蓋(最後一次成功的即為本封信所用);同時累加 token 用量,
-    因為推理 token 以 output 計價、是成本的主要來源,而它到底用了多少
-    只有 API 回的 usage 知道。
+    **只有通過驗收的呼叫才算 writer**。原本在 `r.json()` 之後就登記,於是
+    `finish_reason=length`、content 為空的失敗呼叫也會被記成「實際模型」,
+    而真正寫出信的可能是後面的 Gemini 備援。未通過的進 `attempts`。
     """
+    import llm_telemetry as _lt
+    rec = _lt.build_record(provider, model, requested_effort=requested_effort,
+                           applied_effort=applied_effort, usage=usage,
+                           finish_reason=finish_reason, error=error)
     slot = _RUN_MANIFEST.setdefault("llm", {})
-    slot.update({"provider": provider, "model": model,
-                 "reasoning_effort": effort or None})
-    for k in ("prompt_tokens", "completion_tokens", "total_tokens",
-              "reasoning_tokens"):
-        v = usage.get(k)
-        if isinstance(v, int):
-            slot[k] = slot.get(k, 0) + v
-    # 推理 token 常藏在 completion_tokens_details 裡
-    det = usage.get("completion_tokens_details") or {}
-    if isinstance(det, dict) and isinstance(det.get("reasoning_tokens"), int):
-        slot["reasoning_tokens"] = (slot.get("reasoning_tokens", 0)
-                                    + det["reasoning_tokens"])
-    slot["calls"] = slot.get("calls", 0) + 1
+    if accepted:
+        slot[role] = _lt.merge_same_role(slot.get(role), rec)
+    else:
+        slot.setdefault("attempts", []).append({"role": role, **rec})
 
 
 def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
-                 reasoning: str = "") -> str:
+                 reasoning: str = "", role: str = "primary") -> str:
     """OpenAI 相容 chat completions。
 
     批#89。**GPT-5.6 全系列都是推理模型**,所以這裡從第一版就帶著批#85 的教訓:
@@ -12944,6 +12938,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     url = f"{OPENAI_BASE_URL}/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}",
                "Content-Type": "application/json"}
+    applied_effort = payload.get("reasoning_effort", "")
     r = requests.post(url, json=payload, headers=headers,
                       timeout=timeout or _llm_request_timeout())
     if r.status_code == 400 and "reasoning_effort" in payload:
@@ -12954,11 +12949,11 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         # **建副本而不是就地 pop** —— 就地改會讓「送出去的是哪一份」變得不可追:
         # 呼叫紀錄、log、測試看到的都會是被改過的同一個物件(自測時就是這樣紅的)。
         retry_payload = {k: v for k, v in payload.items() if k != "reasoning_effort"}
+        applied_effort = ""      # 退讓後用的是 provider 預設,不是使用者要的那個
         r = requests.post(url, json=retry_payload, headers=headers,
                           timeout=timeout or _llm_request_timeout())
     r.raise_for_status()
     data = r.json() or {}
-    _record_llm_call("openai", use_model, effort, data.get("usage") or {})
     choices = data.get("choices") or []
     msg = (choices[0].get("message") or {}) if choices else {}
     content = msg.get("content")
@@ -12966,11 +12961,17 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     usage = data.get("usage") or {}
     detail = (f"(model={use_model}、finish_reason={finish}、completion_tokens="
               f"{usage.get('completion_tokens')}、content_len={len(content or '')})")
+    _rec = dict(role=role, provider="openai", model=use_model,
+                requested_effort=effort, applied_effort=applied_effort,
+                usage=usage, finish_reason=finish)
     if finish == "length":
+        _record_llm_call(**_rec, accepted=False, error="finish_reason=length")
         raise ExtractorOutputTruncated(f"OpenAI 額度用完{detail}")
     if not content:
+        _record_llm_call(**_rec, accepted=False, error="empty content")
         raise RuntimeError(f"OpenAI 回應缺少 content{detail}")
-    print(f"[llm] OpenAI {use_model} usage={usage}")
+    _record_llm_call(**_rec, accepted=True)
+    print(f"[llm] OpenAI {use_model} role={role} usage={usage}")
     return content
 
 
@@ -13000,9 +13001,10 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
         try:
             if LLM_SHADOW_PROVIDER == "openai":
                 shadow_text = _call_openai(prompt, model=LLM_SHADOW_MODEL,
-                                           timeout=LLM_SHADOW_TIMEOUT)
+                                           timeout=LLM_SHADOW_TIMEOUT,
+                                           role="shadow")
             elif LLM_SHADOW_PROVIDER == "deepseek":
-                shadow_text = _call_deepseek(prompt)
+                shadow_text = _call_deepseek(prompt, role="shadow")
             else:
                 stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
                 _RUN_MANIFEST["llm_shadow"] = stat
@@ -13238,13 +13240,26 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     )
     def _call(p: str) -> str:
         # 批#90:抽取器可獨立指定 provider(見 `EXTRACTOR_PROVIDER`)。
+        # 批#91(第九輪 P0-1):**每個 provider 都要明確分派。**
+        # 原本 deepseek/openai 之外一律落到 `_call_llm_text(p)`,而那個函式
+        # 讀的是全域 `LLM_PROVIDER`(主分析的 provider)—— 於是
+        # `LLM_PROVIDER=openai` + `EXTRACTOR_PROVIDER=gemini` 會**兩邊都走
+        # OpenAI**,而症狀是「看起來有分開設定、實際沒有」。
+        # 未知的 provider **當場失敗**,不得靜默落到別人身上。
         _ep = _extractor_provider()
         if _ep == "deepseek":
             return _call_deepseek_extractor(p)
         if _ep == "openai":
             return _call_openai(p, model=OPENAI_EXTRACTOR_MODEL,
-                                reasoning=OPENAI_EXTRACTOR_REASONING)
-        return _call_llm_text(p)
+                                reasoning=OPENAI_EXTRACTOR_REASONING,
+                                role="extractor")
+        if _ep == "gemini":
+            return _call_gemini(p)
+        if _ep == "anthropic":
+            return _call_anthropic(p)
+        raise RuntimeError(
+            f"EXTRACTOR_PROVIDER 不是合法值:{_ep!r}"
+            "(可用 deepseek / openai / gemini / anthropic)")
 
     # 批#68:**這條路徑目前在生產沒有任何產出**。1160 則歷史事件裡沒有一則是
     # C 級(LLM 抽取器的固定等級),`sources` 也從未出現 "LLM extractor",

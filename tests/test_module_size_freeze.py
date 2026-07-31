@@ -54,7 +54,17 @@ import pytest
 #: **巢狀閉包**,捕捉 `prompt` / `compact_items` / `_call` / `_stat` 這些區域狀態,
 #: `refactor_audit.py` 只認頂層函式(回報「找不到頂層函式」)。
 #: 把它們提到頂層就得把那四個東西全部改成參數,等於為了搬而搬。
-MAIN_MODULE_LINE_CEILING = 22_600
+#:
+#: 2026-07-31 批#89 調高至 22,800(現況 22,686)。**比較邏輯已經搬走了**:
+#: 純函式的部分(輸出比較、帳本 upsert、彙整判讀)放在新的葉模組
+#: `llm_shadow.py`(它刻意不碰檔案系統與網路,所以可以單獨測)。
+#: 留在主模組的兩個判 BLOCK:
+#: ```
+#: BLOCK _call_openai:   net/io=['requests'] state=[OPENAI_* / LLM_REPORT_MAX_TOKENS]
+#: BLOCK _run_llm_shadow: state=[LLM_SHADOW_* / _RUN_MANIFEST / LLM_PROVIDER …]
+#: ```
+#: 前者是對外請求、後者是接線與 manifest 寫入,兩者本來就該留在主模組。
+MAIN_MODULE_LINE_CEILING = 22_800
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

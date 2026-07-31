@@ -342,6 +342,18 @@ DEEPSEEK_EXTRACTOR_MODEL = os.environ.get("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-
 # 僅對 v4-pro / reasoner 生效，可顯著提升分析推理深度（成本略升）。
 DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
+
+# 批#89:OpenAI(相容 chat completions)。加這個 provider 是為了能把 GPT-5.6
+# 系列拉進**影子比較**,不是為了直接切換 —— 切換前要先有跨日的可比較證據。
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com").rstrip("/")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-terra")
+#: 影子比較:設了才啟用。**預設關閉** —— 它會讓主分析的呼叫成本加倍,
+#: 而且在沒有人要評估換模型時純屬浪費。
+LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
+LLM_SHADOW_MODEL = os.environ.get("LLM_SHADOW_MODEL", "").strip()
+#: 影子呼叫的時間上限。它**不能**擠壓正班 —— 晨報不可斷優先於評估。
+LLM_SHADOW_TIMEOUT = float(os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "120"))
 LLM_TOTAL_TIMEOUT_SECONDS = float(os.environ.get("LLM_TOTAL_TIMEOUT_SECONDS", "180"))
 LLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LLM_REQUEST_TIMEOUT_SECONDS", "75"))
 _LLM_DEADLINE: Optional[float] = None
@@ -374,7 +386,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions", "chips", "policy_deepdive",
+    "corporate_actions", "chips", "policy_deepdive", "llm_shadow",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -10577,6 +10589,7 @@ def _state_push_paths() -> list[str]:
             str(FORECAST_LEDGER_FILE),   # 預測記分帳本:不入 commit 清單=CI 每日歸零(Codex 批#18 P1)
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
             str(CORPORATE_ACTION_FILE),   # 批#82:暫停交易/復牌史。TWTAWU 是**快照**,不跨日累積則結算當下查不到
+            str(LLM_SHADOW_LEDGER_FILE),   # 批#89:影子比較帳本。價值全在跨日累積,不 commit 回來就永遠是「樣本不足」
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
 
 
@@ -12829,12 +12842,131 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
+def _call_openai(prompt: str, model: str = "", timeout: float = 0.0) -> str:
+    """OpenAI 相容 chat completions。
+
+    批#89。**GPT-5.6 全系列都是推理模型**,所以這裡從第一版就帶著批#85 的教訓:
+    `max_completion_tokens` 是 **reasoning + 答案的總額**,而推理可能把整個額度
+    吃光、`content` 回空 —— 那次抽取器 1560 則事件 0 產出就是這樣來的。
+    所以(a)額度給得比答案需求大很多,(b)`finish_reason == "length"`
+    **無條件**當成截斷並拋出可辨識的錯誤,不要等到 content 為空才檢查
+    (先吐一半再斷的情形 content 非空但無法解析)。
+    """
+    if not OPENAI_API_KEY:
+        raise RuntimeError("缺 OPENAI_API_KEY 環境變數")
+    use_model = model or OPENAI_MODEL
+    r = requests.post(
+        f"{OPENAI_BASE_URL}/v1/chat/completions",
+        json={
+            "model": use_model,
+            "messages": [{"role": "user", "content": prompt}],
+            # 推理模型的新版介面用 max_completion_tokens;給 4 倍餘裕
+            # (答案約 7000,推理未知 → 28000)。真正的用量由 usage 記進 manifest。
+            "max_completion_tokens": LLM_REPORT_MAX_TOKENS * 4,
+            "stream": False,
+        },
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}",
+                 "Content-Type": "application/json"},
+        timeout=timeout or _llm_request_timeout(),
+    )
+    r.raise_for_status()
+    data = r.json() or {}
+    choices = data.get("choices") or []
+    msg = (choices[0].get("message") or {}) if choices else {}
+    content = msg.get("content")
+    finish = str((choices[0].get("finish_reason") if choices else "") or "?")
+    usage = data.get("usage") or {}
+    detail = (f"(model={use_model}、finish_reason={finish}、completion_tokens="
+              f"{usage.get('completion_tokens')}、content_len={len(content or '')})")
+    if finish == "length":
+        raise ExtractorOutputTruncated(f"OpenAI 額度用完{detail}")
+    if not content:
+        raise RuntimeError(f"OpenAI 回應缺少 content{detail}")
+    print(f"[llm] OpenAI {use_model} usage={usage}")
+    return content
+
+
+def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> None:
+    """讓第二個模型也跑同一份 prompt,**只記錄、不改輸出**(批#89)。
+
+    預設關閉;設了 `LLM_SHADOW_PROVIDER` 才啟用。設計原則照 MZ 影子:
+      - **失敗只是今天沒有比較資料** —— 任何例外都吞掉,絕不影響晨報
+      - **附加式帳本**:比較的價值全在跨日累積,單日看不出分佈差異
+      - **可觀測**:結果進 manifest,不然它只存在於當次記憶體
+
+    刻意在**主分析成功之後**才跑:影子不該與正班搶時間預算,而且沒有主結果
+    就沒有東西可比。時間不夠時直接跳過並記下原因 —— 晨報不可斷優先於評估。
+    """
+    if not (LLM_SHADOW_PROVIDER and LLM_SHADOW_MODEL and primary_text):
+        return
+    import llm_shadow as _ls
+    stat = {"enabled": True, "shadow_model": LLM_SHADOW_MODEL,
+            "provider": LLM_SHADOW_PROVIDER}
+    try:
+        if not _run_budget_ok(int(LLM_SHADOW_TIMEOUT) + 30, "LLM 影子比較"):
+            stat["skipped"] = "run_budget"
+            _RUN_MANIFEST["llm_shadow"] = stat
+            return
+        t0 = time.monotonic()
+        shadow_text, ok, err = "", False, ""
+        try:
+            if LLM_SHADOW_PROVIDER == "openai":
+                shadow_text = _call_openai(prompt, model=LLM_SHADOW_MODEL,
+                                           timeout=LLM_SHADOW_TIMEOUT)
+            elif LLM_SHADOW_PROVIDER == "deepseek":
+                shadow_text = _call_deepseek(prompt)
+            else:
+                stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
+                _RUN_MANIFEST["llm_shadow"] = stat
+                return
+            ok = bool(shadow_text)
+        except Exception as e:                       # noqa: BLE001 - 影子不得影響正班
+            err = f"{type(e).__name__}: {e}"
+            print(f"[llm-shadow] 影子呼叫失敗(不影響晨報): {err}", file=sys.stderr)
+        elapsed = time.monotonic() - t0
+
+        from llm_postprocess import _extract_stance, _extract_summary
+        rec = _ls.compare_outputs(
+            {"model": (DEEPSEEK_MODEL if LLM_PROVIDER == "deepseek"
+                       else OPENAI_MODEL if LLM_PROVIDER == "openai" else LLM_PROVIDER),
+             "text": primary_text, "stance": _extract_stance(primary_text),
+             "summary": _extract_summary(primary_text), "ok": True, "elapsed": None},
+            {"model": LLM_SHADOW_MODEL, "text": shadow_text,
+             "stance": _extract_stance(shadow_text) if ok else {},
+             "summary": _extract_summary(shadow_text) if ok else "",
+             "ok": ok, "elapsed": elapsed})
+        if err:
+            rec["shadow_error"] = err[:160]
+
+        today = now_tpe.strftime("%Y-%m-%d")
+        try:
+            ledger = _ls.load_ledger(LLM_SHADOW_LEDGER_FILE)
+        except Exception as e:                       # noqa: BLE001
+            # 讀不出來就**不寫** —— 覆蓋等於把累積的樣本清空,而那正是它的全部價值。
+            print(f"[llm-shadow] 帳本不可讀,本次不寫入: {e}", file=sys.stderr)
+            stat["skipped"] = "ledger_unreadable"
+            _RUN_MANIFEST["llm_shadow"] = stat
+            return
+        ledger = _ls.upsert(ledger, rec, today)
+        LLM_SHADOW_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(LLM_SHADOW_LEDGER_FILE,
+                           json.dumps(ledger, ensure_ascii=False, indent=1))
+        stat.update({"today": rec, "cumulative": _ls.summarize(ledger, LLM_SHADOW_MODEL)})
+        print(f"[llm-shadow] {stat['cumulative'].get('verdict')}")
+    except Exception as e:                           # noqa: BLE001
+        stat["error"] = f"{type(e).__name__}: {e}"[:160]
+        print(f"[llm-shadow] 影子比較整段略過(不影響晨報): {e}", file=sys.stderr)
+    _RUN_MANIFEST["llm_shadow"] = stat
+
+
 def _call_llm_text(prompt: str) -> str:
     """Dispatch an LLM task without mixing extraction and report-writing prompts."""
     if LLM_PROVIDER == "anthropic":
         return _call_anthropic(prompt)
     if LLM_PROVIDER == "deepseek":
         return _call_deepseek(prompt)
+    if LLM_PROVIDER == "openai":
+        return _call_openai(prompt)
     return _call_gemini(prompt)
 
 
@@ -13155,6 +13287,10 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
     try:
         text = _call_llm_text(prompt)
         if _analysis_complete_enough(text):
+            # 批#89:影子比較接在**主分析成功之後** —— 只有這裡同時握有 prompt
+            # 與正式輸出。呼叫端沒有 prompt,在那邊重建會與這裡漂移。
+            # 預設關閉;失敗只是今天沒有比較資料(見 `_run_llm_shadow`)。
+            _run_llm_shadow(prompt, text, dt.datetime.now(TPE))
             return text
         print("[llm] 分析輸出疑似截斷，改用短版提示重試一次", file=sys.stderr)
         concise_prompt = (
@@ -15414,6 +15550,8 @@ _EXDIV_KEEP_DAYS = 400
 #: 這一類在 TWSE 沒有各自的端點,但共同表現是「暫停交易數日後以新參考價復牌」,
 #: 所以用暫停交易表當統一訊號,不逐項列舉行動類型。
 CORPORATE_ACTION_FILE = STATE_ROOT / "corporate_actions.json"
+#: 批#89:LLM 影子比較帳本(換模型的證據來源)。
+LLM_SHADOW_LEDGER_FILE = STATE_ROOT / "llm_shadow_ledger.json"
 _CORPACT_KEEP_DAYS = 400
 
 

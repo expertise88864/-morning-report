@@ -1,0 +1,192 @@
+# -*- coding: utf-8 -*-
+"""LLM **影子比較**:同一份 prompt 讓第二個模型也跑一次,只記錄、不改輸出。
+
+批#89(2026-07-31)。要換模型之前必須先有**可比較的證據**,而不是憑一次的
+主觀印象 —— 這個 repo 已經有同樣形狀的東西(MZ 影子),照它的原則做:
+
+  1. **只算不改**:影子輸出永遠不進信件。失敗就只是今天沒有比較資料。
+  2. **附加式帳本**:比較結果逐日累積,否則永遠沒有樣本可以判斷。
+  3. **可觀測**:結果進 manifest,不然它只存在於當次記憶體。
+
+**為什麼不能只看「哪個讀起來比較好」**:立場評分、beta 0.31、Top5 熔斷都是在
+現有模型的輸出分佈上校準的。換模型等於換掉那個分佈,而分佈的差異要看**多天**
+才看得出來(單日的差異可能只是當天新聞本來就模稜兩可)。
+
+本模組刻意**不碰檔案系統與網路**:比較是純函式,帳本讀寫由呼叫端傳入路徑,
+這樣它可以被單獨測試,也不受 conftest 的 state 隔離影響。
+"""
+from __future__ import annotations
+
+import datetime as _dt
+import json as _json
+from pathlib import Path
+
+#: 帳本保留天數。比較樣本要夠長才看得出分佈差異,但也不需要無限累積。
+LEDGER_KEEP_DAYS = 120
+
+#: 一天最多一筆(同一天重跑會覆蓋,不會灌出重複樣本)。
+LEDGER_KEY_FIELDS = ("date", "primary_model", "shadow_model")
+
+
+def _bigrams(text: str) -> set:
+    t = "".join(str(text or "").split())
+    return {t[i:i + 2] for i in range(len(t) - 1)} if len(t) >= 2 else set()
+
+
+def text_overlap(a: str, b: str) -> float:
+    """兩段文字的 bigram 重疊率(分母取較短的一邊)。
+
+    分母取短邊是刻意的:兩個模型的輸出長度可能差很多,用長邊當分母會把
+    「短的那個講了同樣的重點」誤判成不像。
+    """
+    ga, gb = _bigrams(a), _bigrams(b)
+    if not ga or not gb:
+        return 0.0
+    return round(len(ga & gb) / min(len(ga), len(gb)), 3)
+
+
+def compare_outputs(primary: dict, shadow: dict) -> dict:
+    """把兩邊的輸出整理成一筆**可累積**的比較紀錄。
+
+    `primary` / `shadow` 各需含:`model`、`text`、`stance`(dict,含 label/score)、
+    `summary`、`elapsed`、`ok`。缺的欄位一律視為未知,不編值。
+
+    刻意記錄「**是否同向**」而不是只記兩個標籤:換模型真正的風險是
+    **立場翻面**(偏多 ↔ 偏空),那才會改變讀者的動作;
+    「中性 vs 偏多」與「偏多 vs 中性」是同一件事,不該被算成兩種不同的分歧。
+    """
+    def _g(d, *path, default=None):
+        cur = d
+        for k in path:
+            if not isinstance(cur, dict):
+                return default
+            cur = cur.get(k)
+        return cur if cur is not None else default
+
+    p_label = str(_g(primary, "stance", "label") or "")
+    s_label = str(_g(shadow, "stance", "label") or "")
+    p_score = _g(primary, "stance", "score")
+    s_score = _g(shadow, "stance", "score")
+    rec = {
+        "primary_model": str(primary.get("model") or ""),
+        "shadow_model": str(shadow.get("model") or ""),
+        "primary_ok": bool(primary.get("ok")),
+        "shadow_ok": bool(shadow.get("ok")),
+        "primary_stance": p_label or None,
+        "shadow_stance": s_label or None,
+        "stance_agree": (p_label == s_label) if (p_label and s_label) else None,
+        "stance_flipped": _is_flip(p_label, s_label),
+        "primary_score": p_score if isinstance(p_score, int) else None,
+        "shadow_score": s_score if isinstance(s_score, int) else None,
+        "primary_chars": len(str(primary.get("text") or "")),
+        "shadow_chars": len(str(shadow.get("text") or "")),
+        "summary_overlap": text_overlap(primary.get("summary"),
+                                        shadow.get("summary")),
+        "body_overlap": text_overlap(primary.get("text"), shadow.get("text")),
+        "primary_seconds": _round_or_none(primary.get("elapsed")),
+        "shadow_seconds": _round_or_none(shadow.get("elapsed")),
+    }
+    if isinstance(p_score, int) and isinstance(s_score, int):
+        rec["score_gap"] = s_score - p_score
+    return rec
+
+
+#: 立場標籤的方向。未收錄的字串視為未知,**不猜**。
+_DIRECTION = {"偏多": 1, "看多": 1, "多方": 1,
+              "中性": 0, "觀望": 0, "中立": 0,
+              "偏空": -1, "看空": -1, "空方": -1}
+
+
+def _is_flip(a: str, b: str):
+    """是否**翻面**(多 ↔ 空)。任一邊未知就回 None,不當成「沒翻面」。"""
+    da, db = _DIRECTION.get(a), _DIRECTION.get(b)
+    if da is None or db is None:
+        return None
+    return da * db < 0
+
+
+def _round_or_none(v):
+    try:
+        return round(float(v), 1)
+    except (TypeError, ValueError):
+        return None
+
+
+def load_ledger(path: Path) -> list:
+    """讀帳本。**讀不出來就拋** —— 呼叫端不得代它把檔案清掉。
+
+    這是本 repo 反覆出現的病灶(讀檔失敗被當成沒有資料,再被原子覆寫),
+    影子帳本的價值全在於累積,一次誤覆寫就等於重新開始。
+    """
+    if not Path(path).exists():
+        return []
+    data = _json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"影子帳本格式非預期:{type(data).__name__}")
+    for i, r in enumerate(data):
+        if not isinstance(r, dict):
+            raise ValueError(f"影子帳本第 {i} 列不是物件")
+    return data
+
+
+def upsert(ledger: list, record: dict, today: str) -> list:
+    """把今天的紀錄併進帳本(同日同模型組合覆蓋),並修剪過期資料。"""
+    rec = {"date": str(today), **record}
+    key = tuple(str(rec.get(k) or "") for k in LEDGER_KEY_FIELDS)
+    out = [r for r in (ledger or [])
+           if tuple(str(r.get(k) or "") for k in LEDGER_KEY_FIELDS) != key]
+    out.append(rec)
+    try:
+        cutoff = (_dt.date.fromisoformat(str(today))
+                  - _dt.timedelta(days=LEDGER_KEEP_DAYS)).isoformat()
+        out = [r for r in out if str(r.get("date") or "") >= cutoff]
+    except (ValueError, TypeError):
+        pass
+    return sorted(out, key=lambda r: (str(r.get("date")), str(r.get("shadow_model"))))
+
+
+def summarize(ledger: list, shadow_model: str = "") -> dict:
+    """把帳本彙整成「夠不夠格換」的判讀。
+
+    **樣本不足時明說「還不知道」**,不給一個看起來像結論的數字 ——
+    這一輪已經有太多次「機制存在但沒有證據」被當成有結論。
+    """
+    rows = [r for r in (ledger or []) if isinstance(r, dict)
+            and (not shadow_model or r.get("shadow_model") == shadow_model)]
+    both_ok = [r for r in rows if r.get("primary_ok") and r.get("shadow_ok")]
+    agree = [r for r in both_ok if r.get("stance_agree") is not None]
+    flips = [r for r in both_ok if r.get("stance_flipped") is True]
+    out = {"samples": len(rows), "both_ok": len(both_ok),
+           "shadow_fail": sum(1 for r in rows if not r.get("shadow_ok"))}
+    if agree:
+        out["stance_agree_rate"] = round(
+            sum(1 for r in agree if r["stance_agree"]) / len(agree), 3)
+        out["stance_flips"] = len(flips)
+    gaps = [r["score_gap"] for r in both_ok if isinstance(r.get("score_gap"), int)]
+    if gaps:
+        out["score_gap_mean"] = round(sum(gaps) / len(gaps), 2)
+        out["score_gap_abs_max"] = max(abs(g) for g in gaps)
+    ov = [r["body_overlap"] for r in both_ok
+          if isinstance(r.get("body_overlap"), (int, float))]
+    if ov:
+        out["body_overlap_mean"] = round(sum(ov) / len(ov), 3)
+    out["verdict"] = _verdict(out)
+    return out
+
+
+#: 判斷「樣本夠不夠」的下限。10 個交易日約兩週 —— 少於這個數字,
+#: 立場一致率的分母太小,一兩天的差異就會把比率甩到極端。
+MIN_SAMPLES_FOR_VERDICT = 10
+
+
+def _verdict(stat: dict) -> str:
+    if stat.get("both_ok", 0) < MIN_SAMPLES_FOR_VERDICT:
+        return (f"樣本不足({stat.get('both_ok', 0)}/{MIN_SAMPLES_FOR_VERDICT})"
+                "——尚不足以判斷,繼續累積")
+    if stat.get("stance_flips", 0) > 0:
+        return (f"有 {stat['stance_flips']} 天立場翻面(多↔空)"
+                "——換模型會改變讀者動作,需人工逐日核對那幾天誰對")
+    rate = stat.get("stance_agree_rate")
+    if rate is not None and rate >= 0.8:
+        return "立場高度一致——差異主要在文字,可依品質偏好決定"
+    return "立場常不一致但未翻面——建議再累積,並人工抽樣比較理由品質"

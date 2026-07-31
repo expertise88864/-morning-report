@@ -92,16 +92,16 @@ PODCASTS = [
     # --- 英文深度 / 科技(預算內輪轉;貼近 2330/00662 半導體與 NASDAQ 曝險) ---
     {"key": "oddlots", "name": "Odd Lots", "search": "Odd Lots Bloomberg",
      "lang": "en", "country": "US", "priority": 2},
-    {"key": "moneytalks", "name": "Money Talks (Economist)",
-     "search": "Money Talks from The Economist",
-     "lang": "en", "country": "US", "priority": 2},
     {"key": "sharptech", "name": "Sharp Tech (Ben Thompson)",
      "search": "Sharp Tech Ben Thompson",
      "lang": "en", "country": "US", "priority": 2},   # 科技/半導體策略,貼 2330/00662
     {"key": "allin", "name": "All-In Podcast", "search": "All-In Podcast",
      "lang": "en", "country": "US", "priority": 2},    # 總經+科技+市場,週更格局大
-    {"key": "bg2", "name": "BG2 Pod", "search": "BG2 Pod",
-     "lang": "en", "country": "US", "priority": 2},    # Gerstner/Gurley 科技投資深度,週更(2026-07-14 使用者拍板新增)
+    # 2026-07-31 依實測移除兩檔(digest 累積至今**各 0 集**,不是抓取壞掉,是節目本身):
+    #   BG2 Pod —— iTunes 最新集停在 2026-03-15,停更四個半月
+    #   Money Talks (Economist) —— feed 實測 167 天/集,幾乎不更新
+    # 兩者都通過 iTunes 查詢(feed 有效),所以既有的抓取失敗告警不會響 ——
+    # 「節目不出新集」與「我們抓不到」是兩件事,而只有後者有告警。
 ]
 
 # 首跑實測:轉錄速度 ~0.18x 音長(147 分音檔僅 25 分轉錄),預算可放寬;
@@ -172,14 +172,53 @@ def _http_get(url, *, retries=2, backoff=1.2,
         raise last_exc
 
 
+def _name_matches(search_term: str, collection: str) -> bool:
+    """iTunes 回的節目名與搜尋詞是否真的是同一個節目。
+
+    2026-07-31 實測 iTunes 的模糊比對會回**完全不同的節目**:
+      「Acquired podcast」        → 「Target Acquired Podcast / A Marvel…」
+      「Stratechery Ben Thompson」→ 「Acquired」
+    而 `resolve_feed_url` 原本直接取 `results[0]`,等於把別的節目的內容
+    灌進晨報,而且**看起來完全正常**(有 feed、有新集、摘要也寫得出來)。
+
+    判準:搜尋詞的具辨識力片段(去掉泛用詞)至少要有一個出現在節目名裡。
+    刻意只要求一個 —— 節目名常帶副標(「BG2Pod with Brad Gerstner and Bill
+    Gurley」),而搜尋詞常帶名稱裡沒有的消歧詞(「Odd Lots **Bloomberg**」);
+    要求全中會把正確的擋掉。
+
+    **能力邊界(誠實標註)**:擋得住完全不相干的誤配(Stratechery → Acquired),
+    但擋**不住**「具辨識力詞整個出現在別的節目名裡」的情形 ——
+    「Acquired」對「Target Acquired Podcast」仍會通過。要根本解決得把 feed URL
+    釘進設定(人工核對過一次),搜尋只當備援。這裡的職責是**擋漂移**,
+    不是做節目探索;PODCASTS 是人工策展的固定清單。
+    """
+    name = str(collection or "").lower()
+    generic = {"podcast", "pod", "the", "show", "from", "with", "and", "&"}
+    parts = [w for w in str(search_term or "").lower().replace("(", " ")
+             .replace(")", " ").split() if w and w not in generic]
+    if not parts:
+        return bool(name)
+    return any(w in name for w in parts)
+
+
 def resolve_feed_url(search_term: str, country: str = "TW") -> str:
+    """搜尋節目並回 feed URL;**名稱對不上就回空**(見 `_name_matches`)。
+
+    取 limit=5 再挑第一個名稱對得上的 —— 只取 1 筆的話,一旦最相似的那筆是
+    別的節目就直接誤用,沒有第二次機會。
+    """
     r = _http_get("https://itunes.apple.com/search",
                   params={"term": search_term, "country": country,
-                          "media": "podcast", "limit": 1},
+                          "media": "podcast", "limit": 5},
                   timeout=20)
     r.raise_for_status()
-    results = r.json().get("results", [])
-    return str(results[0].get("feedUrl", "")) if results else ""
+    for item in r.json().get("results", []) or []:
+        if not isinstance(item, dict):
+            continue
+        feed = str(item.get("feedUrl") or "")
+        if feed and _name_matches(search_term, item.get("collectionName")):
+            return feed
+    return ""
 
 
 def parse_feed_url(url: str, timeout: int = 20):

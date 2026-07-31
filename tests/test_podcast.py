@@ -260,3 +260,39 @@ def test_load_podcast_digest_excludes_removed_shows(tmp_path, monkeypatch):
     shows = {e["show"] for e in eps}
     assert "股癌" in shows
     assert "科技報橘" not in shows and "WSJ What's News" not in shows
+
+
+def test_itunes_feed_match_rejects_unrelated_shows():
+    """批#87:`resolve_feed_url` 原本直接取 `results[0]`,不驗名稱。
+
+    2026-07-31 實測 iTunes 的模糊比對會回**完全不同的節目**:
+    「Stratechery Ben Thompson」→「Acquired」。接錯 feed 會把別的節目的內容
+    灌進晨報,而且看起來完全正常(有 feed、有新集、摘要也寫得出來)。
+    """
+    import podcast_digest as pdg
+
+    # 擋得住的:完全不相干
+    assert not pdg._name_matches("Stratechery Ben Thompson", "Acquired")
+    assert not pdg._name_matches("股癌 Gooaye", "M觀點")
+    # 必須放行的:名稱帶副標、或搜尋詞帶名稱裡沒有的消歧詞
+    assert pdg._name_matches("BG2 Pod", "BG2Pod with Brad Gerstner and Bill Gurley")
+    assert pdg._name_matches("Odd Lots Bloomberg", "Odd Lots")
+    assert pdg._name_matches("股癌 Gooaye", "股癌 Gooaye")
+    # **擋不住的(已知邊界,誠實釘住)**:具辨識力詞整個出現在別的節目名裡
+    assert pdg._name_matches("Acquired podcast", "Target Acquired Podcast"), \
+        "這個案例本來就擋不住 —— 若哪天擋住了,請一併更新 docstring 的能力邊界"
+
+
+def test_dead_shows_are_off_the_list():
+    """批#87:digest 累積至今各 0 集的兩檔已移除。
+
+    **不是抓取壞掉,是節目本身**:BG2 Pod 的 iTunes 最新集停在 2026-03-15
+    (停更四個半月);Money Talks (Economist) 的 feed 實測 167 天/集。
+    兩者都通過 iTunes 查詢、feed 有效,所以既有的抓取失敗告警**不會響** ——
+    「節目不出新集」與「我們抓不到」是兩件事,而只有後者有告警。
+    """
+    import podcast_digest as pdg
+
+    keys = {p["key"] for p in pdg.PODCASTS}
+    assert "bg2" not in keys and "moneytalks" not in keys
+    assert keys, "清單不能是空的"

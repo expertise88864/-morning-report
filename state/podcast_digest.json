@@ -4915,6 +4915,54 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73279484",
+        "title": "Reddit beat fails to trend",
+        "published": "Fri, 31 Jul 2026 10:46:33 +0000",
+        "processed_at": "2026-07-31T15:37:39Z",
+        "digest": {
+          "summary_points": [
+            "Reddit 第二季營收年增61%至8.05億美元、EPS 1.25美元，優於預期，但盤前股價下跌近9%，主因市場擔憂AI搜尋功能可能減少傳統搜尋導流，該股今年累計跌逾23%。",
+            "亞馬遜第二季財報全面優於預期，AWS雲端成長加速且獲利強勁，盤前股價大漲12%，顯示AI資本支出正轉化為實際營收動能。",
+            "微軟財報激勵股價站上200日均線，市場對AI相關營收成長抱持樂觀態度。",
+            "Jersey Mike's 以23美元定價IPO，開盤跌至21美元，收在21.63美元，Seeking Alpha 分析師認為估值可能偏高。",
+            "日本與南韓聯手干預匯市，日圓與韓元反彈，顯示官方對匯率過度波動的警戒。"
+          ],
+          "tickers": [
+            {
+              "name": "Reddit",
+              "code": "RDDT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報優於預期但股價重挫，主因AI搜尋可能衝擊流量。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2全面擊敗預期，AWS加速成長且獲利強勁。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報後股價站上200日均線，AI營收展望樂觀。"
+            },
+            {
+              "name": "Jersey Mike's",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "IPO定價高於首日開盤，分析師認為估值可能偏高。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73263214",
         "title": "High-flying AI fund forced to dump stocks",
         "published": "Thu, 30 Jul 2026 20:13:34 +0000",
@@ -5478,65 +5526,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-22T22:58:47Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73084229",
-        "title": "Nebius gets NVDA lift",
-        "published": "Tue, 21 Jul 2026 10:30:30 +0000",
-        "processed_at": "2026-07-21T15:22:34Z",
-        "digest": {
-          "summary_points": [
-            "Nebius 盤前上漲 6%，因 Nvidia 取得其 9.3% 股權，包括先前宣布的 20 億美元投資及認股權證，合作部署超過 5 GW 的 Nvidia 系統至 2030 年。",
-            "三星推出三星 Galaxy 卡，由 Barclays 發行於 Visa 網路，提供最高 5% 現金回饋（三星直接消費）、3%（Samsung Wallet）及 2%（串流服務）。",
-            "Cracker Barrel 預期達成或超越營收預期高標及調整後 EBITDA 展望；完成 26 家店面售後租回及出售 Maple Street Biscuit Company，淨獲利約 7700 萬美元用於減債。",
-            "Snap 據報導就社交媒體成癮訴訟達成和解（趨勢話題）。",
-            "原油價格在五個月戰爭期間漲幅不如預期（主要話題）。",
-            "台積電據報導將在 2027 年將晶片製造價格提高最多 10%。",
-            "Magnolia Oil & Gas 下跌 6%，因定價公開發行逾 4600 萬股 A 類股，每股 23.75 美元，籌資約 11 億美元。",
-            "股指期貨開盤前走高，原油上漲 0.3%，FTSE 100 漲 0.2%，DAX 漲 0.3%。"
-          ],
-          "tickers": [
-            {
-              "name": "Nebius",
-              "code": "NBIS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Nvidia 持股及合作提升 AI 基礎設施展望，股價正面反應。"
-            },
-            {
-              "name": "Cracker Barrel",
-              "code": "CBRL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "正面財測及資產活化（售後租回、出售事業）改善財務狀況。"
-            },
-            {
-              "name": "Magnolia Oil & Gas",
-              "code": "MGY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "股權稀釋導致股價下跌。"
-            },
-            {
-              "name": "Taiwan Semiconductor Manufacturing",
-              "code": "TSM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "報導計劃漲價，影響待觀察。"
-            },
-            {
-              "name": "Snap",
-              "code": "SNAP",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "訴訟和解消息無明確方向性。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Nebius is up 6% in pre-market action after disclosing that Nvidia has taken a stake in the company."
-        },
-        "shown_at": "2026-07-21T22:51:32Z"
       }
     ]
   },

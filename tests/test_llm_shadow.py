@@ -389,31 +389,79 @@ def test_400_backoff_only_when_the_error_blames_that_parameter():
     assert not lt.response_blames_param(_Bad(), "reasoning_effort")
 
 
-def test_scheduled_runs_reject_efforts_that_cannot_finish_in_time():
-    """批#92(第九輪 P1-2):**額度與 wall-clock 必須是同一個預算。**
+def test_effort_caps_are_per_provider_and_grounded_in_measurement():
+    """批#93:**推理強度的標籤在不同 provider 之間不可比。**
 
-    提高 token 額度只避免 server 端截斷,避不掉 client 端的 75 秒 timeout。
-    xhigh 的 98,000 token 額度遠超過 75 秒能生成的量 —— 結果是逾時掉備援,
-    連想評估的那個模型的輸出都看不到。高強度留給手動/影子/離線。
+    批#92 用一張跨 provider 的表(primary 一律 medium),上線第一班就誤報 ——
+    2026-08-01 生產 manifest 顯示 `deepseek-v4-pro / requested=high /
+    reasoning_tokens=517 / calls=1`,一次就完成,而 `high` 正是本 repo 的
+    **程式碼預設值**。那條守衛等於每天把 `llm:config_issue` 塞進降級清單,
+    而降級清單一旦有常駐雜訊,真的問題就會被淹掉。
+
+    所以這條同時是**那次誤報的回歸測試**:上限必須各自依實測訂。
     """
     import llm_telemetry as lt
 
     def _has(_env):
         return True
 
-    ok = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
-                                shadow_provider="", has_key=_has,
-                                efforts={"primary": "medium", "extractor": "low"})
-    assert ok == [], ok
-    bad = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
-                                 shadow_provider="", has_key=_has,
-                                 efforts={"primary": "xhigh"})
-    assert any("超過正式排程上限" in m for m in bad), bad
+    def _issues(**kw):
+        base = dict(provider="deepseek", extractor_provider="deepseek",
+                    shadow_provider="", has_key=_has)
+        base.update(kw)
+        return lt.validate_llm_config(**base)
+
+    # 生產實測過的組合不得告警(這正是批#92 誤報的那一班)
+    assert _issues(efforts={"primary": "high"}) == []
+    # 超出實測範圍的才告警,而且要說得出是哪個 provider
+    over = _issues(efforts={"primary": "max"})
+    assert any("deepseek" in m and "max" in m for m in over), over
+    # OpenAI 的抽取器仍限 low —— 2026-07-31 的 1560 則 0 產出就是它推理過頭
+    ext = _issues(provider="openai", extractor_provider="openai",
+                  efforts={"extractor": "high"})
+    assert any("extractor" in m for m in ext), ext
+    # 但 OpenAI 主分析可以到 xhigh(前提是 timeout 一起放大,見下)
+    assert _issues(provider="openai", extractor_provider="openai",
+                   efforts={"primary": "xhigh", "extractor": "low"}) == []
     # 手動/離線執行不受此限
-    manual = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
-                                    shadow_provider="", has_key=_has,
-                                    efforts={"primary": "xhigh"}, scheduled=False)
-    assert manual == [], manual
+    assert _issues(efforts={"primary": "max"}, scheduled=False) == []
+
+
+def test_raising_the_token_cap_without_raising_the_timeout_is_self_contradictory():
+    """批#93(第九輪 P1-2):**額度與 wall-clock 是同一個預算。**
+
+    批#92 只對過高的強度告警,但告警擋不住實際的失敗:xhigh 的額度是 98,000
+    token,75 秒內生成不完 → 逾時 → 掉備援,於是「想量 xhigh 的成本」這件事
+    永遠量不到,只會得到一次 timeout。額度放大而時間不放大是自相矛盾的。
+    """
+    import llm_telemetry as lt
+
+    assert lt.timeout_for("medium", 75) == 75, "medium 是基準,不該被放大"
+    assert lt.timeout_for("xhigh", 75) > 75
+    assert lt.timeout_for("max", 75) > lt.timeout_for("xhigh", 75)
+    assert lt.timeout_for("garbage", 75) == 75, "未知強度不猜"
+    # 每一個會放大額度的強度,都必須同時放大時間 —— 否則就是上面那個矛盾
+    for effort, mult in lt.CAP_MULTIPLIER.items():
+        if mult > lt.CAP_MULTIPLIER["medium"]:
+            assert lt.timeout_for(effort, 75) > 75, (
+                f"{effort} 放大了額度({mult}x)卻沒放大時間 —— 必然逾時")
+
+
+def test_config_source_distinguishes_unset_from_set_to_the_default():
+    """批#93:**「沒設」與「設成跟預設一樣」必須分得出來。**
+
+    2026-08-01 使用者設了 `LLM_PROVIDER=openai` 卻仍跑 DeepSeek,而 manifest
+    完全看不出原因 —— workflow 在 YAML 裡就用 `${{ vars.X || 'deepseek' }}`
+    補了預設,程式看到的永遠是最終值。
+    """
+    import llm_telemetry as lt
+
+    assert lt.config_source_issues("LLM_PROVIDER=openai;OPENAI_MODEL=gpt") == []
+    msgs = lt.config_source_issues("LLM_PROVIDER=;OPENAI_MODEL=gpt")
+    assert any("LLM_PROVIDER" in m for m in msgs), msgs
+    assert any("Secrets" in m for m in msgs), "要指出最可能的原因"
+    assert "OPENAI_MODEL" not in "".join(msgs), "有設的不該被列進去"
+    assert lt.config_source_issues("") == [], "本機執行沒有這個變數,不該吵"
 
 
 def test_config_validation_catches_typos_and_missing_keys():

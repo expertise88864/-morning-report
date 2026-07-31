@@ -101,6 +101,14 @@ jobs:
           # LLM 影子比較(空 = 關閉):換模型前後累積可比較的證據
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
           LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
+          # 上面每一項都在 YAML 就用 `|| 預設` 補齊,所以程式看到的永遠是最終值,
+          # **分辨不出「沒設」與「設成跟預設一樣」**。2026-08-01 就是這樣:
+          # 使用者設了 LLM_PROVIDER=openai 卻仍跑 DeepSeek,而 manifest 看不出原因
+          # (最可能是設成了 Secrets —— `vars.X` 讀不到 Secret,靜默落回預設)。
+          # 這一行把**未經遮蔽的原始值**一起傳進去,由程式指出哪些其實是空的。
+          # 刻意進 manifest 而不是只印 job log:job log 要 admin 才讀得到。
+          LLM_CONFIG_RAW: >-
+            LLM_PROVIDER=${{ vars.LLM_PROVIDER }};OPENAI_MODEL=${{ vars.OPENAI_MODEL }};OPENAI_REASONING_EFFORT=${{ vars.OPENAI_REASONING_EFFORT }};EXTRACTOR_PROVIDER=${{ vars.EXTRACTOR_PROVIDER }}
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

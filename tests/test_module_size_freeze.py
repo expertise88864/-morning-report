@@ -64,7 +64,21 @@ import pytest
 #: BLOCK _run_llm_shadow: state=[LLM_SHADOW_* / _RUN_MANIFEST / LLM_PROVIDER …]
 #: ```
 #: 前者是對外請求、後者是接線與 manifest 寫入,兩者本來就該留在主模組。
-MAIN_MODULE_LINE_CEILING = 22_800
+#:
+#: 2026-08-01 批#92 **沒有**調高(22,811 → 22,787):額度計算、400 判別、設定驗證
+#: 進 `llm_telemetry.py`,影子編排以依賴注入進 `llm_shadow.run_comparison`。
+#:
+#: 2026-08-01 批#93 調高至 22,900(現況 22,819)。**能搬的已經先搬了**:
+#: 設定快照與問題清單的組裝是純運算,已放進 `llm_telemetry.config_snapshot`。
+#: 留下來的兩個判 BLOCK:
+#: ```
+#: $ python tools/refactor_audit.py group _timeout_env _core_tail_seconds
+#:   BLOCK  _timeout_env:       net/io=['os'] state=['_PRIMARY_EFFORT']
+#:   BLOCK  _core_tail_seconds: state=['LLM_TOTAL_TIMEOUT_SECONDS']
+#: ```
+#: 兩者的**全部工作就是讀模組層的設定常數**(推理強度、時間預算),
+#: 搬走等於把那些常數改成參數再由主模組傳回去 —— 為了搬而搬。
+MAIN_MODULE_LINE_CEILING = 22_900
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

@@ -113,15 +113,42 @@ VALID_PROVIDERS = ("deepseek", "openai", "gemini", "anthropic")
 PROVIDER_KEY_ENV = {"deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY",
                     "gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
 
-#: 正式排程允許的推理強度上限(第九輪 P1-2)。
+#: 正式排程可用的推理強度上限,**依 provider 分開**(第九輪 P1-2、批#93)。
 #:
-#: 提高 token 額度只避免 server 端截斷,**避不掉 client 端的 75 秒 timeout**:
-#: xhigh 的 98,000 token 額度遠超過 75 秒能生成的量,結果是逾時 → 掉備援,
-#: 連想評估的那個模型的輸出都看不到。額度與 wall-clock 必須是同一個預算。
-#: 高強度留給手動執行/影子/離線 benchmark,那裡沒有「信必須準時寄出」的約束。
-SCHEDULED_MAX_EFFORT = {"primary": "medium", "extractor": "low",
-                        "shadow": "medium"}
+#: 批#92 用一張跨 provider 的表(primary 一律 medium),上線第一班就誤報:
+#: 2026-08-01 生產 manifest 顯示 `deepseek-v4-pro / requested=high / applied=high
+#: / reasoning_tokens=517 / completion=5,557 / calls=1` —— 一次就完成,
+#: 而 `high` 正是這個 repo 的**程式碼預設值**。也就是說那條守衛每天都會把
+#: `llm:config_issue` 塞進降級清單,而降級清單一旦有常駐雜訊,真的問題就被淹掉。
+#:
+#: 根因是**推理強度的標籤在不同 provider 之間不可比**:DeepSeek 的 high 只推理
+#: 517 個 token,GPT-5.6 的 high 可以燒掉數萬個(2026-07-31 抽取器 0 產出正是
+#: 推理吃光額度)。所以上限必須各自依**實測**訂,沒實測過的就別假裝知道。
+SCHEDULED_MAX_EFFORT = {
+    # 實測:2026-08-01 生產,high 一次完成(見上)。high 以上未實測。
+    "deepseek": {"primary": "high", "extractor": "high", "shadow": "high"},
+    # 主分析 xhigh 可用 —— 但**前提是 timeout 一起放大**(見 timeout_for)。
+    # 抽取器維持 low:2026-07-31 的 1560 則 0 產出就是抽取器推理過頭造成的,
+    # 而抽取是機械性任務,推理再多也不會抄得更準。
+    "openai": {"primary": "xhigh", "extractor": "low", "shadow": "xhigh"},
+}
 _EFFORT_ORDER = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
+#: 推理強度 → 時間倍率。**額度與 wall-clock 是同一個預算**(第九輪 P1-2)。
+#:
+#: 把 `max_completion_tokens` 放大只避得開 server 端截斷,避不開 client 端
+#: timeout:xhigh 的額度是 98,000 token,而 75 秒內不可能生成那個量 ——
+#: 結果是逾時掉備援,連想評估的那個模型的輸出都看不到。倍率刻意遠小於額度倍率
+#: (額度 6→14 是 2.3 倍,時間只放大 2.4 倍):額度是**上限**,沒用到不計費,
+#: 給寬無代價;時間是**真的會被花掉**的東西,而它直接排擠寄信。
+EFFORT_TIME_MULTIPLIER = {"none": 1.0, "minimal": 1.0, "low": 1.0,
+                          "medium": 1.0, "high": 1.6, "xhigh": 2.4, "max": 3.0}
+
+
+def timeout_for(effort: str, base_seconds: float) -> float:
+    """依推理強度放大 timeout。未知強度不放大(不猜)。"""
+    return round(base_seconds * EFFORT_TIME_MULTIPLIER.get(
+        (effort or "").strip().lower(), 1.0), 1)
 
 
 def effort_rank(effort: str) -> int:
@@ -163,14 +190,41 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
         eff = (eff or "").strip().lower()
         if eff and eff not in _EFFORT_ORDER:
             out.append(f"{role} 的推理強度不是合法值:{eff!r}")
-        elif scheduled and eff and role in SCHEDULED_MAX_EFFORT:
-            cap = SCHEDULED_MAX_EFFORT[role]
-            if effort_rank(eff) > effort_rank(cap):
-                out.append(
-                    f"{role} 推理強度 {eff} 超過正式排程上限 {cap} —— "
-                    "額度會遠超過單次請求 timeout 能生成的量,逾時後會掉備援;"
-                    "高強度請用手動執行或影子")
+            continue
+        prov = (roles.get(role) or "").strip().lower()
+        cap = SCHEDULED_MAX_EFFORT.get(prov, {}).get(role) if scheduled else None
+        if cap and eff and effort_rank(eff) > effort_rank(cap):
+            out.append(
+                f"{role}({prov})推理強度 {eff} 超過實測過的上限 {cap} —— "
+                "超出的部分沒有量測支持,逾時掉備援的風險未知;"
+                "要提高請先用手動執行或影子量一次 reasoning_tokens")
     return out
+
+
+def config_source_issues(raw: str) -> list:
+    """哪些 LLM 設定**其實沒生效**(批#93)。
+
+    2026-08-01 的事故:使用者設了 `LLM_PROVIDER=openai` 卻仍跑 DeepSeek,
+    而 manifest **分辨不出「沒設」與「設成 deepseek」** —— workflow 在 YAML
+    裡就用 `${{ vars.X || 'deepseek' }}` 補了預設,程式看到的永遠是最終值。
+    (最可能的原因是設成了 Secrets:`vars.X` 讀不到 Secret,就落回預設。)
+
+    所以 workflow 另外把**原始的 `vars.*`** 以 `k=v;k=v` 傳進來,由這裡指出
+    哪些是空的。診斷必須進 manifest 而不是只印在 job log —— job log 要 admin
+    權限才讀得到,而 manifest 是 commit 進 repo 的。
+    """
+    if not raw:
+        return []
+    seen = {}
+    for chunk in str(raw).split(";"):
+        if "=" in chunk:
+            k, _, v = chunk.partition("=")
+            seen[k.strip()] = v.strip()
+    unset = sorted(k for k, v in seen.items() if not v)
+    if not unset:
+        return []
+    return [f"這些 repo variable 沒有設定(走 workflow 預設值):{'、'.join(unset)}"
+            " —— 若你以為設過了,請確認是設在 Variables 而不是 Secrets"]
 
 
 def error_blames_param(err: Optional[dict], param: str) -> bool:
@@ -200,3 +254,25 @@ def response_blames_param(response, param: str) -> bool:
     except Exception:                       # noqa: BLE001 - 非 JSON 的 400
         return False
     return error_blames_param(err, param)
+
+
+def config_snapshot(*, provider: str, extractor_provider: str,
+                    shadow_provider: str, model: str, primary_effort: str,
+                    extractor_effort: str, request_timeout: float,
+                    total_timeout: float, raw_vars: str, has_key):
+    """組出「本班打算用什麼」的快照 + 設定問題清單(批#93)。
+
+    **設定是輸入,不該只在成功路徑上被記錄。** 2026-08-01 使用者以為切到 OpenAI
+    卻仍跑 DeepSeek,而當時 manifest 只在呼叫**被接受後**才寫 provider ——
+    呼叫失敗或走備援時,就完全看不出本班原本打算用什麼、逾時預算是多少。
+    """
+    snap = {"provider": provider, "extractor": extractor_provider,
+            "model": model, "primary_effort": primary_effort,
+            "request_timeout": request_timeout, "total_timeout": total_timeout}
+    if shadow_provider:
+        snap["shadow"] = shadow_provider
+    issues = config_source_issues(raw_vars) + validate_llm_config(
+        provider=provider, extractor_provider=extractor_provider,
+        shadow_provider=shadow_provider, has_key=has_key,
+        efforts={"primary": primary_effort, "extractor": extractor_effort})
+    return snap, issues

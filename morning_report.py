@@ -383,8 +383,24 @@ EXTRACTOR_PROVIDER = os.environ.get("EXTRACTOR_PROVIDER", "").strip().lower()
 def _extractor_provider() -> str:
     """抽取器實際要用的 provider(**呼叫時**才決定,見上面的說明)。"""
     return EXTRACTOR_PROVIDER or LLM_PROVIDER
-LLM_TOTAL_TIMEOUT_SECONDS = float(os.environ.get("LLM_TOTAL_TIMEOUT_SECONDS", "180"))
-LLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LLM_REQUEST_TIMEOUT_SECONDS", "75"))
+#: 主分析實際採用的推理強度(依 provider),用來放大時間預算。
+_PRIMARY_EFFORT = (OPENAI_REASONING_EFFORT if LLM_PROVIDER == "openai"
+                   else DEEPSEEK_REASONING_EFFORT)
+
+
+def _timeout_env(name: str, base: float) -> float:
+    """時間預算:明設就用明設的,否則**依推理強度放大**(批#93,第九輪 P1-2)。
+
+    批#92 只對過高的強度告警,但告警擋不住實際的失敗:xhigh 的額度是 98,000
+    token,75 秒內生成不完 → 逾時 → 掉備援,於是「想量 xhigh 的成本」這件事
+    永遠量不到,只會得到一次 timeout。額度放大而時間不放大是自相矛盾的。
+    """
+    raw = os.environ.get(name, "").strip()
+    return float(raw) if raw else _lt.timeout_for(_PRIMARY_EFFORT, base)
+
+
+LLM_TOTAL_TIMEOUT_SECONDS = _timeout_env("LLM_TOTAL_TIMEOUT_SECONDS", 180.0)
+LLM_REQUEST_TIMEOUT_SECONDS = _timeout_env("LLM_REQUEST_TIMEOUT_SECONDS", 75.0)
 _LLM_DEADLINE: Optional[float] = None
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
@@ -531,7 +547,9 @@ def _run_seconds_left() -> float:
 
 def _run_budget_ok(need_seconds: float, step_label: str) -> bool:
     """昂貴非核心步驟的時間閘:剩餘時間 < 該步驟+後續寄信所需 → 跳過並記錄降級。
-    回 True=可執行。need_seconds 應含「本步驟估時 + 後續核心(LLM 主分析~180s + 渲染寄信~40s)」。"""
+    回 True=可執行。need_seconds 應含「本步驟估時 + 後續核心」——
+    後者請用 `_core_tail_seconds()` 取,不要寫死(批#93:LLM 預算會隨推理強度放大,
+    寫死 180s 會在 xhigh 之下少保留一半以上的時間,而那正是寄信要用的)。"""
     left = _run_seconds_left()
     if left >= need_seconds:
         return True
@@ -539,6 +557,16 @@ def _run_budget_ok(need_seconds: float, step_label: str) -> bool:
     print(f"[budget] 剩餘 {left:.0f}s < {need_seconds:.0f}s → 跳過「{step_label}」保寄信",
           file=sys.stderr)
     return False
+
+
+def _core_tail_seconds() -> float:
+    """後續**核心**步驟的保留時間:LLM 主分析 + 渲染寄信。
+
+    批#93:原本三處呼叫端把「180s 主分析 + 40s 寄信」寫死在數字裡
+    (360/300/260)。LLM 預算現在隨推理強度放大(xhigh 是 2.4 倍),
+    寫死的保留量就會不足 —— 昂貴步驟以為還有時間、跑下去,結果排擠到寄信。
+    """
+    return LLM_TOTAL_TIMEOUT_SECONDS + 40
 
 
 def _llm_remaining_seconds() -> float:
@@ -21728,7 +21756,7 @@ def main() -> int:
     news = classify_news_importance(news)
 
     # 5.2 (Task A) 對 critical 事件抓全文(P0-2:時間預算不足時跳過——全文是「加深」而非核心)
-    if _run_budget_ok(360, "重大事件全文擷取"):
+    if _run_budget_ok(_core_tail_seconds() + 140, "重大事件全文擷取"):
         print("[main] 對重大事件擷取全文…")
         try:
             # 同時對 critical 與 high 級新聞抓全文(個股新聞多半屬 high,只有 RSS snippet
@@ -22087,7 +22115,7 @@ def main() -> int:
 
     # 6.36 補抓全文:候選股/8-K 新聞在 5.2 全文擷取之後才併入,其中升級為
     # critical/high 者在此補抓(fetch_news_fulltext 冪等,已抓過的會跳過)。
-    if _run_budget_ok(300, "候選/8-K 補抓全文"):
+    if _run_budget_ok(_core_tail_seconds() + 80, "候選/8-K 補抓全文"):
         try:
             news = fetch_news_fulltext(news, max_critical=3, max_high=8)
         except Exception as e:
@@ -22113,7 +22141,7 @@ def main() -> int:
     # 仍用確定性抽取 extract_structured_events 產生 events——它是計分/歸因/來源健康的
     # 輸入,若改傳 [] 會在時間預算觸發時「悄悄改變計分」並讓來源健康被誤扣分
     # (Codex review;違反計分凍結)。(P0-2)
-    if _run_budget_ok(260, "LLM 新聞事件抽取(豐富化)"):
+    if _run_budget_ok(_core_tail_seconds() + 40, "LLM 新聞事件抽取(豐富化)"):
         print(f"[main] 模型歷史/回填完成 ({time.monotonic()-_ml_t0:.1f}s);跑事件抽取…")
         _events = call_llm_event_extractor(news, tw_mops,
                                            known_names=_entity_alias_map(tw0050))
@@ -22519,16 +22547,20 @@ def main() -> int:
     # 批#92(第九輪 P1-5):**設定本身要先被驗。** 模型可由 GitHub Variables
     # 隨時改,而打錯字的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。
     # 只告警不擋(晨報不可斷優先);問題進 manifest 與降級清單,看得見。
-    _cfg = _lt.validate_llm_config(
+    _snap, _cfg = _lt.config_snapshot(
         provider=LLM_PROVIDER, extractor_provider=_extractor_provider(),
         shadow_provider=LLM_SHADOW_PROVIDER,
-        has_key=lambda env: bool(os.environ.get(env, "").strip()),
-        efforts={"primary": (OPENAI_REASONING_EFFORT if LLM_PROVIDER == "openai"
-                             else DEEPSEEK_REASONING_EFFORT),
-                 "extractor": (OPENAI_EXTRACTOR_REASONING
-                               if _extractor_provider() == "openai" else "")})
+        model=(OPENAI_MODEL if LLM_PROVIDER == "openai" else DEEPSEEK_MODEL),
+        primary_effort=_PRIMARY_EFFORT,
+        extractor_effort=(OPENAI_EXTRACTOR_REASONING
+                          if _extractor_provider() == "openai" else ""),
+        request_timeout=LLM_REQUEST_TIMEOUT_SECONDS,
+        total_timeout=LLM_TOTAL_TIMEOUT_SECONDS,
+        raw_vars=os.environ.get("LLM_CONFIG_RAW", ""),
+        has_key=lambda env: bool(os.environ.get(env, "").strip()))
+    _RUN_MANIFEST.setdefault("llm", {})["config"] = _snap
     if _cfg:
-        _RUN_MANIFEST.setdefault("llm", {})["config_issues"] = _cfg
+        _RUN_MANIFEST["llm"]["config_issues"] = _cfg
         _DEGRADED_STEPS.append("llm:config_issue")
         for _m in _cfg:
             print(f"[llm-config] ⚠ {_m}", file=sys.stderr)

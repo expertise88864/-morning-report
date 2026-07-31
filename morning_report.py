@@ -354,6 +354,20 @@ LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
 LLM_SHADOW_MODEL = os.environ.get("LLM_SHADOW_MODEL", "").strip()
 #: 影子呼叫的時間上限。它**不能**擠壓正班 —— 晨報不可斷優先於評估。
 LLM_SHADOW_TIMEOUT = float(os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "120"))
+#: 事件抽取器的 provider。**與主分析分開**(批#90)。
+#: 抽取是機械性的結構化任務(把新聞抄成 JSON 欄位),不需要旗艦推理模型;
+#: 而換主分析時若連它一起換過去,成本反而由這裡主導 ——
+#: 抽取器的額度是 16000 tokens,用高價模型跑滿一次就比主分析還貴。
+#: 空字串 = 跟隨 `LLM_PROVIDER`(維持既有行為)。
+#: **刻意保留空字串而不在這裡就補上 `LLM_PROVIDER`** —— 在模組層取值等於把
+#: `LLM_PROVIDER` 在 import 當下快照起來,之後任何覆寫(測試 monkeypatch、
+#: 執行期切換)都跟不動。實際的決定在 `_extractor_provider()`。
+EXTRACTOR_PROVIDER = os.environ.get("EXTRACTOR_PROVIDER", "").strip().lower()
+
+
+def _extractor_provider() -> str:
+    """抽取器實際要用的 provider(**呼叫時**才決定,見上面的說明)。"""
+    return EXTRACTOR_PROVIDER or LLM_PROVIDER
 LLM_TOTAL_TIMEOUT_SECONDS = float(os.environ.get("LLM_TOTAL_TIMEOUT_SECONDS", "180"))
 LLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LLM_REQUEST_TIMEOUT_SECONDS", "75"))
 _LLM_DEADLINE: Optional[float] = None
@@ -13149,8 +13163,13 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         + "\n</UNTRUSTED_SOURCE_DATA>"
     )
     def _call(p: str) -> str:
-        return (_call_deepseek_extractor(p) if LLM_PROVIDER == "deepseek"
-                else _call_llm_text(p))
+        # 批#90:抽取器可獨立指定 provider(見 `EXTRACTOR_PROVIDER`)。
+        _ep = _extractor_provider()
+        if _ep == "deepseek":
+            return _call_deepseek_extractor(p)
+        if _ep == "openai":
+            return _call_openai(p)
+        return _call_llm_text(p)
 
     # 批#68:**這條路徑目前在生產沒有任何產出**。1160 則歷史事件裡沒有一則是
     # C 級(LLM 抽取器的固定等級),`sources` 也從未出現 "LLM extractor",

@@ -135,3 +135,33 @@ def test_shadow_is_off_by_default(monkeypatch, tmp_path):
                        _dt.datetime(2026, 7, 31, 6, 45, tzinfo=mr.TPE))
     assert not called and not (tmp_path / "led.json").exists()
     assert "llm_shadow" not in mr._RUN_MANIFEST
+
+
+def test_extractor_provider_is_independent_of_the_main_analysis(monkeypatch):
+    """批#90:換主分析模型時,**抽取器不該被一起換過去**。
+
+    抽取是機械性的結構化任務(把新聞抄成 JSON 欄位),不需要旗艦推理模型;
+    而它的額度是 16000 tokens —— 用高價模型跑滿一次就比主分析還貴,
+    換模型的成本會反過來由這裡主導。
+    """
+    import morning_report as mr
+
+    news = [{"title": "台積電消息", "summary": "內容", "source": "測試",
+             "link": "https://example.com/1",
+             "published": "2026-07-31T08:00:00+08:00"}]
+    used = []
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "openai")       # 主分析換 OpenAI
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "deepseek")   # 抽取器留 DeepSeek
+    assert mr._extractor_provider() == "deepseek"
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    monkeypatch.setattr(mr, "_call_deepseek_extractor",
+                        lambda p: used.append("deepseek") or "[]")
+    monkeypatch.setattr(mr, "_call_openai",
+                        lambda p, **k: used.append("openai") or "[]")
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    try:
+        mr.call_llm_event_extractor(news, [])
+        assert used == ["deepseek"], f"抽取器走錯 provider:{used}"
+    finally:
+        mr._RUN_MANIFEST.pop("llm_extractor", None)

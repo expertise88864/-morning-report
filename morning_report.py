@@ -352,6 +352,15 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-terra")
 #: 抽取只是把新聞抄成 JSON 欄位,而它的額度是 16000 tokens ——
 #: 用高價模型跑滿一次就比主分析還貴。空字串 = 跟 `OPENAI_MODEL` 同一個。
 OPENAI_EXTRACTOR_MODEL = os.environ.get("OPENAI_EXTRACTOR_MODEL", "").strip()
+#: 推理強度(官方支援 none/low/medium/high/xhigh/max)。
+#: 這是**成本與可靠度的主要旋鈕**:推理 token 以 output 計價,而 GPT-5.6 系列的
+#: output 是 input 的 6 倍價 —— 推理量翻倍,帳單幾乎跟著翻倍。
+#: 主分析預設 medium(要因果鏈但不需要無上限思考);
+#: 抽取器預設 **low** —— 它只是把新聞抄成 JSON 欄位,是機械性任務,
+#: 而 2026-07-31 生產事故正是推理吃光額度導致 0 產出。
+OPENAI_REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "medium").strip().lower()
+OPENAI_EXTRACTOR_REASONING = os.environ.get(
+    "OPENAI_EXTRACTOR_REASONING", "low").strip().lower()
 #: 影子比較:設了才啟用。**預設關閉** —— 它會讓主分析的呼叫成本加倍,
 #: 而且在沒有人要評估換模型時純屬浪費。
 LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
@@ -12860,7 +12869,8 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
-def _call_openai(prompt: str, model: str = "", timeout: float = 0.0) -> str:
+def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
+                 reasoning: str = "") -> str:
     """OpenAI 相容 chat completions。
 
     批#89。**GPT-5.6 全系列都是推理模型**,所以這裡從第一版就帶著批#85 的教訓:
@@ -12873,20 +12883,32 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0) -> str:
     if not OPENAI_API_KEY:
         raise RuntimeError("缺 OPENAI_API_KEY 環境變數")
     use_model = model or OPENAI_MODEL
-    r = requests.post(
-        f"{OPENAI_BASE_URL}/v1/chat/completions",
-        json={
-            "model": use_model,
-            "messages": [{"role": "user", "content": prompt}],
-            # 推理模型的新版介面用 max_completion_tokens;給 4 倍餘裕
-            # (答案約 7000,推理未知 → 28000)。真正的用量由 usage 記進 manifest。
-            "max_completion_tokens": LLM_REPORT_MAX_TOKENS * 4,
-            "stream": False,
-        },
-        headers={"Authorization": f"Bearer {OPENAI_API_KEY}",
-                 "Content-Type": "application/json"},
-        timeout=timeout or _llm_request_timeout(),
-    )
+    effort = (reasoning or OPENAI_REASONING_EFFORT).strip().lower()
+    payload = {
+        "model": use_model,
+        "messages": [{"role": "user", "content": prompt}],
+        # 推理模型的新版介面用 max_completion_tokens;給 4 倍餘裕
+        # (答案約 7000,推理未知 → 28000)。真正的用量由 usage 記進 manifest。
+        "max_completion_tokens": LLM_REPORT_MAX_TOKENS * 4,
+        "stream": False,
+    }
+    if effort and effort not in ("", "default"):
+        payload["reasoning_effort"] = effort
+    url = f"{OPENAI_BASE_URL}/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}",
+               "Content-Type": "application/json"}
+    r = requests.post(url, json=payload, headers=headers,
+                      timeout=timeout or _llm_request_timeout())
+    if r.status_code == 400 and "reasoning_effort" in payload:
+        # 參數不被接受時退讓重試一次(DeepSeek 那條路徑既有的「slim 模式」同一招)
+        # —— 寧可少一個旋鈕,也不要因為一個選配參數讓整份分析失敗。
+        print(f"[llm] OpenAI 400,移除 reasoning_effort 後重試:{r.text[:160]}",
+              file=sys.stderr)
+        # **建副本而不是就地 pop** —— 就地改會讓「送出去的是哪一份」變得不可追:
+        # 呼叫紀錄、log、測試看到的都會是被改過的同一個物件(自測時就是這樣紅的)。
+        retry_payload = {k: v for k, v in payload.items() if k != "reasoning_effort"}
+        r = requests.post(url, json=retry_payload, headers=headers,
+                          timeout=timeout or _llm_request_timeout())
     r.raise_for_status()
     data = r.json() or {}
     choices = data.get("choices") or []
@@ -13172,7 +13194,8 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         if _ep == "deepseek":
             return _call_deepseek_extractor(p)
         if _ep == "openai":
-            return _call_openai(p, model=OPENAI_EXTRACTOR_MODEL)
+            return _call_openai(p, model=OPENAI_EXTRACTOR_MODEL,
+                                reasoning=OPENAI_EXTRACTOR_REASONING)
         return _call_llm_text(p)
 
     # 批#68:**這條路徑目前在生產沒有任何產出**。1160 則歷史事件裡沒有一則是

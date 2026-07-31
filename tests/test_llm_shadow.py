@@ -165,3 +165,44 @@ def test_extractor_provider_is_independent_of_the_main_analysis(monkeypatch):
         assert used == ["deepseek"], f"抽取器走錯 provider:{used}"
     finally:
         mr._RUN_MANIFEST.pop("llm_extractor", None)
+
+
+def test_openai_reasoning_effort_is_sent_and_degrades_on_400(monkeypatch):
+    """批#90c:推理強度是**成本主旋鈕**,而且必須能在被拒時退讓。
+
+    推理 token 以 output 計價,而 GPT-5.6 的 output 是 input 的 6 倍價 ——
+    推理量翻倍帳單幾乎跟著翻倍。抽取器是機械性任務(把新聞抄成 JSON),
+    2026-07-31 的 0 產出事故正是推理吃光額度造成的,所以它預設 low。
+
+    但這是**選配參數**:若某個模型或端點不接受,寧可少一個旋鈕也不要讓整份
+    分析失敗 —— 所以 400 時移除該欄位重試一次。
+    """
+    import morning_report as mr
+
+    sent = []
+
+    class _R:
+        def __init__(self, code):
+            self.status_code = code
+            self.text = "unknown parameter reasoning_effort"
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+        def json(self):
+            return {"choices": [{"finish_reason": "stop",
+                                 "message": {"content": "ok"}}],
+                    "usage": {"completion_tokens": 10}}
+
+    def _post(url, json=None, **kw):
+        sent.append(json)
+        return _R(400 if len(sent) == 1 else 200)
+
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
+    monkeypatch.setattr(mr.requests, "post", _post)
+    out = mr._call_openai("prompt", model="gpt-5.6-luna", reasoning="low")
+    assert out == "ok"
+    assert sent[0].get("reasoning_effort") == "low", "第一次要帶推理強度"
+    assert "reasoning_effort" not in sent[1], "400 之後要移除該欄位重試"
+    assert sent[1]["model"] == "gpt-5.6-luna", "重試不得換掉模型"

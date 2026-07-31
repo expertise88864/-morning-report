@@ -732,3 +732,42 @@ def test_sections_do_not_re_expand_what_belongs_elsewhere():
     ten = prompt[prompt.index("## 十、台灣本地動態"):
                  prompt.index("## 十一、")]
     assert "整條不要出現" in ten and "八段" in ten and "九段" in ten
+
+    # r1(Codex,P2):**政策也要有唯一完整版歸屬。** 十之二對每項高分政策要求
+    # 6-10 行完整解析,而九段又被要求涵蓋金融/房市政策 —— 同一項政策會被
+    # 完整寫兩次,正是本批要消除的重複。
+    # r1(Codex,P2):**政策也要有唯一完整版歸屬**,但這條規則本身必須**條件化**
+    # —— 沒有深度解析段時提到它,會讓模型以為政策已在別處寫過而整段略過
+    # (既有的 `policy_deepdive_note` 就是為了這個才做成條件化的)。
+    from tests.test_data_validation import _empty_quotes
+    with_policy = mr._build_prompt(
+        _empty_quotes(TW_DAILY_INTELLIGENCE={"policy": [
+            {"title": "新青安 3.0 八月上路 五大門檻一次看",
+             "link": "https://example.com/1", "source": "自由時報",
+             "importance": 9.0, "topic": "新青安",
+             "published": "2026-07-30T08:00:00+08:00"}]}),
+        {"error": "x"}, {"error": "x"}, [], [], "")
+    nine_p = with_policy[with_policy.index("## 九、其他類股資訊"):
+                         with_policy.index("## 十、台灣本地動態")]
+    assert "完整版屬於該段" in nine_p and "不得重複展開" in nine_p,         "有深度解析段時,九段沒有把政策的完整版讓出去"
+    nine_np = prompt[prompt.index("## 九、其他類股資訊"):
+                     prompt.index("## 十、台灣本地動態")]
+    assert "完整版屬於該段" not in nine_np,         "沒有深度解析段時仍提到它 —— 模型會以為政策已在別處寫過而整段略過"
+
+
+def test_section_nine_example_uses_the_bracket_source_format():
+    """r1(Codex,P2):範例的來源格式必須與全報契約一致。
+
+    我寫的範例用了 ASCII 圓括號 `(中央社)`,而 R10b 與九段格式都要求
+    `[媒體名]`;渲染層 `_dim_source_citations` 的 fallback 也只處理方括號與
+    全形括號,**ASCII 圓括號的來源不會被淡化**。模型照抄範例就會產出
+    淡化不到的來源 —— 範例是模型最直接模仿的東西,格式錯了影響全段。
+    """
+    import morning_report as mr
+
+    prompt = mr._build_prompt({}, {}, {}, [], [], "")
+    nine = prompt[prompt.index("## 九、其他類股資訊"):
+                  prompt.index("## 十、台灣本地動態")]
+    assert "[中央社]" in nine, "範例沒有用方括號來源"
+    for bad in ("(中央社)", "（中央社）"):
+        assert bad not in nine, f"範例仍有圓括號來源:{bad}"

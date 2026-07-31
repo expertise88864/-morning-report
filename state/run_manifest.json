@@ -1,39 +1,40 @@
 {
- "date": "2026-07-31 06:54",
- "total_seconds": 572.6,
+ "date": "2026-08-01 06:48",
+ "total_seconds": 657.6,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [
+  "llm:config_issue",
   "chips:source_date_mismatch"
  ],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 13.9
+   "seconds": 6.1
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 166.3
+   "seconds": 195.3
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 8.4
+   "seconds": 14.9
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 137.0
+   "seconds": 156.0
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 145.5
+   "seconds": 183.5
   },
   {
    "label": "LLM 主分析",
-   "seconds": 98.6
+   "seconds": 98.2
   },
   {
    "label": "渲染",
-   "seconds": 2.7
+   "seconds": 3.6
   }
  ],
  "feeds": {
@@ -50,7 +51,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 131,
+   "ok": 132,
    "fail": 0
   },
   "feeds.feedburner.com": {
@@ -138,13 +139,13 @@
    "fail": 0
   }
  },
- "model_history_days": 219,
- "d1_samples": 3,
+ "model_history_days": 220,
+ "d1_samples": 4,
  "d1_ready": false,
  "stance_dual": {
-  "llm": 1,
+  "llm": 2,
   "llm_label": "中性",
-  "py": 1,
+  "py": 2,
   "py_label": "中性",
   "agree": true,
   "coverage": 1.0,
@@ -163,16 +164,16 @@
     "check": "fill_rate:taifex_top10_net",
     "severity": "warn",
     "passed": true,
-    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 27/30 筆,之後 3/4 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.75
+    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 26/30 筆,之後 3/5 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.6
    },
    {
     "source": "model_history",
     "check": "fill_rate:txo_pc_oi_ratio",
     "severity": "warn",
     "passed": true,
-    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 27/30 筆,之後 2/4 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.5
+    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 26/30 筆,之後 2/5 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.4
    },
    {
     "source": "model_history",
@@ -221,22 +222,22 @@
   "failed": 0
  },
  "mz_shadow": {
-  "n": 51,
+  "n": 52,
   "applied": true,
-  "a": 1.054,
-  "b": 0.6951,
-  "raw": 2282.46,
-  "shadow": 2259.89,
-  "delta": -22.57,
+  "a": 1.804,
+  "b": 0.6768,
+  "raw": 2448.62,
+  "shadow": 2442.79,
+  "delta": -5.83,
   "oos": {
-   "n": 1,
+   "n": 2,
    "enough": false,
    "mz_rule": "delta-mz-hac-v1",
-   "mae_raw": 57.71,
-   "mae_shadow": 40.67,
+   "mae_raw": 62.625,
+   "mae_shadow": 65.39,
    "better": 1,
-   "worse": 0,
-   "mean_gain": 17.04
+   "worse": 1,
+   "mean_gain": -2.765
   }
  },
  "llm_extractor": {
@@ -246,8 +247,8 @@
   "valid": 0,
   "dropped": 0,
   "retried": false,
-  "outcome": "error:RuntimeError",
-  "error": "DeepSeek extractor 回應缺少 content(finish_reason=length、completion_tokens=4000、有 reasoning_content=True、choices=1)"
+  "outcome": "error:ConnectionError",
+  "error": "HTTPSConnectionPool(host='api.deepseek.com', port=443): Read timed out."
  },
  "delivery": {
   "attempted": true,
@@ -261,14 +262,35 @@
   ],
   "warnings": []
  },
- "forecast_mixed_versions": null,
+ "forecast_mixed_versions": {
+  "point_2330": [
+   "2330-open-adr-momentum-bias-v1",
+   "legacy/unknown"
+  ],
+  "point_taiex": [
+   "legacy/unknown",
+   "taiex-open-nightfut-v1"
+  ],
+  "probability_rule": [
+   "legacy/unknown",
+   "prob-v2"
+  ],
+  "mz_rule": [
+   "delta-mz-hac-v1",
+   "legacy/unknown"
+  ],
+  "event_schema": [
+   "3",
+   "legacy/unknown"
+  ]
+ },
  "exdiv_preview": {
-  "rows": 113,
-  "min_ex_date": "2026-07-29",
+  "rows": 122,
+  "min_ex_date": "2026-07-30",
   "max_ex_date": "2026-10-06",
   "days_back": 2,
-  "days_forward": 67,
-  "lead_observed": 5,
+  "days_forward": 66,
+  "lead_observed": 24,
   "lead_censored": 0,
   "lead_unmeasurable": 115,
   "lead_min_days": 13,
@@ -278,14 +300,36 @@
   "rows": 1,
   "min_halt_date": "2026-07-23",
   "max_halt_date": "2026-07-23",
-  "days_back": 8,
-  "days_forward": -8
+  "days_back": 9,
+  "days_forward": -9
  },
  "chips": {
-  "session": "2026-07-30",
-  "large_source_date": "20260729",
-  "pcr_source_date": "20260729",
-  "large_matched": false,
+  "session": "2026-07-31",
+  "large_source_date": "20260731",
+  "pcr_source_date": "20260730",
+  "large_matched": true,
   "pcr_matched": false
+ },
+ "policy_deepdive": {
+  "candidates": 1,
+  "written": 1,
+  "dropped": []
+ },
+ "llm_shadow": null,
+ "llm": {
+  "config_issues": [
+   "primary 推理強度 high 超過正式排程上限 medium —— 額度會遠超過單次請求 timeout 能生成的量,逾時後會掉備援;高強度請用手動執行或影子"
+  ],
+  "primary": {
+   "provider": "deepseek",
+   "model": "deepseek-v4-pro",
+   "requested_effort": "high",
+   "applied_effort": "high",
+   "prompt_tokens": 85814,
+   "completion_tokens": 5557,
+   "total_tokens": 91371,
+   "reasoning_tokens": 517,
+   "calls": 1
+  }
  }
 }

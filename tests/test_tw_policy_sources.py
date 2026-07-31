@@ -242,3 +242,48 @@ def test_gazette_is_declared_authoritative_over_media():
                               {"error": "x"}, {"error": "x"}, [], [], "")
     assert "一手法令原文" in prompt
     assert "以公報為準" in prompt
+
+
+def test_policy_deepdive_never_drops_policies_silently():
+    """批#87:超過版面上限的政策**不得靜默消失**。
+
+    原本 `[:3]` 之後第 4 個起直接不見,信裡與 manifest 都看不出「今天還有別的
+    政策沒展開」—— 讀者無從知道自己漏了什麼。這與本專案反覆出現的
+    「靜默截斷讀起來像全部涵蓋」是同一個病灶。
+    """
+    import morning_report as mr
+
+    intel = {"policy": [
+        {"title": f"重大政策 {i} 公告上路", "topic": f"政策{i}",
+         "importance": 9.0 - i * 0.1, "status": "已公告",
+         "source_name": "自由時報", "link": f"https://example.com/{i}",
+         "published": "2026-07-31T08:00:00+08:00"} for i in range(6)]}
+    mr._RUN_MANIFEST.pop("policy_deepdive", None)
+    try:
+        block = mr._format_policy_deepdive_block(intel)
+        stat = mr._RUN_MANIFEST.get("policy_deepdive") or {}
+        assert stat["candidates"] == 6 and stat["written"] == 3
+        assert len(stat["dropped"]) == 3, "被截掉的政策沒有記進 manifest"
+        # 沒展開的也必須在 prompt 裡被提到(一行帶過)
+        assert "本日另有以下政策" in block
+        for name in stat["dropped"]:
+            assert name in block, f"{name} 被截掉且完全沒有提到"
+    finally:
+        mr._RUN_MANIFEST.pop("policy_deepdive", None)
+
+
+def test_medical_policy_queries_feed_the_policy_channel():
+    """批#87:醫療衛生政策要進得了深度解析。
+
+    衛福部/健保署的查詢原本只在 `medical` 通道,而深度解析只吃 `policy`
+    (`_format_policy_deepdive_block` 讀 `intel["policy"]`)——健保給付調整、
+    醫療法規修法這類會改變執業與家戶支出的政策,最多只在醫界動態卡出現一行。
+    """
+    import morning_report as mr
+
+    policy_qs = " ".join(mr.TW_INTELLIGENCE_QUERIES["policy"])
+    assert "健保" in policy_qs and "給付" in policy_qs, "政策通道沒有健保給付查詢"
+    assert "衛福部" in policy_qs, "政策通道沒有衛福部查詢"
+    # 反向:medical 通道的事件形狀查詢不該被搬走(兩者職責不同)
+    medical_qs = " ".join(mr.TW_INTELLIGENCE_QUERIES["medical"])
+    assert "裁罰" in medical_qs and "缺藥" in medical_qs

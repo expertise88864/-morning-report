@@ -90,12 +90,12 @@ jobs:
           #   讓機械性任務用便宜模型、推理留給旗艦。
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: https://api.openai.com
-          OPENAI_MODEL: gpt-5.6-terra
-          OPENAI_EXTRACTOR_MODEL: gpt-5.6-luna
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-terra' }}
+          OPENAI_EXTRACTOR_MODEL: ${{ vars.OPENAI_EXTRACTOR_MODEL || 'gpt-5.6-luna' }}
           # 推理強度 none/low/medium/high/xhigh/max。**成本主旋鈕**:
           # 推理 token 以 output 計價,而 GPT-5.6 的 output 是 input 的 6 倍價。
-          OPENAI_REASONING_EFFORT: medium
-          OPENAI_EXTRACTOR_REASONING: low
+          OPENAI_REASONING_EFFORT: ${{ vars.OPENAI_REASONING_EFFORT || 'medium' }}
+          OPENAI_EXTRACTOR_REASONING: ${{ vars.OPENAI_EXTRACTOR_REASONING || 'low' }}
           # 事件抽取器 provider(空 = 跟隨 LLM_PROVIDER)
           EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
           # LLM 影子比較(空 = 關閉):換模型前後累積可比較的證據

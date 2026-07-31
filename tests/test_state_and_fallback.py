@@ -529,3 +529,26 @@ def test_manifest_diagnostic_keys_survive_serialisation(tmp_path, monkeypatch):
                 mr._RUN_MANIFEST.pop(k, None)
             else:
                 mr._RUN_MANIFEST[k] = v
+
+
+def test_llm_switches_are_overridable_without_editing_the_workflow():
+    """批#90f:切換模型的設定必須能由 repo variable 覆寫。
+
+    我第一版把 `OPENAI_MODEL` / `OPENAI_REASONING_EFFORT` **寫死**在 workflow
+    裡,卻告訴使用者去 Variables 設 —— 設了不會生效,而症狀是「一切照舊」:
+    沒有錯誤、沒有告警,信照常寄出。那正是最難發現的一種失敗
+    (批#90d 加 manifest 紀錄就是為了這一類,但能預防就不該只靠事後偵測)。
+
+    切換模型是**要能隨時改、隨時退回**的操作 —— 需要改檔案 + push 的話,
+    退回的成本會高到讓人不想退。
+    """
+    wf = (Path(__file__).resolve().parents[1]
+          / ".github" / "workflows" / "morning-report.yml").read_text(encoding="utf-8")
+    for key in ("LLM_PROVIDER", "EXTRACTOR_PROVIDER",
+                "OPENAI_MODEL", "OPENAI_EXTRACTOR_MODEL",
+                "OPENAI_REASONING_EFFORT", "OPENAI_EXTRACTOR_REASONING",
+                "LLM_SHADOW_PROVIDER", "LLM_SHADOW_MODEL"):
+        line = next((ln for ln in wf.splitlines()
+                     if ln.strip().startswith(f"{key}:")), "")
+        assert line, f"workflow 沒有 {key}"
+        assert "vars." in line, f"{key} 寫死了,repo variable 覆寫不了:{line.strip()}"

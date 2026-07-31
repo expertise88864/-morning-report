@@ -28,6 +28,8 @@ import time
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Optional
+
+import llm_telemetry as _lt
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urljoin, urlparse
 
@@ -12874,12 +12876,6 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
-def _openai_output_cap(effort: str) -> int:
-    """依推理強度算輸出額度(實作見 `llm_telemetry.output_cap`)。"""
-    import llm_telemetry as _lt
-    return _lt.output_cap(effort, LLM_REPORT_MAX_TOKENS)
-
-
 def _record_llm_call(role: str, provider: str, model: str, *,
                      requested_effort: str = "", applied_effort: str = "",
                      usage: Optional[dict] = None, accepted: bool = False,
@@ -12897,7 +12893,6 @@ def _record_llm_call(role: str, provider: str, model: str, *,
     `finish_reason=length`、content 為空的失敗呼叫也會被記成「實際模型」,
     而真正寫出信的可能是後面的 Gemini 備援。未通過的進 `attempts`。
     """
-    import llm_telemetry as _lt
     rec = _lt.build_record(provider, model, requested_effort=requested_effort,
                            applied_effort=applied_effort, usage=usage,
                            finish_reason=finish_reason, error=error)
@@ -12930,7 +12925,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         # reasoning + 答案的總額,而固定 4 倍(28,000)在推理達答案的 3 倍時
         # 就會被截斷 —— 那正是 2026-07-31 抽取器 0 產出的成因,設 xhigh 等於
         # 保證重演。額度只是上限,沒用到不計費,所以寧可給寬。
-        "max_completion_tokens": _openai_output_cap(effort),
+        "max_completion_tokens": _lt.output_cap(effort, LLM_REPORT_MAX_TOKENS),
         "stream": False,
     }
     if effort and effort not in ("", "default"):
@@ -12941,7 +12936,11 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     applied_effort = payload.get("reasoning_effort", "")
     r = requests.post(url, json=payload, headers=headers,
                       timeout=timeout or _llm_request_timeout())
-    if r.status_code == 400 and "reasoning_effort" in payload:
+    # r1(第九輪 P1-3):**必須確認 400 真的是這個參數造成的**。400 也可能來自
+    # model ID 錯、額度過大、schema 不合、專案沒權限 —— 那些情況移除推理強度
+    # 沒有用,只是白花一次呼叫,而真正的錯誤訊息會被第二次的失敗蓋掉。
+    if (r.status_code == 400 and "reasoning_effort" in payload
+            and _lt.response_blames_param(r, "reasoning_effort")):
         # 參數不被接受時退讓重試一次(DeepSeek 那條路徑既有的「slim 模式」同一招)
         # —— 寧可少一個旋鈕,也不要因為一個選配參數讓整份分析失敗。
         print(f"[llm] OpenAI 400,移除 reasoning_effort 後重試:{r.text[:160]}",
@@ -12978,71 +12977,47 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
 def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> None:
     """讓第二個模型也跑同一份 prompt,**只記錄、不改輸出**(批#89)。
 
-    預設關閉;設了 `LLM_SHADOW_PROVIDER` 才啟用。設計原則照 MZ 影子:
-      - **失敗只是今天沒有比較資料** —— 任何例外都吞掉,絕不影響晨報
-      - **附加式帳本**:比較的價值全在跨日累積,單日看不出分佈差異
-      - **可觀測**:結果進 manifest,不然它只存在於當次記憶體
-
-    刻意在**主分析成功之後**才跑:影子不該與正班搶時間預算,而且沒有主結果
-    就沒有東西可比。時間不夠時直接跳過並記下原因 —— 晨報不可斷優先於評估。
+    預設關閉;設了 `LLM_SHADOW_PROVIDER` 才啟用。編排本體在
+    `llm_shadow.run_comparison`(批#92 依第九輪 P1-11 用依賴注入搬出去),
+    這裡只負責接線。刻意在**主分析成功之後**才跑:影子不該與正班搶時間預算,
+    而且沒有主結果就沒有東西可比;時間不夠直接跳過並記原因(晨報不可斷優先)。
     """
     if not (LLM_SHADOW_PROVIDER and LLM_SHADOW_MODEL and primary_text):
         return
     import llm_shadow as _ls
+    from llm_postprocess import _extract_stance, _extract_summary
     stat = {"enabled": True, "shadow_model": LLM_SHADOW_MODEL,
             "provider": LLM_SHADOW_PROVIDER}
     try:
         if not _run_budget_ok(int(LLM_SHADOW_TIMEOUT) + 30, "LLM 影子比較"):
             stat["skipped"] = "run_budget"
-            _RUN_MANIFEST["llm_shadow"] = stat
-            return
-        t0 = time.monotonic()
-        shadow_text, ok, err = "", False, ""
-        try:
-            if LLM_SHADOW_PROVIDER == "openai":
-                shadow_text = _call_openai(prompt, model=LLM_SHADOW_MODEL,
-                                           timeout=LLM_SHADOW_TIMEOUT,
-                                           role="shadow")
-            elif LLM_SHADOW_PROVIDER == "deepseek":
-                shadow_text = _call_deepseek(prompt, role="shadow")
-            else:
-                stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
-                _RUN_MANIFEST["llm_shadow"] = stat
-                return
-            ok = bool(shadow_text)
-        except Exception as e:                       # noqa: BLE001 - 影子不得影響正班
-            err = f"{type(e).__name__}: {e}"
-            print(f"[llm-shadow] 影子呼叫失敗(不影響晨報): {err}", file=sys.stderr)
-        elapsed = time.monotonic() - t0
+        elif LLM_SHADOW_PROVIDER not in ("openai", "deepseek"):
+            stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
+        else:
+            def _call():
+                if LLM_SHADOW_PROVIDER == "openai":
+                    return _call_openai(prompt, model=LLM_SHADOW_MODEL,
+                                        timeout=LLM_SHADOW_TIMEOUT, role="shadow")
+                return _call_deepseek(prompt, role="shadow")
 
-        from llm_postprocess import _extract_stance, _extract_summary
-        rec = _ls.compare_outputs(
-            {"model": (DEEPSEEK_MODEL if LLM_PROVIDER == "deepseek"
-                       else OPENAI_MODEL if LLM_PROVIDER == "openai" else LLM_PROVIDER),
-             "text": primary_text, "stance": _extract_stance(primary_text),
-             "summary": _extract_summary(primary_text), "ok": True, "elapsed": None},
-            {"model": LLM_SHADOW_MODEL, "text": shadow_text,
-             "stance": _extract_stance(shadow_text) if ok else {},
-             "summary": _extract_summary(shadow_text) if ok else "",
-             "ok": ok, "elapsed": elapsed})
-        if err:
-            rec["shadow_error"] = err[:160]
+            def _write(path, ledger):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                _atomic_write_text(path, json.dumps(ledger, ensure_ascii=False,
+                                                    indent=1))
 
-        today = now_tpe.strftime("%Y-%m-%d")
-        try:
-            ledger = _ls.load_ledger(LLM_SHADOW_LEDGER_FILE)
-        except Exception as e:                       # noqa: BLE001
-            # 讀不出來就**不寫** —— 覆蓋等於把累積的樣本清空,而那正是它的全部價值。
-            print(f"[llm-shadow] 帳本不可讀,本次不寫入: {e}", file=sys.stderr)
-            stat["skipped"] = "ledger_unreadable"
-            _RUN_MANIFEST["llm_shadow"] = stat
-            return
-        ledger = _ls.upsert(ledger, rec, today)
-        LLM_SHADOW_LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_write_text(LLM_SHADOW_LEDGER_FILE,
-                           json.dumps(ledger, ensure_ascii=False, indent=1))
-        stat.update({"today": rec, "cumulative": _ls.summarize(ledger, LLM_SHADOW_MODEL)})
-        print(f"[llm-shadow] {stat['cumulative'].get('verdict')}")
+            out = _ls.run_comparison(
+                primary_model=(DEEPSEEK_MODEL if LLM_PROVIDER == "deepseek"
+                               else OPENAI_MODEL if LLM_PROVIDER == "openai"
+                               else LLM_PROVIDER),
+                primary_text=primary_text, shadow_model=LLM_SHADOW_MODEL,
+                call_shadow=_call, today=now_tpe.strftime("%Y-%m-%d"),
+                ledger_path=LLM_SHADOW_LEDGER_FILE, read_ledger=_ls.load_ledger,
+                write_ledger=_write, extract_stance=_extract_stance,
+                extract_summary=_extract_summary, elapsed_timer=time.monotonic,
+                log=lambda m: print(m, file=sys.stderr))
+            stat.update(out)
+            if out.get("cumulative"):
+                print(f"[llm-shadow] {out['cumulative'].get('verdict')}")
     except Exception as e:                           # noqa: BLE001
         stat["error"] = f"{type(e).__name__}: {e}"[:160]
         print(f"[llm-shadow] 影子比較整段略過(不影響晨報): {e}", file=sys.stderr)
@@ -22541,7 +22516,24 @@ def main() -> int:
         quotes["FORECAST_LEDGER"] = {}
 
     _mark_phase("LLM 主分析")
-    print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER})")
+    # 批#92(第九輪 P1-5):**設定本身要先被驗。** 模型可由 GitHub Variables
+    # 隨時改,而打錯字的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。
+    # 只告警不擋(晨報不可斷優先);問題進 manifest 與降級清單,看得見。
+    _cfg = _lt.validate_llm_config(
+        provider=LLM_PROVIDER, extractor_provider=_extractor_provider(),
+        shadow_provider=LLM_SHADOW_PROVIDER,
+        has_key=lambda env: bool(os.environ.get(env, "").strip()),
+        efforts={"primary": (OPENAI_REASONING_EFFORT if LLM_PROVIDER == "openai"
+                             else DEEPSEEK_REASONING_EFFORT),
+                 "extractor": (OPENAI_EXTRACTOR_REASONING
+                               if _extractor_provider() == "openai" else "")})
+    if _cfg:
+        _RUN_MANIFEST.setdefault("llm", {})["config_issues"] = _cfg
+        _DEGRADED_STEPS.append("llm:config_issue")
+        for _m in _cfg:
+            print(f"[llm-config] ⚠ {_m}", file=sys.stderr)
+    print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER}"
+          f"、抽取器={_extractor_provider()})")
     # PR-2 第二階段(2026-07-18 使用者拍板):Python 11 維立場分=權威——
     # 進 prompt(LLM 抄錄+解釋)與顯示(KPI);另算 Decision Attribution
     # (今日 vs 前日分項變化)。計算失敗降級回 LLM 自算(晨報不可斷)。

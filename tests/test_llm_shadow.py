@@ -191,6 +191,12 @@ def test_openai_reasoning_effort_is_sent_and_degrades_on_400(monkeypatch):
                 raise RuntimeError(f"HTTP {self.status_code}")
 
         def json(self):
+            if self.status_code == 400:
+                # 真實的 OpenAI 錯誤物件形狀 —— 新守衛靠 `error.param` 判斷
+                # 這個 400 是不是真的在指責 reasoning_effort(第九輪 P1-3)
+                return {"error": {"type": "invalid_request_error",
+                                  "param": "reasoning_effort",
+                                  "message": "Unsupported value"}}
             return {"choices": [{"finish_reason": "stop",
                                  "message": {"content": "ok"}}],
                     "usage": {"completion_tokens": 10}}
@@ -290,6 +296,10 @@ def test_requested_and_applied_reasoning_effort_are_distinguished(monkeypatch):
             pass
 
         def json(self):
+            if self.status_code == 400:
+                return {"error": {"type": "invalid_request_error",
+                                  "param": "reasoning_effort",
+                                  "message": "Unsupported value"}}
             return {"choices": [{"finish_reason": "stop",
                                  "message": {"content": "文"}}],
                     "usage": {}}
@@ -344,3 +354,96 @@ def test_extractor_provider_matrix_is_explicit_and_fails_fast(monkeypatch):
     stat = mr._RUN_MANIFEST.get("llm_extractor") or {}
     assert "typo-provider" in str(stat.get("error") or ""),         f"無效 provider 沒有當場失敗:{stat}"
     mr._RUN_MANIFEST.pop("llm_extractor", None)
+
+
+def test_400_backoff_only_when_the_error_blames_that_parameter():
+    """批#92(第九輪 P1-3):**不是所有 400 都該退讓。**
+
+    400 也可能來自 model ID 錯、額度過大、schema 不合、專案沒權限 ——
+    那些情況移除推理強度沒有用,只是白花一次呼叫,而且**真正的錯誤訊息會被
+    第二次的失敗蓋掉**,只剩 stderr 前 160 字。解析不出來時保守不退讓,
+    讓原始錯誤原樣浮上來(訊息完整、可診斷)。
+    """
+    import llm_telemetry as lt
+
+    yes = [{"type": "invalid_request_error", "param": "reasoning_effort",
+            "message": "Unsupported value"},
+           {"type": "invalid_request_error",
+            "message": "Unknown parameter: reasoning_effort"}]
+    for err in yes:
+        assert lt.error_blames_param(err, "reasoning_effort")
+
+    no = [{"type": "invalid_request_error", "param": "model",
+           "message": "The model `gpt-5.6-typo` does not exist"},
+          {"type": "invalid_request_error", "param": "max_completion_tokens",
+           "message": "too large"},
+          {"type": "insufficient_quota", "message": "quota exceeded"},
+          {}, None, "not a dict"]
+    for err in no:
+        assert not lt.error_blames_param(err, "reasoning_effort"), err
+
+    class _Bad:
+        def json(self):
+            raise ValueError("not json")
+
+    assert not lt.response_blames_param(_Bad(), "reasoning_effort")
+
+
+def test_scheduled_runs_reject_efforts_that_cannot_finish_in_time():
+    """批#92(第九輪 P1-2):**額度與 wall-clock 必須是同一個預算。**
+
+    提高 token 額度只避免 server 端截斷,避不掉 client 端的 75 秒 timeout。
+    xhigh 的 98,000 token 額度遠超過 75 秒能生成的量 —— 結果是逾時掉備援,
+    連想評估的那個模型的輸出都看不到。高強度留給手動/影子/離線。
+    """
+    import llm_telemetry as lt
+
+    def _has(_env):
+        return True
+
+    ok = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
+                                shadow_provider="", has_key=_has,
+                                efforts={"primary": "medium", "extractor": "low"})
+    assert ok == [], ok
+    bad = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
+                                 shadow_provider="", has_key=_has,
+                                 efforts={"primary": "xhigh"})
+    assert any("超過正式排程上限" in m for m in bad), bad
+    # 手動/離線執行不受此限
+    manual = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
+                                    shadow_provider="", has_key=_has,
+                                    efforts={"primary": "xhigh"}, scheduled=False)
+    assert manual == [], manual
+
+
+def test_config_validation_catches_typos_and_missing_keys():
+    """批#92(第九輪 P1-5):**打錯字的症狀是「一切照舊」。**
+
+    模型現在可由 GitHub Variables 隨時改,拼錯時沒有錯誤、沒有告警,
+    只是沒切過去。另外「有任一把金鑰就啟動」的舊閘門是在只有 DeepSeek 的
+    年代寫的 —— 換成 OpenAI-only 之後它會誤判成可用(第九輪 P1-7),
+    所以要**只驗被選中的那個 provider 的金鑰**。
+    """
+    import llm_telemetry as lt
+
+    only_openai = {"OPENAI_API_KEY"}
+
+    def _has(env):
+        return env in only_openai
+
+    # 拼錯的 provider 要被指名
+    msgs = lt.validate_llm_config(provider="openai", extractor_provider="openai",
+                                  shadow_provider="", has_key=_has,
+                                  efforts={})
+    assert msgs == [], msgs
+    msgs = lt.validate_llm_config(provider="opanai", extractor_provider="openai",
+                                  shadow_provider="", has_key=_has, efforts={})
+    assert any("opanai" in m for m in msgs), msgs
+    # 只有 OpenAI 金鑰卻把抽取器指向 DeepSeek → 要抓到
+    msgs = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
+                                  shadow_provider="", has_key=_has, efforts={})
+    assert any("DEEPSEEK_API_KEY" in m for m in msgs), msgs
+    # 影子與主分析同一個 provider = 只是加倍付費
+    msgs = lt.validate_llm_config(provider="openai", extractor_provider="openai",
+                                  shadow_provider="openai", has_key=_has, efforts={})
+    assert any("加倍付費" in m for m in msgs), msgs

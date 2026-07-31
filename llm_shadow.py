@@ -190,3 +190,62 @@ def _verdict(stat: dict) -> str:
     if rate is not None and rate >= 0.8:
         return "立場高度一致——差異主要在文字,可依品質偏好決定"
     return "立場常不一致但未翻面——建議再累積,並人工抽樣比較理由品質"
+
+
+def compare_texts(*, primary_model: str, primary_text: str,
+                  shadow_model: str, shadow_text: str, shadow_ok: bool,
+                  shadow_elapsed, extract_stance, extract_summary) -> dict:
+    """從兩邊的**原始文字**直接組出比較紀錄(批#92)。
+
+    立場與總結的擷取器由呼叫端注入(`llm_postprocess` 的那兩個),
+    這樣本模組仍然不依賴主模組,而呼叫端也不必自己組那兩個 dict ——
+    組錯欄位名的話 `compare_outputs` 會安靜地拿到 None,比較結果看起來正常
+    但全是空的。
+    """
+    return compare_outputs(
+        {"model": primary_model, "text": primary_text,
+         "stance": extract_stance(primary_text),
+         "summary": extract_summary(primary_text), "ok": True, "elapsed": None},
+        {"model": shadow_model, "text": shadow_text,
+         "stance": extract_stance(shadow_text) if shadow_ok else {},
+         "summary": extract_summary(shadow_text) if shadow_ok else "",
+         "ok": shadow_ok, "elapsed": shadow_elapsed})
+
+
+def run_comparison(*, primary_model: str, primary_text: str,
+                   shadow_model: str, call_shadow, today: str,
+                   ledger_path, read_ledger, write_ledger,
+                   extract_stance, extract_summary, elapsed_timer,
+                   log=print) -> dict:
+    """跑一次影子比較並落地,回傳要放進 manifest 的狀態(批#92)。
+
+    第九輪 P1-11 要的**依賴注入**:呼叫、讀寫、計時、擷取器全部由外面傳進來,
+    所以本模組仍然不碰網路與檔案系統(可單獨測),而主模組只留薄接線。
+
+    設計不變(照 MZ 影子):
+      - **失敗只是今天沒有比較資料** —— 例外吞在呼叫端,這裡只記 ok/err
+      - **帳本讀不出來就不寫** —— 覆蓋等於把樣本清空,而累積是它的全部價值
+    """
+    t0 = elapsed_timer()
+    shadow_text, ok, err = "", False, ""
+    try:
+        shadow_text = call_shadow()
+        ok = bool(shadow_text)
+    except Exception as e:                       # noqa: BLE001 - 影子不得影響正班
+        err = f"{type(e).__name__}: {e}"
+        log(f"[llm-shadow] 影子呼叫失敗(不影響晨報): {err}")
+    rec = compare_texts(
+        primary_model=primary_model, primary_text=primary_text,
+        shadow_model=shadow_model, shadow_text=shadow_text, shadow_ok=ok,
+        shadow_elapsed=elapsed_timer() - t0,
+        extract_stance=extract_stance, extract_summary=extract_summary)
+    if err:
+        rec["shadow_error"] = err[:160]
+    try:
+        ledger = read_ledger(ledger_path)
+    except Exception as e:                       # noqa: BLE001
+        log(f"[llm-shadow] 帳本不可讀,本次不寫入: {e}")
+        return {"skipped": "ledger_unreadable"}
+    ledger = upsert(ledger, rec, today)
+    write_ledger(ledger_path, ledger)
+    return {"today": rec, "cumulative": summarize(ledger, shadow_model)}

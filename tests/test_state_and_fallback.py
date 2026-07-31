@@ -552,3 +552,31 @@ def test_llm_switches_are_overridable_without_editing_the_workflow():
                      if ln.strip().startswith(f"{key}:")), "")
         assert line, f"workflow 沒有 {key}"
         assert "vars." in line, f"{key} 寫死了,repo variable 覆寫不了:{line.strip()}"
+
+
+def test_no_module_defines_the_same_top_level_name_twice():
+    """**重複的頂層定義是合法 Python,所以沒有任何既有檢查會抓到。**
+
+    批#92:我用字串切片改 `morning_report.py` 時索引順序弄反,結果檔案裡有
+    **三份** `_call_openai` 與 `_run_llm_shadow` —— 而 `ruff check` 全綠、
+    1,324 條測試全過(重複定義只是後者覆蓋前者,而最後一份剛好是對的)。
+    那代表這一類損壞可以一路通過所有閘門進到生產。
+
+    ruff 的 F811 只在**同一個 scope 內未被使用就重定義**時觸發,函式被呼叫過
+    就不算 —— 所以它擋不住這種情形。這條用 AST 自己數。
+    """
+    import ast
+    import collections
+
+    root = Path(__file__).resolve().parents[1]
+    problems = []
+    for path in sorted(root.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        names = collections.Counter(
+            n.name for n in tree.body
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)))
+        for name, count in names.items():
+            if count > 1:
+                problems.append(f"{path.name}: {name} 定義了 {count} 次")
+    assert not problems, (
+        "有頂層名稱被重複定義(後者靜默覆蓋前者):\n  " + "\n  ".join(problems))

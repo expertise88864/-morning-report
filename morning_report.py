@@ -12871,6 +12871,22 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
+#: 推理強度 → 輸出額度倍數(相對於 `LLM_REPORT_MAX_TOKENS` 的可見答案長度)。
+#: 依實測推得:抽取器在**機械性**任務上推理量已達答案的 1.5 倍,
+#: 主分析這種複雜推理只會更多;而 GPT-5.6 的 max output 是 128K,給寬不吃虧
+#: (額度是上限,沒用到不計費)。
+_OPENAI_CAP_MULTIPLIER = {"none": 2, "low": 4, "medium": 6,
+                          "high": 10, "xhigh": 14, "max": 16}
+#: 模型硬上限(官方文件:GPT-5.6 系列 max output 128K)。
+_OPENAI_MAX_OUTPUT = 128_000
+
+
+def _openai_output_cap(effort: str) -> int:
+    """依推理強度算輸出額度。未知強度取 medium 的倍數(不猜高也不猜低)。"""
+    mult = _OPENAI_CAP_MULTIPLIER.get((effort or "").strip().lower(), 6)
+    return min(LLM_REPORT_MAX_TOKENS * mult, _OPENAI_MAX_OUTPUT)
+
+
 def _record_llm_call(provider: str, model: str, effort: str, usage: dict) -> None:
     """把**這封信實際是哪個模型寫的**記進 manifest(批#90d)。
 
@@ -12916,9 +12932,11 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     payload = {
         "model": use_model,
         "messages": [{"role": "user", "content": prompt}],
-        # 推理模型的新版介面用 max_completion_tokens;給 4 倍餘裕
-        # (答案約 7000,推理未知 → 28000)。真正的用量由 usage 記進 manifest。
-        "max_completion_tokens": LLM_REPORT_MAX_TOKENS * 4,
+        # 額度必須**隨推理強度放大**(批#90e)。`max_completion_tokens` 是
+        # reasoning + 答案的總額,而固定 4 倍(28,000)在推理達答案的 3 倍時
+        # 就會被截斷 —— 那正是 2026-07-31 抽取器 0 產出的成因,設 xhigh 等於
+        # 保證重演。額度只是上限,沒用到不計費,所以寧可給寬。
+        "max_completion_tokens": _openai_output_cap(effort),
         "stream": False,
     }
     if effort and effort not in ("", "default"):

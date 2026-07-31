@@ -248,3 +248,24 @@ def test_manifest_records_which_model_actually_wrote_the_report(monkeypatch):
         assert rec["calls"] == 2 and rec["prompt_tokens"] == 42000
     finally:
         mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_output_cap_scales_with_reasoning_effort():
+    """批#90e:額度必須隨推理強度放大。
+
+    `max_completion_tokens` 是 **reasoning + 答案的總額**。固定 4 倍(28,000)
+    在推理達答案的 3 倍時就會被截斷 —— 那正是 2026-07-31 抽取器 1560 則事件
+    0 產出的成因,而設 xhigh 等於保證重演。
+    """
+    import morning_report as mr
+
+    caps = {e: mr._openai_output_cap(e)
+            for e in ("none", "low", "medium", "high", "xhigh", "max")}
+    assert caps["low"] < caps["medium"] < caps["high"] < caps["xhigh"]
+    # xhigh 要放得下「答案 + 4 倍推理」(= 5 × 可見答案 7,800 ≈ 39,000)
+    assert caps["xhigh"] >= 39_000, f"xhigh 額度不足會被截斷:{caps['xhigh']}"
+    # 不得超過官方 max output
+    assert all(v <= 128_000 for v in caps.values())
+    # 未知強度取 medium,不猜高也不猜低
+    assert mr._openai_output_cap("不存在的強度") == caps["medium"]
+    assert mr._openai_output_cap("") == caps["medium"]

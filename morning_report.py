@@ -19238,7 +19238,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     macro_rows = (
         fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
         fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
-        fmt_macro_row("DXY 美元指數", "DXY", "升→外資易匯出、台股偏壓") +
+        # 2026-07-31:美元指數顯示列移除,保留台幣匯率即可(DXY 仍抓取並餵計分與
+        # prompt,只是不再單獨渲染 —— 與 WTI/BTC/銅的處置一致)。
         fmt_macro_row("台幣匯率 USD/TWD", "USDTWD",
                       "數字升=台幣貶:利出口商獲利,但外資匯出壓力增") +
         fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +

@@ -348,6 +348,10 @@ LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com").rstrip("/")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-terra")
+#: 抽取器專用的 OpenAI 模型(批#90b)。**機械性任務不必用推理旗艦**:
+#: 抽取只是把新聞抄成 JSON 欄位,而它的額度是 16000 tokens ——
+#: 用高價模型跑滿一次就比主分析還貴。空字串 = 跟 `OPENAI_MODEL` 同一個。
+OPENAI_EXTRACTOR_MODEL = os.environ.get("OPENAI_EXTRACTOR_MODEL", "").strip()
 #: 影子比較:設了才啟用。**預設關閉** —— 它會讓主分析的呼叫成本加倍,
 #: 而且在沒有人要評估換模型時純屬浪費。
 LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
@@ -13168,7 +13172,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         if _ep == "deepseek":
             return _call_deepseek_extractor(p)
         if _ep == "openai":
-            return _call_openai(p)
+            return _call_openai(p, model=OPENAI_EXTRACTOR_MODEL)
         return _call_llm_text(p)
 
     # 批#68:**這條路徑目前在生產沒有任何產出**。1160 則歷史事件裡沒有一則是

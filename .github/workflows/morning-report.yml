@@ -65,7 +65,9 @@ jobs:
           #   "deepseek"  → DeepSeek V3.2/V4（推薦，NT$3/月，中文超強）
           #   "gemini"    → Gemini 2.5 Flash（免費，品質中等）
           #   "anthropic" → Claude Sonnet 4.6（NT$46/月，品質最佳）
-          LLM_PROVIDER: deepseek
+          # 主分析 provider:deepseek / openai / gemini / anthropic
+          # 改用 repo variable 覆寫(Settings → Variables),不必動 workflow 檔
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
           LLM_EVENT_EXTRACTION: "1"
 
           # DeepSeek（推薦）— 走 OpenAI 相容 API
@@ -82,6 +84,19 @@ jobs:
           DEEPSEEK_REASONING_EFFORT: high
           LLM_TOTAL_TIMEOUT_SECONDS: "180"
           LLM_REQUEST_TIMEOUT_SECONDS: "75"
+
+          # OpenAI（GPT-5.6 系列；可留空 = 不啟用）
+          #   換模型時把 LLM_PROVIDER 設成 openai 即可;抽取器可獨立指定,
+          #   讓機械性任務用便宜模型、推理留給旗艦。
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: https://api.openai.com
+          OPENAI_MODEL: gpt-5.6-terra
+          OPENAI_EXTRACTOR_MODEL: gpt-5.6-luna
+          # 事件抽取器 provider(空 = 跟隨 LLM_PROVIDER)
+          EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
+          # LLM 影子比較(空 = 關閉):換模型前後累積可比較的證據
+          LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
+          LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

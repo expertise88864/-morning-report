@@ -206,3 +206,45 @@ def test_openai_reasoning_effort_is_sent_and_degrades_on_400(monkeypatch):
     assert sent[0].get("reasoning_effort") == "low", "第一次要帶推理強度"
     assert "reasoning_effort" not in sent[1], "400 之後要移除該欄位重試"
     assert sent[1]["model"] == "gpt-5.6-luna", "重試不得換掉模型"
+
+
+def test_manifest_records_which_model_actually_wrote_the_report(monkeypatch):
+    """批#90d:**信件本身看不出是哪個模型寫的。**
+
+    `LLM_PROVIDER` 是 repo variable,設錯時(拼字、設成 Secret 而不是 Variable)
+    的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。那是最難發現的
+    一種失敗,所以要有每天都看得到的紀錄。
+
+    順帶累加 token 用量:推理 token 以 output 計價、是成本主要來源,
+    而它到底用了多少只有 API 回的 usage 知道。
+    """
+    import morning_report as mr
+
+    class _R:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"finish_reason": "stop",
+                                 "message": {"content": "分析內容"}}],
+                    "usage": {"prompt_tokens": 21000, "completion_tokens": 9000,
+                              "completion_tokens_details": {"reasoning_tokens": 4200}}}
+
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _R())
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        mr._call_openai("p", model="gpt-5.6-terra", reasoning="medium")
+        rec = mr._RUN_MANIFEST.get("llm") or {}
+        assert rec["provider"] == "openai" and rec["model"] == "gpt-5.6-terra"
+        assert rec["reasoning_effort"] == "medium"
+        assert rec["prompt_tokens"] == 21000
+        assert rec["reasoning_tokens"] == 4200, "推理 token 沒記到 —— 成本看不出來"
+        # 多次呼叫(重試/短版)要累加,否則帳單對不上
+        mr._call_openai("p", model="gpt-5.6-terra", reasoning="medium")
+        rec = mr._RUN_MANIFEST["llm"]
+        assert rec["calls"] == 2 and rec["prompt_tokens"] == 42000
+    finally:
+        mr._RUN_MANIFEST.pop("llm", None)

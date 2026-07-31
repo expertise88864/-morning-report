@@ -413,7 +413,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions", "chips", "policy_deepdive", "llm_shadow",
+    "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -12795,6 +12795,8 @@ def _call_deepseek(prompt: str) -> str:
                 if not content:
                     raise RuntimeError(f"DeepSeek 回應無 content: {data}")
                 usage = data.get("usage", {})
+                _record_llm_call("deepseek", model, DEEPSEEK_REASONING_EFFORT,
+                                 usage or {})
                 print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
                       f"completion={usage.get('completion_tokens')} "
                       f"cache_hit={usage.get('prompt_cache_hit_tokens', 0)}")
@@ -12869,6 +12871,33 @@ def _analysis_complete_enough(text: str) -> bool:
     return st.get("score") is not None or bool(st.get("label"))
 
 
+def _record_llm_call(provider: str, model: str, effort: str, usage: dict) -> None:
+    """把**這封信實際是哪個模型寫的**記進 manifest(批#90d)。
+
+    切換 provider 之後,信件本身看不出來是否切成功 —— 而 `LLM_PROVIDER` 是
+    repo variable,設錯(拼字、設在 Secrets 而不是 Variables)時的症狀是
+    「一切照舊」,沒有任何錯誤。那正是最難發現的一種失敗。
+
+    每次呼叫都覆蓋(最後一次成功的即為本封信所用);同時累加 token 用量,
+    因為推理 token 以 output 計價、是成本的主要來源,而它到底用了多少
+    只有 API 回的 usage 知道。
+    """
+    slot = _RUN_MANIFEST.setdefault("llm", {})
+    slot.update({"provider": provider, "model": model,
+                 "reasoning_effort": effort or None})
+    for k in ("prompt_tokens", "completion_tokens", "total_tokens",
+              "reasoning_tokens"):
+        v = usage.get(k)
+        if isinstance(v, int):
+            slot[k] = slot.get(k, 0) + v
+    # 推理 token 常藏在 completion_tokens_details 裡
+    det = usage.get("completion_tokens_details") or {}
+    if isinstance(det, dict) and isinstance(det.get("reasoning_tokens"), int):
+        slot["reasoning_tokens"] = (slot.get("reasoning_tokens", 0)
+                                    + det["reasoning_tokens"])
+    slot["calls"] = slot.get("calls", 0) + 1
+
+
 def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                  reasoning: str = "") -> str:
     """OpenAI 相容 chat completions。
@@ -12911,6 +12940,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                           timeout=timeout or _llm_request_timeout())
     r.raise_for_status()
     data = r.json() or {}
+    _record_llm_call("openai", use_model, effort, data.get("usage") or {})
     choices = data.get("choices") or []
     msg = (choices[0].get("message") or {}) if choices else {}
     content = msg.get("content")

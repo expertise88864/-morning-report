@@ -171,6 +171,19 @@ CASES = [
     ("twse_delisted.json", _case_delisted),
 ]
 
+#: 放在 `tests/fixtures/` 但**不是上游原始 payload** 的檔,逐一明列。
+#:
+#: 這個目錄原本只放「真實 API 回應樣本」,下面那條契約因此可以要求
+#: 「每個檔都要有案例」。Luna 特化實驗需要凍結 prompt 的輸入,那不是
+#: 上游 payload、也沒有 state 邊界可以走 —— 它由
+#: `tests/test_deepseek_legacy_golden.py` 負責。
+#:
+#: 刻意**明列**而不是把掃描範圍縮成某個子目錄:縮範圍會讓下一份真的原始
+#: payload 只要放錯位置就無聲逃過契約,而明列會在 diff 裡被看見。
+NON_PAYLOAD_FIXTURES = {
+    "legacy_prompt_input.json",     # DeepSeek legacy prompt 的凍結輸入
+}
+
 _MANIFEST_KEYS = ("chips", "exdiv_preview", "corporate_actions")
 
 
@@ -192,9 +205,14 @@ def test_every_fixture_has_a_case_and_every_case_has_a_fixture():
     兩個方向都要驗:多出來的 fixture 代表有人存了樣本卻沒寫契約(看起來有覆蓋、
     實際沒有);多出來的案例代表 fixture 被刪掉而測試會在執行時才炸。
     """
-    on_disk = {p.name for p in FIXTURES.glob("*.json")}
+    on_disk = {p.name for p in FIXTURES.glob("*.json")} - NON_PAYLOAD_FIXTURES
     in_table = {name for name, _ in CASES}
     assert on_disk, "fixtures 目錄是空的 —— 掃描器或路徑錯了"
+    stale = sorted(NON_PAYLOAD_FIXTURES
+                   - {p.name for p in FIXTURES.glob("*.json")})
+    assert not stale, (
+        f"NON_PAYLOAD_FIXTURES 列了不存在的檔:{stale} —— "
+        "豁免清單漂移會讓下一個同名的真 payload 靜默逃過契約")
     assert on_disk == in_table, (
         f"沒有案例的 fixture:{sorted(on_disk - in_table)};"
         f"沒有 fixture 的案例:{sorted(in_table - on_disk)}")

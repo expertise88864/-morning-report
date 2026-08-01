@@ -375,3 +375,50 @@ def test_the_three_budgets_are_ordered_and_stay_ordered():
     assert run_budget - core_tail >= 600, (
         f"扣掉 LLM 保留後只剩 {run_budget - core_tail:.0f}s 給資料收集 —— "
         "2026-08-01 實測光是行情+新聞+籌碼就要約 600s")
+
+
+def test_preflight_runs_exactly_what_ci_gates_on():
+    """本機閘門必須與 CI **逐項對應**(使用者定案 2026-08-01:過 CI 才能 push)。
+
+    2026-08-01 我用 `ruff check . | tail -1` 判定 lint,看到最後一行
+    `No fixes available (1 hidden fix…)` 就當成通過,結果 CI 紅 ——
+    **用 tail 看檢查結果本身就是一個會靜默通過的檢查器。**
+
+    但「照 CI 跑」這個約定會漂移:CI 新增一項檢查而本機腳本沒跟上,
+    preflight 照樣全綠、push 之後才發現。這條把對應關係釘住。
+
+    只比對**擋門的那個 job**(`test`);`dry-run-preview` 是手動觸發加
+    `continue-on-error`,不是閘門,本機也不該去打外部 API。
+    """
+    root = Path(__file__).resolve().parents[1]
+    ci_path = root / ".github" / "workflows" / "ci.yml"
+    script = root / "tools" / "preflight.sh"
+    for p in (ci_path, script):
+        if not p.exists():
+            pytest.fail(f"找不到 {p.name} —— 閘門契約不得因檔案不見而跳過")
+
+    ci = yaml.safe_load(ci_path.read_text(encoding="utf-8"))
+    gate = ci["jobs"]["test"]
+    assert not gate.get("continue-on-error"), "擋門的 job 不能 continue-on-error"
+
+    text = script.read_text(encoding="utf-8")
+    # **只看可執行的行。** 被註解掉的指令字面上還在 —— 拿整份文字比對的話,
+    # 「把 compileall 註解掉」這種改動會完全通過(我第一版就是這樣,
+    # 三個突變只抓到兩個)。註解裡也常常會提到指令名稱。
+    code = "\n".join(ln for ln in text.splitlines()
+                     if ln.strip() and not ln.lstrip().startswith("#"))
+    commands = [str(s["run"]).strip() for s in gate["steps"] if s.get("run")]
+    checks = [c for c in commands if c.startswith("python -m")]
+    assert checks, "CI 的 test job 沒有任何 python -m 檢查 —— 契約需要更新"
+    missing = [c for c in checks if c not in code]
+    assert not missing, (
+        "CI 會跑但 tools/preflight.sh 沒有跑:\n  " + "\n  ".join(missing) +
+        "\n本機閘門與 CI 脫節 = preflight 全綠而 push 後才發現")
+
+    # 任一步失敗必須立刻停,否則後面的綠燈會蓋掉前面的紅燈
+    assert "set -euo pipefail" in text, "preflight 沒有 fail-fast"
+    # 而且不得用管線去讀檢查結果(那正是這次的病灶)。同樣只看可執行的行:
+    # 第一版連自己「不要用 | tail」那句註解都判成違規,而「解釋為什麼不做
+    # 某件事」的註解本身就會提到那件事。
+    for bad in ("| tail", "|tail", "| head", "|head"):
+        assert bad not in code, f"preflight 用了 {bad} 判讀結果 —— 會靜默通過"

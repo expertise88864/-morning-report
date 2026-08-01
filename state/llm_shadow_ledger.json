@@ -11,12 +11,13 @@
   "stance_flipped": false,
   "primary_score": 2,
   "shadow_score": 2,
-  "primary_chars": 5815,
-  "shadow_chars": 5533,
-  "summary_overlap": 0.0,
-  "body_overlap": 0.375,
+  "primary_chars": 5188,
+  "shadow_chars": 7419,
+  "summary_overlap": 0.667,
+  "body_overlap": 0.465,
   "primary_seconds": null,
-  "shadow_seconds": 93.7,
-  "score_gap": 0
+  "shadow_seconds": 171.9,
+  "score_gap": 0,
+  "prompt_sha": "9570e7e8735b"
  }
 ]

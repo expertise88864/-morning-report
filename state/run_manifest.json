@@ -1,33 +1,35 @@
 {
- "date": "2026-08-01 09:08",
- "total_seconds": 869.1,
- "budget_seconds": 1140.0,
+ "date": "2026-08-01 10:11",
+ "total_seconds": 756.7,
+ "budget_seconds": 2100.0,
  "news_workers": 8,
- "degraded_steps": [],
+ "degraded_steps": [
+  "llm:config_issue"
+ ],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 5.5
+   "seconds": 6.2
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 171.3
+   "seconds": 200.6
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 6.5
+   "seconds": 7.7
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 213.0
+   "seconds": 146.9
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 179.2
+   "seconds": 190.4
   },
   {
    "label": "LLM 主分析",
-   "seconds": 289.9
+   "seconds": 201.2
   },
   {
    "label": "渲染",
@@ -48,8 +50,8 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 104,
-   "fail": 4
+   "ok": 131,
+   "fail": 0
   },
   "feeds.feedburner.com": {
    "ok": 4,
@@ -327,13 +329,14 @@
    "stance_flipped": false,
    "primary_score": 2,
    "shadow_score": 2,
-   "primary_chars": 5815,
-   "shadow_chars": 5533,
-   "summary_overlap": 0.0,
-   "body_overlap": 0.375,
+   "primary_chars": 5188,
+   "shadow_chars": 7419,
+   "summary_overlap": 0.667,
+   "body_overlap": 0.465,
    "primary_seconds": null,
-   "shadow_seconds": 93.7,
-   "score_gap": 0
+   "shadow_seconds": 171.9,
+   "score_gap": 0,
+   "prompt_sha": "9570e7e8735b"
   },
   "cumulative": {
    "samples": 1,
@@ -343,7 +346,7 @@
    "stance_flips": 0,
    "score_gap_mean": 0.0,
    "score_gap_abs_max": 0,
-   "body_overlap_mean": 0.375,
+   "body_overlap_mean": 0.465,
    "verdict": "樣本不足(1/10)——尚不足以判斷,繼續累積"
   }
  },
@@ -353,14 +356,15 @@
    "model": "gpt-5.6-luna",
    "requested_effort": "low",
    "applied_effort": "low",
-   "prompt_tokens": 10111,
-   "completion_tokens": 1460,
-   "total_tokens": 11571,
-   "reasoning_tokens": 268,
+   "prompt_tokens": 10167,
+   "completion_tokens": 1350,
+   "total_tokens": 11517,
+   "reasoning_tokens": 126,
    "cached_tokens": 0,
-   "estimated_cost_usd": 0.003774,
-   "cost_basis": "官方牌價;推理以 output 計價",
-   "elapsed_seconds": 10.9,
+   "cache_write_tokens": 10164,
+   "estimated_cost_usd": 0.003653,
+   "cost_basis": "官方牌價;推理以 output 計價;另有 10164 tok 寫入快取,其費率未收錄、**未計入**,此項偏低",
+   "elapsed_seconds": 10.8,
    "finish_reason": "stop",
    "calls": 1
   },
@@ -368,24 +372,28 @@
    "provider": "openai",
    "extractor": "deepseek",
    "model": "gpt-5.6-luna",
-   "primary_effort": "xhigh",
-   "request_timeout": 420.0,
-   "total_timeout": 600.0,
+   "primary_effort": "max",
+   "request_timeout": 630.0,
+   "total_timeout": 900.0,
    "shadow": "deepseek"
   },
+  "config_issues": [
+   "primary(openai)推理強度 max 超過實測過的上限 xhigh —— 超出的部分沒有量測支持,逾時掉備援的風險未知;要提高請先用手動執行或影子量一次 reasoning_tokens"
+  ],
   "primary": {
    "provider": "openai",
    "model": "gpt-5.6-luna",
-   "requested_effort": "xhigh",
-   "applied_effort": "xhigh",
-   "prompt_tokens": 93194,
-   "completion_tokens": 27933,
-   "total_tokens": 121127,
-   "reasoning_tokens": 23095,
+   "requested_effort": "max",
+   "applied_effort": null,
+   "prompt_tokens": 92262,
+   "completion_tokens": 4386,
+   "total_tokens": 96648,
+   "reasoning_tokens": 379,
    "cached_tokens": 0,
-   "estimated_cost_usd": 0.052158,
-   "cost_basis": "官方牌價;推理以 output 計價",
-   "elapsed_seconds": 196.1,
+   "cache_write_tokens": 92259,
+   "estimated_cost_usd": 0.023716,
+   "cost_basis": "官方牌價;推理以 output 計價;另有 92259 tok 寫入快取,其費率未收錄、**未計入**,此項偏低",
+   "elapsed_seconds": 29.2,
    "finish_reason": "stop",
    "calls": 1
   },
@@ -394,14 +402,20 @@
    "model": "deepseek-v4-pro",
    "requested_effort": "high",
    "applied_effort": "high",
-   "prompt_tokens": 85917,
-   "completion_tokens": 4370,
-   "total_tokens": 90287,
-   "reasoning_tokens": 443,
+   "prompt_tokens": 84979,
+   "completion_tokens": 6146,
+   "total_tokens": 91125,
+   "reasoning_tokens": 828,
    "cached_tokens": 0,
    "cost_basis": "未收錄 deepseek-v4-pro 的單價,不估",
-   "elapsed_seconds": 93.7,
+   "elapsed_seconds": 171.9,
    "calls": 1
+  },
+  "cost_summary": {
+   "total_usd": 0.027369,
+   "measured_calls": 3,
+   "unmeasured_billable_calls": 0,
+   "incomplete": "未收錄單價:deepseek-v4-pro"
   }
  }
 }

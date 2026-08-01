@@ -40,5 +40,29 @@
   "days": 1,
   "last_seen": "2026-08-01",
   "latest_title": "Iran conflict disrupts oil transport through Hormuz"
+ },
+ "geopolitical:日本": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "Japan reportedly intervenes to support the yen"
+ },
+ "geopolitical:伊朗": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "Trump vows continued U.S. attacks on Iran"
+ },
+ "geopolitical:中國": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "China announces joint military drills around Huangyan Island"
+ },
+ "geopolitical:美國": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "China reiterates opposition to Taiwan independence and foreign intervention"
  }
 }

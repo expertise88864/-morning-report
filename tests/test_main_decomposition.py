@@ -15,8 +15,15 @@
 所以用 AST 把「context 有哪些欄位」與「相位/main 用了哪些」對起來。這條會隨著
 P2-3 逐相位進行一直有效,不需要每拆一個就手動加一條測試。
 
-刻意**不**改成「跑一次 main()」:那需要把數十個對外抓取全部樁掉,而樁本身
-會變成另一份會漂移的規格。這裡驗的是拆解引入的那一類錯誤,不是晨報的行為。
+大部分的檢查刻意停在 AST:要真的跑完 `main()` 得把數十個對外抓取全部樁掉,
+而樁本身會變成另一份會漂移的規格。
+
+**但 AST 不夠。** r1 外審抓到一個純靜態檢查看不見的缺陷:`_phase_render` 在
+`DRY_RUN=1` 時 `return 0` —— 那行在 `main()` 裡是「結束執行」,搬進相位之後
+只結束那個相位。`return` 的語義取決於它在哪個函式裡,而**逐字相同的 diff
+正好看不出這件事**(那是我這批驗證方法自己的盲點)。所以另有一條
+`test_an_early_return_from_any_phase_ends_the_run`:用假相位真的跑一次
+`main()`,驗控制流本身。那是整個套件第一條會執行 `main()` 的測試。
 """
 import ast
 from pathlib import Path
@@ -158,11 +165,13 @@ def test_direct_run_manifest_writes_in_phases_do_not_grow():
 
 
 def test_main_builds_the_context_once_and_passes_it_down():
-    """`ctx` 由 main() 建構,而且每個相位都是用它呼叫的。
+    """`ctx` 由 main() 建構一次,而且 `_PIPELINE` 涵蓋每一個相位、順序與原始碼一致。
 
-    相位若被呼叫時沒帶 ctx(或帶了別的東西),拆解就退化成「函式化」——
-    共用狀態會偷偷跑回模組全域。
+    `_PIPELINE` 漏掉一個相位,那段邏輯就整段不執行 —— 而那不會是錯誤,
+    只會是「今天的信少了一塊」。順序也要盯:相位之間有資料相依。
     """
+    import morning_report as mr
+
     tree = _tree()
     main = _main(tree)
     built = [n for n in ast.walk(main)
@@ -170,15 +179,78 @@ def test_main_builds_the_context_once_and_passes_it_down():
              and n.func.attr == "AppContext"]
     assert len(built) == 1, f"main() 建了 {len(built)} 個 AppContext,應該剛好一個"
 
-    phase_names = {n.name for n in _phase_functions(tree)}
-    called = {}
-    for n in ast.walk(main):
-        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-                and n.func.id in phase_names):
-            called[n.func.id] = n
-    missing = sorted(phase_names - set(called))
-    assert not missing, f"這些相位沒有被 main() 呼叫:{missing}"
-    for name, call in called.items():
-        args = [a.id for a in call.args if isinstance(a, ast.Name)]
-        assert args == ["ctx"], (
-            f"{name} 不是以 `{name}(ctx)` 呼叫的:{ast.unparse(call)[:70]}")
+    in_source = [n.name for n in _phase_functions(tree)]
+    in_pipeline = [f.__name__ for f in mr._PIPELINE]
+    assert in_pipeline == in_source, (
+        "_PIPELINE 與原始碼裡的相位不一致(或順序不同):"
+        f" _PIPELINE={in_pipeline} 原始碼={in_source}")
+
+
+def test_an_early_return_from_any_phase_ends_the_run(monkeypatch):
+    """**相位早退必須結束整個執行。**(r1 Codex #1)
+
+    這是本檔第一條真的會執行 `main()` 的測試,而它存在的理由是一個我自己
+    造出來的缺陷:`_phase_render` 在 `DRY_RUN=1` 時 `return 0`。那行在
+    `main()` 裡的意思是「結束執行」,搬進相位之後只結束那個相位 ——
+    main() 會繼續往下寄信,而 `ctx.html` 還是 `None`。
+
+    **逐字相同的 diff 看不出這件事**:`return` 的語義取決於它在哪個函式裡。
+    所以這條不驗文字,驗行為 —— 用假相位跑一次真的 `main()`。
+    """
+    import datetime as _real_dt
+
+    import morning_report as mr
+
+    class _FixedDT:
+        """固定在 2026-08-05(週三)—— 週日會走 weekend digest 那條路。"""
+
+        class datetime:
+            @staticmethod
+            def now(tz=None):
+                return _real_dt.datetime(2026, 8, 5, 6, 0, tzinfo=tz)
+
+            strptime = staticmethod(_real_dt.datetime.strptime)
+
+    monkeypatch.setattr(mr, "dt", _FixedDT)
+    ran = []
+
+    def _phase(name, rc=None):
+        def _run(ctx):
+            ran.append(name)
+            return rc
+        _run.__name__ = f"_phase_{name}"
+        return _run
+
+    # 中間的相位早退 → 後面的都不該跑,而且退出碼要原樣傳出來
+    monkeypatch.setattr(mr, "_PIPELINE",
+                        (_phase("a"), _phase("b", 7), _phase("c")))
+    assert mr.main() == 7, "相位的早退沒有被傳播 —— main() 會繼續往下寄信"
+    assert ran == ["a", "b"], f"早退之後還跑了後面的相位:{ran}"
+
+    # 全部回 None → 走到底,退出碼 0
+    ran.clear()
+    monkeypatch.setattr(mr, "_PIPELINE", (_phase("a"), _phase("b")))
+    assert mr.main() == 0
+    assert ran == ["a", "b"]
+
+
+def test_a_phase_that_can_return_says_so_in_its_signature():
+    """會早退的相位必須把回傳型別寫出來。
+
+    宣稱要對得上實作:標成 `-> None` 卻會 `return 0` 的相位,讀的人會以為
+    它不可能結束整個執行 —— 而那正是這個缺陷當初被寫出來的原因。
+    """
+    tree = _tree()
+    for node in _phase_functions(tree):
+        inner = {id(x) for f in ast.walk(node)
+                 if isinstance(f, (ast.FunctionDef, ast.Lambda)) and f is not node
+                 for x in ast.walk(f)}
+        returns_value = any(isinstance(r, ast.Return) and r.value is not None
+                            and id(r) not in inner for r in ast.walk(node))
+        ann = ast.unparse(node.returns) if node.returns else ""
+        if returns_value:
+            assert ann != "None", (
+                f"{node.name} 會 return 一個值,簽章卻寫 `-> None`")
+        else:
+            assert ann == "None", (
+                f"{node.name} 不會 return 值,簽章卻寫 `-> {ann}`(宣稱要對得上實作)")

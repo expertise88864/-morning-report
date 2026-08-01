@@ -22952,8 +22952,8 @@ def _phase_llm_analysis(ctx) -> None:
     ctx.analysis = analysis
 
 
-def _phase_render(ctx) -> None:
-    """相位七:渲染 HTML 並組出待存 state。
+def _phase_render(ctx) -> Optional[int]:
+    """相位七:渲染 HTML 並組出待存 state。**DRY_RUN 會早退。**
 
     共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
     """
@@ -23202,6 +23202,28 @@ def _phase_deliver(ctx) -> int:
     return 0
 
 
+#: 主流程的相位,**依執行順序**。
+#:
+#: r1(Codex,#1):寫成序列而不是八行呼叫,是因為 `_phase_render` 在
+#: `DRY_RUN=1` 時會 `return 0` 早退 —— 它原本在 `main()` 裡是「結束整個
+#: 執行」,搬進相位之後只結束那個相位,main() 會繼續往下寄信(而 html 還是
+#: None)。**`return` 的語義會隨著它所在的函式改變,而逐字相同的 diff 看不出
+#: 這件事** —— 那是我這批的驗證方法自己的盲點。
+#:
+#: 這個形式讓「忘記傳播早退」在結構上不可能發生:相位回傳 None 就往下走,
+#: 回傳整數就是本次執行的退出碼。
+_PIPELINE = (
+    _phase_market_and_macro,
+    _phase_news_policy_sports,
+    _phase_taifex_and_chips,
+    _phase_twse_universe,
+    _phase_events_and_models,
+    _phase_llm_analysis,
+    _phase_render,
+    _phase_deliver,
+)
+
+
 def main() -> int:
     global _RUN_DEADLINE
     _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
@@ -23224,14 +23246,11 @@ def main() -> int:
     ctx.mode, ctx.report_date = mode, report_date
     ctx.target_session_date = target_session_date
     ctx.recorder.data["marks"].clear()
-    _phase_market_and_macro(ctx)
-    _phase_news_policy_sports(ctx)
-    _phase_taifex_and_chips(ctx)
-    _phase_twse_universe(ctx)
-    _phase_events_and_models(ctx)
-    _phase_llm_analysis(ctx)
-    _phase_render(ctx)
-    return _phase_deliver(ctx)
+    for _phase in _PIPELINE:
+        _rc = _phase(ctx)
+        if _rc is not None:      # 早退(DRY_RUN)或最終退出碼
+            return _rc
+    return 0
 
 
 if __name__ == "__main__":

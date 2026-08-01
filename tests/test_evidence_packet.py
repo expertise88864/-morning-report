@@ -32,7 +32,7 @@ def _build(quotes=None, news=None):
                     {"fair_value": 100.0}, {"model1": 1000.0},
                     news if news is not None else _NEWS, [], {},
                     as_of="2026-08-01T06:00:00+08:00",
-                    target_session_date="2026-08-01")
+                    target_session_date="2026-08-01", sanitize=str)
 
 
 def test_the_same_evidence_always_hashes_to_the_same_value():

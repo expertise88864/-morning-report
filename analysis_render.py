@@ -123,7 +123,12 @@ def render(obj: Optional[dict]) -> str:
         blk = tree.get(key)
         if isinstance(blk, dict) and _s(blk.get("narrative")):
             p = blk.get("probability")
-            pct = f"（{round(float(p) * 100)}%）" if isinstance(p, (int, float)) else ""
+            # r1(Codex,#5):**這是模型自己給的數字,不是 Python 算的。**
+            # 這個 repo 的規約是 Python 算的數字才有權威(PR-2 立場分即是),
+            # 而一封財經信裡的「基準 60%」讀起來就像計算結果。
+            # 保留數字(它是判讀情境樹的依據),但**標明出處**。
+            pct = (f"（模型主觀機率 {round(float(p) * 100)}%）"
+                   if isinstance(p, (int, float)) else "")
             scen.append(f"- **{name}{pct}**:{_s(blk.get('narrative'))}")
     if scen:
         parts.append("## 情境與觸發條件\n" + "\n".join(scen))

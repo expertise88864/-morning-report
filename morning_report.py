@@ -13480,6 +13480,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
             # 兩邊的 evidence_sha 相同才算可比,而那是公平性的全部依據 ——
             # 沒有記下來的話,事後補不回來(見 `llm_experiment.exclusion_reason`)。
             if packet is not None and LLM_EXPERIMENT_ID:
+                _today = out.get("today") or {}
                 _sha = _ep.evidence_sha(packet)
                 stat["experiment"] = _lx.build_record(
                     today=now_tpe.strftime("%Y-%m-%d"),
@@ -13499,8 +13500,12 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
                                 shadow_profile, {}).get("version"),
                             "model": LLM_SHADOW_MODEL,
                             "effort": LLM_SHADOW_REASONING_EFFORT,
-                            "ok": bool(out.get("shadow_ok")),
-                            "prompt_sha": out.get("shadow_prompt_sha")},
+                            # r1(Codex,#3):`run_comparison` 回的是
+                            # `{"today": rec, "cumulative": …}` —— 讀頂層
+                            # 永遠是 None,於是**每一天的影子都被記成失敗**,
+                            # 十配對永遠湊不滿。
+                            "ok": bool(_today.get("shadow_ok")),
+                            "prompt_sha": _today.get("shadow_prompt_sha")},
                     # 影子送的是同一個 packet 產生的 legacy prompt,
                     # 所以兩邊的證據指紋**必然相同** —— 這裡記下來讓它可稽核,
                     # 而不是靠「我知道它一樣」。
@@ -13990,7 +13995,19 @@ def _luna_analysis(packet: dict, effort: str) -> str:
 
     for repair in _LUNA_ATTEMPTS:
         t0 = time.monotonic()
-        resp = _call_openai_responses(payload)
+        try:
+            resp = _call_openai_responses(payload)
+        except Exception as e:              # noqa: BLE001 - 晨報不可斷
+            # r1(Codex,#6):**送出去了就可能被計費。** ReadTimeout、連線中斷、
+            # 回應不是 JSON —— 這些都發生在 server 已經收下請求之後,
+            # 而既有的 chat/completions 路徑正是為此記 `billable_unmeasured`。
+            # 不記的話總成本與呼叫數會低估,而十天實驗的結論建立在成本上。
+            _record_llm_call(
+                "primary", "openai", OPENAI_MODEL, requested_effort=effort,
+                accepted=False, elapsed=time.monotonic() - t0,
+                error=_redact_secret_text(str(e)), repair=repair,
+                billable_unmeasured=True)
+            raise
         out = _orx.extract_output(resp)
         elapsed = time.monotonic() - t0
 
@@ -14039,6 +14056,38 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     return ""
 
 
+def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
+    """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4)。
+
+    原本只有 `if _text:` 成功時才記,於是可靠度指標只量得到「Luna 成功的那些
+    天」—— 而「誰比較常失敗」正是十天實驗要回答的問題之一。
+    只記成功的那幾天,那個問題的答案永遠是 100%。
+    """
+    if packet is None or not LLM_EXPERIMENT_ID:
+        return
+    try:
+        sha = _ep.evidence_sha(packet)
+        _RUN_MANIFEST.setdefault("llm_shadow", {})["experiment"] = _lx.build_record(
+            today=dt.datetime.now(TPE).strftime("%Y-%m-%d"),
+            experiment_id=LLM_EXPERIMENT_ID,
+            primary={"profile": "luna56_xhigh_v1",
+                     "profile_version": _pp.PROFILES["luna56_xhigh_v1"]["version"],
+                     "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
+                     "ok": False,
+                     "evidence_schema_version": packet.get("schema_version"),
+                     "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
+            # 主分析沒產出時影子根本沒跑 —— 誠實記成沒跑,不要留白讓人猜。
+            shadow={"profile": "deepseek_legacy_v1",
+                    "profile_version": _pp.PROFILES["deepseek_legacy_v1"]["version"],
+                    "model": LLM_SHADOW_MODEL,
+                    "effort": LLM_SHADOW_REASONING_EFFORT, "ok": False},
+            evidence_sha_primary=sha, evidence_sha_shadow=sha,
+            code_version=SHADOW_COHORT_VERSION)
+        _RUN_MANIFEST["llm_shadow"]["experiment"]["failure_reason"] = reason[:60]
+    except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
+        print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)
+
+
 def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                             news: list[dict], tw0050: list[dict] | None = None,
                             calibration: str = "") -> str:
@@ -14060,7 +14109,10 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                                 calibration,
                                 as_of=dt.datetime.now(TPE).isoformat(timespec="minutes"),
                                 target_session_date=_infer_target_session_date(
-                                    dt.datetime.now(TPE).strftime("%Y-%m-%d")))
+                                    dt.datetime.now(TPE).strftime("%Y-%m-%d")),
+                                # r1(Codex,#1):外部文字進 prompt 的唯一入口。
+                                # 前一輪外審立的 P0 控制,新路徑必須接上。
+                                sanitize=_external_text)
             _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
             if _text:
                 # 影子送的是 **legacy profile 的 prompt**(DeepSeek 的既有設計),
@@ -14074,10 +14126,12 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                                 shadow_profile=_shadow_bundle["profile_id"])
                 return _text
             print("[llm] Luna 路徑沒有產出,落回既有路徑", file=sys.stderr)
+            _record_experiment_failure(_packet, "primary_no_output")
         except Exception as e:                  # noqa: BLE001 - 晨報不可斷
             print(f"[llm] Luna 路徑失敗({type(e).__name__}),落回既有路徑:"
                   f"{_redact_secret_text(str(e))[:160]}", file=sys.stderr)
             _DEGRADED_STEPS.append("llm:luna_path_failed")
+            _record_experiment_failure(_packet, type(e).__name__)
     try:
         prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
     except Exception as e:

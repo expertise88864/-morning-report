@@ -241,3 +241,70 @@ def test_the_shadow_gets_the_legacy_prompt_not_the_luna_one(luna_on, monkeypatch
     assert seen.get("primary_profile") == "luna56_xhigh_v1"
     assert seen.get("shadow_profile") == "deepseek_legacy_v1"
     assert seen.get("packet") is not None, "影子沒有拿到 packet,證據指紋記不了"
+
+
+# ---------------------------------------------------------------- r1 外審修正
+
+def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
+        luna_on, monkeypatch):
+    """r1(Codex,#6):**送出去了就可能被計費。**
+
+    ReadTimeout / 連線中斷 / 回應不是 JSON,都發生在 server 已經收下請求
+    之後。不入帳的話總成本與呼叫數會低估,而十天實驗的結論建立在成本上。
+    """
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+
+    attempts = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+                if a.get("role") == "primary"]
+    assert attempts, "逾時的那次請求完全沒有入帳"
+    assert attempts[-1].get("billable_unmeasured") is True, attempts[-1]
+    assert attempts[-1].get("elapsed_seconds") is not None, "沒有記耗時"
+
+
+def test_a_failed_luna_day_still_produces_an_experiment_record(
+        luna_on, monkeypatch):
+    """r1(Codex,#4):**失敗的那天也要有一列紀錄。**
+
+    只記成功的那幾天,「誰比較常失敗」這個問題的答案永遠是 100% ——
+    而那正是十天實驗要回答的問題之一。
+    """
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "luna56-xhigh-vs-dsv4pro-v1")
+    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "LLM_SHADOW_REASONING_EFFORT", "max")
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
+    mr._RUN_MANIFEST.pop("llm_shadow", None)
+    mr._call_llm_analysis_impl(*_ARGS)
+
+    rec = (mr._RUN_MANIFEST.get("llm_shadow") or {}).get("experiment") or {}
+    assert rec, "Luna 失敗的那天沒有留下實驗紀錄"
+    assert rec["primary_ok"] is False and rec["shadow_ok"] is False
+    assert rec["experiment_id"] == "luna56-xhigh-vs-dsv4pro-v1"
+    assert rec.get("failure_reason"), "沒有記下失敗原因"
+
+    import llm_experiment as lx
+    cohort = lx.cohort_key(rec)
+    # 這一天不進有效分母,但**要進可靠度的分母** —— 那是它的價值所在。
+    assert not lx.is_comparable(rec, cohort)
+    assert lx.reliability([rec], cohort)["primary_ok_rate"] == 0.0
+
+
+def test_recording_the_failure_never_breaks_the_email(luna_on, monkeypatch):
+    """紀錄不得反過來弄壞晨報 —— 它是觀測,不是功能。"""
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
+    monkeypatch.setattr(mr, "_lx", None)        # 讓記錄那段必然拋例外
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)

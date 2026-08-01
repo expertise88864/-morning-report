@@ -29,7 +29,7 @@ def _packet(**kw):
     return ep.build({"QQQ": {"close": 500.0}}, {"fair_value": 87.65},
                     {"model1": 1234.5}, _NEWS, [], {},
                     as_of="2026-08-01T06:00:00+08:00",
-                    target_session_date="2026-08-01", **kw)
+                    target_session_date="2026-08-01", **kw, sanitize=str)
 
 
 # ---------------------------------------------------------------- 比較的公平性
@@ -188,7 +188,7 @@ def test_claiming_no_data_gaps_while_evidence_was_truncated_is_flagged():
     """
     many = [dict(_NEWS[2], title=f"n{i}") for i in range(ep.MAX_NEWS_ITEMS + 5)]
     truncated = ep.build({}, {}, {}, many, [], {}, as_of="x",
-                         target_session_date="y")
+                         target_session_date="y", sanitize=str)
     assert truncated["truncation"]["news_dropped"] == 5
 
     silent = am.structured_metrics(_obj(data_gaps=[]), truncated)

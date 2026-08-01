@@ -90,8 +90,12 @@ def _safe(text: str) -> str:
 class Check:
     """一項檢查的結果。`fatal` 代表「這樣上線一定壞」,只有它會讓 job 變紅。"""
 
-    def __init__(self, name, ok, detail="", fatal=True):
+    def __init__(self, name, ok, detail="", fatal=True, body=None):
         self.name, self.ok, self.detail, self.fatal = name, ok, detail, fatal
+        #: r1(Codex,#8):回應主體。`detail` 是**給人看的一句話**,
+        #: 拿它當 dict 用會永遠取到空 —— 那會讓 strict 探測每次都紅,
+        #: 而恆紅的閘門等於沒有閘門。要驗內容的探測讀這個欄位。
+        self.body = body
 
     def row(self) -> str:
         mark = "✅" if self.ok else ("❌" if self.fatal else "⚠")
@@ -363,7 +367,7 @@ def _probe_anthropic(key: str, model: str) -> Check:
 
 
 def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
-    """送一次最小請求。**只回狀態與錯誤內文,不回內容。**"""
+    """送一次最小請求。狀態與錯誤內文給人看,回應主體放 `Check.body`。"""
     import urllib.request as _u
     data = json.dumps(payload).encode("utf-8")
     req = _u.Request(url, data=data, method="POST", headers=headers)
@@ -379,7 +383,11 @@ def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
                      f"(在 {time.monotonic() - t0:.0f}s 後)")
     took = time.monotonic() - t0
     if status == 200:
-        return Check(label, True, f"{took:.0f}s、回應可解析")
+        try:
+            parsed = json.loads(body.decode("utf-8", "replace"))
+        except Exception:                       # noqa: BLE001
+            parsed = None
+        return Check(label, True, f"{took:.0f}s、回應可解析", body=parsed)
     return Check(label, False,
                  f"HTTP {status}: {body.decode('utf-8', 'replace')[:200]}")
 
@@ -430,7 +438,7 @@ def probe_responses_strict(key: str, model: str, effort: str) -> Check:
                        "Content-Type": "application/json"}, label)
     if not chk.ok:
         return chk
-    body = chk.detail if isinstance(chk.detail, dict) else {}
+    body = chk.body if isinstance(chk.body, dict) else {}
     got = orx.extract_output(body)
     applied = orx.applied_effort(body)
     if applied and applied != effort:

@@ -50,7 +50,28 @@ _GRADE_RANK = {"OFFICIAL": 0, "A": 1, "B": 2, "C": 3}
 MAX_NEWS_ITEMS = 220
 
 #: 每則新聞摘要的字元上限(截斷同樣要記)。
-MAX_SUMMARY_CHARS = 400
+#:
+#: r1(Codex,#2):原本是 400,而 legacy prompt 用 **600**、另外還帶最多 1,500
+#: 字的 `fulltext`。也就是說 Luna 看到的證據比 DeepSeek **少**,而兩邊卻蓋同一個
+#: `evidence_sha` —— 那個 sha 因此是**假的保證**,而整個實驗的公平性建立在它上面。
+#: 對齊 legacy 的深度。
+MAX_SUMMARY_CHARS = 600
+
+#: 全文上限。與 `morning_report._format_news_block` 的 `with_full` 分支一致。
+MAX_FULLTEXT_CHARS = 1500
+
+#: **外部文字的消毒函式**,由呼叫端注入。
+#:
+#: r1(Codex,#1):`morning_report._external_text` 是前一輪外審立的 P0 控制
+#: (「所有 RSS/新聞/事件標題與摘要進 prompt 的唯一入口」)。第一版的 packet
+#: 直接複製原始字串,等於**替注入內容開了一條繞過那個控制的旁路** ——
+#: 而 strict JSON 只約束輸出形狀,約束不了 prompt 裡的指令。
+#:
+#: 用注入而不是 import:本模組刻意不相依主模組(它才能單獨測)。
+#: 預設是**恆等函式**,但 `build()` 會在沒有拿到消毒器時拒絕組裝 ——
+#: 「忘了傳」不得靜默退化成「沒有消毒」。
+def _identity(text: str) -> str:
+    return text
 
 
 def _sid(item: dict, index: int) -> str:
@@ -76,7 +97,7 @@ def _grade(item: dict) -> str:
     return g if g in _GRADE_RANK else "C"
 
 
-def normalize_news(news: Optional[list]) -> tuple:
+def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     """(正規化後的新聞, 截斷摘要)。確定性排序、確定性截斷。
 
     排序鍵刻意是 (等級, 發布時間倒序, source_item_id) —— 最後一項是
@@ -91,18 +112,24 @@ def normalize_news(news: Optional[list]) -> tuple:
         if sid in seen:          # 上游已去重,這裡只是防守
             continue
         seen.add(sid)
-        summary = str(n.get("summary") or "")
+        # **每一個外部字串都要過消毒器。** 標題、摘要、全文、來源名、
+        # 實體、URL 全部是抓來的,任何一個都可能帶注入內容。
+        clean = sanitize or _identity
+        summary = clean(str(n.get("summary") or ""))
+        fulltext = clean(str(n.get("fulltext") or ""))
         items.append({
             "source_item_id": sid,
-            "title": str(n.get("title") or "")[:300],
+            "title": clean(str(n.get("title") or ""))[:300],
             "summary": summary[:MAX_SUMMARY_CHARS],
             "summary_truncated": len(summary) > MAX_SUMMARY_CHARS,
+            "fulltext": fulltext[:MAX_FULLTEXT_CHARS],
+            "fulltext_truncated": len(fulltext) > MAX_FULLTEXT_CHARS,
             "published": str(n.get("published") or ""),
-            "source": str(n.get("source") or ""),
+            "source": clean(str(n.get("source") or "")),
             "source_grade": _grade(n),
             "official": bool(n.get("official")),
-            "entities": sorted({str(e) for e in (n.get("entities") or [])})[:12],
-            "url": str(n.get("link") or n.get("url") or ""),
+            "entities": sorted({clean(str(e)) for e in (n.get("entities") or [])})[:12],
+            "url": clean(str(n.get("link") or n.get("url") or "")),
         })
     items.sort(key=lambda x: (_GRADE_RANK[x["source_grade"]],
                              _neg_time(x["published"]), x["source_item_id"]))
@@ -176,12 +203,18 @@ EVIDENCE_QUOTE_KEYS = (
 def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
           tw0050: Optional[list], calibration: Optional[dict], *,
           as_of: str = "", target_session_date: str = "",
-          trading_session: str = "") -> dict:
+          trading_session: str = "", sanitize=None) -> dict:
     """組出一份確定性的 EvidencePacket。
 
     兩個 profile 必須拿到**同一個物件**(或至少同一個 sha)。呼叫端只組一次。
     """
-    kept_news, trunc = normalize_news(news)
+    if sanitize is None:
+        # **忘了傳不得靜默退化成「沒有消毒」。** 這是前一輪外審立的 P0 控制,
+        # 而它最可能的失效方式就是「新的呼叫端沒有接上」——
+        # 那時沒有任何東西會變紅,只有注入內容會靜靜進 prompt。
+        raise ValueError("evidence_packet.build 需要 sanitize —— "
+                         "外部文字進 prompt 必須經過消毒器")
+    kept_news, trunc = normalize_news(news, sanitize)
     packet = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "as_of": str(as_of or ""),

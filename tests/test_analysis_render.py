@@ -125,7 +125,10 @@ def test_data_gaps_and_contradictions_reach_the_email():
 def test_scenarios_carry_their_probabilities():
     """情境沒有機率就只是三段散文,判讀不出模型到底偏哪邊。"""
     md = ar.render(_obj())
-    assert "基準（60%）" in md and "偏空（15%）" in md, md
+    # r1(Codex,#5):機率是**模型主觀估計**,渲染必須標明出處 ——
+    # 一封財經信裡的「基準 60%」讀起來就像 Python 算的。
+    assert "基準（模型主觀機率 60%）" in md, md
+    assert "偏空（模型主觀機率 15%）" in md, md
 
 
 def test_rendering_is_deterministic():

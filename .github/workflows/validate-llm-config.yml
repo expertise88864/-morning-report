@@ -38,6 +38,13 @@ jobs:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-terra' }}
           OPENAI_EXTRACTOR_MODEL: ${{ vars.OPENAI_EXTRACTOR_MODEL || 'gpt-5.6-luna' }}
           OPENAI_REASONING_EFFORT: ${{ vars.OPENAI_REASONING_EFFORT || 'medium' }}
+          # r1(Codex,#7):**這幾行原本不存在。** 沒有 OPENAI_API_MODE,
+          # 探測會用預設 chat_completions 而**靜默略過** Responses strict 探測
+          # —— job 照樣綠,而它宣稱驗過的正是那條新路徑。
+          OPENAI_API_MODE: ${{ vars.OPENAI_API_MODE || 'chat_completions' }}
+          OPENAI_TEXT_VERBOSITY: ${{ vars.OPENAI_TEXT_VERBOSITY || 'high' }}
+          OPENAI_REASONING_SUMMARY: ${{ vars.OPENAI_REASONING_SUMMARY || 'auto' }}
+          OPENAI_REASONING_CONTEXT: ${{ vars.OPENAI_REASONING_CONTEXT || 'current_turn' }}
           OPENAI_EXTRACTOR_REASONING: ${{ vars.OPENAI_EXTRACTOR_REASONING || 'low' }}
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
           LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}

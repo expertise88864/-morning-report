@@ -193,6 +193,10 @@ MODULE_CEILINGS = {
     # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
     # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
     "prompt_profiles.py": 250,
+    # Luna 特化:Responses API 的**純**適配層(組請求、解回應、正規化 usage)。
+    # 網路呼叫刻意留在主模組 —— 那裡才有金鑰、逾時預算與 manifest。
+    # 這個檔長大就表示網路或設定邏輯漏進來了。
+    "openai_responses.py": 250,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

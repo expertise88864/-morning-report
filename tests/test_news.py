@@ -2653,11 +2653,16 @@ def test_event_identity_migration_is_measurable():
 
     assert stats["recomputed"] == 2, stats
     assert stats["canonicalized"] == 2, "指紋沒有被改寫 —— v4 等於沒生效"
+    # 第十一輪 P1-1:`changed_pairs` 是 **append-only 的觀測清單**,不是 dict。
+    # dict 會讓同一個舊指紋的第二次觀測覆蓋第一次 —— 而「分裂」正是那件事,
+    # 於是它在結構上就不可能被看到(我寫的 splits 告警一次都不會響)。
     pairs = stats["changed_pairs"]
-    # 兩個舊指紋收斂到同一個新指紋 —— 那正是 v4 要達成的合併
-    assert set(pairs) == {"2奈米,蘋果", "2nm,apple"}
-    assert len(set(pairs.values())) == 1, f"沒有收斂:{pairs}"
-    assert set(pairs.values()) == {"2nm,aapl"}
+    assert isinstance(pairs, list), "回到 dict 形狀 → splits 永遠測不到"
+    olds = {o["old"] for o in pairs}
+    news = {o["new"] for o in pairs}
+    assert olds == {"2奈米,蘋果", "2nm,apple"}
+    assert news == {"2nm,aapl"}, f"沒有收斂:{pairs}"
+    assert all(o["entity"] == "2330" for o in pairs), "觀測沒帶 entity"
     assert stats["by_schema"] == {"3": 2}
 
     # 已經是當代的事件不該被重算(否則計數會永遠不歸零,看不出遷移完成)

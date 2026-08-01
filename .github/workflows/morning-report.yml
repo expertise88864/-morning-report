@@ -98,7 +98,11 @@ jobs:
           DEEPSEEK_MODEL: deepseek-v4-pro
           DEEPSEEK_EXTRACTOR_MODEL: deepseek-v4-flash
           DEEPSEEK_BASE_URL: https://api.deepseek.com
-          # 思考模式強度：high / medium / low；設 off 可關閉（僅 v4-pro/reasoner 生效）
+          # 思考模式的翻譯規則(開關 vs 強度、別名映射)只寫在
+          # `llm_telemetry.deepseek_thinking` —— 這裡不再重複一份會漂移的規格。
+          # (第十一輪 P2-2:原本這行寫「high / medium / low;設 off 可關閉」,
+          #  而官方文件說思考**預設開啟**、關閉要明確送 disabled。批#118 只改了
+          #  morning_report.py 那份,這一份還留著錯的。)
           # 批#97:**這兩行原本寫死 "180" / "75",讓批#93 的時間放大在生產成為死碼。**
           # 程式碼讓明設的環境變數優先(那是對的 —— 要能臨時壓低),但 workflow
           # 一直在明設,於是放大從來沒有發生過。2026-08-01 的後果:GPT-5.6 在

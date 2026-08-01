@@ -694,7 +694,19 @@ def apply_event_timeline(model_history: list[dict],
                         migration_stats.get("recomputed", 0) + 1)
                     _now = str(event.get("subject_key") or "")
                     if _was and _was != _now:
-                        migration_stats.setdefault("changed_pairs", {})[_was] = _now
+                        # 第十一輪 P1-1:**原本是 `dict[舊指紋] = 新指紋`。**
+                        # 同一個舊指紋第二次產生不同的新指紋時直接覆蓋 ——
+                        # 於是「分裂」在資料結構上就不可能被觀測到,
+                        # 而我寫的 `splits > 0 → 降級告警` 一次都不會響。
+                        # 我自己造了一個永遠通過的守衛。
+                        #
+                        # 改成 append-only 的觀測清單,而且 key 納入
+                        # entity 與 event_type:不同公司碰巧有相同舊指紋時
+                        # 也不該互相覆蓋。
+                        migration_stats.setdefault("changed_pairs", []).append({
+                            "entity": _ent,
+                            "event_type": str(event.get("event_type") or ""),
+                            "old": _was, "new": _now})
                     if _now and _now != _was:
                         migration_stats["canonicalized"] = (
                             migration_stats.get("canonicalized", 0) + 1)

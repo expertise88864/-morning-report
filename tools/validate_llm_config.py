@@ -229,8 +229,19 @@ def main() -> int:
         provider=provider, extractor_provider=extractor,
         shadow_provider=_env("LLM_SHADOW_PROVIDER"),
         has_key=_has_key,
-        efforts={"primary": effort if provider == "openai" else "",
-                 "extractor": ext_effort if extractor == "openai" else ""})
+        # 第十一輪 P1-4:**DeepSeek 的強度原本完全沒被驗過。**
+        # 這裡只在 provider 是 openai 時才帶強度,於是
+        # `DEEPSEEK_REASONING_EFFORT=max` 從來不會進 `validate_llm_config`。
+        efforts={"primary": (effort if provider == "openai"
+                             else _env("DEEPSEEK_REASONING_EFFORT")),
+                 # DeepSeek 抽取器(`_call_deepseek_extractor`)**不送**
+                 # thinking / reasoning_effort,所以它沒有強度可驗 ——
+                 # 套上主分析的強度只會製造假警告。
+                 "extractor": (ext_effort if extractor == "openai" else "")},
+        models={"primary": (model if provider == "openai"
+                            else _env("DEEPSEEK_MODEL", "deepseek-v4-pro")),
+                "extractor": (ext_model if extractor == "openai"
+                              else _env("DEEPSEEK_MODEL", "deepseek-v4-pro"))})
     if issues:
         # r1(Codex #8,P2):**致命的設定問題必須讓 job 變紅。**
         # 原本一律 `fatal=False`,於是「選了 deepseek 卻沒有 DEEPSEEK_API_KEY」
@@ -238,9 +249,10 @@ def main() -> int:
         # 它就當不成設定閘門,而那是它存在的唯一理由。
         # 判準是「這樣上線一定不會動」,不是「風險比較高」:
         # 「超過實測過的上限」屬於後者,維持警告。
-        checks = [Check("設定本身合法",
-                        not any(lt.is_fatal(i) for i in issues),
-                        ";".join(issues),
+        # **有問題就不是 ✅。** `ok` 表示「沒有任何問題」,`fatal` 才決定
+        # 要不要讓 job 變紅 —— 兩者混用會讓一列警告顯示成綠勾,
+        # 而那正是這個工具最不該做的事(看起來通過、其實有話要說)。
+        checks = [Check("設定本身合法", False, ";".join(issues),
                         fatal=any(lt.is_fatal(i) for i in issues))]
 
     if "openai" in (provider, extractor):
@@ -312,10 +324,17 @@ def _report(checks, provider, extractor, model, effort) -> None:
 # (第十輪 P0-1:不把四把金鑰放進同一個 process)。
 
 def _probe_openai_compatible(base: str, key: str, model: str,
-                             label: str) -> Check:
-    """OpenAI 相容的 chat/completions(OpenAI 與 DeepSeek 共用)。"""
+                             label: str, extra: dict = None) -> Check:
+    """OpenAI 相容的 chat/completions(OpenAI 與 DeepSeek 共用)。
+
+    第十一輪 P1-4:`extra` 讓探測送出**正式排程真的會送的那份 payload**。
+    原本 DeepSeek 只送一個 16-token 的裸請求 —— 它證明的只有「金鑰有效、
+    模型會回答」,完全沒有碰到 `thinking` 與 `reasoning_effort`,
+    所以全綠也不代表那組設定可用。
+    """
     payload = {"model": model, "max_tokens": 16, "stream": False,
                "messages": [{"role": "user", "content": "ok"}]}
+    payload.update(extra or {})
     return _probe_json(f"{base.rstrip('/')}/v1/chat/completions", payload,
                        {"Authorization": f"Bearer {key}",
                         "Content-Type": "application/json"}, label)
@@ -384,9 +403,20 @@ def probe_one_provider(provider: str) -> int:
         checks.extend(effort_matrix(model))
     elif provider == "deepseek":
         model = _env("DEEPSEEK_MODEL", "deepseek-v4-pro")
+        raw = _env("DEEPSEEK_REASONING_EFFORT", "max")
+        think = lt.deepseek_thinking(raw)
+        extra = {}
+        if raw:
+            extra["thinking"] = think["thinking"]
+            if think["reasoning_effort"]:
+                extra["reasoning_effort"] = think["reasoning_effort"]
         checks = [_probe_openai_compatible(
             _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"), key, model,
-            f"deepseek {model}")]
+            f"deepseek {model} / {raw}→{think['canonical']}", extra)]
+        if not think["known"]:
+            checks.append(Check(f"推理強度 {raw}", False,
+                                "官方文件沒有列出這個值,已正規化成 high 送出",
+                                fatal=False))
     elif provider == "gemini":
         checks = [_probe_gemini(key, _env("GEMINI_MODEL", "gemini-2.5-flash"))]
     elif provider == "anthropic":

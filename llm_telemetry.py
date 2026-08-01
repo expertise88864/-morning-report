@@ -210,12 +210,16 @@ PROVIDER_KEY_ENV = {"deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY",
 #: 517 個 token,GPT-5.6 的 high 可以燒掉數萬個(2026-07-31 抽取器 0 產出正是
 #: 推理吃光額度)。所以上限必須各自依**實測**訂,沒實測過的就別假裝知道。
 SCHEDULED_MAX_EFFORT = {
-    # 2026-08-01 生產實測:high 一次完成(reasoning 517、耗時遠低於上限)。
-    # 官方文件確認 v4-pro 支援到 `max`,而 `high` 其實只映射到中段 ——
-    # 先前這裡寫 `high` 是照 repo 一行過時的註解(「只認 high/medium/low」),
-    # 不是照文件。上限放到 `max`:**支援性有文件依據,耗時則尚未實測**,
-    # 由 `timeout_for` 的放大(max = 3×)與 `effort_not_applied` 遙測兜底。
-    "deepseek": {"primary": "max", "extractor": "high", "shadow": "max"},
+    # 這張表是**生產已驗證**的上限,不是「API 收得下」的上限 ——
+    # 第十一輪 P1-3 指出批#118 把兩者混為一談:官方文件只能證明
+    # 「API 收得下 max」,不能證明「85k-token 的 prompt 在現行 timeout、
+    # 預算與備援條件下能穩定完成」。支援性見 `MODEL_LIMITS[...]["efforts"]`。
+    #
+    # DeepSeek v4-pro 目前唯一的生產證據:`effort=high`、elapsed 171.9s、
+    # prompt 84,979 tok。所以這裡維持 `high`;設成 max 會得到一條
+    # 「超過實測過的上限」的警告 —— **那句話是真的**,而它會在累積到實測
+    # 之後自然消失。把它一起拿掉等於把「我還不知道」偽裝成「我知道沒問題」。
+    "deepseek": {"primary": "high", "extractor": "high", "shadow": "high"},
     # 主分析 xhigh 可用 —— 但**前提是 timeout 一起放大**(見 timeout_for)。
     # 抽取器維持 low:2026-07-31 的 1560 則 0 產出就是抽取器推理過頭造成的,
     # 而抽取是機械性任務,推理再多也不會抄得更準。
@@ -246,7 +250,12 @@ EFFORT_TIME_MULTIPLIER = {"none": 1.0, "minimal": 1.0, "low": 1.0,
 #: 的餘裕。所以放寬是**有空間**的,不是把寄信的時間拿去賭。
 PROVIDER_TIMEOUT_BASE = {
     "openai": (360.0, 240.0),
-    "deepseek": (180.0, 75.0),
+    # 第十一輪 P1-3:原本 (180, 75) 之下,`max` 的單次上限是 225 秒,
+    # 而 v4-pro 在 **high** 就已實測 171.9 秒 —— 只剩 53 秒餘裕,
+    # 而 max 的推理量預期更大。餘裕不足時的失敗模式是逾時掉備援,
+    # 也就是使用者收到降級版報告(2026-08-01 已經發生過一次)。
+    # 拉到 (300, 150):max 之下總額 900s、單次 450s,約是實測值的 2.6 倍。
+    "deepseek": (300.0, 150.0),
 }
 DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
 
@@ -627,3 +636,46 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
     if notes:
         out["incomplete"] = ";".join(notes)
     return out
+
+
+# ── DeepSeek 思考模式的 provider contract(第十一輪 P1-2 / P2-2)──────────
+# 官方文件把**兩件事分成兩個欄位**,而本 repo 原本混成一個:
+#   思考模式開關:{"thinking": {"type": "enabled"/"disabled"}} —— **預設 enabled**
+#   思考強度    :{"reasoning_effort": "low"/"high"/"max"}
+#
+# 後果是實際的語意錯誤:設 `off` 時我們**兩個都不送**,而思考模式預設是開的
+# —— 所以「關閉思考」根本沒有關閉。要關必須明確送 `disabled`。
+#
+# v4-pro 的映射(官方表):low → high、high → high、xhigh → max、max → max。
+# `medium` 不在那張表裡;它與 `low` 同樣是「低於 high」,所以正規化成 `high`
+# **並且送出 `high` 而不是 `medium`** —— 這樣既不擋掉合法設定,也不會把
+# 一個文件沒列的值丟給 API。
+#
+# 這是**唯一定義處**:workflow 註解與 README 不再各自手寫一份規格
+# (原本寫在兩處,批#118 只改了其中一份,另一份還留著「high/medium/low」)。
+_DEEPSEEK_OFF = ("off", "none", "disabled")
+_DEEPSEEK_TO_HIGH = ("low", "medium", "high")
+_DEEPSEEK_TO_MAX = ("xhigh", "max")
+
+
+def deepseek_thinking(raw: str) -> dict:
+    """把設定值翻成 DeepSeek 實際要送的兩個欄位。
+
+    回 `{"thinking": dict|None, "reasoning_effort": str|None,
+         "canonical": str, "known": bool}`。
+    `known=False` 代表文件沒列這個值 —— 呼叫端該把它當成設定問題,
+    而不是安靜地送出去。
+    """
+    v = (raw or "").strip().lower()
+    if v in _DEEPSEEK_OFF:
+        # **必須明確送 disabled。** 不送 = 沿用預設 = 思考仍然開著。
+        return {"thinking": {"type": "disabled"}, "reasoning_effort": None,
+                "canonical": "none", "known": True}
+    if v in _DEEPSEEK_TO_HIGH:
+        return {"thinking": {"type": "enabled"}, "reasoning_effort": "high",
+                "canonical": "high", "known": True}
+    if v in _DEEPSEEK_TO_MAX:
+        return {"thinking": {"type": "enabled"}, "reasoning_effort": "max",
+                "canonical": "max", "known": True}
+    return {"thinking": {"type": "enabled"}, "reasoning_effort": "high",
+            "canonical": "high", "known": False}

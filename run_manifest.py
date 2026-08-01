@@ -189,12 +189,24 @@ class ManifestRecorder:
 
         `coverage` 由呼叫端統計(它才有 model_history),本模組只組裝與判讀。
         """
-        pairs = stats.get("changed_pairs") or {}
+        # 第十一輪 P1-1:`changed_pairs` 是**觀測清單**,不是 dict ——
+        # dict 會讓同一個舊指紋的第二次觀測覆蓋第一次,而「分裂」正是
+        # 「同一個舊指紋跑出多個新指紋」,於是它在結構上就不可能被看到。
+        # 舊格式(dict)仍收:歷史 state 裡可能還有,轉成單筆觀測。
+        raw = stats.get("changed_pairs") or []
+        if isinstance(raw, dict):
+            raw = [{"entity": "", "event_type": "", "old": o, "new": n}
+                   for o, n in raw.items()]
+        by_old: dict = {}
         merged: dict = {}
-        for old_key, new_key in pairs.items():
-            merged.setdefault(new_key, set()).add(old_key)
-        splits = {o: {n for oo, n in pairs.items() if oo == o} for o in pairs}
-        splits = {k: v for k, v in splits.items() if len(v) > 1}
+        for obs in raw:
+            if not isinstance(obs, dict):
+                continue
+            key = (obs.get("entity") or "", obs.get("event_type") or "",
+                   obs.get("old") or "")
+            by_old.setdefault(key, set()).add(obs.get("new") or "")
+            merged.setdefault(obs.get("new") or "", set()).add(key)
+        splits = {k: sorted(v) for k, v in by_old.items() if len(v) > 1}
         out = {"schema_version": schema_version,
                "recomputed": stats.get("recomputed", 0),
                "canonicalized": stats.get("canonicalized", 0),

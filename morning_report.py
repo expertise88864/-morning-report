@@ -12989,12 +12989,18 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     "max_tokens": 4096 if slim else LLM_REPORT_MAX_TOKENS,
                     "stream": False,
                 }
-                # v4-pro / reasoner 思考模式（精簡模式下停用,以排除參數造成的 400）
-                if (not slim
-                        and DEEPSEEK_REASONING_EFFORT not in ("", "off", "none", "disabled")
-                        and ("pro" in model or "reasoner" in model)):
-                    payload["thinking"] = {"type": "enabled"}
-                    payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
+                # v4-pro / reasoner 思考模式(精簡模式下停用,以排除參數造成的 400)。
+                #
+                # 第十一輪 P1-2:**開關與強度是兩個欄位,而且思考預設是開的。**
+                # 原本設 `off` 時兩個都不送 —— 那不是關閉,是沿用預設(開著)。
+                # 翻譯規則集中在 `llm_telemetry.deepseek_thinking`,
+                # workflow 與 README 不再各自手寫一份會漂移的規格。
+                if not slim and ("pro" in model or "reasoner" in model):
+                    _think = _lt.deepseek_thinking(DEEPSEEK_REASONING_EFFORT)
+                    if DEEPSEEK_REASONING_EFFORT:
+                        payload["thinking"] = _think["thinking"]
+                        if _think["reasoning_effort"]:
+                            payload["reasoning_effort"] = _think["reasoning_effort"]
                 r = requests.post(
                     url, json=payload, headers=headers,
                     timeout=_llm_request_timeout(),
@@ -13011,9 +13017,14 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 _record_llm_call(
                     role, "deepseek", model,
                     requested_effort=DEEPSEEK_REASONING_EFFORT,
+                    # `applied` 記**實際送出**的值。請求值可能是別名
+                    # (medium/low 都送 high),兩者分開才看得出來。
                     applied_effort=payload.get("reasoning_effort", ""),
                     usage=usage or {}, accepted=True,
-                    elapsed=time.monotonic() - _t0)
+                    elapsed=time.monotonic() - _t0,
+                    thinking_mode=(payload.get("thinking") or {}).get("type", ""),
+                    canonical_effort=_lt.deepseek_thinking(
+                        DEEPSEEK_REASONING_EFFORT)["canonical"])
                 print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
                       f"completion={usage.get('completion_tokens')} "
                       f"cache_hit={usage.get('prompt_cache_hit_tokens', 0)}")

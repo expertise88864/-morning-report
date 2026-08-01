@@ -418,15 +418,17 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
 
     # 生產實測過的組合不得告警(這正是批#92 誤報的那一班)
     assert _issues(efforts={"primary": "high"}) == []
-    # 批#118:官方文件確認 v4-pro 支援到 `max`,而 `high` 其實只映射到中段
-    # (low→high、high→high、xhigh→max、max→max)。先前這裡把上限訂在 high,
-    # 依據是 repo 裡一行過時的註解而不是文件。
-    assert _issues(efforts={"primary": "max"},
-                   models={"primary": "deepseek-v4-pro"}) == []
-    # 文件沒列的值仍要當場擋下(那才是這條守衛的用途)
-    bad = _issues(efforts={"primary": "medium"},
-                  models={"primary": "deepseek-v4-pro"})
-    assert any("不支援" in m and "medium" in m for m in bad), bad
+    # 第十一輪 P1-3:**「文件支援」與「生產已驗證」是兩件事。**
+    # 批#118 把兩者混為一談 —— 官方文件只能證明「API 收得下 max」,
+    # 不能證明「85k-token 的 prompt 在現行 timeout 與備援條件下穩定完成」。
+    # 這張表是後者;支援性在 `MODEL_LIMITS[...]["efforts"]`。
+    over = _issues(efforts={"primary": "max"},
+                   models={"primary": "deepseek-v4-pro"})
+    assert any("超過實測過的上限" in m for m in over), over
+    assert not any(lt.is_fatal(m) for m in over), (
+        "「還沒量過」是警告不是致命 —— 使用者可以刻意去量它")
+    # 而**支援性**是另一回事:文件列出的值不得被判成不支援
+    assert "max" in lt.supported_efforts("deepseek-v4-pro")
     # OpenAI 的抽取器仍限 low —— 2026-07-31 的 1560 則 0 產出就是它推理過頭
     ext = _issues(provider="openai", extractor_provider="openai",
                   efforts={"extractor": "high"})
@@ -436,6 +438,37 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
                    efforts={"primary": "xhigh", "extractor": "low"}) == []
     # 手動/離線執行不受此限
     assert _issues(efforts={"primary": "max"}, scheduled=False) == []
+
+
+def test_deepseek_thinking_toggle_is_separate_from_effort():
+    """第十一輪 P1-2:**開關與強度是兩個欄位,而思考模式預設是開的。**
+
+    原本設 `off` 時 `thinking` 與 `reasoning_effort` **兩個都不送** ——
+    而不送 = 沿用預設 = 思考仍然開著。也就是說「關閉思考」根本沒有關閉,
+    而症狀是安靜的(帳單與耗時都照舊,只是設定看起來有生效)。
+
+    別名也要正規化後才送:`medium` 不在官方那張映射表裡,
+    送出去有被拒的風險 —— 正規化成 `high` 之後**送出的是 high**。
+    """
+    import llm_telemetry as lt
+
+    off = lt.deepseek_thinking("off")
+    assert off["thinking"] == {"type": "disabled"}, "沒有明確關閉思考模式"
+    assert off["reasoning_effort"] is None and off["canonical"] == "none"
+
+    for alias in ("low", "medium", "high"):
+        r = lt.deepseek_thinking(alias)
+        assert r["thinking"] == {"type": "enabled"}
+        assert r["reasoning_effort"] == "high", f"{alias} 沒有正規化成 high"
+        assert r["canonical"] == "high" and r["known"]
+    for alias in ("xhigh", "max"):
+        r = lt.deepseek_thinking(alias)
+        assert r["reasoning_effort"] == "max", f"{alias} 沒有映射到 max"
+        assert r["canonical"] == "max"
+    # 文件沒列的值:不靜默送出,而是標成 known=False 讓呼叫端說話
+    unknown = lt.deepseek_thinking("ultra")
+    assert unknown["known"] is False
+    assert unknown["reasoning_effort"] == "high", "未知值不得原樣送出"
 
 
 def test_raising_the_token_cap_without_raising_the_timeout_is_self_contradictory():

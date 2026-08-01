@@ -60,7 +60,8 @@ def reasoning_tokens_of(usage: dict) -> Optional[int]:
 
 def build_record(provider: str, model: str, *, requested_effort: str = "",
                  applied_effort: str = "", usage: Optional[dict] = None,
-                 finish_reason: str = "", error: str = "") -> dict:
+                 finish_reason: str = "", error: str = "",
+                 elapsed: float = 0.0) -> dict:
     """把一次呼叫整理成紀錄。**requested 與 applied 分開**(第九輪 P1-1)。
 
     400 退讓會移除 `reasoning_effort`,那次呼叫用的是 provider 預設。
@@ -78,6 +79,17 @@ def build_record(provider: str, model: str, *, requested_effort: str = "",
         rt = reasoning_tokens_of(usage)
         if rt is not None:
             rec["reasoning_tokens"] = rt
+        ct = cached_tokens_of(usage)
+        if ct is not None:
+            rec["cached_tokens"] = ct
+        cost = estimate_cost(model, usage)
+        if cost["usd"] is not None:
+            rec["estimated_cost_usd"] = cost["usd"]
+        rec["cost_basis"] = cost["basis"]
+    if elapsed:
+        # **失敗的呼叫也要有耗時。** 逾時是本 repo 最常見的 LLM 失敗模式,
+        # 而「花了幾秒才逾時」是判斷 timeout 該不該調的唯一依據。
+        rec["elapsed_seconds"] = round(float(elapsed), 1)
     if finish_reason:
         rec["finish_reason"] = finish_reason
     if error:
@@ -90,13 +102,21 @@ _ACCUMULATE = ("prompt_tokens", "completion_tokens", "total_tokens",
                "reasoning_tokens")
 
 
+#: 這些是浮點,要分開累加(`isinstance(x, int)` 對 float 是 False,
+#: 混在一起會讓成本與耗時**靜默不累加** —— 而那正是「看起來有數字」的失敗)。
+_ACCUMULATE_FLOAT = ("estimated_cost_usd", "elapsed_seconds")
+
+
 def merge_same_role(previous: Optional[dict], record: dict) -> dict:
-    """把同一角色的前一次紀錄累加進來(token 累加,其餘取最新)。"""
+    """把同一角色的前一次紀錄累加進來(token/成本/耗時累加,其餘取最新)。"""
     out = dict(record)
     prev = previous or {}
     for k in _ACCUMULATE:
         if isinstance(prev.get(k), int) and isinstance(out.get(k), int):
             out[k] += prev[k]
+    for k in _ACCUMULATE_FLOAT:
+        if isinstance(prev.get(k), (int, float)) and isinstance(out.get(k), (int, float)):
+            out[k] = round(out[k] + prev[k], 6)
     out["calls"] = int(prev.get("calls") or 0) + 1
     return out
 
@@ -276,3 +296,70 @@ def config_snapshot(*, provider: str, extractor_provider: str,
         shadow_provider=shadow_provider, has_key=has_key,
         efforts={"primary": primary_effort, "extractor": extractor_effort})
     return snap, issues
+
+
+# ---------------------------------------------------------------- 成本估算
+
+#: 每 100 萬 token 的官方牌價(USD)。**只收錄有出處的。**
+#:
+#: 查不到單價的一律不估,而不是拿別處的數字近似 —— 這個數字會直接被拿來做
+#: 「換不換模型」的決定,而我在 2026-08-01 已經用 OpenRouter 的價格估過一次
+#: GPT-5.6,結果比官方低 2.5 倍。錯的成本數字比沒有成本數字更糟。
+#:
+#: 出處:OpenAI Models 文件(使用者於 2026-08-01 提供)。
+#: DeepSeek 刻意留空 —— 我手上沒有官方單價,寧可回報「未收錄」。
+MODEL_PRICING = {
+    "gpt-5.6-sol": {"input": 5.00, "output": 30.00},
+    "gpt-5.6-terra": {"input": 2.00, "output": 12.00},
+    "gpt-5.6-luna": {"input": 0.20, "output": 1.20},
+}
+
+
+def cached_tokens_of(usage: Optional[dict]) -> Optional[int]:
+    """快取命中的輸入 token 數。兩家的欄位名不同,**擇一不相加**。
+
+    OpenAI:`prompt_tokens_details.cached_tokens`;
+    DeepSeek:`prompt_cache_hit_tokens`。
+    """
+    if not isinstance(usage, dict):
+        return None
+    det = usage.get("prompt_tokens_details")
+    if isinstance(det, dict) and isinstance(det.get("cached_tokens"), int):
+        return det["cached_tokens"]
+    hit = usage.get("prompt_cache_hit_tokens")
+    return hit if isinstance(hit, int) else None
+
+
+def price_of(model: str) -> Optional[dict]:
+    """查單價。先精確比對,再前綴比對(容納 `-2026-02-16` 這類日期後綴)。"""
+    m = (model or "").strip().lower()
+    if m in MODEL_PRICING:
+        return MODEL_PRICING[m]
+    for name, price in MODEL_PRICING.items():
+        if m.startswith(name):
+            return price
+    return None
+
+
+def estimate_cost(model: str, usage: Optional[dict]) -> dict:
+    """估這一次呼叫的成本。**估不出來就說估不出來。**
+
+    回 `{"usd": float|None, "basis": str}`。`basis` 一定要寫,因為這個數字
+    帶著兩個會被忘記的假設:(a) 推理 token 以 output 計價(這是推理模型的
+    定價方式,而它通常是帳單的主要來源);(b) 快取命中的輸入**以全價計** ——
+    折扣比例我手上沒有官方數字,所以這是**上界**而不是實際金額。
+    """
+    price = price_of(model)
+    if not price:
+        return {"usd": None, "basis": f"未收錄 {model or '(未知模型)'} 的單價,不估"}
+    if not isinstance(usage, dict):
+        return {"usd": None, "basis": "沒有 usage,不估"}
+    pt, ct = usage.get("prompt_tokens"), usage.get("completion_tokens")
+    if not (isinstance(pt, int) and isinstance(ct, int)):
+        return {"usd": None, "basis": "usage 缺 token 數,不估"}
+    usd = (pt * price["input"] + ct * price["output"]) / 1_000_000
+    basis = "官方牌價;推理以 output 計價"
+    cached = cached_tokens_of(usage)
+    if cached:
+        basis += f";快取命中 {cached} tok 以全價計(折扣未收錄),故為上界"
+    return {"usd": round(usd, 6), "basis": basis}

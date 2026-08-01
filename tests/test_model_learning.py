@@ -1115,7 +1115,11 @@ def test_llm_event_extractor_prioritizes_official_critical_items(monkeypatch):
     monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
     monkeypatch.setattr(mr, "ANTHROPIC_API_KEY", "")
 
-    def fake_call(prompt):
+    def fake_call(prompt, role="primary"):
+        # 批#95:抽取器走 Gemini 時會帶 role="extractor"(否則備援會被記成 writer)。
+        # 替身必須吃得下生產的呼叫形狀 —— 少一個參數會讓 TypeError 被抽取器的
+        # except 吞掉,測試看到的只是「沒有抓到 prompt」。
+        assert role == "extractor"
         captured["prompt"] = prompt
         return "[]"
 
@@ -1159,7 +1163,8 @@ def test_batch36_extractor_input_is_sanitized_and_fenced(monkeypatch):
     monkeypatch.setattr(mr, "GEMINI_API_KEY", "token")
     monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "gemini")
     monkeypatch.setattr(mr, "_call_gemini",
-                        lambda p: captured.setdefault("prompt", p) and "[]" or "[]")
+                        lambda p, role="primary": captured.setdefault("prompt", p)
+                        and "[]" or "[]")
     news = [{
         "source": "Blog", "source_grade": "C", "importance": "critical",
         "published": "Mon, 01 Jun 2026 00:00:00 GMT",
@@ -1285,7 +1290,7 @@ def test_llm_event_extractor_retries_once_when_zero_valid(monkeypatch):
     monkeypatch.setattr(mr, "ANTHROPIC_API_KEY", "")
     calls = {"n": 0}
 
-    def fake(prompt):
+    def fake(prompt, role="primary"):
         calls["n"] += 1
         if calls["n"] == 1:
             return '[{"entity":"2330","event_type":"BOGUS","direction":9}]'   # 全不合格

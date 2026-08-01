@@ -88,6 +88,11 @@ MODULE_CEILINGS = {
     "render_utils.py": 1_900,
     "data_quality.py": 500,
     "model_history_store.py": 600,
+    # 批#95:這兩個是批#89–#93 抽出來的接收端。**沒有被列進來就是後門** ——
+    # 本檔的宣稱是「葉模組也有上限,否則只是把膨脹換個檔案繼續」,
+    # 而它們正是這一輪所有搬遷的去處,漏掉它們等於那句話沒有兌現。
+    "llm_shadow.py": 400,
+    "llm_telemetry.py": 500,
 }
 
 

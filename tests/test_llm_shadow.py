@@ -495,3 +495,140 @@ def test_config_validation_catches_typos_and_missing_keys():
     msgs = lt.validate_llm_config(provider="openai", extractor_provider="openai",
                                   shadow_provider="openai", has_key=_has, efforts={})
     assert any("加倍付費" in m for m in msgs), msgs
+
+
+def test_cost_is_estimated_only_where_there_is_a_price():
+    """批#95(第九輪 P1-6):**估不出來就說估不出來。**
+
+    我在 2026-08-01 用 OpenRouter 的價格估過一次 GPT-5.6,結果比官方低 2.5 倍 ——
+    而這個數字會直接被拿來做「換不換模型」的決定。錯的成本數字比沒有更糟,
+    所以沒收錄單價的模型一律回 None 加上原因,不拿別處的數字近似。
+    """
+    import llm_telemetry as lt
+
+    usage = {"prompt_tokens": 85_814, "completion_tokens": 5_557}
+    luna = lt.estimate_cost("gpt-5.6-luna", usage)
+    # 85,814 × $0.20/M + 5,557 × $1.20/M
+    assert luna["usd"] == pytest.approx(0.0238, abs=1e-4), luna
+    terra = lt.estimate_cost("gpt-5.6-terra", usage)
+    assert terra["usd"] == pytest.approx(0.2383, abs=1e-4), terra
+    assert terra["usd"] > luna["usd"] * 9, "output 是 input 的 6 倍價,差距要拉開"
+
+    unknown = lt.estimate_cost("deepseek-v4-pro", usage)
+    assert unknown["usd"] is None
+    assert "未收錄" in unknown["basis"] and "deepseek-v4-pro" in unknown["basis"]
+    # 日期後綴不該讓單價查不到
+    assert lt.estimate_cost("gpt-5.6-luna-2026-02-16", usage)["usd"] == luna["usd"]
+    # 沒有 usage 時不得憑空生一個 0
+    assert lt.estimate_cost("gpt-5.6-luna", None)["usd"] is None
+    assert lt.estimate_cost("gpt-5.6-luna", {"prompt_tokens": 5})["usd"] is None
+
+
+def test_cached_input_tokens_are_read_from_either_providers_field():
+    """兩家的快取欄位名不同,**擇一不相加**(同 P2-3 的教訓)。"""
+    import llm_telemetry as lt
+
+    assert lt.cached_tokens_of({"prompt_tokens_details": {"cached_tokens": 40}}) == 40
+    assert lt.cached_tokens_of({"prompt_cache_hit_tokens": 25}) == 25
+    assert lt.cached_tokens_of({}) is None
+    # 兩個都有時只取一個(相加會憑空翻倍)
+    both = {"prompt_tokens_details": {"cached_tokens": 40},
+            "prompt_cache_hit_tokens": 25}
+    assert lt.cached_tokens_of(both) in (40, 25)
+    # 快取命中要讓成本標註成「上界」,而不是安靜地按全價算完就當精確值
+    basis = lt.estimate_cost("gpt-5.6-luna", dict(
+        prompt_tokens=1000, completion_tokens=100, **both))["basis"]
+    assert "上界" in basis
+
+
+def test_cost_and_elapsed_accumulate_across_retries():
+    """**浮點欄位要分開累加。**
+
+    `isinstance(x, int)` 對 float 是 False —— 沿用 token 那套累加會讓成本與
+    耗時**靜默不累加**,而那是「看起來有數字、其實只有最後一次」的失敗。
+    """
+    import llm_telemetry as lt
+
+    # 生產路徑的第一次呼叫也會經過 merge(previous=None),所以這裡照同樣的形狀組
+    first = lt.merge_same_role(None, lt.build_record(
+        "openai", "gpt-5.6-luna", elapsed=12.0,
+        usage={"prompt_tokens": 1000, "completion_tokens": 100}))
+    assert first["calls"] == 1
+    merged = lt.merge_same_role(first, lt.build_record(
+        "openai", "gpt-5.6-luna", elapsed=8.0,
+        usage={"prompt_tokens": 1000, "completion_tokens": 100}))
+    assert merged["calls"] == 2
+    assert merged["prompt_tokens"] == 2000
+    assert merged["elapsed_seconds"] == pytest.approx(20.0)
+    assert merged["estimated_cost_usd"] == pytest.approx(
+        2 * first["estimated_cost_usd"]), "成本沒有累加 —— 帳單會對不上"
+
+
+def test_a_timeout_leaves_a_record_instead_of_vanishing(monkeypatch):
+    """批#95:**逾時是最需要診斷、卻唯一沒有紀錄的失敗。**
+
+    例外原本從 `requests.post` 直接往外拋,manifest 完全看不到這次呼叫 ——
+    不知道用了哪個模型、哪個推理強度、花了幾秒才放棄,而那三件事正是判斷
+    「timeout 該不該調」的全部依據。2026-08-01 兩班都是這樣掉到 Gemini 的。
+    """
+    import requests
+
+    import morning_report as mr
+
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(mr, "OPENAI_MODEL", "gpt-5.6-luna")
+    monkeypatch.setattr(mr, "OPENAI_REASONING_EFFORT", "xhigh")
+
+    def _boom(*_a, **_k):
+        raise requests.exceptions.ReadTimeout("Read timed out.")
+
+    monkeypatch.setattr(mr.requests, "post", _boom)
+    saved = mr._RUN_MANIFEST.get("llm")
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            mr._call_openai("hi")
+        attempts = mr._RUN_MANIFEST.get("llm", {}).get("attempts") or []
+        assert attempts, "逾時完全沒有留下紀錄"
+        rec = attempts[-1]
+        assert rec["provider"] == "openai" and rec["model"] == "gpt-5.6-luna"
+        assert rec["requested_effort"] == "xhigh", "看不出是哪個強度逾時的"
+        assert "ReadTimeout" in rec["error"]
+        assert "elapsed_seconds" in rec, "沒有耗時就無從判斷 timeout 該不該調"
+        # 失敗的呼叫**不得**被記成 writer
+        assert "primary" not in mr._RUN_MANIFEST.get("llm", {})
+    finally:
+        if saved is None:
+            mr._RUN_MANIFEST.pop("llm", None)
+        else:
+            mr._RUN_MANIFEST["llm"] = saved
+
+
+def test_gemini_fallback_is_recorded_as_the_writer(monkeypatch):
+    """批#95:**主供應商掛掉時,實際寫出這封信的是 Gemini。**
+
+    Gemini 原本完全不記錄,所以 manifest 在最該說清楚「誰寫的」的時候是空的
+    (2026-08-01 兩班都掉到 Gemini)。
+    """
+    import morning_report as mr
+
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "token")
+    monkeypatch.setattr(mr, "GEMINI_FALLBACK_MODELS", ["gemini-2.5-flash"])
+    monkeypatch.setattr(mr, "_call_gemini_once", lambda _m, _p: "分析內文")
+    saved = mr._RUN_MANIFEST.get("llm")
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        assert mr._call_gemini("prompt") == "分析內文"
+        slot = mr._RUN_MANIFEST.get("llm", {})
+        assert slot.get("primary", {}).get("provider") == "gemini", slot
+        assert slot["primary"]["model"] == "gemini-2.5-flash"
+        # 抽取器用 Gemini 時不得佔用 writer 槽
+        mr._RUN_MANIFEST.pop("llm", None)
+        mr._call_gemini("prompt", role="extractor")
+        slot = mr._RUN_MANIFEST.get("llm", {})
+        assert "primary" not in slot and "extractor" in slot, slot
+    finally:
+        if saved is None:
+            mr._RUN_MANIFEST.pop("llm", None)
+        else:
+            mr._RUN_MANIFEST["llm"] = saved

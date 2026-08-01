@@ -12733,7 +12733,7 @@ GEMINI_FALLBACK_MODELS = [
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
-def _call_gemini(prompt: str) -> str:
+def _call_gemini(prompt: str, role: str = "primary") -> str:
     """
     Gemini 完整呼叫流程：
     對每個候選模型重試 3 次（指數退避 5s/15s/45s），
@@ -12744,7 +12744,15 @@ def _call_gemini(prompt: str) -> str:
         for attempt in range(1, 4):
             try:
                 print(f"[llm] 嘗試 Gemini model={model} attempt={attempt}")
-                return _call_gemini_once(model, prompt)
+                _t0 = time.monotonic()
+                _text = _call_gemini_once(model, prompt)
+                # 批#95(第九輪 P1-6):**Gemini 原本完全不記錄。**
+                # 它是跨供應商備援 —— 主供應商掛掉時實際寫出這封信的就是它,
+                # 而那正是 manifest 最該說清楚「誰寫的」的時候。
+                # 2026-08-01 兩班都掉到 Gemini,而 manifest 的 llm 槽是空的。
+                _record_llm_call(role, "gemini", model, accepted=True,
+                                 elapsed=time.monotonic() - _t0)
+                return _text
             except requests.exceptions.HTTPError as e:
                 code = e.response.status_code if e.response is not None else None
                 last_err = RuntimeError(_http_error_summary(e))
@@ -12830,6 +12838,7 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                         and ("pro" in model or "reasoner" in model)):
                     payload["thinking"] = {"type": "enabled"}
                     payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
+                _t0 = time.monotonic()
                 r = requests.post(
                     url, json=payload, headers=headers,
                     timeout=_llm_request_timeout(),
@@ -12847,7 +12856,8 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     role, "deepseek", model,
                     requested_effort=DEEPSEEK_REASONING_EFFORT,
                     applied_effort=payload.get("reasoning_effort", ""),
-                    usage=usage or {}, accepted=True)
+                    usage=usage or {}, accepted=True,
+                    elapsed=time.monotonic() - _t0)
                 print(f"[llm] DeepSeek 成功 — tokens: prompt={usage.get('prompt_tokens')} "
                       f"completion={usage.get('completion_tokens')} "
                       f"cache_hit={usage.get('prompt_cache_hit_tokens', 0)}")
@@ -12925,7 +12935,8 @@ def _analysis_complete_enough(text: str) -> bool:
 def _record_llm_call(role: str, provider: str, model: str, *,
                      requested_effort: str = "", applied_effort: str = "",
                      usage: Optional[dict] = None, accepted: bool = False,
-                     finish_reason: str = "", error: str = "") -> None:
+                     finish_reason: str = "", error: str = "",
+                     elapsed: float = 0.0) -> None:
     """記錄一次 LLM 呼叫。**依角色分槽**(批#91,第九輪 P0-2)。
 
     批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,每次呼叫
@@ -12941,7 +12952,8 @@ def _record_llm_call(role: str, provider: str, model: str, *,
     """
     rec = _lt.build_record(provider, model, requested_effort=requested_effort,
                            applied_effort=applied_effort, usage=usage,
-                           finish_reason=finish_reason, error=error)
+                           finish_reason=finish_reason, error=error,
+                           elapsed=elapsed)
     slot = _RUN_MANIFEST.setdefault("llm", {})
     if accepted:
         slot[role] = _lt.merge_same_role(slot.get(role), rec)
@@ -12980,8 +12992,20 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}",
                "Content-Type": "application/json"}
     applied_effort = payload.get("reasoning_effort", "")
-    r = requests.post(url, json=payload, headers=headers,
-                      timeout=timeout or _llm_request_timeout())
+    # 批#95(第九輪 P1-6):**逾時是最需要診斷、卻唯一沒有紀錄的失敗。**
+    # 例外從 `requests.post` 直接往外拋,於是 manifest 完全看不到這次呼叫 ——
+    # 不知道用了哪個模型、哪個推理強度、花了幾秒才放棄,而那三件事正是
+    # 判斷「timeout 該不該調」的全部依據。2026-08-01 兩班都是這樣掉備援的。
+    _t0 = time.monotonic()
+    try:
+        r = requests.post(url, json=payload, headers=headers,
+                          timeout=timeout or _llm_request_timeout())
+    except Exception as _e:
+        _record_llm_call(role, "openai", use_model, requested_effort=effort,
+                         applied_effort=effort, accepted=False,
+                         error=f"{type(_e).__name__}: {_e}",
+                         elapsed=time.monotonic() - _t0)
+        raise
     # r1(第九輪 P1-3):**必須確認 400 真的是這個參數造成的**。400 也可能來自
     # model ID 錯、額度過大、schema 不合、專案沒權限 —— 那些情況移除推理強度
     # 沒有用,只是白花一次呼叫,而真正的錯誤訊息會被第二次的失敗蓋掉。
@@ -13008,7 +13032,8 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
               f"{usage.get('completion_tokens')}、content_len={len(content or '')})")
     _rec = dict(role=role, provider="openai", model=use_model,
                 requested_effort=effort, applied_effort=applied_effort,
-                usage=usage, finish_reason=finish)
+                usage=usage, finish_reason=finish,
+                elapsed=time.monotonic() - _t0)
     if finish == "length":
         _record_llm_call(**_rec, accepted=False, error="finish_reason=length")
         raise ExtractorOutputTruncated(f"OpenAI 額度用完{detail}")
@@ -13275,7 +13300,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                                 reasoning=OPENAI_EXTRACTOR_REASONING,
                                 role="extractor")
         if _ep == "gemini":
-            return _call_gemini(p)
+            return _call_gemini(p, role="extractor")
         if _ep == "anthropic":
             return _call_anthropic(p)
         raise RuntimeError(

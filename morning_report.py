@@ -255,12 +255,34 @@ def _external_text(value: object, limit: int = 0) -> str:
 STATE_ROOT = Path(os.environ.get("STATE_ROOT") or "state")
 
 
+#: 本次執行的 state 寫入帳:`{檔名: {"ok": bool, "bytes": int, "error": str}}`。
+#: 由 `_write_run_manifest` 落地成 `state_writes`。
+_STATE_WRITES: dict = {}
+
+
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
     """原子寫檔(修正批B,GPT-5.6 二審):先寫 .tmp 再 os.replace——
-    runner 中止/磁碟寫一半不會留下損壞的 state 檔(讀端頂多讀到舊版完整內容)。"""
+    runner 中止/磁碟寫一半不會留下損壞的 state 檔(讀端頂多讀到舊版完整內容)。
+
+    批#108(第八輪 state staging):**同時記帳。**
+
+    跨檔的交易邊界其實已經存在 —— state 只透過 `git commit` 對下一班可見,
+    而 commit 發生在所有寫入之後。真正缺的不是 staging,是**知道這次交易
+    完不完整**:某個檔寫失敗時,呼叫端普遍是 `except: print("(不影響晨報)")`,
+    而 `_git_commit_and_push_state` 只 add「存在的路徑」—— 於是那個檔保持
+    **舊版內容**被一起 commit 出去,下一班讀到過期資料卻以為是當日的。
+    症狀是安靜的:沒有錯誤、沒有告警,只是某一塊資料停在昨天。
+    """
+    name = path.name
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, path)
+    except Exception as e:                    # noqa: BLE001 - 記帳後照樣往外拋
+        _STATE_WRITES[name] = {"ok": False, "bytes": len(data),
+                               "error": f"{type(e).__name__}: {e}"[:160]}
+        raise
+    _STATE_WRITES[name] = {"ok": True, "bytes": len(data)}
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
@@ -375,7 +397,21 @@ EXTRACTOR_ANSWER_TOKENS = int(os.environ.get("EXTRACTOR_ANSWER_TOKENS", "3000"))
 LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
 LLM_SHADOW_MODEL = os.environ.get("LLM_SHADOW_MODEL", "").strip()
 #: 影子呼叫的時間上限。它**不能**擠壓正班 —— 晨報不可斷優先於評估。
-LLM_SHADOW_TIMEOUT = float(os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "120"))
+#: 批#108:原本寫死 120 秒。使用者 2026-08-01 把主分析切回 DeepSeek、影子改成
+#: luna xhigh,而 luna 在 xhigh 實測要 **196 秒** —— 影子會每天逾時,
+#: 帳本永遠收不到樣本,而「影子沒有資料」看起來就只是「還在累積」。
+#: 改為依影子自己的 provider 與推理強度推導,並夾在既有上限內。
+#: 影子的硬上限。它是**選配**的評估工具,不該有能力吃掉十分鐘的執行預算 ——
+#: 超過就是今天沒有樣本,而那正是既有的設計降級(失敗只是今天沒有比較資料)。
+#: 300 秒的依據:luna 在 xhigh 實測 196 秒,留約 1.5 倍餘裕。
+LLM_SHADOW_MAX_TIMEOUT = 300.0
+LLM_SHADOW_TIMEOUT = float(
+    os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "")
+    or min(LLM_SHADOW_MAX_TIMEOUT,
+           _lt.timeout_for(
+               os.environ.get("LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
+               or "medium",
+               _lt.timeout_base(LLM_SHADOW_PROVIDER)[1])))
 #: 影子的推理強度(第九輪 P1-8)。空 = 跟隨該 provider 的預設。
 #: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
 LLM_SHADOW_REASONING_EFFORT = os.environ.get(
@@ -456,6 +492,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
+    "state_writes",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -478,6 +515,15 @@ def _write_run_manifest(now_tpe) -> None:
                  for h, s in (_FEED_STATS or {}).items()}
         # 批#100:整班的成本彙整,**含「有幾次量不到」**。逾時的呼叫照樣計費
         # 而沒有 usage 可讀,只報一個看似精確的總額會讓帳單對不上時無從查起。
+        # 批#108:寫入帳一律落地。**只記成功的等於沒記** —— 失敗才是要看的。
+        _failed = sorted(k for k, v in _STATE_WRITES.items() if not v.get("ok"))
+        _RUN_MANIFEST["state_writes"] = {
+            "attempted": len(_STATE_WRITES),
+            "failed": _failed,
+            "detail": {k: v for k, v in sorted(_STATE_WRITES.items())
+                       if not v.get("ok")}}
+        if _failed:
+            _DEGRADED_STEPS.append("state:write_failed:" + ",".join(_failed)[:60])
         if isinstance(_RUN_MANIFEST.get("llm"), dict):
             _RUN_MANIFEST["llm"]["cost_summary"] = _lt.run_cost_summary(
                 _RUN_MANIFEST["llm"])
@@ -10654,7 +10700,14 @@ def _git_commit_and_push_state(paths: list, message: str) -> None:
         # 若無變動就跳過
         diff = subprocess.run(["git", "diff", "--cached", "--quiet"], timeout=10)
         if diff.returncode != 0:
-            subprocess.run(["git", "commit", "-m", message], check=True, timeout=10)
+            # 批#108:**把「哪些檔是舊的」寫進 commit 訊息。**
+            # 寫失敗的檔仍以舊版內容被一起 commit(git 只看工作區),
+            # 事後從 git log 完全看不出當天有一塊資料停在昨天。
+            _bad = sorted(k for k, v in _STATE_WRITES.items() if not v.get("ok"))
+            _msg = message
+            if _bad:
+                _msg += "\n\n寫入失敗(內容仍為前一版):" + "、".join(_bad)
+            subprocess.run(["git", "commit", "-m", _msg], check=True, timeout=10)
             try:
                 subprocess.run(["git", "push"], check=True, timeout=25)
             except subprocess.SubprocessError:

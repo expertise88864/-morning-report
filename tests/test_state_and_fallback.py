@@ -13,6 +13,9 @@ B. 跨供應商備援的完整性檢查
    主供應商失敗 → Gemini 備援。備援回傳若被截斷,原本會被原樣送出,
    頂部 KPI/結論卡整排變「—」。
 """
+import datetime as _dt
+import json as _json
+import os
 import re
 from pathlib import Path
 
@@ -564,3 +567,99 @@ def test_no_module_defines_the_same_top_level_name_twice():
                 problems.append(f"{path.name}: {name} 定義了 {count} 次")
     assert not problems, (
         "有頂層名稱被重複定義(後者靜默覆蓋前者):\n  " + "\n  ".join(problems))
+
+
+def test_a_failed_state_write_is_recorded_not_swallowed(tmp_path, monkeypatch):
+    """批#108(第八輪 state staging):**要知道這次交易完不完整。**
+
+    跨檔的交易邊界其實已經存在 —— state 只透過 `git commit` 對下一班可見,
+    而 commit 發生在所有寫入之後。缺的不是 staging,是**可見性**:
+    某個檔寫失敗時,呼叫端普遍是 `except: print("(不影響晨報)")`,
+    而 push 只 add「存在的路徑」→ 那個檔以**舊版內容**被一起 commit 出去,
+    下一班讀到過期資料卻以為是當日的。症狀是安靜的:某一塊資料停在昨天。
+    """
+    import morning_report as mr
+
+    saved = dict(mr._STATE_WRITES)
+    mr._STATE_WRITES.clear()
+    try:
+        good = tmp_path / "ok.json"
+        mr._atomic_write_text(good, "{}")
+        assert mr._STATE_WRITES["ok.json"]["ok"] is True
+        assert mr._STATE_WRITES["ok.json"]["bytes"] == 2
+
+        # 寫不進去(目錄不存在)→ 必須記帳,而且例外照樣往外拋
+        bad = tmp_path / "missing" / "bad.json"
+        with pytest.raises(OSError):
+            mr._atomic_write_text(bad, "{}")
+        rec = mr._STATE_WRITES["bad.json"]
+        assert rec["ok"] is False and rec["error"], rec
+    finally:
+        mr._STATE_WRITES.clear()
+        mr._STATE_WRITES.update(saved)
+
+
+def test_the_manifest_and_commit_message_name_the_stale_files(tmp_path, monkeypatch):
+    """失敗必須同時出現在 manifest、降級清單與 commit 訊息。
+
+    **只記成功的等於沒記** —— 失敗才是要看的那一半。
+    """
+    import morning_report as mr
+
+    saved_w, saved_d = dict(mr._STATE_WRITES), list(mr._DEGRADED_STEPS)
+    saved_m = mr._RUN_MANIFEST.get("state_writes")
+    mr._STATE_WRITES.clear()
+    mr._DEGRADED_STEPS.clear()
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", tmp_path / "run_manifest.json")
+    try:
+        mr._STATE_WRITES["history.json"] = {"ok": True, "bytes": 10}
+        mr._STATE_WRITES["forecast_ledger.json"] = {
+            "ok": False, "bytes": 20, "error": "OSError: disk full"}
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+
+        landed = _json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
+        sw = landed["state_writes"]
+        assert sw["attempted"] == 2
+        assert sw["failed"] == ["forecast_ledger.json"]
+        assert "disk full" in sw["detail"]["forecast_ledger.json"]["error"]
+        assert "history.json" not in sw["detail"], "成功的不必佔版面"
+        assert any("state:write_failed" in d for d in mr._DEGRADED_STEPS), \
+            mr._DEGRADED_STEPS
+    finally:
+        mr._STATE_WRITES.clear()
+        mr._STATE_WRITES.update(saved_w)
+        mr._DEGRADED_STEPS[:] = saved_d
+        if saved_m is None:
+            mr._RUN_MANIFEST.pop("state_writes", None)
+        else:
+            mr._RUN_MANIFEST["state_writes"] = saved_m
+
+
+def test_the_shadow_timeout_follows_its_own_model_and_is_capped():
+    """批#108:影子的 timeout 原本寫死 120 秒。
+
+    luna 在 xhigh 實測要 **196 秒** —— 影子會每天逾時,帳本永遠收不到樣本,
+    而「影子沒有資料」看起來就只是「還在累積」。
+
+    但它是**選配**的評估工具,不該有能力吃掉十分鐘的執行預算:
+    超過上限就是今天沒有樣本(既有的設計降級)。
+    """
+    import importlib
+
+    import morning_report as mr
+
+    def _reload(**env):
+        for k, v in env.items():
+            os.environ[k] = v
+        try:
+            return importlib.reload(mr).LLM_SHADOW_TIMEOUT
+        finally:
+            for k in env:
+                os.environ.pop(k, None)
+            importlib.reload(mr)
+
+    xhigh = _reload(LLM_SHADOW_PROVIDER="openai",
+                    LLM_SHADOW_REASONING_EFFORT="xhigh")
+    assert xhigh > 196, f"影子跑不完 luna xhigh(實測 196s),只有 {xhigh}s"
+    assert xhigh <= mr.LLM_SHADOW_MAX_TIMEOUT, "影子可以吃掉整個預算"
+    assert _reload(LLM_SHADOW_TIMEOUT_SEC="45") == 45, "明設的逃生門壞了"

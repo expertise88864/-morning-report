@@ -84,7 +84,12 @@ import pytest
 #: 85,814-token prompt,備援 Gemini 也失敗,使用者收到降級版基本報告。
 #: 新增的行是 provider-aware 的預算計算與抽取器的網路降級接線,兩者都讀模組層
 #: 設定常數(`_timeout_env` 經 refactor_audit 判 BLOCK),搬走等於為了搬而搬。
-MAIN_MODULE_LINE_CEILING = 23_000
+#:
+#: 2026-08-01 批#108 調高至 23,100(現況 23,017)。state 寫入帳與影子 timeout
+#: 推導都必須留在主模組:`_atomic_write_bytes` 是所有 state 檔的唯一寫入口
+#: (經 refactor_audit 判 BLOCK:net/io=['os'] state=['_STATE_WRITES']),
+#: 而把記帳搬走等於在寫入口與帳本之間再開一條可能不同步的路。
+MAIN_MODULE_LINE_CEILING = 23_100
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

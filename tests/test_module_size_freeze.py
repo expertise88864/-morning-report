@@ -184,6 +184,9 @@ MODULE_CEILINGS = {
     # 批#122:P2-3 的共用狀態容器。它**應該一直很小** —— 它的全部工作是
     # 宣告欄位並用 `__slots__` 擋住打錯字。長大就表示邏輯漏進來了。
     "app_context.py": 120,
+    # Luna 特化:provider 中立的證據包。它是**投影**不是渲染 ——
+    # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
+    "evidence_packet.py": 300,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

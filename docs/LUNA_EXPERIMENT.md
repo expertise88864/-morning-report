@@ -155,12 +155,21 @@ LLM_PRIMARY_PROMPT_PROFILE=      (清空)
 
 ---
 
-## 六、尚未完成 / 已知限制
+## 六、現況與已知限制
 
-1. **執行期尚未接線。** Phase 1–7 建立了契約、adapter、指標與設定入口,
-   但 `_phase_llm_analysis` 目前仍走既有路徑 —— 設了上面的變數,
-   `OPENAI_API_MODE=responses` 還不會實際改變主分析走哪個端點。
-   這是啟動實驗前**必須先完成**的一步。
+1. **執行期已接線(2026-08-02)。** `_call_llm_analysis_impl` 有 Luna 分支,
+   三個條件同時成立才走:profile 是 `luna56_xhigh_v1`、`OPENAI_API_MODE`
+   是 `responses`、有 `OPENAI_API_KEY`。流程是
+   Responses → strict JSON → `analysis_schema.validate` →(最多一次修補)
+   → `analysis_render` 轉 Markdown。**任一環節失敗都落回既有路徑**
+   並在降級清單留下 `llm:luna_path_failed`。
+   影子送的是 **legacy profile 的 prompt**(DeepSeek 的既有問法),
+   不是 Luna 的 —— 那正是「同一份證據、各自最佳化」。
+   由 `tests/test_luna_path_routing.py` 用樁掉 HTTP 的方式證明路由真的會走
+   (這個 repo 有過「測試全綠、生產零產出」的紀錄)。
+
+   **仍未在真實 API 上跑過。** 合併後第一件事是手動跑 Validate LLM Config
+   (`OPENAI_API_MODE=responses` 時它會真的送一次 strict 請求)。
 2. **`reasoning.summary` 需要組織驗證**(官方文件),我無法本機驗證這個
    帳號有沒有開通。adapter 已做成「被拒絕就移除該欄位重試」,不影響寄信。
 3. **`SCHEDULED_MAX_EFFORT["openai"]["extractor"]` 是 `low`**,而實驗要
@@ -185,4 +194,6 @@ LLM_PRIMARY_PROMPT_PROFILE=      (清空)
 | `openai_responses.py` | Responses API 純適配層(組請求/解回應/正規化 usage) |
 | `llm_experiment.py` | 同群身分與「可比較配對」語意 |
 | `analysis_metrics.py` | 確定性品質指標(兩類分開) |
+| `analysis_render.py` | strict JSON → 晨報 Markdown 的確定性 renderer |
 | `tests/test_deepseek_legacy_golden.py` | DeepSeek 現況的逐位元組凍結 |
+| `tests/test_luna_path_routing.py` | 證明接線真的會走(樁掉 HTTP,其餘全真) |

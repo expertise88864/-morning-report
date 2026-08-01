@@ -209,6 +209,9 @@ MODULE_CEILINGS = {
     # Luna 特化:確定性品質指標。它刻意**不提供**綜合分數 ——
     # 結構相關的指標只有 Luna 有,合成單一分數會讓比較變成「有結構 vs 沒結構」。
     "analysis_metrics.py": 350,
+    # Luna 特化:strict JSON → 晨報 Markdown 的確定性 renderer。
+    # **模型不直接控制排版** —— 排版由程式決定,模型只負責判斷內容。
+    "analysis_render.py": 250,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

@@ -32,6 +32,12 @@ from typing import Optional
 import llm_telemetry as _lt
 import app_context as _app
 import prompt_profiles as _pp
+import evidence_packet as _ep
+import analysis_schema as _sch
+import analysis_render as _ar
+import analysis_metrics as _am
+import openai_responses as _orx
+import llm_experiment as _lx
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -13404,7 +13410,9 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     return content
 
 
-def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> None:
+def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
+                    *, packet: Optional[dict] = None,
+                    primary_profile: str = "", shadow_profile: str = "") -> None:
     """讓第二個模型也跑同一份 prompt,**只記錄、不改輸出**(批#89)。
 
     預設關閉;設了 `LLM_SHADOW_PROVIDER` 才啟用。編排本體在
@@ -13468,6 +13476,36 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
             stat.update(out)
             if out.get("cumulative"):
                 print(f"[llm-shadow] {out['cumulative'].get('verdict')}")
+            # Luna 實驗:把**配對語意需要的欄位**一起記進 manifest。
+            # 兩邊的 evidence_sha 相同才算可比,而那是公平性的全部依據 ——
+            # 沒有記下來的話,事後補不回來(見 `llm_experiment.exclusion_reason`)。
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _sha = _ep.evidence_sha(packet)
+                stat["experiment"] = _lx.build_record(
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    experiment_id=LLM_EXPERIMENT_ID,
+                    primary={"profile": primary_profile,
+                             "profile_version": _pp.PROFILES.get(
+                                 primary_profile, {}).get("version"),
+                             "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
+                             "ok": bool(primary_text),
+                             "prompt_sha": (_RUN_MANIFEST.get("llm", {})
+                                            .get("primary_bundle") or {})
+                             .get("prompt_sha"),
+                             "evidence_schema_version": packet.get("schema_version"),
+                             "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
+                    shadow={"profile": shadow_profile,
+                            "profile_version": _pp.PROFILES.get(
+                                shadow_profile, {}).get("version"),
+                            "model": LLM_SHADOW_MODEL,
+                            "effort": LLM_SHADOW_REASONING_EFFORT,
+                            "ok": bool(out.get("shadow_ok")),
+                            "prompt_sha": out.get("shadow_prompt_sha")},
+                    # 影子送的是同一個 packet 產生的 legacy prompt,
+                    # 所以兩邊的證據指紋**必然相同** —— 這裡記下來讓它可稽核,
+                    # 而不是靠「我知道它一樣」。
+                    evidence_sha_primary=_sha, evidence_sha_shadow=_sha,
+                    code_version=SHADOW_COHORT_VERSION)
     except Exception as e:                           # noqa: BLE001
         stat["error"] = f"{type(e).__name__}: {e}"[:160]
         print(f"[llm-shadow] 影子比較整段略過(不影響晨報): {e}", file=sys.stderr)
@@ -13883,11 +13921,163 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
         _LLM_DEADLINE = previous_deadline
 
 
+def _call_openai_responses(payload: dict) -> dict:
+    """送一次 Responses 請求,回傳解析後的 JSON。
+
+    選配欄位被拒時**逐一退讓重試**而不是整個請求作廢:`reasoning.summary`
+    需要組織驗證、`prompt_cache_options` 是 GPT-5.6+ 才有,兩者都只影響
+    可觀測性與成本。為了它們讓晨報斷掉是明顯錯誤的取捨。
+    """
+    url = f"{OPENAI_BASE_URL}{_orx.RESPONSES_PATH}"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}",
+               "Content-Type": "application/json"}
+    body = dict(payload)
+    for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
+        r = requests.post(url, json=body, headers=headers,
+                          timeout=_llm_request_timeout())
+        if r.status_code != 400:
+            r.raise_for_status()
+            return r.json()
+        dropped = None
+        for field in _orx.OPTIONAL_FIELDS:
+            leaf = field.split(".")[-1]
+            if _lc.response_blames_param(r, leaf):
+                dropped = field
+                break
+        if dropped is None or attempt >= len(_orx.OPTIONAL_FIELDS):
+            r.raise_for_status()
+        print(f"[llm] Responses 400 指責 {dropped},移除後重試", file=sys.stderr)
+        body = _orx.drop_field(body, dropped)
+    raise RuntimeError("Responses 退讓重試用盡")
+
+
+#: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
+#: 多一個機制就等於兩個都測不出來(見 `_luna_analysis` 的 docstring)。
+_LUNA_ATTEMPTS = (False, True)
+
+
+def _luna_analysis(packet: dict, effort: str) -> str:
+    """Luna 特化路徑:strict JSON → 驗證 →(最多一次修補)→ 確定性渲染。
+
+    **任何環節失敗都回空字串**,由呼叫端落回既有路徑 —— 晨報不可斷。
+    回半份比不回更糟:信寄出去了但少了一半,而且沒有任何錯誤訊息。
+
+    修補**最多一次**,而且那一次同樣計費、同樣進 attempts。
+    「成本上限 +1」如果不把修補算進去,那個宣稱就是假的。
+
+    次數的上限**只由 `_LUNA_ATTEMPTS` 這一個東西決定**。原本另外還有一個
+    `if repair: return ""` 的早退 —— 兩個機制各自都足夠,結果是把任一個
+    改壞測試都不會紅(突變驗證當場抓到)。重複的守衛測不出來,
+    而測不出來的守衛在下一次重構時會被悄悄拿掉。
+    """
+    bundle = _pp.build_luna_bundle(packet)
+    _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
+        _pp.bundle_debug_json(bundle))
+    ids = _ep.evidence_ids(packet)
+    payload = _orx.build_payload(
+        model=OPENAI_MODEL,
+        instructions=bundle["developer_instructions"],
+        user_input=bundle["user_payload"],
+        effort=effort, verbosity=OPENAI_TEXT_VERBOSITY,
+        response_format=bundle["response_schema"],
+        max_output_tokens=_lt.output_cap(effort, LLM_REPORT_MAX_TOKENS,
+                                         model=OPENAI_MODEL),
+        store=OPENAI_STORE,
+        reasoning_summary=OPENAI_REASONING_SUMMARY,
+        reasoning_context=OPENAI_REASONING_CONTEXT,
+        prompt_cache_key=f"morning-{bundle['profile_id']}",
+        prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
+
+    for repair in _LUNA_ATTEMPTS:
+        t0 = time.monotonic()
+        resp = _call_openai_responses(payload)
+        out = _orx.extract_output(resp)
+        elapsed = time.monotonic() - t0
+
+        def _record(accepted: bool, note: str = "") -> None:
+            """**每一次送出都要計費入帳**,不論被不被採用。
+
+            `accepted=True` 才會進 `llm.primary`(成本彙總看那裡);
+            不合格的那次進 `attempts`。兩者都帶 usage —— 修補失敗的呼叫
+            一樣要付錢,不記等於低估成本,而十天實驗的結論建立在成本上。
+            """
+            _record_llm_call(
+                "primary", "openai", OPENAI_MODEL,
+                requested_effort=effort,
+                applied_effort=_orx.applied_effort(resp),
+                usage=_orx.normalize_usage(resp.get("usage")),
+                accepted=accepted, elapsed=elapsed,
+                finish_reason=out["status"], repair=repair,
+                reject_reason=note)
+
+        if out["refusal"] or out["status"] == "incomplete":
+            _record(False, out["refusal"] or out["incomplete_reason"])
+            print(f"[llm] Luna {out['refusal'] or out['incomplete_reason']}",
+                  file=sys.stderr)
+            return ""
+        try:
+            obj = json.loads(out["text"])
+        except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
+            obj = None
+        problems = _sch.validate(obj, ids) if obj is not None else ["不是合法 JSON"]
+        if not problems:
+            text = _ar.render(obj)
+            if text:
+                _record(True)
+                _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
+                    obj, packet)
+                return text
+            problems = ["渲染不出可用的晨報(缺立場或總結)"]
+        _record(False, "; ".join(problems[:2]))
+        _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
+        print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
+              f"{problems[:2]}", file=sys.stderr)
+        payload = dict(payload, input=(
+            bundle["user_payload"] + "\n\nREPAIR\n上一次的輸出有以下問題,"
+            "請只修正這些問題並重新輸出完整 JSON:\n"
+            + "\n".join(f"- {p}" for p in problems[:5])))
+    return ""
+
+
 def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                             news: list[dict], tw0050: list[dict] | None = None,
                             calibration: str = "") -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。任何環節失敗都回傳備援文字而非 raise，
     確保 main() 一定能寄出基本版晨報。"""
+    # ── Luna 特化路徑(預設關閉)────────────────────────────────────────
+    # **三個條件同時成立才走**:profile 是 luna、API 模式是 responses、有金鑰。
+    # 任一環節失敗就落回下面的既有路徑 —— 晨報不可斷,而新路徑尚未經過生產。
+    _packet = None
+    try:
+        _profile = _prompt_profile_for(LLM_PROVIDER, LLM_PRIMARY_PROMPT_PROFILE)
+    except KeyError as e:
+        print(f"[llm] {e};改用預設問法", file=sys.stderr)
+        _profile = _FALLBACK_PROFILE
+    if (_profile == "luna56_xhigh_v1" and OPENAI_API_MODE == "responses"
+            and OPENAI_API_KEY):
+        try:
+            _packet = _ep.build(quotes, fair, predictions, news, tw0050 or [],
+                                calibration,
+                                as_of=dt.datetime.now(TPE).isoformat(timespec="minutes"),
+                                target_session_date=_infer_target_session_date(
+                                    dt.datetime.now(TPE).strftime("%Y-%m-%d")))
+            _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
+            if _text:
+                # 影子送的是 **legacy profile 的 prompt**(DeepSeek 的既有設計),
+                # 不是 Luna 的 —— 那正是「同一份證據、各自最佳化的問法」。
+                _shadow_bundle = _pp.build_deepseek_legacy_bundle(
+                    _packet, _build_prompt(quotes, fair, predictions, news,
+                                           tw0050 or [], calibration))
+                _run_llm_shadow(_shadow_bundle["user_payload"], _text,
+                                dt.datetime.now(TPE), packet=_packet,
+                                primary_profile="luna56_xhigh_v1",
+                                shadow_profile=_shadow_bundle["profile_id"])
+                return _text
+            print("[llm] Luna 路徑沒有產出,落回既有路徑", file=sys.stderr)
+        except Exception as e:                  # noqa: BLE001 - 晨報不可斷
+            print(f"[llm] Luna 路徑失敗({type(e).__name__}),落回既有路徑:"
+                  f"{_redact_secret_text(str(e))[:160]}", file=sys.stderr)
+            _DEGRADED_STEPS.append("llm:luna_path_failed")
     try:
         prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
     except Exception as e:

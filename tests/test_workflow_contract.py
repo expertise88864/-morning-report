@@ -1,0 +1,210 @@
+# -*- coding: utf-8 -*-
+"""**workflow 的行為契約**(第九輪 P2-1、P1-10)。
+
+第九輪 P2-1 指出既有的 workflow 測試「只做子字串比對」—— 它驗的是
+「這個檔案裡出現過 `vars.`」,而不是「這個變數真的接到對應的 repo variable」。
+`OPENAI_MODEL: ${{ vars.LLM_PROVIDER }}` 這種複製貼上錯誤可以完全通過,
+而它的症狀正是本 repo 反覆遇到的那種:**沒有錯誤、沒有告警,只是沒生效**。
+
+所以這裡改成:
+  1. 用 YAML 解析(不是讀字串),逐鍵確認 `vars.X` 的 X **就是那個鍵本身**;
+  2. 告警腳本**真的執行一次**,驗它在兩種情境下寄出的是不同性質的信。
+
+第二點是必要的:那段 Python 內嵌在 YAML 的 heredoc 裡,不會被 pytest 收集、
+不會被 ruff 檢查、不會被任何既有測試碰到 —— 它是整個 repo 唯一沒有守衛的
+可執行程式碼,而它的工作是「在別的東西壞掉時通知人」。
+"""
+import os
+import re
+from pathlib import Path
+
+import pytest
+
+yaml = pytest.importorskip("yaml")
+
+WF_PATH = (Path(__file__).resolve().parents[1]
+           / ".github" / "workflows" / "morning-report.yml")
+
+#: 這些必須可由 repo variable 覆寫 —— 切換模型要能隨時改、隨時退回。
+LLM_VARS = ("LLM_PROVIDER", "EXTRACTOR_PROVIDER",
+            "OPENAI_MODEL", "OPENAI_EXTRACTOR_MODEL",
+            "OPENAI_REASONING_EFFORT", "OPENAI_EXTRACTOR_REASONING",
+            "LLM_SHADOW_PROVIDER", "LLM_SHADOW_MODEL")
+
+
+def _workflow() -> dict:
+    if not WF_PATH.exists():
+        pytest.fail(f"找不到 workflow:{WF_PATH} —— 契約測試不得因檔案不見而跳過")
+    return yaml.safe_load(WF_PATH.read_text(encoding="utf-8"))
+
+
+def _report_step(wf: dict) -> dict:
+    for step in wf["jobs"]["send-report"]["steps"]:
+        if "morning_report.py" in str(step.get("run") or ""):
+            return step
+    pytest.fail("send-report 裡沒有執行 morning_report.py 的步驟")
+
+
+def test_each_llm_switch_reads_its_own_repo_variable():
+    """**每個開關要接到「自己」那個 variable。**
+
+    子字串比對只能確認「有 vars.」,接錯到別的鍵照樣通過 ——
+    而接錯的症狀是「一切照舊」,沒有任何錯誤訊息。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    for key in LLM_VARS:
+        expr = str(env.get(key, ""))
+        assert expr, f"workflow 沒有 {key}"
+        assert f"vars.{key}" in expr, (
+            f"{key} 沒有接到 vars.{key}(寫死或接錯到別的變數):{expr}")
+
+
+def test_the_alert_job_can_tell_delivery_failure_from_post_delivery_failure():
+    """批#93(第九輪 P1-10):**兩種失敗不是同一件事。**
+
+    2026-07-31:信正常寄達,而寄信**之後**的 state schema 契約失敗讓 job 變紅
+    → 告警信說「晨報未寄出,收件人可能沒有收到信」。誤報比沒有告警更糟 ——
+    它訓練收件人忽略告警,而下一次是真的沒寄出。
+
+    這條把那段內嵌的 Python **真的跑起來**,而不是比對字串:
+    比對字串沒辦法發現分支寫反、或兩個情境其實走到同一句話。
+    """
+    wf = _workflow()
+    alert = wf["jobs"]["alert-on-failure"]["steps"][0]
+    script = _heredoc(str(alert["run"]))
+    sent = []
+
+    def _fake_smtp(*_a, **_k):
+        class _S:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def login(self, *_a):
+                pass
+
+            def send_message(self, m):
+                sent.append(m)
+        return _S()
+
+    def _run(delivered: str) -> str:
+        sent.clear()
+        env = {"GMAIL_USER": "u@example.com", "GMAIL_APP_PASSWORD": "pw",
+               "JOB_RESULT": "failure", "RUN_URL": "https://example/run/1",
+               "DELIVERED": delivered}
+        import smtplib
+        old_env, old_smtp = dict(os.environ), smtplib.SMTP_SSL
+        os.environ.update(env)
+        smtplib.SMTP_SSL = _fake_smtp
+        try:
+            exec(compile(script, "<alert>", "exec"), {"__name__": "__alert__"})
+        finally:
+            smtplib.SMTP_SSL = old_smtp
+            os.environ.clear()
+            os.environ.update(old_env)
+        assert len(sent) == 1, "告警沒有寄出"
+        return sent[0]["Subject"] + "\n" + sent[0].get_content()
+
+    not_delivered = _run("")
+    delivered = _run("true")
+
+    assert "未寄出" in not_delivered
+    assert "未寄出" not in delivered, (
+        "信明明寄出了,告警仍說「未寄出」—— 這正是 2026-07-31 的誤報")
+    assert "已寄出" in delivered
+    assert not_delivered != delivered, "兩種情境走到同一句話,分流等於沒做"
+    # 兩封都必須帶執行紀錄連結,否則收信的人無從查起
+    for body in (not_delivered, delivered):
+        assert "https://example/run/1" in body
+
+
+def test_the_delivered_flag_comes_from_the_report_itself():
+    """**「有沒有寄到」不可從步驟成敗反推。**
+
+    步驟成功不代表信寄出去了(可能在寄信前就被跳過),步驟失敗也不代表沒寄出
+    (2026-07-31 就是寄完才失敗)。這個旗標必須由晨報在寄信成功那一刻自己寫。
+    """
+    wf = _workflow()
+    job = wf["jobs"]["send-report"]
+    assert (job.get("outputs") or {}).get("delivered"), \
+        "send-report 沒有把 delivered 接出去,告警 job 讀不到"
+    step_id = _report_step(wf).get("id")
+    assert step_id, "跑 morning_report.py 的步驟沒有 id,output 接不出來"
+    assert f"steps.{step_id}.outputs.delivered" in job["outputs"]["delivered"], \
+        f"delivered 沒有接到 steps.{step_id} 的 output"
+
+    alert_env = wf["jobs"]["alert-on-failure"]["steps"][0].get("env") or {}
+    assert "needs.send-report.outputs.delivered" in str(alert_env.get("DELIVERED", "")), \
+        "告警 job 沒有讀 send-report 的 delivered output"
+
+    import morning_report as mr
+    assert hasattr(mr, "_gha_output"), "晨報沒有寫 step output 的能力"
+
+
+def _heredoc(run: str) -> str:
+    """把 `python - <<'PY' … PY` 裡的腳本抽出來。"""
+    lines = run.splitlines()
+    try:
+        start = next(i for i, ln in enumerate(lines) if "<<'PY'" in ln) + 1
+    except StopIteration:
+        pytest.fail("告警步驟不是預期的 heredoc 形式,契約需要同步更新")
+    end = next((i for i in range(len(lines) - 1, start - 1, -1)
+                if lines[i].strip() == "PY"), len(lines))
+    body = lines[start:end]
+    pad = min((len(ln) - len(ln.lstrip()) for ln in body if ln.strip()), default=0)
+    return "\n".join(ln[pad:] for ln in body)
+
+
+def test_readme_documents_every_llm_variable_the_workflow_reads():
+    """**README 說得出來的,必須是 workflow 真的在讀的**(第九輪 P2-4)。
+
+    2026-08-01 使用者照 README 設定卻沒生效 —— 當時 README 完全沒有提到
+    OpenAI 那組變數,也沒說「Variables 與 Secrets 是兩個不同的分頁」。
+    設定文件漂移的代價不是看起來不專業,而是**使用者做了正確的事卻沒有效果**,
+    然後從結果完全看不出原因。
+
+    這條只驗一個方向(workflow 讀的 → README 要寫到):README 多寫一些
+    背景說明是好事,少寫一個開關則會讓人設在錯的地方。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    readme = (Path(__file__).resolve().parents[1] / "README.md")
+    if not readme.exists():
+        pytest.fail("找不到 README.md —— 設定文件契約不得因檔案不見而跳過")
+    text = readme.read_text(encoding="utf-8")
+    missing = [k for k in LLM_VARS if k in env and f"`{k}`" not in text]
+    assert not missing, (
+        f"README 沒有寫到這些 LLM 開關:{'、'.join(missing)} —— "
+        "使用者會不知道要設,或設在 Secrets 而不是 Variables")
+    assert "Variables 與 Secrets 是兩個不同的分頁" in text, (
+        "README 沒有點出 Variables/Secrets 的差別 —— 那正是 2026-08-01 "
+        "設定沒生效的原因,而症狀是「一切照舊」")
+
+
+def test_readme_test_count_is_a_floor_not_a_boast():
+    """README 宣稱的測試數**不得灌水**(第九輪 P2-4)。
+
+    宣稱數要是真實數的**下界**:寫少了只是保守,寫多了就是不實。
+    另外差距不得過大,否則這個數字會慢慢變成沒人維護的裝飾。
+    """
+    import ast
+
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "README.md").read_text(encoding="utf-8")
+    claims = re.findall(r"([\d,]+)\+\s*(?:單元)?測試", text)
+    assert claims, "README 不再宣稱測試數 —— 若刻意移除,連同這條測試一起刪"
+    claimed = max(int(c.replace(",", "")) for c in claims)
+
+    # 用 AST 數 test 函式:這是**下界**(parametrize 會展開成更多筆),
+    # 所以「宣稱 ≤ AST 數」是比實際更嚴格的要求,不會誤判成通過。
+    actual = 0
+    for path in sorted((root / "tests").glob("test_*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) \
+                    and node.name.startswith("test_"):
+                actual += 1
+    assert claimed <= actual, (
+        f"README 宣稱 {claimed}+ 測試,但實際只數到 {actual} 個 test 函式")
+    assert actual - claimed <= 400, (
+        f"README 宣稱 {claimed}+,實際 {actual} —— 差距太大,請更新宣稱數")

@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,100+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,300+ 單元測試。
 
 ---
 
@@ -59,6 +59,7 @@
 | `deepseek`(**預設**) | https://platform.deepseek.com | NT$5–15 | `DEEPSEEK_API_KEY`;預設 `deepseek-v4-pro` + 思考模式 |
 | `gemini`(免費備援) | https://aistudio.google.com/apikey | NT$0 | `GEMINI_API_KEY` |
 | `anthropic`(品質最佳) | https://console.anthropic.com | NT$30–46 | `ANTHROPIC_API_KEY` |
+| `openai`(GPT-5.6 系列) | https://platform.openai.com | NT$22(luna)–NT$220(terra) | `OPENAI_API_KEY`;推理強度與時間預算連動,見下表 |
 
 > 建議同時設 `GEMINI_API_KEY` 當免費備援;全部 LLM 失敗仍會寄出含行情與新聞的基本版。
 
@@ -76,12 +77,35 @@
 | `DEEPSEEK_API_KEY` | ✅(預設 provider) | Secret | |
 | `GEMINI_API_KEY` | 建議 | Secret | 免費備援 |
 | `ANTHROPIC_API_KEY` | 選填 | Secret | |
+| `OPENAI_API_KEY` | 選填 | **Secret** | 用 `openai` provider 時必填 |
 | `CONTACT_EMAIL` | 選填 | Secret | SEC EDGAR User-Agent;預設用 GMAIL_USER |
 | `PORTFOLIO_1` / `PORTFOLIO_2` | 選填 | Secret | 持股(`2330:5,0050:10` 或 JSON);信中只顯示彙總 %,**明細絕不落地** |
 | `PORTFOLIO_1_NAME` / `PORTFOLIO_2_NAME` | 選填 | Variable | 倉位顯示名 |
 | `FINMIND_TOKEN` | 選填 | Secret | 提高 FinMind 配息 API 額度 |
 | `NBA_FAVORITE_TEAMS` | 選填 | Variable | 逗號分隔關注隊(如 `Celtics,Lakers`) |
 | `EMAIL_OVERFLOW_MODE` | 選填 | Variable | `full`(預設,不砍內容)/`keep`/`trim` |
+
+#### 切換 LLM 模型(全部是 **Variable**,不是 Secret)
+
+> ⚠ **Variables 與 Secrets 是兩個不同的分頁。** workflow 讀的是 `vars.X`,
+> 它讀不到 Secret —— 設錯地方會靜默落回預設值,症狀是「一切照舊」:
+> 沒有錯誤、沒有告警,只是沒切過去。2026-08-01 實際發生過。
+> 從 2026-08-01 起,`state/run_manifest.json` 的 `llm.config` 會寫出本班
+> **打算**用什麼,`llm.config_issues` 會指出哪些 variable 其實是空的。
+
+| Variable | 預設 | 說明 |
+|---|---|---|
+| `LLM_PROVIDER` | `deepseek` | `deepseek` / `openai` / `gemini` / `anthropic` |
+| `OPENAI_MODEL` | `gpt-5.6-terra` | 主分析模型 |
+| `OPENAI_REASONING_EFFORT` | `medium` | `none`…`max`;**額度與 timeout 會一起放大** |
+| `EXTRACTOR_PROVIDER` | 空(跟隨主分析) | 事件抽取器可獨立指定 |
+| `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` | 抽取是機械性任務,不必用旗艦 |
+| `OPENAI_EXTRACTOR_REASONING` | `low` | 刻意壓低:推理吃光額度會導致 0 產出 |
+| `LLM_SHADOW_PROVIDER` / `LLM_SHADOW_MODEL` | 空(關閉) | 影子比較,只記錄不改輸出 |
+
+推理強度同時放大 **輸出額度** 與 **時間預算**(`llm_telemetry.CAP_MULTIPLIER`
+與 `EFFORT_TIME_MULTIPLIER`)。只放大額度不放大時間會必然逾時 —— 額度是上限、
+沒用到不計費,時間卻是真的會被花掉並排擠寄信的東西。
 
 ### 步驟 5:Actions tab 手動 Run workflow 測試一次
 
@@ -126,7 +150,7 @@ portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要�
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
 tools/                稽核與驗證腳本(codex_review、mz_walkforward、report_watchdog…)
-tests/                1,100+ 測試(不連網;conftest 隔離 state 寫入與網路)
+tests/                1,300+ 測試(不連網;conftest 隔離 state 寫入與網路)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -206,7 +230,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 
 ```bash
 pip install -r requirements.txt
-pytest -q                        # 1,100+ 測試,不連網、不寄信
+pytest -q                        # 1,300+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."

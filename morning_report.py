@@ -510,6 +510,24 @@ def _write_run_manifest(now_tpe) -> None:
         print(f"[manifest] 寫入失敗(不影響晨報): {e}", file=sys.stderr)
 
 
+def _gha_output(key: str, value: str) -> None:
+    """寫一個 GitHub Actions step output(非 Actions 環境 no-op)。
+
+    批#93(第九輪 P1-10):告警必須分得出「信沒寄出」與「信寄出了但事後檢查
+    失敗」。告警是**獨立 job**(批#32 的教訓:放在 send-report 裡會跟著被
+    timeout 一起殺掉,而那正是最該告警的情形),所以它讀不到 state ——
+    「到底寄出去了沒」只能以 job output 的形式跨 job 傳遞。
+    """
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"{key}={value}\n")
+    except OSError as e:                    # 觀測性失敗不得影響晨報
+        print(f"[gha] step output 寫入失敗: {e}", file=sys.stderr)
+
+
 def _append_actions_summary(manifest: dict) -> None:
     """GitHub Actions Step Summary(環境變數 GITHUB_STEP_SUMMARY 指向的檔)。非 Actions 環境則 no-op。"""
     path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -20783,6 +20801,8 @@ def _mark_delivery_in_manifest(**fields) -> None:
             return
         delivery = dict(base.get("delivery") or {})
         delivery.update(fields)
+        if fields.get("success"):
+            _gha_output("delivered", "true")
         delivery.setdefault("run_kind",
                             os.environ.get("GITHUB_EVENT_NAME") or "local")
         base["delivery"] = delivery

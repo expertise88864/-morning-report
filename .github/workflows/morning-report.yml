@@ -35,6 +35,13 @@ jobs:
   send-report:
     runs-on: ubuntu-latest
     timeout-minutes: 25   # 平時 2-8 分;放寬以吸收偶發 LLM 變慢(如外部大量佔用同把 API key)避免撞 timeout 被取消
+    # 批#93(第九輪 P1-10):**「信沒寄出」與「信寄出了但事後檢查失敗」是兩件事。**
+    # 2026-07-31 就發生過:信正常寄達,而寄信**之後**的 state schema 契約失敗
+    # 讓 job 變紅 → 告警信說「晨報未寄出,收件人可能沒有收到信」。
+    # 誤報比沒有告警更糟:它訓練收件人忽略告警,而下一次是真的沒寄出。
+    # 由晨報自己在寄信成功後寫這個 output(見 `_gha_output`),不靠步驟的成敗推測。
+    outputs:
+      delivered: ${{ steps.report.outputs.delivered }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -133,6 +140,7 @@ jobs:
           PORTFOLIO_2_NAME: ${{ vars.PORTFOLIO_2_NAME }}
 
           TZ: Asia/Taipei
+        id: report
         run: python morning_report.py
 
       # 批#77 r1(Codex,P1):**已落地 state 的 schema 契約需要每日觸發點。**
@@ -168,6 +176,9 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           JOB_RESULT: ${{ needs.send-report.result }}
+          # 空字串 = 沒寄出(job 被 timeout/cancel 殺掉時 output 根本不會產生,
+          # 而那正是「真的沒寄到」的情形 —— 預設值必須偏向較嚴重的那一邊)。
+          DELIVERED: ${{ needs.send-report.outputs.delivered }}
         run: |
           python - <<'PY'
           import os, smtplib, ssl
@@ -180,16 +191,33 @@ jobs:
                     "GMAIL_USER / GMAIL_APP_PASSWORD 未設定,無法寄出晨報失敗告警")
               raise SystemExit(1)
           result = os.environ.get("JOB_RESULT", "unknown")
+          # 批#93(第九輪 P1-10):**寄出與否決定這封告警的性質,不只是措辭。**
+          # 「信沒寄到」要你現在就去看;「信寄到了但落地檢查失敗」影響的是明天
+          # 以後的晨報。兩者混成同一句「收件人可能沒有收到信」的代價是誤報 ——
+          # 而誤報會訓練收件人忽略告警,下一次真的沒寄出時就沒人理了。
+          # `delivered` 由晨報在寄信成功後自己寫,不從步驟成敗反推。
+          delivered = os.environ.get("DELIVERED", "").strip() == "true"
+          if delivered:
+              subject = f"⚠ 晨報已寄出，但事後檢查失敗({result})"
+              lead = ("今日晨報已經寄到你的信箱——這封是**事後檢查**的告警。"
+                      + os.linesep
+                      + "寄信之後的步驟失敗了，代表落地的資料可能有問題，"
+                      "會影響明天以後的晨報，但今天這封信本身是完整的。")
+              hint = "常見原因：state schema 契約失敗、state push 衝突、信件存檔寫入失敗。"
+          else:
+              subject = f"⚠ 晨報未寄出({result})"
+              lead = "今日晨報 workflow 未成功完成，收件人可能沒有收到信。"
+              hint = "常見原因：上游來源卡住撞 job timeout、被 concurrency 取消、寄信失敗。"
           m = EmailMessage()
-          m["Subject"] = f"⚠ 晨報未寄出({result})"
+          m["Subject"] = subject
           m["From"] = user
           m["To"] = user          # 只寄給自己
           m.set_content(
-              "今日晨報 workflow 未成功完成，收件人可能沒有收到信。"
+              lead
               + os.linesep * 2
               + f"結果: {result}" + os.linesep
               + f"執行紀錄: {os.environ.get('RUN_URL','')}" + os.linesep * 2
-              + "常見原因：上游來源卡住撞 job timeout、被 concurrency 取消、寄信失敗。")
+              + hint)
           with smtplib.SMTP_SSL("smtp.gmail.com", 465,
                                 context=ssl.create_default_context(), timeout=60) as s:
               s.login(user, pw)

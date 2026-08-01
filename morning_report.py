@@ -13003,7 +13003,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         # 批#96(第九輪 P1-4):額度基準可由呼叫端給 —— 抽取器與主分析的
         # 答案長度差一個量級,共用一個基準等於其中一邊必然抓錯。
         "max_completion_tokens": _lt.output_cap(
-            effort, base_tokens or LLM_REPORT_MAX_TOKENS),
+            effort, base_tokens or LLM_REPORT_MAX_TOKENS, model=use_model),
         "stream": False,
     }
     if response_format:
@@ -13089,11 +13089,14 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
         elif LLM_SHADOW_PROVIDER not in ("openai", "deepseek"):
             stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
         else:
-            def _call():
+            # P2-5:prompt 由 `run_comparison` 交進來,這裡**不得取用外層的
+            # `prompt`** —— 「影子送的與主分析送的是同一份」要由結構保證,
+            # 不是靠讀程式碼相信。
+            def _call(p):
                 if LLM_SHADOW_PROVIDER == "openai":
-                    return _call_openai(prompt, model=LLM_SHADOW_MODEL,
+                    return _call_openai(p, model=LLM_SHADOW_MODEL,
                                         timeout=LLM_SHADOW_TIMEOUT, role="shadow")
-                return _call_deepseek(prompt, role="shadow")
+                return _call_deepseek(p, role="shadow")
 
             def _write(path, ledger):
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -13104,7 +13107,8 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
                 primary_model=(DEEPSEEK_MODEL if LLM_PROVIDER == "deepseek"
                                else OPENAI_MODEL if LLM_PROVIDER == "openai"
                                else LLM_PROVIDER),
-                primary_text=primary_text, shadow_model=LLM_SHADOW_MODEL,
+                primary_text=primary_text, prompt=prompt,
+                shadow_model=LLM_SHADOW_MODEL,
                 call_shadow=_call, today=now_tpe.strftime("%Y-%m-%d"),
                 ledger_path=LLM_SHADOW_LEDGER_FILE, read_ledger=_ls.load_ledger,
                 write_ledger=_write, extract_stance=_extract_stance,

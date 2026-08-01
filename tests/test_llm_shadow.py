@@ -784,3 +784,96 @@ def test_http_errors_do_not_trigger_a_provider_switch(monkeypatch):
     assert called["openai"] == 0, "HTTP 400 不該換 provider —— 換了只是再錯一次"
     stat = mr._RUN_MANIFEST.get("llm_extractor", {})
     assert "fallback_to" not in stat, stat
+
+
+def test_unknown_models_get_a_conservative_output_cap():
+    """批#99(第九輪 P2-2):**登錄簿要說得出數字從哪來。**
+
+    原本一個 `DEFAULT_MAX_OUTPUT = 128_000` 套所有模型 —— 那是把一個模型的
+    規格當成整族的契約,而公開資料沒有保證那件事。
+
+    不對稱在於後果:額度給得比真實上限**低**,最壞是輸出被截斷
+    (有 `finish_reason=length` 可偵測、有減量重試);給得比真實上限**高**,
+    是當場 400、整份分析作廢。所以未收錄的模型取保守值。
+    """
+    import llm_telemetry as lt
+
+    known, src = lt.max_output_for("gpt-5.6-luna")
+    assert known == 128_000 and "MODEL_LIMITS" in src
+    # 日期後綴不該讓登錄簿查不到
+    assert lt.max_output_for("gpt-5.6-luna-2026-02-16")[0] == known
+    unknown, why = lt.max_output_for("gpt-7-imaginary")
+    assert unknown == lt.UNKNOWN_MODEL_MAX_OUTPUT < known
+    assert "未收錄" in why, "沒有出處這件事必須說出來"
+    # 額度會被夾在該模型的上限內
+    assert lt.output_cap("xhigh", 7000, model="gpt-5.6-luna") == 98_000
+    assert lt.output_cap("xhigh", 7000, model="gpt-7-imaginary") == \
+        lt.UNKNOWN_MODEL_MAX_OUTPUT
+    # 每一列都要有出處可查(空的登錄簿會讓上面兩條都虛過)
+    assert lt.MODEL_LIMITS, "登錄簿是空的"
+    for name, spec in lt.MODEL_LIMITS.items():
+        assert spec["max_output"] > 0 and spec["context"] > 0, name
+
+
+def test_the_shadow_cannot_send_a_different_prompt_than_the_primary():
+    """批#99(第九輪 P2-5):**影子把同一份 prompt 交給第二家廠商。**
+
+    那是一個新的資料揭露決定 —— 但影子必須送同一份才比較得出東西,
+    所以正確的做法不是遮蔽(遮了就不是同一份),而是把「同一份」變成
+    **結構上的不變式**:prompt 由 `run_comparison` 交給 `call_shadow`,
+    呼叫端無從偷偷換掉。這樣主 prompt 既有的隱私防線(R15b、讀者身分、
+    持股不落地)全部自動涵蓋影子,不必維護第二套會漂移的規則。
+
+    詞彙掃描式的「敏感詞遮蔽」在這裡是錯的設計:持股代號在行情區塊本來
+    就會出現,掃描不是永遠誤擋、就是要開一堆例外把自己掏空。
+    """
+    import inspect
+
+    import llm_shadow as ls
+
+    import morning_report as mr
+
+    sig = inspect.signature(ls.run_comparison)
+    assert "prompt" in sig.parameters, "run_comparison 沒有收下 prompt"
+
+    seen = {}
+
+    def _call(p):
+        seen["prompt"] = p
+        return "影子:立場中性"
+
+    # 夠長才驗得出「被截斷後送出」—— 短字串會讓 `prompt[:10]` 這種突變虛過,
+    # 而我第一版正是用 4 個字的 prompt,截斷突變照樣全綠。
+    long_prompt = "P-原文-" + ("行情與新聞內文 " * 40)
+    out = ls.run_comparison(
+        primary_model="a", primary_text="主分析:立場中性", prompt=long_prompt,
+        shadow_model="b", call_shadow=_call, today="2026-08-01",
+        ledger_path=None, read_ledger=lambda _p: [],
+        write_ledger=lambda _p, _l: None,
+        extract_stance=lambda _t: {"label": "中性", "score": 0},
+        extract_summary=lambda t: t, elapsed_timer=lambda: 0.0,
+        log=lambda _m: None)
+    assert seen["prompt"] == long_prompt, "影子收到的不是主分析那一份"
+    assert out["today"]["prompt_sha"] == ls.prompt_fingerprint(long_prompt)
+    assert out["today"]["prompt_sha"] != ls.prompt_fingerprint("別的 prompt")
+
+    # 接線端。**用 AST 看 body,不是看簽名。**
+    # 我第一版只斷言原始碼裡有 `def _call(p)` —— 然後把 body 從 `p` 改回外層的
+    # `prompt`,測試照樣全綠。簽名對了不代表用的是那個參數,而「在 body 裡用
+    # 外層變數」正是這個結構保證唯一會失效的方式。
+    import ast
+    import textwrap
+
+    src = inspect.getsource(mr._run_llm_shadow)
+    tree = ast.parse(textwrap.dedent(src))
+    call_fn = next((n for n in ast.walk(tree)
+                    if isinstance(n, ast.FunctionDef) and n.name == "_call"), None)
+    assert call_fn is not None, "找不到影子的呼叫函式 —— 接線改了,契約要同步"
+    params = {a.arg for a in call_fn.args.args}
+    assert params, "影子的呼叫函式沒有收 prompt 參數"
+    used = {n.id for n in ast.walk(call_fn)
+            if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    assert "prompt" not in used, (
+        "影子的呼叫函式在 body 裡用了外層的 `prompt` —— "
+        "那就繞過了「送出去的必定是 run_comparison 交進來的那一份」")
+    assert "prompt=prompt" in src, "沒有把主分析的 prompt 交給 run_comparison"

@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib as _hashlib
 import json as _json
 from pathlib import Path
 
@@ -212,7 +213,18 @@ def compare_texts(*, primary_model: str, primary_text: str,
          "ok": shadow_ok, "elapsed": shadow_elapsed})
 
 
-def run_comparison(*, primary_model: str, primary_text: str,
+def prompt_fingerprint(prompt: str) -> str:
+    """prompt 的指紋(第九輪 P1-8/P2-5)。
+
+    影子帳本累積的是**跨日的比較**,而 prompt 本身會隨改版而變 ——
+    沒有指紋的話,「兩個模型的立場一致率下降」分不出是模型差異還是
+    我們自己改了 prompt。指紋也讓「影子送的和主分析送的是不是同一份」
+    變成可稽核的事實,而不是靠讀程式碼相信。
+    """
+    return _hashlib.sha256((prompt or "").encode("utf-8")).hexdigest()[:12]
+
+
+def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
                    shadow_model: str, call_shadow, today: str,
                    ledger_path, read_ledger, write_ledger,
                    extract_stance, extract_summary, elapsed_timer,
@@ -226,10 +238,19 @@ def run_comparison(*, primary_model: str, primary_text: str,
       - **失敗只是今天沒有比較資料** —— 例外吞在呼叫端,這裡只記 ok/err
       - **帳本讀不出來就不寫** —— 覆蓋等於把樣本清空,而累積是它的全部價值
     """
+    # 第九輪 P2-5:**影子把同一份 prompt 交給第二家廠商 —— 那是一個新的
+    # 資料揭露決定。** 但影子必須送**同一份**才比較得出東西,所以正確的做法
+    # 不是遮蔽(遮了就不是同一份),而是把「同一份」變成可稽核的不變式:
+    # prompt 由這裡傳給 `call_shadow`,呼叫端無從偷偷換掉;兩邊的指紋一起
+    # 進帳本。這樣主 prompt 既有的隱私防線(R15b、讀者身分、持股不落地)
+    # 全部自動涵蓋影子,不必再維護第二套會漂移的規則。
+    #
+    # 詞彙掃描式的「敏感詞遮蔽」在這裡是錯的設計:持股代號在行情區塊本來就
+    # 會出現,掃描不是永遠誤擋、就是要開一堆例外把自己掏空。
     t0 = elapsed_timer()
     shadow_text, ok, err = "", False, ""
     try:
-        shadow_text = call_shadow()
+        shadow_text = call_shadow(prompt)
         ok = bool(shadow_text)
     except Exception as e:                       # noqa: BLE001 - 影子不得影響正班
         err = f"{type(e).__name__}: {e}"
@@ -239,6 +260,7 @@ def run_comparison(*, primary_model: str, primary_text: str,
         shadow_model=shadow_model, shadow_text=shadow_text, shadow_ok=ok,
         shadow_elapsed=elapsed_timer() - t0,
         extract_stance=extract_stance, extract_summary=extract_summary)
+    rec["prompt_sha"] = prompt_fingerprint(prompt)
     if err:
         rec["shadow_error"] = err[:160]
     try:

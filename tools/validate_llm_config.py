@@ -97,7 +97,7 @@ def probe(model: str, effort: str, *, schema=None, prompt="",
         "model": model,
         "messages": [{"role": "user",
                       "content": prompt or "Reply with the single word: ok"}],
-        "max_completion_tokens": lt.output_cap(effort, 2000),
+        "max_completion_tokens": lt.output_cap(effort, 2000, model=model),
         "stream": False,
     }
     if effort:

@@ -26,18 +26,52 @@ from typing import Optional
 CAP_MULTIPLIER = {"none": 2, "minimal": 3, "low": 4, "medium": 6,
                   "high": 10, "xhigh": 14, "max": 16}
 
-#: 模型硬上限。**這是家族層級的粗略上界,不是每個 snapshot 的契約**
-#: (第九輪 P2-2:公開資料沒有保證 family-wide 128K output cap)。
-#: 真正的上限應由 model registry 或 canary 驗出來;在那之前這個值只用來
-#: 避免送出荒謬的大數字。
+#: **模型登錄簿**(第九輪 P2-2)。每一列都要說得出數字**從哪來**。
+#:
+#: 原本只有一個 `DEFAULT_MAX_OUTPUT = 128_000` 套用到所有模型,而公開資料
+#: 並沒有保證那是 family-wide 的契約 —— 那是把一個模型的規格當成整族的假設。
+#: 送出超過真實上限的 `max_completion_tokens` 會直接 400,而 400 在這條路徑上
+#: 的症狀是整份分析作廢。
+#:
+#: 出處:OpenAI Models 文件(使用者於 2026-08-01 提供,含 max output 128K /
+#: context 1.05M / knowledge cutoff 2026-02-16)。
+#: 沒有出處的模型不放進來 —— 見 `UNKNOWN_MODEL_MAX_OUTPUT`。
+MODEL_LIMITS = {
+    "gpt-5.6-sol": {"max_output": 128_000, "context": 1_050_000},
+    "gpt-5.6-terra": {"max_output": 128_000, "context": 1_050_000},
+    "gpt-5.6-luna": {"max_output": 128_000, "context": 1_050_000},
+}
+
+#: 沒收錄的模型用**保守**上限,不是樂觀的。理由不對稱:
+#: 額度給得比真實上限低,最壞是輸出被截斷(有 `finish_reason=length` 可偵測,
+#: 而且有減量重試);給得比真實上限高,是當場 400、整份分析作廢。
+#: 要放寬就把那個模型連同出處加進 `MODEL_LIMITS` —— 那是一個要有人查過的動作。
+UNKNOWN_MODEL_MAX_OUTPUT = 16_000
+
+#: 舊常數保留給沒有指名模型的呼叫端(它是**粗略上界**,不是契約)。
 DEFAULT_MAX_OUTPUT = 128_000
 
 
+def max_output_for(model: str) -> tuple:
+    """(輸出上限, 出處)。未收錄的模型回保守值並明說沒有出處。"""
+    m = (model or "").strip().lower()
+    for name, spec in MODEL_LIMITS.items():
+        if m == name or m.startswith(name):
+            return spec["max_output"], f"MODEL_LIMITS[{name}]"
+    if not m:
+        return DEFAULT_MAX_OUTPUT, "未指名模型,用粗略上界"
+    return UNKNOWN_MODEL_MAX_OUTPUT, f"{model} 未收錄,用保守上限"
+
+
 def output_cap(effort: str, base_tokens: int,
-               max_output: int = DEFAULT_MAX_OUTPUT) -> int:
-    """依推理強度算輸出額度。未知強度取 medium 的倍數(不猜高也不猜低)。"""
+               max_output: Optional[int] = None, model: str = "") -> int:
+    """依推理強度算輸出額度,並夾在該模型的真實上限內。
+
+    未知強度取 medium 的倍數(不猜高也不猜低);未收錄的模型取保守上限。
+    """
     mult = CAP_MULTIPLIER.get((effort or "").strip().lower(), CAP_MULTIPLIER["medium"])
-    return min(int(base_tokens) * mult, int(max_output))
+    cap = max_output if max_output is not None else max_output_for(model)[0]
+    return min(int(base_tokens) * mult, int(cap))
 
 
 def reasoning_tokens_of(usage: dict) -> Optional[int]:

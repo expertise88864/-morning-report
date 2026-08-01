@@ -20,17 +20,20 @@ from pathlib import Path
 
 import pytest
 
+import llm_config
+
 yaml = pytest.importorskip("yaml")
 
 WF_PATH = (Path(__file__).resolve().parents[1]
            / ".github" / "workflows" / "morning-report.yml")
 
 #: 這些必須可由 repo variable 覆寫 —— 切換模型要能隨時改、隨時退回。
-LLM_VARS = ("LLM_PROVIDER", "EXTRACTOR_PROVIDER",
-            "OPENAI_MODEL", "OPENAI_EXTRACTOR_MODEL",
-            "OPENAI_REASONING_EFFORT", "OPENAI_EXTRACTOR_REASONING",
-            "LLM_SHADOW_PROVIDER", "LLM_SHADOW_MODEL",
-            "DEEPSEEK_REASONING_EFFORT")
+#:
+#: 第十一輪 P2-1:**這裡原本是一條手抄的元組**,漏了 `LLM_SHADOW_REASONING_EFFORT`
+#: 與兩個逾時開關 —— 而漏掉的那個 shadow 開關,workflow 根本沒有傳給程式,
+#: 使用者設了也靜默無效。手抄清單漏東西時不會紅,只會少檢查。
+#: 現在從 `llm_config.CONFIG_SOURCE_SPEC` 推導,單一來源。
+LLM_VARS = llm_config.CONFIG_RAW_KEYS
 
 
 def _workflow() -> dict:
@@ -351,13 +354,12 @@ def test_the_three_budgets_are_ordered_and_stay_ordered():
     2026-08-01 三個數字一起放寬(25→40 分、1140→2100s、600→900s),
     這條把「一起」變成強制的。
     """
-    import llm_telemetry as lt
 
     import morning_report as mr
 
     job_seconds = int(_workflow()["jobs"]["send-report"]["timeout-minutes"]) * 60
     run_budget = mr.RUN_BUDGET_SECONDS
-    llm_total = lt.MAX_TOTAL_TIMEOUT
+    llm_total = llm_config.MAX_TOTAL_TIMEOUT
 
     # 寄信 + state push + 存檔的尾段。job 被殺 = 使用者收不到信。
     tail = 240
@@ -540,3 +542,122 @@ def _workflow_at(name: str) -> dict:
     if not path.exists():
         pytest.fail(f"找不到 {name}")
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+# ── 第十一輪 P2-1:設定來源契約 ────────────────────────────────────────
+#: 報告步驟裡**不算行為開關**的 env 鍵前綴/鍵名。
+#: 金鑰刻意排除:它們是 Secrets,而且絕不可以進 manifest。
+_NOT_A_SWITCH = ("LLM_CONFIG_RAW",)
+
+
+def _llm_env_keys(env: dict) -> set:
+    """報告步驟裡所有會改變 LLM 行為的 env 鍵。"""
+    return {k for k in env
+            if re.match(r"^(LLM_|OPENAI_|DEEPSEEK_|EXTRACTOR_)", k)
+            and not k.endswith("_API_KEY") and k not in _NOT_A_SWITCH}
+
+
+def test_the_config_source_table_matches_the_workflow_both_ways():
+    """`CONFIG_SOURCE_SPEC` 與 workflow 的開關集合必須**完全相等**。
+
+    只驗單向會留下兩個各自無聲的洞:表少一個 = manifest 答不出那個開關的
+    來源(症狀是少一格,沒人會發現);workflow 少一個 = 程式讀得到、
+    使用者設了卻沒傳進來(症狀是設定靜默無效 —— `LLM_SHADOW_REASONING_EFFORT`
+    當初就是這樣,是逐鍵列表時才發現的)。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    spec = set(llm_config.CONFIG_SOURCE_SPEC)
+    assert len(spec) >= 15, (
+        "CONFIG_SOURCE_SPEC 只剩 %d 個鍵 —— 這條測試會因此變成空集合真空通過"
+        % len(spec))
+    in_workflow = _llm_env_keys(env)
+    assert spec == in_workflow, (
+        f"表裡有 workflow 沒有的:{sorted(spec - in_workflow)};"
+        f"workflow 有表裡沒有的:{sorted(in_workflow - spec)}")
+
+
+def test_every_declared_default_is_the_default_the_workflow_actually_uses():
+    """宣告的預設值必須就是 workflow 那一格寫的值(逐格比對)。
+
+    `config_sources` 會把 `workflow_default` 寫進 manifest;那個數字若是抄來的,
+    它記錄的就是**我以為的預設**而不是生效的預設 —— 那比不記錄更糟,
+    因為它看起來已經回答了問題。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    for key, (kind, declared) in llm_config.CONFIG_SOURCE_SPEC.items():
+        expr = str(env.get(key, ""))
+        if kind == "fixed":
+            assert "${{" not in expr, f"{key} 宣告成 fixed,workflow 卻用了表達式"
+            assert expr == declared, f"{key} 寫死值不符:{expr!r} vs {declared!r}"
+            continue
+        m = re.search(r"vars\.%s\s*\|\|\s*'([^']*)'" % re.escape(key), expr)
+        if m is None:
+            # 沒有 `|| 預設` 就等於預設是空字串(逾時那兩個開關就是如此)。
+            assert re.search(r"vars\.%s\s*\}\}" % re.escape(key), expr), (
+                f"{key} 沒有接到 vars.{key}:{expr}")
+            assert declared == "", f"{key} 宣告預設 {declared!r},workflow 卻沒給預設"
+        else:
+            assert m.group(1) == declared, (
+                f"{key} 預設不符:workflow={m.group(1)!r} 宣告={declared!r}")
+
+
+def test_config_raw_carries_every_overridable_switch():
+    """`LLM_CONFIG_RAW` 要帶到每一個可覆寫開關的**原始**值。
+
+    帶不到的鍵,`config_sources` 只能回 `unknown` —— 那正是這一批要消滅的
+    狀態(批#118 把預設改成 `max` 之後,manifest 答不出那是誰決定的)。
+    每個鍵還必須接到**自己**那個 `vars.*`:接錯不會有錯誤,只會記錯來源。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    raw = str(env.get("LLM_CONFIG_RAW") or "")
+    assert raw, "workflow 沒有 LLM_CONFIG_RAW"
+    for key in llm_config.CONFIG_RAW_KEYS:
+        assert re.search(r"\b%s=\$\{\{\s*vars\.%s\s*\}\}"
+                         % (re.escape(key), re.escape(key)), raw), (
+            f"LLM_CONFIG_RAW 沒有帶 {key} 的原始值(或接錯到別的 vars.*)")
+    # 反向:`fixed` 的鍵不該混進來 —— 它們沒有 repo variable 可讀,
+    # 混進來只會讓每一班都多一筆假的「走預設」。
+    parsed = set(llm_config.parse_config_raw(
+        raw.replace("${{", "").replace("}}", "")))
+    assert parsed == set(llm_config.CONFIG_RAW_KEYS), (
+        f"LLM_CONFIG_RAW 的鍵集合不符:{sorted(parsed)}")
+
+
+def test_the_program_reports_a_resolved_value_for_every_switch(monkeypatch):
+    """`_llm_config_resolved()` 要**每一個**開關都有值,而且來自模組常數。
+
+    漏掉一個的症狀是 manifest 少一格 `resolved`,不會有任何錯誤。
+    """
+    import morning_report as mr
+    resolved = mr._llm_config_resolved()
+    missing = sorted(set(llm_config.CONFIG_SOURCE_SPEC) - set(resolved))
+    assert not missing, f"這些開關沒有回報實際採用值:{missing}"
+    extra = sorted(set(resolved) - set(llm_config.CONFIG_SOURCE_SPEC))
+    assert not extra, f"回報了不在表裡的鍵:{extra}"
+    # 逾時是**算出來的**,不是環境變數 —— 重讀 os.environ 會拿到空字串。
+    assert float(resolved["LLM_TOTAL_TIMEOUT_SECONDS"]) > 0
+    assert float(resolved["LLM_REQUEST_TIMEOUT_SECONDS"]) > 0
+
+
+def test_readme_documents_the_same_default_as_the_workflow():
+    """README 表格的「預設」欄要跟 workflow 一致(第十一輪 P2-1)。
+
+    在此之前它漂過:`DEEPSEEK_REASONING_EFFORT` 寫著預設 `high`,而批#118
+    已經把 workflow 預設改成 `max`。使用者照著讀就會以為自己在跑 high。
+    """
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    if not readme.exists():
+        pytest.fail("找不到 README.md —— 設定文件契約不得因檔案不見而跳過")
+    text = readme.read_text(encoding="utf-8")
+    for key in llm_config.CONFIG_RAW_KEYS:
+        row = re.search(r"^\|\s*`%s`\s*\|([^|]*)\|" % re.escape(key),
+                        text, re.M)
+        assert row, f"README 變數表沒有 `{key}` 這一列"
+        cell = row.group(1).strip()
+        _, declared = llm_config.CONFIG_SOURCE_SPEC[key]
+        if declared:
+            assert f"`{declared}`" == cell, (
+                f"README 的 `{key}` 預設寫 {cell!r},workflow 是 `{declared}`")
+        else:
+            assert cell.startswith("空"), (
+                f"README 的 `{key}` 預設是空字串,卻寫 {cell!r}")

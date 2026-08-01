@@ -369,14 +369,14 @@ def test_400_backoff_only_when_the_error_blames_that_parameter():
     第二次的失敗蓋掉**,只剩 stderr 前 160 字。解析不出來時保守不退讓,
     讓原始錯誤原樣浮上來(訊息完整、可診斷)。
     """
-    import llm_telemetry as lt
+    import llm_config as lc
 
     yes = [{"type": "invalid_request_error", "param": "reasoning_effort",
             "message": "Unsupported value"},
            {"type": "invalid_request_error",
             "message": "Unknown parameter: reasoning_effort"}]
     for err in yes:
-        assert lt.error_blames_param(err, "reasoning_effort")
+        assert lc.error_blames_param(err, "reasoning_effort")
 
     no = [{"type": "invalid_request_error", "param": "model",
            "message": "The model `gpt-5.6-typo` does not exist"},
@@ -385,13 +385,13 @@ def test_400_backoff_only_when_the_error_blames_that_parameter():
           {"type": "insufficient_quota", "message": "quota exceeded"},
           {}, None, "not a dict"]
     for err in no:
-        assert not lt.error_blames_param(err, "reasoning_effort"), err
+        assert not lc.error_blames_param(err, "reasoning_effort"), err
 
     class _Bad:
         def json(self):
             raise ValueError("not json")
 
-    assert not lt.response_blames_param(_Bad(), "reasoning_effort")
+    assert not lc.response_blames_param(_Bad(), "reasoning_effort")
 
 
 def test_effort_caps_are_per_provider_and_grounded_in_measurement():
@@ -406,6 +406,7 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
     所以這條同時是**那次誤報的回歸測試**:上限必須各自依實測訂。
     """
     import llm_telemetry as lt
+    import llm_config as lc
 
     def _has(_env):
         return True
@@ -414,7 +415,7 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
         base = dict(provider="deepseek", extractor_provider="deepseek",
                     shadow_provider="", has_key=_has)
         base.update(kw)
-        return lt.validate_llm_config(**base)
+        return lc.validate_llm_config(**base)
 
     # 生產實測過的組合不得告警(這正是批#92 誤報的那一班)
     assert _issues(efforts={"primary": "high"}) == []
@@ -425,7 +426,7 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
     over = _issues(efforts={"primary": "max"},
                    models={"primary": "deepseek-v4-pro"})
     assert any("超過實測過的上限" in m for m in over), over
-    assert not any(lt.is_fatal(m) for m in over), (
+    assert not any(lc.is_fatal(m) for m in over), (
         "「還沒量過」是警告不是致命 —— 使用者可以刻意去量它")
     # 而**支援性**是另一回事:文件列出的值不得被判成不支援
     assert "max" in lt.supported_efforts("deepseek-v4-pro")
@@ -479,15 +480,16 @@ def test_raising_the_token_cap_without_raising_the_timeout_is_self_contradictory
     永遠量不到,只會得到一次 timeout。額度放大而時間不放大是自相矛盾的。
     """
     import llm_telemetry as lt
+    import llm_config as lc
 
-    assert lt.timeout_for("medium", 75) == 75, "medium 是基準,不該被放大"
-    assert lt.timeout_for("xhigh", 75) > 75
-    assert lt.timeout_for("max", 75) > lt.timeout_for("xhigh", 75)
-    assert lt.timeout_for("garbage", 75) == 75, "未知強度不猜"
+    assert lc.timeout_for("medium", 75) == 75, "medium 是基準,不該被放大"
+    assert lc.timeout_for("xhigh", 75) > 75
+    assert lc.timeout_for("max", 75) > lc.timeout_for("xhigh", 75)
+    assert lc.timeout_for("garbage", 75) == 75, "未知強度不猜"
     # 每一個會放大額度的強度,都必須同時放大時間 —— 否則就是上面那個矛盾
     for effort, mult in lt.CAP_MULTIPLIER.items():
         if mult > lt.CAP_MULTIPLIER["medium"]:
-            assert lt.timeout_for(effort, 75) > 75, (
+            assert lc.timeout_for(effort, 75) > 75, (
                 f"{effort} 放大了額度({mult}x)卻沒放大時間 —— 必然逾時")
 
 
@@ -498,14 +500,14 @@ def test_config_source_distinguishes_unset_from_set_to_the_default():
     完全看不出原因 —— workflow 在 YAML 裡就用 `${{ vars.X || 'deepseek' }}`
     補了預設,程式看到的永遠是最終值。
     """
-    import llm_telemetry as lt
+    import llm_config as lc
 
-    assert lt.config_source_issues("LLM_PROVIDER=openai;OPENAI_MODEL=gpt") == []
-    msgs = lt.config_source_issues("LLM_PROVIDER=;OPENAI_MODEL=gpt")
+    assert lc.config_source_issues("LLM_PROVIDER=openai;OPENAI_MODEL=gpt") == []
+    msgs = lc.config_source_issues("LLM_PROVIDER=;OPENAI_MODEL=gpt")
     assert any("LLM_PROVIDER" in m for m in msgs), msgs
     assert any("Secrets" in m for m in msgs), "要指出最可能的原因"
     assert "OPENAI_MODEL" not in "".join(msgs), "有設的不該被列進去"
-    assert lt.config_source_issues("") == [], "本機執行沒有這個變數,不該吵"
+    assert lc.config_source_issues("") == [], "本機執行沒有這個變數,不該吵"
 
 
 def test_config_validation_catches_typos_and_missing_keys():
@@ -516,7 +518,7 @@ def test_config_validation_catches_typos_and_missing_keys():
     年代寫的 —— 換成 OpenAI-only 之後它會誤判成可用(第九輪 P1-7),
     所以要**只驗被選中的那個 provider 的金鑰**。
     """
-    import llm_telemetry as lt
+    import llm_config as lc
 
     only_openai = {"OPENAI_API_KEY"}
 
@@ -524,19 +526,19 @@ def test_config_validation_catches_typos_and_missing_keys():
         return env in only_openai
 
     # 拼錯的 provider 要被指名
-    msgs = lt.validate_llm_config(provider="openai", extractor_provider="openai",
+    msgs = lc.validate_llm_config(provider="openai", extractor_provider="openai",
                                   shadow_provider="", has_key=_has,
                                   efforts={})
     assert msgs == [], msgs
-    msgs = lt.validate_llm_config(provider="opanai", extractor_provider="openai",
+    msgs = lc.validate_llm_config(provider="opanai", extractor_provider="openai",
                                   shadow_provider="", has_key=_has, efforts={})
     assert any("opanai" in m for m in msgs), msgs
     # 只有 OpenAI 金鑰卻把抽取器指向 DeepSeek → 要抓到
-    msgs = lt.validate_llm_config(provider="openai", extractor_provider="deepseek",
+    msgs = lc.validate_llm_config(provider="openai", extractor_provider="deepseek",
                                   shadow_provider="", has_key=_has, efforts={})
     assert any("DEEPSEEK_API_KEY" in m for m in msgs), msgs
     # 影子與主分析同一個 provider = 只是加倍付費
-    msgs = lt.validate_llm_config(provider="openai", extractor_provider="openai",
+    msgs = lc.validate_llm_config(provider="openai", extractor_provider="openai",
                                   shadow_provider="openai", has_key=_has, efforts={})
     assert any("加倍付費" in m for m in msgs), msgs
 
@@ -750,17 +752,17 @@ def test_extractor_switches_provider_only_on_network_failure():
     出來),而它被釘在單一 provider。但只有網路層失敗才換人:HTTP 4xx 是我們
     的請求有問題,換一家會用同樣的錯誤參數再錯一次。
     """
-    import llm_telemetry as lt
+    import llm_config as lc
 
     def _has(env):
         return env in {"DEEPSEEK_API_KEY", "OPENAI_API_KEY"}
 
-    assert lt.fallback_extractor_provider("deepseek", _has) == "openai"
-    assert lt.fallback_extractor_provider("openai", _has) == "deepseek"
+    assert lc.fallback_extractor_provider("deepseek", _has) == "openai"
+    assert lc.fallback_extractor_provider("openai", _has) == "deepseek"
     # 沒有第二把金鑰就不換(換了只會拿到「缺金鑰」的錯誤蓋掉真正的原因)
-    assert lt.fallback_extractor_provider(
+    assert lc.fallback_extractor_provider(
         "deepseek", lambda e: e == "DEEPSEEK_API_KEY") == ""
-    assert lt.fallback_extractor_provider("deepseek", lambda _e: False) == ""
+    assert lc.fallback_extractor_provider("deepseek", lambda _e: False) == ""
 
 
 def test_extractor_falls_back_to_another_provider_on_timeout(monkeypatch):
@@ -1127,6 +1129,7 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
     不支援則是**這一定不會生效**。所以要在跑之前就擋下來。
     """
     import llm_telemetry as lt
+    import llm_config as lc
 
     assert lt.supported_efforts("gpt-5.6-luna") == (
         "none", "low", "medium", "high", "xhigh")
@@ -1141,7 +1144,7 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
     assert lt.max_output_for("deepseek-v4-pro")[0] == lt.UNKNOWN_MODEL_MAX_OUTPUT
     assert "未收錄" in lt.max_output_for("deepseek-v4-pro")[1]
 
-    msgs = lt.validate_llm_config(
+    msgs = lc.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",
         has_key=lambda _e: True, efforts={"primary": "max"},
         models={"primary": "gpt-5.6-luna"})
@@ -1149,13 +1152,13 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
     assert any("靜默" in m for m in msgs), "沒說出失敗的樣子(退回 provider 預設)"
 
     # 支援的值不得誤報
-    ok = lt.validate_llm_config(
+    ok = lc.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",
         has_key=lambda _e: True, efforts={"primary": "xhigh"},
         models={"primary": "gpt-5.6-luna"})
     assert ok == [], ok
     # 沒量過的模型不擋(不猜)
-    unknown = lt.validate_llm_config(
+    unknown = lc.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",
         has_key=lambda _e: True, efforts={"primary": "max"},
         models={"primary": "gpt-5.6-sol"}, scheduled=False)
@@ -1267,23 +1270,23 @@ def test_fatal_config_issues_make_the_canary_red():
     判準是「這樣上線一定不會動」,不是「風險比較高」——
     「超過實測過的上限」屬於後者,維持警告。
     """
-    import llm_telemetry as lt
+    import llm_config as lc
 
-    missing = lt.validate_llm_config(
+    missing = lc.validate_llm_config(
         provider="deepseek", extractor_provider="deepseek", shadow_provider="",
         has_key=lambda _e: False, efforts={})
-    assert missing and all(lt.is_fatal(m) for m in missing), missing
+    assert missing and all(lc.is_fatal(m) for m in missing), missing
 
-    typo = lt.validate_llm_config(
+    typo = lc.validate_llm_config(
         provider="opanai", extractor_provider="deepseek", shadow_provider="",
         has_key=lambda _e: True, efforts={})
-    assert any(lt.is_fatal(m) for m in typo), typo
+    assert any(lc.is_fatal(m) for m in typo), typo
 
-    over_cap = lt.validate_llm_config(
+    over_cap = lc.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",
         has_key=lambda _e: True, efforts={"primary": "max"},
         models={"primary": "gpt-5.6-sol"})
-    assert over_cap and not any(lt.is_fatal(m) for m in over_cap), \
+    assert over_cap and not any(lc.is_fatal(m) for m in over_cap), \
         "「未實測」是風險提示,不該讓金絲雀變紅"
     # 訊息本體仍是字串(既有呼叫端、manifest、log 不受影響)
     assert isinstance(missing[0], str)

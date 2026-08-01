@@ -91,18 +91,31 @@
 > 它讀不到 Secret —— 設錯地方會靜默落回預設值,症狀是「一切照舊」:
 > 沒有錯誤、沒有告警,只是沒切過去。2026-08-01 實際發生過。
 > 從 2026-08-01 起,`state/run_manifest.json` 的 `llm.config` 會寫出本班
-> **打算**用什麼,`llm.config_issues` 會指出哪些 variable 其實是空的。
+> **打算**用什麼;`llm.config.sources` 逐鍵記下
+> `{resolved, source}` —— `source` 是 `repo_variable`(你明設的)、
+> `workflow_default`(variable 是空的)還是 `workflow_fixed`(改不動)。
+> 這樣才答得出「這個值是誰決定的」,而不只是「最後用了什麼」。
+> `llm.config_issues` 只留**真正的設定錯誤**(打錯 provider、缺金鑰)。
 
 | Variable | 預設 | 說明 |
 |---|---|---|
 | `LLM_PROVIDER` | `deepseek` | `deepseek` / `openai` / `gemini` / `anthropic` |
-| `DEEPSEEK_REASONING_EFFORT` | `high` | DeepSeek 思考強度;`high` 是它的最高檔(只認 high/medium/low) |
+| `DEEPSEEK_REASONING_EFFORT` | `max` | v4-pro 的映射是 low/high→high、xhigh/max→**max**;送 `high` 只到中段 |
 | `OPENAI_MODEL` | `gpt-5.6-terra` | 主分析模型 |
 | `OPENAI_REASONING_EFFORT` | `medium` | **支援值依 model + endpoint 為準,先跑 Validate LLM Config**;額度與 timeout 會一起放大 |
-| `EXTRACTOR_PROVIDER` | 空(跟隨主分析) | 事件抽取器可獨立指定 |
+| `EXTRACTOR_PROVIDER` | 空 | 事件抽取器可獨立指定;空 = 跟隨主分析 |
 | `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` | 抽取是機械性任務,不必用旗艦 |
 | `OPENAI_EXTRACTOR_REASONING` | `low` | 刻意壓低:推理吃光額度會導致 0 產出 |
-| `LLM_SHADOW_PROVIDER` / `LLM_SHADOW_MODEL` | 空(關閉) | 影子比較,只記錄不改輸出 |
+| `LLM_SHADOW_PROVIDER` | 空 | 影子比較,只記錄不改輸出;空 = 關閉 |
+| `LLM_SHADOW_MODEL` | 空 | 影子模型;空 = 用該 provider 的預設 |
+| `LLM_SHADOW_REASONING_EFFORT` | 空 | 影子推理強度;空 = 跟隨主分析 |
+| `LLM_TOTAL_TIMEOUT_SECONDS` | 空 | 空 = 由程式依 provider 與推理強度算(見 `llm_telemetry.timeout_base`);設了會**壓過**自動放大 |
+| `LLM_REQUEST_TIMEOUT_SECONDS` | 空 | 同上;另受「不得超過總預算 70%」上限 |
+
+> 上表的**預設值欄位由 `tests/test_workflow_contract.py` 對 workflow 逐格比對**
+> (第十一輪 P2-1)。在此之前它漂過:`DEEPSEEK_REASONING_EFFORT` 寫著預設 `high`
+> 且「`high` 是最高檔」,而實際預設已是 `max`、且 v4-pro 的 `high` 只到中段。
+> 設定文件漂移的代價不是不專業,是**使用者做了正確的事卻沒有效果**。
 
 > ⚠ 官方 Models 頁面列出的強度**不等於**該 endpoint 真的接受。
 > 2026-08-01 實測:`gpt-5.6-luna` 在 chat/completions 上拒絕 `max`,

@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 from zoneinfo import ZoneInfo
@@ -420,10 +421,10 @@ LLM_SHADOW_MAX_TIMEOUT = 300.0
 LLM_SHADOW_TIMEOUT = float(
     os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "")
     or min(LLM_SHADOW_MAX_TIMEOUT,
-           _lt.timeout_for(
+           _lc.timeout_for(
                os.environ.get("LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
                or "medium",
-               _lt.timeout_base(LLM_SHADOW_PROVIDER)[1])))
+               _lc.timeout_base(LLM_SHADOW_PROVIDER)[1])))
 #: 影子的推理強度(第九輪 P1-8)。空 = 跟隨該 provider 的預設。
 #: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
 LLM_SHADOW_REASONING_EFFORT = os.environ.get(
@@ -487,16 +488,49 @@ def _timeout_env(name: str, base: float) -> float:
     使用者收到降級版報告;同一天 DeepSeek 在同樣 75 秒內一次完成。
     """
     raw = os.environ.get(name, "").strip()
-    return float(raw) if raw else _lt.timeout_for(_PRIMARY_EFFORT, base)
+    return float(raw) if raw else _lc.timeout_for(_PRIMARY_EFFORT, base)
 
 
-_TOTAL_BASE, _REQ_BASE = _lt.timeout_base(LLM_PROVIDER)
+_TOTAL_BASE, _REQ_BASE = _lc.timeout_base(LLM_PROVIDER)
 LLM_TOTAL_TIMEOUT_SECONDS = _timeout_env("LLM_TOTAL_TIMEOUT_SECONDS", _TOTAL_BASE)
 LLM_REQUEST_TIMEOUT_SECONDS = min(
     _timeout_env("LLM_REQUEST_TIMEOUT_SECONDS", _REQ_BASE),
     # 單次請求不得吃掉整份預算 —— 留得下一次重試才有備援可言。
     round(LLM_TOTAL_TIMEOUT_SECONDS * 0.7, 1))
 _LLM_DEADLINE: Optional[float] = None
+
+
+def _llm_config_resolved() -> dict:
+    """每個 LLM 開關**本班實際採用的值**(第十一輪 P2-1)。
+
+    刻意讀模組常數而不是重新讀 `os.environ`:兩者可以不一樣,而會影響行為
+    的是前者。逾時就是最好的例子 —— 環境變數是空的,實際值由
+    `_timeout_env` 依 provider 與推理強度算出來,重讀環境變數只會拿到空字串。
+    (同樣的錯誤在批#107 的 `_llm_key_available` 犯過一次。)
+
+    鍵集合由 `llm_telemetry.CONFIG_SOURCE_SPEC` 決定,並由
+    `tests/test_workflow_contract.py` 檢查**沒有漏掉任何一個** ——
+    漏掉的症狀是 manifest 少一格,不會有人發現。
+    """
+    return {
+        "LLM_PROVIDER": LLM_PROVIDER,
+        "EXTRACTOR_PROVIDER": _extractor_provider(),
+        "DEEPSEEK_MODEL": DEEPSEEK_MODEL,
+        "DEEPSEEK_EXTRACTOR_MODEL": DEEPSEEK_EXTRACTOR_MODEL,
+        "DEEPSEEK_BASE_URL": DEEPSEEK_BASE_URL,
+        "DEEPSEEK_REASONING_EFFORT": DEEPSEEK_REASONING_EFFORT,
+        "OPENAI_MODEL": OPENAI_MODEL,
+        "OPENAI_BASE_URL": OPENAI_BASE_URL,
+        "OPENAI_REASONING_EFFORT": OPENAI_REASONING_EFFORT,
+        "OPENAI_EXTRACTOR_MODEL": OPENAI_EXTRACTOR_MODEL,
+        "OPENAI_EXTRACTOR_REASONING": OPENAI_EXTRACTOR_REASONING,
+        "LLM_SHADOW_PROVIDER": LLM_SHADOW_PROVIDER,
+        "LLM_SHADOW_MODEL": LLM_SHADOW_MODEL,
+        "LLM_SHADOW_REASONING_EFFORT": LLM_SHADOW_REASONING_EFFORT,
+        "LLM_TOTAL_TIMEOUT_SECONDS": LLM_TOTAL_TIMEOUT_SECONDS,
+        "LLM_REQUEST_TIMEOUT_SECONDS": LLM_REQUEST_TIMEOUT_SECONDS,
+        "LLM_EVENT_EXTRACTION": os.environ.get("LLM_EVENT_EXTRACTION", "1"),
+    }
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
 # GitHub Actions job 有 timeout-minutes(本專案 25 分);2026-07-08 曾因 Google News
@@ -13190,7 +13224,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     # model ID 錯、額度過大、schema 不合、專案沒權限 —— 那些情況移除推理強度
     # 沒有用,只是白花一次呼叫,而真正的錯誤訊息會被第二次的失敗蓋掉。
     if (r.status_code == 400 and "reasoning_effort" in payload
-            and _lt.response_blames_param(r, "reasoning_effort")):
+            and _lc.response_blames_param(r, "reasoning_effort")):
         # 參數不被接受時退讓重試一次(DeepSeek 那條路徑既有的「slim 模式」同一招)
         # —— 寧可少一個旋鈕,也不要因為一個選配參數讓整份分析失敗。
         # 批#104:**原始 400 訊息必須進 manifest,不能只印 stderr。**
@@ -13437,7 +13471,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     # 自測抓到:第一版把 `typo-provider` 一併吞成 `no_api_key`,
     # 於是拼錯字的症狀從「當場報錯」退化成「今天沒有事件」。
     _ep0 = _extractor_provider()
-    if _ep0 in _lt.VALID_PROVIDERS and not _llm_key_available(_ep0):
+    if _ep0 in _lc.VALID_PROVIDERS and not _llm_key_available(_ep0):
         _RUN_MANIFEST.setdefault("llm_extractor", {}).update(
             {"called": False, "outcome": "no_api_key:" + _ep0})
         return deterministic
@@ -13547,7 +13581,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
             return _dispatch_extractor(_ep, p)
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError) as e:
-            _alt = _lt.fallback_extractor_provider(
+            _alt = _lc.fallback_extractor_provider(
                 _ep, lambda k: bool(os.environ.get(k, "").strip()))
             if not _alt:
                 raise
@@ -22786,7 +22820,7 @@ def main() -> int:
     # 批#92(第九輪 P1-5):**設定本身要先被驗。** 模型可由 GitHub Variables
     # 隨時改,而打錯字的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。
     # 只告警不擋(晨報不可斷優先);問題進 manifest 與降級清單,看得見。
-    _snap, _cfg = _lt.config_snapshot(
+    _snap, _cfg = _lc.config_snapshot(
         provider=LLM_PROVIDER, extractor_provider=_extractor_provider(),
         shadow_provider=LLM_SHADOW_PROVIDER,
         model=(OPENAI_MODEL if LLM_PROVIDER == "openai" else DEEPSEEK_MODEL),
@@ -22798,21 +22832,26 @@ def main() -> int:
         request_timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         total_timeout=LLM_TOTAL_TIMEOUT_SECONDS,
         raw_vars=os.environ.get("LLM_CONFIG_RAW", ""),
-        has_key=lambda env: bool(os.environ.get(env, "").strip()))
+        has_key=lambda env: bool(os.environ.get(env, "").strip()),
+        resolved=_llm_config_resolved())
     _RUN_MANIFEST.setdefault("llm", {})["config"] = _snap
     # 第十輪 P1-4:**「Variable 沒設、走文件化預設」是純診斷,不是降級。**
     # 原本一律進降級清單 —— 於是全新安裝、完全照 README 用 DeepSeek 預設配置,
     # 每天都會拿到 `llm:config_issue`。那正是我自己警告過的形狀:
     # 降級清單一旦有常駐雜訊,真正的異常就被淹掉。
-    _sources = [m for m in _cfg if "沒有設定" in m]
-    _real = [m for m in _cfg if m not in _sources]
-    if _sources:
-        _RUN_MANIFEST["llm"]["config_sources"] = _sources
-    if _real:
-        _RUN_MANIFEST["llm"]["config_issues"] = _real
+    #
+    # 第十一輪 P2-1:**來源已經不走 `_cfg` 了。** 原本要用 `"沒有設定" in m`
+    # 把來源訊息從問題清單裡撈回來 —— 訊息一改字,「走預設」就會被當成降級。
+    # 現在來源是 `_snap["sources"]` 的結構化欄位,`_cfg` 只剩真正的設定錯誤。
+    if _cfg:
+        _RUN_MANIFEST["llm"]["config_issues"] = _cfg
         _DEGRADED_STEPS.append("llm:config_issue")
     for _m in _cfg:
-        print(f"[llm-config] {'⚠' if _m in _real else 'ℹ'} {_m}", file=sys.stderr)
+        print(f"[llm-config] ⚠ {_m}", file=sys.stderr)
+    for _k, _e in sorted((_snap.get("sources") or {}).items()):
+        if _e.get("source") == "repo_variable":
+            print(f"[llm-config] ℹ {_k}={_e.get('resolved')} ← repo variable",
+                  file=sys.stderr)
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER}"
           f"、抽取器={_extractor_provider()})")
     # PR-2 第二階段(2026-07-18 使用者拍板):Python 11 維立場分=權威——

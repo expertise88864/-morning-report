@@ -41,6 +41,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import llm_telemetry as lt          # noqa: E402
+import llm_config as lc            # noqa: E402
 from news_events import llm_event_json_schema  # noqa: E402
 
 TIMEOUT = float(os.environ.get("CANARY_TIMEOUT_SEC", "300"))
@@ -95,7 +96,7 @@ class Check:
 
 
 class _Resp:
-    """最小的回應物件:只提供 `lt.response_blames_param` 與本檔用到的介面。"""
+    """最小的回應物件:只提供 `lc.response_blames_param` 與本檔用到的介面。"""
 
     def __init__(self, status_code: int, body: bytes):
         self.status_code = status_code
@@ -163,7 +164,7 @@ def probe(model: str, effort: str, *, schema=None, prompt="",
                       f"{type(e).__name__}(在 {took:.0f}s 後)"), took, {})
     took = time.monotonic() - t0
     if r.status_code != 200:
-        blames = lt.response_blames_param(r, "reasoning_effort")
+        blames = lc.response_blames_param(r, "reasoning_effort")
         hint = "(錯誤指名 reasoning_effort)" if blames else ""
         return (Check(name, False, f"HTTP {r.status_code}{hint}: {r.text[:200]}"),
                 took, {})
@@ -207,7 +208,7 @@ def effort_matrix(model: str) -> list:
                              f"接受、reasoning={lt.reasoning_tokens_of(usage)}",
                              fatal=False))
         else:
-            blames = lt.response_blames_param(r, "reasoning_effort")
+            blames = lc.response_blames_param(r, "reasoning_effort")
             out.append(Check(
                 f"reasoning={effort}", False,
                 f"HTTP {r.status_code}"
@@ -225,7 +226,7 @@ def main() -> int:
     ext_effort = _env("OPENAI_EXTRACTOR_REASONING", "low")
 
     checks = [Check("設定本身合法", True, "")]
-    issues = lt.validate_llm_config(
+    issues = lc.validate_llm_config(
         provider=provider, extractor_provider=extractor,
         shadow_provider=_env("LLM_SHADOW_PROVIDER"),
         has_key=_has_key,
@@ -253,7 +254,7 @@ def main() -> int:
         # 要不要讓 job 變紅 —— 兩者混用會讓一列警告顯示成綠勾,
         # 而那正是這個工具最不該做的事(看起來通過、其實有話要說)。
         checks = [Check("設定本身合法", False, ";".join(issues),
-                        fatal=any(lt.is_fatal(i) for i in issues))]
+                        fatal=any(lc.is_fatal(i) for i in issues))]
 
     if "openai" in (provider, extractor):
         if not _env("OPENAI_API_KEY"):
@@ -288,8 +289,8 @@ def _budget_verdict(took: float, provider: str, effort: str) -> Check:
     程式算出來的單次請求上限 —— 但要說清楚:探測用的是短 prompt,
     生產的 prompt 是 85,000 token 級,所以這個數字是**下界**。
     """
-    total, req = lt.timeout_base(provider)
-    limit = min(lt.timeout_for(effort, req), lt.timeout_for(effort, total) * 0.7)
+    total, req = lc.timeout_base(provider)
+    limit = min(lc.timeout_for(effort, req), lc.timeout_for(effort, total) * 0.7)
     ok = took < limit * 0.5
     return Check("時間預算夠嗎", ok,
                  f"短 prompt 實測 {took:.0f}s、單次上限 {limit:.0f}s"

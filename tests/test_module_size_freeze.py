@@ -137,10 +137,36 @@ MODULE_CEILINGS = {
     # 第十輪 P1-1 調高 600 → 700:價格表加上 cached_input 與 cache write 1.25×,
     # 並記下出處與 schema 版本(外審宣稱的價格錯誤,我逐頁查證後駁回,
     # 但同一條裡的 cached/cache-write 缺失是真的)。
-    "llm_telemetry.py": 700,
+    # 批#120(第十一輪 P2-1)**下修 700 → 450**(現況 393)。設定驗證那半
+    # 搬去 `llm_config.py` 之後這個檔只剩計價與量測 —— 棘輪要跟著縮,
+    # 否則它就變成一個「隨時可以再長 300 行」的空頭額度。
+    "llm_telemetry.py": 450,
+    # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
+    # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
+    # 不依主題喜好 —— 見 `llm_config` 的 docstring。
+    "llm_config.py": 450,
     # 批#115:P1-12 的接收端。**沒有列進來就是後門** —— 批#95 已經因為漏列
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     "run_manifest.py": 300,
+}
+
+#: **明列的豁免**:這些根模組目前沒有行數上限。
+#:
+#: 批#120:上表原本只涵蓋 24 個根模組中的 8 個,而沒有任何守衛要求「新模組
+#: 必須被決定」—— 於是我這一批新增 `llm_config.py` 時,漏列它不會有任何人
+#: 知道。這正是本檔自己警告過兩次的形狀(「沒有列進來就是後門」),
+#: 只是先前防的是**漏列既有檔**,沒有防**新增檔**。
+#:
+#: 這裡不假裝已經替每個檔想好數字。它要求的只有一件事:
+#: **新增一個根模組時,必須明確選擇「設上限」或「列入豁免」** ——
+#: 那是一個會出現在 diff 裡、有人看得到的動作。
+UNCAPPED_MODULES = {
+    "morning_report.py",        # 由 MAIN_MODULE_LINE_CEILING 單獨管
+    "alpha_factors.py", "backtest_runner.py", "factor_ic.py", "fz_score.py",
+    "gooaye_radar.py", "llm_postprocess.py", "model_confidence.py",
+    "news_rules.py", "num_utils.py", "overfit_check.py", "podcast_digest.py",
+    "portfolio_risk.py", "session_calendar.py", "tw_policy_sources.py",
+    "valuation.py",
 }
 
 
@@ -212,3 +238,27 @@ def test_the_ceiling_is_not_far_above_reality():
     assert slack <= 600, (
         f"上限 {MAIN_MODULE_LINE_CEILING} 比實際 {n} 行高出 {slack} 行 —— "
         "棘輪鬆掉了,請把上限調降到接近現況(建議 現況 + 200)。")
+
+
+def test_every_root_module_is_either_capped_or_explicitly_exempt():
+    """新增根模組時,**必須明確決定**它有沒有行數上限(批#120)。
+
+    本檔已經兩次因為「漏列」而讓自己的宣稱落空(批#95 漏 llm_shadow /
+    llm_telemetry)。那兩次防的是漏列既有檔;這條防的是**新增檔** ——
+    上限表是手抄的,新檔不列進來不會紅,只會少檢查一個檔。
+
+    這條刻意不要求每個檔都有數字(那會逼出一堆沒人想過的門檻),
+    只要求那個選擇出現在 diff 裡。
+    """
+    known = set(MODULE_CEILINGS) | UNCAPPED_MODULES
+    actual = {p.name for p in _ROOT.glob("*.py")}
+    assert actual, f"{_ROOT} 底下找不到任何模組 —— 這條測試不得空集合真空通過"
+    unknown = sorted(actual - known)
+    assert not unknown, (
+        f"這些根模組既沒有行數上限也沒有列入豁免:{unknown} —— "
+        "請在 MODULE_CEILINGS 給一個上限,或在 UNCAPPED_MODULES 明列並說明")
+    gone = sorted(known - actual)
+    assert not gone, (
+        f"清單裡有已經不存在的檔:{gone} —— 清單漂移會讓人以為它還被管著")
+    assert not (set(MODULE_CEILINGS) & UNCAPPED_MODULES), (
+        "同一個檔同時被設上限又被豁免 —— 豁免會讓讀的人以為它沒有上限")

@@ -129,14 +129,36 @@ jobs:
           # LLM 影子比較(空 = 關閉):換模型前後累積可比較的證據
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
           LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
+          # 第十一輪 P2-1:**這一行原本不存在。** 程式讀 LLM_SHADOW_REASONING_EFFORT,
+          # workflow 卻沒有傳 —— 設了 repo variable 也**靜默無效**。
+          # 是在替 CONFIG_SOURCE_SPEC 逐鍵列表時才浮出來的。
+          LLM_SHADOW_REASONING_EFFORT: ${{ vars.LLM_SHADOW_REASONING_EFFORT || '' }}
           # 上面每一項都在 YAML 就用 `|| 預設` 補齊,所以程式看到的永遠是最終值,
           # **分辨不出「沒設」與「設成跟預設一樣」**。2026-08-01 就是這樣:
           # 使用者設了 LLM_PROVIDER=openai 卻仍跑 DeepSeek,而 manifest 看不出原因
           # (最可能是設成了 Secrets —— `vars.X` 讀不到 Secret,靜默落回預設)。
           # 這一行把**未經遮蔽的原始值**一起傳進去,由程式指出哪些其實是空的。
           # 刻意進 manifest 而不是只印 job log:job log 要 admin 才讀得到。
+          #
+          # 第十一輪 P2-1:**原本只帶四個鍵**,於是批#118 把 DeepSeek 預設改成
+          # max 之後,manifest 仍答不出「max 是使用者明設,還是 workflow 預設?」。
+          # 現在 `llm_telemetry.CONFIG_SOURCE_SPEC` 裡每一個 `variable` 鍵都要在
+          # 這裡,並由 `tests/test_workflow_contract.py` **雙向**比對(少一個、
+          # 多一個、預設值漂移都會紅)—— 這串不再是人手維護的清單。
+          # 值本身都不是機密(模型名/推理強度/逾時秒數),沒有遮蔽問題。
           LLM_CONFIG_RAW: >-
-            LLM_PROVIDER=${{ vars.LLM_PROVIDER }};OPENAI_MODEL=${{ vars.OPENAI_MODEL }};OPENAI_REASONING_EFFORT=${{ vars.OPENAI_REASONING_EFFORT }};EXTRACTOR_PROVIDER=${{ vars.EXTRACTOR_PROVIDER }}
+            LLM_PROVIDER=${{ vars.LLM_PROVIDER }};
+            EXTRACTOR_PROVIDER=${{ vars.EXTRACTOR_PROVIDER }};
+            DEEPSEEK_REASONING_EFFORT=${{ vars.DEEPSEEK_REASONING_EFFORT }};
+            OPENAI_MODEL=${{ vars.OPENAI_MODEL }};
+            OPENAI_REASONING_EFFORT=${{ vars.OPENAI_REASONING_EFFORT }};
+            OPENAI_EXTRACTOR_MODEL=${{ vars.OPENAI_EXTRACTOR_MODEL }};
+            OPENAI_EXTRACTOR_REASONING=${{ vars.OPENAI_EXTRACTOR_REASONING }};
+            LLM_SHADOW_PROVIDER=${{ vars.LLM_SHADOW_PROVIDER }};
+            LLM_SHADOW_MODEL=${{ vars.LLM_SHADOW_MODEL }};
+            LLM_SHADOW_REASONING_EFFORT=${{ vars.LLM_SHADOW_REASONING_EFFORT }};
+            LLM_TOTAL_TIMEOUT_SECONDS=${{ vars.LLM_TOTAL_TIMEOUT_SECONDS }};
+            LLM_REQUEST_TIMEOUT_SECONDS=${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }}
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

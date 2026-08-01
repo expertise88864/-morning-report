@@ -6598,6 +6598,48 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "3202bc1f-a7db-4549-a5d1-0632d58fa81d",
+        "title": "Chip Stocks Crash, $20B Fund Margin Called, Frontier Labs: SLOW DOWN AI, Mamdani's Grocery Stores",
+        "published": "Fri, 31 Jul 2026 22:23:00 +0000",
+        "processed_at": "2026-08-01T05:10:03Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為本波半導體回檔(費城半導體指數單月跌逾20%、進入熊市,但當天反彈7%)是「動能+槓桿」引發的修正,而非AI基本面變壞;Sacks相信超大規模業者的AI資本支出最終能產生回報。",
+            "25歲基金經理人Leopold Aschenbrenner的避險基金從2.25億美元暴漲至200億美元,但因3.5倍槓桿遇上晶片股大跌而遭margin call,投資組合被Citadel接走;主持人以此警告「槓桿等於毀滅風險」,且後進熱錢往往買在最高點。",
+            "韓國散戶槓桿爆倉規模驚人:120萬個槓桿帳戶被追繳,其中35萬戶已遭強制平倉(兩週前數據,現在可能接近百萬戶);三星單月跌38%、韓國股市40天跌逾40%,顯示亞洲AI/晶片交易的高度槓桿化。",
+            "宏觀面,美國30年期公債殖利率突破5.2%,聯邦赤字2兆美元、債務40兆美元,政府支出與債務上限問題使通膨黏著;主持人認為「5%以上無風險利率」讓高本益比科技股失去吸引力,且市場預期9月升息機率達53%。",
+            "中國AI生態系成新變數:開源模型(Kimi/GLM/DeepSeek)成本低80-90%,正侵蝕前沿模型市占;中國記憶體廠CXMT上市首日飆約500%,ASML因中國自研微影設備消息跌17%。Sacks仍認為OpenAI與Anthropic的營收與毛利率證明雙寡頭地位穩固。",
+            "針對Anthropic/OpenAI的「AI安全公開信」(3,300人連署)與OpenAI模型逃脫事件,Sacks認為是「表演式監管」,實為監管捕獲與壟斷掩飾;兩家公司不會真的放慢研發,反而藉此塑造需要政府保護的形象。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Sacks認為Anthropic營收以10倍成長、毛利率80%以上,雙寡頭地位穩固。"
+            },
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Sacks指出OpenAI淨新增ARR在7月超越Q2整季,新模型帶動動能。"
+            },
+            {
+              "name": "ASML",
+              "code": "ASML",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "中國開始量產微影設備,ASML股價下跌17%。"
+            }
+          ],
+          "market_view": "主持人整體認為,股市回檔是長期多頭中的槓桿清洗,AI資本支出長期可行;但美國財政赤字與公債殖利率攀升是更深的結構性風險,可能持續壓抑高估值成長股。",
+          "action_view": "操作上,主持人強調不要用槓桿;若有長線AI部位應承受波動而非融資。另因無風險利率達5%以上,可考慮配置美國公債;Chamath建議「做多電力/電子」,看好能源與儲能長期需求。",
+          "notable_quote": "Don't put on leverage. Leverage equals risk of ruin."
+        }
+      },
+      {
         "guid": "a23359d3-8299-49b5-aada-ef230f27193b",
         "title": "The $1/Hour Worker: Four Robotics CEOs on Humanoids at Home, China's Threat, and the End of Dangerous Jobs",
         "published": "Tue, 28 Jul 2026 20:21:00 +0000",
@@ -7013,74 +7055,6 @@
           "notable_quote": "It's not a good time to be a defender of the status quo."
         },
         "shown_at": "2026-06-29T22:52:55Z"
-      },
-      {
-        "guid": "786c45b1-79c0-4c09-9b9e-923c9f056e99",
-        "title": "Socialists Sweep NYC, China Catches Up in Coding, AI Memory Crunch, Micron's Blowout Quarter",
-        "published": "Fri, 26 Jun 2026 23:53:00 +0000",
-        "processed_at": "2026-06-27T05:53:49Z",
-        "digest": {
-          "summary_points": [
-            "中國開源模型 GLM 5.2 具有 7440 億參數、100 萬 token 上下文視窗，在 SWE 編碼基準上僅落後 Claude Opus 4.8 不到 1%，且 API 使用成本比 GPT 5.5 低 85%。",
-            "GLM 5.2 是目前最強的開源權重模型，採用 MIT 授權，可自由下載、商用，且已針對華為晶片進行推理優化。",
-            "美光（Micron）上季營收年增 4 倍至 420 億美元，優於預期 16%，本季財測 500 億美元，2026 年 HBM 產能已全數售罄。",
-            "DRAM 是 AI 基礎設施最重要瓶頸，HBM 僅有三家廠商（美光、SK 海力士、三星）能製造，且訂價合約地板已超越前週期高峰毛利率。",
-            "蘋果因 DRAM 成本上升調漲 MacBook Neo、Mac Studio 等產品價格，漲幅 15% 至 25%。",
-            "Cerebrus 上市後股價跌破發行價，主因部分機構投資人設有破發即賣出的交易規則，且成長速度不如同業。",
-            "Gavin Baker 認為 Anthropic 目前估值約 3 兆美元，今年營收將遠超 1000 億美元，推論業務毛利率可達 85%。",
-            "中國 AI 公司透過蒸餾（Distillation）技術，從美國前沿模型 API 獲取推理軌跡，快速縮小能力差距，Z.AI 創辦人預測 2027 年第一季前可達標。",
-            "未來 AI 推理將走向分離式架構，預填充與解碼任務可使用不同晶片，舊 GPU（如 H100）與 Groq/Cerebras 搭配仍具競爭力。",
-            "模組化資料中心（如 Tesla MegaPod）可將 GPU 預裝於貨櫃，90 天內完成部署，但用於訓練時節點間延遲問題仍待解決。"
-          ],
-          "tickers": [
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "DRAM 與 HBM 需求爆發，2026 年產能全滿，營收 4 倍成長，定價合約改善產業結構。"
-            },
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Gavin Baker 認為估值 3 兆美元，今年營收遠超 1000 億，推論毛利率 85%，為 AI 領域龍頭。"
-            },
-            {
-              "name": "Cerebrus",
-              "code": "CRBR",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "上市後跌破發行價，但長線取決於供電速度與 Open AI 合約貢獻，需觀察建置進度。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "MegaPod 商標顯示可能進入模組化資料中心市場，但細節未定，需關注 AI 與能源整合進展。"
-            },
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "軌道運算概念具長期潛力，但 IPO 後員工拋售壓力待觀察，創辦人及多數早期投資者不賣。"
-            },
-            {
-              "name": "SK 海力士",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與美光同為 HBM 三大供應商，受惠於 DRAM 結構性短缺，但節目未提供具體數字。"
-            }
-          ],
-          "market_view": "全球資本市場能吸收 Anthropic、SpaceX 等巨額新股供給，因為僅是從私募轉至公募；DRAM 瓶頸將持續，AI 基礎設施建設成本通膨可能為社會爭取調適時間。",
-          "action_view": "投資人應關注 DRAM 與 HBM 供應鏈（美光、SK 海力士、三星），以及能快速建置供電的 AI 基礎設施公司（如 CoreWeave、Crusoe、SpaceX AI）；Cerebrus 需觀察其供電速度能否兌現。",
-          "notable_quote": "I think Anthropic is worth $3 trillion today."
-        },
-        "shown_at": "2026-06-27T22:52:53Z"
       }
     ]
   },

@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+import data_quality as _dq
 import run_manifest as _rm
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -16033,44 +16034,18 @@ class ExdivFetchFailed(RuntimeError):
 
 
 def _record_exdiv_preview_span(rows: list, today_iso: str = "") -> dict:
-    """把預告表**實際**涵蓋的日期範圍記進 manifest。
+    """量測搬到 `data_quality.exdiv_preview_span`(第十輪 P1-12)。
 
-    批#81。`exdiv_coverage_ok` 的整套判斷建立在一個假設上:「收集日 C 一次抓取
-    就能知道 C 之後至少 `_EXDIV_PREVIEW_LOOKAHEAD_DAYS` 天內的除權息」。
-    那個假設原本只寫在註解裡(「除權息日之前**數日**就會列出」),從未量過 ——
-    而它一旦不成立,守衛會**高估**覆蓋、放行本該作廢的結算,而且完全無聲。
-
-    2026-07-30 對 `TWT48U_ALL` 的實測:115 筆,涵蓋 1150728 ~ 1151006,
-    也就是往回 2 天、往前 68 天。
-
-    r2(Codex,P2):**這個 68 天不足以宣告假設成立。** 它是整張表最晚的一筆,
-    由單一 `2614 / 2026-10-06` 撐起來;只要另有一筆只提前 1 天出現,這個數字
-    仍是 68、不會示警,而守衛會拿「事件還沒出現時的成功收集日」放行。
-    所以這裡只當**必要條件**看(整張表都排不到 7 天後 → 假設一定不成立),
-    真正的充分條件由 `_record_exdiv_lead_stats` 逐筆量提前量。
+    那裡才是它的家:本模組宣稱要補的缺口就是「來源沒掛、HTTP 200,
+    但資料涵蓋範圍與守衛的假設對不上」,而症狀完全無聲。
+    這裡只留 manifest 寫入與警告輸出。
     """
-    dates = sorted({str(r.get("ex_date") or "") for r in rows or []
-                    if r.get("ex_date")})
-    span = {"rows": len(rows or []),
-            "min_ex_date": dates[0] if dates else "",
-            "max_ex_date": dates[-1] if dates else ""}
-    if dates and today_iso:
-        try:
-            today = dt.date.fromisoformat(today_iso)
-            span["days_back"] = (today - dt.date.fromisoformat(dates[0])).days
-            span["days_forward"] = (dt.date.fromisoformat(dates[-1]) - today).days
-        except (ValueError, TypeError):
-            pass
+    span, warnings = _dq.exdiv_preview_span(
+        rows, today_iso, _EXDIV_PREVIEW_LOOKAHEAD_DAYS)
     _RUN_MANIFEST["exdiv_preview"] = span
-    forward = span.get("days_forward")
-    if forward is not None and forward < _EXDIV_PREVIEW_LOOKAHEAD_DAYS:
-        # 這正是讓守衛失效的條件:預告期比守衛假設的還短時,
-        # 「D 之前 7 天內有收集過」不再蘊含「D 當天的除權息已被記錄」。
-        print(f"[exdiv] ⚠ 預告表只往前 {forward} 天,短於覆蓋守衛假設的 "
-              f"{_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天——守衛可能高估覆蓋範圍",
-              file=sys.stderr)
+    for w in warnings:
+        print(w, file=sys.stderr)
     return span
-
 
 def fetch_exdiv_preview(today_iso: str = "") -> list:
     """TWSE 除權除息預告表 → [{code, ex_date, kind, cash}]。
@@ -16223,77 +16198,15 @@ def update_exdiv_history(records: list, now_tpe: dt.datetime) -> dict:
 
 
 def _record_exdiv_lead_stats(history: dict) -> dict:
-    """量每一筆除權息事件的**實際提前量**(ex_date − 第一次被看到的日子)。
+    """量測搬到 `data_quality.exdiv_lead_stats`(第十輪 P1-12)。
 
-    r2(Codex,P2)。`_record_exdiv_preview_span` 的 `days_forward` 取的是整張表
-    最晚的一筆,只能證明「有某一筆排得很遠」——現有 68 天正是被單一
-    `2614 / 2026-10-06` 撐起來的。守衛需要的卻是**每一筆**都至少提前
-    `_EXDIV_PREVIEW_LOOKAHEAD_DAYS` 天出現:只要有一筆只提前 1 天,
-    再碰上抓取中斷,`exdiv_coverage_ok` 就會拿「事件還沒出現時的成功收集日」
-    放行,而 `days_forward` 仍是 68、完全不會示警。
-
-    **只計 `first_seen > since` 的紀錄。** 收集起點那一批的 `first_seen`
-    只是「我們開始看的日子」,不是事件的公告時間,拿來當提前量會低估;
-    舊格式沒有 `first_seen` 的紀錄同理,一律計入 `unmeasurable`。
-    所以剛上線時 `observed` 會是 0 —— 那是誠實的「還不知道」,
-    不是「假設成立」。
-
-    r3(Codex,P2):**短提前量是區間設限(interval-censored)的。**
-    `first_seen` 是「第一次成功看到」,抓取中斷過的話,TWSE 提前 7 天公告的
-    事件也可能到第 6 天才被我們看到 —— 那是我們的空洞,不是 TWSE 的,
-    而誤報會永久留在 manifest 裡。所以短提前量只有在
-    「`first_seen` 之前、且落在 lookahead 窗口內確實成功收集過」時才算確認
-    (那一次沒看到它 ⇒ 它當時真的還沒上表),否則計入 `lead_censored`。
-    提前量 ≥ 門檻的則不受影響:`first_seen` 是下界,下界已達標就是達標。
-
-    現階段**只示警不擋**:要把它變成 fail-closed,得先有真實的提前量分佈,
-    而這正是本函式開始累積的東西。這是刻意的延後,不是漏做。
+    區間設限的判準(短提前量只有在窗口內確實成功收集過時才算確認)
+    是**資料品質**的判準,不是晨報流程的一部分 —— 放在 data_quality 才對。
     """
-    since = str(history.get("since") or "")
-    days = sorted({str(d) for d in (history.get("days") or []) if d})
-    leads, short, censored, unmeasurable = [], [], 0, 0
-    for r in history.get("records") or []:
-        if not isinstance(r, dict):
-            unmeasurable += 1
-            continue
-        seen, ex = str(r.get("first_seen") or ""), str(r.get("ex_date") or "")
-        if not (seen and ex) or (since and seen <= since):
-            unmeasurable += 1
-            continue
-        try:
-            ex_date = dt.date.fromisoformat(ex)
-            lead = (ex_date - dt.date.fromisoformat(seen)).days
-        except (ValueError, TypeError):
-            unmeasurable += 1
-            continue
-        if lead >= _EXDIV_PREVIEW_LOOKAHEAD_DAYS:
-            # `first_seen` 是「第一次**成功看到**」,真實公告只可能更早,
-            # 所以 lead 是下界 —— 下界已達門檻就確定這一筆符合假設。
-            leads.append(lead)
-            continue
-        # r3(Codex,P2):**短提前量是區間設限的,不能直接當成確認。**
-        # 抓取中斷過的話,TWSE 提前 7 天公告的事件也可能到第 6 天才被我們看到,
-        # 那是我們的空洞而不是 TWSE 的,誤報會永久留在 manifest 裡。
-        # 只有在「first_seen 之前、且落在 lookahead 窗口內確實成功收集過」時
-        # 才算確認:那一次收集沒看到它 ⇒ 它當時真的還沒上表。
-        floor = (ex_date - dt.timedelta(
-            days=_EXDIV_PREVIEW_LOOKAHEAD_DAYS)).isoformat()
-        if any(floor <= c < seen for c in days):
-            leads.append(lead)
-            short.append(lead)
-        else:
-            censored += 1
-    stats = {"lead_observed": len(leads), "lead_censored": censored,
-             "lead_unmeasurable": unmeasurable}
-    if leads:
-        stats["lead_min_days"] = min(leads)
-        stats["lead_short_count"] = len(short)
-        if short:
-            print(f"[exdiv] ⚠ 有 {len(short)} 筆除權息只提前 "
-                  f"{min(short)}~{max(short)} 天出現(已排除收集空洞造成的低估),"
-                  f"短於覆蓋守衛假設的 {_EXDIV_PREVIEW_LOOKAHEAD_DAYS} 天"
-                  "——抓取一中斷,那些事件就會被漏記而守衛仍放行",
-                  file=sys.stderr)
+    stats, warnings = _dq.exdiv_lead_stats(
+        history, _EXDIV_PREVIEW_LOOKAHEAD_DAYS)
+    for w in warnings:
+        print(w, file=sys.stderr)
     _RUN_MANIFEST.setdefault("exdiv_preview", {}).update(stats)
     return stats
 
@@ -21148,35 +21061,15 @@ def determine_mode(now_tpe: dt.datetime) -> str:
 
 
 def _refresh_capability_health(dq_summary: Optional[dict] = None) -> dict:
-    """重算並寫回 `_RUN_MANIFEST["capability_health"]`。
+    """委派給 `ManifestRecorder.refresh_capability_health`(第十輪 P1-12)。
 
-    r1(Codex,P1):第一版只在資料品質閘那裡算**一次**,而那裡在 main 的
-    20819 行,事件抽取器要到 20951 才跑 —— 算的時候 `_RUN_MANIFEST
-    ["llm_extractor"]` 還不存在,所以抽取器**永遠不會**出現在
-    `inactive_capabilities` 裡,manifest 與信件都看不到它失效。
-    (我的測試預先塞了 `_RUN_MANIFEST` 或直接注入 `extra_inactive`,
-     繞過了真實的 main 順序 —— 又一次「驗的不是生產送進來的東西」。)
-
-    改成可重複呼叫:抽取器跑完之後再補算一次。`dq_summary` 省略時沿用
-    上次寫進 manifest 的那份。
+    「哪些能力算健康」的判準留在 `data_quality`,manifest 知識
+    (沿用 `data_checks`、抽取器零存活視為失效)在 recorder。
     """
-    summary = dq_summary if dq_summary is not None else (
-        _RUN_MANIFEST.get("data_checks") or {})
-    extra = []
-    lx = _RUN_MANIFEST.get("llm_extractor") or {}
-    # 只有在抽取器**真的跑過**(有 called 記錄)時才判定;沒跑過不是失效
-    if lx.get("called") and not int(_safe_number(lx.get("survived"))):
-        extra.append("llm_event_extractor")
-    try:
-        import data_quality as _dqm
-        health = _dqm.capability_health(summary, extra_inactive=extra)
-    except Exception as e:
-        print(f"[capability] 健康狀態彙整略過: {type(e).__name__}: {e}",
-              file=sys.stderr)
-        return _RUN_MANIFEST.get("capability_health") or {}
-    _RUN_MANIFEST["capability_health"] = health
-    return health
-
+    return _RECORDER.refresh_capability_health(
+        lambda summary, extra: _dq.capability_health(
+            summary, extra_inactive=extra),
+        dq_summary)
 
 def build_data_quality(quotes: dict, fair: dict, predictions: dict,
                         news: list[dict], tw0050: list[dict]) -> list[dict]:

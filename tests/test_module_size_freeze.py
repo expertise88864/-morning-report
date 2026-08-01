@@ -111,7 +111,13 @@ import pytest
 #: 的**邏輯**搬進 `ManifestRecorder`,主模組只留薄委派。
 #: 三者的 BLOCK 理由因此從各自碰 `_RUN_MANIFEST` / `_DEGRADED_STEPS`
 #: 收斂成只碰 `_RECORDER` 一項。
-MAIN_MODULE_LINE_CEILING = 23_220
+#: 2026-08-01 批#117 再調降至 23,120(現況 23,053)。P1-12 第三步:
+#: `_refresh_capability_health` 的 manifest 邏輯進 recorder;
+#: 兩個除權息量測進 `data_quality.py`(**那才是它的家** —— 該模組的宣稱就是
+#: 「來源沒掛但資料是壞的」,而覆蓋量測正是那件事)。
+#: `_chip_fields_for_session` **刻意不搬**:它是組籌碼特徵欄位的領域邏輯,
+#: 只是順便寫 manifest,搬進可觀測性模組只是換個檔案膨脹。
+MAIN_MODULE_LINE_CEILING = 23_120
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

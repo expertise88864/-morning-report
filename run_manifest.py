@@ -207,3 +207,33 @@ class ManifestRecorder:
             self.degraded.append("event_identity:split")
             self._log(f"[event-id] ⚠ 同一個舊指紋產生多個新指紋:{len(splits)} 組")
         return out
+
+    def refresh_capability_health(self, health_fn, dq_summary=None) -> dict:
+        """重算並寫回 `capability_health`(第十輪 P1-12 自主模組搬入)。
+
+        `health_fn(summary, extra_inactive) -> dict` 由呼叫端注入 ——
+        「哪些能力算健康」是資料品質的判準,不是 manifest 的職責。
+
+        留在這裡的是**manifest 知識**:`data_checks` 的沿用、以及
+        「抽取器跑過卻零存活 = 失效」這條判定(它讀的正是 manifest 裡的
+        `llm_extractor`)。可重複呼叫 —— 抽取器跑完之後要能再補算一次,
+        否則算的時候 `llm_extractor` 還不存在,抽取器**永遠不會**出現在
+        `inactive_capabilities` 裡,而 manifest 與信件都看不到它失效。
+        """
+        summary = dq_summary if dq_summary is not None else (
+            self.data.get("data_checks") or {})
+        extra = []
+        lx = self.data.get("llm_extractor") or {}
+        try:
+            survived = int(lx.get("survived") or 0)
+        except (TypeError, ValueError):
+            survived = 0
+        if lx.get("called") and not survived:
+            extra.append("llm_event_extractor")
+        try:
+            health = health_fn(summary, extra)
+        except Exception as e:                  # noqa: BLE001 - 觀測性不得擋晨報
+            self._log(f"[capability] 健康狀態彙整略過: {type(e).__name__}: {e}")
+            return self.data.get("capability_health") or {}
+        self.data["capability_health"] = health
+        return health

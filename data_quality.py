@@ -340,3 +340,106 @@ def validate_history_shape(data: dict, records_key: str, date_field: str,
             v = r.get(f)
             if v not in (None, "") and not iso_date_ok(v):
                 raise ValueError(f"第 {i} 列的 {f} 非 ISO 日期:{v!r}")
+
+
+# ── 除權息預告的覆蓋量測(第十輪 P1-12 自主模組搬入)──────────────────
+# 這裡正是本模組宣稱要補的那個缺口:**來源沒掛、HTTP 200、熔斷不觸發,
+# 但資料涵蓋的範圍與守衛的假設對不上**,而症狀完全無聲 ——
+# `exdiv_coverage_ok` 會高估覆蓋、放行本該作廢的結算。
+#
+# 純函式:不寫 manifest、不印東西(警告以清單回傳,由呼叫端決定怎麼呈現)。
+
+def exdiv_preview_span(rows, today_iso: str = "",
+                       lookahead_days: int = 7) -> tuple:
+    """預告表**實際**涵蓋的日期範圍;回 `(span, warnings)`。
+
+    `exdiv_coverage_ok` 的整套判斷建立在「收集日 C 一次抓取就能知道 C 之後
+    至少 `lookahead_days` 天內的除權息」這個假設上,而它原本只寫在註解裡、
+    從未量過。2026-07-30 對 `TWT48U_ALL` 的實測:115 筆,往回 2 天、往前 68 天。
+
+    這個 68 天**不足以宣告假設成立** —— 它是整張表最晚的一筆,由單一
+    `2614 / 2026-10-06` 撐起來。只要另有一筆只提前 1 天出現,這個數字仍是 68。
+    所以這裡只當**必要條件**(整張表都排不到門檻 → 假設一定不成立),
+    充分條件由 `exdiv_lead_stats` 逐筆量。
+    """
+    import datetime as _dt
+
+    dates = sorted({str(r.get("ex_date") or "") for r in rows or []
+                    if isinstance(r, dict) and r.get("ex_date")})
+    span = {"rows": len(rows or []),
+            "min_ex_date": dates[0] if dates else "",
+            "max_ex_date": dates[-1] if dates else ""}
+    if dates and today_iso:
+        try:
+            today = _dt.date.fromisoformat(today_iso)
+            span["days_back"] = (today - _dt.date.fromisoformat(dates[0])).days
+            span["days_forward"] = (_dt.date.fromisoformat(dates[-1]) - today).days
+        except (ValueError, TypeError):
+            pass
+    warnings = []
+    forward = span.get("days_forward")
+    if forward is not None and forward < lookahead_days:
+        # 這正是讓守衛失效的條件:預告期比守衛假設的還短時,
+        # 「D 之前 N 天內有收集過」不再蘊含「D 當天的除權息已被記錄」。
+        warnings.append(
+            f"[exdiv] ⚠ 預告表只往前 {forward} 天,短於覆蓋守衛假設的 "
+            f"{lookahead_days} 天——守衛可能高估覆蓋範圍")
+    return span, warnings
+
+
+def exdiv_lead_stats(history: dict, lookahead_days: int = 7) -> tuple:
+    """逐筆量「除權息事件提前幾天出現在預告表」;回 `(stats, warnings)`。
+
+    **只計 `first_seen > since` 的紀錄。** 收集起點那一批的 `first_seen`
+    只是「我們開始看的日子」,不是事件的公告時間,拿來當提前量會低估;
+    舊格式沒有 `first_seen` 的同理計入 `unmeasurable`。所以剛上線時
+    `observed` 會是 0 —— 那是誠實的「還不知道」,不是「假設成立」。
+
+    **短提前量是區間設限(interval-censored)的。** `first_seen` 是「第一次
+    成功看到」,抓取中斷過的話,提前 7 天公告的事件也可能到第 6 天才被看到 ——
+    那是我們的空洞,不是來源的,而誤報會永久留在 manifest 裡。所以短提前量
+    只有在「`first_seen` 之前、且落在窗口內確實成功收集過」時才算確認
+    (那一次沒看到它 ⇒ 它當時真的還沒上表),否則計入 `lead_censored`。
+    提前量 ≥ 門檻的不受影響:`first_seen` 是下界,下界已達標就是達標。
+    """
+    import datetime as _dt
+
+    since = str(history.get("since") or "")
+    days = sorted({str(d) for d in (history.get("days") or []) if d})
+    leads, short, censored, unmeasurable = [], [], 0, 0
+    for r in history.get("records") or []:
+        if not isinstance(r, dict):
+            unmeasurable += 1
+            continue
+        seen, ex = str(r.get("first_seen") or ""), str(r.get("ex_date") or "")
+        if not (seen and ex) or (since and seen <= since):
+            unmeasurable += 1
+            continue
+        try:
+            ex_date = _dt.date.fromisoformat(ex)
+            lead = (ex_date - _dt.date.fromisoformat(seen)).days
+        except (ValueError, TypeError):
+            unmeasurable += 1
+            continue
+        if lead >= lookahead_days:
+            leads.append(lead)
+            continue
+        floor = (ex_date - _dt.timedelta(days=lookahead_days)).isoformat()
+        if any(floor <= c < seen for c in days):
+            leads.append(lead)
+            short.append(lead)
+        else:
+            censored += 1
+    stats = {"lead_observed": len(leads), "lead_censored": censored,
+             "lead_unmeasurable": unmeasurable}
+    warnings = []
+    if leads:
+        stats["lead_min_days"] = min(leads)
+        stats["lead_short_count"] = len(short)
+        if short:
+            warnings.append(
+                f"[exdiv] ⚠ 有 {len(short)} 筆除權息只提前 "
+                f"{min(short)}~{max(short)} 天出現(已排除收集空洞造成的低估),"
+                f"短於覆蓋守衛假設的 {lookahead_days} 天"
+                "——抓取一中斷,那些事件就會被漏記而守衛仍放行")
+    return stats, warnings

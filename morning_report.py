@@ -12984,6 +12984,15 @@ def _record_llm_call(role: str, provider: str, model: str, *,
                            finish_reason=finish_reason, error=error,
                            elapsed=elapsed)
     rec.update({k: v for k, v in extra.items() if v not in (None, "", False)})
+    # 批#104:**設了卻沒生效必須自己跳出來。** 使用者把推理強度設成 `max`、
+    # API 拒絕、退讓後用 provider 預設跑完,信照常寄出而沒有任何告警 ——
+    # 正是本 repo 反覆出現的那種失敗(症狀是「一切照舊」)。
+    if accepted and requested_effort and applied_effort != requested_effort:
+        _DEGRADED_STEPS.append(f"llm:effort_not_applied:{role}")
+        print(f"[llm] ⚠ {role} 要求推理強度 {requested_effort},"
+              f"實際生效 {applied_effort or '(provider 預設)'}"
+              + (f" —— {extra.get('backoff_reason')}"
+                 if extra.get("backoff_reason") else ""), file=sys.stderr)
     slot = _RUN_MANIFEST.setdefault("llm", {})
     if accepted:
         slot[role] = _lt.merge_same_role(slot.get(role), rec)
@@ -13008,6 +13017,7 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         raise RuntimeError("缺 OPENAI_API_KEY 環境變數")
     use_model = model or OPENAI_MODEL
     effort = (reasoning or OPENAI_REASONING_EFFORT).strip().lower()
+    _backoff_reason = ""
     payload = {
         "model": use_model,
         "messages": [{"role": "user", "content": prompt}],
@@ -13055,7 +13065,14 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
             and _lt.response_blames_param(r, "reasoning_effort")):
         # 參數不被接受時退讓重試一次(DeepSeek 那條路徑既有的「slim 模式」同一招)
         # —— 寧可少一個旋鈕,也不要因為一個選配參數讓整份分析失敗。
-        print(f"[llm] OpenAI 400,移除 reasoning_effort 後重試:{r.text[:160]}",
+        # 批#104:**原始 400 訊息必須進 manifest,不能只印 stderr。**
+        # 2026-08-01 使用者把強度設成 `max`,API 拒絕、退讓成功、信照常寄出,
+        # 而事後唯一的線索只有 `applied_effort: null` —— 為什麼被拒絕完全查不到,
+        # 因為訊息只在 job log 裡,而 job log 要 admin 權限才讀得到。
+        # 我當時據此推論「max 對 luna 不開放」,結果與官方文件不符 ——
+        # **丟掉錯誤訊息之後,剩下的只能用猜的。**
+        _backoff_reason = _redact_secret_text(r.text)[:300]
+        print(f"[llm] OpenAI 400,移除 reasoning_effort 後重試:{_backoff_reason[:160]}",
               file=sys.stderr)
         # **建副本而不是就地 pop** —— 就地改會讓「送出去的是哪一份」變得不可追:
         # 呼叫紀錄、log、測試看到的都會是被改過的同一個物件(自測時就是這樣紅的)。
@@ -13076,6 +13093,8 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                 requested_effort=effort, applied_effort=applied_effort,
                 usage=usage, finish_reason=finish,
                 elapsed=time.monotonic() - _t0)
+    if _backoff_reason:
+        _rec["backoff_reason"] = _backoff_reason
     if finish == "length":
         _record_llm_call(**_rec, accepted=False, error="finish_reason=length")
         raise ExtractorOutputTruncated(f"OpenAI 額度用完{detail}")

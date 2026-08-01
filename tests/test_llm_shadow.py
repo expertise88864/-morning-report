@@ -1003,3 +1003,48 @@ def test_cohort_key_covers_everything_that_changes_the_distribution():
                            "shadow_effort": "high", "code_version": "abc"})
     assert legacy != fresh
     assert "legacy/unknown" in legacy
+
+
+def test_an_effort_that_does_not_take_effect_raises_a_degraded_step(monkeypatch):
+    """批#104:**設了卻沒生效必須自己跳出來。**
+
+    2026-08-01 使用者把推理強度設成 `max`,API 回 400、退讓後用 provider
+    預設跑完,信照常寄出 —— **沒有任何告警**。事後唯一的線索是 manifest 裡
+    `applied_effort: null`,而「為什麼被拒絕」查不到,因為原始訊息只印在
+    job log(要 admin 才讀得到)。我當時據此推論「max 對 luna 不開放」,
+    結果與官方文件不符 —— 丟掉錯誤訊息之後,剩下的只能用猜的。
+    """
+    import morning_report as mr
+
+    saved_slot = mr._RUN_MANIFEST.get("llm")
+    saved_deg = list(mr._DEGRADED_STEPS)
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr._DEGRADED_STEPS.clear()
+    try:
+        mr._record_llm_call("primary", "openai", "gpt-5.6-luna",
+                            requested_effort="max", applied_effort="",
+                            usage={"prompt_tokens": 10, "completion_tokens": 5},
+                            accepted=True,
+                            backoff_reason="Unsupported value: 'max'")
+        assert any("effort_not_applied" in d for d in mr._DEGRADED_STEPS), \
+            mr._DEGRADED_STEPS
+        rec = mr._RUN_MANIFEST["llm"]["primary"]
+        assert rec["requested_effort"] == "max"
+        assert rec["applied_effort"] is None
+        assert "Unsupported value" in rec["backoff_reason"], \
+            "被拒絕的原因沒有落地 —— 事後只能用猜的"
+
+        # 生效時不得誤報(常駐雜訊會把真的問題淹掉)
+        mr._DEGRADED_STEPS.clear()
+        mr._RUN_MANIFEST.pop("llm", None)
+        mr._record_llm_call("primary", "openai", "gpt-5.6-luna",
+                            requested_effort="xhigh", applied_effort="xhigh",
+                            usage={"prompt_tokens": 10, "completion_tokens": 5},
+                            accepted=True)
+        assert not any("effort_not_applied" in d for d in mr._DEGRADED_STEPS)
+    finally:
+        mr._DEGRADED_STEPS[:] = saved_deg
+        if saved_slot is None:
+            mr._RUN_MANIFEST.pop("llm", None)
+        else:
+            mr._RUN_MANIFEST["llm"] = saved_slot

@@ -34,6 +34,9 @@ from news_events import llm_event_json_schema  # noqa: E402
 
 TIMEOUT = float(os.environ.get("CANARY_TIMEOUT_SEC", "300"))
 
+#: 官方文件列出的推理強度。金絲雀逐一實測,因為**文件是宣稱、端點才是事實**。
+_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
+
 # 輸出全是中文。Linux CI 的 stdout 是 UTF-8,但本機(Windows 主控台預設 GBK)
 # 會在 print 的當下丟 UnicodeEncodeError —— 也就是說**所有檢查都跑完了,
 # 卻死在報告那一行**,而且回傳非零讓人以為是設定有問題。診斷工具自己壞掉
@@ -131,6 +134,43 @@ def probe(model: str, effort: str, *, schema=None, prompt="",
                   f"completion={usage.get('completion_tokens')}"), took, usage)
 
 
+def effort_matrix(model: str) -> list:
+    """逐一實測每個推理強度**在這個 model + 這個 endpoint 上**是否被接受(批#104)。
+
+    2026-08-01:官方文件列出 luna 支援 none…max,而生產實際送出 `max` 時
+    API 回 400 且訊息指名 `reasoning_effort` —— 文件與端點行為不一致
+    (很可能是 chat/completions 與 Responses API 的差異)。
+
+    **文件是宣稱,這裡是量測。** 每個值送一次 20-token 的小請求,
+    比對「文件說支援」與「這個端點真的收」,不一致就明白列出來。
+    """
+    out = []
+    for effort in _EFFORTS:
+        payload = {"model": model, "max_completion_tokens": 64,
+                   "messages": [{"role": "user", "content": "ok"}],
+                   "reasoning_effort": effort, "stream": False}
+        try:
+            r = requests.post(f"{_base()}/v1/chat/completions", json=payload,
+                              headers=_openai_headers(), timeout=90)
+        except Exception as e:                  # noqa: BLE001
+            out.append(Check(f"reasoning={effort}", False,
+                             f"{type(e).__name__}", fatal=False))
+            continue
+        if r.status_code == 200:
+            usage = (r.json() or {}).get("usage") or {}
+            out.append(Check(f"reasoning={effort}", True,
+                             f"接受、reasoning={lt.reasoning_tokens_of(usage)}",
+                             fatal=False))
+        else:
+            blames = lt.response_blames_param(r, "reasoning_effort")
+            out.append(Check(
+                f"reasoning={effort}", False,
+                f"HTTP {r.status_code}"
+                + ("(指名 reasoning_effort)" if blames else "")
+                + f": {r.text[:160]}", fatal=False))
+    return out
+
+
 def main() -> int:
     provider = _env("LLM_PROVIDER", "deepseek")
     extractor = _env("EXTRACTOR_PROVIDER") or provider
@@ -158,6 +198,8 @@ def main() -> int:
                 chk, took, usage = probe(model, effort, label=f"主分析 {model}")
                 checks.append(chk)
                 checks.append(_budget_verdict(took, provider, effort))
+            if provider == "openai" and _env("CANARY_EFFORT_MATRIX", "1") == "1":
+                checks.extend(effort_matrix(model))
             if extractor == "openai":
                 if ext_model != model:
                     checks.append(check_model_exists(ext_model))

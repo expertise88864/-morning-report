@@ -187,6 +187,12 @@ MODULE_CEILINGS = {
     # Luna 特化:provider 中立的證據包。它是**投影**不是渲染 ——
     # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
     "evidence_packet.py": 300,
+    # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
+    # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
+    "analysis_schema.py": 250,
+    # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
+    # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
+    "prompt_profiles.py": 250,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

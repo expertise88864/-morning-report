@@ -1,0 +1,22 @@
+[
+ {
+  "date": "2026-08-01",
+  "primary_model": "gpt-5.6-luna",
+  "shadow_model": "deepseek-v4-pro",
+  "primary_ok": true,
+  "shadow_ok": true,
+  "primary_stance": "中性",
+  "shadow_stance": "中性",
+  "stance_agree": true,
+  "stance_flipped": false,
+  "primary_score": 2,
+  "shadow_score": 2,
+  "primary_chars": 5815,
+  "shadow_chars": 5533,
+  "summary_overlap": 0.0,
+  "body_overlap": 0.375,
+  "primary_seconds": null,
+  "shadow_seconds": 93.7,
+  "score_gap": 0
+ }
+]

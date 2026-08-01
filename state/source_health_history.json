@@ -968,7 +968,7 @@
    "search.cnbc.com": true,
    "feeds.bloomberg.com": true,
    "finance.yahoo.com": true,
-   "news.google.com": false,
+   "news.google.com": true,
    "feeds.feedburner.com": true,
    "www.federalreserve.gov": true,
    "api.cnyes.com": true,

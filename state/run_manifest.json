@@ -1,33 +1,33 @@
 {
- "date": "2026-08-01 08:47",
- "total_seconds": 587.8,
+ "date": "2026-08-01 09:08",
+ "total_seconds": 869.1,
  "budget_seconds": 1140.0,
  "news_workers": 8,
  "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 5.4
+   "seconds": 5.5
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 220.1
+   "seconds": 171.3
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 6.9
+   "seconds": 6.5
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 93.7
+   "seconds": 213.0
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 139.5
+   "seconds": 179.2
   },
   {
    "label": "LLM 主分析",
-   "seconds": 118.6
+   "seconds": 289.9
   },
   {
    "label": "渲染",
@@ -48,7 +48,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 0,
+   "ok": 104,
    "fail": 4
   },
   "feeds.feedburner.com": {
@@ -140,11 +140,11 @@
  "d1_samples": 5,
  "d1_ready": false,
  "stance_dual": {
-  "llm": null,
-  "llm_label": null,
+  "llm": 2,
+  "llm_label": "中性",
   "py": 2,
   "py_label": "中性",
-  "agree": false,
+  "agree": true,
   "coverage": 1.0,
   "missing": [],
   "flags": [],
@@ -169,8 +169,8 @@
     "check": "fill_rate:txo_pc_oi_ratio",
     "severity": "warn",
     "passed": true,
-    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 25/30 筆,之後 2/6 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.333
+    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 25/30 筆,之後 3/6 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.5
    },
    {
     "source": "model_history",
@@ -240,12 +240,18 @@
  "llm_extractor": {
   "called": true,
   "items": 35,
-  "parsed": 0,
-  "valid": 0,
+  "parsed": 13,
+  "valid": 13,
   "dropped": 0,
   "retried": false,
-  "outcome": "error:ConnectionError",
-  "error": "HTTPSConnectionPool(host='api.deepseek.com', port=443): Read timed out."
+  "outcome": "ok",
+  "fallback_from": "deepseek",
+  "fallback_to": "openai",
+  "survived": 13,
+  "merged_away": 0,
+  "provenance": {
+   "source_item_id": 13
+  }
  },
  "delivery": {
   "attempted": true,
@@ -254,9 +260,7 @@
  },
  "capability_health": {
   "fatal": [],
-  "inactive_capabilities": [
-   "llm_event_extractor"
-  ],
+  "inactive_capabilities": [],
   "warnings": []
  },
  "forecast_mixed_versions": {
@@ -308,34 +312,95 @@
   "pcr_matched": true
  },
  "policy_deepdive": null,
- "llm_shadow": null,
+ "llm_shadow": {
+  "enabled": true,
+  "shadow_model": "deepseek-v4-pro",
+  "provider": "deepseek",
+  "today": {
+   "primary_model": "gpt-5.6-luna",
+   "shadow_model": "deepseek-v4-pro",
+   "primary_ok": true,
+   "shadow_ok": true,
+   "primary_stance": "中性",
+   "shadow_stance": "中性",
+   "stance_agree": true,
+   "stance_flipped": false,
+   "primary_score": 2,
+   "shadow_score": 2,
+   "primary_chars": 5815,
+   "shadow_chars": 5533,
+   "summary_overlap": 0.0,
+   "body_overlap": 0.375,
+   "primary_seconds": null,
+   "shadow_seconds": 93.7,
+   "score_gap": 0
+  },
+  "cumulative": {
+   "samples": 1,
+   "both_ok": 1,
+   "shadow_fail": 0,
+   "stance_agree_rate": 1.0,
+   "stance_flips": 0,
+   "score_gap_mean": 0.0,
+   "score_gap_abs_max": 0,
+   "body_overlap_mean": 0.375,
+   "verdict": "樣本不足(1/10)——尚不足以判斷,繼續累積"
+  }
+ },
  "llm": {
+  "extractor": {
+   "provider": "openai",
+   "model": "gpt-5.6-luna",
+   "requested_effort": "low",
+   "applied_effort": "low",
+   "prompt_tokens": 10111,
+   "completion_tokens": 1460,
+   "total_tokens": 11571,
+   "reasoning_tokens": 268,
+   "cached_tokens": 0,
+   "estimated_cost_usd": 0.003774,
+   "cost_basis": "官方牌價;推理以 output 計價",
+   "elapsed_seconds": 10.9,
+   "finish_reason": "stop",
+   "calls": 1
+  },
   "config": {
    "provider": "openai",
    "extractor": "deepseek",
    "model": "gpt-5.6-luna",
    "primary_effort": "xhigh",
-   "request_timeout": 75.0,
-   "total_timeout": 180.0,
+   "request_timeout": 420.0,
+   "total_timeout": 600.0,
    "shadow": "deepseek"
   },
-  "attempts": [
-   {
-    "role": "primary",
-    "provider": "openai",
-    "model": "gpt-5.6-luna",
-    "requested_effort": "xhigh",
-    "applied_effort": "xhigh",
-    "elapsed_seconds": 75.1,
-    "error": "ReadTimeout: HTTPSConnectionPool(host='api.openai.com', port=443): Read timed out. (read timeout=75.0)"
-   }
-  ],
   "primary": {
-   "provider": "gemini",
-   "model": "gemini-2.5-flash",
-   "requested_effort": null,
-   "applied_effort": null,
-   "elapsed_seconds": 43.5,
+   "provider": "openai",
+   "model": "gpt-5.6-luna",
+   "requested_effort": "xhigh",
+   "applied_effort": "xhigh",
+   "prompt_tokens": 93194,
+   "completion_tokens": 27933,
+   "total_tokens": 121127,
+   "reasoning_tokens": 23095,
+   "cached_tokens": 0,
+   "estimated_cost_usd": 0.052158,
+   "cost_basis": "官方牌價;推理以 output 計價",
+   "elapsed_seconds": 196.1,
+   "finish_reason": "stop",
+   "calls": 1
+  },
+  "shadow": {
+   "provider": "deepseek",
+   "model": "deepseek-v4-pro",
+   "requested_effort": "high",
+   "applied_effort": "high",
+   "prompt_tokens": 85917,
+   "completion_tokens": 4370,
+   "total_tokens": 90287,
+   "reasoning_tokens": 443,
+   "cached_tokens": 0,
+   "cost_basis": "未收錄 deepseek-v4-pro 的單價,不估",
+   "elapsed_seconds": 93.7,
    "calls": 1
   }
  }

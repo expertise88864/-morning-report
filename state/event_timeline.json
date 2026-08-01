@@ -3,13 +3,13 @@
   "first_seen": "2026-06-12",
   "days": 43,
   "last_seen": "2026-08-01",
-  "latest_title": "OpenAI blinks in face-off with Chinese rivals, drops pricing for some models up to 80%"
+  "latest_title": "AI 也搞駭客攻擊？ Anthropic承認旗下產品入侵3目標 - Newtalk新聞"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
   "days": 29,
   "last_seen": "2026-08-01",
-  "latest_title": "鄧希煒：制裁反成催化劑 推中企雙驅成長 - 中國評論新聞"
+  "latest_title": "鄧希煒：制裁反成催化劑 推中企雙驅成長 - crntt.com"
  },
  "litigation:": {
   "first_seen": "2026-07-25",
@@ -28,5 +28,17 @@
   "days": 1,
   "last_seen": "2026-07-31",
   "latest_title": "博通修補VMware三項重大漏洞，攻擊者恐繞過身分驗證，或在vCenter與ESX主機執行程式碼 - iThome"
+ },
+ "geopolitical:Iran": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "Trump vows continued heavy US attacks on Iran"
+ },
+ "geopolitical:Strait of Hormuz": {
+  "first_seen": "2026-08-01",
+  "days": 1,
+  "last_seen": "2026-08-01",
+  "latest_title": "Iran conflict disrupts oil transport through Hormuz"
  }
 }

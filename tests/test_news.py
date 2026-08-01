@@ -2227,7 +2227,9 @@ def test_subject_key_is_computed_in_the_production_extraction_path():
           "published": "2026-07-30T01:00:00+00:00"}], [], None, now,
         known_names={"2330": "台積電", "AAPL": "蘋果 Apple"})
     assert out and out[0].get("subject_key"), "生產路徑沒有算出對象指紋"
-    assert "蘋果" in out[0]["subject_key"]
+    # 批#107(Event Identity v4):指紋吐的是**代號**不是別名 ——
+    # 這樣「蘋果」與「Apple」才會收斂到同一個事件身分。
+    assert "aapl" in out[0]["subject_key"], out[0]["subject_key"]
 
 
 def test_subject_lineage_is_bounded_by_year():
@@ -2256,6 +2258,8 @@ def test_subject_key_handles_multi_token_vocabulary_entries():
     `_8K_QUERY_BY_TICKER` 是同一個坑(那邊處理過,這裡又犯一次)。"""
     import news_events as ne
     V = ("蘋果 Apple", "輝達 NVIDIA")
+    # 這個案例的 `known_names` 是**字串 tuple**(沒有代號),所以無從正規化,
+    # 回退成別名是正確行為 —— Event Identity v4 只在拿得到代號時才收斂。
     assert "蘋果" in ne.event_subject_key("台積電獲蘋果大單", "2330", "台積電", V)
     assert "nvidia" in ne.event_subject_key(
         "TSMC lands NVIDIA order", "2330", "台積電", V).lower()
@@ -2276,7 +2280,7 @@ def test_subject_key_excludes_the_entity_own_aliases_and_topic_words():
     assert f("美光記憶體報價調漲", "MU") == "", "主題詞被當成對象"
     assert f("微軟 AI 資本支出上調", "MSFT") == "", "AI 被當成對象"
     # 對照組:真正的第三方對象仍要抓到
-    assert "蘋果" in f("台積電獲蘋果2奈米大單", "2330")
+    assert "aapl" in f("台積電獲蘋果2奈米大單", "2330")
 
 
 def test_alias_map_is_separate_from_search_queries():
@@ -2527,3 +2531,91 @@ def test_latest_of_multiple_sources_is_chosen_by_parsed_time_not_string():
     assert out[0]["provenance"] == "source_item_id"
     # 09:00 (RFC) 才是最新;字串反向排序會誤選 "2026-07-30T02:00"
     assert mr._parse_news_time_required(out[0]["published"]).hour == 9
+
+
+def test_event_identity_v4_canonicalises_subject_and_spec():
+    """第八輪 Event Identity v4:**同一個對象不論用哪個名字寫,都要是同一個指紋。**
+
+    2026-08-01 實測(批#107 之前):
+        「台積電確認蘋果2奈米訂單」→ '2奈米,蘋果'
+        「台積電獲Apple 2奈米訂單」→ '2奈米,apple'
+    同一筆訂單、同一句中文,只因為對手方寫成英文就變成兩個事件 ——
+    生命週期(rumor→confirmed→implemented)因此接不起來。
+
+    規格同病:`2奈米` 與 `2nm` 是同一個製程節點。
+    """
+    from news_events import event_subject_key
+
+    kn = {"AAPL": ("蘋果", "Apple"), "NVDA": ("輝達", "NVIDIA"),
+          "MSFT": ("微軟", "Microsoft")}
+
+    def key(title):
+        return event_subject_key(title, entity="2330",
+                                 entity_aliases=("台積電", "TSMC"), known_names=kn)
+
+    # 該合的要合
+    for a, b in (("台積電獲蘋果2奈米大單", "TSMC wins Apple 2nm order"),
+                 ("台積電確認蘋果2奈米訂單", "台積電獲Apple 2奈米訂單"),
+                 ("台積電獲輝達CoWoS追加訂單", "TSMC gets NVIDIA CoWoS order")):
+        assert key(a) == key(b) != "", f"{a} / {b} → {key(a)!r} vs {key(b)!r}"
+
+    # **該分的仍要分** —— 正規化不得把不同對象或不同規格併在一起
+    for a, b in (("台積電獲蘋果2奈米大單", "台積電獲輝達CoWoS追加訂單"),
+                 ("台積電獲蘋果2奈米大單", "台積電獲蘋果3奈米大單"),
+                 ("台積電獲蘋果訂單", "台積電獲微軟訂單")):
+        assert key(a) != key(b), f"{a} / {b} 被錯誤合併成 {key(a)!r}"
+
+    # 指紋要是代號而不是別名(否則只是換個字串、下次又漂)
+    assert key("台積電獲蘋果2奈米大單") == "2nm,aapl"
+
+
+def test_ambiguous_aliases_are_not_canonicalised():
+    """**一個別名對到多家公司時不猜。**
+
+    「中信」既是中信金也是中信兄弟。猜錯的代價是把兩家公司的事件合併,
+    比不合併嚴重得多 —— 所以歧義時退回原本的別名行為(誠實的降級)。
+    """
+    from news_events import _alias_to_code
+
+    m = _alias_to_code({"AAPL": ("蘋果", "Apple"), "FRUIT": ("蘋果",),
+                        "NVDA": ("輝達", "NVIDIA")})
+    assert "蘋果" not in m, "歧義的別名被硬指派了"
+    assert m.get("apple") == "aapl" and m.get("nvidia") == "nvda"
+    assert _alias_to_code(None) == {} and _alias_to_code(("不是 dict",)) == {}
+
+
+def test_changing_the_identity_formula_bumps_the_schema_version():
+    """**指紋公式改了就必須跳版。**
+
+    不跳的話,舊的 schema-3 事件會被當成同代而錯誤接續:同一筆訂單的舊 ID
+    是 `2奈米,蘋果`、新 ID 是 `2nm,aapl`,兩者並存卻都自稱當代,
+    event-study 會把它算成兩個獨立的可信事件。
+    """
+    from news_events import EVENT_SCHEMA_VERSION, _canon_spec
+
+    assert EVENT_SCHEMA_VERSION >= 4, "v4 的身分公式上線了,版本沒跟著跳"
+    # 正規化本身要冪等,否則同一份輸入跑兩次會得到兩個身分
+    for raw in ("2 奈米", "2nm", "2NM", "12吋"):
+        assert _canon_spec(raw) == _canon_spec(_canon_spec(raw))
+    assert _canon_spec("2 奈米") == "2nm" and _canon_spec("12吋") == "12in"
+
+
+def test_the_production_path_supplies_codes_so_v4_is_not_a_no_op():
+    """**v4 只在拿得到代號時才收斂 —— 所以生產路徑必須給 dict。**
+
+    `event_subject_key` 對「沒有代號」的輸入會誠實退回別名行為。那個降級是對的,
+    但它也意味著:如果哪天有人把生產傳進來的詞彙表改成字串序列,
+    正規化會**靜默失效**,而症狀只是「事件比預期多」—— 沒有錯誤、沒有告警。
+
+    這個 repo 已經有過「機制存在但生產沒產出」的實例,所以這裡直接釘住形狀。
+    """
+    import morning_report as mr
+
+    table = mr._entity_alias_map([{"code": "2330", "name": "台積電"}])
+    assert isinstance(table, dict), "生產詞彙表不是 dict —— v4 會靜默失效"
+    assert table.get("2330") == ("台積電",)
+    assert "AAPL" in table and "蘋果" in table["AAPL"]
+    # 拿這張真表跑一次,確認吐的是代號
+    key = mr.event_subject_key("台積電獲蘋果2奈米大單", entity="2330",
+                               entity_aliases=("台積電",), known_names=table)
+    assert key == "2nm,aapl", key

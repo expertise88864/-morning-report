@@ -407,6 +407,44 @@ _SUBJECT_LATIN_RE = _re_module.compile(r"[A-Za-z][A-Za-z0-9]{2,}")
 #: 製程節點/規格(2奈米、3nm、HBM3E):它們是事件的**對象**,鑑別力很高
 _SUBJECT_SPEC_RE = _re_module.compile(r"\d+\s*(?:奈米|nm|吋|GW|MW)", _re_module.I)
 
+#: 規格單位的中英對照(Event Identity v4)。`2奈米` 與 `2nm` 是同一件事,
+#: 但它們原本是兩個不同的 token —— 於是「台積電獲蘋果2奈米大單」與
+#: 「TSMC wins Apple 2nm order」的主體指紋不同,同一筆訂單被當成兩個事件。
+_SPEC_UNIT_CANON = {"奈米": "nm", "吋": "in"}
+
+
+def _canon_spec(text: str) -> str:
+    """規格 token 正規化:去空白、單位轉成英文、統一小寫。"""
+    out = _re_module.sub(r"\s+", "", str(text or "")).lower()
+    for zh, en in _SPEC_UNIT_CANON.items():
+        out = out.replace(zh, en)
+    return out
+
+
+def _alias_to_code(known_names) -> dict:
+    """`{別名 token: 代號}`。**一個別名對到多個代號時視為歧義,不收。**
+
+    Event Identity v4:主體指紋原本吐出「比對到的別名字串」,所以
+    `蘋果` 與 `Apple` 是兩個不同的 token。改成吐出**代號**之後,
+    同一家公司不論用哪個名字寫都會收斂到同一個指紋。
+
+    歧義的例子是真實存在的(「中信」既是中信金也是中信兄弟),
+    而猜錯的代價是把兩家公司的事件合併 —— 那比不合併嚴重得多,
+    所以歧義時回退成原本的別名行為(誠實的降級)。
+    """
+    hits: dict = {}
+    if not hasattr(known_names, "items"):
+        return {}
+    for code, raw in known_names.items():
+        code = str(code or "").strip()
+        if not code:
+            continue
+        for alias in ((raw,) if isinstance(raw, str) else (raw or ())):
+            for piece in str(alias or "").split():
+                if len(piece) >= 2:
+                    hits.setdefault(piece.lower(), set()).add(code.lower())
+    return {k: next(iter(v)) for k, v in hits.items() if len(v) == 1}
+
 
 def event_subject_key(title: str, entity: str = "",
                       entity_aliases=(), known_names=None) -> str:
@@ -456,18 +494,28 @@ def event_subject_key(title: str, entity: str = "",
         for alias in ((raw,) if isinstance(raw, str) else (raw or ())):
             for piece in str(alias or "").split():
                 candidates.append(piece)
+    # Event Identity v4:比對到別名時吐出**代號**而不是別名字串。
+    # 實測(2026-08-01)原本的行為:
+    #   「台積電確認蘋果2奈米訂單」→ '2奈米,蘋果'
+    #   「台積電獲Apple 2奈米訂單」→ '2奈米,apple'
+    # 同一筆訂單、同一句中文,只因為對手方寫成英文就變成兩個事件。
+    # 歧義的別名(對到多個代號)查不到,自然退回原本的別名行為。
+    alias_code = _alias_to_code(known_names)
     for raw in candidates:
         nm = str(raw or "").strip()
         if len(nm) < 2 or nm.lower() in mine or nm.isdigit():
             continue
+        canon = alias_code.get(nm.lower(), nm.lower())
+        if canon in mine:            # 自己的代號也算自己
+            continue
         if any("一" <= ch <= "鿿" for ch in nm):
             if nm in text:
-                tokens.add(nm.lower())
+                tokens.add(canon)
             continue
         if _re_module.search(
                 rf"(?<![A-Za-z0-9]){_re_module.escape(nm)}(?![A-Za-z0-9])",
                 text, _re_module.I):
-            tokens.add(nm.lower())
+            tokens.add(canon)
     # 拉丁字母只收**專有名詞/型號**,不收普通字詞。自測抓到:原本什麼都收,
     # 「TSMC wins Apple 2nm order」的指紋是 `2nm,apple,order,tsmc,wins` ——
     # 換個動詞(secures/lands)指紋就變了,身分完全不穩,而身分必須可重現。
@@ -479,9 +527,16 @@ def event_subject_key(title: str, entity: str = "",
             continue
         if not (m.isupper() or any(ch.isupper() for ch in m[1:])):
             continue
-        tokens.add(up.lower())
+        # v4:這一圈也要正規化。自測抓到:「TSMC gets NVIDIA CoWoS order」
+        # 的 NVIDIA 全大寫,會被當成型號再收一次 —— 指紋變成
+        # `cowos,nvda,nvidia`,而中文版是 `cowos,nvda`,兩邊照樣分開。
+        # 別名比對與型號掃描是兩條獨立的路徑,只修一條等於沒修。
+        canon = alias_code.get(up.lower(), up.lower())
+        if canon in mine:
+            continue
+        tokens.add(canon)
     for m in _SUBJECT_SPEC_RE.findall(text):
-        tokens.add(_re_module.sub(r"\s+", "", m).lower())
+        tokens.add(_canon_spec(m))     # v4:2奈米 與 2nm 是同一個規格
     if not tokens:
         return ""
     return ",".join(sorted(tokens))[:60]
@@ -675,7 +730,12 @@ def apply_event_timeline(model_history: list[dict],
 #: 事件身分公式的世代。批#72 起為 3(direction 移出 event_id、非期別型改用
 #: 對象指紋)。event-study 只信任**當代**的 event_id;更舊的 evidence 走
 #: session 級 fallback,避免兩代 ID 把同一事件算成兩個可信事件。
-EVENT_SCHEMA_VERSION = 3
+#:
+#: 批#107 起為 4(Event Identity v4:對象與規格正規化)。指紋公式改了就必須
+#: 跳版 —— 不跳的話,舊的 schema-3 事件會被當成同代而錯誤接續:
+#: 同一筆訂單的舊 ID 是 `2奈米,蘋果`、新 ID 是 `2nm,aapl`,
+#: 兩者並存卻都自稱當代,event-study 會把它算成兩個獨立的可信事件。
+EVENT_SCHEMA_VERSION = 4
 
 
 def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:

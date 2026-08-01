@@ -88,6 +88,15 @@ jobs:
           DEEPSEEK_MODEL: deepseek-v4-pro
           GEMINI_MODEL: gemini-2.5-flash
           CLAUDE_MODEL: claude-sonnet-4-6
+          # r2(Codex,#6):**strict 探測是在這個 job 裡跑的,不是 canary job。**
+          # 我 r1 只把變數加到 canary,於是 `probe_responses_strict` 仍然看到
+          # 預設的 chat_completions 而**靜默略過** —— job 照樣綠,
+          # 而它宣稱驗過的正是那條新路徑。
+          OPENAI_REASONING_EFFORT: ${{ vars.OPENAI_REASONING_EFFORT || 'medium' }}
+          OPENAI_API_MODE: ${{ vars.OPENAI_API_MODE || 'chat_completions' }}
+          OPENAI_TEXT_VERBOSITY: ${{ vars.OPENAI_TEXT_VERBOSITY || 'high' }}
+          OPENAI_REASONING_SUMMARY: ${{ vars.OPENAI_REASONING_SUMMARY || 'auto' }}
+          OPENAI_REASONING_CONTEXT: ${{ vars.OPENAI_REASONING_CONTEXT || 'current_turn' }}
           # **只給這一個 provider 的金鑰**:matrix 的其他 job 拿不到它。
           OPENAI_API_KEY: ${{ matrix.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
           DEEPSEEK_API_KEY: ${{ matrix.provider == 'deepseek' && secrets.DEEPSEEK_API_KEY || '' }}

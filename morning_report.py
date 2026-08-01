@@ -13482,7 +13482,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
             if packet is not None and LLM_EXPERIMENT_ID:
                 _today = out.get("today") or {}
                 _sha = _ep.evidence_sha(packet)
-                stat["experiment"] = _lx.build_record(
+                _RUN_MANIFEST["llm_experiment"] = _lx.build_record(
                     today=now_tpe.strftime("%Y-%m-%d"),
                     experiment_id=LLM_EXPERIMENT_ID,
                     primary={"profile": primary_profile,
@@ -13505,7 +13505,10 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
                             # 永遠是 None,於是**每一天的影子都被記成失敗**,
                             # 十配對永遠湊不滿。
                             "ok": bool(_today.get("shadow_ok")),
-                            "prompt_sha": _today.get("shadow_prompt_sha")},
+                            # r2(Codex,#3):`llm_shadow` 記的鍵是
+                            # `prompt_sha`(那一列就是影子的紀錄),
+                            # 不是 `shadow_prompt_sha`。
+                            "prompt_sha": _today.get("prompt_sha")},
                     # 影子送的是同一個 packet 產生的 legacy prompt,
                     # 所以兩邊的證據指紋**必然相同** —— 這裡記下來讓它可稽核,
                     # 而不是靠「我知道它一樣」。
@@ -14067,7 +14070,11 @@ def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
         return
     try:
         sha = _ep.evidence_sha(packet)
-        _RUN_MANIFEST.setdefault("llm_shadow", {})["experiment"] = _lx.build_record(
+        # r2(Codex,#4):**不得寫進 `llm_shadow`。** 主分析失敗後仍會走既有
+        # 路徑,而那條路徑結尾的 `_RUN_MANIFEST["llm_shadow"] = stat` 是**整包
+        # 指派**,會把這裡寫的失敗紀錄整個蓋掉 —— 可靠度又回到只量成功的天。
+        # 放在自己的鍵下,誰都蓋不到。
+        _RUN_MANIFEST["llm_experiment"] = _lx.build_record(
             today=dt.datetime.now(TPE).strftime("%Y-%m-%d"),
             experiment_id=LLM_EXPERIMENT_ID,
             primary={"profile": "luna56_xhigh_v1",
@@ -14083,7 +14090,7 @@ def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
                     "effort": LLM_SHADOW_REASONING_EFFORT, "ok": False},
             evidence_sha_primary=sha, evidence_sha_shadow=sha,
             code_version=SHADOW_COHORT_VERSION)
-        _RUN_MANIFEST["llm_shadow"]["experiment"]["failure_reason"] = reason[:60]
+        _RUN_MANIFEST["llm_experiment"]["failure_reason"] = reason[:60]
     except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
         print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)
 

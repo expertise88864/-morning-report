@@ -122,13 +122,15 @@ def test_data_gaps_and_contradictions_reach_the_email():
     assert "失效條件" in md and "台積電法說釋出降價訊號" in md
 
 
-def test_scenarios_carry_their_probabilities():
-    """情境沒有機率就只是三段散文,判讀不出模型到底偏哪邊。"""
+def test_scenario_narratives_reach_the_email_but_model_probabilities_do_not():
+    """情境敘述要進信;**模型自訂的機率不進**(數字權威屬於 Python)。"""
     md = ar.render(_obj())
-    # r1(Codex,#5):機率是**模型主觀估計**,渲染必須標明出處 ——
-    # 一封財經信裡的「基準 60%」讀起來就像 Python 算的。
-    assert "基準（模型主觀機率 60%）" in md, md
-    assert "偏空（模型主觀機率 15%）" in md, md
+    # r2(Codex,#5):**機率不進信件。** 信裡出現的數字必須是 Python 算的,
+    # 而情境機率沒有任何 Python 來源;標明「模型主觀」仍不滿足那個不變式。
+    # 情境**敘述**要在(那是判讀的內容),數字留在 JSON 供指標使用。
+    assert "基準" in md and "區間震盪" in md
+    assert "偏空" in md and "跌破季線" in md
+    assert "60%" not in md and "15%" not in md, f"模型自訂的機率進了信件:{md}"
 
 
 def test_rendering_is_deterministic():

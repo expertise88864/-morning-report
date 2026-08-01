@@ -282,10 +282,12 @@ def test_a_failed_luna_day_still_produces_an_experiment_record(
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
-    mr._RUN_MANIFEST.pop("llm_shadow", None)
+    mr._RUN_MANIFEST.pop("llm_experiment", None)
     mr._call_llm_analysis_impl(*_ARGS)
 
-    rec = (mr._RUN_MANIFEST.get("llm_shadow") or {}).get("experiment") or {}
+    # r2(Codex,#4):**紀錄放在自己的鍵下。** 寫進 `llm_shadow` 會被既有路徑
+    # 結尾的整包指派蓋掉 —— 可靠度又回到只量成功的那些天。
+    rec = mr._RUN_MANIFEST.get("llm_experiment") or {}
     assert rec, "Luna 失敗的那天沒有留下實驗紀錄"
     assert rec["primary_ok"] is False and rec["shadow_ok"] is False
     assert rec["experiment_id"] == "luna56-xhigh-vs-dsv4pro-v1"
@@ -308,3 +310,28 @@ def test_recording_the_failure_never_breaks_the_email(luna_on, monkeypatch):
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+
+
+def test_the_failure_record_survives_the_legacy_shadow_run(luna_on, monkeypatch):
+    """r2(Codex,#4):失敗紀錄**不得被既有路徑的影子結果蓋掉**。
+
+    `_run_llm_shadow` 結尾是 `_RUN_MANIFEST["llm_shadow"] = stat` —— 整包指派。
+    紀錄若寫在那個鍵底下,主分析失敗那天的證據會在幾行之後消失,
+    而可靠度指標又回到「只量 Luna 成功的那些天」。
+    """
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
+    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+
+    def _shadow_that_overwrites(prompt, primary_text, now, **kw):
+        # 真實 `_run_llm_shadow` 的最後一行就是這個形狀
+        mr._RUN_MANIFEST["llm_shadow"] = {"skipped": "disabled"}
+
+    monkeypatch.setattr(mr, "_run_llm_shadow", _shadow_that_overwrites)
+    mr._RUN_MANIFEST.pop("llm_experiment", None)
+    mr._call_llm_analysis_impl(*_ARGS)
+    assert (mr._RUN_MANIFEST.get("llm_experiment") or {}).get("primary_ok") is False, \
+        "失敗紀錄被影子的整包指派蓋掉了"

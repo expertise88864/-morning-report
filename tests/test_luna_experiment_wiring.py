@@ -157,3 +157,44 @@ def test_a_bad_integer_variable_does_not_kill_the_run():
     finally:
         os.environ.clear()
         os.environ.update(saved)
+
+
+RESPONSES_VARS = ("OPENAI_API_MODE", "OPENAI_TEXT_VERBOSITY",
+                  "OPENAI_REASONING_SUMMARY", "OPENAI_REASONING_CONTEXT")
+
+
+def _canary_workflow():
+    from pathlib import Path
+    return yaml.safe_load((Path(__file__).resolve().parents[1] / ".github"
+                           / "workflows" / "validate-llm-config.yml").read_text(
+        encoding="utf-8"))
+
+
+def test_the_job_that_runs_the_strict_probe_gets_the_mode_variable():
+    """r2(Codex,#6):**strict 探測跑在 matrix `probe` job,不是 `canary`。**
+
+    我 r1 只把變數加到 canary,於是探測仍看到預設的 chat_completions 而
+    **靜默略過** —— job 照樣綠,而它宣稱驗過的正是那條新路徑。
+    這條直接盯**執行 validate_llm_config.py 的那一步**的 env。
+    """
+    wf = _canary_workflow()
+    for job_name, job in wf["jobs"].items():
+        steps = [s for s in job["steps"]
+                 if "validate_llm_config.py" in str(s.get("run") or "")]
+        if not steps:
+            continue
+        env = steps[0].get("env") or {}
+        for var in RESPONSES_VARS:
+            assert var in env, f"{job_name} 這一步沒有拿到 {var}"
+            assert f"vars.{var}" in str(env[var]), f"{var} 沒有接到自己的 variable"
+        assert "OPENAI_REASONING_EFFORT" in env, \
+            f"{job_name} 沒有拿到推理強度 —— strict 探測會用錯的檔位"
+
+
+def test_at_least_one_job_actually_runs_the_probe():
+    """空集合不算通過:找不到執行 canary 的步驟時要紅,不是安靜跳過。"""
+    wf = _canary_workflow()
+    runners = [j for j in wf["jobs"].values()
+               if any("validate_llm_config.py" in str(s.get("run") or "")
+                      for s in j["steps"])]
+    assert runners, "沒有任何 job 執行 validate_llm_config.py"

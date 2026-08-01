@@ -40,6 +40,11 @@ DIAGNOSTIC_KEYS = (
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
     "state_writes", "event_identity",
+    # Luna 特化實驗:**這一列是十配對的原始資料**。
+    # r2(Codex,#4):刻意獨立於 `llm_shadow` —— 那個鍵在既有路徑結尾是
+    # **整包指派**,寫在它底下的失敗紀錄會被靜默蓋掉,而可靠度指標
+    # 又回到「只量 Luna 成功的那些天」。
+    "llm_experiment",
 )
 
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,

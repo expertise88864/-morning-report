@@ -535,10 +535,17 @@ def test_cached_input_tokens_are_read_from_either_providers_field():
     both = {"prompt_tokens_details": {"cached_tokens": 40},
             "prompt_cache_hit_tokens": 25}
     assert lt.cached_tokens_of(both) in (40, 25)
-    # 快取命中要讓成本標註成「上界」,而不是安靜地按全價算完就當精確值
+    # 快取要讓成本標註出**兩個方向**:命中以全價計 → 此項偏高;
+    # 寫入的費率未收錄且未計入 → 此項偏低。批#100 之前只講了偏高的那一半,
+    # 而 2026-08-01 的實際帳單正好高於估計值 —— 只講一邊會誤導判讀方向。
     basis = lt.estimate_cost("gpt-5.6-luna", dict(
         prompt_tokens=1000, completion_tokens=100, **both))["basis"]
-    assert "上界" in basis
+    assert "偏高" in basis, basis
+    with_write = lt.estimate_cost("gpt-5.6-luna", {
+        "prompt_tokens": 1000, "completion_tokens": 100,
+        "prompt_tokens_details": {"cached_tokens": 0,
+                                  "cache_write_tokens": 900}})["basis"]
+    assert "偏低" in with_write, with_write
 
 
 def test_cost_and_elapsed_accumulate_across_retries():
@@ -877,3 +884,64 @@ def test_the_shadow_cannot_send_a_different_prompt_than_the_primary():
         "影子的呼叫函式在 body 裡用了外層的 `prompt` —— "
         "那就繞過了「送出去的必定是 run_comparison 交進來的那一份」")
     assert "prompt=prompt" in src, "沒有把主分析的 prompt 交給 run_comparison"
+
+
+def test_cost_summary_says_when_it_is_incomplete():
+    """批#100:**逾時的呼叫照樣計費,但沒有 usage 可讀。**
+
+    2026-08-01 實際帳單約 $0.1,而 manifest 只記到 $0.056 —— 差額主要是
+    08:57 那班逾時 75 秒的呼叫:server 端已經生成的 token 不會因為 client
+    放棄就不算,可是它進不了加總。
+
+    只報一個看起來精確的總額,會讓人以為帳單對不上是別的原因。
+    **成本估算若只在成功時準確,它在最該看的時候(一直逾時的那幾天)最不準。**
+    """
+    import llm_telemetry as lt
+
+    clean = lt.run_cost_summary({
+        "primary": {"model": "gpt-5.6-luna", "estimated_cost_usd": 0.05,
+                    "calls": 1},
+        "extractor": {"model": "gpt-5.6-luna", "estimated_cost_usd": 0.004,
+                      "calls": 1}})
+    assert clean["total_usd"] == pytest.approx(0.054)
+    assert clean["measured_calls"] == 2
+    assert "incomplete" not in clean, clean
+
+    with_timeout = lt.run_cost_summary({
+        "primary": {"model": "gpt-5.6-luna", "estimated_cost_usd": 0.05,
+                    "calls": 1},
+        "attempts": [{"role": "primary", "provider": "openai",
+                      "error": "ReadTimeout", "billable_unmeasured": True}]})
+    assert with_timeout["unmeasured_billable_calls"] == 1
+    assert "incomplete" in with_timeout
+    assert "計費" in with_timeout["incomplete"]
+
+    # 未收錄單價的模型也要說(DeepSeek 目前就是)
+    mixed = lt.run_cost_summary({"primary": {"model": "deepseek-v4-pro",
+                                             "prompt_tokens": 100, "calls": 1}})
+    assert "deepseek-v4-pro" in mixed.get("incomplete", "")
+
+
+def test_cache_write_tokens_are_recorded_and_flagged_in_the_basis():
+    """批#100:`cache_write_tokens` 原本完全沒被記。
+
+    2026-08-01 實測回應是 `{cached_tokens: 0, cache_write_tokens: 93191}` ——
+    我只記了前者(當天是 0),於是「快取」在 manifest 裡看起來完全沒發生。
+    寫入通常另有費率,而那個費率我沒有出處 → 估計值因此**偏低**,要講出來。
+    """
+    import llm_telemetry as lt
+
+    usage = {"prompt_tokens": 93_194, "completion_tokens": 27_933,
+             "prompt_tokens_details": {"cached_tokens": 0,
+                                       "cache_write_tokens": 93_191},
+             "completion_tokens_details": {"reasoning_tokens": 23_095}}
+    assert lt.cache_write_tokens_of(usage) == 93_191
+    rec = lt.build_record("openai", "gpt-5.6-luna", usage=usage)
+    assert rec["cache_write_tokens"] == 93_191
+    assert rec["reasoning_tokens"] == 23_095
+    # 這一天的實測成本:input 93,194×$0.20/M + output 27,933×$1.20/M
+    assert rec["estimated_cost_usd"] == pytest.approx(0.0522, abs=1e-4)
+    assert "偏低" in rec["cost_basis"], "沒說出估計值可能低於帳單"
+    # 重試要累加,否則與帳單對不上
+    merged = lt.merge_same_role(lt.merge_same_role(None, rec), rec)
+    assert merged["cache_write_tokens"] == 2 * 93_191

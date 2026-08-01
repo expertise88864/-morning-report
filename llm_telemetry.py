@@ -116,6 +116,9 @@ def build_record(provider: str, model: str, *, requested_effort: str = "",
         ct = cached_tokens_of(usage)
         if ct is not None:
             rec["cached_tokens"] = ct
+        cw = cache_write_tokens_of(usage)
+        if cw is not None:
+            rec["cache_write_tokens"] = cw
         cost = estimate_cost(model, usage)
         if cost["usd"] is not None:
             rec["estimated_cost_usd"] = cost["usd"]
@@ -133,7 +136,7 @@ def build_record(provider: str, model: str, *, requested_effort: str = "",
 
 #: 同一角色的重試要累加,否則與帳單對不上。
 _ACCUMULATE = ("prompt_tokens", "completion_tokens", "total_tokens",
-               "reasoning_tokens")
+               "reasoning_tokens", "cached_tokens", "cache_write_tokens")
 
 
 #: 這些是浮點,要分開累加(`isinstance(x, int)` 對 float 是 False,
@@ -377,6 +380,20 @@ MODEL_PRICING = {
 }
 
 
+def cache_write_tokens_of(usage: Optional[dict]) -> Optional[int]:
+    """寫入快取的 token 數(批#100)。
+
+    2026-08-01 實測回應:`prompt_tokens_details: {cached_tokens: 0,
+    cache_write_tokens: 93191}` —— 我原本只記 `cached_tokens`(當天是 0),
+    於是「快取」這件事在 manifest 裡看起來完全沒發生,而實際上有 93,191 個
+    token 被寫進快取。寫入通常另有費率,**沒收錄費率就不能假裝成本是精確的**。
+    """
+    det = usage.get("prompt_tokens_details") if isinstance(usage, dict) else None
+    if isinstance(det, dict) and isinstance(det.get("cache_write_tokens"), int):
+        return det["cache_write_tokens"]
+    return None
+
+
 def cached_tokens_of(usage: Optional[dict]) -> Optional[int]:
     """快取命中的輸入 token 數。兩家的欄位名不同,**擇一不相加**。
 
@@ -423,7 +440,12 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
     basis = "官方牌價;推理以 output 計價"
     cached = cached_tokens_of(usage)
     if cached:
-        basis += f";快取命中 {cached} tok 以全價計(折扣未收錄),故為上界"
+        basis += f";快取命中 {cached} tok 以全價計(折扣未收錄),此項偏高"
+    written = cache_write_tokens_of(usage)
+    if written:
+        # 兩個方向要一起講。只講「上界」會讓人以為實付一定更低,
+        # 而 2026-08-01 的帳單就高於這裡的估計。
+        basis += f";另有 {written} tok 寫入快取,其費率未收錄、**未計入**,此項偏低"
     return {"usd": round(usd, 6), "basis": basis}
 
 
@@ -447,3 +469,47 @@ def fallback_extractor_provider(primary: str, has_key) -> str:
         if cand != p and has_key(PROVIDER_KEY_ENV[cand]):
             return cand
     return ""
+
+
+#: 角色槽位(`attempts` 是失敗紀錄的清單,不是角色)。
+_ROLE_SLOTS = ("primary", "extractor", "shadow")
+
+
+def run_cost_summary(slot: Optional[dict]) -> dict:
+    """把整班的 LLM 成本彙整成可以跟帳單對照的數字(批#100)。
+
+    **重點是誠實標記「這個數字不完整」。**
+
+    逾時的呼叫照樣計費 —— server 端已經生成的 token 不會因為 client 放棄就
+    不算 —— 但它沒有 usage 可讀,所以永遠進不了加總。2026-08-01 實際帳單約
+    $0.1,而 manifest 只記到 $0.056,差額主要就是 08:57 那班逾時 75 秒的呼叫。
+
+    只報一個看起來精確的總額,會讓人以為帳單對不上是別的原因;
+    **成本估算如果只在成功時準確,它在最該看的時候(一直逾時的那幾天)最不準。**
+    """
+    slot = slot or {}
+    total, measured, models = 0.0, 0, set()
+    for role in _ROLE_SLOTS:
+        rec = slot.get(role)
+        if not isinstance(rec, dict):
+            continue
+        models.add(str(rec.get("model") or ""))
+        if isinstance(rec.get("estimated_cost_usd"), (int, float)):
+            total += rec["estimated_cost_usd"]
+            measured += int(rec.get("calls") or 1)
+        elif rec.get("prompt_tokens"):
+            measured += int(rec.get("calls") or 1)
+    billed_unknown = [a for a in (slot.get("attempts") or [])
+                      if isinstance(a, dict) and a.get("billable_unmeasured")]
+    out = {"total_usd": round(total, 6), "measured_calls": measured,
+           "unmeasured_billable_calls": len(billed_unknown)}
+    notes = []
+    if billed_unknown:
+        notes.append(f"另有 {len(billed_unknown)} 次呼叫已送出但沒有 usage"
+                     "(逾時/連線中斷)—— 那些仍會計費,**不在總額內**")
+    unknown_price = sorted(m for m in models if m and price_of(m) is None)
+    if unknown_price:
+        notes.append(f"未收錄單價:{'、'.join(unknown_price)}")
+    if notes:
+        out["incomplete"] = ";".join(notes)
+    return out

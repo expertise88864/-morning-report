@@ -467,6 +467,11 @@ def _write_run_manifest(now_tpe) -> None:
         total = round(marks[-1][1] - marks[0][1], 1) if len(marks) >= 2 else 0.0
         feeds = {h: {"ok": int((s or {}).get("ok", 0)), "fail": int((s or {}).get("fail", 0))}
                  for h, s in (_FEED_STATS or {}).items()}
+        # 批#100:整班的成本彙整,**含「有幾次量不到」**。逾時的呼叫照樣計費
+        # 而沒有 usage 可讀,只報一個看似精確的總額會讓帳單對不上時無從查起。
+        if isinstance(_RUN_MANIFEST.get("llm"), dict):
+            _RUN_MANIFEST["llm"]["cost_summary"] = _lt.run_cost_summary(
+                _RUN_MANIFEST["llm"])
         manifest = {
             "date": now_tpe.strftime("%Y-%m-%d %H:%M"),
             "total_seconds": total,
@@ -12951,7 +12956,7 @@ def _record_llm_call(role: str, provider: str, model: str, *,
                      requested_effort: str = "", applied_effort: str = "",
                      usage: Optional[dict] = None, accepted: bool = False,
                      finish_reason: str = "", error: str = "",
-                     elapsed: float = 0.0) -> None:
+                     elapsed: float = 0.0, **extra) -> None:
     """記錄一次 LLM 呼叫。**依角色分槽**(批#91,第九輪 P0-2)。
 
     批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,每次呼叫
@@ -12969,6 +12974,7 @@ def _record_llm_call(role: str, provider: str, model: str, *,
                            applied_effort=applied_effort, usage=usage,
                            finish_reason=finish_reason, error=error,
                            elapsed=elapsed)
+    rec.update({k: v for k, v in extra.items() if v not in (None, "", False)})
     slot = _RUN_MANIFEST.setdefault("llm", {})
     if accepted:
         slot[role] = _lt.merge_same_role(slot.get(role), rec)
@@ -13025,10 +13031,13 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         r = requests.post(url, json=payload, headers=headers,
                           timeout=timeout or _llm_request_timeout())
     except Exception as _e:
+        # 批#100:**這次呼叫已經送出,server 端照樣計費。** 我們拿不到 usage,
+        # 所以它永遠進不了成本加總 —— 那就必須明講,而不是讓總額看起來精確。
         _record_llm_call(role, "openai", use_model, requested_effort=effort,
                          applied_effort=effort, accepted=False,
                          error=f"{type(_e).__name__}: {_e}",
-                         elapsed=time.monotonic() - _t0)
+                         elapsed=time.monotonic() - _t0,
+                         billable_unmeasured=True, prompt_chars=len(prompt))
         raise
     # r1(第九輪 P1-3):**必須確認 400 真的是這個參數造成的**。400 也可能來自
     # model ID 錯、額度過大、schema 不合、專案沒權限 —— 那些情況移除推理強度

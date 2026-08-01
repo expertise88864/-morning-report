@@ -260,3 +260,76 @@ def test_the_computed_timeout_actually_applies_when_the_variable_is_unset(
                   "LLM_REQUEST_TIMEOUT_SECONDS", "LLM_TOTAL_TIMEOUT_SECONDS"):
             monkeypatch.delenv(k, raising=False)
         importlib.reload(mr)
+
+
+CANARY_PATH = (Path(__file__).resolve().parents[1]
+               / ".github" / "workflows" / "validate-llm-config.yml")
+
+
+def _canary() -> dict:
+    if not CANARY_PATH.exists():
+        pytest.fail(f"找不到金絲雀 workflow:{CANARY_PATH}")
+    return yaml.safe_load(CANARY_PATH.read_text(encoding="utf-8"))
+
+
+def test_the_canary_cannot_send_mail_or_write_state():
+    """批#98(第九輪 P1-5):**金絲雀是診斷工具,不得有副作用。**
+
+    它要能在任何時候被按下去 —— 包括晨報正在跑的時候。所以它不碰 Gmail
+    憑證、不寫 repo、也不與 state 寫入者共用 concurrency group。
+    只讀權限是結構性的保證,比「我記得沒有寫」可靠。
+    """
+    wf = _canary()
+    job = wf["jobs"]["canary"]
+    text = CANARY_PATH.read_text(encoding="utf-8")
+
+    assert wf.get("permissions") == {"contents": "read"}, \
+        "金絲雀必須是唯讀 —— 它沒有任何理由寫回 repo"
+    for forbidden in ("GMAIL_USER", "GMAIL_APP_PASSWORD", "RECIPIENT"):
+        assert forbidden not in text, f"金絲雀不該碰 {forbidden} —— 它不寄信"
+    assert "morning_report.py" not in text, \
+        "金絲雀跑起晨報本體就會寄信/寫 state,那不是診斷"
+    # 觸發方式:只有手動。它會花 API 額度,不該每次 push 都跑
+    triggers = wf[True] if True in wf else wf["on"]
+    assert list(triggers) == ["workflow_dispatch"], triggers
+    # 不得與 state 寫入者搶同一個 group(否則會互相取消)
+    main_group = (_workflow().get("concurrency") or {}).get("group")
+    assert (wf.get("concurrency") or {}).get("group") != main_group
+    assert job["steps"], "金絲雀沒有步驟"
+
+
+def test_the_canary_reads_the_same_variables_as_the_morning_report():
+    """**金絲雀查的必須是正式排程真的會用的那份設定。**
+
+    自己另設一組預設值,等於在驗一個不存在的情境 —— 金絲雀綠燈、隔天照壞,
+    而那比沒有金絲雀更糟(它會讓人停止懷疑設定)。
+    """
+    canary_env = _canary()["jobs"]["canary"]["steps"][-1]["env"]
+    report_env = _report_step(_workflow()).get("env") or {}
+    for key in LLM_VARS:
+        if key not in canary_env:
+            continue
+        assert canary_env[key] == report_env.get(key), (
+            f"{key} 在金絲雀與晨報之間不一致:\n"
+            f"  金絲雀 {canary_env[key]}\n  晨報   {report_env.get(key)}")
+    # 至少要涵蓋決定「用哪個模型」的那幾個,否則驗不到重點
+    for key in ("LLM_PROVIDER", "OPENAI_MODEL", "OPENAI_REASONING_EFFORT"):
+        assert key in canary_env, f"金絲雀沒有讀 {key}"
+
+
+def test_the_canary_redacts_keys_from_anything_it_prints(monkeypatch):
+    """輸出會進 job log,而 log 可能被分享。"""
+    import importlib
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-verysecretvalue123")
+    canary = importlib.import_module("validate_llm_config")
+    importlib.reload(canary)
+    leaked = canary._safe("Bearer sk-verysecretvalue123 rejected")
+    assert "sk-verysecretvalue123" not in leaked
+    assert "<OPENAI_API_KEY>" in leaked
+    # 太短的值不遮(否則會把常見字串都打成 <KEY>,反而看不懂錯誤)
+    monkeypatch.setenv("OPENAI_API_KEY", "abc")
+    importlib.reload(canary)
+    assert canary._safe("abc def") == "abc def"

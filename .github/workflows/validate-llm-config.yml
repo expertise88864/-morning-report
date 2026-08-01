@@ -1,0 +1,48 @@
+# LLM 設定金絲雀(第九輪 P1-5)。
+#
+# 2026-08-01 一天之內兩次:設定有問題,而**發現的方式是早上六點的信壞掉**。
+# 這個 workflow 把回饋管道往前搬 —— 手動觸發、**不寄信、不寫 state**,
+# 只回答「模型存在嗎、推理強度收得下嗎、結構化輸出支援嗎、跑一次要多久」。
+#
+# 刻意只有 workflow_dispatch:它會花掉少量 API 額度,不該每次 push 都跑。
+name: Validate LLM Config
+
+on:
+  workflow_dispatch:
+
+# 與晨報**不共用** concurrency group:它不寫 state,不會與寫入者衝突,
+# 而且要能在晨報跑的時候同時查設定。
+concurrency:
+  group: llm-canary
+  cancel-in-progress: true
+
+permissions:
+  contents: read      # 只讀 —— 這個 workflow 不得寫任何東西回 repo
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: 安裝相依
+        run: pip install requests
+      - name: 檢查 LLM 設定
+        env:
+          # 與晨報讀**同一組** repo variable —— 金絲雀查的必須是正式排程會用的
+          # 那份設定,自己另設一份就等於在驗一個不存在的情境。
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
+          EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-terra' }}
+          OPENAI_EXTRACTOR_MODEL: ${{ vars.OPENAI_EXTRACTOR_MODEL || 'gpt-5.6-luna' }}
+          OPENAI_REASONING_EFFORT: ${{ vars.OPENAI_REASONING_EFFORT || 'medium' }}
+          OPENAI_EXTRACTOR_REASONING: ${{ vars.OPENAI_EXTRACTOR_REASONING || 'low' }}
+          LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python tools/validate_llm_config.py

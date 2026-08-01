@@ -283,3 +283,17 @@ python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 - `state/model_history/` 月分區保存 520 交易日;更長歷史需另存 archive。
 - state 每日 commit 回 repo,長期會膨脹 git 歷史(遷移外部儲存為中期方向)。
 - NBA 單場賭盤 slug 已以上季市場驗證,開季首日仍應目視確認一次。
+
+### 換模型之前:先按金絲雀
+
+Actions → **Validate LLM Config** → Run workflow。它讀**與晨報同一組** repo
+variable,**不寄信、不寫 state**(唯讀權限),只回答四個問題:
+
+- 模型 ID 存在嗎(打錯字的症狀是 400,而 400 有太多其他原因)
+- 推理強度收得下嗎
+- 抽取器的結構化輸出支援嗎
+- **跑一次要多久** —— 拿實測耗時比對程式算出來的單次上限
+
+最後一項是 2026-08-01 真正缺的那個數字:逾時只告訴你「超過 75 秒」,
+不告訴你 240 秒夠不夠。注意探測用的是短 prompt,生產的 prompt 約 85,000
+token,所以那個秒數是**下界**。

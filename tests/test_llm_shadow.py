@@ -1048,3 +1048,49 @@ def test_an_effort_that_does_not_take_effect_raises_a_degraded_step(monkeypatch)
             mr._RUN_MANIFEST.pop("llm", None)
         else:
             mr._RUN_MANIFEST["llm"] = saved_slot
+
+
+def test_efforts_the_model_does_not_support_are_caught_before_the_run():
+    """批#105:**端點實測 > 官方文件。**
+
+    官方 Models 頁面把 gpt-5.6-luna 的推理強度列成 none…max。
+    2026-08-01 金絲雀在 chat/completions 上實測到的是:
+
+        Unsupported value: 'reasoning_effort' does not support 'max' with this
+        model. Supported values are: 'none','low','medium','high','xhigh'.
+
+    生產那一班因此靜默退回 provider 預設(reasoning 379,而 xhigh 是 23,095)
+    —— 使用者以為在測 max、其實在測預設,信照常寄出。
+
+    這比「超過排程上限」嚴重得多:上限只是「沒量過、風險未知」,
+    不支援則是**這一定不會生效**。所以要在跑之前就擋下來。
+    """
+    import llm_telemetry as lt
+
+    assert lt.supported_efforts("gpt-5.6-luna") == (
+        "none", "low", "medium", "high", "xhigh")
+    assert "max" not in lt.supported_efforts("gpt-5.6-luna")
+    assert lt.supported_efforts("gpt-5.6-luna-2026-02-16") is not None
+    # 沒量過的模型回 None —— 不猜、也不擋
+    assert lt.supported_efforts("gpt-5.6-sol") is None
+    assert lt.supported_efforts("deepseek-v4-pro") is None
+
+    msgs = lt.validate_llm_config(
+        provider="openai", extractor_provider="openai", shadow_provider="",
+        has_key=lambda _e: True, efforts={"primary": "max"},
+        models={"primary": "gpt-5.6-luna"})
+    assert any("不支援" in m and "max" in m for m in msgs), msgs
+    assert any("靜默" in m for m in msgs), "沒說出失敗的樣子(退回 provider 預設)"
+
+    # 支援的值不得誤報
+    ok = lt.validate_llm_config(
+        provider="openai", extractor_provider="openai", shadow_provider="",
+        has_key=lambda _e: True, efforts={"primary": "xhigh"},
+        models={"primary": "gpt-5.6-luna"})
+    assert ok == [], ok
+    # 沒量過的模型不擋(不猜)
+    unknown = lt.validate_llm_config(
+        provider="openai", extractor_provider="openai", shadow_provider="",
+        has_key=lambda _e: True, efforts={"primary": "max"},
+        models={"primary": "gpt-5.6-sol"}, scheduled=False)
+    assert unknown == [], unknown

@@ -39,7 +39,14 @@ CAP_MULTIPLIER = {"none": 2, "minimal": 3, "low": 4, "medium": 6,
 MODEL_LIMITS = {
     "gpt-5.6-sol": {"max_output": 128_000, "context": 1_050_000},
     "gpt-5.6-terra": {"max_output": 128_000, "context": 1_050_000},
-    "gpt-5.6-luna": {"max_output": 128_000, "context": 1_050_000},
+    # `efforts` 是**實測**,不是抄文件(批#105)。官方 Models 頁面把 luna 的
+    # 推理強度列成 none…max,但 2026-08-01 金絲雀在 chat/completions 上實測:
+    #     Unsupported value: 'reasoning_effort' does not support 'max' with
+    #     this model. Supported values are: 'none','low','medium','high','xhigh'.
+    # 生產那一班因此靜默退回 provider 預設(reasoning 379 vs xhigh 的 23,095),
+    # 使用者以為在測 max、其實在測預設。**文件是宣稱,端點才是事實。**
+    "gpt-5.6-luna": {"max_output": 128_000, "context": 1_050_000,
+                     "efforts": ("none", "low", "medium", "high", "xhigh")},
 }
 
 #: 沒收錄的模型用**保守**上限,不是樂觀的。理由不對稱:
@@ -50,6 +57,15 @@ UNKNOWN_MODEL_MAX_OUTPUT = 16_000
 
 #: 舊常數保留給沒有指名模型的呼叫端(它是**粗略上界**,不是契約)。
 DEFAULT_MAX_OUTPUT = 128_000
+
+
+def supported_efforts(model: str) -> Optional[tuple]:
+    """這個模型**實測**支援哪些推理強度;沒量過就回 None(不猜)。"""
+    m = (model or "").strip().lower()
+    for name, spec in MODEL_LIMITS.items():
+        if (m == name or m.startswith(name)) and spec.get("efforts"):
+            return spec["efforts"]
+    return None
 
 
 def max_output_for(model: str) -> tuple:
@@ -248,6 +264,7 @@ def effort_rank(effort: str) -> int:
 def validate_llm_config(*, provider: str, extractor_provider: str,
                         shadow_provider: str, has_key,
                         efforts: Optional[dict] = None,
+                        models: Optional[dict] = None,
                         scheduled: bool = True) -> list:
     """回傳設定問題清單(空 = 沒問題)。**不拋例外**:呼叫端決定要擋還是只告警。
 
@@ -258,6 +275,7 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
     這樣本模組不必碰 os.environ(保持純函式、可單獨測)。
     """
     out = []
+    models = models or {}
     roles = {"primary": provider, "extractor": extractor_provider}
     if shadow_provider:
         roles["shadow"] = shadow_provider
@@ -280,6 +298,15 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
             out.append(f"{role} 的推理強度不是合法值:{eff!r}")
             continue
         prov = (roles.get(role) or "").strip().lower()
+        # **模型實測不支援的強度要當場擋下**(批#105)。這比排程上限嚴重得多:
+        # 上限只是「沒量過、風險未知」,不支援則是「這一定不會生效」——
+        # 而它的症狀是靜默退回 provider 預設,信照常寄出。
+        ok = supported_efforts(models.get(role) or "") if eff else None
+        if ok and eff not in ok:
+            out.append(f"{role} 的模型 {models.get(role)} 實測**不支援**推理強度"
+                       f" {eff}(可用 {'/'.join(ok)})—— 送出去會被拒絕並靜默"
+                       "退回 provider 預設")
+            continue
         cap = SCHEDULED_MAX_EFFORT.get(prov, {}).get(role) if scheduled else None
         if cap and eff and effort_rank(eff) > effort_rank(cap):
             out.append(
@@ -346,7 +373,8 @@ def response_blames_param(response, param: str) -> bool:
 
 def config_snapshot(*, provider: str, extractor_provider: str,
                     shadow_provider: str, model: str, primary_effort: str,
-                    extractor_effort: str, request_timeout: float,
+                    extractor_effort: str, extractor_model: str = "",
+                    request_timeout: float = 0.0,
                     total_timeout: float, raw_vars: str, has_key):
     """組出「本班打算用什麼」的快照 + 設定問題清單(批#93)。
 
@@ -362,7 +390,8 @@ def config_snapshot(*, provider: str, extractor_provider: str,
     issues = config_source_issues(raw_vars) + validate_llm_config(
         provider=provider, extractor_provider=extractor_provider,
         shadow_provider=shadow_provider, has_key=has_key,
-        efforts={"primary": primary_effort, "extractor": extractor_effort})
+        efforts={"primary": primary_effort, "extractor": extractor_effort},
+        models={"primary": model, "extractor": extractor_model})
     return snap, issues
 
 

@@ -1331,7 +1331,6 @@ def test_compacting_styles_preserves_every_element_and_its_effective_style():
     assert len(out.encode()) < len(html.encode()), "沒有變小"
     # **一次性的樣式要留在 inline**:萬一客戶端剝掉 <style>,信裡最獨特的
     # 版面(KPI 卡、立場卡)仍然有樣式,被 class 化的只是重複的內文
-    unique = [e for e in b.els if e[1] and "唯一" not in str(e)]
     assert any(st and "border:1px solid #eee" in st for _t, st, _c in b.els), \
         "只出現一次的樣式被 class 化了 —— 失去了剝離 <style> 時的安全網"
 

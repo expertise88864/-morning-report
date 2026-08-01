@@ -22697,6 +22697,8 @@ def main() -> int:
         primary_effort=_PRIMARY_EFFORT,
         extractor_effort=(OPENAI_EXTRACTOR_REASONING
                           if _extractor_provider() == "openai" else ""),
+        extractor_model=(OPENAI_EXTRACTOR_MODEL or OPENAI_MODEL
+                         if _extractor_provider() == "openai" else ""),
         request_timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         total_timeout=LLM_TOTAL_TIMEOUT_SECONDS,
         raw_vars=os.environ.get("LLM_CONFIG_RAW", ""),

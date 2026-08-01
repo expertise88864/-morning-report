@@ -359,7 +359,11 @@ PORTFOLIO_2 = _parse_portfolio(os.environ.get("PORTFOLIO_2", ""))
 PORTFOLIO_1_NAME = os.environ.get("PORTFOLIO_1_NAME", "持倉1").strip() or "持倉1"
 PORTFOLIO_2_NAME = os.environ.get("PORTFOLIO_2_NAME", "持倉2").strip() or "持倉2"
 
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").lower()
+# r1(Codex,#2):**`.strip()` 不是美觀問題。** dispatcher 用 `==` 比對,對不上
+# 就落到 Gemini,而 `validate_llm_config` 內部有 strip、看到的是合法值 ——
+# 於是 `" deepseek "` 會**驗證說沒問題、實際跑另一家**。另兩個 provider 常數
+# 本來就有 strip,只有這個最要緊的漏了。
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
@@ -504,13 +508,12 @@ def _llm_config_resolved() -> dict:
     """每個 LLM 開關**本班實際採用的值**(第十一輪 P2-1)。
 
     刻意讀模組常數而不是重新讀 `os.environ`:兩者可以不一樣,而會影響行為
-    的是前者。逾時就是最好的例子 —— 環境變數是空的,實際值由
-    `_timeout_env` 依 provider 與推理強度算出來,重讀環境變數只會拿到空字串。
+    的是前者。逾時就是最好的例子 —— 環境變數是空的,實際值由 `_timeout_env`
+    依 provider 與推理強度算出來,重讀環境變數只會拿到空字串。
     (同樣的錯誤在批#107 的 `_llm_key_available` 犯過一次。)
 
-    鍵集合由 `llm_telemetry.CONFIG_SOURCE_SPEC` 決定,並由
-    `tests/test_workflow_contract.py` 檢查**沒有漏掉任何一個** ——
-    漏掉的症狀是 manifest 少一格,不會有人發現。
+    鍵集合由 `llm_config.CONFIG_SOURCE_SPEC` 決定,並由契約測試檢查**沒有漏掉
+    任何一個** —— 漏掉的症狀是 manifest 少一格,不會有人發現。
     """
     return {
         "LLM_PROVIDER": LLM_PROVIDER,
@@ -526,6 +529,8 @@ def _llm_config_resolved() -> dict:
         "OPENAI_EXTRACTOR_REASONING": OPENAI_EXTRACTOR_REASONING,
         "LLM_SHADOW_PROVIDER": LLM_SHADOW_PROVIDER,
         "LLM_SHADOW_MODEL": LLM_SHADOW_MODEL,
+        "GEMINI_MODEL": GEMINI_MODEL,
+        "CLAUDE_MODEL": CLAUDE_MODEL,
         "LLM_SHADOW_REASONING_EFFORT": LLM_SHADOW_REASONING_EFFORT,
         "LLM_TOTAL_TIMEOUT_SECONDS": LLM_TOTAL_TIMEOUT_SECONDS,
         "LLM_REQUEST_TIMEOUT_SECONDS": LLM_REQUEST_TIMEOUT_SECONDS,
@@ -13356,15 +13361,29 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
     _RUN_MANIFEST["llm_shadow"] = stat
 
 
+#: provider → (呼叫函式, 模型名)。**dispatcher 與遙測共用同一張表**
+#: (r1 Codex #1)。原本呼叫走 if 串、manifest 另有一份 `openai else deepseek`
+#: 的判斷 —— 於是選 gemini/anthropic 那一班,信是那家寫的、manifest 記著
+#: DeepSeek。兩份各自維護就一定會分岔,而分岔的症狀是遙測說謊。
+_PROVIDERS = {
+    "anthropic": (lambda p: _call_anthropic(p), lambda: CLAUDE_MODEL),
+    "deepseek": (lambda p: _call_deepseek(p), lambda: DEEPSEEK_MODEL),
+    "openai": (lambda p: _call_openai(p), lambda: OPENAI_MODEL),
+    "gemini": (lambda p: _call_gemini(p), lambda: GEMINI_MODEL),
+}
+#: 對不上任何 provider 時的落點 —— 歷來就是 Gemini(免費備援)。**遙測跟著
+#: 這個 fallthrough 走**:manifest 記實際發生的事,設定錯誤另由驗證報。
+_PROVIDER_FALLBACK = "gemini"
+
+
 def _call_llm_text(prompt: str) -> str:
     """Dispatch an LLM task without mixing extraction and report-writing prompts."""
-    if LLM_PROVIDER == "anthropic":
-        return _call_anthropic(prompt)
-    if LLM_PROVIDER == "deepseek":
-        return _call_deepseek(prompt)
-    if LLM_PROVIDER == "openai":
-        return _call_openai(prompt)
-    return _call_gemini(prompt)
+    return _PROVIDERS.get(LLM_PROVIDER, _PROVIDERS[_PROVIDER_FALLBACK])[0](prompt)
+
+
+def _primary_model() -> str:
+    """本班主分析真正會用的模型名 —— 與 `_call_llm_text` 讀同一張表。"""
+    return _PROVIDERS.get(LLM_PROVIDER, _PROVIDERS[_PROVIDER_FALLBACK])[1]()
 
 
 class ExtractorOutputTruncated(RuntimeError):
@@ -22855,7 +22874,8 @@ def main() -> int:
     _snap, _cfg = _lc.config_snapshot(
         provider=LLM_PROVIDER, extractor_provider=_extractor_provider(),
         shadow_provider=LLM_SHADOW_PROVIDER,
-        model=(OPENAI_MODEL if LLM_PROVIDER == "openai" else DEEPSEEK_MODEL),
+        # r1(Codex,#1):四家 provider,不是兩家 —— 理由見 `_PROVIDERS`。
+        model=_primary_model(),
         primary_effort=_PRIMARY_EFFORT,
         extractor_effort=(OPENAI_EXTRACTOR_REASONING
                           if _extractor_provider() == "openai" else ""),

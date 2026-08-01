@@ -142,9 +142,24 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
     roles = {"primary": provider, "extractor": extractor_provider}
     if shadow_provider:
         roles["shadow"] = shadow_provider
-    for role, prov in roles.items():
-        prov = (prov or "").strip().lower()
+    for role, raw_prov in roles.items():
+        prov = (raw_prov or "").strip().lower()
         if not prov:
+            # r1(Codex,#2):**「空白」與「沒設」不是同一件事。**
+            # `LLM_PROVIDER=" "` 在 GitHub Actions 是 truthy(走 repo variable),
+            # strip 之後才變空 —— 而 `_call_llm_text` 對不上任何分支就落到
+            # Gemini。原本這裡直接 `continue`,於是「實跑 Gemini、遙測聲稱
+            # 走 DeepSeek 預設」完全不會被報出來。
+            if raw_prov:
+                out.append(_issue(
+                    f"{role} provider 設成了空白字元 {raw_prov!r} —— "
+                    "它會對不上任何 provider 而靜默落到 Gemini", fatal=True))
+            elif role == "primary":
+                # extractor 空 = 跟隨主分析、shadow 空 = 關閉,那兩個合法;
+                # 主分析沒有「空」這個合法狀態(空一樣落到 Gemini)。
+                out.append(_issue(
+                    "primary provider 是空的 —— 它會靜默落到 Gemini,"
+                    "而 manifest 會顯示一個沒有人選過的 provider", fatal=True))
             continue
         if prov not in VALID_PROVIDERS:
             out.append(_issue(f"{role} provider 不是合法值:{prov!r}"
@@ -348,6 +363,12 @@ CONFIG_SOURCE_SPEC = {
     "DEEPSEEK_BASE_URL":          ("fixed", "https://api.deepseek.com"),
     "OPENAI_BASE_URL":            ("fixed", "https://api.openai.com"),
     "LLM_EVENT_EXTRACTION":       ("fixed", "1"),
+    # r1(Codex,#1):**這兩個原本漏了。** `VALID_PROVIDERS` 有四家,
+    # `_call_llm_text` 也真的會走到 gemini / anthropic(而且 gemini 是
+    # 對不上任何分支時的落點),但這張表只列了 DeepSeek 與 OpenAI ——
+    # 於是選 gemini 那一班的 manifest 完全沒有它實際用的模型。
+    "GEMINI_MODEL":               ("fixed", "gemini-2.5-flash"),
+    "CLAUDE_MODEL":               ("fixed", "claude-sonnet-4-6"),
 }
 
 #: 只有 `variable` 的鍵需要把**原始值**傳進來(`fixed` 的來源已經寫在上表)。
@@ -356,12 +377,21 @@ CONFIG_RAW_KEYS = tuple(k for k, (kind, _) in CONFIG_SOURCE_SPEC.items()
 
 
 def parse_config_raw(raw: str) -> dict:
-    """把 workflow 傳來的 `k=v;k=v` 拆成 dict(值可能是空字串)。"""
+    """把 workflow 傳來的 `k=v;k=v` 拆成 dict(值可能是空字串)。
+
+    r1(Codex,#2):**值不得 strip。** GitHub Actions 的 `${{ vars.X || '預設' }}`
+    把 whitespace-only 視為 truthy —— `LLM_PROVIDER=" "` 走的是 repo variable
+    那條路。這裡若順手 strip,`" "` 就和「真的沒設」變成同一個值,manifest
+    會回報 `workflow_default`,而實際上使用者設了一個壞掉的值。
+
+    鍵仍然要 strip:YAML 的 `>-` 折行會在每個 `;` 之後補一個空格,而那個空格
+    落在**鍵**前面(值後面緊接著就是 `;`),所以值本身是完整的。
+    """
     out: dict = {}
     for chunk in str(raw or "").split(";"):
         if "=" in chunk:
             k, _, v = chunk.partition("=")
-            out[k.strip()] = v.strip()
+            out[k.strip()] = v
     return out
 
 
@@ -370,7 +400,7 @@ def config_sources(raw: str, resolved: Optional[dict] = None) -> dict:
 
     `source` 的四種值,**分得出「使用者明設成跟預設一樣」**:
       - `repo_variable`    :repo variable 有值 → 這是使用者的決定
-      - `workflow_default` :variable 是空的 → 走 workflow 的 `|| 預設`
+      - `workflow_default` :variable 是**空字串** → 走 workflow 的 `|| 預設`
       - `workflow_fixed`   :workflow 寫死,repo variable 改不動
       - `unknown`          :workflow 沒把原始值傳進來(本機執行即如此)
 
@@ -385,7 +415,10 @@ def config_sources(raw: str, resolved: Optional[dict] = None) -> dict:
         if kind == "fixed":
             source = "workflow_fixed"
         elif key in seen:
-            source = "repo_variable" if seen[key] else "workflow_default"
+            # r1(Codex,#2):判準是「GitHub Actions 覺得它 truthy 嗎」,
+            # 也就是**空字串**才算沒設。whitespace-only 是設了一個壞掉的值,
+            # 那條路徑由 `validate_llm_config` 當成設定錯誤報出來。
+            source = "repo_variable" if seen[key] != "" else "workflow_default"
         else:
             source = "unknown"
         entry = {"source": source}

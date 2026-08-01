@@ -545,16 +545,35 @@ def _workflow_at(name: str) -> dict:
 
 
 # ── 第十一輪 P2-1:設定來源契約 ────────────────────────────────────────
-#: 報告步驟裡**不算行為開關**的 env 鍵前綴/鍵名。
-#: 金鑰刻意排除:它們是 Secrets,而且絕不可以進 manifest。
-_NOT_A_SWITCH = ("LLM_CONFIG_RAW",)
+#: 報告步驟裡**不是 LLM 行為開關**的 env 鍵,逐一明列。
+#:
+#: r1(Codex,#1):這裡原本是 `^(LLM_|OPENAI_|DEEPSEEK_|EXTRACTOR_)` 的前綴
+#: regex —— 也就是**守衛自己決定要掃哪些檔**。`GEMINI_MODEL` 與 `CLAUDE_MODEL`
+#: 因此被無聲排除,而那兩家是 `VALID_PROVIDERS` 的成員、gemini 更是所有
+#: 設定錯誤的落點。一個宣稱「雙向相等」的守衛,卻對半數 provider 視而不見。
+#:
+#: 改成**白名單**:報告步驟的每一個 env 鍵,不是 LLM 開關(進
+#: `CONFIG_SOURCE_SPEC`)就是列在這裡。新增第五家 provider 時,漏掉它會紅。
+#: (這與 `test_module_size_freeze.UNCAPPED_MODULES` 是同一個形狀:
+#:  守衛不得自己縮小掃描範圍,只能明列例外。)
+_NOT_AN_LLM_SWITCH = {
+    # 金鑰:是 Secrets,而且**絕不可以**進 manifest。
+    "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY", "FRED_API_KEY",
+    "GEMINI_API_KEY", "OPENAI_API_KEY",
+    # 這一行的內容就是「開關的原始值」本身,不是開關。
+    "LLM_CONFIG_RAW",
+    # 寄信與收件人。
+    "GMAIL_USER", "GMAIL_APP_PASSWORD", "RECIPIENT", "CONTACT_EMAIL",
+    # 持股(Secrets;明細不得進 HTML/prompt/state/log)與顯示名稱。
+    "PORTFOLIO_1", "PORTFOLIO_2", "PORTFOLIO_1_NAME", "PORTFOLIO_2_NAME",
+    # 執行環境,與 LLM 無關。
+    "STATE_PUSH_DEFERRED", "TZ",
+}
 
 
 def _llm_env_keys(env: dict) -> set:
     """報告步驟裡所有會改變 LLM 行為的 env 鍵。"""
-    return {k for k in env
-            if re.match(r"^(LLM_|OPENAI_|DEEPSEEK_|EXTRACTOR_)", k)
-            and not k.endswith("_API_KEY") and k not in _NOT_A_SWITCH}
+    return set(env) - _NOT_AN_LLM_SWITCH
 
 
 def test_the_config_source_table_matches_the_workflow_both_ways():
@@ -661,3 +680,76 @@ def test_readme_documents_the_same_default_as_the_workflow():
         else:
             assert cell.startswith("空"), (
                 f"README 的 `{key}` 預設是空字串,卻寫 {cell!r}")
+
+
+def test_a_whitespace_only_variable_counts_as_set(monkeypatch):
+    """`LLM_PROVIDER=" "` 是**設了一個壞掉的值**,不是沒設(r1 Codex #2)。
+
+    GitHub Actions 的 `${{ vars.X || '預設' }}` 把 whitespace-only 當成
+    truthy,所以走的是 repo variable 那條路。若來源判定先 strip,manifest
+    會說「走 workflow 預設」,而實際上 `_call_llm_text` 對不上任何分支、
+    落到 Gemini —— 遙測與實跑各說各話,正是這一批要消滅的狀態。
+    """
+    src = llm_config.config_sources("LLM_PROVIDER= ;OPENAI_MODEL=",
+                                    {"LLM_PROVIDER": " "})
+    assert src["LLM_PROVIDER"]["source"] == "repo_variable", (
+        "whitespace-only 被當成沒設 —— manifest 會把使用者的錯誤記成走預設")
+    assert src["OPENAI_MODEL"]["source"] == "workflow_default", \
+        "真正的空字串仍必須是 workflow_default"
+
+    issues = [str(i) for i in llm_config.validate_llm_config(
+        provider=" ", extractor_provider="", shadow_provider="",
+        has_key=lambda _e: True)]
+    assert any("空白" in m for m in issues), (
+        f"provider 設成空白沒有被報成設定錯誤:{issues} —— "
+        "它會靜默落到 Gemini")
+    empty = [str(i) for i in llm_config.validate_llm_config(
+        provider="", extractor_provider="", shadow_provider="",
+        has_key=lambda _e: True)]
+    assert any("空的" in m for m in empty), \
+        "primary provider 是空的也必須報 —— 空一樣落到 Gemini"
+
+
+def test_the_runtime_provider_is_stripped_the_same_way_validation_strips_it():
+    """驗證與 dispatch 必須看到**同一個** provider 值(r1 Codex #2)。
+
+    `validate_llm_config` 內部 strip、`_call_llm_text` 用 `==` 比對:
+    只要 runtime 常數不 strip,`" deepseek "` 就會驗證說沒問題、實際跑 Gemini。
+    """
+    src = (Path(__file__).resolve().parents[1] / "morning_report.py").read_text(
+        encoding="utf-8")
+    m = re.search(r"^LLM_PROVIDER = os\.environ\.get\([^)]*\)(.*)$", src, re.M)
+    assert m, "找不到 LLM_PROVIDER 的定義 —— 這條契約需要同步更新"
+    assert ".strip()" in m.group(1), (
+        "LLM_PROVIDER 沒有 strip —— repo variable 多一個空格就會靜默跑 Gemini")
+
+
+def test_every_provider_gets_its_own_model_recorded():
+    """四家 provider 都要記到**自己**的模型(r1 Codex #1)。
+
+    原本是 `OPENAI_MODEL if openai else DEEPSEEK_MODEL` —— 選 gemini 或
+    anthropic 那一班,manifest 會記成 DeepSeek 的模型。gemini 更是所有
+    設定錯誤的落點,最需要被記對的就是它。
+
+    現在 dispatcher 與遙測共用 `_PROVIDERS`,所以「呼叫哪家」與「記哪家」
+    結構上不可能分岔。這條驗那張表**涵蓋每一家合法 provider**,
+    以及未知 provider 的落點與 dispatcher 一致。
+    """
+    import morning_report as mr
+
+    assert set(mr._PROVIDERS) == set(llm_config.VALID_PROVIDERS), (
+        "provider 表與 VALID_PROVIDERS 不一致 —— 新增一家 provider 卻沒有"
+        "給它呼叫函式/模型,信會由別家寫、manifest 會記別家的")
+    assert mr._PROVIDER_FALLBACK in mr._PROVIDERS, "落點 provider 不在表裡"
+    for prov, expect in (("openai", mr.OPENAI_MODEL),
+                         ("deepseek", mr.DEEPSEEK_MODEL),
+                         ("anthropic", mr.CLAUDE_MODEL),
+                         ("gemini", mr.GEMINI_MODEL),
+                         ("typo-provider", mr.GEMINI_MODEL)):
+        old = mr.LLM_PROVIDER
+        try:
+            mr.LLM_PROVIDER = prov
+            got = mr._primary_model()
+        finally:
+            mr.LLM_PROVIDER = old
+        assert got == expect, f"provider={prov} 記成 {got},應該是 {expect}"

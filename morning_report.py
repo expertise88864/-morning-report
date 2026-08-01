@@ -93,6 +93,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _tw_intelligence_timeline_key,
 )
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
+    llm_event_json_schema,
     _news_event_direction,
     _event_type,
     _freshness_weight,
@@ -363,6 +364,11 @@ OPENAI_EXTRACTOR_MODEL = os.environ.get("OPENAI_EXTRACTOR_MODEL", "").strip()
 OPENAI_REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "medium").strip().lower()
 OPENAI_EXTRACTOR_REASONING = os.environ.get(
     "OPENAI_EXTRACTOR_REASONING", "low").strip().lower()
+#: 抽取器**可見答案**的長度基準(不是總額):30 個物件 × 約 90 token ≈ 2,700,
+#: 取 3,000。`output_cap` 會再依推理強度放大成 `max_completion_tokens`
+#: (low = 4 倍 → 12,000),所以這裡刻意填答案長度而不是已含推理餘裕的數字 ——
+#: 填成 16,000 那種「已經放大過」的值會被放大第二次。
+EXTRACTOR_ANSWER_TOKENS = int(os.environ.get("EXTRACTOR_ANSWER_TOKENS", "3000"))
 #: 影子比較:設了才啟用。**預設關閉** —— 它會讓主分析的呼叫成本加倍,
 #: 而且在沒有人要評估換模型時純屬浪費。
 LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
@@ -389,18 +395,27 @@ _PRIMARY_EFFORT = (OPENAI_REASONING_EFFORT if LLM_PROVIDER == "openai"
 
 
 def _timeout_env(name: str, base: float) -> float:
-    """時間預算:明設就用明設的,否則**依推理強度放大**(批#93,第九輪 P1-2)。
+    """時間預算:明設就用明設的,否則**依 provider 與推理強度放大**。
 
-    批#92 只對過高的強度告警,但告警擋不住實際的失敗:xhigh 的額度是 98,000
-    token,75 秒內生成不完 → 逾時 → 掉備援,於是「想量 xhigh 的成本」這件事
-    永遠量不到,只會得到一次 timeout。額度放大而時間不放大是自相矛盾的。
+    批#93 加了強度放大,但 workflow 當時**寫死** `LLM_REQUEST_TIMEOUT_SECONDS:
+    "75"` —— 明設優先,於是整套放大在生產是死碼,而症狀正是這個 repo 反覆遇到
+    的那一種:沒有錯誤、沒有告警,只是沒生效。批#97 把 workflow 那兩行改成
+    `vars.*`(不設就是空字串),放大才真的會發生。
+
+    基準改為**依 provider**:2026-08-01 實測 GPT-5.6 在 75 秒內跑不完本專案的
+    85,814-token prompt(`ReadTimeout … read timeout=75.0`),備援 Gemini 也失敗,
+    使用者收到降級版報告;同一天 DeepSeek 在同樣 75 秒內一次完成。
     """
     raw = os.environ.get(name, "").strip()
     return float(raw) if raw else _lt.timeout_for(_PRIMARY_EFFORT, base)
 
 
-LLM_TOTAL_TIMEOUT_SECONDS = _timeout_env("LLM_TOTAL_TIMEOUT_SECONDS", 180.0)
-LLM_REQUEST_TIMEOUT_SECONDS = _timeout_env("LLM_REQUEST_TIMEOUT_SECONDS", 75.0)
+_TOTAL_BASE, _REQ_BASE = _lt.timeout_base(LLM_PROVIDER)
+LLM_TOTAL_TIMEOUT_SECONDS = _timeout_env("LLM_TOTAL_TIMEOUT_SECONDS", _TOTAL_BASE)
+LLM_REQUEST_TIMEOUT_SECONDS = min(
+    _timeout_env("LLM_REQUEST_TIMEOUT_SECONDS", _REQ_BASE),
+    # 單次請求不得吃掉整份預算 —— 留得下一次重試才有備援可言。
+    round(LLM_TOTAL_TIMEOUT_SECONDS * 0.7, 1))
 _LLM_DEADLINE: Optional[float] = None
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
@@ -12962,7 +12977,9 @@ def _record_llm_call(role: str, provider: str, model: str, *,
 
 
 def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
-                 reasoning: str = "", role: str = "primary") -> str:
+                 reasoning: str = "", role: str = "primary",
+                 response_format: Optional[dict] = None,
+                 base_tokens: int = 0) -> str:
     """OpenAI 相容 chat completions。
 
     批#89。**GPT-5.6 全系列都是推理模型**,所以這裡從第一版就帶著批#85 的教訓:
@@ -12983,9 +13000,16 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         # reasoning + 答案的總額,而固定 4 倍(28,000)在推理達答案的 3 倍時
         # 就會被截斷 —— 那正是 2026-07-31 抽取器 0 產出的成因,設 xhigh 等於
         # 保證重演。額度只是上限,沒用到不計費,所以寧可給寬。
-        "max_completion_tokens": _lt.output_cap(effort, LLM_REPORT_MAX_TOKENS),
+        # 批#96(第九輪 P1-4):額度基準可由呼叫端給 —— 抽取器與主分析的
+        # 答案長度差一個量級,共用一個基準等於其中一邊必然抓錯。
+        "max_completion_tokens": _lt.output_cap(
+            effort, base_tokens or LLM_REPORT_MAX_TOKENS),
         "stream": False,
     }
+    if response_format:
+        # Structured Outputs:形狀由 API 保證,不再靠 prompt 拜託模型守規矩。
+        payload["response_format"] = {"type": "json_schema",
+                                      "json_schema": response_format}
     if effort and effort not in ("", "default"):
         payload["reasoning_effort"] = effort
     url = f"{OPENAI_BASE_URL}/v1/chat/completions"
@@ -13285,6 +13309,27 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         + "\n</UNTRUSTED_SOURCE_DATA>"
     )
     def _call(p: str) -> str:
+        """跑一次抽取;**只有網路層失敗才換 provider**(批#96)。
+
+        2026-08-01 連續兩班的抽取器都在 `api.deepseek.com` 逾時(35 則進去
+        0 則出來)—— 釘在單一 provider,等於對方機房的狀況決定今天有沒有事件。
+        HTTP 4xx 不換(請求本身有問題);額度用完也不換(有減量重試)。只換一次。
+        """
+        _ep = _extractor_provider()
+        try:
+            return _dispatch_extractor(_ep, p)
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError) as e:
+            _alt = _lt.fallback_extractor_provider(
+                _ep, lambda k: bool(os.environ.get(k, "").strip()))
+            if not _alt:
+                raise
+            print(f"[llm-extractor] {_ep} 網路失敗({type(e).__name__}),"
+                  f"改用 {_alt}", file=sys.stderr)
+            _stat["fallback_from"], _stat["fallback_to"] = _ep, _alt
+            return _dispatch_extractor(_alt, p)
+
+    def _dispatch_extractor(_ep: str, p: str) -> str:
         # 批#90:抽取器可獨立指定 provider(見 `EXTRACTOR_PROVIDER`)。
         # 批#91(第九輪 P0-1):**每個 provider 都要明確分派。**
         # 原本 deepseek/openai 之外一律落到 `_call_llm_text(p)`,而那個函式
@@ -13292,13 +13337,13 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         # `LLM_PROVIDER=openai` + `EXTRACTOR_PROVIDER=gemini` 會**兩邊都走
         # OpenAI**,而症狀是「看起來有分開設定、實際沒有」。
         # 未知的 provider **當場失敗**,不得靜默落到別人身上。
-        _ep = _extractor_provider()
         if _ep == "deepseek":
             return _call_deepseek_extractor(p)
         if _ep == "openai":
             return _call_openai(p, model=OPENAI_EXTRACTOR_MODEL,
                                 reasoning=OPENAI_EXTRACTOR_REASONING,
-                                role="extractor")
+                                role="extractor", base_tokens=EXTRACTOR_ANSWER_TOKENS,
+                                response_format=llm_event_json_schema())
         if _ep == "gemini":
             return _call_gemini(p, role="extractor")
         if _ep == "anthropic":

@@ -165,10 +165,38 @@ EFFORT_TIME_MULTIPLIER = {"none": 1.0, "minimal": 1.0, "low": 1.0,
                           "medium": 1.0, "high": 1.6, "xhigh": 2.4, "max": 3.0}
 
 
-def timeout_for(effort: str, base_seconds: float) -> float:
-    """依推理強度放大 timeout。未知強度不放大(不猜)。"""
-    return round(base_seconds * EFFORT_TIME_MULTIPLIER.get(
-        (effort or "").strip().lower(), 1.0), 1)
+#: 各 provider 的時間預算基準(總額秒, 單次請求秒)。**依實測訂。**
+#:
+#: 2026-08-01 生產實測:`ReadTimeout … api.openai.com (read timeout=75.0)` ——
+#: GPT-5.6 跑本專案的 85,814-token prompt **在 75 秒內完成不了**,而備援的
+#: Gemini 也失敗,使用者收到的是降級版基本報告。同一天 DeepSeek v4-pro 在
+#: 同樣的 75 秒內一次完成(reasoning_tokens=517)—— 兩家的生成速度差一個量級,
+#: 用同一組秒數等於對其中一家必然過短。
+#:
+#: 上限來自另一個實測:該班總耗時 588s / 執行預算 1140s,也就是還有約 550 秒
+#: 的餘裕。所以放寬是**有空間**的,不是把寄信的時間拿去賭。
+PROVIDER_TIMEOUT_BASE = {
+    "openai": (360.0, 240.0),
+    "deepseek": (180.0, 75.0),
+}
+DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
+
+#: 總額的硬上限。再長就會開始擠壓寄信 —— 「晨報不可斷」優先於「跑完推理」。
+MAX_TOTAL_TIMEOUT = 600.0
+
+
+def timeout_base(provider: str) -> tuple:
+    """(總額, 單次請求)的基準秒數。"""
+    return PROVIDER_TIMEOUT_BASE.get(
+        (provider or "").strip().lower(), DEFAULT_TIMEOUT_BASE)
+
+
+def timeout_for(effort: str, base_seconds: float,
+                cap: float = MAX_TOTAL_TIMEOUT) -> float:
+    """依推理強度放大 timeout,但不超過上限。未知強度不放大(不猜)。"""
+    scaled = base_seconds * EFFORT_TIME_MULTIPLIER.get(
+        (effort or "").strip().lower(), 1.0)
+    return round(min(scaled, cap), 1)
 
 
 def effort_rank(effort: str) -> int:
@@ -363,3 +391,25 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
     if cached:
         basis += f";快取命中 {cached} tok 以全價計(折扣未收錄),故為上界"
     return {"usd": round(usd, 6), "basis": basis}
+
+
+#: 抽取器逾時時的替補順序。**依「機械性任務夠用且便宜」排,不依品質排** ——
+#: 抽取是把新聞抄成 JSON 欄位,換到更貴的模型不會抄得更準。
+EXTRACTOR_FALLBACK_ORDER = ("openai", "deepseek", "gemini")
+
+
+def fallback_extractor_provider(primary: str, has_key) -> str:
+    """抽取器該改用誰;沒有可用的替代就回空字串(批#96)。
+
+    2026-08-01 連續兩班的抽取器都在同一個 endpoint 逾時
+    (`api.deepseek.com` read timeout,35 則進去 0 則出來),
+    而它被釘在單一 provider 上 —— 對方機房的狀況直接等於今天沒有事件抽取。
+
+    只在**網路層**失敗時才換人:HTTP 4xx 是我們的請求有問題,換一家會用同樣
+    的錯誤參數再錯一次;額度用完有既有的減量重試路徑,不該混進來。
+    """
+    p = (primary or "").strip().lower()
+    for cand in EXTRACTOR_FALLBACK_ORDER:
+        if cand != p and has_key(PROVIDER_KEY_ENV[cand]):
+            return cand
+    return ""

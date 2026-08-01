@@ -208,3 +208,55 @@ def test_readme_test_count_is_a_floor_not_a_boast():
         f"README 宣稱 {claimed}+ 測試,但實際只數到 {actual} 個 test 函式")
     assert actual - claimed <= 400, (
         f"README 宣稱 {claimed}+,實際 {actual} —— 差距太大,請更新宣稱數")
+
+
+def test_the_workflow_does_not_pin_values_that_disable_in_code_logic():
+    """批#97:**workflow 寫死一個值,等於把程式裡的機制變成死碼。**
+
+    批#93 讓 LLM 時間預算依 provider 與推理強度放大,但 workflow 當時寫著
+    `LLM_REQUEST_TIMEOUT_SECONDS: "75"`。程式讓明設的環境變數優先(那是對的
+    —— 要能臨時壓低),於是整套放大從來沒有發生過,而症狀是「沒有錯誤、
+    沒有告警,只是沒生效」。2026-08-01 的後果:GPT-5.6 在 75 秒內跑不完
+    85,814-token 的 prompt → ReadTimeout → Gemini 也失敗 → 使用者收到降級版。
+
+    這條要求:這類「程式會自己算」的旋鈕在 workflow 裡只能接 `vars.*`,
+    不能是字面值。要臨時壓低就去設 repo variable —— 那是一個看得見的動作。
+    """
+    env = _report_step(_workflow()).get("env") or {}
+    computed = ("LLM_TOTAL_TIMEOUT_SECONDS", "LLM_REQUEST_TIMEOUT_SECONDS")
+    pinned = [k for k in computed
+              if k in env and "vars." not in str(env[k])]
+    assert not pinned, (
+        f"{'、'.join(pinned)} 在 workflow 裡被寫死 —— "
+        "程式裡依 provider/推理強度計算的邏輯會變成死碼")
+
+
+def test_the_computed_timeout_actually_applies_when_the_variable_is_unset(
+        monkeypatch):
+    """**光是移除寫死還不夠 —— 要驗算出來的值真的被用上。**
+
+    GitHub Actions 對未設定的 `vars.X` 會傳**空字串**而不是不傳,
+    所以程式端必須把空字串當成「沒設」。少了這一步,改完 workflow 依然沒效果。
+    """
+    import importlib
+
+    import morning_report as mr
+
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-t")
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "medium")
+    monkeypatch.setenv("LLM_REQUEST_TIMEOUT_SECONDS", "")   # 未設的真實形狀
+    monkeypatch.setenv("LLM_TOTAL_TIMEOUT_SECONDS", "")
+    reloaded = importlib.reload(mr)
+    try:
+        assert reloaded.LLM_REQUEST_TIMEOUT_SECONDS > 75, (
+            "空字串沒有被當成「沒設」,算出來的 timeout 沒有生效")
+        assert reloaded.LLM_TOTAL_TIMEOUT_SECONDS >= 360
+        # 明設仍要優先(逃生門不能壞)
+        monkeypatch.setenv("LLM_REQUEST_TIMEOUT_SECONDS", "30")
+        assert importlib.reload(mr).LLM_REQUEST_TIMEOUT_SECONDS == 30
+    finally:
+        for k in ("LLM_PROVIDER", "OPENAI_API_KEY", "OPENAI_REASONING_EFFORT",
+                  "LLM_REQUEST_TIMEOUT_SECONDS", "LLM_TOTAL_TIMEOUT_SECONDS"):
+            monkeypatch.delenv(k, raising=False)
+        importlib.reload(mr)

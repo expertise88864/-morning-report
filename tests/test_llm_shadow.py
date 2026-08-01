@@ -632,3 +632,155 @@ def test_gemini_fallback_is_recorded_as_the_writer(monkeypatch):
             mr._RUN_MANIFEST.pop("llm", None)
         else:
             mr._RUN_MANIFEST["llm"] = saved
+
+
+def test_structured_output_schema_is_derived_from_the_validator():
+    """批#96(第九輪 P1-4):**schema 與驗證器不得是兩份手抄的名單。**
+
+    手抄的必然結局是漂移:schema 允許的 event_type 多一個,`_validate_llm_events`
+    就默默丟掉(manifest 看起來像「沒有事件」);少一個,模型就被迫亂填。
+    這條把兩邊直接對起來 —— 加一個新的 event_type 而忘了同步,它會紅。
+    """
+    import news_events as ne
+
+    schema = ne.llm_event_json_schema()
+    item = schema["schema"]["properties"]["events"]["items"]
+
+    assert schema["strict"] is True
+    assert schema["schema"]["type"] == "object", \
+        "OpenAI strict 模式的根節點必須是 object,不能直接回陣列"
+    # strict 要求:additionalProperties=false,且每個欄位都要在 required 裡
+    assert item["additionalProperties"] is False
+    assert set(item["required"]) == set(item["properties"]), \
+        "strict 模式下未列進 required 的欄位會被 API 拒絕"
+
+    assert set(item["properties"]["event_type"]["enum"]) == set(ne._LLM_EVENT_TYPES)
+    assert set(item["properties"]["direction"]["enum"]) == {-1, 0, 1}
+    assert set(item["properties"]) <= set(ne._LLM_EVENT_FIELDS), \
+        "schema 開了 _validate_llm_events 會剝掉的欄位 —— 兩邊都白做工"
+    lifecycles = {v for v in item["properties"]["lifecycle"]["enum"] if v}
+    assert lifecycles == set(ne._LLM_LIFECYCLES)
+    # 數量上限刻意不寫進 schema(strict 模式對 maxItems 的支援我無法在此驗證),
+    # 由 Python 側把關 —— 寫進去卻沒生效就是「以為擋住了」的假守衛
+    assert "maxItems" not in item and "maxItems" not in \
+        schema["schema"]["properties"]["events"]
+
+
+def test_extractor_accepts_both_the_array_and_the_structured_object():
+    """Structured Outputs 回的是 `{"events": [...]}`,不是裸陣列。
+
+    舊的括號掃描「剛好」也挖得出來 —— 但那是巧合,而巧合會在某天有人在
+    events 之前多放一個含 `[` 的欄位時安靜地壞掉。
+    """
+    from llm_postprocess import _parse_llm_event_json
+
+    ev = {"entity": "2330", "event_type": "orders", "direction": 1, "title": "x"}
+    assert _parse_llm_event_json(json.dumps([ev])) == [ev]
+    assert _parse_llm_event_json(json.dumps({"events": [ev]})) == [ev]
+    # 巧合會壞掉的那個形狀:events 之前先出現另一個含 `[` 的欄位
+    tricky = json.dumps({"notes": ["a]b"], "events": [ev]})
+    assert _parse_llm_event_json(tricky) == [ev], "括號掃描挖錯了陣列"
+    assert _parse_llm_event_json('{"events": "not a list"}') == []
+    assert _parse_llm_event_json("garbage") == []
+
+
+def test_extractor_switches_provider_only_on_network_failure():
+    """批#96:**對方機房的狀況不該直接等於今天沒有事件抽取。**
+
+    2026-08-01 連續兩班的抽取器都在 `api.deepseek.com` 逾時(35 則進去 0 則
+    出來),而它被釘在單一 provider。但只有網路層失敗才換人:HTTP 4xx 是我們
+    的請求有問題,換一家會用同樣的錯誤參數再錯一次。
+    """
+    import llm_telemetry as lt
+
+    def _has(env):
+        return env in {"DEEPSEEK_API_KEY", "OPENAI_API_KEY"}
+
+    assert lt.fallback_extractor_provider("deepseek", _has) == "openai"
+    assert lt.fallback_extractor_provider("openai", _has) == "deepseek"
+    # 沒有第二把金鑰就不換(換了只會拿到「缺金鑰」的錯誤蓋掉真正的原因)
+    assert lt.fallback_extractor_provider(
+        "deepseek", lambda e: e == "DEEPSEEK_API_KEY") == ""
+    assert lt.fallback_extractor_provider("deepseek", lambda _e: False) == ""
+
+
+def test_extractor_falls_back_to_another_provider_on_timeout(monkeypatch):
+    """降級要真的接上去 —— 上面那條只驗策略,這條驗接線。"""
+    import requests
+
+    import morning_report as mr
+
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-d")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-o")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-d")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
+
+    def _timeout(_p):
+        raise requests.exceptions.ReadTimeout("Read timed out.")
+
+    seen = {}
+
+    def _openai(p, **kw):
+        seen.update(kw)
+        return json.dumps({"events": [
+            {"entity": "2330", "event_type": "orders", "direction": 1,
+             "title": "台積電接單"}]})
+
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _timeout)
+    monkeypatch.setattr(mr, "_call_openai", _openai)
+    news = [{"source": "MOPS", "company_label": "2330", "title": "2330 orders",
+             "importance": "critical", "published": "Tue, 02 Jul 2026 00:00:00 GMT"}]
+    mr.call_llm_event_extractor(news, [])
+
+    stat = mr._RUN_MANIFEST.get("llm_extractor", {})
+    assert stat.get("fallback_from") == "deepseek", stat
+    assert stat.get("fallback_to") == "openai", stat
+    assert stat.get("valid") == 1, "降級之後應該真的抽到事件"
+    # 降級過去時仍要帶 schema 與抽取器自己的額度基準
+    assert seen.get("role") == "extractor"
+    assert seen.get("response_format", {}).get("strict") is True
+    assert seen.get("base_tokens") == mr.EXTRACTOR_ANSWER_TOKENS
+
+
+def test_http_errors_do_not_trigger_a_provider_switch(monkeypatch):
+    """**只有網路層失敗才換人。**
+
+    批#96 的第一版測試沒有涵蓋這一半 —— 我把 `except (Timeout,
+    ConnectionError)` 突變成 `except Exception`,測試全綠。那代表守衛只驗了
+    「會換」,沒驗「不該換的時候不換」,而後者才是這個條件存在的理由:
+    HTTP 4xx 是我們的請求有問題,換一家會用同樣的錯誤參數再錯一次
+    —— 兩倍成本、同一個錯誤,而且第二個錯誤會蓋掉第一個。
+    """
+    import requests
+
+    import morning_report as mr
+
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-d")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-d")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-o")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
+
+    def _http_400(_p):
+        resp = requests.Response()
+        resp.status_code = 400
+        raise requests.exceptions.HTTPError("400 Bad Request", response=resp)
+
+    called = {"openai": 0}
+
+    def _openai(_p, **_kw):
+        called["openai"] += 1
+        return "[]"
+
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _http_400)
+    monkeypatch.setattr(mr, "_call_openai", _openai)
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    news = [{"source": "MOPS", "company_label": "2330", "title": "2330 orders",
+             "importance": "critical", "published": "Tue, 02 Jul 2026 00:00:00 GMT"}]
+    mr.call_llm_event_extractor(news, [])
+
+    assert called["openai"] == 0, "HTTP 400 不該換 provider —— 換了只是再錯一次"
+    stat = mr._RUN_MANIFEST.get("llm_extractor", {})
+    assert "fallback_to" not in stat, stat

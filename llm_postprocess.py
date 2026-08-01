@@ -23,10 +23,24 @@ def _strip_llm_watchlist_section(text: str) -> str:
 
 
 def _parse_llm_event_json(text: str) -> list[dict]:
-    """Accept a strict JSON array, with a small fence-tolerant recovery path."""
+    """Accept a strict JSON array, with a small fence-tolerant recovery path.
+
+    批#95(第九輪 P1-4):也接受 Structured Outputs 的 `{"events": [...]}`。
+    OpenAI strict 模式要求根節點是 **object**,所以那條路徑回的是包了一層的
+    物件。下面的括號掃描其實「剛好」也能從它裡面挖出陣列 —— 但那是巧合,
+    而巧合會在某天有人在 events 之前多放一個含 `[` 的欄位時安靜地壞掉。
+    先正式解析,失敗才退回掃描。
+    """
     raw = (text or "").strip()
     if raw.startswith("```"):
         raw = raw.strip("`").removeprefix("json").strip()
+    if raw.startswith("{"):
+        try:
+            obj = json.loads(raw)
+        except json.JSONDecodeError:
+            obj = None
+        if isinstance(obj, dict) and isinstance(obj.get("events"), list):
+            return [it for it in obj["events"] if isinstance(it, dict)][:40]
     start, end = raw.find("["), raw.rfind("]")
     if start < 0 or end < start:
         return []

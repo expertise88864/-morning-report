@@ -89,8 +89,15 @@ jobs:
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 思考模式強度：high / medium / low；設 off 可關閉（僅 v4-pro/reasoner 生效）
           DEEPSEEK_REASONING_EFFORT: high
-          LLM_TOTAL_TIMEOUT_SECONDS: "180"
-          LLM_REQUEST_TIMEOUT_SECONDS: "75"
+          # 批#97:**這兩行原本寫死 "180" / "75",讓批#93 的時間放大在生產成為死碼。**
+          # 程式碼讓明設的環境變數優先(那是對的 —— 要能臨時壓低),但 workflow
+          # 一直在明設,於是放大從來沒有發生過。2026-08-01 的後果:GPT-5.6 在
+          # 75 秒內跑不完 85,814-token 的 prompt → ReadTimeout → Gemini 也失敗
+          # → 使用者收到降級版基本報告。
+          # 不設 = 空字串 = 由程式依 provider 與推理強度決定(見 `timeout_base`);
+          # 要臨時壓低仍可設 repo variable。
+          LLM_TOTAL_TIMEOUT_SECONDS: ${{ vars.LLM_TOTAL_TIMEOUT_SECONDS }}
+          LLM_REQUEST_TIMEOUT_SECONDS: ${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }}
 
           # OpenAI（GPT-5.6 系列；可留空 = 不啟用）
           #   換模型時把 LLM_PROVIDER 設成 openai 即可;抽取器可獨立指定,

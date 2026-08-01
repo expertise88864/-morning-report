@@ -916,3 +916,70 @@ def is_negated_decision(text: str, idx: int) -> bool:
                 return False
         return True
     return "not " in window.lower() or "fail" in window.lower()
+
+
+#: 抽取器的結構化輸出 schema 上限。OpenAI strict 模式**不保證支援 `maxItems`**
+#: (它只吃 JSON Schema 的一個子集),而我沒有辦法在這裡驗證那件事 ——
+#: 所以數量上限一律由 Python 側把關(`_parse_llm_event_json` 的切片),
+#: schema 只負責「欄位與型別」這種它確定管得到的部分。
+#: 把上限寫進 schema 卻沒生效,會變成「以為擋住了」的那種假守衛。
+LLM_EVENT_MAX_ITEMS = 30
+
+
+def llm_event_json_schema() -> dict:
+    """抽取器的 Structured Outputs schema(第九輪 P1-4)。
+
+    **由 `_validate_llm_events` 用的同一組常數推導,不手抄。** 手抄一份 schema
+    的必然結局是兩邊漂移:schema 允許的 event_type 多一個,驗證器就默默丟掉;
+    少一個,模型就被迫亂填。這裡直接讀 `_LLM_EVENT_TYPES` /
+    `_LLM_EVENT_FIELDS` / `_LLM_LIFECYCLES`,漂移在結構上不可能發生。
+
+    OpenAI strict 模式的兩個硬性要求:根節點必須是 **object**(所以包一層
+    `events`),而且 `additionalProperties: false` 之下**每個欄位都要列進
+    `required`** —— 選填欄位因此用 `["string", "null"]` 這種聯集型別表達,
+    而不是從 `required` 拿掉。
+
+    為什麼值得做:抽取器的失敗模式是「回了東西但解析不出來」或「欄位對不上
+    被整批丟棄」,而那在 manifest 裡看起來跟「沒有事件」一模一樣。
+    schema 把這一類失敗從執行期挪到 API 層,由 provider 保證形狀。
+    """
+    def _nullable(kind):
+        return [kind, "null"]
+
+    props = {
+        "entity": {"type": _nullable("string"),
+                   "description": "股票代號或公司名;不確定就填 null,不要猜"},
+        "event_type": {"type": "string", "enum": sorted(_LLM_EVENT_TYPES)},
+        "direction": {"type": "integer", "enum": [-1, 0, 1]},
+        "confidence": {"type": _nullable("number")},
+        "lifecycle": {"type": _nullable("string"), "enum":
+                      sorted(_LLM_LIFECYCLES) + [None]},
+        "title": {"type": "string"},
+        "summary": {"type": _nullable("string")},
+        "published": {"type": _nullable("string")},
+        "source_item_ids": {"type": "array", "items": {"type": "string"}},
+    }
+    # 白名單以外的欄位不得出現在 schema —— 否則等於在 API 層開了一個
+    # `_validate_llm_events` 會剝掉的洞(模型填了、我們丟掉,兩邊都白做工)。
+    assert set(props) <= set(_LLM_EVENT_FIELDS), \
+        f"schema 有白名單以外的欄位:{sorted(set(props) - set(_LLM_EVENT_FIELDS))}"
+    return {
+        "name": "extracted_events",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["events"],
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": sorted(props),
+                        "properties": props,
+                    },
+                },
+            },
+        },
+    }

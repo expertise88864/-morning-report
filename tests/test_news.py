@@ -2382,13 +2382,14 @@ def test_extraction_alias_map_is_wired_at_both_call_sites():
     import pathlib
     src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
     tree = ast.parse(src)
-    main_fn = next(n for n in ast.walk(tree)
-                   if isinstance(n, ast.FunctionDef) and n.name == "main")
+    # 第十一輪 P2-3:**掃描範圍不再是「main() 這個函式」而是「主流程」**。
+    # 相位拆解之後這些呼叫住進 `_phase_*`,只掃 main() 會憑空縮小範圍。
+    from pipeline_ast import walk_pipeline
     names = ("extract_structured_events", "call_llm_event_extractor")
-    calls = [n for n in ast.walk(main_fn)
+    calls = [n for n in walk_pipeline(tree)
              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
              and n.func.id in names]
-    assert len(calls) >= 2, f"main 裡只找到 {len(calls)} 個抽取呼叫點"
+    assert len(calls) >= 2, f"主流程裡只找到 {len(calls)} 個抽取呼叫點"
     for c in calls:
         assert any(kw.arg == "known_names" for kw in c.keywords), \
             f"{ast.unparse(c.func)} 沒傳 known_names"

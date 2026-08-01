@@ -3539,9 +3539,11 @@ def test_capability_health_is_refreshed_after_event_extraction():
 
     # main 必須在事件抽取**之後**補算一次
     tree = ast.parse(pathlib.Path(mr.__file__).read_text(encoding="utf-8"))
-    main_fn = next(n for n in ast.walk(tree)
-                   if isinstance(n, ast.FunctionDef) and n.name == "main")
-    seq = sorted((n.lineno, n.func.id) for n in ast.walk(main_fn)
+    # 第十一輪 P2-3:掃描範圍是「主流程」而不是「main() 這個函式」——
+    # 相位拆解之後這些寫入住進 `_phase_*`,只掃 main() 會憑空縮小範圍。
+    from pipeline_ast import walk_pipeline
+    pipeline = list(walk_pipeline(tree))
+    seq = sorted((n.lineno, n.func.id) for n in pipeline
                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
                  and n.func.id in ("call_llm_event_extractor",
                                    "extract_structured_events",
@@ -3708,9 +3710,11 @@ def test_mixed_versions_reach_the_run_manifest():
     import pathlib
     src = pathlib.Path(mr.__file__).read_text(encoding="utf-8")
     tree = ast.parse(src)
-    main_fn = next(n for n in ast.walk(tree)
-                   if isinstance(n, ast.FunctionDef) and n.name == "main")
-    writes = [n for n in ast.walk(main_fn)
+    # 第十一輪 P2-3:掃描範圍是「主流程」而不是「main() 這個函式」——
+    # 相位拆解之後這些寫入住進 `_phase_*`,只掃 main() 會憑空縮小範圍。
+    from pipeline_ast import walk_pipeline
+    pipeline = list(walk_pipeline(tree))
+    writes = [n for n in pipeline
               if isinstance(n, ast.Subscript)
               and isinstance(n.value, ast.Name)
               and n.value.id == "_RUN_MANIFEST"

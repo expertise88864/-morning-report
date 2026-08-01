@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+import app_context as _app
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -21851,17 +21852,13 @@ def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
 
 
 # ---------- 主流程 ----------
-def _phase_market_and_macro(*, now_tpe, target_session_day, recorder) -> dict:
-    """第一相位:行情 / 總經 / FX / 除息 / 兩檔預測(第十一輪 P2-3 第 1/8 步)。
+def _phase_market_and_macro(ctx) -> None:
+    """相位一:行情 / 總經 / FX / 除息 / 兩檔預測。
 
-    先拆這一相位是因為它的介面最乾淨:**沒有任何上游區域變數**,下游也只
-    用得到六個結果。八個相位共用大量區域變數,一次拆完等於一次改動全部。
-
-    `recorder` 是**參數而不是模組全域** —— 那就是 DI 的那一刀。傳進來的
-    目前仍是 `_RECORDER`(131 處測試透過 `_RUN_MANIFEST` 指著同一個 dict),
-    但相依已經在簽章上,要改成每班新建就只剩 main() 那一行。
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
     """
-    recorder.mark_phase("行情/總經/FX", time.monotonic())
+    now_tpe, target_session_day = ctx.now_tpe, ctx.target_session_day
+    ctx.mark_phase("行情/總經/FX", time.monotonic())
 
     # 1. 抓行情
     quotes = {
@@ -21940,40 +21937,19 @@ def _phase_market_and_macro(*, now_tpe, target_session_day, recorder) -> dict:
     else:
         predictions = {"error": "TSM ADR 行情抓取失敗，無法預測 2330 開盤價"}
         print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)
-    return {"quotes": quotes, "macro": macro, "hist_2330": hist_2330,
-            "ex_div": ex_div, "fair": fair, "predictions": predictions}
+    ctx.quotes, ctx.hist_2330, ctx.ex_div = quotes, hist_2330, ex_div
+    ctx.fair, ctx.predictions = fair, predictions
 
 
-def main() -> int:
-    global _RUN_DEADLINE
-    _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
-    _DEGRADED_STEPS.clear()
-    now_tpe = dt.datetime.now(TPE)
-    # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
-    if now_tpe.weekday() == 6:
-        return run_weekend_digest(now_tpe)
-    mode = determine_mode(now_tpe)
-    report_date = now_tpe.strftime("%Y-%m-%d (%a)")
-    target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
-    target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
+def _phase_news_policy_sports(ctx) -> None:
+    """相位二:新聞 / 政策 / 體育 / 停班停課 / AI 模型動態。
 
-    print(f"[main] 開始產生 {mode} 報告 — {report_date}")
-    # 第十一輪 P2-3:**本班的記錄器在這裡取得一次,再往下傳**(見相位函式)。
-    recorder = _RECORDER
-    recorder.data["marks"].clear()
-    _p1 = _phase_market_and_macro(now_tpe=now_tpe,
-                                  target_session_day=target_session_day,
-                                  recorder=recorder)
-    quotes = _p1["quotes"]
-    macro = _p1["macro"]
-    hist_2330 = _p1["hist_2330"]
-    ex_div = _p1["ex_div"]
-    fair = _p1["fair"]
-    predictions = _p1["predictions"]
-    public_codes = PUBLIC_PREDICTION_CODES
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    now_tpe, quotes = ctx.now_tpe, ctx.quotes
 
     # 5. 抓新聞
-    _mark_phase("新聞+政策+體育")
+    ctx.mark_phase("新聞+政策+體育", time.monotonic())
     print("[main] 抓新聞中…")
     # 批#57:先讀線索帳本,為追蹤中的線索組主動查詢,一起併進本次抓取。
     # 讀不到帳本不影響抓取(只是退回被動模式),故獨立 try。
@@ -22091,9 +22067,18 @@ def main() -> int:
     except Exception as e:
         print(f"[main] SEC 抓取失敗: {e}", file=sys.stderr)
         sec_filings = []
+    ctx.news, ctx.sec_filings = news, sec_filings
+
+
+def _phase_taifex_and_chips(ctx) -> None:
+    """相位三:TAIFEX 籌碼、台指與 0050 預測、融資券與週動能。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    ex_div, fair, predictions, quotes = ctx.ex_div, ctx.fair, ctx.predictions, ctx.quotes
 
     # 5.4 (Task E) TAIFEX 外資台指期未平倉
-    _mark_phase("TAIFEX/籌碼/預測")
+    ctx.mark_phase("TAIFEX/籌碼/預測", time.monotonic())
     print("[main] 抓 TAIFEX 三大法人台指期未平倉…")
     try:
         taifex_oi = fetch_taifex_foreign_futures()
@@ -22205,9 +22190,22 @@ def main() -> int:
     # 5.11 (Task F) 預測準確度回溯
     print("[main] 計算預測準確度回溯…")
     backtest_block = build_prediction_backtest(history)
+    ctx.backtest_block, ctx.breadth, ctx.earnings_proximity, ctx.fair = backtest_block, breadth, earnings_proximity, fair
+    ctx.history, ctx.margin, ctx.night_txf, ctx.predictions = history, margin, night_txf, predictions
+    ctx.taiex_pred, ctx.taifex_large, ctx.taifex_oi, ctx.taifex_pcr = taiex_pred, taifex_large, taifex_oi, taifex_pcr
+    ctx.tw0050_pred, ctx.twse_taiex_close, ctx.weekly = tw0050_pred, twse_taiex_close, weekly
+
+
+def _phase_twse_universe(ctx) -> None:
+    """相位四:TWSE universe、候選新聞補抓、集保籌碼快照。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    history, news, now_tpe, quotes = ctx.history, ctx.news, ctx.now_tpe, ctx.quotes
+    sec_filings = ctx.sec_filings
 
     # 6. 抓台股市值前 100 大 universe + 法人/表現（含 30 日累積）
-    _mark_phase("TWSE universe/候選新聞")
+    ctx.mark_phase("TWSE universe/候選新聞", time.monotonic())
     print("[main] 抓台股市值前 100 大 universe…")
     try:
         tw_universe = fetch_tw_top100_universe(top_n=100)
@@ -22439,8 +22437,23 @@ def main() -> int:
             news = fetch_news_fulltext(news, max_critical=3, max_high=8)
         except Exception as e:
             print(f"[main] 補抓全文失敗(不影響晨報): {e}", file=sys.stderr)
+    ctx.news, ctx.tdcc_snapshot_for_state, ctx.tw0050, ctx.tw_mops = news, tdcc_snapshot_for_state, tw0050, tw_mops
 
-    _mark_phase("事件抽取/模型/walk-forward")
+
+def _phase_events_and_models(ctx) -> None:
+    """相位五:事件抽取、模型分數、walk-forward 與校準。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    backtest_block, breadth, earnings_proximity, ex_div = ctx.backtest_block, ctx.breadth, ctx.earnings_proximity, ctx.ex_div
+    fair, hist_2330, history, margin = ctx.fair, ctx.hist_2330, ctx.history, ctx.margin
+    mode, news, night_txf, now_tpe = ctx.mode, ctx.news, ctx.night_txf, ctx.now_tpe
+    predictions, quotes, sec_filings, taiex_pred = ctx.predictions, ctx.quotes, ctx.sec_filings, ctx.taiex_pred
+    taifex_large, taifex_oi, taifex_pcr, target_session_date = ctx.taifex_large, ctx.taifex_oi, ctx.taifex_pcr, ctx.target_session_date
+    tw0050, tw0050_pred, tw_mops, weekly = ctx.tw0050, ctx.tw0050_pred, ctx.tw_mops, ctx.weekly
+    public_codes = PUBLIC_PREDICTION_CODES
+
+    ctx.mark_phase("事件抽取/模型/walk-forward", time.monotonic())
     print("[main] 建立台股交易日曆、新聞事件聚類與 point-in-time 模型…")
     _ml_t0 = time.monotonic()
     trading_sessions = fetch_tw_trading_sessions(months=18)
@@ -22866,8 +22879,18 @@ def main() -> int:
     except Exception as e:
         print(f"[ledger] 更新失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["FORECAST_LEDGER"] = {}
+    ctx.calibration, ctx.model_history, ctx.trading_sessions, ctx.tw0050 = calibration, model_history, trading_sessions, tw0050
 
-    _mark_phase("LLM 主分析")
+
+def _phase_llm_analysis(ctx) -> None:
+    """相位六:LLM 主分析(設定驗證、Python 立場分、呼叫)。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    calibration, fair, news, now_tpe = ctx.calibration, ctx.fair, ctx.news, ctx.now_tpe
+    predictions, quotes, tw0050 = ctx.predictions, ctx.quotes, ctx.tw0050
+
+    ctx.mark_phase("LLM 主分析", time.monotonic())
     # 批#92(第九輪 P1-5):**設定本身要先被驗。** 模型可由 GitHub Variables
     # 隨時改,而打錯字的症狀是「一切照舊」—— 沒有錯誤、沒有告警,只是沒切過去。
     # 只告警不擋(晨報不可斷優先);問題進 manifest 與降級清單,看得見。
@@ -22926,9 +22949,23 @@ def main() -> int:
         quotes["STANCE_PY"] = {}
         quotes["STANCE_ATTRIB"] = {}
     analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050, calibration)
+    ctx.analysis = analysis
+
+
+def _phase_render(ctx) -> None:
+    """相位七:渲染 HTML 並組出待存 state。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    analysis, earnings_proximity, ex_div, fair = ctx.analysis, ctx.earnings_proximity, ctx.ex_div, ctx.fair
+    mode, model_history, news, night_txf = ctx.mode, ctx.model_history, ctx.news, ctx.night_txf
+    now_tpe, predictions, quotes, report_date = ctx.now_tpe, ctx.predictions, ctx.quotes, ctx.report_date
+    taiex_pred, taifex_large, taifex_oi, taifex_pcr = ctx.taiex_pred, ctx.taifex_large, ctx.taifex_oi, ctx.taifex_pcr
+    target_session_date, tdcc_snapshot_for_state, trading_sessions, tw0050 = ctx.target_session_date, ctx.tdcc_snapshot_for_state, ctx.trading_sessions, ctx.tw0050
+    tw0050_pred, twse_taiex_close = ctx.tw0050_pred, ctx.twse_taiex_close
 
     # 8. 組信
-    _mark_phase("渲染")
+    ctx.mark_phase("渲染", time.monotonic())
     # 批#32:渲染整體 fallback——單張卡片有 _safe_block 兜底,但若 render_html 本體
     # (行情表/KPI/尺寸守衛…)仍拋例外,原本會讓 main 直接退出、當天整封信不寄。
     # 改為退化成「極簡信」(行情+預測+分析全文),確保收件人一定收得到東西。
@@ -23122,13 +23159,23 @@ def main() -> int:
         with open(out, "w", encoding="utf-8") as f:
             f.write(html)
         print(f"[main] DRY_RUN — 預覽寫入 {out}")
-        _mark_phase("完成")
+        ctx.mark_phase("完成", time.monotonic())
         _write_run_manifest(now_tpe)
         return 0
+    ctx.html, ctx.pending_state_entry = html, pending_state_entry
+
+
+def _phase_deliver(ctx) -> int:
+    """相位八:寫 manifest、寄信、決定退出碼。
+
+    共用狀態只在邊界進出,本體逐字沿用拆解前的程式碼(理由見 `app_context`)。
+    """
+    html, now_tpe, pending_state_entry, quotes = ctx.html, ctx.now_tpe, ctx.pending_state_entry, ctx.quotes
+    report_date = ctx.report_date
 
     # P1-4:在寄信/state push 前寫 manifest,使其隨 state 一併 commit(供跨日趨勢);
     # SMTP 送出約 5-10s 未計入屬可接受(manifest 主要看 fetch/compute 花在哪)。失敗不影響寄信。
-    _mark_phase("完成")
+    ctx.mark_phase("完成", time.monotonic())
     _write_run_manifest(now_tpe)
 
     # 10. 寄信
@@ -23153,6 +23200,38 @@ def main() -> int:
               file=sys.stderr)
         return 1
     return 0
+
+
+def main() -> int:
+    global _RUN_DEADLINE
+    _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
+    _DEGRADED_STEPS.clear()
+    now_tpe = dt.datetime.now(TPE)
+    # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
+    if now_tpe.weekday() == 6:
+        return run_weekend_digest(now_tpe)
+    mode = determine_mode(now_tpe)
+    report_date = now_tpe.strftime("%Y-%m-%d (%a)")
+    target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
+    target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
+
+    print(f"[main] 開始產生 {mode} 報告 — {report_date}")
+    # 第十一輪 P2-3:**本班的共用狀態在這裡建一次,再往下傳。** recorder 仍是
+    # 模組層的 `_RECORDER`(131 處測試透過 `_RUN_MANIFEST` 指著同一個 dict),
+    # 但相位只認 `ctx` —— 要改成每班新建就只剩這一行。
+    ctx = _app.AppContext(_RECORDER)
+    ctx.now_tpe, ctx.target_session_day = now_tpe, target_session_day
+    ctx.mode, ctx.report_date = mode, report_date
+    ctx.target_session_date = target_session_date
+    ctx.recorder.data["marks"].clear()
+    _phase_market_and_macro(ctx)
+    _phase_news_policy_sports(ctx)
+    _phase_taifex_and_chips(ctx)
+    _phase_twse_universe(ctx)
+    _phase_events_and_models(ctx)
+    _phase_llm_analysis(ctx)
+    _phase_render(ctx)
+    return _phase_deliver(ctx)
 
 
 if __name__ == "__main__":

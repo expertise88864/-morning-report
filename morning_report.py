@@ -424,7 +424,11 @@ _LLM_DEADLINE: Optional[float] = None
 # 記整體 deadline,昂貴且「非核心」的步驟(全文擷取、LLM 事件抽取)在動工前檢查剩餘時間,
 # 不足就跳過、用當次已有資料組信寄出——寧可少一塊資料,不可整封信被 timeout 吞掉。
 # 核心(行情/預測/LLM 主分析/寄信)永遠執行;主分析本身另有 LLM_TOTAL_TIMEOUT 保護。
-RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "1140"))   # 19 分(25 分留 6 分緩衝)
+RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "2100"))
+#: 35 分(job timeout 40 分,留 5 分讓寄信與 state push 一定跑得完)。
+#: 批#101:1140 → 2100。實測 2026-08-01 那班只用 869s,但高推理強度會讓
+#: `_core_tail_seconds()` 的保留量長大,進而把新聞全文擷取擠掉 ——
+#: 那是拿信的深度去換推理深度,不划算。餘裕本來就有(06:00 跑、09:00 開盤)。
 # P0-1 新聞抓取平行度(依 host 分組,不同 host 平行、同 host 序列);設 1 退回序列(逃生門)。
 NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
 

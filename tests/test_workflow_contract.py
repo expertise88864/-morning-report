@@ -333,3 +333,45 @@ def test_the_canary_redacts_keys_from_anything_it_prints(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "abc")
     importlib.reload(canary)
     assert canary._safe("abc def") == "abc def"
+
+
+def test_the_three_budgets_are_ordered_and_stay_ordered():
+    """批#101:**job timeout > 執行預算 > LLM 預算** —— 這三個數字必須成階梯。
+
+    它們分散在三個檔案(workflow / morning_report / llm_telemetry),而且沒有
+    任何東西綁著。調高其中一個而忘了另一個的後果各自不同,但都很嚴重:
+
+      - 執行預算 ≥ job timeout → **job 在寄信途中被 GitHub 殺掉**,
+        而 `RUN_BUDGET_SECONDS` 存在的唯一理由就是防這件事;
+      - LLM 預算 ≥ 執行預算 → `_core_tail_seconds()` 的保留量超過總預算,
+        所有昂貴步驟(新聞全文、8-K 補抓、事件抽取)**全部被跳過**,
+        信照樣寄出但內容被掏空 —— 而那是最難察覺的一種壞掉。
+
+    2026-08-01 三個數字一起放寬(25→40 分、1140→2100s、600→900s),
+    這條把「一起」變成強制的。
+    """
+    import llm_telemetry as lt
+
+    import morning_report as mr
+
+    job_seconds = int(_workflow()["jobs"]["send-report"]["timeout-minutes"]) * 60
+    run_budget = mr.RUN_BUDGET_SECONDS
+    llm_total = lt.MAX_TOTAL_TIMEOUT
+
+    # 寄信 + state push + 存檔的尾段。job 被殺 = 使用者收不到信。
+    tail = 240
+    assert run_budget + tail <= job_seconds, (
+        f"執行預算 {run_budget:.0f}s + 收尾 {tail}s 超過 job timeout "
+        f"{job_seconds}s —— job 會在寄信途中被殺")
+
+    # LLM 預算加上核心保留之後,要留得下昂貴步驟,否則它們永遠被跳過
+    core_tail = llm_total + 40
+    cheapest_expensive_step = 140      # `_run_budget_ok` 呼叫端的最小估時
+    assert core_tail + cheapest_expensive_step < run_budget, (
+        f"LLM 保留 {core_tail:.0f}s + 最便宜的昂貴步驟 {cheapest_expensive_step}s "
+        f"≥ 執行預算 {run_budget:.0f}s —— 新聞全文擷取等步驟會永遠被跳過")
+
+    # 而且要留下有意義的工作空間,不是剛好塞得下
+    assert run_budget - core_tail >= 600, (
+        f"扣掉 LLM 保留後只剩 {run_budget - core_tail:.0f}s 給資料收集 —— "
+        "2026-08-01 實測光是行情+新聞+籌碼就要約 600s")

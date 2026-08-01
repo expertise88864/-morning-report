@@ -219,7 +219,10 @@ PROVIDER_TIMEOUT_BASE = {
 DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
 
 #: 總額的硬上限。再長就會開始擠壓寄信 —— 「晨報不可斷」優先於「跑完推理」。
-MAX_TOTAL_TIMEOUT = 600.0
+#: 批#101:600 → 900,與 `RUN_BUDGET_SECONDS` 2100 一起放寬。
+#: 實測參考:xhigh 在 2026-08-01 用了 196 秒,離上限還很遠;
+#: 放寬是為了讓 max 不必靠擠掉新聞全文來換時間。
+MAX_TOTAL_TIMEOUT = 900.0
 
 
 def timeout_base(provider: str) -> tuple:

@@ -34,7 +34,13 @@ concurrency:
 jobs:
   send-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 25   # 平時 2-8 分;放寬以吸收偶發 LLM 變慢(如外部大量佔用同把 API key)避免撞 timeout 被取消
+    # 批#101:25 → 40 分。cron 是 06:00 台北,而台股 09:00 才開盤 ——
+    # 牆鐘餘裕有兩小時,真正的限制從來不是時間而是這三個數字沒有綁在一起:
+    # job timeout > RUN_BUDGET_SECONDS > LLM 預算。放寬是為了讓高推理強度
+    # 不必用「跳過新聞全文擷取」去換(那等於拿信的深度換推理深度)。
+    # 這不是把寄信拿去賭:RUN_BUDGET_SECONDS 仍然保證信會先寄出,
+    # job timeout 只是最後的兜底。
+    timeout-minutes: 40
     # 批#93(第九輪 P1-10):**「信沒寄出」與「信寄出了但事後檢查失敗」是兩件事。**
     # 2026-07-31 就發生過:信正常寄達,而寄信**之後**的 state schema 契約失敗
     # 讓 job 變紅 → 告警信說「晨報未寄出,收件人可能沒有收到信」。

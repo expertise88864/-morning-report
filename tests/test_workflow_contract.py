@@ -467,3 +467,76 @@ def test_no_workflow_declares_the_same_env_key_twice():
     assert not problems, (
         "workflow 有重複的 key(後者靜默勝出,前者形同不存在):\n  "
         + "\n  ".join(problems))
+
+
+def test_the_state_contract_gates_the_push_not_the_other_way_round():
+    """第十輪 P1-9:**push 才是發佈邊界,契約要卡在 commit 與 push 之間。**
+
+    原本晨報自己 commit + push,而 schema 契約是 workflow 的**下一步** ——
+    壞掉的 state 早就在 main 上,契約只能事後告訴你。而 `_STATE_WRITES`
+    只看得到 I/O 失敗,看不到 schema 損壞、跨檔版本不一致、語意空資料。
+
+    信在契約之前就已寄出,所以這不違反「晨報不可斷」。
+    """
+    wf = _workflow()
+    steps = wf["jobs"]["send-report"]["steps"]
+    names = [str(s.get("name") or "") for s in steps]
+    report_i = next(i for i, s in enumerate(steps)
+                    if "morning_report.py" in str(s.get("run") or ""))
+    contract_i = next(i for i, s in enumerate(steps)
+                      if "test_state_schema_contract" in str(s.get("run") or ""))
+    push_i = next((i for i, s in enumerate(steps)
+                   if "push_committed_state" in str(s.get("run") or "")), None)
+    assert push_i is not None, f"沒有獨立的發佈步驟:{names}"
+    assert report_i < contract_i < push_i, (
+        f"順序必須是 晨報 → 契約 → 發佈,實際是 {report_i}/{contract_i}/{push_i}")
+
+    # 晨報必須被告知延後 push,否則它會自己推出去、契約再擋也來不及
+    assert (steps[report_i].get("env") or {}).get("STATE_PUSH_DEFERRED") == "1"
+    # 發佈步驟**不得**有 `if: always()` —— 契約失敗時它必須被跳過
+    assert "always" not in str(steps[push_i].get("if") or ""), \
+        "發佈步驟用了 always(),契約失敗照樣 push —— 閘門形同虛設"
+
+    import morning_report as mr
+    assert hasattr(mr, "push_committed_state")
+
+
+def test_each_canary_probe_job_holds_only_its_own_key():
+    """第十輪 P0-1 + P1-3:**真實探測與金鑰隔離要同時成立。**
+
+    P1-3 要求每個 provider 都發真請求;P0-1 要求不要把四把金鑰放進同一個
+    process。matrix 同時滿足兩者 —— 但前提是每個 job 真的只拿自己那一把,
+    所以這裡逐一比對表達式。
+    """
+    wf = _workflow_at("validate-llm-config.yml")
+    probe = wf["jobs"]["probe"]
+    assert probe["strategy"]["matrix"]["provider"] == [
+        "openai", "deepseek", "gemini", "anthropic"]
+    env = probe["steps"][-1]["env"]
+    for provider, key in (("openai", "OPENAI_API_KEY"),
+                          ("deepseek", "DEEPSEEK_API_KEY"),
+                          ("gemini", "GEMINI_API_KEY"),
+                          ("anthropic", "ANTHROPIC_API_KEY")):
+        expr = str(env.get(key, ""))
+        assert f"matrix.provider == '{provider}'" in expr, (
+            f"{key} 沒有以 matrix.provider 條件化 —— 每個 job 會拿到所有金鑰:{expr}")
+
+    # 設定驗證那個 job 仍然不得持有非 OpenAI 的金鑰
+    cfg_env = wf["jobs"]["canary"]["steps"][-1]["env"]
+    for forbidden in ("DEEPSEEK_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        assert forbidden not in cfg_env, f"設定 job 又拿到了 {forbidden}"
+    for flag in ("DEEPSEEK_KEY_PRESENT", "GEMINI_KEY_PRESENT",
+                 "ANTHROPIC_KEY_PRESENT"):
+        assert flag in cfg_env, f"缺 {flag} —— 缺金鑰會被誤判成沒設定"
+    # 而且不得有任何安裝步驟(未鎖版套件 + 金鑰 = 供應鏈風險)
+    for job in wf["jobs"].values():
+        for step in job["steps"]:
+            assert "pip install" not in str(step.get("run") or ""), \
+                "金絲雀又開了安裝步驟 —— 它只用標準函式庫"
+
+
+def _workflow_at(name: str) -> dict:
+    path = Path(__file__).resolve().parents[1] / ".github" / "workflows" / name
+    if not path.exists():
+        pytest.fail(f"找不到 {name}")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))

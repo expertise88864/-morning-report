@@ -302,5 +302,107 @@ def _report(checks, provider, extractor, model, effort) -> None:
             print(f"[canary] step summary 寫入失敗: {e}", file=sys.stderr)
 
 
+
+
+# ── 各 provider 的真實探測(第十輪 P1-3)────────────────────────────────
+# 原本只有 OpenAI 會發真請求,其餘只檢查「有沒有 key」—— 而 workflow 叫做
+# `Validate LLM Config`,很容易讓人以為每個 provider 都被實測過。
+#
+# 這些探測**每個只用自己那把金鑰**,由 workflow 的 matrix 分成獨立 job
+# (第十輪 P0-1:不把四把金鑰放進同一個 process)。
+
+def _probe_openai_compatible(base: str, key: str, model: str,
+                             label: str) -> Check:
+    """OpenAI 相容的 chat/completions(OpenAI 與 DeepSeek 共用)。"""
+    payload = {"model": model, "max_tokens": 16, "stream": False,
+               "messages": [{"role": "user", "content": "ok"}]}
+    return _probe_json(f"{base.rstrip('/')}/v1/chat/completions", payload,
+                       {"Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json"}, label)
+
+
+def _probe_gemini(key: str, model: str) -> Check:
+    url = ("https://generativelanguage.googleapis.com/v1beta/models/"
+           f"{model}:generateContent?key={key}")
+    payload = {"contents": [{"parts": [{"text": "ok"}]}],
+               "generationConfig": {"maxOutputTokens": 16}}
+    return _probe_json(url, payload, {"Content-Type": "application/json"},
+                       f"gemini {model}")
+
+
+def _probe_anthropic(key: str, model: str) -> Check:
+    payload = {"model": model, "max_tokens": 16,
+               "messages": [{"role": "user", "content": "ok"}]}
+    return _probe_json("https://api.anthropic.com/v1/messages", payload,
+                       {"x-api-key": key, "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json"},
+                       f"anthropic {model}")
+
+
+def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
+    """送一次最小請求。**只回狀態與錯誤內文,不回內容。**"""
+    import urllib.request as _u
+    data = json.dumps(payload).encode("utf-8")
+    req = _u.Request(url, data=data, method="POST", headers=headers)
+    t0 = time.monotonic()
+    try:
+        with _u.urlopen(req, timeout=60) as r:
+            body = r.read()
+            status = r.status
+    except urllib.error.HTTPError as e:
+        status, body = e.code, e.read()
+    except Exception as e:                      # noqa: BLE001
+        return Check(label, False, f"{type(e).__name__}"
+                     f"(在 {time.monotonic() - t0:.0f}s 後)")
+    took = time.monotonic() - t0
+    if status == 200:
+        return Check(label, True, f"{took:.0f}s、回應可解析")
+    return Check(label, False,
+                 f"HTTP {status}: {body.decode('utf-8', 'replace')[:200]}")
+
+
+def probe_one_provider(provider: str) -> int:
+    """matrix 模式:只探測**這一個** provider,而且只用它自己的金鑰。"""
+    key = _env(_PROVIDER_KEY.get(provider, ""))
+    # **只有被選用的 provider 缺金鑰才算失敗。** matrix 對四個 provider 都跑,
+    # 而使用者通常只用其中一兩個 —— 讓沒用到的那些變紅,金絲雀就會恆紅,
+    # 而恆紅的閘門等於沒有閘門(與降級清單的常駐雜訊是同一個病)。
+    selected = {_env("LLM_PROVIDER", "deepseek"),
+                _env("EXTRACTOR_PROVIDER") or _env("LLM_PROVIDER", "deepseek"),
+                _env("LLM_SHADOW_PROVIDER")}
+    if not key:
+        used = provider in selected
+        _report([Check(f"{provider} 金鑰", False,
+                       (f"這個 job 沒有拿到 {_PROVIDER_KEY.get(provider)}"
+                        if used else "本次設定沒有用到這個 provider,略過"),
+                       fatal=used)], provider, "-", "-", "-")
+        return 1 if used else 0
+    if provider == "openai":
+        model = _env("OPENAI_MODEL", "gpt-5.6-terra")
+        checks = [check_model_exists(model),
+                  _probe_openai_compatible(_base(), key, model, f"openai {model}")]
+        checks.extend(effort_matrix(model))
+    elif provider == "deepseek":
+        model = _env("DEEPSEEK_MODEL", "deepseek-v4-pro")
+        checks = [_probe_openai_compatible(
+            _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"), key, model,
+            f"deepseek {model}")]
+    elif provider == "gemini":
+        checks = [_probe_gemini(key, _env("GEMINI_MODEL", "gemini-2.5-flash"))]
+    elif provider == "anthropic":
+        checks = [_probe_anthropic(key, _env("CLAUDE_MODEL", "claude-sonnet-4-6"))]
+    else:
+        checks = [Check(f"provider {provider}", False, "不是合法值")]
+    _report(checks, provider, "-", "-", "-")
+    return 1 if any(c.fatal and not c.ok for c in checks) else 0
+
+
+_PROVIDER_KEY = {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY",
+                 "gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # matrix 模式: 有值就只探測那一個 provider
+    # (第十輪 P1-3 要真實探測,P0-1 要金鑰隔離 —— matrix 同時滿足兩者)。
+    _only = _env("CANARY_PROVIDER")
+    raise SystemExit(probe_one_provider(_only) if _only else main())

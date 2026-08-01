@@ -10743,6 +10743,26 @@ def _refresh_state_writes_in_manifest() -> None:
         print(f"[state] 寫入帳補寫失敗: {e}", file=sys.stderr)
 
 
+def push_committed_state() -> None:
+    """把已 commit 的 state 推回 repo(第十輪 P1-9 的發佈步驟)。
+
+    與 commit 分開,好讓 **state 契約可以卡在中間**:契約失敗就不發佈,
+    下一班讀到的是昨天的完整 state,而不是今天壞掉的那份。
+    代價講明白:那一天的累積會遺失 —— 但「少一天」遠優於「餵一份壞資料
+    給之後每一班」,這與本 repo 既有的 fail-closed 立場一致
+    (帳本讀不出來就不覆寫、除權息形狀不對就不落地)。
+    """
+    try:
+        subprocess.run(["git", "push"], check=True, timeout=25)
+    except subprocess.SubprocessError:
+        print("[state] initial push failed; retrying after rebase", file=sys.stderr)
+        subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
+        subprocess.run(["git", "pull", "--rebase", "--autostash"], check=True,
+                       timeout=45)
+        subprocess.run(["git", "push"], check=True, timeout=30)
+    print("[state] 已 push 回 repo")
+
+
 def _git_commit_and_push_state(paths: list, message: str) -> None:
     """在 GitHub Actions 上把指定 state 檔 commit + push 回 repo(本機/DRY_RUN 不動作)。
 
@@ -10779,14 +10799,18 @@ def _git_commit_and_push_state(paths: list, message: str) -> None:
             if _bad:
                 _msg += "\n\n寫入失敗(內容仍為前一版):" + "、".join(_bad)
             subprocess.run(["git", "commit", "-m", _msg], check=True, timeout=10)
-            try:
-                subprocess.run(["git", "push"], check=True, timeout=25)
-            except subprocess.SubprocessError:
-                print("[state] initial push failed; retrying after rebase", file=sys.stderr)
-                subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
-                subprocess.run(["git", "pull", "--rebase", "--autostash"], check=True, timeout=45)
-                subprocess.run(["git", "push"], check=True, timeout=30)
-            print("[state] 已 push 回 repo")
+            # 第十輪 P1-9:**push 才是發佈邊界,驗證要卡在 commit 與 push 之間。**
+            # 原本 commit 完立刻 push,而 state schema 契約是 workflow 的**下一步**
+            # —— 所以 schema 壞掉的 state 已經在 main 上了,契約只能事後告訴你。
+            # 寫檔成功不代表資料正確:`_STATE_WRITES` 只看得到 I/O 失敗,
+            # 看不到 schema 損壞、跨檔版本不一致、日期錯誤、語意空資料。
+            #
+            # 延後模式下由 workflow 接手:契約通過才跑發佈步驟。
+            # 這不影響「晨報不可斷」—— 信在此之前就已經寄出。
+            if os.environ.get("STATE_PUSH_DEFERRED") == "1":
+                print("[state] 已 commit,push 延後至 state 契約通過後")
+                return
+            push_committed_state()
         else:
             print("[state] 無變動，跳過 commit")
     except subprocess.SubprocessError as e:

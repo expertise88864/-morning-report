@@ -156,6 +156,7 @@ jobs:
           PORTFOLIO_2_NAME: ${{ vars.PORTFOLIO_2_NAME }}
 
           TZ: Asia/Taipei
+          STATE_PUSH_DEFERRED: "1"
         id: report
         run: python morning_report.py
 
@@ -167,11 +168,23 @@ jobs:
       # 放在寄信**之後**:此時信已寄出,不違反「晨報不可斷」;契約失敗會讓
       # 這個 job 變紅,既有的 alert-on-failure job 會據此發告警信。
       # `continue-on-error: false`(預設)是刻意的 —— 靜默通過的契約等於沒有契約。
+      # 第十輪 P1-9:**契約卡在 commit 與 push 之間。**
+      # 原本這一步跑在晨報**之後**,而晨報自己已經 push 了 —— schema 壞掉的
+      # state 早就在 main 上,契約只能事後告訴你。現在晨報只 commit
+      # (`STATE_PUSH_DEFERRED=1`),契約通過才由下一步發佈。
+      # 信在此之前就已經寄出,所以這不影響「晨報不可斷」。
       - name: 驗證落地 state 的 schema 契約
         if: ${{ always() && !cancelled() }}
         env:
           TZ: Asia/Taipei
         run: python -m pytest tests/test_state_schema_contract.py -q
+
+      # 沒有 `if:` 是刻意的:上一步失敗時這一步會被跳過,
+      # 壞掉的 state 就留在 runner 上隨之丟棄,不會進 main。
+      - name: 發佈 state(契約通過後才 push)
+        env:
+          TZ: Asia/Taipei
+        run: python -c "import morning_report as mr; mr.push_committed_state()"
 
   # 批#32 r1(Codex F1):告警必須是**獨立 job**。原本放在 send-report 的最後一步,
   # 但 job 撞 timeout-minutes: 25 被 GitHub 終止時,整個 job(含後續步驟)一起被殺

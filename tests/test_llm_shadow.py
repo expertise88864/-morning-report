@@ -560,9 +560,23 @@ def test_cost_is_estimated_only_where_there_is_a_price():
     assert terra["usd"] == pytest.approx(0.2383, abs=1e-4), terra
     assert terra["usd"] > luna["usd"] * 9, "output 是 input 的 6 倍價,差距要拉開"
 
-    unknown = lt.estimate_cost("deepseek-v4-pro", usage)
+    # 「沒有價格就不估」要用**真正未收錄**的模型測。
+    # 這裡原本用 deepseek-v4-pro —— 那個前提在補上 DeepSeek 官方單價之後
+    # 不成立了。把測試改成仍在測同一個性質,而不是為了變綠改掉斷言。
+    unknown = lt.estimate_cost("some-unlisted-model-v9", usage)
     assert unknown["usd"] is None
-    assert "未收錄" in unknown["basis"] and "deepseek-v4-pro" in unknown["basis"]
+    assert "未收錄" in unknown["basis"] and "some-unlisted-model-v9" in unknown["basis"]
+
+    # DeepSeek 現在有官方單價(cache miss $0.435 / hit $0.003625 / output $0.87)
+    ds = lt.estimate_cost("deepseek-v4-pro", usage)
+    assert ds["usd"] == pytest.approx(85_814 * 0.435 / 1e6 + 5_557 * 0.87 / 1e6,
+                                      abs=1e-5), ds
+    # **DeepSeek 沒有 cache write 收費**(那是 GPT-5.6+ 的 1.25×)。
+    # 它的回應根本不含該欄位,所以乘數不該被套用。
+    ds_cached = lt.estimate_cost("deepseek-v4-pro", dict(
+        usage, prompt_cache_hit_tokens=80_000))
+    assert ds_cached["usd"] < ds["usd"], "快取命中沒有讓 DeepSeek 變便宜"
+    assert "cache write" not in ds_cached["basis"]
     # 日期後綴不該讓單價查不到
     assert lt.estimate_cost("gpt-5.6-luna-2026-02-16", usage)["usd"] == luna["usd"]
     # 沒有 usage 時不得憑空生一個 0
@@ -977,10 +991,11 @@ def test_cost_summary_says_when_it_is_incomplete():
     assert "incomplete" in with_timeout
     assert "計費" in with_timeout["incomplete"]
 
-    # 未收錄單價的模型也要說(DeepSeek 目前就是)
-    mixed = lt.run_cost_summary({"primary": {"model": "deepseek-v4-pro",
+    # 未收錄單價的模型也要說。**不要用 DeepSeek 當例子** —— 它已經有官方
+    # 單價了,拿它當「未收錄」的樣本會讓這條測試在下次補價時再壞一次。
+    mixed = lt.run_cost_summary({"primary": {"model": "some-unlisted-model-v9",
                                              "prompt_tokens": 100, "calls": 1}})
-    assert "deepseek-v4-pro" in mixed.get("incomplete", "")
+    assert "some-unlisted-model-v9" in mixed.get("incomplete", "")
 
 
 def test_cache_write_tokens_are_recorded_and_flagged_in_the_basis():

@@ -89,7 +89,12 @@ import pytest
 #: 推導都必須留在主模組:`_atomic_write_bytes` 是所有 state 檔的唯一寫入口
 #: (經 refactor_audit 判 BLOCK:net/io=['os'] state=['_STATE_WRITES']),
 #: 而把記帳搬走等於在寫入口與帳本之間再開一條可能不同步的路。
-MAIN_MODULE_LINE_CEILING = 23_100
+#:
+#: 2026-08-01 批#109 調高至 23,250(現況 23,152)。這批是**外審 8 條 CONFIRMED
+#: finding 的修正**,新增的都是接線與記帳,經 refactor_audit 全判 BLOCK:
+#: `_llm_key_available`(讀四個金鑰常數)、`_record_report_writer`(寫 manifest)、
+#: `_refresh_state_writes_in_manifest`(寫 manifest 檔)。
+MAIN_MODULE_LINE_CEILING = 23_250
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

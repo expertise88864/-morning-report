@@ -267,7 +267,8 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
                    ledger_path, read_ledger, write_ledger,
                    extract_stance, extract_summary, elapsed_timer,
                    primary_effort: str = "", shadow_effort: str = "",
-                   code_version: str = "", log=print) -> dict:
+                   code_version: str = "", applied_effort_probe=None,
+                   log=print) -> dict:
     """跑一次影子比較並落地,回傳要放進 manifest 的狀態(批#92)。
 
     第九輪 P1-11 要的**依賴注入**:呼叫、讀寫、計時、擷取器全部由外面傳進來,
@@ -303,7 +304,10 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
     # 同群欄位。**沒有它們,換了推理強度之後新舊樣本會被混進同一個平均**,
     # 而那個平均正是用來決定換不換模型的。
     rec["primary_effort"] = primary_effort or "unknown"
-    rec["shadow_effort"] = shadow_effort or "unknown"
+    # 呼叫之後才問「實際生效的是哪個強度」:API 可能拒絕並靜默退回預設,
+    # 那時把 requested 寫進 cohort 等於用一個謊當分群依據。
+    _applied = applied_effort_probe() if (ok and applied_effort_probe) else ""
+    rec["shadow_effort"] = _applied or shadow_effort or "unknown"
     rec["code_version"] = (code_version or "unknown")[:12]
     if err:
         rec["shadow_error"] = err[:160]

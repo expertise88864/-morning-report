@@ -655,9 +655,17 @@ def apply_event_timeline(model_history: list[dict],
     for record in sorted(model_history or [], key=lambda item: item.get("session_date", "")):
         for event in record.get("structured_events") or []:
             lifecycle = str(event.get("lifecycle") or _event_lifecycle(event))
-            # 為缺 subject_key 的歷史事件補算 v3 身分(見 docstring)。
+            # 為**舊世代**的歷史事件用當前公式重算身分(見 docstring)。
             # 不寫回 state —— 這裡只是為了讓兩代主鍵在本次比對中對齊。
-            if known_names and not str(event.get("subject_key") or ""):
+            #
+            # r1(Codex #4,P2):原本的條件是「欄位缺失才重算」。
+            # v3 的事件**存著** subject_key(`2奈米,蘋果`),於是升到 v4 之後
+            # 它不會被重算,而新事件是 `2nm,aapl` —— 主鍵永遠對不上,
+            # 標題橋又因改寫而 miss,confirmed 的重複報導會重新拿到完整的
+            # lifecycle weight。判準改成「缺欄位**或**世代較舊」。
+            _gen = int(_safe_number(event.get("event_schema")))
+            if known_names and (not str(event.get("subject_key") or "")
+                                or _gen < EVENT_SCHEMA_VERSION):
                 _ent = str(event.get("entity") or "")
                 event = dict(event, subject_key=event_subject_key(
                     str(event.get("title") or ""), _ent,

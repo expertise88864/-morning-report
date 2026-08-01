@@ -427,6 +427,23 @@ LLM_SHADOW_REASONING_EFFORT = os.environ.get(
 EXTRACTOR_PROVIDER = os.environ.get("EXTRACTOR_PROVIDER", "").strip().lower()
 
 
+def _llm_key_available(provider: str) -> bool:
+    """**被選中的那個 provider** 有沒有金鑰(批#109,外審 #2)。
+
+    「有任一把金鑰就啟動」是在只有 DeepSeek 的年代寫的判準;加入 OpenAI 之後
+    它同時會誤放(選 openai 卻只有 deepseek key → 跑到一半才失敗)與誤擋
+    (OpenAI-only → 在 dispatch 前就靜默跳過,而 manifest 什麼都不會說)。
+    """
+    # **讀模組層常數,不讀 os.environ。** 這個 repo 的金鑰真相來源是
+    # `DEEPSEEK_API_KEY = os.environ.get(...)` 這些 import 時取值的常數,
+    # 測試也是 monkeypatch 它們。直接讀 environ 會與其餘程式碼分歧 ——
+    # 我第一版就是這樣寫的,12 條既有測試立刻紅(它們模擬的是生產的取值方式)。
+    return bool({
+        "deepseek": DEEPSEEK_API_KEY, "openai": OPENAI_API_KEY,
+        "gemini": GEMINI_API_KEY, "anthropic": ANTHROPIC_API_KEY,
+    }.get((provider or "").strip().lower(), "").strip())
+
+
 def _extractor_provider() -> str:
     """抽取器實際要用的 provider(**呼叫時**才決定,見上面的說明)。"""
     return EXTRACTOR_PROVIDER or LLM_PROVIDER
@@ -10677,6 +10694,28 @@ def backfill_actual_opens(history: list[dict]) -> int:
     return filled
 
 
+def _refresh_state_writes_in_manifest() -> None:
+    """把最新的 state 寫入帳補寫回已落地的 manifest(批#109,外審 #3)。"""
+    try:
+        if not RUN_MANIFEST_FILE.exists():
+            return
+        base = json.loads(RUN_MANIFEST_FILE.read_text(encoding="utf-8")) or {}
+        if not isinstance(base, dict):
+            return
+        failed = sorted(k for k, v in _STATE_WRITES.items() if not v.get("ok"))
+        base["state_writes"] = {
+            "attempted": len(_STATE_WRITES), "failed": failed,
+            "detail": {k: v for k, v in sorted(_STATE_WRITES.items())
+                       if not v.get("ok")}}
+        if failed and not any(d.startswith("state:write_failed")
+                              for d in _DEGRADED_STEPS):
+            _DEGRADED_STEPS.append("state:write_failed:" + ",".join(failed)[:60])
+        _atomic_write_text(RUN_MANIFEST_FILE,
+                           json.dumps(base, ensure_ascii=False, indent=1))
+    except Exception as e:                    # noqa: BLE001 - 觀測性不得擋 push
+        print(f"[state] 寫入帳補寫失敗: {e}", file=sys.stderr)
+
+
 def _git_commit_and_push_state(paths: list, message: str) -> None:
     """在 GitHub Actions 上把指定 state 檔 commit + push 回 repo(本機/DRY_RUN 不動作)。
 
@@ -10696,6 +10735,11 @@ def _git_commit_and_push_state(paths: list, message: str) -> None:
     try:
         subprocess.run(["git", "config", "user.name", "morning-report-bot"], check=True, timeout=10)
         subprocess.run(["git", "config", "user.email", "actions@github.com"], check=True, timeout=10)
+        # r1(Codex #3,P2):**manifest 必須是最後一個被寫的 state。**
+        # `_write_run_manifest` 跑在交付之前,而 archive / podcast / history
+        # 都在那之後才寫 —— 它們失敗時,已落地的 manifest 仍宣稱零失敗。
+        _refresh_state_writes_in_manifest()
+        existing = [p for p in paths if os.path.exists(p)]
         subprocess.run(["git", "add", *existing], check=True, timeout=10)
         # 若無變動就跳過
         diff = subprocess.run(["git", "diff", "--cached", "--quiet"], timeout=10)
@@ -12904,6 +12948,7 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
         attempt = 0
         while attempt < 3:
             attempt += 1
+            _t0 = time.monotonic()
             try:
                 print(f"[llm] 嘗試 DeepSeek model={model} attempt={attempt}"
                       f"{' (slim)' if slim else ''}")
@@ -12920,7 +12965,6 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                         and ("pro" in model or "reasoner" in model)):
                     payload["thinking"] = {"type": "enabled"}
                     payload["reasoning_effort"] = DEEPSEEK_REASONING_EFFORT
-                _t0 = time.monotonic()
                 r = requests.post(
                     url, json=payload, headers=headers,
                     timeout=_llm_request_timeout(),
@@ -12970,6 +13014,19 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 break
             except Exception as e:
                 last_err = e
+                # r1(Codex #5,P2):**這次呼叫已經送出,server 端照樣計費。**
+                # 原本只有成功分支呼叫 `_record_llm_call`,於是 DeepSeek 逾時
+                # 在 manifest 裡完全不存在 —— 不知道用了哪個模型、花了幾秒,
+                # 而 `cost_summary` 會回報「0 次未量測的計費呼叫」,
+                # 那是一個看似精確、語意卻錯的答案(2026-08-01 抽取器連兩班
+                # 逾時,事後查不到任何線索)。
+                _record_llm_call(role, "deepseek", model,
+                                 requested_effort=DEEPSEEK_REASONING_EFFORT,
+                                 applied_effort="", accepted=False,
+                                 error=f"{type(e).__name__}: {e}"[:160],
+                                 elapsed=time.monotonic() - _t0,
+                                 billable_unmeasured=True,
+                                 prompt_chars=len(prompt))
                 print(f"[llm] DeepSeek {model} 異常: {_redact_secret_text(str(e))}",
                       file=sys.stderr)
                 if attempt < 3:
@@ -13028,9 +13085,16 @@ def _record_llm_call(role: str, provider: str, model: str, *,
     token 也混成一團:不同模型單價不同,加總之後算不出成本。
     **錯誤的可觀測性比沒有更危險**,它給的是一個看似精確、語意卻錯的答案。
 
-    **只有通過驗收的呼叫才算 writer**。原本在 `r.json()` 之後就登記,於是
-    `finish_reason=length`、content 為空的失敗呼叫也會被記成「實際模型」,
-    而真正寫出信的可能是後面的 Gemini 備援。未通過的進 `attempts`。
+    **只有通過 API 層驗收的呼叫才進角色槽**。原本在 `r.json()` 之後就登記,
+    於是 `finish_reason=length`、content 為空的失敗呼叫也會被記成「實際模型」。
+    未通過的進 `attempts`。
+
+    但 `accepted=True` 只代表**API 回應可用**,不代表那份輸出真的寫出了這封信
+    —— 報告層的驗收(`_analysis_complete_enough`)在更外層,失敗時會走短版
+    重試、Gemini 備援或確定性備援文字。「這封信是誰寫的」由
+    `_record_report_writer` 另外記在 `llm.writer`(批#109,外審 #7:
+    我原本這段 docstring 宣稱「只有通過驗收的呼叫才算 writer」,
+    而那句話只在 API 層成立)。
     """
     rec = _lt.build_record(provider, model, requested_effort=requested_effort,
                            applied_effort=applied_effort, usage=usage,
@@ -13131,8 +13195,20 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
         # 呼叫紀錄、log、測試看到的都會是被改過的同一個物件(自測時就是這樣紅的)。
         retry_payload = {k: v for k, v in payload.items() if k != "reasoning_effort"}
         applied_effort = ""      # 退讓後用的是 provider 預設,不是使用者要的那個
-        r = requests.post(url, json=retry_payload, headers=headers,
-                          timeout=timeout or _llm_request_timeout())
+        # r1(Codex #6,P2):**退讓後的第二次請求也已送出、也會計費。**
+        # 原本只有第一次在記錄例外的 try 裡,第二次逾時會完全沒有紀錄,
+        # 連第一次 400 的原因都跟著消失。
+        try:
+            r = requests.post(url, json=retry_payload, headers=headers,
+                              timeout=timeout or _llm_request_timeout())
+        except Exception as _e2:
+            _record_llm_call(role, "openai", use_model, requested_effort=effort,
+                             applied_effort="", accepted=False,
+                             error=f"{type(_e2).__name__}: {_e2}",
+                             elapsed=time.monotonic() - _t0,
+                             billable_unmeasured=True, prompt_chars=len(prompt),
+                             backoff_reason=_backoff_reason)
+            raise
     r.raise_for_status()
     data = r.json() or {}
     choices = data.get("choices") or []
@@ -13184,8 +13260,13 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
             # 不是靠讀程式碼相信。
             def _call(p):
                 if LLM_SHADOW_PROVIDER == "openai":
+                    # r1(Codex #1,P2):**影子的推理強度原本只被記錄、沒有送出。**
+                    # 沒帶 `reasoning=` 就會沿用主分析的 `OPENAI_REASONING_EFFORT`,
+                    # 而帳本的 cohort 卻宣稱是影子那個 —— 不同設定的樣本
+                    # 會被錯誤地算進同一個平均。
                     return _call_openai(p, model=LLM_SHADOW_MODEL,
-                                        timeout=LLM_SHADOW_TIMEOUT, role="shadow")
+                                        timeout=LLM_SHADOW_TIMEOUT, role="shadow",
+                                        reasoning=LLM_SHADOW_REASONING_EFFORT)
                 return _call_deepseek(p, role="shadow")
 
             def _write(path, ledger):
@@ -13205,6 +13286,11 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
                 extract_summary=_extract_summary, elapsed_timer=time.monotonic,
                 primary_effort=_PRIMARY_EFFORT,
                 shadow_effort=LLM_SHADOW_REASONING_EFFORT,
+                # cohort 要記**實際生效**的強度:API 可能拒絕並靜默退回預設
+                # (2026-08-01 luna 的 max 就是如此),那時 requested 是謊。
+                applied_effort_probe=lambda: str(
+                    (_RUN_MANIFEST.get("llm", {}).get("shadow") or {})
+                    .get("applied_effort") or ""),
                 code_version=os.environ.get("GITHUB_SHA", ""),
                 log=lambda m: print(m, file=sys.stderr))
             stat.update(out)
@@ -13309,7 +13395,19 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                                               known_names=known_names)
     if os.environ.get("LLM_EVENT_EXTRACTION", "1") != "1":
         return deterministic
-    if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
+    # r1(Codex #2,P2):**要驗被選中的那個 provider 的金鑰。**
+    # 原本是 `any((DEEPSEEK, GEMINI, ANTHROPIC))` —— 少了 OPENAI,於是
+    # OpenAI-only 的設定會在 dispatch 之前就靜默退回確定性事件:
+    # 抽取器完全沒執行,而 manifest 連 `called` 都不會有,看起來就像今天沒事件。
+    # 這與 `validate_llm_config` 判定 OpenAI-only 合法互相矛盾。
+    # **合法但沒金鑰**才跳過。打錯字的 provider 必須留給 dispatch 當場失敗
+    # (第九輪 P0-1:未知的 provider 不得靜默落到別人身上)——
+    # 自測抓到:第一版把 `typo-provider` 一併吞成 `no_api_key`,
+    # 於是拼錯字的症狀從「當場報錯」退化成「今天沒有事件」。
+    _ep0 = _extractor_provider()
+    if _ep0 in _lt.VALID_PROVIDERS and not _llm_key_available(_ep0):
+        _RUN_MANIFEST.setdefault("llm_extractor", {}).update(
+            {"called": False, "outcome": "no_api_key:" + _ep0})
         return deterministic
     now_utc = dt.datetime.now(dt.timezone.utc)
 
@@ -13556,6 +13654,36 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         return deterministic
 
 
+def _record_report_writer(text: str) -> None:
+    """記下**真正寫出這封信的是誰**(批#109,外審 #7)。
+
+    `_record_llm_call(accepted=True)` 的判準只有「content 非空且
+    finish_reason != length」—— 那是**API 層**的驗收。而報告層的驗收
+    (`_analysis_complete_enough`:有沒有「我的明確立場」與一句話總結)
+    發生在更外層,失敗時會走短版重試、Gemini 備援、最後退到確定性備援文字。
+
+    也就是說 `llm.primary` 可能宣稱某個 provider 是 writer,而信其實不是它寫的
+    —— 我在 `_record_llm_call` 的 docstring 裡寫過「只有通過驗收的呼叫才算
+    writer」,那句話只在 API 層成立。**宣稱與實作不符**,而錯誤的可觀測性
+    比沒有更危險:它給的是一個看似精確、語意卻錯的答案。
+
+    這裡不改 `accepted` 的語意(它誠實地表示 API 回應可用),而是另外記
+    `llm.writer` —— 直接回答「這封信是誰寫的」。
+    """
+    slot = _RUN_MANIFEST.setdefault("llm", {})
+    if not _analysis_complete_enough(text):
+        slot["writer"] = {"source": "deterministic_fallback",
+                          "reason": "報告驗收未通過(缺立場或總結)"}
+        return
+    for role in ("primary",):
+        rec = slot.get(role)
+        if isinstance(rec, dict) and rec.get("provider"):
+            slot["writer"] = {"source": role, "provider": rec["provider"],
+                              "model": rec.get("model")}
+            return
+    slot["writer"] = {"source": "unknown"}
+
+
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
                       news: list[dict], tw0050: list[dict] | None = None,
                       calibration: str = "") -> str:
@@ -13564,8 +13692,10 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
     previous_deadline = _LLM_DEADLINE
     _LLM_DEADLINE = time.monotonic() + max(1.0, LLM_TOTAL_TIMEOUT_SECONDS)
     try:
-        return _call_llm_analysis_impl(
+        text = _call_llm_analysis_impl(
             quotes, fair, predictions, news, tw0050, calibration)
+        _record_report_writer(text)
+        return text
     finally:
         _LLM_DEADLINE = previous_deadline
 
@@ -21440,7 +21570,12 @@ def analyze_weekend_policy(intel: Optional[dict], gazette_records) -> str:
     prompt = _build_weekend_policy_prompt(intel, gazette_records)
     if not prompt:
         return ""
-    if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY)):
+    # 這裡走 `_call_llm_text`,它**有跨 provider 備援**(主供應商掛掉會轉
+    # Gemini),所以「任一把金鑰」才是對的語意 —— 缺的只是 OPENAI。
+    # (抽取器那一處不同:它是明確分派、沒有跨 provider 備援,
+    #  所以要驗被選中的那一個,見 `_llm_key_available` 的呼叫點。)
+    if not any((DEEPSEEK_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY,
+                OPENAI_API_KEY)):
         print("[weekend] 無 LLM 金鑰,略過政策深度解析", file=sys.stderr)
         return ""
     # r1(Codex,P1):**必須在共用的 LLM 總預算內執行**。直接呼叫 _call_llm_text

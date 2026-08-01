@@ -187,7 +187,16 @@ def main() -> int:
         efforts={"primary": effort if provider == "openai" else "",
                  "extractor": ext_effort if extractor == "openai" else ""})
     if issues:
-        checks = [Check("設定本身合法", False, ";".join(issues), fatal=False)]
+        # r1(Codex #8,P2):**致命的設定問題必須讓 job 變紅。**
+        # 原本一律 `fatal=False`,於是「選了 deepseek 卻沒有 DEEPSEEK_API_KEY」
+        # 這種必定失敗的設定,金絲雀仍然 exit 0、workflow 綠燈 ——
+        # 它就當不成設定閘門,而那是它存在的唯一理由。
+        # 判準是「這樣上線一定不會動」,不是「風險比較高」:
+        # 「超過實測過的上限」屬於後者,維持警告。
+        checks = [Check("設定本身合法",
+                        not any(lt.is_fatal(i) for i in issues),
+                        ";".join(issues),
+                        fatal=any(lt.is_fatal(i) for i in issues))]
 
     if "openai" in (provider, extractor):
         if not _env("OPENAI_API_KEY"):

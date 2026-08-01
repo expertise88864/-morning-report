@@ -336,7 +336,12 @@ def test_extractor_provider_matrix_is_explicit_and_fails_fast(monkeypatch):
         used = []
         monkeypatch.setattr(mr, "LLM_PROVIDER", main)
         monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", ext)
-        monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+        # 批#109(外審 #2):入口閘門現在驗**被選中那個 provider** 的金鑰
+        # (原本是「任一把金鑰就啟動」,而 OpenAI-only 會在 dispatch 前
+        #  就靜默退回確定性事件)。測試要用生產的形狀 —— 四把都給。
+        for _k in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+                   "ANTHROPIC_API_KEY"):
+            monkeypatch.setattr(mr, _k, "k")
         monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
         for name, fn in (("deepseek", "_call_deepseek_extractor"),
                          ("openai", "_call_openai"), ("gemini", "_call_gemini"),
@@ -1094,3 +1099,130 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
         has_key=lambda _e: True, efforts={"primary": "max"},
         models={"primary": "gpt-5.6-sol"}, scheduled=False)
     assert unknown == [], unknown
+
+
+def test_openai_only_credentials_still_run_the_extractor(monkeypatch):
+    """外審 #2:**「有任一把金鑰就啟動」在加入 OpenAI 之後同時誤放與誤擋。**
+
+    OpenAI-only 的設定會在 dispatch **之前**就退回確定性事件 —— 抽取器完全
+    沒執行,而 manifest 連 `called` 都沒有,看起來就像今天沒有事件。
+    """
+    import morning_report as mr
+
+    for k in ("DEEPSEEK_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.setattr(mr, k, "")
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-o")
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    called = {"n": 0}
+
+    def _fake(_p, **_kw):
+        called["n"] += 1
+        return "[]"
+
+    monkeypatch.setattr(mr, "_call_openai", _fake)
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    mr.call_llm_event_extractor(
+        [{"title": "台積電消息", "summary": "x", "source": "測試",
+          "published": "2026-07-31T08:00:00+08:00"}], [])
+    assert called["n"] == 1, "OpenAI-only 之下抽取器根本沒被呼叫"
+
+    # 合法但缺金鑰 → 明確記錄跳過的原因(不是靜默)
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "")
+    mr._RUN_MANIFEST.pop("llm_extractor", None)
+    mr.call_llm_event_extractor([], [])
+    assert mr._RUN_MANIFEST["llm_extractor"]["outcome"].startswith("no_api_key")
+
+
+def test_deepseek_network_failure_is_recorded_like_openai(monkeypatch):
+    """外審 #5:DeepSeek 逾時原本完全不進 telemetry。
+
+    成本摘要會回報「0 次未量測的計費呼叫」—— 一個看似精確、語意卻錯的答案。
+    """
+    import requests
+
+    import morning_report as mr
+
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-d")
+    monkeypatch.setattr(mr, "DEEPSEEK_FALLBACK_MODELS", ["deepseek-v4-pro"],
+                        raising=False)
+    monkeypatch.setattr(mr, "_llm_sleep", lambda _s: None)
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: (_ for _ in ()).throw(
+        requests.exceptions.ReadTimeout("Read timed out.")))
+    saved = mr._RUN_MANIFEST.get("llm")
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        with pytest.raises(Exception):
+            mr._call_deepseek("hi")
+        attempts = mr._RUN_MANIFEST.get("llm", {}).get("attempts") or []
+        assert attempts, "DeepSeek 逾時完全沒有留下紀錄"
+        rec = attempts[-1]
+        assert rec["provider"] == "deepseek"
+        assert rec.get("billable_unmeasured") is True
+        assert "elapsed_seconds" in rec
+        summary = _lt_mod().run_cost_summary(mr._RUN_MANIFEST["llm"])
+        assert summary["unmeasured_billable_calls"] >= 1, summary
+    finally:
+        if saved is None:
+            mr._RUN_MANIFEST.pop("llm", None)
+        else:
+            mr._RUN_MANIFEST["llm"] = saved
+
+
+def _lt_mod():
+    import llm_telemetry
+    return llm_telemetry
+
+
+def test_api_acceptance_is_not_the_same_as_writing_the_report():
+    """外審 #7:**`accepted=True` 只代表 API 回應可用。**
+
+    報告層的驗收(有沒有「我的明確立場」與總結)在更外層,失敗時會走短版
+    重試、Gemini 備援或確定性備援文字 —— 而 `llm.primary` 仍宣稱該 provider
+    是 writer。我的 docstring 曾寫「只有通過驗收的呼叫才算 writer」,
+    那句話只在 API 層成立:**宣稱與實作不符**。
+    """
+    import morning_report as mr
+
+    saved = mr._RUN_MANIFEST.get("llm")
+    mr._RUN_MANIFEST["llm"] = {"primary": {"provider": "deepseek",
+                                           "model": "deepseek-v4-pro"}}
+    try:
+        mr._record_report_writer("內容不完整,沒有立場也沒有總結")
+        w = mr._RUN_MANIFEST["llm"]["writer"]
+        assert w["source"] == "deterministic_fallback", w
+        assert "驗收" in w["reason"]
+    finally:
+        if saved is None:
+            mr._RUN_MANIFEST.pop("llm", None)
+        else:
+            mr._RUN_MANIFEST["llm"] = saved
+
+
+def test_fatal_config_issues_make_the_canary_red():
+    """外審 #8:金絲雀要能當閘門,就必須對「一定不會動」的設定變紅。
+
+    判準是「這樣上線一定不會動」,不是「風險比較高」——
+    「超過實測過的上限」屬於後者,維持警告。
+    """
+    import llm_telemetry as lt
+
+    missing = lt.validate_llm_config(
+        provider="deepseek", extractor_provider="deepseek", shadow_provider="",
+        has_key=lambda _e: False, efforts={})
+    assert missing and all(lt.is_fatal(m) for m in missing), missing
+
+    typo = lt.validate_llm_config(
+        provider="opanai", extractor_provider="deepseek", shadow_provider="",
+        has_key=lambda _e: True, efforts={})
+    assert any(lt.is_fatal(m) for m in typo), typo
+
+    over_cap = lt.validate_llm_config(
+        provider="openai", extractor_provider="openai", shadow_provider="",
+        has_key=lambda _e: True, efforts={"primary": "max"},
+        models={"primary": "gpt-5.6-sol"})
+    assert over_cap and not any(lt.is_fatal(m) for m in over_cap), \
+        "「未實測」是風險提示,不該讓金絲雀變紅"
+    # 訊息本體仍是字串(既有呼叫端、manifest、log 不受影響)
+    assert isinstance(missing[0], str)

@@ -274,7 +274,12 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
     `has_key` 是 `callable(env_name) -> bool`,由呼叫端提供,
     這樣本模組不必碰 os.environ(保持純函式、可單獨測)。
     """
-    out = []
+    # r1(Codex #8,P2):**回傳要帶嚴重度。**
+    # 原本一律是字串,金絲雀因此把全部包成 `fatal=False` —— 於是
+    # 「選了 deepseek 卻沒有 DEEPSEEK_API_KEY」這種必定失敗的設定,
+    # 金絲雀仍然 exit 0、workflow 綠燈,它就當不成設定閘門。
+    # `fatal` 的判準是「這樣上線一定不會動」,不是「風險比較高」。
+    out: list = []
     models = models or {}
     roles = {"primary": provider, "extractor": extractor_provider}
     if shadow_provider:
@@ -284,18 +289,18 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
         if not prov:
             continue
         if prov not in VALID_PROVIDERS:
-            out.append(f"{role} provider 不是合法值:{prov!r}"
-                       f"(可用 {'/'.join(VALID_PROVIDERS)})")
+            out.append(_issue(f"{role} provider 不是合法值:{prov!r}"
+                       f"(可用 {'/'.join(VALID_PROVIDERS)})", fatal=True))
             continue
         env = PROVIDER_KEY_ENV[prov]
         if not has_key(env):
-            out.append(f"{role} 選了 {prov} 但缺 {env}")
+            out.append(_issue(f"{role} 選了 {prov} 但缺 {env}", fatal=True))
     if shadow_provider and shadow_provider.strip().lower() == (provider or "").strip().lower():
-        out.append("影子與主分析是同一個 provider —— 比較不出東西,只是加倍付費")
+        out.append(_issue("影子與主分析是同一個 provider —— 比較不出東西,只是加倍付費", fatal=False))
     for role, eff in (efforts or {}).items():
         eff = (eff or "").strip().lower()
         if eff and eff not in _EFFORT_ORDER:
-            out.append(f"{role} 的推理強度不是合法值:{eff!r}")
+            out.append(_issue(f"{role} 的推理強度不是合法值:{eff!r}", fatal=True))
             continue
         prov = (roles.get(role) or "").strip().lower()
         # **模型實測不支援的強度要當場擋下**(批#105)。這比排程上限嚴重得多:
@@ -303,17 +308,36 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
         # 而它的症狀是靜默退回 provider 預設,信照常寄出。
         ok = supported_efforts(models.get(role) or "") if eff else None
         if ok and eff not in ok:
-            out.append(f"{role} 的模型 {models.get(role)} 實測**不支援**推理強度"
-                       f" {eff}(可用 {'/'.join(ok)})—— 送出去會被拒絕並靜默"
-                       "退回 provider 預設")
+            out.append(_issue(
+                f"{role} 的模型 {models.get(role)} 實測**不支援**推理強度"
+                f" {eff}(可用 {'/'.join(ok)})—— 送出去會被拒絕並靜默"
+                "退回 provider 預設", fatal=True))
             continue
         cap = SCHEDULED_MAX_EFFORT.get(prov, {}).get(role) if scheduled else None
         if cap and eff and effort_rank(eff) > effort_rank(cap):
-            out.append(
+            out.append(_issue(
                 f"{role}({prov})推理強度 {eff} 超過實測過的上限 {cap} —— "
                 "超出的部分沒有量測支持,逾時掉備援的風險未知;"
-                "要提高請先用手動執行或影子量一次 reasoning_tokens")
+                "要提高請先用手動執行或影子量一次 reasoning_tokens", fatal=False))
     return out
+
+
+class _issue(str):
+    """設定問題:本體是字串(既有呼叫端不受影響),額外帶 `fatal` 嚴重度。
+
+    做成 str 子類是刻意的:manifest、log、測試都直接用它當訊息,
+    改成 dict 會讓那些地方全部要跟著改,而**改動面越大越容易漏一處**。
+    """
+
+    def __new__(cls, msg: str, fatal: bool = False):
+        obj = super().__new__(cls, msg)
+        obj.fatal = fatal
+        return obj
+
+
+def is_fatal(issue) -> bool:
+    """這條設定問題是不是「一定不會動」。未標記的一律當成非致命(保守)。"""
+    return bool(getattr(issue, "fatal", False))
 
 
 def config_source_issues(raw: str) -> list:
@@ -338,8 +362,9 @@ def config_source_issues(raw: str) -> list:
     unset = sorted(k for k, v in seen.items() if not v)
     if not unset:
         return []
-    return [f"這些 repo variable 沒有設定(走 workflow 預設值):{'、'.join(unset)}"
-            " —— 若你以為設過了,請確認是設在 Variables 而不是 Secrets"]
+    return [_issue(
+        f"這些 repo variable 沒有設定(走 workflow 預設值):{'、'.join(unset)}"
+        " —— 若你以為設過了,請確認是設在 Variables 而不是 Secrets", fatal=False)]
 
 
 def error_blames_param(err: Optional[dict], param: str) -> bool:

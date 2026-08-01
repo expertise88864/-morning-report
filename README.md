@@ -96,6 +96,7 @@
 | Variable | 預設 | 說明 |
 |---|---|---|
 | `LLM_PROVIDER` | `deepseek` | `deepseek` / `openai` / `gemini` / `anthropic` |
+| `DEEPSEEK_REASONING_EFFORT` | `high` | DeepSeek 思考強度;`high` 是它的最高檔(只認 high/medium/low) |
 | `OPENAI_MODEL` | `gpt-5.6-terra` | 主分析模型 |
 | `OPENAI_REASONING_EFFORT` | `medium` | `none`…`max`;**額度與 timeout 會一起放大** |
 | `EXTRACTOR_PROVIDER` | 空(跟隨主分析) | 事件抽取器可獨立指定 |

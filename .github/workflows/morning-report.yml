@@ -98,7 +98,6 @@ jobs:
           DEEPSEEK_EXTRACTOR_MODEL: deepseek-v4-flash
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 思考模式強度：high / medium / low；設 off 可關閉（僅 v4-pro/reasoner 生效）
-          DEEPSEEK_REASONING_EFFORT: high
           # 批#97:**這兩行原本寫死 "180" / "75",讓批#93 的時間放大在生產成為死碼。**
           # 程式碼讓明設的環境變數優先(那是對的 —— 要能臨時壓低),但 workflow
           # 一直在明設,於是放大從來沒有發生過。2026-08-01 的後果:GPT-5.6 在

@@ -29,7 +29,8 @@ WF_PATH = (Path(__file__).resolve().parents[1]
 LLM_VARS = ("LLM_PROVIDER", "EXTRACTOR_PROVIDER",
             "OPENAI_MODEL", "OPENAI_EXTRACTOR_MODEL",
             "OPENAI_REASONING_EFFORT", "OPENAI_EXTRACTOR_REASONING",
-            "LLM_SHADOW_PROVIDER", "LLM_SHADOW_MODEL")
+            "LLM_SHADOW_PROVIDER", "LLM_SHADOW_MODEL",
+            "DEEPSEEK_REASONING_EFFORT")
 
 
 def _workflow() -> dict:
@@ -422,3 +423,47 @@ def test_preflight_runs_exactly_what_ci_gates_on():
     # 某件事」的註解本身就會提到那件事。
     for bad in ("| tail", "|tail", "| head", "|head"):
         assert bad not in code, f"preflight 用了 {bad} 判讀結果 —— 會靜默通過"
+
+
+def test_no_workflow_declares_the_same_env_key_twice():
+    """r2(Codex,P1):**同一個 mapping 裡的重複 key 會靜默勝出。**
+
+    2026-08-01 我把 `DEEPSEEK_REASONING_EFFORT` 改成 repo variable 可覆寫,
+    卻沒發現同一個 `env:` 區塊底下 14 行外還有一個寫死的 `high` ——
+    後者勝出,於是那個 variable **完全沒有效果**,而症狀是「一切照舊」。
+
+    **`yaml.safe_load` 看不到這件事**:它把重複 key 靜默收斂成最後一個,
+    所以既有的所有契約測試都通過了。這條必須讀**原始文字**。
+
+    (同一個錯我在批#90f 差點犯過一次 —— 當時是 `LLM_PROVIDER`,
+     靠人眼發現。人眼不是守衛。)
+    """
+    import collections
+    import re
+
+    root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    files = sorted(root.glob("*.yml"))
+    assert files, "找不到任何 workflow —— 掃描路徑錯了"
+    problems = []
+    for path in files:
+        # 以縮排分群:同一縮排層級、連續的 `KEY: value` 視為同一個 mapping。
+        groups = collections.defaultdict(list)
+        block = 0
+        prev_indent = None
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip())
+            m = re.match(r"([A-Za-z_][A-Za-z0-9_-]*):", line.strip())
+            if prev_indent is not None and indent != prev_indent:
+                block += 1
+            prev_indent = indent
+            if m and not line.lstrip().startswith("-"):
+                groups[(indent, block)].append(m.group(1))
+        for keys in groups.values():
+            for key, n in collections.Counter(keys).items():
+                if n > 1:
+                    problems.append(f"{path.name}: {key} 出現 {n} 次")
+    assert not problems, (
+        "workflow 有重複的 key(後者靜默勝出,前者形同不存在):\n  "
+        + "\n  ".join(problems))

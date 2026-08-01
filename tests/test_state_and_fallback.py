@@ -663,3 +663,45 @@ def test_the_shadow_timeout_follows_its_own_model_and_is_capped():
     assert xhigh > 196, f"影子跑不完 luna xhigh(實測 196s),只有 {xhigh}s"
     assert xhigh <= mr.LLM_SHADOW_MAX_TIMEOUT, "影子可以吃掉整個預算"
     assert _reload(LLM_SHADOW_TIMEOUT_SEC="45") == 45, "明設的逃生門壞了"
+
+
+def test_failures_after_the_manifest_snapshot_reach_the_landed_degraded_list(
+        tmp_path, monkeypatch):
+    """r2(Codex,P2):**`base` 是從磁碟讀回來的,帶著快照當時的降級清單。**
+
+    `_write_run_manifest` 跑在交付之前;archive / podcast / history 都在那之後
+    才寫。它們失敗時,只 append 到記憶體裡的 `_DEGRADED_STEPS` 而不同步 `base`,
+    落地的降級清單裡就**沒有那一筆** —— 而那份清單正是資料品質區與看門狗在讀的。
+
+    既有測試在 `_write_run_manifest()` **之前**注入失敗,所以完全不會走到
+    補寫這條路徑。這一條專門測快照之後才發生的失敗。
+    """
+    import morning_report as mr
+
+    saved_w, saved_d = dict(mr._STATE_WRITES), list(mr._DEGRADED_STEPS)
+    mr._STATE_WRITES.clear()
+    mr._DEGRADED_STEPS.clear()
+    manifest = tmp_path / "run_manifest.json"
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", manifest)
+    try:
+        # 快照:此時一切正常
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        first = _json.loads(manifest.read_text(encoding="utf-8"))
+        assert first["state_writes"]["failed"] == []
+        assert not any("state:write_failed" in d
+                       for d in first.get("degraded_steps") or [])
+
+        # 交付之後才失敗
+        mr._STATE_WRITES["history.json"] = {
+            "ok": False, "bytes": 5, "error": "OSError: disk full"}
+        mr._refresh_state_writes_in_manifest()
+
+        landed = _json.loads(manifest.read_text(encoding="utf-8"))
+        assert landed["state_writes"]["failed"] == ["history.json"]
+        assert any("state:write_failed" in d
+                   for d in landed.get("degraded_steps") or []), \
+            "交付後的失敗沒有進到**落地的**降級清單"
+    finally:
+        mr._STATE_WRITES.clear()
+        mr._STATE_WRITES.update(saved_w)
+        mr._DEGRADED_STEPS[:] = saved_d

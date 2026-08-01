@@ -10710,6 +10710,11 @@ def _refresh_state_writes_in_manifest() -> None:
         if failed and not any(d.startswith("state:write_failed")
                               for d in _DEGRADED_STEPS):
             _DEGRADED_STEPS.append("state:write_failed:" + ",".join(failed)[:60])
+        # r2(Codex #2,P2):**`base` 是從磁碟讀回來的,帶著快照當時的降級清單。**
+        # 只 append 到記憶體裡的 `_DEGRADED_STEPS` 而不同步 `base`,
+        # 交付後才發生的失敗就只會出現在 `state_writes.failed` 與 commit 訊息,
+        # **落地的降級清單裡沒有** —— 而那份清單正是資料品質區與看門狗在讀的。
+        base["degraded_steps"] = list(_DEGRADED_STEPS)
         _atomic_write_text(RUN_MANIFEST_FILE,
                            json.dumps(base, ensure_ascii=False, indent=1))
     except Exception as e:                    # noqa: BLE001 - 觀測性不得擋 push

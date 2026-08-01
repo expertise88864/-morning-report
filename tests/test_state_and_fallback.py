@@ -705,3 +705,47 @@ def test_failures_after_the_manifest_snapshot_reach_the_landed_degraded_list(
         mr._STATE_WRITES.clear()
         mr._STATE_WRITES.update(saved_w)
         mr._DEGRADED_STEPS[:] = saved_d
+
+
+def test_late_failures_are_added_to_the_marker_not_hidden_by_early_ones(
+        tmp_path, monkeypatch):
+    """r3(Codex,P2):**去重不能讓標記變成陳舊的。**
+
+    快照前 `forecast_ledger.json` 失敗 → 標記名它;交付後 `history.json` 也
+    失敗時,原本的「已經有就不再加」會讓落地的標記**只名第一個**,
+    消費端看不出新增壞掉的是哪個檔。
+
+    我前一版的測試從零失敗開始、只在快照後加一個 —— 所以完全看不到這個
+    混合路徑。守衛要從當前的 failed 集合**重算**,不是「加或不加」。
+    """
+    import morning_report as mr
+
+    saved_w, saved_d = dict(mr._STATE_WRITES), list(mr._DEGRADED_STEPS)
+    mr._STATE_WRITES.clear()
+    mr._DEGRADED_STEPS.clear()
+    manifest = tmp_path / "run_manifest.json"
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", manifest)
+    try:
+        mr._STATE_WRITES["forecast_ledger.json"] = {
+            "ok": False, "bytes": 1, "error": "OSError: early"}
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        early = _json.loads(manifest.read_text(encoding="utf-8"))
+        assert early["state_writes"]["failed"] == ["forecast_ledger.json"]
+
+        mr._STATE_WRITES["history.json"] = {
+            "ok": False, "bytes": 2, "error": "OSError: late"}
+        mr._refresh_state_writes_in_manifest()
+
+        landed = _json.loads(manifest.read_text(encoding="utf-8"))
+        assert landed["state_writes"]["failed"] == [
+            "forecast_ledger.json", "history.json"]
+        marks = [d for d in landed.get("degraded_steps") or []
+                 if d.startswith("state:write_failed")]
+        assert len(marks) == 1, f"標記重複了:{marks}"
+        assert "history.json" in marks[0], (
+            f"交付後新壞掉的檔沒有進標記(標記只有:{marks[0]})")
+        assert "forecast_ledger.json" in marks[0], "早期的失敗被蓋掉了"
+    finally:
+        mr._STATE_WRITES.clear()
+        mr._STATE_WRITES.update(saved_w)
+        mr._DEGRADED_STEPS[:] = saved_d

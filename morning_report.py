@@ -10707,8 +10707,14 @@ def _refresh_state_writes_in_manifest() -> None:
             "attempted": len(_STATE_WRITES), "failed": failed,
             "detail": {k: v for k, v in sorted(_STATE_WRITES.items())
                        if not v.get("ok")}}
-        if failed and not any(d.startswith("state:write_failed")
-                              for d in _DEGRADED_STEPS):
+        # r3(Codex,P2):**去重不能讓標記變成陳舊的。**
+        # 原本是「已經有 state:write_failed 就不再加」—— 於是
+        # forecast_ledger 在快照前失敗、history 在交付後失敗時,
+        # 落地的標記只名字第一個,消費端看不出**新增**壞掉的是哪個檔。
+        # 標記要從當前的 failed 集合重算,而不是「加或不加」。
+        _DEGRADED_STEPS[:] = [d for d in _DEGRADED_STEPS
+                              if not d.startswith("state:write_failed")]
+        if failed:
             _DEGRADED_STEPS.append("state:write_failed:" + ",".join(failed)[:60])
         # r2(Codex #2,P2):**`base` 是從磁碟讀回來的,帶著快照當時的降級清單。**
         # 只 append 到記憶體裡的 `_DEGRADED_STEPS` 而不同步 `base`,

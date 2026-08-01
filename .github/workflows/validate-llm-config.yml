@@ -42,7 +42,7 @@ jobs:
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
           LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
           LLM_SHADOW_REASONING_EFFORT: ${{ vars.LLM_SHADOW_REASONING_EFFORT || '' }}
-          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'high' }}
+          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'max' }}
           # 第十輪 P0-1:**只有金絲雀真的會呼叫的 provider 才給金鑰。**
           # 其餘 provider 這裡只需要知道「有沒有設」—— 用布林旗標,
           # 金鑰就不會進到這個 process 的環境。

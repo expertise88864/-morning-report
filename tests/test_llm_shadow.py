@@ -418,9 +418,15 @@ def test_effort_caps_are_per_provider_and_grounded_in_measurement():
 
     # 生產實測過的組合不得告警(這正是批#92 誤報的那一班)
     assert _issues(efforts={"primary": "high"}) == []
-    # 超出實測範圍的才告警,而且要說得出是哪個 provider
-    over = _issues(efforts={"primary": "max"})
-    assert any("deepseek" in m and "max" in m for m in over), over
+    # 批#118:官方文件確認 v4-pro 支援到 `max`,而 `high` 其實只映射到中段
+    # (low→high、high→high、xhigh→max、max→max)。先前這裡把上限訂在 high,
+    # 依據是 repo 裡一行過時的註解而不是文件。
+    assert _issues(efforts={"primary": "max"},
+                   models={"primary": "deepseek-v4-pro"}) == []
+    # 文件沒列的值仍要當場擋下(那才是這條守衛的用途)
+    bad = _issues(efforts={"primary": "medium"},
+                  models={"primary": "deepseek-v4-pro"})
+    assert any("不支援" in m and "medium" in m for m in bad), bad
     # OpenAI 的抽取器仍限 low —— 2026-07-31 的 1560 則 0 產出就是它推理過頭
     ext = _issues(provider="openai", extractor_provider="openai",
                   efforts={"extractor": "high"})
@@ -829,10 +835,17 @@ def test_unknown_models_get_a_conservative_output_cap():
     assert lt.output_cap("xhigh", 7000, model="gpt-5.6-luna") == 98_000
     assert lt.output_cap("xhigh", 7000, model="gpt-7-imaginary") == \
         lt.UNKNOWN_MODEL_MAX_OUTPUT
-    # 每一列都要有出處可查(空的登錄簿會讓上面兩條都虛過)
+    # 每一列都要有出處可查(空的登錄簿會讓上面兩條都虛過),但**允許只有部分
+    # 欄位有出處**:DeepSeek 的思考模式文件給了強度、沒給輸出上限與 context。
+    # 硬要每列都填齊,就會逼出「推測當出處」—— 那正是本表要防的(批#118)。
     assert lt.MODEL_LIMITS, "登錄簿是空的"
     for name, spec in lt.MODEL_LIMITS.items():
-        assert spec["max_output"] > 0 and spec["context"] > 0, name
+        assert spec, f"{name} 是空的"
+        assert set(spec) <= {"max_output", "context", "efforts"}, name
+        if "max_output" in spec:
+            assert spec["max_output"] > 0 and spec["context"] > 0, name
+        else:
+            assert spec.get("efforts"), f"{name} 既沒上限也沒強度,不該在表裡"
 
 
 def test_the_shadow_cannot_send_a_different_prompt_than_the_primary():
@@ -1088,7 +1101,12 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
     assert lt.supported_efforts("gpt-5.6-luna-2026-02-16") is not None
     # 沒量過的模型回 None —— 不猜、也不擋
     assert lt.supported_efforts("gpt-5.6-sol") is None
-    assert lt.supported_efforts("deepseek-v4-pro") is None
+    # v4-pro 的**強度**有文件出處,但那份文件沒給輸出上限 ——
+    # 一個模型可以只有其中一項有出處,另一項仍走保守值(批#118)。
+    assert lt.supported_efforts("deepseek-v4-pro") == (
+        "none", "low", "high", "xhigh", "max")
+    assert lt.max_output_for("deepseek-v4-pro")[0] == lt.UNKNOWN_MODEL_MAX_OUTPUT
+    assert "未收錄" in lt.max_output_for("deepseek-v4-pro")[1]
 
     msgs = lt.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",

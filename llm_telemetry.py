@@ -47,6 +47,16 @@ MODEL_LIMITS = {
     # 使用者以為在測 max、其實在測預設。**文件是宣稱,端點才是事實。**
     "gpt-5.6-luna": {"max_output": 128_000, "context": 1_050_000,
                      "efforts": ("none", "low", "medium", "high", "xhigh")},
+    # DeepSeek 官方「思考模式」文件(2026-08-01 使用者提供)。
+    # **請求值與實際生效值不是同一件事** —— v4-pro 的映射是:
+    #     low → high、high → high、xhigh → max、max → max
+    # 也就是說先前一直用的 `high` 其實只到中段;要最高推理必須送 `xhigh`/`max`。
+    # (文件另註:2026 年 8 月初會更新 v4-pro 的映射 —— 這張表要盯著。)
+    # **只收 `efforts`** —— 那份文件講的是思考模式,沒有給 max output 與
+    # context。我第一版順手填了 8,192 / 128,000,那是推測不是出處,
+    # 違反本表自己的規則(「說得出數字從哪來」)。沒有的就不填。
+    "deepseek-v4-pro": {"efforts": ("none", "low", "high", "xhigh", "max")},
+    "deepseek-v4-flash": {"efforts": ("none", "low", "high", "xhigh", "max")},
 }
 
 #: 沒收錄的模型用**保守**上限,不是樂觀的。理由不對稱:
@@ -72,7 +82,9 @@ def max_output_for(model: str) -> tuple:
     """(輸出上限, 出處)。未收錄的模型回保守值並明說沒有出處。"""
     m = (model or "").strip().lower()
     for name, spec in MODEL_LIMITS.items():
-        if m == name or m.startswith(name):
+        # 一個模型可以有**文件化的推理強度**卻沒有文件化的輸出上限
+        # (DeepSeek 的思考模式文件就是如此)—— 那時仍走保守值,不猜。
+        if (m == name or m.startswith(name)) and "max_output" in spec:
             return spec["max_output"], f"MODEL_LIMITS[{name}]"
     if not m:
         return DEFAULT_MAX_OUTPUT, "未指名模型,用粗略上界"
@@ -198,8 +210,12 @@ PROVIDER_KEY_ENV = {"deepseek": "DEEPSEEK_API_KEY", "openai": "OPENAI_API_KEY",
 #: 517 個 token,GPT-5.6 的 high 可以燒掉數萬個(2026-07-31 抽取器 0 產出正是
 #: 推理吃光額度)。所以上限必須各自依**實測**訂,沒實測過的就別假裝知道。
 SCHEDULED_MAX_EFFORT = {
-    # 實測:2026-08-01 生產,high 一次完成(見上)。high 以上未實測。
-    "deepseek": {"primary": "high", "extractor": "high", "shadow": "high"},
+    # 2026-08-01 生產實測:high 一次完成(reasoning 517、耗時遠低於上限)。
+    # 官方文件確認 v4-pro 支援到 `max`,而 `high` 其實只映射到中段 ——
+    # 先前這裡寫 `high` 是照 repo 一行過時的註解(「只認 high/medium/low」),
+    # 不是照文件。上限放到 `max`:**支援性有文件依據,耗時則尚未實測**,
+    # 由 `timeout_for` 的放大(max = 3×)與 `effort_not_applied` 遙測兜底。
+    "deepseek": {"primary": "max", "extractor": "high", "shadow": "max"},
     # 主分析 xhigh 可用 —— 但**前提是 timeout 一起放大**(見 timeout_for)。
     # 抽取器維持 low:2026-07-31 的 1560 則 0 產出就是抽取器推理過頭造成的,
     # 而抽取是機械性任務,推理再多也不會抄得更準。

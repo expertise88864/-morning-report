@@ -372,9 +372,13 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_EXTRACTOR_MODEL = os.environ.get("DEEPSEEK_EXTRACTOR_MODEL", "deepseek-v4-flash")
-# 思考模式強度（high / medium / low；設 off/none 關閉）。
-# 僅對 v4-pro / reasoner 生效，可顯著提升分析推理深度（成本略升）。
-DEEPSEEK_REASONING_EFFORT = os.environ.get("DEEPSEEK_REASONING_EFFORT", "high").strip().lower()
+# 思考模式強度。**官方支援 none/low/high/xhigh/max**(2026-08-01 文件)。
+# 這行原本寫「high / medium / low」而且被當成事實用了很久 —— 實際上 v4-pro
+# 的映射是 low→high、high→high、xhigh→max、max→max,也就是說先前一直用的
+# `high` 其實只到中段。要最高推理必須送 `xhigh` 或 `max`。
+# 僅對 v4-pro / reasoner 生效。
+DEEPSEEK_REASONING_EFFORT = os.environ.get(
+    "DEEPSEEK_REASONING_EFFORT", "max").strip().lower()
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "7000"))
 
 # 批#89:OpenAI(相容 chat completions)。加這個 provider 是為了能把 GPT-5.6

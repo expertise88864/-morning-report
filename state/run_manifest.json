@@ -1,40 +1,37 @@
 {
- "date": "2026-08-01 06:48",
- "total_seconds": 657.6,
+ "date": "2026-08-01 08:47",
+ "total_seconds": 587.8,
  "budget_seconds": 1140.0,
  "news_workers": 8,
- "degraded_steps": [
-  "llm:config_issue",
-  "chips:source_date_mismatch"
- ],
+ "degraded_steps": [],
  "phases": [
   {
    "label": "行情/總經/FX",
-   "seconds": 6.1
+   "seconds": 5.4
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 195.3
+   "seconds": 220.1
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 14.9
+   "seconds": 6.9
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 156.0
+   "seconds": 93.7
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 183.5
+   "seconds": 139.5
   },
   {
    "label": "LLM 主分析",
-   "seconds": 98.2
+   "seconds": 118.6
   },
   {
    "label": "渲染",
-   "seconds": 3.6
+   "seconds": 3.7
   }
  ],
  "feeds": {
@@ -51,8 +48,8 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 132,
-   "fail": 0
+   "ok": 0,
+   "fail": 4
   },
   "feeds.feedburner.com": {
    "ok": 4,
@@ -140,14 +137,14 @@
   }
  },
  "model_history_days": 220,
- "d1_samples": 4,
+ "d1_samples": 5,
  "d1_ready": false,
  "stance_dual": {
-  "llm": 2,
-  "llm_label": "中性",
+  "llm": null,
+  "llm_label": null,
   "py": 2,
   "py_label": "中性",
-  "agree": true,
+  "agree": false,
   "coverage": 1.0,
   "missing": [],
   "flags": [],
@@ -164,16 +161,16 @@
     "check": "fill_rate:taifex_top10_net",
     "severity": "warn",
     "passed": true,
-    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 26/30 筆,之後 3/5 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.6
+    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 25/30 筆,之後 4/6 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.667
    },
    {
     "source": "model_history",
     "check": "fill_rate:txo_pc_oi_ratio",
     "severity": "warn",
     "passed": true,
-    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 26/30 筆,之後 2/5 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.4
+    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 25/30 筆,之後 2/6 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.333
    },
    {
     "source": "model_history",
@@ -222,13 +219,13 @@
   "failed": 0
  },
  "mz_shadow": {
-  "n": 52,
+  "n": 53,
   "applied": true,
-  "a": 1.804,
-  "b": 0.6768,
+  "a": 3.527,
+  "b": 0.7357,
   "raw": 2448.62,
-  "shadow": 2442.79,
-  "delta": -5.83,
+  "shadow": 2445.9,
+  "delta": -2.72,
   "oos": {
    "n": 2,
    "enough": false,
@@ -253,7 +250,7 @@
  "delivery": {
   "attempted": true,
   "success": true,
-  "run_kind": "schedule"
+  "run_kind": "workflow_dispatch"
  },
  "capability_health": {
   "fatal": [],
@@ -306,29 +303,39 @@
  "chips": {
   "session": "2026-07-31",
   "large_source_date": "20260731",
-  "pcr_source_date": "20260730",
+  "pcr_source_date": "20260731",
   "large_matched": true,
-  "pcr_matched": false
+  "pcr_matched": true
  },
- "policy_deepdive": {
-  "candidates": 1,
-  "written": 1,
-  "dropped": []
- },
+ "policy_deepdive": null,
  "llm_shadow": null,
  "llm": {
-  "config_issues": [
-   "primary 推理強度 high 超過正式排程上限 medium —— 額度會遠超過單次請求 timeout 能生成的量,逾時後會掉備援;高強度請用手動執行或影子"
+  "config": {
+   "provider": "openai",
+   "extractor": "deepseek",
+   "model": "gpt-5.6-luna",
+   "primary_effort": "xhigh",
+   "request_timeout": 75.0,
+   "total_timeout": 180.0,
+   "shadow": "deepseek"
+  },
+  "attempts": [
+   {
+    "role": "primary",
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "requested_effort": "xhigh",
+    "applied_effort": "xhigh",
+    "elapsed_seconds": 75.1,
+    "error": "ReadTimeout: HTTPSConnectionPool(host='api.openai.com', port=443): Read timed out. (read timeout=75.0)"
+   }
   ],
   "primary": {
-   "provider": "deepseek",
-   "model": "deepseek-v4-pro",
-   "requested_effort": "high",
-   "applied_effort": "high",
-   "prompt_tokens": 85814,
-   "completion_tokens": 5557,
-   "total_tokens": 91371,
-   "reasoning_tokens": 517,
+   "provider": "gemini",
+   "model": "gemini-2.5-flash",
+   "requested_effort": null,
+   "applied_effort": null,
+   "elapsed_seconds": 43.5,
    "calls": 1
   }
  }

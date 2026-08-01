@@ -559,9 +559,21 @@ def test_no_module_defines_the_same_top_level_name_twice():
     problems = []
     for path in sorted(root.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        names = collections.Counter(
-            n.name for n in tree.body
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)))
+        # 第十輪 P2-4:**模組層賦值也算。** 我第一版只查 def/class,
+        # 而 `news_events.py` 裡 `_SUBJECT_LATIN_STOP` 定義了兩次一直沒被抓到 ——
+        # 後者靜默勝出,讓第一個消費端失去 LIMITED / CORPORATION。
+        # 守衛只查一半 = 那一半以外的重複可以永遠通過。
+        names = collections.Counter()
+        for n in tree.body:
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef,
+                              ast.ClassDef)):
+                names[n.name] += 1
+            elif isinstance(n, ast.Assign):
+                for t in n.targets:
+                    if isinstance(t, ast.Name):
+                        names[t.id] += 1
+            elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name):
+                names[n.target.id] += 1
         for name, count in names.items():
             if count > 1:
                 problems.append(f"{path.name}: {name} 定義了 {count} 次")

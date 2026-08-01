@@ -540,17 +540,25 @@ def test_cached_input_tokens_are_read_from_either_providers_field():
     both = {"prompt_tokens_details": {"cached_tokens": 40},
             "prompt_cache_hit_tokens": 25}
     assert lt.cached_tokens_of(both) in (40, 25)
-    # 快取要讓成本標註出**兩個方向**:命中以全價計 → 此項偏高;
-    # 寫入的費率未收錄且未計入 → 此項偏低。批#100 之前只講了偏高的那一半,
-    # 而 2026-08-01 的實際帳單正好高於估計值 —— 只講一邊會誤導判讀方向。
-    basis = lt.estimate_cost("gpt-5.6-luna", dict(
-        prompt_tokens=1000, completion_tokens=100, **both))["basis"]
-    assert "偏高" in basis, basis
-    with_write = lt.estimate_cost("gpt-5.6-luna", {
-        "prompt_tokens": 1000, "completion_tokens": 100,
+    # 第十輪 P1-1:快取命中有**獨立費率**、寫入以 1.25× 計 —— 兩者都要真的算,
+    # 而不是只在說明裡標「偏高/偏低」。逐頁查證的官方數字:
+    # Luna $0.2 / cached $0.02 / $1.2;"Cache writes are billed at 1.25x
+    # the uncached input token rate."
+    hit = lt.estimate_cost("gpt-5.6-luna", {
+        "prompt_tokens": 1000, "completion_tokens": 0,
+        "prompt_tokens_details": {"cached_tokens": 1000}})
+    assert hit["usd"] == pytest.approx(1000 * 0.02 / 1e6), hit
+    assert "0.02" in hit["basis"], hit["basis"]
+    write = lt.estimate_cost("gpt-5.6-luna", {
+        "prompt_tokens": 1000, "completion_tokens": 0,
         "prompt_tokens_details": {"cached_tokens": 0,
-                                  "cache_write_tokens": 900}})["basis"]
-    assert "偏低" in with_write, with_write
+                                  "cache_write_tokens": 1000}})
+    assert write["usd"] == pytest.approx(1000 * 0.2 * 1.25 / 1e6), write
+    assert "1.25" in write["basis"], write["basis"]
+    # 命中比寫入便宜、寫入比一般輸入貴 —— 三種費率的相對關係不可弄反
+    plain = lt.estimate_cost("gpt-5.6-luna",
+                             {"prompt_tokens": 1000, "completion_tokens": 0})
+    assert hit["usd"] < plain["usd"] < write["usd"]
 
 
 def test_cost_and_elapsed_accumulate_across_retries():
@@ -944,9 +952,11 @@ def test_cache_write_tokens_are_recorded_and_flagged_in_the_basis():
     rec = lt.build_record("openai", "gpt-5.6-luna", usage=usage)
     assert rec["cache_write_tokens"] == 93_191
     assert rec["reasoning_tokens"] == 23_095
-    # 這一天的實測成本:input 93,194×$0.20/M + output 27,933×$1.20/M
-    assert rec["estimated_cost_usd"] == pytest.approx(0.0522, abs=1e-4)
-    assert "偏低" in rec["cost_basis"], "沒說出估計值可能低於帳單"
+    # 2026-08-01 實測那班:93,191 tok 全部是 cache write(以 1.25× 計),
+    # 其餘 3 tok 一般輸入,output 27,933。
+    expect = (93_191 * 0.2 * 1.25 + 3 * 0.2 + 27_933 * 1.2) / 1e6
+    assert rec["estimated_cost_usd"] == pytest.approx(expect, abs=1e-5), rec
+    assert "1.25" in rec["cost_basis"], rec["cost_basis"]
     # 重試要累加,否則與帳單對不上
     merged = lt.merge_same_role(lt.merge_same_role(None, rec), rec)
     assert merged["cache_write_tokens"] == 2 * 93_191

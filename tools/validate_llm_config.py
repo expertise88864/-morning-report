@@ -18,14 +18,25 @@
 ## 安全
 不寄信、不寫 state、不碰 repo。金鑰只用於 Authorization header,
 任何輸出都經 `_safe()` 過濾;失敗時只印 provider 回的錯誤結構,不印請求內容。
+
+**只用標準函式庫**(第十輪 P0-1)。原本這個 job 先 `pip install requests`
+(未鎖版、無 hash),下一步才把三把 API 金鑰放進環境 —— 而主 CI 與晨報早就
+只用 `requirements.lock`,金絲雀等於自己另開了一條供應鏈通道。惡意套件不必
+在安裝當下讀到金鑰,它可以留下 `sitecustomize.py` / `.pth` 之類的啟動掛勾,
+等下一個帶金鑰的 process 執行。改用 `urllib.request` 之後**沒有安裝步驟**,
+比鎖版更徹底。
+
+而且**只有它真的會呼叫的 provider 才需要金鑰**:其餘 provider 這裡只需要
+知道「有沒有設」,所以 workflow 傳的是布林旗標而不是金鑰本身。
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
-
-import requests
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -47,6 +58,18 @@ if hasattr(sys.stdout, "reconfigure"):
 
 def _env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()
+
+
+def _has_key(env_name: str) -> bool:
+    """金鑰**存不存在**。真正會被呼叫的 provider 才需要金鑰值本身。
+
+    第十輪 P0-1:原本 workflow 把 OPENAI / DEEPSEEK / GEMINI 三把金鑰全部
+    放進同一個 job。金絲雀只對 OpenAI 發真請求,其餘只是檢查「有沒有設」——
+    那用布林旗標就夠了,不必讓金鑰進到這個 process 的環境。
+    """
+    if _env(env_name):
+        return True
+    return _env(env_name.replace("_API_KEY", "_KEY_PRESENT")).lower() == "true"
 
 
 def _safe(text: str) -> str:
@@ -71,6 +94,29 @@ class Check:
         return f"| {mark} | {self.name} | {_safe(self.detail)} |"
 
 
+class _Resp:
+    """最小的回應物件:只提供 `lt.response_blames_param` 與本檔用到的介面。"""
+
+    def __init__(self, status_code: int, body: bytes):
+        self.status_code = status_code
+        self.text = body.decode("utf-8", "replace")
+
+    def json(self):
+        return json.loads(self.text)
+
+
+def _http(url: str, *, method: str = "GET", payload=None, timeout: float = 30):
+    """標準函式庫的 HTTP。非 2xx 不拋例外 —— 錯誤內文正是我們要看的東西。"""
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    req = urllib.request.Request(url, data=data, method=method,
+                                 headers=_openai_headers())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return _Resp(r.status, r.read())
+    except urllib.error.HTTPError as e:
+        return _Resp(e.code, e.read())
+
+
 def _openai_headers() -> dict:
     return {"Authorization": f"Bearer {_env('OPENAI_API_KEY')}",
             "Content-Type": "application/json"}
@@ -83,8 +129,7 @@ def _base() -> str:
 def check_model_exists(model: str) -> Check:
     """模型 ID 打錯時的症狀是 400,而 400 有太多其他原因 —— 先單獨確認一次。"""
     try:
-        r = requests.get(f"{_base()}/v1/models/{model}",
-                         headers=_openai_headers(), timeout=30)
+        r = _http(f"{_base()}/v1/models/{model}", timeout=30)
     except Exception as e:                      # noqa: BLE001
         return Check(f"模型 {model} 存在", False, f"{type(e).__name__}: {e}")
     if r.status_code == 200:
@@ -110,8 +155,8 @@ def probe(model: str, effort: str, *, schema=None, prompt="",
     name = label or f"{model} / reasoning={effort or '(預設)'}"
     t0 = time.monotonic()
     try:
-        r = requests.post(f"{_base()}/v1/chat/completions", json=payload,
-                          headers=_openai_headers(), timeout=TIMEOUT)
+        r = _http(f"{_base()}/v1/chat/completions", method="POST",
+                  payload=payload, timeout=TIMEOUT)
     except Exception as e:                      # noqa: BLE001
         took = time.monotonic() - t0
         return (Check(name, False,
@@ -150,8 +195,8 @@ def effort_matrix(model: str) -> list:
                    "messages": [{"role": "user", "content": "ok"}],
                    "reasoning_effort": effort, "stream": False}
         try:
-            r = requests.post(f"{_base()}/v1/chat/completions", json=payload,
-                              headers=_openai_headers(), timeout=90)
+            r = _http(f"{_base()}/v1/chat/completions", method="POST",
+                      payload=payload, timeout=90)
         except Exception as e:                  # noqa: BLE001
             out.append(Check(f"reasoning={effort}", False,
                              f"{type(e).__name__}", fatal=False))
@@ -183,7 +228,7 @@ def main() -> int:
     issues = lt.validate_llm_config(
         provider=provider, extractor_provider=extractor,
         shadow_provider=_env("LLM_SHADOW_PROVIDER"),
-        has_key=lambda e: bool(_env(e)),
+        has_key=_has_key,
         efforts={"primary": effort if provider == "openai" else "",
                  "extractor": ext_effort if extractor == "openai" else ""})
     if issues:

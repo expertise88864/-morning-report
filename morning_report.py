@@ -273,7 +273,13 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
     **舊版內容**被一起 commit 出去,下一班讀到過期資料卻以為是當日的。
     症狀是安靜的:沒有錯誤、沒有告警,只是某一塊資料停在昨天。
     """
-    name = path.name
+    # 第十輪 P1-10:**用相對於 STATE_ROOT 的路徑當 key。**
+    # basename 會讓 `state/history.json` 與 `state/model_history/history.json`
+    # 撞成同一筆,後寫者覆蓋前者的成敗紀錄。
+    try:
+        name = path.resolve().relative_to(STATE_ROOT.resolve()).as_posix()
+    except (ValueError, OSError):
+        name = path.name
     tmp = path.with_suffix(path.suffix + ".tmp")
     try:
         tmp.write_bytes(data)
@@ -416,6 +422,16 @@ LLM_SHADOW_TIMEOUT = float(
 #: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
 LLM_SHADOW_REASONING_EFFORT = os.environ.get(
     "LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
+#: 影子同群的**語意版本**(第十輪 P1-7)。
+#:
+#: 原本用 `GITHUB_SHA` —— 而這個 repo 一天常有多個 commit,只要改 HTML 樣式、
+#: README 或 workflow 註解,SHA 就變、同群歸零。`MIN_SAMPLES_FOR_VERDICT=10`
+#: 之下等於**永遠樣本不足**,影子帳本再跑一年也給不出判讀。
+#:
+#: 只有真的會改變輸出分佈的東西才該切同群:prompt 模板、立場規則、
+#: 後處理器、報告 schema。改那些時**手動把這個數字 +1**,
+#: 而樣式/文件/測試的變動不動它。
+SHADOW_COHORT_VERSION = "prompt1-stance1-post1"
 #: 事件抽取器的 provider。**與主分析分開**(批#90)。
 #: 抽取是機械性的結構化任務(把新聞抄成 JSON 欄位),不需要旗艦推理模型;
 #: 而換主分析時若連它一起換過去,成本反而由這裡主導 ——
@@ -13302,7 +13318,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
                 applied_effort_probe=lambda: str(
                     (_RUN_MANIFEST.get("llm", {}).get("shadow") or {})
                     .get("applied_effort") or ""),
-                code_version=os.environ.get("GITHUB_SHA", ""),
+                code_version=SHADOW_COHORT_VERSION,
                 log=lambda m: print(m, file=sys.stderr))
             stat.update(out)
             if out.get("cumulative"):
@@ -22903,11 +22919,19 @@ def main() -> int:
         raw_vars=os.environ.get("LLM_CONFIG_RAW", ""),
         has_key=lambda env: bool(os.environ.get(env, "").strip()))
     _RUN_MANIFEST.setdefault("llm", {})["config"] = _snap
-    if _cfg:
-        _RUN_MANIFEST["llm"]["config_issues"] = _cfg
+    # 第十輪 P1-4:**「Variable 沒設、走文件化預設」是純診斷,不是降級。**
+    # 原本一律進降級清單 —— 於是全新安裝、完全照 README 用 DeepSeek 預設配置,
+    # 每天都會拿到 `llm:config_issue`。那正是我自己警告過的形狀:
+    # 降級清單一旦有常駐雜訊,真正的異常就被淹掉。
+    _sources = [m for m in _cfg if "沒有設定" in m]
+    _real = [m for m in _cfg if m not in _sources]
+    if _sources:
+        _RUN_MANIFEST["llm"]["config_sources"] = _sources
+    if _real:
+        _RUN_MANIFEST["llm"]["config_issues"] = _real
         _DEGRADED_STEPS.append("llm:config_issue")
-        for _m in _cfg:
-            print(f"[llm-config] ⚠ {_m}", file=sys.stderr)
+    for _m in _cfg:
+        print(f"[llm-config] {'⚠' if _m in _real else 'ℹ'} {_m}", file=sys.stderr)
     print(f"[main] 呼叫 LLM 分析… (provider={LLM_PROVIDER}"
           f"、抽取器={_extractor_provider()})")
     # PR-2 第二階段(2026-07-18 使用者拍板):Python 11 維立場分=權威——

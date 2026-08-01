@@ -356,9 +356,24 @@ _SUBJECT_BOILERPLATE = ("股市爆料同學會", "提供者", "作者", "討論�
                         # 0.65~0.77(門檻 0.45/0.65),於是「利西亞車行 LAD-US」
                         # 與「穎崴 6515-TW」會被判成同一條敘事。
                         "鉅亨速報")
-#: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個。
-_SUBJECT_LATIN_STOP = {"LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
-                       "THE", "AND", "FOR", "NEW", "AI", "ETF", "US", "CEO"}
+#: 太常見、不具辨識力的英文詞。留著會讓「不同子公司」看起來像同一個,
+#: 也會讓兩件不同的事看起來像同一件。
+#:
+#: 第十輪 P2-4:這個名字原本在本檔**定義兩次**(公司字尾那組、縮寫那組),
+#: 後者靜默勝出 —— 於是第一個消費端(`_SUBJECT_LATIN`,線索主體比對)
+#: 失去了 `LIMITED` 與 `CORPORATION`,公司字尾會被當成有辨識力的 token。
+#: 合併成**聯集**,兩個消費端的原意都保留。
+#: (我批#92 加的「重複頂層定義」守衛只查 def/class,不查模組層賦值 ——
+#:  守衛自己有洞,所以這個檔一直通過。已一併補上。)
+_SUBJECT_LATIN_STOP = {
+    # 公司字尾
+    "LIMITED", "LTD", "INC", "CORP", "CORPORATION", "CO",
+    # 常見虛詞
+    "THE", "AND", "FOR", "NEW",
+    # 常見縮寫
+    "AI", "ETF", "US", "CEO", "CFO", "IPO", "EPS", "USD", "TWD",
+    "GDP", "CPI", "PCE", "ADR", "OEM", "ODM", "IDC", "API", "NEWS",
+}
 _SUBJECT_LATIN = _re_module.compile(r"[A-Za-z]{2,}")
 #: 句尾的來源標註(分隔符不是 " - ",剝段落剝不到)
 _SUBJECT_CREDIT = _re_module.compile(r"\s*(?:提供者|作者|編譯|記者)\s*\S{0,12}\s*$")
@@ -397,12 +412,6 @@ def strip_outlet_suffix(title: str) -> str:
     return out.strip()
 
 
-#: 不具辨識力的英文詞:留著會讓兩件不同的事看起來像同一件
-_SUBJECT_LATIN_STOP = {
-    "THE", "AND", "FOR", "NEW", "INC", "CORP", "LTD", "CO", "AI", "ETF",
-    "US", "CEO", "CFO", "IPO", "EPS", "USD", "TWD", "GDP", "CPI", "PCE",
-    "ADR", "OEM", "ODM", "IDC", "API", "NEWS",
-}
 _SUBJECT_LATIN_RE = _re_module.compile(r"[A-Za-z][A-Za-z0-9]{2,}")
 #: 製程節點/規格(2奈米、3nm、HBM3E):它們是事件的**對象**,鑑別力很高
 _SUBJECT_SPEC_RE = _re_module.compile(r"\d+\s*(?:奈米|nm|吋|GW|MW)", _re_module.I)
@@ -623,7 +632,11 @@ def _event_instance_id(event: dict) -> str:
     → 台積電 2026Q1/Q2/2027Q1 財報全撞同一 ID,event study 去重(event_id 優先)
     把後續季度樣本永遠擋在門外,learned impact 累積不到樣本。
     新 ID 由 timeline 身分衍生(entity 或 entityless 標題指紋 + type|期別 bucket)
-    再加 direction:同一事件跨來源同 ID(可去重)、不同季/月/主體不同 ID(不互吞)。"""
+    同一事件跨來源同 ID(可去重)、不同季/月/主體不同 ID(不互吞)。
+
+    第十輪 P2-3:這段原本寫「再加 direction」,而下一行註解與實作都明說
+    **direction 不進事件身分**(批#72 第七輪 P0-1 錯誤B)。宣稱與實作不符
+    會讓後續維護者拿錯誤的前提當設計依據。"""
     import hashlib
     ident, type_key = _event_timeline_key(event)
     # 批#72(第七輪 P0-1 錯誤B):**direction 不進事件身分。**

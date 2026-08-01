@@ -29,8 +29,6 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - name: 安裝相依
-        run: pip install requests
       - name: 檢查 LLM 設定
         env:
           # 與晨報讀**同一組** repo variable —— 金絲雀查的必須是正式排程會用的
@@ -42,7 +40,14 @@ jobs:
           OPENAI_REASONING_EFFORT: ${{ vars.OPENAI_REASONING_EFFORT || 'medium' }}
           OPENAI_EXTRACTOR_REASONING: ${{ vars.OPENAI_EXTRACTOR_REASONING || 'low' }}
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
+          LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
+          LLM_SHADOW_REASONING_EFFORT: ${{ vars.LLM_SHADOW_REASONING_EFFORT || '' }}
+          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'high' }}
+          # 第十輪 P0-1:**只有金絲雀真的會呼叫的 provider 才給金鑰。**
+          # 其餘 provider 這裡只需要知道「有沒有設」—— 用布林旗標,
+          # 金鑰就不會進到這個 process 的環境。
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEEPSEEK_KEY_PRESENT: ${{ secrets.DEEPSEEK_API_KEY != '' }}
+          GEMINI_KEY_PRESENT: ${{ secrets.GEMINI_API_KEY != '' }}
+          ANTHROPIC_KEY_PRESENT: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         run: python tools/validate_llm_config.py

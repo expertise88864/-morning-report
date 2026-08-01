@@ -26,8 +26,15 @@ from typing import Optional
 #: 帳本保留天數。比較樣本要夠長才看得出分佈差異,但也不需要無限累積。
 LEDGER_KEEP_DAYS = 120
 
-#: 一天最多一筆(同一天重跑會覆蓋,不會灌出重複樣本)。
-LEDGER_KEY_FIELDS = ("date", "primary_model", "shadow_model")
+#: 一天**每個同群**最多一筆。
+#:
+#: 第十輪 P1-6:原本只含 `date / primary_model / shadow_model`,
+#: 於是同一天測「Luna xhigh vs DeepSeek」再測「Luna medium vs DeepSeek」時,
+#: 第二次會把第一次覆蓋 —— 而那正是 2026-08-01 實際發生的使用方式
+#: (同一天多次改推理強度做比較)。key 必須與同群一致,否則
+#: `summarize` 依同群過濾之後,被覆蓋掉的那個同群永遠是 0 筆。
+LEDGER_KEY_FIELDS = ("date", "primary_model", "primary_effort",
+                     "shadow_model", "shadow_effort", "code_version")
 
 
 def _bigrams(text: str) -> set:

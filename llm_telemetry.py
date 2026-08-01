@@ -295,8 +295,17 @@ def validate_llm_config(*, provider: str, extractor_provider: str,
         env = PROVIDER_KEY_ENV[prov]
         if not has_key(env):
             out.append(_issue(f"{role} 選了 {prov} 但缺 {env}", fatal=True))
-    if shadow_provider and shadow_provider.strip().lower() == (provider or "").strip().lower():
-        out.append(_issue("影子與主分析是同一個 provider —— 比較不出東西,只是加倍付費", fatal=False))
+    # 第十輪 P1-5:**同 provider 不等於比較不出東西。**
+    # Terra vs Luna、Luna low vs Luna xhigh、Pro vs Flash 都是有意義的實驗。
+    # 真正沒有意義的是 provider、model、推理強度**三者全同**。
+    _same = (shadow_provider and provider
+             and shadow_provider.strip().lower() == provider.strip().lower()
+             and str(models.get("shadow") or "") == str(models.get("primary") or "")
+             and str((efforts or {}).get("shadow") or "")
+             == str((efforts or {}).get("primary") or ""))
+    if _same:
+        out.append(_issue("影子與主分析的 provider、模型與推理強度完全相同 —— "
+                          "比較不出東西,只是加倍付費", fatal=False))
     for role, eff in (efforts or {}).items():
         eff = (eff or "").strip().lower()
         if eff and eff not in _EFFORT_ORDER:
@@ -431,10 +440,25 @@ def config_snapshot(*, provider: str, extractor_provider: str,
 #: 出處:OpenAI Models 文件(使用者於 2026-08-01 提供)。
 #: DeepSeek 刻意留空 —— 我手上沒有官方單價,寧可回報「未收錄」。
 MODEL_PRICING = {
-    "gpt-5.6-sol": {"input": 5.00, "output": 30.00},
-    "gpt-5.6-terra": {"input": 2.00, "output": 12.00},
-    "gpt-5.6-luna": {"input": 0.20, "output": 1.20},
+    "gpt-5.6-sol": {"input": 5.00, "cached_input": 0.50, "output": 30.00},
+    "gpt-5.6-terra": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
+    "gpt-5.6-luna": {"input": 0.20, "cached_input": 0.02, "output": 1.20},
 }
+
+#: 寫入快取的計價倍率。官方明文:
+#: "Cache writes are billed at 1.25x the uncached input token rate."
+#: (developers.openai.com,2026-08-01 逐頁查證)
+CACHE_WRITE_MULTIPLIER = 1.25
+
+#: 價格表的版本與出處。第十輪外審宣稱 Luna 是 $1.00/$6.00、Terra 是 $2.50/$15,
+#: 據此推得「低估約六倍」—— 我逐頁查證三個 model 頁面後**駁回**該推論:
+#: 官方為 Sol $5/$0.5/$30、Terra $2/$0.2/$12、Luna $0.2/$0.02/$1.2,與本表一致。
+#: 但同一條裡有兩件是對的,而且本表原本都沒有:cached input 有**獨立費率**,
+#: 而 cache write 以 1.25 倍計。實測重算 2026-08-01 10:11 那班:
+#: 記錄 $0.027369 → 正確約 $0.0325,**低估 19%**(不是 594%)。
+PRICING_SOURCE = "developers.openai.com"
+PRICING_AS_OF = "2026-08-01"
+PRICING_SCHEMA = 2
 
 
 def cache_write_tokens_of(usage: Optional[dict]) -> Optional[int]:
@@ -493,17 +517,22 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
     pt, ct = usage.get("prompt_tokens"), usage.get("completion_tokens")
     if not (isinstance(pt, int) and isinstance(ct, int)):
         return {"usd": None, "basis": "usage 缺 token 數,不估"}
-    usd = (pt * price["input"] + ct * price["output"]) / 1_000_000
-    basis = "官方牌價;推理以 output 計價"
-    cached = cached_tokens_of(usage)
+    # 輸入分三種費率(第十輪 P1-1):**快取命中有獨立費率、寫入以 1.25 倍計。**
+    # 原本一律用 uncached 費率、且完全不計 cache write —— 前者高估、後者低估,
+    # 而 2026-08-01 的實際情形是後者主導(92,259 tok 全部是 cache write)。
+    cached = cached_tokens_of(usage) or 0
+    written = cache_write_tokens_of(usage) or 0
+    plain = max(0, pt - cached - written)
+    input_cost = (plain * price["input"]
+                  + cached * price.get("cached_input", price["input"])
+                  + written * price["input"] * CACHE_WRITE_MULTIPLIER)
+    usd = (input_cost + ct * price["output"]) / 1_000_000
+    bits = [f"官方牌價({PRICING_SOURCE} {PRICING_AS_OF});推理以 output 計價"]
     if cached:
-        basis += f";快取命中 {cached} tok 以全價計(折扣未收錄),此項偏高"
-    written = cache_write_tokens_of(usage)
+        bits.append(f"快取命中 {cached} tok 以 ${price.get('cached_input')}/M 計")
     if written:
-        # 兩個方向要一起講。只講「上界」會讓人以為實付一定更低,
-        # 而 2026-08-01 的帳單就高於這裡的估計。
-        basis += f";另有 {written} tok 寫入快取,其費率未收錄、**未計入**,此項偏低"
-    return {"usd": round(usd, 6), "basis": basis}
+        bits.append(f"寫入快取 {written} tok 以 {CACHE_WRITE_MULTIPLIER}× 輸入費率計")
+    return {"usd": round(usd, 6), "basis": ";".join(bits)}
 
 
 #: 抽取器逾時時的替補順序。**依「機械性任務夠用且便宜」排,不依品質排** ——
@@ -556,10 +585,22 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
             measured += int(rec.get("calls") or 1)
         elif rec.get("prompt_tokens"):
             measured += int(rec.get("calls") or 1)
+    # 第十輪 P1-2:**失敗但有 usage 的嘗試同樣計費。**
+    # `finish_reason=length`、結構化輸出不合格、報告層驗收未過 —— 這些呼叫
+    # API 都已經生成內容並收費,原本完全不進總額,成本因此系統性低估。
+    failed_measured = 0.0
+    for a in (slot.get("attempts") or []):
+        if isinstance(a, dict) and isinstance(a.get("estimated_cost_usd"),
+                                              (int, float)):
+            failed_measured += a["estimated_cost_usd"]
+            measured += 1
+    total += failed_measured
     billed_unknown = [a for a in (slot.get("attempts") or [])
                       if isinstance(a, dict) and a.get("billable_unmeasured")]
     out = {"total_usd": round(total, 6), "measured_calls": measured,
-           "unmeasured_billable_calls": len(billed_unknown)}
+           "failed_attempt_cost_usd": round(failed_measured, 6),
+           "unmeasured_billable_calls": len(billed_unknown),
+           "pricing_as_of": PRICING_AS_OF, "pricing_schema": PRICING_SCHEMA}
     notes = []
     if billed_unknown:
         notes.append(f"另有 {len(billed_unknown)} 次呼叫已送出但沒有 usage"

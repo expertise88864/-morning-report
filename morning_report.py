@@ -516,7 +516,8 @@ RUN_MANIFEST_FILE = STATE_ROOT / "run_manifest.json"
 #: `_RUN_MANIFEST` 是**同一個 dict 物件**的別名,不是複本、也不重新綁定 ——
 #: 131 處測試引用全部是就地變更,因此不必改動任何一條。
 #: 一次到位的大改寫在這種耦合度下必然出事:先開接縫,再逐步收斂。
-_RECORDER = _rm.ManifestRecorder()
+_DEGRADED_STEPS: list[str] = []
+_RECORDER = _rm.ManifestRecorder(degraded=_DEGRADED_STEPS)
 _RUN_MANIFEST: dict = _RECORDER.data
 
 #: 診斷鍵與暫時鍵的**單一定義**在 `run_manifest.py`(第十輪 P1-12)。
@@ -612,7 +613,6 @@ def _append_actions_summary(manifest: dict) -> None:
     except Exception as e:
         print(f"[manifest] Step Summary 附加失敗: {e}", file=sys.stderr)
 _RUN_DEADLINE: Optional[float] = None
-_DEGRADED_STEPS: list[str] = []
 
 
 def _run_seconds_left() -> float:
@@ -13101,45 +13101,15 @@ def _record_llm_call(role: str, provider: str, model: str, *,
                      usage: Optional[dict] = None, accepted: bool = False,
                      finish_reason: str = "", error: str = "",
                      elapsed: float = 0.0, **extra) -> None:
-    """記錄一次 LLM 呼叫。**依角色分槽**(批#91,第九輪 P0-2)。
+    """委派給 `ManifestRecorder.record_llm_call`(第十輪 P1-12)。
 
-    批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,每次呼叫
-    覆蓋 provider 與 model、token 全部相加。實際執行順序是
-    抽取器 → 主分析 → 影子,所以開了影子之後 manifest 會宣稱
-    **「這封信由影子模型撰寫」** —— 而影子的輸出根本沒有進信件。
-    token 也混成一團:不同模型單價不同,加總之後算不出成本。
-    **錯誤的可觀測性比沒有更危險**,它給的是一個看似精確、語意卻錯的答案。
-
-    **只有通過 API 層驗收的呼叫才進角色槽**。原本在 `r.json()` 之後就登記,
-    於是 `finish_reason=length`、content 為空的失敗呼叫也會被記成「實際模型」。
-    未通過的進 `attempts`。
-
-    但 `accepted=True` 只代表**API 回應可用**,不代表那份輸出真的寫出了這封信
-    —— 報告層的驗收(`_analysis_complete_enough`)在更外層,失敗時會走短版
-    重試、Gemini 備援或確定性備援文字。「這封信是誰寫的」由
-    `_record_report_writer` 另外記在 `llm.writer`(批#109,外審 #7:
-    我原本這段 docstring 宣稱「只有通過驗收的呼叫才算 writer」,
-    而那句話只在 API 層成立)。
+    邏輯已經搬進 `run_manifest.py`(可單獨測、不碰 state 隔離);
+    這裡只留同名入口,五個既有呼叫端與測試因此不必改。
     """
-    rec = _lt.build_record(provider, model, requested_effort=requested_effort,
-                           applied_effort=applied_effort, usage=usage,
-                           finish_reason=finish_reason, error=error,
-                           elapsed=elapsed)
-    rec.update({k: v for k, v in extra.items() if v not in (None, "", False)})
-    # 批#104:**設了卻沒生效必須自己跳出來。** 使用者把推理強度設成 `max`、
-    # API 拒絕、退讓後用 provider 預設跑完,信照常寄出而沒有任何告警 ——
-    # 正是本 repo 反覆出現的那種失敗(症狀是「一切照舊」)。
-    if accepted and requested_effort and applied_effort != requested_effort:
-        _DEGRADED_STEPS.append(f"llm:effort_not_applied:{role}")
-        print(f"[llm] ⚠ {role} 要求推理強度 {requested_effort},"
-              f"實際生效 {applied_effort or '(provider 預設)'}"
-              + (f" —— {extra.get('backoff_reason')}"
-                 if extra.get("backoff_reason") else ""), file=sys.stderr)
-    slot = _RUN_MANIFEST.setdefault("llm", {})
-    if accepted:
-        slot[role] = _lt.merge_same_role(slot.get(role), rec)
-    else:
-        slot.setdefault("attempts", []).append({"role": role, **rec})
+    _RECORDER.record_llm_call(
+        role, provider, model, requested_effort=requested_effort,
+        applied_effort=applied_effort, usage=usage, accepted=accepted,
+        finish_reason=finish_reason, error=error, elapsed=elapsed, **extra)
 
 
 def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
@@ -13417,42 +13387,18 @@ def _call_deepseek_extractor(prompt: str) -> str:
 
 
 def _record_identity_migration(stats: dict, model_history: list) -> None:
-    """把 v3 → v4 的遷移結果寫進 manifest(第十輪 P1-11)。
+    """統計世代覆蓋率,其餘委派給 recorder(第十輪 P1-12)。
 
-    `changed_pairs` 是「舊指紋 → 新指紋」的對照,由它可以算出兩件事:
-      - **合併(collision)**:多個舊指紋收斂到同一個新指紋 —— 那正是 v4 要的
-        (`2奈米,蘋果` 與 `2nm,apple` 都成為 `2nm,aapl`);
-      - **分裂(split)**:同一個舊指紋跑出多個新指紋 —— **那是缺陷**,
-        代表正規化不是決定性的,要當場看得見。
-
-    另外記錄 `event_schema` 的世代覆蓋率:遷移完成的定義是舊世代歸零,
-    而不是「程式碼裡有 v4」。
+    `history_schema_coverage` 需要 model_history,那是主模組的資料;
+    組裝與「分裂是缺陷」的判讀在 `run_manifest.py`。
     """
-    pairs = stats.get("changed_pairs") or {}
-    merged: dict = {}
-    for old_key, new_key in pairs.items():
-        merged.setdefault(new_key, set()).add(old_key)
-    splits = {k: sorted(v) for k, v in
-              {o: {n for oo, n in pairs.items() if oo == o} for o in pairs}.items()
-              if len(v) > 1}
     coverage: dict = {}
     for rec in (model_history or []):
         for ev in (rec.get("structured_events") or []):
             gen = str(int(_safe_number(ev.get("event_schema"))) or "legacy")
             coverage[gen] = coverage.get(gen, 0) + 1
-    out = {"schema_version": EVENT_SCHEMA_VERSION,
-           "recomputed": stats.get("recomputed", 0),
-           "canonicalized": stats.get("canonicalized", 0),
-           "collisions": sum(1 for v in merged.values() if len(v) > 1),
-           "splits": len(splits),
-           "recomputed_by_schema": stats.get("by_schema") or {},
-           "history_schema_coverage": coverage}
-    _RUN_MANIFEST["event_identity"] = out
-    if splits:
-        # 分裂是缺陷,不是進度 —— 必須自己發聲
-        _DEGRADED_STEPS.append("event_identity:split")
-        print(f"[event-id] ⚠ 同一個舊指紋產生多個新指紋:{len(splits)} 組",
-              file=sys.stderr)
+    out = _RECORDER.record_identity_migration(
+        stats, coverage, EVENT_SCHEMA_VERSION)
     print(f"[event-id] v{EVENT_SCHEMA_VERSION} 遷移:重算 {out['recomputed']}、"
           f"正規化 {out['canonicalized']}、合併 {out['collisions']}、"
           f"分裂 {out['splits']}")
@@ -13725,33 +13671,12 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
 
 
 def _record_report_writer(text: str) -> None:
-    """記下**真正寫出這封信的是誰**(批#109,外審 #7)。
+    """委派給 `ManifestRecorder.record_report_writer`(第十輪 P1-12)。
 
-    `_record_llm_call(accepted=True)` 的判準只有「content 非空且
-    finish_reason != length」—— 那是**API 層**的驗收。而報告層的驗收
-    (`_analysis_complete_enough`:有沒有「我的明確立場」與一句話總結)
-    發生在更外層,失敗時會走短版重試、Gemini 備援、最後退到確定性備援文字。
-
-    也就是說 `llm.primary` 可能宣稱某個 provider 是 writer,而信其實不是它寫的
-    —— 我在 `_record_llm_call` 的 docstring 裡寫過「只有通過驗收的呼叫才算
-    writer」,那句話只在 API 層成立。**宣稱與實作不符**,而錯誤的可觀測性
-    比沒有更危險:它給的是一個看似精確、語意卻錯的答案。
-
-    這裡不改 `accepted` 的語意(它誠實地表示 API 回應可用),而是另外記
-    `llm.writer` —— 直接回答「這封信是誰寫的」。
+    報告層的判準(`_analysis_complete_enough`)留在主模組 —— recorder
+    不必認識晨報的章節結構,只收一個布林。
     """
-    slot = _RUN_MANIFEST.setdefault("llm", {})
-    if not _analysis_complete_enough(text):
-        slot["writer"] = {"source": "deterministic_fallback",
-                          "reason": "報告驗收未通過(缺立場或總結)"}
-        return
-    for role in ("primary",):
-        rec = slot.get(role)
-        if isinstance(rec, dict) and rec.get("provider"):
-            slot["writer"] = {"source": role, "provider": rec["provider"],
-                              "model": rec.get("model")}
-            return
-    slot["writer"] = {"source": "unknown"}
+    _RECORDER.record_report_writer(_analysis_complete_enough(text))
 
 
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,

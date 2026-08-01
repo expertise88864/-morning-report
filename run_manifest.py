@@ -22,7 +22,10 @@ BLOCK 的理由消失,才有可能真的搬走。
 """
 from __future__ import annotations
 
+import sys
 from typing import Optional
+
+import llm_telemetry as _lt
 
 #: 各階段寫進 manifest 的**診斷鍵**,由 `build()` 統一帶出。
 #:
@@ -52,9 +55,15 @@ class ManifestRecorder:
     而那種分家是靜默的(兩邊都「有資料」,只是不是同一份)。
     """
 
-    def __init__(self, data: Optional[dict] = None):
+    def __init__(self, data: Optional[dict] = None,
+                 degraded: Optional[list] = None, log=None):
         self.data = {"marks": []} if data is None else data
         self.data.setdefault("marks", [])
+        # 降級清單與 manifest 是同一件事的兩面(「發生了什麼」與「哪裡不對」),
+        # 由同一個物件持有才不會有人只更新其中一邊。
+        # 同樣是**同一個 list 物件**,不是複本。
+        self.degraded = [] if degraded is None else degraded
+        self._log = log or (lambda m: print(m, file=sys.stderr))
 
     # ── 階段計時 ────────────────────────────────────────────────────
     def mark_phase(self, label: str, clock: float) -> None:
@@ -105,4 +114,96 @@ class ManifestRecorder:
                       for h, s in (feeds or {}).items()},
         }
         out.update({k: self.data.get(k) for k in DIAGNOSTIC_KEYS})
+        return out
+
+    # ── LLM 呼叫 ────────────────────────────────────────────────────
+    def record_llm_call(self, role: str, provider: str, model: str, *,
+                        requested_effort: str = "", applied_effort: str = "",
+                        usage: Optional[dict] = None, accepted: bool = False,
+                        finish_reason: str = "", error: str = "",
+                        elapsed: float = 0.0, **extra) -> None:
+        """記錄一次 LLM 呼叫。**依角色分槽**(第九輪 P0-2)。
+
+        批#90d 的第一版把 primary / extractor / shadow 寫進**同一個槽位**,
+        每次呼叫覆蓋 provider 與 model、token 全部相加。實際執行順序是
+        抽取器 → 主分析 → 影子,所以開了影子之後 manifest 會宣稱
+        **「這封信由影子模型撰寫」** —— 而影子的輸出根本沒進信件。
+        token 也混成一團:不同模型單價不同,加總之後算不出成本。
+        **錯誤的可觀測性比沒有更危險**,它給的是一個看似精確、語意卻錯的答案。
+
+        `accepted=True` 只代表**API 回應可用**(content 非空、finish 不是
+        length),不代表那份輸出真的寫出了這封信 —— 報告層的驗收在更外層,
+        由 `record_report_writer` 另外記在 `llm.writer`。
+
+        **設了卻沒生效必須自己跳出來**(批#104):使用者把推理強度設成 `max`、
+        API 拒絕、退讓後用 provider 預設跑完,信照常寄出而沒有任何告警。
+        """
+        rec = _lt.build_record(provider, model, requested_effort=requested_effort,
+                               applied_effort=applied_effort, usage=usage,
+                               finish_reason=finish_reason, error=error,
+                               elapsed=elapsed)
+        rec.update({k: v for k, v in extra.items() if v not in (None, "", False)})
+        if accepted and requested_effort and applied_effort != requested_effort:
+            self.degraded.append(f"llm:effort_not_applied:{role}")
+            self._log(f"[llm] ⚠ {role} 要求推理強度 {requested_effort},"
+                      f"實際生效 {applied_effort or '(provider 預設)'}"
+                      + (f" —— {extra.get('backoff_reason')}"
+                         if extra.get("backoff_reason") else ""))
+        slot = self.data.setdefault("llm", {})
+        if accepted:
+            slot[role] = _lt.merge_same_role(slot.get(role), rec)
+        else:
+            slot.setdefault("attempts", []).append({"role": role, **rec})
+
+    def record_report_writer(self, complete: bool) -> None:
+        """記下**真正寫出這封信的是誰**(第十輪外審 #7)。
+
+        `record_llm_call(accepted=True)` 是 **API 層**的驗收;報告層的驗收
+        (有沒有「我的明確立場」與一句話總結)發生在更外層,失敗時會走短版
+        重試、Gemini 備援、最後退到確定性備援文字。也就是說 `llm.primary`
+        可能宣稱某個 provider 是 writer,而信其實不是它寫的。
+
+        `complete` 由呼叫端提供(它才知道報告層的判準)—— 這樣本模組
+        不必認識 `_analysis_complete_enough`。
+        """
+        slot = self.data.setdefault("llm", {})
+        if not complete:
+            slot["writer"] = {"source": "deterministic_fallback",
+                              "reason": "報告驗收未通過(缺立場或總結)"}
+            return
+        rec = slot.get("primary")
+        if isinstance(rec, dict) and rec.get("provider"):
+            slot["writer"] = {"source": "primary", "provider": rec["provider"],
+                              "model": rec.get("model")}
+        else:
+            slot["writer"] = {"source": "unknown"}
+
+    def record_identity_migration(self, stats: dict, coverage: dict,
+                                  schema_version: int) -> dict:
+        """Event Identity 的遷移結果(第十輪 P1-11)。
+
+        `changed_pairs` 是「舊指紋 → 新指紋」的對照,由它算出兩件事:
+          - **合併**:多個舊指紋收斂到同一個新指紋 —— 那正是新世代要的;
+          - **分裂**:同一個舊指紋跑出多個新指紋 —— **那是缺陷**,
+            代表正規化不是決定性的,必須當場看得見。
+
+        `coverage` 由呼叫端統計(它才有 model_history),本模組只組裝與判讀。
+        """
+        pairs = stats.get("changed_pairs") or {}
+        merged: dict = {}
+        for old_key, new_key in pairs.items():
+            merged.setdefault(new_key, set()).add(old_key)
+        splits = {o: {n for oo, n in pairs.items() if oo == o} for o in pairs}
+        splits = {k: v for k, v in splits.items() if len(v) > 1}
+        out = {"schema_version": schema_version,
+               "recomputed": stats.get("recomputed", 0),
+               "canonicalized": stats.get("canonicalized", 0),
+               "collisions": sum(1 for v in merged.values() if len(v) > 1),
+               "splits": len(splits),
+               "recomputed_by_schema": stats.get("by_schema") or {},
+               "history_schema_coverage": coverage}
+        self.data["event_identity"] = out
+        if splits:
+            self.degraded.append("event_identity:split")
+            self._log(f"[event-id] ⚠ 同一個舊指紋產生多個新指紋:{len(splits)} 組")
         return out

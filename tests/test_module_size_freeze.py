@@ -106,7 +106,12 @@ import pytest
 #: (連續調高七次),而依賴注入才是解。第一步:manifest 改由
 #: `run_manifest.ManifestRecorder` 擁有,純組裝搬進葉模組,
 #: 並順手移除十行冗餘(明列的診斷鍵與白名單迴圈完全重複)。
-MAIN_MODULE_LINE_CEILING = 23_300
+#: 2026-08-01 批#116 再調降至 23,220(現況 23,160)。P1-12 第二步:
+#: `_record_llm_call` / `_record_report_writer` / `_record_identity_migration`
+#: 的**邏輯**搬進 `ManifestRecorder`,主模組只留薄委派。
+#: 三者的 BLOCK 理由因此從各自碰 `_RUN_MANIFEST` / `_DEGRADED_STEPS`
+#: 收斂成只碰 `_RECORDER` 一項。
+MAIN_MODULE_LINE_CEILING = 23_220
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

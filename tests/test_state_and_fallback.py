@@ -840,3 +840,64 @@ def test_the_recorder_reports_only_failed_state_writes():
     assert sw["attempted"] == 2 and sw["failed"] == ["ledger.json"]
     assert "history.json" not in sw["detail"], "成功的不必佔版面"
     assert rec.record_state_writes({}) == []
+
+
+def test_the_recorder_shares_the_degraded_list_too():
+    """第十輪 P1-12:**降級清單也必須是同一個 list 物件。**
+
+    manifest 與降級清單是同一件事的兩面(「發生了什麼」與「哪裡不對」)。
+    recorder 若持有複本,`record_llm_call` 記下的
+    `llm:effort_not_applied` 就只會出現在 recorder 裡,而落地的 manifest
+    與資料品質區讀的是主模組那一份 —— 兩邊都「有資料」但不是同一份,
+    而那種分家是靜默的。
+    """
+    import morning_report as mr
+
+    assert mr._DEGRADED_STEPS is mr._RECORDER.degraded
+    saved = list(mr._DEGRADED_STEPS)
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        mr._record_llm_call("primary", "openai", "gpt-5.6-luna",
+                            requested_effort="max", applied_effort="",
+                            usage={"prompt_tokens": 1, "completion_tokens": 1},
+                            accepted=True)
+        assert any("effort_not_applied" in d for d in mr._DEGRADED_STEPS), \
+            "recorder 記的降級沒有出現在主模組那一份"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_moved_recorder_logic_still_behaves_identically():
+    """搬家不得改變行為 —— 三個委派入口的對外行為要與搬家前一致。"""
+    import run_manifest as rm
+
+    rec = rm.ManifestRecorder(degraded=[])
+    # 角色分槽:不同角色不得互相覆寫
+    rec.record_llm_call("extractor", "openai", "gpt-5.6-luna", accepted=True,
+                        usage={"prompt_tokens": 10, "completion_tokens": 2})
+    rec.record_llm_call("primary", "deepseek", "deepseek-v4-pro", accepted=True,
+                        usage={"prompt_tokens": 20, "completion_tokens": 4})
+    assert rec.data["llm"]["extractor"]["provider"] == "openai"
+    assert rec.data["llm"]["primary"]["provider"] == "deepseek"
+    # 未通過的進 attempts,不佔角色槽
+    rec.record_llm_call("primary", "deepseek", "deepseek-v4-pro",
+                        accepted=False, error="ReadTimeout")
+    assert rec.data["llm"]["primary"]["provider"] == "deepseek"
+    assert rec.data["llm"]["attempts"][-1]["error"].startswith("ReadTimeout")
+
+    # writer:報告層驗收未過 → 不得宣稱 provider 寫了這封信
+    rec.record_report_writer(False)
+    assert rec.data["llm"]["writer"]["source"] == "deterministic_fallback"
+    rec.record_report_writer(True)
+    assert rec.data["llm"]["writer"] == {"source": "primary",
+                                         "provider": "deepseek",
+                                         "model": "deepseek-v4-pro"}
+
+    # 身分遷移:合併是進度、分裂是缺陷
+    out = rec.record_identity_migration(
+        {"recomputed": 2, "canonicalized": 2,
+         "changed_pairs": {"2奈米,蘋果": "2nm,aapl", "2nm,apple": "2nm,aapl"}},
+        coverage={"3": 2}, schema_version=4)
+    assert out["collisions"] == 1 and out["splits"] == 0
+    assert not any("event_identity:split" in d for d in rec.degraded)

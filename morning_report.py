@@ -539,6 +539,12 @@ def _llm_config_resolved() -> dict:
 # 不足就跳過、用當次已有資料組信寄出——寧可少一塊資料,不可整封信被 timeout 吞掉。
 # 核心(行情/預測/LLM 主分析/寄信)永遠執行;主分析本身另有 LLM_TOTAL_TIMEOUT 保護。
 RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "2100"))
+#: 有預測的**公開**標的。除息偵測與事後校正都以這組為準。
+#: 第十一輪 P2-3:原本是 main() 裡的字面量,拆相位時它得跨兩個相位 ——
+#: 與其把一份常數當成相位的回傳值(回傳值會讓人以為它是**算**出來的),
+#: 不如直接放模組層。**這裡不得放持股代號**:信件、prompt、state、log
+#: 都不揭露持股明細,而這個常數會進除息偵測的查詢與 manifest。
+PUBLIC_PREDICTION_CODES = ["2330", "0050", "00662"]
 #: 35 分(job timeout 40 分,留 5 分讓寄信與 state push 一定跑得完)。
 #: 批#101:1140 → 2100。實測 2026-08-01 那班只用 869s,但高推理強度會讓
 #: `_core_tail_seconds()` 的保留量長大,進而把新聞全文擷取擠掉 ——
@@ -21826,22 +21832,17 @@ def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
 
 
 # ---------- 主流程 ----------
-def main() -> int:
-    global _RUN_DEADLINE
-    _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
-    _DEGRADED_STEPS.clear()
-    now_tpe = dt.datetime.now(TPE)
-    # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
-    if now_tpe.weekday() == 6:
-        return run_weekend_digest(now_tpe)
-    mode = determine_mode(now_tpe)
-    report_date = now_tpe.strftime("%Y-%m-%d (%a)")
-    target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
-    target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
+def _phase_market_and_macro(*, now_tpe, target_session_day, recorder) -> dict:
+    """第一相位:行情 / 總經 / FX / 除息 / 兩檔預測(第十一輪 P2-3 第 1/8 步)。
 
-    print(f"[main] 開始產生 {mode} 報告 — {report_date}")
-    _RUN_MANIFEST["marks"].clear()
-    _mark_phase("行情/總經/FX")
+    先拆這一相位是因為它的介面最乾淨:**沒有任何上游區域變數**,下游也只
+    用得到六個結果。八個相位共用大量區域變數,一次拆完等於一次改動全部。
+
+    `recorder` 是**參數而不是模組全域** —— 那就是 DI 的那一刀。傳進來的
+    目前仍是 `_RECORDER`(131 處測試透過 `_RUN_MANIFEST` 指著同一個 dict),
+    但相依已經在簽章上,要改成每班新建就只剩 main() 那一行。
+    """
+    recorder.mark_phase("行情/總經/FX", time.monotonic())
 
     # 1. 抓行情
     quotes = {
@@ -21891,7 +21892,7 @@ def main() -> int:
 
     # 3.5 預測目標交易日的 corporate actions 必須在模型前載入。
     # 若最後才硬扣配息，pred_pct / bias / state 會互相不一致。
-    public_codes = ["2330", "0050", "00662"]
+    public_codes = PUBLIC_PREDICTION_CODES
     try:
         ex_div = detect_ex_dividend_today(public_codes, target_session_day)
     except Exception as e:
@@ -21920,6 +21921,37 @@ def main() -> int:
     else:
         predictions = {"error": "TSM ADR 行情抓取失敗，無法預測 2330 開盤價"}
         print("[main] TSM 行情缺失 → 2330 預測降級", file=sys.stderr)
+    return {"quotes": quotes, "macro": macro, "hist_2330": hist_2330,
+            "ex_div": ex_div, "fair": fair, "predictions": predictions}
+
+
+def main() -> int:
+    global _RUN_DEADLINE
+    _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
+    _DEGRADED_STEPS.clear()
+    now_tpe = dt.datetime.now(TPE)
+    # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
+    if now_tpe.weekday() == 6:
+        return run_weekend_digest(now_tpe)
+    mode = determine_mode(now_tpe)
+    report_date = now_tpe.strftime("%Y-%m-%d (%a)")
+    target_session_date = _infer_target_session_date(now_tpe.strftime("%Y-%m-%d"))
+    target_session_day = dt.datetime.strptime(target_session_date, "%Y-%m-%d").date()
+
+    print(f"[main] 開始產生 {mode} 報告 — {report_date}")
+    # 第十一輪 P2-3:**本班的記錄器在這裡取得一次,再往下傳**(見相位函式)。
+    recorder = _RECORDER
+    recorder.data["marks"].clear()
+    _p1 = _phase_market_and_macro(now_tpe=now_tpe,
+                                  target_session_day=target_session_day,
+                                  recorder=recorder)
+    quotes = _p1["quotes"]
+    macro = _p1["macro"]
+    hist_2330 = _p1["hist_2330"]
+    ex_div = _p1["ex_div"]
+    fair = _p1["fair"]
+    predictions = _p1["predictions"]
+    public_codes = PUBLIC_PREDICTION_CODES
 
     # 5. 抓新聞
     _mark_phase("新聞+政策+體育")

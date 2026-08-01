@@ -117,7 +117,20 @@ import pytest
 #: 「來源沒掛但資料是壞的」,而覆蓋量測正是那件事)。
 #: `_chip_fields_for_session` **刻意不搬**:它是組籌碼特徵欄位的領域邏輯,
 #: 只是順便寫 manifest,搬進可觀測性模組只是換個檔案膨脹。
-MAIN_MODULE_LINE_CEILING = 23_120
+#: 2026-08-01 批#120 調高至 23,160(現況 23,140)—— **連降三次後的第一次回升**,
+#: 而且是為了第十一輪 P2-3 的相位拆解。誠實記下代價:
+#: 拆一個相位會多出「簽章 + return + 呼叫端解包」約 20 行的接線,
+#: 而拆出來的東西**搬不出主模組** —— 工具判定如下:
+#: ```
+#: $ python tools/refactor_audit.py group _phase_market_and_macro
+#:   OPEN  _phase_market_and_macro:呼叫了群外 mr 函式 ['fetch_quote',
+#:         'fetch_usdtwd_pair', 'fetch_macro_indicators', 'fetch_twse_close', …]
+#: ```
+#: 十一個全是對外抓取,把它們一起搬等於把整個 fetch 層搬走,不是這一步的事。
+#: **這筆額度只給第 1/8 個相位。** 其餘七個相位若每個都要 +20 行,那不是
+#: 拆解的必要成本,而是拆法不對 —— 屆時要改成共用一個 context 物件
+#: (外審建議的 `AppContext`)一次帶過去,而不是每個相位各自解包。
+MAIN_MODULE_LINE_CEILING = 23_160
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

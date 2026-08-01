@@ -525,7 +525,7 @@ _MANIFEST_DIAGNOSTIC_KEYS = (
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
-    "state_writes",
+    "state_writes", "event_identity",
 )
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
@@ -9176,6 +9176,29 @@ _US_ENTITY_ALIASES: dict[str, tuple] = {
 }
 
 
+#: 台股主要公司的**英文/常見別名**。TWSE 只給中文名,於是英文報導裡的
+#: `TSMC` 會被當成「交易對手」收進事件指紋 —— 而中文版沒有,同一件事又分裂。
+#:
+#: 第十輪 P1-11 的自測抓到:「TSMC wins Apple 2nm order」得到
+#: `2nm,aapl,tsmc`,中文版是 `2nm,aapl`。Event Identity v4 修好了對手方的
+#: 跨語言收斂,卻沒修好**主體自己的英文名**。
+#:
+#: 刻意只收**有把握**的少數:誤加一個別名會把不相干的公司事件合併,
+#: 而漏收只是維持現狀。沒把握的寧可不收。
+_TW_ENTITY_EXTRA_ALIASES = {
+    "2330": ("TSMC", "台積"),
+    "2454": ("MediaTek",),
+    "2317": ("Foxconn", "Hon Hai"),
+    "2308": ("Delta",),
+    "2382": ("Quanta",),
+    "3231": ("Wistron",),
+    "2412": ("Chunghwa Telecom",),
+    "2603": ("Evergreen",),
+    "2881": ("Fubon",),
+    "2882": ("Cathay",),
+}
+
+
 def _entity_alias_map(tw0050) -> dict:
     """代號 → 公司名別名 tuple。**供事件對象指紋使用,不含主題詞。**
 
@@ -9188,7 +9211,7 @@ def _entity_alias_map(tw0050) -> dict:
         code = str(s_.get("code") or "")
         name = str(s_.get("name") or "").strip()
         if code and name:
-            out[code] = (name,)
+            out[code] = (name,) + _TW_ENTITY_EXTRA_ALIASES.get(code, ())
     for code, aliases in _US_ENTITY_ALIASES.items():
         out.setdefault(code, aliases)
     return out
@@ -13336,6 +13359,9 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
                 write_ledger=_write, extract_stance=_extract_stance,
                 extract_summary=_extract_summary, elapsed_timer=time.monotonic,
                 primary_effort=_PRIMARY_EFFORT,
+                # P2-5:主分析的實際耗時來自它自己的 telemetry,不是猜的
+                primary_elapsed=(_RUN_MANIFEST.get("llm", {}).get("primary")
+                                 or {}).get("elapsed_seconds"),
                 shadow_effort=LLM_SHADOW_REASONING_EFFORT,
                 # cohort 要記**實際生效**的強度:API 可能拒絕並靜默退回預設
                 # (2026-08-01 luna 的 max 就是如此),那時 requested 是謊。
@@ -13437,6 +13463,48 @@ def _call_deepseek_extractor(prompt: str) -> str:
         # 但都不是「減量就有救」的那一類。
         raise RuntimeError(f"DeepSeek extractor 回應缺少 content{detail}")
     return content
+
+
+def _record_identity_migration(stats: dict, model_history: list) -> None:
+    """把 v3 → v4 的遷移結果寫進 manifest(第十輪 P1-11)。
+
+    `changed_pairs` 是「舊指紋 → 新指紋」的對照,由它可以算出兩件事:
+      - **合併(collision)**:多個舊指紋收斂到同一個新指紋 —— 那正是 v4 要的
+        (`2奈米,蘋果` 與 `2nm,apple` 都成為 `2nm,aapl`);
+      - **分裂(split)**:同一個舊指紋跑出多個新指紋 —— **那是缺陷**,
+        代表正規化不是決定性的,要當場看得見。
+
+    另外記錄 `event_schema` 的世代覆蓋率:遷移完成的定義是舊世代歸零,
+    而不是「程式碼裡有 v4」。
+    """
+    pairs = stats.get("changed_pairs") or {}
+    merged: dict = {}
+    for old_key, new_key in pairs.items():
+        merged.setdefault(new_key, set()).add(old_key)
+    splits = {k: sorted(v) for k, v in
+              {o: {n for oo, n in pairs.items() if oo == o} for o in pairs}.items()
+              if len(v) > 1}
+    coverage: dict = {}
+    for rec in (model_history or []):
+        for ev in (rec.get("structured_events") or []):
+            gen = str(int(_safe_number(ev.get("event_schema"))) or "legacy")
+            coverage[gen] = coverage.get(gen, 0) + 1
+    out = {"schema_version": EVENT_SCHEMA_VERSION,
+           "recomputed": stats.get("recomputed", 0),
+           "canonicalized": stats.get("canonicalized", 0),
+           "collisions": sum(1 for v in merged.values() if len(v) > 1),
+           "splits": len(splits),
+           "recomputed_by_schema": stats.get("by_schema") or {},
+           "history_schema_coverage": coverage}
+    _RUN_MANIFEST["event_identity"] = out
+    if splits:
+        # 分裂是缺陷,不是進度 —— 必須自己發聲
+        _DEGRADED_STEPS.append("event_identity:split")
+        print(f"[event-id] ⚠ 同一個舊指紋產生多個新指紋:{len(splits)} 組",
+              file=sys.stderr)
+    print(f"[event-id] v{EVENT_SCHEMA_VERSION} 遷移:重算 {out['recomputed']}、"
+          f"正規化 {out['canonicalized']}、合併 {out['collisions']}、"
+          f"分裂 {out['splits']}")
 
 
 def call_llm_event_extractor(news: list[dict], mops: list[dict],
@@ -22534,8 +22602,13 @@ def main() -> int:
     # 別名表一併傳入:歷史事件沒有 subject_key,補算 v3 身分才能讓兩代主鍵對齊
     # (漏傳不會壞、不會報錯,只是改寫過的重複報導會重新拿到權重 —— 又是一條
     #  「錯了完全無聲」的接線,已由 AST 測試盯住)。
-    structured_events = apply_event_timeline(model_history, _events,
-                                            known_names=_entity_alias_map(tw0050))
+    # 第十輪 P1-11:Event Identity v4 的**遷移驗收**。沒有這些數字,
+    # 「v4 上線了」與「v4 一則都沒改到」在 manifest 裡長得一模一樣。
+    _mig: dict = {}
+    structured_events = apply_event_timeline(
+        model_history, _events, known_names=_entity_alias_map(tw0050),
+        migration_stats=_mig)
+    _record_identity_migration(_mig, model_history)
     # r1(Codex,P1):抽取器跑完才知道它有沒有產出 —— 能力健康必須在這裡**補算**,
     # 否則 `llm_event_extractor` 永遠不會出現在 inactive_capabilities 裡
     # (資料品質閘那次計算發生在抽取之前)。

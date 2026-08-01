@@ -3,6 +3,8 @@
 原則:函式本體自 morning_report.py 逐字搬遷、一字不改;morning_report 以同名
 re-export 維持既有測試與呼叫端;驗證以 tools/refactor_audit.py verify-move 為準。
 """
+from typing import Optional
+
 from num_utils import _safe_number
 
 from news_rules import (
@@ -653,7 +655,8 @@ def _event_instance_id(event: dict) -> str:
 
 def apply_event_timeline(model_history: list[dict],
                          events: list[dict],
-                         known_names=None) -> list[dict]:
+                         known_names=None,
+                         migration_stats: Optional[dict] = None) -> list[dict]:
     """Annotate incremental lifecycle transitions and suppress repeated event scoring.
 
     `known_names`(批#72 r2,Codex P1):代號→別名 tuple。歷史 state 裡的事件沒有
@@ -680,9 +683,24 @@ def apply_event_timeline(model_history: list[dict],
             if known_names and (not str(event.get("subject_key") or "")
                                 or _gen < EVENT_SCHEMA_VERSION):
                 _ent = str(event.get("entity") or "")
+                _was = str(event.get("subject_key") or "")
                 event = dict(event, subject_key=event_subject_key(
                     str(event.get("title") or ""), _ent,
                     (known_names or {}).get(_ent) or (), known_names))
+                # 第十輪 P1-11:**遷移要能被驗收。** 沒有這些計數,
+                # 「v4 上線了」與「v4 一則都沒改到」在 manifest 裡長得一樣。
+                if migration_stats is not None:
+                    migration_stats["recomputed"] = (
+                        migration_stats.get("recomputed", 0) + 1)
+                    _now = str(event.get("subject_key") or "")
+                    if _was and _was != _now:
+                        migration_stats.setdefault("changed_pairs", {})[_was] = _now
+                    if _now and _now != _was:
+                        migration_stats["canonicalized"] = (
+                            migration_stats.get("canonicalized", 0) + 1)
+                    migration_stats.setdefault("by_schema", {})
+                    migration_stats["by_schema"][str(_gen or "legacy")] = (
+                        migration_stats["by_schema"].get(str(_gen or "legacy"), 0) + 1)
             previous[_event_timeline_key(event)] = lifecycle
             # r1(Codex,P1):**歷史紀錄沒有 `subject_key`。**
             # 批#72 之前存下來的事件算出的是月 bucket 鍵(`orders|2026-07`),

@@ -94,7 +94,13 @@ import pytest
 #: finding 的修正**,新增的都是接線與記帳,經 refactor_audit 全判 BLOCK:
 #: `_llm_key_available`(讀四個金鑰常數)、`_record_report_writer`(寫 manifest)、
 #: `_refresh_state_writes_in_manifest`(寫 manifest 檔)。
-MAIN_MODULE_LINE_CEILING = 23_250
+#:
+#: 2026-08-01 批#114 調高至 23,350(現況 23,261)。Event Identity v4 的遷移
+#: 遙測(第十輪 P1-11):`_record_identity_migration` 經 refactor_audit 判 BLOCK
+#: (寫 `_RUN_MANIFEST` 與 `_DEGRADED_STEPS`),而**計數本身**已經放在
+#: `news_events.apply_event_timeline` 裡(那是純函式,用注入的 dict 收集)。
+#: 留在主模組的只有「算出合併/分裂並寫進 manifest」這一段接線。
+MAIN_MODULE_LINE_CEILING = 23_350
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

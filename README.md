@@ -98,11 +98,15 @@
 | `LLM_PROVIDER` | `deepseek` | `deepseek` / `openai` / `gemini` / `anthropic` |
 | `DEEPSEEK_REASONING_EFFORT` | `high` | DeepSeek 思考強度;`high` 是它的最高檔(只認 high/medium/low) |
 | `OPENAI_MODEL` | `gpt-5.6-terra` | 主分析模型 |
-| `OPENAI_REASONING_EFFORT` | `medium` | `none`…`max`;**額度與 timeout 會一起放大** |
+| `OPENAI_REASONING_EFFORT` | `medium` | **支援值依 model + endpoint 為準,先跑 Validate LLM Config**;額度與 timeout 會一起放大 |
 | `EXTRACTOR_PROVIDER` | 空(跟隨主分析) | 事件抽取器可獨立指定 |
 | `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` | 抽取是機械性任務,不必用旗艦 |
 | `OPENAI_EXTRACTOR_REASONING` | `low` | 刻意壓低:推理吃光額度會導致 0 產出 |
 | `LLM_SHADOW_PROVIDER` / `LLM_SHADOW_MODEL` | 空(關閉) | 影子比較,只記錄不改輸出 |
+
+> ⚠ 官方 Models 頁面列出的強度**不等於**該 endpoint 真的接受。
+> 2026-08-01 實測:`gpt-5.6-luna` 在 chat/completions 上拒絕 `max`,
+> 而程式會靜默退回 provider 預設。金絲雀的推理強度矩陣會逐一實測。
 
 推理強度同時放大 **輸出額度** 與 **時間預算**(`llm_telemetry.CAP_MULTIPLIER`
 與 `EFFORT_TIME_MULTIPLIER`)。只放大額度不放大時間會必然逾時 —— 額度是上限、

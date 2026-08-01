@@ -240,7 +240,8 @@ def _verdict(stat: dict) -> str:
 
 def compare_texts(*, primary_model: str, primary_text: str,
                   shadow_model: str, shadow_text: str, shadow_ok: bool,
-                  shadow_elapsed, extract_stance, extract_summary) -> dict:
+                  shadow_elapsed, extract_stance, extract_summary,
+                  primary_elapsed=None) -> dict:
     """從兩邊的**原始文字**直接組出比較紀錄(批#92)。
 
     立場與總結的擷取器由呼叫端注入(`llm_postprocess` 的那兩個),
@@ -251,7 +252,10 @@ def compare_texts(*, primary_model: str, primary_text: str,
     return compare_outputs(
         {"model": primary_model, "text": primary_text,
          "stance": extract_stance(primary_text),
-         "summary": extract_summary(primary_text), "ok": True, "elapsed": None},
+         "summary": extract_summary(primary_text), "ok": True,
+         # 第十輪 P2-5:原本寫死 None,於是帳本裡 `primary_seconds` 永遠是 null,
+         # 而「比較兩個模型的延遲」正是影子的用途之一。
+         "elapsed": primary_elapsed},
         {"model": shadow_model, "text": shadow_text,
          "stance": extract_stance(shadow_text) if shadow_ok else {},
          "summary": extract_summary(shadow_text) if shadow_ok else "",
@@ -275,7 +279,7 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
                    extract_stance, extract_summary, elapsed_timer,
                    primary_effort: str = "", shadow_effort: str = "",
                    code_version: str = "", applied_effort_probe=None,
-                   log=print) -> dict:
+                   primary_elapsed=None, log=print) -> dict:
     """跑一次影子比較並落地,回傳要放進 manifest 的狀態(批#92)。
 
     第九輪 P1-11 要的**依賴注入**:呼叫、讀寫、計時、擷取器全部由外面傳進來,
@@ -305,7 +309,7 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
     rec = compare_texts(
         primary_model=primary_model, primary_text=primary_text,
         shadow_model=shadow_model, shadow_text=shadow_text, shadow_ok=ok,
-        shadow_elapsed=elapsed_timer() - t0,
+        shadow_elapsed=elapsed_timer() - t0, primary_elapsed=primary_elapsed,
         extract_stance=extract_stance, extract_summary=extract_summary)
     rec["prompt_sha"] = prompt_fingerprint(prompt)
     # 同群欄位。**沒有它們,換了推理強度之後新舊樣本會被混進同一個平均**,

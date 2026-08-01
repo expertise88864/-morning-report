@@ -2613,9 +2613,85 @@ def test_the_production_path_supplies_codes_so_v4_is_not_a_no_op():
 
     table = mr._entity_alias_map([{"code": "2330", "name": "台積電"}])
     assert isinstance(table, dict), "生產詞彙表不是 dict —— v4 會靜默失效"
-    assert table.get("2330") == ("台積電",)
+    # 中文名來自 TWSE,英文別名來自 `_TW_ENTITY_EXTRA_ALIASES`
+    # (第十輪 P1-11:少了英文名,英文報導的 TSMC 會被當成交易對手)。
+    assert table.get("2330")[0] == "台積電"
+    assert "TSMC" in table["2330"]
     assert "AAPL" in table and "蘋果" in table["AAPL"]
     # 拿這張真表跑一次,確認吐的是代號
     key = mr.event_subject_key("台積電獲蘋果2奈米大單", entity="2330",
                                entity_aliases=("台積電",), known_names=table)
     assert key == "2nm,aapl", key
+
+
+def test_event_identity_migration_is_measurable():
+    """第十輪 P1-11:**遷移要能被驗收。**
+
+    沒有這些計數,「v4 上線了」與「v4 一則都沒改到」在 manifest 裡長得一樣 ——
+    而 2026-08-01 的生產 manifest 仍顯示 `event_schema: 3 / legacy`
+    (那一班早於 v4 的 commit),外審因此只能說「程式已實作、資料未證明」。
+
+    **分裂是缺陷,不是進度**:同一個舊指紋跑出多個新指紋,代表正規化不是
+    決定性的。它必須自己發聲,不能只躺在計數裡。
+    """
+    from news_events import apply_event_timeline
+
+    # 主體自己的別名也要在表裡 —— 否則英文標題的 `TSMC` 會被當成交易對手,
+    # 而中文版沒有,同一件事又分裂(這條測試第一次跑就抓到了這個缺陷)。
+    kn = {"AAPL": ("蘋果", "Apple"), "NVDA": ("輝達", "NVIDIA"),
+          "2330": ("台積電", "TSMC")}
+    history = [{"session_date": "2026-07-30", "structured_events": [
+        {"title": "台積電確認蘋果2奈米訂單", "entity": "2330",
+         "event_type": "orders", "lifecycle": "confirmed",
+         "event_schema": 3, "subject_key": "2奈米,蘋果"},
+        {"title": "TSMC wins Apple 2nm order", "entity": "2330",
+         "event_type": "orders", "lifecycle": "rumor",
+         "event_schema": 3, "subject_key": "2nm,apple"},
+    ]}]
+    stats: dict = {}
+    apply_event_timeline(history, [], known_names=kn, migration_stats=stats)
+
+    assert stats["recomputed"] == 2, stats
+    assert stats["canonicalized"] == 2, "指紋沒有被改寫 —— v4 等於沒生效"
+    pairs = stats["changed_pairs"]
+    # 兩個舊指紋收斂到同一個新指紋 —— 那正是 v4 要達成的合併
+    assert set(pairs) == {"2奈米,蘋果", "2nm,apple"}
+    assert len(set(pairs.values())) == 1, f"沒有收斂:{pairs}"
+    assert set(pairs.values()) == {"2nm,aapl"}
+    assert stats["by_schema"] == {"3": 2}
+
+    # 已經是當代的事件不該被重算(否則計數會永遠不歸零,看不出遷移完成)
+    fresh = [{"session_date": "2026-08-02", "structured_events": [
+        {"title": "台積電獲蘋果2奈米大單", "entity": "2330",
+         "event_type": "orders", "event_schema": 4, "subject_key": "2nm,aapl"}]}]
+    done: dict = {}
+    apply_event_timeline(fresh, [], known_names=kn, migration_stats=done)
+    assert done.get("recomputed", 0) == 0, done
+
+
+def test_the_entity_own_english_name_is_not_a_counterparty():
+    """第十輪 P1-11 自測發現:**v4 修好了對手方,沒修好主體自己的英文名。**
+
+    TWSE 只給中文名,於是 `_entity_alias_map` 裡 2330 只有「台積電」——
+    英文報導的 `TSMC` 全大寫、被當成型號/縮寫收進指紋:
+
+        「TSMC wins Apple 2nm order」→ 2nm,aapl,tsmc
+        「台積電確認蘋果2奈米訂單」  → 2nm,aapl
+
+    同一件事又分裂。`_TW_ENTITY_EXTRA_ALIASES` 補上少數**有把握**的英文別名 ——
+    誤加一個會把不相干的公司事件合併,漏收只是維持現狀,所以寧可少收。
+    """
+    import morning_report as mr
+
+    table = mr._entity_alias_map([{"code": "2330", "name": "台積電"}])
+    assert "TSMC" in table["2330"], table["2330"]
+
+    def key(title):
+        return mr.event_subject_key(title, entity="2330",
+                                    entity_aliases=table["2330"],
+                                    known_names=table)
+
+    assert key("TSMC wins Apple 2nm order") == key("台積電確認蘋果2奈米訂單")
+    assert "tsmc" not in key("TSMC wins Apple 2nm order")
+    # 別家公司仍然要被收進來(不能因為排除自己就把對手也排掉)
+    assert "aapl" in key("TSMC wins Apple 2nm order")

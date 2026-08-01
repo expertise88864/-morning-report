@@ -375,6 +375,10 @@ LLM_SHADOW_PROVIDER = os.environ.get("LLM_SHADOW_PROVIDER", "").strip().lower()
 LLM_SHADOW_MODEL = os.environ.get("LLM_SHADOW_MODEL", "").strip()
 #: 影子呼叫的時間上限。它**不能**擠壓正班 —— 晨報不可斷優先於評估。
 LLM_SHADOW_TIMEOUT = float(os.environ.get("LLM_SHADOW_TIMEOUT_SEC", "120"))
+#: 影子的推理強度(第九輪 P1-8)。空 = 跟隨該 provider 的預設。
+#: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
+LLM_SHADOW_REASONING_EFFORT = os.environ.get(
+    "LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
 #: 事件抽取器的 provider。**與主分析分開**(批#90)。
 #: 抽取是機械性的結構化任務(把新聞抄成 JSON 欄位),不需要旗艦推理模型;
 #: 而換主分析時若連它一起換過去,成本反而由這裡主導 ——
@@ -13126,6 +13130,9 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
                 ledger_path=LLM_SHADOW_LEDGER_FILE, read_ledger=_ls.load_ledger,
                 write_ledger=_write, extract_stance=_extract_stance,
                 extract_summary=_extract_summary, elapsed_timer=time.monotonic,
+                primary_effort=_PRIMARY_EFFORT,
+                shadow_effort=LLM_SHADOW_REASONING_EFFORT,
+                code_version=os.environ.get("GITHUB_SHA", ""),
                 log=lambda m: print(m, file=sys.stderr))
             stat.update(out)
             if out.get("cumulative"):

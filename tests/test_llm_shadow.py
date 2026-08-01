@@ -945,3 +945,61 @@ def test_cache_write_tokens_are_recorded_and_flagged_in_the_basis():
     # 重試要累加,否則與帳單對不上
     merged = lt.merge_same_role(lt.merge_same_role(None, rec), rec)
     assert merged["cache_write_tokens"] == 2 * 93_191
+
+
+def test_changing_the_effort_restarts_the_sample_count():
+    """批#102(第九輪 P1-8):**換了設定就換了一個輸出分佈。**
+
+    使用者 2026-08-01 從 xhigh 改成 max。帳本原本只記 model,不記強度 ——
+    於是 xhigh 的樣本會被算進 max 的平均裡,而那個平均正是用來決定要不要
+    換模型的。混進去只會讓判讀**提早到達門檻**,然後給出沒有根據的結論。
+
+    這裡刻意與 forecast ledger 的做法不同:那邊是「混算 + 誠實揭露」,
+    因為它統計的是預測誤差、跨世代仍有參考價值;影子要回答的是
+    「要不要換成**這個**設定」,別的設定跑出來的樣本回答不了。
+    """
+    def _row(day, effort, agree=True):
+        return {"date": day, "primary_model": "gpt-5.6-luna",
+                "primary_effort": effort, "shadow_model": "deepseek-v4-pro",
+                "shadow_effort": "high", "code_version": "abc123",
+                "primary_ok": True, "shadow_ok": True,
+                "stance_agree": agree, "stance_flipped": False}
+
+    old = [_row(f"2026-07-{d:02d}", "xhigh") for d in range(20, 32)]
+    new = [_row("2026-08-01", "max")]
+    ledger = old + new
+
+    cur = ls.summarize(ledger, "deepseek-v4-pro", cohort=ls.cohort_key(new[0]))
+    assert cur["both_ok"] == 1, "舊強度的樣本被算進來了"
+    assert "樣本不足" in cur["verdict"], cur["verdict"]
+    # 舊樣本沒有被刪,而且「有其他設定的樣本」必須說出來
+    assert cur["cohorts"] == 2
+    assert "primary_effort" in cur["cohort_fields"]
+    assert set(cur["cohort_fields"]["primary_effort"]) == {"xhigh", "max"}
+    assert "不計入" in cur["verdict"], cur["verdict"]
+
+    # 同一群累積夠了才給判讀
+    same = ls.summarize([_row(f"2026-07-{d:02d}", "xhigh") for d in range(20, 32)],
+                        "deepseek-v4-pro", cohort=ls.cohort_key(_row("x", "xhigh")))
+    assert same["both_ok"] == 12
+    assert "樣本不足" not in same["verdict"], same["verdict"]
+    assert "cohorts" not in same, "只有一個設定時不該報同群警告"
+
+
+def test_cohort_key_covers_everything_that_changes_the_distribution():
+    """同群欄位漏掉一項,那一項的變動就會靜默地混算。
+
+    `prompt_sha` 刻意**不是**同群欄位:prompt 內容每天都不同(裡面是當天的
+    行情與新聞),拿它分群會讓每一天自成一群、永遠湊不到樣本。
+    """
+    assert set(ls.COHORT_FIELDS) == {
+        "primary_model", "primary_effort", "shadow_model", "shadow_effort",
+        "code_version"}
+    assert "prompt_sha" not in ls.COHORT_FIELDS
+    # 舊資料缺欄位 → 自成 legacy 群,不會與新資料混算
+    legacy = ls.cohort_key({"primary_model": "gpt-5.6-luna"})
+    fresh = ls.cohort_key({"primary_model": "gpt-5.6-luna",
+                           "primary_effort": "max", "shadow_model": "d",
+                           "shadow_effort": "high", "code_version": "abc"})
+    assert legacy != fresh
+    assert "legacy/unknown" in legacy

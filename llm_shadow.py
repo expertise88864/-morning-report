@@ -21,6 +21,7 @@ import datetime as _dt
 import hashlib as _hashlib
 import json as _json
 from pathlib import Path
+from typing import Optional
 
 #: 帳本保留天數。比較樣本要夠長才看得出分佈差異,但也不需要無限累積。
 LEDGER_KEEP_DAYS = 120
@@ -146,7 +147,22 @@ def upsert(ledger: list, record: dict, today: str) -> list:
     return sorted(out, key=lambda r: (str(r.get("date")), str(r.get("shadow_model"))))
 
 
-def summarize(ledger: list, shadow_model: str = "") -> dict:
+#: 決定「哪些樣本可以放進同一個平均」的欄位(第九輪 P1-8)。
+#:
+#: prompt 的**內容**每天都不同(裡面是當天的行情與新聞),所以 `prompt_sha`
+#: 是逐日證據、不是同群依據。真正會讓樣本不可比的是**設定**:換了模型或
+#: 推理強度,輸出分佈就換了一個。
+COHORT_FIELDS = ("primary_model", "primary_effort",
+                 "shadow_model", "shadow_effort", "code_version")
+
+
+def cohort_key(rec: dict) -> tuple:
+    """一列紀錄屬於哪個同群。缺欄位的舊資料自成 `legacy/unknown` 群。"""
+    return tuple(str((rec or {}).get(f) or "legacy/unknown")
+                 for f in COHORT_FIELDS)
+
+
+def summarize(ledger: list, shadow_model: str = "", cohort: Optional[tuple] = None) -> dict:
     """把帳本彙整成「夠不夠格換」的判讀。
 
     **樣本不足時明說「還不知道」**,不給一個看起來像結論的數字 ——
@@ -154,6 +170,15 @@ def summarize(ledger: list, shadow_model: str = "") -> dict:
     """
     rows = [r for r in (ledger or []) if isinstance(r, dict)
             and (not shadow_model or r.get("shadow_model") == shadow_model)]
+    # **換了設定就重新算樣本數。**
+    # 這裡刻意與 forecast ledger 的做法不同:那邊是「混算 + 誠實揭露」,
+    # 因為它統計的是預測誤差、跨世代仍有參考價值;而影子的問題是
+    # 「要不要換成這個設定」—— 用別的設定跑出來的樣本回答不了這個問題,
+    # 混進去只會讓判讀提早到達門檻而給出沒有根據的結論。
+    # 舊樣本不會被刪(它們仍在帳本裡、仍會被報出來),只是不進這次的分母。
+    all_cohorts = {cohort_key(r) for r in rows}
+    if cohort is not None:
+        rows = [r for r in rows if cohort_key(r) == cohort]
     both_ok = [r for r in rows if r.get("primary_ok") and r.get("shadow_ok")]
     agree = [r for r in both_ok if r.get("stance_agree") is not None]
     flips = [r for r in both_ok if r.get("stance_flipped") is True]
@@ -171,6 +196,14 @@ def summarize(ledger: list, shadow_model: str = "") -> dict:
           if isinstance(r.get("body_overlap"), (int, float))]
     if ov:
         out["body_overlap_mean"] = round(sum(ov) / len(ov), 3)
+    if len(all_cohorts) > 1:
+        # 揭露必須有可觀察的出口(照 forecast ledger 的 r1 教訓):
+        # 只存在記憶體裡的警告等於沒有警告。
+        out["cohorts"] = len(all_cohorts)
+        out["cohort_fields"] = {
+            f: sorted({k[i] for k in all_cohorts})
+            for i, f in enumerate(COHORT_FIELDS)
+            if len({k[i] for k in all_cohorts}) > 1}
     out["verdict"] = _verdict(out)
     return out
 
@@ -182,8 +215,13 @@ MIN_SAMPLES_FOR_VERDICT = 10
 
 def _verdict(stat: dict) -> str:
     if stat.get("both_ok", 0) < MIN_SAMPLES_FOR_VERDICT:
+        extra = ""
+        if stat.get("cohorts", 1) > 1:
+            changed = "、".join(sorted(stat.get("cohort_fields") or {}))
+            extra = (f";帳本另有其他設定的樣本(已變動:{changed}),"
+                     "**不計入** —— 換設定等於換一個輸出分佈")
         return (f"樣本不足({stat.get('both_ok', 0)}/{MIN_SAMPLES_FOR_VERDICT})"
-                "——尚不足以判斷,繼續累積")
+                f"——尚不足以判斷,繼續累積{extra}")
     if stat.get("stance_flips", 0) > 0:
         return (f"有 {stat['stance_flips']} 天立場翻面(多↔空)"
                 "——換模型會改變讀者動作,需人工逐日核對那幾天誰對")
@@ -228,7 +266,8 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
                    shadow_model: str, call_shadow, today: str,
                    ledger_path, read_ledger, write_ledger,
                    extract_stance, extract_summary, elapsed_timer,
-                   log=print) -> dict:
+                   primary_effort: str = "", shadow_effort: str = "",
+                   code_version: str = "", log=print) -> dict:
     """跑一次影子比較並落地,回傳要放進 manifest 的狀態(批#92)。
 
     第九輪 P1-11 要的**依賴注入**:呼叫、讀寫、計時、擷取器全部由外面傳進來,
@@ -261,6 +300,11 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
         shadow_elapsed=elapsed_timer() - t0,
         extract_stance=extract_stance, extract_summary=extract_summary)
     rec["prompt_sha"] = prompt_fingerprint(prompt)
+    # 同群欄位。**沒有它們,換了推理強度之後新舊樣本會被混進同一個平均**,
+    # 而那個平均正是用來決定換不換模型的。
+    rec["primary_effort"] = primary_effort or "unknown"
+    rec["shadow_effort"] = shadow_effort or "unknown"
+    rec["code_version"] = (code_version or "unknown")[:12]
     if err:
         rec["shadow_error"] = err[:160]
     try:
@@ -270,4 +314,6 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
         return {"skipped": "ledger_unreadable"}
     ledger = upsert(ledger, rec, today)
     write_ledger(ledger_path, ledger)
-    return {"today": rec, "cumulative": summarize(ledger, shadow_model)}
+    return {"today": rec,
+            "cumulative": summarize(ledger, shadow_model,
+                                    cohort=cohort_key(rec))}

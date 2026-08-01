@@ -455,32 +455,45 @@ def test_every_manifest_key_written_is_also_persisted():
     `_RUN_MANIFEST["x"] = ...` 與 `_RUN_MANIFEST.setdefault("x", ...)` 的鍵,
     比對 `_MANIFEST_DIAGNOSTIC_KEYS`(落地)與 `_MANIFEST_TRANSIENT_KEYS`
     (刻意不落地),漏列時**指名是哪一個鍵**。
+
+    第十輪 P1-12:`state_writes` 搬進 `run_manifest.ManifestRecorder` 之後,
+    只掃主模組的版本立刻漏掉它 —— **只掃單一檔的守衛,程式碼一搬家就失明**。
+    掃描範圍改成「所有會碰 manifest 的檔」,而且要認得 recorder 內部的
+    `self.data[...]`(它與 `_RUN_MANIFEST` 是同一個 dict)。
     """
     import ast
     import morning_report as mr
+    import run_manifest as _rm_mod
 
-    tree = ast.parse(Path(mr.__file__).read_text(encoding="utf-8"))
+    trees = [ast.parse(Path(m.__file__).read_text(encoding="utf-8"))
+             for m in (mr, _rm_mod)]
+    def _is_manifest(node) -> bool:
+        """`_RUN_MANIFEST` 或 recorder 內部的 `self.data` —— 兩者是同一個 dict。
+
+        只認前者的話,搬進 `ManifestRecorder` 的鍵就會從守衛的視野消失
+        (第十輪 P1-12 搬走 `state_writes` 時立刻發生)。
+        """
+        if isinstance(node, ast.Name):
+            return node.id == "_RUN_MANIFEST"
+        return (isinstance(node, ast.Attribute) and node.attr == "data"
+                and isinstance(node.value, ast.Name) and node.value.id == "self")
+
     written = set()
-    for node in ast.walk(tree):
-        # _RUN_MANIFEST["x"] = ...
+    for node in [n for t in trees for n in ast.walk(t)]:
         targets = []
         if isinstance(node, ast.Assign):
             targets = node.targets
         elif isinstance(node, ast.AugAssign):
             targets = [node.target]
         for t in targets:
-            if (isinstance(t, ast.Subscript)
-                    and isinstance(t.value, ast.Name)
-                    and t.value.id == "_RUN_MANIFEST"
+            if (isinstance(t, ast.Subscript) and _is_manifest(t.value)
                     and isinstance(t.slice, ast.Constant)
                     and isinstance(t.slice.value, str)):
                 written.add(t.slice.value)
-        # _RUN_MANIFEST.setdefault("x", ...)
         if (isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "setdefault"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "_RUN_MANIFEST"
+                and _is_manifest(node.func.value)
                 and node.args
                 and isinstance(node.args[0], ast.Constant)
                 and isinstance(node.args[0].value, str)):
@@ -761,3 +774,69 @@ def test_late_failures_are_added_to_the_marker_not_hidden_by_early_ones(
         mr._STATE_WRITES.clear()
         mr._STATE_WRITES.update(saved_w)
         mr._DEGRADED_STEPS[:] = saved_d
+
+
+def test_the_recorder_owns_the_manifest_dict_itself():
+    """第十輪 P1-12:**recorder 的 `data` 必須就是主模組的 `_RUN_MANIFEST`。**
+
+    不是複本、也不重新綁定 —— 131 處測試引用全部是就地變更
+    (`.pop` / `[k] = v` / `.setdefault`)。一旦分家,兩邊都「有資料」
+    但不是同一份,而那種失敗是靜默的。
+    """
+    import morning_report as mr
+
+    assert mr._RUN_MANIFEST is mr._RECORDER.data
+    probe = {"__di_probe__": 1}
+    mr._RUN_MANIFEST.update(probe)
+    try:
+        assert mr._RECORDER.data.get("__di_probe__") == 1
+    finally:
+        mr._RUN_MANIFEST.pop("__di_probe__", None)
+
+
+def test_the_recorder_builds_a_manifest_without_touching_the_world():
+    """組裝是**純函式**:不寫檔、不讀全域、不碰網路 —— 所以可以單獨測。
+
+    它也是那個「漏列白名單」坑的唯一守門處:診斷鍵一律由 `DIAGNOSTIC_KEYS`
+    統一帶出,不逐項明列(逐項明列正是發生過八次的那個坑)。
+    """
+    import run_manifest as rm
+
+    rec = rm.ManifestRecorder()
+    rec.mark_phase("抓資料", 100.0)
+    rec.mark_phase("LLM", 130.0)
+    rec.mark_phase("寄信", 175.5)
+    rec.data["llm_extractor"] = {"called": True, "valid": 3}
+    rec.data["data_checks"] = {"warn": 1}
+
+    built = rec.build(date="2026-08-01 06:00", budget_seconds=2100.0,
+                      news_workers=8, degraded_steps=["a", "a", "b"],
+                      feeds={"example.com": {"ok": 3, "fail": 1}})
+
+    assert built["total_seconds"] == 75.5
+    assert [p["label"] for p in built["phases"]] == ["抓資料", "LLM"]
+    assert built["phases"][0]["seconds"] == 30.0
+    assert built["degraded_steps"] == ["a", "b"], "重複的降級項沒有去重"
+    assert built["feeds"] == {"example.com": {"ok": 3, "fail": 1}}
+    # 每一個診斷鍵都必須出現(即使值是 None)—— 這正是白名單的意義
+    for key in rm.DIAGNOSTIC_KEYS:
+        assert key in built, f"{key} 沒有被帶出去"
+    assert built["llm_extractor"] == {"called": True, "valid": 3}
+    # 暫時鍵不落地
+    for key in rm.TRANSIENT_KEYS:
+        assert key not in built, f"{key} 是中間結構,不該落地"
+
+
+def test_the_recorder_reports_only_failed_state_writes():
+    """**只記成功的等於沒記** —— `detail` 只留失敗項,而 `attempted` 記全部。"""
+    import run_manifest as rm
+
+    rec = rm.ManifestRecorder()
+    failed = rec.record_state_writes({
+        "history.json": {"ok": True, "bytes": 10},
+        "ledger.json": {"ok": False, "bytes": 2, "error": "OSError"}})
+    assert failed == ["ledger.json"]
+    sw = rec.data["state_writes"]
+    assert sw["attempted"] == 2 and sw["failed"] == ["ledger.json"]
+    assert "history.json" not in sw["detail"], "成功的不必佔版面"
+    assert rec.record_state_writes({}) == []

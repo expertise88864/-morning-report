@@ -3717,14 +3717,16 @@ def test_mixed_versions_reach_the_run_manifest():
               and isinstance(n.slice, ast.Constant)
               and n.slice.value == "forecast_mixed_versions"]
     assert writes, "混版本資訊沒有寫進 run manifest"
-    # 也必須列在重建白名單裡,否則寫了會被下一次執行丟掉(本專案第五次同型坑)
-    writer = next(n for n in ast.walk(tree)
-                  if isinstance(n, ast.FunctionDef)
-                  and n.name == "_write_run_manifest")
-    keys = [k.value for n in ast.walk(writer) if isinstance(n, ast.Dict)
-            for k in n.keys if isinstance(k, ast.Constant)]
-    assert "forecast_mixed_versions" in keys, \
-        "混版本資訊不在 manifest 重建白名單裡 → 寫了也會被丟掉"
+    # 也必須真的落地,否則寫了會被下一次執行丟掉(本專案第五次同型坑)。
+    #
+    # 第十輪 P1-12:原本掃 `_write_run_manifest` 的原始碼找明列的鍵 ——
+    # 組裝搬進 `ManifestRecorder.build()` 之後那個掃描就落空了。
+    # **改成驗行為**:實際組一次看鍵在不在。行為檢查不因程式碼搬家而失效。
+    import run_manifest as _rm_mod
+    rec = _rm_mod.ManifestRecorder({"forecast_mixed_versions": {"x": ["1", "2"]}})
+    built = rec.build(date="2026-08-01 06:00", budget_seconds=1.0,
+                      news_workers=1, degraded_steps=[])
+    assert built.get("forecast_mixed_versions") == {"x": ["1", "2"]},         "混版本資訊沒有落地 → 寫了也會被丟掉"
 
 
 def test_exdiv_preview_span_is_measured_not_assumed():

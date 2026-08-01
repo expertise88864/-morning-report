@@ -100,7 +100,13 @@ import pytest
 #: (寫 `_RUN_MANIFEST` 與 `_DEGRADED_STEPS`),而**計數本身**已經放在
 #: `news_events.apply_event_timeline` 裡(那是純函式,用注入的 dict 收集)。
 #: 留在主模組的只有「算出合併/分裂並寫進 manifest」這一段接線。
-MAIN_MODULE_LINE_CEILING = 23_350
+#:
+#: 2026-08-01 批#115 **調降**至 23,300(現況 23,235)—— 這是這份清單上
+#: **第一次往下**。第十輪 P1-12 指出「只能降不能升」至今只是文字規約
+#: (連續調高七次),而依賴注入才是解。第一步:manifest 改由
+#: `run_manifest.ManifestRecorder` 擁有,純組裝搬進葉模組,
+#: 並順手移除十行冗餘(明列的診斷鍵與白名單迴圈完全重複)。
+MAIN_MODULE_LINE_CEILING = 23_300
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -121,6 +127,9 @@ MODULE_CEILINGS = {
     # 並記下出處與 schema 版本(外審宣稱的價格錯誤,我逐頁查證後駁回,
     # 但同一條裡的 cached/cache-write 缺失是真的)。
     "llm_telemetry.py": 700,
+    # 批#115:P1-12 的接收端。**沒有列進來就是後門** —— 批#95 已經因為漏列
+    # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
+    "run_manifest.py": 300,
 }
 
 

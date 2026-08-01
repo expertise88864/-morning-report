@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 import llm_telemetry as _lt
+import run_manifest as _rm
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urljoin, urlparse
 
@@ -511,109 +512,59 @@ NEWS_FETCH_WORKERS = int(os.environ.get("NEWS_FETCH_WORKERS", "8"))
 # Step Summary(在 Actions 執行頁直接看得到「時間花在哪、平行化有沒有幫助、哪個來源在掛」)。
 # 純市場中性資料(耗時/計數/來源健康),不含任何個人化內容。失敗不影響晨報。
 RUN_MANIFEST_FILE = STATE_ROOT / "run_manifest.json"
-_RUN_MANIFEST: dict = {"marks": []}
+#: 第十輪 P1-12:manifest 改由 `ManifestRecorder` 擁有(依賴注入的第一步)。
+#: `_RUN_MANIFEST` 是**同一個 dict 物件**的別名,不是複本、也不重新綁定 ——
+#: 131 處測試引用全部是就地變更,因此不必改動任何一條。
+#: 一次到位的大改寫在這種耦合度下必然出事:先開接縫,再逐步收斂。
+_RECORDER = _rm.ManifestRecorder()
+_RUN_MANIFEST: dict = _RECORDER.data
 
-#: 各階段寫進 `_RUN_MANIFEST` 的**診斷鍵**,由 `_write_run_manifest` 統一落地。
-#: 這個 writer 是重建白名單 dict,沒列到的鍵一律被靜默丟掉 ——
-#: 記憶體裡有值、檔案裡沒有,而診斷欄位存在的唯一理由就是累積成趨勢。
-#: 這個坑至今發生八次(stance_dual / data_checks / mz_shadow / llm_extractor /
-#: delivery / capability_health / forecast_mixed_versions / exdiv_preview),
-#: 所以改成「一處宣告 + AST 掃描比對」,不再靠人記得同步修改兩個地方。
-#: 新增鍵時只要加進這裡;忘了加,測試會指名是哪一個鍵。
-_MANIFEST_DIAGNOSTIC_KEYS = (
-    "model_history_days", "d1_samples", "d1_ready", "stance_dual",
-    "data_checks", "mz_shadow", "llm_extractor", "delivery",
-    "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
-    "state_writes", "event_identity",
-)
-#: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
-#: 原樣寫出去只是重複且龐大。
-_MANIFEST_TRANSIENT_KEYS = ("marks",)
+#: 診斷鍵與暫時鍵的**單一定義**在 `run_manifest.py`(第十輪 P1-12)。
+#: 這裡保留同名 re-export,既有測試與 AST 守衛不必改。
+_MANIFEST_DIAGNOSTIC_KEYS = _rm.DIAGNOSTIC_KEYS
+_MANIFEST_TRANSIENT_KEYS = _rm.TRANSIENT_KEYS
 
 
 def _mark_phase(label: str) -> None:
-    """在 main() 階段邊界插一個時間標記(相鄰標記差=該階段耗時)。純觀測,不影響流程。"""
-    _RUN_MANIFEST["marks"].append((label, time.monotonic()))
+    """在 main() 階段邊界插一個時間標記(相鄰標記差=該階段耗時)。純觀測。"""
+    _RECORDER.mark_phase(label, time.monotonic())
 
 
 def _write_run_manifest(now_tpe) -> None:
-    """把本次執行的階段耗時等寫成 manifest + 附到 GitHub Actions Step Summary。失敗不影響晨報。"""
+    """把本次執行的階段耗時等寫成 manifest + 附到 Actions Step Summary。
+
+    第十輪 P1-12:**組裝已經搬到 `run_manifest.ManifestRecorder.build()`**
+    (純函式,可單獨測)。留在這裡的只有三件本來就屬於主模組的事:
+    收集全域狀態、寫檔、印出來。
+
+    順帶移除了十行冗餘:`model_history_days` / `d1_samples` / `stance_dual` /
+    `data_checks` / `mz_shadow` / `llm_extractor` / `delivery` /
+    `capability_health` / `forecast_mixed_versions` / `d1_ready` 原本各自明列
+    一行,而下面的白名單迴圈又會再帶一次 —— 十項全部重複。
+    那十行各自帶著「同一個坑的第 N 次」的註解,而修法早就是白名單迴圈了。
+
+    失敗不影響晨報。
+    """
     try:
-        marks = _RUN_MANIFEST.get("marks") or []
-        phases = [{"label": marks[i][0], "seconds": round(marks[i + 1][1] - marks[i][1], 1)}
-                  for i in range(len(marks) - 1)]
-        total = round(marks[-1][1] - marks[0][1], 1) if len(marks) >= 2 else 0.0
-        feeds = {h: {"ok": int((s or {}).get("ok", 0)), "fail": int((s or {}).get("fail", 0))}
-                 for h, s in (_FEED_STATS or {}).items()}
-        # 批#100:整班的成本彙整,**含「有幾次量不到」**。逾時的呼叫照樣計費
-        # 而沒有 usage 可讀,只報一個看似精確的總額會讓帳單對不上時無從查起。
-        # 批#108:寫入帳一律落地。**只記成功的等於沒記** —— 失敗才是要看的。
-        _failed = sorted(k for k, v in _STATE_WRITES.items() if not v.get("ok"))
-        _RUN_MANIFEST["state_writes"] = {
-            "attempted": len(_STATE_WRITES),
-            "failed": _failed,
-            "detail": {k: v for k, v in sorted(_STATE_WRITES.items())
-                       if not v.get("ok")}}
-        if _failed:
-            _DEGRADED_STEPS.append("state:write_failed:" + ",".join(_failed)[:60])
+        failed = _RECORDER.record_state_writes(_STATE_WRITES)
+        if failed:
+            _DEGRADED_STEPS.append("state:write_failed:" + ",".join(failed)[:60])
         if isinstance(_RUN_MANIFEST.get("llm"), dict):
             _RUN_MANIFEST["llm"]["cost_summary"] = _lt.run_cost_summary(
                 _RUN_MANIFEST["llm"])
-        manifest = {
-            "date": now_tpe.strftime("%Y-%m-%d %H:%M"),
-            "total_seconds": total,
-            "budget_seconds": RUN_BUDGET_SECONDS,
-            "news_workers": NEWS_FETCH_WORKERS,
-            "degraded_steps": list(dict.fromkeys(_DEGRADED_STEPS)),
-            "phases": phases,
-            "feeds": feeds,
-            # 地基批#5:供次日比對「模型歷史是否縮短」的健康警示
-            "model_history_days": _RUN_MANIFEST.get("model_history_days"),
-            # 批#20 #1:D1 因子驗收樣本數與就緒旗標(首次達標提醒的比對基準)
-            "d1_samples": _RUN_MANIFEST.get("d1_samples"),
-            "d1_ready": _RUN_MANIFEST.get("d1_ready"),
-            # PR-2 雙軌:LLM vs Python 立場比對(三審 P1-4:先前只設進記憶體
-            # dict,這裡的白名單沒輸出 → manifest 追蹤不到一致率)
-            "stance_dual": _RUN_MANIFEST.get("stance_dual"),
-            # Codex r1(P2)**確認**:批#50 設了 _RUN_MANIFEST["data_checks"],
-            # 但這個 writer 是**重建白名單 dict**,沒列到的鍵一律丟掉 →
-            # warn 級的品質問題只存在於當次 stderr,無法累積成承諾的趨勢。
-            # (與三審 P1-4 的 stance_dual 完全同一個坑。)
-            "data_checks": _RUN_MANIFEST.get("data_checks"),
-            # r1(Codex,P1):**這是同一個坑的第三次** —— 三審 P1-4 的 stance_dual、
-            # 批#50 r1 的 data_checks,現在是 mz_shadow。這個 writer 是**重建白名單
-            # dict**,沒列到的鍵一律丟掉。影子模式的**唯一目的**就是累積樣本外資料,
-            # 不落地等於整個功能白做,而且失敗是靜默的(記憶體裡有值、檔案裡沒有)。
-            "mz_shadow": _RUN_MANIFEST.get("mz_shadow"),
-            # 批#68:同一個坑的第四次。漏列這一行,診斷資料每天都會被這個
-            # writer 靜默丟掉 —— 而它存在的唯一理由就是回答「抽取器為什麼沒產出」。
-            "llm_extractor": _RUN_MANIFEST.get("llm_extractor"),
-            # 批#73:寄送結果由 `_mark_delivery_in_manifest` 於寄信後補寫;
-            # 這個重建白名單若漏列,補寫的值會在**下一次執行**被丟掉。
-            "delivery": _RUN_MANIFEST.get("delivery"),
-            # 批#73:漏列的話能力健康狀態每天都會被這個重建白名單丟掉
-            "capability_health": _RUN_MANIFEST.get("capability_health"),
-            # 批#75 r1:混版本揭露如果漏列白名單,就會退回「只存在記憶體裡」
-            # 的狀態 —— 那正是這一項 finding 的內容。
-            "forecast_mixed_versions": _RUN_MANIFEST.get(
-                "forecast_mixed_versions"),
-        }
-        # 批#81 r1(Codex,P2):**同一個坑的第八次,改成擋一整類。**
-        # 上面每一行的註解都是同一件事:writer 是重建白名單 dict,
-        # 沒列到的鍵一律被靜默丟掉(記憶體裡有值、檔案裡沒有)。
-        # 逐點補一行等於預約第九次,所以改由 `_MANIFEST_DIAGNOSTIC_KEYS` 統一帶出,
-        # 並由 `test_every_manifest_key_written_is_also_persisted` 用 AST
-        # 掃描所有 `_RUN_MANIFEST[...] = ` / `.setdefault(...)` 的鍵,
-        # 少列就當場失敗 —— 不再靠人記得改這裡。
-        manifest.update({k: _RUN_MANIFEST.get(k)
-                         for k in _MANIFEST_DIAGNOSTIC_KEYS})
+        manifest = _RECORDER.build(
+            date=now_tpe.strftime("%Y-%m-%d %H:%M"),
+            budget_seconds=RUN_BUDGET_SECONDS,
+            news_workers=NEWS_FETCH_WORKERS,
+            degraded_steps=_DEGRADED_STEPS,
+            feeds=_FEED_STATS)
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
                            json.dumps(manifest, ensure_ascii=False, indent=1))
         _append_actions_summary(manifest)
-        print(f"[manifest] 總耗時 {total:.0f}s / 預算 {RUN_BUDGET_SECONDS:.0f}s"
-              f"({len(phases)} 階段);manifest → {RUN_MANIFEST_FILE}")
+        print(f"[manifest] 總耗時 {manifest['total_seconds']:.0f}s / "
+              f"預算 {RUN_BUDGET_SECONDS:.0f}s"
+              f"({len(manifest['phases'])} 階段);manifest → {RUN_MANIFEST_FILE}")
     except Exception as e:
         print(f"[manifest] 寫入失敗(不影響晨報): {e}", file=sys.stderr)
 

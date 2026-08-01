@@ -31,6 +31,7 @@ from typing import Optional
 
 import llm_telemetry as _lt
 import app_context as _app
+import prompt_profiles as _pp
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -432,8 +433,42 @@ LLM_SHADOW_TIMEOUT = float(
                _lc.timeout_base(LLM_SHADOW_PROVIDER)[1])))
 #: 影子的推理強度(第九輪 P1-8)。空 = 跟隨該 provider 的預設。
 #: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
+
+def _int_env(name: str, default: int) -> int:
+    """整數環境變數。**壞值退回預設並印出來**,不得讓晨報因為一個打錯的
+    數字而整份失敗 —— 但也不得靜默,否則使用者會以為設定生效了。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"[config] {name}={raw!r} 不是整數,退回 {default}", file=sys.stderr)
+        return default
+
+
 LLM_SHADOW_REASONING_EFFORT = os.environ.get(
     "LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
+
+# ── Luna 特化實驗(Phase 7)────────────────────────────────────────────
+# 全部可由 repo variable 覆寫;**回切 DeepSeek 不需要 revert 程式碼**。
+#: 主分析/影子的問法。空 = 依 provider 自動選(見 `_prompt_profile_for`)。
+LLM_PRIMARY_PROMPT_PROFILE = os.environ.get("LLM_PRIMARY_PROMPT_PROFILE", "").strip()
+LLM_SHADOW_PROMPT_PROFILE = os.environ.get("LLM_SHADOW_PROMPT_PROFILE", "").strip()
+LLM_COMPARISON_MODE = os.environ.get(
+    "LLM_COMPARISON_MODE", "end_to_end_profiles").strip()
+#: 實驗代號。**空 = 沒有在跑實驗** —— 帳本不會累積可比較配對。
+LLM_EXPERIMENT_ID = os.environ.get("LLM_EXPERIMENT_ID", "").strip()
+LLM_EXPERIMENT_TARGET_PAIRS = _int_env("LLM_EXPERIMENT_TARGET_PAIRS", 10)
+#: `responses` 或 `chat_completions`。預設是**現況**,不是新路徑 ——
+#: 讓未經生產驗證的 adapter 成為預設,等於讓任何人一切 provider 就踩到它。
+OPENAI_API_MODE = os.environ.get("OPENAI_API_MODE", "chat_completions").strip().lower()
+OPENAI_STORE = os.environ.get("OPENAI_STORE", "0").strip() == "1"
+OPENAI_TEXT_VERBOSITY = os.environ.get("OPENAI_TEXT_VERBOSITY", "high").strip()
+OPENAI_REASONING_SUMMARY = os.environ.get("OPENAI_REASONING_SUMMARY", "auto").strip()
+OPENAI_REASONING_CONTEXT = os.environ.get(
+    "OPENAI_REASONING_CONTEXT", "current_turn").strip()
+OPENAI_PROMPT_CACHE_TTL_SECONDS = _int_env("OPENAI_PROMPT_CACHE_TTL_SECONDS", 0)
 #: 影子同群的**語意版本**(第十輪 P1-7)。
 #:
 #: 原本用 `GITHUB_SHA` —— 而這個 repo 一天常有多個 commit,只要改 HTML 樣式、
@@ -505,6 +540,25 @@ LLM_REQUEST_TIMEOUT_SECONDS = min(
 _LLM_DEADLINE: Optional[float] = None
 
 
+#: provider → 預設 prompt profile。**空的 variable 不代表「沒有 profile」**,
+#: 而是「依 provider 自動選」—— 那讓回切 DeepSeek 只需要改一個變數。
+_DEFAULT_PROFILE_BY_PROVIDER = {"openai": "luna56_xhigh_v1"}
+_FALLBACK_PROFILE = "deepseek_legacy_v1"
+
+
+def _prompt_profile_for(provider: str, override: str = "") -> str:
+    """這個 provider 這一班用哪個問法。
+
+    明設的 override 優先;未知的 override **當場失敗**而不是靜默落回預設 ——
+    在實驗裡靜默落回的症狀是「帳本記著一個沒發生過的設定」。
+    """
+    if override:
+        _pp.profile_meta(override)          # 未知就拋 KeyError
+        return override
+    return _DEFAULT_PROFILE_BY_PROVIDER.get(
+        (provider or "").strip().lower(), _FALLBACK_PROFILE)
+
+
 def _llm_config_resolved() -> dict:
     """每個 LLM 開關**本班實際採用的值**(第十一輪 P2-1)。
 
@@ -536,6 +590,17 @@ def _llm_config_resolved() -> dict:
         "LLM_TOTAL_TIMEOUT_SECONDS": LLM_TOTAL_TIMEOUT_SECONDS,
         "LLM_REQUEST_TIMEOUT_SECONDS": LLM_REQUEST_TIMEOUT_SECONDS,
         "LLM_EVENT_EXTRACTION": os.environ.get("LLM_EVENT_EXTRACTION", "1"),
+        "LLM_PRIMARY_PROMPT_PROFILE": LLM_PRIMARY_PROMPT_PROFILE,
+        "LLM_SHADOW_PROMPT_PROFILE": LLM_SHADOW_PROMPT_PROFILE,
+        "LLM_COMPARISON_MODE": LLM_COMPARISON_MODE,
+        "LLM_EXPERIMENT_ID": LLM_EXPERIMENT_ID,
+        "LLM_EXPERIMENT_TARGET_PAIRS": LLM_EXPERIMENT_TARGET_PAIRS,
+        "OPENAI_API_MODE": OPENAI_API_MODE,
+        "OPENAI_STORE": "1" if OPENAI_STORE else "0",
+        "OPENAI_TEXT_VERBOSITY": OPENAI_TEXT_VERBOSITY,
+        "OPENAI_REASONING_SUMMARY": OPENAI_REASONING_SUMMARY,
+        "OPENAI_REASONING_CONTEXT": OPENAI_REASONING_CONTEXT,
+        "OPENAI_PROMPT_CACHE_TTL_SECONDS": OPENAI_PROMPT_CACHE_TTL_SECONDS,
     }
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────

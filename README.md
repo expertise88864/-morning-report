@@ -111,6 +111,17 @@
 | `LLM_SHADOW_REASONING_EFFORT` | 空 | 影子推理強度;空 = 跟隨主分析 |
 | `LLM_TOTAL_TIMEOUT_SECONDS` | 空 | 空 = 由程式依 provider 與推理強度算(見 `llm_telemetry.timeout_base`);設了會**壓過**自動放大 |
 | `LLM_REQUEST_TIMEOUT_SECONDS` | 空 | 同上;另受「不得超過總預算 70%」上限 |
+| `LLM_PRIMARY_PROMPT_PROFILE` | 空 | 主分析的問法。空 = 依 provider 自動選(openai→luna56_xhigh_v1、其餘→deepseek_legacy_v1) |
+| `LLM_SHADOW_PROMPT_PROFILE` | 空 | 影子的問法。空 = 依 shadow provider 自動選 |
+| `LLM_COMPARISON_MODE` | `end_to_end_profiles` | `end_to_end_profiles` = 同一份證據、各自最佳化的問法,比整套系統 |
+| `LLM_EXPERIMENT_ID` | 空 | 實驗代號。**中途改 prompt/schema 必須換新代號重新起算** |
+| `LLM_EXPERIMENT_TARGET_PAIRS` | `10` | 目標**可比較配對**數,不是日曆日 |
+| `OPENAI_API_MODE` | `chat_completions` | `responses` 或 `chat_completions`。預設刻意是現況 —— Responses 尚未生產驗證 |
+| `OPENAI_STORE` | `0` | 1 = 允許 OpenAI 保存這次請求。預設 0 |
+| `OPENAI_TEXT_VERBOSITY` | `high` | Responses 的 `text.verbosity` |
+| `OPENAI_REASONING_SUMMARY` | `auto` | 推理摘要,**僅供遙測不進信件**;需組織驗證,取不到不算錯 |
+| `OPENAI_REASONING_CONTEXT` | `current_turn` | GPT-5.6 預設 all_turns;晨報每天是獨立判斷,故明設 current_turn |
+| `OPENAI_PROMPT_CACHE_TTL_SECONDS` | 空 | 快取存活秒數。空 = 用 provider 預設(30 分) |
 
 > 上表的**預設值欄位由 `tests/test_workflow_contract.py` 對 workflow 逐格比對**
 > (第十一輪 P2-1)。在此之前它漂過:`DEEPSEEK_REASONING_EFFORT` 寫著預設 `high`

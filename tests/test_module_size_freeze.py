@@ -146,11 +146,16 @@ import pytest
 #: **下一次要降,不是再升。** 能降的地方已經看得見:相位現在是頂層函式,
 #: 各自的相依清楚,`refactor_audit` 可以逐相位重判 —— 純運算的段落
 #: (立場分、渲染前的組裝)不再被 `main()` 的區域變數綁住。
-#: 2026-08-02 hotfix 調高至 23_300(現況 23279):DeepSeek 的輸出額度改用
-#: `output_cap`(原本寫死 7,000,不隨推理強度放大)+ 截斷訊號。
+#: 2026-08-02 hotfix(已上 main):DeepSeek 的輸出額度改用 `output_cap`
+#: (原本寫死 7,000,不隨推理強度放大)+ 截斷改成拒絕並拋出。
 #: 那天週日信的政策解析因此被推理擠掉:completion 7,000 裡 6,757 是推理,
 #: 答案只剩 243 個 token,而 manifest 完全看不出來。
-MAIN_MODULE_LINE_CEILING = 23_330  # r1 後再 +30(現況 23305):截斷改成拒絕並拋出
+#:
+#: 2026-08-02 Luna 特化:再加上實驗的**設定接線**(11 個變數的模組常數 +
+#: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
+#: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
+#: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
+MAIN_MODULE_LINE_CEILING = 23_600
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。

@@ -133,6 +133,21 @@ jobs:
           # workflow 卻沒有傳 —— 設了 repo variable 也**靜默無效**。
           # 是在替 CONFIG_SOURCE_SPEC 逐鍵列表時才浮出來的。
           LLM_SHADOW_REASONING_EFFORT: ${{ vars.LLM_SHADOW_REASONING_EFFORT || '' }}
+
+          # ── Luna 特化實驗(Phase 7)────────────────────────────────
+          # 全部可由 repo variable 覆寫。**回切 DeepSeek 不需要 revert 程式碼**:
+          # 把 LLM_PROVIDER 改回 deepseek、LLM_PRIMARY_PROMPT_PROFILE 清空即可。
+          LLM_PRIMARY_PROMPT_PROFILE: ${{ vars.LLM_PRIMARY_PROMPT_PROFILE || '' }}
+          LLM_SHADOW_PROMPT_PROFILE: ${{ vars.LLM_SHADOW_PROMPT_PROFILE || '' }}
+          LLM_COMPARISON_MODE: ${{ vars.LLM_COMPARISON_MODE || 'end_to_end_profiles' }}
+          LLM_EXPERIMENT_ID: ${{ vars.LLM_EXPERIMENT_ID || '' }}
+          LLM_EXPERIMENT_TARGET_PAIRS: ${{ vars.LLM_EXPERIMENT_TARGET_PAIRS || '10' }}
+          OPENAI_API_MODE: ${{ vars.OPENAI_API_MODE || 'chat_completions' }}
+          OPENAI_STORE: ${{ vars.OPENAI_STORE || '0' }}
+          OPENAI_TEXT_VERBOSITY: ${{ vars.OPENAI_TEXT_VERBOSITY || 'high' }}
+          OPENAI_REASONING_SUMMARY: ${{ vars.OPENAI_REASONING_SUMMARY || 'auto' }}
+          OPENAI_REASONING_CONTEXT: ${{ vars.OPENAI_REASONING_CONTEXT || 'current_turn' }}
+          OPENAI_PROMPT_CACHE_TTL_SECONDS: ${{ vars.OPENAI_PROMPT_CACHE_TTL_SECONDS || '' }}
           # 上面每一項都在 YAML 就用 `|| 預設` 補齊,所以程式看到的永遠是最終值,
           # **分辨不出「沒設」與「設成跟預設一樣」**。2026-08-01 就是這樣:
           # 使用者設了 LLM_PROVIDER=openai 卻仍跑 DeepSeek,而 manifest 看不出原因
@@ -158,7 +173,18 @@ jobs:
             LLM_SHADOW_MODEL=${{ vars.LLM_SHADOW_MODEL }};
             LLM_SHADOW_REASONING_EFFORT=${{ vars.LLM_SHADOW_REASONING_EFFORT }};
             LLM_TOTAL_TIMEOUT_SECONDS=${{ vars.LLM_TOTAL_TIMEOUT_SECONDS }};
-            LLM_REQUEST_TIMEOUT_SECONDS=${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }}
+            LLM_REQUEST_TIMEOUT_SECONDS=${{ vars.LLM_REQUEST_TIMEOUT_SECONDS }};
+            LLM_PRIMARY_PROMPT_PROFILE=${{ vars.LLM_PRIMARY_PROMPT_PROFILE }};
+            LLM_SHADOW_PROMPT_PROFILE=${{ vars.LLM_SHADOW_PROMPT_PROFILE }};
+            LLM_COMPARISON_MODE=${{ vars.LLM_COMPARISON_MODE }};
+            LLM_EXPERIMENT_ID=${{ vars.LLM_EXPERIMENT_ID }};
+            LLM_EXPERIMENT_TARGET_PAIRS=${{ vars.LLM_EXPERIMENT_TARGET_PAIRS }};
+            OPENAI_API_MODE=${{ vars.OPENAI_API_MODE }};
+            OPENAI_STORE=${{ vars.OPENAI_STORE }};
+            OPENAI_TEXT_VERBOSITY=${{ vars.OPENAI_TEXT_VERBOSITY }};
+            OPENAI_REASONING_SUMMARY=${{ vars.OPENAI_REASONING_SUMMARY }};
+            OPENAI_REASONING_CONTEXT=${{ vars.OPENAI_REASONING_CONTEXT }};
+            OPENAI_PROMPT_CACHE_TTL_SECONDS=${{ vars.OPENAI_PROMPT_CACHE_TTL_SECONDS }}
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

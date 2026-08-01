@@ -1,0 +1,32 @@
+{
+ "calibration": {},
+ "fair": {
+  "fair_value": 100.0
+ },
+ "news": [],
+ "predictions": {
+  "model1": 1000.0
+ },
+ "quotes": {
+  "EX_DIV_TODAY": {},
+  "MACRO": {},
+  "QQQ": {
+   "change_pct": 1.01,
+   "close": 500.0,
+   "prev_close": 495.0
+  },
+  "SPY": {
+   "change_pct": 0.5,
+   "close": 600.0,
+   "prev_close": 597.0
+  },
+  "TSM": {
+   "change_pct": 1.01,
+   "close": 200.0,
+   "prev_close": 198.0
+  },
+  "USDTWD": 31.5,
+  "USDTWD_prev": 31.4
+ },
+ "tw0050": []
+}

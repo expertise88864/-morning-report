@@ -1264,3 +1264,84 @@ def test_batch26_stance_label_line_keeps_label(monkeypatch):
     # 理由行仍整段刪(計分子句去、傳導鏈留;clause 策略會 strip 尾標點)
     assert (_strip_stance_internals("> 理由：11 維中 7 項偏空。核心：SOX 壓制。")
             == "> 理由：核心：SOX 壓制")
+
+
+def test_compacting_styles_preserves_every_element_and_its_effective_style():
+    """批#103:**壓體積不得改變任何一個元素看起來的樣子。**
+
+    2026-08-01 實測:一封信 106.8 KB,其中 55.3 KB(52%)是 inline style,
+    可見文字只有 31.8 KB。超過 Gmail 的 102 KB 門檻就會被摺疊(收件端看到
+    「•••」、中間整段收起來),而這自 2026-07-28 起每天都在發生。
+
+    這條逐元素比對「有效樣式」:inline 的照舊、被 class 化的要能從 `<style>`
+    查回一模一樣的宣告。只比對總長度或抽樣是不夠的 —— 樣式錯位是視覺問題,
+    而視覺問題在測試裡最容易被放過。
+    """
+    import re
+    from html.parser import HTMLParser
+
+    from render_utils import compact_inline_styles
+
+    body = "".join(
+        f'<div style="color:#94a3b8;font-size:12px;">列 {i}</div>'
+        f'<span style="color:#0c4a6e;font-weight:700;">{i}</span>'
+        for i in range(30))
+    html = ('<!DOCTYPE html><html><head><title>t</title></head><body>'
+            f'<div style="padding:9px;background:#fff;border:1px solid #eee;">唯一</div>'
+            f'{body}</body></html>')
+    out = compact_inline_styles(html)
+
+    class Collect(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.els, self.text, self._in_style = [], [], False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "style":
+                self._in_style = True
+                return
+            d = dict(attrs)
+            self.els.append((tag, d.get("style"), d.get("class")))
+
+        def handle_endtag(self, tag):
+            if tag == "style":
+                self._in_style = False
+
+        def handle_data(self, data):
+            if not self._in_style:
+                self.text.append(data)
+
+    def parse(h):
+        c = Collect()
+        c.feed(h)
+        return c
+
+    a, b = parse(html), parse(out)
+    assert "".join(a.text) == "".join(b.text), "可見文字被動到了"
+    assert len(a.els) == len(b.els), "元素數量變了"
+
+    sheet_src = re.search(r"<style>(.*?)</style>", out, re.S)
+    assert sheet_src, "沒有產生 <style> 區塊"
+    sheet = dict(re.findall(r"\.(s\d+)\{(.*?)\}", sheet_src.group(1)))
+    for (t1, st1, _), (t2, st2, cls) in zip(a.els, b.els):
+        effective = st2 if st2 is not None else (sheet.get(cls) if cls else None)
+        assert t1 == t2 and (st1 or "") == (effective or ""), (
+            f"{t1} 的有效樣式變了:{st1!r} → {effective!r}")
+
+    assert len(out.encode()) < len(html.encode()), "沒有變小"
+    # **一次性的樣式要留在 inline**:萬一客戶端剝掉 <style>,信裡最獨特的
+    # 版面(KPI 卡、立場卡)仍然有樣式,被 class 化的只是重複的內文
+    unique = [e for e in b.els if e[1] and "唯一" not in str(e)]
+    assert any(st and "border:1px solid #eee" in st for _t, st, _c in b.els), \
+        "只出現一次的樣式被 class 化了 —— 失去了剝離 <style> 時的安全網"
+
+
+def test_compacting_styles_is_a_no_op_when_there_is_nothing_to_gain():
+    """沒有重複就不該產生 `<style>`,也不該動 HTML。"""
+    from render_utils import compact_inline_styles
+
+    plain = '<html><head></head><body><p style="color:red;">x</p></body></html>'
+    assert compact_inline_styles(plain) == plain
+    assert compact_inline_styles("") == ""
+    # 沒有 <head> 就不能插 <style> —— 寧可不壓也不要產生放錯位置的樣式表
+    assert compact_inline_styles("<div style='a:b;'>x</div>") == "<div style='a:b;'>x</div>"

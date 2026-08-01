@@ -1364,3 +1364,60 @@ def _fmt_fact(raw) -> str:
         return format_fact(raw)
     except Exception:
         return str(raw)
+
+
+# ── 信件體積:重複的 inline style 收斂成 class ────────────────────────────
+#: 一個 style 字串要出現幾次才值得換成 class。
+#:
+#: **門檻本身就是安全網。** 只出現一兩次的樣式(KPI 卡、立場卡那些一次性的
+#: 版面)會留在 inline —— 萬一某個客戶端剝掉 `<style>`,信裡最關鍵、最獨特的
+#: 部分仍然有樣式;被 class 化的是重複幾十次的內文與表格,那些即使失去樣式
+#: 也只是變樸素,不會讀不懂。
+_STYLE_CLASS_MIN_USES = 4
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_STYLE_ATTR_RE = re.compile(r"""\sstyle=(['"])(.*?)\1""", re.S)
+
+
+def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> str:
+    """把重複的 inline style 收斂成 `<style>` 裡的 class(批#103)。
+
+    2026-08-01 實測:一封信 106.8 KB,其中 **55.3 KB(52%)是 inline style
+    屬性**,而可見文字只有 31.8 KB。完全相同的 style 字串就重複了 41 KB ——
+    `color:#94a3b8;` 出現 45 次、`color:#0c4a6e;font-weight:700;` 出現 41 次。
+
+    信超過 Gmail 的 102 KB 門檻就會被摺疊(收件端看到「•••」,中間整段收起來),
+    而這在 2026-07-28 之後每天都在發生。壓體積是**不刪任何內容**的解法。
+
+    刻意做成**組裝完成後的單一轉換**,而不是去改幾十個 HTML 產生器:
+    它是純字串重寫、可以逐元素驗證等價,而散在各處的改動沒辦法。
+
+    只重寫標籤內的 `style=` 屬性;可見文字裡剛好出現同樣字元的地方不會被碰到。
+    """
+    if not html or "<head>" not in html:
+        return html
+    counts: dict = {}
+    for tag in _TAG_RE.findall(html):
+        for _q, value in _STYLE_ATTR_RE.findall(tag):
+            counts[value] = counts.get(value, 0) + 1
+    # 依「省下的位元組」排序才會先處理長而重複的;同分時用字串排序保證輸出穩定
+    # (輸出穩定 = 兩封信的 diff 有意義,而不是每天 class 編號都在跳)。
+    worth = sorted((v for v, n in counts.items() if n >= min_uses),
+                   key=lambda v: (-len(v) * counts[v], v))
+    if not worth:
+        return html
+    names = {value: f"s{i}" for i, value in enumerate(worth)}
+
+    def _rewrite(m):
+        tag = m.group(0)
+
+        def _sub(sm):
+            value = sm.group(2)
+            cls = names.get(value)
+            return f' class="{cls}"' if cls else sm.group(0)
+
+        return _STYLE_ATTR_RE.sub(_sub, tag)
+
+    out = _TAG_RE.sub(_rewrite, html)
+    sheet = "".join(f".{names[v]}{{{v}}}" for v in worth)
+    return out.replace("</head>", f"<style>{sheet}</style></head>", 1)

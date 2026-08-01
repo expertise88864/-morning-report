@@ -60,6 +60,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _parse_llm_event_json,
 )
 from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保相容
+    compact_inline_styles,
     _format_macro_line,
     _md_to_html,
     _style_analysis_html,
@@ -20465,6 +20466,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     preheader = _htmllib.escape("　".join(_ph_bits) or f"美股晨報 {report_date}")
 
     def _assemble() -> str:
+        """組裝並**壓掉重複的 inline style**(批#103)。
+
+        壓縮放在這裡而不是最後一步,是為了讓上面所有 `_estimated_email_kb`
+        看到的都是**實際會寄出的大小** —— 否則溢位邏輯會照著虛胖的數字去砍
+        區塊,而那些區塊其實塞得下。
+        """
+        return compact_inline_styles(_assemble_raw())
+
+    def _assemble_raw() -> str:
         return f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>

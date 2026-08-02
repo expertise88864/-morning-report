@@ -13032,7 +13032,16 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
-                    "max_tokens": 4096 if slim else LLM_REPORT_MAX_TOKENS,
+                    # **`max_tokens` 是 reasoning + 答案的總額。**
+                    # 原本寫死 7,000 而**完全不隨推理強度放大** ——
+                    # OpenAI 那條路徑早就用 `output_cap`,DeepSeek 這條沒有。
+                    # 2026-08-02 週日信實測:requested=max、
+                    # completion=7,000、reasoning=6,757 → 答案只剩 243 個 token,
+                    # 政策解析寫到一半斷掉、第二個政策只剩標題。
+                    # 額度只是上限、沒用到不計費;被截斷卻是整份分析作廢。
+                    "max_tokens": (4096 if slim else _lt.output_cap(
+                        DEEPSEEK_REASONING_EFFORT, LLM_REPORT_MAX_TOKENS,
+                        model=model)),
                     "stream": False,
                 }
                 # v4-pro / reasoner 思考模式(精簡模式下停用,以排除參數造成的 400)。
@@ -13060,8 +13069,20 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 if not content:
                     raise RuntimeError(f"DeepSeek 回應無 content: {data}")
                 usage = data.get("usage", {})
+                # **截斷必須留下訊號。** 這一行原本不存在,於是 2026-08-02 那班
+                # 「答案被推理擠掉」在 manifest 裡完全看不出來 ——
+                # `finish_reason` 是 None,而唯一的線索是
+                # completion_tokens 剛好等於 max_tokens 這個要人自己去比對的巧合。
+                _finish = str(choices[0].get("finish_reason") or "")
+                if _finish == "length":
+                    _DEGRADED_STEPS.append(f"llm:truncated:{role}")
+                    print(f"[llm] ⚠ DeepSeek {role} 輸出被額度截斷"
+                          f"(completion={usage.get('completion_tokens')}、"
+                          f"reasoning={_lt.reasoning_tokens_of(usage)})",
+                          file=sys.stderr)
                 _record_llm_call(
                     role, "deepseek", model,
+                    finish_reason=_finish,
                     requested_effort=DEEPSEEK_REASONING_EFFORT,
                     # `applied` 記**實際送出**的值。請求值可能是別名
                     # (medium/low 都送 high),兩者分開才看得出來。

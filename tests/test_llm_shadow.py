@@ -1137,12 +1137,17 @@ def test_efforts_the_model_does_not_support_are_caught_before_the_run():
     assert lt.supported_efforts("gpt-5.6-luna-2026-02-16") is not None
     # 沒量過的模型回 None —— 不猜、也不擋
     assert lt.supported_efforts("gpt-5.6-sol") is None
-    # v4-pro 的**強度**有文件出處,但那份文件沒給輸出上限 ——
-    # 一個模型可以只有其中一項有出處,另一項仍走保守值(批#118)。
     assert lt.supported_efforts("deepseek-v4-pro") == (
         "none", "low", "high", "xhigh", "max")
-    assert lt.max_output_for("deepseek-v4-pro")[0] == lt.UNKNOWN_MODEL_MAX_OUTPUT
-    assert "未收錄" in lt.max_output_for("deepseek-v4-pro")[1]
+    # 「一個模型可以只有其中一項有出處」這條規則要用**真的沒有出處**的模型測。
+    # 這裡原本用 deepseek-v4-pro,而那個前提在 2026-08-02 之後不成立了 ——
+    # 為了修生產截斷,我去查了官方文件並把 384,000 連同出處補進登錄簿。
+    # 改測仍在測同一個性質,而不是為了變綠改掉斷言。
+    assert lt.max_output_for("some-unlisted-model-v9")[0] == lt.UNKNOWN_MODEL_MAX_OUTPUT
+    assert "未收錄" in lt.max_output_for("some-unlisted-model-v9")[1]
+    # v4-pro 現在兩項都有出處
+    assert lt.max_output_for("deepseek-v4-pro") == (
+        384_000, "MODEL_LIMITS[deepseek-v4-pro]")
 
     msgs = lc.validate_llm_config(
         provider="openai", extractor_provider="openai", shadow_provider="",

@@ -55,7 +55,13 @@ MODEL_LIMITS = {
     # **只收 `efforts`** —— 那份文件講的是思考模式,沒有給 max output 與
     # context。我第一版順手填了 8,192 / 128,000,那是推測不是出處,
     # 違反本表自己的規則(「說得出數字從哪來」)。沒有的就不填。
-    "deepseek-v4-pro": {"efforts": ("none", "low", "high", "xhigh", "max")},
+    # `max_output` 出處:DeepSeek Models & Pricing 文件(2026-08-02 查證)——
+    # v4-pro 最大輸出 384,000 token、context 1M。
+    # **先前這裡刻意留空**(「說得出數字從哪來」),而留空的代價在 2026-08-02
+    # 那班具體化了:`_call_deepseek` 送寫死的 7,000,批#118 把推理改成 max 之後
+    # 6,757 個 token 進了推理,答案只剩 243 個 —— 政策解析寫到一半就斷。
+    "deepseek-v4-pro": {"max_output": 384_000, "context": 1_000_000,
+                        "efforts": ("none", "low", "high", "xhigh", "max")},
     "deepseek-v4-flash": {"efforts": ("none", "low", "high", "xhigh", "max")},
 }
 

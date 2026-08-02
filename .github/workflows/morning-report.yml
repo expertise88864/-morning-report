@@ -230,13 +230,35 @@ jobs:
       # 卡片含兩份完整分析文字,所以這一步**只在明確設成 `artifact` 時才跑**;
       # 預設 `local` 不上傳(也就取不回,那個事實會進 manifest 與降級清單)。
       # `.key.json` 是解碼表,與評審看的卡分開上傳 —— 評分寫完才該打開它。
+      # r6(Codex,#2):**卡片與解碼表要分成兩個 artifact。**
+      # 先前整個目錄一起上傳 —— 評審下載後 `<date>.key.json` 就躺在旁邊,
+      # 「分開存檔」被運送方式抵銷掉了。分成兩包之後,評審只下載 cards 那包,
+      # keys 那包等評分定案才開。
+      #
+      # ⚠ 誠實話:本 repo 是公開的,**兩包的存取權限完全一樣**(任何人拿到
+      # 網址都下載得到)。所以這是**流程上的分離,不是存取控制**。
+      # 真正的存取控制要 repo 轉 private,那是使用者的決定。
       - name: 上傳 A/B 盲評卡(僅當 sink=artifact)
         if: ${{ always() && !cancelled() && vars.LLM_BLIND_REVIEW_SINK == 'artifact' }}
         uses: actions/upload-artifact@v4
         with:
-          name: blind-review-${{ github.run_id }}
-          path: artifacts/blind_review/
-          retention-days: 14
+          name: blind-review-cards-${{ github.run_id }}
+          path: |
+            artifacts/blind_review/*.json
+            !artifacts/blind_review/*.key.json
+          # r6(Codex,#3):要蓋得住整個累積期 —— 十配對算的是**成功配對數**,
+          # 失敗與跳過的日子不推進它。必須與 `blind_review.RETENTION_DAYS`
+          # 一致(有測試盯著兩邊不准分岔)。
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: 上傳盲評解碼表(評分定案後才開)
+        if: ${{ always() && !cancelled() && vars.LLM_BLIND_REVIEW_SINK == 'artifact' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blind-review-keys-${{ github.run_id }}
+          path: artifacts/blind_review/*.key.json
+          retention-days: 90
           if-no-files-found: ignore
 
       # `continue-on-error: false`(預設)是刻意的 —— 靜默通過的契約等於沒有契約。

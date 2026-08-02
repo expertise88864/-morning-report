@@ -36,6 +36,7 @@ import evidence_packet as _ep
 import analysis_schema as _sch
 import analysis_render as _ar
 import analysis_metrics as _am
+import blind_review as _br
 import openai_responses as _orx
 import llm_experiment as _lx
 import llm_config as _lc
@@ -13523,7 +13524,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
                 # r4(Codex,#2):**盲評卡要趁兩份文字都還在的時候產生。**
                 # 十配對達標後的判讀明文要求人工盲評,而影子的文字算完指標
                 # 就被丟掉 —— 那個要求先前永遠無法執行。
-                _review_ok = _write_blind_review_card(
+                _review = _write_blind_review_card(
                     primary_text, _shadow_text["value"],
                     now_tpe.strftime("%Y-%m-%d"))
                 _persist_experiment_record(_experiment_row(
@@ -13538,7 +13539,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
                     shadow_prompt_sha=_today.get("prompt_sha") or "",
                     # r3(Codex,#2):**兩側的可比指標要在文字還在記憶體時算。**
                     # `run_comparison` 回傳前就把影子的文字丟掉了。
-                    review_ok=_review_ok,
+                    review=_review,
                     metrics=_comparable_metrics(
                         packet, primary_text, _shadow_text["value"])),
                     now_tpe.strftime("%Y-%m-%d"))
@@ -14090,27 +14091,26 @@ def _luna_analysis(packet: dict, effort: str) -> str:
 #: 盲評卡的落地目錄。**刻意不在 `STATE_ROOT` 之下,也不在 state push 清單裡**
 #: —— 它含兩份完整分析文字,而 state 是 commit 進公開 repo 的。
 BLIND_REVIEW_DIR = Path("artifacts") / "blind_review"
-#: sink → **job 結束之後拿不拿得到**。政策與組裝在 `analysis_metrics.card_files`。
-BLIND_REVIEW_SINKS = {"local": False, "artifact": True}
 
 
 def _write_blind_review_card(primary_text: str, shadow_text: str,
-                             today: str) -> bool:
-    """產生 A/B 盲評卡並落地(r4 #2、r5 #1/#2/#3)。編排在 `llm_experiment`。"""
+                             today: str) -> dict:
+    """產生 A/B 盲評卡並落地(r4 #2、r5 #1/#2/#3、r6 #1/#3)。編排在 `blind_review`。"""
     if not (LLM_EXPERIMENT_ID and primary_text and shadow_text):
-        return False
+        return {}
 
     def _write(name, obj):
         BLIND_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(BLIND_REVIEW_DIR / name,
                            json.dumps(obj, ensure_ascii=False, indent=1))
 
-    ok, entry = _lx.write_card(
+    entry = _br.write_card(
         primary_text, shadow_text, today=today, sink=LLM_BLIND_REVIEW_SINK,
-        sinks=BLIND_REVIEW_SINKS, dirname=str(BLIND_REVIEW_DIR),
-        build=_am.card_files, write=_write, degrade=_DEGRADED_STEPS.append)
+        sinks=_br.SINKS, dirname=str(BLIND_REVIEW_DIR),
+        retention_days=_br.RETENTION_DAYS,
+        build=_br.card_files, write=_write, degrade=_DEGRADED_STEPS.append)
     _RUN_MANIFEST.setdefault("llm_experiment_review", {}).update(entry)
-    return ok
+    return entry
 
 
 def _comparable_metrics(packet: Optional[dict], primary_text: str,
@@ -14150,7 +14150,7 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
                     shadow_profile: str = "", primary_prompt_sha: str = "",
                     shadow_prompt_sha: str = "", reason: str = "",
                     shadow_coverage: Optional[dict] = None,
-                    review_ok: bool = False,
+                    review: Optional[dict] = None,
                     metrics: Optional[dict] = None) -> dict:
     """組出一列實驗紀錄。**成功、失敗、跳過三條路徑共用這一個入口。**
 
@@ -14192,7 +14192,7 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
         # r5(Codex,#1/#3):**這個配對到底有沒有可用的盲評材料。**
         # 判讀文字要求人工盲評,而卡片可能寫失敗、或落在一個 job 結束就
         # 消失的 sink —— 那時「達標」不代表做得成判讀。
-        review_ok=review_ok,
+        review=review,
         metrics=metrics or {})
 
 

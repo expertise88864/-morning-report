@@ -11,6 +11,7 @@
 **「不存在把兩類合成單一分數的函式」**。
 """
 import analysis_metrics as am
+import blind_review as br
 import evidence_packet as ep
 
 _NEWS = [
@@ -247,12 +248,12 @@ def test_cost_per_supported_claim_needs_a_denominator_it_can_get():
 
 def test_the_blind_card_hides_which_model_wrote_which_side():
     """讓 Luna 自評 Luna 沒有意義;讓評分者看得出來也一樣。"""
-    card = am.blind_review_pair("LUNA 的內容", "DEEPSEEK 的內容", seed="2026-08-05")
+    card = br.blind_review_pair("LUNA 的內容", "DEEPSEEK 的內容", seed="2026-08-05")
     shown = card["A"] + card["B"]
     assert "LUNA 的內容" in shown and "DEEPSEEK 的內容" in shown
     for name in ("luna", "deepseek", "gpt", "primary", "shadow"):
         assert name not in str(card["criteria"]).lower()
-    assert am.blind_review_is_decodable(card)
+    assert br.blind_review_is_decodable(card)
 
 
 def test_the_ab_order_is_deterministic_per_day_but_not_always_the_same():
@@ -260,18 +261,18 @@ def test_the_ab_order_is_deterministic_per_day_but_not_always_the_same():
 
     但不同天要會換邊,否則評分者會學會「A 永遠是那一家」。
     """
-    a1 = am.blind_review_pair("P", "S", seed="2026-08-05")
-    a2 = am.blind_review_pair("P", "S", seed="2026-08-05")
+    a1 = br.blind_review_pair("P", "S", seed="2026-08-05")
+    a2 = br.blind_review_pair("P", "S", seed="2026-08-05")
     assert a1["A"] == a2["A"] and a1["_key"] == a2["_key"]
 
-    orders = {am.blind_review_pair("P", "S", seed=f"2026-08-{d:02d}")["_key"]["A"]
+    orders = {br.blind_review_pair("P", "S", seed=f"2026-08-{d:02d}")["_key"]["A"]
               for d in range(1, 15)}
     assert orders == {"primary", "shadow"}, "A/B 從來沒有換邊"
 
 
 def test_a_card_without_a_decode_table_is_useless():
     """沒有解碼表,評完的分數對不回模型 —— 整天的盲評作廢。"""
-    assert not am.blind_review_is_decodable({})
-    assert not am.blind_review_is_decodable({"_key": {"A": "primary"}})
-    assert not am.blind_review_is_decodable(
+    assert not br.blind_review_is_decodable({})
+    assert not br.blind_review_is_decodable({"_key": {"A": "primary"}})
+    assert not br.blind_review_is_decodable(
         {"_key": {"A": "primary", "B": "primary"}})

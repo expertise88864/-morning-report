@@ -26,7 +26,7 @@ import ast
 import json
 from pathlib import Path
 
-import analysis_metrics as am
+import blind_review as br
 import llm_experiment as lx
 import morning_report as mr
 
@@ -66,7 +66,7 @@ def test_the_card_has_a_production_caller():
 def test_the_production_path_reaches_the_pairing_itself(tmp_path, monkeypatch):
     """**生產路徑吐出來的,就是 `blind_review_pair` 算出來的那份。**
 
-    落地流程用注入的方式接組裝器(`build=_am.card_files`),AST 追不過那個
+    落地流程用注入的方式接組裝器(`build=_br.card_files`),AST 追不過那個
     接縫 —— 而追不過就只能改用行為判準,不能改成「看起來有呼叫就算」。
     前一版把判準釘在「`_write_blind_review_card` 直接呼叫
     `blind_review_pair`」,組裝一搬家就指向不存在的形狀:
@@ -76,8 +76,8 @@ def test_the_production_path_reaches_the_pairing_itself(tmp_path, monkeypatch):
     mr._write_blind_review_card("主分析內容", "影子內容", "2026-08-05")
     got = json.loads((tmp_path / "blind_review" / "2026-08-05.json")
                      .read_text(encoding="utf-8"))
-    want, _ = am.split_card(
-        am.blind_review_pair("主分析內容", "影子內容", seed="2026-08-05"))
+    want, _ = br.split_card(
+        br.blind_review_pair("主分析內容", "影子內容", seed="2026-08-05"))
     # 經過 JSON 往返再比:`criteria` 在記憶體裡是 tuple,落地後是 list。
     # 比的是**內容**,不是型別。
     assert got == json.loads(json.dumps(want, ensure_ascii=False)), \
@@ -85,16 +85,21 @@ def test_the_production_path_reaches_the_pairing_itself(tmp_path, monkeypatch):
 
 
 def test_the_card_is_written_while_both_texts_exist(tmp_path, monkeypatch):
-    """行為驗證:兩份文字都在的時候,卡片與解碼表都要落地。"""
-    _write(monkeypatch, tmp_path)
-    assert mr._write_blind_review_card("主分析的完整文字", "影子的完整文字",
-                                       "2026-08-05") is True
+    """行為驗證:兩份文字都在的時候,卡片與解碼表都要落地。
+
+    刻意用 `artifact`:先前這條在預設的 `local` 下斷言 `is True`,
+    而 `local` 是「寫得成功、拿不回來」—— 那句斷言等於把 r6 #1 的缺陷
+    釘成通過條件。**測試寫下的期待也是一種宣稱,會出錯。**
+    """
+    _write(monkeypatch, tmp_path, sink="artifact")
+    assert mr._write_blind_review_card(
+        "主分析的完整文字", "影子的完整文字", "2026-08-05")["review_ok"] is True
     card = json.loads((tmp_path / "blind_review" / "2026-08-05.json")
                       .read_text(encoding="utf-8"))
     assert {card["A"], card["B"]} == {"主分析的完整文字", "影子的完整文字"}
     key = json.loads((tmp_path / "blind_review" / "2026-08-05.key.json")
                      .read_text(encoding="utf-8"))
-    assert am.blind_review_is_decodable(key), \
+    assert br.blind_review_is_decodable(key), \
         "沒有解碼表 —— 評完的分數對不回模型,整天的盲評作廢"
 
 
@@ -110,7 +115,7 @@ def test_the_reviewer_payload_hides_the_identities(tmp_path, monkeypatch):
     mr._write_blind_review_card("主分析", "影子", "2026-08-05")
     card = json.loads((tmp_path / "blind_review" / "2026-08-05.json")
                       .read_text(encoding="utf-8"))
-    assert am.blind_review_is_blind(card), \
+    assert br.blind_review_is_blind(card), \
         f"評審看的那份帶了解碼表,盲評名存實亡:{sorted(card)}"
     assert "primary" not in json.dumps(card) and "shadow" not in json.dumps(card)
 
@@ -159,7 +164,7 @@ def test_every_retrievable_sink_has_a_workflow_consumer():
     """
     wf = (_ROOT / ".github" / "workflows" / "morning-report.yml").read_text(
         encoding="utf-8")
-    for sink, retrievable in mr.BLIND_REVIEW_SINKS.items():
+    for sink, retrievable in br.SINKS.items():
         if not retrievable:
             continue
         assert f"vars.LLM_BLIND_REVIEW_SINK == '{sink}'" in wf, \
@@ -173,8 +178,8 @@ def test_an_unknown_sink_degrades_explicitly(tmp_path, monkeypatch):
     saved = list(mr._DEGRADED_STEPS)
     try:
         mr._DEGRADED_STEPS.clear()
-        assert mr._write_blind_review_card("主分析", "影子", "2026-08-05") is False
-        rec = mr._RUN_MANIFEST.get("llm_experiment_review") or {}
+        rec = mr._write_blind_review_card("主分析", "影子", "2026-08-05")
+        assert rec["review_ok"] is False
         assert rec.get("ok") is False and "dropbox" in str(rec.get("error"))
         assert "blind_review:write_failed" in mr._DEGRADED_STEPS
     finally:
@@ -204,7 +209,8 @@ def test_a_write_failure_leaves_a_structured_trace(tmp_path, monkeypatch):
     saved = list(mr._DEGRADED_STEPS)
     try:
         mr._DEGRADED_STEPS.clear()
-        assert mr._write_blind_review_card("主分析", "影子", "2026-08-05") is False
+        assert mr._write_blind_review_card(
+            "主分析", "影子", "2026-08-05")["review_ok"] is False
         rec = mr._RUN_MANIFEST.get("llm_experiment_review") or {}
         assert rec.get("ok") is False, f"失敗沒有進 manifest:{rec}"
         assert "磁碟滿" in str(rec.get("error"))
@@ -225,7 +231,8 @@ def test_a_pair_without_material_is_visible_in_the_verdict():
             primary={"profile": "luna", "ok": True},
             shadow={"profile": "deepseek_legacy", "ok": True},
             evidence_sha_primary="a", evidence_sha_shadow="a",
-            core_sha_primary="c", core_sha_shadow="c", review_ok=review_ok)
+            core_sha_primary="c", core_sha_shadow="c",
+            review={"review_ok": review_ok, "review_expires": "2099-01-01"})
 
     ledger = [_row(f"2026-08-{d:02d}", d <= 3) for d in range(1, 11)]
     prog = lx.pair_progress(ledger, target=10)
@@ -244,7 +251,8 @@ def test_a_full_house_reads_cleanly():
             primary={"profile": "luna", "ok": True},
             shadow={"profile": "deepseek_legacy", "ok": True},
             evidence_sha_primary="a", evidence_sha_shadow="a",
-            core_sha_primary="c", core_sha_shadow="c", review_ok=True)
+            core_sha_primary="c", core_sha_shadow="c",
+            review={"review_ok": True, "review_expires": "2099-01-01"})
 
     prog = lx.pair_progress([_row(f"2026-08-{d:02d}") for d in range(1, 11)],
                             target=10)
@@ -291,7 +299,7 @@ def test_the_default_sink_does_not_publish():
     """預設通道必須是不外送的那個。通道是使用者的決定,不是預設值該替他做的。"""
     import llm_config
     assert llm_config.CONFIG_SOURCE_SPEC["LLM_BLIND_REVIEW_SINK"][1] == "local"
-    assert mr.BLIND_REVIEW_SINKS["local"] is False
+    assert br.SINKS["local"] is False
 
 
 def test_the_manifest_records_existence_not_text(tmp_path, monkeypatch):
@@ -310,14 +318,14 @@ def test_no_card_without_an_experiment(tmp_path, monkeypatch):
     """沒在跑實驗就不該產生卡片 —— 它只為配對判讀而存在。"""
     _write(monkeypatch, tmp_path)
     monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "")
-    assert mr._write_blind_review_card("主分析", "影子", "2026-08-05") is False
+    assert not mr._write_blind_review_card("主分析", "影子", "2026-08-05")
     assert not (tmp_path / "blind_review").exists()
 
 
 def test_a_missing_side_produces_no_card(tmp_path, monkeypatch):
     """單邊的卡片不是盲評,是誤導。"""
     _write(monkeypatch, tmp_path)
-    assert mr._write_blind_review_card("只有主分析", "", "2026-08-05") is False
+    assert not mr._write_blind_review_card("只有主分析", "", "2026-08-05")
     assert not (tmp_path / "blind_review" / "2026-08-05.json").exists()
 
 
@@ -331,3 +339,104 @@ def test_card_failure_does_not_break_the_report(tmp_path, monkeypatch):
         mr._write_blind_review_card("主分析", "影子", "2026-08-05")   # 不得拋
     finally:
         mr._DEGRADED_STEPS[:] = saved
+
+
+# ------------------------------------------------------------ r6:交付得成嗎
+
+def test_a_written_but_unretrievable_card_is_not_material(tmp_path, monkeypatch):
+    """**寫成功 ≠ 有材料**(r6 Codex,#1)。
+
+    `local` 明明 job 結束就消失,先前卻因為「寫成功」而回 `review_ok=True`
+    —— 每一天都被算進 `pairs_with_review`。帳本可以顯示 10/10 有材料、
+    警語不出現,而實際一張卡都不存在:r5 修好的東西被自己的回傳值繞過去。
+    """
+    _write(monkeypatch, tmp_path, sink="local")
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        entry = mr._write_blind_review_card("主分析", "影子", "2026-08-05")
+        assert entry["ok"] is True, "檔案本身應該有寫成功"
+        assert entry["review_ok"] is False, (
+            "拿不回來的卡片被算成有材料 —— 進度會顯示 10/10 而實際一張都沒有")
+        assert entry["review_expires"] == "", "拿不回來就沒有到期日可言"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+
+
+def test_a_retrievable_card_carries_an_expiry(tmp_path, monkeypatch):
+    """能取回的卡片要記到期日 —— 沒有它,過期與否事後判不出來。"""
+    _write(monkeypatch, tmp_path, sink="artifact")
+    entry = mr._write_blind_review_card("主分析", "影子", "2026-08-05")
+    assert entry["review_ok"] is True
+    assert entry["review_expires"] == br.card_expiry("2026-08-05",
+                                                     br.RETENTION_DAYS)
+
+
+def test_expired_material_stops_counting():
+    """**過期的材料不算材料**(r6 Codex,#3)。
+
+    十配對的分母是成功配對數,失敗與跳過不推進它 —— 累積期因此可以遠長於
+    保留期。而 `review_ok` 是寫下當天的事實,不會自己失效。
+    """
+    def _row(day, expires):
+        return lx.build_record(
+            today=day, experiment_id="e",
+            primary={"profile": "luna", "ok": True},
+            shadow={"profile": "deepseek_legacy", "ok": True},
+            evidence_sha_primary="a", evidence_sha_shadow="a",
+            core_sha_primary="c", core_sha_shadow="c",
+            review={"review_ok": True, "review_expires": expires})
+
+    ledger = ([_row(f"2026-01-{d:02d}", "2026-04-01") for d in range(1, 5)]
+              + [_row(f"2026-08-{d:02d}", "2026-11-01") for d in range(1, 7)])
+    prog = lx.pair_progress(ledger, target=10, as_of="2026-08-10")
+    assert prog["comparable_pairs"] == 10, "可比配對本身不該因為過期而減少"
+    assert prog["pairs_with_review"] == 6, "過期的卡片被算成還在"
+    assert prog["pairs_review_expired"] == 4
+    assert "6/10" in lx.verdict(prog) and "過期" in lx.verdict(prog)
+
+
+def test_rows_without_an_expiry_are_not_presumed_dead():
+    """schema 演進前的舊列沒有到期日 —— 保守地當作還在,不憑空判它死。"""
+    row = lx.build_record(
+        today="2026-08-05", experiment_id="e",
+        primary={"profile": "luna", "ok": True},
+        shadow={"profile": "deepseek_legacy", "ok": True},
+        evidence_sha_primary="a", evidence_sha_shadow="a",
+        core_sha_primary="c", core_sha_shadow="c",
+        review={"review_ok": True})
+    prog = lx.pair_progress([row], target=1, as_of="2030-01-01")
+    assert prog["pairs_with_review"] == 1
+
+
+def test_the_key_ships_in_its_own_artifact():
+    """**解碼表不得和卡片裝在同一包**(r6 Codex,#2)。
+
+    先前整個目錄一起上傳:評審下載後 `.key.json` 就躺在旁邊,
+    「分開存檔」被運送方式抵銷。分開存卻一起送,等於沒有分開。
+    """
+    wf = (_ROOT / ".github" / "workflows" / "morning-report.yml").read_text(
+        encoding="utf-8")
+    assert "blind-review-cards-" in wf and "blind-review-keys-" in wf,         "卡片與解碼表沒有分成兩個 artifact"
+    assert "!artifacts/blind_review/*.key.json" in wf,         "卡片那一包沒有把解碼表排除掉 —— 評審下載後身分就在旁邊"
+
+
+def test_the_workflow_retention_matches_the_code():
+    """**兩邊的保留天數不准分岔。**
+
+    程式用 `RETENTION_DAYS` 算到期日,workflow 用 `retention-days` 真的保留。
+    分岔的症狀是帳本說還在、artifact 早就沒了 —— 而那正是 r6 #3。
+    """
+    wf = (_ROOT / ".github" / "workflows" / "morning-report.yml").read_text(
+        encoding="utf-8")
+    import re
+    got = {int(m) for m in re.findall(r"retention-days:\s*(\d+)", wf)}
+    assert got == {br.RETENTION_DAYS}, (
+        f"workflow 的保留天數 {sorted(got)} 與 blind_review.RETENTION_DAYS "
+        f"{br.RETENTION_DAYS} 不一致")
+
+
+def test_the_separation_is_documented_as_procedural():
+    """公開 repo 上兩包的權限一樣 —— **不得把流程分離講成存取控制**。"""
+    wf = (_ROOT / ".github" / "workflows" / "morning-report.yml").read_text(
+        encoding="utf-8")
+    assert "不是存取控制" in wf,         "workflow 沒有講明這只是流程分離 —— 公開 repo 上兩包誰都下載得到"

@@ -111,8 +111,23 @@ def is_comparable(rec: Optional[dict], cohort: Optional[tuple] = None) -> bool:
     return exclusion_reason(rec, cohort) == ""
 
 
+def _material_live(row: dict, as_of: str) -> bool:
+    """這一列的盲評材料**現在**還拿不拿得到。
+
+    r6(Codex,#3):`review_ok` 是寫下當天的事實,而 artifact 會過期。
+    只看 `review_ok` 會把早就過期的日子算成還有材料 —— 而十配對的分母是
+    成功配對數,累積期可以遠長於保留期,所以這不是理論上的邊角。
+    沒有記到期日的舊列(schema 演進前)保守地當作還在,不憑空判它死。
+    """
+    if not row.get("review_ok"):
+        return False
+    exp = str(row.get("review_expires") or "")
+    return not (exp and as_of and exp < as_of)
+
+
 def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
-                  target: int = DEFAULT_TARGET_PAIRS) -> dict:
+                  target: int = DEFAULT_TARGET_PAIRS,
+                  as_of: str = "") -> dict:
     """實驗進度。**分母是配對數,不是天數。**
 
     回傳同時包含被排除的天數與原因 —— 沒有它,「跑了 14 天只有 6 筆」
@@ -129,10 +144,14 @@ def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
     return {
         "schema_version": EXPERIMENT_SCHEMA_VERSION,
         "comparable_pairs": len(pairs),
-        # 有幾個配對真的留下了可取回的盲評材料。刻意**不**併進
+        # 有幾個配對**現在**還留著可取回的盲評材料。刻意不併進
         # `comparable_pairs`:配對是否可比與盲評材料在不在是兩件事,
         # 混成一個數字就再也分不出是哪一個缺。
-        "pairs_with_review": sum(1 for r in pairs if r.get("review_ok")),
+        "pairs_with_review": sum(1 for r in pairs if _material_live(r, as_of)),
+        # 曾經有、但 artifact 已經過期的那些。分開報才看得出「材料不足」
+        # 是從來沒產生,還是產生了卻放到過期。
+        "pairs_review_expired": sum(
+            1 for r in pairs if r.get("review_ok") and not _material_live(r, as_of)),
         "target_pairs": int(target),
         "remaining": max(0, int(target) - len(pairs)),
         "ready": len(pairs) >= int(target),
@@ -185,9 +204,11 @@ def verdict(progress: dict) -> str:
     tail = ("判讀本身仍需人工盲評與逐日 stance flip 裁決,不得只看綜合分數。")
     if with_review < got:
         # r5(Codex,#1):要求一件做不到的事,等於沒有要求。
-        tail += (f"**但只有 {with_review}/{got} 個配對留下了可取回的盲評卡** ——"
-                 "其餘的卡片寫失敗或落在 job 結束即消失的 sink,"
-                 "那幾天的盲評無法補做。")
+        expired = p.get("pairs_review_expired", 0)
+        tail += (f"**但只有 {with_review}/{got} 個配對還留著可取回的盲評卡** ——"
+                 "其餘的卡片寫失敗、落在 job 結束即消失的 sink"
+                 + (f",或 artifact 已經過期({expired} 天)" if expired else "")
+                 + ",那幾天的盲評無法補做。")
     return f"已達 {got}/{target} 個可比較配對 —— 可以做判讀。{tail}"
 
 
@@ -196,7 +217,7 @@ def build_record(*, today: str, experiment_id: str,
                  evidence_sha_primary: str, evidence_sha_shadow: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
                  code_version: str = "", failure_reason: str = "",
-                 review_ok: bool = False,
+                 review: Optional[dict] = None,
                  metrics: Optional[dict] = None) -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
@@ -208,10 +229,11 @@ def build_record(*, today: str, experiment_id: str,
     return {
         "date": today,
         "experiment_id": experiment_id,
-        # r5(Codex,#1/#3):這一天有沒有**取得回來的**盲評材料。
-        # 判讀明文要求人工盲評 —— 卡片寫失敗、或落在 job 結束就消失的 sink,
-        # 都讓那個要求做不成,而「達標」的宣告會因此變成空話。
-        "review_ok": bool(review_ok),
+        # r5 #1/#3、r6 #1/#3:這一天有沒有**還取得回來的**盲評材料。
+        # 判讀明文要求人工盲評 —— 卡片寫失敗、落在 job 結束就消失的 sink、
+        # 或 artifact 已經過期,都讓那個要求做不成,而「達標」會變成空話。
+        "review_ok": bool((review or {}).get("review_ok")),
+        "review_expires": str((review or {}).get("review_expires") or ""),
         "comparison_mode": COMPARISON_MODE,
         "schema_version": EXPERIMENT_SCHEMA_VERSION,
         "primary_profile": p.get("profile"),
@@ -315,29 +337,3 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     log(f"[llm-experiment] {progress['verdict']}")
     return progress
 
-
-def write_card(primary_text: str, shadow_text: str, *, today: str, sink: str,
-               sinks: dict, dirname: str, build, write, degrade) -> tuple:
-    """把盲評卡落地,回傳 `(有沒有材料, manifest 摘要)`。
-
-    寫檔器由呼叫端注入(本模組不 import 主模組、不碰 `Path`)——
-    與 `run_comparison` 同一個做法。
-
-    「有沒有材料」是回傳值的重點:判讀明文要求人工盲評,而卡片可能寫失敗、
-    或落在 job 結束就消失的 sink。那時「十配對達標」不代表判讀做得成,
-    帳本必須記得下這個差別(r5 Codex,#1/#3)。
-    """
-    try:
-        files, entry = build(primary_text, shadow_text, today=today, sink=sink,
-                             dirname=dirname, sinks=sinks)
-        for name, obj in files:
-            write(name, obj)
-        if not entry["retrievable_after_job"]:
-            degrade(f"blind_review:not_retrievable:{sink}")
-        return True, entry
-    except Exception as e:                     # noqa: BLE001 - 觀測不得弄壞晨報
-        degrade("blind_review:write_failed")
-        return False, {"date": today, "sink": sink, "ok": False,
-                       "error": f"{type(e).__name__}: {e}"[:160],
-                       "blind": False, "decodable": False,
-                       "retrievable_after_job": False}

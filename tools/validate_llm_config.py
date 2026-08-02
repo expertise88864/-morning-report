@@ -332,15 +332,28 @@ def _report(checks, provider, extractor, model, effort) -> None:
 # (第十輪 P0-1:不把四把金鑰放進同一個 process)。
 
 def _probe_openai_compatible(base: str, key: str, model: str,
-                             label: str, extra: dict = None) -> Check:
+                             label: str, *, token_field: str,
+                             extra: dict = None) -> Check:
     """OpenAI 相容的 chat/completions(OpenAI 與 DeepSeek 共用)。
 
     第十一輪 P1-4:`extra` 讓探測送出**正式排程真的會送的那份 payload**。
     原本 DeepSeek 只送一個 16-token 的裸請求 —— 它證明的只有「金鑰有效、
     模型會回答」,完全沒有碰到 `thinking` 與 `reasoning_effort`,
     所以全綠也不代表那組設定可用。
+
+    `token_field` **必須由呼叫端明講**(2026-08-02 實測):兩家的額度欄位
+    名字不同 —— DeepSeek 收 `max_tokens`,而新的 OpenAI 模型只收
+    `max_completion_tokens`,送錯的那家直接 HTTP 400。先前寫死 `max_tokens`
+    共用,於是 OpenAI 這條**每次都紅**;而上面那句 docstring 還宣稱送的是
+    「正式排程真的會送的那份 payload」—— 對 OpenAI 而言那是假的
+    (生產走 `max_completion_tokens` / Responses 的 `max_output_tokens`)。
+
+    **恆紅的閘門等於沒有閘門**(這個檔已經為同一個道理修過一次,見
+    `Check.body` 的註解)—— 它會訓練人忽略紅燈,而真的壞掉那天沒有人相信它。
+    做成必填是為了讓「共用一個預設值」這件事不可能再發生:
+    新增 provider 時,額度欄位得當場想清楚。
     """
-    payload = {"model": model, "max_tokens": 16, "stream": False,
+    payload = {"model": model, token_field: 16, "stream": False,
                "messages": [{"role": "user", "content": "ok"}]}
     payload.update(extra or {})
     return _probe_json(f"{base.rstrip('/')}/v1/chat/completions", payload,
@@ -480,7 +493,10 @@ def probe_one_provider(provider: str) -> int:
     if provider == "openai":
         model = _env("OPENAI_MODEL", "gpt-5.6-terra")
         checks = [check_model_exists(model),
-                  _probe_openai_compatible(_base(), key, model, f"openai {model}")]
+                  _probe_openai_compatible(
+                      _base(), key, model, f"openai {model}",
+                      # 生產的 `_call_openai` 送的就是這個欄位
+                      token_field="max_completion_tokens")]
         checks.extend(effort_matrix(model))
         # Phase 7:**生產相容性要用生產的形狀驗。** 只在真的要走 responses
         # 時才送(它會花掉一次高推理的錢);模式維持現況時不必。
@@ -498,7 +514,9 @@ def probe_one_provider(provider: str) -> int:
                 extra["reasoning_effort"] = think["reasoning_effort"]
         checks = [_probe_openai_compatible(
             _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"), key, model,
-            f"deepseek {model} / {raw}→{think['canonical']}", extra)]
+            f"deepseek {model} / {raw}→{think['canonical']}",
+            # 生產的 `_call_deepseek` 送的是這個(v4-pro 不收另一個名字)
+            token_field="max_tokens", extra=extra)]
         if not think["known"]:
             checks.append(Check(f"推理強度 {raw}", False,
                                 "官方文件沒有列出這個值,已正規化成 high 送出",
@@ -509,6 +527,14 @@ def probe_one_provider(provider: str) -> int:
         checks = [_probe_anthropic(key, _env("CLAUDE_MODEL", "claude-sonnet-4-6"))]
     else:
         checks = [Check(f"provider {provider}", False, "不是合法值")]
+    # 2026-08-02:**「沒被選用」的判斷原本只套在缺金鑰那條分支。**
+    # 於是 anthropic 有金鑰但模型名對不上時,一個生產完全不會用到的 provider
+    # 讓整個金絲雀變紅 —— 而永遠紅的金絲雀會訓練人忽略它,真的壞掉那天
+    # 沒有人相信它(同一個道理這個檔已經修過兩次)。
+    # 失敗仍然照報,只是不致命:看得見,但不會蓋掉真正該看的那條。
+    if provider not in selected:
+        for c in checks:
+            c.fatal = False
     _report(checks, provider, "-", "-", "-")
     return 1 if any(c.fatal and not c.ok for c in checks) else 0
 

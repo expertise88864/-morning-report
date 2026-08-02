@@ -13075,11 +13075,31 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 # completion_tokens 剛好等於 max_tokens 這個要人自己去比對的巧合。
                 _finish = str(choices[0].get("finish_reason") or "")
                 if _finish == "length":
+                    # r1(Codex):**截斷要被拒絕,不只是被看見。**
+                    # 我第一版只記了訊號就照樣回傳半截內容 —— 而週日那條路徑
+                    # (`analyze_weekend_policy`)沒有完整性檢查,於是同樣的
+                    # 半截政策段還是會寄出去,這個修復就白做了。
+                    # 另外兩條路徑早就是這樣做的:`_call_openai` 與
+                    # `_call_deepseek_extractor` 都記 accepted=False 並拋出。
+                    # `record_llm_call` 的契約也明說 accepted=True 代表
+                    # 「content 非空**且** finish 不是 length」。
+                    #
+                    # 拋出之後:主分析走跨 provider 備援(完整的次佳報告勝過
+                    # 半截的最佳報告);週日政策段整段省略(誠實缺席勝過半截)。
                     _DEGRADED_STEPS.append(f"llm:truncated:{role}")
-                    print(f"[llm] ⚠ DeepSeek {role} 輸出被額度截斷"
-                          f"(completion={usage.get('completion_tokens')}、"
-                          f"reasoning={_lt.reasoning_tokens_of(usage)})",
-                          file=sys.stderr)
+                    _record_llm_call(
+                        role, "deepseek", model, finish_reason=_finish,
+                        requested_effort=DEEPSEEK_REASONING_EFFORT,
+                        applied_effort=payload.get("reasoning_effort", ""),
+                        usage=usage or {}, accepted=False,
+                        elapsed=time.monotonic() - _t0,
+                        error=(f"finish_reason=length —— 推理吃光額度"
+                               f"(completion={usage.get('completion_tokens')}、"
+                               f"reasoning={_lt.reasoning_tokens_of(usage)})"))
+                    raise ExtractorOutputTruncated(
+                        f"DeepSeek {role} 輸出被額度截斷:"
+                        f"completion={usage.get('completion_tokens')}、"
+                        f"reasoning={_lt.reasoning_tokens_of(usage)}")
                 _record_llm_call(
                     role, "deepseek", model,
                     finish_reason=_finish,
@@ -13120,6 +13140,12 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     _llm_sleep(wait)
                     continue
                 break
+            except ExtractorOutputTruncated:
+                # **截斷不重試。** 同樣的 prompt 與同樣的額度必然再截斷一次,
+                # 而每一次都是滿額推理的計費呼叫。已經記過帳、記過降級,
+                # 直接往外拋讓呼叫端走它自己的備援(主分析換 provider、
+                # 週日政策段整段省略)。
+                raise
             except Exception as e:
                 last_err = e
                 # r1(Codex #5,P2):**這次呼叫已經送出,server 端照樣計費。**

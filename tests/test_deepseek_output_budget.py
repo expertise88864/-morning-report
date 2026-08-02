@@ -126,3 +126,78 @@ def test_truncation_leaves_a_signal():
 def test_the_openai_path_still_uses_the_same_rule():
     """反向:別為了修 DeepSeek 而把 OpenAI 那條改壞。"""
     assert "output_cap" in _calls(_fn("_call_openai"))
+
+
+# ---------------------------------------------------------------- 行為驗證
+
+def _fake_deepseek(monkeypatch, finish_reason, content="半截的政策解析"):
+    """樁掉 HTTP,讓其餘全部走真實程式碼。"""
+    import morning_report as mr
+
+    class _R:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": content},
+                                 "finish_reason": finish_reason}],
+                    "usage": {"prompt_tokens": 5000, "completion_tokens": 7000,
+                              "completion_tokens_details": {"reasoning_tokens": 6757}}}
+
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _R())
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-test")
+    monkeypatch.setattr(mr, "DEEPSEEK_REASONING_EFFORT", "max")
+    return mr
+
+
+def test_a_truncated_response_is_rejected_not_returned(monkeypatch):
+    """r1(Codex):**截斷要被拒絕,不只是被看見。**
+
+    我第一版只記了訊號就照樣回傳半截內容 —— 而週日那條路徑
+    (`analyze_weekend_policy`)沒有完整性檢查,於是同樣的半截政策段
+    還是會寄出去,整個修復白做。
+
+    另外兩條路徑早就是這樣做的(`_call_openai`、`_call_deepseek_extractor`),
+    而 `record_llm_call` 的契約也明說 accepted=True 代表
+    「content 非空**且** finish 不是 length」。
+    """
+    import pytest as _pytest
+
+    mr = _fake_deepseek(monkeypatch, "length")
+    mr._RUN_MANIFEST.pop("llm", None)
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        mr._DEGRADED_STEPS.clear()
+        with _pytest.raises(mr.ExtractorOutputTruncated):
+            mr._call_deepseek("prompt")
+        assert any(s.startswith("llm:truncated") for s in mr._DEGRADED_STEPS), \
+            f"截斷沒有進降級清單:{mr._DEGRADED_STEPS}"
+        attempts = (mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or []
+        assert attempts, "截斷的那次呼叫沒有入帳"
+        assert "length" in str(attempts[-1].get("error") or ""), attempts[-1]
+        assert (mr._RUN_MANIFEST.get("llm") or {}).get("primary") is None, \
+            "截斷的回應被記成 accepted —— 那會讓它看起來是這封信的作者"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+
+
+def test_a_complete_response_is_still_returned(monkeypatch):
+    """反向:別為了擋截斷而把正常回應也擋掉。"""
+    mr = _fake_deepseek(monkeypatch, "stop", content="完整的政策解析")
+    assert mr._call_deepseek("prompt") == "完整的政策解析"
+
+
+def test_truncation_does_not_burn_three_retries(monkeypatch):
+    """同樣的參數必然再截斷一次,而每次都是滿額推理的計費呼叫。"""
+    import pytest as _pytest
+
+    calls = []
+    mr = _fake_deepseek(monkeypatch, "length")
+    real_post = mr.requests.post
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda *a, **k: (calls.append(1), real_post(*a, **k))[1])
+    with _pytest.raises(mr.ExtractorOutputTruncated):
+        mr._call_deepseek("prompt")
+    assert len(calls) == 1, f"截斷之後又重試了 {len(calls) - 1} 次"

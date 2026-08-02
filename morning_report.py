@@ -14190,8 +14190,9 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
         evidence_sha_primary=sha, evidence_sha_shadow=sha,
         core_sha_primary=core, core_sha_shadow=core,
         code_version=SHADOW_COHORT_VERSION, failure_reason=reason[:60],
-        run=_xl.run_identity(               # P1-4:重跑要排得出先後
+        run=dict(_xl.run_identity(          # P1-4:重跑要排得出先後
             os.environ, started_at=dt.datetime.now(TPE).isoformat()),
+            **_rm.call_counts(_RUN_MANIFEST.get("llm"))),  # 一列 ≠ 一次呼叫
         review=review,                      # r5:有沒有可用的盲評材料
         metrics=metrics or {})
 

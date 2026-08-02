@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import analysis_grounding as _gr
 import experiment_ledger as _xl
 
 #: 實驗帳本的 schema 版本。
@@ -54,6 +55,7 @@ COHORT_FIELDS = (
     "shadow_profile", "shadow_profile_version", "shadow_model", "shadow_effort",
     "evidence_schema_version", "output_schema_version",
     "postprocess_version", "renderer_version",
+    "grounding_version",   # P1-3:換一套接受規則等於換一個系統
 )
 
 #: 不進同群鍵、但要留在紀錄裡的溯源欄位。
@@ -242,7 +244,8 @@ def build_record(*, today: str, experiment_id: str,
         # 排程那次的失敗 —— 而越不可靠的日子越容易被人重跑洗白。
         **{k: (run or {}).get(k, v) for k, v in
            (("run_id", ""), ("run_attempt", 0), ("run_kind", _xl.LOCAL),
-            ("started_at", ""))},
+            ("started_at", ""), ("provider_calls", 0),
+            ("billable_unmeasured_calls", 0))},
         # r5 #1/#3、r6 #1/#3:這一天有沒有**還取得回來的**盲評材料。
         # 判讀明文要求人工盲評 —— 卡片寫失敗、落在 job 結束就消失的 sink、
         # 或 artifact 已經過期,都讓那個要求做不成,而「達標」會變成空話。
@@ -274,6 +277,7 @@ def build_record(*, today: str, experiment_id: str,
         "output_schema_version": p.get("output_schema_version"),
         "postprocess_version": POSTPROCESS_VERSION,
         "renderer_version": RENDERER_VERSION,
+        "grounding_version": _gr.GROUNDING_VERSION,
         # **溯源,不進同群鍵。** 它回答「哪一版程式跑的」,
         # 但不該決定樣本能不能相加。
         "code_version": (code_version or "unknown")[:12],
@@ -330,10 +334,13 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     ledger = _xl.append(ledger, record)
     write_ledger(ledger_path, ledger)
     cohort = cohort_key(record)
-    # 配對與可靠度只看**代表樣本**(排程優先);嘗試層級另外報。
-    daily = _xl.canonical(ledger)
+    # 第十三輪 P1-4:**先劃範圍再收斂。** 同一天若換過模型/強度/profile,
+    # 不分同群就收斂會讓兩個 cohort 互相擠掉,而被擠掉的那群憑空少一天。
+    # 嘗試層級同理:不分實驗的話,這個實驗的進度會顯示別的實驗的嘗試數。
+    same = _xl.scoped(ledger, lambda r: cohort_key(r) == cohort)
+    daily = _xl.canonical(same)
     progress = pair_progress(daily, cohort, target, as_of=today)
-    progress["attempts"] = _xl.attempt_stats(ledger)
+    progress["attempts"] = _xl.attempt_stats(same)
     progress["cohort_fields"] = dict(zip(COHORT_FIELDS, cohort))
     progress["reliability"] = reliability(daily, cohort)
     progress["verdict"] = verdict(progress)

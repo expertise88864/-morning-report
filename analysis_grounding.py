@@ -27,6 +27,13 @@
 """
 from __future__ import annotations
 
+#: **接受契約的版本**(第十三輪 P1-3)。這個模組決定 Luna 的輸出被不被
+#: 採用、要不要修補、要不要落回 legacy —— 也就是決定 primary 成功率、
+#: 成本、延遲與**信裡的內容**。它顯然是實驗系統契約的一部分,而先前
+#: 它既不在同群鍵裡、也沒有行為快照:改掉 grounding 規則而不升任何版本,
+#: 兩種完全不同的接受行為會被當成同一群樣本相加。
+GROUNDING_VERSION = 1
+
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
             "global_market", "top_news_analysis", "scenario_tree",

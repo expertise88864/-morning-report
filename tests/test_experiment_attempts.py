@@ -118,10 +118,11 @@ def test_the_attempt_view_shows_what_the_daily_view_hides():
                               at="2026-08-03T09:00:00+08:00"))
     led = xl.append(led, _rec("2026-08-04", ok=True, run_id="3"))
     st = xl.attempt_stats(led)
-    assert st["attempts"] == 3 and st["days_seen"] == 2
+    assert st["recorded_runs"] == 3 and st["days_seen"] == 2
     assert st["manual_reruns_after_a_scheduled_run"] == 1
-    # 配對可以只算一次,帳單不行 —— 重跑真的付了第二次錢。
-    assert st["billable_attempts"] == 3
+    # 第十三輪 P1-4:**列數不是呼叫數。** 沒有逐列的呼叫數就回 None,
+    # 不要拿列數頂替 —— 那是編造,而且方向偏向「這個實驗很便宜」。
+    assert st["provider_calls"] is None
     assert st["scheduled_attempts"] == 2
 
 
@@ -189,7 +190,7 @@ def test_a_local_run_never_becomes_the_daily_sample():
     led = xl.append([], _rec("2026-08-06", ok=True, run_id="", kind=xl.LOCAL))
     assert xl.canonical(led) == [], "本機那筆成了那天的代表樣本"
     # 但花費仍然看得見 —— 排除不等於假裝沒發生
-    assert xl.attempt_stats(led)["attempts"] == 1
+    assert xl.attempt_stats(led)["recorded_runs"] == 1
 
 
 def test_a_local_run_does_not_shadow_a_scheduled_one():
@@ -249,3 +250,94 @@ def test_production_stamps_the_start_time():
             and getattr(n.func, "attr", "") == "run_identity"]
     assert call, "生產沒有呼叫 run_identity"
     assert any(k.arg == "started_at" for k in call[0].keywords),         "生產沒有把 started_at 交進去 —— 重跑偏差就永遠量不出來"
+
+
+# ------------------------------------------ 第十三輪 P1-4:範圍要先劃
+
+def _cohort_rec(day, model, run_id, ok=True):
+    return lx.build_record(
+        today=day, experiment_id="e",
+        primary={"profile": "luna", "ok": ok, "model": model, "effort": "xhigh"},
+        shadow={"profile": "deepseek_legacy", "ok": ok},
+        evidence_sha_primary="a", evidence_sha_shadow="a",
+        core_sha_primary="c", core_sha_shadow="c",
+        run={"run_id": run_id, "run_attempt": 1, "run_kind": xl.SCHEDULED,
+             "started_at": f"{day}T06:00:00+08:00"})
+
+
+def test_two_cohorts_on_the_same_day_do_not_evict_each_other():
+    """**同一天換過模型時,兩個 cohort 不得互相擠掉**(第十三輪 P1-4)。
+
+    `canonical()` 只依 `(date, experiment_id)` 分組、不看同群鍵 —— 於是
+    換模型那天只有一筆存活,被擠掉的那群憑空少一個樣本,而可靠度還會
+    跟著挑選順序跑。**收斂只在同一個可比範圍內才有意義。**
+    """
+    led = xl.append([], _cohort_rec("2026-08-03", "gpt-5.6-luna", "1"))
+    led = xl.append(led, _cohort_rec("2026-08-03", "gpt-5.6-terra", "2"))
+    luna = lx.cohort_key(_cohort_rec("2026-08-03", "gpt-5.6-luna", "1"))
+    terra = lx.cohort_key(_cohort_rec("2026-08-03", "gpt-5.6-terra", "2"))
+    assert luna != terra, "前提:換模型要換 cohort"
+    for want, cohort in (("gpt-5.6-luna", luna), ("gpt-5.6-terra", terra)):
+        day = xl.canonical(xl.scoped(led, lambda r, c=cohort:
+                                     lx.cohort_key(r) == c))
+        assert len(day) == 1 and day[0]["primary_model"] == want, (
+            f"{want} 那天的樣本被另一個 cohort 擠掉了")
+
+
+def test_record_day_scopes_before_it_converges(tmp_path):
+    """**經由生產入口也要成立。**"""
+    store = {"led": xl.append([], _cohort_rec("2026-08-03", "gpt-5.6-terra", "1"))}
+    prog = lx.record_day(
+        record=_cohort_rec("2026-08-03", "gpt-5.6-luna", "2"),
+        today="2026-08-03", ledger_path=tmp_path / "l.json",
+        read_ledger=lambda p: store["led"],
+        write_ledger=lambda p, v: store.update(led=v),
+        target=10, log=lambda m: None)
+    assert prog["comparable_pairs"] == 1, (
+        "terra 那筆被算進 luna 的 cohort,或反之")
+    assert prog["attempts"]["recorded_runs"] == 1, (
+        "嘗試統計混進了別的 cohort")
+
+
+def test_attempt_stats_does_not_mix_other_experiments(tmp_path):
+    """一個實驗的進度不得顯示另一個實驗的嘗試數。"""
+    other = lx.build_record(
+        today="2026-08-03", experiment_id="另一個實驗",
+        primary={"profile": "x", "ok": True}, shadow={"profile": "y", "ok": True},
+        evidence_sha_primary="a", evidence_sha_shadow="a",
+        core_sha_primary="c", core_sha_shadow="c",
+        run={"run_id": "9", "run_attempt": 1, "run_kind": xl.SCHEDULED,
+             "started_at": "2026-08-03T06:00:00+08:00"})
+    store = {"led": xl.append([], other)}
+    prog = lx.record_day(
+        record=_cohort_rec("2026-08-03", "gpt-5.6-luna", "2"),
+        today="2026-08-03", ledger_path=tmp_path / "l.json",
+        read_ledger=lambda p: store["led"],
+        write_ledger=lambda p, v: store.update(led=v),
+        target=10, log=lambda m: None)
+    assert prog["attempts"]["recorded_runs"] == 1
+    assert len(store["led"]) == 2, "別的實驗的原始紀錄不該被動到"
+
+
+def test_provider_calls_are_counted_not_inferred_from_rows():
+    """**一列不等於一次計費呼叫**(第十三輪 P1-4)。
+
+    一份報告可能是「Luna 不合格 + 修補 + 影子」= 三次;用列數冒充呼叫數
+    會低估帳單,而低估的方向正好偏向「這個實驗很便宜」。
+    """
+    rec = dict(_cohort_rec("2026-08-03", "gpt-5.6-luna", "1"),
+               provider_calls=3, billable_unmeasured_calls=1)
+    st = xl.attempt_stats([rec])
+    assert st["recorded_runs"] == 1
+    assert st["provider_calls"] == 3, "呼叫數被列數頂替了"
+    assert st["billable_unmeasured_calls"] == 1
+
+
+def test_production_records_the_call_count():
+    """生產要真的把呼叫數記進去,否則上面那條永遠是 None。"""
+    import run_manifest as rm
+    got = rm.call_counts({"primary": {"model": "x"},
+                          "attempts": [{"role": "primary"},
+                                       {"role": "shadow",
+                                        "billable_unmeasured": True}]})
+    assert got == {"provider_calls": 3, "billable_unmeasured_calls": 1}

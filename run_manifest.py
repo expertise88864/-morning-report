@@ -257,3 +257,18 @@ class ManifestRecorder:
             return self.data.get("capability_health") or {}
         self.data["capability_health"] = health
         return health
+
+
+def call_counts(llm: Optional[dict]) -> dict:
+    """這一班真的送出了幾次 provider 呼叫、其中幾次計費卻量不到 usage。
+
+    第十三輪 P1-4:一份報告可能是「Luna 不合格 + 修補 + 影子」= 三次,
+    而帳本一天只有一列。用列數冒充呼叫數會低估帳單,而**低估的方向正好
+    偏向「這個實驗很便宜」** —— 也就是這個實驗要下的那個結論。
+    """
+    d = llm if isinstance(llm, dict) else {}
+    att = [a for a in (d.get("attempts") or []) if isinstance(a, dict)]
+    accepted = [d.get(s) for s in ("primary", "extractor", "shadow")]
+    return {"provider_calls": len(att) + sum(1 for a in accepted if a),
+            "billable_unmeasured_calls": sum(
+                1 for a in att if a.get("billable_unmeasured"))}

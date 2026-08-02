@@ -33,6 +33,7 @@ finding 描述的那種:混群而不自知)。
 import hashlib
 import json
 
+import analysis_grounding as gr
 import analysis_render as ar
 import analysis_schema as sch
 import evidence_packet as ep
@@ -89,6 +90,33 @@ _REPORT_TEXT = ("## 七、昨夜三大重點\n- 空方觀點:立場:偏空(淨�
                 "## 我的明確立場\n立場:偏多(淨分:+6)\n"
                 "理由:費半走強、量能回升。\n"
                 "## 一句話總結\n維持核心部位,留意法說。")
+
+
+#: grounding 的行為指紋要用**正反案例**:合格的要放行、各種不合格的要擋,
+#: 而且擋的理由要一樣。少了反例,「全部放行」這個突變會隱形。
+_GROUNDING_CASES = [
+    # 合格
+    {"executive_summary": "偏多", "key_drivers": [{"statement": "費半走強",
+      "claim_type": "fact", "materiality": "high", "evidence_ids": ["n1"]}],
+     "taiwan_market": {"summary": "量能回升。", "evidence_ids": ["n2"]},
+     "top_news_analysis": [{"source_item_id": "n1"}],
+     "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
+                      "claim_type": "fact", "materiality": "high",
+                      "evidence_ids": ["n1"]}]},
+    # 沒有根據的重大主張
+    {"key_drivers": [{"statement": "台股必漲", "claim_type": "fact",
+                      "materiality": "high", "evidence_ids": []}],
+     "claim_audit": []},
+    # 編造的證據 ID
+    {"executive_summary": "偏多",
+     "global_market": {"summary": "美股收紅。", "evidence_ids": ["n_fake"]},
+     "claim_audit": [{"claim_id": "c1", "statement": "x",
+                      "claim_type": "opinion", "materiality": "low",
+                      "evidence_ids": ["n1"]}]},
+    # schema 形狀的空段落(不得誤擋)
+    {"taiwan_market": {"summary": "", "taiex_view": "", "tsmc_view": "",
+                       "evidence_ids": []}},
+]
 
 
 def _sha(obj) -> str:
@@ -161,6 +189,10 @@ def _behaviour() -> dict:
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
                                      lp._extract_summary(_REPORT_TEXT)]),
         "renderer_version": _sha(ar.render(_ANALYSIS)),
+        # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
+        # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
+        "grounding_version": _sha([sch.validate(o, {"n1", "n2"})
+                                   for o in _GROUNDING_CASES]),
     }
 
 
@@ -176,6 +208,7 @@ _FROZEN = {
     "shadow_profile_version":   (1, "1beef7f63a8ee083"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "e0cacdffc2d8162c"),
+    "grounding_version":        (1, "bf44db375b51eeee"),
 }
 
 
@@ -188,6 +221,7 @@ def _declared_versions() -> dict:
         "shadow_profile_version": pp.DEEPSEEK_LEGACY_VERSION,
         "postprocess_version": lx.POSTPROCESS_VERSION,
         "renderer_version": lx.RENDERER_VERSION,
+        "grounding_version": gr.GROUNDING_VERSION,
     }
 
 

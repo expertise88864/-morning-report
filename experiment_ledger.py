@@ -90,8 +90,23 @@ def _rank(row: dict) -> tuple:
             int(row.get("run_attempt") or 0))
 
 
+def scoped(ledger: Optional[list], keep) -> list:
+    """只留下**同一個比較範圍**的列(第十三輪 P1-4)。
+
+    `keep(row) -> bool` 由呼叫端給:它知道自己在問哪一群的問題,本模組不知道。
+
+    先前 `canonical()` 只依 `(date, experiment_id)` 分組、不看同群鍵:
+    同一天換過模型/強度/profile 時**兩個 cohort 會互相擠掉**,被擠掉的
+    那群憑空少一天。`attempt_stats()` 更寬 —— 連 experiment_id 都不分。
+    **收斂只在同一個可比範圍內才有意義**,所以範圍要先劃再收斂。
+    """
+    return [r for r in (ledger or []) if isinstance(r, dict) and keep(r)]
+
+
 def canonical(ledger: Optional[list]) -> list:
     """每個 `(date, experiment_id)` 的代表樣本。
+
+    **先用 `scoped()` 劃好範圍再叫它** —— 它不會自己分辨同群。
 
     **排程優先。** 人工重跑不取代排程 —— 否則「跑失敗就重跑一次」會把
     可靠度洗成滿分,而那正是這個實驗最不該被污染的數字。
@@ -157,17 +172,25 @@ def attempt_stats(ledger: Optional[list]) -> dict:
             elif later:
                 reruns += 1
     ok = [r for r in rows if r.get("primary_ok")]
+    # 第十三輪 P1-4:**一列不等於一次計費呼叫。** 一份報告可能是
+    # 「Luna 一次不合格 + 一次修補 + DeepSeek 影子一次」= 三次計費,
+    # 而逾時那種還會計費卻量不到 usage。用列數冒充呼叫數會低估帳單,
+    # 而低估的方向正好偏向「這個實驗很便宜」。
+    calls = sum(int(r.get("provider_calls") or 0) for r in rows)
+    unmeasured = sum(int(r.get("billable_unmeasured_calls") or 0) for r in rows)
     return {
-        "attempts": len(rows),
+        "recorded_runs": len(rows),
         "days_seen": len(days),
         "manual_reruns_after_a_scheduled_run": reruns,
         # 沒有時間戳、排不出先後的人工執行。**不併進上面那個數字** ——
         # 它宣稱的是時序,而這些排不出時序。
         "manual_attempts_of_unknown_order": unordered,
-        # 每一次嘗試都付過錢。配對可以只算一次,帳單不行。
-        "billable_attempts": len(rows),
-        "attempt_primary_ok_rate": (round(len(ok) / len(rows), 3)
-                                    if rows else None),
+        # 三個層次分開報:**紀錄列數 ≠ provider 呼叫數 ≠ 量得到金額的呼叫數**。
+        # 沒有逐列的呼叫數就回 None,不要拿列數頂替(那是編造)。
+        "provider_calls": calls or None,
+        "billable_unmeasured_calls": unmeasured or None,
+        "run_primary_ok_rate": (round(len(ok) / len(rows), 3)
+                                if rows else None),
         "scheduled_attempts": sum(1 for r in rows
                                   if str(r.get("run_kind")) == SCHEDULED),
     }

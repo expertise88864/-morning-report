@@ -40,7 +40,7 @@ _EVENT_KINDS = {"schedule": SCHEDULED, "workflow_dispatch": MANUAL,
                 "repository_dispatch": MANUAL}
 
 
-def run_identity(env: dict) -> dict:
+def run_identity(env: dict, *, started_at: str = "") -> dict:
     """這次執行的身分。`env` 由呼叫端注入(本模組不讀 `os.environ`)。
 
     本機跑(沒有 `GITHUB_RUN_ID`)算 `local` —— 它既不是排程也不是重跑,
@@ -49,13 +49,15 @@ def run_identity(env: dict) -> dict:
     run_id = str(env.get("GITHUB_RUN_ID") or "").strip()
     event = str(env.get("GITHUB_EVENT_NAME") or "").strip()
     if not run_id:
-        return {"run_id": "", "run_attempt": 0, "run_kind": LOCAL}
+        return {"run_id": "", "run_attempt": 0, "run_kind": LOCAL,
+                "started_at": str(started_at or "")}
     try:
         attempt = int(str(env.get("GITHUB_RUN_ATTEMPT") or "1"))
     except ValueError:
         attempt = 1
     return {"run_id": run_id, "run_attempt": attempt,
-            "run_kind": _EVENT_KINDS.get(event, MANUAL)}
+            "run_kind": _EVENT_KINDS.get(event, MANUAL),
+            "started_at": str(started_at or "")}
 
 
 def attempt_key(row: dict) -> tuple:
@@ -93,10 +95,16 @@ def canonical(ledger: Optional[list]) -> list:
 
     **排程優先。** 人工重跑不取代排程 —— 否則「跑失敗就重跑一次」會把
     可靠度洗成滿分,而那正是這個實驗最不該被污染的數字。
+
+    r1(Codex,P1):**本機跑完全不算代表樣本。** `run_identity` 的說明
+    寫著「本機跑不該進任何一邊的分母」,而這裡原本在沒有更高階紀錄時
+    照樣把它留下來 —— 於是我在本機測一次就可能推進十配對、抬高可靠度。
+    **宣稱與實作不符,而不符的那一邊是我自己寫下的合約。**
+    本機的花費仍然看得到,在 `attempt_stats` 裡。
     """
     best: dict = {}
     for r in (ledger or []):
-        if not isinstance(r, dict):
+        if not isinstance(r, dict) or str(r.get("run_kind")) == LOCAL:
             continue
         k = (str(r.get("date") or ""), str(r.get("experiment_id") or ""))
         if k not in best or _rank(r) > _rank(best[k]):
@@ -104,26 +112,58 @@ def canonical(ledger: Optional[list]) -> list:
     return [best[k] for k in sorted(best)]
 
 
+def _later_than_a_scheduled_run(row: dict, same_day: list) -> Optional[bool]:
+    """這筆人工執行是不是**排在某次排程之後**。無從判斷時回 `None`。
+
+    r1(Codex,P2):`manual_reruns_after_a_scheduled_run` 這個名字宣稱了
+    時序,而原本的實作只看「同一天有沒有兩種」—— 先手動後排程也會被算成
+    重跑。這個指標存在的理由正是要抓「**失敗之後才去重跑**」那個偏差,
+    算錯方向就等於在製造它要偵測的假象。
+
+    沒有時間戳的舊列**不猜**:回 `None`,由呼叫端另外計數。
+    把不知道當成「否」會低估偏差,當成「是」會高估 —— 兩個都是編造。
+    """
+    # 空白的時間戳等於沒有時間戳 —— `" "` 是 truthy,不 strip 的話
+    # 它會被當成一個真的時間拿去比大小,而比出來的結果毫無意義。
+    ts = str(row.get("started_at") or "").strip()
+    sched = [str(o.get("started_at") or "").strip() for o in same_day
+             if str(o.get("run_kind")) == SCHEDULED]
+    if not sched:
+        return False
+    if not ts or not all(sched):
+        return None
+    return any(ts > t for t in sched)
+
+
 def attempt_stats(ledger: Optional[list]) -> dict:
     """嘗試層級的實況 —— **代表樣本看不到的那一面**。
 
-    `manual_reruns` 是「那天已經有排程紀錄,又跑了一次人工」的次數:
-    它高不代表系統壞,但它高而可靠度滿分,就代表可靠度是被重跑撐起來的。
+    重跑次數高不代表系統壞;但它高而可靠度滿分,就代表可靠度是被重跑
+    撐起來的。
     """
     rows = [r for r in (ledger or []) if isinstance(r, dict)]
     days: dict = {}
     for r in rows:
         days.setdefault((str(r.get("date") or ""),
                          str(r.get("experiment_id") or "")), []).append(r)
-    reruns = sum(1 for v in days.values()
-                 for r in v
-                 if str(r.get("run_kind")) == MANUAL
-                 and any(str(o.get("run_kind")) == SCHEDULED for o in v))
+    reruns, unordered = 0, 0
+    for v in days.values():
+        for r in v:
+            if str(r.get("run_kind")) != MANUAL:
+                continue
+            later = _later_than_a_scheduled_run(r, v)
+            if later is None:
+                unordered += 1
+            elif later:
+                reruns += 1
     ok = [r for r in rows if r.get("primary_ok")]
     return {
         "attempts": len(rows),
         "days_seen": len(days),
         "manual_reruns_after_a_scheduled_run": reruns,
+        # 沒有時間戳、排不出先後的人工執行。**不併進上面那個數字** ——
+        # 它宣稱的是時序,而這些排不出時序。
+        "manual_attempts_of_unknown_order": unordered,
         # 每一次嘗試都付過錢。配對可以只算一次,帳單不行。
         "billable_attempts": len(rows),
         "attempt_primary_ok_rate": (round(len(ok) / len(rows), 3)

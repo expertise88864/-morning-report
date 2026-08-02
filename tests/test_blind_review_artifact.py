@@ -447,6 +447,10 @@ def test_the_separation_is_documented_as_procedural():
 def _pair(day, expires):
     return lx.build_record(
         today=day, experiment_id="e",
+        # 第十二輪 P1-4 之後,沒有執行身分的紀錄算「本機」而不進分母 ——
+        # 測試要用生產的形狀:排程跑出來的那種。
+        run={"run_id": day, "run_attempt": 1, "run_kind": "scheduled",
+             "started_at": f"{day}T06:00:00+08:00"},
         primary={"profile": "luna", "ok": True},
         shadow={"profile": "deepseek_legacy", "ok": True},
         evidence_sha_primary="a", evidence_sha_shadow="a",

@@ -241,7 +241,8 @@ def build_record(*, today: str, experiment_id: str,
         # 第十二輪 P1-4:**哪一次執行寫的。** 少了這個,同日重跑會覆蓋掉
         # 排程那次的失敗 —— 而越不可靠的日子越容易被人重跑洗白。
         **{k: (run or {}).get(k, v) for k, v in
-           (("run_id", ""), ("run_attempt", 0), ("run_kind", _xl.LOCAL))},
+           (("run_id", ""), ("run_attempt", 0), ("run_kind", _xl.LOCAL),
+            ("started_at", ""))},
         # r5 #1/#3、r6 #1/#3:這一天有沒有**還取得回來的**盲評材料。
         # 判讀明文要求人工盲評 —— 卡片寫失敗、落在 job 結束就消失的 sink、
         # 或 artifact 已經過期,都讓那個要求做不成,而「達標」會變成空話。

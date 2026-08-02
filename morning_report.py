@@ -14190,11 +14190,9 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
         evidence_sha_primary=sha, evidence_sha_shadow=sha,
         core_sha_primary=core, core_sha_shadow=core,
         code_version=SHADOW_COHORT_VERSION, failure_reason=reason[:60],
-        run=_xl.run_identity(os.environ),   # P1-4:重跑不得覆蓋排程的失敗
-        # r5(Codex,#1/#3):**這個配對到底有沒有可用的盲評材料。**
-        # 判讀文字要求人工盲評,而卡片可能寫失敗、或落在一個 job 結束就
-        # 消失的 sink —— 那時「達標」不代表做得成判讀。
-        review=review,
+        run=_xl.run_identity(               # P1-4:重跑要排得出先後
+            os.environ, started_at=dt.datetime.now(TPE).isoformat()),
+        review=review,                      # r5:有沒有可用的盲評材料
         metrics=metrics or {})
 
 

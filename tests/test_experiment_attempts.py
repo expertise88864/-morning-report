@@ -28,7 +28,8 @@ import experiment_ledger as xl
 import llm_experiment as lx
 
 
-def _rec(day, *, ok, run_id, attempt=1, kind=xl.SCHEDULED, reason=""):
+def _rec(day, *, ok, run_id, attempt=1, kind=xl.SCHEDULED, reason="",
+         at=""):
     return lx.build_record(
         today=day, experiment_id="e",
         primary={"profile": "luna", "ok": ok},
@@ -36,7 +37,8 @@ def _rec(day, *, ok, run_id, attempt=1, kind=xl.SCHEDULED, reason=""):
         evidence_sha_primary="a", evidence_sha_shadow="a",
         core_sha_primary="c", core_sha_shadow="c", failure_reason=reason,
         review={"review_ok": ok, "review_expires": "2099-01-01"},
-        run={"run_id": run_id, "run_attempt": attempt, "run_kind": kind})
+        run={"run_id": run_id, "run_attempt": attempt, "run_kind": kind,
+             "started_at": at or f"{day}T06:00:00+08:00"})
 
 
 # ------------------------------------------------------------ 執行身分
@@ -45,8 +47,8 @@ def test_the_run_kind_comes_from_the_actual_event():
     """排程與人工要分得出來,否則可靠度沒有意義。"""
     sched = xl.run_identity({"GITHUB_RUN_ID": "77", "GITHUB_RUN_ATTEMPT": "2",
                              "GITHUB_EVENT_NAME": "schedule"})
-    assert sched == {"run_id": "77", "run_attempt": 2,
-                     "run_kind": xl.SCHEDULED}
+    assert sched["run_id"] == "77" and sched["run_attempt"] == 2
+    assert sched["run_kind"] == xl.SCHEDULED
     manual = xl.run_identity({"GITHUB_RUN_ID": "78",
                               "GITHUB_EVENT_NAME": "workflow_dispatch"})
     assert manual["run_kind"] == xl.MANUAL and manual["run_attempt"] == 1
@@ -110,8 +112,10 @@ def test_a_github_retry_of_the_same_scheduled_run_wins():
 
 def test_the_attempt_view_shows_what_the_daily_view_hides():
     """代表樣本看不到的那一面要另外報得出來。"""
-    led = xl.append([], _rec("2026-08-03", ok=False, run_id="1"))
-    led = xl.append(led, _rec("2026-08-03", ok=True, run_id="2", kind=xl.MANUAL))
+    led = xl.append([], _rec("2026-08-03", ok=False, run_id="1",
+                             at="2026-08-03T06:00:00+08:00"))
+    led = xl.append(led, _rec("2026-08-03", ok=True, run_id="2", kind=xl.MANUAL,
+                              at="2026-08-03T09:00:00+08:00"))
     led = xl.append(led, _rec("2026-08-04", ok=True, run_id="3"))
     st = xl.attempt_stats(led)
     assert st["attempts"] == 3 and st["days_seen"] == 2
@@ -139,7 +143,7 @@ def test_record_day_uses_the_canonical_sample(tmp_path):
                                        reason="luna_failed:timeout"))}
     prog = lx.record_day(
         record=_rec("2026-08-03", ok=True, run_id="9", attempt=3,
-                    kind=xl.MANUAL),
+                    kind=xl.MANUAL, at="2026-08-03T09:00:00+08:00"),
         today="2026-08-03", ledger_path=tmp_path / "l.json",
         read_ledger=lambda p: store["led"],
         write_ledger=lambda p, v: store.update(led=v),
@@ -171,3 +175,77 @@ def test_the_overwrite_gun_is_gone():
     """
     assert not hasattr(lx, "upsert"), \
         "llm_experiment.upsert 又出現了 —— 它會覆蓋掉同日的原始紀錄"
+
+
+# ------------------------------------------------ r1(Codex):宣稱要對得上
+
+def test_a_local_run_never_becomes_the_daily_sample():
+    """**本機跑不得推進十配對,也不得抬高可靠度**(r1 Codex,P1)。
+
+    `run_identity` 的說明寫著「本機跑不該進任何一邊的分母」,而
+    `canonical()` 原本在沒有更高階紀錄時照樣把它留下來 —— 於是我在本機
+    測一次就可能推進門檻。**不符的那一邊是我自己寫下的合約。**
+    """
+    led = xl.append([], _rec("2026-08-06", ok=True, run_id="", kind=xl.LOCAL))
+    assert xl.canonical(led) == [], "本機那筆成了那天的代表樣本"
+    # 但花費仍然看得見 —— 排除不等於假裝沒發生
+    assert xl.attempt_stats(led)["attempts"] == 1
+
+
+def test_a_local_run_does_not_shadow_a_scheduled_one():
+    """反向:本機那筆不該把同一天的排程紀錄擠掉。"""
+    led = xl.append([], _rec("2026-08-06", ok=True, run_id="", kind=xl.LOCAL))
+    led = xl.append(led, _rec("2026-08-06", ok=False, run_id="7"))
+    day = xl.canonical(led)
+    assert len(day) == 1 and day[0]["run_kind"] == xl.SCHEDULED
+    assert day[0]["primary_ok"] is False
+
+
+def test_a_manual_run_before_the_scheduled_one_is_not_a_rerun():
+    """**先手動、後排程不是重跑**(r1 Codex,P2)。
+
+    這個指標存在的理由是抓「**失敗之後才去重跑**」那個偏差;
+    把時序相反的也算進去,等於在製造它要偵測的假象。
+    """
+    led = xl.append([], _rec("2026-08-07", ok=True, run_id="1", kind=xl.MANUAL,
+                             at="2026-08-07T04:00:00+08:00"))
+    led = xl.append(led, _rec("2026-08-07", ok=True, run_id="2",
+                              at="2026-08-07T06:00:00+08:00"))
+    st = xl.attempt_stats(led)
+    assert st["manual_reruns_after_a_scheduled_run"] == 0,         "排程之前跑的人工執行被算成重跑"
+
+
+def test_a_manual_run_after_the_scheduled_one_is_a_rerun():
+    """正向:時序對的那個才算。"""
+    led = xl.append([], _rec("2026-08-07", ok=False, run_id="1",
+                             at="2026-08-07T06:00:00+08:00"))
+    led = xl.append(led, _rec("2026-08-07", ok=True, run_id="2", kind=xl.MANUAL,
+                              at="2026-08-07T09:00:00+08:00"))
+    assert xl.attempt_stats(led)["manual_reruns_after_a_scheduled_run"] == 1
+
+
+def test_rows_without_timestamps_are_counted_separately():
+    """**排不出先後就別猜。**
+
+    當成「否」會低估偏差、當成「是」會高估 —— 兩個都是編造。
+    分開報,讓看的人知道有多少列答不出這個問題。
+    """
+    led = xl.append([], _rec("2026-08-08", ok=False, run_id="1", at=" "))
+    led = xl.append(led, _rec("2026-08-08", ok=True, run_id="2", kind=xl.MANUAL,
+                              at=" "))
+    st = xl.attempt_stats(led)
+    assert st["manual_reruns_after_a_scheduled_run"] == 0
+    assert st["manual_attempts_of_unknown_order"] == 1
+
+
+def test_production_stamps_the_start_time():
+    """時間戳要真的被生產寫進去 —— 否則上面那些永遠走「排不出先後」。"""
+    import ast
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
+           ).read_text(encoding="utf-8")
+    call = [n for n in ast.walk(ast.parse(src))
+            if isinstance(n, ast.Call)
+            and getattr(n.func, "attr", "") == "run_identity"]
+    assert call, "生產沒有呼叫 run_identity"
+    assert any(k.arg == "started_at" for k in call[0].keywords),         "生產沒有把 started_at 交進去 —— 重跑偏差就永遠量不出來"

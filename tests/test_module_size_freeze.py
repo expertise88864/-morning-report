@@ -214,6 +214,10 @@ MODULE_CEILINGS = {
     # r2(Codex,#3):加上**跨日帳本**(load/upsert/record_day)——
     # 沒有它,十配對的計數機制存在但不會計數。250 → 350(現況 296)。
     "llm_experiment.py": 350,
+    # 帳本的**儲存語意**(追加/代表樣本/嘗試統計)。與 `llm_experiment` 的
+    # 判讀語意刻意分開 —— 第十二輪 P1-4:覆蓋掉的原始紀錄補不回來。
+    # 實測 133 行。
+    "experiment_ledger.py": 150,
     # Luna 特化:確定性品質指標。它刻意**不提供**綜合分數 ——
     # 結構相關的指標只有 Luna 有,合成單一分數會讓比較變成「有結構 vs 沒結構」。
     "analysis_metrics.py": 350,

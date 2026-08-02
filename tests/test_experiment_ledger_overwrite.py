@@ -25,12 +25,14 @@ r3 收到的 finding 是「跳過也要留一列」—— 不留的話,可靠度
 """
 import datetime as dt
 
+import experiment_ledger as xl
 import llm_experiment as lx
 import morning_report as mr
 
 
-def _row(date, *, primary_ok, shadow_ok, reason=""):
+def _row(date, *, primary_ok, shadow_ok, reason="", run=None):
     return lx.build_record(
+        run=run,
         today=date, experiment_id="luna-vs-deepseek",
         primary={"profile": "luna", "ok": primary_ok},
         shadow={"profile": "deepseek_legacy", "ok": shadow_ok},
@@ -39,18 +41,35 @@ def _row(date, *, primary_ok, shadow_ok, reason=""):
         failure_reason=reason)
 
 
-def test_upsert_replaces_by_date_and_experiment():
-    """先確立前提:覆蓋鍵真的是 `(date, experiment_id)`。
+def test_appending_a_second_attempt_does_not_replace_the_first():
+    """**這條的前提在第十二輪 P1-4 被推翻了。**
 
-    這條若變綠燈以外的樣子,下面那條的推論就不成立 —— 前提要有測試,
-    不能只寫在註解裡。
+    原本它確立的是「覆蓋鍵是 `(date, experiment_id)`」—— 那個行為本身就是
+    缺陷:06:00 排程失敗、09:00 人工重跑成功,失敗那列會消失,
+    `primary_ok_rate` 從 0.0 變成 1.0。
+
+    現在的性質相反:**兩次嘗試各留一列。** 收斂成一天一筆是判讀時的事,
+    原始紀錄一旦被蓋掉就補不回來。
     """
-    ledger = lx.upsert([], _row("2026-08-05", primary_ok=False, shadow_ok=False),
-                      "2026-08-05")
-    ledger = lx.upsert(ledger, _row("2026-08-05", primary_ok=True, shadow_ok=True),
-                      "2026-08-05")
-    assert len(ledger) == 1, "同日同實驗應該覆蓋而不是追加"
-    assert ledger[0]["primary_ok"] is True
+    led = xl.append([], _row("2026-08-05", primary_ok=False, shadow_ok=False,
+                             reason="luna_failed:timeout",
+                             run={"run_id": "1", "run_attempt": 1,
+                                  "run_kind": xl.SCHEDULED}))
+    led = xl.append(led, _row("2026-08-05", primary_ok=True, shadow_ok=True,
+                              run={"run_id": "2", "run_attempt": 1,
+                                   "run_kind": xl.MANUAL}))
+    assert len(led) == 2, "第二次嘗試把第一次蓋掉了"
+    assert any(r["primary_ok"] is False for r in led), "失敗那列不見了"
+
+
+def test_rewriting_the_same_attempt_is_idempotent():
+    """同一次嘗試重寫要覆寫 —— 否則 job 重試會把同一件事記兩遍。"""
+    run = {"run_id": "1", "run_attempt": 1, "run_kind": xl.SCHEDULED}
+    led = xl.append([], _row("2026-08-05", primary_ok=False, shadow_ok=False,
+                             run=run))
+    led = xl.append(led, _row("2026-08-05", primary_ok=True, shadow_ok=True,
+                              run=run))
+    assert len(led) == 1 and led[0]["primary_ok"] is True
 
 
 def _stub_shadow(monkeypatch, *, budget_ok):
@@ -82,15 +101,17 @@ def test_the_real_failure_survives_the_legacy_fallback(monkeypatch):
     審查說沒有測試走完這條路;而這正是覆蓋會發生的那條。
     帳本最後必須還是那列失敗。
     """
-    ledger = lx.upsert([], _row("2026-08-05", primary_ok=False, shadow_ok=False,
-                                reason="luna_failed:timeout"), "2026-08-05")
+    ledger = xl.append([], _row("2026-08-05", primary_ok=False, shadow_ok=False,
+                                reason="luna_failed:timeout",
+                                run={"run_id": "1", "run_attempt": 1,
+                                     "run_kind": xl.SCHEDULED}))
 
     written = _stub_shadow(monkeypatch, budget_ok=False)
     # legacy 落回路徑:主分析文字有了,但 packet 沒有跟著傳下來
     mr._run_llm_shadow("prompt", "legacy 的分析文字",
                        dt.datetime(2026, 8, 5, 6, 0), packet=None)
     for rec in written:
-        ledger = lx.upsert(ledger, rec, "2026-08-05")
+        ledger = xl.append(ledger, rec)
 
     assert len(ledger) == 1
     assert ledger[0]["primary_ok"] is False, (

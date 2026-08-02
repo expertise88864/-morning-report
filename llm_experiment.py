@@ -25,6 +25,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import experiment_ledger as _xl
+
 #: 實驗帳本的 schema 版本。
 EXPERIMENT_SCHEMA_VERSION = 1
 
@@ -224,7 +226,7 @@ def build_record(*, today: str, experiment_id: str,
                  evidence_sha_primary: str, evidence_sha_shadow: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
                  code_version: str = "", failure_reason: str = "",
-                 review: Optional[dict] = None,
+                 review: Optional[dict] = None, run: Optional[dict] = None,
                  metrics: Optional[dict] = None) -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
@@ -236,6 +238,10 @@ def build_record(*, today: str, experiment_id: str,
     return {
         "date": today,
         "experiment_id": experiment_id,
+        # 第十二輪 P1-4:**哪一次執行寫的。** 少了這個,同日重跑會覆蓋掉
+        # 排程那次的失敗 —— 而越不可靠的日子越容易被人重跑洗白。
+        **{k: (run or {}).get(k, v) for k, v in
+           (("run_id", ""), ("run_attempt", 0), ("run_kind", _xl.LOCAL))},
         # r5 #1/#3、r6 #1/#3:這一天有沒有**還取得回來的**盲評材料。
         # 判讀明文要求人工盲評 —— 卡片寫失敗、落在 job 結束就消失的 sink、
         # 或 artifact 已經過期,都讓那個要求做不成,而「達標」會變成空話。
@@ -304,22 +310,6 @@ def load_ledger(path) -> list:
     return data
 
 
-def upsert(ledger: Optional[list], record: dict, today: str) -> list:
-    """同一天同一個實驗只留一列(重跑會覆蓋當天,不會多一筆)。
-
-    判準是 (date, experiment_id) —— 不含同群鍵:同一天若改了設定,
-    那一天本來就該只留最後一次的樣貌,而它會因為同群不同而自然被排除。
-    """
-    key = (str(today), str(record.get("experiment_id") or ""))
-    out = [r for r in (ledger or [])
-           if (str(r.get("date") or ""), str(r.get("experiment_id") or "")) != key]
-    out.append(record)
-    # 依日期排序,讓帳本人眼可讀;同日多實驗以 experiment_id 決勝。
-    out.sort(key=lambda r: (str(r.get("date") or ""),
-                            str(r.get("experiment_id") or "")))
-    return out
-
-
 def record_day(*, record: dict, today: str, ledger_path, read_ledger,
                write_ledger, target: int = DEFAULT_TARGET_PAIRS,
                log=print) -> dict:
@@ -334,12 +324,17 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     寫不進去也不得讓晨報中斷 —— 由呼叫端吞例外。
     """
     ledger = read_ledger(ledger_path)          # 讀不出來讓它拋,呼叫端決定
-    ledger = upsert(ledger, record, today)
+    # 第十二輪 P1-4:**追加,不覆蓋。** 原始紀錄一旦被蓋掉就補不回來,
+    # 而收斂成「一天一筆」是判讀時的事(`canonical`)。
+    ledger = _xl.append(ledger, record)
     write_ledger(ledger_path, ledger)
     cohort = cohort_key(record)
-    progress = pair_progress(ledger, cohort, target, as_of=today)
+    # 配對與可靠度只看**代表樣本**(排程優先);嘗試層級另外報。
+    daily = _xl.canonical(ledger)
+    progress = pair_progress(daily, cohort, target, as_of=today)
+    progress["attempts"] = _xl.attempt_stats(ledger)
     progress["cohort_fields"] = dict(zip(COHORT_FIELDS, cohort))
-    progress["reliability"] = reliability(ledger, cohort)
+    progress["reliability"] = reliability(daily, cohort)
     progress["verdict"] = verdict(progress)
     log(f"[llm-experiment] {progress['verdict']}")
     return progress

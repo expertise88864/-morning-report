@@ -140,15 +140,18 @@ def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
     bare = _versionless(pk)
-    luna = pp.build_luna_bundle(pk)
+    # **走生產的組裝器,只是餵去掉版本號的 packet。**
+    # r1(Codex,pass 2):為了剝掉版本號,我一度改成直接呼叫
+    # `luna_user_payload(bare)` —— 於是快照不再經過 `build_luna_bundle`,
+    # 而生產送出去的正是它回傳的 `user_payload`。那個組裝器日後多包一層、
+    # 多附一句 profile 專屬指令,快照都看不到。
+    # 兩個性質不必二選一:餵 versionless 的輸入,但仍走生產的路徑。
+    luna = pp.build_luna_bundle(bare)
     return {
         "evidence_schema_version": _sha(bare),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
-        # payload 由**去掉版本號的** packet 組出來:量的是組裝邏輯,
-        # 不是那個數字。
         "primary_profile_version": _sha(
-            luna["developer_instructions"] + "\x00"
-            + pp.luna_user_payload(bare)),
+            luna["developer_instructions"] + "\x00" + luna["user_payload"]),
         # 只雜湊 `profile_id` 是個**死掉的快照** —— 那是個常數,永遠不會變。
         # legacy 契約真正管的是「這條 prompt 被怎麼包裝」:profile 身分、
         # 結構化輸出開關、有沒有 developer 段。prompt 內容本身由

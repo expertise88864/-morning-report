@@ -205,6 +205,10 @@ MODULE_CEILINGS = {
     # 的教訓正是這兩件事被混為一談)。**實測 97 行**(初訂 90 是依 64 行
     # 抓的頭寸,外審的兩條修正把它撐開;數字據實量測,不靠推估)。
     "analysis_grounding.py": 105,
+    # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
+    # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
+    # 金絲雀探測都需要那個答案。實測 91 行。
+    "json_contract.py": 110,
     # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
     # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
     "prompt_profiles.py": 250,

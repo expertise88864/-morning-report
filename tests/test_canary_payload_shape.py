@@ -240,3 +240,65 @@ def test_a_200_with_real_json_still_passes(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: _R())
     chk = mod._probe_json("https://example.invalid", {}, {}, "probe")
     assert chk.ok is True and chk.body == {"ok": True}
+
+
+# ------------------------------------------ 第十三輪 P2-2 / P2-4
+
+def _probe_model(mod, monkeypatch, env: dict, provider: str) -> str:
+    """在這組設定下,金絲雀實際探測了哪個模型名。"""
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    seen = []
+    monkeypatch.setattr(mod, "_probe_openai_compatible",
+                        lambda *a, **k: (seen.append(a[2]),
+                                         mod.Check("x", True, ""))[1])
+    monkeypatch.setattr(mod, "check_model_exists",
+                        lambda m: mod.Check("模型", True, ""))
+    monkeypatch.setattr(mod, "effort_matrix", lambda m: [])
+    monkeypatch.setattr(mod, "_report", lambda *a, **k: None)
+    mod.probe_one_provider(provider)
+    return seen[0] if seen else ""
+
+
+def test_a_shadow_only_provider_probes_the_shadow_model(monkeypatch):
+    """**只當影子的 provider 要探測影子模型**(第十三輪 P2-2)。
+
+    先前一律探測主分析那個模型:`LLM_SHADOW_MODEL` 打錯時金絲雀照樣綠,
+    而生產的影子用著一個不存在的模型 —— 十配對會全部只有單邊。
+    """
+    mod = _canary()
+    got = _probe_model(mod, monkeypatch, {
+        "LLM_PROVIDER": "openai", "EXTRACTOR_PROVIDER": "",
+        "LLM_SHADOW_PROVIDER": "deepseek",
+        "LLM_SHADOW_MODEL": "deepseek-打錯的名字",
+        "DEEPSEEK_MODEL": "deepseek-v4-pro", "DEEPSEEK_API_KEY": "k",
+    }, "deepseek")
+    assert got == "deepseek-打錯的名字", (
+        f"影子身分卻探測了 {got} —— 影子模型名打錯時金絲雀不會紅")
+
+
+def test_a_primary_provider_still_probes_the_primary_model(monkeypatch):
+    """反向:同時是主分析時,要探測的仍然是主分析那個模型。"""
+    mod = _canary()
+    got = _probe_model(mod, monkeypatch, {
+        "LLM_PROVIDER": "deepseek", "EXTRACTOR_PROVIDER": "",
+        "LLM_SHADOW_PROVIDER": "deepseek",
+        "LLM_SHADOW_MODEL": "deepseek-v4-flash",
+        "DEEPSEEK_MODEL": "deepseek-v4-pro", "DEEPSEEK_API_KEY": "k",
+    }, "deepseek")
+    assert got == "deepseek-v4-pro"
+
+
+def test_the_strict_probe_checks_the_schema_not_just_json():
+    """**只驗「是不是 JSON」等於沒驗 structured output**(第十三輪 P2-4)。
+
+    模型回 `{"hello":"world"}` 也是合法 JSON,而這個探測存在的理由
+    就是驗 strict schema 有沒有生效。
+    """
+    import json_contract as jc
+    mod = _canary()
+    assert jc.violations({"hello": "world"}, mod._CANARY_SCHEMA),         "金絲雀 schema 連完全不相干的物件都攔不下來"
+    assert jc.violations({"stance": "偏多", "evidence_ids": ["n1"]},
+                         mod._CANARY_SCHEMA) == []
+    src = _CANARY.read_text(encoding="utf-8")
+    assert "_jc.violations(parsed, _CANARY_SCHEMA)" in src,         "strict 探測沒有真的拿 schema 去驗"

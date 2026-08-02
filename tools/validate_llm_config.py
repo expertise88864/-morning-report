@@ -489,12 +489,21 @@ def probe_responses_strict(key: str, model: str, effort: str) -> Check:
         return Check(label, False, f"未完成:{got['incomplete_reason']}",
                      fatal=True)
     try:
-        json.loads(got["text"])
+        parsed = json.loads(got["text"])
     except Exception:                       # noqa: BLE001 - 任何解析失敗都算失敗
         return Check(label, False,
                      f"strict schema 沒有回出合法 JSON:{got['text'][:80]}",
                      fatal=True)
-    return Check(label, True, f"生效強度 {applied or effort};JSON 合法")
+    # 第十三輪 P2-4:**只驗「是不是 JSON」等於沒驗 structured output。**
+    # 模型回 `{"hello":"world"}` 也是合法 JSON —— 而這個探測存在的理由
+    # 就是驗 strict schema 有沒有生效。用本地驗證器對照送出去的那份 schema。
+    import json_contract as _jc
+    bad = _jc.violations(parsed, _CANARY_SCHEMA)
+    if bad:
+        return Check(label, False,
+                     f"回應不合 strict schema:{'; '.join(bad[:3])}", fatal=True)
+    return Check(label, True,
+                 f"生效強度 {applied or effort};合乎 strict schema")
 
 
 def probe_one_provider(provider: str) -> int:
@@ -514,8 +523,16 @@ def probe_one_provider(provider: str) -> int:
                         if used else "本次設定沒有用到這個 provider,略過"),
                        fatal=used)], provider, "-", "-", "-")
         return 1 if used else 0
+    # 第十三輪 P2-2:**這個 provider 是以什麼身分被選用的。**
+    # 只當影子時要探測 `LLM_SHADOW_MODEL`,而不是主分析那個 —— 先前一律
+    # 探測主分析的模型,於是影子模型名打錯時金絲雀照樣綠、生產卻壞掉。
+    shadow_only = (provider == _provider_env("LLM_SHADOW_PROVIDER")
+                   and provider != _provider_env("LLM_PROVIDER", "deepseek")
+                   and provider != _provider_env("EXTRACTOR_PROVIDER"))
+    shadow_model = _env("LLM_SHADOW_MODEL")
     if provider == "openai":
-        model = _env("OPENAI_MODEL", "gpt-5.6-terra")
+        model = (shadow_model if shadow_only and shadow_model
+                 else _env("OPENAI_MODEL", "gpt-5.6-terra"))
         checks = [check_model_exists(model),
                   _probe_openai_compatible(
                       _base(), key, model, f"openai {model}",
@@ -528,7 +545,8 @@ def probe_one_provider(provider: str) -> int:
             checks.append(probe_responses_strict(
                 key, model, _env("OPENAI_REASONING_EFFORT", "xhigh")))
     elif provider == "deepseek":
-        model = _env("DEEPSEEK_MODEL", "deepseek-v4-pro")
+        model = (shadow_model if shadow_only and shadow_model
+                 else _env("DEEPSEEK_MODEL", "deepseek-v4-pro"))
         raw = _env("DEEPSEEK_REASONING_EFFORT", "max")
         think = lt.deepseek_thinking(raw)
         extra = {}

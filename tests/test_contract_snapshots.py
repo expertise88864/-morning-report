@@ -33,6 +33,9 @@ finding 描述的那種:混群而不自知)。
 import hashlib
 import json
 
+import fixtures_analysis as fx
+import json_contract as jc
+
 import analysis_grounding as gr
 import analysis_render as ar
 import analysis_schema as sch
@@ -51,35 +54,10 @@ _PRED = {"model1": 23100.0}
 #: (`MAX_SUMMARY_CHARS` / `MAX_FULLTEXT_CHARS`),而輸入短於門檻時
 #: 那些常數怎麼改都不會反映在快照上 —— 那條判準就成了真空通過。
 _LONG = "台積電先進製程需求維持強勁,CoWoS 產能持續吃緊,客戶追加訂單。" * 40
-_NEWS = [{"source_item_id": "n1", "title": "費城半導體指數收漲 2.1%",
-          "summary": _LONG, "fulltext": _LONG * 2, "source": "Reuters",
-          "entities": ["費半"], "published_at": "2026-08-02T20:00:00+08:00"},
-         {"source_item_id": "n2", "title": "央行理監事會維持利率不變",
-          "summary": "利率按兵不動。", "source": "中央銀行",
-          "entities": ["央行"], "official": True,
-          "published_at": "2026-08-02T16:00:00+08:00"}]
+_NEWS = [dict(n, summary=_LONG, fulltext=_LONG * 2) if n["source_item_id"] == "n1"
+         else n for n in fx.news()]
 
-_ANALYSIS = {
-    "executive_summary": "今日偏多,留意台積電法說。",
-    "stance": {"label": "偏多", "score": 6, "confidence": 0.7,
-               "time_horizon": "1-5d", "rationale": "多數訊號同向。"},
-    "key_drivers": [{"statement": "費半走強", "claim_type": "fact",
-                     "direction": "bullish", "materiality": "high",
-                     "confidence": 0.8, "horizon": "intraday",
-                     "evidence_ids": ["n1"], "counterevidence_ids": [],
-                     "falsification_trigger": "夜盤翻黑"}],
-    "taiwan_market": {"summary": "量能回升。", "taiex_view": "偏多",
-                      "tsmc_view": "守月線", "evidence_ids": ["n1"]},
-    "global_market": {"summary": "美股收紅。", "us_to_tw_linkage": "費半傳導",
-                      "evidence_ids": ["n1"]},
-    "top_news_analysis": [{"source_item_id": "n2", "why_it_matters": "利率",
-                           "affected": ["金融股"]}],
-    "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
-                     "claim_type": "fact", "materiality": "high",
-                     "evidence_ids": ["n1"], "counterevidence_ids": [],
-                     "falsification_trigger": "夜盤翻黑"}],
-    "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
-}
+_ANALYSIS = fx.valid_analysis()
 
 #: 這段文字要**分辨得出後處理的行為**,不只是「跑得出答案」。
 #: 第一版寫「淨分 +6」(有空格)、而且全文只有一個立場 —— 於是把容錯規則
@@ -92,31 +70,17 @@ _REPORT_TEXT = ("## 七、昨夜三大重點\n- 空方觀點:立場:偏空(淨�
                 "## 一句話總結\n維持核心部位,留意法說。")
 
 
-#: grounding 的行為指紋要用**正反案例**:合格的要放行、各種不合格的要擋,
-#: 而且擋的理由要一樣。少了反例,「全部放行」這個突變會隱形。
-_GROUNDING_CASES = [
-    # 合格
-    {"executive_summary": "偏多", "key_drivers": [{"statement": "費半走強",
-      "claim_type": "fact", "materiality": "high", "evidence_ids": ["n1"]}],
-     "taiwan_market": {"summary": "量能回升。", "evidence_ids": ["n2"]},
-     "top_news_analysis": [{"source_item_id": "n1"}],
-     "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
-                      "claim_type": "fact", "materiality": "high",
-                      "evidence_ids": ["n1"]}]},
-    # 沒有根據的重大主張
-    {"key_drivers": [{"statement": "台股必漲", "claim_type": "fact",
-                      "materiality": "high", "evidence_ids": []}],
-     "claim_audit": []},
-    # 編造的證據 ID
-    {"executive_summary": "偏多",
-     "global_market": {"summary": "美股收紅。", "evidence_ids": ["n_fake"]},
-     "claim_audit": [{"claim_id": "c1", "statement": "x",
-                      "claim_type": "opinion", "materiality": "low",
-                      "evidence_ids": ["n1"]}]},
-    # schema 形狀的空段落(不得誤擋)
-    {"taiwan_market": {"summary": "", "taiex_view": "", "tsmc_view": "",
-                       "evidence_ids": []}},
-]
+#: grounding 的行為指紋要用**正反案例**:合格的要放行、各種不合格的要擋。
+#: 少了反例,「全部放行」這個突變會隱形。
+#: 全部保持 **schema 合法** —— 要量的是「根據」那一關,不是形狀那一關
+#: (第十三輪 P2-3:兩關混在一起就分不出誰在作用)。
+def _fabricated() -> dict:
+    obj = fx.valid_analysis()
+    obj["global_market"]["evidence_ids"] = ["n_fake"]
+    return obj
+
+
+_GROUNDING_CASES = [fx.valid_analysis(), fx.ungrounded_analysis(), _fabricated()]
 
 
 def _sha(obj) -> str:
@@ -201,14 +165,19 @@ def _behaviour() -> dict:
 #: 改了任何一個契約的行為時:升版號 **並且** 更新這裡的雜湊,在 commit
 #: 說明改了什麼、為什麼。**不要為了讓測試變綠而改** —— 那等於把
 #: 「這一群樣本不可比」這件事偷偷抹掉。
+#:
+#: 2026-08-03 更新四個雜湊,而版本號**維持 1**:原因是**固定輸入被修正**
+#: (先前的 `_ANALYSIS` 不合乎 strict schema,見第十三輪 P2-3),
+#: 不是契約行為改變。這是這張表少數該「改雜湊而不升版」的情形,
+#: 所以理由寫在這裡,不是寫在 commit 就算。
 _FROZEN = {
-    "evidence_schema_version":  (1, "8b120f4fbb1404a7"),
+    "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (1, "2156ff97f37c2b88"),
+    "primary_profile_version":  (1, "748a46d19a2b2cee"),
     "shadow_profile_version":   (1, "1beef7f63a8ee083"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
-    "renderer_version":         (1, "e0cacdffc2d8162c"),
-    "grounding_version":        (1, "bf44db375b51eeee"),
+    "renderer_version":         (1, "617fabcde1df42ac"),
+    "grounding_version":        (1, "ea7c1800b2d0c032"),
 }
 
 
@@ -280,3 +249,16 @@ def test_the_snapshot_inputs_are_not_empty():
     assert ar.render(_ANALYSIS).strip(), "固定分析渲染不出東西"
     assert lp._extract_stance(_REPORT_TEXT).get("label"), "固定文字抽不出立場"
     assert pp.build_luna_bundle(pk)["user_payload"].strip()
+
+
+def test_the_snapshot_fixture_is_schema_valid():
+    """**固定輸入自己要合法**(第十三輪 P2-3)。
+
+    快照量的是「契約對某個輸入怎麼反應」。輸入若是真實 API 不會產出的
+    形狀,量到的就是一個與生產無關的行為 —— 而它照樣會穩定、照樣會通過。
+    """
+    assert jc.violations(_ANALYSIS, sch.ANALYSIS_OUTPUT_SCHEMA) == []
+    for i, case in enumerate(_GROUNDING_CASES):
+        assert jc.violations(case, sch.ANALYSIS_OUTPUT_SCHEMA) == [], (
+            f"grounding 案例 {i} 形狀就不合法 —— 那一關會先擋掉它,"
+            "量不到「根據」那一關")

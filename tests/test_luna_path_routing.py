@@ -15,6 +15,8 @@ import json
 
 import pytest
 
+import fixtures_analysis as fx
+import json_contract as jc
 import morning_report as mr
 
 
@@ -33,48 +35,12 @@ def _response(obj, *, effort="xhigh", usage=None):
     }
 
 
-_GOOD = {
-    "executive_summary": "今日偏多,留意台積電法說。",
-    "stance": {"label": "偏多", "score": 6, "confidence": 0.7,
-               "time_horizon": "1-5d", "rationale": "多數訊號同向。"},
-    "key_drivers": [{"statement": "費半走強", "claim_type": "fact",
-                     "direction": "bullish", "materiality": "high",
-                     "confidence": 0.8, "horizon": "intraday",
-                     "evidence_ids": ["n1"], "counterevidence_ids": [],
-                     "falsification_trigger": "夜盤翻黑"}],
-    "scenario_tree": {"base": {"narrative": "震盪走高", "probability": 0.6,
-                               "triggers": []},
-                      "bull": {"narrative": "突破", "probability": 0.2,
-                               "triggers": []},
-                      "bear": {"narrative": "回測", "probability": 0.2,
-                               "triggers": []},
-                      "invalidation_triggers": []},
-    "taiwan_market": {"summary": "量能回升。", "taiex_view": "偏多",
-                      "tsmc_view": "守月線", "evidence_ids": ["n2"]},
-    "global_market": {"summary": "美股收紅。", "us_to_tw_linkage": "費半傳導",
-                      "evidence_ids": ["n1"]},
-    "portfolio_implications": {"summary": "維持核心。",
-                               "actions_to_consider": [], "risks": []},
-    "top_news_analysis": [{"source_item_id": "n1", "why_it_matters": "傳導台股",
-                           "affected": ["台積電"]}],
-    "contradictions": [], "data_gaps": [], "watch_triggers": [],
-    "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
-                     "claim_type": "fact", "materiality": "high",
-                     "evidence_ids": ["n1"], "counterevidence_ids": [],
-                     "falsification_trigger": "夜盤翻黑"}],
-    "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
-    "priced_in": {"already_reflected": [], "not_yet_reflected": []},
-}
-
-#: 第十二輪 P1-3:**測試資料要有證據可引。**
-#: 原本 news 是空清單,於是 packet 裡一個 evidence ID 都沒有 ——
-#: 「合格輸出」因此只能長成「什麼都不引用」的樣子,而那正是缺陷本身。
-_NEWS = [{"source_item_id": "n1", "title": "費城半導體指數收漲 2.1%",
-          "summary": "SOX 收漲。", "source": "Reuters",
-          "entities": ["費半"], "published_at": "2026-08-02T20:00:00+08:00"},
-         {"source_item_id": "n2", "title": "台積電法說會下週登場",
-          "summary": "市場關注資本支出。", "source": "經濟日報",
-          "entities": ["台積電"], "published_at": "2026-08-02T18:00:00+08:00"}]
+#: 第十三輪 P2-3:**這份 fixture 原本不合乎 strict schema**(實測 8 條:
+#: `top_news_analysis` 少三個必填、`claim_audit` 少兩個,還帶著一個 schema
+#: 根本沒有的 `claim_id`)。也就是說「驗整條生產路徑」驗的是真實 API
+#: 永遠不會產出的形狀。改用共用 fixture,並由 `json_contract` 當場驗它。
+_GOOD = fx.valid_analysis()
+_NEWS = fx.news()
 
 _ARGS = ({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
          {"model1": 1000.0}, _NEWS, [], "")
@@ -448,16 +414,10 @@ def test_the_production_path_actually_attaches_the_metrics(luna_on, monkeypatch)
 
 # ------------------------------------------------------- 第十二輪 P1-3
 
-#: **這份輸出以前叫 `_GOOD`。** 每個 evidence_ids 都是空的、claim_audit 也空,
-#: 而它被當成「生產形狀的合格輸出」用來驗整條路徑 —— 也就是說
-#: 「重大主張不必有根據」被測試釘成了通過條件。
-_UNSUPPORTED = json.loads(json.dumps(_GOOD))
-_UNSUPPORTED["key_drivers"][0]["evidence_ids"] = []
-_UNSUPPORTED["taiwan_market"]["evidence_ids"] = []
-_UNSUPPORTED["global_market"]["evidence_ids"] = []
-_UNSUPPORTED["market_regime"]["evidence_ids"] = []
-_UNSUPPORTED["top_news_analysis"] = []
-_UNSUPPORTED["claim_audit"] = []
+#: 形狀合法、但**沒有根據**的那種輸出。刻意保持 schema 合法:要驗的是
+#: 「語意根據」那一關擋不擋得住,而不是讓它在形狀那關就先被擋掉 ——
+#: 兩關混在一起就分不出誰在作用(第十三輪 P2-3)。
+_UNSUPPORTED = fx.ungrounded_analysis()
 
 
 def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
@@ -493,9 +453,13 @@ def test_the_rejected_report_never_reaches_the_renderer():
     """更前面一步:那份輸出**原本渲染得出完整段落** —— 所以擋要擋在驗證。"""
     import analysis_render as ar
     rendered = ar.render(_UNSUPPORTED)
-    assert "費半走強" in rendered, (
+    # 判準不綁死某句話 —— 要驗的性質是「它渲染得出內容」,而不是
+    # 「它剛好含某個字串」。綁字串的話,fixture 換句話就會假紅。
+    claim = _UNSUPPORTED["key_drivers"][0]["statement"]
+    assert claim in rendered, (
         "反例改壞了 —— 它必須是「渲染得出來」的那種,"
         "否則這條測的就不是「驗證有沒有擋住」")
+    assert _UNSUPPORTED["stance"]["label"] in rendered
 
 
 def test_the_good_fixture_actually_cites_evidence():
@@ -598,3 +562,16 @@ def test_the_failure_row_is_written_even_when_everything_fails(luna_on,
     monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
     mr._call_llm_analysis_impl(*_ARGS)
     assert len(rows) == 1, "連備援文字那個出口都要留下失敗紀錄"
+
+
+def test_the_good_fixture_is_actually_schema_valid():
+    """**基準自己要先合法**(第十三輪 P2-3)。
+
+    `_GOOD` 是本檔所有路徑測試的基準。它若不合乎 strict schema,那些測試
+    驗的就是真實 API 不會產出的形狀 —— 而真實輸出多出來的欄位在測試裡
+    從來沒出現過,renderer 與 grounding 在它們身上的行為完全沒被覆蓋。
+    **fixture 退化時,先紅的要是 fixture 自己。**
+    """
+    import analysis_schema as sch
+    assert jc.violations(_GOOD, sch.ANALYSIS_OUTPUT_SCHEMA) == []
+    assert sch.validate(_GOOD, {n["source_item_id"] for n in _NEWS}) == []

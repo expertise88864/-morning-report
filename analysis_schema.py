@@ -194,17 +194,8 @@ def validate(obj, evidence_ids) -> list:
 
     ## 第十二輪 P1-3:strict schema 保證形狀,不保證根據
 
-    實測反例(審查給的,逐字):一個 `materiality=high` 的 `fact`、
-    `evidence_ids=[]`、`claim_audit=[]` —— 這個物件**零問題通過**,
-    而且 renderer 會把它排進「昨夜三大重點」與「我的明確立場」寄出去。
-
-    缺陷的形狀是本 repo 記過的那一條:**空集合讓迴圈沒跑**。
-    高重要性的檢查寫在 `for c in claim_audit` 裡,`claim_audit` 空的時候
-    整段直接跳過;而 `key_drivers` 只驗「ID 存不存在」,沒驗「有沒有」。
-    兩個漏洞都不會有錯誤訊息,只會安靜地放行。
-
-    所以判準改成**進信的段落都要有根據**,而不是我挑幾個欄位來檢查 ——
-    欄位清單會漂移,「會不會被寄出去」不會。
+    「有話說就要說得出根據」那一半在 `analysis_grounding`(緣由寫在那裡)。
+    這裡只保留「ID 存不存在」與立場詞彙 —— 形狀與根據刻意分成兩個模組。
     """
     problems: list = []
     if not isinstance(obj, dict):
@@ -234,6 +225,12 @@ def validate(obj, evidence_ids) -> list:
     for i, n in enumerate(obj.get("top_news_analysis") or []):
         if isinstance(n, dict):
             _check_ids([n.get("source_item_id")], f"top_news_analysis[{i}]")
+    # r1(Codex,P1):「要求非空」本身在鼓勵模型隨便填一個 —— 新守衛因此
+    # 製造了開頭那句話說的風險:編造的 ID 比沒有 ID 更危險。
+    for sec in _gr.EVIDENCE_BEARING:
+        node = obj.get(sec)
+        if isinstance(node, dict):
+            _check_ids(node.get("evidence_ids"), sec)
 
     # 進信的段落要帶得出根據(`analysis_grounding`)。**空著不算過** ——
     # 迴圈跑不到不等於沒問題,而那正是這條缺陷活下來的方式。

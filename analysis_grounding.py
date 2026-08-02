@@ -37,9 +37,42 @@ RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
 EVIDENCE_BEARING = ("market_regime", "taiwan_market", "global_market")
 
 
+def has_content(node: dict) -> bool:
+    """這個段落**真的有話要說**嗎(`evidence_ids` 不算)。
+
+    r1(Codex,P2):**不能用 dict 的 truthiness 判斷。** strict schema 規定
+    所有欄位必填,所以資料不足那天的合法空段落是「欄位都在、值都空」
+    —— 它是 truthy 的,於是「有內容卻沒有證據」會誤報,Luna 白白修補一次
+    再落回 legacy,而那一段根本沒有任何文字會進信。
+    **誤判的代價不是漏擋,是讓 Luna 在資料稀薄的日子看起來比較不可靠**,
+    而那正是這個實驗要量的東西。
+    (先前的測試用 `{}` 當空段落 —— 那不是 strict 輸出真正的形狀。)
+    """
+    if not isinstance(node, dict):
+        return False
+    for k, v in node.items():
+        if k == "evidence_ids":
+            continue
+        if isinstance(v, str) and v.strip():
+            return True
+        if not isinstance(v, str) and v:
+            return True
+    return False
+
+
 def is_rendered(obj: dict) -> bool:
     """這份輸出有沒有東西真的會被寄出去。"""
-    return any((obj or {}).get(k) for k in RENDERED)
+    for k in RENDERED:
+        v = (obj or {}).get(k)
+        if isinstance(v, dict):
+            if has_content(v):
+                return True
+        elif isinstance(v, str):
+            if v.strip():
+                return True
+        elif v:
+            return True
+    return False
 
 
 def problems(obj: dict) -> list:
@@ -52,7 +85,7 @@ def problems(obj: dict) -> list:
             out.append(f"key_drivers[{i}] 會被排進信裡卻沒有任何證據")
     for sec in EVIDENCE_BEARING:
         node = obj.get(sec)
-        if isinstance(node, dict) and node and not (node.get("evidence_ids") or []):
+        if has_content(node) and not (node.get("evidence_ids") or []):
             out.append(f"{sec} 有內容卻沒有任何證據")
     for i, n in enumerate(obj.get("top_news_analysis") or []):
         if isinstance(n, dict) and not str(n.get("source_item_id") or "").strip():

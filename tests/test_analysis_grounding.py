@@ -111,11 +111,92 @@ def test_an_empty_report_is_not_penalised():
     assert gr.problems({"data_gaps": ["來源不足"]}) == []
 
 
+#: strict schema **所有欄位必填**,所以資料不足那天的合法空段落不是 `{}`,
+#: 而是「欄位都在、值都空」。用 `{}` 測等於在測一個生產不會出現的形狀。
+_EMPTY_SHAPED = {
+    "market_regime": {"label": "", "evidence_ids": []},
+    "taiwan_market": {"summary": "", "taiex_view": "", "tsmc_view": "",
+                      "evidence_ids": []},
+    "global_market": {"summary": "", "us_to_tw_linkage": "",
+                      "evidence_ids": []},
+}
+
+
 def test_an_empty_section_object_is_not_penalised():
     """空的段落物件不算「有話說」。"""
     obj = _sound()
     obj["taiwan_market"] = {}
     assert gr.problems(obj) == []
+
+
+def test_a_schema_shaped_empty_section_is_not_penalised():
+    """**strict 輸出的空段落是 truthy 的**(r1 Codex,P2)。
+
+    所有欄位必填,所以資料不足那天的合法空段落長成「欄位都在、值都空」。
+    用 dict 的 truthiness 判斷會誤報「有內容卻沒有證據」,Luna 白白修補
+    一次再落回 legacy —— **而那一段根本沒有任何文字會進信**。
+
+    誤判的代價不是漏擋,是讓 Luna 在資料稀薄的日子看起來比較不可靠,
+    而那正是這個實驗要量的東西。
+    """
+    for sec, empty in _EMPTY_SHAPED.items():
+        obj = _sound()
+        obj[sec] = dict(empty)
+        assert gr.problems(obj) == [], f"{sec} 的空段落被誤判:{gr.problems(obj)}"
+
+
+def test_evidence_ids_alone_are_not_content():
+    """`has_content` 的宣稱是「`evidence_ids` 不算」—— 那句話要有測試。
+
+    只有一串證據 ID、沒有任何文字的段落,**沒有東西會被寄出去**。
+    把它算成「有內容」會讓一份全空的報告被要求交出稽核軌跡,
+    而那份報告根本沒有話說。
+
+    這條補在突變驗證之後:把「跳過 evidence_ids」拿掉時,grounding 的
+    主路徑行為不變(所以其他測試全綠),但這個宣稱就成了空話。
+    """
+    assert gr.has_content({"summary": "", "evidence_ids": ["n1"]}) is False
+    assert gr.has_content({"summary": "有話說", "evidence_ids": []}) is True
+    # 連帶:全空但帶著證據 ID 的報告不該被要求稽核軌跡
+    obj = {k: dict(v, evidence_ids=["n1"]) for k, v in _EMPTY_SHAPED.items()}
+    obj.update({"executive_summary": "", "key_drivers": [],
+                "top_news_analysis": [], "claim_audit": []})
+    assert gr.problems(obj) == []
+
+
+def test_a_section_with_text_but_no_evidence_is_still_caught():
+    """反向:**別為了消誤報而把真的該擋的放過。**
+
+    只要有一個欄位真的有字,那段就會進信,就要說得出根據。
+    """
+    obj = _sound()
+    obj["taiwan_market"] = dict(_EMPTY_SHAPED["taiwan_market"],
+                                summary="量能回升。")
+    hits = gr.problems(obj)
+    assert len(hits) == 1 and "taiwan_market" in hits[0], hits
+
+
+def test_an_all_empty_report_needs_no_claim_audit():
+    """整份都是 schema 形狀的空段落 → 沒有東西會被寄出 → 不必稽核。"""
+    obj = {k: dict(v) for k, v in _EMPTY_SHAPED.items()}
+    obj.update({"executive_summary": "", "key_drivers": [],
+                "top_news_analysis": [], "claim_audit": []})
+    assert gr.problems(obj) == []
+
+
+def test_fabricated_ids_are_caught_in_every_managed_section():
+    """**編造的 ID 比沒有 ID 更危險** —— 三個新段落也要驗存不存在。
+
+    r1(Codex,P1):新守衛只要求 `evidence_ids` 非空,沒驗它存不存在 ——
+    等於在鼓勵模型「隨便填一個」,而那正是本 repo 既有合約點名的那種風險。
+    判準走 `schema.validate()`(生產真正呼叫的入口),不是只呼叫 grounding。
+    """
+    import analysis_schema as sch
+    for sec in gr.EVIDENCE_BEARING:
+        obj = _sound()
+        obj[sec] = dict(obj[sec], evidence_ids=["n_fabricated"])
+        hits = sch.validate(obj, _IDS)
+        assert any("n_fabricated" in h and sec in h for h in hits),             f"{sec} 引用了不存在的證據卻通過:{hits}"
 
 
 def test_the_rendered_list_covers_what_the_renderer_emits():

@@ -138,3 +138,52 @@ def test_a_selected_provider_still_turns_it_red(monkeypatch):
                         lambda *a, **k: mod.Check("openai x", False, "HTTP 400"))
     assert mod.probe_one_provider(__import__("os").environ["CANARY_PROVIDER"]) == 1, \
         "正在使用的 provider 失敗卻沒有讓金絲雀變紅"
+
+
+def test_mixed_case_provider_still_turns_it_red(monkeypatch):
+    """**大小寫不得讓正在用的 provider 變成「沒被選用」**(r1 Codex)。
+
+    生產把 `LLM_PROVIDER` 正規化成 `.strip().lower()`,金絲雀原本只 strip。
+    於是 `LLM_PROVIDER=OpenAI` 時:生產跑 openai,金絲雀卻判 openai 沒被
+    選用 → 把它的**真實**探測失敗全部降成非致命 → job 收綠燈。
+
+    **正在使用的 provider 壞掉而金絲雀說沒事**,是最糟的一種假綠燈,
+    而且是「未選用不致命」那個修正自己造出來的路徑 ——
+    修掉假警報的動作,順手造了一個假平安。
+    """
+    mod = _canary()
+    for k, v in {"LLM_PROVIDER": "  OpenAI  ", "EXTRACTOR_PROVIDER": "",
+                 "LLM_SHADOW_PROVIDER": "", "CANARY_PROVIDER": "openai",
+                 "OPENAI_API_KEY": "sk-present", "OPENAI_MODEL": "gpt-5.6-luna",
+                 "OPENAI_API_MODE": "chat_completions"}.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(mod, "check_model_exists",
+                        lambda m: mod.Check("模型", True, ""))
+    monkeypatch.setattr(mod, "effort_matrix", lambda m: [])
+    monkeypatch.setattr(mod, "_probe_openai_compatible",
+                        lambda *a, **k: mod.Check("openai x", False, "HTTP 400"))
+    assert mod.probe_one_provider("openai") == 1, (
+        "LLM_PROVIDER=OpenAI 讓金絲雀以為 openai 沒被選用 —— "
+        "生產正在用的 provider 壞掉卻收綠燈")
+
+
+def test_provider_names_are_read_through_one_normalizer():
+    """**六個讀取點不得各自為政。**
+
+    漏掉任何一個,症狀都是同一種假綠燈,而漏掉不會有錯誤訊息 ——
+    所以判準訂在「有沒有人繞過正規化器」,不是「這一次改對了沒有」。
+    """
+    tree = ast.parse(_CANARY.read_text(encoding="utf-8"))
+    bad = []
+    for call in ast.walk(tree):
+        if not (isinstance(call, ast.Call)
+                and getattr(call.func, "id", "") == "_env"):
+            continue
+        if call.args and isinstance(call.args[0], ast.Constant)                 and str(call.args[0].value).endswith("PROVIDER"):
+            bad.append(call.args[0].value)
+    assert not bad, (
+        f"這些 provider 名稱繞過 _provider_env 直接用 _env 讀:{bad} —— "
+        "少了 .lower() 就會與生產對「誰正在被使用」的認知分岔")
+
+    mod = _canary()
+    assert mod._provider_env.__doc__, "正規化器要說明它為什麼存在"

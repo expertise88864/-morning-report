@@ -64,6 +64,22 @@ def _env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()
 
 
+def _provider_env(name: str, default: str = "") -> str:
+    """讀一個 **provider 名稱**。與生產同樣 `.strip().lower()`。
+
+    r1(Codex):金絲雀原本用 `_env`(只有 strip)讀 provider,而生產是
+    `os.environ.get(...).strip().lower()`。於是 `LLM_PROVIDER=OpenAI` 時
+    兩邊對「誰正在被使用」的認知會分岔 —— 生產跑 openai,金絲雀卻判
+    openai **沒被選用**,把它的真實探測失敗全部降成非致命,job 收綠燈。
+    **正在使用的 provider 壞掉而金絲雀說沒事**,那是最糟的一種假綠燈,
+    而且是我上一個修正(未選用不致命)自己造出來的路徑。
+
+    做成獨立函式而不是在呼叫端各自 `.lower()`:六個讀取點漏掉任何一個,
+    症狀都是同一種假綠燈,而漏掉不會有錯誤訊息。
+    """
+    return _env(name, default).lower()
+
+
 def _has_key(env_name: str) -> bool:
     """金鑰**存不存在**。真正會被呼叫的 provider 才需要金鑰值本身。
 
@@ -225,8 +241,8 @@ def effort_matrix(model: str) -> list:
 
 
 def main() -> int:
-    provider = _env("LLM_PROVIDER", "deepseek")
-    extractor = _env("EXTRACTOR_PROVIDER") or provider
+    provider = _provider_env("LLM_PROVIDER", "deepseek")
+    extractor = _provider_env("EXTRACTOR_PROVIDER") or provider
     model = _env("OPENAI_MODEL", "gpt-5.6-terra")
     ext_model = _env("OPENAI_EXTRACTOR_MODEL") or model
     effort = _env("OPENAI_REASONING_EFFORT", "medium")
@@ -235,7 +251,7 @@ def main() -> int:
     checks = [Check("設定本身合法", True, "")]
     issues = lc.validate_llm_config(
         provider=provider, extractor_provider=extractor,
-        shadow_provider=_env("LLM_SHADOW_PROVIDER"),
+        shadow_provider=_provider_env("LLM_SHADOW_PROVIDER"),
         has_key=_has_key,
         # 第十一輪 P1-4:**DeepSeek 的強度原本完全沒被驗過。**
         # 這裡只在 provider 是 openai 時才帶強度,於是
@@ -480,9 +496,10 @@ def probe_one_provider(provider: str) -> int:
     # **只有被選用的 provider 缺金鑰才算失敗。** matrix 對四個 provider 都跑,
     # 而使用者通常只用其中一兩個 —— 讓沒用到的那些變紅,金絲雀就會恆紅,
     # 而恆紅的閘門等於沒有閘門(與降級清單的常駐雜訊是同一個病)。
-    selected = {_env("LLM_PROVIDER", "deepseek"),
-                _env("EXTRACTOR_PROVIDER") or _env("LLM_PROVIDER", "deepseek"),
-                _env("LLM_SHADOW_PROVIDER")}
+    selected = {_provider_env("LLM_PROVIDER", "deepseek"),
+                _provider_env("EXTRACTOR_PROVIDER")
+                or _provider_env("LLM_PROVIDER", "deepseek"),
+                _provider_env("LLM_SHADOW_PROVIDER")}
     if not key:
         used = provider in selected
         _report([Check(f"{provider} 金鑰", False,
@@ -546,5 +563,5 @@ _PROVIDER_KEY = {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY",
 if __name__ == "__main__":
     # matrix 模式: 有值就只探測那一個 provider
     # (第十輪 P1-3 要真實探測,P0-1 要金鑰隔離 —— matrix 同時滿足兩者)。
-    _only = _env("CANARY_PROVIDER")
+    _only = _provider_env("CANARY_PROVIDER")
     raise SystemExit(probe_one_provider(_only) if _only else main())

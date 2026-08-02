@@ -508,3 +508,93 @@ def test_the_good_fixture_actually_cites_evidence():
     assert _GOOD["claim_audit"], "_GOOD 沒有稽核軌跡"
     known = {n["source_item_id"] for n in _NEWS}
     assert ids <= known, f"_GOOD 引用了測試資料裡不存在的證據:{ids - known}"
+
+
+# ------------------------------------------ 第十三輪 r1:失敗日的呼叫數
+
+def test_a_failed_day_counts_the_fallback_calls_too(luna_on, monkeypatch):
+    """**失敗那列要等落回路徑跑完才定案**(第十三輪 r1,#1)。
+
+    原本在落回**之前**就寫帳:legacy 呼叫與短版重試的計費全部不算,
+    而失敗日正是花最多次呼叫的那些天 —— 低估的方向又偏向「很便宜」。
+    """
+    rows = []
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("逾時")))
+
+    def _legacy(prompt):
+        # legacy 這一次呼叫要出現在失敗那列的計費裡
+        mr._record_llm_call("primary", "deepseek", "deepseek-v4-pro",
+                            accepted=True,
+                            usage={"prompt_tokens": 100, "completion_tokens": 10})
+        return ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
+                "## 一句話總結\n維持核心部位。")
+
+    monkeypatch.setattr(mr, "_call_llm_text", _legacy)
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr._call_llm_analysis_impl(*_ARGS)
+
+    assert len(rows) == 1, f"失敗日沒有留下紀錄:{rows}"
+    assert rows[0]["primary_ok"] is False
+    # 例外那條 Luna 只送出 1 次(第一次就拋),所以 legacy 那次讓它變 2。
+    assert rows[0]["provider_calls"] == 2, (
+        f"失敗日只算到 {rows[0]['provider_calls']} 次呼叫 —— "
+        "落回路徑那次沒被算進去")
+
+
+def test_the_no_output_branch_also_defers(luna_on, monkeypatch):
+    """**兩個失敗分支都要延到落回之後**(第十三輪 r1,#1)。
+
+    「Luna 拋例外」與「Luna 回空」是兩條各自寫帳的分支;只測其中一條,
+    另一條改回「立刻寫帳」也不會紅 —— 而我第一次的突變驗證正好證明了
+    這件事(改無產出那條,測試全綠)。
+    """
+    rows = []
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+    # 合法 JSON、但 schema 不合 → `_luna_analysis` 回空字串(不是拋例外)
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: _response({"完全": "不合 schema"}))
+
+    def _legacy(prompt):
+        mr._record_llm_call("primary", "deepseek", "deepseek-v4-pro",
+                            accepted=True,
+                            usage={"prompt_tokens": 100, "completion_tokens": 10})
+        return ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
+                "## 一句話總結\n維持核心部位。")
+
+    monkeypatch.setattr(mr, "_call_llm_text", _legacy)
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr._call_llm_analysis_impl(*_ARGS)
+    assert len(rows) == 1 and rows[0]["primary_ok"] is False
+    # **精確值,不是下界。** 這條路徑 Luna 自己就有 2 次(初次 + 修補),
+    # 所以 `>= 2` 在還沒算 legacy 時就已經滿足 —— 第一版正是這樣寫的,
+    # 而突變(改回立刻寫帳)因此不紅。**門檻訂得比實際低,等於沒訂。**
+    assert rows[0]["provider_calls"] == 3, (
+        f"應是 2 次 Luna(初次+修補)+ 1 次 legacy,實際 "
+        f"{rows[0]['provider_calls']} —— 落回那次沒算進去")
+
+
+def test_the_failure_row_is_written_even_when_everything_fails(luna_on,
+                                                               monkeypatch):
+    """**`finally` 要涵蓋每一個出口。**
+
+    這一段有七個 return;用「在每個 return 前補一行」的寫法,
+    漏掉任何一個都不會有錯誤訊息 —— 只會讓那一類失敗日從帳本消失。
+    """
+    rows = []
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("逾時")))
+    # 落回路徑也整個掛掉 → 走到備援文字那個出口
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("也掛了")))
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
+    mr._call_llm_analysis_impl(*_ARGS)
+    assert len(rows) == 1, "連備援文字那個出口都要留下失敗紀錄"

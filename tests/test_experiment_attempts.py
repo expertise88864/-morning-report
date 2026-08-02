@@ -330,6 +330,46 @@ def test_production_records_the_call_count():
     assert got == {"provider_calls": 3, "billable_unmeasured_calls": 1}
 
 
+def test_an_accepted_role_can_be_more_than_one_call():
+    """**accepted 那一格可能已經是多次呼叫的累加**(第十三輪 r1,#2)。
+
+    `merge_same_role` 維護 `calls`(抽取器重試、短版重試都會讓它 >1),
+    而原本一律算 1 —— 呼叫數又被低估,方向還是偏向「這個實驗很便宜」。
+    先前的測試給的角色紀錄沒有 `calls`,所以只驗到單次那個情形。
+    """
+    import llm_telemetry as lt
+    import run_manifest as rm
+    one = lt.merge_same_role(None, lt.build_record(
+        "openai", "gpt-5.6-luna",
+        usage={"prompt_tokens": 10, "completion_tokens": 1}))
+    two = lt.merge_same_role(one, lt.build_record(
+        "openai", "gpt-5.6-luna",
+        usage={"prompt_tokens": 10, "completion_tokens": 1}))
+    assert two["calls"] == 2, "前提:merge 會累加 calls"
+    assert rm.call_counts({"primary": two})["provider_calls"] == 2
+    # 缺 `calls` 的舊紀錄退回 1,不要當成 0
+    assert rm.call_counts({"primary": {"model": "x"}})["provider_calls"] == 1
+
+
+def test_pricing_metadata_reaches_the_telemetry_record():
+    """**生效費率要真的進到紀錄裡**(第十三輪 r1,#3)。
+
+    `estimate_cost()` 回傳了 `pricing_tier` 與三個生效費率,而
+    `build_record()` 只留總額與 basis —— 我在上一個 commit 寫下
+    「只記總額的話,對不上帳單時分不出原因」,然後就讓那些欄位停在
+    回傳值裡沒有帶出來。**宣稱與實作差的那一層,正好是宣稱要解決的問題。**
+    """
+    import llm_telemetry as lt
+    for pt, want in ((100_000, "standard"), (300_000, "long_context")):
+        rec = lt.build_record("openai", "gpt-5.6-luna",
+                              usage={"prompt_tokens": pt,
+                                     "completion_tokens": 10_000})
+        assert rec["pricing_tier"] == want
+        assert rec["pricing_schema"] == lt.PRICING_SCHEMA
+        assert rec["effective_input_rate"] > 0
+        assert rec["pricing_source"].startswith("developers.openai.com")
+
+
 def test_started_at_comes_from_the_workflow_not_from_row_creation():
     """**先後要用執行開始時間判,不是用這一列被寫下的時間**(第十三輪 P2-5)。
 

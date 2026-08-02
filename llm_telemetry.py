@@ -134,6 +134,12 @@ def reasoning_tokens_of(usage: dict) -> Optional[int]:
     return None
 
 
+#: 成本紀錄要帶的計價中繼資料。**只記總額,對不上帳單時就分不出原因。**
+_PRICING_FIELDS = ("pricing_tier", "pricing_schema", "effective_input_rate",
+                   "effective_cached_rate", "effective_output_rate",
+                   "pricing_source")
+
+
 def build_record(provider: str, model: str, *, requested_effort: str = "",
                  applied_effort: str = "", usage: Optional[dict] = None,
                  finish_reason: str = "", error: str = "",
@@ -165,6 +171,11 @@ def build_record(provider: str, model: str, *, requested_effort: str = "",
         if cost["usd"] is not None:
             rec["estimated_cost_usd"] = cost["usd"]
         rec["cost_basis"] = cost["basis"]
+        # r1(Codex,#3):**生效費率要真的進到紀錄裡。** 我在上一個 commit
+        # 寫下「只記總額的話,對不上帳單時分不出是用錯費率還是漏了呼叫」,
+        # 然後把那些欄位留在 `estimate_cost()` 的回傳值裡沒有帶出來 ——
+        # 宣稱與實作又差一層,而差的那一層正好是宣稱要解決的問題。
+        rec.update({k: cost[k] for k in _PRICING_FIELDS if k in cost})
     if elapsed:
         # **失敗的呼叫也要有耗時。** 逾時是本 repo 最常見的 LLM 失敗模式,
         # 而「花了幾秒才逾時」是判斷 timeout 該不該調的唯一依據。

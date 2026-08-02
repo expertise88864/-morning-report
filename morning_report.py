@@ -14190,9 +14190,9 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
         evidence_sha_primary=sha, evidence_sha_shadow=sha,
         core_sha_primary=core, core_sha_shadow=core,
         code_version=SHADOW_COHORT_VERSION, failure_reason=reason[:60],
-        run=dict(_xl.run_identity(          # P1-4:重跑要排得出先後
-            os.environ, recorded_at=dt.datetime.now(TPE).isoformat()),
-            **_rm.call_counts(_RUN_MANIFEST.get("llm"))),  # 一列 ≠ 一次呼叫
+        run=dict(_xl.run_identity(os.environ,        # P1-4 重跑要排得出先後
+                                  recorded_at=dt.datetime.now(TPE).isoformat()),
+                 **_rm.call_counts(_RUN_MANIFEST.get("llm"))),  # 列 ≠ 呼叫
         review=review,                      # r5:有沒有可用的盲評材料
         metrics=metrics or {})
 
@@ -14230,19 +14230,14 @@ def _persist_experiment_record(record: dict, today: str) -> None:
 
 
 def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
-    """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4)。
-
-    原本只有 `if _text:` 成功時才記,於是可靠度指標只量得到「Luna 成功的那些
-    天」—— 而「誰比較常失敗」正是十天實驗要回答的問題之一。
-    只記成功的那幾天,那個問題的答案永遠是 100%。
+    """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4):
+    只記成功的那幾天,「誰比較常失敗」的答案永遠是 100%。
     """
     if packet is None or not LLM_EXPERIMENT_ID:
         return
     try:
-        # r2(Codex,#4):**不得寫進 `llm_shadow`。** 主分析失敗後仍會走既有
-        # 路徑,而那條路徑結尾的 `_RUN_MANIFEST["llm_shadow"] = stat` 是**整包
-        # 指派**,會把這裡寫的失敗紀錄整個蓋掉 —— 可靠度又回到只量成功的天。
-        # 放在自己的鍵下,誰都蓋不到。
+        # r2(Codex,#4):**不得寫進 `llm_shadow`** —— 那個鍵在既有路徑結尾是
+        # 整包指派,會把失敗紀錄蓋掉。放自己的鍵下,誰都蓋不到。
         _persist_experiment_record(_experiment_row(
             packet, primary_ok=False, shadow_ok=False,
             today=dt.datetime.now(TPE).strftime("%Y-%m-%d"), reason=reason),
@@ -14260,6 +14255,7 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
     # **三個條件同時成立才走**:profile 是 luna、API 模式是 responses、有金鑰。
     # 任一環節失敗就落回下面的既有路徑 —— 晨報不可斷,而新路徑尚未經過生產。
     _packet = None
+    _pending_failure = None   # r1 #1:延到落回跑完才寫,否則漏算 legacy 計費
     try:
         _profile = _prompt_profile_for(LLM_PROVIDER, LLM_PRIMARY_PROMPT_PROFILE)
     except KeyError as e:
@@ -14289,63 +14285,68 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                                 shadow_profile=_shadow_bundle["profile_id"])
                 return _text
             print("[llm] Luna 路徑沒有產出,落回既有路徑", file=sys.stderr)
-            _record_experiment_failure(_packet, "primary_no_output")
+            _pending_failure = (_packet, "primary_no_output")
         except Exception as e:                  # noqa: BLE001 - 晨報不可斷
             print(f"[llm] Luna 路徑失敗({type(e).__name__}),落回既有路徑:"
                   f"{_redact_secret_text(str(e))[:160]}", file=sys.stderr)
             _DEGRADED_STEPS.append("llm:luna_path_failed")
-            _record_experiment_failure(_packet, type(e).__name__)
+            _pending_failure = (_packet, type(e).__name__)
+    # r1(Codex,#1):用 `finally` 而不是逐個 return 補一行(這段有七個 return)
     try:
-        prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
-    except Exception as e:
-        # prompt 組裝崩了（例：歷史記憶欄位格式化錯誤）—— 仍寄信，但用備援文字
-        print(f"[llm] prompt 組裝失敗，改用備援文字: {type(e).__name__}: {e}", file=sys.stderr)
-        return _fallback_analysis_text(news, e)
-    try:
-        text = _call_llm_text(prompt)
-        if _analysis_complete_enough(text):
-            # 批#89:影子比較接在**主分析成功之後** —— 只有這裡同時握有 prompt
-            # 與正式輸出。呼叫端沒有 prompt,在那邊重建會與這裡漂移。
-            # 預設關閉;失敗只是今天沒有比較資料(見 `_run_llm_shadow`)。
-            _run_llm_shadow(prompt, text, dt.datetime.now(TPE))
-            return text
-        print("[llm] 分析輸出疑似截斷，改用短版提示重試一次", file=sys.stderr)
-        concise_prompt = (
-            prompt
-            + "\n\n【長度控制追加規則】\n"
-              "上一版容易過長。請完整輸出所有章節，但更短：世界大事速覽最多 4 條、每條一行;"
-              "科技板塊脈動 6-8 條(只寫科技);"
-              "其他類股資訊依類股熱度表挑今日在動且確有新聞的類股、每類 1-2 條、"
-              "以真正的新聞事件為主(非股價/法人/營收數據),無新聞的類股略過;"
-              "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
-              "必須寫完我的明確立場與一句話總結。"
-        )
-        text = _call_llm_text(concise_prompt)
-        if _analysis_complete_enough(text):
-            return text
-        raise RuntimeError("LLM concise retry output incomplete")
-    except Exception as e:
-        # 跨供應商備援:主供應商(通常 DeepSeek)整個掛掉時,若有 Gemini 金鑰就改用 Gemini,
-        # 避免單一 API 故障(如 400/限流)導致整份分析空白。
-        if LLM_PROVIDER != "gemini" and GEMINI_API_KEY:
-            try:
-                print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
-                # 批#37:備援輸出也要過完整性檢查。同函式上方兩處(主呼叫、concise
-                # 重試)都有 _analysis_complete_enough,唯獨這條**生產實際會走的**
-                # 備援路徑沒有——Gemini 若也截斷會被原樣送出,頂部 KPI/結論卡變「—」,
-                # 而那正是該函式存在的理由。截斷則退回確定性備援文字。
-                _g = _call_gemini(prompt)
-                if _analysis_complete_enough(_g):
-                    return _g
-                print("[llm] Gemini 備援輸出疑似截斷 → 改用備援文字", file=sys.stderr)
-                return _fallback_analysis_text(news, e)
-            except Exception as e2:
-                print(f"[llm] Gemini 備援也失敗: {_redact_secret_text(str(e2))}",
-                      file=sys.stderr)
-                return _fallback_analysis_text(news, e)
-        print(f"[llm] 全部失敗，使用備援文字: {_redact_secret_text(str(e))}",
-              file=sys.stderr)
-        return _fallback_analysis_text(news, e)
+        try:
+            prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
+        except Exception as e:
+            # prompt 組裝崩了（例：歷史記憶欄位格式化錯誤）—— 仍寄信，但用備援文字
+            print(f"[llm] prompt 組裝失敗，改用備援文字: {type(e).__name__}: {e}", file=sys.stderr)
+            return _fallback_analysis_text(news, e)
+        try:
+            text = _call_llm_text(prompt)
+            if _analysis_complete_enough(text):
+                # 批#89:影子比較接在**主分析成功之後** —— 只有這裡同時握有 prompt
+                # 與正式輸出。呼叫端沒有 prompt,在那邊重建會與這裡漂移。
+                # 預設關閉;失敗只是今天沒有比較資料(見 `_run_llm_shadow`)。
+                _run_llm_shadow(prompt, text, dt.datetime.now(TPE))
+                return text
+            print("[llm] 分析輸出疑似截斷，改用短版提示重試一次", file=sys.stderr)
+            concise_prompt = (
+                prompt
+                + "\n\n【長度控制追加規則】\n"
+                  "上一版容易過長。請完整輸出所有章節，但更短：世界大事速覽最多 4 條、每條一行;"
+                  "科技板塊脈動 6-8 條(只寫科技);"
+                  "其他類股資訊依類股熱度表挑今日在動且確有新聞的類股、每類 1-2 條、"
+                  "以真正的新聞事件為主(非股價/法人/營收數據),無新聞的類股略過;"
+                  "不要撰寫今日台股關注五檔，該區塊由 Python Top5 卡片處理；"
+                  "必須寫完我的明確立場與一句話總結。"
+            )
+            text = _call_llm_text(concise_prompt)
+            if _analysis_complete_enough(text):
+                return text
+            raise RuntimeError("LLM concise retry output incomplete")
+        except Exception as e:
+            # 跨供應商備援:主供應商(通常 DeepSeek)整個掛掉時,若有 Gemini 金鑰就改用 Gemini,
+            # 避免單一 API 故障(如 400/限流)導致整份分析空白。
+            if LLM_PROVIDER != "gemini" and GEMINI_API_KEY:
+                try:
+                    print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
+                    # 批#37:備援輸出也要過完整性檢查。同函式上方兩處(主呼叫、concise
+                    # 重試)都有 _analysis_complete_enough,唯獨這條**生產實際會走的**
+                    # 備援路徑沒有——Gemini 若也截斷會被原樣送出,頂部 KPI/結論卡變「—」,
+                    # 而那正是該函式存在的理由。截斷則退回確定性備援文字。
+                    _g = _call_gemini(prompt)
+                    if _analysis_complete_enough(_g):
+                        return _g
+                    print("[llm] Gemini 備援輸出疑似截斷 → 改用備援文字", file=sys.stderr)
+                    return _fallback_analysis_text(news, e)
+                except Exception as e2:
+                    print(f"[llm] Gemini 備援也失敗: {_redact_secret_text(str(e2))}",
+                          file=sys.stderr)
+                    return _fallback_analysis_text(news, e)
+            print(f"[llm] 全部失敗，使用備援文字: {_redact_secret_text(str(e))}",
+                  file=sys.stderr)
+            return _fallback_analysis_text(news, e)
+    finally:
+        if _pending_failure:
+            _record_experiment_failure(*_pending_failure)
 
 
 # 向後相容別名（test_with_mock.py 等舊程式仍可運作）

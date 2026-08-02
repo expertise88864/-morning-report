@@ -268,7 +268,12 @@ def call_counts(llm: Optional[dict]) -> dict:
     """
     d = llm if isinstance(llm, dict) else {}
     att = [a for a in (d.get("attempts") or []) if isinstance(a, dict)]
+    # r1(Codex,#2):**accepted 的那一格可能已經是多次呼叫的累加。**
+    # `merge_same_role` 維護 `calls`(抽取器重試、短版重試都會讓它 >1),
+    # 而原本一律算 1 —— 呼叫數又被低估,方向還是偏向「這個實驗很便宜」。
+    # 缺 `calls` 的舊紀錄才退回 1。
     accepted = [d.get(s) for s in ("primary", "extractor", "shadow")]
-    return {"provider_calls": len(att) + sum(1 for a in accepted if a),
+    return {"provider_calls": len(att) + sum(
+                int(a.get("calls") or 1) for a in accepted if isinstance(a, dict)),
             "billable_unmeasured_calls": sum(
                 1 for a in att if a.get("billable_unmeasured"))}

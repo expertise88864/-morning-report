@@ -4952,6 +4952,32 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73341230",
+        "title": "SpaceX earnings take center stage",
+        "published": "Sun, 02 Aug 2026 16:09:54 +0000",
+        "processed_at": "2026-08-02T20:30:01Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 將於週三發布上市後首份財報，市場關注 Starlink 成長、Starship 時程與資本支出；分析師 Mike Zucardi 認為股價重挫已大致反映供給風險，摩根士丹利目標價 300 美元，而分析師 Julia Ostiaan 則因極高空單、股份解禁潮及 AI 業務永續性存疑維持強烈賣評。",
+            "本週焦點為 7 月非農就業報告，預期新增 8.6 萬人、失業率 4.2%；Wells Fargo 指裁員仍有限，但職缺發布低於去年同期，ADP 私部門就業增速自春季放緩，且勞動參與率回升可能使失業率有上行風險。",
+            "長債殖利率在聯準會主席 Warsh 記者會後仍位於 19 年高點，通膨擔憂未緩解，債券市場將是金融條件的主要驅動力。",
+            "中東局勢訊息分歧，川普稱暫緩軍事打擊並可能重啟荷姆茲海峽談判，伊朗否認，能源市場與區域安全夾在兩種敘事間，油價波動風險仍在。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師看法分歧：Zucardi 認為回檔已反映供給風險，目標價 300 美元；Ostiaan 以空單與解禁潮等因素維持強烈賣評。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "the recent drawdown largely prices in the supply risks"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73279484",
         "title": "Reddit beat fails to trend",
         "published": "Fri, 31 Jul 2026 10:46:33 +0000",
@@ -5529,42 +5555,6 @@
           "notable_quote": "Bill McDermott said, 'We have a kill switch that stops AI agents that go rogue.'"
         },
         "shown_at": "2026-07-23T22:52:12Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73105266",
-        "title": "Super Micro heats up",
-        "published": "Wed, 22 Jul 2026 10:54:15 +0000",
-        "processed_at": "2026-07-22T15:20:23Z",
-        "digest": {
-          "summary_points": [
-            "Super Micro Computer (SMCI) 預估 FY26 Q4 營收接近 $110 億至 $125 億的低端，但毛利率預估大幅提升至 15-17%（先前指引 8.2-8.4%），主因客戶和產品組合有利，盤前漲 16%。",
-            "SMCI 在 FY26 Q4 收到合計逾 600 億美元的新訂單，創紀錄新高，預計在未來季度交貨。",
-            "美國總統川普宣布自 8/1 起進口學名藥享兩年零關稅，之後關稅將逐步升至 100%（2028 年 8 月）及 200%（2029 年），以鼓勵生產回流美國。",
-            "Nike 宣布自明年 1 月起削減中國線上經銷商，轉向官方網站、App 及天貓、京東等平台，可能衝擊實體合作伙伴。",
-            "PEGA Systems (PEGA) 因 Q2 財報營收獲利不如預期，且 AI 帶動的市場不確定性延遲客戶決策，股價盤前大跌 15%。",
-            "美股期指盤前走低，原油期貨漲 5% 至每桶 88 美元，歐股英國 FTSE 100 漲 0.8%，德國 DAX 漲 0.5%。"
-          ],
-          "tickers": [
-            {
-              "name": "Super Micro Computer",
-              "code": "SMCI",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q4 初步指引顯示毛利率大幅提升，新訂單創紀錄，盤前漲 16%。"
-            },
-            {
-              "name": "PEGA Systems",
-              "code": "PEGA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 財報低於預期，AI 不確定性延遲客戶決策，股價下跌 15%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-22T22:58:47Z"
       }
     ]
   },

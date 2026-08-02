@@ -31,6 +31,14 @@ from typing import Optional
 
 import llm_telemetry as _lt
 import app_context as _app
+import prompt_profiles as _pp
+import evidence_packet as _ep
+import analysis_schema as _sch
+import analysis_render as _ar
+import analysis_metrics as _am
+import blind_review as _br
+import openai_responses as _orx
+import llm_experiment as _lx
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -432,8 +440,46 @@ LLM_SHADOW_TIMEOUT = float(
                _lc.timeout_base(LLM_SHADOW_PROVIDER)[1])))
 #: 影子的推理強度(第九輪 P1-8)。空 = 跟隨該 provider 的預設。
 #: 它是**同群欄位**:影子換了強度,舊樣本就不該再跟新樣本平均在一起。
+
+def _int_env(name: str, default: int) -> int:
+    """整數環境變數。**壞值退回預設並印出來**,不得讓晨報因為一個打錯的
+    數字而整份失敗 —— 但也不得靜默,否則使用者會以為設定生效了。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"[config] {name}={raw!r} 不是整數,退回 {default}", file=sys.stderr)
+        return default
+
+
 LLM_SHADOW_REASONING_EFFORT = os.environ.get(
     "LLM_SHADOW_REASONING_EFFORT", "").strip().lower()
+
+# ── Luna 特化實驗(Phase 7)────────────────────────────────────────────
+# 全部可由 repo variable 覆寫;**回切 DeepSeek 不需要 revert 程式碼**。
+#: 主分析/影子的問法。空 = 依 provider 自動選(見 `_prompt_profile_for`)。
+LLM_PRIMARY_PROMPT_PROFILE = os.environ.get("LLM_PRIMARY_PROMPT_PROFILE", "").strip()
+LLM_SHADOW_PROMPT_PROFILE = os.environ.get("LLM_SHADOW_PROMPT_PROFILE", "").strip()
+LLM_COMPARISON_MODE = os.environ.get(
+    "LLM_COMPARISON_MODE", "end_to_end_profiles").strip()
+#: 實驗代號。**空 = 沒有在跑實驗** —— 帳本不會累積可比較配對。
+LLM_EXPERIMENT_ID = os.environ.get("LLM_EXPERIMENT_ID", "").strip()
+LLM_EXPERIMENT_TARGET_PAIRS = _int_env("LLM_EXPERIMENT_TARGET_PAIRS", 10)
+#: `responses` 或 `chat_completions`。預設是**現況**,不是新路徑 ——
+#: 讓未經生產驗證的 adapter 成為預設,等於讓任何人一切 provider 就踩到它。
+OPENAI_API_MODE = os.environ.get("OPENAI_API_MODE", "chat_completions").strip().lower()
+OPENAI_STORE = os.environ.get("OPENAI_STORE", "0").strip() == "1"
+OPENAI_TEXT_VERBOSITY = os.environ.get("OPENAI_TEXT_VERBOSITY", "high").strip()
+OPENAI_REASONING_SUMMARY = os.environ.get("OPENAI_REASONING_SUMMARY", "auto").strip()
+OPENAI_REASONING_CONTEXT = os.environ.get(
+    "OPENAI_REASONING_CONTEXT", "current_turn").strip()
+OPENAI_PROMPT_CACHE_TTL_SECONDS = _int_env("OPENAI_PROMPT_CACHE_TTL_SECONDS", 0)
+#: 盲評卡要送到哪。**預設 `local`** —— 只寫在 runner 上,job 結束即消失。
+#: 那兩份文字是使用者的晨報內容,而公開 repo 的 Actions artifact 任何人
+#: 都下載得到;通道是使用者的決定,不是預設值該替他做的。
+LLM_BLIND_REVIEW_SINK = os.environ.get("LLM_BLIND_REVIEW_SINK", "local").strip()
 #: 影子同群的**語意版本**(第十輪 P1-7)。
 #:
 #: 原本用 `GITHUB_SHA` —— 而這個 repo 一天常有多個 commit,只要改 HTML 樣式、
@@ -505,6 +551,25 @@ LLM_REQUEST_TIMEOUT_SECONDS = min(
 _LLM_DEADLINE: Optional[float] = None
 
 
+#: provider → 預設 prompt profile。**空的 variable 不代表「沒有 profile」**,
+#: 而是「依 provider 自動選」—— 那讓回切 DeepSeek 只需要改一個變數。
+_DEFAULT_PROFILE_BY_PROVIDER = {"openai": "luna56_xhigh_v1"}
+_FALLBACK_PROFILE = "deepseek_legacy_v1"
+
+
+def _prompt_profile_for(provider: str, override: str = "") -> str:
+    """這個 provider 這一班用哪個問法。
+
+    明設的 override 優先;未知的 override **當場失敗**而不是靜默落回預設 ——
+    在實驗裡靜默落回的症狀是「帳本記著一個沒發生過的設定」。
+    """
+    if override:
+        _pp.profile_meta(override)          # 未知就拋 KeyError
+        return override
+    return _DEFAULT_PROFILE_BY_PROVIDER.get(
+        (provider or "").strip().lower(), _FALLBACK_PROFILE)
+
+
 def _llm_config_resolved() -> dict:
     """每個 LLM 開關**本班實際採用的值**(第十一輪 P2-1)。
 
@@ -536,6 +601,18 @@ def _llm_config_resolved() -> dict:
         "LLM_TOTAL_TIMEOUT_SECONDS": LLM_TOTAL_TIMEOUT_SECONDS,
         "LLM_REQUEST_TIMEOUT_SECONDS": LLM_REQUEST_TIMEOUT_SECONDS,
         "LLM_EVENT_EXTRACTION": os.environ.get("LLM_EVENT_EXTRACTION", "1"),
+        "LLM_PRIMARY_PROMPT_PROFILE": LLM_PRIMARY_PROMPT_PROFILE,
+        "LLM_SHADOW_PROMPT_PROFILE": LLM_SHADOW_PROMPT_PROFILE,
+        "LLM_COMPARISON_MODE": LLM_COMPARISON_MODE,
+        "LLM_EXPERIMENT_ID": LLM_EXPERIMENT_ID,
+        "LLM_EXPERIMENT_TARGET_PAIRS": LLM_EXPERIMENT_TARGET_PAIRS,
+        "OPENAI_API_MODE": OPENAI_API_MODE,
+        "OPENAI_STORE": "1" if OPENAI_STORE else "0",
+        "OPENAI_TEXT_VERBOSITY": OPENAI_TEXT_VERBOSITY,
+        "OPENAI_REASONING_SUMMARY": OPENAI_REASONING_SUMMARY,
+        "OPENAI_REASONING_CONTEXT": OPENAI_REASONING_CONTEXT,
+        "OPENAI_PROMPT_CACHE_TTL_SECONDS": OPENAI_PROMPT_CACHE_TTL_SECONDS,
+        "LLM_BLIND_REVIEW_SINK": LLM_BLIND_REVIEW_SINK,
     }
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
@@ -10867,6 +10944,7 @@ def _state_push_paths() -> list[str]:
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
             str(CORPORATE_ACTION_FILE),   # 批#82:暫停交易/復牌史。TWTAWU 是**快照**,不跨日累積則結算當下查不到
             str(LLM_SHADOW_LEDGER_FILE),   # 批#89:影子比較帳本。價值全在跨日累積,不 commit 回來就永遠是「樣本不足」
+            str(LLM_EXPERIMENT_LEDGER_FILE),  # 同理:不 commit 回來,十配對永遠湊不滿
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
 
 
@@ -13339,7 +13417,9 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
     return content
 
 
-def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> None:
+def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
+                    *, packet: Optional[dict] = None,
+                    primary_profile: str = "", shadow_profile: str = "") -> None:
     """讓第二個模型也跑同一份 prompt,**只記錄、不改輸出**(批#89)。
 
     預設關閉;設了 `LLM_SHADOW_PROVIDER` 才啟用。編排本體在
@@ -13356,22 +13436,54 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
     try:
         if not _run_budget_ok(int(LLM_SHADOW_TIMEOUT) + 30, "LLM 影子比較"):
             stat["skipped"] = "run_budget"
+            # r4(Codex,#1):**只有實驗真的在跑的那一天才記。**
+            # legacy 呼叫端不傳 packet,而 `_experiment_row(None, …)` 會捏出一列
+            # Luna profile 的成功紀錄 —— upsert 依 (date, experiment_id) 覆蓋,
+            # 於是它會把稍早那筆**真正的 Luna 失敗**蓋掉,失敗日從可靠度分母
+            # 消失。這比我要修的問題更糟。守衛與成功分支一致。
+            # r3(Codex,#4):跳過也要留一列。 不留的話,可靠度只量得到
+            # 「跑得完的那些天」—— 而最慢、最容易被跳過的日子正是應該被算進去的。
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text), shadow_ok=False,
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    reason="shadow_skipped:run_budget"),
+                    now_tpe.strftime("%Y-%m-%d"))
         elif LLM_SHADOW_PROVIDER not in ("openai", "deepseek"):
             stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text), shadow_ok=False,
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    reason=f"shadow_skipped:{stat['skipped']}"[:60]),
+                    now_tpe.strftime("%Y-%m-%d"))
         else:
             # P2-5:prompt 由 `run_comparison` 交進來,這裡**不得取用外層的
             # `prompt`** —— 「影子送的與主分析送的是同一份」要由結構保證,
             # 不是靠讀程式碼相信。
+            # r3(Codex,#2):**影子的文字要留下來。** `run_comparison` 只回統計,
+            # 文字在它回傳前就被丟掉 —— 於是十配對達標時,兩側的數字一致性、
+            # 證據涵蓋、來源多樣性都算不出來,帳本卻宣告「可以做判讀」。
+            _shadow_text = {"value": ""}
+
             def _call(p):
                 if LLM_SHADOW_PROVIDER == "openai":
                     # r1(Codex #1,P2):**影子的推理強度原本只被記錄、沒有送出。**
                     # 沒帶 `reasoning=` 就會沿用主分析的 `OPENAI_REASONING_EFFORT`,
                     # 而帳本的 cohort 卻宣稱是影子那個 —— 不同設定的樣本
                     # 會被錯誤地算進同一個平均。
-                    return _call_openai(p, model=LLM_SHADOW_MODEL,
-                                        timeout=LLM_SHADOW_TIMEOUT, role="shadow",
-                                        reasoning=LLM_SHADOW_REASONING_EFFORT)
-                return _call_deepseek(p, role="shadow")
+                    out = _call_openai(p, model=LLM_SHADOW_MODEL,
+                                       timeout=LLM_SHADOW_TIMEOUT, role="shadow",
+                                       reasoning=LLM_SHADOW_REASONING_EFFORT)
+                    _shadow_text["value"] = out or ""
+                    return out
+                out = _call_deepseek(p, role="shadow")
+                _shadow_text["value"] = out or ""
+                return out
 
             def _write(path, ledger):
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -13403,6 +13515,34 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime) -> Non
             stat.update(out)
             if out.get("cumulative"):
                 print(f"[llm-shadow] {out['cumulative'].get('verdict')}")
+            # Luna 實驗:把**配對語意需要的欄位**一起記進 manifest。
+            # 兩邊的 evidence_sha 相同才算可比,而那是公平性的全部依據 ——
+            # 沒有記下來的話,事後補不回來(見 `llm_experiment.exclusion_reason`)。
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _today = out.get("today") or {}
+                _sha = _ep.evidence_sha(packet)
+                # r4(Codex,#2):**盲評卡要趁兩份文字都還在的時候產生。**
+                # 十配對達標後的判讀明文要求人工盲評,而影子的文字算完指標
+                # 就被丟掉 —— 那個要求先前永遠無法執行。
+                _review = _write_blind_review_card(
+                    primary_text, _shadow_text["value"],
+                    now_tpe.strftime("%Y-%m-%d"))
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text),
+                    shadow_ok=bool(_today.get("shadow_ok")),
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    primary_prompt_sha=(_RUN_MANIFEST.get("llm", {})
+                                        .get("primary_bundle") or {})
+                    .get("prompt_sha") or "",
+                    shadow_prompt_sha=_today.get("prompt_sha") or "",
+                    # r3(Codex,#2):**兩側的可比指標要在文字還在記憶體時算。**
+                    # `run_comparison` 回傳前就把影子的文字丟掉了。
+                    review=_review,
+                    metrics=_comparable_metrics(
+                        packet, primary_text, _shadow_text["value"])),
+                    now_tpe.strftime("%Y-%m-%d"))
     except Exception as e:                           # noqa: BLE001
         stat["error"] = f"{type(e).__name__}: {e}"[:160]
         print(f"[llm-shadow] 影子比較整段略過(不影響晨報): {e}", file=sys.stderr)
@@ -13818,11 +13958,342 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
         _LLM_DEADLINE = previous_deadline
 
 
+def _call_openai_responses(payload: dict) -> dict:
+    """送一次 Responses 請求,回傳解析後的 JSON。
+
+    選配欄位被拒時**逐一退讓重試**而不是整個請求作廢:`reasoning.summary`
+    需要組織驗證、`prompt_cache_options` 是 GPT-5.6+ 才有,兩者都只影響
+    可觀測性與成本。為了它們讓晨報斷掉是明顯錯誤的取捨。
+    """
+    url = f"{OPENAI_BASE_URL}{_orx.RESPONSES_PATH}"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}",
+               "Content-Type": "application/json"}
+    body = dict(payload)
+    for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
+        r = requests.post(url, json=body, headers=headers,
+                          timeout=_llm_request_timeout())
+        if r.status_code != 400:
+            r.raise_for_status()
+            return r.json()
+        dropped = None
+        for field in _orx.OPTIONAL_FIELDS:
+            leaf = field.split(".")[-1]
+            if _lc.response_blames_param(r, leaf):
+                dropped = field
+                break
+        if dropped is None or attempt >= len(_orx.OPTIONAL_FIELDS):
+            r.raise_for_status()
+        print(f"[llm] Responses 400 指責 {dropped},移除後重試", file=sys.stderr)
+        body = _orx.drop_field(body, dropped)
+    raise RuntimeError("Responses 退讓重試用盡")
+
+
+#: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
+#: 多一個機制就等於兩個都測不出來(見 `_luna_analysis` 的 docstring)。
+_LUNA_ATTEMPTS = (False, True)
+
+
+def _luna_analysis(packet: dict, effort: str) -> str:
+    """Luna 特化路徑:strict JSON → 驗證 →(最多一次修補)→ 確定性渲染。
+
+    **任何環節失敗都回空字串**,由呼叫端落回既有路徑 —— 晨報不可斷。
+    回半份比不回更糟:信寄出去了但少了一半,而且沒有任何錯誤訊息。
+
+    修補**最多一次**,而且那一次同樣計費、同樣進 attempts。
+    「成本上限 +1」如果不把修補算進去,那個宣稱就是假的。
+
+    次數的上限**只由 `_LUNA_ATTEMPTS` 這一個東西決定**。原本另外還有一個
+    `if repair: return ""` 的早退 —— 兩個機制各自都足夠,結果是把任一個
+    改壞測試都不會紅(突變驗證當場抓到)。重複的守衛測不出來,
+    而測不出來的守衛在下一次重構時會被悄悄拿掉。
+    """
+    bundle = _pp.build_luna_bundle(packet)
+    _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
+        _pp.bundle_debug_json(bundle))
+    ids = _ep.evidence_ids(packet)
+    payload = _orx.build_payload(
+        model=OPENAI_MODEL,
+        instructions=bundle["developer_instructions"],
+        user_input=bundle["user_payload"],
+        effort=effort, verbosity=OPENAI_TEXT_VERBOSITY,
+        response_format=bundle["response_schema"],
+        max_output_tokens=_lt.output_cap(effort, LLM_REPORT_MAX_TOKENS,
+                                         model=OPENAI_MODEL),
+        store=OPENAI_STORE,
+        reasoning_summary=OPENAI_REASONING_SUMMARY,
+        reasoning_context=OPENAI_REASONING_CONTEXT,
+        prompt_cache_key=f"morning-{bundle['profile_id']}",
+        prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
+
+    for repair in _LUNA_ATTEMPTS:
+        t0 = time.monotonic()
+        try:
+            resp = _call_openai_responses(payload)
+        except Exception as e:              # noqa: BLE001 - 晨報不可斷
+            # r1(Codex,#6):**送出去了就可能被計費。** ReadTimeout、連線中斷、
+            # 回應不是 JSON —— 這些都發生在 server 已經收下請求之後,
+            # 而既有的 chat/completions 路徑正是為此記 `billable_unmeasured`。
+            # 不記的話總成本與呼叫數會低估,而十天實驗的結論建立在成本上。
+            _record_llm_call(
+                "primary", "openai", OPENAI_MODEL, requested_effort=effort,
+                accepted=False, elapsed=time.monotonic() - t0,
+                error=_redact_secret_text(str(e)), repair=repair,
+                billable_unmeasured=True)
+            raise
+        out = _orx.extract_output(resp)
+        elapsed = time.monotonic() - t0
+
+        def _record(accepted: bool, note: str = "") -> None:
+            """**每一次送出都要計費入帳**,不論被不被採用。
+
+            `accepted=True` 才會進 `llm.primary`(成本彙總看那裡);
+            不合格的那次進 `attempts`。兩者都帶 usage —— 修補失敗的呼叫
+            一樣要付錢,不記等於低估成本,而十天實驗的結論建立在成本上。
+            """
+            _record_llm_call(
+                "primary", "openai", OPENAI_MODEL,
+                requested_effort=effort,
+                applied_effort=_orx.applied_effort(resp),
+                usage=_orx.normalize_usage(resp.get("usage")),
+                accepted=accepted, elapsed=elapsed,
+                finish_reason=out["status"], repair=repair,
+                reject_reason=note)
+
+        if out["refusal"] or out["status"] == "incomplete":
+            _record(False, out["refusal"] or out["incomplete_reason"])
+            print(f"[llm] Luna {out['refusal'] or out['incomplete_reason']}",
+                  file=sys.stderr)
+            return ""
+        try:
+            obj = json.loads(out["text"])
+        except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
+            obj = None
+        problems = _sch.validate(obj, ids) if obj is not None else ["不是合法 JSON"]
+        if not problems:
+            text = _ar.render(obj)
+            if text:
+                _record(True)
+                _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
+                    obj, packet)
+                return text
+            problems = ["渲染不出可用的晨報(缺立場或總結)"]
+        _record(False, "; ".join(problems[:2]))
+        _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
+        print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
+              f"{problems[:2]}", file=sys.stderr)
+        payload = dict(payload, input=(
+            bundle["user_payload"] + "\n\nREPAIR\n上一次的輸出有以下問題,"
+            "請只修正這些問題並重新輸出完整 JSON:\n"
+            + "\n".join(f"- {p}" for p in problems[:5])))
+    return ""
+
+
+#: 盲評卡的落地目錄。**刻意不在 `STATE_ROOT` 之下,也不在 state push 清單裡**
+#: —— 它含兩份完整分析文字,而 state 是 commit 進公開 repo 的。
+BLIND_REVIEW_DIR = Path("artifacts") / "blind_review"
+
+
+def _write_blind_review_card(primary_text: str, shadow_text: str,
+                             today: str) -> dict:
+    """產生 A/B 盲評卡並落地(r4 #2、r5 #1/#2/#3、r6 #1/#3)。編排在 `blind_review`。"""
+    if not (LLM_EXPERIMENT_ID and primary_text and shadow_text):
+        return {}
+
+    def _write(name, obj):
+        BLIND_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(BLIND_REVIEW_DIR / name,
+                           json.dumps(obj, ensure_ascii=False, indent=1))
+
+    entry = _br.write_card(
+        primary_text, shadow_text, today=today, sink=LLM_BLIND_REVIEW_SINK,
+        sinks=_br.SINKS, dirname=str(BLIND_REVIEW_DIR),
+        retention_days=_br.RETENTION_DAYS,
+        build=_br.card_files, write=_write, degrade=_DEGRADED_STEPS.append)
+    _RUN_MANIFEST.setdefault("llm_experiment_review", {}).update(entry)
+    return entry
+
+
+def _comparable_metrics(packet: Optional[dict], primary_text: str,
+                        shadow_text: str) -> dict:
+    """兩側**都算得出來**的指標 + 成本(r3 Codex,#2)。
+
+    十配對達標時要有東西可以判讀。先前 `analysis_metrics` 的函式**在生產
+    完全沒有呼叫端** —— 帳本會宣告「可以做判讀」,而實際上只有立場、字數與
+    body overlap,正是指令書明說不可當判準的那幾樣。
+
+    只算 `text_metrics` 那一類:結構化指標**只有 Luna 有**,放進來比較就變成
+    「有結構 vs 沒結構」(見 `analysis_metrics` 的模組說明)。
+    Luna 的結構化指標另外記在 `llm.primary_metrics`,刻意不混進來。
+    """
+    if not packet:
+        return {}
+    try:
+        llm = _RUN_MANIFEST.get("llm") or {}
+        out = {}
+        for role, text in (("primary", primary_text), ("shadow", shadow_text)):
+            out[role] = _am.text_metrics(
+                text or "", packet, stance=_extract_stance(text or ""))
+            rec = llm.get(role) or {}
+            out[role]["cost"] = _am.cost_effectiveness(
+                rec.get("estimated_cost_usd"), bool(text),
+                structured=(llm.get("primary_metrics")
+                            if role == "primary" else None))
+            out[role]["elapsed_seconds"] = rec.get("elapsed_seconds")
+        return out
+    except Exception as e:                      # noqa: BLE001 - 量測不得弄壞晨報
+        print(f"[llm-experiment] 指標計算失敗(不影響晨報): {e}", file=sys.stderr)
+        return {"error": str(e)[:120]}
+
+
+def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
+                    shadow_ok: bool, today: str, primary_profile: str = "",
+                    shadow_profile: str = "", primary_prompt_sha: str = "",
+                    shadow_prompt_sha: str = "", reason: str = "",
+                    shadow_coverage: Optional[dict] = None,
+                    review: Optional[dict] = None,
+                    metrics: Optional[dict] = None) -> dict:
+    """組出一列實驗紀錄。**成功、失敗、跳過三條路徑共用這一個入口。**
+
+    r3(Codex,#4):shadow 在**呼叫之前**被跳過(執行預算不足、provider 不合法)
+    時,原本完全不會產生紀錄 —— 於是可靠度只量得到「跑得完的那些天」,
+    而最慢、最容易被跳過的日子被排除,`shadow_ok_rate` 因此偏高。
+    唯一入口才擋得住這種「某條路徑忘了記」。
+
+    r3(Codex,#3):`coverage` 先前沒有被傳進來,帳本兩側永遠是空物件 ——
+    折衷 (b) 依賴的深度揭露因此無法隨十配對累積。
+    DeepSeek 側目前沒有對應統計,**明說 unavailable**,不拿空物件冒充已記錄。
+    """
+    pk = packet or {}
+    sha = _ep.evidence_sha(pk) if pk else ""
+    core = pk.get("core_sha") or ""
+    return _lx.build_record(
+        today=today, experiment_id=LLM_EXPERIMENT_ID,
+        primary={"profile": primary_profile or "luna56_xhigh_v1",
+                 "profile_version": _pp.PROFILES.get(
+                     primary_profile or "luna56_xhigh_v1", {}).get("version"),
+                 "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
+                 "ok": bool(primary_ok), "prompt_sha": primary_prompt_sha,
+                 "coverage": dict(pk.get("coverage") or {}),
+                 "evidence_schema_version": pk.get("schema_version"),
+                 "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
+        shadow={"profile": shadow_profile or "deepseek_legacy_v1",
+                "profile_version": _pp.PROFILES.get(
+                    shadow_profile or "deepseek_legacy_v1", {}).get("version"),
+                "model": LLM_SHADOW_MODEL,
+                "effort": LLM_SHADOW_REASONING_EFFORT,
+                "ok": bool(shadow_ok), "prompt_sha": shadow_prompt_sha,
+                # legacy 路徑沒有逐則的涵蓋統計 —— 明說不可得,
+                # 不要用空物件讓人以為「記過了而且是零」。
+                "coverage": dict(shadow_coverage or {"available": None,
+                                                     "basis": "legacy profile 無逐則涵蓋統計"})},
+        evidence_sha_primary=sha, evidence_sha_shadow=sha,
+        core_sha_primary=core, core_sha_shadow=core,
+        code_version=SHADOW_COHORT_VERSION, failure_reason=reason[:60],
+        # r5(Codex,#1/#3):**這個配對到底有沒有可用的盲評材料。**
+        # 判讀文字要求人工盲評,而卡片可能寫失敗、或落在一個 job 結束就
+        # 消失的 sink —— 那時「達標」不代表做得成判讀。
+        review=review,
+        metrics=metrics or {})
+
+
+def _persist_experiment_record(record: dict, today: str) -> None:
+    """把今天這一列寫進**跨日**帳本並回報進度。
+
+    r2(Codex,#3):先前紀錄只進當日 manifest,而 manifest 每天覆寫 ——
+    `pair_progress()` 從來沒有被呼叫、`LLM_EXPERIMENT_TARGET_PAIRS` 從來沒有
+    被使用。也就是說十配對的計數機制**存在但不會計數**,
+    而那比沒有機制更糟:它看起來在運作。
+
+    **失敗只是今天沒有累積,不得讓晨報中斷。** 讀不出帳本就不寫
+    (覆蓋等於把十配對清零),寫不進去也只記一筆降級。
+    """
+    if not LLM_EXPERIMENT_ID:
+        return
+    try:
+        def _write(path, ledger):
+            _atomic_write_text(path, json.dumps(ledger, ensure_ascii=False,
+                                                indent=1))
+
+        progress = _lx.record_day(
+            record=record, today=today,
+            ledger_path=LLM_EXPERIMENT_LEDGER_FILE,
+            read_ledger=_lx.load_ledger, write_ledger=_write,
+            target=LLM_EXPERIMENT_TARGET_PAIRS,
+            log=lambda m: print(m, file=sys.stderr))
+        _RUN_MANIFEST["llm_experiment"] = dict(record, progress=progress)
+    except Exception as e:                      # noqa: BLE001 - 晨報不可斷
+        _DEGRADED_STEPS.append("llm_experiment_ledger")
+        print(f"[llm-experiment] 帳本寫入失敗(不影響晨報):"
+              f"{type(e).__name__}: {e}", file=sys.stderr)
+        _RUN_MANIFEST["llm_experiment"] = dict(record, ledger_error=str(e)[:120])
+
+
+def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
+    """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4)。
+
+    原本只有 `if _text:` 成功時才記,於是可靠度指標只量得到「Luna 成功的那些
+    天」—— 而「誰比較常失敗」正是十天實驗要回答的問題之一。
+    只記成功的那幾天,那個問題的答案永遠是 100%。
+    """
+    if packet is None or not LLM_EXPERIMENT_ID:
+        return
+    try:
+        # r2(Codex,#4):**不得寫進 `llm_shadow`。** 主分析失敗後仍會走既有
+        # 路徑,而那條路徑結尾的 `_RUN_MANIFEST["llm_shadow"] = stat` 是**整包
+        # 指派**,會把這裡寫的失敗紀錄整個蓋掉 —— 可靠度又回到只量成功的天。
+        # 放在自己的鍵下,誰都蓋不到。
+        _persist_experiment_record(_experiment_row(
+            packet, primary_ok=False, shadow_ok=False,
+            today=dt.datetime.now(TPE).strftime("%Y-%m-%d"), reason=reason),
+            dt.datetime.now(TPE).strftime("%Y-%m-%d"))
+    except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
+        print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)
+
+
 def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                             news: list[dict], tw0050: list[dict] | None = None,
                             calibration: str = "") -> str:
     """根據 LLM_PROVIDER 環境變數選擇 LLM。預設 gemini。任何環節失敗都回傳備援文字而非 raise，
     確保 main() 一定能寄出基本版晨報。"""
+    # ── Luna 特化路徑(預設關閉)────────────────────────────────────────
+    # **三個條件同時成立才走**:profile 是 luna、API 模式是 responses、有金鑰。
+    # 任一環節失敗就落回下面的既有路徑 —— 晨報不可斷,而新路徑尚未經過生產。
+    _packet = None
+    try:
+        _profile = _prompt_profile_for(LLM_PROVIDER, LLM_PRIMARY_PROMPT_PROFILE)
+    except KeyError as e:
+        print(f"[llm] {e};改用預設問法", file=sys.stderr)
+        _profile = _FALLBACK_PROFILE
+    if (_profile == "luna56_xhigh_v1" and OPENAI_API_MODE == "responses"
+            and OPENAI_API_KEY):
+        try:
+            _packet = _ep.build(quotes, fair, predictions, news, tw0050 or [],
+                                calibration,
+                                as_of=dt.datetime.now(TPE).isoformat(timespec="minutes"),
+                                target_session_date=_infer_target_session_date(
+                                    dt.datetime.now(TPE).strftime("%Y-%m-%d")),
+                                # r1(Codex,#1):外部文字進 prompt 的唯一入口。
+                                # 前一輪外審立的 P0 控制,新路徑必須接上。
+                                sanitize=_external_text)
+            _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
+            if _text:
+                # 影子送的是 **legacy profile 的 prompt**(DeepSeek 的既有設計),
+                # 不是 Luna 的 —— 那正是「同一份證據、各自最佳化的問法」。
+                _shadow_bundle = _pp.build_deepseek_legacy_bundle(
+                    _packet, _build_prompt(quotes, fair, predictions, news,
+                                           tw0050 or [], calibration))
+                _run_llm_shadow(_shadow_bundle["user_payload"], _text,
+                                dt.datetime.now(TPE), packet=_packet,
+                                primary_profile="luna56_xhigh_v1",
+                                shadow_profile=_shadow_bundle["profile_id"])
+                return _text
+            print("[llm] Luna 路徑沒有產出,落回既有路徑", file=sys.stderr)
+            _record_experiment_failure(_packet, "primary_no_output")
+        except Exception as e:                  # noqa: BLE001 - 晨報不可斷
+            print(f"[llm] Luna 路徑失敗({type(e).__name__}),落回既有路徑:"
+                  f"{_redact_secret_text(str(e))[:160]}", file=sys.stderr)
+            _DEGRADED_STEPS.append("llm:luna_path_failed")
+            _record_experiment_failure(_packet, type(e).__name__)
     try:
         prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
     except Exception as e:
@@ -16097,6 +16568,9 @@ _EXDIV_KEEP_DAYS = 400
 CORPORATE_ACTION_FILE = STATE_ROOT / "corporate_actions.json"
 #: 批#89:LLM 影子比較帳本(換模型的證據來源)。
 LLM_SHADOW_LEDGER_FILE = STATE_ROOT / "llm_shadow_ledger.json"
+#: 端到端 profile 實驗的帳本。**價值全在跨日累積** —— 先前紀錄只寫進當日
+#: manifest,而 manifest 每天覆寫,於是十配對的門檻永遠不會被觸及。
+LLM_EXPERIMENT_LEDGER_FILE = STATE_ROOT / "llm_experiment_ledger.json"
 _CORPACT_KEEP_DAYS = 400
 
 

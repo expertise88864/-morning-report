@@ -146,11 +146,16 @@ import pytest
 #: **下一次要降,不是再升。** 能降的地方已經看得見:相位現在是頂層函式,
 #: 各自的相依清楚,`refactor_audit` 可以逐相位重判 —— 純運算的段落
 #: (立場分、渲染前的組裝)不再被 `main()` 的區域變數綁住。
-#: 2026-08-02 hotfix 調高至 23_300(現況 23279):DeepSeek 的輸出額度改用
-#: `output_cap`(原本寫死 7,000,不隨推理強度放大)+ 截斷訊號。
+#: 2026-08-02 hotfix(已上 main):DeepSeek 的輸出額度改用 `output_cap`
+#: (原本寫死 7,000,不隨推理強度放大)+ 截斷改成拒絕並拋出。
 #: 那天週日信的政策解析因此被推理擠掉:completion 7,000 裡 6,757 是推理,
 #: 答案只剩 243 個 token,而 manifest 完全看不出來。
-MAIN_MODULE_LINE_CEILING = 23_330  # r1 後再 +30(現況 23305):截斷改成拒絕並拋出
+#:
+#: 2026-08-02 Luna 特化:再加上實驗的**設定接線**(11 個變數的模組常數 +
+#: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
+#: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
+#: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
+MAIN_MODULE_LINE_CEILING = 23_780  # 現況 23727(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -184,6 +189,36 @@ MODULE_CEILINGS = {
     # 批#122:P2-3 的共用狀態容器。它**應該一直很小** —— 它的全部工作是
     # 宣告欄位並用 `__slots__` 擋住打錯字。長大就表示邏輯漏進來了。
     "app_context.py": 120,
+    # Luna 特化:provider 中立的證據包。它是**投影**不是渲染 ——
+    # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
+    # r2 折衷 (b):`core_evidence_sha` 與 `coverage` —— 可比性判準
+    # 與深度揭露。300 → 350(現況 318)。
+    "evidence_packet.py": 400,
+    # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
+    # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
+    "analysis_schema.py": 250,
+    # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
+    # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
+    "prompt_profiles.py": 250,
+    # Luna 特化:Responses API 的**純**適配層(組請求、解回應、正規化 usage)。
+    # 網路呼叫刻意留在主模組 —— 那裡才有金鑰、逾時預算與 manifest。
+    # 這個檔長大就表示網路或設定邏輯漏進來了。
+    "openai_responses.py": 250,
+    # Luna 特化:端到端 profile 比較實驗的身分與配對語意。
+    # 它只做「這一天算不算一個有效配對」與「同群是誰」—— 品質指標的計算
+    # 不屬於這裡(那會讓一個判定模組長成一個統計模組)。
+    # r2(Codex,#3):加上**跨日帳本**(load/upsert/record_day)——
+    # 沒有它,十配對的計數機制存在但不會計數。250 → 350(現況 296)。
+    "llm_experiment.py": 350,
+    # Luna 特化:確定性品質指標。它刻意**不提供**綜合分數 ——
+    # 結構相關的指標只有 Luna 有,合成單一分數會讓比較變成「有結構 vs 沒結構」。
+    "analysis_metrics.py": 350,
+    # 盲評卡端到端(產生/拆分/落地)。實測 165 行 —— 這一批從
+    # `analysis_metrics` + `llm_experiment` 抽出來,兩邊都因此退回上限內。
+    "blind_review.py": 180,
+    # Luna 特化:strict JSON → 晨報 Markdown 的確定性 renderer。
+    # **模型不直接控制排版** —— 排版由程式決定,模型只負責判斷內容。
+    "analysis_render.py": 250,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

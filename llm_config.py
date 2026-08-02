@@ -369,6 +369,24 @@ CONFIG_SOURCE_SPEC = {
     # 於是選 gemini 那一班的 manifest 完全沒有它實際用的模型。
     "GEMINI_MODEL":               ("fixed", "gemini-2.5-flash"),
     "CLAUDE_MODEL":               ("fixed", "claude-sonnet-4-6"),
+    # ── Luna 特化實驗(Phase 7)────────────────────────────────────────
+    # 全部可由 repo variable 覆寫,**回切 DeepSeek 不需要 revert 程式碼**。
+    "LLM_PRIMARY_PROMPT_PROFILE":  ("variable", ""),
+    "LLM_SHADOW_PROMPT_PROFILE":   ("variable", ""),
+    "LLM_COMPARISON_MODE":         ("variable", "end_to_end_profiles"),
+    "LLM_EXPERIMENT_ID":           ("variable", ""),
+    "LLM_EXPERIMENT_TARGET_PAIRS": ("variable", "10"),
+    # `OPENAI_API_MODE` 的預設刻意是**現況**(chat_completions)而不是
+    # responses。Responses adapter 是新的、尚未在生產跑過;讓它成為預設等於
+    # 讓任何人一設 LLM_PROVIDER=openai 就走一條沒被驗證過的路。
+    # 實驗自己把它設成 responses —— 那是一個看得見的決定。
+    "OPENAI_API_MODE":             ("variable", "chat_completions"),
+    "OPENAI_STORE":                ("variable", "0"),
+    "OPENAI_TEXT_VERBOSITY":       ("variable", "high"),
+    "OPENAI_REASONING_SUMMARY":    ("variable", "auto"),
+    "OPENAI_REASONING_CONTEXT":    ("variable", "current_turn"),
+    "OPENAI_PROMPT_CACHE_TTL_SECONDS": ("variable", ""),
+    "LLM_BLIND_REVIEW_SINK":       ("variable", "local"),  # 見 BLIND_REVIEW_DIR
 }
 
 #: 只有 `variable` 的鍵需要把**原始值**傳進來(`fixed` 的來源已經寫在上表)。

@@ -42,6 +42,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import llm_telemetry as lt          # noqa: E402
 import llm_config as lc            # noqa: E402
+import analysis_schema as sch      # noqa: E402
+import openai_responses as orx     # noqa: E402
+import prompt_profiles as pp       # noqa: E402
 from news_events import llm_event_json_schema  # noqa: E402
 
 TIMEOUT = float(os.environ.get("CANARY_TIMEOUT_SEC", "300"))
@@ -87,8 +90,12 @@ def _safe(text: str) -> str:
 class Check:
     """一項檢查的結果。`fatal` 代表「這樣上線一定壞」,只有它會讓 job 變紅。"""
 
-    def __init__(self, name, ok, detail="", fatal=True):
+    def __init__(self, name, ok, detail="", fatal=True, body=None):
         self.name, self.ok, self.detail, self.fatal = name, ok, detail, fatal
+        #: r1(Codex,#8):回應主體。`detail` 是**給人看的一句話**,
+        #: 拿它當 dict 用會永遠取到空 —— 那會讓 strict 探測每次都紅,
+        #: 而恆紅的閘門等於沒有閘門。要驗內容的探測讀這個欄位。
+        self.body = body
 
     def row(self) -> str:
         mark = "✅" if self.ok else ("❌" if self.fatal else "⚠")
@@ -360,7 +367,7 @@ def _probe_anthropic(key: str, model: str) -> Check:
 
 
 def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
-    """送一次最小請求。**只回狀態與錯誤內文,不回內容。**"""
+    """送一次最小請求。狀態與錯誤內文給人看,回應主體放 `Check.body`。"""
     import urllib.request as _u
     data = json.dumps(payload).encode("utf-8")
     req = _u.Request(url, data=data, method="POST", headers=headers)
@@ -376,9 +383,82 @@ def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
                      f"(在 {time.monotonic() - t0:.0f}s 後)")
     took = time.monotonic() - t0
     if status == 200:
-        return Check(label, True, f"{took:.0f}s、回應可解析")
+        try:
+            parsed = json.loads(body.decode("utf-8", "replace"))
+        except Exception:                       # noqa: BLE001
+            parsed = None
+        return Check(label, True, f"{took:.0f}s、回應可解析", body=parsed)
     return Check(label, False,
                  f"HTTP {status}: {body.decode('utf-8', 'replace')[:200]}")
+
+
+#: 金絲雀用的縮小版 schema。**形狀與生產一致**(strict、全欄位必填、
+#: 禁止額外欄位、enum 沿用同一組立場詞彙),只是欄位少 ——
+#: 金絲雀不該花掉一次完整分析的錢,但它要驗的正是形狀。
+_CANARY_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "required": ["stance", "evidence_ids"],
+    "properties": {
+        "stance": {"type": "string", "enum": list(sch.STANCE_LABELS)},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
+#: 代表性的證據片段(一則官方新聞)。刻意帶 `source_item_id`,
+#: 因為「模型會不會回指證據 ID」正是 strict 契約的核心。
+_CANARY_EVIDENCE = ('EVIDENCE\n{"news":[{"source_item_id":"n1",'
+                    '"title":"央行維持政策利率","source":"CBC","official":true}]}')
+
+
+def probe_responses_strict(key: str, model: str, effort: str) -> Check:
+    """**真的送一次** Responses + strict schema + 生產的 developer 前綴。
+
+    裸的 16-token「回 ok」請求只證明金鑰與模型存在,證明不了 production
+    compatibility —— 而這條路徑的新風險全都只在真實形狀下才出現:
+      1. 這個帳號的 `xhigh` 在 **responses 端點**上到底收不收
+      2. strict schema 會不會被拒
+      3. 要求的強度會不會被**靜默退讓**(luna 在 chat/completions 上做過)
+    """
+    payload = orx.build_payload(
+        model=model,
+        instructions=pp.LUNA_DEVELOPER_INSTRUCTIONS,
+        user_input=_CANARY_EVIDENCE,
+        effort=effort,
+        verbosity=_env("OPENAI_TEXT_VERBOSITY", "high"),
+        response_format={"type": "json_schema", "name": "canary",
+                         "schema": _CANARY_SCHEMA, "strict": True},
+        max_output_tokens=2000, store=False,
+        reasoning_summary=_env("OPENAI_REASONING_SUMMARY", "auto"),
+        reasoning_context=_env("OPENAI_REASONING_CONTEXT", "current_turn"),
+        prompt_cache_key="canary-luna-v1")
+    label = f"responses strict {model} / {effort}"
+    url = _base().rstrip("/") + orx.RESPONSES_PATH
+    chk = _probe_json(url, payload,
+                      {"Authorization": f"Bearer {key}",
+                       "Content-Type": "application/json"}, label)
+    if not chk.ok:
+        return chk
+    body = chk.body if isinstance(chk.body, dict) else {}
+    got = orx.extract_output(body)
+    applied = orx.applied_effort(body)
+    if applied and applied != effort:
+        # **靜默退讓是這條路徑最危險的失敗**:信照樣寄出、manifest 顯示
+        # 我們要求的強度,而實際跑的是 provider 預設。
+        return Check(label, False,
+                     f"要求 {effort} 但實際生效 {applied} —— 靜默退讓",
+                     fatal=True)
+    if got["refusal"]:
+        return Check(label, False, f"被拒答:{got['refusal'][:80]}", fatal=True)
+    if got["status"] == "incomplete":
+        return Check(label, False, f"未完成:{got['incomplete_reason']}",
+                     fatal=True)
+    try:
+        json.loads(got["text"])
+    except Exception:                       # noqa: BLE001 - 任何解析失敗都算失敗
+        return Check(label, False,
+                     f"strict schema 沒有回出合法 JSON:{got['text'][:80]}",
+                     fatal=True)
+    return Check(label, True, f"生效強度 {applied or effort};JSON 合法")
 
 
 def probe_one_provider(provider: str) -> int:
@@ -402,6 +482,11 @@ def probe_one_provider(provider: str) -> int:
         checks = [check_model_exists(model),
                   _probe_openai_compatible(_base(), key, model, f"openai {model}")]
         checks.extend(effort_matrix(model))
+        # Phase 7:**生產相容性要用生產的形狀驗。** 只在真的要走 responses
+        # 時才送(它會花掉一次高推理的錢);模式維持現況時不必。
+        if _env("OPENAI_API_MODE", "chat_completions") == "responses":
+            checks.append(probe_responses_strict(
+                key, model, _env("OPENAI_REASONING_EFFORT", "xhigh")))
     elif provider == "deepseek":
         model = _env("DEEPSEEK_MODEL", "deepseek-v4-pro")
         raw = _env("DEEPSEEK_REASONING_EFFORT", "max")

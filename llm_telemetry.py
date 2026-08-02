@@ -200,12 +200,24 @@ def merge_same_role(previous: Optional[dict], record: dict) -> dict:
 #: 「換不換模型」的決定,而我在 2026-08-01 已經用 OpenRouter 的價格估過一次
 #: GPT-5.6,結果比官方低 2.5 倍。錯的成本數字比沒有成本數字更糟。
 #:
-#: 出處:OpenAI Models 文件(使用者於 2026-08-01 提供)。
-#: DeepSeek 刻意留空 —— 我手上沒有官方單價,寧可回報「未收錄」。
+#: 出處:OpenAI pricing 頁與 DeepSeek pricing 頁,兩者皆於 2026-08-01 逐頁查證。
+#: **DeepSeek 原本刻意留空**(當時我手上沒有官方單價,寧可回報「未收錄」);
+#: 十天 Luna 對比實驗要比成本,「未收錄」在那個情境等於整半邊沒有數字,
+#: 所以去查了官方頁面後補上 —— 而不是拿第三方轉載的數字近似。
+#: DeepSeek 的欄位對照(官方 pricing 頁,2026-08-01 查證):
+#:   cache miss input → `input`;cache hit input → `cached_input`;output → `output`
+#: **DeepSeek 沒有 cache write 費用** —— 那是 GPT-5.6+ 才有的 1.25× 收費。
+#: 這裡不需要特判:DeepSeek 的回應根本不含 `cache_write_tokens`,
+#: 所以 `cache_write_tokens_of` 回 None,乘數不會被套用。由測試盯住。
 MODEL_PRICING = {
     "gpt-5.6-sol": {"input": 5.00, "cached_input": 0.50, "output": 30.00},
     "gpt-5.6-terra": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
     "gpt-5.6-luna": {"input": 0.20, "cached_input": 0.02, "output": 1.20},
+    # DeepSeek 官方 pricing 頁(2026-08-01 查證)。**先前刻意留空**,理由是
+    # 「我手上沒有官方單價,寧可回報未收錄」—— 現在查到了,所以補上。
+    # 十天實驗要比成本,而「未收錄」在那個情境等於整半邊沒有數字。
+    "deepseek-v4-pro": {"input": 0.435, "cached_input": 0.003625, "output": 0.87},
+    "deepseek-v4-flash": {"input": 0.14, "cached_input": 0.0028, "output": 0.28},
 }
 
 #: 寫入快取的計價倍率。官方明文:
@@ -219,9 +231,26 @@ CACHE_WRITE_MULTIPLIER = 1.25
 #: 但同一條裡有兩件是對的,而且本表原本都沒有:cached input 有**獨立費率**,
 #: 而 cache write 以 1.25 倍計。實測重算 2026-08-01 10:11 那班:
 #: 記錄 $0.027369 → 正確約 $0.0325,**低估 19%**(不是 594%)。
-PRICING_SOURCE = "developers.openai.com"
+#: **每個模型各自的出處。** 單一字串在收錄兩家之後就是錯的宣稱:
+#: manifest 會說 DeepSeek 的價格來自 openai.com。這條被 r1 外審在
+#: 別的地方抓過同型問題(「宣稱要對得上實作」)。
+PRICING_SOURCE_BY_PREFIX = {
+    "gpt-": "developers.openai.com/api/docs/pricing",
+    "deepseek-": "api-docs.deepseek.com/quick_start/pricing",
+}
+PRICING_SOURCE = "developers.openai.com + api-docs.deepseek.com"
 PRICING_AS_OF = "2026-08-01"
-PRICING_SCHEMA = 2
+#: schema 3:收錄第二家 provider,並把出處改成逐模型可查。
+PRICING_SCHEMA = 3
+
+
+def pricing_source_for(model: str) -> str:
+    """這個模型的價格是**從哪一頁查來的**。查不到就明說,不要編一個。"""
+    m = (model or "").strip().lower()
+    for prefix, src in PRICING_SOURCE_BY_PREFIX.items():
+        if m.startswith(prefix):
+            return src
+    return "未收錄"
 
 
 def cache_write_tokens_of(usage: Optional[dict]) -> Optional[int]:

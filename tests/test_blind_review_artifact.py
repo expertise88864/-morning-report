@@ -235,7 +235,7 @@ def test_a_pair_without_material_is_visible_in_the_verdict():
             review={"review_ok": review_ok, "review_expires": "2099-01-01"})
 
     ledger = [_row(f"2026-08-{d:02d}", d <= 3) for d in range(1, 11)]
-    prog = lx.pair_progress(ledger, target=10)
+    prog = lx.pair_progress(ledger, target=10, as_of="")
     assert prog["comparable_pairs"] == 10 and prog["ready"] is True
     assert prog["pairs_with_review"] == 3
     text = lx.verdict(prog)
@@ -255,7 +255,7 @@ def test_a_full_house_reads_cleanly():
             review={"review_ok": True, "review_expires": "2099-01-01"})
 
     prog = lx.pair_progress([_row(f"2026-08-{d:02d}") for d in range(1, 11)],
-                            target=10)
+                            target=10, as_of="")
     assert "無法補做" not in lx.verdict(prog)
 
 
@@ -440,3 +440,58 @@ def test_the_separation_is_documented_as_procedural():
     wf = (_ROOT / ".github" / "workflows" / "morning-report.yml").read_text(
         encoding="utf-8")
     assert "不是存取控制" in wf,         "workflow 沒有講明這只是流程分離 —— 公開 repo 上兩包誰都下載得到"
+
+
+# ------------------------------------------------------------ r7:接上了沒有
+
+def _pair(day, expires):
+    return lx.build_record(
+        today=day, experiment_id="e",
+        primary={"profile": "luna", "ok": True},
+        shadow={"profile": "deepseek_legacy", "ok": True},
+        evidence_sha_primary="a", evidence_sha_shadow="a",
+        core_sha_primary="c", core_sha_shadow="c",
+        review={"review_ok": True, "review_expires": expires})
+
+
+def test_expiry_is_applied_through_the_production_entry(tmp_path):
+    """**經由 `record_day` 也要判到期**(r7 Codex)。
+
+    到期判定寫好了,接線時卻沒把 `as_of` 傳下去 —— 而它預設空字串,
+    於是在生產路徑上從第一天起就是個 no-op:`pairs_review_expired` 恆為零、
+    過期的 artifact 照樣被算成有材料。
+
+    先前的到期測試直接呼叫 `pair_progress(..., as_of=...)` 並自己傳值,
+    **繞過了唯一的生產呼叫端** —— 那是本 repo 反覆栽的同一個地方:
+    測試要用生產的呼叫形狀。
+    """
+    ledger = ([_pair(f"2026-01-{d:02d}", "2026-04-01") for d in range(1, 5)]
+              + [_pair(f"2026-08-{d:02d}", "2026-11-01") for d in range(1, 6)])
+    store = {"ledger": ledger}
+    prog = lx.record_day(
+        record=_pair("2026-08-06", "2026-11-01"), today="2026-08-06",
+        ledger_path=tmp_path / "l.json",
+        read_ledger=lambda p: store["ledger"],
+        write_ledger=lambda p, v: store.update(ledger=v),
+        target=10, log=lambda m: None)
+    assert prog["comparable_pairs"] == 10, "可比配對不該因為過期而減少"
+    assert prog["pairs_with_review"] == 6, (
+        "經由 record_day 時過期沒有被判掉 —— as_of 沒有接上去")
+    assert prog["pairs_review_expired"] == 4
+    assert "過期" in prog["verdict"]
+
+
+def test_the_expiry_switch_cannot_be_forgotten():
+    """**`as_of` 必須是必填的。**
+
+    這一條盯的是缺陷的形狀,不是缺陷本身:一個預設值等於「關閉」的選用
+    參數,就是一個等著被忘記的開關 —— 而忘了傳不會有任何錯誤訊息,
+    只會讓判定安靜地永遠通過。改成必填之後,忘記傳會當場拋。
+    """
+    import inspect
+    sig = inspect.signature(lx.pair_progress)
+    p = sig.parameters["as_of"]
+    assert p.kind is inspect.Parameter.KEYWORD_ONLY, "as_of 要是關鍵字參數"
+    assert p.default is inspect.Parameter.empty, (
+        "as_of 有預設值 —— 忘了傳就會靜靜地不判到期,"
+        "而那正是這個缺陷在生產路徑上活下來的方式")

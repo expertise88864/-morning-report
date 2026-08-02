@@ -82,7 +82,7 @@ def test_ten_means_ten_comparable_pairs_not_ten_days():
               + [_rec(date="2026-08-09", shadow_ok=False),             # 影子掛
                  _rec(date="2026-08-10", primary_ok=False),            # 主分析掛
                  _rec(date="2026-08-11", shadow_core_sha="zzz")])  # 證據不同
-    p = ex.pair_progress(ledger, cohort, target=10)
+    p = ex.pair_progress(ledger, cohort, target=10, as_of="")
     assert p["rows_seen"] == 11
     assert p["comparable_pairs"] == 8, p
     assert p["ready"] is False and p["remaining"] == 2
@@ -142,13 +142,14 @@ def test_the_verdict_refuses_to_conclude_on_thin_evidence():
     """
     cohort = ex.cohort_key(_rec())
     few = ex.pair_progress([_rec(date=str(i)) for i in range(3)]
-                           + [_rec(date="x", shadow_ok=False)], cohort)
+                           + [_rec(date="x", shadow_ok=False)], cohort,
+                           as_of="")
     v = ex.verdict(few)
     assert "樣本不足" in v and "3/10" in v
     assert "影子失敗 1 天" in v, v
     assert "尚不得下結論" in v
 
-    enough = ex.pair_progress([_rec(date=str(i)) for i in range(10)], cohort)
+    enough = ex.pair_progress([_rec(date=str(i)) for i in range(10)], cohort, as_of="")
     assert enough["ready"] is True
     assert "可以做判讀" in ex.verdict(enough)
     assert "人工盲評" in ex.verdict(enough), \
@@ -183,7 +184,7 @@ def test_progress_never_raises_on_a_messy_ledger():
     它一炸就沒有進度可看,而那時最需要知道的正是「還差幾筆」。
     """
     for junk in (None, [], [None, 7, "字串"], [{"date": "x"}]):
-        p = ex.pair_progress(junk, None, target=10)
+        p = ex.pair_progress(junk, None, target=10, as_of="")
         assert p["comparable_pairs"] >= 0 and p["ready"] is False
         assert isinstance(ex.verdict(p), str)
 

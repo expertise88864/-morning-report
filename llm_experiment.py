@@ -126,12 +126,19 @@ def _material_live(row: dict, as_of: str) -> bool:
 
 
 def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
-                  target: int = DEFAULT_TARGET_PAIRS,
-                  as_of: str = "") -> dict:
+                  target: int = DEFAULT_TARGET_PAIRS, *, as_of: str) -> dict:
     """實驗進度。**分母是配對數,不是天數。**
 
     回傳同時包含被排除的天數與原因 —— 沒有它,「跑了 14 天只有 6 筆」
     看起來會像實驗停滯,而實際上可能是影子一直逾時(那本身就是結論)。
+
+    `as_of` 是**必填**的(r7 Codex)。它原本預設空字串,而空字串讓
+    `_material_live` 永遠不判到期 —— 於是我把到期判定寫好、接線時漏傳,
+    生產路徑上它從第一天起就是個 no-op,`pairs_review_expired` 恆為零。
+    測試也沒抓到:那些測試直接呼叫本函式並自己傳 `as_of`,繞過了真正的
+    呼叫端。**預設值是「關閉」的選用參數,就是一個等著被忘記的開關;
+    改成必填之後,忘記傳會當場拋,不會靜靜地失效。**
+    不做到期篩選是合法用途(例如事後分析),但那要 `as_of=""` 明講。
     """
     rows = [r for r in (ledger or []) if isinstance(r, dict)]
     pairs, excluded = [], {}
@@ -330,7 +337,7 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     ledger = upsert(ledger, record, today)
     write_ledger(ledger_path, ledger)
     cohort = cohort_key(record)
-    progress = pair_progress(ledger, cohort, target)
+    progress = pair_progress(ledger, cohort, target, as_of=today)
     progress["cohort_fields"] = dict(zip(COHORT_FIELDS, cohort))
     progress["reliability"] = reliability(ledger, cohort)
     progress["verdict"] = verdict(progress)

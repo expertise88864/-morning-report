@@ -283,3 +283,29 @@ def test_the_depth_difference_is_disclosed_not_hidden():
     # 但核心證據集不同就不可比
     assert not ex.is_comparable(_rec(shadow_core_sha="別批新聞"),
                                 ex.cohort_key(rec))
+
+
+def test_the_ledger_row_carries_both_sides_coverage_and_metrics():
+    """r3(Codex,#3 #2):帳本要帶得動深度揭露與可比指標。
+
+    先前 `build_record` 有這兩個欄位、生產卻沒有傳進來 —— 帳本永遠得到
+    兩個空物件,折衷 (b) 依賴的揭露無法隨十配對累積,
+    而十配對達標時也沒有東西可以判讀。
+    """
+    rec = ex.build_record(
+        today="2026-08-05", experiment_id="e1",
+        primary={"profile": "luna56_xhigh_v1", "profile_version": 1,
+                 "model": "gpt-5.6-luna", "effort": "xhigh", "ok": True,
+                 "coverage": {"available": 200, "included": 200, "rate": 1.0}},
+        shadow={"profile": "deepseek_legacy_v1", "profile_version": 1,
+                "model": "deepseek-v4-pro", "effort": "max", "ok": True,
+                "coverage": {"available": None, "basis": "legacy 無逐則統計"}},
+        evidence_sha_primary="ev", evidence_sha_shadow="ev",
+        core_sha_primary="c", core_sha_shadow="c",
+        metrics={"primary": {"chars": 3000}, "shadow": {"chars": 2800}})
+    assert rec["primary_coverage"]["rate"] == 1.0
+    # DeepSeek 側沒有對應統計時要**明說不可得**,不得用空物件冒充已記錄
+    assert rec["shadow_coverage"]["available"] is None
+    assert rec["shadow_coverage"].get("basis"), "沒有說明為什麼不可得"
+    assert rec["metrics"]["primary"]["chars"] == 3000
+    assert rec["metrics"]["shadow"]["chars"] == 2800

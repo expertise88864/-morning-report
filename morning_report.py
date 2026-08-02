@@ -13430,22 +13430,45 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
     try:
         if not _run_budget_ok(int(LLM_SHADOW_TIMEOUT) + 30, "LLM 影子比較"):
             stat["skipped"] = "run_budget"
+            # r3(Codex,#4):**跳過也要留一列。** 不留的話,可靠度只量得到
+            # 「跑得完的那些天」—— 而最慢、最容易被跳過的日子正是應該被算進去的。
+            _persist_experiment_record(_experiment_row(
+                packet, primary_ok=bool(primary_text), shadow_ok=False,
+                today=now_tpe.strftime("%Y-%m-%d"),
+                primary_profile=primary_profile, shadow_profile=shadow_profile,
+                reason="shadow_skipped:run_budget"),
+                now_tpe.strftime("%Y-%m-%d"))
         elif LLM_SHADOW_PROVIDER not in ("openai", "deepseek"):
             stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
+            _persist_experiment_record(_experiment_row(
+                packet, primary_ok=bool(primary_text), shadow_ok=False,
+                today=now_tpe.strftime("%Y-%m-%d"),
+                primary_profile=primary_profile, shadow_profile=shadow_profile,
+                reason=f"shadow_skipped:{stat['skipped']}"[:60]),
+                now_tpe.strftime("%Y-%m-%d"))
         else:
             # P2-5:prompt 由 `run_comparison` 交進來,這裡**不得取用外層的
             # `prompt`** —— 「影子送的與主分析送的是同一份」要由結構保證,
             # 不是靠讀程式碼相信。
+            # r3(Codex,#2):**影子的文字要留下來。** `run_comparison` 只回統計,
+            # 文字在它回傳前就被丟掉 —— 於是十配對達標時,兩側的數字一致性、
+            # 證據涵蓋、來源多樣性都算不出來,帳本卻宣告「可以做判讀」。
+            _shadow_text = {"value": ""}
+
             def _call(p):
                 if LLM_SHADOW_PROVIDER == "openai":
                     # r1(Codex #1,P2):**影子的推理強度原本只被記錄、沒有送出。**
                     # 沒帶 `reasoning=` 就會沿用主分析的 `OPENAI_REASONING_EFFORT`,
                     # 而帳本的 cohort 卻宣稱是影子那個 —— 不同設定的樣本
                     # 會被錯誤地算進同一個平均。
-                    return _call_openai(p, model=LLM_SHADOW_MODEL,
-                                        timeout=LLM_SHADOW_TIMEOUT, role="shadow",
-                                        reasoning=LLM_SHADOW_REASONING_EFFORT)
-                return _call_deepseek(p, role="shadow")
+                    out = _call_openai(p, model=LLM_SHADOW_MODEL,
+                                       timeout=LLM_SHADOW_TIMEOUT, role="shadow",
+                                       reasoning=LLM_SHADOW_REASONING_EFFORT)
+                    _shadow_text["value"] = out or ""
+                    return out
+                out = _call_deepseek(p, role="shadow")
+                _shadow_text["value"] = out or ""
+                return out
 
             def _write(path, ledger):
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -13483,43 +13506,20 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
             if packet is not None and LLM_EXPERIMENT_ID:
                 _today = out.get("today") or {}
                 _sha = _ep.evidence_sha(packet)
-                _persist_experiment_record(_lx.build_record(
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text),
+                    shadow_ok=bool(_today.get("shadow_ok")),
                     today=now_tpe.strftime("%Y-%m-%d"),
-                    experiment_id=LLM_EXPERIMENT_ID,
-                    primary={"profile": primary_profile,
-                             "profile_version": _pp.PROFILES.get(
-                                 primary_profile, {}).get("version"),
-                             "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
-                             "ok": bool(primary_text),
-                             "prompt_sha": (_RUN_MANIFEST.get("llm", {})
-                                            .get("primary_bundle") or {})
-                             .get("prompt_sha"),
-                             "evidence_schema_version": packet.get("schema_version"),
-                             "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
-                    shadow={"profile": shadow_profile,
-                            "profile_version": _pp.PROFILES.get(
-                                shadow_profile, {}).get("version"),
-                            "model": LLM_SHADOW_MODEL,
-                            "effort": LLM_SHADOW_REASONING_EFFORT,
-                            # r1(Codex,#3):`run_comparison` 回的是
-                            # `{"today": rec, "cumulative": …}` —— 讀頂層
-                            # 永遠是 None,於是**每一天的影子都被記成失敗**,
-                            # 十配對永遠湊不滿。
-                            "ok": bool(_today.get("shadow_ok")),
-                            # r2(Codex,#3):`llm_shadow` 記的鍵是
-                            # `prompt_sha`(那一列就是影子的紀錄),
-                            # 不是 `shadow_prompt_sha`。
-                            "prompt_sha": _today.get("prompt_sha")},
-                    # 影子送的是同一個 packet 產生的 legacy prompt,
-                    # 所以兩邊的證據指紋**必然相同** —— 這裡記下來讓它可稽核,
-                    # 而不是靠「我知道它一樣」。
-                    evidence_sha_primary=_sha, evidence_sha_shadow=_sha,
-                    # r2(Codex,#2):可比性判準是**核心證據集**(來源池 +
-                    # 交易日),不是整個 packet 的指紋 —— 兩份 prompt 是各自
-                    # 組出來的,後者只證明「同一個 packet 物件」。
-                    core_sha_primary=packet.get("core_sha") or "",
-                    core_sha_shadow=packet.get("core_sha") or "",
-                    code_version=SHADOW_COHORT_VERSION),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    primary_prompt_sha=(_RUN_MANIFEST.get("llm", {})
+                                        .get("primary_bundle") or {})
+                    .get("prompt_sha") or "",
+                    shadow_prompt_sha=_today.get("prompt_sha") or "",
+                    # r3(Codex,#2):**兩側的可比指標要在文字還在記憶體時算。**
+                    # `run_comparison` 回傳前就把影子的文字丟掉了。
+                    metrics=_comparable_metrics(
+                        packet, primary_text, _shadow_text["value"])),
                     now_tpe.strftime("%Y-%m-%d"))
     except Exception as e:                           # noqa: BLE001
         stat["error"] = f"{type(e).__name__}: {e}"[:160]
@@ -14066,6 +14066,84 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     return ""
 
 
+def _comparable_metrics(packet: Optional[dict], primary_text: str,
+                        shadow_text: str) -> dict:
+    """兩側**都算得出來**的指標 + 成本(r3 Codex,#2)。
+
+    十配對達標時要有東西可以判讀。先前 `analysis_metrics` 的函式**在生產
+    完全沒有呼叫端** —— 帳本會宣告「可以做判讀」,而實際上只有立場、字數與
+    body overlap,正是指令書明說不可當判準的那幾樣。
+
+    只算 `text_metrics` 那一類:結構化指標**只有 Luna 有**,放進來比較就變成
+    「有結構 vs 沒結構」(見 `analysis_metrics` 的模組說明)。
+    Luna 的結構化指標另外記在 `llm.primary_metrics`,刻意不混進來。
+    """
+    if not packet:
+        return {}
+    try:
+        llm = _RUN_MANIFEST.get("llm") or {}
+        out = {}
+        for role, text in (("primary", primary_text), ("shadow", shadow_text)):
+            out[role] = _am.text_metrics(
+                text or "", packet, stance=_extract_stance(text or ""))
+            rec = llm.get(role) or {}
+            out[role]["cost"] = _am.cost_effectiveness(
+                rec.get("estimated_cost_usd"), bool(text),
+                structured=(llm.get("primary_metrics")
+                            if role == "primary" else None))
+            out[role]["elapsed_seconds"] = rec.get("elapsed_seconds")
+        return out
+    except Exception as e:                      # noqa: BLE001 - 量測不得弄壞晨報
+        print(f"[llm-experiment] 指標計算失敗(不影響晨報): {e}", file=sys.stderr)
+        return {"error": str(e)[:120]}
+
+
+def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
+                    shadow_ok: bool, today: str, primary_profile: str = "",
+                    shadow_profile: str = "", primary_prompt_sha: str = "",
+                    shadow_prompt_sha: str = "", reason: str = "",
+                    shadow_coverage: Optional[dict] = None,
+                    metrics: Optional[dict] = None) -> dict:
+    """組出一列實驗紀錄。**成功、失敗、跳過三條路徑共用這一個入口。**
+
+    r3(Codex,#4):shadow 在**呼叫之前**被跳過(執行預算不足、provider 不合法)
+    時,原本完全不會產生紀錄 —— 於是可靠度只量得到「跑得完的那些天」,
+    而最慢、最容易被跳過的日子被排除,`shadow_ok_rate` 因此偏高。
+    唯一入口才擋得住這種「某條路徑忘了記」。
+
+    r3(Codex,#3):`coverage` 先前沒有被傳進來,帳本兩側永遠是空物件 ——
+    折衷 (b) 依賴的深度揭露因此無法隨十配對累積。
+    DeepSeek 側目前沒有對應統計,**明說 unavailable**,不拿空物件冒充已記錄。
+    """
+    pk = packet or {}
+    sha = _ep.evidence_sha(pk) if pk else ""
+    core = pk.get("core_sha") or ""
+    return _lx.build_record(
+        today=today, experiment_id=LLM_EXPERIMENT_ID,
+        primary={"profile": primary_profile or "luna56_xhigh_v1",
+                 "profile_version": _pp.PROFILES.get(
+                     primary_profile or "luna56_xhigh_v1", {}).get("version"),
+                 "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
+                 "ok": bool(primary_ok), "prompt_sha": primary_prompt_sha,
+                 "coverage": dict(pk.get("coverage") or {}),
+                 "evidence_schema_version": pk.get("schema_version"),
+                 "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
+        shadow={"profile": shadow_profile or "deepseek_legacy_v1",
+                "profile_version": _pp.PROFILES.get(
+                    shadow_profile or "deepseek_legacy_v1", {}).get("version"),
+                "model": LLM_SHADOW_MODEL,
+                "effort": LLM_SHADOW_REASONING_EFFORT,
+                "ok": bool(shadow_ok), "prompt_sha": shadow_prompt_sha,
+                # legacy 路徑沒有逐則的涵蓋統計 —— 明說不可得,
+                # 不要用空物件讓人以為「記過了而且是零」。
+                "coverage": dict(shadow_coverage or {"available": None,
+                                                     "basis": "legacy profile 無逐則涵蓋統計"})},
+        evidence_sha_primary=sha, evidence_sha_shadow=sha,
+        core_sha_primary=core, core_sha_shadow=core,
+        code_version=SHADOW_COHORT_VERSION, failure_reason=reason[:60],
+        metrics=metrics or {})
+
+
 def _persist_experiment_record(record: dict, today: str) -> None:
     """把今天這一列寫進**跨日**帳本並回報進度。
 
@@ -14108,31 +14186,13 @@ def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
     if packet is None or not LLM_EXPERIMENT_ID:
         return
     try:
-        sha = _ep.evidence_sha(packet)
         # r2(Codex,#4):**不得寫進 `llm_shadow`。** 主分析失敗後仍會走既有
         # 路徑,而那條路徑結尾的 `_RUN_MANIFEST["llm_shadow"] = stat` 是**整包
         # 指派**,會把這裡寫的失敗紀錄整個蓋掉 —— 可靠度又回到只量成功的天。
         # 放在自己的鍵下,誰都蓋不到。
-        _persist_experiment_record(_lx.build_record(
-            today=dt.datetime.now(TPE).strftime("%Y-%m-%d"),
-            experiment_id=LLM_EXPERIMENT_ID,
-            primary={"profile": "luna56_xhigh_v1",
-                     "profile_version": _pp.PROFILES["luna56_xhigh_v1"]["version"],
-                     "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
-                     "ok": False,
-                     "evidence_schema_version": packet.get("schema_version"),
-                     "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
-            # 主分析沒產出時影子根本沒跑 —— 誠實記成沒跑,不要留白讓人猜。
-            shadow={"profile": "deepseek_legacy_v1",
-                    "profile_version": _pp.PROFILES["deepseek_legacy_v1"]["version"],
-                    "model": LLM_SHADOW_MODEL,
-                    "effort": LLM_SHADOW_REASONING_EFFORT, "ok": False},
-            evidence_sha_primary=sha, evidence_sha_shadow=sha,
-            # r2(Codex,#2):可比性判準是核心證據集,不是整個 packet 的指紋。
-            core_sha_primary=packet.get("core_sha") or "",
-            core_sha_shadow=packet.get("core_sha") or "",
-            code_version=SHADOW_COHORT_VERSION,
-            failure_reason=reason[:60]),
+        _persist_experiment_record(_experiment_row(
+            packet, primary_ok=False, shadow_ok=False,
+            today=dt.datetime.now(TPE).strftime("%Y-%m-%d"), reason=reason),
             dt.datetime.now(TPE).strftime("%Y-%m-%d"))
     except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
         print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)

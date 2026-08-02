@@ -185,7 +185,8 @@ def build_record(*, today: str, experiment_id: str,
                  primary: dict, shadow: dict,
                  evidence_sha_primary: str, evidence_sha_shadow: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
-                 code_version: str = "", failure_reason: str = "") -> dict:
+                 code_version: str = "", failure_reason: str = "",
+                 metrics: Optional[dict] = None) -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
     `primary` / `shadow` 各自帶 `profile` / `profile_version` / `model` /
@@ -228,6 +229,11 @@ def build_record(*, today: str, experiment_id: str,
         # 失敗的那天要說得出**為什麼** —— 只記「失敗」的帳本回答不了
         # 「誰比較常失敗、失敗在哪裡」,而那正是十配對要比的指標之一。
         "failure_reason": failure_reason or "",
+        # r3(Codex,#2):**兩側都算得出來的指標**。十配對達標時要有東西可以
+        # 判讀 —— 只有立場、字數與 body overlap 的話,正是指令書明說不可當
+        # 判準的那幾樣。結構化指標只有 Luna 有,刻意不放進來(那會變成
+        # 「有結構 vs 沒結構」的比較)。
+        "metrics": dict(metrics or {}),
     }
 
 

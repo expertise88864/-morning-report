@@ -74,6 +74,30 @@ def _identity(text: str) -> str:
     return text
 
 
+def sanitize_tree(node, clean):
+    """遞迴把消毒器套用到**每一個字串葉節點**,數值型別原樣保留。
+
+    r3(Codex,#1):我 r1 只消毒了 `news` 的五個欄位,而 `market` 區塊裡的
+    `GAZETTE_RECORDS`、`STRUCTURED_NEWS_EVENTS`、`EVENT_CALENDAR`、
+    `TW_DAILY_INTELLIGENCE`、`HISTORY` **同樣是抓來的外部文字** ——
+    它們被原樣序列化進 payload,公報裡一個偽造的 `</UNTRUSTED_SOURCE_DATA>`
+    就能提前關掉圍欄,讓後面的內容被當成指令。legacy 路徑對這些是逐欄呼叫
+    `_external_text` 的;我只補了一半。
+
+    **改成整棵樹一次掃完**,而不是繼續維護一份「哪些欄位要消毒」的清單 ——
+    那份清單正是這次漏掉的東西,而且每加一個 quotes 鍵就會再漏一次。
+    """
+    if isinstance(node, str):
+        return clean(node)
+    if isinstance(node, dict):
+        # 鍵也可能來自外部(例如以公司名當鍵),一起消毒。
+        return {clean(k) if isinstance(k, str) else k: sanitize_tree(v, clean)
+                for k, v in node.items()}
+    if isinstance(node, (list, tuple)):
+        return [sanitize_tree(v, clean) for v in node]
+    return node
+
+
 def _sid(item: dict, index: int) -> str:
     """新聞的穩定識別碼。
 
@@ -230,6 +254,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         "portfolio": portfolio_summary(quotes or {}),
         "truncation": trunc,
     }
+    # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
+    # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
+    # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。
+    packet = sanitize_tree(packet, sanitize)
     # r2(Codex,#2):可比性判準與深度揭露一起放進 packet ——
     # 兩者都必須進實驗帳本,事後才分得出「模型差異」與「餵進去的東西不同」。
     packet["core_sha"] = core_evidence_sha(news, target_session_date)

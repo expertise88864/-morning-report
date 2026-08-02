@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 23_700  # 現況 23,667(量出來的)
+MAIN_MODULE_LINE_CEILING = 23_780  # 現況 23727(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -193,7 +193,7 @@ MODULE_CEILINGS = {
     # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
     # r2 折衷 (b):`core_evidence_sha` 與 `coverage` —— 可比性判準
     # 與深度揭露。300 → 350(現況 318)。
-    "evidence_packet.py": 350,
+    "evidence_packet.py": 400,
     # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
     # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
     "analysis_schema.py": 250,

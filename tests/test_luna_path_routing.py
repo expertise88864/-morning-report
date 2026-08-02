@@ -335,3 +335,97 @@ def test_the_failure_record_survives_the_legacy_shadow_run(luna_on, monkeypatch)
     mr._call_llm_analysis_impl(*_ARGS)
     assert (mr._RUN_MANIFEST.get("llm_experiment") or {}).get("primary_ok") is False, \
         "失敗紀錄被影子的整包指派蓋掉了"
+
+
+def test_a_shadow_skipped_before_the_call_still_leaves_a_row(
+        luna_on, monkeypatch):
+    """r3(Codex,#4):**跳過也要留一列。**
+
+    執行預算不足或 provider 不合法時,shadow 在**呼叫之前**就被跳過。
+    不留紀錄的話,可靠度只量得到「跑得完的那些天」—— 而最慢、最容易被跳過
+    的日子正是應該被算進去的,`shadow_ok_rate` 因此偏高。
+    """
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
+    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "_run_budget_ok", lambda *a, **k: False)
+    rows = []
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+    packet = mr._ep.build({}, {}, {}, [], [], {}, sanitize=str)
+    mr._run_llm_shadow("prompt", "正式輸出", mr.dt.datetime.now(mr.TPE),
+                       packet=packet, primary_profile="luna56_xhigh_v1",
+                       shadow_profile="deepseek_legacy_v1")
+    assert rows, "預算不足而跳過的那天完全沒有紀錄"
+    assert rows[0]["shadow_ok"] is False
+    assert "run_budget" in rows[0]["failure_reason"], rows[0]
+
+
+def test_the_comparable_metrics_are_computed_for_both_sides(
+        luna_on, monkeypatch):
+    """r3(Codex,#2):十配對達標時要有東西可以判讀。
+
+    `analysis_metrics` 的函式先前**在生產完全沒有呼叫端** —— 帳本會宣告
+    「可以做判讀」,而實際上只有立場、字數與 body overlap。
+    """
+    packet = mr._ep.build({}, {}, {}, [{"title": "央行維持利率", "source": "CBC",
+                                        "published": "p", "official": True}],
+                          [], {}, sanitize=str)
+    m = mr._comparable_metrics(packet, "央行維持利率,偏多。", "今日中性。")
+    assert set(m) == {"primary", "shadow"}
+    for side in ("primary", "shadow"):
+        assert "numeric_consistency" in m[side]
+        assert "evidence_coverage" in m[side]
+        assert "source_diversity" in m[side]
+        assert "cost" in m[side]
+    # 兩側**用同一組指標**才叫可比
+    assert set(m["primary"]) == set(m["shadow"])
+    # 結構化指標只有 Luna 有,刻意不混進來
+    assert "completeness_rate" not in m["primary"]
+
+
+def test_metric_failure_never_breaks_the_email(monkeypatch):
+    """量測是觀測,不是功能 —— 它壞掉不得讓晨報中斷。"""
+    monkeypatch.setattr(mr._am, "text_metrics",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    packet = mr._ep.build({}, {}, {}, [], [], {}, sanitize=str)
+    out = mr._comparable_metrics(packet, "a", "b")
+    assert "error" in out
+
+
+def test_the_production_path_actually_attaches_the_metrics(luna_on, monkeypatch):
+    """r3(Codex,#2):**指標要真的被生產路徑帶進帳本。**
+
+    只驗 `_comparable_metrics` 本身不夠 —— 它算得再對,呼叫端沒把結果傳下去
+    就等於沒有。這正是「機制存在但沒有呼叫端」的形狀,而那條 finding
+    說的就是 `analysis_metrics` 三個函式在生產完全沒有被呼叫。
+    """
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
+    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "_run_budget_ok", lambda *a, **k: True)
+    monkeypatch.setattr(mr, "_call_deepseek", lambda p, role="": "影子的分析輸出")
+    # `llm_shadow` 是在 `_run_llm_shadow` 裡才 import 的(函式內 local import),
+    # 所以要 patch 模組本身,不是 `mr._ls`。
+    import llm_shadow as _ls
+    monkeypatch.setattr(_ls, "run_comparison",
+                        lambda **kw: {"today": {"shadow_ok": True,
+                                                "prompt_sha": "s1"},
+                                      "cumulative": {}})
+    rows = []
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+
+    packet = mr._ep.build({}, {}, {}, [{"title": "央行維持利率", "source": "CBC",
+                                        "published": "p", "official": True}],
+                          [], {}, sanitize=str)
+    mr._run_llm_shadow("legacy prompt", "正式輸出:央行維持利率",
+                       mr.dt.datetime.now(mr.TPE), packet=packet,
+                       primary_profile="luna56_xhigh_v1",
+                       shadow_profile="deepseek_legacy_v1")
+    assert rows, "成功的那天沒有留下實驗紀錄"
+    m = rows[0].get("metrics") or {}
+    assert set(m) >= {"primary", "shadow"}, f"帳本沒有帶兩側指標:{m}"
+    assert "evidence_coverage" in m["primary"], m["primary"]
+    # 深度揭露也要在
+    assert rows[0]["primary_coverage"].get("available") is not None

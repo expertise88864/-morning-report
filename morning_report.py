@@ -475,6 +475,10 @@ OPENAI_REASONING_SUMMARY = os.environ.get("OPENAI_REASONING_SUMMARY", "auto").st
 OPENAI_REASONING_CONTEXT = os.environ.get(
     "OPENAI_REASONING_CONTEXT", "current_turn").strip()
 OPENAI_PROMPT_CACHE_TTL_SECONDS = _int_env("OPENAI_PROMPT_CACHE_TTL_SECONDS", 0)
+#: 盲評卡要送到哪。**預設 `local`** —— 只寫在 runner 上,job 結束即消失。
+#: 那兩份文字是使用者的晨報內容,而公開 repo 的 Actions artifact 任何人
+#: 都下載得到;通道是使用者的決定,不是預設值該替他做的。
+LLM_BLIND_REVIEW_SINK = os.environ.get("LLM_BLIND_REVIEW_SINK", "local").strip()
 #: 影子同群的**語意版本**(第十輪 P1-7)。
 #:
 #: 原本用 `GITHUB_SHA` —— 而這個 repo 一天常有多個 commit,只要改 HTML 樣式、
@@ -607,6 +611,7 @@ def _llm_config_resolved() -> dict:
         "OPENAI_REASONING_SUMMARY": OPENAI_REASONING_SUMMARY,
         "OPENAI_REASONING_CONTEXT": OPENAI_REASONING_CONTEXT,
         "OPENAI_PROMPT_CACHE_TTL_SECONDS": OPENAI_PROMPT_CACHE_TTL_SECONDS,
+        "LLM_BLIND_REVIEW_SINK": LLM_BLIND_REVIEW_SINK,
     }
 
 # ── P0-2 寄信保命時間預算 ──────────────────────────────────────────────
@@ -13430,22 +13435,31 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
     try:
         if not _run_budget_ok(int(LLM_SHADOW_TIMEOUT) + 30, "LLM 影子比較"):
             stat["skipped"] = "run_budget"
-            # r3(Codex,#4):**跳過也要留一列。** 不留的話,可靠度只量得到
+            # r4(Codex,#1):**只有實驗真的在跑的那一天才記。**
+            # legacy 呼叫端不傳 packet,而 `_experiment_row(None, …)` 會捏出一列
+            # Luna profile 的成功紀錄 —— upsert 依 (date, experiment_id) 覆蓋,
+            # 於是它會把稍早那筆**真正的 Luna 失敗**蓋掉,失敗日從可靠度分母
+            # 消失。這比我要修的問題更糟。守衛與成功分支一致。
+            # r3(Codex,#4):跳過也要留一列。 不留的話,可靠度只量得到
             # 「跑得完的那些天」—— 而最慢、最容易被跳過的日子正是應該被算進去的。
-            _persist_experiment_record(_experiment_row(
-                packet, primary_ok=bool(primary_text), shadow_ok=False,
-                today=now_tpe.strftime("%Y-%m-%d"),
-                primary_profile=primary_profile, shadow_profile=shadow_profile,
-                reason="shadow_skipped:run_budget"),
-                now_tpe.strftime("%Y-%m-%d"))
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text), shadow_ok=False,
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    reason="shadow_skipped:run_budget"),
+                    now_tpe.strftime("%Y-%m-%d"))
         elif LLM_SHADOW_PROVIDER not in ("openai", "deepseek"):
             stat["skipped"] = f"unknown_provider:{LLM_SHADOW_PROVIDER}"
-            _persist_experiment_record(_experiment_row(
-                packet, primary_ok=bool(primary_text), shadow_ok=False,
-                today=now_tpe.strftime("%Y-%m-%d"),
-                primary_profile=primary_profile, shadow_profile=shadow_profile,
-                reason=f"shadow_skipped:{stat['skipped']}"[:60]),
-                now_tpe.strftime("%Y-%m-%d"))
+            if packet is not None and LLM_EXPERIMENT_ID:
+                _persist_experiment_record(_experiment_row(
+                    packet, primary_ok=bool(primary_text), shadow_ok=False,
+                    today=now_tpe.strftime("%Y-%m-%d"),
+                    primary_profile=primary_profile,
+                    shadow_profile=shadow_profile,
+                    reason=f"shadow_skipped:{stat['skipped']}"[:60]),
+                    now_tpe.strftime("%Y-%m-%d"))
         else:
             # P2-5:prompt 由 `run_comparison` 交進來,這裡**不得取用外層的
             # `prompt`** —— 「影子送的與主分析送的是同一份」要由結構保證,
@@ -13506,6 +13520,12 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
             if packet is not None and LLM_EXPERIMENT_ID:
                 _today = out.get("today") or {}
                 _sha = _ep.evidence_sha(packet)
+                # r4(Codex,#2):**盲評卡要趁兩份文字都還在的時候產生。**
+                # 十配對達標後的判讀明文要求人工盲評,而影子的文字算完指標
+                # 就被丟掉 —— 那個要求先前永遠無法執行。
+                _write_blind_review_card(
+                    primary_text, _shadow_text["value"],
+                    now_tpe.strftime("%Y-%m-%d"))
                 _persist_experiment_record(_experiment_row(
                     packet, primary_ok=bool(primary_text),
                     shadow_ok=bool(_today.get("shadow_ok")),
@@ -14064,6 +14084,40 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             "請只修正這些問題並重新輸出完整 JSON:\n"
             + "\n".join(f"- {p}" for p in problems[:5])))
     return ""
+
+
+#: 盲評卡的落地目錄。**刻意不在 `STATE_ROOT` 之下,也不在 state push 清單裡** ——
+#: 它含兩份完整分析文字,而 state 是 commit 進公開 repo 的。
+#: 通道由使用者決定(見 `LLM_BLIND_REVIEW_SINK`);預設只寫在 runner 上,
+#: job 結束就消失 —— 那是「還沒決定通道」時唯一不會外洩的行為。
+BLIND_REVIEW_DIR = Path("artifacts") / "blind_review"
+
+
+def _write_blind_review_card(primary_text: str, shadow_text: str,
+                             today: str) -> None:
+    """產生**隱去模型名稱**的 A/B 盲評卡(r4 Codex,#2)。
+
+    十配對達標的判讀**明文要求人工盲評**,而影子的文字先前只活到算完指標
+    就被丟掉 —— 也就是說那個要求永遠無法執行。
+
+    **通道是使用者的決定,不是我的。** 這兩份文字是他的晨報內容,而
+    GitHub Actions 的 artifact 在公開 repo 上任何人都下載得到。
+    所以預設只寫在 runner 的本地目錄(job 結束即消失),
+    真正的通道由 `LLM_BLIND_REVIEW_SINK` 開啟。組裝在 `analysis_metrics`,
+    這裡只負責落地。
+    """
+    if not (LLM_EXPERIMENT_ID and primary_text and shadow_text):
+        return
+    try:
+        path = BLIND_REVIEW_DIR / f"{today}.json"
+        card, entry = _am.build_card_payload(
+            primary_text, shadow_text, today=today,
+            sink=LLM_BLIND_REVIEW_SINK, path=str(path))
+        BLIND_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(path, json.dumps(card, ensure_ascii=False, indent=1))
+        _RUN_MANIFEST.setdefault("llm_experiment_review", {}).update(entry)
+    except Exception as e:                      # noqa: BLE001 - 觀測不得弄壞晨報
+        print(f"[blind-review] 產生失敗(不影響晨報): {e}", file=sys.stderr)
 
 
 def _comparable_metrics(packet: Optional[dict], primary_text: str,

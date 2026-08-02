@@ -148,6 +148,7 @@ jobs:
           OPENAI_REASONING_SUMMARY: ${{ vars.OPENAI_REASONING_SUMMARY || 'auto' }}
           OPENAI_REASONING_CONTEXT: ${{ vars.OPENAI_REASONING_CONTEXT || 'current_turn' }}
           OPENAI_PROMPT_CACHE_TTL_SECONDS: ${{ vars.OPENAI_PROMPT_CACHE_TTL_SECONDS || '' }}
+          LLM_BLIND_REVIEW_SINK: ${{ vars.LLM_BLIND_REVIEW_SINK || 'local' }}
           # 上面每一項都在 YAML 就用 `|| 預設` 補齊,所以程式看到的永遠是最終值,
           # **分辨不出「沒設」與「設成跟預設一樣」**。2026-08-01 就是這樣:
           # 使用者設了 LLM_PROVIDER=openai 卻仍跑 DeepSeek,而 manifest 看不出原因
@@ -184,7 +185,8 @@ jobs:
             OPENAI_TEXT_VERBOSITY=${{ vars.OPENAI_TEXT_VERBOSITY }};
             OPENAI_REASONING_SUMMARY=${{ vars.OPENAI_REASONING_SUMMARY }};
             OPENAI_REASONING_CONTEXT=${{ vars.OPENAI_REASONING_CONTEXT }};
-            OPENAI_PROMPT_CACHE_TTL_SECONDS=${{ vars.OPENAI_PROMPT_CACHE_TTL_SECONDS }}
+            OPENAI_PROMPT_CACHE_TTL_SECONDS=${{ vars.OPENAI_PROMPT_CACHE_TTL_SECONDS }};
+            LLM_BLIND_REVIEW_SINK=${{ vars.LLM_BLIND_REVIEW_SINK }}
 
           # Gemini（免費備援，可留空）
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

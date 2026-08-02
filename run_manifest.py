@@ -45,6 +45,9 @@ DIAGNOSTIC_KEYS = (
     # **整包指派**,寫在它底下的失敗紀錄會被靜默蓋掉,而可靠度指標
     # 又回到「只量 Luna 成功的那些天」。
     "llm_experiment",
+    # 盲評卡的**存在性**(日期/路徑/通道/解碼表在不在)。刻意只有指標,
+    # 沒有文字 —— manifest 會 commit 進公開 repo,而卡片含兩份完整分析。
+    "llm_experiment_review",
 )
 
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,

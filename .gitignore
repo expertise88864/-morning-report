@@ -23,3 +23,7 @@ state/history_index.jsonl
 # 含實際持股代號(00631L/00662/2330),而本 repo 是**公開**的。
 # 2026-07-26:git add -A 曾誤收此檔,已在 push 前攔下。列入忽略避免再次發生。
 UPGRADE_PLAN_*.md
+
+# 盲評卡:含**兩份完整分析文字**。repo 是公開的,而這是使用者的晨報內容 ——
+# 通道由他決定(LLM_BLIND_REVIEW_SINK),不是 commit 進來的預設。
+artifacts/

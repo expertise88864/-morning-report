@@ -265,3 +265,19 @@ def blind_review_is_decodable(card: dict) -> bool:
     """解碼表在不在。沒有它,評完的分數對不回模型 —— 整天的盲評作廢。"""
     key = (card or {}).get("_key") or {}
     return set(key) == {"A", "B"} and set(key.values()) == {"primary", "shadow"}
+
+
+def build_card_payload(primary_text: str, shadow_text: str, *,
+                       today: str, sink: str, path: str) -> tuple:
+    """組出「要寫的卡片」與「可以進公開 manifest 的摘要」。
+
+    分成兩份是重點:卡片含**兩份完整分析文字**,manifest 會被 commit 進
+    公開 repo —— 摘要只准帶存在性與解碼表,不准帶文字。
+    回傳 `(card, manifest_entry)`;呼叫端負責落地(本模組不碰檔案系統)。
+    """
+    card = blind_review_pair(primary_text, shadow_text, seed=today)
+    return card, {
+        "date": today, "path": path, "sink": sink,
+        "decodable": blind_review_is_decodable(card),
+        "criteria": list(card.get("criteria") or ()),
+    }

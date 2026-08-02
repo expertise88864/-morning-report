@@ -386,6 +386,7 @@ CONFIG_SOURCE_SPEC = {
     "OPENAI_REASONING_SUMMARY":    ("variable", "auto"),
     "OPENAI_REASONING_CONTEXT":    ("variable", "current_turn"),
     "OPENAI_PROMPT_CACHE_TTL_SECONDS": ("variable", ""),
+    "LLM_BLIND_REVIEW_SINK":       ("variable", "local"),  # 見 BLIND_REVIEW_DIR
 }
 
 #: 只有 `variable` 的鍵需要把**原始值**傳進來(`fixed` 的來源已經寫在上表)。

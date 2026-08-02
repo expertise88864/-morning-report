@@ -129,6 +129,10 @@ def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
     return {
         "schema_version": EXPERIMENT_SCHEMA_VERSION,
         "comparable_pairs": len(pairs),
+        # 有幾個配對真的留下了可取回的盲評材料。刻意**不**併進
+        # `comparable_pairs`:配對是否可比與盲評材料在不在是兩件事,
+        # 混成一個數字就再也分不出是哪一個缺。
+        "pairs_with_review": sum(1 for r in pairs if r.get("review_ok")),
         "target_pairs": int(target),
         "remaining": max(0, int(target) - len(pairs)),
         "ready": len(pairs) >= int(target),
@@ -177,8 +181,14 @@ def verdict(progress: dict) -> str:
                 f"{EXCLUSION_REASONS.get(k, k)} {v} 天" for k, v in ex.items()))
         bits.append("**尚不得下結論**")
         return ";".join(bits)
-    return (f"已達 {got}/{target} 個可比較配對 —— 可以做判讀。"
-            "判讀本身仍需人工盲評與逐日 stance flip 裁決,不得只看綜合分數。")
+    with_review = p.get("pairs_with_review", 0)
+    tail = ("判讀本身仍需人工盲評與逐日 stance flip 裁決,不得只看綜合分數。")
+    if with_review < got:
+        # r5(Codex,#1):要求一件做不到的事,等於沒有要求。
+        tail += (f"**但只有 {with_review}/{got} 個配對留下了可取回的盲評卡** ——"
+                 "其餘的卡片寫失敗或落在 job 結束即消失的 sink,"
+                 "那幾天的盲評無法補做。")
+    return f"已達 {got}/{target} 個可比較配對 —— 可以做判讀。{tail}"
 
 
 def build_record(*, today: str, experiment_id: str,
@@ -186,6 +196,7 @@ def build_record(*, today: str, experiment_id: str,
                  evidence_sha_primary: str, evidence_sha_shadow: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
                  code_version: str = "", failure_reason: str = "",
+                 review_ok: bool = False,
                  metrics: Optional[dict] = None) -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
@@ -197,6 +208,10 @@ def build_record(*, today: str, experiment_id: str,
     return {
         "date": today,
         "experiment_id": experiment_id,
+        # r5(Codex,#1/#3):這一天有沒有**取得回來的**盲評材料。
+        # 判讀明文要求人工盲評 —— 卡片寫失敗、或落在 job 結束就消失的 sink,
+        # 都讓那個要求做不成,而「達標」的宣告會因此變成空話。
+        "review_ok": bool(review_ok),
         "comparison_mode": COMPARISON_MODE,
         "schema_version": EXPERIMENT_SCHEMA_VERSION,
         "primary_profile": p.get("profile"),
@@ -299,3 +314,30 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     progress["verdict"] = verdict(progress)
     log(f"[llm-experiment] {progress['verdict']}")
     return progress
+
+
+def write_card(primary_text: str, shadow_text: str, *, today: str, sink: str,
+               sinks: dict, dirname: str, build, write, degrade) -> tuple:
+    """把盲評卡落地,回傳 `(有沒有材料, manifest 摘要)`。
+
+    寫檔器由呼叫端注入(本模組不 import 主模組、不碰 `Path`)——
+    與 `run_comparison` 同一個做法。
+
+    「有沒有材料」是回傳值的重點:判讀明文要求人工盲評,而卡片可能寫失敗、
+    或落在 job 結束就消失的 sink。那時「十配對達標」不代表判讀做得成,
+    帳本必須記得下這個差別(r5 Codex,#1/#3)。
+    """
+    try:
+        files, entry = build(primary_text, shadow_text, today=today, sink=sink,
+                             dirname=dirname, sinks=sinks)
+        for name, obj in files:
+            write(name, obj)
+        if not entry["retrievable_after_job"]:
+            degrade(f"blind_review:not_retrievable:{sink}")
+        return True, entry
+    except Exception as e:                     # noqa: BLE001 - 觀測不得弄壞晨報
+        degrade("blind_review:write_failed")
+        return False, {"date": today, "sink": sink, "ok": False,
+                       "error": f"{type(e).__name__}: {e}"[:160],
+                       "blind": False, "decodable": False,
+                       "retrievable_after_job": False}

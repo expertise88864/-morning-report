@@ -222,6 +222,23 @@ jobs:
       #
       # 放在寄信**之後**:此時信已寄出,不違反「晨報不可斷」;契約失敗會讓
       # 這個 job 變紅,既有的 alert-on-failure job 會據此發告警信。
+      # A/B 盲評卡的 **consumer**。沒有這一步,卡片只存在於 runner 上、
+      # job 結束即消失 —— 而 `LLM_BLIND_REVIEW_SINK` 會看起來像是有在交付
+      # (r5 Codex,#1:機制存在但十天後一張卡都取不回)。
+      #
+      # ⚠ **本 repo 是公開的,公開 repo 的 artifact 任何人拿到網址都能下載。**
+      # 卡片含兩份完整分析文字,所以這一步**只在明確設成 `artifact` 時才跑**;
+      # 預設 `local` 不上傳(也就取不回,那個事實會進 manifest 與降級清單)。
+      # `.key.json` 是解碼表,與評審看的卡分開上傳 —— 評分寫完才該打開它。
+      - name: 上傳 A/B 盲評卡(僅當 sink=artifact)
+        if: ${{ always() && !cancelled() && vars.LLM_BLIND_REVIEW_SINK == 'artifact' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blind-review-${{ github.run_id }}
+          path: artifacts/blind_review/
+          retention-days: 14
+          if-no-files-found: ignore
+
       # `continue-on-error: false`(預設)是刻意的 —— 靜默通過的契約等於沒有契約。
       # 第十輪 P1-9:**契約卡在 commit 與 push 之間。**
       # 原本這一步跑在晨報**之後**,而晨報自己已經 push 了 —— schema 壞掉的

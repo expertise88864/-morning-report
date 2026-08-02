@@ -267,17 +267,50 @@ def blind_review_is_decodable(card: dict) -> bool:
     return set(key) == {"A", "B"} and set(key.values()) == {"primary", "shadow"}
 
 
-def build_card_payload(primary_text: str, shadow_text: str, *,
-                       today: str, sink: str, path: str) -> tuple:
-    """組出「要寫的卡片」與「可以進公開 manifest 的摘要」。
+def blind_review_is_blind(card: dict) -> bool:
+    """評審**真正會打開的那份**有沒有洩漏身分(r5 Codex,#2)。
 
-    分成兩份是重點:卡片含**兩份完整分析文字**,manifest 會被 commit 進
-    公開 repo —— 摘要只准帶存在性與解碼表,不准帶文字。
-    回傳 `(card, manifest_entry)`;呼叫端負責落地(本模組不碰檔案系統)。
+    先前解碼表與 A/B 內容同在一個 JSON 裡:評審點開檔案第一眼就看得到
+    哪一邊是誰,「盲評」只剩名字。而 `blind_review_is_decodable` 反而把
+    這個共存行為固化成測試通過的條件。
     """
-    card = blind_review_pair(primary_text, shadow_text, seed=today)
-    return card, {
-        "date": today, "path": path, "sink": sink,
-        "decodable": blind_review_is_decodable(card),
-        "criteria": list(card.get("criteria") or ()),
-    }
+    return "_key" not in (card or {})
+
+
+def split_card(card: dict) -> tuple:
+    """拆成 `(評審看的, 解碼表)` —— 兩份分開存、分開授權。
+
+    解碼表要等評分寫完才拿出來;放在同一份裡就不是盲評了。
+    """
+    c = dict(card or {})
+    key = {"seed": c.get("seed"), "_key": c.pop("_key", None)}
+    return c, key
+
+
+def card_files(primary_text: str, shadow_text: str, *, today: str, sink: str,
+               dirname: str, sinks: dict) -> tuple:
+    """回傳 `(要寫的檔案, manifest 摘要)`。**本模組不碰檔案系統。**
+
+    三份分開是重點:
+
+      * **評審看的那份不含解碼表**。先前兩者同在一個 JSON 裡,評審點開
+        第一眼就看得到哪一邊是誰 ——「盲評」只剩名字(r5 Codex,#2)。
+      * 解碼表另存,評分寫完才拿出來。
+      * manifest 只帶存在性:它會被 commit 進**公開 repo**,而卡片含兩份
+        完整分析文字。不准帶文字,也不准帶解碼表。
+
+    `sinks` 是「sink → job 結束後拿不拿得到」的對照表。認不得的 sink 直接
+    拋 —— 先前 sink 只被寫進 manifest、沒有任何分派或搬運行為,於是十天後
+    一張卡都取不回,而 manifest 看起來像是有在交付(r5 Codex,#1)。
+    """
+    if sink not in sinks:
+        raise ValueError(f"未知的 sink {sink!r}(可用:{'/'.join(sorted(sinks))})")
+    reviewer, key = split_card(
+        blind_review_pair(primary_text, shadow_text, seed=today))
+    return ([(f"{today}.json", reviewer), (f"{today}.key.json", key)], {
+        "date": today, "dir": dirname, "sink": sink, "ok": True,
+        "blind": blind_review_is_blind(reviewer),
+        "decodable": blind_review_is_decodable(key),
+        "retrievable_after_job": bool(sinks[sink]),
+        "criteria": list(reviewer.get("criteria") or ()),
+    })

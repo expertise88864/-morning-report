@@ -122,7 +122,7 @@
 | `OPENAI_REASONING_SUMMARY` | `auto` | 推理摘要,**僅供遙測不進信件**;需組織驗證,取不到不算錯 |
 | `OPENAI_REASONING_CONTEXT` | `current_turn` | GPT-5.6 預設 all_turns;晨報每天是獨立判斷,故明設 current_turn |
 | `OPENAI_PROMPT_CACHE_TTL_SECONDS` | 空 | 快取存活秒數。空 = 用 provider 預設(30 分) |
-| `LLM_BLIND_REVIEW_SINK` | `local` | A/B 盲評卡送到哪。`local` = 只留在 runner 上(job 結束即消失)—— 卡片含兩份完整分析文字,而本 repo 是公開的 |
+| `LLM_BLIND_REVIEW_SINK` | `local` | A/B 盲評卡送到哪。`local`(預設)= 只留在 runner 上,**job 結束即消失、事後取不回**(這個事實會進 manifest 與降級清單)。`artifact` = 由 workflow 上傳、保留 14 天 —— ⚠ 卡片含兩份完整分析文字,而**公開 repo 的 artifact 任何人拿到網址都能下載** |
 
 > 上表的**預設值欄位由 `tests/test_workflow_contract.py` 對 workflow 逐格比對**
 > (第十一輪 P2-1)。在此之前它漂過:`DEEPSEEK_REASONING_EFFORT` 寫著預設 `high`

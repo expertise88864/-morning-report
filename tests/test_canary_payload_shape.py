@@ -302,3 +302,21 @@ def test_the_strict_probe_checks_the_schema_not_just_json():
                          mod._CANARY_SCHEMA) == []
     src = _CANARY.read_text(encoding="utf-8")
     assert "_jc.violations(parsed, _CANARY_SCHEMA)" in src,         "strict 探測沒有真的拿 schema 去驗"
+
+
+def test_the_matrix_job_actually_passes_the_shadow_model():
+    """**機制做好了、workflow 沒接,等於沒做**(r1 Codex,#1)。
+
+    程式已經會在「只當影子」時改探測 `LLM_SHADOW_MODEL`,而 matrix job
+    沒把那個變數傳進來 —— 它落回主分析的模型,影子模型名打錯照樣綠。
+
+    而我上一版的測試**自己注入環境變數**,所以驗的是函式、不是接線 ——
+    這正是本 repo 反覆栽的地方,所以這條直接讀 workflow。
+    """
+    wf = (_ROOT / ".github" / "workflows"
+          / "validate-llm-config.yml").read_text(encoding="utf-8")
+    probe = wf[wf.index("  probe:"):]
+    assert "LLM_SHADOW_MODEL:" in probe, (
+        "matrix probe job 沒有傳 LLM_SHADOW_MODEL —— "
+        "只當影子的 provider 會被探測成主分析的模型")
+    assert "vars.LLM_SHADOW_MODEL" in probe, "沒有接到 repo variable"

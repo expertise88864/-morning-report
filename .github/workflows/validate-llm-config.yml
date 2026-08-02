@@ -84,6 +84,11 @@ jobs:
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
           EXTRACTOR_PROVIDER: ${{ vars.EXTRACTOR_PROVIDER || '' }}
           LLM_SHADOW_PROVIDER: ${{ vars.LLM_SHADOW_PROVIDER || '' }}
+          # r1(Codex,#1):**這一行原本不存在。** 程式已經會在「只當影子」時
+          # 改探測影子模型,而 matrix job 沒把變數傳進來 —— 於是它落回主分析
+          # 的模型,影子模型名打錯照樣綠。機制做好了、接線沒接,是本 repo
+          # 反覆出現的形狀,而我自己的測試注入環境變數,正好驗不到接線。
+          LLM_SHADOW_MODEL: ${{ vars.LLM_SHADOW_MODEL || '' }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-terra' }}
           DEEPSEEK_MODEL: deepseek-v4-pro
           GEMINI_MODEL: gemini-2.5-flash

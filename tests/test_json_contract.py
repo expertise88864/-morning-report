@@ -36,6 +36,33 @@ def test_an_unimplemented_keyword_raises_instead_of_passing():
                                                       "anyOf": []}}})
 
 
+def test_a_node_made_only_of_an_unsupported_keyword_is_caught():
+    """**只有 `anyOf` 的節點也要被抓**(r1 Codex,pass 2)。
+
+    我把黑名單改成白名單時加了一個「這看起來像不像 schema」的閘門
+    (要有 `type`/`properties`/`enum`/`items` 才檢查),於是
+    `{"anyOf": [...]}` 這種**最該擋**的形狀整個被跳過 ——
+    **舊的黑名單反而擋得住它**。而我的測試把 `anyOf` 跟 `type` 寫在一起,
+    正好滿足那個閘門,把這個情形遮住了。
+
+    組合關鍵字構成的節點本來就常常沒有 `type`;而傳進來的每個 dict
+    都已經是 schema 節點,沒有需要猜的餘地。
+    """
+    import pytest
+    assert jc.unsupported_keywords({"anyOf": []}) == ["(root):anyOf"]
+    with pytest.raises(NotImplementedError):
+        jc.violations({"a": 1}, {"anyOf": []})
+    # 巢狀的也要抓得到,而且要指得出位置
+    nested = {"type": "object", "properties": {"a": {"oneOf": []}}}
+    assert jc.unsupported_keywords(nested) == ["a:oneOf"]
+
+
+def test_an_empty_schema_is_not_flagged():
+    """反向:空 schema(什麼都接受)不是「用了沒實作的關鍵字」。"""
+    assert jc.unsupported_keywords({}) == []
+    assert jc.violations({"a": 1}, {}) == []
+
+
 def test_numeric_bounds_are_checked():
     """r1(Codex,#2):範圍沒檢查,守衛就會替 API 必然拒絕的物件背書。"""
     s = {"type": "object", "additionalProperties": False,

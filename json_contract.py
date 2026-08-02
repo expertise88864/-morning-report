@@ -46,11 +46,13 @@ def unsupported_keywords(schema, path: str = "") -> list:
     """
     out: list = []
     if isinstance(schema, dict):
-        looks_like_schema = bool(
-            {"type", "properties", "enum", "items"} & set(schema))
-        if looks_like_schema:
-            out += [f"{path or '(root)'}:{k}"
-                    for k in schema if k not in IMPLEMENTED]
+        # r1(Codex,pass 2):**不得先問「這看起來像不像 schema」。**
+        # 我加那個閘門是為了避免誤判非 schema 的 dict,結果只有
+        # `{"anyOf": [...]}` 的節點(沒有 `type`)整個檢查被跳過 ——
+        # 而那正是最該擋的形狀。**舊的黑名單反而擋得住它。**
+        # 傳進來的每一個 dict 都已經是 schema 節點,沒有需要猜的餘地。
+        out += [f"{path or '(root)'}:{k}"
+                for k in schema if k not in IMPLEMENTED]
         for k, v in schema.items():
             if k == "properties" and isinstance(v, dict):
                 for name, sub in v.items():
@@ -83,9 +85,7 @@ def violations(obj, schema: dict, path: str = "") -> list:
     out: list = []
     if not isinstance(schema, dict):
         return out
-    bad = [k for k in schema
-           if k not in IMPLEMENTED
-           and {"type", "properties", "enum", "items"} & set(schema)]
+    bad = [k for k in schema if k not in IMPLEMENTED]
     if bad:
         raise NotImplementedError(
             f"{path or '(root)'} 用到本模組沒實作的 schema 關鍵字:{bad} —— "

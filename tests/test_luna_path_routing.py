@@ -40,7 +40,7 @@ _GOOD = {
     "key_drivers": [{"statement": "費半走強", "claim_type": "fact",
                      "direction": "bullish", "materiality": "high",
                      "confidence": 0.8, "horizon": "intraday",
-                     "evidence_ids": [], "counterevidence_ids": [],
+                     "evidence_ids": ["n1"], "counterevidence_ids": [],
                      "falsification_trigger": "夜盤翻黑"}],
     "scenario_tree": {"base": {"narrative": "震盪走高", "probability": 0.6,
                                "triggers": []},
@@ -50,19 +50,34 @@ _GOOD = {
                                "triggers": []},
                       "invalidation_triggers": []},
     "taiwan_market": {"summary": "量能回升。", "taiex_view": "偏多",
-                      "tsmc_view": "守月線", "evidence_ids": []},
+                      "tsmc_view": "守月線", "evidence_ids": ["n2"]},
     "global_market": {"summary": "美股收紅。", "us_to_tw_linkage": "費半傳導",
-                      "evidence_ids": []},
+                      "evidence_ids": ["n1"]},
     "portfolio_implications": {"summary": "維持核心。",
                                "actions_to_consider": [], "risks": []},
-    "top_news_analysis": [], "contradictions": [], "data_gaps": [],
-    "watch_triggers": [], "claim_audit": [],
-    "market_regime": {"label": "偏多", "evidence_ids": []},
+    "top_news_analysis": [{"source_item_id": "n1", "why_it_matters": "傳導台股",
+                           "affected": ["台積電"]}],
+    "contradictions": [], "data_gaps": [], "watch_triggers": [],
+    "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
+                     "claim_type": "fact", "materiality": "high",
+                     "evidence_ids": ["n1"], "counterevidence_ids": [],
+                     "falsification_trigger": "夜盤翻黑"}],
+    "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
     "priced_in": {"already_reflected": [], "not_yet_reflected": []},
 }
 
+#: 第十二輪 P1-3:**測試資料要有證據可引。**
+#: 原本 news 是空清單,於是 packet 裡一個 evidence ID 都沒有 ——
+#: 「合格輸出」因此只能長成「什麼都不引用」的樣子,而那正是缺陷本身。
+_NEWS = [{"source_item_id": "n1", "title": "費城半導體指數收漲 2.1%",
+          "summary": "SOX 收漲。", "source": "Reuters",
+          "entities": ["費半"], "published_at": "2026-08-02T20:00:00+08:00"},
+         {"source_item_id": "n2", "title": "台積電法說會下週登場",
+          "summary": "市場關注資本支出。", "source": "經濟日報",
+          "entities": ["台積電"], "published_at": "2026-08-02T18:00:00+08:00"}]
+
 _ARGS = ({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
-         {"model1": 1000.0}, [], [], "")
+         {"model1": 1000.0}, _NEWS, [], "")
 
 
 @pytest.fixture
@@ -429,3 +444,67 @@ def test_the_production_path_actually_attaches_the_metrics(luna_on, monkeypatch)
     assert "evidence_coverage" in m["primary"], m["primary"]
     # 深度揭露也要在
     assert rows[0]["primary_coverage"].get("available") is not None
+
+
+# ------------------------------------------------------- 第十二輪 P1-3
+
+#: **這份輸出以前叫 `_GOOD`。** 每個 evidence_ids 都是空的、claim_audit 也空,
+#: 而它被當成「生產形狀的合格輸出」用來驗整條路徑 —— 也就是說
+#: 「重大主張不必有根據」被測試釘成了通過條件。
+_UNSUPPORTED = json.loads(json.dumps(_GOOD))
+_UNSUPPORTED["key_drivers"][0]["evidence_ids"] = []
+_UNSUPPORTED["taiwan_market"]["evidence_ids"] = []
+_UNSUPPORTED["global_market"]["evidence_ids"] = []
+_UNSUPPORTED["market_regime"]["evidence_ids"] = []
+_UNSUPPORTED["top_news_analysis"] = []
+_UNSUPPORTED["claim_audit"] = []
+
+
+def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
+    """**沒有根據的重大主張不得被寄出**(第十二輪 P1-3)。
+
+    實測過的反例:`materiality=high` 的 `fact`、`evidence_ids=[]`、
+    `claim_audit=[]` —— 這份輸出原本零問題通過驗證,而 renderer 會把它
+    排進「昨夜三大重點」與「我的明確立場」寄出去。
+
+    缺陷的形狀是**空集合讓迴圈沒跑**:高重要性檢查寫在
+    `for c in claim_audit` 裡,claim_audit 空的時候整段直接跳過。
+
+    strict schema 保證的是形狀,不是根據。
+    """
+    calls = []
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (calls.append(p), _response(_UNSUPPORTED))[1])
+    # 這段要**過得了完整性檢查** —— 太短會落到備援文字,
+    # 那時測到的就不是「有沒有落回 legacy」而是「備援有沒有作用」。
+    legacy = ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
+              "## 一句話總結\n維持核心部位。")
+    monkeypatch.setattr(mr, "_call_llm_text", lambda p: legacy)
+
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert text == legacy, (
+        "沒有根據的報告被採用了 —— 它會被原樣寄出,而且看起來很有把握")
+    assert len(calls) == 2, f"應該修補一次再放棄,實際送了 {len(calls)} 次"
+    problems = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_problems") or []
+    assert any("證據" in p for p in problems), f"拒收原因沒有說清楚:{problems}"
+
+
+def test_the_rejected_report_never_reaches_the_renderer():
+    """更前面一步:那份輸出**原本渲染得出完整段落** —— 所以擋要擋在驗證。"""
+    import analysis_render as ar
+    rendered = ar.render(_UNSUPPORTED)
+    assert "費半走強" in rendered, (
+        "反例改壞了 —— 它必須是「渲染得出來」的那種,"
+        "否則這條測的就不是「驗證有沒有擋住」")
+
+
+def test_the_good_fixture_actually_cites_evidence():
+    """反向:`_GOOD` 不得再退化成「什麼都不引用」。
+
+    它是整個檔案的基準;基準鬆掉,上面每一條路徑測試都會跟著失去意義。
+    """
+    ids = {i for d in _GOOD["key_drivers"] for i in d["evidence_ids"]}
+    assert ids, "_GOOD 的 key_drivers 沒有引用任何證據"
+    assert _GOOD["claim_audit"], "_GOOD 沒有稽核軌跡"
+    known = {n["source_item_id"] for n in _NEWS}
+    assert ids <= known, f"_GOOD 引用了測試資料裡不存在的證據:{ids - known}"

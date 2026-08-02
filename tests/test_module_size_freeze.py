@@ -197,6 +197,9 @@ MODULE_CEILINGS = {
     # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
     # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
     "analysis_schema.py": 250,
+    # 「根據」的檢查(與 schema 的「形狀」檢查刻意分開 —— 第十二輪 P1-3
+    # 的教訓正是這兩件事被混為一談)。實測 64 行。
+    "analysis_grounding.py": 90,
     # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
     # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
     "prompt_profiles.py": 250,

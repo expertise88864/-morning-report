@@ -27,6 +27,8 @@ schema 裡沒有「逐步推理」欄位,也不存模型的隱藏推理。要的
 """
 from __future__ import annotations
 
+import analysis_grounding as _gr
+
 #: 輸出契約版本。**改欄位就要進版** —— cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
 ANALYSIS_SCHEMA_VERSION = 1
@@ -187,7 +189,22 @@ def validate(obj, evidence_ids) -> list:
       - 證據 ID 是否真的存在於本日 packet(**編造的 ID 比沒有 ID 更危險**,
         它看起來有根據)
       - 高重要性的 fact/inference 有沒有帶證據
+      - **會進到信裡的段落有沒有帶得出根據**(第十二輪 P1-3)
       - 立場詞彙是否合法
+
+    ## 第十二輪 P1-3:strict schema 保證形狀,不保證根據
+
+    實測反例(審查給的,逐字):一個 `materiality=high` 的 `fact`、
+    `evidence_ids=[]`、`claim_audit=[]` —— 這個物件**零問題通過**,
+    而且 renderer 會把它排進「昨夜三大重點」與「我的明確立場」寄出去。
+
+    缺陷的形狀是本 repo 記過的那一條:**空集合讓迴圈沒跑**。
+    高重要性的檢查寫在 `for c in claim_audit` 裡,`claim_audit` 空的時候
+    整段直接跳過;而 `key_drivers` 只驗「ID 存不存在」,沒驗「有沒有」。
+    兩個漏洞都不會有錯誤訊息,只會安靜地放行。
+
+    所以判準改成**進信的段落都要有根據**,而不是我挑幾個欄位來檢查 ——
+    欄位清單會漂移,「會不會被寄出去」不會。
     """
     problems: list = []
     if not isinstance(obj, dict):
@@ -217,6 +234,10 @@ def validate(obj, evidence_ids) -> list:
     for i, n in enumerate(obj.get("top_news_analysis") or []):
         if isinstance(n, dict):
             _check_ids([n.get("source_item_id")], f"top_news_analysis[{i}]")
+
+    # 進信的段落要帶得出根據(`analysis_grounding`)。**空著不算過** ——
+    # 迴圈跑不到不等於沒問題,而那正是這條缺陷活下來的方式。
+    problems.extend(_gr.problems(obj))
 
     label = ((obj.get("stance") or {}) if isinstance(obj.get("stance"), dict)
              else {}).get("label")

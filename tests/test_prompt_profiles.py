@@ -314,3 +314,39 @@ def test_validation_never_raises_on_garbage():
                  {"claim_audit": [None, 7]}, {"stance": "不是物件"}):
         out = sch.validate(junk, {"n1"})
         assert isinstance(out, list)
+
+
+def test_the_legacy_bundle_does_not_borrow_the_packets_coverage():
+    """**legacy profile 不消費 packet,就不該掛著 packet 的涵蓋率**
+    (第十二輪 P1-2 子問題)。
+
+    `_bundle` 原本直接從 packet 抄 `coverage`,兩個 profile 都一樣 ——
+    等於替一份沒讀過那些證據的 prompt 宣稱了深度。目前下游沒有讀這個欄位
+    (帳本另記 `available=None`),所以還沒變成假數據;但**一個「填好了、
+    剛好沒人用」的錯誤欄位,是等著被誤用的**,而誤用的那天它會讓兩邊
+    看起來讀了一樣多的東西。
+    """
+    packet = {"schema_version": 1, "core_sha": "x", "news": [],
+              "coverage": {"rate": 1.0, "items": 12}}
+    luna = pp.build_luna_bundle(packet)
+    legacy = pp.build_deepseek_legacy_bundle(packet, "既有的單段 prompt")
+
+    assert luna["evidence_coverage"] == {"rate": 1.0, "items": 12}
+    assert legacy["evidence_coverage"].get("available") is None, (
+        "legacy bundle 借用了 packet 的涵蓋率 —— 它根本沒讀過那份 packet")
+    assert legacy["evidence_coverage"] != luna["evidence_coverage"]
+    assert "basis" in legacy["evidence_coverage"], "說不知道也要說得出為什麼"
+
+
+def test_both_bundles_still_share_the_source_pool_sha():
+    """反向:**可比性的依據不能跟著被拆掉。**
+
+    `core_evidence_sha` 宣稱的是「兩邊從同一批新聞、同一個交易日出發」——
+    那件事對 legacy 仍然成立(它的 prompt 由同一份 news 組出來),
+    所以它該留著。被拆掉的只有「讀了多深」那個宣稱。
+    """
+    packet = {"schema_version": 1, "core_sha": "abc", "news": [],
+              "coverage": {"rate": 1.0}}
+    luna = pp.build_luna_bundle(packet)
+    legacy = pp.build_deepseek_legacy_bundle(packet, "既有的單段 prompt")
+    assert luna["core_evidence_sha"] == legacy["core_evidence_sha"] == "abc"

@@ -124,8 +124,8 @@ def luna_user_payload(packet: dict) -> str:
 
 
 def _bundle(profile_id: str, version: int, developer: str, user: str,
-            response_format: Optional[dict], packet: dict,
-            extra: Optional[dict] = None) -> dict:
+            response_format: Optional[dict], packet: dict, *,
+            coverage: dict, extra: Optional[dict] = None) -> dict:
     """組出 PromptBundle。`prompt_sha` 涵蓋**兩段都算進去**。
 
     只算 user 段的話,「改了 developer 指令」會完全看不出來 ——
@@ -145,7 +145,12 @@ def _bundle(profile_id: str, version: int, developer: str, user: str,
         # **可比性看這個,不看上面那個。** 上面那個只證明「同一個 packet 物件」;
         # 這個證明「兩邊從同一批新聞、同一個交易日出發」。
         "core_evidence_sha": packet.get("core_sha"),
-        "evidence_coverage": dict(packet.get("coverage") or {}),
+        # **涵蓋率由呼叫端給,不從 packet 直接抄**(第十二輪 P1-2 子問題)。
+        # legacy profile 根本不消費 packet —— 把 packet 的涵蓋率蓋到它的
+        # bundle 上,等於替一份沒讀過那些證據的 prompt 宣稱了深度。
+        # 目前下游沒有讀這個欄位(帳本另記 available=None),所以還沒變成
+        # 假數據 —— 但一個「填好了、剛好沒人用」的錯誤欄位,是等著被誤用的。
+        "evidence_coverage": dict(coverage or {}),
         "prompt_sha": hashlib.sha256(full.encode("utf-8")).hexdigest()[:16],
         "estimated_input_tokens": estimate_tokens(full),
         "truncation_summary": dict(packet.get("truncation") or {}),
@@ -158,7 +163,8 @@ def build_luna_bundle(packet: dict) -> dict:
     return _bundle("luna56_xhigh_v1", LUNA_XHIGH_VERSION,
                    LUNA_DEVELOPER_INSTRUCTIONS, luna_user_payload(packet),
                    _sch.response_format(), packet,
-                   {"structured_output": True})
+                   coverage=dict(packet.get("coverage") or {}),
+                   extra={"structured_output": True})
 
 
 def build_deepseek_legacy_bundle(packet: dict, legacy_prompt: str) -> dict:
@@ -169,7 +175,11 @@ def build_deepseek_legacy_bundle(packet: dict, legacy_prompt: str) -> dict:
     """
     return _bundle("deepseek_legacy_v1", DEEPSEEK_LEGACY_VERSION,
                    "", legacy_prompt, None, packet,
-                   {"structured_output": False})
+                   # 這條 prompt 不是從 packet 組的,所以 packet 的逐則涵蓋
+                   # 統計不適用於它。**說不知道,不要拿別人的數字充數。**
+                   coverage={"available": None,
+                             "basis": "legacy profile 不消費 EvidencePacket"},
+                   extra={"structured_output": False})
 
 
 #: profile 登錄簿。**新增 profile 就要進這張表** —— 實驗帳本用 profile_id

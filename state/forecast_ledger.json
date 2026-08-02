@@ -843,24 +843,24 @@
  },
  {
   "type": "top5",
-  "created": "2026-08-01",
+  "created": "2026-08-03",
   "ledger_schema_version": 2,
-  "created_at": "2026-08-01T10:11:44.765972+08:00",
+  "created_at": "2026-08-03T06:43:14.076833+08:00",
   "target_session": "2026-08-03",
   "base_session": "2026-07-31",
   "codes": [
    "2451",
+   "2610",
    "2207",
    "2884",
-   "2603",
-   "2615"
+   "2603"
   ],
   "raw_codes": [
    "2451",
+   "2610",
    "2207",
    "2884",
-   "2357",
-   "3231"
+   "2357"
   ],
   "excluded": [
    [
@@ -878,8 +878,8 @@
  {
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
-  "created": "2026-08-01",
-  "created_at": "2026-08-01T10:11:44.765972+08:00",
+  "created": "2026-08-03",
+  "created_at": "2026-08-03T06:43:14.076833+08:00",
   "target": "2026-08-03",
   "threshold": 2425.0,
   "pred_pct": 0.974,
@@ -894,17 +894,17 @@
    "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
    "probability_rule": "prob-v2",
    "mz_rule": "delta-mz-hac-v1",
-   "event_schema": 3,
+   "event_schema": 4,
    "ledger_schema": 2,
-   "git_sha": "79ee7eab8ccb"
+   "git_sha": "abad0664b724"
   },
-  "git_sha": "79ee7eab8ccb"
+  "git_sha": "abad0664b724"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
-  "created": "2026-08-01",
-  "created_at": "2026-08-01T10:11:44.765972+08:00",
+  "created": "2026-08-03",
+  "created_at": "2026-08-03T06:43:14.076833+08:00",
   "target": "2026-08-03",
   "threshold": 43119.75,
   "pred_pct": -0.0,
@@ -919,16 +919,16 @@
    "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
    "probability_rule": "prob-v2",
    "mz_rule": "delta-mz-hac-v1",
-   "event_schema": 3,
+   "event_schema": 4,
    "ledger_schema": 2,
-   "git_sha": "79ee7eab8ccb"
+   "git_sha": "abad0664b724"
   },
-  "git_sha": "79ee7eab8ccb"
+  "git_sha": "abad0664b724"
  },
  {
   "type": "mz_shadow",
-  "created": "2026-08-01",
-  "created_at": "2026-08-01T10:11:44.765972+08:00",
+  "created": "2026-08-03",
+  "created_at": "2026-08-03T06:43:14.076833+08:00",
   "target": "2026-08-03",
   "raw": 2448.62,
   "shadow": 2445.9,
@@ -944,10 +944,10 @@
    "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
    "probability_rule": "prob-v2",
    "mz_rule": "delta-mz-hac-v1",
-   "event_schema": 3,
+   "event_schema": 4,
    "ledger_schema": 2,
-   "git_sha": "79ee7eab8ccb"
+   "git_sha": "abad0664b724"
   },
-  "git_sha": "79ee7eab8ccb"
+  "git_sha": "abad0664b724"
  }
 ]

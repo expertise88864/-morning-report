@@ -1,9 +1,9 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 43,
-  "last_seen": "2026-08-01",
-  "latest_title": "AI 也搞駭客攻擊？ Anthropic承認旗下產品入侵3目標 - Newtalk新聞"
+  "days": 44,
+  "last_seen": "2026-08-03",
+  "latest_title": "記者編輯部| 【梅花專論】美伊戰爭已近半年川普自陷內外嚴峻挑戰 - 梅花新聞網"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
@@ -16,12 +16,6 @@
   "days": 3,
   "last_seen": "2026-08-01",
   "latest_title": "監察院陷空窗　政治獻金裁罰停擺、彈劾懲戒無法上訴"
- },
- "export_controls:ASML": {
-  "first_seen": "2026-07-28",
-  "days": 2,
-  "last_seen": "2026-07-29",
-  "latest_title": "美制裁反噬？中國自製 DUV 曝光機量產，ASML 護城河遭市場重新定價 - inside.com.tw"
  },
  "geopolitical:AVGO": {
   "first_seen": "2026-07-31",
@@ -49,9 +43,9 @@
  },
  "geopolitical:伊朗": {
   "first_seen": "2026-08-01",
-  "days": 1,
-  "last_seen": "2026-08-01",
-  "latest_title": "Trump vows continued U.S. attacks on Iran"
+  "days": 2,
+  "last_seen": "2026-08-03",
+  "latest_title": "伊朗稱接近與阿曼達成荷姆茲海峽新航道協議"
  },
  "geopolitical:中國": {
   "first_seen": "2026-08-01",
@@ -61,8 +55,14 @@
  },
  "geopolitical:美國": {
   "first_seen": "2026-08-01",
+  "days": 2,
+  "last_seen": "2026-08-03",
+  "latest_title": "川普暫緩對伊朗動武，等待協議進展"
+ },
+ "geopolitical:TSLA": {
+  "first_seen": "2026-08-03",
   "days": 1,
-  "last_seen": "2026-08-01",
-  "latest_title": "China reiterates opposition to Taiwan independence and foreign intervention"
+  "last_seen": "2026-08-03",
+  "latest_title": "傳馬斯克擬切割特斯拉中國業務"
  }
 }

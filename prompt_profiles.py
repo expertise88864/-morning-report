@@ -142,6 +142,10 @@ def _bundle(profile_id: str, version: int, developer: str, user: str,
                                   if response_format else 0),
         "evidence_schema_version": packet.get("schema_version"),
         "evidence_sha": _ep.evidence_sha(packet),
+        # **可比性看這個,不看上面那個。** 上面那個只證明「同一個 packet 物件」;
+        # 這個證明「兩邊從同一批新聞、同一個交易日出發」。
+        "core_evidence_sha": packet.get("core_sha"),
+        "evidence_coverage": dict(packet.get("coverage") or {}),
         "prompt_sha": hashlib.sha256(full.encode("utf-8")).hexdigest()[:16],
         "estimated_input_tokens": estimate_tokens(full),
         "truncation_summary": dict(packet.get("truncation") or {}),

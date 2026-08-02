@@ -10938,6 +10938,7 @@ def _state_push_paths() -> list[str]:
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
             str(CORPORATE_ACTION_FILE),   # 批#82:暫停交易/復牌史。TWTAWU 是**快照**,不跨日累積則結算當下查不到
             str(LLM_SHADOW_LEDGER_FILE),   # 批#89:影子比較帳本。價值全在跨日累積,不 commit 回來就永遠是「樣本不足」
+            str(LLM_EXPERIMENT_LEDGER_FILE),  # 同理:不 commit 回來,十配對永遠湊不滿
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
 
 
@@ -13482,7 +13483,7 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
             if packet is not None and LLM_EXPERIMENT_ID:
                 _today = out.get("today") or {}
                 _sha = _ep.evidence_sha(packet)
-                _RUN_MANIFEST["llm_experiment"] = _lx.build_record(
+                _persist_experiment_record(_lx.build_record(
                     today=now_tpe.strftime("%Y-%m-%d"),
                     experiment_id=LLM_EXPERIMENT_ID,
                     primary={"profile": primary_profile,
@@ -13513,7 +13514,13 @@ def _run_llm_shadow(prompt: str, primary_text: str, now_tpe: dt.datetime,
                     # 所以兩邊的證據指紋**必然相同** —— 這裡記下來讓它可稽核,
                     # 而不是靠「我知道它一樣」。
                     evidence_sha_primary=_sha, evidence_sha_shadow=_sha,
-                    code_version=SHADOW_COHORT_VERSION)
+                    # r2(Codex,#2):可比性判準是**核心證據集**(來源池 +
+                    # 交易日),不是整個 packet 的指紋 —— 兩份 prompt 是各自
+                    # 組出來的,後者只證明「同一個 packet 物件」。
+                    core_sha_primary=packet.get("core_sha") or "",
+                    core_sha_shadow=packet.get("core_sha") or "",
+                    code_version=SHADOW_COHORT_VERSION),
+                    now_tpe.strftime("%Y-%m-%d"))
     except Exception as e:                           # noqa: BLE001
         stat["error"] = f"{type(e).__name__}: {e}"[:160]
         print(f"[llm-shadow] 影子比較整段略過(不影響晨報): {e}", file=sys.stderr)
@@ -14059,6 +14066,38 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     return ""
 
 
+def _persist_experiment_record(record: dict, today: str) -> None:
+    """把今天這一列寫進**跨日**帳本並回報進度。
+
+    r2(Codex,#3):先前紀錄只進當日 manifest,而 manifest 每天覆寫 ——
+    `pair_progress()` 從來沒有被呼叫、`LLM_EXPERIMENT_TARGET_PAIRS` 從來沒有
+    被使用。也就是說十配對的計數機制**存在但不會計數**,
+    而那比沒有機制更糟:它看起來在運作。
+
+    **失敗只是今天沒有累積,不得讓晨報中斷。** 讀不出帳本就不寫
+    (覆蓋等於把十配對清零),寫不進去也只記一筆降級。
+    """
+    if not LLM_EXPERIMENT_ID:
+        return
+    try:
+        def _write(path, ledger):
+            _atomic_write_text(path, json.dumps(ledger, ensure_ascii=False,
+                                                indent=1))
+
+        progress = _lx.record_day(
+            record=record, today=today,
+            ledger_path=LLM_EXPERIMENT_LEDGER_FILE,
+            read_ledger=_lx.load_ledger, write_ledger=_write,
+            target=LLM_EXPERIMENT_TARGET_PAIRS,
+            log=lambda m: print(m, file=sys.stderr))
+        _RUN_MANIFEST["llm_experiment"] = dict(record, progress=progress)
+    except Exception as e:                      # noqa: BLE001 - 晨報不可斷
+        _DEGRADED_STEPS.append("llm_experiment_ledger")
+        print(f"[llm-experiment] 帳本寫入失敗(不影響晨報):"
+              f"{type(e).__name__}: {e}", file=sys.stderr)
+        _RUN_MANIFEST["llm_experiment"] = dict(record, ledger_error=str(e)[:120])
+
+
 def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
     """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4)。
 
@@ -14074,7 +14113,7 @@ def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
         # 路徑,而那條路徑結尾的 `_RUN_MANIFEST["llm_shadow"] = stat` 是**整包
         # 指派**,會把這裡寫的失敗紀錄整個蓋掉 —— 可靠度又回到只量成功的天。
         # 放在自己的鍵下,誰都蓋不到。
-        _RUN_MANIFEST["llm_experiment"] = _lx.build_record(
+        _persist_experiment_record(_lx.build_record(
             today=dt.datetime.now(TPE).strftime("%Y-%m-%d"),
             experiment_id=LLM_EXPERIMENT_ID,
             primary={"profile": "luna56_xhigh_v1",
@@ -14089,8 +14128,12 @@ def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
                     "model": LLM_SHADOW_MODEL,
                     "effort": LLM_SHADOW_REASONING_EFFORT, "ok": False},
             evidence_sha_primary=sha, evidence_sha_shadow=sha,
-            code_version=SHADOW_COHORT_VERSION)
-        _RUN_MANIFEST["llm_experiment"]["failure_reason"] = reason[:60]
+            # r2(Codex,#2):可比性判準是核心證據集,不是整個 packet 的指紋。
+            core_sha_primary=packet.get("core_sha") or "",
+            core_sha_shadow=packet.get("core_sha") or "",
+            code_version=SHADOW_COHORT_VERSION,
+            failure_reason=reason[:60]),
+            dt.datetime.now(TPE).strftime("%Y-%m-%d"))
     except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
         print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)
 
@@ -16413,6 +16456,9 @@ _EXDIV_KEEP_DAYS = 400
 CORPORATE_ACTION_FILE = STATE_ROOT / "corporate_actions.json"
 #: 批#89:LLM 影子比較帳本(換模型的證據來源)。
 LLM_SHADOW_LEDGER_FILE = STATE_ROOT / "llm_shadow_ledger.json"
+#: 端到端 profile 實驗的帳本。**價值全在跨日累積** —— 先前紀錄只寫進當日
+#: manifest,而 manifest 每天覆寫,於是十配對的門檻永遠不會被觸及。
+LLM_EXPERIMENT_LEDGER_FILE = STATE_ROOT / "llm_experiment_ledger.json"
 _CORPACT_KEEP_DAYS = 400
 
 

@@ -230,6 +230,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         "portfolio": portfolio_summary(quotes or {}),
         "truncation": trunc,
     }
+    # r2(Codex,#2):可比性判準與深度揭露一起放進 packet ——
+    # 兩者都必須進實驗帳本,事後才分得出「模型差異」與「餵進去的東西不同」。
+    packet["core_sha"] = core_evidence_sha(news, target_session_date)
+    packet["coverage"] = coverage(packet, news)
     return packet
 
 
@@ -245,8 +249,62 @@ def canonical_json(packet: dict) -> str:
 
 
 def evidence_sha(packet: dict) -> str:
-    """證據指紋。兩邊不同就是那天不可比,不得計入十筆。"""
+    """**這個 packet 物件**的指紋。
+
+    ⚠ 它證明的是「兩邊拿到同一個 packet」,**不是**「兩邊看到同樣的東西」——
+    legacy profile 走的是 `_build_prompt`,那份 prompt 有自己的 bucket 配額、
+    自己的全文取捨、也消費了幾個不在 `EVIDENCE_QUOTE_KEYS` 裡的欄位。
+    可比性請用 `core_evidence_sha`,理由見它的 docstring。
+    """
     return hashlib.sha256(canonical_json(packet).encode("utf-8")).hexdigest()[:16]
+
+
+def core_evidence_sha(news: Optional[list], target_session_date: str = "") -> str:
+    """**兩邊都確實看得到的核心證據**的指紋(r2 外審 #2 的折衷)。
+
+    ## 為什麼不能用整個 packet 的 sha 當可比性判準
+
+    兩份 prompt 是**各自獨立組出來的**:Luna 從 packet 渲染,DeepSeek 走既有的
+    `_build_prompt`。兩者的深度與欄位取捨本來就不同(那正是「各自最佳化」),
+    所以「同一個 packet 物件」證明不了「同樣的證據」。拿它當可比性判準,
+    是一個聽起來很硬、實際上是空的保證。
+
+    要讓那個保證為真只有兩條路,而兩條都牴觸既有約束:
+      (a) 讓 DeepSeek 也從 packet 渲染 → 改變它的 prompt,違反「保留原設計」,
+          逐位元組凍結會紅;
+      (b) 對兩份 prompt 各自算真實內容指紋、不同就判不可比 → 誠實,
+          但幾乎每天都不可比,十配對湊不滿。
+
+    ## 折衷:指紋只涵蓋「來源池」
+
+    這個 sha 算的是**上游那份 `news` 的 source_item_id 集合 + 目標交易日**,
+    也就是兩條路徑共同的**輸入**,在任何截斷與渲染之前。它證明得了:
+
+        兩邊今天是從同一批新聞、同一個交易日出發的。
+
+    它**證明不了**兩邊看到同樣的深度 —— 那個差異由 `coverage` 逐側記錄,
+    在最終報告裡當作**已揭露的 profile 差異**,而不是假裝不存在。
+    這是這份實驗誠實能給的最強保證,不是最漂亮的那個。
+    """
+    ids = sorted({_sid(n, i) for i, n in enumerate(news or [])
+                  if isinstance(n, dict)})
+    raw = str(target_session_date or "") + "|" + ",".join(ids)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def coverage(packet: dict, news: Optional[list]) -> dict:
+    """這個 packet 涵蓋了來源池的多少 —— **深度差異要被記錄,不是被隱藏**。
+
+    `included / available` 就是「Luna 這一側看到多少」。legacy 那一側的對應
+    數字由它自己的 bucket 邏輯決定,兩者不同是預期的;把它記下來,
+    十配對的結論才說得出「這是模型差異還是餵進去的東西不同」。
+    """
+    avail = sum(1 for n in (news or []) if isinstance(n, dict))
+    kept = len((packet or {}).get("news") or [])
+    full = sum(1 for n in ((packet or {}).get("news") or []) if n.get("fulltext"))
+    return {"available": avail, "included": kept,
+            "with_fulltext": full,
+            "rate": round(kept / avail, 3) if avail else None}
 
 
 def evidence_ids(packet: dict) -> set:

@@ -184,3 +184,70 @@ def test_serialization_never_explodes_on_odd_values():
     assert "2026-08-01" in blob
     json.loads(blob)          # 仍必須是合法 JSON
     assert ep.evidence_sha(packet)
+
+
+# ---------------------------------------------------------------- 折衷 (b)
+
+def test_the_core_hash_ignores_how_deep_each_side_renders():
+    """**這是折衷 (b) 的核心性質。**
+
+    `core_sha` 算的是「來源池 + 交易日」,也就是兩條路徑共同的**輸入**。
+    深度(摘要長度、有沒有全文)是各自的渲染決定,不該影響可比性 ——
+    否則 Luna 與 DeepSeek 幾乎每天都會判成不可比,十配對永遠湊不滿。
+
+    若有人把它改回「整個 packet 的指紋」,這條就會紅:那個指紋涵蓋摘要內文
+    與全文,深度一變它就變。
+    """
+    news = [{"title": "央行決議", "summary": "短", "source": "CBC",
+             "published": "2026-08-01T09:00:00", "official": True},
+            {"title": "財報", "summary": "短", "source": "MOPS",
+             "published": "2026-08-01T10:00:00", "source_grade": "A"}]
+    deep = [dict(n, summary="長" * 900, fulltext="全文" * 900) for n in news]
+
+    a = ep.build({}, {}, {}, news, [], {}, target_session_date="2026-08-03",
+                 sanitize=str)
+    b = ep.build({}, {}, {}, deep, [], {}, target_session_date="2026-08-03",
+                 sanitize=str)
+    assert a["core_sha"] == b["core_sha"], (
+        "深度不同就讓核心指紋改變 —— 那等於把 profile 的渲染差異當成"
+        "「看到不同的證據」,十配對永遠湊不滿")
+    # 反向:整個 packet 的指紋**應該**不同(它涵蓋內文)
+    assert ep.evidence_sha(a) != ep.evidence_sha(b)
+
+
+def test_the_core_hash_changes_when_the_source_pool_changes():
+    """反向:真的換了一批新聞、或換了交易日,就必須不可比。"""
+    news = [{"title": "a", "source": "s", "published": "p"}]
+    base = ep.build({}, {}, {}, news, [], {}, target_session_date="2026-08-03",
+                    sanitize=str)["core_sha"]
+    more = ep.build({}, {}, {}, news + [{"title": "b", "source": "t",
+                                         "published": "q"}], [], {},
+                    target_session_date="2026-08-03", sanitize=str)["core_sha"]
+    other_day = ep.build({}, {}, {}, news, [], {},
+                         target_session_date="2026-08-04",
+                         sanitize=str)["core_sha"]
+    assert base != more, "多了一則新聞,核心指紋卻沒變"
+    assert base != other_day, "換了交易日,核心指紋卻沒變"
+
+
+def test_coverage_records_how_much_of_the_pool_actually_got_in():
+    """**深度差異要被記錄,不是被隱藏。**
+
+    可比性只保證「同一批新聞」;每一側實際放進去多少由 coverage 揭露,
+    十配對的結論才說得出「這是模型差異,還是餵進去的東西不同」。
+    """
+    many = [{"title": f"n{i}", "source": "s", "published": f"2026-08-01T{i%24:02d}:00",
+             "summary": "x", "source_grade": "C"}
+            for i in range(ep.MAX_NEWS_ITEMS + 40)]
+    packet = ep.build({}, {}, {}, many, [], {}, target_session_date="2026-08-03",
+                      sanitize=str)
+    cov = packet["coverage"]
+    assert cov["available"] == ep.MAX_NEWS_ITEMS + 40
+    assert cov["included"] == ep.MAX_NEWS_ITEMS
+    assert 0 < cov["rate"] < 1, cov
+    assert "with_fulltext" in cov, "沒有記下有幾則帶了全文 —— 那是深度的主要來源"
+
+    full = ep.build({}, {}, {}, [{"title": "a", "source": "s", "published": "p",
+                                  "fulltext": "內文"}], [], {}, sanitize=str)
+    assert full["coverage"]["with_fulltext"] == 1
+    assert full["coverage"]["rate"] == 1.0

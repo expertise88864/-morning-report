@@ -18,10 +18,15 @@ def _rec(**over):
         "comparison_mode": ex.COMPARISON_MODE,
         "primary_profile": "luna56_xhigh_v1", "primary_profile_version": 1,
         "primary_model": "gpt-5.6-luna", "primary_effort": "xhigh",
-        "primary_ok": True, "primary_evidence_sha": "abc123",
+        # r2(Codex,#2):可比性看**核心證據集**(來源池 + 交易日),
+        # 不是整個 packet 的指紋 —— 兩份 prompt 是各自組出來的。
+        "primary_ok": True, "primary_core_sha": "abc123",
+        # 深度差異被**記錄**而不是被隱藏:兩側涵蓋率不同是預期的。
+        "primary_coverage": {"available": 200, "included": 200, "rate": 1.0},
         "shadow_profile": "deepseek_legacy_v1", "shadow_profile_version": 1,
         "shadow_model": "deepseek-v4-pro", "shadow_effort": "max",
-        "shadow_ok": True, "shadow_evidence_sha": "abc123",
+        "shadow_ok": True, "shadow_core_sha": "abc123",
+        "shadow_coverage": {"available": 200, "included": 180, "rate": 0.9},
         "evidence_schema_version": 1, "output_schema_version": 1,
         "postprocess_version": ex.POSTPROCESS_VERSION,
         "renderer_version": ex.RENDERER_VERSION,
@@ -76,7 +81,7 @@ def test_ten_means_ten_comparable_pairs_not_ten_days():
     ledger = ([_rec(date=f"2026-08-{d:02d}") for d in range(1, 9)]      # 8 個好日
               + [_rec(date="2026-08-09", shadow_ok=False),             # 影子掛
                  _rec(date="2026-08-10", primary_ok=False),            # 主分析掛
-                 _rec(date="2026-08-11", shadow_evidence_sha="zzz")])  # 證據不同
+                 _rec(date="2026-08-11", shadow_core_sha="zzz")])  # 證據不同
     p = ex.pair_progress(ledger, cohort, target=10)
     assert p["rows_seen"] == 11
     assert p["comparable_pairs"] == 8, p
@@ -90,15 +95,15 @@ def test_evidence_mismatch_makes_a_day_incomparable():
     """兩邊看到的證據不同,那天就不可比 —— 這是公平性的全部依據。"""
     cohort = ex.cohort_key(_rec())
     assert ex.is_comparable(_rec(), cohort)
-    assert not ex.is_comparable(_rec(shadow_evidence_sha="different"), cohort)
-    assert ex.exclusion_reason(_rec(shadow_evidence_sha="d"), cohort) == \
+    assert not ex.is_comparable(_rec(shadow_core_sha="different"), cohort)
+    assert ex.exclusion_reason(_rec(shadow_core_sha="d"), cohort) == \
         "evidence_mismatch"
 
 
 def test_a_missing_evidence_hash_is_not_silently_accepted():
     """沒有指紋就無從證明可比。**「沒有證據說它不同」不等於「相同」。**"""
     cohort = ex.cohort_key(_rec())
-    for missing in ({"primary_evidence_sha": ""}, {"shadow_evidence_sha": None}):
+    for missing in ({"primary_core_sha": ""}, {"shadow_core_sha": None}):
         assert ex.exclusion_reason(_rec(**missing), cohort) == \
             "missing_evidence_sha"
 
@@ -111,7 +116,7 @@ def test_the_most_fundamental_reason_is_the_one_reported():
     """
     cohort = ex.cohort_key(_rec())
     odd = _rec(primary_model="gpt-5.6-terra", shadow_ok=False,
-               shadow_evidence_sha="different")
+               shadow_core_sha="different")
     assert ex.exclusion_reason(odd, cohort) == "other_cohort"
 
 
@@ -162,6 +167,7 @@ def test_the_record_carries_both_cohort_and_provenance_fields():
                 "model": "deepseek-v4-pro", "effort": "max", "ok": True,
                 "prompt_sha": "s1"},
         evidence_sha_primary="ev", evidence_sha_shadow="ev",
+        core_sha_primary="core", core_sha_shadow="core",
         code_version="abcdef1234567890")
     for f in ex.COHORT_FIELDS:
         assert rec.get(f) is not None, f"同群欄位 {f} 沒有被寫進紀錄"
@@ -180,3 +186,100 @@ def test_progress_never_raises_on_a_messy_ledger():
         p = ex.pair_progress(junk, None, target=10)
         assert p["comparable_pairs"] >= 0 and p["ready"] is False
         assert isinstance(ex.verdict(p), str)
+
+
+# ---------------------------------------------------------------- 帳本(r2 #3)
+
+def _mem_ledger():
+    """記憶體帳本(不碰檔案系統,本模組刻意保持純函式可測)。"""
+    store = {}
+
+    def read(path):
+        return list(store.get(str(path), []))
+
+    def write(path, ledger):
+        store[str(path)] = list(ledger)
+
+    return store, read, write
+
+
+def test_the_ledger_actually_accumulates_across_days():
+    """**r2(Codex,#3)點名的問題。**
+
+    先前紀錄只寫進當日 manifest,而 manifest 每天覆寫 —— `pair_progress()`
+    從來沒有被呼叫、`LLM_EXPERIMENT_TARGET_PAIRS` 從來沒有被使用。
+    十配對的計數機制**存在但不會計數**,而那比沒有機制更糟:它看起來在運作。
+    """
+    store, read, write = _mem_ledger()
+    progress = None
+    for d in range(1, 13):
+        rec = _rec(date=f"2026-08-{d:02d}")
+        if d in (3, 7):
+            rec["shadow_ok"] = False
+        progress = ex.record_day(record=rec, today=rec["date"],
+                                 ledger_path="L", read_ledger=read,
+                                 write_ledger=write, target=10,
+                                 log=lambda m: None)
+    assert len(store["L"]) == 12, "帳本沒有跨日累積"
+    assert progress["comparable_pairs"] == 10, progress
+    assert progress["ready"] is True
+    assert progress["excluded"] == {"shadow_failed": 2}
+    # 失敗的兩天仍要進可靠度分母 —— 那是它們的價值所在
+    assert progress["reliability"]["days"] == 12
+    assert progress["reliability"]["shadow_ok_rate"] < 1.0
+    assert "cohort_fields" in progress, "沒有記下這批樣本屬於哪個設定"
+
+
+def test_rerunning_the_same_day_replaces_not_duplicates():
+    """同一天重跑不得變成兩筆 —— 那會讓十配對提早達標。"""
+    store, read, write = _mem_ledger()
+    for _ in range(3):
+        ex.record_day(record=_rec(date="2026-08-05"), today="2026-08-05",
+                      ledger_path="L", read_ledger=read, write_ledger=write,
+                      log=lambda m: None)
+    assert len(store["L"]) == 1, f"同一天被記了 {len(store['L'])} 筆"
+
+
+def test_an_unreadable_ledger_is_never_overwritten():
+    """讀不出來就拋 —— 覆蓋等於把累積中的十配對清零。
+
+    這是本 repo 反覆出現的病灶(讀檔失敗被當成沒有資料,再被原子覆寫)。
+    """
+    import pytest as _pytest
+
+    written = []
+
+    def _boom(path):
+        raise ValueError("帳本壞了")
+
+    with _pytest.raises(ValueError):
+        ex.record_day(record=_rec(), today="2026-08-05", ledger_path="L",
+                      read_ledger=_boom,
+                      write_ledger=lambda _p, rows: written.append(rows),
+                      log=lambda m: None)
+    assert not written, "讀不出來卻仍然寫了 —— 累積被清零"
+
+
+def test_the_target_comes_from_the_caller_not_a_hardcoded_ten():
+    """`LLM_EXPERIMENT_TARGET_PAIRS` 要真的被使用。"""
+    store, read, write = _mem_ledger()
+    p = ex.record_day(record=_rec(), today="2026-08-05", ledger_path="L",
+                      read_ledger=read, write_ledger=write, target=3,
+                      log=lambda m: None)
+    assert p["target_pairs"] == 3 and p["remaining"] == 2
+
+
+def test_the_depth_difference_is_disclosed_not_hidden():
+    """r2(Codex,#2)的折衷:兩側涵蓋率不同是**預期**的,但要被記錄。
+
+    可比性只保證「同一批新聞、同一個交易日」;深度差異由 coverage 揭露,
+    最終報告才說得出「這是模型差異,還是餵進去的東西不同」。
+    """
+    rec = _rec()
+    assert rec["primary_coverage"]["rate"] != rec["shadow_coverage"]["rate"], \
+        "測試資料沒有反映真實的深度差異"
+    # 深度不同**不影響**可比性 —— 那正是折衷的內容
+    assert ex.is_comparable(rec, ex.cohort_key(rec))
+    # 但核心證據集不同就不可比
+    assert not ex.is_comparable(_rec(shadow_core_sha="別批新聞"),
+                                ex.cohort_key(rec))

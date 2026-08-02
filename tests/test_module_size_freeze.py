@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 23_600
+MAIN_MODULE_LINE_CEILING = 23_700  # 現況 23,667(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -191,7 +191,9 @@ MODULE_CEILINGS = {
     "app_context.py": 120,
     # Luna 特化:provider 中立的證據包。它是**投影**不是渲染 ——
     # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
-    "evidence_packet.py": 300,
+    # r2 折衷 (b):`core_evidence_sha` 與 `coverage` —— 可比性判準
+    # 與深度揭露。300 → 350(現況 318)。
+    "evidence_packet.py": 350,
     # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
     # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
     "analysis_schema.py": 250,
@@ -205,7 +207,9 @@ MODULE_CEILINGS = {
     # Luna 特化:端到端 profile 比較實驗的身分與配對語意。
     # 它只做「這一天算不算一個有效配對」與「同群是誰」—— 品質指標的計算
     # 不屬於這裡(那會讓一個判定模組長成一個統計模組)。
-    "llm_experiment.py": 250,
+    # r2(Codex,#3):加上**跨日帳本**(load/upsert/record_day)——
+    # 沒有它,十配對的計數機制存在但不會計數。250 → 350(現況 296)。
+    "llm_experiment.py": 350,
     # Luna 特化:確定性品質指標。它刻意**不提供**綜合分數 ——
     # 結構相關的指標只有 Luna 有,合成單一分數會讓比較變成「有結構 vs 沒結構」。
     "analysis_metrics.py": 350,

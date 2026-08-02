@@ -91,8 +91,10 @@ def exclusion_reason(rec: Optional[dict], cohort: Optional[tuple] = None) -> str
     r = rec or {}
     if cohort is not None and cohort_key(r) != cohort:
         return "other_cohort"
-    ev_p = str(r.get("primary_evidence_sha") or "")
-    ev_s = str(r.get("shadow_evidence_sha") or "")
+    # r2(Codex,#2):判準是**核心證據集**(來源池 + 交易日),不是整個 packet
+    # 的指紋 —— 後者只證明「同一個 packet 物件」,而兩份 prompt 是各自組的。
+    ev_p = str(r.get("primary_core_sha") or "")
+    ev_s = str(r.get("shadow_core_sha") or "")
     if not ev_p or not ev_s:
         return "missing_evidence_sha"
     if ev_p != ev_s:
@@ -182,7 +184,8 @@ def verdict(progress: dict) -> str:
 def build_record(*, today: str, experiment_id: str,
                  primary: dict, shadow: dict,
                  evidence_sha_primary: str, evidence_sha_shadow: str,
-                 code_version: str = "") -> dict:
+                 core_sha_primary: str = "", core_sha_shadow: str = "",
+                 code_version: str = "", failure_reason: str = "") -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
     `primary` / `shadow` 各自帶 `profile` / `profile_version` / `model` /
@@ -202,6 +205,10 @@ def build_record(*, today: str, experiment_id: str,
         "primary_ok": bool(p.get("ok")),
         "primary_prompt_sha": p.get("prompt_sha"),
         "primary_evidence_sha": evidence_sha_primary,
+        "primary_core_sha": core_sha_primary,
+        # **深度差異要被記錄。** 兩側涵蓋率不同是預期的(各自最佳化),
+        # 但十配對的結論必須說得出「這是模型差異還是餵進去的東西不同」。
+        "primary_coverage": dict(primary.get("coverage") or {}),
         "shadow_profile": s.get("profile"),
         "shadow_profile_version": s.get("profile_version"),
         "shadow_model": s.get("model"),
@@ -209,6 +216,8 @@ def build_record(*, today: str, experiment_id: str,
         "shadow_ok": bool(s.get("ok")),
         "shadow_prompt_sha": s.get("prompt_sha"),
         "shadow_evidence_sha": evidence_sha_shadow,
+        "shadow_core_sha": core_sha_shadow,
+        "shadow_coverage": dict(shadow.get("coverage") or {}),
         "evidence_schema_version": p.get("evidence_schema_version"),
         "output_schema_version": p.get("output_schema_version"),
         "postprocess_version": POSTPROCESS_VERSION,
@@ -216,4 +225,71 @@ def build_record(*, today: str, experiment_id: str,
         # **溯源,不進同群鍵。** 它回答「哪一版程式跑的」,
         # 但不該決定樣本能不能相加。
         "code_version": (code_version or "unknown")[:12],
+        # 失敗的那天要說得出**為什麼** —— 只記「失敗」的帳本回答不了
+        # 「誰比較常失敗、失敗在哪裡」,而那正是十配對要比的指標之一。
+        "failure_reason": failure_reason or "",
     }
+
+
+# ---------------------------------------------------------------- 帳本
+
+def load_ledger(path) -> list:
+    """讀實驗帳本。**讀不出來就拋** —— 呼叫端不得代它把檔案清掉。
+
+    這是本 repo 反覆出現的病灶(讀檔失敗被當成沒有資料,再被原子覆寫),
+    而實驗帳本的全部價值就是跨日累積:一次誤覆寫等於十配對重新開始。
+    """
+    from pathlib import Path as _P
+    import json as _json
+
+    p = _P(path)
+    if not p.exists():
+        return []
+    data = _json.loads(p.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"實驗帳本格式非預期:{type(data).__name__}")
+    for i, r in enumerate(data):
+        if not isinstance(r, dict):
+            raise ValueError(f"實驗帳本第 {i} 列不是物件")
+    return data
+
+
+def upsert(ledger: Optional[list], record: dict, today: str) -> list:
+    """同一天同一個實驗只留一列(重跑會覆蓋當天,不會多一筆)。
+
+    判準是 (date, experiment_id) —— 不含同群鍵:同一天若改了設定,
+    那一天本來就該只留最後一次的樣貌,而它會因為同群不同而自然被排除。
+    """
+    key = (str(today), str(record.get("experiment_id") or ""))
+    out = [r for r in (ledger or [])
+           if (str(r.get("date") or ""), str(r.get("experiment_id") or "")) != key]
+    out.append(record)
+    # 依日期排序,讓帳本人眼可讀;同日多實驗以 experiment_id 決勝。
+    out.sort(key=lambda r: (str(r.get("date") or ""),
+                            str(r.get("experiment_id") or "")))
+    return out
+
+
+def record_day(*, record: dict, today: str, ledger_path, read_ledger,
+               write_ledger, target: int = DEFAULT_TARGET_PAIRS,
+               log=print) -> dict:
+    """把今天這一列寫進帳本,並回報**跨日累積**的進度。
+
+    這是「十配對」真正會計數的地方。先前只把紀錄寫進當日 manifest ——
+    而 manifest 每天覆寫,所以那個門檻永遠不會被觸及:
+    `pair_progress()` 從來沒有被呼叫過,`LLM_EXPERIMENT_TARGET_PAIRS` 也從來
+    沒有被使用過。機制存在但不會計數,比沒有機制更糟(它看起來在運作)。
+
+    **失敗只是今天沒有累積**:讀不出帳本就不寫(不得覆蓋),
+    寫不進去也不得讓晨報中斷 —— 由呼叫端吞例外。
+    """
+    ledger = read_ledger(ledger_path)          # 讀不出來讓它拋,呼叫端決定
+    ledger = upsert(ledger, record, today)
+    write_ledger(ledger_path, ledger)
+    cohort = cohort_key(record)
+    progress = pair_progress(ledger, cohort, target)
+    progress["cohort_fields"] = dict(zip(COHORT_FIELDS, cohort))
+    progress["reliability"] = reliability(ledger, cohort)
+    progress["verdict"] = verdict(progress)
+    log(f"[llm-experiment] {progress['verdict']}")
+    return progress

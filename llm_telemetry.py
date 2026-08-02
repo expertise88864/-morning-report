@@ -13,6 +13,14 @@ from __future__ import annotations
 
 from typing import Optional
 
+# 計價已抽成獨立模組;這裡 re-export 維持既有呼叫端不變。
+from llm_pricing import (  # noqa: F401
+    CACHE_WRITE_MULTIPLIER, LONG_CONTEXT_TIERS, MODEL_PRICING,
+    PRICING_AS_OF, PRICING_SCHEMA, PRICING_SOURCE,
+    PRICING_SOURCE_BY_PREFIX, cache_write_tokens_of,
+    cached_tokens_of, estimate_cost, long_context_tier,
+    price_of, pricing_source_for)
+
 #: 推理強度 → 輸出額度倍數(相對於可見答案長度)。
 #:
 #: `max_completion_tokens` 是 **reasoning + 答案的總額**。固定 4 倍(28,000)
@@ -192,142 +200,6 @@ def merge_same_role(previous: Optional[dict], record: dict) -> dict:
     return out
 
 
-# ---------------------------------------------------------------- 成本估算
-
-#: 每 100 萬 token 的官方牌價(USD)。**只收錄有出處的。**
-#:
-#: 查不到單價的一律不估,而不是拿別處的數字近似 —— 這個數字會直接被拿來做
-#: 「換不換模型」的決定,而我在 2026-08-01 已經用 OpenRouter 的價格估過一次
-#: GPT-5.6,結果比官方低 2.5 倍。錯的成本數字比沒有成本數字更糟。
-#:
-#: 出處:OpenAI pricing 頁與 DeepSeek pricing 頁,兩者皆於 2026-08-01 逐頁查證。
-#: **DeepSeek 原本刻意留空**(當時我手上沒有官方單價,寧可回報「未收錄」);
-#: 十天 Luna 對比實驗要比成本,「未收錄」在那個情境等於整半邊沒有數字,
-#: 所以去查了官方頁面後補上 —— 而不是拿第三方轉載的數字近似。
-#: DeepSeek 的欄位對照(官方 pricing 頁,2026-08-01 查證):
-#:   cache miss input → `input`;cache hit input → `cached_input`;output → `output`
-#: **DeepSeek 沒有 cache write 費用** —— 那是 GPT-5.6+ 才有的 1.25× 收費。
-#: 這裡不需要特判:DeepSeek 的回應根本不含 `cache_write_tokens`,
-#: 所以 `cache_write_tokens_of` 回 None,乘數不會被套用。由測試盯住。
-MODEL_PRICING = {
-    "gpt-5.6-sol": {"input": 5.00, "cached_input": 0.50, "output": 30.00},
-    "gpt-5.6-terra": {"input": 2.00, "cached_input": 0.20, "output": 12.00},
-    "gpt-5.6-luna": {"input": 0.20, "cached_input": 0.02, "output": 1.20},
-    # DeepSeek 官方 pricing 頁(2026-08-01 查證)。**先前刻意留空**,理由是
-    # 「我手上沒有官方單價,寧可回報未收錄」—— 現在查到了,所以補上。
-    # 十天實驗要比成本,而「未收錄」在那個情境等於整半邊沒有數字。
-    "deepseek-v4-pro": {"input": 0.435, "cached_input": 0.003625, "output": 0.87},
-    "deepseek-v4-flash": {"input": 0.14, "cached_input": 0.0028, "output": 0.28},
-}
-
-#: 寫入快取的計價倍率。官方明文:
-#: "Cache writes are billed at 1.25x the uncached input token rate."
-#: (developers.openai.com,2026-08-01 逐頁查證)
-CACHE_WRITE_MULTIPLIER = 1.25
-
-#: 價格表的版本與出處。第十輪外審宣稱 Luna 是 $1.00/$6.00、Terra 是 $2.50/$15,
-#: 據此推得「低估約六倍」—— 我逐頁查證三個 model 頁面後**駁回**該推論:
-#: 官方為 Sol $5/$0.5/$30、Terra $2/$0.2/$12、Luna $0.2/$0.02/$1.2,與本表一致。
-#: 但同一條裡有兩件是對的,而且本表原本都沒有:cached input 有**獨立費率**,
-#: 而 cache write 以 1.25 倍計。實測重算 2026-08-01 10:11 那班:
-#: 記錄 $0.027369 → 正確約 $0.0325,**低估 19%**(不是 594%)。
-#: **每個模型各自的出處。** 單一字串在收錄兩家之後就是錯的宣稱:
-#: manifest 會說 DeepSeek 的價格來自 openai.com。這條被 r1 外審在
-#: 別的地方抓過同型問題(「宣稱要對得上實作」)。
-PRICING_SOURCE_BY_PREFIX = {
-    "gpt-": "developers.openai.com/api/docs/pricing",
-    "deepseek-": "api-docs.deepseek.com/quick_start/pricing",
-}
-PRICING_SOURCE = "developers.openai.com + api-docs.deepseek.com"
-PRICING_AS_OF = "2026-08-01"
-#: schema 3:收錄第二家 provider,並把出處改成逐模型可查。
-PRICING_SCHEMA = 3
-
-
-def pricing_source_for(model: str) -> str:
-    """這個模型的價格是**從哪一頁查來的**。查不到就明說,不要編一個。"""
-    m = (model or "").strip().lower()
-    for prefix, src in PRICING_SOURCE_BY_PREFIX.items():
-        if m.startswith(prefix):
-            return src
-    return "未收錄"
-
-
-def cache_write_tokens_of(usage: Optional[dict]) -> Optional[int]:
-    """寫入快取的 token 數(批#100)。
-
-    2026-08-01 實測回應:`prompt_tokens_details: {cached_tokens: 0,
-    cache_write_tokens: 93191}` —— 我原本只記 `cached_tokens`(當天是 0),
-    於是「快取」這件事在 manifest 裡看起來完全沒發生,而實際上有 93,191 個
-    token 被寫進快取。寫入通常另有費率,**沒收錄費率就不能假裝成本是精確的**。
-    """
-    det = usage.get("prompt_tokens_details") if isinstance(usage, dict) else None
-    if isinstance(det, dict) and isinstance(det.get("cache_write_tokens"), int):
-        return det["cache_write_tokens"]
-    return None
-
-
-def cached_tokens_of(usage: Optional[dict]) -> Optional[int]:
-    """快取命中的輸入 token 數。兩家的欄位名不同,**擇一不相加**。
-
-    OpenAI:`prompt_tokens_details.cached_tokens`;
-    DeepSeek:`prompt_cache_hit_tokens`。
-    """
-    if not isinstance(usage, dict):
-        return None
-    det = usage.get("prompt_tokens_details")
-    if isinstance(det, dict) and isinstance(det.get("cached_tokens"), int):
-        return det["cached_tokens"]
-    hit = usage.get("prompt_cache_hit_tokens")
-    return hit if isinstance(hit, int) else None
-
-
-def price_of(model: str) -> Optional[dict]:
-    """查單價。先精確比對,再前綴比對(容納 `-2026-02-16` 這類日期後綴)。"""
-    m = (model or "").strip().lower()
-    if m in MODEL_PRICING:
-        return MODEL_PRICING[m]
-    for name, price in MODEL_PRICING.items():
-        if m.startswith(name):
-            return price
-    return None
-
-
-def estimate_cost(model: str, usage: Optional[dict]) -> dict:
-    """估這一次呼叫的成本。**估不出來就說估不出來。**
-
-    回 `{"usd": float|None, "basis": str}`。`basis` 一定要寫,因為這個數字
-    帶著兩個會被忘記的假設:(a) 推理 token 以 output 計價(這是推理模型的
-    定價方式,而它通常是帳單的主要來源);(b) 快取命中的輸入**以全價計** ——
-    折扣比例我手上沒有官方數字,所以這是**上界**而不是實際金額。
-    """
-    price = price_of(model)
-    if not price:
-        return {"usd": None, "basis": f"未收錄 {model or '(未知模型)'} 的單價,不估"}
-    if not isinstance(usage, dict):
-        return {"usd": None, "basis": "沒有 usage,不估"}
-    pt, ct = usage.get("prompt_tokens"), usage.get("completion_tokens")
-    if not (isinstance(pt, int) and isinstance(ct, int)):
-        return {"usd": None, "basis": "usage 缺 token 數,不估"}
-    # 輸入分三種費率(第十輪 P1-1):**快取命中有獨立費率、寫入以 1.25 倍計。**
-    # 原本一律用 uncached 費率、且完全不計 cache write —— 前者高估、後者低估,
-    # 而 2026-08-01 的實際情形是後者主導(92,259 tok 全部是 cache write)。
-    cached = cached_tokens_of(usage) or 0
-    written = cache_write_tokens_of(usage) or 0
-    plain = max(0, pt - cached - written)
-    input_cost = (plain * price["input"]
-                  + cached * price.get("cached_input", price["input"])
-                  + written * price["input"] * CACHE_WRITE_MULTIPLIER)
-    usd = (input_cost + ct * price["output"]) / 1_000_000
-    bits = [f"官方牌價({PRICING_SOURCE} {PRICING_AS_OF});推理以 output 計價"]
-    if cached:
-        bits.append(f"快取命中 {cached} tok 以 ${price.get('cached_input')}/M 計")
-    if written:
-        bits.append(f"寫入快取 {written} tok 以 {CACHE_WRITE_MULTIPLIER}× 輸入費率計")
-    return {"usd": round(usd, 6), "basis": ";".join(bits)}
-
-
-#: 角色槽位(`attempts` 是失敗紀錄的清單,不是角色)。
 _ROLE_SLOTS = ("primary", "extractor", "shadow")
 
 

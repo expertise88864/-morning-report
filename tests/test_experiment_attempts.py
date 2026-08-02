@@ -46,9 +46,11 @@ def _rec(day, *, ok, run_id, attempt=1, kind=xl.SCHEDULED, reason="",
 def test_the_run_kind_comes_from_the_actual_event():
     """排程與人工要分得出來,否則可靠度沒有意義。"""
     sched = xl.run_identity({"GITHUB_RUN_ID": "77", "GITHUB_RUN_ATTEMPT": "2",
-                             "GITHUB_EVENT_NAME": "schedule"})
+                             "GITHUB_EVENT_NAME": "schedule",
+                             "RUN_STARTED_AT": "2026-08-03T06:00:00+00:00"})
     assert sched["run_id"] == "77" and sched["run_attempt"] == 2
     assert sched["run_kind"] == xl.SCHEDULED
+    assert sched["started_at"] == "2026-08-03T06:00:00+00:00"
     manual = xl.run_identity({"GITHUB_RUN_ID": "78",
                               "GITHUB_EVENT_NAME": "workflow_dispatch"})
     assert manual["run_kind"] == xl.MANUAL and manual["run_attempt"] == 1
@@ -239,21 +241,6 @@ def test_rows_without_timestamps_are_counted_separately():
     assert st["manual_attempts_of_unknown_order"] == 1
 
 
-def test_production_stamps_the_start_time():
-    """時間戳要真的被生產寫進去 —— 否則上面那些永遠走「排不出先後」。"""
-    import ast
-    from pathlib import Path
-    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
-           ).read_text(encoding="utf-8")
-    call = [n for n in ast.walk(ast.parse(src))
-            if isinstance(n, ast.Call)
-            and getattr(n.func, "attr", "") == "run_identity"]
-    assert call, "生產沒有呼叫 run_identity"
-    assert any(k.arg == "started_at" for k in call[0].keywords),         "生產沒有把 started_at 交進去 —— 重跑偏差就永遠量不出來"
-
-
-# ------------------------------------------ 第十三輪 P1-4:範圍要先劃
-
 def _cohort_rec(day, model, run_id, ok=True):
     return lx.build_record(
         today=day, experiment_id="e",
@@ -341,3 +328,40 @@ def test_production_records_the_call_count():
                                        {"role": "shadow",
                                         "billable_unmeasured": True}]})
     assert got == {"provider_calls": 3, "billable_unmeasured_calls": 1}
+
+
+def test_started_at_comes_from_the_workflow_not_from_row_creation():
+    """**先後要用執行開始時間判,不是用這一列被寫下的時間**(第十三輪 P2-5)。
+
+    先前兩者混為一談,而寫下的時間是 LLM 分析跑完之後 —— 兩個 workflow
+    重疊時「先開始、後完成」與「後開始、先完成」的順序會相反,
+    而重跑偏差正是靠先後判的。
+    """
+    r = xl.run_identity({"GITHUB_RUN_ID": "7", "GITHUB_EVENT_NAME": "schedule",
+                         "RUN_STARTED_AT": "2026-08-03T06:00:00+00:00"},
+                        recorded_at="2026-08-03T06:12:00+08:00")
+    assert r["started_at"] == "2026-08-03T06:00:00+00:00"
+    assert r["recorded_at"] == "2026-08-03T06:12:00+08:00",         "記錄時間仍然要留著(對照 log 有用),只是不能拿來判先後"
+
+
+def test_the_workflow_actually_exports_the_start_time():
+    """workflow 要真的產生它,否則上面那條在生產永遠是空的。"""
+    from pathlib import Path
+    wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
+          / "morning-report.yml").read_text(encoding="utf-8")
+    assert "RUN_STARTED_AT=" in wf, "workflow 沒有記下執行開始時間"
+    assert wf.index("RUN_STARTED_AT=") < wf.index("Run morning report"),         "開始時間記在晨報**之後** —— 那就不是開始時間了"
+
+
+def test_production_passes_recorded_at_not_started_at():
+    """生產不得再把記錄時間當成開始時間交進去。"""
+    import ast
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
+           ).read_text(encoding="utf-8")
+    call = [n for n in ast.walk(ast.parse(src))
+            if isinstance(n, ast.Call)
+            and getattr(n.func, "attr", "") == "run_identity"]
+    assert call, "生產沒有呼叫 run_identity"
+    kw = {k.arg for k in call[0].keywords}
+    assert kw == {"recorded_at"}, f"生產交進去的是 {kw},不該再有 started_at"

@@ -187,3 +187,56 @@ def test_provider_names_are_read_through_one_normalizer():
 
     mod = _canary()
     assert mod._provider_env.__doc__, "正規化器要說明它為什麼存在"
+
+
+def test_a_200_that_is_not_json_is_a_failure(monkeypatch):
+    """**HTTP 200 但不是 JSON 要算失敗**(第十三輪 P2-1)。
+
+    原本解析失敗只是把 `body` 設成 None,而 Check 照樣 `ok=True`、
+    訊息還寫著「回應可解析」—— 這個檔第三次踩到同一個形狀:
+    **一個看起來在檢查、實際上什麼都不擋的閘門。**
+
+    它擋的正是「端點回了東西、但不是我們能用的東西」那種故障
+    (代理錯誤頁、WAF 攔截頁、HTML 維護公告都會是 200)。
+    """
+    mod = _canary()
+
+    class _R:
+        status = 200
+
+        def read(self):
+            return b"<html>503 Service Unavailable</html>"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: _R())
+    chk = mod._probe_json("https://example.invalid", {}, {}, "probe")
+    assert chk.ok is False, "HTTP 200 的 HTML 錯誤頁被判成成功"
+    assert "不是合法 JSON" in chk.detail
+
+
+def test_a_200_with_real_json_still_passes(monkeypatch):
+    """反向:別為了擋 HTML 而把正常回應也擋掉。"""
+    mod = _canary()
+
+    class _R:
+        status = 200
+
+        def read(self):
+            return b'{"ok": true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: _R())
+    chk = mod._probe_json("https://example.invalid", {}, {}, "probe")
+    assert chk.ok is True and chk.body == {"ok": True}

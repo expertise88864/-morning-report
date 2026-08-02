@@ -66,6 +66,13 @@ jobs:
           # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
           pip install -r requirements.lock   # 鎖版+hash(批#24):套件無預警升版不再直接進 production
 
+      # 第十三輪 P2-5:**真正的執行開始時間。**
+      # 先前用 `_experiment_row()` 呼叫當下的時間當 `started_at`,而那是
+      # LLM 分析跑完(或失敗)之後 —— 兩個 workflow 重疊時,「先開始、後完成」
+      # 與「後開始、先完成」的順序會相反,而重跑偏差正是靠先後判的。
+      - name: 記下執行開始時間
+        run: echo "RUN_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" >> "$GITHUB_ENV"
+
       - name: Run morning report
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}

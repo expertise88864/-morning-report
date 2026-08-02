@@ -412,10 +412,17 @@ def _probe_json(url: str, payload: dict, headers: dict, label: str) -> Check:
                      f"(在 {time.monotonic() - t0:.0f}s 後)")
     took = time.monotonic() - t0
     if status == 200:
+        # 第十三輪 P2-1:**HTTP 200 但不是 JSON 要算失敗。**
+        # 原本解析失敗只是把 `body` 設成 None,而 Check 照樣 ok=True、
+        # 訊息還寫著「回應可解析」—— 那是這個檔第三次踩到同一個形狀:
+        # 一個看起來在檢查、實際上什麼都不擋的閘門。
+        # 而它擋的正是「端點回了東西但不是我們能用的東西」那種故障。
         try:
             parsed = json.loads(body.decode("utf-8", "replace"))
         except Exception:                       # noqa: BLE001
-            parsed = None
+            return Check(label, False,
+                         f"HTTP 200 但回應不是合法 JSON:"
+                         f"{body.decode('utf-8', 'replace')[:120]}")
         return Check(label, True, f"{took:.0f}s、回應可解析", body=parsed)
     return Check(label, False,
                  f"HTTP {status}: {body.decode('utf-8', 'replace')[:200]}")

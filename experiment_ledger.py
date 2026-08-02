@@ -40,24 +40,32 @@ _EVENT_KINDS = {"schedule": SCHEDULED, "workflow_dispatch": MANUAL,
                 "repository_dispatch": MANUAL}
 
 
-def run_identity(env: dict, *, started_at: str = "") -> dict:
+def run_identity(env: dict, *, recorded_at: str = "") -> dict:
     """這次執行的身分。`env` 由呼叫端注入(本模組不讀 `os.environ`)。
 
     本機跑(沒有 `GITHUB_RUN_ID`)算 `local` —— 它既不是排程也不是重跑,
     不該進任何一邊的分母。
+
+    第十三輪 P2-5:**`started_at` 取自 workflow 最開頭的 `RUN_STARTED_AT`,
+    不是這一列被寫下的時間。** 先前兩者混為一談,而寫下的時間是 LLM 分析
+    跑完之後 —— 兩個 workflow 重疊時,「先開始、後完成」與「後開始、先完成」
+    的順序會相反,而重跑偏差正是靠先後判的。
+    記錄時間另存 `recorded_at`:它仍然有用(對照 log),只是不能拿來判先後。
     """
     run_id = str(env.get("GITHUB_RUN_ID") or "").strip()
     event = str(env.get("GITHUB_EVENT_NAME") or "").strip()
     if not run_id:
         return {"run_id": "", "run_attempt": 0, "run_kind": LOCAL,
-                "started_at": str(started_at or "")}
+                "started_at": str(env.get("RUN_STARTED_AT") or "").strip(),
+                "recorded_at": str(recorded_at or "")}
     try:
         attempt = int(str(env.get("GITHUB_RUN_ATTEMPT") or "1"))
     except ValueError:
         attempt = 1
     return {"run_id": run_id, "run_attempt": attempt,
             "run_kind": _EVENT_KINDS.get(event, MANUAL),
-            "started_at": str(started_at or "")}
+            "started_at": str(env.get("RUN_STARTED_AT") or "").strip(),
+            "recorded_at": str(recorded_at or "")}
 
 
 def attempt_key(row: dict) -> tuple:

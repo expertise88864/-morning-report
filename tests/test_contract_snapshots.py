@@ -118,21 +118,43 @@ def _contract_view(bundle: dict) -> dict:
     return {k: v for k, v in bundle.items() if k not in _OTHER_CONTRACTS}
 
 
+def _versionless(obj):
+    """把**版本號本身**從行為指紋裡拿掉(r1 Codex)。
+
+    packet 帶 `schema_version`、bundle 帶 `profile_version`,而 Luna 的
+    user payload 內嵌整個 packet —— 於是「只升版、行為沒變」會讓雜湊跟著變,
+    看起來像是行為也改了,而那正好讓「誤升版」那條判準抓不到東西。
+    (`ANALYSIS_OUTPUT_SCHEMA` 實測不帶版本欄位,不受影響。)
+
+    **指紋要量行為,不能把版本號量進去。**
+    """
+    if isinstance(obj, dict):
+        return {k: _versionless(v) for k, v in obj.items()
+                if not str(k).endswith("_version")}
+    if isinstance(obj, list):
+        return [_versionless(v) for v in obj]
+    return obj
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
+    bare = _versionless(pk)
     luna = pp.build_luna_bundle(pk)
     return {
-        "evidence_schema_version": _sha(pk),
+        "evidence_schema_version": _sha(bare),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
+        # payload 由**去掉版本號的** packet 組出來:量的是組裝邏輯,
+        # 不是那個數字。
         "primary_profile_version": _sha(
-            luna["developer_instructions"] + "\x00" + luna["user_payload"]),
+            luna["developer_instructions"] + "\x00"
+            + pp.luna_user_payload(bare)),
         # 只雜湊 `profile_id` 是個**死掉的快照** —— 那是個常數,永遠不會變。
         # legacy 契約真正管的是「這條 prompt 被怎麼包裝」:profile 身分、
-        # 版本、結構化輸出開關、有沒有 developer 段。prompt 內容本身由
+        # 結構化輸出開關、有沒有 developer 段。prompt 內容本身由
         # `test_deepseek_legacy_golden` 釘住,證據雜湊屬於 evidence 契約。
-        "shadow_profile_version": _sha(_contract_view(
-            pp.build_deepseek_legacy_bundle(pk, "固定的 legacy prompt"))),
+        "shadow_profile_version": _sha(_versionless(_contract_view(
+            pp.build_deepseek_legacy_bundle(pk, "固定的 legacy prompt")))),
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
                                      lp._extract_summary(_REPORT_TEXT)]),
         "renderer_version": _sha(ar.render(_ANALYSIS)),
@@ -145,10 +167,10 @@ def _behaviour() -> dict:
 #: 說明改了什麼、為什麼。**不要為了讓測試變綠而改** —— 那等於把
 #: 「這一群樣本不可比」這件事偷偷抹掉。
 _FROZEN = {
-    "evidence_schema_version":  (1, "2a30ff6c6d8453e0"),
+    "evidence_schema_version":  (1, "8b120f4fbb1404a7"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (1, "e2bea660d422847a"),
-    "shadow_profile_version":   (1, "3c855543ade5867d"),
+    "primary_profile_version":  (1, "2156ff97f37c2b88"),
+    "shadow_profile_version":   (1, "1beef7f63a8ee083"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "e0cacdffc2d8162c"),
 }
@@ -182,33 +204,33 @@ def test_every_version_field_in_the_cohort_key_has_a_snapshot():
     assert set(_declared_versions()) == fields
 
 
-def test_the_behaviour_matches_the_frozen_snapshot():
-    """**內容變了、版本沒變 → 紅。**
+def test_each_contract_matches_its_frozen_version_and_behaviour():
+    """**`(版本號, 行為雜湊)` 這一對要完全相等。**
 
-    這是這條 finding 的核心:改了 prompt / renderer / 抽取邏輯卻忘了升版,
-    不同契約的樣本會被算進同一群,而判讀的人只看得到一個混合平均。
+    r1(Codex):原本拆成兩條判準 ——「行為變了**且**版本沒變」與
+    「版本變了**且**行為沒變」—— **兩個都變時,兩條都不報**。
+    而版本一旦升過、`_FROZEN` 沒跟著更新,第一條的 `declared == ver` 就
+    永遠是 False:**那個契約從此不再被檢查,而且沒有任何訊號。**
+
+    修一個守衛的缺口不該靠再加一條判準去補;**判準本身不能有縫**。
+    合成一對之後三種情況都會紅,而診斷訊息分得出是哪一種。
     """
     now, declared = _behaviour(), _declared_versions()
-    drift = [f"{k}: 行為變了({got[:8]}≠{want[:8]})但版本仍是 {declared[k]}"
-             for k, (ver, want) in _FROZEN.items()
-             if (got := now[k]) != want and declared[k] == ver]
-    assert not drift, (
-        "以下契約的行為改了卻沒有升版 —— 樣本會混群:\n  "
-        + "\n  ".join(drift)
-        + "\n升版號並更新 _FROZEN 的雜湊,在 commit 說明改了什麼。")
-
-
-def test_a_bumped_version_must_come_with_a_new_snapshot():
-    """**版本變了、內容沒變 → 也紅。**
-
-    誤升版會把一群本來可比的樣本切成兩半(十配對重新起算);
-    而「升了版卻忘了更新這裡」會讓下一次真的漂移逃過檢查。
-    """
-    now, declared = _behaviour(), _declared_versions()
-    stale = [f"{k}: 版本 {_FROZEN[k][0]}→{declared[k]},但行為沒變"
-             for k in _FROZEN
-             if declared[k] != _FROZEN[k][0] and now[k] == _FROZEN[k][1]]
-    assert not stale, "\n  ".join(["版本升了但行為一樣:"] + stale)
+    problems = []
+    for k, (ver, want) in _FROZEN.items():
+        got, dv = now[k], declared[k]
+        if (dv, got) == (ver, want):
+            continue
+        if dv == ver:
+            problems.append(f"{k}: 行為變了({want[:8]}→{got[:8]})但版本仍是 "
+                            f"{ver} —— 樣本會混群,請升版並更新 _FROZEN")
+        elif got == want:
+            problems.append(f"{k}: 版本 {ver}→{dv} 但行為沒變 —— 誤升會把可比"
+                            "的樣本切成兩半;若是刻意的請更新 _FROZEN")
+        else:
+            problems.append(f"{k}: 版本 {ver}→{dv} 且行為 {want[:8]}→{got[:8]}"
+                            " —— 兩個都變,請更新 _FROZEN(這一格原本是漏洞)")
+    assert not problems, "\n  ".join(["契約快照對不上:"] + problems)
 
 
 def test_the_snapshot_inputs_are_not_empty():

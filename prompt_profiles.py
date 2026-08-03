@@ -39,10 +39,16 @@ import evidence_packet as _ep
 #: 換新的 experiment_id 重新起算,而版本號是唯一看得出來的憑據。
 #: v2(2026-08-03):legacy prompt 的 R9/R6b 依使用者回饋改成敘事寫法 +
 #: 全形標點。**風格變更會改變輸出**,所以同群鍵要跟著換。
-DEEPSEEK_LEGACY_VERSION = 2
+#: v3(同日):散文的全形轉換又動了 prompt 位元組(見 LUNA_XHIGH_VERSION)。
+DEEPSEEK_LEGACY_VERSION = 3
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
-LUNA_XHIGH_VERSION = 2
+#: v3(同日):r1 外審抓到 v2 的規則**自己用半形舉例**、而且整份指令通篇半形,
+#: 兩份 prompt 因此做了全形轉換。我原本想維持 v2(「同一次變更的修正」),
+#: 而**那個理由取決於「剛好沒有 v2 執行過」** —— 查證確實沒有,但規則不該
+#: 建立在那種查證上:prompt 位元組變了就換版本,`prompt_sha` 只是溯源、
+#: 不在同群鍵裡,靠它事後分辨等於讓混群先發生。
+LUNA_XHIGH_VERSION = 3
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。

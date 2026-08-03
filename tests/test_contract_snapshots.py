@@ -188,6 +188,12 @@ def _behaviour() -> dict:
 #: (先前的 `_ANALYSIS` 不合乎 strict schema,見第十三輪 P2-3),
 #: 不是契約行為改變。這是這張表少數該「改雜湊而不升版」的情形,
 #: 所以理由寫在這裡,不是寫在 commit 就算。
+#: 2026-08-03 第四次更新:兩個 profile 版本 2→3。r1 外審指出「維持 v2」
+#: 這個決定**取決於「剛好沒有 v2 執行過」** —— 查證確實沒有(v2 未推、
+#: 帳本不存在),但規則不該建立在那種查證上。prompt 位元組變了就換版本;
+#: `prompt_sha` 只是溯源、不在同群鍵裡,靠它事後分辨等於讓混群先發生。
+#: 雜湊不變是正確的:內容在上一步就已經改完,這一步只補版本號。
+#:
 #: 2026-08-03 第三次更新:r1 外審抓到「用全形」那條規則**自己用半形舉例**,
 #: 而且整份指令通篇半形 —— 模型模仿它看到的東西,示範會蓋過規則。
 #: 兩份 prompt 的中文散文都做了保守的全形轉換(格式模板不動)。
@@ -201,8 +207,8 @@ def _behaviour() -> dict:
 _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (2, "41bb42185f1d8d74"),
-    "shadow_profile_version":   (2, "030268d0a472347b"),
+    "primary_profile_version":  (3, "41bb42185f1d8d74"),
+    "shadow_profile_version":   (3, "030268d0a472347b"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

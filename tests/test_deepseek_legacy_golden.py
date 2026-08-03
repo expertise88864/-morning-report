@@ -43,7 +43,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 #: 因此 `DEEPSEEK_LEGACY_VERSION` 同步升到 2。
 #: 2026-08-01 於 cd41fee 量測。改動 DeepSeek prompt 時**一起改這個值**,
 #: 並在 commit message 說明改了什麼、為什麼 —— 不要為了讓測試變綠而改。
-LEGACY_PROMPT_SHA256 = "6e6d8428f494f6d96f9b3b743d1e2899158be2ecd6645997d57bebd1e5c9cefc"
+LEGACY_PROMPT_SHA256 = "c010ae3f013841e5278fd592a3361ace2eeef97adc0e70aa3f781ed83eaf625e"
 
 #: 段落順序也是契約的一部分。LLM 對「重要的東西放前面」很敏感,
 #: 而順序被改動時 prompt 雜湊會變,但雜湊說不出是順序變了還是內文變了。

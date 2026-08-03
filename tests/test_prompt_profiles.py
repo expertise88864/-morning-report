@@ -80,12 +80,12 @@ def test_the_stable_prefix_carries_no_daily_values():
     快取的判準是前綴**逐位元組相同**;cached input 是 $0.02 對 $0.20,
     差十倍。寫一句「今天有 187 則新聞」就把它整個關掉了。
     """
+    import re
     text = pp.LUNA_DEVELOPER_INSTRUCTIONS
     packet = _packet()
     a = pp.build_luna_bundle(packet)["developer_instructions"]
     b = pp.build_luna_bundle(_packet())["developer_instructions"]
     assert a == b == text, "developer 指令隨當日輸入改變了"
-    import re
     assert not re.search(r"20\d\d-\d\d-\d\d", text), "前綴含日期"
     assert not re.search(r"\d+\s*(則|筆|檔)", text), "前綴含當日筆數"
 
@@ -350,3 +350,33 @@ def test_both_bundles_still_share_the_source_pool_sha():
     luna = pp.build_luna_bundle(packet)
     legacy = pp.build_deepseek_legacy_bundle(packet, "既有的單段 prompt")
     assert luna["core_evidence_sha"] == legacy["core_evidence_sha"] == "abc"
+
+
+def test_the_style_rule_is_not_contradicted_by_its_own_example():
+    """**「用全形」這條規則,自己要用全形寫**(第十四輪 r1)。
+
+    第一版寫「標點一律用全形:「,」「。」「;」「:」」—— 範例全是半形。
+    模型收到的是一句自相矛盾的要求,而它會照著看到的字元走,不是照著
+    形容詞走。**宣稱與示範不符,示範贏。**
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    i = t.index("標點一律用全形")
+    line = t[i:t.index("\n", i)]
+    bad = [c for c in line if c in ",;:()"]
+    assert not bad, f"要求全形的那一行自己用了半形 {bad}:{line}"
+
+
+def test_the_instruction_itself_mostly_uses_full_width():
+    """**整份指令的實際用法,比規則那一行更有份量。**
+
+    模型模仿它看到的東西。要求全形卻通篇半形,等於一邊說一邊示範相反的做法
+    —— 第一版就是這樣(半形 33 個 vs 全形 11 個)。
+    判準訂在比例而不是「一個都不准有」:程式碼片段、欄位名、格式模板裡的
+    半形是**刻意保留**的(見 R10b:來源方括號要讓顯示層淡化)。
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    half = sum(t.count(c) for c in ",;")
+    full = sum(t.count(c) for c in "，;")
+    assert full > half, (
+        f"指令自己用的半形({half})多於全形({full}) —— "
+        "示範會蓋過規則")

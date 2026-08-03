@@ -188,6 +188,11 @@ def _behaviour() -> dict:
 #: (先前的 `_ANALYSIS` 不合乎 strict schema,見第十三輪 P2-3),
 #: 不是契約行為改變。這是這張表少數該「改雜湊而不升版」的情形,
 #: 所以理由寫在這裡,不是寫在 commit 就算。
+#: 2026-08-03 第三次更新:r1 外審抓到「用全形」那條規則**自己用半形舉例**,
+#: 而且整份指令通篇半形 —— 模型模仿它看到的東西,示範會蓋過規則。
+#: 兩份 prompt 的中文散文都做了保守的全形轉換(格式模板不動)。
+#: 版本仍是 2:這是同一次風格變更的修正,不是另一次變更。
+#:
 #: 2026-08-03 第二次更新:兩個 profile 的**風格**依使用者回饋改成敘事寫法 +
 #: 全形標點,那會改變輸出,所以兩個版本號都升到 2(不是只改雜湊)。
 #: 同時修好一個漏洞:shadow 指紋原本餵一段固定字串當 prompt、而且
@@ -196,8 +201,8 @@ def _behaviour() -> dict:
 _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (2, "eddf8fdf25a58cf2"),
-    "shadow_profile_version":   (2, "73731508b377b3b1"),
+    "primary_profile_version":  (2, "41bb42185f1d8d74"),
+    "shadow_profile_version":   (2, "030268d0a472347b"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

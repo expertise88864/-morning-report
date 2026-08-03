@@ -1,27 +1,21 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 44,
-  "last_seen": "2026-08-03",
-  "latest_title": "記者編輯部| 【梅花專論】美伊戰爭已近半年川普自陷內外嚴峻挑戰 - 梅花新聞網"
+  "days": 45,
+  "last_seen": "2026-08-04",
+  "latest_title": "China missile test shakes Pacific islands' anti-nuclear unity"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 29,
-  "last_seen": "2026-08-01",
-  "latest_title": "鄧希煒：制裁反成催化劑 推中企雙驅成長 - crntt.com"
+  "days": 30,
+  "last_seen": "2026-08-04",
+  "latest_title": "《蜘蛛人：重生日》「制裁者」強柏恩瑟是誰？漫威最狂暴英雄，8部作品看懂私刑正義暗黑起源故事 - cosmopolitan.com"
  },
  "litigation:": {
   "first_seen": "2026-07-25",
-  "days": 3,
-  "last_seen": "2026-08-01",
-  "latest_title": "監察院陷空窗　政治獻金裁罰停擺、彈劾懲戒無法上訴"
- },
- "geopolitical:AVGO": {
-  "first_seen": "2026-07-31",
-  "days": 1,
-  "last_seen": "2026-07-31",
-  "latest_title": "博通修補VMware三項重大漏洞，攻擊者恐繞過身分驗證，或在vCenter與ESX主機執行程式碼 - iThome"
+  "days": 4,
+  "last_seen": "2026-08-04",
+  "latest_title": "Democratic US states sue to challenge Trump’s latest round of tariffs"
  },
  "geopolitical:Iran": {
   "first_seen": "2026-08-01",
@@ -37,15 +31,15 @@
  },
  "geopolitical:日本": {
   "first_seen": "2026-08-01",
-  "days": 1,
-  "last_seen": "2026-08-01",
-  "latest_title": "Japan reportedly intervenes to support the yen"
+  "days": 2,
+  "last_seen": "2026-08-04",
+  "latest_title": "US and Japan implement coordinated yen-market intervention"
  },
  "geopolitical:伊朗": {
   "first_seen": "2026-08-01",
-  "days": 2,
-  "last_seen": "2026-08-03",
-  "latest_title": "伊朗稱接近與阿曼達成荷姆茲海峽新航道協議"
+  "days": 3,
+  "last_seen": "2026-08-04",
+  "latest_title": "US-Iran tensions remain elevated amid disputed negotiations and blockade threats"
  },
  "geopolitical:中國": {
   "first_seen": "2026-08-01",
@@ -64,5 +58,11 @@
   "days": 1,
   "last_seen": "2026-08-03",
   "latest_title": "傳馬斯克擬切割特斯拉中國業務"
+ },
+ "geopolitical:META": {
+  "first_seen": "2026-08-04",
+  "days": 1,
+  "last_seen": "2026-08-04",
+  "latest_title": "白宮邀Meta等AI企業商討自愿安全測試，聚焦模型黑客攻擊能力 - TradingView"
  }
 }

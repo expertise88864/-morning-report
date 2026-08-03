@@ -66,6 +66,12 @@
    "min_date": "2026-07-01",
    "max_date": "2026-07-31",
    "sha256": "b7029af8a534d7eec2525a54fba7466092dd1cc881ea7182b1ded614973cb5ed"
+  },
+  "2026-08.json.gz": {
+   "row_count": 1,
+   "min_date": "2026-08-03",
+   "max_date": "2026-08-03",
+   "sha256": "a49b846b87bf88cabffdcc998f39efbfbc7fa1415aa1d01371a4650734a76bec"
   }
  }
 }

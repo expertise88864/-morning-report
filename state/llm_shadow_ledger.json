@@ -43,5 +43,31 @@
   "primary_effort": "xhigh",
   "shadow_effort": "max",
   "code_version": "prompt1-stan"
+ },
+ {
+  "date": "2026-08-04",
+  "primary_model": "gpt-5.6-luna",
+  "shadow_model": "deepseek-v4-pro",
+  "primary_ok": true,
+  "shadow_ok": true,
+  "primary_stance": "偏多",
+  "shadow_stance": "偏多",
+  "stance_agree": true,
+  "stance_flipped": false,
+  "primary_score": 5,
+  "shadow_score": 5,
+  "primary_chars": 5292,
+  "shadow_chars": 6529,
+  "summary_overlap": 0.562,
+  "body_overlap": 0.385,
+  "primary_seconds": 185.2,
+  "shadow_seconds": 95.1,
+  "score_gap": 0,
+  "prompt_sha": "6f66fedbae01",
+  "primary_effort": "xhigh",
+  "shadow_effort": "max",
+  "code_version": "prompt1-stan",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "legacy_observability_only": true
  }
 ]

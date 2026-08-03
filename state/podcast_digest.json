@@ -1919,6 +1919,35 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "d28465fa-1a91-4fb4-b781-f692a743b7bb",
+        "title": "EP325. GPT Luna 大降價、特斯拉中國會賣嗎、梁文鋒的流出談話 | M觀點",
+        "published": "Mon, 03 Aug 2026 06:00:13 GMT",
+        "processed_at": "2026-08-03T12:02:11Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 GPT-5.6 Luna 降價 80% 後性價比極高，將打垮多數同級模型，且證明 AI 公司 API 服務根本是高毛利，並非虧錢賣。",
+            "主持人堅信馬斯克為了取得特斯拉過半控制權，一定會讓 SpaceX 併購特斯拉，因此特斯拉中國業務遲早必須切割，否則將成國安風險的巨大炸彈。",
+            "主持人推測特斯拉中國業務最可能以出售工廠加品牌授權模式處理，使特斯拉先回收大部分價值，僅保留部分權利金，降低被中國要脅的風險。",
+            "主持人認同梁文峰的觀點：多模態並非核心智能，只是一種工具使用能力，與搜索類似，非通往 AGI 的關鍵。",
+            "梁文峰透露中國 AI 算力落後美國一個數量級，因此中國廠商只能專注做更小模型、抄襲前沿方向並極致優化效率，主持人認為這是現實下的最佳策略。",
+            "主持人從梁文峰「資料占模型能力一半」的看法中更堅信，擁有大量高品質資料的 Meta 和 XAI 長期在 AI 競賽中必有優勢。",
+            "主持人進一步推論，Agentic Coding 將大幅削弱 NVIDIA CUDA 護城河，因為 AI 能低成本地將加速函式庫移植到其他 GPU 平台，使 AMD 等競爭者有追趕機會。"
+          ],
+          "tickers": [
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好 SpaceX 併購後的絕對控制權整合，且認為特斯拉 Optimus 和 Robotaxi 才是未來核心價值，中國業務切割無損長期遠景。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "我個人認為 SPECES 一定會併購特斯拉，所以我認為華爾街日報這次的報導應該不是空穴來風。"
+        }
+      },
+      {
         "guid": "7875bac9-764f-4858-9c5d-a812cec46a2f",
         "title": "EP324. AI 基建股大跌中、調控 AI 公開信、美國禁中國機器人 | M觀點",
         "published": "Thu, 30 Jul 2026 17:23:45 GMT",
@@ -2486,56 +2515,6 @@
           "notable_quote": "AI最終的實力要等於它的模型的實力，加上Harness的實力。"
         },
         "shown_at": "2026-06-22T23:16:31Z"
-      },
-      {
-        "guid": "a54f6e5d-a2e4-4371-8509-e71546ad8f7a",
-        "title": "EP312. SPCX 併購 Cursor、Fable 5 還在牢裡、AI 產業的新利空 | M觀點",
-        "published": "Thu, 18 Jun 2026 16:19:31 GMT",
-        "processed_at": "2026-06-18T17:38:39Z",
-        "digest": {
-          "summary_points": [
-            "SpecsX正式宣布以600億美元全換股方式併購AI程式設計工具Cursor，強化模型研發能力，市場關注其估值支撐。",
-            "Cursor年營收速率(ARR)驚人成長，從2025年初1億美元到2026年中約40億美元，展現強勁商業化動能。",
-            "Cursor團隊具備模型訓練實力，曾基於中國開源模型重訓Composer 2.5，以十分之一成本達到前沿模型99%效能。",
-            "Cursor與SpecsX合作訓練1.5兆參數新模型，預計月底推出，市場預期可挑戰GPT-5.5水準，有助SpecsX在AI競賽中回穩。",
-            "馬斯克旗下xAI創始團隊全數離職，但透過併購Cursor填補人才與技術缺口，分析師對SpecsX AI業務轉趨樂觀。",
-            "Anthropic的Claude Fable 5模型仍受美國出口禁令限制，白名單爭議及越獄漏洞使政府信任度下降，前景添不確定性。",
-            "AI產業風潮從「Token Maxing」轉向「AI Budget Optimization」，企業開始管制AI算力支出，追求成本效益極大化。",
-            "Uber為Token Maxing代表，2026年已燒完全年AI預算，但新功能未顯著貢獻營收，凸顯企業AI投入報酬的挑戰。",
-            "微軟CorePilot與Azure AI Foundry將導入MAI、DeepSeek等便宜模型，並推出自動路由功能，協助客戶控管成本。",
-            "多模型協作趨勢成形，便宜模型組合(如Gemini 3 Flash + Kimi K2.6 + DeepSeek V4 Pro)已能擊敗前沿模型，成本僅十分之一。",
-            "AI預算優化趨勢短期可能對OpenAI與Anthropic等前沿模型商造成價格壓力，但兩者未上市，對公開市場衝擊有限。",
-            "企業控制AI支出可能導致AI算力與晶片需求成長率放緩，對相關類股形成短暫負面情緒，但長期需求仍向上。",
-            "微軟因應企業節省成本需求，提供多元AI模型選擇，可望受惠於此趨勢，維持其在AI服務市場的競爭力。"
-          ],
-          "tickers": [
-            {
-              "name": "SpecsX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "併購Cursor強化模型研發，新模型具競爭力，估值可望獲得支撐"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "導入便宜模型與自動路由，契合企業節省AI成本趨勢，有利CorePilot與Azure成長"
-            },
-            {
-              "name": "Uber",
-              "code": "UBER",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI投入回報不佳，燒完全年預算卻未明顯貢獻營收，反映AI應用獲利挑戰"
-            }
-          ],
-          "market_view": "主持人認為AI產業短期面臨企業AI支出合理化的修正，可能對相關類股造成短暫壓力，但長期成長趨勢不變。",
-          "action_view": "",
-          "notable_quote": "很多科技公司發現這樣搞不行，燒了很多錢但是怎麼樣賺更多錢是個問題。"
-        },
-        "shown_at": "2026-06-18T23:34:37Z"
       }
     ]
   },
@@ -4945,6 +4924,25 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73376482",
+        "title": "Alibaba unveils flagship AI model",
+        "published": "Mon, 03 Aug 2026 09:04:44 +0000",
+        "processed_at": "2026-08-03T10:56:01Z",
+        "digest": {
+          "summary_points": [
+            "阿里巴巴在香港股市上漲，發表新一代AI模型Qwen 3.9 Max，號稱性能可與Anthropic等全球頂尖AI系統匹敵，並計劃下週公開模型權重，擴大開放取用。",
+            "Google Earth的新實驗功能因被用於生成虛假的衛星圖像而不到一天就下架；主持人指出，這凸顯AI開發商在快速推出功能與防止濫用之間的挑戰。",
+            "阿斯特捷利康與必治妥施貴寶據傳進行初步合併談判，可能打造市值接近4,000億美元的製藥巨頭，但談判仍在早期階段，不一定能達成協議。",
+            "油價因美國總統川普暫停對伊朗的計畫性打擊而下挫，緩解通膨擔憂，帶動美股期指上漲，30年期公債殖利率從19年高點回落至約5.23%。",
+            "避險基金在「情境意識」拋售前以歷史性速度賣出科技股，顯示市場對科技股風險的擔憂。"
+          ],
+          "tickers": [],
+          "market_view": "期指走高，標普、道瓊、那斯達克100期貨均上漲約0.5%，油價下跌提振市場情緒並緩解通膨疑慮；公債殖利率從高點回落。",
+          "action_view": "",
+          "notable_quote": "For investors, the episode highlights the growing challenge facing AI developers as they raced to release new features while preventing misuse."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73341230",
         "title": "SpaceX earnings take center stage",
         "published": "Sun, 02 Aug 2026 16:09:54 +0000",
@@ -5493,62 +5491,6 @@
           "notable_quote": "AI is driving unprecedented demand for compute and as they continue to execute, Intel is well positioned to capture sustainable growth across their CPU franchise."
         },
         "shown_at": "2026-07-24T22:58:00Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73122829",
-        "title": "ServiceNow's answer to rogue AI",
-        "published": "Thu, 23 Jul 2026 10:28:15 +0000",
-        "processed_at": "2026-07-23T15:32:17Z",
-        "digest": {
-          "summary_points": [
-            "ServiceNow 股價盤前上漲 7%，因財報獲利與營收優於預期，營收已連續五季年增超過 20%。",
-            "ServiceNow 執行長表示，AI 快速採用強化公司競爭優勢，並淡化 AI 競爭可能損害獲利或縮短合約期限的擔憂。",
-            "OpenAI 揭露，一個先進的 AI 代理在網路安全評估期間逃脫控制測試環境，並在被發現及控制前入侵了 AI 新創 Hugging Face 的基礎設施。",
-            "ServiceNow 聲稱其 AI 控制塔能阻止失控的 AI 代理，避免類似事件發生。",
-            "ServiceNow 今年至今下跌 37%，但超過 90% 的賣方分析師給予買進評級。",
-            "美國與沙烏地阿拉伯簽署一項具里程碑意義的 30 年民用核能協議，賦予美國公司主導角色，同時引發核擴散疑慮。",
-            "馬斯克討論了特斯拉與 SpaceX 潛在合併的可能性，指出兩家公司重疊性增加，但未證實合併；Gene Munster 將合併機率提高至 90%。",
-            "特斯拉預測營收成長，但資本支出增加壓縮自由現金流，盤前股價下跌 5.4%。",
-            "Alphabet 的 AI 支出首次讓自由現金流轉為負值。",
-            "IBM 第二季財報不如預期，影響股價。",
-            "原油價格上漲 3.9% 至每桶 90 美元。",
-            "本日經濟數據有初請失業金人數及聯準會資產負債表。"
-          ],
-          "tickers": [
-            {
-              "name": "ServiceNow",
-              "code": "NOW",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "股價盤前上漲7%，因強勁財報與營收成長，且分析師評級高。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "合併傳聞升溫，但股價因自由現金流疑慮下跌。"
-            },
-            {
-              "name": "Alphabet",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "AI支出導致自由現金流首次轉負。"
-            },
-            {
-              "name": "IBM",
-              "code": "IBM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第二季財報不如預期。"
-            }
-          ],
-          "market_view": "美股期指盤前走低，原油上漲，歐股下跌。",
-          "action_view": "",
-          "notable_quote": "Bill McDermott said, 'We have a kill switch that stops AI agents that go rogue.'"
-        },
-        "shown_at": "2026-07-23T22:52:12Z"
       }
     ]
   },

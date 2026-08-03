@@ -373,10 +373,58 @@ def test_the_instruction_itself_mostly_uses_full_width():
     —— 第一版就是這樣(半形 33 個 vs 全形 11 個)。
     判準訂在比例而不是「一個都不准有」:程式碼片段、欄位名、格式模板裡的
     半形是**刻意保留**的(見 R10b:來源方括號要讓顯示層淡化)。
+
+    第十四輪:第一版的 `full` 寫成 `"，;"` —— 第二個字元是**半形**分號
+    (U+003B),於是半形分號同時被算進 half 與 full,判準等於在替被禁止的
+    字元加分。這條測試自己就犯了它要抓的那個錯。
     """
+    # 兩個字元集只寫一次,計數與自檢共用同一份 —— 分開寫的話,自檢用的是
+    # 自己那份字面量,計數那行改回 `"，;"` 照樣綠(守衛必須能失敗)。
+    HALF, FULL = ",;", "，；"
+    assert not (set(HALF) & set(FULL)), (
+        f"全形集 {FULL!r} 與半形集 {HALF!r} 有交集 —— "
+        "被禁止的字元同時替兩邊加分,判準失效")
     t = pp.LUNA_DEVELOPER_INSTRUCTIONS
-    half = sum(t.count(c) for c in ",;")
-    full = sum(t.count(c) for c in "，;")
+    half = sum(t.count(c) for c in HALF)
+    full = sum(t.count(c) for c in FULL)
     assert full > half, (
         f"指令自己用的半形({half})多於全形({full}) —— "
         "示範會蓋過規則")
+
+
+# ------------------------------------- 第十四輪:使用者回饋的三條可讀性規則
+
+def test_the_instructions_demand_chinese_paraphrase_of_foreign_headlines():
+    """**信裡冒出英文原標題的根因是規則沒說要翻**(2026-08-03 使用者回饋)。
+
+    昨日事件存進 state 的是外電原始標題,而舊規則要求「逐字引用」——
+    模型是照規矩辦事。規則要同時說得出「翻成中文」與「不得改變原意」,
+    只講前者會換來另一種毛病(意譯到走樣)。
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert "外文標題不得整句照貼" in t
+    assert "不能改意思" in t, "只叫它翻譯、沒說不准改意思"
+    assert "句子本體必須是中文" in t
+
+
+def test_the_instructions_demand_a_plain_language_gloss():
+    """艱澀術語要有白話解釋 —— 而且範例本身要是白話的。
+
+    規則若只寫「請用淺顯的說法」而不示範,模型無從知道要淺到哪裡。
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert "用一句白話解釋" in t
+    assert "殖利率" in t and "先進封裝" in t, "沒有示範,形容詞不會生效"
+
+
+def test_the_instructions_demand_a_so_what_after_every_number():
+    """**「數字要有下文」與「一句最多一個數字」是兩條不同的規則。**
+
+    後者管的是密度(擠在一起),前者管的是深度(只描述不分析)。
+    v3 只有前者,使用者收到的信因此仍然是「有抓到但很空洞」。
+    範例要同時給出反例與正例,否則模型只知道不要什麼、不知道要什麼。
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert "一句話裡最多一個數字" in t, "密度那條被誤刪了"
+    assert "只報數字不算分析" in t
+    assert "是描述" in t and "才是分析" in t, "缺反例/正例對照"

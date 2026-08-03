@@ -1069,18 +1069,35 @@ def test_cohort_key_covers_everything_that_changes_the_distribution():
 
     `prompt_sha` 刻意**不是**同群欄位:prompt 內容每天都不同(裡面是當天的
     行情與新聞),拿它分群會讓每一天自成一群、永遠湊不到樣本。
+
+    第十四輪 P0-1 加入 `analysis_origin`:2026-08-03 那天 Luna 特化路徑失敗、
+    由 legacy 補上,而這份帳本記的是 `primary_model=gpt-5.6-luna` +
+    `primary_effort=xhigh` + `primary_ok=true` —— 與特化真的跑成的日子
+    長得一模一樣。**兩種問法(專用 prompt + strict JSON vs 既有單段 prompt)
+    的輸出分佈不同,混進同一個平均等於拿兩件事回答一個問題。**
     """
     assert set(ls.COHORT_FIELDS) == {
         "primary_model", "primary_effort", "shadow_model", "shadow_effort",
-        "code_version"}
+        "code_version", "analysis_origin"}
     assert "prompt_sha" not in ls.COHORT_FIELDS
     # 舊資料缺欄位 → 自成 legacy 群,不會與新資料混算
     legacy = ls.cohort_key({"primary_model": "gpt-5.6-luna"})
     fresh = ls.cohort_key({"primary_model": "gpt-5.6-luna",
                            "primary_effort": "max", "shadow_model": "d",
-                           "shadow_effort": "high", "code_version": "abc"})
+                           "shadow_effort": "high", "code_version": "abc",
+                           "analysis_origin": "luna_specialized"})
     assert legacy != fresh
     assert "legacy/unknown" in legacy
+    # **同一天、同一組模型設定,只有走的路不同 → 不同群。**
+    # 這是這條 finding 的核心:落回 legacy 的那天不得被算進「Luna 的表現」。
+    fell_back = dict(fresh_src := {
+        "primary_model": "gpt-5.6-luna", "primary_effort": "xhigh",
+        "shadow_model": "d", "shadow_effort": "max", "code_version": "abc"},
+        analysis_origin="legacy_fallback_after_luna_failure")
+    specialized = dict(fresh_src, analysis_origin="luna_specialized")
+    assert ls.cohort_key(fell_back) != ls.cohort_key(specialized), (
+        "特化成功與落回 legacy 被歸進同一群 —— "
+        "「Luna 跑了 DeepSeek 的 prompt」會被算成 Luna 的表現")
 
 
 def test_an_effort_that_does_not_take_effect_raises_a_degraded_step(monkeypatch):

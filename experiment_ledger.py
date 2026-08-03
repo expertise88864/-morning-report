@@ -134,71 +134,9 @@ def canonical(ledger: Optional[list]) -> list:
             best[k] = r
     return [best[k] for k in sorted(best)]
 
-
-def _later_than_a_scheduled_run(row: dict, same_day: list) -> Optional[bool]:
-    """這筆人工執行是不是**排在某次排程之後**。無從判斷時回 `None`。
-
-    r1(Codex,P2):`manual_reruns_after_a_scheduled_run` 這個名字宣稱了
-    時序,而原本的實作只看「同一天有沒有兩種」—— 先手動後排程也會被算成
-    重跑。這個指標存在的理由正是要抓「**失敗之後才去重跑**」那個偏差,
-    算錯方向就等於在製造它要偵測的假象。
-
-    沒有時間戳的舊列**不猜**:回 `None`,由呼叫端另外計數。
-    把不知道當成「否」會低估偏差,當成「是」會高估 —— 兩個都是編造。
-    """
-    # 空白的時間戳等於沒有時間戳 —— `" "` 是 truthy,不 strip 的話
-    # 它會被當成一個真的時間拿去比大小,而比出來的結果毫無意義。
-    ts = str(row.get("started_at") or "").strip()
-    sched = [str(o.get("started_at") or "").strip() for o in same_day
-             if str(o.get("run_kind")) == SCHEDULED]
-    if not sched:
-        return False
-    if not ts or not all(sched):
-        return None
-    return any(ts > t for t in sched)
-
-
-def attempt_stats(ledger: Optional[list]) -> dict:
-    """嘗試層級的實況 —— **代表樣本看不到的那一面**。
-
-    重跑次數高不代表系統壞;但它高而可靠度滿分,就代表可靠度是被重跑
-    撐起來的。
-    """
-    rows = [r for r in (ledger or []) if isinstance(r, dict)]
-    days: dict = {}
-    for r in rows:
-        days.setdefault((str(r.get("date") or ""),
-                         str(r.get("experiment_id") or "")), []).append(r)
-    reruns, unordered = 0, 0
-    for v in days.values():
-        for r in v:
-            if str(r.get("run_kind")) != MANUAL:
-                continue
-            later = _later_than_a_scheduled_run(r, v)
-            if later is None:
-                unordered += 1
-            elif later:
-                reruns += 1
-    ok = [r for r in rows if r.get("primary_ok")]
-    # 第十三輪 P1-4:**一列不等於一次計費呼叫。** 一份報告可能是
-    # 「Luna 一次不合格 + 一次修補 + DeepSeek 影子一次」= 三次計費,
-    # 而逾時那種還會計費卻量不到 usage。用列數冒充呼叫數會低估帳單,
-    # 而低估的方向正好偏向「這個實驗很便宜」。
-    calls = sum(int(r.get("provider_calls") or 0) for r in rows)
-    unmeasured = sum(int(r.get("billable_unmeasured_calls") or 0) for r in rows)
-    return {
-        "recorded_runs": len(rows),
-        "days_seen": len(days),
-        "manual_reruns_after_a_scheduled_run": reruns,
-        # 沒有時間戳、排不出先後的人工執行。**不併進上面那個數字** ——
-        # 它宣稱的是時序,而這些排不出時序。
-        "manual_attempts_of_unknown_order": unordered,
-        # 三個層次分開報:**紀錄列數 ≠ provider 呼叫數 ≠ 量得到金額的呼叫數**。
-        # 沒有逐列的呼叫數就回 None,不要拿列數頂替(那是編造)。
-        "provider_calls": calls or None,
-        "billable_unmeasured_calls": unmeasured or None,
-        "run_primary_ok_rate": (round(len(ok) / len(rows), 3)
-                                if rows else None),
-        "scheduled_attempts": sum(1 for r in rows
-                                  if str(r.get("run_kind")) == SCHEDULED),
-    }
+# ---------------------------------------------------------------- 相容出口
+#
+# `attempt_stats` 搬到同名模組(見該檔的說明)。這裡留一個轉出口:
+# 生產與測試都用 `experiment_ledger.attempt_stats` 呼叫它,而**改呼叫端
+# 不是這次要改的東西** —— 一次改一件事,搬動才證明得了「只換位置」。
+from attempt_stats import attempt_stats            # noqa: E402,F401

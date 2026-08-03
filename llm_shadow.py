@@ -23,6 +23,8 @@ import json as _json
 from pathlib import Path
 from typing import Optional
 
+import analysis_origin as _ao
+
 #: 帳本保留天數。比較樣本要夠長才看得出分佈差異,但也不需要無限累積。
 LEDGER_KEEP_DAYS = 120
 
@@ -33,8 +35,11 @@ LEDGER_KEEP_DAYS = 120
 #: 第二次會把第一次覆蓋 —— 而那正是 2026-08-01 實際發生的使用方式
 #: (同一天多次改推理強度做比較)。key 必須與同群一致,否則
 #: `summarize` 依同群過濾之後,被覆蓋掉的那個同群永遠是 0 筆。
+#: 第十四輪 P0-1:`analysis_origin` 也進 key —— 同一天先特化失敗、
+#: 重跑後成功的話,兩列是**不同的事實**,後者不該把前者蓋掉。
 LEDGER_KEY_FIELDS = ("date", "primary_model", "primary_effort",
-                     "shadow_model", "shadow_effort", "code_version")
+                     "shadow_model", "shadow_effort", "code_version",
+                     "analysis_origin")
 
 
 def _bigrams(text: str) -> set:
@@ -159,8 +164,12 @@ def upsert(ledger: list, record: dict, today: str) -> list:
 #: prompt 的**內容**每天都不同(裡面是當天的行情與新聞),所以 `prompt_sha`
 #: 是逐日證據、不是同群依據。真正會讓樣本不可比的是**設定**:換了模型或
 #: 推理強度,輸出分佈就換了一個。
+#: 第十四輪 P0-1:**走哪條路也是設定的一部分。** 特化路徑與落回 legacy
+#: 是兩套完全不同的問法(專用 prompt + strict JSON vs 既有單段 prompt),
+#: 混在同一個平均裡等於拿兩件事的結果回答一個問題。
 COHORT_FIELDS = ("primary_model", "primary_effort",
-                 "shadow_model", "shadow_effort", "code_version")
+                 "shadow_model", "shadow_effort", "code_version",
+                 "analysis_origin")
 
 
 def cohort_key(rec: dict) -> tuple:
@@ -177,6 +186,13 @@ def summarize(ledger: list, shadow_model: str = "", cohort: Optional[tuple] = No
     """
     rows = [r for r in (ledger or []) if isinstance(r, dict)
             and (not shadow_model or r.get("shadow_model") == shadow_model)]
+    # 第十四輪 r1(Codex):**`legacy_observability_only` 要真的不參與判讀。**
+    # 我在寫入端加了那個旗標並在註解裡寫「不得參與判讀或配對計數」,
+    # 而這裡完全沒有實作它 —— 於是十筆之後這份帳本照樣吐出「可依品質偏好
+    # 決定」,與權威帳本並列甚至相反。**宣稱與實作不符,示範贏的那一邊是實作。**
+    # 排除不等於假裝沒發生:筆數仍然報出來(見 `observability_only_rows`)。
+    observability_only = [r for r in rows if r.get("legacy_observability_only")]
+    rows = [r for r in rows if not r.get("legacy_observability_only")]
     # **換了設定就重新算樣本數。**
     # 這裡刻意與 forecast ledger 的做法不同:那邊是「混算 + 誠實揭露」,
     # 因為它統計的是預測誤差、跨世代仍有參考價值;而影子的問題是
@@ -191,6 +207,10 @@ def summarize(ledger: list, shadow_model: str = "", cohort: Optional[tuple] = No
     flips = [r for r in both_ok if r.get("stance_flipped") is True]
     out = {"samples": len(rows), "both_ok": len(both_ok),
            "shadow_fail": sum(1 for r in rows if not r.get("shadow_ok"))}
+    if observability_only:
+        # 正式實驗在跑的那些天。**看得見,但不算數** —— 不報的話,
+        # 「樣本不足」會看起來像沒跑過,而實際上是跑了但不歸這份帳本判讀。
+        out["observability_only_rows"] = len(observability_only)
     if agree:
         out["stance_agree_rate"] = round(
             sum(1 for r in agree if r["stance_agree"]) / len(agree), 3)
@@ -279,7 +299,8 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
                    extract_stance, extract_summary, elapsed_timer,
                    primary_effort: str = "", shadow_effort: str = "",
                    code_version: str = "", applied_effort_probe=None,
-                   primary_elapsed=None, log=print) -> dict:
+                   primary_elapsed=None, analysis_origin: str = "",
+                   experiment_running: bool = False, log=print) -> dict:
     """跑一次影子比較並落地,回傳要放進 manifest 的狀態(批#92)。
 
     第九輪 P1-11 要的**依賴注入**:呼叫、讀寫、計時、擷取器全部由外面傳進來,
@@ -320,6 +341,15 @@ def run_comparison(*, primary_model: str, primary_text: str, prompt: str,
     _applied = applied_effort_probe() if (ok and applied_effort_probe) else ""
     rec["shadow_effort"] = _applied or shadow_effort or "unknown"
     rec["code_version"] = (code_version or "unknown")[:12]
+    # 第十四輪 P0-1:**`primary_ok` 量的是「有沒有東西可以寄」,不是
+    # 「哪條路走成了」。** 2026-08-03 這兩件事分開了:特化路徑失敗、Luna 這個
+    # 模型跑了 DeepSeek 的舊 prompt,而這份帳本記著 `primary_ok: true` +
+    # `primary_model: gpt-5.6-luna` + `primary_effort: xhigh`。十天後翻帳本
+    # 的人會讀成「Luna xhigh 成功」—— 那正是這個實驗要回答的問題。
+    rec["analysis_origin"] = _ao.normalize(analysis_origin)
+    if experiment_running:
+        # 有正式實驗帳本在跑的時候,這一份只是觀測用 —— 不得參與判讀或配對計數。
+        rec["legacy_observability_only"] = True
     if err:
         rec["shadow_error"] = err[:160]
     try:

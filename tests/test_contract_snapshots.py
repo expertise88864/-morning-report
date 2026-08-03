@@ -207,8 +207,9 @@ def _behaviour() -> dict:
 _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (3, "41bb42185f1d8d74"),
-    "shadow_profile_version":   (3, "030268d0a472347b"),
+    # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
+    "primary_profile_version":  (4, "a3f9c7cd7fc69445"),
+    "shadow_profile_version":   (4, "b368909c25e1dd16"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

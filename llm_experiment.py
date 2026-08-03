@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import Optional
 
 import analysis_grounding as _gr
+import analysis_origin as _ao
 import experiment_ledger as _xl
 
 #: 實驗帳本的 schema 版本。
@@ -58,11 +59,10 @@ COHORT_FIELDS = (
     "grounding_version",   # P1-3:換一套接受規則等於換一個系統
 )
 
-#: 不進同群鍵、但要留在紀錄裡的溯源欄位。
-#: `code_version` 在這裡 —— 它回答「這是哪一版程式跑的」,
-#: 那個問題很有用,只是不該決定樣本能不能相加。
+#: 不進同群鍵、但要留在紀錄裡的溯源欄位。**`analysis_origin` 進同群的話,
+#: 落回 legacy 的日子會從可靠度分母消失**(見 `test_analysis_origin.py`)。
 PROVENANCE_FIELDS = ("code_version", "date", "primary_prompt_sha",
-                     "shadow_prompt_sha", "evidence_sha")
+                     "shadow_prompt_sha", "evidence_sha", "analysis_origin")
 
 #: 有效樣本的目標數。**單位是配對,不是日曆日。**
 DEFAULT_TARGET_PAIRS = 10
@@ -229,7 +229,7 @@ def build_record(*, today: str, experiment_id: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
                  code_version: str = "", failure_reason: str = "",
                  review: Optional[dict] = None, run: Optional[dict] = None,
-                 metrics: Optional[dict] = None) -> dict:
+                 metrics: Optional[dict] = None, analysis_origin: str = "") -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
     `primary` / `shadow` 各自帶 `profile` / `profile_version` / `model` /
@@ -244,8 +244,9 @@ def build_record(*, today: str, experiment_id: str,
         # 排程那次的失敗 —— 而越不可靠的日子越容易被人重跑洗白。
         **{k: (run or {}).get(k, v) for k, v in
            (("run_id", ""), ("run_attempt", 0), ("run_kind", _xl.LOCAL),
-            ("started_at", ""), ("recorded_at", ""), ("provider_calls", 0),
-            ("billable_unmeasured_calls", 0))},
+            # P2-1:沒 telemetry 的預設是 `None` 不是 `0`(「沒量到」≠「確定零次」)
+            ("started_at", ""), ("recorded_at", ""), ("provider_calls", None),
+            ("billable_unmeasured_calls", None))},
         # r5 #1/#3、r6 #1/#3:這一天有沒有**還取得回來的**盲評材料。
         # 判讀明文要求人工盲評 —— 卡片寫失敗、落在 job 結束就消失的 sink、
         # 或 artifact 已經過期,都讓那個要求做不成,而「達標」會變成空話。
@@ -278,9 +279,9 @@ def build_record(*, today: str, experiment_id: str,
         "postprocess_version": POSTPROCESS_VERSION,
         "renderer_version": RENDERER_VERSION,
         "grounding_version": _gr.GROUNDING_VERSION,
-        # **溯源,不進同群鍵。** 它回答「哪一版程式跑的」,
-        # 但不該決定樣本能不能相加。
+        # **溯源,不進同群鍵**(見 PROVENANCE_FIELDS)。
         "code_version": (code_version or "unknown")[:12],
+        "analysis_origin": _ao.normalize(analysis_origin),
         # 失敗的那天要說得出**為什麼** —— 只記「失敗」的帳本回答不了
         # 「誰比較常失敗、失敗在哪裡」,而那正是十配對要比的指標之一。
         "failure_reason": failure_reason or "",

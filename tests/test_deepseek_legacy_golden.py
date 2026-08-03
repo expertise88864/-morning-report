@@ -41,9 +41,13 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 #: (兩個有理由的例外保留:來源用半形方括號供顯示層淡化、全形括號留給簡介),
 #: 並新增 R6b 敘事寫法。**這不是 Luna 污染,是使用者要求的風格變更**,
 #: 因此 `DEEPSEEK_LEGACY_VERSION` 同步升到 2。
+#: **2026-08-03 晚再次刻意改動**(v4):使用者看過信之後又提三件事——
+#: 七之四出現英文原標題、艱澀術語沒解釋、分析只在描述數字。
+#: 新增 R6c(數字要有下文)/R6d(術語白話)/R10c(外文一律中文轉述),
+#: 改七之四鐵則,R12 的 C 級補上書單廣告類。`DEEPSEEK_LEGACY_VERSION` → 4。
 #: 2026-08-01 於 cd41fee 量測。改動 DeepSeek prompt 時**一起改這個值**,
 #: 並在 commit message 說明改了什麼、為什麼 —— 不要為了讓測試變綠而改。
-LEGACY_PROMPT_SHA256 = "c010ae3f013841e5278fd592a3361ace2eeef97adc0e70aa3f781ed83eaf625e"
+LEGACY_PROMPT_SHA256 = "d67ad6ae143fb8ad0ac3830ed788ef16cf04a634585757004dc991162c4519f8"
 
 #: 段落順序也是契約的一部分。LLM 對「重要的東西放前面」很敏感,
 #: 而順序被改動時 prompt 雜湊會變,但雜湊說不出是順序變了還是內文變了。
@@ -130,3 +134,39 @@ def test_the_legacy_fallback_still_produces_a_sendable_report():
     text = mr._fallback_analysis_text(news, RuntimeError("讀取逾時"))
     assert isinstance(text, str) and text.strip(), "降級分析回了空字串"
     assert len(text) > 80, f"降級分析只有 {len(text)} 字元,不像一份可寄出的內容"
+
+
+# ------------------------------- 第十四輪:使用者回饋的三條可讀性規則(legacy 側)
+
+def test_the_legacy_prompt_demands_the_same_three_readability_rules():
+    """**兩份 prompt 要一起改。**
+
+    使用者明確選了「兩邊都改」——只改 Luna 的話,實驗比的就變成
+    「新規則 vs 舊規則」而不是兩個模型;而在 Luna 特化路徑還沒跑成的日子,
+    寄出去的信走的正是 legacy 這一份,使用者反映的問題會原封不動再來一次。
+
+    判準是**語意**而不是雜湊:上面的 SHA 說得出「有東西變了」,
+    說不出「它還要求著這三件事」。規則被後人順手刪掉時,SHA 只會叫人更新它。
+    """
+    prompt = mr._build_prompt(*legacy_prompt_inputs())
+    missing = [name for name, needle in (
+        ("R6c 數字要有下文", "只報數字不算分析"),
+        ("R6c 反例/正例對照", "才是分析"),
+        ("R6d 術語白話", "用一句白話解釋"),
+        ("R10c 外文中文轉述", "不得整句照貼原文標題"),
+        ("R10c 不得改變原意", "不能改意思"),
+        ("七之四 要翻成中文", "翻成中文轉述"),
+        ("C 級 排除書單廣告", "根本不是新聞的條目"),
+    ) if needle not in prompt]
+    assert not missing, f"legacy prompt 少了這些要求:{missing}"
+
+
+def test_the_legacy_prompt_keeps_the_number_density_rule_too():
+    """反向:新加的「深度」規則不得把舊的「密度」規則擠掉。
+
+    兩者管的是不同毛病 —— 一句塞三個數字(擠)與只報數字不解釋(空)。
+    使用者兩種都反映過,任一條掉了都會退回去。
+    """
+    prompt = mr._build_prompt(*legacy_prompt_inputs())
+    assert "一句話裡最多一個數字" in prompt
+    assert "中文句子的標點一律用全形" in prompt

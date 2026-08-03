@@ -4924,6 +4924,37 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73395108",
+        "title": "Peloton's costly detour",
+        "published": "Mon, 03 Aug 2026 16:46:11 +0000",
+        "processed_at": "2026-08-03T20:45:39Z",
+        "digest": {
+          "summary_points": [
+            "億貝遭 Wells Fargo 降評至「減碼」(Underweight),目標價下修至 92 美元,主因旗下 Depop 為應對 Vintage 競爭而增加行銷支出,恐壓縮獲利。",
+            "Circle Internet Group 多空分歧:摩根士丹利以 USDC 餘額自 2025 年第三季以來未成長為由降評至「減碼」,TD Cowan 則以買入評級開始追蹤,認為市場低估其轉型為金融基礎設施平台的潛力。"
+          ],
+          "tickers": [
+            {
+              "name": "eBay",
+              "code": "EBAY",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Wells Fargo 降評,Depop 行銷支出增加恐壓縮獲利"
+            },
+            {
+              "name": "Circle Internet Group",
+              "code": "CRCL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "摩根士丹利降評至 underweight,TD Cowan 以買入開始覆蓋,多空分歧"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "we believe Circle is steadily evolving into a broader financial infrastructure platform spanning payments, treasury, tokenized RWA, interoperability, and developer services."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73376482",
         "title": "Alibaba unveils flagship AI model",
         "published": "Mon, 03 Aug 2026 09:04:44 +0000",
@@ -5425,72 +5456,6 @@
           "notable_quote": "NVIDIA announced plans to invest $1 billion for a 4.5 percent stake in the internet company."
         },
         "shown_at": "2026-07-27T22:56:38Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73142508",
-        "title": "Intel flexes on Q2 beat",
-        "published": "Fri, 24 Jul 2026 10:10:26 +0000",
-        "processed_at": "2026-07-24T15:13:31Z",
-        "digest": {
-          "summary_points": [
-            "英特爾第二季非GAAP每股盈餘優於預期0.20美元，營收超出16.5億美元，並上調第三季財測高於市場預期。",
-            "川普政府對60個貿易夥伴（包括歐盟）加徵10%及12.5%新關稅，涵蓋99.4%美國進口商品，但排除石油、天然氣、肥料及部分食品。",
-            "甲骨文獲得美國國防部為期10年、最高70億美元的軟體服務合約，盤前股價上漲2.7%。",
-            "艾馬克科技（AMKR）宣布與輝達（NVDA）簽訂多年策略合作夥伴關係，股價上漲9%。",
-            "特斯拉獲利不佳，今年空頭累積紙上獲利超過90億美元。",
-            "Stripe據報正洽談以100億美元收購AI新創OpenRouter。",
-            "SanDisk遭分析師調降目標價，展望轉趨負面。",
-            "美股期貨盤前全面上漲，原油價格下跌3.2%至每桶89美元。"
-          ],
-          "tickers": [
-            {
-              "name": "英特爾",
-              "code": "INTC",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "第二季財報與第三季財測皆優於預期，AI需求帶動成長。"
-            },
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "獲得國防部大型合約，盤前股價上揚。"
-            },
-            {
-              "name": "艾馬克科技",
-              "code": "AMKR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與輝達策略合作消息激勵股價大漲9%。"
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "與艾馬克合作消息，但無直接股價影響評論。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "獲利表現不佳，空頭獲利可觀。"
-            },
-            {
-              "name": "SanDisk",
-              "code": "WDC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "目標價遭調降，市場看法負面。"
-            }
-          ],
-          "market_view": "美股期貨盤前全面上漲，原油價格下跌3.2%至每桶89美元。",
-          "action_view": "",
-          "notable_quote": "AI is driving unprecedented demand for compute and as they continue to execute, Intel is well positioned to capture sustainable growth across their CPU franchise."
-        },
-        "shown_at": "2026-07-24T22:58:00Z"
       }
     ]
   },
@@ -7007,7 +6972,87 @@
   },
   "circuit": {
     "name": "The Circuit",
-    "episodes": []
+    "episodes": [
+      {
+        "guid": "a146af29-cb5b-4c3d-86e8-74323d0bb8ba",
+        "title": "EP 186: Mobile Bottlenecks, Skyrocketing AI CapEx, and the Compute Crunch",
+        "published": "Mon, 03 Aug 2026 09:37:01 -0700",
+        "processed_at": "2026-08-03T20:55:29Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為手機市場疲軟但未崩盤，真正的瓶頸在供應鏈：連 Apple 都拿不到足夠記憶體與先進製程，Apple 不願支付溢價，AI 擠壓將持續傷害非 AI 消費電子。",
+            "ARM 雖因資料中心而優於預期，但對手機沒說好話；Qualcomm 暗示手機明年還會更差，且自有 AI 晶片仍在「洽談」，尚未有成案。",
+            "聯發科手機業務無人關注，市場焦點全在 TPU/ASIC 帶動的資料中心需求大增；這顯示 AI 客製化晶片需求正外溢到多家供應商。",
+            "超大型雲端業者資本支出續增、強調算力不足；主持人對 Amazon 評價最高，稱其 AI 投資回收期不到三年、企業雲端優勢最清晰，Meta 則傳出租多餘產能，變現說不清楚。",
+            "主持人認為推論（inference）將比訓練更分散，雲端業者會依每 token 利潤決定用誰的晶片；Nvidia 的 TCO 優勢須以實際量產規模證明，AMD 等競爭者讓其任務更困難。",
+            "後院式（behind-the-meter）天然氣供電因推論負載平穩而變可行，能加速電力到位；Bloom Energy 等業者受惠，但電工勞力短缺才是無解的瓶頸。",
+            "資金面亮警訊：Nvidia 傳計劃提供近 6000 億美元融資、大型資料中心債務案接連上場，Meta 與微軟以租賃/表外結構隱藏負債；主持人認為這不是好信號。",
+            "近期市場回檔可能主因是 Situational Awareness 避險基金被迫平倉；槓桿是雙面刃，若利率或 AI 變現不如預期，波動會更劇烈。"
+          ],
+          "tickers": [
+            {
+              "name": "ARM",
+              "code": "ARM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "資料中心營運動能強勁，AI CPU 需求明確，但手機仍有隱憂。"
+            },
+            {
+              "name": "Qualcomm",
+              "code": "QCOM",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "手機展望保守，暗示明年續弱，自有 AI 晶片仍在早期洽談。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "供應鏈受限、記憶體成本高，不願付溢價，但秋季新機可能仍暢銷。"
+            },
+            {
+              "name": "MediaTek",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "ASIC 資料中心需求大增，管理層上調展望，市場只在意 TPU/ASIC 商機。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "最理性的雲端業者，AI 投資回收期不到三年，企業雲端領導地位穩固。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "業績尚可，但 AI 變現故事未完，資產負債表操作引發疑慮。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "AI 變現說不清楚，傳出租多餘產能，用表外融資隱藏債務。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "TCO 優勢仍強，但推論市場競爭加劇，實際量產規模還需證明。"
+            }
+          ],
+          "market_view": "主持人認為基本面仍然強勁（算力短缺），但市場同時存在泡沫與槓桿風險，短期走勢恐更震盪。",
+          "action_view": "操作上留意企業 AI 變現證據，優先布局 Amazon 等企業 AI 受惠者，避開變現不明的 Meta；關注 ASIC、散熱、供電等供應鏈受惠族群。",
+          "notable_quote": "\"AI compute is wreaking havoc on every other section of the industry.\""
+        }
+      }
+    ]
   },
   "fwdguidance": {
     "name": "Forward Guidance",

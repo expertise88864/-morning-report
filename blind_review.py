@@ -160,3 +160,21 @@ def write_card(primary_text: str, shadow_text: str, *, today: str, sink: str,
                 "blind": False, "decodable": False,
                 "retrievable_after_job": False,
                 "review_ok": False, "review_expires": ""}
+
+
+def material_live(row: dict, as_of: str) -> bool:
+    """這一列的盲評材料**現在**還拿不拿得到。
+
+    從 `llm_experiment` 搬過來(第十四輪 P1-4 的騰位)。它本來就屬於這裡:
+    `review_expires` 是 `write_card()` 依 `card_expiry()` 寫下的,判它有沒有
+    過期的規則不該住在判讀模組裡 —— 兩邊分開就會漂。
+
+    r6(Codex,#3):`review_ok` 是寫下當天的事實,而 artifact 會過期。
+    只看 `review_ok` 會把早就過期的日子算成還有材料 —— 而十配對的分母是
+    成功配對數,累積期可以遠長於保留期,所以這不是理論上的邊角。
+    沒有記到期日的舊列(schema 演進前)保守地當作還在,不憑空判它死。
+    """
+    if not (row or {}).get("review_ok"):
+        return False
+    exp = str((row or {}).get("review_expires") or "")
+    return not (exp and as_of and exp < as_of)

@@ -27,7 +27,9 @@ from typing import Optional
 
 import analysis_grounding as _gr
 import analysis_origin as _ao
+import blind_review as _br
 import experiment_ledger as _xl
+import side_telemetry as _sc
 
 #: 實驗帳本的 schema 版本。
 EXPERIMENT_SCHEMA_VERSION = 1
@@ -62,7 +64,9 @@ COHORT_FIELDS = (
 #: 不進同群鍵、但要留在紀錄裡的溯源欄位。**`analysis_origin` 進同群的話,
 #: 落回 legacy 的日子會從可靠度分母消失**(見 `test_analysis_origin.py`)。
 PROVENANCE_FIELDS = ("code_version", "date", "primary_prompt_sha",
-                     "shadow_prompt_sha", "evidence_sha", "analysis_origin")
+                     "shadow_prompt_sha", "evidence_sha", "analysis_origin",
+                     "primary_telemetry", "shadow_telemetry",
+                     "extractor_telemetry")
 
 #: 有效樣本的目標數。**單位是配對,不是日曆日。**
 DEFAULT_TARGET_PAIRS = 10
@@ -115,20 +119,6 @@ def is_comparable(rec: Optional[dict], cohort: Optional[tuple] = None) -> bool:
     return exclusion_reason(rec, cohort) == ""
 
 
-def _material_live(row: dict, as_of: str) -> bool:
-    """這一列的盲評材料**現在**還拿不拿得到。
-
-    r6(Codex,#3):`review_ok` 是寫下當天的事實,而 artifact 會過期。
-    只看 `review_ok` 會把早就過期的日子算成還有材料 —— 而十配對的分母是
-    成功配對數,累積期可以遠長於保留期,所以這不是理論上的邊角。
-    沒有記到期日的舊列(schema 演進前)保守地當作還在,不憑空判它死。
-    """
-    if not row.get("review_ok"):
-        return False
-    exp = str(row.get("review_expires") or "")
-    return not (exp and as_of and exp < as_of)
-
-
 def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
                   target: int = DEFAULT_TARGET_PAIRS, *, as_of: str) -> dict:
     """實驗進度。**分母是配對數,不是天數。**
@@ -137,7 +127,7 @@ def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
     看起來會像實驗停滯,而實際上可能是影子一直逾時(那本身就是結論)。
 
     `as_of` 是**必填**的(r7 Codex)。它原本預設空字串,而空字串讓
-    `_material_live` 永遠不判到期 —— 於是我把到期判定寫好、接線時漏傳,
+    `material_live` 永遠不判到期 —— 於是我把到期判定寫好、接線時漏傳,
     生產路徑上它從第一天起就是個 no-op,`pairs_review_expired` 恆為零。
     測試也沒抓到:那些測試直接呼叫本函式並自己傳 `as_of`,繞過了真正的
     呼叫端。**預設值是「關閉」的選用參數,就是一個等著被忘記的開關;
@@ -158,11 +148,11 @@ def pair_progress(ledger: Optional[list], cohort: Optional[tuple] = None,
         # 有幾個配對**現在**還留著可取回的盲評材料。刻意不併進
         # `comparable_pairs`:配對是否可比與盲評材料在不在是兩件事,
         # 混成一個數字就再也分不出是哪一個缺。
-        "pairs_with_review": sum(1 for r in pairs if _material_live(r, as_of)),
+        "pairs_with_review": sum(1 for r in pairs if _br.material_live(r, as_of)),
         # 曾經有、但 artifact 已經過期的那些。分開報才看得出「材料不足」
         # 是從來沒產生,還是產生了卻放到過期。
         "pairs_review_expired": sum(
-            1 for r in pairs if r.get("review_ok") and not _material_live(r, as_of)),
+            1 for r in pairs if r.get("review_ok") and not _br.material_live(r, as_of)),
         "target_pairs": int(target),
         "remaining": max(0, int(target) - len(pairs)),
         "ready": len(pairs) >= int(target),
@@ -229,7 +219,8 @@ def build_record(*, today: str, experiment_id: str,
                  core_sha_primary: str = "", core_sha_shadow: str = "",
                  code_version: str = "", failure_reason: str = "",
                  review: Optional[dict] = None, run: Optional[dict] = None,
-                 metrics: Optional[dict] = None, analysis_origin: str = "") -> dict:
+                 metrics: Optional[dict] = None, analysis_origin: str = "",
+                 telemetry: Optional[dict] = None) -> dict:
     """組出一列實驗帳本。**同群欄位與溯源欄位都要在。**
 
     `primary` / `shadow` 各自帶 `profile` / `profile_version` / `model` /
@@ -281,6 +272,12 @@ def build_record(*, today: str, experiment_id: str,
         "grounding_version": _gr.GROUNDING_VERSION,
         # **溯源,不進同群鍵**(見 PROVENANCE_FIELDS)。
         "code_version": (code_version or "unknown")[:12],
+        # P1-4:**逐側的成本與延遲。** manifest 隔天就被下一班覆蓋,
+        # 只留整班總和的話,十配對達標時比得出「這一班多少錢」,
+        # 比不出兩套系統各自的成本效益 —— 而那是「要不要換」的核心問題。
+        # 抽取器標 `shared`、不歸任何一側(理由見 `side_telemetry` 模組)。
+        **{f"{k}_telemetry": dict(v) for k, v in (telemetry or {}).items()
+           if isinstance(v, dict)},
         "analysis_origin": _ao.normalize(analysis_origin),
         # 失敗的那天要說得出**為什麼** —— 只記「失敗」的帳本回答不了
         # 「誰比較常失敗、失敗在哪裡」,而那正是十配對要比的指標之一。
@@ -342,6 +339,9 @@ def record_day(*, record: dict, today: str, ledger_path, read_ledger,
     daily = _xl.canonical(same)
     progress = pair_progress(daily, cohort, target, as_of=today)
     progress["attempts"] = _xl.attempt_stats(same)
+    # P1-4:**逐側成本橫跨所有嘗試,不是代表樣本。** 配對一天只算一次,
+    # 帳單不行 —— 重跑那筆錢真的花掉了。所以傳 `same` 而不是 `daily`。
+    progress["side_costs"] = _sc.side_costs(same)
     progress["cohort_fields"] = dict(zip(COHORT_FIELDS, cohort))
     progress["reliability"] = reliability(daily, cohort)
     progress["verdict"] = verdict(progress)

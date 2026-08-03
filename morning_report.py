@@ -45,6 +45,7 @@ import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
+import side_telemetry as _st
 import writing_rules as _wr
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -14076,7 +14077,11 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
                                   recorded_at=dt.datetime.now(TPE).isoformat()),
                  **_rm.call_counts(_RUN_MANIFEST.get("llm"))),  # 列 ≠ 呼叫
         review=review,                      # r5:有沒有可用的盲評材料
-        metrics=metrics or {})
+        metrics=metrics or {},
+        # 第十四輪 P1-4:**逐側成本與延遲要跟著這一列存下來。**
+        # manifest 明早就被下一班覆蓋 —— 2026-08-03 那天問「Luna 花多少」
+        # 還查得到(Luna $0.0669 / DeepSeek $0.0479),晚一天就查不到了。
+        telemetry=_st.from_manifest(_RUN_MANIFEST.get("llm")))
 
 
 def _persist_experiment_record(record: dict, today: str) -> None:

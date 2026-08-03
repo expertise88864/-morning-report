@@ -463,10 +463,15 @@ def test_every_manifest_key_written_is_also_persisted():
     """
     import ast
     import morning_report as mr
-    import run_manifest as _rm_mod
 
-    trees = [ast.parse(Path(m.__file__).read_text(encoding="utf-8"))
-             for m in (mr, _rm_mod)]
+    # 2026-08-03:`llm_experiment` 的寫入搬進 `experiment_record.py` 之後,
+    # 這條又失明了一次 —— 而上面那段註解正是在講同一件事。
+    # **列舉模組本身就是那個會漏的東西**,所以改成掃根目錄所有模組:
+    # 新模組不必有人記得加進來。
+    root = Path(mr.__file__).resolve().parent
+    files = sorted(f for f in root.glob("*.py") if not f.name.startswith("_"))
+    assert len(files) > 10, f"掃到的模組太少({len(files)}),掃描器可能壞了"
+    trees = [ast.parse(f.read_text(encoding="utf-8")) for f in files]
     def _is_manifest(node) -> bool:
         """`_RUN_MANIFEST` 或 recorder 內部的 `self.data` —— 兩者是同一個 dict。
 
@@ -474,7 +479,9 @@ def test_every_manifest_key_written_is_also_persisted():
         (第十輪 P1-12 搬走 `state_writes` 時立刻發生)。
         """
         if isinstance(node, ast.Name):
-            return node.id == "_RUN_MANIFEST"
+            # `manifest` 是**注入時的約定名稱**(見 `experiment_record`):
+            # 葉模組不碰模組全域,manifest 由呼叫端交進來。
+            return node.id in ("_RUN_MANIFEST", "manifest")
         return (isinstance(node, ast.Attribute) and node.attr == "data"
                 and isinstance(node.value, ast.Name) and node.value.id == "self")
 

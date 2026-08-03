@@ -33,6 +33,7 @@ import llm_telemetry as _lt
 import app_context as _app
 import prompt_profiles as _pp
 import evidence_packet as _ep
+import experiment_record as _er
 import experiment_ledger as _xl
 import analysis_schema as _sch
 import analysis_render as _ar
@@ -12628,9 +12629,20 @@ R3. **每個論點必附數據**：禁止「市場樂觀」「資金充沛」這
 R4. **公司名必附簡介**：「**AMD（全球第二大 x86 CPU + AI GPU 廠，MI300X 為主力）**」
 R5. **估值若 None/nan 直接寫「資料缺失」**，不可瞎掰
 R6. **每條只寫一件事**：避免一句話塞三個論點
+R6b. **用敘事寫,不要用訊號清單。** 讀者要的是一段讀得下去的推理:
+    發生了什麼 → 為什麼重要 → 所以今天怎麼看 → 什麼情況會推翻它。
+    每個段落是一段完整的話,不是幾個子句用分號串起來;一句講一件事,
+    平均 25 到 40 字,超過 50 字就斷開。**一句話裡最多一個數字** ——
+    先說結論、再用一個數字支撐,其餘留給 Python 排的表格。
+    段落之間要有因果連接（「不過」「因此」「值得注意的是」），
+    讓讀者知道兩句之間的關係,而不是把並列的事實堆在一起。
 R7. **嚴禁 emoji**：包括 ✅ ❌ 📈 等所有圖示
 R8. **嚴禁使用技術面術語**：不可提 K 線、均線、MACD、KD、RSI、黃金交叉、死亡交叉、布林通道
-R9. **不可用全形冒號之外的全形標點**（書名號、感嘆號除外）
+R9. **中文句子的標點一律用全形**:「，」「。」「；」「：」。
+    半形逗號與分號夾在中文裡會讓整段黏成一團,那是這封信最常被反映的
+    閱讀障礙(2026-08-03 使用者回饋)。
+    **兩個例外仍然保留,它們各有理由**:新聞來源用半形方括號 `[媒體名]`
+    (見 R10b,顯示層要靠它淡化);全形括號（）只用於公司/名詞簡介。
 R10. **繁體中文，台灣財經用語**：寫「漲跌幅」不寫「涨幅」，寫「成交量」不寫「成交额」
 R10b. **新聞來源一律用半形方括號 [媒體名]**(批#27,全報統一,便於顯示層淡化):七/七之二/八/九各段凡引用來源,一律寫 `[媒體名]` 或 `[媒體1／媒體2]`,**不可**用全形括號（）標來源(全形括號保留給公司/名詞簡介);信心標維持 `[X 級・信心:…]` 格式不變。
 R11. **重大地緣政治事件強制分析**：若上方新聞清單的 ★★★ 重大事件中出現 [geo_critical] 類別（川習會、台海、晶片出口管制、軍演、戰爭等），**必須**在「昨夜三大重點」明確點名該事件、引用新聞中的具體內容（人物、發言、數字），並分析其對 2330 / 00662 / 台股開盤的傳導影響。**禁止省略、禁止只用一句話帶過**。若清單中確實沒有此類事件，才可略過。
@@ -14175,7 +14187,10 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
                  "model": OPENAI_MODEL, "effort": _PRIMARY_EFFORT,
                  "ok": bool(primary_ok), "prompt_sha": primary_prompt_sha,
                  "coverage": dict(pk.get("coverage") or {}),
-                 "evidence_schema_version": pk.get("schema_version"),
+                 # packet 沒建成時用**程式碼的**契約版本 —— 版本是程式的
+                 # 性質。用 None 會讓失敗列掉進另一個同群,連可靠度都進不去。
+                 "evidence_schema_version": (pk.get("schema_version")
+                                             or _ep.EVIDENCE_SCHEMA_VERSION),
                  "output_schema_version": _sch.ANALYSIS_SCHEMA_VERSION},
         shadow={"profile": shadow_profile or "deepseek_legacy_v1",
                 "profile_version": _pp.PROFILES.get(
@@ -14198,52 +14213,27 @@ def _experiment_row(packet: Optional[dict], *, primary_ok: bool,
 
 
 def _persist_experiment_record(record: dict, today: str) -> None:
-    """把今天這一列寫進**跨日**帳本並回報進度。
+    """委派給 `experiment_record.persist`(寫檔與設定在這裡注入)。"""
+    def _write(path, ledger):
+        _atomic_write_text(path, json.dumps(ledger, ensure_ascii=False, indent=1))
 
-    r2(Codex,#3):先前紀錄只進當日 manifest,而 manifest 每天覆寫 ——
-    `pair_progress()` 從來沒有被呼叫、`LLM_EXPERIMENT_TARGET_PAIRS` 從來沒有
-    被使用。也就是說十配對的計數機制**存在但不會計數**,
-    而那比沒有機制更糟:它看起來在運作。
-
-    **失敗只是今天沒有累積,不得讓晨報中斷。** 讀不出帳本就不寫
-    (覆蓋等於把十配對清零),寫不進去也只記一筆降級。
-    """
-    if not LLM_EXPERIMENT_ID:
-        return
-    try:
-        def _write(path, ledger):
-            _atomic_write_text(path, json.dumps(ledger, ensure_ascii=False,
-                                                indent=1))
-
-        progress = _lx.record_day(
-            record=record, today=today,
-            ledger_path=LLM_EXPERIMENT_LEDGER_FILE,
-            read_ledger=_lx.load_ledger, write_ledger=_write,
-            target=LLM_EXPERIMENT_TARGET_PAIRS,
-            log=lambda m: print(m, file=sys.stderr))
-        _RUN_MANIFEST["llm_experiment"] = dict(record, progress=progress)
-    except Exception as e:                      # noqa: BLE001 - 晨報不可斷
-        _DEGRADED_STEPS.append("llm_experiment_ledger")
-        print(f"[llm-experiment] 帳本寫入失敗(不影響晨報):"
-              f"{type(e).__name__}: {e}", file=sys.stderr)
-        _RUN_MANIFEST["llm_experiment"] = dict(record, ledger_error=str(e)[:120])
+    _er.persist(record, today, experiment_id=LLM_EXPERIMENT_ID,
+                ledger_path=LLM_EXPERIMENT_LEDGER_FILE,
+                target=LLM_EXPERIMENT_TARGET_PAIRS, write=_write,
+                manifest=_RUN_MANIFEST, degraded=_DEGRADED_STEPS,
+                log=lambda m: print(m, file=sys.stderr))
 
 
 def _record_experiment_failure(packet: Optional[dict], reason: str) -> None:
-    """主分析失敗的那一天**也要有一列實驗紀錄**(r1 Codex,#4):
-    只記成功的那幾天,「誰比較常失敗」的答案永遠是 100%。
-    """
-    if packet is None or not LLM_EXPERIMENT_ID:
-        return
-    try:
-        # r2(Codex,#4):**不得寫進 `llm_shadow`** —— 那個鍵在既有路徑結尾是
-        # 整包指派,會把失敗紀錄蓋掉。放自己的鍵下,誰都蓋不到。
-        _persist_experiment_record(_experiment_row(
-            packet, primary_ok=False, shadow_ok=False,
-            today=dt.datetime.now(TPE).strftime("%Y-%m-%d"), reason=reason),
-            dt.datetime.now(TPE).strftime("%Y-%m-%d"))
-    except Exception as e:                      # noqa: BLE001 - 記錄不得反過來弄壞晨報
-        print(f"[llm] 實驗失敗紀錄寫不進去(不影響晨報): {e}", file=sys.stderr)
+    """委派給 `experiment_record.record_failure`。"""
+    _d = dt.datetime.now(TPE).strftime("%Y-%m-%d")
+    _er.record_failure(
+        packet, reason, experiment_id=LLM_EXPERIMENT_ID,
+        row=lambda pk, why: _experiment_row(pk, primary_ok=False,
+                                            shadow_ok=False, today=_d,
+                                            reason=why),
+        persist_row=lambda rec: _persist_experiment_record(rec, _d),
+        log=lambda m: print(m, file=sys.stderr))
 
 
 def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
@@ -14287,9 +14277,11 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             print("[llm] Luna 路徑沒有產出,落回既有路徑", file=sys.stderr)
             _pending_failure = (_packet, "primary_no_output")
         except Exception as e:                  # noqa: BLE001 - 晨報不可斷
-            print(f"[llm] Luna 路徑失敗({type(e).__name__}),落回既有路徑:"
-                  f"{_redact_secret_text(str(e))[:160]}", file=sys.stderr)
-            _DEGRADED_STEPS.append("llm:luna_path_failed")
+            _lbl, _err = _rm.luna_path_failure(
+                e, redact=_redact_secret_text, packet_built=_packet is not None)
+            print(f"[llm] Luna 路徑失敗:{_err['error']}", file=sys.stderr)
+            _DEGRADED_STEPS.append(_lbl)
+            _RUN_MANIFEST.setdefault("llm", {})["luna_path_error"] = _err
             _pending_failure = (_packet, type(e).__name__)
     # r1(Codex,#1):用 `finally` 而不是逐個 return 補一行(這段有七個 return)
     try:

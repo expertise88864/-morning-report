@@ -128,6 +128,17 @@ def _versionless(obj):
     return obj
 
 
+def _legacy_prompt() -> str:
+    """生產真的會送給 DeepSeek 的那份 prompt(固定輸入)。
+
+    與 `test_deepseek_legacy_golden` 釘的是同一個東西 —— 那個檔負責
+    「改了要看得見」,這裡負責「改了就必須升版」。兩者角度不同,都要有。
+    """
+    import morning_report as mr
+    return mr._build_prompt({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
+                            {"model1": 1000.0}, _NEWS, [], "")
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
@@ -144,12 +155,19 @@ def _behaviour() -> dict:
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
         "primary_profile_version": _sha(
             luna["developer_instructions"] + "\x00" + luna["user_payload"]),
-        # 只雜湊 `profile_id` 是個**死掉的快照** —— 那是個常數,永遠不會變。
-        # legacy 契約真正管的是「這條 prompt 被怎麼包裝」:profile 身分、
-        # 結構化輸出開關、有沒有 developer 段。prompt 內容本身由
-        # `test_deepseek_legacy_golden` 釘住,證據雜湊屬於 evidence 契約。
-        "shadow_profile_version": _sha(_versionless(_contract_view(
-            pp.build_deepseek_legacy_bundle(pk, "固定的 legacy prompt")))),
+        # legacy 契約管兩件事:prompt 的**內容**,以及它被怎麼包裝。
+        # 2026-08-03:先前餵一段固定字串當 prompt,於是**真正的 prompt 改了、
+        # 指紋卻不動** —— 那天升 `DEEPSEEK_LEGACY_VERSION` 時,「版本變了行為
+        # 沒變」當場亮紅,而那個紅是對的:指紋涵蓋不到它自己該管的東西。
+        # 現在餵**生產真的會送的那份**(`_build_prompt` 對固定輸入的輸出)。
+        # prompt 內容**另外算一份**:`_contract_view` 排除了 `user_payload`
+        # (那一格在 Luna 側屬於 evidence 契約),而 legacy 的 prompt 正好
+        # 就住在那裡 —— 只餵真 prompt 而不把它算進去,指紋照樣不動。
+        # 這是同一個洞的第二層:**改對了輸入,卻沒改到被雜湊的東西。**
+        "shadow_profile_version": _sha([
+            _versionless(_contract_view(
+                pp.build_deepseek_legacy_bundle(pk, _legacy_prompt()))),
+            _sha(_legacy_prompt())]),
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
                                      lp._extract_summary(_REPORT_TEXT)]),
         "renderer_version": _sha(ar.render(_ANALYSIS)),
@@ -170,11 +188,16 @@ def _behaviour() -> dict:
 #: (先前的 `_ANALYSIS` 不合乎 strict schema,見第十三輪 P2-3),
 #: 不是契約行為改變。這是這張表少數該「改雜湊而不升版」的情形,
 #: 所以理由寫在這裡,不是寫在 commit 就算。
+#: 2026-08-03 第二次更新:兩個 profile 的**風格**依使用者回饋改成敘事寫法 +
+#: 全形標點,那會改變輸出,所以兩個版本號都升到 2(不是只改雜湊)。
+#: 同時修好一個漏洞:shadow 指紋原本餵一段固定字串當 prompt、而且
+#: `_contract_view` 又把 `user_payload` 排除掉 —— **真正的 legacy prompt
+#: 改了,指紋卻兩層都攔不到**。現在 prompt 內容另外算一份算進去。
 _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
-    "primary_profile_version":  (1, "748a46d19a2b2cee"),
-    "shadow_profile_version":   (1, "1beef7f63a8ee083"),
+    "primary_profile_version":  (2, "eddf8fdf25a58cf2"),
+    "shadow_profile_version":   (2, "73731508b377b3b1"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

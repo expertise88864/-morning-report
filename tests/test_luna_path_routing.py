@@ -136,7 +136,9 @@ def test_a_network_failure_falls_back_and_is_recorded(luna_on, monkeypatch):
     try:
         mr._DEGRADED_STEPS.clear()
         assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
-        assert "llm:luna_path_failed" in mr._DEGRADED_STEPS
+        # 標籤現在帶例外型別 —— 判準改成前綴,別再釘精確字串
+        assert any(x.startswith("llm:luna_path_failed")
+                   for x in mr._DEGRADED_STEPS), mr._DEGRADED_STEPS
     finally:
         mr._DEGRADED_STEPS[:] = saved
 
@@ -575,3 +577,65 @@ def test_the_good_fixture_is_actually_schema_valid():
     import analysis_schema as sch
     assert jc.violations(_GOOD, sch.ANALYSIS_OUTPUT_SCHEMA) == []
     assert sch.validate(_GOOD, {n["source_item_id"] for n in _NEWS}) == []
+
+
+# ------------------------------ 2026-08-03 實機:失敗要查得出原因
+
+def test_a_luna_failure_records_why_and_where(luna_on, monkeypatch):
+    """**失敗原因要留在 manifest 裡**(2026-08-03 實機)。
+
+    那天 Luna 路徑失敗了,而降級清單只有一個沒有型別的標籤、例外訊息只進
+    job log(公開 repo 匿名讀不到 403)—— 整天完全無法診斷,只知道
+    「失敗了」。而 `stage` 是關鍵:packet 建好了沒,決定失敗在**組裝證據**
+    還是**呼叫模型**,兩者排查方向完全不同。
+    """
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場:中性\n"
+                                  "## 一句話總結\n備援。")
+    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
+    mr._RUN_MANIFEST.pop("llm", None)
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        mr._DEGRADED_STEPS.clear()
+        mr._call_llm_analysis_impl(*_ARGS)
+        err = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_path_error") or {}
+        assert "RuntimeError" in err.get("error", ""), err
+        assert err.get("stage") == "analysis", (
+            "packet 已建好卻被記成 packet_build —— 排查方向會反過來")
+        assert "llm:luna_path_failed:RuntimeError" in mr._DEGRADED_STEPS, (
+            "降級清單沒有帶例外型別 —— 那正是當天分不出來的東西")
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+
+
+def test_a_packet_build_failure_is_recorded_as_such(luna_on, monkeypatch):
+    """**證據組裝失敗要標成 `packet_build`,而且那天也要有實驗紀錄。**
+
+    2026-08-03 實機正是這一種:`_packet` 還是 None,於是舊守衛讓實驗
+    整天零產出 —— 而可靠度看不到這種失敗,等於它沒發生過。
+    """
+    rows = []
+    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
+    monkeypatch.setattr(mr, "_persist_experiment_record",
+                        lambda rec, today: rows.append(rec))
+    monkeypatch.setattr(mr._ep, "build",
+                        lambda *a, **k: (_ for _ in ()).throw(TypeError("壞資料")))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場:中性\n"
+                                  "## 一句話總結\n備援。")
+    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
+    mr._RUN_MANIFEST.pop("llm", None)
+    saved = list(mr._DEGRADED_STEPS)
+    try:
+        mr._DEGRADED_STEPS.clear()
+        mr._call_llm_analysis_impl(*_ARGS)
+        err = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_path_error") or {}
+        assert err.get("stage") == "packet_build", err
+        assert len(rows) == 1, "證據組裝失敗的那天沒有留下實驗紀錄"
+        assert rows[0]["primary_ok"] is False
+        assert rows[0]["evidence_schema_version"], (
+            "版本是空的 —— 這一列會掉進另一個同群,連可靠度都進不去")
+    finally:
+        mr._DEGRADED_STEPS[:] = saved

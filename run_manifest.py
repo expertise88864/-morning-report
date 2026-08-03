@@ -277,3 +277,19 @@ def call_counts(llm: Optional[dict]) -> dict:
                 int(a.get("calls") or 1) for a in accepted if isinstance(a, dict)),
             "billable_unmeasured_calls": sum(
                 1 for a in att if a.get("billable_unmeasured"))}
+
+
+def luna_path_failure(exc, *, redact, packet_built: bool) -> tuple:
+    """Luna 特化路徑失敗時要留下的痕跡,回 `(降級標籤, manifest 條目)`。
+
+    2026-08-03 實機:那條路徑失敗了,而**失敗原因沒有任何地方留下來** ——
+    降級清單只有一個沒有型別的標籤、例外訊息只進 job log(公開 repo 匿名
+    讀不到),而 packet 還沒建好所以連實驗紀錄都沒有。那一天因此完全無法
+    診斷,只知道「失敗了」。
+
+    `stage` 是關鍵:packet 建好了沒,決定失敗發生在**組裝證據**還是
+    **呼叫模型** —— 那正是當天分不出來、而排查方向完全不同的一件事。
+    """
+    why = f"{type(exc).__name__}: {redact(str(exc))}"[:200]
+    return (f"llm:luna_path_failed:{type(exc).__name__}",
+            {"error": why, "stage": "analysis" if packet_built else "packet_build"})

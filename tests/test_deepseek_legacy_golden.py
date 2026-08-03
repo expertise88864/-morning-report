@@ -36,9 +36,14 @@ import morning_report as mr
 _ROOT = Path(__file__).resolve().parents[1]
 _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 
+#: **2026-08-03 刻意改動**:使用者回饋「文字擠在一起、半形全形混用,
+#: 要像說故事那樣有邏輯性」。R9 從「不可用全形標點」改成「中文句子一律全形」
+#: (兩個有理由的例外保留:來源用半形方括號供顯示層淡化、全形括號留給簡介),
+#: 並新增 R6b 敘事寫法。**這不是 Luna 污染,是使用者要求的風格變更**,
+#: 因此 `DEEPSEEK_LEGACY_VERSION` 同步升到 2。
 #: 2026-08-01 於 cd41fee 量測。改動 DeepSeek prompt 時**一起改這個值**,
 #: 並在 commit message 說明改了什麼、為什麼 —— 不要為了讓測試變綠而改。
-LEGACY_PROMPT_SHA256 = "6ea484027d19dc595bf37f6f7351f4878e7f00d172dd67b1d2914b4fa6b23012"
+LEGACY_PROMPT_SHA256 = "6e6d8428f494f6d96f9b3b743d1e2899158be2ecd6645997d57bebd1e5c9cefc"
 
 #: 段落順序也是契約的一部分。LLM 對「重要的東西放前面」很敏感,
 #: 而順序被改動時 prompt 雜湊會變,但雜湊說不出是順序變了還是內文變了。

@@ -47,6 +47,29 @@ bash tools/codex_review.sh targeted 7eb60b3 .codex-review/context.md
 `preflight.sh` exit 0、1686 passed、真實 manifest 形狀跑過、四項突變驗證
 (其中「拿掉生產呼叫端的 `telemetry=`」一開始沒紅,補測試後才紅)。
 
+### 批#79 `(下一個 commit)` —— Luna 特化路徑的 TypeError 根因
+`evidence_packet.canonical_json` 用 `sort_keys=True`,而 **`sort_keys` 在鍵混
+型別時會拋 `TypeError: '<' not supported between instances of 'int' and 'str'`**。
+`default=str` 保護的是**值**,沒有人保護鍵 —— 而那個函式的 docstring 自己寫著
+「寧可得到穩定字串,也不要讓整個 packet 拋例外」。宣稱與實作差一層,
+而差的那一層正好是宣稱要解決的問題。
+
+`build()` 只對 news 算 `core_sha` 所以沒事;`build_luna_bundle()` 對整個
+packet 算 `evidence_sha` 才炸 —— Luna 特化路徑因此連兩天(08-03、08-04)
+落回 legacy,實驗 0/10。
+
+修法:先用型別感知的順序(`(type(k).__name__, str(k))`)重建整棵樹,
+再以 `sort_keys=False` 輸出。**全字串鍵時輸出逐位元組相同**(有測試釘住),
+混型別時不再拋。另加 `nonstring_key_paths()` 並寫進 manifest,
+下次才知道是哪個上游欄位塞了非字串鍵。
+
+**外審應特別看的地方**:
+1. 「逐位元組相同」那條測試是否真的涵蓋所有既有形狀(它決定既有 sha 會不會變)
+2. `{1: 'a', '1': 'b'}` 撞鍵時資料會少一筆 —— 那是 `json.dumps` 的既有行為,
+   我只釘住它沒有改;這樣處理對不對?
+3. 診斷欄位寫進 manifest 會不會洩漏內容(目前只寫鍵與型別,不寫值)
+
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

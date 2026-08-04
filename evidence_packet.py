@@ -265,14 +265,62 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     return packet
 
 
+def _key_order(k):
+    """混型別的鍵也要排得出先後。**先比型別名,再比字串形式。**
+
+    `sorted()` 對 `{2026: …, "QQQ": …}` 會拋
+    `TypeError: '<' not supported between instances of 'int' and 'str'`。
+    全部是字串鍵時,`str(k) == k`,所以排序結果與 `sorted(keys)` 完全相同
+    —— 這是「修了不改變既有指紋」的依據。
+    """
+    return (type(k).__name__, str(k))
+
+
+def _sorted_tree(node):
+    """把整棵樹的 dict 依 `_key_order` 重建。**只改順序,不改內容。**"""
+    if isinstance(node, dict):
+        return {k: _sorted_tree(node[k]) for k in sorted(node, key=_key_order)}
+    if isinstance(node, (list, tuple)):
+        return [_sorted_tree(v) for v in node]
+    return node
+
+
+def nonstring_key_paths(node, path: str = "") -> list:
+    """哪些位置的 dict 鍵不是字串(給診斷用,不影響序列化)。
+
+    2026-08-04 實機:Luna 特化路徑連兩天失敗,而第二天終於記到例外是
+    `TypeError: '<' not supported between instances of 'int' and 'str'`。
+    知道「是鍵的型別」還不夠 —— 要知道**是哪個上游欄位**才修得到源頭,
+    否則下次換一個欄位又會重來一次。
+    """
+    out: list = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            here = f"{path}.{k}" if path else str(k)
+            if not isinstance(k, str):
+                out.append(f"{path or '(root)'}:{k!r}({type(k).__name__})")
+            out += nonstring_key_paths(v, here)
+    elif isinstance(node, (list, tuple)):
+        for i, v in enumerate(node):
+            out += nonstring_key_paths(v, f"{path}[{i}]")
+    return out
+
+
 def canonical_json(packet: dict) -> str:
     """穩定序列化。**排序鍵、無空白、不逃逸非 ASCII、無法序列化的轉字串。**
 
     `default=str` 是刻意的:證據裡混進 datetime / Decimal 時,寧可得到一個
     穩定的字串,也不要讓整個 packet 拋例外 —— 那會讓當天完全沒有 sha,
     而沒有 sha 的那天就是不可比的一天。
+
+    2026-08-04 實機:**上面那句話是這個函式沒有做到的事。** `default=str`
+    保護的是**值**,而 `sort_keys=True` 在**鍵**混型別時照樣拋 ——
+    Luna 特化路徑連兩天在這裡掛掉(`build()` 只對 news 算 core_sha 所以沒事,
+    `build_luna_bundle` 對整個 packet 算 evidence_sha 才炸),實驗 0/10。
+    改成先用型別感知的順序重建整棵樹,再以 `sort_keys=False` 輸出:
+    **全字串鍵時輸出逐位元組相同**,混型別時不再拋。
     """
-    return json.dumps(packet, sort_keys=True, ensure_ascii=False,
+    return json.dumps(_sorted_tree(packet), sort_keys=False, ensure_ascii=False,
                       separators=(",", ":"), default=str)
 
 

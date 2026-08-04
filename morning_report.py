@@ -14134,6 +14134,12 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                                 # r1(Codex,#1):外部文字進 prompt 的唯一入口。
                                 # 前一輪外審立的 P0 控制,新路徑必須接上。
                                 sanitize=_external_text)
+            # 2026-08-04:連兩天掛在 evidence_sha 的 `sort_keys` 上。序列化
+            # 已經修成不會拋,但**源頭是某個上游欄位塞了非字串鍵** ——
+            # 不記下來的話,下次換一個欄位又要從零查一次。
+            _nsk = _ep.nonstring_key_paths(_packet)[:8]
+            if _nsk:
+                _RUN_MANIFEST.setdefault("llm", {})["evidence_nonstring_keys"] = _nsk
             _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
             if _text:
                 # 第十四輪 P0-1:**只有走到這裡才算 Luna 特化成功。**

@@ -37,6 +37,7 @@ import fixtures_analysis as fx
 import json_contract as jc
 
 import analysis_grounding as gr
+import analysis_validate as av
 import analysis_render as ar
 import analysis_schema as sch
 import evidence_packet as ep
@@ -173,8 +174,12 @@ def _behaviour() -> dict:
         "renderer_version": _sha(ar.render(_ANALYSIS)),
         # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
         # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
+        # v3:接受政策含「深度加深」的觸發條件 —— depth_advisories 的行為
+        # 也是契約的一部分(它決定要不要多跑一次、輸出分佈因此不同)。
         "grounding_version": _sha([sch.validate(o, {"n1", "n2"})
-                                   for o in _GROUNDING_CASES]),
+                                   for o in _GROUNDING_CASES]
+                                  + [av.depth_advisories(o)
+                                     for o in _GROUNDING_CASES]),
     }
 
 
@@ -205,7 +210,9 @@ def _behaviour() -> dict:
 #: `_contract_view` 又把 `user_payload` 排除掉 —— **真正的 legacy prompt
 #: 改了,指紋卻兩層都攔不到**。現在 prompt 內容另外算一份算進去。
 _FROZEN = {
-    "evidence_schema_version":  (1, "5f0ae11e554371ad"),
+    # v2(第十五輪 P2-1):packet 加 signal_tensions —— 橫向矛盾由 Python
+    # 先算好(附數字與門檻出處),模型從「找矛盾」變成「解釋矛盾」。
+    "evidence_schema_version":  (2, "f6aa3e0311dc0615"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -216,7 +223,8 @@ _FROZEN = {
     # 至少兩條跨條連結、句式不得雷同;兩個範例整個重寫(它們自己在示範那個毛病)。
     # v7(schema v2):新欄位的填法指引(unknown 是誠實不是失敗、
     # 編造的關聯比沒有關聯更糟、五個市場各寫一句不是綜合)。
-    "primary_profile_version":  (7, "12881d2197be3fd0"),
+    # v8(第十五輪 P2-1):要求逐條正面處理 signal_tensions 的每個 tension。
+    "primary_profile_version":  (8, "136166896732bd91"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -225,7 +233,9 @@ _FROZEN = {
     # v3(schema v2):因果鏈/量級/驗證與失效/關係 + 橫向綜合段。
     "renderer_version":         (3, "ca49d95842eedaaa"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
-    "grounding_version":        (2, "48a0093cb4a4e0bb"),
+    # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
+    # 指紋納入 depth_advisories 的行為。
+    "grounding_version":        (3, "13d10021b4886dcd"),
 }
 
 

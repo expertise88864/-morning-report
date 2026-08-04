@@ -281,8 +281,14 @@ MODULE_CEILINGS = {
     "analysis_render_depth.py": 130,
     # schema v2 時從 `analysis_schema` 拆出的**引用檢查**(ID 存不存在、
     # 高重要性要有證據、關係要指向存在的條目、無證據的步驟不得自稱 fact)。
-    # 形狀/根據/引用是三件事,那個檔的 docstring 自己說要分開。實測 120 行。
-    "analysis_validate.py": 150,
+    # 形狀/根據/引用是三件事,那個檔的 docstring 自己說要分開。
+    # 第十五輪同批加 depth_advisories/deepen_input(合法但淺的判準與
+    # 加深指令)—— 深度判準與引用檢查同屬「schema 表達不了的不變式」。
+    # 實測 181 行。
+    "analysis_validate.py": 210,
+    # 第十五輪 P2-1:確定性的訊號張力偵測(矛盾/同向,附數字與門檻出處)。
+    # **只陳述事實不下結論**,有測試用禁用詞掃著。實測 ~175 行。
+    "signal_tensions.py": 210,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

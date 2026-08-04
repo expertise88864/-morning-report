@@ -45,6 +45,7 @@ import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
+import analysis_validate as _av
 import side_telemetry as _st
 import top5_readout as _t5r
 import writing_rules as _wr
@@ -13921,6 +13922,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         prompt_cache_key=f"morning-{bundle['profile_id']}",
         prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
 
+    _kept = None   # 第十五輪:合法但淺的第一版 —— 加深失敗時用它,不落回
     for repair in _LUNA_ATTEMPTS:
         t0 = time.monotonic()
         try:
@@ -13969,6 +13971,20 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             text = _ar.render(obj)
             if text:
                 _record(True)
+                # 深度不足時,把**還沒用掉的修補額度**拿來加深(第十五輪)。
+                # 最壞情況仍是兩次呼叫,與修補相同 —— 多的是深度不是風險;
+                # 加深失敗就用留著的這一版,**不落回 legacy**(淺而正確的
+                # 分析落回只會換來一封更淺的信)。
+                _adv = _av.depth_advisories(obj)
+                if _adv and not repair and _kept is None:
+                    _kept = (obj, text)
+                    _RUN_MANIFEST["llm"]["depth_advisories"] = _adv[:6]
+                    print(f"[llm] Luna 合法但淺({len(_adv)} 項),用剩餘額度加深",
+                          file=sys.stderr)
+                    payload = dict(payload, input=_av.deepen_input(
+                        bundle["user_payload"], _adv))
+                    continue
+                _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
                     obj, packet)
                 return text
@@ -13981,6 +13997,13 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             bundle["user_payload"] + "\n\nREPAIR\n上一次的輸出有以下問題,"
             "請只修正這些問題並重新輸出完整 JSON:\n"
             + "\n".join(f"- {p}" for p in problems[:5])))
+    if _kept is not None:
+        # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
+        # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。
+        obj, text = _kept
+        _RUN_MANIFEST["llm"]["deepen_failed"] = True
+        _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(obj, packet)
+        return text
     return ""
 
 

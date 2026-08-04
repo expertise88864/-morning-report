@@ -17,6 +17,7 @@ DeepSeek 的舊 prompt)。但十天後翻帳本的人會讀成「Luna xhigh 成�
 **只有在失敗的日子裡才分開** —— 也就是唯一需要它們分開的時候。
 """
 import analysis_origin as ao
+import analysis_validate as av
 import llm_experiment as lx
 import llm_shadow as ls
 import morning_report as mr
@@ -300,3 +301,77 @@ def test_a_relation_must_point_at_a_real_item():
     rel["other_source_item_id"] = "n1"          # 指向自己
     hits = sch.validate(obj, {"n1", "n2"})
     assert any("指向自己" in h for h in hits), hits
+
+
+# ---------------------------------------- 第十五輪:深度加深(不擋信)
+
+def test_depth_advisories_and_the_deepen_pass_are_wired():
+    """**加深要真的接在生產迴圈上**,而且用的是剩餘的修補額度。
+
+    判準掃 `_luna_analysis` 的原始碼:
+      (a) 成功分支要呼叫 `depth_advisories`;
+      (b) 加深走 `deepen_input`(裡面帶著「不得硬湊」);
+      (c) 加深失敗要用留著的第一版(`_kept`),**不落回 legacy** ——
+          淺而正確的分析落回只會換來一封更淺的信。
+    """
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
+           ).read_text(encoding="utf-8")
+    body = src[src.index("def _luna_analysis"):src.index("def _luna_analysis")
+               + 8000]
+    assert "_av.depth_advisories(obj)" in body, "成功分支沒有查深度"
+    assert "_av.deepen_input(" in body, "加深沒有走統一的 deepen_input"
+    assert "_kept" in body and "deepen_failed" in body, (
+        "加深失敗沒有回退到留著的第一版")
+
+
+def test_deepen_input_forbids_fabrication():
+    """加深指令必須明說「不得硬湊」—— 否則加深會誘發編造。"""
+    txt = av.deepen_input("PAYLOAD", ["a", "b"])
+    assert "不得硬湊" in txt and "DEEPEN" in txt
+    assert txt.startswith("PAYLOAD"), "user payload 不見了 —— 模型會沒有證據可用"
+
+
+def test_fixture_depth_is_the_reference_answer():
+    """fixture 是「夠深」的參考答案:零 advisory。
+
+    它一旦退化(有人把 mechanism_steps 刪掉),先紅的是這裡。
+    """
+    import fixtures_analysis as fx
+    assert av.depth_advisories(fx.valid_analysis()) == []
+
+
+def test_each_shallow_shape_gets_its_own_advisory():
+    import fixtures_analysis as fx
+    base = fx.valid_analysis()
+    # 高重要性只有一步
+    o = fx.valid_analysis()
+    o["top_news_analysis"][0]["mechanism_steps"] = \
+        o["top_news_analysis"][0]["mechanism_steps"][:1]
+    assert any("因果鏈卻只有 1 步" in a for a in av.depth_advisories(o))
+    # 有量級沒理由
+    o = fx.valid_analysis()
+    o["top_news_analysis"][0]["why_this_magnitude"] = ""
+    assert any("沒有說為什麼是這個量級" in a for a in av.depth_advisories(o))
+    # 橫向綜合沒有衝突欄
+    o = fx.valid_analysis()
+    o["cross_market_synthesis"]["conflicting_signals"] = []
+    assert any("互相抵銷" in a for a in av.depth_advisories(o))
+    # 主導因子空白
+    o = fx.valid_analysis()
+    o["cross_market_synthesis"]["dominant_driver"] = ""
+    assert any("主導因子" in a for a in av.depth_advisories(o))
+    _ = base
+
+
+def test_advisories_never_reject():
+    """**淺不是不合格。** depth_advisories 的每一種形狀都要通得過 validate
+    —— 兩者混在一起,淺的那天就會落回 legacy,換來一封更淺的信。"""
+    import fixtures_analysis as fx
+    o = fx.valid_analysis()
+    o["top_news_analysis"][0]["mechanism_steps"] = []
+    o["cross_market_synthesis"]["conflicting_signals"] = []
+    o["cross_market_synthesis"]["dominant_driver"] = ""
+    assert av.depth_advisories(o), "淺的形狀要被點名"
+    import analysis_schema as sch
+    assert sch.validate(o, {"n1", "n2"}) == [], "淺被當成了不合格 —— 會落回 legacy"

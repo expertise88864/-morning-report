@@ -36,9 +36,13 @@ import hashlib
 import json
 from typing import Optional
 
+import signal_tensions as _tension
+
 #: schema 版本。**改欄位就要進版**:cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
-EVIDENCE_SCHEMA_VERSION = 1
+#: v2(第十五輪 P2-1):加 `signal_tensions` —— 矛盾由 Python 先算好,
+#: 模型從「在 97K token 裡找矛盾」變成「解釋矛盾」。形狀變了,不可與 v1 相加。
+EVIDENCE_SCHEMA_VERSION = 2
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -253,6 +257,9 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         "news": kept_news,
         "portfolio": portfolio_summary(quotes or {}),
         "truncation": trunc,
+        # v2:確定性的訊號張力(矛盾/同向,附數字)。**在消毒之前放進來**
+        # —— 產業名與領頭股名來自外部 API,要跟整棵樹一起過消毒器。
+        "signal_tensions": _tension.detect(quotes or {}),
     }
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。

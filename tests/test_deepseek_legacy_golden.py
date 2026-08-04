@@ -47,7 +47,10 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 #: 改七之四鐵則,R12 的 C 級補上書單廣告類。`DEEPSEEK_LEGACY_VERSION` → 4。
 #: 2026-08-01 於 cd41fee 量測。改動 DeepSeek prompt 時**一起改這個值**,
 #: 並在 commit message 說明改了什麼、為什麼 —— 不要為了讓測試變綠而改。
-LEGACY_PROMPT_SHA256 = "d67ad6ae143fb8ad0ac3830ed788ef16cf04a634585757004dc991162c4519f8"
+#: **2026-08-04 刻意改動**(v5):使用者再提「還是在堆疊數據、沒有分析影響」。
+#: 加 R17(Python 排好的表要在立場理由裡被合起來讀)、七之二 60→90 字
+#: 且要求寫得出傳導路徑而不是四個字的抽象標籤。
+LEGACY_PROMPT_SHA256 = "a38b5e7c9ed90d40f11c10fe1d6704e21a9ca5aba2ea64c26e4055df6a1fd794"
 
 #: 段落順序也是契約的一部分。LLM 對「重要的東西放前面」很敏感,
 #: 而順序被改動時 prompt 雜湊會變,但雜湊說不出是順序變了還是內文變了。
@@ -157,6 +160,14 @@ def test_the_legacy_prompt_demands_the_same_three_readability_rules():
         ("R10c 不得改變原意", "不能改意思"),
         ("七之四 要翻成中文", "翻成中文轉述"),
         ("C 級 排除書單廣告", "根本不是新聞的條目"),
+        # v5(2026-08-04):Python 排好的表要有人解讀。突變驗證顯示只靠上面
+        # 那個 SHA 的話,規則被刪掉時只會叫人「更新 SHA」——**雜湊說不出
+        # 少了什麼**,所以每一條要求都要有自己的語意判準。
+        ("R17 表要被合起來讀", "Python 排好的表要有人解讀"),
+        ("R17 要接回今天的立場", "一致還是矛盾"),
+        ("R17 矛盾不可略過", "矛盾時要明講,不可略過"),
+        ("七之二 要寫得出路徑", "「所以會怎樣」要寫得出**路徑**"),
+        ("七之二 禁抽象標籤", "不接受四五個字的抽象標籤"),
     ) if needle not in prompt]
     assert not missing, f"legacy prompt 少了這些要求:{missing}"
 

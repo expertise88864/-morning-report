@@ -208,8 +208,9 @@ _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
-    "primary_profile_version":  (4, "a3f9c7cd7fc69445"),
-    "shadow_profile_version":   (4, "b368909c25e1dd16"),
+    # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
+    "primary_profile_version":  (5, "1a3bee574edba7ca"),
+    "shadow_profile_version":   (5, "ca84e287e9391075"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

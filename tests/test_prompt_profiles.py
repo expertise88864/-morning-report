@@ -428,3 +428,18 @@ def test_the_instructions_demand_a_so_what_after_every_number():
     assert "一句話裡最多一個數字" in t, "密度那條被誤刪了"
     assert "只報數字不算分析" in t
     assert "是描述" in t and "才是分析" in t, "缺反例/正例對照"
+
+
+def test_the_instructions_demand_reading_the_python_tables_together():
+    """**「不要重述 Python 算好的數字」原本把解讀整個擋在外面。**
+
+    那條規則的用意是避免重複列表,結果是信裡那些由程式排好的區塊
+    (類股熱度、市場廣度、籌碼、Top5)**沒有任何一句話說明意義** ——
+    使用者兩次反映「只是在呈現數字、堆疊數據」,而 prompt 這一側的原因
+    就是這條規則。改成「不要逐項重列,但要合起來讀」。
+    """
+    t = pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert "不要逐項重列" in t, "禁令又被寫回成「不要重述」了"
+    assert "但也不要因此放著不管" in t
+    assert "跟今天的立場一致還是矛盾" in t, "沒有要求把解讀接回今天的立場"
+    assert "矛盾時要明講" in t, "只要求解讀、沒要求誠實面對相反的證據"

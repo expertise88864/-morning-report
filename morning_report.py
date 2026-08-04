@@ -46,6 +46,7 @@ import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
 import side_telemetry as _st
+import top5_readout as _t5r
 import writing_rules as _wr
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -20440,6 +20441,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 is_fin = (_ind == "17"
                           or any(k in _ind for k in ("金融", "保險", "金控", "銀行", "證券", "票券"))
                           or any(k in _desc for k in ("金控", "銀行", "保險", "證券", "票券", "壽險", "產險")))
+                # 2026-08-04 使用者回饋:這張卡有十幾個數字卻**一句話都沒有**。
+                # 把已算好的欄位翻成人話,衝突優先講(外資買但大戶減、漲卻量縮)。
+                # **要放在 `is_fin` 算完之後** —— 金融股的營收年增受合併與利差
+                # 扭曲(理由見上方),拿它講「營收仍在成長」是錯的。
+                # 沒東西可說就回空字串 → 整行不顯示,不生空話。
+                _readout = _t5r.readout(s, sm, is_financial=is_fin)
                 fund_bits = []
                 ry = _num(s.get("rev_yoy_pct"))
                 if ry is not None and not is_fin:
@@ -20532,6 +20539,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"<div style='margin-top:5px;'>{tag_chips_line}</div>"
                     # 第 3 行:數據明細小字
                     f"<div style='margin-top:5px;font-size:12px;color:#94a3b8;'>{metrics_line}</div>"
+                    # 第 3.5 行:一句話解讀(**只描述不建議**;無話可說則整行不出現)
+                    + (f"<div style='margin-top:6px;font-size:13px;color:#334155;"
+                       f"line-height:1.6;'>{_htmllib.escape(_readout)}</div>"
+                       if _readout else "")
+                    +
                     # 基本面/估值/籌碼擴充(與股癌雷達同口徑,純參考、不計入排名分數)
                     f"{ext_html}"
                     # 排名分解/模型技術行/短期參考(forecast_line)/財報品質皆屬

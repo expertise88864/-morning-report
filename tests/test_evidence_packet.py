@@ -113,7 +113,12 @@ def test_every_news_item_has_a_stable_id_that_claims_can_point_at():
     ids = [n["source_item_id"] for n in packet["news"]]
     assert len(set(ids)) == len(ids), "證據 ID 有重複"
     assert all(ids), "有新聞沒有證據 ID"
-    assert ep.evidence_ids(packet) == set(ids)
+    # 第十六輪 P1-1:**registry 是 typed 的**,新聞只是其中一類。
+    # 行情事實先前沒有任何合法的引用對象,於是模型只能拿新聞 ID 去替
+    # 數字背書 —— 那比留空更糟(看起來有根據)。
+    reg = ep.evidence_ids(packet)
+    assert set(ids) <= reg, "新聞 ID 不在 registry 裡"
+    assert all(x.startswith(("market:", "tension:")) for x in reg - set(ids)),         f"registry 出現既不是新聞、也不是 market/tension 的 ID:{reg - set(ids)}"
 
     # 同一則新聞,不論位置,ID 都一樣
     reordered = _build(news=list(reversed(_NEWS)))

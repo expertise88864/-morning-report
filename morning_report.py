@@ -13981,9 +13981,23 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                     _RUN_MANIFEST["llm"]["depth_advisories"] = _adv[:6]
                     print(f"[llm] Luna 合法但淺({len(_adv)} 項),用剩餘額度加深",
                           file=sys.stderr)
+                    # **附上前一版**:不附的話模型只能整份重生,可能修好深度
+                    # 卻少分析一則新聞或改掉立場(第十六輪 P1-8)。
                     payload = dict(payload, input=_av.deepen_input(
-                        bundle["user_payload"], _adv))
+                        bundle["user_payload"], _adv, previous=obj))
                     continue
+                if _kept is not None:
+                    # **第二版要真的比較好才取代第一版。** 只驗合法性的話,
+                    # 「修好深度、改壞別處」會被當成改善 —— 那是我上一批
+                    # 自己寫進去的洞。
+                    _ok, _why = _av.deepen_is_an_improvement(
+                        _kept[0], obj, evidence_ids=ids)
+                    _RUN_MANIFEST["llm"]["deepen_verdict"] = _why
+                    if not _ok:
+                        print(f"[llm] 加深後不算改善({_why}),沿用第一版",
+                              file=sys.stderr)
+                        obj, text = _kept
+                        _adv = _av.depth_advisories(obj)
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
                     obj, packet)

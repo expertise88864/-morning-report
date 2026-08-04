@@ -28,10 +28,9 @@ from __future__ import annotations
 #: 兩種完全不同的接受行為會被當成同一群樣本相加。
 #: v2(schema v2):加 `cross_market_synthesis` —— 漏掉它的話,一段完全
 #: 沒有根據的橫向綜合會照樣寄出,而它正是最容易被寫成漂亮空話的一段。
-#: v3(第十五輪):接受政策多了「深度加深」—— 合法但淺的第一版會觸發
-#: 一次 DEEPEN 修補(depth_advisories 定義「淺」),失敗用第一版、不落回。
-#: 修補時機變了就是接受行為變了,樣本不可與 v2 相加。
-GROUNDING_VERSION = 3
+#: v3(第十五輪):接受政策多了「合法但淺 → 加深一次」(修補時機變了
+#: 就是接受行為變了)。v4(P2-4):`priced_in` 也要帶證據。
+GROUNDING_VERSION = 4
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
@@ -41,8 +40,11 @@ RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
 
 #: schema 裡帶 `evidence_ids` 而且會被寄出去的物件段落
 #: (`key_drivers` 與 `claim_audit` 是清單,另外處理)。
+#: 第十六輪 P2-4:`priced_in` 已經進 RENDERED 卻不在這裡 —— 於是
+#: 「市場已完全反映降息」這種**高推論性**的句子可以完全沒有證據就寄出。
+#: 它比一般新聞摘要**更**需要根據,因為它宣稱的是市場的預期狀態。
 EVIDENCE_BEARING = ("market_regime", "taiwan_market", "global_market",
-                    "cross_market_synthesis")
+                    "cross_market_synthesis", "priced_in")
 
 
 def has_content(node: dict) -> bool:

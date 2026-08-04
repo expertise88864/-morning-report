@@ -197,14 +197,23 @@ MODULE_CEILINGS = {
     # 任何 provider-specific 的文字都不該住在這裡(那是 prompt profile 的事)。
     # r2 折衷 (b):`core_evidence_sha` 與 `coverage` —— 可比性判準
     # 與深度揭露。300 → 350(現況 318)。
-    "evidence_packet.py": 400,
+    # 第十六輪 P1-1 調高 400 → 430(**實測 415**)。長大的是 typed evidence
+    # registry:行情事實先前沒有任何合法的引用對象,模型只能拿新聞 ID 去替
+    # 數字背書。那是**契約內容**,不是邏輯膨脹;序列化那半(canonical_json /
+    # _sorted_tree / evidence_sha)是下一個可拆的接縫,留待需要時再拆。
+    "evidence_packet.py": 430,
     # Luna 特化:strict 輸出契約與內容驗證。schema 本身會長大(欄位是產品決策),
     # 但**驗證邏輯**不該 —— 品質指標的家在 Phase 6 的模組,不在這裡。
-    "analysis_schema.py": 250,
+    # 第十六輪調高 250 → 270(**實測 254**)。schema v2/v3 加的是因果鏈、
+    # 量級、關係與 addressed_tension_ids —— 這個檔的全部工作就是宣告契約,
+    # 而契約變深就是這幾輪的目的。`validate` 已經拆去 `analysis_validate`。
+    "analysis_schema.py": 270,
     # 「根據」的檢查(與 schema 的「形狀」檢查刻意分開 —— 第十二輪 P1-3
     # 的教訓正是這兩件事被混為一談)。**實測 97 行**(初訂 90 是依 64 行
     # 抓的頭寸,外審的兩條修正把它撐開;數字據實量測,不靠推估)。
-    "analysis_grounding.py": 105,
+    # 第十六輪調高 105 → 120(**實測 107**)。多的是 `priced_in` 進
+    # EVIDENCE_BEARING 與版本註解 —— 判準本身仍然只有兩個函式。
+    "analysis_grounding.py": 120,
     # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
     # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
     # 金絲雀探測都需要那個答案。**實測 137 行**(初訂 110 是依 95 行抓的
@@ -213,7 +222,11 @@ MODULE_CEILINGS = {
     # Luna 特化:profile 登錄簿。prompt 文字佔大半,所以上限比別人寬;
     # 但**組裝邏輯**要保持薄 —— 任何 provider 的請求細節都屬於 adapter。
     # 第十四輪:寫作段搬去 `writing_rules.py` 之後**實測 223 行**。
-    "prompt_profiles.py": 250,
+    # 第十六輪調高 250 → 270(**實測 255**)。長大的是 developer 指令裡
+    # 「怎麼用 signal_tensions / typed evidence ID」那幾條 —— 與
+    # `writing_rules.py` 同理:**prompt 文字的長度由使用者要求決定**,
+    # 而組裝邏輯仍然只有 `_bundle` 一個函式。
+    "prompt_profiles.py": 270,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。
@@ -286,6 +299,10 @@ MODULE_CEILINGS = {
     # 加深指令)—— 深度判準與引用檢查同屬「schema 表達不了的不變式」。
     # 實測 181 行。
     "analysis_validate.py": 210,
+    # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
+    # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
+    # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。
+    "analysis_depth.py": 190,
     # 第十五輪 P2-1:確定性的訊號張力偵測(矛盾/同向,附數字與門檻出處)。
     # **只陳述事實不下結論**,有測試用禁用詞掃著。實測 ~175 行。
     "signal_tensions.py": 210,

@@ -42,7 +42,9 @@ import signal_tensions as _tension
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
 #: v2(第十五輪 P2-1):加 `signal_tensions` —— 矛盾由 Python 先算好,
 #: 模型從「在 97K token 裡找矛盾」變成「解釋矛盾」。形狀變了,不可與 v1 相加。
-EVIDENCE_SCHEMA_VERSION = 2
+#: v3(第十六輪):張力改純觀測形狀(left/right/relationship/tension_id/
+#: usable_for_inference),registry 改 typed(market:*、tension:*)。
+EVIDENCE_SCHEMA_VERSION = 3
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -395,6 +397,19 @@ def evidence_ids(packet: dict) -> set:
 
     Luna 的每個重大 claim 都要帶 evidence_ids,而「帶了一個不存在的 ID」
     與「沒帶」是兩種不同的失敗 —— 前者看起來有根據,更危險。
+
+    第十六輪 P1-1:**先前只回新聞 ID,而行情事實沒有合法的引用對象** ——
+    模型只能留空(被擋)、或拿新聞 ID 去替行情數字背書(形式合法、語意錯誤;
+    測試 fixture 自己就示範了後者)。改成 typed:`n1` / `market:QQQ.change_pct`
+    / `tension:t_us_vs_taifex`,而「引用不存在的東西」仍然抓得出來。
     """
-    return {str(n.get("source_item_id")) for n in (packet.get("news") or [])
-            if n.get("source_item_id")}
+    out = {str(n.get("source_item_id")) for n in (packet.get("news") or [])
+           if n.get("source_item_id")}
+    out |= _tension.evidence_refs(packet.get("signal_tensions"))
+    # 行情:**只收有值的葉節點** —— 引用一整個 dict 說明不了任何事。
+    for key, blk in (packet.get("market") or {}).items():
+        vals = blk.items() if isinstance(blk, dict) else [(None, blk)]
+        for field, v in vals:
+            if isinstance(v, (int, float, str)) and v != "":
+                out.add(f"market:{key}.{field}" if field else f"market:{key}")
+    return out

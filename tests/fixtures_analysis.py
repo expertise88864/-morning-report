@@ -88,7 +88,10 @@ def valid_analysis() -> dict:
                  {"from_what": "費半收漲", "to_what": "台股電子開盤定價",
                   "channel": "外部定價", "step_type": "fact",
                   "evidence_ids": ["n1"]},
-                 {"from_what": "電子權值走強", "to_what": "指數開高",
+                 # **鏈要接得起來**:這一步的起點就是上一步的終點。
+                 # 第十六輪 P1-7 的連續性守衛第一次跑就抓到這份 fixture
+                 # 原本是斷的 —— 參考答案自己要示範它要求的性質。
+                 {"from_what": "台股電子開盤定價", "to_what": "指數開高",
                   "channel": "權值佔比", "step_type": "inference",
                   "evidence_ids": []}],
              "magnitude_band": "moderate",
@@ -123,12 +126,16 @@ def valid_analysis() -> dict:
             "funds_moving_from": ["塑化"],
             "funds_moving_to": ["半導體"],
             "what_would_flip_it": "外資空單續增且現貨量能萎縮",
+            # 第十六輪 P2-2:回填「處理過哪幾筆 Python 張力」供驗證器比對。
+            "addressed_tension_ids": [],
             "evidence_ids": ["n1"]},
         "contradictions": [],
         "data_gaps": [],
         "watch_triggers": [],
         "claim_audit": [_claim("費半走強")],
-        "priced_in": {"already_reflected": [], "not_yet_reflected": []},
+        "priced_in": {"already_reflected": ["費半漲幅"],
+                      "not_yet_reflected": ["台積電法說指引"],
+                      "evidence_ids": ["n1"]},
     }
 
 
@@ -148,4 +155,5 @@ def ungrounded_analysis() -> dict:
     # schema v2:橫向綜合也是**會進信而且帶證據**的段落,反例要一起拔掉
     # 證據 —— 留著的話 grounding 會因為它有根據而放行,這個反例就失效了。
     obj["cross_market_synthesis"]["evidence_ids"] = []
+    obj["priced_in"]["evidence_ids"] = []
     return obj

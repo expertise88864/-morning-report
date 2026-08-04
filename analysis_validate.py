@@ -24,6 +24,20 @@ import analysis_grounding as _gr
 # import 本模組(相容出口),頂層互相 import 會在「誰先被載入」上翻車。
 
 
+def _registry(evidence_ids):
+    """接受 **packet 或 ID 集合**(第十六輪 P1-1/P1-2)。
+
+    傳 packet 時才驗得了「有張力卻沒有橫向綜合」這類**與當日輸入有關**
+    的不變式 —— 只有一個 ID 集合的話,驗證器看不到今天有幾筆張力、
+    有幾則高重要性新聞,於是空的輸出可以真空通過。
+    舊呼叫端傳 set 仍然可用(只是少掉那幾條判準,並且說得出少了什麼)。
+    """
+    if isinstance(evidence_ids, dict) and "news" in evidence_ids:
+        import evidence_packet as _ep
+        return _ep.evidence_ids(evidence_ids), evidence_ids
+    return set(evidence_ids or ()), None
+
+
 def validate(obj, evidence_ids) -> list:
     """回傳問題清單(空 = 通過)。**不拋例外**:呼叫端決定要修還是降級。
 
@@ -42,7 +56,7 @@ def validate(obj, evidence_ids) -> list:
     problems: list = []
     if not isinstance(obj, dict):
         return ["輸出不是 JSON 物件"]
-    known = set(evidence_ids or ())
+    known, packet = _registry(evidence_ids)
 
     def _check_ids(ids, where):
         for i in (ids or []):
@@ -80,6 +94,15 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.mechanism_steps[{j}] 自稱 fact 卻沒有證據 ——"
                     "沒有證據的那一步要標成 inference 或 unknown")
+            # 第十六輪 P1-7:**空字串的步驟先前算一步。** 驗證器數 dict 個數,
+            # 而 renderer 會把空的過濾掉 —— 於是「驗證器說有兩步、讀者看不到
+            # 任何因果鏈」。步驟的三個欄位都要有內容才算一步。
+            blank = [k for k in ("from_what", "to_what", "channel")
+                     if not str(st.get(k) or "").strip()]
+            if blank:
+                problems.append(
+                    f"{where}.mechanism_steps[{j}] 有空欄位 {blank} ——"
+                    "空步驟不算一步,寫不出來就不要放這一步")
         # v2:**`unknown` 不是免費的逃生口。** 選它就要說出缺哪些資料,
         # 否則它只是「小幅利多」換一個寫法。
         if (n.get("magnitude_band") == "unknown"
@@ -99,9 +122,45 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.relates_to[{j}] 指向 {other!r},"
                     "而本報今天沒有分析那一則 —— 關係不得指向不存在的東西")
+        # 連續性:下一步要從上一步的終點接下去。斷開的鏈讀起來像因果,
+        # 其實是三個不相干的片段各自成立。
+        steps = [st for st in (n.get("mechanism_steps") or [])
+                 if isinstance(st, dict)]
+        for j in range(1, len(steps)):
+            prev_to = str(steps[j - 1].get("to_what") or "").strip()
+            cur_from = str(steps[j].get("from_what") or "").strip()
+            if prev_to and cur_from and prev_to != cur_from:
+                problems.append(
+                    f"{where}.mechanism_steps[{j}] 從 {cur_from!r} 開始,"
+                    f"而上一步走到 {prev_to!r} —— 鏈斷了,"
+                    "中間缺的那一步要補上(不確定就標 inference)")
+
     cms = obj.get("cross_market_synthesis")
     if isinstance(cms, dict):
         _check_ids(cms.get("evidence_ids"), "cross_market_synthesis")
+    # 第十六輪 P1-2/P2-2:**空的橫向/縱向不得真空通過。**
+    # 只有拿得到 packet 才驗得了 —— 這些判準問的是「今天的輸入要求什麼」。
+    if packet is not None:
+        import signal_tensions as _st
+        need = _st.required_tension_ids(packet.get("signal_tensions"))
+        if need:
+            got = {str(x) for x in ((cms or {}).get("addressed_tension_ids") or [])}
+            missing = sorted(need - got)
+            if missing:
+                problems.append(
+                    f"今天有 {len(need)} 筆待處理的訊號張力,"
+                    f"cross_market_synthesis 沒有處理:{missing} ——"
+                    "每一筆都要放進 conflicting_signals 並回填 tension id")
+            for x in sorted(got - need):
+                problems.append(
+                    f"cross_market_synthesis 宣稱處理了 {x!r},"
+                    "而今天沒有這筆張力 —— 不得回填不存在的 ID")
+        hi = [n for n in news if n.get("materiality") == "high"]
+        if not news and (packet.get("news") or []):
+            problems.append("有新聞可分析,top_news_analysis 卻是空的")
+        if hi and not str((cms or {}).get("dominant_driver") or "").strip():
+            problems.append(
+                "有高重要性事件,cross_market_synthesis 卻沒有指出主導因子")
     # r1(Codex,P1):「要求非空」本身在鼓勵模型隨便填一個 —— 新守衛因此
     # 製造了開頭那句話說的風險:編造的 ID 比沒有 ID 更危險。
     for sec in _gr.EVIDENCE_BEARING:
@@ -120,61 +179,9 @@ def validate(obj, evidence_ids) -> list:
         problems.append(f"立場詞彙不合法:{label!r}")
     return problems
 
-
-# ------------------------------------------------------------ 深度(不擋信)
-
-def depth_advisories(obj) -> list:
-    """**合法但淺**的地方(空 = 夠深)。與 `validate()` 刻意分開:
-
-    這裡的每一條都**不會**讓輸出被拒絕 —— 淺而正確的分析落回 legacy
-    只會換來一封更淺的信。它們的用途是:第一次輸出合法但淺的時候,
-    把**還沒用掉的那次修補額度**拿來加深(見 `deepen_input`),
-    最壞情況仍是兩次呼叫,與修補相同 —— 多的是深度,不是新的失敗模式。
-
-    判準全部是結構性的(數步數、查空欄),不是關鍵詞 —— 第十五輪 P1-5
-    說對了:關鍵詞當門檻,一句「兩者同向,預計明年影響 5%」就能騙過。
-    """
-    out: list = []
-    if not isinstance(obj, dict):
-        return out
-    news = [n for n in (obj.get("top_news_analysis") or []) if isinstance(n, dict)]
-    for i, n in enumerate(news):
-        where = f"top_news_analysis[{i}]"
-        steps = [s for s in (n.get("mechanism_steps") or []) if isinstance(s, dict)]
-        if n.get("materiality") == "high" and len(steps) < 2:
-            out.append(f"{where} 是高重要性,因果鏈卻只有 {len(steps)} 步 —— "
-                       "至少走到「事件 → 營運 → 財務或股價」兩步;"
-                       "不確定的步驟標 inference/scenario,不要省略")
-        if (n.get("magnitude_band") in ("negligible", "small", "moderate", "large")
-                and not str(n.get("why_this_magnitude") or "").strip()):
-            out.append(f"{where} 給了量級卻沒有說為什麼是這個量級")
-    cms = obj.get("cross_market_synthesis")
-    if isinstance(cms, dict):
-        has_content = any(str(v or "").strip() if isinstance(v, str) else v
-                          for k, v in cms.items() if k != "evidence_ids")
-        if has_content:
-            if not [x for x in (cms.get("conflicting_signals") or [])
-                    if str(x).strip()]:
-                out.append("cross_market_synthesis 沒有列任何互相抵銷的訊號 —— "
-                           "確實沒有衝突時要寫一條「今日無明顯互相抵銷的訊號」明講,"
-                           "不得留空")
-            if not str(cms.get("dominant_driver") or "").strip():
-                out.append("cross_market_synthesis 沒有指出今天的主導因子")
-            if not str(cms.get("what_would_flip_it") or "").strip():
-                out.append("cross_market_synthesis 沒有說什麼情況會讓主導因子失效")
-    if len(news) >= 3 and not any((n.get("relates_to") or []) for n in news):
-        out.append(f"{len(news)} 則新聞裡沒有任何一則指出與其他條目的關係 —— "
-                   "確認它們是否真的全部獨立;**沒有根據的關係不要硬湊**,"
-                   "但搶同一段產能或同一個底層驅動的要指出來")
-    return out
-
-
-def deepen_input(user_payload: str, advisories: list) -> str:
-    """加深那一次呼叫的 user 輸入。**加深是把已有的證據走完因果鏈,
-    不是編內容** —— 這句話要放在指令裡,否則加深會誘發編造。"""
-    return (user_payload + "\n\nDEEPEN\n上一版輸出合法,但深度不足。"
-            "請針對下列各點加深後重新輸出**完整** JSON。"
-            "沒有根據的關係與證據**不得硬湊** —— 加深是把已有的證據"
-            "走完因果鏈與量級判斷,不是編造新內容;真的判斷不出量級就選 "
-            "unknown 並寫缺哪些資料:\n"
-            + "\n".join(f"- {a}" for a in advisories[:6]))
+# ---------------------------------------------------------------- 相容出口
+#
+# 深度判準搬到 `analysis_depth`(見該檔:合法性與深度的**後果不同**)。
+# 呼叫端仍可從這裡取用,一次只改一件事。
+from analysis_depth import (                      # noqa: E402,F401
+    depth_advisories, deepen_input, deepen_is_an_improvement)

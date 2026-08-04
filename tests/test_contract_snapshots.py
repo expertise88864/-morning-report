@@ -47,8 +47,15 @@ import prompt_profiles as pp
 
 # ---------------------------------------------------------------- 固定輸入
 
+#: 第十六輪:**固定輸入要撐得起被量的性質。** 先前這裡沒有任何會產生
+#: `signal_tensions` 的資料,於是張力的形狀怎麼改,證據指紋都不動 ——
+#: 那條判準對它自己該管的東西是真空通過的(與 legacy prompt 那次同型的洞)。
 _QUOTES = {"^TWII": {"close": 23000.0, "change_pct": 0.8},
-           "QQQ": {"close": 500.0, "change_pct": 1.2}}
+           "QQQ": {"close": 500.0, "change_pct": 1.2},
+           "TAIFEX_OI": {"foreign_oi_net": -40000},
+           "TAIEX_PRED": {"pred_pct": 0.5},
+           "BREADTH": {"advance_ratio": 52.0},
+           "MACRO": {"10Y": {"close": 4.50, "prev_close": 4.65}}}
 _FAIR = {"fair_value": 22500.0}
 _PRED = {"model1": 23100.0}
 #: `n1` 的摘要與全文**刻意寫得夠長**:證據契約管的一部分是截斷長度
@@ -212,11 +219,15 @@ def _behaviour() -> dict:
 _FROZEN = {
     # v2(第十五輪 P2-1):packet 加 signal_tensions —— 橫向矛盾由 Python
     # 先算好(附數字與門檻出處),模型從「找矛盾」變成「解釋矛盾」。
-    "evidence_schema_version":  (2, "f6aa3e0311dc0615"),
+    # v3(第十六輪):張力改純觀測(left/right/relationship/tension_id/
+    # usable_for_inference);registry 改 typed。固定輸入同時補上會產生
+    # 張力的行情 —— 先前它撐不起這個性質,指紋對自己該管的東西真空通過。
+    "evidence_schema_version":  (3, "3e30bbcf40732ce5"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
-    "output_schema_version":    (2, "948966374ec7dc43"),
+    # v3(第十六輪 P2-2):`addressed_tension_ids` + `priced_in.evidence_ids`。
+    "output_schema_version":    (3, "35809bf8d65a2a1b"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -224,18 +235,23 @@ _FROZEN = {
     # v7(schema v2):新欄位的填法指引(unknown 是誠實不是失敗、
     # 編造的關聯比沒有關聯更糟、五個市場各寫一句不是綜合)。
     # v8(第十五輪 P2-1):要求逐條正面處理 signal_tensions 的每個 tension。
-    "primary_profile_version":  (8, "136166896732bd91"),
+    # v9(第十六輪):張力純觀測、typed 引用 ID、回填 addressed_tension_ids。
+    "primary_profile_version":  (9, "c47216aaba20cfa0"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**
     # v3(schema v2):因果鏈/量級/驗證與失效/關係 + 橫向綜合段。
-    "renderer_version":         (3, "ca49d95842eedaaa"),
+    # 第十六輪:renderer **契約沒變**,是固定輸入補了 priced_in 內容與
+    # addressed_tension_ids(fixture 要示範新欄位長什麼樣)。依本表既有先例
+    # (2026-08-03 那次同理):輸入被修正時**改雜湊而不升版**,理由寫在這裡。
+    "renderer_version":         (3, "c13029050be7171a"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
-    "grounding_version":        (3, "13d10021b4886dcd"),
+    # v4(第十六輪 P2-4):`priced_in` 也要帶證據(高推論性判斷更需要根據)。
+    "grounding_version":        (4, "d4d47f46b77c7f6d"),
 }
 
 

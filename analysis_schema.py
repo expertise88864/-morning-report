@@ -29,15 +29,13 @@ from __future__ import annotations
 
 #: 輸出契約版本。**改欄位就要進版** —— cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
-#: v2(2026-08-04,第十五輪 P1-1):**prompt 叫模型深入分析,而 schema
-#: 沒有地方放深度。** v1 的 `top_news_analysis` 只有
-#: `why_it_matters / direction / materiality / persistence` ——
-#: 必填的全是淺的那幾格,於是模型最安全的填法就是
-#: 「需求增加、對 2330 偏多」。使用者三次反映「只是在堆疊數據」,
-#: 而改 prompt 的效果有天花板,因為**結構化的地方根本沒有欄位可以放**。
-#: v2 加「事件到股價之間的每一步」(因果鏈/量級/時程/驗證與失效/關係),
-#: 另加 `cross_market_synthesis` 專門回答橫向問題。
-ANALYSIS_SCHEMA_VERSION = 2
+#: v2(第十五輪 P1-1):**prompt 叫模型深入分析,而 schema 沒有地方放深度。**
+#: v1 的 `top_news_analysis` 只有四個淺欄位,模型最安全的填法就是
+#: 「需求增加、對 2330 偏多」—— 改 prompt 的效果因此有天花板。
+#: v2 加因果鏈/量級/時程/驗證與失效/關係,另加 `cross_market_synthesis`。
+#: v3(第十六輪 P2-2):`cross_market_synthesis.addressed_tension_ids` ——
+#: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
+ANALYSIS_SCHEMA_VERSION = 3
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -139,6 +137,9 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
     "priced_in": _obj({
         "already_reflected": _arr(_s(), "市場已反映的部分"),
         "not_yet_reflected": _arr(_s(), "尚未反映的部分"),
+        # 第十六輪 P2-4:「已反映/未反映」是**高推論性**判斷,
+        # 比新聞摘要更需要根據 —— 先前它進信卻不必帶證據。
+        "evidence_ids": _EVIDENCE_IDS,
     }),
     "taiwan_market": _obj({
         "summary": _s(), "taiex_view": _s(), "tsmc_view": _s(),
@@ -197,6 +198,12 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "funds_moving_from": _arr(_s(), "資金從哪些地方出來"),
         "funds_moving_to": _arr(_s(), "資金往哪些地方去"),
         "what_would_flip_it": _s("什麼情況會讓主導因子失效"),
+        # 第十六輪 P2-2:**「有沒有處理每一個 Python 張力」要驗得出來。**
+        # 先前只有 prompt 要求,而 `conflicting_signals` 是自由文字 ——
+        # 沒有任何東西能證明模型真的逐條處理過。改成回填 ID 讓驗證器比對集合。
+        "addressed_tension_ids": _arr(
+            _s(), "EVIDENCE.signal_tensions 裡每個 kind=tension 的 "
+                  "`tension:<id>`,處理一個填一個"),
         "evidence_ids": _EVIDENCE_IDS,
     }, desc="橫向綜合:訊號之間的關係,不是把各市場各寫一句"),
     "contradictions": _arr(_obj({

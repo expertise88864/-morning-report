@@ -38,12 +38,8 @@ import writing_rules as _wr
 
 #: 每個 profile 的版本。**改 prompt 就要進版** —— 實驗進行中改版必須
 #: 換新的 experiment_id 重新起算,而版本號是唯一看得出來的憑據。
-#: v2(2026-08-03):legacy prompt 的 R9/R6b 依使用者回饋改成敘事寫法 +
-#: 全形標點。**風格變更會改變輸出**,所以同群鍵要跟著換。
-#: v3(同日):散文的全形轉換又動了 prompt 位元組(見 LUNA_XHIGH_VERSION)。
-#: v4(2026-08-03 晚):使用者收到 v2/v3 之前的信後再提三件事——七之四出現
-#: 英文原標題、艱澀術語沒解釋、分析只在描述數字。加 R6c/R6d/R10c、
-#: 改七之四鐵則、C 級補上書單廣告類。
+#: v2–v3(2026-08-03):敘事寫法 + 全形標點(風格變更會改變輸出)。
+#: v4(同日晚):七之四英文原標題、術語白話、數字要有下文(R6c/R6d/R10c)。
 #: v5(2026-08-04):R17(Python 排好的表要被合起來解讀)+ 七之二要傳導路徑。
 #: v6(同日):方向形容詞不是分析 —— 量級/時間取代方向詞、跨條連結、
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
@@ -58,7 +54,10 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: 句式不得雷同、條目之間要有關係(互相排擠與互相加強是兩件事)。
 #: v7(schema v2):分析單位改成因果鏈(mechanism_steps 等填法指引)。
 #: v8(第十五輪 P2-1):要求逐條正面處理 signal_tensions 的每個 tension。
-LUNA_XHIGH_VERSION = 8
+#: v9(第十六輪 P1-1/P1-3/P2-2):張力改成純觀測(調和由模型做且標 inference)、
+#: 行情與張力有 typed 引用 ID(不得拿新聞 ID 替行情背書)、回填
+#: addressed_tension_ids 讓驗證器比對集合、stale 的張力進 data_gaps。
+LUNA_XHIGH_VERSION = 9
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -123,12 +122,21 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   今天誰主導、為什麼是它、即日與未來幾日的淨效果是否不同、
   資金從哪裡往哪裡、什麼情況會讓主導因子失效。
   **五個市場各寫一句不是綜合** —— 那正是這一欄要取代的東西。
-- **EVIDENCE 裡的 `signal_tensions` 是 Python 依固定門檻算好的訊號矛盾
-  與同向清單**（附數字與來源）。每一條 `kind=tension` 都**必須**在
-  `cross_market_synthesis` 被正面處理：放進 `conflicting_signals`，並說明
-  兩邊怎麼調和、哪一邊在今天比較可信、什麼情況會分出勝負 —— 不可略過、
-  不可只複述兩個數字。`kind=alignment` 可放 `reinforcing_signals`；
-  `unavailable` 是當天缺的資料，屬於 `data_gaps` 的素材。
+- **EVIDENCE 裡的 `signal_tensions` 只給觀測，不給結論。** 每一筆有
+  `left` / `right`（數值、單位、可引用的 `evidence_ref`）與 `relationship`
+  （`opposite_sign` 這類**幾何性質**）。**怎麼調和、哪一邊今天比較可信、
+  會不會高開走低，是你的工作**，而且那是 `inference` 不是 `fact`。
+  每一筆 `kind=tension` 都必須在 `cross_market_synthesis` 被正面處理：
+  放進 `conflicting_signals`、把 `tension:<id>` 回填到
+  `addressed_tension_ids`，並說明兩邊怎麼調和、什麼情況會分出勝負。
+  `usable_for_inference=false` 的那筆帶著 `caveat`（例如美股休市、
+  該側是上一交易日的延續值）—— 那筆**不要**當成今天的矛盾，寫進
+  `data_gaps` 即可。`unavailable` 列出的檢查是當天缺的資料，同樣屬於
+  `data_gaps`。
+- **行情與張力都有自己的引用 ID。** 談 QQQ 漲跌就引
+  `market:QQQ.change_pct`，談外資期貨就引
+  `market:TAIFEX_OI.foreign_oi_net`，談某筆張力就引 `tension:<id>`。
+  **不要拿新聞 ID 去替行情數字背書** —— 那形式上合法、語意上是錯的。
 
 {_wr.LUNA_WRITING}
 """

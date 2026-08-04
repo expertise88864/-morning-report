@@ -135,6 +135,48 @@ Luna 側同批。profile 版本 5→6。
 4. `prose_depth` 的關鍵詞清單是我訂的,誤判方向偏哪一邊?
 
 
+### 批#82 `(下一個 commit)` —— 第十五輪 P1-2/P1-3:渲染層丟資料與段落說謊
+外審三條具體 finding,**我逐一驗過都成立**:
+
+**P1-3 段落語意映射錯(最急,明天就會顯現)**:`global_market`(美股→台股
+連動)被放進「七之二、世界大事速覽」,而那一段的契約定義是**股市之外的
+世界**;`taiwan_market.tsmc_view` 被放進「九、**其他**類股資訊」;整個
+`top_news_analysis` 無條件進「八、科技板塊脈動」,即使是金融/航運/生技。
+TypeError 昨天才修好,**Luna 明早可能第一次真的跑成**,那時信會頂著錯招牌。
+改成:七之二、全球市場與美股台股連動 / 八、重點新聞分析 / 九、台股與台積電。
+Luna schema 沒有「股市之外的世界」這個概念 —— **沒有就不要宣稱有**。
+
+**P1-2 渲染層把最像分析的東西丟掉**:`priced_in`(已反映/未反映)整段
+沒有被渲染;`falsification_trigger`(schema 必填,理由是「說不出什麼情況
+我就錯了的判斷事後無法評分」)、`counterevidence_ids`、
+`actions_to_consider` 也都沒有。模型產出了、驗證器檢查了,收件人沒看到。
+**渲染層丟資料時,模型再深入也沒用。**
+
+順帶修好一條**本身要求錯事的測試**:
+`test_section_titles_match_the_constants_the_pipeline_uses` 斷言渲染層要
+沿用 legacy 的段落名 —— 跟一個錯的名字一致不是優點。判準改成
+「宣告的段落都要出現」+「不得再掛那幾個語意對不上的名字」。
+另一條反向判準也失效了:`("renderer_version", 2)` 寫死當「改過的值」,
+而今天預設剛好升到 2,那條 cohort 反向測試就靜靜通過 —— 改成 `+1` 推導。
+
+RENDERER_VERSION 1→2。
+
+**外審應特別看的地方**:
+1. 改段落名會不會打壞信件 HTML 的樣式或 `_extract_stance`
+   (我加了測試驗立場與總結仍抓得到,但視覺沒辦法自動驗)
+2. 「九、台股與台積電」把 summary/taiex_view/tsmc_view 併成一段,
+   由粗到細 —— 這個併法對嗎?
+3. `priced_in` 只取前 4 條,超過的靜默丟掉 —— 該不該全列?
+
+**尚未處理的第十五輪 finding**(需要使用者決定,見下)
+- P1-1 schema v2(driver clusters / mechanism steps / magnitude band):
+  這是把「一則新聞一段話」改成「因果圖」,**會重置十配對**,工程量大。
+- P1-4 關係要有證據(relationship graph)、P2-1 EvidencePacket 關係圖、
+  P2-4 獨立的 cross_market_synthesis 區塊 —— 同一批的一部分。
+- P1-6「一句最多一個數字」阻礙比較分析(現值 vs 基準需要兩個數字)。
+- P1-7 Top5 跨產業固定門檻(我自己也列過)。
+
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

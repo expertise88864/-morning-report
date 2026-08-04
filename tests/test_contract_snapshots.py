@@ -214,7 +214,10 @@ _FROZEN = {
     "primary_profile_version":  (6, "59c9cbf243817380"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
-    "renderer_version":         (1, "617fabcde1df42ac"),
+    # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
+    # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
+    # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**
+    "renderer_version":         (2, "245d6becc26e5d7a"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),
 }
 

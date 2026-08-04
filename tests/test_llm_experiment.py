@@ -63,8 +63,11 @@ def test_changing_the_contract_does_reset_the_cohort():
             ("shadow_effort", "high"),
             ("evidence_schema_version", 2),
             ("output_schema_version", 2),
-            ("postprocess_version", 2),
-            ("renderer_version", 2),
+            # **不要寫死值。** 這兩行原本是 `2`,而 2026-08-04 把
+            # `RENDERER_VERSION` 升到 2 之後,「改過的值」剛好等於預設值,
+            # 這條反向判準就靜靜失效了(全套跑起來才發現)。
+            ("postprocess_version", ex.POSTPROCESS_VERSION + 1),
+            ("renderer_version", ex.RENDERER_VERSION + 1),
             ("experiment_id", "另一個實驗"),
             ("comparison_mode", "raw_prompt")):
         assert ex.cohort_key(_rec(**{field: value})) != base, \

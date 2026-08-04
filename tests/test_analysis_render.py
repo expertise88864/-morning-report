@@ -79,16 +79,30 @@ def test_the_stance_and_summary_are_parseable_by_the_existing_extractors():
     assert _extract_summary(md).startswith("美股走弱"), _extract_summary(md)
 
 
-def test_section_titles_match_the_constants_the_pipeline_uses():
-    """標題自創不會有錯誤訊息,只會讓那些段落在信裡消失。"""
-    assert ar.SECTION_TECH == mr._SECTION_TECH
-    assert ar.SECTION_OTHER == mr._SECTION_OTHER
-    assert ar.SECTION_WORLD == mr._SECTION_WORLD
-    assert ar.SECTION_TOP3 == mr._SECTION_TOP3
+def test_section_titles_are_honest_and_all_appear():
+    """**這條測試原本要求的是錯的事**(第十五輪 P1-3)。
+
+    它斷言 `ar.SECTION_TECH == mr._SECTION_TECH` 等等,也就是要求渲染層
+    沿用 legacy prompt 的段落名。用意是「標題自創不會有錯誤訊息,只會讓
+    那些段落在信裡消失」——但**跟一個錯的名字一致不是優點**:
+
+      * `global_market`(美股→台股連動)頂著「世界大事速覽」,
+        而那一段的定義是**股市之外的世界**;
+      * `taiwan_market.tsmc_view` 頂著「**其他**類股資訊」。
+
+    Luna 的 schema 沒有那些欄位對應的概念,所以正確的做法是**改名說實話**,
+    而不是為了與 legacy 一致而繼續掛錯招牌。判準因此改成兩條:
+    (a) 渲染層宣告的每個段落都要真的出現在輸出裡(原本的用意保留);
+    (b) **不得**再使用那幾個語意對不上的 legacy 名字。
+    """
     md = ar.render(_obj())
-    for title in (ar.SECTION_TOP3, ar.SECTION_WORLD, ar.SECTION_TECH,
-                  ar.SECTION_OTHER, ar.SECTION_STANCE, ar.SECTION_SUMMARY):
+    assert ar.SECTION_TOP3 == mr._SECTION_TOP3, "『昨夜三大重點』的語意兩邊相同,應保持一致"
+    for title in (ar.SECTION_TOP3, ar.SECTION_GLOBAL, ar.SECTION_NEWS,
+                  ar.SECTION_TW, ar.SECTION_STANCE, ar.SECTION_SUMMARY):
         assert f"## {title}" in md, f"渲染結果缺少段落:{title}"
+    for wrong in (mr._SECTION_WORLD, mr._SECTION_TECH, mr._SECTION_OTHER):
+        assert wrong not in md, (
+            f"渲染層又掛回語意對不上的 legacy 段落名:{wrong}")
 
 
 def test_a_report_without_a_stance_renders_to_nothing_not_to_half():

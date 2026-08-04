@@ -40,7 +40,7 @@ EXPERIMENT_SCHEMA_VERSION = 1
 #: 這兩個數字要手動維護。自動從程式碼推導(檔案雜湊、git SHA)正是本模組
 #: 要避免的東西:那會讓「改一個註解」變成「換一個系統」。
 POSTPROCESS_VERSION = 1
-RENDERER_VERSION = 1
+RENDERER_VERSION = 2   # v2(第十五輪):段落語意修正 + 補回被丟掉的四個欄位
 
 #: 比較模式。`end_to_end_profiles` = 同一份證據、各自最佳化的問法,
 #: 比的是**整套系統**而不是裸模型。

@@ -32,10 +32,23 @@ RENDER_SCHEMA_VERSION = 1
 #: 這些標題**必須與主模組的常數一致**。改一個字,對應段落就會在信裡消失
 #: 而且沒有任何錯誤 —— 由測試比對主模組的 `_SECTION_*`。
 SECTION_TOP3 = "七、昨夜三大重點"
-SECTION_WORLD = "七之二、世界大事速覽"
-SECTION_TECH = "八、科技板塊脈動"
-SECTION_OTHER = "九、其他類股資訊"
-SECTION_LOCAL = "十、台灣本地動態"
+#: 第十五輪 P1-3:**段落名要說實話。**
+#:
+#: 舊的映射把 `global_market`(美股→台股連動)放進「世界大事速覽」——
+#: 那一段在 legacy 契約裡的定義是**股市之外的世界**;把整個
+#: `top_news_analysis` 無條件放進「科技板塊脈動」,即使那則新聞是金融、
+#: 航運或生技;把 `taiwan_market.taiex_view` / `tsmc_view` 放進
+#: 「**其他**類股資訊」——台積電是最不「其他」的那一檔。
+#:
+#: 這不是排版問題。Luna 特化路徑跑成的那一天,收件人會看到
+#: 「世界大事速覽」裡寫美股連動、「其他類股資訊」裡只有台積電 ——
+#: 而信看起來仍然完整,沒有任何錯誤訊息。
+#: Luna 的 schema **沒有**「股市之外的世界」這種欄位,所以正確的做法是
+#: **不要宣稱有**,而不是找一個欄位塞進去。
+SECTION_GLOBAL = "七之二、全球市場與美股台股連動"
+SECTION_NEWS = "八、重點新聞分析"
+SECTION_TW = "九、台股與台積電"
+SECTION_PRICED = "已被市場反映 vs 尚未反映"
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
 
@@ -71,7 +84,17 @@ def _claim_line(c: dict) -> str:
     horizon = _s(c.get("horizon"))
     if horizon:
         bits.append(horizon)
-    return body + (f"（{'、'.join(bits)}）" if bits else "")
+    # 第十五輪 P1-2:**有反面證據要看得見。** schema 收了 `counterevidence_ids`,
+    # 而渲染層先前整個丟掉 —— 於是一條「有人持相反看法」的判斷,
+    # 讀起來與一面倒的判斷一模一樣。
+    if [x for x in (c.get("counterevidence_ids") or []) if _s(x)]:
+        bits.append("有反面證據")
+    line = body + (f"（{'、'.join(bits)}）" if bits else "")
+    # **失效條件先前也被丟掉。** schema 把它列為必填,理由寫在測試裡:
+    # 「說不出什麼情況我就錯了的判斷,事後無法評分」。既然要求了就要顯示,
+    # 否則那個必填只保護了 JSON,沒有保護讀者。
+    trigger = _s(c.get("falsification_trigger"))
+    return line + (f"\n  - 什麼情況代表這個判斷錯了:{trigger}" if trigger else "")
 
 
 def render(obj: Optional[dict]) -> str:
@@ -100,21 +123,37 @@ def render(obj: Optional[dict]) -> str:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 
     gm = obj.get("global_market") if isinstance(obj.get("global_market"), dict) else {}
-    world = [x for x in (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if x]
-    if world:
-        parts.append(f"## {SECTION_WORLD}\n" + "\n".join(f"- {w}" for w in world))
+    glob = [x for x in (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if x]
+    if glob:
+        parts.append(f"## {SECTION_GLOBAL}\n" + "\n".join(f"- {w}" for w in glob))
 
     news = _lines(obj.get("top_news_analysis"),
                   lambda n: _s(n.get("why_it_matters")))
     if news:
-        parts.append(f"## {SECTION_TECH}\n" + "\n".join(news))
+        parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
 
+    # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡
+    # 由粗到細 —— 先前 summary 被丟進「台灣本地動態」(那一段講的是
+    # 證交所新制、勞動基金這類在地消息),兩者不是同一件事。
     tw = obj.get("taiwan_market") if isinstance(obj.get("taiwan_market"), dict) else {}
-    other = [x for x in (_s(tw.get("taiex_view")), _s(tw.get("tsmc_view"))) if x]
-    if other:
-        parts.append(f"## {SECTION_OTHER}\n" + "\n".join(f"- {o}" for o in other))
-    if _s(tw.get("summary")):
-        parts.append(f"## {SECTION_LOCAL}\n- " + _s(tw.get("summary")))
+    tw_lines = [x for x in (_s(tw.get("summary")), _s(tw.get("taiex_view")),
+                            _s(tw.get("tsmc_view"))) if x]
+    if tw_lines:
+        parts.append(f"## {SECTION_TW}\n" + "\n".join(f"- {o}" for o in tw_lines))
+
+    # **`priced_in` 先前整段沒有被渲染。** 它是這份 schema 裡最像分析的欄位
+    # (「哪些已經在價格裡、哪些還沒」),模型產出了、驗證器檢查了,
+    # 而收件人從來沒看到 —— 這正好是使用者反映「只有數據沒有分析」的一部分。
+    pi = obj.get("priced_in") if isinstance(obj.get("priced_in"), dict) else {}
+    done = [_s(x) for x in (pi.get("already_reflected") or []) if _s(x)]
+    todo = [_s(x) for x in (pi.get("not_yet_reflected") or []) if _s(x)]
+    if done or todo:
+        blk = []
+        if done:
+            blk.append("- **已被市場反映**:" + "、".join(done[:4]))
+        if todo:
+            blk.append("- **尚未反映**:" + "、".join(todo[:4]))
+        parts.append(f"## {SECTION_PRICED}\n" + "\n".join(blk))
 
     # 情境樹與觀察點:這是 Luna 特化相對於既有散文的實質增量
     tree = obj.get("scenario_tree") if isinstance(obj.get("scenario_tree"), dict) else {}
@@ -160,6 +199,10 @@ def render(obj: Optional[dict]) -> str:
           if isinstance(obj.get("portfolio_implications"), dict) else {})
     if _s(pf.get("summary")):
         stance_lines.append(_s(pf.get("summary")))
+    # `actions_to_consider` 先前沒有被渲染 —— 模型寫了、驗證了、沒人看得到。
+    for a in (pf.get("actions_to_consider") or [])[:3]:
+        if _s(a):
+            stance_lines.append(f"可考慮的做法:{_s(a)}")
     for r in (pf.get("risks") or [])[:3]:
         if _s(r):
             stance_lines.append(f"風險:{_s(r)}")

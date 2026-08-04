@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 10
+LUNA_XHIGH_VERSION = 11
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -87,7 +87,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 
 # 證據規則
 - 你只能使用 EVIDENCE 區塊裡的內容。任何不在 EVIDENCE 裡的外部事實一律不得陳述。
-- 每一個重大結論都要在 `evidence_ids` 帶上支持它的 `source_item_id`。
+- 每一個重大結論都要在 `evidence_ids` 帶上支持它的 **typed ID**:
+  新聞用 `n1`、行情用 `market:*`、張力用 `tension:*`、
+  衍生值用 `derived:*`。**不要拿新聞 ID 替行情數字背書。**
 - 引用不存在的 ID 比不引用更嚴重:它讓錯誤看起來有根據。寧可留空陣列。
 - EVIDENCE 裡標為 `official: true` 或 `source_grade: A` 的來源權重高於其他來源。
 - `truncation` 欄位說明有多少證據沒有進來。它不為零時，請在 `data_gaps` 說明。

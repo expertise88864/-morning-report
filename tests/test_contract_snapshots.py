@@ -104,6 +104,32 @@ def _packet() -> dict:
                     sanitize=lambda s: s)
 
 
+def _render_case(pk: dict) -> dict:
+    """渲染探針的固定輸入 —— **要示範 renderer 真的會做的事**。
+
+    第十八輪:`fx.valid_analysis()` 沒有任何 `tension_resolutions`,
+    高重要性事件的鏈也是完整的 —— 於是「逐筆張力抬頭」與「傳導未完成
+    的揭露」兩段程式碼在快照裡**一行都跑不到**,改了 renderer 而指紋不動。
+    探針量不到的東西,版本升降就只是在猜。
+    """
+    import signal_tensions as _st
+    o = fx.valid_analysis()
+    o["cross_market_synthesis"]["tension_resolutions"] = [
+        {"tension_id": t, "resolution": "外部定價先反映在權值開盤",
+         "dominant_side": "left", "why": "開盤前只有美股已定價",
+         "decision_rule": "現貨量能與期貨空單是否回補",
+         "evidence_ids": [t]}
+        for t in sorted(_st.required_tension_ids(pk.get("signal_tensions")))]
+    # 一條**停在情緒**的高重要性鏈 —— 揭露那一段才跑得到。
+    o["top_news_analysis"][0]["mechanism_steps"] = [
+        {"from_what": "費半收漲", "to_what": "市場關注提高", "channel": "情緒",
+         "stage": "event", "step_type": "inference", "evidence_ids": []},
+        {"from_what": "市場關注提高", "to_what": "投資情緒改善",
+         "channel": "情緒", "stage": "sentiment", "step_type": "inference",
+         "evidence_ids": []}]
+    return o
+
+
 # ---------------------------------------------------------------- 行為快照
 
 #: 屬於**別的**契約版本的欄位 —— 混進來會讓一個契約的變動誤觸另一個的快照。
@@ -181,13 +207,25 @@ def _behaviour() -> dict:
             _sha(_legacy_prompt())]),
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
                                      lp._extract_summary(_REPORT_TEXT)]),
-        "renderer_version": _sha(ar.render(_ANALYSIS)),
+        # **探針要用生產的呼叫形狀**(第十八輪)。先前餵 `render(obj)` ——
+        # 而生產是 `render(obj, packet)`。於是逐筆張力的抬頭、傳導未完成的
+        # 揭露,這些**只有在有 packet 時才存在的行為**,快照根本量不到:
+        # 改了 renderer 而指紋不動,「版本升了行為沒變」就會誤報。
+        # 這個 repo 已經栽過同一形狀兩次(legacy prompt 那兩層)。
+        "renderer_version": _sha([ar.render(_ANALYSIS),
+                                  ar.render(_render_case(pk), pk)]),
         # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
         # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
         # v3:接受政策含「深度加深」的觸發條件 —— depth_advisories 的行為
         # 也是契約的一部分(它決定要不要多跑一次、輸出分佈因此不同)。
+        # 同上:**主閘門在生產吃的是 packet**,而這裡餵 ID 集合 ——
+        # 於是「有張力卻沒處理」「重複調和」「證據沒涵蓋兩側」這些
+        # packet-aware 的接受規則,快照一條都量不到。**兩種形狀都量**:
+        # 舊呼叫端仍然合法,而新規則要看得見。
         "grounding_version": _sha([sch.validate(o, {"n1", "n2"})
                                    for o in _GROUNDING_CASES]
+                                  + [sch.validate(o, pk)
+                                     for o in _GROUNDING_CASES]
                                   + [av.depth_advisories(o)
                                      for o in _GROUNDING_CASES]),
     }
@@ -225,7 +263,11 @@ _FROZEN = {
     # v3(第十六輪):張力改純觀測(left/right/relationship/tension_id/
     # usable_for_inference);registry 改 typed。固定輸入同時補上會產生
     # 張力的行情 —— 先前它撐不起這個性質,指紋對自己該管的東西真空通過。
-    "evidence_schema_version":  (4, "f0a5b9cd7f1008cd"),
+    # v5(第十八輪 P1-4):利率×科技改用**象限名**(先前的 `same_direction`
+    #     內建了「折現率下行有利成長股」這條假說);衍生值改掛 `derived:`
+    #     並帶來源 —— `market:MACRO.10Y.change_bps` 那個 packet 裡不存在的
+    #     路徑不再是合法引用。
+    "evidence_schema_version":  (5, "b4e2cfe6d09b4b7f"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -239,7 +281,9 @@ _FROZEN = {
     # 編造的關聯比沒有關聯更糟、五個市場各寫一句不是綜合)。
     # v8(第十五輪 P2-1):要求逐條正面處理 signal_tensions 的每個 tension。
     # v9(第十六輪):張力純觀測、typed 引用 ID、回填 addressed_tension_ids。
-    "primary_profile_version":  (10, "4ce7eeaec6393246"),
+    # v11(第十八輪):證據引用改口徑 —— 先前開頭寫「帶上支持它的
+    #      `source_item_id`」而後段才說行情用 `market:*`,前後矛盾。
+    "primary_profile_version":  (11, "cec11a65103f0708"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -249,12 +293,19 @@ _FROZEN = {
     # 第十六輪:renderer **契約沒變**,是固定輸入補了 priced_in 內容與
     # addressed_tension_ids(fixture 要示範新欄位長什麼樣)。依本表既有先例
     # (2026-08-03 那次同理):輸入被修正時**改雜湊而不升版**,理由寫在這裡。
-    "renderer_version":         (4, "c4be915451c1f1f1"),
+    # v5(第十八輪):逐筆張力印出**它在調和什麼**(topic 與兩側數值,
+    #    由 renderer 從 packet 回查);高重要性事件的傳導沒走完時揭露。
+    #    **探針同批修好** —— 先前餵 `render(obj)` 而生產是 `render(obj, packet)`,
+    #    新行為在快照裡一行都跑不到。
+    "renderer_version":         (5, "f48252cb9a2b49ef"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
     # v4(第十六輪 P2-4):`priced_in` 也要帶證據(高推論性判斷更需要根據)。
-    "grounding_version":        (5, "d4d47f46b77c7f6d"),
+    # v6(第十八輪):接受規則加三條 —— 重複的張力調和、調和的證據沒有
+    #    涵蓋兩側、以及**主閘門改吃 packet**(先前生產傳 ID 集合,
+    #    packet-aware 的規則一條都沒跑過)。探針同批改成兩種形狀都量。
+    "grounding_version":        (6, "778f4eca808200d8"),
 }
 
 

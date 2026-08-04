@@ -40,6 +40,12 @@ def _response(obj, *, effort="xhigh", usage=None):
 #: 根本沒有的 `claim_id`)。也就是說「驗整條生產路徑」驗的是真實 API
 #: 永遠不會產出的形狀。改用共用 fixture,並由 `json_contract` 當場驗它。
 _GOOD = fx.valid_analysis()
+#: 第十八輪:主閘門改吃 packet 之後,**這份極簡行情讓四項橫向檢查全都跑不成**
+#: (`_ARGS` 只給 QQQ 的收盤價,沒有漲跌幅、沒有期貨部位、沒有廣度)。
+#: 新規則要求「沒跑成的檢查要揭露」—— 於是這裡必須有一筆缺口。
+#: 這正是先前傳 ID 集合時**在生產從來不會發生**的事。
+_GOOD["data_gaps"] = [{"what_is_missing": "美股漲跌幅與台指期籌碼",
+                       "impact_on_conclusions": "外部定價與本地籌碼的對照今天做不了"}]
 _NEWS = fx.news()
 
 _ARGS = ({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},

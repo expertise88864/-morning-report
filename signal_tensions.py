@@ -57,9 +57,16 @@ RATE_MOVE_BPS = 8
 #: **允許的幾何關係。** 全部是符號/大小的描述,**不含任何經濟解釋** ——
 #: 「利率升所以科技股受壓」是模型的工作(而且要標成 inference),
 #: 不是 Python 的(第十七輪 P1-6)。
+#: 利率 × 科技股用**象限名**(第十八輪 P1-4)。先前寫
+#: `same = (dbps < 0) == (qqq > 0)` —— 把「利率降+科技漲」叫做
+#: `same_direction`,而兩者的原始符號明明一正一負。那個等式本身就是
+#: 「折現率下行有利長天期成長股」這條經濟假說,只是換了個名字。
+#: 象限名不含任何主張:它就是兩個符號的組合。
 RELATIONSHIPS = ("same_sign", "opposite_sign", "same_direction",
                  "opposite_direction", "aligned_but_narrow",
-                 "median_above_leader", "median_below_leader")
+                 "median_above_leader", "median_below_leader",
+                 "yield_up_tech_up", "yield_up_tech_down",
+                 "yield_down_tech_up", "yield_down_tech_down")
 
 #: 只掃成交值前幾大的產業 —— 小產業的中位數噪音大。
 TOP_SECTORS = 3
@@ -72,9 +79,21 @@ def _num(v) -> Optional[float]:
     return float(v)
 
 
-def _side(label: str, value: float, unit: str, ref: str) -> dict:
-    """一邊的觀測。**只有數值與出處,沒有形容詞。**"""
-    return {"label": label, "value": value, "unit": unit, "evidence_ref": ref}
+def _side(label: str, value: float, unit: str, ref: str,
+          derived_from=None) -> dict:
+    """一邊的觀測。**只有數值與出處,沒有形容詞。**
+
+    `derived_from`:這個值是**算出來的**時候,列出它的原始欄位。
+    第十八輪 P1-4:先前利率那一側掛 `market:MACRO.10Y.change_bps`,
+    而 packet 的 MACRO 只有 `close`/`prev_close` —— 那是個**不存在的
+    market 路徑**,卻因為 `evidence_ids()` 無條件收下張力給的 ref
+    而變成合法引用。衍生值要用 `derived:` 命名空間,並帶著它的來源,
+    否則「引用了正確資料」與「引用了一個看起來像資料的名字」分不開。
+    """
+    out = {"label": label, "value": value, "unit": unit, "evidence_ref": ref}
+    if derived_from:
+        out["derived_from"] = list(derived_from)
+    return out
 
 
 def detect(quotes: Optional[dict]) -> dict:
@@ -195,36 +214,28 @@ def detect(quotes: Optional[dict]) -> dict:
         run.append("rates_vs_tech")
         dbps = (y_c - y_p) * 100
         if abs(dbps) >= RATE_MOVE_BPS and abs(qqq) >= US_MOVE_PCT:
-            # 折現率上行與成長股上漲同時發生 = 反向;下行與上漲 = 同向。
-            # 這裡只陳述**符號關係**,不說哪一邊撐不久。
-            # 第十七輪 P1-6:`supportive_for_growth` 已經是**經濟解釋**
-            # (利率升未必壓抑科技股;利率降可能是通膨改善,也可能是衰退
-            # 擔憂)。Python 只說符號關係,解釋交給模型並標成 inference。
-            same = (dbps < 0) == (qqq > 0)
-            _add("t_rates_vs_tech",
-                 "alignment" if same else "tension", "利率 vs 科技股",
+            # 第十八輪 P1-4:**Python 不判斷這個組合是一致還是矛盾。**
+            # 上一版寫 `same = (dbps < 0) == (qqq > 0)`,等於內建了
+            # 「折現率下行有利成長股」——利率降也可能是衰退定價,
+            # 利率升也可能伴隨獲利上修。四個象限**都**交給模型解釋,
+            # 因此一律標 tension(= 必須正面處理),relationship 只說象限。
+            rel = ("yield_up_tech_up" if dbps > 0 and qqq > 0 else
+                   "yield_up_tech_down" if dbps > 0 else
+                   "yield_down_tech_up" if qqq > 0 else
+                   "yield_down_tech_down")
+            _add("t_rates_vs_tech", "tension", "利率 vs 科技股",
                  _side("十年期美債利率變動", round(dbps, 1), "bps",
-                       "market:MACRO.10Y.change_bps"),
+                       "derived:t_rates_vs_tech.left",
+                       derived_from=["market:MACRO.10Y.close",
+                                     "market:MACRO.10Y.prev_close"]),
                  _side("QQQ 日漲跌", qqq, "%", "market:QQQ.change_pct"),
-                 "same_direction" if same else "opposite_direction",
-                 us_side=True)
+                 rel, us_side=True)
 
     return {"checks_run": run, "unavailable": gone, "items": items}
 
 
-def evidence_refs(detected: Optional[dict]) -> set:
-    """張力自己提供的可引用 ID(`tension:*` 與它引用的 `market:*`)。"""
-    out: set = set()
-    for it in ((detected or {}).get("items") or []):
-        if isinstance(it, dict):
-            out.add(f"tension:{it.get('tension_id')}")
-            out.update(str(r) for r in (it.get("evidence_refs") or []))
-    return out
-
-
-def required_tension_ids(detected: Optional[dict]) -> set:
-    """**必須被橫向綜合正面處理**的張力(stale 的不強制)。"""
-    return {f"tension:{it['tension_id']}"
-            for it in ((detected or {}).get("items") or [])
-            if isinstance(it, dict) and it.get("kind") == "tension"
-            and it.get("usable_for_inference")}
+# ---------------------------------------------------------------- 相容出口
+#
+# 查詢介面搬到 `tension_refs`(見該檔:偵測與查詢是兩種責任)。
+from tension_refs import (                        # noqa: E402,F401
+    evidence_refs, market_refs_claimed, required_tension_ids, sides_evidence)

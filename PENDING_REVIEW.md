@@ -390,6 +390,81 @@ RENDERER v4 / Luna profile v10。新模組 `evidence_serialize.py`
    與 closed claim graph。前三者需要在 packet 端先算出「必分析清單」。
 
 
+### 批#87 `(下一個 commit)` —— 第十八輪:引用要相關、覆蓋率不得虛胖
+外審 11 條 P1,逐條實測驗過。**其中最嚴重的一條外審沒抓到,是我自己找到的。**
+
+**主閘門在生產從來沒吃過 packet(最嚴重)**:上一批把選優
+(`deepen_is_an_improvement`)與指標(`structured_metrics`)都接上了 packet,
+唯獨 `_luna_analysis` 裡真正會擋下輸出的那一行仍然是
+`_sch.validate(obj, ids)`。於是「有張力卻沒處理」「有新聞卻交空陣列」
+「有高重要性事件卻沒指出主導因子」**在生產一次都沒跑過**,而測試裡它們
+全是綠的。**守衛接錯線與守衛不存在,對收件人是同一件事。**
+接上之後,`test_luna_path_routing` 立刻紅 —— 那份極簡行情讓四項橫向檢查
+全都跑不成,而新規則要求揭露。那個紅是對的。
+
+**P1-4 幽靈證據路徑(外審第一優先,成立)**:利率那一側掛
+`market:MACRO.10Y.change_bps`,而 packet 的 MACRO 只有 `close`/`prev_close`。
+它之所以合法,只因為 `evidence_ids()` **無條件收下張力給的 ref** ——
+引用檢查在那一刻只證明「名字在集合裡」。改成 `derived:` 命名空間 + 帶來源,
+並在 packet 端加通用防線(`phantom_market_refs`,不進 registry 且記進 manifest)。
+同批修掉關係名:`same = (dbps < 0) == (qqq > 0)` 內建了「折現率下行有利
+成長股」這條假說 —— 利率降也可能是衰退定價。四象限一律要求正面處理,
+關係名只說象限。**原本的測試把那個假說鎖住了**,整條重寫。
+
+**P1-5**:調和的證據只驗存在性 —— 拿一則不相干的新聞去調和
+「QQQ vs 外資期貨」完全合法,而**測試 fixture 自己就在示範那個寫法**。
+改成必須引用該張力本身或兩側各至少一個。
+
+**P1-6**:同一筆張力重複填三次會通過(`got` 是集合),而指標數 `len(res)`
+—— 實測 `required=1 / resolved=3`。改成拒絕重複,指標回真正的覆蓋率
+並分開報 duplicate / grounded_both_sides。
+
+**完整度的兩個反方向**:`data_gaps=[]` 在證據完整的日子是合法的,卻被
+算成少一段(**好報告被扣分**);而 `priced_in` 內部全空時 dict 是 truthy,
+被算成有內容(**空報告被放行**)。改成每段自己的語意判準。
+
+**P1-10**:`reaches_financial` 只看 stage **集合** —— 「事件→股價上漲」接
+「股價上漲→稼動率提升」被算成兩層都到了,因果倒著走。改成順序判準,
+並補上比例(1/1 與 1/5 的計數相同而品質天差地遠)。
+
+**P1-11**:選優只比新聞 ID 的集合 —— 把 n1 從 high 降成 medium,集合不變、
+high 數量不變、深度提示還變少,**真正該加深的那則靠降級逃掉**。改成逐則
+身分(重要性不得降級、說得出的欄位不得變說不出、量級不得退回 unknown)
++ 信心單次漂移上限 0.25。
+
+**P1-9**:高重要性事件停在情緒仍然不擋(淺而正確落回 legacy 只會更淺),
+但**信裡要說出來** —— 加深失敗照原樣寄出而收件人不知道,不是 resilience。
+
+**探針本身是盲的(這一輪的第二個自己找到的)**:渲染探針餵 `render(obj)`
+而生產是 `render(obj, packet)`;接受探針餵 ID 集合而生產傳 packet。於是
+新行為在快照裡一行都跑不到,「版本升了行為沒變」誤報。兩個探針都改成
+生產形狀,並讓固定輸入真的示範新行為。**同一形狀這個 repo 栽過三次。**
+
+**版本鏈**:EVIDENCE v5 / GROUNDING v6 / RENDERER v5 / METRICS v4 /
+Luna profile v11(prompt 開頭寫「帶上 `source_item_id`」而後段才說行情用
+`market:*` —— 前後矛盾)。新模組 `analysis_stages.py`(階段與深度指標:
+錯了會讓收件人讀到假的完整度)、`tension_refs.py`(偵測與查詢是兩種責任
+—— P1-4 的缺陷正好落在接縫上)。
+
+**外審應特別看的地方**:
+1. 利率×科技四象限**一律**要求正面處理 —— 會不會過度觸發?
+   (門檻是 8bps + 0.8%,實務上一週數次)
+2. 「引用該張力本身」就算過關,模型很可能永遠只填那一個 ID ——
+   這條規則的天花板在哪?
+3. 信心漂移上限 0.25 是我訂的,無 repo 出處。
+4. `incomplete_chains` 的揭露句只取前 3 則,超過的靜默省略。
+5. **仍未做**(需要更大的結構改動):P1-1 完整 registry 命名空間
+   (valuation/prediction/calibration/universe/portfolio/quality)、
+   P1-2 evidence metadata(value/unit/as_of/session/quality)、
+   P1-3 required-news coverage(新聞截斷仍依 grade+時間,不依 materiality)、
+   P1-7 alignment 也要結構化、P1-8 全面 freshness 與逐 gap ID、
+   driver clusters、asset-specific impact、closed claim graph。
+
+**驗證**:preflight exit 0、1786 passed、八個突變全紅
+(A 調和不必相關 / B 重複不擋 / C 完整度回 truthiness / D 逐則退步不擋 /
+E 階段順序不計 / F 幽靈路徑照收 / G 傳導未完成不揭露 /
+H 主閘門退回吃 ID 集合)。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

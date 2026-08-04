@@ -156,14 +156,34 @@ def validate(obj, evidence_ids) -> list:
             problems.append(
                 f"tension_resolutions 宣稱處理了 {x!r},而今天沒有這筆張力"
                 "(或它已標為不可用)—— 不得回填不存在的 ID")
+        # 第十八輪 P1-6:**重複不算多處理一筆。** `got` 是集合,所以同一筆
+        # 填三次仍然滿足 required —— 而指標數的是 `len(res)`,於是
+        # 「處理了 3 筆 / 需要 2 筆」這種大於 100% 的覆蓋率。
+        seen_tid = set()
         for r in res:
             tid = str(r.get("tension_id") or "")
+            if tid in seen_tid:
+                problems.append(
+                    f"tension_resolutions 有重複的 {tid!r} —— 一筆張力"
+                    "只該有一個調和,重複會讓覆蓋率虛胖")
+                continue
+            seen_tid.add(tid)
             blank = [k for k in ("resolution", "why", "decision_rule")
                      if not str(r.get(k) or "").strip()]
             if blank:
                 problems.append(f"tension_resolutions[{tid}] 的 {blank} 是空的"
                                 " —— 那等於只點名沒有處理")
             _check_ids(r.get("evidence_ids"), f"tension_resolutions[{tid}]")
+            # 第十八輪 P1-5:**引用存在的 ID ≠ 引用相關的 ID。** 拿一則
+            # 不相干的新聞去調和「QQQ vs 外資期貨」形式上完全合法 ——
+            # 而測試 fixture 自己就在示範那個寫法。要嘛引用該張力本身,
+            # 要嘛兩側各引用到至少一個。
+            if tid in need:
+                import analysis_depth as _ad
+                if not _ad.both_sides_cited(r, packet):
+                    problems.append(
+                        f"tension_resolutions[{tid}] 的證據沒有涵蓋這筆張力"
+                        " —— 要引用該張力本身,或兩側各至少一個")
         # 第十七輪 P2-2:**跑不成的檢查要揭露。** stale/unavailable 代表
         # 今天某個橫向面向根本沒查 —— 不寫進 data_gaps,收件人會以為查過了。
         ts = packet.get("signal_tensions") or {}

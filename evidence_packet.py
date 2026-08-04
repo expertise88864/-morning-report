@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 4
+EVIDENCE_SCHEMA_VERSION = 5
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -304,9 +304,26 @@ def evidence_ids(packet: dict) -> set:
     """
     out = {str(n.get("source_item_id")) for n in (packet.get("news") or [])
            if n.get("source_item_id")}
-    out |= _tension.evidence_refs(packet.get("signal_tensions"))
-    out |= market_refs(packet.get("market"))
+    mkt = market_refs(packet.get("market"))
+    # 第十八輪 P1-4:**張力給什麼 ref、這裡就收什麼**,於是
+    # `market:MACRO.10Y.change_bps`(packet 裡根本沒有這個 leaf)
+    # 靜靜變成合法引用 —— 引用檢查在那一刻只證明「名字合法」,
+    # 不再證明「引用了真的存在的資料」。核對責任在這裡:packet
+    # 才知道樹長什麼樣。**幽靈路徑不進 registry**(而且說得出是哪些)。
+    out |= {r for r in _tension.evidence_refs(packet.get("signal_tensions"))
+            if not str(r).startswith("market:") or r in mkt}
+    out |= mkt
     return out
+
+
+def phantom_market_refs(packet: dict) -> set:
+    """張力宣稱、而 market 樹裡**不存在**的路徑。
+
+    回非空集合代表張力模組與 packet 對不上 —— 那是程式缺陷,不是
+    模型的問題。測試盯著它;生產也記進 manifest,否則下次只會再靜默一次。
+    """
+    return (_tension.market_refs_claimed(packet.get("signal_tensions"))
+            - market_refs(packet.get("market")))
 
 
 #: 遞迴註冊的深度上限。**不是效能考量,是語意的**:巢狀太深的路徑

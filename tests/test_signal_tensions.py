@@ -74,19 +74,6 @@ def test_sector_median_vs_falling_leaders_is_detected():
     assert semi["relationship"] == "median_above_leader"
 
 
-def test_falling_yield_with_rising_tech_is_an_alignment():
-    """10Y 從 4.745 → 4.69(-5.5bps,未達 -8bps 門檻)→ 不報;
-    改成 -10bps 就是 alignment。**門檻要真的有作用**,不是擺著好看。"""
-    out = st.detect(_REAL_QUOTES)
-    assert not [i for i in out["items"] if i["topic"] == "利率 vs 科技股"]
-    q = dict(_REAL_QUOTES, MACRO={"10Y": {"close": 4.64, "prev_close": 4.745}})
-    out2 = st.detect(q)
-    hits = [i for i in out2["items"] if i["topic"] == "利率 vs 科技股"]
-    assert hits and hits[0]["kind"] == "alignment"
-
-
-# ---------------------------------------------------------------- 誠實性
-
 def test_missing_inputs_are_declared_not_silently_skipped():
     """**守衛不得靜默 no-op**:空清單要分得出「沒有張力」與「沒有資料」。"""
     out = st.detect({})
@@ -189,15 +176,71 @@ def test_a_defensive_leader_in_a_falling_sector_is_detected():
 
 def test_all_four_rate_tech_quadrants_are_covered():
     """**P1-5C 象限不全**:第一版只處理「利率升+科技漲」與「利率降+科技漲」,
-    科技下跌的兩個象限完全沒有涵蓋。"""
-    cases = {(12, 1.5): "tension", (-12, 1.5): "alignment",
-             (12, -1.5): "alignment", (-12, -1.5): "tension"}
-    for (bps, qqq), want in cases.items():
+    科技下跌的兩個象限完全沒有涵蓋。
+
+    第十八輪 P1-4:**這條測試原本鎖住了一個經濟假說。** 它斷言
+    「利率降+科技漲 = alignment」—— 而那不是幾何,是「折現率下行有利
+    長天期成長股」。利率降也可能是衰退定價,那時科技股上漲才是矛盾。
+    Python 不該替模型決定哪個象限算一致,所以四個象限**一律**要求
+    正面處理,關係名只說象限。
+    """
+    cases = {(12, 1.5): "yield_up_tech_up", (-12, 1.5): "yield_down_tech_up",
+             (12, -1.5): "yield_up_tech_down", (-12, -1.5): "yield_down_tech_down"}
+    for (bps, qqq), rel in cases.items():
         q = {"QQQ": {"change_pct": qqq},
              "MACRO": {"10Y": {"close": 4.50 + bps / 100.0, "prev_close": 4.50}}}
         hits = [i for i in st.detect(q)["items"] if i["topic"] == "利率 vs 科技股"]
         assert len(hits) == 1, f"{bps}bps / {qqq}% 沒有產出"
-        assert hits[0]["kind"] == want, f"{bps}bps / {qqq}% → {hits[0]['kind']}"
+        assert hits[0]["relationship"] == rel, hits[0]["relationship"]
+        assert hits[0]["kind"] == "tension", (
+            f"{bps}bps / {qqq}% 被 Python 判成 {hits[0]['kind']} ——"
+            "這個組合是一致還是矛盾是模型的工作")
+
+
+def test_the_rate_side_does_not_cite_a_path_the_packet_does_not_have():
+    """**P1-4 的另一半:幽靈證據路徑。**
+
+    先前利率那一側掛 `market:MACRO.10Y.change_bps`,而 packet 的 MACRO
+    只有 `close`/`prev_close`。它之所以「合法」,只是因為
+    `evidence_ids()` 無條件收下張力自己給的 ref —— 引用檢查在那一刻
+    只證明「名字在集合裡」,不再證明「引用了真的存在的資料」。
+    """
+    import evidence_packet as ep
+    q = {"QQQ": {"change_pct": 1.76},
+         "MACRO": {"10Y": {"close": 4.62, "prev_close": 4.50}}}
+    pk = ep.build(q, {}, {}, [], [], {}, as_of="2026-08-05T06:00",
+                  target_session_date="2026-08-05", sanitize=str)
+    assert ep.phantom_market_refs(pk) == set(), "張力宣稱了 packet 沒有的路徑"
+    ids = ep.evidence_ids(pk)
+    assert "market:MACRO.10Y.change_bps" not in ids
+    # 衍生值有自己的命名空間,而**它的來源也引用得到**
+    assert "derived:t_rates_vs_tech.left" in ids
+    assert {"market:MACRO.10Y.close", "market:MACRO.10Y.prev_close"} <= ids
+
+
+def test_a_phantom_market_path_never_becomes_legal(monkeypatch):
+    """**守衛本身要擋得住。** 注入一個不存在的路徑,它不得進 registry。
+
+    這是通用防線:張力模組給什麼 ref、packet 端就收什麼,是這個缺陷
+    活下來的方式 —— 修掉一個打錯的常數不等於修掉那個形狀。
+    """
+    import evidence_packet as ep
+    import tension_refs as tr
+    real = tr.evidence_refs
+
+    def _fake(detected):
+        return real(detected) | {"market:MACRO.10Y.made_up"}
+    monkeypatch.setattr(ep._tension, "evidence_refs", _fake)
+    monkeypatch.setattr(ep._tension, "market_refs_claimed",
+                        lambda d: tr.market_refs_claimed(d)
+                        | {"market:MACRO.10Y.made_up"})
+    q = {"QQQ": {"change_pct": 1.76},
+         "MACRO": {"10Y": {"close": 4.62, "prev_close": 4.50}}}
+    pk = ep.build(q, {}, {}, [], [], {}, as_of="2026-08-05T06:00",
+                  target_session_date="2026-08-05", sanitize=str)
+    assert "market:MACRO.10Y.made_up" not in ep.evidence_ids(pk)
+    assert "market:MACRO.10Y.made_up" in ep.phantom_market_refs(pk), (
+        "幽靈路徑被靜靜丟掉而沒有留下痕跡 —— 下次只會再靜默一次")
 
 
 def test_a_us_holiday_marks_the_us_side_unusable():

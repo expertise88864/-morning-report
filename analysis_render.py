@@ -102,7 +102,7 @@ def _claim_line(c: dict) -> str:
     return line + (f"\n  - 什麼情況代表這個判斷錯了:{trigger}" if trigger else "")
 
 
-def render(obj: Optional[dict]) -> str:
+def render(obj: Optional[dict], packet=None) -> str:
     """把驗證過的分析 JSON 轉成晨報 Markdown。
 
     **無法渲染時回空字串**,不回半份。呼叫端會據此走既有的降級路徑 ——
@@ -129,7 +129,7 @@ def render(obj: Optional[dict]) -> str:
 
     # 橫向綜合**排在最前面**:使用者要的是「今天這些訊號合起來說什麼」,
     # 而不是逐條看完再自己拼。
-    syn = _synthesis(obj.get("cross_market_synthesis"))
+    syn = _synthesis(obj.get("cross_market_synthesis"), packet)
     if syn:
         parts.append(f"## {SECTION_SYNTHESIS}\n" + syn)
 
@@ -140,6 +140,15 @@ def render(obj: Optional[dict]) -> str:
 
     news = _lines(obj.get("top_news_analysis"), _news_line)
     if news:
+        # 第十八輪 P1-9:走到財務層是 advisory,加深失敗就照原樣寄出 ——
+        # 那對「晨報不可斷」是合理的,對收件人卻是隱瞞:他不知道這條
+        # 標成「重大」的事件其實只推到情緒。**不擋,但要說出來。**
+        import analysis_stages as _ast
+        stub = _ast.incomplete_chains(obj)
+        if stub:
+            news.append("- *傳導未完成:" + "、".join(
+                f"{sid} {why}" for sid, why in stub[:3])
+                + " —— 這幾則的影響幅度本報無法確認。*")
         parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
 
     # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡

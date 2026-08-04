@@ -13907,7 +13907,11 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     bundle = _pp.build_luna_bundle(packet)
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
         _pp.bundle_debug_json(bundle))
-    ids = _ep.evidence_ids(packet)
+    # 幽靈引用路徑要留下痕跡:張力宣稱了 packet 沒有的 `market:` 欄位時,
+    # 它已經不會進 registry(第十八輪 P1-4),但**靜靜丟掉等於下次再靜默一次**。
+    _phantom = _ep.phantom_market_refs(packet)
+    if _phantom:
+        _RUN_MANIFEST["llm"]["phantom_evidence_refs"] = sorted(_phantom)[:8]
     payload = _orx.build_payload(
         model=OPENAI_MODEL,
         instructions=bundle["developer_instructions"],
@@ -13966,9 +13970,15 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             obj = json.loads(out["text"])
         except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
             obj = None
-        problems = _sch.validate(obj, ids) if obj is not None else ["不是合法 JSON"]
+        # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
+        # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」
+        # 「有新聞卻交空陣列」「有高重要性事件卻沒指出主導因子」
+        # 這些規則在生產從來沒跑過,而測試裡它們全是綠的。
+        # 守衛接錯線與守衛不存在,對收件人是同一件事。
+        problems = (_sch.validate(obj, packet) if obj is not None
+                    else ["不是合法 JSON"])
         if not problems:
-            text = _ar.render(obj)
+            text = _ar.render(obj, packet)
             if text:
                 _record(True)
                 # 深度不足時,把**還沒用掉的修補額度**拿來加深(第十五輪)。

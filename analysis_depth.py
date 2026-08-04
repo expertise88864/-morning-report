@@ -128,6 +128,61 @@ def _identity(obj) -> dict:
     }
 
 
+#: **每則新聞自己的身分**(第十八輪 P1-11)。上一版只比新聞 ID 的集合,
+#: 於是這個交換完全合法:
+#:
+#:     第一版:n1 = high 但鏈很淺、n2 = medium 但鏈很深
+#:     第二版:n1 = medium 仍然很淺、n2 = high 已經很深
+#:
+#: 新聞 ID 集合不變、high 的**數量**不變、深度提示還會變少 ——
+#: 而真正被要求加深的 n1 是**靠降級逃掉的**。深度要求不能用重新分類繞過。
+_MATERIALITY_RANK = {"low": 0, "medium": 1, "high": 2}
+
+#: 說得出來的東西**不得在加深後說不出來**。這些欄位由有變無,是實質退步,
+#: 而它會讓報告看起來更乾淨(少了一堆但書)—— 最難察覺的那種。
+_NEWS_KEPT = ("horizon", "confirmation_signal", "invalidation_signal",
+              "why_this_magnitude")
+
+#: 立場信心的單次漂移上限。加深是把同一個判斷說得更清楚,不是換一個判斷 ——
+#: 0.35 → 0.95 不可能是「補了幾條因果鏈」帶來的。**本模組自訂。**
+_CONFIDENCE_DRIFT = 0.25
+
+
+def _news_identity(obj) -> dict:
+    """`{source_item_id: {重要性, 量級已知, 說得出來的欄位}}`。"""
+    out = {}
+    for n in ((obj or {}).get("top_news_analysis") or []):
+        if not isinstance(n, dict):
+            continue
+        out[str(n.get("source_item_id") or "")] = {
+            "materiality": str(n.get("materiality") or ""),
+            "magnitude_known": n.get("magnitude_band") not in (None, "", "unknown"),
+            "said": {k for k in _NEWS_KEPT if str(n.get(k) or "").strip()},
+        }
+    return out
+
+
+def news_regressions(before, after) -> list:
+    """第二版在**個別新聞**上的退步(集合層看不見的那種)。"""
+    ib, ia = _news_identity(before), _news_identity(after)
+    bad = []
+    for sid, b in ib.items():
+        a = ia.get(sid)
+        if a is None:            # 整則不見 —— 由集合層的「弄丟新聞」負責
+            continue
+        rb = _MATERIALITY_RANK.get(b["materiality"], -1)
+        ra = _MATERIALITY_RANK.get(a["materiality"], -1)
+        if rb >= 0 and ra >= 0 and ra < rb:
+            bad.append(f"{sid} 的重要性被降級({b['materiality']} → "
+                       f"{a['materiality']})—— 深度要求不得用重新分類繞過")
+        if b["magnitude_known"] and not a["magnitude_known"]:
+            bad.append(f"{sid} 的量級從說得出來變成 unknown")
+        lost = b["said"] - a["said"]
+        if lost:
+            bad.append(f"{sid} 不再說得出 {sorted(lost)}")
+    return bad
+
+
 #: 加深**不得順手改掉**的判斷欄位。它們不是深度,改了就是換一份報告。
 _PINNED = (("stance", "label"), ("stance", "time_horizon"),
            ("cross_market_synthesis", "dominant_driver"))
@@ -188,6 +243,13 @@ def deepen_is_an_improvement(before, after, *, evidence_ids) -> tuple:
         lost = ib[name] - ia[name]
         if lost:
             return False, f"第二版弄丟了{name}:{sorted(lost)[:3]}"
+    for msg in news_regressions(before, after):
+        return False, msg
+    cb = ((before or {}).get("stance") or {}).get("confidence")
+    ca = ((after or {}).get("stance") or {}).get("confidence")
+    if isinstance(cb, (int, float)) and isinstance(ca, (int, float))             and abs(float(ca) - float(cb)) > _CONFIDENCE_DRIFT:
+        return False, (f"立場信心漂移過大({cb} → {ca})—— 加深是把同一個"
+                       "判斷說得更清楚,不是換一個判斷")
     for block, field in _PINNED:
         vb = str(((before or {}).get(block) or {}).get(field) or "")
         va = str(((after or {}).get(block) or {}).get(field) or "")
@@ -206,55 +268,9 @@ def deepen_is_an_improvement(before, after, *, evidence_ids) -> tuple:
     return True, f"深度提示 {len(adv_b)} → {len(adv_a)}"
 
 
-def depth_metrics(obj, packet=None) -> dict:
-    """**十配對要回答的是「深度有沒有真的改善」,而先前量不到**
-    (第十七輪 P1-9)。
-
-    全部是結構性計數,不是關鍵詞。刻意不合成總分 —— 合成之後
-    「因果鏈變深 3、張力少處理 1」會看起來像進步。
-    """
-    import analysis_schema as _sch
-    o = obj if isinstance(obj, dict) else {}
-    news = [n for n in (o.get("top_news_analysis") or []) if isinstance(n, dict)]
-    hi = [n for n in news if n.get("materiality") == "high"]
-    cms = o.get("cross_market_synthesis") or {}
-    res = [r for r in (cms.get("tension_resolutions") or []) if isinstance(r, dict)]
-
-    def _stages(n):
-        return {str(st.get("stage") or "")
-                for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)}
-
-    need = 0
-    if isinstance(packet, dict):
-        import signal_tensions as _st
-        need = len(_st.required_tension_ids(packet.get("signal_tensions")))
-    chains = [len([st for st in (n.get("mechanism_steps") or [])
-                   if isinstance(st, dict)]) for n in news]
-    return {
-        "news_analyzed": len(news),
-        "high_materiality": len(hi),
-        "chain_steps_median": (sorted(chains)[len(chains) // 2] if chains else 0),
-        # **走到財務/估值/股價的比例** —— 停在「情緒改善」不算。
-        "reaches_financial": sum(
-            1 for n in hi if _stages(n) & set(_sch.TERMINAL_STAGES)),
-        "reaches_operations": sum(
-            1 for n in hi if _stages(n) & set(_sch.OPERATIONAL_STAGES)),
-        "magnitude_explained": sum(
-            1 for n in news if str(n.get("why_this_magnitude") or "").strip()),
-        "magnitude_unknown": sum(
-            1 for n in news if n.get("magnitude_band") == "unknown"),
-        "with_confirmation": sum(
-            1 for n in news if str(n.get("confirmation_signal") or "").strip()),
-        "with_invalidation": sum(
-            1 for n in news if str(n.get("invalidation_signal") or "").strip()),
-        "relations": sum(len(n.get("relates_to") or []) for n in news),
-        # 張力覆蓋:**分母來自 packet**,不是模型自報 —— 自報的話
-        # 「沒處理」與「今天沒有張力」會長得一樣。
-        "tensions_required": need,
-        "tensions_resolved": len(res),
-        "resolutions_with_rule": sum(
-            1 for r in res if str(r.get("decision_rule") or "").strip()),
-        "priced_in_items": len((o.get("priced_in") or {}).get("already_reflected") or [])
-        + len((o.get("priced_in") or {}).get("not_yet_reflected") or []),
-        "data_gaps": len(o.get("data_gaps") or []),
-    }
+# ---------------------------------------------------------------- 相容出口
+#
+# 階段/指標搬到 `analysis_stages`(見該檔:**後果不同**)。呼叫端仍可從
+# 這裡取用,一次只改一件事。
+from analysis_stages import (                     # noqa: E402,F401
+    both_sides_cited, depth_metrics, incomplete_chains)

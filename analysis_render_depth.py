@@ -68,7 +68,31 @@ def _news_line(n: dict) -> str:
     return "\n".join(out)
 
 
-def _synthesis(cms: dict) -> str:
+def _tension_head(tid: str, packet) -> str:
+    """張力本身長什麼樣 —— **由 renderer 從 packet 回查,不讓模型重述數字**。
+
+    第十八輪:信裡連著三個「矛盾調和:…(偏向前者)」,而讀者無從知道
+    「前者」是 QQQ、是開盤預測、還是產業中位數。調和說得再好,
+    看不出在調和什麼就等於沒說。
+    """
+    if not isinstance(packet, dict):
+        return ""
+    for it in ((packet.get("signal_tensions") or {}).get("items") or []):
+        if not isinstance(it, dict) or f"tension:{it.get('tension_id')}" != tid:
+            continue
+
+        def _one(side):
+            side = side if isinstance(side, dict) else {}
+            v, u = side.get("value"), _s(side.get("unit"))
+            num = (f"{v:+.2f}".rstrip("0").rstrip(".") if isinstance(v, float)
+                   else f"{v:+}" if isinstance(v, int) else "")
+            return f"{_s(side.get('label'))} {num}{'%' if u == '%' else ' ' + u}".strip()
+        return (f"【{_s(it.get('topic'))}】{_one(it.get('left'))} ↔ "
+                f"{_one(it.get('right'))}")
+    return ""
+
+
+def _synthesis(cms: dict, packet=None) -> str:
     """橫向綜合。**這是這次改版要的東西** —— 訊號之間的關係,
     而不是把各市場各寫一句。"""
     if not isinstance(cms, dict):
@@ -100,6 +124,9 @@ def _synthesis(cms: dict) -> str:
             continue
         side = {"left": "偏向前者", "right": "偏向後者",
                 "neither": "兩邊都不夠強"}.get(_s(r.get("dominant_side")), "")
+        head = _tension_head(_s(r.get("tension_id")), packet)
+        if head:
+            rows.append(f"  - {head}")
         rows.append(f"  - **矛盾調和**:{_s(r.get('resolution'))}"
                     + (f"({side})" if side else "")
                     + (f";{_s(r.get('why'))}" if _s(r.get("why")) else "")

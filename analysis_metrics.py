@@ -41,7 +41,7 @@ import evidence_packet as _ep
 #: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
 #: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
 #: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
-METRICS_SCHEMA_VERSION = 3
+METRICS_SCHEMA_VERSION = 4
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -198,6 +198,38 @@ REQUIRED_SECTIONS = (
 )
 
 
+#: **每個段落自己的「有內容」判準**(第十八輪:false green)。
+#: 先前一律用 `not obj.get(s)`,於是:
+#:   * `data_gaps=[]` —— 證據完整的日子**合法**,卻被算成缺一段;
+#:   * `priced_in={}` 內部全空 —— dict 本身是 truthy,算成有內容。
+#: 兩個方向都錯,而且錯的方向相反:好報告被扣分、空報告被放行。
+def _has_priced_in(v) -> bool:
+    v = v if isinstance(v, dict) else {}
+    return bool((v.get("already_reflected") or []) or
+                (v.get("not_yet_reflected") or []))
+
+
+def _has_cms(v) -> bool:
+    v = v if isinstance(v, dict) else {}
+    return bool(str(v.get("dominant_driver") or "").strip()
+                or (v.get("tension_resolutions") or [])
+                or str(v.get("net_effect_intraday") or "").strip())
+
+
+#: `data_gaps` 是**允許合法為空**的那一段 —— 空代表「今天沒有缺口」,
+#: 不代表「沒寫」。把它算成 missing,等於懲罰資料完整的日子。
+_PRESENCE = {
+    "data_gaps": lambda v: True,
+    "priced_in": _has_priced_in,
+    "cross_market_synthesis": _has_cms,
+    "claim_audit": lambda v: bool([c for c in (v or []) if isinstance(c, dict)]),
+}
+
+
+def _present(obj: dict, section: str) -> bool:
+    return _PRESENCE.get(section, bool)(obj.get(section))
+
+
 def _claims(obj: dict) -> list:
     return [c for c in (obj.get("claim_audit") or []) if isinstance(c, dict)]
 
@@ -231,7 +263,7 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
         t = str(c.get("claim_type") or "?")
         types[t] = types.get(t, 0) + 1
 
-    missing = [s for s in REQUIRED_SECTIONS if not obj.get(s)]
+    missing = [s for s in REQUIRED_SECTIONS if not _present(obj, s)]
     # `data_gaps` 空著**不一定**是失誤 —— 證據齊全的那天本來就沒有缺口。
     # 但「證據被截斷了卻說沒有缺口」是失誤,那個要抓。
     truncated = int(((packet or {}).get("truncation") or {}).get("news_dropped") or 0)

@@ -4945,6 +4945,21 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73446473",
+        "title": "Ban talk lifts networking names",
+        "published": "Tue, 04 Aug 2026 16:28:57 +0000",
+        "processed_at": "2026-08-04T20:52:57Z",
+        "digest": {
+          "summary_points": [
+            "Apollo全球管理首席經濟學家認為，傳統60/40股債投資組合已失效——股市報酬高度集中於少數AI龍頭，債券報酬則受財政赤字與政府債務主導；若AI交易反轉或赤字疑慮升溫，股債可能同步下跌，失去避險功能。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The greater danger lies in a potential reversal of the AI trade or heightened market concern over fiscal deficits."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73436025",
         "title": "Palantir lifts outlook after AI surge",
         "published": "Tue, 04 Aug 2026 12:15:03 +0000",
@@ -5393,61 +5408,6 @@
           "notable_quote": "Deutsche Bank strategist Jim Reid said renewed concerns over AI investment spending and competition from lower-cost Chinese companies were the dominant driver of Asian markets, triggering another sell-off in global semiconductor stocks."
         },
         "shown_at": "2026-07-28T22:56:22Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73195573",
-        "title": "OpenAI agent went rogue for days",
-        "published": "Mon, 27 Jul 2026 16:27:03 +0000",
-        "processed_at": "2026-07-27T20:52:49Z",
-        "digest": {
-          "summary_points": [
-            "原油價格跌破每桶90美元，石油股隨之下跌。",
-            "D-Wave Quantum因宣布與AT&T達成協議，將利用其量子計算技術，股價上漲。",
-            "Rocket Lab獲得美國太空軍價值2.66億美元的多重發射合約，股價走高。",
-            "6月耐久財訂單月增0.3%，低於預期的1.7%，但被認為因AI驅動訂單和庫存積累而強勁。"
-          ],
-          "tickers": [
-            {
-              "name": "ExxonMobil",
-              "code": "XOM",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "油價下跌導致股價走低"
-            },
-            {
-              "name": "BP",
-              "code": "BP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "油價下跌導致股價走低"
-            },
-            {
-              "name": "Chevron",
-              "code": "CVX",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "油價下跌導致股價走低"
-            },
-            {
-              "name": "D-Wave Quantum",
-              "code": "QBTS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "取得AT&T合作案"
-            },
-            {
-              "name": "Rocket Lab",
-              "code": "RKLB",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "取得大型太空軍合約"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The price action in oil this morning clearly reflects the market's desperation for positive news."
-        },
-        "shown_at": "2026-07-27T22:56:38Z"
       }
     ]
   },

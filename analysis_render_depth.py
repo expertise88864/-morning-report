@@ -60,12 +60,35 @@ def _news_line(n: dict) -> str:
         if inval:
             bits.append(f"什麼會推翻它:{inval}")
         out.append("  - " + ";".join(bits))
+    out.extend(_assets(n))
     for rel in (n.get("relates_to") or []):
         if isinstance(rel, dict) and _RELS.get(_s(rel.get("relationship"))):
             out.append(f"  - 與另一則的關係:{_RELS[_s(rel.get('relationship'))]}"
                        + (f" —— {_s(rel.get('explanation'))}"
                           if _s(rel.get("explanation")) else ""))
     return "\n".join(out)
+
+
+#: 逐資產影響的印法。**方向詞單獨出現就是使用者抱怨的那種句子**,
+#: 所以一定帶著幅度與時間一起排。
+_DIR = {"bullish": "偏多", "bearish": "偏空", "neutral": "中性"}
+_BAND = {"negligible": "可忽略", "small": "小", "moderate": "中等",
+         "large": "大", "unknown": "說不出量級"}
+
+
+def _assets(n: dict) -> list:
+    rows = []
+    for a in (n.get("affected_assets") or []):
+        if not isinstance(a, dict) or not _s(a.get("asset_id")):
+            continue
+        head = (f"{_s(a.get('asset_id'))}:"
+                f"{_DIR.get(_s(a.get('direction')), '')}、"
+                f"{_BAND.get(_s(a.get('magnitude_band')), '')}、"
+                f"{_s(a.get('horizon'))}")
+        body = "、".join(x for x in (_s(a.get("first_order_effect")),
+                                    _s(a.get("second_order_effect"))) if x)
+        rows.append(f"    - {head} —— {body}" if body else f"    - {head}")
+    return ["  - **逐標的影響**:"] + rows if rows else []
 
 
 def _tension_head(tid: str, packet) -> str:
@@ -119,6 +142,19 @@ def _synthesis(cms: dict, packet=None) -> str:
                     + " → " + ("、".join(dst[:4]) if dst else "(去向不明)"))
     # 第十七輪 P1-3:**逐筆張力的調和要看得到。** 只印一句「訊號互有矛盾」
     # 等於沒有處理 —— 而那正是這個結構要取代的東西。
+    # 第十八輪 P1-7:同向訊號的解讀也要進信 —— 只印矛盾的話,
+    # 「兩個訊號其實是同一個底層驅動」這種話讀者永遠看不到。
+    for r in (cms.get("alignment_readings") or []):
+        if not isinstance(r, dict) or not _s(r.get("interpretation")):
+            continue
+        head = _tension_head(_s(r.get("alignment_id")), packet)
+        if head:
+            rows.append(f"  - {head}")
+        extra = _s(r.get("marginal_information"))
+        risk = _s(r.get("double_count_risk"))
+        rows.append(f"  - **同向訊號**:{_s(r.get('interpretation'))}"
+                    + (f";增量資訊:{extra}" if extra else "")
+                    + (f"。會不會重複計算:{risk}" if risk else ""))
     for r in (cms.get("tension_resolutions") or []):
         if not isinstance(r, dict) or not _s(r.get("resolution")):
             continue

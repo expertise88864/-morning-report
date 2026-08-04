@@ -82,6 +82,20 @@ def required_tension_ids(detected: Optional[dict]) -> set:
             and it.get("usable_for_inference")}
 
 
+def required_alignment_ids(detected: Optional[dict]) -> set:
+    """**同向訊號也要逐筆解讀**(第十八輪 P1-7)。
+
+    先前只有 `kind == "tension"` 被要求正面處理,於是橫向分析是不對稱的:
+    相反訊號結構化、可逐筆檢查;同向訊號放在自由文字裡,
+    「哪些同向訊號共同構成主導因子」與「有沒有把同一個底層驅動重複計權」
+    都驗不了 —— 而重複計權正是立場分虛高的來源。
+    """
+    return {f"tension:{it['tension_id']}"
+            for it in ((detected or {}).get("items") or [])
+            if isinstance(it, dict) and it.get("kind") == "alignment"
+            and it.get("usable_for_inference")}
+
+
 def required_gap_ids(detected: Optional[dict]) -> dict:
     """`{gap_id: 為什麼今天這一項沒有答案}` —— **逐項,不是一個總數**。
 

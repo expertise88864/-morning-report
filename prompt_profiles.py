@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 13
+LUNA_XHIGH_VERSION = 14
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -100,6 +100,17 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   **跑不成的檢查不揭露,收件人會以為查過了。**
 - EVIDENCE 裡標了「不同步」的欄位(例如美股休市那天的美股數字)
   仍然可以談,但**高重要性的判斷不能只靠它**。
+- **「這則新聞對股市偏多」是泛論,不是分析。** 高重要性事件要用
+  `affected_assets` 拆開:對 2330 是中期中度正面、對指數是即日可忽略、
+  對成熟製程可能是負面 —— 同一件事對不同標的的方向可以相反。
+  每個標的都要寫直接影響;想不到次級影響就寫「本報看不出次級影響」。
+- **同向訊號也要逐筆解讀**(`alignment_readings`):兩個同方向的訊號
+  合起來說明什麼、第二個**多告訴了你什麼**、它們會不會其實是同一個
+  底層驅動(那時把兩者都算進立場就是重複計權)。
+- **每一段都要說得出它靠哪幾條主張。** `claim_audit` 的每一則給一個
+  `claim_id`,`stance` / `priced_in` / `portfolio_implications` 用
+  `claim_ids` 回指。**寫進稽核卻沒有任何一段用到的高重要性主張,
+  不是根據,是配菜。**
 - **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**
   一個事件群只寫**一個**分析單位(挑資訊最完整的那則當 `source_item_id`),
   不要為同一件事寫兩段 —— 那不是更深,是同一條因果鏈改寫兩次。

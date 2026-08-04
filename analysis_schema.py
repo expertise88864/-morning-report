@@ -37,7 +37,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 6
+ANALYSIS_SCHEMA_VERSION = 7
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -128,6 +128,16 @@ _CLAIM = _obj({
     "falsification_trigger": _s("什麼情況出現就代表這個判斷錯了"),
 })
 
+#: **稽核清單那一份多一個 `claim_id`。** 第十八輪:claim audit 先前是孤島
+#: —— 它非空且合法,而信裡真正寫出來的立場、已反映/未反映、投資組合影響
+#: **沒有任何東西回指它**。於是可以「今日偏多,主因半導體需求強勁」而稽核
+#: 裡只有一條「QQQ 昨日上漲」,形式完全合法。
+#: `key_drivers` 刻意**不**帶 ID:回指的對象是稽核,不是重點條目 ——
+#: 兩份清單各自發 ID 的話,`c1` 會有兩個意思。
+_AUDITED_CLAIM = _obj(dict(
+    {"claim_id": _s("本則主張的代號(例:c1);各段用 `claim_ids` 回指")},
+    **_CLAIM["properties"]))
+
 _SCENARIO = _obj({
     "narrative": _s(),
     "probability": _num("0–1"),
@@ -144,6 +154,7 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "evidence_ids": _EVIDENCE_IDS,
     }),
     "stance": _obj({
+        "claim_ids": _arr(_s(), "支撐這一段的 `claim_audit.claim_id`"),
         "label": _enum(STANCE_LABELS),
         "score": {"type": "integer", "minimum": -11, "maximum": 11,
                   "description": "與 Python 11 維立場分同尺度;不一致時要在 "
@@ -158,6 +169,7 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "invalidation_triggers": _arr(_s(), "整體判斷失效的條件"),
     }),
     "priced_in": _obj({
+        "claim_ids": _arr(_s(), "支撐這一段的 `claim_audit.claim_id`"),
         "already_reflected": _arr(_s(), "市場已反映的部分"),
         "not_yet_reflected": _arr(_s(), "尚未反映的部分"),
         # 第十六輪 P2-4:「已反映/未反映」是**高推論性**判斷,
@@ -173,6 +185,7 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "evidence_ids": _EVIDENCE_IDS,
     }),
     "portfolio_implications": _obj({
+        "claim_ids": _arr(_s(), "支撐這一段的 `claim_audit.claim_id`"),
         "summary": _s("只談曝險方向與風險,不得推測持股明細"),
         "actions_to_consider": _arr(_s()),
         "risks": _arr(_s()),
@@ -205,6 +218,19 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "horizon": _enum(HORIZONS, "最快什麼時候看得到"),
         "confirmation_signal": _s("什麼出現代表這條真的在走"),
         "invalidation_signal": _s("什麼出現代表這條不成立"),
+        # 第十八輪:**同一件事對不同標的的影響不一樣。** 先前每則只有
+        # 單一 direction/magnitude/horizon,於是「對台積電中期中度正面、
+        # 對台股指數即日可忽略、對成熟製程可能是負面」被壓成一個
+        # 「偏多」—— 而那正是使用者說的「泛論」。
+        "affected_assets": _arr(_obj({
+            "asset_id": _s("個股代號、指數或 ETF(例:2330、TAIEX、00662)"),
+            "direction": _enum(DIRECTIONS),
+            "magnitude_band": _enum(MAGNITUDE_BANDS),
+            "horizon": _enum(HORIZONS),
+            "first_order_effect": _s("直接影響:訂單、產能、成本、評價"),
+            "second_order_effect": _s("次級影響;想不到就寫「本報看不出次級影響」"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }), "高重要性事件至少要拆出一個標的"),
         "relates_to": _arr(_obj({
             "other_source_item_id": _s("今天另一則的 source_item_id"),
             "relationship": _enum(RELATIONSHIPS),
@@ -229,6 +255,17 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         # `conflicting_signals` 是自由文字 —— 驗證器確認得了「ID 都列到」,
         # 確認不了「哪一段文字處理哪一筆、怎麼調和、憑什麼判斷哪邊可信」。
         # 改成**一對一的結構**,每一筆張力自己帶調和方式與判準。
+        # 第十八輪 P1-7:**橫向先前只嚴格處理矛盾。** 同向訊號放在自由
+        # 文字裡,於是「哪些同向訊號共同構成主導因子」與「有沒有把同一個
+        # 底層訊號重複計權」都驗不了 —— 而重複計權正是立場分虛高的來源。
+        "alignment_readings": _arr(_obj({
+            "alignment_id": _s("EVIDENCE 的 `tension:*`(kind=alignment 的那些)"),
+            "interpretation": _s("兩個同向訊號合起來說明什麼"),
+            "marginal_information": _s("第二個訊號**多告訴了你什麼**;"
+                                       "沒有就寫「沒有增量」"),
+            "double_count_risk": _s("兩者會不會其實是同一個底層驅動"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }), "同向訊號的解讀"),
         "tension_resolutions": _arr(_obj({
             "tension_id": _s("EVIDENCE.signal_tensions 的 `tension:<id>`"),
             "resolution": _s("兩邊怎麼調和;不得只複述兩個數字"),
@@ -266,7 +303,8 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "why": _s(),
         "horizon": _enum(HORIZONS),
     })),
-    "claim_audit": _arr(_CLAIM, "所有重大 claim 的稽核清單;評分以此為準"),
+    "claim_audit": _arr(_AUDITED_CLAIM,
+                        "所有重大 claim 的稽核清單;評分以此為準"),
 }, desc=f"晨報主分析 v{ANALYSIS_SCHEMA_VERSION}")
 
 

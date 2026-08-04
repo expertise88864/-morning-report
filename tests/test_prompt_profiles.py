@@ -268,14 +268,18 @@ def test_fabricated_evidence_ids_are_caught():
     ids = ep.evidence_ids(packet)
     real = sorted(ids)[0]
 
-    ok = {"stance": {"label": "偏多"},
-          "claim_audit": [{"statement": "x", "claim_type": "fact",
+    # 第十八輪:`claim_id` 與 `stance.claim_ids` 是必要的 —— 沒有它們,
+    # 稽核就回到「一座孤島」的狀態,而這條測的不是那個。
+    ok = {"stance": {"label": "偏多", "claim_ids": ["c1"]},
+          "claim_audit": [{"claim_id": "c1", "statement": "x",
+                           "claim_type": "fact",
                            "materiality": "high", "evidence_ids": [real],
                            "counterevidence_ids": []}]}
     assert sch.validate(ok, ids) == []
 
-    bad = {"stance": {"label": "偏多"},
-           "claim_audit": [{"statement": "x", "claim_type": "fact",
+    bad = {"stance": {"label": "偏多", "claim_ids": ["c1"]},
+           "claim_audit": [{"claim_id": "c1", "statement": "x",
+                            "claim_type": "fact",
                             "materiality": "high",
                             "evidence_ids": ["n_does_not_exist"],
                             "counterevidence_ids": []}]}
@@ -286,8 +290,8 @@ def test_fabricated_evidence_ids_are_caught():
 def test_a_high_materiality_fact_without_evidence_is_caught():
     """高重要性的事實主張沒有證據,是這類報告最常見的失敗。"""
     ids = ep.evidence_ids(_packet())
-    obj = {"stance": {"label": "中性"},
-           "claim_audit": [{"statement": "台積電將調升財測",
+    obj = {"stance": {"label": "中性", "claim_ids": ["c1"]},
+           "claim_audit": [{"claim_id": "c1", "statement": "台積電將調升財測",
                             "claim_type": "fact", "materiality": "high",
                             "evidence_ids": [], "counterevidence_ids": []}]}
     problems = sch.validate(obj, ids)

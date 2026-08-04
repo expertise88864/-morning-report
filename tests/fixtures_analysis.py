@@ -37,10 +37,18 @@ def news() -> list:
     ]
 
 
+def _driver(statement: str, **kw) -> dict:
+    """「昨夜三大重點」的一條。**沒有 `claim_id`** —— 見 schema。"""
+    out = _claim(statement, **kw)
+    out.pop("claim_id", None)
+    return out
+
+
 def _claim(statement: str, *, evidence=("n1",), materiality="high",
-           claim_type="fact") -> dict:
-    """一則合乎 schema 的主張。**九個必填欄位一個都不能少。**"""
+           claim_type="fact", claim_id="c1") -> dict:
+    """一則合乎 schema 的主張。**必填欄位一個都不能少。**"""
     return {
+        "claim_id": claim_id,
         "statement": statement,
         "claim_type": claim_type,
         "direction": "bullish",
@@ -61,10 +69,15 @@ def valid_analysis() -> dict:
     """
     return {
         "executive_summary": "今日偏多,留意台積電法說。",
-        "stance": {"label": "偏多", "score": 6, "confidence": 0.7,
-                   "time_horizon": "1-5d", "rationale": "多數訊號同向。"},
+        # 第十八輪:**各段要回指 claim** —— 說不出這一段靠哪幾條主張,
+        # 稽核就只是裝飾(而它先前確實是孤島)。
+        "stance": {"claim_ids": ["c1"], "label": "偏多", "score": 6,
+                   "confidence": 0.7, "time_horizon": "1-5d",
+                   "rationale": "多數訊號同向。"},
         "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
-        "key_drivers": [_claim("費半走強")],
+        # `key_drivers` 與 `claim_audit` 是**兩個不同的 schema**:
+        # 只有稽核那一份有 `claim_id`(各段回指的對象是稽核,不是重點條目)。
+        "key_drivers": [_driver("費半走強")],
         "scenario_tree": {
             "base": {"narrative": "震盪走高", "probability": 0.6, "triggers": []},
             "bull": {"narrative": "突破前高", "probability": 0.2, "triggers": []},
@@ -75,7 +88,7 @@ def valid_analysis() -> dict:
         "global_market": {"summary": "美股收紅。",
                           "us_to_tw_linkage": "費半傳導",
                           "evidence_ids": ["n1"]},
-        "portfolio_implications": {"summary": "維持核心部位。",
+        "portfolio_implications": {"claim_ids": ["c1"], "summary": "維持核心部位。",
                                    "actions_to_consider": [], "risks": []},
         # schema v2:**這份 fixture 要示範的正是「有深度長什麼樣」。**
         # 兩則刻意不同:n1 說得出量級,n2 誠實說量級判斷不出來 ——
@@ -101,6 +114,18 @@ def valid_analysis() -> dict:
                   "step_type": "inference", "evidence_ids": []}],
              "magnitude_band": "moderate",
              "why_this_magnitude": "費半漲幅與台股電子的歷史連動落在中段",
+             # **同一件事對不同標的不一樣** —— 壓成一個「偏多」就是泛論。
+             "affected_assets": [
+                 {"asset_id": "2330", "direction": "bullish",
+                  "magnitude_band": "moderate", "horizon": "intraday",
+                  "first_order_effect": "權值股開盤定價直接跟隨費半",
+                  "second_order_effect": "帶動指數期貨的開盤基差",
+                  "evidence_ids": ["n1"]},
+                 {"asset_id": "TAIEX", "direction": "bullish",
+                  "magnitude_band": "small", "horizon": "intraday",
+                  "first_order_effect": "權值佔比讓指數跟漲但幅度較小",
+                  "second_order_effect": "本報看不出次級影響",
+                  "evidence_ids": ["n1"]}],
              "horizon": "intraday",
              "confirmation_signal": "電子權值開高且量能跟上",
              "invalidation_signal": "夜盤台指期翻黑",
@@ -117,11 +142,13 @@ def valid_analysis() -> dict:
                   "step_type": "scenario", "evidence_ids": ["n2"]}],
              "magnitude_band": "unknown",
              "why_this_magnitude": "尚未公布金額與時程,缺資本支出區間",
+             "affected_assets": [],
              "horizon": "1-5d",
              "confirmation_signal": "法說給出高於市場預期的資本支出區間",
              "invalidation_signal": "指引持平或下修",
              "relates_to": []}],
         "cross_market_synthesis": {
+            "alignment_readings": [],
             "reinforcing_signals": ["費半走強", "美債利率回落"],
             "conflicting_signals": ["外資台指期淨空"],
             "dominant_driver": "美股科技股的外部定價",
@@ -142,7 +169,7 @@ def valid_analysis() -> dict:
         "dismissed_events": [],
         "watch_triggers": [],
         "claim_audit": [_claim("費半走強")],
-        "priced_in": {"already_reflected": ["費半漲幅"],
+        "priced_in": {"claim_ids": ["c1"], "already_reflected": ["費半漲幅"],
                       "not_yet_reflected": ["台積電法說指引"],
                       "evidence_ids": ["n1"]},
     }
@@ -155,7 +182,7 @@ def ungrounded_analysis() -> dict:
     而不是讓它在形狀那一關就先被擋掉 —— 兩關混在一起就分不出誰在作用。
     """
     obj = valid_analysis()
-    obj["key_drivers"] = [_claim("台股必漲", evidence=[])]
+    obj["key_drivers"] = [_driver("台股必漲", evidence=[])]
     obj["market_regime"]["evidence_ids"] = []
     obj["taiwan_market"]["evidence_ids"] = []
     obj["global_market"]["evidence_ids"] = []

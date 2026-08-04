@@ -50,49 +50,11 @@ def _unusable(packet) -> dict:
     return _reg.unusable_ids(packet)
 
 
-def _coverage_problems(obj, packet, analysed_ids) -> list:
-    """**必分析事件的覆蓋率**(第十八輪 P1-3)。
-
-    分母來自 packet(官方來源、多家同時報),不是模型自評的重要性 ——
-    自評當分母時,「只分析一則次要新聞」與「該談的都談了」長得一樣。
-    模型仍可主張某個事件今天不值得談,但**要留下理由**。
-    """
-    import news_clusters as _nc
-    out: list = []
-    info = packet.get("news_clusters") or {}
-    need = list(info.get("required_cluster_ids") or [])
-    if not need:
-        return out
-    groups = info.get("clusters") or []
-    covered = {_nc.cluster_of(groups, sid) for sid in analysed_ids}
-    dismissed = {str((d or {}).get("cluster_id") or ""): d
-                 for d in (obj.get("dismissed_events") or [])
-                 if isinstance(d, dict)}
-    for cid in need:
-        if cid in covered:
-            continue
-        d = dismissed.get(cid)
-        if d is None:
-            out.append(
-                f"本報要求分析的事件 {cid} 既沒有分析、也沒有說為什麼不談"
-                " —— 靜默略過與判斷不重要,在信裡長得一模一樣")
-        elif not str(d.get("why_not_material") or "").strip():
-            out.append(f"dismissed_events[{cid}] 沒有寫為什麼不值得分析")
-    for cid in sorted(set(dismissed) - set(need)):
-        out.append(f"dismissed_events 宣稱駁回 {cid!r},而它不在本報的必分析清單")
-    # 同一個事件群分析兩次以上 —— **那不是更深,是同一條鏈改寫兩次**,
-    # 而它會讓 `news_analyzed` 這個數字看起來變好。
-    seen: dict = {}
-    for sid in analysed_ids:
-        cid = _nc.cluster_of(groups, sid)
-        if cid:
-            seen.setdefault(cid, []).append(sid)
-    for cid, sids in sorted(seen.items()):
-        if len(sids) > 1:
-            out.append(
-                f"{cid} 被分析了 {len(sids)} 次({sorted(sids)})——"
-                "同一件事的不同報導要合併成一個分析單位")
-    return out
+# ---------------------------------------------------------------- 相容出口
+#
+# 完整性檢查搬到 `analysis_crosscheck`(見該檔:形狀與完整是兩件事)。
+from analysis_crosscheck import (                  # noqa: E402,F401
+    _alignment_problems, _claim_graph_problems, _coverage_problems)
 
 
 def validate(obj, evidence_ids) -> list:
@@ -160,6 +122,23 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.mechanism_steps[{j}] 有空欄位 {blank} ——"
                     "空步驟不算一步,寫不出來就不要放這一步")
+        # 第十八輪:**「新聞影響股市」是泛論。** 高重要性事件要說得出
+        # 對哪個標的、多大、多久 —— 同一件事對台積電與對成熟製程
+        # 可以是相反方向,壓成一個「偏多」就是使用者說的數據堆疊。
+        for j, a in enumerate(n.get("affected_assets") or []):
+            if not isinstance(a, dict):
+                problems.append(f"{where}.affected_assets[{j}] 不是物件")
+                continue
+            _check_ids(a.get("evidence_ids"), f"{where}.affected_assets[{j}]")
+            if not str(a.get("asset_id") or "").strip():
+                problems.append(f"{where}.affected_assets[{j}] 沒有標的代號")
+            if not str(a.get("first_order_effect") or "").strip():
+                problems.append(
+                    f"{where}.affected_assets[{j}] 沒有寫直接影響 ——"
+                    "只給方向與幅度等於沒有拆")
+        if n.get("materiality") == "high" and not (n.get("affected_assets") or []):
+            problems.append(
+                f"{where} 是高重要性事件,卻沒有拆出任何受影響標的")
         # v2:**`unknown` 不是免費的逃生口。** 選它就要說出缺哪些資料,
         # 否則它只是「小幅利多」換一個寫法。
         if (n.get("magnitude_band") == "unknown"
@@ -274,6 +253,7 @@ def validate(obj, evidence_ids) -> list:
         if not news and (packet.get("news") or []):
             problems.append("有新聞可分析,top_news_analysis 卻是空的")
         problems.extend(_coverage_problems(obj, packet, own_ids))
+        problems.extend(_alignment_problems(cms, packet, known))
         if hi and not str((cms or {}).get("dominant_driver") or "").strip():
             problems.append(
                 "有高重要性事件,cross_market_synthesis 卻沒有指出主導因子")
@@ -287,6 +267,7 @@ def validate(obj, evidence_ids) -> list:
     # 進信的段落要帶得出根據(`analysis_grounding`)。**空著不算過** ——
     # 迴圈跑不到不等於沒問題,而那正是這條缺陷活下來的方式。
     problems.extend(_gr.problems(obj))
+    problems.extend(_claim_graph_problems(obj))
 
     from analysis_schema import STANCE_LABELS as _labels   # 延遲:避免循環
     label = ((obj.get("stance") or {}) if isinstance(obj.get("stance"), dict)

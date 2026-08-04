@@ -280,7 +280,9 @@ _FROZEN = {
     # v3(第十六輪 P2-2):`addressed_tension_ids` + `priced_in.evidence_ids`。
     # v5(第十八輪 P1-8):`data_gaps[].gap_id` —— 缺口要對得上是哪一項。
     # v6(第十八輪 P1-3):`dismissed_events` —— 駁回必分析事件要留理由。
-    "output_schema_version":    (6, "10c429fcb05e91e2"),
+    # v7(第十八輪):`affected_assets`(同一件事對不同標的可以相反)、
+    #    `claim_id` + 各段 `claim_ids`(閉合 claim 圖)、`alignment_readings`。
+    "output_schema_version":    (7, "1275aa67d82a988b"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -295,7 +297,8 @@ _FROZEN = {
     #      不同步的欄位不得單獨支撐高重要性判斷。
     # v13(第十八輪 P1-3):一個事件群只寫一個分析單位;
     #      必分析清單要嘛分析、要嘛說明為什麼不談。
-    "primary_profile_version":  (13, "93c1a1ef1e4dd4f2"),
+    # v14(第十八輪):三條新規則(逐標的、同向解讀、claim 回指)。
+    "primary_profile_version":  (14, "ad553697173eb86c"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -309,7 +312,8 @@ _FROZEN = {
     #    由 renderer 從 packet 回查);高重要性事件的傳導沒走完時揭露。
     #    **探針同批修好** —— 先前餵 `render(obj)` 而生產是 `render(obj, packet)`,
     #    新行為在快照裡一行都跑不到。
-    "renderer_version":         (5, "f48252cb9a2b49ef"),
+    # v6(第十八輪):逐標的影響與同向解讀排進信。
+    "renderer_version":         (6, "62af6ae0df71804c"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -321,7 +325,9 @@ _FROZEN = {
     #    於是一筆無關的缺口能替所有跑不成的檢查過關);高重要性判斷
     #    不得只靠標為不同步的證據。
     # v8(第十八輪 P1-3):必分析事件的覆蓋率;同一事件群不得分析兩次。
-    "grounding_version":        (8, "5baaf60f4bd40b55"),
+    # v9(第十八輪):高重要性事件要拆出標的;同向訊號逐筆解讀;
+    #    各段要回指 claim,而高重要性的孤兒主張不算根據。
+    "grounding_version":        (9, "9e4b161a97d6a64e"),
 }
 
 

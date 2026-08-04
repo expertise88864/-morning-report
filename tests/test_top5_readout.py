@@ -136,3 +136,48 @@ def test_the_card_actually_renders_the_line():
     assert i_fin < i_call, "解讀算在 is_fin 之前,金融股會誤用營收年增"
     assert ast.parse(text) is not None
     _ = inspect
+
+
+# ------------------- 2026-08-04 二次:方向形容詞不是分析(可量測)
+
+def test_the_prose_depth_metric_separates_labels_from_magnitude():
+    """**使用者反映三次,而每次都要靠人讀信才判斷得出來。**
+
+    這個指標讓「下一版有沒有真的變好」變成可以查的東西,而不是每天重讀一次。
+    刻意只回計數、不回綜合分數:分數會被當成「品質」,而各項退步就看不出來。
+    """
+    import analysis_metrics as am
+    today = ("台積電:熊本廠恢復至地震前水準。稼動率回復可降低供應中斷風險。"
+             "對2330營運穩定性小幅利多,對00662影響有限。\n"
+             "日月光:子公司公告取得營業用設備。對3711偏多,對2330小幅正面。")
+    wanted = ("Broadcom:獲 80 億美元訂單。相當於先進封裝一季出貨量的個位數"
+              "百分比,最快明年上半年才反映在稼動率上。\n"
+              "台積電:熊本廠恢復至地震前水準。這則新聞說不出量級,因為沒有揭露產量。\n"
+              "日月光:取得營業用設備。它與上一條指向同一段產能,兩者互相排擠。")
+    a, b = am.prose_depth(today), am.prose_depth(wanted)
+    assert a["lines_with_direction_label"] == 2 and b["lines_with_direction_label"] == 0
+    assert b["cross_item_links"] > a["cross_item_links"]
+    assert b["lines_admitting_no_magnitude"] == 1, "誠實承認要跟用形容詞打發分開數"
+    assert b["lines_with_horizon"] > a["lines_with_horizon"]
+
+
+def test_the_metric_is_observation_not_a_gate():
+    """**它不擋任何東西。**
+
+    這個 repo 栽過「啟發式被當成判準」——一份有已知誤判的指標拿去當門檻,
+    比沒有指標更糟。空輸入不得拋、不得回 None 讓呼叫端自己猜。
+    """
+    import analysis_metrics as am
+    for junk in ("", None, "短", "\n\n"):
+        out = am.prose_depth(junk)
+        assert out["lines_seen"] == 0
+        assert all(isinstance(v, int) for v in out.values())
+
+
+def test_the_metric_is_wired_into_the_comparable_metrics():
+    """**兩側都算得出來的那一組要帶著它** —— 只有 Luna 有的話就不能比。"""
+    import analysis_metrics as am
+    out = am.text_metrics("對2330小幅利多,對00662影響有限。" * 2, {"news": []})
+    assert "prose_depth" in out, "指標沒有接進 text_metrics,生產不會產出它"
+    assert out["prose_depth"]["lines_with_direction_label"] >= 1
+    assert am.METRICS_SCHEMA_VERSION >= 2, "加了欄位卻沒升 schema 版本"

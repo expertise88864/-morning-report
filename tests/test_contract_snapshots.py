@@ -209,8 +209,10 @@ _FROZEN = {
     "output_schema_version":    (1, "be7237cf1d4f5ed8"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
-    "primary_profile_version":  (5, "1a3bee574edba7ca"),
-    "shadow_profile_version":   (5, "ca84e287e9391075"),
+    # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
+    # 至少兩條跨條連結、句式不得雷同;兩個範例整個重寫(它們自己在示範那個毛病)。
+    "primary_profile_version":  (6, "59c9cbf243817380"),
+    "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     "renderer_version":         (1, "617fabcde1df42ac"),
     "grounding_version":        (1, "ea7c1800b2d0c032"),

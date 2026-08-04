@@ -35,7 +35,9 @@ from typing import Optional
 import analysis_schema as _sch
 import evidence_packet as _ep
 
-METRICS_SCHEMA_VERSION = 1
+#: v2(2026-08-04):加 `prose_depth` —— 量「有多少是方向形容詞、
+#: 有多少說得出量級」。舊列沒有這一格,不可與新列直接比。
+METRICS_SCHEMA_VERSION = 2
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -119,6 +121,52 @@ def source_diversity(text: str, packet: dict) -> dict:
             "rate": round(len(mentioned) / len(sources), 3) if sources else None}
 
 
+#: 用來冒充「影響分析」的方向形容詞。**它們是標籤,不是答案。**
+#: 2026-08-04 實測:八段 10 條有 10 條以這類詞作結、0 條說得出量級 ——
+#: 使用者三次反映「只是在堆疊數據」,而每次都要靠人讀信才判斷得出來。
+#: 量出來才知道下一版有沒有真的變好(這個 repo 栽過「改了但生產沒產出」)。
+DIRECTION_LABELS = ("小幅利多", "小幅正面", "間接正面", "間接小幅正面",
+                    "影響有限", "傳導有限", "暫中性", "中性偏正", "中性偏多",
+                    "僅方向性利多", "方向性利多", "有帶動作用")
+
+#: 「說得出量級」的證據:帶單位的數字。純方向詞沒有單位。
+_MAGNITUDE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:%|個百分點|億|萬|倍|奈米|nm|口|張|噸|美元|元)")
+
+#: 「說得出時間」的證據。
+_HORIZON = ("今日", "本季", "下半年", "上半年", "明年", "第一季", "第二季",
+            "第三季", "第四季", "月底", "年底", "週內", "數週", "數月")
+
+#: 條目之間有關係的證據(互相排擠 / 同一件事的兩面 / 方向相反)。
+_LINKAGE = ("與上一條", "與前一條", "同一段", "同一條線", "互相排擠",
+            "方向相反", "兩者相加", "指向同一", "牴觸", "同向")
+
+
+def prose_depth(text: str) -> dict:
+    """**這份分析有多少是標籤、多少是真的說出了量級。**
+
+    刻意只回可數的東西,不回一個綜合分數:分數會被拿來當「品質」,
+    而這幾個計數各自回答不同的問題,合成之後就分不出是哪一項退步了。
+
+    這是**觀測指標,不是門檻** —— 不擋任何東西,也不進立場計分。
+    """
+    t = str(text or "")
+    lines = [ln.strip() for ln in t.splitlines() if len(ln.strip()) >= 20]
+    labelled = sum(1 for ln in lines if any(w in ln for w in DIRECTION_LABELS))
+    return {
+        "lines_seen": len(lines),
+        "lines_with_direction_label": labelled,
+        "lines_with_magnitude": sum(1 for ln in lines if _MAGNITUDE.search(ln)),
+        "lines_with_horizon": sum(
+            1 for ln in lines if any(w in ln for w in _HORIZON)),
+        "cross_item_links": sum(
+            1 for ln in lines if any(w in ln for w in _LINKAGE)),
+        # 誠實承認量級判斷不出來,**比寫一個形容詞好** —— 分開數,
+        # 否則「說不出量級」會跟「用形容詞打發」混成同一格。
+        "lines_admitting_no_magnitude": t.count("說不出量級"),
+    }
+
+
 def text_metrics(text: str, packet: dict, *, stance: Optional[dict] = None) -> dict:
     """**兩邊都算得出來的指標。只有這一類可以直接對比。**"""
     return {
@@ -128,6 +176,8 @@ def text_metrics(text: str, packet: dict, *, stance: Optional[dict] = None) -> d
         "evidence_coverage": evidence_coverage(text, packet),
         "source_diversity": source_diversity(text, packet),
         "stance": dict(stance or {}),
+        # 2026-08-04:量「有多少是標籤、有多少說得出量級」。
+        "prose_depth": prose_depth(text),
     }
 
 

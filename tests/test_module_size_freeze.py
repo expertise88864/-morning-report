@@ -215,11 +215,17 @@ MODULE_CEILINGS = {
     # 第十四輪:寫作段搬去 `writing_rules.py` 之後**實測 223 行**。
     "prompt_profiles.py": 250,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
-    # 幾乎全是給模型看的散文,所以上限寬;但**這裡只放文字,不放邏輯** ——
-    # 出現 if/for 或任何組裝就表示東西放錯地方了。實測 274 行。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。
-    "writing_rules.py": 300,
+    #
+    # 2026-08-04 放寬 300 → 420(現況 306)。**這一格與其他格不同:**
+    # 行數上限防的是**邏輯**膨脹,而這個檔按設計一行邏輯都沒有 ——
+    # 它的長度由「使用者要求信怎麼寫」決定,那不是該被擋住的東西
+    # (三天內三批回饋,每批都讓規則變長,而每一批都是對的)。
+    # 用行數當代理在這裡擋錯了東西,所以改成**直接驗那個性質**:
+    # `test_the_writing_rules_module_holds_no_logic` 保證這裡只有字串常數。
+    # 上限仍然留著,當「有人把整個 prompt 系統搬進來」的最後一道背牆。
+    "writing_rules.py": 420,
     # 第十四輪 P1-4:**逐側**的成本與延遲(manifest 隔天被覆蓋,帳本是追加的)。
     # 兩件事:從 manifest 擷取一列、跨帳本彙總。**不做任何分攤** ——
     # 抽取器標 shared,按比例拆給兩側是編造。實測 151 行。
@@ -381,3 +387,30 @@ def test_every_root_module_is_either_capped_or_explicitly_exempt():
         f"清單裡有已經不存在的檔:{gone} —— 清單漂移會讓人以為它還被管著")
     assert not (set(MODULE_CEILINGS) & UNCAPPED_MODULES), (
         "同一個檔同時被設上限又被豁免 —— 豁免會讓讀的人以為它沒有上限")
+
+
+def test_the_writing_rules_module_holds_no_logic():
+    """**`writing_rules.py` 只放文字,不放邏輯。**
+
+    它的行數上限比別人寬,理由是「長度由使用者要求決定,不是開發者散漫」。
+    那個理由只有在它**真的沒有邏輯**時才成立 —— 否則寬上限就變成一個
+    「隨時可以塞 100 行程式進去」的空頭額度,而那正是本檔要防的。
+
+    所以把代理換成性質本身:AST 掃到函式、類別、迴圈、條件、推導式就紅。
+    (`from __future__ import annotations` 與模組層的字串常數指派是允許的。)
+    """
+    import ast
+    src = (_ROOT / "writing_rules.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    banned = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.For,
+              ast.While, ast.If, ast.Try, ast.With, ast.Lambda,
+              ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp,
+              ast.Call)
+    found = sorted({type(n).__name__ for n in ast.walk(tree)
+                    if isinstance(n, banned)})
+    assert not found, (
+        f"writing_rules.py 出現了邏輯:{found} —— "
+        "這個檔的寬上限建立在「它只有字串」上,有邏輯就該搬去別的模組")
+    # 反向:掃描器不得因為找不到檔案或解析失敗而真空通過
+    assert len(src) > 5000, "writing_rules.py 突然變得很小 —— 掃描器可能掃錯檔"
+    assert any(isinstance(n, ast.Assign) for n in tree.body), "找不到任何常數"

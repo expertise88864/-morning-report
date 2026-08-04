@@ -41,7 +41,7 @@ import evidence_packet as _ep
 #: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
 #: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
 #: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
-METRICS_SCHEMA_VERSION = 4
+METRICS_SCHEMA_VERSION = 5
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -247,6 +247,7 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
     # 「張力沒處理完」「有新聞卻沒分析」這些規則在指標裡整個不會跑,
     # 帳本會顯示 validation_problems=0 而實際橫向沒做完。
     import analysis_depth as _ad
+    import quality_metrics as _qm
     problems = _sch.validate(obj, packet)
     claims = _claims(obj)
     material = [c for c in claims if c.get("materiality") == "high"]
@@ -275,6 +276,11 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
         # 而先前完全量不到 —— 帳本可以顯示 100% 完整而橫向沒做完、
         # 因果鏈只走到「情緒改善」。
         "depth": _ad.depth_metrics(obj, packet),
+        # 第十九輪 P2-3:**存在性指標量不到「有沒有真的做到」。**
+        # 駁回也算 covered、一個實體覆蓋一整天、合法但不相關的證據算
+        # grounded、`asset_id="市場"` 算逐標的分析 —— 四種 false green
+        # 都會讓 dashboard 接近 100% 而信裡仍然只有「偏多、情緒改善」。
+        "quality": _qm.quality_metrics(obj, packet),
         "validation_problems": len(problems),
         "validation_detail": problems[:10],
         "sections_required": len(REQUIRED_SECTIONS),

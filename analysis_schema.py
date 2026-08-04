@@ -37,7 +37,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 7
+ANALYSIS_SCHEMA_VERSION = 8
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -135,7 +135,13 @@ _CLAIM = _obj({
 #: `key_drivers` 刻意**不**帶 ID:回指的對象是稽核,不是重點條目 ——
 #: 兩份清單各自發 ID 的話,`c1` 會有兩個意思。
 _AUDITED_CLAIM = _obj(dict(
-    {"claim_id": _s("本則主張的代號(例:c1);各段用 `claim_ids` 回指")},
+    {"claim_id": _s("本則主張的代號(例:c1);各段用 `claim_ids` 回指"),
+     # 第十九輪 P1-8:**回指只證明「有連上」,不證明「連對了」。**
+     # 立場寫 1-4 週而它靠的主張只談今日盤前,那個回指是形式上的。
+     # `asset_scope` 讓「這條主張在講誰」變成可比對的東西 ——
+     # 泛稱(市場、大盤、類股)不算標的,那等於沒有指定範圍。
+     "asset_scope": _arr(_s(), "這條主張涵蓋哪些標的;整體市場級別寫 "
+                               "`market-wide`,否則給代號/指數/ETF")},
     **_CLAIM["properties"]))
 
 _SCENARIO = _obj({
@@ -284,6 +290,11 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "opposing_ids": _EVIDENCE_IDS,
         "resolution": _s("如何調和;不得只採一邊"),
     })),
+    # 第十九輪 P1-8:**最可能被單獨閱讀的那一段先前完全脫離稽核。**
+    # `executive_summary` 是字串(既有後處理靠它),所以回指放在頂層 ——
+    # 攤平而不是再包一層(schema 深度已貼齊 strict 上限)。
+    "executive_summary_claim_ids": _arr(
+        _s(), "總結那一句靠哪幾條 `claim_audit.claim_id`"),
     "data_gaps": _arr(_obj({
         # 第十八輪 P1-8:**缺口要能對得上是哪一項。** 先前規則只是
         # 「skipped 非空 → data_gaps 不能全空」,於是一筆完全無關的缺口

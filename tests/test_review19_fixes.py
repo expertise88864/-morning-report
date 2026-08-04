@@ -259,9 +259,10 @@ def test_deepen_cannot_swap_out_a_section_claim_mapping():
     「stance 沒有回指任何 claim」會先擋下來,身分檢查根本沒被問到。
     """
     deep = fx.valid_analysis()
-    deep["claim_audit"].append(dict(deep["claim_audit"][0], claim_id="c9",
-                                    statement="另一條主張"))
-    deep["stance"]["claim_ids"] = ["c9"]        # c1 的回指不見了
+    deep["claim_audit"].append(dict(deep["claim_audit"][1], claim_id="c9",
+                                    statement="另一條同尺度的主張"))
+    # c1 的回指不見了,而立場的時間尺度仍然有主張撐著(c2/c9 都是 1-5d)
+    deep["stance"]["claim_ids"] = ["c2", "c9"]
     deep["priced_in"]["claim_ids"] = ["c1", "c9"]
     assert sch.validate(deep, {"n1", "n2"}) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep,

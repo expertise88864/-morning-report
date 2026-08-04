@@ -305,7 +305,10 @@ _FROZEN = {
     # v6(第十八輪 P1-3):`dismissed_events` —— 駁回必分析事件要留理由。
     # v7(第十八輪):`affected_assets`(同一件事對不同標的可以相反)、
     #    `claim_id` + 各段 `claim_ids`(閉合 claim 圖)、`alignment_readings`。
-    "output_schema_version":    (7, "1275aa67d82a988b"),
+    # v8(第十九輪 P1-8):`claim_audit.asset_scope` 與頂層
+    #    `executive_summary_claim_ids` —— 最可能被單獨閱讀的那一段
+    #    先前完全脫離稽核。回指放頂層是**攤平**(深度已貼齊上限)。
+    "output_schema_version":    (8, "a8dcdce7cf4967de"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -325,7 +328,8 @@ _FROZEN = {
     #    `build_luna_bundle(_packet())`,而 payload 內嵌整個 packet,
     #    於是 evidence 加一個欄位就會讓 prompt 契約亮紅。改餵手寫的
     #    固定 packet。依本表既有先例:**改雜湊而不升版**。
-    "primary_profile_version":  (14, "5fda699c1fda0784"),
+    # v15(第十九輪):asset_scope、總結回指、時間尺度要連對。
+    "primary_profile_version":  (15, "02bed531ee31d7a6"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -358,7 +362,9 @@ _FROZEN = {
     #    各段要回指 claim,而高重要性的孤兒主張不算根據。
     # v10(第十九輪):同一則新聞不得寫兩段;標的不得是泛稱或重複;
     #     同向訊號的證據要綁在那一筆上;駁回理由不得是套語。
-    "grounding_version":        (10, "9e4b161a97d6a64e"),
+    # v11(第十九輪 P1-8):回指要**連對**不只是連上 —— 立場的時間
+    #     尺度要有同尺度的主張撐著;asset_scope 不得是泛稱或留空。
+    "grounding_version":        (11, "cb230b37bb90004a"),
 }
 
 

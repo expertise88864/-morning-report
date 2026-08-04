@@ -41,20 +41,24 @@ def _driver(statement: str, **kw) -> dict:
     """「昨夜三大重點」的一條。**沒有 `claim_id`** —— 見 schema。"""
     out = _claim(statement, **kw)
     out.pop("claim_id", None)
+    # `asset_scope` 也只有稽核那一份有 —— 兩份是不同的 schema。
+    out.pop("asset_scope", None)
     return out
 
 
 def _claim(statement: str, *, evidence=("n1",), materiality="high",
-           claim_type="fact", claim_id="c1") -> dict:
+           claim_type="fact", claim_id="c1", horizon="intraday") -> dict:
     """一則合乎 schema 的主張。**必填欄位一個都不能少。**"""
     return {
         "claim_id": claim_id,
+        # **說得出在講誰** —— 泛稱等於沒有指定範圍(第十九輪 P1-8)。
+        "asset_scope": ["2330"],
         "statement": statement,
         "claim_type": claim_type,
         "direction": "bullish",
         "materiality": materiality,
         "confidence": 0.8,
-        "horizon": "intraday",
+        "horizon": horizon,
         "evidence_ids": list(evidence),
         "counterevidence_ids": [],
         "falsification_trigger": "夜盤翻黑",
@@ -69,9 +73,11 @@ def valid_analysis() -> dict:
     """
     return {
         "executive_summary": "今日偏多,留意台積電法說。",
+        # 最可能被單獨閱讀的那一段也要說得出靠哪幾條主張。
+        "executive_summary_claim_ids": ["c1"],
         # 第十八輪:**各段要回指 claim** —— 說不出這一段靠哪幾條主張,
         # 稽核就只是裝飾(而它先前確實是孤島)。
-        "stance": {"claim_ids": ["c1"], "label": "偏多", "score": 6,
+        "stance": {"claim_ids": ["c1", "c2"], "label": "偏多", "score": 6,
                    "confidence": 0.7, "time_horizon": "1-5d",
                    "rationale": "多數訊號同向。"},
         "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
@@ -168,7 +174,13 @@ def valid_analysis() -> dict:
         # 必分析事件全部談到時,這一段是空的(第十八輪 P1-3)。
         "dismissed_events": [],
         "watch_triggers": [],
-        "claim_audit": [_claim("費半走強")],
+        # **參考答案自己要示範它要求的性質**:立場是 1-5d,而第一條主張
+        # 只談今日盤前 —— 新的時間尺度守衛第一次跑就抓到這份 fixture。
+        # 補一條談同一個尺度的主張,而不是把守衛放寬。
+        "claim_audit": [_claim("費半走強"),
+                        _claim("台積電法說指引將決定本週電子權值走勢",
+                               claim_id="c2", claim_type="inference",
+                               horizon="1-5d")],
         "priced_in": {"claim_ids": ["c1"], "already_reflected": ["費半漲幅"],
                       "not_yet_reflected": ["台積電法說指引"],
                       "evidence_ids": ["n1"]},

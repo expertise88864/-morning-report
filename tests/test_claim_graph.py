@@ -159,8 +159,53 @@ def test_an_orphan_high_materiality_claim_is_rejected():
     hits = [p for p in sch.validate(obj, _IDS) if "沒有被任何段落引用" in p]
     assert hits and "c9" in hits[0], hits
     # 被引用之後就合格 —— **規則要的是連上,不是少寫**
-    obj["stance"]["claim_ids"] = ["c1", "c9"]
+    # (c2 是 fixture 裡撐住立場時間尺度的那一條,一併留著)
+    obj["stance"]["claim_ids"] = ["c1", "c2", "c9"]
     assert not [p for p in sch.validate(obj, _IDS) if "沒有被任何段落引用" in p]
+
+
+def test_the_summary_line_cannot_float_free_of_the_audit():
+    """**最可能被單獨閱讀的那一段先前完全脫離稽核。**
+
+    「今日偏多,主因半導體需求強勁」而稽核裡只有「QQQ 昨日上漲」——
+    形式上完全合法,因為總結根本沒有回指的欄位。
+    """
+    obj = fx.valid_analysis()
+    obj["executive_summary_claim_ids"] = []
+    assert [p for p in sch.validate(obj, _IDS)
+            if "executive_summary 沒有回指" in p]
+    obj["executive_summary_claim_ids"] = ["c99"]
+    assert [p for p in sch.validate(obj, _IDS)
+            if "executive_summary_claim_ids 指向不存在" in p]
+
+
+def test_a_reference_must_connect_to_the_right_horizon():
+    """**回指只證明「有連上」,不證明「連對了」。**
+
+    立場寫 1-5 天,而它唯一靠的主張只談今日盤前 —— 那個引用是形式的,
+    而讀者看到的是一個有根據的一週判斷。
+    """
+    obj = fx.valid_analysis()
+    obj["stance"]["claim_ids"] = ["c1"]          # c1 是 intraday
+    obj["stance"]["time_horizon"] = "1-5d"
+    hits = [p for p in sch.validate(obj, _IDS) if "沒有一條談這個尺度" in p]
+    assert hits and "1-5d" in hits[0], hits
+    # 把尺度改成一致就合格 —— **規則要的是連對,不是少寫**
+    obj["stance"]["time_horizon"] = "intraday"
+    assert not [p for p in sch.validate(obj, _IDS) if "沒有一條談這個尺度" in p]
+
+
+def test_a_claim_must_say_who_it_is_about():
+    """`asset_scope` 留空的主張,**回指到任何一段都成立** ——
+    那讓「連對了嗎」這個問題失去意義。"""
+    obj = fx.valid_analysis()
+    obj["claim_audit"][0]["asset_scope"] = []
+    assert [p for p in sch.validate(obj, _IDS) if "沒有 asset_scope" in p]
+    # 泛稱也不算範圍;整體市場級別有自己的寫法
+    obj["claim_audit"][0]["asset_scope"] = ["市場"]
+    assert [p for p in sch.validate(obj, _IDS) if "是泛稱" in p]
+    obj["claim_audit"][0]["asset_scope"] = ["market-wide"]
+    assert not [p for p in sch.validate(obj, _IDS) if "asset_scope" in p]
 
 
 def test_a_claim_without_an_id_cannot_be_pointed_at():

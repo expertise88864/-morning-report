@@ -21,6 +21,24 @@ _BOILERPLATE = ("影響有限", "市場已消化", "已反映", "不具實質影
                 "例行公告", "不重要", "影響輕微", "無關本日", "中性")
 
 
+#: `asset_scope` 不算範圍的泛稱。**與 `analysis_validate._GENERIC_ASSETS`
+#: 是同一份清單**(從那裡取,避免兩份各自漂移 —— 這個 repo 栽過
+#: 「同一個事實兩個名字」)。
+def _generic_scope() -> frozenset:
+    import analysis_validate as _av
+    return _av._GENERIC_ASSETS
+
+
+class _LazyGeneric(frozenset):
+    """延遲取用:`analysis_validate` 會反向 import 本模組。"""
+
+    def __contains__(self, item):        # noqa: D105
+        return item in _generic_scope()
+
+
+_GENERIC_SCOPE = _LazyGeneric()
+
+
 def _is_boilerplate(why: str) -> bool:
     t = why.strip()
     return len(t) <= 15 and any(w in t for w in _BOILERPLATE)
@@ -140,6 +158,17 @@ def _claim_graph_problems(obj) -> list:
             ids.add(cid)
     for cid in sorted(dup):
         out.append(f"claim_audit 有重複的 claim_id {cid!r} —— 回指會指向兩條")
+    # 第十九輪 P1-8:**總結那一句先前完全脫離稽核。** 它是最可能被
+    # 單獨閱讀的一段 —— 「今日偏多,主因半導體需求強勁」而稽核裡只有
+    # 「QQQ 昨日上漲」,形式上完全合法。
+    top = [str(x) for x in (obj.get("executive_summary_claim_ids") or [])]
+    referenced_top = set(top)
+    for x in top:
+        if x not in ids:
+            out.append(f"executive_summary_claim_ids 指向不存在的主張 {x!r}")
+    if claims and not top:
+        out.append("executive_summary 沒有回指任何 claim —— "
+                   "最可能被單獨閱讀的那一段不能脫離稽核")
     sections = ("stance", "priced_in", "portfolio_implications")
     referenced: set = set()
     for sec in sections:
@@ -154,6 +183,30 @@ def _claim_graph_problems(obj) -> list:
         if not cited and claims:
             out.append(f"{sec} 沒有回指任何 claim —— "
                        "說不出這一段靠哪幾條主張,稽核就只是裝飾")
+    referenced |= referenced_top
+    # 第十九輪 P1-8:**回指只證明「有連上」,不證明「連對了」。**
+    # 立場說 1-4 週而它唯一靠的主張只談今日盤前 —— 那個回指是形式的。
+    stance = obj.get("stance") if isinstance(obj.get("stance"), dict) else {}
+    want = str(stance.get("time_horizon") or "")
+    by_id = {str(c.get("claim_id") or ""): c for c in claims}
+    cited = [by_id[x] for x in (stance.get("claim_ids") or [])
+             if str(x) in by_id]
+    if want and cited and not any(
+            str(c.get("horizon") or "") == want for c in cited):
+        out.append(
+            f"stance 的時間尺度是 {want},而它引用的主張沒有一條談這個尺度"
+            f"({sorted({str(c.get('horizon')) for c in cited})})")
+    # `asset_scope` 要說得出在講誰 —— 泛稱等於沒有指定範圍。
+    for c in claims:
+        cid = str(c.get("claim_id") or "")
+        scope = [str(x).strip() for x in (c.get("asset_scope") or []) if str(x).strip()]
+        if not scope:
+            out.append(f"claim_audit[{cid}] 沒有 asset_scope —— "
+                       "說不出在講誰的主張,回指到任何一段都成立")
+        for a in scope:
+            if a != "market-wide" and a in _GENERIC_SCOPE:
+                out.append(f"claim_audit[{cid}] 的 asset_scope {a!r} 是泛稱 ——"
+                           "整體市場級別請寫 `market-wide`")
     # **孤兒主張**:寫進稽核卻沒有任何一段用到。它不是根據,是配菜。
     for c in claims:
         cid = str(c.get("claim_id") or "")

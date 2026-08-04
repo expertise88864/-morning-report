@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 14
+LUNA_XHIGH_VERSION = 15
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -108,9 +108,13 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   合起來說明什麼、第二個**多告訴了你什麼**、它們會不會其實是同一個
   底層驅動(那時把兩者都算進立場就是重複計權)。
 - **每一段都要說得出它靠哪幾條主張。** `claim_audit` 的每一則給一個
-  `claim_id`,`stance` / `priced_in` / `portfolio_implications` 用
-  `claim_ids` 回指。**寫進稽核卻沒有任何一段用到的高重要性主張,
-  不是根據,是配菜。**
+  `claim_id` 與 `asset_scope`(在講誰:代號、指數、ETF;整體市場級別
+  寫 `market-wide`,**泛稱不算範圍**),再由 `executive_summary_claim_ids`
+  以及 `stance` / `priced_in` / `portfolio_implications` 的 `claim_ids`
+  回指。**寫進稽核卻沒有任何一段用到的高重要性主張,不是根據,是配菜。**
+  總結那一句最可能被單獨閱讀,它也要回指。
+- **回指要連對,不只是連上。** 立場寫 1-4 週,就要有一條談 1-4 週的
+  主張撐著 —— 全部靠今日盤前的主張撐一個一個月的判斷,那是形式上的引用。
 - **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**
   一個事件群只寫**一個**分析單位(挑資訊最完整的那則當 `source_item_id`),
   不要為同一件事寫兩段 —— 那不是更深,是同一條因果鏈改寫兩次。

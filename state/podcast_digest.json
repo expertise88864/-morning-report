@@ -4945,6 +4945,30 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73436025",
+        "title": "Palantir lifts outlook after AI surge",
+        "published": "Tue, 04 Aug 2026 12:15:03 +0000",
+        "processed_at": "2026-08-04T15:45:20Z",
+        "digest": {
+          "summary_points": [
+            "Palantir (PLTR) 第二季營收年增 93% 至 19.4 億美元,EPS 0.41 美元優於預期,並上調全年營收展望至 81.5-81.6 億美元;Seeking Alpha 分析師認為其獲利率正逼近微軟,有望成為全球最賺錢的軟體公司。",
+            "主持人指出市場對超大規模雲端業者 AI 資本支出的擔憂持續消退;但 Google DeepMind 策略長坦言目前 AI 收入還撐不起資本支出,長期可望透過「遞歸自我改進」轉型,並以蒸氣機為喻,暗示不應看空 AI 長期方向。"
+          ],
+          "tickers": [
+            {
+              "name": "Palantir Technologies",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 財報超預期,營收年增 93%,上調全年展望,分析師看好其獲利率逼近微軟。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Steam engines were used to create the next steam engine."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73395108",
         "title": "Peloton's costly detour",
         "published": "Mon, 03 Aug 2026 16:46:11 +0000",
@@ -5422,61 +5446,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "The price action in oil this morning clearly reflects the market's desperation for positive news."
-        },
-        "shown_at": "2026-07-27T22:56:38Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73191023",
-        "title": "A fine mess for Waymo",
-        "published": "Mon, 27 Jul 2026 10:47:03 +0000",
-        "processed_at": "2026-07-27T10:55:35Z",
-        "digest": {
-          "summary_points": [
-            "NVIDIA 計劃投資 10 億美元，取得韓國 NAVER 4.5% 的股權，此投資與擴建 NAVER 的 AI 工廠有關，該工廠目標在 2028 年達到 200 百萬瓦，並使用 NVIDIA 的 Blackwell 和 Vera Rubin 平台。",
-            "聯合航空與達美航空去年曾進行初步合併談判，但最終未取得進展；若合併，兩家公司去年佔據航空業超過 90% 的利潤。",
-            "美股期指盤前上漲，原油價格下跌 8% 至每桶 83 美元，布蘭特原油下跌 9% 至每桶 89 美元，英國 FTSE 100 指數上漲 0.4%，德國 DAX 指數上漲 1.6%。",
-            "Fort Bio Sciences (FBRX) 股價大漲 39%，因 Arjen X 同意以每股 77 美元現金收購該公司，交易估值 22 億美元。"
-          ],
-          "tickers": [
-            {
-              "name": "NAVER",
-              "code": "",
-              "market": "KR",
-              "direction": "bullish",
-              "reason": "股價因 NVIDIA 投資 10 億美元取得 4.5% 股權而大漲約 10%。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "投資 10 億美元參與 NAVER 的 AI 工廠擴建。"
-            },
-            {
-              "name": "United Airlines",
-              "code": "UAL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "曾與達美航空探索合併但未成功。"
-            },
-            {
-              "name": "Delta Air Lines",
-              "code": "DAL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "收到聯合航空的合併提議但未進一步推進。"
-            },
-            {
-              "name": "Fort Bio Sciences",
-              "code": "FBRX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "被 Arjen X 以每股 77 美元收購，股價上漲 39%。"
-            }
-          ],
-          "market_view": "美股期指盤前上漲；原油價格下跌；歐洲指數上漲。",
-          "action_view": "",
-          "notable_quote": "NVIDIA announced plans to invest $1 billion for a 4.5 percent stake in the internet company."
         },
         "shown_at": "2026-07-27T22:56:38Z"
       }

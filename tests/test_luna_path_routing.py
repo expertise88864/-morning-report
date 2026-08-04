@@ -44,8 +44,13 @@ _GOOD = fx.valid_analysis()
 #: (`_ARGS` 只給 QQQ 的收盤價,沒有漲跌幅、沒有期貨部位、沒有廣度)。
 #: 新規則要求「沒跑成的檢查要揭露」—— 於是這裡必須有一筆缺口。
 #: 這正是先前傳 ID 集合時**在生產從來不會發生**的事。
-_GOOD["data_gaps"] = [{"what_is_missing": "美股漲跌幅與台指期籌碼",
-                       "impact_on_conclusions": "外部定價與本地籌碼的對照今天做不了"}]
+#: 第十八輪 P1-8 再一次:規則從「有寫就好」變成**逐項對得上**,
+#: 所以這裡要列出這份 packet 真正產生的四個 `gap_id`。
+_GOOD["data_gaps"] = [
+    {"gap_id": g, "what_is_missing": "這項檢查需要的行情欄位",
+     "impact_on_conclusions": "今天這個面向沒有答案"}
+    for g in ("gap:us_vs_taifex", "gap:prediction_vs_breadth",
+              "gap:sector_internal_divergence", "gap:rates_vs_tech")]
 _NEWS = fx.news()
 
 _ARGS = ({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
@@ -426,6 +431,10 @@ def test_the_production_path_actually_attaches_the_metrics(luna_on, monkeypatch)
 #: 「語意根據」那一關擋不擋得住,而不是讓它在形狀那關就先被擋掉 ——
 #: 兩關混在一起就分不出誰在作用(第十三輪 P2-3)。
 _UNSUPPORTED = fx.ungrounded_analysis()
+#: **一個反例只違反一條規則,才測得到那一條。** 第十八輪之後,
+#: 沒揭露 gap 與沒分析新聞會先跳出來,而這條測的是「沒有根據」。
+_UNSUPPORTED["data_gaps"] = list(_GOOD["data_gaps"])
+_UNSUPPORTED["top_news_analysis"] = list(_GOOD["top_news_analysis"])
 
 
 def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):

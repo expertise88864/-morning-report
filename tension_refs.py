@@ -80,3 +80,20 @@ def required_tension_ids(detected: Optional[dict]) -> set:
             for it in ((detected or {}).get("items") or [])
             if isinstance(it, dict) and it.get("kind") == "tension"
             and it.get("usable_for_inference")}
+
+
+def required_gap_ids(detected: Optional[dict]) -> dict:
+    """`{gap_id: 為什麼今天這一項沒有答案}` —— **逐項,不是一個總數**。
+
+    第十八輪 P1-8:先前驗證器只問「data_gaps 是不是空的」。於是今天
+    利率×科技、開盤預測×廣度、產業分歧三項全部跑不成,而模型寫一句
+    「缺某公司的資本支出金額」就通過了 —— 收件人會以為那三項查過了。
+    """
+    d = detected if isinstance(detected, dict) else {}
+    out = {name: "今天缺少這項檢查需要的行情欄位,沒有跑成"
+           for name in (d.get("unavailable") or [])}
+    for it in (d.get("items") or []):
+        if isinstance(it, dict) and not it.get("usable_for_inference"):
+            out[str(it.get("tension_id") or "")] = (
+                str(it.get("caveat") or "") or "資料不同步,不能拿來推論")
+    return {f"gap:{k}": v for k, v in out.items() if k}

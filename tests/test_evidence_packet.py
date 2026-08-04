@@ -118,7 +118,14 @@ def test_every_news_item_has_a_stable_id_that_claims_can_point_at():
     # 數字背書 —— 那比留空更糟(看起來有根據)。
     reg = ep.evidence_ids(packet)
     assert set(ids) <= reg, "新聞 ID 不在 registry 裡"
-    assert all(x.startswith(("market:", "tension:")) for x in reg - set(ids)),         f"registry 出現既不是新聞、也不是 market/tension 的 ID:{reg - set(ids)}"
+    # 第十八輪 P1-1:命名空間擴到整個 packet —— 先前
+    # `valuation` / `prediction` / `calibration` / `universe` / `portfolio` /
+    # `quality` 一個 ID 都沒有,而「00662 估值偏高」「模型校準變差」
+    # 正是最需要根據的判斷。**判準是白名單,不是「隨便什麼前綴都行」** ——
+    # 沒有前綴的裸字串仍然不得出現(那會讓引用檢查失去作用)。
+    ns = ("market:", "tension:", "derived:", "valuation:", "prediction:",
+          "universe:", "calibration:", "portfolio:", "quality:")
+    assert all(x.startswith(ns) for x in reg - set(ids)),         f"registry 出現不屬於任何命名空間的 ID:{sorted(reg - set(ids))[:5]}"
 
     # 同一則新聞,不論位置,ID 都一樣
     reordered = _build(news=list(reversed(_NEWS)))

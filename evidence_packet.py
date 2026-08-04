@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 5
+EVIDENCE_SCHEMA_VERSION = 6
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -229,6 +229,11 @@ EVIDENCE_QUOTE_KEYS = (
     "MODEL_WALK_FORWARD", "MODEL_MONITORING", "MIDTERM", "ABSORPTION",
     "DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS", "HEALTH_WARNINGS",
     "ALERTS", "LAST_TRADING_SESSION", "HISTORY", "STANCE_PY",
+    # 第十八輪 P1-8:**新鮮度判準本身也要進 packet。** 先前
+    # `signal_tensions` 讀原始 quotes 看得到美股休市,而 registry 只看得到
+    # packet —— 於是同一天「張力標成不可用」而「`market:QQQ.change_pct`
+    # 標成可用」。兩個真相來源不一致時,下游信哪一個是隨機的。
+    "US_HOLIDAY",
 )
 
 
@@ -265,6 +270,12 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         # —— 產業名與領頭股名來自外部 API,要跟整棵樹一起過消毒器。
         "signal_tensions": _tension.detect(quotes or {}),
     }
+    # 第十八輪 P1-8:**模型要知道今天有哪幾項沒有答案。** 不給清單而
+    # 要求逐項揭露,等於要它猜驗證器在想什麼 —— 那種規則只會逼出
+    # 「什麼都寫一點」的自保式輸出。
+    import tension_refs as _tr
+    packet["required_disclosures"] = _tr.required_gap_ids(
+        packet["signal_tensions"])
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。
@@ -291,6 +302,16 @@ def coverage(packet: dict, news: Optional[list]) -> dict:
             "rate": round(kept / avail, 3) if avail else None}
 
 
+def evidence_meta(packet: dict) -> dict:
+    """每個 ID 的 `{value, unit, as_of, session, source, quality, 可否推論}`。
+
+    第十八輪 P1-2:先前 registry 只是一串合法字串,回答得了「這個名字
+    存不存在」,回答不了「引用的是**今天的**資料嗎」。
+    """
+    import evidence_registry as _reg
+    return _reg.registry(packet)
+
+
 def evidence_ids(packet: dict) -> set:
     """packet 裡所有可被 claim 回指的證據 ID。
 
@@ -302,17 +323,21 @@ def evidence_ids(packet: dict) -> set:
     測試 fixture 自己就示範了後者)。改成 typed:`n1` / `market:QQQ.change_pct`
     / `tension:t_us_vs_taifex`,而「引用不存在的東西」仍然抓得出來。
     """
-    out = {str(n.get("source_item_id")) for n in (packet.get("news") or [])
-           if n.get("source_item_id")}
+    # 第十八輪 P1-1:**改由證據圖推導。** 先前只涵蓋新聞、張力與 market,
+    # 而 `valuation_00662` / `predictions_2330` / `calibration` /
+    # `tw_universe` / `portfolio` / `coverage` 一個 ID 都沒有 ——
+    # 模型要談 00662 估值或模型校準時,只能不引用或拿新聞去頂。
+    # **證據圖是唯一的真相來源。** 先前這裡把三個來源聯集起來,
+    # 於是「哪些東西引用得到」由三套規則共同決定,而它們互相不知道
+    # 對方的存在 —— 幽靈路徑正是從那個縫隙進來的。
+    out = set(evidence_meta(packet))
     mkt = market_refs(packet.get("market"))
     # 第十八輪 P1-4:**張力給什麼 ref、這裡就收什麼**,於是
     # `market:MACRO.10Y.change_bps`(packet 裡根本沒有這個 leaf)
     # 靜靜變成合法引用 —— 引用檢查在那一刻只證明「名字合法」,
     # 不再證明「引用了真的存在的資料」。核對責任在這裡:packet
     # 才知道樹長什麼樣。**幽靈路徑不進 registry**(而且說得出是哪些)。
-    out |= {r for r in _tension.evidence_refs(packet.get("signal_tensions"))
-            if not str(r).startswith("market:") or r in mkt}
-    out |= mkt
+    _ = mkt          # 幽靈路徑的核對在 `phantom_market_refs`
     return out
 
 

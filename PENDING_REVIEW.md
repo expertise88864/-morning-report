@@ -465,6 +465,62 @@ Luna profile v11(prompt 開頭寫「帶上 `source_item_id`」而後段才說行
 E 階段順序不計 / F 幽靈路徑照收 / G 傳導未完成不揭露 /
 H 主閘門退回吃 ID 集合)。
 
+### 批#88 `(下一個 commit)` —— 第十八輪續:證據圖(P1-1/P1-2/P1-8)
+上一批留下的結構性缺口,做掉三項。
+
+**P1-1 registry 只覆蓋 packet 的一部分**:先前只有新聞、張力、market。
+於是模型要談「00662 估值偏高」「2330 開盤預測為正」「模型校準最近變差」
+「持倉曝險集中」「台股內部廣度擴散」時,**沒有任何合法的引用對象** ——
+只能不引用(被擋)或拿一則新聞去頂(形式合法、語意錯誤)。
+新增九個命名空間:`n*` / `market:` / `tension:` / `derived:` /
+`valuation:` / `prediction:` / `universe:` / `calibration:` /
+`portfolio:` / `quality:`。持股仍然只有彙總曝險(入口在 `portfolio_summary`,
+沒有代號也沒有股數)。
+
+**P1-2 registry 只是一串合法字串**:回答得了「這個名字存不存在」,
+回答不了「引用的是**今天的**資料嗎」。新模組 `evidence_registry.py` 讓
+每個 ID 帶 `{value, unit, as_of, session, source, quality,
+usable_for_inference, why_unusable}`。**單位推不出來就留空** ——
+猜一個比留空更糟,下游會拿它去格式化。
+用途立刻兌現:高重要性判斷**不得只靠**標為不同步的證據(談「美股沒開
+所以參考性下降」仍然可以引用它,禁止的是只靠它)。
+
+**同批修掉一個兩個真相來源的不一致**:`US_HOLIDAY` 先前沒被帶進 packet
+—— `signal_tensions` 讀原始 quotes 看得到,registry 只看 packet 看不到。
+於是同一天「張力標成不可用」而「`market:QQQ.change_pct` 標成可用」。
+`US_HOLIDAY` 進 `EVIDENCE_QUOTE_KEYS`,兩邊用同一個判準。
+
+**P1-8 逐 gap 揭露**:先前規則是「skipped 非空 → data_gaps 不能全空」,
+於是三項橫向檢查全部沒跑成、而模型寫一句「缺某公司的資本支出金額」
+就過關 —— 收件人會以為那三項查過了。改成穩定的 `gap:*` 代號:
+packet 給 `required_disclosures`(**不給清單而要求逐項揭露,等於要它猜
+驗證器在想什麼**),schema 的 `data_gaps[]` 加 `gap_id`,驗證器逐項比對,
+並擋回填不存在的缺口(`gap:other` 是模型自己發現的缺口用的)。
+
+**證據圖成為唯一的真相來源**:`evidence_ids()` 先前把三個來源聯集,
+「哪些東西引用得到」由三套互不知道對方存在的規則共同決定 ——
+幽靈路徑正是從那個縫隙進來的。現在只從 registry 推導。
+順帶訂了字串葉節點 60 字上限:**標籤是證據,散文不是**
+(`MARKET_REGIME.label = "risk-on"` 要引用得到;公報全文引用它說明不了
+任何具體事實,只會讓引用檢查變成橡皮圖章)。
+
+**版本鏈**:EVIDENCE v6 / SCHEMA v5 / GROUNDING v7 / Luna profile v12。
+
+**外審應特別看的地方**:
+1. 字串葉節點 60 字、遞迴深度 5、`_US_BLOCKS` 六個區塊 —— **都是我訂的**,
+   無 repo 出處。太寬讓引用檢查失去作用,太窄逼模型引錯。
+2. 「高重要性不得只靠不同步的證據」目前只檢查 `claim_audit`,
+   沒有檢查 `key_drivers` 與 `mechanism_steps` —— 要不要一併?
+3. `quality:` 命名空間讓模型引用得到本報自己的涵蓋率。這會不會誘發
+   「用資料涵蓋度當市場論據」這種奇怪的引用?
+4. `portfolio:` 只有百分比與檔數,但**它進了 prompt** ——
+   隱私標準這樣夠嗎?(彙總入口在 `portfolio_summary`,已有測試盯著)
+5. 五個突變全紅過;其中「散文也能當證據」第一次沒紅 —— 補測試後才紅。
+
+**仍未做**:P1-3 required-news coverage(新聞截斷仍依 grade+時間,
+不依 materiality)、P1-7 alignment 結構化、driver clusters、
+asset-specific impact、closed claim graph。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

@@ -38,6 +38,18 @@ def _registry(evidence_ids):
     return set(evidence_ids or ()), None
 
 
+def _unusable(packet) -> dict:
+    """今天**不能拿來當方向證據**的 ID(第十八輪 P1-2 的用途)。
+
+    有 metadata 才問得出這個問題 —— 只有一串合法字串時,
+    「引用了昨天的美股數字」與「引用了今天的」長得一模一樣。
+    """
+    if not isinstance(packet, dict):
+        return {}
+    import evidence_registry as _reg
+    return _reg.unusable_ids(packet)
+
+
 def validate(obj, evidence_ids) -> list:
     """回傳問題清單(空 = 通過)。**不拋例外**:呼叫端決定要修還是降級。
 
@@ -186,14 +198,33 @@ def validate(obj, evidence_ids) -> list:
                         " —— 要引用該張力本身,或兩側各至少一個")
         # 第十七輪 P2-2:**跑不成的檢查要揭露。** stale/unavailable 代表
         # 今天某個橫向面向根本沒查 —— 不寫進 data_gaps,收件人會以為查過了。
-        ts = packet.get("signal_tensions") or {}
-        skipped = list(ts.get("unavailable") or []) + [
-            i.get("tension_id") for i in (ts.get("items") or [])
-            if isinstance(i, dict) and not i.get("usable_for_inference")]
-        if skipped and not (obj.get("data_gaps") or []):
+        # 第十八輪 P1-8:**逐項對得上,不是「有寫就好」。** 先前只要
+        # data_gaps 非空就通過,於是三項橫向檢查全部沒跑成、而模型寫一句
+        # 「缺某公司的資本支出金額」就過關 —— 收件人會以為那三項查過了。
+        import tension_refs as _tr
+        need_gaps = _tr.required_gap_ids(packet.get("signal_tensions"))
+        told = {str((g or {}).get("gap_id") or "")
+                for g in (obj.get("data_gaps") or []) if isinstance(g, dict)}
+        for gid in sorted(set(need_gaps) - told):
             problems.append(
-                f"今天有 {len(skipped)} 項橫向檢查沒跑成或不可用"
-                f"({skipped[:3]}),data_gaps 卻是空的 —— 要揭露")
+                f"{gid} 今天沒有答案({need_gaps[gid]}),data_gaps 沒有揭露它")
+        for gid in sorted(told - set(need_gaps) - {"gap:other", ""}):
+            problems.append(
+                f"data_gaps 宣稱 {gid!r},而今天沒有這一項 —— "
+                "自己發現的缺口請填 `gap:other`")
+        # **不同步的資料不得單獨支撐今天的方向判斷。** 談「美股沒開所以
+        # 參考性下降」需要引用它,所以不禁止引用 —— 禁止的是**只**靠它。
+        stale = _unusable(packet)
+        if stale:
+            for i, c in enumerate(obj.get("claim_audit") or []):
+                if not isinstance(c, dict) or c.get("materiality") != "high":
+                    continue
+                cited = [str(x) for x in (c.get("evidence_ids") or [])]
+                if cited and all(x in stale for x in cited):
+                    problems.append(
+                        f"claim_audit[{i}] 的證據今天全部不同步"
+                        f"({cited[:2]}:{stale[cited[0]]})—— "
+                        "高重要性判斷不能只靠不同步的資料")
         hi = [n for n in news if n.get("materiality") == "high"]
         if not news and (packet.get("news") or []):
             problems.append("有新聞可分析,top_news_analysis 卻是空的")

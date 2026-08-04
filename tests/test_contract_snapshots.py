@@ -267,12 +267,17 @@ _FROZEN = {
     #     內建了「折現率下行有利成長股」這條假說);衍生值改掛 `derived:`
     #     並帶來源 —— `market:MACRO.10Y.change_bps` 那個 packet 裡不存在的
     #     路徑不再是合法引用。
-    "evidence_schema_version":  (5, "b4e2cfe6d09b4b7f"),
+    # v6(第十八輪 P1-1/P1-2/P1-8):registry 擴到整個 packet 並帶 metadata
+    #    (值/單位/時間/來源/能不能推論);`US_HOLIDAY` 進 packet ——
+    #    先前張力看得到美股休市而 registry 看不到,同一天兩個真相;
+    #    新增 `required_disclosures`(今天哪幾項沒有答案)。
+    "evidence_schema_version":  (6, "1bb7f47956305cf2"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
     # v3(第十六輪 P2-2):`addressed_tension_ids` + `priced_in.evidence_ids`。
-    "output_schema_version":    (4, "f6b7a182d42938b1"),
+    # v5(第十八輪 P1-8):`data_gaps[].gap_id` —— 缺口要對得上是哪一項。
+    "output_schema_version":    (5, "57e9fb1d07d7842a"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -283,7 +288,9 @@ _FROZEN = {
     # v9(第十六輪):張力純觀測、typed 引用 ID、回填 addressed_tension_ids。
     # v11(第十八輪):證據引用改口徑 —— 先前開頭寫「帶上支持它的
     #      `source_item_id`」而後段才說行情用 `market:*`,前後矛盾。
-    "primary_profile_version":  (11, "cec11a65103f0708"),
+    # v12(第十八輪):九個命名空間的用法、逐項揭露 `required_disclosures`、
+    #      不同步的欄位不得單獨支撐高重要性判斷。
+    "primary_profile_version":  (12, "7e8ce3a2a8caad60"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -305,7 +312,10 @@ _FROZEN = {
     # v6(第十八輪):接受規則加三條 —— 重複的張力調和、調和的證據沒有
     #    涵蓋兩側、以及**主閘門改吃 packet**(先前生產傳 ID 集合,
     #    packet-aware 的規則一條都沒跑過)。探針同批改成兩種形狀都量。
-    "grounding_version":        (6, "778f4eca808200d8"),
+    # v7(第十八輪 P1-8/P1-2):逐 gap 揭露(先前只要 data_gaps 非空就過,
+    #    於是一筆無關的缺口能替所有跑不成的檢查過關);高重要性判斷
+    #    不得只靠標為不同步的證據。
+    "grounding_version":        (7, "5baaf60f4bd40b55"),
 }
 
 

@@ -136,6 +136,7 @@ def valid_analysis() -> dict:
             "tension_resolutions": [],
             "evidence_ids": ["n1"]},
         "contradictions": [],
+        # `gap_id` 是必填欄位(第十八輪 P1-8);沒有缺口時整個陣列為空。
         "data_gaps": [],
         "watch_triggers": [],
         "claim_audit": [_claim("費半走強")],

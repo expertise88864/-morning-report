@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 11
+LUNA_XHIGH_VERSION = 12
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -87,9 +87,19 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 
 # 證據規則
 - 你只能使用 EVIDENCE 區塊裡的內容。任何不在 EVIDENCE 裡的外部事實一律不得陳述。
-- 每一個重大結論都要在 `evidence_ids` 帶上支持它的 **typed ID**:
-  新聞用 `n1`、行情用 `market:*`、張力用 `tension:*`、
-  衍生值用 `derived:*`。**不要拿新聞 ID 替行情數字背書。**
+- 每一個重大結論都要在 `evidence_ids` 帶上支持它的 **typed ID**。
+  命名空間就是「這是哪一種證據」,**不要拿新聞 ID 替行情數字背書**:
+  `n1`(新聞)、`market:QQQ.change_pct`(行情)、`tension:*`(訊號張力)、
+  `derived:*`(本報算出來的衍生值)、`valuation:*`(00662 估值)、
+  `prediction:*`(2330 開盤預測)、`calibration:*`(模型校準)、
+  `universe:*`(台股個股)、`portfolio:*`(彙總曝險)、
+  `quality:*`(本報的資料涵蓋度)。
+- **EVIDENCE 的 `required_disclosures` 列出今天沒有答案的項目。**
+  每一個都要在 `data_gaps` 用同一個 `gap_id` 寫出來:缺什麼、
+  它讓哪些結論說不準。自己另外發現的缺口填 `gap:other`。
+  **跑不成的檢查不揭露,收件人會以為查過了。**
+- EVIDENCE 裡標了「不同步」的欄位(例如美股休市那天的美股數字)
+  仍然可以談,但**高重要性的判斷不能只靠它**。
 - 引用不存在的 ID 比不引用更嚴重:它讓錯誤看起來有根據。寧可留空陣列。
 - EVIDENCE 裡標為 `official: true` 或 `source_grade: A` 的來源權重高於其他來源。
 - `truncation` 欄位說明有多少證據沒有進來。它不為零時，請在 `data_gaps` 說明。

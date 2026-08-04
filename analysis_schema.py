@@ -37,7 +37,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 4
+ANALYSIS_SCHEMA_VERSION = 5
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -248,6 +248,10 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "resolution": _s("如何調和;不得只採一邊"),
     })),
     "data_gaps": _arr(_obj({
+        # 第十八輪 P1-8:**缺口要能對得上是哪一項。** 先前規則只是
+        # 「skipped 非空 → data_gaps 不能全空」,於是一筆完全無關的缺口
+        # (「缺某公司的資本支出金額」)就能替今天所有跑不成的橫向檢查過關。
+        "gap_id": _s("本報給的缺口代號(`gap:*`);自己發現的缺口填 `gap:other`"),
         "what_is_missing": _s(),
         "impact_on_conclusions": _s(),
     }), "資料不足要說出來,不得用模糊語句掩蓋"),

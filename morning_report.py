@@ -13990,8 +13990,11 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                     # **第二版要真的比較好才取代第一版。** 只驗合法性的話,
                     # 「修好深度、改壞別處」會被當成改善 —— 那是我上一批
                     # 自己寫進去的洞。
+                    # **傳 packet 不是 ids**(第十七輪 P1-8):只傳 ID 集合的話,
+                    # packet-aware 的規則(必須處理的張力、有新聞卻沒分析)
+                    # 在選優裡整個不會跑。
                     _ok, _why = _av.deepen_is_an_improvement(
-                        _kept[0], obj, evidence_ids=ids)
+                        _kept[0], obj, evidence_ids=packet)
                     _RUN_MANIFEST["llm"]["deepen_verdict"] = _why
                     if not _ok:
                         print(f"[llm] 加深後不算改善({_why}),沿用第一版",

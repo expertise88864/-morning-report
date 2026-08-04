@@ -37,7 +37,11 @@ import evidence_packet as _ep
 
 #: v2(2026-08-04):加 `prose_depth` —— 量「有多少是方向形容詞、
 #: 有多少說得出量級」。舊列沒有這一格,不可與新列直接比。
-METRICS_SCHEMA_VERSION = 2
+#: v3(第十七輪 P1-9):**指標先前用 ID 集合驗證,看不到 packet-aware 規則**
+#: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
+#: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
+#: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
+METRICS_SCHEMA_VERSION = 3
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -184,10 +188,13 @@ def text_metrics(text: str, packet: dict, *, stance: Optional[dict] = None) -> d
 # ---------------------------------------------------------------- 僅 Luna
 
 #: 信件需要的段落。缺一塊 renderer 就少排一塊,而那不會有任何錯誤訊息。
+#: 第十七輪 P1-9:`cross_market_synthesis` 與 `priced_in` 先前不在這裡 ——
+#: 於是「橫向綜合完全消失」的那天,完整度仍然是 100%。
 REQUIRED_SECTIONS = (
     "executive_summary", "stance", "key_drivers", "scenario_tree",
     "taiwan_market", "global_market", "portfolio_implications",
     "top_news_analysis", "data_gaps", "watch_triggers", "claim_audit",
+    "cross_market_synthesis", "priced_in",
 )
 
 
@@ -204,8 +211,11 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
     if not isinstance(obj, dict):
         return {"schema_version": METRICS_SCHEMA_VERSION, "parsed": False}
 
-    ids = _ep.evidence_ids(packet)
-    problems = _sch.validate(obj, ids)
+    # **傳 packet 不是 ID 集合**(第十七輪 P1-9):傳集合的話,
+    # 「張力沒處理完」「有新聞卻沒分析」這些規則在指標裡整個不會跑,
+    # 帳本會顯示 validation_problems=0 而實際橫向沒做完。
+    import analysis_depth as _ad
+    problems = _sch.validate(obj, packet)
     claims = _claims(obj)
     material = [c for c in claims if c.get("materiality") == "high"]
     factual = [c for c in claims if c.get("claim_type") in ("fact", "inference")]
@@ -229,6 +239,10 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
     return {
         "schema_version": METRICS_SCHEMA_VERSION,
         "parsed": True,
+        # 第十七輪 P1-9:深度指標。**十配對要回答的正是這個**,
+        # 而先前完全量不到 —— 帳本可以顯示 100% 完整而橫向沒做完、
+        # 因果鏈只走到「情緒改善」。
+        "depth": _ad.depth_metrics(obj, packet),
         "validation_problems": len(problems),
         "validation_detail": problems[:10],
         "sections_required": len(REQUIRED_SECTIONS),

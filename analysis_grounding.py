@@ -30,7 +30,9 @@ from __future__ import annotations
 #: 沒有根據的橫向綜合會照樣寄出,而它正是最容易被寫成漂亮空話的一段。
 #: v3(第十五輪):接受政策多了「合法但淺 → 加深一次」(修補時機變了
 #: 就是接受行為變了)。v4(P2-4):`priced_in` 也要帶證據。
-GROUNDING_VERSION = 4
+#: v5(第十七輪):接受政策加「張力要有逐筆 resolution」與「鏈要走到
+#: 財務層」的深度提示 —— 修補時機再次改變。
+GROUNDING_VERSION = 5
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

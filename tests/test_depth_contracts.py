@@ -39,8 +39,12 @@ def test_an_unaddressed_tension_is_rejected():
     pk = _packet_with_tensions()
     obj = fx.valid_analysis()
     assert [p for p in sch.validate(obj, pk) if "訊號張力" in p], "沒處理卻通過"
-    obj["cross_market_synthesis"]["addressed_tension_ids"] = sorted(
-        st.required_tension_ids(pk.get("signal_tensions")))
+    obj["cross_market_synthesis"]["tension_resolutions"] = [
+        {"tension_id": t, "resolution": "外部定價先反映在權值開盤",
+         "dominant_side": "left", "why": "開盤前只有美股已定價",
+         "decision_rule": "現貨量能與期貨空單是否回補",
+         "evidence_ids": ["n1"]}
+        for t in sorted(st.required_tension_ids(pk.get("signal_tensions")))]
     assert not [p for p in sch.validate(obj, pk) if "訊號張力" in p]
 
 
@@ -48,7 +52,10 @@ def test_a_fabricated_tension_id_is_rejected():
     """反向:**回填不存在的 ID 比不回填更糟** —— 它讓「處理過」看起來成立。"""
     pk = _packet_with_tensions()
     obj = fx.valid_analysis()
-    obj["cross_market_synthesis"]["addressed_tension_ids"] = ["tension:t_bogus"]
+    obj["cross_market_synthesis"]["tension_resolutions"] = [
+        {"tension_id": "tension:t_bogus", "resolution": "x",
+         "dominant_side": "left", "why": "y", "decision_rule": "z",
+         "evidence_ids": []}]
     assert [p for p in sch.validate(obj, pk) if "不得回填不存在" in p]
 
 
@@ -133,8 +140,10 @@ def test_losing_a_news_item_is_not_an_improvement():
     fewer = fx.valid_analysis()
     fewer["top_news_analysis"] = fewer["top_news_analysis"][1:]
     ok, why = ad.deepen_is_an_improvement(shallow, fewer, evidence_ids=_IDS)
-    assert not ok and "退步" in why, why
-    assert "news_items 2→1" in why, why
+    # **身分檢查比數量檢查先攔到**(第十七輪 P1-8):數量只知道「少了一則」,
+    # 身分說得出**少的是哪一則** —— 而「換掉一則」數量根本不會變。
+    assert not ok and "弄丟了分析過的新聞" in why, why
+    assert "n1" in why, why
 
 
 def test_deleting_data_gaps_is_not_an_improvement():
@@ -148,7 +157,8 @@ def test_deleting_data_gaps_is_not_an_improvement():
         shallow["top_news_analysis"][0]["mechanism_steps"][:1]
     ok, why = ad.deepen_is_an_improvement(
         shallow, fx.valid_analysis(), evidence_ids=_IDS)
-    assert not ok and "data_gaps" in why, why
+    assert not ok and "弄丟了資料缺口" in why, why
+    assert "資本支出金額" in why, "要說得出弄丟的是哪一個缺口"
 
 
 def test_an_illegal_second_version_is_rejected():
@@ -190,3 +200,38 @@ def test_the_production_loop_uses_dominance_selection():
     assert "_av.deepen_is_an_improvement(" in body, "沒有比較兩版"
     assert "previous=obj" in body, "加深時沒有附上前一版"
     assert "deepen_verdict" in body, "判定結果沒有進 manifest"
+
+
+def test_an_empty_resolution_does_not_count_as_handled():
+    """**P1-3 的另一半:填了 ID 但欄位是空的,等於只點名沒有處理。**
+
+    突變驗證抓到的:把「resolution/why/decision_rule 不得為空」拿掉之後
+    全套照樣綠 —— 沒有人守這一條。
+    """
+    pk = _packet_with_tensions()
+    obj = fx.valid_analysis()
+    obj["cross_market_synthesis"]["tension_resolutions"] = [
+        {"tension_id": t, "resolution": "", "dominant_side": "left",
+         "why": "", "decision_rule": "", "evidence_ids": []}
+        for t in sorted(st.required_tension_ids(pk.get("signal_tensions")))]
+    hits = [p for p in sch.validate(obj, pk) if "等於只點名沒有處理" in p]
+    assert hits, "空的 resolution 被當成處理過了"
+    assert any("resolution" in h for h in hits), "要指出是哪些欄位空的"
+
+
+def test_a_high_materiality_chain_must_reach_the_financial_layer():
+    """**P1-7**:「事件 → 市場關注提高 → 投資情緒改善」是兩步連續的合法鏈,
+    卻沒有碰到訂單、稼動率、營收、估值或股價的任何一層。"""
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"][0]["mechanism_steps"] = [
+        {"from_what": "費半收漲", "to_what": "市場關注提高",
+         "channel": "情緒", "stage": "event", "step_type": "inference",
+         "evidence_ids": []},
+        {"from_what": "市場關注提高", "to_what": "投資情緒改善",
+         "channel": "情緒", "stage": "sentiment", "step_type": "inference",
+         "evidence_ids": []}]
+    adv = ad.depth_advisories(obj)
+    assert any("營運或產業供需" in a for a in adv), adv
+    assert any("停在情緒不算分析" in a for a in adv), adv
+    # **仍然合法** —— 淺不擋信,只觸發加深
+    assert sch.validate(obj, _IDS) == []

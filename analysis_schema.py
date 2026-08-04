@@ -35,7 +35,9 @@ from __future__ import annotations
 #: v2 加因果鏈/量級/時程/驗證與失效/關係,另加 `cross_market_synthesis`。
 #: v3(第十六輪 P2-2):`cross_market_synthesis.addressed_tension_ids` ——
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
-ANALYSIS_SCHEMA_VERSION = 3
+#: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
+#: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
+ANALYSIS_SCHEMA_VERSION = 4
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -57,6 +59,21 @@ MAGNITUDE_BANDS = ("negligible", "small", "moderate", "large", "unknown")
 #: 而 v1 根本沒有欄位表達這件事,於是十條各寫各的,像十個孤島。
 RELATIONSHIPS = ("reinforcing", "conflicting",
                  "competing_for_same_capacity", "same_underlying_driver")
+
+#: 因果鏈**走到哪一層**(第十七輪 P1-7)。先前只驗「至少兩步、前後連續」,
+#: 於是「事件 → 市場關注提高 → 投資情緒改善」是合法的兩步連續鏈 ——
+#: 它沒有走到訂單、稼動率、營收、估值或股價的任何一層。
+#: 分層之後,「這條鏈停在哪裡」變成可驗證的事實。
+CHAIN_STAGES = ("event", "operations", "industry_supply_demand",
+                "revenue", "margin", "earnings", "valuation",
+                "positioning", "price", "sentiment")
+
+#: 算「走到財務或價格層」的階段。**`sentiment` 刻意不算** ——
+#: 「情緒改善」正是那種讀起來像分析、卻沒有走到任何可驗證後果的終點。
+TERMINAL_STAGES = ("revenue", "margin", "earnings", "valuation",
+                   "positioning", "price")
+#: 算「走到營運/產業層」的階段。
+OPERATIONAL_STAGES = ("operations", "industry_supply_demand")
 
 
 def _obj(props: dict, *, desc: str = "") -> dict:
@@ -90,7 +107,13 @@ def _arr(items: dict, desc: str = "") -> dict:
     return out
 
 
-_EVIDENCE_IDS = _arr(_s(), "EvidencePacket 裡的 source_item_id;沒有就給空陣列")
+#: 第十七輪 P2-1:說明仍寫著「source_item_id」,而合法值早已含 `market:`
+#: 與 `tension:` —— **模型會照說明走**,typed registry 因此形同虛設。
+_EVIDENCE_IDS = _arr(_s(), (
+    "EVIDENCE 裡的證據 ID,三類都合法:新聞的 source_item_id(如 n1)、"
+    "行情的 market:<路徑>(如 market:QQQ.change_pct、market:MACRO.10Y.close)、"
+    "張力的 tension:<id>。**談行情數字就引 market ID,"
+    "不要拿新聞 ID 替它背書。** 沒有就給空陣列"))
 
 _CLAIM = _obj({
     "statement": _s("一句話的主張,不要重述整則新聞"),
@@ -165,6 +188,10 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
             "from_what": _s("這一步從什麼開始"),
             "to_what": _s("走到什麼"),
             "channel": _s("透過什麼傳導(製程/封裝/匯率/資本支出/估值…)"),
+            "stage": _enum(CHAIN_STAGES,
+                           "這一步走到哪一層。**高重要性事件要走到營運層,"
+                           "再走到營收/毛利/獲利/估值/籌碼/股價其中之一**;"
+                           "只走到 sentiment 等於沒有走到可驗證的後果"),
             "step_type": _enum(CLAIM_TYPES),
             "evidence_ids": _EVIDENCE_IDS,
         }), "事件到股價之間的每一步。**沒有證據的那一步要標成 inference 或 "
@@ -198,12 +225,20 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "funds_moving_from": _arr(_s(), "資金從哪些地方出來"),
         "funds_moving_to": _arr(_s(), "資金往哪些地方去"),
         "what_would_flip_it": _s("什麼情況會讓主導因子失效"),
-        # 第十六輪 P2-2:**「有沒有處理每一個 Python 張力」要驗得出來。**
-        # 先前只有 prompt 要求,而 `conflicting_signals` 是自由文字 ——
-        # 沒有任何東西能證明模型真的逐條處理過。改成回填 ID 讓驗證器比對集合。
-        "addressed_tension_ids": _arr(
-            _s(), "EVIDENCE.signal_tensions 裡每個 kind=tension 的 "
-                  "`tension:<id>`,處理一個填一個"),
+        # 第十七輪 P1-3:**點名不等於處理。** v3 只回填一串 ID,而
+        # `conflicting_signals` 是自由文字 —— 驗證器確認得了「ID 都列到」,
+        # 確認不了「哪一段文字處理哪一筆、怎麼調和、憑什麼判斷哪邊可信」。
+        # 改成**一對一的結構**,每一筆張力自己帶調和方式與判準。
+        "tension_resolutions": _arr(_obj({
+            "tension_id": _s("EVIDENCE.signal_tensions 的 `tension:<id>`"),
+            "resolution": _s("兩邊怎麼調和;不得只複述兩個數字"),
+            "dominant_side": _enum(
+                ("left", "right", "neither"),
+                "今天哪一側比較可信;真的分不出就選 neither 並在 why 說明"),
+            "why": _s("憑什麼是這一側 —— 時間尺度、資料新鮮度、或部位性質"),
+            "decision_rule": _s("什麼情況會分出勝負(可觀察的條件)"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }), "**每一筆 kind=tension 都要有自己的一項** —— 沒有的那筆等於沒處理"),
         "evidence_ids": _EVIDENCE_IDS,
     }, desc="橫向綜合:訊號之間的關係,不是把各市場各寫一句"),
     "contradictions": _arr(_obj({

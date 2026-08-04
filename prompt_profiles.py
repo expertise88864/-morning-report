@@ -57,7 +57,10 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v9(第十六輪 P1-1/P1-3/P2-2):張力改成純觀測(調和由模型做且標 inference)、
 #: 行情與張力有 typed 引用 ID(不得拿新聞 ID 替行情背書)、回填
 #: addressed_tension_ids 讓驗證器比對集合、stale 的張力進 data_gaps。
-LUNA_XHIGH_VERSION = 9
+#: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
+#: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
+#: stale/unavailable 要進 data_gaps。
+LUNA_XHIGH_VERSION = 10
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -126,17 +129,30 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   `left` / `right`（數值、單位、可引用的 `evidence_ref`）與 `relationship`
   （`opposite_sign` 這類**幾何性質**）。**怎麼調和、哪一邊今天比較可信、
   會不會高開走低，是你的工作**，而且那是 `inference` 不是 `fact`。
-  每一筆 `kind=tension` 都必須在 `cross_market_synthesis` 被正面處理：
-  放進 `conflicting_signals`、把 `tension:<id>` 回填到
-  `addressed_tension_ids`，並說明兩邊怎麼調和、什麼情況會分出勝負。
+  每一筆 `kind=tension` 都必須在 `tension_resolutions` 有**自己的一項**：
+  怎麼調和、今天哪一側比較可信(`dominant_side`；真的分不出就選
+  `neither`)、憑什麼(時間尺度？資料新鮮度？部位性質？外資期貨淨空
+  可能是避險而不是方向預測)、什麼情況會分出勝負。
+  **只把 ID 列進去而不寫這些,等於沒有處理。**
   `usable_for_inference=false` 的那筆帶著 `caveat`（例如美股休市、
   該側是上一交易日的延續值）—— 那筆**不要**當成今天的矛盾，寫進
   `data_gaps` 即可。`unavailable` 列出的檢查是當天缺的資料，同樣屬於
   `data_gaps`。
 - **行情與張力都有自己的引用 ID。** 談 QQQ 漲跌就引
-  `market:QQQ.change_pct`，談外資期貨就引
-  `market:TAIFEX_OI.foreign_oi_net`，談某筆張力就引 `tension:<id>`。
+  `market:QQQ.change_pct`，談殖利率就引 `market:MACRO.10Y.close`，
+  談某產業中位數就引 `market:SECTOR_HEAT.sectors.<產業>.median_pct`，
+  談某筆張力就引 `tension:<id>`。
   **不要拿新聞 ID 去替行情數字背書** —— 那形式上合法、語意上是錯的。
+- **每個 `mechanism_steps` 都要標 `stage`（走到哪一層）。**
+  高重要性事件的鏈至少要碰到**營運或產業供需**，再碰到
+  **營收／毛利／獲利／估值／籌碼／股價**其中之一。
+  「事件 → 市場關注提高 → 投資情緒改善」是兩步連續的合法鏈，
+  但它停在 `sentiment` —— **那不是分析，是換句話說**。
+  真的走不到就把最後一步標 `sentiment`，並在 `why_this_magnitude`
+  說明還缺什麼才走得到財務層。
+- **`usable_for_inference=false` 的張力與 `unavailable` 的檢查
+  一律寫進 `data_gaps`** —— 那代表今天某個橫向面向根本沒查成，
+  不揭露的話收件人會以為查過了。
 
 {_wr.LUNA_WRITING}
 """

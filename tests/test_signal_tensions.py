@@ -113,10 +113,9 @@ def test_it_states_facts_never_conclusions():
                "caveat"}
     for item in out["items"]:
         assert set(item) == allowed, f"多出自由欄位:{set(item) - allowed}"
-        assert item["relationship"] in {
-            "opposite_sign", "same_sign", "median_above_leader",
-            "median_below_leader", "supportive_for_growth",
-            "opposing_for_growth"}, item["relationship"]
+        # **引用模組自己的白名單**,不要手抄一份 —— 手抄的那份會漂,
+        # 而漂掉的症狀是「新的關係詞混進去了,測試還是綠的」。
+        assert item["relationship"] in st.RELATIONSHIPS, item["relationship"]
         for side in ("left", "right"):
             assert isinstance(item[side]["value"], (int, float))
             assert set(item[side]) == {"label", "value", "unit", "evidence_ref"}
@@ -256,3 +255,70 @@ def test_the_sector_gap_threshold_has_teeth():
     assert [i for i in st.detect(small)["items"]
             if i["topic"] == "產業內部分歧"] == [], "1.5pp 的差距不該報"
     assert st.SECTOR_GAP_PP == 2.0
+
+# ------------------- 第十七輪:59.7% 不是「方向相反」
+
+def test_positive_but_narrow_breadth_is_not_called_opposite():
+    """**P1-4:先前 59.7%(正向)與 38%(真的偏空)拿到同一個標籤。**
+
+    判準寫成 `same = (pred > 0) == (ratio >= 60)` —— 60% 是**強度**門檻,
+    不是方向分界。於是模型收到一個「方向相反」的張力並被要求正面處理,
+    就會寫出「市場廣度偏空」,而 653 檔上漲、360 檔下跌不是偏空。
+    **而且我的測試把這個錯誤語意鎖住了。**
+    """
+    def _rel(ratio):
+        q = {"TAIEX_PRED": {"pred_pct": 0.47}, "BREADTH": {"advance_ratio": ratio}}
+        return st.detect(q)["items"][0]
+    narrow = _rel(59.7)
+    assert narrow["relationship"] == "aligned_but_narrow"
+    assert narrow["kind"] == "tension", "正向但不夠廣仍是值得處理的張力"
+    opposed = _rel(38.0)
+    assert opposed["relationship"] == "opposite_direction"
+    assert narrow["relationship"] != opposed["relationship"], (
+        "正向但不夠廣、與真的偏空,不得共用同一個標籤")
+    assert _rel(65.0)["kind"] == "alignment"
+
+
+def test_the_relationship_vocabulary_carries_no_economics():
+    """**P1-6**:`supportive_for_growth` 已經是經濟解釋 ——
+    利率升未必壓抑科技股,利率降可能是通膨改善也可能是衰退擔憂。
+    Python 只說符號關係,解釋是模型的工作(而且要標成 inference)。"""
+    banned = ("growth", "bull", "bear", "supportive", "risk_on", "risk_off")
+    for rel in st.RELATIONSHIPS:
+        for w in banned:
+            assert w not in rel, f"關係詞帶了經濟解釋:{rel}"
+
+
+def test_nested_market_leaves_are_citable():
+    """**P1-1**:先前只走一層,`market:MACRO.10Y.close` 這種**真正會被分析
+    的數字**沒有合法引用對象 —— 模型只能留空或去引一則新聞替它背書。"""
+    import evidence_packet as ep
+    ids = ep.evidence_ids(ep.build(
+        {"MACRO": {"10Y": {"close": 4.69, "prev_close": 4.745}},
+         "SECTOR_HEAT": {"ranked": ["半導體業"], "sectors": {
+             "半導體業": {"median_pct": 3.6,
+                        "leaders": [{"code": "2330", "name": "台積電",
+                                     "pct": -2.3}]}}},
+         "DATA_QUALITY": {"anything": 1}},
+        {}, {}, [], [], {}, as_of="x", target_session_date="y", sanitize=str))
+    assert "market:MACRO.10Y.close" in ids
+    assert "market:SECTOR_HEAT.sectors.半導體業.median_pct" in ids
+    # 清單用**識別欄位**當路徑,不用索引 —— 索引會隨當日資料量漂移
+    assert "market:SECTOR_HEAT.sectors.半導體業.leaders.2330.pct" in ids
+    # 診斷區塊**不註冊**:讓模型引用它只會製造「看起來有根據」
+    assert not [i for i in ids if "DATA_QUALITY" in i]
+
+
+def test_the_tension_refs_match_the_registry_paths():
+    """張力給的引用路徑要與 registry 的正規路徑**同名** ——
+    否則模型引用張力提供的那個,會落在一個別名上而不是真正的欄位。"""
+    import evidence_packet as ep
+    packet = ep.build(_REAL_QUOTES, {}, {}, [], [], {},
+                      as_of="x", target_session_date="y", sanitize=str)
+    market = ep.market_refs(packet.get("market"))
+    for item in (packet.get("signal_tensions") or {})["items"]:
+        for ref in item["evidence_refs"]:
+            assert ref in market, f"張力引用了 registry 沒有的路徑:{ref}"
+    # **registry 不得膨脹到「什麼都引得到」** —— 那時引用檢查就失去作用。
+    # 這份 fixture 是一天行情的典型規模;數量爆掉要先紅在這裡。
+    assert len(market) < 60, f"registry 膨脹到 {len(market)} 個 ID"

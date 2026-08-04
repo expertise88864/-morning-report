@@ -86,14 +86,19 @@ def valid_analysis() -> dict:
              "persistence": "數個交易日",
              "mechanism_steps": [
                  {"from_what": "費半收漲", "to_what": "台股電子開盤定價",
-                  "channel": "外部定價", "step_type": "fact",
-                  "evidence_ids": ["n1"]},
+                  "channel": "外部定價", "stage": "event",
+                  "step_type": "fact", "evidence_ids": ["n1"]},
                  # **鏈要接得起來**:這一步的起點就是上一步的終點。
                  # 第十六輪 P1-7 的連續性守衛第一次跑就抓到這份 fixture
                  # 原本是斷的 —— 參考答案自己要示範它要求的性質。
-                 {"from_what": "台股電子開盤定價", "to_what": "指數開高",
-                  "channel": "權值佔比", "step_type": "inference",
-                  "evidence_ids": []}],
+                 {"from_what": "台股電子開盤定價", "to_what": "電子權值稼動預期",
+                  "channel": "產業供需", "stage": "industry_supply_demand",
+                  "step_type": "inference", "evidence_ids": []},
+                 # **要走到財務/股價層**(第十七輪 P1-7):停在「情緒改善」
+                 # 通得過連續性檢查,卻沒有碰到任何可驗證的後果。
+                 {"from_what": "電子權值稼動預期", "to_what": "指數開盤價",
+                  "channel": "權值佔比", "stage": "price",
+                  "step_type": "inference", "evidence_ids": []}],
              "magnitude_band": "moderate",
              "why_this_magnitude": "費半漲幅與台股電子的歷史連動落在中段",
              "horizon": "intraday",
@@ -108,8 +113,8 @@ def valid_analysis() -> dict:
              "persistence": "延續到法說當週",
              "mechanism_steps": [
                  {"from_what": "資本支出指引", "to_what": "設備與封裝訂單",
-                  "channel": "資本支出", "step_type": "scenario",
-                  "evidence_ids": ["n2"]}],
+                  "channel": "資本支出", "stage": "operations",
+                  "step_type": "scenario", "evidence_ids": ["n2"]}],
              "magnitude_band": "unknown",
              "why_this_magnitude": "尚未公布金額與時程,缺資本支出區間",
              "horizon": "1-5d",
@@ -126,8 +131,9 @@ def valid_analysis() -> dict:
             "funds_moving_from": ["塑化"],
             "funds_moving_to": ["半導體"],
             "what_would_flip_it": "外資空單續增且現貨量能萎縮",
-            # 第十六輪 P2-2:回填「處理過哪幾筆 Python 張力」供驗證器比對。
-            "addressed_tension_ids": [],
+            # 第十七輪 P1-3:**點名不等於處理** —— 每筆張力自己帶調和方式、
+            # 哪一側可信、憑什麼、什麼情況分出勝負。
+            "tension_resolutions": [],
             "evidence_ids": ["n1"]},
         "contradictions": [],
         "data_gaps": [],

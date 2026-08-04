@@ -159,7 +159,10 @@ def _behaviour() -> dict:
     # 兩個性質不必二選一:餵 versionless 的輸入,但仍走生產的路徑。
     luna = pp.build_luna_bundle(bare)
     return {
-        "evidence_schema_version": _sha(bare),
+        # 第十七輪:evidence v4(遞迴 registry + 廣度方向/強度分離)、
+    # schema v4(tension_resolutions + stage)、renderer v4(逐筆調和進信)、
+    # grounding v5(深度提示再擴充)、Luna profile v10。
+    "evidence_schema_version": _sha(bare),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
         "primary_profile_version": _sha(
             luna["developer_instructions"] + "\x00" + luna["user_payload"]),
@@ -222,12 +225,12 @@ _FROZEN = {
     # v3(第十六輪):張力改純觀測(left/right/relationship/tension_id/
     # usable_for_inference);registry 改 typed。固定輸入同時補上會產生
     # 張力的行情 —— 先前它撐不起這個性質,指紋對自己該管的東西真空通過。
-    "evidence_schema_version":  (3, "3e30bbcf40732ce5"),
+    "evidence_schema_version":  (4, "f0a5b9cd7f1008cd"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
     # v3(第十六輪 P2-2):`addressed_tension_ids` + `priced_in.evidence_ids`。
-    "output_schema_version":    (3, "35809bf8d65a2a1b"),
+    "output_schema_version":    (4, "f6b7a182d42938b1"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -236,7 +239,7 @@ _FROZEN = {
     # 編造的關聯比沒有關聯更糟、五個市場各寫一句不是綜合)。
     # v8(第十五輪 P2-1):要求逐條正面處理 signal_tensions 的每個 tension。
     # v9(第十六輪):張力純觀測、typed 引用 ID、回填 addressed_tension_ids。
-    "primary_profile_version":  (9, "c47216aaba20cfa0"),
+    "primary_profile_version":  (10, "4ce7eeaec6393246"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -246,12 +249,12 @@ _FROZEN = {
     # 第十六輪:renderer **契約沒變**,是固定輸入補了 priced_in 內容與
     # addressed_tension_ids(fixture 要示範新欄位長什麼樣)。依本表既有先例
     # (2026-08-03 那次同理):輸入被修正時**改雜湊而不升版**,理由寫在這裡。
-    "renderer_version":         (3, "c13029050be7171a"),
+    "renderer_version":         (4, "c4be915451c1f1f1"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
     # v4(第十六輪 P2-4):`priced_in` 也要帶證據(高推論性判斷更需要根據)。
-    "grounding_version":        (4, "d4d47f46b77c7f6d"),
+    "grounding_version":        (5, "d4d47f46b77c7f6d"),
 }
 
 

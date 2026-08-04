@@ -54,6 +54,13 @@ PRED_MOVE_PCT = 0.3
 SECTOR_GAP_PP = 2.0
 #: 利率變動的顯著門檻(bps)。**本模組自訂。**
 RATE_MOVE_BPS = 8
+#: **允許的幾何關係。** 全部是符號/大小的描述,**不含任何經濟解釋** ——
+#: 「利率升所以科技股受壓」是模型的工作(而且要標成 inference),
+#: 不是 Python 的(第十七輪 P1-6)。
+RELATIONSHIPS = ("same_sign", "opposite_sign", "same_direction",
+                 "opposite_direction", "aligned_but_narrow",
+                 "median_above_leader", "median_below_leader")
+
 #: 只掃成交值前幾大的產業 —— 小產業的中位數噪音大。
 TOP_SECTORS = 3
 
@@ -122,14 +129,26 @@ def detect(quotes: Optional[dict]) -> dict:
     else:
         run.append("prediction_vs_breadth")
         if abs(pred) >= PRED_MOVE_PCT:
-            broad = ratio >= BREADTH_BROAD
-            same = (pred > 0) == broad
-            _add("t_pred_vs_breadth",
-                 "alignment" if same else "tension", "開盤預測 vs 市場廣度",
+            # 第十七輪 P1-4:**59.7% 不是「方向相反」,是「正向但不夠廣」。**
+            # 先前寫 `same = (pred > 0) == (ratio >= 60)` —— 於是 59.7%
+            # 與真正偏空的 38% 拿到**同一個** `opposite_sign` 標籤,
+            # 而模型被要求正面處理那個「矛盾」,就會寫出「市場廣度偏空」。
+            # 方向的分界是 50%(多過半數上漲),60% 是**強度**門檻。
+            up = ratio > 50.0
+            aligned = (pred > 0) == up
+            broad = ratio >= BREADTH_BROAD or ratio <= (100.0 - BREADTH_BROAD)
+            if aligned and broad:
+                kind, rel = "alignment", "same_direction"
+            elif aligned:
+                kind, rel = "tension", "aligned_but_narrow"
+            else:
+                kind, rel = "tension", "opposite_direction"
+            _add("t_pred_vs_breadth", kind, "開盤預測 vs 市場廣度",
                  _side("加權開盤預測", pred, "%", "market:TAIEX_PRED.pred_pct"),
-                 _side(f"上一交易日上漲家數佔比(普漲門檻 {BREADTH_BROAD:.0f}%)",
+                 _side(f"上一交易日上漲家數佔比"
+                       f"(方向分界 50%、普漲門檻 {BREADTH_BROAD:.0f}%)",
                        ratio, "%", "market:BREADTH.advance_ratio"),
-                 "same_sign" if same else "opposite_sign")
+                 rel)
 
     # 3. 產業內部分歧:中位數與權值領頭的**差距**
     #    第十六輪 P1-5B:同產業每個 leader 各發一筆會產生重複
@@ -156,11 +175,15 @@ def detect(quotes: Optional[dict]) -> dict:
             if worst is None or abs(gap) < SECTOR_GAP_PP:
                 continue
             _add(f"t_sector_divergence:{name}", "tension", "產業內部分歧",
+                 # **路徑要與 registry 的正規路徑一致** —— 同一個事實兩個
+                 # 名字的話,模型引用張力給的那個會落在一個「剛好也合法」
+                 # 的別名上,而不是真正的欄位(第十七輪 P1-1 的延伸)。
                  _side(f"{name}類股中位數", med, "%",
-                       f"market:SECTOR_HEAT.{name}.median_pct"),
+                       f"market:SECTOR_HEAT.sectors.{name}.median_pct"),
                  _side(f"權值領頭 {worst.get('code')} {worst.get('name')}",
                        _num(worst.get("pct")), "%",
-                       f"market:SECTOR_HEAT.{name}.leader.{worst.get('code')}.pct"),
+                       f"market:SECTOR_HEAT.sectors.{name}.leaders."
+                       f"{worst.get('code')}.pct"),
                  "median_above_leader" if gap > 0 else "median_below_leader")
 
     # 4. 長債利率變動 vs 美股科技(**四個象限都要涵蓋** —— 第十六輪 P1-5C)
@@ -174,13 +197,16 @@ def detect(quotes: Optional[dict]) -> dict:
         if abs(dbps) >= RATE_MOVE_BPS and abs(qqq) >= US_MOVE_PCT:
             # 折現率上行與成長股上漲同時發生 = 反向;下行與上漲 = 同向。
             # 這裡只陳述**符號關係**,不說哪一邊撐不久。
+            # 第十七輪 P1-6:`supportive_for_growth` 已經是**經濟解釋**
+            # (利率升未必壓抑科技股;利率降可能是通膨改善,也可能是衰退
+            # 擔憂)。Python 只說符號關係,解釋交給模型並標成 inference。
             same = (dbps < 0) == (qqq > 0)
             _add("t_rates_vs_tech",
                  "alignment" if same else "tension", "利率 vs 科技股",
                  _side("十年期美債利率變動", round(dbps, 1), "bps",
                        "market:MACRO.10Y.change_bps"),
                  _side("QQQ 日漲跌", qqq, "%", "market:QQQ.change_pct"),
-                 "supportive_for_growth" if same else "opposing_for_growth",
+                 "same_direction" if same else "opposite_direction",
                  us_side=True)
 
     return {"checks_run": run, "unavailable": gone, "items": items}

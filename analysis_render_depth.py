@@ -93,6 +93,18 @@ def _synthesis(cms: dict) -> str:
         rows.append("- **資金流向**:"
                     + ("、".join(src[:4]) if src else "(來源不明)")
                     + " → " + ("、".join(dst[:4]) if dst else "(去向不明)"))
+    # 第十七輪 P1-3:**逐筆張力的調和要看得到。** 只印一句「訊號互有矛盾」
+    # 等於沒有處理 —— 而那正是這個結構要取代的東西。
+    for r in (cms.get("tension_resolutions") or []):
+        if not isinstance(r, dict) or not _s(r.get("resolution")):
+            continue
+        side = {"left": "偏向前者", "right": "偏向後者",
+                "neither": "兩邊都不夠強"}.get(_s(r.get("dominant_side")), "")
+        rows.append(f"  - **矛盾調和**:{_s(r.get('resolution'))}"
+                    + (f"({side})" if side else "")
+                    + (f";{_s(r.get('why'))}" if _s(r.get("why")) else "")
+                    + (f"。什麼情況分出勝負:{_s(r.get('decision_rule'))}"
+                       if _s(r.get("decision_rule")) else ""))
     if _s(cms.get("what_would_flip_it")):
         rows.append(f"- **什麼會讓它翻盤**:{_s(cms.get('what_would_flip_it'))}")
     return "\n".join(rows)

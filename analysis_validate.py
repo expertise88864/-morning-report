@@ -143,18 +143,37 @@ def validate(obj, evidence_ids) -> list:
     if packet is not None:
         import signal_tensions as _st
         need = _st.required_tension_ids(packet.get("signal_tensions"))
+        # 第十七輪 P1-3:**點名不等於處理。** 改成逐筆檢查結構化的
+        # `tension_resolutions` —— 每一筆都要說得出怎麼調和、哪邊可信、
+        # 什麼情況分出勝負,而不是丟一串 ID 加一段自由文字。
+        res = [r for r in ((cms or {}).get("tension_resolutions") or [])
+               if isinstance(r, dict)]
+        got = {str(r.get("tension_id") or "") for r in res}
         if need:
-            got = {str(x) for x in ((cms or {}).get("addressed_tension_ids") or [])}
-            missing = sorted(need - got)
-            if missing:
-                problems.append(
-                    f"今天有 {len(need)} 筆待處理的訊號張力,"
-                    f"cross_market_synthesis 沒有處理:{missing} ——"
-                    "每一筆都要放進 conflicting_signals 並回填 tension id")
-            for x in sorted(got - need):
-                problems.append(
-                    f"cross_market_synthesis 宣稱處理了 {x!r},"
-                    "而今天沒有這筆張力 —— 不得回填不存在的 ID")
+            for x in sorted(need - got):
+                problems.append(f"訊號張力 {x} 沒有對應的 tension_resolutions 條目")
+        for x in sorted(got - need):
+            problems.append(
+                f"tension_resolutions 宣稱處理了 {x!r},而今天沒有這筆張力"
+                "(或它已標為不可用)—— 不得回填不存在的 ID")
+        for r in res:
+            tid = str(r.get("tension_id") or "")
+            blank = [k for k in ("resolution", "why", "decision_rule")
+                     if not str(r.get(k) or "").strip()]
+            if blank:
+                problems.append(f"tension_resolutions[{tid}] 的 {blank} 是空的"
+                                " —— 那等於只點名沒有處理")
+            _check_ids(r.get("evidence_ids"), f"tension_resolutions[{tid}]")
+        # 第十七輪 P2-2:**跑不成的檢查要揭露。** stale/unavailable 代表
+        # 今天某個橫向面向根本沒查 —— 不寫進 data_gaps,收件人會以為查過了。
+        ts = packet.get("signal_tensions") or {}
+        skipped = list(ts.get("unavailable") or []) + [
+            i.get("tension_id") for i in (ts.get("items") or [])
+            if isinstance(i, dict) and not i.get("usable_for_inference")]
+        if skipped and not (obj.get("data_gaps") or []):
+            problems.append(
+                f"今天有 {len(skipped)} 項橫向檢查沒跑成或不可用"
+                f"({skipped[:3]}),data_gaps 卻是空的 —— 要揭露")
         hi = [n for n in news if n.get("materiality") == "high"]
         if not news and (packet.get("news") or []):
             problems.append("有新聞可分析,top_news_analysis 卻是空的")

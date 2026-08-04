@@ -330,6 +330,66 @@ grounding 段落,不是邏輯膨脹)。
    asset-specific 量級)與 P2-1 metrics v3。前者是再一次的分析單位重構。
 
 
+### 批#86 `(下一個 commit)` —— 第十七輪:證據圖、廣度語意、逐筆張力調和
+外審 10 條 P1 + 5 條 P2,逐條實測驗過。
+
+**P1-4(最嚴重,今天就會產出錯誤語意)**:判準寫成
+`same = (pred > 0) == (ratio >= 60)` —— 60% 是**強度**門檻不是方向分界,
+於是 59.7%(653 檔漲 / 360 檔跌,正向)與 38%(真的偏空)拿到**同一個**
+`opposite_sign`。模型收到「方向相反」並被要求正面處理,就會寫出
+「市場廣度偏空」。**而且我的 regression test 把這個錯誤語意鎖住了。**
+改成方向(50% 分界)與強度(60% 門檻)分離:`aligned_but_narrow` /
+`opposite_direction` / `same_direction`。
+
+**P1-1**:registry 只走一層,`market:MACRO.10Y.close`、
+`market:SECTOR_HEAT.sectors.<產業>.median_pct` 這些**真正會被分析的數字**
+沒有合法引用對象。改成遞迴(深度 5,排除診斷區塊),清單用識別欄位當路徑
+而不是索引。新測試同時發現**張力給的路徑與 registry 的正規路徑不同名**
+(同一事實兩個名字),已對齊;並加「registry 不得膨脹」的規模斷言。
+
+**P1-3**:`addressed_tension_ids` 只證明「有點名」。改成一對一的
+`tension_resolutions`(調和方式 / 哪一側可信 / 憑什麼 / 什麼情況分出勝負 /
+證據),驗證器逐筆檢查,renderer 逐筆排進信裡。
+
+**P1-6**:`supportive_for_growth` 是經濟解釋(利率升未必壓抑科技股)。
+關係詞全面改成純幾何,並加測試禁止關係詞出現經濟語彙。
+
+**P1-7**:mechanism step 加 `stage`,高重要性事件的鏈要碰到營運層再碰到
+財務/估值/股價層 —— 「事件 → 市場關注提高 → 投資情緒改善」是兩步連續的
+合法鏈,卻沒有走到任何可驗證的後果。
+
+**P1-8**:選優改吃 packet(先前傳 ID 集合,packet-aware 規則在選優裡
+整個不會跑);並從「只比數量」改成**身分保存**:分析過的新聞、處理過的
+張力、反面證據、資料缺口的**集合**都不得縮小,立場/時間尺度/主導因子
+不得改變,立場分不得大幅漂移。**只比數量的話,「換掉一則新聞」數量根本
+不會變。**
+
+**P1-9**:`structured_metrics` 先前用 ID 集合驗證,看不到 packet-aware 規則
+—— 帳本可能顯示 `validation_problems=0` 而橫向沒做完。改吃 packet;
+`REQUIRED_SECTIONS` 補上 `cross_market_synthesis` 與 `priced_in`
+(先前橫向綜合整段消失,完整度仍是 100%);新增 `depth_metrics`
+(走到財務層的比例、張力覆蓋、量級說明率、確認/失效率…)。
+METRICS_SCHEMA_VERSION 3。
+
+**P2-2**:stale/unavailable 的檢查沒寫進 `data_gaps` 就不合格。
+
+**版本鏈**:EVIDENCE v4 / ANALYSIS_SCHEMA v4 / GROUNDING v5 /
+RENDERER v4 / Luna profile v10。新模組 `evidence_serialize.py`
+(序列化與指紋有自己的失效方式 —— 就是讓 Luna 連兩天跑不起來的那個)。
+
+**外審應特別看的地方**:
+1. **P2-4 沒做**:`LLM_EXPERIMENT_ID` 來自 GitHub repo variable,
+   我改不了 —— 需要使用者在設定裡換成新 ID(建議
+   `luna-vs-deepseek-depth-v3`)。cohort 欄位理論上會自然分群,
+   但操作層很容易把新舊視為同一場實驗。
+2. `_MAX_REF_DEPTH = 5` 與 `_NON_EVIDENCE_BLOCKS` 是我訂的 ——
+   registry 太寬會讓引用檢查失去意義,太窄又逼模型引錯。
+3. 加深的「身分保存」四個集合是我挑的,有沒有漏掉真正重要的?
+4. **仍未做**:P1-2 required-news coverage(模型可以只分析一則次要新聞,
+   而 materiality 是它自評的)、P1-5 全面 freshness、P1-10 driver clusters
+   與 closed claim graph。前三者需要在 packet 端先算出「必分析清單」。
+
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

@@ -168,6 +168,44 @@ def claim_graph_saturation(obj) -> dict:
             "saturation_rate": _rate(top, len(sections))}
 
 
+def corroboration_exposure(obj, packet) -> dict:
+    """**高重要性的分析裡,有多少建立在單一來源上**(深度加強第二批)。
+
+    單一來源不是不能分析 —— 獨家常常單一來源。問題是**不標示**:
+    讀者把一家媒體的說法當成多方證實的事實。這是觀測,不是門檻;
+    prompt 要求模型明講,這裡量它整體的曝險。
+    """
+    import news_clusters as _nc
+    groups = ((packet or {}).get("news_clusters") or {}).get("clusters") or []
+    level = {str(c.get("cluster_id") or ""): str(c.get("corroboration") or "")
+             for c in groups if isinstance(c, dict)}
+    hi = [n for n in _news(obj) if n.get("materiality") == "high"]
+    single = [n for n in hi
+              if level.get(_nc.cluster_of(
+                  groups, str(n.get("source_item_id") or ""))) == "single_source"]
+    return {"high_analysed": len(hi), "from_single_source": len(single),
+            "single_source_rate": _rate(len(single), len(hi))}
+
+
+def fact_anchor_usage(obj) -> dict:
+    """縱向鏈的量化錨點用了哪一種(行情 / 新聞事實 / 沒有)。"""
+    hi = [n for n in _news(obj) if n.get("materiality") == "high"]
+
+    def _kinds(n):
+        return {str(e).split(":", 1)[0]
+                for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)
+                for e in (st.get("evidence_ids") or [])}
+    market = sum(1 for n in hi if _kinds(n) & {"market", "derived",
+                                               "valuation", "prediction"})
+    fact = sum(1 for n in hi if "fact" in _kinds(n))
+    none = sum(1 for n in hi
+               if not (_kinds(n) & {"market", "derived", "valuation",
+                                    "prediction", "fact"}))
+    return {"high_analysed": len(hi), "anchored_market": market,
+            "anchored_fact": fact, "unanchored": none,
+            "anchored_rate": _rate(len(hi) - none, len(hi))}
+
+
 def deepen_preservation(before, after) -> dict:
     """加深有沒有**弄丟已經成立的東西**(第十九輪 P1-11 的可量測版)。"""
     import analysis_depth as _ad
@@ -191,4 +229,6 @@ def quality_metrics(obj: Optional[dict], packet: Optional[dict],
         "asset_breakdown": asset_breakdown_quality(obj),
         "ordered_chain": ordered_chain_completion(obj),
         "claim_graph": claim_graph_saturation(obj),
+        "corroboration": corroboration_exposure(obj, packet),
+        "fact_anchors": fact_anchor_usage(obj),
     }

@@ -160,6 +160,22 @@ def registry(packet: Optional[dict]) -> dict:
             "as_of_precision": "source", "observed_session": "",
             "usable_for_inference": True, "why_unusable": "",
         }
+        # **數字事實**(深度加強第二批):值與單位進 metadata,引用檢查
+        # 從「引用了 n3」升級成「引用了 80 億美元那個數字」——
+        # 抄錯十倍與抄對,在檢查器眼裡終於是兩件事。
+        for k, f in enumerate(n.get("numeric_facts") or []):
+            if not isinstance(f, dict):
+                continue
+            out[f"fact:{n['source_item_id']}.{k}"] = {
+                "value": f.get("value"), "unit": str(f.get("unit") or ""),
+                "quote": str(f.get("quote") or ""),
+                "as_of": str(n.get("published") or ""),
+                "as_of_precision": "source", "observed_session": "",
+                "session": session,
+                "source": str(n.get("source") or ""),
+                "quality": str(n.get("source_grade") or ""),
+                "usable_for_inference": True, "why_unusable": "",
+            }
 
     # 2. 行情。逐區塊,因為**新鮮度是逐區塊的**(美股休市只影響美股側)。
     # **`as_of` 是 packet 級的,不是每個欄位自己的。** 先前每一格都掛上

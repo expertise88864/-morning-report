@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Optional
 
 import news_clusters as _nc
+import news_facts as _nf
 
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
@@ -62,8 +63,25 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "entities": sorted({clean(str(e)) for e in (n.get("entities") or [])})[:12],
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
+        # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。
+        # 沒有這一步,「80 億美元訂單」在 registry 裡是 value=None ——
+        # 模型抄成 8 億,檢查器只看得到「引用了 n3」。
+        items[-1]["numeric_facts"] = _nf.facts_for_item(items[-1])
     items.sort(key=lambda x: (_GRADE_RANK[x["source_grade"]],
                              _neg_time(x["published"]), x["source_item_id"]))
+    # **同一家來源、幾乎同一個標題 = 同一篇改版重發。** 上游以 ID 去重,
+    # 而改版常拿到新 ID —— 同一篇佔兩個名額、在事件群裡灌高 size。
+    # 排序後保留第一則(等級高/較新的那則);**跨來源永不去重**
+    # (兩家寫一樣的標題是常態,那是分群的工作)。
+    seen_fp, deduped, near_dropped = set(), [], 0
+    for x in items:
+        fp = _nf.title_fingerprint(x["source"], x["title"])
+        if fp[1] and fp in seen_fp:
+            near_dropped += 1
+            continue
+        seen_fp.add(fp)
+        deduped.append(x)
+    items = deduped
     # 第十九輪 P1-3:**先分群、先保障,再截斷。** 先前是排序後直接留前 220,
     # 而必分析清單是在**截斷後**才算的 —— 於是排在第 221 的央行政策公告
     # 既不會進 packet,也不會成為必分析事件,而覆蓋率仍然顯示 100%。
@@ -83,6 +101,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
              "news_dropped": len(dropped),
              "news_dropped_by_grade": _count_by_grade(dropped),
              "required_forced_in": len(forced),
+             "near_duplicates_dropped": near_dropped,
              "summaries_truncated": sum(1 for x in kept if x["summary_truncated"])}
     return kept, trunc, info
 

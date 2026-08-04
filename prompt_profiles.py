@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 16
+LUNA_XHIGH_VERSION = 17
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -113,6 +113,14 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   以及 `stance` / `priced_in` / `portfolio_implications` 的 `claim_ids`
   回指。**寫進稽核卻沒有任何一段用到的高重要性主張,不是根據,是配菜。**
   總結那一句最可能被單獨閱讀,它也要回指。
+- **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 已把
+  帶單位的數字抽成 `fact:<新聞ID>.<序號>`(附值、單位、上下文)。
+  寫「80 億美元訂單」就引用對應的 fact: —— 引用了,抄錯十倍才抓得到;
+  只引用整則新聞,檢查器不知道你的數字從哪裡來。
+- **單一來源的事件要明講。** `news_clusters` 每群帶 `corroboration`:
+  `single_source`(僅一家、非官方)的事件在分析裡要寫明
+  「僅單一來源,未經其他媒體證實」,invalidation_signal 也要含
+  「後續遭否認或無他家跟進」這類條件 —— 可信度是分析的一部分。
 - **因果鏈要有量化錨點。** 高重要性事件的傳導鏈,至少一步的
   `evidence_ids` 要引用 `market:` / `derived:` / `valuation:` /
   `prediction:` 的具體數字 —— 「費半收漲帶動台股電子」沒有錨在

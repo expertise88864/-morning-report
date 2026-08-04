@@ -116,6 +116,12 @@ def clusters(news: Optional[list]) -> list:
             "has_grade_a": any(m.get("source_grade") == "A" for m in g),
             "size": len(g),
             "unique_sources": len(srcs),
+            # **單一來源與多方證實是兩種可信度**(借自事件聚合系統的
+            # corroboration 概念)。模型分析單一來源的事件時要明講
+            # 「未經其他媒體證實」—— 而它得先知道哪些是。
+            "corroboration": ("official" if any(m.get("official") for m in g)
+                              else "multi_source" if len(srcs) >= 2
+                              else "single_source"),
         })
     return sorted(out, key=lambda c: c["cluster_id"])
 

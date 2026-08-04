@@ -67,13 +67,13 @@ def depth_advisories(obj) -> list:
         if n.get("materiality") == "high" and steps:
             anchored = any(
                 str(e).startswith(("market:", "derived:", "valuation:",
-                                   "prediction:"))
+                                   "prediction:", "fact:"))
                 for st in steps for e in (st.get("evidence_ids") or []))
             if not anchored:
                 out.append(
                     f"{where} 的因果鏈沒有任何一步引用行情或衍生數字 —— "
-                    "至少把起點錨在一個具體數字上(漲跌幅、部位、利率),"
-                    "否則量級判斷沒有立足點")
+                    "至少把一步錨在具體數字上 —— 行情用 market:,"
+                    "新聞裡的數字用 fact:(逐則列在 numeric_facts)")
     cms = obj.get("cross_market_synthesis")
     if isinstance(cms, dict):
         # 深度加強(橫向,2026-08-05):**只靠新聞的橫向綜合是轉述,

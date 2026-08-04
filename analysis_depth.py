@@ -125,6 +125,31 @@ def _identity(obj) -> dict:
                  for x in (c.get("counterevidence_ids") or [])},
         "資料缺口": {str((g or {}).get("what_is_missing") or "")
                  for g in (o.get("data_gaps") or []) if isinstance(g, dict)},
+        # 第十九輪 P1-11:**第二版可以「更深」而同時刪掉橫向與逐標的。**
+        # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
+        # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉
+        # claim 回指」會因為鏈變長而勝出 —— 加深反而讓信變淺。
+        "拆過的標的": {f"{n.get('source_item_id')}:{a.get('asset_id')}"
+                  for n in news for a in (n.get("affected_assets") or [])
+                  if isinstance(a, dict) and a.get("asset_id")},
+        "解讀過的同向訊號": {str(r.get("alignment_id") or "")
+                     for r in (cms.get("alignment_readings") or [])
+                     if isinstance(r, dict)},
+        "稽核過的主張": {str(c.get("claim_id") or "")
+                   for c in (o.get("claim_audit") or [])
+                   if isinstance(c, dict) and c.get("claim_id")},
+        "各段的回指": {f"{sec}:{cid}"
+                  for sec in ("stance", "priced_in", "portfolio_implications")
+                  for cid in ((o.get(sec) or {}).get("claim_ids") or [])
+                  if isinstance(o.get(sec), dict)},
+        "因果步驟的證據": {f"{n.get('source_item_id')}:{e}"
+                    for n in news for st in (n.get("mechanism_steps") or [])
+                    if isinstance(st, dict)
+                    for e in (st.get("evidence_ids") or [])},
+        "條目之間的關係": {f"{n.get('source_item_id')}→"
+                    f"{r.get('other_source_item_id')}"
+                    for n in news for r in (n.get("relates_to") or [])
+                    if isinstance(r, dict)},
     }
 
 

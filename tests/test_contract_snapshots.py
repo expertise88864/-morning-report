@@ -82,6 +82,26 @@ _REPORT_TEXT = ("## 七、昨夜三大重點\n- 空方觀點:立場:偏空(淨�
 #: 少了反例,「全部放行」這個突變會隱形。
 #: 全部保持 **schema 合法** —— 要量的是「根據」那一關,不是形狀那一關
 #: (第十三輪 P2-3:兩關混在一起就分不出誰在作用)。
+#: **手寫**的最小 packet。刻意不經過 `ep.build()` —— 經過的話,
+#: evidence 契約一改,這裡就跟著動,而那正是要隔開的東西。
+_FIXED_PACKET = {
+    "schema_version": 0, "as_of": "2026-08-02T21:00",
+    "target_session_date": "2026-08-03", "trading_session": "pre_open",
+    "market": {"QQQ": {"change_pct": 1.0}},
+    "news": [{"source_item_id": "n1", "title": "固定標題", "summary": "固定摘要",
+              "source": "固定來源", "source_grade": "A", "official": False,
+              "entities": ["台積電"], "published": "2026-08-02T20:00",
+              "url": "", "fulltext": "", "summary_truncated": False,
+              "fulltext_truncated": False}],
+    "signal_tensions": {"checks_run": [], "unavailable": [], "items": []},
+}
+
+
+def _profile_view(bundle: dict) -> str:
+    """profile 契約自己負責的部分:指令,加上 payload 的**框架**。"""
+    return bundle["developer_instructions"] + "\x00" + bundle["user_payload"]
+
+
 def _fabricated() -> dict:
     obj = fx.valid_analysis()
     obj["global_market"]["evidence_ids"] = ["n_fake"]
@@ -273,7 +293,10 @@ _FROZEN = {
     #    新增 `required_disclosures`(今天哪幾項沒有答案)。
     # v7(第十八輪 P1-3):`news_clusters` —— 同一件事的多家報導併成一群,
     #    並由官方來源與報導家數選出必分析清單(不採用模型自評的重要性)。
-    "evidence_schema_version":  (7, "d68c79c74f86c8a7"),
+    # v8(第十九輪):root scalar 的值不再掉在空 path;`as_of_precision`
+    #    與 `observed_session` 取代假精確;新聞先分群、必分析事件強制
+    #    保留、再截斷(先前排第 221 的央行公告直接消失而覆蓋率 100%)。
+    "evidence_schema_version":  (8, "484ebb40080d73f8"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -298,7 +321,11 @@ _FROZEN = {
     # v13(第十八輪 P1-3):一個事件群只寫一個分析單位;
     #      必分析清單要嘛分析、要嘛說明為什麼不談。
     # v14(第十八輪):三條新規則(逐標的、同向解讀、claim 回指)。
-    "primary_profile_version":  (14, "ad553697173eb86c"),
+    # 第十九輪:**探針輸入被修正,契約本身沒變** —— 先前餵
+    #    `build_luna_bundle(_packet())`,而 payload 內嵌整個 packet,
+    #    於是 evidence 加一個欄位就會讓 prompt 契約亮紅。改餵手寫的
+    #    固定 packet。依本表既有先例:**改雜湊而不升版**。
+    "primary_profile_version":  (14, "5fda699c1fda0784"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -313,7 +340,9 @@ _FROZEN = {
     #    **探針同批修好** —— 先前餵 `render(obj)` 而生產是 `render(obj, packet)`,
     #    新行為在快照裡一行都跑不到。
     # v6(第十八輪):逐標的影響與同向解讀排進信。
-    "renderer_version":         (6, "62af6ae0df71804c"),
+    # v7(第十九輪):情境觸發條件(機率仍不進信 —— 信裡的數字必須是
+    #    Python 算的)、駁回事件、未完成鏈的剩餘則數。
+    "renderer_version":         (7, "62af6ae0df71804c"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -327,7 +356,9 @@ _FROZEN = {
     # v8(第十八輪 P1-3):必分析事件的覆蓋率;同一事件群不得分析兩次。
     # v9(第十八輪):高重要性事件要拆出標的;同向訊號逐筆解讀;
     #    各段要回指 claim,而高重要性的孤兒主張不算根據。
-    "grounding_version":        (9, "9e4b161a97d6a64e"),
+    # v10(第十九輪):同一則新聞不得寫兩段;標的不得是泛稱或重複;
+    #     同向訊號的證據要綁在那一筆上;駁回理由不得是套語。
+    "grounding_version":        (10, "9e4b161a97d6a64e"),
 }
 
 

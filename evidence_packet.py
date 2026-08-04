@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 7
+EVIDENCE_SCHEMA_VERSION = 8
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -129,62 +129,11 @@ def _grade(item: dict) -> str:
     return g if g in _GRADE_RANK else "C"
 
 
-def normalize_news(news: Optional[list], sanitize=None) -> tuple:
-    """(正規化後的新聞, 截斷摘要)。確定性排序、確定性截斷。
-
-    排序鍵刻意是 (等級, 發布時間倒序, source_item_id) —— 最後一項是
-    **決勝子句**:少了它,兩則同等級同時間的新聞順序會依賴 dict 的插入順序,
-    而那會讓 evidence_sha 在無關的上游變動下抖動。
-    """
-    items, seen = [], set()
-    for i, n in enumerate(news or []):
-        if not isinstance(n, dict):
-            continue
-        sid = _sid(n, i)
-        if sid in seen:          # 上游已去重,這裡只是防守
-            continue
-        seen.add(sid)
-        # **每一個外部字串都要過消毒器。** 標題、摘要、全文、來源名、
-        # 實體、URL 全部是抓來的,任何一個都可能帶注入內容。
-        clean = sanitize or _identity
-        summary = clean(str(n.get("summary") or ""))
-        fulltext = clean(str(n.get("fulltext") or ""))
-        items.append({
-            "source_item_id": sid,
-            "title": clean(str(n.get("title") or ""))[:300],
-            "summary": summary[:MAX_SUMMARY_CHARS],
-            "summary_truncated": len(summary) > MAX_SUMMARY_CHARS,
-            "fulltext": fulltext[:MAX_FULLTEXT_CHARS],
-            "fulltext_truncated": len(fulltext) > MAX_FULLTEXT_CHARS,
-            "published": str(n.get("published") or ""),
-            "source": clean(str(n.get("source") or "")),
-            "source_grade": _grade(n),
-            "official": bool(n.get("official")),
-            "entities": sorted({clean(str(e)) for e in (n.get("entities") or [])})[:12],
-            "url": clean(str(n.get("link") or n.get("url") or "")),
-        })
-    items.sort(key=lambda x: (_GRADE_RANK[x["source_grade"]],
-                             _neg_time(x["published"]), x["source_item_id"]))
-    kept, dropped = items[:MAX_NEWS_ITEMS], items[MAX_NEWS_ITEMS:]
-    trunc = {"news_total": len(items), "news_kept": len(kept),
-             "news_dropped": len(dropped),
-             "news_dropped_by_grade": _count_by_grade(dropped),
-             "summaries_truncated": sum(1 for x in kept if x["summary_truncated"])}
-    return kept, trunc
-
-
-def _neg_time(published: str) -> str:
-    """讓「新的排前面」可以用單一 sort key 表示(字串反轉不可行,改用補數位)。"""
-    # ISO 時間字串:用固定長度的補數,確保新的排前面且完全確定性。
-    s = (published or "")[:32].ljust(32, "0")
-    return "".join(chr(0x10FFFD - ord(c)) if ord(c) < 0x10FFFD else c for c in s)
-
-
-def _count_by_grade(items: list) -> dict:
-    out: dict = {}
-    for x in items:
-        out[x["source_grade"]] = out.get(x["source_grade"], 0) + 1
-    return dict(sorted(out.items()))
+# ---------------------------------------------------------------- 相容出口
+#
+# 新聞正規化與截斷搬到 `news_normalize`(見該檔:誰留下來是獨立的決定)。
+from news_normalize import (                        # noqa: E402,F401
+    normalize_news, _forced_ids)
 
 
 def portfolio_summary(quotes: dict) -> dict:
@@ -251,7 +200,7 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         # 那時沒有任何東西會變紅,只有注入內容會靜靜進 prompt。
         raise ValueError("evidence_packet.build 需要 sanitize —— "
                          "外部文字進 prompt 必須經過消毒器")
-    kept_news, trunc = normalize_news(news, sanitize)
+    kept_news, trunc, cluster_info = normalize_news(news, sanitize)
     packet = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "as_of": str(as_of or ""),
@@ -279,8 +228,15 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 第十八輪 P1-3:**分母不能是模型自評的重要性。** 同一件事被四家媒體
     # 報導會產生四個分析單位(`news_analyzed` 看起來變深、實際是同一條鏈
     # 改寫四次);而覆蓋率先前只擋得住「一則都沒分析」。
-    import news_clusters as _nc
-    packet["news_clusters"] = _nc.required_analysis(kept_news)
+    # **必分析清單來自完整新聞池**(截斷前),但列出的成員只保留真的
+    # 進了 packet 的那些 —— 模型引用不到被截掉的 ID。
+    kept_ids = {n["source_item_id"] for n in kept_news}
+    packet["news_clusters"] = dict(
+        cluster_info,
+        clusters=[dict(c, member_source_ids=[m for m in c["member_source_ids"]
+                                             if m in kept_ids])
+                  for c in cluster_info["clusters"]
+                  if any(m in kept_ids for m in c["member_source_ids"])])
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。

@@ -15,6 +15,17 @@
 from __future__ import annotations
 
 
+#: 用來打發的套語。**它們是標籤,不是理由** —— 一句 15 字以內、
+#: 而且只由這些詞組成的句子,等於沒有回答「為什麼不談」。
+_BOILERPLATE = ("影響有限", "市場已消化", "已反映", "不具實質影響", "無重大影響",
+                "例行公告", "不重要", "影響輕微", "無關本日", "中性")
+
+
+def _is_boilerplate(why: str) -> bool:
+    t = why.strip()
+    return len(t) <= 15 and any(w in t for w in _BOILERPLATE)
+
+
 def _coverage_problems(obj, packet, analysed_ids) -> list:
     """**必分析事件的覆蓋率**(第十八輪 P1-3)。
 
@@ -43,6 +54,13 @@ def _coverage_problems(obj, packet, analysed_ids) -> list:
                 " —— 靜默略過與判斷不重要,在信裡長得一模一樣")
         elif not str(d.get("why_not_material") or "").strip():
             out.append(f"dismissed_events[{cid}] 沒有寫為什麼不值得分析")
+        elif _is_boilerplate(str(d.get("why_not_material"))):
+            # 第十九輪 P1-5:**「影響有限」不是理由,是換句話說。**
+            # 只驗非空的話,駁回一則央行公告與駁回一則例行公告
+            # 在檢查器眼裡一模一樣。
+            out.append(
+                f"dismissed_events[{cid}] 的理由只是套語 —— "
+                "要說出這件事的哪個環節今天不會傳導到價格")
     for cid in sorted(set(dismissed) - set(need)):
         out.append(f"dismissed_events 宣稱駁回 {cid!r},而它不在本報的必分析清單")
     # 同一個事件群分析兩次以上 —— **那不是更深,是同一條鏈改寫兩次**,
@@ -87,6 +105,18 @@ def _alignment_problems(cms, packet, known) -> list:
         for i in (r.get("evidence_ids") or []):
             if str(i) not in known:
                 out.append(f"alignment_readings[{aid}] 引用了不存在的證據 ID:{i!r}")
+        # 第十九輪 P1-7:**只驗「合法」不驗「相關」。** 矛盾那一側早就
+        # 要求引用該張力本身或兩側,同向這一側卻只要 ID 存在就過 ——
+        # 於是「利率與科技股同向」可以拿一則航運新聞當證據,
+        # 而整段橫向分析仍然是模型自由發揮。兩側用同一條規則。
+        if aid in need:
+            import analysis_stages as _ast
+            if not _ast.both_sides_cited(
+                    {"tension_id": aid, "evidence_ids": r.get("evidence_ids")},
+                    packet):
+                out.append(
+                    f"alignment_readings[{aid}] 的證據沒有涵蓋這筆同向訊號"
+                    " —— 要引用它本身,或兩側各至少一個")
     return out
 
 

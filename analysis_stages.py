@@ -99,6 +99,13 @@ def incomplete_chains(obj) -> list:
             out.append((sid, "沒有推到營收、獲利、估值或股價"))
         elif not stages & set(_sch.OPERATIONAL_STAGES):
             out.append((sid, "沒有經過營運或產業供需這一層"))
+        # 第十九輪 P1-10:**兩個判準先前不一致。** `depth_metrics` 用順序
+        # (營運要在財務之前),而揭露只看 stage **集合** —— 於是
+        # 「事件 → 股價上漲 → 稼動率提升 → 營收」兩層都出現、指標記為
+        # 順序不成立、而信裡什麼都不說。把股價反應當成原因再倒推營運,
+        # 是因果方向錯置,不是深度。同一個 evaluator,同一個答案。
+        elif not _ordered_chain(n):
+            out.append((sid, "因果順序不成立:營運層出現在財務/股價之後"))
     return out
 
 

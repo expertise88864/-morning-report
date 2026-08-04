@@ -39,7 +39,9 @@ from typing import Optional
 #: 真的事件被藏在另一個底下。兩種錯誤的代價不對稱,門檻就該偏向安全那側。
 TITLE_OVERLAP = 0.5
 
-#: 群集規模達到這個數才算「多家同時報」。
+#: **不同來源**達到這個數才算「多家同時報」。
+#: 先前用的是文章數 —— 於是同一家媒體的三篇改寫稿會被當成「三家同時報
+#: 的重大事件」。改寫稿不是獨立證據,它連二手都算不上。
 CLUSTER_IS_MAJOR = 3
 
 #: 必分析清單的上限。**不是「至少分析幾則」,是「這幾則不能不談」** ——
@@ -95,13 +97,19 @@ def clusters(news: Optional[list]) -> list:
     out = []
     for g in groups:
         ids = sorted(str(m["source_item_id"]) for m in g)
+        srcs = sorted({str(m.get("source") or "") for m in g} - {""})
         out.append({
             "cluster_id": f"cluster:{ids[0]}",
             "member_source_ids": ids,
-            "sources": sorted({str(m.get("source") or "") for m in g} - {""}),
-            "official": any(m.get("official") or m.get("source_grade") == "A"
-                            for m in g),
+            "sources": srcs,
+            # **官方公告與 A 級媒體不是同一件事。** 先前 `official` 把兩者
+            # 混成一格 —— 於是 Reuters 的一則報導與主管機關公告在必分析
+            # 清單裡有同樣的份量,而「官方來源被漏掉」正是這類報告
+            # 最實質的失誤,判準本身不能先把它糊掉。
+            "official": any(m.get("official") for m in g),
+            "has_grade_a": any(m.get("source_grade") == "A" for m in g),
             "size": len(g),
+            "unique_sources": len(srcs),
         })
     return sorted(out, key=lambda c: c["cluster_id"])
 
@@ -115,14 +123,16 @@ def required_analysis(news: Optional[list]) -> dict:
     """
     cs = clusters(news)
     ranked = sorted(
-        [c for c in cs if c["official"] or c["size"] >= CLUSTER_IS_MAJOR],
-        # 官方優先,其次群集大的;同分用 ID 決勝(確定性)。
-        key=lambda c: (not c["official"], -c["size"], c["cluster_id"]))
+        [c for c in cs
+         if c["official"] or c["unique_sources"] >= CLUSTER_IS_MAJOR],
+        # 官方優先,其次**不同來源數**;同分用 ID 決勝(確定性)。
+        key=lambda c: (not c["official"], -c["unique_sources"], c["cluster_id"]))
     need = [c["cluster_id"] for c in ranked[:MAX_REQUIRED]]
     return {
         "clusters": cs,
         "required_cluster_ids": need,
-        "coverage_basis": ("官方來源,或三家以上媒體同時報導的事件群;"
+        "coverage_basis": ("官方公告,或三個**不同來源**同時報導的事件群;"
+                           "改寫稿不算獨立來源,A 級媒體也不等於官方;"
                            "不採用模型自評的重要性"),
         "dropped_from_required": max(0, len(ranked) - MAX_REQUIRED),
     }

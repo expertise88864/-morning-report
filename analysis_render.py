@@ -146,9 +146,22 @@ def render(obj: Optional[dict], packet=None) -> str:
         import analysis_stages as _ast
         stub = _ast.incomplete_chains(obj)
         if stub:
+            # 第十九輪 P2-2:先前只印前三則,**其餘靜默消失** ——
+            # 八則裡有五則停在情緒時,讀者只看到三則,而「還有幾則」
+            # 正是他判斷這封信可不可信的關鍵。
             news.append("- *傳導未完成:" + "、".join(
                 f"{sid} {why}" for sid, why in stub[:3])
+                + (f";另有 {len(stub) - 3} 則同樣未完成"
+                   if len(stub) > 3 else "")
                 + " —— 這幾則的影響幅度本報無法確認。*")
+        # 第十九輪 P1-5:**看過而決定不談,讀者有權知道。**
+        # 不顯示的話,「沒發生」與「發生了但本報判斷不重要」長得一樣。
+        skipped = [d for d in (obj.get("dismissed_events") or [])
+                   if isinstance(d, dict) and _s(d.get("why_not_material"))]
+        if skipped:
+            news.append("- *今日看過但未展開:" + "、".join(
+                f"{_s(d.get('cluster_id'))}({_s(d.get('why_not_material'))})"
+                for d in skipped[:4]) + "*")
         parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
 
     # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡
@@ -184,7 +197,16 @@ def render(obj: Optional[dict], packet=None) -> str:
             # 仍不滿足這個 repo 的不變式 —— 信裡出現的數字必須是 Python 算的,
             # 而情境機率沒有任何 Python 來源。它留在 JSON 裡供指標與事後判讀,
             # 但收件人看到的只有情境敘述本身。
-            scen.append(f"- **{name}**:{_s(blk.get('narrative'))}")
+            # 第十九輪 P2-1:**觸發條件先前整個被丟掉。** 機率不進信是
+            # 既有不變式(信裡的數字必須是 Python 算的,而情境機率沒有
+            # 任何 Python 來源)—— 但 `triggers` 不是數字,它是可觀察的
+            # 條件,而「什麼情況會讓這個情境成立」正是情境樹的用處。
+            # 只印敘述等於把三段散文並排,讀者無從判斷該盯什麼。
+            trig = [_s(x) for x in (blk.get("triggers") or []) if _s(x)]
+            line = f"- **{name}**:{_s(blk.get('narrative'))}"
+            if trig:
+                line += "\n  - 什麼情況代表它成立:" + "、".join(trig[:3])
+            scen.append(line)
     if scen:
         parts.append("## 情境與觸發條件\n" + "\n".join(scen))
 

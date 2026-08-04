@@ -20,6 +20,14 @@ from __future__ import annotations
 
 import analysis_grounding as _gr
 
+#: **不算標的的泛稱。** 這些字出現在 `asset_id` 時,那一格等於沒有拆 ——
+#: 而 renderer 會把它排得跟真的逐標的分析一模一樣,讓泛論看起來更像
+#: 深度分析。**比不拆更糟。**(第十九輪 P1-9)
+_GENERIC_ASSETS = frozenset({
+    "市場", "大盤", "台股", "股市", "整體市場", "相關產業", "產業", "概念股",
+    "供應鏈", "科技股", "電子股", "類股", "全球市場", "市場情緒", "投資人",
+})
+
 # `STANCE_LABELS` 在函式內延遲取用 —— `analysis_schema` 的尾端會反向
 # import 本模組(相容出口),頂層互相 import 會在「誰先被載入」上翻車。
 
@@ -98,6 +106,17 @@ def validate(obj, evidence_ids) -> list:
         if isinstance(d, dict):
             _check_ids(d.get("evidence_ids"), f"key_drivers[{i}]")
     news = [n for n in (obj.get("top_news_analysis") or []) if isinstance(n, dict)]
+    # 第十九輪 P1-6:**集合化把重複吃掉了。** 同一個 `source_item_id`
+    # 寫兩段先前完全抓不到 —— 那可以灌高分析則數,甚至對同一個標的
+    # 給出互相矛盾的方向。事件群層級的重複已經擋了,而**同一則**重複
+    # 反而漏了(它連分群都不需要)。
+    from collections import Counter
+    for sid, n_times in sorted(Counter(
+            str(n.get("source_item_id") or "") for n in news).items()):
+        if n_times > 1:
+            problems.append(
+                f"top_news_analysis 對 {sid!r} 寫了 {n_times} 段 —— "
+                "同一則新聞只該有一個分析單位")
     own_ids = {str(n.get("source_item_id") or "") for n in news}
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
@@ -125,10 +144,24 @@ def validate(obj, evidence_ids) -> list:
         # 第十八輪:**「新聞影響股市」是泛論。** 高重要性事件要說得出
         # 對哪個標的、多大、多久 —— 同一件事對台積電與對成熟製程
         # 可以是相反方向,壓成一個「偏多」就是使用者說的數據堆疊。
+        seen_assets: set = set()
         for j, a in enumerate(n.get("affected_assets") or []):
             if not isinstance(a, dict):
                 problems.append(f"{where}.affected_assets[{j}] 不是物件")
                 continue
+            aid = str(a.get("asset_id") or "").strip()
+            # 第十九輪 P1-9:**`asset_id="市場"` 不是拆標的,是換句話說。**
+            # renderer 會把它排得跟真的逐標的分析一模一樣,讓泛論看起來
+            # 更像深度分析 —— 比不拆更糟。
+            if aid in _GENERIC_ASSETS:
+                problems.append(
+                    f"{where}.affected_assets[{j}] 的標的是泛稱 {aid!r} ——"
+                    "要給得出代號、指數或 ETF,給不出就不要列這一項")
+            if aid and aid in seen_assets:
+                problems.append(
+                    f"{where}.affected_assets[{j}] 的 {aid!r} 重複了 ——"
+                    "同一個標的只該有一組方向與量級")
+            seen_assets.add(aid)
             _check_ids(a.get("evidence_ids"), f"{where}.affected_assets[{j}]")
             if not str(a.get("asset_id") or "").strip():
                 problems.append(f"{where}.affected_assets[{j}] 沒有標的代號")

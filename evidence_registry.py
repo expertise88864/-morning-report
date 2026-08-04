@@ -107,10 +107,17 @@ def _entries(tree, root: str, meta: dict) -> dict:
     flat: dict = {}
     _walk(tree, "", flat, meta, 0)
     join = "" if root.endswith(":") else "."
-    return {f"{root}{join}{path}": dict(
-                meta, value=val,
-                unit=_unit(path.rsplit(".", 1)[-1]) if not isinstance(val, str) else "")
-            for path, val in flat.items() if path}
+    out = {}
+    for path, val in flat.items():
+        # **root scalar 的路徑是空字串。** 先前被 `if path` 濾掉,於是
+        # `market:USDTWD_prev`(整個 block 就是一個數字)在 registry 裡
+        # 只剩下一個 `value=None` 的殼 —— ID 存在、值不見了。
+        # 引用它的模型會通過檢查,而檢查器根本不知道那個數字是多少。
+        key = f"{root}{join}{path}" if path else root.rstrip(":")
+        out[key] = dict(meta, value=val,
+                        unit=("" if isinstance(val, str)
+                              else _unit((path or key).rsplit(".", 1)[-1])))
+    return out
 
 
 def registry(packet: Optional[dict]) -> dict:
@@ -137,16 +144,26 @@ def registry(packet: Optional[dict]) -> dict:
             "session": session,
             "source": str(n.get("source") or ""),
             "quality": str(n.get("source_grade") or ""),
+            # 新聞**有**自己的時間 —— 這是唯一一類說得出來的。
+            "as_of_precision": "source", "observed_session": "",
             "usable_for_inference": True, "why_unusable": "",
         }
 
     # 2. 行情。逐區塊,因為**新鮮度是逐區塊的**(美股休市只影響美股側)。
+    # **`as_of` 是 packet 級的,不是每個欄位自己的。** 先前每一格都掛上
+    # packet 的 as_of 與 target session —— 那是**假精確**:QQQ 可能是前一個
+    # 美股交易日、台指期是今天、法說會摘要是上週,而它們全部長得像
+    # 「06:00 觀測、屬於 2026-08-05 這一盤」。模型因此會把不同交易日的
+    # 數字當成同步的橫向訊號。說不出來就要說「說不出來」。
+    tw_session = str((market.get("LAST_TRADING_SESSION") or {}).get("date") or "")
     for block, tree in market.items():
         if block in _NON_EVIDENCE:
             continue
         stale = us_stale and block in _US_BLOCKS
         out.update(_entries(tree, f"market:{block}", {
-            "as_of": as_of, "session": session, "source": f"quotes.{block}",
+            "as_of": as_of, "as_of_precision": "packet",
+            "observed_session": ("" if block in _US_BLOCKS else tw_session),
+            "session": session, "source": f"quotes.{block}",
             "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale,
             "why_unusable": ("美股昨日休市,本區塊是上一個交易日的延續值,"
@@ -154,14 +171,18 @@ def registry(packet: Optional[dict]) -> dict:
         }))
         # 區塊本身也要引用得到(談「今天沒有這塊資料」時需要)
         out.setdefault(f"market:{block}", {
-            "value": None, "unit": "", "as_of": as_of, "session": session,
+            "value": None, "unit": "", "as_of": as_of,
+            "as_of_precision": "packet",
+            "observed_session": ("" if block in _US_BLOCKS else tw_session),
+            "session": session,
             "source": f"quotes.{block}", "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale, "why_unusable": ""})
 
     # 3. packet 的其餘區塊 —— **先前它們一個 ID 都沒有**,而
     #    「00662 估值偏高」「2330 開盤預測為正」「模型校準變差」
     #    「持倉曝險集中」正是最需要根據的四種判斷。
-    base = {"as_of": as_of, "session": session, "quality": "ok",
+    base = {"as_of": as_of, "as_of_precision": "packet",
+            "observed_session": "", "session": session, "quality": "ok",
             "usable_for_inference": True, "why_unusable": ""}
     for ns, key in (("valuation", "valuation_00662"),
                     ("prediction", "predictions_2330"),

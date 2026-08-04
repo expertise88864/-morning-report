@@ -177,6 +177,58 @@ RENDERER_VERSION 1→2。
 - P1-7 Top5 跨產業固定門檻(我自己也列過)。
 
 
+### 批#83 `(下一個 commit)` —— 第十五輪 P1-1:Schema v2(使用者定案要做)
+**prompt 叫模型深入分析,而 schema 沒有地方放深度** —— v1 的
+`top_news_analysis` 只有五個淺欄位,模型最安全的填法就是「需求增加、
+對 2330 偏多」。這是三次「堆疊數據」回饋在結構層的根因。
+
+**schema v2**(`ANALYSIS_SCHEMA_VERSION` 1→2,strict 限制實測 深度6/10、
+屬性105/5000、11.3K/120K 字元):
+- `top_news_analysis[]` 加:`mechanism_steps[]`(from/to/channel/step_type/
+  evidence_ids)、`magnitude_band`(negligible…large/**unknown 是頭等公民**)、
+  `why_this_magnitude`、`horizon`、`confirmation_signal`、
+  `invalidation_signal`、`relates_to[]`(指向另一則+關係型別+證據)。
+- 新增頂層 `cross_market_synthesis`:互相強化/互相抵銷/主導因子/為什麼/
+  即日 vs 1–5 日淨效果/資金從哪到哪/什麼會翻盤 + evidence_ids。
+  **P2-4 一併解決**:橫向問題有自己的地方,不再塞 stance rationale。
+
+**新的跨欄位不變式**(`analysis_validate.py`,從 analysis_schema 拆出):
+- 沒有證據的因果步驟**不得自稱 fact**(fact→fact→fact 的鏈讀起來像事實,
+  中間某步其實是猜的 —— 這正是「看起來有根據」的來源)
+- `magnitude_band=unknown` 必須說缺哪些資料(誠實與打發要分得開)
+- `relates_to` 要指向**今天真的分析過的另一則**,不能指向自己或幽靈
+  (**P1-4 的「編造關聯」風險由此擋**)
+
+**渲染**(`analysis_render_depth.py` 新模組;RENDERER_VERSION 2→3):
+因果鏈逐步印出(推論/情境要標)、量級+為什麼、成立要看到/什麼會推翻、
+與另一則的關係;橫向綜合排在逐條分析**之前**。
+
+**Grounding v2**:cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING
+(一段沒有根據的橫向綜合最容易寫成漂亮空話)。
+
+**Luna profile v7**:新欄位填法指引(unknown 是誠實不是失敗、編造的關聯
+比沒有關聯更糟、五個市場各寫一句不是綜合)。legacy prompt **不動**
+(v6 不變,DeepSeek 不吃 schema)。
+
+**模組整理**:analysis_validate.py(引用檢查,150)、
+analysis_render_depth.py(深度渲染,130)拆出;analysis_render 250→235
+(拆完棘輪跟著縮)。
+
+**突變驗證第一輪抓到兩個洞**:「fact 無證據要擋」與「因果鏈要渲染」
+一開始都沒有測試(拿掉實作全套照樣綠),補了
+test_a_fact_step_without_evidence_is_rejected 等 7 條後才紅。
+
+**外審應特別看的地方**:
+1. mechanism_steps 沒有規定至少幾步 —— 模型可以給一步就過。
+   第十五輪建議「高重要性至少 3 步」,我沒做(空鏈也合法),對嗎?
+2. relates_to 的 relationship_evidence_ids 我只驗存在性,沒驗那些證據
+   真的支持「這種關係」—— 語意上驗不了,這是已知天花板。
+3. cross_market_synthesis 的欄位全是自由文字 —— 會不會又變成
+   「五個市場各寫一句」的新家?prompt 有講,但沒有機械判準。
+4. 十配對:cohort 含 output_schema/renderer/grounding/profile 版本,
+   樣本自然分群;但依規約應換新 experiment_id(帳本目前 0 列,代價最小)。
+
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

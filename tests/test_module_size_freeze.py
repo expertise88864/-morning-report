@@ -272,7 +272,17 @@ MODULE_CEILINGS = {
     "blind_review.py": 180,
     # Luna 特化:strict JSON → 晨報 Markdown 的確定性 renderer。
     # **模型不直接控制排版** —— 排版由程式決定,模型只負責判斷內容。
-    "analysis_render.py": 250,
+    # schema v2 拆出深度渲染之後**下修 250 → 235**(現況 225)——
+    # 拆完變小,棘輪跟著縮,否則留一個「隨時可以長回來」的空頭額度。
+    "analysis_render.py": 235,
+    # schema v2:深度欄位的渲染(因果鏈/量級/關係/橫向綜合)。
+    # 與 `analysis_render` 分開:段落順序跟著信件結構走,條目寫法跟著
+    # schema 版本走。實測 98 行。
+    "analysis_render_depth.py": 130,
+    # schema v2 時從 `analysis_schema` 拆出的**引用檢查**(ID 存不存在、
+    # 高重要性要有證據、關係要指向存在的條目、無證據的步驟不得自稱 fact)。
+    # 形狀/根據/引用是三件事,那個檔的 docstring 自己說要分開。實測 120 行。
+    "analysis_validate.py": 150,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

@@ -27,11 +27,17 @@ schema 裡沒有「逐步推理」欄位,也不存模型的隱藏推理。要的
 """
 from __future__ import annotations
 
-import analysis_grounding as _gr
-
 #: 輸出契約版本。**改欄位就要進版** —— cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
-ANALYSIS_SCHEMA_VERSION = 1
+#: v2(2026-08-04,第十五輪 P1-1):**prompt 叫模型深入分析,而 schema
+#: 沒有地方放深度。** v1 的 `top_news_analysis` 只有
+#: `why_it_matters / direction / materiality / persistence` ——
+#: 必填的全是淺的那幾格,於是模型最安全的填法就是
+#: 「需求增加、對 2330 偏多」。使用者三次反映「只是在堆疊數據」,
+#: 而改 prompt 的效果有天花板,因為**結構化的地方根本沒有欄位可以放**。
+#: v2 加「事件到股價之間的每一步」(因果鏈/量級/時程/驗證與失效/關係),
+#: 另加 `cross_market_synthesis` 專門回答橫向問題。
+ANALYSIS_SCHEMA_VERSION = 2
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -42,6 +48,17 @@ CLAIM_TYPES = ("fact", "inference", "scenario", "unknown")
 DIRECTIONS = ("bullish", "bearish", "neutral")
 MATERIALITY = ("high", "medium", "low")
 HORIZONS = ("intraday", "1-5d", "1-4w")
+
+#: 影響量級。**`unknown` 是頭等公民,不是逃生口** —— 使用者反映的問題
+#: 正是「用形容詞冒充答案」,而誠實說「這則說不出量級」比寫「小幅利多」好。
+#: 選 `unknown` 時 `why_this_magnitude` 必須說出**缺哪些資料**(見驗證器)。
+MAGNITUDE_BANDS = ("negligible", "small", "moderate", "large", "unknown")
+
+#: 條目之間的關係。**「互相排擠」與「互相加強」是兩件不同的事** ——
+#: 兩則新聞搶同一段 CoWoS 產能,合起來的影響小於各自相加;
+#: 而 v1 根本沒有欄位表達這件事,於是十條各寫各的,像十個孤島。
+RELATIONSHIPS = ("reinforcing", "conflicting",
+                 "competing_for_same_capacity", "same_underlying_driver")
 
 
 def _obj(props: dict, *, desc: str = "") -> dict:
@@ -142,7 +159,46 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "direction": _enum(DIRECTIONS),
         "materiality": _enum(MATERIALITY),
         "persistence": _s("一天的事還是會延續的事"),
+        # ---- v2:方向標籤不是分析,下面這些才是 ----
+        "mechanism_steps": _arr(_obj({
+            "from_what": _s("這一步從什麼開始"),
+            "to_what": _s("走到什麼"),
+            "channel": _s("透過什麼傳導(製程/封裝/匯率/資本支出/估值…)"),
+            "step_type": _enum(CLAIM_TYPES),
+            "evidence_ids": _EVIDENCE_IDS,
+        }), "事件到股價之間的每一步。**沒有證據的那一步要標成 inference 或 "
+            "unknown,不得自稱 fact** —— 那正是「看起來有根據」的來源。"),
+        "magnitude_band": _enum(
+            MAGNITUDE_BANDS,
+            "影響有多大。判斷不出來就選 unknown 並在下一欄說缺什麼資料;"
+            "**用形容詞冒充答案是這份報告最常見的失敗**"),
+        "why_this_magnitude": _s(
+            "為什麼是這個量級。選 unknown 時要寫「缺金額/數量/時程的哪一項」"),
+        "horizon": _enum(HORIZONS, "最快什麼時候看得到"),
+        "confirmation_signal": _s("什麼出現代表這條真的在走"),
+        "invalidation_signal": _s("什麼出現代表這條不成立"),
+        "relates_to": _arr(_obj({
+            "other_source_item_id": _s("今天另一則的 source_item_id"),
+            "relationship": _enum(RELATIONSHIPS),
+            "evidence_ids": _EVIDENCE_IDS,
+            "explanation": _s(),
+        }), "與今天其他條目的關係。**沒有根據就不要硬湊** —— 空陣列是"
+            "完全合法的答案,而編造的關聯比沒有關聯更糟。"),
     })),
+    # v2:**橫向問題要有自己的地方**,不能全部塞進 stance rationale 的兩三句。
+    "cross_market_synthesis": _obj({
+        "reinforcing_signals": _arr(_s(), "今天互相強化的訊號"),
+        "conflicting_signals": _arr(
+            _s(), "互相抵銷的訊號。**確實沒有衝突時要明講,不得留空敷衍**"),
+        "dominant_driver": _s("今天真正的主導因子"),
+        "why_it_dominates": _s("為什麼是它而不是別的"),
+        "net_effect_intraday": _s("即日的淨效果"),
+        "net_effect_next_days": _s("未來 1–5 日的淨效果;與即日不同時要說為什麼"),
+        "funds_moving_from": _arr(_s(), "資金從哪些地方出來"),
+        "funds_moving_to": _arr(_s(), "資金往哪些地方去"),
+        "what_would_flip_it": _s("什麼情況會讓主導因子失效"),
+        "evidence_ids": _EVIDENCE_IDS,
+    }, desc="橫向綜合:訊號之間的關係,不是把各市場各寫一句"),
     "contradictions": _arr(_obj({
         "topic": _s(),
         "supporting_ids": _EVIDENCE_IDS,
@@ -182,62 +238,10 @@ def chat_completions_response_format(name: str = "morning_analysis") -> dict:
 
 #: strict 模式保證得了形狀,保證不了**內容的可稽核性**。
 #: 這些是 API 管不到、但十天實驗要用來評分的東西。
-def validate(obj, evidence_ids) -> list:
-    """回傳問題清單(空 = 通過)。**不拋例外**:呼叫端決定要修還是降級。
 
-    只驗「schema 管不到」的:
-      - 證據 ID 是否真的存在於本日 packet(**編造的 ID 比沒有 ID 更危險**,
-        它看起來有根據)
-      - 高重要性的 fact/inference 有沒有帶證據
-      - **會進到信裡的段落有沒有帶得出根據**(第十二輪 P1-3)
-      - 立場詞彙是否合法
-
-    ## 第十二輪 P1-3:strict schema 保證形狀,不保證根據
-
-    「有話說就要說得出根據」那一半在 `analysis_grounding`(緣由寫在那裡)。
-    這裡只保留「ID 存不存在」與立場詞彙 —— 形狀與根據刻意分成兩個模組。
-    """
-    problems: list = []
-    if not isinstance(obj, dict):
-        return ["輸出不是 JSON 物件"]
-    known = set(evidence_ids or ())
-
-    def _check_ids(ids, where):
-        for i in (ids or []):
-            if str(i) not in known:
-                problems.append(f"{where} 引用了不存在的證據 ID:{i!r}")
-
-    for i, c in enumerate(obj.get("claim_audit") or []):
-        if not isinstance(c, dict):
-            problems.append(f"claim_audit[{i}] 不是物件")
-            continue
-        _check_ids(c.get("evidence_ids"), f"claim_audit[{i}]")
-        _check_ids(c.get("counterevidence_ids"), f"claim_audit[{i}] 的反證")
-        if (c.get("materiality") == "high"
-                and c.get("claim_type") in ("fact", "inference")
-                and not (c.get("evidence_ids") or [])):
-            problems.append(
-                f"claim_audit[{i}] 是高重要性的 {c.get('claim_type')},"
-                "卻沒有任何支持證據")
-    for i, d in enumerate(obj.get("key_drivers") or []):
-        if isinstance(d, dict):
-            _check_ids(d.get("evidence_ids"), f"key_drivers[{i}]")
-    for i, n in enumerate(obj.get("top_news_analysis") or []):
-        if isinstance(n, dict):
-            _check_ids([n.get("source_item_id")], f"top_news_analysis[{i}]")
-    # r1(Codex,P1):「要求非空」本身在鼓勵模型隨便填一個 —— 新守衛因此
-    # 製造了開頭那句話說的風險:編造的 ID 比沒有 ID 更危險。
-    for sec in _gr.EVIDENCE_BEARING:
-        node = obj.get(sec)
-        if isinstance(node, dict):
-            _check_ids(node.get("evidence_ids"), sec)
-
-    # 進信的段落要帶得出根據(`analysis_grounding`)。**空著不算過** ——
-    # 迴圈跑不到不等於沒問題,而那正是這條缺陷活下來的方式。
-    problems.extend(_gr.problems(obj))
-
-    label = ((obj.get("stance") or {}) if isinstance(obj.get("stance"), dict)
-             else {}).get("label")
-    if label is not None and label not in STANCE_LABELS:
-        problems.append(f"立場詞彙不合法:{label!r}")
-    return problems
+# ---------------------------------------------------------------- 相容出口
+#
+# `validate` 搬到 `analysis_validate`(見該檔的說明:形狀 / 根據 / 引用
+# 是三件事)。生產與測試都用 `analysis_schema.validate` 呼叫它,
+# **改呼叫端不是這次要改的東西** —— 一次改一件事,搬動才證明得了只換位置。
+from analysis_validate import validate            # noqa: E402,F401

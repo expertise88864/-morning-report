@@ -254,3 +254,49 @@ def test_ordinary_rows_still_count():
     out = ls.summarize(plain, shadow_model="deepseek-v4-pro")
     assert out["samples"] == 3 and out["both_ok"] == 3
     assert "observability_only_rows" not in out
+
+
+# -------------------------------------------- schema v2:新增的跨欄位不變式
+
+def _v2_obj():
+    import fixtures_analysis as fx
+    return fx.valid_analysis()
+
+
+def test_a_fact_step_without_evidence_is_rejected():
+    """**沒有證據的因果步驟不得自稱 fact**(schema v2)。
+
+    突變驗證第一輪抓到這條規則沒有測試 —— 把它從驗證器拿掉,全套照樣綠。
+    它擋的正是「看起來有根據」:一條 fact→fact→fact 的鏈,讀起來像事實,
+    而中間某一步其實是猜的。
+    """
+    import analysis_schema as sch
+    obj = _v2_obj()
+    obj["top_news_analysis"][0]["mechanism_steps"][1]["step_type"] = "fact"
+    hits = sch.validate(obj, {"n1", "n2"})
+    assert any("自稱 fact 卻沒有證據" in h for h in hits), hits
+    # 反向:標成 inference 就合法
+    obj["top_news_analysis"][0]["mechanism_steps"][1]["step_type"] = "inference"
+    assert sch.validate(obj, {"n1", "n2"}) == []
+
+
+def test_unknown_magnitude_must_say_what_is_missing():
+    """`unknown` 是誠實不是逃生口 —— 選它就要說缺哪些資料。"""
+    import analysis_schema as sch
+    obj = _v2_obj()
+    obj["top_news_analysis"][1]["why_this_magnitude"] = ""
+    hits = sch.validate(obj, {"n1", "n2"})
+    assert any("unknown,卻沒有說缺哪些資料" in h for h in hits), hits
+
+
+def test_a_relation_must_point_at_a_real_item():
+    """關係要指向今天真的存在的另一則,不能指向自己或不存在的東西。"""
+    import analysis_schema as sch
+    obj = _v2_obj()
+    rel = obj["top_news_analysis"][0]["relates_to"][0]
+    rel["other_source_item_id"] = "n_ghost"
+    hits = sch.validate(obj, {"n1", "n2", "n_ghost"})
+    assert any("沒有分析那一則" in h for h in hits), hits
+    rel["other_source_item_id"] = "n1"          # 指向自己
+    hits = sch.validate(obj, {"n1", "n2"})
+    assert any("指向自己" in h for h in hits), hits

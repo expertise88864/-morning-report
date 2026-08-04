@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from analysis_render_depth import _news_line, _synthesis
+
 RENDER_SCHEMA_VERSION = 1
 
 #: 這些標題**必須與主模組的常數一致**。改一個字,對應段落就會在信裡消失
@@ -49,6 +51,9 @@ SECTION_GLOBAL = "七之二、全球市場與美股台股連動"
 SECTION_NEWS = "八、重點新聞分析"
 SECTION_TW = "九、台股與台積電"
 SECTION_PRICED = "已被市場反映 vs 尚未反映"
+#: schema v2:橫向綜合。**排在最前面** —— 使用者要的是「這些訊號合起來
+#: 說什麼」,逐條看完再自己拼是他反映了三次的那個問題。
+SECTION_SYNTHESIS = "七之一、今日訊號的橫向綜合"
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
 
@@ -122,13 +127,18 @@ def render(obj: Optional[dict]) -> str:
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 
+    # 橫向綜合**排在最前面**:使用者要的是「今天這些訊號合起來說什麼」,
+    # 而不是逐條看完再自己拼。
+    syn = _synthesis(obj.get("cross_market_synthesis"))
+    if syn:
+        parts.append(f"## {SECTION_SYNTHESIS}\n" + syn)
+
     gm = obj.get("global_market") if isinstance(obj.get("global_market"), dict) else {}
     glob = [x for x in (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if x]
     if glob:
         parts.append(f"## {SECTION_GLOBAL}\n" + "\n".join(f"- {w}" for w in glob))
 
-    news = _lines(obj.get("top_news_analysis"),
-                  lambda n: _s(n.get("why_it_matters")))
+    news = _lines(obj.get("top_news_analysis"), _news_line)
     if news:
         parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
 

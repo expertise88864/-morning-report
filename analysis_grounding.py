@@ -12,18 +12,12 @@
 「昨夜三大重點」與「我的明確立場」寄出去 —— 讀信的人看到的是一句
 語氣肯定的市場判斷,背後什麼都沒有。
 
-缺陷的形狀是本 repo 記過的那一條:**空集合讓迴圈沒跑**。高重要性的檢查
-寫在 `for c in claim_audit` 裡,`claim_audit` 空的時候整段直接跳過;
-而 `key_drivers` 只驗「ID 存不存在」,沒驗「有沒有」。兩個漏洞都不會有
-錯誤訊息,只會安靜地放行。
+缺陷的形狀是本 repo 記過的那一條:**空集合讓迴圈沒跑**。
 
 ## 判準
 
-**會進到信裡的段落,都要帶得出根據。**
-
-不是「我挑幾個欄位來檢查」—— 欄位清單會漂移,而「這段會不會被寄出去」
-不會。空物件不算有內容:「這天沒有國際盤可談」與「有話要說卻說不出根據」
-是兩回事,只有後者要擋。
+**會進到信裡的段落,都要帶得出根據。** 空物件不算有內容:
+「這天沒有國際盤可談」與「有話要說卻說不出根據」是兩回事,只擋後者。
 """
 from __future__ import annotations
 
@@ -32,16 +26,20 @@ from __future__ import annotations
 #: 成本、延遲與**信裡的內容**。它顯然是實驗系統契約的一部分,而先前
 #: 它既不在同群鍵裡、也沒有行為快照:改掉 grounding 規則而不升任何版本,
 #: 兩種完全不同的接受行為會被當成同一群樣本相加。
-GROUNDING_VERSION = 1
+#: v2(schema v2):加 `cross_market_synthesis` —— 漏掉它的話,一段完全
+#: 沒有根據的橫向綜合會照樣寄出,而它正是最容易被寫成漂亮空話的一段。
+GROUNDING_VERSION = 2
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
             "global_market", "top_news_analysis", "scenario_tree",
-            "contradictions", "portfolio_implications")
+            "contradictions", "portfolio_implications",
+            "cross_market_synthesis", "priced_in")
 
 #: schema 裡帶 `evidence_ids` 而且會被寄出去的物件段落
 #: (`key_drivers` 與 `claim_audit` 是清單,另外處理)。
-EVIDENCE_BEARING = ("market_regime", "taiwan_market", "global_market")
+EVIDENCE_BEARING = ("market_regime", "taiwan_market", "global_market",
+                    "cross_market_synthesis")
 
 
 def has_content(node: dict) -> bool:

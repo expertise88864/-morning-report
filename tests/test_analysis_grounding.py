@@ -29,6 +29,9 @@ def _sound() -> dict:
         "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
         "taiwan_market": {"summary": "量能回升。", "evidence_ids": ["n2"]},
         "global_market": {"summary": "美股收紅。", "evidence_ids": ["n1"]},
+        # schema v2:橫向綜合也是帶證據、會進信的段落。
+        "cross_market_synthesis": {"dominant_driver": "美股外部定價",
+                                   "evidence_ids": ["n1"]},
         "top_news_analysis": [{"source_item_id": "n1", "why_it_matters": "傳導"}],
         "claim_audit": [{"claim_id": "c1", "statement": "費半走強",
                          "claim_type": "fact", "materiality": "high",

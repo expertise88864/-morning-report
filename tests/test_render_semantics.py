@@ -117,3 +117,38 @@ def test_an_empty_analysis_still_renders_nothing():
     assert ar.render({}) == ""
     assert ar.render(None) == ""
     assert ar.render({"stance": {"label": "偏多"}}) == "", "缺總結卻回了東西"
+
+
+# ---------------------------------------------------- schema v2:深度要進信
+
+def test_the_mechanism_chain_reaches_the_reader():
+    """**模型填了因果鏈,讀者要看得到** —— 突變驗證第一輪抓到這裡沒測試:
+    把渲染那兩行拿掉,全套照樣綠。schema 再深,渲染丟掉就等於沒有。"""
+    out = ar.render(fx.valid_analysis())
+    assert "怎麼傳導" in out
+    assert "費半收漲 → 台股電子開盤定價" in out
+    assert "(推論)" in out, "推論步驟沒有被標出來 —— 整條鏈讀起來像事實"
+
+
+def test_the_magnitude_and_signals_reach_the_reader():
+    out = ar.render(fx.valid_analysis())
+    assert "量級中等" in out
+    assert "量級判斷不出來" in out, "unknown 的誠實版本沒有被渲染"
+    assert "缺資本支出區間" in out, "「為什麼判斷不出來」沒有跟著出現"
+    assert "成立要看到" in out and "什麼會推翻它" in out
+
+
+def test_the_relationship_reaches_the_reader():
+    out = ar.render(fx.valid_analysis())
+    assert "與另一則的關係" in out
+    assert "同一個底層驅動" in out
+
+
+def test_the_synthesis_section_renders_and_leads():
+    """橫向綜合要在,而且**排在逐條分析之前** —— 使用者要的是
+    「合起來說什麼」,不是自己拼。"""
+    out = ar.render(fx.valid_analysis())
+    assert ar.SECTION_SYNTHESIS in out
+    assert out.index(ar.SECTION_SYNTHESIS) < out.index(ar.SECTION_NEWS)
+    assert "互相強化" in out and "互相抵銷" in out
+    assert "今天的主導因子" in out and "什麼會讓它翻盤" in out

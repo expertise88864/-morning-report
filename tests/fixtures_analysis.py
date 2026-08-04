@@ -77,10 +77,53 @@ def valid_analysis() -> dict:
                           "evidence_ids": ["n1"]},
         "portfolio_implications": {"summary": "維持核心部位。",
                                    "actions_to_consider": [], "risks": []},
-        "top_news_analysis": [{"source_item_id": "n1",
-                               "why_it_matters": "費半傳導台股電子",
-                               "direction": "bullish", "materiality": "high",
-                               "persistence": "數個交易日"}],
+        # schema v2:**這份 fixture 要示範的正是「有深度長什麼樣」。**
+        # 兩則刻意不同:n1 說得出量級,n2 誠實說量級判斷不出來 ——
+        # 後者是本次改版最重要的合法答案(用形容詞冒充答案才是失敗)。
+        "top_news_analysis": [
+            {"source_item_id": "n1", "why_it_matters": "費半傳導台股電子",
+             "direction": "bullish", "materiality": "high",
+             "persistence": "數個交易日",
+             "mechanism_steps": [
+                 {"from_what": "費半收漲", "to_what": "台股電子開盤定價",
+                  "channel": "外部定價", "step_type": "fact",
+                  "evidence_ids": ["n1"]},
+                 {"from_what": "電子權值走強", "to_what": "指數開高",
+                  "channel": "權值佔比", "step_type": "inference",
+                  "evidence_ids": []}],
+             "magnitude_band": "moderate",
+             "why_this_magnitude": "費半漲幅與台股電子的歷史連動落在中段",
+             "horizon": "intraday",
+             "confirmation_signal": "電子權值開高且量能跟上",
+             "invalidation_signal": "夜盤台指期翻黑",
+             "relates_to": [{"other_source_item_id": "n2",
+                             "relationship": "same_underlying_driver",
+                             "evidence_ids": ["n1", "n2"],
+                             "explanation": "都指向台積電的先進製程需求"}]},
+            {"source_item_id": "n2", "why_it_matters": "法說會的資本支出指引",
+             "direction": "neutral", "materiality": "medium",
+             "persistence": "延續到法說當週",
+             "mechanism_steps": [
+                 {"from_what": "資本支出指引", "to_what": "設備與封裝訂單",
+                  "channel": "資本支出", "step_type": "scenario",
+                  "evidence_ids": ["n2"]}],
+             "magnitude_band": "unknown",
+             "why_this_magnitude": "尚未公布金額與時程,缺資本支出區間",
+             "horizon": "1-5d",
+             "confirmation_signal": "法說給出高於市場預期的資本支出區間",
+             "invalidation_signal": "指引持平或下修",
+             "relates_to": []}],
+        "cross_market_synthesis": {
+            "reinforcing_signals": ["費半走強", "美債利率回落"],
+            "conflicting_signals": ["外資台指期淨空"],
+            "dominant_driver": "美股科技股的外部定價",
+            "why_it_dominates": "開盤前唯一已定價的資訊,本地籌碼要等現貨開出",
+            "net_effect_intraday": "偏多,但主要反映在權值股開盤",
+            "net_effect_next_days": "取決於期貨空單回補與否,方向未定",
+            "funds_moving_from": ["塑化"],
+            "funds_moving_to": ["半導體"],
+            "what_would_flip_it": "外資空單續增且現貨量能萎縮",
+            "evidence_ids": ["n1"]},
         "contradictions": [],
         "data_gaps": [],
         "watch_triggers": [],
@@ -102,4 +145,7 @@ def ungrounded_analysis() -> dict:
     obj["global_market"]["evidence_ids"] = []
     obj["top_news_analysis"] = []
     obj["claim_audit"] = []
+    # schema v2:橫向綜合也是**會進信而且帶證據**的段落,反例要一起拔掉
+    # 證據 —— 留著的話 grounding 會因為它有根據而放行,這個反例就失效了。
+    obj["cross_market_synthesis"]["evidence_ids"] = []
     return obj

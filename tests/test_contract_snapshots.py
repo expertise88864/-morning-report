@@ -206,19 +206,26 @@ def _behaviour() -> dict:
 #: 改了,指紋卻兩層都攔不到**。現在 prompt 內容另外算一份算進去。
 _FROZEN = {
     "evidence_schema_version":  (1, "5f0ae11e554371ad"),
-    "output_schema_version":    (1, "be7237cf1d4f5ed8"),
+    # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
+    # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
+    # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
+    "output_schema_version":    (2, "948966374ec7dc43"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
     # 至少兩條跨條連結、句式不得雷同;兩個範例整個重寫(它們自己在示範那個毛病)。
-    "primary_profile_version":  (6, "59c9cbf243817380"),
+    # v7(schema v2):新欄位的填法指引(unknown 是誠實不是失敗、
+    # 編造的關聯比沒有關聯更糟、五個市場各寫一句不是綜合)。
+    "primary_profile_version":  (7, "12881d2197be3fd0"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**
-    "renderer_version":         (2, "245d6becc26e5d7a"),
-    "grounding_version":        (1, "ea7c1800b2d0c032"),
+    # v3(schema v2):因果鏈/量級/驗證與失效/關係 + 橫向綜合段。
+    "renderer_version":         (3, "ca49d95842eedaaa"),
+    # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
+    "grounding_version":        (2, "48a0093cb4a4e0bb"),
 }
 
 

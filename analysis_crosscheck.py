@@ -39,6 +39,18 @@ class _LazyGeneric(frozenset):
 _GENERIC_SCOPE = _LazyGeneric()
 
 
+def _cites_own_cluster(d: dict, cid: str, packet) -> bool:
+    """駁回要引用**被駁回的那一群自己的新聞**(第二十輪 P2-2)。"""
+    info = (packet or {}).get("news_clusters") or {}
+    members: set = set()
+    for c in (info.get("clusters") or []):
+        if isinstance(c, dict) and str(c.get("cluster_id") or "") == cid:
+            members = set(map(str, c.get("member_source_ids") or ()))
+            break
+    cited = {str(x) for x in (d.get("supporting_evidence_ids") or [])}
+    return bool(cited & members)
+
+
 def _is_boilerplate(why: str) -> bool:
     t = why.strip()
     return len(t) <= 15 and any(w in t for w in _BOILERPLATE)
@@ -72,6 +84,15 @@ def _coverage_problems(obj, packet, analysed_ids) -> list:
                 " —— 靜默略過與判斷不重要,在信裡長得一模一樣")
         elif not str(d.get("why_not_material") or "").strip():
             out.append(f"dismissed_events[{cid}] 沒有寫為什麼不值得分析")
+        elif not str(d.get("revisit_trigger") or "").strip():
+            # 第二十輪 P2-2:套語偵測靠字面,一個修飾詞就繞過。
+            # 「什麼情況出現這個駁回就不成立」是機械化的判準 ——
+            # 說不出回頭條件的駁回,與「懶得分析」分不開。
+            out.append(f"dismissed_events[{cid}] 沒有寫 revisit_trigger ——"
+                       "說不出什麼情況要回頭看,駁回就只是略過")
+        elif not _cites_own_cluster(d, cid, packet):
+            out.append(f"dismissed_events[{cid}] 的證據沒有引用"
+                       "該事件群自己的新聞 —— 要證明你看過才能駁回")
         elif _is_boilerplate(str(d.get("why_not_material"))):
             # 第十九輪 P1-5:**「影響有限」不是理由,是換句話說。**
             # 只驗非空的話,駁回一則央行公告與駁回一則例行公告
@@ -162,6 +183,8 @@ def _claim_graph_problems(obj) -> list:
     # 單獨閱讀的一段 —— 「今日偏多,主因半導體需求強勁」而稽核裡只有
     # 「QQQ 昨日上漲」,形式上完全合法。
     top = [str(x) for x in (obj.get("executive_summary_claim_ids") or [])]
+    if len(top) != len(set(top)):
+        out.append("executive_summary_claim_ids 有重複")
     referenced_top = set(top)
     for x in top:
         if x not in ids:
@@ -176,6 +199,9 @@ def _claim_graph_problems(obj) -> list:
         if not isinstance(node, dict):
             continue
         cited = [str(x) for x in (node.get("claim_ids") or [])]
+        if len(cited) != len(set(cited)):
+            out.append(f"{sec}.claim_ids 有重複 —— 同一條主張列兩次"
+                       "不會讓根據變多,只會讓飽和度指標失真")
         referenced |= set(cited)
         for x in cited:
             if x not in ids:
@@ -207,6 +233,31 @@ def _claim_graph_problems(obj) -> list:
             if a != "market-wide" and a in _GENERIC_SCOPE:
                 out.append(f"claim_audit[{cid}] 的 asset_scope {a!r} 是泛稱 ——"
                            "整體市場級別請寫 `market-wide`")
+    # 第二十輪 P1-6:**情境是最前瞻的判斷,不能是唯一不用根據的段落。**
+    tree = obj.get("scenario_tree") if isinstance(obj.get("scenario_tree"), dict) else {}
+    for key in ("base", "bull", "bear"):
+        blk = tree.get(key)
+        if not isinstance(blk, dict) or not str(blk.get("narrative") or "").strip():
+            continue
+        cited = [str(x) for x in (blk.get("claim_ids") or [])]
+        referenced |= set(cited)
+        for x in cited:
+            if x not in ids:
+                out.append(f"scenario_tree.{key}.claim_ids 指向不存在的主張 {x!r}")
+        if not cited and claims:
+            out.append(f"scenario_tree.{key} 有敘述卻沒有回指任何 claim ——"
+                       "前瞻的情境更需要說得出根據")
+    for i, w in enumerate(obj.get("watch_triggers") or []):
+        if not isinstance(w, dict):
+            continue
+        cited = [str(x) for x in (w.get("claim_ids") or [])]
+        referenced |= set(cited)
+        for x in cited:
+            if x not in ids:
+                out.append(f"watch_triggers[{i}].claim_ids 指向不存在的主張 {x!r}")
+        if not cited and claims and str(w.get("trigger") or "").strip():
+            out.append(f"watch_triggers[{i}] 沒有回指任何 claim ——"
+                       "說不出為什麼要盯它,就不該佔讀者的注意力")
     # **孤兒主張**:寫進稽核卻沒有任何一段用到。它不是根據,是配菜。
     for c in claims:
         cid = str(c.get("claim_id") or "")

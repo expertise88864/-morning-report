@@ -155,12 +155,16 @@ def claim_graph_saturation(obj) -> dict:
         node = o.get(sec)
         if isinstance(node, dict):
             sections[sec] = [str(x) for x in (node.get("claim_ids") or [])]
-    used = [c for ids in sections.values() for c in ids]
+    # 第二十輪 P2-1:**數「幾個段落用到」,不是「出現幾次」。**
+    # 同一段重複填五次 c1 時,occurrence 除以段落數會得到 2.0 ——
+    # 一個大於 100% 的「飽和率」自己就是 false green。
     claims = [c for c in (o.get("claim_audit") or []) if isinstance(c, dict)]
-    top = max((used.count(c) for c in set(used)), default=0)
+    used = [set(map(str, ids)) for ids in sections.values()]
+    all_used = set().union(*used) if used else set()
+    top = max((sum(1 for u in used if c in u) for c in all_used), default=0)
     return {"claims": len(claims), "sections_mapped": len(sections),
-            "distinct_claims_used": len(set(used)),
-            # 1.0 = 每一段都靠同一條主張
+            "distinct_claims_used": len(all_used),
+            # 1.0 = 每一段都靠同一條主張;**不可能超過 1**
             "saturation_rate": _rate(top, len(sections))}
 
 

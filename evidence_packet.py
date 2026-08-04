@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 8
+EVIDENCE_SCHEMA_VERSION = 9
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

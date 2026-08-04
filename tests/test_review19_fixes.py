@@ -128,7 +128,7 @@ def test_the_same_news_item_cannot_be_analysed_twice():
     obj = fx.valid_analysis()
     one = dict(obj["top_news_analysis"][0], relates_to=[])
     obj["top_news_analysis"] = [one, dict(one)]
-    assert [p for p in sch.validate(obj, {"n1", "n2"}) if "寫了 2 段" in p]
+    assert [p for p in sch.validate(obj, fx.ids()) if "寫了 2 段" in p]
 
 
 def test_a_generic_asset_id_is_not_a_breakdown():
@@ -136,14 +136,14 @@ def test_a_generic_asset_id_is_not_a_breakdown():
     **讓泛論看起來更像深度分析,比不拆更糟。**"""
     obj = fx.valid_analysis()
     obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = "市場"
-    assert [p for p in sch.validate(obj, {"n1", "n2"}) if "泛稱" in p]
+    assert [p for p in sch.validate(obj, fx.ids()) if "泛稱" in p]
 
 
 def test_the_same_asset_cannot_appear_twice_in_one_event():
     obj = fx.valid_analysis()
     a = obj["top_news_analysis"][0]["affected_assets"]
     a[1]["asset_id"] = a[0]["asset_id"]
-    assert [p for p in sch.validate(obj, {"n1", "n2"}) if "重複了" in p]
+    assert [p for p in sch.validate(obj, fx.ids()) if "重複了" in p]
 
 
 def test_an_alignment_must_cite_evidence_about_that_alignment():
@@ -178,8 +178,9 @@ def test_a_boilerplate_dismissal_is_rejected():
                   sanitize=str)
     obj = fx.valid_analysis()
     obj["top_news_analysis"] = []
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n1",
-                                "why_not_material": "影響有限"}]
+    obj["dismissed_events"] = [{"cluster_id": "cluster:n1", "why_not_material": "影響有限",
+         "supporting_evidence_ids": ["n1"],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
     assert [p for p in sch.validate(obj, pk) if "只是套語" in p]
     obj["dismissed_events"][0]["why_not_material"] = (
         "本次決議與上次一致,利率路徑沒有改變,不會改變今日的折現率假設")
@@ -213,8 +214,9 @@ def test_dismissed_events_are_visible_to_the_reader():
     在信裡先前長得一模一樣。"""
     import analysis_render as ar
     obj = fx.valid_analysis()
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n9",
-                                "why_not_material": "與上次決議一致,利率路徑未改變"}]
+    obj["dismissed_events"] = [{"cluster_id": "cluster:n9", "why_not_material": "與上次決議一致,利率路徑未改變",
+         "supporting_evidence_ids": ["n1"],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
     text = ar.render(obj)
     assert "今日看過但未展開" in text and "cluster:n9" in text
 
@@ -248,7 +250,7 @@ def test_deepen_cannot_drop_the_alignment_readings():
         {"alignment_id": "tension:t_x", "interpretation": "i",
          "marginal_information": "m", "double_count_risk": "d",
          "evidence_ids": []}]
-    ok, why = ad.deepen_is_an_improvement(shallow, deep, evidence_ids={"n1", "n2"})
+    ok, why = ad.deepen_is_an_improvement(shallow, deep, evidence_ids=fx.ids())
     assert not ok and "同向訊號" in why, why
 
 
@@ -264,9 +266,9 @@ def test_deepen_cannot_swap_out_a_section_claim_mapping():
     # c1 的回指不見了,而立場的時間尺度仍然有主張撐著(c2/c9 都是 1-5d)
     deep["stance"]["claim_ids"] = ["c2", "c9"]
     deep["priced_in"]["claim_ids"] = ["c1", "c9"]
-    assert sch.validate(deep, {"n1", "n2"}) == [], "第二版本身要是合法的"
+    assert sch.validate(deep, fx.ids()) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep,
-                                          evidence_ids={"n1", "n2"})
+                                          evidence_ids=fx.ids())
     assert not ok and "回指" in why, why
 
 
@@ -278,9 +280,9 @@ def test_deepen_cannot_swap_out_an_analysed_asset():
     """
     deep = fx.valid_analysis()
     deep["top_news_analysis"][0]["affected_assets"][1]["asset_id"] = "3711"
-    assert sch.validate(deep, {"n1", "n2"}) == [], "第二版本身要是合法的"
+    assert sch.validate(deep, fx.ids()) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep,
-                                          evidence_ids={"n1", "n2"})
+                                          evidence_ids=fx.ids())
     assert not ok and "拆過的標的" in why, why
 
 
@@ -289,7 +291,7 @@ def test_deepen_cannot_drop_a_mechanism_evidence_reference():
     deep["top_news_analysis"][0]["mechanism_steps"][0]["evidence_ids"] = []
     deep["top_news_analysis"][0]["mechanism_steps"][0]["step_type"] = "inference"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep,
-                                          evidence_ids={"n1", "n2"})
+                                          evidence_ids=fx.ids())
     assert not ok and "因果步驟的證據" in why, why
 
 

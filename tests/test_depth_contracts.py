@@ -16,7 +16,7 @@ import evidence_packet as ep
 import fixtures_analysis as fx
 import signal_tensions as st
 
-_IDS = {"n1", "n2"}
+_IDS = fx.ids()
 
 
 def _packet_with_tensions() -> dict:

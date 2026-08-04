@@ -238,7 +238,7 @@ MODULE_CEILINGS = {
     # analysis_crosscheck,這裡剩下的幾乎都是欄位宣告與它們的理由。
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
-    "analysis_schema.py": 350,
+    "analysis_schema.py": 380,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、
@@ -320,7 +320,7 @@ MODULE_CEILINGS = {
     "experiment_record.py": 80,
     # Luna 特化:確定性品質指標。它刻意**不提供**綜合分數 ——
     # 結構相關的指標只有 Luna 有,合成單一分數會讓比較變成「有結構 vs 沒結構」。
-    "analysis_metrics.py": 350,
+    "analysis_metrics.py": 380,
     # 盲評卡端到端(產生/拆分/落地)。實測 165 行 —— 這一批從
     # `analysis_metrics` + `llm_experiment` 抽出來,兩邊都因此退回上限內。
     "blind_review.py": 180,
@@ -347,13 +347,16 @@ MODULE_CEILINGS = {
     # 第十八輪:實測 226 —— 加的兩條(重複的張力調和、調和的證據沒有
     # 涵蓋兩側)**正是這個檔存在的理由**:引用存在的 ID ≠ 引用相關的 ID。
     # 放寬到 240;再長就要把張力那一段整個拆出去。
-    "analysis_validate.py": 330,
+    "analysis_validate.py": 360,
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度
     # 要有主張撐著、asset_scope 不得是泛稱)。**這個檔存在的理由就是
     # 「有沒有真的做完」**,判準變細正是它該長的方向。
-    "analysis_crosscheck.py": 240,
+    # 第二十輪:實測 268 —— 情境/觀察點的回指、駁回的回頭條件與
+    # 自引用檢查。**這個檔量的就是「有沒有真的做完」**,判準變細是
+    # 它該長的方向;超過 300 就再拆。
+    "analysis_crosscheck.py": 300,
     # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
     # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
     # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。
@@ -362,7 +365,7 @@ MODULE_CEILINGS = {
     # `_identity`(加深不得換掉內容,只比數量攔不住)。
     # 判準與量測放同一個檔是刻意的:**它們必須用同一套定義**,
     # 分家的話「提示說夠深、指標說不夠深」會同時成立。
-    "analysis_depth.py": 330,
+    "analysis_depth.py": 360,
     # 第十八輪:階段與深度指標拆去 `analysis_stages` —— **後果不同**:
     # 深度提示錯了只是多跑一次;階段判斷錯了會讓收件人讀到假的完整度。
     "analysis_stages.py": 200,

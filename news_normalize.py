@@ -16,12 +16,13 @@ from __future__ import annotations
 from typing import Optional
 
 import news_clusters as _nc
-# 常數與小工具留在 `evidence_packet`(`core_evidence_sha` 等也用得到)。
-# 兩個模組**沒有**循環:evidence_packet 只從這裡取 `normalize_news`,
-# 而它是在 `build()` 內部呼叫的。
-from evidence_packet import (
-    MAX_FULLTEXT_CHARS, MAX_NEWS_ITEMS, MAX_SUMMARY_CHARS,
-    _GRADE_RANK, _grade, _identity, _sid)
+
+# 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
+# `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
+# `from evidence_packet import ...` —— 先 import evidence_packet 剛好成功
+# (常數已定義),先 import news_normalize 就炸(它反向進入一個
+# 尚未定義 `normalize_news` 的半初始化模組)。實測確認。
+# **宣稱要回頭驗**;修法是延遲到呼叫時才取(那時兩個模組都已載完)。
 
 
 def normalize_news(news: Optional[list], sanitize=None) -> tuple:
@@ -31,6 +32,9 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     **決勝子句**:少了它,兩則同等級同時間的新聞順序會依賴 dict 的插入順序,
     而那會讓 evidence_sha 在無關的上游變動下抖動。
     """
+    from evidence_packet import (
+        MAX_FULLTEXT_CHARS, MAX_NEWS_ITEMS, MAX_SUMMARY_CHARS,
+        _GRADE_RANK, _grade, _identity, _sid)
     items, seen = [], set()
     for i, n in enumerate(news or []):
         if not isinstance(n, dict):

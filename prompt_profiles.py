@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 15
+LUNA_XHIGH_VERSION = 16
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -113,6 +113,13 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   以及 `stance` / `priced_in` / `portfolio_implications` 的 `claim_ids`
   回指。**寫進稽核卻沒有任何一段用到的高重要性主張,不是根據,是配菜。**
   總結那一句最可能被單獨閱讀,它也要回指。
+- **因果鏈要有量化錨點。** 高重要性事件的傳導鏈,至少一步的
+  `evidence_ids` 要引用 `market:` / `derived:` / `valuation:` /
+  `prediction:` 的具體數字 —— 「費半收漲帶動台股電子」沒有錨在
+  `market:QQQ.change_pct` 上,讀者無從判斷是 0.3% 還是 3% 的事。
+- **橫向綜合要接上行情,不是把新聞再說一次。** tension_resolutions 與
+  alignment_readings 的證據本來就該是 `tension:` / `market:`;
+  cross_market_synthesis 整段只引新聞 ID 時,它是轉述不是綜合。
 - **回指要連對,不只是連上。** 立場寫 1-4 週,就要有一條談 1-4 週的
   主張撐著 —— 全部靠今日盤前的主張撐一個一個月的判斷,那是形式上的引用。
 - **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**

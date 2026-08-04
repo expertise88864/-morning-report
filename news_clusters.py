@@ -89,7 +89,13 @@ def clusters(news: Optional[list]) -> list:
     groups: list = []
     for n in items:
         for g in groups:
-            if any(_same_event(n, m) for m in g):
+            # 第二十輪 P1-2:**與代表比,不是與任何成員比。** single-link
+            # 會被橋接串起來:A~B、B~C 而 A≁C,三則被併成一群 ——
+            # 兩件不同的事被壓成一條因果鏈,其中一件還會因為「同一群
+            # 只能分析一次」被驗證器強迫省略。與代表(群裡最小 ID 那則,
+            # 也就是定義 cluster_id 的那則)比對:橋最多自成一群,
+            # 誤併變漏併 —— 兩種錯誤的代價不對稱,要偏向安全那側。
+            if _same_event(n, g[0]):
                 g.append(n)
                 break
         else:

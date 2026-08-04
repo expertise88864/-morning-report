@@ -17,7 +17,9 @@
 """
 import analysis_grounding as gr
 
-_IDS = {"n1", "n2"}
+import fixtures_analysis as fx
+
+_IDS = fx.ids()
 
 
 def _sound() -> dict:

@@ -126,9 +126,12 @@ def test_a_required_event_must_be_analysed_or_explicitly_dismissed():
     hits = [p for p in sch.validate(obj, pk) if "既沒有分析、也沒有說" in p]
     assert len(hits) == 2, hits
     # 駁回要說得出理由
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n1", "why_not_material": ""},
-                               {"cluster_id": "cluster:n4",
-                                "why_not_material": "設備採購金額未達實質影響門檻"}]
+    obj["dismissed_events"] = [{"cluster_id": "cluster:n1", "why_not_material": "",
+         "supporting_evidence_ids": ["n1"],
+         "revisit_trigger": "官方後續公告改變原判斷"},
+                               {"cluster_id": "cluster:n4", "why_not_material": "設備採購金額未達實質影響門檻",
+         "supporting_evidence_ids": ["n4"],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
     probs = sch.validate(obj, pk)
     assert [p for p in probs if "cluster:n1] 沒有寫為什麼" in p]
     assert not [p for p in probs if "cluster:n4" in p]
@@ -139,8 +142,9 @@ def test_dismissing_something_that_was_never_required_is_rejected():
     pk = ep.build({}, {}, {}, _NEWS, [], {}, as_of="2026-08-05T06:00",
                   target_session_date="2026-08-05", sanitize=str)
     obj = fx.valid_analysis()
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n5",
-                                "why_not_material": "不重要"}]
+    obj["dismissed_events"] = [{"cluster_id": "cluster:n5", "why_not_material": "不重要",
+         "supporting_evidence_ids": ["n5"],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
     assert [p for p in sch.validate(obj, pk) if "不在本報的必分析清單" in p]
 
 
@@ -153,8 +157,9 @@ def test_analysing_the_same_event_twice_is_rejected():
     one = dict(obj["top_news_analysis"][0], source_item_id="n1", relates_to=[])
     two = dict(one, source_item_id="n3")
     obj["top_news_analysis"] = [one, two]
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n4",
-                                "why_not_material": "金額未達實質門檻"}]
+    obj["dismissed_events"] = [{"cluster_id": "cluster:n4", "why_not_material": "金額未達實質門檻",
+         "supporting_evidence_ids": ["n4"],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
     hits = [p for p in sch.validate(obj, pk) if "被分析了 2 次" in p]
     assert hits and "cluster:n1" in hits[0], hits
 

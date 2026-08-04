@@ -41,7 +41,7 @@ import evidence_packet as _ep
 #: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
 #: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
 #: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
-METRICS_SCHEMA_VERSION = 5
+METRICS_SCHEMA_VERSION = 6
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -104,14 +104,23 @@ def evidence_coverage(text: str, packet: dict) -> dict:
         return bool(title) and title[:8] in body
 
     covered = [n for n in news if _hit(n)]
-    official = [n for n in news if n.get("official") or n.get("source_grade") == "A"]
+    # 第二十輪 P2-4:**Reuters 不是主管機關。** 先前 official 把兩者混成
+    # 一格 —— dashboard 的「官方來源覆蓋」被 A 級媒體灌高,而「官方公告
+    # 被漏掉」正是這個指標存在的理由。分群那側已經拆了,這裡跟上。
+    official = [n for n in news if n.get("official")]
+    grade_a = [n for n in news if not n.get("official")
+               and n.get("source_grade") == "A"]
     off_cov = [n for n in official if _hit(n)]
+    a_cov = [n for n in grade_a if _hit(n)]
     return {
         "items": len(news), "covered": len(covered),
         "rate": round(len(covered) / len(news), 3),
         "official_items": len(official), "official_covered": len(off_cov),
         "official_rate": (round(len(off_cov) / len(official), 3)
                           if official else None),
+        "grade_a_items": len(grade_a), "grade_a_covered": len(a_cov),
+        "grade_a_rate": (round(len(a_cov) / len(grade_a), 3)
+                         if grade_a else None),
     }
 
 
@@ -234,7 +243,8 @@ def _claims(obj: dict) -> list:
     return [c for c in (obj.get("claim_audit") or []) if isinstance(c, dict)]
 
 
-def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
+def structured_metrics(obj: Optional[dict], packet: dict,
+                       rendered_text: str = "") -> dict:
     """**只有 Luna 有。** 回答「這條路徑健不健康」,不是「比 DeepSeek 好」。
 
     把這些數字拿去和 DeepSeek 比,比的是有沒有結構,不是模型能力 ——
@@ -280,7 +290,10 @@ def structured_metrics(obj: Optional[dict], packet: dict) -> dict:
         # 駁回也算 covered、一個實體覆蓋一整天、合法但不相關的證據算
         # grounded、`asset_id="市場"` 算逐標的分析 —— 四種 false green
         # 都會讓 dashboard 接近 100% 而信裡仍然只有「偏多、情緒改善」。
-        "quality": _qm.quality_metrics(obj, packet),
+        # 第二十輪 P1-3:**rendered text 不傳進來,事件指紋覆蓋率永遠是 0**
+        # —— 無論信裡分析得多完整,十配對的帳本都會顯示 Luna 的事件覆蓋
+        # 失敗。指標接錯線與指標不存在,對判讀的人是同一件事。
+        "quality": _qm.quality_metrics(obj, packet, text=rendered_text),
         "validation_problems": len(problems),
         "validation_detail": problems[:10],
         "sections_required": len(REQUIRED_SECTIONS),

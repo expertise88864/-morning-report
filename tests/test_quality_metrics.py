@@ -45,7 +45,9 @@ def test_a_dismissed_event_is_not_counted_as_covered():
     obj = fx.valid_analysis()
     obj["top_news_analysis"] = []
     obj["dismissed_events"] = [
-        {"cluster_id": c, "why_not_material": "本次決議與上次一致,利率路徑未變"}
+        {"cluster_id": c, "why_not_material": "本次決議與上次一致,利率路徑未變",
+         "supporting_evidence_ids": ["n1"],
+         "revisit_trigger": "官方後續公告改變原判斷"}
         for c in need]
     m = qm.required_event_coverage(obj, pk)
     assert m["true_coverage_rate"] == 0.0, m
@@ -123,7 +125,7 @@ def test_one_claim_filling_the_whole_letter_is_visible():
     obj2 = fx.valid_analysis()
     for sec in ("stance", "priced_in", "portfolio_implications"):
         obj2[sec]["claim_ids"] = ["c1", "c2"]
-    assert sch.validate(obj2, {"n1", "n2"}) == []
+    assert sch.validate(obj2, fx.ids()) == []
 
 
 def test_deepen_preservation_says_what_was_lost():

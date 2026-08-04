@@ -58,8 +58,41 @@ def depth_advisories(obj) -> list:
         if (n.get("magnitude_band") in ("negligible", "small", "moderate", "large")
                 and not str(n.get("why_this_magnitude") or "").strip()):
             out.append(f"{where} 給了量級卻沒有說為什麼是這個量級")
+        # 深度加強(縱向,2026-08-05):**沒有量化錨點的鏈是散文。**
+        # 「費半收漲 → 台股電子開盤定價」每一步都合法,而整條鏈沒有
+        # 引用任何一個行情數字 —— 讀者無從判斷這個傳導是 0.3% 還是 3%。
+        # 高重要性事件的鏈至少要有一步錨在 `market:` / `derived:` /
+        # `valuation:` / `prediction:` 的數字上。判準是結構性的
+        # (查引用的命名空間),不是關鍵詞。
+        if n.get("materiality") == "high" and steps:
+            anchored = any(
+                str(e).startswith(("market:", "derived:", "valuation:",
+                                   "prediction:"))
+                for st in steps for e in (st.get("evidence_ids") or []))
+            if not anchored:
+                out.append(
+                    f"{where} 的因果鏈沒有任何一步引用行情或衍生數字 —— "
+                    "至少把起點錨在一個具體數字上(漲跌幅、部位、利率),"
+                    "否則量級判斷沒有立足點")
     cms = obj.get("cross_market_synthesis")
     if isinstance(cms, dict):
+        # 深度加強(橫向,2026-08-05):**只靠新聞的橫向綜合是轉述,
+        # 不是綜合。** 橫向的原料是行情之間的張力與同向(Python 已經
+        # 算好放在 packet 裡),綜合段的證據若一個 `market:` / `tension:` /
+        # `derived:` 都沒有,它大概率只是把幾則新聞再說一次。
+        cited = ([str(e) for e in (cms.get("evidence_ids") or [])]
+                 + [str(e) for r in (cms.get("tension_resolutions") or [])
+                    if isinstance(r, dict)
+                    for e in (r.get("evidence_ids") or [])]
+                 + [str(e) for r in (cms.get("alignment_readings") or [])
+                    if isinstance(r, dict)
+                    for e in (r.get("evidence_ids") or [])])
+        if cited and not any(e.startswith(("market:", "tension:", "derived:"))
+                             for e in cited):
+            out.append(
+                "cross_market_synthesis 的證據全是新聞 —— 橫向綜合的原料"
+                "是行情之間的張力與同向(EVIDENCE 的 signal_tensions),"
+                "沒有接上任何一個行情數字的綜合只是新聞轉述")
         has_content = any(str(v or "").strip() if isinstance(v, str) else v
                           for k, v in cms.items() if k != "evidence_ids")
         if has_content:
@@ -129,19 +162,34 @@ def _identity(obj) -> dict:
         # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
         # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉
         # claim 回指」會因為鏈變長而勝出 —— 加深反而讓信變淺。
-        "拆過的標的": {f"{n.get('source_item_id')}:{a.get('asset_id')}"
+        # 第二十輪 P1-4:**只保名字保不住結論。** `n1:2330` 不變而方向
+        # bullish→bearish、量級 moderate→negligible —— ID 集合完全相同,
+        # 第二版照樣勝出。**加深是把同一個判斷說得更清楚,不是換判斷**,
+        # 所以身分要含方向/量級/時間 —— 改任何一格都是換了一個結論。
+        "拆過的標的": {f"{n.get('source_item_id')}:{a.get('asset_id')}:"
+                  f"{a.get('direction')}:{a.get('magnitude_band')}:"
+                  f"{a.get('horizon')}"
                   for n in news for a in (n.get("affected_assets") or [])
                   if isinstance(a, dict) and a.get("asset_id")},
-        "解讀過的同向訊號": {str(r.get("alignment_id") or "")
+        "解讀過的同向訊號": {f"{r.get('alignment_id')}:{r.get('interpretation')}"
                      for r in (cms.get("alignment_readings") or [])
                      if isinstance(r, dict)},
-        "稽核過的主張": {str(c.get("claim_id") or "")
+        # 同理:claim 的身分含**內容**(主張本文/尺度/範圍)——
+        # 「c1:需求上升」改成「c1:需求崩跌」時 ID 沒變,而整封信的根據
+        # 已經是另一個世界。
+        "稽核過的主張": {f"{c.get('claim_id')}:{c.get('statement')}:"
+                   f"{c.get('horizon')}:"
+                   f"{','.join(sorted(map(str, c.get('asset_scope') or [])))}"
                    for c in (o.get("claim_audit") or [])
                    if isinstance(c, dict) and c.get("claim_id")},
-        "各段的回指": {f"{sec}:{cid}"
-                  for sec in ("stance", "priced_in", "portfolio_implications")
-                  for cid in ((o.get(sec) or {}).get("claim_ids") or [])
-                  if isinstance(o.get(sec), dict)},
+        "各段的回指": ({f"{sec}:{cid}"
+                   for sec in ("stance", "priced_in", "portfolio_implications")
+                   for cid in ((o.get(sec) or {}).get("claim_ids") or [])
+                   if isinstance(o.get(sec), dict)}
+                  # 第二十輪 P1-4:總結的回指**上一批加了欄位卻忘了進身分**
+                  # —— 加深可以把它整個清掉而不被發現。
+                  | {f"executive_summary:{cid}"
+                     for cid in (o.get("executive_summary_claim_ids") or [])}),
         "因果步驟的證據": {f"{n.get('source_item_id')}:{e}"
                     for n in news for st in (n.get("mechanism_steps") or [])
                     if isinstance(st, dict)

@@ -20,6 +20,7 @@ import analysis_origin as ao
 import analysis_validate as av
 import llm_experiment as lx
 import llm_shadow as ls
+import fixtures_analysis as fx
 import morning_report as mr
 
 
@@ -259,8 +260,9 @@ def test_ordinary_rows_still_count():
 
 # -------------------------------------------- schema v2:新增的跨欄位不變式
 
+
+
 def _v2_obj():
-    import fixtures_analysis as fx
     return fx.valid_analysis()
 
 
@@ -274,11 +276,11 @@ def test_a_fact_step_without_evidence_is_rejected():
     import analysis_schema as sch
     obj = _v2_obj()
     obj["top_news_analysis"][0]["mechanism_steps"][1]["step_type"] = "fact"
-    hits = sch.validate(obj, {"n1", "n2"})
+    hits = sch.validate(obj, fx.ids())
     assert any("自稱 fact 卻沒有證據" in h for h in hits), hits
     # 反向:標成 inference 就合法
     obj["top_news_analysis"][0]["mechanism_steps"][1]["step_type"] = "inference"
-    assert sch.validate(obj, {"n1", "n2"}) == []
+    assert sch.validate(obj, fx.ids()) == []
 
 
 def test_unknown_magnitude_must_say_what_is_missing():
@@ -286,7 +288,7 @@ def test_unknown_magnitude_must_say_what_is_missing():
     import analysis_schema as sch
     obj = _v2_obj()
     obj["top_news_analysis"][1]["why_this_magnitude"] = ""
-    hits = sch.validate(obj, {"n1", "n2"})
+    hits = sch.validate(obj, fx.ids())
     assert any("unknown,卻沒有說缺哪些資料" in h for h in hits), hits
 
 
@@ -299,7 +301,7 @@ def test_a_relation_must_point_at_a_real_item():
     hits = sch.validate(obj, {"n1", "n2", "n_ghost"})
     assert any("沒有分析那一則" in h for h in hits), hits
     rel["other_source_item_id"] = "n1"          # 指向自己
-    hits = sch.validate(obj, {"n1", "n2"})
+    hits = sch.validate(obj, fx.ids())
     assert any("指向自己" in h for h in hits), hits
 
 
@@ -374,4 +376,4 @@ def test_advisories_never_reject():
     o["cross_market_synthesis"]["dominant_driver"] = ""
     assert av.depth_advisories(o), "淺的形狀要被點名"
     import analysis_schema as sch
-    assert sch.validate(o, {"n1", "n2"}) == [], "淺被當成了不合格 —— 會落回 legacy"
+    assert sch.validate(o, fx.ids()) == [], "淺被當成了不合格 —— 會落回 legacy"

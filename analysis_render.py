@@ -161,7 +161,9 @@ def render(obj: Optional[dict], packet=None) -> str:
         if skipped:
             news.append("- *今日看過但未展開:" + "、".join(
                 f"{_s(d.get('cluster_id'))}({_s(d.get('why_not_material'))})"
-                for d in skipped[:4]) + "*")
+                for d in skipped[:4])
+                + (f";另有 {len(skipped) - 4} 件" if len(skipped) > 4 else "")
+                + "*")
         parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
 
     # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡

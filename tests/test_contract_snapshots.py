@@ -242,7 +242,7 @@ def _behaviour() -> dict:
         # 於是「有張力卻沒處理」「重複調和」「證據沒涵蓋兩側」這些
         # packet-aware 的接受規則,快照一條都量不到。**兩種形狀都量**:
         # 舊呼叫端仍然合法,而新規則要看得見。
-        "grounding_version": _sha([sch.validate(o, {"n1", "n2"})
+        "grounding_version": _sha([sch.validate(o, fx.ids())
                                    for o in _GROUNDING_CASES]
                                   + [sch.validate(o, pk)
                                      for o in _GROUNDING_CASES]
@@ -296,7 +296,10 @@ _FROZEN = {
     # v8(第十九輪):root scalar 的值不再掉在空 path;`as_of_precision`
     #    與 `observed_session` 取代假精確;新聞先分群、必分析事件強制
     #    保留、再截斷(先前排第 221 的央行公告直接消失而覆蓋率 100%)。
-    "evidence_schema_version":  (8, "484ebb40080d73f8"),
+    # v9(第二十輪 P1-2/P1-7):分群改與**代表**比對(single-link 會被
+    #    橋接串起來,兩件事壓成一群);observed_session 改逐區塊政策
+    #    (先前「非美即台」,公報與匯率被掛上台股交易日)。
+    "evidence_schema_version":  (9, "484ebb40080d73f8"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -308,7 +311,10 @@ _FROZEN = {
     # v8(第十九輪 P1-8):`claim_audit.asset_scope` 與頂層
     #    `executive_summary_claim_ids` —— 最可能被單獨閱讀的那一段
     #    先前完全脫離稽核。回指放頂層是**攤平**(深度已貼齊上限)。
-    "output_schema_version":    (8, "a8dcdce7cf4967de"),
+    # v9(第二十輪 P1-6/P2-2):scenario 與 watch_triggers 接進 claim 圖
+    #    (最前瞻的判斷不能是唯一不用根據的段落);dismissed_events 加
+    #    revisit_trigger 與 supporting_evidence_ids。
+    "output_schema_version":    (9, "6b5be4b101888a15"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -329,7 +335,8 @@ _FROZEN = {
     #    於是 evidence 加一個欄位就會讓 prompt 契約亮紅。改餵手寫的
     #    固定 packet。依本表既有先例:**改雜湊而不升版**。
     # v15(第十九輪):asset_scope、總結回指、時間尺度要連對。
-    "primary_profile_version":  (15, "02bed531ee31d7a6"),
+    # v16(第二十輪+深度加強):量化錨點、橫向接行情、駁回的回頭條件。
+    "primary_profile_version":  (16, "22b5b1330d099037"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -346,7 +353,8 @@ _FROZEN = {
     # v6(第十八輪):逐標的影響與同向解讀排進信。
     # v7(第十九輪):情境觸發條件(機率仍不進信 —— 信裡的數字必須是
     #    Python 算的)、駁回事件、未完成鏈的剩餘則數。
-    "renderer_version":         (7, "62af6ae0df71804c"),
+    # v8(第二十輪 P2-2):駁回超過 4 件顯示「另有 N 件」。
+    "renderer_version":         (8, "62af6ae0df71804c"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -364,7 +372,10 @@ _FROZEN = {
     #     同向訊號的證據要綁在那一筆上;駁回理由不得是套語。
     # v11(第十九輪 P1-8):回指要**連對**不只是連上 —— 立場的時間
     #     尺度要有同尺度的主張撐著;asset_scope 不得是泛稱或留空。
-    "grounding_version":        (11, "cb230b37bb90004a"),
+    # v12(第二十輪):情境/觀察點要回指;駁回要引用被駁回那群自己的
+    #     新聞並給回頭條件;段落內重複回指要擋;完整鏈=全程不倒退;
+    #     深度加強:量化錨點與橫向接行情(advisory,不擋信)。
+    "grounding_version":        (12, "d711da7ebd4b70ae"),
 }
 
 

@@ -53,7 +53,9 @@ _GOOD["data_gaps"] = [
               "gap:sector_internal_divergence", "gap:rates_vs_tech")]
 _NEWS = fx.news()
 
-_ARGS = ({"QQQ": {"close": 500.0}}, {"fair_value": 100.0},
+# fixture 的因果鏈錨在 `market:QQQ.change_pct` 上(深度加強),
+# 這份行情要供得出那個欄位。
+_ARGS = ({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {"fair_value": 100.0},
          {"model1": 1000.0}, _NEWS, [], "")
 
 
@@ -591,7 +593,9 @@ def test_the_good_fixture_is_actually_schema_valid():
     """
     import analysis_schema as sch
     assert jc.violations(_GOOD, sch.ANALYSIS_OUTPUT_SCHEMA) == []
-    assert sch.validate(_GOOD, {n["source_item_id"] for n in _NEWS}) == []
+    # fixture 的鏈錨在行情數字上(深度加強)—— ID 集合要含它。
+    assert sch.validate(_GOOD, {n["source_item_id"] for n in _NEWS}
+                        | fx.ids()) == []
 
 
 # ------------------------------ 2026-08-03 實機:失敗要查得出原因

@@ -37,7 +37,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 8
+ANALYSIS_SCHEMA_VERSION = 9
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -148,6 +148,10 @@ _SCENARIO = _obj({
     "narrative": _s(),
     "probability": _num("0–1"),
     "triggers": _arr(_s(), "會讓這個情境成立的可觀察條件"),
+    # 第二十輪 P1-6:**情境是最前瞻的判斷,先前卻是唯一不用根據的段落。**
+    # 「台積電明日可能跌停」配一句「外資情緒轉弱」可以整段進信,
+    # 而稽核裡什麼都沒有。
+    "claim_ids": _arr(_s(), "這個情境靠哪幾條 `claim_audit.claim_id`"),
 })
 
 #: **主分析的完整輸出**。欄位對應信件既有的需求:明確立場、淨分、一句話總結、
@@ -308,11 +312,17 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
     "dismissed_events": _arr(_obj({
         "cluster_id": _s("EVIDENCE 的 `news_clusters.required_cluster_ids` 之一"),
         "why_not_material": _s("為什麼今天不值得分析 —— 不得只寫「影響有限」"),
+        # 第二十輪 P2-2:套語偵測靠字面,一個修飾詞就繞過 ——
+        # **機械化的判準是這兩格**:引用你駁回的那則新聞本身
+        # (證明你看過它),以及說得出什麼情況要回頭看它。
+        "supporting_evidence_ids": _EVIDENCE_IDS,
+        "revisit_trigger": _s("什麼情況出現,這個駁回就不成立"),
     }), "本報要求分析而你決定不談的事件"),
     "watch_triggers": _arr(_obj({
         "trigger": _s(),
         "why": _s(),
         "horizon": _enum(HORIZONS),
+        "claim_ids": _arr(_s(), "為什麼要盯它 —— 靠哪幾條主張"),
     })),
     "claim_audit": _arr(_AUDITED_CLAIM,
                         "所有重大 claim 的稽核清單;評分以此為準"),

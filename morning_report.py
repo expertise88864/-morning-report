@@ -14013,7 +14013,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                         _adv = _av.depth_advisories(obj)
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
-                    obj, packet)
+                    obj, packet, rendered_text=text)
                 return text
             problems = ["渲染不出可用的晨報(缺立場或總結)"]
         _record(False, "; ".join(problems[:2]))

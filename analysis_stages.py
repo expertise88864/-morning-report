@@ -44,7 +44,13 @@ def _ordered_chain(n) -> bool:
            if name in _sch.OPERATIONAL_STAGES}
     seq = _stage_seq(n)
     t = _terminal_index(n)
-    return t is not None and any(idx in ops for idx in seq[:t])
+    # 第二十輪 P1-5:**「完整」與「順序錯誤」先前可以同時成立。**
+    # `event → operations → price → revenue` 在第一個 terminal 之前
+    # 有營運層,所以算 complete;而 price 之後倒退回 revenue,
+    # 又算 out_of_order —— 同一條鏈兩個矛盾的標籤,信裡什麼都不說。
+    # 完整的定義收緊:營運層在財務層之前,**而且全程不倒退**。
+    return (t is not None and any(idx in ops for idx in seq[:t])
+            and not _stage_order_broken(n))
 
 
 def _stage_order_broken(n) -> bool:

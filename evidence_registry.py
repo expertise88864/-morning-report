@@ -41,6 +41,18 @@ _UNIT_SUFFIX = (
 #: 拿來解釋今天的台股開盤不同步 —— 沿用 11 維立場分的同一個判準。
 _US_BLOCKS = ("QQQ", "TSM", "SPY", "MACRO", "MACRO_VINTAGE", "SEC_FILINGS")
 
+#: **只有這些區塊屬於台股交易時段**(第二十輪 P1-7)。先前的規則是
+#: 「非美即台」—— 於是公報、政策事件、模型監控、匯率全被掛上
+#: `LAST_TRADING_SESSION.date`,而上週的公報被標成最新台股交易日,
+#: 正是這套 metadata 要消滅的那種假精確。不在清單裡的區塊
+#: `observed_session` 留空:**說不出來就要說「說不出來」**。
+_TW_SESSION_BLOCKS = (
+    "TAIFEX_OI", "TAIFEX_LARGE", "TAIFEX_PCR", "NIGHT_TXF", "TAIEX_PRED",
+    "BREADTH", "MARGIN", "FOREIGN_TOP10_TOTAL", "SECTOR_HEAT",
+    "MARKET_REGIME", "MA200_STATUS", "ABSORPTION", "MIDTERM",
+    "EX_DIV_TODAY", "LAST_TRADING_SESSION",
+)
+
 #: 不當證據用的診斷區塊(它們談的是**資料本身**,不是市場)。
 _NON_EVIDENCE = ("DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS",
                  "HEALTH_WARNINGS", "ALERTS", "HISTORY")
@@ -162,7 +174,7 @@ def registry(packet: Optional[dict]) -> dict:
         stale = us_stale and block in _US_BLOCKS
         out.update(_entries(tree, f"market:{block}", {
             "as_of": as_of, "as_of_precision": "packet",
-            "observed_session": ("" if block in _US_BLOCKS else tw_session),
+            "observed_session": (tw_session if block in _TW_SESSION_BLOCKS else ""),
             "session": session, "source": f"quotes.{block}",
             "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale,
@@ -173,7 +185,7 @@ def registry(packet: Optional[dict]) -> dict:
         out.setdefault(f"market:{block}", {
             "value": None, "unit": "", "as_of": as_of,
             "as_of_precision": "packet",
-            "observed_session": ("" if block in _US_BLOCKS else tw_session),
+            "observed_session": (tw_session if block in _TW_SESSION_BLOCKS else ""),
             "session": session,
             "source": f"quotes.{block}", "quality": "stale" if stale else "ok",
             "usable_for_inference": not stale, "why_unusable": ""})

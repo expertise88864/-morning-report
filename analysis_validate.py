@@ -18,6 +18,8 @@
 """
 from __future__ import annotations
 
+import re as _re
+
 import analysis_grounding as _gr
 
 #: **不算標的的泛稱。** 這些字出現在 `asset_id` 時,那一格等於沒有拆 ——
@@ -27,6 +29,23 @@ _GENERIC_ASSETS = frozenset({
     "市場", "大盤", "台股", "股市", "整體市場", "相關產業", "產業", "概念股",
     "供應鏈", "科技股", "電子股", "類股", "全球市場", "市場情緒", "投資人",
 })
+
+#: 泛稱**詞素**。第二十輪 P1-8:exact-match 黑名單一個修飾詞就繞過
+#: (「台灣市場」「半導體產業」「相關電子族群」全數通過)——
+#: 判準改成:**長得像代號/指數的放行,其餘只要含泛稱詞素就擋**。
+_GENERIC_MORPHEMES = ("市場", "產業", "類股", "族群", "供應鏈", "概念",
+                      "相關", "整體", "主要", "板塊", "個股", "同業")
+
+#: 長得像具體標的:台股代號(2330、00662、6510A)、常見指數/ETF 代碼。
+_ASSET_LIKE = _re.compile(r"[0-9]{4,6}[A-Z]?|[A-Z]{2,6}")
+_KNOWN_ASSETS = frozenset({"TAIEX", "OTC", "SOX", "QQQ", "SPY", "TSM",
+                           "market-wide", "加權指數", "櫃買指數", "費半"})
+
+
+def _is_generic_asset(aid: str) -> bool:
+    if aid in _KNOWN_ASSETS or _ASSET_LIKE.fullmatch(aid):
+        return False
+    return aid in _GENERIC_ASSETS or any(m in aid for m in _GENERIC_MORPHEMES)
 
 # `STANCE_LABELS` 在函式內延遲取用 —— `analysis_schema` 的尾端會反向
 # import 本模組(相容出口),頂層互相 import 會在「誰先被載入」上翻車。
@@ -153,7 +172,7 @@ def validate(obj, evidence_ids) -> list:
             # 第十九輪 P1-9:**`asset_id="市場"` 不是拆標的,是換句話說。**
             # renderer 會把它排得跟真的逐標的分析一模一樣,讓泛論看起來
             # 更像深度分析 —— 比不拆更糟。
-            if aid in _GENERIC_ASSETS:
+            if aid and _is_generic_asset(aid):
                 problems.append(
                     f"{where}.affected_assets[{j}] 的標的是泛稱 {aid!r} ——"
                     "要給得出代號、指數或 ETF,給不出就不要列這一項")

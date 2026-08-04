@@ -65,6 +65,12 @@ def _claim(statement: str, *, evidence=("n1",), materiality="high",
     }
 
 
+def ids() -> set:
+    """`valid_analysis()` 引用得到的證據 ID。**與 fixture 同步維護** ——
+    測試各自手寫 `{"n1", "n2"}` 的話,fixture 一加引用就全面紅。"""
+    return {"n1", "n2", "market:QQQ.change_pct"}
+
+
 def valid_analysis() -> dict:
     """一份**通得過 strict schema、也通得過語意根據檢查**的分析。
 
@@ -85,9 +91,13 @@ def valid_analysis() -> dict:
         # 只有稽核那一份有 `claim_id`(各段回指的對象是稽核,不是重點條目)。
         "key_drivers": [_driver("費半走強")],
         "scenario_tree": {
-            "base": {"narrative": "震盪走高", "probability": 0.6, "triggers": []},
-            "bull": {"narrative": "突破前高", "probability": 0.2, "triggers": []},
-            "bear": {"narrative": "回測季線", "probability": 0.2, "triggers": []},
+            # 情境也要回指(第二十輪 P1-6)—— 前瞻的判斷更需要說得出根據。
+            "base": {"narrative": "震盪走高", "probability": 0.6,
+                     "triggers": [], "claim_ids": ["c1"]},
+            "bull": {"narrative": "突破前高", "probability": 0.2,
+                     "triggers": [], "claim_ids": ["c2"]},
+            "bear": {"narrative": "回測季線", "probability": 0.2,
+                     "triggers": [], "claim_ids": ["c2"]},
             "invalidation_triggers": []},
         "taiwan_market": {"summary": "量能回升。", "taiex_view": "偏多",
                           "tsmc_view": "守月線", "evidence_ids": ["n2"]},
@@ -104,9 +114,13 @@ def valid_analysis() -> dict:
              "direction": "bullish", "materiality": "high",
              "persistence": "數個交易日",
              "mechanism_steps": [
+                 # **量化錨點**(2026-08-05 深度加強):高重要性的鏈至少
+                 # 一步要錨在行情數字上,否則量級判斷沒有立足點 ——
+                 # 參考答案自己要示範這個性質。
                  {"from_what": "費半收漲", "to_what": "台股電子開盤定價",
                   "channel": "外部定價", "stage": "event",
-                  "step_type": "fact", "evidence_ids": ["n1"]},
+                  "step_type": "fact",
+                  "evidence_ids": ["n1", "market:QQQ.change_pct"]},
                  # **鏈要接得起來**:這一步的起點就是上一步的終點。
                  # 第十六輪 P1-7 的連續性守衛第一次跑就抓到這份 fixture
                  # 原本是斷的 —— 參考答案自己要示範它要求的性質。
@@ -167,7 +181,9 @@ def valid_analysis() -> dict:
             # 第十七輪 P1-3:**點名不等於處理** —— 每筆張力自己帶調和方式、
             # 哪一側可信、憑什麼、什麼情況分出勝負。
             "tension_resolutions": [],
-            "evidence_ids": ["n1"]},
+            # **橫向綜合要接上行情**(2026-08-05 深度加強):證據全是新聞
+            # 的綜合只是轉述 —— 參考答案自己要示範這個性質。
+            "evidence_ids": ["n1", "market:QQQ.change_pct"]},
         "contradictions": [],
         # `gap_id` 是必填欄位(第十八輪 P1-8);沒有缺口時整個陣列為空。
         "data_gaps": [],

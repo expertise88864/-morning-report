@@ -138,6 +138,8 @@ def valid_analysis() -> dict:
         "contradictions": [],
         # `gap_id` 是必填欄位(第十八輪 P1-8);沒有缺口時整個陣列為空。
         "data_gaps": [],
+        # 必分析事件全部談到時,這一段是空的(第十八輪 P1-3)。
+        "dismissed_events": [],
         "watch_triggers": [],
         "claim_audit": [_claim("費半走強")],
         "priced_in": {"already_reflected": ["費半漲幅"],

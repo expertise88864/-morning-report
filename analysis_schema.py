@@ -37,7 +37,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 5
+ANALYSIS_SCHEMA_VERSION = 6
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -255,6 +255,12 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "what_is_missing": _s(),
         "impact_on_conclusions": _s(),
     }), "資料不足要說出來,不得用模糊語句掩蓋"),
+    # 第十八輪 P1-3:**靜默略過與判斷不重要,在信裡長得一模一樣。**
+    # 模型可以主張本報列為必分析的事件今天不值得談,但要說出為什麼。
+    "dismissed_events": _arr(_obj({
+        "cluster_id": _s("EVIDENCE 的 `news_clusters.required_cluster_ids` 之一"),
+        "why_not_material": _s("為什麼今天不值得分析 —— 不得只寫「影響有限」"),
+    }), "本報要求分析而你決定不談的事件"),
     "watch_triggers": _arr(_obj({
         "trigger": _s(),
         "why": _s(),

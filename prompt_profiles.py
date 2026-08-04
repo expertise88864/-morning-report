@@ -60,7 +60,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 12
+LUNA_XHIGH_VERSION = 13
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -100,6 +100,13 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   **跑不成的檢查不揭露,收件人會以為查過了。**
 - EVIDENCE 裡標了「不同步」的欄位(例如美股休市那天的美股數字)
   仍然可以談,但**高重要性的判斷不能只靠它**。
+- **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**
+  一個事件群只寫**一個**分析單位(挑資訊最完整的那則當 `source_item_id`),
+  不要為同一件事寫兩段 —— 那不是更深,是同一條因果鏈改寫兩次。
+- `required_cluster_ids` 是本報依**官方來源與報導家數**選出來的必分析事件
+  (不是你自評的重要性)。每一個都要分析;真的判斷今天不值得談,
+  就寫進 `dismissed_events` 並說明為什麼 ——
+  **只寫「影響有限」不算理由**。
 - 引用不存在的 ID 比不引用更嚴重:它讓錯誤看起來有根據。寧可留空陣列。
 - EVIDENCE 裡標為 `official: true` 或 `source_grade: A` 的來源權重高於其他來源。
 - `truncation` 欄位說明有多少證據沒有進來。它不為零時，請在 `data_gaps` 說明。

@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 6
+EVIDENCE_SCHEMA_VERSION = 7
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -276,6 +276,11 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     import tension_refs as _tr
     packet["required_disclosures"] = _tr.required_gap_ids(
         packet["signal_tensions"])
+    # 第十八輪 P1-3:**分母不能是模型自評的重要性。** 同一件事被四家媒體
+    # 報導會產生四個分析單位(`news_analyzed` 看起來變深、實際是同一條鏈
+    # 改寫四次);而覆蓋率先前只擋得住「一則都沒分析」。
+    import news_clusters as _nc
+    packet["news_clusters"] = _nc.required_analysis(kept_news)
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。

@@ -151,12 +151,11 @@ def claim_graph_saturation(obj) -> dict:
     而實際上整封信只有一個根據。**這是觀測,不是門檻** —— 某些日子
     確實由單一驅動主導,把它做成硬性失敗會逼出湊數的主張。
     """
+    # 第二十輪 P2-5:**段落清單從 `claim_map` 長出來。** 先前寫死四段,
+    # 於是一條主張可以填滿三個情境與全部觀察點,而飽和率顯示分散。
+    import claim_map as _cm
     o = obj or {}
-    sections = {"executive_summary": list(o.get("executive_summary_claim_ids") or [])}
-    for sec in ("stance", "priced_in", "portfolio_implications"):
-        node = o.get(sec)
-        if isinstance(node, dict):
-            sections[sec] = [str(x) for x in (node.get("claim_ids") or [])]
+    sections = _cm.section_claim_mappings(o)
     # 第二十輪 P2-1:**數「幾個段落用到」,不是「出現幾次」。**
     # 同一段重複填五次 c1 時,occurrence 除以段落數會得到 2.0 ——
     # 一個大於 100% 的「飽和率」自己就是 false green。

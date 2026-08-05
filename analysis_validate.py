@@ -188,6 +188,33 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.affected_assets[{j}] 沒有寫直接影響 ——"
                     "只給方向與幅度等於沒有拆")
+        # 第二十輪 P2-7:佐證等級由 packet 決定,**不是模型自評** ——
+        # 自評的話「單一來源」永遠不會出現。單一來源/未證實時要說出
+        # 讀者該保留什麼;寫「無」等於沒有揭露。
+        if packet is not None:
+            groups = (packet.get("news_clusters") or {}).get("clusters") or []
+            want = ""
+            for c in groups:
+                if str(n.get("source_item_id") or "") in (
+                        c.get("member_source_ids") or ()):
+                    want = str(c.get("corroboration") or "")
+                    break
+            got = str(n.get("corroboration_assessment") or "")
+            # **只擋「宣稱得比實際更強」。** 把 single_source 寫成
+            # multi_source 是讓讀者高估可信度;反過來(實際多方證實而
+            # 保守寫成單一來源)只是更謹慎,擋它沒有保護到任何人。
+            rank = {"unverified": 0, "single_source": 1,
+                    "multi_source": 2, "official": 3}
+            if want and got and rank.get(got, 0) > rank.get(want, 0):
+                problems.append(
+                    f"{where} 的佐證等級寫 {got!r},而本報算出來只有 {want!r}"
+                    " —— 這一格是資料說了算,不得往上寫")
+            if (want or got) in ("single_source", "unverified"):
+                cav = str(n.get("source_caveat") or "").strip()
+                if not cav or cav in ("無", "無。", "N/A", "none"):
+                    problems.append(
+                        f"{where} 是單一來源/未證實,卻沒有寫 source_caveat"
+                        " —— 讀者會把一家媒體的說法當成多方證實的事實")
         if n.get("materiality") == "high" and not (n.get("affected_assets") or []):
             problems.append(
                 f"{where} 是高重要性事件,卻沒有拆出任何受影響標的")

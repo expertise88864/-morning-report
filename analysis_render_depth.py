@@ -60,6 +60,18 @@ def _news_line(n: dict) -> str:
         if inval:
             bits.append(f"什麼會推翻它:{inval}")
         out.append("  - " + ";".join(bits))
+    # 佐證等級與保留事項**固定呈現**(第二十輪 P2-7)——
+    # 「沒發生」與「只有一家說」在信裡先前長得一樣。
+    _CORR = {"single_source": "僅單一來源,未經其他媒體證實",
+             "unverified": "未證實",
+             "multi_source": "多家媒體同時報導",
+             "official": "官方公告"}
+    lvl = _CORR.get(_s(n.get("corroboration_assessment")))
+    cav = _s(n.get("source_caveat"))
+    if lvl and _s(n.get("corroboration_assessment")) in ("single_source",
+                                                         "unverified"):
+        out.append(f"  - *{lvl}"
+                   + (f";{cav}" if cav and cav != "無" else "") + "*")
     out.extend(_assets(n))
     for rel in (n.get("relates_to") or []):
         if isinstance(rel, dict) and _RELS.get(_s(rel.get("relationship"))):

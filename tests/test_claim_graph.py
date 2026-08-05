@@ -176,7 +176,7 @@ def test_the_summary_line_cannot_float_free_of_the_audit():
             if "executive_summary 沒有回指" in p]
     obj["executive_summary_claim_ids"] = ["c99"]
     assert [p for p in sch.validate(obj, _IDS)
-            if "executive_summary_claim_ids 指向不存在" in p]
+            if "executive_summary 的 claim_ids 指向不存在" in p]
 
 
 def test_a_reference_must_connect_to_the_right_horizon():
@@ -188,11 +188,15 @@ def test_a_reference_must_connect_to_the_right_horizon():
     obj = fx.valid_analysis()
     obj["stance"]["claim_ids"] = ["c1"]          # c1 是 intraday
     obj["stance"]["time_horizon"] = "1-5d"
-    hits = [p for p in sch.validate(obj, _IDS) if "沒有一條談這個尺度" in p]
+    hits = [p for p in sch.validate(obj, _IDS) if "全都比它更長" in p]
     assert hits and "1-5d" in hits[0], hits
     # 把尺度改成一致就合格 —— **規則要的是連對,不是少寫**
     obj["stance"]["time_horizon"] = "intraday"
-    assert not [p for p in sch.validate(obj, _IDS) if "沒有一條談這個尺度" in p]
+    assert not [p for p in sch.validate(obj, _IDS) if "全都比它更長" in p]
+    # 反向:**較長的主張撐得起較短的段落**(月線觀點當然涵蓋今天)
+    obj["stance"]["time_horizon"] = "intraday"
+    obj["stance"]["claim_ids"] = ["c2"]          # c2 是 1-5d
+    assert not [p for p in sch.validate(obj, _IDS) if "全都比它更長" in p]
 
 
 def test_a_claim_must_say_who_it_is_about():

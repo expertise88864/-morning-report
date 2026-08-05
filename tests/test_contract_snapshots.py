@@ -310,7 +310,9 @@ _FROZEN = {
     # v11(2026-08-05 實機 + 第二十輪 P2-3):`coverage` 的分母改成
     #     **去重後**的可用數(一家重發十次時,去重成功先前顯示成
     #     「涵蓋不足」);原始數另外報。
-    "evidence_schema_version":  (11, "22475ec0c82c154a"),
+    # v12(第二十輪 P2-1):事件群代表改選「官方 > 資訊量高 > 最小 ID」
+    #     —— 最小 ID 會確定性 over-split(短而模糊的標題當代表)。
+    "evidence_schema_version":  (12, "22475ec0c82c154a"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -325,7 +327,10 @@ _FROZEN = {
     # v9(第二十輪 P1-6/P2-2):scenario 與 watch_triggers 接進 claim 圖
     #    (最前瞻的判斷不能是唯一不用根據的段落);dismissed_events 加
     #    revisit_trigger 與 supporting_evidence_ids。
-    "output_schema_version":    (9, "6b5be4b101888a15"),
+    # v10(第二十輪 P1-5/P2-7):`key_drivers[].claim_ids`(Email 第一段
+    #     先前完全在 claim 圖之外)、`corroboration_assessment` 與
+    #     `source_caveat`(單一來源的揭露改成機械契約)。
+    "output_schema_version":    (10, "ed72e626cf272f08"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -351,7 +356,13 @@ _FROZEN = {
     # 2026-08-05:**探針輸入被修正,prompt 本身沒變**
     #    (dev 指令與 payload 框架逐位元組相同,已實測)。
     #    依本表既有先例:改雜湊而不升版。
-    "primary_profile_version":  (17, "1e449b27971757d9"),
+    # v18(第二十輪 P2-6):命名空間與量化錨點的說明改由
+    #      `evidence_namespaces` 單一宣告生成(先前三邊各說各話);
+    #      key_drivers/情境/觀察點也要回指;佐證等級照抄不自評。
+    # v19:`calibration:` 與 `quality:` 不再列為量化錨點 ——
+    #      它們是關於**本報自己**的數字(校準、涵蓋度),
+    #      不是市場量級。用它們錨住因果鏈是把儀表板當證據。
+    "primary_profile_version":  (19, "327f32830537d86e"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -369,7 +380,8 @@ _FROZEN = {
     # v7(第十九輪):情境觸發條件(機率仍不進信 —— 信裡的數字必須是
     #    Python 算的)、駁回事件、未完成鏈的剩餘則數。
     # v8(第二十輪 P2-2):駁回超過 4 件顯示「另有 N 件」。
-    "renderer_version":         (8, "62af6ae0df71804c"),
+    # v9(第二十輪 P2-7):單一來源/未證實的佐證等級與保留事項固定呈現。
+    "renderer_version":         (9, "fe4ca290c09fc35c"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -393,7 +405,10 @@ _FROZEN = {
     # v13(深度加強第二批):量化錨點 advisory 接受 `fact:`。
     # v14(第二十輪 P1-3):量化錨點改用 `is_numeric_anchor` ——
     #     要是**這則新聞自己的、真的是數字的、今天可用的**證據。
-    "grounding_version":        (14, "d711da7ebd4b70ae"),
+    # v15(第二十輪 P1-5/P2-5/P2-7):段落→主張的對照表改由 `claim_map`
+    #     生成(四個消費者共用一份);時間尺度要有主張撐得住;
+    #     佐證等級不得往上寫、單一來源要有 caveat。
+    "grounding_version":        (15, "98954f69ba68ab4d"),
 }
 
 

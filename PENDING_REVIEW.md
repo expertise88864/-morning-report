@@ -928,6 +928,67 @@ advisory 與指標改用同一個函式。
 
 **驗證**:preflight exit 0、1897 passed、九個突變全紅。
 
+### 批#96 `(下一個 commit)` —— 第二十輪剩餘:P1-4/P1-5/P2-1/P2-2/P2-5/P2-6/P2-7
+七項的共同形狀是**清單漂移**:同一件事寫在好幾個地方,其中一份改了、
+別的沒跟上。**清單要從一個地方長出來** —— 這個 repo 已經栽過三次。
+
+**P2-5 段落→主張的對照表**有四個消費者(驗證器、飽和率、加深保存、渲染),
+schema 加了 `scenario_tree.*.claim_ids` 與 `watch_triggers[].claim_ids`
+之後**只有驗證器知道**:一條主張可以填滿三個情境而飽和率顯示分散,
+加深也可以把它們整批換掉。新模組 `claim_map.section_claim_mappings()`,
+三個消費者共用。
+
+**P1-5 讀者最先看到的三條在 claim 圖之外**:`key_drivers` 用 `_CLAIM`,
+沒有回指欄位 —— 「七、昨夜三大重點」可以與正式稽核互相矛盾。
+新增 `_DRIVER_CLAIM`(只有它有 `claim_ids`;稽核那份是**被回指的對象**)。
+同批修正時間尺度的方向:**段落宣告了一個期間,就要有主張講到那個期間**
+(外審的反例是「watch trigger 1-4w 引用 intraday 的 QQQ 漲幅」)。
+我第一版寫反了 —— 較長的主張撐得起較短的段落,反過來才是形式引用。
+
+**P1-4 身分只保名字不保結論**:`c1` 不變而 `direction` 翻面、
+`evidence_ids` 換掉、反證搬到另一條 claim 上,身分集合完全相同。
+claim 的指紋改成含 statement/type/direction/materiality/horizon/
+falsification_trigger/evidence/asset_scope;反證改成綁在自己那條上;
+標的含直接影響與證據;張力調和含哪一側可信與判準。
+
+**P2-7 單一來源的揭露改成機械契約**:先前只有 prompt 要求 + 事後量曝險,
+回答不了「讀者被告知了嗎」。schema 加 `corroboration_assessment` 與
+`source_caveat`,驗證器**只擋往上寫**(把 single_source 寫成 multi_source
+是讓讀者高估;反過來保守寫只是更謹慎),renderer 固定呈現。
+**參考 fixture 又一次沒示範它自己要求的性質** —— `news()` 兩則各自單一
+來源而 fixture 寫 multi_source,守衛第一次跑就抓到。
+
+**P2-1 群代表**改選「官方 > 資訊量高 > 最小 ID」:最小 ID 會確定性
+over-split(短而模糊的標題當代表,詳細的兩則自成一群 → 同一事件被分析兩次)。
+
+**P2-2 fact 去重**加語境(上一個數字到這個數字之間的文字,去標點):
+「營收 80 億美元」與「資本支出 80 億美元」是兩個事實;
+「3 億元、3 億元」語境相同、仍然只算一次。
+
+**P2-6 命名空間單一宣告**(`evidence_namespaces.py`):prompt、schema 說明、
+Python advisory 先前三邊各說各話 —— 模型同時收到「fact 是合法的新聞數字」
+與「量化錨點不能用 fact」。**規則自相矛盾時,模型照哪一條做是隨機的。**
+新測試第一次跑就抓到我自己剛造出來的漂移:`ANCHOR_PREFIXES` 含
+`calibration:`/`quality:` 而 Python 那份沒有。判定是**它們不該算錨點** ——
+那是關於本報自己的數字(校準、涵蓋度),不是市場量級;用它們錨住
+「這件事對台積電影響多大」的因果鏈,是把儀表板當成證據。
+
+**版本鏈**:EVIDENCE v12 / SCHEMA v10 / GROUNDING v15 / RENDERER v9 /
+METRICS v9 / Luna profile v19。
+
+**外審應特別看的地方**:
+1. 時間尺度的方向是我改過一次的(先寫成相反)。現在:主張的尺度
+   **不短於**段落的尺度才算撐得住。這個方向對嗎?
+2. 佐證等級只擋「往上寫」是刻意的不對稱 —— 保守寫沒有被擋。
+3. 群代表用 token 數當「資訊量」,是很粗的代理。
+4. fact 的語境鍵取「上一個數字到這個數字之間、去標點」的最後 8 字,
+   長度是我訂的。
+5. `calibration:`/`quality:` 不算錨點是我的判斷,不是外審說的。
+
+**驗證**:preflight exit 0、1915 passed、十四個突變。其中**六個第一次
+沒紅**(key_drivers 進圖、佐證往上寫、caveat、fact 語境、群代表、
+身分含方向)—— 全部是缺測試,補完才紅。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

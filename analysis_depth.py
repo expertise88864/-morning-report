@@ -148,6 +148,20 @@ def deepen_input(user_payload: str, advisories: list, previous=None) -> str:
             + "\n".join(f"- {a}" for a in advisories[:6]))
 
 
+def _claim_fingerprint(c) -> str:
+    """一條主張的**全部判斷內容**。ID 不變而內容換掉,是換一份報告。"""
+    return ":".join(str(c.get(k) or "") for k in (
+        "claim_id", "statement", "claim_type", "direction", "materiality",
+        "horizon", "falsification_trigger")) + ":" + ",".join(
+        sorted(map(str, c.get("evidence_ids") or []))) + ":" + ",".join(
+        sorted(map(str, c.get("asset_scope") or [])))
+
+
+def _claim_sections(o):
+    import claim_map as _cm
+    return _cm.section_claim_mappings(o)
+
+
 def _identity(obj) -> dict:
     """第二版**必須保留**的東西(第十七輪 P1-8)。
 
@@ -163,8 +177,10 @@ def _identity(obj) -> dict:
         "處理過的張力": {str(r.get("tension_id") or "")
                    for r in (cms.get("tension_resolutions") or [])
                    if isinstance(r, dict)},
-        "反面證據": {str(x) for c in (o.get("claim_audit") or [])
-                 if isinstance(c, dict)
+        # **反證要綁在自己那條 claim 上。** 先前是全域集合,於是
+        # 反證可以在 claim A、B 之間互換而集合完全相同。
+        "反面證據": {f"{c.get('claim_id')}:{x}"
+                 for c in (o.get("claim_audit") or []) if isinstance(c, dict)
                  for x in (c.get("counterevidence_ids") or [])},
         "資料缺口": {str((g or {}).get("what_is_missing") or "")
                  for g in (o.get("data_gaps") or []) if isinstance(g, dict)},
@@ -178,28 +194,36 @@ def _identity(obj) -> dict:
         # 所以身分要含方向/量級/時間 —— 改任何一格都是換了一個結論。
         "拆過的標的": {f"{n.get('source_item_id')}:{a.get('asset_id')}:"
                   f"{a.get('direction')}:{a.get('magnitude_band')}:"
-                  f"{a.get('horizon')}"
+                  f"{a.get('horizon')}:{a.get('first_order_effect')}:"
+                  f"{','.join(sorted(map(str, a.get('evidence_ids') or [])))}"
                   for n in news for a in (n.get("affected_assets") or [])
                   if isinstance(a, dict) and a.get("asset_id")},
-        "解讀過的同向訊號": {f"{r.get('alignment_id')}:{r.get('interpretation')}"
+        "解讀過的同向訊號": {f"{r.get('alignment_id')}:{r.get('interpretation')}:"
+                     f"{r.get('marginal_information')}:"
+                     f"{r.get('double_count_risk')}:"
+                     f"{','.join(sorted(map(str, r.get('evidence_ids') or [])))}"
                      for r in (cms.get("alignment_readings") or [])
                      if isinstance(r, dict)},
-        # 同理:claim 的身分含**內容**(主張本文/尺度/範圍)——
-        # 「c1:需求上升」改成「c1:需求崩跌」時 ID 沒變,而整封信的根據
-        # 已經是另一個世界。
-        "稽核過的主張": {f"{c.get('claim_id')}:{c.get('statement')}:"
-                   f"{c.get('horizon')}:"
-                   f"{','.join(sorted(map(str, c.get('asset_scope') or [])))}"
+        # 矛盾那側同理:哪一側可信、憑什麼分出勝負、靠什麼證據 ——
+        # 全部換掉而 tension_id 不變時,先前完全看不出來。
+        "調和過的張力": {f"{r.get('tension_id')}:{r.get('dominant_side')}:"
+                   f"{r.get('resolution')}:{r.get('decision_rule')}:"
+                   f"{','.join(sorted(map(str, r.get('evidence_ids') or [])))}"
+                   for r in (cms.get("tension_resolutions") or [])
+                   if isinstance(r, dict)},
+        # 同理:claim 的身分含**內容**。第二十輪 P1-4:先前只含
+        # 本文/尺度/範圍 —— 於是 `direction` bullish→bearish、
+        # `evidence_ids` 換成另一個合法但不相關的 ID、反證整組搬到
+        # 另一條 claim 上,身分集合完全不變。**加深是把同一個判斷說得
+        # 更清楚,不是換一個判斷。**
+        "稽核過的主張": {_claim_fingerprint(c)
                    for c in (o.get("claim_audit") or [])
                    if isinstance(c, dict) and c.get("claim_id")},
-        "各段的回指": ({f"{sec}:{cid}"
-                   for sec in ("stance", "priced_in", "portfolio_implications")
-                   for cid in ((o.get(sec) or {}).get("claim_ids") or [])
-                   if isinstance(o.get(sec), dict)}
-                  # 第二十輪 P1-4:總結的回指**上一批加了欄位卻忘了進身分**
-                  # —— 加深可以把它整個清掉而不被發現。
-                  | {f"executive_summary:{cid}"
-                     for cid in (o.get("executive_summary_claim_ids") or [])}),
+        # 第二十輪 P2-5:**從 `claim_map` 長出來。** 先前寫死三段 + 手動補
+        # 總結,於是 schema 新增的 scenario / watch / key_driver 回指
+        # 可以被整批換掉而不被發現 —— 而寫死的清單漂移一次就再也對不回來。
+        "各段的回指": {f"{sec}:{cid}" for sec, ids in
+                  _claim_sections(o).items() for cid in ids},
         "因果步驟的證據": {f"{n.get('source_item_id')}:{e}"
                     for n in news for st in (n.get("mechanism_steps") or [])
                     if isinstance(st, dict)

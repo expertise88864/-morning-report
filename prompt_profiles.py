@@ -33,6 +33,7 @@ import json
 from typing import Optional
 
 import analysis_schema as _sch
+import evidence_namespaces as _ns
 import evidence_packet as _ep
 import writing_rules as _wr
 
@@ -60,7 +61,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 17
+LUNA_XHIGH_VERSION = 19
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -81,6 +82,14 @@ def estimate_tokens(text: str) -> int:
 #:   - 不得重述 Python 算好的數字 → 那是渲染層的工作,重述只會佔掉推理額度
 #:   - 沒有證據 ID 就不得輸出外部事實 → 編造的引用比沒有引用更危險
 #:   - 資料不足要降信心 → 用模糊語句掩蓋是這類報告最常見的失敗
+#:
+#: **命名空間的說明與 schema 共用同一份宣告**(第二十輪 P2-6)——
+#: 先前 prompt、schema 說明、Python advisory 三邊各說各話,模型同時
+#: 收到「fact 是合法的新聞數字」與「量化錨點不能用 fact」。
+#: 規則自相矛盾時,模型照哪一條做是隨機的。
+_NS_LINES = _ns.prompt_lines()
+_ANCHORS = _ns.anchor_sentence()
+
 LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 你是一位台股與美股的晨報分析師，服務對象是長期持有台股 ETF 與半導體權值股的
 台灣投資人。你的產出不是新聞摘要，而是**把證據轉成當日可行動的判斷**。
@@ -89,11 +98,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 - 你只能使用 EVIDENCE 區塊裡的內容。任何不在 EVIDENCE 裡的外部事實一律不得陳述。
 - 每一個重大結論都要在 `evidence_ids` 帶上支持它的 **typed ID**。
   命名空間就是「這是哪一種證據」,**不要拿新聞 ID 替行情數字背書**:
-  `n1`(新聞)、`market:QQQ.change_pct`(行情)、`tension:*`(訊號張力)、
-  `derived:*`(本報算出來的衍生值)、`valuation:*`(00662 估值)、
-  `prediction:*`(2330 開盤預測)、`calibration:*`(模型校準)、
-  `universe:*`(台股個股)、`portfolio:*`(彙總曝險)、
-  `quality:*`(本報的資料涵蓋度)。
+{_NS_LINES}
 - **EVIDENCE 的 `required_disclosures` 列出今天沒有答案的項目。**
   每一個都要在 `data_gaps` 用同一個 `gap_id` 寫出來:缺什麼、
   它讓哪些結論說不準。自己另外發現的缺口填 `gap:other`。
@@ -112,19 +117,27 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   寫 `market-wide`,**泛稱不算範圍**),再由 `executive_summary_claim_ids`
   以及 `stance` / `priced_in` / `portfolio_implications` 的 `claim_ids`
   回指。**寫進稽核卻沒有任何一段用到的高重要性主張,不是根據,是配菜。**
-  總結那一句最可能被單獨閱讀,它也要回指。
+  總結那一句最可能被單獨閱讀，它也要回指；
+  **`key_drivers`（信件第一段「昨夜三大重點」）、三個情境與每個觀察點
+  同樣要回指** —— 讀者最先看到的三條不能在稽核之外。
 - **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 已把
   帶單位的數字抽成 `fact:<新聞ID>.<序號>`(附值、單位、上下文)。
   寫「80 億美元訂單」就引用對應的 fact: —— 引用了,抄錯十倍才抓得到;
   只引用整則新聞,檢查器不知道你的數字從哪裡來。
+- **佐證等級照抄，不要自評。** 每則分析的 `corroboration_assessment`
+  要與 EVIDENCE 的 `news_clusters[].corroboration` 一致；
+  `single_source` 與 `unverified` 時，`source_caveat` 要說出讀者該保留
+  什麼（寫「無」等於沒有揭露）。
 - **單一來源的事件要明講。** `news_clusters` 每群帶 `corroboration`:
   `single_source`(僅一家、非官方)的事件在分析裡要寫明
   「僅單一來源,未經其他媒體證實」,invalidation_signal 也要含
   「後續遭否認或無他家跟進」這類條件 —— 可信度是分析的一部分。
 - **因果鏈要有量化錨點。** 高重要性事件的傳導鏈,至少一步的
-  `evidence_ids` 要引用 `market:` / `derived:` / `valuation:` /
-  `prediction:` 的具體數字 —— 「費半收漲帶動台股電子」沒有錨在
-  `market:QQQ.change_pct` 上,讀者無從判斷是 0.3% 還是 3% 的事。
+  `evidence_ids` 要引用 {_ANCHORS} 之一的**具體數字**，而且
+  `fact:` 必須是**這一則自己的**數字 —— 「費半收漲帶動台股電子」
+  沒有錨在 `market:QQQ.change_pct` 上，讀者無從判斷是 0.3% 還是 3% 的事。
+  （引用整個區塊如 `market:QQQ`、或字串標籤如 `MARKET_REGIME.label`，
+  都不算錨點：它們沒有數值。）
 - **橫向綜合要接上行情,不是把新聞再說一次。** tension_resolutions 與
   alignment_readings 的證據本來就該是 `tension:` / `market:`;
   cross_market_synthesis 整段只引新聞 ID 時,它是轉述不是綜合。

@@ -63,8 +63,15 @@ def _stage_order_broken(n) -> bool:
     return any(b < a for a, b in zip(seq, seq[1:]))
 
 
-#: 可以當量化錨點的命名空間。**只列這些不夠** —— 見 `is_numeric_anchor`。
-_ANCHOR_NAMESPACES = ("market:", "derived:", "valuation:", "prediction:", "fact:")
+#: 可以當量化錨點的命名空間。**與 prompt 同一份宣告**(第二十輪 P2-6)——
+#: 兩份清單各自維護時,Python 接受的與 prompt 要求的會分家。
+#: 前綴只是第一關,**還不夠** —— 見 `is_numeric_anchor`。
+def _anchor_namespaces():
+    import evidence_namespaces as _ns
+    return _ns.ANCHOR_PREFIXES
+
+
+_ANCHOR_NAMESPACES = _anchor_namespaces()
 
 
 def is_numeric_anchor(evidence_id, news_id, registry) -> bool:

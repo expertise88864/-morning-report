@@ -47,6 +47,10 @@ _FACT_RE = re.compile(
     r"(個百分點|兆美元|億美元|億元|萬美元|萬張|萬口|萬戶|兆元|基點|奈米"
     r"|bps|%|億|兆|萬|倍|nm|美元|元|口|張|噸|檔|席)")
 
+#: 語境裡不具鑑別力的字元(標點與空白)。去掉之後,「3 億元、3 億元」
+#: 的第二個語境才會與第一個一樣(都是空的)。
+_CONTEXT_NOISE = re.compile(r"[\s,、,。;;::)()(\[\]【】「」]+")
+
 #: 上下文引文的半徑(字元)。夠看出「這個數字在講什麼」即可 ——
 #: 整句會把摘要的一半塞進 registry。
 _QUOTE_RADIUS = 14
@@ -55,17 +59,27 @@ _QUOTE_RADIUS = 14
 def extract(text: str) -> list:
     """`[(值, 單位, 上下文引文)]`,依出現順序、去重、封頂。**純函式。**"""
     t = str(text or "")
-    out, seen = [], set()
+    out, seen, prev_end = [], set(), 0
     for m in _FACT_RE.finditer(t):
         try:
             value = float(m.group(1).replace(",", ""))
         except ValueError:              # pragma: no cover - regex 已保證
             continue
         unit = m.group(2)
-        if (value, unit) in seen:       # 同一數字重複出現只算一次
-            continue
-        seen.add((value, unit))
         quote = t[max(0, m.start() - _QUOTE_RADIUS):m.end() + _QUOTE_RADIUS]
+        # 第二十輪 P2-2:**去重鍵只有 (值, 單位) 會併掉不同的事實。**
+        # 「營收 80 億美元」與「資本支出 80 億美元」是兩個數字,
+        # 而先前只留一個 —— 第二個沒有自己的 ID,模型引用不到。
+        #
+        # 語境取「**上一個數字結束到這個數字開始**」之間的文字並去掉
+        # 標點:真正的重複(「3 億元、3 億元」)語境是空的、仍然只算一次;
+        # 不同的事實(「營收…」「資本支出…」)語境不同,各自留下。
+        lead = _CONTEXT_NOISE.sub("", t[prev_end:m.start()])[-8:]
+        prev_end = m.end()
+        key = (value, unit, lead)
+        if key in seen:
+            continue
+        seen.add(key)
         out.append({"value": value, "unit": unit, "quote": quote.strip()})
         if len(out) >= MAX_FACTS_PER_ITEM:
             break

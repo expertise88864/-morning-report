@@ -37,9 +37,11 @@ def news() -> list:
     ]
 
 
-def _driver(statement: str, **kw) -> dict:
-    """「昨夜三大重點」的一條。**沒有 `claim_id`** —— 見 schema。"""
+def _driver(statement: str, claim_ids=("c1",), **kw) -> dict:
+    """「昨夜三大重點」的一條。**沒有 `claim_id`**(回指的對象是稽核),
+    但**有 `claim_ids`** —— 它是 Email 的第一段,不能在 claim 圖之外。"""
     out = _claim(statement, **kw)
+    out["claim_ids"] = list(claim_ids)      # 只有 key_drivers 有這一格
     out.pop("claim_id", None)
     # `asset_scope` 也只有稽核那一份有 —— 兩份是不同的 schema。
     out.pop("asset_scope", None)
@@ -147,6 +149,11 @@ def valid_analysis() -> dict:
                   "second_order_effect": "本報看不出次級影響",
                   "evidence_ids": ["n1"]}],
              "horizon": "intraday",
+             # **佐證等級照抄 packet**(第二十輪 P2-7)。`news()` 的兩則
+             # 各自只有一家來源 —— 參考答案不能宣稱得比資料更強,
+             # 而且要示範單一來源該怎麼揭露。
+             "corroboration_assessment": "single_source",
+             "source_caveat": "僅一家媒體報導,尚未見其他來源或公司公告佐證",
              "confirmation_signal": "電子權值開高且量能跟上",
              "invalidation_signal": "夜盤台指期翻黑",
              "relates_to": [{"other_source_item_id": "n2",
@@ -164,6 +171,8 @@ def valid_analysis() -> dict:
              "why_this_magnitude": "尚未公布金額與時程,缺資本支出區間",
              "affected_assets": [],
              "horizon": "1-5d",
+             "corroboration_assessment": "single_source",
+             "source_caveat": "僅一家媒體報導,法說前無官方確認",
              "confirmation_signal": "法說給出高於市場預期的資本支出區間",
              "invalidation_signal": "指引持平或下修",
              "relates_to": []}],

@@ -113,7 +113,10 @@ def test_a_watch_trigger_must_say_why_it_deserves_attention():
                               "why": "籌碼面轉空", "horizon": "1-5d",
                               "claim_ids": []}]
     assert [p for p in sch.validate(obj, _IDS) if "watch_triggers[0]" in p]
-    obj["watch_triggers"][0]["claim_ids"] = ["c1"]
+    # **回指要連對**:1-5 天的觀察點只靠 intraday 的主張撐,是形式引用
+    obj["watch_triggers"][0]["claim_ids"] = ["c1"]          # c1 是 intraday
+    assert [p for p in sch.validate(obj, _IDS) if "時間尺度是 1-5d" in p]
+    obj["watch_triggers"][0]["claim_ids"] = ["c2"]          # c2 是 1-5d
     assert not [p for p in sch.validate(obj, _IDS) if "watch_triggers[0]" in p]
 
 
@@ -204,7 +207,7 @@ def test_saturation_cannot_exceed_one():
     obj["executive_summary_claim_ids"] = ["c1"] * 5
     assert qm.claim_graph_saturation(obj)["saturation_rate"] <= 1.0
     assert [p for p in sch.validate(obj, _IDS)
-            if "executive_summary_claim_ids 有重複" in p]
+            if "executive_summary 的 claim_ids 有重複" in p]
     obj2 = fx.valid_analysis()
     obj2["stance"]["claim_ids"] = ["c1", "c1", "c2"]
     assert [p for p in sch.validate(obj2, _IDS) if "claim_ids 有重複" in p]

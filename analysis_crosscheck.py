@@ -160,12 +160,16 @@ def _alignment_problems(cms, packet, known) -> list:
 
 
 def _claim_graph_problems(obj) -> list:
-    """**每個重大結論說得出它靠哪幾條主張**(第十八輪:閉合 claim 圖)。
+    """**每個重大結論說得出它靠哪幾條主張**,而且**連對了**。
 
     先前 `claim_audit` 是孤島:它非空且合法,而信裡真正寫出來的立場、
-    已反映/未反映、投資組合影響**沒有任何東西回指它**。於是可以
-    「今日偏多,主因半導體需求強勁」而稽核裡只有一條「QQQ 昨日上漲」。
+    已反映/未反映、投資組合影響**沒有任何東西回指它**。
+
+    第二十輪 P2-5:段落清單改由 `claim_map` 生成 —— 先前四個消費者
+    (驗證器、飽和率、加深保存、渲染)各自維護一份,schema 加了
+    scenario / watch / key_driver 的回指之後**只有驗證器知道**。
     """
+    import claim_map as _cm
     out: list = []
     claims = [c for c in (obj.get("claim_audit") or []) if isinstance(c, dict)]
     ids, dup = set(), set()
@@ -179,50 +183,29 @@ def _claim_graph_problems(obj) -> list:
             ids.add(cid)
     for cid in sorted(dup):
         out.append(f"claim_audit 有重複的 claim_id {cid!r} —— 回指會指向兩條")
-    # 第十九輪 P1-8:**總結那一句先前完全脫離稽核。** 它是最可能被
-    # 單獨閱讀的一段 —— 「今日偏多,主因半導體需求強勁」而稽核裡只有
-    # 「QQQ 昨日上漲」,形式上完全合法。
-    top = [str(x) for x in (obj.get("executive_summary_claim_ids") or [])]
-    if len(top) != len(set(top)):
-        out.append("executive_summary_claim_ids 有重複")
-    referenced_top = set(top)
-    for x in top:
-        if x not in ids:
-            out.append(f"executive_summary_claim_ids 指向不存在的主張 {x!r}")
-    if claims and not top:
-        out.append("executive_summary 沒有回指任何 claim —— "
-                   "最可能被單獨閱讀的那一段不能脫離稽核")
-    sections = ("stance", "priced_in", "portfolio_implications")
-    referenced: set = set()
-    for sec in sections:
-        node = obj.get(sec)
-        if not isinstance(node, dict):
-            continue
-        cited = [str(x) for x in (node.get("claim_ids") or [])]
+
+    by_id = _cm.claims_by_id(obj)
+    mappings = _cm.section_claim_mappings(obj)
+    for sec, cited in sorted(mappings.items()):
         if len(cited) != len(set(cited)):
-            out.append(f"{sec}.claim_ids 有重複 —— 同一條主張列兩次"
+            out.append(f"{sec} 的 claim_ids 有重複 —— 同一條主張列兩次"
                        "不會讓根據變多,只會讓飽和度指標失真")
-        referenced |= set(cited)
         for x in cited:
             if x not in ids:
-                out.append(f"{sec}.claim_ids 指向不存在的主張 {x!r}")
+                out.append(f"{sec} 的 claim_ids 指向不存在的主張 {x!r}")
         if not cited and claims:
             out.append(f"{sec} 沒有回指任何 claim —— "
                        "說不出這一段靠哪幾條主張,稽核就只是裝飾")
-    referenced |= referenced_top
-    # 第十九輪 P1-8:**回指只證明「有連上」,不證明「連對了」。**
-    # 立場說 1-4 週而它唯一靠的主張只談今日盤前 —— 那個回指是形式的。
-    stance = obj.get("stance") if isinstance(obj.get("stance"), dict) else {}
-    want = str(stance.get("time_horizon") or "")
-    by_id = {str(c.get("claim_id") or ""): c for c in claims}
-    cited = [by_id[x] for x in (stance.get("claim_ids") or [])
-             if str(x) in by_id]
-    if want and cited and not any(
-            str(c.get("horizon") or "") == want for c in cited):
-        out.append(
-            f"stance 的時間尺度是 {want},而它引用的主張沒有一條談這個尺度"
-            f"({sorted({str(c.get('horizon')) for c in cited})})")
-    # `asset_scope` 要說得出在講誰 —— 泛稱等於沒有指定範圍。
+    # **回指要連對,不只是連上。** 相容 = 主張的尺度**不長於**段落的尺度:
+    # 短證據支撐長判斷合理,拿 1-4 週的主張支撐 intraday 的觀察點不合理。
+    # (先前 `stance` 那一格要求完全相等 —— 那條太嚴,把合理的也擋了。)
+    for sec, want in _section_horizons(obj).items():
+        cited = [by_id[x] for x in mappings.get(sec, ()) if x in by_id]
+        if want and cited and not any(
+                _cm.horizon_covers(want, c.get("horizon")) for c in cited):
+            out.append(
+                f"{sec} 的時間尺度是 {want},而它引用的主張全都比它更長"
+                f"({sorted({str(c.get('horizon')) for c in cited})})")
     for c in claims:
         cid = str(c.get("claim_id") or "")
         scope = [str(x).strip() for x in (c.get("asset_scope") or []) if str(x).strip()]
@@ -233,36 +216,25 @@ def _claim_graph_problems(obj) -> list:
             if a != "market-wide" and a in _GENERIC_SCOPE:
                 out.append(f"claim_audit[{cid}] 的 asset_scope {a!r} 是泛稱 ——"
                            "整體市場級別請寫 `market-wide`")
-    # 第二十輪 P1-6:**情境是最前瞻的判斷,不能是唯一不用根據的段落。**
-    tree = obj.get("scenario_tree") if isinstance(obj.get("scenario_tree"), dict) else {}
-    for key in ("base", "bull", "bear"):
-        blk = tree.get(key)
-        if not isinstance(blk, dict) or not str(blk.get("narrative") or "").strip():
-            continue
-        cited = [str(x) for x in (blk.get("claim_ids") or [])]
-        referenced |= set(cited)
-        for x in cited:
-            if x not in ids:
-                out.append(f"scenario_tree.{key}.claim_ids 指向不存在的主張 {x!r}")
-        if not cited and claims:
-            out.append(f"scenario_tree.{key} 有敘述卻沒有回指任何 claim ——"
-                       "前瞻的情境更需要說得出根據")
-    for i, w in enumerate(obj.get("watch_triggers") or []):
-        if not isinstance(w, dict):
-            continue
-        cited = [str(x) for x in (w.get("claim_ids") or [])]
-        referenced |= set(cited)
-        for x in cited:
-            if x not in ids:
-                out.append(f"watch_triggers[{i}].claim_ids 指向不存在的主張 {x!r}")
-        if not cited and claims and str(w.get("trigger") or "").strip():
-            out.append(f"watch_triggers[{i}] 沒有回指任何 claim ——"
-                       "說不出為什麼要盯它,就不該佔讀者的注意力")
     # **孤兒主張**:寫進稽核卻沒有任何一段用到。它不是根據,是配菜。
+    referenced = _cm.referenced_claim_ids(obj)
     for c in claims:
         cid = str(c.get("claim_id") or "")
-        if (c.get("materiality") == "high" and cid and cid not in referenced):
+        if c.get("materiality") == "high" and cid and cid not in referenced:
             out.append(f"claim_audit 的高重要性主張 {cid!r} 沒有被任何段落引用")
     return out
 
+
+def _section_horizons(obj) -> dict:
+    """**有自己時間尺度的段落**。其餘不做尺度判斷 ——
+    「已反映/未反映」沒有一個屬於自己的期間。"""
+    o = obj if isinstance(obj, dict) else {}
+    out = {}
+    stance = o.get("stance")
+    if isinstance(stance, dict) and stance.get("time_horizon"):
+        out["stance"] = str(stance["time_horizon"])
+    for i, w in enumerate(o.get("watch_triggers") or []):
+        if isinstance(w, dict) and w.get("horizon"):
+            out[f"watch_triggers[{i}]"] = str(w["horizon"])
+    return out
 

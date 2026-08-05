@@ -86,6 +86,14 @@ def clusters(news: Optional[list]) -> list:
     items = sorted([n for n in (news or []) if isinstance(n, dict)
                     and n.get("source_item_id")],
                    key=lambda n: str(n["source_item_id"]))
+    # 第二十輪 P2-1:**代表用最小 ID 會確定性 over-split。**
+    # 「A 標題短而模糊、ID 最小;B 與 C 各自詳細描述同一事件」時,
+    # B≈C 而 A≉B、A≉C —— 結果是 A 一群、B+C 一群,同一事件被分析兩次。
+    # 代表改成**官方優先、其次資訊量(token 數)高的那則**:
+    # 資訊量高的標題與同事件的其他寫法重疊得多,漏併率較低。
+    items = sorted(items, key=lambda n: (
+        not n.get("official"), -len(_tokens(n.get("title"))),
+        str(n["source_item_id"])))
     groups: list = []
     for n in items:
         for g in groups:

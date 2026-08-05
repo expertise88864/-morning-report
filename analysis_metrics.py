@@ -41,7 +41,7 @@ import evidence_packet as _ep
 #: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
 #: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
 #: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
-METRICS_SCHEMA_VERSION = 8
+METRICS_SCHEMA_VERSION = 9
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")

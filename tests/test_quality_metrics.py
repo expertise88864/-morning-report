@@ -113,14 +113,22 @@ def test_one_claim_filling_the_whole_letter_is_visible():
     """四段都靠同一條主張時,claim graph 的覆蓋率是 100% ——
     **而整封信只有一個根據**。這是觀測不是門檻:某些日子確實由單一
     驅動主導,做成硬性失敗只會逼出湊數的主張。"""
+    # 第二十輪 P2-5:段落清單從 `claim_map` 長出來,已含情境、觀察點與
+    # 「昨夜三大重點」—— **一條主張填滿三個情境**先前完全看不到。
+    import claim_map as cm
     obj = fx.valid_analysis()
     obj["executive_summary_claim_ids"] = ["c1"]
     for sec in ("stance", "priced_in", "portfolio_implications"):
         obj[sec]["claim_ids"] = ["c1"]
-    assert qm.claim_graph_saturation(obj)["saturation_rate"] == 1.0
+    for key in ("base", "bull", "bear"):
+        obj["scenario_tree"][key]["claim_ids"] = ["c1"]
+    for d in obj["key_drivers"]:
+        d["claim_ids"] = ["c1"]
+    n = len(cm.section_claim_mappings(obj))
+    assert qm.claim_graph_saturation(obj)["saturation_rate"] == 1.0, n
     # 分散開來就降下來
     obj["priced_in"]["claim_ids"] = ["c2"]
-    assert qm.claim_graph_saturation(obj)["saturation_rate"] == 0.75
+    assert qm.claim_graph_saturation(obj)["saturation_rate"] == round((n - 1) / n, 3)
     # **它不擋任何東西**
     obj2 = fx.valid_analysis()
     for sec in ("stance", "priced_in", "portfolio_implications"):

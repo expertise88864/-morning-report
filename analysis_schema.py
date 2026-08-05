@@ -27,6 +27,8 @@ schema 裡沒有「逐步推理」欄位,也不存模型的隱藏推理。要的
 """
 from __future__ import annotations
 
+import evidence_namespaces as _ns
+
 #: 輸出契約版本。**改欄位就要進版** —— cohort 以它為身分的一部分,
 #: 悄悄改欄位等於把不同定義的樣本混進同一個平均。
 #: v2(第十五輪 P1-1):**prompt 叫模型深入分析,而 schema 沒有地方放深度。**
@@ -37,7 +39,7 @@ from __future__ import annotations
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 9
+ANALYSIS_SCHEMA_VERSION = 10
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -109,11 +111,7 @@ def _arr(items: dict, desc: str = "") -> dict:
 
 #: 第十七輪 P2-1:說明仍寫著「source_item_id」,而合法值早已含 `market:`
 #: 與 `tension:` —— **模型會照說明走**,typed registry 因此形同虛設。
-_EVIDENCE_IDS = _arr(_s(), (
-    "EVIDENCE 裡的證據 ID,三類都合法:新聞的 source_item_id(如 n1)、"
-    "行情的 market:<路徑>(如 market:QQQ.change_pct、market:MACRO.10Y.close)、"
-    "張力的 tension:<id>。**談行情數字就引 market ID,"
-    "不要拿新聞 ID 替它背書。** 沒有就給空陣列"))
+_EVIDENCE_IDS = _arr(_s(), _ns.schema_description())
 
 _CLAIM = _obj({
     "statement": _s("一句話的主張,不要重述整則新聞"),
@@ -142,6 +140,13 @@ _AUDITED_CLAIM = _obj(dict(
      # 泛稱(市場、大盤、類股)不算標的,那等於沒有指定範圍。
      "asset_scope": _arr(_s(), "這條主張涵蓋哪些標的;整體市場級別寫 "
                                "`market-wide`,否則給代號/指數/ETF")},
+    **_CLAIM["properties"]))
+
+#: 第二十輪 P1-5:**「七、昨夜三大重點」是 Email 的第一段,而它先前
+#: 完全在 claim 圖之外** —— 讀者最先看到的三條可以與正式稽核矛盾。
+#: `claim_ids` 只加在這一份:稽核那一份是**被回指的對象**,不回指別人。
+_DRIVER_CLAIM = _obj(dict(
+    {"claim_ids": _arr(_s(), "這條重點靠哪幾條 `claim_audit.claim_id` 支撐")},
     **_CLAIM["properties"]))
 
 _SCENARIO = _obj({
@@ -173,7 +178,7 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "time_horizon": _enum(HORIZONS),
         "rationale": _s(),
     }),
-    "key_drivers": _arr(_CLAIM, "今日真正驅動判斷的因子,依 materiality 排序"),
+    "key_drivers": _arr(_DRIVER_CLAIM, "今日真正驅動判斷的因子,依 materiality 排序"),
     "scenario_tree": _obj({
         "base": _SCENARIO, "bull": _SCENARIO, "bear": _SCENARIO,
         "invalidation_triggers": _arr(_s(), "整體判斷失效的條件"),
@@ -226,6 +231,15 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "why_this_magnitude": _s(
             "為什麼是這個量級。選 unknown 時要寫「缺金額/數量/時程的哪一項」"),
         "horizon": _enum(HORIZONS, "最快什麼時候看得到"),
+        # 第二十輪 P2-7:**「有沒有揭露」先前只有 prompt 要求。**
+        # 指標量得出「幾成的高重要性分析建立在單一來源上」,卻回答不了
+        # 更重要的問題:讀者被告知了嗎?改成結構化欄位,由 renderer
+        # 固定呈現 —— 逐字比對只會逼出樣板句。
+        "corroboration_assessment": _enum(
+            ("official", "multi_source", "single_source", "unverified"),
+            "這則事件的佐證等級;以 EVIDENCE 的 `news_clusters[].corroboration` 為準"),
+        "source_caveat": _s("單一來源或未證實時要說出讀者該保留什麼;"
+                            "多方證實或官方公告寫「無」"),
         "confirmation_signal": _s("什麼出現代表這條真的在走"),
         "invalidation_signal": _s("什麼出現代表這條不成立"),
         # 第十八輪:**同一件事對不同標的的影響不一樣。** 先前每則只有

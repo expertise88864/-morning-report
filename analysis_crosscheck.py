@@ -284,24 +284,25 @@ def top_event_problems(obj, packet) -> list:
         if cid and cid not in known and cid not in excluded:
             out.append(f"key_drivers[{i}] 的 cluster_id {cid!r} 不在今天的"
                        "事件群裡 —— 編造的引用比沒有引用更危險")
-    # **至少一半要是真的事件。** 留一格給非新聞的驅動因子(例如外資期貨
-    # 部位)是合理的 —— 三格**全部**不指向事件,就是使用者說的
-    # 「數據文字堆疊」。這條是地板,不是「每一條都必須是事件」。
-    real = [d for d in drivers
-            if str(d.get("cluster_id") or "") in (known - excluded)]
-    if drivers and len(real) * 2 < len(drivers):
-        out.append(f"「昨夜三大重點」{len(drivers)} 條裡只有 {len(real)} 條"
-                   "指向真正的事件 —— 其餘是價格變化或沒有指名事件。"
-                   "價格是別的事件造成的**結果**,讀者要的是造成它的那件事")
-    # **計分最高的那一件不能靜默略過。** 其餘候選可以不談(版面有限),
-    # 第一名不談就要說為什麼 —— 靜默略過與判斷不重要,在信裡長得一樣。
+    # 第二十三輪 P1-6:**「昨夜三大重點」的每一條都要是事件。**
+    # 上一版留一格給非新聞的驅動因子(「至少一半」),外審指出那與段落
+    # 名稱和使用者原話(「昨夜三大**發生的**重大事件」)不符 ——
+    # 非新聞的訊號自有去處(橫向綜合的 dominant_driver 與張力調和)。
+    for i, d in enumerate(drivers):
+        if str(d.get("cluster_id") or "") not in (known - excluded):
+            out.append(f"key_drivers[{i}] 沒有指向任何真正的事件群 —— "
+                       "「昨夜三大重點」的每一條都要是事件;非新聞的"
+                       "驅動因子(籌碼、行情結構)請寫進橫向綜合的"
+                       "主導因子或張力調和,不要佔事件卡的格子")
+    # 第二十三輪:**前三名每一件**都要被採用或逐一說明,不只第一名 ——
+    # 第 2、3 名靜默消失與「沒發生」在信裡長得一樣。
     dismissed = {str((x or {}).get("cluster_id") or "")
                  for x in (obj.get("dismissed_events") or [])
                  if isinstance(x, dict)}
-    first = want[0]
-    if first not in named and first not in dismissed:
-        out.append(f"計分最高的事件 {first} 既沒寫進 `key_drivers`(指名 "
-                   "`cluster_id`)也沒寫進 `dismissed_events` 說明理由")
+    for cid in want:
+        if cid not in named and cid not in dismissed:
+            out.append(f"計分前三的事件 {cid} 既沒寫進 `key_drivers`(指名 "
+                       "`cluster_id`)也沒寫進 `dismissed_events` 說明理由")
     return out
 
 
@@ -321,7 +322,12 @@ def event_graph_problems(obj, packet) -> list:
         return out
     # ── 1) 淨效果
     conflicts = _eg.conflicting_assets(obj)
-    nets = {str((x or {}).get("asset_id") or ""): x
+    import entity_alias as _ea
+
+    def _canon(aid):
+        gi = _ea.group_of(str(aid))
+        return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else str(aid)
+    nets = {_canon((x or {}).get("asset_id") or ""): x
             for x in (obj.get("asset_net_effects") or []) if isinstance(x, dict)}
     for aid in sorted(conflicts):
         n = nets.get(aid)
@@ -360,6 +366,19 @@ def event_graph_problems(obj, packet) -> list:
                 f"shared_driver_notes` 寫 driver={g.get('driver')!r} "
                 "並說明為什麼不算重複計權")
     # ── 3) 總經發布 → 聯合情境
+    # 第二十三輪 P1-8:主發布之外的總經發布不得被忽略 —— CPI 與 Fed
+    # 決議同日時,第二個發布要嘛進 key_drivers、要嘛被 dismissed。
+    dismissed_all = {str((x or {}).get("cluster_id") or "")
+                     for x in (obj.get("dismissed_events") or [])
+                     if isinstance(x, dict)}
+    named_all = {str(d.get("cluster_id") or "")
+                 for d in (obj.get("key_drivers") or []) if isinstance(d, dict)}
+    for extra in (graph.get("macro_release_cluster_ids") or [])[1:]:
+        e = str(extra)
+        if e and e not in named_all and e not in dismissed_all:
+            out.append(f"今天有第二個總經發布({e}),它既不在三大重點、"
+                       "也沒有被 dismissed —— 忽略一個總經發布與沒看到它,"
+                       "在信裡長得一樣")
     macro = str(graph.get("macro_release_cluster_id") or "")
     if macro:
         members = set()

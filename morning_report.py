@@ -7344,7 +7344,9 @@ def fetch_news_fulltext(news: list[dict],
     `targets=None` 走舊路徑(逐則掃 critical 再掃 high)—— 那是分群還沒
     算出來的呼叫端用的,**它會重複計權**,只是不改變既有行為。
     """
-    if targets:
+    # 第二十三輪 P1-3:`[]` 是合法計畫,`None` 才是沒有計畫 —— 空清單
+    # 不得落回逐文章掃描(那正是兩階段要取代的重複計權路徑)。
+    if targets is not None:
         by_id = {str(n.get("source_item_id")): n for n in news
                  if isinstance(n, dict) and n.get("source_item_id")}
         got = 0

@@ -138,9 +138,13 @@ def request_gate(bundle: dict, *, manifest=None,
     量的是 instructions + user payload + response schema 的實際字元 ——
     這才是送出去的東西。超標直接 `PayloadBudgetExceeded`。
     """
+    # 第二十三輪 P1-2:**`structured_output` 是布林旗標**,真正的 strict
+    # schema 在 `response_schema`(實測序列化 32,080 字元)—— 上一版把
+    # `True` 序列化成 4 個字元,32K 的 schema 整個漏算,而測試餵同一個
+    # 錯鍵,兩邊一起錯、一起綠。
     chars = (len(str(bundle.get("developer_instructions") or ""))
              + len(str(bundle.get("user_payload") or ""))
-             + len(json.dumps(bundle.get("structured_output") or {},
+             + len(json.dumps(bundle.get("response_schema") or {},
                               ensure_ascii=False, default=str)))
     if manifest is not None:
         manifest.setdefault("llm", {}).setdefault(

@@ -242,6 +242,24 @@ def _identity(obj) -> dict:
                     f"{r.get('other_source_item_id')}"
                     for n in news for r in (n.get("relates_to") or [])
                     if isinstance(r, dict)},
+        # 第二十三輪 P1-9:**首屏的三條與 Commit D 的新段落先前都不在
+        # 身分裡** —— 加深可以改寫三大重點、翻轉淨效果方向、刪掉共同
+        # 驅動警語、換掉 dismissed 的理由,而選優完全看不見。
+        "三大重點": {f"{d.get('cluster_id')}:{d.get('statement')}:"
+                 f"{d.get('direction')}:{d.get('materiality')}:"
+                 f"{d.get('horizon')}:"
+                 f"{','.join(sorted(map(str, d.get('evidence_ids') or [])))}"
+                 for d in (o.get("key_drivers") or []) if isinstance(d, dict)},
+        "逐標的淨效果": {f"{x.get('asset_id')}:{x.get('net_direction')}:"
+                   f"{x.get('net_magnitude_band')}:{x.get('why')}"
+                   for x in (o.get("asset_net_effects") or [])
+                   if isinstance(x, dict)},
+        "共同驅動說明": {f"{x.get('driver')}:{x.get('why_not_double_counted')}"
+                   for x in (cms.get("shared_driver_notes") or [])
+                   if isinstance(x, dict)},
+        "駁回的事件": {f"{x.get('cluster_id')}:{x.get('why_not_material')}"
+                  for x in (o.get("dismissed_events") or [])
+                  if isinstance(x, dict)},
     }
 
 

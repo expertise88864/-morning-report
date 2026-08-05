@@ -45,7 +45,11 @@ from __future__ import annotations
 #: 價格變化群、指到不存在的群、真事件不到一半、計分最高的靜默略過。
 #: v21(Commit D):接受政策多了三條 —— 方向衝突要給淨效果、共用驅動
 #: 要說明為什麼不算重複計權、有總經發布時三個情境分支要條件在它上面。
-GROUNDING_VERSION = 21
+#: v22(第二十三輪):三大重點每一條都要是事件(半數規則移除);
+#: 計分前三全部要處理;第二總經發布不得忽略;淨效果衝突偵測用
+#: 別名正規化;加深身分補 key_drivers/淨效果/共同驅動/dismissed;
+#: request_gate 改量 `response_schema`(32K schema 先前漏算)。
+GROUNDING_VERSION = 22
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

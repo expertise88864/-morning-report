@@ -118,14 +118,17 @@ def test_a_key_driver_may_not_point_at_a_price_move():
     assert hits, "三大重點指到價格文卻通過了"
 
 
-def test_at_least_half_the_drivers_must_be_real_events():
-    """留一格給非新聞的驅動因子(外資期貨部位)是合理的 ——
-    三格**全部**不指向事件,就是「數據文字堆疊」。"""
+def test_every_driver_must_be_a_real_event():
+    """第二十三輪 P1-6:**每一條都要是事件**。上一版的「至少一半」讓
+    三格裡混一條價格文合法 —— 與段落名稱(昨夜三大**發生的**重大事件)
+    不符。非新聞的訊號(籌碼、行情結構)自有去處:橫向綜合。"""
     pk = _packet()
     bad = _drivers(fx.valid_analysis(), "cluster:n1", "", "")
-    assert [p for p in sch.validate(bad, pk) if "指向真正的事件" in p]
-    ok = _drivers(fx.valid_analysis(), "cluster:n1", "cluster:n2", "")
-    assert not [p for p in sch.validate(ok, pk) if "指向真正的事件" in p]
+    hits = [p for p in sch.validate(bad, pk) if "沒有指向任何真正的事件群" in p]
+    assert len(hits) == 2, hits           # 空的兩條各一
+    ok = _drivers(fx.valid_analysis(), "cluster:n1", "cluster:n2")
+    assert not [p for p in sch.validate(ok, pk)
+                if "沒有指向任何真正的事件群" in p]
 
 
 def test_a_fabricated_cluster_id_is_caught():
@@ -141,12 +144,13 @@ def test_the_top_scored_event_cannot_be_silently_skipped():
     pk = _packet()
     top = pk["top_events"]["top_cluster_ids"][0]
     obj = _drivers(fx.valid_analysis(), "cluster:n2", "cluster:n2")
-    assert [p for p in sch.validate(obj, pk) if "計分最高的事件" in p]
+    assert [p for p in sch.validate(obj, pk) if "計分前三的事件" in p]
     obj["dismissed_events"] = [{"cluster_id": top,
                                 "reason": "央行今日僅例行性調整,幅度低於市場預期區間",
                                 "revisit_trigger": "若下次理監事會再升",
                                 "supporting_evidence_ids": ["n1"]}]
-    assert not [p for p in sch.validate(obj, pk) if "計分最高的事件" in p]
+    assert not [p for p in sch.validate(obj, pk)
+                if f"計分前三的事件 {top}" in p]
 
 
 def test_the_contract_does_not_fire_without_a_packet():

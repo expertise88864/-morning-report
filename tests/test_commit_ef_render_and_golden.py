@@ -203,7 +203,7 @@ def test_0805_a_report_shaped_like_that_day_is_rejected():
                           sorted(pk["top_events"]["excluded_price_moves"])[:3]]
     problems = sch.validate(obj, pk)
     assert [p for p in problems if "純價格變化" in p], problems[:3]
-    assert [p for p in problems if "指向真正的事件" in p], problems[:3]
+    assert [p for p in problems if "沒有指向任何真正的事件群" in p], problems[:3]
 
 
 def test_0805_price_move_detection_is_not_over_broad():

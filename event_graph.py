@@ -49,6 +49,12 @@ DRIVER_TABLE = (
     ("export_control", "出口管制與制裁",
      "出口管制", "禁令", "制裁", "實體清單", "export control", "sanction",
      "entity list"),
+    # **外國央行要先於台灣央行比對**:「日本央行升息」的「央行」與
+    # 「升息」會分別誤中 tw_policy 與 fed_policy(第二十三輪 P1-8)。
+    # 「日本央行」四個字比對長度贏過「升息」兩個字,最長優先就能分對。
+    ("foreign_cb", "海外央行政策",
+     "日本央行", "日銀", "BOJ", "歐洲央行", "ECB", "中國央行", "人民銀行",
+     "人行降準", "韓國央行", "英國央行", "英格蘭銀行"),
     ("tw_policy", "台灣貨幣與財政政策",
      "央行", "理監事", "存準率", "青安", "打炒房", "選擇性信用管制"),
     ("fx_twd", "新台幣匯率",
@@ -99,8 +105,18 @@ def driver_of(text: str) -> str:
         code, words = row[0], row[2:]
         for w in words:
             wl = str(w).lower()
-            if wl and wl in low and len(wl) > best_len:
-                best_code, best_len = code, len(wl)
+            if not wl or len(wl) <= best_len:
+                continue
+            # 第二十三輪 P1-8:ASCII 詞要 token 邊界 ——
+            # `war` 曾命中 `award` 而被歸成地緣衝突。
+            if wl.isascii():
+                import re as _re2
+                if not _re2.search(r"(?<![a-z0-9])" + _re2.escape(wl)
+                                   + r"(?![a-z0-9])", low):
+                    continue
+            elif wl not in low:
+                continue
+            best_code, best_len = code, len(wl)
     return best_code
 
 
@@ -140,20 +156,22 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
                "cluster_ids": sorted(cids),
                "member_drivers": sorted({per_cluster[x] for x in cids})}
               for fam, cids in sorted(groups.items()) if len(cids) >= 2]
-    # **總經發布只挑一個。** 挑法確定性:先照 `MACRO_RELEASE_DRIVERS` 的
-    # 順序(就業 > 通膨 > 央行),同一個驅動裡取最小 cluster_id。
-    macro = ""
+    # 第二十三輪 P1-8:**同一天可以有多個總經發布**(CPI + Fed 決議),
+    # 只挑一個等於忽略其他發布。全部列出;第一個(照
+    # `MACRO_RELEASE_DRIVERS` 的順序,同驅動取最小 ID)是**主發布**,
+    # 情境樹的三個分支要條件在它上面;其餘也要被情境或重點涵蓋。
+    macro_all = []
     for code in MACRO_RELEASE_DRIVERS:
-        hits = sorted(cid for cid, c in per_cluster.items() if c == code)
-        if hits:
-            macro = hits[0]
-            break
+        macro_all += sorted(cid for cid, c in per_cluster.items()
+                            if c == code)
+    macro = macro_all[0] if macro_all else ""
     return {
         "drivers": {cid: {"driver": code, "label": labels.get(code, code)}
                     for cid, code in sorted(per_cluster.items())},
         "shared_driver_groups": shared,
         # 空字串 = 今天沒有總經發布 —— 那時不要求聯合情境。
         "macro_release_cluster_id": macro,
+        "macro_release_cluster_ids": macro_all,
         "basis": ("驅動由宣告式關鍵詞表歸類(`event_graph.DRIVER_TABLE`),"
                   "不用語意相似度:漏歸類只是退回原本的行為,"
                   "誤歸類會讓真的獨立訊號被當成重複計權而消失"),
@@ -167,6 +185,14 @@ def conflicting_assets(obj: Optional[dict]) -> dict:
     合起來是什麼。**只在真的相反時要求** —— 都同向的話,淨效果就是
     那個方向,再要一段只是湊字數。
     """
+    # 第二十三輪 P1-7:**`2330` 與「台積電」是同一個標的。** 原樣分組
+    # 會讓「2330 bullish」與「台積電 bearish」不觸發淨效果。
+    # 正規化到別名組的第一個成員(組的代表寫法)。
+    import entity_alias as _ea
+
+    def _canon(aid: str) -> str:
+        gi = _ea.group_of(aid)
+        return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else aid
     seen: dict = {}
     for n in ((obj or {}).get("top_news_analysis") or []):
         if not isinstance(n, dict):
@@ -177,7 +203,7 @@ def conflicting_assets(obj: Optional[dict]) -> dict:
                 continue
             aid, d = str(a.get("asset_id") or ""), str(a.get("direction") or "")
             if aid and d in ("bullish", "bearish"):
-                seen.setdefault(aid, {}).setdefault(d, []).append(sid)
+                seen.setdefault(_canon(aid), {}).setdefault(d, []).append(sid)
     return {aid: sorted({s for ids in dirs.values() for s in ids})
             for aid, dirs in sorted(seen.items())
             if len(dirs) >= 2}

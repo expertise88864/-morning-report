@@ -1511,6 +1511,52 @@ enum 一律轉中文(bullish → 偏多),回應第一條「信裡不要英文」
 
 **驗證**:preflight exit 0、2044 passed、十二個突變全紅。
 
+### 批#107 `(下一個 commit)` —— 第二十三輪(base de8a770,REQUEST_CHANGES)
+外審 10 P1 + 7 P2。逐條實測後修 CONFIRMED 的九條;其餘分類如下。
+
+**已修(全部先重現再修)**:
+- **P1-2** `request_gate` 量錯鍵:`structured_output` 是布林旗標,真正的
+  strict schema 在 `response_schema`(實測 32,080 字元)—— 32K 整個漏算,
+  而**測試餵同一個錯鍵,兩邊一起錯一起綠**。驗收照外審寫的:拿掉 schema
+  後的差值等於 schema 序列化大小。
+- **P1-3** `if targets:` 讓空計畫落回逐文章掃描 → `is not None`;
+  加了「空計畫 → `_fetch_one_fulltext` 呼叫數 0」的整合測試。
+- **P1-4** 短 ASCII 別名裸子字串:實測連 **Microsoft 都被認成 ft**
+  (Micros-oft)。ASCII 別名改 token 邊界,中文維持子字串。
+- **P1-6** 半數規則移除:**每一條重點都要是事件**;計分**前三**每一件
+  要嘛寫進重點要嘛逐一 dismissed(不只第一名);renderer 改依 Python
+  計分排序,不依模型自評的 materiality。prompt 同步改寫。
+- **P1-7** 淨效果衝突偵測用 `entity_alias` 正規化 ——
+  「2330 bullish」+「台積電 bearish」現在會觸發。
+- **P1-8** `driver_of` ASCII 詞加 token 邊界(award 不再是 war);
+  新增 `foreign_cb` 驅動(日本央行升息不再是 tw_policy/fed_policy);
+  `macro_release_cluster_ids` 列出**全部**總經發布,第二發布未被
+  重點或 dismissed 涵蓋時擋下。
+- **P1-9** 加深身分補四個集合:三大重點(statement/cluster/方向/
+  materiality/horizon/證據)、逐標的淨效果、共同驅動說明、駁回的事件。
+- **P2-4** aggregator-only 事件卡改寫「原始發布者未解析」
+  (與「僅單一來源」是兩種可信度)。
+- **P2-5** 未知來源以正規化發布者字串去重(同站三篇 potential=1)。
+- **P2-6** `report`/`reported` 從事件詞移除(過廣)。
+
+**部分處理**:
+- **P1-1(無生產證據)**:同意。程式端無可修 —— 全部改動都在
+  2026-08-05 06:50 那次執行之後才上線。金絲雀驗收條件照外審清單,
+  下一次排程執行後逐項核對。
+- **P1-5(事件身分)**:CONFIRMED 但需要上游 EVENT_TIMELINE 的結構
+  變更(entity → entity+event_type+object 的複合鍵),獨立一批做 ——
+  與 P2-7(跨語言分群)同屬「事件身分」工程,一起設計。
+- **P2-2(遙測四桶)**、**P2-3(driver↔claim 的 horizon/scope)**、
+  **P2-1(market:/derived: 錨點範圍)**、**P1-10(typed instrument
+  registry)**:UNCERTAIN/設計題,待下一批;P2-1 上一批已記過理由
+  (全市場層級的量刻意不設範圍),外審再提,下批帶 `anchor_role` 設計回應。
+
+**契約**:EVIDENCE 19→20、GROUNDING 21→22、RENDERER 11→12、
+profile 23→24。
+
+**驗證**:preflight exit 0、2057 passed;新測試檔 test_review23_fixes.py
+12 條(含外審必補清單的 1/3/4/6/9/10/11/12/15/16/17/20 號)。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

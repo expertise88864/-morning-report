@@ -92,7 +92,9 @@ _EVENT_VERBS = ("宣布", "決議", "公布", "發表", "簽署", "通過", "裁
                 "announce", "announced", "approve", "approved", "sign",
                 "signed", "ruling", "recall", "strike", "earthquake",
                 "merger", "acquire", "acquired", "sanction", "ban",
-                "resign", "layoff", "report", "reported", "raise", "cut")
+                # 第二十三輪 P2-6:`report`/`reported` 太廣 ——
+                # 「Market report: Nasdaq rose 2%」會因此逃過價格文判定。
+                "resign", "layoff", "raise", "cut")
 
 
 def is_price_move(title: str) -> bool:

@@ -57,11 +57,15 @@ def test_chars_after_includes_the_disclosures():
 
 def test_the_final_request_gate_measures_the_bundle():
     """**P1-2 問題 B**:packet 沒超不代表加上指令與 schema 之後沒超。"""
+    # 第二十三輪 P1-2:**測試把實作錯誤鎖住了** —— 上一版用
+    # `structured_output`(布林旗標)當 schema 鍵,測試也餵同一個錯鍵,
+    # 於是兩邊一起錯、一起綠。真正的 schema 在 `response_schema`。
     ok = {"developer_instructions": "x" * 1000, "user_payload": "y" * 1000,
-          "structured_output": {}}
+          "response_schema": {}}
     pb.request_gate(ok)                     # 不拋
-    big = {"developer_instructions": "x" * 400_000,
-           "user_payload": "y" * 400_000, "structured_output": {}}
+    big = {"developer_instructions": "x" * 350_000,
+           "user_payload": "y" * 300_000,
+           "response_schema": {"pad": "z" * 60_000}}
     try:
         pb.request_gate(big)
         raise AssertionError("最終 request 超標仍被放行")

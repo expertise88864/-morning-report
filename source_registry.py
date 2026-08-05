@@ -33,6 +33,7 @@
 """
 from __future__ import annotations
 
+import re as _re
 from typing import Optional
 
 #: `(群組代號, 成員別名…)`。**同一個編輯台算一組。**
@@ -92,6 +93,17 @@ def _norm(name) -> str:
     return str(name or "").strip()
 
 
+def _alias_in(alias_low: str, name_low: str) -> bool:
+    """第二十三輪 P1-4:**ASCII 別名要 token 邊界。** 裸子字串讓
+    `ft`(Financial Times)命中 `SoftBank` 與 `Microsoft` —— 錯認的
+    發布者會污染獨立數、佐證等級、近似去重與事件排序。
+    中文別名維持子字串(中文無詞界,「鉅亨」要能命中「鉅亨網」)。"""
+    if not alias_low.isascii():
+        return alias_low in name_low
+    return bool(_re.search(r"(?<![a-z0-9])" + _re.escape(alias_low)
+                           + r"(?![a-z0-9])", name_low))
+
+
 def _hit(name: str, table) -> str:
     """`name` 裡出現表中的哪一個別名(最長的優先 —— 「中時新聞網」
     要贏過「中時」,否則短別名會先命中而分組結果依表的順序而定)。"""
@@ -99,7 +111,7 @@ def _hit(name: str, table) -> str:
     best = ""
     for alias in table:
         a = str(alias).lower()
-        if a and a in low and len(a) > len(best):
+        if a and _alias_in(a, low) and len(a) > len(best):
             best = alias
     return best
 
@@ -143,7 +155,7 @@ def owner_of(name) -> str:
         code, aliases = group[0], group[1:]
         for a in aliases:
             al = str(a).lower()
-            if al and al in low and len(al) > best_len:
+            if al and _alias_in(al, low) and len(al) > best_len:
                 best_group, best_len = code, len(al)
     return best_group
 
@@ -207,7 +219,7 @@ def independence(items: Optional[list]) -> dict:
       * `aggregator_only` —— 只查得到聚合器別名的則數(同上,但成因不同:
         那是抓取管線沒有解出真正的發布者,是**我們自己的**缺口)。
     """
-    groups, unverified, agg = set(), 0, 0
+    groups, unknown_names, agg = set(), set(), 0
     for it in (items or []):
         g = owner_of_item(it)
         if g:
@@ -217,7 +229,12 @@ def independence(items: Optional[list]) -> dict:
         if names and all(is_aggregator(n) for n in names):
             agg += 1
         else:
-            unverified += 1
+            # 第二十三輪 P2-5:**未知來源以正規化的發布者字串去重。**
+            # 同一個不認得的網站的三篇改寫稿先前算三個「可能獨立」,
+            # 會灌高覆蓋率地板、擠進必分析清單。
+            key = next((n.strip().lower() for n in names if n.strip()), "")
+            unknown_names.add(key or f"__blank__{len(unknown_names)}")
+    unverified = len(unknown_names)
     return {"groups": sorted(groups), "count": len(groups),
             "unverified": unverified, "aggregator_only": agg,
             # **兩個數字給兩種用途,保守的方向剛好相反。**

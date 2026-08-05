@@ -135,10 +135,18 @@ def _event_card(c: dict, packet=None) -> str:
         if isinstance(n, int) and n >= 2:
             bits.append(f"{n} 個獨立來源")
         elif isinstance(n, int):
-            # **說得出自己驗不了什麼。** 未驗證的來源數另外講,
-            # 不併進「獨立來源」—— 那個數字是可信度宣稱。
+            # **說得出自己驗不了什麼。** 三種情況三種話(第二十三輪
+            # P2-4):「僅單一來源」是查證過只有一家;「未驗證」是
+            # 發布者不在註冊表;「原始發布者未解析」是**我們自己**只
+            # 解析到聚合器 —— 第三種是抓取缺口,不是事件可信度。
             un = blk.get("unverified_sources")
-            bits.append("僅單一來源" if not un else f"來源 {un} 家未驗證")
+            agg = blk.get("aggregator_only_sources")
+            if un:
+                bits.append(f"來源 {un} 家未驗證")
+            elif agg:
+                bits.append("原始發布者未解析")
+            else:
+                bits.append("僅單一來源")
     days = blk.get("continuing_days")
     if isinstance(days, int) and days >= 1:
         bits.append(f"本報連續追蹤第 {days + 1} 天")
@@ -194,8 +202,13 @@ def render(obj: Optional[dict], packet=None) -> str:
     # 那兩件事 packet 早就算好了(獨立編輯台數、連續追蹤天數),
     # 而先前一個字都沒有進信。
     drivers = [c for c in (obj.get("key_drivers") or []) if isinstance(c, dict)]
+    # 第二十三輪 P1-6:**排序依 Python 的事件計分,不依模型自評的
+    # materiality** —— 自評的重要性不能當判準(repo 既有原則)。
+    _rank = {cid: i for i, cid in enumerate(
+        ((packet or {}).get("top_events") or {}).get("top_cluster_ids") or [])}
     order = {"high": 0, "medium": 1, "low": 2}
-    drivers.sort(key=lambda c: order.get(_s(c.get("materiality")), 3))
+    drivers.sort(key=lambda c: (_rank.get(_s(c.get("cluster_id")), 99),
+                                order.get(_s(c.get("materiality")), 3)))
     top3 = [x for x in (_event_card(c, packet) for c in drivers[:3]) if x]
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))

@@ -499,7 +499,9 @@ _FROZEN = {
     # v19(Commit E):正規化保留 `source_name`;近似去重改用發布者
     #     當鍵 —— 先前用聚合器別名,同一個 Google 查詢帶回的三家
     #     媒體被判成「同一家改版重發」而砍掉兩則。
-    "evidence_schema_version":  (19, "3fa58a900296d79e"),
+    # v20(第二十三輪):macro_release_cluster_ids、來源別名 token 邊界、
+    #     未知來源以發布者字串去重。
+    "evidence_schema_version":  (20, "e10d1f57c6f0a038"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -560,7 +562,8 @@ _FROZEN = {
     # v22(Commit C):三大重點的規則(候選由 top_events 給、至少一半
     #     要指到真事件、行情數字用來說明量級)。
     # v23(Commit D):淨效果、共同驅動、總經聯合情境三段規則。
-    "primary_profile_version":  (23, "51983403f1f6bbe8"),
+    # v24(第二十三輪):每條重點都要是事件、前三全處理、多總經發布。
+    "primary_profile_version":  (24, "d45fcd958e7f27e2"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "shadow_profile_version":   (7, "27619c45c92d2128"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
@@ -582,7 +585,9 @@ _FROZEN = {
     # v9(第二十輪 P2-7):單一來源/未證實的佐證等級與保留事項固定呈現。
     # v10(Commit C):`key_drivers` 多了 `cluster_id`。
     # v11(Commit E):事件卡 + 各標的合計影響 + 共用驅動說明進信。
-    "renderer_version":         (11, "56a50bd8d7cbbbec"),
+    # v12(第二十三輪):三大重點依 Python 計分排序;aggregator-only
+    #     寫「原始發布者未解析」。
+    "renderer_version":         (12, "56a50bd8d7cbbbec"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -631,7 +636,10 @@ _FROZEN = {
     # v21(Commit D):方向衝突要給淨效果、共用驅動要說明為什麼不算
     #     重複計權、有總經發布時三個情境分支要條件在它上面。
     #     `_event_graph_probe()` 讓指紋看得見這三條。
-    "grounding_version":        (21, "7892d884e4555e87"),
+    # v22(第二十三輪):每條重點都要是事件、前三全處理、第二總經發布
+    #     不得忽略、淨效果衝突用別名正規化、request_gate 量
+    #     response_schema(32K schema 先前漏算)。
+    "grounding_version":        (22, "6e16d5dce6614e60"),
 }
 
 

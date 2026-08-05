@@ -63,7 +63,10 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: **發布者**當鍵(先前是聚合器別名 `Google:2330` —— 同一個查詢帶回的
 #: 三家媒體被判成「同一家改版重發」而砍掉兩則,Commit B 的獨立來源數
 #: 在生產因此永遠是 1)。
-EVIDENCE_SCHEMA_VERSION = 19
+#: v20(第二十三輪):event_graph 帶 `macro_release_cluster_ids`(全部
+#: 的總經發布,不只挑一個);來源註冊表 ASCII 別名改 token 邊界
+#: (`ft` 不再命中 SoftBank/Microsoft);未知來源以發布者字串去重。
+EVIDENCE_SCHEMA_VERSION = 20
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

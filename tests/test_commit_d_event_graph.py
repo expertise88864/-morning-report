@@ -110,7 +110,9 @@ def test_conflicting_directions_demand_a_net_effect():
     """**使用者原話:「利多還是利空」。** 一則正面一則負面,兩段各自
     寫完就結束了 —— 讀者不知道合起來是什麼。"""
     obj = _conflicting(fx.valid_analysis())
-    assert eg.conflicting_assets(obj) == {"2330": ["n1", "n2"]}
+    # 第二十三輪 P1-7:鍵是**別名組的代表寫法**(台積電)——
+    # 「2330 bullish」與「台積電 bearish」是同一個標的的衝突。
+    assert eg.conflicting_assets(obj) == {"台積電": ["n1", "n2"]}
     hits = [p for p in sch.validate(obj, _packet()) if "asset_net_effects" in p]
     assert hits
 
@@ -155,14 +157,30 @@ def test_a_macro_release_must_condition_all_three_branches():
     pk = _packet()
     assert pk["event_graph"]["macro_release_cluster_id"] == "cluster:m1"
     obj = fx.valid_analysis()
-    hits = [p for p in sch.validate(obj, pk) if "總經發布" in p]
+    # 第二十三輪 P1-8:Fed 發言(m2)現在也是總經發布 —— 第二發布要嘛
+    # 進重點要嘛 dismissed,先處理掉,聚焦驗「三分支要條件在主發布上」。
+    obj["dismissed_events"] = [{"cluster_id": "cluster:m2",
+                                "why_not_material": "與主發布同一驅動,合併談",
+                                "reason": "同驅動", "revisit_trigger": "x",
+                                "supporting_evidence_ids": ["m2"]}]
+    hits = [p for p in sch.validate(obj, pk) if "分岔本身" in p]
     assert len(hits) == 3, hits          # base / bull / bear 各一
     # 三個分支都引用一條指向 m1 的主張就通過
     obj["claim_audit"].append(dict(obj["claim_audit"][0], claim_id="cm",
                                    evidence_ids=["m1"]))
     for br in ("base", "bull", "bear"):
         obj["scenario_tree"][br]["claim_ids"] = ["cm"]
-    assert not [p for p in sch.validate(obj, pk) if "總經發布" in p]
+    assert not [p for p in sch.validate(obj, pk) if "分岔本身" in p]
+
+
+def test_a_second_macro_release_cannot_be_silently_ignored():
+    """**第二十三輪 P1-8:CPI 與 Fed 決議同日,兩個都要被處理。**"""
+    pk = _packet()
+    assert pk["event_graph"]["macro_release_cluster_ids"] == [
+        "cluster:m1", "cluster:m2"]
+    obj = fx.valid_analysis()
+    hits = [p for p in sch.validate(obj, pk) if "第二個總經發布" in p]
+    assert hits and "cluster:m2" in hits[0]
 
 
 def test_no_macro_release_means_no_requirement():

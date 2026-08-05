@@ -321,7 +321,7 @@ def test_depth_advisories_and_the_deepen_pass_are_wired():
            ).read_text(encoding="utf-8")
     body = src[src.index("def _luna_analysis"):src.index("def _luna_analysis")
                + 8000]
-    assert "_av.depth_advisories(obj)" in body, "成功分支沒有查深度"
+    assert "_av.depth_advisories(obj, packet)" in body, "成功分支沒有查深度"
     assert "_av.deepen_input(" in body, "加深沒有走統一的 deepen_input"
     assert "_kept" in body and "deepen_failed" in body, (
         "加深失敗沒有回退到留著的第一版")

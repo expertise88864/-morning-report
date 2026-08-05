@@ -863,6 +863,71 @@ METRICS v6 / Luna profile v16。測試的 ID 集合改由 `fx.ids()` 統一
 5. 六個突變全紅;其中「事實不去重」第一次沒紅 —— 反例的重複排在
    封頂之後,先被 cap 吃掉了。**反例要讓缺陷有機會表現。**
 
+### 批#95 `(下一個 commit)` —— 實機根因:請求太大 + 沒有退避
+**2026-08-05 的實機紀錄推翻了前兩天的診斷。** TypeError **已經消失** ——
+packet 組得起來、`evidence_sha` 算得出來、請求送得出去。新的紀錄是:
+
+    error = "429 Too Many Requests"、stage = analysis、elapsed = 2.7s
+    estimated_input_tokens = 1,110,589
+    evidence_schema_version = 10、profile_version = 17(新版真的上線了)
+
+**根因是請求本身太大**:約 2.0 MB 文字、估 111 萬 token。2.7 秒就被拒,
+是「這個請求連進佇列的資格都沒有」。新聞側有上限(220 則 × 摘要 600 +
+全文 1500 ≈ 46 萬字元),而 `market` 的外部文字區塊 —— 公報全文、
+結構化事件、政策情報、歷史 —— **一個上限都沒有**。
+那正是這個 repo 反覆栽的形狀:**每一塊都有人負責,總和沒有人負責。**
+
+新模組 `payload_budget.py`:先量每個區塊的字元成本,再由大到小裁,
+**只裁背景與診斷**(行情數字、新聞、張力是分析的原料,裁掉等於改變結論)。
+整塊拿掉而不是截斷內容 —— 半截的公報比沒有公報更糟:模型會照著半句話
+推論,而它讀不出那是半句。裁了什麼全部進 manifest;裁完仍超標也要說。
+
+**同一天的另一半**:`_call_openai_responses` **只在 400 時重試**
+(為了移除選配欄位),429/5xx 直接 `raise_for_status()` ——
+而這個 repo 的 `_http_get` 早就有 429/5xx 退避。一次暫時性的失敗
+花掉了整天的特化分析。拆出 `llm_http.post_with_backoff`:
+尊重 `Retry-After`、退避有上限(晨報有時間預算)、重試進 manifest。
+
+**外審 P1-2(commit 主打的反例剛好抓不到,成立)**:`_TRIVIAL` 排除 0–10
+是為了忽略年份與序數,而它連**帶單位**的小數字一起吃掉 —— evidence 是
+80 億、信裡寫 8 億時,結果不是 unmatched,是 `checked=0`:整條檢查靜靜地
+沒有跑。改成「帶單位的數字永遠要檢查」,單位表與 `news_facts` 共用。
+
+**外審 P1-3(成立)**:量化錨點只看命名空間前綴,於是三種假錨點都通過 ——
+別則新聞的 `fact:`、`market:QQQ`(value=None 的殼)、
+`market:MARKET_REGIME.label`(字串標籤)。新增 `is_numeric_anchor()`:
+要是**這則新聞自己的、真的是數字的、今天可用的**證據;
+advisory 與指標改用同一個函式。
+
+**外審 P2-3 / P2-4(成立)**:去重成功先前顯示成「涵蓋不足」
+(一家重發十次時 `included/available` 暴跌)—— 分母改成去重後,
+原始數另外報;`asset_breakdown_quality` 改用 validator 的
+`_is_generic_asset`(「台灣市場」先前被 validator 擋、被指標放行)。
+
+**同批修好第二次的探針耦合**:profile 指紋仍餵真實 packet,於是
+`coverage` 加一個欄位就讓 prompt 契約亮紅。上一輪我以為修好了,
+實際上那次編輯沒有套用到那一行。這次驗過:dev 指令與 payload 框架
+**逐位元組相同**,所以改雜湊而不升版。
+
+**版本鏈**:EVIDENCE v11 / GROUNDING v14 / METRICS v8。
+
+**外審應特別看的地方**:
+1. `MAX_PAYLOAD_CHARS = 600_000` 是**保守起點,不是精算值** ——
+   比成功送出過的(約 9.5 萬 token)大三倍多,遠低於被拒的那次。
+   實機跑一次才知道對不對。
+2. `TRIMMABLE_BLOCKS` 九個區塊是我依欄位語意挑的,沒有量過它們在
+   真實資料裡各佔多少。第一次跑完要看 `payload_budget.trimmed`。
+3. 退避上限 45 秒 × 3 次 = 最多多等 135 秒。晨報的時間預算夠嗎?
+4. `estimated_input_tokens` 用 1.8 字元/token,而中文實際更接近 1.0–1.5
+   —— 估算偏低,實際 token 可能比 111 萬更多。
+5. **仍未做**:P1-4(deepen 保 evidence/direction 與新 mappings)、
+   P1-5(watch/scenario 的 horizon 相容性、key_drivers 接進 claim 圖)、
+   P2-1(cluster 代表改選 official/medoid)、P2-2(同值不同語意的 fact)、
+   P2-5(統一 section mappings)、P2-6(namespace 單一來源)、
+   P2-7(single-source 揭露的機械契約)。
+
+**驗證**:preflight exit 0、1897 passed、九個突變全紅。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

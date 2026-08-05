@@ -19,7 +19,16 @@ from __future__ import annotations
 
 # ------------------------------------------------------------ 深度(不擋信)
 
-def depth_advisories(obj) -> list:
+def _registry_of(packet):
+    """**沒有 packet 時退回寬鬆判準**(舊呼叫端仍要能用),而且說得出來:
+    那時 `is_numeric_anchor` 查不到 metadata,只能看命名空間。"""
+    if not isinstance(packet, dict):
+        return None
+    import evidence_registry as _reg
+    return _reg.registry(packet)
+
+
+def depth_advisories(obj, packet=None) -> list:
     """**合法但淺**的地方(空 = 夠深)。與 `validate()` 刻意分開:
 
     這裡的每一條都**不會**讓輸出被拒絕 —— 淺而正確的分析落回 legacy
@@ -65,9 +74,10 @@ def depth_advisories(obj) -> list:
         # `valuation:` / `prediction:` 的數字上。判準是結構性的
         # (查引用的命名空間),不是關鍵詞。
         if n.get("materiality") == "high" and steps:
+            import analysis_stages as _ast
+            _reg = _registry_of(packet)
             anchored = any(
-                str(e).startswith(("market:", "derived:", "valuation:",
-                                   "prediction:", "fact:"))
+                _ast.is_numeric_anchor(e, n.get("source_item_id"), _reg)
                 for st in steps for e in (st.get("evidence_ids") or []))
             if not anchored:
                 out.append(

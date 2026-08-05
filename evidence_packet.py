@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 10
+EVIDENCE_SCHEMA_VERSION = 11
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -255,10 +255,19 @@ def coverage(packet: dict, news: Optional[list]) -> dict:
     數字由它自己的 bucket 邏輯決定,兩者不同是預期的;把它記下來,
     十配對的結論才說得出「這是模型差異還是餵進去的東西不同」。
     """
-    avail = sum(1 for n in (news or []) if isinstance(n, dict))
+    # 第二十輪 P2-3:**去重成功不該顯示成「涵蓋不足」。** 一家媒體重發
+    # 十次同一篇時,packet 正確地只留一篇,而 `included/available` 會
+    # 暴跌 —— 讀指標的人會以為證據抓不夠。分母改成**去重後**的可用數,
+    # 原始數另外報。
+    avail_raw = sum(1 for n in (news or []) if isinstance(n, dict))
+    trunc = (packet or {}).get("truncation") or {}
+    avail = max(0, avail_raw - int(trunc.get("near_duplicates_dropped") or 0))
     kept = len((packet or {}).get("news") or [])
     full = sum(1 for n in ((packet or {}).get("news") or []) if n.get("fulltext"))
-    return {"available": avail, "included": kept,
+    return {"available": avail, "raw_available": avail_raw,
+            "near_duplicates_dropped": int(
+                trunc.get("near_duplicates_dropped") or 0),
+            "included": kept,
             "with_fulltext": full,
             "rate": round(kept / avail, 3) if avail else None}
 

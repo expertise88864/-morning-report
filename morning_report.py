@@ -31,6 +31,8 @@ from typing import Optional
 
 import llm_telemetry as _lt
 import app_context as _app
+import llm_http as _lh
+import payload_budget as _pb
 import prompt_profiles as _pp
 import evidence_packet as _ep
 import experiment_record as _er
@@ -13867,8 +13869,9 @@ def _call_openai_responses(payload: dict) -> dict:
                "Content-Type": "application/json"}
     body = dict(payload)
     for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
-        r = requests.post(url, json=body, headers=headers,
-                          timeout=_llm_request_timeout())
+        r = _lh.post_with_backoff(url, body, headers,
+                                  timeout=_llm_request_timeout(),
+                                  manifest=_RUN_MANIFEST)
         if r.status_code != 400:
             r.raise_for_status()
             return r.json()
@@ -13904,6 +13907,16 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     改壞測試都不會紅(突變驗證當場抓到)。重複的守衛測不出來,
     而測不出來的守衛在下一次重構時會被悄悄拿掉。
     """
+    # 2026-08-05 實機根因:**請求本身太大。** 估算 111 萬 token、
+    # 約 2.0 MB —— 2.7 秒就被 429 拒收。新聞側有上限而 market 的外部
+    # 文字區塊(公報、事件、政策情報、歷史)一個都沒有:
+    # **每一塊都有人負責,總和沒有人負責。**
+    packet, _budget = _pb.trim(packet)
+    if _budget["trimmed"]:
+        _RUN_MANIFEST.setdefault("llm", {})["payload_budget"] = _budget
+        print(f"[llm] payload {_budget['chars_before']} 字元超出預算,"
+              f"裁掉 {len(_budget['trimmed'])} 個背景區塊 → "
+              f"{_budget['chars_after']}", file=sys.stderr)
     bundle = _pp.build_luna_bundle(packet)
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
         _pp.bundle_debug_json(bundle))
@@ -13985,7 +13998,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 # 最壞情況仍是兩次呼叫,與修補相同 —— 多的是深度不是風險;
                 # 加深失敗就用留著的這一版,**不落回 legacy**(淺而正確的
                 # 分析落回只會換來一封更淺的信)。
-                _adv = _av.depth_advisories(obj)
+                _adv = _av.depth_advisories(obj, packet)
                 if _adv and not repair and _kept is None:
                     _kept = (obj, text)
                     _RUN_MANIFEST["llm"]["depth_advisories"] = _adv[:6]
@@ -14010,7 +14023,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                         print(f"[llm] 加深後不算改善({_why}),沿用第一版",
                               file=sys.stderr)
                         obj, text = _kept
-                        _adv = _av.depth_advisories(obj)
+                        _adv = _av.depth_advisories(obj, packet)
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
                     obj, packet, rendered_text=text)

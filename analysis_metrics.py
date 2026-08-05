@@ -41,7 +41,7 @@ import evidence_packet as _ep
 #: (張力有沒有處理完、有新聞卻沒分析),於是帳本可能顯示
 #: `validation_problems = 0` 而實際橫向沒做完。同時補上深度指標 ——
 #: 十配對要回答的是「深度有沒有真的改善」,而先前量不到。
-METRICS_SCHEMA_VERSION = 7
+METRICS_SCHEMA_VERSION = 8
 
 #: 抓數字用。刻意包含千分位與小數,排除純年份(2026 這種會製造大量誤判)。
 _NUM = re.compile(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+)(?![\w])")
@@ -54,6 +54,14 @@ _TRIVIAL = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 
 def _numbers(text: str) -> list:
     return [m.group(1).replace(",", "") for m in _NUM.finditer(text or "")]
+
+
+#: 緊跟著單位的數字。**與 `news_facts._FACT_RE` 同一組單位** ——
+#: 兩份清單各自漂移的話,抽取端與檢查端會對同一個數字有不同判斷。
+def _numbers_with_units(text: str) -> set:
+    import news_facts as _nf
+    return {str(m.group(1)).replace(",", "")
+            for m in _nf._FACT_RE.finditer(str(text or ""))}
 
 
 def _evidence_numbers(packet: dict) -> set:
@@ -69,7 +77,13 @@ def numeric_consistency(text: str, packet: dict) -> dict:
     那些不會出現在證據裡卻不是錯的。所以回報比率與未命中清單供人判讀,
     不回報「錯誤數」—— 把有誤判的指標當硬性判準比沒有指標更糟。
     """
-    seen = [n for n in _numbers(text) if n not in _TRIVIAL]
+    # 第二十輪 P1-2:**「8 億美元」的 8 被 trivial 濾掉了。**
+    # `_TRIVIAL` 排除 0–10 是為了忽略年份與序數,而它連**帶單位**的
+    # 小數字一起吃掉 —— 於是 evidence 是 80 億、信裡寫 8 億時,
+    # 結果不是 unmatched,是 `checked=0`:整條檢查靜靜地沒有跑。
+    # 帶單位的數字**永遠要檢查**,不論多小。
+    seen = [n for n in _numbers(text)
+            if n not in _TRIVIAL or n in _numbers_with_units(text)]
     if not seen:
         return {"checked": 0, "matched": 0, "rate": None, "unmatched": []}
     known = _evidence_numbers(packet)

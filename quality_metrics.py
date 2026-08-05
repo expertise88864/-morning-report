@@ -117,7 +117,9 @@ def asset_breakdown_quality(obj) -> dict:
     rows = [(n, a) for n in _news(obj)
             for a in (n.get("affected_assets") or []) if isinstance(a, dict)]
     ids = [str(a.get("asset_id") or "").strip() for _, a in rows]
-    generic = [x for x in ids if x in _av._GENERIC_ASSETS]
+    # 第二十輪 P2-4:**驗證器與指標先前用不同判準** ——「台灣市場」
+    # 被 validator 擋下,而指標說它不是泛稱。同一個函式,一個答案。
+    generic = [x for x in ids if x and _av._is_generic_asset(x)]
     dup = 0
     for n in _news(obj):
         got = [str(a.get("asset_id") or "") for a in (n.get("affected_assets") or [])
@@ -187,14 +189,25 @@ def corroboration_exposure(obj, packet) -> dict:
             "single_source_rate": _rate(len(single), len(hi))}
 
 
-def fact_anchor_usage(obj) -> dict:
-    """縱向鏈的量化錨點用了哪一種(行情 / 新聞事實 / 沒有)。"""
+def fact_anchor_usage(obj, packet=None) -> dict:
+    """縱向鏈的量化錨點用了哪一種(行情 / 新聞事實 / 沒有)。
+
+    第二十輪 P1-3:**指標與驗證器要用同一個判準。** 只看前綴時,
+    `market:QQQ`(value=None 的殼)與別則新聞的 `fact:` 都會被算成錨點。
+    """
+    import analysis_stages as _ast
+    reg = None
+    if isinstance(packet, dict):
+        import evidence_registry as _er
+        reg = _er.registry(packet)
     hi = [n for n in _news(obj) if n.get("materiality") == "high"]
 
     def _kinds(n):
         return {str(e).split(":", 1)[0]
                 for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)
-                for e in (st.get("evidence_ids") or [])}
+                for e in (st.get("evidence_ids") or [])
+                if reg is None
+                or _ast.is_numeric_anchor(e, n.get("source_item_id"), reg)}
     market = sum(1 for n in hi if _kinds(n) & {"market", "derived",
                                                "valuation", "prediction"})
     fact = sum(1 for n in hi if "fact" in _kinds(n))
@@ -230,5 +243,5 @@ def quality_metrics(obj: Optional[dict], packet: Optional[dict],
         "ordered_chain": ordered_chain_completion(obj),
         "claim_graph": claim_graph_saturation(obj),
         "corroboration": corroboration_exposure(obj, packet),
-        "fact_anchors": fact_anchor_usage(obj),
+        "fact_anchors": fact_anchor_usage(obj, packet),
     }

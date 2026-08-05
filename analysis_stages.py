@@ -63,6 +63,44 @@ def _stage_order_broken(n) -> bool:
     return any(b < a for a, b in zip(seq, seq[1:]))
 
 
+#: 可以當量化錨點的命名空間。**只列這些不夠** —— 見 `is_numeric_anchor`。
+_ANCHOR_NAMESPACES = ("market:", "derived:", "valuation:", "prediction:", "fact:")
+
+
+def is_numeric_anchor(evidence_id, news_id, registry) -> bool:
+    """這個引用**真的是一個數字錨點**嗎(第二十輪 P1-3)。
+
+    先前只看命名空間前綴,於是三種都通過:
+
+      * `n1` 的因果鏈引用 `fact:n2.0` —— **別則新聞的數字**;
+      * 引用 `market:QQQ` —— 那是 block 殼,registry 裡 `value=None`;
+      * 引用 `market:MARKET_REGIME.label` —— 那是字串標籤,不是數字。
+
+    dashboard 因此可以顯示 `anchored_rate=100%`,而錨點一個數字都沒有。
+    """
+    eid = str(evidence_id or "")
+    if not eid.startswith(_ANCHOR_NAMESPACES):
+        return False
+    if eid.startswith("fact:"):
+        # `fact:<sid>.<k>` —— sid 必須是**正在分析的這一則**。
+        owner = eid[len("fact:"):].rsplit(".", 1)[0]
+        if news_id and owner != str(news_id):
+            return False
+    if registry is None:
+        # **退化模式**:沒有 registry 就查不到 value/unit —— 只能驗
+        # 命名空間與(對 `fact:`)歸屬。說得出自己驗不了什麼,
+        # 比假裝驗過好;生產一定有 packet,這條是給舊呼叫端用的。
+        return True
+    meta = registry.get(eid)
+    if not isinstance(meta, dict):
+        return False
+    if not meta.get("usable_for_inference", True):
+        return False
+    v = meta.get("value")
+    # bool 是 int 的子類 —— `True` 不是量級。
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
 def _required_ids(packet):
     if not isinstance(packet, dict):
         return set()

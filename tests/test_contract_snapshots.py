@@ -202,16 +202,21 @@ def _behaviour() -> dict:
     # `luna_user_payload(bare)` —— 於是快照不再經過 `build_luna_bundle`,
     # 而生產送出去的正是它回傳的 `user_payload`。那個組裝器日後多包一層、
     # 多附一句 profile 專屬指令,快照都看不到。
-    # 兩個性質不必二選一:餵 versionless 的輸入,但仍走生產的路徑。
-    luna = pp.build_luna_bundle(bare)
+    # 2026-08-05:profile 那一格改餵 `_FIXED_PACKET`(見下),
+    # **evidence 那一格仍然走這條** —— 它本來就該隨 packet 變。
     return {
         # 第十七輪:evidence v4(遞迴 registry + 廣度方向/強度分離)、
     # schema v4(tension_resolutions + stage)、renderer v4(逐筆調和進信)、
     # grounding v5(深度提示再擴充)、Luna profile v10。
     "evidence_schema_version": _sha(bare),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
+        # **profile 的指紋不該被證據契約牽動。** 餵 `luna`(由真實
+        # `_packet()` 建的)時,evidence 加一個欄位就讓 prompt 契約亮紅 ——
+        # 2026-08-05 又發生一次(`coverage` 加了 `raw_available`)。
+        # 那種誤報會訓練出「看到紅就升版」的反射,真正的 prompt 變動反而
+        # 混在裡面。改餵**手寫的固定 packet**:payload 的框架仍然量得到。
         "primary_profile_version": _sha(
-            luna["developer_instructions"] + "\x00" + luna["user_payload"]),
+            _profile_view(pp.build_luna_bundle(_FIXED_PACKET))),
         # legacy 契約管兩件事:prompt 的**內容**,以及它被怎麼包裝。
         # 2026-08-03:先前餵一段固定字串當 prompt,於是**真正的 prompt 改了、
         # 指紋卻不動** —— 那天升 `DEEPSEEK_LEGACY_VERSION` 時,「版本變了行為
@@ -302,7 +307,10 @@ _FROZEN = {
     # v10(深度加強第二批):每則新聞抽帶單位的數字成 `fact:` 命名空間
     #     (值/單位/上下文進 registry —— 抄錯十倍終於抓得到);
     #     同源改版重發去重;事件群帶 corroboration 等級。
-    "evidence_schema_version":  (10, "2f1bf87afc7d2bf6"),
+    # v11(2026-08-05 實機 + 第二十輪 P2-3):`coverage` 的分母改成
+    #     **去重後**的可用數(一家重發十次時,去重成功先前顯示成
+    #     「涵蓋不足」);原始數另外報。
+    "evidence_schema_version":  (11, "22475ec0c82c154a"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -340,7 +348,10 @@ _FROZEN = {
     # v15(第十九輪):asset_scope、總結回指、時間尺度要連對。
     # v16(第二十輪+深度加強):量化錨點、橫向接行情、駁回的回頭條件。
     # v17(深度加強第二批):新聞數字用 fact: 引用;單一來源要明講。
-    "primary_profile_version":  (17, "91b753e85b8226dd"),
+    # 2026-08-05:**探針輸入被修正,prompt 本身沒變**
+    #    (dev 指令與 payload 框架逐位元組相同,已實測)。
+    #    依本表既有先例:改雜湊而不升版。
+    "primary_profile_version":  (17, "1e449b27971757d9"),
     "shadow_profile_version":   (6, "27c0be1da4981f4e"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
@@ -380,7 +391,9 @@ _FROZEN = {
     #     新聞並給回頭條件;段落內重複回指要擋;完整鏈=全程不倒退;
     #     深度加強:量化錨點與橫向接行情(advisory,不擋信)。
     # v13(深度加強第二批):量化錨點 advisory 接受 `fact:`。
-    "grounding_version":        (13, "d711da7ebd4b70ae"),
+    # v14(第二十輪 P1-3):量化錨點改用 `is_numeric_anchor` ——
+    #     要是**這則新聞自己的、真的是數字的、今天可用的**證據。
+    "grounding_version":        (14, "d711da7ebd4b70ae"),
 }
 
 

@@ -32,6 +32,7 @@ from typing import Optional
 import llm_telemetry as _lt
 import app_context as _app
 import econ_terms as _et
+import gnews_registry as _gnews_reg
 import llm_http as _lh
 import payload_budget as _pb
 import policy_scope as _ps
@@ -853,25 +854,8 @@ RSS_FEEDS = {
     "Bloomberg Markets": "https://feeds.bloomberg.com/markets/news.rss",   # 偶 403,失敗自動略過
     "Yahoo Finance":     "https://finance.yahoo.com/news/rssindex",
 
-    # === Google News 主題(取代已停的 Reuters,廣度覆蓋)===
-    "Google-半導體":      _gnews_rss("半導體 AI晶片 台積電 輝達"),
-    "Google-美股科技":    _gnews_rss("美股 那斯達克 科技股 財報"),
-    "Google-Fed利率":     _gnews_rss("Fed 聯準會 利率 通膨 CPI"),
-    "Google-台股大盤":    _gnews_rss("台股 加權指數 外資 三大法人"),
-    "Google-地緣":        _gnews_rss("台海 晶片管制 美中 關稅"),
-    # === 科技二線族群主題(讓「科技板塊脈動」不再只有 2330/2454;純取材、不掛個股標籤、不進計分)===
-    "Google-散熱":        _gnews_rss("散熱 水冷 液冷 AI伺服器"),
-    "Google-先進封裝":    _gnews_rss("CoWoS 先進封裝 台積電 日月光"),
-    "Google-載板PCB":     _gnews_rss("ABF載板 PCB CCL 銅箔基板"),
-    "Google-光通訊":      _gnews_rss("光通訊 CPO 矽光子 800G"),
-    # === 世界大事(非市場導向;供「世界大事速覽」取材)===
-    # 使用者需求(2026-07-16):晨報升級為「一封信掌握昨日世界」——股市之外的重大
-    # 地緣/災難/科學/AI 事件也要看得到。查詢經實測校準(召回 46-100 則/2d);
-    # 這些來源不掛 company_label、不進任何計分,純供 LLM「世界大事速覽」段取材。
-    "世界-國際大事":      _gnews_rss("戰爭 OR 停火 OR 大選 OR 政變 OR 峰會 OR 制裁"),
-    "世界-災難極端":      _gnews_rss("地震 OR 颱風 OR 洪災 OR 熱浪 OR 空難"),
-    "世界-科學太空":      _gnews_rss("NASA OR SpaceX OR 諾貝爾 OR 核融合 OR 太空任務"),
-    "世界-AI大事":        _gnews_rss("OpenAI OR Anthropic OR DeepMind OR AI模型 發布"),
+    # 固定的 Google News 主題查詢見 `gnews_registry`(V2-N4:查詢與用途
+    # 同一份宣告,命中則數逐日進健康歷史,零命中在月報列候刪)。
     "中央社國際":         "https://feeds.feedburner.com/rsscna/intworld",
 
     # === 央行 / 政策 ===
@@ -960,6 +944,7 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
 # 併入 RSS_FEEDS(來源名前綴「類股-」,便於 fetch_news 抓取與 prompt 依類股分組)。
 RSS_FEEDS.update({f"類股-{label}": _gnews_rss(query)
                   for label, query in OTHER_SECTOR_QUERIES.items()})
+RSS_FEEDS.update(_gnews_reg.feed_entries(_gnews_rss))   # V2-N4
 
 # 重點公司:每天用 Google News 查各自最新新聞(直接補「個股資訊太少」)。
 # 涵蓋 00662(NASDAQ-100)與 2330 供應鏈最相關的美股 + 台股名稱。
@@ -6819,6 +6804,7 @@ def _fetch_official_response(url: str, stats: dict, timeout: int = 12):
 
 
 _RSS_CONTENT_CACHE: dict = {}   # N5:同一 run 內同一 RSS URL 只抓一次(內容位元組快取);測試間由 conftest 清空
+_DRAMA_COUNT: int = 0           # V2-N3:本 run 敘述-數字交叉驗證的警告數
 _FEED_STATS: dict = {}          # V2-N1:本 run 各來源 host 的 ok/fail 次數(供 N4 歷史逐 host 追蹤);測試間清空
 # 同一 host 本 run 連續失敗達此數且從未成功 → 熔斷:後續同 host 查詢直接快速失敗、不再送 HTTP+重試。
 # 起因:2026-07-08 Google News 整批 503,幾十條查詢 × 重試/退避耗光 job 的 25 分 timeout → 整份晨報未寄出。
@@ -6837,7 +6823,8 @@ def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
     """Fetch RSS with a real requests timeout, then parse bytes locally.
     N5:同一 run 內同一 URL 的內容只抓一次(快取位元組、每次仍重新 parse 給獨立物件,
     避免呼叫端共用可變 feed 物件),減少重複的 Google News RSS 請求。
-    V2-N1:每次『實際抓取』記錄該 host 的 ok/fail 到 _FEED_STATS(快取命中不重複計)。"""
+    V2-N1:每次『實際抓取』記錄該 host 的 ok/fail 到 _FEED_STATS(快取命中不重複計)。
+    V2-N4:註冊表裡的固定查詢另記**命中則數**(零命中連續 30 天 → 月報候刪)。"""
     content = _RSS_CONTENT_CACHE.get(url)
     if content is None:
         stat = _FEED_STATS.setdefault(_feed_label(url), {"ok": 0, "fail": 0, "streak": 0})
@@ -6869,7 +6856,9 @@ def _feedparser_parse_url_with_timeout(url: str, timeout: int = 12):
         stat["streak"] = 0                # 成功即重置連續失敗計數
         if content:                       # 成功且非空才快取;失敗(例外)不快取、下次重試
             _RSS_CONTENT_CACHE[url] = content
-    return feedparser.parse(content)
+    parsed = feedparser.parse(content)
+    _gnews_reg.record(url, len(getattr(parsed, "entries", []) or []))  # V2-N4
+    return parsed
 
 
 def _feed_usable(feed) -> tuple[list, bool]:
@@ -8711,7 +8700,9 @@ SOURCE_HEALTH_HISTORY_FILE = STATE_ROOT / "source_health_history.json"
 
 
 def update_source_health_history(report: dict, today: str, keep_days: int = 30,
-                                  feed_stats: Optional[dict] = None) -> list[str]:
+                                  feed_stats: Optional[dict] = None,
+                                  query_hits: Optional[dict] = None,
+                                  drama_count: Optional[int] = None) -> list[str]:
     """把每日『類別檢查(checks)』與『各來源 host 健康(V2-N1)』累積到滾動 30 天歷史,
     回傳『連續 ≥3 天失敗』的項目(檢查項 + 個別 host)。純 JSON、失敗不影響晨報(回空)。
     host 當日健康:有成功即健康;只有失敗=False;完全沒抓該 host=不列(不算失敗)。"""
@@ -8730,8 +8721,14 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30,
     except Exception:
         hist = []
     hist = [h for h in hist if isinstance(h, dict) and h.get("date") != today]
-    hist.append({"date": today, "checks": {k: bool(v) for k, v in checks.items()},
-                 "feeds": feeds_today})
+    row = {"date": today, "checks": {k: bool(v) for k, v in checks.items()},
+           "feeds": feeds_today}
+    # **缺席與零是兩件事**:沒抓/沒量到就不要寫 0(見 `gnews_registry`)。
+    if isinstance(query_hits, dict) and query_hits:
+        row["queries"] = {str(k): int(v) for k, v in query_hits.items()}
+    if isinstance(drama_count, int):
+        row["drama"] = drama_count
+    hist.append(row)
     hist.sort(key=lambda h: h.get("date", ""))
     hist = hist[-keep_days:]
     try:
@@ -20101,6 +20098,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 敘述-數字交叉驗證(僅記錄):戲劇性漲跌詞與實際幅度不符 → 印警告供監看
     try:
         _drama = _audit_dramatic_macro_claims(analysis_for_render, quotes.get("MACRO") or {})
+        globals()["_DRAMA_COUNT"] = len(_drama)   # V2-N3:進健康歷史看趨勢
         if _drama:
             print(f"[render] ⚠ 敘述-數字交叉驗證:{'; '.join(_drama[:6])}", file=sys.stderr)
     except Exception as _e:
@@ -23056,7 +23054,9 @@ def _phase_events_and_models(ctx) -> None:
         tw0050, news, structured_events, quotes.get("TW_DAILY_INTELLIGENCE"))
     try:   # N4:滾動 30 天來源健康歷史 → 標記連續失敗的來源(不影響計分)
         _persist = update_source_health_history(
-            quotes["SOURCE_HEALTH"], now_tpe.strftime("%Y-%m-%d"), feed_stats=_FEED_STATS)
+            quotes["SOURCE_HEALTH"], now_tpe.strftime("%Y-%m-%d"),
+            feed_stats=_FEED_STATS, query_hits=_gnews_reg.today_hits(),
+            drama_count=_DRAMA_COUNT)
         if _persist:
             quotes["SOURCE_HEALTH"]["persistent_failures"] = _persist
             print(f"[health] 連續失敗來源: {', '.join(_persist)}", file=sys.stderr)

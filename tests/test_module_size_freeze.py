@@ -233,6 +233,10 @@ MODULE_CEILINGS = {
     # 兩階段抓取計畫(全文預算逐事件群分配)。兩個都是純規則層。
     "source_registry.py": 250,
     "fetch_plan.py": 150,
+    # V2-N4/N3:Google 查詢註冊表與 30 天健康歷史的讀取端。
+    # 兩個都是純規則層,說明寫在模組裡(主模組只留一行指路)。
+    "gnews_registry.py": 150,
+    "health_trends.py": 120,
     # Commit C:事件多軸計分 + 純價格變化的排除(「昨夜三大重點」
     # 要是三個事件)。判準詞表佔大半,純規則層。
     "event_score.py": 240,

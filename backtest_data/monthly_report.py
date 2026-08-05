@@ -62,6 +62,20 @@ def d1_readiness(ic_text: str) -> str:
     return (f"> ⏳ 基本面因子 20 日樣本仍不足(目前最多 {maxn} 日,需 ≥30)→ D1 尚未就緒,繼續累積。\n\n")
 
 
+def _health_block() -> str:
+    """來源健康 30 天走勢(V2-N3 / V2-N4)。**讀不到就說讀不到** ——
+    月報不因為狀態檔缺席而失敗,但也不能假裝一切正常。"""
+    try:
+        import sys as _sys
+        root = Path(__file__).resolve().parent.parent
+        if str(root) not in _sys.path:
+            _sys.path.insert(0, str(root))
+        import health_trends as _ht
+        return _ht.monthly_block(root / "state" / "source_health_history.json")
+    except Exception as e:                      # 月報不可因此中斷
+        return f"## 來源健康(30 天)\n\n> 讀取失敗:{e}\n\n"
+
+
 def main() -> None:
     month = sys.argv[1] if len(sys.argv) > 1 else dt.date.today().strftime("%Y-%m")
     ic = _run("bt_factor_ic")
@@ -75,6 +89,7 @@ def main() -> None:
         "> 基本面/估值/籌碼因子自 2026-06 起才逐日累積,樣本不足前顯示「樣本不足」屬正常。\n"
         "> 任何計分權重變更仍須:IC 顯著(|t|>2、方向正確)+ bt_top5 複驗 + 使用者同意。\n\n"
         + readiness
+        + _health_block()
         + f"## bt_factor_ic(各因子前瞻 IC)\n```\n{ic}\n```\n\n"
         f"## bt_radar_score(計分方案分位數超額)\n```\n{rs}\n```\n",
         encoding="utf-8",

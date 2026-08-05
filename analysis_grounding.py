@@ -37,7 +37,11 @@ from __future__ import annotations
 #: 真的支持);標的判準加概念詞黑名單(GPU 永遠不是標的)、ASCII
 #: token 邊界(`Ai` 不再借道 `Taiwan`)、中文名也要在證據裡
 #: (先前非 ASCII 一律放行,AMD 新聞可以掛「華碩」)。
-GROUNDING_VERSION = 18
+#: v19(第二十二輪 defer 三項):horizon 改宣告式矩陣 —— 相鄰一階以內
+#: 才相容(「這個月看多」推不出「今天會漲」);帶主體的錨點要在該段的
+#: 範圍裡(講台積電的鏈不得錨在鴻海的漲跌上);加深選優改用與觸發同一套
+#: 判準(先前 `depth_advisories` 在選優裡沒收到 packet)。
+GROUNDING_VERSION = 19
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -61,26 +61,42 @@ def claims_by_id(obj: Optional[dict]) -> dict:
             if isinstance(c, dict) and c.get("claim_id")}
 
 
-#: 時間尺度由短到長。**相容 = 主張的尺度不短於段落的尺度。**
-#:
-#: 段落宣告了一個期間(立場說 1-5 天、觀察點說 1-4 週),
-#: 就要**至少有一條主張講到那個期間**。全部靠今日盤前的主張撐一個
-#: 一個月的判斷,是形式上的引用 —— 外審給的反例正是
-#: 「watch trigger 1-4w 引用 intraday 的 QQQ 漲幅」。
-#: 較長的主張支撐較短的段落沒有問題(月線觀點當然也涵蓋今天)。
+#: 時間尺度由短到長。
 HORIZON_ORDER = ("intraday", "1-5d", "1-4w")
+
+#: **相容矩陣**(第二十二輪 P1-5)。上一版是 `got >= want` 一條算式,
+#: 它只擋一個方向 —— 而**兩個方向都會出錯**:
+#:
+#:   * 主張比段落**短**:觀察點宣告 1-4 週,引用的全是 intraday 的
+#:     QQQ 漲幅 —— 形式上的引用(第二十輪 P1-5 的原始反例)。
+#:   * 主張比段落**長兩階**:立場宣告當日,撐它的全是 1-4 週的結構性
+#:     主張 —— 「這個月看多」推不出「今天會漲」。算式寫不出這一側,
+#:     因為它在算式裡是「更安全」的方向。
+#:
+#: 矩陣寫得出:**每一格都是一個講得出理由的決定**,而不是一個不等號的
+#: 副作用。相鄰一階以內相容;差兩階不相容(尺度差太遠,回指只是形式)。
+HORIZON_MATRIX = {
+    #  段落 \ 主張      intraday        1-5d           1-4w
+    "intraday": {"intraday": True,  "1-5d": True,  "1-4w": False},
+    "1-5d":     {"intraday": False, "1-5d": True,  "1-4w": True},
+    "1-4w":     {"intraday": False, "1-5d": False, "1-4w": True},
+}
 
 
 def horizon_covers(section_horizon: str, claim_horizon: str) -> bool:
     """這條主張的時間尺度**撐得起**這一段嗎(第二十輪 P1-5)。
 
-    相容 = `claim_horizon` **不短於** `section_horizon`。
-    第二十一輪 P1-6 指出程式、註解與錯誤訊息互相矛盾 —— 三者現在
-    都說同一件事:**段落宣告了一個期間,就要有主張講到那個期間**。
+    查 `HORIZON_MATRIX`。**不認得的尺度不做判斷** —— 降級不誤擋,
+    而那是「沒驗」不是「驗過」(呼叫端要說得出自己驗不了什麼)。
     """
-    try:
-        want = HORIZON_ORDER.index(str(section_horizon))
-        got = HORIZON_ORDER.index(str(claim_horizon))
-    except ValueError:
-        return True                     # 不認得的尺度不做判斷,別誤擋
-    return got >= want
+    row = HORIZON_MATRIX.get(str(section_horizon))
+    if not isinstance(row, dict):
+        return True
+    got = row.get(str(claim_horizon))
+    return True if got is None else bool(got)
+
+
+def horizons_compatible_with(section_horizon: str) -> list:
+    """這一段可以靠哪些尺度的主張撐住 —— **錯誤訊息要說得出正解**。"""
+    row = HORIZON_MATRIX.get(str(section_horizon)) or {}
+    return [h for h in HORIZON_ORDER if row.get(h)]

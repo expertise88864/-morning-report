@@ -71,9 +71,15 @@ def test_one_claim_filling_the_scenarios_shows_up_in_saturation():
 # ---------------------------------------------------------------- P1-5 尺度
 
 def test_a_longer_claim_can_support_a_shorter_section():
-    """**方向不能搞反。** 段落宣告了一個期間,要有東西講到那個期間;
-    而較長的主張當然涵蓋較短的段落。"""
-    assert cm.horizon_covers("intraday", "1-4w") is True
+    """**方向不能搞反,但「更長」也不是無限相容。**
+
+    第二十二輪 P1-5:上一版寫 `horizon_covers("intraday", "1-4w") is True`
+    —— 那是把 `got >= want` 這條算式的副作用釘成通過條件。1-4 週的
+    結構性主張撐不起一個「今天」的段落(「這個月看多」推不出
+    「今天會漲」)。現在是宣告式矩陣,**相鄰一階以內**才相容。
+    """
+    assert cm.horizon_covers("intraday", "1-5d") is True    # 相鄰:相容
+    assert cm.horizon_covers("intraday", "1-4w") is False   # 差兩階:不相容
     assert cm.horizon_covers("1-4w", "intraday") is False
     assert cm.horizon_covers("1-5d", "1-5d") is True
     # 不認得的尺度不做判斷 —— 誤擋比漏擋難察覺

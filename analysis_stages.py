@@ -73,8 +73,25 @@ def _anchor_namespaces():
 
 _ANCHOR_NAMESPACES = _anchor_namespaces()
 
+#: **帶主體的錨點命名空間** —— ID 的後半段指名一個標的
+#: (`universe:2317`、`valuation:00662`、`prediction:2330`)。
+#:
+#: 第二十二輪 P2-1:`fact:` 已經要求「是這一則新聞自己的數字」,而
+#: 這三個沒有任何範圍限制 —— 於是一條講台積電的因果鏈可以錨在
+#: `universe:2317`(鴻海當日漲跌)上,通過「有引用真數字」這一關。
+#: 數字是真的,**它跟這條鏈沒有關係**。
+#:
+#: `market:` 與 `derived:` 刻意**不在這裡**:它們是指數、匯率、殖利率
+#: 這種全市場層級的量,範圍本來就是整個市場,對任何標的的鏈都成立。
+_SUBJECT_NAMESPACES = ("universe:", "valuation:", "prediction:")
 
-def is_numeric_anchor(evidence_id, news_id, registry) -> bool:
+
+def _subject_of(eid: str) -> str:
+    """`universe:2317.change_pct` → `2317`。"""
+    return eid.split(":", 1)[1].split(".", 1)[0] if ":" in eid else ""
+
+
+def is_numeric_anchor(evidence_id, news_id, registry, subjects=None) -> bool:
     """這個引用**真的是一個數字錨點**嗎(第二十輪 P1-3)。
 
     先前只看命名空間前綴,於是三種都通過:
@@ -105,7 +122,16 @@ def is_numeric_anchor(evidence_id, news_id, registry) -> bool:
         return False
     v = meta.get("value")
     # bool 是 int 的子類 —— `True` 不是量級。
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    if not (isinstance(v, (int, float)) and not isinstance(v, bool)):
+        return False
+    if subjects is None or not eid.startswith(_SUBJECT_NAMESPACES):
+        # `subjects=None` = 呼叫端沒說這一段在講誰 —— **沒驗,不是驗過**。
+        # 兩個生產呼叫端都會傳(見 test_review101_fixes 的原始碼掃描)。
+        return True
+    subj = _subject_of(eid)
+    import entity_alias as _ea
+    keys = {str(x) for x in subjects if str(x).strip()}
+    return bool(subj) and (subj in keys or _ea.same(subj, _ea.expand(keys)))
 
 
 def _required_ids(packet):

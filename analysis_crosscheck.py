@@ -196,16 +196,18 @@ def _claim_graph_problems(obj) -> list:
         if not cited and claims:
             out.append(f"{sec} 沒有回指任何 claim —— "
                        "說不出這一段靠哪幾條主張,稽核就只是裝飾")
-    # **回指要連對,不只是連上。** 相容 = 主張的尺度**不短於**段落的
-    # 尺度:段落宣告了一個期間,就要有主張講到那個期間。
-    # (第二十一輪 P1-6:上一版的註解寫反了,與程式和錯誤訊息矛盾。)
+    # **回指要連對,不只是連上。** 相容由 `HORIZON_MATRIX` 逐格決定
+    # (第二十二輪 P1-5):太短撐不起,差兩階也撐不起。訊息不再說
+    # 「全都比它更短」—— 那句話對「差兩階更長」是錯的,而程式會擋它。
     for sec, want in _section_horizons(obj).items():
         cited = [by_id[x] for x in mappings.get(sec, ()) if x in by_id]
         if want and cited and not any(
                 _cm.horizon_covers(want, c.get("horizon")) for c in cited):
             out.append(
-                f"{sec} 的時間尺度是 {want},而它引用的主張全都比它更短"
-                f"({sorted({str(c.get('horizon')) for c in cited})})")
+                f"{sec} 的時間尺度是 {want},而它引用的主張沒有一條撐得起"
+                f"這個尺度(引用的是 "
+                f"{sorted({str(c.get('horizon')) for c in cited})},"
+                f"相容的是 {_cm.horizons_compatible_with(want)})")
     for c in claims:
         cid = str(c.get("claim_id") or "")
         scope = [str(x).strip() for x in (c.get("asset_scope") or []) if str(x).strip()]

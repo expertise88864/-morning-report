@@ -117,8 +117,19 @@ def _split_quantifier() -> dict:
     return obj
 
 
+def _horizon_two_tiers_off() -> dict:
+    """第二十二輪 P1-5:立場宣告當日、主張全是 1-4 週 —— 算式版的
+    `got >= want` 對這一格回 True,矩陣回 False。指紋要看得見這一側。"""
+    obj = fx.valid_analysis()
+    obj["stance"]["time_horizon"] = "intraday"
+    for c in obj["claim_audit"]:
+        c["horizon"] = "1-4w"
+    return obj
+
+
 _GROUNDING_CASES = [fx.valid_analysis(), fx.ungrounded_analysis(),
-                    _fabricated(), _split_quantifier()]
+                    _fabricated(), _split_quantifier(),
+                    _horizon_two_tiers_off()]
 
 
 def _asset_probes() -> list:
@@ -141,6 +152,20 @@ def _asset_probes() -> list:
         o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
         out.append(sch.validate(o, pk))
     return out
+
+
+def _anchor_scope_probe() -> list:
+    """第二十二輪 P2-1:帶主體的錨點要在這一段的範圍裡。
+    講 2330 的鏈錨在 `universe:2317`(鴻海)上 —— 數字是真的,
+    跟這條鏈沒有關係。**規則被拿掉時這個探針要動。**"""
+    import analysis_stages as _ast
+    reg = {"universe:2317.change_pct": {"value": 1.5},
+           "universe:2330.change_pct": {"value": 1.5},
+           "market:QQQ.change_pct": {"value": 1.5}}
+    return [_ast.is_numeric_anchor(e, "n1", reg, subjects=s)
+            for e in ("universe:2317.change_pct", "universe:2330.change_pct",
+                      "market:QQQ.change_pct")
+            for s in (None, {"2330"}, {"台積電"})]
 
 
 def _edge_packet() -> dict:
@@ -307,9 +332,15 @@ def _behaviour() -> dict:
                                    for o in _GROUNDING_CASES]
                                   + [sch.validate(o, pk)
                                      for o in _GROUNDING_CASES]
-                                  + [av.depth_advisories(o)
+                                  # **生產傳的是 `(obj, packet)`**
+                                  # (morning_report:14016)。少了 packet,
+                                  # 範圍化錨點整條規則躲在
+                                  # `registry is not None` 後面,指紋看不到
+                                  # 它的存廢 —— 這個檔已經栽過同一形狀三次。
+                                  + [av.depth_advisories(o, pk)
                                      for o in _GROUNDING_CASES]
-                                  + _asset_probes()),
+                                  + _asset_probes()
+                                  + [_anchor_scope_probe()]),
     }
 
 
@@ -489,7 +520,13 @@ _FROZEN = {
     #     同向且共享證據(P1-4 split-quantifier);標的判準加概念詞
     #     黑名單、ASCII token 邊界、中文名也要在證據裡(P1-6)。
     #     案例加 `_split_quantifier()`、探針加 `_asset_probes()`。
-    "grounding_version":        (18, "881d1a4acf9de977"),
+    # v19(第二十二輪 defer 三項):horizon 改宣告式矩陣(相鄰一階以內
+    #     才相容,「這個月看多」推不出「今天會漲」);帶主體的錨點要在
+    #     該段範圍裡;加深選優改用與觸發同一套判準(`depth_advisories`
+    #     在選優裡先前收不到 packet)。探針同批改成**生產的呼叫形狀**
+    #     `depth_advisories(o, pk)` —— 範圍化錨點整條規則躲在
+    #     `registry is not None` 後面,盲測的探針量不到它。
+    "grounding_version":        (19, "8792484f5df3d402"),
 }
 
 

@@ -188,16 +188,16 @@ def test_a_reference_must_connect_to_the_right_horizon():
     obj = fx.valid_analysis()
     obj["stance"]["claim_ids"] = ["c1"]          # c1 是 intraday
     obj["stance"]["time_horizon"] = "1-5d"
-    # 第二十一輪 P1-6:錯誤訊息與程式終於同向 —— 主張比段落**短**才是問題。
-    hits = [p for p in sch.validate(obj, _IDS) if "全都比它更短" in p]
+    # 第二十二輪 P1-5:判準改宣告式矩陣,訊息跟著改 ——「全都比它更短」
+    # 對「更長兩階」是錯的,而矩陣會擋它。
+    hits = [p for p in sch.validate(obj, _IDS) if "撐得起" in p]
     assert hits and "1-5d" in hits[0], hits
     # 把尺度改成一致就合格 —— **規則要的是連對,不是少寫**
     obj["stance"]["time_horizon"] = "intraday"
-    assert not [p for p in sch.validate(obj, _IDS) if "全都比它更短" in p]
-    # 反向:**較長的主張撐得起較短的段落**(月線觀點當然涵蓋今天)
-    obj["stance"]["time_horizon"] = "intraday"
+    assert not [p for p in sch.validate(obj, _IDS) if "撐得起" in p]
+    # 相鄰一階仍然相容(1-5d 的主張撐得起當日的段落)
     obj["stance"]["claim_ids"] = ["c2"]          # c2 是 1-5d
-    assert not [p for p in sch.validate(obj, _IDS) if "全都比它更短" in p]
+    assert not [p for p in sch.validate(obj, _IDS) if "撐得起" in p]
 
 
 def test_a_claim_must_say_who_it_is_about():

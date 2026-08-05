@@ -202,11 +202,16 @@ def fact_anchor_usage(obj, packet=None) -> dict:
     hi = [n for n in _news(obj) if n.get("materiality") == "high"]
 
     def _kinds(n):
+        # 與 `analysis_depth` 同一個範圍判準(第二十二輪 P2-1)——
+        # 儀表板與擋信的規則分家時,dashboard 會顯示一個沒人在用的數字。
+        subj = {str(a.get("asset_id")) for a in
+                (n.get("affected_assets") or []) if isinstance(a, dict)}
         return {str(e).split(":", 1)[0]
                 for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)
                 for e in (st.get("evidence_ids") or [])
                 if reg is None
-                or _ast.is_numeric_anchor(e, n.get("source_item_id"), reg)}
+                or _ast.is_numeric_anchor(e, n.get("source_item_id"), reg,
+                                          subjects=subj)}
     market = sum(1 for n in hi if _kinds(n) & {"market", "derived",
                                                "valuation", "prediction"})
     fact = sum(1 for n in hi if "fact" in _kinds(n))

@@ -76,8 +76,13 @@ def depth_advisories(obj, packet=None) -> list:
         if n.get("materiality") == "high" and steps:
             import analysis_stages as _ast
             _reg = _registry_of(packet)
+            # 第二十二輪 P2-1:**帶主體的錨點要在這一段的範圍裡** ——
+            # 講台積電的鏈不能靠鴻海的漲跌當錨點。
+            _subj = {str(a.get("asset_id")) for a in
+                     (n.get("affected_assets") or []) if isinstance(a, dict)}
             anchored = any(
-                _ast.is_numeric_anchor(e, n.get("source_item_id"), _reg)
+                _ast.is_numeric_anchor(e, n.get("source_item_id"), _reg,
+                                       subjects=_subj)
                 for st in steps for e in (st.get("evidence_ids") or []))
             if not anchored:
                 out.append(
@@ -357,7 +362,14 @@ def deepen_is_an_improvement(before, after, *, evidence_ids) -> tuple:
     problems = validate(after, evidence_ids)
     if problems:
         return False, f"第二版不合法({problems[0][:40]})"
-    adv_b, adv_a = depth_advisories(before), depth_advisories(after)
+    # **選優的判準要與觸發加深的判準是同一套**(第二十二輪 P2-1 順帶抓到)。
+    # 上面三行剛講完「傳 packet 不是 ids」,而下面這一行自己沒傳 ——
+    # 於是觸發加深的是 `depth_advisories(obj, packet)`(含錨點、橫向這些
+    # packet-aware 提示),而選優數的是不含它們的那一套。第二版**剛好把
+    # packet-aware 的那幾條修好**時,盲測的數量沒有變少 → 判定沒有改善 →
+    # 把真正的改善丟掉,沿用第一版。
+    adv_b = depth_advisories(before, evidence_ids)
+    adv_a = depth_advisories(after, evidence_ids)
     if len(adv_a) >= len(adv_b):
         return False, f"深度提示沒有減少({len(adv_b)} → {len(adv_a)})"
     sb = str(((before or {}).get("stance") or {}).get("label") or "")

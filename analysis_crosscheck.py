@@ -250,6 +250,61 @@ def _claim_graph_problems(obj) -> list:
     return out
 
 
+def top_event_problems(obj, packet) -> list:
+    """**「昨夜三大重點」要是三個事件**(重構規格 Commit C)。
+
+    候選由 Python 從資料算出來(`event_score.rank`),純價格變化整批排除。
+    模型可以不談某一個候選 —— 但要在 `dismissed_events` 說明理由,
+    **靜默略過與判斷不重要,在信裡長得一模一樣**(這是這個 repo 既有的
+    判準,見 `news_clusters` 的模組說明)。
+    """
+    out: list = []
+    if not isinstance(packet, dict) or not isinstance(obj, dict):
+        return out
+    te = packet.get("top_events")
+    if not isinstance(te, dict):
+        return out                      # 舊呼叫端沒有這一段,不判
+    want = [str(x) for x in (te.get("top_cluster_ids") or [])]
+    if not want:
+        return out                      # 今天沒有夠格的事件 —— 不是問題
+    excluded = {str(x) for x in (te.get("excluded_price_moves") or [])}
+    drivers = [d for d in (obj.get("key_drivers") or []) if isinstance(d, dict)]
+    named = {str(d.get("cluster_id") or "") for d in drivers} - {""}
+    for i, d in enumerate(drivers):
+        cid = str(d.get("cluster_id") or "")
+        if cid and cid in excluded:
+            out.append(f"key_drivers[{i}] 指到的 {cid} 是**純價格變化**,"
+                       "不是事件 —— 價格是別的事件造成的結果,"
+                       "三大重點要寫造成它的那件事")
+    known = {str(c.get("cluster_id") or "")
+             for c in ((packet.get("news_clusters") or {}).get("clusters") or [])
+             if isinstance(c, dict)}
+    for i, d in enumerate(drivers):
+        cid = str(d.get("cluster_id") or "")
+        if cid and cid not in known and cid not in excluded:
+            out.append(f"key_drivers[{i}] 的 cluster_id {cid!r} 不在今天的"
+                       "事件群裡 —— 編造的引用比沒有引用更危險")
+    # **至少一半要是真的事件。** 留一格給非新聞的驅動因子(例如外資期貨
+    # 部位)是合理的 —— 三格**全部**不指向事件,就是使用者說的
+    # 「數據文字堆疊」。這條是地板,不是「每一條都必須是事件」。
+    real = [d for d in drivers
+            if str(d.get("cluster_id") or "") in (known - excluded)]
+    if drivers and len(real) * 2 < len(drivers):
+        out.append(f"「昨夜三大重點」{len(drivers)} 條裡只有 {len(real)} 條"
+                   "指向真正的事件 —— 其餘是價格變化或沒有指名事件。"
+                   "價格是別的事件造成的**結果**,讀者要的是造成它的那件事")
+    # **計分最高的那一件不能靜默略過。** 其餘候選可以不談(版面有限),
+    # 第一名不談就要說為什麼 —— 靜默略過與判斷不重要,在信裡長得一樣。
+    dismissed = {str((x or {}).get("cluster_id") or "")
+                 for x in (obj.get("dismissed_events") or [])
+                 if isinstance(x, dict)}
+    first = want[0]
+    if first not in named and first not in dismissed:
+        out.append(f"計分最高的事件 {first} 既沒寫進 `key_drivers`(指名 "
+                   "`cluster_id`)也沒寫進 `dismissed_events` 說明理由")
+    return out
+
+
 def _section_horizons(obj) -> dict:
     """**有自己時間尺度的段落**。其餘不做尺度判斷 ——
     「已反映/未反映」沒有一個屬於自己的期間。"""

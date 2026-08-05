@@ -168,6 +168,30 @@ def _anchor_scope_probe() -> list:
             for s in (None, {"2330"}, {"台積電"})]
 
 
+def _top_event_probe() -> list:
+    """Commit C:三大重點的事件契約。標準案例的 packet 裡沒有被排除的
+    價格變化群,四條規則指紋一條都量不到 —— 給一個含價格文的 packet,
+    再逐個違反方式各跑一次。"""
+    news = [{"source_item_id": "p0", "title": "台積電ADR收跌0.4%",
+             "entities": ["台積電"], "source_name": "鉅亨網"},
+            {"source_item_id": "n1", "title": "央行宣布調升存款準備率1碼",
+             "summary": "新台幣升值0.3%,台股加權承壓", "entities": ["央行"],
+             "source_name": "中央銀行", "official": True},
+            {"source_item_id": "n2", "title": "b", "entities": ["c"],
+             "source": "d"}]
+    pk = ep.build({}, {}, {}, news, [], {}, as_of="x",
+                  target_session_date="y", sanitize=lambda s: s)
+    out = [sorted(pk["top_events"]["top_cluster_ids"]),
+           sorted(pk["top_events"]["excluded_price_moves"])]
+    for cids in (("cluster:p0",), ("cluster:不存在",), ("cluster:n1", "", ""),
+                 ("cluster:n2", "cluster:n2")):
+        o = fx.valid_analysis()
+        base = o["key_drivers"][0]
+        o["key_drivers"] = [dict(base, cluster_id=c) for c in cids]
+        out.append(sch.validate(o, pk))
+    return out
+
+
 def _edge_packet() -> dict:
     """第二十二輪 P1-9/P2-3 的證據行為 —— 延續事件 token 邊界
     (US 不得命中 ASUS)、公司別名接上(台積電↔TSMC 併群且接上
@@ -352,7 +376,8 @@ def _behaviour() -> dict:
                                   + [av.depth_advisories(o, pk)
                                      for o in _GROUNDING_CASES]
                                   + _asset_probes()
-                                  + [_anchor_scope_probe()]),
+                                  + [_anchor_scope_probe()]
+                                  + _top_event_probe()),
     }
 
 
@@ -426,7 +451,9 @@ _FROZEN = {
     #     稿件只算一個編輯決策。`_edge_packet()` 同批加聯合報系兩則 +
     #     一則中央社署名的轉載 —— 兩個突變(不看署名、每個字串各自一組)
     #     都實測讓指紋移動。
-    "evidence_schema_version":  (16, "d08be46fb7238d9e"),
+    # v17(Commit C):packet 帶 `top_events` —— 多軸計分的三大重點
+    #     候選、被排除的純價格變化群、權重宣告。
+    "evidence_schema_version":  (17, "cd6f0baa3a411db6"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -444,7 +471,9 @@ _FROZEN = {
     # v10(第二十輪 P1-5/P2-7):`key_drivers[].claim_ids`(Email 第一段
     #     先前完全在 claim 圖之外)、`corroboration_assessment` 與
     #     `source_caveat`(單一來源的揭露改成機械契約)。
-    "output_schema_version":    (10, "ed72e626cf272f08"),
+    # v11(Commit C):`key_drivers[].cluster_id` —— 三大重點要指名它
+    #     講的是哪一個事件群(價格變化沒有主詞也沒有動作)。
+    "output_schema_version":    (11, "1518afebff5c48cf"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -480,7 +509,9 @@ _FROZEN = {
     #      七之二與八/九段的四個必答問題、內部試算不進信、
     #      政策取材以中彰投雲為主。
     # v21(深度優化第三批):continuing_days > 1 的事件寫增量。
-    "primary_profile_version":  (21, "c042a0198d3ca36c"),
+    # v22(Commit C):三大重點的規則(候選由 top_events 給、至少一半
+    #     要指到真事件、行情數字用來說明量級)。
+    "primary_profile_version":  (22, "9a7a7fdd0b8141aa"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "shadow_profile_version":   (7, "27619c45c92d2128"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
@@ -500,7 +531,8 @@ _FROZEN = {
     #    Python 算的)、駁回事件、未完成鏈的剩餘則數。
     # v8(第二十輪 P2-2):駁回超過 4 件顯示「另有 N 件」。
     # v9(第二十輪 P2-7):單一來源/未證實的佐證等級與保留事項固定呈現。
-    "renderer_version":         (9, "fe4ca290c09fc35c"),
+    # v10(Commit C):`key_drivers` 多了 `cluster_id`。
+    "renderer_version":         (10, "e0e5a73e31605b70"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -543,7 +575,10 @@ _FROZEN = {
     #     在選優裡先前收不到 packet)。探針同批改成**生產的呼叫形狀**
     #     `depth_advisories(o, pk)` —— 範圍化錨點整條規則躲在
     #     `registry is not None` 後面,盲測的探針量不到它。
-    "grounding_version":        (19, "8792484f5df3d402"),
+    # v20(Commit C):接受政策多了三大重點的事件契約 —— 指到被排除的
+    #     價格變化群、指到不存在的群、真事件不到一半、計分最高的
+    #     被靜默略過。`_top_event_probe()` 讓指紋看得見這四條。
+    "grounding_version":        (20, "0084373e2d878d3e"),
 }
 
 

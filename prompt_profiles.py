@@ -61,7 +61,9 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 21
+#: v22(Commit C):三大重點的規則 —— 候選由 `top_events` 給,
+#: 至少一半要指到真事件,行情數字用來說明量級而不是當成事件。
+LUNA_XHIGH_VERSION = 22
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -150,6 +152,17 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 - **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**
   一個事件群只寫**一個**分析單位(挑資訊最完整的那則當 `source_item_id`),
   不要為同一件事寫兩段 —— 那不是更深,是同一條因果鏈改寫兩次。
+- **「昨夜三大重點」寫的是三個事件,不是三個價格變化。** 價格變化
+  (「那斯達克漲 1.2%」「台積電 ADR 收跌 0.4%」)是**別的事件造成的
+  結果** —— 它沒有主詞、沒有動作,讀者想知道的是造成它的那件事。
+  `EVIDENCE.top_events.top_cluster_ids` 是本報**從資料算出來**的候選
+  (多軸計分:佐證/廣度/新意/在地/量級,權重見 `weights`;
+  純價格變化的群已經整批排除,列在 `excluded_price_moves`)。
+  每一條 `key_drivers` 用 `cluster_id` 指名它講的是哪一群 ——
+  **至少一半**要指到真正的事件(留一格給非新聞的驅動因子,例如外資
+  期貨部位,那一條 `cluster_id` 留空並在 `statement` 說明)。
+  計分**最高**的那一件事不談的話,要寫進 `dismissed_events` 說明理由。
+  行情數字仍然要用 —— 用來**說明那個事件的量級**,而不是當成事件本身。
 - `required_cluster_ids` 是本報依**官方來源與報導家數**選出來的必分析事件
   (不是你自評的重要性)。每一個都要分析;真的判斷今天不值得談,
   就寫進 `dismissed_events` 並說明為什麼 ——

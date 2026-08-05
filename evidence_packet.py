@@ -55,7 +55,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: `potential_independent_sources`(覆蓋率地板用,保守方向相反)、
 #: `unverified_sources` / `aggregator_only_sources`(說得出自己驗不了
 #: 什麼)。同集團轉載與通訊社稿件不再各算一家。
-EVIDENCE_SCHEMA_VERSION = 16
+#: v17(Commit C):packet 帶 `top_events`(多軸計分的三大重點候選、
+#: 排除掉的純價格變化、權重宣告)。
+EVIDENCE_SCHEMA_VERSION = 17
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -273,14 +275,19 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         return max((d for e, d in timeline.items()
                     if e in ents or _ea.same(e, keys) or _in_title(e)),
                    default=0)
-    packet["news_clusters"] = dict(
-        cluster_info,
-        clusters=[dict(c,
-                       member_source_ids=[m for m in c["member_source_ids"]
-                                          if m in kept_ids],
-                       continuing_days=_days(c))
-                  for c in cluster_info["clusters"]
-                  if any(m in kept_ids for m in c["member_source_ids"])])
+    _kept_clusters = [dict(c,
+                           member_source_ids=[m for m in c["member_source_ids"]
+                                              if m in kept_ids],
+                           continuing_days=_days(c))
+                      for c in cluster_info["clusters"]
+                      if any(m in kept_ids for m in c["member_source_ids"])]
+    packet["news_clusters"] = dict(cluster_info, clusters=_kept_clusters)
+    # **「昨夜三大重點」的候選由這裡算出來**(重構規格 Commit C)。
+    # 2026-08-05 那封信的第一段寫的是 QQQ 漲 1.2%、台積電 ADR 跌 0.4%
+    # —— 那些是價格變化,不是事件。使用者原話:「不是數據文字堆疊」。
+    # 候選是多軸計分的結果,而純價格變化整批排除(見 `event_score`)。
+    import event_score as _es
+    packet["top_events"] = _es.rank(_kept_clusters, kept_news)
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。

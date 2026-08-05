@@ -41,7 +41,9 @@ from __future__ import annotations
 #: 才相容(「這個月看多」推不出「今天會漲」);帶主體的錨點要在該段的
 #: 範圍裡(講台積電的鏈不得錨在鴻海的漲跌上);加深選優改用與觸發同一套
 #: 判準(先前 `depth_advisories` 在選優裡沒收到 packet)。
-GROUNDING_VERSION = 19
+#: v20(Commit C):接受政策多了三大重點的事件契約 —— 指到被排除的
+#: 價格變化群、指到不存在的群、真事件不到一半、計分最高的靜默略過。
+GROUNDING_VERSION = 20
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

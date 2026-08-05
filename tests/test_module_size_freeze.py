@@ -209,7 +209,8 @@ MODULE_CEILINGS = {
     # 第十八輪:實測 409 —— 加的是 `evidence_meta` 出口與
     # `required_disclosures`。放寬到 420;再長就把 news 正規化拆出去。
     # Commit B:EVIDENCE v16 的版本說明(獨立性三個數各自的用途)。實測 424。
-    "evidence_packet.py": 430,
+    # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
+    "evidence_packet.py": 440,
     # 證據包的序列化與指紋。指紋是實驗公平性的全部依據,值得自己的檔與
     # 測試。**只做序列化,不碰組裝** —— 出現欄位取捨就表示放錯地方。
     # 實測 134 行。
@@ -232,6 +233,9 @@ MODULE_CEILINGS = {
     # 兩階段抓取計畫(全文預算逐事件群分配)。兩個都是純規則層。
     "source_registry.py": 250,
     "fetch_plan.py": 150,
+    # Commit C:事件多軸計分 + 純價格變化的排除(「昨夜三大重點」
+    # 要是三個事件)。判準詞表佔大半,純規則層。
+    "event_score.py": 240,
     # 第十九輪 P1-3:新聞正規化與截斷拆出來 ——「誰留下來」是獨立的決定,
     # 而先前的順序錯誤(先截斷再算必分析)在 `build()` 裡看不出來。
     # 深度加強第二批:改版重發去重(+15 行)。
@@ -253,7 +257,8 @@ MODULE_CEILINGS = {
     # analysis_crosscheck,這裡剩下的幾乎都是欄位宣告與它們的理由。
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
-    "analysis_schema.py": 380,
+    # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
+    "analysis_schema.py": 390,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、
@@ -402,7 +407,8 @@ MODULE_CEILINGS = {
     # 第二十輪:實測 268 —— 情境/觀察點的回指、駁回的回頭條件與
     # 自引用檢查。**這個檔量的就是「有沒有真的做完」**,判準變細是
     # 它該長的方向;超過 300 就再拆。
-    "analysis_crosscheck.py": 300,
+    # Commit C:`top_event_problems`(三大重點要是三個事件的契約)。實測 320。
+    "analysis_crosscheck.py": 335,
     # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
     # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
     # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。

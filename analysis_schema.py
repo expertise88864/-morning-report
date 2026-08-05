@@ -39,7 +39,9 @@ import evidence_namespaces as _ns
 #: 「逐條處理每個 Python 張力」先前只有 prompt 要求、沒有東西驗得出來。
 #: v4(第十七輪 P1-3/P1-7):`tension_resolutions` 取代 `addressed_tension_ids`
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
-ANALYSIS_SCHEMA_VERSION = 10
+#: v11(Commit C):`key_drivers[].cluster_id` —— 三大重點要指名它講的
+#: 是哪一個事件群。價格變化沒有主詞也沒有動作,它不是事件。
+ANALYSIS_SCHEMA_VERSION = 11
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -146,7 +148,15 @@ _AUDITED_CLAIM = _obj(dict(
 #: 完全在 claim 圖之外** —— 讀者最先看到的三條可以與正式稽核矛盾。
 #: `claim_ids` 只加在這一份:稽核那一份是**被回指的對象**,不回指別人。
 _DRIVER_CLAIM = _obj(dict(
-    {"claim_ids": _arr(_s(), "這條重點靠哪幾條 `claim_audit.claim_id` 支撐")},
+    {"claim_ids": _arr(_s(), "這條重點靠哪幾條 `claim_audit.claim_id` 支撐"),
+     # 重構規格 Commit C:**三大重點要指名它講的是哪一件事。**
+     # 2026-08-05 那封信的第一段寫的是 QQQ 漲 1.2%、台積電 ADR 跌 0.4%
+     # —— 價格變化是別的事件造成的結果,它沒有主詞也沒有動作。
+     # 要求指名 `cluster_id` 之後,那三格只能放**事件**(候選由
+     # `EVIDENCE.top_events` 給,純價格變化已經整批排除)。
+     "cluster_id": _s("這條重點講的是哪一個事件群(`EVIDENCE.top_events."
+                      "top_cluster_ids` 裡的 `cluster:<id>`);"
+                      "真的不是任何一群才留空,並在 `statement` 說明")},
     **_CLAIM["properties"]))
 
 _SCENARIO = _obj({

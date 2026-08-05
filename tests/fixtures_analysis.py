@@ -37,11 +37,16 @@ def news() -> list:
     ]
 
 
-def _driver(statement: str, claim_ids=("c1",), **kw) -> dict:
+def _driver(statement: str, claim_ids=("c1",), cluster_id="cluster:n2",
+            **kw) -> dict:
     """「昨夜三大重點」的一條。**沒有 `claim_id`**(回指的對象是稽核),
     但**有 `claim_ids`** —— 它是 Email 的第一段,不能在 claim 圖之外。"""
     out = _claim(statement, **kw)
     out["claim_ids"] = list(claim_ids)      # 只有 key_drivers 有這一格
+    # 重構規格 Commit C:三大重點要指名它講的是哪一個事件群 ——
+    # 那三格只能放**事件**,不能放價格變化(`n1` 是「費城半導體指數
+    # 收漲 2.1%」,它是價格變化;`n2` 是「台積電法說會下週登場」)。
+    out["cluster_id"] = cluster_id
     out.pop("claim_id", None)
     # `asset_scope` 也只有稽核那一份有 —— 兩份是不同的 schema。
     out.pop("asset_scope", None)
@@ -91,7 +96,14 @@ def valid_analysis() -> dict:
         "market_regime": {"label": "偏多", "evidence_ids": ["n1"]},
         # `key_drivers` 與 `claim_audit` 是**兩個不同的 schema**:
         # 只有稽核那一份有 `claim_id`(各段回指的對象是稽核,不是重點條目)。
-        "key_drivers": [_driver("費半走強")],
+        # 重構規格 Commit C:**這個 fixture 自己曾經示範那個缺陷** ——
+        # 唯一的一條「昨夜三大重點」寫的是「費半走強」,而 n1 的標題
+        # 就是「費城半導體指數收漲 2.1%」:那是**價格變化**,不是事件。
+        # 使用者 2026-08-05 的原話:「不是數據文字堆疊」。
+        # 改成指向真正的事件群(n2 台積電法說),費半仍留在 `claim_audit`
+        # 與 `reinforcing_signals` 裡當**行情脈絡**。
+        "key_drivers": [_driver("台積電法說會下週登場,市場等待資本支出指引",
+                                cluster_id="cluster:n2")],
         "scenario_tree": {
             # 情境也要回指(第二十輪 P1-6)—— 前瞻的判斷更需要說得出根據。
             "base": {"narrative": "震盪走高", "probability": 0.6,

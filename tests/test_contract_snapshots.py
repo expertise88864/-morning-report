@@ -312,7 +312,9 @@ _FROZEN = {
     #     「涵蓋不足」);原始數另外報。
     # v12(第二十輪 P2-1):事件群代表改選「官方 > 資訊量高 > 最小 ID」
     #     —— 最小 ID 會確定性 over-split(短而模糊的標題當代表)。
-    "evidence_schema_version":  (12, "22475ec0c82c154a"),
+    # v13(深度優化第三批):事件群標 `continuing_days`(EVENT_TIMELINE
+    #     的第 N 天接到分析單位上 —— 延續事件要寫增量不是重述)。
+    "evidence_schema_version":  (13, "084bea9e1d1f5d9f"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -365,7 +367,8 @@ _FROZEN = {
     # v20(2026-08-05 使用者七項回饋):三大重點要「事件」不是行情、
     #      七之二與八/九段的四個必答問題、內部試算不進信、
     #      政策取材以中彰投雲為主。
-    "primary_profile_version":  (20, "327f32830537d86e"),
+    # v21(深度優化第三批):continuing_days > 1 的事件寫增量。
+    "primary_profile_version":  (21, "c042a0198d3ca36c"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "shadow_profile_version":   (7, "27619c45c92d2128"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
@@ -412,7 +415,10 @@ _FROZEN = {
     # v15(第二十輪 P1-5/P2-5/P2-7):段落→主張的對照表改由 `claim_map`
     #     生成(四個消費者共用一份);時間尺度要有主張撐得住;
     #     佐證等級不得往上寫、單一來源要有 caveat。
-    "grounding_version":        (15, "98954f69ba68ab4d"),
+    # v16(深度優化第三批):大寫字母的標的要是**該則新聞的實體** ——
+    #     字串格式分不出「代號」與「概念」,證據分得出(AMD 在 AMD
+    #     新聞的 entities 裡;GPU 不會是任何新聞的實體)。
+    "grounding_version":        (16, "98954f69ba68ab4d"),
 }
 
 

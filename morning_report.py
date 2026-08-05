@@ -35,6 +35,7 @@ import econ_terms as _et
 import llm_http as _lh
 import payload_budget as _pb
 import policy_scope as _ps
+import sector_readout as _sr
 import prompt_profiles as _pp
 import evidence_packet as _ep
 import experiment_record as _er
@@ -20787,10 +20788,17 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"({_hs.get('value_share_pct', 0):.1f}%)・中位 "
                     f"<b style='color:{_hc};'>{_hs.get('median_pct', 0):+.1f}%</b>"
                     f"　領先:{_hlead or '-'}</div>")
+            # **表上四個數字都在,合起來的那句話沒有人說**(2026-08-05:
+            # 半導體佔 40.5%、中位 +2.5%,而台積電 -2.1%、聯發科 -1.1% ——
+            # 資金湧入的類股裡兩檔權值都收黑,衝突不講就會被當成一致)。
+            _heat_line = _sr.readout(quotes.get("SECTOR_HEAT"))
+            _heat_readout_html = (
+                f"<div style='font-size:12px;color:#b45309;margin-top:6px;'>"
+                f"{_htmllib.escape(_heat_line)}</div>" if _heat_line else "")
             breadth_html += f"""
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;margin:12px 0;">
           <div style="font-size:13px;color:#475569;font-weight:700;margin-bottom:4px;">類股熱度表（依成交值前 5;全市場口徑）</div>
-          {''.join(_hrows)}
+          {''.join(_hrows)}{_heat_readout_html}
         </div>
         """
     # 台股估值溫度(A4)+ 選擇權磁吸參考(A5)兩張卡:使用者要求刪除(2026-07-15)。

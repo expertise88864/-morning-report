@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 12
+EVIDENCE_SCHEMA_VERSION = 13
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -231,10 +231,25 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # **必分析清單來自完整新聞池**(截斷前),但列出的成員只保留真的
     # 進了 packet 的那些 —— 模型引用不到被截掉的 ID。
     kept_ids = {n["source_item_id"] for n in kept_news}
+    # **延續事件要寫增量,不是重述**(深度優化第三批)。EVENT_TIMELINE
+    # 已經在數「第 N 天」—— 把它接到事件群上,模型才知道哪些事昨天
+    # 已經分析過。信裡的「延燒中事件(第 4 天)」與八段的分析先前
+    # 是兩個互不知道對方的系統。
+    timeline = {str(t.get("entity") or ""): int(t.get("days") or 0)
+                for t in (packet["market"].get("EVENT_TIMELINE") or [])
+                if isinstance(t, dict) and t.get("entity")}
+    by_id = {n["source_item_id"]: n for n in kept_news}
+
+    def _days(c):
+        ents = {str(e) for m in c["member_source_ids"]
+                for e in (by_id.get(m, {}).get("entities") or [])}
+        return max((d for e, d in timeline.items() if e in ents), default=0)
     packet["news_clusters"] = dict(
         cluster_info,
-        clusters=[dict(c, member_source_ids=[m for m in c["member_source_ids"]
-                                             if m in kept_ids])
+        clusters=[dict(c,
+                       member_source_ids=[m for m in c["member_source_ids"]
+                                          if m in kept_ids],
+                       continuing_days=_days(c))
                   for c in cluster_info["clusters"]
                   if any(m in kept_ids for m in c["member_source_ids"])])
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、

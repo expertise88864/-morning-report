@@ -47,6 +47,33 @@ def _is_generic_asset(aid: str) -> bool:
         return False
     return aid in _GENERIC_ASSETS or any(m in aid for m in _GENERIC_MORPHEMES)
 
+
+#: 台股代號的形狀(2330、00662、6510A)。
+_TW_CODE = _re.compile(r"[0-9]{4,6}[A-Z]?")
+
+
+def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
+    """**大寫字母的「標的」要是證據裡的人**(第二十輪 P2-4 的收尾)。
+
+    `_ASSET_LIKE` 放行任何 2–6 個大寫字母 —— 於是 `AI`、`GPU`、`CHIP`
+    都能冒充標的,而 renderer 會把它們排得跟真的逐標的分析一模一樣。
+    可是 `AMD`、`TSM` 又是真的 —— **字串格式分不出「代號」與「概念」**。
+    分得出的是證據:分析 AMD 新聞時,AMD 在那則新聞的 `entities` 裡;
+    「GPU」不會是任何新聞的實體。台股代號與已知指數/ETF 照舊放行。
+    """
+    a = str(aid or "").strip()
+    if not a or _TW_CODE.fullmatch(a) or a in _KNOWN_ASSETS:
+        return False
+    if not a.isascii() or not a.isupper():
+        return False                    # 中文名稱交給泛稱檢查
+    ents = {str(e) for e in ((news_item or {}).get("entities") or [])}
+    if a in ents:
+        return False
+    # 該則新聞標題裡逐字出現也算(實體抽取會漏,標題不會說謊)
+    if a in str((news_item or {}).get("title") or ""):
+        return False
+    return True
+
 # `STANCE_LABELS` 在函式內延遲取用 —— `analysis_schema` 的尾端會反向
 # import 本模組(相容出口),頂層互相 import 會在「誰先被載入」上翻車。
 
@@ -176,6 +203,15 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.affected_assets[{j}] 的標的是泛稱 {aid!r} ——"
                     "要給得出代號、指數或 ETF,給不出就不要列這一項")
+            elif aid and packet is not None:
+                _item = next((x for x in (packet.get("news") or [])
+                              if str(x.get("source_item_id")) ==
+                              str(n.get("source_item_id"))), None)
+                if _asset_unknown_to_evidence(aid, _item, packet):
+                    problems.append(
+                        f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"
+                        "新聞的實體或標題裡 —— 「GPU」「AI」是概念不是標的;"
+                        "真的要談某檔美股,它得是新聞裡的主角")
             if aid and aid in seen_assets:
                 problems.append(
                     f"{where}.affected_assets[{j}] 的 {aid!r} 重複了 ——"

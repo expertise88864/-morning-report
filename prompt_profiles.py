@@ -61,7 +61,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 20
+LUNA_XHIGH_VERSION = 21
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -143,6 +143,10 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   cross_market_synthesis 整段只引新聞 ID 時,它是轉述不是綜合。
 - **回指要連對,不只是連上。** 立場寫 1-4 週,就要有一條談 1-4 週的
   主張撐著 —— 全部靠今日盤前的主張撐一個一個月的判斷,那是形式上的引用。
+- **延續中的事件要寫增量,不是重述。** `news_clusters` 的
+  `continuing_days > 1` 代表這件事本報已連續追蹤 N 天 —— 讀者昨天
+  看過背景了。今天要寫的是**新的那一段**:多了什麼證據、量級有沒有
+  改變、昨天的判斷有沒有被推翻。從頭再講一次背景,佔的是新資訊的位置。
 - **EVIDENCE 的 `news_clusters` 已經把同一件事的多家報導併成一群。**
   一個事件群只寫**一個**分析單位(挑資訊最完整的那則當 `source_item_id`),
   不要為同一件事寫兩段 —— 那不是更深,是同一條因果鏈改寫兩次。

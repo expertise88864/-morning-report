@@ -192,6 +192,46 @@ def _top_event_probe() -> list:
     return out
 
 
+def _event_graph_probe() -> list:
+    """Commit D:淨效果、共同驅動、總經聯合情境。標準案例沒有方向衝突、
+    沒有共同驅動群、沒有總經發布 —— 三條規則指紋一條都量不到。"""
+    news = [{"source_item_id": "m1",
+             "title": "美國7月非農就業新增18.5萬人 低於預期",
+             "summary": "失業率升至4.3%", "entities": ["美國"],
+             "source_name": "Reuters"},
+            {"source_item_id": "m2", "title": "Fed 官員鴿派發言 暗示9月降息",
+             "summary": "", "entities": ["聯準會"], "source_name": "CNBC"},
+            {"source_item_id": "m3", "title": "台積電熊本廠恢復產線運作",
+             "summary": "", "entities": ["台積電"], "source_name": "經濟日報"}]
+    pk = ep.build({}, {}, {}, news, [], {}, as_of="x",
+                  target_session_date="y", sanitize=lambda s: s)
+    g = pk["event_graph"]
+    out = [sorted(x["driver"] for x in g["shared_driver_groups"]),
+           g["macro_release_cluster_id"],
+           sorted((k, v["driver"]) for k, v in g["drivers"].items())]
+    # 方向衝突但沒有淨效果 / 有淨效果但沒有衝突 / 共同驅動沒說明
+    o = fx.valid_analysis()
+    o["top_news_analysis"][0]["affected_assets"][0].update(
+        asset_id="2330", direction="bullish")
+    o["top_news_analysis"].append(dict(
+        o["top_news_analysis"][0], source_item_id="n2",
+        affected_assets=[dict(o["top_news_analysis"][0]["affected_assets"][0],
+                              direction="bearish")]))
+    out.append(sch.validate(o, pk))
+    o2 = fx.valid_analysis()
+    o2["asset_net_effects"] = [{"asset_id": "2330", "net_direction": "bullish",
+                                "net_magnitude_band": "small",
+                                "offsetting_cluster_ids": [], "why": "x",
+                                "claim_ids": []}]
+    out.append(sch.validate(o2, pk))
+    o3 = fx.valid_analysis()
+    base = o3["key_drivers"][0]
+    o3["key_drivers"] = [dict(base, cluster_id=c)
+                         for c in ("cluster:m1", "cluster:m2")]
+    out.append(sch.validate(o3, pk))
+    return out
+
+
 def _edge_packet() -> dict:
     """第二十二輪 P1-9/P2-3 的證據行為 —— 延續事件 token 邊界
     (US 不得命中 ASUS)、公司別名接上(台積電↔TSMC 併群且接上
@@ -377,7 +417,8 @@ def _behaviour() -> dict:
                                      for o in _GROUNDING_CASES]
                                   + _asset_probes()
                                   + [_anchor_scope_probe()]
-                                  + _top_event_probe()),
+                                  + _top_event_probe()
+                                  + _event_graph_probe()),
     }
 
 
@@ -453,7 +494,9 @@ _FROZEN = {
     #     都實測讓指紋移動。
     # v17(Commit C):packet 帶 `top_events` —— 多軸計分的三大重點
     #     候選、被排除的純價格變化群、權重宣告。
-    "evidence_schema_version":  (17, "cd6f0baa3a411db6"),
+    # v18(Commit D):packet 帶 `event_graph` —— 共用底層驅動的事件群
+    #     (就業→降息預期→殖利率是同一件事的三個表現)、總經發布。
+    "evidence_schema_version":  (18, "7cddd7dd0ba6b7fd"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -473,7 +516,9 @@ _FROZEN = {
     #     `source_caveat`(單一來源的揭露改成機械契約)。
     # v11(Commit C):`key_drivers[].cluster_id` —— 三大重點要指名它
     #     講的是哪一個事件群(價格變化沒有主詞也沒有動作)。
-    "output_schema_version":    (11, "1518afebff5c48cf"),
+    # v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
+    #     使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
+    "output_schema_version":    (12, "5a327abdd3735950"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -511,7 +556,8 @@ _FROZEN = {
     # v21(深度優化第三批):continuing_days > 1 的事件寫增量。
     # v22(Commit C):三大重點的規則(候選由 top_events 給、至少一半
     #     要指到真事件、行情數字用來說明量級)。
-    "primary_profile_version":  (22, "9a7a7fdd0b8141aa"),
+    # v23(Commit D):淨效果、共同驅動、總經聯合情境三段規則。
+    "primary_profile_version":  (23, "51983403f1f6bbe8"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "shadow_profile_version":   (7, "27619c45c92d2128"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
@@ -578,7 +624,10 @@ _FROZEN = {
     # v20(Commit C):接受政策多了三大重點的事件契約 —— 指到被排除的
     #     價格變化群、指到不存在的群、真事件不到一半、計分最高的
     #     被靜默略過。`_top_event_probe()` 讓指紋看得見這四條。
-    "grounding_version":        (20, "0084373e2d878d3e"),
+    # v21(Commit D):方向衝突要給淨效果、共用驅動要說明為什麼不算
+    #     重複計權、有總經發布時三個情境分支要條件在它上面。
+    #     `_event_graph_probe()` 讓指紋看得見這三條。
+    "grounding_version":        (21, "7892d884e4555e87"),
 }
 
 

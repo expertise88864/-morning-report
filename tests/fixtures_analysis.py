@@ -102,6 +102,9 @@ def valid_analysis() -> dict:
         # 使用者 2026-08-05 的原話:「不是數據文字堆疊」。
         # 改成指向真正的事件群(n2 台積電法說),費半仍留在 `claim_audit`
         # 與 `reinforcing_signals` 裡當**行情脈絡**。
+        # Commit D:方向相反的標的才要列淨效果 —— fixture 沒有衝突,
+        # 所以是空的(列了反而會被擋:湊一段不會讓分析更深)。
+        "asset_net_effects": [],
         "key_drivers": [_driver("台積電法說會下週登場,市場等待資本支出指引",
                                 cluster_id="cluster:n2")],
         "scenario_tree": {
@@ -202,6 +205,8 @@ def valid_analysis() -> dict:
             # 第十七輪 P1-3:**點名不等於處理** —— 每筆張力自己帶調和方式、
             # 哪一側可信、憑什麼、什麼情況分出勝負。
             "tension_resolutions": [],
+            # Commit D:共用底層驅動的事件群怎麼處理(這裡沒有)
+            "shared_driver_notes": [],
             # **橫向綜合要接上行情**(2026-08-05 深度加強):證據全是新聞
             # 的綜合只是轉述 —— 參考答案自己要示範這個性質。
             "evidence_ids": ["n1", "market:QQQ.change_pct"]},

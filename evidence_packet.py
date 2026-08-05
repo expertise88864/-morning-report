@@ -57,7 +57,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 什麼)。同集團轉載與通訊社稿件不再各算一家。
 #: v17(Commit C):packet 帶 `top_events`(多軸計分的三大重點候選、
 #: 排除掉的純價格變化、權重宣告)。
-EVIDENCE_SCHEMA_VERSION = 17
+#: v18(Commit D):packet 帶 `event_graph` —— 共用底層驅動的事件群
+#: (就業→降息預期→殖利率是同一件事的三個表現)、今天的總經發布。
+EVIDENCE_SCHEMA_VERSION = 18
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -288,6 +290,12 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 候選是多軸計分的結果,而純價格變化整批排除(見 `event_score`)。
     import event_score as _es
     packet["top_events"] = _es.rank(_kept_clusters, kept_news)
+    # **事件之間的關係由 Python 先算**(重構規格 Commit D):哪些事件
+    # 共用同一個底層驅動(三段各加一次權重 = 同一件事說三次)、
+    # 今天有沒有總經發布(那是情境樹的**分岔本身**,不是一件會影響
+    # 市場的事)。模型要先知道,才說得出 `double_count_risk`。
+    import event_graph as _eg
+    packet["event_graph"] = _eg.build(_kept_clusters, kept_news)
     # r3(Codex,#1):**整棵樹消毒。** `market` 區塊裡的公報、結構化事件、
     # 政策情報、歷史全都是外部文字,先前被原樣序列化進 payload。
     # 在算 sha **之前**做 —— 指紋要對應真正送出去的內容。

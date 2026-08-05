@@ -154,7 +154,7 @@ def _unusable(packet) -> dict:
 # 完整性檢查搬到 `analysis_crosscheck`(見該檔:形狀與完整是兩件事)。
 from analysis_crosscheck import (                  # noqa: E402,F401
     _alignment_problems, _claim_graph_problems, _coverage_problems,
-    top_event_problems)
+    event_graph_problems, top_event_problems)
 
 
 def validate(obj, evidence_ids) -> list:
@@ -421,6 +421,8 @@ def validate(obj, evidence_ids) -> list:
         problems.extend(_coverage_problems(obj, packet, own_ids))
         # 重構規格 Commit C:三大重點要是三個**事件**,不是三個價格變化。
         problems.extend(top_event_problems(obj, packet))
+        # Commit D:淨效果、共同驅動、總經發布的聯合情境。
+        problems.extend(event_graph_problems(obj, packet))
         problems.extend(_alignment_problems(cms, packet, known))
         if hi and not str((cms or {}).get("dominant_driver") or "").strip():
             problems.append(

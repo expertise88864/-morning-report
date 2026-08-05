@@ -43,7 +43,9 @@ from __future__ import annotations
 #: 判準(先前 `depth_advisories` 在選優裡沒收到 packet)。
 #: v20(Commit C):接受政策多了三大重點的事件契約 —— 指到被排除的
 #: 價格變化群、指到不存在的群、真事件不到一半、計分最高的靜默略過。
-GROUNDING_VERSION = 20
+#: v21(Commit D):接受政策多了三條 —— 方向衝突要給淨效果、共用驅動
+#: 要說明為什麼不算重複計權、有總經發布時三個情境分支要條件在它上面。
+GROUNDING_VERSION = 21
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

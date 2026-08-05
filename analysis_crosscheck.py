@@ -305,6 +305,87 @@ def top_event_problems(obj, packet) -> list:
     return out
 
 
+def event_graph_problems(obj, packet) -> list:
+    """**事件之間的關係**(重構規格 Commit D)。三條:
+
+      1. 方向相反的標的要給**淨效果** —— 兩段各自寫完就結束了,
+         而讀者要的是「合起來是利多還是利空」。
+      2. 共用同一個底層驅動的事件不得被當成**獨立確認** ——
+         就業數據 → 降息預期 → 殖利率是同一件事的三個表現。
+      3. 有總經發布的日子,情境樹的三個分支要**條件在同一個發布上** ——
+         非農不是「一件會影響台股的事」,它是分岔本身。
+    """
+    import event_graph as _eg
+    out: list = []
+    if not isinstance(obj, dict):
+        return out
+    # ── 1) 淨效果
+    conflicts = _eg.conflicting_assets(obj)
+    nets = {str((x or {}).get("asset_id") or ""): x
+            for x in (obj.get("asset_net_effects") or []) if isinstance(x, dict)}
+    for aid in sorted(conflicts):
+        n = nets.get(aid)
+        if not n:
+            out.append(f"{aid} 同時被寫成利多與利空({conflicts[aid]}),"
+                       "卻沒有 `asset_net_effects` —— 兩段各自寫完就結束,"
+                       "讀者不知道合起來是什麼")
+        elif not str(n.get("why") or "").strip():
+            out.append(f"asset_net_effects[{aid}] 沒有寫 `why` —— "
+                       "淨方向要說得出哪一邊比較重、憑什麼")
+    for aid, n in sorted(nets.items()):
+        if aid and aid not in conflicts and str(
+                n.get("net_direction") or "") not in ("", "unknown"):
+            out.append(f"asset_net_effects[{aid}] 沒有方向衝突要調和 —— "
+                       "沒有互相抵銷的標的不必列(湊一段不會讓分析更深)")
+    if not isinstance(packet, dict):
+        return out
+    graph = packet.get("event_graph")
+    if not isinstance(graph, dict):
+        return out                      # 舊呼叫端沒有這一段,不判
+    # ── 2) 共同驅動
+    used = {str(d.get("cluster_id") or "")
+            for d in (obj.get("key_drivers") or []) if isinstance(d, dict)}
+    notes = {str((x or {}).get("driver") or "")
+             for x in ((obj.get("cross_market_synthesis") or {})
+                       .get("shared_driver_notes") or []) if isinstance(x, dict)}
+    for g in (graph.get("shared_driver_groups") or []):
+        if not isinstance(g, dict):
+            continue
+        hit = sorted(used & {str(c) for c in (g.get("cluster_ids") or [])})
+        if len(hit) >= 2 and str(g.get("driver") or "") not in notes:
+            out.append(
+                f"三大重點裡有 {len(hit)} 件事共用同一個底層驅動"
+                f"({g.get('label')}:{hit})—— 各加一次權重等於同一件事"
+                f"說 {len(hit)} 次。請在 `cross_market_synthesis."
+                f"shared_driver_notes` 寫 driver={g.get('driver')!r} "
+                "並說明為什麼不算重複計權")
+    # ── 3) 總經發布 → 聯合情境
+    macro = str(graph.get("macro_release_cluster_id") or "")
+    if macro:
+        members = set()
+        for c in ((packet.get("news_clusters") or {}).get("clusters") or []):
+            if isinstance(c, dict) and str(c.get("cluster_id")) == macro:
+                members = {str(m) for m in (c.get("member_source_ids") or [])}
+        by_id = {str(c.get("claim_id") or ""): c
+                 for c in (obj.get("claim_audit") or []) if isinstance(c, dict)}
+        tree = obj.get("scenario_tree")
+        if members and isinstance(tree, dict):
+            for br in ("base", "bull", "bear"):
+                blk = tree.get(br)
+                if not isinstance(blk, dict):
+                    continue
+                cited = [by_id.get(str(x)) for x in (blk.get("claim_ids") or [])]
+                ev = {str(e) for c in cited if isinstance(c, dict)
+                      for e in (c.get("evidence_ids") or [])}
+                if not (ev & members):
+                    out.append(
+                        f"今天有總經發布({macro}),而 scenario_tree.{br} "
+                        "沒有任何一條主張引用它 —— 總經發布是情境樹的"
+                        "**分岔本身**,三個分支若不條件在同一件事上,"
+                        "那是三件不同的事各自展開")
+    return out
+
+
 def _section_horizons(obj) -> dict:
     """**有自己時間尺度的段落**。其餘不做尺度判斷 ——
     「已反映/未反映」沒有一個屬於自己的期間。"""

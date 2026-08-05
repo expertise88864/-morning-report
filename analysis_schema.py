@@ -41,7 +41,9 @@ import evidence_namespaces as _ns
 #: (點名不等於處理)、mechanism step 加 `stage`(鏈停在哪一層要驗得出來)。
 #: v11(Commit C):`key_drivers[].cluster_id` —— 三大重點要指名它講的
 #: 是哪一個事件群。價格變化沒有主詞也沒有動作,它不是事件。
-ANALYSIS_SCHEMA_VERSION = 11
+#: v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
+#: 使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
+ANALYSIS_SCHEMA_VERSION = 12
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -189,6 +191,19 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "rationale": _s(),
     }),
     "key_drivers": _arr(_DRIVER_CLAIM, "今日真正驅動判斷的因子,依 materiality 排序"),
+    # 重構規格 Commit D:**同一個標的被不同事件推往相反方向時,
+    # 兩段各自寫完就結束了** —— 而使用者要的是「合起來是利多還是利空」。
+    "asset_net_effects": _arr(_obj({
+        "asset_id": _s("代號或指數(例:2330、0050、TAIEX)"),
+        "net_direction": _enum(("bullish", "bearish", "neutral", "unknown"),
+                               "**合起來**的方向;抵銷到看不出來就寫 neutral,"
+                               "判斷不出來寫 unknown 並說明缺什麼"),
+        "net_magnitude_band": _enum(("negligible", "small", "moderate",
+                                     "large", "unknown"), "合起來的量級"),
+        "offsetting_cluster_ids": _arr(_s(), "互相抵銷的那幾個事件群"),
+        "why": _s("為什麼是這個淨方向 —— 哪一邊比較重、憑什麼"),
+        "claim_ids": _arr(_s(), "支撐這個淨判斷的 `claim_audit.claim_id`"),
+    }), "方向相反的標的要給淨效果;沒有衝突的標的不必列"),
     "scenario_tree": _obj({
         "base": _SCENARIO, "bull": _SCENARIO, "bear": _SCENARIO,
         "invalidation_triggers": _arr(_s(), "整體判斷失效的條件"),
@@ -300,6 +315,16 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
             "double_count_risk": _s("兩者會不會其實是同一個底層驅動"),
             "evidence_ids": _EVIDENCE_IDS,
         }), "同向訊號的解讀"),
+        # Commit D:**共用底層驅動的事件不是獨立確認。** 就業數據 →
+        # 降息預期 → 殖利率是同一件事的三個表現;三段各加一次權重,
+        # 讀者看到的是「三個獨立訊號同向」。
+        "shared_driver_notes": _arr(_obj({
+            "driver": _s("`EVIDENCE.event_graph.shared_driver_groups[].driver`"),
+            "cluster_ids": _arr(_s(), "共用這個驅動的事件群"),
+            "why_not_double_counted": _s("為什麼把它們一起看仍然成立 ——"
+                                         "例如只計一次、或它們其實是"
+                                         "傳導鏈上可分辨的兩段"),
+        }), "共用底層驅動的事件群怎麼處理(沒有就給空陣列)"),
         "tension_resolutions": _arr(_obj({
             "tension_id": _s("EVIDENCE.signal_tensions 的 `tension:<id>`"),
             "resolution": _s("兩邊怎麼調和;不得只複述兩個數字"),

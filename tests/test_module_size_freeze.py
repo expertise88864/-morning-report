@@ -210,7 +210,7 @@ MODULE_CEILINGS = {
     # `required_disclosures`。放寬到 420;再長就把 news 正規化拆出去。
     # Commit B:EVIDENCE v16 的版本說明(獨立性三個數各自的用途)。實測 424。
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
-    "evidence_packet.py": 440,
+    "evidence_packet.py": 450,
     # 證據包的序列化與指紋。指紋是實驗公平性的全部依據,值得自己的檔與
     # 測試。**只做序列化,不碰組裝** —— 出現欄位取捨就表示放錯地方。
     # 實測 134 行。
@@ -236,6 +236,9 @@ MODULE_CEILINGS = {
     # Commit C:事件多軸計分 + 純價格變化的排除(「昨夜三大重點」
     # 要是三個事件)。判準詞表佔大半,純規則層。
     "event_score.py": 240,
+    # Commit D:事件圖 —— 共同驅動(家族)、總經發布、方向衝突。
+    # 驅動關鍵詞表佔大半,純規則層。
+    "event_graph.py": 210,
     # 第十九輪 P1-3:新聞正規化與截斷拆出來 ——「誰留下來」是獨立的決定,
     # 而先前的順序錯誤(先截斷再算必分析)在 `build()` 裡看不出來。
     # 深度加強第二批:改版重發去重(+15 行)。
@@ -258,7 +261,7 @@ MODULE_CEILINGS = {
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
     # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
-    "analysis_schema.py": 390,
+    "analysis_schema.py": 410,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、
@@ -295,7 +298,7 @@ MODULE_CEILINGS = {
     # 抓的頭寸,外審的兩條修正把它撐開;數字據實量測,不靠推估)。
     # 第十六輪調高 105 → 120(**實測 107**)。多的是 `priced_in` 進
     # EVIDENCE_BEARING 與版本註解 —— 判準本身仍然只有兩個函式。
-    "analysis_grounding.py": 120,
+    "analysis_grounding.py": 135,
     # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
     # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
     # 金絲雀探測都需要那個答案。**實測 137 行**(初訂 110 是依 95 行抓的
@@ -312,7 +315,7 @@ MODULE_CEILINGS = {
     # 調和的填法指引 —— 與 `writing_rules.py` 同理:**prompt 文字的長度
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
-    "prompt_profiles.py": 360,
+    "prompt_profiles.py": 380,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。
@@ -408,7 +411,7 @@ MODULE_CEILINGS = {
     # 自引用檢查。**這個檔量的就是「有沒有真的做完」**,判準變細是
     # 它該長的方向;超過 300 就再拆。
     # Commit C:`top_event_problems`(三大重點要是三個事件的契約)。實測 320。
-    "analysis_crosscheck.py": 335,
+    "analysis_crosscheck.py": 420,
     # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
     # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
     # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。

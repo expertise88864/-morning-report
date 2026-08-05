@@ -46,7 +46,11 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 14
+#: v15(第二十二輪 P1-9/P2-3):延續事件的標題比對改 token 邊界
+#: (裸子字串讓 `US` 命中 `ASUS`);別名表整批拿掉國家/首都
+#: (「伊朗戰事」≠「德黑蘭地震」,只留同一主體的不同寫法);
+#: 分群交集吃別名(「台積電」與「TSMC」不再拆成兩群重複計權)。
+EVIDENCE_SCHEMA_VERSION = 15
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -248,10 +252,21 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         # 抽取器當天用的那一個。標題也算 —— 實體抽取會漏,標題不會。
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
+        import re as _re2
+
         import entity_alias as _ea
         keys = _ea.expand(ents)
+
+        def _in_title(e):
+            # **token 邊界**(第二十二輪 P1-9):裸子字串會讓 `US`
+            # 命中 `ASUS`,美國事件的第 4 天接到華碩財報上。
+            if not str(e).isascii():
+                return str(e) in titles
+            return bool(_re2.search(
+                r"(?<![A-Za-z0-9])" + _re2.escape(str(e))
+                + r"(?![A-Za-z0-9])", titles, _re2.IGNORECASE))
         return max((d for e, d in timeline.items()
-                    if e in ents or _ea.same(e, keys) or e in titles),
+                    if e in ents or _ea.same(e, keys) or _in_title(e)),
                    default=0)
     packet["news_clusters"] = dict(
         cluster_info,

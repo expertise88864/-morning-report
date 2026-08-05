@@ -32,7 +32,12 @@ from __future__ import annotations
 #: 就是接受行為變了)。v4(P2-4):`priced_in` 也要帶證據。
 #: v5(第十七輪):接受政策加「張力要有逐筆 resolution」與「鏈要走到
 #: 財務層」的深度提示 —— 修補時機再次改變。
-GROUNDING_VERSION = 17
+#: v18(第二十二輪):key_driver 判準合一 —— **同一條 claim 要同時**
+#: 同向且共享證據(split-quantifier:方向靠 c1、證據靠 c2,沒有一條
+#: 真的支持);標的判準加概念詞黑名單(GPU 永遠不是標的)、ASCII
+#: token 邊界(`Ai` 不再借道 `Taiwan`)、中文名也要在證據裡
+#: (先前非 ASCII 一律放行,AMD 新聞可以掛「華碩」)。
+GROUNDING_VERSION = 18
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -109,10 +109,6 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
         pk["market"] = market
         report["trimmed"].append({"block": f"market.{name}", "chars": cost})
     pk["market"] = market
-    report["chars_after"] = _size(pk)
-    # **裁完仍超標要說出來。** 靜默放行等於讓明天再被 429 一次,
-    # 而 manifest 上看不出原因。
-    report["over_budget"] = report["chars_after"] > limit
     if report["trimmed"]:
         # 被裁掉的區塊要變成**必須揭露的缺口** —— 不然收件人會以為
         # 今天沒有公報,而不是「公報沒有進到分析裡」。
@@ -121,7 +117,40 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
             **{f"gap:payload_omitted:{t['block'].split('.', 1)[-1]}":
                f"這塊資料今天太大({t['chars']:,} 字元),沒有進到分析輸入"
                for t in report["trimmed"]})
+    # 第二十二輪 P1-2:**`chars_after` 要在所有改動之後量** —— 上一版在
+    # 加 disclosure 之前算,於是「599,950 + 300 字缺口 = 600,250」會被
+    # 標成 over_budget=False,gate 錯誤放行,manifest 記的也不是真實大小。
+    report["chars_after"] = _size(pk)
+    report["over_budget"] = report["chars_after"] > limit
     return pk, report
+
+
+#: 最終 request 的上限。packet 之外還有 developer instructions、
+#: strict schema 與 API body 框架 —— **gate 擋的要是 provider 真正
+#: 收到的東西**,packet 沒超不代表 request 沒超。
+MAX_REQUEST_CHARS = 700_000
+
+
+def request_gate(bundle: dict, *, manifest=None,
+                 limit: int = MAX_REQUEST_CHARS) -> None:
+    """對**組好的 bundle** 做最終檢查(第二十二輪 P1-2 問題 B)。
+
+    量的是 instructions + user payload + response schema 的實際字元 ——
+    這才是送出去的東西。超標直接 `PayloadBudgetExceeded`。
+    """
+    chars = (len(str(bundle.get("developer_instructions") or ""))
+             + len(str(bundle.get("user_payload") or ""))
+             + len(json.dumps(bundle.get("structured_output") or {},
+                              ensure_ascii=False, default=str)))
+    if manifest is not None:
+        manifest.setdefault("llm", {}).setdefault(
+            "payload_budget", {})["final_request_chars"] = chars
+    if chars > limit:
+        import sys as _sys
+        print(f"[llm] 最終 request {chars:,} 字元超過 {limit:,},"
+              "放棄特化路徑", file=_sys.stderr)
+        raise PayloadBudgetExceeded(
+            f"final request over budget: {chars} > {limit}")
 
 
 class PayloadBudgetExceeded(ValueError):

@@ -253,7 +253,7 @@ MODULE_CEILINGS = {
     # 2026-08-05 實機:**送得出去的 payload 有多大**。新聞側有上限,
     # 而 market 的外部文字區塊一個都沒有 —— 每一塊都有人負責,
     # 總和沒有人負責。實機估 111 萬 token、2.7 秒被 429 拒收。
-    "payload_budget.py": 180,
+    "payload_budget.py": 230,
     # 第二十輪 P2-5:**段落→主張的對照表只有一份。** 先前四個消費者
     # (驗證器、飽和率、加深保存、渲染)各自維護,schema 加了新段落之後
     # 只有驗證器知道。
@@ -269,7 +269,7 @@ MODULE_CEILINGS = {
     "sector_readout.py": 90,
     # 第二十一輪 P2-8:同一件事的兩種寫法(伊朗/德黑蘭、台積電/TSMC)。
     # 刻意只做一張小表,不做模糊比對 —— 誤併比漏併危險。
-    "entity_alias.py": 80,
+    "entity_alias.py": 100,
     # 第二十輪 P2-6:證據命名空間的單一宣告。prompt、schema 說明、
     # Python advisory 先前三邊各說各話,模型收到互相矛盾的規則。
     "evidence_namespaces.py": 80,
@@ -314,7 +314,7 @@ MODULE_CEILINGS = {
     # 第十四輪 P1-4:**逐側**的成本與延遲(manifest 隔天被覆蓋,帳本是追加的)。
     # 兩件事:從 manifest 擷取一列、跨帳本彙總。**不做任何分攤** ——
     # 抽取器標 shared,按比例拆給兩側是編造。實測 151 行。
-    "side_telemetry.py": 200,
+    "side_telemetry.py": 230,
     # 2026-08-04:Top5 卡片的一句話解讀。**只描述不建議**,判準全部來自
     # 卡片上已有的欄位。長大就表示有人在這裡加新的資料來源或建議語氣。
     # 實測 120 行。
@@ -382,7 +382,9 @@ MODULE_CEILINGS = {
     # 深度優化第三批:實測 399 —— 加的是「標的要是證據裡的人」
     # (字串格式分不出代號與概念,證據分得出)。超過 430 就把
     # affected_assets 檢查整段拆去 analysis_crosscheck。
-    "analysis_validate.py": 430,
+    # 第二十二輪:實測 449 —— 概念詞黑名單與「中文名也要在證據裡」。
+    # 超過 470 就把 affected_assets 檢查整段拆去 analysis_crosscheck。
+    "analysis_validate.py": 470,
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

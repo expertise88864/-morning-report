@@ -115,6 +115,20 @@ def from_manifest(llm: Optional[dict]) -> dict:
     return {role: _side(d, role) for role in SIDES}
 
 
+def _fallback_bucket(rows: list) -> dict:
+    """primary 位置上其實是 fallback 的那些天。"""
+    costs, days = [], 0
+    for r in rows:
+        side = ((r or {}).get("primary_telemetry") or {})
+        if isinstance(side, dict) and side.get("available") is True                 and _is_fallback_row(r, side):
+            days += 1
+            v = _num(side.get("measured_cost_usd"))
+            if v is not None:
+                costs.append(v)
+    return {"days": days,
+            "cost_usd": round(sum(costs), 6) if costs else None}
+
+
 def _median(values: list):
     v = sorted(values)
     if not v:
@@ -124,16 +138,39 @@ def _median(values: list):
 
 
 def _collect(rows: list, role: str, field: str) -> list:
-    """帳本裡這一側、這個欄位**真的量到**的值。"""
+    """帳本裡這一側、這個欄位**真的量到**的值。
+
+    第二十二輪 P1-3:**旗子掛了而統計沒看** —— `role_is_specialized`
+    加在單日遙測上,而 `side_costs` 照樣把 fallback writer 的成本累進
+    primary。旗子要在**這裡**生效;沒有旗子的舊 row 用
+    `analysis_origin` 事後歸類(它從第十四輪起就在),兩個都沒有的
+    舊資料才照舊計入(並由 `days_measured` 曝露涵蓋差)。
+    """
     out = []
     for r in rows:
         side = ((r or {}).get(f"{role}_telemetry") or {})
         if not isinstance(side, dict) or side.get("available") is not True:
             continue
+        if role == "primary" and _is_fallback_row(r, side):
+            continue
         v = _num(side.get(field))
         if v is not None:
             out.append(v)
     return out
+
+
+def _is_fallback_row(row: dict, side: dict) -> bool:
+    """這一天的 primary 其實是 legacy fallback 嗎。"""
+    flag = side.get("role_is_specialized")
+    if flag is False:
+        return True
+    if flag is True:
+        return False
+    # 舊 row 沒有旗子 —— 用 analysis_origin 歸類(記在 row 或 llm 區)。
+    origin = str(row.get("analysis_origin")
+                 or ((row.get("llm") or {}).get("analysis_origin")
+                     if isinstance(row.get("llm"), dict) else "") or "")
+    return "fallback" in origin
 
 
 def side_costs(ledger: Optional[list]) -> dict:
@@ -145,7 +182,10 @@ def side_costs(ledger: Optional[list]) -> dict:
     `extractor` 與兩側分開回報:它是共用成本,加進任何一側都是編造。
     """
     rows = [r for r in (ledger or []) if isinstance(r, dict)]
-    out = {"rows_seen": len(rows)}
+    out = {"rows_seen": len(rows),
+           # **fallback 的成本另立一格**,不是丟掉 —— 錢真的花了,
+           # 只是它不屬於「特化路徑的成本」這個問題的答案。
+           "fallback_writer": _fallback_bucket(rows)}
     for role in SIDES:
         costs = _collect(rows, role, "measured_cost_usd")
         failed = _collect(rows, role, "failed_attempt_cost_usd")

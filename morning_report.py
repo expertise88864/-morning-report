@@ -13876,10 +13876,13 @@ def _call_openai_responses(payload: dict) -> dict:
                "Content-Type": "application/json"}
     body = dict(payload)
     for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
+        # 與整個 LLM 階段共用同一個絕對 deadline(修補/加深不重新起算)
         r = _lh.post_with_backoff(url, body, headers,
                                   timeout=_llm_request_timeout(),
                                   manifest=_RUN_MANIFEST,
-                                  deadline=LLM_TOTAL_TIMEOUT_SECONDS)
+                                  deadline_at=_LLM_DEADLINE)
+        if r is None:
+            raise TimeoutError("LLM 總時間預算已耗盡,未再送出請求")
         if r.status_code != 400:
             r.raise_for_status()
             return r.json()
@@ -13929,6 +13932,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
               f"{_budget['chars_after']}", file=sys.stderr)
     _pb.gate(_budget)   # 硬閘門:裁完仍超標就放棄特化(見 payload_budget)
     bundle = _pp.build_luna_bundle(packet)
+    _pb.request_gate(bundle, manifest=_RUN_MANIFEST)  # 量送出去的東西,不是 packet
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
         _pp.bundle_debug_json(bundle))
     # 幽靈引用路徑要留下痕跡:張力宣稱了 packet 沒有的 `market:` 欄位時,

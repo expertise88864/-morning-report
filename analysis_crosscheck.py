@@ -224,20 +224,21 @@ def _claim_graph_problems(obj) -> list:
             continue
         want_dir = str(d.get("direction") or "")
         cited = [by_id[x] for x in (d.get("claim_ids") or []) if str(x) in by_id]
-        if want_dir and cited and not any(
-                str(c.get("direction") or "") == want_dir for c in cited):
-            out.append(
-                f"key_drivers[{i}] 的方向是 {want_dir},而它引用的主張"
-                f"沒有一條同向({sorted({str(c.get('direction')) for c in cited})})"
-                " —— 讀者最先看到的三條不能與稽核相反")
-        # 證據也要有交集:引用一條「講別件事」的主張,方向對上也沒有意義。
         own = {str(x) for x in (d.get("evidence_ids") or [])}
-        if own and cited and not any(
-                own & {str(x) for x in (c.get("evidence_ids") or [])}
-                for c in cited):
+        # 第二十二輪 P1-4:**兩個條件要落在同一條 claim 上。**
+        # 分開驗的話,方向靠 c1 滿足、證據靠 c2 滿足 —— 而沒有任何一條
+        # claim 真的支持這條重點(split-quantifier bypass,實測確認)。
+        def _supports(c):
+            dir_ok = (not want_dir
+                      or str(c.get("direction") or "") == want_dir)
+            ev_ok = (not own
+                     or bool(own & {str(x)
+                                    for x in (c.get("evidence_ids") or [])}))
+            return dir_ok and ev_ok
+        if cited and (want_dir or own) and not any(_supports(c) for c in cited):
             out.append(
-                f"key_drivers[{i}] 與它引用的主張沒有共同證據 ——"
-                "回指要指向真的在講同一件事的那一條")
+                f"key_drivers[{i}] 引用的主張沒有一條**同時**同向且共享證據"
+                " —— 方向靠一條、證據靠另一條,等於沒有任何一條真的支持它")
     # **孤兒主張**:寫進稽核卻沒有任何一段用到。它不是根據,是配菜。
     referenced = _cm.referenced_claim_ids(obj)
     for c in claims:

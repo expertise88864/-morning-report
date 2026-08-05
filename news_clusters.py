@@ -69,7 +69,12 @@ def _same_event(a: dict, b: dict) -> bool:
     """**實體要有交集,而且標題要講同一件事。** 少了任何一半都會誤併。"""
     ea, eb = set(a.get("entities") or []), set(b.get("entities") or [])
     if not (ea & eb):
-        return False
+        # 第二十二輪 P2-3:「台積電」與「TSMC」是同一個主體的兩種寫法
+        # —— 精確交集會把同一事件拆成兩群,橫向重複計權。
+        # 別名表只含公司與同義機構名(國家/首都已拿掉),誤併風險低。
+        import entity_alias as _al
+        if not (_al.expand(ea) & _al.expand(eb)):
+            return False
     ta, tb = _tokens(a.get("title")), _tokens(b.get("title"))
     if not ta or not tb:
         return False

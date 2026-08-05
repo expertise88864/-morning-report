@@ -1145,6 +1145,68 @@ bearish 而引用的稽核主張全是 bullish —— 讀者最先看到的就�
 
 **驗證**:preflight exit 0、1953 passed、九個突變全紅(補測試後)。
 
+### 批#100 `(下一個 commit)` —— 第二十二輪:批#99 的修法被抓出半套(規格 Commit A2)
+外審 9 條 P1 + 4 條 P2,逐條實測後全部成立 —— 主題是「上一批每個修法
+都修了一半」:gate 建好了但量錯東西、旗子掛了但統計不看、檢查拆成兩條
+讓 bypass 從中間穿過。
+
+**P1-2 預算量的不是送出去的東西**:`chars_after` 在加 disclosure 之前量
+(599,950+300=600,250 照樣放行);packet 沒超不代表加上指令與 schema 後
+沒超。`trim()` 改在加完缺口後量;新增 `request_gate(bundle)` 在
+`build_luna_bundle` 之後量**最終 request**(700K 上限),
+`final_request_chars` 進 manifest。
+
+**P1-3 旗子掛了、統計沒看**:`role_is_specialized` 加上去了,
+`side_costs()` 照樣把 fallback 成本累進 primary。改成 `_collect()` 排除
+fallback rows、另立 `fallback_writer` bucket;舊 rows 沒旗子,由
+`analysis_origin` 事後歸類。測試驗**總和**不驗旗子。
+
+**P1-4 split-quantifier**:方向同向靠 c1、證據交集靠 c2 —— 兩條分開的
+檢查都綠,而沒有任何一條 claim 真的支持這條重點。改成合一判準:
+**同一條 claim 要同時**同向且共享證據。
+
+**P1-6 標的判準三個洞**:`"ai" in "taiwan"` 裸子字串放行 `Ai`;
+標題就叫「GPU demand」時概念詞永遠「在證據裡」;非 ASCII 一律放行
+(AMD 新聞可掛「華碩」)。改成概念詞黑名單(GPU/AI/HBM…永遠不是
+標的)+ ASCII token 邊界 + 中文名也要在 entities/內文/別名裡。
+
+**P1-7 deadline 是碼表不是鬧鐘**:每次呼叫各自帶完整 timeout,修補/
+加深重進來就重新起算。改 `deadline_at` 絕對單調時間戳,由
+`_LLM_DEADLINE` 全程共用;過期不送請求(回 None);請求前後都重算剩餘。
+
+**P1-9 裸子字串接延續事件**:`US` 命中 `ASUS`,美國事件第 4 天接到
+華碩財報。標題比對改 token 邊界;**國家/首都別名整批拿掉**
+(「伊朗戰事」≠「德黑蘭地震」,誤併比漏併危險),表只留公司與 Fed。
+
+**P2-3 同主體兩種寫法拆群**:台積電/TSMC 精確交集不相交 → 兩群
+橫向重複計權。分群交集吃別名(表已縮到公司,誤併風險低)。
+
+**P2-4 六條「名稱正確、實際沒測到」的測試**:`never reaches API` 沒
+mock API、deadline 測試不驗經過時間…全部重寫成兌現名字的版本
+(真 monkeypatch 生產路徑、假時鐘驗最終時刻、驗成本總和)。
+
+**契約**:EVIDENCE 14→15、GROUNDING 17→18;指紋探針同批擴充
+(`_edge_packet()`/`_asset_probes()`/`_split_quantifier()`)——
+標準探針蓋不到這些邊角,**擴探針讓指紋真的動**,並驗證突變下
+指紋會移動,才重凍雜湊。
+
+**外審應特別看的地方**:
+1. 概念詞黑名單 18 個詞是我列的 —— 漏了的概念詞仍會靠「不在證據裡」
+   被擋,但標題剛好含該詞時會漏。
+2. `request_gate` 上限 700K 字元是估的(≈ 175K token < Luna 200K 上限)。
+3. 突變 E 第一次沒紅:反例 `Ai` 被概念清單先擋,token 邊界根本沒被
+   測到 —— 反例要**只靠那條規則分勝負**(改用 `MD` 藏在 `AMD` 裡)。
+   這是「反例要讓缺陷有機會表現」的又一個形狀。
+4. 別名表縮編後,國家級延續事件(伊朗、烏克蘭)只能靠實體精確比對
+   或標題 token 接上 —— 漏接會顯示第 0 天,模型重述背景(可接受,
+   誤併不可接受)。
+5. **重構規格 Commit B–F 仍未動工**;第二十二輪 P2-1(範圍化非事實
+   錨點)與 P2-2(同集團轉載獨立性)歸入 Commit B 一併做。
+
+**驗證**:preflight exit 0、1965 passed、十個突變全紅
+(A gate/B telemetry/C and→or/D 概念詞/E 裸子字串/F 中文/G 延續邊界/
+H 分群別名/I chars_after/契約指紋在 E、G 突變下移動)。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

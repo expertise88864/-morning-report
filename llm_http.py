@@ -45,24 +45,29 @@ def _retry_after_seconds(raw) -> float:
 
 
 def post_with_backoff(url: str, body: dict, headers: dict, *,
-                      timeout, manifest=None, deadline=None):
+                      timeout, manifest=None, deadline_at=None):
     """送一次請求;429/5xx 退避重試。**尊重 `Retry-After`**。
 
     回傳最後一次的 response(400 仍交給呼叫端做選配欄位退讓)。
     """
-    # 第二十一輪 P2-5:**退避要吃絕對 deadline。** 先前每次都用完整的
-    # request timeout、sleep 不計入預算 —— 四次呼叫理論上可以超過
-    # 整個 LLM 階段的總時間預算。
-    started = time.monotonic()
+    # 第二十二輪 P1-7:**deadline 是絕對時間戳,不是本函式自己的碼表。**
+    # 上一版把 `deadline` 解讀成「從進入函式起算的秒數」—— 於是選配欄位
+    # 退讓、修補、加深每次重新進來都拿到完整預算,四層加起來可以超過
+    # 整個 LLM 階段的總限制。改吃 `deadline_at`(monotonic 時間戳,
+    # 與主模組的 `_LLM_DEADLINE` 同一個),**每次動作前後都重算剩餘**;
+    # 進來時已經過期就直接回 None,一次 API 都不打。
     r = None
     for attempt in range(_LLM_RETRIES + 1):
-        left = None if deadline is None else deadline - (time.monotonic() - started)
+        left = None if deadline_at is None else deadline_at - time.monotonic()
         if left is not None and left <= 0:
-            return r if r is not None else requests.post(
-                url, json=body, headers=headers, timeout=1)
+            return r
         r = requests.post(url, json=body, headers=headers,
                           timeout=timeout if left is None else min(timeout, left))
         if r.status_code not in _LLM_RETRY_STATUS or attempt >= _LLM_RETRIES:
+            return r
+        # **request 之後重算** —— 上一版用 request 前的舊值決定 sleep。
+        left = None if deadline_at is None else deadline_at - time.monotonic()
+        if left is not None and left <= 1.0:
             return r
         wait = _LLM_BACKOFF_SEC * (attempt + 1)
         wait = max(wait, _retry_after_seconds(r.headers.get("Retry-After")))

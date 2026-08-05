@@ -108,7 +108,59 @@ def _fabricated() -> dict:
     return obj
 
 
-_GROUNDING_CASES = [fx.valid_analysis(), fx.ungrounded_analysis(), _fabricated()]
+def _split_quantifier() -> dict:
+    """第二十二輪 P1-4:方向靠 c1、證據靠 c2 —— 合一判準要看得見它。"""
+    obj = fx.valid_analysis()
+    obj["key_drivers"][0].update(direction="bullish", evidence_ids=["n2"],
+                                 claim_ids=["c1", "c2"])
+    obj["claim_audit"][1].update(direction="bearish", evidence_ids=["n2"])
+    return obj
+
+
+_GROUNDING_CASES = [fx.valid_analysis(), fx.ungrounded_analysis(),
+                    _fabricated(), _split_quantifier()]
+
+
+def _asset_probes() -> list:
+    """第二十二輪 P1-6 的標的判準 —— 概念詞黑名單、ASCII token 邊界、
+    中文名要在證據裡。標準 packet 的新聞蓋不到這些邊角,指紋看不見
+    這三條規則的存廢 —— 各給一個剛好只靠那條規則分勝負的標的。"""
+    pk = ep.build({}, {}, {},
+                  [{"source_item_id": "n1",
+                    "title": "Taiwan GPU demand accelerates as AMD ramps",
+                    "entities": ["台積電", "AMD"], "source": "X"},
+                   {"source_item_id": "n2", "title": "b", "entities": ["c"],
+                    "source": "d"}],
+                  [], {}, as_of="x", target_session_date="y",
+                  sanitize=lambda s: s)
+    out = []
+    #    Ai/GPU=概念詞;MD=只有 token 邊界擋得住(藏在 AMD 裡);
+    #    華碩=不在證據裡的中文名;台積電=真的在證據裡,要放行。
+    for aid in ("Ai", "GPU", "MD", "華碩", "台積電"):
+        o = fx.valid_analysis()
+        o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
+        out.append(sch.validate(o, pk))
+    return out
+
+
+def _edge_packet() -> dict:
+    """第二十二輪 P1-9/P2-3 的證據行為 —— 延續事件 token 邊界
+    (US 不得命中 ASUS)、公司別名接上(台積電↔TSMC 併群且接上
+    第 4 天)、國家/首都不再是別名(伊朗接不上德黑蘭)。"""
+    return ep.build(
+        {"EVENT_TIMELINE": [{"entity": "US", "days": 4},
+                            {"entity": "台積電", "days": 4},
+                            {"entity": "伊朗", "days": 4}]},
+        {}, {},
+        [{"source_item_id": "e1", "title": "ASUS 財報優於預期",
+          "entities": ["華碩"], "source": "甲"},
+         {"source_item_id": "e2", "title": "TSMC 熊本廠恢復產線運作",
+          "entities": ["TSMC"], "source": "乙"},
+         {"source_item_id": "e3", "title": "台積電熊本廠恢復產線",
+          "entities": ["台積電"], "source": "丙"},
+         {"source_item_id": "e4", "title": "德黑蘭發生地震",
+          "entities": ["德黑蘭"], "source": "丁"}],
+        [], {}, as_of="x", target_session_date="y", sanitize=lambda s: s)
 
 
 def _sha(obj) -> str:
@@ -208,7 +260,9 @@ def _behaviour() -> dict:
         # 第十七輪:evidence v4(遞迴 registry + 廣度方向/強度分離)、
     # schema v4(tension_resolutions + stage)、renderer v4(逐筆調和進信)、
     # grounding v5(深度提示再擴充)、Luna profile v10。
-    "evidence_schema_version": _sha(bare),
+    # v15:加 `_edge_packet()` —— 標準 packet 蓋不到延續事件邊界與
+    # 別名分群,那三個行為的存廢先前指紋看不見。
+    "evidence_schema_version": _sha([bare, _versionless(_edge_packet())]),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
         # **profile 的指紋不該被證據契約牽動。** 餵 `luna`(由真實
         # `_packet()` 建的)時,evidence 加一個欄位就讓 prompt 契約亮紅 ——
@@ -247,12 +301,15 @@ def _behaviour() -> dict:
         # 於是「有張力卻沒處理」「重複調和」「證據沒涵蓋兩側」這些
         # packet-aware 的接受規則,快照一條都量不到。**兩種形狀都量**:
         # 舊呼叫端仍然合法,而新規則要看得見。
+        # v18:案例加 split-quantifier、探針加標的判準 —— 合一判準與
+        # 概念詞/token 邊界/中文名三條規則,先前的案例一條都量不到。
         "grounding_version": _sha([sch.validate(o, fx.ids())
                                    for o in _GROUNDING_CASES]
                                   + [sch.validate(o, pk)
                                      for o in _GROUNDING_CASES]
                                   + [av.depth_advisories(o)
-                                     for o in _GROUNDING_CASES]),
+                                     for o in _GROUNDING_CASES]
+                                  + _asset_probes()),
     }
 
 
@@ -318,7 +375,10 @@ _FROZEN = {
     #     量化錨點);trim 改依實際大小;被裁區塊變成必揭露缺口;
     #     cluster 帶 representative 並在截斷時保留(P1-7);
     #     延續事件用實體別名接上(P2-8);fact 跨 title/summary 去重(P2-2)。
-    "evidence_schema_version":  (14, "455052cc93c058a7"),
+    # v15(第二十二輪 P1-9/P2-3):延續事件標題比對改 token 邊界
+    #     (US 不再命中 ASUS);別名表整批拿掉國家/首都、只留公司與 Fed;
+    #     分群交集吃別名(台積電/TSMC 併群)。探針同批加 `_edge_packet()`。
+    "evidence_schema_version":  (15, "5192578f7de536d9"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -425,7 +485,11 @@ _FROZEN = {
     # v17(第二十一輪):key_driver 要與引用的 claim 方向同向且證據
     #     有交集(P1-5);horizon 訊息與程式同向(P1-6);佐證 caveat 的
     #     布林錯誤(P2-4);標的判準改「證據裡的人」不看大小寫(P1-9)。
-    "grounding_version":        (17, "98954f69ba68ab4d"),
+    # v18(第二十二輪):key_driver 判準合一 —— **同一條 claim** 要同時
+    #     同向且共享證據(P1-4 split-quantifier);標的判準加概念詞
+    #     黑名單、ASCII token 邊界、中文名也要在證據裡(P1-6)。
+    #     案例加 `_split_quantifier()`、探針加 `_asset_probes()`。
+    "grounding_version":        (18, "881d1a4acf9de977"),
 }
 
 

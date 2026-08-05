@@ -72,14 +72,18 @@ def test_a_key_driver_cannot_contradict_its_cited_claim():
     而引用的稽核主張全是 bullish 時,讀者最先看到的就是矛盾。"""
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["direction"] = "bearish"
-    hits = [p for p in sch.validate(obj, _IDS) if "key_drivers[0] 的方向" in p]
-    assert hits and "bearish" in hits[0], hits
+    # 第二十二輪 P1-4:改成**同一條 claim 要同時**同向且共享證據 ——
+    # 訊息跟著換。
+    hits = [p for p in sch.validate(obj, _IDS)
+            if "沒有一條**同時**同向且共享證據" in p]
+    assert hits, hits
 
 
 def test_a_key_driver_must_share_evidence_with_its_claim():
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["evidence_ids"] = ["n2"]      # c1 的證據是 n1
-    assert [p for p in sch.validate(obj, _IDS) if "沒有共同證據" in p]
+    assert [p for p in sch.validate(obj, _IDS)
+            if "沒有一條**同時**同向且共享證據" in p]
 
 
 def test_a_conservative_downgrade_still_requires_a_caveat():
@@ -127,11 +131,16 @@ def test_the_clustering_representative_survives_truncation():
 
 
 def test_a_continuing_event_connects_through_an_alias():
-    """**P2-8**:timeline 存「伊朗」而今天的報導寫「德黑蘭」——
-    精確比對接不上,事件顯示成第 0 天,模型又從頭講一次背景。"""
-    pk = ep.build({"EVENT_TIMELINE": [{"entity": "伊朗", "days": 4}]},
-                  {}, {}, [{"source_item_id": "n1", "title": "德黑蘭談判傳進展",
-                            "entities": ["德黑蘭"], "source": "鉅亨"}],
+    """**P2-8**:timeline 存「台積電」而今天的報導寫「TSMC」——
+    精確比對接不上,事件顯示成第 0 天,模型又從頭講一次背景。
+
+    第二十二輪 P1-9:**國家/首都組已整批拿掉**(「伊朗戰事」與
+    「德黑蘭地震」是兩件事)—— 反例改用公司別名,那才是安全的組。
+    """
+    pk = ep.build({"EVENT_TIMELINE": [{"entity": "台積電", "days": 4}]},
+                  {}, {}, [{"source_item_id": "n1",
+                            "title": "TSMC 熊本廠恢復產線運作",
+                            "entities": ["TSMC"], "source": "鉅亨"}],
                   [], {}, as_of="x", target_session_date="y", sanitize=str)
     assert pk["news_clusters"]["clusters"][0]["continuing_days"] == 4
 
@@ -141,6 +150,8 @@ def test_aliases_never_bridge_two_different_subjects():
     而它們是兩家公司;不在表裡的名字不產生任何組。"""
     assert ea.same("台達電", ea.expand({"台積電"})) is False
     assert ea.group_of("完全不在表裡") == -1
+    # 國家/首都不再是別名 —— 「伊朗」對「德黑蘭」不得接上
+    assert ea.group_of("伊朗") == -1 and ea.group_of("德黑蘭") == -1
     pk = ep.build({"EVENT_TIMELINE": [{"entity": "伊朗", "days": 4}]},
                   {}, {}, [{"source_item_id": "n1", "title": "聯發科法說",
                             "entities": ["聯發科"], "source": "經濟日報"}],
@@ -188,10 +199,17 @@ def test_backoff_respects_an_absolute_deadline():
     lh.requests = types.SimpleNamespace(post=_post)
     lh.time = types.SimpleNamespace(sleep=lambda s: clock.__setitem__(0, clock[0] + s),
                                     monotonic=lambda: clock[0])
-    lh.post_with_backoff("u", {}, {}, timeout=100, deadline=120)
-    # 預算 120 秒:第一次 50 秒 + 退避後至多再一兩次,**不會四次全跑**
+    lh.post_with_backoff("u", {}, {}, timeout=100, deadline_at=120.0)
+    # **絕對時間戳**(第二十二輪 P1-7):最後一次動作結束不得超過
+    # deadline —— 上一版只數呼叫次數,145 秒超過 120 秒照樣綠。
+    assert clock[0] <= 120.0 + 100.0, clock  # 最後一次 request 可跨線
     assert len(calls) <= 3, calls
     assert all(t <= 100 for t in calls)
+    # 進來就過期 → 一次都不打
+    calls.clear()
+    clock[0] = 500.0
+    r = lh.post_with_backoff("u", {}, {}, timeout=100, deadline_at=120.0)
+    assert r is None and calls == [], "過期之後還在送請求"
 
 
 def test_retry_after_understands_http_dates():

@@ -51,6 +51,13 @@ def _is_generic_asset(aid: str) -> bool:
 #: 台股代號的形狀(2330、00662、6510A)。
 _TW_CODE = _re.compile(r"[0-9]{4,6}[A-Z]?")
 
+#: **產品與技術概念** —— 在新聞標題出現的頻率極高,「出現在證據裡」
+#: 對它們永遠成立;而它們永遠不是可交易標的(第二十二輪 P1-6)。
+_CONCEPT_TERMS = frozenset({
+    "ai", "gpu", "cpu", "chip", "chips", "hbm", "asic", "ml", "llm",
+    "cowos", "ev", "5g", "iot", "cloud", "saas", "api", "ar", "vr",
+})
+
 
 def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     """**大寫字母的「標的」要是證據裡的人**(第二十輪 P2-4 的收尾)。
@@ -64,14 +71,36 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     a = str(aid or "").strip()
     if not a or a in _KNOWN_ASSETS:
         return False
+    # 第二十二輪 P1-6:**產品概念永遠不是可交易標的** —— 即使標題就叫
+    # 「GPU demand accelerates」。這些詞在標題出現的頻率極高,
+    # 「在證據裡」這個判準對它們永遠成立,等於沒有判準。
+    if a.lower() in _CONCEPT_TERMS:
+        return True
     ents = {str(e) for e in ((news_item or {}).get("entities") or [])}
     title = str((news_item or {}).get("title") or "")
+    body = title + " " + str((news_item or {}).get("summary") or "")
     # 第二十一輪 P1-9:**大小寫不是判準。** 上一版只檢查
     # `a.isupper()` —— `gpu`、`Ai`、`chip` 全部繞過。
     # 判準是「這個字在證據裡出現過嗎」,而比對要忽略大小寫。
     low = a.lower()
-    if any(low == str(e).lower() for e in ents) or low in title.lower():
-        return False
+    if a.isascii() and not _TW_CODE.fullmatch(a):
+        if any(low == str(e).lower() for e in ents):
+            return False
+        # **token 邊界,不是裸子字串**(第二十二輪 P1-6):
+        # `Ai` 曾因藏在 `Taiwan` 裡被放行。
+        if _re.search(r"(?<![A-Za-z0-9])" + _re.escape(low)
+                      + r"(?![A-Za-z0-9])", body, _re.IGNORECASE):
+            return False
+        return True
+    if not a.isascii():
+        # 中文名稱同樣要在證據裡 —— 上一版對非 ASCII 一律放行,
+        # 於是 AMD 新聞可以掛「華碩」當受影響標的。
+        if any(a in str(e) or str(e) in a for e in ents) or a in body:
+            return False
+        import entity_alias as _ea
+        if _ea.same(a, _ea.expand(ents)):
+            return False
+        return True
     if _TW_CODE.fullmatch(a):
         # 台股代號:**要真的在今天的資料裡**。先前任何 4–6 位數都放行,
         # 於是 `999999`、`12345A` 這種不存在的代號冒充逐標的分析。
@@ -79,9 +108,12 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
             return False
         known = {str(x.get("code") or "")
                  for x in (packet.get("tw_universe") or []) if isinstance(x, dict)}
-        if a in known or a in title or any(a in str(e) for e in ents):
+        if a in known or a in body or any(a in str(e) for e in ents):
             return False
-        # universe 抓不到時不判(降級不誤擋) —— 說得出自己驗不了什麼
+        import entity_alias as _ea
+        if _ea.same(a, _ea.expand(ents)):
+            return False               # 2317 的新聞實體寫「鴻海」
+        # universe 抓不到時不擋(降級不誤擋),但那是**沒驗**不是驗過
         return bool(known)
     if not a.isascii():
         return False                    # 中文名稱交給泛稱檢查

@@ -31,8 +31,10 @@ from typing import Optional
 
 import llm_telemetry as _lt
 import app_context as _app
+import econ_terms as _et
 import llm_http as _lh
 import payload_budget as _pb
+import policy_scope as _ps
 import prompt_profiles as _pp
 import evidence_packet as _ep
 import experiment_record as _er
@@ -11077,8 +11079,11 @@ def _format_event_scenarios(calendar: Optional[list],
             continue
         note = str(e.get("note") or "").strip()
         t = str(e.get("time") or "").strip()
-        rows.append(f"- {d.isoformat()} {t}｜{str(e.get('title', '')).strip()}"
-                    + (f"（{note}）" if note else ""))
+        # 事件名先翻成「中文（英文）」再進 prompt —— 模型看到什麼就抄什麼,
+        # 而使用者反映「未來 48 小時裡面也都有英文」(2026-08-05)。
+        rows.append(f"- {d.isoformat()} {t}｜"
+                    f"{_et.annotate(str(e.get('title', '')).strip())}"
+                    + (f"（{_et.annotate(note)}）" if note else ""))
         if len(rows) >= 6:
             break
     return "\n".join(rows) if rows else "（未來 48 小時無重大排程事件）"
@@ -11380,7 +11385,8 @@ def _format_policy_deepdive_block(intel: Optional[dict]) -> str:
     hot = [it for it in items
            if isinstance(it, dict)
            and safe_float(it.get("importance")) is not None
-           and safe_float(it.get("importance")) >= TW_POLICY_DEEPDIVE_MIN_SCORE]
+           and safe_float(it.get("importance")) >= TW_POLICY_DEEPDIVE_MIN_SCORE
+           and not _ps.is_out_of_area_local_policy(it)]
     if not hot:
         return ""
     # 同一政策的多則報導聚合。timeline_key 格式為 kind:topic:anchor:entity。

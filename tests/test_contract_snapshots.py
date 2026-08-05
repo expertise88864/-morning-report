@@ -362,8 +362,12 @@ _FROZEN = {
     # v19:`calibration:` 與 `quality:` 不再列為量化錨點 ——
     #      它們是關於**本報自己**的數字(校準、涵蓋度),
     #      不是市場量級。用它們錨住因果鏈是把儀表板當證據。
-    "primary_profile_version":  (19, "327f32830537d86e"),
-    "shadow_profile_version":   (6, "27c0be1da4981f4e"),
+    # v20(2026-08-05 使用者七項回饋):三大重點要「事件」不是行情、
+    #      七之二與八/九段的四個必答問題、內部試算不進信、
+    #      政策取材以中彰投雲為主。
+    "primary_profile_version":  (20, "327f32830537d86e"),
+    # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
+    "shadow_profile_version":   (7, "27619c45c92d2128"),
     "postprocess_version":      (1, "5791421fb8cd7a67"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /

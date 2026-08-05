@@ -44,7 +44,7 @@ import writing_rules as _wr
 #: v5(2026-08-04):R17(Python 排好的表要被合起來解讀)+ 七之二要傳導路徑。
 #: v6(同日):方向形容詞不是分析 —— 量級/時間取代方向詞、跨條連結、
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
-DEEPSEEK_LEGACY_VERSION = 6
+DEEPSEEK_LEGACY_VERSION = 7
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -61,7 +61,7 @@ DEEPSEEK_LEGACY_VERSION = 6
 #: v10(第十七輪):張力改一對一 `tension_resolutions`(點名不等於處理)、
 #: mechanism step 要標 stage 且高重要性要走到財務層、巢狀 market ID、
 #: stale/unavailable 要進 data_gaps。
-LUNA_XHIGH_VERSION = 19
+LUNA_XHIGH_VERSION = 20
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。

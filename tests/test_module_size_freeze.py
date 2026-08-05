@@ -258,6 +258,11 @@ MODULE_CEILINGS = {
     # (驗證器、飽和率、加深保存、渲染)各自維護,schema 加了新段落之後
     # 只有驗證器知道。
     "claim_map.py": 110,
+    # 2026-08-05 使用者回饋:信裡的財經專有名詞要先講中文。這些字串
+    # **不是模型寫的** —— 財經日曆由 Python 直接排進 HTML。
+    "econ_terms.py": 180,
+    # 同一批:別縣市的單一場所規章不該佔一個政策版位。
+    "policy_scope.py": 60,
     # 第二十輪 P2-6:證據命名空間的單一宣告。prompt、schema 說明、
     # Python advisory 先前三邊各說各話,模型收到互相矛盾的規則。
     "evidence_namespaces.py": 80,

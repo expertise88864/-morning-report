@@ -580,8 +580,20 @@ def _render_model_evidence_html(quotes: dict) -> str:
 
 
 def _render_event_calendar_html(events: list[dict]) -> str:
+    """未來 7 天風險事件。
+
+    2026-08-05 使用者第四次反映信裡有英文:「什麼是 AVERAGE HOURLY
+    EARNINGS M/M、non-farm employment change、unemployment rate」。
+    這些字串**不是模型寫的** —— ForexFactory 的日曆由 Python 直接排進
+    HTML,prompt 改再多也碰不到。一律「中文（英文原名）」:英文保留是
+    刻意的,使用者要對得上外電與看盤軟體。
+    """
+    import econ_terms as _et
     if not events:
         return ""
+    events = [dict(e, title=_et.annotate(str(e.get("title") or "")),
+                   note=_et.annotate(str(e.get("note") or "")))
+              for e in events]
     rows = "".join(
         f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;"
         f"font-weight:700;white-space:nowrap;font-size:13px;'>"

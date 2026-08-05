@@ -106,10 +106,11 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     return kept, trunc, info
 
 
-#: 每個必分析事件群強制保留幾則。**兩則**:定義 `cluster_id` 的那則
-#: (最小 ID,否則群的身分會在截斷後改變)以及官方那則(如果不同)。
+#: 每個必分析事件群強制保留幾則。**三則**:分群時選中的代表
+#: (資訊最完整的那一則)、定義 `cluster_id` 的那則(最小 ID,
+#: 否則群的身分會在截斷後改變)、以及官方那則。
 #: 全部保留會讓一個 20 則的群吃掉十分之一的額度。
-_FORCED_PER_CLUSTER = 2
+_FORCED_PER_CLUSTER = 3
 
 
 def _forced_ids(items: list, info: dict) -> set:
@@ -121,10 +122,18 @@ def _forced_ids(items: list, info: dict) -> set:
         if c.get("cluster_id") not in need:
             continue
         members = list(c.get("member_source_ids") or ())
-        # 最小 ID 決定 `cluster_id`,一定要留;官方那則是這個群之所以
-        # 被列為必分析的原因,也要留。
-        keep = members[:1] + [m for m in members
-                              if (by_id.get(m) or {}).get("official")]
+        # **保留的要是分群時真正選中的代表**(第二十一輪 P1-7),
+        # 不是最小 ID —— 後者可能是那個「短而模糊」的標題。
+        # `cluster_id` 由最小 ID 決定,所以它也要留(群的身分不能變);
+        # 官方那則是這個群之所以被列為必分析的原因,同樣要留。
+        rep = str(c.get("representative_source_id") or "")
+        candidates = ([rep] if rep in members else []) + members[:1] + [
+            m for m in members if (by_id.get(m) or {}).get("official")]
+        keep, seen_keep = [], set()
+        for m in candidates:
+            if m not in seen_keep:
+                seen_keep.add(m)
+                keep.append(m)
         out.update(keep[:_FORCED_PER_CLUSTER])
     return out
 

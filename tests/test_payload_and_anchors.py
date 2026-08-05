@@ -38,9 +38,9 @@ def _packet(**over) -> dict:
 def test_an_oversized_packet_is_trimmed_before_it_is_sent():
     """**2.0 MB 的請求連進佇列的資格都沒有。**"""
     big = "公報全文 " * 60_000                       # ≈ 0.4 MB
-    pk = _packet(quotes={"HISTORY": {"rows": [big]},
+    pk = _packet(quotes={"HISTORY": {"rows": [big * 2]},        # 最大
                          "GAZETTE_RECORDS": {"docs": [big]},
-                         "TW_DAILY_INTELLIGENCE": {"items": [big]}})
+                         "TW_DAILY_INTELLIGENCE": {"items": [big[:1000]]}})
     trimmed, report = pb.trim(pk, limit=200_000)
     assert report["chars_before"] > 200_000
     assert report["chars_after"] <= 200_000, report
@@ -61,12 +61,21 @@ def test_trimming_never_touches_the_analysis_raw_material():
 
 
 def test_a_trimmed_block_leaves_a_trace():
-    """**靜默截斷會讓「今天沒有公報」與「公報被裁掉了」長得一模一樣。**"""
+    """**靜默截斷會讓「今天沒有公報」與「公報被裁掉了」長得一模一樣。**
+
+    第二十一輪 P1-3:痕跡**不能留在 `market` 裡** —— registry 會把那個
+    `omitted_for_size` 數字註冊成可推論的證據,甚至量化錨點。
+    改成:區塊整個拿掉、`required_disclosures` 記一筆 gap。
+    """
     big = "公報 " * 80_000
     pk = _packet(quotes={"GAZETTE_RECORDS": {"docs": [big]}})
     trimmed, report = pb.trim(pk, limit=50_000)
-    assert trimmed["market"]["GAZETTE_RECORDS"] == {
-        "omitted_for_size": report["trimmed"][0]["chars"]}
+    assert "GAZETTE_RECORDS" not in trimmed["market"], "裁切標記留在證據區"
+    gap = "gap:payload_omitted:GAZETTE_RECORDS"
+    assert gap in trimmed["required_disclosures"], "被裁的區塊沒有變成必揭露缺口"
+    # **診斷數字不得進 registry**
+    import evidence_registry as er
+    assert not any("omitted" in k for k in er.registry(trimmed))
 
 
 def test_a_packet_within_budget_is_returned_untouched():
@@ -123,7 +132,8 @@ def test_a_rate_limit_is_retried_not_fatal():
         return _R(429 if len(seen) < 3 else 200)
     import types
     lh.requests = types.SimpleNamespace(post=_fake_post)
-    lh.time = types.SimpleNamespace(sleep=lambda _s: None)
+    lh.time = types.SimpleNamespace(sleep=lambda _s: None,
+                                    monotonic=lambda: 0.0)
     r = lh.post_with_backoff("u", {}, {}, timeout=10)
     assert r.status_code == 200 and len(seen) == 3, seen
 
@@ -139,7 +149,8 @@ def test_retries_are_bounded():
         headers = {"Retry-After": "9999"}
     waits = []
     lh.requests = types.SimpleNamespace(post=lambda *a, **k: _R())
-    lh.time = types.SimpleNamespace(sleep=waits.append)
+    lh.time = types.SimpleNamespace(sleep=waits.append,
+                                    monotonic=lambda: 0.0)
     r = lh.post_with_backoff("u", {}, {}, timeout=10)
     assert r.status_code == 503
     assert len(waits) == lh._LLM_RETRIES

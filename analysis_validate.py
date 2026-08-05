@@ -62,16 +62,29 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     「GPU」不會是任何新聞的實體。台股代號與已知指數/ETF 照舊放行。
     """
     a = str(aid or "").strip()
-    if not a or _TW_CODE.fullmatch(a) or a in _KNOWN_ASSETS:
+    if not a or a in _KNOWN_ASSETS:
         return False
-    if not a.isascii() or not a.isupper():
-        return False                    # 中文名稱交給泛稱檢查
     ents = {str(e) for e in ((news_item or {}).get("entities") or [])}
-    if a in ents:
+    title = str((news_item or {}).get("title") or "")
+    # 第二十一輪 P1-9:**大小寫不是判準。** 上一版只檢查
+    # `a.isupper()` —— `gpu`、`Ai`、`chip` 全部繞過。
+    # 判準是「這個字在證據裡出現過嗎」,而比對要忽略大小寫。
+    low = a.lower()
+    if any(low == str(e).lower() for e in ents) or low in title.lower():
         return False
-    # 該則新聞標題裡逐字出現也算(實體抽取會漏,標題不會說謊)
-    if a in str((news_item or {}).get("title") or ""):
-        return False
+    if _TW_CODE.fullmatch(a):
+        # 台股代號:**要真的在今天的資料裡**。先前任何 4–6 位數都放行,
+        # 於是 `999999`、`12345A` 這種不存在的代號冒充逐標的分析。
+        if packet is None:
+            return False
+        known = {str(x.get("code") or "")
+                 for x in (packet.get("tw_universe") or []) if isinstance(x, dict)}
+        if a in known or a in title or any(a in str(e) for e in ents):
+            return False
+        # universe 抓不到時不判(降級不誤擋) —— 說得出自己驗不了什麼
+        return bool(known)
+    if not a.isascii():
+        return False                    # 中文名稱交給泛稱檢查
     return True
 
 # `STANCE_LABELS` 在函式內延遲取用 —— `analysis_schema` 的尾端會反向
@@ -245,7 +258,12 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where} 的佐證等級寫 {got!r},而本報算出來只有 {want!r}"
                     " —— 這一格是資料說了算,不得往上寫")
-            if (want or got) in ("single_source", "unverified"):
+            # 第二十一輪 P2-4:**`want or got` 是布林短路,不是聯集。**
+            # want=multi_source、got=single_source 時取到 multi_source,
+            # 於是保守降級的那則不要求 caveat —— 而 renderer 仍然把它
+            # 印成「僅單一來源」,讀者看到警語卻沒有看到該保留什麼。
+            _weak = {"single_source", "unverified"}
+            if want in _weak or got in _weak:
                 cav = str(n.get("source_caveat") or "").strip()
                 if not cav or cav in ("無", "無。", "N/A", "none"):
                     problems.append(

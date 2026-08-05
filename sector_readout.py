@@ -47,16 +47,21 @@ def readout(sector_heat: Optional[dict]) -> str:
                   if (_num(m.get("pct")) or 0) <= -_MIN_LEADER_DROP]
     if med is not None and med > 0 and down_leads:
         names = "、".join(f"{m.get('code')}{m.get('name')}" for m in down_leads[:2])
+        # 第二十一輪 P2-6:**輸入撐不起「買盤在中小型」這個因果結論** ——
+        # 非 leader 未必是中小型,而且這一段直接進 HTML,不經 claim 稽核。
+        # 只描述表上看得到的事:漲勢不是這兩檔權值帶的。
         bits.append(f"{top_name}中位上漲而權值領頭{names}收黑,"
-                    "買盤在中小型、不在龍頭")
+                    "漲勢並非由這兩檔權值股主導")
     elif med is not None and med < 0 and leaders and all(
             (_num(m.get("pct")) or 0) >= _MIN_LEADER_DROP for m in leaders[:2]):
-        bits.append(f"{top_name}權值領頭撐盤而中位下跌,漲的只有龍頭")
+        bits.append(f"{top_name}權值領頭收紅而中位下跌,類股內部分化")
 
     # 2. 集中度:單一類股吃掉超過門檻的成交。
     share = _num(top.get("value_share_pct"))
     if share is not None and share >= CONCENTRATION_PCT:
-        bits.append(f"成交{share:.0f}%集中在{top_name},其餘類股量能被抽走")
+        # 同上:「被抽走」是因果宣稱(其他類股的量可能同時擴張)。
+        # 只說分布,不說成因。
+        bits.append(f"該類股占全市場成交{share:.0f}%,成交分布高度集中")
 
     if not bits:
         return ""

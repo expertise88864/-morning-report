@@ -72,7 +72,12 @@ HORIZON_ORDER = ("intraday", "1-5d", "1-4w")
 
 
 def horizon_covers(section_horizon: str, claim_horizon: str) -> bool:
-    """這條主張的時間尺度**撐得起**這一段嗎(第二十輪 P1-5)。"""
+    """這條主張的時間尺度**撐得起**這一段嗎(第二十輪 P1-5)。
+
+    相容 = `claim_horizon` **不短於** `section_horizon`。
+    第二十一輪 P1-6 指出程式、註解與錯誤訊息互相矛盾 —— 三者現在
+    都說同一件事:**段落宣告了一個期間,就要有主張講到那個期間**。
+    """
     try:
         want = HORIZON_ORDER.index(str(section_horizon))
         got = HORIZON_ORDER.index(str(claim_horizon))

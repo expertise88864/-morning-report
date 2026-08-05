@@ -152,7 +152,9 @@ def _claim_fingerprint(c) -> str:
     """一條主張的**全部判斷內容**。ID 不變而內容換掉,是換一份報告。"""
     return ":".join(str(c.get(k) or "") for k in (
         "claim_id", "statement", "claim_type", "direction", "materiality",
-        "horizon", "falsification_trigger")) + ":" + ",".join(
+        # 第二十一輪 P1-8:`confidence` 先前不在身分裡 ——
+        # 0.9 → 0.2 而其餘不變時,第二版照樣可以勝出。
+        "confidence", "horizon", "falsification_trigger")) + ":" + ",".join(
         sorted(map(str, c.get("evidence_ids") or []))) + ":" + ",".join(
         sorted(map(str, c.get("asset_scope") or [])))
 
@@ -192,9 +194,12 @@ def _identity(obj) -> dict:
         # bullish→bearish、量級 moderate→negligible —— ID 集合完全相同,
         # 第二版照樣勝出。**加深是把同一個判斷說得更清楚,不是換判斷**,
         # 所以身分要含方向/量級/時間 —— 改任何一格都是換了一個結論。
+        # 第二十一輪 P1-8:`second_order_effect` 也會渲染進信 ——
+        # 改成相反方向而其餘不變時,先前完全看不出來。
         "拆過的標的": {f"{n.get('source_item_id')}:{a.get('asset_id')}:"
                   f"{a.get('direction')}:{a.get('magnitude_band')}:"
                   f"{a.get('horizon')}:{a.get('first_order_effect')}:"
+                  f"{a.get('second_order_effect')}:"
                   f"{','.join(sorted(map(str, a.get('evidence_ids') or [])))}"
                   for n in news for a in (n.get("affected_assets") or [])
                   if isinstance(a, dict) and a.get("asset_id")},
@@ -247,12 +252,18 @@ _MATERIALITY_RANK = {"low": 0, "medium": 1, "high": 2}
 
 #: 說得出來的東西**不得在加深後說不出來**。這些欄位由有變無,是實質退步,
 #: 而它會讓報告看起來更乾淨(少了一堆但書)—— 最難察覺的那種。
+#: 第二十一輪 P1-8:`source_caveat`(單一來源的保留事項)與
+#: `why_it_matters` 都會渲染進信,先前不在保護範圍內。
 _NEWS_KEPT = ("horizon", "confirmation_signal", "invalidation_signal",
-              "why_this_magnitude")
+              "why_this_magnitude", "source_caveat", "why_it_matters")
 
 #: 立場信心的單次漂移上限。加深是把同一個判斷說得更清楚,不是換一個判斷 ——
 #: 0.35 → 0.95 不可能是「補了幾條因果鏈」帶來的。**本模組自訂。**
 _CONFIDENCE_DRIFT = 0.25
+
+#: 佐證等級由弱到強。加深**不得往上調** —— 讓讀者高估可信度。
+_CORROBORATION_RANK = {"unverified": 0, "single_source": 1,
+                       "multi_source": 2, "official": 3}
 
 
 def _news_identity(obj) -> dict:
@@ -263,6 +274,8 @@ def _news_identity(obj) -> dict:
             continue
         out[str(n.get("source_item_id") or "")] = {
             "materiality": str(n.get("materiality") or ""),
+            "direction": str(n.get("direction") or ""),
+            "corroboration": str(n.get("corroboration_assessment") or ""),
             "magnitude_known": n.get("magnitude_band") not in (None, "", "unknown"),
             "said": {k for k in _NEWS_KEPT if str(n.get(k) or "").strip()},
         }
@@ -277,6 +290,13 @@ def news_regressions(before, after) -> list:
         a = ia.get(sid)
         if a is None:            # 整則不見 —— 由集合層的「弄丟新聞」負責
             continue
+        # 佐證等級不得被往上調(那會讓讀者高估可信度)。
+        if b.get("corroboration") and a.get("corroboration") and                 _CORROBORATION_RANK.get(a["corroboration"], 0) >                 _CORROBORATION_RANK.get(b["corroboration"], 0):
+            bad.append(f"{sid} 的佐證等級被調高("
+                       f"{b['corroboration']} → {a['corroboration']})")
+        if b.get("direction") and a.get("direction")                 and b["direction"] != a["direction"]:
+            bad.append(f"{sid} 的方向被改掉({b['direction']} → {a['direction']})"
+                       " —— 加深不該改判斷")
         rb = _MATERIALITY_RANK.get(b["materiality"], -1)
         ra = _MATERIALITY_RANK.get(a["materiality"], -1)
         if rb >= 0 and ra >= 0 and ra < rb:

@@ -196,15 +196,15 @@ def _claim_graph_problems(obj) -> list:
         if not cited and claims:
             out.append(f"{sec} 沒有回指任何 claim —— "
                        "說不出這一段靠哪幾條主張,稽核就只是裝飾")
-    # **回指要連對,不只是連上。** 相容 = 主張的尺度**不長於**段落的尺度:
-    # 短證據支撐長判斷合理,拿 1-4 週的主張支撐 intraday 的觀察點不合理。
-    # (先前 `stance` 那一格要求完全相等 —— 那條太嚴,把合理的也擋了。)
+    # **回指要連對,不只是連上。** 相容 = 主張的尺度**不短於**段落的
+    # 尺度:段落宣告了一個期間,就要有主張講到那個期間。
+    # (第二十一輪 P1-6:上一版的註解寫反了,與程式和錯誤訊息矛盾。)
     for sec, want in _section_horizons(obj).items():
         cited = [by_id[x] for x in mappings.get(sec, ()) if x in by_id]
         if want and cited and not any(
                 _cm.horizon_covers(want, c.get("horizon")) for c in cited):
             out.append(
-                f"{sec} 的時間尺度是 {want},而它引用的主張全都比它更長"
+                f"{sec} 的時間尺度是 {want},而它引用的主張全都比它更短"
                 f"({sorted({str(c.get('horizon')) for c in cited})})")
     for c in claims:
         cid = str(c.get("claim_id") or "")
@@ -216,6 +216,28 @@ def _claim_graph_problems(obj) -> list:
             if a != "market-wide" and a in _GENERIC_SCOPE:
                 out.append(f"claim_audit[{cid}] 的 asset_scope {a!r} 是泛稱 ——"
                            "整體市場級別請寫 `market-wide`")
+    # 第二十一輪 P1-5:**key driver 進了 claim 圖,卻仍可與它引用的
+    # claim 完全矛盾** —— 而那是 Email 最先看到的「昨夜三大重點」。
+    # 逐條比對方向:引用的主張裡要有一條與這條重點同向。
+    for i, d in enumerate(obj.get("key_drivers") or []):
+        if not isinstance(d, dict):
+            continue
+        want_dir = str(d.get("direction") or "")
+        cited = [by_id[x] for x in (d.get("claim_ids") or []) if str(x) in by_id]
+        if want_dir and cited and not any(
+                str(c.get("direction") or "") == want_dir for c in cited):
+            out.append(
+                f"key_drivers[{i}] 的方向是 {want_dir},而它引用的主張"
+                f"沒有一條同向({sorted({str(c.get('direction')) for c in cited})})"
+                " —— 讀者最先看到的三條不能與稽核相反")
+        # 證據也要有交集:引用一條「講別件事」的主張,方向對上也沒有意義。
+        own = {str(x) for x in (d.get("evidence_ids") or [])}
+        if own and cited and not any(
+                own & {str(x) for x in (c.get("evidence_ids") or [])}
+                for c in cited):
+            out.append(
+                f"key_drivers[{i}] 與它引用的主張沒有共同證據 ——"
+                "回指要指向真的在講同一件事的那一條")
     # **孤兒主張**:寫進稽核卻沒有任何一段用到。它不是根據,是配菜。
     referenced = _cm.referenced_claim_ids(obj)
     for c in claims:

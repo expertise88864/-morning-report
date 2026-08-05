@@ -314,7 +314,11 @@ _FROZEN = {
     #     —— 最小 ID 會確定性 over-split(短而模糊的標題當代表)。
     # v13(深度優化第三批):事件群標 `continuing_days`(EVENT_TIMELINE
     #     的第 N 天接到分析單位上 —— 延續事件要寫增量不是重述)。
-    "evidence_schema_version":  (13, "084bea9e1d1f5d9f"),
+    # v14(第二十一輪):裁切標記不再留在 market(P1-3,先前會變成
+    #     量化錨點);trim 改依實際大小;被裁區塊變成必揭露缺口;
+    #     cluster 帶 representative 並在截斷時保留(P1-7);
+    #     延續事件用實體別名接上(P2-8);fact 跨 title/summary 去重(P2-2)。
+    "evidence_schema_version":  (14, "455052cc93c058a7"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -418,7 +422,10 @@ _FROZEN = {
     # v16(深度優化第三批):大寫字母的標的要是**該則新聞的實體** ——
     #     字串格式分不出「代號」與「概念」,證據分得出(AMD 在 AMD
     #     新聞的 entities 裡;GPU 不會是任何新聞的實體)。
-    "grounding_version":        (16, "98954f69ba68ab4d"),
+    # v17(第二十一輪):key_driver 要與引用的 claim 方向同向且證據
+    #     有交集(P1-5);horizon 訊息與程式同向(P1-6);佐證 caveat 的
+    #     布林錯誤(P2-4);標的判準改「證據裡的人」不看大小寫(P1-9)。
+    "grounding_version":        (17, "98954f69ba68ab4d"),
 }
 
 

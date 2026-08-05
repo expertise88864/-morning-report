@@ -114,6 +114,11 @@ def clusters(news: Optional[list]) -> list:
         srcs = sorted({str(m.get("source") or "") for m in g} - {""})
         out.append({
             "cluster_id": f"cluster:{ids[0]}",
+            # 第二十一輪 P1-7:**分群用的代表與截斷保留的不是同一則。**
+            # 分群靠 `g[0]`(官方優先、其次資訊量高)成功合併,而截斷
+            # 保留 `members[:1]`(最小 ID)—— 新聞超過 220 則時,
+            # 模型可能只看到最模糊的那一則。代表要寫進輸出。
+            "representative_source_id": str(g[0].get("source_item_id")),
             "member_source_ids": ids,
             "sources": srcs,
             # **官方公告與 A 級媒體不是同一件事。** 先前 `official` 把兩者

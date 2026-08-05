@@ -90,16 +90,14 @@ def facts_for_item(item: Optional[dict]) -> list:
     """一則(已消毒的)新聞的數字事實。**標題優先** —— 標題裡的數字
     是編輯挑過的重點,摘要接在後面補。"""
     it = item if isinstance(item, dict) else {}
-    combined = extract(str(it.get("title") or ""))
-    seen = {(f["value"], f["unit"]) for f in combined}
-    for f in extract(str(it.get("summary") or "")):
-        if (f["value"], f["unit"]) in seen:
-            continue
-        seen.add((f["value"], f["unit"]))
-        combined.append(f)
-        if len(combined) >= MAX_FACTS_PER_ITEM:
-            break
-    return combined
+    # 第二十一輪 P2-2:**跨 title/summary 的去重先前退回 (值, 單位)** ——
+    # 標題「營收 80 億美元」與摘要「資本支出 80 億美元」是兩個事實,
+    # 而第二個會消失。改成把兩段接起來一次抽:語境鍵在同一次掃描裡
+    # 生效,兩段之間用句號斷開(語境不會互相污染)。
+    title = str(it.get("title") or "").strip()
+    summary = str(it.get("summary") or "").strip()
+    joined = title + ("。" if title and summary else "") + summary
+    return extract(joined)
 
 
 def title_fingerprint(source: str, title: str) -> tuple:

@@ -13878,7 +13878,8 @@ def _call_openai_responses(payload: dict) -> dict:
     for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
         r = _lh.post_with_backoff(url, body, headers,
                                   timeout=_llm_request_timeout(),
-                                  manifest=_RUN_MANIFEST)
+                                  manifest=_RUN_MANIFEST,
+                                  deadline=LLM_TOTAL_TIMEOUT_SECONDS)
         if r.status_code != 400:
             r.raise_for_status()
             return r.json()
@@ -13919,11 +13920,14 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     # 文字區塊(公報、事件、政策情報、歷史)一個都沒有:
     # **每一塊都有人負責,總和沒有人負責。**
     packet, _budget = _pb.trim(packet)
+    # **報告一律進 manifest**(第二十一輪 P1-2):先前只在有裁東西時才記,
+    # 於是「超標來源全是不可裁的區塊」那一天,manifest 上什麼都看不到。
+    _RUN_MANIFEST.setdefault("llm", {})["payload_budget"] = _budget
     if _budget["trimmed"]:
-        _RUN_MANIFEST.setdefault("llm", {})["payload_budget"] = _budget
         print(f"[llm] payload {_budget['chars_before']} 字元超出預算,"
               f"裁掉 {len(_budget['trimmed'])} 個背景區塊 → "
               f"{_budget['chars_after']}", file=sys.stderr)
+    _pb.gate(_budget)   # 硬閘門:裁完仍超標就放棄特化(見 payload_budget)
     bundle = _pp.build_luna_bundle(packet)
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
         _pp.bundle_debug_json(bundle))

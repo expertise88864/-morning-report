@@ -192,16 +192,27 @@ def _shallow():
 
 
 def test_deepen_cannot_flip_a_claim_direction():
-    """**ID 不變而 direction 翻面,是換一份報告。**"""
+    """**ID 不變而 direction 翻面,是換一份報告。**
+
+    key_driver 的方向相容檢查(第二十一輪 P1-5)會先擋住單獨翻 claim
+    的版本 —— 反例要**整組同翻**保持合法,身分保存才是被測的那一條。
+    """
     deep = fx.valid_analysis()
     deep["claim_audit"][0]["direction"] = "bearish"
+    deep["key_drivers"][0]["direction"] = "bearish"
+    assert sch.validate(deep, _IDS) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep, evidence_ids=_IDS)
     assert not ok and "稽核過的主張" in why, why
 
 
 def test_deepen_cannot_swap_a_claims_evidence():
+    """反例要**只**違反身分保存 —— 換掉 c1 的證據會讓 key_driver 的
+    證據交集檢查先紅(第二十一輪 P1-5 加的),所以 key_driver 同步換,
+    讓第二版完全合法。"""
     deep = fx.valid_analysis()
     deep["claim_audit"][0]["evidence_ids"] = ["n2"]
+    deep["key_drivers"][0]["evidence_ids"] = ["n2"]
+    assert sch.validate(deep, _IDS) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep, evidence_ids=_IDS)
     assert not ok and "稽核過的主張" in why, why
 

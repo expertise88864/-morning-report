@@ -27,9 +27,14 @@ _HEAT_0805 = {
 def test_the_real_0805_divergence_is_called_out():
     """**衝突不講出來就會被當成一致。** 用實信的真實數字釘住。"""
     out = sr.readout(_HEAT_0805)
-    assert "買盤在中小型、不在龍頭" in out, out
+    # 第二十一輪 P2-6:**輸入撐不起「買盤在中小型」的因果宣稱** ——
+    # 非 leader 未必是中小型;「量能被抽走」也一樣(其他類股的量可能
+    # 同時擴張)。只說表上看得到的事。
+    assert "漲勢並非由這兩檔權值股主導" in out, out
     assert "2330台積電" in out
-    assert "40%集中在半導體業" in out, "集中度也要講"
+    assert "成交分布高度集中" in out, "集中度也要講(但不說成因)"
+    for banned in ("買盤在中小型", "被抽走"):
+        assert banned not in out, f"因果宣稱又回來了:{banned}"
 
 
 def test_agreement_means_silence():

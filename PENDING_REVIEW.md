@@ -1076,6 +1076,75 @@ entities 裡;GPU 不會是任何新聞的實體)。台股代號與已知指數�
 
 **驗證**:preflight exit 0、1940 passed、六個突變全紅。
 
+### 批#99 `(下一個 commit)` —— 第二十一輪 blockers(重構規格的 Commit A)
+外審 9 條 P1 + 8 條 P2,六條先實測成立;使用者同時交付完整重構規格,
+本批對應其 Commit A(先修 blockers)。
+
+**P1-2 payload 預算不是硬閘門(明早就會咬人)**:裁完仍超標照樣送 API,
+而且 `trimmed=[]` 時 manifest 什麼都不記。新增 `PayloadBudgetExceeded` +
+`payload_budget.gate()`,在**組 payload 之前**擋下;報告一律進 manifest。
+測試掃原始碼確認閘門位置在 `build_payload` 之前。
+
+**P1-3 裁切標記變成合法證據(荒謬但真實)**:`{"omitted_for_size": 185230}`
+留在 `market` 裡,registry 把它註冊成可推論的數字 —— 「裁掉了 18 萬字元」
+可以當**量化錨點**。改成整塊拿掉 + `gap:payload_omitted:<block>` 進
+必揭露缺口;**診斷資訊放診斷區,不放證據區**。
+
+**P2-3 trim 沒有真的由大到小**:照宣告順序砍,可能先刪三個小而有用的
+區塊。改依實際 `_size` 排序 —— 而突變驗證抓到**第一個反例的大小剛好與
+宣告順序一致,測不到排序**,反例要把大小反過來。
+
+**P1-4 遙測混側**:2026-08-05 的 `primary_telemetry` 顯示
+accepted_calls=1、95K tokens —— 那是 **legacy fallback writer** 的呼叫,
+不是特化分析。十天平均會得到「Luna 成本 = 特化失敗 + legacy 補寫」。
+`_side()` 加 `role_is_specialized`(由 `analysis_origin` 判定;
+shadow 是 None 不是 False)。
+
+**P1-5 key_driver 可與引用的 claim 完全矛盾**:「昨夜三大重點」寫
+bearish 而引用的稽核主張全是 bullish —— 讀者最先看到的就是矛盾。
+加方向同向 + 證據交集檢查。
+
+**P1-6 horizon 的程式、註解、訊息互相矛盾**:實際觸發條件是「主張太短」
+而錯誤訊息說「全都比它更長」。三者對齊(訊息改「更短」)。
+
+**P1-7 分群代表與截斷保留不是同一則**:分群靠 z999(資訊完整)合併,
+截斷保留 a001(最小 ID、最模糊)。cluster 輸出 `representative_source_id`,
+強制保留改為代表+ID 錨+官方(每群三則)。突變驗證抓到反例裡的代表
+剛好也是官方,被官方規則救回 —— 反例改成非官方三來源群。
+
+**P1-8 deepen 漏保**:claim `confidence`、新聞 `direction`/
+`corroboration_assessment`(不得往上調)/`source_caveat`/`why_it_matters`、
+標的 `second_order_effect` 全部進身分。
+
+**P1-9 標的判準被大小寫繞過**:`gpu`/`Ai` 不檢查、`999999` 放行。
+改成忽略大小寫比對證據;台股代號要在當日 universe/標題/實體裡
+(universe 缺席時不判,降級不誤擋)。
+
+**P2-4 布林錯誤**:`(want or got) in weak` 短路取到 multi_source ——
+保守降級的那則不要求 caveat,而 renderer 仍印「僅單一來源」。
+
+**P2-5 退避沒有總 deadline**:四次呼叫理論上可超過 LLM 總預算;
+`Retry-After` 的 HTTP-date 格式被忽略。加絕對 deadline + 兩種格式。
+
+**P2-6 sector readout 過度推論**:「買盤在中小型」「量能被抽走」是
+輸入撐不起的因果宣稱(而且這段不經 claim 稽核直接進 HTML)。
+改成「漲勢並非由這兩檔權值股主導」「成交分布高度集中」。
+
+**P2-8 延續事件加實體別名**(`entity_alias.py`):伊朗/德黑蘭、
+台積電/TSMC。刻意只做一張小表 —— 誤併比漏併危險。
+
+**外審應特別看的地方**:
+1. 十七個突變裡**八個第一次沒紅** —— 那些行為只有開發當下的 inline
+   驗證,沒有測試檔守著。inline 驗證跑完就消失;守得住回歸的只有
+   tests/ 裡的那份。這條教訓值得寫進 repo 規約。
+2. 別名表 14 組是我列的;`same()` 只認表內組合。
+3. deadline 測試用假時鐘;真實 requests 的 timeout 語意(連線+讀取)
+   與牆鐘不完全等價。
+4. **重構規格的 Commit B–F 尚未動工**(兩階段抓取、來源獨立性、
+   事件圖、聯合總經情境、Email 首屏重排)。
+
+**驗證**:preflight exit 0、1953 passed、九個突變全紅(補測試後)。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

@@ -46,7 +46,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: usable_for_inference),registry 改 typed(market:*、tension:*)。
 #: v4(第十七輪 P1-1/P1-4):registry 遞迴到巢狀葉節點、廣度張力分
 #: 「方向」與「強度」(59.7% 不是方向相反)、關係詞不再帶經濟解釋。
-EVIDENCE_SCHEMA_VERSION = 13
+EVIDENCE_SCHEMA_VERSION = 14
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -243,7 +243,16 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     def _days(c):
         ents = {str(e) for m in c["member_source_ids"]
                 for e in (by_id.get(m, {}).get("entities") or [])}
-        return max((d for e, d in timeline.items() if e in ents), default=0)
+        # 第二十一輪 P2-8:**精確比對接不上別名。** 「伊朗」與「德黑蘭」、
+        # 「台積電」與「TSMC」是同一件事的兩種寫法,而 timeline 存的是
+        # 抽取器當天用的那一個。標題也算 —— 實體抽取會漏,標題不會。
+        titles = " ".join(str(by_id.get(m, {}).get("title") or "")
+                          for m in c["member_source_ids"])
+        import entity_alias as _ea
+        keys = _ea.expand(ents)
+        return max((d for e, d in timeline.items()
+                    if e in ents or _ea.same(e, keys) or e in titles),
+                   default=0)
     packet["news_clusters"] = dict(
         cluster_info,
         clusters=[dict(c,

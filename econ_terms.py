@@ -87,7 +87,10 @@ _NORM = re.compile(r"[^a-z0-9/ ]+")
 
 
 def _key(text: str) -> str:
-    return _NORM.sub(" ", str(text or "").lower()).strip()
+    """**多個空白要壓成一個。** 第二十一輪 P2-7:regex 允許
+    `Non  Farm`、`Non - Farm`,而字典鍵只有單一空白 —— 於是 pattern
+    命中之後 `zh()` 又查不到,原樣返回。**兩邊的正規化要一致。**"""
+    return " ".join(_NORM.sub(" ", str(text or "").lower()).split())
 
 
 def zh(term: str, *, with_original: bool = True) -> str:

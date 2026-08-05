@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+"""**同一件事的兩種寫法**(第二十一輪 P2-8)。
+
+`EVENT_TIMELINE` 存的是抽取器**當天**用的那個實體名。隔天別家媒體寫
+「德黑蘭」而不是「伊朗」、寫 `TSMC` 而不是「台積電」時,精確比對就接不上
+—— 而接不上的症狀是「第 4 天的事件顯示成第 0 天」,模型於是又從頭
+講一次背景。
+
+**刻意只做一張小表。** 這裡不做模糊比對:「台積電」與「台達電」差一個字,
+而它們是兩家公司。**誤併比漏併危險**,所以只收互為官方別名的組合。
+"""
+from __future__ import annotations
+
+#: 每一組是同一個主體。**組內任兩個互為別名**,順序無意義。
+ALIAS_GROUPS = (
+    ("伊朗", "德黑蘭", "Iran", "Tehran"),
+    ("美國", "白宮", "華府", "US", "Washington"),
+    ("台積電", "TSMC", "2330", "台積"),
+    ("聯發科", "MediaTek", "2454"),
+    ("鴻海", "Foxconn", "2317"),
+    ("日月光", "ASE", "3711"),
+    ("聯電", "UMC", "2303"),
+    ("中國", "北京", "China", "Beijing"),
+    ("日本", "東京", "Japan", "Tokyo"),
+    ("以色列", "Israel"),
+    ("俄羅斯", "莫斯科", "Russia", "Moscow"),
+    ("聯準會", "Fed", "FOMC", "美聯儲"),
+    ("歐盟", "布魯塞爾", "EU"),
+    ("輝達", "NVIDIA", "Nvidia", "NVDA"),
+)
+
+#: `別名 → 組編號`。**一個別名只能屬於一組** —— 屬於兩組等於把兩個
+#: 主體接起來,而那是誤併。
+_INDEX: dict = {}
+for _i, _grp in enumerate(ALIAS_GROUPS):
+    for _name in _grp:
+        _INDEX.setdefault(str(_name), _i)
+
+
+def group_of(name) -> int:
+    """這個名字屬於哪一組(-1 = 不在表裡)。"""
+    return _INDEX.get(str(name or ""), -1)
+
+
+def expand(names) -> set:
+    """一組實體名 → 它們所屬的組編號集合。**不在表裡的不產生組**。"""
+    return {g for g in (group_of(n) for n in (names or ())) if g >= 0}
+
+
+def same(name, groups) -> bool:
+    """`name` 與這些組裡的任一個是同一個主體嗎。"""
+    g = group_of(name)
+    return g >= 0 and g in (groups or set())

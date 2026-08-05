@@ -90,13 +90,22 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
         return pk, report
 
     market = dict(pk.get("market") or {})
-    for name in TRIMMABLE_BLOCKS:
+    # 第二十一輪 P2-3:**先量再排,不是照固定順序砍。** 上一版依
+    # `TRIMMABLE_BLOCKS` 的宣告順序,可能先刪三個小而有用的區塊,
+    # 最後才碰到那個真正巨大的 —— 而模組說明自己寫著「由大到小裁」。
+    # **宣稱與實作又差一層。** 語意優先序留作同大小時的決勝。
+    order = sorted(
+        [n for n in TRIMMABLE_BLOCKS if n in market],
+        key=lambda n: (-_size(market[n]), TRIMMABLE_BLOCKS.index(n)))
+    for name in order:
         if _size(pk) <= limit:
             break
-        if name not in market:
-            continue
         cost = _size(market[name])
-        market[name] = {"omitted_for_size": cost}
+        # 第二十一輪 P1-3:**裁切標記不能留在 `market` 裡。**
+        # registry 會把 `market.*` 的數字葉節點全部註冊成可引用、
+        # 可推論的證據 —— 於是「裁掉了 185,230 字元」變成一個合法的
+        # **量化錨點**。診斷資訊放診斷區,不放證據區。
+        market.pop(name, None)
         pk["market"] = market
         report["trimmed"].append({"block": f"market.{name}", "chars": cost})
     pk["market"] = market
@@ -104,4 +113,29 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
     # **裁完仍超標要說出來。** 靜默放行等於讓明天再被 429 一次,
     # 而 manifest 上看不出原因。
     report["over_budget"] = report["chars_after"] > limit
+    if report["trimmed"]:
+        # 被裁掉的區塊要變成**必須揭露的缺口** —— 不然收件人會以為
+        # 今天沒有公報,而不是「公報沒有進到分析裡」。
+        pk["required_disclosures"] = dict(
+            pk.get("required_disclosures") or {},
+            **{f"gap:payload_omitted:{t['block'].split('.', 1)[-1]}":
+               f"這塊資料今天太大({t['chars']:,} 字元),沒有進到分析輸入"
+               for t in report["trimmed"]})
     return pk, report
+
+
+class PayloadBudgetExceeded(ValueError):
+    """裁完仍超標 —— 這個請求在結構上不可能成功,不得送出。"""
+
+
+def gate(report: dict) -> None:
+    """**硬閘門**(第二十一輪 P1-2)。裁完仍超標就放棄特化路徑 ——
+    2026-08-05 那次 2.7 秒就被 429 拒收;放它出去只會讓退避機制把
+    同一個無效請求重送四次,燒掉時間預算又什麼都沒得到。
+    (呼叫端會落回 legacy,信照樣寄得出去。)"""
+    import sys as _sys
+    if report.get("over_budget"):
+        print(f"[llm] payload 裁完仍有 {report['chars_after']:,} 字元"
+              f"(上限 {report['limit']:,}),放棄特化路徑", file=_sys.stderr)
+        raise PayloadBudgetExceeded(
+            f"payload over budget: {report['chars_after']} > {report['limit']}")

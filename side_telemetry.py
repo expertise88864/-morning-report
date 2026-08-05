@@ -53,7 +53,17 @@ def _num(v):
 
 
 def _side(llm: dict, role: str) -> dict:
-    """一側的當班實況:被接受的那次 + 被拒絕的嘗試(它們也要付錢)。"""
+    """一側的當班實況:被接受的那次 + 被拒絕的嘗試(它們也要付錢)。
+
+    第二十一輪 P1-4:**`primary` 混用了兩種概念** —— 實驗的特化側,
+    以及最後負責寄信的 provider。2026-08-05 那天 `primary_ok=false`、
+    `analysis_origin=legacy_fallback_after_luna_failure`,而
+    `primary_telemetry` 仍顯示 `accepted_calls=1`、95K prompt tokens:
+    那次被接受的呼叫是 **legacy writer**,不是特化分析。
+    十天後平均起來會得到「Luna 特化的成本 = 特化失敗 + legacy 補寫」,
+    而影子那側只有一次呼叫 —— 兩邊的基準根本不同。
+    這裡加 `role_is_specialized`,讓判讀的人分得出來。
+    """
     accepted = llm.get(role) if isinstance(llm.get(role), dict) else None
     tried = [a for a in (llm.get("attempts") or [])
              if isinstance(a, dict) and a.get("role") == role]
@@ -65,7 +75,15 @@ def _side(llm: dict, role: str) -> dict:
     # **不要寫成 `_num(...) or 1`。** 那正是 P2-1 修掉的形狀:`0` 會被
     # 當成「沒有值」而掉進後備。缺 `calls` 的舊紀錄才退回 1。
     calls = _num((accepted or {}).get("calls"))
+    origin = str(llm.get("analysis_origin") or "")
     out = {"available": True, "attribution": ATTRIBUTION[role],
+           # **這次被接受的呼叫,是不是實驗要比的那一個。**
+           # `None` = 不適用(shadow / extractor);`False` = 這一班的
+           # primary 其實是 fallback,不可與 shadow 直接相比。
+           "role_is_specialized": (
+               None if role != "primary"
+               else (origin == "luna_specialized" if origin else None)),
+           "analysis_origin": origin or None,
            "model": (accepted or {}).get("model") or (
                tried[0].get("model") if tried else None),
            "accepted_calls": (int(calls) if calls is not None

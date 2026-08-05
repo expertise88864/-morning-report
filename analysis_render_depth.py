@@ -138,6 +138,17 @@ def _synthesis(cms: dict, packet=None) -> str:
         vals = [_s(x) for x in (cms.get(key) or []) if _s(x)]
         if vals:
             rows.append(f"- **{name}**:" + "、".join(vals[:5]))
+    # Commit E:**共用底層驅動的說明要進信。** 「三個獨立訊號同向」與
+    # 「同一件事的三個表現」對讀者是完全不同的訊息 —— schema 收了、
+    # 驗證器擋了,而先前渲染層一個字都沒印。
+    for x in (cms.get("shared_driver_notes") or []):
+        if not isinstance(x, dict):
+            continue
+        why = _s(x.get("why_not_double_counted"))
+        cids = [_s(c) for c in (x.get("cluster_ids") or []) if _s(c)]
+        if why and len(cids) >= 2:
+            rows.append(f"- **這 {len(cids)} 件事共用同一個驅動**,"
+                        f"不重複計權:{why}")
     if _s(cms.get("dominant_driver")):
         rows.append(f"- **今天的主導因子**:{_s(cms.get('dominant_driver'))}"
                     + (f" —— {_s(cms.get('why_it_dominates'))}"

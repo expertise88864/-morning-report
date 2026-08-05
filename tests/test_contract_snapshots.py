@@ -496,7 +496,10 @@ _FROZEN = {
     #     候選、被排除的純價格變化群、權重宣告。
     # v18(Commit D):packet 帶 `event_graph` —— 共用底層驅動的事件群
     #     (就業→降息預期→殖利率是同一件事的三個表現)、總經發布。
-    "evidence_schema_version":  (18, "7cddd7dd0ba6b7fd"),
+    # v19(Commit E):正規化保留 `source_name`;近似去重改用發布者
+    #     當鍵 —— 先前用聚合器別名,同一個 Google 查詢帶回的三家
+    #     媒體被判成「同一家改版重發」而砍掉兩則。
+    "evidence_schema_version":  (19, "3fa58a900296d79e"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -578,7 +581,8 @@ _FROZEN = {
     # v8(第二十輪 P2-2):駁回超過 4 件顯示「另有 N 件」。
     # v9(第二十輪 P2-7):單一來源/未證實的佐證等級與保留事項固定呈現。
     # v10(Commit C):`key_drivers` 多了 `cluster_id`。
-    "renderer_version":         (10, "e0e5a73e31605b70"),
+    # v11(Commit E):事件卡 + 各標的合計影響 + 共用驅動說明進信。
+    "renderer_version":         (11, "56a50bd8d7cbbbec"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

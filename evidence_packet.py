@@ -59,7 +59,11 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 排除掉的純價格變化、權重宣告)。
 #: v18(Commit D):packet 帶 `event_graph` —— 共用底層驅動的事件群
 #: (就業→降息預期→殖利率是同一件事的三個表現)、今天的總經發布。
-EVIDENCE_SCHEMA_VERSION = 18
+#: v19(Commit E 修生產缺陷):正規化保留 `source_name`,近似去重改用
+#: **發布者**當鍵(先前是聚合器別名 `Google:2330` —— 同一個查詢帶回的
+#: 三家媒體被判成「同一家改版重發」而砍掉兩則,Commit B 的獨立來源數
+#: 在生產因此永遠是 1)。
+EVIDENCE_SCHEMA_VERSION = 19
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

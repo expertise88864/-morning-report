@@ -44,7 +44,9 @@ POSTPROCESS_VERSION = 1
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
 #: 因此改變(指紋會動的是欄位,不是版面)。
-RENDERER_VERSION = 10
+#: v11(Commit E):三大重點改事件卡(帶這件事的來歷:官方/幾個獨立
+#: 來源/連續追蹤第幾天)、新增「各標的合計影響」、共用驅動的說明進信。
+RENDERER_VERSION = 11
 
 #: 比較模式。`end_to_end_profiles` = 同一份證據、各自最佳化的問法,
 #: 比的是**整套系統**而不是裸模型。

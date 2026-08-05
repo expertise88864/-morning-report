@@ -34,6 +34,9 @@ RENDER_SCHEMA_VERSION = 1
 #: 這些標題**必須與主模組的常數一致**。改一個字,對應段落就會在信裡消失
 #: 而且沒有任何錯誤 —— 由測試比對主模組的 `_SECTION_*`。
 SECTION_TOP3 = "七、昨夜三大重點"
+#: Commit E:逐標的淨效果。**新段落**,不與既有標題衝突 ——
+#: 既有的 `_strip_llm_sections` 只移除它認得的那幾個,新段落原樣留下。
+SECTION_NET = "九之一、各標的合計影響"
 #: 第十五輪 P1-3:**段落名要說實話。**
 #:
 #: 舊的映射把 `global_market`(美股→台股連動)放進「世界大事速覽」——
@@ -102,6 +105,72 @@ def _claim_line(c: dict) -> str:
     return line + (f"\n  - 什麼情況代表這個判斷錯了:{trigger}" if trigger else "")
 
 
+def _cluster_of(packet, cluster_id: str) -> dict:
+    for c in (((packet or {}).get("news_clusters") or {}).get("clusters") or []):
+        if isinstance(c, dict) and _s(c.get("cluster_id")) == cluster_id:
+            return c
+    return {}
+
+
+def _event_card(c: dict, packet=None) -> str:
+    """一條「昨夜三大重點」。**判斷 + 這件事的來歷。**
+
+    先前只有判斷。而「三家獨立媒體證實」與「僅一家、未經證實」在信裡
+    長得一模一樣 —— 可信度是分析的一部分,不是附註。
+    """
+    line = _claim_line(c)
+    if not line:
+        return ""
+    cid = _s(c.get("cluster_id"))
+    if not cid:
+        return line
+    blk = _cluster_of(packet, cid)
+    if not blk:
+        return line
+    bits = []
+    if blk.get("official"):
+        bits.append("官方公告")
+    else:
+        n = blk.get("independent_sources")
+        if isinstance(n, int) and n >= 2:
+            bits.append(f"{n} 個獨立來源")
+        elif isinstance(n, int):
+            # **說得出自己驗不了什麼。** 未驗證的來源數另外講,
+            # 不併進「獨立來源」—— 那個數字是可信度宣稱。
+            un = blk.get("unverified_sources")
+            bits.append("僅單一來源" if not un else f"來源 {un} 家未驗證")
+    days = blk.get("continuing_days")
+    if isinstance(days, int) and days >= 1:
+        bits.append(f"本報連續追蹤第 {days + 1} 天")
+    return line + (f"\n  - 這件事的來歷:{'、'.join(bits)}" if bits else "")
+
+
+def _net_effects(rows) -> str:
+    """**逐標的的淨效果。** 使用者的第六條回饋逐字是:
+    「對整體經濟/對 2330/對 0050/**利多還是利空**」。
+
+    schema 收了、驗證器擋了,而先前渲染層一個字都沒印 —— 那個必填
+    只保護了 JSON,沒有保護讀者(與 `falsification_trigger` 同一個形狀)。
+    """
+    out = []
+    word = {"bullish": "偏多", "bearish": "偏空", "neutral": "中性",
+            "unknown": "判斷不出來"}
+    band = {"negligible": "可忽略", "small": "小", "moderate": "中等",
+            "large": "大", "unknown": "量級不明"}
+    for r in (rows or []):
+        if not isinstance(r, dict):
+            continue
+        aid = _s(r.get("asset_id"))
+        if not aid:
+            continue
+        d = word.get(_s(r.get("net_direction")), _s(r.get("net_direction")))
+        m = band.get(_s(r.get("net_magnitude_band")), "")
+        head = f"- **{aid}**:合計{d}" + (f"、幅度{m}" if m else "")
+        why = _s(r.get("why"))
+        out.append(head + (f"\n  - 為什麼是這個方向:{why}" if why else ""))
+    return "\n".join(out)
+
+
 def render(obj: Optional[dict], packet=None) -> str:
     """把驗證過的分析 JSON 轉成晨報 Markdown。
 
@@ -119,11 +188,15 @@ def render(obj: Optional[dict], packet=None) -> str:
 
     parts: list = []
 
-    # 七、昨夜三大重點 —— 取 materiality 最高的驅動因子
+    # 七、昨夜三大重點 —— **事件卡**(重構規格 Commit E)。
+    # 使用者原話:「我要的是真正國際上昨夜三大發生得重大事件」。
+    # 每一條除了判斷本身,還要看得出**這件事有多可信、是第幾天** ——
+    # 那兩件事 packet 早就算好了(獨立編輯台數、連續追蹤天數),
+    # 而先前一個字都沒有進信。
     drivers = [c for c in (obj.get("key_drivers") or []) if isinstance(c, dict)]
     order = {"high": 0, "medium": 1, "low": 2}
     drivers.sort(key=lambda c: order.get(_s(c.get("materiality")), 3))
-    top3 = _lines(drivers[:3], _claim_line)
+    top3 = [x for x in (_event_card(c, packet) for c in drivers[:3]) if x]
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 
@@ -174,6 +247,12 @@ def render(obj: Optional[dict], packet=None) -> str:
                             _s(tw.get("tsmc_view"))) if x]
     if tw_lines:
         parts.append(f"## {SECTION_TW}\n" + "\n".join(f"- {o}" for o in tw_lines))
+
+    # **逐標的淨效果**(Commit E):同一個標的被不同事件推往相反方向時,
+    # 前面幾段各自寫完就結束了 —— 這一段回答「合起來是利多還是利空」。
+    nets = _net_effects(obj.get("asset_net_effects"))
+    if nets:
+        parts.append(f"## {SECTION_NET}\n" + nets)
 
     # **`priced_in` 先前整段沒有被渲染。** 它是這份 schema 裡最像分析的欄位
     # (「哪些已經在價格裡、哪些還沒」),模型產出了、驗證器檢查了,

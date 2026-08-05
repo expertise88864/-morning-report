@@ -17,6 +17,7 @@ from typing import Optional
 
 import news_clusters as _nc
 import news_facts as _nf
+import source_registry as _sr
 
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
@@ -58,6 +59,14 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "fulltext_truncated": len(fulltext) > MAX_FULLTEXT_CHARS,
             "published": str(n.get("published") or ""),
             "source": clean(str(n.get("source") or "")),
+            # **發布者身分要留下來**(Commit B 的整套獨立性靠它)。
+            # 先前只留 `source` —— 而那一欄常常是聚合器別名
+            # (`Google:2330`、`類股-金融-台股`),於是 `source_registry`
+            # 查不到任何發布者,`independent_sources` 在生產**永遠是 0**,
+            # 同集團與通訊社的合併一次都不會發生。
+            # 單元測試全綠是因為它們直接餵 `source_name` 給 `clusters()`,
+            # 而生產走的是這裡正規化過的清單。
+            "source_name": clean(str(n.get("source_name") or "")),
             "source_grade": _grade(n),
             "official": bool(n.get("official")),
             "entities": sorted({clean(str(e)) for e in (n.get("entities") or [])})[:12],
@@ -75,7 +84,14 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     # (兩家寫一樣的標題是常態,那是分群的工作)。
     seen_fp, deduped, near_dropped = set(), [], 0
     for x in items:
-        fp = _nf.title_fingerprint(x["source"], x["title"])
+        # **「同一家」要用發布者判,不是用聚合器別名判**(Commit E)。
+        # `source` 常是 `Google:2330` 這種查詢代號 —— 同一個查詢帶回
+        # 三家不同媒體的同一則新聞時,上一版把它們判成「同一家改版重發」
+        # 而砍掉兩則。註解寫著「跨來源永不去重」,而程式做的正好相反。
+        # 那也讓 Commit B 的獨立來源數在生產永遠是 1。
+        fp = _nf.title_fingerprint(
+            _sr.owner_of_item(x) or x.get("source_name") or x["source"],
+            x["title"])
         if fp[1] and fp in seen_fp:
             near_dropped += 1
             continue

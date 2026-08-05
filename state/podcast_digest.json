@@ -4899,6 +4899,81 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73489880",
+        "title": "SpaceX spending spree rattles investors",
+        "published": "Wed, 05 Aug 2026 11:28:58 +0000",
+        "processed_at": "2026-08-05T15:38:57Z",
+        "digest": {
+          "summary_points": [
+            "SpaceX 上市後首份財報營收年增 92% 至 78.1 億美元、優於預期，但資本支出暴增至 184 億美元（年增逾 6 倍），其中約 158 億美元投向 AI 與星艦計畫，盤前股價因而承壓，主持人形容為「支出狂潮」。",
+            "AMD 雖交出優於預期的財報並上調財測，但因股價年初至今已漲 130%，投資人期待更高而導致盤前下跌；節目引述分析師看法，AMD 成長速度仍較輝達慢，卻享有更高估值。",
+            "Michael Burry 在 Substack 警告市場可能接近大頂、甚至重演 1987 年式暴跌，並揭露其空單持倉：SOXX、美光、輝達、開拓重工、Palantir、特斯拉、應用材料，其中輝達空單目前虧損；他說「我必須放空，但多數人不該」。",
+            "主持人觀察盤前美股，認為科技股經歷近期「融漲」後略顯疲態，期貨漲跌互見，公債殖利率曲線也趨於平坦。"
+          ],
+          "tickers": [
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報營收優異但資本支出爆增，市場憂心投資回收，盤前走跌。"
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報雖超預期但估值與成長不如輝達，投資人獲利了結。"
+            },
+            {
+              "name": "iShares 半導體 ETF",
+              "code": "SOXX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 仍持有 SOXX 空單，押注半導體族群回檔。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 仍持有美光空單，看空記憶體循環。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Burry 做空輝達且目前虧損，但仍是產業高估值風險代表。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Burry 持有 Palantir 空單，且週二大漲 30% 令空頭損失約 30 億美元。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 仍持有特斯拉空單。"
+            },
+            {
+              "name": "應用材料",
+              "code": "AMAT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 仍持有應用材料空單。"
+            }
+          ],
+          "market_view": "主持人認為科技股在近期融漲後，盤前美股期貨漲跌互見、略顯疲態，公債殖利率曲線走平。",
+          "action_view": "",
+          "notable_quote": "I must short. Most should not."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73446473",
         "title": "Ban talk lifts networking names",
         "published": "Tue, 04 Aug 2026 16:28:57 +0000",
@@ -5302,66 +5377,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "\"The guidance boost is a great bargaining chip to push the $53 billion offer much higher.\""
-        },
-        "shown_at": "2026-07-28T22:56:22Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73212016",
-        "title": "Chips drag Korea lower",
-        "published": "Tue, 28 Jul 2026 10:29:40 +0000",
-        "processed_at": "2026-07-28T15:42:58Z",
-        "digest": {
-          "summary_points": [
-            "韓國 KOSPI 指數暴跌 10%，創下 3 月以來最差單日表現，SK Hynix 下跌 13%、三星下跌 12%，這兩家公司合佔指數權重超過一半。",
-            "人工智慧投資支出疑慮再起，加上來自低成本中國企業的競爭，引發全球半導體股拋售，日本日經指數也下跌 4.1%。",
-            "福特、通用汽車和 B.C. Customs 正在競爭國防部合約，為美國陸軍打造一款基於 F-Series Super Duty 皮卡的戰術卡車原型，國防部預計至少採購 600 輛，每輛成本 33 萬美元。",
-            "Cracker Barrel 執行長 Julie Messino 在任不到三年後宣布卸任，該公司股價較她上任時下跌 45%，今年表現落後標普 500 指數 34 個百分點。",
-            "美國聯邦航空總署要求對波音 737 MAX 飛機進行檢查，原因是座椅安裝不當。",
-            "BuzzFeed 裁減三分之一員工，截至錄音時股價上漲兩位數。",
-            "台灣據報導調查輝達辦公室，涉嫌將 AI 晶片走私至中國。",
-            "Applied Digital (APLD) 股價上漲 4%，因其高運算業務爆炸性成長，第四季營收與獲利均優於預期。",
-            "聯準會為期兩天的政策會議今日開始，預計明天下午公布利率決議。"
-          ],
-          "tickers": [
-            {
-              "name": "福特汽車",
-              "code": "F",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "正在競爭國防部卡車合約，結果不確定。"
-            },
-            {
-              "name": "通用汽車",
-              "code": "GM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "正在競爭國防部卡車合約，結果不確定。"
-            },
-            {
-              "name": "Cracker Barrel",
-              "code": "CBRL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "執行長卸任，股價較上任時下跌 45%，表現落後大盤。"
-            },
-            {
-              "name": "波音",
-              "code": "BA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "FAA 要求檢查 737 MAX 座椅安裝問題。"
-            },
-            {
-              "name": "Applied Digital",
-              "code": "APLD",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "高運算業務爆炸性成長，第四季財報優於預期。"
-            }
-          ],
-          "market_view": "南韓股市因半導體股暴跌而重挫，全球對AI支出與中國競爭的擔憂主導市場，聯準會會議即將展開，市場觀望。",
-          "action_view": "",
-          "notable_quote": "Deutsche Bank strategist Jim Reid said renewed concerns over AI investment spending and competition from lower-cost Chinese companies were the dominant driver of Asian markets, triggering another sell-off in global semiconductor stocks."
         },
         "shown_at": "2026-07-28T22:56:22Z"
       }

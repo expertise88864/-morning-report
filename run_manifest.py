@@ -40,6 +40,9 @@ DIAGNOSTIC_KEYS = (
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
     "state_writes", "event_identity",
+    # 兩階段抓取的計畫(重構規格 Commit B):**涵蓋了幾個事件、漏了哪幾個**。
+    # 只記「抓了幾篇」會讀起來像涵蓋完整 —— 沒有靜默的上限。
+    "news",
     # Luna 特化實驗:**這一列是十配對的原始資料**。
     # r2(Codex,#4):刻意獨立於 `llm_shadow` —— 那個鍵在既有路徑結尾是
     # **整包指派**,寫在它底下的失敗紀錄會被靜默蓋掉,而可靠度指標
@@ -87,6 +90,20 @@ class ManifestRecorder:
     def total_seconds(self) -> float:
         marks = self.data.get("marks") or []
         return round(marks[-1][1] - marks[0][1], 1) if len(marks) >= 2 else 0.0
+
+    def record_fulltext_plan(self, plan: dict) -> None:
+        """兩階段抓取的計畫(重構規格 Commit B)。
+
+        **記的是「涵蓋了幾個事件、漏了哪幾個」** —— 只記「抓了幾篇」
+        會讀起來像涵蓋完整,而逐事件群分配預算正是為了解掉那個錯覺。
+        """
+        p = plan if isinstance(plan, dict) else {}
+        self.data.setdefault("news", {})["fulltext_plan"] = {
+            "targets": len(p.get("targets") or []),
+            "clusters": len(p.get("per_cluster") or []),
+            "uncovered_clusters": list(p.get("uncovered_clusters") or [])[:10],
+            "basis": str(p.get("basis") or ""),
+        }
 
     # ── state 寫入帳 ────────────────────────────────────────────────
     def record_state_writes(self, writes: dict) -> list:

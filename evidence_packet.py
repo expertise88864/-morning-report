@@ -50,7 +50,12 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: (裸子字串讓 `US` 命中 `ASUS`);別名表整批拿掉國家/首都
 #: (「伊朗戰事」≠「德黑蘭地震」,只留同一主體的不同寫法);
 #: 分群交集吃別名(「台積電」與「TSMC」不再拆成兩群重複計權)。
-EVIDENCE_SCHEMA_VERSION = 15
+#: v16(重構規格 Commit B):事件群帶**獨立性** —— `independent_sources`
+#: (已驗證的獨立編輯群組,寫進信裡的佐證等級用它)、
+#: `potential_independent_sources`(覆蓋率地板用,保守方向相反)、
+#: `unverified_sources` / `aggregator_only_sources`(說得出自己驗不了
+#: 什麼)。同集團轉載與通訊社稿件不再各算一家。
+EVIDENCE_SCHEMA_VERSION = 16
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

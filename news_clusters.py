@@ -39,9 +39,14 @@ from typing import Optional
 #: 真的事件被藏在另一個底下。兩種錯誤的代價不對稱,門檻就該偏向安全那側。
 TITLE_OVERLAP = 0.5
 
-#: **不同來源**達到這個數才算「多家同時報」。
+#: **獨立群組**達到這個數才算「多家同時報」。
 #: 先前用的是文章數 —— 於是同一家媒體的三篇改寫稿會被當成「三家同時報
 #: 的重大事件」。改寫稿不是獨立證據,它連二手都算不上。
+#:
+#: 第二十二輪 P2-2:改成不同來源字串之後**還是不夠** ——
+#: 經濟日報 + 聯合報 + 聯合新聞網是三個字串、一個編輯台;三家轉載同一則
+#: 中央社稿是三個字串、一個編輯決策。數的要是 `source_registry` 認得出來的
+#: **獨立群組**(不認得的不計入,另外報 `unverified`)。
 CLUSTER_IS_MAJOR = 3
 
 #: 必分析清單的上限。**不是「至少分析幾則」,是「這幾則不能不談」** ——
@@ -117,6 +122,11 @@ def clusters(news: Optional[list]) -> list:
     for g in groups:
         ids = sorted(str(m["source_item_id"]) for m in g)
         srcs = sorted({str(m.get("source") or "") for m in g} - {""})
+        # 第二十二輪 P2-2:**「幾家報導」與「幾個獨立來源」是兩個數字。**
+        # 前者是字串去重,後者是編輯決策去重 —— 而寫進信裡的佐證等級
+        # 宣稱的是後者。
+        import source_registry as _sr
+        indep = _sr.independence(g)
         out.append({
             "cluster_id": f"cluster:{ids[0]}",
             # 第二十一輪 P1-7:**分群用的代表與截斷保留的不是同一則。**
@@ -134,11 +144,23 @@ def clusters(news: Optional[list]) -> list:
             "has_grade_a": any(m.get("source_grade") == "A" for m in g),
             "size": len(g),
             "unique_sources": len(srcs),
+            # **可以寫進信裡的那個數字。** 不認得的發布者不計入 ——
+            # 高估獨立性會造出假的信心,低估只是多一句但書。
+            "independent_sources": indep["count"],
+            "independence_groups": indep["groups"],
+            #: 說得出自己驗不了什麼:發布者不在註冊表裡、或只查得到
+            #: 聚合器別名(那是**我們自己的**抓取缺口,不是媒體的問題)。
+            "unverified_sources": indep["unverified"],
+            "aggregator_only_sources": indep["aggregator_only"],
+            # **覆蓋率地板用的那個數**(認得的群組 + 不認得的發布者)。
+            # 與 `independent_sources` 的保守方向**相反**,理由見
+            # `source_registry.independence` 的註解。
+            "potential_independent_sources": indep["potential"],
             # **單一來源與多方證實是兩種可信度**(借自事件聚合系統的
             # corroboration 概念)。模型分析單一來源的事件時要明講
             # 「未經其他媒體證實」—— 而它得先知道哪些是。
             "corroboration": ("official" if any(m.get("official") for m in g)
-                              else "multi_source" if len(srcs) >= 2
+                              else "multi_source" if indep["count"] >= 2
                               else "single_source"),
         })
     return sorted(out, key=lambda c: c["cluster_id"])
@@ -154,16 +176,23 @@ def required_analysis(news: Optional[list]) -> dict:
     cs = clusters(news)
     ranked = sorted(
         [c for c in cs
-         if c["official"] or c["unique_sources"] >= CLUSTER_IS_MAJOR],
-        # 官方優先,其次**不同來源數**;同分用 ID 決勝(確定性)。
-        key=lambda c: (not c["official"], -c["unique_sources"], c["cluster_id"]))
+         if c["official"]
+         or c["potential_independent_sources"] >= CLUSTER_IS_MAJOR],
+        # 官方優先,其次**可能獨立數**;同分用 ID 決勝(確定性)。
+        # **這裡刻意用寬鬆的那個數**:清單是覆蓋率的地板,算少了會讓
+        # 重要事件從必分析清單掉出去 —— 而漏掉重要事件正是它要防的事。
+        # 佐證等級(寫進信裡的可信度宣稱)用嚴格的 `independent_sources`。
+        key=lambda c: (not c["official"], -c["potential_independent_sources"],
+                       c["cluster_id"]))
     need = [c["cluster_id"] for c in ranked[:MAX_REQUIRED]]
     return {
         "clusters": cs,
         "required_cluster_ids": need,
-        "coverage_basis": ("官方公告,或三個**不同來源**同時報導的事件群;"
+        "coverage_basis": ("官方公告,或三個**可能獨立**的來源同時報導的"
+                           "事件群(同集團轉載與通訊社稿件只算一個);"
                            "改寫稿不算獨立來源,A 級媒體也不等於官方;"
-                           "不採用模型自評的重要性"),
+                           "不採用模型自評的重要性。注意信裡的佐證等級"
+                           "用的是更嚴格的**已驗證獨立群組數**"),
         "dropped_from_required": max(0, len(ranked) - MAX_REQUIRED),
     }
 

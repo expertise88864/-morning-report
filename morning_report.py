@@ -7304,89 +7304,86 @@ def fetch_tw_daily_intelligence(now_tpe: Optional[dt.datetime] = None,
 # 直接牽動台股的重大地緣事件 —— 升級為 critical（會抓全文 + prompt 強制分析對台影響）
 
 
+def _fulltext_target_link(item: dict) -> str:
+    link = str(item.get("link") or "")
+    if "news.google.com" in link:
+        return (_extract_google_news_target(link)
+                or str(item.get("source_url") or "")
+                or str(item.get("publisher_url") or ""))
+    return link
+
+
+def _fetch_one_fulltext(n: dict, timeout: float, limit: int) -> bool:
+    """抓一則的全文,寫進 `n["fulltext"]`。成功回 True。"""
+    if n.get("fulltext"):        # 冪等:晚到的新聞會再跑一次,別重抓
+        return False
+    link = _fulltext_target_link(n)
+    if not link.startswith("http") or "news.google.com" in link:
+        return False
+    try:
+        r = _http_get(link, timeout=timeout, allow_redirects=True,
+                      headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        if r.status_code != 200:
+            return False
+        text, extracted = _extract_article_text(r.text)
+        # 抽取成功的短新聞不套 100 字門檻(那是給整頁去標籤用的)
+        if text and (extracted or len(text) >= _ARTICLE_MIN_CHARS):
+            n["fulltext"] = text[:limit]
+            return True
+    except Exception as e:
+        print(f"[news_full] {link[:60]} 失敗: {e}", file=sys.stderr)
+    return False
+
+
+# P0-2 內層保命:即使本步驟已通過時間閘,大量逐篇失敗×重試仍可能吃掉整個緩衝
+# (Codex review)。每篇動工前也檢查全域剩餘時間,低於地板(120s,留給主分析/
+# 寄信)就提前停止 —— 閘只擋「開始」,這裡擋「中途拖過頭」。
+_FULLTEXT_FLOOR = 120.0
+
+
 def fetch_news_fulltext(news: list[dict],
                           max_critical: int = 10,
-                          max_high: int = 10) -> list[dict]:
+                          max_high: int = 10,
+                          targets: Optional[list] = None) -> list[dict]:
+    """對重要新聞抓 RSS link 的網頁全文,寫入 `news[i]["fulltext"]`。
+
+    **`targets` 是逐事件群排好的抓取順序**(重構規格 Commit B)——
+    `fetch_plan.plan()` 算出來的。給了就照它走:預算花在**事件**上,
+    同一個事件不會吃掉四格,而只有一家報的事件不會掛零。
+    順序本身是優先序,中途因時間停下來也是從最重要的事件開始有全文。
+
+    `targets=None` 走舊路徑(逐則掃 critical 再掃 high)—— 那是分群還沒
+    算出來的呼叫端用的,**它會重複計權**,只是不改變既有行為。
     """
-    對 critical / high 重要性的新聞,嘗試抓 RSS link 的網頁全文(前 2500 字)。
-    寫入 news[i]["fulltext"] 欄位。
-
-    為什麼擴大到 high:大部分個股新聞(NVDA/AMD/AVGO/TSM 法說 / 8-K 內容)
-    被分類為 high 而非 critical,只有 300-800 字 RSS snippet 不夠 LLM 證明
-    「發生了具體事」, 觸發 R12 鐵律把公司刪掉, 報告就變稀薄。
-
-    Critical 永遠優先(預算用滿才輪 high)。
-    """
-    crit_fetched = 0
-    high_fetched = 0
-
-    def _target_link(item: dict) -> str:
-        link = str(item.get("link") or "")
-        if "news.google.com" in link:
-            return (
-                _extract_google_news_target(link)
-                or str(item.get("source_url") or "")
-                or str(item.get("publisher_url") or "")
-            )
-        return link
-
-    # P0-2 內層保命:即使本步驟已通過時間閘,大量逐篇失敗×重試仍可能吃掉整個緩衝
-    # (Codex review)。故每篇動工前也檢查全域剩餘時間,低於地板(120s,留給主分析/寄信)
-    # 就提前停止抓取、回傳已抓到的——閘只擋「開始」,這裡擋「中途拖過頭」。
-    _FULLTEXT_FLOOR = 120.0
-    # 先掃一輪 critical(優先級高,即使在 list 後段也先抓)
-    for n in news:
-        if crit_fetched >= max_critical or _run_seconds_left() < _FULLTEXT_FLOOR:
-            break
-        if n.get("importance") != "critical":
-            continue
-        if n.get("fulltext"):    # 冪等:晚到的新聞(候選股/8-K)併入後會再補跑一次,別重抓
-            continue
-        link = _target_link(n)
-        if not link or not link.startswith("http"):
-            continue
-        if "news.google.com" in link:
-            continue
-        try:
-            r = _http_get(link, timeout=10,
-                              headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-                              allow_redirects=True)
-            if r.status_code != 200:
+    if targets:
+        by_id = {str(n.get("source_item_id")): n for n in news
+                 if isinstance(n, dict) and n.get("source_item_id")}
+        got = 0
+        for sid in targets:
+            if _run_seconds_left() < _FULLTEXT_FLOOR:
+                break
+            n = by_id.get(str(sid))
+            if not isinstance(n, dict):
                 continue
-            text, extracted = _extract_article_text(r.text)
-            # 抽取成功的短新聞不套 100 字門檻(那是給整頁去標籤用的)
-            if text and (extracted or len(text) >= _ARTICLE_MIN_CHARS):
-                n["fulltext"] = text[:2500]
-                crit_fetched += 1
-        except Exception as e:
-            print(f"[news_full] critical {link[:60]} 失敗: {e}", file=sys.stderr)
-            continue
-    # 再掃 high(預算用滿不再抓;剩餘時間跌破地板也停)
-    for n in news:
-        if high_fetched >= max_high or _run_seconds_left() < _FULLTEXT_FLOOR:
-            break
-        if n.get("importance") != "high":
-            continue
-        if n.get("fulltext"):    # 已被 critical 路徑抓過(理論上不該發生,但保險)
-            continue
-        link = _target_link(n)
-        if not link or not link.startswith("http"):
-            continue
-        if "news.google.com" in link:
-            continue
-        try:
-            r = _http_get(link, timeout=8,    # high 用較短 timeout 避免拖慢
-                              headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-                              allow_redirects=True)
-            if r.status_code != 200:
+            crit = n.get("importance") == "critical"
+            got += bool(_fetch_one_fulltext(n, 10 if crit else 8,
+                                            2500 if crit else 2000))
+        print(f"[news_full] 逐事件群抓到 {got}/{len(targets)} 篇全文")
+        return news
+    crit_fetched = high_fetched = 0
+    for want, cap, timeout, limit in (("critical", max_critical, 10, 2500),
+                                      ("high", max_high, 8, 2000)):
+        n_got = 0
+        for n in news:
+            if n_got >= cap or _run_seconds_left() < _FULLTEXT_FLOOR:
+                break
+            if n.get("importance") != want:
                 continue
-            text, extracted = _extract_article_text(r.text)
-            if text and (extracted or len(text) >= _ARTICLE_MIN_CHARS):
-                n["fulltext"] = text[:2000]    # high 全文略短(2000 vs critical 2500)
-                high_fetched += 1
-        except Exception as e:
-            print(f"[news_full] high {link[:60]} 失敗: {e}", file=sys.stderr)
-            continue
+            n_got += bool(_fetch_one_fulltext(n, timeout, limit))
+        if want == "critical":
+            crit_fetched = n_got
+        else:
+            high_fetched = n_got
     print(f"[news_full] 抓到 {crit_fetched} 篇 critical + {high_fetched} 篇 high 全文")
     return news
 
@@ -22574,9 +22571,13 @@ def _phase_news_policy_sports(ctx) -> None:
     if _run_budget_ok(_core_tail_seconds() + 140, "重大事件全文擷取"):
         print("[main] 對重大事件擷取全文…")
         try:
-            # 同時對 critical 與 high 級新聞抓全文(個股新聞多半屬 high,只有 RSS snippet
-            # 會讓 LLM 因「沒有具體事實」而把該公司刪掉,報告變稀薄)
-            news = fetch_news_fulltext(news, max_critical=10, max_high=16)
+            # **兩階段**(重構規格 Commit B):RSS 帶回標題摘要 → 分群
+            # → **逐事件群**分配全文預算。上一版逐則掃 critical/high,
+            # 於是十篇全文可能只涵蓋兩個事件(同一件事四家媒體各報一則),
+            # 而只有一家報的第三個事件一篇都沒有。
+            import fetch_plan as _fplan
+            news = fetch_news_fulltext(
+                news, targets=_fplan.plan_for_run(news, ctx.recorder))
         except Exception as e:
             print(f"[main] 全文擷取失敗: {e}", file=sys.stderr)
 

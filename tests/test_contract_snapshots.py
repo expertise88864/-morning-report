@@ -184,7 +184,19 @@ def _edge_packet() -> dict:
          {"source_item_id": "e3", "title": "台積電熊本廠恢復產線",
           "entities": ["台積電"], "source": "丙"},
          {"source_item_id": "e4", "title": "德黑蘭發生地震",
-          "entities": ["德黑蘭"], "source": "丁"}],
+          "entities": ["德黑蘭"], "source": "丁"},
+         # Commit B:**同集團與通訊社轉載的獨立性**。三則講同一件事,
+         # 兩則是聯合報系(一個編輯台)、一則帶中央社署名 —— 字串去重
+         # 會數到 3,獨立群組只有 2。規則被拿掉時這幾格要動。
+         {"source_item_id": "e5", "title": "聯發科天璣新品發表會延期",
+          "entities": ["聯發科"], "source": "經濟日報",
+          "source_name": "經濟日報"},
+         {"source_item_id": "e6", "title": "聯發科天璣新品發表會延期",
+          "entities": ["聯發科"], "source": "聯合報", "source_name": "聯合報"},
+         {"source_item_id": "e7", "title": "聯發科天璣新品發表會延期",
+          "entities": ["聯發科"], "source": "自由時報",
+          "source_name": "自由時報",
+          "summary": "(中央社記者李四台北5日電)聯發科今日宣布…"}],
         [], {}, as_of="x", target_session_date="y", sanitize=lambda s: s)
 
 
@@ -409,7 +421,12 @@ _FROZEN = {
     # v15(第二十二輪 P1-9/P2-3):延續事件標題比對改 token 邊界
     #     (US 不再命中 ASUS);別名表整批拿掉國家/首都、只留公司與 Fed;
     #     分群交集吃別名(台積電/TSMC 併群)。探針同批加 `_edge_packet()`。
-    "evidence_schema_version":  (15, "5192578f7de536d9"),
+    # v16(重構規格 Commit B):事件群帶獨立性(已驗證 / 可能 / 未驗證)。
+    #     「三家報導」與「三個獨立來源」是兩個數字:同集團轉載與通訊社
+    #     稿件只算一個編輯決策。`_edge_packet()` 同批加聯合報系兩則 +
+    #     一則中央社署名的轉載 —— 兩個突變(不看署名、每個字串各自一組)
+    #     都實測讓指紋移動。
+    "evidence_schema_version":  (16, "d08be46fb7238d9e"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。

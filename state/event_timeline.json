@@ -1,15 +1,15 @@
 {
  "geopolitical:": {
   "first_seen": "2026-06-12",
-  "days": 46,
-  "last_seen": "2026-08-05",
-  "latest_title": "戰爭下沙特阿美迎“黃金季度”：利潤超越埃克森美孚和雪佛龍之和 - capitalfutures.com.tw"
+  "days": 47,
+  "last_seen": "2026-08-06",
+  "latest_title": "調停美伊戰爭結束有進展 荷姆茲海峽協議正在談判 - Yahoo新聞"
  },
  "export_controls:": {
   "first_seen": "2026-06-16",
-  "days": 31,
-  "last_seen": "2026-08-05",
-  "latest_title": "Chinese chip-tool maker AMEC says first-half profit to nearly quadruple amid soaring deman"
+  "days": 32,
+  "last_seen": "2026-08-06",
+  "latest_title": "美國財政部解除對伊朗的制裁，因達成協議的希望增強 - FXStreet"
  },
  "litigation:": {
   "first_seen": "2026-07-25",
@@ -25,9 +25,9 @@
  },
  "geopolitical:伊朗": {
   "first_seen": "2026-08-01",
-  "days": 4,
-  "last_seen": "2026-08-05",
-  "latest_title": "在與伊朗戰爭中 美陸軍已使用“幾乎所有”ATACMS等精準地對地導彈 - RFI"
+  "days": 5,
+  "last_seen": "2026-08-06",
+  "latest_title": "路透：伊朗警告波灣國家美再動武將報復攻擊區域能源設施| 中東戰火連綿| 全球 - UDN"
  },
  "geopolitical:美國": {
   "first_seen": "2026-08-01",
@@ -88,5 +88,53 @@
   "days": 1,
   "last_seen": "2026-08-05",
   "latest_title": "100套陸射魚叉飛彈2028年底前返台 國軍斥資2.5億支應在美運輸工作 - 自由軍武頻道"
+ },
+ "export_controls:AMAT": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "US export controls reportedly boost Chinese testing of domestic semiconductor equipment"
+ },
+ "geopolitical:Iran-Oman": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "Hormuz reopening talks face unresolved fees and oversight terms"
+ },
+ "geopolitical:United States-Iran": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "Iran warns Gulf states of possible energy-infrastructure retaliation"
+ },
+ "geopolitical:China-Taiwan": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "US analysis warns China could pursue a firepower blockade of Taiwan"
+ },
+ "litigation:United States": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "US refunds roughly $100 billion in invalidated tariff collections"
+ },
+ "export_controls:美國": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "針對美國管制制裁報復 中國緊縮無人機零件出口、制裁美國檢測實驗室| 國際焦點 - 太報 TaiSounds"
+ },
+ "export_controls:ASML": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "Export controls may threaten ASML China orders"
+ },
+ "geopolitical:2634": {
+  "first_seen": "2026-08-06",
+  "days": 1,
+  "last_seen": "2026-08-06",
+  "latest_title": "2634 漢翔 - 140億美元軍售引爆美台聯防 麥考爾拋重磅訊號！防空飛彈與無... - 股市爆料同學會 - CMoney"
  }
 }

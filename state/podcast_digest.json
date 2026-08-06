@@ -687,6 +687,62 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2376228281",
+        "title": "2026/8/6(四)雙軋行情還 能維持多久?川普民調創低  通航有解?【早晨財經速解讀】",
+        "published": "Thu, 06 Aug 2026 01:09:17 +0000",
+        "processed_at": "2026-08-06T05:16:49Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出標普500第二季EPS年增幅衝高至33.2%，創下排除金融海嘯與疫情後30年來最高紀錄，且營收優於預期比例也達五年新高，顯示基本面極強。",
+            "主持人認為雲端運算才是AI投資回收核心，亞馬遜AWS營業利益率達39%、三年內可回收資本支出，AI公司將寄生於巨頭雲端，此為巨頭持續大舉投資的底氣。",
+            "主持人點出美日聯手干預日圓的背後關鍵是避免日本拋售美債推升殖利率，因美國債務已突破40兆美元，若殖利率飆升將衝擊融資成本與期中選舉。",
+            "主持人指出韓國股市前瞻本益比僅4.7倍，為2001年以來新低，比金融海嘯時更便宜，外資已將其視為低本益比價值投資，吸引力浮現。",
+            "主持人提醒台股雖強勢反彈收復月季線，雙嘎行情延續，但融資餘額已連四天回升至5,200億元，若持續增加至6,000億元將形成潛在壓力。",
+            "主持人點出川普民調跌至36%任期新低，通膨壓力迫使對伊朗讓步尋求荷姆茲海峽通航，並可能要求油商吐利潤、推小費免稅等政策以拉抬期中選舉選情。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為台積電總有一天會突破3000元，長期看好。"
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人強調AWS營業利益率39%，AI雲端需求使其資本支出可快速回收。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人指出Google Cloud營收成長82%後股價仍收回，雲端業務支撐評價。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人提到微軟7月以來上漲24%，財報公布後股價暴漲，雲端業務強勁。"
+            },
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人指出輝達7月以來上漲12%，是帶動大盤的巨頭之一。"
+            }
+          ],
+          "market_view": "主持人認為基本面極為強勁，標普二季獲利增幅創數十年新高，科技巨頭現金流足以支撐AI資本支出競賽，但需留意美債殖利率風險、通膨壓力及期中選舉變數對市場的影響。",
+          "action_view": "主持人提醒右側不宜過度樂觀，可留意晶片股財報公布後持續下殺的左側機會；台股短線雙嘎行情強勢，但融資快速回升需謹慎。",
+          "notable_quote": "真正能夠讓AI投資產生回報的核心，不一定是聊天機器人或者廣告，是雲端運算。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2375166146",
         "title": "2026/8/5(三)費半飆漲6% 美股標普創史高!七巨頭回神 SpaceX AMD卻重挫?【早晨財經速解讀】",
         "published": "Wed, 05 Aug 2026 01:10:00 +0000",
@@ -1345,53 +1401,6 @@
           "notable_quote": "只要算力沒有過剩的那一天到來，那本身這場榮景啊，它就會持續下去，一直到有一天你發現算力過剩了，才會有市場上比較更進一步的系統性的修正。"
         },
         "shown_at": "2026-07-22T22:58:47Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2364904202",
-        "title": "2026/7/21(二)全球套牢潮 這次解套要多久?七巨頭能成 美股救星嗎?【早晨財經速解讀】",
-        "published": "Tue, 21 Jul 2026 01:04:47 +0000",
-        "processed_at": "2026-07-21T05:17:50Z",
-        "digest": {
-          "summary_points": [
-            "美股週一開高後震盪，記憶體賣壓沉重，資金從半導體輪動至七巨頭軟體與醫療保健類股。",
-            "半導體ETF SMH自高點下跌逾兩成，但標普買盤踴躍，Google、微軟、亞馬遜7月以來上漲。",
-            "台股融資餘額單日大減269億元，上櫃維持率降至133%逼近追繳，去槓桿壓力增溫。",
-            "國巨股價半個月從1200元跌至600元，華新科跌52%、禾伸堂跌34%，被動元件族群成殺盤重心。",
-            "主動式ETF因持有國巨等暴跌股而承壓，市場違約交割與異常交易疑慮升高。",
-            "韓國股市跌4.4%，觸發今年第20次熔斷，SK海力士兩倍槓桿ETF從高點跌七成，南韓暫停新槓桿ETF。",
-            "美連續空襲伊朗，布蘭特原油突破90美元，7月來漲近兩成，荷姆茲海峽每日通行量僅3-4艘。",
-            "川普對加拿大課50%關稅但豁免能源、鉀肥，並暫停摩洛哥零肥關稅使價格降22%，以平抑通膨。",
-            "AI投資週期面臨考驗：雲端巨頭現金流吃緊、記憶體成本過高、原物料回彈可能使融資延後。",
-            "市場擔憂企業AI投資回本能力，目前估值未現極端泡沫，但需先解決槓桿問題。"
-          ],
-          "tickers": [
-            {
-              "name": "國巨",
-              "code": "2327",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "股價腰斬，被動元件族群殺盤重心，融資斷頭風險高，主動式ETF重災區。"
-            },
-            {
-              "name": "華新科",
-              "code": "2492",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "跌幅達52%，高乖離漲價股去槓桿，多殺多壓力沉重。"
-            },
-            {
-              "name": "禾伸堂",
-              "code": "3026",
-              "market": "TW",
-              "direction": "bearish",
-              "reason": "下跌34%，被動元件族群承壓，市場沉壓擴大。"
-            }
-          ],
-          "market_view": "主持人認為目前並無極端泡沫，僅是波動放大與去槓桿，整體維持高檔震盪，後續需財報證明回本能力。",
-          "action_view": "",
-          "notable_quote": "從底下跑到屋頂要一個鐘頭，從屋頂跳下來只要8秒8，這就是股票。"
-        },
-        "shown_at": "2026-07-21T22:51:32Z"
       }
     ]
   },
@@ -4901,6 +4910,29 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73504452",
+        "title": "Parks, Pixar power Disney",
+        "published": "Wed, 05 Aug 2026 16:35:08 +0000",
+        "processed_at": "2026-08-06T05:18:33Z",
+        "digest": {
+          "summary_points": [
+            "主持人點出,迪士尼與 TikTok 的全球合作案有望提升內容能見度與參與度,是財報之外的潛在催化劑;迪士尼本季 EPS 2.06 美元優於預期,體驗部門營運利益年增 20%,顯示樂園事業動能仍強。"
+          ],
+          "tickers": [
+            {
+              "name": "迪士尼",
+              "code": "DIS",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "第三季財報優於預期,體驗部門強勁,且 TikTok 合作案可能提升內容能見度與參與度。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "For Disney, the deal could boost visibility and engagement."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73489880",
         "title": "SpaceX spending spree rattles investors",
         "published": "Wed, 05 Aug 2026 11:28:58 +0000",
@@ -5325,63 +5357,6 @@
           "notable_quote": "One JP Morgan strategist says the current stock market is in the early stages of a generational trade."
         },
         "shown_at": "2026-07-29T22:53:55Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73218508",
-        "title": "Amazon revamps AI strategy",
-        "published": "Tue, 28 Jul 2026 17:25:24 +0000",
-        "processed_at": "2026-07-28T20:45:45Z",
-        "digest": {
-          "summary_points": [
-            "亞馬遜重組AI策略，逐步終止多款自研NOVA模型，轉而專注於由研究員Peter Abil主導的新邊疆模型，預計在re:Invent大會上亮相。",
-            "康寧 (GLW) 發布混合展望，Q3營收指引49-50億美元略低於市場預期的50億美元，儘管Q2業績強勁，股價仍下跌。",
-            "波音 (BA) Q2營收優於預期，受商用飛機交付強勁帶動，但空軍一號替換計畫相關費用導致調整後虧損擴大，股價仍上漲。",
-            "PayPal (PYPL) Q2獲利優於預期，上調全年財測，儘管Q3展望疲軟；分析師認為財測上調可作為與Stripe收購案談判的籌碼。",
-            "蘋果 (AAPL) 市值突破5兆美元，成為史上第二家達此里程碑的公司，股價年內漲約24%，過去12個月漲近60%；執行長庫克將於9月1日交棒給John Tarnas。",
-            "分析師提出SpaceX與特斯拉合併假設，若以每股480美元溢價50%交易，合併公司估值約3.3兆美元，特斯拉股東將持有54%。"
-          ],
-          "tickers": [
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "亞馬遜重組AI策略，終止部分模型，轉向邊疆模型。"
-            },
-            {
-              "name": "康寧",
-              "code": "GLW",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q3營收指引略低於預期，股價下跌。"
-            },
-            {
-              "name": "波音",
-              "code": "BA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2營收優於預期，股價上漲。"
-            },
-            {
-              "name": "PayPal",
-              "code": "PYPL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2獲利優於預期並上調全年財測。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "市值突破5兆美元里程碑，CEO將交接。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "\"The guidance boost is a great bargaining chip to push the $53 billion offer much higher.\""
-        },
-        "shown_at": "2026-07-28T22:56:22Z"
       }
     ]
   },
@@ -6432,6 +6407,34 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "8bbdfcd5-e2f4-4220-b5da-a84ddd1402e6",
+        "title": "Saronic Founders: Autonomous Warships, China's 230X Advantage & Swarms of Robot Ships",
+        "published": "Wed, 05 Aug 2026 20:19:00 +0000",
+        "processed_at": "2026-08-06T05:26:39Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出，美國造船產能嚴重落後，中國一年建造逾千艘商船，美國僅5艘，產能差距高達230比1，構成國家安全危機。",
+            "主持人強調，Saronic的自主艦艇剛完成全球首次實戰救援任務，證明無人系統能在最高風險環境下避免額外傷亡，是海軍史的里程碑。",
+            "主持人算了一筆帳：傳統驅逐艦成本30億美元、耗時6-8年，約100個VLS發射管；改用Saronic的180尺無人艦Marauder，每年造20艘、每艘16管，年部署量可從15管增至320管，成本大幅降低。",
+            "主持人擔憂若對手在台海衝突中無視AI武器倫理、全自動接戰，美國堅持人類決策恐居劣勢；但Saronic共同創辦人解釋，AI僅輔助識別，開火權仍由人設定門檻，必要時可調整授權。",
+            "主持人讚賞Saronic像特斯拉一樣垂直整合，從設計到造船廠全面自建，並在德州Brownsville啟動占地800英畝的Port Alpha船廠，未來可擴至4000英畝，成為美國最大造船廠。",
+            "主持人呼籲年輕人投身國防科技，認為比在大科技公司優化廣告更有意義，這是這一代的太空競賽，美國不能輸。"
+          ],
+          "tickers": [
+            {
+              "name": "Saronic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好其自主艦艇技術能扭轉美國海軍劣勢，並計劃大規模擴產。"
+            }
+          ],
+          "market_view": "主持人認為美國造船與國防科技嚴重落後中國，必須依靠自主系統和創新企業加速追趕，否則難以維持全球安全格局。",
+          "action_view": "主持人建議年輕人優先考慮國防科技公司而非大型科技公司，認為這是更有意義的職業選擇，並暗示應增加自主系統在國防預算中的佔比。",
+          "notable_quote": "Go work at Serenity. You'll get a couple of years into your career and you'll say, I'm doing important work."
+        }
+      },
+      {
         "guid": "3202bc1f-a7db-4549-a5d1-0632d58fa81d",
         "title": "Chip Stocks Crash, $20B Fund Margin Called, Frontier Labs: SLOW DOWN AI, Mamdani's Grocery Stores",
         "published": "Fri, 31 Jul 2026 22:23:00 +0000",
@@ -6874,22 +6877,6 @@
           "notable_quote": "If you partner with any of these people, they will slit your throat and take your business, wholesale."
         },
         "shown_at": "2026-07-04T22:45:57Z"
-      },
-      {
-        "guid": "a76ab591-7664-4c68-9059-580b160956b0",
-        "title": "Nate Silver Predicts: Democrats Take the House, Newsom Is Fading & AOC Might Win It All in 2028",
-        "published": "Mon, 29 Jun 2026 15:47:00 +0000",
-        "processed_at": "2026-06-29T21:21:25Z",
-        "digest": {
-          "summary_points": [
-            "主持人認為AI資本繁榮是維持美國股市相對健康的主要原因之一。"
-          ],
-          "tickers": [],
-          "market_view": "AI資本繁榮帶動經濟與股市，但整體市場受政治與地緣風險影響。",
-          "action_view": "",
-          "notable_quote": "It's not a good time to be a defender of the status quo."
-        },
-        "shown_at": "2026-06-29T22:52:55Z"
       }
     ]
   },

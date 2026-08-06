@@ -79,3 +79,79 @@ def key_driver_count_problems(obj, packet) -> list:
                 + ("(合格事件群不足三個,所以要求的是全部 —— 湊一段不會讓分析更深)"
                    if want < KEY_DRIVERS_REQUIRED else "")]
     return []
+
+
+def _claims_by_id(obj) -> dict:
+    return {str(c.get("claim_id") or ""): c
+            for c in ((obj or {}).get("claim_audit") or []) if isinstance(c, dict)}
+
+
+def _cluster_ids(packet) -> set:
+    return {str(c.get("cluster_id") or "")
+            for c in (((packet or {}).get("news_clusters") or {}).get("clusters") or [])
+            if isinstance(c, dict)} - {""}
+
+
+def reference_problems(obj, packet) -> list:
+    """**結構化引用的完整性**(第二十四輪 P1-8/P1-9)。
+
+    schema 保證得了「有這一格」,保證不了「這一格指到的東西真的存在、
+    而且指對了」。先前缺的四項各自都能讓一段沒有根據的話進信:
+
+      * `asset_net_effects.claim_ids` 可以是空陣列 —— 「2330 合計偏多」
+        於是可以完全沒有任何被稽核的主張支撐;
+      * 淨效果引用的主張**與這個標的無關**(方向/標的對不上)也照過;
+      * `offsetting_cluster_ids` 指到不存在的事件群不會被發現;
+      * `shared_driver_notes.cluster_ids` 同上,而共用驅動的說明正是
+        「為什麼不算重複計權」的唯一根據。
+
+    這裡只驗**指涉**(存在、對得上),語意品質由既有的其他判準負責。
+    """
+    out: list = []
+    if not isinstance(obj, dict):
+        return out
+    claims = _claims_by_id(obj)
+    known_clusters = _cluster_ids(packet)
+
+    for n in (obj.get("asset_net_effects") or []):
+        if not isinstance(n, dict):
+            continue
+        aid = str(n.get("asset_id") or "")
+        direction = str(n.get("net_direction") or "")
+        cids = [str(c) for c in (n.get("claim_ids") or [])]
+        if not cids:
+            out.append(f"asset_net_effects[{aid}] 沒有引用任何 `claim_ids` —— "
+                       "「合起來是利多還是利空」是會進信的判斷,"
+                       "它必須站在被稽核過的主張上")
+        missing = [c for c in cids if c not in claims]
+        if missing:
+            out.append(f"asset_net_effects[{aid}] 引用了不存在的主張:{missing}")
+        # **引用的主張要真的關於這個標的**:方向靠一條、標的靠另一條,
+        # 等於沒有任何一條真的支撐這個淨判斷。
+        elif cids and aid and direction not in ("", "unknown"):
+            same_asset = [c for c in cids
+                          if str((claims[c] or {}).get("asset_scope") or "") in ("", aid)]
+            if not same_asset:
+                out.append(
+                    f"asset_net_effects[{aid}] 引用的主張沒有一條是關於 {aid} 的"
+                    " —— 淨方向要站在這個標的自己的主張上")
+        if known_clusters:
+            bad = [str(c) for c in (n.get("offsetting_cluster_ids") or [])
+                   if str(c) not in known_clusters]
+            if bad:
+                out.append(
+                    f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
+                    f"指到不存在的事件群:{bad}")
+
+    syn = obj.get("cross_market_synthesis") or {}
+    for note in (syn.get("shared_driver_notes") or []):
+        if not isinstance(note, dict) or not known_clusters:
+            continue
+        bad = [str(c) for c in (note.get("cluster_ids") or [])
+               if str(c) not in known_clusters]
+        if bad:
+            out.append(
+                f"shared_driver_notes[{note.get('driver')}] 的 `cluster_ids` "
+                f"指到不存在的事件群:{bad} —— 「為什麼不算重複計權」"
+                "的根據要指得到真的東西")
+    return out

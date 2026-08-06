@@ -641,7 +641,9 @@ _FROZEN = {
     #     response_schema(32K schema 先前漏算)。
     # 第二十四輪 P1-5/P1-6/P1-7:三大重點條數成為契約、可駁回集合統一、
     # 每個未駁回的總經發布都要條件在三個分支上。
-    "grounding_version":        (23, "15109e5ddbd791da"),
+    # v24(P1-8/P1-9):結構化引用的指涉完整性(淨效果要有 claim 根據且
+    # 主張要關於那個標的;cluster 引用要指得到真的東西)。
+    "grounding_version":        (24, "a0c3a41ab07987f7"),
 }
 
 

@@ -429,6 +429,8 @@ def validate(obj, evidence_ids) -> list:
         problems.extend(top_event_problems(obj, packet))
         # Commit D:淨效果、共同驅動、總經發布的聯合情境。
         problems.extend(event_graph_problems(obj, packet))
+        # P1-8/P1-9:結構化引用的**指涉**完整性(見 `analysis_contracts`)。
+        problems.extend(_ac.reference_problems(obj, packet))
         problems.extend(_alignment_problems(cms, packet, known))
         if hi and not str((cms or {}).get("dominant_driver") or "").strip():
             problems.append(

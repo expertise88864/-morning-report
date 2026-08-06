@@ -5394,6 +5394,26 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "09ad45b2-ee9c-4482-8700-b49d0161d97f",
+        "title": "Brad Setser on the US's Unusual Japanese Yen Intervention",
+        "published": "Thu, 06 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-06T10:22:55Z",
+        "digest": {
+          "summary_points": [
+            "Brad Setser 認為日圓已嚴重超跌：實質有效匯率回到1960年代水準，大麥克指數也顯示極度低估，連利率差都無法解釋近一年日圓與基本面的脫鉤。",
+            "對這次美日聯手干預，他的核心判斷是「成敗看日銀」：若9月升息，干預可望成功；若按兵不動，160防線勢必再被測試。",
+            "美國財政部賣歐元而非賣美元，他表示這是貝森特想傳達「這是對日圓的看法、不是弱勢美元」，但歐元兌日圓利率檢查也讓市場困惑，最終主要干預仍是美元兌日圓。",
+            "他大讚使用 FIMA 回購工具：讓外國央行能以美債作擔保借美元干預，不必立即拋售美債，避免重演2020年美債市場的拋售螺旋；但這工具非免費且有額度，美國財政部自身火力並非無限。",
+            "他反駁「日本財政即將失控」的擔憂：日本初級財政餘額已接近平衡、淨債務持續下降，而且政府持有龐大海外資產（儲備＋GPIF）享有高美元收益，真正的財政赤字問題在美國而非日本。",
+            "他解析東亞貨幣弱勢的結構性原因：台灣央行刻意阻升台幣（管制壽險避險等），韓國則因外資持股集中度限制與退休金外流，使好消息反而造成貨幣貶值——這是為什麼單靠利差無法解釋。"
+          ],
+          "tickers": [],
+          "market_view": "日圓兌美元已嚴重超跌、基本面並不支持160以上的弱勢，但干預能否扭轉趨勢，關鍵在日銀升息與美國利率政策；若日銀升息速度超越聯準會，日圓有機會真正轉強。",
+          "action_view": "操作上，若日銀9月如期升息，不宜繼續追空日圓，干預短期會守住160；若日銀不升息，則160關卡可能再失守。此外可留意美日長天期利差收斂與美債市場壓力（財政部介入方式）對匯率的影響。",
+          "notable_quote": "I think what the Ministry of Finance is trying to do is reestablish fear in the market around $160."
+        }
+      },
+      {
         "guid": "6ea24954-06b5-4daa-a250-b4980120947f",
         "title": "The Tungsten Market Is Warning of an Upcoming War",
         "published": "Mon, 03 Aug 2026 08:00:00 +0000",
@@ -5666,33 +5686,6 @@
           "notable_quote": "This is the US's first statewide moratorium on data centers, which means inevitably this is going to be seen as a test case or an experiment."
         },
         "shown_at": "2026-07-15T22:54:24Z"
-      },
-      {
-        "guid": "bf18344e-5dd0-4852-be82-b483013dfb22",
-        "title": "Why AI Might Actually Create More Work for Lawyers",
-        "published": "Mon, 13 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-13T16:22:25Z",
-        "digest": {
-          "summary_points": [
-            "AI 使法律工作的成本大幅下降，例如審閱數千份信託協議的成本降低了70%。",
-            "AI 正在從效率提升和「思考夥伴」兩個層面改變法律工作，不僅降低工時，也提升品質。",
-            "客戶已注意到使用 AI 的律師事務所產出的專利申請品質更高，且主動給予正面回饋。",
-            "AI 工具（如 Harvey）提供更強的安全與保密層，確保客戶資料與律師-委任人特權不受損。",
-            "保險業者對 AI 的態度從兩年前的「禁止使用」轉變為現在要求律師事務所必須使用 AI。",
-            "Jevons 悖論適用於法律服務：單位成本降低後，客戶願意委託更多法律工作，整體支出可能不減反增。",
-            "初級律師的訓練模式正在改變：從過去枯燥的比對文件等基礎工作，轉向模擬交易並直接使用 AI 工具。",
-            "大型客戶可能因 AI 而將更多例行法律工作內包，但需要市場廣度與跨交易知識的複雜案件仍會委外。",
-            "頂級律師事務所的小時費率持續大幅上升（2025年漲幅達10.1%），但完成特定案件的總工時顯著減少。",
-            "AI 使電子發現成本可能從200萬美元降至20萬美元，從而改變訴訟的經濟可行性，可能增加訴訟數量。",
-            "律師事務所面臨文化衝突：合夥人過去習慣獨立執業，現在卻需分享知識以發揮 AI 的最大效益。",
-            "AI 模型的真正成本仍不明朗，因為目前企業級方案多為吃到飽定價，未來將轉為 token 計費。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "律師事務所應積極採用 AI 工具（如 Harvey）以提升效率與品質，同時注意訓練律師正確使用並雙重檢查產出，避免引用虛構案例。",
-          "notable_quote": "So the Jevons paradox is in action. When the price came down by 70%, they said, oh yeah, at that price, we'll do it."
-        },
-        "shown_at": "2026-07-14T22:51:49Z"
       }
     ]
   },
@@ -6258,6 +6251,62 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-microsofts-plan-for-platform-survival-meta-and-the-markets-permission-a-lack-of-situational-awareness",
+        "title": "(Preview) Microsoft’s Plan for Platform Survival, Meta and the Market’s Permission, A Lack of Situational Awareness",
+        "published": "Thu, 06 Aug 2026 08:59:49 +0000",
+        "processed_at": "2026-08-06T10:14:21Z",
+        "digest": {
+          "summary_points": [
+            "主持人以「實體資產越重越安全、數位資產越重越危險」的光譜比較四大科技巨頭：亞馬遜核心電商受AI威脅最小，微軟軟體業務最受威脅，Google居中，Meta的社群雖較不直接但長期會被AI吃掉使用時間。",
+            "主持人認為微軟的AI策略是把自己做成中介層/作業系統，想把OpenAI、Anthropic等模型降級成「處理器」，用harness掌控工作流程與資料；方向合理，但「最低公分母」型harness可能不如直接跟頂尖模型公司合作的原生工具，回饋迴圈差距是未知數。",
+            "主持人拿微軟類比1990年代的IBM：大象不必跳，規模本身就是優勢，靠幫企業解決新科技焦慮可以多活20-25年；Satya Nadella親自主導Build、頻繁發文，反映他意識到軟體業務正被Anthropic與OpenAI的agent直接侵蝕。",
+            "主持人對科技業「開放信」的解讀：OpenAI與Anthropic正在吞掉整個生態，Nvidia、微軟、創投全都擔心利潤被壓縮或被取代，「簽開放信不是因為你贏，而是因為你怕」。",
+            "亞馬遜與微軟一樣都不在AI前緣，但亞馬遜的電商是實體物流、AI威脅最低，雲端也做得好，且習慣低毛利，是四大巨頭中最安全的一端。",
+            "Meta想追前緣卻沒有雲端業務，雖然AI對社群的威脅不如搜尋或辦公室軟體直接，但任何數位內容本質上長期都會被AI侵蝕，主持人也提到Meta的電話會議讓他有些警覺。"
+          ],
+          "tickers": [
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "認為微軟走中介層/作業系統策略合理，想讓模型變成處理器，但能否對抗OpenAI/Anthropic的直接整合仍是未知。"
+            },
+            {
+              "name": "亞馬遜",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為亞馬遜核心電商是實體物流，AI威脅最小，雲端表現佳且習慣低毛利，是較安全的一端。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為Google有大雲端業務也追求AI前緣，但搜尋業務受AI威脅，位置在光譜中間。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為Meta沒有雲端業務，數位社群本質上長期會被AI agent侵蝕使用時間，且其電話會議透露令人警覺的訊號。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指出若AI運算市場只剩OpenAI與Anthropic兩大買家，輝達的利潤率會被壓縮，因此連輝達也怕到要簽開放信。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "You sign open letters because you're freaking terrified."
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-an-open-ai-model-escapes-sandboxing-intelligence-will-be-a-commodity-market-the-chinese-model-conundrum",
         "title": "(Preview) An OpenAI Model Escapes Sandboxing, Intelligence Will Be a Commodity Market, The Chinese Model Conundrum",

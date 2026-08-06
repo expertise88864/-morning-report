@@ -101,13 +101,26 @@ def test_block_sizes_are_measured_before_anything_is_trimmed():
 
 
 def test_the_production_path_trims_and_records():
-    """**只在測試裡裁得動等於沒有。**"""
+    """**只在測試裡裁得動等於沒有。**
+
+    第二十四輪:預算政策收進 `payload_budget.apply()`(裁 → 壓 → 記錄 → 閘門),
+    所以這裡改成**行為斷言**——原本只掃 morning_report 有沒有出現 `_pb.trim`,
+    而「原始碼裡有那個字串」跟「生產真的裁得動」是兩件事;P1-1 正是被這種
+    只掃字串的測試放過的(planner 的 `plan_for_run` 有被呼叫,但吃不到 ID)。
+    """
     from pathlib import Path
+    import payload_budget as pb
+    manifest: dict = {}
+    packet = {"market": {"HISTORY": {"rows": ["很長" * 400_000]},
+                         "QQQ": {"close": 700}},
+              "news": [], "tw_universe": []}
+    out = pb.apply(packet, manifest)
+    assert manifest["llm"]["payload_budget"]["trimmed"], "生產路徑沒有裁"
+    assert "HISTORY" not in (out.get("market") or {}), "裁了但沒生效"
+    # 主模組確實走這個入口(而不是自己另抄一套)
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
-    body = src[src.index("def _luna_analysis"):]
-    assert "_pb.trim(packet)" in body, "生產沒有裁"
-    assert '"payload_budget"' in body, "裁了什麼沒有進 manifest"
+    assert "_pb.apply(packet" in src[src.index("def _luna_analysis"):], "生產沒有走預算入口"
 
 
 # ---------------------------------------------------------------- 退避重試

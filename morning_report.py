@@ -13918,15 +13918,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     # 約 2.0 MB —— 2.7 秒就被 429 拒收。新聞側有上限而 market 的外部
     # 文字區塊(公報、事件、政策情報、歷史)一個都沒有:
     # **每一塊都有人負責,總和沒有人負責。**
-    packet, _budget = _pb.trim(packet)
-    # **報告一律進 manifest**(第二十一輪 P1-2):先前只在有裁東西時才記,
-    # 於是「超標來源全是不可裁的區塊」那一天,manifest 上什麼都看不到。
-    _RUN_MANIFEST.setdefault("llm", {})["payload_budget"] = _budget
-    if _budget["trimmed"]:
-        print(f"[llm] payload {_budget['chars_before']} 字元超出預算,"
-              f"裁掉 {len(_budget['trimmed'])} 個背景區塊 → "
-              f"{_budget['chars_after']}", file=sys.stderr)
-    _pb.gate(_budget)   # 硬閘門:裁完仍超標就放棄特化(見 payload_budget)
+    # 預算政策的單一入口:裁背景 → 第二層壓縮 → 記錄 → 硬閘門(見 payload_budget)
+    packet = _pb.apply(packet, _RUN_MANIFEST)
     bundle = _pp.build_luna_bundle(packet)
     _pb.request_gate(bundle, manifest=_RUN_MANIFEST)  # 量送出去的東西,不是 packet
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(

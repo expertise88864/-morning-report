@@ -157,6 +157,42 @@ def request_gate(bundle: dict, *, manifest=None,
             f"final request over budget: {chars} > {limit}")
 
 
+def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:
+    """**預算政策的單一入口**:裁背景 → 第二層壓縮 → 記錄 → 硬閘門。
+
+    收在這裡而不是攤在主模組,理由與 `trim` 的「總和沒有人負責」同一個:
+    預算是一件事,不是散在呼叫端的四個步驟(那樣下一個呼叫端只會抄一半)。
+
+    超標時 raise `PayloadBudgetExceeded`,呼叫端落回 legacy(晨報不可斷)。
+    """
+    import sys as _sys
+    import payload_compact as _pc
+    packet, budget = trim(packet)
+    if manifest is not None:
+        manifest.setdefault("llm", {})["payload_budget"] = budget
+    if budget["trimmed"]:
+        print(f"[llm] payload {budget['chars_before']} 字元超出預算,裁掉 "
+              f"{len(budget['trimmed'])} 個背景區塊 → {budget['chars_after']}",
+              file=_sys.stderr)
+    # **第二層**(第二十四輪 P1-2):2026-08-06 裁完仍 910K,而剩下的全在
+    # 不可裁清單裡 —— gate 每天正確地擋,特化路徑卻沒有一天可能成功。
+    packet, cmp_rep = _pc.compact(packet, limit=budget["limit"])
+    if manifest is not None:
+        manifest.setdefault("llm", {})["payload_compact"] = cmp_rep
+        # **量測要是活的**:`block_sizes()` 先前從未被呼叫 —— 模組寫著
+        # 「先量再裁」而沒有人知道剩下那 910K 是什麼。
+        manifest["llm"]["block_sizes"] = dict(
+            list(block_sizes(packet).items())[:12])
+    if cmp_rep["applied"]:
+        budget = dict(budget, chars_after=cmp_rep["chars_after"],
+                      over_budget=cmp_rep["over_budget"])
+        if manifest is not None:
+            manifest["llm"]["payload_budget"] = budget
+        print(f"[llm] 第二層壓縮 → {cmp_rep['chars_after']:,} 字元", file=_sys.stderr)
+    gate(budget)
+    return packet
+
+
 class PayloadBudgetExceeded(ValueError):
     """裁完仍超標 —— 這個請求在結構上不可能成功,不得送出。"""
 

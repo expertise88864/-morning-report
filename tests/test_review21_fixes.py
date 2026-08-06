@@ -32,26 +32,45 @@ def test_an_over_budget_payload_never_reaches_the_api():
 
 
 def test_the_gate_is_wired_before_the_api_call():
-    """**閘門要在送出之前** —— 掃生產原始碼:`gate` 在 payload 組裝前。"""
+    """**閘門要在送出之前**。
+
+    第二十四輪:預算政策收進 `payload_budget.apply()`,閘門是它的最後一步 ——
+    所以「擋得住」現在是行為問題而不是原始碼順序問題:超標時 `apply()`
+    直接 raise,呼叫端根本走不到組 payload 那一行。
+    """
     from pathlib import Path
+    import payload_budget as pb
+    import pytest
+    # 不可裁也不可壓的行情核心自己就超標 → 必須在回傳之前就擋下
+    pk = {"market": {"CORE": {"note": "x" * (pb.MAX_PAYLOAD_CHARS + 50_000)}},
+          "news": [], "tw_universe": []}
+    with pytest.raises(pb.PayloadBudgetExceeded):
+        pb.apply(pk, {})
+    # 生產仍是「先過預算入口,再組 payload」
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
     body = src[src.index("def _luna_analysis"):]
-    i_gate = body.index("_pb.gate(_budget)")
-    i_post = body.index("_orx.build_payload(")
-    assert i_gate < i_post, "閘門在組 payload 之後才擋,已經太晚"
+    assert body.index("_pb.apply(packet") < body.index("_orx.build_payload("), (
+        "預算閘門在組 payload 之後才擋,已經太晚")
 
 
 def test_the_budget_report_is_always_recorded():
     """**P1-2 的另一半**:超標來源全是不可裁區塊時 `trimmed=[]` ——
-    先前那一天 manifest 上什麼都看不到。報告一律要記。"""
-    from pathlib import Path
-    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
-           ).read_text(encoding="utf-8")
-    body = src[src.index("packet, _budget = _pb.trim(packet)"):]
-    record = body.index('["payload_budget"] = _budget')
-    guard = body.index('if _budget["trimmed"]')
-    assert record < guard, "報告只在有裁東西時才記"
+    先前那一天 manifest 上什麼都看不到。報告一律要記。
+
+    改成行為斷言:給一個**沒有任何可裁區塊**的超標 packet,manifest 仍須有報告。
+    """
+    import payload_budget as pb
+    import pytest
+    manifest: dict = {}
+    pk = {"market": {"CORE": {"note": "x" * (pb.MAX_PAYLOAD_CHARS + 50_000)}},
+          "news": [], "tw_universe": []}
+    with pytest.raises(pb.PayloadBudgetExceeded):
+        pb.apply(pk, manifest)
+    rep = manifest["llm"]["payload_budget"]
+    assert rep["trimmed"] == [], "這個情境本來就沒有可裁的區塊"
+    assert rep["over_budget"] is True and rep["chars_before"] > rep["limit"], (
+        "沒有東西可裁的那一天,報告仍然要記")
 
 
 def test_trim_order_follows_measured_size_not_declaration():

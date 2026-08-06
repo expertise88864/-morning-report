@@ -32,7 +32,6 @@
 """
 from __future__ import annotations
 
-import hashlib
 from typing import Optional
 
 import signal_tensions as _tension
@@ -126,20 +125,9 @@ def sanitize_tree(node, clean):
     return node
 
 
-def _sid(item: dict, index: int) -> str:
-    """新聞的穩定識別碼。
-
-    優先用上游已有的 `source_item_id`;沒有就用 (來源, 標題, 發布時間) 的雜湊。
-    **不用陣列索引** —— 索引會隨當日抓取數量漂移,而 claim 要靠它回指證據,
-    索引一變,昨天的 claim 就指到今天的另一則新聞。
-    """
-    existing = str(item.get("source_item_id") or "").strip()
-    if existing:
-        return existing[:16]
-    raw = "|".join(str(item.get(k) or "") for k in ("source", "title", "published"))
-    if not raw.strip("|"):
-        raw = f"__empty__{index}"
-    return "n" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:11]
+#: 新聞身分住在 `news_ids`(第二十四輪 P1-1 拆出)—— 它是整條管線的共用身分,
+#: 不是 packet 階段專屬的東西。此處再匯出,既有 import 路徑不變。
+from news_ids import _sid, assign_source_item_ids  # noqa: E402,F401
 
 
 def _grade(item: dict) -> str:

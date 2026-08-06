@@ -103,12 +103,23 @@ def plan(news: Optional[list], clusters: Optional[list],
 
 
 def plan_for_run(news: Optional[list], recorder=None, budget: int = 26) -> list:
-    """生產用的一行入口:分群 → 排計畫 → 記進 recorder → 回 `targets`。
+    """生產用的一行入口:**補 ID** → 分群 → 排計畫 → 記進 recorder → 回 `targets`。
 
     `recorder` 是 `ManifestRecorder`(相位不得直接碰 `_RUN_MANIFEST`,
     見 `test_main_decomposition` 的棘輪)。沒給就只回計畫,不記錄。
+
+    **補 ID 是這裡的責任,不是呼叫端的**(第二十四輪 P1-1)。分群與本計畫都以
+    `source_item_id` 索引,而它原本要到 EvidencePacket 的 `normalize_news()`
+    才產生 —— 生產接線在那之前就跑完了,於是 2026-08-06 的 manifest 是
+    `available news = 563`、`clusters = 0`、`targets = 0`:兩階段抓取整段 no-op。
+
+    修法刻意放在入口而不是要求呼叫端「記得先補」—— 忘記正是這個缺陷的成因。
+    `assign_source_item_ids()` 就地寫入且冪等,所以呼叫端同一個 list 拿去
+    `fetch_news_fulltext()` 也看得到 ID,而後面的 `normalize_news()` 不會改號。
     """
     import news_clusters as _nc
+    import news_ids as _nids
+    news = _nids.assign_source_item_ids(news)
     out = plan(news, _nc.clusters(news), budget=budget)
     rec = getattr(recorder, "record_fulltext_plan", None)
     if callable(rec):

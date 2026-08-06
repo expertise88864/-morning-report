@@ -22571,10 +22571,9 @@ def _phase_news_policy_sports(ctx) -> None:
     if _run_budget_ok(_core_tail_seconds() + 140, "重大事件全文擷取"):
         print("[main] 對重大事件擷取全文…")
         try:
-            # **兩階段**(重構規格 Commit B):RSS 帶回標題摘要 → 分群
-            # → **逐事件群**分配全文預算。上一版逐則掃 critical/high,
-            # 於是十篇全文可能只涵蓋兩個事件(同一件事四家媒體各報一則),
-            # 而只有一家報的第三個事件一篇都沒有。
+            # **兩階段**(Commit B):分群 → 逐事件群分配全文預算;理由與
+            # 排序規則見 `fetch_plan` 模組 docstring。`plan_for_run` 會先就地
+            # 補齊 `source_item_id`(P1-1),故下一行的 fetch 也看得到。
             import fetch_plan as _fplan
             news = fetch_news_fulltext(
                 news, targets=_fplan.plan_for_run(news, ctx.recorder))

@@ -188,13 +188,20 @@ def test_render_html_preheader_falls_back_without_data():
 
 
 def test_archive_report_html_redacts_and_prunes(tmp_path, monkeypatch):
-    """信件存檔(§B):寫 gzip、去識別移除持股列、修剪過舊檔;失敗不拋。"""
+    """信件存檔(§B):寫 gzip、去識別移除持股列、修剪過舊檔;失敗不拋。
+
+    **日期要相對於今天算**:原本寫死 `2026-07-06` + `keep_days=30`,於是
+    真實日期一過 2026-08-05,剛寫進去的檔案就被自己的修剪規則刪掉 ——
+    測試在某一天之後必然變紅,而失敗原因與被測行為無關。
+    """
+    import datetime as _dt
     import gzip
     monkeypatch.setattr(mr, "EMAIL_ARCHIVE_DIR", tmp_path)
     (tmp_path / "2020-01-01.html.gz").write_bytes(b"old")   # 很舊,應被修剪
     html = ("<body><!--PF_ROW_START--><tr><td>持倉1 昨日帳上 +NT$1.2萬</td></tr>"
             "<!--PF_ROW_END--><div>一、美股收盤行情</div></body>")
-    out = mr.archive_report_html(html, "2026-07-06", keep_days=30)
+    today = _dt.date.today().isoformat()
+    out = mr.archive_report_html(html, today, keep_days=30)
     assert out and out.exists()
     saved = gzip.open(out, "rt", encoding="utf-8").read()
     assert "NT$1.2萬" not in saved and "昨日帳上" not in saved   # 敏感財務去識別

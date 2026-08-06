@@ -234,6 +234,11 @@ MODULE_CEILINGS = {
     # 第二十三輪 P1-4:ASCII 別名 token 邊界 + 未知來源去重。實測 251。
     "source_registry.py": 265,
     "fetch_plan.py": 150,
+    # 第二十四輪 P1-1:新聞身分(`source_item_id`)從 `evidence_packet` 搬出來。
+    # 搬的理由就是那個缺陷的形狀 —— ID 住在 packet 模組裡,就會讓人以為
+    # 「那是 packet 階段的事」,而分群/計畫/抓取三個更早的相位全靠它。
+    # 這是最底層的葉模組(只依賴 hashlib),實測 59 行。
+    "news_ids.py": 80,
     # V2-N4/N3:Google 查詢註冊表與 30 天健康歷史的讀取端。
     # 兩個都是純規則層,說明寫在模組裡(主模組只留一行指路)。
     "gnews_registry.py": 150,

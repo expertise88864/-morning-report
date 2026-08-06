@@ -73,7 +73,13 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     「GPU」不會是任何新聞的實體。台股代號與已知指數/ETF 照舊放行。
     """
     a = str(aid or "").strip()
-    if not a or a in _KNOWN_ASSETS:
+    if not a:
+        return False
+    # **「是已知標的」不等於「與這件事有關」**(P1-12):先前白名單是無條件
+    # 繞過。型別查表、相關性看證據;只有指數豁免(理由見 instrument_registry)。
+    import instrument_registry as _ir
+    _cid, _scope = _ir.resolve(a, packet)
+    if _cid and not _ir.needs_event_evidence(_scope):
         return False
     # 第二十二輪 P1-6:**產品概念永遠不是可交易標的** —— 即使標題就叫
     # 「GPU demand accelerates」。這些詞在標題出現的頻率極高,
@@ -112,7 +118,9 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
             return False
         known = {str(x.get("code") or "")
                  for x in (packet.get("tw_universe") or []) if isinstance(x, dict)}
-        if a in known or a in body or any(a in str(e) for e in ents):
+        # 「代號存在」不等於「與這則新聞有關」(P1-12):先前 `a in known`
+        # 讓 universe 裡的任何一檔都能掛到任何一則新聞上。
+        if a in body or any(a in str(e) for e in ents):
             return False
         import entity_alias as _ea
         if _ea.same(a, _ea.expand(ents)):

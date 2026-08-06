@@ -245,19 +245,32 @@ def _identity(obj) -> dict:
         # 第二十三輪 P1-9:**首屏的三條與 Commit D 的新段落先前都不在
         # 身分裡** —— 加深可以改寫三大重點、翻轉淨效果方向、刪掉共同
         # 驅動警語、換掉 dismissed 的理由,而選優完全看不見。
+        # 第二十四輪 P1-10:**這四格先前只保護了一部分可見欄位。**
+        # 加深因此可以在「集合存在」不變的情況下改變信的語意:調高重點的
+        # confidence、刪掉它的反證與失效條件、把淨效果的 claim 根據與
+        # 抵銷事件換掉、改寫共同驅動指向的事件群、抽掉駁回的證據與回頭條件。
+        # 這些全部會渲染進信 —— **可見的東西都要在身分裡**。
         "三大重點": {f"{d.get('cluster_id')}:{d.get('statement')}:"
                  f"{d.get('direction')}:{d.get('materiality')}:"
-                 f"{d.get('horizon')}:"
+                 f"{d.get('horizon')}:{d.get('confidence')}:"
+                 f"{d.get('falsification_trigger')}:"
+                 f"{','.join(sorted(map(str, d.get('counterevidence_ids') or [])))}:"
+                 f"{','.join(sorted(map(str, d.get('claim_ids') or [])))}:"
                  f"{','.join(sorted(map(str, d.get('evidence_ids') or [])))}"
                  for d in (o.get("key_drivers") or []) if isinstance(d, dict)},
         "逐標的淨效果": {f"{x.get('asset_id')}:{x.get('net_direction')}:"
-                   f"{x.get('net_magnitude_band')}:{x.get('why')}"
+                   f"{x.get('net_magnitude_band')}:{x.get('why')}:"
+                   f"{','.join(sorted(map(str, x.get('offsetting_cluster_ids') or [])))}:"
+                   f"{','.join(sorted(map(str, x.get('claim_ids') or [])))}"
                    for x in (o.get("asset_net_effects") or [])
                    if isinstance(x, dict)},
-        "共同驅動說明": {f"{x.get('driver')}:{x.get('why_not_double_counted')}"
+        "共同驅動說明": {f"{x.get('driver')}:{x.get('why_not_double_counted')}:"
+                   f"{','.join(sorted(map(str, x.get('cluster_ids') or [])))}"
                    for x in (cms.get("shared_driver_notes") or [])
                    if isinstance(x, dict)},
-        "駁回的事件": {f"{x.get('cluster_id')}:{x.get('why_not_material')}"
+        "駁回的事件": {f"{x.get('cluster_id')}:{x.get('why_not_material')}:"
+                  f"{x.get('revisit_trigger')}:"
+                  f"{','.join(sorted(map(str, x.get('supporting_evidence_ids') or [])))}"
                   for x in (o.get("dismissed_events") or [])
                   if isinstance(x, dict)},
     }

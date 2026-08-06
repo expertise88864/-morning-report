@@ -39,7 +39,9 @@ EXPERIMENT_SCHEMA_VERSION = 1
 #:
 #: 這兩個數字要手動維護。自動從程式碼推導(檔案雜湊、git SHA)正是本模組
 #: 要避免的東西:那會讓「改一個註解」變成「換一個系統」。
-POSTPROCESS_VERSION = 1
+#: v2(第二十四輪 P1-10):加深選優的**身分**補上四段可見欄位(見
+#: `analysis_depth._identity`)。選優規則變了 = 發表出去的那一版可能不同。
+POSTPROCESS_VERSION = 2
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合

@@ -39,6 +39,7 @@ import json_contract as jc
 import analysis_grounding as gr
 import analysis_validate as av
 import analysis_render as ar
+import analysis_depth as _ad
 import analysis_schema as sch
 import evidence_packet as ep
 import llm_experiment as lx
@@ -385,8 +386,14 @@ def _behaviour() -> dict:
             _versionless(_contract_view(
                 pp.build_deepseek_legacy_bundle(pk, _legacy_prompt()))),
             _sha(_legacy_prompt())]),
+        # 第二十四輪 P1-10:**探針先前量不到加深選優。** `_identity()` 決定
+        # 哪一版會被發表,而它整個不在任何快照裡 —— 改了選優規則沒有任何
+        # tripwire 會響。這正是本檔要防的形狀,只是漏了這一格。
         "postprocess_version": _sha([lp._extract_stance(_REPORT_TEXT),
-                                     lp._extract_summary(_REPORT_TEXT)]),
+                                     lp._extract_summary(_REPORT_TEXT),
+                                     sorted(_ad._identity(_ANALYSIS).keys()),
+                                     sorted(map(str, _ad._identity(
+                                         _ANALYSIS).get("三大重點", ())))]),
         # **探針要用生產的呼叫形狀**(第十八輪)。先前餵 `render(obj)` ——
         # 而生產是 `render(obj, packet)`。於是逐筆張力的抬頭、傳導未完成的
         # 揭露,這些**只有在有 packet 時才存在的行為**,快照根本量不到:
@@ -566,7 +573,9 @@ _FROZEN = {
     "primary_profile_version":  (24, "d45fcd958e7f27e2"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "shadow_profile_version":   (7, "27619c45c92d2128"),
-    "postprocess_version":      (1, "5791421fb8cd7a67"),
+    # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
+    # 探針同時補上 `_identity`(先前完全量不到選優規則)。
+    "postprocess_version":      (2, "ad654d3f865295e0"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**

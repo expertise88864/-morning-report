@@ -216,3 +216,50 @@ def test_the_prompt_states_all_three_rules():
     assert "asset_net_effects" in text
     assert "shared_driver_groups" in text and "shared_driver_notes" in text
     assert "macro_release_cluster_id" in text
+
+
+def test_every_undismissed_macro_release_must_condition_all_branches():
+    """**第二十四輪 P1-7(必補測試 9):CPI＋Fed 同日,每個分支要同時涵蓋兩者。**
+
+    先前只驗 `macro_release_cluster_id`(單數,排序後的第一個)——
+    第二個發布只要「被具名或被駁回」就過關,於是情境樹可以完全只建在
+    CPI 上,而 Fed 被降級成一則新聞。兩個發布的交叉組合才是真正的分岔。
+    """
+    pk = _packet()
+    assert pk["event_graph"]["macro_release_cluster_ids"] == [
+        "cluster:m1", "cluster:m2"], "fixture 需要兩個總經發布"
+    obj = fx.valid_analysis()
+    # 兩個都不駁回 → 兩個都要條件在三個分支上(2 × 3 = 6 條問題)
+    obj["dismissed_events"] = []
+    hits = [p for p in sch.validate(obj, pk) if "分岔本身" in p]
+    assert len(hits) == 6, hits
+
+    # **只條件在第一個發布上仍然不夠** —— 這正是先前會放行的情況
+    obj["claim_audit"].append(dict(obj["claim_audit"][0], claim_id="cm1",
+                                   evidence_ids=["m1"]))
+    for br in ("base", "bull", "bear"):
+        obj["scenario_tree"][br]["claim_ids"] = ["cm1"]
+    hits = [p for p in sch.validate(obj, pk) if "分岔本身" in p]
+    assert len(hits) == 3 and all("cluster:m2" in p for p in hits), hits
+
+    # 兩個都條件上去才通過
+    obj["claim_audit"].append(dict(obj["claim_audit"][0], claim_id="cm2",
+                                   evidence_ids=["m2"]))
+    for br in ("base", "bull", "bear"):
+        obj["scenario_tree"][br]["claim_ids"] = ["cm1", "cm2"]
+    assert not [p for p in sch.validate(obj, pk) if "分岔本身" in p]
+
+
+def test_a_dismissed_macro_release_is_exempt_from_conditioning():
+    """駁回是模型說「今天這個真的不影響」的唯一出口 —— 兩邊都要求等於沒有出口。
+
+    (駁回本身已被品質門檻把關:非套語、要引用自身事件群、要寫 revisit_trigger。)
+    """
+    pk = _packet()
+    obj = fx.valid_analysis()
+    obj["dismissed_events"] = [{"cluster_id": "cluster:m2",
+                                "why_not_material": "與主發布同一驅動,合併談",
+                                "reason": "同驅動", "revisit_trigger": "x",
+                                "supporting_evidence_ids": ["m2"]}]
+    hits = [p for p in sch.validate(obj, pk) if "分岔本身" in p]
+    assert len(hits) == 3 and all("cluster:m1" in p for p in hits), hits

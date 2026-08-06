@@ -56,6 +56,11 @@ def _is_boilerplate(why: str) -> bool:
     return len(t) <= 15 and any(w in t for w in _BOILERPLATE)
 
 
+#: 可合法駁回的集合住在 `analysis_contracts`(第二十四輪 P1-6)—— 三套契約
+#: 必須用同一個集合,先前各自為政正是它們互相矛盾的原因。此處再匯出。
+from analysis_contracts import dismissable_cluster_ids  # noqa: E402,F401
+
+
 def _coverage_problems(obj, packet, analysed_ids) -> list:
     """**必分析事件的覆蓋率**(第十八輪 P1-3)。
 
@@ -100,8 +105,9 @@ def _coverage_problems(obj, packet, analysed_ids) -> list:
             out.append(
                 f"dismissed_events[{cid}] 的理由只是套語 —— "
                 "要說出這件事的哪個環節今天不會傳導到價格")
-    for cid in sorted(set(dismissed) - set(need)):
-        out.append(f"dismissed_events 宣稱駁回 {cid!r},而它不在本報的必分析清單")
+    for cid in sorted(set(dismissed) - dismissable_cluster_ids(packet)):
+        out.append(f"dismissed_events 宣稱駁回 {cid!r},而它不在本報的"
+                   "必分析清單、計分前三、也不是總經發布")
     # 同一個事件群分析兩次以上 —— **那不是更深,是同一條鏈改寫兩次**,
     # 而它會讓 `news_analyzed` 這個數字看起來變好。
     seen: dict = {}
@@ -379,16 +385,31 @@ def event_graph_problems(obj, packet) -> list:
             out.append(f"今天有第二個總經發布({e}),它既不在三大重點、"
                        "也沒有被 dismissed —— 忽略一個總經發布與沒看到它,"
                        "在信裡長得一樣")
-    macro = str(graph.get("macro_release_cluster_id") or "")
-    if macro:
-        members = set()
-        for c in ((packet.get("news_clusters") or {}).get("clusters") or []):
-            if isinstance(c, dict) and str(c.get("cluster_id")) == macro:
-                members = {str(m) for m in (c.get("member_source_ids") or [])}
+    # 第二十四輪 P1-7:**每一個總經發布都要條件在三個分支上,不只第一個。**
+    # 先前只驗 `macro_release_cluster_id`(單數,排序後的第一個)——
+    # CPI 與 Fed 同日時,情境樹可以完全只建在 CPI 上,而 Fed 只要「被具名
+    # 或被駁回」就過關。那不是聯合情境,是把第二個發布降級成一則新聞:
+    # 兩個發布的交叉組合(CPI 高 × Fed 鷹 / CPI 高 × Fed 鴿…)才是真正的分岔。
+    # **被合法駁回的發布不必條件化** —— 駁回是模型說「今天這個真的不影響」的
+    # 唯一出口,而它已經被品質門檻把關(非套語、要引用自身事件群、要寫
+    # revisit_trigger)。兩邊都要求等於沒有出口。
+    macros = [str(x) for x in (graph.get("macro_release_cluster_ids") or [])
+              if str(x) and str(x) not in dismissed_all]
+    if not macros and graph.get("macro_release_cluster_id"):
+        m0 = str(graph["macro_release_cluster_id"])
+        macros = [m0] if m0 not in dismissed_all else []
+    if macros:
         by_id = {str(c.get("claim_id") or ""): c
                  for c in (obj.get("claim_audit") or []) if isinstance(c, dict)}
         tree = obj.get("scenario_tree")
-        if members and isinstance(tree, dict):
+        groups_by_id = {str(c.get("cluster_id")): c
+                        for c in ((packet.get("news_clusters") or {}).get("clusters") or [])
+                        if isinstance(c, dict)}
+        for macro in macros:
+            members = {str(m) for m in
+                       ((groups_by_id.get(macro) or {}).get("member_source_ids") or [])}
+            if not (members and isinstance(tree, dict)):
+                continue
             for br in ("base", "bull", "bear"):
                 blk = tree.get(br)
                 if not isinstance(blk, dict):
@@ -397,11 +418,14 @@ def event_graph_problems(obj, packet) -> list:
                 ev = {str(e) for c in cited if isinstance(c, dict)
                       for e in (c.get("evidence_ids") or [])}
                 if not (ev & members):
+                    extra = ("(今天有 %d 個總經發布,每一個都要條件在三個分支上"
+                             " —— 只條件在其中一個,另一個就被降級成一則新聞)"
+                             % len(macros)) if len(macros) > 1 else ""
                     out.append(
                         f"今天有總經發布({macro}),而 scenario_tree.{br} "
                         "沒有任何一條主張引用它 —— 總經發布是情境樹的"
                         "**分岔本身**,三個分支若不條件在同一件事上,"
-                        "那是三件不同的事各自展開")
+                        f"那是三件不同的事各自展開{extra}")
     return out
 
 

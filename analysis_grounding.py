@@ -49,7 +49,14 @@ from __future__ import annotations
 #: 計分前三全部要處理;第二總經發布不得忽略;淨效果衝突偵測用
 #: 別名正規化;加深身分補 key_drivers/淨效果/共同驅動/dismissed;
 #: request_gate 改量 `response_schema`(32K schema 先前漏算)。
-GROUNDING_VERSION = 22
+#: v23(第二十四輪 P1-5/P1-6/P1-7):三大重點的**條數**成為契約
+#: (恰好 `min(3, 合格事件群數)` —— 上限擋靜默隱藏、下限擋靜默省略,
+#: 而分母來自 packet 不是模型自評);可合法駁回的集合統一成
+#: 必分析 ∪ 計分前三 ∪ 總經發布(先前三套契約用三個不同集合,
+#: 模型照著其中一套做就會違反另一套);**每一個**未被駁回的總經發布
+#: 都要條件在三個情境分支上(先前只驗第一個,CPI+Fed 同日時
+#: 情境樹可以完全只建在 CPI 上,Fed 被降級成一則新聞)。
+GROUNDING_VERSION = 23
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from analysis_contracts import top_drivers as _top   # 條數與驗證器同源
 from analysis_render_depth import _news_line, _synthesis
 
 RENDER_SCHEMA_VERSION = 1
@@ -196,11 +197,10 @@ def render(obj: Optional[dict], packet=None) -> str:
 
     parts: list = []
 
-    # 七、昨夜三大重點 —— **事件卡**(重構規格 Commit E)。
-    # 使用者原話:「我要的是真正國際上昨夜三大發生得重大事件」。
-    # 每一條除了判斷本身,還要看得出**這件事有多可信、是第幾天** ——
-    # 那兩件事 packet 早就算好了(獨立編輯台數、連續追蹤天數),
-    # 而先前一個字都沒有進信。
+    # 七、昨夜三大重點 —— **事件卡**(重構規格 Commit E)。使用者原話:
+    # 「我要的是真正國際上昨夜三大發生得重大事件」。每一條除了判斷本身,
+    # 還要看得出**這件事有多可信、是第幾天** —— 那兩件事 packet 早就算好了
+    # (獨立編輯台數、連續追蹤天數),而先前一個字都沒有進信。
     drivers = [c for c in (obj.get("key_drivers") or []) if isinstance(c, dict)]
     # 第二十三輪 P1-6:**排序依 Python 的事件計分,不依模型自評的
     # materiality** —— 自評的重要性不能當判準(repo 既有原則)。
@@ -209,7 +209,7 @@ def render(obj: Optional[dict], packet=None) -> str:
     order = {"high": 0, "medium": 1, "low": 2}
     drivers.sort(key=lambda c: (_rank.get(_s(c.get("cluster_id")), 99),
                                 order.get(_s(c.get("materiality")), 3)))
-    top3 = [x for x in (_event_card(c, packet) for c in drivers[:3]) if x]
+    top3 = [x for x in (_event_card(c, packet) for c in _top(drivers, packet)) if x]
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 

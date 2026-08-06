@@ -639,7 +639,9 @@ _FROZEN = {
     # v22(第二十三輪):每條重點都要是事件、前三全處理、第二總經發布
     #     不得忽略、淨效果衝突用別名正規化、request_gate 量
     #     response_schema(32K schema 先前漏算)。
-    "grounding_version":        (22, "6e16d5dce6614e60"),
+    # 第二十四輪 P1-5/P1-6/P1-7:三大重點條數成為契約、可駁回集合統一、
+    # 每個未駁回的總經發布都要條件在三個分支上。
+    "grounding_version":        (23, "15109e5ddbd791da"),
 }
 
 

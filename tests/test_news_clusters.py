@@ -137,15 +137,46 @@ def test_a_required_event_must_be_analysed_or_explicitly_dismissed():
     assert not [p for p in probs if "cluster:n4" in p]
 
 
-def test_dismissing_something_that_was_never_required_is_rejected():
-    """反向:**回填一個沒被要求的駁回**會讓「都處理過了」看起來成立。"""
+def test_dismissing_something_outside_every_legal_set_is_rejected():
+    """反向:**回填一個沒人要求的駁回**會讓「都處理過了」看起來成立。
+
+    第二十四輪 P1-6:合法集合統一成 必分析 ∪ 計分前三 ∪ 總經發布 ——
+    所以這裡改用一個**三個集合都不在**的事件群(此處是根本不存在的 ID,
+    那正是最尖銳的版本:捏造 cluster_id 來充數)。
+    """
     pk = ep.build({}, {}, {}, _NEWS, [], {}, as_of="2026-08-05T06:00",
                   target_session_date="2026-08-05", sanitize=str)
     obj = fx.valid_analysis()
-    obj["dismissed_events"] = [{"cluster_id": "cluster:n5", "why_not_material": "不重要",
+    obj["dismissed_events"] = [
+        {"cluster_id": "cluster:n99", "why_not_material": "不重要",
          "supporting_evidence_ids": ["n5"],
          "revisit_trigger": "官方後續公告改變原判斷"}]
-    assert [p for p in sch.validate(obj, pk) if "不在本報的必分析清單" in p]
+    assert [p for p in sch.validate(obj, pk) if "必分析清單" in p]
+
+
+def test_dismissing_a_top_event_that_is_not_required_is_legal():
+    """**P1-6 的正向面**:計分前三但不在必分析清單的事件,駁回它是合法的。
+
+    先前這裡自相矛盾:覆蓋率契約說「不在必分析清單就不准駁回」,而
+    top-event 契約說「前三名每一件都要具名或駁回」—— 一個不在必分析清單的
+    top-3 事件,模型兩邊都做不對。
+    """
+    import analysis_crosscheck as ac
+    pk = ep.build({}, {}, {}, _NEWS, [], {}, as_of="2026-08-05T06:00",
+                  target_session_date="2026-08-05", sanitize=str)
+    required = set((pk["news_clusters"] or {}).get("required_cluster_ids") or [])
+    top = list((pk.get("top_events") or {}).get("top_cluster_ids") or [])
+    only_top = [c for c in top if c not in required]
+    assert only_top, "fixture 需要一個「在前三、不在必分析」的事件群"
+    assert set(only_top) <= ac.dismissable_cluster_ids(pk), "它必須可以合法駁回"
+
+    obj = fx.valid_analysis()
+    obj["dismissed_events"] = [
+        {"cluster_id": only_top[0], "why_not_material": "與主線同一驅動,合併談",
+         "supporting_evidence_ids": [only_top[0].split(":", 1)[-1]],
+         "revisit_trigger": "官方後續公告改變原判斷"}]
+    assert not [p for p in sch.validate(obj, pk) if "必分析清單" in p], (
+        "計分前三的事件被駁回不該再被判成『不該駁回』")
 
 
 def test_analysing_the_same_event_twice_is_rejected():

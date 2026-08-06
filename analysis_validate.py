@@ -22,6 +22,10 @@ import re as _re
 
 import analysis_grounding as _gr
 
+#: 條數契約住在 `analysis_contracts`(P1-5:判準只能有一份)。此處再匯出。
+import analysis_contracts as _ac  # noqa: E402
+from analysis_contracts import KEY_DRIVERS_REQUIRED, key_drivers_required  # noqa: E402,F401
+
 #: **不算標的的泛稱。** 這些字出現在 `asset_id` 時,那一格等於沒有拆 ——
 #: 而 renderer 會把它排得跟真的逐標的分析一模一樣,讓泛論看起來更像
 #: 深度分析。**比不拆更糟。**(第十九輪 P1-9)
@@ -194,6 +198,8 @@ def validate(obj, evidence_ids) -> list:
             problems.append(
                 f"claim_audit[{i}] 是高重要性的 {c.get('claim_type')},"
                 "卻沒有任何支持證據")
+    # **「昨夜三大重點」的條數**(P1-5;判準與判斷都在 `analysis_contracts`)
+    problems += _ac.key_driver_count_problems(obj, packet)
     for i, d in enumerate(obj.get("key_drivers") or []):
         if isinstance(d, dict):
             _check_ids(d.get("evidence_ids"), f"key_drivers[{i}]")

@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,700+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 2,000+ 單元測試。
 
 ---
 
@@ -180,7 +180,7 @@ portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要�
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
 tools/                稽核與驗證腳本(codex_review、mz_walkforward、report_watchdog…)
-tests/                1,700+ 測試(不連網;conftest 隔離 state 寫入與網路)
+tests/                2,000+ 測試(不連網;conftest 隔離 state 寫入與網路)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -260,7 +260,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 
 ```bash
 pip install -r requirements.txt
-pytest -q                        # 1,700+ 測試,不連網、不寄信
+pytest -q                        # 2,000+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."

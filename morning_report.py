@@ -120,6 +120,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
 )
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     llm_event_json_schema,
+    timeline_subjects as _timeline_subjects,  # noqa: F401 — 延燒事件主體正規化
     _news_event_direction,
     _event_type,
     _freshness_weight,
@@ -15465,8 +15466,7 @@ _TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
 
 def update_event_timeline(structured_events: list[dict],
                           now_tpe: Optional[dt.datetime] = None) -> list[dict]:
-    """以 structured events 維護延燒事件 timeline:同 entity+type 連續出現則累計天數;
-    3 天沒新進展自動退場。回傳進行中的事件(供渲染「第 N 天」)。"""
+    """維護延燒事件 timeline:同主體+型別連續出現則累計天數,3 天無進展退場。"""
     now_tpe = now_tpe or dt.datetime.now(TPE)
     today = now_tpe.strftime("%Y-%m-%d")
     state: dict = {}
@@ -15478,12 +15478,18 @@ def update_event_timeline(structured_events: list[dict],
     for ev in structured_events or []:
         if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
             continue
-        key = f"{ev.get('event_type')}:{str(ev.get('entity') or '')[:20]}"
+        # 空主體不得進 timeline(P1-11:先前全落進 `geopolitical:` 共用桶,
+        # 生產累積到 47 天)。正規化見 `news_events.timeline_subjects`。
+        subjects = _timeline_subjects(ev)
+        if not subjects:
+            continue
+        key = f"{ev.get('event_type')}:{'、'.join(subjects)[:20]}"
         rec = state.get(key) or {"first_seen": today, "days": 0, "last_seen": ""}
         if rec.get("last_seen") != today:
             rec["days"] = int(rec.get("days", 0)) + 1
             rec["last_seen"] = today
         rec["latest_title"] = str(ev.get("title") or "")[:90]
+        rec["entity"] = subjects[0]
         state[key] = rec
     # 退場:超過 3 天無更新
     cutoff = (now_tpe - dt.timedelta(days=3)).strftime("%Y-%m-%d")
@@ -15494,9 +15500,11 @@ def update_event_timeline(structured_events: list[dict],
                            json.dumps(state, ensure_ascii=False, indent=1))
     except Exception as e:
         print(f"[timeline] 寫入失敗: {e}", file=sys.stderr)
-    active = [{"key": k, **v} for k, v in state.items()
+    # **`entity` 是 packet 端建對照表用的鍵**:先前只回 `key`,於是
+    # `continuing_days` 在生產永遠是 0(P1-11)。舊 state 沒這格 → 由 key 補。
+    active = [{**v, "key": k, "entity": v.get("entity") or k.split(":", 1)[-1]}
+              for k, v in state.items()
               if v.get("last_seen") == today and v.get("days", 0) >= 2
-              # 需綁定具體標的(公司/類股/商品);無 entity 的泛新聞(中國天氣、貿易談判)關聯性低 → 不列
               and str(k).split(":", 1)[-1].strip()]
     active.sort(key=lambda r: -r.get("days", 0))
     return active

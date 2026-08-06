@@ -1094,3 +1094,20 @@ def llm_event_json_schema() -> dict:
             },
         },
     }
+
+
+def timeline_subjects(ev: dict) -> list:
+    """延燒事件的**主體清單**(正規化、去重、排序)。
+
+    第二十四輪 P1-11:先前身分是 `event_type:entity` 一個字串,於是同一個
+    故事會裂成多個身分 —— 生產實測荷姆茲談判同時存在
+    `geopolitical:`(47 天)、`geopolitical:伊朗`(5 天)、`geopolitical:美國`(3 天)、
+    `geopolitical:美國、伊朗、阿曼`(1 天):**同一件事有四個不同的「第 N 天」**。
+
+    正規化:多主體字串拆開、去空白、去重、**排序**(順序不是語意),
+    於是「美國、伊朗」與「伊朗、美國」是同一個身分。
+    """
+    import re as _re
+    raw = str((ev or {}).get("entity") or "")
+    parts = [p.strip() for p in _re.split(r"[、,,/／|｜]+", raw) if p.strip()]
+    return sorted(dict.fromkeys(parts))[:4]

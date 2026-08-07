@@ -60,6 +60,21 @@ def test_the_documented_output_limit_has_a_source():
     assert "MODEL_LIMITS" in source, f"上限沒有出處:{source}"
 
 
+def test_flash_limits_are_registered_not_guessed():
+    """**主模型換 flash(2026-08-07)後,上限必須是收錄值而非保守 fallback。**
+
+    flash 未收錄時 `max_output_for` 回 16,000 —— 而 flash 思考模式預設開啟、
+    生產跑 max 推理,reasoning 就可能吃掉上萬 token,答案會被 16K 截斷
+    (批#118 在 v4-pro 上踩過同一型)。出處:DeepSeek Models & Pricing 頁
+    (2026-08-07):flash 輸出上限 384K、context 1M。
+    """
+    cap, source = lt.max_output_for("deepseek-v4-flash")
+    assert cap == 384_000, f"flash 的輸出上限不是收錄值:{cap}"
+    assert "MODEL_LIMITS" in source, f"flash 上限沒有出處:{source}"
+    # 生產組合(base 7000 × max 16 倍)不得再被 16K 假上限夾住
+    assert lt.output_cap("max", 7000, model="deepseek-v4-flash") == 112_000
+
+
 def _fn(name: str):
     tree = ast.parse(_SRC.read_text(encoding="utf-8"))
     return next(n for n in tree.body

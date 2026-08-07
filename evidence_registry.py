@@ -183,7 +183,12 @@ def registry(packet: Optional[dict]) -> dict:
     # 美股交易日、台指期是今天、法說會摘要是上週,而它們全部長得像
     # 「06:00 觀測、屬於 2026-08-05 這一盤」。模型因此會把不同交易日的
     # 數字當成同步的橫向訊號。說不出來就要說「說不出來」。
-    tw_session = str((market.get("LAST_TRADING_SESSION") or {}).get("date") or "")
+    # 生產的 `LAST_TRADING_SESSION` 是**純字串**("2026-08-06";main 用
+    # `max(sessions)` 產生),不是 `{"date": ...}` —— 2026-08-07 flash E2E
+    # 在這一行炸掉 AttributeError,整條特化路徑因此天天落回 legacy,
+    # 而測試 fixture 沒有這個 key 所以全綠。兩種形狀都要收。
+    _lts = market.get("LAST_TRADING_SESSION")
+    tw_session = str(((_lts.get("date") if isinstance(_lts, dict) else _lts) or ""))
     for block, tree in market.items():
         if block in _NON_EVIDENCE:
             continue

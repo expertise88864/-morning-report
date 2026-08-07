@@ -61,8 +61,27 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
         left = None if deadline_at is None else deadline_at - time.monotonic()
         if left is not None and left <= 0:
             return r
-        r = requests.post(url, json=body, headers=headers,
-                          timeout=timeout if left is None else min(timeout, left))
+        try:
+            r = requests.post(url, json=body, headers=headers,
+                              timeout=timeout if left is None else min(timeout, left))
+        except requests.exceptions.RequestException as e:
+            # 傳輸層斷線也要退避重試(2026-08-07 E2E 第六次:DeepSeek 回應
+            # 中途斷線 ChunkedEncodingError,一發就整天放棄特化路徑)。
+            # 額度用完或預算不夠就把例外丟回去 —— 呼叫端要記 billable。
+            left = None if deadline_at is None else deadline_at - time.monotonic()
+            if attempt >= _LLM_RETRIES or (left is not None and left <= 1.0):
+                raise
+            wait = min(_LLM_BACKOFF_SEC * (attempt + 1), 45.0)
+            if left is not None:
+                wait = min(wait, max(0.0, left - 1.0))
+            if manifest is not None:
+                manifest.setdefault("llm", {}).setdefault(
+                    "retry_after_status", []).append(
+                        {"status": type(e).__name__, "wait_seconds": round(wait, 1)})
+            print(f"[llm] 傳輸中斷({type(e).__name__})退避 {wait:.0f}s 後重試"
+                  f"({attempt + 1}/{_LLM_RETRIES})", file=sys.stderr)
+            time.sleep(wait)
+            continue
         if r.status_code not in _LLM_RETRY_STATUS or attempt >= _LLM_RETRIES:
             return r
         # **request 之後重算** —— 上一版用 request 前的舊值決定 sleep。

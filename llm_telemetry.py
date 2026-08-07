@@ -70,7 +70,13 @@ MODEL_LIMITS = {
     # 6,757 個 token 進了推理,答案只剩 243 個 —— 政策解析寫到一半就斷。
     "deepseek-v4-pro": {"max_output": 384_000, "context": 1_000_000,
                         "efforts": ("none", "low", "high", "xhigh", "max")},
-    "deepseek-v4-flash": {"efforts": ("none", "low", "high", "xhigh", "max")},
+    # `max_output`/`context` 出處:DeepSeek Models & Pricing 頁(2026-08-07
+    # 使用者提供)—— flash 最大輸出 384K、context 1M、Responses API(僅 flash)、
+    # 思考模式預設開啟。先前這裡刻意留空,於是 `max_output_for` 回保守的
+    # 16,000;flash 在 max 推理下 reasoning 就可能吃掉上萬 token,16K 的
+    # 上限會讓答案被截斷 —— 與批#118 在 v4-pro 上踩過的是同一型。
+    "deepseek-v4-flash": {"max_output": 384_000, "context": 1_000_000,
+                          "efforts": ("none", "low", "high", "xhigh", "max")},
 }
 
 #: 沒收錄的模型用**保守**上限,不是樂觀的。理由不對稱:

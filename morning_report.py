@@ -12701,9 +12701,108 @@ def _call_openai_responses(payload: dict) -> dict:
     raise RuntimeError("Responses 退讓重試用盡")
 
 
+def _prune_phantom_audit_ids(obj, packet: dict):
+    """claim_audit 裡「同列**仍有真實證據**、卻多引一個不存在 ID」的引用直接拿掉。
+
+    2026-08-07 flash E2E(第四次):兩輪都在這種引用上打轉 —— 修補是整份
+    重寫,修好被點名的、又在別列多引一個,一輪修補在結構上不可能收斂。
+    同列還有真實證據時,假引用是裝飾不是根據;拿掉裝飾比賭下一輪猜中便宜。
+    列上**沒有任何**真實證據時不動它 —— 那要由驗證器擋下,不是由這裡漂白。
+    修剪了什麼記進 manifest(靜默修剪與靜默失敗一樣糟)。
+    """
+    if not isinstance(obj, dict):
+        return obj
+    try:
+        valid = _ep.evidence_ids(packet)
+    except Exception:                                   # noqa: BLE001
+        return obj
+    dropped = []
+    for row in (obj.get("claim_audit") or []):
+        if not isinstance(row, dict):
+            continue
+        if isinstance(row.get("evidence_ids"), list):
+            ids = [str(i) for i in row["evidence_ids"]]
+            keep = [i for i in ids if i in valid]
+            if keep and len(keep) < len(ids):
+                dropped.extend(i for i in ids if i not in valid)
+                row["evidence_ids"] = keep
+        # 反證清單(E2E 第五次:假 ID 換到這一欄)。schema 明文「沒找到就給
+        # 空陣列」—— 不存在的反證不是反證,清掉到空是**更誠實**的答案。
+        if isinstance(row.get("counterevidence_ids"), list):
+            cids = [str(i) for i in row["counterevidence_ids"]]
+            ckeep = [i for i in cids if i in valid]
+            if len(ckeep) < len(cids):
+                dropped.extend(i for i in cids if i not in valid)
+                row["counterevidence_ids"] = ckeep
+    # relates_to 是純裝飾層(schema:「空陣列是完全合法的答案,編造的關聯
+    # 比沒有關聯更糟」)—— 指向沒被分析的條目、或證據被剪光的關係,整列拿掉。
+    analyzed = {str((a or {}).get("source_item_id") or "")
+                for a in (obj.get("top_news_analysis") or [])
+                if isinstance(a, dict)}
+    for a in (obj.get("top_news_analysis") or []):
+        if not isinstance(a, dict) or not isinstance(a.get("relates_to"), list):
+            continue
+        kept_rel = []
+        for rel in a["relates_to"]:
+            if not isinstance(rel, dict):
+                continue
+            if str(rel.get("other_source_item_id") or "") not in analyzed:
+                dropped.append(f"relates_to→{rel.get('other_source_item_id')}")
+                continue
+            if isinstance(rel.get("evidence_ids"), list):
+                rids = [str(i) for i in rel["evidence_ids"]]
+                rkeep = [i for i in rids if i in valid]
+                if not rkeep:
+                    dropped.extend(i for i in rids if i not in valid)
+                    continue                      # 證據全假 → 整列是編造,拿掉
+                if len(rkeep) < len(rids):
+                    dropped.extend(i for i in rids if i not in valid)
+                    rel = dict(rel, evidence_ids=rkeep)
+            kept_rel.append(rel)
+        a["relates_to"] = kept_rel
+    if dropped:
+        _RUN_MANIFEST.setdefault("llm", {})["audit_ids_pruned"] = dropped[:8]
+        print(f"[llm] 修剪 {len(dropped)} 個不存在的證據引用"
+              "(claim_audit/反證/relates_to 裝飾層)", file=sys.stderr)
+    return obj
+
+
+def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
+    """對「引用了不存在的證據 ID」給出**相近合法 ID**(確定性查表,不猜)。
+
+    先比同前綴(`market:USDTWD.close` → `market:USDTWD`),再退而比
+    最後一段的名字(`market:SOX.change_pct` → 任何含 SOX 的合法 ID)。
+    兩者都沒有就明說「沒有相近的」—— 那時正確的修法是移除引用。
+    """
+    import re as _re
+    ids, hints = None, []
+    for p in problems:
+        for bad in _re.findall(r"引用了不存在的證據 ID:'([^']+)'", str(p)):
+            if ids is None:
+                try:
+                    ids = sorted(_ep.evidence_ids(packet))
+                except Exception:                       # noqa: BLE001
+                    return []
+            stem = bad.split(".")[0]
+            near = [i for i in ids if i == stem or i.startswith(stem + ".")]
+            if not near:
+                tail = bad.rsplit(":", 1)[-1].split(".")[0]
+                near = [i for i in ids if tail and tail in i][:4]
+            if near:
+                hints.append(f"'{bad}' → 合法的相近 ID:{'、'.join(near[:4])}")
+            else:
+                hints.append(f"'{bad}' 沒有相近的合法 ID,請移除該引用")
+    return hints[:6]
+
+
 #: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
 #: 多一個機制就等於兩個都測不出來(見 `_luna_analysis` 的 docstring)。
 _LUNA_ATTEMPTS = (False, True)
+
+#: 修補前必須為 legacy 備援保留的秒數(2026-08-07 E2E 第五次:legacy 在
+#: flash 上實測 190-310s 才寫得完整份;保留 300 讓「特化失敗 → legacy」
+#: 永遠是可能的結局,emergency 備援字不得成為常態)。
+_LEGACY_FALLBACK_RESERVE = 300.0
 
 
 def _luna_analysis(packet: dict, effort: str) -> str:
@@ -12759,8 +12858,10 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 回應不是 JSON —— 這些都發生在 server 已經收下請求之後,
             # 而既有的 chat/completions 路徑正是為此記 `billable_unmeasured`。
             # 不記的話總成本與呼叫數會低估,而十天實驗的結論建立在成本上。
+            # 特化路徑 2026-08-07 起打 DeepSeek flash —— 標籤跟著走,
+            # 否則成本會用 OpenAI 費率算(E2E 實測:$0.93 vs 實際 $0.04)。
             _record_llm_call(
-                "primary", "openai", OPENAI_MODEL, requested_effort=effort,
+                "primary", "deepseek", DEEPSEEK_MODEL, requested_effort=effort,
                 accepted=False, elapsed=time.monotonic() - t0,
                 error=_redact_secret_text(str(e)), repair=repair,
                 billable_unmeasured=True)
@@ -12776,7 +12877,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             一樣要付錢,不記等於低估成本,而十天實驗的結論建立在成本上。
             """
             _record_llm_call(
-                "primary", "openai", OPENAI_MODEL,
+                "primary", "deepseek", DEEPSEEK_MODEL,
                 requested_effort=effort,
                 applied_effort=_orx.applied_effort(resp),
                 usage=_orx.normalize_usage(resp.get("usage")),
@@ -12794,8 +12895,16 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # (OpenAI strict 模式保證裸 JSON;DeepSeek 當指引)。剝殼再解析,
             # 形狀仍由下面的 validate 把關 —— 圍欄不是內容問題。
             obj = json.loads(_strip_json_fence(out["text"]))
+            if isinstance(obj, str):
+                # 雙重編碼(整份物件被再包成一個 JSON 字串)—— 同樣是
+                # 包裝問題不是內容問題,再剝一層;仍不是 dict 就交給 validate。
+                obj = json.loads(_strip_json_fence(obj))
         except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
             obj = None
+        if not isinstance(obj, (dict, type(None))):
+            obj = None
+        if obj is not None:
+            obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」
         # 「有新聞卻交空陣列」「有高重要性事件卻沒指出主導因子」
@@ -12846,10 +12955,30 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
         print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
               f"{problems[:2]}", file=sys.stderr)
+        # **修補之前先確認 legacy 還有活路**(2026-08-07 E2E 第五次):
+        # flash + 1M payload 單次 310-370s,兩輪跑完 legacy 直接
+        # 「總時間預算已耗盡」→ 信只剩 emergency 備援字。修補值得試,
+        # 但**不值得拿寄信品質去換**:剩餘預算裝不下「再一輪(以第一輪
+        # 實測耗時估)+ legacy 保留額」就放棄修補,把時間留給備援。
+        if _LLM_DEADLINE is not None:
+            _remaining = _LLM_DEADLINE - time.monotonic()
+            if _remaining < elapsed + _LEGACY_FALLBACK_RESERVE:
+                print(f"[llm] 剩餘預算 {_remaining:.0f}s 裝不下修補一輪"
+                      f"(第一輪 {elapsed:.0f}s)+ legacy 保留 "
+                      f"{_LEGACY_FALLBACK_RESERVE:.0f}s,放棄修補", file=sys.stderr)
+                break
+        # 2026-08-07 flash E2E:兩輪都因「引用了不存在的證據 ID」被擋,而模型
+        # 寫的是**看起來很合理**的 ID(market:USDTWD.close —— 但 packet 裡
+        # USDTWD 是純量,合法 ID 是 market:USDTWD)。只覆述問題不給出路,
+        # 修補就是在賭模型第二次自己猜中 —— 把相近的合法 ID 一併給它。
+        _hints = _repair_evidence_hints(problems, packet)
         payload = dict(payload, input=(
             bundle["user_payload"] + "\n\nREPAIR\n上一次的輸出有以下問題,"
             "請只修正這些問題並重新輸出完整 JSON:\n"
-            + "\n".join(f"- {p}" for p in problems[:5])))
+            + "\n".join(f"- {p}" for p in problems[:5])
+            + ("\n其中無效證據 ID 的修正提示(這些**相近 ID 是合法的**,"
+               "請改用它們或移除該引用):\n"
+               + "\n".join(f"- {h}" for h in _hints) if _hints else "")))
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

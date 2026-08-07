@@ -36,9 +36,15 @@ from typing import Optional
 
 #: 送出去的 payload 字元上限。**量出來的**:2026-08-05 實機約 2.0M 字元
 #: (估 111 萬 token)被 429 拒收;而前一天成功送出的 legacy 請求約
-#: 9.5 萬 token。訂 600K 字元(估 33 萬 token)—— 比成功過的大三倍多,
-#: 仍遠低於被拒的那次。**這是保守的起點,不是精算的最適值。**
-MAX_PAYLOAD_CHARS = 600_000
+#: 9.5 萬 token。原訂 600K 字元(保守起點)。
+#:
+#: 2026-08-07 放寬到 1M:主模型換 deepseek-v4-flash(context 1M token、
+#: 費用約 $0.14/M input,使用者明示 token 成本可忽略)。實測字元→token
+#: 比約 0.6,1M 字元 ≈ 60 萬 token,加上 112K 輸出額度仍在 1M context 內。
+#: 在 600K 之下,公報/結構化事件/模型監控**每天**被整塊裁掉
+#: (2026-08-07 E2E:2.26M 裁到 500K)—— 放寬後只有 HISTORY 這類
+#: 巨型序列出局,其餘背景區塊進得了特化 prompt。
+MAX_PAYLOAD_CHARS = 1_000_000
 
 #: 可以裁的區塊,**由裁的先後順序排列**。全部是背景與診斷 ——
 #: 行情數字(QQQ/TAIFEX/BREADTH/SECTOR_HEAT…)、新聞、張力**不在此列**,
@@ -127,7 +133,9 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
 #: 最終 request 的上限。packet 之外還有 developer instructions、
 #: strict schema 與 API body 框架 —— **gate 擋的要是 provider 真正
 #: 收到的東西**,packet 沒超不代表 request 沒超。
-MAX_REQUEST_CHARS = 700_000
+#: 2026-08-07 隨 MAX_PAYLOAD_CHARS 放寬(flash 1M context):
+#: 1.1M 字元 ≈ 66 萬 token,加輸出額度仍留有餘裕。
+MAX_REQUEST_CHARS = 1_100_000
 
 
 def request_gate(bundle: dict, *, manifest=None,

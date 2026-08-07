@@ -19,6 +19,13 @@ def _size(x):
     return len(json.dumps(x, ensure_ascii=False, default=str))
 
 
+#: 2026-08-06 事發當時的 packet 上限。壓縮**機制**的測試全部用事發當日的
+#: 條件出題 —— 生產上限 2026-08-07 已隨 flash(1M context、token 費用可忽略)
+#: 放寬到 1M,fixture(約 866K)在新上限下不再超標,但機制本身沒有變,
+#: 歷史事故的重現條件也不該跟著上限漂移。
+_INCIDENT_LIMIT = 600_000
+
+
 def _forecast(i):
     """實測形狀:每檔約 2,486 字元,六成是模型內部管線。"""
     quality = {"model_version": "tw-top100-decay-regime-ridge-platt-quantile-v4",
@@ -88,16 +95,16 @@ def _packet_2026_08_06():
 def test_fixture_reproduces_the_production_scale():
     """fixture 本身要真的是生產尺寸等級,否則這份測試證明不了任何事。"""
     pk = _packet_2026_08_06()
-    assert _size(pk) > pb.MAX_PAYLOAD_CHARS, "fixture 必須超標(否則沒在測壓縮)"
+    assert _size(pk) > _INCIDENT_LIMIT, "fixture 必須超標(否則沒在測壓縮)"
 
 
 def test_production_sized_packet_comes_under_limit_after_compaction():
     """**必補測試 4**:8/6 尺寸等級經壓縮後必須低於 packet 上限。"""
     pk = _packet_2026_08_06()
-    out, rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     assert rep["applied"], "超標卻什麼都沒壓"
-    assert rep["chars_after"] <= pb.MAX_PAYLOAD_CHARS, (
-        f"壓縮後仍 {rep['chars_after']:,} > {pb.MAX_PAYLOAD_CHARS:,}")
+    assert rep["chars_after"] <= _INCIDENT_LIMIT, (
+        f"壓縮後仍 {rep['chars_after']:,} > {_INCIDENT_LIMIT:,}")
     assert rep["over_budget"] is False
 
 
@@ -106,7 +113,7 @@ def test_compaction_never_drops_stock_codes():
     白名單,刪列會讓合法的個股分析被判成捏造代號。"""
     pk = _packet_2026_08_06()
     before = {r["code"] for r in pk["tw_universe"]}
-    out, _rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, _rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     after = {r["code"] for r in out["tw_universe"]}
     assert after == before, f"掉了代號:{before - after}"
     assert len(out["tw_universe"]) == len(pk["tw_universe"])
@@ -116,7 +123,7 @@ def test_compaction_never_drops_news_items():
     """**不刪則數** —— 刪則會讓 news_clusters / top_events 的成員 ID 指空。"""
     pk = _packet_2026_08_06()
     before = [n["source_item_id"] for n in pk["news"]]
-    out, _rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, _rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     assert [n["source_item_id"] for n in out["news"]] == before
 
 
@@ -124,7 +131,7 @@ def test_required_and_top_event_news_keep_full_summaries():
     """必分析與三大重點的新聞**不縮摘要** —— 那正是要深入分析的材料。"""
     pk = _packet_2026_08_06()
     full = {n["source_item_id"]: n["summary"] for n in pk["news"]}
-    out, _rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, _rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     by_id = {n["source_item_id"]: n for n in out["news"]}
     for sid in ("n0000", "n0001"):          # required cluster 的成員
         assert by_id[sid]["summary"] == full[sid], f"{sid} 的摘要不該被縮"
@@ -133,7 +140,7 @@ def test_required_and_top_event_news_keep_full_summaries():
 def test_forecast_keeps_headline_numbers_drops_plumbing():
     """留標頭數字、丟模型內部管線。"""
     pk = _packet_2026_08_06()
-    out, _rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, _rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     fc = out["tw_universe"][0]["price_forecast"]
     assert fc["1d_open"]["expected_return_pct"] == 0.69     # 標頭數字留著
     assert fc["1d_open"]["lower"] and fc["1d_open"]["upper"]
@@ -146,7 +153,7 @@ def test_forecast_keeps_headline_numbers_drops_plumbing():
 def test_analyzed_rows_keep_full_detail():
     """觀察名單前段(ranking_score 高)要保留完整欄位。"""
     pk = _packet_2026_08_06()
-    out, _rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, _rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     top = out["tw_universe"][0]           # ranking_score 最高
     assert "price_forecast" in top and "eps" in top
     tail = out["tw_universe"][-1]         # 最低
@@ -215,14 +222,14 @@ def test_compaction_does_not_mutate_input():
     """與 `trim()` 同一個契約:不改變輸入。"""
     pk = _packet_2026_08_06()
     snapshot = json.dumps(pk, ensure_ascii=False, default=str)
-    pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    pc.compact(pk, limit=_INCIDENT_LIMIT)
     assert json.dumps(pk, ensure_ascii=False, default=str) == snapshot
 
 
 def test_compaction_is_disclosed():
     """**沒有靜默的壓縮**:壓過就要留下必須揭露的缺口。"""
     pk = _packet_2026_08_06()
-    out, rep = pc.compact(pk, limit=pb.MAX_PAYLOAD_CHARS)
+    out, rep = pc.compact(pk, limit=_INCIDENT_LIMIT)
     disc = out.get("required_disclosures") or {}
     assert "gap:payload_compacted" in disc
     assert rep["applied"] and all(a["chars_saved"] > 0 for a in rep["applied"])
@@ -236,6 +243,10 @@ def test_budget_apply_records_everything_and_gates_last():
     """
     manifest: dict = {}
     pk = _packet_2026_08_06()
+    # apply() 用的是**今日**生產上限 —— 把行情核心加倍到超過它,
+    # 才驗得到「裁 → 壓 → 記錄 → 閘門」整條在現行設定下的行為。
+    pk["market"] = {f"BLOCK_{i}": {"note": "行情核心" * 2600} for i in range(40)}
+    assert _size(pk) > pb.MAX_PAYLOAD_CHARS
     out = pb.apply(pk, manifest)
     llm = manifest["llm"]
     assert llm["payload_compact"]["applied"], "第二層壓縮沒有被執行/記錄"

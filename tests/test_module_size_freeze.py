@@ -190,7 +190,7 @@ MODULE_CEILINGS = {
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     # Commit B:recorder 收下兩階段抓取的計畫(相位不得直接碰
     # _RUN_MANIFEST,所以這一筆只能放在 recorder 上)。實測 312。
-    "run_manifest.py": 320,
+    "run_manifest.py": 330,   # 2026-08-07:luna_path_failure 加 traceback 記錄(+13 行)
     # 批#122:P2-3 的共用狀態容器。它**應該一直很小** —— 它的全部工作是
     # 宣告欄位並用 `__slots__` 擋住打錯字。長大就表示邏輯漏進來了。
     "app_context.py": 120,

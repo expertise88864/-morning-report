@@ -215,3 +215,39 @@ def test_retry_after_understands_http_dates():
     assert lh._retry_after_seconds("") == 0.0
     # HTTP-date(過去的時間 → 0,不是 crash)
     assert lh._retry_after_seconds("Wed, 05 Aug 2020 12:00:00 GMT") == 0.0
+
+
+def test_transport_errors_are_retried_not_fatal():
+    """**傳輸層斷線要退避重試**(2026-08-07 E2E 第六次:ChunkedEncodingError
+    一發就整天放棄特化路徑)。重試額度內恢復就回 response;用完才拋。"""
+    import llm_http as lh
+    import requests as _rq
+
+    calls = {"n": 0}
+
+    class _OK:
+        status_code = 200
+        headers = {}
+
+    def _flaky(url, json=None, headers=None, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise _rq.exceptions.ChunkedEncodingError("Response ended prematurely")
+        return _OK()
+
+    lh.requests = types.SimpleNamespace(post=_flaky, exceptions=_rq.exceptions)
+    lh.time = types.SimpleNamespace(sleep=lambda s: None, monotonic=lambda: 0.0)
+    r = lh.post_with_backoff("u", {}, {}, timeout=10)
+    assert r is not None and r.status_code == 200
+    assert calls["n"] == 2, "斷線後沒有重試"
+
+    # 每次都斷 → 額度用完把最後的例外丟回去(呼叫端要記 billable_unmeasured)
+    def _always_broken(url, json=None, headers=None, timeout=None):
+        raise _rq.exceptions.ChunkedEncodingError("Response ended prematurely")
+
+    lh.requests = types.SimpleNamespace(post=_always_broken, exceptions=_rq.exceptions)
+    try:
+        lh.post_with_backoff("u", {}, {}, timeout=10)
+        raise AssertionError("額度用完仍應把例外丟回去")
+    except _rq.exceptions.ChunkedEncodingError:
+        pass

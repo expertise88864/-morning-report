@@ -122,8 +122,11 @@ def test_depth_advisories_and_the_deepen_pass_are_wired():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
-    body = src[src.index("def _luna_analysis"):src.index("def _luna_analysis")
-               + 8000]
+    # 切到下一個 top-level def 而不是固定字元數 —— 2026-08-07 在迴圈裡
+    # 插了修補預算守衛,固定 8000 字元的視窗把 `_kept` 尾段推出去,
+    # 測試紅的不是接線而是視窗大小。
+    _start = src.index("def _luna_analysis")
+    body = src[_start:src.index("\ndef ", _start + 10)]
     assert "_av.depth_advisories(obj, packet)" in body, "成功分支沒有查深度"
     assert "_av.deepen_input(" in body, "加深沒有走統一的 deepen_input"
     assert "_kept" in body and "deepen_failed" in body, (

@@ -111,7 +111,7 @@ def test_the_production_path_trims_and_records():
     from pathlib import Path
     import payload_budget as pb
     manifest: dict = {}
-    packet = {"market": {"HISTORY": {"rows": ["很長" * 400_000]},
+    packet = {"market": {"HISTORY": {"rows": ["很長" * pb.MAX_PAYLOAD_CHARS]},
                          "QQQ": {"close": 700}},
               "news": [], "tw_universe": []}
     out = pb.apply(packet, manifest)

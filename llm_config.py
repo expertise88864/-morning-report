@@ -88,15 +88,19 @@ PROVIDER_TIMEOUT_BASE = {
     # 而 max 的推理量預期更大。餘裕不足時的失敗模式是逾時掉備援,
     # 也就是使用者收到降級版報告(2026-08-01 已經發生過一次)。
     # 拉到 (300, 150):max 之下總額 900s、單次 450s,約是實測值的 2.6 倍。
-    "deepseek": (300.0, 150.0),
+    # 2026-08-07 再拉總額基準到 400(max 之下 1200s):flash + 1M payload
+    # 單次 310-370s,900s 裝不下「兩輪特化 + legacy」(見 MAX_TOTAL_TIMEOUT)。
+    "deepseek": (400.0, 150.0),
 }
 DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
 
 #: 總額的硬上限。再長就會開始擠壓寄信 —— 「晨報不可斷」優先於「跑完推理」。
 #: 批#101:600 → 900,與 `RUN_BUDGET_SECONDS` 2100 一起放寬。
-#: 實測參考:xhigh 在 2026-08-01 用了 196 秒,離上限還很遠;
-#: 放寬是為了讓 max 不必靠擠掉新聞全文來換時間。
-MAX_TOTAL_TIMEOUT = 900.0
+#: 2026-08-07:900 → 1200。flash + 1M payload 實測單次特化呼叫 310-370 秒,
+#: 900 之下「兩輪特化 + legacy 備援」在結構上不可能 —— E2E 第五次實測
+#: 兩輪特化跑完,legacy 直接「總時間預算已耗盡」,信只剩 emergency 備援字。
+#: 1200 = 兩輪(~740s)+ legacy(~450s);job timeout-minutes 40 仍有餘裕。
+MAX_TOTAL_TIMEOUT = 1200.0
 
 
 def timeout_base(provider: str) -> tuple:

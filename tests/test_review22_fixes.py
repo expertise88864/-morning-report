@@ -60,9 +60,12 @@ def test_the_final_request_gate_measures_the_bundle():
     ok = {"developer_instructions": "x" * 1000, "user_payload": "y" * 1000,
           "response_schema": {}}
     pb.request_gate(ok)                     # 不拋
-    big = {"developer_instructions": "x" * 350_000,
-           "user_payload": "y" * 300_000,
-           "response_schema": {"pad": "z" * 60_000}}
+    # 相對於上限出題(2026-08-07 上限隨 flash 1M context 放寬過一次):
+    # instructions+payload+schema 合計超出 MAX_REQUEST_CHARS 一成。
+    _half = pb.MAX_REQUEST_CHARS // 2
+    big = {"developer_instructions": "x" * _half,
+           "user_payload": "y" * _half,
+           "response_schema": {"pad": "z" * (pb.MAX_REQUEST_CHARS // 10)}}
     try:
         pb.request_gate(big)
         raise AssertionError("最終 request 超標仍被放行")

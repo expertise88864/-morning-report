@@ -306,5 +306,18 @@ def luna_path_failure(exc, *, redact, packet_built: bool) -> tuple:
     **呼叫模型** —— 那正是當天分不出來、而排查方向完全不同的一件事。
     """
     why = f"{type(exc).__name__}: {redact(str(exc))}"[:200]
-    return (f"llm:luna_path_failed:{type(exc).__name__}",
-            {"error": why, "stage": "analysis" if packet_built else "packet_build"})
+    # 2026-08-07 flash E2E:AttributeError 只有一行訊息,stage 也只分兩段,
+    # 光看紀錄找不到炸點在哪個函式 —— 把 traceback 最後三格的「檔:行 函式」
+    # 一併記下(不含原始碼行,避免把外部字串帶進 manifest)。
+    frames = []
+    tb = getattr(exc, "__traceback__", None)
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        frames.append(f"{code.co_filename.rsplit(chr(92), 1)[-1].rsplit('/', 1)[-1]}"
+                      f":{tb.tb_lineno}:{code.co_name}")
+        tb = tb.tb_next
+    entry = {"error": why,
+             "stage": "analysis" if packet_built else "packet_build"}
+    if frames:
+        entry["trace"] = frames[-3:]
+    return (f"llm:luna_path_failed:{type(exc).__name__}", entry)

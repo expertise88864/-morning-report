@@ -338,3 +338,65 @@ def test_a_luna_failure_records_why_and_where(luna_on, monkeypatch):
     finally:
         mr._DEGRADED_STEPS[:] = saved
 
+
+
+def test_repair_input_names_valid_ids_for_phantom_citations(luna_on, monkeypatch):
+    """**修補要給出路,不是只覆述問題**(2026-08-07 flash E2E)。
+
+    實測兩輪都因「引用了不存在的證據 ID」被擋:模型寫 market:USDTWD.close,
+    而 packet 裡 USDTWD 是純量、合法 ID 是 market:USDTWD —— 只覆述問題,
+    修補就是在賭模型第二次自己猜中。修補請求必須附上相近的合法 ID。
+    """
+    bad = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    bad["claim_audit"][0]["evidence_ids"] = ["market:QQQ.close_typo"]
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        return _response(bad if len(calls) == 1 else _GOOD)
+
+    monkeypatch.setattr(mr, "_call_openai_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("修補成功時不該落回"))
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert mr._analysis_complete_enough(text)
+    assert len(calls) == 2
+    repair_input = calls[1]["input"]
+    assert "market:QQQ.close_typo" in repair_input, "修補請求沒點名無效 ID"
+    assert "market:QQQ.close" in repair_input.replace("close_typo", ""), (
+        "修補請求沒給出相近的合法 ID")
+
+
+def test_a_decorative_phantom_audit_id_is_pruned_not_fatal(luna_on, monkeypatch):
+    """**同列仍有真實證據時,多引的假 ID 修剪掉、第一輪直接過**(2026-08-07)。
+
+    flash E2E 第四次:修補整份重寫,修好被點名的、又在別列多引一個 ——
+    一輪修補在結構上不可能收斂。裝飾性假引用不該讓整條路徑落回 legacy。
+    """
+    decorated = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    ids = list(decorated["claim_audit"][0]["evidence_ids"])
+    decorated["claim_audit"][0]["evidence_ids"] = ids + ["market:QQQ.close_typo"]
+    calls = []
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (calls.append(p), _response(decorated))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("裝飾性假引用不該落回 legacy"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert mr._analysis_complete_enough(text)
+    assert len(calls) == 1, "修剪後第一輪就該過,不該進修補"
+    assert mr._RUN_MANIFEST["llm"]["audit_ids_pruned"] == [
+        "market:QQQ.close_typo"], "修剪必須記進 manifest,不得靜默"
+
+
+def test_an_audit_row_with_only_phantom_ids_is_still_rejected(luna_on, monkeypatch):
+    """**整列都是假證據就不是裝飾** —— 修剪不得把它漂白,驗證器照擋。"""
+    fake = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    fake["claim_audit"][0]["evidence_ids"] = ["market:QQQ.close_typo"]
+    calls = []
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (calls.append(p), _response(fake))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場:中性\n\n## 一句話總結\n備援。")
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+    assert len(calls) == 2, "全假的列要走完修補(兩輪)才落回"

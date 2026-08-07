@@ -195,3 +195,24 @@ def test_the_namespaces_are_documented_in_the_prompt():
     for ns in ("valuation:", "prediction:", "calibration:", "universe:",
                "portfolio:", "quality:", "derived:"):
         assert ns in dev, f"{ns} 沒有寫進 prompt"
+
+
+def test_last_trading_session_as_plain_string_does_not_crash():
+    """**生產的 `LAST_TRADING_SESSION` 是純字串,不是 dict。**
+
+    main 用 `max(trading_sessions)` 塞進 quotes 的是 "2026-08-06" 這種字串;
+    registry 原本寫 `(... or {}).get("date")`,非空字串會 AttributeError ——
+    2026-08-07 flash E2E 實測整條特化路徑因此天天落回 legacy,而 fixture
+    沒這個 key,測試全綠。兩種形狀都要收,而且台股區塊要拿得到那個日期。
+    """
+    pk = _packet(quotes={"LAST_TRADING_SESSION": "2026-08-04"})
+    reg = er.registry(pk)          # 不得拋
+    assert reg, "registry 不得因字串形狀而空手而回"
+    oi = reg.get("market:TAIFEX_OI.foreign_oi_net") or {}
+    assert oi.get("observed_session") == "2026-08-04", (
+        "台股區塊要標上實際交易日(字串形狀也要讀得到)")
+    # dict 形狀(若未來 producer 改型)同樣要通
+    pk2 = _packet(quotes={"LAST_TRADING_SESSION": {"date": "2026-08-04"}})
+    reg2 = er.registry(pk2)
+    oi2 = reg2.get("market:TAIFEX_OI.foreign_oi_net") or {}
+    assert oi2.get("observed_session") == "2026-08-04"

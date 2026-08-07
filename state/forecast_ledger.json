@@ -1275,8 +1275,16 @@
    "3017"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "3231": 193.5,
+   "7750": 2465.0,
+   "2887": 35.3,
+   "3443": 4395.0,
+   "3017": 2730.0
+  },
+  "taiex_entry": 44487.94
  },
  {
   "question": "2330_open_up",

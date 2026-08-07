@@ -25,7 +25,7 @@
   "first_seen": "2026-08-01",
   "days": 4,
   "last_seen": "2026-08-07",
-  "latest_title": "北京因對台軍售不滿而阻礙美國防官員訪中",
+  "latest_title": "北京不滿對台軍售致美國防官員訪中受阻",
   "entity": "美國",
   "subjects": [
    "美國"
@@ -93,9 +93,9 @@
  },
  "geopolitical:台灣": {
   "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "美國可能向國會提出140億美元對台軍售案",
+  "days": 2,
+  "last_seen": "2026-08-07",
+  "latest_title": "學者倡議台美合作發展無人機",
   "entity": "台灣",
   "subjects": [
    "台灣"
@@ -183,7 +183,7 @@
   "first_seen": "2026-08-06",
   "days": 2,
   "last_seen": "2026-08-07",
-  "latest_title": "美國將對多晶矽衍生產品課徵15%關稅",
+  "latest_title": "美國對多晶矽衍生產品加徵15%關稅",
   "entity": "美國",
   "subjects": [
    "美國"
@@ -216,7 +216,7 @@
   "first_seen": "2026-08-07",
   "days": 1,
   "last_seen": "2026-08-07",
-  "latest_title": "美國禁止鎢廢料及電池廢棄物出口",
+  "latest_title": "美國出口禁令涵蓋電池廢棄物與鎢廢料",
   "entity": "US-LICYQ"
  },
  "export_controls:中國": {
@@ -230,14 +230,21 @@
   "first_seen": "2026-08-07",
   "days": 1,
   "last_seen": "2026-08-07",
-  "latest_title": "沙烏地阿拉伯面臨伊朗支持武裝同步攻擊威脅",
+  "latest_title": "沙國警告伊朗支持武裝可能同步攻擊能源設施",
   "entity": "沙烏地阿拉伯"
  },
  "geopolitical:土耳其": {
   "first_seen": "2026-08-07",
   "days": 1,
   "last_seen": "2026-08-07",
-  "latest_title": "土耳其、沙國與巴基斯坦將簽署聯合防務協議",
+  "latest_title": "土耳其、沙國與巴基斯坦傳將簽聯合防務協議",
   "entity": "土耳其"
+ },
+ "export_controls:SMCI": {
+  "first_seen": "2026-08-07",
+  "days": 1,
+  "last_seen": "2026-08-07",
+  "latest_title": "台商危險了！謝金河解析「美制裁加碼、中國頒鎖國法」示警：美中角力進入深水區 - 民視財經網",
+  "entity": "SMCI"
  }
 }

@@ -182,6 +182,9 @@ CASES = [
 #: payload 只要放錯位置就無聲逃過契約,而明列會在 diff 裡被看見。
 NON_PAYLOAD_FIXTURES = {
     "legacy_prompt_input.json",     # DeepSeek legacy prompt 的凍結輸入
+    # LLM 的**回應**契約(不是上游 payload,也沒有 state 邊界可走)——
+    # 由 `tests/test_deepseek_contract.py` 負責,它釘的是實機捕獲的形狀。
+    "deepseek_responses_v1.json",
 }
 
 _MANIFEST_KEYS = ("chips", "exdiv_preview", "corporate_actions")

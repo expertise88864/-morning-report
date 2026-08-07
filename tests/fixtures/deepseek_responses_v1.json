@@ -1,0 +1,89 @@
+{
+ "id": "resp_<redacted>",
+ "object": "response",
+ "created_at": 0,
+ "status": "completed",
+ "background": false,
+ "completed_at": 0,
+ "content_filters": null,
+ "error": null,
+ "frequency_penalty": 0.0,
+ "incomplete_details": null,
+ "instructions": "<redacted: 生產的 developer instructions>",
+ "max_output_tokens": 112000,
+ "max_tool_calls": null,
+ "model": "deepseek-v4-flash",
+ "moderation": null,
+ "output": [
+  {
+   "type": "reasoning",
+   "id": "reasoning_<redacted>",
+   "status": "completed",
+   "content": [
+    {
+     "type": "reasoning_text",
+     "text": "We have a repair task. …<redacted,實測 45,085 字>"
+    }
+   ],
+   "summary": []
+  },
+  {
+   "type": "message",
+   "id": "message_<redacted>",
+   "status": "completed",
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "{\n  \"executive_summary\": \"台積電法說會下週登場,AI 資本支出將是核心。\",\n  \"stance\": {\n    \"label\": \"偏多\",\n    \"score\": 2\n  }\n}"
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  }
+ ],
+ "parallel_tool_calls": true,
+ "presence_penalty": 0.0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "prompt_cache_retention": null,
+ "reasoning": {
+  "effort": "max",
+  "summary": "auto"
+ },
+ "safety_identifier": "morning-report-tw",
+ "service_tier": "default",
+ "store": false,
+ "temperature": 1.0,
+ "text": {
+  "format": {
+   "type": "json_schema",
+   "name": "morning_analysis",
+   "schema": {
+    "<redacted>": "生產的 32K strict schema"
+   },
+   "description": null,
+   "strict": true
+  },
+  "verbosity": "high"
+ },
+ "tool_choice": "auto",
+ "tools": [],
+ "top_logprobs": 0,
+ "top_p": 1.0,
+ "truncation": "disabled",
+ "usage": {
+  "input_tokens": 13506,
+  "input_tokens_details": {
+   "cached_tokens": 13312
+  },
+  "output_tokens": 17491,
+  "output_tokens_details": {
+   "reasoning_tokens": 13566
+  },
+  "total_tokens": 30997
+ },
+ "user": null,
+ "metadata": {}
+}

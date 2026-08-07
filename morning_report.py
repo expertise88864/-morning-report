@@ -41,7 +41,7 @@ import evidence_packet as _ep
 import analysis_schema as _sch
 import analysis_render as _ar
 import analysis_metrics as _am
-import openai_responses as _orx
+import deepseek_responses as _dsr
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -508,8 +508,14 @@ _LLM_DEADLINE: Optional[float] = None
 # **deepseek 預設走特化結構化路徑**:flash 的 Responses API 實測支援
 # instructions/strict json_schema/reasoning.effort(2026-08-07,本機以
 # repo 的 build_payload + 32K schema 原樣驗證),特化失敗仍落回 legacy prompt。
-_DEFAULT_PROFILE_BY_PROVIDER = {"openai": "luna56_xhigh_v1",
-                                "deepseek": "luna56_xhigh_v1"}
+#
+# **`openai` 刻意不在這裡**(外審 P1-2 之後):特化路徑現在打的是
+# `deepseek_responses` 這個**專屬 adapter**、DeepSeek 的 base URL 與金鑰。
+# 先前 openai 也映到特化 profile —— 於是「選 openai + 手上有 DeepSeek 金鑰」
+# 會被路由去打 DeepSeek,而 manifest 顯示的是使用者要的 openai。
+# 選 openai 就走 legacy prompt(`_call_openai` 的 chat/completions),
+# 那是它現在唯一真的存在的路。
+_DEFAULT_PROFILE_BY_PROVIDER = {"deepseek": "luna56_xhigh_v1"}
 _FALLBACK_PROFILE = "deepseek_legacy_v1"
 
 
@@ -12653,31 +12659,23 @@ def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
         _LLM_DEADLINE = previous_deadline
 
 
-def _strip_json_fence(text: str) -> str:
-    """剝掉 ```json ... ``` 圍欄(有就剝,沒有原樣)。"""
-    t = (text or "").strip()
-    if t.startswith("```"):
-        t = t.split("\n", 1)[1] if "\n" in t else t
-        if t.rstrip().endswith("```"):
-            t = t.rstrip()[:-3]
-    return t.strip()
+def _call_deepseek_responses(payload: dict) -> dict:
+    """送一次 DeepSeek Responses 請求,回傳解析後的 JSON。
 
+    請求/回應的形狀由 `deepseek_responses` 這個**專屬 adapter** 定義,
+    契約釘在實機捕獲的 fixture 上(見該模組與 `test_deepseek_contract`)——
+    外審 P1-2:先前是拿 OpenAI 的 adapter 換 base URL,而
+    `/v1/responses` 不在 DeepSeek 公開文件裡,唯一的測試又自己造一個
+    OpenAI 形狀的假回應,證明不了生產契約。
 
-def _call_openai_responses(payload: dict) -> dict:
-    """送一次 Responses 請求,回傳解析後的 JSON。
-
-    選配欄位被拒時**逐一退讓重試**而不是整個請求作廢:`reasoning.summary`
-    需要組織驗證、`prompt_cache_options` 是 GPT-5.6+ 才有,兩者都只影響
-    可觀測性與成本。為了它們讓晨報斷掉是明顯錯誤的取捨。
+    選配欄位被拒時**逐一退讓重試**而不是整份作廢:那幾個都只影響
+    可觀測性與成本,為了它們讓晨報斷掉是明顯錯誤的取捨。
     """
-    # 特化路徑跑 **DeepSeek flash**(2026-08-08):它的 Responses API 與
-    # OpenAI 同形狀(instructions/input/text.format/reasoning),同一個
-    # 客戶端直接換 base_url 與金鑰即可;400 退讓迴圈天然吸收欄位差異。
-    url = f"{DEEPSEEK_BASE_URL}{_orx.RESPONSES_PATH}"
+    url = f"{DEEPSEEK_BASE_URL}{_dsr.RESPONSES_PATH}"
     headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                "Content-Type": "application/json"}
     body = dict(payload)
-    for attempt in range(len(_orx.OPTIONAL_FIELDS) + 1):
+    for attempt in range(len(_dsr.OPTIONAL_FIELDS) + 1):
         # 與整個 LLM 階段共用同一個絕對 deadline(修補/加深不重新起算)
         r = _lh.post_with_backoff(url, body, headers,
                                   timeout=_llm_request_timeout(),
@@ -12689,15 +12687,15 @@ def _call_openai_responses(payload: dict) -> dict:
             r.raise_for_status()
             return r.json()
         dropped = None
-        for field in _orx.OPTIONAL_FIELDS:
+        for field in _dsr.OPTIONAL_FIELDS:
             leaf = field.split(".")[-1]
             if _lc.response_blames_param(r, leaf):
                 dropped = field
                 break
-        if dropped is None or attempt >= len(_orx.OPTIONAL_FIELDS):
+        if dropped is None or attempt >= len(_dsr.OPTIONAL_FIELDS):
             r.raise_for_status()
         print(f"[llm] Responses 400 指責 {dropped},移除後重試", file=sys.stderr)
-        body = _orx.drop_field(body, dropped)
+        body = _dsr.drop_field(body, dropped)
     raise RuntimeError("Responses 退讓重試用盡")
 
 
@@ -12828,7 +12826,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     _phantom = _ep.phantom_market_refs(packet)
     if _phantom:
         _RUN_MANIFEST["llm"]["phantom_evidence_refs"] = sorted(_phantom)[:8]
-    payload = _orx.build_payload(
+    payload = _dsr.build_payload(
         model=DEEPSEEK_MODEL,
         instructions=bundle["developer_instructions"],
         user_input=bundle["user_payload"],
@@ -12849,7 +12847,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     for repair in _LUNA_ATTEMPTS:
         t0 = time.monotonic()
         try:
-            resp = _call_openai_responses(payload)
+            resp = _call_deepseek_responses(payload)
         except Exception as e:              # noqa: BLE001 - 晨報不可斷
             # r1(Codex,#6):**送出去了就可能被計費。** ReadTimeout、連線中斷、
             # 回應不是 JSON —— 這些都發生在 server 已經收下請求之後,
@@ -12863,7 +12861,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 error=_redact_secret_text(str(e)), repair=repair,
                 billable_unmeasured=True)
             raise
-        out = _orx.extract_output(resp)
+        out = _dsr.extract_output(resp)
         elapsed = time.monotonic() - t0
 
         def _record(accepted: bool, note: str = "") -> None:
@@ -12876,26 +12874,41 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             _record_llm_call(
                 "primary", "deepseek", DEEPSEEK_MODEL,
                 requested_effort=effort,
-                applied_effort=_orx.applied_effort(resp),
-                usage=_orx.normalize_usage(resp.get("usage")),
+                applied_effort=_dsr.applied_effort(resp),
+                usage=_dsr.normalize_usage(resp.get("usage")),
                 accepted=accepted, elapsed=elapsed,
                 finish_reason=out["status"], repair=repair,
                 reject_reason=note)
 
         if out["refusal"] or out["status"] == "incomplete":
             _record(False, out["refusal"] or out["incomplete_reason"])
-            print(f"[llm] Luna {out['refusal'] or out['incomplete_reason']}",
+            print(f"[llm] 特化路徑 {out['refusal'] or out['incomplete_reason']}",
                   file=sys.stderr)
             return ""
+        if out["empty_content"]:
+            # **官方明說 JSON 模式偶爾回空 content**(adapter 的契約之一)。
+            # 「回了但沒東西」是可修補的 —— 直接放棄等於把一次可救的
+            # 呼叫當成失敗,而修補額度本來就留著給這種事。
+            _record(False, "empty_content")
+            _RUN_MANIFEST.setdefault("llm", {})["empty_content_seen"] = True
+            print("[llm] 特化路徑回了空 content(將依修補額度重試)",
+                  file=sys.stderr)
+            if repair:
+                return ""
+            payload = dict(payload, input=(
+                bundle["user_payload"]
+                + "\n\nREPAIR\n上一次沒有輸出任何內容,請直接輸出完整 JSON。"))
+            continue
         try:
             # DeepSeek 的 Responses 會把 schema 輸出包進 ```json 圍欄
             # (OpenAI strict 模式保證裸 JSON;DeepSeek 當指引)。剝殼再解析,
             # 形狀仍由下面的 validate 把關 —— 圍欄不是內容問題。
-            obj = json.loads(_strip_json_fence(out["text"]))
+            # 圍欄已由 adapter 依 DeepSeek 契約剝好(strict schema 是指引
+            # 不是保證)。這裡只處理**雙重編碼**:整份物件被再包成一個
+            # JSON 字串 —— 同樣是包裝問題,不是內容問題。
+            obj = json.loads(out["text"])
             if isinstance(obj, str):
-                # 雙重編碼(整份物件被再包成一個 JSON 字串)—— 同樣是
-                # 包裝問題不是內容問題,再剝一層;仍不是 dict 就交給 validate。
-                obj = json.loads(_strip_json_fence(obj))
+                obj = json.loads(_dsr.strip_json_fence(obj))
         except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
             obj = None
         if not isinstance(obj, (dict, type(None))):

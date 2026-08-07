@@ -49,7 +49,7 @@ def test_the_gate_is_wired_before_the_api_call():
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
     body = src[src.index("def _luna_analysis"):]
-    assert body.index("_pb.apply(packet") < body.index("_orx.build_payload("), (
+    assert body.index("_pb.apply(packet") < body.index("_dsr.build_payload("), (
         "預算閘門在組 payload 之後才擋,已經太晚")
 
 

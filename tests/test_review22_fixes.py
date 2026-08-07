@@ -19,10 +19,10 @@ _IDS = fx.ids()
 
 def test_over_budget_means_zero_api_calls_through_production(monkeypatch):
     """**這次真的 mock API。** 不可裁的區塊超標 → gate 在生產路徑上
-    擋下 → `_call_openai_responses` 呼叫數必須是 0,信落回 legacy。"""
+    擋下 → `_call_deepseek_responses` 呼叫數必須是 0,信落回 legacy。"""
     import morning_report as mr
     calls = []
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: calls.append(p) or {})
     # 2026-08-08 單一模型:特化路徑 = deepseek(flash)+ luna profile 預設
     monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
@@ -79,7 +79,7 @@ def test_the_final_request_gate_measures_the_bundle():
            ).read_text(encoding="utf-8")
     body = src[src.index("def _luna_analysis"):]
     assert "_pb.request_gate(payload" in body, "最終 gate 沒吃到真正的 body"
-    assert body.index("_orx.build_payload(") < body.index("_pb.request_gate(payload"), (
+    assert body.index("_dsr.build_payload(") < body.index("_pb.request_gate(payload"), (
         "閘門排在組 payload 之前,量不到外層欄位與逃逸")
 
 
@@ -205,7 +205,7 @@ def test_the_gate_counts_the_wrapper_fields_and_nested_escaping():
     上限只留約一成 overhead,這些漏算會讓「量到的」比「送出去的」小一截。
     """
     import json as _json
-    import openai_responses as orx
+    import deepseek_responses as orx
     # 逃逸密集的 payload:每個字元進外層都會變成兩個
     payload_str = _json.dumps({"news": ['她說:"漲\停"\n'] * 500}, ensure_ascii=False)
     body = orx.build_payload(

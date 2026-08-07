@@ -182,6 +182,10 @@ MODULE_CEILINGS = {
     # 版本、自己的出處、自己的失效方式,而且這個數字直接決定「換不換模型」。
     # 實測 191 行。
     "llm_pricing.py": 210,
+    # DeepSeek Responses 的專屬 adapter(外審 P1-2)。契約釘在實機
+    # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
+    # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。
+    "deepseek_responses.py": 300,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -353,7 +357,6 @@ MODULE_CEILINGS = {
     # Luna 特化:Responses API 的**純**適配層(組請求、解回應、正規化 usage)。
     # 網路呼叫刻意留在主模組 —— 那裡才有金鑰、逾時預算與 manifest。
     # 這個檔長大就表示網路或設定邏輯漏進來了。
-    "openai_responses.py": 250,
     # Luna 特化:端到端 profile 比較實驗的身分與配對語意。
     # 它只做「這一天算不算一個有效配對」與「同群是誰」—— 品質指標的計算
     # 不屬於這裡(那會讓一個判定模組長成一個統計模組)。

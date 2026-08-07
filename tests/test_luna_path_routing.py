@@ -82,7 +82,7 @@ def test_the_luna_path_is_actually_taken_when_configured(luna_on, monkeypatch):
         sent.append(payload)
         return _response(_GOOD)
 
-    monkeypatch.setattr(mr, "_call_openai_responses", _fake)
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: pytest.fail("走到了既有路徑,Luna 分支沒生效"))
 
@@ -99,7 +99,7 @@ def test_no_deepseek_key_means_no_specialized_path(monkeypatch):
     """**沒有金鑰就不走特化**(閘門條件)—— 落回既有路徑,信照樣寄。"""
     monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
     monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: pytest.fail("沒金鑰竟然走了 Responses"))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n照舊。")
@@ -112,7 +112,7 @@ def test_the_legacy_profile_override_is_a_working_escape_hatch(monkeypatch):
     monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
     monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-test")
     monkeypatch.setattr(mr, "LLM_PRIMARY_PROMPT_PROFILE", "deepseek_legacy_v1")
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: pytest.fail("逃生門設定竟然仍走特化"))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：偏空\n\n## 一句話總結\nDS。")
@@ -122,7 +122,7 @@ def test_the_legacy_profile_override_is_a_working_escape_hatch(monkeypatch):
 def test_a_broken_luna_response_falls_back_instead_of_losing_the_email(
         luna_on, monkeypatch):
     """**晨報不可斷。** Luna 壞掉時要落回既有路徑,不是回半份、也不是不寄。"""
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: _response({"完全": "不合 schema"}))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
@@ -136,7 +136,7 @@ def test_a_network_failure_falls_back_and_is_recorded(luna_on, monkeypatch):
     def _boom(payload):
         raise RuntimeError("ReadTimeout")
 
-    monkeypatch.setattr(mr, "_call_openai_responses", _boom)
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _boom)
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     saved = list(mr._DEGRADED_STEPS)
@@ -163,7 +163,7 @@ def test_repair_happens_at_most_once_and_both_attempts_are_billed(
         calls.append(payload)
         return _response({"壞": "的"} if len(calls) == 1 else _GOOD)
 
-    monkeypatch.setattr(mr, "_call_openai_responses", _fake)
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: pytest.fail("不該落回 —— 修補成功了"))
     mr._RUN_MANIFEST.pop("llm", None)
@@ -186,7 +186,7 @@ def test_repair_happens_at_most_once_and_both_attempts_are_billed(
 
     # 第二次也壞 → 不再修補,落回既有路徑
     calls.clear()
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (calls.append(p), _response({"壞": "的"}))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
@@ -197,7 +197,7 @@ def test_repair_happens_at_most_once_and_both_attempts_are_billed(
 def test_the_manifest_records_which_profile_and_evidence_were_used(
         luna_on, monkeypatch):
     """沒有記下來,事後補不回來 —— 而配對語意全靠這幾個欄位。"""
-    monkeypatch.setattr(mr, "_call_openai_responses", lambda p: _response(_GOOD))
+    monkeypatch.setattr(mr, "_call_deepseek_responses", lambda p: _response(_GOOD))
     mr._RUN_MANIFEST.pop("llm", None)
     mr._call_llm_analysis_impl(*_ARGS)
     bundle = (mr._RUN_MANIFEST.get("llm") or {}).get("primary_bundle") or {}
@@ -217,7 +217,7 @@ def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
     ReadTimeout / 連線中斷 / 回應不是 JSON,都發生在 server 已經收下請求
     之後。不入帳的話總成本與呼叫數會低估,而十天實驗的結論建立在成本上。
     """
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
@@ -251,7 +251,7 @@ def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
     strict schema 保證的是形狀,不是根據。
     """
     calls = []
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (calls.append(p), _response(_UNSUPPORTED))[1])
     # 這段要**過得了完整性檢查** —— 太短會落到備援文字,
     # 那時測到的就不是「有沒有落回 legacy」而是「備援有沒有作用」。
@@ -319,7 +319,7 @@ def test_a_luna_failure_records_why_and_where(luna_on, monkeypatch):
     「失敗了」。而 `stage` 是關鍵:packet 建好了沒,決定失敗在**組裝證據**
     還是**呼叫模型**,兩者排查方向完全不同。
     """
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場:中性\n"
@@ -355,7 +355,7 @@ def test_repair_input_names_valid_ids_for_phantom_citations(luna_on, monkeypatch
         calls.append(payload)
         return _response(bad if len(calls) == 1 else _GOOD)
 
-    monkeypatch.setattr(mr, "_call_openai_responses", _fake)
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: pytest.fail("修補成功時不該落回"))
     text = mr._call_llm_analysis_impl(*_ARGS)
@@ -383,7 +383,7 @@ def test_a_phantom_claim_evidence_id_is_never_laundered(luna_on, monkeypatch):
     real = list(laundered["claim_audit"][0]["evidence_ids"])
     laundered["claim_audit"][0]["evidence_ids"] = real + ["market:FED_RATE_捏造"]
     calls = []
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (calls.append(p), _response(laundered))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場:中性\n\n## 一句話總結\n備援。")
@@ -401,7 +401,7 @@ def test_only_the_decorative_relates_to_is_pruned(luna_on, monkeypatch):
                                "relationship": "same_driver",
                                "evidence_ids": [], "explanation": "編的"}]
     calls = []
-    monkeypatch.setattr(mr, "_call_openai_responses",
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (calls.append(p), _response(decorated))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: pytest.fail("裝飾層的幽靈關聯不該讓整條路徑落回"))

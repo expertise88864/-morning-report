@@ -128,7 +128,7 @@ def test_the_production_path_trims_and_records():
 def test_a_rate_limit_is_retried_not_fatal():
     """**暫時性的失敗不該花掉一整天的分析。**
 
-    2026-08-05:429 在 2.7 秒到達,而 `_call_openai_responses` 只在
+    2026-08-05:429 在 2.7 秒到達,而 `_call_deepseek_responses` 只在
     400 時重試(為了移除選配欄位)—— 429 直接 `raise_for_status()`,
     整條特化路徑落回 legacy。
     """

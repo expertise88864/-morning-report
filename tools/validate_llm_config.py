@@ -43,7 +43,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import llm_telemetry as lt          # noqa: E402
 import llm_config as lc            # noqa: E402
 import analysis_schema as sch      # noqa: E402
-import openai_responses as orx     # noqa: E402
+# canary 必須用**生產同一個 adapter**,否則驗的不是生產
+# (外審 P1-2:特化路徑已改吃 DeepSeek 專屬契約)。
+import deepseek_responses as orx  # noqa: E402
 import prompt_profiles as pp       # noqa: E402
 from news_events import llm_event_json_schema  # noqa: E402
 

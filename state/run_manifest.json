@@ -1,12 +1,10 @@
 {
- "date": "2026-08-06 06:46",
- "total_seconds": 816.0,
+ "date": "2026-08-07 08:16",
+ "total_seconds": 992.3,
  "budget_seconds": 2100.0,
  "news_workers": 8,
  "degraded_steps": [
-  "llm:luna_path_failed:PayloadBudgetExceeded",
-  "chips:source_date_mismatch",
-  "chips:source_date_mismatch"
+  "llm:luna_path_failed:HTTPError"
  ],
  "phases": [
   {
@@ -15,27 +13,27 @@
   },
   {
    "label": "新聞+政策+體育",
-   "seconds": 159.6
+   "seconds": 181.4
   },
   {
    "label": "TAIFEX/籌碼/預測",
-   "seconds": 9.3
+   "seconds": 7.6
   },
   {
    "label": "TWSE universe/候選新聞",
-   "seconds": 130.4
+   "seconds": 145.8
   },
   {
    "label": "事件抽取/模型/walk-forward",
-   "seconds": 182.3
+   "seconds": 182.4
   },
   {
    "label": "LLM 主分析",
-   "seconds": 324.6
+   "seconds": 464.9
   },
   {
    "label": "渲染",
-   "seconds": 3.7
+   "seconds": 4.1
   }
  ],
  "feeds": {
@@ -100,7 +98,7 @@
    "fail": 0
   },
   "news.google.com": {
-   "ok": 133,
+   "ok": 131,
    "fail": 0
   },
   "www.ey.gov.tw": {
@@ -140,13 +138,13 @@
    "fail": 0
   }
  },
- "model_history_days": 223,
- "d1_samples": 7,
+ "model_history_days": 224,
+ "d1_samples": 8,
  "d1_ready": false,
  "stance_dual": {
-  "llm": -2,
+  "llm": 0,
   "llm_label": "中性",
-  "py": -2,
+  "py": 0,
   "py_label": "中性",
   "agree": true,
   "coverage": 1.0,
@@ -165,16 +163,16 @@
     "check": "fill_rate:taifex_top10_net",
     "severity": "warn",
     "passed": true,
-    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 23/30 筆,之後 4/8 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.5
+    "detail": "`taifex_top10_net` 觀察中:首見於視窗第 22/30 筆,之後 4/9 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.444
    },
    {
     "source": "model_history",
     "check": "fill_rate:txo_pc_oi_ratio",
     "severity": "warn",
     "passed": true,
-    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 23/30 筆,之後 3/8 筆有值——樣本未達 10 筆,尚不足以判定",
-    "observed": 0.375
+    "detail": "`txo_pc_oi_ratio` 觀察中:首見於視窗第 22/30 筆,之後 4/9 筆有值——樣本未達 10 筆,尚不足以判定",
+    "observed": 0.444
    },
    {
     "source": "model_history",
@@ -223,25 +221,25 @@
   "failed": 0
  },
  "mz_shadow": {
-  "n": 55,
+  "n": 56,
   "applied": true,
-  "a": 1.035,
-  "b": 0.6831,
-  "raw": 2394.27,
-  "shadow": 2398.71,
-  "delta": 4.44,
+  "a": 2.048,
+  "b": 0.687,
+  "raw": 2374.59,
+  "shadow": 2373.64,
+  "delta": -0.95,
   "oos": {
-   "n": 5,
+   "n": 6,
    "enough": false,
    "mz_rule": "delta-mz-hac-v1",
-   "mae_raw": 67.462,
-   "mae_shadow": 68.334,
+   "mae_raw": 56.34,
+   "mae_shadow": 57.563,
    "better": 2,
-   "worse": 3,
-   "mean_gain": -0.872,
+   "worse": 4,
+   "mean_gain": -1.223,
    "lag": 2,
-   "t": -0.29,
-   "t_ols": -0.14
+   "t": -0.49,
+   "t_ols": -0.24
   }
  },
  "llm_extractor": {
@@ -261,7 +259,7 @@
  "delivery": {
   "attempted": true,
   "success": true,
-  "run_kind": "schedule"
+  "run_kind": "workflow_dispatch"
  },
  "capability_health": {
   "fatal": [],
@@ -292,32 +290,36 @@
   ]
  },
  "exdiv_preview": {
-  "rows": 125,
-  "min_ex_date": "2026-08-04",
+  "rows": 117,
+  "min_ex_date": "2026-08-05",
   "max_ex_date": "2026-10-06",
   "days_back": 2,
-  "days_forward": 61,
-  "lead_observed": 63,
+  "days_forward": 60,
+  "lead_observed": 74,
   "lead_censored": 0,
   "lead_unmeasurable": 115,
-  "lead_min_days": 13,
+  "lead_min_days": 12,
   "lead_short_count": 0
  },
  "corporate_actions": {
   "rows": 1,
   "min_halt_date": "2026-07-23",
   "max_halt_date": "2026-07-23",
-  "days_back": 14,
-  "days_forward": -14
+  "days_back": 15,
+  "days_forward": -15
  },
  "chips": {
-  "session": "2026-08-05",
-  "large_source_date": "20260804",
-  "pcr_source_date": "20260805",
-  "large_matched": false,
+  "session": "2026-08-06",
+  "large_source_date": "20260806",
+  "pcr_source_date": "20260806",
+  "large_matched": true,
   "pcr_matched": true
  },
- "policy_deepdive": null,
+ "policy_deepdive": {
+  "candidates": 1,
+  "written": 1,
+  "dropped": []
+ },
  "llm_shadow": {
   "enabled": true,
   "shadow_model": "deepseek-v4-pro",
@@ -331,16 +333,16 @@
    "shadow_stance": "中性",
    "stance_agree": true,
    "stance_flipped": false,
-   "primary_score": -2,
-   "shadow_score": -2,
-   "primary_chars": 6535,
-   "shadow_chars": 6874,
-   "summary_overlap": 0.391,
-   "body_overlap": 0.356,
-   "primary_seconds": 209.1,
-   "shadow_seconds": 114.0,
+   "primary_score": 0,
+   "shadow_score": 0,
+   "primary_chars": 7052,
+   "shadow_chars": 6445,
+   "summary_overlap": 0.4,
+   "body_overlap": 0.333,
+   "primary_seconds": 238.5,
+   "shadow_seconds": 171.6,
    "score_gap": 0,
-   "prompt_sha": "9bb4c5fb1280",
+   "prompt_sha": "b904fb54ba6c",
    "primary_effort": "xhigh",
    "shadow_effort": "max",
    "code_version": "prompt1-stan",
@@ -351,7 +353,7 @@
    "samples": 0,
    "both_ok": 0,
    "shadow_fail": 0,
-   "observability_only_rows": 3,
+   "observability_only_rows": 4,
    "cohorts": 2,
    "cohort_fields": {
     "primary_effort": [
@@ -376,21 +378,21 @@
    "model": "gpt-5.6-luna",
    "requested_effort": "low",
    "applied_effort": "low",
-   "prompt_tokens": 12381,
-   "completion_tokens": 1221,
-   "total_tokens": 13602,
-   "reasoning_tokens": 183,
+   "prompt_tokens": 12041,
+   "completion_tokens": 1346,
+   "total_tokens": 13387,
+   "reasoning_tokens": 92,
    "cached_tokens": 0,
-   "cache_write_tokens": 12378,
-   "estimated_cost_usd": 0.00456,
-   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價;寫入快取 12378 tok 以 1.25× 輸入費率計",
+   "cache_write_tokens": 12038,
+   "estimated_cost_usd": 0.004625,
+   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價;寫入快取 12038 tok 以 1.25× 輸入費率計",
    "pricing_tier": "standard",
    "pricing_schema": 4,
    "effective_input_rate": 0.2,
    "effective_cached_rate": 0.02,
    "effective_output_rate": 1.2,
    "pricing_source": "developers.openai.com/api/docs/pricing",
-   "elapsed_seconds": 9.8,
+   "elapsed_seconds": 8.4,
    "finish_reason": "stop",
    "calls": 1
   },
@@ -555,28 +557,28 @@
    "market.MODEL_WALK_FORWARD:5(int)"
   ],
   "payload_budget": {
-   "chars_before": 2263832,
+   "chars_before": 2271563,
    "limit": 600000,
    "trimmed": [
     {
      "block": "market.HISTORY",
-     "chars": 776642
+     "chars": 794808
     },
     {
      "block": "market.STRUCTURED_NEWS_EVENTS",
-     "chars": 504257
+     "chars": 471476
     },
     {
      "block": "market.TW_DAILY_INTELLIGENCE",
-     "chars": 35607
+     "chars": 36324
     },
     {
      "block": "market.GAZETTE_RECORDS",
-     "chars": 22905
+     "chars": 23694
     },
     {
      "block": "market.MODEL_MONITORING",
-     "chars": 5917
+     "chars": 5807
     },
     {
      "block": "market.MODEL_WALK_FORWARD",
@@ -584,22 +586,112 @@
     },
     {
      "block": "market.SEC_FILINGS",
-     "chars": 2871
+     "chars": 2669
     },
     {
      "block": "market.EVENT_TIMELINE",
-     "chars": 202
+     "chars": 707
     },
     {
      "block": "market.POLICY_NEW_KEYWORDS",
-     "chars": 132
+     "chars": 79
     }
    ],
-   "chars_after": 910312,
-   "over_budget": true
+   "chars_after": 503781,
+   "over_budget": false,
+   "final_request_chars": 503476
   },
+  "payload_compact": {
+   "chars_before": 931011,
+   "limit": 600000,
+   "applied": [
+    {
+     "tier": "universe.price_forecast_plumbing",
+     "chars_saved": 185261,
+     "detail": "100 檔只留預測標頭數字"
+    },
+    {
+     "tier": "universe.non_analyzed_to_skeleton",
+     "chars_saved": 242091,
+     "detail": "76 檔降為骨架、24 檔保留完整(代號全數保留)"
+    }
+   ],
+   "chars_after": 503781,
+   "over_budget": false
+  },
+  "block_sizes": {
+   "news": 210581,
+   "tw_universe": 105024,
+   "news_clusters": 94518,
+   "market.SECTOR_HEAT": 10419,
+   "market.MACRO": 2735,
+   "market.MIDTERM": 2327,
+   "market.SPY": 2313,
+   "market.QQQ": 2311,
+   "market.TSM": 2210,
+   "market.DATA_QUALITY": 2008,
+   "signal_tensions": 1779,
+   "market.SOURCE_DATA_CHECKS": 1174
+  },
+  "primary_bundle": {
+   "core_evidence_sha": "0ae3ada61e98e1b5",
+   "estimated_input_tokens": 268231,
+   "evidence_coverage": {
+    "available": 515,
+    "included": 220,
+    "near_duplicates_dropped": 0,
+    "rate": 0.427,
+    "raw_available": 515,
+    "with_fulltext": 26
+   },
+   "evidence_schema_version": 20,
+   "evidence_sha": "74f295227dc00a3c",
+   "output_schema_version": 12,
+   "profile_id": "luna56_xhigh_v1",
+   "profile_version": 24,
+   "prompt_sha": "b188fe6b93e6ae7d",
+   "structured_output": true,
+   "truncation_summary": {
+    "near_duplicates_dropped": 0,
+    "news_dropped": 295,
+    "news_dropped_by_grade": {
+     "B": 5,
+     "C": 290
+    },
+    "news_kept": 220,
+    "news_total": 515,
+    "required_forced_in": 0,
+    "summaries_truncated": 31
+   }
+  },
+  "retry_after_status": [
+   {
+    "status": 429,
+    "wait_seconds": 8.0
+   },
+   {
+    "status": 429,
+    "wait_seconds": 16.0
+   },
+   {
+    "status": 429,
+    "wait_seconds": 24.0
+   }
+  ],
+  "attempts": [
+   {
+    "role": "primary",
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "requested_effort": "xhigh",
+    "applied_effort": null,
+    "elapsed_seconds": 53.0,
+    "error": "429 Client Error: Too Many Requests for url: https://api.openai.com/v1/responses",
+    "billable_unmeasured": true
+   }
+  ],
   "luna_path_error": {
-   "error": "PayloadBudgetExceeded: payload over budget: 910312 > 600000",
+   "error": "HTTPError: 429 Client Error: Too Many Requests for url: https://api.openai.com/v1/responses",
    "stage": "analysis"
   },
   "analysis_origin": "legacy_fallback_after_luna_failure",
@@ -608,21 +700,21 @@
    "model": "gpt-5.6-luna",
    "requested_effort": "xhigh",
    "applied_effort": "xhigh",
-   "prompt_tokens": 85080,
-   "completion_tokens": 29513,
-   "total_tokens": 114593,
-   "reasoning_tokens": 23826,
+   "prompt_tokens": 89609,
+   "completion_tokens": 36425,
+   "total_tokens": 126034,
+   "reasoning_tokens": 30207,
    "cached_tokens": 0,
-   "cache_write_tokens": 85077,
-   "estimated_cost_usd": 0.056685,
-   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價;寫入快取 85077 tok 以 1.25× 輸入費率計",
+   "cache_write_tokens": 89606,
+   "estimated_cost_usd": 0.066112,
+   "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價;寫入快取 89606 tok 以 1.25× 輸入費率計",
    "pricing_tier": "standard",
    "pricing_schema": 4,
    "effective_input_rate": 0.2,
    "effective_cached_rate": 0.02,
    "effective_output_rate": 1.2,
    "pricing_source": "developers.openai.com/api/docs/pricing",
-   "elapsed_seconds": 209.1,
+   "elapsed_seconds": 238.5,
    "finish_reason": "stop",
    "calls": 1
   },
@@ -631,12 +723,12 @@
    "model": "deepseek-v4-pro",
    "requested_effort": "max",
    "applied_effort": "max",
-   "prompt_tokens": 78661,
-   "completion_tokens": 5542,
-   "total_tokens": 84203,
-   "reasoning_tokens": 622,
+   "prompt_tokens": 82494,
+   "completion_tokens": 5173,
+   "total_tokens": 87667,
+   "reasoning_tokens": 678,
    "cached_tokens": 0,
-   "estimated_cost_usd": 0.039039,
+   "estimated_cost_usd": 0.040385,
    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價",
    "pricing_tier": "standard",
    "pricing_schema": 4,
@@ -644,7 +736,7 @@
    "effective_cached_rate": 0.003625,
    "effective_output_rate": 0.87,
    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
-   "elapsed_seconds": 114.0,
+   "elapsed_seconds": 171.6,
    "finish_reason": "stop",
    "thinking_mode": "enabled",
    "canonical_effort": "max",
@@ -656,12 +748,13 @@
    "model": "gpt-5.6-luna"
   },
   "cost_summary": {
-   "total_usd": 0.100284,
+   "total_usd": 0.111122,
    "measured_calls": 3,
    "failed_attempt_cost_usd": 0.0,
-   "unmeasured_billable_calls": 0,
+   "unmeasured_billable_calls": 1,
    "pricing_as_of": "2026-08-01",
-   "pricing_schema": 4
+   "pricing_schema": 4,
+   "incomplete": "另有 1 次呼叫已送出但沒有 usage(逾時/連線中斷)—— 那些仍會計費,**不在總額內**"
   }
  },
  "state_writes": {
@@ -671,35 +764,46 @@
  },
  "event_identity": {
   "schema_version": 4,
-  "recomputed": 1720,
+  "recomputed": 1760,
   "canonicalized": 417,
   "collisions": 0,
   "splits": 0,
   "recomputed_by_schema": {
-   "legacy": 1720
+   "legacy": 1760
   },
   "history_schema_coverage": {
-   "legacy": 1720
+   "legacy": 1760
   }
  },
  "news": {
   "fulltext_plan": {
-   "targets": 0,
-   "clusters": 0,
-   "uncovered_clusters": [],
+   "targets": 26,
+   "clusters": 467,
+   "uncovered_clusters": [
+    "cluster:nde6377f3f2a",
+    "cluster:ne1f83f89c84",
+    "cluster:ne3a5c795f48",
+    "cluster:nf27e0b95e35",
+    "cluster:n16e4a32680d",
+    "cluster:n230024a4cce",
+    "cluster:n254d6b95b44",
+    "cluster:n32318058235",
+    "cluster:n37270869c6d",
+    "cluster:n3e57d999dc5"
+   ],
    "basis": "逐事件群分配:官方 → 獨立群組數 → 群內最高重要性;先每群一篇再補第二篇(涵蓋的事件數優先於單一事件深度)"
   }
  },
  "llm_experiment": {
-  "date": "2026-08-06",
+  "date": "2026-08-07",
   "experiment_id": "luna-vs-deepseek-depth-v3",
-  "run_id": "31053967823",
+  "run_id": "31134019798",
   "run_attempt": 1,
-  "run_kind": "scheduled",
-  "started_at": "2026-08-05T22:46:17+00:00",
-  "recorded_at": "2026-08-06T06:59:50.659657+08:00",
-  "provider_calls": 3,
-  "billable_unmeasured_calls": 0,
+  "run_kind": "manual",
+  "started_at": "2026-08-07T00:16:11+00:00",
+  "recorded_at": "2026-08-07T08:32:40.666497+08:00",
+  "provider_calls": 4,
+  "billable_unmeasured_calls": 1,
   "review_ok": false,
   "review_expires": "",
   "comparison_mode": "end_to_end_profiles",
@@ -710,15 +814,15 @@
   "primary_effort": "xhigh",
   "primary_ok": false,
   "primary_prompt_sha": "",
-  "primary_evidence_sha": "3bd177cb9ee91883",
-  "primary_core_sha": "56582346d8b2d2bf",
+  "primary_evidence_sha": "255eac079daa30bd",
+  "primary_core_sha": "0ae3ada61e98e1b5",
   "primary_coverage": {
-   "available": 563,
-   "raw_available": 563,
+   "available": 515,
+   "raw_available": 515,
    "near_duplicates_dropped": 0,
    "included": 220,
-   "with_fulltext": 9,
-   "rate": 0.391
+   "with_fulltext": 26,
+   "rate": 0.427
   },
   "shadow_profile": "deepseek_legacy_v1",
   "shadow_profile_version": 7,
@@ -726,17 +830,17 @@
   "shadow_effort": "",
   "shadow_ok": false,
   "shadow_prompt_sha": "",
-  "shadow_evidence_sha": "3bd177cb9ee91883",
-  "shadow_core_sha": "56582346d8b2d2bf",
+  "shadow_evidence_sha": "255eac079daa30bd",
+  "shadow_core_sha": "0ae3ada61e98e1b5",
   "shadow_coverage": {
    "available": null,
    "basis": "legacy profile 無逐則涵蓋統計"
   },
   "evidence_schema_version": 20,
   "output_schema_version": 12,
-  "postprocess_version": 1,
+  "postprocess_version": 2,
   "renderer_version": 12,
-  "grounding_version": 22,
+  "grounding_version": 24,
   "code_version": "prompt1-stan",
   "primary_telemetry": {
    "available": true,
@@ -745,18 +849,18 @@
    "analysis_origin": "legacy_fallback_after_luna_failure",
    "model": "gpt-5.6-luna",
    "accepted_calls": 1,
-   "rejected_calls": 0,
-   "measured_cost_usd": 0.056685,
-   "failed_attempt_cost_usd": 0,
-   "billable_unmeasured_calls": 0,
-   "elapsed_seconds": 209.1,
+   "rejected_calls": 1,
+   "measured_cost_usd": 0.066112,
+   "failed_attempt_cost_usd": 0.0,
+   "billable_unmeasured_calls": 1,
+   "elapsed_seconds": 238.5,
    "pricing_tier": "standard",
    "pricing_source": "developers.openai.com/api/docs/pricing",
-   "prompt_tokens": 85080,
+   "prompt_tokens": 89609,
    "cached_tokens": 0,
-   "cache_write_tokens": 85077,
-   "completion_tokens": 29513,
-   "reasoning_tokens": 23826
+   "cache_write_tokens": 89606,
+   "completion_tokens": 36425,
+   "reasoning_tokens": 30207
   },
   "shadow_telemetry": {
    "available": true,
@@ -766,17 +870,17 @@
    "model": "deepseek-v4-pro",
    "accepted_calls": 1,
    "rejected_calls": 0,
-   "measured_cost_usd": 0.039039,
+   "measured_cost_usd": 0.040385,
    "failed_attempt_cost_usd": 0,
    "billable_unmeasured_calls": 0,
-   "elapsed_seconds": 114.0,
+   "elapsed_seconds": 171.6,
    "pricing_tier": "standard",
    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
-   "prompt_tokens": 78661,
+   "prompt_tokens": 82494,
    "cached_tokens": 0,
    "cache_write_tokens": null,
-   "completion_tokens": 5542,
-   "reasoning_tokens": 622
+   "completion_tokens": 5173,
+   "reasoning_tokens": 678
   },
   "extractor_telemetry": {
    "available": true,
@@ -786,20 +890,20 @@
    "model": "gpt-5.6-luna",
    "accepted_calls": 1,
    "rejected_calls": 0,
-   "measured_cost_usd": 0.00456,
+   "measured_cost_usd": 0.004625,
    "failed_attempt_cost_usd": 0,
    "billable_unmeasured_calls": 0,
-   "elapsed_seconds": 9.8,
+   "elapsed_seconds": 8.4,
    "pricing_tier": "standard",
    "pricing_source": "developers.openai.com/api/docs/pricing",
-   "prompt_tokens": 12381,
+   "prompt_tokens": 12041,
    "cached_tokens": 0,
-   "cache_write_tokens": 12378,
-   "completion_tokens": 1221,
-   "reasoning_tokens": 183
+   "cache_write_tokens": 12038,
+   "completion_tokens": 1346,
+   "reasoning_tokens": 92
   },
   "analysis_origin": "legacy_fallback_after_luna_failure",
-  "failure_reason": "PayloadBudgetExceeded",
+  "failure_reason": "HTTPError",
   "metrics": {},
   "progress": {
    "schema_version": 1,
@@ -821,17 +925,17 @@
     "days_seen": 1,
     "manual_reruns_after_a_scheduled_run": 0,
     "manual_attempts_of_unknown_order": 0,
-    "provider_calls": 3,
-    "billable_unmeasured_calls": 0,
+    "provider_calls": 4,
+    "billable_unmeasured_calls": 1,
     "provider_calls_measured_rows": 1,
     "run_primary_ok_rate": 0.0,
-    "scheduled_attempts": 1
+    "scheduled_attempts": 0
    },
    "side_costs": {
     "rows_seen": 1,
     "fallback_writer": {
      "days": 1,
-     "cost_usd": 0.056685
+     "cost_usd": 0.066112
     },
     "primary": {
      "attribution": "primary",
@@ -847,23 +951,23 @@
     "shadow": {
      "attribution": "shadow",
      "days_measured": 1,
-     "cost_usd": 0.039039,
+     "cost_usd": 0.040385,
      "failed_attempt_cost_usd": 0,
      "repair_calls": 0,
      "billable_unmeasured_calls": 0,
-     "latency_median_seconds": 114.0,
-     "latency_max_seconds": 114.0,
+     "latency_median_seconds": 171.6,
+     "latency_max_seconds": 171.6,
      "latency_samples": 1
     },
     "extractor": {
      "attribution": "shared",
      "days_measured": 1,
-     "cost_usd": 0.00456,
+     "cost_usd": 0.004625,
      "failed_attempt_cost_usd": 0,
      "repair_calls": 0,
      "billable_unmeasured_calls": 0,
-     "latency_median_seconds": 9.8,
-     "latency_max_seconds": 9.8,
+     "latency_median_seconds": 8.4,
+     "latency_max_seconds": 8.4,
      "latency_samples": 1
     }
    },
@@ -880,9 +984,9 @@
     "shadow_effort": "",
     "evidence_schema_version": "20",
     "output_schema_version": "12",
-    "postprocess_version": "1",
+    "postprocess_version": "2",
     "renderer_version": "12",
-    "grounding_version": "22"
+    "grounding_version": "24"
    },
    "reliability": {
     "days": 1,

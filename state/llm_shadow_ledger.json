@@ -121,5 +121,31 @@
   "code_version": "prompt1-stan",
   "analysis_origin": "legacy_fallback_after_luna_failure",
   "legacy_observability_only": true
+ },
+ {
+  "date": "2026-08-07",
+  "primary_model": "gpt-5.6-luna",
+  "shadow_model": "deepseek-v4-pro",
+  "primary_ok": true,
+  "shadow_ok": true,
+  "primary_stance": "中性",
+  "shadow_stance": "中性",
+  "stance_agree": true,
+  "stance_flipped": false,
+  "primary_score": 0,
+  "shadow_score": 0,
+  "primary_chars": 7052,
+  "shadow_chars": 6445,
+  "summary_overlap": 0.4,
+  "body_overlap": 0.333,
+  "primary_seconds": 238.5,
+  "shadow_seconds": 171.6,
+  "score_gap": 0,
+  "prompt_sha": "b904fb54ba6c",
+  "primary_effort": "xhigh",
+  "shadow_effort": "max",
+  "code_version": "prompt1-stan",
+  "analysis_origin": "legacy_fallback_after_luna_failure",
+  "legacy_observability_only": true
  }
 ]

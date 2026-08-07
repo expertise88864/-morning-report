@@ -12,9 +12,9 @@
  },
  "geopolitical:伊朗": {
   "first_seen": "2026-08-01",
-  "days": 5,
-  "last_seen": "2026-08-06",
-  "latest_title": "路透：伊朗警告波灣國家美再動武將報復攻擊區域能源設施| 中東戰火連綿| 全球 - UDN",
+  "days": 6,
+  "last_seen": "2026-08-07",
+  "latest_title": "伊朗、阿曼研議限制敵對船舶通行荷姆茲海峽",
   "entity": "伊朗",
   "subjects": [
    "伊朗"
@@ -23,23 +23,12 @@
  },
  "geopolitical:美國": {
   "first_seen": "2026-08-01",
-  "days": 3,
-  "last_seen": "2026-08-05",
-  "latest_title": "美伊戰爭處在十字路口 美國進退兩難! CNN：川普面臨「這3個」選擇 - Yahoo新聞",
+  "days": 4,
+  "last_seen": "2026-08-07",
+  "latest_title": "北京因對台軍售不滿而阻礙美國防官員訪中",
   "entity": "美國",
   "subjects": [
    "美國"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:TSLA": {
-  "first_seen": "2026-08-03",
-  "days": 1,
-  "last_seen": "2026-08-03",
-  "latest_title": "傳馬斯克擬切割特斯拉中國業務",
-  "entity": "TSLA",
-  "subjects": [
-   "TSLA"
   ],
   "event_type": "geopolitical"
  },
@@ -192,9 +181,9 @@
  },
  "export_controls:美國": {
   "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "針對美國管制制裁報復 中國緊縮無人機零件出口、制裁美國檢測實驗室| 國際焦點 - 太報 TaiSounds",
+  "days": 2,
+  "last_seen": "2026-08-07",
+  "latest_title": "美國將對多晶矽衍生產品課徵15%關稅",
   "entity": "美國",
   "subjects": [
    "美國"
@@ -222,5 +211,33 @@
    "2634"
   ],
   "event_type": "geopolitical"
+ },
+ "export_controls:US-LICYQ": {
+  "first_seen": "2026-08-07",
+  "days": 1,
+  "last_seen": "2026-08-07",
+  "latest_title": "美國禁止鎢廢料及電池廢棄物出口",
+  "entity": "US-LICYQ"
+ },
+ "export_controls:中國": {
+  "first_seen": "2026-08-07",
+  "days": 1,
+  "last_seen": "2026-08-07",
+  "latest_title": "中國擴大對美科技與無人機相關反制措施",
+  "entity": "中國"
+ },
+ "geopolitical:沙烏地阿拉伯": {
+  "first_seen": "2026-08-07",
+  "days": 1,
+  "last_seen": "2026-08-07",
+  "latest_title": "沙烏地阿拉伯面臨伊朗支持武裝同步攻擊威脅",
+  "entity": "沙烏地阿拉伯"
+ },
+ "geopolitical:土耳其": {
+  "first_seen": "2026-08-07",
+  "days": 1,
+  "last_seen": "2026-08-07",
+  "latest_title": "土耳其、沙國與巴基斯坦將簽署聯合防務協議",
+  "entity": "土耳其"
  }
 }

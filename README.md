@@ -55,10 +55,10 @@
 
 | Provider | 申請處 | 月成本 | 備註 |
 |---|---|---|---|
-| `deepseek`(**預設**) | https://platform.deepseek.com | NT$5–15 | `DEEPSEEK_API_KEY`;預設 `deepseek-v4-pro` + 思考模式 |
+| `deepseek`(**預設**) | https://platform.deepseek.com | NT$3–10 | `DEEPSEEK_API_KEY`;固定 `deepseek-v4-flash` + 思考模式;**唯一走特化結構化路徑的 provider** |
 | `gemini`(免費備援) | https://aistudio.google.com/apikey | NT$0 | `GEMINI_API_KEY` |
 | `anthropic`(品質最佳) | https://console.anthropic.com | NT$30–46 | `ANTHROPIC_API_KEY` |
-| `openai`(GPT-5.6 系列) | https://platform.openai.com | NT$22(luna)–NT$220(terra) | `OPENAI_API_KEY`;推理強度與時間預算連動,見下表 |
+| `openai`(GPT-5.6 系列) | https://platform.openai.com | NT$22(luna)–NT$220(terra) | `OPENAI_API_KEY`;**排程班沒有設這把金鑰**(2026-08-07 移除),要用需自行加進 workflow;走 legacy prompt,不走特化路徑 |
 
 > 建議同時設 `GEMINI_API_KEY` 當免費備援;全部 LLM 失敗仍會寄出含行情與新聞的基本版。
 
@@ -105,23 +105,14 @@
 | `EXTRACTOR_PROVIDER` | 空 | 事件抽取器可獨立指定;空 = 跟隨主分析 |
 | `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` | 抽取是機械性任務,不必用旗艦 |
 | `OPENAI_EXTRACTOR_REASONING` | `low` | 刻意壓低:推理吃光額度會導致 0 產出 |
-| `LLM_SHADOW_PROVIDER` | 空 | 影子比較,只記錄不改輸出;空 = 關閉 |
-| `LLM_SHADOW_MODEL` | 空 | 影子模型;空 = 用該 provider 的預設 |
-| `LLM_SHADOW_REASONING_EFFORT` | 空 | 影子推理強度;空 = 跟隨主分析 |
 | `LLM_TOTAL_TIMEOUT_SECONDS` | 空 | 空 = 由程式依 provider 與推理強度算(見 `llm_telemetry.timeout_base`);設了會**壓過**自動放大 |
 | `LLM_REQUEST_TIMEOUT_SECONDS` | 空 | 同上;另受「不得超過總預算 70%」上限 |
-| `LLM_PRIMARY_PROMPT_PROFILE` | 空 | 主分析的問法。空 = 依 provider 自動選(openai→luna56_xhigh_v1、其餘→deepseek_legacy_v1) |
-| `LLM_SHADOW_PROMPT_PROFILE` | 空 | 影子的問法。空 = 依 shadow provider 自動選 |
-| `LLM_COMPARISON_MODE` | `end_to_end_profiles` | `end_to_end_profiles` = 同一份證據、各自最佳化的問法,比整套系統 |
-| `LLM_EXPERIMENT_ID` | 空 | 實驗代號。**中途改 prompt/schema 必須換新代號重新起算** |
-| `LLM_EXPERIMENT_TARGET_PAIRS` | `10` | 目標**可比較配對**數,不是日曆日 |
-| `OPENAI_API_MODE` | `chat_completions` | `responses` 或 `chat_completions`。預設刻意是現況 —— Responses 尚未生產驗證 |
+| `LLM_PRIMARY_PROMPT_PROFILE` | 空 | 主分析的問法。空 = 依 provider 自動選(deepseek→`luna56_xhigh_v1` 特化結構化路徑、其餘→`deepseek_legacy_v1`)。設 `deepseek_legacy_v1` 是**逃生門**:不改程式碼即可回舊 prompt |
 | `OPENAI_STORE` | `0` | 1 = 允許 OpenAI 保存這次請求。預設 0 |
 | `OPENAI_TEXT_VERBOSITY` | `high` | Responses 的 `text.verbosity` |
 | `OPENAI_REASONING_SUMMARY` | `auto` | 推理摘要,**僅供遙測不進信件**;需組織驗證,取不到不算錯 |
 | `OPENAI_REASONING_CONTEXT` | `current_turn` | GPT-5.6 預設 all_turns;晨報每天是獨立判斷,故明設 current_turn |
 | `OPENAI_PROMPT_CACHE_TTL_SECONDS` | 空 | 快取存活秒數。空 = 用 provider 預設(30 分) |
-| `LLM_BLIND_REVIEW_SINK` | `local` | A/B 盲評卡送到哪。`local`(預設)= 只留在 runner 上,**job 結束即消失、事後取不回**(這個事實會進 manifest 與降級清單)。`artifact` = 由 workflow 上傳、保留 14 天 —— ⚠ 卡片含兩份完整分析文字,而**公開 repo 的 artifact 任何人拿到網址都能下載** |
 
 > 上表的**預設值欄位由 `tests/test_workflow_contract.py` 對 workflow 逐格比對**
 > (第十一輪 P2-1)。在此之前它漂過:`DEEPSEEK_REASONING_EFFORT` 寫著預設 `high`
@@ -323,14 +314,3 @@ variable,**不寄信、不寫 state**(唯讀權限),只回答四個問題:
 最後一項是 2026-08-01 真正缺的那個數字:逾時只告訴你「超過 75 秒」,
 不告訴你 240 秒夠不夠。注意探測用的是短 prompt,生產的 prompt 約 85,000
 token,所以那個秒數是**下界**。
-
-### 影子比較的資料揭露
-
-開啟 `LLM_SHADOW_PROVIDER` 等於讓**第二家廠商**收到同一份 prompt。
-這是一個資料揭露決定,不是純技術開關。
-
-影子**必須**送同一份才比較得出東西,所以這裡不做遮蔽(遮了就不是同一份),
-而是把「同一份」變成結構上的不變式:prompt 由 `llm_shadow.run_comparison`
-交給呼叫函式,接線端無從換掉,兩邊的 `prompt_sha` 一起進帳本。
-主 prompt 既有的隱私防線(不揭露讀者身分、持股明細不落地、不提及追蹤清單)
-因此自動涵蓋影子,不必維護第二套會漂移的規則。

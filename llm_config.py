@@ -48,15 +48,28 @@ SCHEDULED_MAX_EFFORT = {
     # 「API 收得下 max」,不能證明「85k-token 的 prompt 在現行 timeout、
     # 預算與備援條件下能穩定完成」。支援性見 `MODEL_LIMITS[...]["efforts"]`。
     #
-    # DeepSeek v4-pro 目前唯一的生產證據:`effort=high`、elapsed 171.9s、
-    # prompt 84,979 tok。所以這裡維持 `high`;設成 max 會得到一條
-    # 「超過實測過的上限」的警告 —— **那句話是真的**,而它會在累積到實測
-    # 之後自然消失。把它一起拿掉等於把「我還不知道」偽裝成「我知道沒問題」。
-    "deepseek": {"primary": "high", "extractor": "high", "shadow": "high"},
+    # 2026-08-07/08 **手動執行的量測**(這正是本表下面那句話要求的形式:
+    # 「要提高請先用手動執行量一次 reasoning_tokens」)。七輪本機 DRY_RUN
+    # 打真實端點、走生產同一條 packet 與 32K strict schema,`effort=max`:
+    #
+    #   prompt        78,381 / 81,870 / 83,751 / 84,603 / 84,810 tok
+    #   reasoning     5,890 / 13,566 / 14,108 / 18,024 / 27,188 tok
+    #   elapsed(單次被採用的呼叫) 81.1 / 189.7 / 192.3 / 264.4 / 312.8 s
+    #   applied_effort=max(**從回應讀的**,不是回報我們送的)
+    #   finish_reason=stop —— 沒有一次被輸出額度截斷
+    #
+    # 單次請求上限在 max 之下是 450s(150 × 3.0),量到的最慢 312.8s ——
+    # 還有餘裕;總預算 1200s 裝得下「兩輪特化 + legacy 備援」。
+    #
+    # **誠實記下這份證據的邊界**:它是本機手動執行,不是 GitHub Actions
+    # runner 上的排程班。CI 的網路與機器較慢時仍可能更久,那要由第一次
+    # 排程班的 manifest 來確認(elapsed 與 applied_effort 都有記)。
+    # 抽取器維持 high:它走的是另一條呼叫,沒有一起量過。
+    "deepseek": {"primary": "max", "extractor": "high"},
     # 主分析 xhigh 可用 —— 但**前提是 timeout 一起放大**(見 timeout_for)。
     # 抽取器維持 low:2026-07-31 的 1560 則 0 產出就是抽取器推理過頭造成的,
     # 而抽取是機械性任務,推理再多也不會抄得更準。
-    "openai": {"primary": "xhigh", "extractor": "low", "shadow": "xhigh"},
+    "openai": {"primary": "xhigh", "extractor": "low"},
 }
 _EFFORT_ORDER = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
 

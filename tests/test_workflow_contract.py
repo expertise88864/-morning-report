@@ -755,3 +755,46 @@ def test_every_provider_gets_its_own_model_recorded():
         finally:
             mr.LLM_PROVIDER = old
         assert got == expect, f"provider={prov} 記成 {got},應該是 {expect}"
+
+
+def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
+    """**canary 的價值全部來自「跑的是同一條路」**(外審 P2-1)。
+
+    先前 CI 的 dry-run 用 v4-pro / high / `LLM_EVENT_EXTRACTION=0`,
+    而排程班是 flash / max / 抽取器開啟、走特化結構化路徑 ——
+    「canary 綠」在那個設定下不代表生產跑得起來,而那正是這個 repo
+    反覆遇到的「測試全綠、生產零產出」的形狀。
+
+    這裡逐項比對兩個 workflow 的 env,任何一項漂移都要紅。
+    """
+    import yaml
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    prod = yaml.safe_load((root / "morning-report.yml").read_text(encoding="utf-8"))
+    ci = yaml.safe_load((root / "ci.yml").read_text(encoding="utf-8"))
+
+    def _run_env(wf, job, needle):
+        for step in wf["jobs"][job]["steps"]:
+            env = step.get("env") or {}
+            if needle in env:
+                return env
+        raise AssertionError(f"{job} 找不到帶 {needle} 的步驟")
+
+    prod_env = _run_env(prod, "send-report", "DEEPSEEK_MODEL")
+    ci_env = _run_env(ci, "dry-run-preview", "DEEPSEEK_MODEL")
+    for key in ("LLM_PROVIDER", "DEEPSEEK_MODEL", "DEEPSEEK_REASONING_EFFORT",
+                "LLM_EVENT_EXTRACTION", "LLM_PRIMARY_PROMPT_PROFILE"):
+        assert key in ci_env, f"canary 少了 {key} —— 它會拿到與生產不同的預設"
+        assert str(ci_env[key]) == str(prod_env[key]), (
+            f"{key} 在 canary 與排程班不一致:"
+            f"canary={ci_env[key]!r} vs 排程={prod_env[key]!r}")
+    assert ci_env["DRY_RUN"] == "1", "canary 必須是 DRY_RUN(不寄信)"
+
+    # **時間預算要裝得下**:max 推理下總預算 1200s,12 分鐘的 job timeout
+    # 會在 canary 證明任何事之前先把它砍掉。
+    import llm_config as lc
+    job_seconds = int(ci["jobs"]["dry-run-preview"]["timeout-minutes"]) * 60
+    assert job_seconds > lc.MAX_TOTAL_TIMEOUT, (
+        f"canary 的 job timeout {job_seconds}s 裝不下 LLM 總預算 "
+        f"{lc.MAX_TOTAL_TIMEOUT}s")

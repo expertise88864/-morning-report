@@ -45,10 +45,20 @@ jobs:
   # 手動觸發：用真實資料跑一次完整流程（不寄信），產出 HTML 預覽 artifact。
   # 連 Yahoo / TWSE / LLM，可能因外部服務不穩而失敗 —— 故設 continue-on-error，
   # 不影響 CI 綠燈，也不影響每日排程。
+  #
+  # 外審 P2-1:**這個 job 的設定必須與排程班一致**,否則它證明的是另一條路。
+  # 先前 model 預設 v4-pro、effort 預設 high、`LLM_EVENT_EXTRACTION=0` ——
+  # 而生產是 flash / max / 抽取器開啟、走特化結構化路徑。
+  # 「canary 綠」在那個設定下不代表生產跑得起來,那正是這個 repo 反覆遇到的
+  # 「測試全綠、生產零產出」的形狀。
+  #
+  # timeout 12 → 30 分鐘:max 推理下單次呼叫實測 81–313 秒,
+  # 而總預算是 1200 秒(兩輪特化 + legacy 備援)—— 12 分鐘裝不下,
+  # canary 會在證明任何事之前先被 job timeout 砍掉。
   dry-run-preview:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -68,11 +78,16 @@ jobs:
       - name: Run morning report (DRY_RUN, no email)
         env:
           DRY_RUN: "1"
-          LLM_EVENT_EXTRACTION: "0"
+          # 以下四項**與 morning-report.yml 逐字相同** —— canary 的價值
+          # 全部來自「跑的是同一條路」(外審 P2-1)。
+          LLM_EVENT_EXTRACTION: "1"
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-v4-pro' }}
-          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'high' }}
+          DEEPSEEK_MODEL: deepseek-v4-flash
+          DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'max' }}
+          # 空字串 = 依 provider 自動選(deepseek → 特化結構化路徑),
+          # 與排程班同一個逃生門語意。
+          LLM_PRIMARY_PROMPT_PROFILE: ${{ vars.LLM_PRIMARY_PROMPT_PROFILE || '' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}

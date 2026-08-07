@@ -651,7 +651,11 @@ _FROZEN = {
     # 每個未駁回的總經發布都要條件在三個分支上。
     # v24(P1-8/P1-9):結構化引用的指涉完整性(淨效果要有 claim 根據且
     # 主張要關於那個標的;cluster 引用要指得到真的東西)。
-    "grounding_version":        (24, "a0c3a41ab07987f7"),
+    # v25(外審 P1-6/P1-7/P1-8):證據欄位不再被自動修剪(裝飾層除外)、
+    # 淨效果的標的比對改吃陣列 `asset_scope`(泛稱/空範圍不算指名)並要求
+    # 方向同向、`offsetting_cluster_ids` 至少兩群且與衝突偵測一致、
+    # 共用驅動要對得上 Python 端的分組、key-driver 反證也要驗。
+    "grounding_version":        (25, "eb7d8abf552e295e"),
 }
 
 

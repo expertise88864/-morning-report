@@ -28,7 +28,8 @@ def _obj(**over):
             {"claim_id": "c2", "asset_scope": "2317", "direction": "bearish"}],
         "asset_net_effects": [
             {"asset_id": "2330", "net_direction": "bullish",
-             "offsetting_cluster_ids": ["cluster:a"], "claim_ids": ["c1"],
+             "offsetting_cluster_ids": ["cluster:a", "cluster:b"],
+             "claim_ids": ["c1"],
              "why": "訂單利多大於成本利空"}],
         "cross_market_synthesis": {"shared_driver_notes": [
             {"driver": "rates", "cluster_ids": ["cluster:a", "cluster:b"],
@@ -67,7 +68,7 @@ def test_net_effect_claim_must_be_about_that_asset():
 def test_offsetting_cluster_ids_must_exist():
     """**必補測試 11**:互相抵銷的事件群要指得到真的東西。"""
     obj = _obj()
-    obj["asset_net_effects"][0]["offsetting_cluster_ids"] = ["cluster:zzz"]
+    obj["asset_net_effects"][0]["offsetting_cluster_ids"] = ["cluster:y", "cluster:z"]
     problems = ac.reference_problems(obj, _packet())
     assert any("offsetting_cluster_ids" in p and "不存在" in p for p in problems)
 
@@ -84,7 +85,7 @@ def test_shared_driver_cluster_ids_must_exist():
 def test_no_packet_means_no_cluster_judgement():
     """拿不到 packet 就沒有事件群清單 —— **不猜**(但 claim 側仍然要驗)。"""
     obj = _obj()
-    obj["asset_net_effects"][0]["offsetting_cluster_ids"] = ["cluster:zzz"]
+    obj["asset_net_effects"][0]["offsetting_cluster_ids"] = ["cluster:y", "cluster:z"]
     problems = ac.reference_problems(obj, None)
     assert not any("offsetting_cluster_ids" in p for p in problems)
     obj["asset_net_effects"][0]["claim_ids"] = []

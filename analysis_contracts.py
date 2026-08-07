@@ -138,32 +138,160 @@ def reference_problems(obj, packet) -> list:
         missing = [c for c in cids if c not in claims]
         if missing:
             out.append(f"asset_net_effects[{aid}] 引用了不存在的主張:{missing}")
-        # **引用的主張要真的關於這個標的**:方向靠一條、標的靠另一條,
-        # 等於沒有任何一條真的支撐這個淨判斷。
+        # **引用的主張要真的關於這個標的、而且方向對得上。**
+        # 外審 P1-7 抓到兩個繞法,而第三個是型別錯誤:
+        #   (a) `asset_scope` 是**陣列**,上一版 `str(...) in ("", aid)`
+        #       把整個清單字串化 —— `"[\'2330\']"` 永遠不等於 `"2330"`,
+        #       於是**正確標註的主張被拒、沒標範圍的反而過**,判準剛好相反;
+        #   (b) 空 scope 被當成「支援所有標的」—— 一句泛稱
+        #       於是可以替任何一檔的淨判斷背書;
+        #   (c) 完全不看 claim 的 `direction` —— 一條 2330 bearish 的主張
+        #       可以支撐「2330 合計偏多」,只要標的一樣。
         elif cids and aid and direction not in ("", "unknown"):
-            same_asset = [c for c in cids
-                          if str((claims[c] or {}).get("asset_scope") or "") in ("", aid)]
+            same_asset = [c for c in cids if _claim_covers_asset(claims[c], aid)]
             if not same_asset:
                 out.append(
                     f"asset_net_effects[{aid}] 引用的主張沒有一條是關於 {aid} 的"
-                    " —— 淨方向要站在這個標的自己的主張上")
-        if known_clusters:
-            bad = [str(c) for c in (n.get("offsetting_cluster_ids") or [])
-                   if str(c) not in known_clusters]
-            if bad:
+                    " —— 淨方向要站在這個標的自己的主張上"
+                    "(泛稱或 `market-wide` 不算指定這一檔)")
+            elif direction in ("bullish", "bearish") and not [
+                    c for c in same_asset
+                    if str((claims[c] or {}).get("direction") or "") == direction]:
+                out.append(
+                    f"asset_net_effects[{aid}] 的淨方向是 {direction},"
+                    f"而引用的 {aid} 主張沒有一條是同方向的 —— "
+                    "淨判斷不能只靠反方向的主張撐著")
+        # `offsetting_cluster_ids` 的語意是「互相抵銷」,而**一個群抵銷不了
+        # 任何東西**(外審 P1-7.3)。非空時要求:至少兩個、都存在、而且
+        # 與 Python 端衝突偵測算出來的那組**完全一致** —— 讓模型自選子集
+        # 等於它自己決定什麼叫衝突。
+        offs = [str(c) for c in (n.get("offsetting_cluster_ids") or [])]
+        if offs:
+            if known_clusters:
+                bad = [c for c in offs if c not in known_clusters]
+                if bad:
+                    out.append(
+                        f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
+                        f"指到不存在的事件群:{bad}")
+            if len(set(offs)) < 2:
                 out.append(
                     f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
-                    f"指到不存在的事件群:{bad}")
+                    f"只有 {len(set(offs))} 個事件群 —— 「互相抵銷」"
+                    "至少要兩件事")
+            expect = _offsetting_clusters_for(obj, packet, aid)
+            if expect is not None and set(offs) != expect:
+                out.append(
+                    f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
+                    f"{sorted(set(offs))} 與本日實際衝突的事件群 "
+                    f"{sorted(expect)} 不一致 —— 哪些事互相抵銷由資料決定,"
+                    "不由輸出自選")
 
     syn = obj.get("cross_market_synthesis") or {}
+    groups = _shared_driver_groups(packet)
     for note in (syn.get("shared_driver_notes") or []):
-        if not isinstance(note, dict) or not known_clusters:
+        if not isinstance(note, dict):
             continue
-        bad = [str(c) for c in (note.get("cluster_ids") or [])
-               if str(c) not in known_clusters]
-        if bad:
-            out.append(
-                f"shared_driver_notes[{note.get('driver')}] 的 `cluster_ids` "
-                f"指到不存在的事件群:{bad} —— 「為什麼不算重複計權」"
-                "的根據要指得到真的東西")
+        cids = [str(c) for c in (note.get("cluster_ids") or [])]
+        if known_clusters:
+            bad = [c for c in cids if c not in known_clusters]
+            if bad:
+                out.append(
+                    f"shared_driver_notes[{note.get('driver')}] 的 `cluster_ids` "
+                    f"指到不存在的事件群:{bad} —— 「為什麼不算重複計權」"
+                    "的根據要指得到真的東西")
+                continue
+        # **存在不等於共用同一個驅動**(外審 P1-8):兩個真實但毫無關係的
+        # 事件群一樣可以被宣稱為共同驅動,而這一段的用途正是
+        # 「所以不算重複計權」。要求與 Python 端算出來的某一組完全一致。
+        if groups is not None and cids:
+            if len(set(cids)) < 2:
+                out.append(
+                    f"shared_driver_notes[{note.get('driver')}] 只列了一個事件群"
+                    " —— 「共用同一個驅動」至少要兩件事")
+            elif not any(set(cids) == g["ids"] for g in groups):
+                out.append(
+                    f"shared_driver_notes[{note.get('driver')}] 的 `cluster_ids` "
+                    f"{sorted(set(cids))} 不是本日任何一組共用驅動 —— "
+                    f"本日共 {len(groups)} 組")
+            else:
+                want = next(g["driver"] for g in groups if set(cids) == g["ids"])
+                got = str(note.get("driver") or "")
+                if want and got and got != want:
+                    out.append(
+                        f"shared_driver_notes 宣稱的驅動是 {got!r},"
+                        f"而這組事件群在本日被歸類為 {want!r}")
     return out
+
+
+#: 泛稱的範圍不算指定標的(與 `analysis_validate` 同源的判準:
+#: 「整體市場級別寫 `market-wide`」,而它**不能**替某一檔背書)。
+_GENERIC_SCOPE = frozenset({"market-wide", "市場", "大盤", "整體", "台股", "美股"})
+
+
+def _claim_covers_asset(claim, asset_id: str) -> bool:
+    """這條主張**指名**了這個標的嗎。
+
+    `asset_scope` 是陣列;空陣列與泛稱都**不算**指名 —— 否則一句
+    「整體偏多」就能替任何一檔的淨判斷背書(外審 P1-7.1)。
+    別名同組視為同一檔(`2330` 與「台積電」)。
+    """
+    import entity_alias as _ea
+    scope = (claim or {}).get("asset_scope")
+    if isinstance(scope, str):
+        scope = [scope] if scope else []
+    names = [str(x).strip() for x in (scope or []) if str(x).strip()]
+    named = [x for x in names if x not in _GENERIC_SCOPE]
+    if not named or not asset_id:
+        return False
+    gi = _ea.group_of(asset_id)
+    if gi >= 0:
+        return any(_ea.group_of(x) == gi or x == asset_id for x in named)
+    return asset_id in named
+
+
+def _shared_driver_groups(packet):
+    """本日 Python 算出來的共用驅動組 `[{ids, driver}]`;
+    拿不到 `event_graph` 就回 `None`(沒有分母就不驗這一條)。"""
+    graph = (packet or {}).get("event_graph") if isinstance(packet, dict) else None
+    if not isinstance(graph, dict) or "shared_driver_groups" not in graph:
+        return None
+    out = []
+    for g in (graph.get("shared_driver_groups") or []):
+        if isinstance(g, dict):
+            ids = {str(c) for c in (g.get("cluster_ids") or [])}
+            if ids:
+                out.append({"ids": ids, "driver": str(g.get("driver") or "")})
+    return out
+
+
+def _offsetting_clusters_for(obj, packet, asset_id: str):
+    """這個標的今天**實際**互相衝突的事件群集合;算不出來回 `None`。
+
+    衝突由 `event_graph.conflicting_assets` 依輸出自己的
+    `top_news_analysis` 判定(同一標的兩個相反方向),它回的是新聞 ID;
+    再經 packet 的分群對回事件群 —— 兩邊都要有才驗得動。
+    """
+    clusters = (((packet or {}).get("news_clusters") or {}).get("clusters")
+                if isinstance(packet, dict) else None)
+    if not clusters:
+        return None
+    try:
+        import entity_alias as _ea
+        import event_graph as _eg
+        found = _eg.conflicting_assets(obj)
+        hits = found.get(asset_id)
+        if hits is None:
+            gi = _ea.group_of(asset_id)   # 偵測端已正規化到組代表
+            hits = found.get(_ea.ALIAS_GROUPS[gi][0]) if gi >= 0 else None
+    except Exception:                                   # noqa: BLE001
+        return None
+    if hits is None:
+        return None
+    sids = {str(s) for s in hits}
+    got = {str(c.get("cluster_id")) for c in clusters
+           if isinstance(c, dict)
+           and sids & {str(m) for m in (c.get("member_source_ids") or ())}}
+    # **對不回任何事件群 = 算不出來,不是「答案是空集合」。**
+    # (被分析的新聞不在這份 packet 的分群裡時就會這樣;拿空集合去要求
+    # 「完全一致」等於用一個不知道的東西去否定模型。)
+    return got or None

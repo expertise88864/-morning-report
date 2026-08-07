@@ -121,7 +121,8 @@ def test_a_net_effect_must_say_which_side_is_heavier():
     obj = _conflicting(fx.valid_analysis())
     obj["asset_net_effects"] = [{"asset_id": "2330", "net_direction": "bullish",
                                  "net_magnitude_band": "moderate",
-                                 "offsetting_cluster_ids": ["cluster:m1"],
+                                 "offsetting_cluster_ids": ["cluster:m1",
+                                                            "cluster:m2"],
                                  "why": "", "claim_ids": []}]
     assert [p for p in sch.validate(obj, _packet()) if "`why`" in p]
     obj["asset_net_effects"][0]["why"] = "產能恢復的量級大於降息預期的折現效果"

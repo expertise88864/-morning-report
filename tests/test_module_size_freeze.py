@@ -397,7 +397,7 @@ MODULE_CEILINGS = {
     # P1-8/P1-9 再加上結構化引用的完整性(淨效果要有 claim 根據、
     # 引用的主張要真的關於那個標的、cluster 引用要指得到真的東西)——
     # 那是同一類東西:**schema 保證得了形狀,保證不了指涉**。實測 157 行。
-    "analysis_contracts.py": 180,
+    "analysis_contracts.py": 310,   # 2026-08-08 外審 P1-7/P1-8:淨效果的標的/方向/抵銷集合與共用驅動比對(判準集中在這裡,呼叫端才不會各寫一份)
     # schema v2:深度欄位的渲染(因果鏈/量級/關係/橫向綜合)。
     # 與 `analysis_render` 分開:段落順序跟著信件結構走,條目寫法跟著
     # schema 版本走。實測 98 行。
@@ -420,7 +420,7 @@ MODULE_CEILINGS = {
     # affected_assets 檢查整段拆去 analysis_crosscheck。
     # 第二十二輪:實測 449 —— 概念詞黑名單與「中文名也要在證據裡」。
     # 超過 470 就把 affected_assets 檢查整段拆去 analysis_crosscheck。
-    "analysis_validate.py": 470,
+    "analysis_validate.py": 480,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

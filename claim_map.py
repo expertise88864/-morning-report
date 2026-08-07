@@ -47,6 +47,14 @@ def section_claim_mappings(obj: Optional[dict]) -> dict:
     for i, d in enumerate(o.get("key_drivers") or []):
         if isinstance(d, dict) and str(d.get("statement") or "").strip():
             out[f"key_drivers[{i}]"] = [str(x) for x in (d.get("claim_ids") or [])]
+    # **淨效果也回指主張**(外審 P1-7.4)。先前它不在這張圖裡,於是:
+    #   * 引用完整性要求淨效果有 `claim_ids`,而 claim 圖不知道它用了誰 ——
+    #     專門為淨效果寫的高重要性主張會被判成孤兒;
+    #   * 飽和率看不到這一段(一條主張填滿所有淨效果也不會顯示集中)。
+    # 「是不是有根據」在不同消費者眼裡再次漂移,而那正是本模組要消滅的。
+    for i, n in enumerate(o.get("asset_net_effects") or []):
+        if isinstance(n, dict) and str(n.get("asset_id") or "").strip():
+            out[f"asset_net_effects[{i}]"] = [str(x) for x in (n.get("claim_ids") or [])]
     return out
 
 

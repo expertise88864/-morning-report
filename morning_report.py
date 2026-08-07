@@ -12702,13 +12702,25 @@ def _call_openai_responses(payload: dict) -> dict:
 
 
 def _prune_phantom_audit_ids(obj, packet: dict):
-    """claim_audit 裡「同列**仍有真實證據**、卻多引一個不存在 ID」的引用直接拿掉。
+    """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
 
-    2026-08-07 flash E2E(第四次):兩輪都在這種引用上打轉 —— 修補是整份
-    重寫,修好被點名的、又在別列多引一個,一輪修補在結構上不可能收斂。
-    同列還有真實證據時,假引用是裝飾不是根據;拿掉裝飾比賭下一輪猜中便宜。
-    列上**沒有任何**真實證據時不動它 —— 那要由驗證器擋下,不是由這裡漂白。
-    修剪了什麼記進 manifest(靜默修剪與靜默失敗一樣糟)。
+    2026-08-07 flash E2E:模型每輪都多引一兩個不存在的 ID,而修補是整份
+    重寫、修好這列又壞那列,一輪修補在結構上難以收斂。當時的做法是
+    「同列還有真實證據就把假的剪掉」—— 外審 P1-6 指出那會**把沒有根據的
+    主張洗成合法**:
+
+        evidence_ids = ["news:無關的航運報導", "market:捏造的Fed利率"]
+
+    捏造的那個才是模型真正想引用的根據,剪掉之後剩下合法但無關的航運新聞,
+    存在性檢查就會認為這條主張有證據。**捏造的相關證據 + 無關的合法證據
+    = 看起來有根據的主張**,而那正是這整套驗證要擋的東西。
+
+    所以 `claim_audit.evidence_ids`、`counterevidence_ids`、key-driver 證據
+    **一律不修剪**:驗證失敗 → 修補一次 → 仍失敗就落回 legacy,並把
+    幽靈引用率記進 manifest。收斂率換掉正確性是不划算的交易。
+
+    `relates_to` 不同:schema 明文寫「空陣列是完全合法的答案,而編造的
+    關聯比沒有關聯更糟」,它不替任何主張背書,清掉就只是少一句裝飾。
     """
     if not isinstance(obj, dict):
         return obj
@@ -12717,23 +12729,6 @@ def _prune_phantom_audit_ids(obj, packet: dict):
     except Exception:                                   # noqa: BLE001
         return obj
     dropped = []
-    for row in (obj.get("claim_audit") or []):
-        if not isinstance(row, dict):
-            continue
-        if isinstance(row.get("evidence_ids"), list):
-            ids = [str(i) for i in row["evidence_ids"]]
-            keep = [i for i in ids if i in valid]
-            if keep and len(keep) < len(ids):
-                dropped.extend(i for i in ids if i not in valid)
-                row["evidence_ids"] = keep
-        # 反證清單(E2E 第五次:假 ID 換到這一欄)。schema 明文「沒找到就給
-        # 空陣列」—— 不存在的反證不是反證,清掉到空是**更誠實**的答案。
-        if isinstance(row.get("counterevidence_ids"), list):
-            cids = [str(i) for i in row["counterevidence_ids"]]
-            ckeep = [i for i in cids if i in valid]
-            if len(ckeep) < len(cids):
-                dropped.extend(i for i in cids if i not in valid)
-                row["counterevidence_ids"] = ckeep
     # relates_to 是純裝飾層(schema:「空陣列是完全合法的答案,編造的關聯
     # 比沒有關聯更糟」)—— 指向沒被分析的條目、或證據被剪光的關係,整列拿掉。
     analyzed = {str((a or {}).get("source_item_id") or "")
@@ -12761,9 +12756,9 @@ def _prune_phantom_audit_ids(obj, packet: dict):
             kept_rel.append(rel)
         a["relates_to"] = kept_rel
     if dropped:
-        _RUN_MANIFEST.setdefault("llm", {})["audit_ids_pruned"] = dropped[:8]
-        print(f"[llm] 修剪 {len(dropped)} 個不存在的證據引用"
-              "(claim_audit/反證/relates_to 裝飾層)", file=sys.stderr)
+        _RUN_MANIFEST.setdefault("llm", {})["relates_to_pruned"] = dropped[:8]
+        print(f"[llm] 修剪 {len(dropped)} 個 relates_to 的幽靈關聯"
+              "(純裝飾層;證據欄位一律不修剪)", file=sys.stderr)
     return obj
 
 

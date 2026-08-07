@@ -211,6 +211,11 @@ def validate(obj, evidence_ids) -> list:
     for i, d in enumerate(obj.get("key_drivers") or []):
         if isinstance(d, dict):
             _check_ids(d.get("evidence_ids"), f"key_drivers[{i}]")
+            # **反證也要驗**(外審 P1-8):renderer 看到非空的
+            # `counterevidence_ids` 就在信裡標「有反面證據」,而先前這裡
+            # 只驗支持證據 —— 模型塞一個捏造的 ID,讀者就看到一個
+            # 不存在的反面觀點,而那正是「這條判斷有多穩」的訊號。
+            _check_ids(d.get("counterevidence_ids"), f"key_drivers[{i}] 的反證")
     news = [n for n in (obj.get("top_news_analysis") or []) if isinstance(n, dict)]
     # 第十九輪 P1-6:**集合化把重複吃掉了。** 同一個 `source_item_id`
     # 寫兩段先前完全抓不到 —— 那可以灌高分析則數,甚至對同一個標的

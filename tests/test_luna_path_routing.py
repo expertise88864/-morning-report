@@ -367,36 +367,45 @@ def test_repair_input_names_valid_ids_for_phantom_citations(luna_on, monkeypatch
         "修補請求沒給出相近的合法 ID")
 
 
-def test_a_decorative_phantom_audit_id_is_pruned_not_fatal(luna_on, monkeypatch):
-    """**同列仍有真實證據時,多引的假 ID 修剪掉、第一輪直接過**(2026-08-07)。
 
-    flash E2E 第四次:修補整份重寫,修好被點名的、又在別列多引一個 ——
-    一輪修補在結構上不可能收斂。裝飾性假引用不該讓整條路徑落回 legacy。
+def test_a_phantom_claim_evidence_id_is_never_laundered(luna_on, monkeypatch):
+    """**證據欄位一律不修剪**(外審 P1-6)。
+
+    「同列還有真實證據就把假的剪掉」會把沒有根據的主張洗成合法:
+
+        evidence_ids = ["無關但合法的新聞", "捏造但相關的 Fed 利率"]
+
+    捏造的那個才是模型真正的根據;剪掉之後剩下無關的那則,存在性檢查
+    就認為這條主張有證據。收斂率不值得拿正確性去換 —— 驗證失敗、修補
+    一次、仍失敗就落回 legacy。
     """
+    laundered = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    real = list(laundered["claim_audit"][0]["evidence_ids"])
+    laundered["claim_audit"][0]["evidence_ids"] = real + ["market:FED_RATE_捏造"]
+    calls = []
+    monkeypatch.setattr(mr, "_call_openai_responses",
+                        lambda p: (calls.append(p), _response(laundered))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場\n立場:中性\n\n## 一句話總結\n備援。")
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert "備援。" in text, "幽靈證據被剪掉當成合法,整份輸出被採用了"
+    assert len(calls) == 2, "應該修補一次再落回"
+
+
+def test_only_the_decorative_relates_to_is_pruned(luna_on, monkeypatch):
+    """`relates_to` 是裝飾層(schema:空陣列合法、編造的關聯更糟)——
+    它不替任何主張背書,清掉只是少一句話,不影響根據。"""
     decorated = json.loads(json.dumps(_GOOD, ensure_ascii=False))
-    ids = list(decorated["claim_audit"][0]["evidence_ids"])
-    decorated["claim_audit"][0]["evidence_ids"] = ids + ["market:QQQ.close_typo"]
+    analyzed = decorated["top_news_analysis"][0]
+    analyzed["relates_to"] = [{"other_source_item_id": "不存在的那則",
+                               "relationship": "same_driver",
+                               "evidence_ids": [], "explanation": "編的"}]
     calls = []
     monkeypatch.setattr(mr, "_call_openai_responses",
                         lambda p: (calls.append(p), _response(decorated))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: pytest.fail("裝飾性假引用不該落回 legacy"))
+                        lambda p: pytest.fail("裝飾層的幽靈關聯不該讓整條路徑落回"))
     mr._RUN_MANIFEST.pop("llm", None)
-    text = mr._call_llm_analysis_impl(*_ARGS)
-    assert mr._analysis_complete_enough(text)
-    assert len(calls) == 1, "修剪後第一輪就該過,不該進修補"
-    assert mr._RUN_MANIFEST["llm"]["audit_ids_pruned"] == [
-        "market:QQQ.close_typo"], "修剪必須記進 manifest,不得靜默"
-
-
-def test_an_audit_row_with_only_phantom_ids_is_still_rejected(luna_on, monkeypatch):
-    """**整列都是假證據就不是裝飾** —— 修剪不得把它漂白,驗證器照擋。"""
-    fake = json.loads(json.dumps(_GOOD, ensure_ascii=False))
-    fake["claim_audit"][0]["evidence_ids"] = ["market:QQQ.close_typo"]
-    calls = []
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (calls.append(p), _response(fake))[1])
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: "## 我的明確立場\n立場:中性\n\n## 一句話總結\n備援。")
-    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
-    assert len(calls) == 2, "全假的列要走完修補(兩輪)才落回"
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 1, "修剪裝飾層之後第一輪就該過"
+    assert mr._RUN_MANIFEST["llm"]["relates_to_pruned"], "修剪必須留痕,不得靜默"

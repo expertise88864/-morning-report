@@ -38,7 +38,7 @@ DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions", "chips", "policy_deepdive", "llm_shadow", "llm",
+    "corporate_actions", "chips", "policy_deepdive", "llm",
     "state_writes", "event_identity",
     # 兩階段抓取的計畫(重構規格 Commit B):**涵蓋了幾個事件、漏了哪幾個**。
     # 只記「抓了幾篇」會讀起來像涵蓋完整 —— 沒有靜默的上限。
@@ -47,10 +47,8 @@ DIAGNOSTIC_KEYS = (
     # r2(Codex,#4):刻意獨立於 `llm_shadow` —— 那個鍵在既有路徑結尾是
     # **整包指派**,寫在它底下的失敗紀錄會被靜默蓋掉,而可靠度指標
     # 又回到「只量 Luna 成功的那些天」。
-    "llm_experiment",
     # 盲評卡的**存在性**(日期/路徑/通道/解碼表在不在)。刻意只有指標,
     # 沒有文字 —— manifest 會 commit 進公開 repo,而卡片含兩份完整分析。
-    "llm_experiment_review",
 )
 
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,

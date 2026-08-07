@@ -12,7 +12,6 @@ import entity_alias as ea
 import evidence_packet as ep
 import fixtures_analysis as fx
 import payload_budget as pb
-import side_telemetry as st
 
 _IDS = fx.ids()
 
@@ -179,28 +178,6 @@ def test_aliases_never_bridge_two_different_subjects():
 
 
 # ---------------------------------------------------------------- 遙測分側
-
-def test_fallback_telemetry_is_not_counted_as_specialized():
-    """**P1-4**:2026-08-05 那天 primary_ok=false 而 primary_telemetry
-    顯示 accepted_calls=1 —— 那次被接受的呼叫是 legacy writer,不是
-    特化分析。十天平均起來會得到「Luna 的成本 = 特化失敗 + legacy
-    補寫」,而影子那側只有一次呼叫,基準根本不同。"""
-    llm = {"analysis_origin": "legacy_fallback_after_luna_failure",
-           "primary": {"model": "gpt-5.6-luna", "calls": 1,
-                       "prompt_tokens": 95128},
-           "attempts": [{"role": "primary", "error": "429"}]}
-    out = st._side(llm, "primary")
-    assert out["role_is_specialized"] is False
-    assert out["analysis_origin"] == "legacy_fallback_after_luna_failure"
-    ok = st._side(dict(llm, analysis_origin="luna_specialized"), "primary")
-    assert ok["role_is_specialized"] is True
-    # shadow 不適用這個概念 —— None,不是 False
-    assert st._side(dict(llm, shadow={"calls": 1}), "shadow")[
-        "role_is_specialized"] is None
-
-
-# ---------------------------------------------------------------- 退避 deadline
-
 def test_backoff_respects_an_absolute_deadline():
     """**P2-5**:先前每次都用完整 timeout、sleep 不計入預算 ——
     四次呼叫理論上可以超過整個 LLM 階段的總時間預算。"""

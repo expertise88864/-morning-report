@@ -20,7 +20,7 @@ import json_contract as jc
 import morning_report as mr
 
 
-def _response(obj, *, effort="xhigh", usage=None):
+def _response(obj, *, effort="max", usage=None):
     """一個形狀正確的 Responses 回應。"""
     return {
         "status": "completed",
@@ -61,14 +61,12 @@ _ARGS = ({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {"fair_value": 100.0},
 
 @pytest.fixture
 def luna_on(monkeypatch):
-    """把實驗設定打開(其餘保持真實程式碼)。"""
-    monkeypatch.setattr(mr, "LLM_PROVIDER", "openai")
-    monkeypatch.setattr(mr, "OPENAI_API_MODE", "responses")
-    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-test")
-    monkeypatch.setattr(mr, "OPENAI_MODEL", "gpt-5.6-luna")
+    """特化路徑的生產設定(2026-08-08:deepseek flash,profile 預設即特化)。"""
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-test")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-flash")
     monkeypatch.setattr(mr, "LLM_PRIMARY_PROMPT_PROFILE", "")
-    monkeypatch.setattr(mr, "_PRIMARY_EFFORT", "xhigh")
-    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "")     # 影子分開測
+    monkeypatch.setattr(mr, "_PRIMARY_EFFORT", "max")
     monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
 
 
@@ -90,36 +88,34 @@ def test_the_luna_path_is_actually_taken_when_configured(luna_on, monkeypatch):
 
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert sent, "完全沒有送出 Responses 請求"
-    assert sent[0]["reasoning"]["effort"] == "xhigh"
+    assert sent[0]["reasoning"]["effort"] == "max"
     assert sent[0]["text"]["format"]["strict"] is True
     assert sent[0]["instructions"].startswith("你是一位台股與美股的晨報分析師")
     assert "我的明確立場" in text and "一句話總結" in text
     assert mr._analysis_complete_enough(text), "產出過不了既有的截斷偵測器"
 
 
-def test_the_default_configuration_does_not_take_the_luna_path(monkeypatch):
-    """預設(chat_completions)不得走新路徑 —— 它尚未經過生產。"""
-    monkeypatch.setattr(mr, "LLM_PROVIDER", "openai")
-    monkeypatch.setattr(mr, "OPENAI_API_MODE", "chat_completions")
-    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-test")
+def test_no_deepseek_key_means_no_specialized_path(monkeypatch):
+    """**沒有金鑰就不走特化**(閘門條件)—— 落回既有路徑,信照樣寄。"""
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "")
     monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: pytest.fail("預設設定竟然走了 Responses"))
+                        lambda p: pytest.fail("沒金鑰竟然走了 Responses"))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n照舊。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     assert "照舊" in mr._call_llm_analysis_impl(*_ARGS)
 
 
-def test_deepseek_never_takes_the_luna_path(monkeypatch):
-    """回切之後不得殘留 —— 那是使用者要求「保留 DeepSeek 設計」的實質內容。"""
+def test_the_legacy_profile_override_is_a_working_escape_hatch(monkeypatch):
+    """**逃生門要真的可用**(2026-08-08):設 deepseek_legacy_v1 即回舊 prompt,
+    不必 revert 程式碼 —— workflow 註解對使用者做了這個承諾。"""
     monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
-    monkeypatch.setattr(mr, "OPENAI_API_MODE", "responses")   # 就算模式開著
-    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-test")
+    monkeypatch.setattr(mr, "LLM_PRIMARY_PROMPT_PROFILE", "deepseek_legacy_v1")
     monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: pytest.fail("DeepSeek 竟然走了 Luna 路徑"))
+                        lambda p: pytest.fail("逃生門設定竟然仍走特化"))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：偏空\n\n## 一句話總結\nDS。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     assert "DS。" in mr._call_llm_analysis_impl(*_ARGS)
 
 
@@ -130,7 +126,6 @@ def test_a_broken_luna_response_falls_back_instead_of_losing_the_email(
                         lambda p: _response({"完全": "不合 schema"}))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert "備援。" in text, "Luna 失敗後沒有落回既有路徑"
 
@@ -144,7 +139,6 @@ def test_a_network_failure_falls_back_and_is_recorded(luna_on, monkeypatch):
     monkeypatch.setattr(mr, "_call_openai_responses", _boom)
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     saved = list(mr._DEGRADED_STEPS)
     try:
         mr._DEGRADED_STEPS.clear()
@@ -196,7 +190,6 @@ def test_repair_happens_at_most_once_and_both_attempts_are_billed(
                         lambda p: (calls.append(p), _response({"壞": "的"}))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
     assert len(calls) == 2, "修補失敗後仍在重試"
 
@@ -215,30 +208,6 @@ def test_the_manifest_records_which_profile_and_evidence_were_used(
     assert metrics.get("parsed") is True
 
 
-def test_the_shadow_gets_the_legacy_prompt_not_the_luna_one(luna_on, monkeypatch):
-    """影子送的必須是 **DeepSeek 的既有問法** —— 那正是「各自最佳化」。
-
-    送 Luna 的 prompt 給 DeepSeek,比的就變成「DeepSeek 用別人的 prompt」,
-    而那不是任何人想知道的事。
-    """
-    seen = {}
-
-    def _shadow(prompt, primary_text, now, **kw):
-        seen["prompt"] = prompt
-        seen.update(kw)
-
-    monkeypatch.setattr(mr, "_call_openai_responses", lambda p: _response(_GOOD))
-    monkeypatch.setattr(mr, "_run_llm_shadow", _shadow)
-    mr._call_llm_analysis_impl(*_ARGS)
-    assert seen, "主分析成功卻沒有觸發影子"
-    assert "你是嚴謹但敢於下判斷的科技股財經分析師" in seen["prompt"], \
-        "影子拿到的不是 legacy prompt"
-    assert "EVIDENCE" not in seen["prompt"], "影子拿到了 Luna 的 payload"
-    assert seen.get("primary_profile") == "luna56_xhigh_v1"
-    assert seen.get("shadow_profile") == "deepseek_legacy_v1"
-    assert seen.get("packet") is not None, "影子沒有拿到 packet,證據指紋記不了"
-
-
 # ---------------------------------------------------------------- r1 外審修正
 
 def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
@@ -252,7 +221,6 @@ def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
                         lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     mr._RUN_MANIFEST.pop("llm", None)
     assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
 
@@ -263,175 +231,6 @@ def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
     assert attempts[-1].get("elapsed_seconds") is not None, "沒有記耗時"
 
 
-def test_a_failed_luna_day_still_produces_an_experiment_record(
-        luna_on, monkeypatch):
-    """r1(Codex,#4):**失敗的那天也要有一列紀錄。**
-
-    只記成功的那幾天,「誰比較常失敗」這個問題的答案永遠是 100% ——
-    而那正是十天實驗要回答的問題之一。
-    """
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "luna56-xhigh-vs-dsv4pro-v1")
-    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
-    monkeypatch.setattr(mr, "LLM_SHADOW_REASONING_EFFORT", "max")
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("ReadTimeout")))
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
-    mr._RUN_MANIFEST.pop("llm_experiment", None)
-    mr._call_llm_analysis_impl(*_ARGS)
-
-    # r2(Codex,#4):**紀錄放在自己的鍵下。** 寫進 `llm_shadow` 會被既有路徑
-    # 結尾的整包指派蓋掉 —— 可靠度又回到只量成功的那些天。
-    rec = mr._RUN_MANIFEST.get("llm_experiment") or {}
-    assert rec, "Luna 失敗的那天沒有留下實驗紀錄"
-    assert rec["primary_ok"] is False and rec["shadow_ok"] is False
-    assert rec["experiment_id"] == "luna56-xhigh-vs-dsv4pro-v1"
-    assert rec.get("failure_reason"), "沒有記下失敗原因"
-
-    import llm_experiment as lx
-    cohort = lx.cohort_key(rec)
-    # 這一天不進有效分母,但**要進可靠度的分母** —— 那是它的價值所在。
-    assert not lx.is_comparable(rec, cohort)
-    assert lx.reliability([rec], cohort)["primary_ok_rate"] == 0.0
-
-
-def test_recording_the_failure_never_breaks_the_email(luna_on, monkeypatch):
-    """紀錄不得反過來弄壞晨報 —— 它是觀測,不是功能。"""
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
-    monkeypatch.setattr(mr, "_lx", None)        # 讓記錄那段必然拋例外
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
-    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
-
-
-def test_the_failure_record_survives_the_legacy_shadow_run(luna_on, monkeypatch):
-    """r2(Codex,#4):失敗紀錄**不得被既有路徑的影子結果蓋掉**。
-
-    `_run_llm_shadow` 結尾是 `_RUN_MANIFEST["llm_shadow"] = stat` —— 整包指派。
-    紀錄若寫在那個鍵底下,主分析失敗那天的證據會在幾行之後消失,
-    而可靠度指標又回到「只量 Luna 成功的那些天」。
-    """
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
-    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
-
-    def _shadow_that_overwrites(prompt, primary_text, now, **kw):
-        # 真實 `_run_llm_shadow` 的最後一行就是這個形狀
-        mr._RUN_MANIFEST["llm_shadow"] = {"skipped": "disabled"}
-
-    monkeypatch.setattr(mr, "_run_llm_shadow", _shadow_that_overwrites)
-    mr._RUN_MANIFEST.pop("llm_experiment", None)
-    mr._call_llm_analysis_impl(*_ARGS)
-    assert (mr._RUN_MANIFEST.get("llm_experiment") or {}).get("primary_ok") is False, \
-        "失敗紀錄被影子的整包指派蓋掉了"
-
-
-def test_a_shadow_skipped_before_the_call_still_leaves_a_row(
-        luna_on, monkeypatch):
-    """r3(Codex,#4):**跳過也要留一列。**
-
-    執行預算不足或 provider 不合法時,shadow 在**呼叫之前**就被跳過。
-    不留紀錄的話,可靠度只量得到「跑得完的那些天」—— 而最慢、最容易被跳過
-    的日子正是應該被算進去的,`shadow_ok_rate` 因此偏高。
-    """
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
-    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "deepseek")
-    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
-    monkeypatch.setattr(mr, "_run_budget_ok", lambda *a, **k: False)
-    rows = []
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-    packet = mr._ep.build({}, {}, {}, [], [], {}, sanitize=str)
-    mr._run_llm_shadow("prompt", "正式輸出", mr.dt.datetime.now(mr.TPE),
-                       packet=packet, primary_profile="luna56_xhigh_v1",
-                       shadow_profile="deepseek_legacy_v1")
-    assert rows, "預算不足而跳過的那天完全沒有紀錄"
-    assert rows[0]["shadow_ok"] is False
-    assert "run_budget" in rows[0]["failure_reason"], rows[0]
-
-
-def test_the_comparable_metrics_are_computed_for_both_sides(
-        luna_on, monkeypatch):
-    """r3(Codex,#2):十配對達標時要有東西可以判讀。
-
-    `analysis_metrics` 的函式先前**在生產完全沒有呼叫端** —— 帳本會宣告
-    「可以做判讀」,而實際上只有立場、字數與 body overlap。
-    """
-    packet = mr._ep.build({}, {}, {}, [{"title": "央行維持利率", "source": "CBC",
-                                        "published": "p", "official": True}],
-                          [], {}, sanitize=str)
-    m = mr._comparable_metrics(packet, "央行維持利率,偏多。", "今日中性。")
-    assert set(m) == {"primary", "shadow"}
-    for side in ("primary", "shadow"):
-        assert "numeric_consistency" in m[side]
-        assert "evidence_coverage" in m[side]
-        assert "source_diversity" in m[side]
-        assert "cost" in m[side]
-    # 兩側**用同一組指標**才叫可比
-    assert set(m["primary"]) == set(m["shadow"])
-    # 結構化指標只有 Luna 有,刻意不混進來
-    assert "completeness_rate" not in m["primary"]
-
-
-def test_metric_failure_never_breaks_the_email(monkeypatch):
-    """量測是觀測,不是功能 —— 它壞掉不得讓晨報中斷。"""
-    monkeypatch.setattr(mr._am, "text_metrics",
-                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    packet = mr._ep.build({}, {}, {}, [], [], {}, sanitize=str)
-    out = mr._comparable_metrics(packet, "a", "b")
-    assert "error" in out
-
-
-def test_the_production_path_actually_attaches_the_metrics(luna_on, monkeypatch):
-    """r3(Codex,#2):**指標要真的被生產路徑帶進帳本。**
-
-    只驗 `_comparable_metrics` 本身不夠 —— 它算得再對,呼叫端沒把結果傳下去
-    就等於沒有。這正是「機制存在但沒有呼叫端」的形狀,而那條 finding
-    說的就是 `analysis_metrics` 三個函式在生產完全沒有被呼叫。
-    """
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e1")
-    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "deepseek")
-    monkeypatch.setattr(mr, "LLM_SHADOW_MODEL", "deepseek-v4-pro")
-    monkeypatch.setattr(mr, "_run_budget_ok", lambda *a, **k: True)
-    monkeypatch.setattr(mr, "_call_deepseek", lambda p, role="": "影子的分析輸出")
-    # `llm_shadow` 是在 `_run_llm_shadow` 裡才 import 的(函式內 local import),
-    # 所以要 patch 模組本身,不是 `mr._ls`。
-    import llm_shadow as _ls
-    monkeypatch.setattr(_ls, "run_comparison",
-                        lambda **kw: {"today": {"shadow_ok": True,
-                                                "prompt_sha": "s1"},
-                                      "cumulative": {}})
-    rows = []
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-
-    packet = mr._ep.build({}, {}, {}, [{"title": "央行維持利率", "source": "CBC",
-                                        "published": "p", "official": True}],
-                          [], {}, sanitize=str)
-    mr._run_llm_shadow("legacy prompt", "正式輸出:央行維持利率",
-                       mr.dt.datetime.now(mr.TPE), packet=packet,
-                       primary_profile="luna56_xhigh_v1",
-                       shadow_profile="deepseek_legacy_v1")
-    assert rows, "成功的那天沒有留下實驗紀錄"
-    m = rows[0].get("metrics") or {}
-    assert set(m) >= {"primary", "shadow"}, f"帳本沒有帶兩側指標:{m}"
-    assert "evidence_coverage" in m["primary"], m["primary"]
-    # 深度揭露也要在
-    assert rows[0]["primary_coverage"].get("available") is not None
-
-
-# ------------------------------------------------------- 第十二輪 P1-3
-
-#: 形狀合法、但**沒有根據**的那種輸出。刻意保持 schema 合法:要驗的是
-#: 「語意根據」那一關擋不擋得住,而不是讓它在形狀那關就先被擋掉 ——
-#: 兩關混在一起就分不出誰在作用(第十三輪 P2-3)。
 _UNSUPPORTED = fx.ungrounded_analysis()
 #: **一個反例只違反一條規則,才測得到那一條。** 第十八輪之後,
 #: 沒揭露 gap 與沒分析新聞會先跳出來,而這條測的是「沒有根據」。
@@ -495,94 +294,6 @@ def test_the_good_fixture_actually_cites_evidence():
 
 # ------------------------------------------ 第十三輪 r1:失敗日的呼叫數
 
-def test_a_failed_day_counts_the_fallback_calls_too(luna_on, monkeypatch):
-    """**失敗那列要等落回路徑跑完才定案**(第十三輪 r1,#1)。
-
-    原本在落回**之前**就寫帳:legacy 呼叫與短版重試的計費全部不算,
-    而失敗日正是花最多次呼叫的那些天 —— 低估的方向又偏向「很便宜」。
-    """
-    rows = []
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("逾時")))
-
-    def _legacy(prompt):
-        # legacy 這一次呼叫要出現在失敗那列的計費裡
-        mr._record_llm_call("primary", "deepseek", "deepseek-v4-pro",
-                            accepted=True,
-                            usage={"prompt_tokens": 100, "completion_tokens": 10})
-        return ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
-                "## 一句話總結\n維持核心部位。")
-
-    monkeypatch.setattr(mr, "_call_llm_text", _legacy)
-    mr._RUN_MANIFEST.pop("llm", None)
-    mr._call_llm_analysis_impl(*_ARGS)
-
-    assert len(rows) == 1, f"失敗日沒有留下紀錄:{rows}"
-    assert rows[0]["primary_ok"] is False
-    # 例外那條 Luna 只送出 1 次(第一次就拋),所以 legacy 那次讓它變 2。
-    assert rows[0]["provider_calls"] == 2, (
-        f"失敗日只算到 {rows[0]['provider_calls']} 次呼叫 —— "
-        "落回路徑那次沒被算進去")
-
-
-def test_the_no_output_branch_also_defers(luna_on, monkeypatch):
-    """**兩個失敗分支都要延到落回之後**(第十三輪 r1,#1)。
-
-    「Luna 拋例外」與「Luna 回空」是兩條各自寫帳的分支;只測其中一條,
-    另一條改回「立刻寫帳」也不會紅 —— 而我第一次的突變驗證正好證明了
-    這件事(改無產出那條,測試全綠)。
-    """
-    rows = []
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-    # 合法 JSON、但 schema 不合 → `_luna_analysis` 回空字串(不是拋例外)
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: _response({"完全": "不合 schema"}))
-
-    def _legacy(prompt):
-        mr._record_llm_call("primary", "deepseek", "deepseek-v4-pro",
-                            accepted=True,
-                            usage={"prompt_tokens": 100, "completion_tokens": 10})
-        return ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
-                "## 一句話總結\n維持核心部位。")
-
-    monkeypatch.setattr(mr, "_call_llm_text", _legacy)
-    mr._RUN_MANIFEST.pop("llm", None)
-    mr._call_llm_analysis_impl(*_ARGS)
-    assert len(rows) == 1 and rows[0]["primary_ok"] is False
-    # **精確值,不是下界。** 這條路徑 Luna 自己就有 2 次(初次 + 修補),
-    # 所以 `>= 2` 在還沒算 legacy 時就已經滿足 —— 第一版正是這樣寫的,
-    # 而突變(改回立刻寫帳)因此不紅。**門檻訂得比實際低,等於沒訂。**
-    assert rows[0]["provider_calls"] == 3, (
-        f"應是 2 次 Luna(初次+修補)+ 1 次 legacy,實際 "
-        f"{rows[0]['provider_calls']} —— 落回那次沒算進去")
-
-
-def test_the_failure_row_is_written_even_when_everything_fails(luna_on,
-                                                               monkeypatch):
-    """**`finally` 要涵蓋每一個出口。**
-
-    這一段有七個 return;用「在每個 return 前補一行」的寫法,
-    漏掉任何一個都不會有錯誤訊息 —— 只會讓那一類失敗日從帳本消失。
-    """
-    rows = []
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-    monkeypatch.setattr(mr, "_call_openai_responses",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("逾時")))
-    # 落回路徑也整個掛掉 → 走到備援文字那個出口
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("也掛了")))
-    monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
-    mr._call_llm_analysis_impl(*_ARGS)
-    assert len(rows) == 1, "連備援文字那個出口都要留下失敗紀錄"
-
-
 def test_the_good_fixture_is_actually_schema_valid():
     """**基準自己要先合法**(第十三輪 P2-3)。
 
@@ -613,7 +324,6 @@ def test_a_luna_failure_records_why_and_where(luna_on, monkeypatch):
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場:中性\n"
                                   "## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
     mr._RUN_MANIFEST.pop("llm", None)
     saved = list(mr._DEGRADED_STEPS)
     try:
@@ -628,33 +338,3 @@ def test_a_luna_failure_records_why_and_where(luna_on, monkeypatch):
     finally:
         mr._DEGRADED_STEPS[:] = saved
 
-
-def test_a_packet_build_failure_is_recorded_as_such(luna_on, monkeypatch):
-    """**證據組裝失敗要標成 `packet_build`,而且那天也要有實驗紀錄。**
-
-    2026-08-03 實機正是這一種:`_packet` 還是 None,於是舊守衛讓實驗
-    整天零產出 —— 而可靠度看不到這種失敗,等於它沒發生過。
-    """
-    rows = []
-    monkeypatch.setattr(mr, "LLM_EXPERIMENT_ID", "e")
-    monkeypatch.setattr(mr, "_persist_experiment_record",
-                        lambda rec, today: rows.append(rec))
-    monkeypatch.setattr(mr._ep, "build",
-                        lambda *a, **k: (_ for _ in ()).throw(TypeError("壞資料")))
-    monkeypatch.setattr(mr, "_call_llm_text",
-                        lambda p: "## 我的明確立場\n立場:中性\n"
-                                  "## 一句話總結\n備援。")
-    monkeypatch.setattr(mr, "_run_llm_shadow", lambda *a, **k: None)
-    mr._RUN_MANIFEST.pop("llm", None)
-    saved = list(mr._DEGRADED_STEPS)
-    try:
-        mr._DEGRADED_STEPS.clear()
-        mr._call_llm_analysis_impl(*_ARGS)
-        err = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_path_error") or {}
-        assert err.get("stage") == "packet_build", err
-        assert len(rows) == 1, "證據組裝失敗的那天沒有留下實驗紀錄"
-        assert rows[0]["primary_ok"] is False
-        assert rows[0]["evidence_schema_version"], (
-            "版本是空的 —— 這一列會掉進另一個同群,連可靠度都進不去")
-    finally:
-        mr._DEGRADED_STEPS[:] = saved

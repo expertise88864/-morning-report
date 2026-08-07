@@ -42,7 +42,6 @@ import analysis_render as ar
 import analysis_depth as _ad
 import analysis_schema as sch
 import evidence_packet as ep
-import llm_experiment as lx
 import llm_postprocess as lp
 import prompt_profiles as pp
 
@@ -382,7 +381,7 @@ def _behaviour() -> dict:
         # (那一格在 Luna 側屬於 evidence 契約),而 legacy 的 prompt 正好
         # 就住在那裡 —— 只餵真 prompt 而不把它算進去,指紋照樣不動。
         # 這是同一個洞的第二層:**改對了輸入,卻沒改到被雜湊的東西。**
-        "shadow_profile_version": _sha([
+        "fallback_profile_version": _sha([
             _versionless(_contract_view(
                 pp.build_deepseek_legacy_bundle(pk, _legacy_prompt()))),
             _sha(_legacy_prompt())]),
@@ -572,7 +571,7 @@ _FROZEN = {
     # v24(第二十三輪):每條重點都要是事件、前三全處理、多總經發布。
     "primary_profile_version":  (24, "d45fcd958e7f27e2"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
-    "shadow_profile_version":   (7, "27619c45c92d2128"),
+    "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     "postprocess_version":      (2, "ad654d3f865295e0"),
@@ -662,9 +661,9 @@ def _declared_versions() -> dict:
         "evidence_schema_version": ep.EVIDENCE_SCHEMA_VERSION,
         "output_schema_version": sch.ANALYSIS_SCHEMA_VERSION,
         "primary_profile_version": pp.LUNA_XHIGH_VERSION,
-        "shadow_profile_version": pp.DEEPSEEK_LEGACY_VERSION,
-        "postprocess_version": lx.POSTPROCESS_VERSION,
-        "renderer_version": lx.RENDERER_VERSION,
+        "fallback_profile_version": pp.DEEPSEEK_LEGACY_VERSION,
+        "postprocess_version": lp.POSTPROCESS_VERSION,
+        "renderer_version": lp.RENDERER_VERSION,
         "grounding_version": gr.GROUNDING_VERSION,
     }
 
@@ -677,7 +676,7 @@ def test_every_version_field_in_the_cohort_key_has_a_snapshot():
     新增一個版本欄位卻沒有快照,漏掉不會有任何人發現 —— 而漏掉的症狀
     正是這條 finding 描述的那種:混群而不自知。
     """
-    fields = {f for f in lx.COHORT_FIELDS if f.endswith("_version")}
+    fields = set(lp.CONTRACT_VERSION_FIELDS)
     assert fields, "COHORT_FIELDS 裡找不到任何版本欄位 —— 掃描器壞了"
     assert set(_FROZEN) == fields, (
         f"沒有快照的版本欄位:{fields - set(_FROZEN)};"

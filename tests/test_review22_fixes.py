@@ -11,7 +11,6 @@ import evidence_packet as ep
 import fixtures_analysis as fx
 import news_clusters as nc
 import payload_budget as pb
-import side_telemetry as st
 
 _IDS = fx.ids()
 
@@ -25,13 +24,11 @@ def test_over_budget_means_zero_api_calls_through_production(monkeypatch):
     calls = []
     monkeypatch.setattr(mr, "_call_openai_responses",
                         lambda p: calls.append(p) or {})
-    monkeypatch.setattr(mr, "LLM_PROVIDER", "openai")
-    monkeypatch.setattr(mr, "OPENAI_API_MODE", "responses")
-    monkeypatch.setattr(mr, "OPENAI_API_KEY", "sk-test")
-    monkeypatch.setattr(mr, "OPENAI_MODEL", "gpt-5.6-luna")
+    # 2026-08-08 單一模型:特化路徑 = deepseek(flash)+ luna profile 預設
+    monkeypatch.setattr(mr, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "sk-test")
     monkeypatch.setattr(mr, "LLM_PRIMARY_PROMPT_PROFILE", "")
-    monkeypatch.setattr(mr, "_PRIMARY_EFFORT", "xhigh")
-    monkeypatch.setattr(mr, "LLM_SHADOW_PROVIDER", "")
+    monkeypatch.setattr(mr, "_PRIMARY_EFFORT", "max")
     monkeypatch.setattr(mr, "GEMINI_API_KEY", "")
     legacy = ("## 我的明確立場\n立場:偏多\n既有路徑寫的分析。\n"
               "## 一句話總結\n維持核心部位。")
@@ -78,28 +75,6 @@ def test_the_final_request_gate_measures_the_bundle():
 
 
 # ---------------------------------------------------------------- 遙測(真的)
-
-def test_side_costs_excludes_fallback_from_primary():
-    """**P1-3**:旗子掛了而統計沒看 —— `side_costs` 照樣把 fallback 的
-    成本累進 primary。這次驗的是**總和**,不是旗子。"""
-    rows = [{"primary_telemetry": {"available": True,
-                                   "role_is_specialized": False,
-                                   "measured_cost_usd": 0.05}},
-            {"primary_telemetry": {"available": True,
-                                   "role_is_specialized": True,
-                                   "measured_cost_usd": 0.07}},
-            # 舊 row 沒旗子 —— 用 analysis_origin 事後歸類
-            {"analysis_origin": "legacy_fallback_after_luna_failure",
-             "primary_telemetry": {"available": True,
-                                   "measured_cost_usd": 0.04}}]
-    out = st.side_costs(rows)
-    assert out["primary"]["cost_usd"] == 0.07, out["primary"]
-    assert out["fallback_writer"]["days"] == 2
-    assert out["fallback_writer"]["cost_usd"] == 0.09
-
-
-# ---------------------------------------------------------------- 語意(同一條)
-
 def test_direction_and_evidence_must_come_from_the_same_claim():
     """**P1-4 split-quantifier**:方向靠 c1、證據靠 c2 —— 沒有任何一條
     claim 真的支持這條重點,而兩個分開的檢查都綠。"""

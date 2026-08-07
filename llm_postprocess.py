@@ -6,6 +6,36 @@ from __future__ import annotations
 import json
 import sys
 
+# ── 契約版本(2026-08-08 自 llm_experiment 遷入:實驗已拆除,
+#    而這兩個版本描述的是**報告管線本身**,與實驗無關)──
+#: 後處理與渲染的契約版本。**動了它們就等於換了一個系統**,
+#: 樣本因此不可比 —— 所以它們在同群鍵裡。
+#:
+#: 這兩個數字要手動維護。自動從程式碼推導(檔案雜湊、git SHA)正是本模組
+#: 要避免的東西:那會讓「改一個註解」變成「換一個系統」。
+#: v2(第二十四輪 P1-10):加深選優的**身分**補上四段可見欄位(見
+#: `analysis_depth._identity`)。選優規則變了 = 發表出去的那一版可能不同。
+POSTPROCESS_VERSION = 2
+#: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
+#: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
+#: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
+#: 因此改變(指紋會動的是欄位,不是版面)。
+#: v11(Commit E):三大重點改事件卡(帶這件事的來歷:官方/幾個獨立
+#: 來源/連續追蹤第幾天)、新增「各標的合計影響」、共用驅動的說明進信。
+#: v12(第二十三輪):三大重點依 Python 計分排序(不依模型自評);
+#: aggregator-only 事件寫「原始發布者未解析」而非「僅單一來源」。
+RENDERER_VERSION = 12
+
+#: 契約快照追蹤的版本欄位(2026-08-08 自 llm_experiment.COHORT_FIELDS 遷入:
+#: 實驗已拆,但「哪些契約版本要被凍結追蹤」這份登錄簿必須活著 ——
+#: 新增版本欄位而沒有快照,漏掉不會有任何人發現)。
+#: `fallback_profile_version` 舊名 shadow_profile_version:影子已拆,
+#: legacy prompt 現在是特化失敗時的**備援寫手**,版本仍要追蹤。
+CONTRACT_VERSION_FIELDS = (
+    "evidence_schema_version", "output_schema_version",
+    "primary_profile_version", "fallback_profile_version",
+    "postprocess_version", "renderer_version", "grounding_version")
+
 
 def _strip_llm_watchlist_section(text: str) -> str:
     """Remove duplicated LLM-written Taiwan Top5; Python renders the canonical card."""

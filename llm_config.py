@@ -346,47 +346,23 @@ def fallback_extractor_provider(primary: str, has_key) -> str:
 #: 這張表由 `tests/test_workflow_contract.py` 與 workflow 的 env 區塊做
 #: **雙向**比對:少一個、多一個、預設值漂移,都會紅。
 CONFIG_SOURCE_SPEC = {
+    # 2026-08-08 單一模型架構:主分析 = deepseek-v4-flash(特化結構化路徑,
+    # 失敗落回 legacy prompt,再落回 Gemini 備援)。影子比較與 Luna/OpenAI
+    # 實驗已整批拆除 —— 開關表跟著縮,而不是留一排永遠為空的鍵。
     "LLM_PROVIDER":               ("variable", "deepseek"),
     "EXTRACTOR_PROVIDER":         ("variable", ""),
     "DEEPSEEK_REASONING_EFFORT":  ("variable", "max"),
-    "OPENAI_MODEL":               ("variable", "gpt-5.6-terra"),
-    "OPENAI_REASONING_EFFORT":    ("variable", "medium"),
-    "OPENAI_EXTRACTOR_MODEL":     ("variable", "gpt-5.6-luna"),
-    "OPENAI_EXTRACTOR_REASONING": ("variable", "low"),
-    "LLM_SHADOW_PROVIDER":        ("variable", ""),
-    "LLM_SHADOW_MODEL":           ("variable", ""),
-    "LLM_SHADOW_REASONING_EFFORT": ("variable", ""),
     "LLM_TOTAL_TIMEOUT_SECONDS":  ("variable", ""),
     "LLM_REQUEST_TIMEOUT_SECONDS": ("variable", ""),
-    "DEEPSEEK_MODEL":             ("fixed", "deepseek-v4-pro"),
+    #: 空 = 依 provider 自動選(deepseek → 特化;見 _DEFAULT_PROFILE_BY_PROVIDER)。
+    #: 留著它是**逃生門**:設 deepseek_legacy_v1 即回舊路,不必 revert 程式碼。
+    "LLM_PRIMARY_PROMPT_PROFILE":  ("variable", ""),
+    "DEEPSEEK_MODEL":             ("fixed", "deepseek-v4-flash"),
     "DEEPSEEK_EXTRACTOR_MODEL":   ("fixed", "deepseek-v4-flash"),
     "DEEPSEEK_BASE_URL":          ("fixed", "https://api.deepseek.com"),
-    "OPENAI_BASE_URL":            ("fixed", "https://api.openai.com"),
     "LLM_EVENT_EXTRACTION":       ("fixed", "1"),
-    # r1(Codex,#1):**這兩個原本漏了。** `VALID_PROVIDERS` 有四家,
-    # `_call_llm_text` 也真的會走到 gemini / anthropic(而且 gemini 是
-    # 對不上任何分支時的落點),但這張表只列了 DeepSeek 與 OpenAI ——
-    # 於是選 gemini 那一班的 manifest 完全沒有它實際用的模型。
     "GEMINI_MODEL":               ("fixed", "gemini-2.5-flash"),
     "CLAUDE_MODEL":               ("fixed", "claude-sonnet-4-6"),
-    # ── Luna 特化實驗(Phase 7)────────────────────────────────────────
-    # 全部可由 repo variable 覆寫,**回切 DeepSeek 不需要 revert 程式碼**。
-    "LLM_PRIMARY_PROMPT_PROFILE":  ("variable", ""),
-    "LLM_SHADOW_PROMPT_PROFILE":   ("variable", ""),
-    "LLM_COMPARISON_MODE":         ("variable", "end_to_end_profiles"),
-    "LLM_EXPERIMENT_ID":           ("variable", ""),
-    "LLM_EXPERIMENT_TARGET_PAIRS": ("variable", "10"),
-    # `OPENAI_API_MODE` 的預設刻意是**現況**(chat_completions)而不是
-    # responses。Responses adapter 是新的、尚未在生產跑過;讓它成為預設等於
-    # 讓任何人一設 LLM_PROVIDER=openai 就走一條沒被驗證過的路。
-    # 實驗自己把它設成 responses —— 那是一個看得見的決定。
-    "OPENAI_API_MODE":             ("variable", "chat_completions"),
-    "OPENAI_STORE":                ("variable", "0"),
-    "OPENAI_TEXT_VERBOSITY":       ("variable", "high"),
-    "OPENAI_REASONING_SUMMARY":    ("variable", "auto"),
-    "OPENAI_REASONING_CONTEXT":    ("variable", "current_turn"),
-    "OPENAI_PROMPT_CACHE_TTL_SECONDS": ("variable", ""),
-    "LLM_BLIND_REVIEW_SINK":       ("variable", "local"),  # 見 BLIND_REVIEW_DIR
 }
 
 #: 只有 `variable` 的鍵需要把**原始值**傳進來(`fixed` 的來源已經寫在上表)。

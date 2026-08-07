@@ -15,7 +15,6 @@ B. 跨供應商備援的完整性檢查
 """
 import datetime as _dt
 import json as _json
-import os
 import re
 from pathlib import Path
 
@@ -665,36 +664,6 @@ def test_the_manifest_and_commit_message_name_the_stale_files(tmp_path, monkeypa
             mr._RUN_MANIFEST.pop("state_writes", None)
         else:
             mr._RUN_MANIFEST["state_writes"] = saved_m
-
-
-def test_the_shadow_timeout_follows_its_own_model_and_is_capped():
-    """批#108:影子的 timeout 原本寫死 120 秒。
-
-    luna 在 xhigh 實測要 **196 秒** —— 影子會每天逾時,帳本永遠收不到樣本,
-    而「影子沒有資料」看起來就只是「還在累積」。
-
-    但它是**選配**的評估工具,不該有能力吃掉十分鐘的執行預算:
-    超過上限就是今天沒有樣本(既有的設計降級)。
-    """
-    import importlib
-
-    import morning_report as mr
-
-    def _reload(**env):
-        for k, v in env.items():
-            os.environ[k] = v
-        try:
-            return importlib.reload(mr).LLM_SHADOW_TIMEOUT
-        finally:
-            for k in env:
-                os.environ.pop(k, None)
-            importlib.reload(mr)
-
-    xhigh = _reload(LLM_SHADOW_PROVIDER="openai",
-                    LLM_SHADOW_REASONING_EFFORT="xhigh")
-    assert xhigh > 196, f"影子跑不完 luna xhigh(實測 196s),只有 {xhigh}s"
-    assert xhigh <= mr.LLM_SHADOW_MAX_TIMEOUT, "影子可以吃掉整個預算"
-    assert _reload(LLM_SHADOW_TIMEOUT_SEC="45") == 45, "明設的逃生門壞了"
 
 
 def test_failures_after_the_manifest_snapshot_reach_the_landed_degraded_list(

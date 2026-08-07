@@ -586,7 +586,9 @@ def test_the_config_source_table_matches_the_workflow_both_ways():
     """
     env = _report_step(_workflow()).get("env") or {}
     spec = set(llm_config.CONFIG_SOURCE_SPEC)
-    assert len(spec) >= 15, (
+    # 2026-08-08 單一模型架構:影子/實驗/OpenAI 開關整批拆除,12 個是
+    # 真實的全集 —— 門檻跟著降,但仍防「表被清空後真空通過」。
+    assert len(spec) >= 10, (
         "CONFIG_SOURCE_SPEC 只剩 %d 個鍵 —— 這條測試會因此變成空集合真空通過"
         % len(spec))
     in_workflow = _llm_env_keys(env)
@@ -690,11 +692,11 @@ def test_a_whitespace_only_variable_counts_as_set(monkeypatch):
     會說「走 workflow 預設」,而實際上 `_call_llm_text` 對不上任何分支、
     落到 Gemini —— 遙測與實跑各說各話,正是這一批要消滅的狀態。
     """
-    src = llm_config.config_sources("LLM_PROVIDER= ;OPENAI_MODEL=",
-                                    {"LLM_PROVIDER": " "})
+    src = llm_config.config_sources(
+        "LLM_PROVIDER= ;DEEPSEEK_REASONING_EFFORT=", {"LLM_PROVIDER": " "})
     assert src["LLM_PROVIDER"]["source"] == "repo_variable", (
         "whitespace-only 被當成沒設 —— manifest 會把使用者的錯誤記成走預設")
-    assert src["OPENAI_MODEL"]["source"] == "workflow_default", \
+    assert src["DEEPSEEK_REASONING_EFFORT"]["source"] == "workflow_default", \
         "真正的空字串仍必須是 workflow_default"
 
     issues = [str(i) for i in llm_config.validate_llm_config(

@@ -1557,6 +1557,68 @@ profile 23→24。
 **驗證**:preflight exit 0、2057 passed;新測試檔 test_review23_fixes.py
 12 條(含外審必補清單的 1/3/4/6/9/10/11/12/15/16/17/20 號)。
 
+### 第二十五輪 `(下一個 commit)` —— 身分從「主體過粗」變成「動作過粗」
+外審 7 P1 + 10 P2,**七條逐一重現後才修**。主題:上一輪把延燒事件的
+身分從 entity 換成 action,方向對 —— 但同月裡每一樁軍售、每一起資安
+事件、每一個關稅案都變成同一條線。**動作過粗與主體過粗是同一個錯的
+兩面。**
+
+**Commit 1(P1-2/P1-3)事件身分**:
+- `NEEDS_OBJECT` 宣告哪些動作**必須帶對象**才構成身分;
+  `object_signature()` 把主體集合寫進鍵。實測:對台/對日軍售分開、
+  多晶矽/歐盟 EV 關稅分開、兩起資安事件分開,而**荷姆茲跨語言仍合併**
+  (它自帶唯一對象,不在 `NEEDS_OBJECT`)。
+- `adopt_legacy` 要求**動作相符**:舊鍵「美國(制裁,第 4 天)」不再把
+  四天接到今天的軍售案上。舊標題認不出動作時**從第 1 天起算**並標
+  `migration_uncertain` —— 低估連續天數只是少一句「第 N 天」,接錯會讓
+  讀者以為今天才發生的事已經追蹤一週。
+- IDENTITY_SCHEMA 5→6。
+
+**Commit 2(P1-4/P1-5/P1-6)三個空集合/單邊 bypass** —— 同一個形狀:
+**有結構,但沒有真正完成比較**。
+- `offsetting_cluster_ids`:三道檢查先前全包在 `if offs:` 裡,留空就
+  整段跳過。改成**先算 expected 再比 submitted**,算得出衝突時空陣列必敗。
+- 淨效果:上一版只要「至少一條同向」,於是可以只引勝方 ——
+  `offsetting_cluster_ids` 說有兩邊、`claim_ids` 只分析一邊。
+  改成**兩側各至少一條**。
+- shared-driver note:空 `cluster_ids` 跳過驗證,而另一側只用 driver
+  名稱判斷「已處理」。改成 `cluster_ids` 至少兩個 + **已處理身分是
+  (驅動, 群集)**。
+
+**Commit 3(P1-7)instrument registry 三態**:
+`resolve_status()` 回 `verified / unverified / invalid` —— universe 缺席
+不再等於放行(`9999` 先前是合法標的)。
+**第一版修過頭**:拿 `INVALID` 當擋的條件,而 `_KNOWN` 只有八檔,
+`NVDA`、`AMD` 這些真 ticker 一起被殺。改成明確的商用縮寫黑名單
+(`CEO`/`IPO`/`EPS`/`GDP`/`ADR`…),NVDA 放行、縮寫全擋。
+
+**Commit 4(P2-1)DeepSeek parser**:`finals if finals else others` 讓
+「有 commentary、final 是空字串」時 commentary 被當成答案送下去,
+`empty_content` 也跟著變 false。改成看**有沒有出現過 final_answer 這個
+階段**,commentary 永遠不是替補;沒標階段的 message 仍是合法答案。
+
+**P2-6**:`cut`/`raise`/`sign` 從事件詞移除(`Nasdaq cut losses and
+rose 2%` 因 `cut` 逃過價格文判定);廣度詞的裸 `rate` 換成
+`interest rate`/`rate hike`/`rate cut`。
+
+**外審應特別看的地方**:
+1. **對象簽章用的是整個主體集合**,不是剖析出來的受詞 —— 剖析錯會把
+   兩件事黏在一起,那正是要修的缺陷。代價是同一件事的兩則報導若主體
+   集合不同會**分裂**(退回今天以前的行為)。
+2. **遷移收緊會讓部分舊線在升版當天從第 1 天起算** —— 那是外審指定的
+   方向,但讀者當天會看到「第 1 天」而不是「第 7 天」。
+3. 商用縮寫黑名單 37 個是我列的;漏一個就會讓那個縮寫繼續冒充標的。
+4. 突變 G 第一次沒紅:反例被 `analysis_contracts` 的「少於兩件」先擋住,
+   測不到 `analysis_crosscheck` 的身分判準。**反例要只靠被測那條規則
+   分勝負** —— 補了一則「數量夠、群也存在、但講的是別的兩群」的 note。
+5. **仍未做**:P2-7 跨語言同日分群、P2-8 publisher canonical、
+   P2-5 retry 遙測、P2-2 live contract canary、P2-4 wire bytes 估算、
+   P2-9 collection 邊界 canonical 去重、P2-10 README 漂移。
+
+**驗證**:preflight exit 0、1958 passed、十一個突變全紅。
+**仍無 current-head production 證據**(P1-1)—— 下一次排程跑成之後
+才驗得到。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

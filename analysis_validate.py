@@ -55,6 +55,18 @@ def _is_generic_asset(aid: str) -> bool:
 #: 台股代號的形狀(2330、00662、6510A)。
 _TW_CODE = _re.compile(r"[0-9]{4,6}[A-Z]?")
 
+#: **永遠不是股票代號的商用縮寫**(第二十五輪 P1-7)。
+#: 它們長得像 2–4 位大寫 ticker、常常出現在標題裡、不在概念詞表 ——
+#: 於是「CEO resigns after earnings miss」可以掛 `asset_id: "CEO"`。
+#: 與概念詞表同一個道理:這些詞在標題出現的頻率極高,而它們**永遠不是
+#: 可交易標的**,「出現在證據裡」對它們等於沒有判準。
+_NOT_TICKER_ABBREV = frozenset({
+    "CEO", "CFO", "COO", "CTO", "CIO", "IPO", "SPO", "EPS", "PER", "PBR",
+    "ROE", "ROA", "GDP", "CPI", "PPI", "PCE", "PMI", "FOMC", "SEC", "FDA",
+    "FTC", "DOJ", "WTO", "IMF", "OPEC", "ADR", "GDR", "ETF", "API", "FAQ",
+    "GAAP", "EBITDA", "CAPEX", "OPEX", "YOY", "QOQ", "MOM",
+})
+
 #: **產品與技術概念** —— 在新聞標題出現的頻率極高,「出現在證據裡」
 #: 對它們永遠成立;而它們永遠不是可交易標的(第二十二輪 P1-6)。
 _CONCEPT_TERMS = frozenset({
@@ -92,6 +104,16 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     # 第二十一輪 P1-9:**大小寫不是判準。** 上一版只檢查
     # `a.isupper()` —— `gpu`、`Ai`、`chip` 全部繞過。
     # 判準是「這個字在證據裡出現過嗎」,而比對要忽略大小寫。
+    # 第二十五輪 P1-7:**registry 是判準,不是參考。** 上一版對 ASCII
+    # token 只看「有沒有出現在標題/實體裡」—— 於是 `CEO`、`IPO`、`EPS`、
+    # `CFO`、`ADR` 這些只要出現在標題就通過(它們長得像 2–6 位 ticker、
+    # 不在概念黑名單、也不是已知標的)。
+    # **只擋「確定不是標的」的那些。** 第一版拿 registry 的
+    # `INVALID` 當條件,而 `_KNOWN` 只有八檔 —— `NVDA`、`AMD` 這些
+    # 真 ticker 一起被殺。**誤殺比漏放危險**(repo 記過),
+    # 改成明確的縮寫黑名單。
+    if a.upper() in _NOT_TICKER_ABBREV:
+        return True
     low = a.lower()
     if a.isascii() and not _TW_CODE.fullmatch(a):
         if any(low == str(e).lower() for e in ents):

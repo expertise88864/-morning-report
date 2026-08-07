@@ -161,12 +161,42 @@ def reference_problems(obj, packet) -> list:
                     f"asset_net_effects[{aid}] 的淨方向是 {direction},"
                     f"而引用的 {aid} 主張沒有一條是同方向的 —— "
                     "淨判斷不能只靠反方向的主張撐著")
+            # 第二十五輪 P1-5:**「淨」的意思是比較過雙方。**
+            # 上一版只要求「至少一條同向」,於是 A(利多)與 B(利空)
+            # 都存在時,可以只引用 A —— `offsetting_cluster_ids` 說有兩邊,
+            # `claim_ids` 卻只分析一邊,`why` 是自由文字。那不是淨效果,
+            # 是選邊之後補一句理由。
+            # **鍵要用 canonical**:衝突偵測回的是別名組代表(「台積電」),
+            # 而這裡的 `aid` 是輸出寫的原樣(「2330」)。
+            if _eg_conflicts(obj).get(_canon_asset(aid)):
+                dirs = {str((claims[c] or {}).get("direction") or "")
+                        for c in same_asset}
+                missing = {"bullish", "bearish"} - dirs
+                if missing:
+                    out.append(
+                        f"asset_net_effects[{aid}] 引用的主張只有 "
+                        f"{sorted(dirs & {'bullish', 'bearish'})} 這一側 —— "
+                        f"今天 {aid} 同時有利多與利空,淨判斷要**兩側各至少"
+                        "一條主張**才證明得出比較過(缺 "
+                        f"{sorted(missing)})")
         # `offsetting_cluster_ids` 的語意是「互相抵銷」,而**一個群抵銷不了
         # 任何東西**(外審 P1-7.3)。非空時要求:至少兩個、都存在、而且
         # 與 Python 端衝突偵測算出來的那組**完全一致** —— 讓模型自選子集
         # 等於它自己決定什麼叫衝突。
         offs = [str(c) for c in (n.get("offsetting_cluster_ids") or [])]
-        if offs:
+        # 第二十五輪 P1-4:**空陣列先前整段跳過。** 三道檢查全包在
+        # `if offs:` 裡,於是留空就同時避開「至少兩群」「群要存在」
+        # 「要與實際衝突一致」—— 而另一側只要求 `why` 非空。
+        # **先算 expected,再比 submitted**:算得出衝突時,空陣列必敗。
+        expect = _offsetting_clusters_for(obj, packet, aid)
+        if expect is not None:
+            if set(offs) != expect:
+                out.append(
+                    f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
+                    f"{sorted(set(offs)) or '(空)'} 與本日實際衝突的事件群 "
+                    f"{sorted(expect)} 不一致 —— 哪些事互相抵銷由資料決定,"
+                    "不由輸出自選;留空等於沒有比較過")
+        elif offs:
             if known_clusters:
                 bad = [c for c in offs if c not in known_clusters]
                 if bad:
@@ -178,13 +208,6 @@ def reference_problems(obj, packet) -> list:
                     f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
                     f"只有 {len(set(offs))} 個事件群 —— 「互相抵銷」"
                     "至少要兩件事")
-            expect = _offsetting_clusters_for(obj, packet, aid)
-            if expect is not None and set(offs) != expect:
-                out.append(
-                    f"asset_net_effects[{aid}] 的 `offsetting_cluster_ids` "
-                    f"{sorted(set(offs))} 與本日實際衝突的事件群 "
-                    f"{sorted(expect)} 不一致 —— 哪些事互相抵銷由資料決定,"
-                    "不由輸出自選")
 
     syn = obj.get("cross_market_synthesis") or {}
     groups = _shared_driver_groups(packet)
@@ -192,6 +215,14 @@ def reference_problems(obj, packet) -> list:
         if not isinstance(note, dict):
             continue
         cids = [str(c) for c in (note.get("cluster_ids") or [])]
+        # 第二十五輪 P1-6:**空 cluster_ids 先前整段跳過**,而另一側
+        # 只用 driver 名稱判斷「已處理」—— 於是填一個正確的 driver、
+        # cluster_ids 留空,就同時滿足「有 note」與「避開 exact-match」。
+        if groups is not None and len(set(cids)) < 2:
+            out.append(
+                f"shared_driver_notes[{note.get('driver')}] 的 `cluster_ids` "
+                f"只有 {len(set(cids))} 個 —— 「為什麼不算重複計權」講的是"
+                "**哪幾件事**共用驅動,少於兩件就沒有東西要調和")
         if known_clusters:
             bad = [c for c in cids if c not in known_clusters]
             if bad:
@@ -262,6 +293,18 @@ def _shared_driver_groups(packet):
             if ids:
                 out.append({"ids": ids, "driver": str(g.get("driver") or "")})
     return out
+
+
+def _canon_asset(aid) -> str:
+    import entity_alias as _ea
+    gi = _ea.group_of(str(aid))
+    return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else str(aid)
+
+
+def _eg_conflicts(obj) -> dict:
+    """Python 端算出來的方向衝突(`{標的: [新聞 ID]}`)。"""
+    import event_graph as _eg
+    return _eg.conflicting_assets(obj)
 
 
 def _offsetting_clusters_for(obj, packet, asset_id: str):

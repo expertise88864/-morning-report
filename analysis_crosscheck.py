@@ -357,14 +357,20 @@ def event_graph_problems(obj, packet) -> list:
     # ── 2) 共同驅動
     used = {str(d.get("cluster_id") or "")
             for d in (obj.get("key_drivers") or []) if isinstance(d, dict)}
-    notes = {str((x or {}).get("driver") or "")
+    # 第二十五輪 P1-6:**「已處理」的身分是 (驅動, 群集)**,不是驅動名稱。
+    # 只比名稱時,一則 `cluster_ids=[]` 的 note 就算處理過了。
+    notes = {(str((x or {}).get("driver") or ""),
+              frozenset(str(c) for c in (x.get("cluster_ids") or [])))
              for x in ((obj.get("cross_market_synthesis") or {})
                        .get("shared_driver_notes") or []) if isinstance(x, dict)}
     for g in (graph.get("shared_driver_groups") or []):
         if not isinstance(g, dict):
             continue
         hit = sorted(used & {str(c) for c in (g.get("cluster_ids") or [])})
-        if len(hit) >= 2 and str(g.get("driver") or "") not in notes:
+        _handled = any(d == str(g.get("driver") or "") and len(cs) >= 2
+                       and cs <= {str(c) for c in (g.get("cluster_ids") or [])}
+                       for d, cs in notes)
+        if len(hit) >= 2 and not _handled:
             out.append(
                 f"三大重點裡有 {len(hit)} 件事共用同一個底層驅動"
                 f"({g.get('label')}:{hit})—— 各加一次權重等於同一件事"

@@ -53,17 +53,34 @@ import re
 
 #: 身分公式的版本。**改動判定規則就要升版** —— 舊 state 的鍵是用舊公式
 #: 算的,不升版就沒有人知道混在一起的兩批鍵各自是什麼意思。
-IDENTITY_SCHEMA_VERSION = 5
+#: v6(第二十五輪 P1-2/P1-3):帶對象的動作把對象寫進鍵;
+#: legacy 認領要動作相符(主體有交集不代表同一件事)。
+IDENTITY_SCHEMA_VERSION = 6
 
 #: 動作表:`(代碼, 說明, 關鍵詞…)`。中英並列,**由上而下第一個命中者勝**
 #: —— 順序即優先序,具體的排在概括的前面。
 #:
 #: 判準刻意保守:寧可認不出(降級回主體集合,行為與舊版相同),
 #: 不要誤認(把兩件事黏成一件是不可逆的,而且會靜靜地錯很多天)。
+#: `NEEDS_OBJECT` 的動作**必須帶對象才構成身分**(第二十五輪 P1-2)。
+#:
+#: 上一版的鍵是 `{型別}:{動作}:{月份}` —— 完全不含對象,於是同一個月裡
+#: 「美國對台軍售」與「美國對日本軍售」是同一條線;三件不同公司的資安
+#: 事件、三個國家的關稅案也全部黏在一起。**動作過粗與主體過粗一樣錯**,
+#: 只是換了一個方向。
+#:
+#: 判準:動作若是「某人對某個對象做的事」,對象就是身分的一部分;
+#: 動作若本身就指名了唯一標的(荷姆茲海峽),對象是常數、不必再帶。
+NEEDS_OBJECT = frozenset({
+    "arms_sale", "cyberattack", "tariff_action", "export_control",
+    "sanction", "election", "summit_talks", "fx_intervention",
+})
+
 ACTION_TABLE = (
+    # 這一條**自帶唯一對象**(海峽只有一個),所以不在 `NEEDS_OBJECT`。
     ("hormuz_passage", "荷姆茲海峽通行",
      "荷姆茲", "荷莫茲", "霍爾木茲", "Hormuz"),
-    ("arms_sale", "對台軍售",
+    ("arms_sale", "軍售",
      "軍售", "對台軍售", "arms sale", "arms package", "FMS"),
     ("cyberattack", "網路攻擊",
      "網攻", "網路攻擊", "駭客入侵", "勒索軟體", "資安事件",
@@ -78,6 +95,7 @@ ACTION_TABLE = (
      "yen-market intervention", "currency intervention"),
     ("sanction", "制裁",
      "制裁", "凍結資產", "sanction", "asset freeze"),
+    # 台海情勢自帶地理對象,同上。
     ("strait_tension", "台海情勢",
      "台海", "軍演", "共機", "灰色地帶", "Taiwan Strait", "military drill"),
     ("election", "選舉",
@@ -126,6 +144,21 @@ def event_action(*texts) -> str:
     return ""
 
 
+def object_signature(action: str, subjects) -> str:
+    """帶對象的動作 → 對象簽章;不帶對象的動作 → 空字串。
+
+    **簽章是主體集合本身**(已正規化、已排序、已截斷)。為什麼不是
+    「挑出受詞」:那需要語意剖析,而剖析錯會把兩件事黏在一起 ——
+    這正是要修的缺陷。用整個主體集合當簽章是保守的:
+    同一件事的兩則報導若主體集合不同會**分裂**(退回今天以前的行為),
+    而不同的事**不會合併**。兩種錯誤的代價不對稱。
+    """
+    if str(action or "") not in NEEDS_OBJECT:
+        return ""
+    return "、".join(sorted(dict.fromkeys(
+        str(s) for s in (subjects or []) if str(s).strip())))[:24]
+
+
 def action_label(code: str) -> str:
     for row in ACTION_TABLE:
         if row[0] == code:
@@ -151,12 +184,16 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
     action = event_action(ev.get("title"), ev.get("summary"))
     if action:
         month = _month(today or str(ev.get("published") or ""))
-        key = f"{etype}:{action}" + (f":{month}" if month else "")
-        basis = "action"
+        # 第二十五輪 P1-2:**帶對象的動作要把對象寫進鍵。**
+        # 少了它,同月的每一樁軍售/資安/關稅案都是同一條線。
+        obj = object_signature(action, canon)
+        key = ":".join(x for x in (etype, action, obj, month) if x)
+        basis = "action+object" if obj else "action"
     else:
         key = f"{etype}:{'、'.join(canon)[:20]}"
         basis = "subjects"
-    return {"key": key, "action": action, "subjects": canon, "basis": basis}
+    return {"key": key, "action": action, "subjects": canon,
+            "object": obj if action else "", "basis": basis}
 
 
 def _int(v) -> int:
@@ -176,6 +213,7 @@ def adopt_legacy(state: dict, ev: dict, subjects: list,
     """
     etype = str(ev.get("event_type") or "")
     want = {str(x) for x in (ident.get("subjects") or subjects)}
+    new_action = str(ident.get("action") or "")
     best_key, best = "", None
     for k, v in state.items():
         if not isinstance(v, dict):
@@ -189,6 +227,21 @@ def adopt_legacy(state: dict, ev: dict, subjects: list,
         old_subjects = {canonical_subject(x) for x in old_subjects}
         if not (old_subjects & want):
             continue
+        # 第二十五輪 P1-3:**主體有交集不代表是同一件事。**
+        # 舊鍵「geopolitical:美國(制裁案,第 4 天)」與今天的軍售案都含
+        # 「美國」,於是軍售案第一天就顯示「延燒第 5 天」—— 重構本來要
+        # 消掉的錯誤,只是從穩態身分搬到了遷移。
+        old_action = event_action(v.get("latest_title"), v.get("latest_summary"))
+        if new_action or old_action:
+            if old_action != new_action:
+                continue                  # 動作對不上就不認領
         if best is None or _int(v.get("days")) > _int(best.get("days")):
             best_key, best = k, v
-    return (dict(best) if best else None), best_key
+    if best is None:
+        return None, ""
+    rec = dict(best)
+    if not event_action(best.get("latest_title"), best.get("latest_summary")):
+        # 舊 record 認不出動作 —— 接了也說不出接的是什麼。
+        # **留下痕跡**:天數照舊(讀者看過那個數字),但標記不確定。
+        rec["migration_uncertain"] = True
+    return rec, best_key

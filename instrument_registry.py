@@ -48,26 +48,50 @@ _KNOWN = {
 }
 
 
-def resolve(aid, packet=None):
-    """`(canonical_id, scope)`;不是標的回 `(None, None)`。
+#: `resolve_status()` 的三態(第二十五輪 P1-7)。
+#:
+#: 上一版只有二態,而「查不到」被寫成 `(canonical, scope)` 放行 ——
+#: universe 缺席那天,`9999`、`999999` 都成了合法標的。
+#: **「沒驗」與「驗過是標的」不是同一件事**,把它們塞進同一個回傳值,
+#: 呼叫端就永遠分不出來。
+VERIFIED = "verified"       # 查得到:確定是可交易標的
+UNVERIFIED = "unverified"   # 查不到 universe:形狀像,但今天驗不了
+INVALID = "invalid"         # 確定不是標的(概念詞、職稱、縮寫…)
 
-    台股代號要**真的在當日 universe 裡**才算標的 —— 先前任何 4–6 位數
-    都放行,於是 `999999` 冒充過逐標的分析。拿不到 universe 時不判定
-    (降級不誤擋),但那是**沒驗**不是驗過。
+
+def resolve_status(aid, packet=None) -> tuple:
+    """`(canonical_id, scope, status)` —— **三態**。
+
+    台股代號要**真的在當日 universe 裡**才是 `verified`。拿不到
+    universe 時回 `unverified`(不是放行)—— 呼叫端據此決定要不要
+    生成逐標的方向,而不是預設它是真的。
     """
     a = str(aid or "").strip()
     if not a:
-        return None, None
+        return None, None, INVALID
     if a in _KNOWN:
-        return _KNOWN[a]
+        cid, scope = _KNOWN[a]
+        return cid, scope, VERIFIED
     if a.isdigit() or (len(a) >= 4 and a[:-1].isdigit()):
         codes = {str(x.get("code") or "")
                  for x in ((packet or {}).get("tw_universe") or [])
                  if isinstance(x, dict)}
         if a in codes:
-            return f"TW:EQUITY:{a}", EQUITY
-        return (None, None) if codes else (f"TW:EQUITY:{a}", EQUITY)
-    return None, None
+            return f"TW:EQUITY:{a}", EQUITY, VERIFIED
+        if codes:
+            return None, None, INVALID          # universe 在,而它不在裡面
+        return f"TW:EQUITY:{a}", EQUITY, UNVERIFIED
+    return None, None, INVALID
+
+
+def resolve(aid, packet=None):
+    """`(canonical_id, scope)` —— 舊呼叫端的相容出口。
+
+    **`unverified` 在這裡看起來與 `verified` 一樣** —— 那正是三態要解決
+    的問題,所以新的判準一律走 `resolve_status()`。
+    """
+    cid, scope, _ = resolve_status(aid, packet)
+    return cid, scope
 
 
 def needs_event_evidence(scope) -> bool:

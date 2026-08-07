@@ -185,7 +185,8 @@ MODULE_CEILINGS = {
     # DeepSeek Responses 的專屬 adapter(外審 P1-2)。契約釘在實機
     # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
     # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。
-    "deepseek_responses.py": 300,
+    # 第二十五輪 P2-1:commentary 永遠不得當 final 替補(三個 bucket)。
+    "deepseek_responses.py": 325,
     # 延燒事件的身分(外審 P1-9)。動作表是宣告式的,說明佔了大半 ——
     # 那是這個模組的重點:身分不能靠相似度,每一列都要說得出
     # 代碼與判準。`adopt_legacy` 由主模組搬進來(refactor_audit 判
@@ -405,7 +406,9 @@ MODULE_CEILINGS = {
     # P1-8/P1-9 再加上結構化引用的完整性(淨效果要有 claim 根據、
     # 引用的主張要真的關於那個標的、cluster 引用要指得到真的東西)——
     # 那是同一類東西:**schema 保證得了形狀,保證不了指涉**。實測 157 行。
-    "analysis_contracts.py": 310,   # 2026-08-08 外審 P1-7/P1-8:淨效果的標的/方向/抵銷集合與共用驅動比對(判準集中在這裡,呼叫端才不會各寫一份)
+    # 第二十五輪 P1-4/P1-5:先算 expected 再比 submitted;淨判斷要
+    # 兩側各一條主張。
+    "analysis_contracts.py": 360,   # 2026-08-08 外審 P1-7/P1-8:淨效果的標的/方向/抵銷集合與共用驅動比對(判準集中在這裡,呼叫端才不會各寫一份)
     # schema v2:深度欄位的渲染(因果鏈/量級/關係/橫向綜合)。
     # 與 `analysis_render` 分開:段落順序跟著信件結構走,條目寫法跟著
     # schema 版本走。實測 98 行。
@@ -428,7 +431,8 @@ MODULE_CEILINGS = {
     # affected_assets 檢查整段拆去 analysis_crosscheck。
     # 第二十二輪:實測 449 —— 概念詞黑名單與「中文名也要在證據裡」。
     # 超過 470 就把 affected_assets 檢查整段拆去 analysis_crosscheck。
-    "analysis_validate.py": 480,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # 第二十五輪 P1-7:商用縮寫黑名單(CEO/IPO/EPS 不是 ticker)。
+    "analysis_validate.py": 515,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度
@@ -438,7 +442,8 @@ MODULE_CEILINGS = {
     # 自引用檢查。**這個檔量的就是「有沒有真的做完」**,判準變細是
     # 它該長的方向;超過 300 就再拆。
     # Commit C:`top_event_problems`(三大重點要是三個事件的契約)。實測 320。
-    "analysis_crosscheck.py": 445,
+    # 第二十五輪 P1-6:已處理身分改 (驅動, 群集)。
+    "analysis_crosscheck.py": 465,
     # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
     # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
     # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。

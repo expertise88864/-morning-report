@@ -182,8 +182,14 @@ def extract_output(response: Optional[dict]) -> dict:
     if isinstance(inc, dict):
         out["incomplete_reason"] = str(inc.get("reason") or "")
 
-    finals, others, refusals = [], [], []
+    # 第二十五輪 P2-1:**commentary 永遠不能當 final 的替補。**
+    # 上一版是 `finals if finals else others`,而 `others` 裡混著
+    # commentary —— 「有 commentary、final 是空字串」時 `finals` 是空的,
+    # 於是 commentary 被當成答案送下去,`empty_content` 也跟著變 false。
+    # 判準改成看**有沒有出現過 final_answer 這個階段**,不是看它有沒有字。
+    finals, unphased, commentary, refusals = [], [], [], []
     saw_message = False
+    saw_final_phase = False
     for item in (response.get("output") or []):
         if not isinstance(item, dict) or item.get("type") != "message":
             continue
@@ -191,7 +197,12 @@ def extract_output(response: Optional[dict]) -> dict:
         phase = str(item.get("phase") or "")
         if phase == "commentary":
             out["had_commentary"] = True
-        bucket = finals if phase == "final_answer" else others
+            bucket = commentary
+        elif phase == "final_answer":
+            saw_final_phase = True
+            bucket = finals
+        else:
+            bucket = unphased          # 沒標階段的 message 才是合法替補
         for part in (item.get("content") or []):
             if not isinstance(part, dict):
                 continue
@@ -200,7 +211,7 @@ def extract_output(response: Optional[dict]) -> dict:
             elif part.get("type") == "refusal" and part.get("refusal"):
                 refusals.append(str(part["refusal"]))
 
-    raw = "".join(finals) if finals else "".join(others)
+    raw = "".join(finals) if saw_final_phase else "".join(unphased)
     out["text"] = strip_json_fence(raw)
     out["refusal"] = "\n".join(refusals)
     # 有 message 但一個字都沒有 —— 官方點名過的情況,要能與「沒有 message」

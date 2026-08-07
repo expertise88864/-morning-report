@@ -57,7 +57,10 @@ _TW_MARKERS = ("台股", "台灣", "臺灣", "加權", "台積", "TSMC", "櫃買
 _BROAD_MARKERS = ("關稅", "升息", "降息", "利率", "通膨", "CPI", "PPI",
                   "就業", "非農", "GDP", "出口管制", "制裁", "戰爭",
                   "地震", "颱風", "央行", "FOMC", "Fed", "政策",
-                  "tariff", "inflation", "rate", "sanction", "war")
+                  # `rate` 裸子字串會命中 `corporate`/`accelerate`;
+                  # 廣度詞改用明確的組合(第二十五輪 P2-6)。
+                  "tariff", "inflation", "interest rate", "rate hike",
+                  "rate cut", "sanction", "war")
 
 #: 有數字可談的判準:帶單位的數字。**不做語意判斷** —— 只看形狀。
 _NUM_MARKERS = ("%", "％", "億", "兆", "萬", "美元", "元", "點", "bp",
@@ -89,12 +92,17 @@ _EVENT_VERBS = ("宣布", "決議", "公布", "發表", "簽署", "通過", "裁
                 "採購經理", "零售銷售", "進出口", "貿易", "景氣",
                 "年增", "月增", "新增", "增幅", "降幅", "低於預期",
                 "高於預期", "不如預期", "優於預期", "數據",
-                "announce", "announced", "approve", "approved", "sign",
+                "announce", "announced", "approve", "approved",
                 "signed", "ruling", "recall", "strike", "earthquake",
                 "merger", "acquire", "acquired", "sanction", "ban",
                 # 第二十三輪 P2-6:`report`/`reported` 太廣 ——
                 # 「Market report: Nasdaq rose 2%」會因此逃過價格文判定。
-                "resign", "layoff", "raise", "cut")
+                # 第二十五輪 P2-6:`cut`/`raise`/`sign` 拿掉 ——
+                # 「Nasdaq **cut** losses and rose 2%」整句只有價格,而
+                # `cut` 是完整的一個 token,邊界救不了它。這三個詞只在
+                # 「同時有價格詞」時才起作用,而那正是它們最會誤判的場合;
+                # 「Fed cuts rates」沒有價格詞,本來就不會被判成價格文。
+                "resign", "layoff")
 
 
 def is_price_move(title: str) -> bool:
@@ -105,9 +113,22 @@ def is_price_move(title: str) -> bool:
     """
     t = str(title or "")
     low = t.lower()
-    has_price = any(w in t or w in low for w in _PRICE_WORDS)
-    has_event = any(v in t or v in low for v in _EVENT_VERBS)
-    return has_price and not has_event
+
+    def _hit(words):
+        # 第二十五輪 P2-6:**ASCII 詞要 token 邊界。** 裸子字串讓
+        # 「Nasdaq cut losses and rose 2%」因為 `cut` 被當成事件 ——
+        # 而它整句只有價格。中文無詞界,維持子字串。
+        import re as _re3
+        for w in words:
+            wl = str(w).lower()
+            if not wl.isascii():
+                if wl in t:
+                    return True
+            elif _re3.search(r"(?<![a-z0-9])" + _re3.escape(wl)
+                             + r"(?![a-z0-9])", low):
+                return True
+        return False
+    return _hit(_PRICE_WORDS) and not _hit(_EVENT_VERBS)
 
 
 def _text(members) -> str:

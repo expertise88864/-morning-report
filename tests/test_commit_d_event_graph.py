@@ -128,9 +128,14 @@ def test_a_net_effect_must_say_which_side_is_heavier():
     obj["asset_net_effects"][0]["why"] = "產能恢復的量級大於降息預期的折現效果"
     # 第二十四輪 P1-8:淨效果還要**站在被稽核過的主張上** —— 「合起來是
     # 利多還是利空」是會進信的判斷,空的 `claim_ids` 等於沒有根據。
-    obj["claim_audit"].append(dict(obj["claim_audit"][0], claim_id="cn",
-                                   asset_scope="2330"))
-    obj["asset_net_effects"][0]["claim_ids"] = ["cn"]
+    # 第二十五輪 P1-5:**「淨」的意思是比較過雙方。** 上一版只補一條
+    # 同向主張就算過 —— 而 `offsetting_cluster_ids` 說有兩邊,`claim_ids`
+    # 卻只分析一邊。兩側各要有一條。
+    base = obj["claim_audit"][0]
+    obj["claim_audit"] += [
+        dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"]),
+        dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"])]
+    obj["asset_net_effects"][0]["claim_ids"] = ["cb", "cs"]
     assert not [p for p in sch.validate(obj, _packet())
                 if "asset_net_effects" in p]
 

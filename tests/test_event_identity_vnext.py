@@ -134,7 +134,11 @@ def test_a_legacy_lineage_keeps_its_days_on_upgrade_day(tmp_path, monkeypatch):
     而且舊鍵要被移除 —— 兩條並存就等於同一件事又有兩個「第 N 天」。"""
     legacy = {"geopolitical:伊朗": {
         "first_seen": "2026-08-01", "days": 6, "last_seen": "2026-08-06",
-        "latest_title": "舊鍵", "entity": "伊朗", "subjects": ["伊朗"],
+        # 第二十五輪 P1-3:**認領要動作相符。** 舊 record 的標題原本寫
+        # 「舊鍵」這種佔位字串,而真實的 state 存的是當天的實際標題 ——
+        # 用佔位字串測遷移,等於測一個不存在的形狀。
+        "latest_title": "伊朗與阿曼就荷姆茲航道談判",
+        "entity": "伊朗", "subjects": ["伊朗"],
         "event_type": "geopolitical"}}
     _a, state = _run(tmp_path, monkeypatch, [
         {"event_type": "geopolitical", "entity": "伊朗、阿曼",
@@ -143,6 +147,44 @@ def test_a_legacy_lineage_keeps_its_days_on_upgrade_day(tmp_path, monkeypatch):
     new = state["geopolitical:hormuz_passage:2026-08"]
     assert new["days"] == 7, f"天數沒接過來:{new}"
     assert new["first_seen"] == "2026-08-01"
+
+
+def test_a_legacy_lineage_with_a_different_action_is_not_adopted(tmp_path,
+                                                                monkeypatch):
+    """**主體有交集不代表是同一件事**(第二十五輪 P1-3)。
+
+    舊鍵「geopolitical:美國」記的是制裁案(第 4 天),今天出現的是軍售案
+    —— 兩者都含「美國」,先前就把四天接了過去,軍售案第一天直接顯示
+    「延燒第 5 天」。那正是這次重構要消掉的錯誤,只是從穩態身分搬到了遷移。
+    """
+    legacy = {"geopolitical:美國": {
+        "first_seen": "2026-08-01", "days": 4, "last_seen": "2026-08-06",
+        "latest_title": "美國宣布對某國制裁", "entity": "美國",
+        "subjects": ["美國"], "event_type": "geopolitical"}}
+    _a, state = _run(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "美國、台灣",
+         "title": "美國宣布對台軍售"}], state=legacy)
+    new_key = [k for k in state if "arms_sale" in k]
+    assert new_key, sorted(state)
+    assert state[new_key[0]]["days"] == 1, "制裁案的天數被接到軍售案上"
+    assert "geopolitical:美國" in state, "沒認領就不該收掉舊鍵"
+
+
+def test_a_legacy_record_whose_action_is_unreadable_restarts(tmp_path,
+                                                             monkeypatch):
+    """舊標題認不出動作時**從第 1 天起算**,不靠主體交集接天數。
+
+    低估連續天數只是少一句「第 N 天」;接錯會讓讀者以為一件今天才發生的
+    事已經追蹤一週。兩種錯誤的代價不對稱。
+    """
+    legacy = {"geopolitical:伊朗": {
+        "first_seen": "2026-08-01", "days": 6, "last_seen": "2026-08-06",
+        "latest_title": "(舊格式沒有存標題)", "entity": "伊朗",
+        "subjects": ["伊朗"], "event_type": "geopolitical"}}
+    _a, state = _run(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "伊朗、阿曼",
+         "title": "荷姆茲海峽通行談判"}], state=legacy)
+    assert state["geopolitical:hormuz_passage:2026-08"]["days"] == 1
 
 
 def test_an_unrelated_legacy_lineage_is_not_adopted(tmp_path, monkeypatch):
@@ -164,7 +206,10 @@ def test_the_migration_is_visible_in_the_manifest(tmp_path, monkeypatch):
     「新公式一則都沒改到」在 manifest 裡長得一樣。"""
     legacy = {"geopolitical:伊朗": {
         "first_seen": "2026-08-01", "days": 6, "last_seen": "2026-08-06",
-        "latest_title": "舊鍵", "entity": "伊朗", "subjects": ["伊朗"],
+        # 同上:真實 state 存的是當天的實際標題,不是佔位字串 ——
+        # 而認領現在要求動作相符(第二十五輪 P1-3)。
+        "latest_title": "伊朗與阿曼就荷姆茲航道談判",
+        "entity": "伊朗", "subjects": ["伊朗"],
         "event_type": "geopolitical"}}
     mr._RUN_MANIFEST.pop("event_identity", None)
     _run(tmp_path, monkeypatch, [

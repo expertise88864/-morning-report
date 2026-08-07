@@ -43,7 +43,7 @@ jobs:
 
       - name: Cache whisper models
         # 核心節目用 medium(~1.5GB)轉錄較準;快取模型避免每日重新下載、保住 job 預算
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/huggingface
           key: faster-whisper-small-medium-v1

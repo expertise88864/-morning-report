@@ -14167,7 +14167,7 @@ def update_event_timeline(structured_events: list[dict],
     # `geopolitical:伊朗、美國、阿曼`(1 天);而 `geopolitical:美國`(4 天)
     # 的 latest_title 已經漂到「對台軍售」—— 那是另一件事。
     # 身分改由 `event_identity` 決定(動作為主鍵),見該模組說明。
-    _migrated, _by_action = 0, 0
+    _migrated, _by_action, _superseded = 0, 0, 0
     for ev in structured_events or []:
         if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
             continue
@@ -14189,6 +14189,16 @@ def update_event_timeline(structured_events: list[dict],
             if _old:
                 _migrated += 1
                 state.pop(_old, None)
+            else:
+                # **接不到也要把舊線收掉**(2026-08-08 生產抓到)。
+                # 那天信裡同時出現「伊朗(第 7 天)」與
+                # 「hormuz_passage:2026-08(第 2 天)」—— 同一件荷姆茲的事
+                # 兩條線,因為舊鍵的標題認不出動作(認領收緊之後不接),
+                # 而它自己還活著、還在渲染。
+                # 讀者看到兩個不同的「第 N 天」比看到一個偏小的更糟。
+                _shadowed = _eid.supersede_legacy(state, ev, subjects, ident)
+                if _shadowed:
+                    _superseded += len(_shadowed)
         if rec is None:
             rec = {"first_seen": today, "days": 0, "last_seen": ""}
         if rec.get("last_seen") != today:
@@ -14210,6 +14220,9 @@ def update_event_timeline(structured_events: list[dict],
         "schema": _eid.IDENTITY_SCHEMA_VERSION,
         "keyed_by_action": _by_action,
         "adopted_legacy": _migrated,
+        # 接不到而被收掉的舊線:**與「接過來」是兩件事**,分開記才看得出
+        # 遷移當天有多少條線是重新起算的。
+        "superseded_legacy": _superseded,
         "legacy_remaining": _legacy_left,
     }
     # 退場:超過 3 天無更新
@@ -14298,7 +14311,7 @@ def _render_event_timeline_html(active: list[dict], htmllib) -> str:
         return ""
     rows = "".join(
         f"<div style='margin:4px 0;font-size:13px;color:#334155;'>"
-        f"・<b>{htmllib.escape(_to_traditional(str(r['key']).split(':', 1)[-1] or '事件'))}</b>"
+        f"・<b>{htmllib.escape(_to_traditional(_eid.display_label(r)))}</b>"
         f"<span style='color:#b91c1c;font-weight:700;'>(第 {r['days']} 天)</span>　"
         f"{htmllib.escape(_to_traditional(r.get('zh_title') or r.get('latest_title', '')))}</div>"
         for r in active[:4])

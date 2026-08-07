@@ -159,6 +159,32 @@ def object_signature(action: str, subjects) -> str:
         str(s) for s in (subjects or []) if str(s).strip())))[:24]
 
 
+def display_label(record) -> str:
+    """**給讀者看的事件名稱**(2026-08-08 生產抓到)。
+
+    信裡的「延燒中事件」先前印的是 `key.split(":", 1)[-1]` —— 舊的兩段式
+    鍵剛好切出主體(「伊朗」),而新的三段式鍵切出來是
+    `hormuz_passage:2026-08`,**內部識別碼直接進了信**。
+
+    鍵是給程式用的,標籤是給人看的;這兩件事先前是同一個字串,
+    所以沒有人發現它們其實是兩個東西。
+    """
+    r = record if isinstance(record, dict) else {}
+    label = action_label(str(r.get("action") or ""))
+    subs = [str(x) for x in (r.get("subjects") or []) if str(x).strip()]
+    who = "、".join(subs[:2])
+    if label and who:
+        return f"{who}{label}"
+    if label:
+        return label
+    if who:
+        return who
+    # 連主體都沒有時才退回鍵,而且只取最後一段的**非日期**部分。
+    tail = [p for p in str(r.get("key") or "").split(":")[1:]
+            if p and not p[:4].isdigit()]
+    return "、".join(tail) or "事件"
+
+
 def action_label(code: str) -> str:
     for row in ACTION_TABLE:
         if row[0] == code:
@@ -194,6 +220,41 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
         basis = "subjects"
     return {"key": key, "action": action, "subjects": canon,
             "object": obj if action else "", "basis": basis}
+
+
+def supersede_legacy(state: dict, ev: dict, subjects: list,
+                     ident: dict) -> list:
+    """**接不到的舊線要收掉,不能讓它繼續自己活著。**
+
+    `adopt_legacy` 現在要求動作相符(第二十五輪 P1-3)—— 那是對的:
+    制裁案的天數不該接到軍售案上。但接不到之後,舊鍵仍留在 state 裡
+    繼續累計、繼續渲染,於是信裡出現**同一件事的兩個「第 N 天」**
+    (2026-08-08 實測:「伊朗(第 7 天)」與「hormuz_passage(第 2 天)」)。
+
+    這裡把「同型別 + 主體有交集 + 舊動作認不出來」的舊鍵移除。
+    刻意**不碰動作認得出來而且不同**的舊鍵 —— 那是真的另一件事,
+    它應該繼續有自己的天數。回傳被收掉的鍵。
+    """
+    etype = str(ev.get("event_type") or "")
+    want = {str(x) for x in (ident.get("subjects") or subjects)}
+    gone = []
+    for k, v in list(state.items()):
+        if not isinstance(v, dict) or k == ident.get("key"):
+            continue
+        if _int(v.get("identity_schema")) >= IDENTITY_SCHEMA_VERSION:
+            continue
+        if str(k).split(":", 1)[0] != etype:
+            continue
+        old_subjects = {canonical_subject(str(x))
+                        for x in (v.get("subjects") or [])} or {
+            canonical_subject(str(k).split(":", 1)[-1])}
+        if not (old_subjects & want):
+            continue
+        if event_action(v.get("latest_title"), v.get("latest_summary")):
+            continue                      # 認得出動作 → 是別件事,留著
+        state.pop(k, None)
+        gone.append(k)
+    return gone
 
 
 def _int(v) -> int:

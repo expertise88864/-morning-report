@@ -242,3 +242,41 @@ def test_canonicalisation_never_invents_a_mapping():
     assert eid.canonical_subject("台積電") == "台積電"
     assert eid.canonical_subject("某個沒收錄的名字") == "某個沒收錄的名字"
     assert eid.canonical_subject("") == "" and eid.canonical_subject(None) == ""
+
+
+def test_production_sweeps_the_unadopted_legacy_line(tmp_path, monkeypatch):
+    """**走生產路徑驗**(2026-08-08 事故)。
+
+    上一版的回歸測試直接呼叫 `supersede_legacy`,於是把 `update_event_timeline`
+    裡的那一行拿掉時**一條測試都不紅** —— 函式對、呼叫端忘了接,而那正是
+    這個 repo 記過的形狀。這裡重現那天的 state:舊鍵「伊朗」的標題認不出
+    動作,今天來的是荷姆茲的報導。信裡不得出現兩個「第 N 天」。
+    """
+    legacy = {"geopolitical:伊朗": {
+        "first_seen": "2026-08-01", "days": 7, "last_seen": "2026-08-07",
+        "latest_title": "川普預告戰爭快結束,稱親自參與談判",
+        "entity": "伊朗", "subjects": ["伊朗"], "event_type": "geopolitical"}}
+    active, state = _run(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "伊朗、阿曼",
+         "title": "川普認了飛彈庫存吃緊,荷姆茲海峽有望重啟"}],
+        day="2026-08-08", state=legacy)
+    assert "geopolitical:伊朗" not in state, "接不到的舊線還留著,同一件事兩條"
+    assert mr._RUN_MANIFEST["event_identity"]["superseded_legacy"] == 1
+    # 新線當天才第 1 天,`days >= 2` 的門檻讓它還不顯示 —— **那是對的**:
+    # 讀者當天看不到這條線,總比看到兩個互相矛盾的「第 N 天」好。
+    assert [r["key"] for r in active] == [], active
+    assert state["geopolitical:hormuz_passage:2026-08"]["days"] == 1
+
+
+def test_the_rendered_timeline_never_shows_an_internal_key(tmp_path,
+                                                           monkeypatch):
+    """**信裡那一行要是人看得懂的名字。** 走真正的 HTML 渲染。"""
+    import html as _htmllib
+    ev = [{"event_type": "geopolitical", "entity": "伊朗、阿曼",
+           "title": "荷姆茲海峽有望重啟"}]
+    # 跑兩天:`active` 的門檻是 `days >= 2`,一天的線本來就不顯示。
+    _run(tmp_path, monkeypatch, ev, day="2026-08-08")
+    active, _ = _run(tmp_path, monkeypatch, ev, day="2026-08-09")
+    out = mr._render_event_timeline_html(active, _htmllib)
+    assert "hormuz_passage" not in out and "2026-08" not in out, out
+    assert "荷姆茲" in out

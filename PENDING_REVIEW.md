@@ -1619,6 +1619,48 @@ rose 2%` 因 `cut` 逃過價格文判定);廣度詞的裸 `rate` 換成
 **仍無 current-head production 證據**(P1-1)—— 下一次排程跑成之後
 才驗得到。
 
+### 2026-08-08 生產事故 `(下一個 commit)` —— 兩個是第二十五輪改動的直接後果
+那天的信終於是**第一份 current-head 附近的生產證據**,而它同時暴露三件事。
+
+**(A) 主分析整個沒跑 —— 這不是程式問題。**
+`config_issues: ['primary 選了 openai 但缺 OPENAI_API_KEY', 'extractor 同上']`,
+`LLM_PROVIDER` 的來源是 **repo_variable**。workflow 寫的是
+`${{ vars.LLM_PROVIDER || 'deepseek' }}` —— 也就是 GitHub 上那個 repo
+variable 明確設成 `openai`,蓋掉了 deepseek 預設;而切換到 flash 時
+OpenAI 的 key/model wiring 已經拿掉。程式做的完全正確:清楚報出設定
+問題、乾淨降級。**要改的是 GitHub 的 repo variable,不是程式。**
+
+**(B) 內部身分鍵印進信裡。** 「延燒中事件」渲染的是
+`key.split(":", 1)[-1]` —— 舊的兩段式鍵剛好切出主體(「伊朗」),
+而第二十五輪的三段式鍵切出來是 `hormuz_passage:2026-08`。
+**鍵是給程式用的,標籤是給人看的**,這兩件事先前是同一個字串,
+所以沒有人發現它們其實是兩個東西。新增 `display_label()`。
+
+**(C) 同一件事兩條線並存。** 那天信裡同時有「伊朗(第 7 天)」與
+「hormuz_passage:2026-08(第 2 天)」。成因正是第二十五輪把認領收緊
+(P1-3,動作要相符)—— 接不到之後,舊鍵**自己還活著、還在渲染**。
+`manifest.legacy_remaining` 是 22。新增 `supersede_legacy()`:
+同型別 + 主體有交集 + **舊動作認不出來**的舊鍵移除;動作認得出來而且
+不同的**留著**(那是真的另一件事)。manifest 加 `superseded_legacy`。
+
+掃掉的當天新線是第 1 天,`days >= 2` 的門檻讓它還不顯示 —— 那是對的:
+讀者當天看不到這條線,比看到兩個互相矛盾的「第 N 天」好。
+
+**突變 B 第一次沒紅**:回歸測試直接呼叫 `supersede_legacy`,而生產
+路徑那一行拿掉時一條都不紅 —— **函式對、呼叫端忘了接**,repo 記過的
+形狀。補了走 `update_event_timeline` 與真正 HTML 渲染的兩條測試。
+
+**外審應特別看的地方**:
+1. (A) 需要**你在 GitHub 改設定**:Settings → Secrets and variables →
+   Actions → Variables,把 `LLM_PROVIDER` 刪掉(讓它走 workflow 的
+   `deepseek` 預設)或改成 `deepseek`。在那之前每天都會降級。
+2. `supersede_legacy` 的判準是「舊動作認不出來」—— 認得出來就留著。
+   誤掃會讓一條真的獨立事件的天數歸零;漏掃會回到兩條線。偏保守。
+3. `display_label` 的退路(連主體與動作都沒有時)會濾掉日期段再輸出,
+   仍有可能印出動作代碼 —— 那是最後一層,實務上到不了。
+
+**驗證**:preflight exit 0、1963 passed、四個突變全紅。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

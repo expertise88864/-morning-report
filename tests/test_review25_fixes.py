@@ -268,3 +268,57 @@ def test_nasdaq_cut_losses_is_still_a_price_move():
     只在「同時有價格詞」時起作用,而那正是它們最會誤判的場合。"""
     assert es.is_price_move("Nasdaq cut losses and rose 2%")
     assert not es.is_price_move("Fed cuts rates by 25bp")
+
+
+# ============================================================ 2026-08-08 生產
+#
+# 那天的信同時暴露三個問題,其中兩個是第二十五輪改動的直接後果 ——
+# **修正比缺陷更糟**的那個形狀,由生產抓到而不是測試。
+
+def test_the_internal_identity_key_never_reaches_the_email():
+    """**鍵是給程式用的,標籤是給人看的。**
+
+    信裡的「延燒中事件」印的是 `key.split(":", 1)[-1]` —— 舊的兩段式鍵
+    剛好切出主體(「伊朗」),而第二十五輪的三段式鍵切出來是
+    `hormuz_passage:2026-08`。2026-08-08 那封信第一次讓它現形。
+    """
+    label = ei.display_label(
+        {"key": "geopolitical:hormuz_passage:2026-08",
+         "action": "hormuz_passage", "subjects": ["伊朗", "阿曼"]})
+    assert "hormuz_passage" not in label and "2026-08" not in label
+    assert "荷姆茲" in label and "伊朗" in label
+    # 舊格式仍要看得懂
+    assert ei.display_label(
+        {"key": "geopolitical:伊朗", "action": "", "subjects": ["伊朗"]}) == "伊朗"
+    # 什麼都沒有時也不得吐出日期段
+    assert "2026" not in ei.display_label({"key": "geopolitical:x:2026-08"})
+
+
+def test_an_unadopted_legacy_line_is_swept_not_left_running():
+    """**同一件事不得有兩個「第 N 天」。**
+
+    認領收緊(P1-3)之後,舊鍵接不到就自己留著繼續累計 —— 2026-08-08
+    的信因此同時出現「伊朗(第 7 天)」與「hormuz_passage(第 2 天)」。
+    低估天數只是少一句話;**兩個互相矛盾的天數比那更糟**。
+    """
+    state = {"geopolitical:伊朗": {
+        "days": 7, "subjects": ["伊朗"], "identity_schema": 4,
+        "latest_title": "川普預告戰爭快結束,稱親自參與談判"}}
+    ev = {"event_type": "geopolitical", "title": "荷姆茲海峽有望重啟"}
+    ident = ei.timeline_identity(ev, ["伊朗", "阿曼"], "2026-08-08")
+    assert ei.adopt_legacy(state, ev, ["伊朗", "阿曼"], ident)[0] is None
+    assert ei.supersede_legacy(state, ev, ["伊朗", "阿曼"], ident) == [
+        "geopolitical:伊朗"]
+    assert state == {}
+
+
+def test_a_legacy_line_about_a_different_event_is_kept():
+    """**收掉要保守。** 舊動作認得出來而且不同 —— 那是真的另一件事,
+    它應該繼續有自己的天數,不能被順手掃掉。"""
+    state = {"geopolitical:日本": {
+        "days": 3, "subjects": ["日本"], "identity_schema": 4,
+        "latest_title": "日本干預匯市"}}
+    ev = {"event_type": "geopolitical", "title": "荷姆茲海峽有望重啟"}
+    ident = ei.timeline_identity(ev, ["日本"], "2026-08-08")
+    assert ei.supersede_legacy(state, ev, ["日本"], ident) == []
+    assert "geopolitical:日本" in state

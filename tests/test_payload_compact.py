@@ -82,8 +82,10 @@ def _packet_2026_08_06():
         "news_clusters": {"required_cluster_ids": ["cluster:n0000"],
                           "clusters": [{"cluster_id": "cluster:n0000",
                                         "member_source_ids": ["n0000", "n0001"]}]},
-        "top_events": [{"cluster_id": "cluster:n0000",
-                        "member_source_ids": ["n0000"]}],
+        # **生產形狀**:`evidence_packet` 存的是 `event_score.rank()` 的
+        # **dict**(見下面的 production-shaped 測試),不是 list-of-dict。
+        "top_events": {"ranked": [], "top_cluster_ids": ["cluster:n0000"],
+                       "excluded_price_moves": [], "weights": {}},
         "signal_tensions": {"items": [
             {"tension_id": f"t{i}", "why": "張力說明" * 40,
              "evidence_refs": [f"market:X{i}"]} for i in range(40)]},
@@ -271,3 +273,61 @@ def test_budget_apply_still_raises_when_impossible():
         pb.apply(pk, manifest)
     assert manifest["llm"]["payload_budget"]["over_budget"] is True
 
+
+
+def test_tier3_survives_the_real_top_events_shape():
+    """**第三級壓縮要吃得下生產的 `top_events`**(外審 P1-3)。
+
+    `evidence_packet` 存的是 `event_score.rank()` 的**回傳 dict**
+    (`{ranked, top_cluster_ids, weights, basis}`),而上一版把它當
+    list 迭代 —— dict 迭代出 `"ranked"` 這種**字串鍵**,下一行
+    `t.get(...)` 當場 `AttributeError`。
+
+    症狀最惡的地方在於**只有真正需要第三級的大日子才走到這裡**:
+    新聞高峰日、行情資料變大的日子,也就是最需要壓縮的那天,
+    特化路徑整條失敗。這裡**不手寫 fixture 形狀** —— 走真實
+    `evidence_packet.build()`,再逼它進第三級。
+    """
+    import evidence_packet as ep
+    import event_score as es
+
+    # **題材要分散** —— 全部同題會聚成一群、整群都受保護,就測不到縮摘要。
+    _topics = ["台積電熊本廠", "聯發科法說", "長榮運價", "國泰金增資",
+               "中鋼盤價", "台達電電源", "鴻海電動車", "日月光封測",
+               "廣達伺服器", "友達面板", "統一超商展店", "中華電資費"]
+    news = [{"source_item_id": f"n{i:04d}",
+             "title": f"{_topics[i % len(_topics)]}最新進展第{i}報",
+             "summary": "摘要內容" * 200, "source": f"媒體{i % 6}",
+             "entities": [_topics[i % len(_topics)][:3]],
+             "published": "2026-08-07T10:00:00Z"} for i in range(120)]
+    pk = ep.build({"QQQ": {"close": 500.0, "change_pct": 1.2}}, {}, {},
+                  news, [], {}, as_of="2026-08-07T06:00",
+                  target_session_date="2026-08-07", sanitize=str)
+    # 真的是 rank() 的形狀(這條斷言本身就是上一版缺的那個判準)
+    assert isinstance(pk["top_events"], dict), "packet 存的不是 rank() 的回傳"
+    assert set(pk["top_events"]) >= set(es.rank([], []))
+
+    # 逼進第三級:上限壓到「壓完前兩級仍不夠」的程度
+    out, rep = pc.compact(pk, limit=20_000)          # 不得拋 AttributeError
+    tiers = [a["tier"] for a in rep["applied"]]
+    assert "news.low_materiality_summary" in tiers, f"沒走到第三級:{tiers}"
+    # 三大重點候選的成員新聞**摘要不得被縮** —— 那正是要深入分析的材料
+    top_ids = set(pk["top_events"]["top_cluster_ids"])
+    members = {str(m) for c in (pk["news_clusters"]["clusters"] or [])
+               if str(c.get("cluster_id")) in top_ids
+               for m in (c.get("member_source_ids") or ())}
+    assert members, "這份 fixture 沒有三大重點候選,測不到保護"
+    # 判準用**長度**而不是 `summary_truncated` —— 後者 `news_normalize`
+    # 在建 packet 時就會設(那是它自己的截斷),拿它驗 compact 會誤判。
+    before = {n["source_item_id"]: str(n.get("summary") or "") for n in pk["news"]}
+    by_id = {n["source_item_id"]: n for n in out["news"]}
+    for sid in members:
+        if sid not in by_id:
+            continue
+        assert by_id[sid]["summary"] == before[sid], (
+            f"{sid} 是三大重點候選的成員,摘要不該被 compact 縮短")
+    # 反面:非候選的長摘要**要**被縮,否則這條測試證明不了壓縮有在做事
+    others = [sid for sid in before
+              if sid not in members and len(before[sid]) > pc.COMPACT_SUMMARY_CHARS]
+    assert others and any(len(by_id[s]["summary"]) < len(before[s])
+                          for s in others if s in by_id), "第三級沒有真的縮任何摘要"

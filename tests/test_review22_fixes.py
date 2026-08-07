@@ -71,10 +71,16 @@ def test_the_final_request_gate_measures_the_bundle():
         raise AssertionError("最終 request 超標仍被放行")
     except pb.PayloadBudgetExceeded:
         pass
+    # 外審 P1-4:閘門改吃**真正要送的 body**,而且必須排在
+    # `build_payload` **之後** —— 排在之前就只量得到三段長度加總,
+    # 外層欄位、JSON 結構與巢狀逃逸全部漏算。
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
-    assert "_pb.request_gate(bundle" in src, "最終 gate 沒接進生產"
+    body = src[src.index("def _luna_analysis"):]
+    assert "_pb.request_gate(payload" in body, "最終 gate 沒吃到真正的 body"
+    assert body.index("_orx.build_payload(") < body.index("_pb.request_gate(payload"), (
+        "閘門排在組 payload 之前,量不到外層欄位與逃逸")
 
 
 # ---------------------------------------------------------------- 遙測(真的)
@@ -185,3 +191,39 @@ def test_tsmc_and_taijidian_cluster_together():
          {"source_item_id": "b", "title": "TSMC 熊本廠恢復產線運作",
           "entities": ["TSMC"]}])
     assert [g["member_source_ids"] for g in groups] == [["a", "b"]]
+
+
+def test_the_gate_counts_the_wrapper_fields_and_nested_escaping():
+    """**閘門要量真正的 body,不是三段長度加總**(外審 P1-4)。
+
+    漏算的兩類:
+      (a) 外層欄位 —— `model`/`store`/`safety_identifier`/`reasoning`/
+          `text`/`max_output_tokens`/prompt-cache;
+      (b) **巢狀逃逸** —— `user_payload` 自己是 JSON 字串,放進外層 body
+          之後每個引號、反斜線、換行都會再逃逸一次。
+
+    上限只留約一成 overhead,這些漏算會讓「量到的」比「送出去的」小一截。
+    """
+    import json as _json
+    import openai_responses as orx
+    # 逃逸密集的 payload:每個字元進外層都會變成兩個
+    payload_str = _json.dumps({"news": ['她說:"漲\停"\n'] * 500}, ensure_ascii=False)
+    body = orx.build_payload(
+        model="deepseek-v4-flash", instructions="指令" * 50,
+        user_input=payload_str, effort="max", verbosity="high",
+        response_format={"name": "x", "schema": {"type": "object"}, "strict": True},
+        max_output_tokens=112_000, store=False,
+        reasoning_summary="auto", reasoning_context="current_turn",
+        prompt_cache_key="morning-luna56_xhigh_v1")
+    m = {}
+    pb.request_gate(body, manifest=m)
+    measured = m["llm"]["payload_budget"]["final_request_chars"]
+
+    naive = (len(body["instructions"]) + len(body["input"])
+             + len(_json.dumps(body["text"]["format"], ensure_ascii=False)))
+    assert measured > naive, (
+        f"量到的 {measured} 沒有大於三段加總 {naive} —— 外層與逃逸仍漏算")
+    # 真的等於序列化後的長度(不是另一個近似)
+    assert measured == len(_json.dumps(body, ensure_ascii=False, default=str))
+    # 這個 body 的逃逸成本不是零頭:至少要看得出 5% 以上的差
+    assert (measured - naive) / naive > 0.05, (measured, naive)

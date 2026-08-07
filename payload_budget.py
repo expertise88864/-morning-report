@@ -138,21 +138,29 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
 MAX_REQUEST_CHARS = 1_100_000
 
 
-def request_gate(bundle: dict, *, manifest=None,
+def request_gate(body: dict, *, manifest=None,
                  limit: int = MAX_REQUEST_CHARS) -> None:
-    """對**組好的 bundle** 做最終檢查(第二十二輪 P1-2 問題 B)。
+    """對**真正要送出去的 request body** 做最終檢查(外審 P1-4)。
 
-    量的是 instructions + user payload + response schema 的實際字元 ——
-    這才是送出去的東西。超標直接 `PayloadBudgetExceeded`。
+    量的是整個 body 序列化之後的字元 —— 包含 `model` / `store` /
+    `reasoning` / `text` / `max_output_tokens` / prompt-cache 欄位、
+    外層 JSON 結構,以及**巢狀字串內的逃逸**(user payload 自己是一個
+    JSON 字串,放進外層時引號、反斜線、換行都會再逃逸一次)。
+    上一版只加總三段長度,這些全部漏算。
+
+    **刻意不用 `ensure_ascii=True`**,雖然 `requests` 上線時是那樣送:
+    這道閘門是 **token 的代理**(2026-08-05 的 429 訊息是
+    `estimated_input_tokens = 1,110,589`),而 token 算在**解碼後**的
+    內容上。中文在 ASCII 逃逸下會膨脹六倍(實測 5 萬中文字:
+    100,030 → 600,033),照 wire 長度設限會讓晨報**每天**被自家閘門擋掉,
+    擋的還不是真正的限制。分隔符沿用 `requests` 的預設。
+
+    超標直接 `PayloadBudgetExceeded`(呼叫端落回 legacy,信照樣寄)。
     """
-    # 第二十三輪 P1-2:**`structured_output` 是布林旗標**,真正的 strict
-    # schema 在 `response_schema`(實測序列化 32,080 字元)—— 上一版把
-    # `True` 序列化成 4 個字元,32K 的 schema 整個漏算,而測試餵同一個
-    # 錯鍵,兩邊一起錯、一起綠。
-    chars = (len(str(bundle.get("developer_instructions") or ""))
-             + len(str(bundle.get("user_payload") or ""))
-             + len(json.dumps(bundle.get("response_schema") or {},
-                              ensure_ascii=False, default=str)))
+    try:
+        chars = len(json.dumps(body or {}, ensure_ascii=False, default=str))
+    except (TypeError, ValueError):     # pragma: no cover - default=str 已保護
+        chars = len(str(body))
     if manifest is not None:
         manifest.setdefault("llm", {}).setdefault(
             "payload_budget", {})["final_request_chars"] = chars

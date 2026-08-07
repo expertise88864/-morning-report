@@ -165,9 +165,19 @@ def compact(packet: Optional[dict], *, limit: int) -> tuple:
         for c in (info.get("clusters") or []):
             if str(c.get("cluster_id") or "") in need:
                 keep_ids.update(str(m) for m in (c.get("member_source_ids") or ()))
-        for t in (pk.get("top_events") or []):
-            for m in ((t or {}).get("member_source_ids") or ()):
-                keep_ids.add(str(m))
+        # **`top_events` 是 `event_score.rank()` 的回傳 dict**,不是 list ——
+        # 它給的是 `top_cluster_ids`,成員要回 `news_clusters` 查。
+        # 上一版把它當 list 迭代:dict 迭代出的是 `"ranked"`、`"weights"`
+        # 這些**字串鍵**,下一行 `t.get(...)` 當場 AttributeError,而
+        # 測試 fixture 自己寫成 list-of-dict,兩邊一起錯、一起綠。
+        # 症狀最惡:只有真正需要第三級壓縮的大日子才走到這裡,
+        # 也就是**最需要壓縮的那天**特化路徑整條失敗(外審 P1-3)。
+        top = pk.get("top_events")
+        top_ids = set(str(i) for i in ((top or {}).get("top_cluster_ids") or ())
+                      ) if isinstance(top, dict) else set()
+        for c in (info.get("clusters") or []):
+            if str(c.get("cluster_id") or "") in top_ids:
+                keep_ids.update(str(m) for m in (c.get("member_source_ids") or ()))
         shortened = []
         for n in news:
             sid = str(n.get("source_item_id") or "")

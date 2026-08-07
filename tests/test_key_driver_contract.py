@@ -120,3 +120,44 @@ def test_no_silent_hiding_when_model_overshoots():
     obj = _with_drivers(pk, 5)
     problems = [p for p in sch.validate(obj, pk) if _is_count_problem(p)]
     assert problems, "多寫沒有被擋 —— 那正是靜默隱藏"
+
+
+def test_a_zero_event_day_requires_zero_drivers_not_three():
+    """**0 個合格事件是合法答案,不是「不知道」**(外審 P1-5)。
+
+    上一版 `n == 0` 與「拿不到 packet」都回 `None`:
+      * 條數契約整段跳過 → 模型塞 1–3 條虛構重點不會被擋;
+      * renderer 的 `or 3` 又把 0 當 falsy → 最多顯示三條。
+    「今天沒有三大事件」因此被迫變成虛構的三大事件 —— 而週日輕量日、
+    新聞池全是價格變化的日子,`top_cluster_ids` 真的會是空的。
+    """
+    import analysis_contracts as ac
+    pk = _packet(0)
+    assert (pk.get("top_events") or {}).get("top_cluster_ids") == [], (
+        "這份 fixture 不是 0 事件,測不到本條")
+    assert ac.key_drivers_required(pk) == 0, "0 個合格事件要回 0,不是 None"
+
+    # 拿不到分母才是 None(這條分界不能被上面那個修正弄丟)
+    assert ac.key_drivers_required(None) is None
+    assert ac.key_drivers_required({}) is None
+    assert ac.key_drivers_required({"top_events": []}) is None
+
+    # 0 事件日塞任何一條重點都要被擋
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0])]
+    problems = [p for p in ac.key_driver_count_problems(obj, pk)]
+    assert problems, "0 事件日塞了一條虛構重點卻沒被擋"
+    assert "恰好 0 條" in problems[0], problems
+
+    obj["key_drivers"] = []
+    assert ac.key_driver_count_problems(obj, pk) == [], "0 條才是這天的正確答案"
+
+
+def test_the_renderer_does_not_fall_back_to_three_on_a_zero_event_day():
+    """**`or 3` 是這個缺陷的另一半**:切片端不得把合法的 0 當成沒答案。"""
+    import analysis_contracts as ac
+    pk = _packet(0)
+    drivers = [{"statement": f"虛構{i}"} for i in range(3)]
+    assert ac.top_drivers(drivers, pk) == [], "0 事件日仍切出重點給 renderer"
+    # 拿不到分母時仍退回硬上限(不得因為修 0 而把 None 也變成 0)
+    assert len(ac.top_drivers(drivers, None)) == ac.KEY_DRIVERS_REQUIRED

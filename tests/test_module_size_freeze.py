@@ -236,7 +236,7 @@ MODULE_CEILINGS = {
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
-    "payload_compact.py": 200,
+    "payload_compact.py": 215,   # 2026-08-08:top_events dict 形狀修正 + 註解(外審 P1-3)
     # 第二十四輪 P1-1:新聞身分(`source_item_id`)從 `evidence_packet` 搬出來。
     # 搬的理由就是那個缺陷的形狀 —— ID 住在 packet 模組裡,就會讓人以為
     # 「那是 packet 階段的事」,而分群/計畫/抓取三個更早的相位全靠它。

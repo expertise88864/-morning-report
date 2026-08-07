@@ -12826,7 +12826,6 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     # 預算政策的單一入口:裁背景 → 第二層壓縮 → 記錄 → 硬閘門(見 payload_budget)
     packet = _pb.apply(packet, _RUN_MANIFEST)
     bundle = _pp.build_luna_bundle(packet)
-    _pb.request_gate(bundle, manifest=_RUN_MANIFEST)  # 量送出去的東西,不是 packet
     _RUN_MANIFEST.setdefault("llm", {})["primary_bundle"] = json.loads(
         _pp.bundle_debug_json(bundle))
     # 幽靈引用路徑要留下痕跡:張力宣稱了 packet 沒有的 `market:` 欄位時,
@@ -12847,6 +12846,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         reasoning_context=OPENAI_REASONING_CONTEXT,
         prompt_cache_key=f"morning-{bundle['profile_id']}",
         prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
+    # **量真正要送的那個 body**(外審 P1-4):閘門在 `build_payload` **之後**,
+    # 才吃得到外層欄位、JSON 結構與巢狀逃逸。放在之前只量得到三段長度加總。
+    _pb.request_gate(payload, manifest=_RUN_MANIFEST)
 
     _kept = None   # 第十五輪:合法但淺的第一版 —— 加深失敗時用它,不落回
     for repair in _LUNA_ATTEMPTS:

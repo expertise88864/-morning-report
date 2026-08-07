@@ -31,13 +31,19 @@ def key_drivers_required(packet=None):
 
     **分母只能來自 packet**(Python 計分後的 `top_events`),不能由模型自評 ——
     拿不到 packet 就回 `None`:不猜比猜錯好。
+
+    **0 是合法答案,不是「不知道」**(外審 P1-5)。上一版在 `n == 0` 時
+    一併回 `None`,把「今天真的沒有合格事件」與「沒有分母可判斷」混成同
+    一件事 —— 於是條數檢查整段跳過、renderer 的 `or 3` 又把它當 fallback,
+    「今天沒有三大事件」被迫變成虛構的三條。**只有拿不到 packet /
+    `top_events` 才是 `None`。**
     """
-    top = (packet or {}).get("top_events")
-    if isinstance(top, dict):
-        n = len(top.get("top_cluster_ids") or [])
-        if n:
-            return min(KEY_DRIVERS_REQUIRED, n)
-    return None
+    if not isinstance(packet, dict):
+        return None
+    top = packet.get("top_events")
+    if not isinstance(top, dict):
+        return None
+    return min(KEY_DRIVERS_REQUIRED, len(top.get("top_cluster_ids") or []))
 
 
 def dismissable_cluster_ids(packet) -> set:
@@ -60,8 +66,14 @@ def dismissable_cluster_ids(packet) -> set:
 
 
 def top_drivers(drivers, packet):
-    """依**今日應有條數**切片 —— renderer 與驗證器用同一個判準,不各自寫死。"""
-    return list(drivers or [])[:key_drivers_required(packet) or KEY_DRIVERS_REQUIRED]
+    """依**今日應有條數**切片 —— renderer 與驗證器用同一個判準,不各自寫死。
+
+    **不得寫 `or KEY_DRIVERS_REQUIRED`**(外審 P1-5):`0` 是合法答案而它是
+    falsy,那個 `or` 會把「今天沒有合格事件」變成「顯示三條」。只有 `None`
+    (拿不到分母)才退回硬上限。
+    """
+    want = key_drivers_required(packet)
+    return list(drivers or [])[:KEY_DRIVERS_REQUIRED if want is None else want]
 
 
 def key_driver_count_problems(obj, packet) -> list:

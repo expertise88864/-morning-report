@@ -1,25 +1,16 @@
 {
- "geopolitical:日本": {
-  "first_seen": "2026-08-01",
-  "days": 2,
-  "last_seen": "2026-08-04",
-  "latest_title": "US and Japan implement coordinated yen-market intervention",
-  "entity": "日本",
-  "subjects": [
-   "日本"
-  ],
-  "event_type": "geopolitical"
- },
  "geopolitical:伊朗": {
   "first_seen": "2026-08-01",
-  "days": 6,
-  "last_seen": "2026-08-07",
-  "latest_title": "伊朗、阿曼研議限制敵對船舶通行荷姆茲海峽",
+  "days": 7,
+  "last_seen": "2026-08-08",
+  "latest_title": "川普預告戰爭快結束：我參與談判 伊朗撐不久 - 新唐人電視台",
   "entity": "伊朗",
   "subjects": [
    "伊朗"
   ],
-  "event_type": "geopolitical"
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 6
  },
  "geopolitical:美國": {
   "first_seen": "2026-08-01",
@@ -29,17 +20,6 @@
   "entity": "美國",
   "subjects": [
    "美國"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:META": {
-  "first_seen": "2026-08-04",
-  "days": 1,
-  "last_seen": "2026-08-04",
-  "latest_title": "白宮邀Meta等AI企業商討自愿安全測試，聚焦模型黑客攻擊能力 - TradingView",
-  "entity": "META",
-  "subjects": [
-   "META"
   ],
   "event_type": "geopolitical"
  },
@@ -53,19 +33,6 @@
    "美國政府"
   ],
   "event_type": "litigation"
- },
- "geopolitical:伊朗、美國、阿曼": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "美伊荷姆茲海峽談判傳出進展",
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗",
-   "美國",
-   "阿曼"
-  ],
-  "event_type": "geopolitical"
  },
  "geopolitical:伊朗、胡塞武裝": {
   "first_seen": "2026-08-05",
@@ -246,5 +213,31 @@
   "last_seen": "2026-08-07",
   "latest_title": "台商危險了！謝金河解析「美制裁加碼、中國頒鎖國法」示警：美中角力進入深水區 - 民視財經網",
   "entity": "SMCI"
+ },
+ "export_controls:sanction:伊朗:2026-08": {
+  "first_seen": "2026-08-08",
+  "days": 1,
+  "last_seen": "2026-08-08",
+  "latest_title": "美參議院通過制裁俄羅斯和伊朗法案 - 大纪元",
+  "entity": "伊朗",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "export_controls",
+  "action": "sanction",
+  "identity_schema": 6
+ },
+ "geopolitical:hormuz_passage:2026-08": {
+  "first_seen": "2026-08-05",
+  "days": 2,
+  "last_seen": "2026-08-08",
+  "latest_title": "認了飛彈庫存吃緊！川普預言伊朗戰爭將結束荷姆茲有望重啟- 國際 - 自由時報",
+  "entity": "伊朗",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "hormuz_passage",
+  "identity_schema": 6
  }
 }

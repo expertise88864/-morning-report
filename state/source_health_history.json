@@ -1233,5 +1233,50 @@
    "世界-AI大事": 51
   },
   "drama": 0
+ },
+ {
+  "date": "2026-08-08",
+  "checks": {
+   "universe": true,
+   "institutional": true,
+   "revenue": true,
+   "liquidity": true,
+   "news": true,
+   "structured_events": true
+  },
+  "feeds": {
+   "search.cnbc.com": true,
+   "feeds.bloomberg.com": true,
+   "finance.yahoo.com": true,
+   "feeds.feedburner.com": true,
+   "www.federalreserve.gov": true,
+   "api.cnyes.com": true,
+   "openapi.twse.com.tw": true,
+   "news.ltn.com.tw": true,
+   "technews.tw": true,
+   "tw.stock.yahoo.com": true,
+   "money.udn.com": true,
+   "udn.com": true,
+   "www.scmp.com": true,
+   "asia.nikkei.com": true,
+   "feeds.bbci.co.uk": true,
+   "news.google.com": true
+  },
+  "queries": {
+   "Google-半導體": 42,
+   "Google-美股科技": 31,
+   "Google-Fed利率": 13,
+   "Google-台股大盤": 37,
+   "Google-地緣": 2,
+   "Google-散熱": 19,
+   "Google-先進封裝": 6,
+   "Google-載板PCB": 5,
+   "Google-光通訊": 5,
+   "世界-國際大事": 100,
+   "世界-災難極端": 100,
+   "世界-科學太空": 100,
+   "世界-AI大事": 48
+  },
+  "drama": 0
  }
 ]

@@ -1409,6 +1409,64 @@
     "name": "財報狗",
     "episodes": [
       {
+        "guid": "cmshn80ls0ghn01vic6gv0cy0",
+        "title": "543.【財經時事放大鏡】光禁 x 高壓、晶片、Memory TAM 比天高",
+        "published": "Thu, 06 Aug 2026 23:02:03 GMT",
+        "processed_at": "2026-08-07T01:22:01Z",
+        "digest": {
+          "summary_points": [
+            "Sky 根據熊本廠設備回復僅需 4～5 天推估，台積電此次地震損失應低於新台幣 10 億元，認為影響可控，但提醒若停工時間拉長可能引發供應鏈蝴蝶效應。",
+            "針對 FCC 擬禁中國光收發模組，Sky 指出因中國市佔高達 7～8 成，非中供應鏈具巨大機會，但產能與原料（如磷化銦基板）能否接上是關鍵，短期不易完全填補，若禁制嚴格對台灣業者將是倍數商機。",
+            "環球晶法說透露晶圓市況「近竅」，UTR 滿載且與美光簽 10 年長約並預收 5 億美元，Sky 看好晶圓循環向上，但提醒市場若以記憶體漲幅類推晶圓價格可能過度樂觀，並須注意世創持股的金融評價干擾單月財報。",
+            "HBM 降規傳言可能使配置從 16-Hi 降至 12-Hi 甚至 8-Hi，Sky 分析因 DRAM 毛利率高於 HBM，若降規釋出產能轉做 DRAM，記憶體廠反而可能賺更多；整體來看無論哪種情境，記憶體廠均處供不應求的賣方市場。",
+            "聯發科法說會上修 ASIC 營收展望約 10 億美元且市佔擴大，Sky 認為這再次驗證 AI ASIC 正處於正向循環，領導廠商持續受惠，並有機會在下一代 TPU 維持主要供應地位。",
+            "ON Semi 將 2030 年功率半導體 TAM 從 120 億大幅上調至 500 億美元，Sky 雖認同功率元件需求因 AI 伺服器電壓與電流變化而大增，但提醒只有特定高壓、高頻規格才會真正缺貨，且股價可能已反映樂觀預期。",
+            "FMS 大會揭示 HBM、高速 SSD、CXL 等新儲存技術，Sky 強調記憶體速度仍是當前 AI 運算主要瓶頸，因此包含 controller 在內的各類加速方案均具投資機會，但需留意不同方案的受惠廠商有所不同。",
+            "Sky 提到 PLP（面板級封裝）目前主要應用於 PMIC 與 RF，若未來電源管理 IC 需求大增，PLP 作為低成本方案可能迎來發展空間，但現階段市場尚未關注，可持續追蹤。"
+          ],
+          "tickers": [
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "neutral",
+              "reason": "主持人估算熊本地震損失在 10 億台幣以下，影響可控，但無明確多空表態。"
+            },
+            {
+              "name": "環球晶",
+              "code": "6488",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "法說透露晶圓市況趨緊，與美光簽長約並預收 5 億美元，主持人看好循環向上。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "法說會上修 ASIC 營收展望約 10 億美元，市佔擴大，主持人視為 AI ASIC 正向循環的證明。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "HBM 降規或 DRAM 供不應求均可能使記憶體廠受惠，主持人認為整體對記憶體廠商非利空。"
+            },
+            {
+              "name": "ON Semiconductor",
+              "code": "ON",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "雖大幅上調功率半導體 TAM，但主持人提醒股價可能已反映，且僅特定規格真正缺貨。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "主持人認為當前 AI 相關元件價值普遍提升，但股價反映的預期高低差異可創造交易機會，傾向買進市場預期較低、價格相對便宜的標的。",
+          "notable_quote": "哇靠這個晶圓的狀況現在是近竅，這個 Titan 近竅已經要來了。"
+        }
+      },
+      {
         "guid": "cms7madtv06kz01yzchn7c7zd",
         "title": "542.【達人聊產業】先進封裝良率守護者！AOM 遍尋晶圓 defect ft. 倍利科黃建中總經理",
         "published": "Thu, 30 Jul 2026 23:02:22 GMT",
@@ -1877,27 +1935,6 @@
           "notable_quote": "綠電市場其實一直處於一個結構性失衡的問題，就是綠電的需求一直存在，但是供給其實比較相對的成長的速度比較緩慢。"
         },
         "shown_at": "2026-06-16T01:08:29Z"
-      },
-      {
-        "guid": "cmq9m7ory003o01tlc7941igy",
-        "title": "531.【財經時事放大鏡】升不了壓，封不了光！HVDC & CPO 雖遲但到？",
-        "published": "Thu, 11 Jun 2026 23:02:57 GMT",
-        "processed_at": "2026-06-12T03:18:46Z",
-        "digest": {
-          "summary_points": [
-            "Semi-Analysis 報告指出 800V 高壓直流電（HVDC）量產時程延後至 28 年以後，但正負 400V 方案仍會推進，相關功率元件、被動元件需求不減。",
-            "CPO（共封裝光學）量產遞延至 29 年以後，但可插拔光模組仍是主流，中國供應鏈持續受惠。",
-            "主持人認為本波下跌主因是股價漲多後的修正，與基本面變化關聯不大，情緒性賣壓為主。",
-            "光模組實際需求強勁，缺貨現象真實，長期趨勢仍看好，但短期需等待情緒修復。",
-            "HVDC 方向正確，但技術突破需要時間，新材料（如碳化矽、氮化鎵）與安規測試是瓶頸。",
-            "市場常將研報簡化為敘事，投資者應區分短期情緒與長期趨勢，避免過度反應。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為大盤下跌主因是漲多修正，無重大利空，市場情緒主導短期走勢。",
-          "action_view": "建議關注被錯殺的光模組及 HVDC 相關供應鏈，等待情緒修復後再考慮進場。",
-          "notable_quote": "漲高了就是利空"
-        },
-        "shown_at": "2026-06-13T01:06:36Z"
       }
     ]
   },
@@ -4911,6 +4948,71 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73560597",
+        "title": "Show-Me state says no",
+        "published": "Thu, 06 Aug 2026 15:15:02 +0000",
+        "processed_at": "2026-08-07T01:24:58Z",
+        "digest": {
+          "summary_points": [
+            "SoundHound AI 第二季營收與獲利大幅優於預期，並上調全年營收展望，股價上漲 24%。",
+            "AppLovin 第二季營收與 EBITDA 不如預期，第三季財測大致符合預估，股價下跌 16%。",
+            "美國 7 月企業宣布裁員 33,429 人，為兩年來最低；初領失業金人數 19.9 萬，低於市場預期的 20.1 萬。"
+          ],
+          "tickers": [
+            {
+              "name": "SoundHound AI",
+              "code": "SOUN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 財報優於預期並上調全年展望，帶動股價上漲 24%。"
+            },
+            {
+              "name": "AppLovin",
+              "code": "APP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 營收與 EBITDA 不如預期，股價下跌 16%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/73550767",
+        "title": "Jamie Dimon warns on hidden leverage",
+        "published": "Thu, 06 Aug 2026 10:36:43 +0000",
+        "processed_at": "2026-08-07T01:26:30Z",
+        "digest": {
+          "summary_points": [
+            "主持人引述摩根大通執行長傑米·戴蒙的警告：市場負債處於歷史高點，存在大量隱藏槓桿（如避險基金透過 prime brokerage 借款、槓桿 ETF 與美債套利），一旦發生衝擊可能快速引發市場震盪。",
+            "SanDisk 上季財報與獲利優於預期，但本季營收指引 103 至 108 億美元低於市場共識的 108.2 億美元，盤前股價下跌。",
+            "App Lovin 第二季營收未達預期，股價暴跌，並拖累那斯達克 100 期貨走弱。",
+            "SpaceX 首次財報後約 9 億股（約現有流通股的 140%）今日解禁，可交易流通股從 6.389 億股增至約 15.5 億股，公眾流通股比例從約 4.9% 升至 11.9%。"
+          ],
+          "tickers": [
+            {
+              "name": "SanDisk",
+              "code": "SNDK",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q1 營收指引低於市場預期，盤前下跌。"
+            },
+            {
+              "name": "App Lovin",
+              "code": "APP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 營收未達預期，股價大跌。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "There's a lot of margin debt you don't see because it's not called margin debt. It's called other things."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73504452",
         "title": "Parks, Pixar power Disney",
         "published": "Wed, 05 Aug 2026 16:35:08 +0000",
@@ -5283,82 +5385,6 @@
           "notable_quote": "Meta Platforms reported mixed second quarter results beating on the bottom line, but missing profit expectations."
         },
         "shown_at": "2026-07-30T23:04:08Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73244300",
-        "title": "Fed holds rates and markets ain't happy",
-        "published": "Wed, 29 Jul 2026 20:37:55 +0000",
-        "processed_at": "2026-07-30T05:10:32Z",
-        "digest": {
-          "summary_points": [
-            "聯準會維持利率在3.5%至3.75%不變，為連續第五次按兵不動，但本次決議出現三位地區聯儲主席反對維持利率，傾向升息一碼，為2016年以來首次。",
-            "三位反對者分別為克里夫蘭聯儲主席Beth Hammack、達拉斯聯儲主席Lori Logan及明尼亞波利斯聯儲主席Neil Kashkari，市場原先預期Kashkari可能轉向鷹派。",
-            "聯準會會後聲明僅做最小幅度修改，未提供維持利率不變的理由，也未暗示何種情況會升息，經濟學家形容為「前所未見」。",
-            "30年期美債殖利率升至5.21%，創2007年以來新高，反映市場對長期通膨與財政的擔憂。",
-            "聯邦基金期貨顯示，9月升息與維持不變的機率大致持平，交換合約不再完全定價下次會議升息一碼。",
-            "黃金價格上漲約1%，美元指數下跌約0.5%，顯示市場對聯準會決策的負面反應。",
-            "股市在聯準會記者會後走低，標普500指數下跌1.51%，納斯達克下跌1.74%，道瓊下跌2.18%。",
-            "聯準會主席Warsh強調致力於物價穩定，並讚揚市場對縮減前瞻指引的反應，暗示可透過市場預期而非升息來收緊金融條件。",
-            "經濟學家Dario Perkins批評聯準會「以前瞻指引取代了轉向」，增加市場不確定性與波動。"
-          ],
-          "tickers": [],
-          "market_view": "聯準會維持利率不變但內部鷹派分歧加劇，市場對未來路徑更加不確定，導致長天期殖利率攀升、美元走弱、股市下跌，整體波動加劇。",
-          "action_view": "",
-          "notable_quote": "We have replaced forward guidance with spin."
-        },
-        "shown_at": "2026-07-31T22:59:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73231963",
-        "title": "Meta, Microsoft earnings test",
-        "published": "Wed, 29 Jul 2026 10:26:43 +0000",
-        "processed_at": "2026-07-29T15:27:26Z",
-        "digest": {
-          "summary_points": [
-            "Meta Platforms (META) 將在收盤後公布第二季財報，股價已連跌九個交易日，從7月盤中高點680.19美元下滑近12%至593.41美元，選擇權市場預期波動幅度約6.95%。",
-            "市場預期Meta每股盈餘7.40美元，營收602.9億美元，投資人關注AI廣告工具、AI基建支出、資本支出及展望。",
-            "微軟 (MSFT) 同日盤後公布第四季財報，市場預期每股盈餘4.24美元，營收876.3億美元，年增14.8%，焦點放在Azure雲端業務及全年資本支出。",
-            "微軟計劃2026年資本支出約1900億美元，超出分析師預期的逾1500億美元，投資人密切關注Copilot變現進展。",
-            "亞馬遜 (AMZN) 在美國雜貨市佔率一年內增幅最大，Costco、沃爾瑪、Trader Joe's及Aldi也增加市佔，克羅格、Albertsons及山姆會員店則流失市佔。",
-            "油價因伊朗攻擊美軍並拒絕阿曼提議而上漲逾3%，西德州原油升至近82美元，布蘭特原油升至87美元。",
-            "Avis Budget Group (CAR) 因第二季營收與獲利不如預期，盤前股價下跌13%。",
-            "摩根大通策略師表示當前股市處於世代交易（generational trade）的早期階段。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報公布前股價連跌，選擇權市場預期波動大，但無明確多空方向。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報公布前市場關注AI投資回報及Copilot變現，無明確方向。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "美國雜貨市佔率增幅最大，顯示業務成長。"
-            },
-            {
-              "name": "Avis Budget Group",
-              "code": "CAR",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第二季營收與獲利不如預期，股價下跌13%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "One JP Morgan strategist says the current stock market is in the early stages of a generational trade."
-        },
-        "shown_at": "2026-07-29T22:53:55Z"
       }
     ]
   },

@@ -46,7 +46,6 @@ MAX_PAYLOAD_CHARS = 600_000
 TRIMMABLE_BLOCKS = (
     "HISTORY",                  # 歷史序列:最大、對當日判斷最間接
     "GAZETTE_RECORDS",          # 公報全文
-    "TW_DAILY_INTELLIGENCE",    # 政策情報彙整
     "STRUCTURED_NEWS_EVENTS",   # 結構化事件(新聞側已另有全文)
     "EVENT_TIMELINE",
     "POLICY_NEW_KEYWORDS",

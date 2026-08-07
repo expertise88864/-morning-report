@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 23_780  # 現況 23727(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_443  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -292,7 +292,6 @@ MODULE_CEILINGS = {
     # **不是模型寫的** —— 財經日曆由 Python 直接排進 HTML。
     "econ_terms.py": 180,
     # 同一批:別縣市的單一場所規章不該佔一個政策版位。
-    "policy_scope.py": 60,
     # 深度優化第三批:類股熱度表的一句話解讀 —— 表上四個數字都在,
     # 合起來的那句話沒有人說(2026-08-05 實信:半導體佔 40.5% 而
     # 台積電 -2.1%)。與 top5_readout 同規矩:衝突優先、不建議、可沉默。

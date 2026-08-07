@@ -287,41 +287,6 @@ def test_render_html_size_guard_compacts_points_for_few_large_episodes(monkeypat
     assert "一、美股收盤行情" in html
 
 
-def test_render_html_size_guard_drops_policy_before_podcast_and_sports(monkeypatch):
-    """trim 模式:超標時依使用者優先序先砍政策,Podcast 與體育保留。"""
-    monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")
-    monkeypatch.setattr(mr, "_estimated_email_kb",
-                        lambda h: 120.0 if "POLICYMARK" in h else 80.0)
-    q = {**_full_quotes(),
-         "TW_DAILY_INTELLIGENCE": {
-             "policy": [{"title": "POLICYMARK 重大政策", "published": "2026-06-15", "link": "#"}],
-             "medical": [{"title": "醫界訊息", "published": "2026-06-15", "link": "#"}]},
-         "SPORTS": {"news": {}, "cpbl_scores": [
-             {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
-              "winner": "away", "date": "06/14"}]},
-         "PODCAST_DIGEST": [{"show": "股癌", "title": "EP670",
-                             "digest": {"summary_points": ["重點一", "重點二"], "tickers": []}}]}
-    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    assert "POLICYMARK" not in html                 # 政策被砍
-    assert "已暫略" in html and "政府政策" in html    # 橫幅標示砍了政策
-    assert "中華職棒" in html                         # 體育保留
-    assert "Podcast 重點" in html and "股癌" in html  # Podcast 保留
-    # 批#9 回歸:政策被 trim 整塊移除 → 回報未顯示,寄信端不得把沒看到的條目標成 shown
-    assert q["TW_INTEL_POLICY_SHOWN"] is False
-
-
-def test_render_html_reports_policy_shown_when_not_trimmed(monkeypatch):
-    """政策區正常出現在信中 → TW_INTEL_POLICY_SHOWN=True(寄信端據此記錄已顯示)。"""
-    monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 full,不移除任何區塊
-    q = {**_full_quotes(),
-         "TW_DAILY_INTELLIGENCE": {
-             "policy": [{"title": "重大政策", "published": "2026-06-15", "link": "#"}],
-             "medical": []}}
-    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    assert "重大政策" in html
-    assert q["TW_INTEL_POLICY_SHOWN"] is True
-
-
 def test_render_html_reports_only_shown_podcast_episodes(monkeypatch):
     """只有真正出現在信中的 Podcast 集才回報為 shown;被砍/縮掉的不算(否則永遠不再出現)。"""
     monkeypatch.setenv("EMAIL_OVERFLOW_MODE", "trim")   # 縮減/移除行為僅在 trim 模式
@@ -426,12 +391,10 @@ def test_render_html_stays_within_gmail_ceiling_with_huge_podcast(monkeypatch):
 
 
 def test_render_html_keep_mode_does_not_omit_sections(monkeypatch):
-    """預設 keep 模式:即使估算超標也不省略任何區塊,只加可點開提示;Podcast/體育/政策都在。"""
+    """預設 keep 模式:即使估算超標也不省略任何區塊,只加可點開提示;Podcast/體育都在。"""
     monkeypatch.delenv("EMAIL_OVERFLOW_MODE", raising=False)   # 預設 = keep
     monkeypatch.setattr(mr, "_estimated_email_kb", lambda h: 130.0)   # 一律「超標」
     q = {**_full_quotes(),
-         "TW_DAILY_INTELLIGENCE": {
-             "policy": [{"title": "POLICYKEEP 政策", "published": "2026-06-15", "link": "#"}]},
          "SPORTS": {"news": {}, "cpbl_scores": [
              {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
               "winner": "away", "date": "06/14"}]},
@@ -440,13 +403,13 @@ def test_render_html_keep_mode_does_not_omit_sections(monkeypatch):
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
     assert "已暫略" not in html                       # 不省略
     assert "顯示完整內容" not in html                   # 使用者要求移除「本期內容較長」提示橫幅
-    assert "POLICYKEEP" in html and "中華職棒" in html and "EPKEEP" in html  # 全都在
+    assert "中華職棒" in html and "EPKEEP" in html  # 全都在
     assert q["PODCAST_SHOWN_EPISODES"] == q["PODCAST_DIGEST"]   # 全集視為已顯示
 
 
 def test_render_html_user_requested_trims_2026_06():
     """2026-06 使用者批次精簡:市場警告/外資台指期未平倉/中期展望/區間方法/今日立場/
-    已自我校正/個股冗長註腳 全部移除;政策·醫界各只留 3 篇;核心(訊號共識/行情/個股預測)保留。"""
+    已自我校正/個股冗長註腳 全部移除;核心(訊號共識/行情/個股預測)保留。"""
     q = {**_full_quotes(),
          "ALERTS": [{"level": "red", "title": "費半急跌", "detail": "SOX 單日跌 -5.71%"}],
          "TAIFEX_OI": {"foreign_oi_net": -69847, "invest_oi_net": 56894,
@@ -457,12 +420,7 @@ def test_render_html_user_requested_trims_2026_06():
          "MIDTERM": {"2330": {"trend": "上行",
                               "metrics": {"pct_5d": 4.1, "ma20_dist_pct": 3.6},
                               "forecast": {"5d": {"lower": 2359, "upper": 2546},
-                                           "20d": {"lower": 2318, "upper": 2693}}}},
-         "TW_DAILY_INTELLIGENCE": {
-             "policy": [{"title": f"政策{i}", "published": "2026-06-16", "link": "#",
-                         "importance": 5 - i * 0.1} for i in range(5)],
-             "medical": [{"title": f"醫界{i}", "published": "2026-06-16", "link": "#",
-                          "importance": 6 - i * 0.1} for i in range(5)]}}
+                                           "20d": {"lower": 2318, "upper": 2693}}}}}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-17", "每日報")
     # --- 移除項 ---
     assert "市場警告" not in html and "費半急跌" not in html       # 2. 市場警告
@@ -471,24 +429,9 @@ def test_render_html_user_requested_trims_2026_06():
     assert "區間方法" not in html and "今日立場：" not in html       # 4. 區間方法/今日立場
     assert "已自我校正" not in html                                # 4. 已自我校正
     assert "非開盤價" not in html and "刻意保守" not in html         # 5. 個股冗長註腳
-    # --- 政策/醫界各只留最重要 3 篇 ---
-    assert "政策0" in html and "政策2" in html and "政策3" not in html
-    assert "醫界0" in html and "醫界2" in html and "醫界3" not in html
     # --- 核心保留 ---
     assert "訊號共識" in html                                      # 訊號共識保留
     assert "一、美股收盤行情" in html and "個股開盤預測" in html
-
-
-def test_render_html_low_priority_sections_sit_at_bottom():
-    """版面順序:體育在前,政策/醫界在最末(Gmail 真要剪先剪低優先,不動體育)。"""
-    q = {**_full_quotes(),
-         "TW_DAILY_INTELLIGENCE": {"policy": [{"title": "政策X", "published": "2026-06-15", "link": "#"}]},
-         "SPORTS": {"news": {}, "cpbl_scores": [
-             {"away": "統一", "home": "味全", "away_score": 5, "home_score": 3,
-              "winner": "away", "date": "06/14"}]}}
-    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    # 體育(中華職棒)應排在 政策整理 之前
-    assert html.index("中華職棒") < html.index("政策整理")
 
 
 def test_render_html_contains_required_sections():
@@ -808,19 +751,6 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkey
         "date": "2026/06/02", "foreign_oi_net": -21000,
         "invest_oi_net": 1000, "dealer_oi_net": -500,
     }
-    q["TW_DAILY_INTELLIGENCE"] = {
-        "window": "2026-06-02 至 2026-06-02",
-        "policy": [{
-            "published": "2026-06-02", "topic": "住宅政策",
-            "official": True, "source_grade": "A", "status": "confirmed",
-            "title": "政策測試標題", "link": "https://example.com/policy",
-        }],
-        "medical": [{
-            "published": "2026-06-02", "topic": "醫療量能",
-            "official": False, "source_grade": "B", "status": "confirmed",
-            "title": "醫界測試標題", "link": "https://example.com/medical",
-        }],
-    }
     q["TW_UNIVERSE_SNAPSHOT"] = [{
         "code": "2330", "name": "台積電", "close": 1000.0, "day_pct": 1.0,
         "attention_score": 72.5, "ranking_score": 72.5, "news_catalyst_score": 2.4,
@@ -845,14 +775,11 @@ def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkey
     # 十二、十三已上移到頂端「今日結論」卡,body 不再有「我的明確立場」標題;
     # 其內容(立場/一句話)應出現在頂端(比 taifex 更早)。
     summary_idx = html.find("今日結論")
-    policy_idx = html.find("台灣政策近月走向")
-    medical_idx = html.find("台灣醫界昨日走向")
     top5_idx = html.find("台股客觀關注排名 Top 1")
-    assert -1 not in (summary_idx, policy_idx, medical_idx, top5_idx)
+    assert -1 not in (summary_idx, top5_idx)
     assert "外資台指期未平倉" not in html   # 該區塊已依使用者要求隱藏
-    # 依使用者犧牲優先序排版(低優先在最末,Gmail 真要剪先剪政策/醫界):
-    # 結論在頂端,接著五檔,最後才是醫學文獻、政策、醫界。
-    assert summary_idx < top5_idx < policy_idx < medical_idx
+    # 結論在頂端,五檔在後(政策/醫界卡已於 2026-08-07 移除)。
+    assert summary_idx < top5_idx
     assert "偏多但控風險" in html[:html.find("一、美股收盤行情")]   # 一句話在頂端
 
 

@@ -38,7 +38,7 @@ DIAGNOSTIC_KEYS = (
     "model_history_days", "d1_samples", "d1_ready", "stance_dual",
     "data_checks", "mz_shadow", "llm_extractor", "delivery",
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
-    "corporate_actions", "chips", "policy_deepdive", "llm",
+    "corporate_actions", "chips", "llm",
     "state_writes", "event_identity",
     # 兩階段抓取的計畫(重構規格 Commit B):**涵蓋了幾個事件、漏了哪幾個**。
     # 只記「抓了幾篇」會讀起來像涵蓋完整 —— 沒有靜默的上限。

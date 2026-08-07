@@ -741,11 +741,13 @@ def test_sections_do_not_re_expand_what_belongs_elsewhere():
     # (既有的 `policy_deepdive_note` 就是為了這個才做成條件化的)。
     from tests.test_data_validation import _empty_quotes
     with_policy = mr._build_prompt(
-        _empty_quotes(TW_DAILY_INTELLIGENCE={"policy": [
-            {"title": "新青安 3.0 八月上路 五大門檻一次看",
-             "link": "https://example.com/1", "source": "自由時報",
-             "importance": 9.0, "topic": "新青安",
-             "published": "2026-07-30T08:00:00+08:00"}]}),
+        _empty_quotes(GAZETTE_RECORDS=[{
+            "meta_id": "167273", "publisher": "財政部",
+            "date_published": "中華民國115年7月24日", "comment_deadline": "",
+            "title": "財政部令:修正「金融機構稅務申報作業要點」",
+            "theme_subject": "修正作業要點第8點", "keywords": ["青年安心成家方案"],
+            "explain": "配合實務需要修正", "category_codes": ["510"],
+            "content": "第一點 適用對象為……", "url": "https://gazette.example/1"}]),
         {"error": "x"}, {"error": "x"}, [], [], "")
     nine_p = with_policy[with_policy.index("## 九、其他類股資訊"):
                          with_policy.index("## 十、台灣本地動態")]

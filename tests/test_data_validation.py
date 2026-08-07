@@ -1442,12 +1442,6 @@ def test_output_must_not_disclose_a_watchlist():
     assert "R15b" in prompt, "禁令本身要在"
     assert "暗示本報有一份特定關注清單的措辭" in prompt
 
-    # 政策卡的「入選原因」會原樣渲染進信件
-    _, reasons = mr._tw_intelligence_importance(
-        "policy", "行政院拍板台灣未來帳戶", True, "昨日新訊", "已公告")
-    for r in reasons:
-        assert "本報" not in str(r), f"入選原因洩漏關注清單:{r}"
-
     # podcast 對照標籤
     label = ru._podcast_ticker_crosscheck({"code": "9999", "market": "TW"}, [])
     assert "追蹤池" not in label and "本報追蹤" not in label

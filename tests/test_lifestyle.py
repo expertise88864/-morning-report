@@ -447,24 +447,14 @@ def test_estimated_email_kb_measures_decoded_html():
 
 
 def test_truncate_default_order_protects_podcast_and_sports():
-    """預設犧牲序依使用者指定:政策先砍、Podcast/體育殿後。"""
+    """預設犧牲序依使用者指定:文獻/五檔先砍、Podcast/體育殿後。
+    (2026-08-07:政策/醫界卡整組移除,不再出現在犧牲序。)"""
     order = mr._truncate_order()
-    assert order[0] == "policy" and order[1] == "medical"
+    assert "policy" not in order and "medical" not in order
     assert order[-1] == "podcast" and order[-2] == "sports"
-    # 政策/醫界/醫學文獻/五檔 都排在 體育/Podcast 之前
-    for k in ("policy", "medical", "journals", "top5"):
+    # 醫學文獻/五檔 都排在 體育/Podcast 之前
+    for k in ("journals", "top5"):
         assert order.index(k) < order.index("sports") < order.index("podcast")
-
-
-def test_tw_intelligence_include_flags():
-    intel = {"policy": [{"title": "政策A", "published": "2026-06-15", "link": "#"}],
-             "medical": [{"title": "醫界B", "published": "2026-06-15", "link": "#"}]}
-    import html as htmllib
-    both = mr._render_tw_intelligence_html(intel, htmllib)
-    assert "政策A" in both and "醫界B" in both
-    no_policy = mr._render_tw_intelligence_html(intel, htmllib, include_policy=False)
-    assert "政策A" not in no_policy and "醫界B" in no_policy        # 砍政策不影響醫界
-    assert mr._render_tw_intelligence_html(intel, htmllib, False, False) == ""
 
 
 def test_render_worldcup_marks_advancing_top2():
@@ -588,51 +578,23 @@ def test_weekend_digest_content_gate():
     fresh = (now - dt.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M")
     stale = (now - dt.timedelta(days=10)).strftime("%Y-%m-%d %H:%M")
 
+    del fresh, stale   # 政策/醫界卡已移除(2026-08-07),時效參數不再使用
     # 新內容 → 寄
     assert mr._weekend_digest_has_content(
-        {"worldcup": {"results": [1]}}, [], {}, [], now) is True       # 世足昨日完賽
-    assert mr._weekend_digest_has_content({}, [{"x": 1}], {}, [], now) is True  # 未顯示過的 podcast
+        {"worldcup": {"results": [1]}}, [], [], now) is True       # 世足昨日完賽
+    assert mr._weekend_digest_has_content({}, [{"x": 1}], [], now) is True  # 未顯示過的 podcast
     assert mr._weekend_digest_has_content(
-        {"nba": [{"date": yday, "text": "x"}]}, [], {}, [], now) is True        # 昨日 NBA
+        {"nba": [{"date": yday, "text": "x"}]}, [], [], now) is True        # 昨日 NBA
     assert mr._weekend_digest_has_content(
-        {"cpbl_scores": [{"date": yday}]}, [], {}, [], now) is True             # 昨日中職比分
-    assert mr._weekend_digest_has_content(
-        {}, [], {"policy": [{"published": fresh}]}, [], now) is True            # 近 30h 政策
-    assert mr._weekend_digest_has_content(
-        {}, [], {"medical": [{"published": fresh}]}, [], now) is True           # 近 30h 醫界
+        {"cpbl_scores": [{"date": yday}]}, [], [], now) is True             # 昨日中職比分
 
     # 舊內容/純版面內容 → 不寄(避免與週六信重複)
     assert mr._weekend_digest_has_content(
-        {"nba": [{"date": "06/09", "text": "x"}]}, [], {}, [], now) is False    # 5 天前 NBA 非新
+        {"nba": [{"date": "06/09", "text": "x"}]}, [], [], now) is False    # 5 天前 NBA 非新
     assert mr._weekend_digest_has_content(
-        {}, [], {"policy": [{"published": stale}]}, [], now) is False           # 10 天前政策
-    assert mr._weekend_digest_has_content(
-        {"cpbl": [1, 2], "standings": {"美聯": [1]}}, [], {}, [], now) is False  # 純戰績表
-    assert mr._weekend_digest_has_content({}, [], {}, [1], now) is False        # 文獻不單獨觸發
-    assert mr._weekend_digest_has_content({}, [], {}, [], now) is False
-
-
-def test_weekend_gate_policy_excludes_pre_saturday_items():
-    """政策/醫界用 24h 窗 ≈『上一封信之後才出刊』,週六信之前(>24h)的不再觸發。"""
-    import datetime as dt
-    sun = dt.datetime(2026, 6, 14, 6, 10, tzinfo=mr.TPE)            # 週日早上發信
-    after_sat_report = (sun - dt.timedelta(hours=20)).strftime("%Y-%m-%d %H:%M")  # 週六上午之後
-    before_sat_report = (sun - dt.timedelta(hours=26)).strftime("%Y-%m-%d %H:%M")  # 週六信之前
-    assert mr._weekend_digest_has_content(
-        {}, [], {"policy": [{"published": after_sat_report}]}, [], sun) is True
-    assert mr._weekend_digest_has_content(
-        {}, [], {"policy": [{"published": before_sat_report}]}, [], sun) is False
-
-
-def test_published_within_hours():
-    import datetime as dt
-    now = dt.datetime(2026, 6, 14, 8, 0, tzinfo=mr.TPE)
-    assert mr._published_within_hours("2026-06-14 06:00", 30, now) is True
-    assert mr._published_within_hours("2026-06-13 05:00", 30, now) is True
-    assert mr._published_within_hours("2026-06-12 06:00", 30, now) is False   # >30h
-    assert mr._published_within_hours("2026-06-14", 30, now) is True          # 純日期
-    assert mr._published_within_hours("", 30, now) is False
-    assert mr._published_within_hours("not-a-date", 30, now) is False         # 無法解析→False
+        {"cpbl": [1, 2], "standings": {"美聯": [1]}}, [], [], now) is False  # 純戰績表
+    assert mr._weekend_digest_has_content({}, [], [1], now) is False        # 文獻不單獨觸發
+    assert mr._weekend_digest_has_content({}, [], [], now) is False
 
 
 def test_fetch_worldcup_parses_espn(monkeypatch):
@@ -839,7 +801,6 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     monkeypatch.setattr(mr, "fetch_weather", lambda: [])
     monkeypatch.setattr(mr, "fetch_sports_digest", lambda now: {})
     monkeypatch.setattr(mr, "load_podcast_digest", lambda: podcast)
-    monkeypatch.setattr(mr, "fetch_tw_daily_intelligence", lambda now: {})
     monkeypatch.setattr(mr, "fetch_medical_journal_articles", lambda: [])
     monkeypatch.setattr(mr, "translate_journal_titles", lambda a: [])
     monkeypatch.setattr(mr, "fetch_event_calendar", lambda now: [])
@@ -858,7 +819,7 @@ def _stub_weekend_sources(monkeypatch, *, podcast):
     for fn in ("_render_weather_html", "_render_event_calendar_html"):
         monkeypatch.setattr(mr, fn, lambda *a, **k: "")
     for fn in ("_render_sports_html", "_render_podcast_html",
-               "_render_tw_intelligence_html", "_render_journals_html"):
+               "_render_journals_html"):
         monkeypatch.setattr(mr, fn, lambda *a, **k: "")
     monkeypatch.delenv("DRY_RUN", raising=False)
 
@@ -886,12 +847,11 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert ("marked", 1) in events
     assert "history!" not in events                       # 關鍵:不污染預測歷史
     pushes = [e for e in events if isinstance(e, tuple) and e[0] == "push"]
-    # §B:週末也 push 信件存檔目錄+政策已顯示記錄(仍不含 history/model_history,不污染預測歷史)
+    # §B:週末也 push 信件存檔目錄(仍不含 history/model_history,不污染預測歷史)
     # 批#69 r1(Codex,P1):`run_manifest` 加進週日的 push 清單。原本不在裡面,
     # 而它又寫在 push **之後** → 週日寫出來的 manifest 永遠不會被 commit,
     # repo 裡的檔案停在週六;看門狗讀那個檔判定「今天有沒有跑」,週日必然誤報。
     assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE),
-                                       str(mr.INTEL_SHOWN_FILE),
                                        str(mr.POLY_HISTORY_FILE),
                                        str(mr.RUN_MANIFEST_FILE),
                                        str(mr.EMAIL_ARCHIVE_DIR)]
@@ -1186,30 +1146,6 @@ def test_weekly_recap_html():
     assert "本週預測回顧" in h and "-1.71%" in h and "-0.36%" in h
     assert mr._render_weekly_recap_html([]) == ""
 
-
-def test_medical_entity_cap_one_per_day(monkeypatch):
-    """同一機構(中榮)多角度報導,醫界區每天最多 1 條。"""
-    class Feed:
-        entries = [{
-            "title": "神外住院遭停約 中榮研擬申覆",
-            "link": "https://news.example.com/a",
-            "published": "Tue, 02 Jun 2026 08:00:00 GMT",
-        }, {
-            "title": "廠商代刀風暴 中榮擬向醫師求償遭裁罰",
-            "link": "https://news.example.com/b",
-            "published": "Tue, 02 Jun 2026 09:00:00 GMT",
-        }]
-
-    import datetime as dt
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda *a, **k: Feed())
-    out = mr.fetch_tw_daily_intelligence(
-        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
-    titles = [item["title"] for item in out["medical"]]
-    assert sum(1 for t in titles if "中榮" in t) <= 1
-
-
-# ===================== 世足淘汰賽修正(2026-07-13)=====================
 
 def test_fetch_worldcup_results_cover_previous_espn_bucket(monkeypatch):
     """ESPN 以美國日期分桶:台北早上場次在「台北−2」桶也要抓到,日期以開球換算台北為準。
@@ -1692,36 +1628,6 @@ def test_fetch_nba_week_fixtures_den_not_matching_golden_state(monkeypatch):
     assert "GSW @ MIA" not in texts                   # 不誤中 Golden State
 
 
-def test_medical_org_cap_covers_source_org_key(monkeypatch):
-    """G8 回歸(Codex review):TFDA 公告標題常不含「食藥署」——每日一機構 cap 須退回
-    來源設定的 org_key 辨識,否則官方 feed 多則公告會繞過 cap 佔滿醫界區。"""
-    import datetime as dt
-
-    class Feed:
-        def __init__(self, url):
-            title = ("藥品全面回收 多批次檢驗不符規範" if "rssNews" in url
-                     else "醫材預防性下架 標示不符須改正")   # 皆不含「食藥署」
-            self.entries = [{
-                "title": title,
-                "link": f"https://www.fda.gov.tw/x/{'a' if 'rssNews' in url else 'b'}",
-                "published": "Tue, 02 Jun 2026 08:00:00 GMT",
-            }]
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda url, *a, **k: Feed(url))
-    # 只留兩條 TFDA 官方 feed(共用 org_key),排除 Google 與其他直連源的干擾
-    monkeypatch.setattr(mr, "TW_INTELLIGENCE_QUERIES", {"policy": (), "medical": ()})
-    monkeypatch.setattr(mr, "TW_INTELLIGENCE_DIRECT_SOURCES", {
-        "policy": (),
-        "medical": tuple(s for s in mr.TW_INTELLIGENCE_DIRECT_SOURCES["medical"]
-                         if "FDA" in s["name"]),
-    })
-    out = mr.fetch_tw_daily_intelligence(
-        dt.datetime(2026, 6, 3, 6, tzinfo=mr.TPE), per_kind_limit=8)
-    # 兩則標題皆無機關名 → 靠 org_key 歸同機構,每日最多 1 條
-    assert len(out["medical"]) == 1
-
-
-# ═══ 信件調整批#2(2026-07-14)═══
 def test_ipo_filter_excludes_bonds(monkeypatch):
     """公開申購只留股票抽籤:央債/公司債(代號含字母或名稱含「債」)一律排除。"""
     import datetime as dt
@@ -1936,29 +1842,6 @@ def test_batch30_tennis_round_zh():
 
 
 # ═══ 信件調整批#4(2026-07-15)═══
-def test_medical_employer_special_case_removed_covered_by_local_card():
-    """兩院(彰基/中國醫)一般/建設消息已整合到「在地快訊」卡(2026-07-15 拍板)——
-    醫界卡不再有豁免/加成,建設類回歸一般規則被擋;硬新聞(裁罰/感染)仍照常召回。"""
-    # 建設消息無硬新聞詞 → 與一般醫院同樣被擋(在地卡涵蓋,見 LOCAL_NEWS_QUERIES)
-    assert mr._tw_intelligence_recall_hit("medical", "彰基新醫療大樓動土 打造中部醫療新地標") is False
-    # 硬新聞仍走一般規則進醫界卡
-    assert mr._tw_intelligence_recall_hit("medical", "彰基遭健保署裁罰") is True
-    # 在地卡查詢涵蓋兩院
-    labels = {r[0]: r[1] for r in mr.LOCAL_NEWS_QUERIES}
-    assert "彰基/中國醫" in labels
-    assert "彰化基督教醫院" in labels["彰基/中國醫"] and "中醫大附醫" in labels["彰基/中國醫"]
-
-
-def test_batch4_queries_present():
-    # 兩院查詢已自醫界遷至在地快訊(見 test_medical_employer_special_case_removed…)
-    assert not any("彰基" in q for q in mr.TW_INTELLIGENCE_QUERIES["medical"])
-    assert "中友百貨" in mr.OTHER_SECTOR_QUERIES["建設-中彰投"]
-    q2882 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2882" and "OR" in q)
-    q2891 = next(q for q, lbl in mr.GOOGLE_NEWS_COMPANIES if lbl == "2891" and "OR" in q)
-    assert "國泰世華" in q2882 and "國泰產險" in q2882      # 子公司納入
-    assert "台灣人壽" in q2891 and "中信銀" in q2891
-
-
 def test_mlb_chinese_team_names():
     import html as htmllib
     assert mr._mlb_zh("TB @ BOS") == "坦帕灣光芒 @ 波士頓紅襪"
@@ -2031,17 +1914,6 @@ def test_local_queries_cover_douliu():
     assert "總太" in mr.OTHER_SECTOR_QUERIES["建商-中彰投"]
 
 
-def test_medical_org_cap_canonicalizes_employer_aliases():
-    """回歸(Codex review):全名「彰化基督教醫院」與簡稱「彰基」須收斂同一鍵,
-    中國醫四種寫法亦同——否則任職醫院多篇報導繞過每日一機構 cap。"""
-    assert mr._tw_medical_org_key("彰化基督教醫院新大樓動土") == "彰基"
-    assert mr._tw_medical_org_key("彰基擴建計畫") == "彰基"
-    for t in ("中國醫藥大學附設醫院質子中心", "中國醫藥大學新校區",
-              "中醫大附醫手術突破", "中國附醫公告"):
-        assert mr._tw_medical_org_key(t) == "中國附醫", t
-    assert mr._tw_medical_org_key("台中榮總急診") == "中榮"   # 既有行為不變
-
-
 def test_local_news_keeps_25h_old_items(monkeypatch):
     """回歸(Codex review):when=1d 伺服器端只回 24h 內,24-30h 新聞被吃掉——
     改 when=2d 抓寬、cutoff 30h 精確過濾:25h 前的新聞須保留、31h 前的須剔除。"""
@@ -2097,14 +1969,6 @@ def test_weekend_digest_includes_local_news_card(monkeypatch):
 
 
 # ═══ 批#6(2026-07-15)═══
-def test_batch6_queries_present():
-    labels = {r[0]: r[1] for r in mr.LOCAL_NEWS_QUERIES}
-    assert "交通異動" in labels and "台74" in labels["交通異動"]   # 在地交通異動
-    pol = mr.TW_INTELLIGENCE_QUERIES["policy"]
-    assert any("房貸利率" in q for q in pol)                      # 房貸利率新聞式追蹤
-    assert any("托育補助" in q for q in pol)                      # 托育/教育政策
-
-
 def test_espn_week_fixtures_attach_odds(monkeypatch):
     """MLB/NBA 週賽程附賭盤(縮寫組行,渲染端再中文化);無賠率場次 odds 為空。"""
     import datetime as dt

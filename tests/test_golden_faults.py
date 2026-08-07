@@ -604,7 +604,7 @@ def test_batch33_state_pushed_even_without_history_entry(monkeypatch):
     assert pushes, "entry 缺席時仍須提交其餘 state"
     paths = pushes[0][0]
     for must in (str(mr.FORECAST_LEDGER_FILE), str(mr.CONFORMAL_STATE_FILE),
-                 str(mr.MODEL_HISTORY_DIR), str(mr.INTEL_SHOWN_FILE)):
+                 str(mr.MODEL_HISTORY_DIR), str(mr.POLICY_KEYWORDS_FILE)):
         assert must in paths, must
 
 

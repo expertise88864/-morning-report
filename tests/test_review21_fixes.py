@@ -76,11 +76,11 @@ def test_trim_order_follows_measured_size_not_declaration():
     """**P2-3**:上一個反例的大小剛好與宣告順序一致,測不到排序 ——
     這裡把大小反過來(宣告順序靠後的那塊最大)。"""
     pk = {"market": {"HISTORY": {"rows": ["小" * 1_000]},
-                     "TW_DAILY_INTELLIGENCE": {"items": ["大" * 300_000]}},
+                     "STRUCTURED_NEWS_EVENTS": {"items": ["大" * 300_000]}},
           "news": [], "signal_tensions": {}}
     _, report = pb.trim(pk, limit=2_000)
     order = [t["block"] for t in report["trimmed"]]
-    assert order[0] == "market.TW_DAILY_INTELLIGENCE", order
+    assert order[0] == "market.STRUCTURED_NEWS_EVENTS", order
 
 
 # ---------------------------------------------------------------- 語意相容

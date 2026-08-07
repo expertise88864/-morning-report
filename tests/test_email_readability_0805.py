@@ -10,7 +10,6 @@
   * 有一項是**取材範圍不對** —— 別縣市的停車場管理要點佔掉一個政策版位。
 """
 import econ_terms as et
-import policy_scope as ps
 import render_utils as ru
 import writing_rules as wr
 
@@ -118,31 +117,3 @@ def _rules_text() -> str:
 
 
 # ---------------------------------------------------------------- 政策範圍
-
-def test_another_countys_parking_rules_do_not_take_a_policy_slot():
-    """使用者原話:「不用高雄楠梓科技園區這種很地方性的資訊」。"""
-    assert ps.is_out_of_area_local_policy(
-        {"topic": "高雄楠梓科技產業園區停車場管理要點"}) is True
-
-
-def test_home_region_local_policy_is_kept():
-    """「可以有地方性的資訊,但是要在台中彰化南投雲林為主」。"""
-    for topic in ("台中市停車場管理要點", "彰化縣道路使用收費標準",
-                  "南投縣園區管理要點", "雲林縣自治條例修正"):
-        assert ps.is_out_of_area_local_policy({"topic": topic}) is False, topic
-
-
-def test_a_national_policy_is_never_excluded():
-    """**兩個條件要同時成立才排除** —— 只看縣市名會誤殺全國性法規。"""
-    for topic in ("投資臺灣生醫產業實施方案", "9大新制8月上路!新青安3.0",
-                  "金管會預告修正保險業財務報告編製準則",
-                  "高雄港貨櫃量創新高與全國航運政策"):
-        assert ps.is_out_of_area_local_policy({"topic": topic}) is False, topic
-
-
-def test_the_filter_is_wired_into_the_policy_section():
-    """**只在測試裡擋得住等於沒有。**"""
-    from pathlib import Path
-    src = (Path(__file__).resolve().parents[1] / "morning_report.py"
-           ).read_text(encoding="utf-8")
-    assert "_ps.is_out_of_area_local_policy(it)" in src

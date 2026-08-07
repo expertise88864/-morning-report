@@ -328,42 +328,6 @@ class _FakeFeed:
         self.bozo_exception = type(exc_name, (Exception,), {})() if exc_name else None
 
 
-def test_feed_usable_benign_bozo_with_entries():
-    # CharacterEncodingOverride / NonXMLContentType 是警告,有 entries 就算可用
-    for benign in ("CharacterEncodingOverride", "NonXMLContentType"):
-        entries, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], True, benign))
-        assert usable is True and len(entries) == 1
-
-
-def test_feed_usable_fatal_bozo_not_usable():
-    # SAXParseException 是真的解析失敗 → 不可用(會走 fallback)
-    _, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], True, "SAXParseException"))
-    assert usable is False
-
-
-def test_feed_usable_clean_feed():
-    _, usable = mr._feed_usable(_FakeFeed([{"title": "x"}], False, None))
-    assert usable is True
-    _, usable_empty = mr._feed_usable(_FakeFeed([], False, None))
-    assert usable_empty is False
-
-
-def test_official_source_entries_accepts_benign_bozo(monkeypatch):
-    """EY/CDC 類:feedparser 設 CharacterEncodingOverride/NonXMLContentType 但有 entries
-    → 直接採用,不再誤判失敗、不記為 error。"""
-    monkeypatch.setattr(
-        mr, "_feedparser_parse_url_with_timeout",
-        lambda url, timeout=12: _FakeFeed(
-            [{"title": "行政院公告", "link": "https://ey.gov.tw/x"}],
-            True, "CharacterEncodingOverride"))
-    stats = {}
-    out = mr._official_source_entries(
-        {"name": "EY News", "url": "https://www.ey.gov.tw/x"}, stats)
-    assert len(out) == 1
-    assert stats.get("feed_ok") == 1
-    assert not stats.get("errors")     # 良性警告不記為錯誤
-
-
 def test_mops_roc_datetime():
     """MOPS 民國發言日期+時間 → 台北時區 datetime。"""
     d = mr._mops_roc_datetime("1150702", "70003")   # 115/07/02 07:00:03
@@ -923,68 +887,6 @@ def _mk_policy_item(key, published, title="測試政策"):
             "importance": 5.0, "official": True, "scope": "昨日新訊"}
 
 
-def test_demote_recently_shown_policy(monkeypatch, tmp_path):
-    import datetime as dt
-    import json
-    f = tmp_path / "intel_shown.json"
-    monkeypatch.setattr(mr, "INTEL_SHOWN_FILE", f)
-    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
-    f.write_text(json.dumps({
-        "policy|托育補助": {"date": "2026-07-15", "published": "2026-07-15 00:00"},
-        "policy|舊制勞退": {"date": "2026-07-09", "published": "2026-07-02 00:00"},
-    }), encoding="utf-8")
-    ranked = [
-        _mk_policy_item("policy|托育補助", "2026-07-15 00:00"),   # 昨天顯示過、無新報導 → 降序
-        _mk_policy_item("policy|舊制勞退", "2026-07-02 00:00"),   # 7 天前顯示(>5 天)→ 不降
-        _mk_policy_item("policy|新青安", "2026-07-15 20:00"),     # 沒顯示過 → 不降
-    ]
-    out = mr._demote_recently_shown_policy(ranked, now)
-    assert [i["timeline_key"] for i in out] == [
-        "policy|舊制勞退", "policy|新青安", "policy|托育補助"]
-    # 同 key 但有更新報導(published 比顯示當時新)→ 視為新訊,不降
-    fresh_again = _mk_policy_item("policy|托育補助", "2026-07-15 21:00")
-    out2 = mr._demote_recently_shown_policy([fresh_again], now)
-    assert out2[0]["timeline_key"] == "policy|托育補助"
-    # 無紀錄檔 → 原樣返回
-    f.unlink()
-    assert mr._demote_recently_shown_policy(ranked, now) == ranked
-
-
-def test_mark_intel_shown_records_top3_and_prunes(monkeypatch, tmp_path):
-    import datetime as dt
-    import json
-    f = tmp_path / "intel_shown.json"
-    monkeypatch.setattr(mr, "INTEL_SHOWN_FILE", f)
-    now = dt.datetime(2026, 7, 16, 6, 0, tzinfo=mr.TPE)
-    # 既有一筆 20 天前的舊紀錄 → 應被修剪
-    f.write_text(json.dumps({
-        "policy|遠古": {"date": "2026-06-26", "published": "2026-06-26 00:00"}}),
-        encoding="utf-8")
-    intel = {"policy": [
-        _mk_policy_item("policy|A", "2026-07-15 10:00"),
-        _mk_policy_item("policy|B", "2026-07-15 11:00"),
-        _mk_policy_item("policy|C", "2026-07-15 12:00"),
-        _mk_policy_item("policy|D", "2026-07-15 13:00"),   # 第 4 條未顯示 → 不記
-    ]}
-    mr.mark_intel_shown(intel, now)
-    data = json.loads(f.read_text(encoding="utf-8"))
-    assert set(data) == {"policy|A", "policy|B", "policy|C"}
-    assert data["policy|A"] == {"date": "2026-07-16", "published": "2026-07-15 10:00"}
-    # 空 intelligence / 無 policy → 不寫不炸
-    mr.mark_intel_shown(None, now)
-    mr.mark_intel_shown({"policy": []}, now)
-
-
-def test_policy_queries_or_form_covers_hsinchingan():
-    """回歸:舊多詞查詢是 AND 語意(空格=AND)召回近零,新青安 3.0 漏抓——
-    必須存在 OR 形式的新青安/打炒房查詢。"""
-    qs = mr.TW_INTELLIGENCE_QUERIES["policy"]
-    assert any("新青安 OR" in q for q in qs)
-    assert not any(("新青安" in q and " OR " not in q) for q in qs)
-
-
-# ===== 修正批A(2026-07-17,GPT-5.6 二審語意五修) =====
-
 def test_parse_portfolio_rejects_lot_scale_input(capsys):
     """P0 股/張防呆:單一標的 >1000 萬股=幾乎必是把張當股填 → 整組拒用+報錯。"""
     assert mr._parse_portfolio('{"2330": 5000}') == {"2330": 5000.0}   # 正常股數
@@ -1228,19 +1130,6 @@ def test_cnyes_json_branch_parses_epoch_and_tracks_health(monkeypatch):
     assert mr._process_feed_item(w, cutoff) == []
     assert mr._FEED_STATS["api.cnyes.com"]["fail"] == 1
     assert mr._FEED_STATS["api.cnyes.com"]["streak"] == 1
-
-
-def test_policy_user_focus_terms_boost_housing_policy():
-    """批#14:新青安/打炒房等房市政策條目獲個人化加權,不再被官方行政公告壓死。"""
-    imp, why = mr._tw_intelligence_importance(
-        "policy", "「新青安3.0」拍板 設排富條款", False, "昨日新訊",
-        mr._tw_intelligence_status("「新青安3.0」拍板 設排富條款"))
-    assert imp >= 5.0                                # 2.9 → 5.4+,可進前三
-    assert why[0] == "房市政策"   # 批#15 r3:顯示文案不得提使用者
-    # 非房市政策媒體條目不受影響
-    imp2, why2 = mr._tw_intelligence_importance(
-        "policy", "行政院討論一般行政事項", False, "昨日新訊", "媒體報導")
-    assert "房市政策" not in why2 and imp2 < imp
 
 
 def test_company_label_gate_blocks_unrelated_decision_word_hits(monkeypatch):
@@ -1621,16 +1510,6 @@ def test_company_bucket_ranks_by_keep_score_not_arrival_order():
 def test_company_bucket_edge_cases():
     assert mr._rank_company_bucket([], 3) == []
     assert mr._rank_company_bucket([_company_item("a", "t")], 0) == []
-
-
-def test_ey_sources_have_distinct_html_fallback_pages():
-    """html_url 是 RSS 掛掉時的退化來源;兩個頻道共用同一頁會讓退化路徑
-    抓到別的頻道內容卻掛著本頻道的名字(錯誤歸因)。"""
-    policy = mr.TW_INTELLIGENCE_DIRECT_SOURCES["policy"]
-    ey = [s for s in policy if s["name"].startswith("EY ")]
-    urls = [s.get("html_url") for s in ey]
-    assert len(urls) == len(set(urls)), f"EY 頻道 html_url 重複:{urls}"
-    assert len(ey) >= 4, "四個 EY 頻道(院會決議/部會/澄清/本院新聞)都要在"
 
 
 def test_company_bucket_cap_counts_publisher_family_not_channel_name():

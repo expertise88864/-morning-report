@@ -2,8 +2,8 @@
 
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
-天氣與颱風警示、中彰投雲在地快訊、台灣政策與醫界、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,900+ 單元測試。
+天氣與颱風警示、中彰投雲在地快訊、重大政策深度解析(行政院公報)、Podcast 重點、醫學文獻、
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 1,800+ 單元測試。
 
 ---
 
@@ -30,10 +30,9 @@
 | Podcast 重點 | 11 檔節目白名單(股癌/游庭皓/Wall Street Breakfast/Odd Lots/BG2 等),每集重點+個股觀點與本報資料對照 | 獨立轉錄排程 |
 | 體育快訊 | 世足(淘汰表+**冠軍機率**+90分鐘賭盤)、中職(比分/賽程/**單場賭盤**/戰績)、MLB(戰績表/焦點賽程/單場賭盤/世界大賽/MVP/賽揚盤)、NBA(**開季自動啟用單場賭盤**/總冠軍/東西區盤)、網球(冠軍收斂+美網冠軍盤);隊名全繁中 | ESPN、Yahoo、Wikipedia、Polymarket |
 | 在地快訊 | 彰基/中國醫、建設、房市、產業/科技、學區/文教、交通異動、**選情(2026 九合一)**——台中/彰化/南投/斗六,同事件模糊去重 | Google News |
-| 台灣政策/醫界 | 政策近月走向(**已顯示條目 5 日內降序防重複**)+ 醫界昨日;與股價模型完全隔離 | Google News+官方 RSS(TFDA) |
 | 醫學文獻速報 | JAAD/JEADV/BJD/JAMA Derm/NEJM/AJO 近 7 天,標題中譯 | 期刊 RSS |
 
-另有:**週日綜合輕量信**(僅體育/Podcast/政策/醫界有新內容才寄)、
+另有:**週日綜合輕量信**(僅體育/Podcast 有新內容才寄)、
 **股癌雷達獨立信**(`gooaye_radar.py`,新集偵測後族群萃取+個股驗證)、
 **週一晨報含最近 7 個已結算預測的錯誤檢討**。
 
@@ -180,7 +179,7 @@ portfolio_risk.py     持倉曝險引擎(現僅後台,卡片已依使用者要�
 podcast_digest.py     Podcast 轉錄與摘要(獨立排程)
 gooaye_radar.py       股癌雷達獨立信
 tools/                稽核與驗證腳本(codex_review、mz_walkforward、report_watchdog…)
-tests/                1,900+ 測試(不連網;conftest 隔離 state 寫入與網路)
+tests/                1,800+ 測試(不連網;conftest 隔離 state 寫入與網路)
 state/                執行期狀態(見下);由 workflow 於寄信成功後 commit 回 repo
 ```
 
@@ -193,7 +192,6 @@ state/                執行期狀態(見下);由 workflow 於寄信成功後 co
 | `event_timeline.json` | 新聞事件生命週期(rumor→confirmed→implemented) |
 | `podcast_digest.json` | Podcast 摘要與已顯示標記 |
 | `conformal_intervals.json` | 預測區間校準 |
-| `intel_shown.json` | 政策區已顯示條目(5 日降序防連日重複) |
 | `source_health_history.json` | 來源健康 30 天史 |
 | `run_manifest.json` | 每次執行耗時/來源結果(觀測用) |
 | `emails/` | 寄出信件去識別存檔(gzip,供檢索) |
@@ -250,9 +248,8 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
   程式抓不到 → 停班停課走新聞源(視窗=台北昨日 16:00 起)。
 - 在地快訊七主題(彰基/中國醫、建設、房市、產業/科技、學區/文教、交通異動、
   選情);同事件模糊去重(bigram overlap ≥0.5,短標題 ≥0.85)。
-- 政策區:AND 語意查詢已全面改 OR;`intel_shown.json` 防連日重複。
 - Email 大小:`EMAIL_OVERFLOW_MODE=full`(預設)接受 Gmail 102KB 摺疊不砍內容;
-  `trim` 模式會依優先序縮減,且被砍掉的 Podcast/政策**不會**被誤標已顯示。
+  `trim` 模式會依優先序縮減,且被砍掉的 Podcast **不會**被誤標已顯示。
 
 ---
 
@@ -260,7 +257,7 @@ point-in-time 市值前百 + 法人 30 日 + 月營收 + 大戶持股 → ridge 
 
 ```bash
 pip install -r requirements.txt
-pytest -q                        # 1,900+ 測試,不連網、不寄信
+pytest -q                        # 1,800+ 測試,不連網、不寄信
 
 # 完整流程預覽(連真實資料,不寄信);PowerShell:
 $env:DRY_RUN="1"; $env:LLM_PROVIDER="deepseek"; $env:DEEPSEEK_API_KEY="sk-..."
@@ -286,7 +283,6 @@ python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 - **資料品質區塊** → 信內列出每來源 ok/降級/失敗;LLM prompt 同步收到,
   不會把「抓不到」誤判成「沒訊號」。
 - **Polymarket 全缺** → 看 log 是否斷路器觸發(連 2 敗/90s 預算);隔天自動恢復。
-- **政策/醫界一模一樣** → 檢查 `state/intel_shown.json` 是否有 commit 回 repo。
 - **state push 失敗** → 只印警告不影響寄信;workflow 需 `contents: write` +
   `fetch-depth: 0`。
 - **中職比分/官網 geo-block** → 已固定走 Yahoo 運動 API + Wikipedia 戰績備援。
@@ -304,7 +300,7 @@ python morning_report.py         # 預覽寫到 /tmp/morning_report_preview.html
 4. **隱私**:持股明細只存在 Secrets;信件存檔去識別;個人任職/房產資訊
    不落地於信件、log 或公開檔案。
 5. **顯示層與模型層分離**:使用者要求隱藏的卡片(Top5/曝險/估值溫度/選擇權)
-   關顯示不關計算;新增資訊(Polymarket/政策/在地)一律不餵計分。
+   關顯示不關計算;新增資訊(Polymarket/在地)一律不餵計分。
 6. **降級優先**:每個來源獨立 try;晨報必達,內容寧缺。
 
 ## 已知限制

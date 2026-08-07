@@ -72,10 +72,14 @@ def test_subjectless_events_never_enter_the_timeline(tmp_path, monkeypatch):
 
 
 def test_the_same_story_does_not_fragment_by_subject_order(tmp_path, monkeypatch):
-    """主體順序不是語意 —— 「美國、伊朗」與「伊朗、美國」要是同一個身分。"""
+    """主體順序不是語意 —— 「美國、伊朗」與「伊朗、美國」要是同一個身分。
+
+    2026-08-08:身分主鍵改成**動作**(見 `event_identity`),而這一條驗的是
+    認不出動作時的降級路徑 —— 所以兩則標題都刻意不帶動作關鍵詞。
+    """
     _a, state = _timeline(tmp_path, monkeypatch, [
         {"event_type": "geopolitical", "entity": "美國、伊朗、阿曼",
-         "title": "荷姆茲談判"}], days=1)
+         "title": "三國代表昨日會面"}], days=1)
     _a2, state2 = _timeline(tmp_path, monkeypatch, [
         {"event_type": "geopolitical", "entity": "伊朗、阿曼、美國",
          "title": "同一件事,主體換順序"}], days=1)

@@ -186,6 +186,11 @@ MODULE_CEILINGS = {
     # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
     # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。
     "deepseek_responses.py": 300,
+    # 延燒事件的身分(外審 P1-9)。動作表是宣告式的,說明佔了大半 ——
+    # 那是這個模組的重點:身分不能靠相似度,每一列都要說得出
+    # 代碼與判準。`adopt_legacy` 由主模組搬進來(refactor_audit 判
+    # ALL-CLEAR),所以這裡的額度換到的是主模組的等量縮減。
+    "event_identity.py": 260,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

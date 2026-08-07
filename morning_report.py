@@ -42,6 +42,7 @@ import analysis_schema as _sch
 import analysis_render as _ar
 import analysis_metrics as _am
 import deepseek_responses as _dsr
+import event_identity as _eid
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -14149,8 +14150,6 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
 # ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
 EVENT_TIMELINE_FILE = STATE_ROOT / "event_timeline.json"
 _TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
-
-
 def update_event_timeline(structured_events: list[dict],
                           now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     """維護延燒事件 timeline:同主體+型別連續出現則累計天數,3 天無進展退場。"""
@@ -14162,6 +14161,13 @@ def update_event_timeline(structured_events: list[dict],
             state = json.loads(EVENT_TIMELINE_FILE.read_text(encoding="utf-8")) or {}
         except Exception:
             state = {}
+    # **舊身分是「某國的某類新聞」,不是事件**(外審 P1-9)。
+    # 實測 2026-08-07 的 state 同時有兩種相反的錯:同一條荷姆茲海峽線因為
+    # 兩則報導點名的主體集合不同而裂成 `geopolitical:伊朗`(6 天)與
+    # `geopolitical:伊朗、美國、阿曼`(1 天);而 `geopolitical:美國`(4 天)
+    # 的 latest_title 已經漂到「對台軍售」—— 那是另一件事。
+    # 身分改由 `event_identity` 決定(動作為主鍵),見該模組說明。
+    _migrated, _by_action = 0, 0
     for ev in structured_events or []:
         if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
             continue
@@ -14170,14 +14176,42 @@ def update_event_timeline(structured_events: list[dict],
         subjects = _timeline_subjects(ev)
         if not subjects:
             continue
-        key = f"{ev.get('event_type')}:{'、'.join(subjects)[:20]}"
-        rec = state.get(key) or {"first_seen": today, "days": 0, "last_seen": ""}
+        ident = _eid.timeline_identity(ev, subjects, today)
+        key = ident["key"]
+        if ident["basis"] == "action":
+            _by_action += 1
+        rec = state.get(key)
+        if rec is None:
+            # **舊鍵要接得起來**:同一條線在升版當天不該從第 1 天重新起算
+            # (那會讓「延燒六天」在讀者眼中憑空消失)。只接**同型別、
+            # 主體有交集**的舊鍵,而且只接一次 —— 接不到就是新的一條。
+            rec, _old = _eid.adopt_legacy(state, ev, subjects, ident)
+            if _old:
+                _migrated += 1
+                state.pop(_old, None)
+        if rec is None:
+            rec = {"first_seen": today, "days": 0, "last_seen": ""}
         if rec.get("last_seen") != today:
             rec["days"] = int(rec.get("days", 0)) + 1
             rec["last_seen"] = today
         rec["latest_title"] = str(ev.get("title") or "")[:90]
-        rec["entity"] = subjects[0]
+        rec["entity"] = ident["subjects"][0] if ident["subjects"] else subjects[0]
+        rec["subjects"] = ident["subjects"] or subjects
+        rec["event_type"] = str(ev.get("event_type") or "")
+        rec["action"] = ident["action"]
+        rec["identity_schema"] = _eid.IDENTITY_SCHEMA_VERSION
         state[key] = rec
+    # **遷移要看得見**(第十輪 P1-11 的同一條規矩):沒有這些數字,
+    # 「新公式上線了」與「新公式一則都沒改到」在 manifest 裡長得一樣。
+    _legacy_left = sum(1 for v in state.values()
+                       if int(_safe_number(v.get("identity_schema")) or 0)
+                       < _eid.IDENTITY_SCHEMA_VERSION)
+    _RUN_MANIFEST["event_identity"] = {
+        "schema": _eid.IDENTITY_SCHEMA_VERSION,
+        "keyed_by_action": _by_action,
+        "adopted_legacy": _migrated,
+        "legacy_remaining": _legacy_left,
+    }
     # 退場:超過 3 天無更新
     cutoff = (now_tpe - dt.timedelta(days=3)).strftime("%Y-%m-%d")
     state = {k: v for k, v in state.items() if v.get("last_seen", "") >= cutoff}

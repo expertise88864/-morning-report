@@ -4974,6 +4974,32 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73611025",
+        "title": "Trade Desk slammed after earnings miss",
+        "published": "Fri, 07 Aug 2026 11:09:36 +0000",
+        "processed_at": "2026-08-07T14:32:05Z",
+        "digest": {
+          "summary_points": [
+            "The Trade Desk 第二季營收 7.15 億美元、年增 3%，低於市場預期的 7.514 億美元；調整後 EPS 0.34 美元也遜於預估的 0.40 美元，獲利率從 39% 降至 34%，盤前股價重挫近三分之一，反映數位廣告成長動能明顯放緩。",
+            "川普簽署命令，將對多晶矽及下游產品（矽晶圓、太陽能電池、太陽能模組）自 12 月 4 日起加徵 15% 關稅並設定最低進口價，雖意在保護本國製造商，但將推升太陽能開發成本，成為再生能源業者新的逆風。",
+            "David Einhorn 認為 SpaceX 的 IPO 可能是投機市場觸頂的訊號，顯示部分投資人開始擔憂估值與市場情緒過熱。",
+            "SK 海力士宣布投資 380 億美元擴充南韓晶片產能，顯示記憶體產業的資本支出仍維持強勁，反映對未來需求的信心。"
+          ],
+          "tickers": [
+            {
+              "name": "The Trade Desk",
+              "code": "TTD",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 財報低於預期且獲利能力下滑，盤前股價大跌近三分之一。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "That's no coaster, that's my AI."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73560597",
         "title": "Show-Me state says no",
         "published": "Thu, 06 Aug 2026 15:15:02 +0000",
@@ -5361,58 +5387,6 @@
           "notable_quote": "Warsh said, market participants are learning to play the ball, not the referee."
         },
         "shown_at": "2026-07-30T23:04:08Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73256142",
-        "title": "Jersey Mike’s prices at $23",
-        "published": "Thu, 30 Jul 2026 10:29:09 +0000",
-        "processed_at": "2026-07-30T15:31:03Z",
-        "digest": {
-          "summary_points": [
-            "Jersey Mike's Subs 以每股23美元的價格進行IPO，在紐約證交所上市，估值約73億美元，為近年來最大的餐廳IPO之一。",
-            "Meta Platforms 第二季自由現金流量降至7.84億美元，為2022年第三季以來最低，主因AI基礎設施支出大增。",
-            "Meta公布第三季營收展望低於預期，投資人對其數十億美元AI投資何時產生回報感到擔憂，股價盤前下跌9%。",
-            "Starbucks 第三財季同店銷售成長7.9%，經調整每股盈餘0.85美元優於預期，並上調2026財年展望，股價上漲4.7%。",
-            "Microsoft 第四季財報優於預期，Azure營收突破1000億美元，股價盤前上漲。",
-            "Samsung 預測AI驅動的記憶體短缺將持續至2028年。",
-            "Intel 據報向一家新創公司開放其晶片設計資源。",
-            "Teladoc Health 第二季營收未達預期並發布疲弱展望，股價下跌17%。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "自由現金流量下降，AI支出大增，營收展望不如預期，股價下跌。"
-            },
-            {
-              "name": "Starbucks",
-              "code": "SBUX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "同店銷售成長、獲利優於預期，並上調財測，股價上漲。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報優於預期，Azure營收突破千億美元，股價正面。"
-            },
-            {
-              "name": "Teladoc Health",
-              "code": "TDOC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "營收未達標，財測疲弱，股價大跌17%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Meta Platforms reported mixed second quarter results beating on the bottom line, but missing profit expectations."
-        },
-        "shown_at": "2026-07-30T23:04:08Z"
       }
     ]
   },
@@ -5449,6 +5423,25 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "253af1b0-6485-46c3-b506-b49e01625633",
+        "title": "How a Sardine Gets From the Ocean to a Can",
+        "published": "Fri, 07 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-07T14:40:20Z",
+        "digest": {
+          "summary_points": [
+            "來賓 Becca Milstein（Fishwife 創辦人）指出，摩洛哥佔全球沙丁魚出口約 50%，其禁止冷凍沙丁魚出口是為了把原料留給本國罐頭業，導致全球沙丁魚供應驟減，也讓 Fishwife 的沙丁魚銷售動能從去年 12 月起暴增到原本的 2-3 倍，之後更達 4-5 倍。",
+            "Fishwife 本身並未依賴摩洛哥漁場，而是採購英格蘭康沃爾與伊比利半島兩個 MSC 認證的永續沙丁魚漁場；但市場缺貨仍讓零售客戶要求擴大供貨，公司一度選擇以空運方式搶時間、犧牲毛利率來滿足需求。",
+            "來賓認為沙丁魚短缺較可能源於氣候變遷而非過度捕撈：中大西洋水溫上升讓沙丁魚遷移到漁民較難到達的水域、浮游生物減少導致魚群變瘦；摩洛哥漁場目前仍被評為黃燈、管制與執法良好，因此這比較像資源管理而非枯竭。",
+            "她預期沙丁魚價格會上漲，因為 Fishwife 所仰賴的兩個永續漁場會越來越競爭；同時消費者會在沙丁魚、鯖魚、鮪魚、鮭魚等罐頭魚種之間轉換，並非只鎖定單一魚種。",
+            "Fishwife 的商業模式與傳統 DTC 新創相反：不是用低價破壞式產品，而是找歐洲多代家族經營的高品質罐頭廠合作，且 DTC 只占營收約 20%，主要靠零售通路，反映高品質食品品牌在 2020 年代需要不同的成長路徑。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Don't freak out when you see those empty shelves, like be happy that people are putting these restrictions into place."
+        }
+      },
       {
         "guid": "09ad45b2-ee9c-4482-8700-b49d0161d97f",
         "title": "Brad Setser on the US's Unusual Japanese Yen Intervention",
@@ -5705,44 +5698,6 @@
           "notable_quote": "if you have a good model you wouldn't publish it you would just beat the bookies"
         },
         "shown_at": "2026-07-16T22:53:17Z"
-      },
-      {
-        "guid": "b0947973-da0c-4120-9104-b4870172c604",
-        "title": "NY Governor Kathy Hochul on Her One Year Data Center Moratorium",
-        "published": "Wed, 15 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-15T10:31:21Z",
-        "digest": {
-          "summary_points": [
-            "紐約州長霍楚宣布為期一年的暫停令，暫停大型資料中心新項目，要求業者自備電力或支付電網使用溢價，並須對社區做出貢獻。",
-            "此暫停令旨在制定統一規範，可能提高資料中心建置成本，影響亞馬遜、Meta等雲端業者在紐約州的擴張。",
-            "紐約州積極爭取半導體製造，美光（Micron）投資1,000億美元設廠，將提供5萬個就業機會，州政府承諾協助電力供應。",
-            "霍楚計劃擴建核電，包含大型核反應爐與小型模組化反應爐（SMR），以因應AI與資料中心造成的電力需求激增。",
-            "紐約州因熱浪曾啟用備用化石燃料電廠，凸顯能源轉型迫切性；霍楚強調對核能、水力及離岸風電的「一切以上」策略。",
-            "州長認為資料中心應為電網基礎設施貢獻資金，否則不應取得用電；業者須「自帶電源」或支付保費。",
-            "紐約金融業雖有部份擴張至德州、佛州，但紐約仍是金融中心，商用租賃市場近期明顯回溫。",
-            "霍楚利用AI審查州法，已找出數千條過時法規，提升行政效率，但此舉不直接影響投資市場。"
-          ],
-          "tickers": [
-            {
-              "name": "美光科技",
-              "code": "MU",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "州長明確表示積極招商，提供電力支持，將其視為創造就業的核心產業。"
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "資料中心暫停令可能增加其擴建成本，但州長強調並非禁止，業者仍可依新規則進行。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "This is the US's first statewide moratorium on data centers, which means inevitably this is going to be seen as a test case or an experiment."
-        },
-        "shown_at": "2026-07-15T22:54:24Z"
       }
     ]
   },
@@ -7079,6 +7034,56 @@
   "fwdguidance": {
     "name": "Forward Guidance",
     "episodes": [
+      {
+        "guid": "702b3a2e-91f4-11f1-8e04-e765401f1c74",
+        "title": "Washington Is Suppressing Volatility To Keep The AI Boom Alive | Weekly Roundup",
+        "published": "Fri, 07 Aug 2026 07:00:00 -0000",
+        "processed_at": "2026-08-07T14:49:37Z",
+        "digest": {
+          "summary_points": [
+            "Tyler 認為 Fed 與財政部已從「看 Fed」轉向聯手干預的治國術，類似 Plaza Accord 式壓抑波動；只要經濟成長高於通膨，就能用通膨稅去槓桿。",
+            "Quinn 指出 QRA 聲明把「increase」改成「changes」，打開未來縮減長債發行的尾部空間，加上 FIMA facility 與賣歐元而非美元干預日圓，整體偏鴿且流動性友善，但也可能墊高長期通膨風險。",
+            "Tyler 看好工業、機械、鐵路等實體資本支出產業，認為 AI 會商品化軟體，不可複製的實體資產才是長期投資主軸，核能則是下一個大主題。",
+            "Nick 認為 AI 交易的基本面問題未解（Meg 7 現金流為負、信用利差擴大），干預只是暫時性包紮，中期風險持續堆積，未來幾個月仍會高波動，對科技領導股保持懷疑。",
+            "Tyler 提出若 Oracle 投資級債券殖利率到 8-9%，會是很好的買點，因為這類公司不會倒閉、能提供真實收益，尤其適合追求收益的資金。",
+            "比特幣方面，Tyler 認為自己「幾乎到底」，礦工轉向 AI、供應清洗接近尾聲，但短期仍是「腦損傷」行情，適合慢慢買而非高槓桿。",
+            "Tyler 強調市場廣度健康，IWM 與 RSP 表現良好，整體很難做空牛市，但須注意單股波動並設停損。"
+          ],
+          "tickers": [
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為若其債券殖利率升至8-9%是絕佳買點，公司不會倒閉且提供真實收益。"
+            },
+            {
+              "name": "iShares Russell 2000 ETF",
+              "code": "IWM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為IWM看起來很好，市場廣度正在改善。"
+            },
+            {
+              "name": "Invesco S&P 500 Equal Weight ETF",
+              "code": "RSP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為RSP表現極佳，等權指數顯示市場健康。"
+            },
+            {
+              "name": "Invesco QQQ Trust",
+              "code": "QQQ",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為QQQ看起來很好，科技股回穩。"
+            }
+          ],
+          "market_view": "主持人普遍認為 Fed 與財政部積極干預壓抑波動，短期支撐風險資產，但 Quinn 與 Nick 擔心中期通膨與基本面惡化；Tyler 則認為整體牛市很難做空，市場廣度健康。",
+          "action_view": "Tyler 建議在波動中逢低買入，但需嚴設停損；比特幣可逐步建倉，不宜高槓桿。Quinn 與 Nick 則傾向觀望，觀察干預效果與中期風險。",
+          "notable_quote": "I think it's really hard to fade the bull market right now in general."
+        }
+      },
       {
         "guid": "47818ce2-9044-11f1-80cc-fb5e7951f44a",
         "title": "The Portfolio Built To Survive Every Crash | Jared Dillian",

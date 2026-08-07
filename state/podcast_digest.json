@@ -1977,6 +1977,48 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "45714ba3-86e4-4e9e-8fd5-250491f47151",
+        "title": "EP326. PLTR 怪物級財報、SPCX 的未來大餅、谷歌 AI 組織調整 | M觀點",
+        "published": "Thu, 06 Aug 2026 16:35:14 GMT",
+        "processed_at": "2026-08-07T09:40:25Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Palantir 本次財報僅是中期勝利，並非從此高枕無憂，因 OpenEye、Entropy、微軟等巨頭均開始抄襲其 FDE 模式，長期競爭壓力仍在。",
+            "主持人強調 Palantir 的 Net Dollar Retention 達 157%，顯示舊客戶平均多花 57% 的錢，證明其真正為企業創造價值，這是成長的核心動能。",
+            "主持人提出 Palantir 的「Bench making」策略主張企業應自建評估基準，而非依賴通用基準，凸顯其平台與模型解耦的獨特價值。",
+            "主持人認為 SpaceX 財報雖好但估值仍過高，合理估值僅約 1 兆美元，目前 1.4~1.5 兆仍太貴，他設定若跌至 90 塊將買滿目標倉位。",
+            "主持人推算 SpaceX 明年營收可達 1500~2000 億美元，並看好其 AI 算力租賃業務（第三季營收估逾 50 億美元），但提醒早期股東鎖定期結束將帶來賣壓。",
+            "主持人解讀 Google AI 部門重整是讓不擅商戰的哈薩比斯轉向科研，由實戰派接手，而 Jeff Dean 離去非末日，認為整體消息持平、非利空。"
+          ],
+          "tickers": [
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為財報證明其商業模式創造價值，跌至 120~140 區間是加碼機會，長期看好但提醒競爭壓力。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為估值過高但長期看好 AI 算力與 Starlink 成長，計畫於 160、110 分批布局，並跌至 90 塊買滿。"
+            },
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為 AI 部門重整與 Jeff Dean 離職非利空，組織調整可望更聚焦商戰，對股價影響持平。"
+            }
+          ],
+          "market_view": "近期市場對 AI 巨頭與軟體股信心回升，財報季出現微軟、亞馬遜、Palantir 等接連大漲的「復仇」行情。",
+          "action_view": "對於高成長 AI 股，主持人採「跌至估值區間緩步加碼、漲至過高不追」的策略，並以 SpaceX 為例規劃分批買進價位（160、110、90塊），同時對 Google 暫無動作，待重新估值後決定。",
+          "notable_quote": "市場永遠是對的這一句話它有它的重要的地方，但它也不是百分之百正確。"
+        }
+      },
+      {
         "guid": "d28465fa-1a91-4fb4-b781-f692a743b7bb",
         "title": "EP325. GPT Luna 大降價、特斯拉中國會賣嗎、梁文鋒的流出談話 | M觀點",
         "published": "Mon, 03 Aug 2026 06:00:13 GMT",
@@ -2523,57 +2565,6 @@
           "notable_quote": "記憶體真的會貴一陣子，那這樣真的就會打到很多消費品。"
         },
         "shown_at": "2026-06-29T22:52:55Z"
-      },
-      {
-        "guid": "b911adb2-9839-4029-bfbd-3d9883757cbc",
-        "title": "EP313. 谷歌痛失 AI 大將、Fable 5 配方解密、Meta 士氣低落中、FSD 即將入台 | M觀點",
-        "published": "Mon, 22 Jun 2026 06:34:58 GMT",
-        "processed_at": "2026-06-22T14:08:58Z",
-        "digest": {
-          "summary_points": [
-            "Google兩名關鍵AI人員離職：Gemini共同負責人Non-Shader跳槽OpenAI，諾貝爾獎得主John Jumper跳槽Anthropic，市場擔憂Google AI競爭力。",
-            "Google消費者端Gemini市占率升至27.7%，但企業端Agentic workflow落後OpenAI與Anthropic。",
-            "外界傳言Gemini 3.5 Pro可能不如預期，需觀察六月底前發布狀況。",
-            "主持人認為Google不會因此被打趴，但士氣打擊不小，Google人才與資源仍強。",
-            "Anthropic的Fable5模型洩漏的系統提示詞顯示其透過Agent Harness大幅強化聊天機器人性能，可能帶動業界跟進。",
-            "美國國會議員稱Fable5可在數小時內破解高度機密系統，但主持人認為配合修復漏洞後，2-4週內可能重新上線。",
-            "AI顯學是Harness，模型實力加Harness決定最終表現，這將影響各AI公司競爭格局。",
-            "Meta裁員8000人後，將7000人調至Applied AI部門，從事重複性AI訓練工作，導致士氣低落，CTO承認20年來最糟。",
-            "Applied AI部門的工作無意義，可能導致人才流失，主持人認為這是Placeholder過渡安排。",
-            "主持人預測人類未來創造高熵值數據的工作可能普遍意義低落，對AI產業長期人力供給有影響。",
-            "特斯拉FSD在台灣正式送件申請，預計第三季可能通過，快則8月慢則9月。",
-            "主持人認為FSD將震撼台灣駕駛，今年特斯拉全球銷量因FSD效應將重新上升。",
-            "台灣汽車關稅可能因台美貿易協議降低，但德國特斯拉也可能要求同等降稅，未來特斯拉有降價空間。",
-            "特斯拉目前台灣買斷FSD 22.2萬元，主持人建議用月費即可。"
-          ],
-          "tickers": [
-            {
-              "name": "Alphabet (Google)",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "主持人認為Google人才多，不會因大將離職而被打趴，但AI競爭落後，對士氣有打擊。"
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為Meta士氣低落、Applied AI部門工作無意義可能導致人才流失，影響長期表現。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人看好FSD進入台灣將帶動銷售，認為全球FSD效應將使特斯拉今年銷量重新上升。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "AI最終的實力要等於它的模型的實力，加上Harness的實力。"
-        },
-        "shown_at": "2026-06-22T23:16:31Z"
       }
     ]
   },

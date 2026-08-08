@@ -75,6 +75,92 @@ _CONCEPT_TERMS = frozenset({
 })
 
 
+#: **會計期間不是標的**(第二十六輪 P1-6)。`Q2`、`FY25`、`1H`、`TTM`
+#: 出現在幾乎每一則財報新聞的標題裡,而它們永遠不是可交易標的 ——
+#: 與 `CEO`/`GPU` 同一個形狀:「出現在證據裡」對它們**永遠成立**,
+#: 那個判準等於沒有判準,而 renderer 會把 `asset_id: "Q2"` 排得跟
+#: 真的逐標的分析一模一樣。
+#: **只擋帶數字的那些**(外審第二輪 P2)。第一版把裸縮寫也列進去,
+#: 而 `MTD` 是 Mettler-Toledo、`TTM` 也有人在用 —— 絕對黑名單會在
+#: 那家公司真的上新聞的那天把合法分析判掉,而**誤殺比漏放危險**
+#: (這個 repo 記過)。帶數字的期間詞沒有這個歧義:美股代號不含數字,
+#: 台股代號是純數字加選擇性的字尾,兩邊都不會長成 `Q2` / `FY25`。
+#: 代價是裸 `FY`、`YTD` 仍可能混進來 —— 那是刻意選的那一側。
+_PERIOD_TOKEN = _re.compile(
+    r"Q[1-4]|[1-4]Q|H[12]|[12]H|(?:FY|CY)[0-9]{2,4}", _re.IGNORECASE)
+
+
+#: **既是期間縮寫、也可能是代號**的那些(外審第二輪 P2)。
+#: `MTD` 是 Mettler-Toledo、`TTM` 也有人在用 —— 一律列進絕對黑名單會在
+#: 那家公司真的上新聞的那天把合法分析判掉;而一律放行,
+#: 「Revenue rises on a TTM basis」這種標題又能讓 `asset_id: "TTM"` 過關。
+#: 判準因此**看上下文**:出現在 `entities` 裡才算公司,
+#: 只在標題裡出現的那個字,幾乎必然是被當成期間在用。
+_AMBIGUOUS_PERIOD_ABBREV = frozenset({
+    "MTD", "TTM", "YTD", "QTD", "FY", "CY", "FYE", "LTM",
+})
+
+
+def _ticker_notation(a: str, news_item) -> bool:
+    """這則新聞用**交易所限定的寫法**點名了這個代號嗎(`NYSE: MTD`)。
+
+    只認這一種自由文字裡的權威寫法。**「公司名後面接括號」不算**
+    (外審第四輪):`Apple (TTM) valuation reaches…` 完全符合那個樣式,
+    而 `TTM` 在那裡是估值的期間、不是蘋果的代號 —— 文字相鄰證明不了
+    「這個縮寫是那家公司的代號」,那是一個**要被宣告的對應**
+    (`entity_alias.ALIAS_GROUPS`),不是從版面推導得出來的。
+    """
+    body = (str((news_item or {}).get("title") or "") + " "
+            + str((news_item or {}).get("summary") or ""))
+    return bool(_re.search(
+        r"(?:NYSE|NASDAQ|AMEX|NYSEARCA|TWSE|TPEX|OTC)\s*[:：]\s*"
+        + _re.escape(a) + r"(?![A-Za-z0-9])", body, _re.IGNORECASE))
+
+
+def period_word_not_an_entity(aid, news_item) -> bool:
+    """歧義縮寫**只在標題裡**出現 → 那是期間,不是這則新聞的主角。
+
+    只擋這一種情形:字在 `_AMBIGUOUS_PERIOD_ABBREV` 裡,而且這則新聞
+    沒有把它當公司在寫 —— 出現在 `entities`、**宣告過**的別名同組
+    (`entity_alias.ALIAS_GROUPS`)、或交易所限定寫法(`NYSE: MTD`)都算。
+    抽取器把公司名放進 `entities`;標題裡的 `TTM` 不會進去,
+    因為它在那句話裡是個期間。
+
+    **「公司名後面接括號」不是權威**(外審第四輪):`Apple (TTM)` 符合
+    那個樣式,而它是估值期間。代號與公司的對應要被宣告,不是從版面推導。
+    """
+    a = str(aid or "").strip()
+    if a.upper() not in _AMBIGUOUS_PERIOD_ABBREV:
+        return False
+    ents = {str(e).lower() for e in ((news_item or {}).get("entities") or [])}
+    if a.lower() in ents:
+        return False
+    import entity_alias as _ea
+    if _ea.same(a, _ea.expand({str(e) for e in
+                               ((news_item or {}).get("entities") or [])})):
+        return False
+    return not _ticker_notation(a, news_item)
+
+
+def never_an_instrument(aid) -> bool:
+    """這個字**在定義上就不是可交易標的**(與今天的證據無關)。
+
+    三類同一個形狀:商用縮寫(`CEO`/`IPO`/`EPS`)、產品概念(`AI`/`GPU`)、
+    會計期間(`Q2`/`FY25`)。它們長得像 ticker、在標題裡出現的頻率極高,
+    所以「有沒有出現在證據裡」這個判準對它們永遠成立。
+
+    **獨立成一個判準是為了讓訊息說得出真正的理由**:先前這三類都從
+    `_asset_unknown_to_evidence` 回 `True`,而呼叫端的訊息寫「不在這則
+    新聞的實體或標題裡」—— 對 `Q2` 來說那句話是**假的**,它就在標題裡。
+    """
+    a = str(aid or "").strip()
+    if not a:
+        return False
+    return (a.upper() in _NOT_TICKER_ABBREV
+            or a.lower() in _CONCEPT_TERMS
+            or bool(_PERIOD_TOKEN.fullmatch(a)))
+
+
 def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     """**大寫字母的「標的」要是證據裡的人**(第二十輪 P2-4 的收尾)。
 
@@ -96,7 +182,7 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     # 第二十二輪 P1-6:**產品概念永遠不是可交易標的** —— 即使標題就叫
     # 「GPU demand accelerates」。這些詞在標題出現的頻率極高,
     # 「在證據裡」這個判準對它們永遠成立,等於沒有判準。
-    if a.lower() in _CONCEPT_TERMS:
+    if never_an_instrument(a):
         return True
     ents = {str(e) for e in ((news_item or {}).get("entities") or [])}
     title = str((news_item or {}).get("title") or "")
@@ -112,12 +198,15 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     # `INVALID` 當條件,而 `_KNOWN` 只有八檔 —— `NVDA`、`AMD` 這些
     # 真 ticker 一起被殺。**誤殺比漏放危險**(repo 記過),
     # 改成明確的縮寫黑名單。
-    if a.upper() in _NOT_TICKER_ABBREV:
-        return True
     low = a.lower()
     if a.isascii() and not _TW_CODE.fullmatch(a):
         if any(low == str(e).lower() for e in ents):
             return False
+        # **歧義縮寫在標題裡不算數**(外審第二輪 P2):`TTM`、`MTD` 既是
+        # 期間也是代號,而「Revenue rises on a TTM basis」這種標題會讓
+        # token 比對放行 —— 那個字在那句話裡是期間。要它在 `entities` 裡。
+        if period_word_not_an_entity(a, news_item):
+            return True
         # **token 邊界,不是裸子字串**(第二十二輪 P1-6):
         # `Ai` 曾因藏在 `Taiwan` 裡被放行。
         if _re.search(r"(?<![A-Za-z0-9])" + _re.escape(low)
@@ -290,15 +379,31 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(
                     f"{where}.affected_assets[{j}] 的標的是泛稱 {aid!r} ——"
                     "要給得出代號、指數或 ETF,給不出就不要列這一項")
+            elif aid and never_an_instrument(aid):
+                # **兩個問題要分開問**:這個字是不是標的、它與這件事有沒有關。
+                # 混在一起的話,`Q2` 會拿到一句「不在這則新聞的標題裡」——
+                # 而它就在標題裡,那句話是假的,讀著訊息的人會去修錯的東西。
+                problems.append(
+                    f"{where}.affected_assets[{j}] 的 {aid!r} 不是可交易標的"
+                    " —— 會計期間(`Q2`/`FY25`)、商用縮寫(`CEO`/`EPS`)、"
+                    "產品概念(`AI`/`GPU`)在標題出現的頻率極高,"
+                    "「出現在證據裡」對它們等於沒有判準")
             elif aid and packet is not None:
                 _item = next((x for x in (packet.get("news") or [])
                               if str(x.get("source_item_id")) ==
                               str(n.get("source_item_id"))), None)
-                if _asset_unknown_to_evidence(aid, _item, packet):
+                if period_word_not_an_entity(aid, _item):
+                    # **理由要對得上**:`TTM` 就在標題裡,說它「不在這則
+                    # 新聞裡」是假的。它不在的是 `entities`。
+                    problems.append(
+                        f"{where}.affected_assets[{j}] 的 {aid!r} 在這則新聞裡"
+                        "是**期間**不是公司 —— 它沒有出現在實體清單;"
+                        "真的要談那家公司,它得是新聞裡被點名的主角")
+                elif _asset_unknown_to_evidence(aid, _item, packet):
                     problems.append(
                         f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"
-                        "新聞的實體或標題裡 —— 「GPU」「AI」是概念不是標的;"
-                        "真的要談某檔美股,它得是新聞裡的主角")
+                        "新聞的實體或標題裡 —— 真的要談某檔美股,"
+                        "它得是新聞裡的主角")
             # **`2330` 與「台積電」是同一個標的**(第二十六輪外審 P1)。
             # 原樣比對讓同一則新聞可以對同一檔給出**兩個相反方向** ——
             # 而衝突偵測會正規化別名,於是那一則同時進了利多側與利空側。

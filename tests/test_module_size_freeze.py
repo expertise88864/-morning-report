@@ -502,7 +502,13 @@ MODULE_CEILINGS = {
     # 第二十二輪:實測 449 —— 概念詞黑名單與「中文名也要在證據裡」。
     # 超過 470 就把 affected_assets 檢查整段拆去 analysis_crosscheck。
     # 第二十五輪 P1-7:商用縮寫黑名單(CEO/IPO/EPS 不是 ticker)。
-    "analysis_validate.py": 515,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # 第二十六輪 P1-6:`never_an_instrument` 從 `_asset_unknown_to_evidence`
+    # 裡拆出來 —— 「永遠不是標的」與「與這件事無關」是兩個問題,
+    # 混在一起的話訊息會說一句假話。外審第二輪把期間詞收窄成「只擋帶
+    # 數字的」(`MTD` 是 Mettler-Toledo);第三輪再加「歧義縮寫要看上下文」
+    # (`TTM` 在標題裡是期間、在 `entities` 裡才是公司);第四輪再加代號的
+    # 標準寫法(`Mettler-Toledo (MTD)`、`NYSE: MTD`)。**實測 618 行**。
+    "analysis_validate.py": 625,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

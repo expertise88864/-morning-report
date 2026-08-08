@@ -96,8 +96,10 @@ def test_a_concept_cannot_impersonate_a_ticker():
                          ("AMD", False), ("2330", False), ("TAIEX", False)):
         obj = fx.valid_analysis()
         obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
+        # 第二十六輪 P1-6:概念詞現在走「不是可交易標的」那條訊息
+        # ——「不在這則新聞裡」對它們是**假的**(GPU 就在標題裡)。
         hit = [p for p in sch.validate(obj, pk)
-               if "不在這則" in p or "泛稱" in p]
+               if "不在這則" in p or "泛稱" in p or "不是可交易標的" in p]
         assert bool(hit) == blocked, f"{aid}: {hit}"
 
 

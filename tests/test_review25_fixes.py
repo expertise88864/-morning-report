@@ -226,14 +226,18 @@ def test_business_abbreviations_are_not_instruments():
                     "source": "d"}],
                   [], {}, as_of="x", target_session_date="y",
                   sanitize=lambda s: s)
+    # 第二十六輪 P1-6:理由改成「不是可交易標的」—— `CEO` 就在標題裡,
+    # 說它「不在這則新聞的實體或標題裡」是假的,而讀著訊息的人會去修
+    # 錯的東西。判準沒變,變的是它說得出真正的理由。
     for bad in ("CEO", "IPO", "EPS", "GDP", "ADR"):
         o = fx.valid_analysis()
         o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = bad
-        assert [p for p in sch.validate(o, pk) if "不在這則" in p], bad
+        assert [p for p in sch.validate(o, pk) if "不是可交易標的" in p], bad
     # **不得誤殺真 ticker**:NVDA 在標題裡,它是這則新聞的主角
     o = fx.valid_analysis()
     o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = "NVDA"
-    assert not [p for p in sch.validate(o, pk) if "不在這則" in p]
+    assert not [p for p in sch.validate(o, pk)
+                if "不在這則" in p or "不是可交易標的" in p]
 
 
 def test_missing_universe_does_not_verify_a_fake_code():

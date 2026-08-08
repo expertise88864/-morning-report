@@ -57,7 +57,9 @@ from __future__ import annotations
 #: cluster 引用要指得到真的東西)—— schema 保證形狀,保證不了指涉。
 #: v26(第二十六輪 P1-5):淨效果「兩側各一條主張」要**錨回證據側** ——
 #: 那一側先前由主張自己的 `direction` 標籤決定,而標籤是輸出自己填的。
-GROUNDING_VERSION = 26
+#: v27(P1-6):會計期間(`Q2`/`FY25`)不是標的;「永遠不是標的」與
+#: 「與這件事無關」拆成兩個問題,訊息才說得出真正的理由。
+GROUNDING_VERSION = 27
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

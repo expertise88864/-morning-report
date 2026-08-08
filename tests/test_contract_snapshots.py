@@ -138,17 +138,40 @@ def _asset_probes() -> list:
     這三條規則的存廢 —— 各給一個剛好只靠那條規則分勝負的標的。"""
     pk = ep.build({}, {}, {},
                   [{"source_item_id": "n1",
-                    "title": "Taiwan GPU demand accelerates as AMD ramps",
+                    # 第二十六輪 P1-6:標題**帶著 Q2**。少了它,
+                    # 期間詞那條規則會因為「Q2 不在證據裡」而被相關性
+                    # 檢查順手擋掉 —— 指紋量到的是別條規則,不是這條。
+                    "title": "Taiwan GPU demand accelerates as AMD ramps in Q2",
                     "entities": ["台積電", "AMD"], "source": "X"},
-                   {"source_item_id": "n2", "title": "b", "entities": ["c"],
-                    "source": "d"}],
+                   # 第二十六輪 P1-6:撞名代號的兩種寫法在同一則裡 ——
+                   # `MTD` 有宣告過的別名(要放行),`TTM` 只是版面上
+                   # 長得一樣的期間(要擋)。這條規則來回改了三次,
+                   # 指紋要看得見它往任一邊漂。
+                   {"source_item_id": "n2",
+                    "title": "Mettler-Toledo (MTD) lifts guidance; "
+                             "Apple (TTM) valuation at a record",
+                    "entities": ["Mettler-Toledo", "Apple"], "source": "d"}],
                   [], {}, as_of="x", target_session_date="y",
                   sanitize=lambda s: s)
     out = []
     #    Ai/GPU=概念詞;MD=只有 token 邊界擋得住(藏在 AMD 裡);
     #    華碩=不在證據裡的中文名;台積電=真的在證據裡,要放行。
-    for aid in ("Ai", "GPU", "MD", "華碩", "台積電"):
+    #    Q2/FY25=會計期間(第二十六輪 P1-6):**它就在標題裡**,
+    #    只有「永遠不是標的」那條規則擋得住;AMD 在同一則標題裡,
+    #    確認新規則沒有把真代號一起掃掉。
+    #    MTD=與期間縮寫碰撞的**真代號**(Mettler-Toledo):它該走
+    #    「與這件事無關」那條訊息,不是「永遠不是標的」——
+    #    黑名單一旦又長回裸縮寫,這一格的指紋就會動。
+    for aid in ("Ai", "GPU", "MD", "華碩", "台積電", "Q2", "FY25", "AMD",
+                "MTD"):
         o = fx.valid_analysis()
+        o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
+        out.append(sch.validate(o, pk))
+    # n2 那則同時有兩種寫法:`MTD` 是宣告過的公司(放行)、
+    # `TTM` 在版面上長得一模一樣卻是期間(要擋)。
+    for aid in ("MTD", "TTM"):
+        o = fx.valid_analysis()
+        o["top_news_analysis"][0]["source_item_id"] = "n2"
         o["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
         out.append(sch.validate(o, pk))
     return out
@@ -717,7 +740,10 @@ _FROZEN = {
     # 那一側先前由主張自己的 `direction` 標籤決定,而標籤是輸出自己填的:
     # 同一批新聞寫兩條、其中一條標成相反方向就形式合格。
     # 探針補 `_side_grounding_case()`(放行版與被擋版都量)。
-    "grounding_version":        (26, "cbd81b25a709ba16"),
+    # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
+    # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
+    # 帶上 Q2,新規則才是靠自己分勝負的那一條。
+    "grounding_version":        (27, "18cd68e7853ae760"),
 }
 
 

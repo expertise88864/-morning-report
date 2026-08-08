@@ -45,6 +45,11 @@ ALIAS_GROUPS = (
     ("微軟", "Microsoft", "MSFT"),
     ("亞馬遜", "Amazon", "AMZN"),
     ("特斯拉", "Tesla", "TSLA"),
+    # **代號與期間縮寫撞名的公司要被宣告**(第二十六輪 P1-6 外審第四輪)。
+    # `MTD` 既是 Mettler-Toledo 也是 month-to-date —— 沒有宣告的話,
+    # 那家公司真的上新聞時會被判成「這裡的 MTD 是期間」。
+    # 宣告是唯一的權威:從「公司名後面接括號」推導會讓 `Apple (TTM)` 過關。
+    ("Mettler-Toledo", "MTD", "梅特勒-托利多"),
     ("廣達", "Quanta", "2382"),
     ("緯穎", "Wiwynn", "6669"),
 )

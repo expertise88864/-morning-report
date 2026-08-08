@@ -222,6 +222,41 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
             "object": obj if action else "", "basis": basis}
 
 
+def drop_shadowed(active: list) -> list:
+    """**主體 fallback 不得與已識別的事件並列**(2026-08-08 第二封信)。
+
+    `timeline_identity` 認不出動作時退回主體集合當鍵 —— 而同一個故事的
+    標題**有時點得出動作、有時點不出**:
+        「認了飛彈庫存吃緊,荷姆茲有望重啟」 → `hormuz_passage`
+        「川普稱與伊朗戰爭很快將結束」       → 退回 `伊朗`
+    於是兩條線永遠並存,信裡出現「伊朗(第 7 天)」與
+    「伊朗荷姆茲海峽通行(第 2 天)」兩個互相矛盾的天數。
+
+    `supersede_legacy` 接不到它,因為主體那條**已經被蓋成新 schema**
+    (它是今天才走 fallback 的,不是舊格式的遺留)。
+
+    **只做顯示層的遮蔽,不合併天數。** 合併要冒的風險是把另一樁伊朗事件
+    的天數接到荷姆茲上;而主體那條的意思本來就是「今天認不出這是什麼」,
+    在旁邊已經有一條認得出來的線時,它對讀者沒有增加任何東西。
+    """
+    rows = [r for r in (active or []) if isinstance(r, dict)]
+    named = [r for r in rows if str(r.get("action") or "").strip()]
+    out = []
+    for r in rows:
+        if str(r.get("action") or "").strip():
+            out.append(r)
+            continue
+        subs = {str(x) for x in (r.get("subjects") or []) if str(x).strip()}
+        etype = str(r.get("event_type") or "")
+        shadowed = any(
+            str(n.get("event_type") or "") == etype
+            and subs & {str(x) for x in (n.get("subjects") or [])}
+            for n in named)
+        if not shadowed:
+            out.append(r)
+    return out
+
+
 def supersede_legacy(state: dict, ev: dict, subjects: list,
                      ident: dict) -> list:
     """**接不到的舊線要收掉,不能讓它繼續自己活著。**

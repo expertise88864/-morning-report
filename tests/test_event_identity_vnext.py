@@ -280,3 +280,59 @@ def test_the_rendered_timeline_never_shows_an_internal_key(tmp_path,
     out = mr._render_event_timeline_html(active, _htmllib)
     assert "hormuz_passage" not in out and "2026-08" not in out, out
     assert "荷姆茲" in out
+
+
+def test_a_subject_fallback_line_is_hidden_when_the_story_is_identified():
+    """**同一個故事不得有兩個「第 N 天」**(2026-08-08 第二封信)。
+
+    標題有時點得出動作、有時點不出,於是同一條荷姆茲的線同時以
+    `hormuz_passage`(第 2 天)與 `伊朗`(第 7 天)存在。
+    `supersede_legacy` 接不到它 —— 主體那條**已經被蓋成新 schema**,
+    它不是舊格式的遺留,是今天才走 fallback 的。
+    """
+    active = [
+        {"key": "geopolitical:伊朗", "days": 7, "action": "",
+         "subjects": ["伊朗"], "event_type": "geopolitical"},
+        {"key": "geopolitical:hormuz_passage:2026-08", "days": 2,
+         "action": "hormuz_passage", "subjects": ["伊朗", "阿曼"],
+         "event_type": "geopolitical"}]
+    kept = [r["key"] for r in eid.drop_shadowed(active)]
+    assert kept == ["geopolitical:hormuz_passage:2026-08"], kept
+
+
+def test_an_unrelated_subject_line_is_not_hidden():
+    """**遮蔽要保守。** 主體沒有交集的那條與它無關,不得順手蓋掉。"""
+    active = [
+        {"key": "geopolitical:日本", "days": 4, "action": "",
+         "subjects": ["日本"], "event_type": "geopolitical"},
+        {"key": "geopolitical:hormuz_passage:2026-08", "days": 2,
+         "action": "hormuz_passage", "subjects": ["伊朗"],
+         "event_type": "geopolitical"}]
+    assert len(eid.drop_shadowed(active)) == 2
+
+
+def test_production_hides_the_shadowed_line(tmp_path, monkeypatch):
+    """走生產路徑 —— **函式對、呼叫端忘了接**是這個 repo 記過的形狀。"""
+    state = {"geopolitical:伊朗": {
+        "first_seen": "2026-08-01", "days": 7, "last_seen": "2026-08-08",
+        "latest_title": "川普稱與伊朗戰爭很快將結束", "action": "",
+        "entity": "伊朗", "subjects": ["伊朗"], "event_type": "geopolitical",
+        "identity_schema": eid.IDENTITY_SCHEMA_VERSION},
+        "geopolitical:hormuz_passage:2026-08": {
+        "first_seen": "2026-08-07", "days": 1, "last_seen": "2026-08-08",
+        "latest_title": "荷姆茲有望重啟", "action": "hormuz_passage",
+        "entity": "伊朗", "subjects": ["伊朗", "阿曼"],
+        "event_type": "geopolitical",
+        "identity_schema": eid.IDENTITY_SCHEMA_VERSION}}
+    # **兩條線要在同一天都活著**,否則濾掉的是「今天沒更新」那道門檻,
+    # 量不到遮蔽規則(突變驗證抓到:拿掉 `drop_shadowed` 也不紅)。
+    # 所以餵兩則:一則點得出荷姆茲、一則點不出動作而退回主體。
+    active, _ = _run(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "伊朗、阿曼",
+         "title": "荷姆茲海峽談判再進展"},
+        {"event_type": "geopolitical", "entity": "伊朗",
+         "title": "川普稱與伊朗的僵局很快就會有結果"}],
+        day="2026-08-09", state=state)
+    keys = [r["key"] for r in active]
+    assert "geopolitical:hormuz_passage:2026-08" in keys, keys
+    assert "geopolitical:伊朗" not in keys, keys

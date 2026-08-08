@@ -14241,7 +14241,9 @@ def update_event_timeline(structured_events: list[dict],
               if v.get("last_seen") == today and v.get("days", 0) >= 2
               and str(k).split(":", 1)[-1].strip()]
     active.sort(key=lambda r: -r.get("days", 0))
-    return active
+    # 主體 fallback 的線,在同主體已有「認得出動作」的線時不顯示
+    # (2026-08-08:信裡出現兩個互相矛盾的「第 N 天」)。
+    return _eid.drop_shadowed(active)
 
 
 _S2TW_CC = None

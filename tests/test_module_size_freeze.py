@@ -193,7 +193,9 @@ MODULE_CEILINGS = {
     # ALL-CLEAR),所以這裡的額度換到的是主模組的等量縮減。
     # 2026-08-08 生產:display_label(鍵不是標籤)+ supersede_legacy
     # (接不到的舊線要收掉,否則同一件事兩條「第 N 天」)。
-    "event_identity.py": 320,
+    # 2026-08-08 第二封信:drop_shadowed(主體 fallback 不得與
+    # 已識別的事件並列,否則同一故事兩個「第 N 天」)。
+    "event_identity.py": 360,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

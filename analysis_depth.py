@@ -28,12 +28,6 @@ def _registry_of(packet):
     return _reg.registry(packet)
 
 
-#: 重述門檻:今天敘述的 token 有六成以上昨天就說過,視為重述。
-#: 訂 0.6 不是量出來的 —— 主體與事件名本來就會重複(那部分合理),
-#: 六成以上代表連判斷句都在重複。外審可挑戰。
-RESTATEMENT_OVERLAP = 0.6
-
-
 def depth_advisories(obj, packet=None) -> list:
     """**合法但淺**的地方(空 = 夠深)。與 `validate()` 刻意分開:
 
@@ -130,22 +124,12 @@ def depth_advisories(obj, packet=None) -> list:
         out.append(f"{len(news)} 則新聞裡沒有任何一則指出與其他條目的關係 —— "
                    "確認它們是否真的全部獨立;**沒有根據的關係不要硬湊**,"
                    "但搶同一段產能或同一個底層驅動的要指出來")
-    # 分析面縱深:**與昨日觀點高度重複的延續事件敘述,退回加深。**
-    # 判準是覆蓋率不是語意(`analysis_recap.overlap`:今天的字有多少
-    # 昨天就說過)—— prompt 要求寫增量,而先前沒有任何檢查量得到重述。
-    # `packet` 在舊相容路徑上可以是 ID 集合(見 `_registry_of`)——
-    # 那時沒有事件群,重述檢查整段跳過(與其他 packet-aware 規則一致)。
-    _pk = packet if isinstance(packet, dict) else {}
-    yv = {str(c.get("cluster_id") or ""): str(c.get("yesterday_view") or "")
-          for c in ((_pk.get("news_clusters") or {}).get("clusters") or [])
-          if isinstance(c, dict)}
+    # 分析面縱深:**與昨日觀點高度重複的敘述(主要+次要),退回加深。**
+    # 本體在 `analysis_recap.restatements`(存什麼/比什麼/門檻是同一個
+    # 閉環,拆兩處會各自漂移)。`packet` 在舊相容路徑上可以是 ID 集合
+    # (見 `_registry_of`)—— 那時沒有事件群,重述檢查整段跳過。
     import analysis_recap as _rc
-    for d in (obj.get("key_drivers") or []):
-        v = yv.get(str((d or {}).get("cluster_id") or "")) if isinstance(d, dict) else ""
-        if v and _rc.overlap(d.get("statement"), v) >= RESTATEMENT_OVERLAP:
-            out.append(f"key_drivers 對 {d.get('cluster_id')} 的敘述與昨日觀點"
-                       "高度重複 —— 延續事件要寫增量:強化/轉弱/翻轉之一,"
-                       "附**今天的**新證據,不要把昨天的判斷再說一次")
+    out.extend(_rc.restatements(obj, packet if isinstance(packet, dict) else {}))
     return out
 
 

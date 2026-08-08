@@ -163,6 +163,100 @@ def test_no_view_means_no_restatement_check():
     assert hits == []
 
 
+# ------------------------------------------------------------ 次要事件
+
+def _obj_with_secondary(why="半導體設備出口管制擴大,對成熟製程廠是新增的限制"):
+    """key_drivers 指 n2(台積電),top_news_analysis 指 n1(費半)——
+    兩個**不同**的事件群,次要那條先前完全不存。"""
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2")]
+    obj["top_news_analysis"] = [dict(obj["top_news_analysis"][0],
+                                     source_item_id="n1",
+                                     why_it_matters=why)]
+    return obj
+
+
+def test_secondary_events_are_saved_too():
+    """延燒到第三天的事件常已不在首屏 —— 只存首屏的話,最需要 diff
+    基準的長尾事件恰恰沒有基準。"""
+    rec = rc.extract(_obj_with_secondary(), _packet(date="2026-08-07"))
+    assert len(rec["items"]) == 2, rec
+    ents = [it["entities"] for it in rec["items"]]
+    assert ["台積電"] in ents and ["費半"] in ents, ents
+
+
+def test_one_view_per_cluster_and_the_primary_wins():
+    """首屏與次要講同一件事時只存首屏那句 —— 它才是本報的正式判斷,
+    存兩句明天就有兩個互相競爭的「昨日觀點」。"""
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2",
+                               statement="首屏的判斷")]
+    obj["top_news_analysis"] = [dict(obj["top_news_analysis"][0],
+                                     source_item_id="n2",
+                                     why_it_matters="次要段對同一件事的判斷")]
+    rec = rc.extract(obj, _packet(date="2026-08-07"))
+    tsmc = [it for it in rec["items"] if it["entities"] == ["台積電"]]
+    assert len(tsmc) == 1 and tsmc[0]["statement"] == "首屏的判斷", rec
+
+
+def test_an_unmatchable_view_is_not_stored():
+    """接不回來的觀點是死重量:source_item_id 不在任何群、也不在
+    news 裡 → 沒有實體 → 不存。"""
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = []
+    obj["top_news_analysis"] = [dict(obj["top_news_analysis"][0],
+                                     source_item_id="n_不存在")]
+    assert rc.extract(obj, _packet(date="2026-08-07"))["items"] == []
+
+
+def test_the_item_cap_keeps_the_primaries():
+    """超過上限截**尾**不截頭 —— 主要觀點(items 前段)要留下來。"""
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2",
+                               statement="主要")]
+    # 發布者各自不同 —— 同發布者+相似標題會被 packet 的近似去重收掉
+    # (v19 的正確行為),那樣測到的是去重不是上限。
+    news = [{"source_item_id": f"s{i:02d}", "title": f"事件{i}",
+             "entities": [f"公司{i}"], "source": f"媒體{i}",
+             "source_name": f"媒體{i}"}
+            for i in range(rc.MAX_ITEMS + 5)]
+    news.append({"source_item_id": "n2", "title": "台積電新聞",
+                 "entities": ["台積電"], "source": "Y", "source_name": "Y"})
+    pk = _packet(news=news, date="2026-08-07")
+    obj["top_news_analysis"] = [
+        dict(fx.valid_analysis()["top_news_analysis"][0],
+             source_item_id=f"s{i:02d}", why_it_matters=f"判斷{i}")
+        for i in range(rc.MAX_ITEMS + 5)]
+    rec = rc.extract(obj, pk)
+    assert len(rec["items"]) == rc.MAX_ITEMS
+    assert rec["items"][0]["statement"] == "主要"
+
+
+def test_restating_a_secondary_event_is_flagged():
+    """**這一批存在的理由**:重述最常發生在次要段 —— 首屏有三條的
+    位置壓力,次要段沒有,延燒事件掉出首屏後就開始逐日重述。"""
+    saved = rc.extract(_obj_with_secondary(), _packet(date="2026-08-07"))
+    pk = _packet(recap=saved)   # 明天:同一批新聞,費半群帶 yesterday_view
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = [dict(
+        obj["top_news_analysis"][0], source_item_id="n1",
+        why_it_matters="半導體設備出口管制擴大,對成熟製程廠是新增的限制")]
+    hits = [a for a in ad.depth_advisories(obj, pk) if "昨日觀點" in a]
+    assert any("top_news_analysis[0]" in a for a in hits), hits
+
+
+def test_a_secondary_delta_is_not_flagged():
+    saved = rc.extract(_obj_with_secondary(), _packet(date="2026-08-07"))
+    pk = _packet(recap=saved)
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = [dict(
+        obj["top_news_analysis"][0], source_item_id="n1",
+        why_it_matters="管制清單今日新增兩家台廠,影響從方向變成名單")]
+    hits = [a for a in ad.depth_advisories(obj, pk)
+            if "top_news_analysis[0]" in a and "昨日觀點" in a]
+    assert hits == [], hits
+
+
 # ------------------------------------------------------------ 生產接線
 
 def test_production_wires_both_ends_of_the_loop():

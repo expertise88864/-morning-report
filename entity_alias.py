@@ -33,6 +33,20 @@ ALIAS_GROUPS = (
     ("陽明", "2609"),
     ("台新新光金", "2887"),
     ("富邦金", "2881"),
+    # 深度優化(橫向):跨語言合併的前提是實體組有交集,而外媒寫英文名。
+    # 只收**歧義風險低**的:Delta(台達電)會撞航空與變體、Google 會撞
+    # 聚合器字串,刻意不收。
+    ("SK海力士", "SK Hynix", "SK hynix", "海力士"),
+    ("美光", "Micron", "MU"),
+    ("三星電子", "Samsung Electronics", "三星"),
+    ("英特爾", "Intel", "INTC"),
+    ("超微", "AMD"),
+    ("蘋果", "Apple", "AAPL"),
+    ("微軟", "Microsoft", "MSFT"),
+    ("亞馬遜", "Amazon", "AMZN"),
+    ("特斯拉", "Tesla", "TSLA"),
+    ("廣達", "Quanta", "2382"),
+    ("緯穎", "Wiwynn", "6669"),
 )
 
 #: `別名 → 組編號`。**一個別名只能屬於一組** —— 屬於兩組等於把兩個
@@ -57,3 +71,30 @@ def same(name, groups) -> bool:
     """`name` 與這些組裡的任一個是同一個主體嗎。"""
     g = group_of(name)
     return g >= 0 and g in (groups or set())
+
+
+def days_for(entities, titles_text: str, timeline: dict) -> int:
+    """這群新聞接得上事件 timeline 的第幾天(接不上回 0)。
+
+    從 `evidence_packet._days` 抽出來共用 —— fetch_plan 的延燒優先
+    (縱向:延燒中的事件要抓全文,因為它要寫的是**增量**,增量需要細節)
+    與 packet 的 `continuing_days` 必須是**同一套判準**,否則「抓了全文的
+    事件」與「標成第 N 天的事件」會是兩個不同的集合。
+
+    比對三層:實體精確 → 別名組(`expand`/`same`)→ 標題含實體名
+    (ASCII 要 token 邊界 —— 裸子字串會讓 `US` 命中 `ASUS`,
+    美國事件的第 4 天接到華碩財報上;第二十二輪 P1-9)。
+    """
+    import re as _re
+    ents = {str(e) for e in (entities or ()) if str(e).strip()}
+    titles = str(titles_text or "")
+    keys = expand(ents)
+
+    def _in_title(e: str) -> bool:
+        if not e.isascii():
+            return e in titles
+        return bool(_re.search(r"(?<![A-Za-z0-9])" + _re.escape(e)
+                               + r"(?![A-Za-z0-9])", titles, _re.IGNORECASE))
+    return max((int(d or 0) for e, d in (timeline or {}).items()
+                if e in ents or same(e, keys) or _in_title(str(e))),
+               default=0)

@@ -66,7 +66,11 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: v20(第二十三輪):event_graph 帶 `macro_release_cluster_ids`(全部
 #: 的總經發布,不只挑一個);來源註冊表 ASCII 別名改 token 邊界
 #: (`ft` 不再命中 SoftBank/Microsoft);未知來源以發布者字串去重。
-EVIDENCE_SCHEMA_VERSION = 20
+#: v21(深度優化,橫向):跨語言同事件以數字錨點橋接(`cross_lang` ——
+#: CNBC 與經濟日報報的同一筆金額不再是兩個分析單位);聚合器條目的
+#: 發布者從標題尾綴解析(`source_registry.title_publisher`,獨立來源數
+#: 與 aggregator_only 都會動);分群比對剝發布者尾綴。
+EVIDENCE_SCHEMA_VERSION = 21
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -250,29 +254,14 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     by_id = {n["source_item_id"]: n for n in kept_news}
 
     def _days(c):
+        # 判準在 `entity_alias.days_for`(與 fetch_plan 的延燒優先共用 ——
+        # 「抓了全文的事件」與「標成第 N 天的事件」必須是同一個集合)。
         ents = {str(e) for m in c["member_source_ids"]
                 for e in (by_id.get(m, {}).get("entities") or [])}
-        # 第二十一輪 P2-8:**精確比對接不上別名。** 「伊朗」與「德黑蘭」、
-        # 「台積電」與「TSMC」是同一件事的兩種寫法,而 timeline 存的是
-        # 抽取器當天用的那一個。標題也算 —— 實體抽取會漏,標題不會。
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
-        import re as _re2
-
         import entity_alias as _ea
-        keys = _ea.expand(ents)
-
-        def _in_title(e):
-            # **token 邊界**(第二十二輪 P1-9):裸子字串會讓 `US`
-            # 命中 `ASUS`,美國事件的第 4 天接到華碩財報上。
-            if not str(e).isascii():
-                return str(e) in titles
-            return bool(_re2.search(
-                r"(?<![A-Za-z0-9])" + _re2.escape(str(e))
-                + r"(?![A-Za-z0-9])", titles, _re2.IGNORECASE))
-        return max((d for e, d in timeline.items()
-                    if e in ents or _ea.same(e, keys) or _in_title(e)),
-                   default=0)
+        return _ea.days_for(ents, titles, timeline)
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],

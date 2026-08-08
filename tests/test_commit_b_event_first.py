@@ -166,5 +166,8 @@ def test_production_uses_the_event_plan_not_the_per_article_scan():
     from pathlib import Path
     src = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
                   encoding="utf-8").read()
-    assert "plan_for_run(news, ctx.recorder)" in src, "兩階段抓取沒接進生產"
+    # 深度優化(縱向)後呼叫多帶 timeline_file —— 釘的字串跟著生產走,
+    # timeline 接線本身另有 test_deep_news_opt 的守衛盯。
+    assert "plan_for_run(\n                    news, ctx.recorder" in src, \
+        "兩階段抓取沒接進生產"
     assert "targets=_fplan.plan_for_run" in src

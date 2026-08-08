@@ -21239,7 +21239,8 @@ def _phase_news_policy_sports(ctx) -> None:
             # 補齊 `source_item_id`(P1-1),故下一行的 fetch 也看得到。
             import fetch_plan as _fplan
             news = fetch_news_fulltext(
-                news, targets=_fplan.plan_for_run(news, ctx.recorder))
+                news, targets=_fplan.plan_for_run(
+                    news, ctx.recorder, timeline_file=EVENT_TIMELINE_FILE))
         except Exception as e:
             print(f"[main] 全文擷取失敗: {e}", file=sys.stderr)
 

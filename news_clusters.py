@@ -80,10 +80,19 @@ def _same_event(a: dict, b: dict) -> bool:
         import entity_alias as _al
         if not (_al.expand(ea) & _al.expand(eb)):
             return False
-    ta, tb = _tokens(a.get("title")), _tokens(b.get("title"))
+    # 聚合器條目的「 - 發布者」尾綴不是標題內容:兩家媒體報同一件事時
+    # 尾綴必然不同,它的字元在重疊比對裡**懲罰合併**(短標題會因此
+    # 掉到門檻下)。剝掉的判準與理由在 `source_registry.bare_title`。
+    import source_registry as _sr
+    ta, tb = _tokens(_sr.bare_title(a)), _tokens(_sr.bare_title(b))
     if not ta or not tb:
         return False
-    return len(ta & tb) / min(len(ta), len(tb)) >= TITLE_OVERLAP
+    if len(ta & tb) / min(len(ta), len(tb)) >= TITLE_OVERLAP:
+        return True
+    # 跨語言同事件的重疊實測只有 0.33,永遠過不了門檻(P2-7)——
+    # 用**同幣別同量級的金額**補這一段;三道防線見 `cross_lang`。
+    import cross_lang as _cl
+    return _cl.bridge(a, b)
 
 
 def clusters(news: Optional[list]) -> list:

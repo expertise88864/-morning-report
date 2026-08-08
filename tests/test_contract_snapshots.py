@@ -260,7 +260,17 @@ def _edge_packet() -> dict:
          {"source_item_id": "e7", "title": "聯發科天璣新品發表會延期",
           "entities": ["聯發科"], "source": "自由時報",
           "source_name": "自由時報",
-          "summary": "(中央社記者李四台北5日電)聯發科今日宣布…"}],
+          "summary": "(中央社記者李四台北5日電)聯發科今日宣布…"},
+         # v21:**跨語言數字錨點橋接 + 聚合器發布者浮出**。CNBC 的 $38B
+         # 與經濟日報(藏在 Google 尾綴裡)的 383億美元要併成一群、
+         # 獨立來源數 2 —— 橋接或尾綴解析被拿掉時,這幾格要動。
+         {"source_item_id": "e8",
+          "title": "SK Hynix to spend $38 billion on two new chip plants",
+          "entities": ["SK Hynix"], "source": "CNBC", "source_name": "CNBC"},
+         {"source_item_id": "e9",
+          "title": "SK海力士砸383億美元建兩座新廠 - 經濟日報",
+          "entities": ["SK海力士"], "source": "Google:半導體",
+          "source_name": ""}],
         [], {}, as_of="x", target_session_date="y", sanitize=lambda s: s)
 
 
@@ -507,7 +517,11 @@ _FROZEN = {
     #     媒體被判成「同一家改版重發」而砍掉兩則。
     # v20(第二十三輪):macro_release_cluster_ids、來源別名 token 邊界、
     #     未知來源以發布者字串去重。
-    "evidence_schema_version":  (20, "e10d1f57c6f0a038"),
+    # v21(深度優化):跨語言數字錨點橋接 + 聚合器發布者浮出 + 分群剝
+    # 發布者尾綴。edge packet 補了 e8/e9(CNBC $38B ↔ 經濟日報 383億美元)
+    # —— 先前的探針蓋不到這兩個行為,指紋不動;**探針量不到的東西,
+    # 版本升降就只是在猜**(這一格的既有教訓,同一句話再驗一次)。
+    "evidence_schema_version":  (21, "2c24b13910d80212"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。

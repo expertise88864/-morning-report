@@ -41,12 +41,33 @@ def _imp(item) -> int:
     return _IMPORTANCE.get(str((item or {}).get("importance") or ""), 9)
 
 
-def _rank(cluster: dict, by_id: dict) -> tuple:
-    """事件群的抓取優先序。**官方 → 獨立群組數 → 群內最高重要性 → ID。**"""
+def _continuing(cluster: dict, by_id: dict, timeline: dict) -> int:
+    """這個事件群接得上 timeline 的第幾天(判準共用 `entity_alias.days_for`)。"""
+    if not timeline:
+        return 0
+    members = [str(m) for m in (cluster.get("member_source_ids") or [])]
+    ents = {str(e) for m in members
+            for e in (by_id.get(m, {}).get("entities") or [])}
+    titles = " ".join(str(by_id.get(m, {}).get("title") or "") for m in members)
+    import entity_alias as _ea
+    return _ea.days_for(ents, titles, timeline)
+
+
+def _rank(cluster: dict, by_id: dict, days: int = 0) -> tuple:
+    """事件群的抓取優先序。
+    **官方 → 獨立群組數 → 延燒中 → 群內最高重要性 → ID。**
+
+    延燒中(昨天以前已在追蹤)排在同獨立度的新事件之前,理由是縱向的:
+    延續事件在信裡要寫**增量**(昨天 vs 今天),增量需要全文的細節;
+    只有 RSS 兩行摘要時,模型只能把背景再講一次 —— 那正是「延燒第 N 天」
+    機制要消掉的重複。放在獨立度**之後**:一個三家證實的新事件仍然
+    比一條單來源的延燒尾巴重要。
+    """
     members = [by_id.get(m) for m in (cluster.get("member_source_ids") or [])]
     best = min([_imp(m) for m in members if m], default=9)
     return (not cluster.get("official"),
             -int(cluster.get("independent_sources") or 0),
+            0 if days >= 2 else 1,
             best, str(cluster.get("cluster_id") or ""))
 
 
@@ -59,17 +80,23 @@ def _fetchable(item) -> bool:
 
 
 def plan(news: Optional[list], clusters: Optional[list],
-         budget: int = 26) -> dict:
+         budget: int = 26, timeline: Optional[dict] = None) -> dict:
     """回 `{targets, per_cluster, uncovered_clusters, budget, basis}`。
 
     **純函式**:不抓網路、不改輸入。`targets` 是有序的 `source_item_id`
     清單,呼叫端照順序抓到預算用完(或時間用完)為止 —— 順序本身就是
     優先序,所以中途停下來也是**從最重要的事件開始有全文**。
+
+    `timeline` 是 `{實體: 第幾天}`(昨天為止的事件 timeline)——
+    給了就把延燒中的事件排在同獨立度的新事件之前(理由見 `_rank`)。
     """
     by_id = {str(n.get("source_item_id")): n for n in (news or [])
              if isinstance(n, dict) and n.get("source_item_id")}
+    cont = {str(c.get("cluster_id") or ""): _continuing(c, by_id, timeline or {})
+            for c in (clusters or []) if isinstance(c, dict)}
     ranked = sorted([c for c in (clusters or []) if isinstance(c, dict)],
-                    key=lambda c: _rank(c, by_id))
+                    key=lambda c: _rank(c, by_id,
+                                        cont.get(str(c.get("cluster_id") or ""), 0)))
     targets: list = []
     per_cluster: list = []
     for c in ranked:
@@ -97,12 +124,45 @@ def plan(news: Optional[list], clusters: Optional[list],
         # **不做靜默的上限**:排得到卻沒預算的事件群要說出來。
         "uncovered_clusters": uncovered,
         "budget": int(budget),
-        "basis": ("逐事件群分配:官方 → 獨立群組數 → 群內最高重要性;"
-                  "先每群一篇再補第二篇(涵蓋的事件數優先於單一事件深度)"),
+        # 延燒優先真的有沒有生效,manifest 要看得出來 —— 0 可能是
+        # 「今天沒有延燒事件」也可能是「timeline 沒接上」,分不開的話
+        # 接線斷了不會有人發現(2026-08-06 兩階段抓取整段 no-op 的教訓)。
+        "continuing_boosted": sorted(k for k, d in cont.items() if d >= 2),
+        "timeline_entities": len(timeline or {}),
+        "basis": ("逐事件群分配:官方 → 獨立群組數 → 延燒中 → 群內最高"
+                  "重要性;先每群一篇再補第二篇(涵蓋的事件數優先於"
+                  "單一事件深度)"),
     }
 
 
-def plan_for_run(news: Optional[list], recorder=None, budget: int = 26) -> list:
+def timeline_map(path) -> dict:
+    """昨天為止的事件 timeline → `{實體: 第幾天}`(讀不到回空 dict)。
+
+    讀的是 state 檔的原始形狀(`{key: {days, subjects}}`)而不是渲染後的
+    清單 —— 抓取發生在今天的 timeline 更新**之前**,昨天的 state 正是
+    「哪些事在延燒」的最新事實。**讀不到就不加權,不是不抓** ——
+    降級方向是「退回今天以前的排序」,晨報不因此中斷。
+    """
+    try:
+        import json
+        import pathlib
+        state = json.loads(
+            pathlib.Path(str(path)).read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+    out: dict = {}
+    for rec in state.values():
+        if not isinstance(rec, dict):
+            continue
+        d = int(rec.get("days") or 0)
+        for s in (rec.get("subjects") or []):
+            if str(s).strip():
+                out[str(s)] = max(out.get(str(s), 0), d)
+    return out
+
+
+def plan_for_run(news: Optional[list], recorder=None, budget: int = 26,
+                 timeline_file=None) -> list:
     """生產用的一行入口:**補 ID** → 分群 → 排計畫 → 記進 recorder → 回 `targets`。
 
     `recorder` 是 `ManifestRecorder`(相位不得直接碰 `_RUN_MANIFEST`,
@@ -120,7 +180,8 @@ def plan_for_run(news: Optional[list], recorder=None, budget: int = 26) -> list:
     import news_clusters as _nc
     import news_ids as _nids
     news = _nids.assign_source_item_ids(news)
-    out = plan(news, _nc.clusters(news), budget=budget)
+    out = plan(news, _nc.clusters(news), budget=budget,
+               timeline=timeline_map(timeline_file) if timeline_file else {})
     rec = getattr(recorder, "record_fulltext_plan", None)
     if callable(rec):
         rec(out)

@@ -193,11 +193,47 @@ def wire_byline(item) -> str:
     return ""
 
 
+#: Google News 的標題尾綴:`「標題 - 發布者」`。**發布者身分就藏在標題裡**,
+#: 而先前只看 `source_name` 欄位 —— 欄位空的時候整則被記成
+#: `aggregator_only`(「抓取管線沒解出發布者」),實際上解得出來。
+_TITLE_TAIL = _re.compile(r"\s[-–—|]\s([^-–—|]{2,24})\s*$")
+
+
+def title_publisher(item) -> str:
+    """聚合器條目的標題尾綴裡認得出來的發布者(認不得回空字串)。
+
+    **只在來源是聚合器時看標題**:一般媒體的「 - 副標」是內容,
+    拿它當發布者會把「A公司財報 - 法說會前瞻」記成一家叫
+    「法說會前瞻」的媒體。**只回註冊表認得的**:不認得的尾綴可能是
+    副標也可能是小站,認錯的代價(假的獨立數)大於漏認(unverified)。
+    """
+    if not isinstance(item, dict):
+        return ""
+    src = str(item.get("source") or "")
+    if not (src.lower().startswith("google:") or is_aggregator(src)):
+        return ""
+    m = _TITLE_TAIL.search(str(item.get("title") or ""))
+    tail = m.group(1).strip() if m else ""
+    return tail if tail and owner_of(tail) else ""
+
+
+def bare_title(item) -> str:
+    """分群比對用的標題:聚合器條目剝掉發布者尾綴。
+
+    同一件事經兩家媒體出現在 Google News 時,尾綴不同(「 - 經濟日報」vs
+    「 - 中時新聞網」)—— 尾綴的字元在標題重疊比對裡**懲罰合併**,
+    短標題會因此掉到 0.5 門檻之下,同一件事拆成兩群。
+    """
+    t = str((item or {}).get("title") or "")
+    return _TITLE_TAIL.sub("", t) if title_publisher(item) else t
+
+
 def owner_of_item(item) -> str:
     """一則新聞的獨立群組。
 
-    順序:**通訊社署名 → `source_name` → `source`**。署名先判的理由見
-    `_WIRE_BYLINE` —— 轉載的編輯決策屬於通訊社,不屬於轉載的報紙。
+    順序:**通訊社署名 → `source_name` → `source` → 聚合器標題尾綴**。
+    署名先判的理由見 `_WIRE_BYLINE` —— 轉載的編輯決策屬於通訊社,
+    不屬於轉載的報紙。尾綴最後判:欄位有值時欄位比標題可信。
     """
     mark = wire_byline(item)
     if mark:
@@ -206,7 +242,8 @@ def owner_of_item(item) -> str:
         g = owner_of(n)
         if g:
             return g
-    return ""
+    tail = title_publisher(item)
+    return owner_of(tail) if tail else ""
 
 
 def independence(items: Optional[list]) -> dict:

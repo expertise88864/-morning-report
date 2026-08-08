@@ -26,7 +26,8 @@ def _ok_manifest(**over):
         "llm": {"analysis_origin": ao.LUNA_SPECIALIZED,
                 "recap_saved": True,
                 "payload_budget": {"over_budget": False}},
-        "news": {"fulltext_plan": {"clusters": 120, "targets": ["a", "b"]}},
+        "news": {"fulltext_plan": {"clusters": 120, "targets": ["a", "b"],
+                                   "available_news": 300}},
     }
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(m.get(k), dict):
@@ -34,6 +35,17 @@ def _ok_manifest(**over):
         else:
             m[k] = v
     return m
+
+
+def _measured(*pairs, role="primary", accepted=True):
+    """**走 recorder 產生量測**(第二輪外審 F1):手工塞 `llm.primary`
+    量不到「角色槽是彙總、量測要逐次成對」這件事 —— 而那正是缺陷所在。"""
+    import run_manifest as rm
+    r = rm.ManifestRecorder()
+    for chars, toks in pairs:
+        r.record_llm_call(role, "deepseek", "m", usage={"prompt_tokens": toks},
+                          accepted=accepted, request_chars=chars)
+    return r.data["llm"]
 
 
 def test_a_healthy_run_reports_nothing():
@@ -57,14 +69,16 @@ def test_the_five_day_silent_degradation_is_caught():
 
 def test_the_no_op_fetch_plan_is_caught():
     """2026-08-06:分不出事件群 → 信裡只有 RSS 兩行摘要。"""
-    m = _ok_manifest(news={"fulltext_plan": {"clusters": 0, "targets": []}})
+    m = _ok_manifest(news={"fulltext_plan": {
+        "clusters": 0, "targets": [], "available_news": 563}})
     assert "fetch_plan_no_clusters" in {f["code"] for f in rq.assess(m)}
 
 
 def test_clusters_without_targets_is_a_broken_wire():
     """分得出群卻一篇都沒排 —— 那是接線斷了,不是預算不夠
     (預算不夠會排出 targets 再被截斷)。"""
-    m = _ok_manifest(news={"fulltext_plan": {"clusters": 80, "targets": []}})
+    m = _ok_manifest(news={"fulltext_plan": {
+        "clusters": 80, "targets": [], "available_news": 300}})
     assert "fetch_plan_no_targets" in {f["code"] for f in rq.assess(m)}
 
 
@@ -184,11 +198,13 @@ def test_the_char_gate_headroom_is_measured_not_assumed(tmp_path):
     manifest 裡(`final_request_chars` 與主嘗試的 `prompt_tokens`),
     缺的只是把它們除一下。"""
     import payload_budget as pb
-    m = _ok_manifest(llm={
-        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-        "payload_budget": {"over_budget": False,
-                           "final_request_chars": 1_052_716},
-        "attempts": [{"role": "primary", "prompt_tokens": 391_145}]})
+    # **走 recorder 的生產形狀**:先前 fixture 手工把 token 放進
+    # `attempts`、字元放在 manifest 頂層 —— 而健康的日子 attempts 裡根本
+    # 沒有 primary,量測整個不跑,測試卻是綠的(第一輪外審 F1)。
+    m = _ok_manifest(llm={**_measured((1_052_716, 391_145)),
+                          "analysis_origin": ao.LUNA_SPECIALIZED,
+                          "recap_saved": True,
+                          "payload_budget": {"over_budget": False}})
     head = pb.proxy_headroom(m)
     # **驗自己的算術**,不抄別份資料的結論:真實 manifest 算出 2.688 是因為
     # 它有第二次嘗試、`max` 取到更大的 token 數。把那個數字抄進只有一次
@@ -202,25 +218,29 @@ def test_a_cjk_heavy_day_makes_the_proxy_thin():
     """**同一份字元預算,偏中文的日子換到多得多的 token。**
     字元閘門的安全性完全取決於當日語言組合 —— 那是一個會浮動的東西,
     而先前沒有任何人在看它。"""
-    m = _ok_manifest(llm={
-        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-        "payload_budget": {"over_budget": False,
-                           "final_request_chars": 1_052_716},
-        # 1.17 字元/token(重中文)→ 同樣的字元上限換到 94 萬 token
-        "attempts": [{"role": "primary", "prompt_tokens": 900_000}]})
+    # 1.17 字元/token(重中文)→ 同樣的字元上限換到 94 萬 token
+    m = _ok_manifest(llm={**_measured((1_052_716, 900_000)),
+                          "analysis_origin": ao.LUNA_SPECIALIZED,
+                          "recap_saved": True,
+                          "payload_budget": {"over_budget": False}})
     got = [f for f in rq.assess(m) if f["code"] == "payload_proxy_thin"]
     assert got and got[0]["severity"] == "defect", rq.assess(m)
 
 
 def test_the_headroom_uses_the_largest_attempt():
-    """修補與加深各送一次 —— **最大的那次才是閘門要擋的東西**。"""
+    """修補與加深各送一次 —— **最大的那次才是閘門要擋的東西**,
+    而且**只算 primary**:抽取器走的是另一條路、另一個上限。"""
     import payload_budget as pb
-    m = _ok_manifest(llm={
-        "payload_budget": {"final_request_chars": 1_000_000},
-        "attempts": [{"role": "primary", "prompt_tokens": 100_000},
-                     {"role": "primary", "prompt_tokens": 500_000},
-                     {"role": "extractor", "prompt_tokens": 900_000}]})
-    assert pb.proxy_headroom(m)["chars_per_token"] == 2.0   # 1e6 / 5e5
+    llm = {**_measured((800_000, 100_000), (1_000_000, 500_000)),
+           **_measured((2_000_000, 900_000), role="extractor")}
+    llm["request_measurements"] = (
+        _measured((800_000, 100_000), (1_000_000, 500_000))
+        ["request_measurements"]
+        + _measured((2_000_000, 900_000), role="extractor")
+        ["request_measurements"])
+    # 取**字元最大**的 primary 那筆(1e6 / 5e5);抽取器不算,
+    # 否則 2e6/9e5 會贏,而那不是特化路徑的請求。
+    assert pb.proxy_headroom({"llm": llm})["chars_per_token"] == 2.0
 
 
 def test_no_numbers_means_no_claim():
@@ -228,8 +248,11 @@ def test_no_numbers_means_no_claim():
     看起來很精確的比例。"""
     import payload_budget as pb
     assert pb.proxy_headroom({}) is None
-    assert pb.proxy_headroom({"llm": {"payload_budget":
-                                      {"final_request_chars": 1000}}}) is None
+    # 只有字元沒有 token(或反過來)→ 不成對,不算
+    assert pb.proxy_headroom(
+        {"llm": {"primary": {"request_chars": 1000}}}) is None
+    assert pb.proxy_headroom(
+        {"llm": {"primary": {"prompt_tokens": 1000}}}) is None
 
 
 # ------------------------------------------------------------ README 漂移
@@ -254,3 +277,155 @@ def test_every_env_name_in_the_readme_still_exists():
     assert not missing, (
         f"README 提到但程式與 workflow 都找不到的設定名:{missing}。\n"
         "改名時要同時改文件 —— 使用者照著設會設到一個沒有人在讀的東西。")
+
+
+# ------------------------------------------- 第一輪外審(這兩批的補正)
+
+def test_a_repaired_run_is_not_a_defect():
+    """**R1-F2 的反例。** `luna_problems` 是累積的 —— 第一次不合格、
+    第二次修補成功時它仍然留著。只看它非空就報 defect,會在**特化輸出
+    順利寄出的日子**讓 canary 紅、看門狗回 2。誤報是這個模組最該避免
+    的東西(它自己的 docstring 這樣寫)。"""
+    m = _ok_manifest(llm={
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+        "payload_budget": {"over_budget": False},
+        "luna_problems": ["claim_audit[3] 引用了不存在的證據 ID"]})
+    assert rq.assess(m) == [], rq.assess(m)
+    # 反向:最後真的沒跑成時仍要報
+    m2 = _ok_manifest(llm={
+        "analysis_origin": ao.LEGACY_AFTER_LUNA_FAILURE,
+        "luna_problems": ["同上"]})
+    assert "luna_rejected" in {f["code"] for f in rq.assess(m2)}
+
+
+def test_no_news_at_all_is_an_upstream_outage_not_a_wiring_defect():
+    """**R1-F3 的反例。** 零新聞時零群集是必然結果 —— 報成接線缺陷會讓
+    上游斷料的日子看起來像程式有 bug,而該查的地方完全不同。"""
+    m = _ok_manifest(news={"fulltext_plan": {
+        "clusters": 0, "targets": [], "available_news": 0}})
+    got = rq.assess(m)
+    assert [f["code"] for f in got] == ["news_upstream_empty"], got
+    assert got[0]["severity"] == "degraded"
+
+
+def test_optional_namespaces_being_empty_is_not_a_defect():
+    """**R1-F4 的反例。** 生產那邊的註解自己就寫著「當日真的沒有持倉/
+    張力時空掉是對的」—— 而第一版把每一個空掉的命名空間都報成程式缺陷,
+    等於製造可預期的假警報。"""
+    m = _ok_manifest(llm={
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+        "payload_budget": {"over_budget": False},
+        "unrealizable_namespaces": ["portfolio:", "tension:", "fact:"]})
+    assert rq.assess(m) == [], rq.assess(m)
+    # 反向:每天都組得出來的那幾個空掉,仍然是缺陷(2026-08-08 的形狀)
+    m2 = _ok_manifest(llm={
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+        "payload_budget": {"over_budget": False},
+        "unrealizable_namespaces": ["portfolio:", "calibration:"]})
+    got = [f for f in rq.assess(m2) if f["code"] == "namespace_unrealizable"]
+    assert got and "calibration:" in got[0]["detail"], rq.assess(m2)
+    assert "portfolio:" not in got[0]["detail"], got[0]["detail"]
+
+
+def test_the_gate_runs_on_every_attempt_and_records_its_own_chars():
+    """**R1-F1 的接線。** 先前只在迴圈前量一次 —— 而修補/加深那次會把
+    上一版的完整 JSON 附進 input,送的是一個**更大而且從沒被量過**的
+    payload;字元也只有一份,配不起第二次的 token 數。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    body = src.split("def _luna_analysis(")[1].split("\ndef ")[0]
+    head, loop = body.split("for repair in _LUNA_ATTEMPTS:", 1)
+    assert "_pb.request_gate(" not in head, "閘門還在迴圈外只量一次"
+    assert "_req_chars = _pb.request_gate(" in loop
+    assert "request_chars=_req_chars" in loop, "字元沒有記到那一次呼叫上"
+
+
+def test_an_oversized_repair_does_not_throw_away_a_good_first_version():
+    """**修正不得比缺陷更糟。** 修補那次超標時若直接拋,已經拿到的
+    合法第一版(`_kept`)會被丟掉,信反而更差。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    body = src.split("def _luna_analysis(")[1].split("\ndef ")[0]
+    seg = body.split("except _pb.PayloadBudgetExceeded:", 1)[1][:400]
+    assert "if _kept is None:" in seg and "raise" in seg and "break" in seg, seg
+
+
+def test_the_planner_records_the_news_count_the_criterion_needs():
+    """**判準的前提要由生產端提供。** 上面那條分得出「零新聞」與
+    「接線壞」,靠的是 `plan()` 記下 `available_news` —— 生產不記的話,
+    `run_quality` 拿不到那個前提,零群集又會被一律報成缺陷。
+
+    第一版的反例自己在 fixture 裡塞了這個欄位,於是把生產端的記錄
+    拿掉時測試照樣綠(突變驗證抓到)。**測試要用生產的呼叫形狀。**
+    """
+    import fetch_plan as fp
+    import news_clusters as nc
+    news = [{"source_item_id": f"n{i}", "title": f"事件{i}",
+             "entities": [f"公司{i}"], "source": f"媒體{i}",
+             "source_name": f"媒體{i}", "link": "http://x"}
+            for i in range(4)]
+    out = fp.plan(news, nc.clusters(news))
+    assert out["available_news"] == 4, out.get("available_news")
+    assert fp.plan([], [])["available_news"] == 0
+
+
+# ------------------------------------------- 第二輪外審:走完整管線
+
+def test_a_deepened_run_does_not_fake_a_thin_proxy():
+    """**R2-F1 的反例。** 加深成功那天有兩次 accepted 呼叫;
+    `merge_same_role` 把 token **累加**、其餘欄位取最新 ——
+    於是角色槽裡是「第二次的字元 ÷ 兩次的 token 和」,比例偏小,
+    看起來像「字元換到很多 token」→ **假的 payload_proxy_thin**。
+
+    角色槽是彙總、量測要的是逐次成對,兩種需求不共用容器。
+    """
+    import payload_budget as pb
+    import run_manifest as rm
+    r = rm.ManifestRecorder()
+    for chars, toks in ((1_000_000, 390_000), (1_100_000, 420_000)):
+        r.record_llm_call("primary", "deepseek", "m",
+                          usage={"prompt_tokens": toks},
+                          accepted=True, request_chars=chars)
+    m = r.data
+    # 合併後的角色槽確實是混的 —— 這正是不能拿它算比例的理由
+    assert m["llm"]["primary"]["prompt_tokens"] == 810_000
+    assert m["llm"]["primary"]["request_chars"] == 1_100_000
+    head = pb.proxy_headroom(m)
+    assert head["chars_per_token"] == round(1_100_000 / 420_000, 3), head
+    m.update(date="x", degraded_steps=[],
+             news={"fulltext_plan": {"clusters": 9, "targets": [1],
+                                     "available_news": 20}})
+    m["llm"].update(analysis_origin=ao.LUNA_SPECIALIZED, recap_saved=True,
+                    payload_budget={"over_budget": False})
+    assert [f["code"] for f in rq.assess(m)] == [], rq.assess(m)
+
+
+def test_the_recorder_carries_the_news_count_through():
+    """**R2-F2 的反例。** `plan()` 記了 `available_news`,而
+    `record_fulltext_plan()` 重建 entry 時只抄四個欄位 —— 於是判準拿到
+    `None`,零新聞的日子又被報成接線缺陷。
+
+    **走 planner → recorder → 判準的完整路徑**:上一版的反例只驗
+    `plan()` 的回傳,量不到中間那一段(逐欄複製的清單漂移)。
+    """
+    import fetch_plan as fp
+    import run_manifest as rm
+    r = rm.ManifestRecorder()
+    fp.plan_for_run([], recorder=r)          # 今天一則新聞都沒有
+    plan = r.data["news"]["fulltext_plan"]
+    assert plan.get("available_news") == 0, plan
+    m = {"date": "x", "degraded_steps": [],
+         "llm": {"analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+                 "payload_budget": {"over_budget": False}},
+         "news": {"fulltext_plan": plan}}
+    got = rq.assess(m)
+    assert [f["code"] for f in got] == ["news_upstream_empty"], got
+    # 反向:真的有新聞卻零群集,仍要報接線缺陷
+    r2 = rm.ManifestRecorder()
+    news = [{"source_item_id": "n1", "title": "某事件", "entities": ["某公司"],
+             "source": "甲", "source_name": "甲", "link": "http://x"}]
+    r2.record_fulltext_plan(dict(fp.plan(news, []), per_cluster=[]))
+    m["news"]["fulltext_plan"] = r2.data["news"]["fulltext_plan"]
+    assert "fetch_plan_no_clusters" in {f["code"] for f in rq.assess(m)}

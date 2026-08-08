@@ -166,24 +166,35 @@ def proxy_headroom(manifest) -> Optional[dict]:
     """
     m = manifest if isinstance(manifest, dict) else {}
     llm = m.get("llm") if isinstance(m.get("llm"), dict) else {}
-    pb = llm.get("payload_budget") if isinstance(
-        llm.get("payload_budget"), dict) else {}
-    chars = pb.get("final_request_chars")
-    toks = [a.get("prompt_tokens") for a in (llm.get("attempts") or [])
-            if isinstance(a, dict) and a.get("role") == "primary"
-            and isinstance(a.get("prompt_tokens"), (int, float))
-            and a.get("prompt_tokens") > 0]
-    if not isinstance(chars, (int, float)) or chars <= 0 or not toks:
+    # **只讀逐次成對的量測**(第二輪外審 F1)。
+    #
+    # 第一版讀 `llm.primary` + `llm.attempts`:accepted 記在角色槽、
+    # 只有被拒的進 attempts,所以健康的日子完全量不到(而我當初拿
+    # 2026-08-08 那份「全被拒」的 manifest 驗證,它看起來會動)。
+    # 補上角色槽之後還有第二個洞:`merge_same_role` 把 token **累加**、
+    # 其餘取最新 —— 加深成功那天字元是第二次的、token 是兩次的和,
+    # 比例偏小,會產生假的 `payload_proxy_thin`。
+    #
+    # 角色槽是**彙總**、量測要的是**逐次成對**:`request_measurements`
+    # 是專為後者存的,不受合併語意影響。
+    pairs = [(float(r["chars"]), float(r["tokens"]))
+             for r in (llm.get("request_measurements") or [])
+             if isinstance(r, dict) and r.get("role") == "primary"
+             and isinstance(r.get("chars"), (int, float)) and r["chars"] > 0
+             and isinstance(r.get("tokens"), (int, float)) and r["tokens"] > 0]
+    if not pairs:
         return None
-    # **取最大的那次**:最大的請求才是閘門真正要擋的東西。
-    cpt = float(chars) / float(max(toks))
+    # **取字元數最大的那一次**:最大的請求才是閘門真正要擋的東西,
+    # 而它的比例才是「這個上限還剩多少餘裕」的答案。
+    chars, toks = max(pairs, key=lambda p: p[0])
+    cpt = chars / toks
     return {"chars_per_token": round(cpt, 3),
             "implied_token_ceiling": int(MAX_REQUEST_CHARS / cpt),
             "observed_rejected_tokens": OBSERVED_REJECTED_TOKENS}
 
 
 def request_gate(body: dict, *, manifest=None,
-                 limit: int = MAX_REQUEST_CHARS) -> None:
+                 limit: int = MAX_REQUEST_CHARS) -> int:
     """對**真正要送出去的 request body** 做最終檢查(外審 P1-4)。
 
     量的是整個 body 序列化之後的字元 —— 包含 `model` / `store` /
@@ -214,6 +225,11 @@ def request_gate(body: dict, *, manifest=None,
               "放棄特化路徑", file=_sys.stderr)
         raise PayloadBudgetExceeded(
             f"final request over budget: {chars} > {limit}")
+    # **回傳字元數**(第一輪外審 F1):呼叫端要把它記到**那一次呼叫**上,
+    # 才配得起同一次的 `prompt_tokens`。manifest 頂層那個
+    # `final_request_chars` 只有一份,而修補那次送的是另一個 payload ——
+    # 拿它去除第二次的 token 數,算出來的比例沒有意義。
+    return chars
 
 
 def apply(packet: Optional[dict], manifest: Optional[dict] = None) -> dict:

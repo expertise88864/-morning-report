@@ -96,12 +96,19 @@ class ManifestRecorder:
         會讀起來像涵蓋完整,而逐事件群分配預算正是為了解掉那個錯覺。
         """
         p = plan if isinstance(plan, dict) else {}
-        self.data.setdefault("news", {})["fulltext_plan"] = {
+        entry = {
             "targets": len(p.get("targets") or []),
             "clusters": len(p.get("per_cluster") or []),
             "uncovered_clusters": list(p.get("uncovered_clusters") or [])[:10],
             "basis": str(p.get("basis") or ""),
         }
+        # **「分不出群」與「今天根本沒有新聞」要分得開**(第二輪外審 F2)。
+        # `plan()` 記了 `available_news`,而這裡重建 entry 時只抄四個欄位 ——
+        # 於是判準拿到 `None`,零群集又被一律報成接線缺陷。
+        # 這是「生產端記了、下游沒帶」—— 逐欄複製的清單漂移形狀。
+        if isinstance(p.get("available_news"), int):
+            entry["available_news"] = p["available_news"]
+        self.data.setdefault("news", {})["fulltext_plan"] = entry
 
     # ── state 寫入帳 ────────────────────────────────────────────────
     def record_state_writes(self, writes: dict) -> list:
@@ -173,6 +180,19 @@ class ManifestRecorder:
                       + (f" —— {extra.get('backoff_reason')}"
                          if extra.get("backoff_reason") else ""))
         slot = self.data.setdefault("llm", {})
+        # **成對的字元/token 要獨立留一份**(第二輪外審 F1)。
+        # `merge_same_role` 把 token **累加**、其餘欄位取最新 ——
+        # 加深成功那天有兩次 accepted 呼叫,於是 `request_chars` 是第二次的、
+        # `prompt_tokens` 是兩次的和,除出來的比例沒有意義,而且會偏小
+        # (看起來像「字元換到很多 token」)→ 假的 `payload_proxy_thin`。
+        # 角色槽是**彙總**(成本、次數),量測要的是**逐次成對**,
+        # 兩種需求不該共用同一個容器。
+        _chars, _toks = rec.get("request_chars"), rec.get("prompt_tokens")
+        if (isinstance(_chars, int) and _chars > 0
+                and isinstance(_toks, int) and _toks > 0):
+            slot.setdefault("request_measurements", []).append(
+                {"role": role, "chars": _chars, "tokens": _toks,
+                 "accepted": bool(accepted)})
         if accepted:
             slot[role] = _lt.merge_same_role(slot.get(role), rec)
         else:

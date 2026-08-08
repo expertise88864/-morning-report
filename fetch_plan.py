@@ -124,6 +124,10 @@ def plan(news: Optional[list], clusters: Optional[list],
     return {
         "targets": ordered,
         "per_cluster": per_cluster,
+        # **「分不出事件群」與「今天根本沒有新聞」是兩件事**
+        # (第一輪外審 F3):前者是接線壞了,後者是上游斷料。
+        # 沒有這個數字的話,兩者在 manifest 裡長得一模一樣。
+        "available_news": len([n for n in (news or []) if isinstance(n, dict)]),
         # **不做靜默的上限**:排得到卻沒預算的事件群要說出來。
         "uncovered_clusters": uncovered,
         "budget": int(budget),

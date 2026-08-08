@@ -12877,12 +12877,23 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         reasoning_context=OPENAI_REASONING_CONTEXT,
         prompt_cache_key=f"morning-{bundle['profile_id']}",
         prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
-    # **量真正要送的那個 body**(外審 P1-4):閘門在 `build_payload` **之後**,
-    # 才吃得到外層欄位、JSON 結構與巢狀逃逸。放在之前只量得到三段長度加總。
-    _pb.request_gate(payload, manifest=_RUN_MANIFEST)
-
     _kept = None   # 第十五輪:合法但淺的第一版 —— 加深失敗時用它,不落回
+    _req_chars = 0
     for repair in _LUNA_ATTEMPTS:
+        # **每一次送出去的 body 都要過閘門**(第一輪外審 F1)。先前只在
+        # 迴圈前量一次 —— 而修補/加深那次會把上一版的完整 JSON 附進
+        # input,送的是一個**更大而且從沒被量過**的 payload。
+        # 閘門在 `build_payload` 之後才吃得到外層欄位、JSON 結構與巢狀逃逸。
+        try:
+            _req_chars = _pb.request_gate(payload, manifest=_RUN_MANIFEST)
+        except _pb.PayloadBudgetExceeded:
+            # 第一次就超標 → 照舊往上拋(呼叫端落回 legacy)。
+            # 修補那次超標 → **break 而不是拋**:下面還有一版合法的
+            # `_kept` 要用,拋掉等於為了守預算把已經拿到的好東西丟了
+            # (這個 repo 記過:一個修正可能比原本的缺陷更糟)。
+            if _kept is None:
+                raise
+            break
         t0 = time.monotonic()
         try:
             resp = _call_deepseek_responses(payload)
@@ -12916,6 +12927,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 usage=_dsr.normalize_usage(resp.get("usage")),
                 accepted=accepted, elapsed=elapsed,
                 finish_reason=out["status"], repair=repair,
+                # **這一次的字元數**,配這一次的 token 數(外審 F1)。
+                request_chars=_req_chars,
                 reject_reason=note)
 
         if out["refusal"] or out["status"] == "incomplete":

@@ -36,6 +36,14 @@ import analysis_origin as _ao
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
 #: 需要被看見的那一種。
+#: **一定生得出 ID 的命名空間。** 它們的來源資料每天都會組出來
+#: (行情、校準、資料涵蓋度 —— 即使降級也會留下 note/error 欄位),
+#: 所以空掉只可能是 prompt 宣告與 registry 對不上。
+#: 其餘的(`portfolio:` / `tension:` / `fact:` / `universe:` …)
+#: **當日真的沒有那類資料時空掉是正常的** —— 生產那邊的註解本來就
+#: 這樣寫,而第一版的判準忽略了它,等於製造可預期的假警報。
+ALWAYS_REALIZABLE = frozenset({"market:", "calibration:", "quality:"})
+
 KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
     "llm:effort_not_applied:primary",
@@ -79,14 +87,29 @@ def assess(manifest) -> list:
             "特化路徑的事件卡、淨效果、橫向綜合今天都不在信裡")
 
     # ---- 2. 特化路徑被自己的驗證擋下(2026-08-04→08 連續五天)
+    #
+    # **修補成功的日子不算缺陷**(第一輪外審 F2):`luna_problems` 是
+    # 累積的,第一次不合格、第二次修補成功時它仍然留著 —— 只看它非空
+    # 就報 defect,會在**特化輸出順利寄出的日子**讓 canary 紅、看門狗
+    # 回 2。誤報是這個模組最該避免的東西(見模組 docstring)。
     problems = _dig(m, "llm", "luna_problems", default=[]) or []
-    if problems:
+    if problems and origin != _ao.LUNA_SPECIALIZED:
         add("luna_rejected", "defect",
             f"特化輸出被驗證擋下 {len(problems)} 條:"
             + "；".join(str(p) for p in problems[:3]))
 
     # ---- 3. prompt 宣告了 registry 生不出來的命名空間
-    unreal = _dig(m, "llm", "unrealizable_namespaces", default=[]) or []
+    #
+    # **空掉不必然是缺陷**(第一輪外審 F4)—— 生產那邊的註解自己就寫著
+    # 「當日真的沒有持倉/張力時空掉是對的」,而我在這裡把每一個空掉的
+    # 命名空間都報成程式缺陷,等於製造可預期的假警報。
+    # 只報 `ALWAYS_REALIZABLE`:它們的來源資料**每天都會組出來**
+    # (行情、校準、涵蓋度即使降級也會留下 note/error 欄位),
+    # 空掉只可能是 prompt 宣告與 registry 對不上 —— 那正是 2026-08-08
+    # 讓特化分析連續五天作廢的那個缺陷。
+    unreal = [x for x in (_dig(m, "llm", "unrealizable_namespaces",
+                               default=[]) or [])
+              if str(x) in ALWAYS_REALIZABLE]
     if unreal:
         add("namespace_unrealizable", "defect",
             "這些命名空間宣告在 prompt 裡卻生不出任何 ID(模型照規則猜"
@@ -108,10 +131,19 @@ def assess(manifest) -> list:
         clusters = int(plan.get("clusters") or 0)
         targets = len(plan.get("targets") or []) if isinstance(
             plan.get("targets"), list) else int(plan.get("targets") or 0)
-        if clusters == 0:
+        # **「分不出群」與「今天沒有新聞」是兩件事**(第一輪外審 F3)。
+        # 零新聞時零群集是必然結果,不是接線壞了 —— 報成 defect 會讓
+        # 上游斷料的日子看起來像程式有 bug,而該查的地方完全不同。
+        avail = plan.get("available_news")
+        if clusters == 0 and isinstance(avail, int) and avail == 0:
+            add("news_upstream_empty", "degraded",
+                "今天一則新聞都沒抓到 —— 上游斷料,不是分群壞了。"
+                "信裡的事件段落會是空的")
+        elif clusters == 0:
             add("fetch_plan_no_clusters", "defect",
-                "兩階段全文抓取分不出任何事件群 —— 信裡的事件只會有 "
-                "RSS 兩行摘要(2026-08-06 的形狀:source_item_id 還沒補)")
+                f"有 {avail if isinstance(avail, int) else '未知數量'} 則新聞卻"
+                "分不出任何事件群 —— 信裡的事件只會有 RSS 兩行摘要"
+                "(2026-08-06 的形狀:source_item_id 還沒補)")
         elif targets == 0:
             add("fetch_plan_no_targets", "defect",
                 f"分出了 {clusters} 個事件群卻一篇全文都沒排 —— 接線斷了")

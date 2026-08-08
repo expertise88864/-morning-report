@@ -212,7 +212,10 @@ MODULE_CEILINGS = {
     # 「今天的信跑成了嗎」的判準(不是「有沒有跑」)。每日看門狗與 CI
     # canary **共用同一份** —— 兩份各自演化的話,「canary 綠而生產壞」
     # 會再發生一次(2026-08-04→08 連續五天的形狀)。實測 145。
-    "run_quality.py": 170,
+    # 第一輪外審 F2/F3/F4:三條誤報產生器都補了前提條件
+    # (修補成功不算缺陷、零新聞不算接線壞、選配命名空間空掉是正常)。
+    # 實測 176。
+    "run_quality.py": 200,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -221,7 +224,10 @@ MODULE_CEILINGS = {
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     # Commit B:recorder 收下兩階段抓取的計畫(相位不得直接碰
     # _RUN_MANIFEST,所以這一筆只能放在 recorder 上)。實測 312。
-    "run_manifest.py": 330,   # 2026-08-07:luna_path_failure 加 traceback 記錄(+13 行)
+    # 第二輪外審 F1/F2:成對量測獨立成 `request_measurements`(角色槽是彙總,
+    # 合併會把 token 累加而字元只留最新 → 假的比例);fulltext_plan 帶
+    # available_news(「分不出群」與「今天沒新聞」要分得開)。實測 343。
+    "run_manifest.py": 368,   # 2026-08-07:luna_path_failure 加 traceback 記錄(+13 行)
     # 批#122:P2-3 的共用狀態容器。它**應該一直很小** —— 它的全部工作是
     # 宣告欄位並用 `__slots__` 擋住打錯字。長大就表示邏輯漏進來了。
     "app_context.py": 120,

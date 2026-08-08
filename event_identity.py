@@ -55,7 +55,11 @@ import re
 #: 算的,不升版就沒有人知道混在一起的兩批鍵各自是什麼意思。
 #: v6(第二十五輪 P1-2/P1-3):帶對象的動作把對象寫進鍵;
 #: legacy 認領要動作相符(主體有交集不代表同一件事)。
-IDENTITY_SCHEMA_VERSION = 6
+#: v7(2026-08-08,外審 P1-4):未知動作的鍵加月份、對象依種類過濾、
+#: 記錄帶 `incident_tokens`。**公式變了就要進版** —— 不進版的話
+#: `adopt_legacy` 會因為 `identity_schema >= VERSION` 而跳過既有記錄,
+#: 每一條 lineage 在上線當天從第 1 天重算,而沒有人看得出原因。
+IDENTITY_SCHEMA_VERSION = 7
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -228,8 +232,44 @@ def _subjects_meet(ents: set, keys: set, subs: set, titles: str) -> bool:
     return False
 
 
+#: 兩組辨識詞要重疊到這個比例才算**同一樁**。
+#: 比遮蔽的 0.35 寬一點:這裡兩邊已經同型別、同動作、同對象、同月,
+#: 剩下要分的只是「這個月對同一個標的的第幾起事件」——
+#: 而同一樁的後續報導幾乎必然共用核心詞(「勒索軟體」「產線停擺」)。
+INCIDENT_OVERLAP = 0.3
+
+
+def incident_suffix(tokens) -> str:
+    """同鍵下另一樁事件的穩定後綴(由辨識詞決定,不用序號)。
+
+    序號會隨處理順序漂移 —— 昨天的 `#2` 明天可能指到另一樁。
+    """
+    import hashlib
+    core = "|".join(sorted(str(t) for t in (tokens or []))[:4])
+    return hashlib.sha1(core.encode("utf-8")).hexdigest()[:6]
+
+
+def same_incident(tokens_a, tokens_b) -> bool:
+    """兩組辨識詞講的是同一樁事件嗎(任一邊太少 → **當成同一樁**)。
+
+    **不確定時併,不切** —— 這裡與遮蔽的方向相反,理由是後果不同:
+    遮蔽切錯會讓一樁真事件從信裡消失;這裡切錯會讓一條延燒中的線
+    每天從第 1 天重來,而那會讓「延燒第 N 天」整個功能失去意義。
+    """
+    a = {str(t) for t in (tokens_a or [])}
+    b = {str(t) for t in (tokens_b or [])}
+    if len(a) < MIN_DISCRIMINATIVE or len(b) < MIN_DISCRIMINATIVE:
+        return True
+    return len(a & b) / min(len(a), len(b)) >= INCIDENT_OVERLAP
+
+
 def object_signature(action: str, subjects) -> str:
     """帶對象的動作 → 對象簽章;不帶對象的動作 → 空字串。
+
+    **對象只取該動作真正的標的種類**(外審 P1-4C):法域類的動作
+    (軍售/制裁/關稅…)只看國家,廠商名不進簽章 —— 同一批軍售不會
+    因為某一則多抓到一個承包商就分裂成兩條線。判準在
+    `event_actions.OBJECT_SCOPE`;那不是剖析受詞,是限定種類。
 
     **簽章是主體集合本身**(已正規化、已排序、已截斷)。為什麼不是
     「挑出受詞」:那需要語意剖析,而剖析錯會把兩件事黏在一起 ——
@@ -237,10 +277,18 @@ def object_signature(action: str, subjects) -> str:
     同一件事的兩則報導若主體集合不同會**分裂**(退回今天以前的行為),
     而不同的事**不會合併**。兩種錯誤的代價不對稱。
     """
-    if str(action or "") not in NEEDS_OBJECT:
+    act = str(action or "")
+    if act not in NEEDS_OBJECT:
         return ""
-    return "、".join(sorted(dict.fromkeys(
-        str(s) for s in (subjects or []) if str(s).strip())))[:24]
+    names = [str(s) for s in (subjects or []) if str(s).strip()]
+    from event_actions import OBJECT_SCOPE
+    if OBJECT_SCOPE.get(act) == "jurisdiction":
+        # 只留法域(國家)—— 廠商名不是這類動作的標的。
+        # 一個都不是法域時**不縮**:那時整個主體集合就是我們知道的全部,
+        # 硬縮成空字串會讓鍵退化成「同月同動作全部一條」。
+        juris = [n for n in names if n in set(CANONICAL_SUBJECTS.values())]
+        names = juris or names
+    return "、".join(sorted(dict.fromkeys(names)))[:24]
 
 
 def display_label(record) -> str:
@@ -311,19 +359,33 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
     etype = str(ev.get("event_type") or "general")
     canon = sorted(dict.fromkeys(
         c for c in (canonical_subject(s) for s in (subjects or [])) if c))[:4]
-    action = event_action(ev.get("title"), ev.get("summary"))
+    title = ev.get("title")
+    action = event_action(title, ev.get("summary"))
+    month = _month(today or str(ev.get("published") or ""))
+    obj = ""
     if action:
-        month = _month(today or str(ev.get("published") or ""))
         # 第二十五輪 P1-2:**帶對象的動作要把對象寫進鍵。**
         # 少了它,同月的每一樁軍售/資安/關稅案都是同一條線。
         obj = object_signature(action, canon)
         key = ":".join(x for x in (etype, action, obj, month) if x)
         basis = "action+object" if obj else "action"
     else:
-        key = f"{etype}:{'、'.join(canon)[:20]}"
+        # **未知動作的鍵加上月份**:純主體的鑰匙會把同一個國家跨月的
+        # 每一件事串成一條永久 lineage(外審 P1-4A)。月份不能分開
+        # 同月的兩件事 —— 那一層由 `incident_tokens` 在呼叫端判(見下)。
+        key = ":".join(x for x in (etype, "、".join(canon)[:20], month) if x)
         basis = "subjects"
+    # **辨識詞跟著回傳,但不進鍵。**
+    #
+    # 第一版把指紋雜湊寫進鍵,結果同一樁攻擊的後續報導(標題多了「再遭」
+    # 兩個字)拿到不同的鍵 —— 而後續報導正是「延燒第 N 天」的常態,
+    # 那個修法會讓每一條線每天都從第 1 天重來,**比原本的缺陷更糟**。
+    #
+    # 鍵維持粗粒度,「是不是同一樁」交給呼叫端用辨識詞比對:
+    # 相關 → 同一條線;不相關 → 這個鍵下的**另一樁**,另開一條。
     return {"key": key, "action": action, "subjects": canon,
-            "object": obj if action else "", "basis": basis}
+            "object": obj, "basis": basis,
+            "incident_tokens": sorted(discriminative_tokens(title, canon))}
 
 
 def drop_shadowed(active: list) -> list:

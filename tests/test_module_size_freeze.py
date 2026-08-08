@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_497  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_536  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -206,9 +206,11 @@ MODULE_CEILINGS = {
     # `event_actions.py`。上一輪寫下「下一次要降,不是再升」,這是兌現。
     # 切點不是主題喜好 —— 宣告式詞彙與身分計算的失效方式不同:
     # 前者漏一個詞 → 退回主體 fallback;後者判準錯 → 兩件事黏成一條線。
-    "event_identity.py": 470,
+    # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
+    "event_identity.py": 533,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
-    "event_actions.py": 130,
+    # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
+    "event_actions.py": 171,
     # 「今天的信跑成了嗎」的判準(不是「有沒有跑」)。每日看門狗與 CI
     # canary **共用同一份** —— 兩份各自演化的話,「canary 綠而生產壞」
     # 會再發生一次(2026-08-04→08 連續五天的形狀)。實測 145。

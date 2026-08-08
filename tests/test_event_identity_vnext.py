@@ -92,14 +92,24 @@ def test_a_cyberattack_never_shares_a_lineage_with_real_geopolitics():
     assert cyber["action"] == "cyberattack" and cyber["key"] != arms["key"]
 
 
-def test_an_unrecognised_action_degrades_to_the_old_behaviour():
-    """**認不出動作是合法答案。** 降級回主體集合 —— 行為與舊版相同,
-    不是拿一個猜出來的動作把兩件事黏在一起。"""
+def test_an_unrecognised_action_falls_back_to_subjects_within_a_month():
+    """**認不出動作是合法答案** —— 但退回**純**主體集合不是。
+
+    上一版的期望(`geopolitical:伊朗、美國`,不帶月份)**把缺陷釘成了
+    通過條件**:那把鑰匙讓同一組國家跨月的每一件事共用一條永久 lineage,
+    而外審 P1-4A 指的正是它。加上月份是最低限度的分界;
+    **同月**的兩件事由辨識詞在呼叫端分(見 `same_incident`)。
+    """
     out = eid.timeline_identity(
         {"event_type": "geopolitical", "title": "兩國代表昨日於第三地會面"},
         ["美國", "伊朗"], "2026-08-07")
     assert out["action"] == "" and out["basis"] == "subjects"
-    assert out["key"] == "geopolitical:伊朗、美國"
+    assert out["key"] == "geopolitical:伊朗、美國:2026-08"
+    # 跨月就是另一條線(這正是加月份要買到的東西)
+    nxt = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": "兩國代表昨日於第三地會面"},
+        ["美國", "伊朗"], "2026-09-07")
+    assert nxt["key"] != out["key"]
 
 
 def test_the_month_separates_this_years_case_from_next_years():
@@ -339,7 +349,7 @@ def test_production_keeps_both_lines_distinguishable(tmp_path, monkeypatch):
 
     外審補審 F5 之後量的是「兩條線分得開」而不是「其中一條被藏掉」;
     理由寫在下方斷言處。"""
-    state = {"geopolitical:伊朗": {
+    state = {"geopolitical:伊朗:2026-08": {
         "first_seen": "2026-08-01", "days": 7, "last_seen": "2026-08-08",
         "latest_title": "川普稱與伊朗戰爭很快將結束", "action": "",
         "entity": "伊朗", "subjects": ["伊朗"], "event_type": "geopolitical",
@@ -374,7 +384,247 @@ def test_production_keeps_both_lines_distinguishable(tmp_path, monkeypatch):
     # 原本的抱怨是「兩個矛盾的第 N 天分不出來」—— 那一半由
     # `display_label` 解掉:主體 fallback 的線現在帶自己的標題片段,
     # 兩條讀起來是**兩件事**,不是同一件事的兩個天數。
-    assert "geopolitical:伊朗" in keys, keys
+    assert "geopolitical:伊朗:2026-08" in keys, keys
     labels = [eid.display_label(r) for r in active]
     assert len(set(labels)) == len(labels), labels
     assert any("僵局" in x or "川普" in x for x in labels), labels
+
+
+# ================= Commit 2:incident identity v7 =================
+
+def test_two_unknown_actions_for_the_same_subject_do_not_share_a_line():
+    """**外審 P1-4A。** 「伊朗國內爆發示威」與「伊朗與鄰國邊境衝突」
+    的動作都不在表裡 —— 鍵一樣,但它們不是同一樁。辨識詞分得開。"""
+    a = eid.timeline_identity({"event_type": "geopolitical",
+                               "title": "伊朗國內爆發大規模示威"},
+                              ["伊朗"], "2026-08-09")
+    b = eid.timeline_identity({"event_type": "geopolitical",
+                               "title": "伊朗與鄰國發生邊境武裝衝突"},
+                              ["伊朗"], "2026-08-09")
+    assert a["key"] == b["key"], "同鍵是預期的(鍵刻意維持粗粒度)"
+    assert not eid.same_incident(a["incident_tokens"], b["incident_tokens"])
+
+
+def test_two_incidents_on_the_same_company_in_one_month_do_not_merge():
+    """**外審 P1-4B。** 同月對同一家公司的勒索攻擊與資料外洩,
+    `型別:動作:對象:月` 完全一樣 —— 要靠辨識詞分。"""
+    a = eid.timeline_identity({"event_type": "litigation",
+                               "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
+                              ["藥華藥"], "2026-08-03")
+    # **反例要只靠被測那條規則分勝負。** 第一版兩個標題都寫「遭勒索軟體
+    # 攻擊」—— 重疊 0.67,而那本來就可能是同一樁(後續揭露資料也外洩了)。
+    # 換成描述完全不同的第二樁,勝負才由辨識詞決定。
+    b = eid.timeline_identity({"event_type": "litigation",
+                               "title": "藥華藥傳客戶名單外洩 主管請辭"},
+                              ["藥華藥"], "2026-08-20")
+    assert not eid.same_incident(a["incident_tokens"], b["incident_tokens"]), (
+        a["incident_tokens"], b["incident_tokens"])
+
+
+def test_follow_up_coverage_of_one_incident_stays_on_the_same_line():
+    """**修正不得比缺陷更糟。** 第一版把指紋寫進鍵,同一樁的後續報導
+    (標題多了「再遭」兩個字)就拿到新的鍵 —— 每條線每天從第 1 天重來,
+    而後續報導正是「延燒第 N 天」的常態。"""
+    a = eid.timeline_identity({"event_type": "litigation",
+                               "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
+                              ["藥華藥"], "2026-08-03")
+    b = eid.timeline_identity({"event_type": "litigation",
+                               "title": "藥華藥再遭勒索軟體攻擊 產線停擺"},
+                              ["藥華藥"], "2026-08-04")
+    assert a["key"] == b["key"]
+    assert eid.same_incident(a["incident_tokens"], b["incident_tokens"])
+
+
+def test_an_extra_vendor_entity_does_not_split_one_arms_package():
+    """**外審 P1-4C。** 同一批軍售,某一則多抓到承包商 —— 對象簽章
+    先前用整個主體集合,兩把鑰匙就不同。法域類的動作只看國家。"""
+    base = {"event_type": "geopolitical", "title": "美國宣布對台軍售"}
+    k1 = eid.timeline_identity(base, ["美國", "台灣"], "2026-08-09")["key"]
+    k2 = eid.timeline_identity(base, ["美國", "台灣", "洛克希德馬丁"],
+                               "2026-08-09")["key"]
+    assert k1 == k2, (k1, k2)
+    # 但**換一個受援國**仍要分開(修正不得把該分的黏起來)
+    k3 = eid.timeline_identity(dict(base, title="美國宣布對日本軍售"),
+                               ["美國", "日本"], "2026-08-09")["key"]
+    assert k3 != k1
+
+
+def test_a_jurisdiction_action_without_a_known_country_keeps_its_subjects():
+    """**濾不出法域時不得硬縮成空。** 制裁的對象可能是一家公司、一個
+    組織 —— 它們不在 `CANONICAL_SUBJECTS` 裡。硬縮成空字串會讓那個月
+    所有這類制裁案共用一把鑰匙,而那正是加對象要修的東西。"""
+    base = {"event_type": "geo", "title": "美方宣布制裁該實體"}
+    a = eid.timeline_identity(base, ["某資安公司"], "2026-08-09")["key"]
+    b = eid.timeline_identity(base, ["另一家公司"], "2026-08-09")["key"]
+    assert a != b, (a, b)
+    assert "某資安公司" in a
+
+
+def test_a_company_target_is_still_part_of_the_object():
+    """`cyberattack` 的對象是**公司**,不是法域 —— 不得被法域過濾清空。"""
+    a = eid.timeline_identity({"event_type": "litigation", "title": "甲公司遭勒索軟體攻擊"},
+                              ["甲公司"], "2026-08-09")["key"]
+    b = eid.timeline_identity({"event_type": "litigation", "title": "乙公司遭勒索軟體攻擊"},
+                              ["乙公司"], "2026-08-09")["key"]
+    assert a != b, (a, b)
+
+
+def test_an_iranian_drill_is_not_a_taiwan_strait_event():
+    """**自查(外審沒提)**:`軍演` 是台海動作的關鍵詞,於是
+    「伊朗革命衛隊舉行軍演」被判成 `strait_tension` —— 一個伊朗的
+    演習進了台海的 lineage,而錯誤分類會一路污染 continuing days。
+    台海是**地點**,不是動作。"""
+    assert eid.event_action("伊朗革命衛隊舉行軍演") == ""
+    assert eid.event_action("共機擾台 台海軍演升溫") == "strait_tension"
+
+
+def test_ascii_keywords_need_token_boundaries():
+    """**這條不是修一個已確認的缺陷。** 外審說 `export_control` 含裸的
+    `ban` 因而讓 `Bank earnings` 誤判 —— 查表:沒有裸 `ban`(用的是
+    片語 `chip ban`),實測回空字串,那條駁回。
+
+    但這個 repo 已為同一個形狀修過三次(`ft` 命中 SoftBank、
+    `raise` 命中 praise、`us` 命中 ASUS),而現在全靠「剛好沒有人加過
+    一個會撞的單字」—— 把它變成結構上不可能發生比較便宜。
+    """
+    # 判準是**詞界有沒有生效**,不是「禁止短關鍵詞」:`FMS`
+    # (Foreign Military Sales)是正當的縮寫,而它現在因為詞界而安全 ——
+    # 禁掉它等於把修正的成果當成問題。
+    assert eid.event_action("Bank earnings rise") == ""
+    assert eid.event_action("US widens chip ban on China") == "export_control"
+    assert eid.event_action("Taiwan FMS package approved") == "arms_sale"
+    # 藏在別的字裡不得命中
+    assert eid.event_action("The firm confirms guidance") == ""
+    assert eid.event_action("FMSX Corp reports results") == ""
+    # **複數要放行** —— 純詞界讓 `sanction` 不再命中 `sanctions`,
+    # 那是硬化造成的真回歸(preflight 當場抓到:一則英文制裁報導的
+    # 動作變成空字串,昨日觀點因此接不上)。只放行一個 `s`。
+    assert eid.event_action("US announces new sanctions on Iran") == "sanction"
+    # `ban` 是**片語** `chip ban` 的一部分(這正是駁回 P1-4D 的理由),
+    # 所以「bans chip exports」不該命中 —— 斷言要照表寫,不照印象寫。
+    assert eid.event_action("US bans chip exports") == ""
+
+
+def test_production_really_writes_two_lineages(tmp_path, monkeypatch):
+    """**走生產路徑,不是 grep 函式名**(第二輪外審 F1)。
+
+    上一版只檢查原始碼裡出現過 `same_incident` 與 `incident_suffix` ——
+    而生產把 `ident["key"]` 換掉了、落盤那行卻用著**先前存下來的**
+    `key` 變數:第二樁直接**覆寫**第一樁,分線完全沒生效,還會蓋掉資料。
+    只 grep 名字的守衛看不見那件事。
+    """
+    evs = [{"event_type": "litigation", "entity": "藥華藥",
+            "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
+           {"event_type": "litigation", "entity": "藥華藥",
+            "title": "藥華藥遭駭客入侵 客戶名單外洩"}]
+    _, state = _run(tmp_path, monkeypatch, evs, day="2026-08-07")
+    keys = sorted(state)
+    assert len(keys) == 2, keys
+    assert any("#" in k for k in keys), keys
+    titles = {v["latest_title"] for v in state.values()}
+    assert len(titles) == 2, titles
+
+
+def test_a_split_incident_keeps_its_line_the_next_day(tmp_path, monkeypatch):
+    """**分出去的那一樁隔天要接得回自己**(第二輪外審 F3)。
+
+    後綴由當日辨識詞雜湊而來,而辨識詞會隨標題漂移 —— 只比 base、
+    直接算新後綴的話,第二樁**每天都會再開一條**,天數永遠是 1。
+    這是我在「指紋進鍵」上踩過的同一個坑換了個位置。
+    """
+    d1 = [{"event_type": "litigation", "entity": "藥華藥",
+           "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
+          {"event_type": "litigation", "entity": "藥華藥",
+           "title": "藥華藥遭駭客入侵 客戶名單外洩"}]
+    _, st1 = _run(tmp_path, monkeypatch, d1, day="2026-08-07")
+    d2 = [{"event_type": "litigation", "entity": "藥華藥",
+           "title": "藥華藥遭勒索軟體攻擊 產線停擺進度更新"},
+          {"event_type": "litigation", "entity": "藥華藥",
+           # **這個續篇的 top-4 辨識詞會漂移**(加了「主管請辭負責」)——
+           # 後綴由 top-4 雜湊而來,所以不找 sibling 的話會另開一條。
+           # 上一版的續篇碰巧沒讓 top-4 變動,量不到那條規則。
+           "title": "藥華藥遭駭客入侵 客戶名單外洩 主管請辭負責"}]
+    import event_identity as _ei
+    _d1 = sorted(_ei.discriminative_tokens("藥華藥遭駭客入侵 客戶名單外洩",
+                                           ["藥華藥"]))
+    _d2 = sorted(_ei.discriminative_tokens(d2[1]["title"], ["藥華藥"]))
+    assert _ei.incident_suffix(_d1) != _ei.incident_suffix(_d2),         "反例沒有讓後綴漂移 —— 量不到 sibling 搜尋那條規則"
+    assert _ei.same_incident(_d1, _d2), "但它們仍是同一樁"
+    _, st2 = _run(tmp_path, monkeypatch, d2, day="2026-08-08", state=st1)
+    assert sorted(st2) == sorted(st1), (sorted(st1), sorted(st2))
+    assert all(v["days"] == 2 for v in st2.values()), \
+        {k: v["days"] for k, v in st2.items()}
+
+
+def test_the_schema_version_moves_when_the_formula_moves():
+    """**公式變了就要進版**(第二輪外審 F2)。不進版的話 `adopt_legacy`
+    會因為 `identity_schema >= VERSION` 跳過既有記錄,每一條 lineage
+    在上線當天從第 1 天重算,而沒有人看得出原因。"""
+    assert eid.IDENTITY_SCHEMA_VERSION >= 7
+
+
+def test_a_schema_6_record_is_adopted_by_the_new_formula(tmp_path, monkeypatch):
+    """**上線當天要接得住舊記錄。** 未知動作的鍵加了月份、對象換了
+    範圍 —— 舊鍵算出來的東西與新鍵不同,而天數必須跟過來。"""
+    legacy = {"geopolitical:伊朗": {
+        "first_seen": "2026-08-01", "days": 6, "last_seen": "2026-08-08",
+        "latest_title": "伊朗國內爆發大規模示威", "entity": "伊朗",
+        "subjects": ["伊朗"], "event_type": "geopolitical",
+        "identity_schema": 6}}
+    _, state = _run(tmp_path, monkeypatch,
+                    [{"event_type": "geopolitical", "entity": "伊朗",
+                      "title": "伊朗國內示威進入第七天"}],
+                    day="2026-08-09", state=legacy)
+    assert "geopolitical:伊朗" not in state, "舊鍵沒被收掉"
+    assert state, "新鍵也沒建立 —— 那條線整個不見了"
+    assert max(v["days"] for v in state.values()) >= 7, (
+        state, "舊記錄的天數沒有接過來,從第 1 天重算了")
+
+
+def test_a_company_sanction_target_is_not_erased_by_the_jurisdiction_filter():
+    """**制裁可以直接針對一家公司**(第二輪外審 F4)。一律縮成法域會讓
+    「美國制裁甲公司」與「美國制裁乙公司」共用一把鑰匙 —— 那是我為了修
+    承包商雜訊而引進的新 over-merge。"""
+    base = {"event_type": "geo", "title": "美國宣布制裁該實體"}
+    a = eid.timeline_identity(base, ["美國", "甲公司"], "2026-08-09")["key"]
+    b = eid.timeline_identity(base, ["美國", "乙公司"], "2026-08-09")["key"]
+    assert a != b, (a, b)
+    # 但軍售仍要濾掉承包商(那是 P1-4C,方向相反)
+    arms = {"event_type": "geo", "title": "美國宣布對台軍售"}
+    k1 = eid.timeline_identity(arms, ["美國", "台灣"], "2026-08-09")["key"]
+    k2 = eid.timeline_identity(arms, ["美國", "台灣", "洛克希德馬丁"],
+                               "2026-08-09")["key"]
+    assert k1 == k2, (k1, k2)
+
+
+def test_a_sibling_survives_the_base_lineage_expiring(tmp_path, monkeypatch):
+    """**base 退場之後,還在燒的那一樁要接得回自己**(第三輪外審)。
+
+    sibling 搜尋原本掛在「base record 還在」底下 —— 而 base 停更三天
+    就會被退場清掉,`state.get(base)` 回 `None`。那之後,持續延燒的
+    sibling 每天都拿到 base 這把空鑰匙、重開一條新線,天數永遠是 1。
+    **base 不在了正是「只剩一樁在燒」的常態**,不是罕例;而這條測試
+    先前只跨了一天,兩條都還在 state 裡,量不到這件事。
+    """
+    # 兩則都要命中 `cyberattack`(否則 base key 本來就不同,
+    # 根本沒有同鍵可分,測不到 sibling 這條規則)。
+    day1 = [{"event_type": "geopolitical", "entity": "藥華藥",
+             "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
+            {"event_type": "geopolitical", "entity": "藥華藥",
+             "title": "藥華藥遭駭客入侵 客戶名單外洩"}]
+    _, st = _run(tmp_path, monkeypatch, day1, day="2026-08-01")
+    assert len(st) == 2, st
+    base = next(k for k in st if "#" not in k)
+    sib = next(k for k in st if "#" in k)
+
+    # 之後只有「名單外洩」那一樁持續有報導,base 那樁停更
+    for n, extra in ((2, "後續"), (3, "最新進度"), (4, "主管請辭負責"),
+                     (5, "調查結果出爐"), (6, "和解金額出爐")):
+        _, st = _run(tmp_path, monkeypatch,
+                     [{"event_type": "geopolitical", "entity": "藥華藥",
+                       "title": f"藥華藥遭駭客入侵 客戶名單外洩 {extra}"}],
+                     day=f"2026-08-{n:02d}", state=st)
+    assert base not in st, "base 那樁停更超過保留期,應該已經退場"
+    assert sib in st, f"還在燒的那一樁被丟了:{sorted(st)}"
+    assert st[sib]["days"] == 6, {k: v["days"] for k, v in st.items()}
+    assert len(st) == 1, f"base 被重開了 —— 天數從第 1 天重算:{sorted(st)}"

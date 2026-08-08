@@ -13,6 +13,8 @@
 """
 from __future__ import annotations
 
+import re
+
 #: 動作表:`(代碼, 說明, 關鍵詞…)`。中英並列,**由上而下第一個命中者勝**
 #: —— 順序即優先序,具體的排在概括的前面。
 #:
@@ -27,6 +29,37 @@ from __future__ import annotations
 #:
 #: 判準:動作若是「某人對某個對象做的事」,對象就是身分的一部分;
 #: 動作若本身就指名了唯一標的(荷姆茲海峽),對象是常數、不必再帶。
+#: 帶對象的動作,**它的對象是什麼種類**(外審 P1-4C)。
+#:
+#: `object_signature` 先前直接用整個主體集合當簽章 —— 於是同一批軍售,
+#: 報導 A 的實體是 `[美國, 台灣]`、報導 B 多抓到 `[…, 洛克希德馬丁]`,
+#: 兩把鑰匙就不同,同一件事分裂成兩條線。
+#:
+#: 修法**不是剖析受詞**(這個 repo 拒絕過:剖析錯會把兩件事黏在一起),
+#: 而是限定**種類**:軍售/制裁/關稅/出口管制/峰會/匯率干預/選舉的對象
+#: 都是**法域**(國家),而 `CANONICAL_SUBJECTS` 正好就是那份宣告。
+#: 廠商名不是法域,自然被排除 —— 不必猜哪一個才是受詞。
+#:
+#: `cyberattack` 的對象是**公司**,所以它留在 `any`(全部主體)。
+#: **只有「對象在定義上就是法域」的動作才過濾**(第二輪外審 F4)。
+#: 制裁、出口管制、關稅**可以直接針對一家公司或一個實體**
+#: (實體清單就是這樣運作的)—— 一律縮成法域會讓
+#: 「美國制裁甲公司」與「美國制裁乙公司」共用一把鑰匙,
+#: 那是我為了修 C(承包商雜訊)引進的新 over-merge。
+#:
+#: 留在 `jurisdiction` 的四個,對象只可能是國家:軍售的受援國、
+#: 峰會的與會國、選舉的國家、匯率干預的央行所在國。
+OBJECT_SCOPE = {
+    "arms_sale": "jurisdiction",
+    "summit_talks": "jurisdiction",
+    "election": "jurisdiction",
+    "fx_intervention": "jurisdiction",
+    "sanction": "any",
+    "tariff_action": "any",
+    "export_control": "any",
+    "cyberattack": "any",
+}
+
 NEEDS_OBJECT = frozenset({
     "arms_sale", "cyberattack", "tariff_action", "export_control",
     "sanction", "election", "summit_talks", "fx_intervention",
@@ -52,8 +85,12 @@ ACTION_TABLE = (
     ("sanction", "制裁",
      "制裁", "凍結資產", "sanction", "asset freeze"),
     # 台海情勢自帶地理對象,同上。
+    # **`軍演` 單獨出現不是台海事件**(2026-08-08 自查):
+    # 「伊朗革命衛隊舉行軍演」被判成 `strait_tension` —— 一個伊朗的軍事
+    # 演習因此進了台海的 lineage,而錯誤分類會一路污染 continuing days
+    # 與全文優先權。台海是**地點**,不是動作:判準要帶得出那個地點。
     ("strait_tension", "台海情勢",
-     "台海", "軍演", "共機", "灰色地帶", "Taiwan Strait", "military drill"),
+     "台海", "共機", "灰色地帶", "Taiwan Strait", "military drill"),
     ("election", "選舉",
      "大選", "選舉", "投票日", "election", "referendum"),
     ("summit_talks", "峰會與談判",
@@ -95,6 +132,28 @@ def event_action(*texts) -> str:
         return ""
     for row in ACTION_TABLE:
         code, words = row[0], row[2:]
-        if any(w.lower() in blob for w in words):
+        if any(_kw_hit(str(w).lower(), blob) for w in words):
             return code
     return ""
+
+
+def _kw_hit(word: str, blob: str) -> bool:
+    """ASCII 關鍵詞要 **token 邊界**;中文無詞界,維持子字串。
+
+    **這不是修一個已確認的缺陷** —— 外審說 `export_control` 含裸的 `ban`
+    因而讓 `Bank earnings` 誤判,我查了表:沒有裸 `ban`(用的是片語
+    `chip ban`),實測 `Bank earnings rise` 回空字串,那條駁回。
+    但這個 repo 已經為同一個形狀修過三次(`ft` 命中 SoftBank、
+    `raise` 命中 praise、`us` 命中 ASUS),而現在全靠「剛好沒有人加過
+    一個會撞的單字」—— 把它變成結構上不可能發生比較便宜。
+    """
+    if not word:
+        return False
+    if not word.isascii():
+        return word in blob
+    # **複數/第三人稱要放行**:純詞界會讓 `sanction` 不再命中
+    # `sanctions`、`ban` 不再命中 `bans` —— 那是硬化造成的真回歸
+    # (實測抓到:一則英文制裁報導的動作變成空字串)。
+    # 只放行一個 `s`:`ban`→`bans` 通,而 `bank` 的 `k` 仍然擋得住。
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(word) + r"s?(?![a-z0-9])",
+                          blob))

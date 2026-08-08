@@ -14219,7 +14219,7 @@ def update_event_timeline(structured_events: list[dict],
     # `geopolitical:伊朗、美國、阿曼`(1 天);而 `geopolitical:美國`(4 天)
     # 的 latest_title 已經漂到「對台軍售」—— 那是另一件事。
     # 身分改由 `event_identity` 決定(動作為主鍵),見該模組說明。
-    _migrated, _by_action, _superseded = 0, 0, 0
+    _migrated, _by_action, _superseded, _split_incidents = 0, 0, 0, 0
     for ev in structured_events or []:
         if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
             continue
@@ -14251,12 +14251,49 @@ def update_event_timeline(structured_events: list[dict],
                 _shadowed = _eid.supersede_legacy(state, ev, subjects, ident)
                 if _shadowed:
                     _superseded += len(_shadowed)
+        # **同一把鑰匙底下可能是兩樁不同的事**(外審 P1-4A/B)。
+        # 鍵是 `型別:動作:對象:月`(或未知動作時 `型別:主體:月`)——
+        # 同月對同一家公司的兩次資安事件、同一國的兩輪示威與邊境衝突,
+        # 鑰匙都一樣。用辨識詞比對:**相關 → 同一條線;不相關 → 另開**。
+        #
+        # 指紋刻意**不進鍵**:第一版那樣做,同一樁的後續報導(標題多兩個字)
+        # 就拿到新的鍵,每條線每天從第 1 天重來 —— 比原本的缺陷更糟。
+        _tok = ident.get("incident_tokens") or []
+        if rec is None or not _eid.same_incident(
+                _tok, rec.get("incident_tokens")):
+            # **先找既有的 sibling**(第二輪外審 F3)。後綴由當日辨識詞
+            # 雜湊而來,而辨識詞會隨標題漂移 —— 只比 base、算出新後綴的話,
+            # 已經分出去的那一樁**每天都會再開一條**,天數永遠是 1。
+            # 這正是我上一版在「指紋進鍵」上踩過的同一個坑,換了個位置。
+            #
+            # **搜尋不以「base 還在」為前提**(第三輪外審):base 那樁
+            # 先停更、三天後被退場清掉,`state.get(base)` 就回 None ——
+            # 掛在 `rec is not None` 底下的話,還在延燒的 sibling 從此
+            # 每天重開一條 base,天數永遠是 1。而 base 不在了正是
+            # 「只剩 sibling 在燒」的常態,不是罕例。
+            _sib = next(
+                (k for k, v in sorted(state.items())
+                 if k.startswith(ident["key"] + "#") and isinstance(v, dict)
+                 and _eid.same_incident(_tok, v.get("incident_tokens"))), None)
+            if _sib:
+                key = _sib
+            elif rec is not None:
+                # base 佔著,而且是**另一樁** → 另開一條
+                key = f"{ident['key']}#{_eid.incident_suffix(_tok)}"
+                _split_incidents += 1
+            # base 空著且沒有相符的 sibling → 就用 base(不必另開後綴)
+            # **`key` 要一起改**(第二輪外審 F1):先前只換了 `ident`,
+            # 而落盤那行用的是這個變數 —— 第二樁直接覆寫第一樁,
+            # 分線完全沒生效,還會蓋掉資料。
+            ident = dict(ident, key=key)
+            rec = state.get(key)
         if rec is None:
             rec = {"first_seen": today, "days": 0, "last_seen": ""}
         if rec.get("last_seen") != today:
             rec["days"] = int(rec.get("days", 0)) + 1
             rec["last_seen"] = today
         rec["latest_title"] = str(ev.get("title") or "")[:90]
+        rec["incident_tokens"] = _tok[:12]
         rec["entity"] = ident["subjects"][0] if ident["subjects"] else subjects[0]
         rec["subjects"] = ident["subjects"] or subjects
         rec["event_type"] = str(ev.get("event_type") or "")
@@ -14275,6 +14312,9 @@ def update_event_timeline(structured_events: list[dict],
         # 接不到而被收掉的舊線:**與「接過來」是兩件事**,分開記才看得出
         # 遷移當天有多少條線是重新起算的。
         "superseded_legacy": _superseded,
+        # 同鍵下被分出去的另一樁(外審 P1-4A/B)。0 可能是「今天沒有
+        # 同鍵撞在一起的兩件事」,也可能是判準沒接上 —— 記著才分得開。
+        "split_incidents": _split_incidents,
         "legacy_remaining": _legacy_left,
     }
     # 退場:超過 3 天無更新

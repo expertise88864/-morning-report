@@ -76,13 +76,20 @@ def test_the_same_story_does_not_fragment_by_subject_order(tmp_path, monkeypatch
 
     2026-08-08:身分主鍵改成**動作**(見 `event_identity`),而這一條驗的是
     認不出動作時的降級路徑 —— 所以兩則標題都刻意不帶動作關鍵詞。
+
+    2026-08-08(identity v7):**標題要一樣。** 上一版兩則用了完全不同的
+    佔位標題(「三國代表昨日會面」vs「同一件事,主體換順序」)——
+    而 v7 之後標題的辨識詞會分出「同鍵下的另一樁」,於是這條測試
+    同時動了兩個變數,量到的不再是主體順序。
+    **反例要只靠被測那條規則分勝負。**
     """
+    title = "三國代表昨日於第三地會面"
     _a, state = _timeline(tmp_path, monkeypatch, [
         {"event_type": "geopolitical", "entity": "美國、伊朗、阿曼",
-         "title": "三國代表昨日會面"}], days=1)
+         "title": title}], days=1)
     _a2, state2 = _timeline(tmp_path, monkeypatch, [
         {"event_type": "geopolitical", "entity": "伊朗、阿曼、美國",
-         "title": "同一件事,主體換順序"}], days=1)
+         "title": title}], days=1)
     assert set(state) == set(state2), f"{sorted(state)} != {sorted(state2)}"
 
 
@@ -102,4 +109,4 @@ def test_days_accumulate_once_per_day(tmp_path, monkeypatch):
     mr.update_event_timeline(ev, now)
     mr.update_event_timeline(ev, now)
     state = json.loads(f.read_text(encoding="utf-8"))
-    assert state["geopolitical:伊朗"]["days"] == 1
+    assert state["geopolitical:伊朗:2026-08"]["days"] == 1

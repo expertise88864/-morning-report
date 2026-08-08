@@ -221,6 +221,14 @@ def request_gate(body: dict, *, manifest=None,
             "payload_budget", {})["final_request_chars"] = chars
     if chars > limit:
         import sys as _sys
+        # **超標要在 manifest 留下痕跡**(外審 P1-3):先前只拋例外,
+        # 而 `run_quality` 看的是 packet 層的 `over_budget` ——
+        # 於是「packet 沒超、最終 request 超了」這條路徑走完之後,
+        # manifest 上只剩一個 `analysis_not_specialized`(degraded),
+        # canary 照樣 exit 0。閘門擋住了,而擋住這件事本身沒有被記下來。
+        if manifest is not None:
+            manifest.setdefault("llm", {}).setdefault(
+                "payload_budget", {})["final_request_over_budget"] = True
         print(f"[llm] 最終 request {chars:,} 字元超過 {limit:,},"
               "放棄特化路徑", file=_sys.stderr)
         raise PayloadBudgetExceeded(

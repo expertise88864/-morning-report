@@ -12893,6 +12893,12 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # (這個 repo 記過:一個修正可能比原本的缺陷更糟)。
             if _kept is None:
                 raise
+            # **已回收的超標不是缺陷**(第二輪外審 F2):下面會用留著的
+            # 合法第一版走完 `_accept_luna`,`analysis_origin` 仍是特化。
+            # 只留旗標不留「後來救回來了」,判準會對一份**成功產出的
+            # 特化報告**報 defect —— 誤報是這套守衛最該避免的東西。
+            _RUN_MANIFEST.setdefault("llm", {}).setdefault(
+                "payload_budget", {})["final_request_over_budget_recovered"] = True
             break
         t0 = time.monotonic()
         try:

@@ -63,14 +63,45 @@ def _dig(obj, *path, default=None):
     return default if cur is None else cur
 
 
-def assess(manifest) -> list:
+#: 特化路徑**走完就一定會留下**的紀錄。少任何一格,那份 manifest
+#: 就與它自己宣稱的 `analysis_origin` 互相矛盾 —— 而先前
+#: `{"llm": {"analysis_origin": "luna_specialized"}}` 這種最小 manifest
+#: 會回**空 findings**:空集合真空通過,這個 repo 記過的形狀,
+#: 而我自己蓋了一個(外審 P1-3)。
+#:
+#: 每一格都說得出誰寫的:
+#:   payload_budget       ← `payload_budget.apply()`
+#:   primary_metrics      ← `_accept_luna()`
+#:   recap_saved          ← `_accept_luna()`
+#:   request_measurements ← `record_llm_call()`(逐次成對)
+SPECIALIZED_REQUIRED = (
+    ("payload_budget", "預算政策沒有跑過(`payload_budget.apply`)"),
+    ("primary_metrics", "沒有結構化指標(`_accept_luna` 沒走到)"),
+    ("recap_saved", "沒有昨日觀點的存檔結果(同上)"),
+    ("request_measurements", "沒有逐次的字元/token 量測(沒送出過請求)"),
+)
+
+#: strict 模式(CI canary)額外要求的執行身分欄位。
+RUN_BINDING_FIELDS = ("git_sha", "github_run_id", "run_nonce")
+
+
+def assess(manifest, *, mode: str = "watchdog",
+           expected_sha: str = "", expected_run_id: str = "") -> list:
     """回 `[{code, severity, detail}]`(空 = 今天的信跑成了)。
 
     `severity`:`defect` = 程式或接線壞了;`degraded` = 讀者今天拿到的
     比應有的少,但可能是外部因素(額度、服務不穩)。兩者都值得說,
     分開是因為**要修的東西不一樣**。
+
+    `mode`(外審 P1-3):
+      * `watchdog` —— 每日生產。額度用罄那幾天退回 legacy 是外部因素,
+        報 `degraded` 讓使用者知道,但不該天天當成程式缺陷。
+      * `strict` —— CI canary。那個 job 的名字是「**證明特化輸出真的
+        產生了**」,所以退回 legacy 就是不通過;而且要證明這份 manifest
+        是**這一次執行**產生的(舊檔案永遠滿足不了 SHA/run id 綁定)。
     """
     m = manifest if isinstance(manifest, dict) else {}
+    strict = str(mode) == "strict"
     out: list = []
 
     def add(code, severity, detail):
@@ -167,7 +198,50 @@ def assess(manifest) -> list:
                 "閘門擋的是字元、provider 算的是 token,而這個比例隨當日"
                 "語言組合浮動:偏中文的日子同樣的字元預算會換到多得多的 token")
 
-    # ---- 8. 沒見過的降級
+    # ---- 8. **宣稱走了特化路徑,就要留下那條路徑的紀錄**(外審 P1-3)
+    if origin == _ao.LUNA_SPECIALIZED:
+        missing = [f"`{k}`({why})" for k, why in SPECIALIZED_REQUIRED
+                   if _dig(m, "llm", k) is None]
+        if missing:
+            add("manifest_incomplete", "defect",
+                "manifest 說走的是特化路徑,卻缺了那條路徑必然會寫下的"
+                "紀錄:" + "、".join(missing)
+                + " —— 要嘛是主流程中途死掉,要嘛這份 manifest 不是"
+                  "這一次執行產生的")
+
+    # ---- 9. 最終 request 被閘門擋下(packet 沒超不代表 request 沒超)
+    # **終局的超標才是缺陷**(第二輪外審 F2)。加深那次超標時主流程會
+    # `break` 並沿用留著的合法第一版 —— 那條路徑走完仍是特化輸出,
+    # 對讀者沒有任何損失。只看旗標會對一份成功的報告報 defect。
+    if (_dig(m, "llm", "payload_budget", "final_request_over_budget") is True
+            and _dig(m, "llm", "payload_budget",
+                     "final_request_over_budget_recovered") is not True):
+        add("final_request_over_budget", "defect",
+            "最終 request 超過硬閘門而被擋下,且沒有回收 —— packet 層的 "
+            "over_budget 是 False,只看那一格會完全看不到這件事")
+
+    # ---- 10. strict(CI canary):綠燈必須代表「特化輸出真的產生了」
+    if strict:
+        if origin != _ao.LUNA_SPECIALIZED:
+            add("canary_not_specialized", "defect",
+                f"canary 的判準是「特化輸出真的產生了」,而這一班走的是"
+                f"「{_ao.describe(origin)}」—— 退回 legacy 對每日生產是"
+                "可接受的降級,對 canary 是不通過")
+        missing_bind = [k for k in RUN_BINDING_FIELDS if not _dig(m, k)]
+        if missing_bind:
+            add("run_binding_missing", "defect",
+                f"manifest 沒有執行身分:{'、'.join(missing_bind)} —— "
+                "沒有它就證明不了這份檔案是這一次跑出來的")
+        for got, want, what in ((_dig(m, "git_sha"), expected_sha, "git_sha"),
+                                (_dig(m, "github_run_id"), expected_run_id,
+                                 "github_run_id")):
+            if want and str(got or "") != str(want):
+                add("run_binding_mismatch", "defect",
+                    f"{what} 對不上:manifest 是 {got or '(空)'}、"
+                    f"這一次是 {want} —— **讀到的是別次執行的 manifest**"
+                    "(`state/run_manifest.json` 進版控,checkout 之後就在那裡)")
+
+    # ---- 11. 沒見過的降級
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED]
     if unknown:

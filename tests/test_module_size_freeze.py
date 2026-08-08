@@ -215,7 +215,8 @@ MODULE_CEILINGS = {
     # 第一輪外審 F2/F3/F4:三條誤報產生器都補了前提條件
     # (修補成功不算缺陷、零新聞不算接線壞、選配命名空間空掉是正常)。
     # 實測 176。
-    "run_quality.py": 200,
+    # 外審 P1-3:strict canary 模式 + 必要區塊完整性(最小 manifest 先前真空通過)+ final request 旗標。實測 260。
+    "run_quality.py": 285,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -227,7 +228,8 @@ MODULE_CEILINGS = {
     # 第二輪外審 F1/F2:成對量測獨立成 `request_measurements`(角色槽是彙總,
     # 合併會把 token 累加而字元只留最新 → 假的比例);fulltext_plan 帶
     # available_news(「分不出群」與「今天沒新聞」要分得開)。實測 343。
-    "run_manifest.py": 368,   # 2026-08-07:luna_path_failure 加 traceback 記錄(+13 行)
+    # 外審 P1-2:manifest 綁定這一次執行(git_sha/run_id/nonce)—— 舊檔案永遠滿足不了。實測 381。
+    "run_manifest.py": 406,   # 2026-08-07:luna_path_failure 加 traceback 記錄(+13 行)
     # 批#122:P2-3 的共用狀態容器。它**應該一直很小** —— 它的全部工作是
     # 宣告欄位並用 `__slots__` 擋住打錯字。長大就表示邏輯漏進來了。
     "app_context.py": 120,
@@ -351,7 +353,10 @@ MODULE_CEILINGS = {
     # 2026-08-08:`proxy_headroom` —— 字元閘門是 token 的**代理**,
     # 而代理的誤差先前從來沒被量過(註解裡的「1.1M ≈ 66 萬 token」是推的)。
     # 兩個數字本來就在 manifest 裡,缺的只是把它們除一下。實測 269。
-    "payload_budget.py": 290,
+    # 外審 P1-3:最終 request 超標要在 manifest 留旗標(先前只拋例外,
+    # 而判準看的是 packet 層的 over_budget → canary 照樣 exit 0)。
+    # 實測 293。
+    "payload_budget.py": 313,
     # 第二十輪 P2-5:**段落→主張的對照表只有一份。** 先前四個消費者
     # (驗證器、飽和率、加深保存、渲染)各自維護,schema 加了新段落之後
     # 只有驗證器知道。

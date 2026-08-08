@@ -22,6 +22,8 @@ BLOCK 的理由消失,才有可能真的搬走。
 """
 from __future__ import annotations
 
+import os
+
 import sys
 from typing import Optional
 
@@ -54,6 +56,32 @@ DIAGNOSTIC_KEYS = (
 #: 刻意**不**落地的鍵:`marks` 是階段計時的中間結構,已經被彙整成 `phases`,
 #: 原樣寫出去只是重複且龐大。
 TRANSIENT_KEYS = ("marks",)
+
+
+def run_binding() -> dict:
+    """這一次執行的身分:`git_sha` / `github_run_id` / `run_nonce`。
+
+    CI 上兩個 env 都有;本機跑時退回 `git rev-parse HEAD`,
+    再不行就留空字串 —— **留空是誠實的**,而斷言端會把「該有卻沒有」
+    當成不通過(見 `tools/assert_run_quality.py` 的 strict 模式)。
+    """
+    import subprocess
+    import uuid
+    sha = os.environ.get("GITHUB_SHA") or ""
+    if not sha:
+        try:
+            sha = subprocess.run(["git", "rev-parse", "HEAD"],
+                                 capture_output=True, text=True,
+                                 timeout=10).stdout.strip()
+        except Exception:                      # noqa: BLE001
+            sha = ""
+    return {
+        "git_sha": sha,
+        "github_run_id": os.environ.get("GITHUB_RUN_ID") or "",
+        # nonce 讓「同一個 SHA、同一個 run」的兩次執行也分得開
+        # (手動 dispatch + 排程班撞在一起時)。
+        "run_nonce": uuid.uuid4().hex,
+    }
 
 
 class ManifestRecorder:
@@ -134,6 +162,16 @@ class ManifestRecorder:
         """
         out = {
             "date": date,
+            # **這份 manifest 屬於哪一次執行**(外審 P1-2)。
+            #
+            # `state/run_manifest.json` 是**進版控的**,所以 CI checkout
+            # 之後它本來就在那裡 —— 若這一班在寫 manifest 之前就掛掉,
+            # 斷言腳本讀到的是**上一班的檔案**,而上一班可能剛好是健康的:
+            # 「canary 綠」於是證明不了任何事。
+            #
+            # 綁定是**性質**而不是程序:`rm -f` 那種前置步驟會被忘記,
+            # 而「SHA/run id 對不上」是舊檔案永遠滿足不了的條件。
+            **run_binding(),
             "total_seconds": self.total_seconds(),
             "budget_seconds": budget_seconds,
             "news_workers": news_workers,

@@ -19,13 +19,24 @@ import run_quality as rq
 
 
 def _ok_manifest(**over):
-    """一份「跑成了」的 manifest —— 判準的基準線。"""
+    """一份「跑成了」的 manifest —— 判準的基準線。
+
+    **必須是完整的**:特化路徑走完會留下 `payload_budget` /
+    `primary_metrics` / `recap_saved` / `request_measurements`,
+    少任何一格都與 `analysis_origin` 自己的宣稱互相矛盾(外審 P1-3)。
+    基準線少東西的話,下面每一條測的都是「不完整 + 那條規則」的混合。
+    """
     m = {
         "date": "2026-08-09 06:10",
         "degraded_steps": [],
+        "git_sha": "abc123", "github_run_id": "42", "run_nonce": "deadbeef",
         "llm": {"analysis_origin": ao.LUNA_SPECIALIZED,
                 "recap_saved": True,
-                "payload_budget": {"over_budget": False}},
+                "payload_budget": {"over_budget": False},
+                "primary_metrics": {"news_analyzed": 6},
+                "request_measurements": [
+                    {"role": "primary", "chars": 1_052_716,
+                     "tokens": 391_145}]},
         "news": {"fulltext_plan": {"clusters": 120, "targets": ["a", "b"],
                                    "available_news": 300}},
     }
@@ -179,15 +190,22 @@ def test_the_canary_exits_nonzero_only_on_defects(tmp_path):
     sys.path.insert(0, str((tmp_path / "..").resolve()))
     from tools.assert_run_quality import main as canary_main
     f = tmp_path / "run_manifest.json"
+
+    def _run(mode="watchdog"):
+        return canary_main(["--manifest", str(f), "--mode", mode])
+
     f.write_text(json.dumps(_ok_manifest(
         llm={"analysis_origin": ao.LEGACY_AFTER_LUNA_FAILURE})),
         encoding="utf-8")
-    assert canary_main(f) == 0, "只有 degraded 卻讓 CI 紅了"
+    assert _run() == 0, "watchdog 模式下只有 degraded 卻讓 CI 紅了"
+    # **但 strict 模式要擋** —— canary 的名字是「證明特化輸出真的產生了」
+    assert _run("strict") == 1, "strict 放行了退回 legacy 的那一班"
     f.write_text(json.dumps(_ok_manifest(
-        news={"fulltext_plan": {"clusters": 0, "targets": []}})),
+        news={"fulltext_plan": {"clusters": 0, "targets": [],
+                                "available_news": 563}})),
         encoding="utf-8")
-    assert canary_main(f) == 1, "接線斷了卻放行"
-    assert canary_main(tmp_path / "不存在.json") == 1
+    assert _run() == 1, "接線斷了卻放行"
+    assert canary_main(["--manifest", str(tmp_path / "不存在.json")]) == 1
 
 
 # ------------------------------------------------------------ 字元代理的誤差
@@ -398,7 +416,8 @@ def test_a_deepened_run_does_not_fake_a_thin_proxy():
              news={"fulltext_plan": {"clusters": 9, "targets": [1],
                                      "available_news": 20}})
     m["llm"].update(analysis_origin=ao.LUNA_SPECIALIZED, recap_saved=True,
-                    payload_budget={"over_budget": False})
+                    payload_budget={"over_budget": False},
+                    primary_metrics={"news_analyzed": 3})
     assert [f["code"] for f in rq.assess(m)] == [], rq.assess(m)
 
 
@@ -416,10 +435,7 @@ def test_the_recorder_carries_the_news_count_through():
     fp.plan_for_run([], recorder=r)          # 今天一則新聞都沒有
     plan = r.data["news"]["fulltext_plan"]
     assert plan.get("available_news") == 0, plan
-    m = {"date": "x", "degraded_steps": [],
-         "llm": {"analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-                 "payload_budget": {"over_budget": False}},
-         "news": {"fulltext_plan": plan}}
+    m = _ok_manifest(news={"fulltext_plan": plan})
     got = rq.assess(m)
     assert [f["code"] for f in got] == ["news_upstream_empty"], got
     # 反向:真的有新聞卻零群集,仍要報接線缺陷
@@ -429,3 +445,191 @@ def test_the_recorder_carries_the_news_count_through():
     r2.record_fulltext_plan(dict(fp.plan(news, []), per_cluster=[]))
     m["news"]["fulltext_plan"] = r2.data["news"]["fulltext_plan"]
     assert "fetch_plan_no_clusters" in {f["code"] for f in rq.assess(m)}
+
+
+# ================= 外審 P1-2 / P1-3:acceptance proof =================
+
+def _specialized(**over):
+    """完整的特化 manifest —— `_ok_manifest` 本身就是(基準線要完整),
+    這裡只是給 acceptance 那組一個講得出意圖的名字。"""
+    m = _ok_manifest()
+    m.update(over)
+    return m
+
+
+def test_a_minimal_manifest_no_longer_passes_vacuously():
+    """**空集合真空通過 —— 而我自己蓋了一個**(外審 P1-3)。
+    `{"llm": {"analysis_origin": "luna_specialized"}}` 先前回空 findings:
+    缺 payload_budget 不報、缺 fulltext_plan 不報、缺 recap_saved 不報……
+    宣稱走了特化路徑,就要留下那條路徑必然會寫下的紀錄。"""
+    got = rq.assess({"llm": {"analysis_origin": ao.LUNA_SPECIALIZED}})
+    assert "manifest_incomplete" in {f["code"] for f in got}, got
+    assert any(f["severity"] == "defect" for f in got)
+
+
+def test_each_required_block_is_individually_required():
+    """**逐格驗**:少任何一格都要報 —— 只驗「全缺」的話,
+    漏掉其中一格的 manifest 會靜靜通過。"""
+    for key in [k for k, _ in rq.SPECIALIZED_REQUIRED]:
+        m = _specialized()
+        del m["llm"][key]
+        got = {f["code"] for f in rq.assess(m)}
+        assert "manifest_incomplete" in got, (key, rq.assess(m))
+    assert rq.assess(_specialized()) == [], rq.assess(_specialized())
+
+
+def test_strict_canary_rejects_legacy_fallback_even_without_defects():
+    """canary step 的名字是「證明特化輸出真的產生了」,而先前
+    退回 legacy 只算 degraded → exit 0,**與那個名字互相矛盾**。"""
+    m = _specialized(llm={**_specialized()["llm"],
+                          "analysis_origin": ao.LEGACY_AFTER_LUNA_FAILURE})
+    watchdog = rq.assess(m)
+    assert all(f["severity"] != "defect" for f in watchdog), watchdog
+    strict = rq.assess(m, mode="strict")
+    assert "canary_not_specialized" in {f["code"] for f in strict}
+    assert any(f["severity"] == "defect" for f in strict)
+
+
+def test_canary_rejects_a_manifest_from_the_previous_checkout():
+    """**`state/run_manifest.json` 進版控**,checkout 之後就在那裡 ——
+    主流程若在寫它之前掛掉,斷言會讀到上一班的檔案,而上一班可能剛好
+    健康。SHA 綁定是舊檔案**永遠滿足不了**的條件。"""
+    m = _specialized(git_sha="old_sha_from_last_run")
+    got = {f["code"] for f in rq.assess(m, mode="strict",
+                                        expected_sha="this_run_sha",
+                                        expected_run_id="42")}
+    assert "run_binding_mismatch" in got, got
+    # 對得上就放行
+    assert rq.assess(_specialized(git_sha="this_run_sha"), mode="strict",
+                     expected_sha="this_run_sha", expected_run_id="42") == []
+
+
+def test_canary_requires_run_id_to_match():
+    got = {f["code"] for f in rq.assess(
+        _specialized(), mode="strict", expected_sha="abc123",
+        expected_run_id="99")}
+    assert "run_binding_mismatch" in got, got
+
+
+def test_a_manifest_without_run_binding_is_not_acceptable_to_the_canary():
+    """**沒有身分就證明不了它是這一次跑出來的。** 舊 manifest(綁定欄位
+    還不存在的世代)在 strict 下不得放行。"""
+    m = _specialized()
+    for k in rq.RUN_BINDING_FIELDS:
+        m.pop(k, None)
+    got = {f["code"] for f in rq.assess(m, mode="strict")}
+    assert "run_binding_missing" in got, got
+
+
+def test_final_request_budget_failure_is_a_defect():
+    """**packet 沒超不代表 request 沒超**(外審 P1-3)。先前閘門擋住之後
+    manifest 上只剩一個 degraded,canary 照樣 exit 0 —— 閘門做了事,
+    而它做了事這件事沒有被記下來。"""
+    m = _specialized(llm={**_specialized()["llm"],
+                          "payload_budget": {"over_budget": False,
+                                             "final_request_over_budget": True}})
+    got = [f for f in rq.assess(m) if f["code"] == "final_request_over_budget"]
+    assert got and got[0]["severity"] == "defect", rq.assess(m)
+
+
+def test_the_gate_records_the_flag_it_needs(tmp_path):
+    """**判準的前提要由生產端提供**:閘門不記旗標的話,上一條驗的是
+    一個永遠不會出現的欄位。"""
+    import payload_budget as pb
+    man = {}
+    try:
+        pb.request_gate({"x": "y" * 200}, manifest=man, limit=10)
+    except pb.PayloadBudgetExceeded:
+        pass
+    else:
+        raise AssertionError("超標卻沒有拋")
+    assert man["llm"]["payload_budget"]["final_request_over_budget"] is True
+
+
+def test_the_manifest_carries_the_identity_of_this_run():
+    """生產端要寫得出綁定,strict 才有東西可比。"""
+    import run_manifest as rmod
+    m = rmod.ManifestRecorder().build(
+        date="2026-08-09 06:10", budget_seconds=1200, news_workers=8,
+        degraded_steps=[])
+    for k in rq.RUN_BINDING_FIELDS:
+        assert k in m, (k, sorted(m))
+    assert m["git_sha"], "git_sha 是空的 —— 本機應退回 git rev-parse HEAD"
+
+
+def test_ci_isolates_and_binds_the_canary():
+    """**守衛不得靠遺忘失效**:strict 模式與 SHA 綁定要真的接進 workflow。"""
+    from pathlib import Path
+    ci = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
+          / "ci.yml").read_text(encoding="utf-8")
+    assert "rm -f state/run_manifest.json" in ci, "舊 manifest 沒有先移除"
+    assert "--mode strict" in ci, "canary 沒有用 strict 模式"
+    assert "GITHUB_SHA: ${{ github.sha }}" in ci
+    assert "GITHUB_RUN_ID: ${{ github.run_id }}" in ci
+    # **預設也要是 strict**(縱深):CI 有明確傳旗標、而上面那條釘住它,
+    # 但有人在別處呼叫這個腳本時,預設值決定它是閘門還是擺設。
+    from tools.assert_run_quality import main as _m
+    import inspect
+    src = inspect.getsource(_m)
+    assert 'default="strict"' in src, "canary 的預設模式不是 strict"
+
+
+# ============ 第二輪外審:斷言要能讓 job 紅、超標要分終局與回收 ============
+
+def test_the_acceptance_assertion_can_actually_fail_the_job():
+    """**沒有 acceptance 證據就是沒有通過**(第三輪外審 F1)。
+
+    我前兩版都在替 `continue-on-error` 辯護。第二版改成只容忍 `run`
+    那一步、斷言步驟跳過 —— 而那正是外審指出的:**把「沒有證據」
+    轉換成 success**。import error、中途 crash、寫 manifest 之前掛掉,
+    全都會讓 job 綠著結束而什麼都沒證明。
+
+    **而上一版的這條測試把那個 fail-open 明文釘成通過條件** ——
+    測試期望本身也是宣稱,寫錯了就把缺陷鎖成正確行為。
+
+    顧慮之所以站不住:這個 job 只在 `workflow_dispatch` 手動觸發時跑,
+    不在每次 push 的路徑上,紅燈不會變成日常噪音。
+    """
+    # **解析 YAML,不比字串**:註解裡出現 `continue-on-error` 這幾個字
+    # 會讓字串判準誤判(第一版當場踩到)—— 而註解不影響 workflow 行為。
+    import yaml
+    from pathlib import Path
+    ci = yaml.safe_load((Path(__file__).resolve().parents[1] / ".github"
+                         / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    job = ci["jobs"]["dry-run-preview"]
+    assert job.get("continue-on-error") is not True,         "job 層仍容忍失敗 —— 斷言紅了 workflow 還是綠的"
+    steps = {str(st.get("name", "")): st for st in job["steps"]}
+    assert job.get("if") == "github.event_name == 'workflow_dispatch'",         "這個 job 若進了每次 push 的路徑,不容忍失敗的決定要重新評估"
+    # **每一步都不得容忍失敗** —— 主流程掛掉時沒有 manifest,
+    # 那是「沒有證據」,不是「跳過」。
+    for name, st in steps.items():
+        assert st.get("continue-on-error") is not True,             f"步驟「{name}」容忍失敗 —— 沒有證據會被轉換成 success"
+    assertion = next(st for n, st in steps.items()
+                     if n.startswith("Assert the run actually produced"))
+    assert assertion.get("if") == "always()", assertion
+
+
+def test_a_recovered_over_budget_is_not_a_defect():
+    """**已回收的超標不是缺陷**(第二輪外審 F2)。加深那次超標時主流程
+    `break` 並沿用留著的合法第一版,`analysis_origin` 仍是特化 ——
+    對讀者沒有任何損失。只看旗標會對一份**成功產出的報告**報 defect,
+    而誤報是這套守衛最該避免的東西。"""
+    pb_terminal = {"over_budget": False, "final_request_over_budget": True}
+    m = _ok_manifest(llm={**_ok_manifest()["llm"], "payload_budget": pb_terminal})
+    assert "final_request_over_budget" in {f["code"] for f in rq.assess(m)}
+    m2 = _ok_manifest(llm={**_ok_manifest()["llm"], "payload_budget": {
+        **pb_terminal, "final_request_over_budget_recovered": True}})
+    assert "final_request_over_budget" not in {f["code"] for f in rq.assess(m2)}
+
+
+def test_production_marks_the_recovered_case():
+    """**判準的前提要由生產端提供**:回收路徑不寫旗標的話,上一條驗的是
+    一個永遠不會出現的欄位。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    seg = src.split("except _pb.PayloadBudgetExceeded:", 1)[1][:700]
+    assert "final_request_over_budget_recovered" in seg, seg
+    # 只在 `_kept` 存在(真的救得回來)時標
+    assert seg.index("if _kept is None:") < seg.index(
+        "final_request_over_budget_recovered"), seg

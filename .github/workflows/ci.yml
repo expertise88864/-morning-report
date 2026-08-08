@@ -59,12 +59,18 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # **仍然 continue-on-error**:這個 job 連 Yahoo / TWSE / LLM,會因外部
-    # 服務不穩而失敗;把它變成硬閘門只會訓練人忽略紅燈(這個 repo 為此
-    # 拒絕過自動遮蔽)。價值在**它綠的時候綠得有意義** —— 下面那個斷言
-    # 步驟讓「exit 0」不再等於「跑成了」。真正的每日守衛是
-    # `report-watchdog.yml`,判準同一份。
-    continue-on-error: true
+    # **這個 job 不容忍任何失敗**(第三輪外審 F1)。
+    #
+    # 我前兩版都在替 `continue-on-error` 辯護,理由是「連外部服務,
+    # 變成硬閘門會訓練人忽略紅燈」。第二版改成只容忍 `run` 那一步、
+    # 斷言步驟跳過 —— 而那正是外審指出的:**把「沒有 acceptance 證據」
+    # 轉換成 success**。import error、中途 crash、寫 manifest 之前掛掉,
+    # 全都會讓 job 綠著結束而什麼都沒證明。
+    #
+    # 那個顧慮之所以站不住,是因為**這個 job 只在 workflow_dispatch
+    # 手動觸發時跑**(見上面的 `if:`)—— 它不在每次 push 的路徑上,
+    # 紅燈不會變成日常噪音;而按下按鈕的人要的正是「到底成不成」。
+    # 沒有證據就是沒有通過。
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
@@ -80,7 +86,16 @@ jobs:
           # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
           pip install -r requirements.lock
 
+      # **舊 manifest 必須先消失**(外審 P1-2):`state/run_manifest.json`
+      # 是進版控的,checkout 之後就在那裡 —— 主流程若在寫它之前掛掉,
+      # 斷言會讀到上一班的檔案,而上一班可能剛好健康。
+      # 這是**帶** —— 真正的**褲腰帶**是下面斷言步驟的 SHA/run-id 綁定
+      # (rm 會被忘記,綁定是舊檔案永遠滿足不了的條件)。
+      - name: Remove the checked-in manifest so a stale one cannot pass
+        run: rm -f state/run_manifest.json
+
       - name: Run morning report (DRY_RUN, no email)
+        id: run
         env:
           DRY_RUN: "1"
           # 以下四項**與 morning-report.yml 逐字相同** —— canary 的價值
@@ -105,8 +120,17 @@ jobs:
       # 判準與每日看門狗**同一份**(`run_quality.assess`)—— 兩份判準
       # 各自演化的話,「canary 綠而生產壞」會再發生一次。
       - name: Assert the run actually produced the specialized output
+        # **一律驗**:主流程掛掉時沒有 manifest,斷言會說「跑完了但沒有
+        # run_manifest.json」並 exit 1 —— 那是對的結論,而不是「跳過」。
+        # 沒有證據就是沒有通過(第三輪外審 F1)。
         if: always()
-        run: python tools/assert_run_quality.py
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        # **strict**:這個 job 的名字是「證明特化輸出真的產生了」,
+        # 所以退回 legacy 就是不通過(每日生產的 watchdog 用 watchdog 模式,
+        # 額度用罄那幾天不該天天當成程式缺陷)。
+        run: python tools/assert_run_quality.py --mode strict
 
       - name: Upload HTML preview
         if: always()

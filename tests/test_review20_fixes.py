@@ -91,7 +91,11 @@ def test_the_fingerprint_metric_actually_receives_the_letter():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "morning_report.py"
            ).read_text(encoding="utf-8")
-    assert "structured_metrics(\n                    obj, packet, rendered_text=text)" in src, \
+    # **釘性質,不釘縮排**:呼叫端 2026-08-08 收斂進 `_accept_luna`
+    # (外審補審 F2:兩個接受出口各寫一遍會漂移)。逐字比對縮排的話,
+    # 每次搬家都要改測試,而搬家本身不是缺陷。
+    _body = src.split("def _accept_luna(")[1].split("\ndef ")[0]
+    assert "structured_metrics(" in _body and "rendered_text=text" in _body, \
         "生產呼叫端沒有把 rendered text 傳給指標"
 
 

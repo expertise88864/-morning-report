@@ -10030,6 +10030,7 @@ def _state_push_paths() -> list[str]:
     return [str(STATE_FILE), str(MODEL_HISTORY_FILE),
             str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
+            str(ANALYSIS_RECAP_FILE),   # 外審 F1:昨日觀點閉環,不跨日累積則每天都沒有 diff 基準
             str(CONFORMAL_STATE_FILE),   # conformal 區間校準 q 需跨日持久化才會收斂
             str(SOURCE_HEALTH_HISTORY_FILE),   # N4:來源健康 30 天歷史,需跨日累積才算得出連續失敗
             str(RUN_MANIFEST_FILE),   # P1-4:本次執行耗時/來源 manifest(觀測用,市場中性)
@@ -12814,6 +12815,20 @@ _LUNA_ATTEMPTS = (False, True)
 _LEGACY_FALLBACK_RESERVE = 300.0
 
 
+def _accept_luna(obj: dict, packet: dict, text: str) -> str:
+    """**特化路徑的唯一接受出口**(外審補審 F2)。
+
+    先前兩個出口(加深成功 / 加深失敗沿用第一版)各自寫一遍指標與
+    存檔,而後者漏了 recap —— 兩個地方做同一件事就會漂移。
+    這裡是它們共同的收斂點:進 manifest、存昨日觀點、回文字。
+    """
+    _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
+        obj, packet, rendered_text=text)
+    _RUN_MANIFEST["llm"]["recap_saved"] = _arc.save(
+        ANALYSIS_RECAP_FILE, obj, packet)     # 失敗不斷晨報,但要看得見
+    return text
+
+
 def _luna_analysis(packet: dict, effort: str) -> str:
     """Luna 特化路徑:strict JSON → 驗證 →(最多一次修補)→ 確定性渲染。
 
@@ -12980,11 +12995,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                         obj, text = _kept
                         _adv = _av.depth_advisories(obj, packet)
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
-                _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
-                    obj, packet, rendered_text=text)
-                _RUN_MANIFEST["llm"]["recap_saved"] = _arc.save(
-                    STATE_ROOT / "analysis_recap.json", obj, packet)  # 閉環寫入端;失敗不斷晨報
-                return text
+                return _accept_luna(obj, packet, text)
             problems = ["渲染不出可用的晨報(缺立場或總結)"]
         _record(False, "; ".join(problems[:2]))
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
@@ -13019,8 +13030,10 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。
         obj, text = _kept
         _RUN_MANIFEST["llm"]["deepen_failed"] = True
-        _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(obj, packet)
-        return text
+        # **這個出口先前不存 recap**(外審補審 F2):第一版合法、第二版
+        # 失敗時信照樣寄出,而明天沒有 diff 基準。兩個出口做同一件事而
+        # 各自寫一遍,正是會漂移的形狀 —— 收斂成同一個 finalizer。
+        return _accept_luna(obj, packet, text)
     return ""
 
 
@@ -14158,6 +14171,17 @@ def _render_journals_html(articles: list[dict], htmllib) -> str:
 
 # ===== 重大事件連續劇追蹤(延燒事件 timeline) =====
 EVENT_TIMELINE_FILE = STATE_ROOT / "event_timeline.json"
+#: 昨日觀點閉環的 state(外審補審 F1)。**必須是具名常數** ——
+#: `_state_push_paths()` 的登錄檢查掃的是大寫常數,先前這裡寫成 inline 的
+#: `STATE_ROOT / "analysis_recap.json"`,守衛看不見它,於是檔案寫在
+#: runner 上、從不 commit,次日新 runner 讀到空的 —— **整個閉環在
+#: 生產是 no-op**,而本機與測試全綠。
+ANALYSIS_RECAP_FILE = STATE_ROOT / "analysis_recap.json"
+#: 股癌雷達的 state。**晨報只讀不寫**(寫入端是 `gooaye_radar.py` 的
+#: `RADAR_STATE_FILE`,由它自己的 workflow 推送)。宣告成常數是因為
+#: inline 路徑掃描器看不見 —— 而 line 270 的註解 2026-07 就把它列為
+#: 已知盲點,一直沒補。外審補審 F1 的守衛第一次跑就抓到它。
+GOOAYE_RADAR_FILE = STATE_ROOT / "gooaye_radar.json"
 _TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
 def update_event_timeline(structured_events: list[dict],
                           now_tpe: Optional[dt.datetime] = None) -> list[dict]:
@@ -18537,7 +18561,7 @@ def _radar_processed_guids() -> set:
     (不碰 podcast_digest.json,避免兩 workflow 競寫),晨報讀它來去重:雷達已處理的股癌集,
     晨報 Podcast 段不再重複。讀檔失敗一律回空集(降級為不去重,最壞重複一次)。"""
     try:
-        p = STATE_ROOT / "gooaye_radar.json"
+        p = GOOAYE_RADAR_FILE
         if not p.exists():
             return set()
         data = json.loads(p.read_text(encoding="utf-8"))
@@ -21717,7 +21741,14 @@ def _phase_events_and_models(ctx) -> None:
     except Exception as e:
         print(f"[main] 事件 timeline 失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["EVENT_TIMELINE"] = []
-    quotes["ANALYSIS_RECAP"] = _arc.load(STATE_ROOT / "analysis_recap.json")
+    _recap_state = _arc.load(ANALYSIS_RECAP_FILE)
+    if _recap_state.get("unreadable"):
+        # **壞檔要進正式的降級管道**(第二輪外審 F5)—— 只印 stderr 的話,
+        # 生產監控分不出「昨天沒跑成」與「state 壞了」。
+        _DEGRADED_STEPS.append("analysis_recap_unreadable")
+        print("::warning::昨日觀點 state 讀不動,已另存 .corrupt", flush=True)
+        _recap_state = {}
+    quotes["ANALYSIS_RECAP"] = _recap_state
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events)

@@ -43,7 +43,11 @@ _REPO_STATE = Path(__file__).resolve().parents[1] / "state"
 
 # 唯讀輸入,不是「跑完後回流」的狀態:程式只 .exists() / .read_text(),
 # 由外部工具或人工維護。故不該出現在 push 清單。
-_READ_ONLY_STATE = {"REVENUE_CONSENSUS_FILE", "TWSE_TOP100_ARCHIVE_FILE"}
+#: 晨報**只讀不寫**的 state。`GOOAYE_RADAR_FILE` 的寫入端與推送責任
+#: 都在 `gooaye_radar.py` 的自有 workflow(兩個 workflow 競寫同一個檔
+#: 才是要避免的事)。
+_READ_ONLY_STATE = {"REVENUE_CONSENSUS_FILE", "TWSE_TOP100_ARCHIVE_FILE",
+                    "GOOAYE_RADAR_FILE"}
 
 # 批#74(第七輪 P1-10):state 路徑改為由 `STATE_ROOT` 衍生,宣告形式因此有兩種:
 #   舊:`FOO_FILE = Path("state/foo.json")`
@@ -71,8 +75,17 @@ def _declared_state_consts() -> set[str]:
 
 
 def _push_listed_consts() -> set[str]:
+    """**只認真的會被執行的登錄行。**
+
+    突變驗證抓到:把 `str(ANALYSIS_RECAP_FILE)` 那一行整行註解掉,
+    這個掃描器照樣認得它 —— 於是「移出 push 清單」這個改動不會讓
+    任何測試變紅,而次日讀不到的症狀本機測不出來。
+    註解掉一個登錄與刪掉它,對 CI 上的次日行為是同一件事。
+    """
     body = _SRC.split("def _state_push_paths(")[1].split("\ndef ")[0]
-    return set(re.findall(r"str\(([A-Z][A-Z0-9_]*)\)", body))
+    code = "\n".join(ln for ln in body.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    return set(re.findall(r"str\(([A-Z][A-Z0-9_]*)\)", code))
 
 
 def test_state_const_scan_finds_the_known_ones():
@@ -94,6 +107,65 @@ def test_every_state_path_is_registered_for_push():
         "跨日累積的狀態未 commit 回 repo,CI 每天都是新 runner → 次日讀不到,"
         "本機卻一切正常。若確定是唯讀輸入,請加進 _READ_ONLY_STATE 並註明理由。"
     )
+
+
+#: 程式碼裡**直接**組出來的 state 路徑(沒有經過具名常數)。
+_INLINE_STATE_PATH_RE = re.compile(r'STATE_ROOT\s*/\s*"([^"]+)"')
+
+#: 常數宣告行 —— inline 寫法**只有這一種**是合法的。
+_CONST_DECL_LINE = re.compile(r'^[A-Z][A-Z0-9_]*\s*=\s*STATE_ROOT\s*/')
+
+
+def test_no_state_file_is_reached_by_an_inline_path():
+    """**守衛只看得見遵守宣告慣例的東西**(外審補審 F1)。
+
+    上面那條掃的是大寫常數。2026-08-08 的昨日觀點閉環寫成
+    `STATE_ROOT / "analysis_recap.json"`(inline 字面量)—— 掃描器
+    看不見它,於是它從不進 push 清單:檔案寫在 runner 上、次日新
+    runner 讀到空的,**整個閉環在生產是 no-op**,而本機與測試全綠。
+
+    這條補的是那個縫:inline 路徑一律不合法,必須先宣告成常數
+    (常數才會被上面那條檢查登錄)。**修的是類別,不是那一個檔案。**
+    """
+    # 判準是**逐行**的:
+    #   * 註解與 docstring 裡的示範路徑(line 265 的 `STATE_ROOT / "…"`)
+    #     建不出檔案,算進來只會製造雜訊,而雜訊會訓練出「把守衛關掉」的反射;
+    #   * 常數宣告行(`FOO_FILE = STATE_ROOT / "foo.json"`)是**唯一合法**的
+    #     inline 寫法 —— 它正是這條規則要求的東西。
+    #
+    # **規則是「使用要走常數」,不是「有宣告就好」**(突變驗證抓到):
+    # 宣告了 `GOOAYE_RADAR_FILE` 卻仍在函式裡 inline 組同一個路徑時,
+    # 只比檔名的話那條照樣過關 —— 而 conftest 的測試隔離導的是常數,
+    # inline 那條會繞過隔離直接打真實 state(批#71 r1 真的發生過)。
+    stray = sorted({
+        f"{m.group(1)}(line {i})"
+        for i, ln in enumerate(_SRC.splitlines(), 1)
+        if not ln.lstrip().startswith("#")
+        and not _CONST_DECL_LINE.match(ln.strip())
+        for m in _INLINE_STATE_PATH_RE.finditer(ln)})
+    assert not stray, (
+        f"這些地方 inline 組了 state 路徑:{stray}。\n"
+        "請宣告成模組級常數(`FOO_FILE = STATE_ROOT / \"foo.json\"`)"
+        "**並使用該常數** —— push 登錄檢查與 conftest 的測試隔離"
+        "都只認得常數,兩者都看不見 inline 路徑。")
+
+
+def test_the_inline_scanner_would_catch_a_real_stray():
+    """守住掃描器本身:正則失配時上面那條會變成永遠通過的空斷言。
+
+    三種行各給一個:**宣告**(合法)、**使用**(違規,即使同名常數
+    已宣告)、**註解**(不算)。少了第二種,「宣告過就放行」那個
+    寬鬆版本不會被抓到。
+    """
+    lines = ['A_FILE = STATE_ROOT / "a.json"',
+             '    p = STATE_ROOT / "a.json"',
+             '# 範例:STATE_ROOT / "doc.json"']
+    stray = {m.group(1)
+             for ln in lines
+             if not ln.lstrip().startswith("#")
+             and not _CONST_DECL_LINE.match(ln.strip())
+             for m in _INLINE_STATE_PATH_RE.finditer(ln)}
+    assert stray == {"a.json"}, stray
 
 
 def test_read_only_whitelist_stays_read_only():

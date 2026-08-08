@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_443  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_497  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -195,7 +195,20 @@ MODULE_CEILINGS = {
     # (接不到的舊線要收掉,否則同一件事兩條「第 N 天」)。
     # 2026-08-08 第二封信:drop_shadowed(主體 fallback 不得與
     # 已識別的事件並列,否則同一故事兩個「第 N 天」)。
-    "event_identity.py": 360,
+    # 外審補審 F4/F5:`match_days`(主體相交**且動作相同**,同主體的兩個
+    # 活躍事件不再共用天數)+ `_title_related` 遮蔽證據 + `_title_hint`
+    # (不遮蔽時兩條線要分得開)。實測 452。
+    # 第二輪外審 F1/F2/F3:`discriminative_tokens`(主體與通用動詞不算
+    # 事件證據 —— 它們在上一層已經算過一次)+ 帶對象動作要比對象簽章。
+    # 實測 511。**下一次要降**:動作表與身分計算是兩件事,
+    # `ACTION_TABLE` + `event_action` 可以自成一個檔。
+    # 第五輪外審後**調降**(530→470,實測 455):動作表與動作辨識搬到
+    # `event_actions.py`。上一輪寫下「下一次要降,不是再升」,這是兌現。
+    # 切點不是主題喜好 —— 宣告式詞彙與身分計算的失效方式不同:
+    # 前者漏一個詞 → 退回主體 fallback;後者判準錯 → 兩件事黏成一條線。
+    "event_identity.py": 470,
+    # 動作表(宣告式資料 + 純字串函式)。實測 100。
+    "event_actions.py": 130,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -223,7 +236,9 @@ MODULE_CEILINGS = {
     # `required_disclosures`。放寬到 420;再長就把 news 正規化拆出去。
     # Commit B:EVIDENCE v16 的版本說明(獨立性三個數各自的用途)。實測 424。
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
-    "evidence_packet.py": 450,
+    # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
+    # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
+    "evidence_packet.py": 470,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -259,12 +274,20 @@ MODULE_CEILINGS = {
     # 深度優化(橫向 P2-7):跨語言同事件的數字錨點橋接。三道防線
     # (跨語言限定/金額下限/幣別+容差)佔了大半 —— 那正是這個模組的
     # 重點:誤併比漏併危險。實測 108。
-    "cross_lang.py": 125,
+    # 外審補審 F6:金額只產生候選,合併還要**雙語事件類別一致**
+    # (投資 $10B vs 營收 $10B 是兩件事)。實測 152。
+    # 第二輪外審 F4:類別要 token 邊界、歧義詞先挖掉、多重命中回空。
+    # 實測 170。
+    "cross_lang.py": 190,
     # 分析面縱深:昨日觀點閉環(存觀點 → 明天掛在事件群上 → 驗重述)。
     # 第二批:次要事件(top_news_analysis)也存 diff 基準,重述檢查
     # 本體從 analysis_depth 搬進來(同一個閉環拆兩處會各自漂移)。
     # 實測 222。
-    "analysis_recap.py": 240,
+    # 外審補審 F3/F7:觀點存事件身分(動作+標題)、`view_for` 兩層判準
+    # 且模稜兩可回空、壞檔與缺檔分得開。實測 280。
+    # 第三輪外審 F2:觀點存對象簽章(動作不等於身分 —— 制裁伊朗與
+    # 制裁俄羅斯共用動作碼與主體「美國」)。實測 304。
+    "analysis_recap.py": 320,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

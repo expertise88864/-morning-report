@@ -96,13 +96,75 @@ def _cjk_dominant(title) -> bool:
     return len(_CJK.findall(t)) > len(re.findall(r"[A-Za-z]", t))
 
 
+#: **雙語事件類別**。同一筆金額可以是資本支出、營收、融資或罰款 ——
+#: 那是四件事。外審補審 F6:先前只比金額,於是「Micron 投資 $10B」與
+#: 「美光營收 100 億美元」被併成一群,`independent_sources` 變 2、
+#: 佐證等級升到 multi_source —— **虛增的可信度會寫進信裡**。
+#:
+#: 金額只用來**產生候選配對**;合併還要求類別一致。認不出類別的一律
+#: 不橋接(保守側:漏併只是退回今天的行為,誤併會造出假的佐證)。
+EVENT_CATEGORIES = (
+    ("capex", ("投資", "擴產", "建廠", "設廠", "新廠", "資本支出", "擴建",
+               "加碼", "invest", "capex", "spend", "build", "expansion",
+               "plant", "fab", "factory")),
+    ("revenue", ("營收", "營業額", "銷售額", "財報", "獲利", "毛利",
+                 "revenue", "sales", "earnings", "profit", "income")),
+    ("financing", ("發債", "公司債", "融資", "增資", "募資", "上市",
+                   "bond", "debt", "financing", "raise", "ipo", "offering")),
+    ("mna", ("併購", "收購", "合併", "入股", "出售",
+             "acquire", "acquisition", "merger", "buyout", "stake")),
+    ("penalty", ("罰款", "裁罰", "和解金", "賠償",
+                 "fine", "penalty", "settlement", "damages")),
+    ("subsidy", ("補助", "補貼", "獎勵", "撥款",
+                 "subsidy", "grant", "award", "funding")),
+)
+
+
+def _word_hit(word: str, blob: str) -> bool:
+    """ASCII 詞要 token 邊界(第二輪外審 F4):`raise` 不得命中 `praise`。
+    中文無詞界,維持子字串 —— 但歧義詞已由 `_AMBIGUOUS` 排除。"""
+    w = word.lower()
+    if not w.isascii():
+        return w in blob
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", blob))
+
+
+#: **歧義詞:含類別詞當子字串,語意卻是別的東西。** 「投資人」含「投資」
+#: 但講的是股東;先把它們從文字挖掉再判類別(第二輪外審 F4:
+#: 「美光營收100億美元,投資人關注」被判成 capex,與英文的 invest 併群)。
+_AMBIGUOUS = ("投資人", "投資者", "投資機構", "投資銀行", "外資", "法人",
+              "投顧", "分析師")
+
+
+def event_category(title) -> str:
+    """標題屬於哪一類事件(認不出來、或**同時命中多類**時回空字串)。
+
+    多重命中回空是刻意的(第二輪外審 F4):「營收 100 億,將投資擴產」
+    同時是 revenue 與 capex —— 那時「第一個命中就贏」會讓兩邊各自
+    取到不同的類別,或更糟,取到同一個錯的類別而併群。
+    **分不出來就不橋接**:漏併只是退回今天的行為,誤併會造出假的佐證。
+    """
+    blob = str(title or "").lower()
+    for amb in _AMBIGUOUS:
+        blob = blob.replace(amb.lower(), " ")
+    hits = {code for code, words in EVENT_CATEGORIES
+            if any(_word_hit(w, blob) for w in words)}
+    return hits.pop() if len(hits) == 1 else ""
+
+
 def bridge(a: dict, b: dict) -> bool:
     """跨語言配對的第二次機會。**呼叫端已驗過實體別名組交集** ——
-    這裡只補「標題重疊量不到跨語言」那一段。同語言一律不橋接
-    (第 1 道防線,理由見模組 docstring)。
+    這裡只補「標題重疊量不到跨語言」那一段。
+
+    三道防線 + 第四道:同語言不橋(第 1)、金額 ≥1e7(第 2)、
+    幣別相同 + 容差(第 3)、**事件類別一致**(第 4,外審補審 F6)——
+    金額只產生候選,類別才決定是不是同一件事。
     """
     ta = str((a or {}).get("title") or "")
     tb = str((b or {}).get("title") or "")
     if _cjk_dominant(ta) == _cjk_dominant(tb):
         return False
-    return shared_money(ta, tb)
+    if not shared_money(ta, tb):
+        return False
+    ca, cb = event_category(ta), event_category(tb)
+    return bool(ca) and ca == cb

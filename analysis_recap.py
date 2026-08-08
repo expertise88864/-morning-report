@@ -75,8 +75,14 @@ def extract(analysis_obj, packet) -> dict:
                   for c in clusters}
     cluster_of = {m: cid for cid, ms in members_of.items() for m in ms}
 
+    import event_identity as _eid
+
     def _ents(member_ids) -> list:
-        return sorted({str(e) for m in member_ids
+        """**與 timeline 同一套正規化**(第四輪外審 F2)。存原文拼寫的話,
+        明天英文報導寫 `Iran`、昨天存「伊朗」,對象簽章就對不上 ——
+        而對象現在是硬判準,對不上等於整條線索失去 diff 基準。
+        身分的正規化只做一半,比完全不做更難查。"""
+        return sorted({_eid.canonical_subject(str(e)) for m in member_ids
                        for e in (by_id.get(m, {}).get("entities") or [])
                        if str(e).strip()})
 
@@ -91,9 +97,23 @@ def extract(analysis_obj, packet) -> dict:
         if not ents:
             return          # 明天接不回來的觀點是死重量,不存
         seen.add(cluster_id or f"__{len(items)}")
+        # **實體不足以當事件身分**(外審補審 F3):同一家公司昨天可以
+        # 同時有法說會與擴廠兩件事,只比實體會把擴廠今天的敘述配到
+        # 法說會的觀點上,模型被要求對無關的觀點寫「強化/轉弱/翻轉」。
+        # 一併存動作與代表標題 —— 讀取端要兩層都對得上才算同一件事。
+        title = " ".join(str(by_id.get(m, {}).get("title") or "")
+                         for m in members_of.get(cluster_id, [])) or (
+            str(by_id.get(fallback_sid, {}).get("title") or ""))
+        _act = _eid.event_action(title)
         items.append({"statement": stmt[:STATEMENT_CHARS],
                       "direction": str(direction or ""),
-                      "entities": ents})
+                      "entities": ents,
+                      "action": _act,
+                      # **動作不等於身分**(第三輪外審 F2):`sanction`
+                      # 這種帶對象的動作,「制裁伊朗」與「制裁俄羅斯」
+                      # 是兩件事,而它們共用主體「美國」與同一個動作碼。
+                      "object": _eid.object_signature(_act, ents),
+                      "title": title[:STATEMENT_CHARS]})
 
     for d in (obj.get("key_drivers") or []):
         if isinstance(d, dict):
@@ -118,6 +138,17 @@ def save(path, analysis_obj, packet) -> bool:
         import pathlib
         p = pathlib.Path(str(path))
         p.parent.mkdir(parents=True, exist_ok=True)
+        # 壞檔先留副本再覆寫(外審補審 F7)—— 覆寫掉就查不出昨天
+        # 為什麼壞了,而那正是隔天要診斷的東西。
+        # **只碰普通檔案**:第一版寫 `p.exists()`,而路徑是目錄時
+        # 「讀不動」也成立 → 直接把那個目錄改名。修 F7 的動作本身
+        # 變成破壞性操作(測試當場把 pytest 的 tmp 目錄搬走)。
+        # 這個 repo 記過:一個修正可能比原本的缺陷更糟。
+        if p.is_file():
+            try:
+                json.loads(p.read_text(encoding="utf-8"))
+            except Exception:               # noqa: BLE001
+                p.replace(p.with_suffix(".json.corrupt"))
         tmp = p.with_suffix(".tmp")
         tmp.write_text(json.dumps(rec, ensure_ascii=False, indent=1),
                        encoding="utf-8")
@@ -129,13 +160,27 @@ def save(path, analysis_obj, packet) -> bool:
 
 
 def load(path) -> dict:
-    """讀 state(讀不到回空 dict —— 降級方向是「沒有昨日觀點」)。"""
+    """讀 state。**「沒有檔案」與「檔案壞了」是兩件事**(外審補審 F7)。
+
+    先前兩者都靜靜回 `{}`,然後今天的 `save()` 把壞檔原子覆寫掉 ——
+    連「昨天壞過」都查不到。現在壞檔回 `{"unreadable": ...}`:
+    昨日觀點一樣不可用(降級相同),但 `save()` 會先留一份 `.corrupt`
+    副本,而呼叫端看得出兩者的差別。
+    """
+    import pathlib
+    p = pathlib.Path(str(path))
+    if not p.is_file():
+        return {}          # 不存在、或根本不是檔案 —— 都當成「沒有昨日觀點」
     try:
-        import pathlib
-        return json.loads(
-            pathlib.Path(str(path)).read_text(encoding="utf-8")) or {}
-    except Exception:                       # noqa: BLE001
-        return {}
+        return json.loads(p.read_text(encoding="utf-8")) or {}
+    except Exception as e:                  # noqa: BLE001
+        print(f"[recap] 昨日觀點 state 讀不動({e});今日照常產生新的,"
+              f"壞檔會另存 .corrupt", file=sys.stderr)
+        # **不把原始例外字串放進去**(第二輪外審 F5):這個 dict 會進
+        # `quotes["ANALYSIS_RECAP"]` → packet → prompt。例外訊息含路徑
+        # 與內文片段,既是雜訊也是一條不必要的注入面。
+        # 旗標給呼叫端記 degraded 用,`items` 空 = 降級行為與缺檔相同。
+        return {"unreadable": True, "items": []}
 
 
 def usable(recap, target_session_date: str) -> list:
@@ -150,25 +195,76 @@ def usable(recap, target_session_date: str) -> list:
             if isinstance(it, dict) and str(it.get("statement") or "").strip()]
 
 
-def view_for(entities, items, sanitize=None) -> str:
-    """這個事件群對得上的昨日觀點(對不上回空字串)。
+#: 昨日觀點與今天的事件群要對到這個標題重疊度才算同一件事。
+#: 比分群的 0.5 寬(跨日報導用詞差異較大),但**不是零** ——
+#: 零就退回「同公司即同事件」,那正是外審補審 F3 的缺陷。
+VIEW_TITLE_OVERLAP = 0.3
 
-    比對走 `entity_alias`(精確 + 別名組)—— 與 `continuing_days` 同一套
-    身分哲學:「台積電」的觀點要接得上明天寫「TSMC」的群。
+
+def view_for(entities, items, sanitize=None, titles: str = "") -> str:
+    """這個事件群對得上的昨日觀點(對不上、或**分不出來**時回空字串)。
+
+    兩層判準(外審補審 F3):
+      1. 主體相交(精確或別名組)—— 與 `continuing_days` 同一套哲學,
+         「台積電」的觀點要接得上明天寫「TSMC」的群;
+      2. **事件層一致** —— 動作相同,或標題重疊過門檻。
+
+    **模稜兩可時回空字串。** 兩筆同分代表身分分不出來,而「沒有基準」
+    只是少一次 diff,「配到別件事的觀點」會讓模型對無關的判斷寫
+    強化/轉弱/翻轉 —— 兩種錯誤的代價不對稱。
     """
     import entity_alias as _ea
-    ents = {str(e) for e in (entities or ()) if str(e).strip()}
+    import event_identity as _eid
+    # 兩側同一套正規化(第四輪外審 F2)—— 存的是 canonical,
+    # 今天的實體是原文拼寫;不正規化的話跨語言的續篇會失去基準。
+    ents = {_eid.canonical_subject(str(e)) for e in (entities or ())
+            if str(e).strip()}
     keys = _ea.expand(ents)
+    today_action = _eid.event_action(titles)
+    scored = []
     for it in (items or []):
         theirs = {str(e) for e in (it.get("entities") or [])}
-        if ents & theirs or (keys & _ea.expand(theirs)):
-            zh = _DIRECTION_ZH.get(str(it.get("direction") or ""), "")
-            head = f"{it.get('date', '')}本報" + (f"({zh})" if zh else "")
-            body = str(it.get("statement") or "")
-            if callable(sanitize):
-                body = str(sanitize(body))
-            return f"{head}:{body}"[:STATEMENT_CHARS + 40]
-    return ""
+        if not (ents & theirs or (keys & _ea.expand(theirs))):
+            continue
+        their_action = str(it.get("action") or "")
+        # **對象不同就是兩件事,標題再像也一樣**(第四輪外審 F1)。
+        # 「美國宣布對伊朗新一輪經濟制裁措施」與同一句話換成俄羅斯 ——
+        # 去掉主體之後剩下的詞幾乎完全相同,標題那條路會翻案。
+        # 已知且不同 → 直接排除;算不出來才退回標題辨識。
+        their_obj = str(it.get("object") or "")
+        my_obj = _eid.object_signature(their_action or today_action, ents)
+        if my_obj and their_obj and my_obj != their_obj:
+            continue
+        # **只用辨識詞比**(第二輪外審 F2):主體相交已經在上一行判過,
+        # 標題重疊若又被主體名與「宣布」這類套語灌滿,等於把同一份
+        # 證據算兩次 —— 「台積電宣布法說會」與「台積電宣布擴建新廠」
+        # 的共同詞正好全部是這一類(重疊 0.50,越過 0.3 門檻)。
+        subj = ents | theirs
+        a = _eid.discriminative_tokens(titles, subj)
+        b = _eid.discriminative_tokens(it.get("title"), subj)
+        overlap = (len(a & b) / min(len(a), len(b))
+                   if len(a) >= _eid.MIN_DISCRIMINATIVE
+                   and len(b) >= _eid.MIN_DISCRIMINATIVE else 0.0)
+        action_match = bool(today_action) and today_action == their_action
+        if action_match and today_action in _eid.NEEDS_OBJECT:
+            # 帶對象的動作:動作相同還不夠,對象也要相同(第三輪外審 F2)。
+            # 算不出對象一律不當作動作命中 —— 退回標題辨識詞那一關。
+            action_match = bool(my_obj) and my_obj == their_obj
+        if not action_match and overlap < VIEW_TITLE_OVERLAP:
+            continue
+        scored.append(((1 if action_match else 0, round(overlap, 3)), it))
+    if not scored:
+        return ""
+    scored.sort(key=lambda x: x[0], reverse=True)
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return ""          # 分不出來就不給基準
+    it = scored[0][1]
+    zh = _DIRECTION_ZH.get(str(it.get("direction") or ""), "")
+    head = f"{it.get('date', '')}本報" + (f"({zh})" if zh else "")
+    body = str(it.get("statement") or "")
+    if callable(sanitize):
+        body = str(sanitize(body))
+    return f"{head}:{body}"[:STATEMENT_CHARS + 40]
 
 
 def restatements(analysis_obj, packet) -> list:

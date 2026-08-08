@@ -74,7 +74,12 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 的判斷(`analysis_recap`,同日重跑不自比)。模型先前被要求「延續
 #: 事件寫增量」卻沒有 diff 的對象;它只是 diff 基準,不進 registry
 #: (拿自己昨天的判斷當今天的證據是循環引用)。
-EVIDENCE_SCHEMA_VERSION = 22
+#: v23(外審補審 F3/F4/F6):timeline **記錄整筆帶著走**(先前折成
+#: `{entity: days}`,同主體的兩個活躍事件共用最大天數,新事件被標成
+#: 延燒第 7 天);`yesterday_view` 的比對加事件層(同公司兩件事不再
+#: 互換觀點,分不出來時不給基準);跨語言金額橋接要**事件類別一致**
+#: (投資 $10B 與營收 $10B 是兩件事,先前併群後佐證虛增成 multi_source)。
+EVIDENCE_SCHEMA_VERSION = 23
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -253,20 +258,23 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 已經在數「第 N 天」—— 把它接到事件群上,模型才知道哪些事昨天
     # 已經分析過。信裡的「延燒中事件(第 4 天)」與八段的分析先前
     # 是兩個互不知道對方的系統。
-    timeline = {str(t.get("entity") or ""): int(t.get("days") or 0)
-                for t in (packet["market"].get("EVENT_TIMELINE") or [])
-                if isinstance(t, dict) and t.get("entity")}
+    # **記錄整筆帶著走**(外審補審 F4):先前折成 `{entity: days}`,
+    # 同一個 entity 出現兩次時後者覆蓋前者,而同主體的兩個活躍事件
+    # 正是 action/object 身分要分辨的東西。
+    timeline = [t for t in (packet["market"].get("EVENT_TIMELINE") or [])
+                if isinstance(t, dict)]
     by_id = {n["source_item_id"]: n for n in kept_news}
 
     def _days(c):
-        # 判準在 `entity_alias.days_for`(與 fetch_plan 的延燒優先共用 ——
-        # 「抓了全文的事件」與「標成第 N 天的事件」必須是同一個集合)。
+        # 判準在 `event_identity.match_days`(與 fetch_plan 的延燒優先
+        # 共用 —— 「抓了全文的事件」與「標成第 N 天的事件」必須是同一
+        # 個集合)。主體相交**且動作相同**才算同一件事。
         ents = {str(e) for m in c["member_source_ids"]
                 for e in (by_id.get(m, {}).get("entities") or [])}
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
-        import entity_alias as _ea
-        return _ea.days_for(ents, titles, timeline)
+        import event_identity as _eid
+        return _eid.match_days(timeline, ents, titles)
     # **昨日觀點掛在事件群上**(分析面縱深):prompt 要求延續事件寫增量,
     # 而模型先前沒有 diff 的對象。同日重跑的守衛在 `usable`(拿今天比
     # 今天會產生假的強化/推翻);比對身分與 continuing_days 同一套。
@@ -277,8 +285,12 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     def _yview(c):
         ents = {str(e) for m in c["member_source_ids"]
                 for e in (by_id.get(m, {}).get("entities") or [])}
+        # **標題要一起傳**(外審補審 F3):只比實體的話,同一家公司
+        # 昨天的兩件事會隨機配一個給今天的群。
+        titles = " ".join(str(by_id.get(m, {}).get("title") or "")
+                          for m in c["member_source_ids"])
         # 消毒交給最後的 `sanitize_tree` 整樹掃(它是字串葉節點之一)。
-        return _rc.view_for(ents, _recap_items)
+        return _rc.view_for(ents, _recap_items, titles=titles)
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],

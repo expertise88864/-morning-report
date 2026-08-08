@@ -36,12 +36,13 @@ def test_validate_tickers_name_wins_on_code_name_conflict():
 def test_morning_report_radar_processed_guids(tmp_path, monkeypatch):
     """晨報去重來源:只認雷達 state 內『已寄(radar_sent_at)』的股癌 guid;無檔→空集(降級不去重)。"""
     import morning_report as mr
-    (tmp_path / "state").mkdir()
-    f = tmp_path / "state" / "gooaye_radar.json"
+    f = tmp_path / "gooaye_radar.json"
     f.write_text(json.dumps({"gooaye": {"episodes": [
         {"guid": "sent1", "radar_sent_at": "2026-06-18T00:00:00Z"},
         {"guid": "pending"}]}}), encoding="utf-8")
-    monkeypatch.chdir(tmp_path)
+    # **盯常數,不靠 chdir**:這個路徑外審補審 F1 之後是具名常數
+    # (inline 路徑掃描器看不見它,而 conftest 也只導得動常數)。
+    monkeypatch.setattr(mr, "GOOAYE_RADAR_FILE", f)
     assert mr._radar_processed_guids() == {"sent1"}
     f.unlink()
     assert mr._radar_processed_guids() == set()

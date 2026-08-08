@@ -57,91 +57,175 @@ import re
 #: legacy 認領要動作相符(主體有交集不代表同一件事)。
 IDENTITY_SCHEMA_VERSION = 6
 
-#: 動作表:`(代碼, 說明, 關鍵詞…)`。中英並列,**由上而下第一個命中者勝**
-#: —— 順序即優先序,具體的排在概括的前面。
-#:
-#: 判準刻意保守:寧可認不出(降級回主體集合,行為與舊版相同),
-#: 不要誤認(把兩件事黏成一件是不可逆的,而且會靜靜地錯很多天)。
-#: `NEEDS_OBJECT` 的動作**必須帶對象才構成身分**(第二十五輪 P1-2)。
-#:
-#: 上一版的鍵是 `{型別}:{動作}:{月份}` —— 完全不含對象,於是同一個月裡
-#: 「美國對台軍售」與「美國對日本軍售」是同一條線;三件不同公司的資安
-#: 事件、三個國家的關稅案也全部黏在一起。**動作過粗與主體過粗一樣錯**,
-#: 只是換了一個方向。
-#:
-#: 判準:動作若是「某人對某個對象做的事」,對象就是身分的一部分;
-#: 動作若本身就指名了唯一標的(荷姆茲海峽),對象是常數、不必再帶。
-NEEDS_OBJECT = frozenset({
-    "arms_sale", "cyberattack", "tariff_action", "export_control",
-    "sanction", "election", "summit_talks", "fx_intervention",
-})
+# ---------------------------------------------------------------- 相容出口
+#
+# 動作表與動作辨識搬到 `event_actions`(見該檔:宣告式資料與身分計算
+# 是兩件事,失效方式也不同)。此處再匯出,既有 import 路徑不變。
+from event_actions import (                       # noqa: E402,F401
+    ACTION_TABLE, CANONICAL_SUBJECTS, NEEDS_OBJECT, canonical_subject,
+    event_action)
 
-ACTION_TABLE = (
-    # 這一條**自帶唯一對象**(海峽只有一個),所以不在 `NEEDS_OBJECT`。
-    ("hormuz_passage", "荷姆茲海峽通行",
-     "荷姆茲", "荷莫茲", "霍爾木茲", "Hormuz"),
-    ("arms_sale", "軍售",
-     "軍售", "對台軍售", "arms sale", "arms package", "FMS"),
-    ("cyberattack", "網路攻擊",
-     "網攻", "網路攻擊", "駭客入侵", "勒索軟體", "資安事件",
-     "cyberattack", "ransomware", "data breach"),
-    ("export_control", "出口管制",
-     "出口管制", "禁售", "實體清單", "管制清單",
-     "export control", "entity list", "chip ban"),
-    ("tariff_action", "關稅措施",
-     "關稅", "課稅", "反傾銷", "tariff", "anti-dumping"),
-    ("fx_intervention", "匯市干預",
-     "匯市干預", "干預匯市", "聯合干預", "fx intervention",
-     "yen-market intervention", "currency intervention"),
-    ("sanction", "制裁",
-     "制裁", "凍結資產", "sanction", "asset freeze"),
-    # 台海情勢自帶地理對象,同上。
-    ("strait_tension", "台海情勢",
-     "台海", "軍演", "共機", "灰色地帶", "Taiwan Strait", "military drill"),
-    ("election", "選舉",
-     "大選", "選舉", "投票日", "election", "referendum"),
-    ("summit_talks", "峰會與談判",
-     "峰會", "元首會談", "貿易談判", "會談", "summit", "trade talks",
-     "negotiation"),
+
+#: **通用新聞動詞**:每一則都有,不指認任何事件。與主體名一樣,
+#: 它們在標題重疊裡是雜訊 —— 而雜訊剛好足以讓兩件不相干的事
+#: 越過門檻(第二輪外審:「伊朗宣布軍演」vs「伊朗宣布荷姆茲協議」
+#: 共同詞是「伊朗/朗宣/宣布」,重疊 0.38 > 0.35)。
+GENERIC_NEWS_WORDS = (
+    "宣布", "表示", "指出", "公布", "傳出", "據悉", "傳", "證實", "強調",
+    "今日", "昨日", "近期", "最新", "報導", "消息", "傳聞", "回應",
+    "announce", "announces", "announced", "says", "said", "report",
+    "reports", "reported", "unveil", "unveils", "confirms", "confirmed",
 )
 
-#: 跨語言的主體正規化。**只放看得出來的對照**,推不出來就原樣留著 ——
-#: 猜一個對照會把兩個不同的主體黏成一個,而那比分裂更難發現。
-#: (別名同組的公司代號/中文名由 `entity_alias` 負責,這裡只補國家與機構。)
-CANONICAL_SUBJECTS = {
-    "iran": "伊朗", "united states": "美國", "u.s.": "美國", "us": "美國",
-    "usa": "美國", "america": "美國", "oman": "阿曼", "japan": "日本",
-    "china": "中國", "prc": "中國", "beijing": "中國", "taiwan": "台灣",
-    "south korea": "南韓", "korea": "南韓", "russia": "俄羅斯",
-    "ukraine": "烏克蘭", "israel": "以色列", "eu": "歐盟",
-    "european union": "歐盟", "germany": "德國", "india": "印度",
-    "白宮": "美國", "華府": "美國", "北京": "中國", "美方": "美國",
-    "中方": "中國", "日方": "日本",
-}
+#: 一則標題至少要留下幾個辨識詞才拿來比對。低於這個數代表整個標題
+#: 幾乎只有主體與通用詞 —— **那時任何重疊都不構成證據**。
+MIN_DISCRIMINATIVE = 2
 
 
-def canonical_subject(name: str) -> str:
-    """把主體正規化成同一種寫法(認不出就原樣回,不猜)。"""
-    raw = str(name or "").strip()
-    if not raw:
-        return ""
-    return CANONICAL_SUBJECTS.get(raw.lower(), raw)
+def discriminative_tokens(title, subjects=()) -> set:
+    """標題裡**真正指認事件**的 token(去掉主體名與通用新聞動詞)。
 
+    第二輪外審 F2/F3:主體相交已經在上一層判過了,標題重疊若又被
+    主體名灌滿,等於**把同一份證據算兩次** —— 而「台積電宣布法說會」
+    與「台積電宣布擴建新廠」的共同詞正好全部是這一類(重疊 0.50)。
 
-def event_action(*texts) -> str:
-    """這則報導在講**什麼動作**;認不出來回空字串。
-
-    由上而下第一個命中者勝(順序即優先序)。認不出來是合法答案 ——
-    呼叫端會降級回主體集合,那與舊版行為相同。
+    **從文字裡挖掉再切詞**,不是切完再過濾:中文用二元組,
+    「台積電宣布」會產生「電宣」這種跨越主體與動詞的詞,事後濾不掉。
     """
-    blob = " ".join(str(t or "") for t in texts).lower()
-    if not blob.strip():
-        return ""
-    for row in ACTION_TABLE:
-        code, words = row[0], row[2:]
-        if any(w.lower() in blob for w in words):
-            return code
-    return ""
+    from news_clusters import _tokens
+    text = str(title or "")
+    names = [str(s) for s in (subjects or ()) if str(s).strip()]
+    # 主體的別名一起挖(今天寫 TSMC、昨天寫台積電)
+    import entity_alias as _ea
+    for grp in _ea.ALIAS_GROUPS:
+        if any(n in grp for n in names):
+            names.extend(grp)
+    # **正規化是多對一,反查要展開**(第五輪外審 F1)。主體傳進來的是
+    # canonical(「美國」「伊朗」),而英文標題寫的是 `US` / `Iran` ——
+    # 只挖 canonical 的話,英文標題的主體詞留在辨識詞裡,兩件不相干的
+    # 英文事件會靠共用的國名越過門檻。
+    canon = {canonical_subject(n) for n in names}
+    names.extend(raw for raw, c in CANONICAL_SUBJECTS.items() if c in canon)
+    for w in sorted(set(names) | set(GENERIC_NEWS_WORDS), key=len, reverse=True):
+        if not w:
+            continue
+        if w.isascii():
+            # **英文要不分大小寫、要詞界**:表裡存的是小寫 `us`/`iran`,
+            # 標題寫的是 `US`/`Iran`;逐字替換的話一個都挖不掉
+            # (第五輪外審 F1 的修正第一版就是這樣,實測沒生效)。
+            # 詞界則是避免 `us` 把 `focus`/`versus` 挖出洞。
+            text = re.sub(r"(?<![A-Za-z0-9])" + re.escape(w)
+                          + r"(?![A-Za-z0-9])", " ", text, flags=re.IGNORECASE)
+        else:
+            text = text.replace(w, " ")
+    return _tokens(text)
+
+
+#: 兩個標題要重疊到這個比例才算「同一個故事的兩種寫法」。
+#: 訂 0.35 比分群的 0.5 寬:這裡兩邊已經同型別、同主體,而且是**跨日**
+#: 的兩則報導(用詞差異本來就比同日大)。仍然擋得住「軍演 vs 通行談判」。
+SHADOW_TITLE_OVERLAP = 0.35
+
+
+def title_related(a, b, subjects=()) -> bool:
+    """兩個標題講的是同一個故事嗎。
+
+    **只用辨識詞比**(第二輪外審 F3)—— 主體與通用動詞是上一層已經
+    算過的證據,拿它們再算一次會讓兩件不相干的事越過門檻。
+    辨識詞太少(任一邊 < `MIN_DISCRIMINATIVE`)時**不敢說是**:
+    那個標題幾乎只有主體與套語,任何重疊都不構成證據。
+    """
+    ta = discriminative_tokens(a, subjects)
+    tb = discriminative_tokens(b, subjects)
+    if len(ta) < MIN_DISCRIMINATIVE or len(tb) < MIN_DISCRIMINATIVE:
+        return False
+    return len(ta & tb) / min(len(ta), len(tb)) >= SHADOW_TITLE_OVERLAP
+
+
+_title_related = title_related        # 既有呼叫端
+
+
+def match_days(records, entities, titles) -> int:
+    """事件群接得上哪一筆 timeline 記錄的第幾天(接不上回 0)。
+
+    **主體相交是必要條件,不是充分條件**(外審補審 F3/F4)。同一個主體
+    可以同時有兩個活躍事件 —— 荷姆茲通行第 7 天、對同一國的制裁第 2 天。
+    先前兩個消費端(`fetch_plan.timeline_map` 與 packet 的 `_days`)都把
+    state 壓成 `{主體: 天數}`,於是制裁案第一天就被標成「第 7 天」、
+    拿到全文優先權,而 `event_identity` 引進 action/object 的**全部理由**
+    就是主體身分會把不同事件併在一起。
+
+    判準:主體相交 **且動作相同**(含兩邊都認不出來)。今天點得出動作、
+    記錄沒有(或相反)時**不接** —— 低估天數只是少一句「第 N 天」,
+    接錯會讓今天才發生的事顯示成追蹤一週。兩種錯誤的代價不對稱。
+
+    多筆同時命中(同動作、同主體的兩筆)時取**最小**天數:那代表身分
+    仍未分辨得開,保守側是少算。
+    """
+    # **兩邊都要正規化**(第三輪外審 F1)。`timeline_identity` 存的是
+    # `canonical_subject` 之後的主體(「美國」),而今天的實體保留原文
+    # 拼寫(`news_normalize` 刻意不動它)—— 英文報導的
+    # `United States` 因此接不上,一條延燒了 7 天的事件回 0 天、
+    # 掉出全文優先權。**正規化是身分的一部分,不是顯示的細節。**
+    ents = {canonical_subject(str(e)) for e in (entities or ())
+            if str(e).strip()}
+    # **不因為實體集合是空的就早退**:實體抽取會漏,標題不會 ——
+    # `_subjects_meet` 的第三層(標題含記錄的主體名)是正當的比對路徑。
+    keys = expand_alias(ents)
+    today_action = event_action(titles)
+    hits = []
+    for r in (records or []):
+        if not isinstance(r, dict):
+            continue
+        subs = {canonical_subject(str(x)) for x in (r.get("subjects") or [])
+                if str(x).strip()}
+        if not subs and r.get("entity"):
+            subs = {canonical_subject(str(r["entity"]))}
+        if not (_subjects_meet(ents, keys, subs, titles)):
+            continue
+        rec_action = str(r.get("action") or "") or event_action(
+            r.get("latest_title"), r.get("latest_summary"))
+        if rec_action != today_action:
+            continue
+        # **帶對象的動作要比對象**(第二輪外審 F1)。「美國對台軍售」
+        # 與「美國對日軍售」都是 `arms_sale`、都含「美國」——
+        # 只比動作的話,今天才發生的對日軍售會繼承對台那條的 7 天。
+        # `NEEDS_OBJECT` 存在的理由就是這個。
+        if rec_action in NEEDS_OBJECT:
+            mine = object_signature(rec_action, ents or [])
+            theirs = object_signature(rec_action, subs)
+            if not mine or not theirs or mine != theirs:
+                continue          # 對象對不上、或算不出來 → 保守不接
+        hits.append(int(r.get("days") or 0))
+    return min(hits) if hits else 0
+
+
+def expand_alias(names) -> set:
+    import entity_alias as _ea
+    return _ea.expand(names)
+
+
+def _subjects_meet(ents: set, keys: set, subs: set, titles: str) -> bool:
+    """主體相交(精確 / 別名組 / 標題含記錄的主體名)。
+
+    標題那一層維持 ASCII token 邊界 —— 裸子字串會讓 `US` 命中 `ASUS`。
+    """
+    import entity_alias as _ea
+    if ents & subs:
+        return True
+    if keys & _ea.expand(subs):
+        return True
+    text = str(titles or "")
+    # 記錄存的是 canonical 主體,而標題寫的是原文拼寫 —— 兩邊都比
+    # (`canonical_subject` 是多對一,反查不了,所以比原字串也比標準名)。
+    for s in {x for s0 in subs for x in (s0, canonical_subject(s0)) if x}:
+        if not s.isascii():
+            if s in text:
+                return True
+        elif re.search(r"(?<![A-Za-z0-9])" + re.escape(s)
+                       + r"(?![A-Za-z0-9])", text, re.IGNORECASE):
+            return True
+    return False
 
 
 def object_signature(action: str, subjects) -> str:
@@ -178,11 +262,31 @@ def display_label(record) -> str:
     if label:
         return label
     if who:
-        return who
+        # **主體 fallback 的線要說得出自己是哪一件事**(外審補審 F5)。
+        # 2026-08-08 的抱怨是「同一件事兩個矛盾的第 N 天」,而它之所以
+        # 讀起來矛盾,是因為兩條都只寫得出主體名。遮蔽掉是一種解法,
+        # 但那會連**真的另一樁**同主體事件一起藏掉(外審抓到)。
+        # 改成:留著,但帶上自己的標題片段 —— 兩條就分得開,
+        # 讀者看到的是兩件事,不是同一件事的兩個矛盾天數。
+        hint = _title_hint(r.get("latest_title"))
+        return f"{who}:{hint}" if hint else who
     # 連主體都沒有時才退回鍵,而且只取最後一段的**非日期**部分。
     tail = [p for p in str(r.get("key") or "").split(":")[1:]
             if p and not p[:4].isdigit()]
     return "、".join(tail) or "事件"
+
+
+#: 主體 fallback 線的標題片段長度。**短到一眼看完**,長到分得出是哪件事。
+TITLE_HINT_CHARS = 18
+
+
+def _title_hint(title) -> str:
+    """標題的前幾個字(去掉發布者尾綴與空白);沒有標題回空字串。"""
+    t = str(title or "").strip()
+    if not t:
+        return ""
+    t = re.split(r"\s[-–—|]\s", t)[0].strip()
+    return t[:TITLE_HINT_CHARS] + ("…" if len(t) > TITLE_HINT_CHARS else "")
 
 
 def action_label(code: str) -> str:
@@ -248,9 +352,17 @@ def drop_shadowed(active: list) -> list:
             continue
         subs = {str(x) for x in (r.get("subjects") or []) if str(x).strip()}
         etype = str(r.get("event_type") or "")
+        # **主體相交不足以證明是同一個故事**(外審補審 F5)。
+        # 「伊朗荷姆茲通行」與「伊朗革命衛隊軍演」同型別、同主體、
+        # 而後者的動作不在 ACTION_TABLE 裡 —— 只比主體的話,一樁真的
+        # 事件會從信裡整條消失。**隱藏真事件比顯示兩條更糟**:
+        # 兩條線讀者看得出來混亂,消失的那條讀者不知道它存在過。
+        # 因此再要求標題有實質重疊(同一個故事的兩種寫法會共用詞)。
         shadowed = any(
             str(n.get("event_type") or "") == etype
             and subs & {str(x) for x in (n.get("subjects") or [])}
+            and title_related(r.get("latest_title"), n.get("latest_title"),
+                              subs | {str(x) for x in (n.get("subjects") or [])})
             for n in named)
         if not shadowed:
             out.append(r)

@@ -527,7 +527,9 @@ _FROZEN = {
     # —— 先前的探針蓋不到這兩個行為,指紋不動;**探針量不到的東西,
     # 版本升降就只是在猜**(這一格的既有教訓,同一句話再驗一次)。
     # v22(分析面縱深):事件群帶 `yesterday_view`(昨日觀點閉環)。
-    "evidence_schema_version":  (22, "e7423e29318fcc51"),
+    # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
+    # 比對、跨語言橋接要事件類別一致。
+    "evidence_schema_version":  (23, "74c70db99b893952"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。

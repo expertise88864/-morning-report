@@ -287,17 +287,40 @@ def test_a_subject_fallback_line_is_hidden_when_the_story_is_identified():
 
     標題有時點得出動作、有時點不出,於是同一條荷姆茲的線同時以
     `hormuz_passage`(第 2 天)與 `伊朗`(第 7 天)存在。
-    `supersede_legacy` 接不到它 —— 主體那條**已經被蓋成新 schema**,
-    它不是舊格式的遺留,是今天才走 fallback 的。
+
+    外審補審 F5:**遮蔽現在要有第二個「同一件事」的證據**(標題重疊)
+    —— 只比主體的話,同主體的**另一樁真事件**會被一起藏掉。
+    因此 fixture 補上生產真的有的 `latest_title`。
     """
     active = [
         {"key": "geopolitical:伊朗", "days": 7, "action": "",
-         "subjects": ["伊朗"], "event_type": "geopolitical"},
+         "subjects": ["伊朗"], "event_type": "geopolitical",
+         "latest_title": "伊朗荷姆茲海峽通行談判傳有進展"},
         {"key": "geopolitical:hormuz_passage:2026-08", "days": 2,
          "action": "hormuz_passage", "subjects": ["伊朗", "阿曼"],
-         "event_type": "geopolitical"}]
+         "event_type": "geopolitical",
+         "latest_title": "伊朗荷姆茲海峽通行談判進入第二週"}]
     kept = [r["key"] for r in eid.drop_shadowed(active)]
     assert kept == ["geopolitical:hormuz_passage:2026-08"], kept
+
+
+def test_an_unrelated_story_on_the_same_subject_survives_but_says_which():
+    """**外審補審 F5。** 標題對不上時**不遮蔽** —— 但那條線要說得出
+    自己是哪件事,否則兩個「伊朗(第 N 天)」讀起來仍然矛盾。
+    (2026-08-08 的抱怨是「分不出來」,不是「有兩條」。)"""
+    active = [
+        {"key": "geopolitical:伊朗", "days": 7, "action": "",
+         "subjects": ["伊朗"], "event_type": "geopolitical",
+         "latest_title": "伊朗革命衛隊在波斯灣舉行大規模軍演"},
+        {"key": "geopolitical:hormuz_passage:2026-08", "days": 2,
+         "action": "hormuz_passage", "subjects": ["伊朗", "阿曼"],
+         "event_type": "geopolitical",
+         "latest_title": "伊朗與阿曼就荷姆茲航道達成共識"}]
+    kept = eid.drop_shadowed(active)
+    assert len(kept) == 2, "真的另一樁事件被藏掉了"
+    labels = [eid.display_label(r) for r in kept]
+    assert any("軍演" in x for x in labels), labels
+    assert len({*labels}) == 2, labels
 
 
 def test_an_unrelated_subject_line_is_not_hidden():
@@ -311,8 +334,11 @@ def test_an_unrelated_subject_line_is_not_hidden():
     assert len(eid.drop_shadowed(active)) == 2
 
 
-def test_production_hides_the_shadowed_line(tmp_path, monkeypatch):
-    """走生產路徑 —— **函式對、呼叫端忘了接**是這個 repo 記過的形狀。"""
+def test_production_keeps_both_lines_distinguishable(tmp_path, monkeypatch):
+    """走生產路徑 —— **函式對、呼叫端忘了接**是這個 repo 記過的形狀。
+
+    外審補審 F5 之後量的是「兩條線分得開」而不是「其中一條被藏掉」;
+    理由寫在下方斷言處。"""
     state = {"geopolitical:伊朗": {
         "first_seen": "2026-08-01", "days": 7, "last_seen": "2026-08-08",
         "latest_title": "川普稱與伊朗戰爭很快將結束", "action": "",
@@ -335,4 +361,20 @@ def test_production_hides_the_shadowed_line(tmp_path, monkeypatch):
         day="2026-08-09", state=state)
     keys = [r["key"] for r in active]
     assert "geopolitical:hormuz_passage:2026-08" in keys, keys
-    assert "geopolitical:伊朗" not in keys, keys
+    # **外審補審 F5 之後這裡的期望改了,而且是刻意的。**
+    #
+    # 2026-08-08 生產的這兩個標題(「川普稱與伊朗的僵局很快就會有結果」
+    # vs「荷姆茲海峽談判再進展」)重疊度很低 —— 遮蔽規則現在要求
+    # 「同一件事」的第二個證據,所以它**不再被遮掉**。
+    #
+    # 這是取捨,不是退步:只比主體的話,同主體的**另一樁真事件**
+    # (例:伊朗革命衛隊軍演)會從信裡整條消失,而讀者不會知道它存在過。
+    # 隱藏真事件比顯示兩條更糟。
+    #
+    # 原本的抱怨是「兩個矛盾的第 N 天分不出來」—— 那一半由
+    # `display_label` 解掉:主體 fallback 的線現在帶自己的標題片段,
+    # 兩條讀起來是**兩件事**,不是同一件事的兩個天數。
+    assert "geopolitical:伊朗" in keys, keys
+    labels = [eid.display_label(r) for r in active]
+    assert len(set(labels)) == len(labels), labels
+    assert any("僵局" in x or "川普" in x for x in labels), labels

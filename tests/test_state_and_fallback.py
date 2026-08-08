@@ -183,6 +183,29 @@ def test_read_only_whitelist_stays_read_only():
             )
 
 
+def test_the_legacy_model_history_stays_frozen():
+    """**legacy 單檔已凍結唯讀 —— 而那件事沒有守衛。**
+
+    實測 `state/model_history.json` 已達 **13.3 MiB**,逼近當初列 A3
+    (單檔 gzip)時擔心的 14MB cap。問題已由地基批#1 的**按月分區**
+    解掉:新資料進 `state/model_history/YYYY-MM.json.gz`(合計 3.6 MB),
+    legacy 只讀不寫,所以它不再長大。
+
+    但「不再長大」完全靠慣例維持 —— 有人加一行寫入,檔案會繼續膨脹,
+    而**沒有任何東西會發現**(它在 push 清單裡,git 只會默默收下)。
+    2026-08-08 校正待辦清單時把這句話寫進文件,就該讓它擋得住。
+    """
+    for pattern in ("MODEL_HISTORY_FILE.write_text",
+                    "MODEL_HISTORY_FILE.write_bytes",
+                    "MODEL_HISTORY_FILE.open(",
+                    "_atomic_write_text(MODEL_HISTORY_FILE",
+                    "_atomic_write_bytes(MODEL_HISTORY_FILE"):
+        assert pattern not in _SRC, (
+            f"legacy model_history 又被寫入了({pattern})。\n"
+            "它已達 13.3 MiB;新資料應該進 state/model_history/ 的按月分區"
+            "(gzip),legacy 維持凍結唯讀。要改這個決定請先處理 repo 大小。")
+
+
 def test_push_list_has_no_stale_entries():
     """反向:push 清單不該列到已不存在或已非 state 的常數(重構刪檔後留下的
     孤兒路徑會讓 git add 每天噴錯,雜訊蓋掉真正的失敗)。"""

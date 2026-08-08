@@ -254,3 +254,27 @@ def test_a_phase_that_can_return_says_so_in_its_signature():
         else:
             assert ann == "None", (
                 f"{node.name} 不會 return 值,簽章卻寫 `-> {ann}`(宣稱要對得上實作)")
+
+
+#: `main()` 的行數上限。**棘輪,只能降不能升。**
+#: P2-3 拆解前是 641 行(2026-07-04 的盤點),批#120–122 拆完後實測 31 行。
+#: 主模組整體的上限(`MAIN_MODULE_LINE_CEILING`)擋不住這件事 ——
+#: main() 可以一路長回 641 行而整個檔仍在上限之下,而「拆解還在不在」
+#: 正是上面那些相位守衛的前提。
+#: 2026-08-08 校正待辦清單時發現「main() 31 行」這個宣稱沒有東西撐著。
+MAIN_FUNCTION_LINE_CEILING = 60
+
+
+def test_main_stays_a_thin_orchestrator():
+    """**拆解要擋得住回流。** 相位函式存在不代表 main() 還是薄的 ——
+    有人把邏輯寫回 main() 時,上面每一條相位檢查照樣全綠。"""
+    src = _SRC.read_text(encoding="utf-8")
+    i = src.index("\ndef main(")
+    # `main()` 是檔案最後一個頂層 def(後面只剩 `if __name__ ==`),
+    # 所以「下一個 def」可能不存在 —— 找不到就量到檔尾。
+    j = src.find("\ndef ", i + 10)
+    n = src[i:(j if j > 0 else len(src))].count("\n")
+    assert n <= MAIN_FUNCTION_LINE_CEILING, (
+        f"main() 已達 {n} 行,超過上限 {MAIN_FUNCTION_LINE_CEILING}。\n"
+        "這是棘輪:請把邏輯搬進相位函式,而不是調高數字 —— "
+        "P2-3 拆解前它是 641 行,而主模組整體的上限擋不住它長回去。")

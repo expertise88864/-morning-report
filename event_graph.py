@@ -178,21 +178,20 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
     }
 
 
-def conflicting_assets(obj: Optional[dict]) -> dict:
-    """同一個標的在**不同分析單位裡方向相反** → `{asset_id: [cluster/新聞]}`。
+def conflicting_asset_sides(obj: Optional[dict]) -> dict:
+    """方向衝突**逐側**的新聞 ID → `{標的: {"bullish": [...], "bearish": [...]}}`。
 
-    這是「淨效果」要求的觸發條件:兩段各自寫完就結束,而讀者要的是
-    合起來是什麼。**只在真的相反時要求** —— 都同向的話,淨效果就是
-    那個方向,再要一段只是湊字數。
+    `conflicting_assets` 只回聯集,而聯集答得出「有沒有衝突」,答不出
+    **哪幾則是利多那一側**。少了那一半,「兩側各一條主張」就只能驗
+    模型自己寫的 `direction` 標籤 —— 而標籤是它自己填的:同一批利空
+    新聞寫兩條主張、其中一條標成 `bullish`,形式上就滿足了兩側。
     """
     # 第二十三輪 P1-7:**`2330` 與「台積電」是同一個標的。** 原樣分組
     # 會讓「2330 bullish」與「台積電 bearish」不觸發淨效果。
     # 正規化到別名組的第一個成員(組的代表寫法)。
     import entity_alias as _ea
 
-    def _canon(aid: str) -> str:
-        gi = _ea.group_of(aid)
-        return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else aid
+    _canon = _ea.canonical
     seen: dict = {}
     for n in ((obj or {}).get("top_news_analysis") or []):
         if not isinstance(n, dict):
@@ -204,6 +203,19 @@ def conflicting_assets(obj: Optional[dict]) -> dict:
             aid, d = str(a.get("asset_id") or ""), str(a.get("direction") or "")
             if aid and d in ("bullish", "bearish"):
                 seen.setdefault(_canon(aid), {}).setdefault(d, []).append(sid)
-    return {aid: sorted({s for ids in dirs.values() for s in ids})
+    return {aid: {d: sorted(set(ids)) for d, ids in sorted(dirs.items())}
             for aid, dirs in sorted(seen.items())
             if len(dirs) >= 2}
+
+
+def conflicting_assets(obj: Optional[dict]) -> dict:
+    """同一個標的在**不同分析單位裡方向相反** → `{asset_id: [cluster/新聞]}`。
+
+    這是「淨效果」要求的觸發條件:兩段各自寫完就結束,而讀者要的是
+    合起來是什麼。**只在真的相反時要求** —— 都同向的話,淨效果就是
+    那個方向,再要一段只是湊字數。
+
+    (逐側的名單見 `conflicting_asset_sides`;這裡回聯集,兩者同一份判定。)
+    """
+    return {aid: sorted({s for ids in sides.values() for s in ids})
+            for aid, sides in conflicting_asset_sides(obj).items()}

@@ -229,7 +229,37 @@ def _event_graph_probe() -> list:
     o3["key_drivers"] = [dict(base, cluster_id=c)
                          for c in ("cluster:m1", "cluster:m2")]
     out.append(sch.validate(o3, pk))
+    # 第二十六輪 P1-5:**兩側標籤齊全、證據卻同側。** 上面三個案例
+    # 一個都碰不到這條規則 —— 它只在「標籤兩側、證據單側」時作用,
+    # 而那正是它要擋的東西。放行版與被擋版都量,指紋才分得出存廢。
+    out += [_side_grounding_case(["n1"], ["n1"]),
+            _side_grounding_case(["n1"], ["n2"])]
     return out
+
+
+def _side_grounding_case(ev_bull, ev_bear) -> list:
+    """2330 有方向衝突、淨效果兩側各一條主張,只有**證據**不同。"""
+    o = fx.valid_analysis()
+    a = o["top_news_analysis"][0]
+    a["affected_assets"][0].update(asset_id="2330", direction="bullish")
+    o["top_news_analysis"] = [a, dict(
+        a, source_item_id="n2",
+        affected_assets=[dict(a["affected_assets"][0], direction="bearish")])]
+    c0 = o["claim_audit"][0]
+    o["claim_audit"] += [
+        dict(c0, claim_id="cb", direction="bullish", asset_scope=["2330"],
+             evidence_ids=list(ev_bull)),
+        dict(c0, claim_id="cs", direction="bearish", asset_scope=["2330"],
+             evidence_ids=list(ev_bear))]
+    o["asset_net_effects"] = [{
+        "asset_id": "2330", "net_direction": "bullish",
+        "net_magnitude_band": "moderate",
+        "offsetting_cluster_ids": ["cluster:m1", "cluster:m2"],
+        "why": "產能恢復的量級大於降息預期的折現效果",
+        "claim_ids": ["cb", "cs"]}]
+    return sch.validate(o, ep.build({}, {}, {}, [], [], {}, as_of="x",
+                                    target_session_date="y",
+                                    sanitize=lambda s: s))
 
 
 def _edge_packet() -> dict:
@@ -597,7 +627,7 @@ _FROZEN = {
     # 被判不存在,整份特化分析作廢退回舊路徑。
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
-    "primary_profile_version":  (26, "a5e5337df749dcb8"),
+    "primary_profile_version":  (27, "a9c856207dd2c230"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
@@ -683,7 +713,11 @@ _FROZEN = {
     # 淨效果的標的比對改吃陣列 `asset_scope`(泛稱/空範圍不算指名)並要求
     # 方向同向、`offsetting_cluster_ids` 至少兩群且與衝突偵測一致、
     # 共用驅動要對得上 Python 端的分組、key-driver 反證也要驗。
-    "grounding_version":        (25, "eb7d8abf552e295e"),
+    # v26(第二十六輪 P1-5):淨效果「兩側各一條主張」要錨回**證據側** ——
+    # 那一側先前由主張自己的 `direction` 標籤決定,而標籤是輸出自己填的:
+    # 同一批新聞寫兩條、其中一條標成相反方向就形式合格。
+    # 探針補 `_side_grounding_case()`(放行版與被擋版都量)。
+    "grounding_version":        (26, "cbd81b25a709ba16"),
 }
 
 

@@ -125,9 +125,14 @@ def _conflicting(net, claims=None):
 
 
 def _both_sides():
+    # 第二十六輪 P1-5:兩側**各自引用自己那一側的新聞**(n1 利多、n2 利空)。
+    # 上一版兩條都是 `base` 的複本 —— 證據相同,只有 `direction` 這個
+    # 輸出自己填的標籤不同,而那正是新規則要擋的東西。
     base = fx.valid_analysis()["claim_audit"][0]
-    return [dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"]),
-            dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"])]
+    return [dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"],
+                 evidence_ids=["n1"]),
+            dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"],
+                 evidence_ids=["n2"])]
 
 
 def test_real_conflict_rejects_empty_offsetting_clusters():

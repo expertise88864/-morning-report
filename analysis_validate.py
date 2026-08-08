@@ -299,11 +299,19 @@ def validate(obj, evidence_ids) -> list:
                         f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"
                         "新聞的實體或標題裡 —— 「GPU」「AI」是概念不是標的;"
                         "真的要談某檔美股,它得是新聞裡的主角")
-            if aid and aid in seen_assets:
+            # **`2330` 與「台積電」是同一個標的**(第二十六輪外審 P1)。
+            # 原樣比對讓同一則新聞可以對同一檔給出**兩個相反方向** ——
+            # 而衝突偵測會正規化別名,於是那一則同時進了利多側與利空側。
+            # 淨效果的「兩側各自接地」判準因此**整段靜默跳過**
+            # (兩側的差集都是空的),換標籤假裝權衡照樣過。
+            _canon = _ac._canon_asset(aid) if aid else ""
+            if _canon and _canon in seen_assets:
                 problems.append(
                     f"{where}.affected_assets[{j}] 的 {aid!r} 重複了 ——"
-                    "同一個標的只該有一組方向與量級")
-            seen_assets.add(aid)
+                    "同一個標的只該有一組方向與量級"
+                    + ("(別名同組:先前寫過同一檔的另一種寫法)"
+                       if _canon != aid else ""))
+            seen_assets.add(_canon)
             _check_ids(a.get("evidence_ids"), f"{where}.affected_assets[{j}]")
             if not str(a.get("asset_id") or "").strip():
                 problems.append(f"{where}.affected_assets[{j}] 沒有標的代號")

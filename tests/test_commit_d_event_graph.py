@@ -131,10 +131,16 @@ def test_a_net_effect_must_say_which_side_is_heavier():
     # 第二十五輪 P1-5:**「淨」的意思是比較過雙方。** 上一版只補一條
     # 同向主張就算過 —— 而 `offsetting_cluster_ids` 說有兩邊,`claim_ids`
     # 卻只分析一邊。兩側各要有一條。
+    # 第二十六輪 P1-5:**兩側要各自站在自己那一側的證據上。**
+    # 上一版兩條主張都是 `base` 的複本 —— 證據完全相同(都是 n1),
+    # 只有 `direction` 這個**輸出自己填的標籤**不同。那正是這條規則要擋的
+    # 東西,而 fixture 先前把它釘成了通過條件。
     base = obj["claim_audit"][0]
     obj["claim_audit"] += [
-        dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"]),
-        dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"])]
+        dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"],
+             evidence_ids=["n1"]),
+        dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"],
+             evidence_ids=["n2"])]
     obj["asset_net_effects"][0]["claim_ids"] = ["cb", "cs"]
     assert not [p for p in sch.validate(obj, _packet())
                 if "asset_net_effects" in p]
@@ -274,3 +280,107 @@ def test_a_dismissed_macro_release_is_exempt_from_conditioning():
                                 "supporting_evidence_ids": ["m2"]}]
     hits = [p for p in sch.validate(obj, pk) if "分岔本身" in p]
     assert len(hits) == 3 and all("cluster:m1" in p for p in hits), hits
+
+
+# ============ 第二十六輪 P1-5:方向標籤不是證據 ============
+
+def _two_sided(evidence_bull, evidence_bear):
+    """2330 有方向衝突、淨效果兩側各一條主張;只有**證據**不同。"""
+    obj = _conflicting(fx.valid_analysis())
+    base = obj["claim_audit"][0]
+    obj["claim_audit"] += [
+        dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"],
+             evidence_ids=list(evidence_bull)),
+        dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"],
+             evidence_ids=list(evidence_bear))]
+    obj["asset_net_effects"] = [{
+        "asset_id": "2330", "net_direction": "bullish",
+        "net_magnitude_band": "moderate",
+        "offsetting_cluster_ids": ["cluster:m1", "cluster:m2"],
+        "why": "產能恢復的量級大於降息預期的折現效果",
+        "claim_ids": ["cb", "cs"]}]
+    return [p for p in sch.validate(obj, _packet()) if "asset_net_effects" in p]
+
+
+def test_relabelling_one_side_does_not_count_as_comparing_both():
+    """**方向標籤是輸出自己填的。**
+
+    「兩側各至少一條主張」先前只看主張的 `direction` —— 於是拿**同一批**
+    利多新聞寫兩條主張、其中一條標成 `bearish`,形式上就滿足了「比較過
+    雙方」,而淨判斷實際上完全建立在單側證據上。讀者看到的卻是一個
+    「權衡之後」的結論。
+
+    這裡兩條主張引用的都是 n1(今天對 2330 的利多側),只有標籤不同。
+    """
+    hits = _two_sided(["n1"], ["n1"])
+    assert hits, "同一批新聞換個標籤就過了"
+    assert any("bearish 側" in h for h in hits), hits
+
+
+def test_a_fact_id_counts_as_its_own_news():
+    """`fact:n2.x` 與 `n2` 是同一則 —— 引用數字不是繞過去的辦法。
+
+    歸屬規則與 `analysis_stages.is_numeric_anchor` 同一套;兩邊分家的話,
+    改引用 `fact:` 就能避開這條檢查。
+    """
+    assert not _two_sided(["fact:n1.yoy"], ["fact:n2.yoy"]), "正確引用被誤擋"
+    assert _two_sided(["fact:n1.yoy"], ["fact:n1.yoy"]), "換成 fact: 就繞過了"
+
+
+def test_a_claim_with_no_news_evidence_is_not_accused():
+    """**證明不出矛盾就不報。**
+
+    「2330 已跌破月線」是合法的利空主張,它本來就不繫在任何一則新聞上 ——
+    只引用行情/估值的主張,這條規則答不出它站在哪一側,那就不能拿來
+    指控它。修誤報不得造出漏報,反過來也一樣。
+    """
+    assert not _two_sided(["n1"], ["market:TAIEX.change_pct"])
+
+
+def test_one_news_item_cannot_stand_on_both_sides_via_an_alias():
+    """**同一則新聞不得靠別名同時當多空兩側的證據**(第二十六輪外審 P1)。
+
+    `affected_assets` 的重複檢查用原樣字串比對,而衝突偵測會正規化別名
+    —— 於是一則新聞同時寫「2330 bullish」與「台積電 bearish」不會被擋,
+    卻讓那一則同時進了利多側與利空側。兩側的差集因此都是空集合,
+    **上面那條「兩側各自接地」的規則整段靜默跳過**:守衛被一個
+    自相矛盾的輸入關掉了,而它報的是「沒問題」。
+    """
+    obj = fx.valid_analysis()
+    a = obj["top_news_analysis"][0]
+    a["affected_assets"] = [dict(a["affected_assets"][0], asset_id="2330",
+                                 direction="bullish"),
+                            dict(a["affected_assets"][0], asset_id="台積電",
+                                 direction="bearish")]
+    assert [p for p in sch.validate(obj, _packet()) if "重複" in p]
+    # 而衝突偵測確實會把它算成兩側 —— 這正是守衛失效的機制
+    assert eg.conflicting_asset_sides(obj)["台積電"] == {
+        "bearish": ["n1"], "bullish": ["n1"]}
+
+
+def test_one_market_only_claim_does_not_condemn_its_whole_side():
+    """**「全部」要真的是全部**(第二十六輪外審 P2)。
+
+    這一側有兩條主張:一條引用另一側的新聞,一條只繫在行情上
+    (合法,但證明不出站在哪一側)。政策寫的是「該側主張**全部**只引用
+    另一側才報」—— 而上一版寫成「任一條」,於是整側被判掉,
+    生產把任何一條 problem 當成整份特化輸出不合格。
+    """
+    obj = _conflicting(fx.valid_analysis())
+    base = obj["claim_audit"][0]
+    obj["claim_audit"] += [
+        dict(base, claim_id="cb", direction="bullish", asset_scope=["2330"],
+             evidence_ids=["n1"]),
+        dict(base, claim_id="cs", direction="bearish", asset_scope=["2330"],
+             evidence_ids=["n1"]),
+        dict(base, claim_id="cs2", direction="bearish", asset_scope=["2330"],
+             evidence_ids=["market:TAIEX.change_pct"])]
+    obj["asset_net_effects"] = [{
+        "asset_id": "2330", "net_direction": "bullish",
+        "net_magnitude_band": "moderate",
+        "offsetting_cluster_ids": ["cluster:m1", "cluster:m2"],
+        "why": "產能恢復的量級大於降息預期的折現效果",
+        "claim_ids": ["cb", "cs", "cs2"]}]
+    assert not [p for p in sch.validate(obj, _packet())
+                if "另一側" in p], "混了一條行情主張就把整側判掉"
+

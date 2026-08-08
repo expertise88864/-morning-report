@@ -62,6 +62,17 @@ def group_of(name) -> int:
     return _INDEX.get(str(name or ""), -1)
 
 
+def canonical(name) -> str:
+    """這個名字的**組代表寫法**(不在表裡的原樣回傳)。
+
+    「2330」與「台積電」是同一檔 —— 而這件事先前在三個地方各寫了一份
+    (衝突偵測、淨效果契約、`affected_assets` 的重複檢查),
+    其中一份漏掉正規化,同一則新聞就能靠兩種寫法同時站在多空兩側。
+    """
+    gi = group_of(name)
+    return ALIAS_GROUPS[gi][0] if gi >= 0 else str(name or "")
+
+
 def expand(names) -> set:
     """一組實體名 → 它們所屬的組編號集合。**不在表裡的不產生組**。"""
     return {g for g in (group_of(n) for n in (names or ())) if g >= 0}

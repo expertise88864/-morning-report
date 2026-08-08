@@ -168,7 +168,8 @@ def reference_problems(obj, packet) -> list:
             # 是選邊之後補一句理由。
             # **鍵要用 canonical**:衝突偵測回的是別名組代表(「台積電」),
             # 而這裡的 `aid` 是輸出寫的原樣(「2330」)。
-            if _eg_conflicts(obj).get(_canon_asset(aid)):
+            _sides = _eg_sides(obj).get(_canon_asset(aid)) or {}
+            if _sides:
                 dirs = {str((claims[c] or {}).get("direction") or "")
                         for c in same_asset}
                 missing = {"bullish", "bearish"} - dirs
@@ -179,6 +180,7 @@ def reference_problems(obj, packet) -> list:
                         f"今天 {aid} 同時有利多與利空,淨判斷要**兩側各至少"
                         "一條主張**才證明得出比較過(缺 "
                         f"{sorted(missing)})")
+                out.extend(_side_grounding_problems(aid, same_asset, claims, _sides))
         # `offsetting_cluster_ids` 的語意是「互相抵銷」,而**一個群抵銷不了
         # 任何東西**(外審 P1-7.3)。非空時要求:至少兩個、都存在、而且
         # 與 Python 端衝突偵測算出來的那組**完全一致** —— 讓模型自選子集
@@ -297,14 +299,81 @@ def _shared_driver_groups(packet):
 
 def _canon_asset(aid) -> str:
     import entity_alias as _ea
-    gi = _ea.group_of(str(aid))
-    return _ea.ALIAS_GROUPS[gi][0] if gi >= 0 else str(aid)
+    return _ea.canonical(aid)
 
 
-def _eg_conflicts(obj) -> dict:
-    """Python 端算出來的方向衝突(`{標的: [新聞 ID]}`)。"""
+#: 方向的另一側。
+_OPPOSITE = {"bullish": "bearish", "bearish": "bullish"}
+
+
+def _evidence_news_ids(claim) -> set:
+    """這條主張的證據落在**哪幾則新聞**上。
+
+    `fact:n3.revenue_yoy` 與 `n3` 是同一則(歸屬規則見
+    `analysis_stages.is_numeric_anchor`);行情、估值那些命名空間不是新聞,
+    不進這個集合 —— 它們支撐得了一條主張,只是**證明不了它站在哪一側**。
+    """
+    out = set()
+    for e in ((claim or {}).get("evidence_ids") or []):
+        s = str(e).strip()
+        if s.startswith("fact:"):
+            s = s[len("fact:"):].rsplit(".", 1)[0]
+        if s and ":" not in s:
+            out.add(s)
+    return out
+
+
+def _side_grounding_problems(aid, same_asset, claims, sides) -> list:
+    """**方向標籤不是證據**(第二十六輪 P1-5)。
+
+    上一條只驗「兩側各至少一條主張」,而那一側是由主張自己的 `direction`
+    決定的 —— 同一批利空新聞寫兩條主張、其中一條標成 `bullish`,
+    形式上就滿足了「比較過雙方」。淨效果因此可以完全建立在單側證據上,
+    而讀者看到的是一個「權衡後」的結論。
+
+    這裡把那一側**錨回 Python 自己算出來的證據**:哪幾則新聞對這個標的
+    是利多、哪幾則是利空,由輸出的 `top_news_analysis.affected_assets`
+    判定(`event_graph.conflicting_asset_sides`),不由淨效果那一段自選。
+
+    **只在證明得出矛盾時才報**(這是修誤報不得造出漏報的另一面):
+      * 該側主張有一條引用了該側的新聞 → 站得住,過;
+      * 一則新聞都沒引用(只引行情/估值)→ **不知道**,不報 ——
+        「2330 已跌破月線」是合法的利空主張,它本來就不繫在新聞上;
+      * 該側主張**全部**只引用了另一側的新聞 → 報。
+    """
+    out = []
+    for d, opp in _OPPOSITE.items():
+        own = {str(s) for s in (sides.get(d) or ())}
+        other = {str(s) for s in (sides.get(opp) or ())} - own
+        if not own or not other:
+            continue
+        side_claims = [c for c in same_asset
+                       if str((claims[c] or {}).get("direction") or "") == d]
+        if not side_claims:
+            continue          # 缺這一側是上一條的事,不在這裡重複報
+        news = {c: _evidence_news_ids(claims[c]) for c in side_claims}
+        if any(news[c] & own for c in side_claims):
+            continue
+        # **「全部」要真的是全部**(第二十六輪外審 P2)。上一版寫成
+        # 「任一條引用了另一側」就報 —— 於是這一側只要**有一條**繫在
+        # 行情上的合法主張(它沒有新聞證據,證明不出站在哪一側),
+        # 整側照樣被判掉,而生產把任何一條 problem 當成整份輸出不合格。
+        # 沒有新聞證據的那一條 `news[c] & other` 是空集合,`all` 自然
+        # 讓它擋下這次指控 —— 判準與寫出來的政策同一句話。
+        if all(news[c] & other for c in side_claims):
+            out.append(
+                f"asset_net_effects[{aid}] 的 {d} 側主張 {sorted(side_claims)} "
+                f"引用的全是**另一側**的新聞 —— "
+                f"今天對 {aid} 屬於 {d} 的是 {sorted(own)};"
+                "方向標籤是輸出自己填的,把同一批新聞換個標籤"
+                "湊不出「比較過雙方」")
+    return out
+
+
+def _eg_sides(obj) -> dict:
+    """Python 端算出來的方向衝突,**逐側**(`{標的: {方向: [新聞 ID]}}`)。"""
     import event_graph as _eg
-    return _eg.conflicting_assets(obj)
+    return _eg.conflicting_asset_sides(obj)
 
 
 def _offsetting_clusters_for(obj, packet, asset_id: str):

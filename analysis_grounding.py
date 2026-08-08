@@ -55,7 +55,9 @@ from __future__ import annotations
 #: **每一個**未被駁回的總經發布都要條件在三個情境分支上(先前只驗第一個);
 #: 結構化引用的**指涉**完整性(淨效果要有 claim 根據、主張要關於那個標的、
 #: cluster 引用要指得到真的東西)—— schema 保證形狀,保證不了指涉。
-GROUNDING_VERSION = 25
+#: v26(第二十六輪 P1-5):淨效果「兩側各一條主張」要**錨回證據側** ——
+#: 那一側先前由主張自己的 `direction` 標籤決定,而標籤是輸出自己填的。
+GROUNDING_VERSION = 26
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

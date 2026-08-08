@@ -22,7 +22,10 @@ import pytest
 
 import llm_config
 
-yaml = pytest.importorskip("yaml")
+# **不用 `importorskip`**(2026-08-09):這個檔盯的是 workflow 契約 ——
+# 排程、權限、逾時。裝不到 yaml 就跳過的話,守衛只在本機作用,
+# 而它要保護的是 CI 與生產。`PyYAML` 已經是宣告的依賴(requirements.txt)。
+import yaml
 
 WF_PATH = (Path(__file__).resolve().parents[1]
            / ".github" / "workflows" / "morning-report.yml")

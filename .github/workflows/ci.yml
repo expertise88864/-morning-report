@@ -59,6 +59,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # **仍然 continue-on-error**:這個 job 連 Yahoo / TWSE / LLM,會因外部
+    # 服務不穩而失敗;把它變成硬閘門只會訓練人忽略紅燈(這個 repo 為此
+    # 拒絕過自動遮蔽)。價值在**它綠的時候綠得有意義** —— 下面那個斷言
+    # 步驟讓「exit 0」不再等於「跑成了」。真正的每日守衛是
+    # `report-watchdog.yml`,判準同一份。
     continue-on-error: true
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -93,6 +98,15 @@ jobs:
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
           TZ: Asia/Taipei
         run: python morning_report.py
+
+      # **「跑完了、exit 0」證明不了什麼**:降級成 legacy、兩階段抓取
+      # 整段 no-op、昨日觀點沒存下來 —— 三者都會 exit 0。canary 的綠燈
+      # 必須代表「特化路徑真的走完了」,否則它只是一個很貴的 smoke test。
+      # 判準與每日看門狗**同一份**(`run_quality.assess`)—— 兩份判準
+      # 各自演化的話,「canary 綠而生產壞」會再發生一次。
+      - name: Assert the run actually produced the specialized output
+        if: always()
+        run: python tools/assert_run_quality.py
 
       - name: Upload HTML preview
         if: always()

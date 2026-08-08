@@ -17,7 +17,14 @@ morning 與 podcast 共用 `state-writers` 這個 concurrency group 且不取消
 用它而不是 history.json:週日輕量信在沒有新內容時本來就可能不寄,
 但 manifest 只要跑過就會更新,不會產生假警報。
 
-回傳碼:0=正常,1=逾時未更新(呼叫端據此寄告警信)。
+**批#N(2026-08-08):「有跑」與「跑成了」是兩件事。**
+2026-08-04 → 08-08 連續五天,特化路徑每天被自己的引用檢查擋下、
+退回 legacy;信照樣寄出、manifest 照樣更新 —— 這個看門狗全程安靜,
+使用者是把信貼進對話裡才發現的。判準搬到 `run_quality.assess()`
+(純函式,吃 manifest);這裡只負責接線與告警文字。
+
+回傳碼:0=正常,1=沒跑起來/沒寄到,2=跑起來了但**跑壞了**
+(呼叫端據此寄不同主旨的告警信)。
 """
 import datetime as dt
 import json
@@ -61,6 +68,17 @@ def delivery_state(path: Path = MANIFEST) -> dict:
     return d if isinstance(d, dict) else {}
 
 
+def quality_findings(path: Path = MANIFEST) -> list:
+    """今天這一班的品質判準(判準本體在 `run_quality`)。"""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import run_quality as _rq
+    return _rq.assess(raw)
+
+
 def main() -> int:
     now = dt.datetime.now(TPE)
     age, info = manifest_age_hours(now)
@@ -83,12 +101,12 @@ def main() -> int:
         # 產生一次確定的假警報,而假警報會訓練人忽略告警。
         print(f"[watchdog] 正常(舊格式 manifest,無寄送欄位):{info}"
               f"({age:.1f} 小時前)")
-        return 0
+        return _quality_exit(info)
     if delivery.get("skipped_reason"):
         # 刻意不寄(週日無新內容)。批#69 r2 才剛修掉同型的假警報。
         print(f"[watchdog] 正常:{info} 刻意未寄信"
               f"({delivery.get('skipped_reason')})")
-        return 0
+        return 0        # 刻意不寄的日子沒有「信的品質」可談
     if not delivery.get("success"):
         print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
               f"(attempted={delivery.get('attempted')}、"
@@ -96,7 +114,23 @@ def main() -> int:
         return 1
     print(f"[watchdog] 正常:{info} 已寄出({age:.1f} 小時前、"
           f"run_kind={delivery.get('run_kind')})")
-    return 0
+    return _quality_exit(info)
+
+
+def _quality_exit(info: str) -> int:
+    """跑起來也寄到了 —— 再問一次「跑成了嗎」。
+
+    **回 2 而不是 1**:呼叫端要能分辨「今天沒有信」與「今天的信比它
+    該有的樣子差」—— 兩者的緊急程度與該做的事都不同。
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import run_quality as _rq
+    findings = quality_findings()
+    if not findings:
+        return 0
+    print(f"[watchdog] 品質異常({info}):\n" + _rq.summarize(findings),
+          file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

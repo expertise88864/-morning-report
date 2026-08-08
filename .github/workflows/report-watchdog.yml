@@ -30,21 +30,32 @@ jobs:
         with:
           python-version: "3.11"
 
+      # 回傳碼:0=正常,1=沒跑起來/沒寄到,2=跑起來了但**跑壞了**。
+      # 分開是因為要做的事不同:1 要看排程與 concurrency;
+      # 2 要看 manifest 說哪一塊沒走完(判準在 `run_quality`)。
       - name: Check last run
         id: check
         run: |
-          if python tools/report_watchdog.py; then
-            echo "stale=0" >> "$GITHUB_OUTPUT"
-          else
-            echo "stale=1" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          OUT="$(python tools/report_watchdog.py 2>&1)"
+          RC=$?
+          set -e
+          echo "$OUT"
+          {
+            echo "rc=$RC"
+            echo "detail<<WATCHDOG_EOF"
+            echo "$OUT"
+            echo "WATCHDOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Alert
-        if: steps.check.outputs.stale == '1'
+        if: steps.check.outputs.rc != '0'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+          WATCHDOG_RC: ${{ steps.check.outputs.rc }}
+          WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
         run: |
           python - <<'PY'
           import os, smtplib, ssl, datetime as dt
@@ -57,16 +68,41 @@ jobs:
           tpe = dt.timezone(dt.timedelta(hours=8))
           now = dt.datetime.now(tpe).strftime("%Y-%m-%d %H:%M")
           msg = EmailMessage()
-          msg["Subject"] = f"[晨報看門狗] {now} 今天的晨報可能沒有跑起來"
+          rc = os.environ.get("WATCHDOG_RC", "1")
+          # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
+          # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
+          if rc == "2":
+              msg["Subject"] = f"[晨報品質] {now} 信寄出了,但有段落沒跑成"
+          else:
+              msg["Subject"] = f"[晨報看門狗] {now} 今天的晨報可能沒有跑起來"
           msg["From"], msg["To"] = user, to
-          msg.set_content(
-              "看門狗在台北 07:30 檢查 state/run_manifest.json,發現最後一次執行的\n"
-              "時間戳超過門檻。可能原因:\n"
-              "  - 排程 run 在 pending 階段被 state-writers group 的其他 run 擠掉\n"
-              "    (job 不會啟動,workflow 內的告警步驟也不會執行)\n"
-              "  - GitHub Actions 排程延遲或當機\n"
-              "  - 執行中途失敗且未寫入 manifest\n\n"
-              "請到 Actions 頁面查看 Morning Report 的最近一次執行。\n")
+          detail = os.environ.get("WATCHDOG_DETAIL", "").strip()
+          # **內文要對得上主旨。** 先前這裡寫死「時間戳超過門檻」的
+          # 可能原因 —— 品質告警共用它的話,信會說一件沒發生的事,
+          # 而那比沒有告警更難查。
+          if rc == "2":
+              body = (
+                  "晨報跑起來也寄出去了,但**有段落沒跑成** —— 收件人今天\n"
+                  "拿到的比它該有的樣子少。判準見 `run_quality.assess()`。\n\n"
+                  f"{detail}\n\n"
+                  "severity 的差別:\n"
+                  "  defect   —— 程式或接線壞了(例:特化輸出被自己的驗證擋下、\n"
+                  "               兩階段抓取整段 no-op、昨日觀點沒存下來)\n"
+                  "  degraded —— 讀者今天少拿到東西,但可能是外部因素\n"
+                  "               (額度、服務不穩)\n\n"
+                  "2026-08-04 → 08-08 連續五天走的正是這條路,而當時沒有\n"
+                  "任何東西會發出這封信。\n")
+          else:
+              body = (
+                  "看門狗在台北 07:30 檢查 state/run_manifest.json,發現最後一次\n"
+                  "執行的時間戳超過門檻,或有執行但沒有成功寄出。可能原因:\n"
+                  "  - 排程 run 在 pending 階段被 state-writers group 的其他 run 擠掉\n"
+                  "    (job 不會啟動,workflow 內的告警步驟也不會執行)\n"
+                  "  - GitHub Actions 排程延遲或當機\n"
+                  "  - 執行中途失敗且未寫入 manifest\n\n"
+                  f"{detail}\n\n"
+                  "請到 Actions 頁面查看 Morning Report 的最近一次執行。\n")
+          msg.set_content(body)
           with smtplib.SMTP("smtp.gmail.com", 587) as s:
               s.starttls(context=ssl.create_default_context())
               s.login(user, pwd)
@@ -75,5 +111,5 @@ jobs:
           PY
 
       - name: Fail the run so it is visible in the Actions list
-        if: steps.check.outputs.stale == '1'
+        if: steps.check.outputs.rc != '0'
         run: exit 1

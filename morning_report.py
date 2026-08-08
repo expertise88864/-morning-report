@@ -42,6 +42,7 @@ import analysis_schema as _sch
 import analysis_render as _ar
 import analysis_metrics as _am
 import deepseek_responses as _dsr
+import analysis_recap as _arc
 import event_identity as _eid
 from calibration_table import _calibration_note, render_calibration_table  # noqa: E402
 import llm_config as _lc
@@ -12981,6 +12982,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
                     obj, packet, rendered_text=text)
+                _RUN_MANIFEST["llm"]["recap_saved"] = _arc.save(
+                    STATE_ROOT / "analysis_recap.json", obj, packet)  # 閉環寫入端;失敗不斷晨報
                 return text
             problems = ["渲染不出可用的晨報(缺立場或總結)"]
         _record(False, "; ".join(problems[:2]))
@@ -21714,6 +21717,7 @@ def _phase_events_and_models(ctx) -> None:
     except Exception as e:
         print(f"[main] 事件 timeline 失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["EVENT_TIMELINE"] = []
+    quotes["ANALYSIS_RECAP"] = _arc.load(STATE_ROOT / "analysis_recap.json")
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events)

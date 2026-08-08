@@ -239,7 +239,12 @@ def _edge_packet() -> dict:
     return ep.build(
         {"EVENT_TIMELINE": [{"entity": "US", "days": 4},
                             {"entity": "台積電", "days": 4},
-                            {"entity": "伊朗", "days": 4}]},
+                            {"entity": "伊朗", "days": 4}],
+         # v22:**昨日觀點掛上事件群**。台積電那兩群(e2/e3)要帶
+         # yesterday_view;同日重跑守衛與別名比對被拿掉時,這一格會動。
+         "ANALYSIS_RECAP": {"date": "2026-08-07", "items": [
+             {"statement": "熊本廠復線對先進製程排程是正面",
+              "direction": "bullish", "entities": ["台積電"]}]}},
         {}, {},
         [{"source_item_id": "e1", "title": "ASUS 財報優於預期",
           "entities": ["華碩"], "source": "甲"},
@@ -521,7 +526,8 @@ _FROZEN = {
     # 發布者尾綴。edge packet 補了 e8/e9(CNBC $38B ↔ 經濟日報 383億美元)
     # —— 先前的探針蓋不到這兩個行為,指紋不動;**探針量不到的東西,
     # 版本升降就只是在猜**(這一格的既有教訓,同一句話再驗一次)。
-    "evidence_schema_version":  (21, "2c24b13910d80212"),
+    # v22(分析面縱深):事件群帶 `yesterday_view`(昨日觀點閉環)。
+    "evidence_schema_version":  (22, "e7423e29318fcc51"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -587,7 +593,9 @@ _FROZEN = {
     # `prediction:` 不帶標的段、加權在 `market:TAIEX_PRED.*`、
     # `calibration:` 舉出實際欄位。模型先前照錯的說明猜名字,五條引用
     # 被判不存在,整份特化分析作廢退回舊路徑。
-    "primary_profile_version":  (25, "62a43f93daf218ac"),
+    # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
+    # (強化/轉弱/翻轉),且不得引用它替今天背書。
+    "primary_profile_version":  (26, "a5e5337df749dcb8"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;

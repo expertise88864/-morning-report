@@ -53,9 +53,12 @@ _TW_SESSION_BLOCKS = (
     "EX_DIV_TODAY", "LAST_TRADING_SESSION",
 )
 
-#: 不當證據用的診斷區塊(它們談的是**資料本身**,不是市場)。
+#: 不當證據用的區塊:診斷談的是**資料本身**、ANALYSIS_RECAP 是**本報
+#: 自己昨天的判斷**(拿它當今天的證據是循環引用)—— 都不是市場事實。
+#: **這是唯一的一份**;`evidence_packet` 引用這裡 —— 先前兩個檔各維護
+#: 一份,加 ANALYSIS_RECAP 時果然只改到一份(清單漂移,當場示範)。
 _NON_EVIDENCE = ("DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS",
-                 "HEALTH_WARNINGS", "ALERTS", "HISTORY")
+                 "HEALTH_WARNINGS", "ALERTS", "HISTORY", "ANALYSIS_RECAP")
 
 #: 遞迴深度上限。`SECTOR_HEAT.sectors.<產業>.leaders.<代號>.pct` 正好第五層。
 _MAX_DEPTH = 5

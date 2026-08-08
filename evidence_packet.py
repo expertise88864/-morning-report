@@ -70,7 +70,11 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: CNBC 與經濟日報報的同一筆金額不再是兩個分析單位);聚合器條目的
 #: 發布者從標題尾綴解析(`source_registry.title_publisher`,獨立來源數
 #: 與 aggregator_only 都會動);分群比對剝發布者尾綴。
-EVIDENCE_SCHEMA_VERSION = 21
+#: v22(分析面縱深):事件群帶 `yesterday_view` —— 本報昨天對同一件事
+#: 的判斷(`analysis_recap`,同日重跑不自比)。模型先前被要求「延續
+#: 事件寫增量」卻沒有 diff 的對象;它只是 diff 基準,不進 registry
+#: (拿自己昨天的判斷當今天的證據是循環引用)。
+EVIDENCE_SCHEMA_VERSION = 22
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -187,6 +191,7 @@ EVIDENCE_QUOTE_KEYS = (
     "TAIEX_PRED", "BREADTH", "MARGIN", "FOREIGN_TOP10_TOTAL", "SECTOR_HEAT",
     "MARKET_REGIME", "MA200_STATUS", "ANALYST_MOMENTUM", "SEC_FILINGS",
     "STRUCTURED_NEWS_EVENTS", "EVENT_TIMELINE", "EVENT_CALENDAR",
+    "ANALYSIS_RECAP",
     "GAZETTE_RECORDS", "POLICY_NEW_KEYWORDS",
     "MODEL_WALK_FORWARD", "MODEL_MONITORING", "MIDTERM", "ABSORPTION",
     "DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS", "HEALTH_WARNINGS",
@@ -262,10 +267,23 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
                           for m in c["member_source_ids"])
         import entity_alias as _ea
         return _ea.days_for(ents, titles, timeline)
+    # **昨日觀點掛在事件群上**(分析面縱深):prompt 要求延續事件寫增量,
+    # 而模型先前沒有 diff 的對象。同日重跑的守衛在 `usable`(拿今天比
+    # 今天會產生假的強化/推翻);比對身分與 continuing_days 同一套。
+    import analysis_recap as _rc
+    _recap_items = _rc.usable(packet["market"].get("ANALYSIS_RECAP"),
+                              str(packet.get("target_session_date") or ""))
+
+    def _yview(c):
+        ents = {str(e) for m in c["member_source_ids"]
+                for e in (by_id.get(m, {}).get("entities") or [])}
+        # 消毒交給最後的 `sanitize_tree` 整樹掃(它是字串葉節點之一)。
+        return _rc.view_for(ents, _recap_items)
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],
-                           continuing_days=_days(c))
+                           continuing_days=_days(c),
+                           yesterday_view=_yview(c))
                       for c in cluster_info["clusters"]
                       if any(m in kept_ids for m in c["member_source_ids"])]
     packet["news_clusters"] = dict(cluster_info, clusters=_kept_clusters)
@@ -386,10 +404,9 @@ def phantom_market_refs(packet: dict) -> set:
 #: 不靠這個數字。
 _MAX_REF_DEPTH = 5
 
-#: **不註冊**的區塊:診斷與內部狀態,不是可供分析引用的市場事實。
-#: 放進來只會讓模型有機會引用一個它其實沒讀懂的東西。
-_NON_EVIDENCE_BLOCKS = ("DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS",
-                        "HEALTH_WARNINGS", "ALERTS", "HISTORY")
+#: **不註冊**的區塊 —— 本體在 `evidence_registry._NON_EVIDENCE`
+#: (單一真相來源;先前兩檔各一份,加 ANALYSIS_RECAP 時只改到一份)。
+from evidence_registry import _NON_EVIDENCE as _NON_EVIDENCE_BLOCKS  # noqa: E402
 
 
 def market_refs(market, prefix: str = "", depth: int = 0) -> set:

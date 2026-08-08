@@ -1819,6 +1819,58 @@ e8/e9(跨語言配對)—— 先前探針蓋不到新行為、指紋不動,「�
 **驗證**:preflight exit 0、1995 passed、**十二個突變全紅**
 (跨語言 6 + 發布者 3 + 延燒 3)。
 
+### 分析面縱深:昨日觀點閉環 `(下一個 commit)` —— 延續事件寫增量的可執行化
+使用者指示繼續做分析面的縱深優化。這一批補的是一個**指令與能力的落差**:
+
+**缺口。** prompt 早就要求「延續中的事件要寫增量,不是重述」——
+但特化路徑的模型只知道 `continuing_days = N`,**不知道本報昨天對這件事
+說了什麼**。沒有 diff 的對象,「寫增量」是一句無法執行的要求;也沒有
+任何檢查量得到「今天只是把昨天再說一次」。legacy prompt 有
+`_format_narrative_delta`(昨日立場+五條標題),特化路徑什麼都沒有。
+
+**閉環三段(新模組 `analysis_recap`,153 行)**:
+  1. **寫入端**:分析通過驗證後,把 key_drivers 的(敘述, 方向, 實體)
+     存進 `state/analysis_recap.json`(只留最新一天;manifest 記
+     `recap_saved`,失敗不斷晨報但看得到)。**以實體為身分,不以
+     cluster_id** —— cluster_id 是「群裡最小的 source_item_id」,
+     明天必然換號;實體+別名組才是跨日穩定的身分,與 continuing_days
+     同一套哲學。
+  2. **讀取端**:事件群帶 `yesterday_view`(EVIDENCE v22)——
+     「2026-08-07本報(偏多):…」。**同日重跑不得自比**(手動 dispatch
+     會把今天早上存進 state,拿它比是今天比今天,產生假的強化/推翻 ——
+     legacy 踩過的洞,這次從第一天就守)。prompt(LUNA v26)要求敘述
+     相對它定位:強化/轉弱/翻轉,且**不得引用它替今天背書**
+     (拿自己昨天的判斷當今天的證據是循環引用 —— ANALYSIS_RECAP
+     不進 registry,引用必被判不存在)。
+  3. **驗證端**:depth advisory 量重述度(`overlap`:今天敘述的 token
+     有多少昨天就說過;門檻 0.6)—— 過高就用既有的加深額度退回重寫,
+     不擋信(淺而正確落回 legacy 只會換來更淺的信)。
+
+**過程中抓到的**:
+  * `_NON_EVIDENCE_BLOCKS`(packet)與 `_NON_EVIDENCE`(registry)是
+    **同一份清單維護在兩個檔** —— 加 ANALYSIS_RECAP 時果然只改到一份,
+    測試當場紅。已合併成單一真相來源(registry 那份是本體)。
+    這是 repo 記過的清單漂移形狀,當場再示範一次。
+  * `depth_advisories` 的 `packet` 參數在舊相容路徑上是 **ID 集合**
+    (`deepen_is_an_improvement` 傳進來的)—— 我的第一版假設 dict,
+    17 條既有測試紅。isinstance 守衛後跳過重述檢查(與其他
+    packet-aware 規則的降級方向一致)。
+
+**外審應特別看的地方**:
+1. 重述門檻 0.6 不是量出來的(主體與事件名本來就會重複,六成以上
+   代表判斷句也在重複)—— 可挑戰。
+2. 只存 key_drivers 三條,top_news_analysis 的敘述不存 —— 取捨是
+   payload 預算;若外審認為次要事件也該有 diff 基準,加欄位即可。
+3. `yesterday_view` 進 prompt 時在 UNTRUSTED 圍欄內(整個 packet 都在),
+   且過整樹消毒 —— 但它本質是**回流的模型輸出**,注入面外審請再看。
+4. 一天沒跑(週末)時,`yesterday_view` 顯示的是上一個交易日的觀點,
+   標頭帶日期所以讀者看得出來 —— 刻意不做「超過 N 天就丟」。
+5. 版本連動:EVIDENCE 21→22、LUNA 25→26,edge packet 補 recap 行為,
+   指紋皆已驗真的動。
+
+**驗證**:preflight exit 0、2009 passed、**七個突變全紅**
+(同日守衛/別名比對/門檻/掛載/實體/registry 排除/存檔)。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

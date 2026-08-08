@@ -174,3 +174,83 @@ def test_the_canary_exits_nonzero_only_on_defects(tmp_path):
         encoding="utf-8")
     assert canary_main(f) == 1, "接線斷了卻放行"
     assert canary_main(tmp_path / "不存在.json") == 1
+
+
+# ------------------------------------------------------------ 字元代理的誤差
+
+def test_the_char_gate_headroom_is_measured_not_assumed(tmp_path):
+    """**代理的誤差要被量,不是被假設。** `MAX_REQUEST_CHARS` 的註解原本
+    寫「1.1M 字元 ≈ 66 萬 token」—— 那是推的。兩個數字其實都已經在
+    manifest 裡(`final_request_chars` 與主嘗試的 `prompt_tokens`),
+    缺的只是把它們除一下。"""
+    import payload_budget as pb
+    m = _ok_manifest(llm={
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+        "payload_budget": {"over_budget": False,
+                           "final_request_chars": 1_052_716},
+        "attempts": [{"role": "primary", "prompt_tokens": 391_145}]})
+    head = pb.proxy_headroom(m)
+    # **驗自己的算術**,不抄別份資料的結論:真實 manifest 算出 2.688 是因為
+    # 它有第二次嘗試、`max` 取到更大的 token 數。把那個數字抄進只有一次
+    # 嘗試的 fixture 裡,測的就不是這段程式了。
+    assert head["chars_per_token"] == round(1_052_716 / 391_145, 3), head
+    assert 400_000 < head["implied_token_ceiling"] < 420_000, head
+    assert rq.assess(m) == [], "今天的比例是安全的,不該報"
+
+
+def test_a_cjk_heavy_day_makes_the_proxy_thin():
+    """**同一份字元預算,偏中文的日子換到多得多的 token。**
+    字元閘門的安全性完全取決於當日語言組合 —— 那是一個會浮動的東西,
+    而先前沒有任何人在看它。"""
+    m = _ok_manifest(llm={
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
+        "payload_budget": {"over_budget": False,
+                           "final_request_chars": 1_052_716},
+        # 1.17 字元/token(重中文)→ 同樣的字元上限換到 94 萬 token
+        "attempts": [{"role": "primary", "prompt_tokens": 900_000}]})
+    got = [f for f in rq.assess(m) if f["code"] == "payload_proxy_thin"]
+    assert got and got[0]["severity"] == "defect", rq.assess(m)
+
+
+def test_the_headroom_uses_the_largest_attempt():
+    """修補與加深各送一次 —— **最大的那次才是閘門要擋的東西**。"""
+    import payload_budget as pb
+    m = _ok_manifest(llm={
+        "payload_budget": {"final_request_chars": 1_000_000},
+        "attempts": [{"role": "primary", "prompt_tokens": 100_000},
+                     {"role": "primary", "prompt_tokens": 500_000},
+                     {"role": "extractor", "prompt_tokens": 900_000}]})
+    assert pb.proxy_headroom(m)["chars_per_token"] == 2.0   # 1e6 / 5e5
+
+
+def test_no_numbers_means_no_claim():
+    """量不到就不要編:缺任一個數字時回 None,而不是拿預設值算一個
+    看起來很精確的比例。"""
+    import payload_budget as pb
+    assert pb.proxy_headroom({}) is None
+    assert pb.proxy_headroom({"llm": {"payload_budget":
+                                      {"final_request_chars": 1000}}}) is None
+
+
+# ------------------------------------------------------------ README 漂移
+
+def test_every_env_name_in_the_readme_still_exists():
+    """**README 說錯設定名,使用者就會設錯東西。**
+    2026-08-08 的生產事故正是一個過時的 `LLM_PROVIDER` 值 —— 設定與
+    程式各說各話時,症狀是「照文件做卻不會動」,而那最難查。
+    """
+    import glob
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    names = {m.group(1) for m in re.finditer(r"`([A-Z][A-Z0-9_]{3,})`", readme)}
+    assert len(names) >= 20, f"README 掃描疑似失配,只找到 {len(names)} 個"
+    blob = ""
+    for pat in ("*.py", "tools/*.py", ".github/workflows/*.yml"):
+        for f in glob.glob(str(root / pat)):
+            blob += Path(f).read_text(encoding="utf-8")
+    missing = sorted(n for n in names if n not in blob)
+    assert not missing, (
+        f"README 提到但程式與 workflow 都找不到的設定名:{missing}。\n"
+        "改名時要同時改文件 —— 使用者照著設會設到一個沒有人在讀的東西。")

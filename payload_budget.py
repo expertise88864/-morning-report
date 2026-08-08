@@ -135,7 +135,51 @@ def trim(packet: Optional[dict], *, limit: int = MAX_PAYLOAD_CHARS) -> tuple:
 #: 收到的東西**,packet 沒超不代表 request 沒超。
 #: 2026-08-07 隨 MAX_PAYLOAD_CHARS 放寬(flash 1M context):
 #: 1.1M 字元 ≈ 66 萬 token,加輸出額度仍留有餘裕。
+#:
+#: **那個「≈66 萬」是推的,不是量的。** 2026-08-08 首次拿到生產數字:
+#: 1,052,716 字元 → 391,145 prompt tokens,也就是 **2.69 字元/token**;
+#: 同樣的字元上限實際換到約 41 萬 token,比推估的還寬鬆。
+#: 但**這個比例完全取決於當日的語言組合** —— 新聞偏中文時字元/token
+#: 會掉下來,同一份字元預算就會換到多得多的 token。
+#: 所以這個上限不是一次定案的常數,而是一個**要被持續量測的代理**:
+#: `proxy_headroom()` 從 manifest 算出當日比例與隱含的 token 上限,
+#: `run_quality` 盯著它別逼近下面那個已知會被拒的水位。
 MAX_REQUEST_CHARS = 1_100_000
+
+#: **實測會被拒的 token 數**(2026-08-05 的 429:
+#: `estimated_input_tokens = 1,110,589`)。這不是 provider 公告的上限 ——
+#: 公告值我們沒有,而**量到過的拒收點**是唯一站得住的參考。
+#: 拿它當基準是刻意的:推估的上限會讓守衛建立在猜測上。
+OBSERVED_REJECTED_TOKENS = 1_110_589
+
+#: 隱含 token 上限逼近拒收點到這個比例時就要說話。
+#: 0.8 是判斷不是量測 —— 留兩成餘裕給「明天的新聞比今天更偏中文」。
+PROXY_ALERT_FRACTION = 0.8
+
+
+def proxy_headroom(manifest) -> Optional[dict]:
+    """字元閘門**今天**換到多少 token(算不出來回 None)。
+
+    兩個數字都已經在 manifest 裡(`final_request_chars` 與主嘗試的
+    `prompt_tokens`)—— 缺的只是把它們除一下。**代理的誤差沒被量過**
+    的話,「1.1M 字元很安全」就只是一句沒有人驗過的宣稱。
+    """
+    m = manifest if isinstance(manifest, dict) else {}
+    llm = m.get("llm") if isinstance(m.get("llm"), dict) else {}
+    pb = llm.get("payload_budget") if isinstance(
+        llm.get("payload_budget"), dict) else {}
+    chars = pb.get("final_request_chars")
+    toks = [a.get("prompt_tokens") for a in (llm.get("attempts") or [])
+            if isinstance(a, dict) and a.get("role") == "primary"
+            and isinstance(a.get("prompt_tokens"), (int, float))
+            and a.get("prompt_tokens") > 0]
+    if not isinstance(chars, (int, float)) or chars <= 0 or not toks:
+        return None
+    # **取最大的那次**:最大的請求才是閘門真正要擋的東西。
+    cpt = float(chars) / float(max(toks))
+    return {"chars_per_token": round(cpt, 3),
+            "implied_token_ceiling": int(MAX_REQUEST_CHARS / cpt),
+            "observed_rejected_tokens": OBSERVED_REJECTED_TOKENS}
 
 
 def request_gate(body: dict, *, manifest=None,

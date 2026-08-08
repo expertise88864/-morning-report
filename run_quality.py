@@ -121,7 +121,21 @@ def assess(manifest) -> list:
         add("recap_not_saved", "defect",
             "分析成功但昨日觀點沒存下來 —— 明天的延續事件沒有 diff 基準")
 
-    # ---- 7. 沒見過的降級
+    # ---- 7. 字元閘門還擋得住嗎(代理的誤差要被量,不是被假設)
+    import payload_budget as _pb
+    head = _pb.proxy_headroom(m)
+    if head:
+        implied = head["implied_token_ceiling"]
+        floor = _pb.OBSERVED_REJECTED_TOKENS * _pb.PROXY_ALERT_FRACTION
+        if implied >= floor:
+            add("payload_proxy_thin", "defect",
+                f"字元上限今天只換到 {implied:,} token 的餘裕 —— 逼近實測會被"
+                f"拒收的 {head['observed_rejected_tokens']:,}"
+                f"(今日 {head['chars_per_token']} 字元/token)。"
+                "閘門擋的是字元、provider 算的是 token,而這個比例隨當日"
+                "語言組合浮動:偏中文的日子同樣的字元預算會換到多得多的 token")
+
+    # ---- 8. 沒見過的降級
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED]
     if unknown:

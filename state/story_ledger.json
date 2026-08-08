@@ -192,28 +192,30 @@
   "entity": "美國",
   "entity_name": "",
   "event_type": "general",
-  "headline": "減少2.3萬人！美國7月非農意外爆冷，黃金大漲超50美元 - capitalfutures.com.tw",
+  "headline": "美國非農爆冷！7月就業意外減少2.3萬人Fed升息押注急退- 日報 - 工商時報",
   "state": "peak",
   "first_seen": "2026-08-08",
   "last_update": "2026-08-08",
-  "updates": 2,
-  "last_delta": "減少2.3萬人！美國7月非農意外爆冷，黃金大漲超50美元 - capitalfutures.com.tw",
-  "prev_delta": "非農大爆冷！美國 7 月就業人數「意外減少 2.3 萬」，失業率穩居 4.1% - 動區動趨",
+  "updates": 3,
+  "last_delta": "美國非農爆冷！7月就業意外減少2.3萬人Fed升息押注急退- 日報 - 工商時報",
+  "prev_delta": "減少2.3萬人！美國7月非農意外爆冷，黃金大漲超50美元 - capitalfutures.com.tw",
   "max_surprise": 0.95,
   "seen_sigs": [
+   "0324fae91407b65d",
    "adb39af7c1bb7144",
    "82f70e06e9067929"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
+    "0324fae91407b65d",
     "82f70e06e9067929",
     "adb39af7c1bb7144"
    ]
   },
-  "last_published": "2026-08-07T12:52:04+00:00",
+  "last_published": "2026-08-07T19:00:00+00:00",
   "lifecycle": "rumor",
-  "source_grade": "C",
+  "source_grade": "B",
   "timeline": [
    {
     "d": "2026-08-08",
@@ -236,6 +238,59 @@
      "50",
      "7"
     ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster2137371903|l:revenue_growth",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "revenue_growth",
+  "headline": "美股重點新聞摘要2026年8月8日",
+  "state": "peak",
+  "first_seen": "2026-08-01",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "美股重點新聞摘要2026年8月8日",
+  "prev_delta": "美股重點新聞摘要2026年8月7日",
+  "max_surprise": 0.95,
+  "seen_sigs": [
+   "b625503a23c4b8e2",
+   "7c8a9c82b344952b",
+   "144c066026c610fc",
+   "bd213edbfa20bf64"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "bd213edbfa20bf64"
+   ]
+  },
+  "last_published": "2026-08-08T00:40:03+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-01",
+    "t": "美股重點新聞摘要2026年8月1日",
+    "l": "https://news.cnyes.com/news/id/6555196",
+    "s": "鉅亨美股",
+    "f": []
+   },
+   {
+    "d": "2026-08-07",
+    "t": "美股重點新聞摘要2026年8月7日",
+    "l": "https://news.cnyes.com/news/id/6563152",
+    "s": "鉅亨美股",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "美股重點新聞摘要2026年8月8日",
+    "l": "https://news.cnyes.com/news/id/6564478",
+    "s": "鉅亨美股",
+    "f": []
    }
   ],
   "delta_unconfirmed": false
@@ -1104,26 +1159,28 @@
   "prev_delta": "",
   "max_surprise": 0.9,
   "seen_sigs": [
-   "95a9c91108718222",
    "51183ccca341146c",
    "7f97013e4b71cbbd",
    "1f2376c75e741e1c",
    "b10b69eae598d8d6",
-   "7ec674245e91147d",
    "2e32eddb57dbb3de",
    "b7bfbde8f3d8e7d9",
    "c6322d2f34aa8b18",
    "d01aeae1e18c1ca3",
+   "b7d1998bf255c643",
    "6557a7da33af4b7b",
-   "b7d1998bf255c643"
+   "7ec674245e91147d",
+   "e5788442999698d6"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
     "6557a7da33af4b7b",
+    "7ec674245e91147d",
     "b7d1998bf255c643",
     "c6322d2f34aa8b18",
-    "d01aeae1e18c1ca3"
+    "d01aeae1e18c1ca3",
+    "e5788442999698d6"
    ]
   },
   "last_published": "2026-08-07T08:04:58+00:00",
@@ -1170,6 +1227,78 @@
     "t": "川普不想再打、也難收手！伊朗戰爭最難抉擇浮現－中央社 - 商周",
     "l": "https://news.google.com/rss/articles/CBMibEFVX3lxTE1OZ01jZmh5TTdtVC05UHlJaEVCdjhkZkVNdFpDb3lBb0V1NXUwUFJObEpvWUx2QjN2OURCS2NNNDdPcDVIN0wzRUJUZzljSmFoT0RFVXJpMl9TcU1sN2xGS09hWlc3SnlxWjBERg?oc=5",
     "s": "商周",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:伊朗|l:general|98d46794ed",
+  "entity": "伊朗",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "伊朗、阿曼傳將達成荷姆茲海峽協議川普也說話了- 國際 - 自由時報",
+  "state": "peak",
+  "first_seen": "2026-08-03",
+  "last_update": "2026-08-08",
+  "updates": 5,
+  "last_delta": "伊朗、阿曼傳將達成荷姆茲海峽協議川普也說話了- 國際 - 自由時報",
+  "prev_delta": "美官員：伊朗與阿曼即將達成荷姆茲海峽協議| 國際焦點 - taisounds.com",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "d5a777c86b7d12cb",
+   "c2b790c53767eea2",
+   "22c2d353c231f57a",
+   "b07a32b38b49a00a",
+   "4482451903a9f838",
+   "00aaec772bfad033",
+   "f8d32aa7f3afa2e7"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "00aaec772bfad033",
+    "4482451903a9f838",
+    "f8d32aa7f3afa2e7"
+   ]
+  },
+  "last_published": "2026-08-08T00:34:16+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-03",
+    "t": "伊朗稱接近與阿曼達成荷姆茲海峽新航道協議",
+    "l": "",
+    "s": "LLM extractor",
+    "f": []
+   },
+   {
+    "d": "2026-08-06",
+    "t": "伊朗與阿曼就霍爾木茲海峽新航線達成協議 - rfi.fr",
+    "l": "https://news.google.com/rss/articles/CBMiwwJBVV95cUxPYlI4TnIxNFZRVUQ0dTZsNWdjem9zUUZpcEp0dGhWb3dRSUhWdXlGenU5NEUzZElVR2diWHBVVUl0OU5YY0kwU3ctaEdYMTFYUjI1ZC1hWGpVclpwN0ZhVWpOa0NXSVJ2Sm5EY21NUFpRUzNfRnh",
+    "s": "rfi.fr",
+    "f": []
+   },
+   {
+    "d": "2026-08-07",
+    "t": "伊朗證實將與阿曼達成協議 擬劃分航道重啟荷姆茲海峽 - 公視新聞網PNN",
+    "l": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1DQzRIZDhsalA4Tnlwc1Z2TTUxUkxodW4zQ2FUbldqUG1CTkIyVjlsYzdIWU4tcWpwSEdVbGN5Qm5DeXIyN2dfWmxRQm9mSEU?oc=5",
+    "s": "公視新聞網PNN",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "美官員：伊朗與阿曼即將達成荷姆茲海峽協議| 國際焦點 - taisounds.com",
+    "l": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE94RXBEeVZrLW9lcWRFOER5TjBoaUNWSldLNklVRGNpRjRCSDZ6WkY3bnlTMGJ3UWExZktkWFhrUnFJNHpWY2FJVEZZaFR4Y1pOc0JhNjdoc1BMTjZs?oc=5",
+    "s": "taisounds.com",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "伊朗、阿曼傳將達成荷姆茲海峽協議川普也說話了- 國際 - 自由時報",
+    "l": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBFOGVyZE5zZ3RlbEh1Z0JCZjBDMGlyYlNtTDFrSkJoSUZjbDg4LVFYOGdxVlBFdTNYbWV4bExhcjdYU3dwRXVET0lfYjN1ZnlmVTZIWTRWRkRzQ0VycmJ2Y2Z0eElZdw?oc=5",
+    "s": "自由時報",
     "f": []
    }
   ],
@@ -1240,78 +1369,17 @@
   "delta_unconfirmed": false
  },
  {
-  "key": "e:伊朗|l:general|98d46794ed",
-  "entity": "伊朗",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "美官員：伊朗與阿曼即將達成荷姆茲海峽協議| 國際焦點 - taisounds.com",
-  "state": "peak",
-  "first_seen": "2026-08-03",
-  "last_update": "2026-08-08",
-  "updates": 4,
-  "last_delta": "美官員：伊朗與阿曼即將達成荷姆茲海峽協議| 國際焦點 - taisounds.com",
-  "prev_delta": "伊朗證實將與阿曼達成協議 擬劃分航道重啟荷姆茲海峽 - 公視新聞網PNN",
-  "max_surprise": 0.9,
-  "seen_sigs": [
-   "d5a777c86b7d12cb",
-   "c2b790c53767eea2",
-   "22c2d353c231f57a",
-   "b07a32b38b49a00a",
-   "4482451903a9f838"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "4482451903a9f838"
-   ]
-  },
-  "last_published": "2026-08-07T23:14:41+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-03",
-    "t": "伊朗稱接近與阿曼達成荷姆茲海峽新航道協議",
-    "l": "",
-    "s": "LLM extractor",
-    "f": []
-   },
-   {
-    "d": "2026-08-06",
-    "t": "伊朗與阿曼就霍爾木茲海峽新航線達成協議 - rfi.fr",
-    "l": "https://news.google.com/rss/articles/CBMiwwJBVV95cUxPYlI4TnIxNFZRVUQ0dTZsNWdjem9zUUZpcEp0dGhWb3dRSUhWdXlGenU5NEUzZElVR2diWHBVVUl0OU5YY0kwU3ctaEdYMTFYUjI1ZC1hWGpVclpwN0ZhVWpOa0NXSVJ2Sm5EY21NUFpRUzNfRnh",
-    "s": "rfi.fr",
-    "f": []
-   },
-   {
-    "d": "2026-08-07",
-    "t": "伊朗證實將與阿曼達成協議 擬劃分航道重啟荷姆茲海峽 - 公視新聞網PNN",
-    "l": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE1DQzRIZDhsalA4Tnlwc1Z2TTUxUkxodW4zQ2FUbldqUG1CTkIyVjlsYzdIWU4tcWpwSEdVbGN5Qm5DeXIyN2dfWmxRQm9mSEU?oc=5",
-    "s": "公視新聞網PNN",
-    "f": []
-   },
-   {
-    "d": "2026-08-08",
-    "t": "美官員：伊朗與阿曼即將達成荷姆茲海峽協議| 國際焦點 - taisounds.com",
-    "l": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE94RXBEeVZrLW9lcWRFOER5TjBoaUNWSldLNklVRGNpRjRCSDZ6WkY3bnlTMGJ3UWExZktkWFhrUnFJNHpWY2FJVEZZaFR4Y1pOc0JhNjdoc1BMTjZs?oc=5",
-    "s": "taisounds.com",
-    "f": []
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:土耳其|l:geopolitical|202608",
   "entity": "土耳其",
   "entity_name": "",
   "event_type": "geopolitical",
-  "headline": "中東戰火持續：沙特、巴基斯坦與土耳其簽署共同防禦協議 - RFI",
+  "headline": "沙特土耳其巴基斯坦建立「中東北約」 三國「去美國化」的盤算 - 香港01",
   "state": "peak",
   "first_seen": "2026-08-07",
   "last_update": "2026-08-08",
-  "updates": 3,
-  "last_delta": "中東戰火持續：沙特、巴基斯坦與土耳其簽署共同防禦協議 - RFI",
-  "prev_delta": "討論牆 | 應對中東變局 土耳其、沙烏地阿拉伯及巴基斯坦簽署三國聯合防衛協議 - LINE TODAY",
+  "updates": 4,
+  "last_delta": "沙特土耳其巴基斯坦建立「中東北約」 三國「去美國化」的盤算 - 香港01",
+  "prev_delta": "沙特土耳其巴基斯坦簽署共同防務協議 加強對「任何侵略行為」共同威懾 - 橙新聞",
   "max_surprise": 0.9,
   "seen_sigs": [
    "eadd3252b648e691",
@@ -1320,22 +1388,26 @@
    "bf016a1b87d03755",
    "48c9b8a8c7cc8c0e",
    "dcd2e6a13205634b",
+   "46a53abef514566a",
+   "a2ba5cb1d8515f81",
    "1da056b005a42d70",
    "f8f11c4176b20ae5",
-   "46a53abef514566a",
-   "a2ba5cb1d8515f81"
+   "a25507d68bad33e8",
+   "98d71ebf34e5a1d7"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
     "1da056b005a42d70",
     "46a53abef514566a",
+    "98d71ebf34e5a1d7",
+    "a25507d68bad33e8",
     "a2ba5cb1d8515f81",
     "dcd2e6a13205634b",
     "f8f11c4176b20ae5"
    ]
   },
-  "last_published": "2026-08-07T21:48:58+00:00",
+  "last_published": "2026-08-08T02:08:43+00:00",
   "lifecycle": "rumor",
   "source_grade": "C",
   "timeline": [
@@ -1348,10 +1420,12 @@
    },
    {
     "d": "2026-08-08",
-    "t": "中東戰火持續：沙特、巴基斯坦與土耳其簽署共同防禦協議 - RFI",
+    "t": "沙特土耳其巴基斯坦建立「中東北約」 三國「去美國化」的盤算 - 香港01",
     "l": "",
-    "s": "RFI",
-    "f": []
+    "s": "香港01",
+    "f": [
+     "1"
+    ]
    }
   ],
   "delta_unconfirmed": false
@@ -1553,8 +1627,8 @@
   "prev_delta": "華許9月升息？ING：匯市在他與戰爭間拉鋸 - 鏡週刊Mirror Media",
   "max_surprise": 0.9,
   "seen_sigs": [
-   "0dfd60e1b5e585ec",
-   "67d0ab94e2ded428"
+   "67d0ab94e2ded428",
+   "0dfd60e1b5e585ec"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -1584,6 +1658,50 @@
     "f": [
      "9"
     ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:伊朗|l:general|faebab4165",
+  "entity": "伊朗",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "荷莫茲傳禁美以船隻通行伊朗嗆聲攻擊「敵意目標」 | 中東戰火連綿| 全球 | 聯合新聞網 - UDN",
+  "state": "peak",
+  "first_seen": "2026-08-07",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "荷莫茲傳禁美以船隻通行伊朗嗆聲攻擊「敵意目標」 | 中東戰火連綿| 全球 | 聯合新聞網 - UDN",
+  "prev_delta": "荷莫茲海峽禁美以船隻通行？伊朗阿曼協議草案曝光敵對國要先賠償| 中東戰火連綿| 全球 - UDN",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "6d23c3a4f36436f4",
+   "c003f9dff5bc981b"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "c003f9dff5bc981b"
+   ]
+  },
+  "last_published": "2026-08-07T18:53:57+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-07",
+    "t": "荷莫茲海峽禁美以船隻通行？伊朗阿曼協議草案曝光敵對國要先賠償| 中東戰火連綿| 全球 - UDN",
+    "l": "https://news.google.com/rss/articles/CBMiU0FVX3lxTFBjRzV6RmtPZDE4di11QlV4dkd0N3BzTGZ0Z3Jib29kYjZBcVYzRnpfWFl0eFV2OU5KQTNVYUpYYXl2Nl80YzBfc01DQUtCanNLaE9V?oc=5",
+    "s": "UDN",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "荷莫茲傳禁美以船隻通行伊朗嗆聲攻擊「敵意目標」 | 中東戰火連綿| 全球 | 聯合新聞網 - UDN",
+    "l": "https://news.google.com/rss/articles/CBMidkFVX3lxTE9weXFHX3lMUFdtZzdzVVJPanpNdUY4QmN5Mk51cUhDZVdSV09KTFRNSi10MDZXMmtDTTZnLVQ2amFXVkdwNElla2t0NW84aWRSN05RaFZOcUVsRUw1RkV1WWkwLVl3Y25Zbml5a2x1dVlSZHp4X3c",
+    "s": "UDN",
+    "f": []
    }
   ],
   "delta_unconfirmed": false
@@ -2369,6 +2487,152 @@
   ]
  },
  {
+  "key": "e:cluster7992becc2f|l:geopolitical",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "geopolitical",
+  "headline": "加薩名醫遭以色列拘押近600天  人權團體籲釋放",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "加薩名醫遭以色列拘押近600天  人權團體籲釋放",
+  "prev_delta": "",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "02e7ee5d46038aba"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "02e7ee5d46038aba"
+   ]
+  },
+  "last_published": "2026-08-08T00:51:40+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "加薩名醫遭以色列拘押近600天  人權團體籲釋放",
+    "l": "https://www.cna.com.tw/news/aopl/202608080015.aspx",
+    "s": "中央社國際",
+    "f": [
+     "600"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster86c265cbf5|l:geopolitical",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "geopolitical",
+  "headline": "中東局勢推高物價  法國人度假吹起「平價風」",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "中東局勢推高物價  法國人度假吹起「平價風」",
+  "prev_delta": "",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "def817e844492a3a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "def817e844492a3a"
+   ]
+  },
+  "last_published": "2026-08-08T00:45:37+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "中東局勢推高物價  法國人度假吹起「平價風」",
+    "l": "https://www.cna.com.tw/news/aopl/202608080014.aspx",
+    "s": "中央社國際",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster522490634b|l:geopolitical",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "geopolitical",
+  "headline": "〈熱門股〉國際金價漲破4400美元！貴金屬ETF齊揚 00708L周漲近1成",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "〈熱門股〉國際金價漲破4400美元！貴金屬ETF齊揚 00708L周漲近1成",
+  "prev_delta": "",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "7aa26586a4ccc3d3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "7aa26586a4ccc3d3"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:07+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "〈熱門股〉國際金價漲破4400美元！貴金屬ETF齊揚 00708L周漲近1成",
+    "l": "https://news.cnyes.com/news/id/6566161",
+    "s": "鉅亨台股",
+    "f": [
+     "1",
+     "4400",
+     "708"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterf849a349d7|l:geopolitical",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "geopolitical",
+  "headline": "川普重啟撤換理事庫克行動　再攻擊聯準會獨立性",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "川普重啟撤換理事庫克行動　再攻擊聯準會獨立性",
+  "prev_delta": "",
+  "max_surprise": 0.9,
+  "seen_sigs": [
+   "dde664c66fa30c4e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "dde664c66fa30c4e"
+   ]
+  },
+  "last_published": "2026-08-08T01:54:01+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "川普重啟撤換理事庫克行動　再攻擊聯準會獨立性",
+    "l": "https://tw.stock.yahoo.com/news/%E5%B7%9D%E6%99%AE%E9%87%8D%E5%95%9F%E6%92%A4%E6%8F%9B%E7%90%86%E4%BA%8B%E5%BA%AB%E5%85%8B%E8%A1%8C%E5%8B%95-%E5%86%8D%E6%94%BB%E6%93%8A%E8%81%AF%E6%BA%96%E6%9C%83%E7%8",
+    "s": "Yahoo股市",
+    "f": []
+   }
+  ]
+ },
+ {
   "key": "e:美國|l:export_controls|202608",
   "entity": "美國",
   "entity_name": "",
@@ -3134,6 +3398,80 @@
   ]
  },
  {
+  "key": "e:cluster429490a6cc|l:export_controls",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "export_controls",
+  "headline": "美參院通過大規模制裁案 最高可課俄羅斯500％關稅 - 自由財經",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "美參院通過大規模制裁案 最高可課俄羅斯500％關稅 - 自由財經",
+  "prev_delta": "",
+  "max_surprise": 0.85,
+  "seen_sigs": [
+   "839df5b017bb86f1"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "839df5b017bb86f1"
+   ]
+  },
+  "last_published": "2026-08-08T01:27:19+00:00",
+  "lifecycle": "confirmed",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美參院通過大規模制裁案 最高可課俄羅斯500％關稅 - 自由財經",
+    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE1zT01TOWttYnpONVdxOGYtamo4MmVTc2RZX2l2WlJ2VGxkMmdaamE4WE9zdnZWQnM3M200QnM1RVl3T09tTXlobm1Ba2FZMTJldTFoeUVmWjdHQmRUb3pz?oc=5",
+    "s": "自由財經",
+    "f": [
+     "500"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterce945f7762|l:export_controls",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "export_controls",
+  "headline": "美中互祭報復制裁火藥味濃！　 9月「川習會」添變數 - ETtoday新聞雲",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "美中互祭報復制裁火藥味濃！　 9月「川習會」添變數 - ETtoday新聞雲",
+  "prev_delta": "",
+  "max_surprise": 0.85,
+  "seen_sigs": [
+   "3fc615ab4a4001ae"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "3fc615ab4a4001ae"
+   ]
+  },
+  "last_published": "2026-08-07T23:22:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美中互祭報復制裁火藥味濃！　 9月「川習會」添變數 - ETtoday新聞雲",
+    "l": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE10ODhZclE1MkdWV2xJTXhHNmdzbnpOT2hrSktiRHltMWNwWlRHUmxRQXIwamItSGlIcmpfakNhNVpqVDZ5X2VrOXpEZGxRV0RUTHBudVhMekhzSE1SQ1HSAUtBVV95cUxNYXhhWThFVDNJMmtaTm1",
+    "s": "ETtoday新聞雲",
+    "f": [
+     "9"
+    ]
+   }
+  ]
+ },
+ {
   "key": "e:clusterc6b0ca7a93|l:litigation",
   "entity": "",
   "entity_name": "",
@@ -3531,13 +3869,13 @@
   "entity": "2610",
   "entity_name": "",
   "event_type": "earnings",
-  "headline": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)EPS預估上修至8.54元，預估目標價為421元",
+  "headline": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)EPS預估上修至7.65元，預估目標價為417.5元",
   "state": "peak",
   "first_seen": "2026-07-28",
   "last_update": "2026-08-08",
-  "updates": 7,
-  "last_delta": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)EPS預估上修至8.54元，預估目標價為421元",
-  "prev_delta": "鉅亨速報 - Factset 最新調查：信驊(5274-TW)EPS預估上修至185.71元，預估目標價為20059.09元",
+  "updates": 8,
+  "last_delta": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)EPS預估上修至7.65元，預估目標價為417.5元",
+  "prev_delta": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)EPS預估上修至8.54元，預估目標價為421元",
   "max_surprise": 0.6,
   "seen_sigs": [
    "218cf524e3c47244",
@@ -3550,29 +3888,21 @@
    "cec1af29f3f5507b",
    "b93965658fc6fb18",
    "d57577dc9246d285",
-   "81c688bcf7a13b6e"
+   "81c688bcf7a13b6e",
+   "e02b7b0378531b16"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
     "81c688bcf7a13b6e",
-    "d57577dc9246d285"
+    "d57577dc9246d285",
+    "e02b7b0378531b16"
    ]
   },
-  "last_published": "2026-08-08T00:10:33+00:00",
+  "last_published": "2026-08-08T02:10:37+00:00",
   "lifecycle": "rumor",
   "source_grade": "B",
   "timeline": [
-   {
-    "d": "2026-07-30",
-    "t": "鉅亨速報 - Factset 最新調查：Ensign Group Inc(ENSG-US)EPS預估上修至7.73元，預估目標價為225.00元",
-    "l": "https://news.cnyes.com/news/id/6551403",
-    "s": "鉅亨美股",
-    "f": [
-     "225",
-     "7.73"
-    ]
-   },
    {
     "d": "2026-07-31",
     "t": "2610 華航 - 華航EPS預估上修至2.13元，預估目標價為25.7元 - 股市爆料同學會 - cmoney.tw",
@@ -3624,6 +3954,17 @@
      "421",
      "6213",
      "8.54"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)EPS預估上修至7.65元，預估目標價為417.5元",
+    "l": "https://news.cnyes.com/news/id/6566385",
+    "s": "鉅亨台股",
+    "f": [
+     "3105",
+     "417.5",
+     "7.65"
     ]
    }
   ],
@@ -3705,6 +4046,181 @@
      "150",
      "2027",
      "4"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:6515|l:earnings|2026q3",
+  "entity": "6515",
+  "entity_name": "穎崴",
+  "event_type": "earnings",
+  "headline": "鉅亨速報 - Factset 最新調查：瑞昱(2379-TW)EPS預估下修至32.09元，預估目標價為717元",
+  "state": "peak",
+  "first_seen": "2026-07-27",
+  "last_update": "2026-08-08",
+  "updates": 6,
+  "last_delta": "鉅亨速報 - Factset 最新調查：瑞昱(2379-TW)EPS預估下修至32.09元，預估目標價為717元",
+  "prev_delta": "鉅亨速報 - Factset 最新調查：東陽(1319-TW)EPS預估下修至6.41元，預估目標價為100元",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "7b1908ccb2fb6be4",
+   "d513dabc0bd3e447",
+   "dac61b8a444c4959",
+   "fb007e6bdbe1af63",
+   "7bce7bb5c78e4cb9",
+   "ad85a5f88fa5c634",
+   "01a1866f92df5b7a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "01a1866f92df5b7a",
+    "ad85a5f88fa5c634"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:36+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "delta_unconfirmed": false,
+  "timeline": [
+   {
+    "d": "2026-07-28",
+    "t": "討論牆| 鉅亨速報- Factset 最新調查：穎崴(6515-TW)EPS預估下修至97.85元，預估目標價為12600元 - LINE TODAY",
+    "l": "",
+    "s": "Google:6515",
+    "f": [
+     "12600",
+     "97.85"
+    ]
+   },
+   {
+    "d": "2026-08-05",
+    "t": "鉅亨速報 - Factset 最新調查：富世達(6805-TW)EPS預估下修至63.08元，預估目標價為2600元",
+    "l": "https://news.cnyes.com/news/id/6559440",
+    "s": "鉅亨台股",
+    "f": [
+     "2600",
+     "63.08",
+     "6805"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "鉅亨速報 - Factset 最新調查：穎崴(6515-TW)EPS預估下修至97.11元，預估目標價為11750元",
+    "l": "https://news.cnyes.com/news/id/6563613",
+    "s": "鉅亨台股",
+    "f": [
+     "11750",
+     "97.11"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：東陽(1319-TW)EPS預估下修至6.41元，預估目標價為100元",
+    "l": "https://news.cnyes.com/news/id/6566337",
+    "s": "鉅亨台股",
+    "f": [
+     "100",
+     "1319",
+     "6.41"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：瑞昱(2379-TW)EPS預估下修至32.09元，預估目標價為717元",
+    "l": "https://news.cnyes.com/news/id/6566384",
+    "s": "鉅亨台股",
+    "f": [
+     "2379",
+     "32.09",
+     "717"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:2308|l:earnings|2026q3",
+  "entity": "2308",
+  "entity_name": "台達電",
+  "event_type": "earnings",
+  "headline": "〈熱門股〉健策7月營收月增21%續創高 股價谷底翻漲重回4000元關卡",
+  "state": "peak",
+  "first_seen": "2026-07-27",
+  "last_update": "2026-08-08",
+  "updates": 6,
+  "last_delta": "〈熱門股〉健策7月營收月增21%續創高 股價谷底翻漲重回4000元關卡",
+  "prev_delta": "",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "02a085d2bb1b0f96",
+   "a21867604128cdad",
+   "564977e546bba5f7",
+   "2027deb6f0c6708b",
+   "7319e6346322306a",
+   "fc9f9376c1237761",
+   "241998414df5005f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "241998414df5005f"
+   ]
+  },
+  "last_published": "2026-08-08T01:04:21+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "delta_unconfirmed": false,
+  "timeline": [
+   {
+    "d": "2026-07-31",
+    "t": "(2308)台達電子法說會 2026/07、台達電財報、台達電展望、台達電財報投資亮點｜理柴知道:法說最速報! - 方格子 - Vocus",
+    "l": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE41YW5qMjBqZ3luTUNNOHRoU2Y3N0tLQ05PZkJVM0ZXZC1zeURQQ1dDemtSQS1Gd0txdDhQcVJhTmFRNlQ2T09DQnBFTmtuWHBiR0R1UzB5VUNKcjA1d1HSAWNBVV95cUxNQkZHVTcxano3VF9RMEp",
+    "s": "Vocus",
+    "f": [
+     "2026",
+     "7"
+    ]
+   },
+   {
+    "d": "2026-08-01",
+    "t": "台達電明年EPS估續增逾5成 AI佔比續拉高 - 台視全球資訊網",
+    "l": "https://news.google.com/rss/articles/CBMinAFBVV95cUxORXRzNFR5cEZSQktZY0pvbTFLZGhCOFlHYUNBb1ZFSm0xdHIwZnNjdnh2UTltMTctUmZIZ0p4b29PaGlDU1JuM0Jac3FjRWs1Uzl4U2NUUldEYmFCellzZUs1R0w1UjRaUEx2TTQ1bDBVaTluR0p",
+    "s": "台視全球資訊網",
+    "f": [
+     "5"
+    ]
+   },
+   {
+    "d": "2026-08-03",
+    "t": "台股震盪跌逾500點！「光通訊黑馬」逆勢周漲9.3% 6月EPS達0.22元翻轉去年虧損慘況 - Yahoo股市",
+    "l": "https://news.google.com/rss/articles/CBMixgJBVV95cUxOQUY2dG53aU5WY25ybGFlQ1BGcUhBOHpocnFwaWs2WEtMbXBmb2VHU21OUC1yMTVFU0Zkb1l1WkJ1WVZiWTMxU2I3LWpSa19GMDBRUTg3cEcyRUZ3b0xHMFlzWFR0ZGQ1OUN0Q19CSURQZ01xNHA",
+    "s": "Yahoo股市",
+    "f": [
+     "0.22",
+     "500",
+     "6",
+     "9.3"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "電源雙雄火力全開！台達電與「這光電大廠」成資金新寵、EPS衝上3.07元 營運續衝高 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "3.07"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "〈熱門股〉健策7月營收月增21%續創高 股價谷底翻漲重回4000元關卡",
+    "l": "https://news.cnyes.com/news/id/6561036",
+    "s": "鉅亨台股",
+    "f": [
+     "21",
+     "4000",
+     "7"
     ]
    }
   ]
@@ -3798,82 +4314,6 @@
    }
   ],
   "delta_unconfirmed": false
- },
- {
-  "key": "e:6515|l:earnings|2026q3",
-  "entity": "6515",
-  "entity_name": "穎崴",
-  "event_type": "earnings",
-  "headline": "鉅亨速報 - Factset 最新調查：東陽(1319-TW)EPS預估下修至6.41元，預估目標價為100元",
-  "state": "peak",
-  "first_seen": "2026-07-27",
-  "last_update": "2026-08-08",
-  "updates": 5,
-  "last_delta": "鉅亨速報 - Factset 最新調查：東陽(1319-TW)EPS預估下修至6.41元，預估目標價為100元",
-  "prev_delta": "鉅亨速報 - Factset 最新調查：穎崴(6515-TW)EPS預估下修至97.11元，預估目標價為11750元",
-  "max_surprise": 0.6,
-  "seen_sigs": [
-   "7b1908ccb2fb6be4",
-   "d513dabc0bd3e447",
-   "dac61b8a444c4959",
-   "fb007e6bdbe1af63",
-   "7bce7bb5c78e4cb9",
-   "ad85a5f88fa5c634"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "ad85a5f88fa5c634"
-   ]
-  },
-  "last_published": "2026-08-08T00:10:34+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "delta_unconfirmed": false,
-  "timeline": [
-   {
-    "d": "2026-07-28",
-    "t": "討論牆| 鉅亨速報- Factset 最新調查：穎崴(6515-TW)EPS預估下修至97.85元，預估目標價為12600元 - LINE TODAY",
-    "l": "",
-    "s": "Google:6515",
-    "f": [
-     "12600",
-     "97.85"
-    ]
-   },
-   {
-    "d": "2026-08-05",
-    "t": "鉅亨速報 - Factset 最新調查：富世達(6805-TW)EPS預估下修至63.08元，預估目標價為2600元",
-    "l": "https://news.cnyes.com/news/id/6559440",
-    "s": "鉅亨台股",
-    "f": [
-     "2600",
-     "63.08",
-     "6805"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "鉅亨速報 - Factset 最新調查：穎崴(6515-TW)EPS預估下修至97.11元，預估目標價為11750元",
-    "l": "https://news.cnyes.com/news/id/6563613",
-    "s": "鉅亨台股",
-    "f": [
-     "11750",
-     "97.11"
-    ]
-   },
-   {
-    "d": "2026-08-08",
-    "t": "鉅亨速報 - Factset 最新調查：東陽(1319-TW)EPS預估下修至6.41元，預估目標價為100元",
-    "l": "https://news.cnyes.com/news/id/6566337",
-    "s": "鉅亨台股",
-    "f": [
-     "100",
-     "1319",
-     "6.41"
-    ]
-   }
-  ]
  },
  {
   "key": "e:mu|l:earnings|2026q3",
@@ -4220,8 +4660,8 @@
   "max_surprise": 0.6,
   "seen_sigs": [
    "16d714c73d91b69a",
-   "a1fd39056eda95d3",
-   "71ab2510a65764ce"
+   "71ab2510a65764ce",
+   "a1fd39056eda95d3"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -4262,6 +4702,64 @@
      "115",
      "7"
     ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:3653|l:earnings|2026q3",
+  "entity": "3653",
+  "entity_name": "健策",
+  "event_type": "earnings",
+  "headline": "AI需求帶動！川湖、健策與永擎財報數據創高-財經焦點情報站 - CMoney投資網誌",
+  "state": "peak",
+  "first_seen": "2026-07-28",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "AI需求帶動！川湖、健策與永擎財報數據創高-財經焦點情報站 - CMoney投資網誌",
+  "prev_delta": "",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "ad0a824ec2557887",
+   "b038f9d3d602f251",
+   "c07ba7a8ae776760"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "c07ba7a8ae776760"
+   ]
+  },
+  "last_published": "2026-08-08T02:12:30+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-07-28",
+    "t": "Factset 最新調查：健策(3653-TW)EPS預估下修至55.78元，預估目標價為4840元｜新聞快訊｜豐雲學堂 - sinotrade.com.tw",
+    "l": "",
+    "s": "Google:3653",
+    "f": [
+     "4840",
+     "55.78"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "健策6月EPS 6.45元 - UDN",
+    "l": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE80eGpnVVZOakhxQnRfQnNaM1VnbTJ0azNfZzlfLW1wZjFfbi02SHBNNGE4a1BKbkV6eWx3Q0d1bkJZYzlOM25EaEdZOEN2NHVPZ0YyUUpR0gFWQVVfeXFMTzR4amdVVk5qSHFCdF9Cc1ozVWdtMnR",
+    "s": "UDN",
+    "f": [
+     "6",
+     "6.45"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "AI需求帶動！川湖、健策與永擎財報數據創高-財經焦點情報站 - CMoney投資網誌",
+    "l": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOZ3BURlFRbTJCdG14NVpQM1RHbGw3bEozV3drb1JIWmhhcjZmQUdfYVl5MVktUGRXYjNRU0pSSzdsZVhrZkpSenRMbmhlUHVfbXo3LXBNbDlQd1FIWlYxTHFoOXQwN3Fhb2dBekgtYUEwbF9SYkh",
+    "s": "CMoney投資網誌",
+    "f": []
    }
   ],
   "delta_unconfirmed": false
@@ -4374,16 +4872,17 @@
    "81426ae0f1cd95f5",
    "23cef561a6177e86",
    "be939d7cddf4be9c",
-   "ee06239b29f4c589",
    "6c84ac8c4d4c11c2",
+   "ceb60f76954c0181",
    "449091b867fa500d",
-   "ceb60f76954c0181"
+   "ee06239b29f4c589"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
     "449091b867fa500d",
-    "ceb60f76954c0181"
+    "ceb60f76954c0181",
+    "ee06239b29f4c589"
    ]
   },
   "last_published": "2026-08-06T21:30:00+00:00",
@@ -4720,6 +5219,88 @@
   "delta_unconfirmed": false
  },
  {
+  "key": "e:2308|l:revenue_growth|202608",
+  "entity": "2308",
+  "entity_name": "台達電",
+  "event_type": "revenue_growth",
+  "headline": "上月營收達723億元創紀錄！「亞太3C王者」前7月營收逼近4000億業務「雙引擎」年增破140%帶頭衝 - Yahoo股市",
+  "state": "peak",
+  "first_seen": "2026-08-03",
+  "last_update": "2026-08-08",
+  "updates": 4,
+  "last_delta": "上月營收達723億元創紀錄！「亞太3C王者」前7月營收逼近4000億業務「雙引擎」年增破140%帶頭衝 - Yahoo股市",
+  "prev_delta": "H1每股賺156.38元創同期新高！「這檔」7月營收續寫新高 斥資砸9.42億美元擴大投資搶AI商機 - Yahoo股市",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "98027fc0f868f6a7",
+   "2268de9afd976f5a",
+   "80502372b3ee3174",
+   "cb8136c6c4d82a58",
+   "e5eb9b7fd8b67de9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "cb8136c6c4d82a58",
+    "e5eb9b7fd8b67de9"
+   ]
+  },
+  "last_published": "2026-08-08T00:23:36+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-03",
+    "t": "AI、高階記憶體需求旺！旺宏H1營收超越去年全年 八大公股5日砸9.6億元卡位9.1千張 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "1",
+     "5",
+     "9.1",
+     "960000000"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "輝達供應鏈動能強！「IC載板廠」7月營收年增35.85%、二度擴產 連6日狂飆48%登強勢股王 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "35.85",
+     "48",
+     "6",
+     "7"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "H1每股賺156.38元創同期新高！「這檔」7月營收續寫新高 斥資砸9.42億美元擴大投資搶AI商機 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "1",
+     "156.38",
+     "7",
+     "942000000"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "上月營收達723億元創紀錄！「亞太3C王者」前7月營收逼近4000億業務「雙引擎」年增破140%帶頭衝 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "140",
+     "3",
+     "400000000000",
+     "7"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
   "key": "e:cluster45091937f1|l:revenue_growth",
   "entity": "",
   "entity_name": "",
@@ -4798,13 +5379,15 @@
    "8eebb611db5128b4",
    "d1801b85ae3074f2",
    "357e0ca20007f446",
-   "81442a8c7e1761fe",
-   "fa1b4edd70ccd67c"
+   "fa1b4edd70ccd67c",
+   "50b8bfe217327855",
+   "81442a8c7e1761fe"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
     "357e0ca20007f446",
+    "50b8bfe217327855",
     "81442a8c7e1761fe",
     "d1801b85ae3074f2",
     "fa1b4edd70ccd67c"
@@ -4859,8 +5442,8 @@
    "b5ed09b01cc78238",
    "ccc0b27c39b95e20",
    "45a799a5884d5ddb",
-   "dac77bcde282982e",
-   "cf78c817304a0405"
+   "cf78c817304a0405",
+   "dac77bcde282982e"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -5029,74 +5612,6 @@
     "f": [
      "19",
      "7"
-    ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
-  "key": "e:2308|l:revenue_growth|202608",
-  "entity": "2308",
-  "entity_name": "台達電",
-  "event_type": "revenue_growth",
-  "headline": "H1每股賺156.38元創同期新高！「這檔」7月營收續寫新高 斥資砸9.42億美元擴大投資搶AI商機 - Yahoo股市",
-  "state": "peak",
-  "first_seen": "2026-08-03",
-  "last_update": "2026-08-08",
-  "updates": 3,
-  "last_delta": "H1每股賺156.38元創同期新高！「這檔」7月營收續寫新高 斥資砸9.42億美元擴大投資搶AI商機 - Yahoo股市",
-  "prev_delta": "輝達供應鏈動能強！「IC載板廠」7月營收年增35.85%、二度擴產 連6日狂飆48%登強勢股王 - Yahoo股市",
-  "max_surprise": 0.5,
-  "seen_sigs": [
-   "98027fc0f868f6a7",
-   "2268de9afd976f5a",
-   "80502372b3ee3174",
-   "e5eb9b7fd8b67de9"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "e5eb9b7fd8b67de9"
-   ]
-  },
-  "last_published": "2026-08-07T23:15:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-03",
-    "t": "AI、高階記憶體需求旺！旺宏H1營收超越去年全年 八大公股5日砸9.6億元卡位9.1千張 - Yahoo股市",
-    "l": "",
-    "s": "Yahoo股市",
-    "f": [
-     "1",
-     "5",
-     "9.1",
-     "960000000"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "輝達供應鏈動能強！「IC載板廠」7月營收年增35.85%、二度擴產 連6日狂飆48%登強勢股王 - Yahoo股市",
-    "l": "",
-    "s": "Yahoo股市",
-    "f": [
-     "35.85",
-     "48",
-     "6",
-     "7"
-    ]
-   },
-   {
-    "d": "2026-08-08",
-    "t": "H1每股賺156.38元創同期新高！「這檔」7月營收續寫新高 斥資砸9.42億美元擴大投資搶AI商機 - Yahoo股市",
-    "l": "",
-    "s": "Yahoo股市",
-    "f": [
-     "1",
-     "156.38",
-     "7",
-     "942000000"
     ]
    }
   ],
@@ -5304,8 +5819,8 @@
    "b05f58ce38c462ea",
    "df75b17243279765",
    "b1f71c606cb09835",
-   "8edd367abaeb07d7",
-   "db521b7710c33c39"
+   "db521b7710c33c39",
+   "8edd367abaeb07d7"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -5352,6 +5867,176 @@
      "2026",
      "3331000000",
      "7"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:6669|l:revenue_growth|202608",
+  "entity": "6669",
+  "entity_name": "緯穎",
+  "event_type": "revenue_growth",
+  "headline": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - 非凡新聞台",
+  "state": "peak",
+  "first_seen": "2026-08-07",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - 非凡新聞台",
+  "prev_delta": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - news.ustv.com.tw",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "4278542b0c66f663",
+   "81da5f26c3c01562",
+   "97f85af16678e6b1"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "81da5f26c3c01562",
+    "97f85af16678e6b1"
+   ]
+  },
+  "last_published": "2026-08-07T09:40:45+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-07",
+    "t": "AI需求續旺　智邦7月營收394億創歷史次高 - 鏡週刊Mirror Media",
+    "l": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE56MnM5M0JTaUhHVll4eVdlbnc2R1VaV3k1UGZPSE1IaXVrRUE2WW1fYkhJTXpDS2hKMWtUV2hZZXJnMzVKejMxbTU2SkZtbFRkckd6dWZxd1pBR1Uyb1JFNFNFQmVUVDl00gFoQVVfeXFMTnoyczk",
+    "s": "鏡週刊Mirror Media",
+    "f": [
+     "39400000000",
+     "7"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - news.ustv.com.tw",
+    "l": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBMblN5Qm5pQzZVRXQwS1EyN0tQNm9XV1YwUGZ3SkNSbHFLRExyMmdXZFJOaFpVUEJWSldZQ1RncE9zRUxvUUdsVXI0VjR4WEdJdzJqZ3Y4M29mLXRhREc2LXo2WHdyTUVtZzdtV2JR?oc=5",
+    "s": "news.ustv.com.tw",
+    "f": [
+     "300000000000",
+     "7",
+     "9"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - 非凡新聞台",
+    "l": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBMblN5Qm5pQzZVRXQwS1EyN0tQNm9XV1YwUGZ3SkNSbHFLRExyMmdXZFJOaFpVUEJWSldZQ1RncE9zRUxvUUdsVXI0VjR4WEdJdzJqZ3Y4M29mLXRhREc2LXo2WHdyTUVtZzdtV2JR?oc=5",
+    "s": "非凡新聞台",
+    "f": [
+     "300000000000",
+     "7",
+     "9"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:1301|l:general|a2a3ddf0bd",
+  "entity": "1301",
+  "entity_name": "台塑",
+  "event_type": "general",
+  "headline": "鉅亨速報 - Factset 最新調查：京元電子(2449-TW)目標價調降至348元，幅度約3.84%",
+  "state": "peak",
+  "first_seen": "2026-07-29",
+  "last_update": "2026-08-08",
+  "updates": 8,
+  "last_delta": "鉅亨速報 - Factset 最新調查：京元電子(2449-TW)目標價調降至348元，幅度約3.84%",
+  "prev_delta": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "70111f4973a81fa3",
+   "d2049ee94e9ebe4e",
+   "71ba1e73319fc6d3",
+   "81e18070e64e247b",
+   "52cea8ea20690164",
+   "145d4fb111012640",
+   "e728afb1eb252dd5",
+   "3fef2a6ea7f20521",
+   "a4595b11b8ef973e",
+   "dbb914f36e9acab1",
+   "9dd30df3c973a79d"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "9dd30df3c973a79d",
+    "dbb914f36e9acab1"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:22+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-01",
+    "t": "鉅亨速報 - Factset 最新調查：中興電(1513-TW)目標價調升至191元，幅度約6.11%",
+    "l": "https://news.cnyes.com/news/id/6555639",
+    "s": "鉅亨台股",
+    "f": [
+     "1513",
+     "191",
+     "6.11"
+    ]
+   },
+   {
+    "d": "2026-08-05",
+    "t": "鉅亨速報 - Factset 最新調查：世界(5347-TW)目標價調升至187元，幅度約3.89%",
+    "l": "https://news.cnyes.com/news/id/6559438",
+    "s": "鉅亨台股",
+    "f": [
+     "187",
+     "3.89",
+     "5347"
+    ]
+   },
+   {
+    "d": "2026-08-06",
+    "t": "鉅亨速報 - Factset 最新調查：力積電(6770-TW)目標價調降至92.5元，幅度約7.5%",
+    "l": "https://news.cnyes.com/news/id/6561372",
+    "s": "鉅亨台股",
+    "f": [
+     "6770",
+     "7.5",
+     "92.5"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "鉅亨速報 - Factset 最新調查：聯詠(3034-TW)目標價調升至530元，幅度約10.42%",
+    "l": "https://news.cnyes.com/news/id/6563609",
+    "s": "鉅亨台股",
+    "f": [
+     "10.42",
+     "3034",
+     "530"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%",
+    "l": "https://news.cnyes.com/news/id/6566334",
+    "s": "鉅亨台股",
+    "f": [
+     "26.43",
+     "421",
+     "6213"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：京元電子(2449-TW)目標價調降至348元，幅度約3.84%",
+    "l": "https://news.cnyes.com/news/id/6566382",
+    "s": "鉅亨台股",
+    "f": [
+     "2449",
+     "3.84",
+     "348"
     ]
    }
   ],
@@ -5450,110 +6135,6 @@
      "115191",
      "4",
      "539"
-    ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
-  "key": "e:1301|l:general|a2a3ddf0bd",
-  "entity": "1301",
-  "entity_name": "台塑",
-  "event_type": "general",
-  "headline": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%",
-  "state": "peak",
-  "first_seen": "2026-07-29",
-  "last_update": "2026-08-08",
-  "updates": 7,
-  "last_delta": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%",
-  "prev_delta": "鉅亨速報 - Factset 最新調查：聯詠(3034-TW)目標價調升至530元，幅度約10.42%",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "70111f4973a81fa3",
-   "d2049ee94e9ebe4e",
-   "71ba1e73319fc6d3",
-   "81e18070e64e247b",
-   "52cea8ea20690164",
-   "145d4fb111012640",
-   "e728afb1eb252dd5",
-   "3fef2a6ea7f20521",
-   "a4595b11b8ef973e",
-   "dbb914f36e9acab1"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "dbb914f36e9acab1"
-   ]
-  },
-  "last_published": "2026-08-08T00:10:21+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-01",
-    "t": "鉅亨速報 - Factset 最新調查：友達(2409-TW)目標價調降至23.7元，幅度約5.2%",
-    "l": "https://news.cnyes.com/news/id/6555606",
-    "s": "鉅亨台股",
-    "f": [
-     "23.7",
-     "2409",
-     "5.2"
-    ]
-   },
-   {
-    "d": "2026-08-01",
-    "t": "鉅亨速報 - Factset 最新調查：中興電(1513-TW)目標價調升至191元，幅度約6.11%",
-    "l": "https://news.cnyes.com/news/id/6555639",
-    "s": "鉅亨台股",
-    "f": [
-     "1513",
-     "191",
-     "6.11"
-    ]
-   },
-   {
-    "d": "2026-08-05",
-    "t": "鉅亨速報 - Factset 最新調查：世界(5347-TW)目標價調升至187元，幅度約3.89%",
-    "l": "https://news.cnyes.com/news/id/6559438",
-    "s": "鉅亨台股",
-    "f": [
-     "187",
-     "3.89",
-     "5347"
-    ]
-   },
-   {
-    "d": "2026-08-06",
-    "t": "鉅亨速報 - Factset 最新調查：力積電(6770-TW)目標價調降至92.5元，幅度約7.5%",
-    "l": "https://news.cnyes.com/news/id/6561372",
-    "s": "鉅亨台股",
-    "f": [
-     "6770",
-     "7.5",
-     "92.5"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "鉅亨速報 - Factset 最新調查：聯詠(3034-TW)目標價調升至530元，幅度約10.42%",
-    "l": "https://news.cnyes.com/news/id/6563609",
-    "s": "鉅亨台股",
-    "f": [
-     "10.42",
-     "3034",
-     "530"
-    ]
-   },
-   {
-    "d": "2026-08-08",
-    "t": "鉅亨速報 - Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%",
-    "l": "https://news.cnyes.com/news/id/6566334",
-    "s": "鉅亨台股",
-    "f": [
-     "26.43",
-     "421",
-     "6213"
     ]
    }
   ],
@@ -5961,6 +6542,82 @@
     "s": "經濟日報",
     "f": [
      "21"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:2603|l:general|10b663122f",
+  "entity": "2603",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - 航貿週刊",
+  "state": "peak",
+  "first_seen": "2026-08-06",
+  "last_update": "2026-08-08",
+  "updates": 4,
+  "last_delta": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - 航貿週刊",
+  "prev_delta": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - shippingdigest.tw",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "f58c026ae35862e4",
+   "0bd9370a0c71fa4a",
+   "5f88be59b6f64e04",
+   "266bcc18cc892b36",
+   "c9ea8a89d9dc0699",
+   "9c9a87b71d131377"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "9c9a87b71d131377",
+    "c9ea8a89d9dc0699"
+   ]
+  },
+  "last_published": "2026-08-07T01:34:13+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-06",
+    "t": "長榮航空12月1日起開航桃園－印度德里直飛航線 - 中央社 CNA",
+    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE96bmFIMUVkQ1BVM2JpVUNTNmNDZFBkZnBjeTJsQTQxUnd0bzliSWtja0twcXFFNk5yUHZNdVVtcUx4SjVXbjJ5eGhTUmY3THN3NW9fZzBZYUFKdw?oc=5",
+    "s": "中央社 CNA",
+    "f": [
+     "1",
+     "12"
+    ]
+   },
+   {
+    "d": "2026-08-07",
+    "t": "長榮航空12/1開航桃園直飛德里 每週5班推科技商務與觀光 - 中華新聞雲／中華日報",
+    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1tOVF1RTZwU3BWdDhqSjJleC1FRmpMa0NsanZ6QUotRmxSUEVOdloyU2JmY28wQUdlMFl5TXVING90YVFVNGVtemZoV3l0dG9XUVE?oc=5",
+    "s": "中華新聞雲／中華日報",
+    "f": [
+     "1",
+     "12",
+     "5"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - shippingdigest.tw",
+    "l": "https://news.google.com/rss/articles/CBMiVEFVX3lxTFBGS3MwUExYeWtkUDR5LUFFX0FZV2g4b3ljaWdIT25fUHl4aGxlLUJGVDdtSk0zUDhRVmt0dUUyUXNuaklidmdCWDYwajJJOHJ3RFFzTg?oc=5",
+    "s": "shippingdigest.tw",
+    "f": [
+     "1",
+     "12"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - 航貿週刊",
+    "l": "https://news.google.com/rss/articles/CBMiVEFVX3lxTFBGS3MwUExYeWtkUDR5LUFFX0FZV2g4b3ljaWdIT25fUHl4aGxlLUJGVDdtSk0zUDhRVmt0dUUyUXNuaklidmdCWDYwajJJOHJ3RFFzTg?oc=5",
+    "s": "航貿週刊",
+    "f": [
+     "1",
+     "12"
     ]
    }
   ],
@@ -6643,70 +7300,6 @@
   "delta_unconfirmed": false
  },
  {
-  "key": "e:2603|l:general|10b663122f",
-  "entity": "2603",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - shippingdigest.tw",
-  "state": "peak",
-  "first_seen": "2026-08-06",
-  "last_update": "2026-08-08",
-  "updates": 3,
-  "last_delta": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - shippingdigest.tw",
-  "prev_delta": "長榮航空12/1開航桃園直飛德里 每週5班推科技商務與觀光 - 中華新聞雲／中華日報",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "f58c026ae35862e4",
-   "0bd9370a0c71fa4a",
-   "5f88be59b6f64e04",
-   "266bcc18cc892b36",
-   "c9ea8a89d9dc0699"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "c9ea8a89d9dc0699"
-   ]
-  },
-  "last_published": "2026-08-07T01:34:13+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-06",
-    "t": "長榮航空12月1日起開航桃園－印度德里直飛航線 - 中央社 CNA",
-    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE96bmFIMUVkQ1BVM2JpVUNTNmNDZFBkZnBjeTJsQTQxUnd0bzliSWtja0twcXFFNk5yUHZNdVVtcUx4SjVXbjJ5eGhTUmY3THN3NW9fZzBZYUFKdw?oc=5",
-    "s": "中央社 CNA",
-    "f": [
-     "1",
-     "12"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "長榮航空12/1開航桃園直飛德里 每週5班推科技商務與觀光 - 中華新聞雲／中華日報",
-    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1tOVF1RTZwU3BWdDhqSjJleC1FRmpMa0NsanZ6QUotRmxSUEVOdloyU2JmY28wQUdlMFl5TXVING90YVFVNGVtemZoV3l0dG9XUVE?oc=5",
-    "s": "中華新聞雲／中華日報",
-    "f": [
-     "1",
-     "12",
-     "5"
-    ]
-   },
-   {
-    "d": "2026-08-08",
-    "t": "長榮航空12月1日起開航桃園/印度德里直飛航線 即日起開放訂位購票 - shippingdigest.tw",
-    "l": "https://news.google.com/rss/articles/CBMiVEFVX3lxTFBGS3MwUExYeWtkUDR5LUFFX0FZV2g4b3ljaWdIT25fUHl4aGxlLUJGVDdtSk0zUDhRVmt0dUUyUXNuaklidmdCWDYwajJJOHJ3RFFzTg?oc=5",
-    "s": "shippingdigest.tw",
-    "f": [
-     "1",
-     "12"
-    ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:3017|l:general|fb20c4c4fb",
   "entity": "3017",
   "entity_name": "奇鋐",
@@ -6875,6 +7468,155 @@
   "delta_unconfirmed": false
  },
  {
+  "key": "e:clustera9b20b578e|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - taiwanhot.net",
+  "state": "peak",
+  "first_seen": "2026-08-07",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - taiwanhot.net",
+  "prev_delta": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - 台灣好新聞",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1d74b226e7878165",
+   "a2f21a3cbee18d3f",
+   "94694aafb1b777ff"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "94694aafb1b777ff",
+    "a2f21a3cbee18d3f"
+   ]
+  },
+  "last_published": "2026-08-07T10:31:40+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-07",
+    "t": "台中建商轉保守　推案規模近腰斬、買方不再只看建設利多 - 好房網News",
+    "l": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5CTXBTeHYwcEN3eEVIbUd5YlpZU19RT1RnaVpVV2kxY3VGLXAxV040d2Y1Z2YtMUJJb3ZucW5ORmdDSXI3R29ock1sdFVOQkU1elpneHZnWGFFZTh6andFZzJUeHBXY0VVUFc0b0FTb1jSAXBBVV9",
+    "s": "好房網News",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - 台灣好新聞",
+    "l": "",
+    "s": "台灣好新聞",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - taiwanhot.net",
+    "l": "",
+    "s": "taiwanhot.net",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:2891|l:general|da2b57bd10",
+  "entity": "2891",
+  "entity_name": "中信金",
+  "event_type": "general",
+  "headline": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - TradingView",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - TradingView",
+  "prev_delta": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - es.tradingview.com",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "da3e0038be0fe475",
+   "745c5edf7c3eb747",
+   "2e6150e378310f0a",
+   "a6cc0c13ea8fe152"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "2e6150e378310f0a",
+    "745c5edf7c3eb747",
+    "a6cc0c13ea8fe152",
+    "da3e0038be0fe475"
+   ]
+  },
+  "last_published": "2026-08-07T08:40:29+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - Yahoo 財經",
+    "l": "",
+    "s": "Yahoo 財經",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - es.tradingview.com",
+    "l": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE01WTNIQnNueWNHNTlZY0h4ZFdDQnZkTUx1c1dfVmpMdTFKQVdHemMwa3U1SXR1WlJFOHZfSWtrdlloX005eHpsRmtsN0hwZ05ESl96alhTcEhnaVIya2IwY0puWlo?oc=5",
+    "s": "es.tradingview.com",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:2882|l:general|3cde687c34",
+  "entity": "2882",
+  "entity_name": "國泰金",
+  "event_type": "general",
+  "headline": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - Yahoo新聞",
+  "state": "peak",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 3,
+  "last_delta": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - Yahoo新聞",
+  "prev_delta": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - 蕃新聞",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "7e42565af2f8725e",
+   "109e9bd509d0d34d",
+   "a9ef410563755d14"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "109e9bd509d0d34d",
+    "7e42565af2f8725e",
+    "a9ef410563755d14"
+   ]
+  },
+  "last_published": "2026-08-07T10:42:21+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - n.yam.com",
+    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE8weGRPTGRNU1BiZHhET0czTWVZOHRwdzE3Nzd4UmdpbVRzNE1kMWdUazFpSTdKaXVMOTNRV0g4cVNLV3M0S3lDNjRDckZsNHppeUE?oc=5",
+    "s": "n.yam.com",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - 蕃新聞",
+    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE8weGRPTGRNU1BiZHhET0czTWVZOHRwdzE3Nzd4UmdpbVRzNE1kMWdUazFpSTdKaXVMOTNRV0g4cVNLV3M0S3lDNjRDckZsNHppeUE?oc=5",
+    "s": "蕃新聞",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
   "key": "e:2303|l:earnings|2026q3",
   "entity": "2303",
   "entity_name": "聯電",
@@ -6958,51 +7700,6 @@
      "5.45",
      "55"
     ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
-  "key": "e:cluster2137371903|l:revenue_growth",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "revenue_growth",
-  "headline": "美股重點新聞摘要2026年8月7日",
-  "state": "developing",
-  "first_seen": "2026-08-01",
-  "last_update": "2026-08-07",
-  "updates": 2,
-  "last_delta": "美股重點新聞摘要2026年8月7日",
-  "prev_delta": "美股重點新聞摘要2026年8月1日",
-  "max_surprise": 0.95,
-  "seen_sigs": [
-   "b625503a23c4b8e2",
-   "7c8a9c82b344952b",
-   "144c066026c610fc"
-  ],
-  "today_sigs": {
-   "date": "2026-08-07",
-   "sigs": [
-    "144c066026c610fc"
-   ]
-  },
-  "last_published": "2026-08-07T00:00:09+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-01",
-    "t": "美股重點新聞摘要2026年8月1日",
-    "l": "https://news.cnyes.com/news/id/6555196",
-    "s": "鉅亨美股",
-    "f": []
-   },
-   {
-    "d": "2026-08-07",
-    "t": "美股重點新聞摘要2026年8月7日",
-    "l": "https://news.cnyes.com/news/id/6563152",
-    "s": "鉅亨美股",
-    "f": []
    }
   ],
   "delta_unconfirmed": false
@@ -7198,80 +7895,6 @@
    }
   ],
   "delta_unconfirmed": false
- },
- {
-  "key": "e:2308|l:earnings|2026q3",
-  "entity": "2308",
-  "entity_name": "台達電",
-  "event_type": "earnings",
-  "headline": "電源雙雄火力全開！台達電與「這光電大廠」成資金新寵、EPS衝上3.07元 營運續衝高 - Yahoo股市",
-  "state": "developing",
-  "first_seen": "2026-07-27",
-  "last_update": "2026-08-07",
-  "updates": 5,
-  "last_delta": "電源雙雄火力全開！台達電與「這光電大廠」成資金新寵、EPS衝上3.07元 營運續衝高 - Yahoo股市",
-  "prev_delta": "台股震盪跌逾500點！「光通訊黑馬」逆勢周漲9.3% 6月EPS達0.22元翻轉去年虧損慘況 - Yahoo股市",
-  "max_surprise": 0.6,
-  "seen_sigs": [
-   "02a085d2bb1b0f96",
-   "a21867604128cdad",
-   "564977e546bba5f7",
-   "2027deb6f0c6708b",
-   "7319e6346322306a",
-   "fc9f9376c1237761"
-  ],
-  "today_sigs": {
-   "date": "2026-08-07",
-   "sigs": [
-    "fc9f9376c1237761"
-   ]
-  },
-  "last_published": "2026-08-06T01:15:25+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "delta_unconfirmed": false,
-  "timeline": [
-   {
-    "d": "2026-07-31",
-    "t": "(2308)台達電子法說會 2026/07、台達電財報、台達電展望、台達電財報投資亮點｜理柴知道:法說最速報! - 方格子 - Vocus",
-    "l": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE41YW5qMjBqZ3luTUNNOHRoU2Y3N0tLQ05PZkJVM0ZXZC1zeURQQ1dDemtSQS1Gd0txdDhQcVJhTmFRNlQ2T09DQnBFTmtuWHBiR0R1UzB5VUNKcjA1d1HSAWNBVV95cUxNQkZHVTcxano3VF9RMEp",
-    "s": "Vocus",
-    "f": [
-     "2026",
-     "7"
-    ]
-   },
-   {
-    "d": "2026-08-01",
-    "t": "台達電明年EPS估續增逾5成 AI佔比續拉高 - 台視全球資訊網",
-    "l": "https://news.google.com/rss/articles/CBMinAFBVV95cUxORXRzNFR5cEZSQktZY0pvbTFLZGhCOFlHYUNBb1ZFSm0xdHIwZnNjdnh2UTltMTctUmZIZ0p4b29PaGlDU1JuM0Jac3FjRWs1Uzl4U2NUUldEYmFCellzZUs1R0w1UjRaUEx2TTQ1bDBVaTluR0p",
-    "s": "台視全球資訊網",
-    "f": [
-     "5"
-    ]
-   },
-   {
-    "d": "2026-08-03",
-    "t": "台股震盪跌逾500點！「光通訊黑馬」逆勢周漲9.3% 6月EPS達0.22元翻轉去年虧損慘況 - Yahoo股市",
-    "l": "https://news.google.com/rss/articles/CBMixgJBVV95cUxOQUY2dG53aU5WY25ybGFlQ1BGcUhBOHpocnFwaWs2WEtMbXBmb2VHU21OUC1yMTVFU0Zkb1l1WkJ1WVZiWTMxU2I3LWpSa19GMDBRUTg3cEcyRUZ3b0xHMFlzWFR0ZGQ1OUN0Q19CSURQZ01xNHA",
-    "s": "Yahoo股市",
-    "f": [
-     "0.22",
-     "500",
-     "6",
-     "9.3"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "電源雙雄火力全開！台達電與「這光電大廠」成資金新寵、EPS衝上3.07元 營運續衝高 - Yahoo股市",
-    "l": "",
-    "s": "Yahoo股市",
-    "f": [
-     "3.07"
-    ]
-   }
-  ]
  },
  {
   "key": "e:2059|l:earnings|2026q3",
@@ -7808,56 +8431,6 @@
   "delta_unconfirmed": true
  },
  {
-  "key": "e:3653|l:earnings|2026q3",
-  "entity": "3653",
-  "entity_name": "健策",
-  "event_type": "earnings",
-  "headline": "健策6月EPS 6.45元 - UDN",
-  "state": "developing",
-  "first_seen": "2026-07-28",
-  "last_update": "2026-08-07",
-  "updates": 2,
-  "last_delta": "健策6月EPS 6.45元 - UDN",
-  "prev_delta": "",
-  "max_surprise": 0.6,
-  "seen_sigs": [
-   "ad0a824ec2557887",
-   "b038f9d3d602f251"
-  ],
-  "today_sigs": {
-   "date": "2026-08-07",
-   "sigs": [
-    "b038f9d3d602f251"
-   ]
-  },
-  "last_published": "2026-08-06T17:41:16+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-07-28",
-    "t": "Factset 最新調查：健策(3653-TW)EPS預估下修至55.78元，預估目標價為4840元｜新聞快訊｜豐雲學堂 - sinotrade.com.tw",
-    "l": "",
-    "s": "Google:3653",
-    "f": [
-     "4840",
-     "55.78"
-    ]
-   },
-   {
-    "d": "2026-08-07",
-    "t": "健策6月EPS 6.45元 - UDN",
-    "l": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE80eGpnVVZOakhxQnRfQnNaM1VnbTJ0azNfZzlfLW1wZjFfbi02SHBNNGE4a1BKbkV6eWx3Q0d1bkJZYzlOM25EaEdZOEN2NHVPZ0YyUUpR0gFWQVVfeXFMTzR4amdVVk5qSHFCdF9Cc1ozVWdtMnR",
-    "s": "UDN",
-    "f": [
-     "6",
-     "6.45"
-    ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:cluster90cdace3de|l:earnings",
   "entity": "",
   "entity_name": "",
@@ -8100,6 +8673,51 @@
     "t": "輝達終結連五紅 財報將成下一個催化劑 - news.cnyes.com",
     "l": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE90bUF1QWh3MHEyN25jb3pzblFSbm9hNXB6bU84VzAydHpsT1lvelozaUhiTk90Zm9YZmg1UlMyR094OWw2QlhmZ0wtN1ctR0t4WEE0?oc=5",
     "s": "news.cnyes.com",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster8cb9434ddc|l:earnings",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "earnings",
+  "headline": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - news.org.tw",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - news.org.tw",
+  "prev_delta": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - 東南亞財經新聞",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "e1c83412bcea20a7",
+   "67c8d0ee1f7aa06e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "67c8d0ee1f7aa06e",
+    "e1c83412bcea20a7"
+   ]
+  },
+  "last_published": "2026-08-07T00:01:52+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - 東南亞財經新聞",
+    "l": "https://news.google.com/rss/articles/CBMiwgJBVV95cUxPVFJYRTBtMjRHMkhiekVvVkY1NjdSMElBSmpHZDRlMXN1MUhKa2dnQWF0OWVPTFEydGpJZzhpVnpOUUJkRWMtUTI2bDBYWGpYZF9MRTNzVERCajdsdDlwOHdCSkM3M29oS0dJZnJ0YlZMdEZZRWZ",
+    "s": "東南亞財經新聞",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - news.org.tw",
+    "l": "https://news.google.com/rss/articles/CBMiwgJBVV95cUxPVFJYRTBtMjRHMkhiekVvVkY1NjdSMElBSmpHZDRlMXN1MUhKa2dnQWF0OWVPTFEydGpJZzhpVnpOUUJkRWMtUTI2bDBYWGpYZF9MRTNzVERCajdsdDlwOHdCSkM3M29oS0dJZnJ0YlZMdEZZRWZ",
+    "s": "news.org.tw",
     "f": []
    }
   ],
@@ -8415,57 +9033,6 @@
   "delta_unconfirmed": false
  },
  {
-  "key": "e:6669|l:revenue_growth|202608",
-  "entity": "6669",
-  "entity_name": "緯穎",
-  "event_type": "revenue_growth",
-  "headline": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - news.ustv.com.tw",
-  "state": "developing",
-  "first_seen": "2026-08-07",
-  "last_update": "2026-08-08",
-  "updates": 2,
-  "last_delta": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - news.ustv.com.tw",
-  "prev_delta": "",
-  "max_surprise": 0.5,
-  "seen_sigs": [
-   "4278542b0c66f663",
-   "81da5f26c3c01562"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "81da5f26c3c01562"
-   ]
-  },
-  "last_published": "2026-08-07T09:40:45+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-07",
-    "t": "AI需求續旺　智邦7月營收394億創歷史次高 - 鏡週刊Mirror Media",
-    "l": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE56MnM5M0JTaUhHVll4eVdlbnc2R1VaV3k1UGZPSE1IaXVrRUE2WW1fYkhJTXpDS2hKMWtUV2hZZXJnMzVKejMxbTU2SkZtbFRkckd6dWZxd1pBR1Uyb1JFNFNFQmVUVDl00gFoQVVfeXFMTnoyczk",
-    "s": "鏡週刊Mirror Media",
-    "f": [
-     "39400000000",
-     "7"
-    ]
-   },
-   {
-    "d": "2026-08-08",
-    "t": "緯創7月營收站穩3000億、累計前7月大增近9成！與緯穎雙創同期高| 產經 - news.ustv.com.tw",
-    "l": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBMblN5Qm5pQzZVRXQwS1EyN0tQNm9XV1YwUGZ3SkNSbHFLRExyMmdXZFJOaFpVUEJWSldZQ1RncE9zRUxvUUdsVXI0VjR4WEdJdzJqZ3Y4M29mLXRhREc2LXo2WHdyTUVtZzdtV2JR?oc=5",
-    "s": "news.ustv.com.tw",
-    "f": [
-     "300000000000",
-     "7",
-     "9"
-    ]
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:googl|l:general|ade31f094a",
   "entity": "GOOGL",
   "entity_name": "Alphabet Google AI",
@@ -8481,8 +9048,8 @@
   "seen_sigs": [
    "aec0c1783d26ba33",
    "6bc0d27ac3fb55a8",
-   "de56968cdf21270a",
-   "b306f84517bd3270"
+   "b306f84517bd3270",
+   "de56968cdf21270a"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -8624,8 +9191,8 @@
   "prev_delta": "適逢旺季！長榮7月營收480億元 年增43% - Yahoo股市",
   "max_surprise": 0.5,
   "seen_sigs": [
-   "84f98d623aa5faef",
    "d2f5c065dd51fb8f",
+   "84f98d623aa5faef",
    "1e30b8dd53c63895",
    "6dff8b6375973a9a",
    "9a88988b6c55d1d0"
@@ -8684,9 +9251,9 @@
   "prev_delta": "塞港有助支撐運價！萬海7月營收186.4億元、年增逾50％ - 工商時報",
   "max_surprise": 0.5,
   "seen_sigs": [
+   "2c24bd533bba8127",
    "f8c70095660cb03d",
-   "d8a72335c1ff2871",
-   "2c24bd533bba8127"
+   "d8a72335c1ff2871"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -8740,8 +9307,8 @@
   "max_surprise": 0.5,
   "seen_sigs": [
    "0a35a613e188ee9b",
-   "80e261d1235ee499",
-   "73872d0bb1e9ae2a"
+   "73872d0bb1e9ae2a",
+   "80e261d1235ee499"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -8889,6 +9456,155 @@
      "2",
      "2026",
      "3197000000"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:2337|l:revenue_growth|202608",
+  "entity": "2337",
+  "entity_name": "旺宏",
+  "event_type": "revenue_growth",
+  "headline": "旺宏7月營收衝破70億元 續創單月新高 - news.cnyes.com",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "旺宏7月營收衝破70億元 續創單月新高 - news.cnyes.com",
+  "prev_delta": "華邦電、旺宏、群聯 7月營收同創新高 - 自由時報",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "b4bd7276039d8e63",
+   "a7837d0d0093d3e1",
+   "5c46689309dbac5d",
+   "c470ccca4b1713b9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "5c46689309dbac5d",
+    "a7837d0d0093d3e1",
+    "b4bd7276039d8e63",
+    "c470ccca4b1713b9"
+   ]
+  },
+  "last_published": "2026-08-07T08:47:30+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "華邦電、旺宏、群聯 7月營收同創新高 - 自由時報",
+    "l": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9QakZjSjJMVVIwaFNCZ0tDRkxONkQ5RlRtMEdiV3VYX3NGWE0zVXlRcUFsdTlaY1lKUnBfMWZ5d1NiNk1qTVNEdmNWZ0lnYmlmMW9pUWJyVW4?oc=5",
+    "s": "自由時報",
+    "f": [
+     "7"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "旺宏7月營收衝破70億元 續創單月新高 - news.cnyes.com",
+    "l": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE96Y0xjQTAxc0JJaFRyMm1pRkxhYUItMy1WanlIYTRYaXBPbFItMk1ueGE2bkIwbE9RQlFQRUppNTlFXzFXb09tVV85bXFYZEU?oc=5",
+    "s": "news.cnyes.com",
+    "f": [
+     "7",
+     "7000000000"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:clusterc3ef904a6c|l:revenue_growth",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "revenue_growth",
+  "headline": "長榮、萬海7月營收暢旺- 日報 - 工商時報",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "長榮、萬海7月營收暢旺- 日報 - 工商時報",
+  "prev_delta": "長榮、萬海7月營收暢旺- 日報 - ctee.com.tw",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "cc89e1430be69ca7",
+   "d4a7b5fcadd3e27f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "cc89e1430be69ca7",
+    "d4a7b5fcadd3e27f"
+   ]
+  },
+  "last_published": "2026-08-07T19:00:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "長榮、萬海7月營收暢旺- 日報 - ctee.com.tw",
+    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5mY1RXUDAtZ2l5aG0xdG50N3RZUUs3Z0ExWXQzZzc4MTI5RVdwamp0blRhTG1ZV2JCTlQxWXg4OWtfRkF4YWc2X1JxWFl5ZUdPZDFBTHAyTkZiMUVlZzF3?oc=5",
+    "s": "ctee.com.tw",
+    "f": [
+     "7"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "長榮、萬海7月營收暢旺- 日報 - 工商時報",
+    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5mY1RXUDAtZ2l5aG0xdG50N3RZUUs3Z0ExWXQzZzc4MTI5RVdwamp0blRhTG1ZV2JCTlQxWXg4OWtfRkF4YWc2X1JxWFl5ZUdPZDFBTHAyTkZiMUVlZzF3?oc=5",
+    "s": "工商時報",
+    "f": [
+     "7"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:clusterc2372e8f35|l:revenue_growth",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "revenue_growth",
+  "headline": "Microsoft’s AI Revenue is 70% OpenAI",
+  "state": "developing",
+  "first_seen": "2026-07-28",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "Microsoft’s AI Revenue is 70% OpenAI",
+  "prev_delta": "Nvidia, SpaceX, Microsoft launch AI safety initiative as OpenAI cyberattack fallout continues",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "d77859a6083b8548",
+   "0f470f1617478bd3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "0f470f1617478bd3"
+   ]
+  },
+  "last_published": "2026-08-06T20:30:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-07-28",
+    "t": "Nvidia, SpaceX, Microsoft launch AI safety initiative as OpenAI cyberattack fall",
+    "l": "",
+    "s": "CNBC Tech",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "Microsoft’s AI Revenue is 70% OpenAI",
+    "l": "https://finance.yahoo.com/technology/ai/articles/microsoft-ai-revenue-70-openai-203000803.html",
+    "s": "Moby",
+    "f": [
+     "70"
     ]
    }
   ],
@@ -11064,50 +11780,6 @@
   "delta_unconfirmed": false
  },
  {
-  "key": "e:clustera9b20b578e|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - 台灣好新聞",
-  "state": "developing",
-  "first_seen": "2026-08-07",
-  "last_update": "2026-08-08",
-  "updates": 2,
-  "last_delta": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - 台灣好新聞",
-  "prev_delta": "台中建商轉保守　推案規模近腰斬、買方不再只看建設利多 - 好房網News",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "1d74b226e7878165",
-   "a2f21a3cbee18d3f"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "a2f21a3cbee18d3f"
-   ]
-  },
-  "last_published": "2026-08-07T10:31:40+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-07",
-    "t": "台中建商轉保守　推案規模近腰斬、買方不再只看建設利多 - 好房網News",
-    "l": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5CTXBTeHYwcEN3eEVIbUd5YlpZU19RT1RnaVpVV2kxY3VGLXAxV040d2Y1Z2YtMUJJb3ZucW5ORmdDSXI3R29ock1sdFVOQkU1elpneHZnWGFFZTh6andFZzJUeHBXY0VVUFc0b0FTb1jSAXBBVV9",
-    "s": "好房網News",
-    "f": []
-   },
-   {
-    "d": "2026-08-08",
-    "t": "台中建商轉保守 推案規模近腰斬、買方不再只看建設利多 - 台灣好新聞",
-    "l": "",
-    "s": "台灣好新聞",
-    "f": []
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:6472|l:general|63215da33c",
   "entity": "6472",
   "entity_name": "",
@@ -11828,8 +12500,8 @@
   "prev_delta": "波羅的海指數｜美軍打伊朗用光「亞太火力庫存」？ BDI暫受阻3010點 BDTI 2500點有支持 - 香港經濟日報HKET",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "fd1de820dc60bed1",
-   "b62d6338c421f6a5"
+   "b62d6338c421f6a5",
+   "fd1de820dc60bed1"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -11929,9 +12601,9 @@
   "prev_delta": "打破「藍色彈珠」迷思，NASA 最新 3D 模型揭露地球「坑疤」真面目 - TechNews 科技新報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "f9b03ace7adebe1e",
+   "f7b5a9e446369ee4",
    "561c62b880440d01",
-   "f7b5a9e446369ee4"
+   "f9b03ace7adebe1e"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -11980,9 +12652,9 @@
   "prev_delta": "能源管理邁入新時代！鄭平：台達電推微電網整體解方 - TechNews 科技新報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "53d989d5997ecc1b",
    "369da99c4a11eff8",
-   "f41f7ef8689c72c3"
+   "f41f7ef8689c72c3",
+   "53d989d5997ecc1b"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12123,8 +12795,8 @@
   "prev_delta": "SCFI連二漲美線漲幅收斂、歐線緩跌、美東線傳加班船搶貨- 產業 - 工商時報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "b90f9652e72eb915",
-   "9c89e99d22476155"
+   "9c89e99d22476155",
+   "b90f9652e72eb915"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12168,8 +12840,8 @@
   "prev_delta": "《生醫股》漢達抗癌新藥HND-039商業化布局上市準備加速- 證券 - 工商時報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "413727b37e728a73",
-   "39765c31f0a3dbb5"
+   "39765c31f0a3dbb5",
+   "413727b37e728a73"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12266,8 +12938,8 @@
   "prev_delta": "建商豁出去了！低首付降至4％還送家電 台中重劃區爆發「價格讓利大對決」 - 工商時報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "0ccc64bcb42adc01",
-   "24266d6475bc25aa"
+   "24266d6475bc25aa",
+   "0ccc64bcb42adc01"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12302,53 +12974,6 @@
   "delta_unconfirmed": false
  },
  {
-  "key": "e:2891|l:general|da2b57bd10",
-  "entity": "2891",
-  "entity_name": "中信金",
-  "event_type": "general",
-  "headline": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - es.tradingview.com",
-  "state": "developing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 2,
-  "last_delta": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - es.tradingview.com",
-  "prev_delta": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - Yahoo 財經",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "745c5edf7c3eb747",
-   "2e6150e378310f0a",
-   "da3e0038be0fe475"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "2e6150e378310f0a",
-    "745c5edf7c3eb747",
-    "da3e0038be0fe475"
-   ]
-  },
-  "last_published": "2026-08-07T08:40:29+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - Yahoo 財經",
-    "l": "",
-    "s": "Yahoo 財經",
-    "f": []
-   },
-   {
-    "d": "2026-08-08",
-    "t": "中信銀行參展高齡健康博覽會 主打「三本一留」與智慧防詐金融體驗 - es.tradingview.com",
-    "l": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE01WTNIQnNueWNHNTlZY0h4ZFdDQnZkTUx1c1dfVmpMdTFKQVdHemMwa3U1SXR1WlJFOHZfSWtrdlloX005eHpsRmtsN0hwZ05ESl96alhTcEhnaVIya2IwY0puWlo?oc=5",
-    "s": "es.tradingview.com",
-    "f": []
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
   "key": "e:2891|l:general|927f945502",
   "entity": "2891",
   "entity_name": "中信金",
@@ -12362,8 +12987,8 @@
   "prev_delta": "中信金高齡健康產業博覽會亮點一次看用VR體驗「失智」、測動脈血管健康- 金融 - 工商時報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "e2744df51cad649d",
-   "f3a4305a5111fcca"
+   "f3a4305a5111fcca",
+   "e2744df51cad649d"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12407,8 +13032,8 @@
   "prev_delta": "馬斯克劍指記憶體、特斯拉為 Terafab 徵 DRAM 人才 - TechNews 科技新報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "f5ddbf1b1c203a17",
-   "695d6a28a66fbb47"
+   "695d6a28a66fbb47",
+   "f5ddbf1b1c203a17"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -12548,8 +13173,8 @@
   "prev_delta": "賣壓大房價必跌？最新數據曝桃園房市「詭譎現象」：兩區屋主急下車 - 自由時報",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "558e318a7294f87f",
-   "b056ff38430e863d"
+   "b056ff38430e863d",
+   "558e318a7294f87f"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -13026,8 +13651,8 @@
   "prev_delta": "白海豚颱風襲沖繩！４大航空航班大取消、蘭嶼綠島停航最新一次看 - 食尚玩家",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "a0ca3d5bc7829fac",
-   "a6bd262666ffb504"
+   "a6bd262666ffb504",
+   "a0ca3d5bc7829fac"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -13246,51 +13871,6 @@
     "t": "百歲人生財國泰金五路齊發 健康、信託、交通、投資一站包辦 - 鏡報",
     "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTFAtazhsQkdMMlUtQkJJbl9NbEdVRFE0VmpMc2V1bzUtNzRBMXRCSFVxMVc3UHBXSHd1aUJsWHRWbFoxVngzR0hIWUx1T21pYVNrQkE?oc=5",
     "s": "鏡報",
-    "f": []
-   }
-  ],
-  "delta_unconfirmed": false
- },
- {
-  "key": "e:2882|l:general|3cde687c34",
-  "entity": "2882",
-  "entity_name": "國泰金",
-  "event_type": "general",
-  "headline": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - 蕃新聞",
-  "state": "developing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 2,
-  "last_delta": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - 蕃新聞",
-  "prev_delta": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - n.yam.com",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "7e42565af2f8725e",
-   "109e9bd509d0d34d"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "109e9bd509d0d34d",
-    "7e42565af2f8725e"
-   ]
-  },
-  "last_published": "2026-08-07T02:42:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - n.yam.com",
-    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE8weGRPTGRNU1BiZHhET0czTWVZOHRwdzE3Nzd4UmdpbVRzNE1kMWdUazFpSTdKaXVMOTNRV0g4cVNLV3M0S3lDNjRDckZsNHppeUE?oc=5",
-    "s": "n.yam.com",
-    "f": []
-   },
-   {
-    "d": "2026-08-08",
-    "t": "【有影】退休財務怎麼顧？國泰世華銀行、國泰證券、國泰投信三路布局高齡金融 - 蕃新聞",
-    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE8weGRPTGRNU1BiZHhET0czTWVZOHRwdzE3Nzd4UmdpbVRzNE1kMWdUazFpSTdKaXVMOTNRV0g4cVNLV3M0S3lDNjRDckZsNHppeUE?oc=5",
-    "s": "蕃新聞",
     "f": []
    }
   ],
@@ -13708,8 +14288,8 @@
   "prev_delta": "回測洗籌洗去浮額！休息是為了更長的路…洗完再上！ - hwa-guan.com.tw",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "36d920c33b4d4b75",
-   "bb6e99c1a6b706cf"
+   "bb6e99c1a6b706cf",
+   "36d920c33b4d4b75"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -14127,13 +14707,15 @@
   "max_surprise": 0.35,
   "seen_sigs": [
    "3eab98272d9e5410",
-   "8924230ce9d0b51c",
    "fac2f9f4fc7ad933",
-   "7511a1f9374b2b74"
+   "8924230ce9d0b51c",
+   "7511a1f9374b2b74",
+   "078d8f14d6745025"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
+    "078d8f14d6745025",
     "7511a1f9374b2b74",
     "8924230ce9d0b51c",
     "fac2f9f4fc7ad933"
@@ -14160,6 +14742,653 @@
     "f": [
      "16800000000"
     ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster0c547633b0|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力 - TechNews 科技新報",
+  "state": "developing",
+  "first_seen": "2026-08-07",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力 - TechNews 科技新報",
+  "prev_delta": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "263cf24d331ac3cc",
+   "fb683bff23e5b485"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "fb683bff23e5b485"
+   ]
+  },
+  "last_published": "2026-08-06T23:21:35+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-07",
+    "t": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力",
+    "l": "https://technews.tw/2026/08/07/china-ev-recycling-material-potential/",
+    "s": "科技新報",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力 - TechNews 科技新報",
+    "l": "https://news.google.com/rss/articles/CBMieEFVX3lxTE4za1AtWE5MZHhNbHNhbjZFczFGbjhjVmxOTXFqOWtSdy1XOUh0V0pZdnlSRkEtcVppZkJFaUtCNm91eDZmNkZHOGhLVjEtOF9tRlo5QUlJaTMyY2JOVEMtVXlKWVdxNXBhWGdLSFNfckdKWDlqTGR",
+    "s": "TechNews 科技新報",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster61c785bdad|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "台新新光金控淨零論壇 匯聚永續的光與熱 - news.cnyes.com",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "台新新光金控淨零論壇 匯聚永續的光與熱 - news.cnyes.com",
+  "prev_delta": "台新新光金控淨零論壇 匯聚永續的光與熱 - 鉅亨網",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "67af87fddebe8d2a",
+   "7caef91899f93964"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "67af87fddebe8d2a",
+    "7caef91899f93964"
+   ]
+  },
+  "last_published": "2026-08-07T10:32:13+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "台新新光金控淨零論壇 匯聚永續的光與熱 - 鉅亨網",
+    "l": "https://news.google.com/rss/articles/CBMiS0FVX3lxTFBBVXhCU3FJN29qN0pBYmtyczRJV2RZa1YyeXQ3UFZwYlRCRTVPWWtoN0JSOWV5VkNueFdtQ3Rad0M4cHVpUzZTY01BRQ?oc=5",
+    "s": "鉅亨網",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "台新新光金控淨零論壇 匯聚永續的光與熱 - news.cnyes.com",
+    "l": "https://news.google.com/rss/articles/CBMiT0FVX3lxTFBwcmROdkF2d2FVT19udGdNdGNBeUlxaGtEN0hjUm8wdUJISHFQSFFBWXBmbFd5OUIzcFdyNU9ZNGtSZ3Y1eXkyS3Y0Z05BYnM?oc=5",
+    "s": "news.cnyes.com",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:土耳其|l:general|1e3112afd1",
+  "entity": "土耳其",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "中東局勢不穩定 沙烏地阿拉伯、土耳其、巴基斯坦簽署共同防禦條約 - 台視新聞網",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "中東局勢不穩定 沙烏地阿拉伯、土耳其、巴基斯坦簽署共同防禦條約 - 台視新聞網",
+  "prev_delta": "沙烏地、巴基斯坦與土耳其簽署共同防禦協定",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "315b3bac60a87907",
+   "46a53abef514566a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "315b3bac60a87907",
+    "46a53abef514566a"
+   ]
+  },
+  "last_published": "2026-08-07T13:07:55+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "沙烏地、巴基斯坦與土耳其簽署共同防禦協定",
+    "l": "https://www.cna.com.tw/news/aopl/202608070313.aspx",
+    "s": "中央社國際",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "中東局勢不穩定 沙烏地阿拉伯、土耳其、巴基斯坦簽署共同防禦條約 - 台視新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE10aG5OZkdCSnQxREpkLUpqeTBEVDNwY3M1a1g1cjdRbWRCb0Z4bnZjTi1zanVERldTUFhsVmtFeVI4X0ZZV3FfTzN0YnBrNWpLcmdPWmJ6aw?oc=5",
+    "s": "台視新聞網",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster4259b604c3|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "SCFI 運價指數連兩漲 北美線續漲 - 經濟日報",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "SCFI 運價指數連兩漲 北美線續漲 - 經濟日報",
+  "prev_delta": "SCFI 運價指數連兩漲 北美線續漲 | 產業熱點 | 產業 - 經濟日報",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "33a9eb148970c741",
+   "3d1ca5acfc26505f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "33a9eb148970c741",
+    "3d1ca5acfc26505f"
+   ]
+  },
+  "last_published": "2026-08-07T09:07:52+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "SCFI 運價指數連兩漲 北美線續漲 | 產業熱點 | 產業 - 經濟日報",
+    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1Da3JDUnl3dEE3dlU2STg5ZnlyblNyUHlsWGg4aENIbHpxVmtncU1RVktETjlSRUhYSzhpOHB3LWZYbElKWTROLURxU2JkXzdJUElKal9Yak5Odw?oc=5",
+    "s": "經濟日報",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "SCFI 運價指數連兩漲 北美線續漲 - 經濟日報",
+    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1Da3JDUnl3dEE3dlU2STg5ZnlyblNyUHlsWGg4aENIbHpxVmtncU1RVktETjlSRUhYSzhpOHB3LWZYbElKWTROLURxU2JkXzdJUElKal9Yak5Od9IBX0FVX3lxTE13dC1PSUk1ci1Sakw0Rm11elp",
+    "s": "經濟日報",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:clusterc2ea03ba50|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "颱風白海豚南北擺盪父親節晚間至周日白天降雨最集中氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "颱風白海豚南北擺盪父親節晚間至周日白天降雨最集中氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
+  "prev_delta": "颱風白海豚南北擺盪父親節晚間至周日白天風雨最明顯氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1a970958b3c1effd",
+   "2e6347e2ae8f1065"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "1a970958b3c1effd",
+    "2e6347e2ae8f1065"
+   ]
+  },
+  "last_published": "2026-08-08T01:20:23+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "颱風白海豚南北擺盪父親節晚間至周日白天風雨最明顯氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
+    "l": "",
+    "s": "Yahoo新聞",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "颱風白海豚南北擺盪父親節晚間至周日白天降雨最集中氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
+    "l": "",
+    "s": "Yahoo新聞",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:伊朗|l:general|1bf1966651",
+  "entity": "伊朗",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - cw.com.tw",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - cw.com.tw",
+  "prev_delta": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - 天下雜誌",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "fdc041cd42d8ddcd",
+   "a2d82f9ebf427e84"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "a2d82f9ebf427e84",
+    "fdc041cd42d8ddcd"
+   ]
+  },
+  "last_published": "2026-08-07T17:29:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - 天下雜誌",
+    "l": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE9rY0FLWDhsWGItNGZHdWZ6a1dmLW1Rdi1xZFB0bnlKUXV4YllXVllOaGRRRDlCMGJCanpnNHZpY1ZxcG1tVEcwUnYxUm9QQQ?oc=5",
+    "s": "天下雜誌",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - cw.com.tw",
+    "l": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE9rY0FLWDhsWGItNGZHdWZ6a1dmLW1Rdi1xZFB0bnlKUXV4YllXVllOaGRRRDlCMGJCanpnNHZpY1ZxcG1tVEcwUnYxUm9QQQ?oc=5",
+    "s": "cw.com.tw",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster96fdf2ee89|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "《台北股市》三大法人07日賣超股：群創、華邦電、聯電 - 富聯網",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "《台北股市》三大法人07日賣超股：群創、華邦電、聯電 - 富聯網",
+  "prev_delta": "《台北股市》三大法人7日賣超前十大 8檔上萬張 群創.華邦電.聯電… - 富聯網",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "44bc69b65dbc6b1c",
+   "13f2d5b741ef12fb"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "13f2d5b741ef12fb",
+    "44bc69b65dbc6b1c"
+   ]
+  },
+  "last_published": "2026-08-08T01:21:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "《台北股市》三大法人7日賣超前十大 8檔上萬張 群創.華邦電.聯電… - 富聯網",
+    "l": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOZnA1ZHBNRTl5NmxJR1RERjJlUkppZzd6VW5ZSTVrbUlMR2FGTUhUSUtENFNTbld4dUV4TE01Mk1sMDZvSHpzdWtqRXhhV08yaWRudzQ1ZFVNTlU2NUZOWjhickZJd0NTNHhPb2Y3U18yeEFFWFM",
+    "s": "富聯網",
+    "f": [
+     "7",
+     "8"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "《台北股市》三大法人07日賣超股：群創、華邦電、聯電 - 富聯網",
+    "l": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOMDFHd2w4aDA1RlJpTklyQnNTOFdCRE5YUjRaNnZyb1hyZ0t4NzVCOTF5V2hlSkVDc0dnOF9wNWZNcXQ4RG40V3RUanpSQnc4aGtNRnVzUTNOSHV2cFNWTzdZaEJUYVNnZ1k1N3M0Yklzd3ZITXc",
+    "s": "富聯網",
+    "f": [
+     "7"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:clustere318605548|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - NOWnews今日新聞",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - NOWnews今日新聞",
+  "prev_delta": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - nownews.com",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "055fd12ada9596ac",
+   "1e2756fb7a98480a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "055fd12ada9596ac",
+    "1e2756fb7a98480a"
+   ]
+  },
+  "last_published": "2026-08-07T00:06:14+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - nownews.com",
+    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1Lc1hJaWFWOXc0SFBmVkVqM0d3bHYtdWhuaFBJaXE3WW9Jd0U3RHRlT0JTUWxKMG5MbUtkME9rSlJYQmRYWWM5VjRKUF9TZHRjUXfSAVJBVV95cUxNS3NYSWlhVjl3NEhQZlZFajNHd2x2LXVobmh",
+    "s": "nownews.com",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - NOWnews今日新聞",
+    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1Lc1hJaWFWOXc0SFBmVkVqM0d3bHYtdWhuaFBJaXE3WW9Jd0U3RHRlT0JTUWxKMG5MbUtkME9rSlJYQmRYWWM5VjRKUF9TZHRjUXfSAVJBVV95cUxNS3NYSWlhVjl3NEhQZlZFajNHd2x2LXVobmh",
+    "s": "NOWnews今日新聞",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster1c09f16142|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 報新聞",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 報新聞",
+  "prev_delta": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 焦點時報",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "cb37e0ed34e523be",
+   "958100f0a4b8bd7a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "958100f0a4b8bd7a",
+    "cb37e0ed34e523be"
+   ]
+  },
+  "last_published": "2026-08-07T22:46:46+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 焦點時報",
+    "l": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE1RT204N0dNcVRMSzRrWkFIXzFYWUI1dG5uMXhRaGxwRk84ZjZmRjdia3RnX2NRUlRacTdzaWV2S0hmVXlSQV9yaWx2VFcxX3FnS2tTMjZWZw?oc=5",
+    "s": "焦點時報",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 報新聞",
+    "l": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE5BS0JBNHlVVWlldHI2Y1VFdlRqaTVKN3JZQ0YtTGdsOHNLSFdFak9JbWtiaFNJOW9hV0thNEo5Vi1zWU9rQlZTTXQzaXFDVlJKVVotVlZnY1A4dVZsLThISWR1czFiQU5H?oc=5",
+    "s": "報新聞",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:美國|l:general|ab99ce4644",
+  "entity": "美國",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "金融時報：主張「對抗中國」的美國人在減少 - 世界新聞網",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "金融時報：主張「對抗中國」的美國人在減少 - 世界新聞網",
+  "prev_delta": "金融時報：主張「對抗中國」的美國人在減少| 焦點即時| 川普2.0 | 世界新聞網 - 世界新聞網",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "fb3f346df21eacba",
+   "478eb8ea49ad23dc"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "478eb8ea49ad23dc",
+    "fb3f346df21eacba"
+   ]
+  },
+  "last_published": "2026-08-07T22:20:50+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "金融時報：主張「對抗中國」的美國人在減少| 焦點即時| 川普2.0 | 世界新聞網 - 世界新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE5qRjh2UDFONGV3WDlUcGhmNGprZTIzOXFyeTBQZTBhT2NJVmNmN1g1dnYtTjdsdmZHcVBwYWVORWc1TjlLOE1fcXVYOWlPaGM0d1g4RjhKNS0zc0V5ZU9LWjhn?oc=5",
+    "s": "世界新聞網",
+    "f": [
+     "2"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "金融時報：主張「對抗中國」的美國人在減少 - 世界新聞網",
+    "l": "https://news.google.com/rss/articles/CBMifkFVX3lxTE1vaDIzYzBEcmRaaUpIWlZEdkdWV3JMenhuV1IyM3dqNURmc3BvTFV6TFRMSWVQNVdGUERqQTdieXVIQVRORlh4cTFfal8zSVc3OGZvLTNkLW1jSWRFSHdGNV9LNkdINjFQenQtaVotdWZFNGJkM0t",
+    "s": "世界新聞網",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster15b3b96f59|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "預售屋遺產稅怎麼算？四大重點避補稅！ - taiwanhot.net",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "預售屋遺產稅怎麼算？四大重點避補稅！ - taiwanhot.net",
+  "prev_delta": "預售屋遺產稅怎麼算？四大重點避補稅！ - 台灣好新聞",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "18e8791ed564de39",
+   "030dd4a21ae0dfe9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "030dd4a21ae0dfe9",
+    "18e8791ed564de39"
+   ]
+  },
+  "last_published": "2026-08-07T10:31:40+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "預售屋遺產稅怎麼算？四大重點避補稅！ - 台灣好新聞",
+    "l": "https://news.google.com/rss/articles/CBMiqAJBVV95cUxOWWJoZ29oSEZsRDNXUzdYazdrT2xRcjh3aGllSlN6c0Q2ZHZwa2JJbU9KTjBhWC1DcmdvakdLaXdhSVB5eU1KdFdhdTdsT0NaMG1fcWF2cnRPenJUeE15ZkJuS2FSWTF3eWhrM09SbFhlam50YzJ",
+    "s": "台灣好新聞",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "預售屋遺產稅怎麼算？四大重點避補稅！ - taiwanhot.net",
+    "l": "https://news.google.com/rss/articles/CBMiqAJBVV95cUxOWWJoZ29oSEZsRDNXUzdYazdrT2xRcjh3aGllSlN6c0Q2ZHZwa2JJbU9KTjBhWC1DcmdvakdLaXdhSVB5eU1KdFdhdTdsT0NaMG1fcWF2cnRPenJUeE15ZkJuS2FSWTF3eWhrM09SbFhlam50YzJ",
+    "s": "taiwanhot.net",
+    "f": []
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:2330|l:general|22928c41ef",
+  "entity": "2330",
+  "entity_name": "台積電",
+  "event_type": "general",
+  "headline": "台積電擴產、CSP大開資本支出都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - Yahoo股市",
+  "state": "developing",
+  "first_seen": "2026-08-06",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "台積電擴產、CSP大開資本支出都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - Yahoo股市",
+  "prev_delta": "台積電擴產、CSP大開資本支出 都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - 財訊",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "bcdc8ccb633ecf04",
+   "d03f85536f051435"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "d03f85536f051435"
+   ]
+  },
+  "last_published": "2026-08-07T05:38:15+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-06",
+    "t": "台積電擴產、CSP大開資本支出 都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - 財訊",
+    "l": "https://news.google.com/rss/articles/CBMie0FVX3lxTFA5ekxwVDRBekRRUEJGT2lJYnJyVDZQNkU5ZlhmbXlQRHNfNVRBZllLWWM4dDIwaDZodUM4bkdVZ0JqQVp3YUJOdFNHUmNpN3ROV1dkU25UOEJxZzlXem8yNHdabFB0V0hjVDFSbTQtWW14Vmx3X1h",
+    "s": "財訊",
+    "f": [
+     "10",
+     "7",
+     "8"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "台積電擴產、CSP大開資本支出都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "10",
+     "7",
+     "8"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:美國|l:general|8946e13bc2",
+  "entity": "美國",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退 - news.cnyes.com",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退 - news.cnyes.com",
+  "prev_delta": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "b39788a736f8da85",
+   "d755ac686ccd2cc6"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "b39788a736f8da85",
+    "d755ac686ccd2cc6"
+   ]
+  },
+  "last_published": "2026-08-07T23:11:21+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退",
+    "l": "https://news.cnyes.com/news/id/6566303",
+    "s": "鉅亨美股",
+    "f": [
+     "6"
+    ]
+   },
+   {
+    "d": "2026-08-08",
+    "t": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退 - news.cnyes.com",
+    "l": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE85N2w4eWFQYkJ5aE5OZGNtazYxZnEtNk5jMGZYVWlWc0xVX0hrQUNncm9KeEdDVlBoRGdIa3RXLTc4bWliT205dHBEYktqaFk?oc=5",
+    "s": "news.cnyes.com",
+    "f": [
+     "6"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:amd|l:general|48da51952b",
+  "entity": "AMD",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - Yahoo新聞",
+  "state": "developing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 2,
+  "last_delta": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - Yahoo新聞",
+  "prev_delta": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - FTNN 新聞網",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "54d3b503eba1a09a",
+   "0cf667887b2468f3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "0cf667887b2468f3",
+    "54d3b503eba1a09a"
+   ]
+  },
+  "last_published": "2026-08-07T03:47:23+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - FTNN 新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE9fZnhxX1VEUGdCb3FiMzlwbG12WWR2b3JKT0ZaMHdLS0VoWXRkR2JSZVkyZ08xSm45QW1TcDB1TjJxUnFfUklVVDJzcw?oc=5",
+    "s": "FTNN 新聞網",
+    "f": []
+   },
+   {
+    "d": "2026-08-08",
+    "t": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - Yahoo新聞",
+    "l": "https://news.google.com/rss/articles/CBMizAJBVV95cUxQMUU3X0s2SldZaC1NejVPTUxrMWNyeDRRQlBaMk12aDBXMU1ZN2RZUVFaa1dZMmRHY2Qtc2lmQnJKSVFQSVRuN3dtRkEzbHZUckFUYnBWcWZOdVhEWGVURjhGMlVleE1saWMwSEd1OFozdk91YzY",
+    "s": "Yahoo新聞",
+    "f": []
    }
   ],
   "delta_unconfirmed": false
@@ -23779,6 +25008,151 @@
   ]
  },
  {
+  "key": "e:cluster8f46256b59|l:orders",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "orders",
+  "headline": "〈熱門股〉永擎上半年財報亮眼周強漲逾28% 下半年B300與GB300放量出貨",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "〈熱門股〉永擎上半年財報亮眼周強漲逾28% 下半年B300與GB300放量出貨",
+  "prev_delta": "",
+  "max_surprise": 0.7,
+  "seen_sigs": [
+   "3b3400610c04d825"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "3b3400610c04d825"
+   ]
+  },
+  "last_published": "2026-08-08T01:36:46+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "〈熱門股〉永擎上半年財報亮眼周強漲逾28% 下半年B300與GB300放量出貨",
+    "l": "https://news.cnyes.com/news/id/6566173",
+    "s": "鉅亨台股",
+    "f": [
+     "28",
+     "300"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster583bace21f|l:orders",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "orders",
+  "headline": "AI記憶體需求持續升溫 SK海力士砸383億美元擴產 龍仁、清州新建兩座晶圓廠",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "AI記憶體需求持續升溫 SK海力士砸383億美元擴產 龍仁、清州新建兩座晶圓廠",
+  "prev_delta": "",
+  "max_surprise": 0.7,
+  "seen_sigs": [
+   "7ba28bf079f089bc"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "7ba28bf079f089bc"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:07+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "AI記憶體需求持續升溫 SK海力士砸383億美元擴產 龍仁、清州新建兩座晶圓廠",
+    "l": "https://news.cnyes.com/news/id/6566348",
+    "s": "鉅亨美股",
+    "f": [
+     "38300000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster4b0a69aca2|l:orders",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "orders",
+  "headline": "Taiwan’s push to dissolve pro-Beijing party triggers political censorship debate",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Taiwan’s push to dissolve pro-Beijing party triggers political censorship debate",
+  "prev_delta": "",
+  "max_surprise": 0.7,
+  "seen_sigs": [
+   "102197e8327f3239"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "102197e8327f3239"
+   ]
+  },
+  "last_published": "2026-08-08T01:00:10+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Taiwan’s push to dissolve pro-Beijing party triggers political censorship debate",
+    "l": "https://www.scmp.com/news/china/politics/article/3363313/taiwans-push-dissolve-pro-beijing-party-triggers-political-censorship-debate?utm_source=rss_feed",
+    "s": "南華早報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2330|l:orders|s2395csp|2026",
+  "entity": "2330",
+  "entity_name": "台積電",
+  "event_type": "orders",
+  "headline": "台積電、CSP 大舉建廠背後的推手！研華北美接單強勁，無懼零件飆漲樂觀看旺下半年 - TechNews 科技新報",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "台積電、CSP 大舉建廠背後的推手！研華北美接單強勁，無懼零件飆漲樂觀看旺下半年 - TechNews 科技新報",
+  "prev_delta": "",
+  "max_surprise": 0.7,
+  "seen_sigs": [
+   "349afe997b6fd0f5"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "349afe997b6fd0f5"
+   ]
+  },
+  "last_published": "2026-08-08T01:01:13+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "台積電、CSP 大舉建廠背後的推手！研華北美接單強勁，無懼零件飆漲樂觀看旺下半年 - TechNews 科技新報",
+    "l": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFBpa2wtZTFPRkZ0dUZYYm5xeHZPN3dYLUtuWVpjeThVRFdtb3hYei1MaFRfeFRMU0RBX0xhWE9rZDY0ZUZ5TUFTVG40S2QwbnIyeHlZVGxBVTZYeE1Bb2c?oc=5",
+    "s": "TechNews 科技新報",
+    "f": []
+   }
+  ]
+ },
+ {
   "key": "e:6949|l:earnings|2026q2",
   "entity": "6949",
   "entity_name": "沛爾生醫-創",
@@ -25577,41 +26951,6 @@
   ]
  },
  {
-  "key": "e:cluster8cb9434ddc|l:earnings",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "earnings",
-  "headline": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - 東南亞財經新聞",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - 東南亞財經新聞",
-  "prev_delta": "",
-  "max_surprise": 0.6,
-  "seen_sigs": [
-   "e1c83412bcea20a7"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "e1c83412bcea20a7"
-   ]
-  },
-  "last_published": "2026-08-07T00:01:52+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "中東局勢與財報牽動 美股標普那指微幅波動道瓊收低 - 東南亞財經新聞",
-    "l": "https://news.google.com/rss/articles/CBMiwgJBVV95cUxPVFJYRTBtMjRHMkhiekVvVkY1NjdSMElBSmpHZDRlMXN1MUhKa2dnQWF0OWVPTFEydGpJZzhpVnpOUUJkRWMtUTI2bDBYWGpYZF9MRTNzVERCajdsdDlwOHdCSkM3M29oS0dJZnJ0YlZMdEZZRWZ",
-    "s": "東南亞財經新聞",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:cluster53a80ebf4b|l:earnings",
   "entity": "",
   "entity_name": "",
@@ -25686,6 +27025,113 @@
    }
   ],
   "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster29e113a780|l:earnings",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "earnings",
+  "headline": "立地就醫！iRhythm 重金收購VitalConnect 搶攻遠距心臟監測市場",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "立地就醫！iRhythm 重金收購VitalConnect 搶攻遠距心臟監測市場",
+  "prev_delta": "",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "94554582e3a5b43c"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "94554582e3a5b43c"
+   ]
+  },
+  "last_published": "2026-08-08T01:00:05+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "立地就醫！iRhythm 重金收購VitalConnect 搶攻遠距心臟監測市場",
+    "l": "https://news.cnyes.com/news/id/6566319",
+    "s": "鉅亨美股",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clusterae50974f31|l:earnings",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "earnings",
+  "headline": "Three Defense Plays Spike On Earnings, One Breaks Out. Howmet Tops Views.",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Three Defense Plays Spike On Earnings, One Breaks Out. Howmet Tops Views.",
+  "prev_delta": "",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "98fc421c1264be4c"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "98fc421c1264be4c"
+   ]
+  },
+  "last_published": "2026-08-06T20:27:31+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Three Defense Plays Spike On Earnings, One Breaks Out. Howmet Tops Views.",
+    "l": "https://www.investors.com/news/howmet-aerospace-hwm-stock-breakout-ati-stock-redwire-rdw-caci-international-earnings-rally-defense-stocks/?src=A00220&yptr=yahoo",
+    "s": "Investor's Business Dail",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:1714|l:earnings|2026q2",
+  "entity": "1714",
+  "entity_name": "",
+  "event_type": "earnings",
+  "headline": "焦點股》和桐：Q2獲利大躍進 股價強攻漲停 - 自由時報",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "焦點股》和桐：Q2獲利大躍進 股價強攻漲停 - 自由時報",
+  "prev_delta": "",
+  "max_surprise": 0.6,
+  "seen_sigs": [
+   "00543236f832fe6a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "00543236f832fe6a"
+   ]
+  },
+  "last_published": "2026-08-06T03:42:14+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "焦點股》和桐：Q2獲利大躍進 股價強攻漲停 - 自由時報",
+    "l": "https://news.google.com/rss/articles/CBMiWEFVX3lxTFB5emh2OEtRRTZ2dkRHMUxUa0RTSk0zT2IxcFNUMmhQOTRiQ1NPRW1BaEJUZlE2cUZmSlVzZ01JdngtdnhEV1lDMHJJNkJudHpsNzRZYXZnUDE?oc=5",
+    "s": "自由時報",
+    "f": [
+     "2"
+    ]
+   }
+  ]
  },
  {
   "key": "e:clustercb34edb94c|l:revenue_growth",
@@ -26280,14 +27726,13 @@
   "prev_delta": "",
   "max_surprise": 0.5,
   "seen_sigs": [
-   "1144f2bb3814b82c",
-   "b0b860f03e2a52a7"
+   "b0b860f03e2a52a7",
+   "1144f2bb3814b82c"
   ],
   "today_sigs": {
-   "date": "2026-08-07",
+   "date": "2026-08-08",
    "sigs": [
-    "1144f2bb3814b82c",
-    "b0b860f03e2a52a7"
+    "1144f2bb3814b82c"
    ]
   },
   "last_published": "2026-08-06T23:36:13+00:00",
@@ -27164,47 +28609,6 @@
   ]
  },
  {
-  "key": "e:2337|l:revenue_growth|202608",
-  "entity": "2337",
-  "entity_name": "旺宏",
-  "event_type": "revenue_growth",
-  "headline": "華邦電、旺宏、群聯 7月營收同創新高 - 自由時報",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "華邦電、旺宏、群聯 7月營收同創新高 - 自由時報",
-  "prev_delta": "",
-  "max_surprise": 0.5,
-  "seen_sigs": [
-   "b4bd7276039d8e63",
-   "c470ccca4b1713b9",
-   "a7837d0d0093d3e1"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "a7837d0d0093d3e1",
-    "b4bd7276039d8e63",
-    "c470ccca4b1713b9"
-   ]
-  },
-  "last_published": "2026-08-07T20:33:36+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "華邦電、旺宏、群聯 7月營收同創新高 - 自由時報",
-    "l": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE9QakZjSjJMVVIwaFNCZ0tDRkxONkQ5RlRtMEdiV3VYX3NGWE0zVXlRcUFsdTlaY1lKUnBfMWZ5d1NiNk1qTVNEdmNWZ0lnYmlmMW9pUWJyVW4?oc=5",
-    "s": "自由時報",
-    "f": [
-     "7"
-    ]
-   }
-  ]
- },
- {
   "key": "e:2603|l:revenue_growth|202608",
   "entity": "2603",
   "entity_name": "",
@@ -27489,43 +28893,6 @@
   ]
  },
  {
-  "key": "e:clusterc3ef904a6c|l:revenue_growth",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "revenue_growth",
-  "headline": "長榮、萬海7月營收暢旺- 日報 - ctee.com.tw",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "長榮、萬海7月營收暢旺- 日報 - ctee.com.tw",
-  "prev_delta": "",
-  "max_surprise": 0.5,
-  "seen_sigs": [
-   "cc89e1430be69ca7"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "cc89e1430be69ca7"
-   ]
-  },
-  "last_published": "2026-08-07T19:00:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "長榮、萬海7月營收暢旺- 日報 - ctee.com.tw",
-    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5mY1RXUDAtZ2l5aG0xdG50N3RZUUs3Z0ExWXQzZzc4MTI5RVdwamp0blRhTG1ZV2JCTlQxWXg4OWtfRkF4YWc2X1JxWFl5ZUdPZDFBTHAyTkZiMUVlZzF3?oc=5",
-    "s": "ctee.com.tw",
-    "f": [
-     "7"
-    ]
-   }
-  ]
- },
- {
   "key": "e:1303|l:revenue_growth|202608",
   "entity": "1303",
   "entity_name": "南亞",
@@ -27600,6 +28967,78 @@
      "2026",
      "26.8",
      "50"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterdfe4f66192|l:revenue_growth",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "revenue_growth",
+  "headline": "New Zealand Slaps New Sanctions Against Russia After US Move",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "New Zealand Slaps New Sanctions Against Russia After US Move",
+  "prev_delta": "",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "12c73ca500758f09"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "12c73ca500758f09"
+   ]
+  },
+  "last_published": "2026-08-08T00:58:38+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "New Zealand Slaps New Sanctions Against Russia After US Move",
+    "l": "https://www.bloomberg.com/news/articles/2026-08-08/new-zealand-slaps-new-sanctions-against-russia-after-us-move",
+    "s": "Bloomberg Markets",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster97ab2e6484|l:revenue_growth",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "revenue_growth",
+  "headline": "〈熱門股〉松川精密獲AI需求助攻營運高熱度升高周漲24%",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "〈熱門股〉松川精密獲AI需求助攻營運高熱度升高周漲24%",
+  "prev_delta": "",
+  "max_surprise": 0.5,
+  "seen_sigs": [
+   "407b40535a47ada1"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "407b40535a47ada1"
+   ]
+  },
+  "last_published": "2026-08-08T01:38:26+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "〈熱門股〉松川精密獲AI需求助攻營運高熱度升高周漲24%",
+    "l": "https://news.cnyes.com/news/id/6566311",
+    "s": "鉅亨台股",
+    "f": [
+     "24"
     ]
    }
   ]
@@ -29387,41 +30826,6 @@
     "d": "2026-08-07",
     "t": "全球三大 AI 重鎮同步去槓桿，台股韓股美股各有一堂課要補",
     "l": "https://finance.technews.tw/2026/08/07/the-truth-about-taiwans-margin-maintenance-ratio/",
-    "s": "科技新報",
-    "f": []
-   }
-  ]
- },
- {
-  "key": "e:cluster0c547633b0|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力",
-  "state": "brewing",
-  "first_seen": "2026-08-07",
-  "last_update": "2026-08-07",
-  "updates": 1,
-  "last_delta": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "263cf24d331ac3cc"
-  ],
-  "today_sigs": {
-   "date": "2026-08-07",
-   "sigs": [
-    "263cf24d331ac3cc"
-   ]
-  },
-  "last_published": "2026-08-06T23:20:24+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-07",
-    "t": "中國電動車迎「循環經濟」轉捩點，研究指舊車回收將成關鍵原料供應主力",
-    "l": "https://technews.tw/2026/08/07/china-ev-recycling-material-potential/",
     "s": "科技新報",
     "f": []
    }
@@ -31242,41 +32646,6 @@
     "t": "從一顆晶片做到一整櫃　聯發科攻AI資料中心新戰場挑戰博通 - 經濟日報",
     "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE81dlNkM25rZ1NCbFI0SFgxMy15ZGtmd3NuQkk4cTdfREpWdFlRR1RPTGs2d3JWLXhmT0xEWXFOcjZlWTNqR3RIMldkTmlWSEY3UDNjTWlfVlVEQdIBX0FVX3lxTE9DZ1l2YXAta0Q0R3VpVlRGSDN",
     "s": "經濟日報",
-    "f": []
-   }
-  ]
- },
- {
-  "key": "e:伊朗|l:general|faebab4165",
-  "entity": "伊朗",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "荷莫茲海峽禁美以船隻通行？伊朗阿曼協議草案曝光敵對國要先賠償| 中東戰火連綿| 全球 - UDN",
-  "state": "brewing",
-  "first_seen": "2026-08-07",
-  "last_update": "2026-08-07",
-  "updates": 1,
-  "last_delta": "荷莫茲海峽禁美以船隻通行？伊朗阿曼協議草案曝光敵對國要先賠償| 中東戰火連綿| 全球 - UDN",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "6d23c3a4f36436f4"
-  ],
-  "today_sigs": {
-   "date": "2026-08-07",
-   "sigs": [
-    "6d23c3a4f36436f4"
-   ]
-  },
-  "last_published": "2026-08-06T23:02:46+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-07",
-    "t": "荷莫茲海峽禁美以船隻通行？伊朗阿曼協議草案曝光敵對國要先賠償| 中東戰火連綿| 全球 - UDN",
-    "l": "https://news.google.com/rss/articles/CBMiU0FVX3lxTFBjRzV6RmtPZDE4di11QlV4dkd0N3BzTGZ0Z3Jib29kYjZBcVYzRnpfWFl0eFV2OU5KQTNVYUpYYXl2Nl80YzBfc01DQUtCanNLaE9V?oc=5",
-    "s": "UDN",
     "f": []
    }
   ]
@@ -34839,7 +36208,7 @@
    "877b0c88e8699a59"
   ],
   "today_sigs": {
-   "date": "2026-08-07",
+   "date": "2026-08-08",
    "sigs": [
     "877b0c88e8699a59"
    ]
@@ -41631,7 +43000,7 @@
    "cf8bf8f2c1572865"
   ],
   "today_sigs": {
-   "date": "2026-08-07",
+   "date": "2026-08-08",
    "sigs": [
     "cf8bf8f2c1572865"
    ]
@@ -43196,8 +44565,8 @@
   "prev_delta": "Trump revives effort to fire Fed's Lisa Cook",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "dfa6e006917695e8",
-   "d4749044800ccaf4"
+   "d4749044800ccaf4",
+   "dfa6e006917695e8"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -44822,41 +46191,6 @@
   ]
  },
  {
-  "key": "e:cluster61c785bdad|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "台新新光金控淨零論壇 匯聚永續的光與熱 - 鉅亨網",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "台新新光金控淨零論壇 匯聚永續的光與熱 - 鉅亨網",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "67af87fddebe8d2a"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "67af87fddebe8d2a"
-   ]
-  },
-  "last_published": "2026-08-07T10:32:13+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "台新新光金控淨零論壇 匯聚永續的光與熱 - 鉅亨網",
-    "l": "https://news.google.com/rss/articles/CBMiS0FVX3lxTFBBVXhCU3FJN29qN0pBYmtyczRJV2RZa1YyeXQ3UFZwYlRCRTVPWWtoN0JSOWV5VkNueFdtQ3Rad0M4cHVpUzZTY01BRQ?oc=5",
-    "s": "鉅亨網",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:clusterb85e44bfb2|l:general",
   "entity": "",
   "entity_name": "",
@@ -44942,11 +46276,13 @@
   "prev_delta": "",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "8118a0520da00f82"
+   "8118a0520da00f82",
+   "675a8655b036765a"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
+    "675a8655b036765a",
     "8118a0520da00f82"
    ]
   },
@@ -45588,41 +46924,6 @@
   ]
  },
  {
-  "key": "e:土耳其|l:general|1e3112afd1",
-  "entity": "土耳其",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "沙烏地、巴基斯坦與土耳其簽署共同防禦協定",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "沙烏地、巴基斯坦與土耳其簽署共同防禦協定",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "315b3bac60a87907"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "315b3bac60a87907"
-   ]
-  },
-  "last_published": "2026-08-07T12:29:19+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "沙烏地、巴基斯坦與土耳其簽署共同防禦協定",
-    "l": "https://www.cna.com.tw/news/aopl/202608070313.aspx",
-    "s": "中央社國際",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:土耳其|l:general|f9039e0e34",
   "entity": "土耳其",
   "entity_name": "",
@@ -46152,8 +47453,8 @@
   "prev_delta": "國泰金控攜手子公司打造「國泰遊樂場」 陪民眾打造健康第二人生 - udn",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "109a4573ef18cc2d",
-   "23b6fb47fa55c6f6"
+   "23b6fb47fa55c6f6",
+   "109a4573ef18cc2d"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -46575,41 +47876,6 @@
   ]
  },
  {
-  "key": "e:cluster4259b604c3|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "SCFI 運價指數連兩漲 北美線續漲 | 產業熱點 | 產業 - 經濟日報",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "SCFI 運價指數連兩漲 北美線續漲 | 產業熱點 | 產業 - 經濟日報",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "33a9eb148970c741"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "33a9eb148970c741"
-   ]
-  },
-  "last_published": "2026-08-07T09:07:52+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "SCFI 運價指數連兩漲 北美線續漲 | 產業熱點 | 產業 - 經濟日報",
-    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE1Da3JDUnl3dEE3dlU2STg5ZnlyblNyUHlsWGg4aENIbHpxVmtncU1RVktETjlSRUhYSzhpOHB3LWZYbElKWTROLURxU2JkXzdJUElKal9Yak5Odw?oc=5",
-    "s": "經濟日報",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:clusterd01c674ea3|l:general",
   "entity": "",
   "entity_name": "",
@@ -46949,8 +48215,8 @@
   "prev_delta": "特朗普簽署新行政命令 試圖重新限制美國出生公民權",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "2ec3b2539afe2614",
-   "b48b49fb5ba1d2e5"
+   "b48b49fb5ba1d2e5",
+   "2ec3b2539afe2614"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -48530,41 +49796,6 @@
   ]
  },
  {
-  "key": "e:clusterc2ea03ba50|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "颱風白海豚南北擺盪父親節晚間至周日白天風雨最明顯氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "颱風白海豚南北擺盪父親節晚間至周日白天風雨最明顯氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "1a970958b3c1effd"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "1a970958b3c1effd"
-   ]
-  },
-  "last_published": "2026-08-07T16:08:17+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "颱風白海豚南北擺盪父親節晚間至周日白天風雨最明顯氣象署說明最新颱風路徑、影響範圍【不斷更新】 - Yahoo新聞",
-    "l": "",
-    "s": "Yahoo新聞",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:cluster3a9fd239d1|l:general",
   "entity": "",
   "entity_name": "",
@@ -49335,8 +50566,8 @@
   "prev_delta": "美股開盤「費半上攻逾300點」！台積電ADR跟著上漲",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "8d8506e31017e873",
-   "1de1852cacd6ce7a"
+   "1de1852cacd6ce7a",
+   "8d8506e31017e873"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -49876,41 +51107,6 @@
   ]
  },
  {
-  "key": "e:伊朗|l:general|1bf1966651",
-  "entity": "伊朗",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - 天下雜誌",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - 天下雜誌",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "fdc041cd42d8ddcd"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "fdc041cd42d8ddcd"
-   ]
-  },
-  "last_published": "2026-08-07T17:29:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "美國打伊朗打到沒子彈了嗎？印太戰略拉警報？ - 天下雜誌",
-    "l": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE9rY0FLWDhsWGItNGZHdWZ6a1dmLW1Rdi1xZFB0bnlKUXV4YllXVllOaGRRRDlCMGJCanpnNHZpY1ZxcG1tVEcwUnYxUm9QQQ?oc=5",
-    "s": "天下雜誌",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:伊朗|l:general|9deed04424",
   "entity": "伊朗",
   "entity_name": "",
@@ -50302,11 +51498,13 @@
   "max_surprise": 0.35,
   "seen_sigs": [
    "8c19675b7473c8ff",
-   "af12f53d3d76935c"
+   "af12f53d3d76935c",
+   "779dfdca4cc965d1"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
+    "779dfdca4cc965d1",
     "8c19675b7473c8ff",
     "af12f53d3d76935c"
    ]
@@ -50341,8 +51539,8 @@
   "prev_delta": "金融族群開趴放紅煙火　這2檔沒被邀請 - 鏡週刊Mirror Media",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "90c766c27f0d9b50",
-   "2a0040d801db6141"
+   "2a0040d801db6141",
+   "90c766c27f0d9b50"
   ],
   "today_sigs": {
    "date": "2026-08-08",
@@ -50735,41 +51933,6 @@
   ]
  },
  {
-  "key": "e:clusterb414d48cfb|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - FTNN 新聞網",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - FTNN 新聞網",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "54d3b503eba1a09a"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "54d3b503eba1a09a"
-   ]
-  },
-  "last_published": "2026-08-07T03:25:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "不只拚GPU！AMD砸重兵布局AI推論晶片 收購Taalas向輝達宣戰 - FTNN 新聞網",
-    "l": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE9fZnhxX1VEUGdCb3FiMzlwbG12WWR2b3JKT0ZaMHdLS0VoWXRkR2JSZVkyZ08xSm45QW1TcDB1TjJxUnFfUklVVDJzcw?oc=5",
-    "s": "FTNN 新聞網",
-    "f": []
-   }
-  ]
- },
- {
   "key": "e:cluster9532cbcf76|l:general",
   "entity": "",
   "entity_name": "",
@@ -50877,44 +52040,6 @@
   ]
  },
  {
-  "key": "e:cluster96fdf2ee89|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "《台北股市》三大法人7日賣超前十大 8檔上萬張 群創.華邦電.聯電… - 富聯網",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "《台北股市》三大法人7日賣超前十大 8檔上萬張 群創.華邦電.聯電… - 富聯網",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "44bc69b65dbc6b1c"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "44bc69b65dbc6b1c"
-   ]
-  },
-  "last_published": "2026-08-07T08:20:00+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "《台北股市》三大法人7日賣超前十大 8檔上萬張 群創.華邦電.聯電… - 富聯網",
-    "l": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxOZnA1ZHBNRTl5NmxJR1RERjJlUkppZzd6VW5ZSTVrbUlMR2FGTUhUSUtENFNTbld4dUV4TE01Mk1sMDZvSHpzdWtqRXhhV08yaWRudzQ1ZFVNTlU2NUZOWjhickZJd0NTNHhPb2Y3U18yeEFFWFM",
-    "s": "富聯網",
-    "f": [
-     "7",
-     "8"
-    ]
-   }
-  ]
- },
- {
   "key": "e:clustere6b06402b6|l:general",
   "entity": "",
   "entity_name": "",
@@ -50948,41 +52073,6 @@
     "f": [
      "7"
     ]
-   }
-  ]
- },
- {
-  "key": "e:clustere318605548|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - nownews.com",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - nownews.com",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "055fd12ada9596ac"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "055fd12ada9596ac"
-   ]
-  },
-  "last_published": "2026-08-07T00:06:14+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "對台軍售惹怒中國！外媒踢爆：北京明示不歡迎五角大廈這高層到訪 - nownews.com",
-    "l": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1Lc1hJaWFWOXc0SFBmVkVqM0d3bHYtdWhuaFBJaXE3WW9Jd0U3RHRlT0JTUWxKMG5MbUtkME9rSlJYQmRYWWM5VjRKUF9TZHRjUXfSAVJBVV95cUxNS3NYSWlhVjl3NEhQZlZFajNHd2x2LXVobmh",
-    "s": "nownews.com",
-    "f": []
    }
   ]
  },
@@ -52824,43 +53914,6 @@
   ]
  },
  {
-  "key": "e:clusterec0104824f|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "b39788a736f8da85"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "b39788a736f8da85"
-   ]
-  },
-  "last_published": "2026-08-07T23:10:02+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "漢堡王睽違6年重奪美國漢堡二哥 溫蒂漢堡早餐攻勢失靈 連6季銷售衰退",
-    "l": "https://news.cnyes.com/news/id/6566303",
-    "s": "鉅亨美股",
-    "f": [
-     "6"
-    ]
-   }
-  ]
- },
- {
   "key": "e:cluster56f3dec512|l:general",
   "entity": "",
   "entity_name": "",
@@ -53457,11 +54510,13 @@
   "prev_delta": "",
   "max_surprise": 0.35,
   "seen_sigs": [
-   "ce7a1f47cb195af1"
+   "ce7a1f47cb195af1",
+   "3354064e38127cfc"
   ],
   "today_sigs": {
    "date": "2026-08-08",
    "sigs": [
+    "3354064e38127cfc",
     "ce7a1f47cb195af1"
    ]
   },
@@ -53515,41 +54570,6 @@
      "130000",
      "2"
     ]
-   }
-  ]
- },
- {
-  "key": "e:cluster1c09f16142|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 焦點時報",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 焦點時報",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "cb37e0ed34e523be"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "cb37e0ed34e523be"
-   ]
-  },
-  "last_published": "2026-08-07T22:28:31+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "台中捷運南屯站土地開發共構大樓開工動土 公私協力打造宜居新地標實現軌道經濟願景 - 焦點時報",
-    "l": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE1RT204N0dNcVRMSzRrWkFIXzFYWUI1dG5uMXhRaGxwRk84ZjZmRjdia3RnX2NRUlRacTdzaWV2S0hmVXlSQV9yaWx2VFcxX3FnS2tTMjZWZw?oc=5",
-    "s": "焦點時報",
-    "f": []
    }
   ]
  },
@@ -53987,43 +55007,6 @@
   ]
  },
  {
-  "key": "e:美國|l:general|ab99ce4644",
-  "entity": "美國",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "金融時報：主張「對抗中國」的美國人在減少| 焦點即時| 川普2.0 | 世界新聞網 - 世界新聞網",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "金融時報：主張「對抗中國」的美國人在減少| 焦點即時| 川普2.0 | 世界新聞網 - 世界新聞網",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "fb3f346df21eacba"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "fb3f346df21eacba"
-   ]
-  },
-  "last_published": "2026-08-07T22:20:50+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "金融時報：主張「對抗中國」的美國人在減少| 焦點即時| 川普2.0 | 世界新聞網 - 世界新聞網",
-    "l": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE5qRjh2UDFONGV3WDlUcGhmNGprZTIzOXFyeTBQZTBhT2NJVmNmN1g1dnYtTjdsdmZHcVBwYWVORWc1TjlLOE1fcXVYOWlPaGM0d1g4RjhKNS0zc0V5ZU9LWjhn?oc=5",
-    "s": "世界新聞網",
-    "f": [
-     "2"
-    ]
-   }
-  ]
- },
- {
   "key": "e:美國|l:general|64af243599",
   "entity": "美國",
   "entity_name": "",
@@ -54164,41 +55147,6 @@
     "f": [
      "3276"
     ]
-   }
-  ]
- },
- {
-  "key": "e:cluster15b3b96f59|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "預售屋遺產稅怎麼算？四大重點避補稅！ - 台灣好新聞",
-  "state": "brewing",
-  "first_seen": "2026-08-08",
-  "last_update": "2026-08-08",
-  "updates": 1,
-  "last_delta": "預售屋遺產稅怎麼算？四大重點避補稅！ - 台灣好新聞",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "18e8791ed564de39"
-  ],
-  "today_sigs": {
-   "date": "2026-08-08",
-   "sigs": [
-    "18e8791ed564de39"
-   ]
-  },
-  "last_published": "2026-08-07T10:31:40+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-08",
-    "t": "預售屋遺產稅怎麼算？四大重點避補稅！ - 台灣好新聞",
-    "l": "https://news.google.com/rss/articles/CBMiqAJBVV95cUxOWWJoZ29oSEZsRDNXUzdYazdrT2xRcjh3aGllSlN6c0Q2ZHZwa2JJbU9KTjBhWC1DcmdvakdLaXdhSVB5eU1KdFdhdTdsT0NaMG1fcWF2cnRPenJUeE15ZkJuS2FSWTF3eWhrM09SbFhlam50YzJ",
-    "s": "台灣好新聞",
-    "f": []
    }
   ]
  },
@@ -54635,6 +55583,2235 @@
     "l": "https://asia.nikkei.com/editor-s-picks/interview/former-top-british-spy-says-trust-between-allies-is-key-in-turbulent-world",
     "s": "Nikkei Asia 中國",
     "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clusterdb672be4a0|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "Canada’s PSP Is Said to Mull $1.5 Billion Sale of Roads in India",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Canada’s PSP Is Said to Mull $1.5 Billion Sale of Roads in India",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "f67af389f0fb1a6a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "f67af389f0fb1a6a"
+   ]
+  },
+  "last_published": "2026-08-08T01:47:15+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Canada’s PSP Is Said to Mull $1.5 Billion Sale of Roads in India",
+    "l": "https://www.bloomberg.com/news/articles/2026-08-08/canada-s-psp-is-said-to-mull-1-5-billion-sale-of-roads-in-india",
+    "s": "Bloomberg Markets",
+    "f": [
+     "1.5"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterd86eefffc3|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "泰國校園槍手由祖父母撫養　沉默少友案發前疑遭霸凌",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "泰國校園槍手由祖父母撫養　沉默少友案發前疑遭霸凌",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "a326f7ab837eb75d"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "a326f7ab837eb75d"
+   ]
+  },
+  "last_published": "2026-08-07T23:35:26+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "泰國校園槍手由祖父母撫養　沉默少友案發前疑遭霸凌",
+    "l": "https://www.cna.com.tw/news/aopl/202608080009.aspx",
+    "s": "中央社國際",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster94d562a63b|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "特休幾天？加班費怎麼算？勞部試算系統上線 歷年、週年特休「秒查」不踩雷",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "特休幾天？加班費怎麼算？勞部試算系統上線 歷年、週年特休「秒查」不踩雷",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e540f1a194ba72ca"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e540f1a194ba72ca"
+   ]
+  },
+  "last_published": "2026-08-08T01:47:39+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "特休幾天？加班費怎麼算？勞部試算系統上線 歷年、週年特休「秒查」不踩雷",
+    "l": "https://news.cnyes.com/news/id/6566242",
+    "s": "鉅亨台股",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster97d8f77325|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "韓股暴跌引爆出走潮！南韓散戶「螞蟻」7月砸46億美元搶進美股 資金外流考驗韓元",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "韓股暴跌引爆出走潮！南韓散戶「螞蟻」7月砸46億美元搶進美股 資金外流考驗韓元",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "44682ae1f3f0ac67"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "44682ae1f3f0ac67"
+   ]
+  },
+  "last_published": "2026-08-08T02:00:06+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "韓股暴跌引爆出走潮！南韓散戶「螞蟻」7月砸46億美元搶進美股 資金外流考驗韓元",
+    "l": "https://news.cnyes.com/news/id/6564168",
+    "s": "鉅亨美股",
+    "f": [
+     "4600000000",
+     "7"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster63bfa6d722|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "升息怕壓垮財政、不升又救不了匯率，解析日本「保日圓」的兩難困境",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "升息怕壓垮財政、不升又救不了匯率，解析日本「保日圓」的兩難困境",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1286d03a5c93c26f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "1286d03a5c93c26f"
+   ]
+  },
+  "last_published": "2026-08-08T02:00:19+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "升息怕壓垮財政、不升又救不了匯率，解析日本「保日圓」的兩難困境",
+    "l": "https://finance.technews.tw/2026/08/08/japan-dilemma-save-yen/",
+    "s": "科技新報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clusterb59e59706d|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "霸主地位的起點，30 年前 AT&T 如何靠「預設值」助微軟稱霸市場？",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "霸主地位的起點，30 年前 AT&T 如何靠「預設值」助微軟稱霸市場？",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "18f9e88b11b8fb49"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "18f9e88b11b8fb49"
+   ]
+  },
+  "last_published": "2026-08-08T01:30:12+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "霸主地位的起點，30 年前 AT&T 如何靠「預設值」助微軟稱霸市場？",
+    "l": "https://technews.tw/2026/08/08/att-internet-explorer-default-advantage-30-years-ago/",
+    "s": "科技新報",
+    "f": [
+     "30"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster90a4535298|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "P-1 AI 獲 5,000 萬美元融資，推出代理式 AI 工程師「Archie」化解實體工程人才荒",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "P-1 AI 獲 5,000 萬美元融資，推出代理式 AI 工程師「Archie」化解實體工程人才荒",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "6dd568b9261af8c2"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "6dd568b9261af8c2"
+   ]
+  },
+  "last_published": "2026-08-08T00:30:27+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "P-1 AI 獲 5,000 萬美元融資，推出代理式 AI 工程師「Archie」化解實體工程人才荒",
+    "l": "https://technews.tw/2026/08/08/could-agentic-ai-bring-american-manufacturing-back/",
+    "s": "科技新報",
+    "f": [
+     "1",
+     "50000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster8a08635024|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "China faces new AI bottleneck as it runs out of Chinese-language training data",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "China faces new AI bottleneck as it runs out of Chinese-language training data",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "ccc7430e61a6267a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "ccc7430e61a6267a"
+   ]
+  },
+  "last_published": "2026-08-08T02:00:23+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "China faces new AI bottleneck as it runs out of Chinese-language training data",
+    "l": "https://www.scmp.com/tech/tech-trends/article/3363318/china-faces-new-ai-bottleneck-it-runs-out-chinese-language-training-data?utm_source=rss_feed",
+    "s": "南華早報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster5dc467ebcc|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "Chip off the old bloc: Thailand looks to Siam Silica to propel it to top Asean player",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Chip off the old bloc: Thailand looks to Siam Silica to propel it to top Asean player",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "77f02a9b505d7700"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "77f02a9b505d7700"
+   ]
+  },
+  "last_published": "2026-08-08T02:00:18+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Chip off the old bloc: Thailand looks to Siam Silica to propel it to top Asean p",
+    "l": "https://www.scmp.com/week-asia/politics/article/3363312/chip-old-bloc-thailand-looks-siam-silica-propel-it-top-asean-player?utm_source=rss_feed",
+    "s": "南華早報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clusterc762daf3ca|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "111-year-old Chinese grandma reveals secret daily ‘workout’ leading to her longevity",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "111-year-old Chinese grandma reveals secret daily ‘workout’ leading to her longevity",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "061df3b0fae33a8e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "061df3b0fae33a8e"
+   ]
+  },
+  "last_published": "2026-08-08T01:00:14+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "111-year-old Chinese grandma reveals secret daily ‘workout’ leading to her longe",
+    "l": "https://www.scmp.com/news/people-culture/trending-china/article/3363358/111-year-old-chinese-grandma-reveals-secret-daily-workout-leading-her-longevity?utm_source=rss_feed",
+    "s": "南華早報",
+    "f": [
+     "111"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterd5d347776b|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "別再扯居住正義了！都更釘子戶就是「錢的問題」 同意戶泣：我們等了20年 - Yahoo",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "別再扯居住正義了！都更釘子戶就是「錢的問題」 同意戶泣：我們等了20年 - Yahoo",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "706964053b01b4f6"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "706964053b01b4f6"
+   ]
+  },
+  "last_published": "2026-08-08T01:06:08+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "別再扯居住正義了！都更釘子戶就是「錢的問題」 同意戶泣：我們等了20年 - Yahoo",
+    "l": "",
+    "s": "Yahoo",
+    "f": [
+     "20"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster419db0551a|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "颱風白海豚強度減弱晚間至9日最靠近台灣| 生活 - cna.com.tw",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "颱風白海豚強度減弱晚間至9日最靠近台灣| 生活 - cna.com.tw",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "89df7a974979776f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "89df7a974979776f"
+   ]
+  },
+  "last_published": "2026-08-08T01:14:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "颱風白海豚強度減弱晚間至9日最靠近台灣| 生活 - cna.com.tw",
+    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE5tTEtmN0dLalp3N0trVENfZTlHWkZUWXpxdVFQTHRtZ0tJZlFVSWduQ3p3Mklmd0s1cmYwT2JaNzZfUVpKUEtzRUxib2tnbmpWcUVfeG1mLUdUT3ByeHZB?oc=5",
+    "s": "cna.com.tw",
+    "f": [
+     "9"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterb51ec8bc73|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "美參院通過數十名川普人事案　填補外交體系空缺",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "美參院通過數十名川普人事案　填補外交體系空缺",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "2f6d943498a717ea"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "2f6d943498a717ea"
+   ]
+  },
+  "last_published": "2026-08-08T00:45:35+00:00",
+  "lifecycle": "confirmed",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美參院通過數十名川普人事案　填補外交體系空缺",
+    "l": "https://www.cna.com.tw/news/aopl/202608080013.aspx",
+    "s": "中央社國際",
+    "f": [
+     "10"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterd58a437222|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)目標價調降至417.5元，幅度約5.11%",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)目標價調降至417.5元，幅度約5.11%",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "53669f326e188adb"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "53669f326e188adb"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:26+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "鉅亨速報 - Factset 最新調查：穩懋(3105-TW)目標價調降至417.5元，幅度約5.11%",
+    "l": "https://news.cnyes.com/news/id/6566383",
+    "s": "鉅亨台股",
+    "f": [
+     "3105",
+     "417.5",
+     "5.11"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterdee3dc03b5|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "「儲存三巨頭」2027產能傳全數售罄 AI業者搶記憶體甚至願付溢價",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "「儲存三巨頭」2027產能傳全數售罄 AI業者搶記憶體甚至願付溢價",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "7dbf32f6380ecf4c"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "7dbf32f6380ecf4c"
+   ]
+  },
+  "last_published": "2026-08-08T01:40:02+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "「儲存三巨頭」2027產能傳全數售罄 AI業者搶記憶體甚至願付溢價",
+    "l": "https://news.cnyes.com/news/id/6566347",
+    "s": "鉅亨美股",
+    "f": [
+     "2027"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustere7b46cae09|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "陸今夏用電4度創新高！AI資料中心需求 推升廣東用電成長",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "陸今夏用電4度創新高！AI資料中心需求 推升廣東用電成長",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "d789d1439101293a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "d789d1439101293a"
+   ]
+  },
+  "last_published": "2026-08-08T01:20:07+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "陸今夏用電4度創新高！AI資料中心需求 推升廣東用電成長",
+    "l": "https://money.udn.com/money/story/5603/9678544",
+    "s": "經濟日報財經",
+    "f": [
+     "4"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustereaf49db0cb|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "CUHK chief calls for more funds for campuses in Northern Metropolis university town",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "CUHK chief calls for more funds for campuses in Northern Metropolis university town",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e4668d70ac72f950"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e4668d70ac72f950"
+   ]
+  },
+  "last_published": "2026-08-08T01:00:16+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "CUHK chief calls for more funds for campuses in Northern Metropolis university t",
+    "l": "https://www.scmp.com/news/hong-kong/education/article/3363363/cuhk-chief-calls-more-funds-campuses-northern-metropolis-university-town?utm_source=rss_feed",
+    "s": "南華早報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:3231|l:general|d0d7b17e37",
+  "entity": "3231",
+  "entity_name": "緯創",
+  "event_type": "general",
+  "headline": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1cc47cdb28e8b822"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "1cc47cdb28e8b822"
+   ]
+  },
+  "last_published": "2026-08-08T01:46:51+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+    "l": "https://news.cnyes.com/news/id/6566198",
+    "s": "鉅亨台股",
+    "f": [
+     "7"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:2308|l:general|f4e25fb1ab",
+  "entity": "2308",
+  "entity_name": "台達電",
+  "event_type": "general",
+  "headline": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1cc47cdb28e8b822"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "1cc47cdb28e8b822"
+   ]
+  },
+  "last_published": "2026-08-08T01:46:51+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "台股關禁閉規定鬆綁、緯創法說、7月CPI連三月衝破通膨警戒線 本周大事回顧",
+    "l": "https://news.cnyes.com/news/id/6566198",
+    "s": "鉅亨台股",
+    "f": [
+     "7"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:2059|l:general|977ad3bff3",
+  "entity": "2059",
+  "entity_name": "川湖",
+  "event_type": "general",
+  "headline": "外資按讚川湖 目標價15,000 - UDN",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "外資按讚川湖 目標價15,000 - UDN",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e9c165121ef2a7d4"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e9c165121ef2a7d4"
+   ]
+  },
+  "last_published": "2026-08-07T16:29:07+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "外資按讚川湖 目標價15,000 - UDN",
+    "l": "https://news.google.com/rss/articles/CBMiVkFVX3lxTFBibGpJa01FTU9LRlM1UEk1OGJBb2ZEcDJOWWpVQmlrejFUUHhoT2RYdy0wOWJuOGNuNXdjLVBkRjZ3dGZfZ2JHNTkzbFlKQjhvNlMtT3h30gFWQVVfeXFMUGJsaklrTUVNT0tGUzVQSTU4YkFvZkR",
+    "s": "UDN",
+    "f": [
+     "15000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterb3dd1719db|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "日勝生持續深耕台中市場 台中捷運南屯站土地開發共構大樓開工動土 - 經濟日報",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "日勝生持續深耕台中市場 台中捷運南屯站土地開發共構大樓開工動土 - 經濟日報",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "48ab17671cd38510"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "48ab17671cd38510"
+   ]
+  },
+  "last_published": "2026-08-07T05:26:17+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "日勝生持續深耕台中市場 台中捷運南屯站土地開發共構大樓開工動土 - 經濟日報",
+    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5zdFNqeWRVVnppS0RUVTZvSWctV0lmZktYTVl5X0xQanRGeVJUQ2VQamhaeTgzWHd6MUtHVVotNk8zS1ctb3ZkV1hzbGc4Qzd3V0YxOWx6UkxoZ9IBX0FVX3lxTE9acGNBb1dlZC05bHllb1huUHV",
+    "s": "經濟日報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:3231|l:general|a4398d282f",
+  "entity": "3231",
+  "entity_name": "緯創",
+  "event_type": "general",
+  "headline": "緯創2H26 AI伺服器逐季成長 8月動能將明顯拉升 - DIGITIMES",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "緯創2H26 AI伺服器逐季成長 8月動能將明顯拉升 - DIGITIMES",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e75bbccc99376094"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e75bbccc99376094"
+   ]
+  },
+  "last_published": "2026-08-07T08:01:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "緯創2H26 AI伺服器逐季成長 8月動能將明顯拉升 - DIGITIMES",
+    "l": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNQnlpSlV4a193NVBtRkpkaEVoZkx4cnU4aTV4aXlwMWRNZnRfaFI3elh0cmYtbGNydmYxdHp3WGtuSk1zamJma3dXTmVieGtwTnY4Yk4ySldzM2lRTThXdllUWVUwWlEteFdQcXp1UFJ2TnItT21",
+    "s": "DIGITIMES",
+    "f": [
+     "2",
+     "26",
+     "8"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:mu|l:general|00dd6ab76a",
+  "entity": "MU",
+  "entity_name": "美光 Micron 記憶體",
+  "event_type": "general",
+  "headline": "馬斯克劍指記憶體、特斯拉為Terafab徵DRAM人才 - MoneyDJ",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "馬斯克劍指記憶體、特斯拉為Terafab徵DRAM人才 - MoneyDJ",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "aff2149727e5e164"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "aff2149727e5e164"
+   ]
+  },
+  "last_published": "2026-08-07T04:31:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "馬斯克劍指記憶體、特斯拉為Terafab徵DRAM人才 - MoneyDJ",
+    "l": "https://news.google.com/rss/articles/CBMikgFBVV95cUxPdGp5SEVTak83cUJMOUxiMElLVnRiMjZGQ2FHTkZ5LUlfRGVraERLRXRqdmxOQUVTOWM1VlI5M3NZWUpQa19namRLcVhWNGREcGlTRnFaWTR6YmxXQk9WZHRXT0pFdGVQS0xCZ2haVk84aTBNWFN",
+    "s": "MoneyDJ",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2454|l:general|947932a48f",
+  "entity": "2454",
+  "entity_name": "聯發科",
+  "event_type": "general",
+  "headline": "聯發科、京元電 四檔夯 - 經濟日報",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "聯發科、京元電 四檔夯 - 經濟日報",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "3c112c9802d459c9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "3c112c9802d459c9"
+   ]
+  },
+  "last_published": "2026-08-07T09:00:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "聯發科、京元電 四檔夯 - 經濟日報",
+    "l": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE56WlpjVVU1T2NCMjl0aW16dGNfZVctOXdGejRENUJUajNOMGZ6c25ycnR3NTFGOXpnaEhGcF90VnprREhJSS1QcjV3WTFJWlNOdkNrc2JtZTFaQdIBX0FVX3lxTE1OdTZKa1h0dUdJbTVEUVA5ZHJ",
+    "s": "經濟日報",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2308|l:general|84acd14f4d",
+  "entity": "2308",
+  "entity_name": "台達電",
+  "event_type": "general",
+  "headline": "美股重大變革》23小時交易只是第一步 那斯達克下一盤更大的棋 - Yahoo股市",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "美股重大變革》23小時交易只是第一步 那斯達克下一盤更大的棋 - Yahoo股市",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "3925c4e92cff840f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "3925c4e92cff840f"
+   ]
+  },
+  "last_published": "2026-08-08T02:18:51+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美股重大變革》23小時交易只是第一步 那斯達克下一盤更大的棋 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "23"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster382959c4f6|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "綠電出走潮2》CPPA成主流仍難取代FIT 能源署：光電躉售暫不退場",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "綠電出走潮2》CPPA成主流仍難取代FIT 能源署：光電躉售暫不退場",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "07b7105f77b00e40"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "07b7105f77b00e40"
+   ]
+  },
+  "last_published": "2026-08-08T02:05:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "綠電出走潮2》CPPA成主流仍難取代FIT 能源署：光電躉售暫不退場",
+    "l": "https://ec.ltn.com.tw/article/breakingnews/5532633",
+    "s": "自由財經",
+    "f": [
+     "2"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustere2c920262d|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "出口量差4倍！宏都拉斯蝦農怨中國只會殺價：寧付20％關稅賣給台灣",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "出口量差4倍！宏都拉斯蝦農怨中國只會殺價：寧付20％關稅賣給台灣",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "3eb574d53aeb220e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "3eb574d53aeb220e"
+   ]
+  },
+  "last_published": "2026-08-08T01:57:53+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "出口量差4倍！宏都拉斯蝦農怨中國只會殺價：寧付20％關稅賣給台灣",
+    "l": "https://ec.ltn.com.tw/article/breakingnews/5532639",
+    "s": "自由財經",
+    "f": [
+     "20",
+     "4"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster0a4a6d10f2|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "OpenAI示警新模型恐具關鍵資安能力　收緊研發管控",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "OpenAI示警新模型恐具關鍵資安能力　收緊研發管控",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "9a17f0f2a2005c51"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "9a17f0f2a2005c51"
+   ]
+  },
+  "last_published": "2026-08-08T01:52:59+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "OpenAI示警新模型恐具關鍵資安能力　收緊研發管控",
+    "l": "https://tw.stock.yahoo.com/news/openai%E7%A4%BA%E8%AD%A6%E6%96%B0%E6%A8%A1%E5%9E%8B%E6%81%90%E5%85%B7%E9%97%9C%E9%8D%B5%E8%B3%87%E5%AE%89%E8%83%BD%E5%8A%9B-%E6%94%B6%E7%B7%8A%E7%A0%94%E7%99%BC%E7%AE%A",
+    "s": "Yahoo股市",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster2dd617d5e3|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "因應AI風險　美專家：關鍵在建構防禦又不拖慢創新",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "因應AI風險　美專家：關鍵在建構防禦又不拖慢創新",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "662577947c595ecb"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "662577947c595ecb"
+   ]
+  },
+  "last_published": "2026-08-08T01:52:54+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "因應AI風險　美專家：關鍵在建構防禦又不拖慢創新",
+    "l": "https://tw.stock.yahoo.com/news/%E5%9B%A0%E6%87%89ai%E9%A2%A8%E9%9A%AA-%E7%BE%8E%E5%B0%88%E5%AE%B6-%E9%97%9C%E9%8D%B5%E5%9C%A8%E5%BB%BA%E6%A7%8B%E9%98%B2%E7%A6%A6%E5%8F%88%E4%B8%8D%E6%8B%96%E6%85%A2%E",
+    "s": "Yahoo股市",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster8b021ef816|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "「滑軌界台積電」　股后川湖揭密",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "「滑軌界台積電」　股后川湖揭密",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "51f59a91aebeefc9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "51f59a91aebeefc9"
+   ]
+  },
+  "last_published": "2026-08-08T00:42:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "「滑軌界台積電」　股后川湖揭密",
+    "l": "https://finance.ettoday.net/news/3215497",
+    "s": "ETtoday財經",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster7f56f61499|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "想靠0050正二翻本　達人教戰4心法",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "想靠0050正二翻本　達人教戰4心法",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "a5963cd17c3db462"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "a5963cd17c3db462"
+   ]
+  },
+  "last_published": "2026-08-07T23:43:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "想靠0050正二翻本　達人教戰4心法",
+    "l": "https://finance.ettoday.net/news/3215487",
+    "s": "ETtoday財經",
+    "f": [
+     "4",
+     "50"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustereeb43569d1|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "父親節壽險業者教戰 爸爸保險三階段策略 - Yahoo新聞",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "父親節壽險業者教戰 爸爸保險三階段策略 - Yahoo新聞",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "0868cd351863c9bc"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "0868cd351863c9bc"
+   ]
+  },
+  "last_published": "2026-08-08T02:15:36+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "父親節壽險業者教戰 爸爸保險三階段策略 - Yahoo新聞",
+    "l": "https://news.google.com/rss/articles/CBMirAJBVV95cUxOX3FXaWZoR3lsOVNfcmVrRTNVZ1lrN29fQkJBV3BHbUQ1Tll3VzhEcmswOE5HOGFvejQ5UUpEUVNUQ1hxRkJaaTdxT09JaEYtaDRnOVRPd3NLd20zaUZqQTJvTnJXU0wxTnJzblhsSXowb1FGTWt",
+    "s": "Yahoo新聞",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clusterea6349ecf8|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "房市／信義房屋品牌影片詮釋家的價值　破百萬觀看 - NOWnews今日新聞",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "房市／信義房屋品牌影片詮釋家的價值　破百萬觀看 - NOWnews今日新聞",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "a561da179abf379e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "a561da179abf379e"
+   ]
+  },
+  "last_published": "2026-08-08T00:01:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "房市／信義房屋品牌影片詮釋家的價值　破百萬觀看 - NOWnews今日新聞",
+    "l": "https://news.google.com/rss/articles/CBMiTEFVX3lxTFAzUW02U0E2WFpFcEwta3NBa04tVDJLckdYLXp5UGtIZnB5LVljcjJaWHQ0bUFUcDR1Q2NEOXhSODUzR0FmaWVyOGZiV3nSAVJBVV95cUxQdGJFSUtnWmxyTGIyVjFqemNiemw1TlpwSi1QWklFS1N",
+    "s": "NOWnews今日新聞",
+    "f": [
+     "100"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster67b53a5aa3|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "黃金週度預測：隨著美聯儲加息押注緩和，看漲壓力加大 - FXStreet",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "黃金週度預測：隨著美聯儲加息押注緩和，看漲壓力加大 - FXStreet",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "ae639228a24adcf9"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "ae639228a24adcf9"
+   ]
+  },
+  "last_published": "2026-08-07T14:26:22+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "黃金週度預測：隨著美聯儲加息押注緩和，看漲壓力加大 - FXStreet",
+    "l": "",
+    "s": "FXStreet",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster70ff6f9cd5|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "蔡英文出手「直搗藍票倉」？他曝年底大選變化：綠營恐逆轉5縣市 - TVBS新聞網",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "蔡英文出手「直搗藍票倉」？他曝年底大選變化：綠營恐逆轉5縣市 - TVBS新聞網",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "570abdff95f17443"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "570abdff95f17443"
+   ]
+  },
+  "last_published": "2026-08-08T01:03:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "蔡英文出手「直搗藍票倉」？他曝年底大選變化：綠營恐逆轉5縣市 - TVBS新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE50Mi1PM3l3RW1EMXN6M0Zudk04aV9NMUpWd1h0OEZ2NHhSV1JoeEF0WS1uZ3plZ21pZno5OVVGUWdNRW9LSldxQ2lBVzJCQkhwZEdz?oc=5",
+    "s": "TVBS新聞網",
+    "f": [
+     "5"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustera729e823e1|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "ETtoday新聞雲. . 【LIVE】8/8 08:40 白海豚颱風動態 氣象署最新說明 - facebook.com",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "ETtoday新聞雲. . 【LIVE】8/8 08:40 白海豚颱風動態 氣象署最新說明 - facebook.com",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "632093427e1b8982"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "632093427e1b8982"
+   ]
+  },
+  "last_published": "2026-08-08T00:37:44+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "ETtoday新聞雲. . 【LIVE】8/8 08:40 白海豚颱風動態 氣象署最新說明 - facebook.com",
+    "l": "https://news.google.com/rss/articles/CBMiogJBVV95cUxPNm1lLXBsYWJBWHVqTHJuQjliMUlJSXNqYWZuakNGdWtwdUw5WDVMQzhPU2tpNzZreFNnYnUzT3pSVnVCelA5d0Qyd1NmMS1BVWFqMlNvbW1HMkcwa0VzQllQemlTVVFQR0FpcDZpanZBbVVTS3E",
+    "s": "facebook.com",
+    "f": [
+     "40",
+     "8"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clusterd3b6e07505|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "白海豚外圍環流已勾到台灣陸地！路徑南北擺盪 中部以北豪大雨 - 台視新聞網",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "白海豚外圍環流已勾到台灣陸地！路徑南北擺盪 中部以北豪大雨 - 台視新聞網",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "f6cde2501dc48432"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "f6cde2501dc48432"
+   ]
+  },
+  "last_published": "2026-08-07T23:36:25+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "白海豚外圍環流已勾到台灣陸地！路徑南北擺盪 中部以北豪大雨 - 台視新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE5ZbFY5dGFGbGdlSlU3OUEyWGVKRU4tbFpPVUNDTTFhN3k0emwtUjZPWDlRMHhYeWFnWktrWHlDdEg5WG1BZlJnUTZkQXhWcC15anNSY01Qaw?oc=5",
+    "s": "台視新聞網",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster551fc47aee|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "已勾到台灣陸地！白海豚颱風出現「雙眼牆」蛇行擺盪 - 東森新聞",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "已勾到台灣陸地！白海豚颱風出現「雙眼牆」蛇行擺盪 - 東森新聞",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "7dc90cb8888014b6"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "7dc90cb8888014b6"
+   ]
+  },
+  "last_published": "2026-08-08T00:13:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "已勾到台灣陸地！白海豚颱風出現「雙眼牆」蛇行擺盪 - 東森新聞",
+    "l": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE9VN0pkM01SMUVzM2o2cVhIWVFFZjNsYTJyTTNUZTRhYkd5NENkdDFPRFpkV2pMWllVOEVDRlZFYS1Uel9HNkFBbEEzVXFNc0NaNXBSNA?oc=5",
+    "s": "東森新聞",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:cluster3c78d8c808|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "颱風外圍環流影響8縣市大雨特報- 生活 - 自由時報",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "颱風外圍環流影響8縣市大雨特報- 生活 - 自由時報",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "b4149d168bdffed0"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "b4149d168bdffed0"
+   ]
+  },
+  "last_published": "2026-08-07T22:06:07+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "颱風外圍環流影響8縣市大雨特報- 生活 - 自由時報",
+    "l": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE9Gem5sbVd2VFNGWGhYX2FaNnFSXzYtWnJpOThXZW1jU09DN1YyV2N2RnRBNERiNklnQmtQMWVYYmNmZFpYV0tmUEdTVHg1ZThfZG9GYTJzNW9ySy1YMFBERHV2R3Y?oc=5",
+    "s": "自由時報",
+    "f": [
+     "8"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster614b3cf611|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "SpaceX首個禁售期屆滿，股價再漲15.8% - 华尔街日报中文网",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "SpaceX首個禁售期屆滿，股價再漲15.8% - 华尔街日报中文网",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "4586e3ff67494fa3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "4586e3ff67494fa3"
+   ]
+  },
+  "last_published": "2026-08-08T01:23:39+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "SpaceX首個禁售期屆滿，股價再漲15.8% - 华尔街日报中文网",
+    "l": "https://news.google.com/rss/articles/CBMi4AFBVV95cUxQTHlYTnE3U05VelI2U2xLOEZjYlQxOVhNUy1zWFBLbVFEdkRmajNZZ1Y4d2pHd0hGUmN4NERiWTk2VTVKdXBWN1l6SHhTQUtSVUdweEFiZ2oycDRaQWtIeGJLeWp1RXhZWWd0SGxMb0s0SFM4VmJ",
+    "s": "华尔街日报中文网",
+    "f": [
+     "15.8"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster900467b4b9|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "OpenAI：最新模型Astra延後發布 恐具備「重大」網安能力| 國際焦點 - 太報 TaiSounds",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "OpenAI：最新模型Astra延後發布 恐具備「重大」網安能力| 國際焦點 - 太報 TaiSounds",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "657aa2140184b2df"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "657aa2140184b2df"
+   ]
+  },
+  "last_published": "2026-08-07T23:57:21+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "OpenAI：最新模型Astra延後發布 恐具備「重大」網安能力| 國際焦點 - 太報 TaiSounds",
+    "l": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE0xS0wxOFNrRVZIclJSSEZmdGM2WXdYYWFFNW5IQVNGdnlhOHhQYVZ2TmZpdVhHOG9SZS1xUGZ3Qmt5OUJaRUlJN2FhcUJOeUt3QWNCeTI0emJWX25s?oc=5",
+    "s": "太報 TaiSounds",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:clustere528a76fa0|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "字節跳動訓練10兆參數AI模型 規模直逼Anthropic Mythos - TVBS新聞網",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "字節跳動訓練10兆參數AI模型 規模直逼Anthropic Mythos - TVBS新聞網",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e35017083e549476"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e35017083e549476"
+   ]
+  },
+  "last_published": "2026-08-08T01:00:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "字節跳動訓練10兆參數AI模型 規模直逼Anthropic Mythos - TVBS新聞網",
+    "l": "https://news.google.com/rss/articles/CBMiTEFVX3lxTE1zQjRqYVdnSGZrQzA1T19ZX1pnTE40TjZDZWRIWUZGT3VGcG9obXVDaUNwYWtDQUdaYk1WTWZ4bG54QTkzNkFWT3Nmb0Y?oc=5",
+    "s": "TVBS新聞網",
+    "f": [
+     "10000000000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:clustere159038037|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "綠電出走潮3》加速投奔企業  3原因讓台電「分手費」逐年縮水",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "綠電出走潮3》加速投奔企業  3原因讓台電「分手費」逐年縮水",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "2a0d17371f2805cf"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "2a0d17371f2805cf"
+   ]
+  },
+  "last_published": "2026-08-08T02:10:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "綠電出走潮3》加速投奔企業  3原因讓台電「分手費」逐年縮水",
+    "l": "https://ec.ltn.com.tw/article/breakingnews/5532634",
+    "s": "自由財經",
+    "f": [
+     "3"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster4d88ef41ea|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "綠電出走潮1》分手台電轉奔企業 今年轉供估128億度創新高",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "綠電出走潮1》分手台電轉奔企業 今年轉供估128億度創新高",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "1a327d0c8ce6d6db"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "1a327d0c8ce6d6db"
+   ]
+  },
+  "last_published": "2026-08-08T02:00:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "綠電出走潮1》分手台電轉奔企業 今年轉供估128億度創新高",
+    "l": "https://ec.ltn.com.tw/article/breakingnews/5532632",
+    "s": "自由財經",
+    "f": [
+     "1",
+     "12800000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:美國|l:general|ca1eeef8ac",
+  "entity": "美國",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "川普：美國會試圖透過監管「扼殺」AI產業 - 自由財經",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "川普：美國會試圖透過監管「扼殺」AI產業 - 自由財經",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "fe9e784f143cf0dd"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "fe9e784f143cf0dd"
+   ]
+  },
+  "last_published": "2026-08-08T01:22:19+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "川普：美國會試圖透過監管「扼殺」AI產業 - 自由財經",
+    "l": "https://news.google.com/rss/articles/CBMiX0FVX3lxTE9UaEtrUk5kRy1HTEt3TThzMy1UdHN3cmlxRkRwVVVDSlNJQ2UyVXJkNlJLUXRrd05SbVdLMlM4N3ZmNDFYVExwY01reG1BeFU4SnE5TmI5QVh0anFmSTJZ?oc=5",
+    "s": "自由財經",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2330|l:general|2e9cb0ae3e",
+  "entity": "2330",
+  "entity_name": "台積電",
+  "event_type": "general",
+  "headline": "2330 台積電 - 【美股巨頭】記憶體缺貨全面引爆，Cramer點名設備股才是這波主角- 股市爆料同學會 - CMoney",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "2330 台積電 - 【美股巨頭】記憶體缺貨全面引爆，Cramer點名設備股才是這波主角- 股市爆料同學會 - CMoney",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "991a3100367cc45d"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "991a3100367cc45d"
+   ]
+  },
+  "last_published": "2026-08-07T22:02:28+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "2330 台積電 - 【美股巨頭】記憶體缺貨全面引爆，Cramer點名設備股才是這波主角- 股市爆料同學會 - CMoney",
+    "l": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5BVUJTWHhxenBFaW0zMkY5QXVWWG9DdFl2LWNJOW85cXFkNWREdW9hQ1BZZ0dPSjlMM3NXd04zZDM2NTZIMHBESWhHNzdmMGZIOW5nYkFUbDc?oc=5",
+    "s": "CMoney",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2330|l:general|88a757eb34",
+  "entity": "2330",
+  "entity_name": "台積電",
+  "event_type": "general",
+  "headline": "【幕後／還原台灣成功採購BNT疫苗歷程 台積電是最寧靜的承擔者】 其實最安靜、最不邀功，但承擔最多國際談判、法務行政事務的關鍵功臣，正是護國神山——台積電。 - facebook.com",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "【幕後／還原台灣成功採購BNT疫苗歷程 台積電是最寧靜的承擔者】 其實最安靜、最不邀功，但承擔最多國際談判、法務行政事務的關鍵功臣，正是護國神山——台積電。 - facebook.com",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "aa70bbf3c5fa88ff"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "aa70bbf3c5fa88ff"
+   ]
+  },
+  "last_published": "2026-08-07T19:50:20+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "【幕後／還原台灣成功採購BNT疫苗歷程 台積電是最寧靜的承擔者】 其實最安靜、最不邀功，但承擔最多國際談判、法務行政事務的關鍵功臣，正是護國神山——台積電。 -",
+    "l": "",
+    "s": "facebook.com",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:amd|l:general|e3e0306712",
+  "entity": "AMD",
+  "entity_name": "超微 AMD",
+  "event_type": "general",
+  "headline": "美国超微公司(AMD) 商业数据与统计数据 - Moomoo",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "美国超微公司(AMD) 商业数据与统计数据 - Moomoo",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "ce6ff3965b76090f"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "ce6ff3965b76090f"
+   ]
+  },
+  "last_published": "2026-08-07T17:54:49+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "美国超微公司(AMD) 商业数据与统计数据 - Moomoo",
+    "l": "",
+    "s": "Moomoo",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:meta|l:general|b686b14b5f",
+  "entity": "META",
+  "entity_name": "Meta",
+  "event_type": "general",
+  "headline": "Meta判賠304億元！遭控危害兒少心理健康　法院出手限制青少年使用 - mnews.tw",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Meta判賠304億元！遭控危害兒少心理健康　法院出手限制青少年使用 - mnews.tw",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "bd3c06ca625fe0b0"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "bd3c06ca625fe0b0"
+   ]
+  },
+  "last_published": "2026-08-08T00:20:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Meta判賠304億元！遭控危害兒少心理健康　法院出手限制青少年使用 - mnews.tw",
+    "l": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE1nbllyRkMzWGhRMERnLWN4MWstYURYU1RFUXpGQk91UmJFeTNVYUwtVWZORy1VYVV3NjBiaHFPcmZteU5sYUduTkQwenM5LU0wMC1rNlpZa1h4bkln0gFcQVVfeXFMTWduWXJGQzNYaFEwRGctY3g",
+    "s": "mnews.tw",
+    "f": [
+     "30400000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:meta|l:general|7f1de857e6",
+  "entity": "META",
+  "entity_name": "Meta",
+  "event_type": "general",
+  "headline": "新墨西哥州裁定Meta支付5.67億美元，社交媒體或面臨重大變革！ - CMoney",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "新墨西哥州裁定Meta支付5.67億美元，社交媒體或面臨重大變革！ - CMoney",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "ca9c135a3bac0b17"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "ca9c135a3bac0b17"
+   ]
+  },
+  "last_published": "2026-08-07T20:07:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "新墨西哥州裁定Meta支付5.67億美元，社交媒體或面臨重大變革！ - CMoney",
+    "l": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE9zVWZSR29IUEp2Z1J0Uy15NGxVekM3azM2Z1BoZmxraks3bWlUUDhyLXJoc0tlbHEzNURUaWY4MGlFT1ZmbEEyLU9VMXJ5WGx5dm1DUElZc1U1c0gxY1VvQnY4VVpnRE0?oc=5",
+    "s": "CMoney",
+    "f": [
+     "567000000"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:土耳其|l:general|f876eb784f",
+  "entity": "土耳其",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "沙特、土耳其、巴基斯坦 簽麥加共同防務協議 - 20260808 - 國際 - news.mingpao.com",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "沙特、土耳其、巴基斯坦 簽麥加共同防務協議 - 20260808 - 國際 - news.mingpao.com",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "be607e3bc8b3d55a"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "be607e3bc8b3d55a"
+   ]
+  },
+  "last_published": "2026-08-07T20:30:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "沙特、土耳其、巴基斯坦 簽麥加共同防務協議 - 20260808 - 國際 - news.mingpao.com",
+    "l": "",
+    "s": "news.mingpao.com",
+    "f": [
+     "20260808"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:2618|l:general|dba171f756",
+  "entity": "2618",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "《台北股市》三大法人07日買超股：長榮航、統一、友達 - 富聯網",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "《台北股市》三大法人07日買超股：長榮航、統一、友達 - 富聯網",
+  "prev_delta": "《台北股市》外資07日買超股：長榮航、統一、緯創 - 富聯網",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "9b97f3a055d87d8a",
+   "525a0e75f87320d6"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "525a0e75f87320d6",
+    "9b97f3a055d87d8a"
+   ]
+  },
+  "last_published": "2026-08-08T01:20:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "《台北股市》三大法人07日買超股：長榮航、統一、友達 - 富聯網",
+    "l": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQQ3BpMUNGamh6bGJBRjJaTkRXdEE3NmRoN2NLUFliNEduRjl4Q0htVzZEbUJNdGxoekFwRW5IdFY1bmxHQzNFNk01Rmstam9fbmZKUkVvWFh0VHB2WGdEamw5eDJoenZCRE9XMk84YkJvakdJV0N",
+    "s": "富聯網",
+    "f": [
+     "7"
+    ]
+   }
+  ],
+  "delta_unconfirmed": false
+ },
+ {
+  "key": "e:cluster8570b1695a|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "從估值擴張到基本面驗證：第三季美股進入新的考驗 - CME Group",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "從估值擴張到基本面驗證：第三季美股進入新的考驗 - CME Group",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "07212e2bfffaf00e"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "07212e2bfffaf00e"
+   ]
+  },
+  "last_published": "2026-08-07T13:19:03+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "從估值擴張到基本面驗證：第三季美股進入新的考驗 - CME Group",
+    "l": "https://news.google.com/rss/articles/CBMif0FVX3lxTE4zU0NhR2pOWlpCMTJtNF9mRkpkTE5kYWw0M281amstVkpSTkFhQ19wQ1VhLW1uRGVnWURUeFowbmFpTURaQlN6NDhmWkdkcGxUNmhGVUJzb3V3b0ZzZmZWTVk0WVRDMVhlMDU4WkFiR2dON2h3bmx",
+    "s": "CME Group",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:msft|l:general|e186013579",
+  "entity": "MSFT",
+  "entity_name": "微軟 Microsoft AI",
+  "event_type": "general",
+  "headline": "OpenAI 攜微軟、亞馬遜推 Agent Plugins 開放標準 - 鏈新聞 ABMedia",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "OpenAI 攜微軟、亞馬遜推 Agent Plugins 開放標準 - 鏈新聞 ABMedia",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "e88461adb825cad0"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "e88461adb825cad0"
+   ]
+  },
+  "last_published": "2026-08-07T08:48:05+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "OpenAI 攜微軟、亞馬遜推 Agent Plugins 開放標準 - 鏈新聞 ABMedia",
+    "l": "https://news.google.com/rss/articles/CBMiY0FVX3lxTFBLejBhRUhLM1JkbHBBd3d5emZBaXlTZGMtMTVLWnBObVJVTmpvRVpVeVBFS2J5S0lhSWxSWDJPZ1VNdTh3c3V1MWpmRUFNLTgwWHcwWkNZMm03Z3FrWS1RNExCUQ?oc=5",
+    "s": "鏈新聞 ABMedia",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:googl|l:general|9ebdb33127",
+  "entity": "GOOGL",
+  "entity_name": "Alphabet Google AI",
+  "event_type": "general",
+  "headline": "谷歌AI大重組 內部人士：哈薩比斯被放到最關鍵位置 - Business Insider Taiwan",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "谷歌AI大重組 內部人士：哈薩比斯被放到最關鍵位置 - Business Insider Taiwan",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "6d67a45887b32577"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "6d67a45887b32577"
+   ]
+  },
+  "last_published": "2026-08-07T09:33:51+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "谷歌AI大重組 內部人士：哈薩比斯被放到最關鍵位置 - Business Insider Taiwan",
+    "l": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE5jTG52cUY1UmZUZ251ZkMyTXhQNllITFlXdl9ZTEowVlRVNEFyTmhFYzRmX3dYaEE1dTNWOTBUSXYtYjR2UXJjdk9lMEE0cF95MjV2d1Rn?oc=5",
+    "s": "Business Insider Taiwan",
+    "f": []
+   }
+  ]
+ },
+ {
+  "key": "e:2454|l:general|2a9fcd11b0",
+  "entity": "2454",
+  "entity_name": "聯發科",
+  "event_type": "general",
+  "headline": "川湖噴漲停、機器人齊飛！台積電逆勢漲5元撐盤 台股高開低走跌170點失守季線 - Yahoo股市",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "川湖噴漲停、機器人齊飛！台積電逆勢漲5元撐盤 台股高開低走跌170點失守季線 - Yahoo股市",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "b9a0e6c53e583e83"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "b9a0e6c53e583e83"
+   ]
+  },
+  "last_published": "2026-08-07T07:40:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "川湖噴漲停、機器人齊飛！台積電逆勢漲5元撐盤 台股高開低走跌170點失守季線 - Yahoo股市",
+    "l": "",
+    "s": "Yahoo股市",
+    "f": [
+     "170",
+     "5"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:6213|l:general|a5cb068b0f",
+  "entity": "6213",
+  "entity_name": "聯茂",
+  "event_type": "general",
+  "headline": "Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%｜新聞快訊｜豐雲學堂 - sinotrade.com.tw",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%｜新聞快訊｜豐雲學堂 - sinotrade.com.tw",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "344957ea9f902af3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "344957ea9f902af3"
+   ]
+  },
+  "last_published": "2026-08-07T09:10:00+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Factset 最新調查：聯茂(6213-TW)目標價調升至421元，幅度約26.43%｜新聞快訊｜豐雲學堂 - sinotrade.com.tw",
+    "l": "https://news.google.com/rss/articles/CBMidkFVX3lxTFB6ZFFBU1dhOFMxWGR5RGRTa1FjS0lqd2oyUVFDYW5OTm9QeVo0NGV5cDM2MVpjT1UtMnpDRmMxN1E1UXk3ZFVUUnpNaWJrS2RaVk81cWtSR2ctVUtSb0U3S0k5cHBMYkZ6ZGRvV0k4TVAxb3oyZ1E",
+    "s": "sinotrade.com.tw",
+    "f": [
+     "26.43",
+     "421"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:3017|l:general|5669e0b22a",
+  "entity": "3017",
+  "entity_name": "奇鋐",
+  "event_type": "general",
+  "headline": "三大法人買賣超 – 外資買超(3231)緯創、(6213)聯茂，投信買超(3017)奇鋐、(3211)順達，法人合計賣超442.44億元 - sinotrade.com.tw",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "三大法人買賣超 – 外資買超(3231)緯創、(6213)聯茂，投信買超(3017)奇鋐、(3211)順達，法人合計賣超442.44億元 - sinotrade.com.tw",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "079b6ddf0eb1d5ed"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "079b6ddf0eb1d5ed"
+   ]
+  },
+  "last_published": "2026-08-07T08:47:01+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "三大法人買賣超 – 外資買超(3231)緯創、(6213)聯茂，投信買超(3017)奇鋐、(3211)順達，法人合計賣超442.44億元 - sinotrade",
+    "l": "",
+    "s": "sinotrade.com.tw",
+    "f": [
+     "3211",
+     "3231",
+     "44244000000",
+     "6213"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster1b6c840f04|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "Iovance Biotherapeutics (IOVA) Pops 43% on Stellar Q2. Here’s What Comes Next",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "Iovance Biotherapeutics (IOVA) Pops 43% on Stellar Q2. Here’s What Comes Next",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "bea9a353b49917b3"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "bea9a353b49917b3"
+   ]
+  },
+  "last_published": "2026-08-06T20:20:47+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "Iovance Biotherapeutics (IOVA) Pops 43% on Stellar Q2. Here’s What Comes Next",
+    "l": "https://finance.yahoo.com/healthcare/articles/iovance-biotherapeutics-iova-pops-43-202047364.html",
+    "s": "Insider Monkey",
+    "f": [
+     "2",
+     "43"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:cluster030eb96d57|l:general",
+  "entity": "",
+  "entity_name": "",
+  "event_type": "general",
+  "headline": "2 Analysts Just Upped Their Price Targets on Fastly Stock. Here's Why.",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "2 Analysts Just Upped Their Price Targets on Fastly Stock. Here's Why.",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "014296ed9808fab7"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "014296ed9808fab7"
+   ]
+  },
+  "last_published": "2026-08-06T20:27:36+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "B",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "2 Analysts Just Upped Their Price Targets on Fastly Stock. Here's Why.",
+    "l": "https://finance.yahoo.com/markets/stocks/articles/2-analysts-just-upped-price-202736147.html",
+    "s": "Barchart",
+    "f": [
+     "2"
+    ]
+   }
+  ]
+ },
+ {
+  "key": "e:6446|l:general|0513a07b77",
+  "entity": "6446",
+  "entity_name": "藥華藥",
+  "event_type": "general",
+  "headline": "009816、0050換股倒數！法人提前揭名單 誰入列、誰出局？ | Newtalk - LINE TODAY",
+  "state": "brewing",
+  "first_seen": "2026-08-08",
+  "last_update": "2026-08-08",
+  "updates": 1,
+  "last_delta": "009816、0050換股倒數！法人提前揭名單 誰入列、誰出局？ | Newtalk - LINE TODAY",
+  "prev_delta": "",
+  "max_surprise": 0.35,
+  "seen_sigs": [
+   "31f9125ed00bd8f6"
+  ],
+  "today_sigs": {
+   "date": "2026-08-08",
+   "sigs": [
+    "31f9125ed00bd8f6"
+   ]
+  },
+  "last_published": "2026-08-07T02:20:23+00:00",
+  "lifecycle": "rumor",
+  "source_grade": "C",
+  "timeline": [
+   {
+    "d": "2026-08-08",
+    "t": "009816、0050換股倒數！法人提前揭名單 誰入列、誰出局？ | Newtalk - LINE TODAY",
+    "l": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE5Sd2NWUERYZ1FkVW1Sekg5S0c0QlkxWUVFOWllT0NaM2RRV2JJOGRUVDdzTmhtekI1M0w1eFdNak5yczdqLTl1aHkyVm1MLVVmeGlhUnRn?oc=5",
+    "s": "LINE TODAY",
+    "f": [
+     "50",
+     "9816"
+    ]
    }
   ]
  },
@@ -92559,45 +95736,6 @@
   ]
  },
  {
-  "key": "e:2330|l:general|22928c41ef",
-  "entity": "2330",
-  "entity_name": "台積電",
-  "event_type": "general",
-  "headline": "台積電擴產、CSP大開資本支出 都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - 財訊",
-  "state": "dormant",
-  "first_seen": "2026-08-06",
-  "last_update": "2026-08-06",
-  "updates": 1,
-  "last_delta": "台積電擴產、CSP大開資本支出 都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - 財訊",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "bcdc8ccb633ecf04"
-  ],
-  "today_sigs": {
-   "date": "2026-08-06",
-   "sigs": [
-    "bcdc8ccb633ecf04"
-   ]
-  },
-  "last_published": "2026-08-05T08:26:55+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "C",
-  "timeline": [
-   {
-    "d": "2026-08-06",
-    "t": "台積電擴產、CSP大開資本支出 都少不了研華！全球前10大半導體設備商有7、8家都是研華客戶 - 財訊",
-    "l": "https://news.google.com/rss/articles/CBMie0FVX3lxTFA5ekxwVDRBekRRUEJGT2lJYnJyVDZQNkU5ZlhmbXlQRHNfNVRBZllLWWM4dDIwaDZodUM4bkdVZ0JqQVp3YUJOdFNHUmNpN3ROV1dkU25UOEJxZzlXem8yNHdabFB0V0hjVDFSbTQtWW14Vmx3X1h",
-    "s": "財訊",
-    "f": [
-     "10",
-     "7",
-     "8"
-    ]
-   }
-  ]
- },
- {
   "key": "e:2382|l:general|57e6deeb78",
   "entity": "2382",
   "entity_name": "廣達",
@@ -101220,7 +104358,7 @@
    "06e4a6e8bdb8dc55"
   ],
   "today_sigs": {
-   "date": "2026-08-05",
+   "date": "2026-08-08",
    "sigs": [
     "06e4a6e8bdb8dc55"
    ]
@@ -154955,7 +158093,7 @@
    "6bd1e0f8c24bb79a"
   ],
   "today_sigs": {
-   "date": "2026-08-01",
+   "date": "2026-08-08",
    "sigs": [
     "6bd1e0f8c24bb79a"
    ]
@@ -154995,7 +158133,7 @@
    "8c652fe74ce752e6"
   ],
   "today_sigs": {
-   "date": "2026-08-01",
+   "date": "2026-08-08",
    "sigs": [
     "8c652fe74ce752e6"
    ]
@@ -155035,7 +158173,7 @@
    "a4386b3d0c7470e7"
   ],
   "today_sigs": {
-   "date": "2026-08-01",
+   "date": "2026-08-08",
    "sigs": [
     "a4386b3d0c7470e7"
    ]
@@ -186174,41 +189312,6 @@
    {
     "d": "2026-07-28",
     "t": "Oil prices cool, AI's 'distillation' debate, Ford's 'Nike shoe drop' and more in",
-    "l": "",
-    "s": "CNBC Tech",
-    "f": []
-   }
-  ]
- },
- {
-  "key": "e:clusterdbe2a0c592|l:general",
-  "entity": "",
-  "entity_name": "",
-  "event_type": "general",
-  "headline": "Nvidia, SpaceX, Microsoft launch AI safety initiative as OpenAI cyberattack fallout continues",
-  "state": "dormant",
-  "first_seen": "2026-07-28",
-  "last_update": "2026-07-28",
-  "updates": 1,
-  "last_delta": "Nvidia, SpaceX, Microsoft launch AI safety initiative as OpenAI cyberattack fallout continues",
-  "prev_delta": "",
-  "max_surprise": 0.35,
-  "seen_sigs": [
-   "d77859a6083b8548"
-  ],
-  "today_sigs": {
-   "date": "2026-07-28",
-   "sigs": [
-    "d77859a6083b8548"
-   ]
-  },
-  "last_published": "2026-07-27T11:32:45+00:00",
-  "lifecycle": "rumor",
-  "source_grade": "B",
-  "timeline": [
-   {
-    "d": "2026-07-28",
-    "t": "Nvidia, SpaceX, Microsoft launch AI safety initiative as OpenAI cyberattack fall",
     "l": "",
     "s": "CNBC Tech",
     "f": []

@@ -3,7 +3,7 @@
   "first_seen": "2026-08-01",
   "days": 7,
   "last_seen": "2026-08-08",
-  "latest_title": "川普預告戰爭快結束：我參與談判 伊朗撐不久 - 新唐人電視台",
+  "latest_title": "美伊談判中！ 川普稱與伊朗戰爭很快將結束| 國際 - news.ustv.com.tw",
   "entity": "伊朗",
   "subjects": [
    "伊朗"
@@ -207,18 +207,11 @@
   "latest_title": "土耳其、沙國與巴基斯坦傳將簽聯合防務協議",
   "entity": "土耳其"
  },
- "export_controls:SMCI": {
-  "first_seen": "2026-08-07",
-  "days": 1,
-  "last_seen": "2026-08-07",
-  "latest_title": "台商危險了！謝金河解析「美制裁加碼、中國頒鎖國法」示警：美中角力進入深水區 - 民視財經網",
-  "entity": "SMCI"
- },
  "export_controls:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-08",
   "days": 1,
   "last_seen": "2026-08-08",
-  "latest_title": "美參議院通過制裁俄羅斯和伊朗法案 - 大纪元",
+  "latest_title": "美財政部最新制裁 打擊伊朗祕密貨幣交易 - 大纪元",
   "entity": "伊朗",
   "subjects": [
    "伊朗"
@@ -238,6 +231,32 @@
   ],
   "event_type": "geopolitical",
   "action": "hormuz_passage",
+  "identity_schema": 6
+ },
+ "export_controls:export_control:美國:2026-08": {
+  "first_seen": "2026-08-08",
+  "days": 1,
+  "last_seen": "2026-08-08",
+  "latest_title": "美國祭出機器人禁令與AI制裁威脅！中國大動作無人機出口管制強硬反擊 | Newtalk - LINE TODAY",
+  "entity": "美國",
+  "subjects": [
+   "美國"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
+  "identity_schema": 6
+ },
+ "export_controls:sanction:SMCI:2026-08": {
+  "first_seen": "2026-08-07",
+  "days": 2,
+  "last_seen": "2026-08-08",
+  "latest_title": "台商危險了！謝金河解析「美制裁加碼、中國頒鎖國法」示警：美中角力進入深水區 - 民視財經網",
+  "entity": "SMCI",
+  "subjects": [
+   "SMCI"
+  ],
+  "event_type": "export_controls",
+  "action": "sanction",
   "identity_schema": 6
  }
 }

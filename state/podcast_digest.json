@@ -6473,6 +6473,71 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "bf461c11-8e10-4124-8c40-f24dab393cf9",
+        "title": "Google's AI Brain Drain, SpaceX's Huge Quarter, Airtable's 90% Collapse, US Data Fuels China AI",
+        "published": "Sat, 08 Aug 2026 00:32:00 +0000",
+        "processed_at": "2026-08-08T03:24:19Z",
+        "digest": {
+          "summary_points": [
+            "大衛·弗里德伯格認為Google人事變動反映其資本配置從模型開發轉向AI基礎設施：模型開發是高beta高風險，基礎設施是高alpha低風險，因此頂尖科學家出走，Google將走向模型無關的基礎設施公司。",
+            "薩克斯認為前沿模型市場已成Anthropic與OpenAI雙寡頭，可對最先進智能收取溢價；非前沿模型商品化，只能按算力收費。Anthropic年化營收已超80億美元且加速，證明雙寡頭的獲利能力。",
+            "傑森認為開源模型與前沿模型的差距已可忽略，對多數工作開源已足夠，因此看好Google憑藉Android、Search等30億用戶產品及Gemini成為AI第一公司；但馬斯克與黃仁勳反駁稱前沿模型仍大幅領先，且成本優勢被高估。",
+            "布萊德與薩克斯分析SpaceX財報後認為，Starlink業務本身價值巨大，按目前增速18個月內可達1兆美元市值，支撐整體估值；但提醒IPO時2兆美元買點過高，當前1.4兆美元較合理，進場價格是關鍵。",
+            "薩克斯計算SpaceX的AI算力租賃每吉瓦可產生300至500億美元年收入，支持年底100億美元ARR目標；但擔憂算力租賃價格（每瓦30至50美元）的持續性，以及擴增至6吉瓦需3,000億美元資本的融資問題。",
+            "布萊德分析Airtable被Bending Spoons收購：因銷售團隊僅30%達標，創投與私募股權模式衝突；Bending Spoons可削減80至90%成本，AI加速程式碼維護，預期產生高EBITDA，是有效率的收購。",
+            "薩克斯認為Airtable案例不能代表整體SaaS，合規性強的軟體（如微軟、Salesforce）不會被AI替換，但no-code工具受AI衝擊最大；布萊德指出IGV ETF近六個月上漲20%，Snowflake等表現強勁，軟體股並非整體崩盤。",
+            "薩克斯對限制美國數據標註公司向中國銷售數據持保留態度，認為數據是商品，中國可自行生產，限制可能引發貿易戰；傑森則擔心這幫助中國追趕，侵蝕美國AI戰略優勢。"
+          ],
+          "tickers": [
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "傑森認為Google憑藉30億用戶產品矩陣與Gemini普及將成AI第一公司；大衛認為其轉向基礎設施模式也是好生意。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "布萊德與薩克斯認為Starlink業務價值巨大，AI算力需求強勁，當前1.4兆美元估值合理，長期可翻倍。"
+            },
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "薩克斯認為Anthropic是前沿智能雙寡頭之一，年營收超80億美元且加速，可對前沿模型收取溢價。"
+            },
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "薩克斯認為OpenAI同為前沿雙寡頭，營收加速成長，市場願意為最先進智能支付溢價。"
+            },
+            {
+              "name": "Salesforce",
+              "code": "CRM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "薩克斯指出Salesforce等合規性強的軟體被政府機構採用，不會被AI取代。"
+            },
+            {
+              "name": "Snowflake",
+              "code": "SNOW",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "布萊德提到Snowflake近六個月漲90%，業績強勁，屬於高成長軟體股而非受AI衝擊的no-code。"
+            }
+          ],
+          "market_view": "主持人認為市場已從7月回調中恢復，AI基礎設施投資與SpaceX等IPO帶來活力，整體偏多，但需警惕算力需求波動；強調選擇進場價格。",
+          "action_view": "布萊德提醒避免在IPO首日追高，應等待估值消化；薩克斯建議長期持有SpaceX等核心資產；對SaaS需區分護城河，不盲目看空。",
+          "notable_quote": "The market for frontier intelligence has become a duopoly."
+        }
+      },
+      {
         "guid": "8bbdfcd5-e2f4-4220-b5da-a84ddd1402e6",
         "title": "Saronic Founders: Autonomous Warships, China's 230X Advantage & Swarms of Robot Ships",
         "published": "Wed, 05 Aug 2026 20:19:00 +0000",
@@ -6905,45 +6970,6 @@
           "notable_quote": "We have a shot with this technology. So not our children nor anyone they know dies of cancer."
         },
         "shown_at": "2026-07-10T22:59:35Z"
-      },
-      {
-        "guid": "afd9c6d3-2254-4a38-9847-a304981d286d",
-        "title": "AI Sovereignty Wars, Palantir-Nvidia Deal, SCOTUS Birthright Ruling, Newsom's CA Budget Lie",
-        "published": "Fri, 03 Jul 2026 22:12:00 +0000",
-        "processed_at": "2026-07-04T05:40:16Z",
-        "digest": {
-          "summary_points": [
-            "Palantir（PLTR）與Nvidia（NVDA）宣布合作，利用Nvidia的NemoTron開源模型為美國政府打造自主AI作業系統，強調數據與模型權限由客戶掌控。",
-            "Anthropic被指控利用模型層壟斷地位，觀察客戶成功領域後垂直整合推出競爭產品（如Claw Design、Claw Code），導致合作企業（如Figma）股價下跌50%。",
-            "企業使用封閉模型存在數據外洩風險：Anthropic與OpenAI可能學習客戶專有知識並最終與之競爭，建議企業採用開源模型自建AI以保護「智能主權」。",
-            "Chamath的實測顯示：搭配8100框架的開源模型比單用Claude Opus便宜16.4倍（雖慢3倍），證明開源自建方案在成本與控制上的巨大優勢。",
-            "Nvidia推出NemoTron開源模型，性能接近Claude，並與Palantir合作，企圖打破Anthropic/OpenAI在模型層的雙寡頭局面。",
-            "企業AI部署模式正從「大樞紐-大輻條」轉向「大樞紐-中樞紐-分散式輻條」，越來越多企業將自行訓練模型並在本地硬體上運行推論。",
-            "加州預算從2019年2150億美元膨脹至2025年3550億美元，實際靠舉債「平衡」；前1%納稅人貢獻50%個人所得稅，但因高稅率導致企業與富人外流，形成螺旋式惡化。",
-            "加州潛在未計負債（退休金、醫療等）高達1.5-2兆美元，若聯邦不出手紓困，可能導致退休金重整或憲法改寫。",
-            "Ramp與Revello Labs研究顯示：高強度採用AI的企業在兩年內員工成長約10%（初階職位成長12%），並未出現AI導致失業的證據。"
-          ],
-          "tickers": [
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與Nvidia合作推出自主AI作業系統，切入政府與企業自建模型需求，有利長期成長。"
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "推出NemoTron開源模型並與Palantir合作，有助於打破模型層雙寡頭，擴大晶片客戶基礎。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "If you partner with any of these people, they will slit your throat and take your business, wholesale."
-        },
-        "shown_at": "2026-07-04T22:45:57Z"
       }
     ]
   },

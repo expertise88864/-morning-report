@@ -25,9 +25,17 @@ NAMESPACES = (
     ("derived:", "本報算出來的衍生值（附來源欄位）", True),
     ("tension:", "訊號張力與同向訊號", False),
     ("valuation:", "00662 估值", True),
-    ("prediction:", "2330 與加權的開盤預測", True),
+    # **說明錯了,模型就會照著錯的猜。** 先前寫「2330 與加權的開盤預測」,
+    # 而加權指數的預測其實在 `market:TAIEX_PRED.*`;模型於是造出
+    # `prediction:TAIEX.pred_open`、`prediction:2330.mid`(以為要帶標的段),
+    # 三條引用全被判不存在(2026-08-08 生產)。
+    ("prediction:", "2330 開盤預測的欄位,**不帶標的段**"
+                    "(`prediction:pred_open`);加權指數的預測在 "
+                    "`market:TAIEX_PRED.*`", True),
     ("universe:", "台股個股當日漲跌", True),
-    ("calibration:", "本報模型的校準狀況", False),
+    ("calibration:", "ADR→2330 開盤預測的近 N 日誤差"
+                     "(`calibration:mean_abs_delta_pct`、"
+                     "`calibration:by_date.<MM/DD>.delta_pct`)", False),
     ("portfolio:", "彙總曝險（只有百分比與檔數）", False),
     ("quality:", "本報今日的資料涵蓋度", False),
 )
@@ -57,3 +65,16 @@ def schema_description() -> str:
 def anchor_sentence() -> str:
     """給 prompt 的量化錨點說明 —— 與 `ANCHOR_PREFIXES` 同一份宣告。"""
     return "、".join(f"`{p}`" for p in ANCHOR_PREFIXES)
+
+
+def unrealizable(ids) -> set:
+    """宣告了、卻一個 ID 都生不出來的命名空間。
+
+    2026-08-08 生產:`calibration:` 宣告著,而校準表是一整塊 markdown
+    字串 —— 攤平不出葉節點,模型照宣告猜名字、五條引用全被判不存在,
+    整份特化分析作廢退回舊路徑,連續多日。**宣告的同時就要能實現** ——
+    資料齊全時非空是程式缺陷(測試盯);真缺資料時空掉正常(生產只記錄)。
+    """
+    have = {str(i) for i in (ids or ())}
+    return {p for p, _, _ in NAMESPACES if p.endswith(":")
+            and not any(i.startswith(p) for i in have)}

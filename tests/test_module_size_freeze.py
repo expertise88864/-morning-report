@@ -224,6 +224,10 @@ MODULE_CEILINGS = {
     # Commit B:EVIDENCE v16 的版本說明(獨立性三個數各自的用途)。實測 424。
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     "evidence_packet.py": 450,
+    # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
+    # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
+    # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
+    "calibration_table.py": 60,
     # 證據包的序列化與指紋。指紋是實驗公平性的全部依據,值得自己的檔與
     # 測試。**只做序列化,不碰組裝** —— 出現欄位取捨就表示放錯地方。
     # 實測 134 行。

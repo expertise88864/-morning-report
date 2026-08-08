@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import evidence_namespaces as _ns
 import signal_tensions as _tension
 from evidence_serialize import core_evidence_sha  # noqa: F401
 
@@ -363,6 +364,15 @@ def evidence_ids(packet: dict) -> set:
     # 才知道樹長什麼樣。**幽靈路徑不進 registry**(而且說得出是哪些)。
     _ = mkt          # 幽靈路徑的核對在 `phantom_market_refs`
     return out
+
+
+def unrealizable_namespaces(packet: dict) -> set:
+    """宣告在 prompt 裡、registry 卻生不出任何 ID 的命名空間。
+
+    判準與事故記錄在 `evidence_namespaces.unrealizable`(宣告在哪,
+    「宣告要能實現」的守衛就在哪)。這裡只負責把 packet 攤成 ID 集合。
+    """
+    return _ns.unrealizable(evidence_ids(packet))
 
 
 def phantom_market_refs(packet: dict) -> set:

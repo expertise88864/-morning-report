@@ -65,7 +65,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 至少一半要指到真事件,行情數字用來說明量級而不是當成事件。
 #: v23(Commit D):淨效果、共同驅動不算獨立確認、總經發布要聯合情境。
 #: v24(第二十三輪):每條重點都要是事件、前三全處理、多總經發布。
-LUNA_XHIGH_VERSION = 24
+LUNA_XHIGH_VERSION = 25
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。

@@ -121,6 +121,16 @@ def _entries(tree, root: str, meta: dict) -> dict:
     join = "" if root.endswith(":") else "."
     out = {}
     for path, val in flat.items():
+        # **整個區塊就是一個純量時,它沒有葉節點名字可用。**
+        # 先前這裡走 `root.rstrip(":")`,於是 `calibration:` 這個命名空間
+        # 生出一個叫 `calibration`(沒有冒號)的 ID —— 落在所有已宣告的
+        # 命名空間之外,模型永遠猜不到,而 `calibration:xxx` 的引用
+        # 一律被判為「不存在」。2026-08-08 生產:五條引用失敗、
+        # 整份特化分析作廢退回舊路徑,連續多日。
+        # 不發明葉名、也不剝掉命名空間 —— 這一格就是不可引用,
+        # 而 `unrealizable_namespaces` 會把它講出來。
+        if not path and root.endswith(":"):
+            continue
         # **root scalar 的路徑是空字串。** 先前被 `if path` 濾掉,於是
         # `market:USDTWD_prev`(整個 block 就是一個數字)在 registry 裡
         # 只剩下一個 `value=None` 的殼 —— ID 存在、值不見了。

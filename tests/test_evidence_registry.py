@@ -30,9 +30,16 @@ _QUOTES = {
 
 def _packet(**over) -> dict:
     q = dict(_QUOTES, **over.pop("quotes", {}))
+    # calibration 用**生產形狀**(`build_historical_calibration` 的回傳)。
+    # 先前餵 `{"brier": 0.21}` —— 生產從來不會產生的形狀 —— 於是
+    # 「`calibration:brier` 在 registry 裡」自第十八輪起一路綠著,
+    # 而生產傳的是 markdown 字串、那個命名空間**始終一個 ID 都沒有**
+    # (2026-08-08 才在信裡看見)。測試要用生產的呼叫形狀。
     return ep.build(q, {"fair_value": 55.2, "premium_pct": 3.1},
                     {"model1": {"pred_pct": 0.42}}, fx.news(),
-                    [{"code": "2330", "pct": 1.2}], {"brier": 0.21},
+                    [{"code": "2330", "pct": 1.2}],
+                    {"n_days": 7, "mean_abs_delta_pct": 0.83,
+                     "by_date": {"08/07": {"delta_pct": -0.33}}, "note": ""},
                     as_of="2026-08-05T06:00", target_session_date="2026-08-05",
                     sanitize=str, **over)
 
@@ -44,7 +51,7 @@ def test_the_blocks_that_used_to_have_no_ids_now_have_them():
     reg = er.registry(_packet())
     assert "valuation:fair_value" in reg, "00662 估值沒有引用對象"
     assert "prediction:model1.pred_pct" in reg, "2330 開盤預測沒有引用對象"
-    assert "calibration:brier" in reg, "模型校準沒有引用對象"
+    assert "calibration:mean_abs_delta_pct" in reg, "模型校準沒有引用對象"
     assert "universe:2330.pct" in reg, "台股個股沒有引用對象"
     assert any(k.startswith("quality:") for k in reg), "資料涵蓋度沒有引用對象"
 

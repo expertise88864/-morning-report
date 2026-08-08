@@ -569,7 +569,11 @@ _FROZEN = {
     #     要指到真事件、行情數字用來說明量級)。
     # v23(Commit D):淨效果、共同驅動、總經聯合情境三段規則。
     # v24(第二十三輪):每條重點都要是事件、前三全處理、多總經發布。
-    "primary_profile_version":  (24, "d45fcd958e7f27e2"),
+    # v25(2026-08-08 生產):命名空間說明改成指得到真 ID 的樣子 ——
+    # `prediction:` 不帶標的段、加權在 `market:TAIEX_PRED.*`、
+    # `calibration:` 舉出實際欄位。模型先前照錯的說明猜名字,五條引用
+    # 被判不存在,整份特化分析作廢退回舊路徑。
+    "primary_profile_version":  (25, "62a43f93daf218ac"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;

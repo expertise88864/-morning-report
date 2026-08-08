@@ -43,6 +43,7 @@ import analysis_render as _ar
 import analysis_metrics as _am
 import deepseek_responses as _dsr
 import event_identity as _eid
+from calibration_table import _calibration_note, render_calibration_table  # noqa: E402
 import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
@@ -4409,19 +4410,28 @@ def fetch_2330_recent() -> Optional[pd.DataFrame]:
     return None
 
 
-def build_historical_calibration(hist_2330: Optional[pd.DataFrame], days: int = 7) -> str:
+def build_historical_calibration(hist_2330: Optional[pd.DataFrame],
+                                 days: int = 7) -> dict:
+    """「過去 N 日 TSM 漲跌 → 2330 隔日開盤實際漲跌」的**結構化**對照。
+
+    回傳 dict 而不是字串:證據包要的是可以逐格引用的葉節點
+    (`calibration:mean_abs_delta_pct` 這種),而字串攤平不出葉節點。
+    取不到資料時仍回 dict 並在 `note` 說明 —— **命名空間不會因為
+    降級就整個消失**,否則降級日的引用檢查又會開始亂擋。
     """
-    建立「過去 N 日 TSM 漲跌 → 2330 隔日開盤實際漲跌」對照表。
-    讓 LLM 看真實的「ADR 預測 vs 台股實際」誤差，作為今日預測的校準錨點。
-    """
+    def _empty(note: str) -> dict:
+        return {"n_days": 0, "by_date": {}, "mean_delta_pct": None,
+                "mean_abs_delta_pct": None, "max_abs_delta_pct": None,
+                "note": note}
+
     if hist_2330 is None or len(hist_2330) < days + 2:
-        return "（歷史資料不足，無法生成校準表）"
+        return _empty("歷史資料不足，無法生成校準表")
     try:
         tsm_hist = yf.Ticker("TSM").history(period="2mo", auto_adjust=False)
         tsm_hist = tsm_hist.dropna(subset=["Close"])
         tsm_hist = tsm_hist[tsm_hist["Close"] > 0]
         if len(tsm_hist) < days + 2:
-            return "（TSM 歷史資料不足）"
+            return _empty("TSM 歷史資料不足")
 
         # 對齊：TSM 第 T 日漲跌 vs 2330 第 T+1 日開盤漲跌
         # 因 TSM 與 2330 時區不同，先做近似對齊（用日期）
@@ -4467,22 +4477,26 @@ def build_historical_calibration(hist_2330: Optional[pd.DataFrame], days: int = 
             })
 
         if not rows:
-            return "（無有效對照資料）"
+            return _empty("無有效對照資料")
 
         # 計算平均偏離（含絕對值平均，反映誤差大小）
         avg_delta = sum(r["delta"] for r in rows) / len(rows)
         avg_abs = sum(abs(r["delta"]) for r in rows) / len(rows)
-
-        rows_str = "\n".join(
-            f"  {r['date']}：TSM 收盤 {r['tsm_pct']:+.2f}% → 2330 開盤 {r['tw_open_pct']:+.2f}%（偏離 {r['delta']:+.2f}%）"
-            for r in rows
-        )
-        return (f"近 {len(rows)} 個交易日 TSM 漲跌 vs 2330 開盤對照（驗證 ADR 預測準確度）：\n"
-                f"{rows_str}\n"
-                f"平均偏離 = {avg_delta:+.2f}% （正值 = 2330 開盤通常比 ADR 暗示偏高）\n"
-                f"平均絕對偏離 = {avg_abs:.2f}% （此為預測誤差參考）")
+        return {
+            "n_days": len(rows),
+            # 逐日用**日期當鍵**:清單的索引會隨當日資料量漂移,
+            # 昨天的引用明天會指到別一天(registry 的既有教訓)。
+            "by_date": {r["date"]: {"tsm_pct": round(r["tsm_pct"], 3),
+                                    "tw_open_pct": round(r["tw_open_pct"], 3),
+                                    "delta_pct": round(r["delta"], 3)}
+                        for r in rows},
+            "mean_delta_pct": round(avg_delta, 3),
+            "mean_abs_delta_pct": round(avg_abs, 3),
+            "max_abs_delta_pct": round(max(abs(r["delta"]) for r in rows), 3),
+            "note": "",
+        }
     except Exception as e:
-        return f"（對照表生成失敗: {e}）"
+        return _empty(f"對照表生成失敗: {e}")
 
 
 def calc_00662_fair_value(qqq_close: float, qqq_prev_close: float,
@@ -12646,7 +12660,7 @@ def _record_report_writer(text: str) -> None:
 
 def call_llm_analysis(quotes: dict, fair: dict, predictions: dict,
                       news: list[dict], tw0050: list[dict] | None = None,
-                      calibration: str = "") -> str:
+                      calibration: dict | None = None) -> str:
     """Run report generation inside one shared wall-clock budget."""
     global _LLM_DEADLINE
     previous_deadline = _LLM_DEADLINE
@@ -12827,6 +12841,13 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     _phantom = _ep.phantom_market_refs(packet)
     if _phantom:
         _RUN_MANIFEST["llm"]["phantom_evidence_refs"] = sorted(_phantom)[:8]
+    # 宣告在 prompt 裡、卻生不出任何 ID 的命名空間。**空掉不一定是缺陷**
+    # (當日真的沒有持倉/張力時空掉是對的),所以這裡只記錄不阻擋;
+    # 「資料齊全時不得為空」由測試守。沒有這一格的話,`calibration:`
+    # 那種永遠空的命名空間只會再靜默一次。
+    _unreal = _ep.unrealizable_namespaces(packet)
+    if _unreal:
+        _RUN_MANIFEST["llm"]["unrealizable_namespaces"] = sorted(_unreal)
     payload = _dsr.build_payload(
         model=DEEPSEEK_MODEL,
         instructions=bundle["developer_instructions"],
@@ -13055,7 +13076,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
     _set_analysis_origin(_ao.LEGACY_AFTER_LUNA_FAILURE if _pending_failure
                          else _ao.LEGACY_PRIMARY)
     try:
-        prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [], calibration)
+        prompt = _build_prompt(quotes, fair, predictions, news, tw0050 or [],
+                               render_calibration_table(calibration))
     except Exception as e:
         # prompt 組裝崩了（例：歷史記憶欄位格式化錯誤）—— 仍寄信，但用備援文字
         print(f"[llm] prompt 組裝失敗，改用備援文字: {type(e).__name__}: {e}", file=sys.stderr)
@@ -13147,22 +13169,6 @@ def _wrap_tw_picks(html: str) -> str:
            "padding:22px 24px;margin:28px 0;\">"
            + mid_cards + "</div>")
     return pre + box + post
-
-
-def _calibration_note(obj: dict) -> str:
-    """把 calibration 欄位轉成一句人類可讀說明（純文字，render 與 prompt 共用）。"""
-    if not isinstance(obj, dict):
-        return ""
-    cal = obj.get("calibration")
-    if not isinstance(cal, dict):
-        return ""
-    if cal.get("applied"):
-        b = cal.get("bias_pct", 0) or 0
-        sign = "+" if b >= 0 else ""
-        return (f"已自我校正（近 {cal.get('samples')} 日平均偏誤 {sign}{b}%，"
-                f"原值 {cal.get('raw')};屬追趕型修正,市場結構驟變時失效率較高）")
-    return f"自我校正未套用：{cal.get('reason', '樣本累積中')}"
-
 
 def _calibration_note_compact(obj: dict) -> str:
     """同 _calibration_note，但前期可預期的「樣本累積中」狀態回空字串，
@@ -21803,7 +21809,8 @@ def _phase_events_and_models(ctx) -> None:
 
     # 6.5 建立歷史校準資料（TSM vs 2330 開盤實證對照）
     calibration = build_historical_calibration(hist_2330, days=7)
-    print(f"[main] 歷史校準資料已生成（{len(calibration)} 字）")
+    print(f"[main] 歷史校準資料已生成（{calibration.get('n_days', 0)} 個交易日"
+          f"{'：' + calibration['note'] if calibration.get('note') else ''}）")
 
     # 6.55 美股休市偵測:已在上方模型區塊算過 quotes["US_HOLIDAY"],這裡僅記錄,不重複計算
     if quotes.get("US_HOLIDAY", {}).get("detected"):

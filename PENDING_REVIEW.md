@@ -1699,6 +1699,67 @@ fallback** 的。`timeline_identity` 認不出動作時退回主體集合當鍵,
 
 **驗證**:preflight exit 0、1966 passed、三個突變全紅。
 
+### 2026-08-08 第三封信 `(下一個 commit)` —— 特化分析被自己的引用檢查殺掉
+儲值後 10:38 的信是**第一封 LLM 跑成的**,但 `analysis_origin` 仍是
+`legacy_fallback_after_luna_failure`。特化路徑其實跑完了(391K prompt
+tokens、33,950 completion、成本 $0.067),是**被驗證丟棄的**:
+
+    claim_audit[8] 引用了不存在的證據 ID:'prediction:2330.mid'
+                                        'prediction:TAIEX.pred_open'
+                                        'prediction:TAIEX.weighted_pct'
+    claim_audit[8]/[14]:'calibration:tsm2330_7d_absdev'
+
+**五條全是程式這邊的錯,不是模型幻覺** —— 模型照我們給的規則猜名字:
+
+1. **`calibration:` 宣告了、永遠一個 ID 都生不出來。**
+   `build_historical_calibration` 回傳整張 markdown 表;超過
+   `_MAX_STRING_LEAF`(60)不是葉子,攤平不出任何東西。降級日的短字串
+   (「(歷史資料不足…)」)則落進另一個機制:根純量被 `root.rstrip(":")`
+   剝掉冒號,生出叫 `calibration`(無冒號)的孤兒 ID —— 落在所有已宣告
+   命名空間之外。**兩個機制,同一個結果:`calibration:xxx` 必被判不存在。**
+2. **`prediction:` 的說明寫「2330 與加權的開盤預測」** —— 而加權其實在
+   `market:TAIEX_PRED.*`,且 ID 不帶標的段。模型照那句話造出
+   `prediction:TAIEX.pred_open` 與 `prediction:2330.mid`。
+   **說明錯了,模型就會照著錯的猜。**
+
+**為什麼測試沒抓到**:`test_evidence_registry` 餵 calibration 的是
+`{"brier": 0.21}` —— 生產從來不會產生的形狀。「`calibration:brier` 在
+registry 裡」自第十八輪起一路綠著,而生產那個命名空間始終是空的。
+(**測試要用生產的呼叫形狀** —— 本 repo 記過的形狀,又一例。)
+
+**修法(四件一組)**:
+- `build_historical_calibration` 改回傳**結構化 dict**(`by_date` 以日期
+  為鍵、`mean_delta_pct`/`mean_abs_delta_pct`/`max_abs_delta_pct`/`note`);
+  降級日也回 dict —— **命名空間不因降級而整個消失**。
+- 渲染拆到新葉模組 `calibration_table.py`(refactor_audit ALL-CLEAR;
+  `_calibration_note` 一併搬,主模組 22438 ≤ 22443 棘輪);legacy prompt
+  收 `render_calibration_table(calibration)`,證據包收結構化那份 ——
+  兩個呼叫點的形狀由測試釘住(守衛不得靠遺忘失效)。
+- `evidence_registry._entries`:根純量**不再剝冒號造孤兒**(不可引用
+  就是不可引用,不發明名字)。
+- 新守衛 `evidence_namespaces.unrealizable(ids)`:**宣告的每個命名空間
+  都要生得出至少一個 ID**(資料齊全 fixture 下空集合直接紅);生產把
+  `unrealizable_namespaces` 記進 manifest(當日真缺資料時空掉正常,
+  所以只記錄不阻擋)。`prediction:`/`calibration:` 的說明改成指得到
+  真 ID 的樣子,且**說明裡舉的例子逐一驗證解析得到**。
+  `LUNA_XHIGH_VERSION` 24→25、契約指紋 d45fcd95→62a43f93(真的動了)。
+
+**外審應特別看的地方**:
+1. 突變 A 第一次沒紅:我的反例表 79 字,落在「長字串不是葉子」機制,
+   量不到「剝冒號」機制 —— 孤兒只在 ≤60 字的短字串下出現。改用降級日
+   的真實 note 當反例才隔離出來。**本工作階段第五次踩同一形狀。**
+2. `unrealizable` 對 `n<編號>`(新聞)跳過 —— 它不是前綴。若未來加入
+   非冒號結尾的命名空間,這個守衛對它是盲的。
+3. manifest 只記錄不阻擋的取捨:降級日 `portfolio:`/`tension:` 空掉是
+   正常的,擋了會把「今天沒持倉資料」升級成晨報中斷。
+4. 模型當時想引的 `calibration:tsm2330_7d_absdev` 概念上= 現在的
+   `calibration:mean_abs_delta_pct` —— 名字是我定的,外審可挑戰。
+
+**驗證**:preflight exit 0、1976 passed、四個突變全紅
+(A:剝冒號還原/B:生產改回傳字串/C:說明改回舊寫法/D:守衛真空通過)。
+**下一次排程跑成後看 manifest**:`analysis_origin` 應為特化路徑、
+`luna_problems` 不應再有 `prediction:`/`calibration:` 的引用失敗。
+
 ## 補審完成後
 
 把上面那一列從清單刪掉;清單空了就**刪掉整個檔案** ——

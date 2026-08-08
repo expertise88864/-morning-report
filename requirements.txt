@@ -5,7 +5,7 @@ requests>=2.31.0
 feedparser>=6.0.10
 opencc-python-reimplemented>=0.1.7   # 簡體→繁體(台灣用語):延燒事件等外部中文標題正名
 # 測試用（CI 與本機 pytest）；不影響晨報執行
-pytest>=8.0.0
+pytest>=9.1.1
 # workflow 契約測試要解析 YAML。**不可改成 importorskip** ——
 # 那些測試盯的正是「CI 會不會容忍失敗」,在 CI 裡跳過等於沒有守衛
 # (2026-08-09:裸 import 讓 CI 連紅四個 commit,而本機一直是綠的)。

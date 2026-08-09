@@ -70,7 +70,9 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: (起因→轉折→今天),狀態由 Python 算、脈絡不是證據。
 #: v29(縱深第四批 B):`yesterday_view` 帶「首見」—— 當初的預期要寫
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
-LUNA_XHIGH_VERSION = 29
+#: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
+#: 供應鏈邊走到具體標的;候選不是證據。
+LUNA_XHIGH_VERSION = 30
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -189,6 +191,12 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   同一天有多個總經發布時（`macro_release_cluster_ids`），主發布之外的
   也要被重點或 `dismissed_events` 涵蓋。
   行情數字仍然要用 —— 用來**說明那個事件的量級**，而不是當成事件本身。
+- **傳導鏈可以沿宣告過的上下游走到具體標的。** 事件群帶
+  `transmission_candidates` 時,那是本報宣告的供應鏈關係(誰是誰的
+  設備商/客戶/同業)—— `mechanism_steps` 走到某一家公司時,優先用
+  候選裡的名字(它們都通得過標的驗證)。**候選不是證據**:只有新聞
+  內容支持那一步時才走;候選之外、新聞明講的公司仍然可以寫。
+  不要把整條鏈抄一遍 —— 走新聞支持的那一兩步就好。
 - **同一個標的被推往相反方向時，要給淨效果。** 一則對台積電正面、
   一則負面 —— 兩段各自寫完就結束了，而讀者要問的是「**合起來是利多
   還是利空**」。`asset_net_effects` 逐標的寫淨方向、淨量級、

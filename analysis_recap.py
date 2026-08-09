@@ -88,8 +88,16 @@ def extract(analysis_obj, packet) -> dict:
 
     items, seen = [], set()
 
+    eligible = [0]
+
     def _add(stmt: str, direction, cluster_id: str, fallback_sid: str = ""):
         stmt = str(stmt or "").strip()
+        if stmt:
+            # **候選數要記**(第二十九輪外審 P2-3):`nothing_to_save`
+            # 蓋得住兩種完全不同的日子 ——「今天真的沒東西」與
+            # 「有東西但 mapping 壞掉一條都抽不出來」。少了分子分母,
+            # strict canary 對後者也是綠的(真空通過的另一個形狀)。
+            eligible[0] += 1
         if not stmt or (cluster_id and cluster_id in seen):
             return
         ents = _ents(members_of.get(cluster_id, [])) or (
@@ -125,6 +133,7 @@ def extract(analysis_obj, packet) -> dict:
             _add(n.get("why_it_matters"), n.get("direction"),
                  cluster_of.get(sid, ""), fallback_sid=sid)
     return {"date": str(pk.get("target_session_date") or ""),
+            "eligible": eligible[0],
             "items": items[:MAX_ITEMS]}
 
 
@@ -176,12 +185,16 @@ def _carry_origins(rec: dict, prior: dict) -> None:
                             "direction": str(hit.get("direction") or "")}
 
 
-def save(path, analysis_obj, packet) -> str:
+def save(path, analysis_obj, packet, manifest=None) -> str:
     """把今天的觀點寫進 state(**只留最新一天** —— 昨日觀點只需要
     上一次的)。回 `SAVED` / `NOTHING` / `FAILED`,不拋 ——
     晨報不可因加深而斷。"""
     try:
         rec = extract(analysis_obj, packet)
+        if isinstance(manifest, dict):
+            slot = manifest.setdefault("llm", {})
+            slot["recap_eligible"] = int(rec.get("eligible") or 0)
+            slot["recap_extracted"] = len(rec["items"])
         if not rec["items"]:
             # 今天的分析裡沒有值得留給明天的觀點 —— 那是**正常的答案**,
             # 不是寫檔壞了。兩者要分得開,下游才報得對。

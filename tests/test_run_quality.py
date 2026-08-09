@@ -1457,3 +1457,62 @@ def test_running_without_a_state_path_touches_nothing(tmp_path, monkeypatch):
     after = live.read_text(encoding="utf-8") if live.exists() else None
     assert before == after, "無參數的本機用法動到了版控裡的狀態"
 
+
+# ===== 第二十九輪外審 Commit 4:strict 驗收補完 =====
+
+def test_nothing_to_save_with_candidates_is_a_dead_wire():
+    """**`nothing_to_save` 蓋得住兩種完全不同的日子**(P2-3):
+    「今天真的沒東西」與「有東西但 mapping 壞掉一條都抽不出來」。
+    有分子分母才分得開。"""
+    m = _strict_ok()
+    m["llm"].update(recap_saved="nothing_to_save",
+                    recap_eligible=3, recap_extracted=0)
+    assert "recap_extraction_dead" in _strict(m), _strict(m)
+
+
+def test_a_genuinely_quiet_day_is_still_allowed():
+    """**修正不得把清淡的一天標成缺陷**:eligible == 0 的
+    `nothing_to_save` 是正常答案。"""
+    m = _strict_ok()
+    m["llm"].update(recap_saved="nothing_to_save",
+                    recap_eligible=0, recap_extracted=0)
+    assert "recap_extraction_dead" not in _strict(m), _strict(m)
+    # 沒有計數的舊 manifest 也不猜
+    m2 = _strict_ok()
+    m2["llm"]["recap_saved"] = "nothing_to_save"
+    assert "recap_extraction_dead" not in _strict(m2)
+
+
+def test_an_extractor_only_measurement_does_not_satisfy_primary():
+    """**extractor 的量測湊不了數**(P2-4):canary 的名字是「特化
+    **主分析**真的產生了」,primary 一筆都沒有時不算。"""
+    m = _strict_ok()
+    m["llm"]["request_measurements"] = [
+        {"role": "extractor", "chars": 1000, "tokens": 500, "accepted": True}]
+    assert "manifest_incomplete" in _strict(m), _strict(m)
+    # 被拒的 primary + 被接受的 extractor 也不夠
+    m2 = _strict_ok()
+    m2["llm"]["request_measurements"] = [
+        {"role": "primary", "chars": 1000, "tokens": 500, "accepted": False},
+        {"role": "extractor", "chars": 1000, "tokens": 500, "accepted": True}]
+    assert "manifest_incomplete" in _strict(m2), _strict(m2)
+
+
+def test_the_producer_records_the_recap_counts(tmp_path):
+    """**生產端要記,下游才驗得動**:`save(manifest=...)` 要寫
+    eligible/extracted 兩格(走生產的呼叫形狀)。"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_recap as rc
+    import fixtures_analysis as fx
+    man: dict = {}
+    obj = fx.valid_analysis()
+    pk = {"target_session_date": "2026-08-10",
+          "news": [{"source_item_id": "n2", "title": "台積電法說會下週登場",
+                    "entities": ["台積電"]}],
+          "news_clusters": {"clusters": [
+              {"cluster_id": "cluster:n2", "member_source_ids": ["n2"]}]}}
+    out = rc.save(tmp_path / "recap.json", obj, pk, manifest=man)
+    assert out == rc.SAVED
+    assert man["llm"]["recap_eligible"] >= man["llm"]["recap_extracted"] >= 1
+

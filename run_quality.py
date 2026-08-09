@@ -189,6 +189,11 @@ def _measurements_problem(v):
           and _pos_int(x.get("chars")) and _pos_int(x.get("tokens"))]
     if not ok:
         return "沒有一筆是**被接受**且字元/token 都為正的量測"
+    # **主分析自己要有一筆**(第二十九輪外審 P2-4):extractor 的量測
+    # 湊不了數 —— canary 的名字是「特化**主分析**真的產生了」,
+    # 而 primary 一筆都沒有時,上面那條靠 extractor 也能綠。
+    if not [x for x in ok if str(x.get("role") or "") == "primary"]:
+        return "被接受的量測裡沒有 `primary` —— extractor 的量測湊不了數"
     return ""
 
 
@@ -456,6 +461,18 @@ def assess(manifest, *, mode: str = "watchdog",
             if bad_plan:
                 add("canary_no_fetch_plan", "defect",
                     f"canary 沒有兩階段抓取的證據:{bad_plan}")
+        # **`nothing_to_save` 蓋得住兩種完全不同的日子**(外審 P2-3):
+        # 「今天真的沒東西」與「有東西但 mapping 壞掉一條都抽不出來」。
+        # 有分子分母才分得開 —— eligible > 0 而一條都沒抽出來,
+        # 那是閉環接線失敗,不是清淡的一天。
+        import analysis_recap as _arc2
+        if (_dig(m, "llm", "recap_saved") == _arc2.NOTHING
+                and _safe_int(_dig(m, "llm", "recap_eligible")) > 0
+                and _safe_int(_dig(m, "llm", "recap_extracted")) == 0):
+            add("recap_extraction_dead", "defect",
+                f"分析裡有 {_safe_int(_dig(m, 'llm', 'recap_eligible'))} 條"
+                "候選觀點,而 recap 一條都沒抽出來 —— `nothing_to_save` "
+                "在這種日子是接線失敗的偽裝,不是清淡")
         if not str(m.get("report_kind") or ""):
             add("canary_no_report_kind", "defect",
                 "manifest 沒說這一班寄的是哪一種信 —— 判準會退回"

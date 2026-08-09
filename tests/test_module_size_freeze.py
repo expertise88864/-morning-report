@@ -230,7 +230,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:state 裡混著兩代身分要看得見(`legacy_remaining` 記了卻沒人讀)
     # 第二十七輪外審 P1-2:strict 的語意契約(「不是 None」不算跑過)
     # —— 四格各配一個判準 + 計畫/report_kind 必填。**實測 444 行**。
-    "run_quality.py": 520,
+    "run_quality.py": 535,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -326,7 +326,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:`save()` 回三態,不是布林
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
-    "analysis_recap.py": 430,
+    "analysis_recap.py": 445,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

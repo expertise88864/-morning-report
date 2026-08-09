@@ -12840,7 +12840,8 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
     _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
         obj, packet, rendered_text=text)
     _RUN_MANIFEST["llm"]["recap_saved"] = _arc.save(
-        ANALYSIS_RECAP_FILE, obj, packet)     # 失敗不斷晨報,但要看得見
+        ANALYSIS_RECAP_FILE, obj, packet,
+        manifest=_RUN_MANIFEST)     # 失敗不斷晨報,但要看得見
     return text
 
 

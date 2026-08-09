@@ -810,3 +810,90 @@ def test_the_producer_actually_records_it():
     landed = rec.data["news"]["fulltext_plan"]
     assert landed["fetchable_candidates"] == 1, landed
 
+
+# ===== 2026-08-09 P2:重試記了,放棄沒記 =====
+
+def test_giving_up_on_a_retry_is_recorded():
+    """**429 打到預算用完的那天,manifest 要說得出來。**
+
+    上一版只記「退避了幾次」—— 重試清單非空只說明「遇到過阻力」,
+    說不出「最後有沒有拿到答案」。而那兩件事的處理完全不同。
+    """
+    import llm_http as lh
+
+    class _R:
+        status_code = 429
+        headers: dict = {}
+
+    man: dict = {}
+    calls = {"n": 0}
+
+    def _post(*a, **k):
+        calls["n"] += 1
+        return _R()
+
+    orig_post, orig_sleep = lh.requests.post, lh.time.sleep
+    try:
+        lh.requests.post = _post
+        lh.time.sleep = lambda *_: None
+        lh.post_with_backoff("http://x", {}, {}, timeout=1, manifest=man)
+    finally:
+        lh.requests.post, lh.time.sleep = orig_post, orig_sleep
+    gave = man["llm"]["retry_gave_up"]
+    assert gave and gave[-1]["status"] == 429, man["llm"]
+    assert gave[-1]["reason"] == "重試次數用完", gave
+    assert man["llm"]["retry_after_status"], "退避本身也還是要記"
+
+
+def test_a_clean_run_records_no_give_up():
+    """**修正不得把每一天都標成放棄。** 一次就成功的請求不留這筆。"""
+    import llm_http as lh
+
+    class _R:
+        status_code = 200
+        headers: dict = {}
+
+    man: dict = {}
+    orig = lh.requests.post
+    try:
+        lh.requests.post = lambda *a, **k: _R()
+        lh.post_with_backoff("http://x", {}, {}, timeout=1, manifest=man)
+    finally:
+        lh.requests.post = orig
+    assert "retry_gave_up" not in man.get("llm", {}), man
+
+
+def test_the_deadline_exit_records_the_same_two_things():
+    """**四個放棄出口要用同一套語義**(外審)。
+
+    退避途中預算用完那個出口原本記 `status="deadline"` 與一個多算一次的
+    次數 —— 而 `retry_after_status` 記的是 HTTP 碼。同一份清單裡的兩筆
+    讀起來意思不一樣,查的人會以為 429 那天沒有 429。
+
+    `status` 一律是觸發重試的那個狀態,`attempt` 一律是真的送出去過幾次。
+    """
+    import llm_http as lh
+
+    class _R:
+        status_code = 429
+        headers: dict = {}
+
+    man: dict = {}
+    clock = {"t": 0.0}
+    orig_post, orig_sleep, orig_mono = (lh.requests.post, lh.time.sleep,
+                                        lh.time.monotonic)
+    try:
+        lh.requests.post = lambda *a, **k: _R()
+        # 退避把預算睡掉 —— 下一圈在迴圈頂端就過期
+        lh.time.sleep = lambda s: clock.__setitem__("t", clock["t"] + 100)
+        lh.time.monotonic = lambda: clock["t"]
+        lh.post_with_backoff("http://x", {}, {}, timeout=1, manifest=man,
+                             deadline_at=30.0)
+    finally:
+        (lh.requests.post, lh.time.sleep,
+         lh.time.monotonic) = orig_post, orig_sleep, orig_mono
+    gave = man["llm"]["retry_gave_up"]
+    assert len(gave) == 1, gave
+    assert gave[0]["status"] == 429, gave      # 不是字串 "deadline"
+    assert gave[0]["attempt"] == 1, gave       # 只送出去過一次
+

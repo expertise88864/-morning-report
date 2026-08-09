@@ -49,13 +49,16 @@ def test_save_and_load_round_trip(tmp_path):
     obj = fx.valid_analysis()
     obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n1")]
     f = tmp_path / "analysis_recap.json"
-    assert rc.save(f, obj, _packet(date="2026-08-07")) is True
+    assert rc.save(f, obj, _packet(date="2026-08-07")) == rc.SAVED
     assert rc.load(f)["date"] == "2026-08-07"
 
 
 def test_save_to_an_unwritable_path_degrades_without_raising(tmp_path):
     """加深不可斷晨報:存不進去回 False,不拋。"""
-    assert rc.save(tmp_path, fx.valid_analysis(), _packet()) is False
+    # **三態**(2026-08-09 P2):寫不進去是 `FAILED`,
+    # 而「今天沒有值得留給明天的觀點」是 `NOTHING` —— 兩者
+    # 先前都是 `False`,下游把它一律報成 defect。
+    assert rc.save(tmp_path, fx.valid_analysis(), _packet()) == rc.FAILED
 
 
 def test_statement_is_stored_as_judgment_not_essay():
@@ -305,7 +308,7 @@ def test_a_corrupt_state_is_distinguishable_and_preserved(tmp_path):
     assert rc.usable(got, "2026-08-08") == []      # 降級行為與「沒有」相同
     obj = fx.valid_analysis()
     obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n2")]
-    assert rc.save(f, obj, _packet(date="2026-08-08")) is True
+    assert rc.save(f, obj, _packet(date="2026-08-08")) == rc.SAVED
     assert (tmp_path / "analysis_recap.json.corrupt").exists(), "壞檔被覆寫掉了"
     assert rc.load(f)["date"] == "2026-08-08"
 
@@ -485,3 +488,44 @@ def test_the_saved_side_is_normalised_too():
     assert items[0]["entities"] == ["伊朗", "美國"], items[0]["entities"]
     assert rc.view_for({"美國", "伊朗"}, items,
                        titles="美國宣布對伊朗新一輪經濟制裁措施")
+
+
+def test_nothing_to_save_is_not_a_failure(tmp_path):
+    """**「沒東西可存」不是「存檔失敗」**(2026-08-09 P2)。
+
+    資料稀薄的日子,今天的分析裡可能沒有值得留給明天的觀點 ——
+    那是正常的答案。兩者先前都回 `False`,而看門狗把 `False` 報成
+    defect「分析成功但昨日觀點沒存下來」:一個假的缺陷,
+    而讀著它的人會去查一個沒有壞的東西。
+    """
+    import analysis_recap as rc
+    empty = fx.valid_analysis()
+    empty["key_drivers"] = []
+    empty["top_news_analysis"] = []
+    empty["asset_net_effects"] = []
+    empty["scenario_tree"] = {"base": {}, "bull": {}, "bear": {},
+                              "invalidation_triggers": []}
+    out = rc.save(tmp_path / "recap.json", empty, _packet())
+    assert out in (rc.NOTHING, rc.SAVED), out
+    if out == rc.NOTHING:
+        import run_quality as rq
+        m = {"report_kind": rq.MORNING_REPORT,
+             "llm": {"analysis_origin": "luna_specialized",
+                     "payload_budget": {}, "primary_metrics": {},
+                     "recap_saved": out, "request_measurements": []}}
+        assert [p["code"] for p in rq.assess(m)] == [], rq.assess(m)
+
+
+def test_a_write_failure_is_still_a_defect():
+    """**修誤報不得造出漏報**:真的寫不進去仍要報 defect。"""
+    import analysis_recap as rc
+    import run_quality as rq
+    m = {"report_kind": rq.MORNING_REPORT,
+         "llm": {"analysis_origin": "luna_specialized",
+                 "payload_budget": {}, "primary_metrics": {},
+                 "recap_saved": rc.FAILED, "request_measurements": []}}
+    assert [p["code"] for p in rq.assess(m)] == ["recap_not_saved"]
+    # 舊的布林 `False` 也仍當成失敗(那是會出聲的那一邊)
+    m["llm"]["recap_saved"] = False
+    assert [p["code"] for p in rq.assess(m)] == ["recap_not_saved"]
+

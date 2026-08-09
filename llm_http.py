@@ -56,12 +56,35 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
     # 整個 LLM 階段的總限制。改吃 `deadline_at`(monotonic 時間戳,
     # 與主模組的 `_LLM_DEADLINE` 同一個),**每次動作前後都重算剩餘**;
     # 進來時已經過期就直接回 None,一次 API 都不打。
+    def _note(key, entry):
+        if manifest is not None:
+            manifest.setdefault("llm", {}).setdefault(key, []).append(entry)
+
+    def _gave_up(status, why):
+        """**放棄也要記**(2026-08-09 P2)。上一版只記「退避了幾次」——
+        而 429 打到預算用完那天,manifest 與乾淨的一天長得一模一樣:
+        重試清單非空只說明「遇到過阻力」,說不出「最後有沒有拿到答案」。
+
+        `status` 一律是**觸發重試的那個狀態**(HTTP 碼或例外類別名),
+        `attempt` 一律是**真的送出去過幾次請求** —— 四個放棄出口用
+        同一套語義,否則同一份清單裡的兩筆讀起來意思不一樣
+        (外審:迴圈頂端那個出口原本記 `"deadline"` 與一個多算一次的
+        次數,而 `retry_after_status` 用的是 HTTP 碼)。
+        """
+        _note("retry_gave_up", {"status": status, "reason": why,
+                                "attempt": sent})
+
     r = None
+    sent = 0
+    last_trigger = None
     for attempt in range(_LLM_RETRIES + 1):
         left = None if deadline_at is None else deadline_at - time.monotonic()
         if left is not None and left <= 0:
+            if sent:
+                _gave_up(last_trigger, "退避途中預算用完")
             return r
         try:
+            sent += 1
             r = requests.post(url, json=body, headers=headers,
                               timeout=timeout if left is None else min(timeout, left))
         except requests.exceptions.RequestException as e:
@@ -70,33 +93,38 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
             # 額度用完或預算不夠就把例外丟回去 —— 呼叫端要記 billable。
             left = None if deadline_at is None else deadline_at - time.monotonic()
             if attempt >= _LLM_RETRIES or (left is not None and left <= 1.0):
+                _gave_up(type(e).__name__,
+                         "重試次數用完" if attempt >= _LLM_RETRIES
+                         else "剩餘預算不足")
                 raise
             wait = min(_LLM_BACKOFF_SEC * (attempt + 1), 45.0)
             if left is not None:
                 wait = min(wait, max(0.0, left - 1.0))
-            if manifest is not None:
-                manifest.setdefault("llm", {}).setdefault(
-                    "retry_after_status", []).append(
-                        {"status": type(e).__name__, "wait_seconds": round(wait, 1)})
+            last_trigger = type(e).__name__
+            _note("retry_after_status",
+                  {"status": last_trigger, "wait_seconds": round(wait, 1)})
             print(f"[llm] 傳輸中斷({type(e).__name__})退避 {wait:.0f}s 後重試"
                   f"({attempt + 1}/{_LLM_RETRIES})", file=sys.stderr)
             time.sleep(wait)
             continue
-        if r.status_code not in _LLM_RETRY_STATUS or attempt >= _LLM_RETRIES:
+        if r.status_code not in _LLM_RETRY_STATUS:
+            return r
+        if attempt >= _LLM_RETRIES:
+            _gave_up(r.status_code, "重試次數用完")
             return r
         # **request 之後重算** —— 上一版用 request 前的舊值決定 sleep。
         left = None if deadline_at is None else deadline_at - time.monotonic()
         if left is not None and left <= 1.0:
+            _gave_up(r.status_code, "剩餘預算不足")
             return r
         wait = _LLM_BACKOFF_SEC * (attempt + 1)
         wait = max(wait, _retry_after_seconds(r.headers.get("Retry-After")))
         wait = min(wait, 45.0)     # 晨報有時間預算,不能無限等
         if left is not None:
             wait = min(wait, max(0.0, left - 1.0))
-        if manifest is not None:
-            manifest.setdefault("llm", {}).setdefault(
-                "retry_after_status", []).append(
-                    {"status": r.status_code, "wait_seconds": round(wait, 1)})
+        last_trigger = r.status_code
+        _note("retry_after_status",
+              {"status": last_trigger, "wait_seconds": round(wait, 1)})
         print(f"[llm] {r.status_code} 退避 {wait:.0f}s 後重試"
               f"({attempt + 1}/{_LLM_RETRIES})", file=sys.stderr)
         time.sleep(wait)

@@ -128,13 +128,25 @@ def extract(analysis_obj, packet) -> dict:
             "items": items[:MAX_ITEMS]}
 
 
-def save(path, analysis_obj, packet) -> bool:
+#: `save()` 的三種結果。**「沒東西可存」不是「存檔失敗」**
+#: (2026-08-09 P2):上一版兩者都回 `False`,而下游把 `False` 報成
+#: defect「分析成功但昨日觀點沒存下來」—— 那句話在資料稀薄的日子是假的,
+#: 而假的缺陷會讓人去查一個沒有壞的東西。
+SAVED = "saved"
+NOTHING = "nothing_to_save"
+FAILED = "failed"
+
+
+def save(path, analysis_obj, packet) -> str:
     """把今天的觀點寫進 state(**只留最新一天** —— 昨日觀點只需要
-    上一次的)。失敗回 False 並印錯誤,不拋 —— 晨報不可因加深而斷。"""
+    上一次的)。回 `SAVED` / `NOTHING` / `FAILED`,不拋 ——
+    晨報不可因加深而斷。"""
     try:
         rec = extract(analysis_obj, packet)
         if not rec["items"]:
-            return False
+            # 今天的分析裡沒有值得留給明天的觀點 —— 那是**正常的答案**,
+            # 不是寫檔壞了。兩者要分得開,下游才報得對。
+            return NOTHING
         import pathlib
         p = pathlib.Path(str(path))
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -153,10 +165,10 @@ def save(path, analysis_obj, packet) -> bool:
         tmp.write_text(json.dumps(rec, ensure_ascii=False, indent=1),
                        encoding="utf-8")
         tmp.replace(p)
-        return True
+        return SAVED
     except Exception as e:                  # noqa: BLE001 - 加深不可斷晨報
         print(f"[recap] 昨日觀點存檔失敗(不影響晨報):{e}", file=sys.stderr)
-        return False
+        return FAILED
 
 
 def load(path) -> dict:

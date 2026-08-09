@@ -32,6 +32,7 @@
 from __future__ import annotations
 
 import analysis_origin as _ao
+import analysis_recap as _arc
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -223,7 +224,12 @@ def assess(manifest, *, mode: str = "watchdog",
                        else ""))
 
     # ---- 6. 昨日觀點閉環(2026-08-08:state 沒進 push 清單)
-    if origin == _ao.LUNA_SPECIALIZED and _dig(m, "llm", "recap_saved") is False:
+    # **「沒東西可存」不是「存檔失敗」**(2026-08-09 P2):上一版兩者
+    # 都是 `False`,而這裡一律報 defect —— 那句話在資料稀薄的日子是假的。
+    # 舊的布林 `False` 仍當成失敗(那是會出聲的那一邊)。
+    _recap = _dig(m, "llm", "recap_saved")
+    if origin == _ao.LUNA_SPECIALIZED and (
+            _recap is False or _recap == _arc.FAILED):
         add("recap_not_saved", "defect",
             "分析成功但昨日觀點沒存下來 —— 明天的延續事件沒有 diff 基準")
 

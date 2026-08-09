@@ -137,6 +137,45 @@ NOTHING = "nothing_to_save"
 FAILED = "failed"
 
 
+def _carry_origins(rec: dict, prior: dict) -> None:
+    """**首見判斷逐日 carry**(縱深第四批)。
+
+    檔案只留最新一天,於是「當初的預期」在第二天就沒了 —— 而線索延燒到
+    第三天時,「昨天說什麼」不足以寫出「當初預期 → 應驗/落空」。
+    每次存檔前,把今天的每一條觀點接回昨天那一條(**同一份身分判準**:
+    `best_view` —— 主體相交 + 事件層一致,模稜兩可不接),接得上就把
+    首見帶過來:昨天那條已有 `origin` → 沿用(首見永遠是**最早**那天,
+    不是前一天);沒有 → 昨天那條自己就是首見。
+
+    **同日重跑只沿用、不建立**:拿今天的重跑當首見,「首見」與「今天」
+    是同一天,那不是任何東西的起點。日期倒退(時鐘錯亂)整批不接。
+    """
+    pdate = str((prior or {}).get("date") or "")
+    ndate = str(rec.get("date") or "")
+    if not pdate or not ndate or pdate > ndate:
+        return
+    prior_items = [it for it in (prior.get("items") or [])
+                   if isinstance(it, dict)]
+    if not prior_items:
+        return
+    for it in rec["items"]:
+        hit = best_view(it.get("entities"), prior_items,
+                        titles=str(it.get("title") or ""))
+        if not hit:
+            continue
+        origin = hit.get("origin") if isinstance(hit.get("origin"), dict)             else None
+        if origin:
+            it["origin"] = {"date": str(origin.get("date") or "")[:10],
+                            "statement": str(origin.get("statement")
+                                             or "")[:STATEMENT_CHARS],
+                            "direction": str(origin.get("direction") or "")}
+        elif pdate < ndate:
+            it["origin"] = {"date": pdate[:10],
+                            "statement": str(hit.get("statement")
+                                             or "")[:STATEMENT_CHARS],
+                            "direction": str(hit.get("direction") or "")}
+
+
 def save(path, analysis_obj, packet) -> str:
     """把今天的觀點寫進 state(**只留最新一天** —— 昨日觀點只需要
     上一次的)。回 `SAVED` / `NOTHING` / `FAILED`,不拋 ——
@@ -147,6 +186,7 @@ def save(path, analysis_obj, packet) -> str:
             # 今天的分析裡沒有值得留給明天的觀點 —— 那是**正常的答案**,
             # 不是寫檔壞了。兩者要分得開,下游才報得對。
             return NOTHING
+        _carry_origins(rec, load(path))
         import pathlib
         p = pathlib.Path(str(path))
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -213,17 +253,21 @@ def usable(recap, target_session_date: str) -> list:
 VIEW_TITLE_OVERLAP = 0.3
 
 
-def view_for(entities, items, sanitize=None, titles: str = "") -> str:
-    """這個事件群對得上的昨日觀點(對不上、或**分不出來**時回空字串)。
+def best_view(entities, items, titles: str = ""):
+    """對得上的那一筆觀點(對不上、或**分不出來**時回 `None`)。
 
     兩層判準(外審補審 F3):
       1. 主體相交(精確或別名組)—— 與 `continuing_days` 同一套哲學,
          「台積電」的觀點要接得上明天寫「TSMC」的群;
       2. **事件層一致** —— 動作相同,或標題重疊過門檻。
 
-    **模稜兩可時回空字串。** 兩筆同分代表身分分不出來,而「沒有基準」
+    **模稜兩可時回 `None`。** 兩筆同分代表身分分不出來,而「沒有基準」
     只是少一次 diff,「配到別件事的觀點」會讓模型對無關的判斷寫
     強化/轉弱/翻轉 —— 兩種錯誤的代價不對稱。
+
+    抽成獨立函式(縱深第四批):`save()` 的**首見判斷 carry** 要用
+    同一份身分判準 —— 各寫一份的話,「昨天接得上、首見卻接不上」
+    這種分歧沒有人查得出來。
     """
     import entity_alias as _ea
     import event_identity as _eid
@@ -266,17 +310,54 @@ def view_for(entities, items, sanitize=None, titles: str = "") -> str:
             continue
         scored.append(((1 if action_match else 0, round(overlap, 3)), it))
     if not scored:
-        return ""
+        return None
     scored.sort(key=lambda x: x[0], reverse=True)
     if len(scored) > 1 and scored[0][0] == scored[1][0]:
-        return ""          # 分不出來就不給基準
-    it = scored[0][1]
-    zh = _DIRECTION_ZH.get(str(it.get("direction") or ""), "")
-    head = f"{it.get('date', '')}本報" + (f"({zh})" if zh else "")
-    body = str(it.get("statement") or "")
+        return None          # 分不出來就不給基準
+    return scored[0][1]
+
+
+def _fmt_view(date, direction, stmt, label, sanitize=None) -> str:
+    zh = _DIRECTION_ZH.get(str(direction or ""), "")
+    body = str(stmt or "")
     if callable(sanitize):
         body = str(sanitize(body))
-    return f"{head}:{body}"[:STATEMENT_CHARS + 40]
+    return (f"{date}{label}" + (f"({zh})" if zh else "")
+            + f":{body}")[:STATEMENT_CHARS + 40]
+
+
+def view_for(entities, items, sanitize=None, titles: str = "") -> str:
+    """`best_view` 的字串出口(給 packet 的 `yesterday_view`)。
+
+    **只有昨天那一句** —— 首見走 `origin_view_for`(另一個欄位)。
+    第一版把首見串進同一個字串,而 `restatements()` 拿整串
+    `yesterday_view` 算重疊:模型**正確**回顧當初預期(應驗/落空)時,
+    敘述必然與首見高度重疊 → 被誤判成重述、耗掉唯一一次加深呼叫
+    (外審抓到)。渲染與重述檢查要各看各的欄位。
+    """
+    it = best_view(entities, items, titles=titles)
+    if not it:
+        return ""
+    return _fmt_view(it.get("date", ""), it.get("direction"),
+                     it.get("statement"), "本報", sanitize)
+
+
+def origin_view_for(entities, items, sanitize=None, titles: str = "") -> str:
+    """這個事件群的**首見判斷**(沒有、或首見就是昨天時回空字串)。
+
+    縱深第四批:線索延燒到第三天時,「昨天說什麼」不足以寫出
+    「當初預期 → 應驗/落空」—— 那需要**最初**那一天的判斷,而檔案只留
+    最新一天,首見靠 `save()` 逐日 carry(`origin` 欄位)。
+    """
+    it = best_view(entities, items, titles=titles)
+    if not it:
+        return ""
+    origin = it.get("origin") if isinstance(it.get("origin"), dict) else None
+    if not origin or str(origin.get("date") or "") == str(it.get("date")
+                                                         or ""):
+        return ""
+    return _fmt_view(origin.get("date", ""), origin.get("direction"),
+                     origin.get("statement"), "首見", sanitize)
 
 
 def restatements(analysis_obj, packet) -> list:

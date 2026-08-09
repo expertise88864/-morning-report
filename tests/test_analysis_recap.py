@@ -536,3 +536,150 @@ def test_a_write_failure_is_still_a_defect():
     assert "recap_not_saved" not in _codes(rc.SAVED)
     assert "recap_not_saved" not in _codes(rc.NOTHING)
 
+
+# ===== 縱深第四批 B:首見判斷逐日 carry =====
+
+def _thread_item(stmt, title):
+    return {"statement": stmt, "direction": "bullish", "entities": ["台積電"],
+            "action": "", "object": "", "title": title}
+
+
+_T1 = "台積電 CoWoS 先進封裝擴產計畫啟動"
+_T2 = "台積電 CoWoS 先進封裝擴產追加訂單"
+_T3 = "台積電 CoWoS 先進封裝擴產訂單再上修"
+
+
+def test_the_origin_view_survives_across_days():
+    """**檔案只留最新一天,「當初的預期」在第二天就沒了。**
+
+    線索延燒到第三天時,「昨天說什麼」不足以寫出「當初預期 →
+    應驗/落空」—— 首見要逐日 carry,而且首見永遠是**最早**那天,
+    不是前一天(每天重新錨定的話,第三天的「首見」會變成第二天)。
+    """
+    day2 = {"date": "2026-08-08", "items": [_thread_item("進度提前", _T2)]}
+    rc._carry_origins(day2, {"date": "2026-08-07",
+                             "items": [_thread_item("擴產將推升營收", _T1)]})
+    assert day2["items"][0]["origin"]["date"] == "2026-08-07"
+    day3 = {"date": "2026-08-09", "items": [_thread_item("傳追加訂單", _T3)]}
+    rc._carry_origins(day3, day2)
+    assert day3["items"][0]["origin"]["date"] == "2026-08-07",         day3["items"][0].get("origin")
+    assert day3["items"][0]["origin"]["statement"] == "擴產將推升營收"
+
+
+def test_a_same_day_rerun_does_not_reanchor_the_origin():
+    """**同日重跑只沿用、不建立**:拿今天的重跑當首見,
+    「首見」與「今天」是同一天 —— 那不是任何東西的起點。"""
+    day3 = {"date": "2026-08-09", "items": [_thread_item("第一版", _T3)]}
+    rc._carry_origins(day3, {"date": "2026-08-07",
+                             "items": [_thread_item("首見版", _T1)]})
+    rerun = {"date": "2026-08-09", "items": [_thread_item("重跑版", _T3)]}
+    rc._carry_origins(rerun, day3)
+    assert rerun["items"][0]["origin"]["date"] == "2026-08-07"
+    # 同日、而且前一份**沒有** origin → 不得無中生有
+    fresh = {"date": "2026-08-09", "items": [_thread_item("又一版", _T3)]}
+    rc._carry_origins(fresh, {"date": "2026-08-09",
+                              "items": [_thread_item("同日另一版", _T3)]})
+    assert "origin" not in fresh["items"][0]
+
+
+def test_an_unrelated_thread_gets_no_origin():
+    """接不上(或模稜兩可)就不 carry —— 配到別條線索的首見,
+    模型會對無關的判斷寫「應驗/落空」。"""
+    day2 = {"date": "2026-08-08",
+            "items": [_thread_item("完全另一件事", "聯發科發表新晶片平台")]}
+    rc._carry_origins(day2, {"date": "2026-08-07",
+                             "items": [_thread_item("擴產", _T1)]})
+    assert "origin" not in day2["items"][0]
+
+
+def test_the_origin_is_its_own_field_not_part_of_yesterday():
+    """**渲染與重述檢查要各看各的欄位**(外審)。
+
+    首見串進 `yesterday_view` 的話,`restatements()` 拿整串算重疊 ——
+    模型**正確**回顧當初預期(應驗/落空)時,敘述必然與首見高度重疊,
+    被誤判成重述、耗掉唯一一次加深呼叫。
+    """
+    it = dict(_thread_item("進度提前", _T2), date="2026-08-08",
+              origin={"date": "2026-08-07", "statement": "擴產將推升營收",
+                      "direction": "bullish"})
+    yv = rc.view_for(["台積電"], [it], titles=_T2)
+    ov = rc.origin_view_for(["台積電"], [it], titles=_T2)
+    assert "首見" not in yv, yv                     # 昨日欄位乾淨
+    assert yv.startswith("2026-08-08本報"), yv
+    assert ov.startswith("2026-08-07首見"), ov
+    # 第一天(origin 就是昨天)沒有首見欄位
+    first = dict(it, origin={"date": "2026-08-08", "statement": "x",
+                             "direction": "bullish"})
+    assert rc.origin_view_for(["台積電"], [first], titles=_T2) == ""
+
+
+def test_the_origin_view_reaches_the_packet_cluster():
+    """**沒接上等於不存在**(repo 記過,而 TC2 突變當場證明沒有測試
+    走到 `evidence_packet` 的接線):首見要真的出現在事件群的
+    `origin_view` 欄位上,且與 `yesterday_view` 是兩個欄位。"""
+    saved = _saved()
+    saved["date"] = "2026-08-07"
+    for it in saved["items"]:
+        it["origin"] = {"date": "2026-08-05",
+                        "statement": "首見:封測供需趨緊",
+                        "direction": "bullish"}
+    pk = _packet(recap=saved, date="2026-08-08")
+    clu = next(c for c in pk["news_clusters"]["clusters"]
+               if c.get("yesterday_view"))
+    assert clu["origin_view"].startswith("2026-08-05首見"), clu["origin_view"]
+    assert "首見" not in clu["yesterday_view"], clu["yesterday_view"]
+
+
+def test_recapping_the_origin_is_not_a_restatement():
+    """**反例走 `restatements()` 本體**:今天的敘述回顧首見的措辭
+    (那正是 prompt 要求的)不得被計成重述 —— 重述比的是
+    `yesterday_view`,而首見在 `origin_view` 裡。"""
+    pk = {"news_clusters": {"clusters": [{
+        "cluster_id": "c1", "member_source_ids": ["n1"],
+        "yesterday_view": "2026-08-08本報(偏多):進度提前",
+        "origin_view": "2026-08-07首見(偏多):擴產將推升營收 帶動先進封裝"}]}}
+    obj = {"key_drivers": [{
+        "statement": "當初預期擴產將推升營收 帶動先進封裝,今日訂單數字應驗",
+        "cluster_id": "c1"}], "top_news_analysis": []}
+    hits = rc.restatements(obj, pk)
+    assert hits == [], hits
+
+
+def test_the_origin_carry_is_wired_into_save(tmp_path):
+    """**沒有呼叫端的函式,它的 docstring 是假的**(repo 記過):
+    carry 要走生產的 `save()` 路徑,直接呼叫 `_carry_origins` 的測試
+    量不到「存檔時真的有接」。"""
+    import json
+    f = tmp_path / "recap.json"
+    day1 = {"date": "2026-08-07", "items": [_thread_item("首見版", _T1)]}
+    f.write_text(json.dumps(day1, ensure_ascii=False), encoding="utf-8")
+    # `save()` 吃的是 analysis_obj+packet;繞過 extract 直接驗 carry 的話
+    # 又量不到接線 —— 用 monkeypatch 不行(save 內部呼叫 extract),
+    # 所以給一份會 extract 出同一條線索的最小輸入。
+    obj = {"key_drivers": [], "top_news_analysis": [
+        {"source_item_id": "n1", "why_it_matters": "進度提前",
+         "direction": "bullish"}]}
+    pk = {"target_session_date": "2026-08-08",
+          "news": [{"source_item_id": "n1", "title": _T2,
+                    "entities": ["台積電"]}],
+          "news_clusters": {"clusters": [
+              {"cluster_id": "c1", "member_source_ids": ["n1"]}]}}
+    assert rc.save(f, obj, pk) == rc.SAVED
+    saved = json.loads(f.read_text(encoding="utf-8"))
+    assert saved["items"][0]["origin"]["date"] == "2026-08-07", saved
+
+
+def test_the_prompt_asks_for_fulfilment_of_the_origin_view():
+    """prompt 要說出「應驗/落空/仍待驗證」—— 沒說的話,首見只是多一段
+    被複述的舊文。**錨在 prompt 的規則句**(`yesterday_view` 帶「首見」),
+    不是版本註解 —— 第一版搜裸「帶首見」,先命中的是 v29 的說明,
+    量到的是別的東西(突變驗證當場抓到)。"""
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "prompt_profiles.py",
+                   encoding="utf-8").read()
+    anchor = "事件群帶 `origin_view` 時"
+    assert anchor in src
+    seg = src[src.index(anchor):src.index(anchor) + 400]
+    assert "應驗" in seg and "落空" in seg, seg
+

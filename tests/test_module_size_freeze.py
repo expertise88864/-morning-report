@@ -264,7 +264,7 @@ MODULE_CEILINGS = {
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
-    "evidence_packet.py": 490,
+    "evidence_packet.py": 505,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -320,7 +320,9 @@ MODULE_CEILINGS = {
     # 第三輪外審 F2:觀點存對象簽章(動作不等於身分 —— 制裁伊朗與
     # 制裁俄羅斯共用動作碼與主體「美國」)。實測 304。
     # 2026-08-09 P2:`save()` 回三態,不是布林
-    "analysis_recap.py": 340,
+    # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
+    # 抽出 + 首見渲染)。**實測 398 行**。
+    "analysis_recap.py": 430,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

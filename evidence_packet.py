@@ -79,12 +79,15 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 延燒第 7 天);`yesterday_view` 的比對加事件層(同公司兩件事不再
 #: 互換觀點,分不出來時不給基準);跨語言金額橋接要**事件類別一致**
 #: (投資 $10B 與營收 $10B 是兩件事,先前併群後佐證虛增成 multi_source)。
+#: v25(縱深第四批 B):事件群多 `origin_view`(首見判斷,由 recap
+#: 逐日 carry)—— 與 `yesterday_view` 分開兩個欄位:混成一串的話,
+#: `restatements` 拿整串算重疊,正確回顧當初預期會被誤判成重述。
 #: v24(2026-08-09,縱深第四批):`story_arcs` —— 線索帳本
 #: (`story_ledger`,狀態機 + 逐步軌跡)先前**只餵 legacy prompt**,
 #: 特化路徑看不到:同一條延燒中的線索,legacy 的信寫得出
 #: 「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
 #: 故事縱深不是沒有,是沒接上。
-EVIDENCE_SCHEMA_VERSION = 24
+EVIDENCE_SCHEMA_VERSION = 25
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -296,11 +299,21 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
                           for m in c["member_source_ids"])
         # 消毒交給最後的 `sanitize_tree` 整樹掃(它是字串葉節點之一)。
         return _rc.view_for(ents, _recap_items, titles=titles)
+
+    def _oview(c):
+        # **首見與昨日是兩個欄位**:混成一串的話,`restatements` 拿整串
+        # 算重疊,模型正確回顧當初預期會被誤判成重述(外審)。
+        ents = {str(e) for m in c["member_source_ids"]
+                for e in (by_id.get(m, {}).get("entities") or [])}
+        titles = " ".join(str(by_id.get(m, {}).get("title") or "")
+                          for m in c["member_source_ids"])
+        return _rc.origin_view_for(ents, _recap_items, titles=titles)
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],
                            continuing_days=_days(c),
-                           yesterday_view=_yview(c))
+                           yesterday_view=_yview(c),
+                           origin_view=_oview(c))
                       for c in cluster_info["clusters"]
                       if any(m in kept_ids for m in c["member_source_ids"])]
     packet["news_clusters"] = dict(cluster_info, clusters=_kept_clusters)

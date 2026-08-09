@@ -1406,6 +1406,65 @@ def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES,
     return alive[:limit]
 
 
+def _arc_steps(tl: list) -> list:
+    """軌跡的取樣:第一步(起因)+ 尾端三步;被省略的段落標出步數。"""
+    def _step(e):
+        return {"date": str(e.get("d") or "")[:10],
+                "title": str(e.get("t") or "")[:90],
+                "facts": [format_fact(f) for f in (e.get("f") or [])[:2]]}
+    if len(tl) <= 4:
+        return [_step(e) for e in tl]
+    omitted = len(tl) - 4
+    steps = [_step(tl[0])] + [_step(e) for e in tl[-3:]]
+    steps[0]["steps_omitted_after"] = omitted
+    return steps
+
+
+def story_arcs(ledger, today: str = "",
+               limit: int = MAX_ACTIVE_STORIES) -> list:
+    """給**特化路徑**(evidence packet)的結構化敘事弧。
+
+    縱深第四批(2026-08-09):這個帳本先前**只餵 legacy prompt**
+    (`format_story_block`)—— 同一條延燒中的線索,legacy 的信寫得出
+    「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
+    故事縱深不是沒有,是沒接上。
+
+    **選擇與 legacy 同一套**(`active_stories`):兩條路徑看到不同的
+    線索集合的話,「哪條線索在燒」會依 provider 而變 —— 那不是模型的
+    差異,是我們餵的差異。欄位是資料不是散文:渲染語氣交給模型,
+    但狀態(醞釀/發展/高潮/收斂)由這裡算,模型不得改判。
+    消毒交給 `evidence_packet.sanitize_tree` 整樹掃(這些全是字串葉節點)。
+    """
+    out = []
+    for s in active_stories(ledger, limit, today):
+        arc = {
+            "entity": str(s.get("entity") or ""),
+            "state": str(s.get("state") or ""),
+            "state_zh": STATE_ZH.get(str(s.get("state")), "發展"),
+            "first_seen": str(s.get("first_seen") or "")[:10],
+            "updates": int(s.get("updates") or 1),
+            # **「今日無新進展」要標出來**(與 legacy 的 r17 同一條規矩):
+            # 沒標的話,今天沒動的線索看起來與有進展的一樣新,
+            # 模型會照樣重述 —— 正是每日重複要消滅的東西。
+            "fresh_today": bool(today) and (str(s.get("last_update") or "")[:10]
+                                            == str(today)[:10]),
+            "headline": str(s.get("headline") or "")[:120],
+            # **軌跡是縱深的本體**:起因(第一步)→ 轉折 → 最新。
+            # 上限四步(六步全給的話 payload 會被長線索吃掉),但**截斷
+            # 不得丟掉起因**(外審 F2):prompt 把軌跡第一步當成起因,
+            # 只取尾端的話,五、六步的線索的「第一步」其實是中途轉折 ——
+            # 模型會把轉折誤寫成故事的開端。取**第一步 + 尾端三步**,
+            # 中間被省略的步數標出來(讀的人才知道有跳接)。
+            "trajectory": _arc_steps([x for x in (s.get("timeline") or [])
+                                      if isinstance(x, dict)]),
+            "prior_delta": str(s.get("prev_delta") or "")[:160],
+        }
+        if s.get("delta_unconfirmed") and arc["fresh_today"]:
+            arc["unconfirmed_today"] = True
+        out.append(arc)
+    return out
+
+
 def format_story_block(ledger: list[dict], sanitize, limit: int = MAX_ACTIVE_STORIES,
                        today: str = "") -> str:
     """組給 LLM 的敘事脈絡塊。回傳空字串代表今日無活躍線索,呼叫端整段省略。

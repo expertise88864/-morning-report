@@ -79,7 +79,12 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 延燒第 7 天);`yesterday_view` 的比對加事件層(同公司兩件事不再
 #: 互換觀點,分不出來時不給基準);跨語言金額橋接要**事件類別一致**
 #: (投資 $10B 與營收 $10B 是兩件事,先前併群後佐證虛增成 multi_source)。
-EVIDENCE_SCHEMA_VERSION = 23
+#: v24(2026-08-09,縱深第四批):`story_arcs` —— 線索帳本
+#: (`story_ledger`,狀態機 + 逐步軌跡)先前**只餵 legacy prompt**,
+#: 特化路徑看不到:同一條延燒中的線索,legacy 的信寫得出
+#: 「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
+#: 故事縱深不是沒有,是沒接上。
+EVIDENCE_SCHEMA_VERSION = 24
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -196,7 +201,7 @@ EVIDENCE_QUOTE_KEYS = (
     "TAIEX_PRED", "BREADTH", "MARGIN", "FOREIGN_TOP10_TOTAL", "SECTOR_HEAT",
     "MARKET_REGIME", "MA200_STATUS", "ANALYST_MOMENTUM", "SEC_FILINGS",
     "STRUCTURED_NEWS_EVENTS", "EVENT_TIMELINE", "EVENT_CALENDAR",
-    "ANALYSIS_RECAP",
+    "ANALYSIS_RECAP", "STORY_LEDGER",
     "GAZETTE_RECORDS", "POLICY_NEW_KEYWORDS",
     "MODEL_WALK_FORWARD", "MODEL_MONITORING", "MIDTERM", "ABSORPTION",
     "DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS", "HEALTH_WARNINGS",
@@ -303,6 +308,21 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 2026-08-05 那封信的第一段寫的是 QQQ 漲 1.2%、台積電 ADR 跌 0.4%
     # —— 那些是價格變化,不是事件。使用者原話:「不是數據文字堆疊」。
     # 候選是多軸計分的結果,而純價格變化整批排除(見 `event_score`)。
+    # **多日敘事弧接進特化路徑**(縱深第四批)。`story_ledger` 的狀態機
+    # 與逐步軌跡先前只餵 legacy prompt —— 特化的信因此寫不出
+    # 「起因→轉折→今天」。選擇與 legacy 同一套(見 `story_arcs`)。
+    # **原始帳本不留在 packet**:數百條線索會吃掉 payload 預算,
+    # 也讓 evidence_sha 對「與今天無關的舊線索變動」敏感 ——
+    # 蒸餾後的 `story_arcs` 才是證據面向的形狀。
+    import story_ledger as _sl
+    # **新鮮度用產報日,不是目標交易日**(外審 F1):週六產報時
+    # `target_session_date` 指到週一,而帳本的 `last_update` 是實際產報日
+    # —— 拿目標日比的話,今天才更新的線索全部被標成不新鮮、
+    # 被舊線索擠出 12 條上限,而 legacy 用的是台北當日。
+    # 兩條路徑的「今天」必須是同一天。
+    packet["story_arcs"] = _sl.story_arcs(
+        packet["market"].pop("STORY_LEDGER", None) or [],
+        today=str(as_of or "")[:10])
     import event_score as _es
     packet["top_events"] = _es.rank(_kept_clusters, kept_news)
     # **事件之間的關係由 Python 先算**(重構規格 Commit D):哪些事件

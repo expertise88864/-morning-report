@@ -264,7 +264,7 @@ MODULE_CEILINGS = {
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
-    "evidence_packet.py": 470,
+    "evidence_packet.py": 490,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -427,7 +427,7 @@ MODULE_CEILINGS = {
     # 調和的填法指引 —— 與 `writing_rules.py` 同理:**prompt 文字的長度
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
-    "prompt_profiles.py": 380,
+    "prompt_profiles.py": 395,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。

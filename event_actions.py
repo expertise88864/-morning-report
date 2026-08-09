@@ -150,6 +150,21 @@ CANONICAL_SUBJECTS = {
     "european union": "歐盟", "germany": "德國", "india": "印度",
     "白宮": "美國", "華府": "美國", "北京": "中國", "美方": "美國",
     "中方": "中國", "日方": "日本",
+    # 第二十九輪外審 Commit 2 第二輪:**主體相交判準用的就是這張表** ——
+    # `France` 不在表裡的話,同一件法國軍售的中英報導在 UNKNOWN 承接的
+    # 相交判準上是 {"法國"} vs {"France"},同日後續被錯分成 sibling。
+    # `EXTRA_JURISDICTIONS`(只答「是不是法域」)答不了「同一個法域的
+    # 兩種寫法」—— 那是這張表的工作。
+    "france": "法國", "uk": "英國", "united kingdom": "英國",
+    "britain": "英國", "canada": "加拿大", "australia": "澳洲",
+    "brazil": "巴西", "mexico": "墨西哥", "indonesia": "印尼",
+    "thailand": "泰國", "vietnam": "越南", "singapore": "新加坡",
+    "malaysia": "馬來西亞", "philippines": "菲律賓",
+    "netherlands": "荷蘭", "switzerland": "瑞士", "sweden": "瑞典",
+    "poland": "波蘭", "turkey": "土耳其", "saudi arabia": "沙烏地",
+    "uae": "阿聯", "egypt": "埃及", "south africa": "南非",
+    "argentina": "阿根廷", "new zealand": "紐西蘭", "italy": "義大利",
+    "spain": "西班牙", "hong kong": "香港",
 }
 
 

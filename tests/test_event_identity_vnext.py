@@ -753,11 +753,142 @@ def test_an_unknown_recipient_says_unknown_instead_of_guessing():
                                "title": "美台簽署軍售合約"},
                               ["美國", "台灣"], "2026-08-09")["key"]
     assert k.endswith(f":{eid.UNKNOWN_OBJECT}:2026-08"), k
-    # 另一則同樣認不出受詞的落在同一條線上(而不是各自散開)
+    # 同**主體**且同樣認不出受詞的落在同一個 base key 上(散開的話,
+    # sibling 比對根本沒有機會跑)—— 但**不同主體不得共用一條線**,
+    # 那一層由 `_hosts` 的主體相交把關(見下一條)。
     k2 = eid.timeline_identity({"event_type": "geopolitical",
                                 "title": "美國批准新一批軍售案"},
                                ["美國"], "2026-08-09")["key"]
     assert k == k2, (k, k2)
+
+
+def test_two_unknown_recipient_sales_by_different_actors_stay_apart(
+        tmp_path, monkeypatch):
+    """**`arms_sale:?` 不代表「全球所有未知受援國」**(第二十九輪外審
+    P1-3)。
+
+    美國與法國各一件軍售、受援國都認不出 → 同鍵;扣掉主體後只剩
+    「FMS」一個辨識詞 → UNKNOWN;上一版只看同代同日就承接 ——
+    兩國的軍售被壓成一條,第二件事件從報告消失。
+    UNKNOWN 的承接現在要求**主體相交**。
+    """
+    evs = [{"event_type": "geopolitical", "entity": "美國",
+            "title": "美國 FMS"},
+           {"event_type": "geopolitical", "entity": "法國",
+            "title": "法國 FMS"}]
+    _, st = _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    assert len(st) == 2, st
+    subj = sorted(tuple(v["subjects"]) for v in st.values())
+    assert subj == [("法國",), ("美國",)], subj
+
+
+def test_three_actors_with_identical_tokens_get_three_lineages(
+        tmp_path, monkeypatch):
+    """**後綴撞到一條不是我們的線時要消歧**(外審第三輪)。
+
+    三件同日的 unknown 受援國軍售辨識詞相同 → 後綴相同 → 第三件算出的
+    鍵正是第二件的 sibling,而落盤那行會直接**覆寫掉**它 ——
+    兩個 actor 的反例只需要一條 sibling,量不到這次碰撞。
+    """
+    evs = [{"event_type": "geopolitical", "entity": e, "title": f"{e} FMS"}
+           for e in ("美國", "法國", "德國")]
+    _, st = _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    assert len(st) == 3, st
+    subj = sorted(tuple(v["subjects"]) for v in st.values())
+    assert subj == [("德國",), ("法國",), ("美國",)], subj
+    # 隔天:單一辨識詞的 UNKNOWN **跨日不承接**(那是 P1-3 刻意的
+    # fail-closed —— 繼承錯的天數比少算貴)。要驗的是:德國的後續
+    # 不得污染美/法的線,也不得覆寫任何一條既有線。
+    _, st2 = _run(tmp_path, monkeypatch,
+                  [{"event_type": "geopolitical", "entity": "德國",
+                    "title": "德國 FMS 進度"}],
+                  day="2026-08-10", state=st)
+    assert all(tuple(v["subjects"]) in (("美國",), ("法國",), ("德國",))
+               for v in st2.values()), st2
+    # 新的德國線**從第 1 天算起**(fail-closed 的另一半:不是繼承,
+    # 也不是覆寫 —— 昨天那條還在)
+    de2 = [v for v in st2.values()
+           if v["subjects"] == ["德國"] and v["last_seen"] == "2026-08-10"]
+    assert de2 and all(v["days"] == 1 for v in de2), st2
+    assert not any(v["subjects"] != ["德國"] and v.get("days", 0) > 1
+                   for v in st2.values()), "別國的線被德國的後續動到了"
+
+
+def test_a_same_token_followup_does_not_overwrite_yesterdays_line(
+        tmp_path, monkeypatch):
+    """**消歧鍵也可能被昨天的自己佔著**(外審第四輪):同主體、同辨識詞
+    的跨日 UNKNOWN 不承接(刻意),於是第二天的同名事件會算出同一把
+    消歧鍵 —— 再蓋下去就是把昨天那條覆寫掉。"""
+    evs = [{"event_type": "geopolitical", "entity": e, "title": f"{e} FMS"}
+           for e in ("美國", "法國", "德國")]
+    _, st = _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    _, st2 = _run(tmp_path, monkeypatch,
+                  [{"event_type": "geopolitical", "entity": "德國",
+                    "title": "德國 FMS"}],       # 同標題 → 同後綴、同消歧鍵
+                  day="2026-08-10", state=st)
+    de = sorted((v["last_seen"], v["days"]) for v in st2.values()
+                if v["subjects"] == ["德國"])
+    assert de == [("2026-08-09", 1), ("2026-08-10", 1)], st2
+
+
+def test_a_same_actor_followup_still_continues(tmp_path, monkeypatch):
+    """**修正不得把該接的切斷**:同主體、同日的後續報導(UNKNOWN)
+    仍要接得上。"""
+    evs = [{"event_type": "geopolitical", "entity": "美國",
+            "title": "美國 FMS"},
+           {"event_type": "geopolitical", "entity": "美國",
+            "title": "美國 FMS 進度"}]
+    _, st = _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    assert len(st) == 1, st
+
+
+def test_cross_language_actor_spellings_share_one_unknown_lineage(
+        tmp_path, monkeypatch):
+    """**主體相交判準用的是 `CANONICAL_SUBJECTS`**(外審第二輪)——
+    `France` 不在表裡的話,同一件法國軍售的中英報導在 UNKNOWN 承接的
+    相交判準上是 {"法國"} vs {"France"},同日後續被錯分成 sibling。
+    """
+    evs = [{"event_type": "geopolitical", "entity": "法國",
+            "title": "法國 FMS"},
+           {"event_type": "geopolitical", "entity": "France",
+            "title": "France FMS update"}]
+    _, st = _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    assert len(st) == 1, st
+    assert next(iter(st.values()))["subjects"] == ["法國"], st
+
+
+def test_timeline_and_bridge_resolve_the_object_identically():
+    """**判準只能有一份**(P2-1):timeline 放 `?` 而 bridge 退回主體集合
+    的話,同一則事件在分群與 timeline 拿到不同的對象身分 ——
+    同一件事會重複佔據 top-event 與全文預算。"""
+    title, subs = "美國批准新一批軍售案", ["美國"]
+    assert eid.action_object("arms_sale", title, subs) == eid.UNKNOWN_OBJECT
+    ident = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": title}, subs, "2026-08-09")
+    assert f":{eid.action_object('arms_sale', title, subs)}:" in ident["key"]
+
+
+def test_unknown_objects_do_not_bridge_across_languages():
+    """**兩邊都不知道對象不等於同一個對象**:UNKNOWN 對 UNKNOWN 只說得出
+    「都認不出受詞」—— 拿它當同對象會把美法各自的軍售橋在一起
+    (P1-3 的跨語言側)。"""
+    import cross_lang as cl
+    assert not cl.bridge(
+        {"title": "美國批准新一批軍售案 12 億美元", "entities": ["美國"]},
+        {"title": "France approves $1.2 billion weapons sale",
+         "entities": ["France"]})
+    # **同 actor 也一樣**:bridge 退回主體集合的話,這一對的對象都是
+    # 「美國」+ 金額相同 → 誤併;而受援國兩邊都認不出,「是不是同一批」
+    # 根本答不出來 —— 誤併會讓一件真事件消失,漏併只是少一個佐證。
+    assert not cl.bridge(
+        {"title": "美國批准新一批軍售案 12 億美元", "entities": ["美國"]},
+        {"title": "US approves new $1.2 billion weapons sale",
+         "entities": ["United States"]})
+    # 而受援國**認得出**的同一批仍然要橋得起來(修正不得把該接的切斷)
+    assert cl.bridge(
+        {"title": "美國批准對台軍售 12 億美元", "entities": ["美國", "台灣"]},
+        {"title": "US approves $1.2 billion arms sale to Taiwan",
+         "entities": ["United States", "Taiwan"]})
 
 
 def test_a_recipient_in_the_summary_is_found():

@@ -66,7 +66,9 @@ import re
 #: v9(第二十八輪外審 P1-4):帶方向的動作認不出受詞時,鍵放
 #: `UNKNOWN_OBJECT` 而不是整個主體集合(那等於拿 actor+recipient 冒充
 #: recipient);受詞也會從 summary 找。**鍵的算法變了就要進版。**
-IDENTITY_SCHEMA_VERSION = 9
+#: v10(第二十九輪 Commit 2):`CANONICAL_SUBJECTS` 補齊法域的中英對應
+#: (France→法國 等 28 組)—— 主體正規化是鍵的一部分,表變了鍵就變。
+IDENTITY_SCHEMA_VERSION = 10
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -416,6 +418,21 @@ def _scan(low: str, known: dict, action: str) -> str:
     return best
 
 
+def action_object(action: str, title, subjects, summary="") -> str:
+    """這個動作的**對象**(單一真相來源,第二十九輪外審 P2-1)。
+
+    先前 timeline 與跨語言 bridge 各自拼:timeline 認不出受詞時放
+    `UNKNOWN_OBJECT`,bridge 卻退回整個主體集合 —— 同一則事件在分群與
+    timeline 拿到**不同的對象身分**,而那會讓同一件事重複佔據 top-event
+    與全文預算(false split)。判準只能有一份,兩邊都呼叫這裡。
+    """
+    act = str(action or "")
+    if act in DIRECTIONAL_ACTIONS:
+        return (directional_object(act, title, subjects, summary=summary)
+                or UNKNOWN_OBJECT)
+    return object_signature(act, subjects)
+
+
 def object_signature(action: str, subjects) -> str:
     """帶對象的動作 → 對象簽章;不帶對象的動作 → 空字串。
 
@@ -521,14 +538,9 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
         # **先問標題點不點得出受詞**(外審 P1-4A):主體集合當簽章會讓
         # 同一批軍售因為某一則多抓到 actor 就分裂,而 sibling 比對只在
         # 同一個 base key 底下跑,救不回來。點不出來才退回主體集合。
-        if action in DIRECTIONAL_ACTIONS:
-            # **認不出受詞就說不知道**(外審 P1-4)——
-            # 退回主體集合等於拿「actor + recipient」冒充 recipient。
-            obj = (directional_object(action, title, canon,
-                                      summary=ev.get("summary"))
-                   or UNKNOWN_OBJECT)
-        else:
-            obj = object_signature(action, canon)
+        # 對象的判準收在 `action_object`(單一真相來源,外審 P2-1)——
+        # timeline 與跨語言 bridge 要拿到同一個答案。
+        obj = action_object(action, title, canon, summary=ev.get("summary"))
         key = ":".join(x for x in (etype, action, obj, month) if x)
         basis = "action+object" if obj else "action"
     else:

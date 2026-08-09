@@ -14295,8 +14295,12 @@ def update_event_timeline(structured_events: list[dict],
             三態的政策在這裡:
               * `MATCH`      → 承接;
               * `NO_MATCH`   → 另開 sibling;
-              * `UNKNOWN`    → **只有同代、而且今天已經更新過**才承接
-                (那是同一天的後續報導,不是跨日的天數繼承);
+              * `UNKNOWN`    → **同代、今天已更新過、而且主體相交**才承接
+                (那是同一天的後續報導)。主體相交是第二十九輪外審 P1-3
+                補上的:unknown 受援國的鍵是 `arms_sale:?`,美國與法國的
+                兩件軍售**同鍵**;扣掉主體後只剩「FMS」一個辨識詞 →
+                UNKNOWN → 上一版只看同代同日就承接,兩國的軍售被壓成
+                一條、第二件事件從報告消失。
                 其餘一律不承接 → 另開一條,從第 1 天算起。
 
             剛剛被 `adopt_legacy` 接過來的那筆例外:遷移有它自己的判準
@@ -14310,9 +14314,16 @@ def update_event_timeline(structured_events: list[dict],
                 return True
             if verdict == _eid.NO_MATCH:
                 return False
-            return (int(_safe_number(candidate.get("identity_schema")) or 0)
-                    >= _eid.IDENTITY_SCHEMA_VERSION
-                    and str(candidate.get("last_seen") or "") == today)
+            if (int(_safe_number(candidate.get("identity_schema")) or 0)
+                    < _eid.IDENTITY_SCHEMA_VERSION
+                    or str(candidate.get("last_seen") or "") != today):
+                return False
+            _mine = {_eid.canonical_subject(str(s)) for s in subjects
+                     if str(s).strip()}
+            _theirs = {_eid.canonical_subject(str(s))
+                       for s in (candidate.get("subjects") or [])
+                       if str(s).strip()}
+            return bool(_mine & _theirs)
 
         if rec is None or not _hosts(rec):
             # **先找既有的 sibling**(第二輪外審 F3)。後綴由當日辨識詞
@@ -14334,6 +14345,23 @@ def update_event_timeline(structured_events: list[dict],
             elif rec is not None:
                 # base 佔著,而且是**另一樁** → 另開一條
                 key = f"{ident['key']}#{_eid.incident_suffix(_tok)}"
+                # **後綴撞到一條不是我們的線時要消歧**(第二十九輪外審
+                # 第三輪):三件同日的 unknown 受援國軍售(美/法/德 FMS)
+                # 辨識詞相同 → 後綴相同 → 第三件算出的鍵正是第二件的
+                # sibling,而下面的 `state.get(key)` 會直接拿到它、
+                # **覆寫掉**(第二件事件從報告消失)。
+                # 用主體簽章消歧:同主體的撞鍵會在 `_hosts` 那關被承接,
+                # 走得到這裡的必然是不同主體。
+                if key in state and isinstance(state[key], dict)                         and not _hosts(state[key]):
+                    key = f"{key}~{'、'.join(ident['subjects'])[:20]}"
+                if key in state and isinstance(state[key], dict)                         and not _hosts(state[key]):
+                    # **消歧鍵也可能被昨天的自己佔著**(外審第四輪):
+                    # 同主體、同辨識詞的跨日 UNKNOWN 不承接(刻意的
+                    # fail-closed),於是德國第二天的同名事件會算出
+                    # 同一把消歧鍵 —— 再蓋下去就是把昨天那條覆寫掉。
+                    # 附上日期開新的一代;同日不可能走到這裡
+                    # (同日同主體的 UNKNOWN 在 `_hosts` 就承接了)。
+                    key = f"{key}~{today}"
                 _split_incidents += 1
             # base 空著且沒有相符的 sibling → 就用 base(不必另開後綴)
             # **`key` 要一起改**(第二輪外審 F1):先前只換了 `ident`,

@@ -267,17 +267,21 @@ def action_anchor(a: dict, b: dict) -> bool:
         # 對象是 `any` 的動作永遠對不上,這條錨等於只對法域事件有用。
         # 這一層只在這裡做,不影響 timeline 的鍵。
         import entity_alias as _ea2
-        subs = [_ea2.canonical(x)
-                for x in _ei.canonical_subjects(_entities(item))]
-        # **summary 也要傳**(外審第二輪 F1):`timeline_identity` 傳了、
-        # 這個直接呼叫端沒傳 —— 於是英文那側("weapons package",受援國
-        # 寫在 summary)退回主體集合,與中文側對不上,同一件事橋不起來。
-        return (_ei.directional_object(act, (item or {}).get("title"), subs,
-                                       summary=(item or {}).get("summary"))
-                or _ei.object_signature(act, sorted(dict.fromkeys(subs))))
+        subs = sorted(dict.fromkeys(
+            _ea2.canonical(x) for x in _ei.canonical_subjects(_entities(item))))
+        # **與 timeline 同一份對象判準**(第二十九輪外審 P2-1):先前這裡
+        # 認不出受詞時退回主體集合,而 timeline 放 `UNKNOWN_OBJECT` ——
+        # 同一則事件在分群與 timeline 拿到不同的對象身分。
+        return _ei.action_object(act, (item or {}).get("title"), subs,
+                                 summary=(item or {}).get("summary"))
 
     sa, sb = _obj(a), _obj(b)
     if not sa or sa != sb:
+        return False
+    if sa == _ei.UNKNOWN_OBJECT:
+        # **兩邊都不知道對象不等於同一個對象**:UNKNOWN 對 UNKNOWN 只說
+        # 得出「都認不出受詞」—— 拿它當「同對象」會把美國與法國各自的
+        # 軍售案橋在一起(與 P1-3 同一個形狀,在跨語言這一側)。
         return False
     # **同動作同對象仍可能是同一天的兩樁不同的事**(外審 P1-4B):
     # 同一國同日兩批不同軍售、同一目標兩輪不同制裁。誤併的代價很重 ——

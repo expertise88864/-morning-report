@@ -1,48 +1,5 @@
 [
  {
-  "date": "2026-07-04",
-  "checks": {
-   "universe": true,
-   "institutional": true,
-   "revenue": true,
-   "liquidity": true,
-   "news": true,
-   "structured_events": true,
-   "tw_policy_intelligence": true,
-   "tw_medical_intelligence": true,
-   "tw_policy_official_sources": true,
-   "tw_medical_official_sources": true
-  },
-  "feeds": {
-   "search.cnbc.com": true,
-   "feeds.bloomberg.com": true,
-   "finance.yahoo.com": true,
-   "news.google.com": true,
-   "www.federalreserve.gov": true,
-   "home.treasury.gov": false,
-   "news.cnyes.com": false,
-   "www.chinatimes.com": false,
-   "money.udn.com": true,
-   "udn.com": true,
-   "feeds.feedburner.com": true,
-   "www.scmp.com": true,
-   "asia.nikkei.com": true,
-   "feeds.bbci.co.uk": true,
-   "www.ey.gov.tw": true,
-   "www.mohw.gov.tw": true,
-   "www.nhi.gov.tw": false,
-   "www.fsc.gov.tw": true,
-   "www.cbc.gov.tw": true,
-   "www.moi.gov.tw": true,
-   "www.mol.gov.tw": true,
-   "www.moea.gov.tw": true,
-   "www.cdc.gov.tw": true,
-   "www.fda.gov.tw": true,
-   "www.vghtc.gov.tw": false,
-   "www.ntuh.gov.tw": false
-  }
- },
- {
   "date": "2026-07-06",
   "checks": {
    "universe": true,
@@ -1276,6 +1233,51 @@
    "世界-災難極端": 100,
    "世界-科學太空": 100,
    "世界-AI大事": 48
+  },
+  "drama": 0
+ },
+ {
+  "date": "2026-08-10",
+  "checks": {
+   "universe": true,
+   "institutional": true,
+   "revenue": true,
+   "liquidity": true,
+   "news": true,
+   "structured_events": true
+  },
+  "feeds": {
+   "search.cnbc.com": true,
+   "feeds.bloomberg.com": true,
+   "finance.yahoo.com": true,
+   "feeds.feedburner.com": true,
+   "www.federalreserve.gov": true,
+   "api.cnyes.com": true,
+   "openapi.twse.com.tw": true,
+   "news.ltn.com.tw": true,
+   "technews.tw": true,
+   "tw.stock.yahoo.com": true,
+   "money.udn.com": true,
+   "udn.com": true,
+   "www.scmp.com": true,
+   "asia.nikkei.com": true,
+   "feeds.bbci.co.uk": true,
+   "news.google.com": true
+  },
+  "queries": {
+   "Google-半導體": 41,
+   "Google-美股科技": 21,
+   "Google-Fed利率": 11,
+   "Google-台股大盤": 20,
+   "Google-地緣": 0,
+   "Google-散熱": 8,
+   "Google-先進封裝": 6,
+   "Google-載板PCB": 4,
+   "Google-光通訊": 1,
+   "世界-國際大事": 100,
+   "世界-災難極端": 100,
+   "世界-科學太空": 100,
+   "世界-AI大事": 41
   },
   "drama": 0
  }

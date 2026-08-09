@@ -1,50 +1,541 @@
 {
- "date": "2026-08-09 06:15",
- "git_sha": "57e76b8166ffc4a9db913d691197ddc06b6a0014",
- "github_run_id": "31281244048",
- "run_nonce": "67756608dfc34e9c9797b11e641e5d01",
- "total_seconds": 0.0,
+ "date": "2026-08-10 06:17",
+ "report_kind": "morning_report",
+ "git_sha": "1b76a8dff6836b82a7026b5be37c18da3767b02d",
+ "github_run_id": "31338997293",
+ "run_nonce": "c79f2795125b48cfaebef6f06b3890bc",
+ "total_seconds": 1225.1,
  "budget_seconds": 2100.0,
  "news_workers": 8,
  "degraded_steps": [
   "llm:effort_not_applied:primary"
  ],
- "phases": [],
+ "phases": [
+  {
+   "label": "行情/總經/FX",
+   "seconds": 5.1
+  },
+  {
+   "label": "新聞+政策+體育",
+   "seconds": 144.6
+  },
+  {
+   "label": "TAIFEX/籌碼/預測",
+   "seconds": 9.6
+  },
+  {
+   "label": "TWSE universe/候選新聞",
+   "seconds": 131.0
+  },
+  {
+   "label": "事件抽取/模型/walk-forward",
+   "seconds": 258.8
+  },
+  {
+   "label": "LLM 主分析",
+   "seconds": 672.2
+  },
+  {
+   "label": "渲染",
+   "seconds": 3.7
+  }
+ ],
  "feeds": {
+  "search.cnbc.com": {
+   "ok": 3,
+   "fail": 0
+  },
+  "feeds.bloomberg.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "finance.yahoo.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "feeds.feedburner.com": {
+   "ok": 4,
+   "fail": 0
+  },
+  "www.federalreserve.gov": {
+   "ok": 2,
+   "fail": 0
+  },
+  "api.cnyes.com": {
+   "ok": 7,
+   "fail": 0
+  },
+  "openapi.twse.com.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "news.ltn.com.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "technews.tw": {
+   "ok": 1,
+   "fail": 0
+  },
+  "tw.stock.yahoo.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "money.udn.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "udn.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "www.scmp.com": {
+   "ok": 2,
+   "fail": 0
+  },
+  "asia.nikkei.com": {
+   "ok": 1,
+   "fail": 0
+  },
+  "feeds.bbci.co.uk": {
+   "ok": 1,
+   "fail": 0
+  },
   "news.google.com": {
-   "ok": 13,
+   "ok": 109,
    "fail": 0
   }
  },
- "model_history_days": null,
- "d1_samples": null,
- "d1_ready": null,
- "stance_dual": null,
- "data_checks": null,
- "mz_shadow": null,
- "llm_extractor": null,
+ "model_history_days": 225,
+ "d1_samples": 10,
+ "d1_ready": false,
+ "stance_dual": {
+  "llm": 1,
+  "llm_label": "中性",
+  "py": 1,
+  "py_label": "中性",
+  "agree": true,
+  "coverage": 1.0,
+  "missing": [],
+  "flags": [],
+  "abstain": false,
+  "stale_us": false,
+  "mode": "global_full",
+  "rule_version": 2,
+  "authority": "python"
+ },
+ "data_checks": {
+  "all": [
+   {
+    "source": "model_history",
+    "check": "fill_rate:taifex_top10_net",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`taifex_top10_net` 填充率 55%(6/11)",
+    "observed": 0.545
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:txo_pc_oi_ratio",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`txo_pc_oi_ratio` 填充率 55%(6/11)",
+    "observed": 0.545
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:taiex_close",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`taiex_close` 填充率 100%(30/30)",
+    "observed": 1.0
+   },
+   {
+    "source": "model_history",
+    "check": "fill_rate:structured_events",
+    "severity": "warn",
+    "passed": true,
+    "detail": "`structured_events` 填充率 97%(29/30)",
+    "observed": 0.967
+   },
+   {
+    "source": "tw_universe",
+    "check": "row_count",
+    "severity": "error",
+    "passed": true,
+    "detail": "100 筆",
+    "observed": 100
+   },
+   {
+    "source": "tw_universe",
+    "check": "required_fields",
+    "severity": "error",
+    "passed": true,
+    "detail": "必要欄位齊全",
+    "observed": 0.0
+   },
+   {
+    "source": "tw_universe",
+    "check": "value_range",
+    "severity": "warn",
+    "passed": true,
+    "detail": "值域正常",
+    "observed": 0.0
+   }
+  ],
+  "errors": [],
+  "warnings": [],
+  "checked": 7,
+  "failed": 0
+ },
+ "mz_shadow": {
+  "n": 58,
+  "applied": true,
+  "a": 2.011,
+  "b": 0.688,
+  "raw": 2372.51,
+  "shadow": 2373.74,
+  "delta": 1.23,
+  "oos": {
+   "n": 7,
+   "enough": false,
+   "mz_rule": "delta-mz-hac-v1",
+   "mae_raw": 50.493,
+   "mae_shadow": 51.677,
+   "better": 2,
+   "worse": 5,
+   "mean_gain": -1.184,
+   "lag": 2,
+   "t": -0.55,
+   "t_ols": -0.27
+  }
+ },
+ "llm_extractor": {
+  "called": true,
+  "items": 35,
+  "parsed": 0,
+  "valid": 0,
+  "dropped": 0,
+  "retried": false,
+  "outcome": "ok",
+  "fallback_from": "deepseek",
+  "fallback_to": "gemini",
+  "survived": 0,
+  "merged_away": 0,
+  "provenance": {}
+ },
  "delivery": {
   "attempted": true,
   "success": true,
-  "run_kind": "workflow_dispatch"
+  "run_kind": "schedule"
  },
- "capability_health": null,
- "forecast_mixed_versions": null,
- "exdiv_preview": null,
- "corporate_actions": null,
- "chips": null,
+ "capability_health": {
+  "fatal": [],
+  "inactive_capabilities": [
+   "llm_event_extractor"
+  ],
+  "warnings": []
+ },
+ "forecast_mixed_versions": {
+  "point_2330": [
+   "2330-open-adr-momentum-bias-v1",
+   "legacy/unknown"
+  ],
+  "point_taiex": [
+   "legacy/unknown",
+   "taiex-open-nightfut-v1"
+  ],
+  "probability_rule": [
+   "legacy/unknown",
+   "prob-v2"
+  ],
+  "mz_rule": [
+   "delta-mz-hac-v1",
+   "legacy/unknown"
+  ],
+  "event_schema": [
+   "3",
+   "4",
+   "legacy/unknown"
+  ]
+ },
+ "exdiv_preview": {
+  "rows": 117,
+  "min_ex_date": "2026-08-06",
+  "max_ex_date": "2026-10-06",
+  "days_back": 4,
+  "days_forward": 57,
+  "lead_observed": 80,
+  "lead_censored": 0,
+  "lead_unmeasurable": 115,
+  "lead_min_days": 12,
+  "lead_short_count": 0
+ },
+ "corporate_actions": {
+  "rows": 1,
+  "min_halt_date": "2026-07-23",
+  "max_halt_date": "2026-07-23",
+  "days_back": 18,
+  "days_forward": -18
+ },
+ "chips": {
+  "session": "2026-08-07",
+  "large_source_date": "20260807",
+  "pcr_source_date": "20260807",
+  "large_matched": true,
+  "pcr_matched": true
+ },
  "llm": {
+  "extractor": {
+   "provider": "gemini",
+   "model": "gemini-2.5-flash",
+   "requested_effort": null,
+   "applied_effort": null,
+   "elapsed_seconds": 34.0,
+   "calls": 1
+  },
+  "config": {
+   "provider": "deepseek",
+   "extractor": "deepseek",
+   "model": "deepseek-v4-flash",
+   "primary_effort": "max",
+   "request_timeout": 450.0,
+   "total_timeout": 1200.0,
+   "sources": {
+    "LLM_PROVIDER": {
+     "source": "workflow_default",
+     "resolved": "deepseek",
+     "workflow_default": "deepseek"
+    },
+    "EXTRACTOR_PROVIDER": {
+     "source": "workflow_default",
+     "resolved": "deepseek",
+     "workflow_default": ""
+    },
+    "DEEPSEEK_REASONING_EFFORT": {
+     "source": "workflow_default",
+     "resolved": "max",
+     "workflow_default": "max"
+    },
+    "LLM_TOTAL_TIMEOUT_SECONDS": {
+     "source": "workflow_default",
+     "resolved": "1200.0",
+     "workflow_default": ""
+    },
+    "LLM_REQUEST_TIMEOUT_SECONDS": {
+     "source": "workflow_default",
+     "resolved": "450.0",
+     "workflow_default": ""
+    },
+    "LLM_PRIMARY_PROMPT_PROFILE": {
+     "source": "repo_variable",
+     "resolved": "luna56_xhigh_v1"
+    },
+    "DEEPSEEK_MODEL": {
+     "source": "workflow_fixed",
+     "resolved": "deepseek-v4-flash",
+     "workflow_default": "deepseek-v4-flash"
+    },
+    "DEEPSEEK_EXTRACTOR_MODEL": {
+     "source": "workflow_fixed",
+     "resolved": "deepseek-v4-flash",
+     "workflow_default": "deepseek-v4-flash"
+    },
+    "DEEPSEEK_BASE_URL": {
+     "source": "workflow_fixed",
+     "resolved": "https://api.deepseek.com",
+     "workflow_default": "https://api.deepseek.com"
+    },
+    "LLM_EVENT_EXTRACTION": {
+     "source": "workflow_fixed",
+     "resolved": "1",
+     "workflow_default": "1"
+    },
+    "GEMINI_MODEL": {
+     "source": "workflow_fixed",
+     "resolved": "gemini-2.5-flash",
+     "workflow_default": "gemini-2.5-flash"
+    },
+    "CLAUDE_MODEL": {
+     "source": "workflow_fixed",
+     "resolved": "claude-sonnet-4-6",
+     "workflow_default": "claude-sonnet-4-6"
+    }
+   }
+  },
+  "evidence_nonstring_keys": [
+   "market.MODEL_WALK_FORWARD:3(int)",
+   "market.MODEL_WALK_FORWARD:5(int)"
+  ],
+  "payload_budget": {
+   "chars_before": 2214577,
+   "limit": 1000000,
+   "trimmed": [
+    {
+     "block": "market.HISTORY",
+     "chars": 830708
+    },
+    {
+     "block": "market.STRUCTURED_NEWS_EVENTS",
+     "chars": 382910
+    },
+    {
+     "block": "market.GAZETTE_RECORDS",
+     "chars": 55801
+    }
+   ],
+   "chars_after": 945310,
+   "over_budget": false,
+   "final_request_chars": 1000446
+  },
+  "payload_compact": {
+   "chars_before": 945310,
+   "limit": 1000000,
+   "applied": [],
+   "chars_after": 945310,
+   "over_budget": false
+  },
+  "block_sizes": {
+   "tw_universe": 524770,
+   "news": 202637,
+   "news_clusters": 110261,
+   "market.SECTOR_HEAT": 10420,
+   "market.MODEL_MONITORING": 5916,
+   "market.MODEL_WALK_FORWARD": 5429,
+   "market.MACRO": 2739,
+   "market.MIDTERM": 2329,
+   "market.QQQ": 2312,
+   "market.SPY": 2312,
+   "signal_tensions": 2233,
+   "market.TSM": 2209
+  },
+  "primary_bundle": {
+   "core_evidence_sha": "a0978c8aa7cd0910",
+   "estimated_input_tokens": 496857,
+   "evidence_coverage": {
+    "available": 449,
+    "included": 220,
+    "near_duplicates_dropped": 0,
+    "rate": 0.49,
+    "raw_available": 449,
+    "with_fulltext": 27
+   },
+   "evidence_schema_version": 27,
+   "evidence_sha": "20c029c2c0e10757",
+   "output_schema_version": 13,
+   "profile_id": "luna56_xhigh_v1",
+   "profile_version": 31,
+   "prompt_sha": "73c2bcc71d7b1548",
+   "structured_output": true,
+   "truncation_summary": {
+    "near_duplicates_dropped": 0,
+    "news_dropped": 229,
+    "news_dropped_by_grade": {
+     "C": 229
+    },
+    "news_kept": 220,
+    "news_total": 449,
+    "required_forced_in": 0,
+    "summaries_truncated": 23
+   }
+  },
+  "unrealizable_namespaces": [
+   "derived:"
+  ],
+  "relates_to_pruned": [
+   "relates_to→n27d926bea11",
+   "relates_to→n34ce97d5398",
+   "relates_to→n195522542ec"
+  ],
+  "request_measurements": [
+   {
+    "role": "primary",
+    "chars": 999263,
+    "tokens": 353832,
+    "accepted": false
+   },
+   {
+    "role": "primary",
+    "chars": 1000446,
+    "tokens": 354358,
+    "accepted": false
+   }
+  ],
+  "attempts": [
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "max",
+    "applied_effort": "max",
+    "prompt_tokens": 353832,
+    "completion_tokens": 41236,
+    "total_tokens": 395068,
+    "reasoning_tokens": 26141,
+    "cached_tokens": 0,
+    "estimated_cost_usd": 0.061083,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價",
+    "pricing_tier": "standard",
+    "pricing_schema": 4,
+    "effective_input_rate": 0.14,
+    "effective_cached_rate": 0.0028,
+    "effective_output_rate": 0.28,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 371.7,
+    "finish_reason": "completed",
+    "request_chars": 999263,
+    "reject_reason": "claim_audit[0] 引用了不存在的證據 ID:'market:SOX.change_pct'; claim_audit[5] 引用了不存在的證據 ID:'market:WTI.close'"
+   },
+   {
+    "role": "primary",
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "requested_effort": "max",
+    "applied_effort": "max",
+    "prompt_tokens": 354358,
+    "completion_tokens": 31023,
+    "total_tokens": 385381,
+    "reasoning_tokens": 21008,
+    "cached_tokens": 353792,
+    "estimated_cost_usd": 0.009756,
+    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價;快取命中 353792 tok 以 $0.0028/M 計",
+    "pricing_tier": "standard",
+    "pricing_schema": 4,
+    "effective_input_rate": 0.14,
+    "effective_cached_rate": 0.0028,
+    "effective_output_rate": 0.28,
+    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
+    "elapsed_seconds": 241.1,
+    "finish_reason": "completed",
+    "repair": true,
+    "request_chars": 1000446,
+    "reject_reason": "claim_audit[8] 引用了不存在的證據 ID:'prediction:pred_open'; top_news_analysis[0].affected_assets[0] 的 '2408' 不在這則新聞的實體或標題裡 —— 真的要談某檔美股,它得是新聞裡的主角"
+   }
+  ],
+  "luna_problems": [
+   "claim_audit[0] 引用了不存在的證據 ID:'market:SOX.change_pct'",
+   "claim_audit[5] 引用了不存在的證據 ID:'market:WTI.close'",
+   "claim_audit[7] 引用了不存在的證據 ID:'market:VIX.close'",
+   "claim_audit[7] 引用了不存在的證據 ID:'market:VIX9D.change_pct'",
+   "claim_audit[7] 引用了不存在的證據 ID:'market:VIX_TERM.state'",
+   "claim_audit[8] 引用了不存在的證據 ID:'prediction:pred_open'",
+   "top_news_analysis[0].affected_assets[0] 的 '2408' 不在這則新聞的實體或標題裡 —— 真的要談某檔美股,它得是新聞裡的主角",
+   "top_news_analysis[0].affected_assets[1] 的 '3711' 不在這則新聞的實體或標題裡 —— 真的要談某檔美股,它得是新聞裡的主角",
+   "top_news_analysis[0].mechanism_steps[1] 從 '長鑫存儲今年產能已達極限，價格與美光、SK海力士相當甚至更貴' 開始,而上一步走到 '蘋果在中國市場的部分裝置可能改用長鑫記憶體' —— 鏈斷了,中間缺的那一步要補上(不確定就標 inference)",
+   "top_news_analysis[0].mechanism_steps[2] 從 '記憶體短缺持續，蘋果尋求額外供給' 開始,而上一步走到 '短期對現有記憶體廠的訂單與定價衝擊有限' —— 鏈斷了,中間缺的那一步要補上(不確定就標 inference)"
+  ],
+  "analysis_origin": "legacy_fallback_after_luna_failure",
   "primary": {
    "provider": "deepseek",
    "model": "deepseek-v4-flash",
    "requested_effort": "max",
    "applied_effort": null,
-   "prompt_tokens": 4983,
-   "completion_tokens": 7329,
-   "total_tokens": 12312,
-   "reasoning_tokens": 6521,
+   "prompt_tokens": 82642,
+   "completion_tokens": 5029,
+   "total_tokens": 87671,
+   "reasoning_tokens": 1397,
    "cached_tokens": 0,
-   "estimated_cost_usd": 0.00275,
+   "estimated_cost_usd": 0.012978,
    "cost_basis": "官方牌價(developers.openai.com + api-docs.deepseek.com 2026-08-01);推理以 output 計價",
    "pricing_tier": "standard",
    "pricing_schema": 4,
@@ -52,25 +543,61 @@
    "effective_cached_rate": 0.0028,
    "effective_output_rate": 0.28,
    "pricing_source": "api-docs.deepseek.com/quick_start/pricing",
-   "elapsed_seconds": 80.8,
+   "elapsed_seconds": 57.2,
    "finish_reason": "stop",
    "canonical_effort": "max",
    "calls": 1
   },
+  "writer": {
+   "source": "primary",
+   "provider": "deepseek",
+   "model": "deepseek-v4-flash"
+  },
   "cost_summary": {
-   "total_usd": 0.00275,
-   "measured_calls": 1,
-   "failed_attempt_cost_usd": 0.0,
+   "total_usd": 0.083817,
+   "measured_calls": 3,
+   "failed_attempt_cost_usd": 0.070839,
    "unmeasured_billable_calls": 0,
    "pricing_as_of": "2026-08-01",
-   "pricing_schema": 4
+   "pricing_schema": 4,
+   "incomplete": "未收錄單價:gemini-2.5-flash"
   }
  },
  "state_writes": {
-  "attempted": 4,
+  "attempted": 14,
   "failed": [],
   "detail": {}
  },
- "event_identity": null,
- "news": null
+ "event_identity": {
+  "schema": 10,
+  "keyed_by_action": 1,
+  "keyed_by_action_object": 0,
+  "adopted_legacy": 1,
+  "superseded_legacy": 0,
+  "split_incidents": 1,
+  "legacy_remaining": 23
+ },
+ "news": {
+  "fulltext_plan": {
+   "targets": 26,
+   "clusters": 413,
+   "uncovered_clusters": [
+    "cluster:nefe448f40f0",
+    "cluster:nf8617a159ee",
+    "cluster:n0c2ea357566",
+    "cluster:n0f5cfac51a5",
+    "cluster:n1c4f68923d5",
+    "cluster:n22992630b1a",
+    "cluster:n27d926bea11",
+    "cluster:n32b545a1aff",
+    "cluster:n374584756be",
+    "cluster:n3ec5fc8d8b1"
+   ],
+   "basis": "逐事件群分配:官方 → 獨立群組數 → 延燒中 → 群內最高重要性;先每群一篇再補第二篇(涵蓋的事件數優先於單一事件深度)",
+   "available_news": 413,
+   "fetchable_candidates": 413,
+   "already_fulltext": 0,
+   "no_fetch_link": 0
+  }
+ }
 }

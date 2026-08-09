@@ -23,41 +23,6 @@
   ],
   "event_type": "geopolitical"
  },
- "litigation:美國政府": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "美國25州控告川普政府新關稅越權",
-  "entity": "美國政府",
-  "subjects": [
-   "美國政府"
-  ],
-  "event_type": "litigation"
- },
- "geopolitical:伊朗、胡塞武裝": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "印度籍商船遭襲後沉沒於紅海",
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗",
-   "胡塞武裝"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:俄羅斯、烏克蘭": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "烏克蘭指控俄羅斯無人機攻擊構成戰爭罪",
-  "entity": "俄羅斯",
-  "subjects": [
-   "俄羅斯",
-   "烏克蘭"
-  ],
-  "event_type": "geopolitical"
- },
  "geopolitical:台灣": {
   "first_seen": "2026-08-05",
   "days": 2,
@@ -69,83 +34,6 @@
   ],
   "event_type": "geopolitical"
  },
- "geopolitical:6446": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "藥華藥公告該公司及子公司泛泰醫療遭網路攻擊 - iThome",
-  "entity": "6446",
-  "subjects": [
-   "6446"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:2603": {
-  "first_seen": "2026-08-05",
-  "days": 1,
-  "last_seen": "2026-08-05",
-  "latest_title": "100套陸射魚叉飛彈2028年底前返台 國軍斥資2.5億支應在美運輸工作 - 自由軍武頻道",
-  "entity": "2603",
-  "subjects": [
-   "2603"
-  ],
-  "event_type": "geopolitical"
- },
- "export_controls:AMAT": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "US export controls reportedly boost Chinese testing of domestic semiconductor equipment",
-  "entity": "AMAT",
-  "subjects": [
-   "AMAT"
-  ],
-  "event_type": "export_controls"
- },
- "geopolitical:Iran-Oman": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "Hormuz reopening talks face unresolved fees and oversight terms",
-  "entity": "Iran-Oman",
-  "subjects": [
-   "Iran-Oman"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:United States-Iran": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "Iran warns Gulf states of possible energy-infrastructure retaliation",
-  "entity": "United States-Iran",
-  "subjects": [
-   "United States-Iran"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:China-Taiwan": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "US analysis warns China could pursue a firepower blockade of Taiwan",
-  "entity": "China-Taiwan",
-  "subjects": [
-   "China-Taiwan"
-  ],
-  "event_type": "geopolitical"
- },
- "litigation:United States": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "US refunds roughly $100 billion in invalidated tariff collections",
-  "entity": "United States",
-  "subjects": [
-   "United States"
-  ],
-  "event_type": "litigation"
- },
  "export_controls:美國": {
   "first_seen": "2026-08-06",
   "days": 2,
@@ -156,28 +44,6 @@
    "美國"
   ],
   "event_type": "export_controls"
- },
- "export_controls:ASML": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "Export controls may threaten ASML China orders",
-  "entity": "ASML",
-  "subjects": [
-   "ASML"
-  ],
-  "event_type": "export_controls"
- },
- "geopolitical:2634": {
-  "first_seen": "2026-08-06",
-  "days": 1,
-  "last_seen": "2026-08-06",
-  "latest_title": "2634 漢翔 - 140億美元軍售引爆美台聯防 麥考爾拋重磅訊號！防空飛彈與無... - 股市爆料同學會 - CMoney",
-  "entity": "2634",
-  "subjects": [
-   "2634"
-  ],
-  "event_type": "geopolitical"
  },
  "export_controls:US-LICYQ": {
   "first_seen": "2026-08-07",
@@ -199,13 +65,6 @@
   "last_seen": "2026-08-07",
   "latest_title": "沙國警告伊朗支持武裝可能同步攻擊能源設施",
   "entity": "沙烏地阿拉伯"
- },
- "geopolitical:土耳其": {
-  "first_seen": "2026-08-07",
-  "days": 1,
-  "last_seen": "2026-08-07",
-  "latest_title": "土耳其、沙國與巴基斯坦傳將簽聯合防務協議",
-  "entity": "土耳其"
  },
  "export_controls:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-08",
@@ -258,5 +117,78 @@
   "event_type": "export_controls",
   "action": "sanction",
   "identity_schema": 6
+ },
+ "geopolitical:hormuz_passage:2026-08#04d558": {
+  "first_seen": "2026-08-10",
+  "days": 1,
+  "last_seen": "2026-08-10",
+  "latest_title": "重啟荷莫茲…伊朗提嚴苛條件 要求美軍撤離、永久結束戰爭等 增添談判變數 - money.udn.com",
+  "incident_tokens": [
+   "com",
+   "money",
+   "udn",
+   "久結",
+   "判變",
+   "啟荷",
+   "嚴苛",
+   "增添",
+   "戰爭",
+   "提嚴",
+   "撤離",
+   "束戰",
+   "條件",
+   "永久",
+   "求美",
+   "添談",
+   "爭等",
+   "結束",
+   "美軍",
+   "苛條",
+   "荷莫",
+   "莫茲",
+   "要求",
+   "談判"
+  ],
+  "entity": "伊朗",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "hormuz_passage",
+  "identity_schema": 10
+ },
+ "geopolitical:土耳其:2026-08": {
+  "first_seen": "2026-08-07",
+  "days": 2,
+  "last_seen": "2026-08-10",
+  "latest_title": "沙特、土耳其和巴基斯坦簽了：攻擊一國視作攻擊三國 - 華僑時報",
+  "entity": "土耳其",
+  "migration_uncertain": true,
+  "incident_tokens": [
+   "一國",
+   "三國",
+   "作攻",
+   "僑時",
+   "和巴",
+   "國視",
+   "坦簽",
+   "基斯",
+   "巴基",
+   "擊一",
+   "擊三",
+   "攻擊",
+   "斯坦",
+   "時報",
+   "沙特",
+   "簽了",
+   "華僑",
+   "視作"
+  ],
+  "subjects": [
+   "土耳其"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 10
  }
 }

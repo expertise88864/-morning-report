@@ -510,9 +510,12 @@ def test_the_bridge_is_actually_reachable_from_clustering():
     上一版的測試直接呼叫 `cross_lang.bridge()`,繞過了整段前置條件。
     """
     import news_clusters as nc
+    # **同動作同對象還不夠**(第二十七輪外審 P1-4B):同一國同日可能有
+    # 兩批不同軍售。要一個具體的共同錨 —— 這裡是同一筆金額。
     news = [{"source_item_id": "n1", "title": "美國批准對台軍售 12 億美元",
              "entities": ["美國", "台灣"], "source": "經濟日報"},
-            {"source_item_id": "n2", "title": "US approves arms sale to Taiwan",
+            {"source_item_id": "n2",
+             "title": "US approves $1.2 billion arms sale to Taiwan",
              "entities": ["United States", "Taiwan"], "source": "Reuters"}]
     assert len(nc.clusters(news)) == 1, nc.clusters(news)
     # **對象不同就不得併** —— 前置條件放寬不等於門開著
@@ -530,9 +533,30 @@ def test_a_non_monetary_event_can_bridge_across_languages():
     本來就中英並列,主體正規化把 "United States" 與「美國」收成同一個。
     """
     assert _pair("美國批准對台軍售 12 億美元", ["美國", "台灣"],
-                 "US approves arms sale to Taiwan", ["United States", "Taiwan"])
-    assert _pair("美國宣布制裁中國半導體企業", ["美國", "中國"],
-                 "US sanctions Chinese chipmakers", ["United States", "China"])
+                 "US approves $1.2 billion arms sale to Taiwan",
+                 ["United States", "Taiwan"])
+    # 具體錨也可以是**兩邊都點名的非法域實體**(別名組對應)
+    assert _pair("美國制裁台積電供應鏈", ["美國", "台積電"],
+                 "US sanctions TSMC suppliers", ["United States", "TSMC"])
+
+
+def test_the_same_action_and_object_alone_do_not_merge():
+    """**同動作同對象仍可能是同一天的兩樁不同的事**(第二十七輪外審 P1-4B)。
+
+    同一國同日兩批不同軍售、同一目標兩輪不同制裁 —— 誤併的代價很重:
+    獨立來源數被灌高、全文預算只留一個事件,而驗證器禁止同一群分析兩次,
+    於是其中一件真事件會整條消失。所以要一個**具體的共同錨**
+    (同一筆金額,或兩邊都點名的非法域實體);沒有就不併。
+
+    代價是**漏併**(兩則沒有數字、沒有點名公司的同案報導各自成群)——
+    那是刻意選的那一側。
+    """
+    assert not _pair("美國批准對台軍售", ["美國", "台灣"],
+                     "US approves arms sale to Taiwan",
+                     ["United States", "Taiwan"])
+    assert not _pair("美國宣布制裁中國半導體企業", ["美國", "中國"],
+                     "US sanctions Chinese chipmakers",
+                     ["United States", "China"])
 
 
 def test_the_new_anchor_does_not_merge_two_different_events():

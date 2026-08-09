@@ -349,14 +349,22 @@ def test_production_keeps_both_lines_distinguishable(tmp_path, monkeypatch):
 
     外審補審 F5 之後量的是「兩條線分得開」而不是「其中一條被藏掉」;
     理由寫在下方斷言處。"""
+    # **v7 的記錄一定帶 `incident_tokens`**(生產每次寫入都會補)——
+    # 標成 v7 卻沒有 tokens 是生產產不出來的形狀,而三態判準
+    #(外審 P1-3)對「沒有 tokens」的答案是 `UNKNOWN`:
+    # 這條測的是遮蔽規則,fixture 不真實的話量到的是別條。
     state = {"geopolitical:伊朗:2026-08": {
         "first_seen": "2026-08-01", "days": 7, "last_seen": "2026-08-08",
         "latest_title": "川普稱與伊朗戰爭很快將結束", "action": "",
+        "incident_tokens": sorted(eid.discriminative_tokens(
+            "川普稱與伊朗戰爭很快將結束", ["伊朗"]))[:12],
         "entity": "伊朗", "subjects": ["伊朗"], "event_type": "geopolitical",
         "identity_schema": eid.IDENTITY_SCHEMA_VERSION},
         "geopolitical:hormuz_passage:2026-08": {
         "first_seen": "2026-08-07", "days": 1, "last_seen": "2026-08-08",
         "latest_title": "荷姆茲有望重啟", "action": "hormuz_passage",
+        "incident_tokens": sorted(eid.discriminative_tokens(
+            "荷姆茲有望重啟", ["伊朗", "阿曼"]))[:12],
         "entity": "伊朗", "subjects": ["伊朗", "阿曼"],
         "event_type": "geopolitical",
         "identity_schema": eid.IDENTITY_SCHEMA_VERSION}}
@@ -651,4 +659,163 @@ def test_the_telemetry_counts_action_keys_that_carry_an_object(tmp_path,
     tel = mr._RUN_MANIFEST["event_identity"]
     assert tel["keyed_by_action"] == 3, tel
     assert tel["keyed_by_action_object"] == 2, tel
+
+
+# ===== 第二十七輪外審 P1-3 / P1-4A:三態與方向詞受詞 =====
+
+def test_sparse_tokens_are_unknown_not_a_match():
+    """**「不知道」要自己是一個答案。**
+
+    上一版辨識詞不足時直接回「同一樁」—— 而升版當天 state 裡幾乎全是
+    **沒有 `incident_tokens`** 的舊代記錄,比對時一側是空集合,
+    新事件因此繼承前一樁的天數。
+    """
+    assert eid.incident_match([], ["入侵", "名單", "外洩"]) == eid.UNKNOWN
+    assert eid.incident_match(["外洩"], ["入侵", "名單", "產線"]) == eid.UNKNOWN
+    assert eid.incident_match(["a", "b", "c"], ["a", "b", "d"]) == eid.MATCH
+    assert eid.incident_match(["a", "b", "c"], ["x", "y", "z"]) == eid.NO_MATCH
+
+
+def test_a_legacy_record_does_not_lend_its_days_to_a_new_incident(tmp_path,
+                                                                  monkeypatch):
+    """**舊代記錄不得把天數借給另一樁事**(外審 P1-3 情境 A)。
+
+    schema 6 的記錄沒有 `incident_tokens`;上一版比對時一側是空集合 →
+    一律視為同一樁 → 同鍵下的新事件直接繼承它的天數。
+    現在那是 `UNKNOWN`,而 `UNKNOWN` 只有「同代且今天已更新過」才承接。
+    """
+    legacy = {"geopolitical:cyberattack:藥華藥:2026-08": {
+        "first_seen": "2026-08-01", "days": 8, "last_seen": "2026-08-08",
+        "latest_title": "藥華藥遭勒索軟體攻擊 產線停擺", "entity": "藥華藥",
+        "subjects": ["藥華藥"], "event_type": "geopolitical",
+        "action": "cyberattack", "identity_schema": 6}}
+    _, st = _run(tmp_path, monkeypatch,
+                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                   "title": "藥華藥遭駭客入侵 客戶名單外洩"}],
+                 day="2026-08-09", state=legacy)
+    # **今天被更新的那一條**要從第 1 天算起(舊那筆沒被碰,天數當然還在
+    # 它自己身上,它會自然退場 —— 那不是繼承)。
+    today_line = [v for v in st.values() if v.get("last_seen") == "2026-08-09"]
+    assert today_line, st
+    assert all(v["days"] == 1 for v in today_line),         {k: v["days"] for k, v in st.items()}
+    assert all("外洩" not in str(v.get("latest_title") or "")
+               for v in st.values() if v.get("days", 0) > 1), st
+
+
+def test_a_same_day_follow_up_still_continues_its_line(tmp_path, monkeypatch):
+    """**修正不得把該接的切斷**:同代、今天已更新過的那一筆仍要承接
+    (那是同一天的後續報導,不是跨日的天數繼承)。"""
+    # 同代(v7)、**今天已經更新過**、但存下來的辨識詞是空的
+    # (標題太短時生產真的會寫成空清單)——「不知道」在這裡要沿用,
+    # 那是同一天的後續報導,不是跨日的天數繼承。
+    key = "geopolitical:cyberattack:藥華藥:2026-08"
+    same_day = {key: {"first_seen": "2026-08-09", "days": 1,
+                      "last_seen": "2026-08-09", "latest_title": "藥華藥",
+                      "entity": "藥華藥", "subjects": ["藥華藥"],
+                      "event_type": "geopolitical", "action": "cyberattack",
+                      "incident_tokens": [],
+                      "identity_schema": eid.IDENTITY_SCHEMA_VERSION}}
+    _, st = _run(tmp_path, monkeypatch,
+                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                   "title": "藥華藥遭勒索軟體攻擊 產線停擺"}],
+                 day="2026-08-09", state=same_day)
+    assert list(st) == [key], st
+
+
+def test_the_recipient_is_the_object_even_when_the_actor_is_missing():
+    """**同一批軍售不得因為 actor 有沒有被抓到而分裂**(外審 P1-4A)。
+
+    donor 與 recipient 都是法域,「只留法域」解不了這件事 ——
+    要看標題裡的方向詞(「對**台**」、"to Taiwan")。
+    """
+    base = {"event_type": "geopolitical", "title": "美國宣布對台軍售"}
+    k1 = eid.timeline_identity(base, ["台灣"], "2026-08-09")["key"]
+    k2 = eid.timeline_identity(base, ["美國", "台灣"], "2026-08-09")["key"]
+    assert k1 == k2, (k1, k2)
+    # 換一個受援國仍要分開
+    k3 = eid.timeline_identity(dict(base, title="美國宣布對日本軍售"),
+                               ["美國", "日本"], "2026-08-09")["key"]
+    assert k3 != k1
+
+
+def test_no_direction_marker_falls_back_instead_of_guessing():
+    """**點不出受詞就退回舊行為,不猜** —— 猜錯會把兩件事黏在一起。"""
+    assert eid.directional_object("arms_sale", "美台簽署軍售合約",
+                                  ["美國", "台灣"]) == ""
+    k = eid.timeline_identity({"event_type": "geopolitical",
+                               "title": "美台簽署軍售合約"},
+                              ["美國", "台灣"], "2026-08-09")["key"]
+    assert "台灣、美國" in k, k
+
+
+def test_the_suffix_uses_the_whole_token_set():
+    """**後綴只雜湊前四個詞的話,前四個剛好相同的兩樁事會共用後綴** ——
+    而後綴正是用來把它們分開的東西。"""
+    a = ["aa", "bb", "cc", "dd", "ee"]
+    b = ["aa", "bb", "cc", "dd", "zz"]
+    assert eid.incident_suffix(a) != eid.incident_suffix(b)
+
+
+def test_a_direction_marker_is_only_trusted_where_it_is_declared():
+    """**「對台影響」是後果子句,不是受詞**(外審第二輪 F1)。
+
+    `jurisdiction` 那一組還包含選舉、峰會、匯率干預 —— 一律套方向詞的話,
+    「美國大選對台影響」與「日本大選對台影響」會拿到同一個 `台灣`,
+    於是日本大選繼承美國大選的延燒天數。軍售的「對 X」在語意上就是
+    受援國,那是目前唯一站得住的一個。
+    """
+    assert eid.directional_object("election", "美國大選對台影響",
+                                  ["美國", "台灣"]) == ""
+    assert eid.directional_object("summit_talks", "美中峰會對台影響",
+                                  ["美國", "中國", "台灣"]) == ""
+    a = eid.timeline_identity({"event_type": "geopolitical",
+                               "title": "美國大選對台影響"},
+                              ["美國", "台灣"], "2026-08-09")["key"]
+    b = eid.timeline_identity({"event_type": "geopolitical",
+                               "title": "日本大選對台影響"},
+                              ["日本", "台灣"], "2026-08-09")["key"]
+    assert a != b, (a, b)
+
+
+def test_the_stored_tokens_are_not_shorter_than_what_we_compare_with(
+        tmp_path, monkeypatch):
+    """**存幾個要與比對用的一致**(外審第二輪 F2)。
+
+    存 12 個而後綴吃 24 個的話,隔天比對的分母是被截短的那一份 ——
+    重疊率被灌高,本來是 `NO_MATCH` 的兩樁事會判成 `MATCH` 而直接承接
+    lineage(`incident_suffix` 根本不會被呼叫)。
+    """
+    long_title = "藥華藥遭勒索軟體攻擊 產線停擺 客戶名單外洩 主管請辭 調查展開"
+    _, st = _run(tmp_path, monkeypatch,
+                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                   "title": long_title}], day="2026-08-09")
+    rec = next(iter(st.values()))
+    full = sorted(eid.discriminative_tokens(long_title, ["藥華藥"]))
+    assert len(full) > 12, f"這個標題切不出超過 12 個辨識詞,量不到:{full}"
+    assert len(rec["incident_tokens"]) == min(len(full),
+                                              eid.MAX_SUFFIX_TOKENS), rec
+
+
+def test_a_competing_direction_phrase_does_not_steal_the_object():
+    """**取第一個方向詞會被前面的子句搶走**(外審第三輪)。
+
+    "US responds to China with arms sale to Taiwan" 的第一個 " to " 指向
+    中國,而受援國是台灣 —— 同一批軍售於是分裂成兩個 base key。
+    中文的語序把方向詞放在關鍵詞**前面**(「對台軍售」),英文放在後面,
+    所以判準是**離動作關鍵詞的距離**,不是先後。
+    """
+    for title, ents in (
+            ("US responds to China with arms sale to Taiwan",
+             ["United States", "China", "Taiwan"]),
+            ("美國回應中國後宣布對台軍售", ["美國", "中國", "台灣"])):
+        assert eid.directional_object("arms_sale", title, ents) == "台灣", title
+    # 同一批軍售的兩則報導因此仍是同一個 base key
+    k1 = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": "US approves arms sale to Taiwan"},
+        ["United States", "Taiwan"], "2026-08-09")["key"]
+    k2 = eid.timeline_identity(
+        {"event_type": "geopolitical",
+         "title": "US responds to China with arms sale to Taiwan"},
+        ["United States", "China", "Taiwan"], "2026-08-09")["key"]
+    assert k1 == k2, (k1, k2)
 

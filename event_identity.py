@@ -59,7 +59,11 @@ import re
 #: 記錄帶 `incident_tokens`。**公式變了就要進版** —— 不進版的話
 #: `adopt_legacy` 會因為 `identity_schema >= VERSION` 而跳過既有記錄,
 #: 每一條 lineage 在上線當天從第 1 天重算,而沒有人看得出原因。
-IDENTITY_SCHEMA_VERSION = 7
+#: v8(2026-08-09,第二十七輪外審 P1-3/P1-4A):辨識詞比對改**三態**
+#: (「不知道」不再壓成「同一樁」)、後綴雜湊改吃完整的辨識詞集合、
+#: 法域類動作的對象改先看標題裡的方向詞(「對台」/"to Taiwan")——
+#: **鍵的算法變了就要進版**,否則 `adopt_legacy` 會跳過既有記錄。
+IDENTITY_SCHEMA_VERSION = 8
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -239,28 +243,63 @@ def _subjects_meet(ents: set, keys: set, subs: set, titles: str) -> bool:
 INCIDENT_OVERLAP = 0.3
 
 
+#: 後綴雜湊最多吃幾個辨識詞。取大是刻意的:這個上限是**長度保護**,
+#: 不是「挑最重要的四個」—— 挑選會讓不同的事共用後綴。
+MAX_SUFFIX_TOKENS = 24
+
+
 def incident_suffix(tokens) -> str:
     """同鍵下另一樁事件的穩定後綴(由辨識詞決定,不用序號)。
 
     序號會隨處理順序漂移 —— 昨天的 `#2` 明天可能指到另一樁。
     """
+    # **用完整的辨識詞集合**(第二十七輪外審 P1-3):只雜湊排序後前四個
+    # 的話,兩樁不同的事只要前四個排序詞剛好相同就共用同一個後綴 ——
+    # 而後綴正是用來把它們分開的東西。上限是為了確定性與長度,
+    # 不是為了挑選(`discriminative_tokens` 已經去過重、排過序)。
     import hashlib
-    core = "|".join(sorted(str(t) for t in (tokens or []))[:4])
+    core = "|".join(sorted(str(t) for t in (tokens or []))[:MAX_SUFFIX_TOKENS])
     return hashlib.sha1(core.encode("utf-8")).hexdigest()[:6]
 
 
-def same_incident(tokens_a, tokens_b) -> bool:
-    """兩組辨識詞講的是同一樁事件嗎(任一邊太少 → **當成同一樁**)。
+#: `incident_match()` 的三種答案。
+MATCH = "match"
+NO_MATCH = "no_match"
+UNKNOWN = "unknown"
 
-    **不確定時併,不切** —— 這裡與遮蔽的方向相反,理由是後果不同:
-    遮蔽切錯會讓一樁真事件從信裡消失;這裡切錯會讓一條延燒中的線
-    每天從第 1 天重來,而那會讓「延燒第 N 天」整個功能失去意義。
+
+def incident_match(tokens_a, tokens_b) -> str:
+    """兩組辨識詞講的是同一樁事件嗎 —— **三態**,不是布林。
+
+    第二十七輪外審 P1-3:上一版辨識詞不足時直接回「同一樁」,
+    而那個「不確定時併」在兩種情況下會把不同的事黏在一起:
+
+      * **舊代記錄沒有 `incident_tokens`**(schema 6 以前)。比對時一側
+        是空集合 → 一律視為同一樁,新事件因此繼承前一樁的天數。
+        而升版當天 state 裡幾乎全是舊代記錄。
+      * **短標題**:扣掉主體與通用動詞、中文二元切詞之後,可能剩不到
+        兩個辨識詞。同公司同月的「再遭駭」與「資料外洩」會被黏成一條。
+
+    所以「不知道」要自己是一個答案,由呼叫端決定往哪邊倒 ——
+    判準本身不替它選(見 `morning_report.update_event_timeline`:
+    同代且同日的追蹤沿用 lineage,跨代/跨日一律另開 provisional sibling,
+    **不繼承天數**)。
     """
     a = {str(t) for t in (tokens_a or [])}
     b = {str(t) for t in (tokens_b or [])}
     if len(a) < MIN_DISCRIMINATIVE or len(b) < MIN_DISCRIMINATIVE:
-        return True
-    return len(a & b) / min(len(a), len(b)) >= INCIDENT_OVERLAP
+        return UNKNOWN
+    return (MATCH if len(a & b) / min(len(a), len(b)) >= INCIDENT_OVERLAP
+            else NO_MATCH)
+
+
+def same_incident(tokens_a, tokens_b) -> bool:
+    """`incident_match` 的布林相容出口(**不知道**算同一樁)。
+
+    留著是因為它已經是別處的判準;新的呼叫端要用三態版本 ——
+    把「不知道」壓成「是」正是外審 P1-3 指的那件事。
+    """
+    return incident_match(tokens_a, tokens_b) != NO_MATCH
 
 
 #: 一則報導最多取幾個主體進身分。多了會讓同一件事因為某一則多抓到
@@ -277,6 +316,76 @@ def canonical_subjects(subjects) -> list:
     return sorted(dict.fromkeys(
         c for c in (canonical_subject(s) for s in (subjects or [])) if c)
     )[:MAX_SUBJECTS]
+
+
+#: **哪些動作的受詞真的跟在方向詞後面**。這是一份宣告 ——
+#: 「對台影響」在選舉/峰會/匯率干預的標題裡是後果子句,不是受詞。
+DIRECTIONAL_ACTIONS = frozenset({"arms_sale"})
+
+#: **方向詞**:法域類動作的受詞跟在它後面(「對**台**軍售」、
+#: "arms sale **to** Taiwan")。這是一份**宣告**,不是語意剖析 ——
+#: 找不到就退回原本的行為(整個主體集合),不猜。
+_DIRECTION_MARKERS = ("對", "向", "售予", "賣給", " to ", " toward ",
+                      " towards ", " against ")
+
+
+def directional_object(action: str, title, subjects) -> str:
+    """標題裡點得出來的**受詞法域**(點不出來回空字串)。
+
+    第二十七輪外審 P1-4A:上一版把**所有**法域都留進簽章,於是同一批
+    軍售因為某一則多抓到 actor(`[台灣]` vs `[美國, 台灣]`)就分裂成
+    兩條線 —— 而 sibling 比對只在同一個 base key 底下跑,救不回來。
+    donor 與 recipient 都是法域,「只留法域」解不了這件事。
+
+    這裡只做一件很窄的事:找**方向詞後面**的那個法域。
+    「美國宣布對台軍售」與 "US approves arms sale to Taiwan" 都指到台灣。
+    找不到方向詞、或後面不是認得的法域 → 回空字串,呼叫端退回舊行為
+    (**不猜**:猜錯會把兩件事黏在一起,那比分裂貴)。
+    """
+    # **只對宣告過的動作生效**(外審第二輪 F1)。`jurisdiction` 這一組還
+    # 包含 `election`/`summit_talks`/`fx_intervention` —— 而那些標題裡的
+    # 「對台影響」是**後果子句**,不是動作的受詞:
+    # 「美國大選對台影響」與「日本大選對台影響」會拿到同一個 `台灣`,
+    # 於是日本大選繼承美國大選的延燒天數。
+    # 軍售的「對 X」在語意上就是受援國,那是這裡唯一站得住的一個。
+    if str(action or "") not in DIRECTIONAL_ACTIONS:
+        return ""
+    text = str(title or "")
+    low = text.lower()
+    known = {}
+    for alias, canon in CANONICAL_SUBJECTS.items():
+        known[str(alias).lower()] = canon
+    for canon in set(CANONICAL_SUBJECTS.values()):
+        known[str(canon).lower()] = canon
+    # 中文的「對台」是簡稱 —— 主體集合裡的法域也一起當候選
+    for s in (subjects or []):
+        c = canonical_subject(s)
+        if c:
+            known[str(c).lower()] = c
+            known[str(c)[:1].lower()] = c        # 「台」→ 台灣
+    # **取離動作關鍵詞最近的那個方向詞**(外審第三輪)。
+    # 「第一個」會被前面的子句搶走:
+    # "US responds to China with arms sale to Taiwan" 的第一個 " to "
+    # 指向中國,而受援國是台灣 —— 同一批軍售於是分裂成兩個 base key。
+    # 中文的語序把方向詞放在關鍵詞**前面**(「對台軍售」),英文放在
+    # 後面 —— 所以判準是**距離**,不是先後。
+    from event_actions import ACTION_TABLE
+    words = next((row[2:] for row in ACTION_TABLE if row[0] == action), ())
+    spots = [low.find(str(w).lower()) for w in words]
+    spots = [x for x in spots if x >= 0]
+    best, best_dist = "", None
+    for mark in _DIRECTION_MARKERS:
+        at = low.find(mark.lower())
+        while at >= 0:
+            tail = low[at + len(mark):].lstrip()
+            hit = next((known[k] for k in sorted(known, key=len, reverse=True)
+                        if k and tail.startswith(k)), "")
+            if hit:
+                dist = min((abs(at - p) for p in spots), default=0)
+                if best_dist is None or dist < best_dist:
+                    best, best_dist = hit, dist
+            at = low.find(mark.lower(), at + 1)
+    return best
 
 
 def object_signature(action: str, subjects) -> str:
@@ -381,7 +490,11 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
     if action:
         # 第二十五輪 P1-2:**帶對象的動作要把對象寫進鍵。**
         # 少了它,同月的每一樁軍售/資安/關稅案都是同一條線。
-        obj = object_signature(action, canon)
+        # **先問標題點不點得出受詞**(外審 P1-4A):主體集合當簽章會讓
+        # 同一批軍售因為某一則多抓到 actor 就分裂,而 sibling 比對只在
+        # 同一個 base key 底下跑,救不回來。點不出來才退回主體集合。
+        obj = directional_object(action, title, canon) or object_signature(
+            action, canon)
         key = ":".join(x for x in (etype, action, obj, month) if x)
         basis = "action+object" if obj else "action"
     else:

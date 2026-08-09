@@ -157,6 +157,27 @@ def _entities(item) -> list:
     return [str(x) for x in (ents or []) if str(x).strip()]
 
 
+def _shared_specific_anchor(a: dict, b: dict) -> bool:
+    """兩則報導有沒有指到**同一個具體的東西**。
+
+    法域(國家)不算 —— 那是動作的對象,同一天的兩樁事本來就共用它。
+    算的是:同幣別同量級的金額,或一個兩邊都點名的**非法域**實體
+    (公司、機構;跨語言由 `entity_alias` 的別名組對應)。
+    """
+    import entity_alias as _ea
+    import event_actions as _eac
+    if shared_money(str((a or {}).get("title") or ""),
+                    str((b or {}).get("title") or "")):
+        return True
+    juris = set(_eac.CANONICAL_SUBJECTS.values())
+
+    def _groups(item):
+        return {_ea.group_of(n) for n in _entities(item)
+                if _eac.canonical_subject(n) not in juris} - {-1}
+
+    return bool(_groups(a) & _groups(b))
+
+
 def action_anchor(a: dict, b: dict) -> bool:
     """非貨幣事件的跨語言錨:**同一個動作、同一個對象**。
 
@@ -185,9 +206,31 @@ def action_anchor(a: dict, b: dict) -> bool:
     if act != _ea.event_action(str((b or {}).get("title") or ""),
                                (b or {}).get("summary")):
         return False
-    sa = _ei.object_signature(act, _ei.canonical_subjects(_entities(a)))
-    sb = _ei.object_signature(act, _ei.canonical_subjects(_entities(b)))
-    return bool(sa) and sa == sb
+    def _obj(item):
+        # **公司別名也要收斂**:`canonical_subjects` 只正規化法域
+        # (那是 timeline 鍵的判準,動它要進版),而跨語言比對的對象常常
+        # 是公司 —— 「台積電」與 "TSMC" 不收在一起的話,`sanction` 這類
+        # 對象是 `any` 的動作永遠對不上,這條錨等於只對法域事件有用。
+        # 這一層只在這裡做,不影響 timeline 的鍵。
+        import entity_alias as _ea2
+        subs = [_ea2.canonical(x)
+                for x in _ei.canonical_subjects(_entities(item))]
+        return (_ei.directional_object(act, (item or {}).get("title"), subs)
+                or _ei.object_signature(act, sorted(dict.fromkeys(subs))))
+
+    sa, sb = _obj(a), _obj(b)
+    if not sa or sa != sb:
+        return False
+    # **同動作同對象仍可能是同一天的兩樁不同的事**(外審 P1-4B):
+    # 同一國同日兩批不同軍售、同一目標兩輪不同制裁。誤併的代價很重 ——
+    # 獨立來源數被灌高、全文預算只留一個事件,而驗證器禁止同一群分析兩次,
+    # 於是其中一件真事件會整條消失。
+    #
+    # 所以再要一個**具體的共同錨**。
+    # (辨識詞在這裡**用不上**:它是語言相依的 —— 中文是二元切詞、英文是
+    #  單字,同一件事的中英報導必然零重疊,拿 `incident_match` 來擋會把
+    #  每一組跨語言配對都判成不同事件。第一版寫了,實測當場全滅。)
+    return _shared_specific_anchor(a, b)
 
 
 def bridge(a: dict, b: dict) -> bool:

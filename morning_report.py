@@ -14242,6 +14242,7 @@ def update_event_timeline(structured_events: list[dict],
             if ident.get("object"):
                 _by_action_object += 1
         rec = state.get(key)
+        _adopted_now = False
         if rec is None:
             # **舊鍵要接得起來**:同一條線在升版當天不該從第 1 天重新起算
             # (那會讓「延燒六天」在讀者眼中憑空消失)。只接**同型別、
@@ -14249,6 +14250,7 @@ def update_event_timeline(structured_events: list[dict],
             rec, _old = _eid.adopt_legacy(state, ev, subjects, ident)
             if _old:
                 _migrated += 1
+                _adopted_now = True
                 state.pop(_old, None)
             else:
                 # **接不到也要把舊線收掉**(2026-08-08 生產抓到)。
@@ -14268,8 +14270,38 @@ def update_event_timeline(structured_events: list[dict],
         # 指紋刻意**不進鍵**:第一版那樣做,同一樁的後續報導(標題多兩個字)
         # 就拿到新的鍵,每條線每天從第 1 天重來 —— 比原本的缺陷更糟。
         _tok = ident.get("incident_tokens") or []
-        if rec is None or not _eid.same_incident(
-                _tok, rec.get("incident_tokens")):
+
+        def _hosts(candidate) -> bool:
+            """這筆記錄可以承接這則報導嗎 —— **「不知道」不算可以**。
+
+            第二十七輪外審 P1-3:上一版辨識詞不足時一律視為同一樁,
+            而升版當天 state 裡幾乎全是**沒有 `incident_tokens`** 的舊代
+            記錄 —— 比對時一側是空集合,新事件因此繼承前一樁的天數。
+            短標題(扣掉主體與通用動詞後不足兩個辨識詞)也是同一個形狀。
+
+            三態的政策在這裡:
+              * `MATCH`      → 承接;
+              * `NO_MATCH`   → 另開 sibling;
+              * `UNKNOWN`    → **只有同代、而且今天已經更新過**才承接
+                (那是同一天的後續報導,不是跨日的天數繼承);
+                其餘一律不承接 → 另開一條,從第 1 天算起。
+
+            剛剛被 `adopt_legacy` 接過來的那筆例外:遷移有它自己的判準
+            (同型別、主體有交集、只接一次),而且進了 `adopted_legacy`
+            遙測 —— 在這裡再擋一次等於把遷移功能整個關掉。
+            """
+            if _adopted_now:
+                return True
+            verdict = _eid.incident_match(_tok, candidate.get("incident_tokens"))
+            if verdict == _eid.MATCH:
+                return True
+            if verdict == _eid.NO_MATCH:
+                return False
+            return (int(_safe_number(candidate.get("identity_schema")) or 0)
+                    >= _eid.IDENTITY_SCHEMA_VERSION
+                    and str(candidate.get("last_seen") or "") == today)
+
+        if rec is None or not _hosts(rec):
             # **先找既有的 sibling**(第二輪外審 F3)。後綴由當日辨識詞
             # 雜湊而來,而辨識詞會隨標題漂移 —— 只比 base、算出新後綴的話,
             # 已經分出去的那一樁**每天都會再開一條**,天數永遠是 1。
@@ -14283,7 +14315,7 @@ def update_event_timeline(structured_events: list[dict],
             _sib = next(
                 (k for k, v in sorted(state.items())
                  if k.startswith(ident["key"] + "#") and isinstance(v, dict)
-                 and _eid.same_incident(_tok, v.get("incident_tokens"))), None)
+                 and _hosts(v)), None)
             if _sib:
                 key = _sib
             elif rec is not None:
@@ -14302,7 +14334,10 @@ def update_event_timeline(structured_events: list[dict],
             rec["days"] = int(rec.get("days", 0)) + 1
             rec["last_seen"] = today
         rec["latest_title"] = str(ev.get("title") or "")[:90]
-        rec["incident_tokens"] = _tok[:12]
+        # **存幾個要與比對用的一致**(外審第二輪 F2):存 12 個而後綴
+        # 吃 24 個的話,隔天比對的分母是被截短的那一份 —— 重疊率被灌高,
+        # 本來是 `NO_MATCH` 的兩樁事會判成 `MATCH` 而直接承接 lineage。
+        rec["incident_tokens"] = _tok[:_eid.MAX_SUFFIX_TOKENS]
         rec["entity"] = ident["subjects"][0] if ident["subjects"] else subjects[0]
         rec["subjects"] = ident["subjects"] or subjects
         rec["event_type"] = str(ev.get("event_type") or "")

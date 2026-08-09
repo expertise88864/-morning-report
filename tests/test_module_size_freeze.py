@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_555  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_600  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -208,7 +208,9 @@ MODULE_CEILINGS = {
     # 切點不是主題喜好 —— 宣告式詞彙與身分計算的失效方式不同:
     # 前者漏一個詞 → 退回主體 fallback;後者判準錯 → 兩件事黏成一條線。
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
-    "event_identity.py": 533,
+    # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
+    # 法域動作先看方向詞取受詞。**實測 627 行**。
+    "event_identity.py": 660,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     "event_actions.py": 171,
@@ -306,7 +308,7 @@ MODULE_CEILINGS = {
     # 第二輪外審 F4:類別要 token 邊界、歧義詞先挖掉、多重命中回空。
     # 實測 170。
     # 2026-08-09 P2:非貨幣事件的跨語言錨(軍售/制裁/峰會多半沒有金額)。**實測 212 行**。
-    "cross_lang.py": 220,
+    "cross_lang.py": 260,
     # 分析面縱深:昨日觀點閉環(存觀點 → 明天掛在事件群上 → 驗重述)。
     # 第二批:次要事件(top_news_analysis)也存 diff 基準,重述檢查
     # 本體從 analysis_depth 搬進來(同一個閉環拆兩處會各自漂移)。

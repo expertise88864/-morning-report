@@ -210,7 +210,7 @@ MODULE_CEILINGS = {
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
-    "event_identity.py": 660,
+    "event_identity.py": 700,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
@@ -310,7 +310,7 @@ MODULE_CEILINGS = {
     # 第二輪外審 F4:類別要 token 邊界、歧義詞先挖掉、多重命中回空。
     # 實測 170。
     # 2026-08-09 P2:非貨幣事件的跨語言錨(軍售/制裁/峰會多半沒有金額)。**實測 212 行**。
-    "cross_lang.py": 260,
+    "cross_lang.py": 325,
     # 分析面縱深:昨日觀點閉環(存觀點 → 明天掛在事件群上 → 驗重述)。
     # 第二批:次要事件(top_news_analysis)也存 diff 基準,重述檢查
     # 本體從 analysis_depth 搬進來(同一個閉環拆兩處會各自漂移)。

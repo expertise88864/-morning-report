@@ -535,9 +535,22 @@ def test_a_non_monetary_event_can_bridge_across_languages():
     assert _pair("美國批准對台軍售 12 億美元", ["美國", "台灣"],
                  "US approves $1.2 billion arms sale to Taiwan",
                  ["United States", "Taiwan"])
-    # 具體錨也可以是**兩邊都點名的非法域實體**(別名組對應)
-    assert _pair("美國制裁台積電供應鏈", ["美國", "台積電"],
-                 "US sanctions TSMC suppliers", ["United States", "TSMC"])
+    # 具體錨也可以是兩邊都出現的**量級數字**(受影響筆數、批次規模)
+    assert _pair("台積電遭勒索軟體攻擊 12000 筆資料外洩", ["台積電"],
+                 "TSMC ransomware attack exposes 12000 records", ["TSMC"])
+
+
+def test_the_object_itself_is_not_an_incident_anchor():
+    """**同一個受害者不能同時當對象與錨**(第二十八輪外審 P1-3)。
+
+    `cyberattack` 的對象**就是那家公司** —— 拿「兩邊都點名的非法域實體」
+    當第二道錨,等於把同一個受害者再驗一次:同公司同日的兩起不同資安
+    事件(勒索軟體 vs 供應商入口外洩)會被判成同一件事,
+    而其中一件會因為「同一群不得分析兩次」整條消失。
+    """
+    assert not _pair("台積電遭勒索軟體攻擊,產線系統短暫停擺", ["台積電"],
+                     "TSMC reports separate supplier-portal data breach",
+                     ["TSMC"])
 
 
 def test_the_same_action_and_object_alone_do_not_merge():
@@ -677,4 +690,35 @@ def test_the_key_never_merges_more_than_the_old_behaviour_did():
                 "a.b.unknownsuffix.zz", "c.d.unknownsuffix.zz")
     keys = [sr.publisher_key(h) for h in distinct]
     assert len(set(keys)) == len(distinct), dict(zip(distinct, keys))
+
+
+# ===== 第二十八輪外審第二輪 =====
+
+def _pair2(a, b) -> bool:
+    import cross_lang as cl
+    return cl.bridge(a, b)
+
+
+def test_a_shared_year_is_not_an_incident_anchor():
+    """**同一年的兩起事件都會寫到那個年份**(外審第二輪 F2)——
+    拿它當錨等於沒有錨,而那正好把剛修掉的誤併路徑再打開一次。"""
+    assert not _pair2(
+        {"title": "台積電 2026 年勒索軟體攻擊", "entities": ["台積電"]},
+        {"title": "TSMC 2026 supplier-portal data breach",
+         "entities": ["TSMC"]})
+    # 而**量級數字**仍然是錨
+    assert _pair2(
+        {"title": "台積電遭勒索軟體攻擊 12000 筆外洩", "entities": ["台積電"]},
+        {"title": "TSMC ransomware attack exposes 12000 records",
+         "entities": ["TSMC"]})
+
+
+def test_the_bridge_reads_the_summary_for_the_recipient():
+    """**`timeline_identity` 傳了 summary,這個直接呼叫端沒傳**
+    (外審第二輪 F1)—— 於是英文那側退回主體集合,與中文側對不上。"""
+    assert _pair2(
+        {"title": "美國批准對台軍售 12 億美元", "entities": ["美國", "台灣"]},
+        {"title": "US approves new weapons package worth $1.2 billion",
+         "summary": "The package is intended for Taiwan.",
+         "entities": ["United States", "Taiwan"]})
 

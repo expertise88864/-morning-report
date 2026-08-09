@@ -157,25 +157,79 @@ def _entities(item) -> list:
     return [str(x) for x in (ents or []) if str(x).strip()]
 
 
-def _shared_specific_anchor(a: dict, b: dict) -> bool:
+def _shared_specific_anchor(a: dict, b: dict, *, obj: str = "") -> bool:
     """兩則報導有沒有指到**同一個具體的東西**。
 
     法域(國家)不算 —— 那是動作的對象,同一天的兩樁事本來就共用它。
-    算的是:同幣別同量級的金額,或一個兩邊都點名的**非法域**實體
-    (公司、機構;跨語言由 `entity_alias` 的別名組對應)。
+
+    **對象自己也不算**(第二十八輪外審 P1-3)。上一版拿「兩邊都點名的
+    非法域實體」當第二道錨,而 `cyberattack` 的對象**就是那家公司** ——
+    於是「台積電遭勒索軟體攻擊」與 "TSMC reports separate supplier-portal
+    data breach" 會被判成同一件事:錨只是把同一個受害者再驗一次,
+    它不是獨立的判準。同一承包商的兩批軍售、同一目標的兩項管制同理。
+
+    留下來的錨要**只屬於這一樁**:
+      * 同幣別同量級的金額(`shared_money`);
+      * 兩邊都出現的**數量級數字**(受影響筆數、通知編號、批次規模);
+      * 兩邊都點名、而且**不是這個動作的對象**的實體
+        (例如軍售案裡的承包商)。
     """
     import entity_alias as _ea
     import event_actions as _eac
-    if shared_money(str((a or {}).get("title") or ""),
-                    str((b or {}).get("title") or "")):
+    ta = str((a or {}).get("title") or "")
+    tb = str((b or {}).get("title") or "")
+    if shared_money(ta, tb):
+        return True
+    if _shared_numeric(ta, tb):
         return True
     juris = set(_eac.CANONICAL_SUBJECTS.values())
+    # **對象本身要排除**:它是這兩則共用的前提,不是分辨它們的東西。
+    obj_groups = {_ea.group_of(x) for x in
+                  (y.strip() for y in str(obj or "").split("、"))
+                  if x.strip()} - {-1}
 
     def _groups(item):
-        return {_ea.group_of(n) for n in _entities(item)
-                if _eac.canonical_subject(n) not in juris} - {-1}
+        # **一個判準,不是兩個**:第一版同時比名稱與別名組,而沒有別名組
+        # 的名稱本來就被 `g >= 0` 濾掉 —— 兩個條件互相冗餘,
+        # 單獨突變任何一個都被另一個蓋住(突變驗證當場證明它量不到)。
+        out = set()
+        for n in _entities(item):
+            if _eac.canonical_subject(n) in juris:
+                continue
+            g = _ea.group_of(n)
+            if g >= 0 and g not in obj_groups:
+                out.add(g)
+        return out
 
     return bool(_groups(a) & _groups(b))
+
+
+#: 當成錨的數字最少要幾位 —— 一兩位數(名次、季別)到處都是。
+MIN_NUMERIC_ANCHOR = 3
+
+
+def _shared_numeric(a_text: str, b_text: str) -> bool:
+    """兩段文字有沒有共同的**量級數字**(受影響筆數、批次編號…)。
+
+    只收三位數以上,而且比對的是去掉千分位之後的字串 ——
+    「1,200 萬筆」與 "12 million records" 不會因為寫法不同而錯過,
+    而「第 3 季」這種到處都是的小數字不會製造假的錨。
+    """
+    import re as _re
+
+    def _nums(t):
+        out = set()
+        for raw in _re.findall(r"[0-9][0-9,]{2,}", t):
+            v = raw.replace(",", "")
+            # **年份不是事件專屬的數字**(外審第二輪 F2):同一年的兩起
+            # 事件都會寫到「2026」—— 拿它當錨等於沒有錨,
+            # 而那正好把 P1-3 修掉的誤併路徑再打開一次。
+            if len(v) == 4 and 1900 <= int(v) <= 2100:
+                continue
+            out.add(v)
+        return out
+
+    return bool(_nums(a_text) & _nums(b_text))
 
 
 def action_anchor(a: dict, b: dict) -> bool:
@@ -215,7 +269,11 @@ def action_anchor(a: dict, b: dict) -> bool:
         import entity_alias as _ea2
         subs = [_ea2.canonical(x)
                 for x in _ei.canonical_subjects(_entities(item))]
-        return (_ei.directional_object(act, (item or {}).get("title"), subs)
+        # **summary 也要傳**(外審第二輪 F1):`timeline_identity` 傳了、
+        # 這個直接呼叫端沒傳 —— 於是英文那側("weapons package",受援國
+        # 寫在 summary)退回主體集合,與中文側對不上,同一件事橋不起來。
+        return (_ei.directional_object(act, (item or {}).get("title"), subs,
+                                       summary=(item or {}).get("summary"))
                 or _ei.object_signature(act, sorted(dict.fromkeys(subs))))
 
     sa, sb = _obj(a), _obj(b)
@@ -230,7 +288,7 @@ def action_anchor(a: dict, b: dict) -> bool:
     # (辨識詞在這裡**用不上**:它是語言相依的 —— 中文是二元切詞、英文是
     #  單字,同一件事的中英報導必然零重疊,拿 `incident_match` 來擋會把
     #  每一組跨語言配對都判成不同事件。第一版寫了,實測當場全滅。)
-    return _shared_specific_anchor(a, b)
+    return _shared_specific_anchor(a, b, obj=sa)
 
 
 def bridge(a: dict, b: dict) -> bool:

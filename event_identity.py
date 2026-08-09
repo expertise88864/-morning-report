@@ -63,7 +63,10 @@ import re
 #: (「不知道」不再壓成「同一樁」)、後綴雜湊改吃完整的辨識詞集合、
 #: 法域類動作的對象改先看標題裡的方向詞(「對台」/"to Taiwan")——
 #: **鍵的算法變了就要進版**,否則 `adopt_legacy` 會跳過既有記錄。
-IDENTITY_SCHEMA_VERSION = 8
+#: v9(第二十八輪外審 P1-4):帶方向的動作認不出受詞時,鍵放
+#: `UNKNOWN_OBJECT` 而不是整個主體集合(那等於拿 actor+recipient 冒充
+#: recipient);受詞也會從 summary 找。**鍵的算法變了就要進版。**
+IDENTITY_SCHEMA_VERSION = 9
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -325,11 +328,26 @@ DIRECTIONAL_ACTIONS = frozenset({"arms_sale"})
 #: **方向詞**:法域類動作的受詞跟在它後面(「對**台**軍售」、
 #: "arms sale **to** Taiwan")。這是一份**宣告**,不是語意剖析 ——
 #: 找不到就退回原本的行為(整個主體集合),不猜。
+#: `" for "` 收在這裡是因為軍售常寫 "intended for Taiwan" / "destined for
+#: Taiwan"(外審 P1-4 的反例)。它本身很常見,但**後面要緊接一個認得的
+#: 法域**才算命中,而且方向詞只對 `DIRECTIONAL_ACTIONS` 生效 ——
+#: 兩層限制之下,誤命中的空間很小。
 _DIRECTION_MARKERS = ("對", "向", "售予", "賣給", " to ", " toward ",
-                      " towards ", " against ")
+                      " towards ", " against ", " for ")
 
 
-def directional_object(action: str, title, subjects) -> str:
+#: 帶方向的動作**認不出受詞**時的鍵。
+#:
+#: 第二十八輪外審 P1-4:認不出來時退回整個主體集合,等於拿
+#: 「actor + recipient」冒充 recipient —— 於是同一批軍售的兩則報導
+#: (一則標題寫得出「對台」、一則只在 summary 裡提)拿到兩個不同的
+#: base key,而 sibling 比對只在同一個 base key 底下跑,救不回來。
+#: **不知道就說不知道**:所有認不出受詞的同動作事件落在同一條
+#: provisional lineage 上,而不是各自散成主體集合的排列。
+UNKNOWN_OBJECT = "?"
+
+
+def directional_object(action: str, title, subjects, summary="") -> str:
     """標題裡點得出來的**受詞法域**(點不出來回空字串)。
 
     第二十七輪外審 P1-4A:上一版把**所有**法域都留進簽章,於是同一批
@@ -350,8 +368,11 @@ def directional_object(action: str, title, subjects) -> str:
     # 軍售的「對 X」在語意上就是受援國,那是這裡唯一站得住的一個。
     if str(action or "") not in DIRECTIONAL_ACTIONS:
         return ""
+    # **先在標題找,找不到才連 summary 一起找**(外審第二輪 F3)。
+    # 上一版用「標題裡有沒有方向詞」當閘門 —— 而「美國軍售最新動**向**」
+    # 的「向」會讓它以為標題找得到,summary 那條路就走不到了。
+    # 判準要看**有沒有找到受詞**,不是有沒有出現方向詞。
     text = str(title or "")
-    low = text.lower()
     known = {}
     for alias, canon in CANONICAL_SUBJECTS.items():
         known[str(alias).lower()] = canon
@@ -363,16 +384,23 @@ def directional_object(action: str, title, subjects) -> str:
         if c:
             known[str(c).lower()] = c
             known[str(c)[:1].lower()] = c        # 「台」→ 台灣
-    # **取離動作關鍵詞最近的那個方向詞**(外審第三輪)。
-    # 「第一個」會被前面的子句搶走:
-    # "US responds to China with arms sale to Taiwan" 的第一個 " to "
-    # 指向中國,而受援國是台灣 —— 同一批軍售於是分裂成兩個 base key。
-    # 中文的語序把方向詞放在關鍵詞**前面**(「對台軍售」),英文放在
-    # 後面 —— 所以判準是**距離**,不是先後。
+    best = _scan(text.lower(), known, action)
+    if best or not summary:
+        return best
+    return _scan(f"{text} {summary}".lower(), known, action)
+
+
+def _scan(low: str, known: dict, action: str) -> str:
+    """在這段文字裡找方向詞後面的法域。
+
+    **取離動作關鍵詞最近的那個方向詞**(第二十七輪外審):「第一個」會被
+    前面的子句搶走 —— "US responds to China with arms sale to Taiwan" 的
+    第一個 " to " 指向中國,而受援國是台灣。中文的語序把方向詞放在關鍵詞
+    **前面**(「對台軍售」)、英文放在後面,所以判準是**距離**不是先後。
+    """
     from event_actions import ACTION_TABLE
     words = next((row[2:] for row in ACTION_TABLE if row[0] == action), ())
-    spots = [low.find(str(w).lower()) for w in words]
-    spots = [x for x in spots if x >= 0]
+    spots = [x for x in (low.find(str(w).lower()) for w in words) if x >= 0]
     best, best_dist = "", None
     for mark in _DIRECTION_MARKERS:
         at = low.find(mark.lower())
@@ -493,8 +521,14 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
         # **先問標題點不點得出受詞**(外審 P1-4A):主體集合當簽章會讓
         # 同一批軍售因為某一則多抓到 actor 就分裂,而 sibling 比對只在
         # 同一個 base key 底下跑,救不回來。點不出來才退回主體集合。
-        obj = directional_object(action, title, canon) or object_signature(
-            action, canon)
+        if action in DIRECTIONAL_ACTIONS:
+            # **認不出受詞就說不知道**(外審 P1-4)——
+            # 退回主體集合等於拿「actor + recipient」冒充 recipient。
+            obj = (directional_object(action, title, canon,
+                                      summary=ev.get("summary"))
+                   or UNKNOWN_OBJECT)
+        else:
+            obj = object_signature(action, canon)
         key = ":".join(x for x in (etype, action, obj, month) if x)
         basis = "action+object" if obj else "action"
     else:

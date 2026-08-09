@@ -738,14 +738,42 @@ def test_the_recipient_is_the_object_even_when_the_actor_is_missing():
     assert k3 != k1
 
 
-def test_no_direction_marker_falls_back_instead_of_guessing():
-    """**點不出受詞就退回舊行為,不猜** —— 猜錯會把兩件事黏在一起。"""
+def test_an_unknown_recipient_says_unknown_instead_of_guessing():
+    """**點不出受詞就說不知道**(第二十八輪外審 P1-4)。
+
+    上一版退回整個主體集合 —— 那等於拿「actor + recipient」冒充
+    recipient:同一批軍售的兩則報導(一則標題寫得出「對台」、一則沒有)
+    拿到兩個不同的 base key,而 sibling 比對只在同一個 base key 底下跑,
+    救不回來。認不出受詞的同動作事件現在落在**同一條** provisional
+    lineage 上。
+    """
     assert eid.directional_object("arms_sale", "美台簽署軍售合約",
                                   ["美國", "台灣"]) == ""
     k = eid.timeline_identity({"event_type": "geopolitical",
                                "title": "美台簽署軍售合約"},
                               ["美國", "台灣"], "2026-08-09")["key"]
-    assert "台灣、美國" in k, k
+    assert k.endswith(f":{eid.UNKNOWN_OBJECT}:2026-08"), k
+    # 另一則同樣認不出受詞的落在同一條線上(而不是各自散開)
+    k2 = eid.timeline_identity({"event_type": "geopolitical",
+                                "title": "美國批准新一批軍售案"},
+                               ["美國"], "2026-08-09")["key"]
+    assert k == k2, (k, k2)
+
+
+def test_a_recipient_in_the_summary_is_found():
+    """**標題寫不出受援國時看 summary**(外審 P1-4 的反例)。
+
+    "US approves new weapons package" + “intended for Taiwan” 要與
+    「美國批准對台軍售」落在同一條線上。
+    """
+    en = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": "US approves new weapons package",
+         "summary": "The package is intended for Taiwan."},
+        ["United States", "Taiwan"], "2026-08-09")["key"]
+    zh = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": "美國批准對台軍售"},
+        ["美國", "台灣"], "2026-08-09")["key"]
+    assert en == zh, (en, zh)
 
 
 def test_the_suffix_uses_the_whole_token_set():
@@ -818,4 +846,21 @@ def test_a_competing_direction_phrase_does_not_steal_the_object():
          "title": "US responds to China with arms sale to Taiwan"},
         ["United States", "China", "Taiwan"], "2026-08-09")["key"]
     assert k1 == k2, (k1, k2)
+
+
+def test_an_unrelated_marker_in_the_title_does_not_block_the_summary():
+    """**閘門要看「有沒有找到受詞」,不是「有沒有出現方向詞」**
+    (外審第二輪 F3)。
+
+    「美國軍售最新動**向**」的「向」會讓上一版以為標題找得到,
+    summary 那條路就走不到了 —— 而受援國寫在 summary 裡。
+    """
+    assert eid.directional_object("arms_sale", "美國軍售最新動向",
+                                  ["美國", "台灣"],
+                                  summary="武器售予台灣") == "台灣"
+    # 英文的無關 "for" 同理
+    assert eid.directional_object(
+        "arms_sale", "US weapons package under review for approval",
+        ["United States", "Taiwan"],
+        summary="The package is intended for Taiwan.") == "台灣"
 

@@ -69,7 +69,10 @@ ACTION_TABLE = (
     # 這一條**自帶唯一對象**(海峽只有一個),所以不在 `NEEDS_OBJECT`。
     ("hormuz_passage", "荷姆茲海峽通行",
      "荷姆茲", "荷莫茲", "霍爾木茲", "Hormuz"),
+    # 英文報導常寫 "weapons package" / "arms package" 而不是 "arms sale"
+    #(外審 P1-4 的反例就是這個寫法)。
     ("arms_sale", "軍售",
+     "weapons package", "arms package", "weapons sale",
      "軍售", "對台軍售", "arms sale", "arms package", "FMS"),
     ("cyberattack", "網路攻擊",
      "網攻", "網路攻擊", "駭客入侵", "勒索軟體", "資安事件",

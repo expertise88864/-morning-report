@@ -263,6 +263,22 @@ def same_incident(tokens_a, tokens_b) -> bool:
     return len(a & b) / min(len(a), len(b)) >= INCIDENT_OVERLAP
 
 
+#: 一則報導最多取幾個主體進身分。多了會讓同一件事因為某一則多抓到
+#: 一個配角而分裂;這個上限與排序讓它變成**確定性**的。
+MAX_SUBJECTS = 4
+
+
+def canonical_subjects(subjects) -> list:
+    """主體清單 → 去重、正規化、排序、截斷的**組代表寫法**。
+
+    抽出來是因為它有第二個呼叫端(跨語言橋接)——**判準只能有一份**:
+    兩邊各寫一次的話,「同一件事」在分群與在 timeline 會是兩個答案。
+    """
+    return sorted(dict.fromkeys(
+        c for c in (canonical_subject(s) for s in (subjects or [])) if c)
+    )[:MAX_SUBJECTS]
+
+
 def object_signature(action: str, subjects) -> str:
     """帶對象的動作 → 對象簽章;不帶對象的動作 → 空字串。
 
@@ -357,8 +373,7 @@ def timeline_identity(event: dict, subjects, today: str = "") -> dict:
     """
     ev = event if isinstance(event, dict) else {}
     etype = str(ev.get("event_type") or "general")
-    canon = sorted(dict.fromkeys(
-        c for c in (canonical_subject(s) for s in (subjects or [])) if c))[:4]
+    canon = canonical_subjects(subjects)
     title = ev.get("title")
     action = event_action(title, ev.get("summary"))
     month = _month(today or str(ev.get("published") or ""))

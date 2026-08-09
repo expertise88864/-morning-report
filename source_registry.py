@@ -246,6 +246,76 @@ def owner_of_item(item) -> str:
     return owner_of(tail) if tail else ""
 
 
+#: 兩段式頂級網域的**第二層**(`com`.tw、`co`.uk、`ac`.jp…)。
+#:
+#: 上一版是把 `com.tw`/`co.uk` 這些**逐個列舉**,於是沒列到的
+#: (`co.nz`、`com.br`、`co.in`…)會讓兩個不同的發布者被收成同一個
+#: `co.nz` —— 而那是**少算**獨立來源、讓事件從必分析清單掉出去的方向
+#: (2026-08-09 外審)。改成規則:國碼頂級網域(兩個字母)底下的
+#: 這幾個第二層,一律多留一層。規則涵蓋列舉,而且不會漏掉下一個國家。
+#:
+#: **這是啟發式,不是 Public Suffix List** —— 所以判不準時的**方向**
+#: 才是重點:`publisher_key` 只在**有把握**時收合,判不準就保留整個
+#: host。而「保留整個 host」正是這個修正之前的行為,所以這條規則
+#: **不可能比舊版更會誤併**:它只在確定的情況下少算一次重複。
+#: PSL 是一份一萬多行、需要定期更新的資料檔,為了一個只用來替不認得的
+#: 發布者去重的鍵而背它(還要決定更新頻率與離線落後時的行為),
+#: 維護成本大於它擋掉的風險。
+_SECOND_LEVEL = frozenset({
+    # 通用(絕大多數國碼頂級網域共用)
+    "com", "co", "org", "net", "gov", "edu", "ac", "or", "ne", "gr",
+    "go", "mil", "int", "info", "biz",
+    # 各國自訂的分類第二層
+    "idv", "game", "ebiz", "club",      # .tw
+    "lg",                               # .jp
+    "re", "pe",                         # .kr
+    "sch", "nhs", "police",             # .uk
+})
+
+_HOSTLIKE = _re.compile(r"^(?:https?://)?([a-z0-9.-]+\.[a-z]{2,})(?:[/?#]|$)")
+
+
+def publisher_key(name) -> str:
+    """不認得的發布者拿來**去重**的鍵:像網址就收成註冊網域。
+
+    2026-08-09 P2:上一版用整串小寫字串當鍵 —— 於是同一個站的
+    `news.example.com`、`www.example.com`、`https://example.com/a/b`
+    算成**三個**「可能獨立」的來源。那個數字是覆蓋率地板
+    (`potential`),灌高之後不重要的事件會擠進必分析清單。
+
+    **不像網址的就原樣回傳**:「Example News」與 `example.com` 是不是
+    同一家,這裡答不出來 —— 而猜錯會把兩個真的獨立來源併成一個,
+    那是**少算**佐證的方向,與這個數字要的保守方向相反。
+    """
+    n = str(name or "").strip().lower()
+    m = _HOSTLIKE.match(n)
+    if not m:
+        return n
+    host = m.group(1).strip(".")
+    parts = host.split(".")
+    if len(parts) <= 2:
+        return host
+    tld = parts[-1]
+    if len(tld) > 2:
+        # **通用頂級網域(`.com`/`.tech`/`.news`…)只有一段後綴。**
+        # 上一版在這裡放了一份 gTLD 白名單 —— 那是同一個毛病換個位置:
+        # 沒收到的 `.tech` 會讓 `news.example.tech` 與 `www.example.tech`
+        # 變成兩個鍵(外審第四輪)。**用長度分辨就夠了**:兩段式的公有
+        # 後綴實際上只存在於國碼頂級網域底下。
+        return ".".join(parts[-2:])
+    if parts[-2] in _SECOND_LEVEL:
+        # 認得的兩段式後綴(`com.tw`、`co.uk`、`idv.tw`…)
+        return ".".join(parts[-3:])
+    if len(parts) == 3:
+        # 國碼底下直接註冊(`news.example.de`)
+        return ".".join(parts[-2:])
+    # **判不準 → 保留整個 host。** 三段式的公有後綴(`k12.ca.us`)
+    # 用規則追不完,而收合錯的代價是把兩個發布者算成一個 ——
+    # 那是**少算**獨立來源、讓事件從必分析清單掉出去的方向。
+    # 保留整個 host = 這個修正之前的行為,不會比舊版更糟。
+    return host
+
+
 def independence(items: Optional[list]) -> dict:
     """這一群新聞代表**幾個獨立的編輯決策**。
 
@@ -269,7 +339,10 @@ def independence(items: Optional[list]) -> dict:
             # 第二十三輪 P2-5:**未知來源以正規化的發布者字串去重。**
             # 同一個不認得的網站的三篇改寫稿先前算三個「可能獨立」,
             # 會灌高覆蓋率地板、擠進必分析清單。
-            key = next((n.strip().lower() for n in names if n.strip()), "")
+            # **同一個站的三種寫法是一個來源**(2026-08-09 P2):
+            # 整串字串當鍵的話,`news.example.com` / `www.example.com` /
+            # `https://example.com/a/b` 算三個「可能獨立」。
+            key = next((publisher_key(n) for n in names if n.strip()), "")
             unknown_names.add(key or f"__blank__{len(unknown_names)}")
     unverified = len(unknown_names)
     return {"groups": sorted(groups), "count": len(groups),

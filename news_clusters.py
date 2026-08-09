@@ -79,7 +79,17 @@ def _same_event(a: dict, b: dict) -> bool:
         # 別名表只含公司與同義機構名(國家/首都已拿掉),誤併風險低。
         import entity_alias as _al
         if not (_al.expand(ea) & _al.expand(eb)):
-            return False
+            # **法域的中英對應不在別名表裡**(2026-08-09 外審):那張表
+            # 刻意只收公司與同義機構名,國家在第二十二輪 P1-9 被整批拿掉
+            # (理由是城市≠國家)。於是「美國/台灣」與 "United States/
+            # Taiwan" 在這裡就回 False,底下的跨語言橋接**永遠走不到** ——
+            # 我加的非貨幣錨本來是給那一類事件用的。
+            # 名稱翻譯的宣告在 `event_actions.CANONICAL_SUBJECTS`
+            # (同一個國家的兩種寫法,不是城市與國家)。
+            import event_identity as _eid
+            if not (set(_eid.canonical_subjects(ea))
+                    & set(_eid.canonical_subjects(eb))):
+                return False
     # 聚合器條目的「 - 發布者」尾綴不是標題內容:兩家媒體報同一件事時
     # 尾綴必然不同,它的字元在重疊比對裡**懲罰合併**(短標題會因此
     # 掉到門檻下)。剝掉的判準與理由在 `source_registry.bare_title`。

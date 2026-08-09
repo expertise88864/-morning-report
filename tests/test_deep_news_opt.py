@@ -490,3 +490,167 @@ def test_stripping_a_short_english_name_keeps_word_boundaries():
     tok = ei.discriminative_tokens("Market focus versus consensus view",
                                    ["美國"])
     assert "focus" in tok and "versus" in tok, sorted(tok)
+
+
+# ===== 2026-08-09 P2:跨語言橋接只認金額 =====
+
+def _pair(ta, ea, tb, eb) -> bool:
+    import cross_lang as cl
+    return cl.bridge({"title": ta, "entities": list(ea)},
+                     {"title": tb, "entities": list(eb)})
+
+
+def test_the_bridge_is_actually_reachable_from_clustering(): 
+    """**沒接上等於不存在**(2026-08-09 外審 F1)。
+
+    `_same_event()` 在呼叫 `bridge()` 之前要求實體交集,而 `entity_alias`
+    **刻意不收國家**(第二十二輪 P1-9 整批拿掉)—— 於是「美國/台灣」與
+    "United States/Taiwan" 在前置條件就回 False,我加的非貨幣錨
+    **永遠走不到**,而它本來就是給那一類事件用的。
+    上一版的測試直接呼叫 `cross_lang.bridge()`,繞過了整段前置條件。
+    """
+    import news_clusters as nc
+    news = [{"source_item_id": "n1", "title": "美國批准對台軍售 12 億美元",
+             "entities": ["美國", "台灣"], "source": "經濟日報"},
+            {"source_item_id": "n2", "title": "US approves arms sale to Taiwan",
+             "entities": ["United States", "Taiwan"], "source": "Reuters"}]
+    assert len(nc.clusters(news)) == 1, nc.clusters(news)
+    # **對象不同就不得併** —— 前置條件放寬不等於門開著
+    other = [news[0], dict(news[1], title="US approves arms sale to Japan",
+                           entities=["United States", "Japan"])]
+    assert len(nc.clusters(other)) == 2
+
+
+def test_a_non_monetary_event_can_bridge_across_languages():
+    """**軍售、制裁、峰會多半沒有金額** —— 而它們正是最需要交叉驗證的
+    那一類事件。只認金額的話,同一件事的中英報導永遠是兩群,
+    `independent_sources` 少算,交叉驗證看起來比實際弱。
+
+    錨用的是既有的雙語判準,不是新的相似度:`event_action` 的關鍵詞表
+    本來就中英並列,主體正規化把 "United States" 與「美國」收成同一個。
+    """
+    assert _pair("美國批准對台軍售 12 億美元", ["美國", "台灣"],
+                 "US approves arms sale to Taiwan", ["United States", "Taiwan"])
+    assert _pair("美國宣布制裁中國半導體企業", ["美國", "中國"],
+                 "US sanctions Chinese chipmakers", ["United States", "China"])
+
+
+def test_the_new_anchor_does_not_merge_two_different_events():
+    """**誤併會造出假的獨立來源數**,那比漏併貴。
+
+    對象不同(受援國換一個)、動作不同,都不得橋接;
+    同語言更不得橋(第一道防線)。
+    """
+    # 同動作、**不同對象**
+    assert not _pair("美國批准對台軍售", ["美國", "台灣"],
+                     "US approves arms sale to Japan",
+                     ["United States", "Japan"])
+    # **不同動作**
+    assert not _pair("美國批准對台軍售", ["美國", "台灣"],
+                     "US sanctions Chinese chipmakers",
+                     ["United States", "China"])
+    # 同語言不橋
+    assert not _pair("美國批准對台軍售", ["美國", "台灣"],
+                     "美國批准對台軍售新案", ["美國", "台灣"])
+
+
+def test_an_objectless_action_is_not_enough_to_bridge():
+    """**「同一類事」不是「同一件事」。** 沒有對象的動作(台海情勢)
+    只說得出前者 —— 用它橋接會把同一天的兩則台海新聞併成一群。"""
+    import event_actions as ea
+    assert "strait_tension" not in ea.NEEDS_OBJECT
+    assert not _pair("共機擾台 台海軍演升溫", ["台灣", "中國"],
+                     "Chinese jets enter Taiwan air defence zone",
+                     ["Taiwan", "China"])
+
+
+def test_the_subject_normaliser_has_one_declaration():
+    """**判準只能有一份**:分群與 timeline 用同一個主體正規化,
+    兩邊各寫一次的話「同一件事」會有兩個答案。"""
+    import event_identity as eid
+    assert eid.canonical_subjects(["United States", "美國", "Taiwan"]) ==         ["台灣", "美國"]
+    ident = eid.timeline_identity(
+        {"event_type": "geopolitical", "title": "美國批准對台軍售"},
+        ["United States", "Taiwan"], "2026-08-09")
+    assert ident["subjects"] == eid.canonical_subjects(["United States",
+                                                       "Taiwan"])
+
+
+# ===== 2026-08-09 P2:同一個未知站的三種寫法算成三個來源 =====
+
+def test_one_unknown_site_counts_once():
+    """**`potential` 是覆蓋率地板** —— 灌高之後不重要的事件會擠進
+    必分析清單。整串字串當鍵的話,同一個站的三種寫法算三個。"""
+    import source_registry as sr
+    items = [{"source": "X", "source_name": n} for n in
+             ("news.example.com", "www.example.com",
+              "https://example.com/a/b")]
+    got = sr.independence(items)
+    assert got["unverified"] == 1, got
+    assert got["potential"] == 1, got
+
+
+def test_a_plain_name_is_not_guessed_into_a_domain():
+    """**不像網址的就原樣留著。**「Example News」與 `example.com` 是不是
+    同一家,這裡答不出來 —— 猜錯會把兩個真的獨立來源併成一個,
+    而那是**少算**佐證的方向,與這個數字要的保守方向相反。"""
+    import source_registry as sr
+    items = [{"source": "X", "source_name": "example.com"},
+             {"source": "X", "source_name": "Example News"}]
+    assert sr.independence(items)["unverified"] == 2
+
+
+def test_two_label_suffixes_keep_one_more_level():
+    """兩段式後綴要多留一層,否則兩個發布者會被收成同一個。
+
+    **判準是規則不是列舉**(2026-08-09 外審 F2):上一版逐個列
+    `com.tw`/`co.uk`,沒列到的 `co.nz`、`com.br` 會讓
+    `nzherald.co.nz` 與 `stuff.co.nz` 都變成 `co.nz` —— 那是**少算**
+    獨立來源、讓事件從必分析清單掉出去的方向。
+    """
+    import source_registry as sr
+    for a, b in (("money.udn.com.tw", "news.ltn.com.tw"),
+                 ("news.nzherald.co.nz", "www.stuff.co.nz"),
+                 ("g1.globo.com.br", "folha.com.br"),
+                 ("news.bbc.co.uk", "www.telegraph.co.uk"),
+                 # 各國自訂的分類第二層也算後綴(外審第二輪):
+                 # `idv.tw` 是**個人網域**空間,兩個人不是同一個發布者。
+                 ("alice.idv.tw", "bob.idv.tw"),
+                 ("a.game.tw", "b.game.tw"),
+                 # **判不準就保留整個 host**(外審第三輪):三段式的
+                 # 公有後綴(`k12.ca.us`)用規則追不完,而收合錯是
+                 # 少算獨立來源的方向。保留整個 host = 這個修正之前的
+                 # 行為,所以這條規則不可能比舊版更會誤併。
+                 ("district-a.k12.ca.us", "district-b.k12.ca.us")):
+        assert sr.publisher_key(a) != sr.publisher_key(b), (a, b)
+    assert sr.publisher_key("money.udn.com.tw") == "udn.com.tw"
+    assert sr.publisher_key("news.nzherald.co.nz") == "nzherald.co.nz"
+    # 一般 gTLD 仍然只取兩段(`news.google.com` 不是 `news.google.com`)
+    assert sr.publisher_key("news.google.com") == "google.com"
+    # **新的通用頂級網域不得因為「沒被列到」而退回整個 host**
+    # (外審第四輪):上一版用 gTLD 白名單,`.tech` 沒收到,於是同一個
+    # 站的兩種寫法又變成兩個鍵。判準改成長度 —— 兩段式的公有後綴
+    # 實際上只存在於國碼頂級網域底下。
+    for tld in ("tech", "news", "cloud", "app", "media", "xyz"):
+        # 三段與**四段**都要收得動:三段那一種另有一條分支接得住
+        # (國碼底下直接註冊),四段只有「通用頂級網域」這條規則救得了。
+        assert (sr.publisher_key(f"news.example.{tld}")
+                == sr.publisher_key(f"www.money.example.{tld}")
+                == f"example.{tld}"), tld
+
+
+def test_the_key_never_merges_more_than_the_old_behaviour_did():
+    """**這個修正只在有把握時收合。**
+
+    舊行為是「整串字串當鍵」—— 兩個不同的 host 永遠是兩個鍵。
+    新規則因此有一個可驗的性質:它只把**同一個註冊網域**的不同寫法
+    收在一起,判不準時退回整個 host。少了這個性質,一個沒收到的後綴
+    就會把兩個發布者算成一個,而那是少算獨立來源的方向。
+    """
+    import source_registry as sr
+    distinct = ("district-a.k12.ca.us", "district-b.k12.ca.us",
+                "alice.idv.tw", "bob.idv.tw",
+                "a.b.unknownsuffix.zz", "c.d.unknownsuffix.zz")
+    keys = [sr.publisher_key(h) for h in distinct]
+    assert len(set(keys)) == len(distinct), dict(zip(distinct, keys))
+

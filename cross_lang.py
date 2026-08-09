@@ -152,6 +152,44 @@ def event_category(title) -> str:
     return hits.pop() if len(hits) == 1 else ""
 
 
+def _entities(item) -> list:
+    ents = (item or {}).get("entities")
+    return [str(x) for x in (ents or []) if str(x).strip()]
+
+
+def action_anchor(a: dict, b: dict) -> bool:
+    """非貨幣事件的跨語言錨:**同一個動作、同一個對象**。
+
+    金額橋只接得起「有一筆大錢」的事件 —— 而軍售、制裁、出口管制、
+    峰會、選舉、資安事件多半沒有金額,於是同一件事的中英報導永遠是
+    兩群:`independent_sources` 少算,交叉驗證看起來比實際弱。
+
+    錨用的是既有的雙語判準,不是新的相似度:
+      * `event_actions.event_action()` 的關鍵詞表本來就中英並列;
+      * 對象簽章用 `event_identity.object_signature`,而主體正規化
+        (`canonical_subjects`)把 "United States" 與「美國」收成同一個。
+
+    **只認算得出對象的事件**:沒有對象的動作(例如台海情勢)只說得出
+    「這是同一類事」,說不出「這是同一件事」—— 而誤併會造出假的獨立
+    來源數,那比漏併貴。判準交給 `object_signature` 一句話:
+    它對 `NEEDS_OBJECT` 以外的動作回空字串,所以下面那個 `bool(sa)`
+    就是這條規則本身。**不另外再寫一次 `act in NEEDS_OBJECT`** ——
+    那個分支不可能單獨失敗,而不可能失敗的守衛只會讓人以為驗過了。
+    """
+    import event_actions as _ea
+    import event_identity as _ei
+    act = _ea.event_action(str((a or {}).get("title") or ""),
+                           (a or {}).get("summary"))
+    if not act:
+        return False
+    if act != _ea.event_action(str((b or {}).get("title") or ""),
+                               (b or {}).get("summary")):
+        return False
+    sa = _ei.object_signature(act, _ei.canonical_subjects(_entities(a)))
+    sb = _ei.object_signature(act, _ei.canonical_subjects(_entities(b)))
+    return bool(sa) and sa == sb
+
+
 def bridge(a: dict, b: dict) -> bool:
     """跨語言配對的第二次機會。**呼叫端已驗過實體別名組交集** ——
     這裡只補「標題重疊量不到跨語言」那一段。
@@ -164,6 +202,10 @@ def bridge(a: dict, b: dict) -> bool:
     tb = str((b or {}).get("title") or "")
     if _cjk_dominant(ta) == _cjk_dominant(tb):
         return False
+    # **金額不是唯一的錨**(2026-08-09 P2):軍售、制裁、出口管制、峰會
+    # 多半沒有金額,而它們正是最需要交叉驗證的那一類事件。
+    if action_anchor(a, b):
+        return True
     if not shared_money(ta, tb):
         return False
     ca, cb = event_category(ta), event_category(tb)

@@ -312,7 +312,9 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:非貨幣事件的跨語言錨(軍售/制裁/峰會多半沒有金額)。**實測 212 行**。
     # 縱深第四批 C:宣告式供應鏈地圖(橫向傳導候選)。**實測 86 行**。
     "sector_map.py": 110,
-    "cross_lang.py": 325,
+    # 第二十九輪 Commit 3:typed quantity anchors(裸數字不是事件身分)
+    # **實測 352 行**。
+    "cross_lang.py": 395,
     # 分析面縱深:昨日觀點閉環(存觀點 → 明天掛在事件群上 → 驗重述)。
     # 第二批:次要事件(top_news_analysis)也存 diff 基準,重述檢查
     # 本體從 analysis_depth 搬進來(同一個閉環拆兩處會各自漂移)。

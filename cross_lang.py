@@ -170,17 +170,24 @@ def _shared_specific_anchor(a: dict, b: dict, *, obj: str = "") -> bool:
 
     留下來的錨要**只屬於這一樁**:
       * 同幣別同量級的金額(`shared_money`);
-      * 兩邊都出現的**數量級數字**(受影響筆數、通知編號、批次規模);
+      * 同類別、同量級的**帶單位數量**(`_shared_quantity` ——
+        裸數字是型號/版本/點位,第二十九輪外審 P1-4);
       * 兩邊都點名、而且**不是這個動作的對象**的實體
         (例如軍售案裡的承包商)。
+
+    **錨讀 title + summary**(P2-2):受援國已經會從 summary 找,
+    而金額與筆數常常也只在 summary 裡 —— 錨只看標題的話,
+    「對象對上了、錨看不到」的同一件事橋不起來。
     """
     import entity_alias as _ea
     import event_actions as _eac
-    ta = str((a or {}).get("title") or "")
-    tb = str((b or {}).get("title") or "")
+    ta = (str((a or {}).get("title") or "") + " "
+          + str((a or {}).get("summary") or ""))
+    tb = (str((b or {}).get("title") or "") + " "
+          + str((b or {}).get("summary") or ""))
     if shared_money(ta, tb):
         return True
-    if _shared_numeric(ta, tb):
+    if _shared_quantity(ta, tb):
         return True
     juris = set(_eac.CANONICAL_SUBJECTS.values())
     # **對象本身要排除**:它是這兩則共用的前提,不是分辨它們的東西。
@@ -204,32 +211,94 @@ def _shared_specific_anchor(a: dict, b: dict, *, obj: str = "") -> bool:
     return bool(_groups(a) & _groups(b))
 
 
-#: 當成錨的數字最少要幾位 —— 一兩位數(名次、季別)到處都是。
-MIN_NUMERIC_ANCHOR = 3
+#: **數量單位的宣告**:`單位詞 → 單位類別`。數字要帶單位才是事件專屬的
+#: 量(受影響筆數、召回台數)—— 裸數字是型號(M109)、平台版本
+#: (Microsoft 365)、點位(9999 點),拿它們當錨等於沒有錨
+#: (第二十九輪外審 P1-4:365 讓兩起不同的資安事件誤併)。
+#: 中文量詞在數字後面、英文單位在數字後面,兩邊同一張表。
+_QUANTITY_UNITS = {
+    "筆": "records", "records": "records", "record": "records",
+    "entries": "records", "條": "records",
+    "人": "people", "名": "people", "people": "people", "users": "people",
+    "用戶": "people", "戶": "people", "employees": "people",
+    "台": "units", "輛": "units", "架": "units", "units": "units",
+    "顆": "units", "座": "units",
+}
+
+#: 數字與單位之間的**倍數詞**(「1,200 萬筆」的「萬」)。
+_QTY_SCALE = {"萬": 1e4, "億": 1e8, "兆": 1e12,
+              "thousand": 1e3, "k": 1e3, "million": 1e6, "m": 1e6,
+              "billion": 1e9, "bn": 1e9}
+
+#: **宣告過的「品牌+號碼」組合**:整組才是產品名(第五輪外審:
+#: 只宣告品牌的話,"Microsoft 500 employees laid off" 的 500 也被當成
+#: 產品號 —— 品牌後面照樣可以接真的量,產品號是**特定的**組合)。
+_PRODUCT_NAMES = frozenset({
+    "microsoft 365", "office 365", "dynamics 365",
+    "windows 10", "windows 11", "windows 12",
+    "iphone 15", "iphone 16", "iphone 17",
+    "galaxy s24", "galaxy s25", "playstation 5", "xbox 360",
+    "gpt 4", "gpt 5", "llama 3", "llama 4", "gemini 2",
+})
+
+_QTY_RE = re.compile(
+    r"([0-9][0-9,]*(?:\.[0-9]+)?)\s*"
+    r"(萬|億|兆|thousand|million|billion|bn|k|m)?\s*"
+    r"(" + "|".join(sorted(map(re.escape, _QUANTITY_UNITS), key=len,
+                           reverse=True)) + r")(?![a-z])",
+    re.IGNORECASE)
 
 
-def _shared_numeric(a_text: str, b_text: str) -> bool:
-    """兩段文字有沒有共同的**量級數字**(受影響筆數、批次編號…)。
+def quantity_anchors(text) -> set:
+    """文字裡的 `(單位類別, 數值)` 集合 —— **帶單位的數字才算**。
 
-    只收三位數以上,而且比對的是去掉千分位之後的字串 ——
-    「1,200 萬筆」與 "12 million records" 不會因為寫法不同而錯過,
-    而「第 3 季」這種到處都是的小數字不會製造假的錨。
+    「1,200 萬筆」與 "12 million records" 都正規化成
+    `("records", 12000000.0)` —— 上一版的裸數字比對抓的是去千分位的
+    字串,兩種寫法**對不上**,而 docstring 卻宣稱對得上(外審抓到:
+    實作與宣稱不一致)。
     """
-    import re as _re
+    out = set()
+    t = str(text or "")
+    for m in _QTY_RE.finditer(t):
+        pre = t[:m.start()]
+        # **品牌+數字的複合詞不是量**(第二輪外審):「Microsoft 365
+        # 用戶」的 365 是產品名的一部分,不是 365 個人 —— 而 cyberattack
+        # 的兩則不同事件都會寫到它,拿它當錨會誤併。
+        # 數字**緊貼**字母(M109)一律不算。
+        if re.search(r"[A-Za-z0-9]$", pre):
+            continue
+        try:
+            v = float(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        v *= _QTY_SCALE.get((m.group(2) or "").lower(), 1.0)
+        # **產品號的判準是「宣告過的品牌+號碼組合」**,不是前一個詞的
+        # 大小寫(誤殺 Affected 12 million)、不是值域(誤殺 TSMC 500
+        # employees)、也不是裸品牌(誤殺 Microsoft 500 employees ——
+        # 品牌後面照樣可以接真的量)。我在這上面換了四版判準,
+        # 每一版都在誤殺與誤放之間漏一邊;**產品名是特定的組合,
+        # 那就宣告整組**。表沒收到的新產品會漏排除,但兩邊要同單位
+        # 同值才成錨,殘餘風險小。
+        # **帶倍數詞的不是產品號**(第六輪外審):"Microsoft 365 million
+        # users" 的 365 million 是真的量 —— 產品號後面不會接 million。
+        _last_word = re.search(r"([A-Za-z]+)[ ]+$", pre)
+        if (_last_word and not m.group(2)
+                and (f"{_last_word.group(1).lower()} "
+                     f"{m.group(1).replace(',', '')}"
+                     in _PRODUCT_NAMES)):
+            continue
+        if v >= 100:                     # 「3 人受傷」層級的小數字到處都是
+            out.add((_QUANTITY_UNITS[m.group(3).lower()], v))
+    return out
 
-    def _nums(t):
-        out = set()
-        for raw in _re.findall(r"[0-9][0-9,]{2,}", t):
-            v = raw.replace(",", "")
-            # **年份不是事件專屬的數字**(外審第二輪 F2):同一年的兩起
-            # 事件都會寫到「2026」—— 拿它當錨等於沒有錨,
-            # 而那正好把 P1-3 修掉的誤併路徑再打開一次。
-            if len(v) == 4 and 1900 <= int(v) <= 2100:
-                continue
-            out.add(v)
-        return out
 
-    return bool(_nums(a_text) & _nums(b_text))
+def _shared_quantity(a_text: str, b_text: str) -> bool:
+    """兩段文字有沒有**同類別、同量級**的數量(容差與金額同一套)。"""
+    for ua, va in quantity_anchors(a_text):
+        for ub, vb in quantity_anchors(b_text):
+            if ua == ub and va and vb and                     abs(va - vb) / max(va, vb) <= REL_TOLERANCE:
+                return True
+    return False
 
 
 def action_anchor(a: dict, b: dict) -> bool:

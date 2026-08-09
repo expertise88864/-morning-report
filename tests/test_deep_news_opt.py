@@ -722,3 +722,76 @@ def test_the_bridge_reads_the_summary_for_the_recipient():
          "summary": "The package is intended for Taiwan.",
          "entities": ["United States", "Taiwan"]})
 
+
+# ===== 第二十九輪外審 Commit 3:typed anchors =====
+
+def test_a_model_number_is_not_an_incident_anchor():
+    """**裸數字是型號/版本/點位,不是事件身分**(P1-4)。
+
+    `Microsoft 365` 的 365、`M109` 的 109 —— 上一版的裸三位數比對會把
+    同公司兩起不同的資安事件、兩批不同的軍售誤併,而誤併會讓其中一件
+    真事件從報告消失(同一群不得分析兩次)。**數字要帶單位才算量。**
+    """
+    import cross_lang as cl
+    assert not cl._shared_quantity("台積電 Microsoft 365 帳號遭網攻",
+                                   "TSMC separate Microsoft 365 cyberattack")
+    assert not cl._shared_quantity("對台軍售含 M109 自走砲",
+                                   "arms sale includes M109 howitzers")
+    assert not cl.bridge(
+        {"title": "台積電 Microsoft 365 帳號遭網攻", "entities": ["台積電"]},
+        {"title": "TSMC reports separate Microsoft 365 breach",
+         "entities": ["TSMC"]})
+    # **品牌+數字後面接單位詞也不算**(外審第二輪):
+    # 「Microsoft 365 用戶」的 365 是產品名的一部分,不是 365 個人。
+    assert not cl._shared_quantity("Microsoft 365 用戶遭網攻",
+                                   "Microsoft 365 users hit by attack")
+    assert not cl._shared_quantity("M109 units in the package",
+                                   "M109 台在批次中")
+    # 而**合法的量**前面是小寫動詞或中文 —— 不受品牌規則波及
+    assert cl._shared_quantity("影響 365 名用戶", "attack affecting 365 users")
+    # **大寫詞後面的真量也不受波及**(外審第三輪):第一版把任何大寫詞
+    # 後面的數字全部排除 —— 句首動詞、公司名後的量都被殺掉。
+    # 量大、或帶倍數詞的不是產品號。
+    assert cl._shared_quantity("影響 1,200 萬名用戶",
+                               "Affected 12 million users in the breach")
+    assert cl._shared_quantity("外洩 12000 筆", "TSMC 12000 records exposed")
+    # **小的真量也不受波及**(外審第四輪:值域門檻誤殺 TSMC 500)——
+    # 判準是宣告過的品牌,不是前一個詞的大小寫或值的大小。
+    assert cl._shared_quantity("台積電 500 名員工疏散",
+                               "TSMC 500 employees evacuated")
+    assert not cl._shared_quantity("Windows 11 用戶受影響",
+                                   "Windows 11 users affected")
+    # **裸品牌不是判準**(第五輪外審):品牌後面照樣可以接真的量 ——
+    # 產品名是特定的「品牌+號碼」組合,宣告整組。
+    assert cl._shared_quantity("微軟 500 名員工被裁",
+                               "Microsoft 500 employees laid off")
+    assert "microsoft 365" in cl._PRODUCT_NAMES
+    # **帶倍數詞的不是產品號**(第六輪外審):產品號後面不會接 million。
+    assert cl._shared_quantity("影響 3.65 億名用戶",
+                               "Microsoft 365 million users affected")
+
+
+def test_quantities_normalise_across_languages():
+    """**實作要做得到 docstring 宣稱的事**(外審抓到不一致):
+    「1,200 萬筆」與 "12 million records" 要對得上 —— 上一版的裸字串
+    比對是 `1200` vs `12`,對不上,而註解說對得上。"""
+    import cross_lang as cl
+    assert cl._shared_quantity("外洩 1,200 萬筆資料",
+                               "12 million records exposed")
+    assert cl._shared_quantity("12000 筆外洩", "exposes 12000 records")
+    # 類別不同不算(1200 萬**人** vs 1200 萬**筆**是兩件事)
+    assert not cl._shared_quantity("影響 1,200 萬人",
+                                   "12 million records exposed")
+
+
+def test_anchors_read_the_summary_too():
+    """**受援國已經會從 summary 找,錨也要**(P2-2):金額常常只在
+    summary 裡 ——「對象對上了、錨看不到」的同一件事橋不起來。"""
+    import cross_lang as cl
+    assert cl.bridge(
+        {"title": "美國批准對台軍售", "summary": "總額 12 億美元",
+         "entities": ["美國", "台灣"]},
+        {"title": "US approves arms sale to Taiwan",
+         "summary": "worth $1.2 billion",
+         "entities": ["United States", "Taiwan"]})
+

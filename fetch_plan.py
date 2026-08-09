@@ -100,6 +100,12 @@ def plan(news: Optional[list], clusters: Optional[list],
     ranked = sorted([c for c in (clusters or []) if isinstance(c, dict)],
                     key=lambda c: _rank(c, by_id,
                                         cont.get(str(c.get("cluster_id") or ""), 0)))
+    _members = {m for c in (clusters or []) if isinstance(c, dict)
+                for m in (str(x) for x in (c.get("member_source_ids") or []))}
+    _has_fulltext = {m for m in _members
+                     if isinstance(by_id.get(m), dict) and by_id[m].get("fulltext")}
+    _no_link = {m for m in _members - _has_fulltext
+                if not _fetchable(by_id.get(m))}
     targets: list = []
     per_cluster: list = []
     for c in ranked:
@@ -128,6 +134,17 @@ def plan(news: Optional[list], clusters: Optional[list],
         # (第一輪外審 F3):前者是接線壞了,後者是上游斷料。
         # 沒有這個數字的話,兩者在 manifest 裡長得一模一樣。
         "available_news": len([n for n in (news or []) if isinstance(n, dict)]),
+        # **「沒東西可抓」與「接線斷了」是兩件事**(2026-08-09 P2)。
+        # `targets == 0` 目前一律被判成「分出了 N 群卻一篇都沒排 —— 接線斷了」,
+        # 而候選全都已經有 `fulltext`、或全都沒有 http 連結時,零就是正確答案。
+        # 少了這個數字,兩者在 manifest 裡長得一模一樣 ——
+        # 而這正是 `available_news` 那一格要解掉的同一種錯覺,只是在下一層。
+        "fetchable_candidates": len(_members - _has_fulltext - _no_link),
+        # **「已經有全文」與「根本沒有連結」是相反的兩件事**(外審):
+        # 前者代表信裡的事件**有**全文,後者代表只剩 RSS 兩行摘要。
+        # 合成一格的話,下游只能講一句對其中一半是假的話。
+        "already_fulltext": len(_has_fulltext),
+        "no_fetch_link": len(_no_link),
         # **不做靜默的上限**:排得到卻沒預算的事件群要說出來。
         "uncovered_clusters": uncovered,
         "budget": int(budget),

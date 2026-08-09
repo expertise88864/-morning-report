@@ -134,8 +134,12 @@ class ManifestRecorder:
         # `plan()` 記了 `available_news`,而這裡重建 entry 時只抄四個欄位 ——
         # 於是判準拿到 `None`,零群集又被一律報成接線缺陷。
         # 這是「生產端記了、下游沒帶」—— 逐欄複製的清單漂移形狀。
-        if isinstance(p.get("available_news"), int):
-            entry["available_news"] = p["available_news"]
+        # **逐欄複製就是清單漂移**(上一次已經被抓過一次):改成逐項帶,
+        # 加一格判準只要在這個 tuple 裡加一個名字。
+        for _k in ("available_news", "fetchable_candidates",
+                   "already_fulltext", "no_fetch_link"):
+            if isinstance(p.get(_k), int):
+                entry[_k] = p[_k]
         self.data.setdefault("news", {})["fulltext_plan"] = entry
 
     # ── state 寫入帳 ────────────────────────────────────────────────

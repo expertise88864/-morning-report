@@ -733,3 +733,80 @@ def test_the_weekend_dry_run_writes_its_manifest_before_returning():
                    if any(isinstance(x, ast.Return) for x in ast.walk(st)))
         assert wrote is not None and wrote < ret,             "DRY_RUN 早退之前沒有寫 manifest"
 
+
+# ===== 2026-08-09 P2:「沒東西可抓」與「接線斷了」 =====
+
+def _plan_manifest(**plan) -> dict:
+    return {"report_kind": rq.MORNING_REPORT,
+            "llm": {"analysis_origin": "luna_specialized",
+                    "payload_budget": {}, "primary_metrics": {},
+                    "recap_saved": True, "request_measurements": []},
+            "news": {"fulltext_plan": dict({"clusters": 3, "targets": 0,
+                                            "available_news": 40}, **plan)}}
+
+
+def test_nothing_left_to_fetch_is_not_a_broken_wire():
+    """**候選全都已經有全文、或都沒有可抓的連結時,零是正確答案。**
+
+    `targets == 0` 先前一律報「分出了 N 群卻一篇都沒排 —— 接線斷了」,
+    而那句話在這一天是假的。這是 `available_news` 已經解過的同一種錯覺
+    (「分不出群」vs「上游斷料」),只是在下一層。
+    """
+    got = rq.assess(_plan_manifest(fetchable_candidates=0,
+                                   already_fulltext=9, no_fetch_link=0))
+    assert [p["code"] for p in got] == ["fetch_plan_nothing_to_fetch"], got
+    assert got[0]["severity"] == "degraded"
+    # **訊息不得宣稱一件對其中一半是假的事**(外審):候選已經有全文時,
+    # 信裡的事件**有**全文 —— 說「只會有 RSS 兩行摘要」是假的診斷,
+    # 而讀著訊息的人會去查錯的地方。
+    assert "RSS" not in got[0]["detail"], got[0]["detail"]
+    assert "已經有全文 9 篇" in got[0]["detail"], got[0]["detail"]
+
+
+def test_the_two_kinds_of_zero_are_counted_apart():
+    """**「已經有全文」與「根本沒有連結」的後果相反。** 生產端要分開記,
+    下游才講得出對的那一句。"""
+    import fetch_plan as fp
+    news = [{"source_item_id": "n1", "fulltext": "有", "link": "http://x/1"},
+            {"source_item_id": "n2", "link": "notaurl"}]
+    p = fp.plan(news, [{"cluster_id": "c1",
+                        "member_source_ids": ["n1", "n2"],
+                        "representative_source_id": "n1"}])
+    assert (p["fetchable_candidates"], p["already_fulltext"],
+            p["no_fetch_link"]) == (0, 1, 1), p
+
+
+def test_a_broken_wire_still_speaks_up():
+    """**有候選卻一篇都沒排** —— 那才是接線斷了,而且要是 defect。"""
+    got = rq.assess(_plan_manifest(fetchable_candidates=12))
+    assert [p["code"] for p in got] == ["fetch_plan_no_targets"], got
+    assert got[0]["severity"] == "defect"
+    assert "12" in got[0]["detail"], got
+
+
+def test_without_the_count_it_still_reports():
+    """**拿不到這個數字時仍報 defect** —— 那是會出聲的那一邊。
+
+    反過來預設的話,一份舊 manifest(或上游忘了帶這一格)會讓整條
+    判準靜默跳過,而 2026-08-06 兩階段抓取整段 no-op 正是它要抓的事。
+    """
+    got = rq.assess(_plan_manifest())
+    assert [p["code"] for p in got] == ["fetch_plan_no_targets"], got
+
+
+def test_the_producer_actually_records_it():
+    """**生產端要記,下游才驗得動**(這個 repo 已經栽過:`plan()` 記了
+    `available_news`,而 `record_fulltext_plan` 只抄四個欄位)。"""
+    import fetch_plan as fp
+    import run_manifest as rmod
+    news = [{"source_item_id": "n1", "title": "a", "link": "http://x/1"},
+            {"source_item_id": "n2", "title": "b", "fulltext": "有了",
+             "link": "http://x/2"}]
+    plan = fp.plan(news, [{"cluster_id": "c1", "member_source_ids": ["n1", "n2"],
+                           "representative_source_id": "n1"}])
+    assert plan["fetchable_candidates"] == 1, plan
+    rec = rmod.ManifestRecorder()
+    rec.record_fulltext_plan(plan)
+    landed = rec.data["news"]["fulltext_plan"]
+    assert landed["fetchable_candidates"] == 1, landed
+

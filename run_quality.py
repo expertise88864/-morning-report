@@ -200,8 +200,27 @@ def assess(manifest, *, mode: str = "watchdog",
                 "分不出任何事件群 —— 信裡的事件只會有 RSS 兩行摘要"
                 "(2026-08-06 的形狀:source_item_id 還沒補)")
         elif targets == 0:
-            add("fetch_plan_no_targets", "defect",
-                f"分出了 {clusters} 個事件群卻一篇全文都沒排 —— 接線斷了")
+            # **「沒東西可抓」不是接線斷了**(2026-08-09 P2):候選全都
+            # 已經有全文、或全都沒有 http 連結時,零是正確答案。
+            # 拿不到這個數字時仍報 defect —— 那是會出聲的那一邊。
+            cand = plan.get("fetchable_candidates")
+            if isinstance(cand, int) and cand == 0:
+                # **兩種零的後果相反**(外審):候選已經有全文 → 信裡的
+                # 事件**有**全文;候選沒有連結 → 只剩 RSS 兩行摘要。
+                # 講一句對其中一半是假的話,等於用一個假的診斷換掉一個
+                # 假的缺陷 —— 讀著訊息的人會去查錯的地方。
+                got = plan.get("already_fulltext")
+                none = plan.get("no_fetch_link")
+                add("fetch_plan_nothing_to_fetch", "degraded",
+                    f"分出了 {clusters} 個事件群,沒有需要再排的全文目標"
+                    + (f"(已經有全文 {got} 篇、沒有可抓連結 {none} 篇)"
+                       if isinstance(got, int) and isinstance(none, int)
+                       else "(候選已經有全文、或沒有可抓的連結)"))
+            else:
+                add("fetch_plan_no_targets", "defect",
+                    f"分出了 {clusters} 個事件群卻一篇全文都沒排 —— 接線斷了"
+                    + (f"(可抓的候選有 {cand} 篇)" if isinstance(cand, int)
+                       else ""))
 
     # ---- 6. 昨日觀點閉環(2026-08-08:state 沒進 push 清單)
     if origin == _ao.LUNA_SPECIALIZED and _dig(m, "llm", "recap_saved") is False:

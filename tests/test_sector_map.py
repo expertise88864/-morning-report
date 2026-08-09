@@ -87,3 +87,117 @@ def test_the_prompt_says_candidates_are_not_evidence():
     seg = src[src.index(anchor):src.index(anchor) + 500]
     assert "不是證據" in seg, seg
     assert "新聞" in seg and "支持" in seg, seg
+
+
+# ===== 橫向抓取(縱深第四批 C 之二) =====
+
+def _fu(key, entity, name):
+    return {"key": key, "query": f"{name} 訂單", "entity": entity, "name": name}
+
+
+def test_horizontal_queries_walk_declared_edges():
+    """查詢綁「候選 + 本尊」,而 key/entity/name 都是**發起線索**的 ——
+    抓回的文章走與縱向同一個貼標閘門,提到本尊才接回線索。"""
+    import sector_map as sm
+    got = sm.horizontal_queries([_fu("e:2330|l:orders", "2330", "台積電")])
+    assert got and got[0]["query"] == "ASML 台積電", got
+    assert got[0]["key"] == "e:2330|l:orders"
+    assert got[0]["entity"] == "2330" and got[0]["name"] == "台積電"
+
+
+def test_the_horizontal_budget_is_shared_round_robin():
+    """**單一線索不獨占橫向預算**:每條線索先各拿第一個候選,
+    額度還有再輪第二個。"""
+    import sector_map as sm
+    got = sm.horizontal_queries([_fu("k1", "2330", "台積電"),
+                                 _fu("k2", "NVDA", "輝達")])
+    assert len(got) == sm.HORIZONTAL_MAX_QUERIES
+    assert [g["key"] for g in got] == ["k1", "k2", "k1"], got
+
+
+def test_tracked_names_are_not_queried_horizontally():
+    """縱向已經在追的名字不再橫向查(它自己有查詢);
+    同一個候選被多條線索走到只查一次。"""
+    import sector_map as sm
+    got = sm.horizontal_queries([_fu("k1", "2330", "台積電"),
+                                 _fu("k2", "NVDA", "輝達")])
+    names = [g["query"].split()[0] for g in got]
+    assert "輝達" not in names and "台積電" not in names, got
+    assert len(names) == len(set(names)), got
+
+
+def test_unknown_subjects_yield_no_horizontal_queries():
+    """主體不在圖上 → 沒有橫向查詢(**不猜**,與候選同一條規矩)。"""
+    import sector_map as sm
+    assert sm.horizontal_queries([_fu("k", "9999", "不在圖上的公司")]) == []
+    assert sm.horizontal_queries([]) == []
+    # 形狀防禦:混進非 dict / 空名不炸
+    assert sm.horizontal_queries([None, {"key": "k"}]) == []
+
+
+def test_fetch_news_does_not_silently_drop_horizontal_queries(monkeypatch,
+                                                              capsys):
+    """**生產的切片要蓋到橫向**:`fetch_news` 原本切 `FOLLOWUP_MAX_QUERIES`,
+    橫向多出來的三條會被**悄悄丟掉**(沒有任何日誌)—— 悄悄截斷讀起來
+    就像全部蓋到了。走生產的呼叫形狀驗:縱向 5 + 橫向 3 全部要成為
+    工作項,再多的要有日誌。"""
+    import morning_report as mr
+    import sector_map as sm
+    import story_ledger as sl
+    seen = []
+    monkeypatch.setattr(mr, "RSS_FEEDS", {})
+    monkeypatch.setattr(mr, "GOOGLE_NEWS_COMPANIES", [])
+    monkeypatch.setattr(mr, "_process_feed_item",
+                        lambda w, cutoff: (seen.append(w), [])[1])
+    vert = [_fu(f"k{i}", f"23{i}0", f"直向{i}")
+            for i in range(sl.FOLLOWUP_MAX_QUERIES)]
+    horiz = [{"key": "k0", "query": f"橫向{i} 直向0", "entity": "2300",
+              "name": "直向0"} for i in range(sm.HORIZONTAL_MAX_QUERIES)]
+    mr.fetch_news(vert + horiz)
+    assert len(seen) == len(vert) + len(horiz), [w["source"] for w in seen]
+    assert any("橫向2" in w["source"] for w in seen), "橫向被切掉了"
+    # 每一條都帶著接回線索用的欄位(與縱向同一個貼標閘門)
+    assert all(w.get("followup_key") for w in seen), seen
+    # 真的超額才丟,而且要說
+    seen.clear()
+    mr.fetch_news(vert + horiz + [_fu("k9", "9999", "超額")])
+    assert len(seen) == len(vert) + len(horiz)
+    assert "超額" in capsys.readouterr().err
+
+
+def test_the_producer_wires_horizontal_queries_into_the_fetch():
+    """**沒接上等於不存在**:`horizontal_queries` 要真的在抓新聞的相位被
+    呼叫、而且結果併進 `fetch_news` 的清單 —— 只有函式沒有呼叫端的話,
+    上面每一條測試都在替一個不存在的行為背書。"""
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    i = src.index("horizontal_queries(_followups)")
+    seg = src[i:src.index("news = fetch_news(_followups)", i)]
+    assert "_followups = _followups + _horiz" in seg, seg[:400]
+
+
+def test_fetch_news_survives_a_broken_sector_map(monkeypatch, capsys):
+    """**橫向是選配,抓新聞不是**(外審 r1):`sector_map` 載入失敗時
+    `fetch_news` 要退回純縱向(上限、日誌),不是把整封晨報帶走 ——
+    呼叫端的 try 只蓋到橫向查詢的產生,蓋不到這裡的 import。"""
+    import sys as _sys
+    import morning_report as mr
+    import story_ledger as sl
+    seen = []
+    monkeypatch.setattr(mr, "RSS_FEEDS", {})
+    monkeypatch.setattr(mr, "GOOGLE_NEWS_COMPANIES", [])
+    monkeypatch.setattr(mr, "_process_feed_item",
+                        lambda w, cutoff: (seen.append(w), [])[1])
+    monkeypatch.setitem(_sys.modules, "sector_map", None)  # 模擬載入失敗
+    vert = [_fu(f"k{i}", f"23{i}0", f"直向{i}")
+            for i in range(sl.FOLLOWUP_MAX_QUERIES)]
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", [])
+    mr.fetch_news(vert)                    # 不得拋出
+    assert len(seen) == len(vert)
+    assert "橫向模組載入失敗" in capsys.readouterr().err
+    # 降級要**登錄**不是只印(外審 r2):`_DEGRADED_STEPS` 進 run
+    # manifest,stderr 不進 —— 不登錄的話執行紀錄把這天讀成正常成功。
+    assert "sector_map_unavailable" in mr._DEGRADED_STEPS
+

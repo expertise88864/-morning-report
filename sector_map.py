@@ -84,3 +84,54 @@ def transmission_candidates(entities) -> list:
                 seen.add(dst)
                 out.append({"name": dst, "via": src, "relation": rel})
     return out[:MAX_CANDIDATES]
+
+
+#: 每天最多為傳導對象發幾條橫向查詢。與縱向(`FOLLOWUP_MAX_QUERIES=5`)
+#: 分開列預算 —— 每條是一次 Google News RSS 請求,而抓新聞是 wall-clock
+#: 主導者。三條夠蓋當日主線的第一步傳導,不拖垮 25 分鐘預算。
+HORIZONTAL_MAX_QUERIES = 3
+
+
+def horizontal_queries(followups, limit: int = HORIZONTAL_MAX_QUERIES) -> list:
+    """沿宣告過的邊,為追蹤中線索的**傳導對象**補主動查詢(橫向)。
+
+    縱向追蹤(`story_ledger.followup_queries`)問「這條線索本身有沒有
+    後續」;這裡問「**鏈上的下一步有沒有動**」。packet 裡的
+    `transmission_candidates` 只是宣告的可能性、不是證據 —— 這支就是去把
+    證據抓回來:查詢綁「候選 + 本尊」("ASML 台積電"),抓回的文章要
+    真的提到本尊才會接回線索(`fetch_news` 的貼標閘門,與縱向同一個),
+    只提到候選的進一般新聞池 —— 那是廣度,不是歸因。
+
+    形狀與縱向的 followup dict 完全相同(`key`/`query`/`entity`/`name`,
+    key/entity/name 都是**發起線索**的)—— 呼叫端與 `fetch_news`
+    不需要分辨這條查詢是縱的還是橫的。
+
+    候選的選法:
+
+      * **輪流拿**(round-robin):每條線索先各拿第一個候選,額度還有
+        再輪第二個 —— 單一線索不獨占橫向預算;
+      * **縱向已經在追的名字不查**(它自己有查詢了);
+      * 同一個候選被多條線索走到只查一次;
+      * 線索的主體不在圖上 → 這條沒有橫向查詢(**不猜**,與
+        `transmission_candidates` 同一條規矩)。
+    """
+    fus = [f for f in (followups or []) if isinstance(f, dict)
+           and str(f.get("name") or "").strip()]
+    tracked = {_canon(str(f.get("name"))) for f in fus}
+    tracked |= {_canon(str(f.get("entity") or "")) for f in fus}
+    per_story = [[c for c in transmission_candidates([f["name"]])
+                  if c["name"] not in tracked] for f in fus]
+    out, used = [], set()
+    for rank in range(MAX_CANDIDATES):
+        for f, cands in zip(fus, per_story):
+            if len(out) >= limit:
+                return out
+            if rank >= len(cands) or cands[rank]["name"] in used:
+                continue
+            cand = cands[rank]
+            used.add(cand["name"])
+            out.append({"key": str(f.get("key") or ""),
+                        "query": f"{cand['name']} {f['name']}",
+                        "entity": str(f.get("entity") or ""),
+                        "name": str(f.get("name"))})
+    return out

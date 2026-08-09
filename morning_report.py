@@ -6018,7 +6018,28 @@ def fetch_news(followups: Optional[list] = None) -> list[dict]:
     # 並開始降級,最後沉寂——**不是因為事情停了,是因為我們沒去找**。
     # when=3d:追蹤是為了補「昨天漏掉的」,窗口比一般 feed 略寬。
     import story_ledger as _sl_mod
-    for _fu in (followups or [])[:_sl_mod.FOLLOWUP_MAX_QUERIES]:
+    # 上限要**蓋到橫向**:縱向與橫向各自有預算,這裡收的是兩者相加 ——
+    # 只切縱向上限的話,橫向查詢會被這個切片**悄悄丟掉**(沒有任何日誌),
+    # 而「悄悄截斷讀起來像全部蓋到了」正是要避免的形狀。
+    _fu_cap = _sl_mod.FOLLOWUP_MAX_QUERIES
+    try:
+        # **橫向是選配,抓新聞不是**(外審 r1):這個 import 不受保護的話,
+        # `sector_map` 載入失敗會讓整個 fetch_news 拋出 —— 呼叫端的 try
+        # 只蓋到橫向查詢的**產生**,而晨報不可斷。載不進來就只收縱向上限
+        # (那時橫向查詢也必然沒產生,兩端一致)。
+        import sector_map as _sm_mod
+        _fu_cap += _sm_mod.HORIZONTAL_MAX_QUERIES
+    except Exception as _sm_err:                        # noqa: BLE001
+        # 降級要**登錄**,不是只印(外審 r2):stderr 沒人回頭讀,
+        # `_DEGRADED_STEPS` 才會進 run manifest —— 不登錄的話,
+        # 執行紀錄會把「缺了橫向抓取」讀成正常成功。
+        _DEGRADED_STEPS.append("sector_map_unavailable")
+        print(f"[news] 橫向模組載入失敗({type(_sm_err).__name__})"
+              "—— 只收縱向追蹤查詢", file=sys.stderr)
+    if len(followups or []) > _fu_cap:
+        print(f"[news] 追蹤查詢超額:{len(followups)} 條只收前 {_fu_cap} 條",
+              file=sys.stderr)
+    for _fu in (followups or [])[:_fu_cap]:
         # r1(Codex,P1):**結果必須接得回發起查詢的那條線索**。
         # 原本只留查詢文字、丟掉 story key 與實體 → 抓回來的文章在
         # extract_structured_events 只能從 entity/code/company_label 推 entity,
@@ -21332,6 +21353,22 @@ def _phase_news_policy_sports(ctx) -> None:
                       + "、".join(str(f.get("query") or "") for f in _followups))
     except Exception as e:
         print(f"[story] 追蹤查詢略過: {type(e).__name__}: {e}", file=sys.stderr)
+    # 橫向(縱深第四批 C):沿宣告過的邊,替追蹤中線索的傳導對象補查詢。
+    # packet 的 transmission_candidates 只是宣告、不是證據 —— prompt 要求
+    # 「新聞支持那一步才走」,這裡就是去把那一步的新聞抓回來。
+    # 獨立 try:橫向壞掉退回純縱向,不影響晨報。
+    if _followups:
+        try:
+            import sector_map as _sm_early
+            _horiz = _sm_early.horizontal_queries(_followups)
+            if _horiz:
+                print("[story] 橫向傳導查詢 "
+                      + "、".join(str(f.get("query") or "") for f in _horiz))
+                _followups = _followups + _horiz
+        except Exception as e:
+            _DEGRADED_STEPS.append("horizontal_queries")
+            print(f"[story] 橫向傳導查詢略過: {type(e).__name__}: {e}",
+                  file=sys.stderr)
     news = fetch_news(_followups)
     print(f"[main] 抓到 {len(news)} 則新聞")
     # 批#41:行政院公報一手法令(每工作日 18:30 出刊,只回最新一個出刊日)。

@@ -678,7 +678,7 @@ _FROZEN = {
     # v11(Commit E):事件卡 + 各標的合計影響 + 共用驅動說明進信。
     # v12(第二十三輪):三大重點依 Python 計分排序;aggregator-only
     #     寫「原始發布者未解析」。
-    "renderer_version":         (12, "56a50bd8d7cbbbec"),
+    "renderer_version":         (12, "b9b90bfda47bdef5"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -745,7 +745,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":        (27, "18cd68e7853ae760"),
+    "grounding_version":        (28, "4b5ddbed01bb4eeb"),
 }
 
 

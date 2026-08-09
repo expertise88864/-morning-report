@@ -414,7 +414,7 @@ MODULE_CEILINGS = {
     # EVIDENCE_BEARING 與版本註解 —— 判準本身仍然只有兩個函式。
     # 第二十六輪 P1-5:多的是 v26 的版本註記(判準在 `analysis_contracts`,
     # 這裡只有版本號)。**實測 137 行**。
-    "analysis_grounding.py": 140,
+    "analysis_grounding.py": 150,
     # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
     # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
     # 金絲雀探測都需要那個答案。**實測 137 行**(初訂 110 是依 95 行抓的
@@ -539,7 +539,7 @@ MODULE_CEILINGS = {
     # 標準寫法(`Mettler-Toledo (MTD)`、`NYSE: MTD`)。**實測 618 行**。
     # 第二十七輪外審 P1-5:法域不是標的 + 撞名的走上下文判準
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
-    "analysis_validate.py": 665,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    "analysis_validate.py": 715,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

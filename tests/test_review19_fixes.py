@@ -279,7 +279,10 @@ def test_deepen_cannot_swap_out_an_analysed_asset():
     昨天已經有的那一份拆解。反例要只違反一條規則。
     """
     deep = fx.valid_analysis()
-    deep["top_news_analysis"][0]["affected_assets"][1]["asset_id"] = "3711"
+    # 第二十九輪 F1 之後,ID-set 路徑也驗標的相關性 —— `3711` 不在 n1
+    # (費半新聞)的證據裡,不再是「合法的第二版」。換成另一個指數
+    # (相關性豁免),反例仍然只違反「不得換掉拆過的標的」那一條。
+    deep["top_news_analysis"][0]["affected_assets"][1]["asset_id"] = "SOX"
     assert sch.validate(deep, fx.ids()) == [], "第二版本身要是合法的"
     ok, why = ad.deepen_is_an_improvement(_shallow(), deep,
                                           evidence_ids=fx.ids())

@@ -116,6 +116,15 @@ _AMBIGUOUS_JURISDICTION = frozenset({"EU"})
 #: 兩組合起來:這些字**不進絕對黑名單**,改走看上下文的判準。
 _AMBIGUOUS_ABBREV = _AMBIGUOUS_PERIOD_ABBREV | _AMBIGUOUS_JURISDICTION
 
+#: **與普通英文單字撞名的已宣告 ticker**(第二十九輪外審 P1-2B)。
+#: `NOW` 是 ServiceNow,也是副詞;`NET` 是 Cloudflare,也出現在
+#: "net income";`ARM`/`SNOW`/`COIN` 同理。「宣告過」只回答得了
+#: 「它是不是真 ticker」,回答不了「這個句子裡的 now 是不是在講那家
+#: 公司」—— 所以這些字**不得靠標題裸字命中**:要嘛 entities 裡有
+#: **大小寫一致**的那個代號(抽取器抓 ticker 時保留大寫),
+#: 要嘛交易所限定寫法(`NYSE: NOW`)。
+_COMMON_WORD_TICKERS = frozenset({"NOW", "NET", "ARM", "SNOW", "COIN"})
+
 
 def _ticker_notation(a: str, news_item) -> bool:
     """這則新聞用**交易所限定的寫法**點名了這個代號嗎(`NYSE: MTD`)。
@@ -236,6 +245,12 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
         # (`TTM`/`MTD` 那組仍然認 entities,判準見那個函式。)
         if period_word_not_an_entity(a, news_item):
             return True
+        if a.upper() in _COMMON_WORD_TICKERS:
+            # 裸字命中不算(副詞 now / net income / Arm 架構)——
+            # 要 entities 大小寫一致,或交易所限定寫法。
+            if any(a.upper() == str(e) for e in ents):
+                return False
+            return not _ticker_notation(a, news_item)
         # **未知的大寫字串是「未知實體」,不是「可能是標的」**
         # (第二十八輪外審 P1-2)。上一版的判準是「長得像 2–6 位大寫字母
         # 且出現在證據裡」,再靠黑名單排除 —— 而黑名單追不完開放字彙:
@@ -255,8 +270,13 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
             return False
         return True
     if not a.isascii():
-        # 中文名稱同樣要在證據裡 —— 上一版對非 ASCII 一律放行,
-        # 於是 AMD 新聞可以掛「華碩」當受影響標的。
+        # **中文實體也要走宣告閘門**(第二十九輪外審 P1-2A):上一版只問
+        # 「有沒有出現在證據裡」—— 而「聯準會」精確出現在自己的新聞裡,
+        # 它是機構不是可交易標的。ASCII 分支已經是正面條件,
+        # 這裡不補的話等於同一道門只關了一半。
+        import instrument_registry as _ir3
+        if not _ir3.is_declared(a):
+            return True
         if any(a in str(e) or str(e) in a for e in ents) or a in body:
             return False
         import entity_alias as _ea
@@ -264,21 +284,42 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
             return False
         return True
     if _TW_CODE.fullmatch(a):
-        # 台股代號:**要真的在今天的資料裡**。先前任何 4–6 位數都放行,
+        # 台股代號:**要與這一則新聞有關**。先前任何 4–6 位數都放行,
         # 於是 `999999`、`12345A` 這種不存在的代號冒充逐標的分析。
-        if packet is None:
+        # `packet is None` 的舊呼叫端**不再是全放行**(第二十九輪
+        # P1-2C):證據判準(下面三關)不需要 packet,照走。
+        #
+        # **正文命中要有兩個限制**(第二輪 F2):
+        #   * token 邊界 —— 裸子字串會讓 `2330` 藏在 `123300` 裡也算;
+        #   * **年份形狀的代號(1900–2100)不吃正文** ——
+        #     `asset_id="2026"` 配 "2026 market outlook",命中的是年份
+        #     不是公司;這種代號要 entities 精確命中或別名組。
+        if any(a == str(e).strip() for e in ents):
             return False
+        # **正文命中只給「驗過的代號」加分**(第三輪外審):數字與公司名
+        # 不同 —— 「指數上漲 9999 點」的 9999 是點位、「2026 展望」的
+        # 2026 是年份。正文出現一個數字證明不了它是代號;
+        # 它要嘛**宣告過**(2330 的別名組)、要嘛在**當日 universe** 裡,
+        # 正文命中才算相關。年份形狀(1900–2100)連這個都不吃 ——
+        # 那個範圍的四位數在財經文本裡幾乎必然是年份。
+        _yearish = len(a) == 4 and a.isdigit() and 1900 <= int(a) <= 2100
+        import instrument_registry as _ir4
         known = {str(x.get("code") or "")
-                 for x in (packet.get("tw_universe") or []) if isinstance(x, dict)}
-        # 「代號存在」不等於「與這則新聞有關」(P1-12):先前 `a in known`
-        # 讓 universe 裡的任何一檔都能掛到任何一則新聞上。
-        if a in body or any(a in str(e) for e in ents):
+                 for x in (((packet or {}).get("tw_universe")) or [])
+                 if isinstance(x, dict)}
+        if (not _yearish and (_ir4.is_declared(a) or a in known)
+                and _re.search(r"(?<![0-9A-Za-z])" + _re.escape(a)
+                               + r"(?![0-9A-Za-z])", body)):
             return False
         import entity_alias as _ea
         if _ea.same(a, _ea.expand(ents)):
             return False               # 2317 的新聞實體寫「鴻海」
-        # universe 抓不到時不擋(降級不誤擋),但那是**沒驗**不是驗過
-        return bool(known)
+        # **走到這裡代表代號不在證據裡**(前面三關都沒命中)——
+        # 那不論 universe 在不在都該擋(第二十九輪外審 P1-2C):
+        # 上一版在 universe 空的那天放行,而「資料斷供的日子」正是
+        # 假代號最不會被抓到的日子。宣告過的代號(2330 那些)在
+        # `never_an_instrument` 之前的宣告閘門就處理了,不受影響。
+        return True
     if not a.isascii():
         return False                    # 中文名稱交給泛稱檢查
     return True
@@ -429,10 +470,17 @@ def validate(obj, evidence_ids) -> list:
                     " —— 會計期間(`Q2`/`FY25`)、商用縮寫(`CEO`/`EPS`)、"
                     "產品概念(`AI`/`GPU`)在標題出現的頻率極高,"
                     "「出現在證據裡」對它們等於沒有判準")
-            elif aid and packet is not None:
-                _item = next((x for x in (packet.get("news") or [])
-                              if str(x.get("source_item_id")) ==
-                              str(n.get("source_item_id"))), None)
+            elif aid:
+                # **ID-set 相容路徑不得跳過標的驗證**(第二十九輪外審
+                # 第二輪 F1):先前整段掛在 `packet is not None` 底下,
+                # 於是 `validate(obj, ids)` 這條入口連 `ASEAN` 都放行 ——
+                # 上一輪關掉的每一條 bypass 在這條路上全部無效。
+                # 沒有 packet 時 `_item=None`(沒有證據可看):
+                # 指數(豁免相關性)照過,其餘 fail-closed。
+                _item = None if packet is None else next(
+                    (x for x in (packet.get("news") or [])
+                     if str(x.get("source_item_id")) ==
+                     str(n.get("source_item_id"))), None)
                 if period_word_not_an_entity(aid, _item):
                     # **理由要對得上**:`TTM` 就在標題裡,說它「不在這則
                     # 新聞裡」是假的。它不在的是 `entities`。

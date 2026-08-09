@@ -92,15 +92,21 @@ def test_a_concept_cannot_impersonate_a_ticker():
                    "entities": ["AMD"], "source": "CNBC"},
                   {"source_item_id": "n2", "title": "台積電法說會下週登場",
                    "entities": ["台積電"], "source": "經濟日報"}])
-    for aid, blocked in (("GPU", True), ("AI", True), ("CHIP", True),
-                         ("AMD", False), ("2330", False), ("TAIEX", False)):
+    # 第二十九輪 P1-2C:`2330` 掛在 **AMD 的新聞**上先前靠
+    # 「universe 空就放行」通過 —— 那正是這次關掉的洞:真代號也要
+    # 與**這一則**新聞有關。正向案例改掛在台積電的新聞(n2,別名組命中)。
+    for aid, sid, blocked in (("GPU", "n1", True), ("AI", "n1", True),
+                              ("CHIP", "n1", True), ("AMD", "n1", False),
+                              ("2330", "n1", True), ("2330", "n2", False),
+                              ("TAIEX", "n1", False)):
         obj = fx.valid_analysis()
+        obj["top_news_analysis"][0]["source_item_id"] = sid
         obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
         # 第二十六輪 P1-6:概念詞現在走「不是可交易標的」那條訊息
         # ——「不在這則新聞裡」對它們是**假的**(GPU 就在標題裡)。
         hit = [p for p in sch.validate(obj, pk)
                if "不在這則" in p or "泛稱" in p or "不是可交易標的" in p]
-        assert bool(hit) == blocked, f"{aid}: {hit}"
+        assert bool(hit) == blocked, f"{aid}@{sid}: {hit}"
 
 
 def test_a_ticker_in_the_title_but_not_the_entities_still_passes():

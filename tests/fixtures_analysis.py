@@ -153,7 +153,12 @@ def valid_analysis() -> dict:
              "why_this_magnitude": "費半漲幅與台股電子的歷史連動落在中段",
              # **同一件事對不同標的不一樣** —— 壓成一個「偏多」就是泛論。
              "affected_assets": [
-                 {"asset_id": "2330", "direction": "bullish",
+                 # 第二十九輪 P1-2C:這一格先前是 `2330` —— 而 n1 是**費半**
+                 # 的新聞,2330 不在它的實體或標題裡。它通過驗證靠的是
+                 # 「universe 空就放行」,那正是這輪關掉的洞:fixture 把
+                 # 缺陷釘成通過條件。費半是指數(相關性豁免,理由見
+                 # `instrument_registry`),而它就是這則新聞的主角。
+                 {"asset_id": "費半", "direction": "bullish",
                   "magnitude_band": "moderate", "horizon": "intraday",
                   "first_order_effect": "權值股開盤定價直接跟隨費半",
                   "second_order_effect": "帶動指數期貨的開盤基差",

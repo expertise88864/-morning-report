@@ -59,7 +59,11 @@ from __future__ import annotations
 #: 那一側先前由主張自己的 `direction` 標籤決定,而標籤是輸出自己填的。
 #: v27(P1-6):會計期間(`Q2`/`FY25`)不是標的;「永遠不是標的」與
 #: 「與這件事無關」拆成兩個問題,訊息才說得出真正的理由。
-GROUNDING_VERSION = 27
+#: v28(第二十九輪外審 P1-2):標的權威全域化 —— 非 ASCII 實體也走
+#: 宣告閘門(「聯準會」不是標的)、撞名英文單字的 ticker 不得靠標題
+#: 裸字命中(`NOW`/`NET`/`ARM`/`SNOW`/`COIN`)、台股代號不在證據裡時
+#: 不論 universe 在不在都擋(含 `packet is None` 的舊路徑)。
+GROUNDING_VERSION = 28
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

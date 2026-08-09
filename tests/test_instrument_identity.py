@@ -396,3 +396,121 @@ def test_listed_companies_without_a_ticker_in_their_group_are_declared():
                 "三星電子", "Samsung Electronics", "三星"):
         assert ir.is_declared(aid), aid
 
+
+# ===== 第二十九輪外審 P1-2:三條殘餘 bypass =====
+
+def test_a_chinese_institution_cannot_become_an_asset():
+    """**非 ASCII 分支先前只問「有沒有出現在證據裡」**(P1-2A)——
+    而「聯準會」精確出現在自己的新聞裡,它是機構不是可交易標的。
+    同一道門在 ASCII 側已經是正面條件,只關一半等於沒關。"""
+    for aid, title in (("聯準會", "聯準會宣布維持利率不變"),
+                       ("美聯儲", "美聯儲官員談話"),
+                       ("東協", "東協峰會討論區域貿易"),
+                       ("金磚國家", "金磚國家擴大成員"),
+                       ("美國財政部", "美國財政部標售公債")):
+        it = {"source_item_id": "n1", "title": title, "summary": "",
+              "entities": [aid]}
+        assert av._asset_unknown_to_evidence(aid, it, _packet()), aid
+    # 宣告過的中文名稱不受影響(誤殺比漏放危險)
+    for aid in ("台積電", "聯發科", "鴻海", "SK海力士", "三星電子"):
+        it = {"source_item_id": "n2", "title": f"{aid} 最新公告",
+              "summary": "", "entities": [aid]}
+        assert not av._asset_unknown_to_evidence(aid, it, _packet()), aid
+
+
+def test_a_common_word_does_not_support_its_homonym_ticker():
+    """**「宣告過」回答不了「這個句子裡的 now 是不是 ServiceNow」**
+    (P1-2B)。撞名的 ticker 不得靠標題裸字命中 —— 要 entities 大小寫
+    一致,或交易所限定寫法。"""
+    cases = (("NOW", "Investors now expect the Fed to cut rates"),
+             ("NET", "Company reports higher net income this quarter"),
+             ("ARM", "Arm architecture adoption is accelerating"),
+             ("SNOW", "Heavy snow disrupts logistics networks"),
+             ("COIN", "The other side of the coin for investors"))
+    for aid, title in cases:
+        it = {"source_item_id": "n1", "title": title, "summary": "",
+              "entities": ["Fed"]}
+        assert av._asset_unknown_to_evidence(aid, it, _packet()), aid
+    # 真的在講那家公司:entities 大寫一致、或交易所限定寫法
+    assert not av._asset_unknown_to_evidence(
+        "NOW", {"source_item_id": "n2", "title": "ServiceNow beats estimates",
+                "summary": "", "entities": ["NOW"]}, _packet())
+    assert not av._asset_unknown_to_evidence(
+        "NOW", {"source_item_id": "n3",
+                "title": "ServiceNow (NYSE: NOW) raises guidance",
+                "summary": "", "entities": ["ServiceNow"]}, _packet())
+
+
+def test_a_fake_tw_code_is_rejected_even_when_the_universe_is_empty():
+    """**資料斷供的日子正是假代號最不會被抓到的日子**(P1-2C)。
+
+    走到 universe 那一關代表代號不在證據裡 —— 那不論 universe 在不在
+    都該擋。上一版在 universe 空的那天放行。
+    """
+    it = {"source_item_id": "n1", "title": "市場震盪", "summary": "",
+          "entities": []}
+    assert av._asset_unknown_to_evidence("9999", it, {"tw_universe": []})
+    # `packet is None` 的舊呼叫端先前是**全放行** —— 同樣關掉:
+    # 證據判準不需要 packet。
+    assert av._asset_unknown_to_evidence("9999", it, None)
+    assert av._asset_unknown_to_evidence("999999", it, {"tw_universe": []})
+    # 而**在證據裡**的代號不受 universe 缺席影響
+    named = {"source_item_id": "n2", "title": "2330 法說會登場",
+             "summary": "", "entities": []}
+    assert not av._asset_unknown_to_evidence("2330", named,
+                                             {"tw_universe": []})
+
+
+def test_the_id_set_entry_point_also_validates_assets():
+    """**相容路徑不得跳過標的驗證**(第二十九輪外審第二輪 F1)。
+
+    整段掛在 `packet is not None` 底下的話,`validate(obj, ids)` 這條入口
+    連 `ASEAN` 都放行 —— 之前每一輪關掉的 bypass 在這條路上全部無效,
+    而 `analysis_depth` 與大量測試就是用這條入口。
+    沒有 packet = 沒有證據可看:指數(豁免相關性)照過,其餘 fail-closed。
+    """
+    import sys
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+    import analysis_schema as sch
+    for bad in ("ASEAN", "聯準會", "9999", "NOW"):
+        obj = fx.valid_analysis()
+        obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = bad
+        assert [p for p in sch.validate(obj, fx.ids()) if bad in p], bad
+    # 指數與 market-wide 在 ID-set 路徑照過(fixture 本身就是)
+    assert not [p for p in sch.validate(fx.valid_analysis(), fx.ids())
+                if "affected_assets" in p]
+
+
+def test_a_year_shaped_code_gets_no_credit_from_the_body():
+    """**`asset_id="2026"` 配 "2026 market outlook" 命中的是年份**
+    (第二輪 F2)。年份形狀的代號要 entities 精確命中或別名組;
+    其餘數字的正文命中要 token 邊界(裸子字串會藏在長數字裡)。"""
+    it = {"source_item_id": "n1", "title": "2026 market outlook",
+          "summary": "", "entities": []}
+    assert av._asset_unknown_to_evidence("2026", it, {"tw_universe": []})
+    # entities 精確命中才算(真的有 2026 這檔且被點名時)
+    named = dict(it, entities=["2026"])
+    assert not av._asset_unknown_to_evidence("2026", named, {"tw_universe": []})
+    # token 邊界:2330 不得藏在 123300 裡
+    hidden = {"source_item_id": "n2", "title": "指數上漲 123300 點次",
+              "summary": "", "entities": []}
+    assert av._asset_unknown_to_evidence("2330", hidden, {"tw_universe": []})
+
+
+def test_a_standalone_number_in_the_body_is_not_ticker_evidence():
+    """**正文出現一個數字證明不了它是代號**(第三輪外審)。
+
+    「指數上漲 9999 點」的 9999 是點位 —— 正文命中只給**驗過的代號**
+    (宣告過、或在當日 universe 裡)加分;沒驗過的數字要 entities
+    精確命中。
+    """
+    it = {"source_item_id": "n1", "title": "指數上漲 9999 點",
+          "summary": "", "entities": []}
+    assert av._asset_unknown_to_evidence("9999", it, {"tw_universe": []})
+    # 同一個數字,在 universe 裡(真的上市)→ 正文命中就算相關
+    assert not av._asset_unknown_to_evidence(
+        "9999", {"source_item_id": "n2", "title": "9999 盤中大漲",
+                 "summary": "", "entities": []},
+        {"tw_universe": [{"code": "9999"}]})
+

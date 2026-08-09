@@ -206,3 +206,85 @@ def test_the_message_says_the_real_reason():
     assert any("不是可交易標的" in h for h in hits), hits
     assert not any("不在這則" in h for h in hits), hits
 
+
+# ===== 第二十七輪外審 P1-5:國家實體冒充可交易標的 =====
+
+def test_a_country_entity_cannot_be_rendered_as_an_asset():
+    """**`US` 精確出現在 entities 與標題裡,於是被當成標的**。
+
+    確定性反例(外審原文):
+    `{"title": "US sanctions China", "entities": ["US", "China"],
+      "affected_assets": [{"asset_id": "US", ...}]}` ——
+    `US` 不在商用縮寫黑名單、不在概念詞表、不是會計期間,而且**就在證據
+    裡**,所以逐標的方向卡照渲染。可是它是國家,不是可交易標的。
+
+    「出現在證據裡」這個判準對**事件主體**永遠成立 —— 與 `CEO`、`Q2`
+    是同一個形狀,只是主體那一類先前完全沒被宣告。
+    """
+    news = {"source_item_id": "n9", "title": "US sanctions China",
+            "summary": "", "entities": ["US", "China"]}
+    for aid in ("US", "China", "UK", "美國", "中國", "台灣"):
+        assert av.never_an_instrument(aid), aid
+        assert av._asset_unknown_to_evidence(aid, news, _packet()), aid
+
+
+def test_a_jurisdiction_that_collides_with_a_real_ticker_needs_context():
+    """**`EU` 是歐盟,也是 enCore Energy 的美股代號**(外審第二輪)。
+
+    一律擋會把合法的逐標的卡判掉,而那會讓整份特化分析進修補、
+    修不好就降級。所以它不進絕對黑名單,改走看上下文的判準 ——
+    而且**不認 `entities` 字面**:`EU` 出現在 entities 裡多半就是歐盟
+    本身,拿它當「這是公司」的證據會讓每一則歐盟新聞變成一張方向卡。
+    只認宣告過的別名組或交易所限定寫法。
+    """
+    assert not av.never_an_instrument("EU")
+    eu = {"source_item_id": "n1", "title": "EU announces new tariffs on China",
+          "summary": "", "entities": ["EU", "China"]}
+    assert av._asset_unknown_to_evidence("EU", eu, _packet()), "歐盟被當成標的"
+    enc = {"source_item_id": "n2", "summary": "",
+           "title": "enCore Energy (NASDAQ: EU) reports results",
+           "entities": ["enCore Energy"]}
+    assert not av._asset_unknown_to_evidence("EU", enc, _packet()),         "交易所限定寫法仍被擋"
+    # **訊息要說得出真正的理由**(外審第二輪):對 `EU` 說「是期間」
+    # 「沒有出現在實體清單」兩句都是假的 —— 它就在實體清單裡,
+    # 只是那裡的 `EU` 是歐盟。這句話會被原樣送進修補 prompt。
+    import analysis_schema as sch
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"][0]["source_item_id"] = "n1"
+    obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = "EU"
+    pk = _packet()
+    pk["news"] = [{"source_item_id": "n1", "title": eu["title"],
+                   "summary": "", "entities": eu["entities"],
+                   "source": "Reuters"}]
+    hits = [p for p in sch.validate(obj, pk) if "EU" in p]
+    assert hits, "EU 整個沒被擋"
+    assert any("法域" in h for h in hits), hits
+    assert not any("期間" in h for h in hits), hits
+    # 期間那組仍然認 `entities`(兩組的確認方式不同,理由見判準)
+    mtd = {"source_item_id": "n3", "title": "MTD 上修全年財測",
+           "summary": "", "entities": ["MTD"]}
+    assert not av._asset_unknown_to_evidence("MTD", mtd, _packet())
+
+
+def test_intergovernmental_bodies_and_product_brands_are_not_instruments():
+    """`UN`/`NATO` 是機構、`AWS`/`CUDA` 是產品線 —— 要談那家公司
+    請寫 `AMZN` / `NVDA`。"""
+    for aid in ("UN", "NATO", "OECD", "AWS", "CUDA", "AZURE"):
+        assert av.never_an_instrument(aid), aid
+
+
+def test_real_tickers_survive_the_jurisdiction_rule():
+    """**誤殺比漏放危險**:這條規則不得掃到真代號或指數。"""
+    for aid in ("NVDA", "AMD", "TSM", "QQQ", "SPY", "TAIEX", "加權指數",
+                "market-wide", "2330", "00662", "SOX", "費半"):
+        assert not av.never_an_instrument(aid), aid
+
+
+def test_the_jurisdiction_list_is_declared_not_guessed():
+    """判準走**宣告過的表**(`event_actions`),不是「兩個大寫字母」
+    那種開放式猜測 —— 猜會掃到 `GM`、`BP` 這種真代號。"""
+    import event_actions as ea
+    assert ea.is_jurisdiction("US") and ea.is_jurisdiction("英國")
+    assert not ea.is_jurisdiction("GM") and not ea.is_jurisdiction("BP")
+

@@ -65,6 +65,9 @@ _NOT_TICKER_ABBREV = frozenset({
     "ROE", "ROA", "GDP", "CPI", "PPI", "PCE", "PMI", "FOMC", "SEC", "FDA",
     "FTC", "DOJ", "WTO", "IMF", "OPEC", "ADR", "GDR", "ETF", "API", "FAQ",
     "GAAP", "EBITDA", "CAPEX", "OPEX", "YOY", "QOQ", "MOM",
+    # 政府間組織與機關:是事件的主體,不是可交易標的
+    "UN", "NATO", "OECD", "WHO", "IEA", "BIS", "ECB", "BOJ", "PBOC",
+    "DOE", "DOD", "DHS", "USTR", "CBP", "BIS2",
 })
 
 #: **產品與技術概念** —— 在新聞標題出現的頻率極高,「出現在證據裡」
@@ -72,6 +75,9 @@ _NOT_TICKER_ABBREV = frozenset({
 _CONCEPT_TERMS = frozenset({
     "ai", "gpu", "cpu", "chip", "chips", "hbm", "asic", "ml", "llm",
     "cowos", "ev", "5g", "iot", "cloud", "saas", "api", "ar", "vr",
+    # 雲端與技術品牌:它們是產品線,不是可交易標的
+    # (要談那家公司請寫 AMZN / MSFT / GOOGL / NVDA)
+    "aws", "azure", "gcp", "cuda", "rocm", "arm64", "x86", "risc-v",
 })
 
 
@@ -100,6 +106,16 @@ _AMBIGUOUS_PERIOD_ABBREV = frozenset({
     "MTD", "TTM", "YTD", "QTD", "FY", "CY", "FYE", "LTM",
 })
 
+#: **與法域撞名的真代號**(第二十七輪外審第二輪)。`EU` 是歐盟,也是
+#: enCore Energy 的美股代號。與期間縮寫是同一個形狀,但**確認的方式更嚴**:
+#: 期間那組可以靠「出現在 `entities` 裡」確認,而 `EU` 出現在 entities
+#: 裡多半就是歐盟本身 —— 所以只認**宣告過的別名組**或**交易所限定寫法**
+#: (`NASDAQ: EU`)。
+_AMBIGUOUS_JURISDICTION = frozenset({"EU"})
+
+#: 兩組合起來:這些字**不進絕對黑名單**,改走看上下文的判準。
+_AMBIGUOUS_ABBREV = _AMBIGUOUS_PERIOD_ABBREV | _AMBIGUOUS_JURISDICTION
+
 
 def _ticker_notation(a: str, news_item) -> bool:
     """這則新聞用**交易所限定的寫法**點名了這個代號嗎(`NYSE: MTD`)。
@@ -118,7 +134,7 @@ def _ticker_notation(a: str, news_item) -> bool:
 
 
 def period_word_not_an_entity(aid, news_item) -> bool:
-    """歧義縮寫**只在標題裡**出現 → 那是期間,不是這則新聞的主角。
+    """歧義縮寫**只在標題裡**出現 → 那是期間/法域,不是這則新聞的主角。
 
     只擋這一種情形:字在 `_AMBIGUOUS_PERIOD_ABBREV` 裡,而且這則新聞
     沒有把它當公司在寫 —— 出現在 `entities`、**宣告過**的別名同組
@@ -130,10 +146,13 @@ def period_word_not_an_entity(aid, news_item) -> bool:
     那個樣式,而它是估值期間。代號與公司的對應要被宣告,不是從版面推導。
     """
     a = str(aid or "").strip()
-    if a.upper() not in _AMBIGUOUS_PERIOD_ABBREV:
+    if a.upper() not in _AMBIGUOUS_ABBREV:
         return False
     ents = {str(e).lower() for e in ((news_item or {}).get("entities") or [])}
-    if a.lower() in ents:
+    # **與法域撞名的那組不認 `entities` 字面**:`EU` 出現在 entities 裡
+    # 多半就是歐盟本身,拿它當「這是公司」的證據會把每一則歐盟新聞都
+    # 變成一張逐標的方向卡。只認宣告過的別名組或交易所限定寫法。
+    if a.upper() not in _AMBIGUOUS_JURISDICTION and a.lower() in ents:
         return False
     import entity_alias as _ea
     if _ea.same(a, _ea.expand({str(e) for e in
@@ -156,9 +175,20 @@ def never_an_instrument(aid) -> bool:
     a = str(aid or "").strip()
     if not a:
         return False
+    import event_actions as _ea
+    # **撞名的那些不進絕對黑名單**(外審第二輪):`EU` 是歐盟,也是
+    # enCore Energy 的美股代號 —— 一律擋會把合法的逐標的卡判掉,
+    # 而那會讓整份特化分析進修補、修不好就降級。改走看上下文的判準
+    # (`period_word_not_an_entity`)。
+    if a.upper() in _AMBIGUOUS_ABBREV:
+        return False
     return (a.upper() in _NOT_TICKER_ABBREV
             or a.lower() in _CONCEPT_TERMS
-            or bool(_PERIOD_TOKEN.fullmatch(a)))
+            or bool(_PERIOD_TOKEN.fullmatch(a))
+            # **法域永遠不是可交易標的**(第二十七輪外審 P1-5):
+            # `US` 精確出現在 entities 與標題裡,於是被當成可渲染的
+            # 逐標的方向卡 —— 而「出現在證據裡」對事件主體永遠成立。
+            or _ea.is_jurisdiction(a))
 
 
 def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
@@ -200,13 +230,14 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     # 改成明確的縮寫黑名單。
     low = a.lower()
     if a.isascii() and not _TW_CODE.fullmatch(a):
-        if any(low == str(e).lower() for e in ents):
-            return False
-        # **歧義縮寫在標題裡不算數**(外審第二輪 P2):`TTM`、`MTD` 既是
-        # 期間也是代號,而「Revenue rises on a TTM basis」這種標題會讓
-        # token 比對放行 —— 那個字在那句話裡是期間。要它在 `entities` 裡。
+        # **歧義縮寫要先問**(第二十七輪外審第二輪):`EU` 出現在
+        # `entities` 裡多半就是歐盟本身 —— 讓「字面命中 entities」先跑的話,
+        # 每一則歐盟新聞都會變成一張逐標的方向卡。
+        # (`TTM`/`MTD` 那組仍然認 entities,判準見那個函式。)
         if period_word_not_an_entity(a, news_item):
             return True
+        if any(low == str(e).lower() for e in ents):
+            return False
         # **token 邊界,不是裸子字串**(第二十二輪 P1-6):
         # `Ai` 曾因藏在 `Taiwan` 裡被放行。
         if _re.search(r"(?<![A-Za-z0-9])" + _re.escape(low)
@@ -395,10 +426,23 @@ def validate(obj, evidence_ids) -> list:
                 if period_word_not_an_entity(aid, _item):
                     # **理由要對得上**:`TTM` 就在標題裡,說它「不在這則
                     # 新聞裡」是假的。它不在的是 `entities`。
-                    problems.append(
-                        f"{where}.affected_assets[{j}] 的 {aid!r} 在這則新聞裡"
-                        "是**期間**不是公司 —— 它沒有出現在實體清單;"
-                        "真的要談那家公司,它得是新聞裡被點名的主角")
+                    #
+                    # 而**法域撞名的那組要另一句**(外審第二輪):
+                    # 對 `EU` 說「是期間」「沒有出現在實體清單」兩句都假
+                    # —— 它就在實體清單裡,只是那裡的 `EU` 是歐盟。
+                    # 這句話會被原樣送進修補 prompt,說錯了模型就去修錯的
+                    # 東西,還可能把唯一一次修補機會用掉。
+                    if aid.upper() in _AMBIGUOUS_JURISDICTION:
+                        problems.append(
+                            f"{where}.affected_assets[{j}] 的 {aid!r} 在這則"
+                            "新聞裡指的是**法域**,不是同名的那檔股票 ——"
+                            "要談那家公司,請用交易所限定寫法"
+                            f"(`NASDAQ: {aid.upper()}`)或它的正式名稱")
+                    else:
+                        problems.append(
+                            f"{where}.affected_assets[{j}] 的 {aid!r} 在這則"
+                            "新聞裡是**期間**不是公司 —— 它沒有出現在實體"
+                            "清單;真的要談那家公司,它得是新聞裡被點名的主角")
                 elif _asset_unknown_to_evidence(aid, _item, packet):
                     problems.append(
                         f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"

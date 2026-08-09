@@ -101,6 +101,38 @@ ACTION_TABLE = (
 #: 跨語言的主體正規化。**只放看得出來的對照**,推不出來就原樣留著 ——
 #: 猜一個對照會把兩個不同的主體黏成一個,而那比分裂更難發現。
 #: (別名同組的公司代號/中文名由 `entity_alias` 負責,這裡只補國家與機構。)
+#: 這張表以外的法域寫法(**只為了「這不是可交易標的」這個判準**,
+#: 不進身分鍵 —— 進鍵要另外想清楚別名合併的後果)。
+#: 第二十七輪外審 P1-5:`US` 精確出現在 entities 與標題裡,於是被當成
+#: 可渲染的逐標的方向卡 —— 而它是國家,不是可交易標的。
+EXTRA_JURISDICTIONS = frozenset({
+    "uk", "united kingdom", "britain", "england", "france", "italy",
+    "spain", "canada", "australia", "brazil", "mexico", "indonesia",
+    "thailand", "vietnam", "singapore", "malaysia", "philippines",
+    "netherlands", "switzerland", "sweden", "poland", "turkey",
+    "saudi arabia", "uae", "egypt", "south africa", "argentina",
+    "英國", "法國", "義大利", "西班牙", "加拿大", "澳洲", "巴西",
+    "墨西哥", "印尼", "泰國", "越南", "新加坡", "馬來西亞", "菲律賓",
+    "荷蘭", "瑞士", "瑞典", "波蘭", "土耳其", "沙烏地", "阿聯",
+    "埃及", "南非", "阿根廷", "紐西蘭", "香港", "澳門",
+})
+
+
+def is_jurisdiction(name) -> bool:
+    """這個字是一個**法域**嗎(國家/地區)。
+
+    法域可以是事件的主體與對象,但**永遠不是可交易標的** ——
+    而判準要走宣告過的表,不是開放式黑名單(第二十七輪外審 P1-5)。
+    """
+    n = str(name or "").strip()
+    if not n:
+        return False
+    low = n.lower()
+    return (low in CANONICAL_SUBJECTS or n in CANONICAL_SUBJECTS
+            or n in set(CANONICAL_SUBJECTS.values())
+            or low in EXTRA_JURISDICTIONS or n in EXTRA_JURISDICTIONS)
+
+
 CANONICAL_SUBJECTS = {
     "iran": "伊朗", "united states": "美國", "u.s.": "美國", "us": "美國",
     "usa": "美國", "america": "美國", "oman": "阿曼", "japan": "日本",

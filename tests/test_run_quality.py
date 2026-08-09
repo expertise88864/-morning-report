@@ -30,13 +30,21 @@ def _ok_manifest(**over):
         "date": "2026-08-09 06:10",
         "degraded_steps": [],
         "git_sha": "abc123", "github_run_id": "42", "run_nonce": "deadbeef",
+        # **基準線要是生產真的會寫出來的內容**(第二十七輪外審 P1-2):
+        # 上一版用 `{"over_budget": False}` / `{"news_analyzed": 6}` 這種
+        # 佔位符 —— 而語意判準要問的正是「這一格真的跑過嗎」。
+        # 佔位符當基準線的話,基準線自己就是那個缺陷。
         "llm": {"analysis_origin": ao.LUNA_SPECIALIZED,
-                "recap_saved": True,
-                "payload_budget": {"over_budget": False},
-                "primary_metrics": {"news_analyzed": 6},
+                "recap_saved": "saved",
+                "payload_budget": {"chars_before": 1_052_716,
+                                   "chars_after": 980_000,
+                                   "limit": 1_100_000, "over_budget": False},
+                "primary_metrics": {"parsed": True, "claims": 9,
+                                    "sections_present": 11,
+                                    "validation_problems": 0},
                 "request_measurements": [
                     {"role": "primary", "chars": 1_052_716,
-                     "tokens": 391_145}]},
+                     "tokens": 391_145, "accepted": True}]},
         "news": {"fulltext_plan": {"clusters": 120, "targets": ["a", "b"],
                                    "available_news": 300}},
     }
@@ -112,15 +120,16 @@ def test_prompt_registry_mismatch_is_caught():
     """2026-08-08 的根因:prompt 宣告的命名空間 registry 生不出來,
     模型照規則猜名字必被判不存在。"""
     m = _ok_manifest(llm={"analysis_origin": ao.LUNA_SPECIALIZED,
-                          "recap_saved": True,
+                          "recap_saved": "saved",
                           "unrealizable_namespaces": ["calibration:"]})
     assert "namespace_unrealizable" in {f["code"] for f in rq.assess(m)}
 
 
 def test_payload_over_budget_is_a_defect():
     m = _ok_manifest(llm={"analysis_origin": ao.LUNA_SPECIALIZED,
-                          "recap_saved": True,
-                          "payload_budget": {"over_budget": True}})
+                          "recap_saved": "saved",
+                          "payload_budget": dict(_ok_manifest()["llm"]["payload_budget"],
+                                                 over_budget=True)})
     got = [f for f in rq.assess(m) if f["code"] == "payload_over_budget"]
     assert got and got[0]["severity"] == "defect"
 
@@ -221,8 +230,8 @@ def test_the_char_gate_headroom_is_measured_not_assumed(tmp_path):
     # 沒有 primary,量測整個不跑,測試卻是綠的(第一輪外審 F1)。
     m = _ok_manifest(llm={**_measured((1_052_716, 391_145)),
                           "analysis_origin": ao.LUNA_SPECIALIZED,
-                          "recap_saved": True,
-                          "payload_budget": {"over_budget": False}})
+                          "recap_saved": "saved",
+                          "payload_budget": _ok_manifest()["llm"]["payload_budget"]})
     head = pb.proxy_headroom(m)
     # **驗自己的算術**,不抄別份資料的結論:真實 manifest 算出 2.688 是因為
     # 它有第二次嘗試、`max` 取到更大的 token 數。把那個數字抄進只有一次
@@ -239,8 +248,8 @@ def test_a_cjk_heavy_day_makes_the_proxy_thin():
     # 1.17 字元/token(重中文)→ 同樣的字元上限換到 94 萬 token
     m = _ok_manifest(llm={**_measured((1_052_716, 900_000)),
                           "analysis_origin": ao.LUNA_SPECIALIZED,
-                          "recap_saved": True,
-                          "payload_budget": {"over_budget": False}})
+                          "recap_saved": "saved",
+                          "payload_budget": _ok_manifest()["llm"]["payload_budget"]})
     got = [f for f in rq.assess(m) if f["code"] == "payload_proxy_thin"]
     assert got and got[0]["severity"] == "defect", rq.assess(m)
 
@@ -305,8 +314,8 @@ def test_a_repaired_run_is_not_a_defect():
     順利寄出的日子**讓 canary 紅、看門狗回 2。誤報是這個模組最該避免
     的東西(它自己的 docstring 這樣寫)。"""
     m = _ok_manifest(llm={
-        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-        "payload_budget": {"over_budget": False},
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": "saved",
+        "payload_budget": _ok_manifest()["llm"]["payload_budget"],
         "luna_problems": ["claim_audit[3] 引用了不存在的證據 ID"]})
     assert rq.assess(m) == [], rq.assess(m)
     # 反向:最後真的沒跑成時仍要報
@@ -331,14 +340,14 @@ def test_optional_namespaces_being_empty_is_not_a_defect():
     張力時空掉是對的」—— 而第一版把每一個空掉的命名空間都報成程式缺陷,
     等於製造可預期的假警報。"""
     m = _ok_manifest(llm={
-        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-        "payload_budget": {"over_budget": False},
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": "saved",
+        "payload_budget": _ok_manifest()["llm"]["payload_budget"],
         "unrealizable_namespaces": ["portfolio:", "tension:", "fact:"]})
     assert rq.assess(m) == [], rq.assess(m)
     # 反向:每天都組得出來的那幾個空掉,仍然是缺陷(2026-08-08 的形狀)
     m2 = _ok_manifest(llm={
-        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": True,
-        "payload_budget": {"over_budget": False},
+        "analysis_origin": ao.LUNA_SPECIALIZED, "recap_saved": "saved",
+        "payload_budget": _ok_manifest()["llm"]["payload_budget"],
         "unrealizable_namespaces": ["portfolio:", "calibration:"]})
     got = [f for f in rq.assess(m2) if f["code"] == "namespace_unrealizable"]
     assert got and "calibration:" in got[0]["detail"], rq.assess(m2)
@@ -415,9 +424,13 @@ def test_a_deepened_run_does_not_fake_a_thin_proxy():
     m.update(date="x", degraded_steps=[],
              news={"fulltext_plan": {"clusters": 9, "targets": [1],
                                      "available_news": 20}})
-    m["llm"].update(analysis_origin=ao.LUNA_SPECIALIZED, recap_saved=True,
-                    payload_budget={"over_budget": False},
-                    primary_metrics={"news_analyzed": 3})
+    # **其餘欄位沿用基準線那一份**:這條測的是比例,不是完整度 ——
+    # 自己另寫一組佔位符會讓 `manifest_incomplete` 混進答案裡。
+    _base = _ok_manifest()["llm"]
+    m["llm"].update(analysis_origin=ao.LUNA_SPECIALIZED,
+                    recap_saved=_base["recap_saved"],
+                    payload_budget=_base["payload_budget"],
+                    primary_metrics=_base["primary_metrics"])
     assert [f["code"] for f in rq.assess(m)] == [], rq.assess(m)
 
 
@@ -451,8 +464,13 @@ def test_the_recorder_carries_the_news_count_through():
 
 def _specialized(**over):
     """完整的特化 manifest —— `_ok_manifest` 本身就是(基準線要完整),
-    這裡只是給 acceptance 那組一個講得出意圖的名字。"""
+    這裡只是給 acceptance 那組一個講得出意圖的名字。
+
+    strict 另外要求 `report_kind`(第二十七輪外審 P1-2):缺席時判準會
+    退回「當成平日報」,那個預設對每日生產是對的,對 canary 是「沒證明」。
+    """
     m = _ok_manifest()
+    m.setdefault("report_kind", rq.MORNING_REPORT)
     m.update(over)
     return m
 
@@ -737,12 +755,12 @@ def test_the_weekend_dry_run_writes_its_manifest_before_returning():
 # ===== 2026-08-09 P2:「沒東西可抓」與「接線斷了」 =====
 
 def _plan_manifest(**plan) -> dict:
-    return {"report_kind": rq.MORNING_REPORT,
-            "llm": {"analysis_origin": "luna_specialized",
-                    "payload_budget": {}, "primary_metrics": {},
-                    "recap_saved": True, "request_measurements": []},
-            "news": {"fulltext_plan": dict({"clusters": 3, "targets": 0,
-                                            "available_news": 40}, **plan)}}
+    """**建在 `_ok_manifest` 上**:自己另寫一份 llm 區塊的話,
+    語意判準一改,這裡就會混進 `manifest_incomplete` 而看不出要測的東西。"""
+    return _ok_manifest(
+        report_kind=rq.MORNING_REPORT,
+        news={"fulltext_plan": dict({"clusters": 3, "targets": 0,
+                                     "available_news": 40}, **plan)})
 
 
 def test_nothing_left_to_fetch_is_not_a_broken_wire():
@@ -901,11 +919,8 @@ def test_the_deadline_exit_records_the_same_two_things():
 # ===== 2026-08-09 P2:記了卻沒有人讀的那一格 =====
 
 def _identity_manifest(**eid) -> dict:
-    return {"report_kind": rq.MORNING_REPORT,
-            "llm": {"analysis_origin": "luna_specialized",
-                    "payload_budget": {}, "primary_metrics": {},
-                    "recap_saved": "saved", "request_measurements": []},
-            "event_identity": dict({"schema": 7}, **eid)}
+    return _ok_manifest(report_kind=rq.MORNING_REPORT,
+                        event_identity=dict({"schema": 7}, **eid))
 
 
 def test_state_holding_two_identity_generations_is_reported():
@@ -955,4 +970,143 @@ def test_the_producer_writes_that_field():
         mr.EVENT_TIMELINE_FILE = old
     assert "legacy_remaining" in mr._RUN_MANIFEST["event_identity"]
     assert mr._RUN_MANIFEST["event_identity"]["legacy_remaining"] >= 1
+
+
+# ===== 第二十七輪外審 P1-2:strict 仍接受「欄位在、內容空」 =====
+
+def _strict_ok() -> dict:
+    """一份**真的跑過**的 manifest(每一格都有生產會寫進去的內容)。"""
+    return {"git_sha": "abc", "github_run_id": "1", "run_nonce": "n",
+            "report_kind": rq.MORNING_REPORT,
+            "llm": {"analysis_origin": "luna_specialized",
+                    "payload_budget": {"chars_before": 100, "chars_after": 90,
+                                       "limit": 999, "over_budget": False},
+                    "primary_metrics": {"parsed": True, "claims": 3,
+                                        "sections_present": 8,
+                                        "validation_problems": 0},
+                    "recap_saved": "saved",
+                    "request_measurements": [
+                        {"role": "primary", "chars": 100, "tokens": 30,
+                         "accepted": True}]},
+            "news": {"fulltext_plan": {"clusters": 3, "targets": 5,
+                                       "available_news": 40}}}
+
+
+def _strict(m) -> list:
+    return [p["code"] for p in rq.assess(m, mode="strict",
+                                         expected_sha="abc",
+                                         expected_run_id="1")]
+
+
+def test_a_manifest_that_really_ran_passes_strict():
+    """**地基**:先證明合格的那一份會過,否則下面每一條都可能是誤報。"""
+    assert _strict(_strict_ok()) == []
+
+
+def test_empty_required_blocks_do_not_satisfy_the_specialized_contract():
+    """**「不是 None」不算跑過。**
+
+    `{}`、`[]`、`""` 都不是 `None` —— 於是一份每一格都空著的 manifest
+    可以通過 strict。canary 從「讀錯檔」修到「讀對這一班的檔」,
+    卻還沒證明這一班**產出了有效內容**。
+    """
+    m = _strict_ok()
+    m["llm"].update(payload_budget={}, primary_metrics={},
+                    recap_saved="", request_measurements=[])
+    got = _strict(m)
+    assert got == ["manifest_incomplete"], got
+
+
+def test_each_empty_block_is_rejected_on_its_own():
+    """**逐格量**:四格一起空的話,只要有一格擋得住就看不出其餘三格
+    有沒有在作用(這個 repo 記過的形狀)。"""
+    for key, empty in (("payload_budget", {}), ("primary_metrics", {}),
+                       ("recap_saved", ""), ("request_measurements", [])):
+        m = _strict_ok()
+        m["llm"][key] = empty
+        assert _strict(m) == ["manifest_incomplete"], key
+
+
+def test_a_half_written_budget_block_is_rejected():
+    """**只有一個欄位不算跑過。** `{}` 會被「chars_before 不是正整數」
+    那一條擋下,所以要另給一個**欄位型別對、但少了其餘幾格**的反例,
+    才量得到「缺欄位」那條規則自己(突變驗證當場證明前者量不到)。
+    """
+    m = _strict_ok()
+    m["llm"]["payload_budget"] = {"chars_before": 100}
+    assert _strict(m) == ["manifest_incomplete"], _strict(m)
+
+
+def test_a_primary_measurement_must_be_accepted_and_positive():
+    """量測要是**被接受**且字元/token 都為正 —— 一筆被拒的請求證明不了
+    這一班送出過有效的 payload。"""
+    for bad in ([{"role": "primary", "chars": 100, "tokens": 30,
+                  "accepted": False}],
+                [{"role": "primary", "chars": 0, "tokens": 30,
+                  "accepted": True}],
+                [{"role": "primary", "chars": 100, "tokens": 0,
+                  "accepted": True}]):
+        m = _strict_ok()
+        m["llm"]["request_measurements"] = bad
+        assert _strict(m) == ["manifest_incomplete"], bad
+
+
+def test_truthy_wrong_types_do_not_count_as_a_measurement():
+    """**真值判斷不是型別判斷**(第二十七輪外審第二輪)。
+
+    `accepted: "false"` 是 truthy;而 `bool` 是 `int` 的子類,
+    `chars: True` 會通過 `> 0`。生產寫進去的是 `bool(accepted)` 與真的
+    整數 —— 判準要照那個型別驗,否則一份型別全錯的 manifest 讓 canary 綠。
+    """
+    # 用 `in` 不用相等:型別壞掉的量測也會讓字元閘門的比例算出怪數字,
+    # 那是另一條規則在說話 —— 這裡只驗這一條有沒有作用。
+    for bad in ([{"role": "primary", "chars": 100, "tokens": 30,
+                  "accepted": "false"}],
+                [{"role": "primary", "chars": True, "tokens": 30,
+                  "accepted": True}],
+                [{"role": "primary", "chars": 100, "tokens": True,
+                  "accepted": True}]):
+        m = _strict_ok()
+        m["llm"]["request_measurements"] = bad
+        assert "manifest_incomplete" in _strict(m), bad
+    # 預算那一格同理
+    m = _strict_ok()
+    m["llm"]["payload_budget"] = dict(m["llm"]["payload_budget"],
+                                      chars_before=True)
+    assert "manifest_incomplete" in _strict(m), _strict(m)
+
+
+def test_unparsed_metrics_are_rejected():
+    """`primary_metrics` 有欄位不代表分析真的被解析出來。"""
+    m = _strict_ok()
+    m["llm"]["primary_metrics"] = {"parsed": False, "claims": 0,
+                                   "sections_present": 0,
+                                   "validation_problems": 3}
+    assert _strict(m) == ["manifest_incomplete"]
+
+
+def test_missing_fulltext_plan_is_rejected_in_strict_mode():
+    """**整格缺席先前靜默通過**:那段檢查包在 `if plan:` 裡,
+    而它正是 2026-08-06 兩階段抓取整段 no-op 的哨兵。"""
+    m = _strict_ok()
+    m.pop("news")
+    assert _strict(m) == ["canary_no_fetch_plan"], _strict(m)
+    # 每日生產不因此吵(那一天可能真的沒跑到那一段,而信仍然寄出去了)
+    assert [p["code"] for p in rq.assess(m)] == []
+
+
+def test_missing_report_kind_is_rejected_in_strict_mode():
+    """缺席時判準會退回「當成平日報」—— 那個預設對每日生產是對的,
+    對 canary 是「沒證明」。"""
+    m = _strict_ok()
+    m.pop("report_kind")
+    assert _strict(m) == ["canary_no_report_kind"], _strict(m)
+
+
+def test_the_weekend_digest_is_not_asked_for_a_fetch_plan():
+    """週日綜合信不跑兩階段抓取 —— 對它要那份計畫是另一種假警報。"""
+    m = _strict_ok()
+    m["report_kind"] = rq.WEEKEND_DIGEST
+    m.pop("news")
+    assert "canary_no_fetch_plan" not in _strict(m), _strict(m)
 

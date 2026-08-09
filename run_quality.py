@@ -83,12 +83,100 @@ def _dig(obj, *path, default=None):
 #:   primary_metrics      ← `_accept_luna()`
 #:   recap_saved          ← `_accept_luna()`
 #:   request_measurements ← `record_llm_call()`(逐次成對)
+#:
+#: **「不是 None」不算跑過**(第二十七輪外審 P1-2):`{}`、`[]`、`""`
+#: 都不是 `None`,於是一份每一格都空著的 manifest 可以通過 strict ——
+#: canary 從「讀錯檔」修到「讀對這一班的檔」,卻還沒證明這一班**產出了
+#: 有效內容**。所以每一格都配一個**語意**判準(見 `_BLOCK_CHECKS`),
+#: 而不是問它在不在。
 SPECIALIZED_REQUIRED = (
     ("payload_budget", "預算政策沒有跑過(`payload_budget.apply`)"),
     ("primary_metrics", "沒有結構化指標(`_accept_luna` 沒走到)"),
     ("recap_saved", "沒有昨日觀點的存檔結果(同上)"),
     ("request_measurements", "沒有逐次的字元/token 量測(沒送出過請求)"),
 )
+
+def _pos_int(v) -> bool:
+    """**是正整數,而且不是布林**(第二十七輪外審第二輪)。
+
+    `bool` 是 `int` 的子類 —— `True > 0` 成立,於是 `chars: True` 會被
+    當成「量到了一個正數」。生產寫進去的是真的整數(見
+    `run_manifest.record_llm_call`),判準要照那個型別驗。
+    """
+    return type(v) is int and v > 0
+
+
+def _budget_problem(v):
+    """預算政策**跑過**的樣子(欄位見 `payload_budget.apply` 的 `report`)。"""
+    if not isinstance(v, dict):
+        return "不是物件"
+    missing = [k for k in ("chars_before", "chars_after", "limit",
+                           "over_budget") if k not in v]
+    if missing:
+        return f"缺欄位 {missing}"
+    if not _pos_int(v.get("chars_before")):
+        return f"chars_before 不是正整數:{v.get('chars_before')!r}"
+    return ""
+
+
+def _metrics_problem(v):
+    """結構化指標**算過**的樣子(欄位見 `analysis_metrics.structured_metrics`)。"""
+    if not isinstance(v, dict) or not v:
+        return "是空的"
+    if v.get("parsed") is not True:
+        return f"parsed 不是 True:{v.get('parsed')!r}"
+    missing = [k for k in ("claims", "sections_present", "validation_problems")
+               if k not in v]
+    if missing:
+        return f"缺欄位 {missing}"
+    return ""
+
+
+def _recap_problem(v):
+    """昨日觀點的存檔結果要是**明確的狀態**,不是空字串。"""
+    import analysis_recap as _arc
+    if v is True:                      # 舊的布林(升版前的 manifest)
+        return ""
+    if v in (_arc.SAVED, _arc.NOTHING):
+        return ""
+    return f"不是明確的存檔狀態:{v!r}"
+
+
+def _measurements_problem(v):
+    """**至少一筆被接受的逐次量測**,而且字元與 token 都是正數。
+
+    空清單先前讓 token headroom 那條檢查整段不執行 —— 而空集合真空通過
+    正是這個模組的 docstring 在講的那件事。
+    """
+    if not isinstance(v, list) or not v:
+        return "沒有任何逐次量測"
+    # `accepted` 要**真的是 `True`**:生產寫的是 `bool(accepted)`,
+    # 而 `"false"` 這種字串是 truthy —— 用真值判斷會把它當成被接受。
+    ok = [x for x in v if isinstance(x, dict) and x.get("accepted") is True
+          and _pos_int(x.get("chars")) and _pos_int(x.get("tokens"))]
+    if not ok:
+        return "沒有一筆是**被接受**且字元/token 都為正的量測"
+    return ""
+
+
+#: `manifest["llm"][key]` → 語意判準(回空字串代表合格)。
+_BLOCK_CHECKS = {
+    "payload_budget": _budget_problem,
+    "primary_metrics": _metrics_problem,
+    "recap_saved": _recap_problem,
+    "request_measurements": _measurements_problem,
+}
+
+
+def _plan_problem(v):
+    """兩階段抓取的計畫**跑過**的樣子。整格缺席時,先前那段檢查
+    (`if plan:`)是靜默跳過的 —— 而它正是 2026-08-06 整段 no-op 的哨兵。"""
+    if not isinstance(v, dict) or not v:
+        return "沒有兩階段抓取的計畫(`fetch_plan.plan` 沒跑過)"
+    if not isinstance(v.get("available_news"), int):
+        return "計畫裡沒有 `available_news` —— 分不出上游斷料與分群壞掉"
+    return ""
+
 
 #: strict 模式(CI canary)額外要求的執行身分欄位。
 RUN_BINDING_FIELDS = ("git_sha", "github_run_id", "run_nonce")
@@ -272,8 +360,16 @@ def assess(manifest, *, mode: str = "watchdog",
 
     # ---- 8. **宣稱走了特化路徑,就要留下那條路徑的紀錄**(外審 P1-3)
     if origin == _ao.LUNA_SPECIALIZED:
-        missing = [f"`{k}`({why})" for k, why in SPECIALIZED_REQUIRED
-                   if _dig(m, "llm", k) is None]
+        missing = []
+        for k, why in SPECIALIZED_REQUIRED:
+            v = _dig(m, "llm", k)
+            if v is None:
+                missing.append(f"`{k}`({why})")
+                continue
+            # **「有這一格」不等於「跑過」**(第二十七輪外審 P1-2)。
+            bad = _BLOCK_CHECKS[k](v)
+            if bad:
+                missing.append(f"`{k}`({bad})")
         if missing:
             add("manifest_incomplete", "defect",
                 "manifest 說走的是特化路徑,卻缺了那條路徑必然會寫下的"
@@ -306,6 +402,21 @@ def assess(manifest, *, mode: str = "watchdog",
                 f"canary 的判準是「特化輸出真的產生了」,而這一班走的是"
                 f"「{_ao.describe(origin)}」—— 退回 legacy 對每日生產是"
                 "可接受的降級,對 canary 是不通過")
+        # **整格缺席不得靜默通過**(第二十七輪外審 P1-2)。
+        # `fulltext_plan` 那段檢查包在 `if plan:` 裡,而它正是 2026-08-06
+        # 整段 no-op 的哨兵 —— 計畫從來沒跑過的那一班,先前一句話都不說。
+        # `report_kind` 同理:缺席時判準會退回「當成平日報」,
+        # 那個預設對每日生產是對的,對 canary 是「沒證明」。
+        if not digest:
+            bad_plan = _plan_problem(_dig(m, "news", "fulltext_plan"))
+            if bad_plan:
+                add("canary_no_fetch_plan", "defect",
+                    f"canary 沒有兩階段抓取的證據:{bad_plan}")
+        if not str(m.get("report_kind") or ""):
+            add("canary_no_report_kind", "defect",
+                "manifest 沒說這一班寄的是哪一種信 —— 判準會退回"
+                "「當成平日報」,那個預設對每日生產是對的,對 canary 是"
+                "「沒證明」")
         missing_bind = [k for k in RUN_BINDING_FIELDS if not _dig(m, k)]
         if missing_bind:
             add("run_binding_missing", "defect",

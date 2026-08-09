@@ -509,23 +509,30 @@ def test_nothing_to_save_is_not_a_failure(tmp_path):
     assert out in (rc.NOTHING, rc.SAVED), out
     if out == rc.NOTHING:
         import run_quality as rq
-        m = {"report_kind": rq.MORNING_REPORT,
-             "llm": {"analysis_origin": "luna_specialized",
-                     "payload_budget": {}, "primary_metrics": {},
-                     "recap_saved": out, "request_measurements": []}}
-        assert [p["code"] for p in rq.assess(m)] == [], rq.assess(m)
+        # **只驗 recap 那一格**:自己另寫一組佔位符的話,
+        # `manifest_incomplete` 會混進答案裡(第二十七輪外審 P1-2 之後,
+        # 空的 payload_budget/metrics 本身就是缺陷)。
+        assert [p for p in rq.assess({"report_kind": rq.MORNING_REPORT,
+                                      "llm": {"analysis_origin":
+                                              "luna_specialized",
+                                              "recap_saved": out}})
+                if p["code"] == "recap_not_saved"] == []
 
 
 def test_a_write_failure_is_still_a_defect():
     """**修誤報不得造出漏報**:真的寫不進去仍要報 defect。"""
     import analysis_recap as rc
     import run_quality as rq
-    m = {"report_kind": rq.MORNING_REPORT,
-         "llm": {"analysis_origin": "luna_specialized",
-                 "payload_budget": {}, "primary_metrics": {},
-                 "recap_saved": rc.FAILED, "request_measurements": []}}
-    assert [p["code"] for p in rq.assess(m)] == ["recap_not_saved"]
+    def _codes(v):
+        return [p["code"] for p in rq.assess(
+            {"report_kind": rq.MORNING_REPORT,
+             "llm": {"analysis_origin": "luna_specialized",
+                     "recap_saved": v}})]
+
+    assert "recap_not_saved" in _codes(rc.FAILED)
     # 舊的布林 `False` 也仍當成失敗(那是會出聲的那一邊)
-    m["llm"]["recap_saved"] = False
-    assert [p["code"] for p in rq.assess(m)] == ["recap_not_saved"]
+    assert "recap_not_saved" in _codes(False)
+    # 而 saved / nothing 不報
+    assert "recap_not_saved" not in _codes(rc.SAVED)
+    assert "recap_not_saved" not in _codes(rc.NOTHING)
 

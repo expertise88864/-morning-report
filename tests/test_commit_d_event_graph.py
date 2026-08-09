@@ -384,3 +384,67 @@ def test_one_market_only_claim_does_not_condemn_its_whole_side():
     assert not [p for p in sch.validate(obj, _packet())
                 if "另一側" in p], "混了一條行情主張就把整側判掉"
 
+
+# ===== 2026-08-09 P2:沒被點名的央行掉進台灣或 Fed =====
+
+def test_a_foreign_central_bank_is_not_taiwan_monetary_policy():
+    """**裸「央行」是台灣的簡稱,只在沒有別的法域限定它的時候。**
+
+    實測(修正前):「瑞士央行維持利率不變」→ `tw_policy`
+    (裸「央行」命中台灣那一列)、「印度央行意外降息」→ `fed_policy`
+    (「降息」兩個字比「央行」長)。兩種錯法都讓一則外國貨幣政策
+    進了台灣/美國的分析,而重複計權的判準建立在驅動代號上。
+    """
+    for title in ("瑞士央行維持利率不變", "印度央行意外降息",
+                  "加拿大央行降息", "巴西央行降息2碼", "澳洲央行按兵不動",
+                  "土耳其央行緊急升息", "南非央行維持政策利率"):
+        assert eg.driver_of(title) == "foreign_cb", (title, eg.driver_of(title))
+
+
+def test_the_bare_word_still_means_taiwan():
+    """**修正不得把該分的黏起來**:台灣媒體講自己的央行就是裸「央行」。"""
+    for title in ("央行理監事會議決議", "央行選擇性信用管制上路",
+                  "央行召開記者會說明政策方向"):
+        assert eg.driver_of(title) == "tw_policy", (title, eg.driver_of(title))
+    # (「央行:新台幣匯率由市場決定」歸 `fx_twd` 是**對的** ——「新台幣」
+    #  比「央行」長,而那則講的就是匯率。我第一版把它寫成期望值,
+    #  那是把自己的猜測當成規格。)
+    # 美國的央行就是 Fed —— 那一則不該被歸成「海外央行」
+    assert eg.driver_of("聯準會決議降息一碼") == "fed_policy"
+
+
+def test_every_declared_foreign_bank_survives_a_policy_verb():
+    """**守衛要量行為,不要推理長度**(外審第二輪 F2)。
+
+    第一版只檢查「含『央行』的項目要比裸『央行』長」—— 於是「日銀」
+    整個不在檢查範圍裡,而「日銀」與「升息」同為兩個字、`fed_policy`
+    在表裡排在前面:**日本央行的決策被歸成 Fed**,而那正是這條規則
+    要防的事。逐項配上通用動詞跑一次,長度推理就不必寫在守衛裡。
+    """
+    rows = {r[0]: r[2:] for r in eg.DRIVER_TABLE}
+    assert rows["foreign_cb"], "空集合不算通過"
+    bad = []
+    for w in rows["foreign_cb"]:
+        if not str(w).isascii():
+            # **只配通用動詞。**「理監事」是台灣央行自己的機構用語
+            # (日銀沒有理監事會),拿它去對打是兩個具名詞相撞,
+            # 不是這條規則要處理的「誰 vs 做什麼」—— 而「日銀理監事會議」
+            # 也不是一個會出現的標題。守衛不該用造不出來的輸入判失敗。
+            for verb in ("升息", "降息", "維持利率不變", "宣布政策決議"):
+                if eg.driver_of(f"{w}{verb}") != "foreign_cb":
+                    bad.append(f"{w}{verb} → {eg.driver_of(f'{w}{verb}')}")
+    assert not bad, f"這些外國央行配上通用動詞後歸錯了:{bad}"
+
+
+def test_a_named_institution_beats_a_generic_verb_of_the_same_length():
+    """**「誰」比「做什麼」更能決定這是誰的政策。**
+
+    修法不是調整表的順序 —— 這個函式的說明自己就寫著「歸類取決於
+    表的順序不是一個講得出理由的判準」。
+    """
+    assert eg.driver_of("日銀升息") == "foreign_cb"
+    assert eg.driver_of("日銀降息") == "foreign_cb"
+    # 而 Fed 自己的具名詞仍然歸 Fed(修正不得把該分的黏起來)
+    assert eg.driver_of("聯準會升息") == "fed_policy"
+    assert eg.driver_of("FOMC 降息") == "fed_policy"
+

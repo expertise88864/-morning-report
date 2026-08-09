@@ -628,3 +628,27 @@ def test_a_sibling_survives_the_base_lineage_expiring(tmp_path, monkeypatch):
     assert sib in st, f"還在燒的那一樁被丟了:{sorted(st)}"
     assert st[sib]["days"] == 6, {k: v["days"] for k, v in st.items()}
     assert len(st) == 1, f"base 被重開了 —— 天數從第 1 天重算:{sorted(st)}"
+
+
+def test_the_telemetry_counts_action_keys_that_carry_an_object(tmp_path,
+                                                               monkeypatch):
+    """**`keyed_by_action` 從 v7 起幾乎永遠是 0**(2026-08-09 P2)。
+
+    帶對象的動作,`basis` 是 `action+object` —— 而計數只認字串完全等於
+    `action`。這格數字正是用來看「動作為主鍵這件事有沒有在作用」的,
+    於是「遙測說 0」與「功能真的沒接上」在 manifest 裡長得一模一樣。
+    """
+    evs = [{"event_type": "geopolitical", "entity": "美國、台灣",
+            "title": "美國宣布對台軍售"},
+           {"event_type": "geopolitical", "entity": "美國、中國",
+            "title": "美國宣布制裁中國實體清單企業"},
+           # **這一則的動作不帶對象**(`strait_tension` 不在 `NEEDS_OBJECT`)
+           # —— 兩個計數器要因此分岔。都算進去的話,第二格恆等於第一格,
+           # 而它存在的理由正是「對象簽章今天算不算得出來」。
+           {"event_type": "geopolitical", "entity": "台灣",
+            "title": "共機擾台 台海軍演升溫"}]
+    _run(tmp_path, monkeypatch, evs, day="2026-08-09")
+    tel = mr._RUN_MANIFEST["event_identity"]
+    assert tel["keyed_by_action"] == 3, tel
+    assert tel["keyed_by_action_object"] == 2, tel
+

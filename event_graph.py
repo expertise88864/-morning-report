@@ -52,9 +52,25 @@ DRIVER_TABLE = (
     # **外國央行要先於台灣央行比對**:「日本央行升息」的「央行」與
     # 「升息」會分別誤中 tw_policy 與 fed_policy(第二十三輪 P1-8)。
     # 「日本央行」四個字比對長度贏過「升息」兩個字,最長優先就能分對。
+    # **沒被點名的央行會掉進台灣或 Fed**(2026-08-09 P2)。實測:
+    # 「瑞士央行維持利率不變」→ `tw_policy`(裸「央行」命中台灣那一列)、
+    # 「印度央行意外降息」→ `fed_policy`(「降息」兩個字比「央行」長)。
+    # 兩種錯法都會讓一則外國貨幣政策進台灣的分析,而重複計權的判準
+    # (`DRIVER_FAMILIES`)是建立在驅動代號上的。
+    #
+    # 修法**不新增機制**:名單裡的「X央行」四個字本來就贏得過裸「央行」
+    # 與「降息」—— 最長優先自己會分對。名單是**宣告**,不是從「央行前面
+    # 有兩個中文字」推導:「決議後央行」那種前綴會讓推導判成外國。
+    #
+    # **`美國央行` 刻意不收**:美國的央行就是 Fed,那一則屬於 `fed_policy`。
     ("foreign_cb", "海外央行政策",
      "日本央行", "日銀", "BOJ", "歐洲央行", "ECB", "中國央行", "人民銀行",
-     "人行降準", "韓國央行", "英國央行", "英格蘭銀行"),
+     "人行降準", "韓國央行", "英國央行", "英格蘭銀行",
+     "瑞士央行", "印度央行", "加拿大央行", "澳洲央行", "紐西蘭央行",
+     "巴西央行", "俄羅斯央行", "土耳其央行", "印尼央行", "泰國央行",
+     "菲律賓央行", "越南央行", "新加坡金管局", "馬來西亞央行",
+     "墨西哥央行", "阿根廷央行", "南非央行", "以色列央行", "香港金管局",
+     "南韓央行", "歐元區央行", "德國央行", "法國央行"),
     ("tw_policy", "台灣貨幣與財政政策",
      "央行", "理監事", "存準率", "青安", "打炒房", "選擇性信用管制"),
     ("fx_twd", "新台幣匯率",
@@ -92,20 +108,34 @@ _FAMILY_OF = {d: fam for fam, ds in DRIVER_FAMILIES.items() for d in ds}
 MACRO_RELEASE_DRIVERS = ("us_labor", "us_inflation", "fed_policy", "tw_policy")
 
 
+#: **具名機構**的驅動代號。同樣長度時它們贏過通用動詞。
+#:
+#: 「日銀升息」:「日銀」與「升息」都是兩個字,而 `fed_policy` 在表裡
+#: 排在前面 —— 於是日本央行的決策被歸成 Fed(2026-08-09 外審抓到)。
+#: 靠調整表的順序去修等於讓歸類取決於順序,而這個函式的說明自己就寫著
+#: 那不是一個講得出理由的判準。
+#:
+#: 講得出理由的判準是:**「誰」比「做什麼」更能決定這是誰的政策。**
+#: 升息降息每一國都會做;「日銀」只有一個。
+NAMED_INSTITUTION_DRIVERS = frozenset({"foreign_cb"})
+
+
 def driver_of(text: str) -> str:
     """這段文字屬於哪一個底層驅動(認不出來回空字串)。
 
     **最長的關鍵詞優先**:「出口管制」要贏過「管制」,否則歸類會取決於
     表的順序 —— 而那不是一個講得出理由的判準。
+    同樣長度時**具名機構贏過通用動詞**(見 `NAMED_INSTITUTION_DRIVERS`)。
     """
     t = str(text or "")
     low = t.lower()
-    best_code, best_len = "", 0
+    best_code, best_rank = "", (0, 0)
     for row in DRIVER_TABLE:
         code, words = row[0], row[2:]
+        named = 1 if code in NAMED_INSTITUTION_DRIVERS else 0
         for w in words:
             wl = str(w).lower()
-            if not wl or len(wl) <= best_len:
+            if not wl or (len(wl), named) <= best_rank:
                 continue
             # 第二十三輪 P1-8:ASCII 詞要 token 邊界 ——
             # `war` 曾命中 `award` 而被歸成地緣衝突。
@@ -116,7 +146,7 @@ def driver_of(text: str) -> str:
                     continue
             elif wl not in low:
                 continue
-            best_code, best_len = code, len(wl)
+            best_code, best_rank = code, (len(wl), named)
     return best_code
 
 

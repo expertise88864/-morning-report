@@ -153,8 +153,9 @@ class ManifestRecorder:
         return failed
 
     # ── 組裝 ────────────────────────────────────────────────────────
-    def build(self, *, date: str, budget_seconds: float, news_workers: int,
-              degraded_steps, feeds: Optional[dict] = None) -> dict:
+    def build(self, *, date: str, report_kind: str, budget_seconds: float,
+              news_workers: int, degraded_steps,
+              feeds: Optional[dict] = None) -> dict:
         """組出要落地的 manifest。**純函式** —— 不寫檔、不印東西。
 
         診斷鍵一律由 `DIAGNOSTIC_KEYS` 統一帶出,不逐項明列:
@@ -162,6 +163,12 @@ class ManifestRecorder:
         """
         out = {
             "date": date,
+            # **這一班寄的是哪一種信**(2026-08-09 生產)。週日綜合信走的是
+            # 輕量路徑,根本不跑主分析 —— 而 `run_quality` 不知道有這回事,
+            # 於是每個週日都會發一封「有段落沒跑成」。
+            # **誤報是這類守衛最貴的失效方式**:它會讓人開始忽略那封信。
+            # 沒有這一格時當成平日報(那是會出聲的那一邊)。
+            "report_kind": str(report_kind),
             # **這份 manifest 屬於哪一次執行**(外審 P1-2)。
             #
             # `state/run_manifest.json` 是**進版控的**,所以 CI checkout

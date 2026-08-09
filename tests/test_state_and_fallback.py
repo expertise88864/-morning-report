@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 import morning_report as mr
+import run_quality as rq
 
 _SRC = Path(mr.__file__).read_text(encoding="utf-8")
 
@@ -634,7 +635,8 @@ def test_manifest_diagnostic_keys_survive_serialisation(tmp_path, monkeypatch):
     try:
         for key in mr._MANIFEST_DIAGNOSTIC_KEYS:
             mr._RUN_MANIFEST[key] = probe if key == "exdiv_preview" else {"probe": key}
-        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE),
+                               report_kind=rq.MORNING_REPORT)
         assert target.exists(), "manifest 沒有被寫出來"
         landed = _json.loads(target.read_text(encoding="utf-8"))
         for key in mr._MANIFEST_DIAGNOSTIC_KEYS:
@@ -741,7 +743,8 @@ def test_the_manifest_and_commit_message_name_the_stale_files(tmp_path, monkeypa
         mr._STATE_WRITES["history.json"] = {"ok": True, "bytes": 10}
         mr._STATE_WRITES["forecast_ledger.json"] = {
             "ok": False, "bytes": 20, "error": "OSError: disk full"}
-        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE),
+                               report_kind=rq.MORNING_REPORT)
 
         landed = _json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
         sw = landed["state_writes"]
@@ -781,7 +784,8 @@ def test_failures_after_the_manifest_snapshot_reach_the_landed_degraded_list(
     monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", manifest)
     try:
         # 快照:此時一切正常
-        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE),
+                               report_kind=rq.MORNING_REPORT)
         first = _json.loads(manifest.read_text(encoding="utf-8"))
         assert first["state_writes"]["failed"] == []
         assert not any("state:write_failed" in d
@@ -824,7 +828,8 @@ def test_late_failures_are_added_to_the_marker_not_hidden_by_early_ones(
     try:
         mr._STATE_WRITES["forecast_ledger.json"] = {
             "ok": False, "bytes": 1, "error": "OSError: early"}
-        mr._write_run_manifest(_dt.datetime.now(mr.TPE))
+        mr._write_run_manifest(_dt.datetime.now(mr.TPE),
+                               report_kind=rq.MORNING_REPORT)
         early = _json.loads(manifest.read_text(encoding="utf-8"))
         assert early["state_writes"]["failed"] == ["forecast_ledger.json"]
 
@@ -880,7 +885,7 @@ def test_the_recorder_builds_a_manifest_without_touching_the_world():
     rec.data["llm_extractor"] = {"called": True, "valid": 3}
     rec.data["data_checks"] = {"warn": 1}
 
-    built = rec.build(date="2026-08-01 06:00", budget_seconds=2100.0,
+    built = rec.build(date="2026-08-01 06:00", report_kind=rq.MORNING_REPORT, budget_seconds=2100.0,
                       news_workers=8, degraded_steps=["a", "a", "b"],
                       feeds={"example.com": {"ok": 3, "fail": 1}})
 

@@ -49,6 +49,7 @@ import llm_config as _lc
 import data_quality as _dq
 import run_manifest as _rm
 import analysis_origin as _ao
+import run_quality as _rq
 import analysis_validate as _av
 import top5_readout as _t5r
 import writing_rules as _wr
@@ -605,7 +606,7 @@ def _mark_phase(label: str) -> None:
     _RECORDER.mark_phase(label, time.monotonic())
 
 
-def _write_run_manifest(now_tpe) -> None:
+def _write_run_manifest(now_tpe, *, report_kind: str) -> None:
     """把本次執行的階段耗時等寫成 manifest + 附到 Actions Step Summary。
 
     第十輪 P1-12:**組裝已經搬到 `run_manifest.ManifestRecorder.build()`**
@@ -629,6 +630,7 @@ def _write_run_manifest(now_tpe) -> None:
                 _RUN_MANIFEST["llm"])
         manifest = _RECORDER.build(
             date=now_tpe.strftime("%Y-%m-%d %H:%M"),
+            report_kind=report_kind,
             budget_seconds=RUN_BUDGET_SECONDS,
             news_workers=NEWS_FETCH_WORKERS,
             degraded_steps=_DEGRADED_STEPS,
@@ -14220,6 +14222,7 @@ def update_event_timeline(structured_events: list[dict],
     # 的 latest_title 已經漂到「對台軍售」—— 那是另一件事。
     # 身分改由 `event_identity` 決定(動作為主鍵),見該模組說明。
     _migrated, _by_action, _superseded, _split_incidents = 0, 0, 0, 0
+    _by_action_object = 0
     for ev in structured_events or []:
         if str(ev.get("event_type")) not in _TIMELINE_EVENT_TYPES:
             continue
@@ -14230,8 +14233,14 @@ def update_event_timeline(structured_events: list[dict],
             continue
         ident = _eid.timeline_identity(ev, subjects, today)
         key = ident["key"]
-        if ident["basis"] == "action":
+        # **`basis` 從 v7 起多半是 `action+object`**(2026-08-09 P2):
+        # 只認 `action` 的話,這格遙測在正常運作的日子也接近 0,而它正是
+        # 用來看「動作為主鍵這件事到底有沒有在作用」的那個數字 ——
+        # 遙測說 0 與功能真的沒接上,在 manifest 裡長得一模一樣。
+        if str(ident["basis"]).startswith("action"):
             _by_action += 1
+            if ident.get("object"):
+                _by_action_object += 1
         rec = state.get(key)
         if rec is None:
             # **舊鍵要接得起來**:同一條線在升版當天不該從第 1 天重新起算
@@ -14308,6 +14317,9 @@ def update_event_timeline(structured_events: list[dict],
     _RUN_MANIFEST["event_identity"] = {
         "schema": _eid.IDENTITY_SCHEMA_VERSION,
         "keyed_by_action": _by_action,
+        # 其中**連對象一起進鍵**的有幾條 —— 兩個數字一樣時,
+        # 表示對象簽章今天一條都沒算出來(那是另一回事)。
+        "keyed_by_action_object": _by_action_object,
         "adopted_legacy": _migrated,
         # 接不到而被收掉的舊線:**與「接過來」是兩件事**,分開記才看得出
         # 遷移當天有多少條線是重新起算的。
@@ -20987,7 +20999,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         # 沒有這幾行,那句話在它唯一適用的情境下是假的。
         # 只推 manifest:不動 podcast/history/intel 狀態(沒寄信就不該標記已顯示)。
         try:
-            _write_run_manifest(now_tpe)
+            _write_run_manifest(now_tpe, report_kind=_rq.WEEKEND_DIGEST)
             # 批#73:明確標記「刻意不寄」。看門狗改為檢查寄送結果之後,
             # 沒有這個標記的話這條路徑又會變成假警報來源
             # ——批#69 r2 才剛修掉同型的一次。
@@ -21043,6 +21055,12 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         policy_analysis_html=policy_analysis_html)
 
     if os.environ.get("DRY_RUN") == "1":
+        # **manifest 要在早退之前寫**(2026-08-09 外審 F1):CI 的 canary
+        # 先 `rm -f` 舊檔、跑 DRY_RUN、再讀 manifest 下判斷。週日的
+        # DRY_RUN 從這裡直接 return,於是根本沒有檔案 ——
+        # 斷言只會說「找不到 run_manifest.json」,而不是那句說得出下一步的
+        # 「這一班寄的是週日綜合信,請在交易日重新 dispatch」。
+        _write_run_manifest(now_tpe, report_kind=_rq.WEEKEND_DIGEST)
         # 同時寫入晨報慣用的預覽路徑,讓 CI 的 dry-run-preview artifact 在週日也抓得到。
         for out in ("/tmp/morning_report_preview.html",
                     "/tmp/weekend_digest_preview.html"):
@@ -21072,7 +21090,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # 批#69 的看門狗正是讀這個檔判定「今天有沒有跑」,週日必然誤報。
     # (平日分支早就是「先寫 manifest 再 push」,見該處註解;週日這條漏了。)
     try:
-        _write_run_manifest(now_tpe)
+        _write_run_manifest(now_tpe, report_kind=_rq.WEEKEND_DIGEST)
     except Exception as e:
         print(f"[weekend] run manifest 寫入失敗: {type(e).__name__}", file=sys.stderr)
     _git_commit_and_push_state(
@@ -22439,7 +22457,7 @@ def _phase_render(ctx) -> Optional[int]:
             f.write(html)
         print(f"[main] DRY_RUN — 預覽寫入 {out}")
         ctx.mark_phase("完成", time.monotonic())
-        _write_run_manifest(now_tpe)
+        _write_run_manifest(now_tpe, report_kind=_rq.MORNING_REPORT)
         return 0
     ctx.html, ctx.pending_state_entry = html, pending_state_entry
 
@@ -22455,7 +22473,7 @@ def _phase_deliver(ctx) -> int:
     # P1-4:在寄信/state push 前寫 manifest,使其隨 state 一併 commit(供跨日趨勢);
     # SMTP 送出約 5-10s 未計入屬可接受(manifest 主要看 fetch/compute 花在哪)。失敗不影響寄信。
     ctx.mark_phase("完成", time.monotonic())
-    _write_run_manifest(now_tpe)
+    _write_run_manifest(now_tpe, report_kind=_rq.MORNING_REPORT)
 
     # 10. 寄信
     subject = f"📈 美股晨報 {report_date} | QQQ {quotes['QQQ'].get('change_pct','?')}% / TSM {quotes['TSM'].get('change_pct','?')}%"

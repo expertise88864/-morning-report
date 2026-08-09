@@ -84,6 +84,23 @@ SPECIALIZED_REQUIRED = (
 #: strict 模式(CI canary)額外要求的執行身分欄位。
 RUN_BINDING_FIELDS = ("git_sha", "github_run_id", "run_nonce")
 
+#: 這一班寄的是哪一種信。**週日綜合信沒有主分析那一段** ——
+#: 它走 `render_weekend_digest_html` 的輕量路徑,不跑行情、不跑事件卡。
+#: 拿平日報的判準去量它,每個週日都會發一封「有段落沒跑成」
+#: (2026-08-09 生產實際發生)。
+MORNING_REPORT = "morning_report"
+WEEKEND_DIGEST = "weekend_digest"
+
+
+def is_weekend_digest(manifest) -> bool:
+    """這一班寄的是週日綜合信嗎。
+
+    **沒有這一格時當成平日報**:那是會出聲的那一邊。反過來預設的話,
+    一份缺欄位的舊 manifest 會讓所有分析面的判準整批靜默跳過。
+    """
+    m = manifest if isinstance(manifest, dict) else {}
+    return str(m.get("report_kind") or "") == WEEKEND_DIGEST
+
 
 def assess(manifest, *, mode: str = "watchdog",
            expected_sha: str = "", expected_run_id: str = "") -> list:
@@ -108,8 +125,15 @@ def assess(manifest, *, mode: str = "watchdog",
         out.append({"code": code, "severity": severity, "detail": detail})
 
     # ---- 1. 主分析走了哪條路
+    #
+    # **週日綜合信沒有這一段**(2026-08-09 生產):那條路徑不跑主分析,
+    # 判準套上去等於每個週日發一封假警報 —— 而假警報的代價是使用者
+    # 開始忽略這封信,連真的那天也一起忽略。
+    digest = is_weekend_digest(m)
     origin = _ao.normalize(_dig(m, "llm", "analysis_origin"))
-    if origin == _ao.EMERGENCY_FALLBACK:
+    if digest:
+        pass
+    elif origin == _ao.EMERGENCY_FALLBACK:
         add("analysis_emergency", "degraded",
             "信裡沒有任何模型判斷,寄出的是 Python 組的備援文字")
     elif origin != _ao.LUNA_SPECIALIZED:
@@ -124,7 +148,7 @@ def assess(manifest, *, mode: str = "watchdog",
     # 就報 defect,會在**特化輸出順利寄出的日子**讓 canary 紅、看門狗
     # 回 2。誤報是這個模組最該避免的東西(見模組 docstring)。
     problems = _dig(m, "llm", "luna_problems", default=[]) or []
-    if problems and origin != _ao.LUNA_SPECIALIZED:
+    if problems and not digest and origin != _ao.LUNA_SPECIALIZED:
         add("luna_rejected", "defect",
             f"特化輸出被驗證擋下 {len(problems)} 條:"
             + "；".join(str(p) for p in problems[:3]))
@@ -222,7 +246,14 @@ def assess(manifest, *, mode: str = "watchdog",
 
     # ---- 10. strict(CI canary):綠燈必須代表「特化輸出真的產生了」
     if strict:
-        if origin != _ao.LUNA_SPECIALIZED:
+        if digest:
+            # **「無法證明」不是「證明了」。** canary 的名字是「特化輸出
+            # 真的產生了」,而週日那條路徑根本不跑主分析 —— 讓它靜默通過
+            # 等於把一個量不到東西的綠燈當成證據。
+            add("canary_on_a_non_trading_day", "defect",
+                "這一班寄的是週日綜合信 —— 那條路徑不跑主分析,"
+                "canary 證明不了任何事。請在交易日重新 dispatch")
+        elif origin != _ao.LUNA_SPECIALIZED:
             add("canary_not_specialized", "defect",
                 f"canary 的判準是「特化輸出真的產生了」,而這一班走的是"
                 f"「{_ao.describe(origin)}」—— 退回 legacy 對每日生產是"

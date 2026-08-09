@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 import model_confidence as mc
+import run_quality as rq
 
 
 def _rng():
@@ -292,7 +293,7 @@ def test_mz_shadow_survives_into_the_persisted_manifest(tmp_path, monkeypatch):
     mr._RUN_MANIFEST["mz_shadow"] = {"n": 49, "applied": True, "b": 0.6865,
                                      "raw": 2336.0, "shadow": 2342.85,
                                      "delta": 6.85}
-    mr._write_run_manifest(dt.datetime(2026, 7, 28, 6, 0))
+    mr._write_run_manifest(dt.datetime(2026, 7, 28, 6, 0), report_kind=rq.MORNING_REPORT)
     saved = json.loads(f.read_text(encoding="utf-8"))
     assert "mz_shadow" in saved, "影子預測沒落地 —— 樣本永遠累積不起來"
     assert saved["mz_shadow"]["shadow"] == 2342.85

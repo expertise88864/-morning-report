@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_536  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_555  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -218,7 +218,9 @@ MODULE_CEILINGS = {
     # (修補成功不算缺陷、零新聞不算接線壞、選配命名空間空掉是正常)。
     # 實測 176。
     # 外審 P1-3:strict canary 模式 + 必要區塊完整性(最小 manifest 先前真空通過)+ final request 旗標。實測 260。
-    "run_quality.py": 285,
+    # 2026-08-09:多的是「週日綜合信不是壞掉的平日報」那條判準與理由
+    # (生產每個週日發一封假警報)。**實測 296 行**。
+    "run_quality.py": 305,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -320,7 +322,9 @@ MODULE_CEILINGS = {
     "event_score.py": 240,
     # Commit D:事件圖 —— 共同驅動(家族)、總經發布、方向衝突。
     # 驅動關鍵詞表佔大半,純規則層。
-    "event_graph.py": 245,
+    # 2026-08-09:外國央行名單(沒被點名的會掉進台灣或 Fed)+ 同長度時
+    # 具名機構優先(「日銀升息」被歸成 Fed)。**實測 251 行**。
+    "event_graph.py": 260,
     # 第十九輪 P1-3:新聞正規化與截斷拆出來 ——「誰留下來」是獨立的決定,
     # 而先前的順序錯誤(先截斷再算必分析)在 `build()` 裡看不出來。
     # 深度加強第二批:改版重發去重(+15 行)。

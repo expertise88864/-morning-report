@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import morning_report as mr
+import run_quality as rq
 
 
 def _stock(close, **extra):
@@ -3135,7 +3136,7 @@ def test_mixed_versions_reach_the_run_manifest():
     # **改成驗行為**:實際組一次看鍵在不在。行為檢查不因程式碼搬家而失效。
     import run_manifest as _rm_mod
     rec = _rm_mod.ManifestRecorder({"forecast_mixed_versions": {"x": ["1", "2"]}})
-    built = rec.build(date="2026-08-01 06:00", budget_seconds=1.0,
+    built = rec.build(date="2026-08-01 06:00", report_kind=rq.MORNING_REPORT, budget_seconds=1.0,
                       news_workers=1, degraded_steps=[])
     assert built.get("forecast_mixed_versions") == {"x": ["1", "2"]},         "混版本資訊沒有落地 → 寫了也會被丟掉"
 

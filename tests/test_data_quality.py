@@ -7,6 +7,7 @@
 """
 import data_quality as dq
 import morning_report as mr
+import run_quality as rq
 
 
 def _rows(n, **over):
@@ -141,7 +142,7 @@ def test_data_checks_survive_into_the_persisted_manifest(tmp_path, monkeypatch):
     summary = dq.summarize([dq.check_value_range("u", [99.0] * 10, lo=0, hi=1,
                                                  severity=dq.WARN)])
     mr._RUN_MANIFEST["data_checks"] = summary
-    mr._write_run_manifest(dt.datetime(2026, 7, 26, 6, 0))
+    mr._write_run_manifest(dt.datetime(2026, 7, 26, 6, 0), report_kind=rq.MORNING_REPORT)
     saved = json.loads(f.read_text(encoding="utf-8"))
     assert "data_checks" in saved, "manifest 白名單漏了 data_checks"
     assert saved["data_checks"]["warnings"], "warn 級沒被保存下來"

@@ -2,6 +2,7 @@
 import time
 
 import morning_report as mr
+import run_quality as rq
 
 
 def test_safe_float():
@@ -856,7 +857,7 @@ def test_run_manifest_and_step_summary(tmp_path, monkeypatch):
                         {"llm": -8, "py": -7, "agree": False,
                          "coverage": 1.0, "missing": [], "flags": [],
                          "abstain": False, "stale_us": False})
-    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50))
+    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50), report_kind=rq.MORNING_REPORT)
     m = _json.loads((tmp_path / "run_manifest.json").read_text(encoding="utf-8"))
     assert m["total_seconds"] == 300.0
     assert m["stance_dual"]["agree"] is False and m["stance_dual"]["py"] == -7
@@ -882,7 +883,7 @@ def test_run_manifest_no_step_summary_when_env_absent(tmp_path, monkeypatch):
     monkeypatch.setattr(mr, "_FEED_STATS", {})
     t = time.monotonic()
     monkeypatch.setitem(mr._RUN_MANIFEST, "marks", [("a", t), ("完成", t + 10)])
-    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50))
+    mr._write_run_manifest(dt.datetime(2026, 7, 15, 6, 50), report_kind=rq.MORNING_REPORT)
     assert (tmp_path / "rm.json").exists()
 
 

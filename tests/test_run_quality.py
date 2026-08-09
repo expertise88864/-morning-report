@@ -550,8 +550,8 @@ def test_the_manifest_carries_the_identity_of_this_run():
     """生產端要寫得出綁定,strict 才有東西可比。"""
     import run_manifest as rmod
     m = rmod.ManifestRecorder().build(
-        date="2026-08-09 06:10", budget_seconds=1200, news_workers=8,
-        degraded_steps=[])
+        date="2026-08-09 06:10", report_kind=rq.MORNING_REPORT,
+        budget_seconds=1200, news_workers=8, degraded_steps=[])
     for k in rq.RUN_BINDING_FIELDS:
         assert k in m, (k, sorted(m))
     assert m["git_sha"], "git_sha 是空的 —— 本機應退回 git rev-parse HEAD"
@@ -633,3 +633,103 @@ def test_production_marks_the_recovered_case():
     # 只在 `_kept` 存在(真的救得回來)時標
     assert seg.index("if _kept is None:") < seg.index(
         "final_request_over_budget_recovered"), seg
+
+
+# ===== 2026-08-09 生產:週日綜合信被平日報的判準判成「有段落沒跑成」 =====
+
+def _digest_manifest() -> dict:
+    """週日那條路徑的形狀:有寄信、有 LLM(政策解析),**沒有主分析**。"""
+    return {"report_kind": rq.WEEKEND_DIGEST,
+            "delivery": {"attempted": True, "success": True},
+            "llm": {"primary": {"provider": "deepseek", "total_tokens": 12312}}}
+
+
+def test_a_weekend_digest_is_not_a_broken_morning_report():
+    """**每個週日一封假警報**(2026-08-09 生產實測)。
+
+    週日走 `render_weekend_digest_html` 的輕量路徑,根本不跑主分析 ——
+    那封信裡本來就沒有事件卡、淨效果、橫向綜合。拿平日報的判準去量它,
+    看門狗每個週日都會說「信寄出了,但有段落沒跑成」。
+    **假警報的代價是使用者開始忽略這封信**,連真的那天也一起忽略。
+    """
+    assert rq.assess(_digest_manifest()) == []
+
+
+def test_a_missing_report_kind_still_speaks_up():
+    """**沒有這一格時當成平日報** —— 那是會出聲的那一邊。
+
+    反過來預設的話,一份缺欄位的 manifest(例如主流程中途死掉、
+    或舊版留下來的)會讓所有分析面的判準整批靜默跳過,
+    而那正是這個模組存在的理由。
+    """
+    m = _digest_manifest()
+    m.pop("report_kind")
+    assert [p["code"] for p in rq.assess(m)] == ["analysis_not_specialized"]
+
+
+def test_the_canary_does_not_pass_by_having_nothing_to_prove():
+    """**「無法證明」不是「證明了」。**
+
+    canary 的名字是「特化輸出真的產生了」。若 dispatch 落在週日,
+    那一班寄的是綜合信、根本不跑主分析 —— 靜默通過等於把一個
+    量不到東西的綠燈當成證據。要紅,而且要說得出下一步。
+    """
+    codes = [p["code"] for p in rq.assess(_digest_manifest(), mode="strict")]
+    assert "canary_on_a_non_trading_day" in codes, codes
+    assert all(p["severity"] == "defect"
+               for p in rq.assess(_digest_manifest(), mode="strict")
+               if p["code"] == "canary_on_a_non_trading_day")
+
+
+def test_every_manifest_write_says_which_kind_of_mail_it_was():
+    """**必填關鍵字**:新的寄信路徑忘了表態就 TypeError,不會靜默寫錯。
+
+    四個呼叫端(週日不寄信、週日寄了、平日 DRY_RUN、平日寄了)
+    各自表態 —— 而預設值會讓下一條路徑安靜地繼承錯的那個。
+    """
+    import ast
+    import inspect
+    import morning_report as mr
+    src = ast.parse(inspect.getsource(mr))
+    sig = next(n for n in ast.walk(src)
+               if isinstance(n, ast.FunctionDef) and n.name == "_write_run_manifest")
+    assert not sig.args.args[1:], "report_kind 不得是位置參數"
+    assert [a.arg for a in sig.args.kwonlyargs] == ["report_kind"]
+    assert sig.args.kw_defaults == [None], "不得有預設值 —— 忘了要當場炸"
+    calls = [n for n in ast.walk(src) if isinstance(n, ast.Call)
+             and isinstance(n.func, ast.Name)
+             and n.func.id == "_write_run_manifest"]
+    # **不寫死條數**:上一版斷言「恰好四個」,而外審要求補的那一個
+    # (週日 DRY_RUN)一加就紅 —— 那不是缺陷,是清單漂移。
+    # 要驗的性質是「每一個呼叫都表態了」,不是「有幾個」。
+    assert len(calls) >= 4, len(calls)
+    kinds = [ast.unparse(k.value) for c in calls for k in c.keywords
+             if k.arg == "report_kind"]
+    assert len(kinds) == len(calls), "有呼叫端沒有表態"
+    assert set(kinds) == {"_rq.MORNING_REPORT", "_rq.WEEKEND_DIGEST"}, kinds
+
+
+def test_the_weekend_dry_run_writes_its_manifest_before_returning():
+    """**canary 讀不到 manifest 就給不出那句話**(外審第二輪 F1)。
+
+    CI 的 canary 先 `rm -f` 舊檔、跑 `DRY_RUN=1`、再讀 manifest。
+    週日的 DRY_RUN 從預覽那一段直接 `return`,於是根本沒有檔案 ——
+    斷言只會說「找不到 run_manifest.json」,而不是那句說得出下一步的
+    「這一班寄的是週日綜合信,請在交易日重新 dispatch」。
+    """
+    import ast
+    import inspect
+    import morning_report as mr
+    fn = next(n for n in ast.walk(ast.parse(inspect.getsource(mr)))
+              if isinstance(n, ast.FunctionDef) and n.name == "run_weekend_digest")
+    guarded = [n for n in ast.walk(fn) if isinstance(n, ast.If)
+               and "DRY_RUN" in ast.unparse(n.test)
+               and any(isinstance(x, ast.Return) for x in ast.walk(n))]
+    assert guarded, "找不到週日 DRY_RUN 的早退點 —— 這條守衛量不到東西了"
+    for node in guarded:
+        wrote = next((i for i, st in enumerate(node.body)
+                      if "_write_run_manifest" in ast.unparse(st)), None)
+        ret = next(i for i, st in enumerate(node.body)
+                   if any(isinstance(x, ast.Return) for x in ast.walk(st)))
+        assert wrote is not None and wrote < ret,             "DRY_RUN 早退之前沒有寫 manifest"
+

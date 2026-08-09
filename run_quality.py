@@ -55,6 +55,14 @@ KNOWN_DEGRADED = frozenset({
 })
 
 
+def _safe_int(v):
+    """拿得到就回 int,拿不到回 0(判準不因型別而爆掉)。"""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _dig(obj, *path, default=None):
     cur = obj
     for key in path:
@@ -232,6 +240,21 @@ def assess(manifest, *, mode: str = "watchdog",
             _recap is False or _recap == _arc.FAILED):
         add("recap_not_saved", "defect",
             "分析成功但昨日觀點沒存下來 —— 明天的延續事件沒有 diff 基準")
+
+    # ---- 6b. **state 裡混著兩代身分**(2026-08-09 P2)
+    #
+    # `legacy_remaining` 一直記著,而**沒有任何東西讀它** —— 遷移只成功
+    # 一半(舊鍵接不上新公式)時,那些記錄會留在 state 裡直到過期,
+    # 而它們沒有 `incident_tokens`:同鍵下的新事件比對「兩邊都不知道」
+    # 會被當成同一樁,於是併進一條可能是別件事的 lineage 並繼承它的天數。
+    # 升版當天出現是正常的(隔天就該歸零);**連續出現才是問題**,
+    # 而看不見的話沒有人會發現「連續」。
+    _left = _safe_int(_dig(m, "event_identity", "legacy_remaining"))
+    if _left:
+        add("identity_generations_mixed", "degraded",
+            f"事件 timeline 裡還有 {_left} 條是舊版身分公式寫的 —— "
+            "它們沒有 incident_tokens,同鍵下的新事件會被當成同一樁而"
+            "繼承天數。升版當天正常,**隔天還在就是遷移沒接上**")
 
     # ---- 7. 字元閘門還擋得住嗎(代理的誤差要被量,不是被假設)
     import payload_budget as _pb

@@ -153,6 +153,114 @@ def strip_json_fence(text: str) -> str:
     return t.strip()
 
 
+def contract_problems(response) -> list:
+    """這份回應**還解析得動嗎**(合格回空清單)。
+
+    **判準只能有一份**(2026-08-09 P2):離線契約測試釘的是 2026-08-08
+    的實機 fixture,而沒有任何東西會告訴我們線上還是不是那個形狀 ——
+    provider 換了契約的第一個徵兆會是那天早上的信壞掉。
+    `tools/deepseek_live_canary.py` 拿真的回應跑這同一份判準。
+
+    **判準就是 adapter 自己**(外審):第一版逐格比對 fixture 的形狀
+    (`output` 恰好是 `["reasoning","message"]`、`role` 是 assistant、
+    `model` 完全相等)—— 那比 `extract_output` 實際要求的**嚴格**:
+    它容忍任意順序、忽略不認得的項目、也接受沒有標 `phase` 的訊息。
+    於是 provider 多回一個項目、換一個 model 別名,金絲雀就紅,
+    而生產完全正常。**假警報會讓人把金絲雀關掉。**
+
+    所以這裡問的是三件我們真的依賴的事:
+      1. 拿得到答案文字(`extract_output`);
+      2. 拿得到 usage 的三個 token 數 —— **值的型別也算契約**:
+         `normalize_usage` 對非 int 是靜默丟棄,成本與遙測會低估而不報錯;
+      3. `status` 說這次是完成的(沒完成就是沒有答案,與形狀無關,
+         但金絲雀要說得出來)。
+
+    **`model` 不比對。** 第一版留了一個「當提示用」的 model 檢查 ——
+    而清單非空就是不合格,金絲雀會因為別名換了而 exit 1,
+    與寫在旁邊的說明矛盾。一個會讓判準變紅的「提示」不是提示。
+    """
+    r = response if isinstance(response, dict) else None
+    if not r:
+        return ["回應不是一個物件"]
+    out: list = []
+    status = str(r.get("status") or "")
+    if status != "completed":
+        out.append(f"status 不是 completed:{status!r}"
+                   + (f"(incomplete_reason={r.get('incomplete_details')})"
+                      if r.get("incomplete_details") else ""))
+    # **問形狀,不問模型有沒有講話**(外審第二輪)。
+    # 空答案是這個 provider 已知會出現、而且生產修得掉的狀況
+    # (`empty_content` 就是為它設的旗標),拒答也是合法回應 ——
+    # 要求「文字非空」比 adapter 嚴,會製造假警報。
+    # 而 `empty_content` 分不出「模型沒講話」與「我們讀不懂 content」:
+    # 把 `output_text` 改名也會讓它變 True。所以直接找 adapter 真正讀的
+    # 那一格:有沒有一個 `output_text`(或 `refusal`)的 content 項。
+    # **只看 adapter 真的會採用的那些 content**:
+    #   * 項目型別要是 `message`(外審第三輪)—— `extract_output` 明確
+    #     只認那一種(reasoning 那一項不是答案);
+    #   * 階段要是 `final_answer` 或**沒有標**(外審第五輪)——
+    #     `commentary` 永遠不能當 final 的替補,它被丟掉。
+    #
+    # 第二條是我上一輪答錯的地方:我以為「只有 commentary」與「偶發的
+    # 空回應」在回應上分不開(兩者都落在 `empty_content`)——
+    # 而**分得開,差別就在 phase 這個標籤本身**。
+    # 空的 `output_text` 掛在可採用的階段下 → 合格(provider 已知會偶發,
+    # 生產修得掉);內容只掛在 commentary 下 → 不合格(那是 phase 語意變了,
+    # 生產每次都會進修補、持續出現就降級)。
+    # **而且 bucket 有優先序**(外審第六輪):看過 `final_answer` 就
+    # 完全捨棄沒標 phase 的那一桶 —— 空的 final 配一個有內容的 unphased
+    # 訊息時,生產拿到的是空答案,而「兩桶合起來看」會判成合格。
+    _msgs = [it for it in (r.get("output") or [])
+             if isinstance(it, dict) and it.get("type") == "message"]
+    _finals = [m for m in _msgs if str(m.get("phase") or "") == "final_answer"]
+    _adopt = _finals or [m for m in _msgs if not str(m.get("phase") or "")]
+    kinds = {c.get("type") for m in _adopt
+             for c in (m.get("content") or []) if isinstance(c, dict)}
+    # **拒答不受 bucket 優先序限制**(外審第七輪):`extract_output` 從
+    # **任何**訊息收拒答,不看 phase —— 把它一起套進優先序的話,
+    # 拒答掛在 commentary 下就會被判成契約變了,而生產解析得好好的。
+    # **值也要在**(外審第八輪):`extract_output` 要的是一個有內容的
+    # `refusal` 欄位 —— 型別留著、值換了名字的話,生產既拿不到答案
+    # 也拿不到拒答,而金絲雀是綠的。
+    refused = any(c.get("type") == "refusal" and str(c.get("refusal") or "").strip()
+                  for m in _msgs
+                  for c in (m.get("content") or []) if isinstance(c, dict))
+    if not (refused or "output_text" in kinds):
+        out.append("採用的那一桶裡找不到 `output_text`,也沒有任何拒答 —— "
+                   f"message/content 的形狀變了(看到的是 {sorted(kinds)})")
+
+    raw_usage = r.get("usage")
+    if not isinstance(raw_usage, dict):
+        out.append(f"usage 不是物件:{type(raw_usage).__name__}")
+    else:
+        u = normalize_usage(raw_usage)
+        missing = [k for k in ("prompt_tokens", "completion_tokens",
+                               "total_tokens") if k not in u]
+        if missing:
+            # **鍵在不代表值能用**:`normalize_usage` 對非 int 靜默丟棄,
+            # 於是成本與 token 遙測會低估而不報錯。
+            out.append(f"usage 取不到 {missing} —— 鍵在不代表值是整數:"
+                       + str({k: type(raw_usage.get(k)).__name__
+                              for k in ("input_tokens", "output_tokens",
+                                        "total_tokens")}))
+        if "completion_tokens_details" not in u:
+            out.append("usage 取不到 reasoning_tokens —— "
+                       "推理計價會少算(`output_tokens_details` 的形狀變了)")
+        # **快取那一格也被消費**(外審第二輪):`normalize_usage` 直接讀
+        # `input_tokens_details.cached_tokens`,型別變了會靜默丟棄,
+        # 而成本與快取遙測跟著失真。**不要求它存在**(沒打中快取的日子
+        # 本來就可能沒有這一格)—— 只在「欄位在、卻取不出來」時報。
+        idet = raw_usage.get("input_tokens_details")
+        if idet is not None and not isinstance(idet, dict):
+            out.append(f"input_tokens_details 不是物件:{type(idet).__name__}")
+        elif (isinstance(idet, dict) and "cached_tokens" in idet
+                and "prompt_tokens_details" not in u):
+            out.append("usage 有 cached_tokens 卻取不出來 —— "
+                       f"型別是 {type(idet.get('cached_tokens')).__name__},"
+                       "快取成本會失真")
+    return out
+
+
 def extract_output(response: Optional[dict]) -> dict:
     """取出**最終答案**、拒答、狀態與未完成原因。
 

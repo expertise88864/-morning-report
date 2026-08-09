@@ -897,3 +897,62 @@ def test_the_deadline_exit_records_the_same_two_things():
     assert gave[0]["status"] == 429, gave      # 不是字串 "deadline"
     assert gave[0]["attempt"] == 1, gave       # 只送出去過一次
 
+
+# ===== 2026-08-09 P2:記了卻沒有人讀的那一格 =====
+
+def _identity_manifest(**eid) -> dict:
+    return {"report_kind": rq.MORNING_REPORT,
+            "llm": {"analysis_origin": "luna_specialized",
+                    "payload_budget": {}, "primary_metrics": {},
+                    "recap_saved": "saved", "request_measurements": []},
+            "event_identity": dict({"schema": 7}, **eid)}
+
+
+def test_state_holding_two_identity_generations_is_reported():
+    """**`legacy_remaining` 一直記著,而沒有任何東西讀它。**
+
+    遷移只成功一半時,舊代記錄會留在 state 裡直到過期,而它們沒有
+    `incident_tokens` —— 同鍵下的新事件比對「兩邊都不知道」會被當成
+    同一樁,於是併進一條可能是別件事的 lineage 並繼承它的天數。
+    升版當天出現正常,**隔天還在就是遷移沒接上** —— 而看不見的話,
+    沒有人會發現「隔天還在」。
+    """
+    got = rq.assess(_identity_manifest(legacy_remaining=3))
+    assert [p["code"] for p in got] == ["identity_generations_mixed"], got
+    assert got[0]["severity"] == "degraded"
+    assert "3" in got[0]["detail"]
+
+
+def test_a_fully_migrated_state_says_nothing():
+    """**修正不得把每一天都標成有問題**:零就是零。"""
+    assert rq.assess(_identity_manifest(legacy_remaining=0)) == []
+    assert rq.assess(_identity_manifest()) == []      # 拿不到就不猜
+
+
+def test_the_producer_writes_that_field():
+    """**生產端要記,下游才驗得動。** 走生產路徑寫一次 timeline,
+    確認那一格真的在 manifest 裡(而不是只有這個判準在讀一個
+    永遠不會出現的欄位)。"""
+    import datetime as dt
+    import json
+    import tempfile
+    from pathlib import Path
+    import morning_report as mr
+    f = Path(tempfile.mkdtemp()) / "tl.json"
+    f.write_text(json.dumps({"geopolitical:伊朗:2026-08": {
+        "first_seen": "2026-08-01", "days": 6, "last_seen": "2026-08-09",
+        "latest_title": "伊朗國內爆發示威", "entity": "伊朗",
+        "subjects": ["伊朗"], "event_type": "geopolitical",
+        "identity_schema": 1}}, ensure_ascii=False), encoding="utf-8")
+    old = mr.EVENT_TIMELINE_FILE
+    try:
+        mr.EVENT_TIMELINE_FILE = f
+        mr.update_event_timeline(
+            [{"event_type": "geopolitical", "entity": "日本",
+              "title": "日本首相宣布改組內閣"}],
+            dt.datetime(2026, 8, 9, 7, 0, tzinfo=mr.TPE))
+    finally:
+        mr.EVENT_TIMELINE_FILE = old
+    assert "legacy_remaining" in mr._RUN_MANIFEST["event_identity"]
+    assert mr._RUN_MANIFEST["event_identity"]["legacy_remaining"] >= 1
+

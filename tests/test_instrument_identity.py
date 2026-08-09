@@ -52,7 +52,11 @@ def test_tw_code_must_exist_in_todays_universe():
     assert ir.resolve("2330", _packet())[1] == ir.EQUITY
     assert ir.resolve("9999", _packet()) == (None, None)
     # 拿不到 universe 時**不判定**(降級不誤擋)
-    assert ir.resolve("9999", {})[0] == "TW:EQUITY:9999"
+    # **相容出口預設 fail-closed**(第二十八輪外審 P2-2):上一版直接丟掉
+    # status,於是沒有 universe 的日子 `9999` 也回得出 canonical id ——
+    # 任何殘留的呼叫端只要走這個出口,修掉的 bypass 就重新打開。
+    assert ir.resolve("9999", {}) == (None, None)
+    assert ir.resolve("9999", {}, allow_unverified=True)[0] == "TW:EQUITY:9999"
 
 
 # ── 相關性:只有指數豁免 ──
@@ -147,10 +151,16 @@ def test_a_period_abbreviation_in_the_headline_is_not_a_company():
             "summary": "毛利同步改善", "entities": []}
     assert av._asset_unknown_to_evidence("TTM", head, _packet())
     assert av.period_word_not_an_entity("TTM", head)
-    # 同一個字被點名成實體時就是公司 —— 規則不是黑名單
+    # 同一個字被點名成實體時,**期間那條規則**放行 ——
+    # 但它仍然不是宣告過的標的,所以整體判準照樣擋(第二十八輪 P1-2:
+    # 未知的大寫字串是「未知實體」,不是「可能是標的」)。
     named = dict(head, entities=["TTM"])
     assert not av.period_word_not_an_entity("TTM", named)
-    assert not av._asset_unknown_to_evidence("TTM", named, _packet())
+    assert av._asset_unknown_to_evidence("TTM", named, _packet()),         "沒有被宣告過的縮寫仍然不該進逐標的方向卡"
+    # 交易所限定寫法才是自由文字裡的權威
+    quoted = dict(head, title="TTM Technologies (NASDAQ: TTM) beats",
+                  entities=["TTM Technologies"])
+    assert not av._asset_unknown_to_evidence("TTM", quoted, _packet())
     # 而真代號不受這條規則影響
     for aid in ("NVDA", "AMD", "TSM", "2330"):
         assert not av.period_word_not_an_entity(aid, head), aid
@@ -287,4 +297,102 @@ def test_the_jurisdiction_list_is_declared_not_guessed():
     import event_actions as ea
     assert ea.is_jurisdiction("US") and ea.is_jurisdiction("英國")
     assert not ea.is_jurisdiction("GM") and not ea.is_jurisdiction("BP")
+
+
+# ===== 第二十八輪外審 P1-2:開放字彙 =====
+
+def _named(aid: str) -> dict:
+    return {"source_item_id": "n1", "summary": "",
+            "title": f"{aid} discusses regional trade restrictions",
+            "entities": [aid]}
+
+
+def test_an_international_body_cannot_become_an_asset():
+    """**`ASEAN` 符合 `[A-Z]{2,6}`、不在任何黑名單、就在標題與 entities 裡**
+    —— 於是它被渲染成逐標的方向卡。黑名單追不完開放字彙。"""
+    for aid in ("ASEAN", "BRICS", "OPEC", "G7", "G20"):
+        assert av._asset_unknown_to_evidence(aid, _named(aid), _packet()), aid
+
+
+def test_an_arbitrary_uppercase_token_is_not_an_instrument():
+    """**未知的大寫字串是「未知實體」,不是「可能是標的」。**"""
+    for aid in ("XYZAB", "ZZZ", "QWERTY", "FOO"):
+        assert av._asset_unknown_to_evidence(aid, _named(aid), _packet()), aid
+
+
+def test_declared_instruments_still_pass():
+    """**誤殺比漏放危險**:宣告過的標的不得被這條規則掃掉。
+
+    宣告有兩個來源 —— `instrument_registry._KNOWN` 與 `entity_alias`
+    的別名組(「輝達/NVIDIA/NVDA」本來就是同一個主體的不同寫法)。
+    """
+    import instrument_registry as ir
+    for aid in ("NVDA", "AMD", "TSM", "QQQ", "SPY", "AAPL", "MSFT",
+                "AVGO", "ASML", "SOX", "TAIEX"):
+        assert ir.is_declared(aid), aid
+        assert not av._asset_unknown_to_evidence(aid, _named(aid), _packet()), aid
+
+
+def test_an_exchange_qualified_symbol_is_authoritative_even_if_undeclared():
+    """沒被宣告過、但新聞用交易所限定寫法點名 —— 那是自由文字裡的權威。"""
+    it = {"source_item_id": "n2", "summary": "",
+          "title": "Foo Industries (NASDAQ: FOOO) raises guidance",
+          "entities": ["Foo Industries"]}
+    assert not av._asset_unknown_to_evidence("FOOO", it, _packet())
+
+
+def test_the_declaration_is_the_gate_not_the_evidence():
+    """**「出現在證據裡」不再足夠** —— 那正是開放字彙的破口:
+    事件主體(國家、組織)必然出現在自己的新聞裡。"""
+    import instrument_registry as ir
+    assert not ir.is_declared("ASEAN")
+    it = _named("ASEAN")
+    assert "ASEAN" in it["title"] and "ASEAN" in it["entities"]
+    assert av._asset_unknown_to_evidence("ASEAN", it, _packet())
+
+
+def test_a_subject_alias_group_is_not_an_instrument_declaration():
+    """**別名表是「主體」的身分表,不是標的表**(外審第二輪)。
+
+    它含「聯準會 / Fed / FOMC / 美聯儲」—— 那是一個機構。
+    把整張表當成標的宣告的話,`asset_id: "Fed"` 會被渲染成方向卡
+    (`FOMC` 剛好被縮寫黑名單擋下,`Fed` 沒有 —— 所以反例要用 `Fed`)。
+    """
+    import instrument_registry as ir
+    for aid in ("Fed", "FOMC", "聯準會", "美聯儲"):
+        assert not ir.is_declared(aid), aid
+    it = {"source_item_id": "n1", "summary": "",
+          "title": "Fed holds rates steady", "entities": ["Fed"]}
+    assert av._asset_unknown_to_evidence("Fed", it, _packet())
+    # 而**組裡有一個真代號**的那些仍然算宣告過
+    for aid in ("台積電", "TSMC", "2330", "輝達", "NVDA"):
+        assert ir.is_declared(aid), aid
+
+
+def test_every_alias_group_has_taken_a_side():
+    """**每一組別名都要表態:它是標的,還是主體?**(外審第二輪)
+
+    只靠「組裡有沒有一個代號」推導的話,`SK海力士`、`三星電子` 這種
+    真的上市、但別名組裡沒有代號的公司會被一律拒絕 ——
+    而那會把合法的半導體分析送進修補。
+    這條守衛讓「新增一組別名卻沒想過它是哪一種」當場紅,
+    而不是等某天在生產裡變成一張假的方向卡(或一次誤殺)。
+    """
+    import entity_alias as ea
+    import instrument_registry as ir
+    undecided = [g[0] for g in ea.ALIAS_GROUPS
+                 if not ir.is_declared(g[0])
+                 and g[0] not in ir.NON_INSTRUMENT_ALIAS_GROUPS]
+    assert not undecided, f"這些別名組沒有表態:{undecided}"
+    # 兩邊都要有東西,否則這條守衛可能是靠空集合過關的
+    assert ir.NON_INSTRUMENT_ALIAS_GROUPS
+    assert any(ir.is_declared(g[0]) for g in ea.ALIAS_GROUPS)
+
+
+def test_listed_companies_without_a_ticker_in_their_group_are_declared():
+    """`SK海力士` / `三星電子` 的別名組裡沒有代號,但它們是真的上市公司。"""
+    import instrument_registry as ir
+    for aid in ("SK海力士", "SK Hynix", "海力士",
+                "三星電子", "Samsung Electronics", "三星"):
+        assert ir.is_declared(aid), aid
 

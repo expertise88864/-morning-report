@@ -236,6 +236,16 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
         # (`TTM`/`MTD` 那組仍然認 entities,判準見那個函式。)
         if period_word_not_an_entity(a, news_item):
             return True
+        # **未知的大寫字串是「未知實體」,不是「可能是標的」**
+        # (第二十八輪外審 P1-2)。上一版的判準是「長得像 2–6 位大寫字母
+        # 且出現在證據裡」,再靠黑名單排除 —— 而黑名單追不完開放字彙:
+        # `ASEAN`、`BRICS` 是國際組織,`XYZAB` 誰也不是,三者都通過。
+        # 改成**正面條件**:要嘛被宣告過(`instrument_registry.is_declared`
+        # —— `_KNOWN` 或 `entity_alias` 的別名組),要嘛這則新聞用交易所
+        # 限定寫法點名了它(`NASDAQ: EU`)。
+        import instrument_registry as _ir2
+        if not (_ir2.is_declared(a) or _ticker_notation(a, news_item)):
+            return True
         if any(low == str(e).lower() for e in ents):
             return False
         # **token 邊界,不是裸子字串**(第二十二輪 P1-6):

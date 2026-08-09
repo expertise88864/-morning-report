@@ -28,6 +28,8 @@
 """
 from __future__ import annotations
 
+import re as _re
+
 #: 標的的三種範疇。**豁免事件相關性檢查的只有 `index`**,理由見模組說明。
 EQUITY, ETF, INDEX = "equity", "etf", "index"
 
@@ -45,6 +47,33 @@ _KNOWN = {
     "QQQ": ("US:ETF:QQQ", ETF),
     "SPY": ("US:ETF:SPY", ETF),
     "TSM": ("US:EQUITY:TSM", EQUITY),
+    # **非台股的個股要被宣告**(第二十八輪外審 P1-2)。
+    # 上一版的判準是「長得像 2–6 位大寫字母」+ 有限的黑名單 ——
+    # 於是 `ASEAN`、`BRICS` 這種國際組織只要出現在標題裡就能當標的。
+    # 黑名單追不完開放字彙;**清單是宣告**,而宣告要在這裡。
+    # 收的是這份報告真的會談到的:半導體鏈與大型科技股。
+    **{t: (f"US:EQUITY:{t}", EQUITY) for t in (
+        "NVDA", "AMD", "INTC", "MU", "AVGO", "QCOM", "TXN", "ADI", "MRVL",
+        "AMAT", "LRCX", "KLAC", "ASML", "ARM", "SMCI", "DELL", "HPE",
+        "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NFLX",
+        "ORCL", "CRM", "NOW", "PLTR", "SNOW", "NET", "COIN", "MSTR",
+        "WDC", "STX", "SNDK", "GFS", "UMC", "ASX", "HIMX", "CHT",
+        # 與期間縮寫撞名、而且真的是標的的那些(見 `analysis_validate`
+        # 的 `_AMBIGUOUS_ABBREV`):宣告在這裡,判準才有東西可依。
+        "MTD",
+    )},
+    # 非美股的已上市公司:別名組裡沒有代號,要在這裡宣告
+    # (外審第二輪:`SK海力士`、`三星電子` 是真的上市公司,
+    #  一律拒絕會把合法的半導體分析送進修補)。
+    **{t: ("KR:EQUITY:000660", EQUITY) for t in (
+        "SK海力士", "SK Hynix", "SK hynix", "海力士",
+    )},
+    **{t: ("KR:EQUITY:005930", EQUITY) for t in (
+        "三星電子", "Samsung Electronics", "三星",
+    )},
+    **{t: (f"US:ETF:{t}", ETF) for t in ("SMH", "SOXX", "VOO", "IVV",
+                                         "DIA", "IWM", "TLT", "GLD")},
+    **{t: (f"US:INDEX:{t}", INDEX) for t in ("SPX", "NDX", "DJIA", "VIX")},
 }
 
 
@@ -57,6 +86,48 @@ _KNOWN = {
 VERIFIED = "verified"       # 查得到:確定是可交易標的
 UNVERIFIED = "unverified"   # 查不到 universe:形狀像,但今天驗不了
 INVALID = "invalid"         # 確定不是標的(概念詞、職稱、縮寫…)
+
+
+#: 台股代號的形狀(這裡只用來認「別名組裡有沒有一個代號」)。
+_TW_CODE_SHAPE = _re.compile(r"[0-9]{4,6}[A-Z]?")
+
+
+#: **明確不是標的**的別名組(它們是主體:機構、政策制定者)。
+#: 這個集合的存在是為了讓下面那條守衛問得出「每一組都表態了嗎」——
+#: 新增一組別名時,要嘛它含一個宣告過的標的,要嘛它出現在這裡。
+NON_INSTRUMENT_ALIAS_GROUPS = frozenset({"聯準會"})
+
+
+def is_declared(aid) -> bool:
+    """這個字是**宣告過的**標的嗎(台股代號另有 universe 驗證)。
+
+    第二十八輪外審 P1-2:`_ASSET_LIKE` 讓任何 2–6 位大寫字母先被當成
+    「長得像標的」,再靠有限的黑名單排除 —— 而黑名單追不完開放字彙:
+    `ASEAN`、`BRICS` 是國際組織,`XYZAB` 誰也不是。
+    **未知的大寫字串應該是「未知實體」,不是「可能是標的」。**
+
+    宣告有兩個來源,都在這個 repo 裡寫得出來:
+      * `_KNOWN`(這個表);
+      * `entity_alias` 的別名組裡出現過的寫法(「輝達/NVIDIA/NVDA」)——
+        那張表本來就是「同一個主體的不同寫法」的宣告。
+    """
+    a = str(aid or "").strip()
+    if not a:
+        return False
+    if a in _KNOWN or a.upper() in _KNOWN:
+        return True
+    # **別名表是「主體」的身分表,不是標的表**(外審第二輪):
+    # 它含「聯準會 / Fed / FOMC / 美聯儲」—— 那是一個機構,不是可交易標的。
+    # 所以只認**那一組裡有一個成員本身就是宣告過的標的**(在 `_KNOWN`
+    # 裡,或是台股代號)的組。「台積電」算(組裡有 2330)、
+    # 「輝達」算(組裡有 NVDA)、「聯準會」不算。
+    import entity_alias as _ea
+    gi = _ea.group_of(a)
+    if gi < 0:
+        return False
+    return any(str(m) in _KNOWN or str(m).upper() in _KNOWN
+               or _TW_CODE_SHAPE.fullmatch(str(m))
+               for m in _ea.ALIAS_GROUPS[gi])
 
 
 def resolve_status(aid, packet=None) -> tuple:
@@ -84,13 +155,18 @@ def resolve_status(aid, packet=None) -> tuple:
     return None, None, INVALID
 
 
-def resolve(aid, packet=None):
+def resolve(aid, packet=None, *, allow_unverified: bool = False):
     """`(canonical_id, scope)` —— 舊呼叫端的相容出口。
 
-    **`unverified` 在這裡看起來與 `verified` 一樣** —— 那正是三態要解決
-    的問題,所以新的判準一律走 `resolve_status()`。
+    **預設 fail-closed**(第二十八輪外審 P2-2):上一版直接丟掉 status,
+    於是 `resolve("9999", {})` 在沒有 universe 的日子回
+    `("TW:EQUITY:9999", "equity")` —— 任何殘留或未來的呼叫端只要走這個
+    出口,上一輪修掉的 bypass 就會重新打開。
+    要「沒驗也接受」請明講 `allow_unverified=True`。
     """
-    cid, scope, _ = resolve_status(aid, packet)
+    cid, scope, status = resolve_status(aid, packet)
+    if status != VERIFIED and not allow_unverified:
+        return None, None
     return cid, scope
 
 

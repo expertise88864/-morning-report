@@ -42,6 +42,10 @@ def main(argv=None) -> int:
                     help="要檢查的 manifest(預設 state/run_manifest.json)")
     ap.add_argument("--mode", default="strict", choices=("strict", "watchdog"))
     ap.add_argument("--expected-sha", default=os.environ.get("GITHUB_SHA", ""))
+    # **nonce 要比對才是綁定**(第二十七輪外審 P2-5):workflow 產生一次、
+    # 同時交給生產(`RUN_NONCE` env)與這裡,才證明得了「這份 manifest 是
+    # 那一次 process invocation 寫的」。沒給就退回原本的「只驗非空」。
+    ap.add_argument("--expected-nonce", default=os.environ.get("RUN_NONCE", ""))
     ap.add_argument("--expected-run-id",
                     default=os.environ.get("GITHUB_RUN_ID", ""))
     args = ap.parse_args(argv)
@@ -58,7 +62,8 @@ def main(argv=None) -> int:
         return 1
     findings = rq.assess(m, mode=args.mode,
                          expected_sha=args.expected_sha,
-                         expected_run_id=args.expected_run_id)
+                         expected_run_id=args.expected_run_id,
+                         expected_nonce=args.expected_nonce)
     if not findings:
         print("[canary] 特化路徑走完了,判準全過")
         return 0

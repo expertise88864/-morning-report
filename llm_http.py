@@ -108,6 +108,15 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
             time.sleep(wait)
             continue
         if r.status_code not in _LLM_RETRY_STATUS:
+            # **成功之前送了幾次也要記**(第二十七輪外審 P2-2):
+            # 上一版只在最終放棄時寫 `retry_gave_up` —— 而「第 3 次才成功」
+            # 與「第 1 次就成功」在帳本裡長得一樣,call volume、
+            # 每次請求的延遲、以及「這一天服務有多不穩」全部看不出來。
+            # 邏輯呼叫數(`llm.<role>`)與**實體請求數**是兩件事。
+            if sent > 1:
+                _note("physical_attempts",
+                      {"status": r.status_code, "attempts": sent,
+                       "retried_on": last_trigger})
             return r
         if attempt >= _LLM_RETRIES:
             _gave_up(r.status_code, "重試次數用完")

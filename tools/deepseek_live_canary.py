@@ -51,26 +51,102 @@ def _payload(model: str) -> dict:
     )
 
 
+#: **契約多久沒被驗證過就當成缺陷**(天)。
+#:
+#: 第二十七輪外審 P2-3:RC=2 只印 warning 然後綠燈 —— secret 被刪掉之後
+#: 可以每週綠燈、永遠沒有真正監測 provider contract。
+#: 第一版數「連續幾次」,而那個數字被同日 rerun 灌高、被漏跑的班次打斷
+#: (外審第二、三輪各抓到一次)。**「連續幾次」本來就不是要量的東西** ——
+#: 要量的是「距離上一次真的驗證過,過了多久」。那個問題有一個明確的答案,
+#: 而且 rerun 與漏班都不會動到它。
+CADENCE_DAYS = 7               # 這支程式一週跑一次
+STALE_AFTER_DAYS = CADENCE_DAYS * 3     # 三班沒驗證過就升級
+
+
+def _days_between(a: str, b: str):
+    """`b - a` 的天數(任一邊解析不了回 `None`)。"""
+    import datetime as _dt
+    try:
+        return (_dt.date.fromisoformat(str(b))
+                - _dt.date.fromisoformat(str(a))).days
+    except (TypeError, ValueError):
+        return None
+
+
+def _record(path, ok: bool, stamp: str) -> dict:
+    """更新並回傳狀態(`last_success` / `first_unavailable`)。
+
+    純檔案操作,失敗不影響判定 —— 這支程式的主業是回報契約。
+    """
+    import json as _json
+    cur = {}
+    if path:
+        try:
+            cur = _json.loads(open(path, encoding="utf-8").read())
+        except Exception:                               # noqa: BLE001
+            cur = {}
+    if ok:
+        out = {"last_success": stamp, "first_unavailable": ""}
+    else:
+        out = {"last_success": cur.get("last_success", ""),
+               "first_unavailable": (cur.get("first_unavailable")
+                                     or stamp or "")}
+    if path:
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                _json.dump(out, f, ensure_ascii=False)
+        except Exception as e:                          # noqa: BLE001
+            print(f"[canary] 狀態寫不進去({e})—— 不影響本次判定",
+                  file=sys.stderr)
+    return out
+
+
+def _unavailable(state, stamp, why: str) -> int:
+    """跑不起來:記一次,**距離上次驗證過太久**就升級成失敗。"""
+    st = _record(state, False, stamp)
+    # **從「上次驗證過」起算**。從來沒成功過的話,`first_unavailable`
+    # 是這個窗口的**起點**而不是起點前一班 —— 直接拿它當基準會少算一班
+    # (三次每週失敗只走到第 14 天,要到第四次才升級;外審第四輪)。
+    # 往前推一個排程間隔,語意就與「上次驗證過」對齊。
+    since, age = st.get("last_success") or "", None
+    if since and stamp:
+        age = _days_between(since, stamp)
+    elif st.get("first_unavailable") and stamp:
+        gap = _days_between(st["first_unavailable"], stamp)
+        age = None if gap is None else gap + CADENCE_DAYS
+    if age is not None and age >= STALE_AFTER_DAYS:
+        print(f"[canary] 契約已經 {age} 天沒有被驗證過({why})—— "
+              "這已經不是暫時性的:金鑰可能被刪或撤銷,而 provider 換契約"
+              "我們不會知道", file=sys.stderr)
+        return 1
+    print(f"[canary] 跑不起來({why});距上次驗證 "
+          f"{'未知' if age is None else age} 天,到 {STALE_AFTER_DAYS} 天才升級",
+          file=sys.stderr)
+    return 2
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="DeepSeek 線上契約金絲雀")
     ap.add_argument("--model", default=_DEFAULT_MODEL)
     ap.add_argument("--timeout", type=float, default=120.0)
+    ap.add_argument("--state", default="",
+                    help="連續次數的狀態檔(workflow 用 cache 帶著走)")
+    ap.add_argument("--now", default="",
+                    help="今天的日期(由呼叫端給,程式本身不讀時鐘)")
     args = ap.parse_args(argv)
 
     key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if not key:
-        print("[canary] 沒有 DEEPSEEK_API_KEY —— **這不是契約變了**,"
-              "是這支程式跑不起來", file=sys.stderr)
-        return 2
+        return _unavailable(args.state, args.now, "沒有 DEEPSEEK_API_KEY")
     try:
         import requests
         r = requests.post(_URL, json=_payload(args.model), timeout=args.timeout,
                           headers={"Authorization": f"Bearer {key}",
                                    "Content-Type": "application/json"})
     except Exception as e:                              # noqa: BLE001
-        print(f"[canary] 送不出去({type(e).__name__}:{e})—— 跑不起來,"
-              "不是契約變了", file=sys.stderr)
-        return 2
+        return _unavailable(args.state, args.now,
+                            f"送不出去:{type(e).__name__}")
     if r.status_code != 200:
         # 429/5xx 是服務狀況,不是契約 —— 分開回報,否則暫時性的忙碌
         # 會被讀成「DeepSeek 改了 API」而讓人去改 adapter。
@@ -80,8 +156,9 @@ def main(argv=None) -> int:
         # **認證失敗也是「跑不起來」**(外審):金鑰過期/被撤銷/權限不足
         # 時,請求根本沒有執行過 —— 宣稱「契約變了」會讓人去改 adapter,
         # 而該做的是換金鑰。
-        return 2 if r.status_code in (401, 403, 408, 425, 429,
-                                      500, 502, 503, 504) else 1
+        if r.status_code in (401, 403, 408, 425, 429, 500, 502, 503, 504):
+            return _unavailable(args.state, args.now, f"HTTP {r.status_code}")
+        return 1
     try:
         resp = r.json()
     except Exception:                                   # noqa: BLE001
@@ -104,6 +181,7 @@ def main(argv=None) -> int:
                            ensure_ascii=False), file=sys.stderr)
         return 1
     got = ds.extract_output(resp)
+    _record(args.state, True, args.now)
     print(f"[canary] 形狀符合;取到答案 {len(got.get('text') or '')} 字元、"
           f"applied_effort={ds.applied_effort(resp)!r}")
     return 0

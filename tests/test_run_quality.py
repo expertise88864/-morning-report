@@ -932,7 +932,10 @@ def test_state_holding_two_identity_generations_is_reported():
     升版當天出現正常,**隔天還在就是遷移沒接上** —— 而看不見的話,
     沒有人會發現「隔天還在」。
     """
-    got = rq.assess(_identity_manifest(legacy_remaining=3))
+    # **要有上一班的數字才判得動**(第二十七輪外審 P2-4):訊息說的是
+    # 「隔天還在才是問題」,只看單次 snapshot 會讓升版當天必然報一次。
+    got = rq.assess(_identity_manifest(legacy_remaining=3,
+                                       previous_legacy_remaining=3))
     assert [p["code"] for p in got] == ["identity_generations_mixed"], got
     assert got[0]["severity"] == "degraded"
     assert "3" in got[0]["detail"]
@@ -1110,3 +1113,176 @@ def test_the_weekend_digest_is_not_asked_for_a_fetch_plan():
     m.pop("news")
     assert "canary_no_fetch_plan" not in _strict(m), _strict(m)
 
+
+# ===== 第二十七輪外審 Commit 4:可觀測性 =====
+
+def test_a_foreign_central_bank_gets_no_taiwan_locality():
+    """**裸「央行」讓外國央行拿到台灣在地性加分**(外審 P2-1)。
+
+    實測(修正前):「日本央行升息」與「歐洲央行維持利率」都是 0.4,
+    而 locality 是 top-event 排序的一軸 —— 那個分數會把與台灣只有間接
+    關係的外國央行事件擠進前三。台灣自己的央行寫得出來。
+    """
+    import event_score as es
+    # **全名也要擋**(外審第二輪 F1):「歐洲**中央**銀行」不在
+    # `event_graph` 的央行名單裡,而它含「中央銀行」—— 名單永遠列不完,
+    # 所以判準走宣告過的**法域表**組出來的規則。
+    for t in ("日本央行升息 日圓走弱", "歐洲央行維持利率不變",
+              "中國央行降準", "歐洲中央銀行維持利率不變",
+              "日本中央銀行升息", "英國中央銀行降息"):
+        assert es._locality(t) == 0.0, t
+    for t in ("央行理監事會議 新台幣", "中央銀行宣布選擇性信用管制",
+              "台積電法說 台股走高"):
+        assert es._locality(t) > 0.0, t
+
+
+def test_success_after_retries_records_the_physical_attempts():
+    """**「第 3 次才成功」與「第 1 次就成功」在帳本裡長得一樣**
+    (外審 P2-2)。邏輯呼叫數與實體請求數是兩件事。"""
+    import llm_http as lh
+
+    class _R:
+        def __init__(self, code):
+            self.status_code, self.headers = code, {}
+
+    man: dict = {}
+    seq = {"n": 0}
+
+    def _post(*a, **k):
+        seq["n"] += 1
+        return _R(503 if seq["n"] < 3 else 200)
+
+    orig_post, orig_sleep = lh.requests.post, lh.time.sleep
+    try:
+        lh.requests.post = _post
+        lh.time.sleep = lambda *_: None
+        lh.post_with_backoff("http://x", {}, {}, timeout=1, manifest=man)
+    finally:
+        lh.requests.post, lh.time.sleep = orig_post, orig_sleep
+    phys = man["llm"]["physical_attempts"]
+    assert phys and phys[-1]["attempts"] == 3, man["llm"]
+    assert phys[-1]["retried_on"] == 503, phys
+
+
+def test_a_first_try_success_records_no_physical_attempts():
+    """**修正不得把每一次都記一筆**:一次就成功的請求不留這筆。"""
+    import llm_http as lh
+
+    class _R:
+        status_code, headers = 200, {}
+
+    man: dict = {}
+    orig = lh.requests.post
+    try:
+        lh.requests.post = lambda *a, **k: _R()
+        lh.post_with_backoff("http://x", {}, {}, timeout=1, manifest=man)
+    finally:
+        lh.requests.post = orig
+    assert "physical_attempts" not in man.get("llm", {}), man
+
+
+def _identity_delta(now, prev=None) -> dict:
+    eid = {"schema": 8, "legacy_remaining": now}
+    if prev is not None:
+        eid["previous_legacy_remaining"] = prev
+    return _ok_manifest(report_kind=rq.MORNING_REPORT, event_identity=eid)
+
+
+def test_the_first_day_of_a_migration_is_not_a_finding():
+    """**判準要與寫出來的話一致**(外審 P2-4):訊息說「升版當天正常,
+    隔天還在才是問題」,而上一版只看單次 snapshot —— 新公式第一次上線
+    那天必然報一次 degraded,即使那正是程式自己認定的正常狀態。"""
+    assert rq.assess(_identity_delta(14)) == []
+    assert rq.assess(_identity_delta(14, 23)) == []      # 正在下降
+
+
+def test_a_migration_that_stops_moving_is_reported():
+    """沒有下降 → degraded;**往回長** → defect(那不只是沒接上)。"""
+    got = rq.assess(_identity_delta(14, 14))
+    assert [(p["code"], p["severity"]) for p in got] == [
+        ("identity_generations_mixed", "degraded")], got
+    got = rq.assess(_identity_delta(20, 14))
+    assert [(p["code"], p["severity"]) for p in got] == [
+        ("identity_generations_mixed", "defect")], got
+
+
+def test_the_nonce_is_compared_not_just_present():
+    """**只驗非空的話它只是一個存在性欄位**(外審 P2-5)——
+    證明不了「這是那一次 process invocation」。"""
+    m = _specialized(run_nonce="from-last-run")
+    got = {f["code"] for f in rq.assess(m, mode="strict",
+                                        expected_sha="abc123",
+                                        expected_run_id="42",
+                                        expected_nonce="this-invocation")}
+    assert "run_binding_mismatch" in got, got
+    assert rq.assess(_specialized(run_nonce="this-invocation"), mode="strict",
+                     expected_sha="abc123", expected_run_id="42",
+                     expected_nonce="this-invocation") == []
+
+
+def test_the_producer_uses_an_externally_supplied_nonce(monkeypatch):
+    """workflow 產生一次、同時交給生產與斷言,比對才有意義。"""
+    import run_manifest as rmod
+    monkeypatch.setenv("RUN_NONCE", "wf-supplied-123")
+    assert rmod.run_binding()["run_nonce"] == "wf-supplied-123"
+    monkeypatch.delenv("RUN_NONCE")
+    assert rmod.run_binding()["run_nonce"]          # 沒給就退回隨機值
+
+
+def _canary_runs(tmp_path, days):
+    """同一個狀態檔跑過這幾天,回每次的退出碼。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import deepseek_live_canary as canary
+    import os as _os
+    st = str(tmp_path / "streak.json")
+    old = _os.environ.pop("DEEPSEEK_API_KEY", None)
+    try:
+        return [canary.main(["--state", st, "--now", d]) for d in days]
+    finally:
+        if old is not None:
+            _os.environ["DEEPSEEK_API_KEY"] = old
+
+
+def test_the_canary_escalates_once_the_contract_goes_unverified_too_long(
+        tmp_path):
+    """**secret 被刪掉之後可以每週綠燈**(外審 P2-3):RC=2 只印 warning。
+
+    第一版數「連續幾次」—— 而那個數字被同日 rerun 灌高、被漏跑的班次打斷
+    (外審第二、三輪各抓到一次)。**「連續幾次」本來就不是要量的東西**:
+    要量的是「距離上一次真的驗證過,過了多久」。
+    """
+    # **第三班就要升級**(外審第四輪):從來沒成功過時,第一次失敗是
+    # 這個窗口的起點而不是起點前一班 —— 直接拿它當基準會少算一班。
+    codes = _canary_runs(tmp_path, ["2026-08-01", "2026-08-08", "2026-08-15"])
+    assert codes == [2, 2, 1], codes
+
+
+def test_reruns_on_the_same_day_do_not_escalate(tmp_path):
+    """同日 rerun 不會讓它變老 —— 時間才是判準。"""
+    assert _canary_runs(tmp_path, ["2026-08-09"] * 4) == [2, 2, 2, 2]
+
+
+def test_a_missed_scheduled_run_does_not_reset_the_clock(tmp_path):
+    """**漏跑一班不是「驗證過」。**
+
+    數次數的版本會被漏班打斷(第三輪外審要求隔太久就重設)——
+    而漏班代表**沒有資料**,不代表契約好好的。改看時間之後,
+    漏一週反而讓它更快到門檻,那才是對的方向。
+    """
+    assert _canary_runs(tmp_path, ["2026-08-01", "2026-08-15"]) == [2, 1]
+
+
+def test_a_success_resets_the_clock(tmp_path, monkeypatch):
+    """驗證成功之後重新起算 —— 否則一次久遠的失敗會永遠掛在那裡。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import deepseek_live_canary as canary
+    st = str(tmp_path / "s.json")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    canary.main(["--state", st, "--now", "2026-08-01"])
+    canary._record(st, True, "2026-08-20")          # 中間有一次成功
+    assert canary.main(["--state", st, "--now", "2026-08-27"]) == 2
+    assert canary.main(["--state", st, "--now", "2026-09-11"]) == 1

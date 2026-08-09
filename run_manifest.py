@@ -67,6 +67,12 @@ def run_binding() -> dict:
     """
     import subprocess
     import uuid
+    # **nonce 由外面給才擋得住「同一次 run 的第二次執行」**
+    # (第二十七輪外審 P2-5):自己隨機產生的話,斷言端只驗得了「非空」,
+    # 而那只是一個存在性欄位 —— 證明不了「這是那一次 process invocation」。
+    # workflow 產生一次、同時交給生產與斷言,比對才有意義;
+    # 沒有給就退回隨機值(本機跑時仍然是誠實的)。
+    nonce_env = os.environ.get("RUN_NONCE") or ""
     sha = os.environ.get("GITHUB_SHA") or ""
     if not sha:
         try:
@@ -80,7 +86,7 @@ def run_binding() -> dict:
         "github_run_id": os.environ.get("GITHUB_RUN_ID") or "",
         # nonce 讓「同一個 SHA、同一個 run」的兩次執行也分得開
         # (手動 dispatch + 排程班撞在一起時)。
-        "run_nonce": uuid.uuid4().hex,
+        "run_nonce": nonce_env or uuid.uuid4().hex,
     }
 
 

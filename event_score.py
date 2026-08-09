@@ -49,8 +49,13 @@ WEIGHTS = {
 }
 
 #: 台灣相關的判準詞。**看的是市場,不是持股**(見模組說明的隱私段)。
+#: **裸「央行」不算在地**(第二十七輪外審 P2-1):「日本央行升息」、
+#: 「歐洲央行維持利率」實測都拿到 0.4 的 locality,而它們與台股只有間接
+#: 關係 —— 那個分數會把外國央行事件擠進前三。台灣自己的央行寫得出來:
+#: 「中央銀行」「央行理監事」「台灣央行」,或標題裡有新台幣。
 _TW_MARKERS = ("台股", "台灣", "臺灣", "加權", "台積", "TSMC", "櫃買",
-               "證交所", "央行", "行政院", "金管會", "新台幣", "台幣",
+               "證交所", "中央銀行", "央行理監事", "台灣央行", "我國央行",
+               "行政院", "金管會", "新台幣", "台幣",
                "經濟部", "主計總處", "TAIEX", "Taiwan", "taiwan")
 
 #: 影響面涵蓋整個市場的判準詞(對比「某一家公司的財報」)。
@@ -166,8 +171,34 @@ def _novelty(cluster: dict) -> float:
     return 1.0 if days <= 0 else max(0.35, 1.0 - 0.15 * days)
 
 
+#: 央行類的判準詞 —— **只有在這則不是外國央行新聞時才算台灣**。
+#: 「歐洲中央銀行」含「中央銀行」(外審第二輪 F1),子字串比對分不出來。
+#: 外國央行的名單走 `event_graph` 那一份宣告,不另寫一份。
+_CB_MARKERS = ("中央銀行", "央行理監事", "台灣央行", "我國央行")
+
+
+def _foreign_central_bank(body: str) -> bool:
+    """這段文字講的是**外國**央行嗎。
+
+    判準走**宣告過的法域表**(`event_actions`),不是再列一份央行名單:
+    「歐洲央行」在 `event_graph` 的名單裡,而「歐洲**中央**銀行」不在 ——
+    子字串比對分不出來,而名單永遠列不完(外審第二輪 F1)。
+    台灣自己的寫法(台灣/我國/中華民國)不算外國。
+    """
+    import re as _re
+    import event_actions as _ea
+    names = set(_ea.CANONICAL_SUBJECTS) | set(_ea.CANONICAL_SUBJECTS.values())
+    names |= set(_ea.EXTRA_JURISDICTIONS)
+    names -= {"台灣", "taiwan", "tw"}
+    alt = "|".join(sorted((_re.escape(str(n)) for n in names if str(n).strip()),
+                          key=len, reverse=True))
+    return bool(_re.search(rf"({alt})\s*(中央銀行|央行)", body, _re.IGNORECASE))
+
+
 def _locality(body: str) -> float:
-    hits = sum(1 for m in _TW_MARKERS if m in body)
+    foreign_cb = _foreign_central_bank(body)
+    hits = sum(1 for m in _TW_MARKERS
+               if m in body and not (foreign_cb and m in _CB_MARKERS))
     return min(1.0, 0.4 * min(hits, 3) + (0.0 if hits else 0.0))
 
 

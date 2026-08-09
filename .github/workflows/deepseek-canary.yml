@@ -31,13 +31,21 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -r requirements.lock
+      # **連續次數要活過 job**(外審 P2-3):沒有它的話,secret 被刪掉之後
+      # 每週 RC=2、每週綠燈,而契約從那時起就沒有被監測過。
+      - name: Restore the streak counter
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4
+        with:
+          path: .canary-state
+          key: deepseek-canary-state-${{ github.run_id }}
+          restore-keys: deepseek-canary-state-
       - name: Check the live contract
         id: canary
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
           set +e
-          python tools/deepseek_live_canary.py
+          python tools/deepseek_live_canary.py             --state .canary-state/streak.json --now "$(date -u +%F)"
           code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           # **「跑不起來」不該染紅這個 job**:沒有金鑰、服務忙碌、網路不通

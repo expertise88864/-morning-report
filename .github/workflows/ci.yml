@@ -94,10 +94,18 @@ jobs:
       - name: Remove the checked-in manifest so a stale one cannot pass
         run: rm -f state/run_manifest.json
 
+      # **同一個 nonce 交給生產與斷言**(外審 P2-5):自己隨機產生的話,
+      # 斷言只驗得了「非空」—— 那只是一個存在性欄位,證明不了這份
+      # manifest 是這一次 process invocation 寫的。
+      - name: Mint this invocation's nonce
+        id: nonce
+        run: echo "value=${{ github.run_id }}-${{ github.run_attempt }}-$RANDOM$RANDOM" >> "$GITHUB_OUTPUT"
+
       - name: Run morning report (DRY_RUN, no email)
         id: run
         env:
           DRY_RUN: "1"
+          RUN_NONCE: ${{ steps.nonce.outputs.value }}
           # 以下四項**與 morning-report.yml 逐字相同** —— canary 的價值
           # 全部來自「跑的是同一條路」(外審 P2-1)。
           LLM_EVENT_EXTRACTION: "1"
@@ -127,6 +135,7 @@ jobs:
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+          RUN_NONCE: ${{ steps.nonce.outputs.value }}
         # **strict**:這個 job 的名字是「證明特化輸出真的產生了」,
         # 所以退回 legacy 就是不通過(每日生產的 watchdog 用 watchdog 模式,
         # 額度用罄那幾天不該天天當成程式缺陷)。

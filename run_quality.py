@@ -200,7 +200,8 @@ def is_weekend_digest(manifest) -> bool:
 
 
 def assess(manifest, *, mode: str = "watchdog",
-           expected_sha: str = "", expected_run_id: str = "") -> list:
+           expected_sha: str = "", expected_run_id: str = "",
+           expected_nonce: str = "") -> list:
     """回 `[{code, severity, detail}]`(空 = 今天的信跑成了)。
 
     `severity`:`defect` = 程式或接線壞了;`degraded` = 讀者今天拿到的
@@ -337,12 +338,22 @@ def assess(manifest, *, mode: str = "watchdog",
     # 會被當成同一樁,於是併進一條可能是別件事的 lineage 並繼承它的天數。
     # 升版當天出現是正常的(隔天就該歸零);**連續出現才是問題**,
     # 而看不見的話沒有人會發現「連續」。
+    # **判準要與寫出來的話一致**(第二十七輪外審 P2-4):訊息說「升版當天
+    # 正常,隔天還在才是問題」,而上一版只看單次 snapshot —— 於是新公式
+    # 第一次上線那天必然報一次 degraded,即使那正是程式自己認定的正常狀態。
+    # 生產在寫 manifest 前把上一班的數字帶過來(`previous_legacy_remaining`)。
     _left = _safe_int(_dig(m, "event_identity", "legacy_remaining"))
-    if _left:
-        add("identity_generations_mixed", "degraded",
-            f"事件 timeline 裡還有 {_left} 條是舊版身分公式寫的 —— "
-            "它們沒有 incident_tokens,同鍵下的新事件會被當成同一樁而"
-            "繼承天數。升版當天正常,**隔天還在就是遷移沒接上**")
+    _prev = _dig(m, "event_identity", "previous_legacy_remaining")
+    if _left and isinstance(_prev, int):
+        if _left > _prev:
+            add("identity_generations_mixed", "defect",
+                f"舊版身分公式的記錄從 {_prev} 條**增加到** {_left} 條 —— "
+                "遷移不只是沒接上,是還在往回長")
+        elif _left >= _prev:
+            add("identity_generations_mixed", "degraded",
+                f"事件 timeline 裡還有 {_left} 條是舊版身分公式寫的,"
+                f"而上一班是 {_prev} 條 —— **沒有下降**。它們沒有 "
+                "incident_tokens,同鍵下的新事件會另開一條而不是接上去")
 
     # ---- 7. 字元閘門還擋得住嗎(代理的誤差要被量,不是被假設)
     import payload_budget as _pb
@@ -424,7 +435,12 @@ def assess(manifest, *, mode: str = "watchdog",
                 "沒有它就證明不了這份檔案是這一次跑出來的")
         for got, want, what in ((_dig(m, "git_sha"), expected_sha, "git_sha"),
                                 (_dig(m, "github_run_id"), expected_run_id,
-                                 "github_run_id")):
+                                 "github_run_id"),
+                                # **nonce 要比對才是綁定**(外審 P2-5):
+                                # 只驗非空的話它只是一個存在性欄位,
+                                # 證明不了「這是那一次 process invocation」。
+                                (_dig(m, "run_nonce"), expected_nonce,
+                                 "run_nonce")):
             if want and str(got or "") != str(want):
                 add("run_binding_mismatch", "defect",
                     f"{what} 對不上:manifest 是 {got or '(空)'}、"

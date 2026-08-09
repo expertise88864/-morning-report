@@ -628,6 +628,19 @@ def _write_run_manifest(now_tpe, *, report_kind: str) -> None:
         if isinstance(_RUN_MANIFEST.get("llm"), dict):
             _RUN_MANIFEST["llm"]["cost_summary"] = _lt.run_cost_summary(
                 _RUN_MANIFEST["llm"])
+        # **上一班的數字要帶過來**(第二十七輪外審 P2-4):判準說的是
+        # 「隔天還在才是問題」,而它手上只有今天這一份 —— 沒有昨天的
+        # 數字,那句話就只能靠一次 snapshot 猜。
+        _prev_left = None
+        try:
+            _prev_left = json.loads(
+                RUN_MANIFEST_FILE.read_text(encoding="utf-8")
+            ).get("event_identity", {}).get("legacy_remaining")
+        except Exception:                      # noqa: BLE001 - 讀不到就不猜
+            _prev_left = None
+        if isinstance(_prev_left, int) and isinstance(
+                _RUN_MANIFEST.get("event_identity"), dict):
+            _RUN_MANIFEST["event_identity"]["previous_legacy_remaining"] =                 _prev_left
         manifest = _RECORDER.build(
             date=now_tpe.strftime("%Y-%m-%d %H:%M"),
             report_kind=report_kind,

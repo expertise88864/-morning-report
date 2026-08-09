@@ -134,7 +134,37 @@ def extract(analysis_obj, packet) -> dict:
                  cluster_of.get(sid, ""), fallback_sid=sid)
     return {"date": str(pk.get("target_session_date") or ""),
             "eligible": eligible[0],
-            "items": items[:MAX_ITEMS]}
+            "items": items[:MAX_ITEMS],
+            "watch": _watch_of(obj)}
+
+
+#: 觀察點最多留幾條、每格幾字。上限跟 items 一樣是 payload 紀律 ——
+#: 回顧要逐條,存十條等於逼明天的分析寫十條回顧。
+WATCH_MAX = 5
+WATCH_CHARS = 120
+
+
+def _watch_of(obj) -> list:
+    """今天信裡的觀察點(`watch_triggers`),要留給明天回顧的形狀。
+
+    **預期→結果的閉環**(縱深第四批 D):觀察點先前寫進信裡就被遺忘
+    —— schema 有寫入端(watch_triggers),沒有任何東西隔天回頭問
+    「觸發了沒」。這裡是閉環的存檔面;隔天由 `usable_watch` 派代號、
+    packet 的 `yesterday_watch` 進 prompt、validator 驗逐條回顧。
+    """
+    out = []
+    for w in (obj.get("watch_triggers") or []):
+        if not isinstance(w, dict):
+            continue
+        trig = str(w.get("trigger") or "").strip()
+        if not trig:
+            continue
+        out.append({"trigger": trig[:WATCH_CHARS],
+                    "why": str(w.get("why") or "").strip()[:WATCH_CHARS],
+                    "horizon": str(w.get("horizon") or "")[:16]})
+        if len(out) >= WATCH_MAX:
+            break
+    return out
 
 
 #: `save()` 的三種結果。**「沒東西可存」不是「存檔失敗」**
@@ -195,9 +225,10 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
             slot = manifest.setdefault("llm", {})
             slot["recap_eligible"] = int(rec.get("eligible") or 0)
             slot["recap_extracted"] = len(rec["items"])
-        if not rec["items"]:
-            # 今天的分析裡沒有值得留給明天的觀點 —— 那是**正常的答案**,
-            # 不是寫檔壞了。兩者要分得開,下游才報得對。
+        if not rec["items"] and not rec.get("watch"):
+            # 今天的分析裡沒有值得留給明天的觀點**也沒有觀察點** ——
+            # 那是正常的答案,不是寫檔壞了。觀點空、觀察點不空的日子
+            # 仍要存:回顧的閉環不能因為當天觀點稀薄就斷一天。
             return NOTHING
         _carry_origins(rec, load(path))
         import pathlib
@@ -246,6 +277,27 @@ def load(path) -> dict:
         # 與內文片段,既是雜訊也是一條不必要的注入面。
         # 旗標給呼叫端記 degraded 用,`items` 空 = 降級行為與缺檔相同。
         return {"unreadable": True, "items": []}
+
+
+def usable_watch(recap, target_session_date: str) -> list:
+    """昨天的觀察點,配上 Python 派的代號(`w1`…)。
+
+    與 `usable` 同一條日期閘門:**同日重跑不得自比** —— 拿今天剛寫的
+    觀察點當「昨天的預期」回顧,每一條都會「已觸發」(它就是照今天
+    的新聞寫的)。代號在這裡派而不是讓模型自報 —— 回顧要能逐條對帳,
+    帳本的鍵就得是我們發的。
+    """
+    r = recap if isinstance(recap, dict) else {}
+    date = str(r.get("date") or "")
+    if not date or not target_session_date or date >= str(target_session_date):
+        return []
+    ws = [w for w in (r.get("watch") or [])
+          if isinstance(w, dict) and str(w.get("trigger") or "").strip()]
+    return [{"watch_id": f"w{i + 1}", "date": date,
+             "trigger": str(w.get("trigger") or ""),
+             "why": str(w.get("why") or ""),
+             "horizon": str(w.get("horizon") or "")}
+            for i, w in enumerate(ws[:WATCH_MAX])]
 
 
 def usable(recap, target_session_date: str) -> list:

@@ -43,7 +43,7 @@ import evidence_namespaces as _ns
 #: 是哪一個事件群。價格變化沒有主詞也沒有動作,它不是事件。
 #: v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
 #: 使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-ANALYSIS_SCHEMA_VERSION = 12
+ANALYSIS_SCHEMA_VERSION = 13
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -373,6 +373,19 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "horizon": _enum(HORIZONS),
         "claim_ids": _arr(_s(), "為什麼要盯它 —— 靠哪幾條主張"),
     })),
+    # 縱深第四批 D(v13):**預期→結果的閉環**。觀察點先前寫進信裡
+    # 就被遺忘 —— 沒有人隔天回頭問「觸發了沒」。EVIDENCE.yesterday_watch
+    # 的每一條都要在這裡出現一次(validator 驗全覆蓋、驗重複、驗代號);
+    # 「已觸發」要引今天的證據 ID —— 不引的話,「觸發了」只是一句話。
+    "watch_review": _arr(_obj({
+        "watch_id": _s("EVIDENCE.yesterday_watch 的 `watch_id`(例:w1)"),
+        "status": _enum(("triggered", "not_triggered", "no_longer_relevant"),
+                        "triggered=預期的情況今天出現了;not_triggered=還沒;"
+                        "no_longer_relevant=前提已消失,不用再盯"),
+        "what_happened": _s("triggered/no_longer_relevant:今天發生了什麼;"
+                            "not_triggered:一句話說還在等什麼"),
+        "evidence_ids": _EVIDENCE_IDS,
+    }), "昨天觀察點的逐條回顧;EVIDENCE 沒給 yesterday_watch 就給空陣列"),
     "claim_audit": _arr(_AUDITED_CLAIM,
                         "所有重大 claim 的稽核清單;評分以此為準"),
 }, desc=f"晨報主分析 v{ANALYSIS_SCHEMA_VERSION}")

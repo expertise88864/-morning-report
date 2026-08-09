@@ -72,7 +72,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
 #: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
 #: 供應鏈邊走到具體標的;候選不是證據。
-LUNA_XHIGH_VERSION = 30
+LUNA_XHIGH_VERSION = 31
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -155,6 +155,12 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 - **回指要連對,不只是連上。** 立場寫 1-4 週,就要有一條談 1-4 週的
   主張撐著 —— 全部靠今日盤前的主張撐一個一個月的判斷,那是形式上的引用。
 - **有多日軌跡的線索要寫成發展,像在說一個進行中的故事。**
+  `EVIDENCE.yesterday_watch` 是**本報昨天自己寫下的觀察點** ——
+  每一條都要在 `watch_review` 逐條回顧(用它的 `watch_id`):
+  預期的情況今天出現了(triggered,**要引今天的證據 ID**)、
+  還沒出現(not_triggered,一句話說還在等什麼)、或前提已消失
+  (no_longer_relevant)。這是回顧**不是證據** —— 昨天的預期不能
+  替今天的判斷背書;觸發與否只看今天的證據。
   `EVIDENCE.story_arcs` 是本報跨日追蹤的線索帳本:起因
   (`first_seen` + 軌跡第一步)→ 轉折(`trajectory` 逐步)→ 今天的增量
   → 下一步觀察點。狀態(醞釀/發展/高潮/收斂)由 Python 計算,直接引用

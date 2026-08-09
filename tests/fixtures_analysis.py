@@ -221,6 +221,9 @@ def valid_analysis() -> dict:
         # 必分析事件全部談到時,這一段是空的(第十八輪 P1-3)。
         "dismissed_events": [],
         "watch_triggers": [],
+        # 縱深第四批 D(schema v13):watch_review 必填(strict 全欄位);
+        # 這份 fixture 的 packet 沒有 yesterday_watch,空陣列是正確答案。
+        "watch_review": [],
         # **參考答案自己要示範它要求的性質**:立場是 1-5d,而第一條主張
         # 只談今日盤前 —— 新的時間尺度守衛第一次跑就抓到這份 fixture。
         # 補一條談同一個尺度的主張,而不是把守衛放寬。

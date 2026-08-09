@@ -583,7 +583,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (26, "fe698e45bc5ffe8e"),
+    "evidence_schema_version":  (27, "b6497c9c64f9abda"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -605,7 +605,7 @@ _FROZEN = {
     #     講的是哪一個事件群(價格變化沒有主詞也沒有動作)。
     # v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
     #     使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-    "output_schema_version":    (12, "5a327abdd3735950"),
+    "output_schema_version":    (13, "0b1a31b11ad23ac0"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -652,7 +652,7 @@ _FROZEN = {
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
-    "primary_profile_version":  (30, "a2262613101d527f"),
+    "primary_profile_version":  (31, "e0f3cb7a34fc5ce9"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;

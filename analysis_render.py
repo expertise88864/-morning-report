@@ -317,6 +317,28 @@ def render(obj: Optional[dict], packet=None) -> str:
     if contra:
         parts.append("## 證據衝突與調和\n" + "\n".join(contra))
 
+    # 縱深第四批 D:昨天的觀察點回顧放在今天的新觀察點**之前** ——
+    # 敘事順序是「昨天預期 → 今天結果 → 明天再盯什麼」。
+    # trigger 原文從 packet 查(模型只回代號;沒有 packet 就印代號 ——
+    # 那是相容路徑,信仍然完整,只是少了原文)。
+    wr = [w for w in (obj.get("watch_review") or []) if isinstance(w, dict)]
+    if wr:
+        _wid_text = {str(w.get("watch_id") or ""): _s(w.get("trigger"))
+                     for w in ((packet or {}).get("yesterday_watch") or [])
+                     if isinstance(w, dict)}
+        _WR_ZH = {"triggered": "已觸發", "not_triggered": "未觸發",
+                  "no_longer_relevant": "不再相關"}
+        _wr_lines = []
+        for w in wr:
+            wid = str(w.get("watch_id") or "")
+            label = _wid_text.get(wid) or wid
+            status = _WR_ZH.get(str(w.get("status") or ""), "?")
+            what = _s(w.get("what_happened"))
+            _wr_lines.append(f"{label}：{status}"
+                             + (f"（{what}）" if what else ""))
+        if _wr_lines:
+            parts.append("## 昨日觀察點回顧\n" + "\n".join(_wr_lines))
+
     watch = _lines(obj.get("watch_triggers"),
                    lambda w: f"{_s(w.get('trigger'))}"
                              f"{'（' + _s(w.get('why')) + '）' if _s(w.get('why')) else ''}")

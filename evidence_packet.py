@@ -89,7 +89,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 特化路徑看不到:同一條延燒中的線索,legacy 的信寫得出
 #: 「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
 #: 故事縱深不是沒有,是沒接上。
-EVIDENCE_SCHEMA_VERSION = 26
+EVIDENCE_SCHEMA_VERSION = 27
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -347,6 +347,14 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     packet["story_arcs"] = _sl.story_arcs(
         packet["market"].pop("STORY_LEDGER", None) or [],
         today=str(as_of or "")[:10])
+    # **預期→結果的閉環**(縱深第四批 D):昨天信裡的觀察點
+    # (`watch_triggers`)先前寫完就被遺忘 —— 沒有任何東西隔天回頭問
+    # 「觸發了沒」。代號由 Python 派(w1…),schema 的 `watch_review`
+    # 逐條回指,validator 驗全覆蓋 —— 漏一條驗證就說話,
+    # 「逐日追蹤」才是性質而不是宣稱。
+    packet["yesterday_watch"] = _rc.usable_watch(
+        packet["market"].get("ANALYSIS_RECAP"),
+        str(packet.get("target_session_date") or ""))
     import event_score as _es
     packet["top_events"] = _es.rank(_kept_clusters, kept_news)
     # **事件之間的關係由 Python 先算**(重構規格 Commit D):哪些事件

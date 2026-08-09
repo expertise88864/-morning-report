@@ -409,6 +409,56 @@ def validate(obj, evidence_ids) -> list:
             # 只驗支持證據 —— 模型塞一個捏造的 ID,讀者就看到一個
             # 不存在的反面觀點,而那正是「這條判斷有多穩」的訊號。
             _check_ids(d.get("counterevidence_ids"), f"key_drivers[{i}] 的反證")
+    # **預期→結果閉環的驗收**(縱深第四批 D)。昨天的觀察點每一條都要
+    # 被回顧 —— 缺一條,「逐日追蹤」就是宣稱而不是性質;「已觸發」不引
+    # 今天的證據,就只是一句話。只有 packet 知道昨天有哪些觀察點,
+    # ID-set 相容路徑驗不了覆蓋(但仍驗證據 ID 的存在)。
+    declared_watch = {str(w.get("watch_id") or ""): w
+                      for w in ((packet or {}).get("yesterday_watch") or [])
+                      if isinstance(w, dict)}
+    seen_watch = set()
+    for i, w in enumerate(obj.get("watch_review") or []):
+        if not isinstance(w, dict):
+            problems.append(f"watch_review[{i}] 不是物件")
+            continue
+        wid = str(w.get("watch_id") or "")
+        _check_ids(w.get("evidence_ids"), f"watch_review[{i}]")
+        if packet is not None and wid not in declared_watch:
+            problems.append(
+                f"watch_review[{i}] 回顧了不存在的觀察點:{wid!r}")
+            continue
+        if wid in seen_watch:
+            problems.append(f"watch_review 對 {wid} 回顧了兩次")
+        seen_watch.add(wid)
+        # **空的 `what_happened` 讓閉環有形無實**(外審 F1):
+        # strict schema 只保證欄位在,空字串是合法 JSON —— 而信裡那一行
+        # 會只剩「已觸發」三個字。三種狀態都要有內容:已觸發/不再相關
+        # 要說今天發生了什麼,未觸發要說還在等什麼。
+        if not str(w.get("what_happened") or "").strip():
+            problems.append(
+                f"watch_review[{i}]({wid})的 `what_happened` 是空的 —— "
+                "已觸發要說發生了什麼,未觸發要說還在等什麼")
+        if str(w.get("status") or "") == "triggered":
+            cited = [str(x) for x in (w.get("evidence_ids") or [])]
+            if not cited:
+                problems.append(
+                    f"watch_review[{i}]({wid})說「已觸發」"
+                    "卻沒有任何今天的證據 ID")
+            else:
+                # **不同步的資料不得單獨支撐「已觸發」**(外審 F2):
+                # 判準與高重要性 claim 同一條(`_unusable`)—— 美股休市日
+                # 拿 `market:QQQ.*` 當唯一根據,「今天出現了」根本不是
+                # 今天的觀察。引用不禁止,禁止的是**只**靠它。
+                _stale_w = _unusable(packet)
+                if _stale_w and all(x in _stale_w for x in cited):
+                    problems.append(
+                        f"watch_review[{i}]({wid})的「已觸發」只靠"
+                        f"今天不同步的資料({cited[:2]}:"
+                        f"{_stale_w[cited[0]]})—— 觸發與否只看今天的證據")
+    if packet is not None:
+        for wid in sorted(set(declared_watch) - seen_watch):
+            problems.append(
+                f"昨天的觀察點 {wid} 沒有被回顧(watch_review 要逐條)")
     news = [n for n in (obj.get("top_news_analysis") or []) if isinstance(n, dict)]
     # 第十九輪 P1-6:**集合化把重複吃掉了。** 同一個 `source_item_id`
     # 寫兩段先前完全抓不到 —— 那可以灌高分析則數,甚至對同一個標的

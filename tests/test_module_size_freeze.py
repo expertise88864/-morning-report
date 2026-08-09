@@ -326,7 +326,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:`save()` 回三態,不是布林
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
-    "analysis_recap.py": 445,
+    "analysis_recap.py": 495,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
@@ -370,7 +370,7 @@ MODULE_CEILINGS = {
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
     # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
-    "analysis_schema.py": 410,
+    "analysis_schema.py": 435,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、
@@ -491,7 +491,7 @@ MODULE_CEILINGS = {
     # 拆完變小,棘輪跟著縮,否則留一個「隨時可以長回來」的空頭額度。
     # 第十九輪:實測 256 —— 情境觸發條件、駁回事件、未完成鏈剩餘數。
     # Commit E:事件卡(這件事的來歷)+ 逐標的淨效果。實測 337。
-    "analysis_render.py": 350,
+    "analysis_render.py": 390,
     # 第二十四輪 P1-12:標的的**型別身分**(canonical id + 範疇)。
     # 先前沒有「標的」這個型別 —— 判斷散在四處各憑字串形狀猜,而白名單
     # 被當成「與這件事有關」的免死金牌。實測 71 行。
@@ -541,7 +541,7 @@ MODULE_CEILINGS = {
     # 標準寫法(`Mettler-Toledo (MTD)`、`NYSE: MTD`)。**實測 618 行**。
     # 第二十七輪外審 P1-5:法域不是標的 + 撞名的走上下文判準
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
-    "analysis_validate.py": 715,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    "analysis_validate.py": 780,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

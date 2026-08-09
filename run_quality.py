@@ -107,7 +107,12 @@ def _pos_int(v) -> bool:
 
 
 def _budget_problem(v):
-    """預算政策**跑過**的樣子(欄位見 `payload_budget.apply` 的 `report`)。"""
+    """預算政策**跑過**的樣子(欄位見 `payload_budget.apply` 的 `report`)。
+
+    第二十八輪外審 P2-1:上一版只真的驗了 `chars_before` 是正整數 ——
+    `{"chars_after": null, "limit": "not-a-number", "over_budget": "false"}`
+    照樣通過。**值的型別與欄位之間的關係也是契約**。
+    """
     if not isinstance(v, dict):
         return "不是物件"
     missing = [k for k in ("chars_before", "chars_after", "limit",
@@ -116,11 +121,26 @@ def _budget_problem(v):
         return f"缺欄位 {missing}"
     if not _pos_int(v.get("chars_before")):
         return f"chars_before 不是正整數:{v.get('chars_before')!r}"
+    if not (type(v.get("chars_after")) is int and v["chars_after"] >= 0):
+        return f"chars_after 不是非負整數:{v.get('chars_after')!r}"
+    if not _pos_int(v.get("limit")):
+        return f"limit 不是正整數:{v.get('limit')!r}"
+    if type(v.get("over_budget")) is not bool:
+        return f"over_budget 不是布林:{v.get('over_budget')!r}"
+    # **旗標要與數字一致**:兩者矛盾時,信任哪一個都是猜的。
+    if v["over_budget"] is not (v["chars_after"] > v["limit"]):
+        return (f"over_budget={v['over_budget']} 與 "
+                f"chars_after={v['chars_after']} / limit={v['limit']} 不一致")
     return ""
 
 
 def _metrics_problem(v):
-    """結構化指標**算過**的樣子(欄位見 `analysis_metrics.structured_metrics`)。"""
+    """結構化指標**算過**的樣子(欄位見 `analysis_metrics.structured_metrics`)。
+
+    第二十八輪外審 P2-1:上一版只要求那三格「在」——
+    `{"claims": null, "sections_present": null, "validation_problems": 999}`
+    照樣通過,而最後那個數字非零時,那份輸出根本沒有通過驗證。
+    """
     if not isinstance(v, dict) or not v:
         return "是空的"
     if v.get("parsed") is not True:
@@ -129,6 +149,19 @@ def _metrics_problem(v):
                if k not in v]
     if missing:
         return f"缺欄位 {missing}"
+    if not (type(v.get("claims")) is int and v["claims"] >= 0):
+        return f"claims 不是非負整數:{v.get('claims')!r}"
+    # `structured_metrics` 寫出來的是**計數**(見 `analysis_metrics`)——
+    # 上一版順手接受了非空清單,那是我自己想像出來的形狀(外審第二輪 F1)。
+    sect = v.get("sections_present")
+    if not (type(sect) is int and sect > 0):
+        return f"sections_present 不是正整數:{sect!r}"
+    if type(v.get("validation_problems")) is not int:
+        return f"validation_problems 不是整數:{v.get('validation_problems')!r}"
+    # **驗證問題非零 = 那份輸出沒有通過驗證**,而 canary 的名字是
+    # 「特化輸出真的產生了」—— 帶著未解問題的輸出不算產生。
+    if v["validation_problems"] != 0:
+        return f"validation_problems={v['validation_problems']}(不是 0)"
     return ""
 
 

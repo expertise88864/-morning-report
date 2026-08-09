@@ -16,7 +16,12 @@ on:
     - cron: "30 21 * * 1"   # 週二 05:30 台北(避開晨報與 deps-canary)
   workflow_dispatch:
 permissions:
-  contents: read
+  # 狀態檔要 commit 回 repo —— **cache 對「一週一班」是錯的儲存**
+  # (GitHub 七天未用就清掉,而我們的間隔正好是七天;外審第二輪 F3:
+  # 一直沒命中的話,每一班都以為自己是第一次,永遠綠燈)。
+  # repo 是這個 job 唯一拿得到的持久層,而它是可驗證的:
+  # checkout 一定會把它帶回來,所以「檔案不在」只可能是還沒 bootstrap。
+  contents: write
 concurrency:
   group: deepseek-canary
   cancel-in-progress: true
@@ -33,26 +38,34 @@ jobs:
         run: pip install -r requirements.lock
       # **連續次數要活過 job**(外審 P2-3):沒有它的話,secret 被刪掉之後
       # 每週 RC=2、每週綠燈,而契約從那時起就沒有被監測過。
-      - name: Restore the streak counter
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684  # v4
-        with:
-          path: .canary-state
-          key: deepseek-canary-state-${{ github.run_id }}
-          restore-keys: deepseek-canary-state-
       - name: Check the live contract
         id: canary
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
           set +e
-          python tools/deepseek_live_canary.py             --state .canary-state/streak.json --now "$(date -u +%F)"
+          python tools/deepseek_live_canary.py             --state state/deepseek_canary.json --now "$(date -u +%F)"
           code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           # **「跑不起來」不該染紅這個 job**:沒有金鑰、服務忙碌、網路不通
           # 都不是契約問題,而讓它們紅會把真正的契約變更淹沒在噪音裡。
           # 契約真的變了(1)才失敗。
-          if [ "$code" = "1" ]; then exit 1; fi
+          # 契約真的變了(1)、**或狀態層壞掉(3)**才失敗 —— 後者代表
+          # 升級政策失效,而那正是這個 job 要關掉的「永遠綠燈」。
+          if [ "$code" = "1" ] || [ "$code" = "3" ]; then exit 1; fi
           exit 0
+      # 狀態要留給下一班 —— 這是「多久沒驗證過」唯一的依據。
+      - name: Persist the canary state
+        if: always()
+        run: |
+          if ! git diff --quiet -- state/deepseek_canary.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/deepseek_canary.json
+            git commit -m "chore: deepseek canary state [skip ci]"
+            git push
+          fi
+
       - name: Say when the check could not run
         if: steps.canary.outputs.code == '2'
         run: |

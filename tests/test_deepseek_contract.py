@@ -503,6 +503,9 @@ def test_the_workflow_only_fails_on_a_real_contract_change():
                         .read_text(encoding="utf-8"))
     steps = wf["jobs"]["contract"]["steps"]
     run = next(st for st in steps if st.get("id") == "canary")
-    assert 'if [ "$code" = "1" ]; then exit 1; fi' in run["run"]
+    # 契約變了(1)**或狀態層壞掉(3)**才失敗 —— 後者代表升級政策失效
+    # (第二十八輪外審 P2-3),而那正是這個 job 要關掉的「永遠綠燈」。
+    assert '"$code" = "1"' in run["run"] and '"$code" = "3"' in run["run"],         run["run"]
+    assert 'exit 1; fi' in run["run"]
     assert "schedule" in (wf.get(True) or wf.get("on")), wf.keys()
 

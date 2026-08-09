@@ -17,7 +17,14 @@
     python tools/deepseek_live_canary.py            # 需要 DEEPSEEK_API_KEY
     python tools/deepseek_live_canary.py --model deepseek-v4-flash
 
-退出碼:0 = 形狀符合;1 = 契約變了;2 = 跑不起來(沒有金鑰、網路不通)。
+退出碼:
+    0 = 形狀符合
+    1 = 契約變了(去改 adapter)
+    2 = 這一次跑不起來(沒有金鑰、網路、服務忙碌)
+    3 = **狀態層壞掉** —— 沒有持久化狀態就執行不了「多久沒驗證過」那條
+        政策,而那正是這支程式唯一的升級機制(第二十八輪外審 P2-3:
+        cache 一直 restore/save 失敗時,每一班都以為自己是第一次,
+        於是永遠停在 2、永遠綠燈)。
 **「跑不起來」與「契約變了」要分得開** —— 前者不該讓人去改 adapter。
 """
 from __future__ import annotations
@@ -51,6 +58,13 @@ def _payload(model: str) -> dict:
     )
 
 
+#: 狀態檔的預設位置。**放在 repo 裡而不是 CI cache**(第二十八輪外審
+#: 第二輪 F3):cache 對「一週一班」是錯的儲存 —— GitHub 七天未用就清掉,
+#: 而我們的間隔正好是七天。一直沒命中的話,每一班都以為自己是第一次,
+#: 於是永遠停在「暫時性」而週週綠燈。repo 是這個 job 拿得到的持久層,
+#: 而且可驗證:checkout 一定會把它帶回來。
+DEFAULT_STATE = "state/deepseek_canary.json"
+
 #: **契約多久沒被驗證過就當成缺陷**(天)。
 #:
 #: 第二十七輪外審 P2-3:RC=2 只印 warning 然後綠燈 —— secret 被刪掉之後
@@ -79,32 +93,53 @@ def _record(path, ok: bool, stamp: str) -> dict:
     純檔案操作,失敗不影響判定 —— 這支程式的主業是回報契約。
     """
     import json as _json
-    cur = {}
-    if path:
+    cur, readable = {}, True
+    if path and os.path.exists(path):
+        # **「沒有這個檔」與「讀不動這個檔」是兩件事**(外審第二輪 F2):
+        # 上一版把讀取例外一律吞成 `{}`,然後**覆寫**掉那份歷史 ——
+        # 升級時鐘於是被一個壞掉的檔案重設,而沒有人看得出來。
         try:
             cur = _json.loads(open(path, encoding="utf-8").read())
+            readable = isinstance(cur, dict)
         except Exception:                               # noqa: BLE001
-            cur = {}
+            cur, readable = {}, False
     if ok:
         out = {"last_success": stamp, "first_unavailable": ""}
     else:
         out = {"last_success": cur.get("last_success", ""),
                "first_unavailable": (cur.get("first_unavailable")
                                      or stamp or "")}
+    out["_persisted"] = readable
+    if not readable:
+        print(f"[canary] 既有狀態讀不動({path})—— **不覆寫**,"
+              "升級時鐘由人處理", file=sys.stderr)
+        return out
     if path:
         try:
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
-                _json.dump(out, f, ensure_ascii=False)
+                _json.dump({k: v for k, v in out.items()
+                            if not k.startswith("_")}, f, ensure_ascii=False)
         except Exception as e:                          # noqa: BLE001
-            print(f"[canary] 狀態寫不進去({e})—— 不影響本次判定",
+            # **寫不進去不是「不影響判定」**(第二十八輪外審 P2-3):
+            # 「多久沒驗證過」整條政策靠這個檔活著,寫不進去等於每一班
+            # 都從零開始 —— 那正是這支程式要關掉的「永遠綠燈」。
+            print(f"[canary] 狀態寫不進去({e})—— 升級政策失效",
                   file=sys.stderr)
+            out["_persisted"] = False
     return out
 
 
 def _unavailable(state, stamp, why: str) -> int:
     """跑不起來:記一次,**距離上次驗證過太久**就升級成失敗。"""
     st = _record(state, False, stamp)
+    if state and not st.get("_persisted"):
+        # **狀態層壞掉不是「暫時性」**(第二十八輪外審 P2-3):
+        # 「多久沒驗證過」整條政策靠這個檔活著 —— 它一直壞的話,
+        # 每一班都以為自己是第一次,於是永遠停在 2、永遠綠燈。
+        print("[canary] 沒有持久化狀態,「多久沒驗證過」判斷不了",
+              file=sys.stderr)
+        return 3
     # **從「上次驗證過」起算**。從來沒成功過的話,`first_unavailable`
     # 是這個窗口的**起點**而不是起點前一班 —— 直接拿它當基準會少算一班
     # (三次每週失敗只走到第 14 天,要到第四次才升級;外審第四輪)。
@@ -130,12 +165,28 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="DeepSeek 線上契約金絲雀")
     ap.add_argument("--model", default=_DEFAULT_MODEL)
     ap.add_argument("--timeout", type=float, default=120.0)
+    # **預設不動狀態**(外審第三輪):把預設改成 repo 的路徑之後,
+    # 文件寫的本機用法(不帶參數直接跑)會寫到版控裡的檔案、甚至把
+    # `last_success` 洗掉 —— 而 workflow 本來就明講了路徑。
+    # `DEFAULT_STATE` 留著當**唯一的一份宣告**(workflow 與守衛都指它)。
     ap.add_argument("--state", default="",
                     help="連續次數的狀態檔(workflow 用 cache 帶著走)")
     ap.add_argument("--now", default="",
                     help="今天的日期(由呼叫端給,程式本身不讀時鐘)")
+    ap.add_argument("--expect-restored", action="store_true",
+                    help="呼叫端說上一班的狀態應該存在;而它不在 → "
+                         "狀態層壞掉。狀態改放 repo(見 workflow)之後,"
+                         "checkout 一定會帶回來 —— 所以「檔案不在」只可能是"
+                         "還沒 bootstrap,這個旗標留給別的呼叫端。")
     args = ap.parse_args(argv)
 
+    if args.expect_restored and args.state and not os.path.exists(args.state):
+        # **cache 說上一班存過,而檔案不在** —— 那是跨 run 的持久層壞了,
+        # 而「多久沒驗證過」整條政策靠它活著。這一格壞掉時,金絲雀會
+        # 每一班都以為自己是第一次(外審第二輪 F3)。
+        print(f"[canary] 上一班的狀態應該在 {args.state},而它不在 —— "
+              "跨 run 的持久層壞了,升級政策失效", file=sys.stderr)
+        return 3
     key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if not key:
         return _unavailable(args.state, args.now, "沒有 DEEPSEEK_API_KEY")
@@ -181,7 +232,10 @@ def main(argv=None) -> int:
                            ensure_ascii=False), file=sys.stderr)
         return 1
     got = ds.extract_output(resp)
-    _record(args.state, True, args.now)
+    if args.state and not _record(args.state, True, args.now).get("_persisted"):
+        print("[canary] 契約沒問題,但狀態存不下來 —— 下一班會以為"
+              "從來沒驗證過", file=sys.stderr)
+        return 3
     print(f"[canary] 形狀符合;取到答案 {len(got.get('text') or '')} 字元、"
           f"applied_effort={ds.applied_effort(resp)!r}")
     return 0

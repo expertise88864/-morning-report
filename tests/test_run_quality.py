@@ -1286,3 +1286,174 @@ def test_a_success_resets_the_clock(tmp_path, monkeypatch):
     canary._record(st, True, "2026-08-20")          # 中間有一次成功
     assert canary.main(["--state", st, "--now", "2026-08-27"]) == 2
     assert canary.main(["--state", st, "--now", "2026-09-11"]) == 1
+
+
+# ===== 第二十八輪外審 P2-1 / P2-3 =====
+
+def test_the_budget_block_validates_types_and_relationships():
+    """**只驗 `chars_before` 是正整數不夠**(外審 P2-1)。
+
+    `{"chars_after": null, "limit": "not-a-number", "over_budget": "false"}`
+    照樣通過 —— 而 canary 的綠燈要代表「預算政策真的跑過」。
+    """
+    base = _strict_ok()["llm"]["payload_budget"]
+    for bad in ({"chars_after": None}, {"chars_after": -1},
+                {"chars_after": True}, {"limit": "not-a-number"},
+                {"limit": 0}, {"over_budget": "false"}, {"over_budget": 1}):
+        m = _strict_ok()
+        m["llm"]["payload_budget"] = dict(base, **bad)
+        assert "manifest_incomplete" in _strict(m), bad
+    # **旗標要與數字一致**:兩者矛盾時,信任哪一個都是猜的
+    m = _strict_ok()
+    m["llm"]["payload_budget"] = dict(base, over_budget=True)
+    assert "manifest_incomplete" in _strict(m), _strict(m)
+
+
+def test_the_metrics_block_requires_a_clean_validation():
+    """`validation_problems=999` 代表那份輸出**沒有通過驗證** ——
+    而 canary 的名字是「特化輸出真的產生了」。"""
+    base = _strict_ok()["llm"]["primary_metrics"]
+    for bad in ({"claims": None}, {"claims": -1}, {"claims": True},
+                {"sections_present": None}, {"sections_present": []},
+                # `structured_metrics` 寫出來的是**計數**,不是清單 ——
+                # 上一版順手接受了非空清單,那是想像出來的形狀
+                #(外審第二輪 F1)。
+                {"sections_present": ["anything"]}, {"sections_present": 0},
+                {"validation_problems": "0"}, {"validation_problems": 999}):
+        m = _strict_ok()
+        m["llm"]["primary_metrics"] = dict(base, **bad)
+        assert "manifest_incomplete" in _strict(m), bad
+
+
+def test_broken_state_persistence_is_not_a_temporary_outage(tmp_path):
+    """**狀態層壞掉時仍會永遠綠燈**(外審 P2-3)。
+
+    「多久沒驗證過」整條政策靠那個檔活著 —— cache 一直 restore/save
+    失敗的話,每一班都以為自己是第一次,於是永遠停在 2、永遠綠燈。
+    那要有自己的退出碼,而 workflow 對它失敗。
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import deepseek_live_canary as canary
+    import os as _os
+    blocker = tmp_path / "afile"
+    blocker.write_text("", encoding="utf-8")
+    old = _os.environ.pop("DEEPSEEK_API_KEY", None)
+    try:
+        rc = canary.main(["--state", str(blocker / "s.json"),
+                          "--now", "2026-08-09"])
+    finally:
+        if old is not None:
+            _os.environ["DEEPSEEK_API_KEY"] = old
+    assert rc == 3, rc
+    # **不帶 `--state` 是本機用法** —— 不碰任何狀態檔,也不算壞掉
+    assert canary.main(["--now", "2026-08-09"]) == 2
+
+
+def test_the_workflow_fails_on_broken_state_too():
+    """**噪音會淹沒訊號,但沉默會淹沒一切。** RC=3 要讓 job 紅。"""
+    import yaml
+    from pathlib import Path
+    wf = yaml.safe_load((Path(__file__).resolve().parents[1] / ".github"
+                         / "workflows" / "deepseek-canary.yml")
+                        .read_text(encoding="utf-8"))
+    run = next(st for st in wf["jobs"]["contract"]["steps"]
+               if st.get("id") == "canary")["run"]
+    assert '"$code" = "3"' in run, run
+
+
+def test_a_corrupt_state_file_is_not_silently_reset(tmp_path):
+    """**「沒有這個檔」與「讀不動這個檔」是兩件事**(外審第二輪 F2)。
+
+    上一版把讀取例外一律吞成 `{}` 然後**覆寫**掉那份歷史 ——
+    升級時鐘被一個壞掉的檔案重設,而沒有人看得出來。
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import deepseek_live_canary as canary
+    import os as _os
+    st = tmp_path / "s.json"
+    st.write_text("{壞掉", encoding="utf-8")
+    old = _os.environ.pop("DEEPSEEK_API_KEY", None)
+    try:
+        rc = canary.main(["--state", str(st), "--now", "2026-08-09"])
+    finally:
+        if old is not None:
+            _os.environ["DEEPSEEK_API_KEY"] = old
+    assert rc == 3, rc
+    assert st.read_text(encoding="utf-8") == "{壞掉", "壞檔被覆寫了"
+
+
+def test_a_missing_restore_that_should_have_happened_is_a_state_failure(
+        tmp_path):
+    """**cache 說上一班存過,而檔案不在** —— 那是跨 run 的持久層壞了
+    (外審第二輪 F3)。這一格壞掉時,金絲雀會每一班都以為自己是第一次。"""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+    import deepseek_live_canary as canary
+    import os as _os
+    old = _os.environ.pop("DEEPSEEK_API_KEY", None)
+    try:
+        rc = canary.main(["--state", str(tmp_path / "nope.json"),
+                          "--now", "2026-08-09", "--expect-restored"])
+        # 沒有宣稱該有的話,第一次跑是正常的
+        rc2 = canary.main(["--state", str(tmp_path / "fresh.json"),
+                           "--now", "2026-08-09"])
+    finally:
+        if old is not None:
+            _os.environ["DEEPSEEK_API_KEY"] = old
+    assert rc == 3, rc
+    assert rc2 == 2, rc2
+
+
+def test_the_canary_state_lives_in_the_repository():
+    """**cache 對「一週一班」是錯的儲存**(外審第二輪 F3)。
+
+    GitHub 七天未用就清掉快取,而我們的間隔正好是七天 —— 一直沒命中的話,
+    每一班都以為自己是第一次,於是永遠停在「暫時性」而週週綠燈。
+    repo 是這個 job 拿得到的持久層,而且**可驗證**:checkout 一定會把它
+    帶回來,所以「檔案不在」只可能是還沒 bootstrap。
+    """
+    import yaml
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    wf = yaml.safe_load((root / ".github" / "workflows"
+                         / "deepseek-canary.yml").read_text(encoding="utf-8"))
+    steps = wf["jobs"]["contract"]["steps"]
+    assert not any(str(st.get("uses", "")).startswith("actions/cache")
+                   for st in steps), "還在用 cache 當持久層"
+    assert wf["permissions"]["contents"] == "write", wf["permissions"]
+    run = next(st for st in steps if st.get("id") == "canary")["run"]
+    import sys
+    sys.path.insert(0, str(root / "tools"))
+    import deepseek_live_canary as _c
+    assert _c.DEFAULT_STATE in run, run
+    # **狀態要被 commit 回去**,否則下一班還是看不到
+    persist = next(st for st in steps
+                   if "Persist" in str(st.get("name", "")))["run"]
+    assert "git push" in persist and _c.DEFAULT_STATE in persist, persist
+    # 而那個檔案已經在版控裡(bootstrap 過了)
+    assert (root / _c.DEFAULT_STATE).exists()
+
+
+def test_running_without_a_state_path_touches_nothing(tmp_path, monkeypatch):
+    """**文件寫的本機用法不得動到版控裡的狀態**(外審第三輪)。
+
+    把 `--state` 的預設改成 repo 的路徑之後,不帶參數直接跑會寫進那個檔、
+    甚至把 `last_success` 洗掉 —— 而 workflow 本來就明講了路徑。
+    """
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "tools"))
+    import deepseek_live_canary as canary
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    live = root / canary.DEFAULT_STATE
+    before = live.read_text(encoding="utf-8") if live.exists() else None
+    assert canary.main(["--now", "2026-08-09"]) == 2
+    after = live.read_text(encoding="utf-8") if live.exists() else None
+    assert before == after, "無參數的本機用法動到了版控裡的狀態"
+

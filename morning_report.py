@@ -75,6 +75,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_llm_sections,
     _strip_stance_calculation,
     _strip_stance_internals,
+    _strip_stance_scaffolding,
     _sanitize_debate_section,
     _strip_score_phrases,
     _extract_stance,
@@ -4757,6 +4758,12 @@ def fetch_portfolio_risk(portfolio: dict, latest_prices: Optional[dict] = None) 
         return {}
 
 
+#: 「長線趨勢參考」卡**不顯示**的標的(資料照抓、照餵 packet 與 prompt)。
+#: 與 WTI/BTC/DXY/銅同一個處置:使用者不想在信裡看到,但拿掉資料等於讓
+#: 後台的計分與模型也瞎掉。00631L 於 2026-08-10 依使用者要求移出顯示。
+MA200_HIDDEN_SYMBOLS = ("00631L.TW",)
+
+
 def fetch_ma200_status() -> dict:
     """核心持股的 200 日均線(波段長線參考)。定位為「抗回撤/控波動」而非「增報酬」工具:
     回測 5–10 年「站上才持有、跌破轉中性」能把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)
@@ -4765,7 +4772,9 @@ def fetch_ma200_status() -> dict:
     避免 yfinance 落後 1 日造成信中同檔兩個收盤),MA200 仍用 yfinance trailing(同為未還原收盤,基準一致)。"""
     out: dict = {}
     # 對齊使用者實際持股(ETF 為主);00631L 為 2x 槓桿,長抱波動耗損大、回測中
-    # 趨勢紀律對它最關鍵(15 年買進持有最大回撤 -96.9%),故特別納入。leveraged 旗標供渲染加註。
+    # 趨勢紀律對它最關鍵(15 年買進持有最大回撤 -96.9%),故特別納入。
+    # 2026-08-10:00631L **不再渲染**(見 `MA200_HIDDEN_SYMBOLS`),但仍抓、
+    # 仍進 packet 與 prompt;`leveraged` 旗標因此只剩資料語意,不再有顯示端。
     for sym, name, leveraged in (("00662.TW", "00662 富邦NASDAQ", False),
                                  ("0050.TW", "0050 元大台灣50", False),
                                  ("00631L.TW", "00631L 台灣50正2", True),
@@ -10627,6 +10636,40 @@ def _format_section_assignment_block(assignments) -> str:
             + "\n</UNTRUSTED_SOURCE_DATA>")
 
 
+#: **立場段的格式指令原文**(prompt 與過濾器的單一真相來源)。
+#:
+#: 模型會把這些指令**逐字抄回**輸出(2026-08-10 實信:結論卡出現三個空的
+#: 「第 N 行 — …」標題)。外審連五輪指的是同一件事的不同長度:只砍標題 →
+#: 砍到冒號 → 逐句 → 逐片語,而每一次都有更長的一段漏掉。
+#: **「片語清單」本來就不是要量的東西** —— 要量的是「這句話是不是**我們**
+#: 寫的」,而那有唯一答案:去 prompt 原文裡找。所以指令只寫一份,
+#: prompt 用它、`_strip_stance_scaffolding` 也拿它比對。
+#: 佔位符兩側各自是靜態片段,比對時逐段找(見 `llm_postprocess`)。
+_STANCE_FORMAT_BLOCK = """**第 1 行 — 11 維計分行**（{stance_line1_rule}):
+```
+QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外資市值前10大合計 [±1/0]、外資台指期 [±1/0]、10Y X bps [±1/0]、NQ X.X% [±1/0]、VIX9D/VIX X.XX [±1/0]、WTI X.X% [±1/0]、市場廣度 X% [±1/0] = 淨分 X
+```
+
+**第 2 行 — 立場標籤**：
+> **立場：偏多 / 偏空 / 中性 / 資料不足**（{stance_line2_rule}）
+
+**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報涵蓋的個股與 ETF,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
+**批#26 鐵律:理由**只寫「哪些關鍵指標+透過什麼機制+推向什麼結論」,**嚴禁**出現
+「11 維中 X 項偏空/偏多」「N 項偏空僅 M 項偏多」「淨分 ±N」「距門檻多少」這類
+計分內部細節——那是後台計算,讀者只要看到結論與傳導鏈,不要看到幾維幾分。
+
+**第 4-6 行**（**每行獨立成段，中間空行**）：
+
+> **2330 開盤關鍵價位**：{key_2330_line}
+
+> **00662 操作建議**：{key_00662_line} 接著只寫你的結論動作——「加碼 / 觀望 / 減碼」擇一(可附條件價位);**動作前不要複述任何指示語**(如「在此基礎上明確寫」——那是給你的指令,不是報告內容,批#29 實信曾整句回音)。
+
+（上兩行的價位數字由 Python 計算:**原樣引用、不可自行更動、不可改用 ADR 美元價**;
+ 這段括號說明是給你的指令,**不要抄進輸出**。）
+
+"""
+
+
 def _build_prompt(quotes: dict, fair: dict, predictions: dict,
                    news: list[dict], tw0050: list[dict],
                    calibration: str = "") -> str:
@@ -11469,6 +11512,13 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         stance_line1_rule=stance_line1_rule,
         stance_py_block_section=stance_py_block_section,
         event_scenario_lines=event_scenario_lines)
+    # 立場段的格式指令只寫一份(`_STANCE_FORMAT_BLOCK`)—— 這裡填值,
+    # 渲染端拿同一份原文比對模型有沒有把它抄回來(外審 r5)。
+    _stance_format_block = _STANCE_FORMAT_BLOCK.format(
+        stance_line1_rule=stance_line1_rule,
+        stance_line2_rule=stance_line2_rule,
+        key_2330_line=key_2330_line,
+        key_00662_line=key_00662_line)
     return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
 
 【資料品質（最優先閱讀）】
@@ -11807,29 +11857,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 {policy_deepdive_section}
 ## 十一、我的明確立場（**最重要段**）
 
-**第 1 行 — 11 維計分行**（{stance_line1_rule}):
-```
-QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外資市值前10大合計 [±1/0]、外資台指期 [±1/0]、10Y X bps [±1/0]、NQ X.X% [±1/0]、VIX9D/VIX X.XX [±1/0]、WTI X.X% [±1/0]、市場廣度 X% [±1/0] = 淨分 X
-```
-
-**第 2 行 — 立場標籤**：
-> **立場：偏多 / 偏空 / 中性 / 資料不足**（{stance_line2_rule}）
-
-**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報涵蓋的個股與 ETF,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
-**批#26 鐵律:理由**只寫「哪些關鍵指標+透過什麼機制+推向什麼結論」,**嚴禁**出現
-「11 維中 X 項偏空/偏多」「N 項偏空僅 M 項偏多」「淨分 ±N」「距門檻多少」這類
-計分內部細節——那是後台計算,讀者只要看到結論與傳導鏈,不要看到幾維幾分。
-
-**第 4-6 行**（**每行獨立成段，中間空行**）：
-
-> **2330 開盤關鍵價位**：{key_2330_line}
-
-> **00662 操作建議**：{key_00662_line} 接著只寫你的結論動作——「加碼 / 觀望 / 減碼」擇一(可附條件價位);**動作前不要複述任何指示語**(如「在此基礎上明確寫」——那是給你的指令,不是報告內容,批#29 實信曾整句回音)。
-
-（上兩行的價位數字由 Python 計算:**原樣引用、不可自行更動、不可改用 ADR 美元價**;
- 這段括號說明是給你的指令,**不要抄進輸出**。）
-
-> **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
+{_stance_format_block}> **主要風險**：1 句話點出最可能讓今日預測失效的單一事件
 
 ## 十二、一句話總結
 
@@ -13258,21 +13286,32 @@ def _render_ma200_html(status: dict) -> str:
     if not status:
         return ""
     rows = []
-    for v in status.values():
+    for _sym, v in status.items():
+        # 顯示列移除、資料照抓(與 WTI/BTC/DXY/銅同一個處置):00631L 仍在
+        # `MA200_STATUS` 裡餵 evidence packet 與 prompt,只是不再單獨渲染
+        # ——使用者 2026-08-10 要求。
+        if str(_sym) in MA200_HIDDEN_SYMBOLS:
+            continue
         above = v.get("above")
         tag = "站上(波段偏多)" if above else "跌破(波段轉弱)"
         color = "#dc2626" if above else "#16a34a"   # TW 紅漲綠跌
-        lev_badge = (" <span style='color:#b45309;font-size:11px;font-weight:700;'>槓桿</span>"
-                     if v.get("leveraged") else "")
+        # 「槓桿」標記已隨 00631L 一起移除:本表唯一的槓桿標的就是它,
+        # 標記留著等於一段永遠不會執行的渲染。`leveraged` 旗標仍在資料裡
+        # (packet/prompt 讀得到),要恢復顯示時把標記加回來即可。
         rows.append(
             f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;"
-            f"color:#0f172a;font-size:13px;'>{v.get('name', '')}{lev_badge}</td>"
+            f"color:#0f172a;font-size:13px;'>{v.get('name', '')}</td>"
             f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
             f"font-size:12px;color:#64748b;font-variant-numeric:tabular-nums;'>"
             f"收 {v.get('close')} / MA200 {v.get('ma200')}</td>"
             f"<td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;text-align:right;"
             f"font-weight:700;font-size:13px;color:{color};white-space:nowrap;'>"
             f"{tag} {v.get('dist_pct', 0):+.1f}%</td></tr>")
+    # **過濾之後可能一列都不剩**(外審 r2):可見的三檔全抓失敗、只有隱藏的
+    # 00631L 成功時,上面那個 `if not status` 是通過的 —— 信裡就會出現一張
+    # 只有標題的空表。沒有內容的區塊要缺席,不是留一個空殼。
+    if not rows:
+        return ""
     return (
         '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin:14px 0;">'
         '<div style="background:#f1f5f9;color:#475569;padding:8px 14px;font-weight:700;font-size:14px;">'
@@ -19101,6 +19140,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 批#26:計分內部(「11 維中 X 項」「淨分 ±N」)只在「立場詳情段」過濾——
     # **不套整份 analysis**(Codex r4:八段的「距突破門檻 2%」等正當子句會被誤刪)
     stance_detail = _strip_stance_internals(stance_detail)
+    # 使用者 2026-08-10:結論卡不要出現 prompt 的格式鷹架(「第 N 行 — …」),
+    # 也不要再寫一次「立場:X」(頂端 KPI 條已經有了)。
+    stance_detail = _strip_stance_scaffolding(
+        stance_detail, instructions=_STANCE_FORMAT_BLOCK)
     # 批#29:prompt 指令回音保險——2026-07-22 實信曾把指令「在此基礎上明確寫」
     # 整句抄進 00662 建議行;prompt 已改寫,此為確定性替換雙保險。
     # 用正則容忍 markdown 強調符與空白(Codex r8:「在此基礎上**明確寫**：」的
@@ -19212,18 +19255,21 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 信件只顯示「一般投資人看得懂」的指標;艱澀的 VIX9D / NQ・ES 期貨 / 10Y・13W 殖利率
     # 已從 email 移除,但仍在 MACRO dict + LLM prompt 內(後台保留餵立場評分與模型,品質不降)。
     # WTI / BTC 顯示列已刪(2026-07-16 使用者要求);兩者資料照抓、照餵 11 維計分與 prompt。
+    # 列序由使用者指定(2026-08-10):匯率 → 亞股(韓、日、中)→ 波動與半導體
+    # → 黃金 → 美債。**順序就是閱讀順序** —— 與台股開盤最近的先看。
     macro_rows = (
-        fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
-        fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
         # 2026-07-31:美元指數顯示列移除,保留台幣匯率即可(DXY 仍抓取並餵計分與
         # prompt,只是不再單獨渲染 —— 與 WTI/BTC/銅的處置一致)。
         fmt_macro_row("台幣匯率 USD/TWD", "USDTWD",
                       "數字升=台幣貶:利出口商獲利,但外資匯出壓力增") +
-        fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
         fmt_macro_row("韓國 KOSPI", "KOSPI", "記憶體/半導體出口國,與台股連動") +
+        fmt_macro_row("日經 225", "N225", "亞股開盤情緒參考") +
         fmt_macro_row("上證綜指", "SSE", "中國盤面→台股資金面") +
+        fmt_macro_row("VIX 恐慌指數", "VIX", "<15樂觀 / >25恐慌") +
+        fmt_macro_row("SOX 費半指數", "SOX", "美國半導體,與台積電連動最高") +
         fmt_macro_row("黃金", "GOLD", "避險情緒,漲多代表避險升溫")
         # 銅期貨已依使用者要求移除(批#26);COPPER 仍抓取供內部參考,只是不顯示
+        # 美債利率環境緊接在下方 append(表末跨兩欄)
     )
     # 美債利率環境:白話結論(隱藏殖利率曲線/倒掛術語,只給結果)。跨兩欄放表末。
     _yc = _yield_curve_read(macro)

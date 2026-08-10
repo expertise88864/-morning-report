@@ -867,8 +867,12 @@ def test_render_ma200_status_card():
     assert "長線趨勢參考(200 日均線)" in h
     assert "站上(波段偏多)" in h and "跌破(波段轉弱)" in h
     assert "非買賣訊號" not in h     # 註腳已依使用者要求移除(2026-07-14)
-    # 槓桿標的(00631L)應帶「槓桿」標記
-    assert "槓桿" in h
+    # **00631L 不在這張卡上**(使用者 2026-08-10):資料照抓、照餵 packet
+    # 與 prompt,只是不顯示 —— 與 WTI/BTC/DXY/銅同一個處置。
+    assert "00631L" not in h, h
+    assert "槓桿" not in h           # 唯一的槓桿標的既然不顯示,標記也不留
+    # 其餘標的照舊(隱藏清單不得順手把整張卡清空)
+    assert "0050 元大台灣50" in h and "2330 台積電" in h
     assert "抗回撤" not in h        # 定位說明註腳一併移除(2026-07-14)
 
 
@@ -1278,3 +1282,154 @@ def test_compacting_styles_is_a_no_op_when_there_is_nothing_to_gain():
     assert compact_inline_styles("") == ""
     # 沒有 <head> 就不能插 <style> —— 寧可不壓也不要產生放錯位置的樣式表
     assert compact_inline_styles("<div style='a:b;'>x</div>") == "<div style='a:b;'>x</div>"
+
+
+# ===== 使用者 2026-08-10:結論卡與總經表的三項調整 =====
+
+def test_the_conclusion_card_drops_the_prompt_scaffolding():
+    """**prompt 的格式說明被模型抄了回來**(2026-08-10 實信):結論卡出現
+    「第 1 行 — 11 維計分行」「第 2 行 — 立場標籤」「第 3 行 — 理由」——
+    而 11 維計分行本身早被 `_strip_stance_calculation` 拿掉,讀者看到的
+    是三個空標題。這是批#29「指令回音」的同一個形狀。"""
+    from llm_postprocess import _strip_stance_scaffolding as strip
+    out = strip(chr(10).join([
+        "**第 1 行 — 11 維計分行**",
+        "**第 2 行 — 立場標籤**",
+        "> **立場：中性**",
+        "**第 3 行 — 理由**",
+        "美股上週五全面收紅,費半 +2.56%。",
+        "> **2330 開盤關鍵價位**：站上 2,396 元偏強。"]))
+    assert "第 1 行" not in out and "第 3 行" not in out, out
+    assert "立場：中性" not in out, out          # 頂端 KPI 條已經寫過一次
+    # **內容一個字都不能少**
+    assert "美股上週五全面收紅,費半 +2.56%。" in out
+    assert "2330 開盤關鍵價位" in out
+
+
+def test_the_scaffolding_strip_keeps_a_real_sentence():
+    """帶理由的立場句是內容,不是重複 —— 只砍「標籤自成一行」的那種。"""
+    from llm_postprocess import _strip_stance_scaffolding as strip
+    keep = "立場：中性,因為外資空單未回補。"
+    assert strip(keep) == keep
+    assert strip("") == "" and strip(None) is None
+
+
+def test_the_macro_rows_follow_the_requested_order():
+    """列序由使用者指定(2026-08-10):匯率 → 韓 → 日 → 中 → VIX → SOX
+    → 黃金 → 美債。**順序就是閱讀順序**,不是實作順序。"""
+    def _m(close, pct):
+        return {"close": close, "change_pct": pct, "pct_rank_252d": 50}
+    q = {**_full_quotes(), "MACRO": {
+        "USDTWD": _m(32.23, 0.08), "KOSPI": _m(6258.77, -0.6),
+        "N225": _m(65606.71, -0.12), "SSE": _m(3940.04, 1.02),
+        "VIX": _m(14.9, -1.65), "SOX": _m(12356.79, 2.56),
+        "GOLD": _m(4399.7, 1.36)}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x",
+                          "2026-06-16", "每日報")
+    want = ["台幣匯率 USD/TWD", "韓國 KOSPI", "日經 225", "上證綜指",
+            "VIX 恐慌指數", "SOX 費半指數", "黃金"]
+    at = [html.find(w) for w in want]
+    assert all(i >= 0 for i in at), dict(zip(want, at))
+    assert at == sorted(at), dict(zip(want, at))
+    # 美債利率環境在表末(它是跨欄的結語列)
+    if "美債利率環境" in html:
+        assert html.find("美債利率環境") > at[-1]
+
+
+def test_the_email_itself_has_no_scaffolding_lines():
+    """**沒接上等於不存在**:上面那條測試直接呼叫函式,拿掉 `render_html`
+    裡的呼叫端它照樣綠 —— 而讀者看的是信。這一條走生產路徑。"""
+    analysis = chr(10).join([
+        "## 十一、我的明確立場",
+        "**第 1 行 — 11 維計分行**",
+        "**第 2 行 — 立場標籤**",
+        "> **立場：中性**",
+        "**第 3 行 — 理由**",
+        "美股上週五全面收紅,費半 +2.56% 帶動台積電 ADR。",
+        "",
+        "## 十二、一句話總結",
+        "中性操作,2330 守穩 2,373 元。"])
+    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+                          analysis, "2026-06-16", "每日報")
+    assert "第 1 行" not in html and "第 2 行" not in html, "鷹架進了信裡"
+    assert "第 3 行" not in html
+    # 理由本體要留著(清過頭比沒清更糟)
+    assert "費半 +2.56% 帶動台積電 ADR" in html
+
+
+# ===== 外審第一輪 =====
+
+def test_scaffolding_and_prose_on_the_same_line_keeps_the_prose():
+    """**鷹架與正文同一行時只砍鷹架**(外審 r1):模型會寫
+    「**第 3 行 — 理由**:美股全面收紅…」—— 整行刪掉會把理由一起帶走,
+    那比留著標題更糟。"""
+    from llm_postprocess import _strip_stance_scaffolding as strip
+    out = strip(chr(10).join([
+        "**第 1 行 — 11 維計分行**",
+        "**第 3 行 — 理由**：美股上週五全面收紅,費半 +2.56%。",
+        "第 4-6 行（每行獨立成段）：",
+        "> **00662 操作建議**：觀望。"]))
+    lines = [ln for ln in out.split(chr(10)) if ln.strip()]
+    assert "第 1 行" not in out and "第 4-6 行" not in out, out
+    assert "第 3 行" not in out, out
+    assert any(ln.startswith("美股上週五全面收紅") for ln in lines), lines
+    assert "00662 操作建議" in out
+
+
+def test_the_ma200_card_disappears_when_only_hidden_symbols_survive():
+    """**過濾之後可能一列都不剩**(外審 r2):可見的三檔全抓失敗、只有
+    隱藏的 00631L 成功時,信裡不該出現一張只有標題的空表。"""
+    only_hidden = {"00631L.TW": {"name": "00631L 台灣50正2", "close": 90.0,
+                                 "ma200": 80.0, "above": True,
+                                 "dist_pct": 12.5, "leveraged": True}}
+    assert mr._render_ma200_html(only_hidden) == ""
+    # 混合時照常出表(修正不得把整張卡關掉)
+    mixed = dict(only_hidden, **{"2330.TW": {
+        "name": "2330 台積電", "close": 900.0, "ma200": 950.0,
+        "above": False, "dist_pct": -5.3, "leveraged": False}})
+    assert "2330 台積電" in mr._render_ma200_html(mixed)
+
+
+def test_a_verbatim_prompt_line_is_not_mistaken_for_a_reason():
+    """**逐字抄回的是整行,不是我挑的那一句**(外審 r5):判準改成拿
+    `_STANCE_FORMAT_BLOCK` 原文比對 —— 任意長度的抄回都涵蓋,
+    而且沒有一張會漂移的片語清單。這條用**prompt 的真正第 3 行**。"""
+    from llm_postprocess import _strip_stance_scaffolding as strip
+    line3 = next(ln for ln in mr._STANCE_FORMAT_BLOCK.split(chr(10))
+                 if ln.startswith("**第 3 行"))
+    assert len(line3) > 100, "prompt 第 3 行變短了,這條測試要重寫"
+    assert strip(line3, instructions=mr._STANCE_FORMAT_BLOCK) == ""
+    # 抄回整行之後才接真理由 → 只留理由
+    out = strip(line3 + "美股上週五全面收紅,費半 +2.56%。",
+                instructions=mr._STANCE_FORMAT_BLOCK)
+    assert out == "美股上週五全面收紅,費半 +2.56%。", repr(out)
+
+
+def test_an_echo_inside_a_sentence_does_not_take_the_price_with_it():
+    """**句內把片語拿掉,剩下的還有東西就留**(外審 r4):回音與 Python
+    算出來的價位可能在同一句裡 —— 整句丟會把價位一起帶走。"""
+    from llm_postprocess import _strip_stance_scaffolding as strip
+    out = strip("原樣引用 2,396 元，站上偏強。",
+                instructions=mr._STANCE_FORMAT_BLOCK)
+    assert "原樣引用" not in out and "2,396 元" in out and "站上偏強" in out, out
+    # 真正的內容一個字都不動
+    keep = "> **主要風險**：CPI 高於預期。"
+    assert strip(keep, instructions=mr._STANCE_FORMAT_BLOCK) == keep
+
+
+def test_the_prompt_and_the_filter_read_the_same_block():
+    """**單一真相來源**:prompt 用 `_STANCE_FORMAT_BLOCK` 填值,渲染端拿
+    同一份原文比對。兩邊各寫一份時,prompt 一改寫過濾就悄悄失效。"""
+    import io as _io
+    from pathlib import Path
+    from llm_postprocess import _STANCE_PROMPT_ECHOES as phrases
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    assert "{_stance_format_block}" in src, "prompt 沒有用那份常數"
+    assert "instructions=_STANCE_FORMAT_BLOCK" in src, "渲染端沒有拿原文比對"
+    # 句內片語表也釘在同一份原文上(它只處理混合句,見該常數)
+    missing = [e for e in phrases if e not in mr._STANCE_FORMAT_BLOCK]
+    assert not missing, f"這些片語已不在指令原文裡:{missing}"
+    assert phrases, "空表不算通過"
+
+

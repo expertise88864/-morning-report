@@ -101,6 +101,133 @@ def _strip_stance_calculation(text: str) -> str:
     return "\n".join(out)
 
 
+#: 立場段的**結構鷹架**:prompt 用「第 N 行 — 用途」交代格式,而模型會把
+#: 那些標題**原樣抄進輸出**(2026-08-10 實信:結論卡出現「第 1 行 — 11 維
+#: 計分行」「第 2 行 — 立場標籤」「第 3 行 — 理由」三行,而 11 維計分行
+#: 本身早被 `_strip_stance_calculation` 拿掉 —— 讀者看到的是三個空標題)。
+#: 這是批#29「指令回音」的同一個形狀,處置也一樣:prompt 明講不要抄,
+#: 再加一道確定性的移除(模型的輸出不歸我們管,prompt 只降低機率)。
+#: 鷹架的**標題**:行首的「第 N 行」(或「第 4-6 行」)一路到收尾的冒號
+#: 或行尾。**辨識與移除是同一條** —— 兩條各寫一份會漂移:第一版辨識端
+#: 要求「行」後面緊接破折號或冒號,於是「第 4-6 行(每行獨立成段):」
+#: 這種全形括號開頭的整條漏掉(外審 r1 的測試當場抓到)。
+#: 行首錨定才是判準;長度上限只是不讓它吞掉一整段。
+_STANCE_SCAFFOLD_RE = (r"^[>\s]*[*_]{0,3}\s*第\s*\d+(?:\s*[-–—]\s*\d+)?"
+                       r"\s*行[^:：\n]{0,60}(?:[:：]|$)")
+#: 只印一次立場:頂端 KPI 條已經有「立場 中性」,結論卡再寫一行是重複
+#: (使用者 2026-08-10)。**只砍「標籤本身自成一行」**的那種 ——
+#: 帶理由的句子(「立場：中性,因為…」)是內容,不是重複。
+#: 這道移除在 `_extract_stance` **之後**才跑(它讀的是整份 analysis,
+#: 不是這一段)—— 與 `_strip_stance_internals` 同一個先後理由。
+_STANCE_LABEL_ONLY_RE = (r"(?m)^[>\s]*[*_]{0,3}\s*立場\s*[*_]{0,3}\s*[:：]"
+                         r"\s*[*_]{0,3}\s*(?:偏多|偏空|中性|資料不足)"
+                         r"\s*[*_]{0,3}\s*[。.]?\s*$")
+
+
+#: 一段文字要多長才值得當成「指令回音」比對。太短的片段(「觀望」)在
+#: prompt 裡也找得到,那不是回音,是正常用詞。
+_ECHO_MIN_CHARS = 12
+
+
+def _norm_echo(s) -> str:
+    """比對用的正規化:排版差異(空白、markdown 強調、引號)不算差異。"""
+    import re as _re
+    return _re.sub(r"[\s*_>`\"'“”「」【】]", "", str(s or ""))
+
+
+def _instruction_chunks(instructions) -> tuple:
+    """把 prompt 的指令原文切成可比對的靜態片段。
+
+    **判準是「這句話是不是我們寫的」,而那有唯一答案:去 prompt 原文裡找。**
+    外審連五輪指的是同一件事的不同長度(只砍標題 → 砍到冒號 → 逐句 →
+    逐片語),而每一次都有更長的一段漏掉 —— 因為「片語清單」本來就不是
+    要量的東西。改成拿**原文本身**比對之後,任意長度的逐字抄回都涵蓋,
+    而且沒有一張會漂移的清單。
+
+    佔位符(`{…}`)的值每天不同,所以只拿它兩側的靜態片段比對。
+    """
+    import re as _re
+    out = []
+    for chunk in _re.split(r"\{[^{}]*\}", str(instructions or "")):
+        n = _norm_echo(chunk)
+        if len(n) >= _ECHO_MIN_CHARS:
+            out.append(n)
+    return tuple(out)
+
+
+#: **句內**的指令片語:同一句裡混著指令與真數據時(「原樣引用 2,396 元,
+#: 站上偏強」),整句不是原文的子字串,上面那條比不到 —— 而把價位一起丟掉
+#: 比留著四個字更糟(外審 r4)。這張表只處理這種混合句,而且每一條都被
+#: 守衛釘在 `_STANCE_FORMAT_BLOCK` 上(`tests/test_markdown.py`):
+#: prompt 改寫而它沒跟上,測試當場紅。
+_STANCE_PROMPT_ECHOES = (
+    "說明為什麼是這個立場",
+    "每句必附數據",
+    "每行獨立成段",
+    "原樣引用",
+    "不可自行更動",
+    "不可改用 ADR 美元價",
+    "不要抄進輸出",
+    "是給你的指令",
+    "禁止只寫",
+)
+
+
+def _strip_stance_scaffolding(text: str, instructions: str = "") -> str:
+    """移除立場段裡「prompt 的格式說明」與重複的立場標籤行。
+
+    兩者都不是分析內容:前者是給模型的指令被抄了回來,後者在頂端 KPI 條
+    已經出現過。理由句、關鍵價位、操作建議、風險一律不動 —— 鷹架與正文
+    寫在同一行時**只砍鷹架**(外審 r1:整行刪會把理由一起帶走)。
+
+    `instructions` 是 prompt 的指令原文(`_STANCE_FORMAT_BLOCK`)。給了它
+    才比得出「這句話是我們寫的」;不給只做鷹架與標籤的移除 —— 那是
+    降級不是失效(舊呼叫端與單元測試仍然可用)。
+    """
+    import re as _re
+    if not isinstance(text, str) or not text:
+        return text
+    chunks = _instruction_chunks(instructions)
+
+    def _is_quoted(seg: str) -> bool:
+        """整句(或整行)就是 prompt 原文的一段 —— 任意長度都涵蓋。"""
+        n = _norm_echo(seg)
+        return len(n) >= _ECHO_MIN_CHARS and any(n in c for c in chunks)
+
+    def _has_phrase(s: str) -> bool:
+        return any(e in s for e in _STANCE_PROMPT_ECHOES)
+
+    out = []
+    for ln in text.split("\n"):
+        if _re.search(_STANCE_LABEL_ONLY_RE, ln):
+            continue                    # 立場標籤自成一行 = 重複,不留
+        m = _re.match(_STANCE_SCAFFOLD_RE, ln)
+        rest = ln[m.end():] if m else ln
+        if _is_quoted(rest) or _has_phrase(rest):
+            kept = []
+            for c in _re.findall(r"[^。！？!?]*[。！？!?]|[^。！？!?]+", rest):
+                if _is_quoted(c):
+                    continue            # 整句是我們寫的字
+                if not _has_phrase(c):
+                    kept.append(c)
+                    continue
+                # **句內把片語拿掉,剩下的還有東西就留**(外審 r4):
+                # 「原樣引用 2,396 元,站上偏強」—— 逐句丟會把 Python
+                # 算出來的價位一起帶走。拿掉片語後只剩標點的才整句不要。
+                for e in _STANCE_PROMPT_ECHOES:
+                    c = c.replace(e, "")
+                if _re.sub(r"[\s，、。；：,.;:！？!?*_>（）()「」【】\-—–]", "", c):
+                    kept.append(c)
+            rest = "".join(kept)
+        elif not m:
+            out.append(ln)              # 沒鷹架也沒回音 → 原樣保留
+            continue
+        rest = rest.strip().strip("*_> 　").lstrip("，,、；;。.:：")
+        if rest:                        # 還有正文 → 只砍鷹架與指令
+            out.append(rest)
+    return "\n".join(out).strip("\n")
+
+
 def _strip_stance_internals(text: str, extra_bad: str = "") -> str:
     """散文層安全網(批#26 使用者:理由不要出現計分內部):在「我的明確立場」
     理由句裡移除「11 維中 X 項偏空」「N 項偏多」「淨分 ±N」「距門檻…」等

@@ -12,60 +12,6 @@
   "action": "",
   "identity_schema": 6
  },
- "geopolitical:美國": {
-  "first_seen": "2026-08-01",
-  "days": 4,
-  "last_seen": "2026-08-07",
-  "latest_title": "北京不滿對台軍售致美國防官員訪中受阻",
-  "entity": "美國",
-  "subjects": [
-   "美國"
-  ],
-  "event_type": "geopolitical"
- },
- "geopolitical:台灣": {
-  "first_seen": "2026-08-05",
-  "days": 2,
-  "last_seen": "2026-08-07",
-  "latest_title": "學者倡議台美合作發展無人機",
-  "entity": "台灣",
-  "subjects": [
-   "台灣"
-  ],
-  "event_type": "geopolitical"
- },
- "export_controls:美國": {
-  "first_seen": "2026-08-06",
-  "days": 2,
-  "last_seen": "2026-08-07",
-  "latest_title": "美國對多晶矽衍生產品加徵15%關稅",
-  "entity": "美國",
-  "subjects": [
-   "美國"
-  ],
-  "event_type": "export_controls"
- },
- "export_controls:US-LICYQ": {
-  "first_seen": "2026-08-07",
-  "days": 1,
-  "last_seen": "2026-08-07",
-  "latest_title": "美國出口禁令涵蓋電池廢棄物與鎢廢料",
-  "entity": "US-LICYQ"
- },
- "export_controls:中國": {
-  "first_seen": "2026-08-07",
-  "days": 1,
-  "last_seen": "2026-08-07",
-  "latest_title": "中國擴大對美科技與無人機相關反制措施",
-  "entity": "中國"
- },
- "geopolitical:沙烏地阿拉伯": {
-  "first_seen": "2026-08-07",
-  "days": 1,
-  "last_seen": "2026-08-07",
-  "latest_title": "沙國警告伊朗支持武裝可能同步攻擊能源設施",
-  "entity": "沙烏地阿拉伯"
- },
  "export_controls:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-08",
   "days": 1,

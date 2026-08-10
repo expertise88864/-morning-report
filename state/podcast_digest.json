@@ -1953,6 +1953,63 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "c9b5a32c-d698-4e94-b69d-8e9fe1f51ca9",
+        "title": "EP327. 谷歌會放棄模型嗎、我低估了 SPCX、美股來到歷史新高 | M觀點",
+        "published": "Mon, 10 Aug 2026 05:52:03 GMT",
+        "processed_at": "2026-08-10T09:38:01Z",
+        "digest": {
+          "summary_points": [
+            "主持人反駁 Semi-Analysis 稱 Google 會放棄前沿模型的說法，認為單一模型落後是兵家常事，Google 資源龐大且絕不會短視近利，應會持續研發並追上前沿水準。",
+            "提出將前沿模型分為「最前沿、次前沿、後前沿」三個層級，並推測 Google 在年底前至少能推出次前沿等級的 Gemini 4.0，足以在市場競爭。",
+            "從三大公有雲的算力分配邏輯分析，自有模型是長期競爭關鍵，且 Google 執行長在第二季電話會議已明確表示 TPU 算力以內部模型研發為第一優先。",
+            "主持人因 All-In Podcast 及最新財報資訊，認為先前低估了 SpaceX 的價值，將 XAI 模型與資料資產估值從 2,500 億調升至 3,500 億美元，地面算力中心估值從 1,500 億調升至 4,000 億美元，整體估值由 1.05 兆拉高至 1.4 兆美元。",
+            "調高 SpaceX 估值的主因是 Grok 4.5 推出後 Token 用量翻三倍、Cursor 年底 ARR 上看 100 億美元，以及地面算力中心明年底目標 8GW 電力容量，即使保守計算年營收仍可達 1,440 億美元以上。",
+            "美股 S&P 500 創歷史新高，主持人強調投資需要深入研究和堅定信念，避免因市場波動而頻繁交易，並以自身長期持有 SEA 與 Palantir 為例，說明股價高低不影響其長期看法。",
+            "提醒若市場再次進入瘋狂，下一波修正勢必更大，投資人應做好風險控管，避免過高槓桿，才能在修正時穩健渡過。"
+          ],
+          "tickers": [
+            {
+              "name": "Google",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Google 有能力且會繼續研發前沿模型，不認同市場認為它將放棄模型、只賣算力的悲觀看法。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "基於算力中心擴張與 XAI 業務進展，主持人認為先前估值太低，調高合理估值至 1.4 兆美元，看好其創造價值的能力。"
+            },
+            {
+              "name": "XAI",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Grok 4.5 用量飆升、Cursor 成長快速，且算力業務潛力龐大，主持人認為 XAI 整體資產價值被低估。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人長期持有並有堅定信念，認為公司在之前幾季就已證明自己，股價波動不影響其長線價值判斷。"
+            },
+            {
+              "name": "Sea Limited",
+              "code": "SE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人以自身持有為例，強調無論股價高低，對其前景看法未曾改變，展現對該公司的長線 conviction。"
+            }
+          ],
+          "market_view": "美股 S&P 500 雖創歷史新高，但市場熱度不減，主持人提醒若再次走向瘋狂，下一波修正將更劇烈，投資人應謹慎控管風險，避免追高。",
+          "action_view": "以長期持有為核心，在修正時適度用剩餘現金加碼，但絕不開過高槓桿，強調深入研究和堅定信念是穩健投資的關鍵。",
+          "notable_quote": "我從來沒有看過這些科技巨頭的心態是短視近利的。"
+        }
+      },
+      {
         "guid": "45714ba3-86e4-4e9e-8fd5-250491f47151",
         "title": "EP326. PLTR 怪物級財報、SPCX 的未來大餅、谷歌 AI 組織調整 | M觀點",
         "published": "Thu, 06 Aug 2026 16:35:14 GMT",
@@ -2497,51 +2554,6 @@
           "notable_quote": "我告訴你，Meta出租算力不是認輸，這很合理。"
         },
         "shown_at": "2026-07-02T23:04:56Z"
-      },
-      {
-        "guid": "05dbfcf7-a0b7-4e78-ac2e-a172c51cd27e",
-        "title": "EP315. GPT-5.6 限定推出、蘋果漲價被罵翻、Meta 新智能眼鏡 | M觀點",
-        "published": "Mon, 29 Jun 2026 07:13:40 GMT",
-        "processed_at": "2026-06-29T13:06:13Z",
-        "digest": {
-          "summary_points": [
-            "蘋果因 DRAM 和 NAND 記憶體價格大漲，調漲 Mac、iPad 等產品售價，外界批評聲浪大，主持人認為成本上升約 2,500 元台幣，漲價 3,000 元台幣屬合理。",
-            "美光商務長批評客戶先前壓價導致現在缺貨，但主持人直言記憶體廠過去不會因此擴產，現在記憶體價格將維持高檔一段時間。",
-            "記憶體大缺，台灣記憶體相關廠商近期股價表現亮眼。",
-            "記憶體漲價可能衝擊消費性電子產品需求，相關類股投資須謹慎。",
-            "OpenAI 發布 GPT5.6 模型，在 Agentic 工作流與資安測試等指標上打敗 Anthropic Measles，AI 競賽形成雙頭馬車。",
-            "美國政府對前沿 AI 模型進行監管，可能影響 OpenAI 等公司營收，若限制過嚴可能將市場讓給中國開源模型。",
-            "Meta 推出自有品牌平價智慧眼鏡，降價策略正確，但 AI 功能能否跟上將是關鍵，否則可能被 Google 反超。",
-            "近期股市波動大，主持人建議去槓桿，避免因指數修正而被斷頭。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "調漲產品售價合理，但成本上升可能壓抑需求，無明確看多或看空。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "記憶體漲價受惠，但擴產有限，長期仍須觀察。"
-            },
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "平價智慧眼鏡策略正確，但 AI 表現若不佳可能影響產品競爭力。"
-            }
-          ],
-          "market_view": "近期股市波動很大，台股美股都出現大幅上下，主持人認為波動大，但未明確看多或看空。",
-          "action_view": "建議去槓桿，在波動大的時期不要承擔無法承受的風險，避免因指數跌幅而斷頭。",
-          "notable_quote": "記憶體真的會貴一陣子，那這樣真的就會打到很多消費品。"
-        },
-        "shown_at": "2026-06-29T22:52:55Z"
       }
     ]
   },
@@ -5468,6 +5480,34 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "f7ff667e-d517-457f-b745-b49f0150c4e6",
+        "title": "NYT CEO Meredith Kopit Levien on Running a Media Brand in the Age of AI",
+        "published": "Mon, 10 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-10T09:46:10Z",
+        "digest": {
+          "summary_points": [
+            "紐約時報執行長強調，集團最核心的價值來源是高品質獨立新聞，而非遊戲或食譜；她駁斥「新聞是虧錢招牌」的舊觀念，認為新聞才是訂閱經濟的引擎。",
+            "她透露紐時去年花費近 20 億美元製作內容，並正透過訴訟（OpenAI、微軟、Perplexity）與授權（Amazon）雙軌並進，要求 AI 業者為使用新聞內容付出公平、可控且可持續的授權費。",
+            "關於定價，執行長說策略是「把所有人都放到需求曲線之下」：多數訂戶以每周 1 美元訂閱新聞捆綁包，之後依使用深度逐步漲價；此「梯子式」定價已讓轉換與續訂表現良好。",
+            "針對股價在財報後下跌，她表示紐時是家族控制公司，能打長期戰，因此持續加碼投資影片；目標不是重蹈 5-10 年前「為搶廣告而 pivot to video」的覆轍，而是建立每天數百萬人的原生觀看群眾。",
+            "主持人結語評論，紐時的成功讓它成為新聞人才市場近乎「獨買者」——頂尖記者最終都會流向紐時，區域報紙不再有能力雇白宮記者；這種贏者全拿對整體媒體生態可能不利。",
+            "執行長也否認「受眾綁架」疑慮，強調紐時會繼續報導真相，即使得罪不同立場的讀者；同時她證實新聞室的信任與標準團隊是業界最大的，並投入大量資源教育員工「獨立新聞」的意義。"
+          ],
+          "tickers": [
+            {
+              "name": "紐約時報",
+              "code": "NYT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "節目中將紐時視為數位媒體轉型的成功案例，執行長看好其高品質新聞與捆綁訂閱策略的長期成長，並認為 AI 授權能帶來額外價值。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The first dollar in the place goes to the high quality independent news journalism period hard stop."
+        }
+      },
+      {
         "guid": "253af1b0-6485-46c3-b506-b49e01625633",
         "title": "How a Sardine Gets From the Ocean to a Can",
         "published": "Fri, 07 Aug 2026 08:00:00 +0000",
@@ -5724,25 +5764,6 @@
           "notable_quote": "The Fed is not safe, it's an endangered species now."
         },
         "shown_at": "2026-07-17T22:45:02Z"
-      },
-      {
-        "guid": "4859579a-2313-42f7-9c12-b488014fc4d7",
-        "title": "Why Soccer Analytics Works Like Volatility Arbitrage Trading",
-        "published": "Thu, 16 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-16T09:43:04Z",
-        "digest": {
-          "summary_points": [
-            "足球分析與波動率交易相似，都是在不完全資訊下進行高槓桿賭注。",
-            "MLS 薪資上限結構類似於投資組合配置，需要根據球員槽位進行相對價值評估。",
-            "數據分析可能導致運動策略的同質化，如同金融市場中的過度最佳化問題。",
-            "好的模型不會公開，而是直接用於打敗賭盤，類似於量化交易中的策略保密。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "if you have a good model you wouldn't publish it you would just beat the bookies"
-        },
-        "shown_at": "2026-07-16T22:53:17Z"
       }
     ]
   },

@@ -210,7 +210,7 @@ MODULE_CEILINGS = {
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
-    "event_identity.py": 760,
+    "event_identity.py": 880,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)

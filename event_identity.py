@@ -66,9 +66,13 @@ import re
 #: v9(第二十八輪外審 P1-4):帶方向的動作認不出受詞時,鍵放
 #: `UNKNOWN_OBJECT` 而不是整個主體集合(那等於拿 actor+recipient 冒充
 #: recipient);受詞也會從 summary 找。**鍵的算法變了就要進版。**
+#: v12(第三十輪外審 P1-1/P1-4):態勢表收窄成「持續態勢」(選舉與峰會
+#: 回到逐樁)、家具剝除改正面辨識(發布者/版名宣告表)、樣板前綴
+#: (「重大訊息」「公告」)進通用詞 —— **辨識詞的公式變了就要進版**。
+#: v11(縱深第五批):標題家具(來源名與版名)不進辨識詞。
 #: v10(第二十九輪 Commit 2):`CANONICAL_SUBJECTS` 補齊法域的中英對應
 #: (France→法國 等 28 組)—— 主體正規化是鍵的一部分,表變了鍵就變。
-IDENTITY_SCHEMA_VERSION = 11
+IDENTITY_SCHEMA_VERSION = 12
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -86,6 +90,12 @@ from event_actions import (                       # noqa: E402,F401
 GENERIC_NEWS_WORDS = (
     "宣布", "表示", "指出", "公布", "傳出", "據悉", "傳", "證實", "強調",
     "今日", "昨日", "近期", "最新", "報導", "消息", "傳聞", "回應",
+    # v12(外審 P1-4 的下半):**樣板前綴**。「台積電重大訊息公告 -
+    # 高雄廠停工」與「… - 董事長辭任」剝完家具之後仍有 0.56 重疊 ——
+    # 六個共同詞全部來自這個前綴。它每一則公告都有,不指認任何事件,
+    # 與「宣布」「表示」是同一類;不挖掉的話,家具剝乾淨了,
+    # 兩件事還是會被判成同一樁(外審指的 observable failure)。
+    "重大訊息", "公告", "澄清說明", "新聞稿",
     "announce", "announces", "announced", "says", "said", "report",
     "reports", "reported", "unveil", "unveils", "confirms", "confirmed",
 )
@@ -95,52 +105,153 @@ GENERIC_NEWS_WORDS = (
 MIN_DISCRIMINATIVE = 2
 
 
-#: 標題尾巴「家具」的長度上限:來源名(" - money.udn.com")與版名
-#: ("| 聯合新聞網")都是短標籤;真的標題子句(帶句讀)不會被誤剝。
-_FURNITURE_MAX = 24
+#: **標題尾綴的發布者**(只為「這一段是不是家具」服務)。
+#:
+#: 為什麼不塞進 `source_registry.OWNER_GROUPS`:那張表回答的是**另一個
+#: 問題** ——「這是不是一個獨立的編輯決策」,而它刻意保守(不在表裡的不
+#: 計入獨立數)。LINE TODAY、Yahoo股市是**聚合器**:它們是貨真價實的
+#: 標題家具,卻絕不該讓「多家獨立證實」的數字加一。兩張表、兩個問題。
+#:
+#: 名單由 2026-08-10 的真實 state 量出來(6,197 個標題裡帶 " - " 的
+#: 3,876 個,依尾綴出現次數由高至低)。**認不得就不剝** —— 漏剝只是讓
+#: 家具留在辨識詞裡(批#5 之前的老樣子),誤剝會把「重大訊息 - 高雄廠
+#: 停工」與「重大訊息 - 董事長辭任」壓成同一件事(外審 P1-4)。
+#: 兩種錯誤的代價不對稱。
+_TITLE_TAIL_PUBLISHERS = frozenset({
+    "cmoney投資網誌", "cmoney", "yahoo股市", "yahoo新聞", "yahoo 財經",
+    "yahoo運動", "yahoo奇摩股市", "line today", "蕃新聞", "富聯網",
+    "tradingkey", "ftnn 新聞網", "ftnn新聞網", "台視全球資訊網",
+    "股市報價& 財經新聞", "大纪元", "大紀元", "鏡週刊mirror media",
+    "鏡週刊", "tradingview", "富途牛牛", "pchome online 新聞", "今周刊",
+    "rfi", "世界新聞網", "非凡新聞台", "風傳媒", "上報", "太報",
+    "nownews今日新聞", "nownews", "newtalk", "民視新聞網", "民視財經網",
+    "ctwant", "techorange 科技報橘", "動區動趨", "香港經濟日報hket",
+    "報新聞", "華僑時報", "新頭殼newtalk", "數位時代", "遠見雜誌",
+    "經濟日報", "工商時報", "財訊", "信傳媒", "商周", "yahoo",
+    "hinet生活誌", "yahoo奇摩新聞", "自由財經", "自由時報",
+    "旺得富理財網", "moomoo", "鏈新聞 abmedia", "民報", "商傳媒",
+    "business insider taiwan", "理財周刊", "新唐人電視台", "環球生技月刊",
+    "biggo 財經", "壹蘋新聞網", "台灣好新聞", "t客邦", "ithome",
+    "mashdigi", "好房網news", "卡優新聞網", "信報網站", "太報 taisounds",
+    "中華新聞雲／中華日報", "科技新報", "數位時代", "天下雜誌",
+})
+
+#: **版名/導覽段**(管線分隔的那幾格)。同樣是正面宣告:
+#: 「短」不是家具的證據(外審 P1-4:「法說」「停工」也只有兩個字,
+#: 而那是內容)。名單同樣由真實 state 量出來。
+_SECTION_LABELS = frozenset({
+    "全球", "全球財經", "股市話題", "產業熱點", "市場焦點", "股市要聞",
+    "個股", "股市", "產經", "國際", "生活", "科技", "產業", "新聞",
+    "財經", "요즘", "時事", "焦點", "頭條", "重點新聞", "熱門新聞",
+    "即時新聞", "國際財經", "台股", "美股", "陸股", "政治", "社會",
+})
+
+
+#: 招牌尾字:認得的發布者名字扣掉之後,這些字不算事件內容
+#: (「三立新聞網SETN.com」→ 扣掉 `三立新聞`/`setn` 還剩「網.com」)。
+#: **只收招牌用語** —— 「停工」「法說」「辭任」不在裡面,所以它擴大的是
+#: 辨識率,不是誤剝的面積(外審 P1-4 的判準:正面宣告,不是長度)。
+_OUTLET_SUFFIX_WORDS = (
+    "新聞網", "新聞雲", "財經雲", "電視台", "資訊網", "新聞台", "網站",
+    "新聞", "財經", "理財", "網", "雲", "報", "台", "com", "tw", "net",
+)
+
+
+def _publisher_aliases() -> tuple:
+    """所有認得的發布者別名(註冊表 + 本檔宣告),小寫、由長至短。
+
+    由長至短是必要的:先扣掉「聯合新聞網」才不會被「聯合」切成碎片,
+    而碎片會讓殘餘看起來像內容。
+    """
+    global _ALIAS_CACHE
+    if _ALIAS_CACHE is None:
+        import source_registry as _sr
+        names = set(_TITLE_TAIL_PUBLISHERS)
+        for grp in _sr.OWNER_GROUPS:
+            names.update(str(x).casefold() for x in grp[1:])
+        names.update(str(x).casefold() for x in _sr.WIRES)
+        names.update(str(x).casefold() for x in _sr.AGGREGATORS)
+        _ALIAS_CACHE = tuple(sorted(
+            (n for n in names if len(n) >= 2), key=len, reverse=True))
+    return _ALIAS_CACHE
+
+
+_ALIAS_CACHE = None
+
+
+def _is_publisher_tail(tail: str) -> bool:
+    """這一段是不是**發布者標籤**(不是事件內容)。
+
+    三種正面證據:註冊表認得的發布者、網域形狀(`ftnn.com.tw`)、
+    本檔宣告的尾綴發布者。**長度不算證據**(外審 P1-4)。
+    """
+    t = str(tail or "").strip()
+    if not t or re.search(r"[:：。!！?？「」]", t):
+        return False          # 帶引述/句讀的是內容(「路透:停火近了」)
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}", t):
+        return True           # money.udn.com / ftnn.com.tw
+    if t.casefold() in _TITLE_TAIL_PUBLISHERS:
+        return True
+    # **把認得的發布者名字扣掉,看剩下什麼**(外審 r2 的一般化)。
+    # 註冊表是子字串比對,所以「含發布者」不等於「是發布者標籤」:
+    #   「路透獨家披露停火條件全文內容整理」扣掉「路透」還剩 14 字 → 內容;
+    #   「TechNews 科技新報」兩個名字都扣掉之後什麼都不剩 → 標籤。
+    # 用長度當閘門的話,兩個字的真內容(「法說」)會過、十四個字的真
+    # 標籤(中英並列的媒體名)會被擋 —— 兩頭都錯。
+    left, hit = t.casefold(), False
+    for alias in _publisher_aliases():
+        if alias and alias in left:
+            left = left.replace(alias, " ")
+            hit = True
+    if hit:
+        # 認得的名字扣掉之後,常見的**招牌尾字**也不算內容
+        # (「三立新聞網SETN.com」→「網.com」、「ETtoday財經雲」→「財經雲」)。
+        # 這張表刻意只收招牌用語 —— 「停工」「法說」不在裡面,
+        # 所以它擴大的是辨識率,不是誤剝的面積。
+        for w in _OUTLET_SUFFIX_WORDS:
+            left = left.replace(w, " ")
+    # **一定要有名字被扣掉,而且要扣得一乾二淨**:
+    #   * 沒扣到任何東西 → 殘餘等於原文,兩個字的真內容(「法說」)會過關;
+    #   * 留一點餘裕(舊版 ≤2)→「路透停火」「彭博破局」扣掉媒體名之後
+    #     剩下的**正是分辨兩樁的內容**,而它剛好兩個字(外審 r1)。
+    # 招牌用語已經在上面扣過了,所以「乾淨」是做得到的要求。
+    return hit and not re.sub(r"[\s.,·・\-–—_/|()（）]", "", left)
 
 
 def strip_title_furniture(title) -> str:
-    """剝掉標題**尾端**的來源與版名;剝不動(內文太短)就原樣退回。
+    """剝掉標題**尾端**的發布者與版名;認不出來就原樣退回。
 
     這些不是事件內容(v11)—— 2026-08-10 實際 state 的 incident_tokens
     裡有 `com`/`money`/`udn`/「聯合」「新聞」:同一條線索兩天在不同媒體
     報導,家具不同會稀釋重疊、家具相同會灌高重疊 —— 兩個方向都在扭曲
     「是不是同一樁」的判斷。
+
+    **判準是正面辨識,不是長度**(外審 P1-4):「台積電重大訊息 -
+    高雄廠停工」與「… - 董事長辭任」的尾段都短、都沒句讀,靠長度剝的話
+    兩件事會被壓成同一個標題、同一組辨識詞 —— 那正是這個模組要防的
+    false merge。認不得的尾綴留著(家具進辨識詞是舊行為,保守側)。
     """
     text = str(title or "").strip()
-    # 「內容 - 來源」:只剝最後一段,而且要短、不含句讀(真句子不剝)。
-    # Google News 的尾綴慣例就是這個形狀;小站(ftnn.com.tw)不在
-    # 註冊表,所以這一段维持啟發式。
-    head, sep, tail = text.rpartition(" - ")
-    if (sep and 0 < len(tail.strip()) <= _FURNITURE_MAX
-            and not re.search(r"[。!！?？「」]", tail)
-            and len(head.strip()) >= 6):
+    # 「內容 - 發布者」:Google News 的尾綴慣例。**逐段往前剝** ——
+    # 真實資料是「內容 | 版名 - 站名 - 發布者」這種多層尾巴。
+    while True:
+        head, sep, tail = text.rpartition(" - ")
+        if not sep or len(head.strip()) < 6 or not _is_publisher_tail(tail):
+            break
         text = head.strip()
-    # 「內容 | 版名| 站名」:**只有尾段是註冊表認得的發布者**才剝
-    # (`source_registry.owner_of`,與 `title_publisher` 同一個先例)。
-    # 全形「｜」在真實標題裡有語意用途(「美國宣布新制裁｜鎖定無人機
-    # 供應鏈」)—— 外審 r1:長度不是家具的證據,認得出來才是。
-    # 發布者錨定之後,它前面的連續**極短**段(≤6,「全球」「中東戰火
-    # 連綿」)是站內導覽,一併剝;更長的段可能是內容,留下。
+    # 「內容 | 版名 | 站名」:尾段是發布者才動;錨定之後只再剝**宣告過的
+    # 版名**。全形「｜」在真實標題裡有語意用途(「美國宣布新制裁｜鎖定
+    # 無人機供應鏈」)—— 剝到內容比留著家具貴得多。
     seps = [m.start() for m in re.finditer(r"[|｜]", text)]
     if seps:
-        import source_registry as _sr
         _tail = text[seps[-1] + 1:].strip()
-        # 尾段要**是**發布者標籤,不是**含**發布者(外審 r2):
-        # `owner_of` 對中文別名是子字串比對,「路透:雙方仍未就停火條件
-        # 達成協議」含「路透」也會命中 —— 而那是**引述**,是分辨兩樁的
-        # 內容。純標籤短(聯合新聞網/經濟日報)且不帶冒號句讀;
-        # 帶引述記號或超長的一律當內容。
-        if (0 < len(_tail) <= 12
-                and not re.search(r"[:：。!！?？「」]", _tail)
-                and _sr.owner_of(_tail)):
+        if _is_publisher_tail(_tail) or _tail.casefold() in _SECTION_LABELS:
             cut = seps[-1]
             # 用**切片**而不是 split/join —— 重組會把全形｜換成半形,
             # 留下的內容一個字元都不該變。
             for pos in reversed(seps[:-1]):
                 seg = text[pos + 1:cut].strip()
-                if 0 < len(seg) <= 6:
+                if seg.casefold() in _SECTION_LABELS or _is_publisher_tail(seg):
                     cut = pos
                 else:
                     break

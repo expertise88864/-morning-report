@@ -1120,3 +1120,127 @@ def test_situation_actions_are_declared_states_not_acts():
                  "tariff_action"} & SITUATION_ACTIONS)
     assert "hormuz_passage" in SITUATION_ACTIONS
 
+
+# ===== 第三十輪外審 Commit 1:身分的兩個 false-merge =====
+
+def test_two_summit_rounds_same_counterpart_same_month_are_distinct(
+        tmp_path, monkeypatch):
+    """**會重複發生的回合不是持續態勢**(外審 P1-1):同一組對手同月的
+    貿易談判與安全會談,鍵完全相同(型別:動作:對象:月)—— 上一版把
+    summit_talks 當態勢、跳過逐樁切分,兩件事被寫成同一條延燒故事。"""
+    a = {"event_type": "geopolitical", "entity": "美國、中國",
+         "title": "美中日內瓦貿易談判結束"}
+    b = {"event_type": "geopolitical", "entity": "美國、中國",
+         "title": "美中兩週後舉行另一輪安全會談"}
+    ia = eid.timeline_identity(a, ["美國", "中國"], "2026-08-10")
+    ib = eid.timeline_identity(b, ["美國", "中國"], "2026-08-10")
+    assert ia["key"] == ib["key"], "前提:鍵相同,分辨只能靠逐樁切分"
+    assert not eid.is_situation_action("summit_talks")
+    _run(tmp_path, monkeypatch, [a], day="2026-08-10", state={})
+    import json as _json
+    st = _json.loads((tmp_path / "tl.json").read_text(encoding="utf-8"))
+    _, new = _run(tmp_path, monkeypatch, [b], day="2026-08-11", state=st)
+    assert len([k for k in new if "summit_talks" in k]) == 2, sorted(new)
+
+
+def test_two_elections_same_country_same_month_are_distinct(tmp_path,
+                                                            monkeypatch):
+    """同一國同月的兩場不同選舉同理 —— 上一版等於宣告「法國八月只會有
+    一場選舉」。"""
+    a = {"event_type": "geopolitical", "entity": "法國",
+         "title": "法國國會選舉完成第一輪投票"}
+    b = {"event_type": "geopolitical", "entity": "法國",
+         "title": "法國地方選舉開票結果出爐 執政黨席次減少"}
+    assert (eid.timeline_identity(a, ["法國"], "2026-08-10")["key"]
+            == eid.timeline_identity(b, ["法國"], "2026-08-10")["key"])
+    assert not eid.is_situation_action("election")
+    _run(tmp_path, monkeypatch, [a], day="2026-08-10", state={})
+    import json as _json
+    st = _json.loads((tmp_path / "tl.json").read_text(encoding="utf-8"))
+    _, new = _run(tmp_path, monkeypatch, [b], day="2026-08-11", state=st)
+    assert len([k for k in new if "election" in k]) == 2, sorted(new)
+
+
+def test_persistent_theatre_still_survives_rewording(tmp_path, monkeypatch):
+    """**收窄不得把荷莫茲的修正一起收掉**:持續態勢照樣接得回同一條線。"""
+    state = {"geopolitical:hormuz_passage:2026-08": {
+        "first_seen": "2026-08-05", "days": 2, "last_seen": "2026-08-08",
+        "latest_title": _T1, "entity": "伊朗", "identity_schema": 10,
+        "subjects": ["伊朗"],
+        "incident_tokens": sorted(eid.discriminative_tokens(_T1, {"伊朗"}))}}
+    _, new = _run(tmp_path, monkeypatch,
+                  [{"event_type": "geopolitical", "entity": "伊朗、美國",
+                    "title": _T2}], day="2026-08-10", state=state)
+    keys = [k for k in new if "hormuz" in k]
+    assert keys == ["geopolitical:hormuz_passage:2026-08"], keys
+    assert new[keys[0]]["days"] == 3
+
+
+def test_the_theatre_table_only_holds_persistent_states():
+    """宣告的完整性:表裡的每一個都要真的在 ACTION_TABLE(拼錯的動作名
+    永遠不會命中);**會重複發生的回合與會完成的行為都不得混入**。"""
+    from event_actions import ACTION_TABLE, SITUATION_ACTIONS
+    known = {row[0] for row in ACTION_TABLE}
+    assert SITUATION_ACTIONS <= known, SITUATION_ACTIONS - known
+    assert not ({"election", "summit_talks", "arms_sale", "cyberattack",
+                 "sanction", "export_control", "tariff_action"}
+                & SITUATION_ACTIONS)
+    assert SITUATION_ACTIONS == {"hormuz_passage", "strait_tension"}
+
+
+# ---------------------------------------------------------------- 家具辨識
+
+def test_a_semantic_dash_suffix_is_not_stripped():
+    """**長度不是家具的證據**(外審 P1-4):兩則重大訊息的尾段都短、
+    都沒句讀 —— 靠長度剝的話會被壓成同一個標題、同一組辨識詞,
+    兩件事併成一條 lineage。"""
+    strip = eid.strip_title_furniture
+    a = "台積電重大訊息公告 - 高雄廠停工"
+    b = "台積電重大訊息公告 - 董事長辭任"
+    assert strip(a) == a and strip(b) == b
+    assert eid.incident_match(
+        eid.discriminative_tokens(a, {"台積電"}),
+        eid.discriminative_tokens(b, {"台積電"})) == eid.NO_MATCH
+    en_a = "Apple guidance update today - guidance cut"
+    en_b = "Apple guidance update today - dividend hike"
+    assert strip(en_a) == en_a and strip(en_b) == en_b
+    # **發布者 + 兩個字的內容**(外審 r1):扣掉媒體名之後剩下的正是
+    # 分辨兩樁的東西,而它剛好兩個字 —— 舊版的 `<= 2` 餘裕會整段剝掉。
+    wire_a = "美伊談判進入關鍵階段｜路透停火"
+    wire_b = "美伊談判進入關鍵階段｜路透破局"
+    assert strip(wire_a) == wire_a and strip(wire_b) == wire_b
+    assert not eid._is_publisher_tail("路透停火")
+    assert not eid._is_publisher_tail("彭博破局")
+
+
+def test_a_recognised_publisher_suffix_is_still_stripped():
+    """**修正不得把家具剝除一起關掉**:認得出來的發布者照剝
+    (註冊表、宣告表、網域形狀、中英並列的招牌)。"""
+    strip = eid.strip_title_furniture
+    assert strip("某公司第二季財報揭曉 - 經濟日報") == "某公司第二季財報揭曉"
+    assert strip("某公司第二季財報揭曉 - ftnn.com.tw") == "某公司第二季財報揭曉"
+    assert strip("某公司第二季財報揭曉 - TechNews 科技新報") == "某公司第二季財報揭曉"
+    # **招牌尾字**那張表的用途:名字扣掉之後剩「網」「財經雲」這種招牌用語
+    # 也算標籤(這條反例只靠那張表分勝負 —— 別的規則都認不出它)
+    assert strip("某公司第二季財報揭曉 - ETtoday財經雲") == "某公司第二季財報揭曉"
+    assert strip("某公司第二季財報揭曉 - LINE TODAY") == "某公司第二季財報揭曉"
+    # 多層尾巴逐段剝(真實資料是「內容 - 站名 - 發布者」)
+    assert strip("某公司第二季財報揭曉 - 民視新聞網 - LINE TODAY") == "某公司第二季財報揭曉"
+
+
+def test_a_short_pipe_segment_is_not_navigation_by_default():
+    """管線段同樣要正面辨識:「法說」只有兩個字,而它是內容;
+    宣告過的版名(「全球」)才剝。"""
+    strip = eid.strip_title_furniture
+    assert strip("台積電重大訊息公告｜法說｜經濟日報") == "台積電重大訊息公告｜法說"
+    assert strip("台積電重大訊息公告｜全球｜經濟日報") == "台積電重大訊息公告"
+
+
+def test_the_furniture_tables_are_declarations_not_heuristics():
+    """兩張表的宣稱要成立:招牌尾字裡不得混入事件內容用語。"""
+    from event_identity import _OUTLET_SUFFIX_WORDS, _SECTION_LABELS
+    bad = {"停工", "法說", "辭任", "罷工", "召回", "併購", "漲價"}
+    assert not (bad & set(_OUTLET_SUFFIX_WORDS))
+    assert not (bad & _SECTION_LABELS)
+    assert _OUTLET_SUFFIX_WORDS and _SECTION_LABELS
+

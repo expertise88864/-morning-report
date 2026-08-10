@@ -51,6 +51,7 @@ import run_manifest as _rm
 import analysis_origin as _ao
 import run_quality as _rq
 import analysis_validate as _av
+import evidence_registry as _reg
 import top5_readout as _t5r
 import writing_rules as _wr
 from zoneinfo import ZoneInfo
@@ -12780,6 +12781,35 @@ def _call_deepseek_responses(payload: dict) -> dict:
     raise RuntimeError("Responses 退讓重試用盡")
 
 
+def _canonicalize_evidence_ids(obj, packet: dict) -> None:
+    """把**指稱明確、路徑少一層**的證據 ID 就地改寫成正規形式。
+
+    2026-08-10 實信的根因:模型寫 `market:SOX.change_pct`,而合法的是
+    `market:MACRO.SOX.change_pct` —— 10 條驗證失敗、整份特化分析作廢、
+    退回既有路徑,那天的信因此沒有事件卡、淨效果與橫向綜合。
+
+    判準與安全性寫在 `evidence_registry.resolve_near_miss`(唯一命中才解,
+    歧義不解,不存在的仍然不存在)。這裡只負責接線與**留下痕跡**:
+    改寫進 manifest,否則「模型引用得對不對」會被這一層悄悄美化。
+    """
+    if not isinstance(obj, dict):
+        return
+    try:
+        changed = _reg.canonicalize_evidence_ids(
+            obj, _ep.evidence_ids(packet), _sch.evidence_id_fields())
+    except Exception as e:                              # noqa: BLE001
+        print(f"[llm] 證據 ID 正規化略過:{type(e).__name__}: {e}",
+              file=sys.stderr)
+        return
+    if not changed:
+        return
+    slot = _RUN_MANIFEST.setdefault("llm", {})
+    slot["evidence_ids_canonicalized"] = len(changed)
+    slot["evidence_id_rewrites"] = [f"{a}→{b}" for a, b in changed[:6]]
+    print(f"[llm] 證據 ID 正規化 {len(changed)} 筆(路徑少一層、唯一命中):"
+          + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
+
+
 def _prune_phantom_audit_ids(obj, packet: dict):
     """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
 
@@ -13036,6 +13066,11 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         if not isinstance(obj, (dict, type(None))):
             obj = None
         if obj is not None:
+            # **正規化要在修剪之前**(外審 r1):`relates_to[].evidence_ids`
+            # 也是證據欄位,修剪先跑的話,近似 ID 會被當成幽靈剪掉 ——
+            # 整條合法的跨新聞關聯因此消失,還被記成「幽靈修剪」。
+            # 先把無歧義的指稱寫成正規形式,剩下的才是真的假引用。
+            _canonicalize_evidence_ids(obj, packet)
             obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」

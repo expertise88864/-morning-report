@@ -43,7 +43,7 @@ import evidence_namespaces as _ns
 #: 是哪一個事件群。價格變化沒有主詞也沒有動作,它不是事件。
 #: v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
 #: 使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-ANALYSIS_SCHEMA_VERSION = 13
+ANALYSIS_SCHEMA_VERSION = 14
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -115,7 +115,18 @@ def _arr(items: dict, desc: str = "") -> dict:
 
 #: 第十七輪 P2-1:說明仍寫著「source_item_id」,而合法值早已含 `market:`
 #: 與 `tension:` —— **模型會照說明走**,typed registry 因此形同虛設。
-_EVIDENCE_IDS = _arr(_s(), _ns.schema_description())
+def _evidence_ids(extra: str = "") -> dict:
+    """證據 ID 陣列。**描述以命名空間說明開頭** —— 下游靠這個形狀認出
+    「這一格裝的是證據 ID」(`evidence_id_fields`)。
+
+    而且 ID 的合法詞彙本來就該對**每一個**證據欄位講一次:先前只有
+    `evidence_ids` 講了,`counterevidence_ids` 自己一種說明 —— 同一個
+    ID 空間、兩種講法,模型照說明走就會在反證那一格用別的寫法。
+    """
+    return _arr(_s(), _ns.schema_description() + (" " + extra if extra else ""))
+
+
+_EVIDENCE_IDS = _evidence_ids()
 
 _CLAIM = _obj({
     "statement": _s("一句話的主張,不要重述整則新聞"),
@@ -126,7 +137,7 @@ _CLAIM = _obj({
     "confidence": _num("0–1;資料不足時要降低而不是補故事"),
     "horizon": _enum(HORIZONS),
     "evidence_ids": _EVIDENCE_IDS,
-    "counterevidence_ids": _arr(_s(), "反向證據的 ID;沒找到就給空陣列"),
+    "counterevidence_ids": _evidence_ids("反向證據;沒找到就給空陣列"),
     "falsification_trigger": _s("什麼情況出現就代表這個判斷錯了"),
 })
 
@@ -418,3 +429,40 @@ def chat_completions_response_format(name: str = "morning_analysis") -> dict:
 # 是三件事)。生產與測試都用 `analysis_schema.validate` 呼叫它,
 # **改呼叫端不是這次要改的東西** —— 一次改一件事,搬動才證明得了只換位置。
 from analysis_validate import validate            # noqa: E402,F401
+
+
+def evidence_id_fields() -> frozenset:
+    """schema 裡**裝證據 ID** 的欄位名(從 schema 本身推導,不是另抄一份)。
+
+    下游要知道「哪些格子裝的是證據 ID」才做得了正規化,而抄一份清單的話,
+    schema 新增一個欄位它就靜靜漏掉 —— 漏掉的症狀是那一格的近似 ID
+    照樣被擋,也就是「修了一半」。這裡認的是 `_EVIDENCE_IDS` 這個形狀,
+    所以任何用它宣告的欄位自動涵蓋。
+
+    `claim_ids` / `cluster_id` **不在裡面**:它們指的是主張與事件群,
+    不是證據 —— 拿證據的規則去改它們會把兩個命名空間混成一個。
+    """
+    head = _ns.schema_description()
+
+    def _is_evidence_ids(v) -> bool:
+        return (isinstance(v, dict) and v.get("type") == "array"
+                and str(v.get("description") or "").startswith(head))
+
+    found: set = set()
+
+    def _walk(node):
+        if isinstance(node, dict):
+            for k, v in (node.get("properties") or {}).items():
+                if _is_evidence_ids(v):
+                    found.add(str(k))
+                else:
+                    _walk(v)
+            for key in ("items",):
+                if node.get(key) is not None:
+                    _walk(node[key])
+        elif isinstance(node, list):
+            for it in node:
+                _walk(it)
+
+    _walk(ANALYSIS_OUTPUT_SCHEMA)
+    return frozenset(found)

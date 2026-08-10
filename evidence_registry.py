@@ -272,3 +272,84 @@ def unusable_ids(packet: Optional[dict]) -> dict:
     return {k: v.get("why_unusable") or "資料不同步"
             for k, v in registry(packet).items()
             if not v.get("usable_for_inference")}
+
+
+def resolve_near_miss(cited: str, ids) -> str:
+    """把**指稱明確、路徑少一層**的 ID 解成它真正指的那一個。回 `""` 表示解不出來。
+
+    2026-08-10 實信:模型寫 `market:SOX.change_pct`、`market:WTI.close`、
+    `market:VIX.close`,而合法的是 `market:MACRO.SOX.change_pct` —— 少了
+    中間那一層。整份特化分析因此作廢(10 條驗證失敗)、退回既有路徑,
+    讀者那天沒有事件卡、淨效果與橫向綜合。
+
+    **這不是放寬驗證。** 不存在的 ID 仍然不存在;這裡處理的是
+    「同一個東西的另一種寫法」,而且只在**唯一命中**時才解:
+
+      * 同命名空間(`market:` 的近似只在 `market:` 裡找);
+      * 宣告過的路徑**以引用的路徑結尾**,而且**只少一層**(逐段比,
+        不是子字串 —— `SOX.change_pct` 對 `MACRO.SOX.change_pct` 成立,
+        對 `MACRO.VIX.change_pct` 不成立)。少兩層以上不解:
+        `market:close` 指的是哪一個 close,少的那兩層才知道 ——
+        那不是筆誤,是根本沒說完;
+      * 命中兩個以上就**不解**(那不是筆誤是歧義,兩個都可能不是它要的);
+      * 引用本身合法時原樣回它(不改已經對的東西)。
+
+    與 `_prune_phantom_audit_ids` 的差別是根本的:那支**移除**引用,
+    於是「捏造的相關證據 + 合法但無關的證據」會把沒根據的主張洗成合法;
+    這支**不移除任何東西**,只把一個無歧義的指稱寫成正規形式。
+    """
+    cid = str(cited or "").strip()
+    known = set(ids or ())
+    if not cid or cid in known:
+        return cid if cid in known else ""
+    if ":" not in cid:
+        return ""
+    ns, _, path = cid.partition(":")
+    want = [seg for seg in path.split(".") if seg]
+    # **一段不算指稱。** `market:change_pct` 是「誰的 change_pct」都沒說,
+    # 唯一命中只是當天剛好只有一個 —— 那種正確性是碰運氣來的。
+    # 實際的近似都是「區塊+欄位」少了外面那一層(`SOX.change_pct`)。
+    if len(want) < 2:
+        return ""
+    hits = []
+    for i in known:
+        s = str(i)
+        if not s.startswith(ns + ":"):
+            continue
+        segs = [seg for seg in s.partition(":")[2].split(".") if seg]
+        if len(segs) == len(want) + 1 and segs[-len(want):] == want:
+            hits.append(s)
+    return hits[0] if len(hits) == 1 else ""
+
+
+def canonicalize_evidence_ids(obj, ids, fields) -> list:
+    """就地把 `obj` 裡證據欄位的近似 ID 改寫成正規形式。回改寫紀錄。
+
+    `fields` 由 schema 推導(`analysis_schema.evidence_id_fields()`)——
+    抄一份清單的話,schema 新增欄位時那一格會靜靜漏掉。
+    回傳 `[(原本, 改成), …]`:呼叫端要記進 manifest,**改寫必須看得見**,
+    否則「模型引用得對不對」這件事會被這一層悄悄美化。
+    """
+    keys = frozenset(str(f) for f in (fields or ()))
+    known = set(ids or ())
+    changed: list = []
+
+    def _walk(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if str(k) in keys and isinstance(v, list):
+                    for n, one in enumerate(v):
+                        if not isinstance(one, str) or one in known:
+                            continue
+                        fixed = resolve_near_miss(one, known)
+                        if fixed and fixed != one:
+                            v[n] = fixed
+                            changed.append((one, fixed))
+                else:
+                    _walk(v)
+        elif isinstance(node, list):
+            for it in node:
+                _walk(it)
+
+    _walk(obj)
+    return changed

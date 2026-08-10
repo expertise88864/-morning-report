@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_720  # 2026-08-10 使用者三項調整 + 立場格式指令抽成常數(prompt 與過濾器單一真相來源);現況 22711  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_760  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -280,7 +280,7 @@ MODULE_CEILINGS = {
     # 第十九輪:實測 228 —— 加的是 metadata 欄位(as_of_precision、
     # observed_session)。**假精確比沒有 metadata 更糟**,所以這幾格要留。
     # 深度加強第二批:實測 256 —— 加的是 fact: 命名空間(值/單位/上下文)。
-    "evidence_registry.py": 280,
+    "evidence_registry.py": 370,
     # 第十八輪 P1-3:事件分群與必分析清單。與 `evidence_packet` 分開,
     # 因為門檻是**量出來的**(同語言同事件 0.69/0.90、不同事件同主體
     # 0.18),而量測值需要一個看得見、改得動的地方。
@@ -370,7 +370,7 @@ MODULE_CEILINGS = {
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
     # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
-    "analysis_schema.py": 435,
+    "analysis_schema.py": 480,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、

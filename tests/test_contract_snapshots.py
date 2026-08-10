@@ -652,7 +652,7 @@ _FROZEN = {
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
-    "primary_profile_version":  (31, "e0f3cb7a34fc5ce9"),
+    "primary_profile_version":  (32, "d43a23a85b7812ce"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;

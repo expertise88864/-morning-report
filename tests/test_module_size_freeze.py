@@ -326,7 +326,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:`save()` 回三態,不是布林
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
-    "analysis_recap.py": 495,
+    "analysis_recap.py": 650,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
@@ -433,7 +433,7 @@ MODULE_CEILINGS = {
     # 調和的填法指引 —— 與 `writing_rules.py` 同理:**prompt 文字的長度
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
-    "prompt_profiles.py": 410,
+    "prompt_profiles.py": 430,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。

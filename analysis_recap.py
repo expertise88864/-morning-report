@@ -135,7 +135,7 @@ def extract(analysis_obj, packet) -> dict:
     return {"date": str(pk.get("target_session_date") or ""),
             "eligible": eligible[0],
             "items": items[:MAX_ITEMS],
-            "watch": _watch_of(obj)}
+            "watch": []}   # 生命週期在 `save()`(見 `carry_watch`)
 
 
 #: 觀察點最多留幾條、每格幾字。上限跟 items 一樣是 payload 紀律 ——
@@ -165,6 +165,121 @@ def _watch_of(obj) -> list:
         if len(out) >= WATCH_MAX:
             break
     return out
+
+
+#: horizon → 幾天到期。**Python 擁有到期,不問模型**(第三十輪外審
+#: P1-2):過期是時間的函數,而模型每天看到的是不同的今天。
+WATCH_HORIZON_DAYS = {"intraday": 1, "1-5d": 5, "1-4w": 28}
+#: 認不出 horizon 時的預設。取短的:過期只是少追一條(可以再開),
+#: 而永遠不過期的觀察點會累積成一張沒有人看的清單。
+WATCH_DEFAULT_DAYS = 5
+#: 同時**開著**的觀察點上限。回顧要逐條,開十條等於逼明天寫十條回顧。
+WATCH_OPEN_MAX = 8
+
+#: 觀察點的狀態。`not_triggered` **不是終局** —— 那正是外審 P1-2 的
+#: 缺陷:1–4 週的觀察點今天回「還沒」,明天就從帳本上消失了。
+WATCH_OPEN = "open"
+WATCH_CLOSED_STATUSES = ("triggered", "no_longer_relevant", "expired")
+
+
+def _days_after(date_str: str, days: int) -> str:
+    import datetime as _dt
+    try:
+        d = _dt.date.fromisoformat(str(date_str)[:10])
+    except (TypeError, ValueError):
+        return ""
+    return (d + _dt.timedelta(days=int(days))).isoformat()
+
+
+def _watch_ledger(prior) -> list:
+    """既有的觀察點帳本,**舊形狀就地升級**(壞形狀一律略過)。
+
+    外審 r2:上線當天 state 裡的每一條都是舊形狀(只有 trigger/why/
+    horizon,沒有 `watch_id`/`created`/`deadline`)—— 直接沿用的話
+    每一條的代號都是空字串,好幾條在驗證與渲染裡撞成同一個,
+    而 `carry_watch` 又認不出空代號的回顧 → 那些觀察點**既關不掉也
+    追不動**。升級是確定性的:代號依序補、建立日用 recap 的日期、
+    到期日由 horizon 算 —— 與新開的那條走同一組規則。
+    """
+    rows = [w for w in ((prior or {}).get("watch") or [])
+            if isinstance(w, dict) and str(w.get("trigger") or "").strip()]
+    base = str((prior or {}).get("date") or "")[:10]
+    used = {str(w.get("watch_id") or "") for w in rows}
+    seq = int((prior or {}).get("watch_seq") or 0)
+    out = []
+    for w in rows:
+        w = dict(w)
+        if not str(w.get("watch_id") or ""):
+            seq += 1
+            while f"w{seq}" in used:
+                seq += 1
+            w["watch_id"] = f"w{seq}"
+            used.add(w["watch_id"])
+        w.setdefault("status", WATCH_OPEN)
+        if not str(w.get("created") or ""):
+            w["created"] = base
+        if not str(w.get("deadline") or ""):
+            days = WATCH_HORIZON_DAYS.get(str(w.get("horizon") or ""),
+                                          WATCH_DEFAULT_DAYS)
+            w["deadline"] = _days_after(w["created"], days)
+        out.append(w)
+    return out
+
+
+def carry_watch(prior, obj, today: str) -> list:
+    """**觀察點的生命週期**(第三十輪外審 P1-2)。
+
+    上一版每天用今天的 `watch_triggers` 整個覆寫,昨天的只透過
+    `usable_watch` 給今天回顧一次 —— 於是 horizon 寫著 `1-4w` 的觀察點
+    **活到隔天為止**:今天回「還沒觸發」,明天就不在帳本上了,
+    除非模型剛好自己又寫了一條一模一樣的。狀態機因此是
+    「建立 → 回顧一次 → 消失」,而不是 horizon 宣稱的那個。
+
+    這裡把它交回 Python:
+
+      * `triggered` / `no_longer_relevant` → 關閉(模型的判斷,要有證據
+        —— 那條在 `analysis_validate`);
+      * `not_triggered` → **維持開啟**,只更新 `last_reviewed`;
+      * 過了 `deadline` → `expired`(**時間的函數,不問模型**);
+      * 今天的新觀察點 → 開新條目(同一句 trigger 不重複開)。
+
+    代號由 Python 派且**跨日穩定**(`w7`)—— 回顧要逐條對帳,帳本的鍵
+    就得是我們發的;每天重新編號的話,昨天的 `w1` 明天指到另一件事。
+    """
+    reviewed = {}
+    for r in ((obj or {}).get("watch_review") or []):
+        if isinstance(r, dict) and str(r.get("watch_id") or ""):
+            reviewed[str(r["watch_id"])] = str(r.get("status") or "")
+    _ledger = _watch_ledger(prior)
+    seq = max([int((prior or {}).get("watch_seq") or 0)]
+              + [int(str(w.get("watch_id") or "w0")[1:] or 0)
+                 for w in _ledger
+                 if str(w.get("watch_id") or "")[1:].isdigit()])
+    out = []
+    for w in _ledger:
+        if str(w.get("status") or WATCH_OPEN) != WATCH_OPEN:
+            continue                       # 已關閉的不再帶(帳本只留在燒的)
+        w = dict(w)
+        verdict = reviewed.get(str(w.get("watch_id") or ""))
+        if verdict in ("triggered", "no_longer_relevant"):
+            continue                       # 關閉 = 從帳本移除
+        if verdict:
+            w["last_reviewed"] = today     # not_triggered:繼續開著
+        deadline = str(w.get("deadline") or "")
+        if deadline and today and str(today)[:10] > deadline:
+            continue                       # 到期(Python 判,不問模型)
+        out.append(w)
+    seen = {str(w.get("trigger") or "") for w in out}
+    for fresh in _watch_of(obj):
+        if fresh["trigger"] in seen or len(out) >= WATCH_OPEN_MAX:
+            continue
+        seq += 1
+        days = WATCH_HORIZON_DAYS.get(fresh["horizon"], WATCH_DEFAULT_DAYS)
+        out.append(dict(fresh, watch_id=f"w{seq}", status=WATCH_OPEN,
+                        created=str(today)[:10], last_reviewed="",
+                        deadline=_days_after(today, days)))
+        seen.add(fresh["trigger"])
+    return out[:WATCH_OPEN_MAX], seq
 
 
 #: `save()` 的三種結果。**「沒東西可存」不是「存檔失敗」**
@@ -221,16 +336,33 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
     晨報不可因加深而斷。"""
     try:
         rec = extract(analysis_obj, packet)
+        prior = load(path)
+        _prior_watch = _watch_ledger(prior)
+        _today = str(rec.get("date") or "")
+        rec["watch"], rec["watch_seq"] = carry_watch(
+            prior, analysis_obj, _today)
         if isinstance(manifest, dict):
             slot = manifest.setdefault("llm", {})
             slot["recap_eligible"] = int(rec.get("eligible") or 0)
             slot["recap_extracted"] = len(rec["items"])
-        if not rec["items"] and not rec.get("watch"):
+            slot["watch_open"] = len(rec["watch"])
+            # **關閉數要數「原本開著、現在不在帳本上」的那幾條**
+            # (外審 r4):用「原有 + 今天提的 − 最後剩下」相減的話,
+            # 被上限擋掉的新條目與重複的 trigger 都會被記成「關閉」。
+            _now_ids = {str(w.get("watch_id") or "") for w in rec["watch"]}
+            slot["watch_closed_today"] = len(
+                [w for w in _prior_watch
+                 if str(w.get("status") or WATCH_OPEN) == WATCH_OPEN
+                 and str(w.get("watch_id") or "") not in _now_ids])
+        # **「什麼都沒有」與「原本有、今天清空了」是兩件事**(外審 r1):
+        # 最後一條觀察點今天關閉、而當天又沒有值得留的觀點時,上一版在
+        # 這裡就 return 了 —— 檔案沒被覆寫,那條關掉的明天照樣冒出來。
+        if not rec["items"] and not rec["watch"] and not _prior_watch:
             # 今天的分析裡沒有值得留給明天的觀點**也沒有觀察點** ——
             # 那是正常的答案,不是寫檔壞了。觀點空、觀察點不空的日子
             # 仍要存:回顧的閉環不能因為當天觀點稀薄就斷一天。
             return NOTHING
-        _carry_origins(rec, load(path))
+        _carry_origins(rec, prior)
         import pathlib
         p = pathlib.Path(str(path))
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -288,16 +420,35 @@ def usable_watch(recap, target_session_date: str) -> list:
     帳本的鍵就得是我們發的。
     """
     r = recap if isinstance(recap, dict) else {}
-    date = str(r.get("date") or "")
-    if not date or not target_session_date or date >= str(target_session_date):
+    session = str(target_session_date or "")
+    if not session:
         return []
-    ws = [w for w in (r.get("watch") or [])
-          if isinstance(w, dict) and str(w.get("trigger") or "").strip()]
-    return [{"watch_id": f"w{i + 1}", "date": date,
-             "trigger": str(w.get("trigger") or ""),
-             "why": str(w.get("why") or ""),
-             "horizon": str(w.get("horizon") or "")}
-            for i, w in enumerate(ws[:WATCH_MAX])]
+    out = []
+    for w in _watch_ledger(r):
+        if str(w.get("status") or WATCH_OPEN) != WATCH_OPEN:
+            continue
+        deadline = str(w.get("deadline") or "")
+        # **到期的不再送進 prompt**(外審 r3):留到 `carry_watch` 才移除的話,
+        # 模型會在過期後多回顧一次,而驗證還會要求那一條 —— 過期是
+        # Python 的判斷,不該消耗模型的注意力。
+        if deadline and session[:10] > deadline:
+            continue
+        created = str(w.get("created") or r.get("date") or "")[:10]
+        # **同日建立的不回顧**:拿今天剛寫的觀察點當「昨天的預期」,
+        # 每一條都會「已觸發」(它就是照今天的新聞寫的)。
+        # 逐條比 `created` 而不是比整份 recap 的日期 —— 帳本現在同時
+        # 帶著不同天建立的觀察點(外審 P1-2)。
+        if not created or created >= session:
+            continue
+        out.append({"watch_id": str(w.get("watch_id") or ""),
+                    "date": created,
+                    "trigger": str(w.get("trigger") or ""),
+                    "why": str(w.get("why") or ""),
+                    "horizon": str(w.get("horizon") or ""),
+                    "deadline": str(w.get("deadline") or "")})
+        if len(out) >= WATCH_OPEN_MAX:
+            break
+    return out
 
 
 def usable(recap, target_session_date: str) -> list:

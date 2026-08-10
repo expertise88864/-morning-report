@@ -438,11 +438,19 @@ def validate(obj, evidence_ids) -> list:
             problems.append(
                 f"watch_review[{i}]({wid})的 `what_happened` 是空的 —— "
                 "已觸發要說發生了什麼,未觸發要說還在等什麼")
-        if str(w.get("status") or "") == "triggered":
+        if str(w.get("status") or "") in ("triggered", "no_longer_relevant"):
             cited = [str(x) for x in (w.get("evidence_ids") or [])]
+            _verdict_zh = ("已觸發"
+                           if str(w.get("status")) == "triggered"
+                           else "不再相關")
             if not cited:
+                # **關閉一條觀察點是今天的事實判斷**(第三十輪外審 P2-1):
+                # 「前提已經不存在」與「已經發生」一樣需要今天的證據 ——
+                # 少了它,模型可以一句話永久關掉一條還沒驗證的預期。
+                # 「還沒觸發」不需要證據(它什麼都沒宣稱),而「過期」
+                # 由 Python 判(見 `analysis_recap.carry_watch`)。
                 problems.append(
-                    f"watch_review[{i}]({wid})說「已觸發」"
+                    f"watch_review[{i}]({wid})說「{_verdict_zh}」"
                     "卻沒有任何今天的證據 ID")
             else:
                 # **不同步的資料不得單獨支撐「已觸發」**(外審 F2):
@@ -452,7 +460,7 @@ def validate(obj, evidence_ids) -> list:
                 _stale_w = _unusable(packet)
                 if _stale_w and all(x in _stale_w for x in cited):
                     problems.append(
-                        f"watch_review[{i}]({wid})的「已觸發」只靠"
+                        f"watch_review[{i}]({wid})的「{_verdict_zh}」只靠"
                         f"今天不同步的資料({cited[:2]}:"
                         f"{_stale_w[cited[0]]})—— 觸發與否只看今天的證據")
     if packet is not None:

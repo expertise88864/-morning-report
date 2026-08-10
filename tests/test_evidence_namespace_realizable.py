@@ -65,7 +65,13 @@ def _news():
 
 def _packet(calibration=None):
     return ep.build(_QUOTES, {"fair_value": 123.17, "premium_pct": -1.1},
-                    {"pred_open": 2372.51, "pred_pct": 0.11, "mid": 2372.51},
+                    # **這裡要放生產真的會產生的欄位。** 先前是
+                    # `{"pred_open": …, "pred_pct": …}` —— `calc_2330_predictions`
+                    # 從來不回那兩個鍵,於是這一整組守衛替「prompt 教了一個
+                    # 不存在的 ID」背書,而生產在 2026-08-10 的 current-head
+                    # 驗收上被那個 ID 擋掉整份特化分析(下面有守衛盯著)。
+                    {"mid": 2372.51, "last_2330": 2370.0,
+                     "model1_1to1": 2375.0, "tsm_pct": 0.44},
                     _news(), [{"code": "2330", "pct": 0.2}],
                     _CALIBRATION if calibration is None else calibration,
                     as_of="2026-08-08T06:00",
@@ -115,6 +121,27 @@ def test_the_namespace_descriptions_point_at_ids_that_exist():
                 f"{prefix} 的說明舉例 `{ex}` 解析不到任何 ID"
             checked += 1
     assert checked >= 3, "說明裡根本沒有舉例,這條測試等於沒跑"
+
+
+def test_prediction_examples_exist_in_the_production_calculation():
+    """**fixture 不能替 prompt 背書**(2026-08-10 current-head 生產驗收)。
+
+    上一版的 fixture 自己造了 `pred_open`,於是上面那條守衛綠燈,
+    而生產的 `calc_2330_predictions` 根本不回那個鍵 —— 模型照著 prompt
+    的範例寫,引用被判不存在、整份特化分析作廢退回 legacy。
+    這條把範例釘在**生產的計算函式**上,fixture 造不出來。
+    """
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    i = src.index("def calc_2330_predictions")
+    body = src[i:src.index(chr(10) + "def ", i + 10)]
+    fields = {ex.split(":", 1)[1] for _, desc, _ in ns.NAMESPACES
+              for ex in re.findall(r"`(prediction:[^`]+)`", desc)}
+    assert fields, "說明裡沒有 prediction 範例 —— 這條測試等於沒跑"
+    missing = sorted(f for f in fields if f'"{f}"' not in body)
+    assert not missing, f"prompt 教的欄位生產不會產生:{missing}"
 
 
 # ------------------------------------------------------------ 生產那次的三條
@@ -207,3 +234,75 @@ def test_a_degraded_day_still_says_why():
     assert "不足" in mr.render_calibration_table(empty)
     ids = ep.evidence_ids(_packet(calibration=empty))
     assert "calibration:n_days" in ids and "calibration:note" in ids
+
+
+# ===== 2026-08-10 current-head 生產驗收:引用被判不存在的兩個根因 =====
+
+def _rich_packet():
+    """夠豐富的代表性 packet:每個命名空間都有資料可攤。"""
+    import evidence_packet as ep
+    import news_normalize as nn
+    news = nn.normalize_news([{
+        "source_item_id": "n1",
+        "title": "台積電 7 月營收 3200 億元 年增 24%",
+        "summary": "台積電公布 7 月營收 3200 億元,年增 24%",
+        "entities": ["台積電"], "source": "經濟日報",
+        "published": "2026-08-10T01:00:00Z", "link": "http://x"}])[0]
+    return ep.build(
+        {"QQQ": {"change_pct": 1.2}, "TAIEX_PRED": {"open": 44474}},
+        {"fair_value": 123.4},
+        {"mid": 2372.5, "last_2330": 2370.0, "model1_1to1": 2375.0},
+        news, [], {"mean_abs_delta_pct": 1.2},
+        as_of="2026-08-10 06:00", target_session_date="2026-08-10",
+        sanitize=lambda s, *a: s)
+
+
+def test_every_example_id_in_the_prompt_actually_exists():
+    """**範例 ID 自己要存在**(2026-08-10 current-head 生產驗收):
+    說明裡寫著 `prediction:pred_open`,而那個欄位從來沒有被產生過
+    (真正的鍵是 `mid`/`last_2330`/`model1_1to1`)。模型照著範例寫,
+    引用全被判不存在、整份特化分析作廢退回 legacy。
+    通配符(`*`)與佔位符(`<…>`)不算範例。"""
+    import re
+    import evidence_namespaces as ns
+    import evidence_packet as ep
+    real = ep.evidence_ids(_rich_packet())
+    examples = {m for _, desc, _ in ns.NAMESPACES
+                for m in re.findall(r"`([^`]+)`", desc)
+                if ":" in m and "*" not in m and "<" not in m}
+    assert examples, "說明裡一個範例都沒有 —— 這條守衛會真空通過"
+    missing = sorted(e for e in examples if e not in real)
+    assert not missing, f"prompt 教了不存在的 ID:{missing}"
+
+
+def test_numeric_facts_carry_the_id_we_issued():
+    """**ID 由我們發,不讓模型組**:prompt 只說「`fact:<新聞ID>.<序號>`」,
+    而 packet 給的是沒有編號的清單 —— 模型得自己猜從 0 還是從 1 起算,
+    實測寫出 `fact:nfe44152db8e.1`(那則的合法 ID 是 `.0`)。"""
+    import evidence_packet as ep
+    pk = _rich_packet()
+    facts = pk["news"][0].get("numeric_facts") or []
+    assert facts, "前提:這則新聞抽得出數字事實"
+    ids = [f.get("evidence_id") for f in facts]
+    assert all(ids), f"有事實沒有帶 ID:{facts}"
+    assert ids[0] == "fact:n1.0"
+    real = ep.evidence_ids(pk)
+    assert set(ids) <= real, sorted(set(ids) - real)
+
+
+def test_the_registry_reads_the_issued_id_not_its_position():
+    """**派號的地方只有一個**:registry 讀 packet 帶的那一個,
+    兩邊各算一次的話,去重或排序一動就對不上。"""
+    import evidence_registry as er
+    pk = {"news": [{"source_item_id": "n9", "title": "t", "published": "",
+                    "numeric_facts": [
+                        {"value": 1, "unit": "%", "quote": "q",
+                         "evidence_id": "fact:n9.7"}]}]}
+    reg = er.registry(pk)
+    assert "fact:n9.7" in reg and "fact:n9.0" not in reg
+    # 舊 packet(沒有帶 ID)仍然退回位置推導
+    pk2 = {"news": [{"source_item_id": "n9", "title": "t", "published": "",
+                     "numeric_facts": [{"value": 1, "unit": "%",
+                                        "quote": "q"}]}]}
+    assert "fact:n9.0" in er.registry(pk2)
+

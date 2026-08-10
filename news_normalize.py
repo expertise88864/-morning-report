@@ -75,7 +75,20 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
         # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。
         # 沒有這一步,「80 億美元訂單」在 registry 裡是 value=None ——
         # 模型抄成 8 億,檢查器只看得到「引用了 n3」。
-        items[-1]["numeric_facts"] = _nf.facts_for_item(items[-1])
+        # **ID 由我們發,不讓模型組**(2026-08-10 current-head 生產驗收):
+        # prompt 只說「`fact:<新聞ID>.<序號>`」,而 packet 給的是一個沒有
+        # 編號的清單 —— 模型得自己猜是從 0 還是從 1 起算,實測寫出
+        # `fact:nfe44152db8e.1`(那則只有一筆事實,合法的是 `.0`),
+        # 引用被判不存在、整份特化分析作廢。這與觀察點代號、事件群代號
+        # 同一條規矩:對帳用的鍵就得是我們發的。
+        # (變數不叫 `_sid` —— 那是這個函式裡 import 進來的**函式名**,
+        #  遮蔽掉的話下一則新聞就炸;實測第二則當場 TypeError。)
+        _facts = _nf.facts_for_item(items[-1])
+        _item_id = items[-1]["source_item_id"]
+        for _k, _f in enumerate(_facts):
+            if isinstance(_f, dict):
+                _f["evidence_id"] = f"fact:{_item_id}.{_k}"
+        items[-1]["numeric_facts"] = _facts
     items.sort(key=lambda x: (_GRADE_RANK[x["source_grade"]],
                              _neg_time(x["published"]), x["source_item_id"]))
     # **同一家來源、幾乎同一個標題 = 同一篇改版重發。** 上游以 ID 去重,

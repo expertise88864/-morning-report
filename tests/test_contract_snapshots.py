@@ -583,7 +583,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (27, "b6497c9c64f9abda"),
+    "evidence_schema_version":  (28, "4dca5a42ba3a541e"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -652,7 +652,7 @@ _FROZEN = {
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
-    "primary_profile_version":  (32, "d43a23a85b7812ce"),
+    "primary_profile_version":  (33, "b92a2e64a129f613"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;

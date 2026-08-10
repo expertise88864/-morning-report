@@ -84,12 +84,16 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: v25(縱深第四批 B):事件群多 `origin_view`(首見判斷,由 recap
 #: 逐日 carry)—— 與 `yesterday_view` 分開兩個欄位:混成一串的話,
 #: `restatements` 拿整串算重疊,正確回顧當初預期會被誤判成重述。
+#: v28(2026-08-11):每一筆 `numeric_facts` 帶著自己的 `evidence_id`
+#: —— 先前要模型自己組 `fact:<新聞ID>.<序號>`,而序號從 0 起算這件事
+#: packet 裡看不出來(2026-08-10 current-head 生產驗收:模型寫 `.1`、
+#: 那則的合法 ID 是 `.0`,整份特化分析作廢)。**packet 的形狀變了就要進版。**
 #: v24(2026-08-09,縱深第四批):`story_arcs` —— 線索帳本
 #: (`story_ledger`,狀態機 + 逐步軌跡)先前**只餵 legacy prompt**,
 #: 特化路徑看不到:同一條延燒中的線索,legacy 的信寫得出
 #: 「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
 #: 故事縱深不是沒有,是沒接上。
-EVIDENCE_SCHEMA_VERSION = 27
+EVIDENCE_SCHEMA_VERSION = 28
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

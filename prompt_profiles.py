@@ -72,7 +72,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
 #: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
 #: 供應鏈邊走到具體標的;候選不是證據。
-LUNA_XHIGH_VERSION = 32
+LUNA_XHIGH_VERSION = 33
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -131,8 +131,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   總結那一句最可能被單獨閱讀，它也要回指；
   **`key_drivers`（信件第一段「昨夜三大重點」）、三個情境與每個觀察點
   同樣要回指** —— 讀者最先看到的三條不能在稽核之外。
-- **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 已把
-  帶單位的數字抽成 `fact:<新聞ID>.<序號>`(附值、單位、上下文)。
+- **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 每一筆
+  都自己帶著 `evidence_id`(附值、單位、上下文)——**照抄那個字串**,
+  不要自己組編號。
   寫「80 億美元訂單」就引用對應的 fact: —— 引用了,抄錯十倍才抓得到;
   只引用整則新聞,檢查器不知道你的數字從哪裡來。
 - **佐證等級照抄，不要自評。** 每則分析的 `corroboration_assessment`

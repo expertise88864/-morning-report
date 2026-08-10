@@ -179,7 +179,11 @@ def registry(packet: Optional[dict]) -> dict:
         for k, f in enumerate(n.get("numeric_facts") or []):
             if not isinstance(f, dict):
                 continue
-            out[f"fact:{n['source_item_id']}.{k}"] = {
+            # **派號的地方只有一個**(`news_normalize`)—— 這裡讀它,
+            # 讀不到才退回位置推導(舊 packet 與測試 fixture)。
+            # 兩邊各算一次的話,去重或排序一動就對不上。
+            _fid = str(f.get("evidence_id") or "") or                 f"fact:{n['source_item_id']}.{k}"
+            out[_fid] = {
                 "value": f.get("value"), "unit": str(f.get("unit") or ""),
                 "quote": str(f.get("quote") or ""),
                 "as_of": str(n.get("published") or ""),

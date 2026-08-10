@@ -29,9 +29,15 @@ NAMESPACES = (
     # 而加權指數的預測其實在 `market:TAIEX_PRED.*`;模型於是造出
     # `prediction:TAIEX.pred_open`、`prediction:2330.mid`(以為要帶標的段),
     # 三條引用全被判不存在(2026-08-08 生產)。
+    # **範例 ID 自己要存在。** 先前這裡寫 `prediction:pred_open` ——
+    # 那個欄位從來沒有被產生過(真正的鍵是 `mid`/`last_2330`/`model1_1to1`
+    # 這些)。模型照著範例寫,三條引用全被判不存在,整份特化分析作廢
+    # (2026-08-10 current-head 生產驗收:10 條驗證失敗)。
+    # 守衛見 `tests/test_evidence_namespaces.py`:說明裡的每一個 ID
+    # 都要能從代表性 packet 生得出來。
     ("prediction:", "2330 開盤預測的欄位,**不帶標的段**"
-                    "(`prediction:pred_open`);加權指數的預測在 "
-                    "`market:TAIEX_PRED.*`", True),
+                    "(`prediction:mid`、`prediction:last_2330`);"
+                    "加權指數的預測在 `market:TAIEX_PRED.*`", True),
     ("universe:", "台股個股當日漲跌", True),
     ("calibration:", "ADR→2330 開盤預測的近 N 日誤差"
                      "(`calibration:mean_abs_delta_pct`、"

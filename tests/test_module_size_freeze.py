@@ -264,7 +264,7 @@ MODULE_CEILINGS = {
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
-    "evidence_packet.py": 515,
+    "evidence_packet.py": 540,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -280,7 +280,7 @@ MODULE_CEILINGS = {
     # 第十九輪:實測 228 —— 加的是 metadata 欄位(as_of_precision、
     # observed_session)。**假精確比沒有 metadata 更糟**,所以這幾格要留。
     # 深度加強第二批:實測 256 —— 加的是 fact: 命名空間(值/單位/上下文)。
-    "evidence_registry.py": 370,
+    "evidence_registry.py": 380,
     # 第十八輪 P1-3:事件分群與必分析清單。與 `evidence_packet` 分開,
     # 因為門檻是**量出來的**(同語言同事件 0.69/0.90、不同事件同主體
     # 0.18),而量測值需要一個看得見、改得動的地方。
@@ -351,7 +351,7 @@ MODULE_CEILINGS = {
     # 第十九輪 P1-3:新聞正規化與截斷拆出來 ——「誰留下來」是獨立的決定,
     # 而先前的順序錯誤(先截斷再算必分析)在 `build()` 裡看不出來。
     # 深度加強第二批:改版重發去重(+15 行)。
-    "news_normalize.py": 200,
+    "news_normalize.py": 260,
     # 深度加強第二批:數字事實抽取(帶單位的數字 → fact: 命名空間)與
     # 同源標題指紋。借自 5W1H 結構化抽取與 RSS 聚合器的內容指紋做法,
     # 取其中純規則做得到的一塊 —— ML 相依違反本 repo 的確定性約束。
@@ -403,7 +403,7 @@ MODULE_CEILINGS = {
     "entity_alias.py": 100,
     # 第二十輪 P2-6:證據命名空間的單一宣告。prompt、schema 說明、
     # Python advisory 先前三邊各說各話,模型收到互相矛盾的規則。
-    "evidence_namespaces.py": 80,
+    "evidence_namespaces.py": 95,
     # 同一天的另一半:LLM 呼叫沒有 429/5xx 退避(`_http_get` 早就有)。
     # 暫時性的失敗不該花掉一整天的分析。
     # 2026-08-09 P2:放棄也要記(429 打到預算用完的那天,manifest

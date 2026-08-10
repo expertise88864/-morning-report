@@ -5029,6 +5029,38 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73763864",
+        "title": "GameStop rethinks eBay takeover",
+        "published": "Mon, 10 Aug 2026 15:11:46 +0000",
+        "processed_at": "2026-08-10T20:10:57Z",
+        "digest": {
+          "summary_points": [
+            "主持人報導，GameStop 執行長 Ryan Cohen 傳出可能撤回對 eBay 的 560 億美元收購，改談合作或合資；GameStop 持有 eBay 9.75% 股權，但股價自 5 月以來已下跌 28%，Michael Burry 也出清持股。",
+            "主持人引述策略師數據指出，S&P 500 股息殖利率降至 1.04% 歷史新低，代表股價漲幅遠超過股息成長，而過去市場弱勢時殖利率曾達 3.87%。",
+            "主持人報導，Archer Aviation 宣布收購 Boeing 旗下 Wisk Aero、SkyGrid 與 Insitu，涵蓋電動垂直起降機、空中交通管理及無人機系統，股價因此大漲。"
+          ],
+          "tickers": [
+            {
+              "name": "GameStop",
+              "code": "GME",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人報導 GameStop 股價自 5 月以來下跌 28%，且 Michael Burry 出清持股，市場對收購 eBay 的計畫存疑。"
+            },
+            {
+              "name": "Archer Aviation",
+              "code": "ACHR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人報導 Archer Aviation 收購 Boeing 旗下三家子公司，股價因此大漲。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Wall Street does indeed mistake debt for creativity and does so constantly."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73752411",
         "title": "Burry turns on Berkshire",
         "published": "Mon, 10 Aug 2026 10:35:47 +0000",
@@ -5373,55 +5405,6 @@
           "notable_quote": "the recent drawdown largely prices in the supply risks"
         },
         "shown_at": "2026-08-02T22:56:04Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73279484",
-        "title": "Reddit beat fails to trend",
-        "published": "Fri, 31 Jul 2026 10:46:33 +0000",
-        "processed_at": "2026-07-31T15:37:39Z",
-        "digest": {
-          "summary_points": [
-            "Reddit 第二季營收年增61%至8.05億美元、EPS 1.25美元，優於預期，但盤前股價下跌近9%，主因市場擔憂AI搜尋功能可能減少傳統搜尋導流，該股今年累計跌逾23%。",
-            "亞馬遜第二季財報全面優於預期，AWS雲端成長加速且獲利強勁，盤前股價大漲12%，顯示AI資本支出正轉化為實際營收動能。",
-            "微軟財報激勵股價站上200日均線，市場對AI相關營收成長抱持樂觀態度。",
-            "Jersey Mike's 以23美元定價IPO，開盤跌至21美元，收在21.63美元，Seeking Alpha 分析師認為估值可能偏高。",
-            "日本與南韓聯手干預匯市，日圓與韓元反彈，顯示官方對匯率過度波動的警戒。"
-          ],
-          "tickers": [
-            {
-              "name": "Reddit",
-              "code": "RDDT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "財報優於預期但股價重挫，主因AI搜尋可能衝擊流量。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2全面擊敗預期，AWS加速成長且獲利強勁。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財報後股價站上200日均線，AI營收展望樂觀。"
-            },
-            {
-              "name": "Jersey Mike's",
-              "code": "",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "IPO定價高於首日開盤，分析師認為估值可能偏高。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-31T22:59:06Z"
       }
     ]
   },

@@ -691,6 +691,34 @@ def _month(day: str) -> str:
     return d[:7] if re.match(r"^\d{4}-\d{2}", d) else ""
 
 
+def view_identity(title, subjects, summary: str = "") -> dict:
+    """一段敘述的**事件身分**:`{action, object, incident_tokens}`。
+
+    第三十輪外審 P1-3:`analysis_recap` 先前自己推了一套 ——
+    `event_action(title)` + `object_signature(action, entities)` —— 而
+    timeline 走的是 `action_object()`。兩套判準在兩個方向上都會出錯:
+
+      * **假合併**:同公司同月的兩起資安事件,動作與對象都相同,
+        而 `best_view` 只要動作對上就接 —— 今天這一起會拿到上一起的
+        昨日觀點與首見,模型被要求對**另一件事**寫「應驗/落空」;
+      * **假分裂**:同一批對台軍售,昨天的實體是「台灣、美國」、今天
+        只寫「台灣」,`object_signature` 退回主體集合 → 兩天的對象不同
+        → 昨日觀點消失。而 timeline 早就知道「受援國才是對象,
+        actor 有沒有被抽出來不改身分」。
+
+    所以身分只留一份:動作與對象走 `action_object()`(timeline、跨語言
+    橋接、recap 同一個答案),再帶上 `incident_tokens` —— 「同一個動作
+    對同一個對象」還要問「是不是同一樁」,那正是 timeline 早就在做的事。
+    """
+    _t = str(title or "")
+    canon = canonical_subjects(subjects)
+    action = event_action(_t, summary)
+    return {"action": action,
+            "object": action_object(action, _t, canon,
+                                    summary=summary) if action else "",
+            "incident_tokens": sorted(discriminative_tokens(_t, canon))}
+
+
 def timeline_identity(event: dict, subjects, today: str = "") -> dict:
     """`{key, action, subjects, basis}` —— 延燒事件的身分。
 

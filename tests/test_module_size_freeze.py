@@ -210,7 +210,7 @@ MODULE_CEILINGS = {
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
-    "event_identity.py": 880,
+    "event_identity.py": 910,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
@@ -326,7 +326,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:`save()` 回三態,不是布林
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
-    "analysis_recap.py": 650,
+    "analysis_recap.py": 680,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

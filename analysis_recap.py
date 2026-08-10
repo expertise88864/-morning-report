@@ -112,15 +112,18 @@ def extract(analysis_obj, packet) -> dict:
         title = " ".join(str(by_id.get(m, {}).get("title") or "")
                          for m in members_of.get(cluster_id, [])) or (
             str(by_id.get(fallback_sid, {}).get("title") or ""))
-        _act = _eid.event_action(title)
+        # **身分只留一份**(第三十輪外審 P1-3):動作、對象、辨識詞全部
+        # 走 `event_identity.view_identity` —— 與 timeline、跨語言橋接
+        # 同一個答案。先前這裡自己推(`object_signature(action, ents)`),
+        # 於是同一批軍售在 timeline 的對象是「台灣」、在 recap 是
+        # 「台灣、美國」,今天少寫一個實體就接不回昨天。
+        _ident = _eid.view_identity(title, ents)
         items.append({"statement": stmt[:STATEMENT_CHARS],
                       "direction": str(direction or ""),
                       "entities": ents,
-                      "action": _act,
-                      # **動作不等於身分**(第三輪外審 F2):`sanction`
-                      # 這種帶對象的動作,「制裁伊朗」與「制裁俄羅斯」
-                      # 是兩件事,而它們共用主體「美國」與同一個動作碼。
-                      "object": _eid.object_signature(_act, ents),
+                      "action": _ident["action"],
+                      "object": _ident["object"],
+                      "incident_tokens": _ident["incident_tokens"],
                       "title": title[:STATEMENT_CHARS]})
 
     for d in (obj.get("key_drivers") or []):
@@ -469,6 +472,31 @@ def usable(recap, target_session_date: str) -> list:
 VIEW_TITLE_OVERLAP = 0.3
 
 
+def _comparable(a, b) -> bool:
+    """兩個標題的辨識詞**比得出勝負嗎** —— 同一套書寫系統才比得出。
+
+    中文標題切二元組、英文標題切單詞:同一件事的中文報導與英文報導
+    共用的辨識詞是零,而那是語言差異不是事件差異。
+
+    判準是**比例**不是「有沒有」(外審 r1):台灣的英文報導常留著中文
+    公司名(`台積電 hit by ransomware; fabs halted`),只看「有沒有兩個
+    漢字」會把它判成中文標題 —— 它與真的中文報導比,辨識詞照樣是零,
+    於是同一樁事件的昨日觀點被無聲丟掉。混合書寫的一律當**比不出來**
+    (保守側:不否決,還有標題重疊那一關)。
+    """
+    def _score(t):
+        text = str(t or "")
+        han = sum(1 for ch in text if "一" <= ch <= "鿿")
+        lat = sum(1 for ch in text if ch.isascii() and ch.isalpha())
+        return han, lat
+
+    ha, la = _score(a)
+    hb, lb = _score(b)
+    cjk_a, cjk_b = ha >= 2 and ha >= la, hb >= 2 and hb >= lb
+    lat_a, lat_b = la >= 4 and la > ha, lb >= 4 and lb > hb
+    return (cjk_a and cjk_b) or (lat_a and lat_b)
+
+
 def best_view(entities, items, titles: str = ""):
     """對得上的那一筆觀點(對不上、或**分不出來**時回 `None`)。
 
@@ -503,21 +531,39 @@ def best_view(entities, items, titles: str = ""):
         # 「美國宣布對伊朗新一輪經濟制裁措施」與同一句話換成俄羅斯 ——
         # 去掉主體之後剩下的詞幾乎完全相同,標題那條路會翻案。
         # 已知且不同 → 直接排除;算不出來才退回標題辨識。
+        subj = ents | theirs
         their_obj = str(it.get("object") or "")
-        my_obj = _eid.object_signature(their_action or today_action, ents)
+        # 對象也走同一個入口(外審 P1-3);`titles` 是今天這一群的標題,
+        # 受詞在標題裡的動作(軍售)因此與 timeline 得到同一個答案。
+        my_obj = _eid.view_identity(titles, ents)["object"] if (
+            their_action or today_action) else ""
         if my_obj and their_obj and my_obj != their_obj:
             continue
         # **只用辨識詞比**(第二輪外審 F2):主體相交已經在上一行判過,
         # 標題重疊若又被主體名與「宣布」這類套語灌滿,等於把同一份
         # 證據算兩次 —— 「台積電宣布法說會」與「台積電宣布擴建新廠」
         # 的共同詞正好全部是這一類(重疊 0.50,越過 0.3 門檻)。
-        subj = ents | theirs
         a = _eid.discriminative_tokens(titles, subj)
         b = _eid.discriminative_tokens(it.get("title"), subj)
         overlap = (len(a & b) / min(len(a), len(b))
                    if len(a) >= _eid.MIN_DISCRIMINATIVE
                    and len(b) >= _eid.MIN_DISCRIMINATIVE else 0.0)
         action_match = bool(today_action) and today_action == their_action
+        # **同一個動作對同一個對象,還要是同一樁**(第三十輪外審 P1-3)。
+        # 同公司同月的兩起資安事件、同一目標的兩輪制裁、同一受援國的
+        # 兩批軍售 —— 動作與對象都相同,而 `action_match` 一成立就直接
+        # 接上去(標題重疊根本不看)。於是今天這一起會拿到上一起的
+        # 昨日觀點與首見,模型被要求對**另一件事**寫「應驗/落空」。
+        # 判準與 timeline 同一個(`incident_match` 三態):
+        # 明確不是同一樁就不接;算不出來(辨識詞太少)不阻擋 ——
+        # 那時還有下面的標題重疊那一關。
+        # **跨語言的兩側本來就不重疊**:英文報導與中文報導講同一件事時,
+        # 辨識詞一個都不會共用 —— 那是「比不出來」,不是「不是同一樁」。
+        # (`cross_lang` 用金額/數量錨處理那條路;這裡只要不誤判。)
+        if _comparable(titles, it.get("title")) and _eid.incident_match(
+                _eid.discriminative_tokens(titles, subj),
+                it.get("incident_tokens") or []) == _eid.NO_MATCH:
+            continue
         if action_match and today_action in _eid.NEEDS_OBJECT:
             # 帶對象的動作:動作相同還不夠,對象也要相同(第三輪外審 F2)。
             # 算不出對象一律不當作動作命中 —— 退回標題辨識詞那一關。

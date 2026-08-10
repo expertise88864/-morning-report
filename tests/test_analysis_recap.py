@@ -683,3 +683,95 @@ def test_the_prompt_asks_for_fulfilment_of_the_origin_view():
     seg = src[src.index(anchor):src.index(anchor) + 400]
     assert "應驗" in seg and "落空" in seg, seg
 
+
+# ===== 第三十輪外審 P1-3:身分只留一份 =====
+
+def _item(title, ents, statement="昨天的判斷"):
+    import event_identity as _eid
+    it = {"statement": statement, "direction": "bearish",
+          "entities": sorted(ents), "title": title, "date": "2026-08-09"}
+    it.update(_eid.view_identity(title, ents))
+    return it
+
+
+def test_two_incidents_of_the_same_action_do_not_share_a_view():
+    """**同一個動作對同一個對象,還要是同一樁**(外審 P1-3):同公司同月的
+    兩起資安事件,動作與對象都相同 —— 上一版 `action_match` 一成立就接,
+    標題重疊根本不看。於是今天這一起會拿到上一起的昨日觀點與首見,
+    模型被要求對**另一件事**寫「應驗/落空」。"""
+    yesterday = _item("台積電遭勒索軟體攻擊 部分產線短暫停擺", ["台積電"])
+    assert yesterday["action"] == "cyberattack"
+    today = "台積電遭網路攻擊 供應鏈系統中斷"
+    assert rc.best_view(["台積電"], [yesterday], titles=today) is None
+    # 同一樁的續篇照樣接得回(修正不得把延續一起關掉)
+    same = "台積電勒索軟體事件 產線今日全面復工"
+    assert rc.best_view(["台積電"], [yesterday], titles=same) is not None
+
+
+def test_two_sanction_rounds_on_the_same_target_do_not_share_an_origin():
+    """同一目標的兩輪不同制裁同理 —— 對象相同、動作相同,是兩件事。"""
+    y = _item("美國制裁伊朗祕密貨幣交易網絡與空殼公司", ["伊朗", "美國"])
+    assert y["action"] == "sanction"
+    other = "美國制裁伊朗無人機零組件供應鏈與航運仲介"
+    assert rc.best_view(["伊朗", "美國"], [y], titles=other) is None
+
+
+def test_the_same_arms_sale_is_not_split_by_the_actor():
+    """**假分裂的那一半**(走生產的寫入路徑 `extract`):同一批對台軍售,
+    受援國才是對象 —— 上一版兩端都用 `object_signature(action, ents)`,
+    於是對象是整個主體集合「台灣、美國」,而 timeline 算的是「台灣」。
+    兩套判準各自漂移,昨日觀點就在某一天無聲消失。"""
+    import event_identity as _eid
+    pk = _packet(news=[{"source_item_id": "n1",
+                        "title": "美國宣布對台軍售 F-16 零附件",
+                        "entities": ["台灣", "美國"], "source": "X",
+                        "source_name": "X"}], date="2026-08-07")
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n1",
+                               statement="軍售對國防類股的影響")]
+    obj["top_news_analysis"] = []
+    items = rc.usable(rc.extract(obj, pk), "2026-08-08")
+    # 寫入端存的就是 timeline 的答案(受援國),不是主體集合
+    assert items[0]["object"] == "台灣" == _eid.action_object(
+        "arms_sale", "美國宣布對台軍售 F-16 零附件", ["台灣", "美國"])
+    # 讀取端同一個入口:今天這一群同時點名台灣與美國,對象仍是台灣
+    hit = rc.best_view(["台灣", "美國"], items,
+                       titles="對台軍售案 F-16 零附件出口許可獲國會通過")
+    assert hit is not None and hit["statement"] == "軍售對國防類股的影響"
+
+
+def test_recap_and_timeline_answer_with_the_same_identity():
+    """**判準只有一份**:recap 存的動作與對象,要與 timeline 算出來的
+    一模一樣 —— 兩邊各寫一次的話,「同一件事」會有兩個答案。"""
+    import event_identity as _eid
+    title = "美國宣布對台軍售 F-16 零附件"
+    ents = ["台灣", "美國"]
+    ident = _eid.timeline_identity(
+        {"event_type": "geopolitical", "title": title}, ents, "2026-08-09")
+    view = _eid.view_identity(title, ents)
+    assert (view["action"], view["object"]) == (ident["action"],
+                                                ident["object"])
+    assert view["incident_tokens"] == ident["incident_tokens"]
+
+
+def test_a_cross_language_continuation_is_not_vetoed():
+    """**跨語言的兩側本來就不重疊**:英文報導與中文報導講同一件事時
+    辨識詞一個都不共用 —— 那是「比不出來」,不是「不是同一樁」。
+    加了逐樁判準之後,這條(R4-F2)不得被誤殺。"""
+    y = _item("US announces new sanctions package on Iran", ["伊朗", "美國"])
+    assert rc._comparable("US announces new sanctions on Iran",
+                          "美國宣布對伊朗制裁") is False
+    assert rc.best_view(["伊朗", "美國"], [y],
+                        titles="美國宣布對伊朗新一輪經濟制裁措施") is not None
+    # **混合書寫也算比不出來**(外審 r1):台灣的英文報導常留著中文
+    # 公司名 —— 只看「有沒有兩個漢字」會把它判成中文標題,而它與真的
+    # 中文報導比,辨識詞照樣是零。
+    mixed = _item("台積電 hit by ransomware; fabs halted temporarily",
+                  ["台積電"])
+    assert rc._comparable(mixed["title"], "台積電遭網路攻擊 供應鏈系統中斷")         is False
+    assert rc.best_view(["台積電"], [mixed],
+                        titles="台積電勒索軟體事件 產線今日全面復工") is not None
+    # 中文標題裡的英文產品名不影響判定(比例,不是有沒有)
+    assert rc._comparable("台積電 CoWoS 產能傳大幅擴充",
+                          "台積電先進封裝擴產再加碼") is True
+

@@ -14405,6 +14405,13 @@ def update_event_timeline(structured_events: list[dict],
             """
             if _adopted_now:
                 return True
+            # **態勢不切樁**(縱深第五批):鍵本身就是那條線的身分。
+            # 切分是為「一筆軍售、一次攻擊」設計的,套在 hormuz_passage
+            # 這種持續狀態上,發展換了詞就 NO_MATCH → 荷莫茲第 6 天
+            # 變成 #04d558 第 1 天(2026-08-10 實信)。**放在世代檢查
+            # 之前**:既有 state 是舊代,態勢線要當場接回,不是再裂一天。
+            if _eid.is_situation_action(ident.get("action")):
+                return True
             verdict = _eid.incident_match(_tok, candidate.get("incident_tokens"))
             if verdict == _eid.MATCH:
                 return True

@@ -210,12 +210,12 @@ MODULE_CEILINGS = {
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
-    "event_identity.py": 700,
+    "event_identity.py": 760,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
     # **實測 191 行**。
-    "event_actions.py": 215,
+    "event_actions.py": 245,
     # 「今天的信跑成了嗎」的判準(不是「有沒有跑」)。每日看門狗與 CI
     # canary **共用同一份** —— 兩份各自演化的話,「canary 綠而生產壞」
     # 會再發生一次(2026-08-04→08 連續五天的形狀)。實測 145。

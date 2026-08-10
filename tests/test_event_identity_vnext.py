@@ -995,3 +995,128 @@ def test_an_unrelated_marker_in_the_title_does_not_block_the_summary():
         ["United States", "Taiwan"],
         summary="The package is intended for Taiwan.") == "台灣"
 
+
+# ===== 縱深第五批(2026-08-10):態勢的連續性 =====
+
+_T1 = "荷莫茲傳禁美以船隻通行伊朗嗆聲攻擊「敵意目標」 | 中東戰火連綿| 全球 | 聯合新聞網 - UDN"
+_T2 = "重啟荷莫茲…伊朗提嚴苛條件 要求美軍撤離、永久結束戰爭等 增添談判變數 - money.udn.com"
+
+
+def test_title_furniture_is_not_event_content():
+    """**來源與版名不是事件內容**:2026-08-10 實際 state 的
+    incident_tokens 裡有 `com`/`money`/`udn`/「聯合」「新聞」——
+    家具不同稀釋重疊、家具相同灌高重疊,兩個方向都在扭曲判斷。"""
+    a = eid.discriminative_tokens(_T1, {"伊朗"})
+    b = eid.discriminative_tokens(_T2, {"伊朗"})
+    assert not ({"udn", "com", "money", "聯合", "新聞"} & (a | b)), (a, b)
+    assert "荷莫" in a and "荷莫" in b        # 內容要活著
+
+
+def test_furniture_stripping_is_conservative():
+    """只剝**尾端的短標籤**:長尾巴、帶句讀的尾巴、剝完太短的都不動。"""
+    strip = eid.strip_title_furniture
+    assert strip(_T2) == "重啟荷莫茲…伊朗提嚴苛條件 要求美軍撤離、永久結束戰爭等 增添談判變數"
+    # 尾巴超過上限 = 可能是真句子,不剝(頭要夠長 —— 反例要只靠
+    # 長度上限分勝負,第一版的頭太短被別的守衛先擋住,量不到上限)
+    long_tail = "台積電召開法說會 - 資本支出上修至三百億美元並宣布擴建兩座先進封裝新廠房"
+    assert strip(long_tail) == long_tail
+    # 帶引號的尾巴是內文,不剝
+    quoted = "外資喊「買進」 - 目標價「上看 1,500」"
+    assert strip(quoted) == quoted
+    # 剝完剩太短 → 原樣退回
+    assert strip("短 - UDN") == "短 - UDN"
+    assert strip("") == ""
+    # **全形｜在真實標題裡有語意用途**(外審 r1):長度不是家具的證據,
+    # 註冊表認得出來才是 —— 尾段不是已知發布者,一段都不剝。
+    assert strip("美國宣布新制裁｜鎖定無人機供應鏈") == "美國宣布新制裁｜鎖定無人機供應鏈"
+    # 發布者錨定時,它前面的極短導覽段一併剝;較長的內容段留下
+    assert strip("內容主體夠長的標題｜鎖定無人機供應鏈｜聯合新聞網") == "內容主體夠長的標題｜鎖定無人機供應鏈"
+    # **含發布者的引述是內容,不是標籤**(外審 r2):`owner_of` 對中文
+    # 別名是子字串比對,「路透:…」整句也會命中 —— 尾段要**是**標籤
+    # (短、無冒號)才剝。
+    quoted_wire = "美伊談判最新｜路透:雙方仍未就停火條件達成協議"
+    assert strip(quoted_wire) == quoted_wire
+    short_wire = "內容主體夠長的標題｜路透:停火近了"
+    assert strip(short_wire) == short_wire
+    # 反例要**只靠長度規則**分勝負(無冒號、無句讀、含發布者子字串):
+    # 上一版的長引述帶冒號,長度上限被冒號守衛遮住,量不到。
+    long_no_colon = "美伊談判最新｜路透獨家披露停火條件全文內容整理"
+    assert strip(long_no_colon) == long_no_colon
+    # **全形冒號才是生產的常態**(外審 r3):守衛只認半形 `:` 的話,
+    # 「路透：停火近了」照樣被剝 —— 同一個缺陷換一個字元活著。
+    fw = "內容主體夠長的標題｜路透：停火近了"
+    assert strip(fw) == fw
+
+
+def test_short_pipe_suffixes_still_distinguish_incidents(tmp_path,
+                                                         monkeypatch):
+    """**分辨兩樁的內容全在短管線尾段時,兩條線仍是兩條**(外審 r1 要求
+    的回歸):尾段被誤當家具剝掉的話,兩案的辨識詞變成同一組 → 併線、
+    天數接錯。"""
+    t_a = "美國宣布新制裁｜鎖定無人機零組件供應鏈"
+    t_b = "美國宣布新制裁｜打擊祕密油輪船隊與空殼公司"
+    a = eid.discriminative_tokens(t_a, {"美國"})
+    b = eid.discriminative_tokens(t_b, {"美國"})
+    assert eid.incident_match(a, b) == eid.NO_MATCH, (a, b)
+    _run(tmp_path, monkeypatch,
+         [{"event_type": "export_controls", "entity": "美國", "title": t_a}],
+         day="2026-08-05", state={})
+    import json as _json
+    st = _json.loads((tmp_path / "tl.json").read_text(encoding="utf-8"))
+    active, new = _run(tmp_path, monkeypatch,
+                       [{"event_type": "export_controls", "entity": "美國",
+                         "title": t_b}],
+                       day="2026-08-06", state=st)
+    assert len([k for k in new if "sanction" in k]) == 2, sorted(new)
+
+
+def test_a_situation_line_survives_its_own_development(tmp_path, monkeypatch):
+    """**態勢不切樁**:荷莫茲 08-08 的禁航與 08-10 的談判條件,辨識詞
+    天然重疊很低(同一條線的**發展**本來就會換詞)—— 上一版 NO_MATCH
+    → `#04d558` 第 1 天(2026-08-10 實信)。態勢動作的鍵本身就是身分;
+    **舊代 state 也要當場接回**(候選 schema 10,政策放在世代檢查之前)。"""
+    state = {"geopolitical:hormuz_passage:2026-08": {
+        "first_seen": "2026-08-05", "days": 2, "last_seen": "2026-08-08",
+        "latest_title": _T1, "entity": "伊朗", "identity_schema": 10,
+        "subjects": ["伊朗"],
+        "incident_tokens": sorted(eid.discriminative_tokens(_T1, {"伊朗"}))}}
+    active, new = _run(
+        tmp_path, monkeypatch,
+        [{"event_type": "geopolitical", "entity": "伊朗、美國", "title": _T2}],
+        day="2026-08-10", state=state)
+    keys = [k for k in new if "hormuz" in k]
+    assert keys == ["geopolitical:hormuz_passage:2026-08"], keys
+    assert new[keys[0]]["days"] == 3, new[keys[0]]
+    assert new[keys[0]]["last_seen"] == "2026-08-10"
+
+
+def test_incident_actions_still_split_distinct_cases(tmp_path, monkeypatch):
+    """**修正不得把逐樁切分關掉**(第二十七輪的行為):同月對同一國的
+    兩輪不同制裁案仍然是兩條線 —— 切分正是為「會完成的行為」設計的。
+    (第一版反例用 cybersecurity,而那個型別根本不進 timeline ——
+    被前置守衛先擋住的反例量不到缺陷。)"""
+    t_a = "美財政部最新制裁 打擊伊朗祕密貨幣交易網絡與空殼公司"
+    t_b = "美國宣布新一輪制裁 鎖定伊朗無人機零組件供應鏈與航運仲介"
+    _run(tmp_path, monkeypatch,
+         [{"event_type": "export_controls", "entity": "美國", "title": t_a}],
+         day="2026-08-05", state={})
+    import json as _json
+    st = _json.loads((tmp_path / "tl.json").read_text(encoding="utf-8"))
+    assert any("sanction" in k for k in st), st    # 前提:動作真的被認出
+    active, new = _run(tmp_path, monkeypatch,
+                       [{"event_type": "export_controls", "entity": "美國",
+                         "title": t_b}],
+                       day="2026-08-06", state=st)
+    assert len([k for k in new if "sanction" in k]) == 2, sorted(new)
+
+
+def test_situation_actions_are_declared_states_not_acts():
+    """宣告的完整性:表裡的每一個都要真的在 ACTION_TABLE(拼錯的動作名
+    永遠不會命中 —— 守衛靜默失效的形狀);而「會完成的行為」不得混入。"""
+    from event_actions import ACTION_TABLE, SITUATION_ACTIONS
+    known = {row[0] for row in ACTION_TABLE}
+    assert SITUATION_ACTIONS <= known, SITUATION_ACTIONS - known
+    assert not ({"arms_sale", "cyberattack", "sanction", "export_control",
+                 "tariff_action"} & SITUATION_ACTIONS)
+    assert "hormuz_passage" in SITUATION_ACTIONS
+

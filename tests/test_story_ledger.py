@@ -1217,3 +1217,43 @@ def test_ledger_authority_covers_rejected_like_withdrawn():
     story = {"lifecycle": "rejected", "source_grade": "A"}
     assert sl._lifecycle_regresses({"lifecycle": "confirmed"}, story),         "C 級 confirmed 相對官方 rejected 未被判為倒退"
     assert not sl._lifecycle_regresses({"lifecycle": "rejected"}, story)
+
+
+# ===== 縱深第五批:名額給「像故事的」 =====
+
+def test_active_slots_prefer_tracked_entity_stories_over_noise():
+    """名額先前只分「今天有沒有動」,同組之內按**插入順序** ——
+    2026-08-10 實測:一次性雜訊(快艇翻覆,updates=1、無實體)佔掉名額,
+    多日有實體錨的線索(鴻海營收 upd=4)被擠出。
+    「延燒」的本錢是追蹤紀錄與實體錨,不是誰先進帳本。"""
+    led = [
+        {"key": "noise", "state": "peak", "updates": 1, "entity": "",
+         "last_update": "2026-08-10", "headline": "快艇翻覆"},
+        # cluster 鍵刻意排在鴻海**前面**:實體那一項失效時,平手會落回
+        # 插入順序、這條會排第一 —— 反例要只靠實體規則分勝負。
+        {"key": "cluster-x", "state": "peak", "updates": 4,
+         "entity": "cluster:n9", "last_update": "2026-08-10",
+         "headline": "無實體錨的群"},
+        {"key": "honhai", "state": "peak", "updates": 4, "entity": "2317",
+         "last_update": "2026-08-10", "headline": "鴻海營收"},
+    ]
+    got = [s["key"] for s in sl.active_stories(led, limit=3,
+                                               today="2026-08-10")]
+    assert got[0] == "honhai", got
+    assert got[1] == "cluster-x", got          # 多日 > 一次性
+    assert got[-1] == "noise", got             # 實體錨 > cluster 鍵
+
+
+def test_freshness_still_outranks_track_record():
+    """r17 的規則不變:**今天有動的一律在前** —— 昨天的高潮再厚,
+    也不得擠掉今天真的有進展的線索(R16b:沒有新進展整條不要寫)。"""
+    led = [
+        {"key": "old-big", "state": "peak", "updates": 8, "entity": "2330",
+         "last_update": "2026-08-09", "headline": "昨天的大線"},
+        {"key": "today-small", "state": "developing", "updates": 2,
+         "entity": "3017", "last_update": "2026-08-10", "headline": "今天的小線"},
+    ]
+    got = [s["key"] for s in sl.active_stories(led, limit=2,
+                                               today="2026-08-10")]
+    assert got == ["today-small", "old-big"], got
+

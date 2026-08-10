@@ -1400,9 +1400,18 @@ def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES,
     R16b「沒有新進展整條不要寫」。故今日有更新者一律排在前面。
     """
     alive = [s for s in (ledger or []) if s.get("state") != "dormant"]
-    if today:
-        alive.sort(key=lambda s: str(s.get("last_update") or "")[:10] == str(today)[:10],
-                   reverse=True)
+
+    def _rank(s):
+        # 縱深第五批:名額先前只分「今天有沒有動」,同組之內按**插入順序**
+        # —— 2026-08-10 實測:一次性雜訊(快艇翻覆/野火,updates=1、無實體)
+        # 佔掉名額,多日有實體錨的線索(鴻海營收 upd=4)被擠出。
+        # 「延燒」的本錢是追蹤紀錄與實體錨,不是誰先進帳本。
+        ent = str(s.get("entity") or "")
+        return ((str(s.get("last_update") or "")[:10] == str(today)[:10])
+                if today else False,             # 今天有動優先(r17,不變)
+                min(int(s.get("updates") or 0), 8),   # 多日 > 一次性;封頂
+                bool(ent) and not ent.startswith("cluster"))  # 有實體錨
+    alive.sort(key=_rank, reverse=True)
     return alive[:limit]
 
 

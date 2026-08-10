@@ -68,7 +68,7 @@ import re
 #: recipient);受詞也會從 summary 找。**鍵的算法變了就要進版。**
 #: v10(第二十九輪 Commit 2):`CANONICAL_SUBJECTS` 補齊法域的中英對應
 #: (France→法國 等 28 組)—— 主體正規化是鍵的一部分,表變了鍵就變。
-IDENTITY_SCHEMA_VERSION = 10
+IDENTITY_SCHEMA_VERSION = 11
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -95,6 +95,66 @@ GENERIC_NEWS_WORDS = (
 MIN_DISCRIMINATIVE = 2
 
 
+#: 標題尾巴「家具」的長度上限:來源名(" - money.udn.com")與版名
+#: ("| 聯合新聞網")都是短標籤;真的標題子句(帶句讀)不會被誤剝。
+_FURNITURE_MAX = 24
+
+
+def strip_title_furniture(title) -> str:
+    """剝掉標題**尾端**的來源與版名;剝不動(內文太短)就原樣退回。
+
+    這些不是事件內容(v11)—— 2026-08-10 實際 state 的 incident_tokens
+    裡有 `com`/`money`/`udn`/「聯合」「新聞」:同一條線索兩天在不同媒體
+    報導,家具不同會稀釋重疊、家具相同會灌高重疊 —— 兩個方向都在扭曲
+    「是不是同一樁」的判斷。
+    """
+    text = str(title or "").strip()
+    # 「內容 - 來源」:只剝最後一段,而且要短、不含句讀(真句子不剝)。
+    # Google News 的尾綴慣例就是這個形狀;小站(ftnn.com.tw)不在
+    # 註冊表,所以這一段维持啟發式。
+    head, sep, tail = text.rpartition(" - ")
+    if (sep and 0 < len(tail.strip()) <= _FURNITURE_MAX
+            and not re.search(r"[。!！?？「」]", tail)
+            and len(head.strip()) >= 6):
+        text = head.strip()
+    # 「內容 | 版名| 站名」:**只有尾段是註冊表認得的發布者**才剝
+    # (`source_registry.owner_of`,與 `title_publisher` 同一個先例)。
+    # 全形「｜」在真實標題裡有語意用途(「美國宣布新制裁｜鎖定無人機
+    # 供應鏈」)—— 外審 r1:長度不是家具的證據,認得出來才是。
+    # 發布者錨定之後,它前面的連續**極短**段(≤6,「全球」「中東戰火
+    # 連綿」)是站內導覽,一併剝;更長的段可能是內容,留下。
+    seps = [m.start() for m in re.finditer(r"[|｜]", text)]
+    if seps:
+        import source_registry as _sr
+        _tail = text[seps[-1] + 1:].strip()
+        # 尾段要**是**發布者標籤,不是**含**發布者(外審 r2):
+        # `owner_of` 對中文別名是子字串比對,「路透:雙方仍未就停火條件
+        # 達成協議」含「路透」也會命中 —— 而那是**引述**,是分辨兩樁的
+        # 內容。純標籤短(聯合新聞網/經濟日報)且不帶冒號句讀;
+        # 帶引述記號或超長的一律當內容。
+        if (0 < len(_tail) <= 12
+                and not re.search(r"[:：。!！?？「」]", _tail)
+                and _sr.owner_of(_tail)):
+            cut = seps[-1]
+            # 用**切片**而不是 split/join —— 重組會把全形｜換成半形,
+            # 留下的內容一個字元都不該變。
+            for pos in reversed(seps[:-1]):
+                seg = text[pos + 1:cut].strip()
+                if 0 < len(seg) <= 6:
+                    cut = pos
+                else:
+                    break
+            text = text[:cut].strip()
+    return text if len(text) >= 6 else str(title or "").strip()
+
+
+def is_situation_action(action) -> bool:
+    """這個動作是不是「態勢」(同鍵之下不做逐樁切分)。宣告見
+    `event_actions.SITUATION_ACTIONS`(與 ACTION_TABLE 同檔,同一份權威)。"""
+    from event_actions import SITUATION_ACTIONS
+    return str(action or "") in SITUATION_ACTIONS
+
+
 def discriminative_tokens(title, subjects=()) -> set:
     """標題裡**真正指認事件**的 token(去掉主體名與通用新聞動詞)。
 
@@ -106,7 +166,8 @@ def discriminative_tokens(title, subjects=()) -> set:
     「台積電宣布」會產生「電宣」這種跨越主體與動詞的詞,事後濾不掉。
     """
     from news_clusters import _tokens
-    text = str(title or "")
+    # 家具先剝(v11):來源與版名不是事件內容 —— 見 `strip_title_furniture`。
+    text = strip_title_furniture(title)
     names = [str(s) for s in (subjects or ()) if str(s).strip()]
     # 主體的別名一起挖(今天寫 TSMC、昨天寫台積電)
     import entity_alias as _ea

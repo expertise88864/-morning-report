@@ -125,6 +125,23 @@ _AMBIGUOUS_ABBREV = _AMBIGUOUS_PERIOD_ABBREV | _AMBIGUOUS_JURISDICTION
 #: 要嘛交易所限定寫法(`NYSE: NOW`)。
 _COMMON_WORD_TICKERS = frozenset({"NOW", "NET", "ARM", "SNOW", "COIN"})
 
+#: 歧義代號 → **公司名**(第三十輪外審 P2-4)。extractor 抽出的是公司名、
+#: 模型寫的是代號,中間沒有橋的話,`ServiceNow` 的真新聞會與副詞 `now`
+#: 一起被擋(fail-closed 但誤殺)。
+#:
+#: **刻意不放進 `entity_alias.ALIAS_GROUPS`**(外審 r2):那張表是全域的
+#: 主體等價關係,`canonical("Arm")` 一旦回 `Arm Holdings`,
+#: 「Arm 架構」的新聞在 event identity 那邊就會與 Arm Holdings 的線索
+#: 併成同一條。歧義只該影響問這個問題的人 —— 這裡只回答
+#: 「這則新聞的實體支持這個代號嗎」。
+_TICKER_COMPANY_NAMES = {
+    "NOW": ("servicenow",),
+    "NET": ("cloudflare",),
+    "ARM": ("arm holdings",),
+    "SNOW": ("snowflake",),
+    "COIN": ("coinbase",),
+}
+
 
 def _ticker_notation(a: str, news_item) -> bool:
     """這則新聞用**交易所限定的寫法**點名了這個代號嗎(`NYSE: MTD`)。
@@ -247,8 +264,17 @@ def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
             return True
         if a.upper() in _COMMON_WORD_TICKERS:
             # 裸字命中不算(副詞 now / net income / Arm 架構)——
-            # 要 entities 大小寫一致,或交易所限定寫法。
+            # 要 entities 大小寫一致、**公司名的別名組**,或交易所寫法。
+            # 別名組那一條是第三十輪外審 P2-4:extractor 抽出的是
+            # `ServiceNow`,而模型寫的是 `NOW` —— 中間沒有橋的話,
+            # 合法新聞與副詞一起被擋(fail-closed 但誤殺)。
             if any(a.upper() == str(e) for e in ents):
+                return False
+            # 宣告過的**公司名**才算橋(表在上面;代號自己不算 ——
+            # 否則裸字會從 entities 那條路回來:`Arm architecture` 的
+            # entities 就是 `Arm`)。
+            _names = _TICKER_COMPANY_NAMES.get(a.upper(), ())
+            if any(str(e).lower() in _names for e in ents):
                 return False
             return not _ticker_notation(a, news_item)
         # **未知的大寫字串是「未知實體」,不是「可能是標的」**

@@ -230,7 +230,7 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:state 裡混著兩代身分要看得見(`legacy_remaining` 記了卻沒人讀)
     # 第二十七輪外審 P1-2:strict 的語意契約(「不是 None」不算跑過)
     # —— 四格各配一個判準 + 計畫/report_kind 必填。**實測 444 行**。
-    "run_quality.py": 535,
+    "run_quality.py": 555,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -541,7 +541,7 @@ MODULE_CEILINGS = {
     # 標準寫法(`Mettler-Toledo (MTD)`、`NYSE: MTD`)。**實測 618 行**。
     # 第二十七輪外審 P1-5:法域不是標的 + 撞名的走上下文判準
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
-    "analysis_validate.py": 780,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    "analysis_validate.py": 800,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

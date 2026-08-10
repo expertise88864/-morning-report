@@ -1390,7 +1390,7 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
 
 
 def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES,
-                   today: str = "") -> list[dict]:
+                   today: str = "", states=()) -> list[dict]:
     """會進 prompt 的 story:排除沉寂者,**今日有更新的優先**。
 
     沉寂的**不刪除**——同一條線索日後復燃時(例如併購案重啟)還要接得回去。
@@ -1400,6 +1400,13 @@ def active_stories(ledger: list[dict], limit: int = MAX_ACTIVE_STORIES,
     R16b「沒有新進展整條不要寫」。故今日有更新者一律排在前面。
     """
     alive = [s for s in (ledger or []) if s.get("state") != "dormant"]
+    # **先篩再截**(第三十輪外審 P2-2):呼叫端要的是「peak/developing
+    # 的前 N 條」,而先截再篩會變成「前 N 條裡剛好是 peak/developing 的」
+    # —— 實測 30 條 fresh brewing 排在前面時,追蹤查詢一條都發不出來,
+    # 連帶橫向傳導(建立在縱向 followup 上)也一起歸零。
+    if states:
+        want = {str(x) for x in states}
+        alive = [s for s in alive if str(s.get("state")) in want]
 
     def _rank(s):
         # 縱深第五批:名額先前只分「今天有沒有動」,同組之內按**插入順序**
@@ -1569,9 +1576,10 @@ def followup_queries(ledger: list[dict], limit: int = FOLLOWUP_MAX_QUERIES,
     """
     picked = []
     seen_q = set()
-    for s in active_stories(ledger, limit=limit * 6, today=today):
-        if str(s.get("state")) not in FOLLOWUP_STATES:
-            continue
+    # 名額給「可追蹤的那些」的前幾條(外審 P2-2:篩選要在截斷之前)。
+    # 仍多取一些:實體錨抽不出來的會在下面被跳過。
+    for s in active_stories(ledger, limit=limit * 6, today=today,
+                            states=FOLLOWUP_STATES):
         ent = _followup_entity(s)
         if not ent:
             continue          # 無實體錨 → 不查(見 docstring)

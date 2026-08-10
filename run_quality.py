@@ -473,6 +473,28 @@ def assess(manifest, *, mode: str = "watchdog",
                 f"分析裡有 {_safe_int(_dig(m, 'llm', 'recap_eligible'))} 條"
                 "候選觀點,而 recap 一條都沒抽出來 —— `nothing_to_save` "
                 "在這種日子是接線失敗的偽裝,不是清淡")
+        # **「送得出去」不等於「這個能力活著」**(第三十輪外審 P2-3):
+        # 2026-08-10 的實機 manifest:`called=true, items=35, parsed=0,
+        # valid=0, outcome="ok"` —— 抽取器吃了 35 筆、DeepSeek 失敗後
+        # 換 Gemini,最後零筆有效輸出,而 `outcome` 還叫 ok、strict 全綠。
+        # capability_health 那邊早就把它列進 `inactive_capabilities`,
+        # 只是驗收沒有讀。
+        _ex = m.get("llm_extractor")
+        if isinstance(_ex, dict) and _ex.get("called") is True:
+            _items = _safe_int(_ex.get("items"))
+            # **判準與 capability_health 同一條**(外審 r1):那邊用的是
+            # `survived`(真的活到下游的事件數),而 `parsed` 只代表
+            # 「JSON 解得開」、`valid` 只代表「通過 schema」——
+            # 解得開但全部不合格、或合格卻全被合併掉,都是零產出。
+            # 兩邊各寫一次的話,一邊說 inactive、一邊說綠燈(現況)。
+            _alive = (_safe_int(_ex.get("survived"))
+                      if "survived" in _ex else _safe_int(_ex.get("valid")))
+            if _items > 0 and _alive <= 0:
+                add("event_extractor_dead", "defect",
+                    f"事件抽取器吃了 {_items} 筆、活到下游 0 筆"
+                    f"(parsed={_safe_int(_ex.get('parsed'))}、"
+                    f"outcome={_ex.get('outcome')!r})—— 「送得出去」"
+                    "不等於「這個能力活著」")
         if not str(m.get("report_kind") or ""):
             add("canary_no_report_kind", "defect",
                 "manifest 沒說這一班寄的是哪一種信 —— 判準會退回"

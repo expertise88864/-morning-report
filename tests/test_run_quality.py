@@ -1516,3 +1516,50 @@ def test_the_producer_records_the_recap_counts(tmp_path):
     assert out == rc.SAVED
     assert man["llm"]["recap_eligible"] >= man["llm"]["recap_extracted"] >= 1
 
+
+def test_strict_rejects_an_extractor_that_produced_nothing():
+    """**「送得出去」不等於「這個能力活著」**(第三十輪外審 P2-3):
+    2026-08-10 的實機 manifest 是 `called=true, items=35, parsed=0,
+    valid=0, outcome="ok"` —— 抽取器吃了 35 筆、換過 provider,
+    最後零筆有效輸出,而 strict 全綠。"""
+    m = _strict_ok()
+    m["llm_extractor"] = {"called": True, "items": 35, "parsed": 0,
+                          "valid": 0, "outcome": "ok",
+                          "fallback_from": "deepseek", "fallback_to": "gemini"}
+    assert "event_extractor_dead" in _strict(m), _strict(m)
+
+
+def test_parsed_but_all_invalid_is_still_dead():
+    """**判準與 capability_health 同一條**(外審 r1):`parsed` 只代表
+    「JSON 解得開」、`valid` 只代表「通過 schema」—— 解得開但全部不合格、
+    或合格卻全被合併掉,都是零產出。兩邊各寫一次的話,
+    一邊說 inactive、一邊說綠燈。"""
+    for ex in ({"called": True, "items": 35, "parsed": 30, "valid": 0,
+                "survived": 0, "outcome": "ok"},
+               {"called": True, "items": 35, "parsed": 30, "valid": 12,
+                "survived": 0, "outcome": "ok"}):
+        m = _strict_ok()
+        m["llm_extractor"] = ex
+        assert "event_extractor_dead" in _strict(m), ex
+    # 沒有 `survived` 的舊 manifest 退回看 `valid`
+    m2 = _strict_ok()
+    m2["llm_extractor"] = {"called": True, "items": 35, "parsed": 30,
+                           "valid": 0, "outcome": "ok"}
+    assert "event_extractor_dead" in _strict(m2)
+
+
+def test_a_working_or_idle_extractor_is_not_a_defect():
+    """有產出、或今天根本沒東西可抽、或沒開 —— 都不是缺陷
+    (修正不得把正常的日子標紅)。"""
+    for ex in ({"called": True, "items": 35, "parsed": 30, "valid": 28,
+                "survived": 25, "outcome": "ok"},
+               {"called": True, "items": 0, "parsed": 0, "valid": 0,
+                "outcome": "ok"},
+               {"called": False, "items": 0, "parsed": 0, "valid": 0,
+                "outcome": "disabled"}):
+        m = _strict_ok()
+        m["llm_extractor"] = ex
+        assert "event_extractor_dead" not in _strict(m), ex
+    # 沒有這一格的舊 manifest 不猜
+    assert "event_extractor_dead" not in _strict(_strict_ok())
+

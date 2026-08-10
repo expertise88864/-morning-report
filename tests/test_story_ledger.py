@@ -1257,3 +1257,49 @@ def test_freshness_still_outranks_track_record():
                                                today="2026-08-10")]
     assert got == ["today-small", "old-big"], got
 
+
+# ===== 第三十輪外審 P2-2:先篩再截 =====
+
+def _brewing_flood(n=30):
+    return [{"key": f"b{i}", "state": "brewing", "updates": 5,
+             "entity": f"11{i:02d}", "entity_name": f"醞釀{i}",
+             "last_update": "2026-08-10", "headline": "x"} for i in range(n)]
+
+
+def test_brewing_stories_cannot_starve_the_followup_queries():
+    """**先截再篩會變成「前 N 條裡剛好可追蹤的」**(外審 P2-2):
+    30 條 fresh brewing 排在前面時,追蹤查詢一條都發不出來 ——
+    而橫向傳導建立在縱向 followup 上,會一起歸零。"""
+    led = _brewing_flood() + [
+        {"key": f"p{i}", "state": "peak", "updates": 1,
+         "entity": f"22{i:02d}", "entity_name": f"高潮{i}",
+         "last_update": "2026-08-10", "headline": "y"} for i in range(5)]
+    got = sl.followup_queries(led, today="2026-08-10")
+    assert len(got) == sl.FOLLOWUP_MAX_QUERIES, got
+    assert all(q["name"].startswith("高潮") for q in got), got
+
+
+def test_the_state_filter_happens_before_the_cap():
+    """判準本身:`active_stories(states=…)` 先篩再排再截。"""
+    led = _brewing_flood() + [
+        {"key": "p", "state": "peak", "updates": 1, "entity": "2200",
+         "entity_name": "高潮", "last_update": "2026-08-10", "headline": "y"}]
+    picked = sl.active_stories(led, limit=3, today="2026-08-10",
+                               states=("peak", "developing"))
+    assert [x["key"] for x in picked] == ["p"], picked
+    # 不給 states 時行為不變(既有呼叫端)
+    assert len(sl.active_stories(led, limit=3, today="2026-08-10")) == 3
+
+
+def test_horizontal_queries_still_get_fed():
+    """**橫向建立在縱向上**:縱向被餓死時橫向也是零 —— 這條把兩者接起來
+    一起量(修好縱向之後橫向要真的拿得到東西)。"""
+    import sector_map as sm
+    led = _brewing_flood() + [
+        {"key": "tsmc", "state": "peak", "updates": 3, "entity": "2330",
+         "entity_name": "台積電", "last_update": "2026-08-10",
+         "headline": "CoWoS 擴產"}]
+    vert = sl.followup_queries(led, today="2026-08-10")
+    assert vert and vert[0]["name"] == "台積電"
+    assert sm.horizontal_queries(vert), "橫向拿不到候選"
+

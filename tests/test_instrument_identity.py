@@ -514,3 +514,55 @@ def test_a_standalone_number_in_the_body_is_not_ticker_evidence():
                  "summary": "", "entities": []},
         {"tw_universe": [{"code": "9999"}]})
 
+
+# ===== 第三十輪外審 P2-4:歧義代號的公司名要有橋 =====
+
+def _blocked(aid, ents, title):
+    import analysis_validate as av
+    return av._asset_unknown_to_evidence(
+        aid, {"title": title, "summary": "", "entities": list(ents)}, None)
+
+
+def test_the_company_name_supports_its_ambiguous_ticker():
+    """**fail-closed 但誤殺**(外審 P2-4):extractor 抽出的是公司名、
+    模型寫的是代號 —— 中間沒有橋的話,`ServiceNow` 的真新聞與副詞 `now`
+    一起被擋。補上別名組之後兩件事同時成立。"""
+    for aid, name, title in (
+            ("NOW", "ServiceNow", "ServiceNow raises full-year guidance"),
+            ("NET", "Cloudflare", "Cloudflare reports record revenue"),
+            ("ARM", "Arm Holdings", "Arm Holdings beats estimates"),
+            ("SNOW", "Snowflake", "Snowflake lifts product revenue outlook"),
+            ("COIN", "Coinbase", "Coinbase volumes surge")):
+        assert not _blocked(aid, [name], title), (aid, name)
+
+
+def test_the_common_word_itself_still_does_not_support_it():
+    """裸字命中仍然不算 —— 這是上一輪的修正,不得被這一輪打開。"""
+    for aid, title in (("NOW", "Apple is now the biggest company"),
+                       ("NET", "Apple net income rises 12%"),
+                       ("ARM", "Apple moves to Arm architecture"),
+                       ("SNOW", "Snow disrupts flights in Chicago"),
+                       ("COIN", "A coin shortage hits retailers")):
+        assert _blocked(aid, ["Apple"], title), aid
+
+
+def test_the_bare_ambiguous_word_as_an_entity_is_not_the_company():
+    """**橋是公司名,不是代號自己**(這條反例只靠那一行分勝負):
+    `Arm architecture` 的 entities 會是 `Arm` —— 別名組裡有它,
+    把整組都當橋的話裸字又從 entities 那條路回來了。"""
+    assert _blocked("ARM", ["Arm"], "Apple moves to Arm architecture")
+    assert not _blocked("ARM", ["Arm Holdings"], "Arm Holdings beats")
+
+
+def test_the_ambiguity_does_not_leak_into_the_global_alias_table():
+    """**歧義只該影響問這個問題的人**(外審 r2):`canonical("Arm")` 一旦
+    回 `Arm Holdings`,「Arm 架構」的新聞在 event identity 那邊就會與
+    Arm Holdings 的線索併成同一條 —— 那張表是全域的主體等價關係。"""
+    import entity_alias as ea
+    import event_identity as eid
+    for word in ("Arm", "now", "NOW", "net", "coin", "snow"):
+        assert ea.canonical(word) == word, word
+    assert not ea.expand({"Arm"}) & ea.expand({"Arm Holdings"})
+    # 主體正規化也不得把它們併起來
+    assert eid.canonical_subject("Arm") != eid.canonical_subject("Arm Holdings")
+

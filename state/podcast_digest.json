@@ -5001,6 +5001,47 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73827346",
+        "title": "The AI watermark you can't erase",
+        "published": "Tue, 11 Aug 2026 18:14:41 +0000",
+        "processed_at": "2026-08-11T20:11:31Z",
+        "digest": {
+          "summary_points": [
+            "主持人報導 Anthropic 將因歐盟 AI 法案，在歐盟推出的新模型全面加入浮水印，適用所有 Claude 產品，並附帶數位簽章的來源中繼資料。",
+            "Sea Limited 因電子商務、數位金融服務與遊戲業務強勁成長，Q2 營收優於預期，股價大漲。",
+            "Rocket Lab 表示 Neutron 火箭首飛時程可能延至 2027 年，股價下跌；公司仍排定 Q4 上發射台，但未重申年底首飛目標。",
+            "Hims & Hers Health 因營業費用暴增 48%，Q2 意外虧損（每股虧 0.37 美元 vs 預期盈餘 0.32 美元），股價下跌。",
+            "PMC 報告指出 2026 年 K 型經濟消費支出差距在 7 月幾乎關閉，勞動市場成為更重要的驅動因素，退稅帶動的效應已大致消退。"
+          ],
+          "tickers": [
+            {
+              "name": "Sea Limited",
+              "code": "SE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 營收優於預期，電商、數位金融服務與遊戲業務成長強勁。"
+            },
+            {
+              "name": "Rocket Lab",
+              "code": "RKLB",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Neutron 火箭首飛可能延至 2027 年，時程風險增加。"
+            },
+            {
+              "name": "Hims & Hers Health",
+              "code": "HIMS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 意外虧損，營業費用大增 48%，盈利能力受疑。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "It's the AI identifier you can't erase, no matter how hard you try."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73814051",
         "title": "Riot’s $9.1B AI mystery",
         "published": "Tue, 11 Aug 2026 10:29:26 +0000",
@@ -5386,26 +5427,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "we believe Circle is steadily evolving into a broader financial infrastructure platform spanning payments, treasury, tokenized RWA, interoperability, and developer services."
-        },
-        "shown_at": "2026-08-03T23:01:47Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73376482",
-        "title": "Alibaba unveils flagship AI model",
-        "published": "Mon, 03 Aug 2026 09:04:44 +0000",
-        "processed_at": "2026-08-03T10:56:01Z",
-        "digest": {
-          "summary_points": [
-            "阿里巴巴在香港股市上漲，發表新一代AI模型Qwen 3.9 Max，號稱性能可與Anthropic等全球頂尖AI系統匹敵，並計劃下週公開模型權重，擴大開放取用。",
-            "Google Earth的新實驗功能因被用於生成虛假的衛星圖像而不到一天就下架；主持人指出，這凸顯AI開發商在快速推出功能與防止濫用之間的挑戰。",
-            "阿斯特捷利康與必治妥施貴寶據傳進行初步合併談判，可能打造市值接近4,000億美元的製藥巨頭，但談判仍在早期階段，不一定能達成協議。",
-            "油價因美國總統川普暫停對伊朗的計畫性打擊而下挫，緩解通膨擔憂，帶動美股期指上漲，30年期公債殖利率從19年高點回落至約5.23%。",
-            "避險基金在「情境意識」拋售前以歷史性速度賣出科技股，顯示市場對科技股風險的擔憂。"
-          ],
-          "tickers": [],
-          "market_view": "期指走高，標普、道瓊、那斯達克100期貨均上漲約0.5%，油價下跌提振市場情緒並緩解通膨疑慮；公債殖利率從高點回落。",
-          "action_view": "",
-          "notable_quote": "For investors, the episode highlights the growing challenge facing AI developers as they raced to release new features while preventing misuse."
         },
         "shown_at": "2026-08-03T23:01:47Z"
       }

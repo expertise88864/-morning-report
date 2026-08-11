@@ -5001,6 +5001,62 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73814051",
+        "title": "Riot’s $9.1B AI mystery",
+        "published": "Tue, 11 Aug 2026 10:29:26 +0000",
+        "processed_at": "2026-08-11T14:35:45Z",
+        "digest": {
+          "summary_points": [
+            "Anthropic 傳以 91 億美元與比特幣礦商 Riot Platforms 簽約,20 年供應德州 Rockdale 廠 100MW AI 算力容量,含延長選項總值最高上看 161 億美元,Riot 盤前大漲 20%。",
+            "Plug Power 盤前漲 11%:Q2 財報優於預期,毛利率從負 31% 改善至接近損益兩平,營運費用年減 50% 至 6,200 萬美元,並上調 2026 會計年度營收成長目標至 15–16%。",
+            "SpaceX 收復 135 美元 IPO 發行價:週一收漲 4.2% 至 138.74 美元,為 7 月 16 日以來首度站回發行價之上,較 8 月 3 日盤中低點 104.83 美元明顯反彈。",
+            "英特爾將股票發行規模擴大至 200 億美元,定價每股 95 美元。",
+            "Upwork 盤前重挫 20%:Q2 EPS 小幅不及預期,且 Q3 與全年財測顯著低於預期,引發市場對成長放緩的擔憂。",
+            "油價單日大漲約 5 美元,西德州原油上漲 2.6% 至每桶 84 美元、布蘭特上漲 2.3% 至 89 美元,美股期指盤前走跌,今日留意 10 點成屋銷售數據。"
+          ],
+          "tickers": [
+            {
+              "name": "Riot Platforms",
+              "code": "RIOT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "與 Anthropic 簽訂 91 億美元 AI 算力供應合約,盤前大漲 20%。"
+            },
+            {
+              "name": "Plug Power",
+              "code": "PLUG",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 財報優於預期、毛利率接近損益兩平,並上調 2026 財年營收成長目標。"
+            },
+            {
+              "name": "Upwork",
+              "code": "UPWK",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2 EPS 不及預期且 Q3/全年財測顯著低於預期,股價盤前重挫 20%。"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "擴大股票發行至 200 億美元、定價 95 美元,籌資動作稀釋股權但充實資本。"
+            },
+            {
+              "name": "Monster Beverage",
+              "code": "MNST",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "2 拆 1 股票分割今日生效。"
+            }
+          ],
+          "market_view": "美股期指盤前走跌,油價單日大漲約 5 美元(西德州 84 美元、布蘭特 89 美元),顯示地緣風險升溫壓抑風險情緒;HSBC 則認為股市派對尚未結束。",
+          "action_view": "節目未給明確操作建議,主要提示留意油價大漲與地緣風險對大盤的壓抑,以及盤後/盤前個股因財報與大單消息出現的劇烈波動。",
+          "notable_quote": "To put this into perspective for you, 191 megawatts of capacity is enough to energize roughly 143,000 homes at any given time."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73763864",
         "title": "GameStop rethinks eBay takeover",
         "published": "Mon, 10 Aug 2026 15:11:46 +0000",
@@ -5352,33 +5408,6 @@
           "notable_quote": "For investors, the episode highlights the growing challenge facing AI developers as they raced to release new features while preventing misuse."
         },
         "shown_at": "2026-08-03T23:01:47Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73341230",
-        "title": "SpaceX earnings take center stage",
-        "published": "Sun, 02 Aug 2026 16:09:54 +0000",
-        "processed_at": "2026-08-02T20:30:01Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 將於週三發布上市後首份財報，市場關注 Starlink 成長、Starship 時程與資本支出；分析師 Mike Zucardi 認為股價重挫已大致反映供給風險，摩根士丹利目標價 300 美元，而分析師 Julia Ostiaan 則因極高空單、股份解禁潮及 AI 業務永續性存疑維持強烈賣評。",
-            "本週焦點為 7 月非農就業報告，預期新增 8.6 萬人、失業率 4.2%；Wells Fargo 指裁員仍有限，但職缺發布低於去年同期，ADP 私部門就業增速自春季放緩，且勞動參與率回升可能使失業率有上行風險。",
-            "長債殖利率在聯準會主席 Warsh 記者會後仍位於 19 年高點，通膨擔憂未緩解，債券市場將是金融條件的主要驅動力。",
-            "中東局勢訊息分歧，川普稱暫緩軍事打擊並可能重啟荷姆茲海峽談判，伊朗否認，能源市場與區域安全夾在兩種敘事間，油價波動風險仍在。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師看法分歧：Zucardi 認為回檔已反映供給風險，目標價 300 美元；Ostiaan 以空單與解禁潮等因素維持強烈賣評。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "the recent drawdown largely prices in the supply risks"
-        },
-        "shown_at": "2026-08-02T22:56:04Z"
       }
     ]
   },

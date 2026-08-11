@@ -12659,7 +12659,13 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
             return _call(_effective["prompt"])
 
     try:
-        parsed = _parse_llm_event_json(_call_or_halve(prompt))
+        # **回空陣列有四種原因,而它們的處置不同**(2026-08-11 生產:
+        # `parsed=0, outcome="ok"` 連續多天,離線分不出是哪一段)。
+        _pdiag: dict = {}
+        parsed = _parse_llm_event_json(_call_or_halve(prompt), diag=_pdiag)
+        _stat["parse"] = {k: (_redact_secret_text(str(v))
+                              if k in ("head", "error") else v)
+                          for k, v in _pdiag.items()}
         _stat["parsed"] = len(parsed or [])
         valid, dropped = _validate_llm_events(parsed)
         _stat["valid"], _stat["dropped"] = len(valid), dropped

@@ -490,11 +490,16 @@ def assess(manifest, *, mode: str = "watchdog",
             _alive = (_safe_int(_ex.get("survived"))
                       if "survived" in _ex else _safe_int(_ex.get("valid")))
             if _items > 0 and _alive <= 0:
+                # **原因要跟著訊息走**(2026-08-11):只說「活到下游 0 筆」
+                # 的話,收信的人還是得自己去猜是哪一段 —— 而四種原因的
+                # 處置完全不同(見 `llm_postprocess._parse_llm_event_json`)。
+                _pk = str((_ex.get("parse") or {}).get("kind") or "")
                 add("event_extractor_dead", "defect",
                     f"事件抽取器吃了 {_items} 筆、活到下游 0 筆"
                     f"(parsed={_safe_int(_ex.get('parsed'))}、"
-                    f"outcome={_ex.get('outcome')!r})—— 「送得出去」"
-                    "不等於「這個能力活著」")
+                    f"outcome={_ex.get('outcome')!r}"
+                    + (f"、解析={_pk}" if _pk else "")
+                    + ")—— 「送得出去」不等於「這個能力活著」")
         if not str(m.get("report_kind") or ""):
             add("canary_no_report_kind", "defect",
                 "manifest 沒說這一班寄的是哪一種信 —— 判準會退回"

@@ -52,8 +52,22 @@ def _strip_llm_watchlist_section(text: str) -> str:
     return _re.sub(pattern, "\n", text, flags=_re.S).strip()
 
 
-def _parse_llm_event_json(text: str) -> list[dict]:
+#: 診斷裡帶多長的回應開頭。夠看出「這是不是 JSON」就好 ——
+#: 這個欄位會進 run manifest(公開 repo),不放整份回應。
+PARSE_HEAD_CHARS = 120
+
+
+def _parse_llm_event_json(text: str, diag=None) -> list[dict]:
     """Accept a strict JSON array, with a small fence-tolerant recovery path.
+
+    **回空陣列有五種完全不同的原因**(2026-08-11 生產):回應是空的、
+    裡面根本沒有陣列(模型在講話)、**開了括號沒有收**(被截斷)、
+    陣列解不開、包了 `{"events": …}` 但那不是陣列。
+    上一版四種都回 `[]`,而呼叫端記下的是 `parsed=0, outcome="ok"` ——
+    「抽取器吃了 35 筆、活到下游 0 筆」連續多天,而離線分不出是哪一段。
+    `diag` 給呼叫端一個 dict,這裡把原因與回應形狀填進去
+    (**處置不同的原因要分得開**:沒回應是 provider 問題、解不開是
+    格式問題、沒有陣列多半是模型在講話而不是輸出 JSON)。
 
     批#95(第九輪 P1-4):也接受 Structured Outputs 的 `{"events": [...]}`。
     OpenAI strict 模式要求根節點是 **object**,所以那條路徑回的是包了一層的
@@ -62,6 +76,11 @@ def _parse_llm_event_json(text: str) -> list[dict]:
     先正式解析,失敗才退回掃描。
     """
     raw = (text or "").strip()
+    _d = diag if isinstance(diag, dict) else {}
+    _d.update({"chars": len(raw), "head": raw[:PARSE_HEAD_CHARS],
+               "kind": "empty_response" if not raw else "unknown"})
+    if not raw:
+        return []
     if raw.startswith("```"):
         raw = raw.strip("`").removeprefix("json").strip()
     if raw.startswith("{"):
@@ -70,15 +89,34 @@ def _parse_llm_event_json(text: str) -> list[dict]:
         except json.JSONDecodeError:
             obj = None
         if isinstance(obj, dict) and isinstance(obj.get("events"), list):
+            _d["kind"] = "ok_object"
             return [it for it in obj["events"] if isinstance(it, dict)][:40]
+        if obj is None:
+            _d["kind"] = "bad_json_object"
+        else:
+            _d["kind"] = "object_without_events"
     start, end = raw.find("["), raw.rfind("]")
     if start < 0 or end < start:
+        # **開了括號卻沒有收 = 被截斷**,不是「模型在講話」(外審 r1)。
+        # 兩者的處置不同:截斷要減量重試或調高輸出額度,而模型講話要
+        # 改 prompt/schema —— 壓成同一個名字就等於沒有診斷。
+        if start >= 0:
+            _d["kind"] = "truncated_array"
+        elif _d.get("kind") in ("unknown", "", None):
+            _d["kind"] = "no_array_found"
         return []
     try:
         parsed = json.loads(raw[start:end + 1])
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        _d["kind"] = "bad_json_array"
+        _d["error"] = str(e)[:80]
         return []
-    return [item for item in parsed if isinstance(item, dict)][:40] if isinstance(parsed, list) else []
+    if not isinstance(parsed, list):
+        _d["kind"] = "array_is_not_a_list"
+        return []
+    out = [item for item in parsed if isinstance(item, dict)][:40]
+    _d["kind"] = "ok_array" if out else "array_without_objects"
+    return out
 
 
 def _strip_stance_calculation(text: str) -> str:

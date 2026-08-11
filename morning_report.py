@@ -12816,6 +12816,32 @@ def _canonicalize_evidence_ids(obj, packet: dict) -> None:
           + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
 
 
+def _canonicalize_tension_ids(obj, packet: dict) -> None:
+    """把少了 `tension:` 前綴的張力 ID 補上(判準見 `tension_refs`)。
+
+    2026-08-11 CI #495:兩筆張力各因此產生一對鏡像錯誤,整份特化分析作廢。
+    這裡只負責接線與**留下痕跡** —— 改寫要進 manifest,否則「模型有沒有
+    照 schema 寫」會被這一層悄悄美化。
+    """
+    if not isinstance(obj, dict):
+        return
+    try:
+        import tension_refs as _tr
+        changed = _tr.canonicalize_tension_ids(
+            obj, (packet or {}).get("signal_tensions"))
+    except Exception as e:                              # noqa: BLE001
+        print(f"[llm] 張力 ID 正規化略過:{type(e).__name__}: {e}",
+              file=sys.stderr)
+        return
+    if not changed:
+        return
+    slot = _RUN_MANIFEST.setdefault("llm", {})
+    slot["tension_ids_canonicalized"] = len(changed)
+    slot["tension_id_rewrites"] = [f"{a}→{b}" for a, b in changed[:6]]
+    print(f"[llm] 張力 ID 補前綴 {len(changed)} 筆:"
+          + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
+
+
 def _prune_phantom_audit_ids(obj, packet: dict):
     """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
 
@@ -13077,6 +13103,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 整條合法的跨新聞關聯因此消失,還被記成「幽靈修剪」。
             # 先把無歧義的指稱寫成正規形式,剩下的才是真的假引用。
             _canonicalize_evidence_ids(obj, packet)
+            # 張力 ID 是**另一組命名空間**(`tension_resolutions[].tension_id`
+            # 不是證據欄位),所以上一行走不到它 —— 見 CI #495。
+            _canonicalize_tension_ids(obj, packet)
             obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」

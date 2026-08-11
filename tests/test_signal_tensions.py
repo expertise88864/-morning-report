@@ -9,6 +9,8 @@
 fixture 用的就是**那一天的真實數字** —— 這四組矛盾每一組都要被抓到。
 """
 import signal_tensions as st
+import analysis_validate as _av
+import tension_refs as _tr
 
 #: 2026-08-04 實際數字(信件與 manifest 抄的)。
 _REAL_QUOTES = {
@@ -365,3 +367,116 @@ def test_the_tension_refs_match_the_registry_paths():
     # **registry 不得膨脹到「什麼都引得到」** —— 那時引用檢查就失去作用。
     # 這份 fixture 是一天行情的典型規模;數量爆掉要先紅在這裡。
     assert len(market) < 60, f"registry 膨脹到 {len(market)} 個 ID"
+
+
+# ---------------------------------------------------------------- 鏈的連續性
+# 2026-08-11 CI #495:同一條規則第三次擋下整封信。上一步是一句列舉多個
+# 結果的長句(那正是本報要的敘事),下一步只接走其中一個結果 ——
+# 讀起來完全接得上,而重疊比例被整句稀釋到 0.17。
+
+_LONG_STEP = ("市場同時收到巴基斯坦「協議可能接近」的訊號，選擇相信談判："
+              "油價收 82.5 美元、新興市場資產反彈")
+
+
+def test_a_step_may_pick_up_one_outcome_of_a_long_previous_step():
+    assert _av._same_node(_LONG_STEP, "油價與通膨預期")
+
+
+def test_an_unrelated_fragment_is_still_a_broken_chain():
+    for other in ("台北市長選舉的投票率", "生技新藥三期試驗解盲",
+                  "颱風假的判定標準"):
+        assert not _av._same_node(_LONG_STEP, other), other
+
+
+def test_the_rule_is_named_not_measured():
+    """**指名過**就算接上,不看佔多少比例。
+
+    這是判準本身:長句稀釋的那個缺陷,只有在不看比例時才會消失。
+    """
+    prev = "台幣升值壓縮出口報價，電子代工的毛利率因此往下修"
+    assert _av._same_node(prev, "毛利率與明年的資本支出計畫")
+
+
+# ------------------------------------------------------------------ 張力 ID
+# packet 那一格叫 `tension_id`、值不帶前綴;輸出 schema 的欄位也叫
+# `tension_id`、要的卻是帶前綴的形式 —— 照抄就是錯的(CI #495)。
+
+_DET = {"items": [
+    {"tension_id": "t_sector_divergence:半導體業", "kind": "tension",
+     "usable_for_inference": True},
+    {"tension_id": "t_breadth_vs_index", "kind": "alignment",
+     "usable_for_inference": True},
+]}
+
+
+def _obj(tid, aid="tension:t_breadth_vs_index"):
+    # 三個必填欄位都寫滿 —— 生產看到的就是這個形狀:模型**認真處理了**
+    # 那筆張力,只有 ID 少了前綴。空著的話「只點名沒處理」會蓋掉重點。
+    row = {"tension_id": tid, "resolution": "兩側的時間尺度不同",
+           "dominant_side": "left", "why": "外資期貨可能是避險",
+           "decision_rule": "現貨買超連兩日就分出勝負", "evidence_ids": []}
+    return {"cross_market_synthesis": {
+        "tension_resolutions": [row],
+        "alignment_readings": [{"alignment_id": aid}]}}
+
+
+def test_a_missing_tension_prefix_is_filled_in():
+    obj = _obj("t_sector_divergence:半導體業")
+    changed = _tr.canonicalize_tension_ids(obj, _DET)
+    assert changed == [("t_sector_divergence:半導體業",
+                        "tension:t_sector_divergence:半導體業")]
+    got = obj["cross_market_synthesis"]["tension_resolutions"][0]["tension_id"]
+    assert got == "tension:t_sector_divergence:半導體業"
+
+
+def test_alignment_ids_are_the_same_namespace():
+    obj = _obj("tension:t_sector_divergence:半導體業", aid="t_breadth_vs_index")
+    _tr.canonicalize_tension_ids(obj, _DET)
+    got = obj["cross_market_synthesis"]["alignment_readings"][0]["alignment_id"]
+    assert got == "tension:t_breadth_vs_index"
+
+
+def test_an_id_that_does_not_exist_stays_unknown():
+    """不存在的仍然不存在 —— 正規化不得憑空認可任何 ID。"""
+    obj = _obj("t_捏造的張力")
+    assert _tr.canonicalize_tension_ids(obj, _DET) == []
+    got = obj["cross_market_synthesis"]["tension_resolutions"][0]["tension_id"]
+    assert got == "t_捏造的張力"
+
+
+def test_the_validator_accepts_the_canonicalized_shape():
+    """接線的證明:補完前綴之後,那筆張力才算被處理。
+
+    走**生產的入口** `validate(obj, packet)` —— 少了前綴會同時產生一對
+    鏡像錯誤(沒有對應的條目 / 宣稱處理了今天沒有的張力),那正是
+    生產看到的形狀。
+    """
+    packet = {"news": [], "signal_tensions": _DET}
+    obj = _obj("t_sector_divergence:半導體業")
+    before = [p for p in _av.validate(obj, packet)
+              if "t_sector_divergence" in p]
+    assert len(before) == 2, before          # 缺一筆 + 多一筆,鏡像的一對
+    _tr.canonicalize_tension_ids(obj, _DET)
+    after = [p for p in _av.validate(obj, packet)
+             if "t_sector_divergence" in p and (
+                 "沒有對應的" in p or "今天沒有這筆張力" in p)]
+    assert not after, after
+
+
+def test_the_tension_canonicalizer_is_actually_called():
+    """**沒有呼叫端的函式,那個 docstring 的宣稱就是假的。**
+
+    而且要跑在驗證之前 —— 驗證器正是那對鏡像錯誤的來源。
+    """
+    import ast
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    calls = [n for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "_canonicalize_tension_ids"]
+    assert calls, "生產路徑沒有呼叫它 —— 那這個修正在生產不存在"
+    i = src.index("_canonicalize_tension_ids(obj, packet)" + chr(10))
+    j = src.index("problems = (_sch.validate(obj, packet)")
+    assert i < j, "正規化跑在驗證後面 = 那對鏡像錯誤照樣發生"

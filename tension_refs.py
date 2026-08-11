@@ -74,6 +74,55 @@ def sides_evidence(detected: Optional[dict]) -> dict:
     return out
 
 
+def known_tension_ids(detected: Optional[dict]) -> set:
+    """今天**偵測到的所有**張力 ref(含 stale / 不可用的那些)。
+
+    `required_*` 問的是「非處理不可的有哪幾筆」,這一個問的是
+    「這個 ID 到底存不存在」—— 正規化只在**指的是真的有的東西**時才敢改寫。
+    """
+    return {f"tension:{it['tension_id']}"
+            for it in ((detected or {}).get("items") or [])
+            if isinstance(it, dict) and it.get("tension_id")}
+
+
+def canonicalize_tension_ids(obj, detected: Optional[dict]) -> list:
+    """把**少了 `tension:` 前綴**的張力 ID 就地補上,回傳改寫紀錄。
+
+    2026-08-11 CI #495 的駁回:模型寫 `t_sector_divergence:半導體業`,
+    而驗證器要的是 `tension:t_sector_divergence:半導體業` —— 兩筆張力
+    各產生一對鏡像錯誤(「沒有對應的條目」+「宣稱處理了今天沒有的張力」),
+    整份特化分析作廢。
+
+    **這個坑是我們自己挖的**:packet 那一格的欄位名就叫 `tension_id`、
+    值是不帶前綴的 `t_sector_divergence:半導體業`,而輸出 schema 的欄位
+    也叫 `tension_id`、要的卻是帶前綴的形式。同名不同值,照抄就是錯的。
+    schema 的說明已經改成明講(那是「不要犯」),這裡是「犯了也認得出來」
+    —— 與 `evidence_registry.resolve_near_miss` 同一個模式。
+
+    只在 `tension:<原字串>` 真的是今天偵測到的張力時才改寫:
+    不存在的仍然不存在,不會有任何 ID 被憑空認可。
+    """
+    known = known_tension_ids(detected)
+    cms = ((obj or {}).get("cross_market_synthesis")
+           if isinstance(obj, dict) else None)
+    if not isinstance(cms, dict) or not known:
+        return []
+    out = []
+    for field, key in (("tension_resolutions", "tension_id"),
+                       ("alignment_readings", "alignment_id")):
+        for row in (cms.get(field) or []):
+            if not isinstance(row, dict):
+                continue
+            raw = str(row.get(key) or "")
+            if not raw or raw in known:
+                continue
+            fixed = f"tension:{raw}"
+            if fixed in known:
+                row[key] = fixed
+                out.append((raw, fixed))
+    return out
+
+
 def required_tension_ids(detected: Optional[dict]) -> set:
     """**必須被橫向綜合正面處理**的張力(stale 的不強制)。"""
     return {f"tension:{it['tension_id']}"

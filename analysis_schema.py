@@ -49,7 +49,9 @@ import evidence_namespaces as _ns
 #: v16(2026-08-11):`key_drivers` 的說明寫出條數規則(指向
 #: `EVIDENCE.key_drivers_required`)—— 那條規則驗證器一直在驗,
 #: 而 schema 與 prompt 從來沒說過。
-ANALYSIS_SCHEMA_VERSION = 16
+#: v17(2026-08-11 CI #495):`tension_id` / `alignment_id` 明講要帶
+#: `tension:` 前綴 —— packet 那一格同名而不帶前綴,照抄就是錯的。
+ANALYSIS_SCHEMA_VERSION = 17
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -332,7 +334,9 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         # 文字裡,於是「哪些同向訊號共同構成主導因子」與「有沒有把同一個
         # 底層訊號重複計權」都驗不了 —— 而重複計權正是立場分虛高的來源。
         "alignment_readings": _arr(_obj({
-            "alignment_id": _s("EVIDENCE 的 `tension:*`(kind=alignment 的那些)"),
+            "alignment_id": _s("`tension:` + EVIDENCE.signal_tensions.items[]"
+                               ".tension_id(kind=alignment 的那些)—— "
+                               "**要帶 `tension:` 前綴**,packet 那一格沒有"),
             "interpretation": _s("兩個同向訊號合起來說明什麼"),
             "marginal_information": _s("第二個訊號**多告訴了你什麼**;"
                                        "沒有就寫「沒有增量」"),
@@ -350,7 +354,10 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
                                          "傳導鏈上可分辨的兩段"),
         }), "共用底層驅動的事件群怎麼處理(沒有就給空陣列)"),
         "tension_resolutions": _arr(_obj({
-            "tension_id": _s("EVIDENCE.signal_tensions 的 `tension:<id>`"),
+            "tension_id": _s("`tension:` + EVIDENCE.signal_tensions.items[]"
+                             ".tension_id —— **要帶 `tension:` 前綴**,"
+                             "packet 那一格沒有前綴,照抄會被判成不存在的張力"
+                             "(例:`tension:t_sector_divergence:半導體業`)"),
             "resolution": _s("兩邊怎麼調和;不得只複述兩個數字"),
             "dominant_side": _enum(
                 ("left", "right", "neither"),

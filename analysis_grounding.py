@@ -72,7 +72,9 @@ from __future__ import annotations
 #: v31(2026-08-11 CI #492):當日 universe 裡的台股可以是傳導對象
 #: (它是真的在交易的股票 —— 這道閘門要擋的假代號不成立);
 #: 美股那側的規則不變。判準變了就要進版。
-GROUNDING_VERSION = 31
+#: v32(2026-08-11 CI #495):鏈的連續性改問「上一步有沒有指名過
+#: 這一步的起點」,不再看重疊比例(長句會把它稀釋掉)。
+GROUNDING_VERSION = 32
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

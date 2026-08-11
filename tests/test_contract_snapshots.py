@@ -132,6 +132,28 @@ _GROUNDING_CASES = [fx.valid_analysis(), fx.ungrounded_analysis(),
                     _horizon_two_tiers_off()]
 
 
+def _chain_probes(pk) -> list:
+    """鏈的連續性:**上一步的終點有沒有指名過這一步的起點**(CI #495)。
+
+    這條規則兩天內改了三次判準(逐字相等 → 一方包含另一方 → 重疊比例
+    → 有沒有指名),而 grounding 指紋**一次都沒動** —— 它量不到自己
+    該管的東西。正反各一格,而且用**會稀釋比例的長句**:那正是生產
+    連三次誤擋的形狀,短句量不到。
+    """
+    prev = ("市場同時收到巴基斯坦「協議可能接近」的訊號，選擇相信談判："
+            "油價收 82.5 美元、新興市場資產反彈")
+    out = []
+    #    油價與通膨預期=接走上一步列舉的其中一個結果(要放行);
+    #    生技新藥…=完全不相干(要擋)。兩格只靠這一條規則分勝負。
+    for nxt in ("油價與通膨預期", "生技新藥三期試驗解盲解盲"):
+        o = fx.valid_analysis()
+        steps = o["top_news_analysis"][0]["mechanism_steps"]
+        steps[0]["to_what"] = prev
+        steps[1]["from_what"] = nxt
+        out.append(sch.validate(o, pk))
+    return out
+
+
 def _asset_probes() -> list:
     """第二十二輪 P1-6 的標的判準 —— 概念詞黑名單、ASCII token 邊界、
     中文名要在證據裡。標準 packet 的新聞蓋不到這些邊角,指紋看不見
@@ -490,6 +512,7 @@ def _behaviour() -> dict:
                                   + [av.depth_advisories(o, pk)
                                      for o in _GROUNDING_CASES]
                                   + _asset_probes()
+                                  + _chain_probes(pk)
                                   + [_anchor_scope_probe()]
                                   + _top_event_probe()
                                   + _event_graph_probe()),
@@ -605,7 +628,7 @@ _FROZEN = {
     #     講的是哪一個事件群(價格變化沒有主詞也沒有動作)。
     # v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
     #     使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-    "output_schema_version":  (16, "300d1d349a71063e"),
+    "output_schema_version":  (17, "1e9fcfe2da901e58"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -745,7 +768,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":  (31, "25567cef52e9b317"),
+    "grounding_version":  (32, "bb906443c52928b4"),
 }
 
 

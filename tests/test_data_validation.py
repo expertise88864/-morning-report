@@ -494,6 +494,118 @@ def test_deepseek_400_retries_with_slim_payload(monkeypatch):
     assert any("thinking" not in c for c in calls)       # slim 重試不帶 → 成功
 
 
+def test_the_slim_retry_says_why_and_says_it_out_loud(monkeypatch):
+    """**切了精簡模式 = 這一班的信是沒有思考的模型寫的。**
+
+    先前唯一的痕跡是 `applied_effort` 變空,而那個降級被白名單註記成
+    「影響深度而已」;400 的理由只印在 job log(要 admin 權限才讀得到)。
+    2026-08-11 那班就是這樣寄出去的 —— 特化路徑被驗證擋下、既有路徑接手、
+    400 之後精簡重試成功,而事後查不到為什麼。
+    """
+    def fake_post(url, json=None, headers=None, timeout=None):
+        if "thinking" in (json or {}):
+            return _FakePostResp(
+                400, text='{"error":{"message":"context length exceeded"}}')
+        return _FakePostResp(200, {"choices": [{"message": {"content": "分析"}}],
+                                   "usage": {"prompt_tokens": 3,
+                                             "completion_tokens": 2}})
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "DEEPSEEK_REASONING_EFFORT", "high")
+    saved = list(mr._DEGRADED_STEPS)
+    mr._DEGRADED_STEPS[:] = []
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        assert mr._call_deepseek("prompt") == "分析"
+        assert "llm:slim_retry:primary" in mr._DEGRADED_STEPS, mr._DEGRADED_STEPS
+        rec = mr._RUN_MANIFEST["llm"]["primary"]
+        assert rec.get("slim") is True, rec
+        assert "context length exceeded" in str(rec.get("backoff_reason")), rec
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_the_reason_survives_when_the_slim_retry_also_fails(monkeypatch):
+    """**最需要那句話的時候,它原本正好消失**(外審 r1 P2)。
+
+    400 → 精簡重試 → 精簡也失敗 → 換模型。`_backoff_reason` 在
+    `for model` 的開頭清空,而先前這條 HTTP 分支一筆紀錄都沒有 ——
+    於是「一開始為什麼 400」在換模型之後查不到。
+    """
+    def fake_post(url, json=None, headers=None, timeout=None):
+        if "thinking" in (json or {}):
+            return _FakePostResp(
+                400, text='{"error":{"message":"context length exceeded"}}')
+        raise mr.requests.exceptions.ReadTimeout("slim 也逾時")
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-pro")
+    monkeypatch.setattr(mr, "DEEPSEEK_REASONING_EFFORT", "high")
+    monkeypatch.setattr(mr, "_llm_sleep", lambda *a, **k: None)
+    saved = list(mr._DEGRADED_STEPS)
+    mr._DEGRADED_STEPS[:] = []
+    mr._RUN_MANIFEST.pop("llm", None)
+    import pytest
+    try:
+        with pytest.raises(RuntimeError):
+            mr._call_deepseek("prompt")
+        att = mr._RUN_MANIFEST["llm"].get("attempts") or []
+        # 兩筆各自釘一件事(**每一筆都要自己能被殺掉**):
+        # 1) 還沒精簡的那次 400 —— 這條分支先前一筆紀錄都沒有;
+        four = [a for a in att if "HTTP 400" in str(a.get("error"))]
+        assert four, "400 那次完全沒有紀錄"
+        assert "context length exceeded" in str(four[0].get("backoff_reason"))
+        # 2) 精簡之後才逾時的那次 —— 它是換模型前**最後一筆**帶得走理由的。
+        late = [a for a in att if "ReadTimeout" in str(a.get("error"))
+                and a.get("slim")]
+        assert late, "精簡後的失敗沒有標記 slim"
+        assert "context length exceeded" in str(late[0].get("backoff_reason")),             "換模型之後就查不到一開始為什麼 400"
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_a_failure_that_is_not_the_first_400_is_recorded_too(monkeypatch):
+    """**換模型之前的每一次失敗都要留下紀錄。**
+
+    精簡之後又一個 400(或 5xx)先前同樣什麼都沒記 —— 而那一筆才是
+    「精簡也沒用」的證據:少了它,事後只看得到第一次 400,
+    會以為精簡救回來了。
+    """
+    def always_400(url, json=None, headers=None, timeout=None):
+        return _FakePostResp(400, text='{"error":{"message":"bad request"}}')
+
+    monkeypatch.setattr(mr.requests, "post", always_400)
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setattr(mr, "DEEPSEEK_MODEL", "deepseek-v4-flash")
+    monkeypatch.setattr(mr, "_llm_sleep", lambda *a, **k: None)
+    saved = list(mr._DEGRADED_STEPS)
+    mr._DEGRADED_STEPS[:] = []
+    mr._RUN_MANIFEST.pop("llm", None)
+    import pytest
+    try:
+        with pytest.raises(RuntimeError):
+            mr._call_deepseek("prompt")
+        att = mr._RUN_MANIFEST["llm"].get("attempts") or []
+        after = [a for a in att if a.get("slim") and "HTTP 400" in str(a.get("error"))]
+        assert after, "精簡之後那次 400 沒有紀錄:%r" % (att,)
+    finally:
+        mr._DEGRADED_STEPS[:] = saved
+        mr._RUN_MANIFEST.pop("llm", None)
+
+
+def test_the_slim_retry_is_not_a_known_degradation(monkeypatch):
+    """白名單不收它 —— **沒見過的降級正是最需要被看見的那一種**,
+    而「推理強度沒套上」那一條寫著「影響深度,不影響管線」,
+    正好把「整份分析沒有推理」講成了小事。"""
+    import run_quality as rq
+    assert "llm:slim_retry:primary" not in rq.KNOWN_DEGRADED
+
+
 def test_deepseek_400_body_in_error(monkeypatch):
     """所有嘗試 400 時,RuntimeError 應帶回 DeepSeek 的錯誤內文(供信件診斷)。"""
     def always_400(url, json=None, headers=None, timeout=None):

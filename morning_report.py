@@ -11993,6 +11993,14 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
     last_err: Optional[Exception] = None
     for model in fallback_models:
         slim = False    # 收到 400 後切「精簡模式」:去掉 thinking/reasoning_effort + 降 max_tokens
+        # **切了精簡模式,信就是沒有思考的模型寫的** —— 而先前唯一的痕跡是
+        # `applied_effort` 變空,再被 `KNOWN_DEGRADED` 註記成「影響深度而已」。
+        # 2026-08-11 那班正是這樣:特化路徑被驗證擋下、既有路徑接手、
+        # 400 之後精簡重試成功,信照常寄出,而**為什麼 400** 只在 job log 裡
+        # (要 admin 權限才讀得到)。這個 repo 為 OpenAI 那條路徑修過同一個
+        # 缺陷(批#104:「丟掉錯誤訊息之後,剩下的只能用猜的」),
+        # 而這條路徑漏了。
+        _backoff_reason = ""
         attempt = 0
         while attempt < 3:
             attempt += 1
@@ -12063,6 +12071,7 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                         role, "deepseek", model, finish_reason=_finish,
                         requested_effort=DEEPSEEK_REASONING_EFFORT,
                         applied_effort=payload.get("reasoning_effort", ""),
+                        slim=slim, backoff_reason=_backoff_reason,
                         usage=usage or {}, accepted=False,
                         elapsed=time.monotonic() - _t0,
                         error=(f"finish_reason=length —— 推理吃光額度"
@@ -12079,6 +12088,7 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     # `applied` 記**實際送出**的值。請求值可能是別名
                     # (medium/low 都送 high),兩者分開才看得出來。
                     applied_effort=payload.get("reasoning_effort", ""),
+                    slim=slim, backoff_reason=_backoff_reason,
                     usage=usage or {}, accepted=True,
                     elapsed=time.monotonic() - _t0,
                     thinking_mode=(payload.get("thinking") or {}).get("type", ""),
@@ -12100,12 +12110,38 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     f"HTTP {code}: {body}" if body else str(e)))
                 print(f"[llm] DeepSeek {model} HTTP {code}: {_redact_secret_text(body)}",
                       file=sys.stderr)
+                # **每一次 HTTP 失敗都要自己留下紀錄**(外審 r1 P2)。
+                # 先前這條分支一個 `_record_llm_call` 都沒有:精簡重試如果
+                # 自己也失敗(逾時、又一個 400),流程換下一個模型,而
+                # `_backoff_reason` 在 `for model` 的開頭就被清空 ——
+                # **這個 commit 要保住的那句話,正好在它最需要的時候消失。**
+                _http_reason = _redact_secret_text(
+                    f"HTTP {code}: {body}" if body else str(e))[:300]
+                _fail_rec = dict(
+                    role=role, provider="deepseek", model=model,
+                    requested_effort=DEEPSEEK_REASONING_EFFORT,
+                    applied_effort=payload.get("reasoning_effort", ""),
+                    accepted=False, error=_http_reason[:160],
+                    elapsed=time.monotonic() - _t0,
+                    prompt_chars=len(prompt))
                 if code == 400 and not slim:
                     # 400 → 改精簡 payload(去 reasoning + 降 tokens)立即重試,排除參數/長度問題
                     print("[llm] DeepSeek 400 → 改用精簡 payload 重試", file=sys.stderr)
+                    _backoff_reason = _http_reason
+                    # **這是「沒有思考」而不只是「強度沒套上」。** 不進白名單,
+                    # 所以品質守門會把它當成沒見過的降級報出來 —— 那正是
+                    # 我們想要的:它每出現一次,那一班的信就少了推理。
+                    _DEGRADED_STEPS.append(f"llm:slim_retry:{role}")
+                    # 這一筆記的是**還沒精簡**的那次(slim=False),
+                    # 而理由已經寫進去了 —— 之後就算精簡也失敗,
+                    # manifest 仍然說得出「一開始是為什麼」。
+                    _record_llm_call(slim=False, backoff_reason=_backoff_reason,
+                                     **_fail_rec)
                     slim = True
                     attempt -= 1     # 這次不算入重試次數
                     continue
+                _record_llm_call(slim=slim, backoff_reason=_backoff_reason,
+                                 **_fail_rec)
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))
                     print(f"[llm] DeepSeek HTTP {code}，{wait}s 後重試", file=sys.stderr)
@@ -12132,6 +12168,10 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                                  error=f"{type(e).__name__}: {e}"[:160],
                                  elapsed=time.monotonic() - _t0,
                                  billable_unmeasured=True,
+                                 # 外審 r1(P2):精簡之後才逾時的話,
+                                 # 這一筆是唯一還說得出「一開始 400 為什麼」
+                                 # 的紀錄 —— 換模型時 `_backoff_reason` 會清空。
+                                 slim=slim, backoff_reason=_backoff_reason,
                                  prompt_chars=len(prompt))
                 print(f"[llm] DeepSeek {model} 異常: {_redact_secret_text(str(e))}",
                       file=sys.stderr)

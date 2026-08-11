@@ -17,7 +17,9 @@ import sys
 #: `analysis_depth._identity`)。選優規則變了 = 發表出去的那一版可能不同。
 #: v3(2026-08-11):事件抽取的解析器帶診斷,並對「多餘的逗號」做
 #: 無損語法修補 —— 解析結果可能因此不同(那正是要進版的理由)。
-POSTPROCESS_VERSION = 3
+#: v4(2026-08-11):整段解不開時逐塊撿回讀得懂的那幾筆 ——
+#: 解析結果會不同(一列壞掉不再讓 35 列全丟)。
+POSTPROCESS_VERSION = 4
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
@@ -95,6 +97,59 @@ def _strip_trailing_commas(body: str) -> str:
     return "".join(out)
 
 
+def _row_starts(body: str):
+    """每一列物件的起點:`[`、`,` 或**上一列的 `}`** 之後的第一個 `{`。
+
+    **不追蹤字串狀態** —— 那正是上一版壞掉的地方(外審 r2):單一
+    `in_str` 旗標遇到**奇數個**沒跳脫的引號會從此顛倒,後面每一個 `}`
+    都被當成在字串裡,整份就這樣全丟。這裡只認結構標點,而真正的
+    「這一塊讀不讀得懂」交給 `json.JSONDecoder.raw_decode`(它自己會
+    正確處理跳脫)—— 讀不動就跳到下一列,**每一列都是重新開始**。
+    """
+    out, prev = [], "["
+    for k, ch in enumerate(str(body or "")):
+        if ch.isspace():
+            continue
+        # `}` 也算(外審 r3):`[{"a":1} {"b":2}]` 少了逗號,而第二列本身
+        # 是完好的 —— 只認 `[`/`,` 會把它靜靜丟掉,連 `skipped` 都不加一。
+        if ch == "{" and prev in "[,}":
+            out.append(k)
+        prev = ch
+    return out
+
+
+def _salvage_objects(body: str) -> tuple:
+    """從壞掉的陣列裡把**還讀得懂的那幾筆**撿回來。
+
+    2026-08-11 生產給出的錯誤是 `Expecting ',' delimiter: line 27
+    column 30` —— 那是字串裡有沒跳脫的引號(中文標題常有)。
+    一列壞掉讓 35 列全丟是不划算的取捨:**漏一則比全丟好**,
+    而且「跳過幾筆」記得下來,不是靜靜少掉。
+
+    每一列各自 `raw_decode`,**不猜內容**:讀不動的那一列就是不要,
+    而且不會影響下一列(壞掉的引號不會傳染)。
+    """
+    text = str(body or "")
+    dec = json.JSONDecoder()
+    out, skipped, consumed = [], 0, 0
+    for start in _row_starts(text):
+        # 已經被讀掉的那一段裡面不再找列(巢狀物件不是一列)。
+        # 讀不動的那一列**不設界線** —— 那正是重新同步的機會。
+        if start < consumed:
+            continue
+        try:
+            obj, end = dec.raw_decode(text, start)
+        except ValueError:
+            skipped += 1
+            continue
+        consumed = end
+        if isinstance(obj, dict):
+            out.append(obj)
+        else:
+            skipped += 1
+    return out, skipped
+
+
 def _parse_llm_event_json(text: str, diag=None) -> list[dict]:
     """Accept a strict JSON array, with a small fence-tolerant recovery path.
 
@@ -154,9 +209,18 @@ def _parse_llm_event_json(text: str, diag=None) -> list[dict]:
         try:
             parsed = json.loads(fixed)
         except json.JSONDecodeError:
-            _d["kind"] = "bad_json_array"
+            # **漏一則比全丟好**:整段解不開時,逐塊撿回讀得懂的那幾筆
+            # (2026-08-11 生產:`Expecting ',' delimiter: line 27` ——
+            # 一列的引號沒跳脫,而 35 列全部陪葬)。跳過幾筆要記下來,
+            # 不是靜靜少掉;一筆都撿不回來才是真的失敗。
             _d["error"] = str(e)[:80]
-            return []
+            salvaged, skipped = _salvage_objects(fixed)
+            if not salvaged:
+                _d["kind"] = "bad_json_array"
+                return []
+            _d["kind"] = "ok_array_salvaged"
+            _d["salvaged"], _d["skipped"] = len(salvaged), skipped
+            return salvaged[:40]
         _d["repair"] = "trailing_comma"
     if not isinstance(parsed, list):
         _d["kind"] = "array_is_not_a_list"

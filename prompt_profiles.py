@@ -72,7 +72,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
 #: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
 #: 供應鏈邊走到具體標的;候選不是證據。
-LUNA_XHIGH_VERSION = 35
+LUNA_XHIGH_VERSION = 36
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -110,6 +110,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 - 每一個重大結論都要在 `evidence_ids` 帶上支持它的 **typed ID**。
   命名空間就是「這是哪一種證據」,**不要拿新聞 ID 替行情數字背書**:
 {_NS_LINES}
+- **EVIDENCE 的 `unavailable_namespaces` 列出今天一個 ID 都沒有的命名空間。**
+  那幾種今天不存在,**不要引用它們**,也不要自己造一個名字 ——
+  引用不存在的 ID 會讓整份分析作廢,而那一格就是為了避免這件事。
 - **EVIDENCE 的 `required_disclosures` 列出今天沒有答案的項目。**
   每一個都要在 `data_gaps` 用同一個 `gap_id` 寫出來:缺什麼、
   它讓哪些結論說不準。自己另外發現的缺口填 `gap:other`。
@@ -363,7 +366,14 @@ def _bundle(profile_id: str, version: int, developer: str, user: str,
 
 
 def build_luna_bundle(packet: dict) -> dict:
-    """`luna56_xhigh_v1`:穩定 developer 前綴 + 當日證據 + strict schema。"""
+    """`luna56_xhigh_v1`:穩定 developer 前綴 + 當日證據 + strict schema。
+
+    「今天哪幾種證據是空的」**進 packet 不進前綴**:前綴要逐位元組相同
+    才打得中 prompt caching(cached input 便宜十倍),而那句話每天不同。
+    規則本身留在前綴(`EVIDENCE.unavailable_namespaces`)—— 與
+    `required_disclosures` 同一個模式:Python 算的當日提示走 packet,
+    規矩走前綴。
+    """
     return _bundle("luna56_xhigh_v1", LUNA_XHIGH_VERSION,
                    LUNA_DEVELOPER_INSTRUCTIONS, luna_user_payload(packet),
                    _sch.response_format(), packet,

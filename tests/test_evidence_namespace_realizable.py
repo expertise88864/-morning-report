@@ -338,3 +338,45 @@ def test_the_registry_reads_the_issued_id_not_its_position():
                                         "quote": "q"}]}]}
     assert "fact:n9.0" in er.registry(pk2)
 
+
+# ===== 2026-08-11:今天沒有的命名空間,不要邀請模型引用 =====
+
+def test_the_packet_says_which_namespaces_are_empty_today():
+    """**prompt 講了模型拿不到的東西**(`derived:tsmc_capex_twd_9503`,
+    2026-08-11 生產)——那是 `pred_open`/`fact:<序號>`/`valuation:` 之後的
+    第四次。靜態清單說「本報有哪幾種證據」,packet 說「今天哪幾種是空的」。"""
+    pk = _rich_packet()
+    empty = pk["unavailable_namespaces"]
+    assert "derived:" in empty, empty        # 這一天確實沒有 derived:
+    # 生得出 ID 的不得列進去(列了等於叫模型別引用它真的有的東西)
+    ids = ep.evidence_ids(pk)
+    for p in empty:
+        assert not any(str(i).startswith(p) for i in ids), p
+
+
+def test_the_rule_lives_in_the_stable_prefix_and_the_data_in_the_packet():
+    """**前綴要逐位元組相同才打得中 prompt caching**(cached input 便宜
+    十倍)—— 當日資訊放前綴會把它整個關掉。規矩走前綴、資料走 packet,
+    與 `required_disclosures` 同一個模式。"""
+    import prompt_profiles as pp
+    a = pp.build_luna_bundle(_rich_packet())["developer_instructions"]
+    b = pp.build_luna_bundle(ep.build(
+        {}, {}, {}, [], [], {}, as_of="z", target_session_date="w",
+        sanitize=lambda s, *x: s))["developer_instructions"]
+    assert a == b == pp.LUNA_DEVELOPER_INSTRUCTIONS
+    assert "unavailable_namespaces" in a, "規則沒進前綴 = 模型不知道那一格"
+
+
+def test_a_day_without_numeric_facts_says_so():
+    """**`fact:` 不豁免**(外審 r1):我上一版把它當「骨幹」放行,
+    而那正好是這個功能要關掉的洞 —— 沒有任何數字事實的日子,模型照樣
+    會寫 `fact:n3.0`。靜態清單仍然講它是什麼(規則),
+    這一格說的是今天有沒有(資料)。"""
+    pk = ep.build({}, {}, {}, [], [], {}, as_of="z", target_session_date="w",
+                  sanitize=lambda s, *x: s)
+    assert "fact:" in pk["unavailable_namespaces"]
+    assert "fact:" in ns.prompt_lines(), "規則本身不得被拿掉"
+    # 有數字事實的日子不列(不要為了列而列)
+    rich = _rich_packet()
+    assert "fact:" not in rich["unavailable_namespaces"]
+

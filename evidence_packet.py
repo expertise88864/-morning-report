@@ -93,7 +93,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 特化路徑看不到:同一條延燒中的線索,legacy 的信寫得出
 #: 「上週 X → 前天 Y → 今天 Z」,特化的信只有「第 N 天」+ 昨天一句。
 #: 故事縱深不是沒有,是沒接上。
-EVIDENCE_SCHEMA_VERSION = 28
+#: v29(2026-08-11):packet 帶 `unavailable_namespaces` ——
+#: 今天一個 ID 都沒有的命名空間,模型不得引用(它會自己發明名字)。
+EVIDENCE_SCHEMA_VERSION = 29
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -375,6 +377,20 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 兩者都必須進實驗帳本,事後才分得出「模型差異」與「餵進去的東西不同」。
     packet["core_sha"] = core_evidence_sha(news, target_session_date)
     packet["coverage"] = coverage(packet, news)
+    # **今天一個 ID 都沒有的命名空間**(2026-08-11 生產:模型引用了
+    # `derived:tsmc_capex_twd_9503` —— 那個命名空間宣告在 prompt 裡,
+    # 而當天一個 ID 都沒有,它只好自己發明一個名字)。
+    # 這與 `required_disclosures` 是同一種東西:Python 算出來的當日提示,
+    # **放 packet 不放穩定前綴**(前綴要逐位元組相同才打得中快取)。
+    # **算在 packet 組完之後** —— 插在中間的話,後面才加進來的區塊
+    #(`quality:` 就是)會被誤報成「今天沒有」,而那句話會叫模型
+    # 不要引用它真的有的東西。
+    # **`fact:` 不豁免**(外審 r1):我上一版把它與新聞當成「骨幹」放行,
+    # 而那正好是這個功能要關掉的洞 —— 沒有任何數字事實的日子,模型照樣
+    # 會寫 `fact:n3.0`。靜態清單仍然講 `fact:` 是什麼(那是規則),
+    # 這一格說的是「今天有沒有」(那是資料),兩者是兩件事。
+    packet["unavailable_namespaces"] = sorted(
+        _ns.unrealizable(evidence_ids(packet)))
     return packet
 
 

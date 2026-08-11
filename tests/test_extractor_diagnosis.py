@@ -27,7 +27,7 @@ def test_each_empty_reason_gets_its_own_name():
     """四種原因分得開 —— 這正是上一版做不到的事。"""
     assert _kind("")[0] == "empty_response"
     assert _kind("我沒有找到任何符合條件的事件。")[0] == "no_array_found"
-    assert _kind('[{"a":1} {"b":2}]')[0] == "bad_json_array"
+    assert _kind('["x" "y"]')[0] == "bad_json_array"
     assert _kind('{"result":"none"}')[0] == "object_without_events"
     assert _kind('{"events":')[0] == "bad_json_object"
 
@@ -150,10 +150,62 @@ def test_the_repair_never_touches_string_content():
 
 
 def test_a_genuinely_broken_array_is_still_reported():
-    """修不好就照實回報,不猜內容 —— 而且要帶著 JSON 的錯誤訊息。"""
-    kind, n, d = _kind('[{"a":1} {"b":2}]')
+    """**一筆都撿不回來才是真的失敗** —— 照實回報,不猜內容,
+    而且要帶著 JSON 的錯誤訊息。"""
+    kind, n, d = _kind('["x" "y"]')          # 連一個物件都沒有
     assert (kind, n) == ("bad_json_array", 0)
     assert d.get("error"), d
+
+
+def test_one_broken_row_does_not_sink_the_other_thirty_four():
+    """**漏一則比全丟好**(2026-08-11 生產:`Expecting ',' delimiter:
+    line 27` —— 一列的引號沒跳脫,而 35 列全部陪葬)。
+    跳過幾筆要記下來,不是靜靜少掉。"""
+    broken = ('[{"title": "台積電"法說"會", "t": "x"}, '
+              '{"title": "正常的", "t": "y"}, {"title": "也正常", "t": "z"}]')
+    kind, n, d = _kind(broken)
+    assert (kind, n) == ("ok_array_salvaged", 2)
+    assert (d["salvaged"], d["skipped"]) == (2, 1)
+    assert d.get("error"), "撿回來也要留下原始的錯誤"
+
+
+def test_a_single_unescaped_quote_does_not_poison_the_rest():
+    """**奇數個沒跳脫的引號**(外審 r2):上一版用單一 `in_str` 旗標,
+    引號的奇偶一顛倒,後面每一個 `}` 都被當成在字串裡 —— 整份全丟。
+    上一條測試剛好用了**兩個**引號,把奇偶湊回來,所以量不到。
+    每一列要各自重新開始。"""
+    odd = ('[{"t": "12"晶圓 遭下修"}, '
+           '{"t": "好的"}, {"t": "也好"}]')
+    kind, n, d = _kind(odd)
+    assert (kind, n) == ("ok_array_salvaged", 2), d
+    assert (d["salvaged"], d["skipped"]) == (2, 1)
+
+
+def test_salvage_never_guesses_the_content():
+    """撿回來的每一塊都要自己解得過 —— **不猜內容**,
+    讀不懂的那幾塊就是不要。"""
+    from llm_postprocess import _salvage_objects as salvage
+    got, skipped = salvage('[{"a": 1}, {"b": }, {"c": 3}]')
+    assert got == [{"a": 1}, {"c": 3}] and skipped == 1
+    # 巢狀物件不會被當成一列(列的起點只認 `[`/`,` 之後的 `{`)
+    got2, skipped2 = salvage('[{"a": {"deep": 1}}, {"b": 2}]')
+    assert got2 == [{"a": {"deep": 1}}, {"b": 2}] and skipped2 == 0
+    # 壞掉那一列的後面照樣讀得到(不會傳染)
+    got4, skipped4 = salvage('[{"a": }, {"b": 2}, {"c": 3}]')
+    assert got4 == [{"b": 2}, {"c": 3}] and skipped4 == 1
+    # **少一個逗號**(外審 r3):第二列本身是完好的,只認 `[`/`,` 會把它
+    # 靜靜丟掉,連 `skipped` 都不加一 —— 那是「無聲的資料遺失」。
+    got5, skipped5 = salvage('[{"a":1} {"b":2}]')
+    assert got5 == [{"a": 1}, {"b": 2}] and skipped5 == 0
+    # **已經被讀掉的那一段裡面不再找列**:列內的物件陣列,其中第二個
+    # 物件前面正好是逗號 —— 少了這一步,它會被當成獨立的一列撿回來
+    # (半截資料冒充事件)。這條反例只靠 `consumed` 分勝負。
+    got6, skipped6 = salvage('[{"a": [{"x":1}, {"y":2}], "b": 3}, {"c": 4}]')
+    assert got6 == [{"a": [{"x": 1}, {"y": 2}], "b": 3}, {"c": 4}], got6
+    assert skipped6 == 0
+    # 字串裡的大括號不算(與逗號那條同一個理由)
+    got3, _ = salvage('[{"t": "標題有 } 這個字"}]')
+    assert got3 == [{"t": "標題有 } 這個字"}]
 
 
 def test_a_healthy_array_is_not_marked_as_repaired():

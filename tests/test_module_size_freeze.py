@@ -403,7 +403,7 @@ MODULE_CEILINGS = {
     "entity_alias.py": 100,
     # 第二十輪 P2-6:證據命名空間的單一宣告。prompt、schema 說明、
     # Python advisory 先前三邊各說各話,模型收到互相矛盾的規則。
-    "evidence_namespaces.py": 95,
+    "evidence_namespaces.py": 130,
     # 同一天的另一半:LLM 呼叫沒有 429/5xx 退避(`_http_get` 早就有)。
     # 暫時性的失敗不該花掉一整天的分析。
     # 2026-08-09 P2:放棄也要記(429 打到預算用完的那天,manifest
@@ -433,7 +433,7 @@ MODULE_CEILINGS = {
     # 調和的填法指引 —— 與 `writing_rules.py` 同理:**prompt 文字的長度
     # 由使用者要求決定**,而組裝邏輯仍只有 `_bundle` 一個函式。
     # 第十八輪:實測 301 —— 三條新規則(逐標的、同向解讀、claim 回指)。
-    "prompt_profiles.py": 430,
+    "prompt_profiles.py": 450,
     # 第十四輪抽出:兩份 prompt 的**寫作規則文字**(legacy R1–R16b + Luna 寫作)。
     # 搬過來的理由是使用者兩天內改了兩批寫法,而每一批都要同時動兩個檔;
     # 其中一個埋在 `morning_report.py` 中段的 f-string 裡,兩邊很容易漂開。

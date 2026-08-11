@@ -1,68 +1,37 @@
 {
- "geopolitical:伊朗": {
-  "first_seen": "2026-08-01",
-  "days": 7,
-  "last_seen": "2026-08-08",
-  "latest_title": "伊朗太難應付！川普罕認「彈藥吃緊」：戰爭快結束了 - Yahoo新聞",
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 6
- },
- "export_controls:sanction:伊朗:2026-08": {
-  "first_seen": "2026-08-08",
-  "days": 1,
-  "last_seen": "2026-08-08",
-  "latest_title": "美財政部最新制裁 打擊伊朗祕密貨幣交易 - 大纪元",
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "export_controls",
-  "action": "sanction",
-  "identity_schema": 6
- },
  "geopolitical:hormuz_passage:2026-08": {
   "first_seen": "2026-08-05",
-  "days": 2,
-  "last_seen": "2026-08-08",
-  "latest_title": "荷莫茲傳禁美以船隻通行伊朗嗆聲攻擊「敵意目標」 | 中東戰火連綿| 全球 | 聯合新聞網 - UDN",
+  "days": 3,
+  "last_seen": "2026-08-12",
+  "latest_title": "〈能源盤後〉伊朗稱荷姆茲海峽不會重開！油價漲逾1% 連2日創逾1周新高",
   "entity": "伊朗",
   "subjects": [
    "伊朗"
   ],
   "event_type": "geopolitical",
   "action": "hormuz_passage",
-  "identity_schema": 6
- },
- "export_controls:export_control:美國:2026-08": {
-  "first_seen": "2026-08-08",
-  "days": 1,
-  "last_seen": "2026-08-08",
-  "latest_title": "美國祭出機器人禁令與AI制裁威脅！中國大動作無人機出口管制強硬反擊 | Newtalk - LINE TODAY",
-  "entity": "美國",
-  "subjects": [
-   "美國"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 6
- },
- "export_controls:sanction:SMCI:2026-08": {
-  "first_seen": "2026-08-07",
-  "days": 2,
-  "last_seen": "2026-08-08",
-  "latest_title": "台商危險了！謝金河解析「美制裁加碼、中國頒鎖國法」示警：美中角力進入深水區 - 民視財經網",
-  "entity": "SMCI",
-  "subjects": [
-   "SMCI"
-  ],
-  "event_type": "export_controls",
-  "action": "sanction",
-  "identity_schema": 6
+  "identity_schema": 12,
+  "incident_tokens": [
+   "不會",
+   "價漲",
+   "創逾",
+   "周新",
+   "姆茲",
+   "峽不",
+   "新高",
+   "日創",
+   "會重",
+   "油價",
+   "海峽",
+   "源盤",
+   "漲逾",
+   "盤後",
+   "稱荷",
+   "能源",
+   "茲海",
+   "荷姆",
+   "重開"
+  ]
  },
  "geopolitical:hormuz_passage:2026-08#04d558": {
   "first_seen": "2026-08-10",
@@ -136,5 +105,215 @@
   "event_type": "geopolitical",
   "action": "",
   "identity_schema": 10
+ },
+ "geopolitical:美國:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "巴拿馬籍貨輪企圖突破伊朗港口封鎖　遭美軍開火",
+  "incident_tokens": [
+   "企圖",
+   "伊朗",
+   "口封",
+   "圖突",
+   "封鎖",
+   "巴拿",
+   "拿馬",
+   "朗港",
+   "港口",
+   "破伊",
+   "突破",
+   "籍貨",
+   "美軍",
+   "貨輪",
+   "軍開",
+   "輪企",
+   "遭美",
+   "開火",
+   "馬籍"
+  ],
+  "entity": "美國",
+  "subjects": [
+   "美國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:美國:2026-08#9b695c": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "談判叫價美伊互索戰爭損失- 國際 - 旺得富理財網",
+  "incident_tokens": [
+   "互索",
+   "伊互",
+   "價美",
+   "判叫",
+   "叫價",
+   "國際",
+   "戰爭",
+   "損失",
+   "爭損",
+   "索戰",
+   "美伊",
+   "談判"
+  ],
+  "entity": "美國",
+  "subjects": [
+   "美國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:烏克蘭:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "Ukraine says Russia fired North Korean missiles in deadly attack",
+  "incident_tokens": [
+   "attack",
+   "deadly",
+   "fired",
+   "in",
+   "korean",
+   "missiles",
+   "north",
+   "russia"
+  ],
+  "entity": "烏克蘭",
+  "subjects": [
+   "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "export_controls:中國:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "中國公民企圖走私美國軍事設備　面臨最高20年徒刑",
+  "incident_tokens": [
+   "20",
+   "事設",
+   "企圖",
+   "公民",
+   "國軍",
+   "圖走",
+   "年徒",
+   "徒刑",
+   "最高",
+   "民企",
+   "私美",
+   "美國",
+   "臨最",
+   "設備",
+   "走私",
+   "軍事",
+   "面臨"
+  ],
+  "entity": "中國",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:strait_tension:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "全球緊盯台海！外媒示警台灣太有價值 不只有台積電更要猛攻這點 - Yahoo新聞",
+  "incident_tokens": [
+   "不只",
+   "價值",
+   "全球",
+   "只有",
+   "台海",
+   "台積",
+   "外媒",
+   "太有",
+   "媒示",
+   "攻這",
+   "更要",
+   "有價",
+   "有台",
+   "猛攻",
+   "球緊",
+   "盯台",
+   "示警",
+   "積電",
+   "緊盯",
+   "要猛",
+   "這點",
+   "電更"
+  ],
+  "entity": "台灣",
+  "subjects": [
+   "台灣"
+  ],
+  "event_type": "geopolitical",
+  "action": "strait_tension",
+  "identity_schema": 12
+ },
+ "litigation:New York Times:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "佛州勒令紐約時報交文件 查以哈戰爭錯誤報導 - 新唐人電視台",
+  "incident_tokens": [
+   "交文",
+   "令紐",
+   "以哈",
+   "佛州",
+   "勒令",
+   "哈戰",
+   "報交",
+   "州勒",
+   "戰爭",
+   "文件",
+   "時報",
+   "查以",
+   "爭錯",
+   "約時",
+   "紐約",
+   "錯誤"
+  ],
+  "entity": "New York Times",
+  "subjects": [
+   "New York Times"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:中國:2026-08": {
+  "first_seen": "2026-08-12",
+  "days": 1,
+  "last_seen": "2026-08-12",
+  "latest_title": "北京對台灣參加太平洋島國論壇表示抗議 - RFI",
+  "incident_tokens": [
+   "加太",
+   "參加",
+   "國論",
+   "太平",
+   "對台",
+   "島國",
+   "平洋",
+   "抗議",
+   "洋島",
+   "灣參",
+   "論壇"
+  ],
+  "entity": "中國",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
  }
 }

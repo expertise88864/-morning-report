@@ -800,3 +800,46 @@ def test_the_schema_states_the_count_rule():
     assert "key_drivers_required" in desc, desc
     assert "恰好" in desc, desc
 
+
+# ===== 2026-08-11 CI #492:當日 universe 裡的台股 =====
+
+def _amd_packet():
+    return {"news": [{"source_item_id": "n1",
+                      "title": "AMD 資料中心營收年增 107%", "summary": "",
+                      "entities": ["AMD"]}],
+            "news_clusters": {"clusters": []}, "yesterday_watch": [],
+            "tw_universe": [{"code": "3661", "name": "世芯-KY"},
+                            {"code": "2408", "name": "南亞科"}]}
+
+
+def test_a_real_listed_taiwan_stock_can_be_a_transmission_target():
+    """**這道閘門本來要擋的是假代號**(「指數上漲 9999 點」的 9999)——
+    而 universe 是 Python 抓回來的當日上市清單:在裡面就代表它是一檔
+    真的、今天在交易的股票。2026-08-11 連三班因為這條被擋下整份分析
+    (2610 華航、3661 世芯-KY、2408 南亞科,每一檔都是真的)。"""
+    for code in ("3661", "2408"):
+        assert not _asset_problems(
+            code, "AI ASIC 需求外溢至設計服務廠的投片量與稼動率",
+            pk=_amd_packet()), code
+
+
+def test_the_mechanism_is_still_required_for_them():
+    """放行的條件沒有變:說不出那一步怎麼走的「受影響」與亂灑沒有分別。"""
+    bad = _asset_problems("3661", "偏多", pk=_amd_packet())
+    assert bad and "傳導機制" in bad[0], bad
+
+
+def test_a_code_outside_todays_universe_is_still_blocked():
+    """**不在當日清單裡的四位數不算證明**(那正是假代號的形狀)。"""
+    bad = _asset_problems("9999", "某種聽起來合理的傳導機制寫得很長",
+                          pk=_amd_packet())
+    assert bad and "主角" in bad[0], bad
+
+
+def test_the_us_side_rule_is_untouched():
+    """**美股那側一個字都沒動** —— 亂灑的風險在那一側,而閘門自己的
+    訊息也是那樣寫的。"""
+    bad = _asset_problems("CRM", "某種聽起來合理的傳導機制寫得很長",
+                          pk=_amd_packet())
+    assert bad and "主角" in bad[0], bad
+

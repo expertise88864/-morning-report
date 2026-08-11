@@ -69,7 +69,10 @@ from __future__ import annotations
 #: 「油價暴漲 → 通膨 → 估值 → 00662」被判成幽靈標的,連兩天整份作廢。
 #: v30(2026-08-11):鏈的連續性改用辨識詞重疊 —— **改寫不是斷鏈**,
 #: 這一關要抓的是不相干的片段被接成因果。
-GROUNDING_VERSION = 30
+#: v31(2026-08-11 CI #492):當日 universe 裡的台股可以是傳導對象
+#: (它是真的在交易的股票 —— 這道閘門要擋的假代號不成立);
+#: 美股那側的規則不變。判準變了就要進版。
+GROUNDING_VERSION = 31
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -284,6 +284,23 @@ def _transmission_ok(aid: str, news_item, packet) -> bool:
     import instrument_registry as _ir5
     if _ir5.is_core_asset(aid):
         return True
+    # **當日 universe 裡的台股**:這道閘門本來要擋的是「假代號」——
+    # 「指數上漲 9999 點」的 9999、「2026 展望」的 2026。而 universe 是
+    # Python 抓回來的當日上市清單:在裡面就代表它是一檔**真的、今天在
+    # 交易的股票**,那個擔憂不成立(閘門自己的訊息也寫著「真的要談某檔
+    # **美股**」—— 亂灑的風險在美股那側)。
+    #
+    # 2026-08-11 連三班因為這條被擋下整份分析:2610 華航、3661 世芯-KY、
+    # 2408 南亞科 —— 每一檔都是真的,而供應鏈圖一次只補得到一兩個名字。
+    # 逐個宣告追不上,而**讀者的代價是整封信退回 legacy**(沒有事件卡、
+    # 沒有淨效果、沒有橫向綜合)。
+    # 呼叫端仍然要求寫得出傳導機制;美股那側的規則一個字都沒動。
+    if _TW_CODE.fullmatch(str(aid or "")):
+        _uni = {str(x.get("code") or "")
+                for x in (((packet or {}).get("tw_universe")) or [])
+                if isinstance(x, dict)}
+        if aid in _uni:
+            return True
     try:
         import entity_alias as _ea5
         import sector_map as _sm2

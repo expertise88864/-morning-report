@@ -95,7 +95,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 故事縱深不是沒有,是沒接上。
 #: v29(2026-08-11):packet 帶 `unavailable_namespaces` ——
 #: 今天一個 ID 都沒有的命名空間,模型不得引用(它會自己發明名字)。
-EVIDENCE_SCHEMA_VERSION = 29
+#: v30(2026-08-11):packet 帶 `key_drivers_required` —— 今天要幾條重點
+#: 是 Python 算出來的,別讓模型自己數(寫 4 條被擋下整份分析,兩次)。
+EVIDENCE_SCHEMA_VERSION = 30
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -389,6 +391,14 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 而那正好是這個功能要關掉的洞 —— 沒有任何數字事實的日子,模型照樣
     # 會寫 `fact:n3.0`。靜態清單仍然講 `fact:` 是什麼(那是規則),
     # 這一格說的是「今天有沒有」(那是資料),兩者是兩件事。
+    # **今天要幾條「昨夜三大重點」**:驗證器要求恰好這個數字(上限 3,
+    # 而清淡的日子可以更少 —— 湊一段不會讓分析更深)。判準一直只寫在
+    # 驗證器裡:prompt 只在散文提過「三大重點」、schema 一個字都沒說,
+    # 而模型要自己去數 `top_events.top_cluster_ids` 才猜得到。
+    # 2026-08-11 生產兩次因為寫了 4 條被擋下整份分析 ——
+    # 這是「我們沒說的規則拿來駁回」的第五次。**算好的數字直接給。**
+    import analysis_contracts as _ac2
+    packet["key_drivers_required"] = _ac2.key_drivers_required(packet)
     packet["unavailable_namespaces"] = sorted(
         _ns.unrealizable(evidence_ids(packet)))
     return packet

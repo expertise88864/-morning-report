@@ -770,3 +770,33 @@ def test_the_chain_subjects_come_from_the_news_item():
          "step_type": "inference", "evidence_ids": ["n1"]}]
     assert [p for p in av.validate(obj, pk) if "鏈斷了" in p]
 
+
+# ===== 2026-08-11:「今天要幾條重點」也要說出來 =====
+
+def test_the_packet_says_how_many_key_drivers_today():
+    """**我們沒說的規則拿來駁回**,第五次(2026-08-11 生產兩次因為寫了
+    4 條被擋下整份分析)。驗證器要求恰好 `min(3, 合格事件群數)`,
+    而 prompt 只在散文提過「三大重點」、schema 一個字都沒說 ——
+    模型得自己去數 `top_events.top_cluster_ids` 才猜得到。
+    **算好的數字直接給。**"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_contracts as ac
+    import evidence_packet as ep
+    import fixtures_analysis as fx
+    pk = ep.build({}, {}, {}, fx.news(), [], {}, as_of="2026-08-11 06:00",
+                  target_session_date="2026-08-11", sanitize=lambda s, *a: s)
+    want = pk["key_drivers_required"]
+    assert isinstance(want, int) and 0 <= want <= ac.KEY_DRIVERS_REQUIRED
+    # **與驗證器同一個答案**(兩邊各算一次的話,說的與驗的會分家)
+    assert want == ac.key_drivers_required(pk)
+
+
+def test_the_schema_states_the_count_rule():
+    """規則要寫在模型讀得到的地方 —— schema 的欄位說明。"""
+    import analysis_schema as sch
+    desc = sch.ANALYSIS_OUTPUT_SCHEMA["properties"]["key_drivers"].get(
+        "description") or ""
+    assert "key_drivers_required" in desc, desc
+    assert "恰好" in desc, desc
+

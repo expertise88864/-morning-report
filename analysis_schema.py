@@ -46,7 +46,10 @@ import evidence_namespaces as _ns
 #: v15(2026-08-11 生產):`mechanism_steps.from_what` 的說明寫出
 #: 「第二步以後要沿用上一步的 `to_what`」—— 那條規則 validator 一直在驗,
 #: 而 schema 與 prompt 從來沒說過(連兩天整份特化分析因此作廢)。
-ANALYSIS_SCHEMA_VERSION = 15
+#: v16(2026-08-11):`key_drivers` 的說明寫出條數規則(指向
+#: `EVIDENCE.key_drivers_required`)—— 那條規則驗證器一直在驗,
+#: 而 schema 與 prompt 從來沒說過。
+ANALYSIS_SCHEMA_VERSION = 16
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -204,7 +207,12 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "time_horizon": _enum(HORIZONS),
         "rationale": _s(),
     }),
-    "key_drivers": _arr(_DRIVER_CLAIM, "今日真正驅動判斷的因子,依 materiality 排序"),
+    "key_drivers": _arr(_DRIVER_CLAIM,
+                        "今日真正驅動判斷的因子,依 materiality 排序。"
+                        "**條數要恰好等於 `EVIDENCE.key_drivers_required`**"
+                        "(上限 3;清淡的日子會更少 —— 湊一段不會讓分析"
+                        "更深)。多寫的第 4 條以後只會被靜默隱藏,"
+                        "而整份分析會因為條數不符被退回。"),
     # 重構規格 Commit D:**同一個標的被不同事件推往相反方向時,
     # 兩段各自寫完就結束了** —— 而使用者要的是「合起來是利多還是利空」。
     "asset_net_effects": _arr(_obj({

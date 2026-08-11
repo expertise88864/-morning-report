@@ -264,7 +264,7 @@ MODULE_CEILINGS = {
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
-    "evidence_packet.py": 540,
+    "evidence_packet.py": 560,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -370,7 +370,7 @@ MODULE_CEILINGS = {
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
     # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
-    "analysis_schema.py": 480,
+    "analysis_schema.py": 500,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、

@@ -43,7 +43,10 @@ import evidence_namespaces as _ns
 #: 是哪一個事件群。價格變化沒有主詞也沒有動作,它不是事件。
 #: v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
 #: 使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-ANALYSIS_SCHEMA_VERSION = 14
+#: v15(2026-08-11 生產):`mechanism_steps.from_what` 的說明寫出
+#: 「第二步以後要沿用上一步的 `to_what`」—— 那條規則 validator 一直在驗,
+#: 而 schema 與 prompt 從來沒說過(連兩天整份特化分析因此作廢)。
+ANALYSIS_SCHEMA_VERSION = 15
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -249,7 +252,9 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "persistence": _s("一天的事還是會延續的事"),
         # ---- v2:方向標籤不是分析,下面這些才是 ----
         "mechanism_steps": _arr(_obj({
-            "from_what": _s("這一步從什麼開始"),
+            "from_what": _s("這一步從什麼開始。**第二步以後要沿用上一步的 "
+                            "`to_what`**(照抄,或在它後面補充)—— "
+                            "接不上的兩步讀起來像因果,其實是兩個片段"),
             "to_what": _s("走到什麼"),
             "channel": _s("透過什麼傳導(製程/封裝/匯率/資本支出/估值…)"),
             "stage": _enum(CHAIN_STAGES,

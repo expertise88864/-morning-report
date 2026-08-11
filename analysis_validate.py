@@ -217,6 +217,36 @@ def never_an_instrument(aid) -> bool:
             or _ea.is_jurisdiction(a))
 
 
+#: 兩步之間「同一個節點」至少要共用幾個字。太短的共用(「油價」)
+#: 可能只是巧合,而這一關的用途是確認**上一步的終點就是這一步的起點**。
+_NODE_MIN_CHARS = 4
+
+
+def _same_node(prev_to: str, cur_from: str) -> bool:
+    """這一步的起點,就是上一步的終點嗎。
+
+    先前的判準是**逐字相等**,而 prompt 與 schema 從來沒說過要逐字沿用
+    (2026-08-11 生產:上一步走到「荷莫茲海峽重開協議停滯」、這一步從
+    「荷莫茲海峽承載全球約五分之一石油與天然氣、重開無望」開始 ——
+    語意上是同一個節點,整份特化分析卻因此作廢)。**沒告訴模型的規則
+    不能拿來駁回**;規則已經寫進 schema 說明,而判準同時放寬到
+    「一方包含另一方」:補充細節仍是同一個節點,而兩個不相干的片段
+    共用不了整段文字。
+    """
+    import re as _re2
+
+    def _norm(s):
+        return _re2.sub(r"[\s,,、。;;::「」『』()()]+", "", str(s or ""))
+
+    a, b = _norm(prev_to), _norm(cur_from)
+    if not a or not b:
+        return True
+    if a == b:
+        return True
+    short, long_ = (a, b) if len(a) <= len(b) else (b, a)
+    return len(short) >= _NODE_MIN_CHARS and short in long_
+
+
 #: 非主角的標的要寫得出多長的傳導機制。短於這個長度的多半是
 #: 「成本上升」這種標籤,說明不了任何一步 —— 而「說得出機制」正是
 #: 這條放行條件的全部理由。
@@ -241,21 +271,32 @@ def _transmission_ok(aid: str, news_item, packet) -> bool:
         # 就是那一份。只用被選中的**那一篇**重算,會拒絕模型照著我們給的
         # 候選寫出來的合法標的 —— 自相矛盾,而且症狀是整份降級。
         sid = str((news_item or {}).get("source_item_id") or "")
+        by_id = {str(x.get("source_item_id")): x
+                 for x in ((packet or {}).get("news") or [])
+                 if isinstance(x, dict)}
+        # **主體要用整群的**(外審第二輪):候選是聚合群內所有成員的實體
+        # 算出來的,而被選中的那一篇未必含那個主體 —— 只看它自己的話,
+        # 「群內另一篇提到 WTI + 這條邊排在版面上限之外」的合法組合
+        # 兩條路都走不通,分析照樣被駁回。
+        ents = [str(e) for e in ((news_item or {}).get("entities") or [])]
         for c in ((packet or {}).get("news_clusters") or {}).get(
                 "clusters", []) or []:
             if not isinstance(c, dict):
                 continue
-            if sid and sid not in [str(m) for m in
-                                   (c.get("member_source_ids") or [])]:
+            members = [str(m) for m in (c.get("member_source_ids") or [])]
+            if sid and sid not in members:
                 continue
             if any(_ea5.canonical((x or {}).get("name")) == want
                    for x in (c.get("transmission_candidates") or [])):
                 return True
-        # packet 沒帶候選(ID-set 相容路徑、或分群失敗)時,退回用這一篇
-        # 的實體重算 —— 判準同一條(`sector_map` 的宣告邊)。
-        ents = [str(e) for e in ((news_item or {}).get("entities") or [])]
+            ents = [str(e) for m in members
+                    for e in (by_id.get(m, {}).get("entities") or [])] or ents
+            break
+        # 候選沒帶(ID-set 相容路徑、分群失敗),或那條邊排在**版面上限
+        # 之外** —— 問「這條邊有沒有被宣告過」。上限是給模型看幾個的
+        # 預算,不是語意邊界。
         return any(_ea5.canonical(c.get("name")) == want
-                   for c in _sm2.transmission_candidates(ents))
+                   for c in _sm2.declared_neighbours(ents))
     except Exception:                                   # noqa: BLE001
         return False
 
@@ -736,7 +777,7 @@ def validate(obj, evidence_ids) -> list:
         for j in range(1, len(steps)):
             prev_to = str(steps[j - 1].get("to_what") or "").strip()
             cur_from = str(steps[j].get("from_what") or "").strip()
-            if prev_to and cur_from and prev_to != cur_from:
+            if prev_to and cur_from and not _same_node(prev_to, cur_from):
                 problems.append(
                     f"{where}.mechanism_steps[{j}] 從 {cur_from!r} 開始,"
                     f"而上一步走到 {prev_to!r} —— 鏈斷了,"

@@ -697,3 +697,25 @@ def test_the_cluster_candidates_are_what_the_model_was_given():
     n["affected_assets"][0]["asset_id"] = "CRM"
     assert [p for p in av.validate(obj, pk) if "affected_assets" in p]
 
+
+def test_the_chain_rule_is_stated_where_the_model_reads_it():
+    """**沒告訴模型的規則不能拿來駁回**(2026-08-11 生產):validator 一直
+    在驗「這一步的起點要是上一步的終點」,而 schema 與 prompt 從來沒說過
+    —— 連兩天整份特化分析因此作廢。"""
+    import analysis_schema as sch
+    desc = sch.ANALYSIS_OUTPUT_SCHEMA["properties"]["top_news_analysis"][
+        "items"]["properties"]["mechanism_steps"]["items"][
+        "properties"]["from_what"]["description"]
+    assert "沿用上一步" in desc and "to_what" in desc, desc
+
+
+def test_the_same_node_may_be_restated_with_more_detail():
+    """判準放寬到「一方包含另一方」:補充細節仍是同一個節點,
+    而兩個不相干的片段共用不了整段文字。"""
+    import analysis_validate as av
+    assert av._same_node("油價上漲", "油價上漲推升通膨預期")
+    assert av._same_node("油價上漲推升通膨預期", "油價上漲")
+    assert not av._same_node("油價上漲", "台積電營收創高")
+    # 太短的共用不算(那可能只是巧合)
+    assert not av._same_node("油價", "油價下跌帶動消費")
+

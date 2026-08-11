@@ -52,16 +52,58 @@ EDGES = (
     ("台積電", "GFS", "成熟製程代工同業", "成熟製程代工同業"),
     # ── 封測與代工
     ("台積電", "日月光", "封測合作夥伴(先進封裝互補)", "晶圓代工上游"),
+    # ── **商品 → 產業**(2026-08-11 生產:油價暴漲那則,模型寫
+    #    「→ 2610 華航」而 2610 既不是核心標的也不在圖上,整份作廢)。
+    #    油價是這些產業**直接的成本項**,不是「同屬景氣循環」那種弱關係
+    #    —— 這張表的規矩沒有變:寧可短,不收關係弱的。
+    ("WTI", "華航", "燃油成本(佔營運成本兩成上下)", "油品需求端"),
+    ("WTI", "長榮航", "燃油成本(佔營運成本兩成上下)", "油品需求端"),
+    ("WTI", "長榮", "船用燃油成本", "油品需求端"),
+    ("WTI", "陽明", "船用燃油成本", "油品需求端"),
+    ("WTI", "萬海", "船用燃油成本", "油品需求端"),
+    ("WTI", "台塑化", "原油是煉化的原料", "煉化業者"),
+    ("WTI", "台塑", "石化原料成本", "石化業者"),
+    # 布蘭特與西德州是同一件事的兩個報價 —— 邊要一樣完整,
+    # 不然「今天的新聞寫哪一個」會決定分析過不過(外審 r1)。
+    ("BRENT", "華航", "燃油成本(佔營運成本兩成上下)", "油品需求端"),
+    ("BRENT", "長榮航", "燃油成本(佔營運成本兩成上下)", "油品需求端"),
+    ("BRENT", "長榮", "船用燃油成本", "油品需求端"),
+    ("BRENT", "陽明", "船用燃油成本", "油品需求端"),
+    ("BRENT", "萬海", "船用燃油成本", "油品需求端"),
+    ("BRENT", "台塑化", "原油是煉化的原料", "煉化業者"),
+    ("BRENT", "台塑", "石化原料成本", "石化業者"),
 )
 
-#: 每個事件群最多附幾個傳導候選。多了會稀釋 —— 模型該走的是
+#: 每個事件群最多**附幾個候選給模型看**。多了會稀釋 —— 模型該走的是
 #: 新聞支持的那一兩步,不是把整條鏈抄一遍。
+#:
+#: **這是版面預算,不是語意邊界**(外審 r2):驗證端問的是「這條邊有沒有
+#: 被宣告過」,那個問題與「今天秀幾個」無關。混用的話,第七條邊
+#: (`WTI → 台塑`)宣告了卻永遠不算數 —— 宣告與生效分家,而症狀是
+#: 模型照著合法的關係寫、分析整份被駁回。
 MAX_CANDIDATES = 6
 
 
 def _canon(name: str) -> str:
     import entity_alias as _ea
     return _ea.canonical(name)
+
+
+def declared_neighbours(entities) -> list:
+    """這些主體沿宣告過的邊走得到的**全部**標的(不套版面上限)。
+
+    驗證端用這一個:「這條邊有沒有被宣告過」與「今天秀幾個」是兩個問題
+    (外審 r2)。給模型看的那一份在 `transmission_candidates`。
+    """
+    canon_ents = {_canon(str(e)) for e in (entities or ()) if str(e).strip()}
+    out, seen = [], set()
+    for a, b, rel_ab, rel_ba in EDGES:
+        ca, cb = _canon(a), _canon(b)
+        for src, dst, rel in ((ca, cb, rel_ab), (cb, ca, rel_ba)):
+            if src in canon_ents and dst not in canon_ents and dst not in seen:
+                seen.add(dst)
+                out.append({"name": dst, "via": src, "relation": rel})
+    return out
 
 
 def transmission_candidates(entities) -> list:
@@ -72,18 +114,10 @@ def transmission_candidates(entities) -> list:
     是本人);同一個名字命中多條邊時取第一條(表的順序就是宣告的
     優先序)。認不出主體、或主體不在圖上 → 空清單(**不猜**)。
     """
-    canon_ents = {_canon(str(e)) for e in (entities or ()) if str(e).strip()}
-    out, seen = [], set()
-    for a, b, rel_ab, rel_ba in EDGES:
-        # **表的節點也要正規化**:表裡寫 `NVDA`,而別名組的代表寫法是
-        # 「輝達」—— 兩邊不走同一套正規化的話,英文節點的邊整條失效
-        # (第一版實測 `NVDA → []`,守衛只驗宣告、驗不到這件事)。
-        ca, cb = _canon(a), _canon(b)
-        for src, dst, rel in ((ca, cb, rel_ab), (cb, ca, rel_ba)):
-            if src in canon_ents and dst not in canon_ents and dst not in seen:
-                seen.add(dst)
-                out.append({"name": dst, "via": src, "relation": rel})
-    return out[:MAX_CANDIDATES]
+    # **表的節點也要正規化**:表裡寫 `NVDA`,而別名組的代表寫法是
+    # 「輝達」—— 兩邊不走同一套正規化的話,英文節點的邊整條失效
+    # (第一版實測 `NVDA → []`,守衛只驗宣告、驗不到這件事)。
+    return declared_neighbours(entities)[:MAX_CANDIDATES]
 
 
 #: 每天最多為傳導對象發幾條橫向查詢。與縱向(`FOLLOWUP_MAX_QUERIES=5`)

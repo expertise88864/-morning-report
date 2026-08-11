@@ -201,3 +201,96 @@ def test_fetch_news_survives_a_broken_sector_map(monkeypatch, capsys):
     # manifest,stderr 不進 —— 不登錄的話執行紀錄把這天讀成正常成功。
     assert "sector_map_unavailable" in mr._DEGRADED_STEPS
 
+
+# ===== 2026-08-11 生產:商品 → 產業的宣告邊 =====
+
+def test_the_oil_price_reaches_the_industries_it_actually_costs():
+    """油價暴漲那則,模型寫「→ 2610 華航」而 2610 既不是核心標的也不在
+    圖上 —— 整份特化分析作廢。油價是這些產業**直接的成本項**,
+    不是「同屬景氣循環」那種弱關係(這張表的規矩沒變:寧可短)。"""
+    want = {"華航", "長榮航", "長榮", "陽明", "萬海", "台塑化", "台塑"}
+    # **宣告端要完整**:版面上限只決定「秀幾個」(外審 r2)
+    for src in ("WTI", "BRENT"):
+        got = {c["name"] for c in sm.declared_neighbours([src])}
+        assert want <= got, (src, sorted(want - got))
+    rel = next(c for c in sm.declared_neighbours(["WTI"])
+               if c["name"] == "華航")
+    assert "燃油" in rel["relation"], rel
+
+
+def test_the_display_cap_is_not_a_semantic_boundary():
+    """**上限是版面預算,不是「有沒有這條邊」的答案**(外審 r2):
+    第七條邊(`WTI → 台塑`)宣告了卻永遠不算數 —— 宣告與生效分家,
+    症狀是模型照著合法的關係寫、分析整份被駁回。"""
+    shown = [c["name"] for c in sm.transmission_candidates(["WTI"])]
+    declared = [c["name"] for c in sm.declared_neighbours(["WTI"])]
+    assert len(shown) == sm.MAX_CANDIDATES < len(declared)
+    assert shown == declared[:sm.MAX_CANDIDATES]
+    assert "台塑" in declared and "台塑" not in shown
+
+
+def test_the_validator_accepts_an_edge_beyond_the_display_cap():
+    """走生產的驗證路徑:被上限擋在候選之外的那條邊仍然算數。"""
+    import analysis_validate as av
+    import sys
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+    pk = {"news": [{"source_item_id": "n1", "title": "WTI 單日暴漲5.05%",
+                    "summary": "", "entities": ["WTI"]}],
+          "news_clusters": {"clusters": []}, "yesterday_watch": []}
+    obj = fx.valid_analysis()
+    n = obj["top_news_analysis"][0]
+    n["source_item_id"] = "n1"
+    n["affected_assets"] = [{
+        "asset_id": "1301", "direction": "bearish",
+        "magnitude_band": "moderate", "horizon": "1-5d",
+        "first_order_effect": "原油是石化的原料,油價漲直接推升投入成本",
+        "second_order_effect": "本報看不出次級影響", "evidence_ids": ["n1"]}]
+    assert not [x for x in av.validate(obj, pk) if "affected_assets" in x]
+
+
+def test_the_commodity_nodes_are_declared_instruments_too():
+    """表的完整性守衛涵蓋新的商品邊 —— 沒宣告的名字當場紅。"""
+    import instrument_registry as ir
+    for name in ("WTI", "BRENT", "華航", "長榮航", "台塑化", "2610"):
+        assert ir.is_declared(name), name
+
+
+def test_the_map_still_refuses_weak_relations():
+    """**寧可短,不收關係弱的**:黃金與航空沒有成本關係,不得在圖上。"""
+    got = {c["name"] for c in sm.transmission_candidates(["GOLD"])}
+    assert not got, got
+
+
+def test_a_cluster_sibling_supplies_the_subject_beyond_the_cap():
+    """**兩個修正的交集**(外審第二輪):群內**另一篇**提到 WTI、
+    被選中的那篇沒有,而那條邊(`WTI → 台塑`)又排在版面上限之外 ——
+    兩條路都走不通的話,合法分析照樣被駁回。"""
+    import analysis_validate as av
+    import sys
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+    pk = {"news": [
+        {"source_item_id": "n1", "title": "美伊談判觸礁 談判代表返國",
+         "summary": "", "entities": ["美國", "伊朗"]},
+        {"source_item_id": "n2", "title": "WTI 單日暴漲5.05%收82.19美元",
+         "summary": "", "entities": ["WTI"]}],
+        "news_clusters": {"clusters": [
+            {"cluster_id": "c1", "member_source_ids": ["n1", "n2"],
+             # 展示候選被上限截掉,不含台塑
+             "transmission_candidates": [
+                 {"name": "華航", "via": "WTI", "relation": "燃油成本"}]}]},
+        "yesterday_watch": []}
+    obj = fx.valid_analysis()
+    n = obj["top_news_analysis"][0]
+    n["source_item_id"] = "n1"          # 這一篇自己沒有 WTI
+    n["affected_assets"] = [{
+        "asset_id": "1301", "direction": "bearish",
+        "magnitude_band": "moderate", "horizon": "1-5d",
+        "first_order_effect": "原油是石化的原料,油價漲直接推升投入成本",
+        "second_order_effect": "本報看不出次級影響", "evidence_ids": ["n1"]}]
+    assert not [x for x in av.validate(obj, pk) if "affected_assets" in x]
+    # 群內沒有人提到的主體仍然擋(反例只靠「整群實體」那一步分勝負)
+    n["affected_assets"][0]["asset_id"] = "CRM"
+    assert [x for x in av.validate(obj, pk) if "affected_assets" in x]
+

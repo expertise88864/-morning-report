@@ -566,3 +566,134 @@ def test_the_ambiguity_does_not_leak_into_the_global_alias_table():
     # 主體正規化也不得把它們併起來
     assert eid.canonical_subject("Arm") != eid.canonical_subject("Arm Holdings")
 
+
+# ===== 2026-08-11 生產驗收:主角與傳導對象是兩件事 =====
+
+def _oil_packet():
+    return {"news": [{"source_item_id": "n1",
+                      "title": "美伊談判觸礁 川普反向索賠 "
+                               "WTI 單日暴漲5.05%收82.19美元",
+                      "summary": "", "entities": ["美國", "伊朗"]}],
+            "news_clusters": {"clusters": []}, "yesterday_watch": []}
+
+
+def _asset_problems(aid, why, pk=None, entities=None):
+    import analysis_validate as av
+    import fixtures_analysis as fx
+    pk = pk or _oil_packet()
+    if entities is not None:
+        pk["news"][0]["entities"] = entities
+    obj = fx.valid_analysis()
+    n = obj["top_news_analysis"][0]
+    n["source_item_id"] = "n1"
+    n["affected_assets"] = [{
+        "asset_id": aid, "direction": "bearish",
+        "magnitude_band": "moderate", "horizon": "1-5d",
+        "first_order_effect": why,
+        "second_order_effect": "本報看不出次級影響",
+        "evidence_ids": ["n1"]}]
+    return [p for p in av.validate(obj, pk) if "affected_assets" in p]
+
+
+def test_a_commodity_in_the_headline_is_an_instrument():
+    """**`WTI` 沒有被宣告過**(2026-08-11 生產):標題寫著
+    「…WTI 單日暴漲 5.05%」,而它連「是不是標的」那一關都過不了 ——
+    整份特化分析因此作廢。"""
+    import instrument_registry as ir
+    assert ir.is_declared("WTI") and ir.is_declared("黃金")
+    assert not _asset_problems("WTI", "油價本身就是這則新聞的主體")
+
+
+def test_the_transmission_chain_to_a_core_asset_is_allowed():
+    """**主角與傳導對象是兩件事**:「油價暴漲 → 通膨 → 估值 → 2330」
+    正是這份報告要寫的東西,上一版把它判成幽靈標的。"""
+    assert not _asset_problems("2330", "油價上漲推升通膨預期,壓縮成長股評價")
+    assert not _asset_problems("00662", "通膨預期升溫,NASDAQ 成長股折價")
+
+
+def test_a_transmission_claim_without_a_mechanism_is_still_rejected():
+    """**放行的條件是宣告 + 說得出機制**:說不出那一步怎麼走的
+    「受影響」與亂灑沒有分別(這條反例只靠機制長度分勝負)。"""
+    bad = _asset_problems("2330", "偏空")
+    assert bad and "傳導機制" in bad[0], bad
+
+
+def test_an_arbitrary_stock_still_has_to_be_the_subject():
+    """**閘門本體沒有動**:不是核心標的、也不是宣告過的供應鏈鄰居時,
+    任意個股仍然要被新聞點名。"""
+    bad = _asset_problems("CRM", "油價上漲會壓縮軟體股的評價倍數")
+    assert bad and "主角" in bad[0], bad
+
+
+def test_a_declared_supply_chain_neighbour_is_allowed():
+    """宣告過的供應鏈鄰居也算傳導對象 —— 那份候選是我們自己餵給
+    模型的(`sector_map.transmission_candidates` 進了 packet)。"""
+    import sector_map as sm
+    assert any(c["name"] == "ASML"
+               for c in sm.transmission_candidates(["台積電"]))
+    assert not _asset_problems(
+        "ASML", "台積電資本支出上修,設備商接單能見度跟著拉長",
+        entities=["台積電"])
+
+
+def test_the_prompt_states_the_transmission_rule():
+    """規則要講出來 —— 不講的話模型只能靠猜,而猜錯就是整份作廢
+    (2026-08-11 生產連兩天如此)。"""
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "prompt_profiles.py",
+                   encoding="utf-8").read()
+    i = src.index("受影響標的可以不是新聞的主角")
+    seg = src[i:i + 500]
+    assert "transmission_candidates" in seg, seg
+    assert "first_order_effect" in seg, seg
+    assert "仍然要被新聞點名" in seg, seg
+
+
+# ===== 外審第一輪 =====
+
+def test_a_commodity_on_an_unrelated_story_is_still_rejected():
+    """**註解說了不豁免,程式就要真的是那樣**(外審 r1):
+    `needs_event_evidence` 當時只認 `(EQUITY, ETF)` —— WTI 掛在一則
+    台積電營收新聞上照樣通過,連傳導機制檢查都不會跑到。"""
+    import instrument_registry as ir
+    assert ir.needs_event_evidence(ir.COMMODITY) is True
+    pk = {"news": [{"source_item_id": "n1", "title": "台積電7月營收創新高",
+                    "summary": "", "entities": ["台積電"]}],
+          "news_clusters": {"clusters": []}, "yesterday_watch": []}
+    bad = _asset_problems("WTI", "油價與這則新聞無關,但我硬掛上去",
+                          pk=pk)
+    assert bad and "主角" in bad[0], bad
+
+
+def test_the_cluster_candidates_are_what_the_model_was_given():
+    """**候選是整個事件群算出來的**(外審 r2):packet 那份
+    `transmission_candidates` 聚合了群內所有成員的實體,而模型看到的
+    就是那一份 —— 只用被選中的那一篇重算,會拒絕模型照著我們給的候選
+    寫出來的標的(自相矛盾,症狀是整份降級)。"""
+    import analysis_validate as av
+    import fixtures_analysis as fx
+    # 主體(台積電)在群內**另一篇**;被選中的這篇沒有它
+    pk = {"news": [
+        {"source_item_id": "n1", "title": "設備商在台招募逾千人",
+         "summary": "", "entities": ["ASML"]},
+        {"source_item_id": "n2", "title": "台積電資本支出上修",
+         "summary": "", "entities": ["台積電"]}],
+        "news_clusters": {"clusters": [
+            {"cluster_id": "c1", "member_source_ids": ["n1", "n2"],
+             "transmission_candidates": [
+                 {"name": "AMAT", "via": "台積電", "relation": "製程設備供應商"}]}]},
+        "yesterday_watch": []}
+    obj = fx.valid_analysis()
+    n = obj["top_news_analysis"][0]
+    n["source_item_id"] = "n1"
+    n["affected_assets"] = [{
+        "asset_id": "AMAT", "direction": "bullish",
+        "magnitude_band": "moderate", "horizon": "1-4w",
+        "first_order_effect": "台積電資本支出上修,製程設備商接單能見度拉長",
+        "second_order_effect": "本報看不出次級影響", "evidence_ids": ["n1"]}]
+    assert not [p for p in av.validate(obj, pk) if "affected_assets" in p]
+    # 不在候選裡的仍然要擋(反例只靠候選清單分勝負)
+    n["affected_assets"][0]["asset_id"] = "CRM"
+    assert [p for p in av.validate(obj, pk) if "affected_assets" in p]
+

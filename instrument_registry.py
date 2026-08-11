@@ -30,8 +30,13 @@ from __future__ import annotations
 
 import re as _re
 
-#: 標的的三種範疇。**豁免事件相關性檢查的只有 `index`**,理由見模組說明。
-EQUITY, ETF, INDEX = "equity", "etf", "index"
+#: 標的的範疇。**豁免事件相關性檢查的只有 `index`**,理由見模組說明。
+#: `commodity`(原油、黃金、銅)**不豁免** —— 它們與個股一樣要被點名:
+#: 一則談台積電營收的新聞不會因為「油價也存在」就與 WTI 有關。
+#: 宣告它們的理由是另一件事:2026-08-11 的生產,標題寫著
+#: 「…WTI 單日暴漲 5.05%」而 `WTI` 沒有被宣告過 → 連「它是不是標的」
+#: 這一關都過不了,整份特化分析作廢。
+EQUITY, ETF, INDEX, COMMODITY = "equity", "etf", "index", "commodity"
 
 #: 非台股個股的已知標的 → (canonical_id, scope)。
 #: canonical id 的形狀是 `<市場>:<類別>:<代號>` —— 「2330」與「TSM」是
@@ -47,6 +52,14 @@ _KNOWN = {
     "QQQ": ("US:ETF:QQQ", ETF),
     "SPY": ("US:ETF:SPY", ETF),
     "TSM": ("US:EQUITY:TSM", EQUITY),
+    # 本報每天引用的商品價格(MACRO 區塊裡就有這些欄位)
+    "WTI": ("GLOBAL:COMMODITY:WTI", COMMODITY),
+    "西德州原油": ("GLOBAL:COMMODITY:WTI", COMMODITY),
+    "BRENT": ("GLOBAL:COMMODITY:BRENT", COMMODITY),
+    "布蘭特": ("GLOBAL:COMMODITY:BRENT", COMMODITY),
+    "GOLD": ("GLOBAL:COMMODITY:GOLD", COMMODITY),
+    "黃金": ("GLOBAL:COMMODITY:GOLD", COMMODITY),
+    "COPPER": ("GLOBAL:COMMODITY:COPPER", COMMODITY),
     # **非台股的個股要被宣告**(第二十八輪外審 P1-2)。
     # 上一版的判準是「長得像 2–6 位大寫字母」+ 有限的黑名單 ——
     # 於是 `ASEAN`、`BRICS` 這種國際組織只要出現在標題裡就能當標的。
@@ -96,6 +109,25 @@ _TW_CODE_SHAPE = _re.compile(r"[0-9]{4,6}[A-Z]?")
 #: 這個集合的存在是為了讓下面那條守衛問得出「每一組都表態了嗎」——
 #: 新增一組別名時,要嘛它含一個宣告過的標的,要嘛它出現在這裡。
 NON_INSTRUMENT_ALIAS_GROUPS = frozenset({"聯準會"})
+
+
+#: **本報存在的理由就是回答「這對它們有什麼影響」。**
+#:
+#: 指數豁免事件相關性檢查的理由(見模組說明)對這幾檔**逐字適用**:
+#: 總經與商品事件影響的就是它們,而新聞標題不會寫「00662」。
+#: 2026-08-11 生產:油價暴漲 5% 那則,模型寫「→ 2330/00662 偏空」,
+#: 三條全被判「不在這則新聞的實體或標題裡」,整份特化分析作廢 ——
+#: 而那條傳導鏈正是這份報告要寫的東西。
+#:
+#: **這不是把閘門打開**:名單是宣告的、有界的,而且呼叫端還要求
+#: 模型說得出傳導機制(見 `analysis_validate`)。任意美股仍然要被點名。
+CORE_ASSETS = frozenset({"2330", "台積電", "TSM", "00662", "0050", "00631L"})
+
+
+def is_core_asset(name) -> bool:
+    """這是不是本報的核心標的(宣告見 `CORE_ASSETS`)。"""
+    return str(name or "").strip().upper() in {
+        x.upper() for x in CORE_ASSETS}
 
 
 def is_declared(aid) -> bool:
@@ -171,5 +203,11 @@ def resolve(aid, packet=None, *, allow_unverified: bool = False):
 
 
 def needs_event_evidence(scope) -> bool:
-    """這個範疇的標的要不要在證據裡出現過?**指數不用**(見模組說明)。"""
-    return scope in (EQUITY, ETF)
+    """這個範疇的標的要不要在證據裡出現過?**只有指數不用**(見模組說明)。
+
+    `commodity` 要(外審 r1):我在宣告它們時寫著「不豁免」,而這個函式
+    當時仍然只認 `(EQUITY, ETF)` —— 於是 WTI 掛在一則台積電營收新聞上
+    也照樣通過,連新加的傳導機制檢查都不會跑到。**註解說了什麼,
+    程式就要真的是那樣。**
+    """
+    return scope in (EQUITY, ETF, COMMODITY)

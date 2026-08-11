@@ -63,7 +63,11 @@ from __future__ import annotations
 #: 宣告閘門(「聯準會」不是標的)、撞名英文單字的 ticker 不得靠標題
 #: 裸字命中(`NOW`/`NET`/`ARM`/`SNOW`/`COIN`)、台股代號不在證據裡時
 #: 不論 universe 在不在都擋(含 `packet is None` 的舊路徑)。
-GROUNDING_VERSION = 28
+#: v29(2026-08-11 生產驗收):**主角與傳導對象是兩件事** ——
+#: 受影響標的可以不是新聞的主角,但要是本報核心標的或宣告過的供應鏈
+#: 鄰居,而且要寫得出傳導機制。舊規則與這份報告的用途矛盾:
+#: 「油價暴漲 → 通膨 → 估值 → 00662」被判成幽靈標的,連兩天整份作廢。
+GROUNDING_VERSION = 29
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

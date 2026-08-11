@@ -652,7 +652,7 @@ _FROZEN = {
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
-    "primary_profile_version":  (33, "b92a2e64a129f613"),
+    "primary_profile_version":  (34, "43b64e66af9f654f"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
@@ -745,7 +745,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":        (28, "4b5ddbed01bb4eeb"),
+    "grounding_version":        (29, "25567cef52e9b317"),
 }
 
 

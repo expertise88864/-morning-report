@@ -72,7 +72,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
 #: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
 #: 供應鏈邊走到具體標的;候選不是證據。
-LUNA_XHIGH_VERSION = 33
+LUNA_XHIGH_VERSION = 34
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -131,6 +131,12 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   總結那一句最可能被單獨閱讀，它也要回指；
   **`key_drivers`（信件第一段「昨夜三大重點」）、三個情境與每個觀察點
   同樣要回指** —— 讀者最先看到的三條不能在稽核之外。
+- **受影響標的可以不是新聞的主角,但要說得出傳導機制。**
+  一則油價新聞寫「→ 2330 偏空」是本報要的分析﹔而它要通過驗證,
+  `asset_id` 必須是本報的核心標的﹙2330／TSM／00662／0050﹚或該事件群
+  `transmission_candidates` 裡的名字﹙那是宣告過的供應鏈鄰居﹚,
+  並且 `first_order_effect` 要寫出**那一步怎麼走**﹙不是「偏空」兩個字﹚。
+  **任意個股仍然要被新聞點名** —— 說不出機制的「受影響」與亂灑沒有分別。
 - **新聞裡的數字用 `fact:` 引用。** 每則新聞的 `numeric_facts` 每一筆
   都自己帶著 `evidence_id`(附值、單位、上下文)——**照抄那個字串**,
   不要自己組編號。

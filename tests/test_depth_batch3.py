@@ -93,20 +93,36 @@ def test_a_concept_cannot_impersonate_a_ticker():
                   {"source_item_id": "n2", "title": "台積電法說會下週登場",
                    "entities": ["台積電"], "source": "經濟日報"}])
     # 第二十九輪 P1-2C:`2330` 掛在 **AMD 的新聞**上先前靠
-    # 「universe 空就放行」通過 —— 那正是這次關掉的洞:真代號也要
-    # 與**這一則**新聞有關。正向案例改掛在台積電的新聞(n2,別名組命中)。
+    # 「universe 空就放行」通過 —— 那正是那次關掉的洞。
+    #
+    # **2026-08-11 改判**:`2330@n1` 從「一律擋」改成「說得出機制才過」。
+    # 理由是那條規則與這份報告的用途矛盾 —— AMD 是台積電的客戶
+    # (`sector_map` 的宣告邊),「AMD 資料中心營收年增 107% → 2330 受惠」
+    # 正是本報要寫的傳導鏈,而生產連兩天因為這條規則整份作廢。
+    # **這一條測試保護的性質沒有變**:概念詞不得冒充標的、任意個股仍要
+    # 被點名(見 `test_an_arbitrary_stock_still_has_to_be_the_subject`),
+    # 而「沒有機制的傳導」照樣擋(下面那半)。
     for aid, sid, blocked in (("GPU", "n1", True), ("AI", "n1", True),
                               ("CHIP", "n1", True), ("AMD", "n1", False),
-                              ("2330", "n1", True), ("2330", "n2", False),
+                              ("2330", "n1", False), ("2330", "n2", False),
                               ("TAIEX", "n1", False)):
         obj = fx.valid_analysis()
         obj["top_news_analysis"][0]["source_item_id"] = sid
         obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = aid
+        obj["top_news_analysis"][0]["affected_assets"][0][
+            "first_order_effect"] = "AMD 是台積電先進製程客戶,拉貨直接進代工營收"
         # 第二十六輪 P1-6:概念詞現在走「不是可交易標的」那條訊息
         # ——「不在這則新聞裡」對它們是**假的**(GPU 就在標題裡)。
         hit = [p for p in sch.validate(obj, pk)
                if "不在這則" in p or "泛稱" in p or "不是可交易標的" in p]
         assert bool(hit) == blocked, f"{aid}@{sid}: {hit}"
+    # **沒有機制的傳導照樣擋**(這一半是新規則的閘門本體)
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"][0]["source_item_id"] = "n1"
+    obj["top_news_analysis"][0]["affected_assets"][0]["asset_id"] = "2330"
+    obj["top_news_analysis"][0]["affected_assets"][0][
+        "first_order_effect"] = "偏多"
+    assert [p for p in sch.validate(obj, pk) if "傳導機制" in p]
 
 
 def test_a_ticker_in_the_title_but_not_the_entities_still_passes():

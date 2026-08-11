@@ -217,6 +217,49 @@ def never_an_instrument(aid) -> bool:
             or _ea.is_jurisdiction(a))
 
 
+#: 非主角的標的要寫得出多長的傳導機制。短於這個長度的多半是
+#: 「成本上升」這種標籤,說明不了任何一步 —— 而「說得出機制」正是
+#: 這條放行條件的全部理由。
+_MECHANISM_MIN_CHARS = 12
+
+
+def _transmission_ok(aid: str, news_item, packet) -> bool:
+    """這個標的雖然不是主角,但**宣告過**是這件事會傳導到的地方嗎。
+
+    兩種宣告(都不是從文字推導出來的):本報的核心標的、
+    以及這則新聞的主體在 `sector_map` 上的鄰居。
+    """
+    import instrument_registry as _ir5
+    if _ir5.is_core_asset(aid):
+        return True
+    try:
+        import entity_alias as _ea5
+        import sector_map as _sm2
+        want = _ea5.canonical(aid)
+        # **候選是整個事件群算出來的**(外審 r2):packet 裡那份
+        # `transmission_candidates` 聚合了群內所有成員的實體,而模型看到的
+        # 就是那一份。只用被選中的**那一篇**重算,會拒絕模型照著我們給的
+        # 候選寫出來的合法標的 —— 自相矛盾,而且症狀是整份降級。
+        sid = str((news_item or {}).get("source_item_id") or "")
+        for c in ((packet or {}).get("news_clusters") or {}).get(
+                "clusters", []) or []:
+            if not isinstance(c, dict):
+                continue
+            if sid and sid not in [str(m) for m in
+                                   (c.get("member_source_ids") or [])]:
+                continue
+            if any(_ea5.canonical((x or {}).get("name")) == want
+                   for x in (c.get("transmission_candidates") or [])):
+                return True
+        # packet 沒帶候選(ID-set 相容路徑、或分群失敗)時,退回用這一篇
+        # 的實體重算 —— 判準同一條(`sector_map` 的宣告邊)。
+        ents = [str(e) for e in ((news_item or {}).get("entities") or [])]
+        return any(_ea5.canonical(c.get("name")) == want
+                   for c in _sm2.transmission_candidates(ents))
+    except Exception:                                   # noqa: BLE001
+        return False
+
+
 def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:
     """**大寫字母的「標的」要是證據裡的人**(第二十輪 P2-4 的收尾)。
 
@@ -586,10 +629,32 @@ def validate(obj, evidence_ids) -> list:
                             "新聞裡是**期間**不是公司 —— 它沒有出現在實體"
                             "清單;真的要談那家公司,它得是新聞裡被點名的主角")
                 elif _asset_unknown_to_evidence(aid, _item, packet):
-                    problems.append(
-                        f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"
-                        "新聞的實體或標題裡 —— 真的要談某檔美股,"
-                        "它得是新聞裡的主角")
+                    # **主角與傳導對象是兩件事**(2026-08-11 生產驗收)。
+                    # 這一關本來只認「新聞裡的主角」,於是
+                    # 「油價暴漲 → 通膨 → 估值 → 00662 偏空」被判為
+                    # 幽靈標的,整份特化分析作廢退回 legacy ——
+                    # 而那條傳導鏈正是這份報告要寫的東西。
+                    #
+                    # 放行的條件是**宣告 + 說得出機制**,不是放寬:
+                    #   * 標的要嘛是本報的核心標的(`CORE_ASSETS`,有界),
+                    #     要嘛是這一群主體在供應鏈圖上的鄰居
+                    #     (`sector_map` 的宣告邊,而那份候選我們自己
+                    #     餵給模型過);
+                    #   * 而且 `first_order_effect` 要寫得出來 ——
+                    #     說不出機制的「受影響」與亂灑沒有分別。
+                    # 任意美股仍然要被點名(閘門本體沒有動)。
+                    _why = str(a.get("first_order_effect") or "").strip()
+                    if not _transmission_ok(aid, _item, packet):
+                        problems.append(
+                            f"{where}.affected_assets[{j}] 的 {aid!r} 不在這則"
+                            "新聞的實體或標題裡,也不是本報核心標的或這一群"
+                            "主體在供應鏈上的鄰居 —— 真的要談某檔美股,"
+                            "它得是新聞裡的主角")
+                    elif len(_why) < _MECHANISM_MIN_CHARS:
+                        problems.append(
+                            f"{where}.affected_assets[{j}] 的 {aid!r} 不是這則"
+                            "新聞的主角,那就要寫得出傳導機制 ——"
+                            f"`first_order_effect` 只有 {len(_why)} 個字")
             # **`2330` 與「台積電」是同一個標的**(第二十六輪外審 P1)。
             # 原樣比對讓同一則新聞可以對同一檔給出**兩個相反方向** ——
             # 而衝突偵測會正規化別名,於是那一則同時進了利多側與利空側。

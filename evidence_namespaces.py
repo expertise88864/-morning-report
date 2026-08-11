@@ -24,7 +24,15 @@ NAMESPACES = (
     ("market:", "行情欄位（`market:QQQ.change_pct` 這種葉節點）", True),
     ("derived:", "本報算出來的衍生值（附來源欄位）", True),
     ("tension:", "訊號張力與同向訊號", False),
-    ("valuation:", "00662 估值", True),
+    # **同一課學兩次**(2026-08-11 生產):`prediction:` 在 08-08 那次
+    # 之後補上了「不帶標的段」與真實欄位,而 `valuation:` 的說明還是
+    # 光禿禿的「00662 估值」—— 模型於是寫出
+    # `valuation:00662.implied_change_pct`(自己加了標的段,又自己發明了
+    # 欄位名),兩條引用被判不存在、整份特化分析作廢。
+    # 說明要說出**它到底有什麼**;守衛見 `tests/test_evidence_namespace_realizable.py`。
+    ("valuation:", "00662 的估值欄位,**不帶標的段**"
+                   "(`valuation:fair_price`、`valuation:implied_change_pct`、"
+                   "`valuation:premium_pct`)", True),
     # **說明錯了,模型就會照著錯的猜。** 先前寫「2330 與加權的開盤預測」,
     # 而加權指數的預測其實在 `market:TAIEX_PRED.*`;模型於是造出
     # `prediction:TAIEX.pred_open`、`prediction:2330.mid`(以為要帶標的段),

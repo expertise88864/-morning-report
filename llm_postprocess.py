@@ -15,7 +15,9 @@ import sys
 #: 要避免的東西:那會讓「改一個註解」變成「換一個系統」。
 #: v2(第二十四輪 P1-10):加深選優的**身分**補上四段可見欄位(見
 #: `analysis_depth._identity`)。選優規則變了 = 發表出去的那一版可能不同。
-POSTPROCESS_VERSION = 2
+#: v3(2026-08-11):事件抽取的解析器帶診斷,並對「多餘的逗號」做
+#: 無損語法修補 —— 解析結果可能因此不同(那正是要進版的理由)。
+POSTPROCESS_VERSION = 3
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
@@ -55,6 +57,42 @@ def _strip_llm_watchlist_section(text: str) -> str:
 #: 診斷裡帶多長的回應開頭。夠看出「這是不是 JSON」就好 ——
 #: 這個欄位會進 run manifest(公開 repo),不放整份回應。
 PARSE_HEAD_CHARS = 120
+
+
+def _strip_trailing_commas(body: str) -> str:
+    r"""去掉 `]`/`}` 前面多餘的逗號 —— **只動字串外面的**。
+
+    外審 r1:用正則 `,\s*([\]}])` 掃整段的話,新聞標題裡的
+    「…成長,}」也會被改掉 —— 那不是修語法,那是**竄改內容**,
+    而且改完還會被當成正常解析。這裡逐字元走,遇到字串就整段跳過
+    (含跳脫),只有字串外的逗號才可能被丟掉。
+    """
+    out, in_str, esc, pending = [], False, False, -1
+    for ch in str(body or ""):
+        if in_str:
+            out.append(ch)
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str, pending = True, -1
+        elif ch == ",":
+            pending = len(out)
+        elif ch.isspace():
+            out.append(ch)
+            continue                      # 逗號與收尾之間的空白不算數
+        elif ch in "]}":
+            if pending >= 0:
+                out[pending] = ""         # 就是它多餘
+            pending = -1
+        else:
+            pending = -1
+        out.append(ch)
+    return "".join(out)
 
 
 def _parse_llm_event_json(text: str, diag=None) -> list[dict]:
@@ -105,17 +143,28 @@ def _parse_llm_event_json(text: str, diag=None) -> list[dict]:
         elif _d.get("kind") in ("unknown", "", None):
             _d["kind"] = "no_array_found"
         return []
+    body = raw[start:end + 1]
     try:
-        parsed = json.loads(raw[start:end + 1])
+        parsed = json.loads(body)
     except json.JSONDecodeError as e:
-        _d["kind"] = "bad_json_array"
-        _d["error"] = str(e)[:80]
-        return []
+        # **多餘的逗號是純語法缺陷,補它不改變任何語意**
+        # (2026-08-11 生產:診斷欄位第一次上工就指到 `bad_json_array`)。
+        # 只做這一種無損修補;修不好就照實回報,不猜內容。
+        fixed = _strip_trailing_commas(body)
+        try:
+            parsed = json.loads(fixed)
+        except json.JSONDecodeError:
+            _d["kind"] = "bad_json_array"
+            _d["error"] = str(e)[:80]
+            return []
+        _d["repair"] = "trailing_comma"
     if not isinstance(parsed, list):
         _d["kind"] = "array_is_not_a_list"
         return []
     out = [item for item in parsed if isinstance(item, dict)][:40]
     _d["kind"] = "ok_array" if out else "array_without_objects"
+    if out and _d.get("repair"):
+        _d["kind"] = "ok_array_after_repair"
     return out
 
 

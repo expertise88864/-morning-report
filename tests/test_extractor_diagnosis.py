@@ -27,7 +27,7 @@ def test_each_empty_reason_gets_its_own_name():
     """四種原因分得開 —— 這正是上一版做不到的事。"""
     assert _kind("")[0] == "empty_response"
     assert _kind("我沒有找到任何符合條件的事件。")[0] == "no_array_found"
-    assert _kind('[{"a":1},]')[0] == "bad_json_array"
+    assert _kind('[{"a":1} {"b":2}]')[0] == "bad_json_array"
     assert _kind('{"result":"none"}')[0] == "object_without_events"
     assert _kind('{"events":')[0] == "bad_json_object"
 
@@ -114,3 +114,50 @@ def test_the_watchdog_message_says_which_reason():
            if p["code"] == "event_extractor_dead"]
     assert hit, "前提:這一班本來就該被判缺陷"
     assert "no_array_found" in hit[0]["detail"], hit[0]["detail"]
+
+
+# ===== 2026-08-11 診斷第一次上工:`bad_json_array` =====
+
+def test_a_trailing_comma_is_repaired_losslessly():
+    """**多餘的逗號是純語法缺陷,補它不改變任何語意**(生產第一次拿到的
+    答案就是 `bad_json_array`)。只做這一種無損修補,而且要留下痕跡 ——
+    「修過」與「本來就好」是兩件事。"""
+    kind, n, d = _kind('[{"a":1},{"b":2},]')
+    assert (kind, n) == ("ok_array_after_repair", 2)
+    assert d["repair"] == "trailing_comma"
+    # 物件內的多餘逗號同理
+    assert _kind('[{"a":1,}]')[0] == "ok_array_after_repair"
+
+
+def test_the_repair_never_touches_string_content():
+    """**只動字串外面的逗號**(外審 r1):用正則掃整段的話,新聞標題裡的
+    「…成長,}」也會被改掉 —— 那不是修語法,那是**竄改內容**,
+    而且改完還會被當成正常解析。"""
+    import json
+    from llm_postprocess import _strip_trailing_commas as strip
+    rows = [{"title": "營收成長,}", "note": "逗號在字串裡,]"}]
+    body = json.dumps(rows, ensure_ascii=False)
+    assert json.loads(strip(body)) == rows          # 一個字元都不能變
+    assert json.loads(strip(body + " ")) == rows
+    # 真的多餘的照樣去掉
+    assert strip('[{"a":1},]') == '[{"a":1}]'
+    assert strip('[{"a":1,}]') == '[{"a":1}]'
+    assert strip("[1, 2]") == "[1, 2]"              # 正常的逗號不動
+    # 走完整條解析路徑,字串內容原樣保留
+    d = {}
+    out = parse(json.dumps(rows, ensure_ascii=False)[:-1] + ",]", diag=d)
+    assert out == rows and d["repair"] == "trailing_comma"
+
+
+def test_a_genuinely_broken_array_is_still_reported():
+    """修不好就照實回報,不猜內容 —— 而且要帶著 JSON 的錯誤訊息。"""
+    kind, n, d = _kind('[{"a":1} {"b":2}]')
+    assert (kind, n) == ("bad_json_array", 0)
+    assert d.get("error"), d
+
+
+def test_a_healthy_array_is_not_marked_as_repaired():
+    """沒修過的不得掛上修補標記(不然帳面上永遠像有問題)。"""
+    kind, _, d = _kind('[{"a":1}]')
+    assert kind == "ok_array" and "repair" not in d
+

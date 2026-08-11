@@ -64,7 +64,12 @@ def _news():
 
 
 def _packet(calibration=None):
-    return ep.build(_QUOTES, {"fair_value": 123.17, "premium_pct": -1.1},
+    # **生產的鍵**:`calc_00662_fair_value` 回 `fair_price`/`implied_change_pct`,
+    # 沒有 `fair_value` —— fixture 用錯名字的話,「範例都解析得到」這條守衛
+    # 就會替一個 prompt 教得出來、生產卻沒有的 ID 背書(2026-08-11 那次
+    # 正是這個形狀)。
+    return ep.build(_QUOTES, {"fair_price": 123.17, "premium_pct": -1.1,
+                              "implied_change_pct": 1.3},
                     # **這裡要放生產真的會產生的欄位。** 先前是
                     # `{"pred_open": …, "pred_pct": …}` —— `calc_2330_predictions`
                     # 從來不回那兩個鍵,於是這一整組守衛替「prompt 教了一個
@@ -121,6 +126,30 @@ def test_the_namespace_descriptions_point_at_ids_that_exist():
                 f"{prefix} 的說明舉例 `{ex}` 解析不到任何 ID"
             checked += 1
     assert checked >= 3, "說明裡根本沒有舉例,這條測試等於沒跑"
+
+
+def _production_body(func_name: str) -> str:
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    i = src.index(f"def {func_name}")
+    return src[i:src.index(chr(10) + "def ", i + 10)]
+
+
+def test_valuation_examples_exist_in_the_production_calculation():
+    """**同一課學三次就夠了**(2026-08-11):`valuation:` 的說明原本只寫
+    「00662 估值」—— 沒說不帶標的段、也沒舉真實欄位,模型於是寫出
+    `valuation:00662.implied_change_pct`(欄位名其實是對的,多的是標的段)。
+    範例釘在 `calc_00662_fair_value` 的原始碼上,fixture 造不出來。"""
+    import re
+    import evidence_namespaces as ns
+    body = _production_body("calc_00662_fair_value")
+    fields = {ex.split(":", 1)[1] for _, desc, _ in ns.NAMESPACES
+              for ex in re.findall(r"`(valuation:[^`]+)`", desc)}
+    assert fields, "說明裡沒有 valuation 範例 —— 這條測試等於沒跑"
+    missing = sorted(f for f in fields if f'"{f}"' not in body)
+    assert not missing, f"prompt 教的欄位生產不會產生:{missing}"
 
 
 def test_prediction_examples_exist_in_the_production_calculation():
@@ -250,7 +279,10 @@ def _rich_packet():
         "published": "2026-08-10T01:00:00Z", "link": "http://x"}])[0]
     return ep.build(
         {"QQQ": {"change_pct": 1.2}, "TAIEX_PRED": {"open": 44474}},
-        {"fair_value": 123.4},
+        # **生產的鍵**(`calc_00662_fair_value` 回的是 `fair_price`,
+        # 不是 `fair_value` —— 我修 `pred_open` 那個 bug 時差點再犯一次)
+        {"fair_price": 123.4, "premium_pct": -1.1,
+         "implied_change_pct": 1.3},
         {"mid": 2372.5, "last_2330": 2370.0, "model1_1to1": 2375.0},
         news, [], {"mean_abs_delta_pct": 1.2},
         as_of="2026-08-10 06:00", target_session_date="2026-08-10",

@@ -221,8 +221,13 @@ def never_an_instrument(aid) -> bool:
 #: 可能只是巧合,而這一關的用途是確認**上一步的終點就是這一步的起點**。
 _NODE_MIN_CHARS = 4
 
+#: 兩端的辨識詞要重疊到這個比例才算同一個節點。與事件身分的
+#: `INCIDENT_OVERLAP` 同一個數字:兩者問的是同一種問題(這兩段講的是
+#: 同一件事嗎),而判準各給一個數字的話,兩邊會慢慢漂開。
+_NODE_OVERLAP = 0.3
 
-def _same_node(prev_to: str, cur_from: str) -> bool:
+
+def _same_node(prev_to: str, cur_from: str, subjects=()) -> bool:
     """這一步的起點,就是上一步的終點嗎。
 
     先前的判準是**逐字相等**,而 prompt 與 schema 從來沒說過要逐字沿用
@@ -244,7 +249,24 @@ def _same_node(prev_to: str, cur_from: str) -> bool:
     if a == b:
         return True
     short, long_ = (a, b) if len(a) <= len(b) else (b, a)
-    return len(short) >= _NODE_MIN_CHARS and short in long_
+    if len(short) >= _NODE_MIN_CHARS and short in long_:
+        return True
+    # **改寫不是斷鏈**(2026-08-11 生產,schema 已經明講要沿用之後仍然
+    # 發生):上一步走到「美伊重啟談判的希望再降,雙方立場差距擴大」、
+    # 這一步從「美伊談判希望降低」開始 —— 同一個節點換句話說。
+    # 這一關要抓的是**不相干的片段被接成因果**,不是措辭。
+    # 判準用既有的辨識詞重疊(與事件身分同一套機器):實測改寫 0.43、
+    # 不相干 0.00,兩者分得很開。
+    # **主體名要挖掉**(外審 r2,而這是本 repo 記過的同一條規矩):
+    # 主體相交是另一層的判準,標題重疊若又被主體名灌滿等於把同一份證據
+    # 算兩次 —— 「台積電營收創高」與「台積電法說下週」共用的
+    # 「台積」「積電」就足以越過門檻,而它們是兩件事。
+    import event_identity as _eid2
+    ta = _eid2.discriminative_tokens(prev_to, subjects)
+    tb = _eid2.discriminative_tokens(cur_from, subjects)
+    if min(len(ta), len(tb)) < _eid2.MIN_DISCRIMINATIVE:
+        return True          # 辨識詞太少 → 判不出來,不阻擋
+    return len(ta & tb) / min(len(ta), len(tb)) >= _NODE_OVERLAP
 
 
 #: 非主角的標的要寫得出多長的傳導機制。短於這個長度的多半是
@@ -774,10 +796,18 @@ def validate(obj, evidence_ids) -> list:
         # 其實是三個不相干的片段各自成立。
         steps = [st for st in (n.get("mechanism_steps") or [])
                  if isinstance(st, dict)]
+        # 主體由**這則新聞**給(見 `_same_node`:主體名不算共用)
+        _step_item = next(
+            (x for x in ((packet or {}).get("news") or [])
+             if str(x.get("source_item_id")) == str(n.get("source_item_id"))),
+            None) if packet is not None else None
+        _step_subj = [str(e) for e in ((_step_item or {}).get("entities")
+                                       or [])]
         for j in range(1, len(steps)):
             prev_to = str(steps[j - 1].get("to_what") or "").strip()
             cur_from = str(steps[j].get("from_what") or "").strip()
-            if prev_to and cur_from and not _same_node(prev_to, cur_from):
+            if prev_to and cur_from and not _same_node(prev_to, cur_from,
+                                                      _step_subj):
                 problems.append(
                     f"{where}.mechanism_steps[{j}] 從 {cur_from!r} 開始,"
                     f"而上一步走到 {prev_to!r} —— 鏈斷了,"

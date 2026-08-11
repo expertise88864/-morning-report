@@ -493,7 +493,10 @@ def assess(manifest, *, mode: str = "watchdog",
                 # **原因要跟著訊息走**(2026-08-11):只說「活到下游 0 筆」
                 # 的話,收信的人還是得自己去猜是哪一段 —— 而四種原因的
                 # 處置完全不同(見 `llm_postprocess._parse_llm_event_json`)。
-                _pk = str((_ex.get("parse") or {}).get("kind") or "")
+                _pd = _ex.get("parse") or {}
+                _pk = str(_pd.get("kind") or "")
+                if _pd.get("error"):
+                    _pk = f"{_pk}({str(_pd['error'])[:60]})"
                 add("event_extractor_dead", "defect",
                     f"事件抽取器吃了 {_items} 筆、活到下游 0 筆"
                     f"(parsed={_safe_int(_ex.get('parsed'))}、"

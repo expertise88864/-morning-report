@@ -716,6 +716,57 @@ def test_the_same_node_may_be_restated_with_more_detail():
     assert av._same_node("油價上漲", "油價上漲推升通膨預期")
     assert av._same_node("油價上漲推升通膨預期", "油價上漲")
     assert not av._same_node("油價上漲", "台積電營收創高")
-    # 太短的共用不算(那可能只是巧合)
-    assert not av._same_node("油價", "油價下跌帶動消費")
+    # **判準改了**(2026-08-11):辨識詞太少時判不出來 → 不阻擋。
+    # 「油價」只切得出一個辨識詞,而這一關要抓的是不相干的片段被接成
+    # 因果 —— 判不出來就擋,擋掉的是模型合法的簡短節點。
+    assert av._same_node("油價", "油價下跌帶動消費")
+    # 真正不相干的仍然擋(這條才是這一關的用途)
+    assert not av._same_node("油價下跌帶動消費", "台積電法說會下週登場")
+
+
+def test_a_reworded_node_is_not_a_broken_chain():
+    """**改寫不是斷鏈**(2026-08-11 生產,schema 已明講要沿用之後仍然
+    發生):上一步走到「美伊重啟談判的希望再降,雙方立場差距擴大」、
+    這一步從「美伊談判希望降低」開始 —— 同一個節點換句話說。
+    這一關要抓的是**不相干的片段被接成因果**,不是措辭。"""
+    import analysis_validate as av
+    assert av._same_node("美伊重啟談判的希望再降,雙方立場差距擴大",
+                         "美伊談判希望降低")
+    # 不相干的仍然是斷鏈(反例只靠辨識詞重疊分勝負)
+    assert not av._same_node("美伊重啟談判的希望再降,雙方立場差距擴大",
+                             "台積電七月營收創新高")
+    assert not av._same_node("油價上漲推升通膨預期", "台積電法說會下週登場")
+
+
+def test_the_subject_name_does_not_glue_two_events_together():
+    """**主體名要挖掉**(外審 r2,repo 記過的同一條規矩):主體相交是
+    另一層的判準,標題重疊若又被主體名灌滿等於把同一份證據算兩次 ——
+    「台積電營收創高」與「台積電法說下週」共用的「台積」「積電」
+    就足以越過門檻,而它們是兩件事。"""
+    import analysis_validate as av
+    assert not av._same_node("台積電營收創高", "台積電法說下週", ["台積電"])
+    # 同主體的**同一個節點**仍然接得上(挖掉主體之後還有共用的內容)
+    assert av._same_node("台積電營收創高,月增 5.6%", "台積電營收創高",
+                         ["台積電"])
+
+
+def test_the_chain_subjects_come_from_the_news_item():
+    """**沒接上等於不存在**:主體要從這則新聞來,而不是空手比 ——
+    走生產的驗證路徑(同主體、兩個不相干的節點)。"""
+    import sys
+    import analysis_validate as av
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+    pk = {"news": [{"source_item_id": "n1", "title": "台積電消息",
+                    "summary": "", "entities": ["台積電"]}],
+          "news_clusters": {"clusters": []}, "yesterday_watch": []}
+    obj = fx.valid_analysis()
+    n = obj["top_news_analysis"][0]
+    n["source_item_id"] = "n1"
+    n["mechanism_steps"] = [
+        {"from_what": "AI 需求走強", "to_what": "台積電營收創高",
+         "step_type": "fact", "evidence_ids": ["n1"]},
+        {"from_what": "台積電法說下週", "to_what": "資本支出可能上修",
+         "step_type": "inference", "evidence_ids": ["n1"]}]
+    assert [p for p in av.validate(obj, pk) if "鏈斷了" in p]
 

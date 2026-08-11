@@ -72,7 +72,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: 應驗/落空/仍待驗證;首見由 `analysis_recap` 逐日 carry。
 #: v30(縱深第四批 C):`transmission_candidates` —— 傳導鏈沿宣告過的
 #: 供應鏈邊走到具體標的;候選不是證據。
-LUNA_XHIGH_VERSION = 34
+LUNA_XHIGH_VERSION = 35
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。

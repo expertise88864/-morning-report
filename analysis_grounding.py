@@ -67,7 +67,9 @@ from __future__ import annotations
 #: 受影響標的可以不是新聞的主角,但要是本報核心標的或宣告過的供應鏈
 #: 鄰居,而且要寫得出傳導機制。舊規則與這份報告的用途矛盾:
 #: 「油價暴漲 → 通膨 → 估值 → 00662」被判成幽靈標的,連兩天整份作廢。
-GROUNDING_VERSION = 29
+#: v30(2026-08-11):鏈的連續性改用辨識詞重疊 —— **改寫不是斷鏈**,
+#: 這一關要抓的是不相干的片段被接成因果。
+GROUNDING_VERSION = 30
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

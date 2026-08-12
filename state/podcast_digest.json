@@ -4926,6 +4926,53 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73849996",
+        "title": "Inflation cools but stays stubborn",
+        "published": "Wed, 12 Aug 2026 15:23:32 +0000",
+        "processed_at": "2026-08-12T20:10:53Z",
+        "digest": {
+          "summary_points": [
+            "7月CPI年增3.4%符合預期，核心CPI年增2.5%，連續第65個月高於2%目標；分析師認為報告給聯準會更多時間，但不改變整體通膨軌跡。",
+            "聯準會9月升息機率由48%降至43%；Janney策略師Guy Labar表示目前處於「不降息不升息」經濟，聯準會主席Kevin Warsh出面明說對市場有利。",
+            "Domino's Pizza推出個人底特律風格新披薩，分析師Andrew Charles看好其納入6.99美元Mix & Match平台有助於降低客單價侵蝕風險，但質疑定價是否夠低，因為消費者可能改買中尺寸披薩。",
+            "現貨黃金反彈至4400美元/盎司，為6月5日以來高點並站上100日均線；Nomura的Charlie Magellicott稱「黃金重置」，量化基金由空翻多投入約15億美元，若突破5056美元將全力做多。"
+          ],
+          "tickers": [
+            {
+              "name": "CoreWeave",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "上調2026年營收展望至124-132億美元（原120-130億），並上調調整後營業利益展望，股價大漲逾15%。"
+            },
+            {
+              "name": "Super Micro Computer",
+              "code": "SMCI",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q1 EPS指引1.00-1.10美元遠超市場預期的0.72美元，股價走高。"
+            },
+            {
+              "name": "H&R Block",
+              "code": "HRB",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q4財報大幅擊敗預期，2027年EPS指引6.04-6.24美元優於市場共識5.86美元，並提高季度股息10%至0.46美元。"
+            },
+            {
+              "name": "Domino's Pizza",
+              "code": "DPZ",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師Andrew Charles看好新披薩納入Mix & Match平台有助客單價，但質疑定價可能不夠低，因此態度中性。"
+            }
+          ],
+          "market_view": "美國經濟處於「不降息不升息」的狀態，但聯準會缺乏前瞻指引，市場被迫對沖各種可能結果。",
+          "action_view": "",
+          "notable_quote": "We're now in a no-cut-no-hike economy, but it would be good for markets for Fed Chairman Kevin Warsh to come out and say so."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73841821",
         "title": "NYC delivery model detour",
         "published": "Wed, 12 Aug 2026 10:35:54 +0000",
@@ -5336,31 +5383,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "The greater danger lies in a potential reversal of the AI trade or heightened market concern over fiscal deficits."
-        },
-        "shown_at": "2026-08-04T23:06:58Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73436025",
-        "title": "Palantir lifts outlook after AI surge",
-        "published": "Tue, 04 Aug 2026 12:15:03 +0000",
-        "processed_at": "2026-08-04T15:45:20Z",
-        "digest": {
-          "summary_points": [
-            "Palantir (PLTR) 第二季營收年增 93% 至 19.4 億美元,EPS 0.41 美元優於預期,並上調全年營收展望至 81.5-81.6 億美元;Seeking Alpha 分析師認為其獲利率正逼近微軟,有望成為全球最賺錢的軟體公司。",
-            "主持人指出市場對超大規模雲端業者 AI 資本支出的擔憂持續消退;但 Google DeepMind 策略長坦言目前 AI 收入還撐不起資本支出,長期可望透過「遞歸自我改進」轉型,並以蒸氣機為喻,暗示不應看空 AI 長期方向。"
-          ],
-          "tickers": [
-            {
-              "name": "Palantir Technologies",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2 財報超預期,營收年增 93%,上調全年展望,分析師看好其獲利率逼近微軟。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Steam engines were used to create the next steam engine."
         },
         "shown_at": "2026-08-04T23:06:58Z"
       }

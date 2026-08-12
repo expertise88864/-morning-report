@@ -49,7 +49,8 @@
           "market_view": "主持人對台股大盤看法相對樂觀，雖然短線存在消息面利多出貨的互搞現象，但族群已逐漸成型，中小型成長股創高，拉長看型態正在轉好，是可以操作的盤。",
           "action_view": "主持人降低槓桿，將部分指數部位轉向個股，偏好有明確獲利上修、股價尚未完全回到高點的中小型成長股，如光通、散熱、AI 電源等族群。",
           "notable_quote": "算力它就是數位時代的鐵路跟電網，它就是某種非常重要的 infrastructure。"
-        }
+        },
+        "shown_at": "2026-08-12T22:52:00Z"
       },
       {
         "guid": "0e0b7654-dec7-479d-8edd-b5d51f76126d",
@@ -695,7 +696,8 @@
           "market_view": "四大指數高檔震盪，費半觀察能否站回季線；市場等待通膨數據，AI投資題材持續主導盤勢。",
           "action_view": "主持人對AI前景保持樂觀，認為在算力過剩跡象出現前仍可參與，但提醒投資人回歸基本面，確認自身是否相信AI生產力能持續提升，並留意金融槓桿與資金鏈風險。",
           "notable_quote": "你相不相信AI能夠達成生產力的提升？而且在未來幾年，你認為現在建置的算力中心跟不上你的AI需求，這是最大的一個起見點。"
-        }
+        },
+        "shown_at": "2026-08-12T22:52:00Z"
       },
       {
         "guid": "tag:soundcloud,2010:tracks/2379425969",
@@ -4970,7 +4972,8 @@
           "market_view": "美國經濟處於「不降息不升息」的狀態，但聯準會缺乏前瞻指引，市場被迫對沖各種可能結果。",
           "action_view": "",
           "notable_quote": "We're now in a no-cut-no-hike economy, but it would be good for markets for Fed Chairman Kevin Warsh to come out and say so."
-        }
+        },
+        "shown_at": "2026-08-12T22:52:00Z"
       },
       {
         "guid": "https://api.spreaker.com/episode/73841821",
@@ -5009,7 +5012,8 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "Who benefits as AI data centers create a power shortage?"
-        }
+        },
+        "shown_at": "2026-08-12T22:52:00Z"
       },
       {
         "guid": "https://api.spreaker.com/episode/73827346",

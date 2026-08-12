@@ -69,6 +69,7 @@ from num_utils import (  # A5-B1:數值基礎工具已抽出(僅依 stdlib),re-e
     _sigmoid,
 )
 from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處 re-export 保相容
+    repair_instruction as _repair_instruction,
     _mask_malformed_numbers,
     _sanitize_llm_2330_prices,
     _strip_llm_watchlist_section,
@@ -13216,12 +13217,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # 修補就是在賭模型第二次自己猜中 —— 把相近的合法 ID 一併給它。
         _hints = _repair_evidence_hints(problems, packet)
         payload = dict(payload, input=(
-            bundle["user_payload"] + "\n\nREPAIR\n上一次的輸出有以下問題,"
-            "請只修正這些問題並重新輸出完整 JSON:\n"
-            + "\n".join(f"- {p}" for p in problems[:5])
-            + ("\n其中無效證據 ID 的修正提示(這些**相近 ID 是合法的**,"
-               "請改用它們或移除該引用):\n"
-               + "\n".join(f"- {h}" for h in _hints) if _hints else "")))
+            bundle["user_payload"]
+            + _repair_instruction(problems, _hints)))
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

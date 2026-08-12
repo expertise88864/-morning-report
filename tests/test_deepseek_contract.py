@@ -509,3 +509,40 @@ def test_the_workflow_only_fails_on_a_real_contract_change():
     assert 'exit 1; fi' in run["run"]
     assert "schedule" in (wf.get(True) or wf.get("on")), wf.keys()
 
+
+
+# ------------------------------------------------- 2026-08-12 CI #504
+def test_the_repair_round_is_told_every_problem():
+    """**問題清單一條都不能少。** 先前只給 `problems[:5]` 還要求
+    「只修正這些問題」—— 10 條的日子,修補在結構上不可能收斂:
+    模型修好被告知的 5 條,沒被告知的 5 條再被擋一次。"""
+    import llm_postprocess as lp
+    probs = [f'第 {i} 條問題' for i in range(10)]
+    txt = lp.repair_instruction(probs, [])
+    for p_ in probs:
+        assert p_ in txt, p_
+    assert '請全部修正' in txt and '請只修正' not in txt
+
+
+def test_a_pathological_problem_list_discloses_the_cut():
+    """超過 40 條(驗證器迴圈失控)要說出被截了多少 —— 靜默截斷
+    讀起來像「全部都轉告了」。"""
+    import llm_postprocess as lp
+    txt = lp.repair_instruction([f'p{i}' for i in range(50)], [])
+    assert '另有 10 條' in txt
+
+
+def test_the_repair_wiring_uses_the_shared_builder():
+    """呼叫端不得自己拼修補指令 —— 上限散在呼叫端正是這次的根因。"""
+    import ast
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / 'morning_report.py',
+                   encoding='utf-8').read()
+    calls = [n for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+             and n.func.attr == 'repair_instruction']
+    calls += [n for n in ast.walk(ast.parse(src))
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+              and n.func.id == '_repair_instruction']
+    assert calls, '修補輪沒有走共用的指令產生器'

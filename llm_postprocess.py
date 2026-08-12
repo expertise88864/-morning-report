@@ -19,7 +19,9 @@ import sys
 #: 無損語法修補 —— 解析結果可能因此不同(那正是要進版的理由)。
 #: v4(2026-08-11):整段解不開時逐塊撿回讀得懂的那幾筆 ——
 #: 解析結果會不同(一列壞掉不再讓 35 列全丟)。
-POSTPROCESS_VERSION = 4
+#: v5(2026-08-12 CI #504):修補指令搬進本模組,問題清單**全量**轉告
+#: (先前呼叫端只給 5 條還要求「只修正這些」,N>5 時結構上不可能收斂)。
+POSTPROCESS_VERSION = 5
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合
@@ -148,6 +150,34 @@ def _salvage_objects(body: str) -> tuple:
         else:
             skipped += 1
     return out, skipped
+
+
+def repair_instruction(problems: list, hints: list) -> str:
+    """修補輪附在 payload 後面的指令。**問題清單一條都不能少。**
+
+    2026-08-12 CI #504 的根因:先前這段寫在呼叫端,只給 `problems[:5]`,
+    還要求「**只**修正這些問題」—— 10 條問題的日子,模型把被告知的 5 條
+    修好,沒被告知的另外 5 條原封不動,整份再被擋一次。`N > 5` 時修補
+    **在結構上不可能收斂**,而連續兩班的駁回正是這個形狀(修好了
+    payload_omitted 那批,冒出來的是從來沒被轉告的 net_effects 那批)。
+
+    一條問題約一百字,四十條也只是 4K 字元 —— 對上 1M 的 payload,
+    截斷省不了什麼,只會讓修補變成賭模型自己猜中沒說的那幾條。
+    上限 40 是防病態(驗證器迴圈失控)不是預算:真的超過 40 條,
+    修補救不了,而且要說出來被截了多少。
+    """
+    shown = [str(p) for p in (problems or [])[:40]]
+    dropped = max(0, len(problems or []) - len(shown))
+    nl = chr(10)
+    head = (nl + nl + "REPAIR" + nl + "上一次的輸出有以下問題,"
+            "請全部修正並重新輸出完整 JSON(沒列到的部分保持原樣):" + nl)
+    return (head
+            + nl.join(f"- {p}" for p in shown)
+            + (nl + f"(另有 {dropped} 條同類問題被截斷 —— 修正時請檢查"
+               "全部同類欄位,不只上面列出的)" if dropped else "")
+            + (nl + "其中無效證據 ID 的修正提示(這些**相近 ID 是合法的**,"
+               "請改用它們或移除該引用):" + nl
+               + nl.join(f"- {h}" for h in hints) if hints else ""))
 
 
 def _parse_llm_event_json(text: str, diag=None) -> list[dict]:

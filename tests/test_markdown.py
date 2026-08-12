@@ -1,6 +1,8 @@
 """_md_to_html 轉譯與 render_html 結構測試。"""
 import morning_report as mr
 
+NL = chr(10)
+
 
 def test_md_escapes_html():
     out = mr._md_to_html("正常文字 <script>alert(1)</script> 結束")
@@ -1433,3 +1435,95 @@ def test_the_prompt_and_the_filter_read_the_same_block():
     assert phrases, "空表不算通過"
 
 
+
+
+# ============================================================ 2026-08-12 實信
+# 那一班的既有路徑把「七、昨夜三大重點」到「十二、一句話總結」**全部**
+# 寫成 `**…**` 而不是 `##`,於是十一個段落標題變成普通段落 ——
+# 藍色標題卡片與立場 callout 一起消失。判準取自那封信本身。
+
+#: 實信裡**整行粗體**的那 11 行,每一行都是段落標題。
+_REAL_HEADINGS = (
+    "七、昨夜三大重點", "七之二、世界大事速覽", "七之三、未來 48 小時關鍵事件情境",
+    "七之四、敘事變化", "七之五、多空交鋒", "八、科技板塊脈動",
+    "九、其他類股資訊", "十、台灣本地動態", "十之二、重大政策深度解析",
+    "十一、我的明確立場", "十二、一句話總結",
+)
+
+#: 同一封信裡**粗體開頭、後面還有內容**的那些,每一行都是內文。
+_REAL_BODY = (
+    "**美國7月消費者物價指數（CPI）｜2026-08-12 20:30**：核心CPI月增率預期0.2%",
+    "**台積電（2330，全球晶圓代工龍頭，先進製程市占逾九成）**：昨日董事會核准",
+    "**世芯-KY（3661，AI客製化晶片設計服務廠）**：延續7月營收年增181%的動能",
+    "**多方最強**：台積電核准294億美元資本支出、TSM ADR漲0.86%",
+    # **章節名開頭、後面還有內容**:只認整行的話這是內文;若改成
+    # 「粗體開頭就升級」,`.+?` 會把後面那半句**整段丟掉**。
+    "**十一、我的明確立場**：中性,VIX 15.28 處一年第 13 個百分位",
+)
+
+
+def test_a_bold_only_line_is_the_heading_the_model_meant():
+    for h in _REAL_HEADINGS:
+        out = mr._md_to_html(f"**{h}**")
+        assert out.strip() == f"<h2>{h}</h2>", (h, out)
+
+
+def test_a_bold_lead_in_is_still_body_text():
+    """**粗體開頭 ≠ 標題。** 這 21 行在同一封信裡,判準要能把兩者分開 ——
+    分不開的話,每一條個股點評都會變成一張標題卡片。"""
+    for line in _REAL_BODY:
+        out = mr._md_to_html(line)
+        assert out.startswith("<p>"), (line, out)
+        assert "<h2>" not in out, (line, out)
+        # **內容不得在轉譯中掉字**(「粗體開頭就升級」會吃掉後半句)。
+        assert out.rstrip().endswith("</p>") and len(out) > len(line) - 4, out
+    tail = mr._md_to_html("**十一、我的明確立場**：中性,VIX 15.28 處一年第 13 個百分位")
+    assert "VIX 15.28" in tail, tail
+
+
+def test_a_bold_sentence_is_emphasis_not_a_heading():
+    """整行粗體但**不是編號章節**的,維持原本的粗體段落(外審 r1 P2)。
+
+    段落內的粗體標籤(`**風險與不確定**`)變成藍色標題卡已經夠糟;更糟的是
+    它若落在立場段裡,`_wrap_stance` 會把它當成下一個 `<h2>`,callout 提前收掉。
+    """
+    for line in ("**風險與不確定**", "**資料來源**",
+                 "**這一句整句加粗當強調用，不是標題。**", "**Key takeaways**",
+                 # **有頓號不代表是章節。** 判準是「中文數字 + 、」,
+                 # 而不是「行內有一個頓號」—— 這一行只靠那個差別分勝負。
+                 "**銅、鋁、鎳的庫存變化**"):
+        out = mr._md_to_html(line)
+        assert "<h2>" not in out and out.startswith("<p>"), (line, out)
+
+
+def test_the_stance_callout_is_not_cut_short_by_an_inner_bold_label():
+    """立場段裡的粗體標籤不得截斷 callout —— 那正是放寬到「任何整行粗體」
+    會造成的回歸。"""
+    import render_utils as ru
+    md = NL.join(("**十一、我的明確立場**", "", "立場：中性", "",
+                  "**風險與不確定**", "", "今晚 CPI 若高於預期…", "",
+                  "**十二、一句話總結**", "", "中性。"))
+    html = ru._wrap_stance(ru._style_analysis_html(ru._md_to_html(md)))
+    box = html[html.find("linear-gradient(135deg,#dbeafe"):]
+    assert "今晚 CPI 若高於預期" in box[:box.find("</div>")], html[:400]
+
+
+def test_the_stance_callout_comes_back_with_the_heading():
+    """標題回來,`_wrap_stance` 的藍色 callout 才找得到段落邊界。"""
+    import render_utils as ru
+    md = NL.join(("**十一、我的明確立場**", "", "立場：中性", "",
+                   "**十二、一句話總結**", "", "中性。"))
+    html = ru._wrap_stance(ru._style_analysis_html(ru._md_to_html(md)))
+    assert "linear-gradient(135deg,#dbeafe,#e0f2fe)" in html, html[:300]
+
+
+def test_the_stance_wrapper_never_duplicates_the_tail():
+    """**只擋 `h2_end == -1` 是不夠的。** 立場段出現在第一個 `<h2>` 之前時
+    `h2_start` 是 -1 —— `html[:-1]` 砍掉最後一個字元、`html[h2_end:]` 又把
+    後半段接第二次,讀者看到的是重複的內文。沒有 callout 是小事,
+    信裡出現兩份內容不是。"""
+    import render_utils as ru
+    html = "<p>我的明確立場:中性</p><p>細節</p><h2>十二、一句話總結</h2><p>收尾</p>"
+    out = ru._wrap_stance(html)
+    assert out.count("十二、一句話總結") == 1, out
+    assert out.count("收尾") == 1, out

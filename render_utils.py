@@ -117,6 +117,14 @@ def _format_macro_line(name: str, m: dict) -> str:
     return f"{name}={m['close']} ({prev_str}{cp_str}{rank_str})"
 
 
+#: 章節標題的形狀:中文數字 + 頓號(「七、」「七之二、」「十一、」)。
+#: 既有路徑偶爾會把章節標題寫成 `**…**` 而不是 `##`(2026-08-12 實信
+#: 十一個章節全部如此),而**內文裡的粗體標籤不是這個形狀** ——
+#: 那正是這條規則要分開的兩件事。
+_SECTION_NUMBER = re.compile(
+    r"^[〇零一二三四五六七八九十百]+(?:之[〇零一二三四五六七八九十百]+)?、")
+
+
 def _md_to_html(text: str) -> str:
     """
     自製 minimal Markdown → HTML 轉譯器，只用 stdlib `re`，不依賴第三方套件。
@@ -167,6 +175,34 @@ def _md_to_html(text: str) -> str:
             level = len(m.group(1))
             content = m.group(2).strip()
             out.append(f"<h{level}>{content}</h{level}>")
+            continue
+
+        # **整行只有粗體 = 模型把它當標題在用。**
+        #
+        # 2026-08-12 實信:既有路徑那一班把「七、昨夜三大重點」到
+        # 「十二、一句話總結」**全部**寫成 `**…**` 而不是 `##` ——
+        # 於是十一個段落標題變成普通段落,藍色卡片、`_wrap_stance` 的
+        # 立場 callout 一起消失,讀者看到的是一大片沒有分段的文字。
+        # (prompt 自己就是用 `##` 寫的,前一天同一條路徑也照做了 ——
+        # 這是模型的擺盪,不是規格不清楚。)
+        #
+        # 判準取自那封信本身:**整行粗體的 11 行全部是標題**,
+        # 而**粗體開頭後面還有內容**的 21 行(「台積電（2330…）:…」)
+        # 全部是內文。所以只認「整行」。
+        #
+        # **而且要是編號章節**(外審 r1,P2):只看「整行粗體」的話,
+        # 段落內一個 `**風險與不確定**` 也會變成藍色標題卡 —— 更糟的是
+        # 它若落在立場段裡,`_wrap_stance` 會把它當成下一個 `<h2>`,
+        # callout 就提前收掉。本報的章節一律是「中文數字 + 、」
+        # (七、/ 七之二、/ 十一、),而內文標籤不是這個形狀。
+        # 用形狀而不是寫死名單:週一才出現的「七之六、近期預測檢討」
+        # 不會因為沒被列進名單而漏掉。
+        m = re.match(r"^\s*\*\*(.+)\*\*\s*$", line)
+        if (m and "**" not in m.group(1)
+                and _SECTION_NUMBER.match(m.group(1).lstrip())):
+            flush_para()
+            close_lists()
+            out.append(f"<h2>{m.group(1).strip()}</h2>")
             continue
 
         # 引用 >
@@ -339,7 +375,11 @@ def _wrap_stance(html: str) -> str:
     h2_start = html.rfind("<h2", 0, idx)
     # 找下一個 h2 即立場段結束
     h2_end = html.find("<h2", idx)
-    if h2_end == -1:
+    # **兩端都要找得到。** 只擋 `h2_end == -1` 的話,立場段出現在第一個 `<h2>`
+    # 之前時 `h2_start` 是 -1 —— `html[:-1]` 會砍掉最後一個字元、
+    # `html[h2_end:]` 又把後半段整個接第二次:讀者看到的是**重複的內文**。
+    # 找不到就原樣返回(沒有 callout 是小事,信裡出現兩份內容不是)。
+    if h2_start == -1 or h2_end == -1:
         return html
     pre  = html[:h2_start]
     mid  = html[h2_start:h2_end]

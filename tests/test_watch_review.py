@@ -31,7 +31,7 @@ def _analysis(**over):
 def test_new_watches_enter_the_ledger_with_stable_ids():
     """觀察點要進帳本,而且**代號跨日穩定**(第三十輪外審 P1-2)——
     每天重新編號的話,昨天的 `w1` 明天指到另一件事。"""
-    led, seq = rc.carry_watch({}, _analysis(), "2026-08-10")
+    led, seq, *_ = rc.carry_watch({}, _analysis(), "2026-08-10")
     assert [w["trigger"] for w in led] == [
         "美光財報上修 HBM 出貨", "台積電法說資本支出"]
     assert [w["watch_id"] for w in led] == ["w1", "w2"] and seq == 2
@@ -39,7 +39,7 @@ def test_new_watches_enter_the_ledger_with_stable_ids():
     assert led[0]["status"] == rc.WATCH_OPEN
     assert led[0]["created"] == "2026-08-10"
     # 續開時序號接著跑(不重用號碼 —— 重用會讓昨天的 w1 明天指到別件事)
-    led2, _ = rc.carry_watch(
+    led2, _, *_x = rc.carry_watch(
         {"watch": led, "watch_seq": seq},
         {"watch_triggers": [{"trigger": "新的一條", "why": "",
                              "horizon": "1-5d"}]}, "2026-08-11")
@@ -51,7 +51,7 @@ def test_ids_are_never_reused_after_one_closes():
     w1 關掉之後再開一條 —— 用「清單長度 + 1」的話新的那條會叫 w2,
     與還開著的 w2 撞號,而模型的回顧是按代號對帳的。"""
     prior = {"watch": [_w("w1", "A"), _w("w2", "B")], "watch_seq": 2}
-    led, seq = rc.carry_watch(
+    led, seq, *_ = rc.carry_watch(
         prior,
         {"watch_triggers": [{"trigger": "新的一條", "why": "",
                              "horizon": "1-5d"}],
@@ -67,7 +67,7 @@ def test_watch_is_capped_and_junk_is_dropped():
     """上限與空 trigger:開十條等於逼明天寫十條回顧。"""
     many = [{"trigger": f"觀察{i}", "why": "", "horizon": "1-5d"}
             for i in range(9)] + [{"trigger": "", "why": "x"}, "垃圾"]
-    led, _ = rc.carry_watch({}, _analysis(watch_triggers=many), "2026-08-10")
+    led, _, *_x = rc.carry_watch({}, _analysis(watch_triggers=many), "2026-08-10")
     assert len(led) == rc.WATCH_MAX          # 單日新增仍受 WATCH_MAX 限制
     assert all(w["trigger"] for w in led)
 
@@ -293,7 +293,7 @@ def test_a_not_triggered_watch_survives_to_the_next_day():
     obj = {"watch_triggers": [],
            "watch_review": [{"watch_id": "w1", "status": "not_triggered",
                              "what_happened": "還在等", "evidence_ids": []}]}
-    led, _ = rc.carry_watch(prior, obj, "2026-08-10")
+    led, _, *_x = rc.carry_watch(prior, obj, "2026-08-10")
     assert [w["watch_id"] for w in led] == ["w1"], led
     assert led[0]["status"] == rc.WATCH_OPEN
     assert led[0]["last_reviewed"] == "2026-08-10"
@@ -308,7 +308,7 @@ def test_a_long_horizon_watch_survives_several_reviews():
                                 "what_happened": "還在等",
                                 "evidence_ids": []}]}
     for day in ("2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05"):
-        led, seq = rc.carry_watch(state, review, day)
+        led, seq, *_ = rc.carry_watch(state, review, day)
         state = {"date": day, "watch": led, "watch_seq": seq}
     assert [w["watch_id"] for w in state["watch"]] == ["w1"]
     assert state["watch"][0]["last_reviewed"] == "2026-08-05"
@@ -317,7 +317,7 @@ def test_a_long_horizon_watch_survives_several_reviews():
 def test_triggered_and_no_longer_relevant_close_the_watch():
     """模型的兩種關閉判斷都要真的把它從帳本移除。"""
     for status in ("triggered", "no_longer_relevant"):
-        led, _ = rc.carry_watch(
+        led, _, *_x = rc.carry_watch(
             _led(_w("w1", "等財報")),
             {"watch_triggers": [],
              "watch_review": [{"watch_id": "w1", "status": status,
@@ -332,10 +332,10 @@ def test_python_expires_a_watch_by_its_horizon():
     而 deadline 是建立當天就算好的。"""
     prior = _led(_w("w1", "intraday 的觀察", created="2026-08-01",
                     deadline="2026-08-02"))
-    led, _ = rc.carry_watch(prior, {"watch_triggers": []}, "2026-08-03")
+    led, _, *_x = rc.carry_watch(prior, {"watch_triggers": []}, "2026-08-03")
     assert led == [], led
     # 還沒到期的照樣留著(反例只靠 deadline 分勝負)
-    keep, _ = rc.carry_watch(prior, {"watch_triggers": []}, "2026-08-02")
+    keep, _, *_x = rc.carry_watch(prior, {"watch_triggers": []}, "2026-08-02")
     assert [w["watch_id"] for w in keep] == ["w1"]
 
 
@@ -343,7 +343,7 @@ def test_horizon_decides_the_deadline():
     """三種 horizon 各自的到期日由宣告表決定;認不出來用短的
     (過期只是少追一條,永不過期會累積成沒有人看的清單)。"""
     def _deadline(h):
-        led, _ = rc.carry_watch(
+        led, _, *_x = rc.carry_watch(
             {}, {"watch_triggers": [{"trigger": f"觀察{h}", "why": "",
                                      "horizon": h}]}, "2026-08-10")
         return led[0]["deadline"]
@@ -356,8 +356,8 @@ def test_horizon_decides_the_deadline():
 def test_a_same_day_rerun_does_not_duplicate_or_age_the_watch():
     """同日重跑:同一句 trigger 不重複開,`created` 不變(年齡不會被
     重跑洗掉 —— 那會讓 1–4 週的觀察點每跑一次就延壽一次)。"""
-    led1, seq1 = rc.carry_watch({}, _analysis(), "2026-08-10")
-    led2, seq2 = rc.carry_watch({"date": "2026-08-10", "watch": led1,
+    led1, seq1, *_a = rc.carry_watch({}, _analysis(), "2026-08-10")
+    led2, seq2, *_b = rc.carry_watch({"date": "2026-08-10", "watch": led1,
                                  "watch_seq": seq1}, _analysis(),
                                 "2026-08-10")
     assert [w["watch_id"] for w in led2] == [w["watch_id"] for w in led1]
@@ -456,14 +456,14 @@ def test_a_legacy_watch_is_migrated_not_broken():
     assert all(w["watch_id"] for w in got)
     assert got[0]["date"] == "2026-08-09"
     # 升級後關得掉(這正是舊形狀原本做不到的事)
-    led, seq = rc.carry_watch(
+    led, seq, *_ = rc.carry_watch(
         legacy, {"watch_triggers": [],
                  "watch_review": [{"watch_id": "w1", "status": "triggered",
                                    "what_happened": "x",
                                    "evidence_ids": ["n1"]}]}, "2026-08-10")
     assert [w["watch_id"] for w in led] == ["w2"], led
     # 新開的不得與補發的號碼相撞
-    led2, _ = rc.carry_watch(
+    led2, _, *_x = rc.carry_watch(
         {"date": "2026-08-09", "watch": legacy["watch"]},
         {"watch_triggers": [{"trigger": "新的", "why": "",
                              "horizon": "1-5d"}]}, "2026-08-10")
@@ -502,3 +502,19 @@ def test_the_closed_counter_counts_closures_not_rejections(tmp_path):
     assert man["llm"]["watch_open"] == rc.WATCH_OPEN_MAX
     assert man["llm"]["watch_closed_today"] == 0, man["llm"]
 
+
+
+def test_a_full_ledger_reports_how_many_watches_it_dropped():
+    """**容量滿不得靜默丟**(第三十一輪外審 P2-1):信裡渲染了觀察點、
+    帳本沒接住 —— 至少 telemetry 要看得到掉了幾條。"""
+    prior = {"date": "2026-08-09", "watch_seq": rc.WATCH_OPEN_MAX, "watch": [
+        {"watch_id": f"w{i}", "trigger": f"既有觸發 {i}", "why": "w",
+         "horizon": "1-4w", "status": rc.WATCH_OPEN, "created": "2026-08-01",
+         "last_reviewed": "", "deadline": "2026-09-07"}
+        for i in range(rc.WATCH_OPEN_MAX)]}
+    led, seq, dropped = rc.carry_watch(
+        prior, _analysis(watch_triggers=[
+            {"trigger": "今天信裡渲染的新觀察點", "why": "w",
+             "horizon": "1-4w"}]), "2026-08-10")
+    assert len(led) == rc.WATCH_OPEN_MAX
+    assert dropped == 1, (dropped, [w["trigger"] for w in led])

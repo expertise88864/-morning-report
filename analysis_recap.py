@@ -112,19 +112,28 @@ def extract(analysis_obj, packet) -> dict:
         title = " ".join(str(by_id.get(m, {}).get("title") or "")
                          for m in members_of.get(cluster_id, [])) or (
             str(by_id.get(fallback_sid, {}).get("title") or ""))
+        # **summary 是身分的一部分**(第三十一輪外審 P1-1A):受詞常常
+        # 只在 summary(「美國軍售最新動向」+ for Taiwan)—— timeline 端
+        # 一直都吃,寫入端不吃的話,同一件事兩天的對象對不上。
+        summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
+                        for m in members_of.get(cluster_id, [])) or (
+            str(by_id.get(fallback_sid, {}).get("summary") or ""))
         # **身分只留一份**(第三十輪外審 P1-3):動作、對象、辨識詞全部
         # 走 `event_identity.view_identity` —— 與 timeline、跨語言橋接
         # 同一個答案。先前這裡自己推(`object_signature(action, ents)`),
         # 於是同一批軍售在 timeline 的對象是「台灣」、在 recap 是
         # 「台灣、美國」,今天少寫一個實體就接不回昨天。
-        _ident = _eid.view_identity(title, ents)
+        _ident = _eid.view_identity(title, ents, summary=summ)
         items.append({"statement": stmt[:STATEMENT_CHARS],
                       "direction": str(direction or ""),
                       "entities": ents,
                       "action": _ident["action"],
                       "object": _ident["object"],
                       "incident_tokens": _ident["incident_tokens"],
-                      "title": title[:STATEMENT_CHARS]})
+                      "title": title[:STATEMENT_CHARS],
+                      # 跨語言錨(金額/帶單位數量)常常只在 summary ——
+                      # 不存的話,明天英文報導接不回今天的中文觀點。
+                      "summary": summ[:STATEMENT_CHARS]})
 
     for d in (obj.get("key_drivers") or []):
         if isinstance(d, dict):
@@ -273,8 +282,16 @@ def carry_watch(prior, obj, today: str) -> list:
             continue                       # 到期(Python 判,不問模型)
         out.append(w)
     seen = {str(w.get("trigger") or "") for w in out}
+    dropped = 0
     for fresh in _watch_of(obj):
-        if fresh["trigger"] in seen or len(out) >= WATCH_OPEN_MAX:
+        if fresh["trigger"] in seen:
+            continue
+        if len(out) >= WATCH_OPEN_MAX:
+            # **容量滿不得靜默丟**(第三十一輪外審 P2-1):信裡渲染了
+            # 「後續觀察點」,帳本卻沒記住 —— 讀者以為系統在盯,明天
+            # 它整條消失,而 telemetry 一個字都沒有。這裡先記下數字;
+            # 「渲染的必須被接住」的更強保證需要渲染端配合,另案。
+            dropped += 1
             continue
         seq += 1
         days = WATCH_HORIZON_DAYS.get(fresh["horizon"], WATCH_DEFAULT_DAYS)
@@ -282,7 +299,7 @@ def carry_watch(prior, obj, today: str) -> list:
                         created=str(today)[:10], last_reviewed="",
                         deadline=_days_after(today, days)))
         seen.add(fresh["trigger"])
-    return out[:WATCH_OPEN_MAX], seq
+    return out[:WATCH_OPEN_MAX], seq, dropped
 
 
 #: `save()` 的三種結果。**「沒東西可存」不是「存檔失敗」**
@@ -317,7 +334,8 @@ def _carry_origins(rec: dict, prior: dict) -> None:
         return
     for it in rec["items"]:
         hit = best_view(it.get("entities"), prior_items,
-                        titles=str(it.get("title") or ""))
+                        titles=str(it.get("title") or ""),
+                        summary=str(it.get("summary") or ""))
         if not hit:
             continue
         origin = hit.get("origin") if isinstance(hit.get("origin"), dict)             else None
@@ -342,13 +360,15 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
         prior = load(path)
         _prior_watch = _watch_ledger(prior)
         _today = str(rec.get("date") or "")
-        rec["watch"], rec["watch_seq"] = carry_watch(
+        rec["watch"], rec["watch_seq"], _watch_dropped = carry_watch(
             prior, analysis_obj, _today)
         if isinstance(manifest, dict):
             slot = manifest.setdefault("llm", {})
             slot["recap_eligible"] = int(rec.get("eligible") or 0)
             slot["recap_extracted"] = len(rec["items"])
             slot["watch_open"] = len(rec["watch"])
+            if _watch_dropped:
+                slot["watch_dropped_capacity"] = _watch_dropped
             # **關閉數要數「原本開著、現在不在帳本上」的那幾條**
             # (外審 r4):用「原有 + 今天提的 − 最後剩下」相減的話,
             # 被上限擋掉的新條目與重複的 trigger 都會被記成「關閉」。
@@ -497,7 +517,7 @@ def _comparable(a, b) -> bool:
     return (cjk_a and cjk_b) or (lat_a and lat_b)
 
 
-def best_view(entities, items, titles: str = ""):
+def best_view(entities, items, titles: str = "", summary: str = ""):
     """對得上的那一筆觀點(對不上、或**分不出來**時回 `None`)。
 
     兩層判準(外審補審 F3):
@@ -535,7 +555,8 @@ def best_view(entities, items, titles: str = ""):
         their_obj = str(it.get("object") or "")
         # 對象也走同一個入口(外審 P1-3);`titles` 是今天這一群的標題,
         # 受詞在標題裡的動作(軍售)因此與 timeline 得到同一個答案。
-        my_obj = _eid.view_identity(titles, ents)["object"] if (
+        my_obj = _eid.view_identity(titles, ents,
+                                    summary=summary)["object"] if (
             their_action or today_action) else ""
         if my_obj and their_obj and my_obj != their_obj:
             continue
@@ -568,6 +589,27 @@ def best_view(entities, items, titles: str = ""):
             # 帶對象的動作:動作相同還不夠,對象也要相同(第三輪外審 F2)。
             # 算不出對象一律不當作動作命中 —— 退回標題辨識詞那一關。
             action_match = bool(my_obj) and my_obj == their_obj
+        if action_match and not _comparable(titles, it.get("title")):
+            # **跨語言:同動作+同對象只證明「可能是同一件」**(第三十一輪
+            # 外審 P1-2)。同公司的兩起資安事件、同受援國的兩批軍售 ——
+            # 中英文的辨識詞本來就零共用,incident 否決在上面被跳過,
+            # 光憑動作+對象接上去就是把**另一樁**的觀點端給模型。
+            # 要一個只屬於這一樁的錨(同幣別同量級金額 / 同類別帶單位
+            # 數量 / 非對象的第三實體)—— `cross_lang` 既有的判準,
+            # 那裡的橋接本來就是這樣做的。沒有錨 → 不接(少一次 diff
+            # 的代價遠小於對另一件事寫「應驗/落空」)。
+            import cross_lang as _cl
+            # entities 也要進錨(外審 r1,P2):第三種錨(非對象第三實體,
+            # 例如同一筆軍售兩側都點名的承包商)由 `entities` 算 ——
+            # 只傳 title/summary 的話那條錨永遠是空的。
+            if not _cl._shared_specific_anchor(
+                    {"title": titles, "summary": summary,
+                     "entities": sorted(ents)},
+                    {"title": str(it.get("title") or ""),
+                     "summary": str(it.get("summary") or ""),
+                     "entities": list(it.get("entities") or [])},
+                    obj=my_obj):
+                continue
         if not action_match and overlap < VIEW_TITLE_OVERLAP:
             continue
         scored.append(((1 if action_match else 0, round(overlap, 3)), it))
@@ -588,7 +630,8 @@ def _fmt_view(date, direction, stmt, label, sanitize=None) -> str:
             + f":{body}")[:STATEMENT_CHARS + 40]
 
 
-def view_for(entities, items, sanitize=None, titles: str = "") -> str:
+def view_for(entities, items, sanitize=None, titles: str = "",
+             summary: str = "") -> str:
     """`best_view` 的字串出口(給 packet 的 `yesterday_view`)。
 
     **只有昨天那一句** —— 首見走 `origin_view_for`(另一個欄位)。
@@ -597,21 +640,22 @@ def view_for(entities, items, sanitize=None, titles: str = "") -> str:
     敘述必然與首見高度重疊 → 被誤判成重述、耗掉唯一一次加深呼叫
     (外審抓到)。渲染與重述檢查要各看各的欄位。
     """
-    it = best_view(entities, items, titles=titles)
+    it = best_view(entities, items, titles=titles, summary=summary)
     if not it:
         return ""
     return _fmt_view(it.get("date", ""), it.get("direction"),
                      it.get("statement"), "本報", sanitize)
 
 
-def origin_view_for(entities, items, sanitize=None, titles: str = "") -> str:
+def origin_view_for(entities, items, sanitize=None, titles: str = "",
+                    summary: str = "") -> str:
     """這個事件群的**首見判斷**(沒有、或首見就是昨天時回空字串)。
 
     縱深第四批:線索延燒到第三天時,「昨天說什麼」不足以寫出
     「當初預期 → 應驗/落空」—— 那需要**最初**那一天的判斷,而檔案只留
     最新一天,首見靠 `save()` 逐日 carry(`origin` 欄位)。
     """
-    it = best_view(entities, items, titles=titles)
+    it = best_view(entities, items, titles=titles, summary=summary)
     if not it:
         return ""
     origin = it.get("origin") if isinstance(it.get("origin"), dict) else None

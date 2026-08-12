@@ -221,6 +221,15 @@ def never_an_instrument(aid) -> bool:
 #: 可能只是巧合,而這一關的用途是確認**上一步的終點就是這一步的起點**。
 _NODE_MIN_CHARS = 4
 
+#: 因果鏈交接判準裡**不算指名**的泛用二元組。這些詞出現在大半的
+#: 財經句子裡,共用它證明不了「上一步的終點就是這一步的起點」。
+#: 只在 `_same_node` 用 —— 事件身分那套 `GENERIC_NEWS_WORDS`
+#: 是另一個問題的清單(那邊挖的是新聞動詞),別合併。
+_GENERIC_NODE_TOKENS = frozenset({
+    "市場", "經濟", "資金", "投資", "價格", "需求", "供給",
+    "成長", "風險", "壓力", "趨勢", "股市", "影響", "預期"})
+
+
 def _same_node(prev_to: str, cur_from: str, subjects=()) -> bool:
     """這一步的起點,就是上一步的終點嗎。
 
@@ -242,8 +251,15 @@ def _same_node(prev_to: str, cur_from: str, subjects=()) -> bool:
         return True
     if a == b:
         return True
-    short, long_ = (a, b) if len(a) <= len(b) else (b, a)
-    if len(short) >= _NODE_MIN_CHARS and short in long_:
+    # **照抄再補充**(schema v18 明講的形狀):上一步的終點完整出現在
+    # 這一步的起點裡 —— 這個方向不設長度下限,因為短邊就是**整個**
+    # to_what,模型照規格抄它就該放行(第三十一輪外審 P1-4:
+    # 「需求」→「需求持續轉弱」是合規的接法,不是巧合)。
+    if len(a) >= 2 and a in b:
+        return True
+    # 反向(起點是終點的截取)仍要 ≥ _NODE_MIN_CHARS —— 這一向沒有
+    # 「照抄」的語意背書,太短的包含(「油價」)可能只是巧合。
+    if len(b) >= _NODE_MIN_CHARS and b in a:
         return True
     # **改寫不是斷鏈**(2026-08-11 生產,schema 已經明講要沿用之後仍然
     # 發生):上一步走到「美伊重啟談判的希望再降,雙方立場差距擴大」、
@@ -268,8 +284,15 @@ def _same_node(prev_to: str, cur_from: str, subjects=()) -> bool:
     ta = _eid2.discriminative_tokens(prev_to, subjects)
     tb = _eid2.discriminative_tokens(cur_from, subjects)
     if min(len(ta), len(tb)) < _eid2.MIN_DISCRIMINATIVE:
-        return True          # 辨識詞太少 → 判不出來,不阻擋
-    return bool(ta & tb)
+        # **判不出來 → 不接**(第三十一輪外審 P1-4)。先前這裡回 True,
+        # 於是「需求」→「毛利」這種完全斷掉的鏈確定性放行 ——
+        # 而 schema 已明講要照抄,合規的短節點在上面的包含判準就放行了,
+        # 走到這裡的短節點只剩「沒有照抄的兩個片段」。
+        return False
+    # **一個泛用詞不算指名**(同輪 P1-4):「市場需求轉弱」→「市場資金
+    # 回流」靠「市場」過關,而那是兩個節點。泛用詞清單只在這一關用
+    # (事件身分那套共用機器不動 —— 改它會牽動 timeline 與 recap)。
+    return bool((ta & tb) - _GENERIC_NODE_TOKENS)
 
 
 #: 非主角的標的要寫得出多長的傳導機制。短於這個長度的多半是

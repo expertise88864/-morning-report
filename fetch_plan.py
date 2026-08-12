@@ -50,8 +50,9 @@ def _continuing(cluster: dict, by_id: dict, timeline) -> int:
     ents = {str(e) for m in members
             for e in (by_id.get(m, {}).get("entities") or [])}
     titles = " ".join(str(by_id.get(m, {}).get("title") or "") for m in members)
+    summ = " ".join(str(by_id.get(m, {}).get("summary") or "") for m in members)
     import event_identity as _eid
-    return _eid.match_days(timeline, ents, titles)
+    return _eid.match_days(timeline, ents, titles, summary=summ)
 
 
 def _rank(cluster: dict, by_id: dict, days: int = 0) -> tuple:

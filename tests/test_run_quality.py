@@ -47,6 +47,10 @@ def _ok_manifest(**over):
                      "tokens": 391_145, "accepted": True}]},
         "news": {"fulltext_plan": {"clusters": 120, "targets": ["a", "b"],
                                    "available_news": 300}},
+        # 第三十一輪外審 P1-5:基準線**要有抽取器區塊** —— 先前它缺席
+        # 而 strict 全綠,等於把「整個能力沒接上」釘成 healthy baseline。
+        "llm_extractor": {"called": True, "items": 20, "parsed": 18,
+                          "valid": 18, "survived": 18, "outcome": "ok"},
     }
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(m.get(k), dict):
@@ -981,6 +985,9 @@ def _strict_ok() -> dict:
     """一份**真的跑過**的 manifest(每一格都有生產會寫進去的內容)。"""
     return {"git_sha": "abc", "github_run_id": "1", "run_nonce": "n",
             "report_kind": rq.MORNING_REPORT,
+            # 第三十一輪 P1-5:strict 基準線也要有抽取器區塊(缺席=接線壞)
+            "llm_extractor": {"called": True, "items": 20, "parsed": 18,
+                              "valid": 18, "survived": 18, "outcome": "ok"},
             "llm": {"analysis_origin": "luna_specialized",
                     "payload_budget": {"chars_before": 100, "chars_after": 90,
                                        "limit": 999, "over_budget": False},
@@ -1609,3 +1616,52 @@ def test_every_rejected_attempt_records_how_many_problems_remain():
            / "morning_report.py").read_text(encoding="utf-8")
     body = src.split("def _luna_analysis(")[1].split(chr(10) + "def ")[0]
     assert "problems_total=len(problems)" in body,         "駁回的那一輪沒有記剩幾條問題"
+
+
+# ------------------------------------------------- 第三十一輪外審 P1-5
+
+def test_enabled_extractor_missing_manifest_block_is_defect():
+    """**缺席不得真空通過**:接線 regression 讓抽取器整個沒被呼叫時,
+    manifest 沒有區塊 —— 先前 strict 反而全綠。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT)
+    m.pop("llm_extractor")
+    assert "event_extractor_missing" in _strict(m), _strict(m)
+
+
+def test_enabled_extractor_called_false_is_defect():
+    """called=false 而非刻意停用(例:沒金鑰)—— 能力設了卻沒跑。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm_extractor={"called": False,
+                                    "outcome": "no_api_key:deepseek"})
+    assert "event_extractor_not_called" in _strict(m), _strict(m)
+
+
+def test_disabled_extractor_is_allowed():
+    """刻意停用要留 disabled 紀錄,而 strict 不報 —— 「停用」與
+    「接線壞」必須分得開。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm_extractor={"called": False, "disabled": True,
+                                    "outcome": "disabled"})
+    bad = [f for f in _strict(m) if f.startswith("event_extractor")]
+    assert not bad, bad
+
+
+def test_the_disabled_path_actually_records_itself():
+    """生產的停用路徑真的寫那筆紀錄(宣稱要對得上實作)。"""
+    import os
+    import morning_report as mr
+    saved = dict(mr._RUN_MANIFEST)
+    old_env = os.environ.get("LLM_EVENT_EXTRACTION")
+    try:
+        mr._RUN_MANIFEST.pop("llm_extractor", None)
+        os.environ["LLM_EVENT_EXTRACTION"] = "0"
+        mr.call_llm_event_extractor([], [])
+        ex = mr._RUN_MANIFEST.get("llm_extractor")
+        assert ex and ex.get("called") is False and ex.get("disabled") is True, ex
+    finally:
+        if old_env is None:
+            os.environ.pop("LLM_EVENT_EXTRACTION", None)
+        else:
+            os.environ["LLM_EVENT_EXTRACTION"] = old_env
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)

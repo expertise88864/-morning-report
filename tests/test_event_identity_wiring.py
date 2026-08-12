@@ -110,3 +110,25 @@ def test_days_accumulate_once_per_day(tmp_path, monkeypatch):
     mr.update_event_timeline(ev, now)
     state = json.loads(f.read_text(encoding="utf-8"))
     assert state["geopolitical:伊朗:2026-08"]["days"] == 1
+
+
+def test_producer_timeline_carries_the_summary_only_recipient(
+        tmp_path, monkeypatch):
+    """第三十一輪外審 r1(P1):`match_days` 的記錄側讀 `object` /
+    `latest_summary`,而 producer 先前兩個都沒存 —— 手捏 record 的測試
+    全綠,真實 state 形狀下受詞只在 summary 的事件隔天回 0 天。
+    **timeline 一律由 `update_event_timeline()` 產生**(本檔鐵則)。"""
+    import event_identity as eid
+    _active, state = _timeline(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "美國",
+         "entities": ["美國", "台灣"],
+         "title": "美國軍售最新動向",
+         "summary": "五角大廈證實新一批軍售 package for Taiwan,交付時程未定"}],
+        days=1)
+    rec = next(iter(state.values()))
+    assert rec.get("object") == "台灣", rec
+    assert "Taiwan" in str(rec.get("latest_summary") or ""), rec
+    # 隔天:標題明寫對台 —— 要接上第 1 天那條(state 形狀是生產的)
+    got = eid.match_days(list(state.values()), ["美國", "台灣"],
+                         "美國宣布對台軍售")
+    assert got == 1, (got, rec)

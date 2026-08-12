@@ -295,8 +295,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
                 for e in (by_id.get(m, {}).get("entities") or [])}
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
+        summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
+                        for m in c["member_source_ids"])
         import event_identity as _eid
-        return _eid.match_days(timeline, ents, titles)
+        return _eid.match_days(timeline, ents, titles, summary=summ)
     # **昨日觀點掛在事件群上**(分析面縱深):prompt 要求延續事件寫增量,
     # 而模型先前沒有 diff 的對象。同日重跑的守衛在 `usable`(拿今天比
     # 今天會產生假的強化/推翻);比對身分與 continuing_days 同一套。
@@ -311,8 +313,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         # 昨天的兩件事會隨機配一個給今天的群。
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
+        summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
+                        for m in c["member_source_ids"])
         # 消毒交給最後的 `sanitize_tree` 整樹掃(它是字串葉節點之一)。
-        return _rc.view_for(ents, _recap_items, titles=titles)
+        return _rc.view_for(ents, _recap_items, titles=titles, summary=summ)
 
     def _chain(c):
         # **橫向傳導候選**(縱深第四批 C):事件的主體沿宣告過的供應鏈邊
@@ -329,7 +333,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
                 for e in (by_id.get(m, {}).get("entities") or [])}
         titles = " ".join(str(by_id.get(m, {}).get("title") or "")
                           for m in c["member_source_ids"])
-        return _rc.origin_view_for(ents, _recap_items, titles=titles)
+        summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
+                        for m in c["member_source_ids"])
+        return _rc.origin_view_for(ents, _recap_items, titles=titles,
+                                   summary=summ)
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],

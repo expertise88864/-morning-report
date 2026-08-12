@@ -480,3 +480,28 @@ def test_the_tension_canonicalizer_is_actually_called():
     i = src.index("_canonicalize_tension_ids(obj, packet)" + chr(10))
     j = src.index("problems = (_sch.validate(obj, packet)")
     assert i < j, "正規化跑在驗證後面 = 那對鏡像錯誤照樣發生"
+
+
+# --------------------------------------------- 第三十一輪外審 P1-4
+
+def test_token_poor_unrelated_nodes_are_rejected():
+    """**判不出來 → 不接**:先前辨識詞太少回 True,「需求」→「毛利」
+    這種完全斷掉的鏈確定性放行。合規的短節點(照抄)由包含判準放行,
+    走到 token 那一關的短節點只剩沒有照抄的兩個片段。"""
+    assert not _av._same_node("需求", "毛利")
+    assert not _av._same_node("出口", "房市")
+
+
+def test_a_short_node_copied_verbatim_still_joins():
+    """短節點照 schema 抄仍要放行 —— fail-closed 不得誤殺合規的接法。"""
+    assert _av._same_node("需求", "需求持續轉弱")
+    assert _av._same_node("需求", "需求")
+
+
+def test_one_generic_market_token_does_not_join_nodes():
+    """「市場需求轉弱」→「市場資金回流」共用的只有泛用詞「市場」——
+    那是兩個節點,不是交接。"""
+    assert not _av._same_node("市場需求轉弱", "市場資金回流")
+    # 非泛用的單一辨識詞仍算指名(生產誤擋三次的那個形狀)
+    assert _av._same_node("油價收 82.5 美元、新興市場資產反彈",
+                          "油價與通膨預期")

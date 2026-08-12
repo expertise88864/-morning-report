@@ -330,7 +330,7 @@ def title_related(a, b, subjects=()) -> bool:
 _title_related = title_related        # 既有呼叫端
 
 
-def match_days(records, entities, titles) -> int:
+def match_days(records, entities, titles, summary: str = "") -> int:
     """事件群接得上哪一筆 timeline 記錄的第幾天(接不上回 0)。
 
     **主體相交是必要條件,不是充分條件**(外審補審 F3/F4)。同一個主體
@@ -357,7 +357,14 @@ def match_days(records, entities, titles) -> int:
     # **不因為實體集合是空的就早退**:實體抽取會漏,標題不會 ——
     # `_subjects_meet` 的第三層(標題含記錄的主體名)是正當的比對路徑。
     keys = expand_alias(ents)
-    today_action = event_action(titles)
+    # **身分走同一個入口**(第三十一輪外審 P1-1B):先前這裡自己算
+    # `event_action(titles)` + `object_signature(action, ents)` ——
+    # 不吃 summary、對象退回主體集合。受詞只在 summary 的日子
+    # (「美國軍售最新動向」+ summary 寫 for Taiwan),timeline 已經
+    # 知道對象是台灣、這裡算不出來;actor 有沒有被抽出來也會改變
+    # 主體集合 → 同一件事兩天的 `continuing_days` 對不上。
+    _vi = view_identity(titles, entities, summary)
+    today_action = _vi["action"]
     hits = []
     for r in (records or []):
         if not isinstance(r, dict):
@@ -377,8 +384,14 @@ def match_days(records, entities, titles) -> int:
         # 只比動作的話,今天才發生的對日軍售會繼承對台那條的 7 天。
         # `NEEDS_OBJECT` 存在的理由就是這個。
         if rec_action in NEEDS_OBJECT:
-            mine = object_signature(rec_action, ents or [])
-            theirs = object_signature(rec_action, subs)
+            # 兩側都走 `action_object`(受詞優先、summary 也找);
+            # 記錄側優先用**存下來的**對象 —— 它是當天算好的身分。
+            mine = _vi["object"]
+            theirs = (str(r.get("object") or "")
+                      or action_object(rec_action, str(r.get("latest_title")
+                                                       or ""), subs,
+                                       summary=str(r.get("latest_summary")
+                                                   or "")))
             if not mine or not theirs or mine != theirs:
                 continue          # 對象對不上、或算不出來 → 保守不接
         hits.append(int(r.get("days") or 0))

@@ -12500,6 +12500,11 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     deterministic = extract_structured_events(news, mops,
                                               known_names=known_names)
     if os.environ.get("LLM_EVENT_EXTRACTION", "1") != "1":
+        # **停用也要留紀錄**(第三十一輪外審 P1-5):沒有這一筆的話,
+        # 「刻意停用」與「接線壞掉整個沒跑」在 manifest 裡長得一模一樣,
+        # 而 strict 驗收要能把後者當缺陷抓出來,就必須分得開這兩種。
+        _RUN_MANIFEST.setdefault("llm_extractor", {}).update(
+            {"called": False, "disabled": True, "outcome": "disabled"})
         return deterministic
     # r1(Codex #2,P2):**要驗被選中的那個 provider 的金鑰。**
     # 原本是 `any((DEEPSEEK, GEMINI, ANTHROPIC))` —— 少了 OPENAI,於是
@@ -14593,6 +14598,16 @@ def update_event_timeline(structured_events: list[dict],
             rec["days"] = int(rec.get("days", 0)) + 1
             rec["last_seen"] = today
         rec["latest_title"] = str(ev.get("title") or "")[:90]
+        # **比對要用的欄位就要落盤**(第三十一輪外審 r1,P1):
+        # `match_days` 的記錄側優先讀存好的 `object`、沒有才拿
+        # `latest_title + latest_summary` 重算 —— 而先前兩個都沒存,
+        # 受詞只在 summary 的事件(「美國軍售最新動向」+ for Taiwan)
+        # 隔天 `continuing_days` 直接回 0,掉出延燒排序與全文優先權。
+        rec["latest_summary"] = str(ev.get("summary") or "")[:200]
+        rec["object"] = _eid.action_object(
+            ident["action"], str(ev.get("title") or ""),
+            ident["subjects"] or subjects,
+            summary=str(ev.get("summary") or "")) if ident["action"] else ""
         # **存幾個要與比對用的一致**(外審第二輪 F2):存 12 個而後綴
         # 吃 24 個的話,隔天比對的分母是被截短的那一份 —— 重疊率被灌高,
         # 本來是 `NO_MATCH` 的兩樁事會判成 `MATCH` 而直接承接 lineage。

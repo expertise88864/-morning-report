@@ -620,7 +620,7 @@ def test_a_transmission_claim_without_a_mechanism_is_still_rejected():
 
 def test_an_arbitrary_stock_still_has_to_be_the_subject():
     """**閘門本體沒有動**:不是核心標的、也不是宣告過的供應鏈鄰居時,
-    任意個股仍然要被新聞點名。"""
+    台股走 universe 規則、美股仍要是新聞主角(P1-3 對齊後)。"""
     bad = _asset_problems("CRM", "油價上漲會壓縮軟體股的評價倍數")
     assert bad and "主角" in bad[0], bad
 
@@ -647,7 +647,10 @@ def test_the_prompt_states_the_transmission_rule():
     seg = src[i:i + 500]
     assert "transmission_candidates" in seg, seg
     assert "first_order_effect" in seg, seg
-    assert "仍然要被新聞點名" in seg, seg
+    # 第三十一輪 P1-3:prompt 與 validator 對齊 —— 台股走 universe
+    # 規則,美股仍要是新聞主角;「任意個股要被新聞點名」已撤下。
+    assert "tw_universe" in seg, seg
+    assert "美股仍然要是新聞裡的主角" in seg, seg
 
 
 # ===== 外審第一輪 =====

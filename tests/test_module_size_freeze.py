@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_875  # 外審 r1:修補帶當輪被拒版本 + 空 content 不再早退(第二套上限拆掉,`_kept` 回收不被跳過);現況 22868  # CI #506:gap ID 正規化接線(真缺口錯命名不該整份作廢;判準在 tension_refs,這裡只有接線與manifest 痕跡,與張力 ID 那一對同形狀);現況 22849  # 2026-08-11 外審 r1(P2):每一次 HTTP 失敗都自己留紀錄 —— 精簡重試若也失敗,換模型時 `_backoff_reason` 清空,原本那個 400 的理由整個消失;現況 22832  # 2026-08-11:精簡重試要說得出為什麼(400 理由進 manifest + `llm:slim_retry:<role>` 降級)—— OpenAI 那條路徑早就這樣做,DeepSeek 這條漏了;現況 22803  # 2026-08-11 CI #495:張力 ID 正規化接線(`tension_resolutions[].tension_id` 不是證據欄位,證據那條走不到它) —— 判準在 `tension_refs`,這裡只有接線與 manifest 痕跡,與既有的證據 ID 接線是同一對;現況 22788  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_890  # 第三十一輪外審 r1:timeline 落盤補 object/latest_summary(match_days 記錄側要讀的欄位);現況 22885  # 外審 r1:修補帶當輪被拒版本 + 空 content 不再早退(第二套上限拆掉,`_kept` 回收不被跳過);現況 22868  # CI #506:gap ID 正規化接線(真缺口錯命名不該整份作廢;判準在 tension_refs,這裡只有接線與manifest 痕跡,與張力 ID 那一對同形狀);現況 22849  # 2026-08-11 外審 r1(P2):每一次 HTTP 失敗都自己留紀錄 —— 精簡重試若也失敗,換模型時 `_backoff_reason` 清空,原本那個 400 的理由整個消失;現況 22832  # 2026-08-11:精簡重試要說得出為什麼(400 理由進 manifest + `llm:slim_retry:<role>` 降級)—— OpenAI 那條路徑早就這樣做,DeepSeek 這條漏了;現況 22803  # 2026-08-11 CI #495:張力 ID 正規化接線(`tension_resolutions[].tension_id` 不是證據欄位,證據那條走不到它) —— 判準在 `tension_refs`,這裡只有接線與 manifest 痕跡,與既有的證據 ID 接線是同一對;現況 22788  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -230,7 +230,8 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:state 裡混著兩代身分要看得見(`legacy_remaining` 記了卻沒人讀)
     # 第二十七輪外審 P1-2:strict 的語意契約(「不是 None」不算跑過)
     # —— 四格各配一個判準 + 計畫/report_kind 必填。**實測 444 行**。
-    "run_quality.py": 555,
+    # 第三十一輪外審:抽取器缺席/沒被呼叫不得真空通過
+    "run_quality.py": 585,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -264,7 +265,8 @@ MODULE_CEILINGS = {
     # Commit C:top_events 進 packet(EVIDENCE v17)。實測 431。
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
-    "evidence_packet.py": 560,
+    # 第三十一輪外審:identity 消費端補 summary
+    "evidence_packet.py": 575,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -326,7 +328,8 @@ MODULE_CEILINGS = {
     # 2026-08-09 P2:`save()` 回三態,不是布林
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
-    "analysis_recap.py": 680,
+    # 第三十一輪外審:watch 容量掉條數的 telemetry
+    "analysis_recap.py": 725,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。
@@ -542,7 +545,8 @@ MODULE_CEILINGS = {
     # 第二十七輪外審 P1-5:法域不是標的 + 撞名的走上下文判準
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
     # CI #502:need 集合改讀 required_disclosures(單一真相來源)
-    "analysis_validate.py": 975,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # 第三十一輪外審:鏈交接拆 fail-open(泛用詞清單)
+    "analysis_validate.py": 1000,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

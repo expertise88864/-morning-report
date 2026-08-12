@@ -79,7 +79,9 @@ from __future__ import annotations
 #: v34(2026-08-12 CI #502):data_gaps 的 need 集合改讀
 #: `packet["required_disclosures"]`(模型看到的那一格)——
 #: `gap:payload_omitted:*` 先前被自己的驗證器判成回填。
-GROUNDING_VERSION = 34
+#: v35(第三十一輪外審 P1-4):鏈交接拆掉兩個 fail-open —— 辨識詞太少
+#: 改不接(照抄的短節點由包含判準放行)、單一泛用詞不算指名。
+GROUNDING_VERSION = 35
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -145,11 +145,21 @@ def _chain_probes(pk) -> list:
     out = []
     #    油價與通膨預期=接走上一步列舉的其中一個結果(要放行);
     #    生技新藥…=完全不相干(要擋)。兩格只靠這一條規則分勝負。
+    #    v35 再加三格:token 太少的斷鏈(要擋)、泛用詞交接(要擋)、
+    #    短節點照抄(要放行)—— fail-open 拆掉之後,指紋要看得見這三條。
     for nxt in ("油價與通膨預期", "生技新藥三期試驗解盲解盲"):
         o = fx.valid_analysis()
         steps = o["top_news_analysis"][0]["mechanism_steps"]
         steps[0]["to_what"] = prev
         steps[1]["from_what"] = nxt
+        out.append(sch.validate(o, pk))
+    for prev2, nxt2 in (("需求", "毛利"),
+                        ("市場需求轉弱", "市場資金回流"),
+                        ("需求", "需求持續轉弱")):
+        o = fx.valid_analysis()
+        steps = o["top_news_analysis"][0]["mechanism_steps"]
+        steps[0]["to_what"] = prev2
+        steps[1]["from_what"] = nxt2
         out.append(sch.validate(o, pk))
     return out
 
@@ -675,7 +685,7 @@ _FROZEN = {
     # v26(分析面縱深):延續事件的敘述要相對 `yesterday_view` 定位
     # (強化/轉弱/翻轉),且不得引用它替今天背書。
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
-    "primary_profile_version":  (36, "20f7a2a76c695d7a"),
+    "primary_profile_version":  (37, "e8bd7487ff119c7f"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
@@ -768,7 +778,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":  (34, "bb906443c52928b4"),
+    "grounding_version":  (35, "db0c56b77fb37ffe"),
 }
 
 

@@ -477,7 +477,7 @@ def test_the_saved_side_is_normalised_too():
     (上一條的昨日實體本來就是標準名,勝負分不出來 —— 突變驗證抓到。)"""
     pk = _packet(
         news=[{"source_item_id": "n1",
-               "title": "US announces new sanctions package on Iran",
+               "title": "US announces $2 billion sanctions package on Iran",
                "entities": ["United States", "Iran"], "source": "X",
                "source_name": "X"}], date="2026-08-07")
     obj = fx.valid_analysis()
@@ -486,8 +486,9 @@ def test_the_saved_side_is_normalised_too():
     obj["top_news_analysis"] = []
     items = rc.usable(rc.extract(obj, pk), "2026-08-08")
     assert items[0]["entities"] == ["伊朗", "美國"], items[0]["entities"]
+    # 第三十一輪 P1-2 起,跨語言還需要一個逐樁的錨(這裡:同量級金額)。
     assert rc.view_for({"美國", "伊朗"}, items,
-                       titles="美國宣布對伊朗新一輪經濟制裁措施")
+                       titles="美國宣布對伊朗20億美元制裁方案")
 
 
 def test_nothing_to_save_is_not_a_failure(tmp_path):
@@ -754,24 +755,100 @@ def test_recap_and_timeline_answer_with_the_same_identity():
     assert view["incident_tokens"] == ident["incident_tokens"]
 
 
-def test_a_cross_language_continuation_is_not_vetoed():
-    """**跨語言的兩側本來就不重疊**:英文報導與中文報導講同一件事時
-    辨識詞一個都不共用 —— 那是「比不出來」,不是「不是同一樁」。
-    加了逐樁判準之後,這條(R4-F2)不得被誤殺。"""
-    y = _item("US announces new sanctions package on Iran", ["伊朗", "美國"])
+def test_a_cross_language_continuation_needs_an_incident_anchor():
+    """**跨語言:同動作+同對象只證明「可能是同一件」**(第三十一輪 P1-2)。
+
+    同一目標的兩輪制裁、同公司的兩起資安事件 —— 中英文辨識詞零共用,
+    incident 否決比不出來;先前光憑動作+對象就接,今天這一輪會拿到
+    上一輪的昨日觀點,模型被要求對**另一樁**寫「應驗/落空」。
+    現在要一個只屬於這一樁的錨(同量級金額/帶單位數量/第三實體)。
+    """
+    y = _item("US announces $2 billion sanctions package on Iran",
+              ["伊朗", "美國"])
+    y["summary"] = ""
     assert rc._comparable("US announces new sanctions on Iran",
                           "美國宣布對伊朗制裁") is False
+    # 無錨 → 不接(可能是另一輪制裁)
     assert rc.best_view(["伊朗", "美國"], [y],
-                        titles="美國宣布對伊朗新一輪經濟制裁措施") is not None
-    # **混合書寫也算比不出來**(外審 r1):台灣的英文報導常留著中文
-    # 公司名 —— 只看「有沒有兩個漢字」會把它判成中文標題,而它與真的
-    # 中文報導比,辨識詞照樣是零。
+                        titles="美國宣布對伊朗新一輪經濟制裁措施") is None
+    # 同量級金額錨 → 接(cross_lang 的既有判準)
+    assert rc.best_view(["伊朗", "美國"], [y],
+                        titles="美國宣布對伊朗20億美元制裁方案") is not None
+
+
+def test_two_cross_language_incidents_same_company_stay_separate():
+    """同公司的中英文兩起資安事件(reviewer 的原始反例)——
+    無錨時不得互相認領觀點。"""
+    y = _item("台積電遭勒索軟體攻擊,客戶資料外洩", ["台積電"])
+    y["summary"] = ""
+    got = rc.best_view(["台積電"], [y],
+                       titles="TSMC reports separate supplier-portal "
+                              "data breach")
+    assert got is None, got
+    # **混合書寫同樣要錨**(政策一致):辨識詞零共用時「比不出來」,
+    # 而比不出來的預設從「接」改成「不接」—— 對另一樁寫「應驗/落空」
+    # 比少一次 diff 更糟。
     mixed = _item("台積電 hit by ransomware; fabs halted temporarily",
                   ["台積電"])
+    mixed["summary"] = ""
     assert rc._comparable(mixed["title"], "台積電遭網路攻擊 供應鏈系統中斷")         is False
     assert rc.best_view(["台積電"], [mixed],
-                        titles="台積電勒索軟體事件 產線今日全面復工") is not None
+                        titles="台積電勒索軟體事件 產線今日全面復工") is None
     # 中文標題裡的英文產品名不影響判定(比例,不是有沒有)
     assert rc._comparable("台積電 CoWoS 產能傳大幅擴充",
                           "台積電先進封裝擴產再加碼") is True
 
+
+
+def test_extract_reads_the_recipient_from_the_summary():
+    """**寫入端也要吃 summary**(第三十一輪 P1-1A):受詞只在 summary 的
+    軍售新聞,recap 存下的對象要與 timeline 同一個答案(台灣),
+    否則明天標題寫明「對台」時,兩天的對象對不上、觀點接不回來。"""
+    pk = _packet(
+        news=[{"source_item_id": "n1",
+               "title": "美國軍售最新動向",
+               "summary": "五角大廈證實新一批軍售 package for Taiwan,對台灣交付時程未定",
+               "entities": ["美國", "台灣"], "source": "X",
+               "source_name": "X"}], date="2026-08-07")
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n1",
+                               statement="軍售對供應鏈的影響")]
+    obj["top_news_analysis"] = []
+    items = rc.usable(rc.extract(obj, pk), "2026-08-08")
+    assert items and items[0]["object"] == "台灣", items
+    # 錨要用的 summary 也存下來(跨語言那一關讀它)
+    assert "Taiwan" in str(items[0].get("summary") or ""), items[0]
+
+
+def test_the_cross_language_anchor_receives_the_entities(monkeypatch):
+    """外審 r1(P2):第三種錨(非對象第三實體)由 `entities` 算 ——
+    只傳 title/summary 的話那條錨永遠是空的。**在邊界釘**:
+    best_view 傳給錨的兩個 dict 都要帶 entities。"""
+    import cross_lang as cl
+    seen = {}
+
+    def _spy(a, b, *, obj=""):
+        seen["a"], seen["b"] = a, b
+        return False
+
+    monkeypatch.setattr(cl, "_shared_specific_anchor", _spy)
+    y = _item("US announces new arms sale to Taiwan", ["美國", "台灣"])
+    y["summary"] = ""
+    rc.best_view(["美國", "台灣"], [y], titles="美國宣布對台軍售")
+    assert seen, "跨語言路徑沒有走到錨"
+    assert seen["a"].get("entities") and seen["b"].get("entities"), seen
+
+
+def test_a_third_entity_anchor_is_reachable_with_entities():
+    """錨本身:對象之外、兩側都點名且有別名組的公司(台積電)接得上 ——
+    entities 沒進 dict 時這條永遠 False(那正是修掉的洞)。"""
+    import cross_lang as cl
+    ents = ["美國", "台灣", "台積電"]
+    assert cl._shared_specific_anchor(
+        {"title": "美國宣布對台軍售", "summary": "", "entities": ents},
+        {"title": "US announces new arms sale to Taiwan", "summary": "",
+         "entities": ents}, obj="台灣") is True
+    assert cl._shared_specific_anchor(
+        {"title": "美國宣布對台軍售", "summary": ""},
+        {"title": "US announces new arms sale to Taiwan", "summary": ""},
+        obj="台灣") is False

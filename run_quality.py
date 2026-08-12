@@ -484,6 +484,22 @@ def assess(manifest, *, mode: str = "watchdog",
         # capability_health 那邊早就把它列進 `inactive_capabilities`,
         # 只是驗收沒有讀。
         _ex = m.get("llm_extractor")
+        # **缺席不得真空通過**(第三十一輪外審 P1-5):先前只在
+        # `called is True` 時檢查 —— 接線 regression 讓抽取器整個沒被
+        # 呼叫時,manifest 沒有這個區塊,strict 反而全綠。三種形狀分開:
+        #   * 區塊不存在        → 接線壞了(停用路徑也會留 called=false);
+        #   * called=false      → 刻意停用(disabled)不報;
+        #                          沒金鑰等其他原因 → 能力沒跑,報出來;
+        #   * called=true       → 走既有的零產出判準。
+        if not isinstance(_ex, dict):
+            add("event_extractor_missing", "defect",
+                "manifest 沒有 llm_extractor 區塊 —— 抽取器整個沒被接上"
+                "(刻意停用也會留 called=false 的紀錄,缺席只能是接線壞)")
+        elif _ex.get("called") is not True:
+            if not _ex.get("disabled"):
+                add("event_extractor_not_called", "defect",
+                    f"抽取器沒有被呼叫(outcome={_ex.get('outcome')!r})——"
+                    " 能力設了卻沒跑,與「今天沒事件」在信裡長得一樣")
         if isinstance(_ex, dict) and _ex.get("called") is True:
             _items = _safe_int(_ex.get("items"))
             # **判準與 capability_health 同一條**(外審 r1):那邊用的是

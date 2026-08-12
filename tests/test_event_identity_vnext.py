@@ -1244,3 +1244,43 @@ def test_the_furniture_tables_are_declarations_not_heuristics():
     assert not (bad & _SECTION_LABELS)
     assert _OUTLET_SUFFIX_WORDS and _SECTION_LABELS
 
+
+
+# ------------------------------------------------- 第三十一輪外審 P1-1
+
+def test_summary_only_recipient_matches_in_match_days():
+    """受詞只在 summary 的日子,`match_days` 要與 timeline 同一個答案。
+
+    先前它自己算 `event_action(titles)` + `object_signature(action, ents)`
+    —— 不吃 summary、對象退回主體集合;timeline 早知道受援國才是對象。
+    """
+    import event_identity as eid
+    rec = [{"subjects": ["美國", "台灣"], "action": "arms_sale",
+            "object": "台灣", "days": 3,
+            "latest_title": "美國宣布對台軍售", "latest_summary": ""}]
+    got = eid.match_days(rec, ["美國", "台灣"], "美國軍售最新動向",
+                         summary="package intended for Taiwan")
+    assert got == 3, got
+
+
+def test_actor_presence_does_not_change_continuing_days():
+    """actor 有沒有被實體抽取抽出來,不改事件身分(受詞才是身分)。"""
+    import event_identity as eid
+    rec = [{"subjects": ["台灣"], "action": "arms_sale", "object": "台灣",
+            "days": 5, "latest_title": "對台軍售追蹤", "latest_summary": ""}]
+    with_actor = eid.match_days(rec, ["美國", "台灣"], "美國宣布對台軍售")
+    without = eid.match_days(rec, ["台灣"], "對台軍售新進展")
+    assert with_actor == without == 5, (with_actor, without)
+
+
+def test_a_stored_object_wins_over_recomputation():
+    """記錄側優先用**存下來的**對象 —— 它是當天(受詞可能只在當天的
+    summary)算好的身分;重算只能看 subjects,而受援國不一定在裡面。"""
+    import event_identity as eid
+    rec = [{"subjects": ["美國"], "action": "arms_sale",
+            "object": "台灣", "days": 4,
+            "latest_title": "美國軍售案追蹤", "latest_summary": ""}]
+    # 今天明確是對台軍售;記錄的 subjects 沒有台灣(當天從 summary 抽的)
+    # —— 只有讀「存下來的對象」才接得上。
+    got = eid.match_days(rec, ["美國", "台灣"], "美國宣布對台軍售")
+    assert got == 4, got

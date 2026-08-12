@@ -4926,6 +4926,45 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73841821",
+        "title": "NYC delivery model detour",
+        "published": "Wed, 12 Aug 2026 10:35:54 +0000",
+        "processed_at": "2026-08-12T14:36:44Z",
+        "digest": {
+          "summary_points": [
+            "紐約市提出《送貨保護法》,要求第三方配送公司直接僱用最後一哩工人,主要針對亞馬遜,若通過將增加其營運成本,並可能迫使亞馬遜考慮將配送業務移出紐約。",
+            "加州法官初步拒絕以「逆佔有原則」要求 Edison International 承擔伊頓大火數十億美元財產損失,Edison 股價上漲 3%,若裁定成為最終判決,Edison 可主張免除無過失責任。",
+            "雲端 AI 基礎設施供應商 CoreWeave 公佈 Q2 營收近乎倍增,股價大漲 17%,顯示 AI 基礎設施需求持續加速。"
+          ],
+          "tickers": [
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "紐約市《送貨保護法》要求直接僱用最後一哩工人,增加營運成本,並可能迫使亞馬遜重新考慮紐約配送布局。"
+            },
+            {
+              "name": "Edison International",
+              "code": "EIX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "加州法官初步拒絕追究伊頓大火賠償責任,若裁定確定可避免數十億美元損失,股價上漲 3%。"
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 營收年增近一倍,AI 基礎設施需求加速,財報優於預期,股價上漲 17%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Who benefits as AI data centers create a power shortage?"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73827346",
         "title": "The AI watermark you can't erase",
         "published": "Tue, 11 Aug 2026 18:14:41 +0000",
@@ -5324,38 +5363,6 @@
           "notable_quote": "Steam engines were used to create the next steam engine."
         },
         "shown_at": "2026-08-04T23:06:58Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73395108",
-        "title": "Peloton's costly detour",
-        "published": "Mon, 03 Aug 2026 16:46:11 +0000",
-        "processed_at": "2026-08-03T20:45:39Z",
-        "digest": {
-          "summary_points": [
-            "億貝遭 Wells Fargo 降評至「減碼」(Underweight),目標價下修至 92 美元,主因旗下 Depop 為應對 Vintage 競爭而增加行銷支出,恐壓縮獲利。",
-            "Circle Internet Group 多空分歧:摩根士丹利以 USDC 餘額自 2025 年第三季以來未成長為由降評至「減碼」,TD Cowan 則以買入評級開始追蹤,認為市場低估其轉型為金融基礎設施平台的潛力。"
-          ],
-          "tickers": [
-            {
-              "name": "eBay",
-              "code": "EBAY",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Wells Fargo 降評,Depop 行銷支出增加恐壓縮獲利"
-            },
-            {
-              "name": "Circle Internet Group",
-              "code": "CRCL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "摩根士丹利降評至 underweight,TD Cowan 以買入開始覆蓋,多空分歧"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "we believe Circle is steadily evolving into a broader financial infrastructure platform spanning payments, treasury, tokenized RWA, interoperability, and developer services."
-        },
-        "shown_at": "2026-08-03T23:01:47Z"
       }
     ]
   },
@@ -7092,6 +7099,28 @@
   "fwdguidance": {
     "name": "Forward Guidance",
     "episodes": [
+      {
+        "guid": "5cfaa964-95cb-11f1-8ae8-6b9f8f5585ff",
+        "title": "The Growth Strategy Trapping The Fed | Darius Dale",
+        "published": "Wed, 12 Aug 2026 10:00:00 -0000",
+        "processed_at": "2026-08-12T14:44:13Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為目前市場處於「風險偏好再通膨」的市場機制，自2025年4月進入paradigm C（經濟過熱）以來，股市出現泡沫化條件，債券長端因無法與名目GDP成長競爭而承壓。",
+            "主持人模型顯示r-star（實質中性利率）在過去3-4個月上升約50-75個基點，目前落在1.47%-1.78%，高於實質有效聯邦基金利率1.21%，代表全球資本供給稀缺性增加，投資難度升高。",
+            "主持人警告，若聯準會真的升息，對風險資產將是利空；但他認為聯準會最終將走向鴿派，透過「play action pass」策略——先週期性緊縮、再結構性寬鬆，相關政策建議可能在未來3-6個月出爐。",
+            "主持人表示，財政部長貝森特正盡力避免債市失控，選擇Kevin Warsh為聯準會主席是為了以「穿鷹派外衣的鴿派」來安撫債市與匯市，防止美元貶值導致長端公債失去信心。",
+            "主持人模型估算，10年期公債公平價值約5.8%、30年期在6%以上，因為期限溢價回歸歷史常態；若聯準會不升息來安撫債市，長端利率恐飆升。",
+            "主持人認為成功關鍵是盡量停留在paradigm C（成長），避免過度緊縮或過度寬鬆，因為劇烈削減開支可能導致戰爭，過度印鈔可能導致內戰。",
+            "主持人強調系統化投資與正偏態報酬分布的重要性，其KISS策略（60%股票、30%黃金、10%比特幣）自2023年1月上線以來年化報酬約16%，最大回撤-12%，優於60/40（-23%）與S&P 500（-34%）。",
+            "主持人指出，將風險管理信號（Dr. Mo）應用於全球股市可額外獲得11%的累積報酬、比特幣可額外增加18%，且能避開大幅波動與嚴重回撤。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為目前市場處於風險偏好再通膨機制，短期至中期相對看好股票、黃金、比特幣與大宗商品，但看空美元與公債；整體經濟偏熱，債市存在供給失衡風險。",
+          "action_view": "主持人建議投資人提升Alpha策略比重，因Beta策略在目前環境下較為艱困；應採用系統化風險管理（如KISS與Dr.Mo），讓資產保持接近高水位，避免大幅回撤。KISS策略為60%股票、30%黃金、10%比特幣，目前未滿倉。",
+          "notable_quote": "You have to have investors to have a confidence in the soundness of the dollar as money in order to have a bond market."
+        }
+      },
       {
         "guid": "702b3a2e-91f4-11f1-8e04-e765401f1c74",
         "title": "Washington Is Suppressing Volatility To Keep The AI Boom Alive | Weekly Roundup",

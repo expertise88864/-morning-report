@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 22_835  # 2026-08-11 外審 r1(P2):每一次 HTTP 失敗都自己留紀錄 —— 精簡重試若也失敗,換模型時 `_backoff_reason` 清空,原本那個 400 的理由整個消失;現況 22832  # 2026-08-11:精簡重試要說得出為什麼(400 理由進 manifest + `llm:slim_retry:<role>` 降級)—— OpenAI 那條路徑早就這樣做,DeepSeek 這條漏了;現況 22803  # 2026-08-11 CI #495:張力 ID 正規化接線(`tension_resolutions[].tension_id` 不是證據欄位,證據那條走不到它) —— 判準在 `tension_refs`,這裡只有接線與 manifest 痕跡,與既有的證據 ID 接線是同一對;現況 22788  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 22_860  # CI #506:gap ID 正規化接線(真缺口錯命名不該整份作廢;判準在 tension_refs,這裡只有接線與manifest 痕跡,與張力 ID 那一對同形狀);現況 22849  # 2026-08-11 外審 r1(P2):每一次 HTTP 失敗都自己留紀錄 —— 精簡重試若也失敗,換模型時 `_backoff_reason` 清空,原本那個 400 的理由整個消失;現況 22832  # 2026-08-11:精簡重試要說得出為什麼(400 理由進 manifest + `llm:slim_retry:<role>` 降級)—— OpenAI 那條路徑早就這樣做,DeepSeek 這條漏了;現況 22803  # 2026-08-11 CI #495:張力 ID 正規化接線(`tension_resolutions[].tension_id` 不是證據欄位,證據那條走不到它) —— 判準在 `tension_refs`,這裡只有接線與 manifest 痕跡,與既有的證據 ID 接線是同一對;現況 22788  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -584,7 +584,9 @@ MODULE_CEILINGS = {
     # CI #495:多了「補前綴」的查詢(`known_tension_ids` /
     # `canonicalize_tension_ids`)—— 判準留在這個模組,
     # 接線在 morning_report,與證據 ID 那一對同一個形狀。
-    "tension_refs.py": 175,
+    # CI #506:再加自發現缺口的 `canonicalize_gap_ids`(與張力前綴
+    # 同形狀的第二個正規化;判準集中在本模組)。
+    "tension_refs.py": 210,
 }
 
 #: **明列的豁免**:這些根模組目前沒有行數上限。

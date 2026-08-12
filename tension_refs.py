@@ -123,6 +123,40 @@ def canonicalize_tension_ids(obj, detected: Optional[dict]) -> list:
     return out
 
 
+def canonicalize_gap_ids(obj, packet) -> list:
+    """把自發現缺口的 `gap:<標籤>` 就地改寫成 `gap:other:<標籤>`。
+
+    2026-08-12 CI #506:模型揭露了三個**真的**自發現缺口(當天籌碼
+    確實缺、新聞抓取確實失敗),命名卻寫 `gap:model_calibration` /
+    `gap:news_coverage` / `gap:taifex_top10_net` 而不是規定的
+    `gap:other:<標籤>` —— 修補輪連同全量問題清單也沒收斂,整份作廢。
+    意圖零歧義(前綴都是 `gap:`、又不是本報宣告的任何缺口),
+    與張力前綴(`canonicalize_tension_ids`)同一形狀、同一個解法。
+
+    **必要缺口的 ID 一個都不動**:改寫只作用在「不在 need 集合」的
+    那些 —— 動到 need 裡的 ID 會讓「沒有揭露它」誤報,守衛照舊。
+    改寫不驗真偽:`gap:other:<標籤>` 本來就是模型自由填的,
+    這裡只是把名字搬進契約規定的命名空間。
+    """
+    rows = [r for r in ((obj or {}).get("data_gaps") or [])
+            if isinstance(r, dict)]
+    if not rows:
+        return []
+    rd = (packet or {}).get("required_disclosures")
+    need = (set(rd) if isinstance(rd, dict)
+            else set(required_gap_ids((packet or {}).get("signal_tensions"))))
+    out = []
+    for r in rows:
+        gid = str(r.get("gap_id") or "")
+        if (not gid.startswith("gap:") or gid in need
+                or gid == "gap:other" or gid.startswith("gap:other:")):
+            continue
+        fixed = "gap:other:" + gid[len("gap:"):]
+        r["gap_id"] = fixed
+        out.append((gid, fixed))
+    return out
+
+
 def required_tension_ids(detected: Optional[dict]) -> set:
     """**必須被橫向綜合正面處理**的張力(stale 的不強制)。"""
     return {f"tension:{it['tension_id']}"

@@ -363,3 +363,63 @@ def test_a_fabricated_gap_is_still_fabricated():
                             "what_is_missing": "x",
                             "impact_on_conclusions": "y"}])
     assert [p for p in sch.validate(obj, pk) if "而今天沒有這一項" in p]
+
+
+# ------------------------------------------------- 2026-08-12 CI #506
+
+def test_a_mislabeled_self_found_gap_is_moved_into_the_contract():
+    """**真缺口、錯命名,不該整份作廢。** 模型揭露了三個真的自發現缺口
+    (當天籌碼確實缺、新聞抓取確實失敗),命名寫 `gap:taifex_top10_net`
+    而不是 `gap:other:taifex_top10_net` —— 意圖零歧義,與張力前綴同一
+    形狀、同一個解法(正規化)。"""
+    pk = _packet()
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = ([{"gap_id": g, "what_is_missing": "x",
+                          "impact_on_conclusions": "y"}
+                         for g in tr.required_gap_ids(pk["signal_tensions"])]
+                        + [{"gap_id": "gap:taifex_top10_net",
+                            "what_is_missing": "TAIFEX 來源日期錯位",
+                            "impact_on_conclusions": "籌碼維度缺席"}])
+    changed = tr.canonicalize_gap_ids(obj, pk)
+    assert changed == [("gap:taifex_top10_net",
+                        "gap:other:taifex_top10_net")]
+    assert not [p for p in sch.validate(obj, pk) if "而今天沒有這一項" in p]
+
+
+def test_a_needed_gap_id_is_never_rewritten():
+    """**need 裡的 ID 一個都不動** —— 動了會讓「沒有揭露它」誤報,
+    等於把守衛拆掉。"""
+    pk = _packet()
+    need = sorted(tr.required_gap_ids(pk["signal_tensions"]))
+    assert need, "這份 packet 本來就該有必要缺口"
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = [{"gap_id": g, "what_is_missing": "x",
+                         "impact_on_conclusions": "y"} for g in need]
+    assert tr.canonicalize_gap_ids(obj, pk) == []
+    assert not [p for p in sch.validate(obj, pk) if "沒有揭露它" in p]
+
+
+def test_gap_other_shapes_pass_through_untouched():
+    pk = _packet()
+    obj = {"data_gaps": [{"gap_id": "gap:other"},
+                         {"gap_id": "gap:other:cpi_pending"},
+                         {"gap_id": "不是 gap 開頭"}]}
+    assert tr.canonicalize_gap_ids(obj, pk) == []
+    got = [r["gap_id"] for r in obj["data_gaps"]]
+    assert got == ["gap:other", "gap:other:cpi_pending", "不是 gap 開頭"]
+
+
+def test_the_gap_canonicalizer_is_actually_called_before_validation():
+    """沒有呼叫端的函式,docstring 的宣稱就是假的 —— 而且要跑在驗證之前。"""
+    import ast
+    import io as _io
+    from pathlib import Path
+    src = _io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                   encoding="utf-8").read()
+    calls = [n for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "_canonicalize_gap_ids"]
+    assert calls, "生產路徑沒有呼叫它"
+    i = src.index("_canonicalize_gap_ids(obj, packet)" + chr(10))
+    j = src.index("problems = (_sch.validate(obj, packet)")
+    assert i < j, "正規化跑在驗證後面 = 駁回照樣發生"

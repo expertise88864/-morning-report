@@ -12886,6 +12886,26 @@ def _canonicalize_tension_ids(obj, packet: dict) -> None:
           + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
 
 
+def _canonicalize_gap_ids(obj, packet: dict) -> None:
+    """把自發現缺口的 `gap:<標籤>` 改寫進契約命名空間(判準見 tension_refs)。"""
+    if not isinstance(obj, dict):
+        return
+    try:
+        import tension_refs as _tr
+        changed = _tr.canonicalize_gap_ids(obj, packet)
+    except Exception as e:                              # noqa: BLE001
+        print(f"[llm] gap ID 正規化略過:{type(e).__name__}: {e}",
+              file=sys.stderr)
+        return
+    if not changed:
+        return
+    slot = _RUN_MANIFEST.setdefault("llm", {})
+    slot["gap_ids_canonicalized"] = len(changed)
+    slot["gap_id_rewrites"] = [f"{a}→{b}" for a, b in changed[:6]]
+    print(f"[llm] 自發現缺口改寫進 gap:other {len(changed)} 筆:"
+          + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
+
+
 def _prune_phantom_audit_ids(obj, packet: dict):
     """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
 
@@ -13150,6 +13170,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 張力 ID 是**另一組命名空間**(`tension_resolutions[].tension_id`
             # 不是證據欄位),所以上一行走不到它 —— 見 CI #495。
             _canonicalize_tension_ids(obj, packet)
+            # 自發現缺口的命名也是(CI #506:`gap:model_calibration` ——
+            # 真缺口、錯命名,整份作廢)。need 裡的 ID 一個都不動。
+            _canonicalize_gap_ids(obj, packet)
             obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」

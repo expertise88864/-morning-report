@@ -301,3 +301,65 @@ def test_a_self_found_gap_may_carry_a_label():
         got = bool([p for p in sch.validate(obj, pk)
                     if "而今天沒有這一項" in p])
         assert got == blocked, (extra, got)
+
+
+# ------------------------------------------------- 2026-08-12 CI #502
+
+def _trimmed_packet():
+    """走**生產的裁切路徑**產生 `gap:payload_omitted:*`(不是手捏)。"""
+    import payload_budget as pb
+    pk = ep.build({"QQQ": {"close": 500.0},
+                   "HISTORY": {"rows": ["x" * 400] * 40}},
+                  {}, {}, fx.news(), [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    pk["market"]["HISTORY"] = {"rows": ["x" * 400] * 40}
+    trimmed, report = pb.trim(pk, limit=len(pb._json(pk)) - 1
+                              if hasattr(pb, "_json") else 8_000)
+    assert any("HISTORY" in t["block"] for t in report["trimmed"]), report
+    return trimmed
+
+
+def test_a_disclosed_payload_omission_is_not_a_fabricated_gap():
+    """**need 集合要讀模型看到的那一格**(CI #502)。
+
+    `payload_budget` 把 `gap:payload_omitted:HISTORY` 寫進
+    `required_disclosures` 給模型;模型照做揭露,而驗證器先前重新從
+    signal_tensions 推導 —— 兩個真相來源,模型聽了其中一個、
+    被另一個判成「回填不存在的缺口」,整份特化分析作廢。
+    """
+    pk = _trimmed_packet()
+    assert "gap:payload_omitted:HISTORY" in pk["required_disclosures"]
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = [{"gap_id": g, "what_is_missing": "x",
+                         "impact_on_conclusions": "y"}
+                        for g in pk["required_disclosures"]]
+    assert not [p for p in sch.validate(obj, pk)
+                if "而今天沒有這一項" in p]
+
+
+def test_an_omitted_block_must_actually_be_disclosed():
+    """反向也要接上線:「被裁掉的區塊必須揭露」先前只寫在 packet 裡,
+    **沒有任何檢查執行它** —— 沒有呼叫端的宣稱是假的。"""
+    pk = _trimmed_packet()
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = [{"gap_id": g, "what_is_missing": "x",
+                         "impact_on_conclusions": "y"}
+                        for g in pk["required_disclosures"]
+                        if not g.startswith("gap:payload_omitted:")]
+    missing = [p for p in sch.validate(obj, pk)
+               if "沒有揭露它" in p and "payload_omitted" in p]
+    assert missing, "裁掉的區塊沒揭露卻通過了"
+
+
+def test_a_fabricated_gap_is_still_fabricated():
+    """收窄的證明:讀 `required_disclosures` 沒有把「回填宣告過的缺口」
+    那道守衛一起放掉。"""
+    pk = _trimmed_packet()
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = ([{"gap_id": g, "what_is_missing": "x",
+                          "impact_on_conclusions": "y"}
+                         for g in pk["required_disclosures"]]
+                        + [{"gap_id": "gap:payload_omitted:捏造的區塊",
+                            "what_is_missing": "x",
+                            "impact_on_conclusions": "y"}])
+    assert [p for p in sch.validate(obj, pk) if "而今天沒有這一項" in p]

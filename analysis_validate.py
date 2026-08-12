@@ -888,7 +888,18 @@ def validate(obj, evidence_ids) -> list:
         # data_gaps 非空就通過,於是三項橫向檢查全部沒跑成、而模型寫一句
         # 「缺某公司的資本支出金額」就過關 —— 收件人會以為那三項查過了。
         import tension_refs as _tr
-        need_gaps = _tr.required_gap_ids(packet.get("signal_tensions"))
+        # **need 集合要讀模型看到的那一格**(2026-08-12 CI #502)。
+        # `payload_budget` 裁掉區塊時會把 `gap:payload_omitted:<區塊>` 寫進
+        # packet["required_disclosures"] 給模型 —— 模型照做揭露,而這裡
+        # 先前**重新**從 signal_tensions 推導,不讀那一格:兩個真相來源,
+        # 模型聽了其中一個、被另一個判成「回填不存在的缺口」,整份作廢。
+        # 平日兩者相等(ep.build 就是拿 required_gap_ids 填的,有測試釘著);
+        # 分歧的日子 —— 正是被裁的日子 —— 模型看到的那一份才是契約。
+        # 這同時把「被裁掉的區塊必須揭露」接上線:先前只寫在 packet 裡,
+        # 沒有任何檢查執行它(沒有呼叫端的宣稱是假的)。
+        _rd = packet.get("required_disclosures")
+        need_gaps = (dict(_rd) if isinstance(_rd, dict)
+                     else _tr.required_gap_ids(packet.get("signal_tensions")))
         told = {str((g or {}).get("gap_id") or "")
                 for g in (obj.get("data_gaps") or []) if isinstance(g, dict)}
         for gid in sorted(set(need_gaps) - told):

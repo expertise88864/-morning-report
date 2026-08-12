@@ -541,7 +541,8 @@ MODULE_CEILINGS = {
     # 標準寫法(`Mettler-Toledo (MTD)`、`NYSE: MTD`)。**實測 618 行**。
     # 第二十七輪外審 P1-5:法域不是標的 + 撞名的走上下文判準
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
-    "analysis_validate.py": 960,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # CI #502:need 集合改讀 required_disclosures(單一真相來源)
+    "analysis_validate.py": 975,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

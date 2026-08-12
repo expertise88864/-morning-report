@@ -76,7 +76,10 @@ from __future__ import annotations
 #: 這一步的起點」,不再看重疊比例(長句會把它稀釋掉)。
 #: v33(2026-08-12 生產):`gap:other:<標籤>` 視同 `gap:other`(標籤更
 #: 有資訊,gap ID 不被解參照,守的是回填**宣告過的**缺口那種假揭露)。
-GROUNDING_VERSION = 33
+#: v34(2026-08-12 CI #502):data_gaps 的 need 集合改讀
+#: `packet["required_disclosures"]`(模型看到的那一格)——
+#: `gap:payload_omitted:*` 先前被自己的驗證器判成回填。
+GROUNDING_VERSION = 34
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

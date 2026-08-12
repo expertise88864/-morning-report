@@ -39,7 +39,13 @@ _UNIT_SUFFIX = (
 
 #: **美股/美元側的區塊。** 美股休市那天這些是上一個交易日的延續值,
 #: 拿來解釋今天的台股開盤不同步 —— 沿用 11 維立場分的同一個判準。
-_US_BLOCKS = ("QQQ", "TSM", "SPY", "MACRO", "MACRO_VINTAGE", "SEC_FILINGS")
+#: `ALERTS` 也算美股側(外審 r1,P1):過熱/恐慌訊號主要由 VIX/SOX 等
+#: 美股數值算出,休市日它是延續值 —— 不標 stale 的話,高重要性 claim
+#: 只引用 `market:ALERTS` 就繞過「證據全部不同步」檢查。保守整塊標:
+#: 台股側的少數警訊被連帶標成 stale 是可接受的代價(「引用它」仍然
+#: 合法,被禁的只有「**只**靠它」)。
+_US_BLOCKS = ("QQQ", "TSM", "SPY", "MACRO", "MACRO_VINTAGE",
+              "SEC_FILINGS", "ALERTS")
 
 #: **只有這些區塊屬於台股交易時段**(第二十輪 P1-7)。先前的規則是
 #: 「非美即台」—— 於是公報、政策事件、模型監控、匯率全被掛上
@@ -57,8 +63,16 @@ _TW_SESSION_BLOCKS = (
 #: 自己昨天的判斷**(拿它當今天的證據是循環引用)—— 都不是市場事實。
 #: **這是唯一的一份**;`evidence_packet` 引用這裡 —— 先前兩個檔各維護
 #: 一份,加 ANALYSIS_RECAP 時果然只改到一份(清單漂移,當場示範)。
+#: 2026-08-12 生產:模型的 claim 引用 `market:ALERTS` 被判不存在,整份
+#: 特化分析作廢。`ALERTS` 是**市場觀測**(昨日過熱/恐慌訊號,從行情算
+#: 出來的),不是管線診斷 —— 它被誤放在這份清單裡,而 payload 給模型看
+#: 它引用不到的東西,是 `pred_open`/`fact:`/`valuation:`/`derived:` 之後
+#: 第五次同一形狀。移出後它整塊引用得到(項目沒有識別欄位,葉子自然
+#: 不註冊)。**留在清單裡的各有理由**:ANALYSIS_RECAP/HISTORY 是循環引用
+#: (拿自己昨天的判斷當今天的證據),DATA_QUALITY 等是管線診斷
+#: (引用它只製造「看起來有根據」)—— 兩者都有測試釘著,別整類放行。
 _NON_EVIDENCE = ("DATA_QUALITY", "SOURCE_HEALTH", "SOURCE_DATA_CHECKS",
-                 "HEALTH_WARNINGS", "ALERTS", "HISTORY", "ANALYSIS_RECAP")
+                 "HEALTH_WARNINGS", "HISTORY", "ANALYSIS_RECAP")
 
 #: 遞迴深度上限。`SECTOR_HEAT.sectors.<產業>.leaders.<代號>.pct` 正好第五層。
 _MAX_DEPTH = 5

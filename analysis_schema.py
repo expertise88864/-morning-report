@@ -55,7 +55,9 @@ import evidence_namespaces as _ns
 #: v15 只寫了「照抄或補充」,而當天三條駁回全是換句話說
 #: (「先進封裝產能擴充」→「CoWoS 已大量生產」:語意有橋、字面零共用)。
 #: 規則要用它自己要求的方式寫。
-ANALYSIS_SCHEMA_VERSION = 18
+#: v19(2026-08-12 生產):`gap_id` 說明寫出 `gap:other` 可加標籤 ——
+#: 模型寫 `gap:other:cpi_pending` 被判成回填不存在的缺口。
+ANALYSIS_SCHEMA_VERSION = 19
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -391,7 +393,8 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         # 第十八輪 P1-8:**缺口要能對得上是哪一項。** 先前規則只是
         # 「skipped 非空 → data_gaps 不能全空」,於是一筆完全無關的缺口
         # (「缺某公司的資本支出金額」)就能替今天所有跑不成的橫向檢查過關。
-        "gap_id": _s("本報給的缺口代號(`gap:*`);自己發現的缺口填 `gap:other`"),
+        "gap_id": _s("本報給的缺口代號(`gap:*`);自己發現的缺口填 "
+                     "`gap:other`,可加自己的標籤(`gap:other:cpi_pending`)"),
         "what_is_missing": _s(),
         "impact_on_conclusions": _s(),
     }), "資料不足要說出來,不得用模糊語句掩蓋"),

@@ -894,10 +894,18 @@ def validate(obj, evidence_ids) -> list:
         for gid in sorted(set(need_gaps) - told):
             problems.append(
                 f"{gid} 今天沒有答案({need_gaps[gid]}),data_gaps 沒有揭露它")
+        # **`gap:other` 可以帶標籤**(2026-08-12 生產:模型寫
+        # `gap:other:cpi_pending` / `gap:other:news_truncation` 被判成
+        # 「回填不存在的缺口」,整份特化分析作廢)。標籤比光禿禿的
+        # `gap:other` 更有資訊,而且沒有指涉風險 —— gap ID 不會被解參照,
+        # 這裡守的是「回填**本報宣告過**的缺口 ID」那種假揭露。
+        # `gap:otherX`(沒有冒號)不算:那是另一個名字,不是加標籤。
         for gid in sorted(told - set(need_gaps) - {"gap:other", ""}):
+            if gid.startswith("gap:other:"):
+                continue
             problems.append(
                 f"data_gaps 宣稱 {gid!r},而今天沒有這一項 —— "
-                "自己發現的缺口請填 `gap:other`")
+                "自己發現的缺口請填 `gap:other`(可加標籤:`gap:other:<標籤>`)")
         # **不同步的資料不得單獨支撐今天的方向判斷。** 談「美股沒開所以
         # 參考性下降」需要引用它,所以不禁止引用 —— 禁止的是**只**靠它。
         stale = _unusable(packet)

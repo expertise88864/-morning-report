@@ -606,7 +606,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (30, "a5e737b5eac0381e"),
+    "evidence_schema_version":  (31, "a5e737b5eac0381e"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -628,7 +628,7 @@ _FROZEN = {
     #     講的是哪一個事件群(價格變化沒有主詞也沒有動作)。
     # v12(Commit D):`asset_net_effects`(方向相反的標的要給淨方向 ——
     #     使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
-    "output_schema_version":  (18, "6d97d2928b7903a2"),
+    "output_schema_version":  (19, "47bc0465742cda65"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -768,7 +768,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":  (32, "bb906443c52928b4"),
+    "grounding_version":  (33, "bb906443c52928b4"),
 }
 
 

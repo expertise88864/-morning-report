@@ -223,3 +223,81 @@ def test_last_trading_session_as_plain_string_does_not_crash():
     reg2 = er.registry(pk2)
     oi2 = reg2.get("market:TAIFEX_OI.foreign_oi_net") or {}
     assert oi2.get("observed_session") == "2026-08-04"
+
+
+# ------------------------------------------------- 2026-08-12 生產(CI #500)
+
+def test_alerts_is_market_evidence_not_diagnostics():
+    """**payload 給模型看的市場觀測,要引用得到。**
+
+    `ALERTS`(昨日過熱/恐慌訊號)跟著 packet 序列化進 Luna payload,
+    而它被誤放在 `_NON_EVIDENCE` —— claim 引用 `market:ALERTS` 被判
+    不存在、整份特化分析作廢。這是 `pred_open`/`fact:`/`valuation:`/
+    `derived:` 之後**第五次**「prompt 給模型看它引用不到的東西」。
+    """
+    pk = ep.build({"QQQ": {"close": 500.0},
+                   "ALERTS": [{"level": "warn", "title": "VIX 跳升",
+                               "detail": "單日 +18%"}]},
+                  {}, {}, [], [], {}, as_of="x", target_session_date="y",
+                  sanitize=str)
+    assert "market:ALERTS" in ep.evidence_ids(pk)
+    # phantom 檢查的另一半要同步 —— 兩邊判準不同 = 同一個事實兩個名字。
+    assert "market:ALERTS" in ep.market_refs(pk["market"])
+
+
+def test_alerts_go_stale_with_the_us_market(monkeypatch):
+    """**休市日的警訊是延續值**(外審 r1,P1)。
+
+    過熱/恐慌訊號主要由 VIX/SOX 算出 —— `ALERTS` 若不在 `_US_BLOCKS`,
+    高重要性 claim 只引用 `market:ALERTS` 就繞過「證據今天全部不同步」
+    檢查,而它的內容全是上一個交易日的美股資料。
+    """
+    pk = ep.build({"QQQ": {"close": 500.0},
+                   "US_HOLIDAY": {"detected": True, "actual_date": "2026-07-03"},
+                   "ALERTS": [{"level": "red", "title": "VIX 跳升",
+                               "detail": "單日 +18%"}]},
+                  {}, {}, fx.news(), [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    meta = ep.evidence_meta(pk)
+    assert meta["market:ALERTS"]["usable_for_inference"] is False
+    # 生產的後果:高重要性 claim **只**靠它要被擋,搭配新鮮證據則放行。
+    obj = fx.valid_analysis()
+    obj["claim_audit"] = [dict(obj["claim_audit"][0], materiality="high",
+                               evidence_ids=["market:ALERTS"])]
+    assert [p for p in sch.validate(obj, pk) if "全部不同步" in p]
+    obj["claim_audit"][0]["evidence_ids"] = ["market:ALERTS", "n1"]
+    assert not [p for p in sch.validate(obj, pk) if "全部不同步" in p]
+
+
+def test_the_deliberately_uncitable_blocks_stay_uncitable():
+    """收窄的證明:ALERTS 放行**沒有**帶著整份清單一起放行。
+
+    留在 `_NON_EVIDENCE` 裡的各有理由 —— ANALYSIS_RECAP 是循環引用、
+    DATA_QUALITY 是管線診斷 —— 整類放行會把那兩條已釘住的規則靜默拆掉。
+    """
+    pk = ep.build({"ALERTS": [{"level": "warn", "title": "t", "detail": "d"}],
+                   "DATA_QUALITY": {"missing_fields": 3},
+                   "HEALTH_WARNINGS": {"n": 1}},
+                  {}, {}, [], [], {}, as_of="x", target_session_date="y",
+                  sanitize=str)
+    ids = ep.evidence_ids(pk)
+    bad = [i for i in ids if "DATA_QUALITY" in i or "HEALTH_WARNINGS" in i]
+    assert not bad, bad
+
+
+def test_a_self_found_gap_may_carry_a_label():
+    """`gap:other:cpi_pending` 視同 `gap:other`(2026-08-12 生產:標籤被
+    判成回填不存在的缺口)。`gap:otherX` 沒有冒號 —— 那是另一個名字,
+    照樣擋;守的是回填**宣告過的**缺口 ID 那種假揭露。"""
+    pk = _packet()
+    base = [{"gap_id": g, "what_is_missing": "x", "impact_on_conclusions": "y"}
+            for g in tr.required_gap_ids(pk["signal_tensions"])]
+    for extra, blocked in (("gap:other:cpi_pending", False),
+                           ("gap:other:news_truncation", False),
+                           ("gap:otherX", True), ("gap:made_up", True)):
+        obj = fx.valid_analysis()
+        obj["data_gaps"] = base + [{"gap_id": extra, "what_is_missing": "x",
+                                    "impact_on_conclusions": "y"}]
+        got = bool([p for p in sch.validate(obj, pk)
+                    if "而今天沒有這一項" in p])
+        assert got == blocked, (extra, got)

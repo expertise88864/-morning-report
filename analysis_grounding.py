@@ -74,7 +74,9 @@ from __future__ import annotations
 #: 美股那側的規則不變。判準變了就要進版。
 #: v32(2026-08-11 CI #495):鏈的連續性改問「上一步有沒有指名過
 #: 這一步的起點」,不再看重疊比例(長句會把它稀釋掉)。
-GROUNDING_VERSION = 32
+#: v33(2026-08-12 生產):`gap:other:<標籤>` 視同 `gap:other`(標籤更
+#: 有資訊,gap ID 不被解參照,守的是回填**宣告過的**缺口那種假揭露)。
+GROUNDING_VERSION = 33
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

@@ -97,7 +97,11 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: 今天一個 ID 都沒有的命名空間,模型不得引用(它會自己發明名字)。
 #: v30(2026-08-11):packet 帶 `key_drivers_required` —— 今天要幾條重點
 #: 是 Python 算出來的,別讓模型自己數(寫 4 條被擋下整份分析,兩次)。
-EVIDENCE_SCHEMA_VERSION = 30
+#: v31(2026-08-12 生產):`ALERTS` 移出 `_NON_EVIDENCE` —— 它是市場觀測
+#: (昨日過熱/恐慌訊號)不是管線診斷,payload 給模型看、registry 卻不給
+#: ID,claim 引用 `market:ALERTS` 因此整份作廢。其餘區塊維持不可引用
+#: (循環引用/假根據,各有測試釘著)。
+EVIDENCE_SCHEMA_VERSION = 31
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -522,6 +526,13 @@ def market_refs(market, prefix: str = "", depth: int = 0) -> set:
         if depth == 0 and key in _NON_EVIDENCE_BLOCKS:
             continue
         path = f"{prefix}.{key}" if prefix else str(key)
+        if depth == 0:
+            # **區塊本身也引用得到** —— registry 那側一直有這一格
+            # (「談今天沒有這塊資料時需要」的 setdefault),而這裡沒有:
+            # 兩邊判準不同步,`market:ALERTS` 在 registry 合法、在 phantom
+            # 檢查那側卻是幽靈(2026-08-12)。同一個事實兩個名字,
+            # 這個 repo 已經栽過。
+            out.add(f"market:{path}")
         if isinstance(val, (int, float, str)) and val != "":
             out.add(f"market:{path}")
         elif isinstance(val, dict):

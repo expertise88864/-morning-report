@@ -1585,3 +1585,27 @@ def test_the_chip_date_mismatch_is_only_announced_once():
         assert mr._DEGRADED_STEPS.count("chips:source_date_mismatch") == 1,             mr._DEGRADED_STEPS
     finally:
         mr._DEGRADED_STEPS[:] = saved
+
+
+# ------------------------------------------------- 2026-08-12 CI #508
+
+def test_the_luna_loop_allows_a_second_repair():
+    """命名類失誤由正規化家族收掉之後,剩下的駁回是實質分析規則 ——
+    一輪修補收不完(CI #508 拿到全量清單仍剩 10 條,而預算剩 900 秒)。
+    迴圈裡的預算守衛在時間不夠時本來就會放棄後續修補,上限提高只花
+    「還有剩」的預算。"""
+    import morning_report as mr
+    assert len(mr._LUNA_ATTEMPTS) == 3, mr._LUNA_ATTEMPTS
+    assert mr._LUNA_ATTEMPTS[0] is False, "第一輪不是修補"
+    assert all(mr._LUNA_ATTEMPTS[1:]), "後續每一輪都是修補"
+
+
+def test_every_rejected_attempt_records_how_many_problems_remain():
+    """**收斂要量得到**:每一輪剩幾條進 manifest —— 「12→10→3」與
+    「12→10→10」的處置不同(後者代表修補在原地打轉,加輪數沒有用)。
+    只記前 2 條訊息量不出這個差別。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    body = src.split("def _luna_analysis(")[1].split(chr(10) + "def ")[0]
+    assert "problems_total=len(problems)" in body,         "駁回的那一輪沒有記剩幾條問題"

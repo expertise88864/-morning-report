@@ -12997,7 +12997,13 @@ def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
 
 #: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
 #: 多一個機制就等於兩個都測不出來(見 `_luna_analysis` 的 docstring)。
-_LUNA_ATTEMPTS = (False, True)
+#: 一輪初始 + **兩輪**修補(2026-08-12 CI #508)。命名類失誤已由正規化
+#: 家族收掉之後,剩下的駁回是實質分析規則(共用驅動的說明、第二個
+#: 總經發布的處置)—— 一輪修補收不完,而那一班還剩 900 秒預算沒用。
+#: 迴圈裡的預算守衛(剩餘 < 一輪實測耗時 + legacy 保留)本來就會在
+#: 時間不夠時放棄後續修補 —— 上限提高只花「還有剩」的預算,
+#: 每一輪同樣計費、同樣進 attempts。
+_LUNA_ATTEMPTS = (False, True, True)
 
 #: 修補前必須為 legacy 備援保留的秒數(2026-08-07 E2E 第五次:legacy 在
 #: flash 上實測 190-310s 才寫得完整份;保留 300 讓「特化失敗 → legacy」
@@ -13021,13 +13027,13 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
 
 
 def _luna_analysis(packet: dict, effort: str) -> str:
-    """Luna 特化路徑:strict JSON → 驗證 →(最多一次修補)→ 確定性渲染。
+    """Luna 特化路徑:strict JSON → 驗證 →(修補至多兩輪)→ 確定性渲染。
 
     **任何環節失敗都回空字串**,由呼叫端落回既有路徑 —— 晨報不可斷。
     回半份比不回更糟:信寄出去了但少了一半,而且沒有任何錯誤訊息。
 
-    修補**最多一次**,而且那一次同樣計費、同樣進 attempts。
-    「成本上限 +1」如果不把修補算進去,那個宣稱就是假的。
+    每一輪修補同樣計費、同樣進 attempts(帶 `problems_total`,收斂
+    量得到)。「成本上限 +N」如果不把每一輪算進去,那個宣稱就是假的。
 
     次數的上限**只由 `_LUNA_ATTEMPTS` 這一個東西決定**。原本另外還有一個
     `if repair: return ""` 的早退 —— 兩個機制各自都足夠,結果是把任一個
@@ -13110,7 +13116,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         out = _dsr.extract_output(resp)
         elapsed = time.monotonic() - t0
 
-        def _record(accepted: bool, note: str = "") -> None:
+        def _record(accepted: bool, note: str = "", **extra) -> None:
             """**每一次送出都要計費入帳**,不論被不被採用。
 
             `accepted=True` 才會進 `llm.primary`(成本彙總看那裡);
@@ -13126,7 +13132,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 finish_reason=out["status"], repair=repair,
                 # **這一次的字元數**,配這一次的 token 數(外審 F1)。
                 request_chars=_req_chars,
-                reject_reason=note)
+                reject_reason=note, **extra)
 
         if out["refusal"] or out["status"] == "incomplete":
             _record(False, out["refusal"] or out["incomplete_reason"])
@@ -13141,8 +13147,11 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             _RUN_MANIFEST.setdefault("llm", {})["empty_content_seen"] = True
             print("[llm] 特化路徑回了空 content(將依修補額度重試)",
                   file=sys.stderr)
-            if repair:
-                return ""
+            # **上限只由 `_LUNA_ATTEMPTS` 決定**(外審 r1,P2):這裡原本
+            # 還有一個 `if repair: return ""` 的第二套上限 —— 修補輪回空
+            # 就整段放棄,新增的第二輪永遠走不到;若是加深那次回空,
+            # 早退還跳過函式尾端的 `_kept` 回收,把已到手的合法版本一起
+            # 丟掉。與 invalid-JSON 路徑當年拆掉的是同一種重複守衛。
             payload = dict(payload, input=(
                 bundle["user_payload"]
                 + "\n\nREPAIR\n上一次沒有輸出任何內容,請直接輸出完整 JSON。"))
@@ -13218,7 +13227,10 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 _RUN_MANIFEST["llm"]["depth_advisories_after"] = len(_adv)
                 return _accept_luna(obj, packet, text)
             problems = ["渲染不出可用的晨報(缺立場或總結)"]
-        _record(False, "; ".join(problems[:2]))
+        # 收斂要量得到:每一輪剩幾條進 manifest,下一次 CI 直接看
+        # 「12→10→3」還是「12→10→10」—— 後者代表修補在原地打轉。
+        _record(False, "; ".join(problems[:2]),
+                problems_total=len(problems))
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
         print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
               f"{problems[:2]}", file=sys.stderr)
@@ -13241,7 +13253,12 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         _hints = _repair_evidence_hints(problems, packet)
         payload = dict(payload, input=(
             bundle["user_payload"]
-            + _repair_instruction(problems, _hints)))
+            + _repair_instruction(
+                problems, _hints,
+                # **帶當輪被拒的那一版**(外審 r1):「沒列到的保持原樣」
+                # 要給得出原樣;第二輪自然帶到第二版(obj 是當輪解析的)。
+                previous_json=(json.dumps(obj, ensure_ascii=False)
+                               if isinstance(obj, dict) else ""))))
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

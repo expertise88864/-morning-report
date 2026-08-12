@@ -51,7 +51,11 @@ import evidence_namespaces as _ns
 #: 而 schema 與 prompt 從來沒說過。
 #: v17(2026-08-11 CI #495):`tension_id` / `alignment_id` 明講要帶
 #: `tension:` 前綴 —— packet 那一格同名而不帶前綴,照抄就是錯的。
-ANALYSIS_SCHEMA_VERSION = 17
+#: v18(2026-08-12 生產):`from_what` 的說明**示範**沿用的形狀 ——
+#: v15 只寫了「照抄或補充」,而當天三條駁回全是換句話說
+#: (「先進封裝產能擴充」→「CoWoS 已大量生產」:語意有橋、字面零共用)。
+#: 規則要用它自己要求的方式寫。
+ANALYSIS_SCHEMA_VERSION = 18
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -263,8 +267,12 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         # ---- v2:方向標籤不是分析,下面這些才是 ----
         "mechanism_steps": _arr(_obj({
             "from_what": _s("這一步從什麼開始。**第二步以後要沿用上一步的 "
-                            "`to_what`**(照抄,或在它後面補充)—— "
-                            "接不上的兩步讀起來像因果,其實是兩個片段"),
+                            "`to_what` 的字**(照抄,補充放在後面)。"
+                            "例:上一步 to_what=『先進封裝產能擴充』→ 這一步 "
+                            "from_what=『先進封裝產能擴充(CoWoS 量產)』。"
+                            "**換句話說不算沿用**:『CoWoS 已大量生產』與"
+                            "『先進封裝產能擴充』在你看來是同一件事,"
+                            "驗證器只看字 —— 兩步會被判成接不上的片段"),
             "to_what": _s("走到什麼"),
             "channel": _s("透過什麼傳導(製程/封裝/匯率/資本支出/估值…)"),
             "stage": _enum(CHAIN_STAGES,

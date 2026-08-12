@@ -49,6 +49,10 @@ KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
     "llm:effort_not_applied:primary",
     "llm:effort_not_applied:extractor",
+    # TAIFEX 來源日期對不上該交易日(2026-08-11 首次在生產觸發:
+    # 端點回前一天的資料)。行為是對的 —— 寧可留空也不要錯位
+    # (批#83),缺的那一格與原因都在 manifest["chips"]。
+    "chips:source_date_mismatch",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",

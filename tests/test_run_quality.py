@@ -1563,3 +1563,25 @@ def test_a_working_or_idle_extractor_is_not_a_defect():
     # 沒有這一格的舊 manifest 不猜
     assert "event_extractor_dead" not in _strict(_strict_ok())
 
+
+
+def test_the_chip_date_mismatch_is_a_known_degradation():
+    """TAIFEX 回前一天的資料時,行為是「留空不錯位」(批#83)——
+    降級是真的(讀者少一天籌碼訊號),但處置正確且原因在 manifest,
+    不該天天被當成沒見過的降級吵一次(2026-08-12 watchdog)。"""
+    import run_quality as rq
+    assert "chips:source_date_mismatch" in rq.KNOWN_DEGRADED
+
+
+def test_the_chip_date_mismatch_is_only_announced_once():
+    """兩個呼叫點同一班各走一次 —— watchdog 信裡不該重複兩行。"""
+    import morning_report as mr
+    saved = list(mr._DEGRADED_STEPS)
+    mr._DEGRADED_STEPS[:] = []
+    try:
+        for _ in range(2):
+            mr._chip_fields_for_session(
+                {"date": "20260810", "top10_net": 1}, {}, "2026-08-11")
+        assert mr._DEGRADED_STEPS.count("chips:source_date_mismatch") == 1,             mr._DEGRADED_STEPS
+    finally:
+        mr._DEGRADED_STEPS[:] = saved

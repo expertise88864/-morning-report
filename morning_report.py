@@ -1538,7 +1538,10 @@ def _chip_fields_for_session(large: Optional[dict], pcr: Optional[dict],
         "pcr_matched": bool(pcr_ok),
     }
     if (large and not large_ok) or (pcr and not pcr_ok):
-        _DEGRADED_STEPS.append("chips:source_date_mismatch")
+        # 兩個呼叫點(state entry + 特徵列)同一班會各走一次 ——
+        # 同一件事喊兩次是雜訊,watchdog 信裡就重複了兩行。
+        if "chips:source_date_mismatch" not in _DEGRADED_STEPS:
+            _DEGRADED_STEPS.append("chips:source_date_mismatch")
     return {
         "taifex_top10_net": large.get("top10_net") if large_ok else None,
         "taifex_spec_top10_net": large.get("spec_top10_net") if large_ok else None,

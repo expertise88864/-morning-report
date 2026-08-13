@@ -170,3 +170,78 @@ def test_rendering_survives_partial_objects():
                  {"executive_summary": "x", "stance": {"label": "中性"},
                   "scenario_tree": "不是物件"}):
         assert isinstance(ar.render(junk), str)
+
+
+# ------------------------------------------- 第三十二輪 P1-3(選項 B)
+
+def test_a_universe_only_asset_is_labelled_speculative():
+    """只靠當日 universe 放行的標的要標〔推測性傳導〕——
+    universe 證明它是真股票,證明不了這件事會傳導到它。"""
+    import fixtures_analysis as fx
+    import analysis_render as ar
+    import evidence_packet as ep
+    pk = ep.build({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {}, {},
+                  fx.news(), [], {}, as_of="x", target_session_date="y",
+                  sanitize=str)
+    pk["tw_universe"] = [{"code": "3661", "name": "世芯-KY"}]
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"][0]["affected_assets"] = [
+        dict(obj["top_news_analysis"][0]["affected_assets"][0],
+             asset_id="3661"),
+        dict(obj["top_news_analysis"][0]["affected_assets"][0],
+             asset_id="2330")]
+    text = ar.render(obj, pk)
+    lines = [x for x in text.splitlines() if "3661" in x]
+    assert lines and "推測性傳導" in lines[0], lines
+    core = [x for x in text.splitlines() if "2330:" in x]
+    assert core and "推測性傳導" not in core[0], core
+
+
+def test_a_named_or_core_asset_is_not_labelled():
+    """新聞主角與核心標的不標 —— 標籤只給「真的但沒宣告」那一層。"""
+    import fixtures_analysis as fx
+    import analysis_render as ar
+    import evidence_packet as ep
+    pk = ep.build({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {}, {},
+                  fx.news(), [], {}, as_of="x", target_session_date="y",
+                  sanitize=str)
+    obj = fx.valid_analysis()
+    text = ar.render(obj, pk)
+    assert "推測性傳導" not in text, "基準 fixture 不該有推測層標的"
+    # **主角不標**(只靠這一條分勝負的反例):3661 在 universe 裡、
+    # 不是核心也不是宣告邊,但它就是這則新聞點名的主角 ——
+    # 名字在新聞裡的不是推測。
+    pk2 = ep.build({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {}, {},
+                   [{"source_item_id": "n1",
+                     "title": "世芯-KY 法說會釋出樂觀展望",
+                     "entities": ["世芯-KY", "3661"], "source": "X",
+                     "source_name": "X"}],
+                   [], {}, as_of="x", target_session_date="y", sanitize=str)
+    pk2["tw_universe"] = [{"code": "3661", "name": "世芯-KY"}]
+    obj2 = fx.valid_analysis()
+    obj2["top_news_analysis"] = [dict(obj2["top_news_analysis"][0],
+                                      source_item_id="n1")]
+    obj2["top_news_analysis"][0]["affected_assets"] = [
+        dict(obj2["top_news_analysis"][0]["affected_assets"][0],
+             asset_id="3661")]
+    t2 = ar.render(obj2, pk2)
+    named = [x for x in t2.splitlines() if "3661" in x]
+    assert named and "推測性傳導" not in named[0], named
+
+
+def test_a_broken_declared_layer_is_not_silent(monkeypatch, capsys):
+    """宣告層炸掉時 universe fallback 仍在,但要留下 ::warning:: ——
+    宣告過的台股被錯標成推測層,沒有痕跡就查不到為什麼(外審 r1)。"""
+    import analysis_validate as av
+    import sector_map
+    monkeypatch.setattr(sector_map, "declared_neighbours",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            RuntimeError("宣告層炸了")))
+    pk = {"tw_universe": [{"code": "3661", "name": "世芯-KY"}],
+          "news": [{"source_item_id": "n1", "entities": ["WTI"],
+                    "title": "油價新聞"}]}
+    item = {"source_item_id": "n1", "entities": ["WTI"], "title": "油價新聞"}
+    tier = av.transmission_tier("3661", item, pk)
+    assert tier == "universe", tier          # fallback 仍在
+    err = capsys.readouterr().err
+    assert "::warning::" in err and "宣告層失效" in err, err

@@ -224,7 +224,8 @@ def render(obj: Optional[dict], packet=None) -> str:
     if glob:
         parts.append(f"## {SECTION_GLOBAL}\n" + "\n".join(f"- {w}" for w in glob))
 
-    news = _lines(obj.get("top_news_analysis"), _news_line)
+    news = _lines(obj.get("top_news_analysis"),
+                  lambda n: _news_line(n, packet))
     if news:
         # 第十八輪 P1-9:走到財務層是 advisory,加深失敗就照原樣寄出 ——
         # 那對「晨報不可斷」是合理的,對收件人卻是隱瞞:他不知道這條

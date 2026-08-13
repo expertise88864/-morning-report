@@ -711,7 +711,7 @@ _FROZEN = {
     # v11(Commit E):事件卡 + 各標的合計影響 + 共用驅動說明進信。
     # v12(第二十三輪):三大重點依 Python 計分排序;aggregator-only
     #     寫「原始發布者未解析」。
-    "renderer_version":         (12, "b9b90bfda47bdef5"),
+    "renderer_version":         (13, "b9b90bfda47bdef5"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

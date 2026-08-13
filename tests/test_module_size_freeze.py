@@ -525,7 +525,8 @@ MODULE_CEILINGS = {
     # 張力在調和什麼)。先前信裡連著三個「矛盾調和…(偏向前者)」,
     # 而讀者無從知道「前者」是 QQQ 還是產業中位數。放寬到 150。
     # 第十八輪:實測 173 —— 逐標的影響與同向解讀都要排進信。放寬到 190。
-    "analysis_render_depth.py": 205,
+    # 第三十二輪 P1-3 選項 B:傳導分層+推測性標籤
+    "analysis_render_depth.py": 220,
     # schema v2 時從 `analysis_schema` 拆出的**引用檢查**(ID 存不存在、
     # 高重要性要有證據、關係要指向存在的條目、無證據的步驟不得自稱 fact)。
     # 形狀/根據/引用是三件事,那個檔的 docstring 自己說要分開。
@@ -551,7 +552,8 @@ MODULE_CEILINGS = {
     #(`EU` 也是 enCore Energy)。**實測 654 行**。
     # CI #502:need 集合改讀 required_disclosures(單一真相來源)
     # 第三十一輪外審:鏈交接拆 fail-open(泛用詞清單)
-    "analysis_validate.py": 1000,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # 第三十二輪 P1-3 選項 B:傳導分層+推測性標籤
+    "analysis_validate.py": 1040,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

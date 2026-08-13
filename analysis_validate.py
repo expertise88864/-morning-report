@@ -302,14 +302,24 @@ _MECHANISM_MIN_CHARS = 12
 
 
 def _transmission_ok(aid: str, news_item, packet) -> bool:
-    """這個標的雖然不是主角,但**宣告過**是這件事會傳導到的地方嗎。
+    """`transmission_tier` 的布林出口(放行集合不變)。"""
+    return bool(transmission_tier(aid, news_item, packet))
 
-    兩種宣告(都不是從文字推導出來的):本報的核心標的、
-    以及這則新聞的主體在 `sector_map` 上的鄰居。
+
+def transmission_tier(aid: str, news_item, packet) -> str:
+    """這個非主角標的是哪一層傳導:`core` / `declared` / `universe` / 空。
+
+    第三十二輪外審 P1-3 的產品決策(選項 B):universe 放行**維持**
+    (撤掉會回到真台股被擋、整封退 legacy),但兩層要分得開 ——
+    `tw_universe` 證明的是「這是一檔真的股票」,不是「這件事真的會
+    傳導到它」。宣告邊(sector_map)與核心標的是**已驗證**的傳導;
+    只靠 universe 放行的,信裡標「推測性傳導」讓讀者自行折價。
+    宣告邊的判準排在 universe 之前 —— 又真又宣告過的標的要拿到
+    比較強的那個標籤。
     """
     import instrument_registry as _ir5
     if _ir5.is_core_asset(aid):
-        return True
+        return "core"
     # **當日 universe 裡的台股**:這道閘門本來要擋的是「假代號」——
     # 「指數上漲 9999 點」的 9999、「2026 展望」的 2026。而 universe 是
     # Python 抓回來的當日上市清單:在裡面就代表它是一檔**真的、今天在
@@ -321,12 +331,6 @@ def _transmission_ok(aid: str, news_item, packet) -> bool:
     # 逐個宣告追不上,而**讀者的代價是整封信退回 legacy**(沒有事件卡、
     # 沒有淨效果、沒有橫向綜合)。
     # 呼叫端仍然要求寫得出傳導機制;美股那側的規則一個字都沒動。
-    if _TW_CODE.fullmatch(str(aid or "")):
-        _uni = {str(x.get("code") or "")
-                for x in (((packet or {}).get("tw_universe")) or [])
-                if isinstance(x, dict)}
-        if aid in _uni:
-            return True
     try:
         import entity_alias as _ea5
         import sector_map as _sm2
@@ -353,17 +357,58 @@ def _transmission_ok(aid: str, news_item, packet) -> bool:
                 continue
             if any(_ea5.canonical((x or {}).get("name")) == want
                    for x in (c.get("transmission_candidates") or [])):
-                return True
+                return "declared"
             ents = [str(e) for m in members
                     for e in (by_id.get(m, {}).get("entities") or [])] or ents
             break
         # 候選沒帶(ID-set 相容路徑、分群失敗),或那條邊排在**版面上限
         # 之外** —— 問「這條邊有沒有被宣告過」。上限是給模型看幾個的
         # 預算,不是語意邊界。
-        return any(_ea5.canonical(c.get("name")) == want
-                   for c in _sm2.declared_neighbours(ents))
+        if any(_ea5.canonical(c.get("name")) == want
+               for c in _sm2.declared_neighbours(ents)):
+            return "declared"
+    except Exception as _te:                            # noqa: BLE001
+        # 宣告層炸掉不吃掉 universe 層(原本 universe 在最前)——
+        # 但**降級不得靜默**(外審 r1):宣告過的台股會被錯標成推測層,
+        # 而事後沒有任何痕跡就查不到為什麼。stderr 進 job log,
+        # 呼叫端(run_quality)另有 unknown-degradation 白名單機制,
+        # 這裡選 stderr + GitHub annotation(::warning:: 不需要 admin)。
+        import sys as _sys
+        print(f"::warning::transmission_tier 宣告層失效,"
+              f"退用 universe 層:{type(_te).__name__}: {_te}",
+              file=_sys.stderr)
+    # **當日 universe 裡的台股**:這道閘門本來要擋的是「假代號」——
+    # universe 證明它是一檔真的、今天在交易的股票(2026-08-11 連三班
+    # 真台股被擋、整封退 legacy 的教訓);但它證明不了「這件事會傳導
+    # 到它」—— 所以是最弱的一層,信裡標「推測性傳導」。
+    if _TW_CODE.fullmatch(str(aid or "")):
+        _uni = {str(x.get("code") or "")
+                for x in (((packet or {}).get("tw_universe")) or [])
+                if isinstance(x, dict)}
+        if aid in _uni:
+            return "universe"
+    return ""
+
+
+def speculative_transmission(aid: str, analysis_entry, packet) -> bool:
+    """信裡要標「推測性傳導」的標的:不是新聞主角、也不是核心/宣告邊,
+    只靠當日 universe 放行(第三十二輪 P1-3,選項 B)。
+
+    renderer 呼叫這裡而不是自己判 —— 判準要與 validator 同一份,
+    各寫一份會漂移(這個 repo 記過的規矩)。
+    """
+    try:
+        sid = str((analysis_entry or {}).get("source_item_id") or "")
+        item = next((x for x in ((packet or {}).get("news") or [])
+                     if isinstance(x, dict)
+                     and str(x.get("source_item_id")) == sid), None)
+        if item is None:
+            return False
+        if not _asset_unknown_to_evidence(aid, item, packet):
+            return False               # 主角:名字就在新聞裡,不是推測
+        return transmission_tier(aid, item, packet) == "universe"
     except Exception:                                   # noqa: BLE001
-        return False
+        return False                   # 標籤是加值,失敗不得毀掉渲染
 
 
 def _asset_unknown_to_evidence(aid: str, news_item, packet) -> bool:

@@ -28,7 +28,7 @@ _STEP = {"fact": "", "inference": "(推論)", "scenario": "(情境)",
          "unknown": "(資料不足)"}
 
 
-def _news_line(n: dict) -> str:
+def _news_line(n: dict, packet=None) -> str:
     """一則新聞的分析。**schema v2 的深度要真的排進信裡。**
 
     v1 只印 `why_it_matters` —— 於是即使模型填好了因果鏈、量級與關係,
@@ -72,7 +72,7 @@ def _news_line(n: dict) -> str:
                                                          "unverified"):
         out.append(f"  - *{lvl}"
                    + (f";{cav}" if cav and cav != "無" else "") + "*")
-    out.extend(_assets(n))
+    out.extend(_assets(n, packet))
     for rel in (n.get("relates_to") or []):
         if isinstance(rel, dict) and _RELS.get(_s(rel.get("relationship"))):
             out.append(f"  - 與另一則的關係:{_RELS[_s(rel.get('relationship'))]}"
@@ -88,15 +88,26 @@ _BAND = {"negligible": "可忽略", "small": "小", "moderate": "中等",
          "large": "大", "unknown": "說不出量級"}
 
 
-def _assets(n: dict) -> list:
+def _assets(n: dict, packet=None) -> list:
     rows = []
     for a in (n.get("affected_assets") or []):
         if not isinstance(a, dict) or not _s(a.get("asset_id")):
             continue
+        # **兩層傳導要分得開**(第三十二輪 P1-3,選項 B):只靠當日
+        # universe 放行的標的,讀者要能自行折價 —— universe 證明它是
+        # 真股票,證明不了這件事真的會傳導到它。判準回 validator 問
+        # (`speculative_transmission`),不在渲染層自己判一份。
+        _spec = ""
+        try:
+            import analysis_validate as _av9
+            if _av9.speculative_transmission(_s(a.get("asset_id")), n, packet):
+                _spec = "〔推測性傳導,未宣告的供應鏈關係〕"
+        except Exception:               # noqa: BLE001 - 標籤失敗不毀渲染
+            _spec = ""
         head = (f"{_s(a.get('asset_id'))}:"
                 f"{_DIR.get(_s(a.get('direction')), '')}、"
                 f"{_BAND.get(_s(a.get('magnitude_band')), '')}、"
-                f"{_s(a.get('horizon'))}")
+                f"{_s(a.get('horizon'))}{_spec}")
         body = "、".join(x for x in (_s(a.get("first_order_effect")),
                                     _s(a.get("second_order_effect"))) if x)
         rows.append(f"    - {head} —— {body}" if body else f"    - {head}")

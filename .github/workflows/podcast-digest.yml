@@ -82,8 +82,9 @@ jobs:
           git add state/podcast_digest.json
           if ! git diff --cached --quiet; then
             git commit -m "chore: update podcast digest [skip ci]"
-            git pull --rebase --autostash
-            git push
+            # 重試政策集中在 tools/push_state.sh(2026-08-13 #235:
+            # GitHub 500 讓這一班的 digest 整批掉了,而這裡沒有重試)
+            bash tools/push_state.sh
           else
             echo "no digest changes"
           fi

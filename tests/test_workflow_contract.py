@@ -801,3 +801,103 @@ def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
     assert job_seconds > lc.MAX_TOTAL_TIMEOUT, (
         f"canary 的 job timeout {job_seconds}s 裝不下 LLM 總預算 "
         f"{lc.MAX_TOTAL_TIMEOUT}s")
+
+
+# ------------------------------------------------- 2026-08-13 Podcast #235
+
+def test_every_state_push_goes_through_the_shared_retry_policy():
+    """**state push 的重試政策只有一份。**
+
+    2026-08-13 #235:podcast digest 的 commit 做好了,push 收到 GitHub 500
+    (`remote rejected ... Internal Server Error`)—— 而那個呼叫點完全沒有
+    重試,那一班的 digest 整批掉了。當時四個呼叫點有四種寫法(兩個沒有
+    重試、一個沒有退避)。「改了一份、另外三份還留著舊的」是本 repo
+    反覆記過的失效形狀 —— 這條釘住它們都走同一份政策。
+    """
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "tools" / "push_state.sh").exists()
+    for name in ("podcast-digest", "deepseek-canary", "gooaye-radar",
+                 "monthly-ic-report"):
+        text = (root / ".github" / "workflows" / f"{name}.yml").read_text(
+            encoding="utf-8")
+        if "git commit" not in text:
+            continue
+        assert "tools/push_state.sh" in text, f"{name} 沒走共用的 push 政策"
+        # 裸 `git push` 不得再出現(那就是繞過政策)
+        bare = [ln for ln in text.splitlines()
+                if ln.strip() == "git push"]
+        assert not bare, f"{name} 還有裸 git push:{bare}"
+
+
+def test_the_main_state_publisher_uses_the_same_policy():
+    """晨報自己的發佈步驟也走同一份 —— 它原本自己寫「推一次、rebase、
+    再推一次」,兩次之間沒有等待,對暫時性 5xx 等於連撞兩次。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    body = src.split("def push_committed_state(")[1].split(chr(10) + "def ")[0]
+    assert "push_state.sh" in body, "發佈步驟沒走共用政策"
+    assert '"git", "push"' not in body, "還留著自己那份 push"
+
+
+def test_the_retry_policy_backs_off_and_fails_loudly():
+    """政策本身:多次嘗試、之間有退避、最後失敗要紅(不得吞掉保持綠燈)。"""
+    from pathlib import Path
+    sh = (Path(__file__).resolve().parents[1] / "tools"
+          / "push_state.sh").read_text(encoding="utf-8")
+    assert "sleep" in sh, "沒有退避 —— 對暫時性 5xx 等於連撞 N 次"
+    assert "git pull --rebase --autostash" in sh, "沒有處理競寫"
+    assert "exit 1" in sh and "::error::" in sh, "推不上去沒有變紅"
+
+
+def _run_push_state(tmp_path, fail_times, attempts=3):
+    """用假的 `git` 跑真的腳本 —— 只驗文字的合約測試證明不了它會重試。"""
+    import os
+    import shutil
+    import subprocess
+    from pathlib import Path
+    bash = shutil.which("bash")
+    if not bash:
+        import pytest as _pt
+        _pt.skip("這台機器沒有 bash")
+    counter = tmp_path / "count"
+    counter.write_text("0", encoding="utf-8")
+    stub = tmp_path / "git"
+    stub.write_text(
+        "#!/usr/bin/env bash" + chr(10)
+        + 'if [[ "$1" != "push" ]]; then exit 0; fi' + chr(10)
+        + f'n=$(cat {counter.as_posix()})' + chr(10)
+        + "n=$((n + 1))" + chr(10)
+        + f'echo "$n" > {counter.as_posix()}' + chr(10)
+        + f'if (( n <= {fail_times} )); then' + chr(10)
+        + '  echo "remote: Internal Server Error" >&2; exit 1' + chr(10)
+        + "fi" + chr(10) + "exit 0" + chr(10), encoding="utf-8")
+    stub.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = str(tmp_path) + os.pathsep + env.get("PATH", "")
+    env["PUSH_STATE_ATTEMPTS"] = str(attempts)
+    env["PUSH_STATE_SLEEPS"] = "0 0 0"          # 測試不等真的退避
+    script = Path(__file__).resolve().parents[1] / "tools" / "push_state.sh"
+    # **明確指定編碼**:Windows 預設 cp950 會在讀 UTF-8 的 stderr 時炸掉
+    # reader thread,proc.stderr 變成 None(本機實測)。
+    proc = subprocess.run([bash, str(script)], env=env, capture_output=True,
+                          text=True, encoding='utf-8', errors='replace',
+                          timeout=60)
+    return proc, int(counter.read_text(encoding="utf-8"))
+
+
+def test_a_transient_500_is_retried_and_succeeds(tmp_path):
+    """2026-08-13 #235 的形狀:第一次 500、第二次成功 —— 那一班的
+    state 不該就這樣掉了。"""
+    proc, pushes = _run_push_state(tmp_path, fail_times=1)
+    assert proc.returncode == 0, proc.stderr
+    assert pushes == 2, f"沒有重試(push 次數={pushes})"
+
+
+def test_persistent_failure_ends_red(tmp_path):
+    """一直推不上去要紅 —— 吞掉保持綠燈的話,state 沒發佈而沒有人知道。"""
+    proc, pushes = _run_push_state(tmp_path, fail_times=99, attempts=3)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert pushes == 3, f"嘗試次數不是 3(={pushes})"
+    assert "::error::" in proc.stderr

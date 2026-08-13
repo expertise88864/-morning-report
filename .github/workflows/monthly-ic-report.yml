@@ -45,10 +45,7 @@ jobs:
             echo "no changes to commit"; exit 0
           fi
           git commit -m "chore(report): 月度因子 IC 報告 [skip ci]"
-          # push 失敗不得吞掉保持綠燈(五審 P2):fetch/rebase 重試三次,仍敗即紅
-          for i in 1 2 3; do
-            git push && exit 0
-            git fetch origin main && git rebase origin/main || exit 1
-          done
-          echo "push failed after retries" >&2
-          exit 1
+          # push 失敗不得吞掉保持綠燈(五審 P2)。重試政策集中在
+          # tools/push_state.sh —— 這裡原本自己寫一份(沒有退避,
+          # 對 GitHub 5xx 等於連撞三次)。
+          bash tools/push_state.sh

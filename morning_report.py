@@ -10003,14 +10003,12 @@ def push_committed_state() -> None:
     給之後每一班」,這與本 repo 既有的 fail-closed 立場一致
     (帳本讀不出來就不覆寫、除權息形狀不對就不落地)。
     """
-    try:
-        subprocess.run(["git", "push"], check=True, timeout=25)
-    except subprocess.SubprocessError:
-        print("[state] initial push failed; retrying after rebase", file=sys.stderr)
-        subprocess.run(["git", "fetch", "origin"], check=True, timeout=30)
-        subprocess.run(["git", "pull", "--rebase", "--autostash"], check=True,
-                       timeout=45)
-        subprocess.run(["git", "push"], check=True, timeout=30)
+    # **重試政策只有一份**(2026-08-13 Podcast Digest #235):這裡原本
+    # 自己寫「推一次、rebase、再推一次」—— 對 GitHub 的暫時性 5xx 等於
+    # 連撞兩次(兩次之間沒有等待)。政策集中在 `tools/push_state.sh`,
+    # 四個 workflow 與這裡共用;推不上去仍然拋出(state 沒發佈要紅)。
+    _script = str(Path(__file__).resolve().parent / "tools" / "push_state.sh")
+    subprocess.run(["bash", _script], check=True, timeout=180)
     print("[state] 已 push 回 repo")
 
 

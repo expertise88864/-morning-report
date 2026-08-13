@@ -1441,7 +1441,10 @@ def test_the_canary_state_lives_in_the_repository():
     # **狀態要被 commit 回去**,否則下一班還是看不到
     persist = next(st for st in steps
                    if "Persist" in str(st.get("name", "")))["run"]
-    assert "git push" in persist and _c.DEFAULT_STATE in persist, persist
+    # 2026-08-13 #235:推送改走共用的重試政策(裸 git push 對 GitHub 的
+    # 暫時性 5xx 沒有招架 —— 那一班的 state 就是這樣掉的)。
+    assert "tools/push_state.sh" in persist, persist
+    assert _c.DEFAULT_STATE in persist, persist
     # 而那個檔案已經在版控裡(bootstrap 過了)
     assert (root / _c.DEFAULT_STATE).exists()
 

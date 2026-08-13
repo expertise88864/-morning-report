@@ -330,6 +330,22 @@ def title_related(a, b, subjects=()) -> bool:
 _title_related = title_related        # 既有呼叫端
 
 
+def match_lineage(records, entities, titles, summary: str = "") -> str:
+    """事件群接得上的 timeline **世系 ID**(接不上或分不出回空字串)。
+
+    第三十一輪外審的方向:timeline 的 `key` 已經是「同一樁事的逐日世系」
+    (身分分裂/承接/退場全在 producer 處理)—— recap 與 origin 各自再推
+    一次身分,正是「同一件事兩個答案」反覆出現的根源。這裡把世系交出去,
+    下游**同世系直接接、不同世系直接否**,推身分只留給沒有世系的事件。
+
+    多筆命中而世系不同 = 身分仍分不開 → 回空(保守側:退回既有的
+    模糊判準,不擲骰子)。
+    """
+    hits = {k for _, k in _lineage_hits(records, entities, titles, summary)
+            if k}
+    return hits.pop() if len(hits) == 1 else ""
+
+
 def match_days(records, entities, titles, summary: str = "") -> int:
     """事件群接得上哪一筆 timeline 記錄的第幾天(接不上回 0)。
 
@@ -352,6 +368,34 @@ def match_days(records, entities, titles, summary: str = "") -> int:
     # 拼寫(`news_normalize` 刻意不動它)—— 英文報導的
     # `United States` 因此接不上,一條延燒了 7 天的事件回 0 天、
     # 掉出全文優先權。**正規化是身分的一部分,不是顯示的細節。**
+    return min((h[0] for h in _lineage_hits(records, entities, titles,
+                                            summary)), default=0)
+
+
+def _objects_agree(mine: str, theirs: str) -> bool:
+    """兩側的對象算同一個嗎 —— **簽章退回時當候選集合**。
+
+    producer 端(timeline)存的是剝掉 actor 的明確對象(「伊朗」),而
+    消費端的實體集合常帶著 actor,`action_object` 退回整組簽章
+    (「伊朗、美國」)—— 等值比對永遠對不上,`continuing_days` 回 0、
+    世系接不上(Batch A 端到端測試當場抓到)。
+
+    退回的簽章不是「對象是這一串」,是「對象在這一串裡、分不出是哪個」
+    —— 所以:單一側的明確對象出現在多元側的候選裡就算對上;
+    **兩側都是多元時仍要求相等**(兩個都分不出,猜了就是擲骰子)。
+    """
+    if mine == theirs:
+        return True
+    ma, tb = mine.split("、"), theirs.split("、")
+    if len(ma) == 1 and len(tb) > 1:
+        return mine in tb
+    if len(tb) == 1 and len(ma) > 1:
+        return theirs in ma
+    return False
+
+
+def _lineage_hits(records, entities, titles, summary: str = "") -> list:
+    """`[(days, key)]` —— match_days 與 match_lineage 共用同一次比對。"""
     ents = {canonical_subject(str(e)) for e in (entities or ())
             if str(e).strip()}
     # **不因為實體集合是空的就早退**:實體抽取會漏,標題不會 ——
@@ -392,10 +436,10 @@ def match_days(records, entities, titles, summary: str = "") -> int:
                                                        or ""), subs,
                                        summary=str(r.get("latest_summary")
                                                    or "")))
-            if not mine or not theirs or mine != theirs:
+            if not mine or not theirs or not _objects_agree(mine, theirs):
                 continue          # 對象對不上、或算不出來 → 保守不接
-        hits.append(int(r.get("days") or 0))
-    return min(hits) if hits else 0
+        hits.append((int(r.get("days") or 0), str(r.get("key") or "")))
+    return hits
 
 
 def expand_alias(names) -> set:

@@ -101,7 +101,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: (昨日過熱/恐慌訊號)不是管線診斷,payload 給模型看、registry 卻不給
 #: ID,claim 引用 `market:ALERTS` 因此整份作廢。其餘區塊維持不可引用
 #: (循環引用/假根據,各有測試釘著)。
-EVIDENCE_SCHEMA_VERSION = 31
+#: v32(Batch A,2026-08-13):事件群帶 `lineage_id`(timeline 的 key)
+#: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
+EVIDENCE_SCHEMA_VERSION = 32
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -299,6 +301,19 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
                         for m in c["member_source_ids"])
         import event_identity as _eid
         return _eid.match_days(timeline, ents, titles, summary=summ)
+
+    def _lineage(c):
+        # **世系是 timeline 的 key**(第三十一輪外審的方向):同世系的
+        # 昨日觀點/首見直接接、不同世系直接否 —— 推身分只留給沒有
+        # 世系的事件。分不出(多筆命中不同 key)回空,退回模糊判準。
+        ents = {str(e) for m in c["member_source_ids"]
+                for e in (by_id.get(m, {}).get("entities") or [])}
+        titles = " ".join(str(by_id.get(m, {}).get("title") or "")
+                          for m in c["member_source_ids"])
+        summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
+                        for m in c["member_source_ids"])
+        import event_identity as _eid
+        return _eid.match_lineage(timeline, ents, titles, summary=summ)
     # **昨日觀點掛在事件群上**(分析面縱深):prompt 要求延續事件寫增量,
     # 而模型先前沒有 diff 的對象。同日重跑的守衛在 `usable`(拿今天比
     # 今天會產生假的強化/推翻);比對身分與 continuing_days 同一套。
@@ -316,7 +331,8 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
                         for m in c["member_source_ids"])
         # 消毒交給最後的 `sanitize_tree` 整樹掃(它是字串葉節點之一)。
-        return _rc.view_for(ents, _recap_items, titles=titles, summary=summ)
+        return _rc.view_for(ents, _recap_items, titles=titles, summary=summ,
+                            lineage_id=_lineage(c))
 
     def _chain(c):
         # **橫向傳導候選**(縱深第四批 C):事件的主體沿宣告過的供應鏈邊
@@ -336,11 +352,12 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         summ = " ".join(str(by_id.get(m, {}).get("summary") or "")
                         for m in c["member_source_ids"])
         return _rc.origin_view_for(ents, _recap_items, titles=titles,
-                                   summary=summ)
+                                   summary=summ, lineage_id=_lineage(c))
     _kept_clusters = [dict(c,
                            member_source_ids=[m for m in c["member_source_ids"]
                                               if m in kept_ids],
                            continuing_days=_days(c),
+                           lineage_id=_lineage(c),
                            yesterday_view=_yview(c),
                            origin_view=_oview(c),
                            transmission_candidates=_chain(c))

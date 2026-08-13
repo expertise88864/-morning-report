@@ -132,3 +132,26 @@ def test_producer_timeline_carries_the_summary_only_recipient(
     got = eid.match_days(list(state.values()), ["美國", "台灣"],
                          "美國宣布對台軍售")
     assert got == 1, (got, rec)
+
+
+def test_the_packet_cluster_carries_the_timeline_lineage(tmp_path,
+                                                         monkeypatch):
+    """端到端:producer 產的 timeline(帶 key)進 packet 後,同一樁事的
+    cluster 要帶 `lineage_id` —— recap 明天就是拿它直接接。"""
+    import evidence_packet as ep
+    _active, state = _timeline(tmp_path, monkeypatch, [
+        {"event_type": "geopolitical", "entity": "伊朗",
+         "entities": ["伊朗", "美國"],
+         "title": "美國宣布對伊朗新一輪經濟制裁措施", "summary": ""}],
+        days=2)
+    timeline = [dict(v, key=k) for k, v in state.items()]
+    pk = ep.build({"EVENT_TIMELINE": timeline},
+                  {}, {}, [{"source_item_id": "n1",
+                            "title": "美國對伊朗制裁 波斯灣航運受阻",
+                            "entities": ["美國", "伊朗"], "source": "X",
+                            "source_name": "X"}],
+                  [], {}, as_of="x", target_session_date="2026-08-07",
+                  sanitize=str)
+    cl = pk["news_clusters"]["clusters"]
+    assert cl and cl[0].get("lineage_id"), cl
+    assert cl[0]["lineage_id"] in state, (cl[0]["lineage_id"], list(state))

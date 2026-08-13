@@ -852,3 +852,95 @@ def test_a_third_entity_anchor_is_reachable_with_entities():
         {"title": "美國宣布對台軍售", "summary": ""},
         {"title": "US announces new arms sale to Taiwan", "summary": ""},
         obj="台灣") is False
+
+
+# ------------------------------------------------- Batch A:lineage 端到端
+
+def test_a_shared_lineage_connects_across_languages_without_an_anchor():
+    """**世系是單一契約**:timeline 的橋接早就做完跨語言的辨識 ——
+    同世系直接接,不必再找金額/數量錨。"""
+    y = _item("US announces new sanctions package on Iran", ["伊朗", "美國"])
+    y["summary"] = ""
+    y["lineage_id"] = "sanction:伊朗"
+    got = rc.best_view(["伊朗", "美國"], [y],
+                       titles="美國宣布對伊朗新一輪經濟制裁措施",
+                       lineage_id="sanction:伊朗")
+    assert got is not None, "同世系被丟掉了"
+
+
+def test_different_lineages_never_share_a_view():
+    """兩邊都有世系而不同 = 兩件事,標題再像也一樣。"""
+    y = _item("美國宣布對伊朗新一輪經濟制裁措施", ["伊朗", "美國"])
+    y["lineage_id"] = "sanction:伊朗#a1"
+    got = rc.best_view(["伊朗", "美國"], [y],
+                       titles="美國宣布對伊朗新一輪經濟制裁措施",
+                       lineage_id="sanction:伊朗#b2")
+    assert got is None, got
+
+
+def test_an_item_without_lineage_still_uses_the_fuzzy_rules():
+    """世系只約束**兩邊都有**的配對 —— 第一天的事件(還不在 active
+    清單)沒有世系,照走既有判準,不得被連坐排除。"""
+    y = _item("美國宣布對伊朗新一輪經濟制裁措施", ["伊朗", "美國"])
+    y["lineage_id"] = ""
+    got = rc.best_view(["伊朗", "美國"], [y],
+                       titles="美國對伊朗經濟制裁再加碼",
+                       lineage_id="sanction:伊朗")
+    assert got is not None, "沒有世系的舊觀點被連坐排除了"
+
+
+def test_extract_stores_the_cluster_lineage():
+    """寫入端:packet cluster 的 lineage_id 要存進 recap item ——
+    明天讀取端才有東西可比。"""
+    pk = _packet(
+        news=[{"source_item_id": "n1", "title": "美國宣布對台軍售",
+               "entities": ["美國", "台灣"], "source": "X",
+               "source_name": "X"}], date="2026-08-07")
+    for c in pk["news_clusters"]["clusters"]:
+        c["lineage_id"] = "arms_sale:台灣"
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [dict(obj["key_drivers"][0], cluster_id="cluster:n1",
+                               statement="軍售的影響")]
+    obj["top_news_analysis"] = []
+    items = rc.usable(rc.extract(obj, pk), "2026-08-08")
+    assert items and items[0].get("lineage_id") == "arms_sale:台灣", items
+
+
+def test_one_lineage_writes_only_one_item():
+    """**同世系只存一筆**(外審 r1):同一條世系對應兩個 cluster
+    (跨語言分群)時,兩筆都寫會讓明天的世系直配退回模糊判準。"""
+    pk = _packet(
+        news=[{"source_item_id": "n1", "title": "美國宣布對台軍售",
+               "entities": ["美國", "台灣"], "source": "X", "source_name": "X"},
+              {"source_item_id": "n2",
+               "title": "US announces arms sale to Taiwan",
+               "entities": ["美國", "台灣"], "source": "Y", "source_name": "Y"}],
+        date="2026-08-07")
+    for c in pk["news_clusters"]["clusters"]:
+        c["lineage_id"] = "arms_sale:台灣"
+    obj = fx.valid_analysis()
+    obj["key_drivers"] = [
+        dict(obj["key_drivers"][0], cluster_id="cluster:n1",
+             statement="軍售的影響(中文群)"),
+        dict(obj["key_drivers"][0], cluster_id="cluster:n2",
+             statement="arms sale view(英文群)")]
+    obj["top_news_analysis"] = []
+    items = rc.usable(rc.extract(obj, pk), "2026-08-08")
+    lin = [it for it in items if it.get("lineage_id") == "arms_sale:台灣"]
+    assert len(lin) == 1, lin
+    assert "中文群" in lin[0]["statement"], "沒有依重要性序留第一筆"
+
+
+def test_multiple_same_lineage_items_pick_the_first_deterministically():
+    """讀取端防線:舊 state 殘留兩筆同世系時取第一筆,不退回模糊判準
+    (退回的話跨語言那筆沒有錨、整個消失)。"""
+    a = _item("US announces arms sale to Taiwan", ["美國", "台灣"],
+              statement="第一筆")
+    b = _item("美國對台軍售追蹤", ["美國", "台灣"], statement="第二筆")
+    for it in (a, b):
+        it["summary"] = ""
+        it["lineage_id"] = "arms_sale:台灣"
+    got = rc.best_view(["美國", "台灣"], [a, b],
+                       titles="美國對台軍售最新進展",
+                       lineage_id="arms_sale:台灣")
+    assert got is not None and got["statement"] == "第一筆", got

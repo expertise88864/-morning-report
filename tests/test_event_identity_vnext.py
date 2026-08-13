@@ -1284,3 +1284,25 @@ def test_a_stored_object_wins_over_recomputation():
     # —— 只有讀「存下來的對象」才接得上。
     got = eid.match_days(rec, ["美國", "台灣"], "美國宣布對台軍售")
     assert got == 4, got
+
+
+def test_a_signature_fallback_object_is_a_candidate_set():
+    """producer 存明確對象(伊朗)、消費端退回簽章(伊朗、美國)——
+    等值比對永遠對不上;退回的簽章當候選集合,明確側在裡面就算對上。"""
+    import event_identity as eid
+    rec = [{"key": "geopolitical:sanction:伊朗:2026-08", "subjects": ["伊朗"],
+            "action": "sanction", "object": "伊朗", "days": 2,
+            "latest_title": "美國宣布對伊朗新一輪經濟制裁措施",
+            "latest_summary": ""}]
+    t = "美國對伊朗制裁 波斯灣航運受阻"
+    assert eid.match_days(rec, ["美國", "伊朗"], t) == 2
+    assert eid.match_lineage(rec, ["美國", "伊朗"], t) ==         "geopolitical:sanction:伊朗:2026-08"
+
+
+def test_two_ambiguous_signatures_still_require_equality():
+    """兩側都分不出對象時仍要求相等 —— 猜了就是擲骰子。"""
+    import event_identity as eid
+    assert eid._objects_agree("伊朗、美國", "俄羅斯、美國") is False
+    assert eid._objects_agree("伊朗、美國", "伊朗、美國") is True
+    # 明確 vs 明確:不同就是不同(對台/對日不得互認)
+    assert eid._objects_agree("台灣", "日本") is False

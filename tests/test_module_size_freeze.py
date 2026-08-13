@@ -210,7 +210,8 @@ MODULE_CEILINGS = {
     # Commit 2 identity v7:incident 判準(same_incident/incident_suffix)+ 對象依種類過濾。實測 513。
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
-    "event_identity.py": 910,
+    # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
+    "event_identity.py": 960,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
@@ -266,7 +267,8 @@ MODULE_CEILINGS = {
     # 外審補審 F4:timeline 記錄整筆帶著走(先前折成 `{entity: days}`,
     # 同 entity 重複時後者覆蓋前者)+ yesterday_view 傳標題。實測 457。
     # 第三十一輪外審:identity 消費端補 summary
-    "evidence_packet.py": 575,
+    # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
+    "evidence_packet.py": 590,
     # 2026-08-08 生產:ADR→2330 校準的**渲染**(表是投影,不是真相來源;
     # builder 因 yfinance 判 BLOCK 留在主模組)+ `_calibration_note`。
     # 兩個都是 refactor_audit ALL-CLEAR 的純函式。實測 47。
@@ -329,7 +331,8 @@ MODULE_CEILINGS = {
     # 縱深第四批 B:首見判斷逐日 carry(`_carry_origins` + `best_view`
     # 抽出 + 首見渲染)。**實測 398 行**。
     # 第三十一輪外審:watch 容量掉條數的 telemetry
-    "analysis_recap.py": 725,
+    # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
+    "analysis_recap.py": 750,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

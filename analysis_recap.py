@@ -74,6 +74,10 @@ def extract(analysis_obj, packet) -> dict:
                   [str(m) for m in (c.get("member_source_ids") or [])]
                   for c in clusters}
     cluster_of = {m: cid for cid, ms in members_of.items() for m in ms}
+    # 世系由 packet 端算好(timeline 的 key);沒有的事件留空。
+    lineage_of = {str(c.get("cluster_id") or ""): str(c.get("lineage_id") or "")
+                  for c in clusters}
+    seen_lineage: set = set()
 
     import event_identity as _eid
 
@@ -124,6 +128,15 @@ def extract(analysis_obj, packet) -> dict:
         # 於是同一批軍售在 timeline 的對象是「台灣」、在 recap 是
         # 「台灣、美國」,今天少寫一個實體就接不回昨天。
         _ident = _eid.view_identity(title, ents, summary=summ)
+        _lin = str(lineage_of.get(cluster_id) or "")
+        # **同世系只存一筆**(外審 r1):同一條 timeline 世系可以對應
+        # 兩個 news cluster(跨語言/措辭分群)—— 兩筆都寫的話,明天
+        # `best_view` 的世系直配對到兩筆、退回模糊判準,跨語言那筆
+        # 反而接不上。依加入順序(key_drivers 在前 = 重要性序)留第一筆。
+        if _lin and _lin in seen_lineage:
+            return
+        if _lin:
+            seen_lineage.add(_lin)
         items.append({"statement": stmt[:STATEMENT_CHARS],
                       "direction": str(direction or ""),
                       "entities": ents,
@@ -131,6 +144,7 @@ def extract(analysis_obj, packet) -> dict:
                       "object": _ident["object"],
                       "incident_tokens": _ident["incident_tokens"],
                       "title": title[:STATEMENT_CHARS],
+                      "lineage_id": _lin,
                       # 跨語言錨(金額/帶單位數量)常常只在 summary ——
                       # 不存的話,明天英文報導接不回今天的中文觀點。
                       "summary": summ[:STATEMENT_CHARS]})
@@ -335,7 +349,8 @@ def _carry_origins(rec: dict, prior: dict) -> None:
     for it in rec["items"]:
         hit = best_view(it.get("entities"), prior_items,
                         titles=str(it.get("title") or ""),
-                        summary=str(it.get("summary") or ""))
+                        summary=str(it.get("summary") or ""),
+                        lineage_id=str(it.get("lineage_id") or ""))
         if not hit:
             continue
         origin = hit.get("origin") if isinstance(hit.get("origin"), dict)             else None
@@ -517,7 +532,8 @@ def _comparable(a, b) -> bool:
     return (cjk_a and cjk_b) or (lat_a and lat_b)
 
 
-def best_view(entities, items, titles: str = "", summary: str = ""):
+def best_view(entities, items, titles: str = "", summary: str = "",
+              lineage_id: str = ""):
     """對得上的那一筆觀點(對不上、或**分不出來**時回 `None`)。
 
     兩層判準(外審補審 F3):
@@ -541,8 +557,22 @@ def best_view(entities, items, titles: str = "", summary: str = ""):
             if str(e).strip()}
     keys = _ea.expand(ents)
     today_action = _eid.event_action(titles)
+    # **世系是單一契約**(第三十一輪外審的方向):兩邊都有世系時,
+    # 同世系直接接(跨語言也不必再找錨 —— timeline 的橋接早就做完了)、
+    # 不同世系直接否。推身分只留給任一邊沒有世系的配對。
+    if lineage_id:
+        _same = [it for it in (items or [])
+                 if str((it or {}).get("lineage_id") or "") == lineage_id]
+        if _same:
+            # 多筆同世系(舊 state 或去重前的殘留)→ 確定性取第一筆
+            # (items 保留寫入序 = 重要性序),不退回模糊判準 ——
+            # 退回的話跨語言那筆會因為沒有錨而整個消失(外審 r1)。
+            return _same[0]
     scored = []
     for it in (items or []):
+        if (lineage_id and str(it.get("lineage_id") or "")
+                and str(it.get("lineage_id")) != lineage_id):
+            continue          # 兩邊都有世系而不同 = 兩件事,標題再像也一樣
         theirs = {str(e) for e in (it.get("entities") or [])}
         if not (ents & theirs or (keys & _ea.expand(theirs))):
             continue
@@ -631,7 +661,7 @@ def _fmt_view(date, direction, stmt, label, sanitize=None) -> str:
 
 
 def view_for(entities, items, sanitize=None, titles: str = "",
-             summary: str = "") -> str:
+             summary: str = "", lineage_id: str = "") -> str:
     """`best_view` 的字串出口(給 packet 的 `yesterday_view`)。
 
     **只有昨天那一句** —— 首見走 `origin_view_for`(另一個欄位)。
@@ -640,7 +670,8 @@ def view_for(entities, items, sanitize=None, titles: str = "",
     敘述必然與首見高度重疊 → 被誤判成重述、耗掉唯一一次加深呼叫
     (外審抓到)。渲染與重述檢查要各看各的欄位。
     """
-    it = best_view(entities, items, titles=titles, summary=summary)
+    it = best_view(entities, items, titles=titles, summary=summary,
+                   lineage_id=lineage_id)
     if not it:
         return ""
     return _fmt_view(it.get("date", ""), it.get("direction"),
@@ -648,14 +679,15 @@ def view_for(entities, items, sanitize=None, titles: str = "",
 
 
 def origin_view_for(entities, items, sanitize=None, titles: str = "",
-                    summary: str = "") -> str:
+                    summary: str = "", lineage_id: str = "") -> str:
     """這個事件群的**首見判斷**(沒有、或首見就是昨天時回空字串)。
 
     縱深第四批:線索延燒到第三天時,「昨天說什麼」不足以寫出
     「當初預期 → 應驗/落空」—— 那需要**最初**那一天的判斷,而檔案只留
     最新一天,首見靠 `save()` 逐日 carry(`origin` 欄位)。
     """
-    it = best_view(entities, items, titles=titles, summary=summary)
+    it = best_view(entities, items, titles=titles, summary=summary,
+                   lineage_id=lineage_id)
     if not it:
         return ""
     origin = it.get("origin") if isinstance(it.get("origin"), dict) else None

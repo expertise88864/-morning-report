@@ -4901,6 +4901,85 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73920403",
+        "title": "Trump vaccine order faces major hurdle",
+        "published": "Thu, 13 Aug 2026 15:26:35 +0000",
+        "processed_at": "2026-08-13T20:07:03Z",
+        "digest": {
+          "summary_points": [
+            "7月 PPI 月增率持平，低於市場預期的 0.2%；年增率從 5.5% 降至 4.7%，核心 PPI 年增率也降至 4.2%，市場對聯準會 9 月升息的預期進一步降溫。",
+            "Jack in the Box 連續第二日反彈，分析師對其「Jack on Track」計畫感到鼓舞，包括降低槓桿與整頓績效不佳門市，但認為在速食漢堡競爭激烈與低消費力環境下仍有挑戰。",
+            "大空頭 Michael Burry 加大對 Nebius、美光、甲骨文及 iShares 半導體 ETF 的放空部位，並稱 Nebius 的飆漲是「繁榮期頂部看起來的樣子」。",
+            "IBM 與 OpenAI 宣布合作，將 GPT 5.6 等模型與代理工具嵌入 IBM Consulting Advantage，以協助企業大規模部署 AI 並強化網路安全防禦。"
+          ],
+          "tickers": [
+            {
+              "name": "Jack in the Box",
+              "code": "JACK",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師對其轉型計畫鼓舞，但警告速食漢堡競爭與弱勢消費族群仍是阻力。"
+            },
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 加碼放空，認為其股價暴漲是繁榮期頂部特徵。"
+            },
+            {
+              "name": "美光",
+              "code": "MU",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 增加放空部位。"
+            },
+            {
+              "name": "甲骨文",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 增加放空部位。"
+            },
+            {
+              "name": "iShares 半導體 ETF",
+              "code": "SOXX",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry 增加放空部位。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Nebius is what the top of a boom looks like."
+        }
+      },
+      {
+        "guid": "https://api.spreaker.com/episode/73903795",
+        "title": "Google pushes harder on Gemini",
+        "published": "Thu, 13 Aug 2026 10:30:59 +0000",
+        "processed_at": "2026-08-13T20:08:24Z",
+        "digest": {
+          "summary_points": [
+            "Cisco 上季財報與本季財測皆優於預期，產品訂單年增 35%（不含超大規模資料中心為 25%），網絡產品訂單年增 40% 且連續八季雙位數成長；但盤前股價反而下跌，主持人指出主因是過去三個月已累積約 35% 漲幅，且管理層預期 2027 年從超大規模資料中心取得 75 億美元 AI 相關營收。",
+            "Google 共同創辦人 Sergey Brin 敦促 AI 團隊全力提升 Gemini 模型能力，要求加速開發、聚焦變現，並強調遞迴式自我改進，反映 Google 在 AI 商業化上更加積極。",
+            "韓國 Cosplay 指數重新進入技術性牛市，呼應 AI 交易反彈。"
+          ],
+          "tickers": [
+            {
+              "name": "Cisco Systems",
+              "code": "CSCO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報與財測優異但盤前下跌，因先前累積漲幅約35%已反映利多。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Brin also wants the AI team to focus on more recursive self-improvement, a compounding process where an AI system helps design, code, or train its own next generation."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73849996",
         "title": "Inflation cools but stays stubborn",
         "published": "Wed, 12 Aug 2026 15:23:32 +0000",
@@ -5270,98 +5349,6 @@
           "notable_quote": "For Disney, the deal could boost visibility and engagement."
         },
         "shown_at": "2026-08-07T00:32:46Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73489880",
-        "title": "SpaceX spending spree rattles investors",
-        "published": "Wed, 05 Aug 2026 11:28:58 +0000",
-        "processed_at": "2026-08-05T15:38:57Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 上市後首份財報營收年增 92% 至 78.1 億美元、優於預期，但資本支出暴增至 184 億美元（年增逾 6 倍），其中約 158 億美元投向 AI 與星艦計畫，盤前股價因而承壓，主持人形容為「支出狂潮」。",
-            "AMD 雖交出優於預期的財報並上調財測，但因股價年初至今已漲 130%，投資人期待更高而導致盤前下跌；節目引述分析師看法，AMD 成長速度仍較輝達慢，卻享有更高估值。",
-            "Michael Burry 在 Substack 警告市場可能接近大頂、甚至重演 1987 年式暴跌，並揭露其空單持倉：SOXX、美光、輝達、開拓重工、Palantir、特斯拉、應用材料，其中輝達空單目前虧損；他說「我必須放空，但多數人不該」。",
-            "主持人觀察盤前美股，認為科技股經歷近期「融漲」後略顯疲態，期貨漲跌互見，公債殖利率曲線也趨於平坦。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報營收優異但資本支出爆增，市場憂心投資回收，盤前走跌。"
-            },
-            {
-              "name": "AMD",
-              "code": "AMD",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "財報雖超預期但估值與成長不如輝達，投資人獲利了結。"
-            },
-            {
-              "name": "iShares 半導體 ETF",
-              "code": "SOXX",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 仍持有 SOXX 空單，押注半導體族群回檔。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 仍持有美光空單，看空記憶體循環。"
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Burry 做空輝達且目前虧損，但仍是產業高估值風險代表。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Burry 持有 Palantir 空單，且週二大漲 30% 令空頭損失約 30 億美元。"
-            },
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 仍持有特斯拉空單。"
-            },
-            {
-              "name": "應用材料",
-              "code": "AMAT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 仍持有應用材料空單。"
-            }
-          ],
-          "market_view": "主持人認為科技股在近期融漲後，盤前美股期貨漲跌互見、略顯疲態，公債殖利率曲線走平。",
-          "action_view": "",
-          "notable_quote": "I must short. Most should not."
-        },
-        "shown_at": "2026-08-05T22:59:55Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73446473",
-        "title": "Ban talk lifts networking names",
-        "published": "Tue, 04 Aug 2026 16:28:57 +0000",
-        "processed_at": "2026-08-04T20:52:57Z",
-        "digest": {
-          "summary_points": [
-            "Apollo全球管理首席經濟學家認為，傳統60/40股債投資組合已失效——股市報酬高度集中於少數AI龍頭，債券報酬則受財政赤字與政府債務主導；若AI交易反轉或赤字疑慮升溫，股債可能同步下跌，失去避險功能。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The greater danger lies in a potential reversal of the AI trade or heightened market concern over fiscal deficits."
-        },
-        "shown_at": "2026-08-04T23:06:58Z"
       }
     ]
   },

@@ -211,7 +211,8 @@ MODULE_CEILINGS = {
     # 第二十七輪外審 P1-3/P1-4A:辨識詞比對三態、後綴吃完整集合、
     # 法域動作先看方向詞取受詞。**實測 627 行**。
     # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
-    "event_identity.py": 960,
+    # 第三十二輪 P1-1:lineage 指派補逐樁 incident 判準(三態+跨語言錨)
+    "event_identity.py": 1000,
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)

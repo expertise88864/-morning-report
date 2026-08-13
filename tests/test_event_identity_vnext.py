@@ -1306,3 +1306,80 @@ def test_two_ambiguous_signatures_still_require_equality():
     assert eid._objects_agree("伊朗、美國", "伊朗、美國") is True
     # 明確 vs 明確:不同就是不同(對台/對日不得互認)
     assert eid._objects_agree("台灣", "日本") is False
+
+
+# --------------------------------------- 第三十二輪外審 P1-1:逐樁 lineage
+
+def _cyber_rec(title, days=7, **over):
+    import event_identity as eid
+    rec = {"key": "geopolitical:cyberattack:台積電:2026-08",
+           "subjects": ["台積電"], "action": "cyberattack",
+           "object": "台積電", "days": days, "latest_title": title,
+           "latest_summary": "",
+           "incident_tokens": sorted(eid.discriminative_tokens(
+               title, ["台積電"]))}
+    rec.update(over)
+    return rec
+
+
+def test_a_new_same_company_incident_does_not_inherit_old_days():
+    """同公司同月的第二起資安事件是**另一樁** —— 不看 incident 辨識詞
+    的話,新樁繼承舊樁 7 天、拿到延燒排序與全文優先權。"""
+    import event_identity as eid
+    old = _cyber_rec("台積電遭勒索軟體攻擊 產線停擺")
+    # 反例要**只靠 incident 那關**分勝負:這個標題的 action 也是
+    # cyberattack(action 那關擋不住它),辨識詞重疊 1/9 < 門檻。
+    t_new = "台積電再遭網路攻擊 供應商系統資料外洩"
+    assert eid.match_days([old], ["台積電"], t_new) == 0
+    assert eid.match_lineage([old], ["台積電"], t_new) == ""
+
+
+def test_the_same_incident_still_inherits():
+    import event_identity as eid
+    old = _cyber_rec("台積電遭勒索軟體攻擊 產線停擺")
+    assert eid.match_days([old], ["台積電"],
+                          "台積電勒索軟體攻擊第七天 產線停擺持續") == 7
+
+
+def test_a_legacy_record_without_tokens_is_not_vetoed():
+    """UNKNOWN 保守不否決 —— 升版當天 state 幾乎全是舊代記錄,
+    硬否決等於把所有延燒歸零。"""
+    import event_identity as eid
+    old = _cyber_rec("台積電遭勒索軟體攻擊 產線停擺")
+    old.pop("incident_tokens")
+    assert eid.match_days([old], ["台積電"],
+                          "台積電勒索軟體攻擊 產線停擺持續") == 7
+
+
+def test_cross_language_inheritance_requires_an_incident_anchor():
+    """跨書寫系統的零共用是語言差異,不是事件差異 —— 但也不能白拿:
+    要一個逐樁錨(這裡:同幣別同量級金額)。"""
+    import event_identity as eid
+    old = _cyber_rec("台積電遭勒索軟體攻擊 損失20億美元")
+    assert eid.match_days([old], ["台積電"],
+                          "TSMC ransomware attack causes $2 billion loss") == 7
+    assert eid.match_days([old], ["台積電"],
+                          "TSMC ransomware attack under investigation") == 0
+
+
+def test_situation_actions_are_not_split_per_incident():
+    """persistent situation(荷姆茲通行)本來就不逐樁 —— 每天的報導
+    辨識詞都不同,逐樁否決會讓它天天歸零。"""
+    import event_identity as eid
+    sit = {"key": "geopolitical:hormuz_passage:伊朗:2026-08",
+           "subjects": ["伊朗"], "action": "hormuz_passage", "object": "",
+           "days": 9, "latest_title": "荷姆茲海峽通行受阻",
+           "latest_summary": "", "incident_tokens": ["通行", "受阻"]}
+    assert eid.match_days([sit], ["伊朗"], "荷姆茲海峽危機 油輪改道") == 9
+
+
+def test_fetch_plan_does_not_boost_a_new_same_company_incident():
+    """端到端:fetch_plan 的延燒加權走同一個判準 —— 新樁不得拿
+    舊樁的全文優先權。"""
+    import fetch_plan as fp
+    old = _cyber_rec("台積電遭勒索軟體攻擊 產線停擺")
+    by_id = {"n1": {"source_item_id": "n1",
+                    "title": "台積電再遭網路攻擊 供應商系統資料外洩",
+                    "entities": ["台積電"], "summary": ""}}
+    c = {"cluster_id": "cluster:n1", "member_source_ids": ["n1"]}
+    assert fp._continuing(c, by_id, [old]) == 0

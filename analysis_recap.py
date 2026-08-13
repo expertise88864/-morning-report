@@ -508,28 +508,10 @@ VIEW_TITLE_OVERLAP = 0.3
 
 
 def _comparable(a, b) -> bool:
-    """兩個標題的辨識詞**比得出勝負嗎** —— 同一套書寫系統才比得出。
-
-    中文標題切二元組、英文標題切單詞:同一件事的中文報導與英文報導
-    共用的辨識詞是零,而那是語言差異不是事件差異。
-
-    判準是**比例**不是「有沒有」(外審 r1):台灣的英文報導常留著中文
-    公司名(`台積電 hit by ransomware; fabs halted`),只看「有沒有兩個
-    漢字」會把它判成中文標題 —— 它與真的中文報導比,辨識詞照樣是零,
-    於是同一樁事件的昨日觀點被無聲丟掉。混合書寫的一律當**比不出來**
-    (保守側:不否決,還有標題重疊那一關)。
-    """
-    def _score(t):
-        text = str(t or "")
-        han = sum(1 for ch in text if "一" <= ch <= "鿿")
-        lat = sum(1 for ch in text if ch.isascii() and ch.isalpha())
-        return han, lat
-
-    ha, la = _score(a)
-    hb, lb = _score(b)
-    cjk_a, cjk_b = ha >= 2 and ha >= la, hb >= 2 and hb >= lb
-    lat_a, lat_b = la >= 4 and la > ha, lb >= 4 and lb > hb
-    return (cjk_a and cjk_b) or (lat_a and lat_b)
+    """委派 `event_identity.comparable_scripts`(單一判準;本體已搬過去,
+    lineage 指派與 recap 讀取端共用 —— 各留一份會漂移)。"""
+    import event_identity as _eid
+    return _eid.comparable_scripts(a, b)
 
 
 def best_view(entities, items, titles: str = "", summary: str = "",

@@ -147,7 +147,9 @@ def test_the_packet_cluster_carries_the_timeline_lineage(tmp_path,
     timeline = [dict(v, key=k) for k, v in state.items()]
     pk = ep.build({"EVENT_TIMELINE": timeline},
                   {}, {}, [{"source_item_id": "n1",
-                            "title": "美國對伊朗制裁 波斯灣航運受阻",
+                            # 標題要與 day-1 有足夠 incident 重疊(P1-1 之後同語言 NO_MATCH
+                            # 會否決 —— 這正是要的行為)
+                            "title": "美國對伊朗新一輪制裁 波斯灣航運受阻",
                             "entities": ["美國", "伊朗"], "source": "X",
                             "source_name": "X"}],
                   [], {}, as_of="x", target_session_date="2026-08-07",

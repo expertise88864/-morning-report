@@ -438,6 +438,33 @@ def _lineage_hits(records, entities, titles, summary: str = "") -> list:
                                                    or "")))
             if not mine or not theirs or not _objects_agree(mine, theirs):
                 continue          # 對象對不上、或算不出來 → 保守不接
+        # **同動作+同對象還要是同一樁**(第三十二輪外審 P1-1)。
+        # `cyberattack`/`sanction`/`arms_sale` 同月同對象可以發生多起 ——
+        # 不看 incident 辨識詞的話,今天全新的一樁會繼承昨天那樁的天數,
+        # 拿到延燒排序與全文優先權,縱向敘事起點跟著錯。
+        # 三態各有去處:同文字系統 NO_MATCH → 硬否決;跨文字系統的
+        # 零共用是語言差異 → 退而要求**逐樁錨**(金額/帶單位數量/
+        # 非對象第三實體,與跨語言橋接同一套);UNKNOWN(舊代記錄沒有
+        # 辨識詞、短標題)→ 保守不否決(升版當天 state 幾乎全是舊代);
+        # persistent situation(荷姆茲通行)本來就不逐樁。
+        if not is_situation_action(rec_action):
+            _mt = incident_match(_vi["incident_tokens"],
+                                 r.get("incident_tokens") or [])
+            if _mt == NO_MATCH:
+                if comparable_scripts(titles, r.get("latest_title")):
+                    continue
+                import cross_lang as _cl
+                if not _cl._shared_specific_anchor(
+                        {"title": str(titles or ""),
+                         "summary": str(summary or ""),
+                         "entities": sorted(str(e) for e in (entities or ())
+                                            if str(e).strip())},
+                        {"title": str(r.get("latest_title") or ""),
+                         "summary": str(r.get("latest_summary") or ""),
+                         "entities": [str(x) for x in (r.get("subjects")
+                                                       or [])]},
+                        obj=str(r.get("object") or "")):
+                    continue
         hits.append((int(r.get("days") or 0), str(r.get("key") or "")))
     return hits
 
@@ -500,6 +527,27 @@ def incident_suffix(tokens) -> str:
 MATCH = "match"
 NO_MATCH = "no_match"
 UNKNOWN = "unknown"
+
+
+def comparable_scripts(a, b) -> bool:
+    """兩段文字的辨識詞**比得出勝負嗎** —— 同一套書寫系統才比得出。
+
+    中文切二元組、英文切單詞:同一件事的中英文報導共用辨識詞是零,
+    那是語言差異不是事件差異。混合書寫一律當**比不出來**(保守側)。
+    本體自 `analysis_recap._comparable` 搬入 —— lineage 指派(P1-1)
+    也要用同一個判準,各留一份會漂移。
+    """
+    def _score(t):
+        text = str(t or "")
+        han = sum(1 for ch in text if "一" <= ch <= "鿿")
+        lat = sum(1 for ch in text if ch.isascii() and ch.isalpha())
+        return han, lat
+
+    ha, la = _score(a)
+    hb, lb = _score(b)
+    cjk_a, cjk_b = ha >= 2 and ha >= la, hb >= 2 and hb >= lb
+    lat_a, lat_b = la >= 4 and la > ha, lb >= 4 and lb > hb
+    return (cjk_a and cjk_b) or (lat_a and lat_b)
 
 
 def incident_match(tokens_a, tokens_b) -> str:

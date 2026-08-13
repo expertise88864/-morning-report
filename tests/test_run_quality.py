@@ -366,7 +366,7 @@ def test_the_gate_runs_on_every_attempt_and_records_its_own_chars():
     src = (Path(__file__).resolve().parents[1]
            / "morning_report.py").read_text(encoding="utf-8")
     body = src.split("def _luna_analysis(")[1].split("\ndef ")[0]
-    head, loop = body.split("for repair in _LUNA_ATTEMPTS:", 1)
+    head, loop = body.split("for _ai, repair in enumerate(_LUNA_ATTEMPTS):", 1)
     assert "_pb.request_gate(" not in head, "閘門還在迴圈外只量一次"
     assert "_req_chars = _pb.request_gate(" in loop
     assert "request_chars=_req_chars" in loop, "字元沒有記到那一次呼叫上"
@@ -1663,5 +1663,120 @@ def test_the_disabled_path_actually_records_itself():
             os.environ.pop("LLM_EVENT_EXTRACTION", None)
         else:
             os.environ["LLM_EVENT_EXTRACTION"] = old_env
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+# ------------------------------------------------- 2026-08-13 生產(排程)
+
+def test_problem_kinds_classifies_by_validator_phrases():
+    """95 條「是什麼」要當天答得出來 —— 「一種規則爆 90 次」與
+    「95 種各一次」的處置完全不同。"""
+    import llm_postprocess as lp
+    ks = lp.problem_kinds(
+        ["不是合法 JSON"] + ["… 鏈斷了,中間缺的那一步要補上"] * 3
+        + ["claim_audit[1] 引用了不存在的證據 ID:'x'"] * 2 + ["沒見過的"])
+    assert ks == {"invalid_json": 1, "chain_break": 3,
+                  "phantom_evidence": 2, "other": 1}, ks
+    # **標的判準是一族**(外審 r1):四個分支的實際訊息(照抄驗證器原文)
+    # 都要落在 asset_relevance —— 拆散成 other 就答不出是哪族在爆。
+    fam = lp.problem_kinds([
+        "top_news_analysis[0].affected_assets[1] 的 'Q2' 不是可交易標的"
+        " —— 會計期間(`Q2`/`FY25`)…",
+        "top_news_analysis[0].affected_assets[2] 的 'US' 在這則新聞裡指的是"
+        "**法域**,不是同名的那檔股票 —— 要談那家公司,請用交易所限定寫法",
+        "top_news_analysis[0].affected_assets[0] 的 'TTM' 在這則新聞裡是"
+        "**期間**不是公司 —— 它沒有出現在實體清單",
+        "top_news_analysis[1].affected_assets[0] 的 '9999' 不在這則新聞的"
+        "實體或標題裡",
+        "top_news_analysis[1].affected_assets[1] 的 '2330' 要寫出傳導機制"])
+    assert fam == {"asset_relevance": 5}, fam
+
+
+def test_a_rejected_attempt_records_its_problem_kinds(luna_off_guard=None):
+    """駁回的那一輪把分佈記進 manifest(接線,不只分類器)。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    body = src.split("def _luna_analysis(")[1].split(chr(10) + "def ")[0]
+    assert "problems_kinds=_problem_kinds(problems)" in body,         "駁回的那一輪沒有記 problems_kinds"
+
+
+def test_skipping_repair_for_budget_leaves_a_trace():
+    """放棄修補的決定要留痕 —— manifest 分不出「預算不夠」與
+    「迴圈壞掉」的話,只跑 2/3 輪的日子只能猜(stderr 要 admin 才讀得到)。"""
+    import morning_report as mr
+    import time as _t
+    saved = dict(mr._RUN_MANIFEST)
+    prev_deadline = mr._LLM_DEADLINE
+
+    def _bad(payload):
+        return {"status": "completed",
+                "output": [{"type": "message", "role": "assistant",
+                            "content": [{"type": "output_text",
+                                         "text": "{"}]}]}
+
+    try:
+        mr._RUN_MANIFEST.pop("llm", None)
+        mr._LLM_DEADLINE = _t.monotonic() + 1     # 裝不下任何一輪修補
+        import unittest.mock as _m
+        with _m.patch.object(mr, "_call_deepseek_responses", _bad),              _m.patch.object(mr, "LLM_PROVIDER", "deepseek"),              _m.patch.object(mr, "DEEPSEEK_API_KEY", "sk-test"),              _m.patch.object(mr, "LLM_PRIMARY_PROMPT_PROFILE", ""),              _m.patch.object(mr, "_call_llm_text", lambda p: "## 我的明確立場"
+                             + chr(10) + "立場:中性" + chr(10) + chr(10)
+                             + "## 一句話總結" + chr(10) + "備援。"):
+            mr._call_llm_analysis_impl(
+                {"QQQ": {"close": 500.0, "change_pct": 1.0}},
+                {"fair_value": 100.0}, {"m": 1.0}, [], [], "")
+        trace = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_skipped_budget")
+        assert trace and "remaining_seconds" in trace, mr._RUN_MANIFEST.get("llm")
+    finally:
+        mr._LLM_DEADLINE = prev_deadline
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+def test_an_unparsable_primary_response_leaves_its_head():
+    """「不是合法 JSON」是四種原因的統稱 —— 主分析側也要留 head/tail
+    (抽取器那側早有 diag)。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / "morning_report.py").read_text(encoding="utf-8")
+    assert '"primary_parse_error"' in src, "主分析的解析失敗沒有留痕"
+
+
+def test_exhausting_all_attempts_is_not_recorded_as_a_budget_skip():
+    """**上限打滿 ≠ 預算不夠**(外審 r2):守衛在最後一輪之後照跑的話,
+    三輪全敗+時間剛好偏短的日子會被誤記成 repair_skipped_budget ——
+    這個 trace 存在的理由正是把兩者分開。"""
+    import time as _t
+    import unittest.mock as _m
+    import morning_report as mr
+    saved = dict(mr._RUN_MANIFEST)
+    prev_deadline = mr._LLM_DEADLINE
+    calls = []
+
+    def _bad(payload):
+        calls.append(1)
+        if len(calls) == len(mr._LUNA_ATTEMPTS):
+            # 最後一輪回應後,讓剩餘預算變負 —— 舊碼會在這裡誤寫 trace
+            mr._LLM_DEADLINE = _t.monotonic() - 1
+        return {"status": "completed",
+                "output": [{"type": "message", "role": "assistant",
+                            "content": [{"type": "output_text",
+                                         "text": "{"}]}]}
+
+    try:
+        mr._RUN_MANIFEST.pop("llm", None)
+        mr._LLM_DEADLINE = _t.monotonic() + 3600
+        with _m.patch.object(mr, "_call_deepseek_responses", _bad),              _m.patch.object(mr, "LLM_PROVIDER", "deepseek"),              _m.patch.object(mr, "DEEPSEEK_API_KEY", "sk-test"),              _m.patch.object(mr, "LLM_PRIMARY_PROMPT_PROFILE", ""),              _m.patch.object(mr, "_call_llm_text", lambda p: "## 我的明確立場"
+                             + chr(10) + "立場:中性" + chr(10) + chr(10)
+                             + "## 一句話總結" + chr(10) + "備援。"):
+            mr._call_llm_analysis_impl(
+                {"QQQ": {"close": 500.0, "change_pct": 1.0}},
+                {"fair_value": 100.0}, {"m": 1.0}, [], [], "")
+        assert len(calls) == len(mr._LUNA_ATTEMPTS), calls
+        assert "repair_skipped_budget" not in (mr._RUN_MANIFEST.get("llm")
+                                               or {}),             "上限打滿被誤記成預算不夠"
+    finally:
+        mr._LLM_DEADLINE = prev_deadline
         mr._RUN_MANIFEST.clear()
         mr._RUN_MANIFEST.update(saved)

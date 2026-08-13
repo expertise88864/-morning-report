@@ -70,6 +70,7 @@ from num_utils import (  # A5-B1:數值基礎工具已抽出(僅依 stdlib),re-e
 )
 from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處 re-export 保相容
     repair_instruction as _repair_instruction,
+    problem_kinds as _problem_kinds,
     _mask_malformed_numbers,
     _sanitize_llm_2330_prices,
     _strip_llm_watchlist_section,
@@ -13081,7 +13082,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
     _kept = None   # 第十五輪:合法但淺的第一版 —— 加深失敗時用它,不落回
     _req_chars = 0
-    for repair in _LUNA_ATTEMPTS:
+    for _ai, repair in enumerate(_LUNA_ATTEMPTS):
         # **每一次送出去的 body 都要過閘門**(第一輪外審 F1)。先前只在
         # 迴圈前量一次 —— 而修補/加深那次會把上一版的完整 JSON 附進
         # input,送的是一個**更大而且從沒被量過**的 payload。
@@ -13171,7 +13172,14 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             obj = json.loads(out["text"])
             if isinstance(obj, str):
                 obj = json.loads(_dsr.strip_json_fence(obj))
-        except Exception:                   # noqa: BLE001 - 非 JSON 就是不合格
+        except Exception as _je:            # noqa: BLE001 - 非 JSON 就是不合格
+            # 「不是合法 JSON」是四種原因的統稱(截斷/引號/圍欄/雙重編碼)
+            # —— 抽取器那側早有 diag,主分析這側先前一個字都不留
+            # (2026-08-13 生產:attempt0 只記了那六個字)。
+            _RUN_MANIFEST.setdefault("llm", {})["primary_parse_error"] = {
+                "error": f"{type(_je).__name__}: {_je}"[:80],
+                "head": str(out.get("text") or "")[:120],
+                "tail": str(out.get("text") or "")[-80:]}
             obj = None
         if not isinstance(obj, (dict, type(None))):
             obj = None
@@ -13235,7 +13243,11 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # 收斂要量得到:每一輪剩幾條進 manifest,下一次 CI 直接看
         # 「12→10→3」還是「12→10→10」—— 後者代表修補在原地打轉。
         _record(False, "; ".join(problems[:2]),
-                problems_total=len(problems))
+                problems_total=len(problems),
+                # 95 條「是什麼」要當天答得出來(2026-08-13 生產)——
+                # 只有總數與前兩條訊息,分不開「一種規則爆 90 次」與
+                # 「95 種各一次」,而兩者的處置完全不同。
+                problems_kinds=_problem_kinds(problems))
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
         print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
               f"{problems[:2]}", file=sys.stderr)
@@ -13244,12 +13256,22 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # 「總時間預算已耗盡」→ 信只剩 emergency 備援字。修補值得試,
         # 但**不值得拿寄信品質去換**:剩餘預算裝不下「再一輪(以第一輪
         # 實測耗時估)+ legacy 保留額」就放棄修補,把時間留給備援。
-        if _LLM_DEADLINE is not None:
+        # **只有還有下一輪可跳時才叫「放棄修補」**(外審 r2):最後一輪
+        # 之後守衛照跑的話,「上限打滿」會被誤記成「預算不夠」——
+        # 這個 trace 存在的理由正是把兩者分開。
+        if _ai + 1 < len(_LUNA_ATTEMPTS) and _LLM_DEADLINE is not None:
             _remaining = _LLM_DEADLINE - time.monotonic()
             if _remaining < elapsed + _LEGACY_FALLBACK_RESERVE:
                 print(f"[llm] 剩餘預算 {_remaining:.0f}s 裝不下修補一輪"
                       f"(第一輪 {elapsed:.0f}s)+ legacy 保留 "
                       f"{_LEGACY_FALLBACK_RESERVE:.0f}s,放棄修補", file=sys.stderr)
+                # **放棄的決定要留痕**(2026-08-13 生產:只跑了 2/3 輪,
+                # 而 manifest 分不出「預算不夠」與「迴圈壞掉」—— stderr
+                # 在 job log,要 admin 權限才讀得到)。
+                _RUN_MANIFEST.setdefault("llm", {})["repair_skipped_budget"] = {
+                    "remaining_seconds": round(_remaining),
+                    "last_attempt_seconds": round(elapsed),
+                    "reserve_seconds": round(_LEGACY_FALLBACK_RESERVE)}
                 break
         # 2026-08-07 flash E2E:兩輪都因「引用了不存在的證據 ID」被擋,而模型
         # 寫的是**看起來很合理**的 ID(market:USDTWD.close —— 但 packet 裡

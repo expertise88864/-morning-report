@@ -154,6 +154,43 @@ def _salvage_objects(body: str) -> tuple:
     return out, skipped
 
 
+#: 駁回訊息 → 穩定類別。**95 條「是什麼」要當天就答得出來**
+#: (2026-08-13 生產:repair 輪爆 95 條,而 manifest 只記前 2 條訊息
+#: 與截前 5 條的帳本 —— 「一種規則 × 90 次」與「95 種各一次」的
+#: 處置完全不同,分不開就只能猜)。判準拿訊息裡的固定片語比對,
+#: 片語來自各驗證器自己的措辭。
+_PROBLEM_KINDS = (
+    ("invalid_json", "不是合法 JSON"),
+    ("chain_break", "鏈斷了"),
+    ("phantom_evidence", "引用了不存在的證據"),
+    ("tension", "tension_resolutions"),
+    ("asset_relevance", "不在這則新聞的實體"),
+    ("asset_relevance", "傳導機制"),
+    # 同一族的其他分支(外審 r1):statistically 它們同屬「標的判準」,
+    # 拆散成 other 就答不出「是哪類規則大量爆發」。片語照抄驗證器原文。
+    ("asset_relevance", "不是可交易標的"),
+    ("asset_relevance", "指的是**法域**"),
+    ("asset_relevance", "是**期間**不是公司"),
+    ("data_gaps", "data_gaps"),
+    ("data_gaps", "沒有揭露它"),
+    ("key_drivers", "key_drivers"),
+    ("net_effects", "asset_net_effects"),
+    ("macro_release", "總經發布"),
+    ("stale_evidence", "全部不同步"),
+)
+
+
+def problem_kinds(problems: list) -> dict:
+    """`{類別: 條數}`,由訊息片語分類;沒中的歸 `other`。"""
+    out: dict = {}
+    for msg in (problems or []):
+        text = str(msg)
+        kind = next((k for k, pat in _PROBLEM_KINDS if pat in text),
+                    "other")
+        out[kind] = out.get(kind, 0) + 1
+    return out
+
+
 def repair_instruction(problems: list, hints: list,
                        previous_json: str = "") -> str:
     """修補輪附在 payload 後面的指令。**問題清單一條都不能少。**

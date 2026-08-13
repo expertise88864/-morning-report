@@ -441,6 +441,30 @@ def assess(manifest, *, mode: str = "watchdog",
             "最終 request 超過硬閘門而被擋下,且沒有回收 —— packet 層的 "
             "over_budget 是 False,只看那一格會完全看不到這件事")
 
+    # ---- 9b. 模式無關的品質降級(外審 r1,P1:這兩條原本在 strict 區,
+    # 每日 watchdog 走 mode="watchdog" 永遠看不到 —— 品質信不會提它們)。
+    # **撿回一筆不等於健康**(P2-1):解析器自己說了有列確定丟失
+    # (ok_array_salvaged + skipped>0),35→1 與 35→30 不再都叫「活著」。
+    _exq = m.get("llm_extractor")
+    if isinstance(_exq, dict) and _exq.get("called") is True:
+        _pdq = _exq.get("parse") or {}
+        _aliveq = (_safe_int(_exq.get("survived"))
+                   if "survived" in _exq else _safe_int(_exq.get("valid")))
+        if (str(_pdq.get("kind") or "") == "ok_array_salvaged"
+                and _safe_int(_pdq.get("skipped")) > 0 and _aliveq > 0):
+            add("event_extractor_partial", "degraded",
+                f"抽取器逐列撿回:{_safe_int(_exq.get('items'))} 筆進、"
+                f"{_safe_int(_pdq.get('salvaged'))} 筆撿回、"
+                f"{_safe_int(_pdq.get('skipped'))} 筆確定丟失 ——"
+                " 信寄得出去,但事件面比它該有的樣子少")
+    # **看得見丟掉還不夠**(P2-2):信裡渲染了「後續觀察點」而帳本
+    # 沒接住 —— telemetry 有了,還要有人讀它。
+    _wd = _safe_int(_dig(m, "llm", "watch_dropped_capacity"))
+    if _wd > 0:
+        add("watch_dropped_capacity", "degraded",
+            f"觀察點帳本已滿,今天有 {_wd} 條新觀察點沒被記住 ——"
+            " 信裡寫了「接下來觀察」,明天它會無聲消失")
+
     # ---- 10. strict(CI canary):綠燈必須代表「特化輸出真的產生了」
     if strict:
         if digest:

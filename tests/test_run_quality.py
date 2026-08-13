@@ -1780,3 +1780,50 @@ def test_exhausting_all_attempts_is_not_recorded_as_a_budget_skip():
         mr._LLM_DEADLINE = prev_deadline
         mr._RUN_MANIFEST.clear()
         mr._RUN_MANIFEST.update(saved)
+
+
+# ------------------------------------------------- 第三十二輪 Commit C
+
+def test_salvaged_with_skipped_rows_is_partial_not_ok():
+    """35→1 與 35→30 不該都叫「活著」—— 解析器自己說了有列被丟
+    (ok_array_salvaged + skipped>0),不必猜存活率門檻。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm_extractor={"called": True, "items": 35, "parsed": 1,
+                                    "valid": 1, "survived": 1, "outcome": "ok",
+                                    "parse": {"kind": "ok_array_salvaged",
+                                              "salvaged": 1, "skipped": 1}})
+    # **走生產的呼叫形狀**:每日 watchdog 用預設 mode ——
+    # 放在 strict 區的話品質信永遠不會提它(外審 r1,P1)。
+    got = [f for f in rq.assess(m) if f["code"] == "event_extractor_partial"]
+    assert got and got[0]["severity"] == "degraded", got
+    assert [f for f in rq.assess(m, mode="strict", expected_sha="abc123",
+                                 expected_run_id="42")
+            if f["code"] == "event_extractor_partial"]
+
+
+def test_a_clean_parse_is_not_flagged_partial():
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm_extractor={"called": True, "items": 20, "parsed": 18,
+                                    "valid": 18, "survived": 18,
+                                    "outcome": "ok",
+                                    "parse": {"kind": "ok_array"}})
+    got = [f for f in rq.assess(m) if f["code"] == "event_extractor_partial"]
+    assert not got, got
+
+
+def test_watch_capacity_drop_is_reported_by_run_quality():
+    """telemetry 有了還要有人讀它 —— 帳本滿了丟掉的觀察點要進品質信。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm={"watch_dropped_capacity": 2})
+    got = [f for f in rq.assess(m) if f["code"] == "watch_dropped_capacity"]
+    assert got and "2 條" in got[0]["detail"], got
+
+
+def test_quality_recipient_has_no_hardcoded_personal_fallback():
+    """公開 repo 不放個人信箱 —— 位址只能來自 repo variable。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1]
+           / ".github" / "workflows" / "report-watchdog.yml"
+           ).read_text(encoding="utf-8")
+    assert "f94001115" not in src, "個人信箱不得寫死在公開 workflow"
+    assert "vars.QUALITY_RECIPIENT" in src

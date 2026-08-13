@@ -233,7 +233,8 @@ MODULE_CEILINGS = {
     # 第二十七輪外審 P1-2:strict 的語意契約(「不是 None」不算跑過)
     # —— 四格各配一個判準 + 計畫/report_kind 必填。**實測 444 行**。
     # 第三十一輪外審:抽取器缺席/沒被呼叫不得真空通過
-    "run_quality.py": 585,
+    # 第三十二輪 Commit C:partial salvage 與 watch drop 進品質守門
+    "run_quality.py": 615,
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

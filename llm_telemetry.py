@@ -69,14 +69,17 @@ MODEL_LIMITS = {
     # 那班具體化了:`_call_deepseek` 送寫死的 7,000,批#118 把推理改成 max 之後
     # 6,757 個 token 進了推理,答案只剩 243 個 —— 政策解析寫到一半就斷。
     "deepseek-v4-pro": {"max_output": 384_000, "context": 1_000_000,
-                        "efforts": ("none", "low", "high", "xhigh", "max")},
+                        "efforts": ("none", "low", "medium", "high",
+                                    "xhigh", "max")},
     # `max_output`/`context` 出處:DeepSeek Models & Pricing 頁(2026-08-07
     # 使用者提供)—— flash 最大輸出 384K、context 1M、Responses API(僅 flash)、
     # 思考模式預設開啟。先前這裡刻意留空,於是 `max_output_for` 回保守的
     # 16,000;flash 在 max 推理下 reasoning 就可能吃掉上萬 token,16K 的
     # 上限會讓答案被截斷 —— 與批#118 在 v4-pro 上踩過的是同一型。
     "deepseek-v4-flash": {"max_output": 384_000, "context": 1_000_000,
-                          "efforts": ("none", "low", "high", "xhigh", "max")},
+                          # medium 是合法設定(映為 high)—— 驗設定的那關不得擋它
+                          "efforts": ("none", "low", "medium", "high",
+                                      "xhigh", "max")},
 }
 
 #: 沒收錄的模型用**保守**上限,不是樂觀的。理由不對稱:
@@ -280,16 +283,18 @@ def run_cost_summary(slot: Optional[dict]) -> dict:
 # 後果是實際的語意錯誤:設 `off` 時我們**兩個都不送**,而思考模式預設是開的
 # —— 所以「關閉思考」根本沒有關閉。要關必須明確送 `disabled`。
 #
-# v4-pro 的映射(官方表):low → high、high → high、xhigh → max、max → max。
-# `medium` 不在那張表裡;它與 `low` 同樣是「低於 high」,所以正規化成 `high`
-# **並且送出 `high` 而不是 `medium`** —— 這樣既不擋掉合法設定,也不會把
-# 一個文件沒列的值丟給 API。
+# 官方映射表(2026-08-13 文件改版查證,flash 與 pro **同一張表**):
+#   low → low、medium → high、high → high、xhigh → high、max → max。
+# 合法送出值是 low/high/max;`medium`/`xhigh` 不是送出值,依官方表翻成
+# high 再送。**舊表把 low 升成 high、xhigh 升成 max** —— 那會默默放大
+# 使用者的成本設定;新文件有真的 low 檔、xhigh 也只到 high。
 #
 # 這是**唯一定義處**:workflow 註解與 README 不再各自手寫一份規格
 # (原本寫在兩處,批#118 只改了其中一份,另一份還留著「high/medium/low」)。
 _DEEPSEEK_OFF = ("off", "none", "disabled")
-_DEEPSEEK_TO_HIGH = ("low", "medium", "high")
-_DEEPSEEK_TO_MAX = ("xhigh", "max")
+_DEEPSEEK_TO_LOW = ("low",)
+_DEEPSEEK_TO_HIGH = ("medium", "high", "xhigh")
+_DEEPSEEK_TO_MAX = ("max",)
 
 
 def deepseek_thinking(raw: str) -> dict:
@@ -305,6 +310,9 @@ def deepseek_thinking(raw: str) -> dict:
         # **必須明確送 disabled。** 不送 = 沿用預設 = 思考仍然開著。
         return {"thinking": {"type": "disabled"}, "reasoning_effort": None,
                 "canonical": "none", "known": True}
+    if v in _DEEPSEEK_TO_LOW:
+        return {"thinking": {"type": "enabled"}, "reasoning_effort": "low",
+                "canonical": "low", "known": True}
     if v in _DEEPSEEK_TO_HIGH:
         return {"thinking": {"type": "enabled"}, "reasoning_effort": "high",
                 "canonical": "high", "known": True}

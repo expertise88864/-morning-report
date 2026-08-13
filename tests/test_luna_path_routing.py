@@ -618,3 +618,22 @@ def test_string_and_null_roots_are_semantic_not_syntax(luna_on, monkeypatch):
         finally:
             mr._RUN_MANIFEST.clear()
             mr._RUN_MANIFEST.update(saved)
+
+
+def test_effort_aliases_are_canonicalized_before_the_responses_payload(
+        luna_on, monkeypatch):
+    """medium/xhigh 是合法設定但不是 Responses 的合法送出值(官方表映為
+    high)—— 直送會 400、整條特化路徑退 legacy(外審 r1)。"""
+    # none 也要送出(外審 r2):Responses 用 reasoning.effort=none 關思考,
+    # 省略欄位 = 沿用預設(開著)。
+    for raw, sent_expected in (("medium", "high"), ("xhigh", "high"),
+                               ("max", "max"), ("none", "none")):
+        seen = []
+        monkeypatch.setattr(mr, "_PRIMARY_EFFORT", raw)
+        monkeypatch.setattr(mr, "_call_deepseek_responses",
+                            lambda p: (seen.append(p), _response(_GOOD))[1])
+        monkeypatch.setattr(mr, "_call_llm_text",
+                            lambda p: pytest.fail("不該落回"))
+        mr._call_llm_analysis_impl(*_ARGS)
+        assert seen and seen[0]["reasoning"]["effort"] == sent_expected, (
+            raw, seen[0].get("reasoning"))

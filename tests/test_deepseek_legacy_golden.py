@@ -113,10 +113,11 @@ def test_the_legacy_prompt_keeps_its_section_order():
 
 @pytest.mark.parametrize("raw,thinking,effort,canonical", [
     ("max", "enabled", "max", "max"),
-    ("xhigh", "enabled", "max", "max"),
+    # 2026-08-13 官方表改版:xhigh 只到 high、low 有真的 low 檔
+    ("xhigh", "enabled", "high", "high"),
     ("high", "enabled", "high", "high"),
     ("medium", "enabled", "high", "high"),
-    ("low", "enabled", "high", "high"),
+    ("low", "enabled", "low", "low"),
     ("off", "disabled", None, "none"),
     ("", "enabled", "high", "high"),
 ])

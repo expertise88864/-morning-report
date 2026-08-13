@@ -13071,7 +13071,17 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         model=DEEPSEEK_MODEL,
         instructions=bundle["developer_instructions"],
         user_input=bundle["user_payload"],
-        effort=effort, verbosity=OPENAI_TEXT_VERBOSITY,
+        # **送出前正規化**(外審 r1):合法設定 medium/xhigh 不是
+        # Responses 的合法送出值(官方表映為 high)—— 直送會 400、
+        # 整條特化路徑退回 legacy。唯一定義處在 deepseek_thinking;
+        # telemetry 的 requested_effort 仍記 raw(要求值與送出值分開)。
+        # **`none` 要送出**(外審 r2):Responses 格式用
+        # `reasoning.effort=none` 關思考 —— 省略欄位 = 沿用預設(開著),
+        # 使用者的成本/延遲設定被靜默違反。
+        effort=("none" if _lt.deepseek_thinking(effort)["canonical"] == "none"
+                else (_lt.deepseek_thinking(effort)["reasoning_effort"]
+                      or "")),
+        verbosity=OPENAI_TEXT_VERBOSITY,
         response_format=bundle["response_schema"],
         max_output_tokens=_lt.output_cap(effort, LLM_REPORT_MAX_TOKENS,
                                          model=DEEPSEEK_MODEL),

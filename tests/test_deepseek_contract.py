@@ -546,3 +546,18 @@ def test_the_repair_wiring_uses_the_shared_builder():
               if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
               and n.func.id == '_repair_instruction']
     assert calls, '修補輪沒有走共用的指令產生器'
+
+
+def test_the_thinking_effort_mapping_matches_the_official_table():
+    """官方映射表(2026-08-13 文件改版):low→low、medium→high、high→high、
+    xhigh→high、max→max —— 舊表把 low 升成 high、xhigh 升成 max,
+    會默默放大使用者的成本設定。"""
+    import llm_telemetry as lt
+    expect = {"low": "low", "medium": "high", "high": "high",
+              "xhigh": "high", "max": "max"}
+    for raw, sent in expect.items():
+        got = lt.deepseek_thinking(raw)
+        assert got["reasoning_effort"] == sent, (raw, got)
+        assert got["thinking"] == {"type": "enabled"}, (raw, got)
+    off = lt.deepseek_thinking("off")
+    assert off["thinking"] == {"type": "disabled"}, off

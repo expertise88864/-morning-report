@@ -5399,6 +5399,50 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "bfd63d35-c7ad-4a5c-a603-b4a400dbfa65",
+        "title": "Trucking Is Booming Again, And Drivers Aren't Happy About It",
+        "published": "Thu, 13 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-13T08:56:41Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出卡車運輸景氣明顯回升：Knight-Swift（KNX）今年漲幅甚至超過 Meta，JB Hunt 股價接近翻倍，現貨運價指數也從去年12月約1.94美元/英里升至突破3美元後小幅回落。",
+            "來賓認為本輪運價上漲主要不是需求回溫，而是供給面結構性收縮：新政府對非定居者CDL（non-domiciled CDL）與英語能力嚴格查緝，加上最高法院 Montgomery 案讓貨運仲介可能承擔承運商責任，大量小型與邊際產能被迫退出市場。",
+            "最高法院 Montgomery 案若成立，貨運仲介可能面臨數億美元級賠償（如 CH Robinson 被求償6億美元），將重塑仲介模式，並使安全評等較佳的承運商享有溢價，貨運市場從純粹商品化走向分層。",
+            "來賓觀察到駕駛士氣低落與供給減少：電子紀錄裝置（ELD）與車內監控讓駕駛失去「路上的自由」，年輕人不願入行，合格駕駛供給縮減將推升薪資，也進一步收緊承載量。",
+            "卡車停車位不足是生產力與駕駛收入的隱形殺手：全美傳統停車位約70萬個，但每天有數百萬輛卡車需要停放；駕駛為了搶停車位可能損失可開車時數，直接影響按英里計價的收入。",
+            "來賓公司 Truck Parking Club 每週新增約1,500個私人停車空間，總數已近9萬個，超過最大卡車休息站連鎖；這種共享停車模式可提升駕駛效率與車隊調度，成為供給端新變數。",
+            "需求面出現結構性亮點：資料中心建設帶動平板拖車需求與特定路段運價，且資料中心設備高單價也成為竊盜目標，促使業者規劃更安全的停放與中繼點。",
+            "貨物竊盜去年大增60%，犯罪集團假冒承運商或設立虛假公司竊取高價貨物（如酒類、汽車），讓仲介審查更嚴格，也推升對安全承運商的需求。"
+          ],
+          "tickers": [
+            {
+              "name": "Knight-Swift Transportation",
+              "code": "KNX",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人以股價大漲、超越Meta來說明卡車運輸週期反彈，KNX是這波回升的代表個股。"
+            },
+            {
+              "name": "JB Hunt Transport Services",
+              "code": "JBHT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人提到JB Hunt股價自年初接近翻倍，同樣受惠卡車運輸景氣回升與運價上漲。"
+            },
+            {
+              "name": "C.H. Robinson Worldwide",
+              "code": "CHRW",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "因最高法院Montgomery案可能讓貨運仲介承擔承運商責任，CH Robinson正面臨6億美元判決上訴，商業模式受威脅。"
+            }
+          ],
+          "market_view": "主持人與來賓認為卡車運輸業已走出三年多谷底，但本輪回升主要源於供給面結構性收縮，包括非定居者CDL與英語要求收緊、仲介責任風險升高、駕駛供給減少，而非單純需求回升；運價與相關股價已明顯上漲。",
+          "action_view": "節目未提出具體加減碼操作，但暗示資金正流向卡車運輸族群；同時認為具安全評等與規模優勢的承運商/仲介將在分層市場中受惠，無法適應新監管與仲介責任風險的小型業者可能加速退出。",
+          "notable_quote": "Forget about AI. The money apparently is in trucking."
+        }
+      },
+      {
         "guid": "f7ff667e-d517-457f-b745-b49f0150c4e6",
         "title": "NYT CEO Meredith Kopit Levien on Running a Media Brand in the Age of AI",
         "published": "Mon, 10 Aug 2026 08:00:00 +0000",
@@ -5659,31 +5703,6 @@
           "notable_quote": "The way that I would think about it is, do you guys know this like seven powers framework? No."
         },
         "shown_at": "2026-07-20T22:51:16Z"
-      },
-      {
-        "guid": "4e48ebd0-0b41-4721-8e45-b489014fc1c7",
-        "title": "Lev Menand and Nathan Tankus on Why Fed Independence Is Now Hanging by a Thread",
-        "published": "Fri, 17 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-17T09:41:32Z",
-        "digest": {
-          "summary_points": [
-            "美國最高法院在 Cook 案中裁定總統不能隨意解僱聯準會理事，引用歷史傳統（亞歷山大·漢彌爾頓）作為例外，但其他獨立機構如 FTC、SEC 失去保護。",
-            "該裁決以 5:4 通過，其中只有兩位大法官（Roberts 和 Kavanaugh）完全認同這一例外，其餘七位要麼認為所有機構都應保護，要麼認為聯準會也不應例外。",
-            "裁決邏輯藉用了第二修正案案例 Rahimi 的「歷史與傳統」分析法，但被批評為誤讀歷史，因為漢彌爾頓主張的是私有商業銀行而非政府機構。",
-            "Humphreys Executor 案（1935年）確立的獨立機構免職保護被推翻，僅保留聯準會的例外，導致專家行政機構的法律基礎被削弱。",
-            "聯準會的獨立性還源於其不受國會撥款程序控制的融資方式（透過評估聯準會銀行），這使其能獨立於總統和國會，但也成為爭議焦點。",
-            "討論指出，聯準會的監管職能與貨幣政策職能難以分離，未來可能面臨法律挑戰，比如其資本規則被質疑不符合歷史傳統。",
-            "法院的裁決使聯準會成為唯一享有高度獨立性的監管機構，這可能導致政治壓力集中，並引發未來司法變動。",
-            "主持人認為聯準會獨立性當前處於危險狀態，裁決雖短期保護但長期不穩定，僅靠兩位大法官維持。",
-            "對話提到，如果總統能控制聯準會，理論上可透過非追索貸款等方式進行財政擴張，威脅憲法分權。",
-            "歷史案例顯示，美國法院曾因金融穩定考量而避免推翻貨幣體系（如州銀行發行信用券），類比當前可能因市場反應而維持聯準會獨立性。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為聯準會獨立性在司法上得到短期強化，但整體行政機構獨立性被削弱，增加了政策不確定性，可能影響金融市場穩定。",
-          "action_view": "",
-          "notable_quote": "The Fed is not safe, it's an endangered species now."
-        },
-        "shown_at": "2026-07-17T22:45:02Z"
       }
     ]
   },

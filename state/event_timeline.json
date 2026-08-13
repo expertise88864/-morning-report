@@ -33,79 +33,6 @@
    "重開"
   ]
  },
- "geopolitical:hormuz_passage:2026-08#04d558": {
-  "first_seen": "2026-08-10",
-  "days": 1,
-  "last_seen": "2026-08-10",
-  "latest_title": "重啟荷莫茲…伊朗提嚴苛條件 要求美軍撤離、永久結束戰爭等 增添談判變數 - money.udn.com",
-  "incident_tokens": [
-   "com",
-   "money",
-   "udn",
-   "久結",
-   "判變",
-   "啟荷",
-   "嚴苛",
-   "增添",
-   "戰爭",
-   "提嚴",
-   "撤離",
-   "束戰",
-   "條件",
-   "永久",
-   "求美",
-   "添談",
-   "爭等",
-   "結束",
-   "美軍",
-   "苛條",
-   "荷莫",
-   "莫茲",
-   "要求",
-   "談判"
-  ],
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 10
- },
- "geopolitical:土耳其:2026-08": {
-  "first_seen": "2026-08-07",
-  "days": 2,
-  "last_seen": "2026-08-10",
-  "latest_title": "沙特、土耳其和巴基斯坦簽了：攻擊一國視作攻擊三國 - 華僑時報",
-  "entity": "土耳其",
-  "migration_uncertain": true,
-  "incident_tokens": [
-   "一國",
-   "三國",
-   "作攻",
-   "僑時",
-   "和巴",
-   "國視",
-   "坦簽",
-   "基斯",
-   "巴基",
-   "擊一",
-   "擊三",
-   "攻擊",
-   "斯坦",
-   "時報",
-   "沙特",
-   "簽了",
-   "華僑",
-   "視作"
-  ],
-  "subjects": [
-   "土耳其"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 10
- },
  "geopolitical:美國:2026-08": {
   "first_seen": "2026-08-12",
   "days": 1,
@@ -314,6 +241,106 @@
   ],
   "event_type": "geopolitical",
   "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:2303:2026-08": {
+  "first_seen": "2026-08-14",
+  "days": 1,
+  "last_seen": "2026-08-14",
+  "latest_title": "〈美股盤後〉PPI意外持平 油價挫逾2% SanDisk暴漲超13% 標普締歷史新高",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "13",
+   "ppi",
+   "sandisk",
+   "價挫",
+   "史新",
+   "外持",
+   "意外",
+   "持平",
+   "挫逾",
+   "新高",
+   "普締",
+   "暴漲",
+   "標普",
+   "歷史",
+   "油價",
+   "漲超",
+   "盤後",
+   "締歷",
+   "美股",
+   "股盤"
+  ],
+  "entity": "2303",
+  "subjects": [
+   "2303"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "litigation:Regions Bank:2026-08": {
+  "first_seen": "2026-08-14",
+  "days": 1,
+  "last_seen": "2026-08-14",
+  "latest_title": "Federal Reserve Board issues enforcement action with former employee of Regions Bank",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "action",
+   "board",
+   "employee",
+   "enforcement",
+   "federal",
+   "former",
+   "issues",
+   "of",
+   "reserve",
+   "with"
+  ],
+  "entity": "Regions Bank",
+  "subjects": [
+   "Regions Bank"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:cyberattack:6446:2026-08": {
+  "first_seen": "2026-08-14",
+  "days": 1,
+  "last_seen": "2026-08-14",
+  "latest_title": "藥華藥遭駭客網路攻擊！ 公司發聲明：機密已加密無外流 - Yahoo新聞",
+  "latest_summary": "",
+  "object": "6446",
+  "incident_tokens": [
+   "加密",
+   "司發",
+   "外流",
+   "客網",
+   "密已",
+   "密無",
+   "已加",
+   "攻擊",
+   "機密",
+   "無外",
+   "發聲",
+   "網路",
+   "聲明",
+   "華藥",
+   "藥華",
+   "藥遭",
+   "路攻",
+   "遭駭",
+   "駭客"
+  ],
+  "entity": "6446",
+  "subjects": [
+   "6446"
+  ],
+  "event_type": "geopolitical",
+  "action": "cyberattack",
   "identity_schema": 12
  }
 }

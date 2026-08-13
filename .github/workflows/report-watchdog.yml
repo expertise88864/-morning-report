@@ -54,6 +54,10 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+          # [晨報品質](rc=2)只寄品質信箱(使用者指定 2026-08-13):
+          # 主收件人只想收晨報本體;品質告警是維運訊號,分流。
+          # 要換位址時設 repo variable QUALITY_RECIPIENT 蓋過預設。
+          QUALITY_RECIPIENT: ${{ vars.QUALITY_RECIPIENT || 'f94001115@gmail.com' }}
           WATCHDOG_RC: ${{ steps.check.outputs.rc }}
           WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
         run: |
@@ -69,6 +73,9 @@ jobs:
           now = dt.datetime.now(tpe).strftime("%Y-%m-%d %H:%M")
           msg = EmailMessage()
           rc = os.environ.get("WATCHDOG_RC", "1")
+          if rc == "2":
+              # 品質告警分流;沒設品質信箱就回到原收件人(告警不可斷)
+              to = os.environ.get("QUALITY_RECIPIENT", "").strip() or to
           # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
           # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
           if rc == "2":

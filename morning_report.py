@@ -13170,8 +13170,6 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 不是保證)。這裡只處理**雙重編碼**:整份物件被再包成一個
             # JSON 字串 —— 同樣是包裝問題,不是內容問題。
             obj = json.loads(out["text"])
-            if isinstance(obj, str):
-                obj = json.loads(_dsr.strip_json_fence(obj))
         except Exception as _je:            # noqa: BLE001 - 非 JSON 就是不合格
             # 「不是合法 JSON」是四種原因的統稱(截斷/引號/圍欄/雙重編碼)
             # —— 抽取器那側早有 diag,主分析這側先前一個字都不留
@@ -13181,7 +13179,25 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 "head": str(out.get("text") or "")[:120],
                 "tail": str(out.get("text") or "")[-80:]}
             obj = None
-        if not isinstance(obj, (dict, type(None))):
+            _parse_exc = True
+        else:
+            _parse_exc = False
+            # **雙重解碼是嘗試,失敗不算解析例外**(外審 r2):字串根
+            # `"hello"` 的第一次解析是成功的 —— 再解一次失敗只代表它
+            # 不是雙重編碼,不代表原始輸出不是合法 JSON。放在同一個
+            # try 裡的話,合法字串根被誤標成語法輪。
+            if isinstance(obj, str):
+                try:
+                    obj = json.loads(_dsr.strip_json_fence(obj))
+                except Exception:           # noqa: BLE001
+                    pass
+        # **解析成功與否要獨立追蹤**(外審 r1 P2):合法 JSON 但根不是
+        # 物件(陣列/字串/null)是**結構問題不是語法問題** —— 標成
+        # syntax 會叫模型「只修語法」,而語法本來就是對的,配額白燒。
+        # 序列化留下來當語意修補的底本(`null` 也是值 → "null",外審 r2)。
+        _parsed_nondict_json = ""
+        if not _parse_exc and not isinstance(obj, dict):
+            _parsed_nondict_json = json.dumps(obj, ensure_ascii=False)[:200_000]
             obj = None
         if obj is not None:
             # **正規化要在修剪之前**(外審 r1):`relates_to[].evidence_ids`
@@ -13202,7 +13218,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # 這些規則在生產從來沒跑過,而測試裡它們全是綠的。
         # 守衛接錯線與守衛不存在,對收件人是同一件事。
         problems = (_sch.validate(obj, packet) if obj is not None
-                    else ["不是合法 JSON"])
+                    else (["不是合法 JSON"] if _parse_exc
+                          else ["輸出不是 JSON 物件"]))
         if not problems:
             text = _ar.render(obj, packet)
             if text:
@@ -13277,15 +13294,30 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         # 寫的是**看起來很合理**的 ID(market:USDTWD.close —— 但 packet 裡
         # USDTWD 是純量,合法 ID 是 market:USDTWD)。只覆述問題不給出路,
         # 修補就是在賭模型第二次自己猜中 —— 把相近的合法 ID 一併給它。
+        if _ai + 1 >= len(_LUNA_ATTEMPTS):
+            # 最後一輪之後沒有下一次請求 —— 白建 payload 還會讓
+            # `repair_modes` 多記一筆,對不上實際送出的修補數(外審 r1 P3)。
+            continue
         _hints = _repair_evidence_hints(problems, packet)
+        # 修補型態:**只有解析例外才是語法輪**(外審 r1 P2)——
+        # 解析成功而根不是物件,是結構/語意問題,底本用序列化後的值。
+        _prev_json = (json.dumps(obj, ensure_ascii=False)
+                      if isinstance(obj, dict) else _parsed_nondict_json)
         payload = dict(payload, input=(
             bundle["user_payload"]
             + _repair_instruction(
                 problems, _hints,
                 # **帶當輪被拒的那一版**(外審 r1):「沒列到的保持原樣」
                 # 要給得出原樣;第二輪自然帶到第二版(obj 是當輪解析的)。
-                previous_json=(json.dumps(obj, ensure_ascii=False)
-                               if isinstance(obj, dict) else ""))))
+                previous_json=_prev_json,
+                # 壞 JSON 時帶**原始文字**當底本(第三十二輪 P1-2):
+                # 只修語法不改語意 —— 不再從零重寫。
+                previous_raw=(str(out.get("text") or "")
+                              if _parse_exc else ""))))
+        # 修補型態留痕:語法輪與語意輪的收斂性質完全不同,
+        # 事後要分得開(2026-08-13 生產只看得到一串 problems_total)。
+        _RUN_MANIFEST.setdefault("llm", {}).setdefault(
+            "repair_modes", []).append("syntax" if _parse_exc else "semantic")
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

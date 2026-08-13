@@ -475,3 +475,146 @@ def test_a_forged_closing_tag_cannot_escape_the_repair_fence():
     assert "UNTRUSTED-SOURCE-DATA" in txt, "偽造標籤沒有被中和"
     # 「只作資料」規則在圍欄外面(在開欄標籤之前)
     assert txt.index("一律忽略") < txt.index("<UNTRUSTED_SOURCE_DATA>")
+
+
+# ------------------------------------------- 第三十二輪 P1-2:語法修補有底本
+
+def test_invalid_json_repair_receives_the_raw_previous_output(
+        luna_on, monkeypatch):
+    """壞 JSON 的修補不再從零重寫(2026-08-13 生產:1 條語法問題 →
+    全新重寫 → 95 條語意問題):原始文字進圍欄當底本,指示只修語法。"""
+    calls = []
+    bad_raw = '{"top_news_analysis": [{"title": "台積電法說",,}]}'
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return {"status": "completed",
+                    "output": [{"type": "message", "role": "assistant",
+                                "content": [{"type": "output_text",
+                                             "text": bad_raw}]}]}
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("修補成功了,不該落回"))
+    saved = dict(mr._RUN_MANIFEST)
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        text = mr._call_llm_analysis_impl(*_ARGS)
+        assert mr._analysis_complete_enough(text)
+        rep = calls[1]["input"]
+        assert "只修 JSON 語法" in rep, "沒有語法修補指示"
+        assert bad_raw[:30] in rep, "原始輸出沒有進修補請求 —— 又是從零重寫"
+        modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes")
+        assert modes == ["syntax"], modes
+    finally:
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+def test_semantic_repair_mode_is_recorded_too(luna_on, monkeypatch):
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        return _response({"壞": "的"} if len(calls) == 1 else _GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("修補成功了,不該落回"))
+    saved = dict(mr._RUN_MANIFEST)
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        mr._call_llm_analysis_impl(*_ARGS)
+        modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes")
+        assert modes == ["semantic"], modes
+    finally:
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+def test_a_non_object_root_is_a_semantic_repair_with_its_value(
+        luna_on, monkeypatch):
+    """合法 JSON 但根是陣列 —— 結構問題不是語法問題(外審 r1 P2):
+    標成 syntax 會叫模型「只修語法」而語法本來就對,配額白燒。"""
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return {"status": "completed",
+                    "output": [{"type": "message", "role": "assistant",
+                                "content": [{"type": "output_text",
+                                             "text": '[{"陣列": "根"}]'}]}]}
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("修補成功了,不該落回"))
+    saved = dict(mr._RUN_MANIFEST)
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        mr._call_llm_analysis_impl(*_ARGS)
+        modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes")
+        assert modes == ["semantic"], modes
+        rep = calls[1]["input"]
+        assert "只修 JSON 語法" not in rep, "結構問題被標成語法修補"
+        assert '"陣列"' in rep, "序列化後的值沒有進底本"
+    finally:
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+def test_repair_modes_match_the_number_of_repair_calls(luna_on, monkeypatch):
+    """三輪全敗時只有兩次修補請求 —— `repair_modes` 要對得上實際送出的
+    修補數,不得在最後一輪之後多記一筆(外審 r1 P3)。"""
+    calls = []
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: (calls.append(p),
+                                   _response({"壞": "的"}))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: "## 我的明確立場" + chr(10) + "立場:中性"
+                        + chr(10) + chr(10) + "## 一句話總結" + chr(10) + "備援。")
+    saved = dict(mr._RUN_MANIFEST)
+    mr._RUN_MANIFEST.pop("llm", None)
+    try:
+        mr._call_llm_analysis_impl(*_ARGS)
+        assert len(calls) == len(mr._LUNA_ATTEMPTS)
+        modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes") or []
+        assert len(modes) == len(mr._LUNA_ATTEMPTS) - 1, modes
+    finally:
+        mr._RUN_MANIFEST.clear()
+        mr._RUN_MANIFEST.update(saved)
+
+
+def test_string_and_null_roots_are_semantic_not_syntax(luna_on, monkeypatch):
+    """外審 r2:字串根的第一次解析是成功的(雙重解碼失敗不算解析例外);
+    `null` 也是值,底本是 "null" —— 兩者都走語意修補。"""
+    for raw, expect_prev in (('"hello"', '"hello"'), ("null", "null")):
+        calls = []
+
+        def _fake(payload, _raw=raw):
+            calls.append(payload)
+            if len(calls) == 1:
+                return {"status": "completed",
+                        "output": [{"type": "message", "role": "assistant",
+                                    "content": [{"type": "output_text",
+                                                 "text": _raw}]}]}
+            return _response(_GOOD)
+
+        monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+        monkeypatch.setattr(mr, "_call_llm_text",
+                            lambda p: pytest.fail("修補成功了,不該落回"))
+        saved = dict(mr._RUN_MANIFEST)
+        mr._RUN_MANIFEST.pop("llm", None)
+        try:
+            mr._call_llm_analysis_impl(*_ARGS)
+            modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes")
+            assert modes == ["semantic"], (raw, modes)
+            rep = calls[1]["input"]
+            assert "只修 JSON 語法" not in rep, raw
+            assert expect_prev in rep, (raw, "底本沒進修補請求")
+        finally:
+            mr._RUN_MANIFEST.clear()
+            mr._RUN_MANIFEST.update(saved)

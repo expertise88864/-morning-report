@@ -690,7 +690,7 @@ _FROZEN = {
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
-    "postprocess_version":  (6, "ad654d3f865295e0"),
+    "postprocess_version":  (7, "ad654d3f865295e0"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**

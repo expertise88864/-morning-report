@@ -217,6 +217,23 @@ def merge_same_role(previous: Optional[dict], record: dict) -> dict:
         if isinstance(prev.get(k), (int, float)) and isinstance(out.get(k), (int, float)):
             out[k] = round(out[k] + prev[k], 6)
     out["calls"] = int(prev.get("calls") or 0) + 1
+    # **混合費率的總額不得掛單一標籤**(外審 r1,P2):同一角色的兩次
+    # 呼叫可以跨過 DeepSeek 的峰谷邊界,而其餘欄位一律「取最新」——
+    # 於是一筆尖峰+離峰的合計會整個被標成其中一種,對帳時分不出來。
+    # 逐時段的金額留一份;`pricing_tier` 在混合時明說 `mixed`。
+    _prev_tier = str(prev.get("pricing_tier") or "")
+    _now_tier = str(out.get("pricing_tier") or "")
+    if _prev_tier and _now_tier:
+        _by = dict(prev.get("cost_by_tier") or {})
+        if not _by and prev.get("estimated_cost_usd") is not None:
+            _by[_prev_tier] = prev["estimated_cost_usd"]
+        _mine = record.get("estimated_cost_usd")
+        if _mine is not None:
+            _by[_now_tier] = round(_by.get(_now_tier, 0.0) + _mine, 6)
+        if _by:
+            out["cost_by_tier"] = _by
+        if _prev_tier != _now_tier or _prev_tier == "mixed":
+            out["pricing_tier"] = "mixed"
     return out
 
 

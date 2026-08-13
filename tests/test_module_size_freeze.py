@@ -181,7 +181,8 @@ MODULE_CEILINGS = {
     # 單價與成本估算(第十三輪 P1-1 抽出)。計價自成一塊:自己的 schema
     # 版本、自己的出處、自己的失效方式,而且這個數字直接決定「換不換模型」。
     # 實測 191 行。
-    "llm_pricing.py": 210,
+    # 2026-08-14:DeepSeek 峰谷計價(單價是時間的函數)
+    "llm_pricing.py": 300,
     # DeepSeek Responses 的專屬 adapter(外審 P1-2)。契約釘在實機
     # 捕獲的 fixture 上,說明佔了近半 —— 那是這個模組的重點:
     # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。

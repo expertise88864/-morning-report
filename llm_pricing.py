@@ -47,6 +47,51 @@ MODEL_PRICING = {
     "deepseek-v4-flash": {"input": 0.14, "cached_input": 0.0028, "output": 0.28},
 }
 
+#: **DeepSeek 的峰谷計價**(官方頁 2026-08-14 查證,中英文兩版一致)。
+#:
+#: 北京時間 2026-08-17 00:00(= UTC 2026-08-16 16:00)起生效,
+#: 尖峰時段 **北京 09:00–12:00 與 14:00–18:00**,其餘為離峰。
+#:
+#: ⚠ **這不是「離峰打對折」而已 —— 離峰價本身就比現價貴**:
+#: pro 輸入 $0.435→$0.66(1.5×)、輸出 $0.87→$1.98(2.3×)、
+#: 快取命中 $0.003625→$0.022(6.1×)。把它讀成「調價後有便宜時段」
+#: 會低估帳單。
+#:
+#: 判準用**北京時間的小時**比對(官方就是這樣寫的)—— 換算成 UTC 再比
+#: 多一層可能出錯的翻譯。半開區間 `[9,12)`/`[14,18)`:邊界的讀法是假設,
+#: 而本報排程在北京 06:00,離兩個邊界都很遠。
+DEEPSEEK_PEAK_PRICING = {
+    # (UTC) 生效時刻 —— 之前一律用上面的單一費率表
+    "effective_from_utc": (2026, 8, 16, 16, 0),
+    "peak_hours_beijing": ((9, 12), (14, 18)),
+    "rates": {
+        "deepseek-v4-pro": {
+            "offpeak": {"input": 0.66, "cached_input": 0.022, "output": 1.98},
+            "peak": {"input": 1.32, "cached_input": 0.044, "output": 3.96},
+        },
+        "deepseek-v4-flash": {
+            "offpeak": {"input": 0.22, "cached_input": 0.007, "output": 0.66},
+            "peak": {"input": 0.44, "cached_input": 0.014, "output": 1.32},
+        },
+    },
+}
+
+
+def deepseek_window(at) -> str:
+    """這個時刻落在 DeepSeek 的哪個計價時段:`peak` / `offpeak`。
+
+    `at` 是 timezone-aware 的 UTC 時間。北京 = UTC+8(無日光節約),
+    所以直接加八小時再比小時數 —— 與官方公告的寫法逐字對應。
+    """
+    import datetime as _dt
+    beijing = at.astimezone(_dt.timezone.utc) + _dt.timedelta(hours=8)
+    h = beijing.hour
+    for lo, hi in DEEPSEEK_PEAK_PRICING["peak_hours_beijing"]:
+        if lo <= h < hi:
+            return "peak"
+    return "offpeak"
+
+
 #: 寫入快取的計價倍率。官方明文:
 #: "Cache writes are billed at 1.25x the uncached input token rate."
 #: (developers.openai.com,2026-08-01 逐頁查證)
@@ -74,10 +119,15 @@ LONG_CONTEXT_TIERS = {"gpt-": {"threshold": 272_000,
                                "input": 2.0, "cached_input": 2.0,
                                "output": 1.5}}
 PRICING_SOURCE = "developers.openai.com + api-docs.deepseek.com"
-PRICING_AS_OF = "2026-08-01"
+#: 2026-08-14 重查:峰谷費率(2026-08-17 生效)取自同兩頁的中英文版,
+#: 兩版數字一致(¥/$ 換算約 6.8-7.1)。
+PRICING_AS_OF = "2026-08-14"
 #: schema 4:加入 `>272K` long-context 費率層,每筆多帶 `pricing_tier`
 #: 與生效費率 —— 舊 schema 的資料**不可與新的相加**。
-PRICING_SCHEMA = 4
+#: schema 5(2026-08-14):DeepSeek 改**峰谷計價**(2026-08-17 生效)——
+#: 單價從此是時間的函數,而且**離峰價本身就比舊價貴**(pro 輸出 2.3×)。
+#: 舊 schema 的成本資料不可與新的相加。
+PRICING_SCHEMA = 5
 
 
 def pricing_source_for(model: str) -> str:
@@ -118,14 +168,40 @@ def cached_tokens_of(usage: Optional[dict]) -> Optional[int]:
     return hit if isinstance(hit, int) else None
 
 
-def price_of(model: str) -> Optional[dict]:
-    """查單價。先精確比對,再前綴比對(容納 `-2026-02-16` 這類日期後綴)。"""
+def price_of(model: str, at=None) -> Optional[dict]:
+    """查單價。先精確比對,再前綴比對(容納 `-2026-02-16` 這類日期後綴)。
+
+    `at`(timezone-aware UTC)給定且落在 DeepSeek 峰谷計價生效之後時,
+    回**那個時段**的費率 —— 單價從此是**時間的函數**,不再是一張表。
+    """
     m = (model or "").strip().lower()
+    peaked = _deepseek_price_at(m, at)
+    if peaked:
+        return peaked
     if m in MODEL_PRICING:
         return MODEL_PRICING[m]
     for name, price in MODEL_PRICING.items():
         if m.startswith(name):
             return price
+    return None
+
+
+def _deepseek_price_at(model: str, at) -> Optional[dict]:
+    """峰谷生效後的 DeepSeek 費率;不適用(舊時刻/沒給時間/非 DeepSeek)回 None。"""
+    if at is None:
+        return None
+    import datetime as _dt
+    eff = _dt.datetime(*DEEPSEEK_PEAK_PRICING["effective_from_utc"],
+                       tzinfo=_dt.timezone.utc)
+    try:
+        if at.astimezone(_dt.timezone.utc) < eff:
+            return None
+    except (AttributeError, TypeError, ValueError):
+        return None                 # 時間形狀不對 → 退回單一費率表,不猜
+    rates = DEEPSEEK_PEAK_PRICING["rates"]
+    for name, byw in rates.items():
+        if model == name or model.startswith(name):
+            return byw[deepseek_window(at)]
     return None
 
 
@@ -142,7 +218,7 @@ def long_context_tier(model: str, prompt_tokens: int) -> Optional[dict]:
     return None
 
 
-def estimate_cost(model: str, usage: Optional[dict]) -> dict:
+def estimate_cost(model: str, usage: Optional[dict], at=None) -> dict:
     """估這一次呼叫的成本。**估不出來就說估不出來。**
 
     回 `{"usd": float|None, "basis": str}`。`basis` 一定要寫,因為這個數字
@@ -150,7 +226,12 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
     定價方式,而它通常是帳單的主要來源);(b) 快取命中的輸入**以全價計** ——
     折扣比例我手上沒有官方數字,所以這是**上界**而不是實際金額。
     """
-    price = price_of(model)
+    # **單價是時間的函數**(DeepSeek 峰谷,2026-08-17 起):沒給時刻就用
+    # 現在 —— 這次呼叫剛剛發生,那就是它的計價時刻。測試傳 `at` 取得確定性。
+    if at is None:
+        import datetime as _dt
+        at = _dt.datetime.now(_dt.timezone.utc)
+    price = price_of(model, at)
     if not price:
         return {"usd": None, "basis": f"未收錄 {model or '(未知模型)'} 的單價,不估"}
     if not isinstance(usage, dict):
@@ -174,6 +255,13 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
                   + written * rate_in * CACHE_WRITE_MULTIPLIER)
     usd = (input_cost + ct * rate_out) / 1_000_000
     bits = [f"官方牌價({PRICING_SOURCE} {PRICING_AS_OF});推理以 output 計價"]
+    # **時段要記下來**:同一個模型同一天可以有兩種單價,只記總額的話
+    # 事後對不上帳單時分不出是「跑在尖峰」還是「漏算呼叫」。
+    _win = (deepseek_window(at)
+            if _deepseek_price_at((model or "").strip().lower(), at) else "")
+    if _win:
+        bits.append(f"DeepSeek 峰谷計價:{_win}"
+                    "(尖峰為北京 09-12、14-18)")
     if tier:
         bits.append(f"輸入 {pt} tok > {tier['threshold']},整筆改用長 context "
                     f"費率(input ×{tier['input']}、output ×{tier['output']})")
@@ -184,7 +272,8 @@ def estimate_cost(model: str, usage: Optional[dict]) -> dict:
     # **生效費率要記下來** —— 只記總額的話,事後對不上帳單時分不出是
     # 「用錯費率」還是「漏了呼叫」。
     return {"usd": round(usd, 6), "basis": ";".join(bits),
-            "pricing_tier": "long_context" if tier else "standard",
+            "pricing_tier": ("long_context" if tier
+                             else (f"deepseek_{_win}" if _win else "standard")),
             "pricing_schema": PRICING_SCHEMA,
             "effective_input_rate": round(rate_in, 6),
             "effective_cached_rate": round(rate_cached, 6),

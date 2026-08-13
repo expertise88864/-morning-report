@@ -92,7 +92,12 @@ def test_the_multipliers_match_the_published_long_context_prices():
 def test_a_provider_without_the_tier_is_untouched():
     """DeepSeek 沒有這一層 —— 不收錄就不該被套用。"""
     assert lp.long_context_tier("deepseek-v4-pro", 10_000_000) is None
-    r = lp.estimate_cost("deepseek-v4-pro", _usage(1_000_000))
+    # **時刻要釘死**(外審 r1):`estimate_cost` 的 `at` 預設是「現在」,
+    # 而 2026-08-17 之後 DeepSeek 走峰谷 → tier 變 deepseek_*,
+    # 不釘的話這條會在生效日當天無聲轉紅(它要驗的是 long-context 那層)。
+    import datetime as _dt
+    r = lp.estimate_cost("deepseek-v4-pro", _usage(1_000_000),
+                         at=_dt.datetime(2026, 8, 1, tzinfo=_dt.timezone.utc))
     assert r["pricing_tier"] == "standard"
 
 
@@ -127,4 +132,14 @@ def test_the_published_prices_are_what_we_verified():
         "input": 0.20, "cached_input": 0.02, "output": 1.20}
     assert lp.MODEL_PRICING["gpt-5.6-terra"] == {
         "input": 2.00, "cached_input": 0.20, "output": 12.00}
-    assert lp.PRICING_SCHEMA == 4, "加了費率層就要升 schema,舊資料不可相加"
+    # schema 5(2026-08-14):DeepSeek 改峰谷計價,單價成為時間的函數
+    # —— 舊資料一樣不可與新的相加,所以這條照樣要跟著動。
+    assert lp.PRICING_SCHEMA == 5, "加了費率層就要升 schema,舊資料不可相加"
+
+
+def test_the_long_context_tier_still_wins_after_the_peak_pricing_starts():
+    """峰谷生效後,long-context 那層仍然是 long-context(兩層不互相吃掉)。"""
+    import datetime as _dt
+    at = _dt.datetime(2026, 8, 20, 22, 0, tzinfo=_dt.timezone.utc)
+    r = lp.estimate_cost("gpt-5.6-luna", _usage(1_000_000), at=at)
+    assert r["pricing_tier"] == "long_context", r

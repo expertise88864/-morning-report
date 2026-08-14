@@ -284,6 +284,51 @@ def test_a_reaction_headline_naming_the_data_is_not_the_release():
     assert g["macro_release_cluster_ids"] == ["cluster:r2"]
 
 
+def test_a_combined_report_and_reaction_headline_loses_to_the_pure_release():
+    """**「結果+反應」合一的標題也命中發布詞**(外審第二輪):
+    「通膨數據年增2.9% 道瓊應聲大漲」有數字也有「年增」,只憑
+    `_RELEASE_TITLE` 分不出它與純發布 —— 反應語句(應聲/大漲)
+    要讓它降級,情境樹才會錨在發布本身。"""
+    news = [
+        {"source_item_id": "s1", "title": "通膨數據年增2.9% 道瓊應聲大漲",
+         "summary": "市場解讀通膨降溫", "entities": ["道瓊"],
+         "source_name": "MarketWatch"},
+        {"source_item_id": "s2", "title": "美國7月CPI月增0.2% 高於預期",
+         "summary": "核心通膨仍具黏性", "entities": ["美國"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:s2"]
+
+
+def test_a_numberless_data_headline_loses_to_the_numbered_release():
+    """數據發布的標題會**報實際數值**;「CPI 數據公布 高於預期」
+    沒有數字,多半是轉述 —— 不得只因命中「公布」就搶走真正報數的
+    那一群。"""
+    news = [
+        {"source_item_id": "t1", "title": "CPI 數據公布 高於預期",
+         "summary": "市場關注後續", "entities": ["美國"],
+         "source_name": "工商時報"},
+        {"source_item_id": "t2", "title": "美國7月CPI年增2.7% 續降",
+         "summary": "能源價格回落", "entities": ["美國"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:t2"]
+
+
+def test_a_decision_release_does_not_need_a_number_in_the_title():
+    """決議類驅動豁免數字要求:「按兵不動」可以整句沒有數字,
+    不得因此輸給 ID 較小的反應標題(「決議拖累美股」)。"""
+    news = [
+        {"source_item_id": "u1", "title": "Fed 決議拖累美股走低",
+         "summary": "市場失望", "entities": ["美股"],
+         "source_name": "CNBC"},
+        {"source_item_id": "u2", "title": "Fed 按兵不動 維持利率不變",
+         "summary": "聲明基調中性", "entities": ["聯準會"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:u2"]
+
+
 def test_no_titled_release_falls_back_to_the_smallest_id():
     """全場都只在 summary 提到(外電轉述日)—— 沒有標題級的發布時
     退回最小 ID,不得整個消失也不得炸掉。"""

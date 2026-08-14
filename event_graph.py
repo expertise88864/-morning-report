@@ -119,6 +119,19 @@ _RELEASE_TITLE = re.compile(
     "遜於預期|不如預期|公布|發布|出爐|初值|終值|決議|升息|降息|按兵不動|"
     "維持利率|萬人")
 
+#: 「CPI 年增2.9% 美股應聲大漲」**同時**報結果與報反應 —— 也命中
+#: `_RELEASE_TITLE`,只憑發布詞分不出它與純發布(外審第二輪)。
+#: 反應語句的受詞是**資產**(拖累科技股、道瓊應聲大漲),純發布標題
+#: 沒有這些詞。命中只**降級**(輸給純發布),不出局。
+_REACTION_TITLE = re.compile(
+    "拖累|重挫|大漲|大跌|飆漲|勁揚|下挫|跳水|崩跌|反彈|應聲|承壓|"
+    "提振|推升|激勵|衝擊|震盪|收黑|收紅|賣壓|買盤|殺盤|補漲|回檔")
+
+#: 數據發布的標題會帶**實際數值**(月增0.9%、新增18.5萬人);
+#: 「CPI 數據公布 高於預期」沒有數字,多半是轉述或反應。決議類
+#: (fed_policy/tw_policy)豁免 ——「按兵不動」可以整句沒有數字。
+_DATA_RELEASE_DRIVERS = frozenset({"us_labor", "us_inflation"})
+
 
 #: **具名機構**的驅動代號。同樣長度時它們贏過通用動詞。
 #:
@@ -230,7 +243,14 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
         # 會搶走真正的發布,情境樹就錨在反應而不是發布上。
         released = [cid for cid in titled
                     if _RELEASE_TITLE.search(_title_text(cid))]
-        macro_all.append((released or titled or cands)[0])
+        # 純發布再優先於「結果+反應」的混合標題;數據類驅動另要求
+        # 標題帶實際數值。四層決勝,每一層認不出來只**退回上一層**
+        # (最壞退回最小 ID)—— 表漏了詞是降級不是誤判。
+        pure = [cid for cid in released
+                if not _REACTION_TITLE.search(_title_text(cid))
+                and (code not in _DATA_RELEASE_DRIVERS
+                     or re.search(r"[0-9][0-9.,]*", _title_text(cid)))]
+        macro_all.append((pure or released or titled or cands)[0])
     macro = macro_all[0] if macro_all else ""
     return {
         "drivers": {cid: {"driver": code, "label": labels.get(code, code)}

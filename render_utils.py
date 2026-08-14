@@ -814,6 +814,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     news = (sports or {}).get("news") or {}
     cpbl = (sports or {}).get("cpbl") or []
     cpbl_source = (sports or {}).get("cpbl_source")
+    cpbl_label = (sports or {}).get("cpbl_label") or ""
+    cpbl_full_year = (sports or {}).get("cpbl_full_year") or []
+    cpbl_full_year_label = (sports or {}).get("cpbl_full_year_label") or ""
     cpbl_scores = (sports or {}).get("cpbl_scores") or []
     nba = (sports or {}).get("nba") or []
     nba_fav = (sports or {}).get("nba_fav") or []
@@ -911,7 +914,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
     _poly_renderable = any(poly.get(k) for k in (
         "wc_champion", "mlb_ws", "nba_champ", "tennis_m", "tennis_w",
         "mlb_al_mvp", "mlb_nl_mvp", "mlb_al_cy", "mlb_nl_cy", "nba_east", "nba_west"))
-    if not (cpbl or cpbl_scores or cpbl_fixtures or nba or nba_fav or nba_offseason
+    if not (cpbl or cpbl_full_year or cpbl_scores or cpbl_fixtures
+            or nba or nba_fav or nba_offseason
             or standings or wc_results or wc_groups or wc_fixtures or wc_knockout
             or mlb_tw or tennis.get("tournaments") or tennis.get("results")
             or (sports or {}).get("mlb_fixtures") or (sports or {}).get("nba_fixtures")
@@ -1108,7 +1112,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         blocks.append(
             "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒 未來一週賽程（台北時間）</b>"
             + rows + "</div>")
-    if cpbl:
+    def _cpbl_table(teams: list, title: str, note: str = "") -> str:
         rows = "".join(
             f"<tr><td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;"
             f"font-size:13px;color:#0f172a;'>{t['rank']}. <b>{htmllib.escape(t['team'])}</b></td>"
@@ -1118,21 +1122,34 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"font-size:13px;'>{t['pct']}</td>"
             f"<td style='padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;"
             f"font-size:13px;color:#64748b;'>{htmllib.escape(t['gb'] or '-')}</td></tr>"
-            for t in cpbl)
+            for t in teams)
+        return ("<div style='margin:8px 0;'><b style='color:#0f172a;'>"
+                + htmllib.escape(title) + "</b>"
+                "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
+                "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
+                "font-size:12px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
+                "text-align:right;font-size:12px;color:#64748b;'>勝-和-敗</th>"
+                "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th>"
+                "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝差</th></tr>"
+                + rows + "</table>" + note + "</div>")
+
+    if cpbl or cpbl_full_year:
         src_note = ""
         if cpbl_source == "Wikipedia 備援":
             src_note = ("<div style='font-size:11px;color:#94a3b8;margin-top:2px;'>"
                         "※ 中職官網海外連線受限,本表為 Wikipedia 備援(社群更新,可能稍有遲滯)</div>")
         _mark("中職")
-        blocks.append(
-            "<div style='margin:8px 0;'><b style='color:#0f172a;'>中華職棒戰績</b>"
-            "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
-            "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
-            "font-size:12px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
-            "text-align:right;font-size:12px;color:#64748b;'>勝-和-敗</th>"
-            "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝率</th>"
-            "<th style='padding:4px 10px;text-align:right;font-size:12px;color:#64748b;'>勝差</th></tr>"
-            + rows + "</table>" + src_note + "</div>")
+        # 分段名沒拿到就不標 —— 中職季後賽資格同時看半季冠軍與全年勝率,
+        # 標錯段比不標更糟(讀者會拿下半季的勝差去想全年的門票)。
+        if cpbl:
+            blocks.append(_cpbl_table(
+                cpbl, f"中華職棒戰績（{cpbl_label}）" if cpbl_label else "中華職棒戰績",
+                "" if cpbl_full_year else src_note))
+        if cpbl_full_year:
+            blocks.append(_cpbl_table(
+                cpbl_full_year,
+                f"中華職棒戰績（{cpbl_full_year_label}）" if cpbl_full_year_label
+                else "中華職棒全年戰績", src_note))
     _nba_champ_shown = False   # 冠軍盤是否已嵌進某個 NBA 區塊(否則最後獨立渲染)
     if nba:
         rows = "".join(

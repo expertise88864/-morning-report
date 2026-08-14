@@ -430,6 +430,217 @@ def test_render_sports_cpbl_source_note():
     assert "Wikipedia 備援" not in official              # 官網來源不顯示備援警語
 
 
+# --------------------------------------------------- 中職:當前半季 + 全年兩張表
+
+_WIKI_HALF = """=== 上半球季 ===
+{| class = "wikitable"
+|-
+| 1 || [[味全龍]] ||60||60||39||21||0||{{Winning percentage|39|21}}||–||–
+|-
+| 2 || [[富邦悍將]] ||60||60||34||26||0||{{Winning percentage|34|26}}||5.0||–
+|-
+| 3 || [[統一7-ELEVEn獅]] ||60||59||29||29||1||{{Winning percentage|29|29}}||9.5||–
+|-
+| 4 || [[台鋼雄鷹]] ||60||60||30||29||1||{{Winning percentage|30|29}}||9.0||–
+|}
+{{中華職棒賽程/表頭|上半球季}}
+
+=== 下半球季 ===
+{| class = "wikitable"
+|-
+! 球隊 !! 主場
+|-
+| [[味全龍]] || [[天母棒球場]]
+|-
+| [[樂天桃猿]] || [[樂天桃園棒球場]]
+|}
+{| class = "wikitable"
+|-
+| 1 || [[味全龍]] ||60||25||15||10||0||{{Winning percentage|15|10}}||–||–
+|-
+| 2 || [[樂天桃猿]] ||60||24||14||10||0||{{Winning percentage|14|10}}||0.5||36
+|-
+| 3 || [[中信兄弟]] ||60||26||13||13||0||{{Winning percentage|13|13}}||2.5||33
+|-
+| 4 || [[富邦悍將]] ||60||24||10||14||0||{{Winning percentage|10|14}}||4.5||32
+|}
+{{中華職棒賽程/表頭|下半球季}}
+
+=== 全年球季 ===
+{| class = "wikitable"
+|-
+| 1 || [[味全龍]] ||120||85||54||31||0||{{Winning percentage|54|31}}||–||–
+|-
+| 2 || [[富邦悍將]] ||120||84||44||40||0||{{Winning percentage|44|40}}||9.5||27
+|-
+| 3 || [[統一7-ELEVEn獅]] ||120||84||41||42||1||{{Winning percentage|41|42}}||12.0||24
+|-
+| 4 || [[台鋼雄鷹]] ||120||86||41||44||1||{{Winning percentage|41|44}}||13.0||22
+|}
+"""
+
+
+def _wiki_get(wikitext):
+    class R:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"parse": {"wikitext": wikitext}}
+    return lambda *a, **k: R()
+
+
+def test_wiki_tables_are_keyed_by_the_declared_section(monkeypatch):
+    """**分段名取自章節標題,不從場次推導。** 先前取「已賽總場次最大」者,
+    而全年球季永遠最大 —— 生產(海外 IP 走 wiki 備援)顯示的一直是全年,
+    下半季的排名戰完全看不到(使用者 2026-08-15 回報)。"""
+    monkeypatch.setattr(mr, "_http_get", _wiki_get(_WIKI_HALF))
+    t = mr._cpbl_wiki_tables(2026)
+    assert set(t) == {"上半季", "下半季", "全年"}
+    assert t["下半季"][0]["wdl"] == "15-0-10"      # 下半季的味全,不是全年的
+    assert t["全年"][0]["wdl"] == "54-0-31"
+    # 節內排在前面的非戰績表(主場地)不得被當成戰績:認表靠**列的形狀**
+    assert len(t["下半季"]) == 4 and t["下半季"][0]["games"] == "25"
+
+
+def test_current_split_is_the_half_being_played_not_the_biggest(monkeypatch):
+    """當前分段 = **有打過球的最後一個半季**。已賽最多的是全年段,
+    最後一個章節也是全年段 —— 兩種便宜的判準都會挑錯。"""
+    monkeypatch.setattr(mr, "_http_get", _wiki_get(_WIKI_HALF))
+    meta = {}
+    rows = mr.fetch_cpbl_standings(meta)
+    assert meta["season_label"] == "下半季"
+    assert rows[0]["wdl"] == "15-0-10"
+    assert meta["full_year_label"] == "全年"
+    assert meta["full_year"][0]["wdl"] == "54-0-31"
+
+
+def test_first_half_does_not_show_the_same_table_twice(monkeypatch):
+    """上半季期間全年度**就等於上半季** —— 同一張表印兩次不是資訊。"""
+    first_half = _WIKI_HALF.split("=== 下半球季 ===")[0] + """=== 全年球季 ===
+{| class = "wikitable"
+|-
+| 1 || [[味全龍]] ||120||60||39||21||0||{{Winning percentage|39|21}}||–||–
+|-
+| 2 || [[富邦悍將]] ||120||60||34||26||0||{{Winning percentage|34|26}}||5.0||–
+|-
+| 3 || [[統一7-ELEVEn獅]] ||120||59||29||29||1||{{Winning percentage|29|29}}||9.5||–
+|-
+| 4 || [[台鋼雄鷹]] ||120||60||30||29||1||{{Winning percentage|30|29}}||9.0||–
+|}
+"""
+    monkeypatch.setattr(mr, "_http_get", _wiki_get(first_half))
+    meta = {}
+    rows = mr.fetch_cpbl_standings(meta)
+    assert meta["season_label"] == "上半季"
+    assert rows[0]["wdl"] == "39-0-21"
+    assert "full_year" not in meta
+
+
+def test_unknown_sections_fall_back_without_claiming_a_split(monkeypatch):
+    """頁面改版認不出章節 —— 表照樣要有(晨報不可斷),但**不得**宣稱
+    自己是哪一段(標錯段比不標更糟:讀者會拿半季勝差去想全年門票)。"""
+    plain = _WIKI_HALF.replace("=== 上半球季 ===", "=== 例行賽戰績 ===")         .replace("=== 下半球季 ===", "=== 其他 ===")         .replace("=== 全年球季 ===", "=== 累計 ===")
+    monkeypatch.setattr(mr, "_http_get", _wiki_get(plain))
+    meta = {}
+    rows = mr.fetch_cpbl_standings(meta)
+    assert rows and meta["season_label"] == ""
+    assert "full_year" not in meta
+
+
+def test_the_official_page_label_comes_from_its_own_h3(monkeypatch):
+    """官網預設回**當前分段**、`seasonCode=0` 回全年度,而分段名寫在
+    頁面的 `<h3>` 裡 —— 直接用它,不從場次反推(季後賽、補賽的日子
+    推導會說謊,而讀者沒有辦法發現)。"""
+    half = ('<h3>2026年 下半季<span class="en"></span></h3>'
+            '<div class="rank">1</div><a href="/team?TeamNo=A">味全龍</a>'
+            '<td class="num">25</td> <td class="num">15-0-10</td> '
+            '<td class="num">0.600</td> <td class="num">-</td>')
+    year = ('<h3>2026年 全年度<span class="en"></span></h3>'
+            '<div class="rank">1</div><a href="/team?TeamNo=A">味全龍</a>'
+            '<td class="num">85</td> <td class="num">54-0-31</td> '
+            '<td class="num">0.635</td> <td class="num">-</td>')
+    seen = []
+
+    class R:
+        def __init__(self, text):
+            self.text = text
+
+        def raise_for_status(self):
+            pass
+
+    def fake_get(url, **kw):
+        params = kw.get("params") or {}
+        seen.append(params.get("seasonCode"))
+        return R(year if params.get("seasonCode") == "0" else half)
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    meta = {}
+    rows = mr.fetch_cpbl_standings(meta)
+    assert meta["source"] == "官網"
+    assert meta["season_label"] == "下半季" and rows[0]["wdl"] == "15-0-10"
+    assert meta["full_year_label"] == "全年"
+    assert meta["full_year"][0]["wdl"] == "54-0-31"
+    assert seen == [None, "0"]          # 預設那張沒有帶 seasonCode
+
+
+def test_a_broken_full_year_does_not_lose_the_current_table(monkeypatch):
+    """全年度抓不到只是少一張表 —— **當前分段不得跟著消失**(晨報不可斷)。"""
+    half = ('<h3>2026年 下半季<span class="en"></span></h3>'
+            '<div class="rank">1</div><a href="/team?TeamNo=A">味全龍</a>'
+            '<td class="num">25</td> <td class="num">15-0-10</td> '
+            '<td class="num">0.600</td> <td class="num">-</td>')
+
+    class R:
+        def __init__(self, text):
+            self.text = text
+
+        def raise_for_status(self):
+            pass
+
+    def fake_get(url, **kw):
+        if (kw.get("params") or {}).get("seasonCode") == "0":
+            raise RuntimeError("boom")
+        return R(half)
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    meta = {}
+    rows = mr.fetch_cpbl_standings(meta)
+    assert rows[0]["wdl"] == "15-0-10" and meta["season_label"] == "下半季"
+    assert "full_year" not in meta
+
+
+def test_render_shows_both_tables_with_their_own_labels():
+    base = [{"rank": 1, "team": "味全龍", "games": "25", "wdl": "15-0-10",
+             "pct": "0.600", "gb": "-"}]
+    full = [{"rank": 1, "team": "味全龍", "games": "85", "wdl": "54-0-31",
+             "pct": "0.635", "gb": "-"}]
+    h = mr._render_sports_html({"news": {}, "cpbl": base, "cpbl_label": "下半季",
+                                "cpbl_full_year": full,
+                                "cpbl_full_year_label": "全年",
+                                "cpbl_source": "官網"}, htmllib)
+    assert "中華職棒戰績（下半季）" in h and "中華職棒戰績（全年）" in h
+    assert "15-0-10" in h and "54-0-31" in h
+    # 分段名拿不到時不標,不猜
+    plain = mr._render_sports_html({"news": {}, "cpbl": base}, htmllib)
+    assert "中華職棒戰績" in plain and "（" not in plain.split("中華職棒戰績")[1][:3]
+
+
+def test_wiki_source_note_appears_once_under_the_last_table():
+    """備援警語是**整組表**的註腳,兩張表各印一次會變成雜訊。"""
+    base = [{"rank": 1, "team": "味全龍", "games": "25", "wdl": "15-0-10",
+             "pct": "0.600", "gb": "-"}]
+    full = [{"rank": 1, "team": "味全龍", "games": "85", "wdl": "54-0-31",
+             "pct": "0.635", "gb": "-"}]
+    h = mr._render_sports_html({"news": {}, "cpbl": base, "cpbl_label": "下半季",
+                                "cpbl_full_year": full,
+                                "cpbl_full_year_label": "全年",
+                                "cpbl_source": "Wikipedia 備援"}, htmllib)
+    assert h.count("可能稍有遲滯") == 1
+
+
 def test_cap_analysis_text():
     short = "第一段。\n\n第二段。"
     assert mr._cap_analysis_text(short, max_chars=999) == short   # 短的不動

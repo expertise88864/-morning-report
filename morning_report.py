@@ -17063,10 +17063,64 @@ SPORTS_NEWS_QUERIES = [
 ]
 
 
-def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
-    """Wikipedia「中華職棒N年」戰績表(全球可用,社群賽後更新)。
+#: 賽季分段的**宣告名稱**正規化:官網寫「全年度」、Wikipedia 章節寫
+#: 「全年球季」,是同一段。只收兩邊真的會出現的寫法;**認不出來保留原文**
+#: (寧可標一個沒看過的名字,也不要猜成別段)。
+_CPBL_SPLIT_ALIAS = {
+    "上半球季": "上半季", "下半球季": "下半季", "全年球季": "全年",
+    "上半季": "上半季", "下半季": "下半季", "全年度": "全年", "全年": "全年"}
 
-    頁內有多個 wikitable(熱身賽/上半季/下半季),取「已賽總場次最大」者 = 當前賽季進度。
+#: 一個賽季分段的當前進度,由**已賽場次**判定 —— 不是「已賽最多」
+#: (全年段永遠最多),也不是「最後一個章節」(下半季表在上半季期間
+#: 就已經存在,整欄是 0)。
+_CPBL_HALVES = ("下半季", "上半季")
+
+
+def _cpbl_split_label(text: str) -> str:
+    """從資料源自己寫的標題取分段名(「2026年 下半季」→「下半季」)。
+
+    標籤是**資料源宣告的事實**,不從場次推導 —— 推導出來的標籤在
+    季後賽、延賽補賽這些日子會說謊,而讀者沒有辦法發現。
+    """
+    import re as _re
+    t = _re.sub(r"<[^>]+>", " ", str(text or ""))
+    t = _re.sub(r"\s+", " ", t).strip()
+    for raw in sorted(_CPBL_SPLIT_ALIAS, key=len, reverse=True):
+        if raw in t:
+            return _CPBL_SPLIT_ALIAS[raw]
+    return ""
+
+
+def _cpbl_played(rows: list[dict]) -> int:
+    total = 0
+    for r in (rows or []):
+        try:
+            total += int(str((r or {}).get("games") or "0").strip() or 0)
+        except ValueError:
+            continue
+    return total
+
+
+def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
+    """Wikipedia「中華職棒N年」**當前分段**戰績(全球可用,社群賽後更新)。
+
+    `_cpbl_wiki_tables()` 的相容外殼:先前這裡取「已賽總場次最大」者,
+    而全年球季永遠最大 —— 生產(海外 IP 走 wiki 備援)顯示的一直是
+    全年,下半季的排名戰完全看不到。
+    """
+    tables = _cpbl_wiki_tables(year)
+    for name in _CPBL_HALVES:
+        if _cpbl_played(tables.get(name)) > 0:
+            return tables[name]
+    return tables.get("全年") or tables.get("") or []
+
+
+def _cpbl_wiki_tables(year: Optional[int] = None) -> dict:
+    """Wikipedia「中華職棒N年」的**各分段**戰績表:`{宣告名稱: rows}`。
+
+    章節標題(`=== 下半球季 ===`)本身就宣告了這是哪一段,直接用它;
+    認不出任何已知分段時,才退回舊的「已賽最多」啟發式並放在鍵 `""`
+    (標不出名字就不標,不假裝知道是哪一段)。
     """
     import re as _re
     year = year or dt.datetime.now(TPE).year
@@ -17083,11 +17137,8 @@ def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
         r"\|\s*(\d+)\s*\|\|\s*\[\[([^\]|]+)(?:\|[^\]]*)?\]\]\s*"
         r"\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)\s*\|\|\s*(\d+)"
         r"\s*\|\|.*?\|\|\s*([^\n|]*)")
-    best: list[dict] = []
-    best_games = -1
-    for block in wikitext.split('{|'):
+    def _rows_of(block: str) -> list[dict]:
         rows = []
-        played_sum = 0
         for m in row_re.finditer(block):
             rank, team = int(m.group(1)), m.group(2).strip()
             played, wins, losses, ties = (
@@ -17096,53 +17147,128 @@ def _cpbl_from_wikipedia(year: Optional[int] = None) -> list[dict]:
             rows.append({"rank": rank, "team": team, "games": str(played),
                          "wdl": f"{wins}-{ties}-{losses}", "pct": f"{pct:.3f}",
                          "gb": m.group(8).strip().replace("–", "-")})
-            played_sum += played
-        if len(rows) >= 4 and played_sum > best_games:
-            best, best_games = rows, played_sum
-    return best[:6]
+        return rows[:6]
+
+    # 章節標題 → 該節第一張**形狀符合戰績**的 wikitable。節內今天只有
+    # 一張表(逐場賽程走 {{中華職棒賽程}} 模板不是 wikitable),但頁面
+    # 別處有主場地、打擊成績這類表;章節邊界一挪就會混進來,所以用
+    # 「列的形狀」認表(排名||[[隊伍]]||應賽||已賽||勝||敗||和),
+    # 不是靠它排第幾張。
+    out: dict = {}
+    heads = list(_re.finditer(r"^(={2,4})\s*(.+?)\s*\1\s*$", wikitext, _re.M))
+    for i, h in enumerate(heads):
+        name = _CPBL_SPLIT_ALIAS.get(h.group(2).strip())
+        if not name or name in out:
+            continue
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(wikitext)
+        for block in wikitext[h.end():end].split('{|')[1:]:
+            rows = _rows_of(block)
+            if len(rows) >= 4:
+                out[name] = rows
+                break
+    if out:
+        return out
+    # 認不出章節(頁面改版)→ 舊啟發式,但**不宣稱是哪一段**
+    best: list[dict] = []
+    best_games = -1
+    for block in wikitext.split('{|'):
+        rows = _rows_of(block)
+        played = _cpbl_played(rows)
+        if len(rows) >= 4 and played > best_games:
+            best, best_games = rows, played
+    return {"": best} if best else {}
+
+
+def _cpbl_official(season_code: str = "") -> tuple[list[dict], str]:
+    """中職官網一張戰績表 +**官網自己寫的**分段名。
+
+    `seasonCode` 空 = 官網預設(當前分段)、`0` = 全年度
+    (選單值 1/2/0 = 上半季/下半季/全年度,在頁面的 seasonOpts 裡)。
+    """
+    import re as _re
+    params = {"seasonCode": season_code} if season_code else None
+    r = _http_get("https://www.cpbl.com.tw/standings/season", timeout=15,
+                  params=params,
+                  headers={"User-Agent": "Mozilla/5.0",
+                           "Accept-Language": "zh-TW,zh;q=0.9"})
+    r.raise_for_status()
+    out = []
+    pattern = _re.compile(
+        r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
+        r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
+        r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
+        _re.S)
+    for m in pattern.finditer(r.text):
+        out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
+                    "games": m.group(3), "wdl": m.group(4),
+                    "pct": m.group(5), "gb": m.group(6).strip()})
+        if len(out) >= 6:
+            break
+    h3 = _re.search(r"<h3>(.*?)</h3>", r.text, _re.S)
+    return out, _cpbl_split_label(h3.group(1) if h3 else "")
 
 
 def fetch_cpbl_standings(meta: Optional[dict] = None) -> list[dict]:
-    """CPBL 戰績:官網直連(台灣 IP 可)→ Wikipedia 備援(GitHub Actions 海外 IP
-    被官網 geo-block 回 404;r.jina.ai 代理實測也被擋,改用 wiki)。失敗回空。
+    """CPBL **當前分段**戰績(現在是下半季):官網直連(台灣 IP 可)→
+    Wikipedia 備援(GitHub Actions 海外 IP 被官網 geo-block 回 404;
+    r.jina.ai 代理實測也被擋,改用 wiki)。失敗回空。
 
-    meta(可選 dict)會被填入 {"source": "官網"/"Wikipedia 備援"/"無"},供渲染端標註
-    資料來源透明度(Wikipedia 取決於社群編輯速度,可能遲滯)。
+    meta(可選 dict)會被填入:
+      * `source`      "官網"/"Wikipedia 備援"/"無" —— 資料來源透明度
+                      (Wikipedia 取決於社群編輯速度,可能遲滯)。
+      * `season_label` 這張表是哪一段(「下半季」),**取自資料源自己的
+                      宣告**;認不出來留空,渲染端就不標。
+      * `full_year` / `full_year_label` 全年度戰績表。中職的季後賽資格
+                      同時看**半季冠軍**與**全年勝率**,只給一張表會漏掉
+                      另一半的戰局。與當前分段**逐列相同**時不給
+                      (上半季期間全年度就等於上半季,重複表不是資訊)。
     """
-    import re as _re
     if meta is not None:
         meta["source"] = "無"
+        meta["season_label"] = ""
     try:
-        r = _http_get("https://www.cpbl.com.tw/standings/season", timeout=15,
-                         headers={"User-Agent": "Mozilla/5.0",
-                                  "Accept-Language": "zh-TW,zh;q=0.9"})
-        r.raise_for_status()
-        out = []
-        pattern = _re.compile(
-            r'<div class="rank">(\d+)</div>.*?/team\?TeamNo=[^"]*">([^<]+)</a>.*?'
-            r'<td class="num">(\d+)</td>\s*<td class="num">([\d\-]+)</td>\s*'
-            r'<td class="num">([\d.]+)</td>\s*<td class="num">([^<]*)</td>',
-            _re.S)
-        for m in pattern.finditer(r.text):
-            out.append({"rank": int(m.group(1)), "team": m.group(2).strip(),
-                        "games": m.group(3), "wdl": m.group(4),
-                        "pct": m.group(5), "gb": m.group(6).strip()})
-            if len(out) >= 6:
-                break
-        if out:
+        rows, label = _cpbl_official()
+        if rows:
             if meta is not None:
                 meta["source"] = "官網"
-            return out
+                meta["season_label"] = label
+                try:
+                    fy, fy_label = _cpbl_official("0")
+                    _cpbl_set_full_year(meta, rows, fy, fy_label or "全年")
+                except Exception as e:      # 全年抓不到不影響當前分段
+                    print(f"[sports] CPBL 官網全年度失敗: {str(e)[:60]}",
+                          file=sys.stderr)
+            return rows
     except Exception as e:
         print(f"[sports] CPBL 官網失敗({str(e)[:60]}),改用 Wikipedia", file=sys.stderr)
     try:
-        rows = _cpbl_from_wikipedia()
+        tables = _cpbl_wiki_tables()
+        rows, label = [], ""
+        for name in _CPBL_HALVES:
+            if _cpbl_played(tables.get(name)) > 0:
+                rows, label = tables[name], name
+                break
+        if not rows:                        # 半季都還沒開打(季前/改版)
+            for name in ("全年", ""):
+                if tables.get(name):
+                    rows, label = tables[name], name
+                    break
         if rows and meta is not None:
             meta["source"] = "Wikipedia 備援"
+            meta["season_label"] = label
+            _cpbl_set_full_year(meta, rows, tables.get("全年") or [], "全年")
         return rows
     except Exception as e:
         print(f"[sports] CPBL Wikipedia 備援也失敗: {e}", file=sys.stderr)
         return []
+
+
+def _cpbl_set_full_year(meta: dict, current: list[dict],
+                        full_year: list[dict], label: str) -> None:
+    """全年度表只在**與當前分段不同**時才進 meta(同一張表印兩次不是資訊)。"""
+    if full_year and full_year != current:
+        meta["full_year"] = full_year
+        meta["full_year_label"] = label
 
 
 # 世足國家隊英文→繁中對照(ESPN 回傳英文隊名)。查無對照時回原英文,不漏資料。
@@ -18729,6 +18855,10 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
         _cpbl_meta: dict = {}
         out["cpbl"] = fetch_cpbl_standings(_cpbl_meta)
         out["cpbl_source"] = _cpbl_meta.get("source")
+        out["cpbl_label"] = _cpbl_meta.get("season_label") or ""
+        if _cpbl_meta.get("full_year"):
+            out["cpbl_full_year"] = _cpbl_meta["full_year"]
+            out["cpbl_full_year_label"] = _cpbl_meta.get("full_year_label") or "全年"
     except Exception as e:
         print(f"[sports] CPBL 戰績抓取失敗: {e}", file=sys.stderr)
     # CPBL 昨日比分(Yahoo 運動,避開中職官網 geo-block)

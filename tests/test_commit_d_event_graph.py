@@ -227,6 +227,60 @@ def test_the_macro_pick_is_deterministic():
     assert g1["macro_release_cluster_id"] == "cluster:m1"
 
 
+# ------------------------------------------------- 主題飽和的一天(發布 vs 被帶動)
+
+def _ppi_day_news():
+    """PPI 日的縮影(2026-08-14 生產:55 條駁回裡 47 條是「第二個總經
+    發布」):**發布本身只有一則**,其餘新聞只是被通膨帶動 ——
+    標題各自講自己的事,summary 順帶提到通膨數據。"""
+    return [
+        {"source_item_id": "p1", "title": "台積電法說會釋出樂觀展望",
+         "summary": "法人認為通膨數據降溫有利科技股評價",
+         "entities": ["台積電"], "source_name": "經濟日報"},
+        {"source_item_id": "p2", "title": "美國7月PPI月增0.9% 高於預期",
+         "summary": "生產者物價指數意外走高", "entities": ["美國"],
+         "source_name": "Reuters"},
+        {"source_item_id": "p3", "title": "航運族群齊漲 運價續強",
+         "summary": "市場關注通膨數據對運輸成本的影響", "entities": ["長榮"],
+         "source_name": "工商時報"}]
+
+
+def test_a_theme_saturated_day_yields_one_release_per_driver():
+    """**「被通膨帶動」不是「通膨發布」。** PPI 日全場 summary 都提通膨,
+    driver_of 讀 title+summary 會把每一群都歸成 us_inflation ——
+    若每一群都算發布,驗證器會要求模型把 47 個「發布」全部進三大重點
+    或 dismissed,結構上不可能滿足(2026-08-14 生產事故)。
+    一個驅動一天只有一次發布。"""
+    news = _ppi_day_news()
+    g = eg.build(nc.clusters(news), news)
+    ids = g["macro_release_cluster_ids"]
+    assert len(ids) == 1, ids
+
+
+def test_the_release_is_the_cluster_titled_as_the_release():
+    """挑哪一群當發布:**標題自己就是那個發布**的群(發布新聞的標題
+    會寫 PPI/CPI;被帶動的新聞只在 summary 提到)。台積電那群 ID
+    排序在前,若規則退化成「取最小 ID」,發布會被指到法說會上。"""
+    news = _ppi_day_news()
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:p2"]
+    assert g["macro_release_cluster_id"] == "cluster:p2"
+
+
+def test_no_titled_release_falls_back_to_the_smallest_id():
+    """全場都只在 summary 提到(外電轉述日)—— 沒有標題級的發布時
+    退回最小 ID,不得整個消失也不得炸掉。"""
+    news = [
+        {"source_item_id": "q1", "title": "亞股開盤走勢分歧",
+         "summary": "市場消化美國通膨數據", "entities": ["日經"],
+         "source_name": "Reuters"},
+        {"source_item_id": "q2", "title": "美元指數走弱",
+         "summary": "通膨數據後殖利率回落", "entities": ["美元"],
+         "source_name": "CNBC"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:q1"]
+
+
 def test_the_prompt_states_all_three_rules():
     import prompt_profiles as pp
     text = pp.LUNA_DEVELOPER_INSTRUCTIONS

@@ -190,10 +190,30 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
     # 只挑一個等於忽略其他發布。全部列出;第一個(照
     # `MACRO_RELEASE_DRIVERS` 的順序,同驅動取最小 ID)是**主發布**,
     # 情境樹的三個分支要條件在它上面;其餘也要被情境或重點涵蓋。
+    # **一個驅動一天只有一次「發布」**(2026-08-14 生產:PPI 日全場的
+    # 敘事都繞著通膨,`driver_of` 讀 title+summary 把 47+ 個事件群全歸成
+    # `us_inflation` —— 於是每一群都被當成「總經發布」要求進三大重點或
+    # dismissed,55 條駁回裡 47 條是這一條,結構上不可能滿足)。
+    # 「被通膨帶動的台積電新聞」與「PPI 發布本身」是兩回事:前者由
+    # `shared_driver_groups` 處理(共用驅動不算獨立確認),只有後者是
+    # 發布。挑法:**標題自己就是那個發布**的群優先(發布新聞的標題會
+    # 寫 PPI/CPI/決議;被帶動的新聞只在 summary 提到),沒有才退回
+    # 最小 ID。原意「同一天可以有多個發布」指 CPI+Fed 兩個**不同**
+    # 驅動 —— 每個驅動至多一筆,那一層不變。
+    def _title_text(cid):
+        cl = next((c for c in (clusters or [])
+                   if isinstance(c, dict)
+                   and str(c.get("cluster_id") or "") == cid), {})
+        return " ".join(str((by_id.get(str(m)) or {}).get("title") or "")
+                        for m in (cl.get("member_source_ids") or []))
+
     macro_all = []
     for code in MACRO_RELEASE_DRIVERS:
-        macro_all += sorted(cid for cid, c in per_cluster.items()
-                            if c == code)
+        cands = sorted(cid for cid, c in per_cluster.items() if c == code)
+        if not cands:
+            continue
+        titled = [cid for cid in cands if driver_of(_title_text(cid)) == code]
+        macro_all.append((titled or cands)[0])
     macro = macro_all[0] if macro_all else ""
     return {
         "drivers": {cid: {"driver": code, "label": labels.get(code, code)}

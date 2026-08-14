@@ -315,6 +315,21 @@ def test_a_numberless_data_headline_loses_to_the_numbered_release():
     assert g["macro_release_cluster_ids"] == ["cluster:t2"]
 
 
+def test_a_date_digit_does_not_count_as_the_release_value():
+    """**月份也是數字**(外審第三輪):「7月 CPI 高於預期 美股上漲」
+    的 7 通過裸數字檢查、「上漲」又不在反應詞表 —— 數字要連著量值
+    單位(%/百分點/萬人)才算發布值,日期/期別不得充當。"""
+    news = [
+        {"source_item_id": "v1", "title": "7月 CPI 高於預期 美股上漲",
+         "summary": "投資人樂觀", "entities": ["美股"],
+         "source_name": "MarketWatch"},
+        {"source_item_id": "v2", "title": "美國7月CPI月增0.2% 超出市場預估",
+         "summary": "核心通膨仍具黏性", "entities": ["美國"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:v2"]
+
+
 def test_a_decision_release_does_not_need_a_number_in_the_title():
     """決議類驅動豁免數字要求:「按兵不動」可以整句沒有數字,
     不得因此輸給 ID 較小的反應標題(「決議拖累美股」)。"""

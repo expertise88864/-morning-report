@@ -127,10 +127,14 @@ _REACTION_TITLE = re.compile(
     "拖累|重挫|大漲|大跌|飆漲|勁揚|下挫|跳水|崩跌|反彈|應聲|承壓|"
     "提振|推升|激勵|衝擊|震盪|收黑|收紅|賣壓|買盤|殺盤|補漲|回檔")
 
-#: 數據發布的標題會帶**實際數值**(月增0.9%、新增18.5萬人);
+#: 數據發布的標題會帶**實際量值**(月增0.9%、新增18.5萬人);
 #: 「CPI 數據公布 高於預期」沒有數字,多半是轉述或反應。決議類
 #: (fed_policy/tw_policy)豁免 ——「按兵不動」可以整句沒有數字。
 _DATA_RELEASE_DRIVERS = frozenset({"us_labor", "us_inflation"})
+
+#: 數字要**連著量值單位**才算發布值 ——「7月 CPI 高於預期」的月份
+#: 也是數字,裸數字檢查會讓日期/期別/編號充當發布值(外審第三輪)。
+_MAGNITUDE = re.compile(r"[0-9][0-9.,]*\s*(?:%|%|個?百分點|萬人)")
 
 
 #: **具名機構**的驅動代號。同樣長度時它們贏過通用動詞。
@@ -249,7 +253,7 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
         pure = [cid for cid in released
                 if not _REACTION_TITLE.search(_title_text(cid))
                 and (code not in _DATA_RELEASE_DRIVERS
-                     or re.search(r"[0-9][0-9.,]*", _title_text(cid)))]
+                     or _MAGNITUDE.search(_title_text(cid)))]
         macro_all.append((pure or released or titled or cands)[0])
     macro = macro_all[0] if macro_all else ""
     return {

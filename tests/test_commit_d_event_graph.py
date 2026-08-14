@@ -267,6 +267,23 @@ def test_the_release_is_the_cluster_titled_as_the_release():
     assert g["macro_release_cluster_id"] == "cluster:p2"
 
 
+def test_a_reaction_headline_naming_the_data_is_not_the_release():
+    """**標題命中驅動詞不代表它是發布本身**(外審 2026-08-14):
+    「PPI 飆升拖累科技股」也在標題寫了 PPI,ID 又排在前面 ——
+    若只看「標題有沒有命中」,發布會被指到市場反應群上,情境樹
+    就錨在反應而不是發布。發布標題的形狀是**報數字**(月增/高於
+    預期)或**報決議**;反應標題只是提到那個詞。"""
+    news = [
+        {"source_item_id": "r1", "title": "PPI 飆升拖累科技股 費半重挫",
+         "summary": "通膨數據衝擊風險資產", "entities": ["費半"],
+         "source_name": "MarketWatch"},
+        {"source_item_id": "r2", "title": "美國7月PPI月增0.9% 高於預期",
+         "summary": "生產者物價指數意外走高", "entities": ["美國"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:r2"]
+
+
 def test_no_titled_release_falls_back_to_the_smallest_id():
     """全場都只在 summary 提到(外電轉述日)—— 沒有標題級的發布時
     退回最小 ID,不得整個消失也不得炸掉。"""

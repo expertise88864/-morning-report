@@ -27,6 +27,8 @@
 """
 from __future__ import annotations
 
+import re
+
 from typing import Optional
 
 #: `(驅動代號, 說明, 關鍵詞…)`。**同一個底層驅動的不同表現**。
@@ -106,6 +108,16 @@ _FAMILY_OF = {d: fam for fam, ds in DRIVER_FAMILIES.items() for d in ds}
 #: **總經發布**:它們不是「會影響市場的事件」,而是**分岔本身**。
 #: 情境樹的三個分支要條件在同一個發布上,否則那是三件不同的事。
 MACRO_RELEASE_DRIVERS = ("us_labor", "us_inflation", "fed_policy", "tw_policy")
+
+#: **發布形狀**的標題:報數字(月增/年增/高於預期)或報決議(升息/
+#: 按兵不動)。「PPI 飆升拖累科技股」也在標題寫了 PPI,但那是**市場
+#: 反應** —— 只憑「標題命中驅動詞」分不出兩者(外審 2026-08-14)。
+#: 認不出來時退回既有的最小 ID 決勝,所以這張表漏了詞是**降級不是
+#: 誤判**:頂多退回舊行為,不會把發布踢出清單。
+_RELEASE_TITLE = re.compile(
+    "月增|年增|月減|年減|季增|新增|高於預期|低於預期|符合預期|優於預期|"
+    "遜於預期|不如預期|公布|發布|出爐|初值|終值|決議|升息|降息|按兵不動|"
+    "維持利率|萬人")
 
 
 #: **具名機構**的驅動代號。同樣長度時它們贏過通用動詞。
@@ -213,7 +225,12 @@ def build(clusters: Optional[list], news: Optional[list]) -> dict:
         if not cands:
             continue
         titled = [cid for cid in cands if driver_of(_title_text(cid)) == code]
-        macro_all.append((titled or cands)[0])
+        # 標題命中驅動詞的群裡,再優先挑**發布形狀**的標題 ——
+        # 反應標題(「PPI 飆升拖累科技股」)也會命中驅動詞,ID 較小時
+        # 會搶走真正的發布,情境樹就錨在反應而不是發布上。
+        released = [cid for cid in titled
+                    if _RELEASE_TITLE.search(_title_text(cid))]
+        macro_all.append((released or titled or cands)[0])
     macro = macro_all[0] if macro_all else ""
     return {
         "drivers": {cid: {"driver": code, "label": labels.get(code, code)}

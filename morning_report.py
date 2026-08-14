@@ -17236,6 +17236,7 @@ def fetch_cpbl_standings(meta: Optional[dict] = None) -> list[dict]:
                     fy, fy_label = _cpbl_official("0")
                     _cpbl_set_full_year(meta, rows, fy, fy_label or "全年")
                 except Exception as e:      # 全年抓不到不影響當前分段
+                    _cpbl_degrade_full_year("error")
                     print(f"[sports] CPBL 官網全年度失敗: {str(e)[:60]}",
                           file=sys.stderr)
             return rows
@@ -17263,10 +17264,29 @@ def fetch_cpbl_standings(meta: Optional[dict] = None) -> list[dict]:
         return []
 
 
+def _cpbl_degrade_full_year(reason: str) -> None:
+    """全年度表**要不到**要登錄降級 —— 只印 stderr 的話,manifest 與
+    watchdog 會把這一班當成正常,而讀者只是少看到半個戰局。
+
+    兩個理由分開記,因為**處置不同**:`error` 是連線/來源掛掉(隔天
+    多半自己好),`empty` 是回了 200 卻解析不出表(頁面改版,要改程式)。
+    """
+    step = f"sports:cpbl_full_year_{reason}"
+    if step not in _DEGRADED_STEPS:
+        _DEGRADED_STEPS.append(step)
+
+
 def _cpbl_set_full_year(meta: dict, current: list[dict],
                         full_year: list[dict], label: str) -> None:
-    """全年度表只在**與當前分段不同**時才進 meta(同一張表印兩次不是資訊)。"""
-    if full_year and full_year != current:
+    """全年度表只在**與當前分段不同**時才進 meta。
+
+    「與當前逐列相同」是**刻意不給**(上半季期間全年度就等於上半季,
+    同一張表印兩次不是資訊),不是降級;「空表」才是要不到。
+    """
+    if not full_year:
+        _cpbl_degrade_full_year("empty")
+        return
+    if full_year != current:
         meta["full_year"] = full_year
         meta["full_year_label"] = label
 

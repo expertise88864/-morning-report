@@ -606,10 +606,65 @@ def test_a_broken_full_year_does_not_lose_the_current_table(monkeypatch):
         return R(half)
 
     monkeypatch.setattr(mr, "_http_get", fake_get)
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", [])
     meta = {}
     rows = mr.fetch_cpbl_standings(meta)
     assert rows[0]["wdl"] == "15-0-10" and meta["season_label"] == "下半季"
     assert "full_year" not in meta
+    # **少一張表要留痕**:只印 stderr 的話 manifest 與 watchdog 會把
+    # 這一班當成正常,而讀者只是少看到半個戰局(外審 2026-08-15)
+    assert "sports:cpbl_full_year_error" in mr._DEGRADED_STEPS
+
+
+def test_an_unparsable_full_year_page_is_recorded_as_empty(monkeypatch):
+    """回 200 卻解析不出表(頁面改版)—— 與連線失敗**處置不同**
+    (前者要改程式,後者隔天多半自己好),所以分開記。"""
+    half = ('<h3>2026年 下半季<span class="en"></span></h3>'
+            '<div class="rank">1</div><a href="/team?TeamNo=A">味全龍</a>'
+            '<td class="num">25</td> <td class="num">15-0-10</td> '
+            '<td class="num">0.600</td> <td class="num">-</td>')
+
+    class R:
+        def __init__(self, text):
+            self.text = text
+
+        def raise_for_status(self):
+            pass
+
+    def fake_get(url, **kw):
+        if (kw.get("params") or {}).get("seasonCode") == "0":
+            return R("<h3>2026年 全年度</h3><div class='newLayout'></div>")
+        return R(half)
+
+    monkeypatch.setattr(mr, "_http_get", fake_get)
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", [])
+    meta = {}
+    assert mr.fetch_cpbl_standings(meta)[0]["wdl"] == "15-0-10"
+    assert "sports:cpbl_full_year_empty" in mr._DEGRADED_STEPS
+    assert "sports:cpbl_full_year_error" not in mr._DEGRADED_STEPS
+
+
+def test_suppressing_a_duplicate_full_year_is_not_a_degradation(monkeypatch):
+    """上半季期間全年度**就等於**上半季 —— 刻意不印第二張表不是降級,
+    記進 manifest 會讓真正要不到表的日子看起來一樣。"""
+    first_half = _WIKI_HALF.split("=== 下半球季 ===")[0] + """=== 全年球季 ===
+{| class = "wikitable"
+|-
+| 1 || [[味全龍]] ||120||60||39||21||0||{{Winning percentage|39|21}}||–||–
+|-
+| 2 || [[富邦悍將]] ||120||60||34||26||0||{{Winning percentage|34|26}}||5.0||–
+|-
+| 3 || [[統一7-ELEVEn獅]] ||120||59||29||29||1||{{Winning percentage|29|29}}||9.5||–
+|-
+| 4 || [[台鋼雄鷹]] ||120||60||30||29||1||{{Winning percentage|30|29}}||9.0||–
+|}
+"""
+    monkeypatch.setattr(mr, "_http_get", _wiki_get(first_half))
+    monkeypatch.setattr(mr, "_DEGRADED_STEPS", [])
+    meta = {}
+    mr.fetch_cpbl_standings(meta)
+    assert "full_year" not in meta
+    assert not [d for d in mr._DEGRADED_STEPS if "cpbl_full_year" in d]
 
 
 def test_render_shows_both_tables_with_their_own_labels():

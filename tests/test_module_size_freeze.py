@@ -287,7 +287,8 @@ MODULE_CEILINGS = {
     # 第十九輪:實測 228 —— 加的是 metadata 欄位(as_of_precision、
     # observed_session)。**假精確比沒有 metadata 更糟**,所以這幾格要留。
     # 深度加強第二批:實測 256 —— 加的是 fact: 命名空間(值/單位/上下文)。
-    "evidence_registry.py": 380,
+    # 2026-08-14:universe 條目節點可引用
+    "evidence_registry.py": 395,
     # 第十八輪 P1-3:事件分群與必分析清單。與 `evidence_packet` 分開,
     # 因為門檻是**量出來的**(同語言同事件 0.69/0.90、不同事件同主體
     # 0.18),而量測值需要一個看得見、改得動的地方。

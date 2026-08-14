@@ -361,7 +361,12 @@ def _edge_packet() -> dict:
           "title": "SK海力士砸383億美元建兩座新廠 - 經濟日報",
           "entities": ["SK海力士"], "source": "Google:半導體",
           "source_name": ""}],
-        [], {}, as_of="x", target_session_date="y", sanitize=lambda s: s)
+        # v33:**universe 條目節點可引用**(`universe:2317`)—— 指紋要
+        # 蓋得到這條規則,fixture 就要有一列 universe(先前給空清單,
+        # 節點 ID 的存廢在指紋裡完全看不見)。
+        [{"code": "2317", "name": "鴻海", "close": 187.5,
+          "change_pct": -3.0}],
+        {}, as_of="x", target_session_date="y", sanitize=lambda s: s)
 
 
 def _sha(obj) -> str:
@@ -616,7 +621,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (32, "dfe525d8c85046ba"),
+    "evidence_schema_version":  (33, "5dacf45c472fcebd"),
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。

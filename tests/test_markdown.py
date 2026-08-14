@@ -1527,3 +1527,28 @@ def test_the_stance_wrapper_never_duplicates_the_tail():
     out = ru._wrap_stance(html)
     assert out.count("十二、一句話總結") == 1, out
     assert out.count("收尾") == 1, out
+
+
+def test_a_hash1_numbered_section_still_gets_the_card_style():
+    """2026-08-14 實信:模型這次寫 `# 七、…`(h1)—— 卡片樣式與立場
+    callout 都錨在 <h2>,整段又只剩文字。章節的身分是「中文數字+頓號」
+    的形狀,不是它今天恰好用哪一號井號。"""
+    for md in ("# 七、昨夜三大重點", "### 十之二、重大政策深度解析",
+               "#### 十一、我的明確立場"):
+        out = mr._md_to_html(md).strip()
+        assert out.startswith("<h2>") and out.endswith("</h2>"), (md, out)
+
+
+def test_a_non_numbered_h1_keeps_its_level():
+    """非編號標題不動 —— `# 晨報` 這種真的 h1 不得被降級。"""
+    assert mr._md_to_html("# 晨報").strip() == "<h1>晨報</h1>"
+    assert mr._md_to_html("### 小結").strip() == "<h3>小結</h3>"
+
+
+def test_the_stance_callout_survives_hash1_headings():
+    """立場段被 `#` 標題包夾時 callout 仍要找得到邊界。"""
+    import render_utils as ru
+    md = NL.join(("# 十一、我的明確立場", "", "立場:偏多", "",
+                  "# 十二、一句話總結", "", "偏多。"))
+    html = ru._wrap_stance(ru._style_analysis_html(ru._md_to_html(md)))
+    assert "linear-gradient(135deg,#dbeafe,#e0f2fe)" in html, html[:300]

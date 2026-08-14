@@ -257,6 +257,17 @@ def registry(packet: Optional[dict]) -> dict:
                     ("portfolio", "portfolio"),
                     ("quality", "coverage")):
         out.update(_entries(pk.get(key), f"{ns}:", dict(base, source=key)))
+    # **universe 的條目本身要引用得到**(2026-08-14 生產:模型引用
+    # `universe:2317` 被判不存在,整份特化分析作廢)。葉子
+    # (`universe:2317.close`)一直都有,而「這檔股票在今天的上市清單裡」
+    # 的語意單位就是**條目** —— 尤其 universe 層傳導放行之後,引用整檔
+    # 正是模型該做的事。與 `market:<block>` 的 setdefault 同一個先例;
+    # 只補 universe(別的清單照舊 —— 全面放行節點會讓引用檢查變橡皮圖章)。
+    for row in (pk.get("tw_universe") or []):
+        code = str((row or {}).get("code") or "") if isinstance(row, dict) else ""
+        if code:
+            out.setdefault(f"universe:{code}", dict(
+                base, source="tw_universe", value=None, unit=""))
 
     # 4. 張力與衍生值(由 `tension_refs` 定義,這裡只補上 metadata)。
     import tension_refs as _tr

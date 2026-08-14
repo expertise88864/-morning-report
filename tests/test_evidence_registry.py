@@ -423,3 +423,17 @@ def test_the_gap_canonicalizer_is_actually_called_before_validation():
     i = src.index("_canonicalize_gap_ids(obj, packet)" + chr(10))
     j = src.index("problems = (_sch.validate(obj, packet)")
     assert i < j, "正規化跑在驗證後面 = 駁回照樣發生"
+
+
+def test_a_universe_entry_is_citable_as_a_whole():
+    """2026-08-14 生產:模型引用 `universe:2317`(鴻海在今天的上市清單裡)
+    被判不存在、整份作廢 —— 葉子一直都有,而語意單位是**條目**。
+    不存在的代號仍然不存在。"""
+    pk = ep.build({"QQQ": {"close": 500.0}}, {}, {}, fx.news(),
+                  [{"code": "2317", "name": "鴻海", "close": 187.5,
+                    "change_pct": -3.0}],
+                  {}, as_of="x", target_session_date="y", sanitize=str)
+    ids = ep.evidence_ids(pk)
+    assert "universe:2317" in ids
+    assert "universe:2317.close" in ids       # 葉子仍在
+    assert "universe:9999" not in ids         # 憑空的代號照樣擋

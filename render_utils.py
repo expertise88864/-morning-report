@@ -174,6 +174,14 @@ def _md_to_html(text: str) -> str:
             close_lists()
             level = len(m.group(1))
             content = m.group(2).strip()
+            # **編號章節一律 h2**(2026-08-14 實信:模型這次寫 `# 七、…`
+            # 單井號 → h1,藍色卡片樣式與 `_wrap_stance` 的段落邊界都
+            # 錨在 `<h2>`,整段卡片又只剩文字。prompt 用 `##`、上一班用
+            # `**粗體**`、這一班用 `#` —— 模型在三種寫法之間擺盪,
+            # 修在渲染器(每天都吃得到):章節的**身分**是「中文數字+頓號」
+            # 的形狀,不是它今天恰好用哪一號井號。非編號標題不動。
+            if _SECTION_NUMBER.match(content):
+                level = 2
             out.append(f"<h{level}>{content}</h{level}>")
             continue
 

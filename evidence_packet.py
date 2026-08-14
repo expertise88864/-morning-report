@@ -103,7 +103,9 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: (循環引用/假根據,各有測試釘著)。
 #: v32(Batch A,2026-08-13):事件群帶 `lineage_id`(timeline 的 key)
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
-EVIDENCE_SCHEMA_VERSION = 32
+#: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
+#: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
+EVIDENCE_SCHEMA_VERSION = 33
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

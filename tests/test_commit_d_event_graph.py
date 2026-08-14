@@ -330,6 +330,20 @@ def test_a_date_digit_does_not_count_as_the_release_value():
     assert g["macro_release_cluster_ids"] == ["cluster:v2"]
 
 
+def test_a_fullwidth_percent_counts_as_the_release_value():
+    """繁中媒體標題常用全形 ％(外審第四輪:替代項曾重複寫成半形
+    `%|%`,全形發布「年增 2.7％」掉出 pure,反應群又以最小 ID 搶回)。"""
+    news = [
+        {"source_item_id": "w1", "title": "7月 CPI 高於預期 美股上漲",
+         "summary": "投資人樂觀", "entities": ["美股"],
+         "source_name": "MarketWatch"},
+        {"source_item_id": "w2", "title": "美國7月CPI年增 2.7％ 續降",
+         "summary": "能源價格回落", "entities": ["美國"],
+         "source_name": "Reuters"}]
+    g = eg.build(nc.clusters(news), news)
+    assert g["macro_release_cluster_ids"] == ["cluster:w2"]
+
+
 def test_a_decision_release_does_not_need_a_number_in_the_title():
     """決議類驅動豁免數字要求:「按兵不動」可以整句沒有數字,
     不得因此輸給 ID 較小的反應標題(「決議拖累美股」)。"""

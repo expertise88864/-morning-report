@@ -13108,6 +13108,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         prompt_cache_key=f"morning-{bundle['profile_id']}",
         prompt_cache_ttl_seconds=OPENAI_PROMPT_CACHE_TTL_SECONDS or None)
     _kept = None   # 第十五輪:合法但淺的第一版 —— 加深失敗時用它,不落回
+    #: 目前**最好的草稿**(問題最少):`(問題數, JSON, 問題清單)`。
+    #: 修補輪從它接手,而不是從最新那一版 —— 見迴圈末的說明。
+    _best_draft = None
     _req_chars = 0
     for _ai, repair in enumerate(_LUNA_ATTEMPTS):
         # **每一次送出去的 body 都要過閘門**(第一輪外審 F1)。先前只在
@@ -13325,17 +13328,36 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 最後一輪之後沒有下一次請求 —— 白建 payload 還會讓
             # `repair_modes` 多記一筆,對不上實際送出的修補數(外審 r1 P3)。
             continue
-        _hints = _repair_evidence_hints(problems, packet)
         # 修補型態:**只有解析例外才是語法輪**(外審 r1 P2)——
         # 解析成功而根不是物件,是結構/語意問題,底本用序列化後的值。
         _prev_json = (json.dumps(obj, ensure_ascii=False)
                       if isinstance(obj, dict) else _parsed_nondict_json)
+        # **修補要從目前最好的那一版接手,不是最新的那一版。**
+        # 2026-08-13 生產:第一次嘗試只剩 **1 條**問題,修補輪回來變成
+        # **95 條** —— 而下一輪會從那份 95 條的版本繼續修,那個差一步就
+        # 過關的版本就永遠消失了。「沒點到的照抄」只有在底本是最好的
+        # 版本時才划算。
+        # **變好與平手都留最新**(既有規約:帶舊版會把上一輪的修正倒回去);
+        # 只有**明顯更差**時才回退。問題清單要跟著底本走 —— 送 A 版當底本
+        # 卻附 B 版的問題,等於叫模型修一份它手上沒有的文件。
+        # 只比較解析得出來的版本:語法輪的底本是原始文字,那是另一件事。
+        _base_problems = problems
+        if isinstance(obj, dict):
+            if _best_draft is None or len(problems) < _best_draft[0]:
+                _best_draft = (len(problems), _prev_json, list(problems))
+            elif len(problems) > _best_draft[0]:
+                _prev_json, _base_problems = _best_draft[1], list(_best_draft[2])
+                _RUN_MANIFEST.setdefault("llm", {}).setdefault(
+                    "repair_bases", []).append(
+                        f"best@{_best_draft[0]}(本輪 {len(problems)})")
+        _hints = _repair_evidence_hints(_base_problems, packet)
         payload = dict(payload, input=(
             bundle["user_payload"]
             + _repair_instruction(
-                problems, _hints,
+                _base_problems, _hints,
                 # **帶當輪被拒的那一版**(外審 r1):「沒列到的保持原樣」
                 # 要給得出原樣;第二輪自然帶到第二版(obj 是當輪解析的)。
+                # 除非當輪比先前**明顯更差**(見上)。
                 previous_json=_prev_json,
                 # 壞 JSON 時帶**原始文字**當底本(第三十二輪 P1-2):
                 # 只修語法不改語意 —— 不再從零重寫。

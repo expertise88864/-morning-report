@@ -470,6 +470,81 @@ def test_the_second_repair_carries_the_latest_candidate(luna_on, monkeypatch):
     assert "第一版" not in calls[2]["input"], "舊版本殘留 —— 修正會被倒回去"
 
 
+def test_a_repair_that_regresses_does_not_become_the_next_base(
+        luna_on, monkeypatch):
+    """**修補要從最好的那一版接手,不是最新的那一版。**
+
+    2026-08-13 生產:第一次嘗試只剩 **1 條**問題,修補輪回來變成 **95 條**。
+    上一版的規則(永遠帶最新)會讓第三輪從那份 95 條的版本繼續修,
+    而那個差一步就過關的版本永遠消失 —— 「沒點到的照抄」只有在底本是
+    目前最好的版本時才划算。
+    """
+    near = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    near["claim_audit"][0]["evidence_ids"] = ["market:NEAR_MISS"]
+    near["top_news_analysis"][0]["headline"] = "差一步的版本"
+    worse = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    worse["top_news_analysis"][0]["headline"] = "退步的版本"
+    for _c in worse["claim_audit"]:
+        _c["evidence_ids"] = ["market:BAD1", "market:BAD2", "market:BAD3"]
+    for _n in worse["top_news_analysis"]:
+        _n["asset_net_effects"] = []
+        _n["mechanism_steps"] = []
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _response(near)
+        if len(calls) == 2:
+            return _response(worse)
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("第三輪成功了,不該落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 3, "應該用滿兩輪修補"
+    third = calls[2]["input"]
+    assert "差一步的版本" in third, "第三輪沒有從最好的那一版接手"
+    assert "退步的版本" not in third, "退步的版本被當成底本"
+    # **問題清單要跟著底本走**:送 A 版當底本卻附 B 版的問題,
+    # 等於叫模型修一份它手上沒有的文件。
+    assert "market:NEAR_MISS" in third, "附的不是那一版自己的問題"
+    assert "market:BAD1" not in third, "附了底本裡不存在的問題"
+    bases = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_bases") or []
+    assert bases and "best@" in bases[-1], "回退到最佳版本沒有留痕"
+
+
+def test_an_improving_repair_keeps_the_newest_draft(luna_on, monkeypatch):
+    """變好就留最新 —— 回退到舊版會把上一輪的修正倒回去(既有規約)。"""
+    worst = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    worst["top_news_analysis"][0]["headline"] = "最初的版本"
+    for _c in worst["claim_audit"]:
+        _c["evidence_ids"] = ["market:BAD1", "market:BAD2", "market:BAD3"]
+    better = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    better["top_news_analysis"][0]["headline"] = "改善後的版本"
+    better["claim_audit"][0]["evidence_ids"] = ["market:ONE_LEFT"]
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _response(worst)
+        if len(calls) == 2:
+            return _response(better)
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("第三輪成功了,不該落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    third = calls[2]["input"]
+    assert "改善後的版本" in third and "最初的版本" not in third
+    assert not ((mr._RUN_MANIFEST.get("llm") or {}).get("repair_bases")),         "沒有回退卻留了回退痕跡"
+
+
 def test_an_empty_content_on_the_repair_round_does_not_give_up(
         luna_on, monkeypatch):
     """**上限只由 `_LUNA_ATTEMPTS` 決定**(外審 r1):修補輪回空 content

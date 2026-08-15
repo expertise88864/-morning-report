@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import analysis_origin as _ao
 import analysis_recap as _arc
+import llm_telemetry as _lt
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -570,6 +571,31 @@ def assess(manifest, *, mode: str = "watchdog",
                     f"{what} 對不上:manifest 是 {got or '(空)'}、"
                     f"這一次是 {want} —— **讀到的是別次執行的 manifest**"
                     "(`state/run_manifest.json` 進版控,checkout 之後就在那裡)")
+
+    # ---- 10c. 供應商把請求擋在門外(餘額/金鑰)
+    #
+    # 這與「服務不穩」**處置完全不同**:重試幾次都一樣,要有人去儲值或
+    # 換金鑰,而且在那之前**每一班都會這樣**。2026-08-15 生產:DeepSeek
+    # 402 Insufficient Balance,主分析三個模型與抽取器全被擋,信只剩備援
+    # 模型寫的版本 —— 而品質信當時只說得出「沒見過的降級」。
+    _refusals = {}
+    for _a in (_dig(m, "llm", "attempts", default=[]) or []):
+        _why = _lt.refusal_reason(str((_a or {}).get("error") or ""))
+        if _why:
+            _refusals.setdefault(_why, set()).add(
+                str((_a or {}).get("provider") or "?"))
+    _ex_err = str(_dig(m, "llm_extractor", "error", default="") or "")
+    _ex_why = _lt.refusal_reason(_ex_err)
+    if _ex_why:
+        _refusals.setdefault(_ex_why, set()).add("extractor")
+    for _why, _who in sorted(_refusals.items()):
+        add("llm_provider_refused_" + _why, "degraded",
+            ("供應商擋下請求(%s):%s —— %s。"
+             "**重試不會好,而且在處理之前每一班都會這樣。**"
+             % (_why,
+                "、".join(sorted(_who)),
+                "帳戶餘額不足,需要儲值" if _why == "payment"
+                else "金鑰無效或沒有權限,需要換金鑰/開通")))
 
     # ---- 11. 沒見過的降級
     unknown = [s for s in (m.get("degraded_steps") or [])

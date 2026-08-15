@@ -237,6 +237,35 @@ def test_a_billable_timeout_is_recorded_even_though_usage_is_unknown(
     assert attempts[-1].get("elapsed_seconds") is not None, "沒有記耗時"
 
 
+def test_a_refused_request_is_not_recorded_as_billable(luna_on, monkeypatch):
+    """**402 不會計費** —— server 在做任何推理之前就把請求擋下。
+
+    2026-08-15 生產:DeepSeek 餘額用盡,三次呼叫全是 402,而 manifest
+    的成本摘要寫「另有 1 次呼叫已送出但沒有 usage —— 那些仍會計費」。
+    那是一句關於錢的假話,而成本帳正是這個實驗的判讀基礎。
+    """
+    class _Resp:
+        status_code = 402
+
+    class _HTTP402(Exception):
+        response = _Resp()
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: (_ for _ in ()).throw(
+                            _HTTP402("402 Client Error: Payment Required")))
+    monkeypatch.setattr(
+        mr, "_call_llm_text",
+        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+
+    attempts = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+                if a.get("role") == "primary"]
+    assert attempts, "被拒的那次請求也要入帳(只是不計費)"
+    assert not attempts[-1].get("billable_unmeasured"), attempts[-1]
+    assert attempts[-1].get("error"), "失敗原因仍要留著"
+
+
 _UNSUPPORTED = fx.ungrounded_analysis()
 #: **一個反例只違反一條規則,才測得到那一條。** 第十八輪之後,
 #: 沒揭露 gap 與沒分析新聞會先跳出來,而這條測的是「沒有根據」。

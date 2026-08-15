@@ -12170,7 +12170,9 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                                  applied_effort="", accepted=False,
                                  error=f"{type(e).__name__}: {e}"[:160],
                                  elapsed=time.monotonic() - _t0,
-                                 billable_unmeasured=True,
+                                 # 被拒的請求(402 沒錢/401 金鑰無效)server
+                                 # 沒做任何推理 → 不計費;逾時/斷線才計費。
+                                 billable_unmeasured=not _lt.refusal_reason(e),
                                  # 外審 r1(P2):精簡之後才逾時的話,
                                  # 這一筆是唯一還說得出「一開始 400 為什麼」
                                  # 的紀錄 —— 換模型時 `_backoff_reason` 會清空。
@@ -12313,7 +12315,8 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                          applied_effort=effort, accepted=False,
                          error=f"{type(_e).__name__}: {_e}",
                          elapsed=time.monotonic() - _t0,
-                         billable_unmeasured=True, prompt_chars=len(prompt))
+                         billable_unmeasured=not _lt.refusal_reason(_e),
+                         prompt_chars=len(prompt))
         raise
     # r1(第九輪 P1-3):**必須確認 400 真的是這個參數造成的**。400 也可能來自
     # model ID 錯、額度過大、schema 不合、專案沒權限 —— 那些情況移除推理強度
@@ -12346,7 +12349,8 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                              applied_effort="", accepted=False,
                              error=f"{type(_e2).__name__}: {_e2}",
                              elapsed=time.monotonic() - _t0,
-                             billable_unmeasured=True, prompt_chars=len(prompt),
+                             billable_unmeasured=not _lt.refusal_reason(_e2),
+                             prompt_chars=len(prompt),
                              backoff_reason=_backoff_reason)
             raise
     r.raise_for_status()
@@ -13125,7 +13129,7 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 "primary", "deepseek", DEEPSEEK_MODEL, requested_effort=effort,
                 accepted=False, elapsed=time.monotonic() - t0,
                 error=_redact_secret_text(str(e)), repair=repair,
-                billable_unmeasured=True)
+                billable_unmeasured=not _lt.refusal_reason(e))
             raise
         out = _dsr.extract_output(resp)
         elapsed = time.monotonic() - t0

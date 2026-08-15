@@ -111,9 +111,9 @@ jobs:
           LLM_EVENT_EXTRACTION: "1"
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # 與生產一致(2026-08-13 主分析改 v4-pro)—— 驗收關跑的
+          # 與生產一致(2026-08-15 主分析改回 v4-flash)—— 驗收關跑的
           # 要是生產真的會跑的那個模型。
-          DEEPSEEK_MODEL: deepseek-v4-pro
+          DEEPSEEK_MODEL: deepseek-v4-flash
           DEEPSEEK_REASONING_EFFORT: ${{ vars.DEEPSEEK_REASONING_EFFORT || 'max' }}
           # 空字串 = 依 provider 自動選(deepseek → 特化結構化路徑),
           # 與排程班同一個逃生門語意。

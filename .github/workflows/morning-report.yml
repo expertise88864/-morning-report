@@ -99,14 +99,13 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           # Macro Vintage(選配):FRED/ALFRED 免費 key,未設則功能休眠
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          # 2026-08-13:主分析改 **deepseek-v4-pro**(使用者指定;
-          # V4-Pro-0813 新版)—— 1M context、384K 輸出、Responses + 思考。
-          # 單價約 flash 的 3 倍($0.435/$0.87 vs $0.14/$0.28 per 1M),
-          # 換更強的推理;抽取器仍走 flash(結構化抽取不吃深推理,
-          # 3 倍價差在那裡買不到東西)。
-          # ⚠ 2026-08-16 16:00 UTC 起 DeepSeek 改峰谷計價:本報 06:00 台北
-          # = 22:00 UTC 屬離峰(pro 離峰 $0.66/$1.98)。
-          DEEPSEEK_MODEL: deepseek-v4-pro
+          # 2026-08-15:主分析改回 **deepseek-v4-flash**(使用者指定)。
+          # 08-13~08-15 試跑 pro 的實測:單價約 flash 3 倍、一次嘗試 610 秒
+          # (flash 約 1/3),2100 秒預算只夠一輪 → **修補輪被時間預算跳過**,
+          # 而修補輪正是特化路徑收斂的關鍵。08-15 那班 DeepSeek 餘額用盡
+          # (402)全部走備援。⚠ 2026-08-16 16:00 UTC 起改峰谷計價:
+          # 06:00 台北 = 22:00 UTC 屬離峰(flash 離峰 $0.22/$0.66)。
+          DEEPSEEK_MODEL: deepseek-v4-flash
           DEEPSEEK_EXTRACTOR_MODEL: deepseek-v4-flash
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 思考模式的翻譯規則(開關 vs 強度、別名映射)只寫在

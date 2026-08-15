@@ -375,7 +375,7 @@ CONFIG_SOURCE_SPEC = {
     #: 留著它是**逃生門**:設 deepseek_legacy_v1 即回舊路,不必 revert 程式碼。
     "LLM_PRIMARY_PROMPT_PROFILE":  ("variable", ""),
     # 2026-08-13:主分析改 v4-pro(使用者指定;V4-Pro-0813)。抽取器仍 flash。
-    "DEEPSEEK_MODEL":             ("fixed", "deepseek-v4-pro"),
+    "DEEPSEEK_MODEL":             ("fixed", "deepseek-v4-flash"),
     "DEEPSEEK_EXTRACTOR_MODEL":   ("fixed", "deepseek-v4-flash"),
     "DEEPSEEK_BASE_URL":          ("fixed", "https://api.deepseek.com"),
     "LLM_EVENT_EXTRACTION":       ("fixed", "1"),

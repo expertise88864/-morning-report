@@ -11,6 +11,7 @@ conftest 的 state 隔離影響。
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 # 計價已抽成獨立模組;這裡 re-export 維持既有呼叫端不變。
@@ -141,6 +142,35 @@ def reasoning_tokens_of(usage: dict) -> Optional[int]:
     if isinstance(det, dict) and isinstance(det.get("reasoning_tokens"), int):
         return det["reasoning_tokens"]
     return None
+
+
+#: 請求在**被處理之前**就遭拒的狀態碼 → 原因代號。
+#: 402 帳戶餘額不足、401/403 金鑰無效或沒有權限 —— server 沒有做任何
+#: 推理,所以**不會計費**,而且**重試不會好**:要有人去儲值或換金鑰。
+#: 逾時與連線中斷刻意不在此列:那些是 server 已經收下請求之後才斷,
+#: 照樣計費(`billable_unmeasured` 正是為它們而存在)。
+_REFUSED_BEFORE_WORK = {401: "auth", 402: "payment", 403: "auth"}
+
+#: 訊息裡的狀態碼寫法:requests 的 `402 Client Error: ...`、
+#: 本專案 chat 路徑自己組的 `HTTP 402: {...}`。
+_STATUS_IN_TEXT = re.compile(r"(?:HTTP\s+|\b)(\d{3})(?=\s*(?::|Client Error|"
+                             r"Server Error))")
+
+
+def refusal_reason(exc_or_text) -> str:
+    """這次失敗是「請求被拒」還是「做到一半斷掉」→ `"payment"`/`"auth"`/`""`。
+
+    兩者**處置完全不同**:被拒要有人去處理帳號(重試幾次都一樣),
+    斷線隔天多半自己好;而且被拒**不會計費**,記成計費會讓成本帳
+    憑空多出一筆(2026-08-15 生產:DeepSeek 402 餘額不足,manifest
+    卻寫「已送出但沒有 usage —— 那些仍會計費」)。
+    """
+    exc = exc_or_text
+    code = getattr(getattr(exc, "response", None), "status_code", None)
+    if not isinstance(code, int):
+        m = _STATUS_IN_TEXT.search(str(exc or ""))
+        code = int(m.group(1)) if m else 0
+    return _REFUSED_BEFORE_WORK.get(code, "")
 
 
 #: 成本紀錄要帶的計價中繼資料。**只記總額,對不上帳單時就分不出原因。**

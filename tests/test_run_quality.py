@@ -1830,3 +1830,48 @@ def test_quality_recipient_has_no_hardcoded_personal_fallback():
            ).read_text(encoding="utf-8")
     assert "f94001115" not in src, "個人信箱不得寫死在公開 workflow"
     assert "vars.QUALITY_RECIPIENT" in src
+
+
+def test_a_payment_refusal_says_what_to_do():
+    """**「餘額不足」與「服務不穩」處置完全不同**(2026-08-15 生產:
+    DeepSeek 402 Insufficient Balance,主分析三個模型與抽取器全被擋,
+    信只剩備援模型寫的版本)—— 而品質信當時只說得出「沒見過的降級」。
+    重試不會好,要有人去儲值。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT, llm={"attempts": [
+        {"role": "primary", "provider": "deepseek",
+         "error": "402 Client Error: Payment Required for url: "
+                  "https://api.deepseek.com/v1/responses"},
+        {"role": "primary", "provider": "deepseek",
+         "error": 'HTTP 402: {"error":{"message":"Insufficient Balance"}}'}]},
+        llm_extractor={"called": True, "outcome": "error:HTTPError",
+                       "error": "402 Client Error: Payment Required"})
+    got = [f for f in rq.assess(m) if f["code"] == "llm_provider_refused_payment"]
+    assert got, [f["code"] for f in rq.assess(m)]
+    assert "儲值" in got[0]["detail"] and "deepseek" in got[0]["detail"]
+    assert "extractor" in got[0]["detail"]          # 抽取器也被擋要看得見
+
+
+def test_a_bad_key_is_not_reported_as_a_balance_problem():
+    """401/403 要換金鑰、402 要儲值 —— 兩者混成一句話,收信的人會做錯事。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT, llm={"attempts": [
+        {"role": "primary", "provider": "openai",
+         "error": "401 Client Error: Unauthorized"}]})
+    got = {f["code"]: f for f in rq.assess(m)}
+    assert "llm_provider_refused_auth" in got
+    assert "llm_provider_refused_payment" not in got
+    assert "金鑰" in got["llm_provider_refused_auth"]["detail"]
+
+
+def test_a_transient_failure_is_not_called_a_refusal():
+    """逾時、500 是「做到一半斷掉」—— 隔天多半自己好,不得叫人去儲值。"""
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT, llm={"attempts": [
+        {"role": "primary", "provider": "deepseek",
+         "error": "ReadTimeout: timed out"},
+        {"role": "primary", "provider": "deepseek",
+         "error": "HTTP 500: internal server error"},
+        # **訊息裡的數字不一定是狀態碼**:裸數字比對會把這一筆當成
+        # 402 餘額不足,於是叫人去儲值一個沒有問題的帳戶。
+        {"role": "primary", "provider": "deepseek",
+         "error": "ValueError: 402 字元的回應不是合法 JSON"}]})
+    assert not [f for f in rq.assess(m)
+                if str(f["code"]).startswith("llm_provider_refused")]

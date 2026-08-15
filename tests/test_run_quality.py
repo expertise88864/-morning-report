@@ -14,6 +14,8 @@
 """
 import json
 
+import pytest
+
 import analysis_origin as ao
 import run_quality as rq
 
@@ -1875,3 +1877,43 @@ def test_a_transient_failure_is_not_called_a_refusal():
          "error": "ValueError: 402 字元的回應不是合法 JSON"}]})
     assert not [f for f in rq.assess(m)
                 if str(f["code"]).startswith("llm_provider_refused")]
+
+
+def test_an_http_refusal_from_openai_is_recorded(monkeypatch):
+    """**有回應的失敗也要留紀錄**(外審 2026-08-15 r1)。
+
+    `requests.post` 只在逾時/斷線時拋例外;401/402/403 是 server 有
+    回話,在 `raise_for_status()` 才拋 —— 先前那一行在 try 之外,於是
+    那次呼叫在 manifest 裡完全不存在:成本看不到它,而上面那條
+    「餘額不足要儲值」的判準讀的正是 `llm.attempts[].error`。
+    """
+    import requests
+    import morning_report as mr
+
+    class _R:
+        status_code = 402
+        text = '{"error":{"message":"Insufficient Balance"}}'
+
+        def raise_for_status(self):
+            raise requests.HTTPError("402 Client Error: Payment Required",
+                                     response=self)
+
+        def json(self):
+            return {}
+
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
+    monkeypatch.setattr(mr.requests, "post", lambda *a, **k: _R())
+    mr._RUN_MANIFEST.pop("llm", None)
+    with pytest.raises(requests.HTTPError):
+        mr._call_openai("prompt", model="gpt-5.6-luna", role="primary")
+
+    att = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+           if a.get("provider") == "openai"]
+    assert att, "402 的那次呼叫完全沒有進 manifest"
+    assert "402" in str(att[-1].get("error"))
+    assert not att[-1].get("billable_unmeasured"), "被拒的請求不計費"
+    # 品質判準讀得到它 —— 這才是「留紀錄」的目的
+    m = _ok_manifest(report_kind=rq.MORNING_REPORT,
+                     llm={"attempts": [dict(att[-1])]})
+    assert [f for f in rq.assess(m)
+            if f["code"] == "llm_provider_refused_payment"]

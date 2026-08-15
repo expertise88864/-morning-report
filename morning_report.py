@@ -12353,7 +12353,22 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                              prompt_chars=len(prompt),
                              backoff_reason=_backoff_reason)
             raise
-    r.raise_for_status()
+    try:
+        r.raise_for_status()
+    except Exception as _e3:
+        # 外審 2026-08-15 r1:**有回應的失敗也要留紀錄。** 上面兩個
+        # handler 只接得到 `requests.post` 自己拋的例外(逾時、連線中斷);
+        # 401/402/403 這種 server 有回話的失敗是在這一行才拋 —— 於是
+        # 那次呼叫在 manifest 裡完全不存在,成本看不到它,新的
+        # 「餘額不足/金鑰無效」判準也讀不到它(它讀 `llm.attempts[].error`)。
+        _record_llm_call(role, "openai", use_model, requested_effort=effort,
+                         applied_effort=applied_effort, accepted=False,
+                         error=f"HTTP {r.status_code}: "
+                               f"{_redact_secret_text(r.text)[:160]}",
+                         elapsed=time.monotonic() - _t0,
+                         billable_unmeasured=not _lt.refusal_reason(_e3),
+                         prompt_chars=len(prompt))
+        raise
     data = r.json() or {}
     choices = data.get("choices") or []
     msg = (choices[0].get("message") or {}) if choices else {}

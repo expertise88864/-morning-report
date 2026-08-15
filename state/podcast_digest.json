@@ -3,6 +3,34 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "986db49f-de3d-49e4-9ef7-dd721bdc240c",
+        "title": "EP688 | 🥽",
+        "published": "Sat, 15 Aug 2026 06:36:40 GMT",
+        "processed_at": "2026-08-15T08:43:38Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為SpaceX股票解禁的首次衝擊最大，但隨流動性增加、承接者變多，後續解禁對股價的影響會愈來愈小，而且釋出更多籌碼有助價格發現。",
+            "主持人認為Cerebras的SRAM低延遲解碼方案在Reasoning推論時代有搞頭，公司取得晶圓產能愈來愈多代表信心增強，待這波解禁籌碼消化後值得觀察。",
+            "主持人指出NVIDIA 800V DC白皮書可能重新點燃被市場冷落的電源族群；2026-27年power rack階段受惠AC-DC PSU、SHAF電容/連接器與BBU，但部分已反映在股價上。",
+            "主持人強調中期power center階段才是新機會，SiC、GaN（尤其GaN缺貨超乎先前預期）、IGBT及集中式整流器將受惠；2028-30年UPS、busway、SSCB，2030年後重電與儲能接棒。",
+            "主持人對被動元件/功率族群看法：經過深跌後營收續創新高、獲利成長高於營收成長，代表價格條件仍好；AI需求可支撐漲價，但車用/消費電子的漲價則有價格破壞風險。",
+            "主持人提醒抄底不要幻想抓絕對低點，只能抓相對位置；應以事件搭配超強反彈走勢來判斷底部，分幾批進場且不要一次打光子彈，若破底則反而是更深的風險。"
+          ],
+          "tickers": [
+            {
+              "name": "Cerebras Systems",
+              "code": "CBRS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為其SRAM推論方案有潛力，取得產能增加顯示信心，待籌碼釋出後再觀察。"
+            }
+          ],
+          "market_view": "主持人認為市場題材仍充沛，先前修正讓很多股票變便宜，資金在各族群間輪動；電源族群被冷落許久，800V DC白皮書可能點燃新一波行情，但仍需觀察族群能否形成主流。",
+          "action_view": "抄底應分批慢慢買，不要幻想買在最低；用事件搭配強勁反彈判斷底部，若破底需警惕更深風險；可開始依白皮書測算電源鏈公司未來營收時間點，再挑選股價相對低估的標的。",
+          "notable_quote": "你不可能會百分之百完美的抓到底部……我們能夠知道的是相對位置，但是絕對位置真的太難了。"
+        }
+      },
+      {
         "guid": "63275cd6-e7a5-4ece-8432-e39884d94ae2",
         "title": "EP687 | 🐧",
         "published": "Wed, 12 Aug 2026 07:27:46 GMT",
@@ -604,58 +632,6 @@
           "notable_quote": "其實我覺得根本沒什麼好解的，因為你去看一下加權指數，基本上就在右上角。"
         },
         "shown_at": "2026-07-09T23:10:08Z"
-      },
-      {
-        "guid": "2d7b77d8-c828-43f9-b835-5a1a72aa2e38",
-        "title": "EP676 | 🐬",
-        "published": "Sat, 04 Jul 2026 07:45:37 GMT",
-        "processed_at": "2026-07-04T10:03:50Z",
-        "digest": {
-          "summary_points": [
-            "台股經小修正後，強勢股因解套賣壓被修理，但週四五部分股票鎖住，氣勢轉變，可能準備再攻。",
-            "被動元件、功率元件是修正後率先轉強族群，資金集中，但追高易被修理，需等籌碼洗淨。",
-            "大盤若創新高即確認修正結束，資金將重新凝聚，強勢族群易於識別。",
-            "功率元件供需緊張加劇，部分 Mosfet 出現斷貨，lead time 拉長，缺貨程度不亞於被動元件。",
-            "功率元件多為 IDM 一條龍，掌握產能者較有優勢；Fabless 若透過集團資源確保產能，亦可受惠。",
-            "封測族群整體轉強，AI 需求排擠導致封裝廠大幅漲價，下季報價漲幅達 30%-50%，遠高於過往。",
-            "AI 需求使封測廠可挑客人，功率封測也醞釀漲價，封測題材可能成為下一波資金焦點。",
-            "AI 熱潮從高毛利 IC 設計擴至晶圓代工，再延伸至被動、功率等小料件及封測，相關公司毛利有拉高機會。",
-            "Meta 投入 NeoCloud 並非放棄 AI，而是欲出租閒置算力以創造收入並擴大投資，對 AI 基建需求未減。",
-            "Meta 此舉對現有 NeoCloud 業者形成競爭威脅，但長期整體 AI 建置故事不受影響，甚至可能加速。",
-            "券商不限用途借貸趨緊，部分停止新借或調降額度，主持人認為被動風控不致引發市場全面抽資。",
-            "光通訊基本面佳但市場資金未回流，股價表現平淡，需待資金重回或出現新題材再注意。",
-            "驅動 IC 本業展望雖平淡，但因成本轉嫁漲價成功及跨入新題材拉高估值，股價提前反應。",
-            "消費性電子需求尚未顯著好轉，近期拉貨多為補庫存動作，延續性待觀察。",
-            "落後股如部分 IC 設計有補漲空間，市場資金可能尋找低基期標的進行估值修復。"
-          ],
-          "tickers": [
-            {
-              "name": "日月光",
-              "code": "",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "封測族群轉強，AI 需求排擠效應帶動封裝漲價，公司為龍頭可望受惠。"
-            },
-            {
-              "name": "京元電",
-              "code": "",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "同為封測股，具 AI 相關業務，族群強勢下表現看好。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "投入 NeoCloud 非退出 AI，而是擴大投資並創造新收入，公司將繼續衝刺 AI 建置。"
-            }
-          ],
-          "market_view": "大盤在修正後有機會創新高，一旦確認將結束整理，資金重新凝聚，被動、功率、封測等族群有機會帶頭上攻。",
-          "action_view": "已針對轉強族群完成佈局，等待大盤確認訊號；短線不宜追高，需待籌碼洗淨後再跟進強勢股。",
-          "notable_quote": "資源是有限的，你不可能什麼東西都去追。"
-        },
-        "shown_at": "2026-07-04T22:45:57Z"
       }
     ]
   },
@@ -4902,6 +4878,29 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/73978473",
+        "title": "Upvoted into the S&P",
+        "published": "Fri, 14 Aug 2026 10:54:22 +0000",
+        "processed_at": "2026-08-15T08:44:34Z",
+        "digest": {
+          "summary_points": [
+            "應用材料（AMAT）上季財報與展望優於市場預期，但盤前股價仍下跌5%，主持人認為市場期待更高；該股年初至今漲幅近98%。"
+          ],
+          "tickers": [
+            {
+              "name": "應用材料",
+              "code": "AMAT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人僅說明股價反應，未明確表達多空看法。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Shares are down even after AMAT reported fiscal third quarter results and guidance that topped Wall Street's forecast, suggesting investors want it more."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73920403",
         "title": "Trump vaccine order faces major hurdle",
         "published": "Thu, 13 Aug 2026 15:26:35 +0000",
@@ -5328,30 +5327,6 @@
           "notable_quote": "There's a lot of margin debt you don't see because it's not called margin debt. It's called other things."
         },
         "shown_at": "2026-08-07T01:46:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73504452",
-        "title": "Parks, Pixar power Disney",
-        "published": "Wed, 05 Aug 2026 16:35:08 +0000",
-        "processed_at": "2026-08-06T05:18:33Z",
-        "digest": {
-          "summary_points": [
-            "主持人點出,迪士尼與 TikTok 的全球合作案有望提升內容能見度與參與度,是財報之外的潛在催化劑;迪士尼本季 EPS 2.06 美元優於預期,體驗部門營運利益年增 20%,顯示樂園事業動能仍強。"
-          ],
-          "tickers": [
-            {
-              "name": "迪士尼",
-              "code": "DIS",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "第三季財報優於預期,體驗部門強勁,且 TikTok 合作案可能提升內容能見度與參與度。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "For Disney, the deal could boost visibility and engagement."
-        },
-        "shown_at": "2026-08-07T00:32:46Z"
       }
     ]
   },
@@ -6259,6 +6234,34 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-nvidias-answer-to-capital-constraints-googles-attrition-and-direction-q-a-on-ai-writing-vision-pro-vibe-coding",
+        "title": "(Preview) Nvidia’s Answer to Capital Constraints, Google’s Attrition and Direction, Q&amp;A on AI Writing, Vision Pro, V",
+        "published": "Fri, 14 Aug 2026 08:59:41 +0000",
+        "processed_at": "2026-08-15T08:49:07Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 NVIDIA 聯手 Apollo、BlackRock、Blackstone、Brookfield、Goldman Sachs、KKR 籌組 5000 億美元 AI 基礎設施融資平台，本質是用長期資本配對長期投資，但這也代表短期資本已幾乎用完，風險正在升高。",
+            "他以 1873 年鐵路泡沫類比，指出 AI 投資已從超大企業用自由現金流支付，轉向大舉舉債；真正的問題不是算力或電力，而是『什麼時候會把錢用完』。",
+            "針對 CoreWeave 宣稱 A100 舊晶片合約價格更高，主持人懷疑這不能代表未來：舊資料中心因水冷規格限制放不下新 GPU，且當下算力稀缺環境不具長期代表性，若供給過剩舊晶片會快速被淘汰。",
+            "他點出所有超大規模業者同時收到『需求超過供給』的訊號，若大家都同步擴產，可能重演景氣循環的過度供給，導致長壽資產在回報實現前就貶值。",
+            "主持人認為生成式 AI 興起其實削弱了 CUDA 護城河：多數應用程式在 LLM API 層運作，開發者不需要碰 CUDA，NVIDIA 必須尋找新的成長敘事，這次融資平台也有防禦 Google TPU 等替代方案的意味。",
+            "他對 AI 基礎設施長遠報酬不悲觀，但強調是時間問題：這些資產很可能最終會回收，問題是能否在資金斷層出現前及時產生現金流，否則就會出現一堆套牢的持有人。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人對 NVIDIA 的 AI 基礎設施融資與 CUDA 長期護城河有所質疑，認為短期算力稀缺不代表舊晶片長期價值，且 LLM 生態讓 CUDA 重要性下降。"
+            }
+          ],
+          "market_view": "主持人提醒 AI 基礎設施投資已從現金流轉向舉債，需留意資金供給是否在某個時間點斷裂，以及所有業者同步擴產導致的過度供給風險。",
+          "action_view": "未給出明確加減碼建議，傾向以觀望態度檢視 AI 基礎設施融資創新是否真的能撐到回報實現，而非現在追逐擴產題材。",
+          "notable_quote": "the big question with these capital issues is, I believe this stuff will pay for itself. The question is will it pay for itself in time to avoid like an air pocket where we run out of money?"
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-microsofts-plan-for-platform-survival-meta-and-the-markets-permission-a-lack-of-situational-awareness",
         "title": "(Preview) Microsoft’s Plan for Platform Survival, Meta and the Market’s Permission, A Lack of Situational Awareness",

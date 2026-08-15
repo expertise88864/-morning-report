@@ -5391,6 +5391,26 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "906e5071-7abc-4f2c-acb5-b4a5013ff33f",
+        "title": "A Historic El Niño Is Coming That Could Cost the World Trillions",
+        "published": "Fri, 14 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-15T20:03:09Z",
+        "digest": {
+          "summary_points": [
+            "主持人觀察到多家投行報告（花旗、摩根士丹利、美銀）開始提及聖嬰現象對利率、通膨及新興市場貨幣的影響，顯示市場開始重視此風險。",
+            "主持人指出，本次聖嬰現象預報顯示可能超越2016年成為創紀錄事件，澳洲氣象局的指標也顯示極端程度。",
+            "訪談研究顯示，聖嬰現象並非暫時性衝擊，而是永久壓抑經濟成長；1997-98年事件五年後全球損失達5.7兆美元。",
+            "主持人強調，聖嬰現象的全球同時性是關鍵，與全球暖化疊加使影響更加嚴重。",
+            "研究估計本次聖嬰現象未來五年保守損失約10兆美元，最多可達14兆，且大部分損失超出既有數據可解釋範圍。",
+            "主持人總結，目前全球並未充分適應聖嬰現象，相關經濟成本仍會累積，投資人應留意其引發的供應鏈與通膨風險。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為聖嬰現象可能對全球經濟成長產生持續拖累，並帶來通膨壓力，尤其影響農業、礦業及供應鏈。",
+          "action_view": "主持人未給出具體操作建議，但暗示投資人應關注聖嬰現象相關風險，可能影響大宗商品價格與新興市場。",
+          "notable_quote": "I estimate somewhere around $10 trillion of global economic losses conservatively over the next five years."
+        }
+      },
+      {
         "guid": "bfd63d35-c7ad-4a5c-a603-b4a400dbfa65",
         "title": "Trucking Is Booming Again, And Drivers Aren't Happy About It",
         "published": "Thu, 13 Aug 2026 08:00:00 +0000",
@@ -5672,30 +5692,6 @@
           "notable_quote": "The next three years are going to be the biggest three product years in Apple's history."
         },
         "shown_at": "2026-07-23T22:52:12Z"
-      },
-      {
-        "guid": "ef32f81a-cd8d-4184-8eb6-b48a015709b4",
-        "title": "The Creator of Claude Code on The Hottest Piece of Software in the World",
-        "published": "Mon, 20 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-20T15:36:07Z",
-        "digest": {
-          "summary_points": [
-            "Opus 4.5 和 Opus 4.6 等模型版本大幅提升 Claude Code 的程式碼生成能力，帶動用戶數在每個版本發布後飆升。",
-            "Anthropic 內部約 90% 的程式碼由 Claude Code 生成，包括產品、基礎設施和研究程式碼。",
-            "軟體工程角色正從編碼轉向原型設計、建構、維護和擴展等更高層級的抽象工作。",
-            "企業採用 AI 程式設計工具遵循階梯：從個人試用、單會話到多會話、再到全公司普及，安全與治理是主要瓶頸。",
-            "AI 降低軟體切換成本，但企業的競爭壁壘仍依賴網路效應、規模經濟等組合護城河。",
-            "Claude Code 能高效完成 COBOL 等老舊程式碼的遷移，成本降至傳統方式的極小部分。",
-            "模型安全（如防止提示注入）成為差異化優勢，Anthropic 透過對齊與沙盒實現領先。",
-            "未來人機互動將從圖形介面轉向對話式協作，AI 代理能主動參與工作流程並生成設計。",
-            "程式語言的重要性下降，模型可處理任意語言，可能導致新程式語言的爆發。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The way that I would think about it is, do you guys know this like seven powers framework? No."
-        },
-        "shown_at": "2026-07-20T22:51:16Z"
       }
     ]
   },
@@ -6495,6 +6491,57 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "b9acd3c5-2292-42ed-8fcb-4228ccea6dfd",
+        "title": "Anthropic's $2T IPO, Zuck's AI Manifesto, Nvidia's $500B AI Bet, Grok's Comeback",
+        "published": "Fri, 14 Aug 2026 20:11:00 +0000",
+        "processed_at": "2026-08-15T19:56:52Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Anthropic 傳出以 2 兆美元 IPO 的估值「有點誇張」,可能是銀行放話;實際定價會更保守,以便吸收鎖定期賣壓,但對其年化營收將達 100-120 億美元、年增 10 倍的驚人成長仍表肯定。",
+            "針對 Zuckerberg「去中心化、開源」宣言,主持人強調 AI 太危險所以不能集中化;人類需要能代表個別使用者的 AI,而非由單一公司(如 Anthropic)決定利益,並呼應「開放原始碼讓前沿模型更有價值」的觀點。",
+            "對 NVIDIA 攜手 Goldman/BlackRock 等籌集 5000 億美元 AI 算力融資,主持人看好其將 GPU 視為可融資資產的策略,並認為這不是循環融資,反而能解除算力建設的資金限制;最大風險是未來可能出現算力過剩(暗 GPU)。",
+            "主持人評估 Anthropic 明年營收成長將明顯減速,因為開源模型(GLM/Meta 等)以便宜 90% 的價格搶市;他預估 2027 年收入約 4000-5000 億美元(出口年率),而非 1 兆美元,但這已是史詩級成長。",
+            "xAI 的 Grok 4.6 已追上前沿,打破原本「Anthropic+OpenAI 雙寡頭」看法;Grok Bot 的普及讓 AI 更個人化,而 Elon 整合 Cursor 與 SpaceX 團隊是追上來的關鍵。",
+            "主持人認為市場對資料中心的「水電恐慌」是被誇大的謊言;AI 資料中心反而降低電價、繁榮小鎮,短期需要天然氣,長期靠太陽能/核能,而這波建設潮將帶動能源與設備股。",
+            "Silver Lake 據傳將收購 Workday,主持人視為軟體業觸底的重要訊號;開源 AI 降低了軟體公司成本,讓私有股權資金願意回頭買軟體,整個產業的投資環境將改變。",
+            "Anthropic 的 S1 財報將是 AI 產業最重要的領先訊號;若它踩煞車(需求下滑),整個算力供應鏈會連環追撞;但主持人也強調 Anthropic 其實有現金流、並非補貼,市場上很多「AI泡沫論」是錯的。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "把 GPU 變成可融資資產,並與 Goldman/BlackRock 合作融資,解除算力建設資金限制,主持人認為策略聰明且有利需求。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Zuckerberg 提倡開源與去中心化 AI,主持人普遍認同,並認為這符合美國利益及用戶自主權。"
+            },
+            {
+              "name": "Workday",
+              "code": "WDAY",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "傳被 Silver Lake 收購,主持人視為軟體業觸底訊號,私有化買盤將改變軟體投資環境。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Amazon DSP 司機僱用爭議引來監管壓力,主持人意見分歧;成本與聲譽風險需觀察,但整體效率仍高。"
+            }
+          ],
+          "market_view": "AI 需求極大、成長驚人,但必須注意算力與能源的實體限制、開源模型的競爭,以及封閉前沿公司高估值的風險;整體仍看好 AI 與軟體業,認為 AI 泡沫論者忽略實際現金流。",
+          "action_view": "持續看好 AI 基礎設施(如 NVIDIA、能源/資料中心)與開源生態;對封閉前沿模型 IPO 估值持保留態度,可留意軟體公司私有化/併購機會(如 Workday)。",
+          "notable_quote": "This technology is too dangerous to centralize."
+        }
+      },
+      {
         "guid": "2d3f7c13-7a54-434d-8136-5c13aeca9ca1",
         "title": "Rahm Emanuel: Trump's Foreign Policy, China, Europe's Decline, Immigration & DSA vs Democrats",
         "published": "Thu, 13 Aug 2026 02:10:00 +0000",
@@ -6910,69 +6957,6 @@
           "notable_quote": "The voice is identity and the IP. It's like, when you speak a certain way, people recognize it, can feel that emotion. And to some extent, it could be a problem, could be opportunity before."
         },
         "shown_at": "2026-07-14T22:51:49Z"
-      },
-      {
-        "guid": "4423c373-1b80-4d70-b500-f9823914247a",
-        "title": "More Trillion Dollar IPOs, Anthropic $3T, Zuck's Price War, China Ends Open Source?, Trump Accounts",
-        "published": "Sat, 11 Jul 2026 02:12:00 +0000",
-        "processed_at": "2026-07-11T05:03:40Z",
-        "digest": {
-          "summary_points": [
-            "SpaceX 的 IPO 成功定價於 1.75 兆美元，目前交易價格高於發行價，為 Anthropic 與 OpenAI 等巨型 IPO 提供借鑑。",
-            "Anthropic 年化營收預估超過 1,000 億美元，可能於今年或明年初 IPO。",
-            "OpenAI 營收約 700 億美元，但企業重組可能使其較晚上市。",
-            "企業 AI 支出面臨 ROI 檢驗，多數公司仍處於實驗階段，尚未嚴格審視效益，但 token 成本每 45 天翻倍，下游生產力提升僅約 5%。",
-            "Jevons Paradox 正在發生：Token 價格暴跌 90% 促使使用量暴增，進一步推升需求。",
-            "雖然 AI 模型實力在技術上逐步趨近，但營收集中度卻反而向 Anthropic 與 OpenAI 兩大廠靠攏。",
-            "中國可能收緊其 AI 模型出口，藉此保護自身優勢，並呼應美國對模型蒸餾的禁令。",
-            "能源將成為 AI 發展的關鍵瓶頸，美國預估到 2050 年前電力缺口相當於三個加州的用電量。",
-            "Trump Accounts 正式上線，每位新生兒可獲 1,000 美元投資於 S&P 500，且具有顯著稅務優惠。",
-            "主持人認為 Trump Accounts 可望在 12 個月內募集超過 1,000 億美元，成為有史以來最大的直接捐贈平台。",
-            "Trump Accounts 最終可能取代社會福利制度，讓美國下一代從出生就擁有資本，被視為社會安全制度的現代化版本。",
-            "美中 AI 競賽正熾，美國內部應避免因 AI 末日論而自我設限。"
-          ],
-          "tickers": [
-            {
-              "name": "SpaceX",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "SpaceX 的 IPO 成功定價於 1.75 兆美元，目前交易價格高於發行價，顯示出強勁的投資者需求。"
-            },
-            {
-              "name": "Anthropic",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Anthropic 的營收增長年化超過 1,000 億美元，被認為是 AI 領域的下一個巨型 IPO。"
-            },
-            {
-              "name": "OpenAI",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "OpenAI 營收約 700 億美元，並正在開發 GPT-6，但企業重組可能會推遲其 IPO。"
-            },
-            {
-              "name": "Nvidia",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Nvidia 是 AI 支出激增的最大受益者，其晶片被用於訓練和推理。"
-            },
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Meta 發布了強大的開源模型 Llama，但面臨商品化和定價壓力。"
-            }
-          ],
-          "market_view": "主持人整體看多 AI 帶動的牛市，尤其看好大型 IPO (SpaceX, Anthropic, OpenAI) 及 AI 基礎建設 (Nvidia)，但也提醒能源將成為關鍵瓶頸。",
-          "action_view": "建議投資人關注即將到來的巨型 IPO，同時利用 Trump Accounts 的稅務優惠進行長期複利投資，並在 AI 領域聚焦於能證明 ROI 的龍頭公司。",
-          "notable_quote": "If you can get out now, you should get out now before all of that starts to seep into the water table."
-        },
-        "shown_at": "2026-07-11T22:36:13Z"
       }
     ]
   },

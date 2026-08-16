@@ -4952,6 +4952,32 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74132214",
+        "title": "Retail earnings put consumers in the spotlight",
+        "published": "Sun, 16 Aug 2026 16:23:03 +0000",
+        "processed_at": "2026-08-16T19:46:42Z",
+        "digest": {
+          "summary_points": [
+            "本週美國零售股為焦點,Home Depot、Target、Walmart 陸續公布財報;主持人特別點出 Walmart 為重頭戲,並引述 Oppenheimer 下調評等至 Perform,預估美國同店銷售僅約 3%,低於市場預期的 3.8%,反映對消費力道的疑慮。",
+            "週三公布 Fed 會議紀要,Wells Fargo 經濟學家預期內容顯示官員願意耐心等待通膨進展,但若通膨未進一步降溫,未來升息門檻低;9 月會議將取決於接下來就業與通膨數據。",
+            "AI 新創 Anthropic 預測 2028 年營收約 1900-2000 億美元,將影響其 IPO 估值,並參考 Cloudflare、Palantir、SpaceX 等估值基準;顯示 AI 資本支出可望在未來產生高營收與利潤。",
+            "交易公司 Jane Street 上個月因投資 Situational Awareness 被迫賤賣給 Citadel,損失達 150 億美元,對以嚴謹風險管理聞名的該公司是罕見挫折。"
+          ],
+          "tickers": [
+            {
+              "name": "沃爾瑪",
+              "code": "WMT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Oppenheimer 下調評等至 Perform,預期美國同店銷售約 3% 低於市場共識的 3.8%,顯示消費力道恐不如預期。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "We expect strong grocery momentum to continue in a more difficult backdrop lately, and are modeling a moderation for both the general merchandise and health and wellness categories."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/73978473",
         "title": "Upvoted into the S&P",
         "published": "Fri, 14 Aug 2026 10:54:22 +0000",
@@ -5366,40 +5392,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": ""
-        },
-        "shown_at": "2026-08-07T01:46:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73550767",
-        "title": "Jamie Dimon warns on hidden leverage",
-        "published": "Thu, 06 Aug 2026 10:36:43 +0000",
-        "processed_at": "2026-08-07T01:26:30Z",
-        "digest": {
-          "summary_points": [
-            "主持人引述摩根大通執行長傑米·戴蒙的警告：市場負債處於歷史高點，存在大量隱藏槓桿（如避險基金透過 prime brokerage 借款、槓桿 ETF 與美債套利），一旦發生衝擊可能快速引發市場震盪。",
-            "SanDisk 上季財報與獲利優於預期，但本季營收指引 103 至 108 億美元低於市場共識的 108.2 億美元，盤前股價下跌。",
-            "App Lovin 第二季營收未達預期，股價暴跌，並拖累那斯達克 100 期貨走弱。",
-            "SpaceX 首次財報後約 9 億股（約現有流通股的 140%）今日解禁，可交易流通股從 6.389 億股增至約 15.5 億股，公眾流通股比例從約 4.9% 升至 11.9%。"
-          ],
-          "tickers": [
-            {
-              "name": "SanDisk",
-              "code": "SNDK",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q1 營收指引低於市場預期，盤前下跌。"
-            },
-            {
-              "name": "App Lovin",
-              "code": "APP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 營收未達預期，股價大跌。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "There's a lot of margin debt you don't see because it's not called margin debt. It's called other things."
         },
         "shown_at": "2026-08-07T01:46:06Z"
       }

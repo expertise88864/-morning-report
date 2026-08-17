@@ -77,28 +77,19 @@ def _lines(items, fmt) -> list:
 
 
 def _claim_line(c: dict) -> str:
-    """一條 claim 的行文。**型別與信心一起寫出來** —— 那是這份報告與
-    「看起來很確定的散文」的唯一差別。"""
+    """一條 claim 的行文。
+
+    **2026-08-17 使用者定案:敘事為主。** 特化路徑第一次在生產成功那天,
+    使用者的回饋是「敘述方式變成這樣,原本的還比較好」—— 信裡長出了
+    「(推論、信心 60%、1-5d、有反面證據)」這種括號,讀起來像表單。
+    保留的是**判斷本身**與**什麼情況代表它錯了**(那兩項舊版沒有);
+    型別、信心百分比、時間窗、反面證據旗標都收起來 —— 它們仍在 schema
+    裡被驗證,只是不再排進讀者的視線。
+    """
     body = _s(c.get("statement"))
     if not body:
         return ""
-    bits = []
-    kind = _s(c.get("claim_type"))
-    if kind and kind != "fact":
-        bits.append({"inference": "推論", "scenario": "情境",
-                     "unknown": "資料不足"}.get(kind, kind))
-    conf = c.get("confidence")
-    if isinstance(conf, (int, float)):
-        bits.append(f"信心 {round(float(conf) * 100)}%")
-    horizon = _s(c.get("horizon"))
-    if horizon:
-        bits.append(horizon)
-    # 第十五輪 P1-2:**有反面證據要看得見。** schema 收了 `counterevidence_ids`,
-    # 而渲染層先前整個丟掉 —— 於是一條「有人持相反看法」的判斷,
-    # 讀起來與一面倒的判斷一模一樣。
-    if [x for x in (c.get("counterevidence_ids") or []) if _s(x)]:
-        bits.append("有反面證據")
-    line = body + (f"（{'、'.join(bits)}）" if bits else "")
+    line = body
     # **失效條件先前也被丟掉。** schema 把它列為必填,理由寫在測試裡:
     # 「說不出什麼情況我就錯了的判斷,事後無法評分」。既然要求了就要顯示,
     # 否則那個必填只保護了 JSON,沒有保護讀者。
@@ -123,11 +114,9 @@ def _event_card(c: dict, packet=None) -> str:
     if not line:
         return ""
     cid = _s(c.get("cluster_id"))
-    if not cid:
-        return line
-    blk = _cluster_of(packet, cid)
-    if not blk:
-        return line
+    # **反面證據不依賴 cluster 查得到**:先前兩個早退(沒有 cluster_id、
+    # 查不到那一群)會把整個括號跳過,而反面證據是 claim 自己帶的欄位。
+    blk = _cluster_of(packet, cid) if cid else {}
     bits = []
     if blk.get("official"):
         bits.append("官方公告")
@@ -150,8 +139,22 @@ def _event_card(c: dict, packet=None) -> str:
                 bits.append("僅單一來源")
     days = blk.get("continuing_days")
     if isinstance(days, int) and days >= 1:
-        bits.append(f"本報連續追蹤第 {days + 1} 天")
-    return line + (f"\n  - 這件事的來歷:{'、'.join(bits)}" if bits else "")
+        bits.append(f"連續追蹤第 {days + 1} 天")
+    # 第十五輪 P1-2 的理由不變:**有反面證據要看得見** —— 一條「有人持
+    # 相反看法」的判斷,不能與一面倒的判斷長得一樣。2026-08-17 把它從
+    # 機械括號(推論、信心 60%…)搬到這個**來歷**括號:留下來的都是
+    # 誠實性訊號(幾個來源、有沒有反面證據、追了幾天),機械欄位收起來。
+    if [x for x in (c.get("counterevidence_ids") or []) if _s(x)]:
+        bits.append("有反面證據")
+    # **來歷收成句末的一個小括號**(2026-08-17 使用者定案):獨立一行的
+    # 「這件事的來歷:…」讀起來像表單。可信度不刪 —— 「僅單一來源」與
+    # 「三家證實」在信裡仍然長得不一樣,只是不再各佔一行。
+    # 括號要接在**判斷那一句**後面,不是接在失效條件那一行後面
+    # (`_claim_line` 回的是「判斷 \n 失效條件」兩行)。
+    if not bits:
+        return line
+    head, _, rest = line.partition("\n")
+    return head + f"（{'、'.join(bits)}）" + (f"\n{rest}" if rest else "")
 
 
 def _net_effects(rows) -> str:

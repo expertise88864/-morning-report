@@ -58,12 +58,16 @@ def test_opposite_directions_for_two_assets_are_legal():
 
 
 def test_the_letter_shows_each_asset_with_its_magnitude_and_horizon():
-    """**方向詞單獨出現就是使用者抱怨的那種句子** —— 一定帶量級與時間。"""
+    """**方向詞單獨出現就是使用者抱怨的那種句子** —— 一定帶量級與時間。
+
+    2026-08-17 使用者定案(敘事為主):「逐標的影響」那個標題行與巢狀
+    縮排收起來,方向/量級/時間窗改成 `費半 偏多（中等、intraday）`
+    —— **判準不變**:方向不得單獨出現。
+    """
     text = ar.render(fx.valid_analysis())
-    assert "逐標的影響" in text, "渲染層丟掉了逐標的影響"
     # 第二十九輪 P1-2C:fixture 的第一格標的改成費半(先前的 2330 掛在
     # 費半的新聞上,靠空 universe 放行 —— 那個洞關掉了)。
-    assert "費半:偏多、中等、intraday" in text, text[:200]
+    assert "費半 偏多（中等、intraday）" in text, text[:300]
     assert "本報看不出次級影響" in text, "誠實承認想不到次級影響也要印出來"
 
 

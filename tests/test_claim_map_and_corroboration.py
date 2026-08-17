@@ -124,10 +124,16 @@ def test_a_single_source_event_must_say_what_to_hold_back():
 
 
 def test_the_caveat_reaches_the_letter():
-    """**「沒發生」與「只有一家說」在信裡先前長得一樣。**"""
+    """**「沒發生」與「只有一家說」在信裡先前長得一樣。**
+
+    2026-08-17 使用者定案(敘事為主):佐證等級收成句尾的
+    `（單一來源）`,不再自己佔一行。**誠實記下代價**:`source_caveat`
+    的說明文字(「僅鉅亨轉述、未見原始報告」)不再進信裡 —— 等級的
+    區分留著,細節只留在 manifest 與 schema 驗證裡。
+    """
     import analysis_render as ar
     text = ar.render(fx.valid_analysis())
-    assert "僅單一來源,未經其他媒體證實" in text, text[:200]
+    assert "（單一來源）" in text, text[:300]
     # 多方證實時不印 —— 每則都掛一句等於沒有揭露
     obj = fx.valid_analysis()
     for n in obj["top_news_analysis"]:

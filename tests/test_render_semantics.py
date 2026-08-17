@@ -83,7 +83,10 @@ def test_the_falsification_trigger_reaches_the_reader():
 
 
 def test_counterevidence_is_flagged():
-    """有反面證據的判斷,讀起來不得與一面倒的判斷一模一樣。"""
+    """有反面證據的判斷,讀起來不得與一面倒的判斷一模一樣。
+
+    2026-08-17:標記從機械括號(推論、信心…)搬到**來歷**括號 ——
+    留在讀者眼前的都是誠實性訊號,機械欄位收起來。判準不變。"""
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["counterevidence_ids"] = ["n2"]
     assert "有反面證據" in ar.render(obj)
@@ -125,23 +128,35 @@ def test_the_mechanism_chain_reaches_the_reader():
     """**模型填了因果鏈,讀者要看得到** —— 突變驗證第一輪抓到這裡沒測試:
     把渲染那兩行拿掉,全套照樣綠。schema 再深,渲染丟掉就等於沒有。"""
     out = ar.render(fx.valid_analysis())
-    assert "怎麼傳導" in out
+    assert "傳導:" in out
     assert "費半收漲 → 台股電子開盤定價" in out
-    assert "(推論)" in out, "推論步驟沒有被標出來 —— 整條鏈讀起來像事實"
+    # 2026-08-17:通道與 fact/推論 標記收起來(使用者:讀起來像表單)。
+    # **鏈本身還在**,而且節點串成一行 —— 那正是這條測試在保護的東西。
 
 
-def test_the_magnitude_and_signals_reach_the_reader():
+def test_the_invalidation_signal_reaches_the_reader():
+    """**留下的是「什麼會推翻它」。**
+
+    2026-08-17 使用者定案:量級/為什麼是這個量級/確認訊號收起來
+    (它們仍在 schema 裡被要求與驗證)。失效條件不能一起收 ——
+    說不出什麼情況自己會錯的判斷,事後無法評分。"""
     out = ar.render(fx.valid_analysis())
-    assert "量級中等" in out
-    assert "量級判斷不出來" in out, "unknown 的誠實版本沒有被渲染"
-    assert "缺資本支出區間" in out, "「為什麼判斷不出來」沒有跟著出現"
-    assert "成立要看到" in out and "什麼會推翻它" in out
+    assert "什麼會推翻它" in out
+    assert "量級中等" not in out and "成立要看到" not in out
 
 
-def test_the_relationship_reaches_the_reader():
+def test_the_relationship_line_is_folded_away():
+    """2026-08-17 使用者定案:逐則新聞底下的「與另一則的關係:…」收起來。
+
+    關係本身由**橫向綜合**那一段負責(互相強化/互相抵銷/共用驅動不
+    重複計權),而逐則再講一次正是使用者說的「像表單」。
+    **誠實記下代價**:綜合段講的是全局關係,不保證逐則的配對
+    (「這則與那則方向相反」)會被提到 —— 那個細節確實不再進信裡。
+    欄位仍在 schema 裡被要求與驗證。
+    """
     out = ar.render(fx.valid_analysis())
-    assert "與另一則的關係" in out
-    assert "同一個底層驅動" in out
+    assert "與另一則的關係" not in out
+    assert ar.SECTION_SYNTHESIS in out, "橫向綜合那一段本身要還在"
 
 
 def test_the_synthesis_section_renders_and_leads():
@@ -152,3 +167,56 @@ def test_the_synthesis_section_renders_and_leads():
     assert out.index(ar.SECTION_SYNTHESIS) < out.index(ar.SECTION_NEWS)
     assert "互相強化" in out and "互相抵銷" in out
     assert "今天的主導因子" in out and "什麼會讓它翻盤" in out
+
+
+def test_a_broken_chain_is_not_rendered_as_one_arrow_run():
+    """**鏈斷掉時不假裝連續**(2026-08-17 壓成一行的代價要先擋住)。
+
+    下一步的起點不等於上一步的終點,就用「;」分段 —— 用一條箭頭把
+    兩件不相干的事串起來,是這份報告最該避免的那種句子。
+    """
+    import analysis_render_depth as ard
+    joined = ard._chain_line([{"from_what": "A", "to_what": "B"},
+                              {"from_what": "B", "to_what": "C"}])
+    assert joined == "A → B → C"
+    broken = ard._chain_line([{"from_what": "A", "to_what": "B"},
+                              {"from_what": "X", "to_what": "Y"}])
+    assert broken == "A → B；X → Y", broken
+
+
+def test_two_effect_sentences_do_not_collide():
+    """兩段影響是**兩句話**:先前用「、」黏起來,接出「。、」
+    (2026-08-17 生產信裡看得到)。"""
+    import analysis_render_depth as ard
+    rows = ard._assets({"affected_assets": [
+        {"asset_id": "2330", "direction": "bearish", "magnitude_band": "small",
+         "horizon": "1-5d", "first_order_effect": "折現率上升。",
+         "second_order_effect": "折價可能擴大"}]})
+    assert rows and "。、" not in rows[0], rows
+    assert rows[0].endswith("折價可能擴大。"), rows
+
+
+def test_the_counterevidence_flag_survives_without_a_cluster():
+    """反面證據是 claim 自己的欄位 —— 沒有 cluster_id、或查不到那一群時
+    仍要出現(先前兩個早退會把整個括號跳過)。"""
+    import analysis_render as ar
+    c = {"statement": "判斷一句話。", "counterevidence_ids": ["n2"]}
+    assert "有反面證據" in ar._event_card(c, {})
+
+
+def test_the_provenance_paren_sits_on_the_claim_sentence():
+    """來歷括號要接在**判斷那一句**後面,不是接在失效條件那一行後面。
+
+    `_claim_line` 回的是兩行(判斷 \n 失效條件)—— 直接 `line + 括號`
+    會把「(官方公告)」黏在「什麼情況代表這個判斷錯了:夜盤翻黑」的
+    尾巴,讀起來像是那個條件出自官方公告。
+    """
+    import analysis_render as ar
+    c = {"statement": "判斷一句話。", "falsification_trigger": "夜盤翻黑",
+         "cluster_id": "cluster:x"}
+    pk = {"news_clusters": {"clusters": [{"cluster_id": "cluster:x",
+                                          "official": True}]}}
+    lines = ar._event_card(c, pk).splitlines()
+    assert len(lines) == 2, lines
+    assert lines[0].endswith("（官方公告）"), lines
+    assert "官方公告" not in lines[1], lines

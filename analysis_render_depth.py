@@ -28,6 +28,31 @@ _STEP = {"fact": "", "inference": "(推論)", "scenario": "(情境)",
          "unknown": "(資料不足)"}
 
 
+def _chain_line(chain: list) -> str:
+    """因果鏈壓成一行:`A → B → C`。
+
+    **鏈斷掉時不假裝連續**:下一步的起點不等於上一步的終點,就用
+    `；` 分段。用一條箭頭串起兩件不相干的事,是這份報告最該避免的
+    那種句子(通道與 fact/推論 標記拿掉了 —— 那些括號正是把一句話
+    撐成三行的東西,欄位本身仍在 schema 裡被驗證)。
+    """
+    segs, nodes = [], []
+    for st in (chain or []):
+        a, b = _s(st.get("from_what")), _s(st.get("to_what"))
+        if not a or not b:
+            continue
+        if not nodes:
+            nodes = [a, b]
+        elif nodes[-1] == a:
+            nodes.append(b)
+        else:
+            segs.append(nodes)
+            nodes = [a, b]
+    if nodes:
+        segs.append(nodes)
+    return "；".join(" → ".join(seg) for seg in segs)
+
+
 def _news_line(n: dict, packet=None) -> str:
     """一則新聞的分析。**schema v2 的深度要真的排進信裡。**
 
@@ -37,47 +62,31 @@ def _news_line(n: dict, packet=None) -> str:
     body = _s(n.get("why_it_matters"))
     if not body:
         return ""
-    # `_lines` 會替第一行加 `- `,這裡不重複(否則變成「- - 」)。
+    # **2026-08-17 使用者定案:敘事為主,機制鏈與失效條件各留一行。**
+    # 特化路徑第一次在生產成功那天,使用者的回饋是「敘述方式變成這樣,
+    # 原本的還比較好」—— 一則新聞底下曾經排出五到六個標籤行(怎麼傳導 /
+    # 量級 / 成立要看到 / 來源評註 / 逐標的影響 / 與另一則的關係),
+    # 讀起來像表單不像文章。
+    # 收起來的欄位**仍在 schema 裡被要求與驗證**(模型還是得寫、還是得
+    # 通過引用檢查),只是不再排進讀者的視線:量級與理由、確認訊號、
+    # 與另一則的關係(橫向綜合那一段已經在講關係了)。
+    # 留下的三樣是舊版沒有、而且看得懂就能用的:傳導鏈、什麼會推翻它、
+    # 逐標的影響。
     out = [body]
     chain = [st for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)]
-    hops = [f"{_s(st.get('from_what'))} → {_s(st.get('to_what'))}"
-            f"（{_s(st.get('channel'))}{_STEP.get(_s(st.get('step_type')), '')}）"
-            for st in chain if _s(st.get("from_what")) and _s(st.get("to_what"))]
-    if hops:
-        out.append("  - 怎麼傳導:" + " ／ ".join(hops))
-    band = _BANDS.get(_s(n.get("magnitude_band")))
-    why = _s(n.get("why_this_magnitude"))
-    if band:
-        out.append(f"  - {band}"
-                   + (f"（{why}）" if why else "")
-                   + (f",最快 {_s(n.get('horizon'))} 看得到"
-                      if _s(n.get("horizon")) else ""))
-    conf, inval = _s(n.get("confirmation_signal")), _s(n.get("invalidation_signal"))
-    if conf or inval:
-        bits = []
-        if conf:
-            bits.append(f"成立要看到:{conf}")
-        if inval:
-            bits.append(f"什麼會推翻它:{inval}")
-        out.append("  - " + ";".join(bits))
-    # 佐證等級與保留事項**固定呈現**(第二十輪 P2-7)——
-    # 「沒發生」與「只有一家說」在信裡先前長得一樣。
-    _CORR = {"single_source": "僅單一來源,未經其他媒體證實",
-             "unverified": "未證實",
-             "multi_source": "多家媒體同時報導",
-             "official": "官方公告"}
+    line = _chain_line(chain)
+    if line:
+        out.append("  - 傳導:" + line)
+    inval = _s(n.get("invalidation_signal"))
+    if inval:
+        out.append(f"  - 什麼會推翻它:{inval}")
+    # 佐證等級收成一句話的尾巴(第二十輪 P2-7 的理由不變:「沒發生」與
+    # 「只有一家說」不能長得一樣)—— 但不再自己佔一行。
+    _CORR = {"single_source": "單一來源", "unverified": "未證實"}
     lvl = _CORR.get(_s(n.get("corroboration_assessment")))
-    cav = _s(n.get("source_caveat"))
-    if lvl and _s(n.get("corroboration_assessment")) in ("single_source",
-                                                         "unverified"):
-        out.append(f"  - *{lvl}"
-                   + (f";{cav}" if cav and cav != "無" else "") + "*")
+    if lvl:
+        out[0] = out[0] + f"（{lvl}）"
     out.extend(_assets(n, packet))
-    for rel in (n.get("relates_to") or []):
-        if isinstance(rel, dict) and _RELS.get(_s(rel.get("relationship"))):
-            out.append(f"  - 與另一則的關係:{_RELS[_s(rel.get('relationship'))]}"
-                       + (f" —— {_s(rel.get('explanation'))}"
-                          if _s(rel.get("explanation")) else ""))
     return "\n".join(out)
 
 
@@ -104,14 +113,27 @@ def _assets(n: dict, packet=None) -> list:
                 _spec = "〔推測性傳導,未宣告的供應鏈關係〕"
         except Exception:               # noqa: BLE001 - 標籤失敗不毀渲染
             _spec = ""
-        head = (f"{_s(a.get('asset_id'))}:"
-                f"{_DIR.get(_s(a.get('direction')), '')}、"
-                f"{_BAND.get(_s(a.get('magnitude_band')), '')}、"
-                f"{_s(a.get('horizon'))}{_spec}")
-        body = "、".join(x for x in (_s(a.get("first_order_effect")),
-                                    _s(a.get("second_order_effect"))) if x)
-        rows.append(f"    - {head} —— {body}" if body else f"    - {head}")
-    return ["  - **逐標的影響**:"] + rows if rows else []
+        # **2026-08-17:方向與幅度收進一個括號**,不再用「、」把
+        # 方向/幅度/時間窗串成一串標籤(使用者:讀起來像表單)。
+        tag = "、".join(x for x in (
+            _BAND.get(_s(a.get("magnitude_band")), ""),
+            _s(a.get("horizon"))) if x)
+        head = (f"{_s(a.get('asset_id'))} "
+                f"{_DIR.get(_s(a.get('direction')), '')}"
+                + (f"（{tag}）" if tag else "") + _spec)
+        # 兩段影響是**兩句話**,先前用「、」黏起來會接出「。、」
+        # (2026-08-17 生產信裡看得到)。
+        body = "".join(_join_sentence(x) for x in
+                       (_s(a.get("first_order_effect")),
+                        _s(a.get("second_order_effect"))) if x)
+        rows.append(f"  - {head}:{body}" if body else f"  - {head}")
+    return rows
+
+
+def _join_sentence(text: str) -> str:
+    """接成句子:自己有句末標點就不再補一個。"""
+    t = str(text or "").strip()
+    return t if (not t or t[-1] in "。！？;;") else t + "。"
 
 
 def _tension_head(tid: str, packet) -> str:

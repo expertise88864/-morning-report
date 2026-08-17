@@ -117,15 +117,19 @@ def test_a_report_without_a_stance_renders_to_nothing_not_to_half():
     assert ar.render({}) == ""
 
 
-def test_claims_carry_their_type_and_confidence_into_the_text():
-    """**推論不得被寫成事實。**
+def test_the_claim_line_is_prose_not_a_form():
+    """**2026-08-17 使用者定案:敘事為主。**
 
-    這是 Luna 特化相對於既有散文的實質增量:讀的人看得出哪一句是推論、
-    信心多少。把它們渲染掉等於把那個增量丟掉。
+    特化路徑第一次在生產成功那天,使用者的回饋是「敘述方式變成這樣,
+    原本的還比較好」—— 每條判斷後面掛著「(推論、信心 70%、1-5d、
+    有反面證據)」,讀起來像表單。型別與信心**仍在 schema 裡被要求與
+    驗證**(模型還是得寫、還是得通過引用檢查),只是不再排進讀者視線;
+    留下的是判斷本身、失效條件,以及誠實性訊號(來源、反面證據)。
     """
     md = ar.render(_obj())
-    assert "推論" in md, "claim_type 沒有進到信裡"
-    assert "信心 70%" in md, "confidence 沒有進到信裡"
+    assert "信心 70%" not in md, "機械欄位又跑回信裡"
+    assert "（推論" not in md and "(推論" not in md.replace("步驟(推論)", "")
+    assert "什麼情況代表這個判斷錯了" in md, "失效條件是留下來的那一半"
 
 
 def test_data_gaps_and_contradictions_reach_the_email():
@@ -193,7 +197,7 @@ def test_a_universe_only_asset_is_labelled_speculative():
     text = ar.render(obj, pk)
     lines = [x for x in text.splitlines() if "3661" in x]
     assert lines and "推測性傳導" in lines[0], lines
-    core = [x for x in text.splitlines() if "2330:" in x]
+    core = [x for x in text.splitlines() if "2330 " in x and "偏" in x]
     assert core and "推測性傳導" not in core[0], core
 
 

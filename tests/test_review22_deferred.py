@@ -180,5 +180,9 @@ def test_the_coverage_check_cannot_pass_on_an_empty_set():
         "top_news_analysis"]["items"]["properties"]
     assert len(rendered & set(news)) >= 8, sorted(rendered & set(news))
     assert len(_depth_literals()) >= 20
-    # 已知會渲染的三個欄位要在掃描結果裡 —— 掃描本身壞掉時這條先紅
-    assert {"why_it_matters", "source_caveat", "materiality"} <= rendered
+    # 已知會渲染的三個欄位要在掃描結果裡 —— 掃描本身壞掉時這條先紅。
+    # 2026-08-17:哨兵從 `source_caveat` 換成 `invalidation_signal` ——
+    # 使用者定案改敘事文體後,來源說明文字不再排進信裡(佐證**等級**
+    # 仍以句尾「(單一來源)」呈現),而失效條件是留下來的那一半。
+    # 哨兵要挑**確定會被渲染**的欄位,否則這條守衛自己會變成假紅。
+    assert {"why_it_matters", "invalidation_signal", "materiality"} <= rendered

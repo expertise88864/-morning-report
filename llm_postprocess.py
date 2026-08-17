@@ -36,7 +36,7 @@ POSTPROCESS_VERSION = 7
 #: aggregator-only 事件寫「原始發布者未解析」而非「僅單一來源」。
 #: v13(第三十二輪 P1-3,選項 B):universe-only 的傳導標的在信裡
 #: 標〔推測性傳導〕—— 已驗證與推測兩層分開,讀者自行折價。
-RENDERER_VERSION = 13
+RENDERER_VERSION = 14
 
 #: 契約快照追蹤的版本欄位(2026-08-08 自 llm_experiment.COHORT_FIELDS 遷入:
 #: 實驗已拆,但「哪些契約版本要被凍結追蹤」這份登錄簿必須活著 ——

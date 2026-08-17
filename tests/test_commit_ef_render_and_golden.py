@@ -36,8 +36,9 @@ def test_the_top_three_carry_where_the_event_came_from():
     obj["key_drivers"][0]["cluster_id"] = "cluster:n1"
     text = ar.render(obj, pk)
     top = text[text.index("## 七、"):text.index("## 七之一")]
-    assert "這件事的來歷" in top, top
-    assert "官方公告" in top, top
+    # 2026-08-17 使用者定案:來歷從獨立一行收成句尾括號。判準不變 ——
+    # 「官方公告」與「僅單一來源」在信裡仍然長得不一樣。
+    assert "（官方公告" in top, top
 
 
 def test_a_single_source_event_says_so_in_the_first_screen():

@@ -716,7 +716,13 @@ _FROZEN = {
     # v11(Commit E):事件卡 + 各標的合計影響 + 共用驅動說明進信。
     # v12(第二十三輪):三大重點依 Python 計分排序;aggregator-only
     #     寫「原始發布者未解析」。
-    "renderer_version":         (13, "b9b90bfda47bdef5"),
+    # v14(2026-08-17 使用者定案:敘事為主):特化路徑第一次在生產成功
+    #     那天,使用者回「敘述方式變成這樣,原本的還比較好」。機械欄位
+    #     (claim_type/信心%/量級/確認訊號/與另一則的關係/來源說明文字)
+    #     收起來;留下判斷、失效條件、傳導鏈一行、逐標的影響一行,以及
+    #     句尾的誠實性括號(來源、反面證據、追蹤天數)。**欄位仍在
+    #     schema 裡被要求與驗證**,只是不再排進讀者視線。
+    "renderer_version":         (14, "6823a56a74febf61"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

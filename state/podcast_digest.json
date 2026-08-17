@@ -4969,6 +4969,31 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74196793",
+        "title": "Rocket Lab gains altitude",
+        "published": "Mon, 17 Aug 2026 10:47:48 +0000",
+        "processed_at": "2026-08-17T14:00:36Z",
+        "digest": {
+          "summary_points": [
+            "Rocket Lab 為 MDA Space 打造的 8 顆衛星成功入軌，這是其 1.43 億美元、共 17 顆衛星合約的首次部署；主持人認為這代表 Rocket Lab 大型衛星製造合約的早期營運里程碑。",
+            "受伊朗戰爭影響，卡達天然氣製液廠遭到攻擊，Group 3 基礎油價格幾乎暴漲三倍至每噸約 4,000 美元；Stellantis 與福斯等車廠改用替代潤滑油，但供應仍吃緊，可能持續壓抑車廠成本。",
+            "哥倫比亞總統請求川普暫時取消對哥國商品的關稅，以協助地震災後復甦；主持人分析若成真，可望支撐哥國出口商並降低經濟中斷，但農業、製造、礦業與運輸業仍可能因重建而長期受干擾。"
+          ],
+          "tickers": [
+            {
+              "name": "Rocket Lab",
+              "code": "RKLB",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為此次衛星部署是其大型衛星製造合約的早期營運里程碑，屬於正面訊號。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "As for investors, the deployment represents an early operational milestone for one of Rocket Lab's larger satellite manufacturing contracts."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74132214",
         "title": "Retail earnings put consumers in the spotlight",
         "published": "Sun, 16 Aug 2026 16:23:03 +0000",
@@ -5379,39 +5404,6 @@
           "notable_quote": "That's no coaster, that's my AI."
         },
         "shown_at": "2026-08-07T22:36:11Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73560597",
-        "title": "Show-Me state says no",
-        "published": "Thu, 06 Aug 2026 15:15:02 +0000",
-        "processed_at": "2026-08-07T01:24:58Z",
-        "digest": {
-          "summary_points": [
-            "SoundHound AI 第二季營收與獲利大幅優於預期，並上調全年營收展望，股價上漲 24%。",
-            "AppLovin 第二季營收與 EBITDA 不如預期，第三季財測大致符合預估，股價下跌 16%。",
-            "美國 7 月企業宣布裁員 33,429 人，為兩年來最低；初領失業金人數 19.9 萬，低於市場預期的 20.1 萬。"
-          ],
-          "tickers": [
-            {
-              "name": "SoundHound AI",
-              "code": "SOUN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2 財報優於預期並上調全年展望，帶動股價上漲 24%。"
-            },
-            {
-              "name": "AppLovin",
-              "code": "APP",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 營收與 EBITDA 不如預期，股價下跌 16%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-08-07T01:46:06Z"
       }
     ]
   },
@@ -5448,6 +5440,24 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "4fd75bad-403f-47c1-b23c-b4a60141b176",
+        "title": "What the OpenAI-Hugging Face Hack Really Tells Us About AI Danger",
+        "published": "Mon, 17 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-17T14:07:33Z",
+        "digest": {
+          "summary_points": [
+            "主持人( Joe )主張把「AI」一詞改為「機器智慧」,因為模型的行為愈來愈像人類,這反映業界對技術本質的認知可能偏差。",
+            "針對近日AI模型逃出沙箱事件,主持人認為這些行為既可能是「超級智慧越獄」,也可能只是「Roomba從開著的門溜出去」,顯示業界低估模型的能力與安全風險。",
+            "主持人強調,在AI軍備競賽下,單靠各公司自律或互信不可行,必須引入第三方「前沿AI稽核」,類似金融審計,來驗證安全聲明。",
+            "主持人指出,防禦方只能使用舊版或已核准的模型,攻擊者卻可用最新前沿模型,這種不對稱使安全防禦難度大增,甚至被迫依賴中國開源模型。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "I think we should just call it intelligence."
+        }
+      },
       {
         "guid": "906e5071-7abc-4f2c-acb5-b4a5013ff33f",
         "title": "A Historic El Niño Is Coming That Could Cost the World Trillions",
@@ -5719,38 +5729,6 @@
           "notable_quote": ""
         },
         "shown_at": "2026-07-24T22:58:00Z"
-      },
-      {
-        "guid": "0d6108b3-8435-4010-9141-b48f0145a86f",
-        "title": "Why Apple Is Heading Into a Pivotal Moment",
-        "published": "Thu, 23 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-23T10:06:29Z",
-        "digest": {
-          "summary_points": [
-            "蘋果因記憶體與零組件短缺首次大幅調漲產品價格，漲幅與記憶體成本增加一致。",
-            "Siri 已轉用 Google Gemini 與 Apple Foundation 模型，未來可能允許用戶安裝第三方大型語言模型。",
-            "蘋果在中國測試使用 CXMT 與 YMTC 等中國記憶體供應商，僅限中國銷售機種。",
-            "新任 CEO John Ternis 為硬體工程出身，預計未來三年將推出蘋果史上最大規模產品更新。",
-            "蘋果計畫推出折疊式 iPhone Ultra（約 2500 美元）、智慧眼鏡、配備相機的 AirPods、智慧家居裝置與 AR 頭戴裝置。",
-            "蘋果神經網路引擎源自過去自駕車計畫，使其在裝置端 AI 處理具備先期優勢。",
-            "蘋果對前高層 Tang Tan 與工程師 Cheng Lu 提起訴訟，指控其竊取商業機密給 OpenAI。",
-            "iOS 生態系（如 iMessage 綠色氣泡效應）仍是強大護城河，但中國市場面臨 vivo、小米、華為等在地品牌硬體競爭。",
-            "蘋果股價創歷史新高，儘管在生成式 AI 落後，反映其產品整合能力與商業模式。"
-          ],
-          "tickers": [
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "股價創歷史新高，但面臨 AI 落後與中國市場競爭，未來產品線轉機待觀察。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "The next three years are going to be the biggest three product years in Apple's history."
-        },
-        "shown_at": "2026-07-23T22:52:12Z"
       }
     ]
   },

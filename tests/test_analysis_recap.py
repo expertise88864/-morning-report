@@ -337,10 +337,13 @@ def test_production_wires_both_ends_of_the_loop():
     # 讀取端:與 EVENT_TIMELINE 同一段接進 quotes
     assert "_arc.load(ANALYSIS_RECAP_FILE)" in src
     assert 'quotes["ANALYSIS_RECAP"] = _recap_state' in src
-    # **兩個接受出口都要經過同一個 finalizer**(外審補審 F2):
+    # **每一個接受出口都要經過同一個 finalizer**(外審補審 F2):
     # 加深失敗沿用第一版那條先前不存 recap,信照寄而明天沒有基準。
+    # 2026-08-17:第三個出口 —— 加深**沒有額度/時間**時直接用留著的合法
+    # 淺版(外審 P1-2 r1:加深先前不扣額度,繞過 deadline 與 legacy 保留額)。
+    # 守的性質不變:接受路徑一律走 finalizer,不得自己交出一份文字。
     body = src.split("def _luna_analysis(")[1].split("\ndef ")[0]
-    assert body.count("return _accept_luna(") == 2, body.count("return _accept_luna(")
+    assert body.count("return _accept_luna(") == 3, body.count("return _accept_luna(")
     # **不得有繞過 finalizer 的接受出口。** 只數 finalizer 的呼叫次數
     # 擋不住「在它前面多一個 `return text`」—— 突變驗證當場抓到。
     strays = [ln.strip() for ln in body.splitlines()

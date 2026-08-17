@@ -13399,6 +13399,18 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 if _adv and not repair and _kept is None:
                     _kept = (obj, text)
                     _RUN_MANIFEST["llm"]["depth_advisories"] = _adv[:6]
+                    # **加深也要扣額度**(外審 2026-08-17 r1):上面那句
+                    # 「用剩餘額度加深」在舊迴圈裡是真的(它佔掉一個 slot),
+                    # 改成分模式額度之後它變成**不佔任何額度** —— 於是
+                    # 加深繞過了 deadline / legacy 保留額守衛,還能再跑完整
+                    # 兩輪語意修補(初始 → 加深 → 語意 → 語意)。
+                    # 扣在語意額度上、標籤 `deepen`(它送的是重寫請求,
+                    # 收斂性質與語意輪同一類);額度或時間不夠就**直接用
+                    # 留著的淺版** —— 淺不是落回 legacy 的理由。
+                    if not _consume_repair("semantic", "deepen", elapsed):
+                        print("[llm] 沒有額度/時間加深,用合法的淺版",
+                              file=sys.stderr)
+                        return _accept_luna(obj, packet, text)
                     print(f"[llm] Luna 合法但淺({len(_adv)} 項),用剩餘額度加深",
                           file=sys.stderr)
                     # **附上前一版**:不附的話模型只能整份重生,可能修好深度

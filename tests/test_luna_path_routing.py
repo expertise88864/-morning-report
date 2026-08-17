@@ -310,6 +310,88 @@ def test_a_parse_failure_does_not_consume_the_semantic_repair_budget(
     assert (_used["syntax"], _used["semantic"]) == (1, 2), _used
 
 
+def _shallow():
+    """**合法但淺**的一版 —— 觸發 deepen 而不觸發 validate。
+
+    第一版我把因果鏈砍掉、量級改 unknown —— 那變成**不合法**,測到的是
+    語意修補而不是加深(它是這輪外審點名的那條路徑)。合法而淺的做法是
+    只清掉「為什麼是這個量級」,而且**只清具體量級的那些**:
+    `unknown` 沒寫理由是 validate 會擋的事,不是 advisory。
+    """
+    import json as _j
+    o = _j.loads(_j.dumps(_GOOD, ensure_ascii=False))
+    for n in o["top_news_analysis"]:
+        if n.get("magnitude_band") != "unknown":
+            n["why_this_magnitude"] = ""
+    return o
+
+
+def test_deepen_consumes_budget_and_is_recorded(luna_on, monkeypatch):
+    """**加深也要扣額度**(外審 2026-08-17 r1)。
+
+    註解宣稱「用**剩餘的修補額度**加深」—— 在舊的 `for` 迴圈裡那是真的
+    (它佔掉一個 slot)。改成分模式額度之後它變成不佔任何額度:於是加深
+    繞過 deadline / legacy 保留額守衛,還能再跑完整兩輪語意修補
+    (初始 → 加深 → 語意 → 語意),而且 `repair_modes` 看不到它。
+    """
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _response(_shallow())            # 合法但淺 → 觸發加深
+        return _response(_GOOD)                      # 加深後合格
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("加深成功了,不該落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    assert len(calls) == 2, calls
+    assert llm.get("depth_advisories"), "沒有觸發加深,這條測試量不到東西"
+    assert llm["repair_modes"] == ["deepen"], llm.get("repair_modes")
+    assert llm["repair_budget"]["used"]["semantic"] == 1, llm["repair_budget"]
+
+
+def test_deepen_does_not_grant_extra_semantic_rounds(luna_on, monkeypatch):
+    """加深扣掉一格之後,語意只剩一輪 —— 不得因為加深而多拿一次呼叫。"""
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _response(_shallow())
+        return _response(_semantically_bad(len(calls)))   # 之後一直不合格
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(
+        mr, "_call_llm_text",
+        lambda p: pytest.fail("加深失敗要用留著的淺版,不落回 legacy"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    # 1 初始 + 1 加深 + 1 語意 = 3(語意額度 2,加深已用掉 1)
+    assert len(calls) == 3, calls
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    assert llm["repair_budget"]["used"]["semantic"] == 2, llm["repair_budget"]
+    assert llm.get("deepen_failed") is True, "加深失敗沒有留痕"
+
+
+def test_no_budget_left_accepts_the_shallow_version(luna_on, monkeypatch):
+    """額度/時間不夠加深時,用**留著的合法淺版** —— 淺不是落回 legacy 的
+    理由(那只會換來一封更淺的信)。"""
+    import time as _t
+    calls = []
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: (calls.append(p), _response(_shallow()))[1])
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("有合法淺版時不該落回"))
+    monkeypatch.setattr(mr, "_LLM_DEADLINE", _t.monotonic() + 1)   # 時間不夠
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 1, "沒有額度還是送了加深請求"
+
+
 def test_the_two_budgets_are_independent(luna_on, monkeypatch):
     """語法額度用完不影響語意額度,反之亦然 —— 各自到底才停。"""
     calls = []

@@ -1089,11 +1089,35 @@ def test_a_failed_save_keeps_the_claim_for_triggers_already_on_disk(tmp_path):
 
 def test_an_unreadable_ledger_says_it_does_not_know(tmp_path):
     """`None` 與空集合是兩件事:問不到磁碟狀態時渲染端**不標**,
-    不假裝知道;確定什麼都沒在追才是空集合。"""
+    不假裝知道;確定什麼都沒在追才是空集合。
+
+    2026-08-17 r3:第一版這裡寫成 `in (None, set())` —— **那種斷言
+    兩個答案都收**,等於沒有釘住任何東西(外審點名)。逐種情況寫明。
+    """
+    # 沒有檔案 = 沒有帳本 = 確定什麼都沒在追
     assert rc.ledger_triggers(str(tmp_path / "missing.json")) == set()
+    # 壞 JSON:`load()` 回 `{"unreadable": ...}`,裡面沒有 watch → 空集合
     bad = tmp_path / "bad.json"
     bad.write_text("{ not json", encoding="utf-8")
-    assert rc.ledger_triggers(str(bad)) in (None, set())
+    assert rc.ledger_triggers(str(bad)) == set()
+
+
+def test_a_malformed_ledger_field_does_not_raise(tmp_path):
+    """**合法 JSON 但欄位壞掉**(外審 2026-08-17 r3)。
+
+    `_watch_ledger()` 自己會 `int(prior["watch_seq"])` —— 先前 try 只包住
+    `load()`,於是 `"watch_seq": "invalid"` 的例外會往外拋、穿過
+    `_accept_luna`,把**已經成功的整份分析**丟掉落回 legacy。
+    這個 helper 的契約是「問不到就說不知道」,不是「問不到就毀掉晨報」。
+    """
+    import json as _j
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [], "watch_seq": "invalid",
+         "watch": [{"watch_id": "w1", "trigger": "美元指數突破 105",
+                    "status": rc.WATCH_OPEN, "horizon": "1-5d"}]},
+        ensure_ascii=False), encoding="utf-8")
+    assert rc.ledger_triggers(str(path)) is None, "壞欄位應該回 None,不是拋"
 
 
 def test_a_closed_entry_is_not_reported_as_tracked(tmp_path):

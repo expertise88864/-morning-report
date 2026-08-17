@@ -386,16 +386,21 @@ def ledger_triggers(path):
     `None` 與空集合是兩件事:前者是「問不到磁碟狀態」(渲染端因此不標,
     不假裝知道),後者是「確定什麼都沒在追」。
     """
+    # **整段都要在 try 裡**(外審 2026-08-17 r3):先前只包住 `load()`,
+    # 而 `_watch_ledger()` 自己會 `int(prior["watch_seq"])` —— state 是合法
+    # JSON 但 `watch_seq` 壞掉(`"invalid"`)時例外會往外拋,穿過
+    # `_accept_luna`,把**已經成功的整份分析**丟掉落回 legacy。
+    # 這個 helper 的契約是「問不到就說不知道」,不是「問不到就毀掉晨報」。
     try:
         rec = load(path)
+        if not isinstance(rec, dict):
+            return None
+        return {canonical_trigger(w.get("trigger"))
+                for w in _watch_ledger(rec)
+                if str(w.get("trigger") or "").strip()
+                and str(w.get("status") or WATCH_OPEN) == WATCH_OPEN}
     except Exception:                       # noqa: BLE001 - 問不到就說不知道
         return None
-    if not isinstance(rec, dict):
-        return None
-    return {canonical_trigger(w.get("trigger"))
-            for w in _watch_ledger(rec)
-            if str(w.get("trigger") or "").strip()
-            and str(w.get("status") or WATCH_OPEN) == WATCH_OPEN}
 
 
 def tracked_triggers(path, analysis_obj, today: str) -> set:

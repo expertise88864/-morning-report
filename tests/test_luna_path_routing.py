@@ -1034,3 +1034,36 @@ def test_a_successful_save_keeps_the_tracking_claim(luna_on, monkeypatch):
     mr._RUN_MANIFEST.pop("llm", None)
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert "美元指數突破 105" in text and "一次性觀察" not in text
+
+
+def test_a_malformed_ledger_does_not_discard_a_good_analysis(
+        luna_on, monkeypatch, tmp_path):
+    """**查詢失敗只是不標記,不毀渲染**(外審 2026-08-17 r3)。
+
+    state 是合法 JSON 但 `watch_seq` 壞掉時,`_watch_ledger()` 的
+    `int()` 會拋 —— 先前那個例外會穿過 `_accept_luna`,把已經成功的
+    整份 Luna 分析丟掉落回 legacy。**壞掉的觀察點帳本不該有那種權力。**
+    """
+    import json as _j
+    import analysis_recap as _arc
+    ledger = tmp_path / "recap.json"
+    ledger.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [], "watch_seq": "invalid",
+         "watch": [{"watch_id": "w1", "trigger": "美元指數突破 105",
+                    "status": _arc.WATCH_OPEN, "horizon": "intraday"}]},
+        ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(mr, "ANALYSIS_RECAP_FILE", ledger)
+    obj = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "intraday", "claim_ids": ["c1"]}]
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: _response(obj))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("壞帳本竟然讓整份分析被丟掉"))
+    monkeypatch.setattr(mr._arc, "save", lambda *a, **k: _arc.FAILED)
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert mr._analysis_complete_enough(text), "分析被壞帳本毀掉了"
+    assert "美元指數突破 105" in text
+    # 問不到磁碟狀態 → **不標**(不假裝知道,也不亂標一次性)
+    assert "一次性觀察" not in text

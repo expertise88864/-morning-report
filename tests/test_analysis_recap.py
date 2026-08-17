@@ -1021,3 +1021,47 @@ def test_admission_and_the_ledger_agree(tmp_path):
     # 被容量擋掉的那條:兩邊都說沒收
     assert "新的一條" not in admitted and "新的一條" not in _in_ledger
     assert dropped == 1, dropped
+
+
+def test_a_trigger_longer_than_the_ledger_limit_is_still_recognised(tmp_path):
+    """**比對要用帳本的正規形式**(外審 2026-08-17 r1)。
+
+    帳本存的是截到 `WATCH_CHARS` 的字串;渲染端先前拿**未截斷的全文**
+    比對集合 —— 超過上限的 trigger 因此被錯標成「一次性觀察」,
+    而它其實已經被收下了。
+    """
+    import json as _j
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    long_trigger = "美元指數" + "很長的條件說明" * 30      # 遠超 WATCH_CHARS
+    assert len(long_trigger) > rc.WATCH_CHARS
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps({"date": "2026-08-18", "items": [], "watch": []},
+                             ensure_ascii=False), encoding="utf-8")
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": long_trigger, "why": "資金面",
+                              "horizon": "1-5d"}]
+    tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
+    assert tracked == {rc.canonical_trigger(long_trigger)}, tracked
+    out = ar.render(obj, None, admitted_watch=tracked)
+    assert "一次性觀察" not in out, "被收下的超長 trigger 被錯標成一次性"
+
+
+def test_two_triggers_sharing_the_first_120_chars_are_one_entry(tmp_path):
+    """截斷之後相同 → 帳本視為同一條(不重複開)。**渲染端要跟著同一個
+    判準**,否則第二條會被標成一次性,而它其實與第一條是同一個承諾。"""
+    import json as _j
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    head = "美元" * 70                                  # 前 120 字相同
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps({"date": "2026-08-18", "items": [], "watch": []},
+                             ensure_ascii=False), encoding="utf-8")
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": head + "甲", "why": "x", "horizon": "1-5d"},
+                             {"trigger": head + "乙", "why": "y", "horizon": "1-5d"}]
+    ledger, _seq, _dropped = rc.carry_watch(rc.load(str(path)), obj, "2026-08-18")
+    assert len(ledger) == 1, "截斷後相同卻開了兩條"
+    tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
+    out = ar.render(obj, None, admitted_watch=tracked)
+    assert "一次性觀察" not in out, out[-300:]

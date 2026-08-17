@@ -953,3 +953,51 @@ def test_effort_aliases_are_canonicalized_before_the_responses_payload(
         mr._call_llm_analysis_impl(*_ARGS)
         assert seen and seen[0]["reasoning"]["effort"] == sent_expected, (
             raw, seen[0].get("reasoning"))
+
+
+def test_a_failed_recap_save_drops_the_tracking_claim(luna_on, monkeypatch):
+    """**存檔失敗就不得留著「持續追蹤」的宣稱**(外審 2026-08-17 r1)。
+
+    渲染時的 admission 是**預演**(算得出帳本會收下誰);真正寫進磁碟是
+    `_accept_luna`。寫失敗而信裡照樣印「觀察觸發點」,就是原本那個缺陷
+    再現一次 —— 只是原因從「容量滿」變成「檔案寫不進去」。
+    """
+    import analysis_recap as _arc
+    obj = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    # `watch_triggers` 要回指 claim(schema:說不出靠哪幾條主張的段落
+    # 只是裝飾)—— 用 fixture 既有的 c1。
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "intraday", "claim_ids": ["c1"]}]
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: _response(obj))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("分析成功了,不該落回"))
+    monkeypatch.setattr(mr._arc, "save",
+                        lambda *a, **k: _arc.FAILED)      # 寫不進去
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert mr._analysis_complete_enough(text), "存檔失敗不得毀掉整封信"
+    assert "美元指數突破 105" in text, "觀察點內容仍要在"
+    assert "一次性觀察,未納入持續追蹤" in text, (
+        "帳本沒寫進去,信裡卻仍宣稱會持續追蹤")
+    # 指標要用**最後真的寄出去的那份文字**算
+    metrics = (mr._RUN_MANIFEST.get("llm") or {}).get("primary_metrics") or {}
+    assert metrics.get("parsed") is True, metrics
+
+
+def test_a_successful_save_keeps_the_tracking_claim(luna_on, monkeypatch):
+    """反向:存檔成功時不得把被收下的那條標成一次性。"""
+    import analysis_recap as _arc
+    obj = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "intraday", "claim_ids": ["c1"]}]
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: _response(obj))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("分析成功了,不該落回"))
+    monkeypatch.setattr(mr._arc, "save", lambda *a, **k: _arc.SAVED)
+    monkeypatch.setattr(mr._arc, "tracked_triggers",
+                        lambda *a, **k: {"美元指數突破 105"})
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert "美元指數突破 105" in text and "一次性觀察" not in text

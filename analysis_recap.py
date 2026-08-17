@@ -170,6 +170,16 @@ WATCH_MAX = 5
 WATCH_CHARS = 120
 
 
+def canonical_trigger(text) -> str:
+    """觀察點在帳本裡的**正規形式**(去空白 + 截到 `WATCH_CHARS`)。
+
+    渲染端與存檔端必須用同一個(外審 2026-08-17 r1):帳本存的是截斷後
+    的字串,而渲染端先前拿**未截斷的全文**去比對集合 —— 超過 120 字的
+    trigger 因此會被錯標成「一次性觀察」,而它其實已經被收下了。
+    """
+    return str(text or "").strip()[:WATCH_CHARS]
+
+
 def _watch_of(obj) -> list:
     """今天信裡的觀察點(`watch_triggers`),要留給明天回顧的形狀。
 
@@ -185,7 +195,7 @@ def _watch_of(obj) -> list:
         trig = str(w.get("trigger") or "").strip()
         if not trig:
             continue
-        out.append({"trigger": trig[:WATCH_CHARS],
+        out.append({"trigger": canonical_trigger(trig),
                     "why": str(w.get("why") or "").strip()[:WATCH_CHARS],
                     "horizon": str(w.get("horizon") or "")[:16]})
         if len(out) >= WATCH_MAX:

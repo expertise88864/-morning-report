@@ -351,11 +351,20 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
 
     def _watch_line(w) -> str:
         _t = _s(w.get("trigger"))
+        # **比對要用帳本的正規形式**(外審 2026-08-17 r1):帳本存的是
+        # 截斷後的字串,拿全文比對會讓超過上限的 trigger 被錯標成
+        # 「一次性觀察」—— 而它其實已經被收下了。判準只有一份。
+        try:
+            from analysis_recap import canonical_trigger as _canon
+        except Exception:            # noqa: BLE001 - 載不到就退回原文比對
+            def _canon(x):
+                return str(x or "").strip()
+        _key = _canon(_t)
         _why = _s(w.get("why"))
         # **沒被帳本收下的不得寫成持續追蹤**:那是一個明天不會被兌現的
         # 承諾。標出來而不是隱藏 —— 模型提的內容仍然有參考價值。
         _tail = ""
-        if admitted_watch is not None and _t and _t not in admitted_watch:
+        if admitted_watch is not None and _key and _key not in admitted_watch:
             _tail = "（一次性觀察,未納入持續追蹤）"
         return _t + (f"（{_why}）" if _why else "") + _tail
 

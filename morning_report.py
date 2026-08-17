@@ -13131,11 +13131,25 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
     存檔,而後者漏了 recap —— 兩個地方做同一件事就會漂移。
     這裡是它們共同的收斂點:進 manifest、存昨日觀點、回文字。
     """
-    _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
-        obj, packet, rendered_text=text)
-    _RUN_MANIFEST["llm"]["recap_saved"] = _arc.save(
+    _saved = _arc.save(
         ANALYSIS_RECAP_FILE, obj, packet,
         manifest=_RUN_MANIFEST)     # 失敗不斷晨報,但要看得見
+    _RUN_MANIFEST["llm"]["recap_saved"] = _saved
+    # **存檔失敗就不得留著「持續追蹤」的宣稱**(外審 2026-08-17 r1)。
+    # 渲染時的 admission 是**預演**(算得出帳本會收下誰);真正寫進磁碟
+    # 是這裡。寫失敗而信裡照樣印「觀察觸發點」,就是原本那個缺陷再現一次
+    # —— 只是這次原因從「容量滿」變成「檔案寫不進去」。
+    # 用空集合重渲染:**全部標成一次性**。這偏保守(舊帳本裡本來就在追
+    # 的那幾條會被少報),而少報不會讓讀者以為系統在盯一件它不會盯的事。
+    # 指標要用**最後真的寄出去的那份文字**算,不是預演那份。
+    if _saved == _arc.FAILED:
+        _honest = _ar.render(obj, packet, admitted_watch=set())
+        if _honest:
+            text = _honest
+        print("[llm] 昨日觀點存檔失敗 —— 信裡的觀察點改標一次性",
+              file=sys.stderr)
+    _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
+        obj, packet, rendered_text=text)
     return text
 
 

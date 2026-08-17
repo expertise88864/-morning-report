@@ -947,3 +947,77 @@ def test_multiple_same_lineage_items_pick_the_first_deterministically():
                        titles="美國對台軍售最新進展",
                        lineage_id="arms_sale:台灣")
     assert got is not None and got["statement"] == "第一筆", got
+
+
+# ------------------------- 外審 2026-08-17 P2-1:admission 才是渲染的真相
+
+def _full_ledger(today="2026-08-18"):
+    """帳本已滿(`WATCH_OPEN_MAX` 條都開著)。"""
+    return {"date": today, "items": [], "watch_seq": rc.WATCH_OPEN_MAX,
+            "watch": [{"watch_id": f"w{i}", "trigger": f"既有觀察點 {i}",
+                       "why": "x", "horizon": "1-5d", "status": rc.WATCH_OPEN,
+                       "created": "2026-08-10", "last_reviewed": "",
+                       "deadline": "2026-12-31"}
+                      for i in range(1, rc.WATCH_OPEN_MAX + 1)]}
+
+
+def test_a_capacity_dropped_watch_is_not_rendered_as_persistent(tmp_path):
+    """**信上不得承諾帳本不會兌現的事。**
+
+    帳本滿了,今天模型又提一條 —— 先前信裡照樣印成「觀察觸發點」,
+    而明天帳本裡根本沒有它(讀者以為系統在盯)。
+    """
+    import json as _j
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(_full_ledger(), ensure_ascii=False),
+                    encoding="utf-8")
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "1-5d"}]
+    tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
+    assert "美元指數突破 105" not in tracked, "帳本滿了卻收下了新條目"
+    assert len(tracked) == rc.WATCH_OPEN_MAX, "帳本原本那幾條要還在"
+    out = ar.render(obj, None, admitted_watch=tracked)
+    assert "美元指數突破 105" in out, "內容仍要印出來(有參考價值)"
+    assert "一次性觀察,未納入持續追蹤" in out, "沒有標出它不會被持續追蹤"
+
+
+def test_an_admitted_watch_is_rendered_as_persistent(tmp_path):
+    """反向:帳本收下的那條**不得**被標成一次性 —— 標錯方向同樣是說謊。"""
+    import json as _j
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps({"date": "2026-08-18", "items": [], "watch": []},
+                             ensure_ascii=False), encoding="utf-8")
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "1-5d"}]
+    admitted = rc.tracked_triggers(str(path), obj, "2026-08-18")
+    assert "美元指數突破 105" in admitted
+    out = ar.render(obj, None, admitted_watch=admitted)
+    assert "一次性觀察" not in out
+
+
+def test_admission_and_the_ledger_agree(tmp_path):
+    """**兩邊必須是同一個答案。** 渲染端問 `admitted_triggers`、存檔走
+    `carry_watch` —— 判準寫兩份就會漂移,而漂移的症狀是信與帳本互相矛盾。"""
+    import json as _j
+    import fixtures_analysis as fx
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(_full_ledger(), ensure_ascii=False),
+                    encoding="utf-8")
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [
+        {"trigger": "新的一條", "why": "x", "horizon": "1-5d"},
+        {"trigger": "既有觀察點 1", "why": "x", "horizon": "1-5d"}]
+    admitted = rc.tracked_triggers(str(path), obj, "2026-08-18")
+    ledger, _seq, dropped = rc.carry_watch(rc.load(str(path)), obj, "2026-08-18")
+    _in_ledger = {str(w.get("trigger") or "") for w in ledger}
+    # **兩邊是同一個集合**,不是子集 —— 子集判準放得過「渲染端少報一半」
+    assert admitted == _in_ledger, (admitted, _in_ledger)
+    # 被容量擋掉的那條:兩邊都說沒收
+    assert "新的一條" not in admitted and "新的一條" not in _in_ledger
+    assert dropped == 1, dropped

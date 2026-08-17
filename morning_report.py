@@ -13388,7 +13388,20 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                     else (["不是合法 JSON"] if _parse_exc
                           else ["輸出不是 JSON 物件"]))
         if not problems:
-            text = _ar.render(obj, packet)
+            # **帳本收下的才算持續追蹤**(外審 2026-08-17 P2-1):渲染端
+            # 先前直接印模型提的 `watch_triggers`,而帳本滿了(上限)時新的
+            # 那條會被丟掉 —— 信上像是承諾會盯,明天帳本裡沒有它。
+            # admission 與存檔走**同一個** `carry_watch`(同一份 prior、
+            # 同一個 today → 同一個答案),有測試釘住兩邊 ID 一致。
+            try:
+                _admitted = _arc.tracked_triggers(
+                    ANALYSIS_RECAP_FILE, obj,
+                    str((packet or {}).get("target_session_date") or ""))
+            except Exception as _e_adm:      # noqa: BLE001 - 標記失敗不毀渲染
+                _admitted = None
+                print(f"[llm] 觀察點 admission 查詢失敗:{str(_e_adm)[:80]}",
+                      file=sys.stderr)
+            text = _ar.render(obj, packet, admitted_watch=_admitted)
             if text:
                 _record(True)
                 # 深度不足時,把**還沒用掉的修補額度**拿來加深(第十五輪)。

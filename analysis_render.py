@@ -183,11 +183,17 @@ def _net_effects(rows) -> str:
     return "\n".join(out)
 
 
-def render(obj: Optional[dict], packet=None) -> str:
+def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     """把驗證過的分析 JSON 轉成晨報 Markdown。
 
     **無法渲染時回空字串**,不回半份。呼叫端會據此走既有的降級路徑 ——
     回半份的症狀是「信寄出去了但少了一半」,那比沒寄更難發現。
+
+    `admitted_watch`(可選)是**帳本真的收下**的觀察點 trigger 集合
+    (`analysis_recap.admitted_triggers`)。給了就據此標記:沒被收下的
+    那條會寫成「一次性觀察,未納入持續追蹤」—— 先前一律印成持續觀察,
+    而帳本滿的時候它明天就不存在(外審 2026-08-17 P2-1)。
+    **不給就不標**:沒有那個資訊時保持原樣,不假裝知道。
     """
     if not isinstance(obj, dict):
         return ""
@@ -343,9 +349,17 @@ def render(obj: Optional[dict], packet=None) -> str:
         if _wr_lines:
             parts.append("## 昨日觀察點回顧\n" + "\n".join(_wr_lines))
 
-    watch = _lines(obj.get("watch_triggers"),
-                   lambda w: f"{_s(w.get('trigger'))}"
-                             f"{'（' + _s(w.get('why')) + '）' if _s(w.get('why')) else ''}")
+    def _watch_line(w) -> str:
+        _t = _s(w.get("trigger"))
+        _why = _s(w.get("why"))
+        # **沒被帳本收下的不得寫成持續追蹤**:那是一個明天不會被兌現的
+        # 承諾。標出來而不是隱藏 —— 模型提的內容仍然有參考價值。
+        _tail = ""
+        if admitted_watch is not None and _t and _t not in admitted_watch:
+            _tail = "（一次性觀察,未納入持續追蹤）"
+        return _t + (f"（{_why}）" if _why else "") + _tail
+
+    watch = _lines(obj.get("watch_triggers"), _watch_line)
     if watch:
         parts.append("## 觀察觸發點\n" + "\n".join(watch))
 

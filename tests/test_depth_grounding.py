@@ -248,7 +248,9 @@ def test_the_production_gate_validates_against_the_packet():
     body = body[:body.index("#: 盲評卡的落地目錄")]
     assert "_sch.validate(obj, packet)" in body, "主閘門沒有吃 packet"
     assert "_sch.validate(obj, ids)" not in body, "還留著吃 ID 集合的呼叫"
-    assert "_ar.render(obj, packet)" in body, "renderer 拿不到 packet,張力抬頭印不出來"
+    # 2026-08-17:render 多了 `admitted_watch`(觀察點 admission 才是持續
+    # 追蹤的真相來源)—— 錨點改成前綴,守的性質不變:renderer 拿得到 packet。
+    assert "_ar.render(obj, packet" in body, "renderer 拿不到 packet,張力抬頭印不出來"
 
 
 def test_the_snapshot_probe_uses_the_production_call_shape():

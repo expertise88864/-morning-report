@@ -342,7 +342,10 @@ MODULE_CEILINGS = {
     # 抽出 + 首見渲染)。**實測 398 行**。
     # 第三十一輪外審:watch 容量掉條數的 telemetry
     # Batch A:lineage 端到端(match_lineage/簽章候選集合/世系接線)
-    "analysis_recap.py": 750,
+    # 2026-08-17 外審 P2-1:`tracked_triggers()` —— 渲染端要問「帳本真的
+    # 在追嗎」,而不是直接印模型提的 watch_triggers(帳本滿了那條明天
+    # 就不存在)。實測 753。
+    "analysis_recap.py": 770,
     # 第二十四輪 P1-2:第二層壓縮(不可裁區塊本身超標時)。與 `payload_budget`
     # 分開,是因為兩者的判準不同 —— 前者「整塊拿掉背景」,後者「留下所有身分、
     # 只壓內容深度」;混在一起會讓「不可裁」這個清單的意義變模糊。實測 182 行。

@@ -366,6 +366,28 @@ def _carry_origins(rec: dict, prior: dict) -> None:
                             "direction": str(hit.get("direction") or "")}
 
 
+def tracked_triggers(path, analysis_obj, today: str) -> set:
+    """**今天結束後帳本真的在追**的那些 trigger 文字。
+
+    渲染端要問這個(外審 2026-08-17 P2-1):先前信裡直接印模型提的
+    `watch_triggers`,而帳本滿了(`WATCH_OPEN_MAX`)時新的那條會被丟掉
+    —— 於是信上像是承諾會持續追蹤,明天帳本裡根本沒有它。
+    **帳本才是那個承諾的真相來源。**
+
+    與 `save()` 走**同一個** `carry_watch(prior, obj, today)`:同一份
+    prior、同一個 today → 同一個答案。兩邊各寫一份判準才是會漂移的形狀
+    (有測試釘住兩邊一致)。
+
+    刻意**不**過濾成「只有今天新提的」:渲染端問的是「這一條有沒有被
+    持續追蹤」,而今天提的句子若與帳本已有的一條相同,它確實正在被追。
+    第一版加了那層過濾,而突變驗證顯示它對渲染端沒有任何可觀測效果 ——
+    測不到的宣稱不留。
+    """
+    ledger, _seq, _dropped = carry_watch(load(path), analysis_obj, today)
+    return {str(w.get("trigger") or "") for w in ledger
+            if str(w.get("trigger") or "")}
+
+
 def save(path, analysis_obj, packet, manifest=None) -> str:
     """把今天的觀點寫進 state(**只留最新一天** —— 昨日觀點只需要
     上一次的)。回 `SAVED` / `NOTHING` / `FAILED`,不拋 ——

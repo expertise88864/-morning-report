@@ -11920,11 +11920,21 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     data = r.json()
     candidates = data.get("candidates") or []
     if not candidates:
+        # **prompt 層被擋時根本不會有 candidates**(外審 2026-08-17 r5):
+        # 裁決寫在 `promptFeedback.blockReason`。先前這裡拋裸 RuntimeError,
+        # 於是「整個 prompt 被安全政策擋下」被當成暫時性失敗,對同一份
+        # 未改變的請求重送三次,而 manifest 也看不到那個裁決。
+        _block = str((data.get("promptFeedback") or {}).get("blockReason")
+                     or "").upper()
+        if _block:
+            raise GeminiCompletionError(
+                _block, f"Gemini promptFeedback.blockReason={_block} —— "
+                        f"prompt 層被擋(role={role},model={model})")
         raise RuntimeError(f"Gemini 回應無 candidates: {data}")
+    # **先判裁決,再要求 parts**:被內容過濾擋下的 candidate 可以完全沒有
+    # parts —— 那時該回報的是裁決原因,不是「回應無 parts」。
     parts = candidates[0].get("content", {}).get("parts") or []
-    if not parts:
-        raise RuntimeError(f"Gemini 回應無 parts: {data}")
-    text = parts[0].get("text", "")
+    text = (parts[0].get("text", "") if parts else "")
     # **只有正常結束才算成功**(外審 2026-08-17 r2 的 P1)。
     #
     # 上一版只擋 `MAX_TOKENS`,理由是「不要因為欄位缺席就誤判截斷」——
@@ -11951,6 +11961,8 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
             _reason,
             f"Gemini finishReason={_reason or 'MISSING'} —— 不是正常結束"
             f"({len(text)} 字元,role={role},model={model})")
+    if not parts:
+        raise RuntimeError(f"Gemini 回應無 parts: {data}")
     return text
 
 
@@ -12045,9 +12057,15 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                 # 成功那一次進 manifest —— 於是「Flash 被 SAFETY 擋三次、
                 # Flash-Lite 才成功」在事後長得像「Flash-Lite 一次就成功」,
                 # 成本、呼叫數與 provider 健康度全部看不到那三次。
-                _record_gemini_failure(role, model, _t0, str(last_err),
-                                       exc=e, next_model=_next_gemini(model))
-                if code in RETRY_STATUS_CODES and attempt < 3:
+                # **先決定接下來做什麼,再記帳**(外審 r5):`fallback_to` 在
+                # 同模型重試時填「下一棒」是假的 —— 三次 OTHER 全部宣稱換去
+                # Flash-Lite,而實際上只有第三次換。這個欄位存在的理由正是
+                # 重建請求序列,寫錯比不寫更糟。
+                _will_retry = code in RETRY_STATUS_CODES and attempt < 3
+                _record_gemini_failure(
+                    role, model, _t0, str(last_err), exc=e,
+                    next_model="" if _will_retry else _next_gemini(model))
+                if _will_retry:
                     wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
                     print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
                     _llm_sleep(wait)
@@ -12057,12 +12075,13 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
             except Exception as e:
                 last_err = e
                 print(f"[llm] {model} 異常: {_redact_secret_text(str(e))}", file=sys.stderr)
-                _record_gemini_failure(role, model, _t0,
-                                       _redact_secret_text(str(e)), exc=e,
-                                       next_model=_next_gemini(model))
                 # **provider 的裁決不重試同一個模型**:內容過濾與額度用盡
                 # 都是對「這一份請求」的判定,原樣再送兩次只是多付兩次錢。
-                if getattr(e, "retryable", True) and attempt < 3:
+                _will_retry = bool(getattr(e, "retryable", True)) and attempt < 3
+                _record_gemini_failure(
+                    role, model, _t0, _redact_secret_text(str(e)), exc=e,
+                    next_model="" if _will_retry else _next_gemini(model))
+                if _will_retry:
                     _llm_sleep(5)
                     continue
                 break

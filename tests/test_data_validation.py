@@ -1889,3 +1889,85 @@ def test_an_unknown_finish_reason_still_gets_limited_retries(monkeypatch):
               if a.get("provider") == "gemini"]
     assert len(failed) == 3, "三次都送出去了,紀錄卻不是三筆"
     assert {a["finish_reason"] for a in failed} == {"OTHER"}
+
+
+def test_a_prompt_level_block_is_a_verdict_not_a_transient_failure(monkeypatch):
+    """**prompt 層被擋時根本不會有 candidates**(外審 2026-08-17 r5)。
+
+    裁決寫在 `promptFeedback.blockReason`。先前這條路徑拋裸 RuntimeError,
+    於是「整個 prompt 被安全政策擋下」被當成暫時性失敗,對同一份未改變的
+    請求重送三次;manifest 也看不到那個裁決。
+    """
+    calls = []
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+    monkeypatch.setattr(mr, "_llm_sleep", lambda s: None)
+
+    class _R:
+        def __init__(self, payload):
+            self._p = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._p
+
+    def fake_post(url, json=None, timeout=None, headers=None):
+        model = url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        if model == "gemini-2.5-flash":
+            return _R({"promptFeedback": {"blockReason": "SAFETY"}})
+        return _R({"candidates": [{"finishReason": "STOP",
+                                   "content": {"parts": [{"text": "ok"}]}}]})
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._call_gemini("p", role="extractor") == "ok"
+    # **只送兩次**:prompt 被擋不重試同一個模型
+    assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], calls
+    failed = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+              if a.get("provider") == "gemini"]
+    assert len(failed) == 1 and failed[0]["finish_reason"] == "SAFETY", failed
+
+
+def test_a_blocked_candidate_without_parts_reports_the_verdict(monkeypatch):
+    """被內容過濾擋下的 candidate 可以完全沒有 parts —— 那時該回報的是
+    **裁決原因**,不是「回應無 parts」(否則又變成可重試的暫時性失敗)。"""
+    import pytest as _pt
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+
+    class _R:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"candidates": [{"finishReason": "RECITATION",
+                                    "content": {}}]}
+
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda *a, **k: _R())
+    with _pt.raises(mr.GeminiCompletionError) as e:
+        mr._call_gemini_once("gemini-2.5-flash", "p")
+    assert e.value.finish_reason == "RECITATION"
+    assert e.value.retryable is False
+
+
+def test_fallback_to_is_only_set_when_the_model_is_actually_abandoned(
+        monkeypatch):
+    """**`fallback_to` 不得說謊**(外審 r5)。
+
+    三次 `OTHER` 全部宣稱換去 Flash-Lite,而實際上只有第三次換 ——
+    這個欄位存在的理由正是重建請求序列,寫錯比不寫更糟。
+    """
+    calls = _gemini_router(monkeypatch, {
+        "gemini-2.5-flash": ("OTHER", "partial"),
+        "gemini-2.5-flash-lite": ("STOP", "ok")})
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._call_gemini("p") == "ok"
+    assert calls.count("gemini-2.5-flash") == 3, calls
+    flash = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+             if a.get("model") == "gemini-2.5-flash"]
+    assert len(flash) == 3, flash
+    # 前兩次是同模型重試 → 沒有換人;第三次才真的換
+    assert [a.get("fallback_to", "") for a in flash] == [
+        "", "", "gemini-2.5-flash-lite"], [a.get("fallback_to", "") for a in flash]

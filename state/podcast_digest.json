@@ -4969,6 +4969,38 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74213028",
+        "title": "McDonald's gets a Red Bull boost",
+        "published": "Mon, 17 Aug 2026 15:29:57 +0000",
+        "processed_at": "2026-08-17T19:52:56Z",
+        "digest": {
+          "summary_points": [
+            "摩根士丹利認為,麥當勞首次將能量飲料(Red Bull Dragonberry Energizer)納入菜單,可能成為下半年投資人觀察的「swing factor」,因為調查顯示 60% 的能量飲料消費是增量需求。",
+            "Wells Fargo 將 Ulta Beauty 升評至 Overweight,理由是核心業務需求與執行改善,且公司聚焦大型企業(增加產能、擴展合作夥伴)正開始見效。",
+            "高盛報告《第二次太空時代》指出,太空正從「最終邊境」變成機構化資產類別,預估 2035 年太空經濟達 1.8 兆美元;2025 年投資逾 550 億美元,2026 年第一季更創下 360 億美元紀錄。"
+          ],
+          "tickers": [
+            {
+              "name": "Ulta Beauty",
+              "code": "ULTA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Wells Fargo 升評至 Overweight,認為核心業務需求與執行改善,大型企業策略奏效。"
+            },
+            {
+              "name": "McDonald's",
+              "code": "MCD",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "能量飲料平台上架可能成為下半年股價變數,摩根士丹利認為值得觀察。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Space is moving from the final frontier to an institutional asset class."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74196793",
         "title": "Rocket Lab gains altitude",
         "published": "Mon, 17 Aug 2026 10:47:48 +0000",
@@ -5377,33 +5409,6 @@
           "notable_quote": "My biggest fear for Berkshire Hathaway was that Warren Buffett's eventual successor would lack Buffett's patience and discipline to wait for the right fat pitch."
         },
         "shown_at": "2026-08-10T22:46:52Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73611025",
-        "title": "Trade Desk slammed after earnings miss",
-        "published": "Fri, 07 Aug 2026 11:09:36 +0000",
-        "processed_at": "2026-08-07T14:32:05Z",
-        "digest": {
-          "summary_points": [
-            "The Trade Desk 第二季營收 7.15 億美元、年增 3%，低於市場預期的 7.514 億美元；調整後 EPS 0.34 美元也遜於預估的 0.40 美元，獲利率從 39% 降至 34%，盤前股價重挫近三分之一，反映數位廣告成長動能明顯放緩。",
-            "川普簽署命令，將對多晶矽及下游產品（矽晶圓、太陽能電池、太陽能模組）自 12 月 4 日起加徵 15% 關稅並設定最低進口價，雖意在保護本國製造商，但將推升太陽能開發成本，成為再生能源業者新的逆風。",
-            "David Einhorn 認為 SpaceX 的 IPO 可能是投機市場觸頂的訊號，顯示部分投資人開始擔憂估值與市場情緒過熱。",
-            "SK 海力士宣布投資 380 億美元擴充南韓晶片產能，顯示記憶體產業的資本支出仍維持強勁，反映對未來需求的信心。"
-          ],
-          "tickers": [
-            {
-              "name": "The Trade Desk",
-              "code": "TTD",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 財報低於預期且獲利能力下滑，盤前股價大跌近三分之一。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "That's no coaster, that's my AI."
-        },
-        "shown_at": "2026-08-07T22:36:11Z"
       }
     ]
   },
@@ -7006,6 +7011,77 @@
   "circuit": {
     "name": "The Circuit",
     "episodes": [
+      {
+        "guid": "ab487da6-004f-4add-abcb-f2dd75fa74bf",
+        "title": "EP 188: The Wild West of Optical, Cisco's AI Hack, and Is Compute an Investable Asset",
+        "published": "Mon, 17 Aug 2026 09:12:01 -0700",
+        "processed_at": "2026-08-17T20:01:24Z",
+        "digest": {
+          "summary_points": [
+            "Lumentum 財報全面優於預期且上調財測，Coherent 營收雖好但毛利率承壓，股價表現分歧；主持人認為差異來自產品組合與晶圓尺寸策略，6 吋磷化銦晶圓生態系還不成熟，Coherent 推進較吃力，Lumentum 在 4 吋上表現較佳。",
+            "光學技術演進 LPO→NPO→CPO 常被過度樂觀，主持人認為 CPO 的製造與可靠性難度高，省下的功耗未必值得額外工程成本，因此 NPO 可能成為主流並維持很久；CPO 短期內不會在機架內大規模採用。",
+            "Scale up/scale out 用語混淆導致市場高估光學連接數量；主持人指出機架內（垂直）光連結採用遙遠，目前主流是機架間（水平）連結，若假設每 rack 光學含量需先確認連接場景，否則預測會偏離。",
+            "Cisco 財報看似普通但內涵正面，幾乎全產品線改用自家 ASIC，並在 AI 資料中心與企業本地 AI 集群取得超大型客戶訂單；另外利用 Anthropic 的 Claude 做安全審計的銷售策略很聰明，能帶動後續資安服務收入。",
+            "Applied Materials 財報強勁、營收創歷史最快季增，但股價因指引未達市場期待而下跌；主持人推測是因為 Intel 剛完成籌資、尚未確定設備訂單，10 月投資人日應會明朗；LTA 長期協議使設備商能見度從 2 季延長到 8 季，顯示產業結構性變化。",
+            "Nvidia 聯手金融機構推出 5,000 億美元資料中心融資，主持人認為有循環融資疑慮，但戰略上是為了分散客戶基礎；他也質疑「算力是可投資資產」的說法，因為算力會折舊、需持續升級，不像房地產能長期保值。",
+            "CoreWeave 與 Nebius 兩家 neocloud 財報佳，GPU 投資回收期已從 3 年縮短到 2 年，但高度依賴少數客戶；短期算力供不應求，長期需求能否維持仍存高度不確定性。"
+          ],
+          "tickers": [
+            {
+              "name": "Lumentum",
+              "code": "LITE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報全面優於預期且上調財測，4 吋晶圓產能表現佳，並有 NPO 相關 IP 可運用。"
+            },
+            {
+              "name": "Coherent",
+              "code": "COHR",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "營收雖好但毛利率受 6 吋晶圓新生態系不成熟拖累，股價反應負面。"
+            },
+            {
+              "name": "Cisco",
+              "code": "CSCO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "全產品線採用自家 ASIC，AI 資料中心與企業本地 AI 集群訂單佳，並透過 AI 安全審計帶動資安服務。"
+            },
+            {
+              "name": "Applied Materials",
+              "code": "AMAT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "營收創最快季增，能見度延長至 8 季，但短期指引保守，10 月投資人日可能因 Intel 訂單明朗而上修。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "5,000 億美元融資案助長需求但也有循環性疑慮，長期算力投資回報不確定，短期仍是算力霸主。"
+            },
+            {
+              "name": "CoreWeave",
+              "code": "CRWV",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報佳、GPU 回收期縮短至 2 年，但高度依賴少數大客戶，長期需求未明。"
+            },
+            {
+              "name": "Nebius",
+              "code": "NBIS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報與股價反應正面，但同樣有客戶集中風險。"
+            }
+          ],
+          "market_view": "主持人認為 AI 算力需求短期強勁、供不應求，但長期需求能否維持存高度不確定性；半導體設備與光通訊產業正經歷結構性變化，但實際採用速度可能比市場預期慢。",
+          "action_view": "主持人提醒不宜過度樂觀看待光學與 CPO 的採用速度，並指出 Nvidia 融資案具循環性疑慮；投資人可關注長期協議帶來的能見度提升，但需留意客戶集中風險與股價已反應的樂觀預期。",
+          "notable_quote": "It's going to take longer than any of us expect."
+        }
+      },
       {
         "guid": "eaa0d3f6-4fa2-4412-a2ad-5cfde9c13161",
         "title": "EP 187: Inside the Future of Memory Summit & AMD’s \"Boring\" Bullishness",

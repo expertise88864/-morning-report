@@ -254,6 +254,88 @@ def test_gemini_call_sends_key_header_not_query(monkeypatch):
     assert captured["headers"]["x-goog-api-key"] == "gemini-secret"
 
 
+def _gemini_stub(monkeypatch, *, finish="STOP", text="ok"):
+    """攔下 Gemini 的請求,回一個可控的回應。回 captured 供斷言 payload。"""
+    captured = {}
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"candidates": [{"finishReason": finish,
+                                    "content": {"parts": [{"text": text}]}}]}
+
+    def fake_post(url, json, timeout, headers=None):
+        captured["payload"] = json
+        return FakeResponse()
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    return captured
+
+
+def test_the_extractor_gets_room_for_thinking_plus_a_long_array(monkeypatch):
+    """**`maxOutputTokens` 是「思考 + 答案」的總額。**
+
+    2026-08-17 生產:抽取器 35 則新聞只抽出 1 個事件 —— DeepSeek 網路失敗
+    落到 Gemini,而 2.5 系列的思考吃光 8192 額度,答案在陣列中間被切斷
+    (回應 936 字元)。抽取器要吐最多 30 個物件,思考量隨則數成長。
+    """
+    cap = _gemini_stub(monkeypatch)
+    mr._call_gemini_once("gemini-2.5-flash", "p", role="extractor")
+    assert cap["payload"]["generationConfig"]["maxOutputTokens"] >= 16000
+    # 主分析那條不受影響(它的額度另有政策)
+    cap2 = _gemini_stub(monkeypatch)
+    mr._call_gemini_once("gemini-2.5-flash", "p")
+    assert cap2["payload"]["generationConfig"]["maxOutputTokens"] >= 8192
+
+
+def test_the_extractor_role_reaches_the_budget_through_the_wrapper(monkeypatch):
+    """**接線也要測。** 上一條直接呼叫底層,證明不了生產那條路會不會把
+    `role` 帶下去 —— 而生產走的是 `_call_gemini(prompt, role="extractor")`
+    (抽取器的 dispatch)。role 掉在中間,額度就又回到 8192。
+    """
+    cap = _gemini_stub(monkeypatch, text="[]")
+    assert mr._call_gemini("p", role="extractor") == "[]"
+    assert cap["payload"]["generationConfig"]["maxOutputTokens"] >= 16000
+
+
+def test_a_truncated_gemini_answer_is_not_treated_as_complete(monkeypatch):
+    """**截斷不得當成完整答案。**
+
+    `finishReason` 在這條路徑上先前從來沒人看 —— 被切斷的 JSON 一路傳到
+    解析器,撿回一個物件、報 `outcome: ok`,而 manifest 顯示這個能力是
+    健康的。另兩條 provider 路徑早就會拋出(DeepSeek/OpenAI 的 length)。
+    """
+    import pytest as _pt
+    _gemini_stub(monkeypatch, finish="MAX_TOKENS", text='[{"entity": "Iran"')
+    with _pt.raises(RuntimeError) as e:
+        mr._call_gemini_once("gemini-2.5-flash", "p", role="extractor")
+    assert "MAX_TOKENS" in str(e.value)
+    # 正常結束照舊回傳
+    _gemini_stub(monkeypatch, finish="STOP", text="ok")
+    assert mr._call_gemini_once("gemini-2.5-flash", "p") == "ok"
+
+
+def test_a_response_without_a_finish_reason_still_works(monkeypatch):
+    """舊版/精簡回應沒有 `finishReason` —— 不得因為欄位缺席就當成截斷。"""
+    captured = {}
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+
+    monkeypatch.setattr(mr.requests, "post",
+                        lambda url, json, timeout, headers=None: FakeResponse())
+    assert mr._call_gemini_once("gemini-2.5-flash", "p") == "ok"
+    assert captured == {}
+
+
 def test_detect_us_holiday_memorial_day():
     """週二早上跑時,QQQ.date 應為週一;若為週五則代表週一 US 休市(Memorial Day 之類)。"""
     import datetime as dt

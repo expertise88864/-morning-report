@@ -11875,7 +11875,19 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 """
 
 
-def _call_gemini_once(model: str, prompt: str) -> str:
+#: Gemini 各角色的輸出額度。**`maxOutputTokens` 是「思考 + 答案」的總額**
+#: (與 DeepSeek 的 `max_tokens`、OpenAI 的 `max_completion_tokens` 同一件事
+#: —— 那兩條路徑都為此吃過苦頭:批#85、批#90e),而 2.5 系列預設開思考。
+#:
+#: 2026-08-17 生產:抽取器 35 則新聞只抽出 **1 個事件**。DeepSeek 網路失敗
+#: 落到 Gemini,而 Gemini 的思考吃光 8192 額度,答案在**陣列中間被切斷**
+#: (回應只有 936 字元),撿回 1 個物件、丟掉 1 個。抽取器要吐的是一個
+#: 最多 30 個物件的陣列,而思考量隨新聞則數成長 —— 8192 給不夠。
+#: DeepSeek 那條路徑給 16000,這裡對齊。
+_GEMINI_ROLE_TOKENS = {"extractor": 16000}
+
+
+def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     """單次呼叫 Gemini REST。失敗時直接 raise，由外層處理重試/降級。"""
     if not GEMINI_API_KEY:
         raise RuntimeError("缺 GEMINI_API_KEY 環境變數")
@@ -11885,7 +11897,8 @@ def _call_gemini_once(model: str, prompt: str) -> str:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.3,
-            "maxOutputTokens": max(8192, LLM_REPORT_MAX_TOKENS),
+            "maxOutputTokens": max(8192, LLM_REPORT_MAX_TOKENS,
+                                   _GEMINI_ROLE_TOKENS.get(role, 0)),
         },
     }
     r = requests.post(url, json=payload, timeout=_llm_request_timeout(),
@@ -11898,7 +11911,19 @@ def _call_gemini_once(model: str, prompt: str) -> str:
     parts = candidates[0].get("content", {}).get("parts") or []
     if not parts:
         raise RuntimeError(f"Gemini 回應無 parts: {data}")
-    return parts[0].get("text", "")
+    text = parts[0].get("text", "")
+    # **截斷不得當成完整答案**(2026-08-17 生產)。`finishReason` 在這條
+    # 路徑上從來沒有人看 —— 於是被切斷的 JSON 一路傳到解析器,撿回一個
+    # 物件、報 `outcome: ok`,而 manifest 顯示這個能力是健康的。
+    # 另外兩條路徑早就這樣做(DeepSeek 的 `finish_reason=length` 拋出、
+    # OpenAI 的 `length` 無條件當截斷)—— 這裡是漏的那一條。
+    # **拋出而不是回傳半截**:外層的模型降級鏈會換下一個模型再試,
+    # 全掛才落到確定性事件;而回傳半截會讓失敗看起來像成功。
+    if str(candidates[0].get("finishReason") or "").upper() == "MAX_TOKENS":
+        raise RuntimeError(
+            f"Gemini finishReason=MAX_TOKENS —— 額度用完,回應被截斷"
+            f"({len(text)} 字元,role={role})")
+    return text
 
 
 # 模型降級鏈：主模型不穩時依序往下試
@@ -11922,7 +11947,7 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
             try:
                 print(f"[llm] 嘗試 Gemini model={model} attempt={attempt}")
                 _t0 = time.monotonic()
-                _text = _call_gemini_once(model, prompt)
+                _text = _call_gemini_once(model, prompt, role=role)
                 # 批#95(第九輪 P1-6):**Gemini 原本完全不記錄。**
                 # 它是跨供應商備援 —— 主供應商掛掉時實際寫出這封信的就是它,
                 # 而那正是 manifest 最該說清楚「誰寫的」的時候。

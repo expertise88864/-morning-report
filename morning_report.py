@@ -12641,25 +12641,37 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         """
         _ep = _extractor_provider()
         _t0 = time.monotonic()
+        _before = len((_RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
         try:
             return _dispatch_extractor(_ep, p)
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError) as e:
             _alt = _lc.fallback_extractor_provider(
                 _ep, lambda k: bool(os.environ.get(k, "").strip()))
-            # **失敗的那次呼叫要留紀錄**(2026-08-17 生產):manifest 只有
-            # `fallback_from: deepseek → gemini`,而「是逾時還是連線中斷、
-            # 花了幾秒才放棄」查不到 —— 那三件事正是判斷「timeout 該不該調」
-            # 的全部依據(批#95 已經為主分析補過同一件事,抽取器漏了)。
-            # 成本也看得到它:送出去了就可能被計費。
-            # **有沒有備援可換都要記**:沒得換的日子反而完全沒有紀錄,
-            # 而那是更該被看見的一天。
-            _record_llm_call(
-                "extractor", _ep, _extractor_model_of(_ep), accepted=False,
-                elapsed=time.monotonic() - _t0,
-                error=f"{type(e).__name__}: {e}"[:160],
-                billable_unmeasured=not _lt.refusal_reason(e),
-                fallback_to=_alt or "")
+            # **有些 provider 自己就會記**(`_call_openai` 的網路失敗
+            # handler)—— 外層再記一筆會讓同一次呼叫在成本與呼叫數上
+            # 雙計,而且外層寫的模型名還可能是空的(外審 2026-08-17)。
+            # 用「這次 dispatch 有沒有新增 attempt」判定,不列舉誰會記:
+            # 列舉出來的清單會在下一個 provider 加進來時無聲過期。
+            _att = (_RUN_MANIFEST.get("llm") or {}).get("attempts") or []
+            if len(_att) > _before:
+                # 已經有人記了 —— 只補上「換給誰」,不再開一筆。
+                if _alt:
+                    _att[-1]["fallback_to"] = _alt
+            else:
+                # **失敗的那次呼叫要留紀錄**(2026-08-17 生產):manifest 只有
+                # `fallback_from: deepseek → gemini`,而「是逾時還是連線中斷、
+                # 花了幾秒才放棄」查不到 —— 那三件事正是判斷「timeout 該不該
+                # 調」的全部依據(批#95 已經為主分析補過同一件事,抽取器漏了)。
+                # 成本也看得到它:送出去了就可能被計費。
+                # **有沒有備援可換都要記**:沒得換的日子反而完全沒有紀錄,
+                # 而那是更該被看見的一天。
+                _record_llm_call(
+                    "extractor", _ep, _extractor_model_of(_ep), accepted=False,
+                    elapsed=time.monotonic() - _t0,
+                    error=f"{type(e).__name__}: {e}"[:160],
+                    billable_unmeasured=not _lt.refusal_reason(e),
+                    fallback_to=_alt or "")
             if not _alt:
                 raise
             print(f"[llm-extractor] {_ep} 網路失敗({type(e).__name__}),"
@@ -12671,7 +12683,13 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         """紀錄要寫得出**用的是哪個模型** —— 只記 provider 的話,
         「flash 逾時」與「pro 逾時」在事後長得一樣。"""
         return {"deepseek": DEEPSEEK_EXTRACTOR_MODEL,
-                "openai": OPENAI_EXTRACTOR_MODEL,
+                # `_call_openai` 自己會落回 `OPENAI_MODEL`(抽取器專用
+                # 變數預設是空字串)—— 這裡照抄那個解析。
+                # **誠實記下**:OpenAI 的網路失敗由 `_call_openai` 自己記,
+                # 所以這一格今天走不到(上面的去重會先接手),測試也因此
+                # 涵蓋不到它。留著是為了「那邊哪天不記了」時不會寫出空模型,
+                # 不是因為它現在有作用。
+                "openai": OPENAI_EXTRACTOR_MODEL or OPENAI_MODEL,
                 "gemini": GEMINI_MODEL,
                 "anthropic": CLAUDE_MODEL}.get(_ep, "")
 

@@ -1985,3 +1985,39 @@ def test_the_record_survives_when_there_is_no_fallback(monkeypatch):
     assert att, "沒有備援可換時,那次失敗完全沒有紀錄"
     assert "ConnectionError" in str(att[-1].get("error")), att[-1]
     assert not att[-1].get("fallback_to"), "沒換 provider 卻記了換到誰"
+
+
+def test_a_provider_that_records_itself_is_not_recorded_twice(monkeypatch):
+    """**一次呼叫一筆紀錄**(外審 2026-08-17)。
+
+    `_call_openai` 的網路失敗 handler 自己就會記一筆;外層再記一次,
+    同一次呼叫在 `provider_calls` 與 `unmeasured_billable_calls` 上會被
+    算成兩次 —— 而成本結論正是建立在這些計數上。外層只補「換給誰」。
+    """
+    import requests
+    import morning_report as mr
+
+    class _R:
+        status_code = 200
+        text = ""
+
+    def _boom(*a, **k):
+        raise requests.exceptions.Timeout("read timed out")
+
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "openai")
+    monkeypatch.setattr(mr, "OPENAI_API_KEY", "k")
+    monkeypatch.setattr(mr, "OPENAI_EXTRACTOR_MODEL", "")   # 生產預設是空的
+    monkeypatch.setattr(mr, "OPENAI_MODEL", "gpt-5.6-terra")
+    monkeypatch.setattr(mr.requests, "post", _boom)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "g")
+    monkeypatch.setattr(mr, "_call_gemini", lambda p, role="primary": "[]")
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr.call_llm_event_extractor(_extractor_news(), [])
+
+    att = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+           if a.get("role") == "extractor" and a.get("provider") == "openai"]
+    assert len(att) == 1, f"同一次呼叫記了 {len(att)} 筆:{att}"
+    # 已經有人記了 → 外層只補接手者,模型仍是 `_call_openai` 解析的那個
+    assert att[0].get("model") == "gpt-5.6-terra", att[0]
+    assert att[0].get("fallback_to") == "gemini", att[0]

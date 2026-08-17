@@ -1383,3 +1383,63 @@ def test_fetch_plan_does_not_boost_a_new_same_company_incident():
                     "entities": ["台積電"], "summary": ""}}
     c = {"cluster_id": "cluster:n1", "member_source_ids": ["n1"]}
     assert fp._continuing(c, by_id, [old]) == 0
+
+
+# ---------------------------------------- 外審 2026-08-17 P1-1:UNKNOWN 有兩種
+
+def _cyber_record(**over):
+    """現行代的一樁網攻記錄(帶足夠的辨識詞)。"""
+    rec = {"subjects": ["TSMC"], "action": "cyberattack", "object": "TSMC",
+           "key": "old-tsmc-cyber-A", "days": 7,
+           "incident_tokens": ["ransomware", "fab", "halted"],
+           "latest_title": "TSMC hit by ransomware, fab output halted",
+           "latest_summary": ""}
+    rec.update(over)
+    return [rec]
+
+
+def test_current_schema_unknown_incident_does_not_inherit_old_lineage_days():
+    """**今天的證據不足,不等於是同一樁。**
+
+    記錄側是現行代(3 個辨識詞),今天的標題 `TSMC cyberattack` 扣掉主體
+    只剩 1 個辨識詞 → `incident_match` 回 UNKNOWN。先前 UNKNOWN 一律放行,
+    於是全新的一樁繼承 7 天與舊 lineage,被寫成「第 8 天」,還拿到延燒
+    排序與全文優先權。
+    **producer 早就是這個政策**(`incident_match` docstring:跨代/跨日
+    一律另開 provisional sibling、不繼承天數)—— consumer 先前與它相反。
+    """
+    import event_identity as eid
+    recs = _cyber_record()
+    assert eid.incident_match(
+        eid.view_identity("TSMC cyberattack", ["TSMC"], "")["incident_tokens"],
+        recs[0]["incident_tokens"]) == eid.UNKNOWN, "前提:這是 UNKNOWN"
+    assert eid.match_days(recs, ["TSMC"], "TSMC cyberattack", "") == 0
+    assert eid.match_lineage(recs, ["TSMC"], "TSMC cyberattack", "") == ""
+
+
+def test_legacy_record_without_incident_tokens_can_still_migrate():
+    """**舊代記錄沒有辨識詞是遷移相容,不是證據不足。**
+
+    升版當天 state 幾乎全是舊代記錄 —— 把它們一起 fail-closed 會讓所有
+    延燒事件在那一天集體斷線。兩種 UNKNOWN 要有兩個答案。
+    """
+    import event_identity as eid
+    assert eid.match_days(_cyber_record(incident_tokens=[]),
+                          ["TSMC"], "TSMC cyberattack", "") == 7
+
+
+def test_an_overlapping_incident_still_continues():
+    """反向:真的是同一樁(辨識詞重疊)不得被新規則擋掉。"""
+    import event_identity as eid
+    assert eid.match_days(_cyber_record(), ["TSMC"],
+                          "TSMC ransomware attack halted fab output", "") == 7
+
+
+def test_cross_language_unknown_requires_a_specific_anchor():
+    """跨語言 + 今天證據不足 → 要有逐樁錨(金額/帶單位數量/第三實體)
+    才承接。零共用在跨語言是語言差異,但「今天說不出是哪一樁」不是。"""
+    import event_identity as eid
+    recs = _cyber_record(latest_title="台積電遭勒索軟體攻擊 產線停工",
+                         incident_tokens=["勒索", "停工", "產線"],
+                         subjects=["台積電"])
+    assert eid.match_days(recs, ["TSMC"], "TSMC cyberattack", "") == 0

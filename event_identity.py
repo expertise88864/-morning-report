@@ -450,8 +450,23 @@ def _lineage_hits(records, entities, titles, summary: str = "") -> list:
         if not is_situation_action(rec_action):
             _mt = incident_match(_vi["incident_tokens"],
                                  r.get("incident_tokens") or [])
-            if _mt == NO_MATCH:
-                if comparable_scripts(titles, r.get("latest_title")):
+            # **UNKNOWN 有兩種,不是一種**(外審 2026-08-17)。
+            # 先前只有 `NO_MATCH` 會被否決,`UNKNOWN` 一律放行 ——
+            # 於是「舊代記錄沒有辨識詞」(遷移相容,該放行)與「記錄是
+            # 現行代、**今天**的證據不足」(不知道是不是同一樁,該保守)
+            # 得到同一個答案。實測反例:記錄 3 個辨識詞、今天標題
+            # `TSMC cyberattack` 只有 1 個 → 繼承 7 天與舊 lineage,
+            # 於是全新的一樁被寫成「第 8 天」,並拿到延燒排序與全文優先權。
+            # **這也是 producer 早就採取的政策**:`incident_match` 的
+            # docstring 寫著「跨代/跨日一律另開 provisional sibling,
+            # 不繼承天數」—— consumer 先前與它相反。
+            _rec_specific = len({str(t) for t in (r.get("incident_tokens")
+                                                 or [])}) >= MIN_DISCRIMINATIVE
+            if _mt == NO_MATCH or (_mt == UNKNOWN and _rec_specific):
+                # 同文字系統的零重疊是硬證據(不同樁);其餘(跨語言的
+                # 零重疊、今天證據不足)退而要求**逐樁錨**。
+                if _mt == NO_MATCH and comparable_scripts(titles,
+                                                          r.get("latest_title")):
                     continue
                 import cross_lang as _cl
                 if not _cl._shared_specific_anchor(

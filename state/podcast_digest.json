@@ -1851,6 +1851,56 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "dbeef481-226a-4556-a855-caba3bb9787b",
+        "title": "EP328. SPCX Grok 4.6、谷歌 Gemini 3.7 Flash、Anthropic 上市估值 | M觀點",
+        "published": "Mon, 17 Aug 2026 06:16:31 GMT",
+        "processed_at": "2026-08-17T09:02:33Z",
+        "digest": {
+          "summary_points": [
+            "xAI 的 Grok 4.6 用 1.5 兆參數就追平 GPT 5.6 Soul 的 AAII 61 分，且每任務成本僅 0.84 美元，比 GPT 5.6 Soul 便宜 32%、比 Fable 5 便宜 73%，主持人認為 xAI 已回到最前沿且 CP 值最高。",
+            "主持人預期 Grok 4.7（2 兆參數）9 月底前推出，有機會以 63-65 分拿下 AAII 第一；並透露 Grok 4.5 推出後 xAI Token 銷量一週內增三倍，後續月增率可能 50-100%。",
+            "主持人修正模型商品化觀點，認為前沿模型不會完全互換，換模型如同換 NBA 球星有磨合成本，企業沒有強烈動機不會更換核心模型。",
+            "Gemini 3.7 Flash 僅達次前沿（AAII 56 分），每任務成本 0.4 美元與 Meta 的 MuSpark 1.2 平手、比 GPT 5.6 Tera 便宜 20%，主持人認為能幫 Google Cloud 防守客戶，但不上 Azure/AWS 會失去規模經濟。",
+            "Anthropic 傳 10 月以 2 兆美元 IPO，主持人認為是投資人放話帶風向；他認為合理估值 1-1.5 兆美元，但市場可能給到 1.8 兆，因年底 ARR 可達 1000 億美元。",
+            "阿里巴巴 Qwen 3.8 27B 可塞進 24GB 消費級顯卡，是第一個可在一般電腦跑 agent workflow 的模型，主持人認為會吸引大量個人用戶與研究者採用。",
+            "主持人以 NVIDIA 類比 Anthropic：市占率雖被 OpenAI 與 xAI 搶走，但整體 AI 需求高速成長，Anthropic 月增 7% 即可在年底達 100B ARR，不必因成長率落後就看衰。"
+          ],
+          "tickers": [
+            {
+              "name": "Alphabet",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Gemini 3.7 Flash 只達次前沿且僅在 GCP 推出，主持人認為 Google 防守客戶有餘但缺乏規模經濟，不看衰也不看好奪冠。"
+            },
+            {
+              "name": "Microsoft",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人說微軟應力挺 Grok 等其他模型以制衡 OpenAI/Anthropic，讓模型商品化，平台才有話語權。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人說亞馬遜應力挺 Grok 等其他模型以制衡 OpenAI/Anthropic，讓模型商品化，平台才有話語權。"
+            },
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人以 NVIDIA 為例，資料中心業務年增 92%，市占雖下滑但量體仍大，仍可達合理估值，未看衰。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "未明確給出個股操作，但對高估值 AI IPO 保持謹慎，認為 Anthropic 2 兆太貴、合理約 1-1.5 兆，但尊重市場定價。",
+          "notable_quote": "我雖然覺得太貴,可是市場覺得ok啊,那就ok嘛"
+        }
+      },
+      {
         "guid": "c9b5a32c-d698-4e94-b69d-8e9fe1f51ca9",
         "title": "EP327. 谷歌會放棄模型嗎、我低估了 SPCX、美股來到歷史新高 | M觀點",
         "published": "Mon, 10 Aug 2026 05:52:03 GMT",
@@ -2399,60 +2449,6 @@
           "notable_quote": "特斯拉現在整個汽車業務在特斯拉的重要性其實已經蠻低的，無論是 Robotaxi 無論是 Otomos 都比他重要。"
         },
         "shown_at": "2026-07-06T23:02:03Z"
-      },
-      {
-        "guid": "71dc7fca-30b3-4e4c-87e7-76a7fd9511d7",
-        "title": "EP316. Claude Sonnet 5、Meta 也要賣算力、PLTR 合作 NVDA | M觀點",
-        "published": "Thu, 02 Jul 2026 16:42:42 GMT",
-        "processed_at": "2026-07-02T21:36:33Z",
-        "digest": {
-          "summary_points": [
-            "Anthropic推出Cloud Sonnet 5中階模型，性能逼近Opus 4.8，價格僅其六成，可能提升中階模型CP值，影響AI應用市場。",
-            "Meta傳出啟動Meta Compute專案，打算出租閒置AI算力，帶動股價大漲，但引發市場對算力過剩擔憂，光通訊、記憶體等AI基建股下跌。",
-            "Palantir與NVIDIA合作推出Intelligence Engine，協助企業在私有環境中訓練模型，有望搶佔企業級AI市場。",
-            "Palantir CEO批評OpenAI及Anthropic的Token收費模式，認為企業應掌握控制層而非依賴前沿模型，此論點可能影響AI投資佈局。",
-            "主持人賣出英特爾持股，暗示對其前景轉趨保守，但未透露新投資標的。",
-            "AI Agent技術進步可能削弱NVIDIA CUDA護城河，加速競爭對手如AMD的採用，長期風險浮現。",
-            "主持人認為Meta出租算力是資產活化，不代表退出AI競賽，長線仍看好其AI投資。",
-            "三大公有雲業者（AWS、GCP、Azure）仍表示AI算力供不應求，市場短期對閒置算力過剩的擔憂可能過度。",
-            "2026年第三季中階AI模型競爭加劇，Google Gemline 3.5 Pro、Grok 4.5等將推出，AI進步速度加快，可能影響相關公司估值。",
-            "主持人先前即預測Meta將出租算力，如今成真，顯示其對產業趨勢掌握，並認為市場反應慢半拍。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "出租閒置算力可創造營收，顯示AI投資有彈性，非認輸。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與NVIDIA合作推出企業AI引擎，控制層路線正確，有望受益於私有AI需求。"
-            },
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "AI Agent可能削弱CUDA護城河，但算力需求仍強，短期影響不明。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人賣出英特爾持股，可能看壞前景。"
-            }
-          ],
-          "market_view": "主持人認為AI算力需求仍然強勁，市場對閒置算力釋出的擔憂可能過度，長線看好AI基礎設施投資。",
-          "action_view": "賣出英特爾持股，轉向其他更具成長潛力的投資標的；對AI基礎設施股下跌採觀望或逢低布局策略。",
-          "notable_quote": "我告訴你，Meta出租算力不是認輸，這很合理。"
-        },
-        "shown_at": "2026-07-02T23:04:56Z"
       }
     ]
   },

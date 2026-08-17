@@ -301,6 +301,40 @@ def test_the_extractor_role_reaches_the_budget_through_the_wrapper(monkeypatch):
     assert cap["payload"]["generationConfig"]["maxOutputTokens"] >= 16000
 
 
+def test_every_model_in_the_fallback_chain_gets_a_limit_it_accepts(monkeypatch):
+    """**降級鏈的每一棒都要送得出去**(外審 2026-08-17)。
+
+    抽取器的角色額度 16,000 先前被無差別套到每一棒,而
+    `gemini-2.0-flash`(鏈上最後一棒)的文件上限是 8,192 —— 送 16,000
+    會當場 400,等於最後一層備援從來沒有真的存在過。
+    這條測試釘的是**性質**:凡是 `MODEL_LIMITS` 查得到出處的模型,
+    送出的額度不得超過它 —— 日後往鏈上加模型也會被這條擋住。
+    """
+    import llm_telemetry as lt
+    for model in mr.GEMINI_FALLBACK_MODELS:
+        cap = _gemini_stub(monkeypatch, text="[]")
+        mr._call_gemini_once(model, "p", role="extractor")
+        sent = cap["payload"]["generationConfig"]["maxOutputTokens"]
+        limit, src = lt.max_output_for(model)
+        if src.startswith("MODEL_LIMITS["):
+            assert sent <= limit, (model, sent, limit)
+    # 具體的那一棒:2.0-flash 只拿得到 8,192
+    cap = _gemini_stub(monkeypatch, text="[]")
+    mr._call_gemini_once("gemini-2.0-flash", "p", role="extractor")
+    assert cap["payload"]["generationConfig"]["maxOutputTokens"] == 8192
+
+
+def test_an_unlisted_model_gets_the_conservative_limit(monkeypatch):
+    """未收錄的模型走保守上限。`MODEL_LIMITS` 寫明的不對稱:額度給低了
+    最壞是截斷(可偵測、有重試),給高了是當場 400、整份分析作廢。"""
+    import llm_telemetry as lt
+    monkeypatch.setattr(mr, "LLM_REPORT_MAX_TOKENS", 40_000)
+    cap = _gemini_stub(monkeypatch, text="[]")
+    mr._call_gemini_once("gemini-9-experimental", "p", role="extractor")
+    sent = cap["payload"]["generationConfig"]["maxOutputTokens"]
+    assert sent == lt.UNKNOWN_MODEL_MAX_OUTPUT, sent
+
+
 def test_a_truncated_gemini_answer_is_not_treated_as_complete(monkeypatch):
     """**截斷不得當成完整答案。**
 

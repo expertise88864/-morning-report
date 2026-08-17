@@ -11887,6 +11887,20 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 _GEMINI_ROLE_TOKENS = {"extractor": 16000}
 
 
+def _gemini_output_tokens(model: str, role: str) -> int:
+    """這次要跟 Gemini 要多少輸出額度,**夾在該模型的文件上限內**。
+
+    外審 2026-08-17:抽取器的角色額度 16,000 被無差別套到降級鏈的每一棒,
+    而 `gemini-2.0-flash`(鏈上最後一棒)的上限就是 8,192 —— 送 16,000
+    會當場 400,等於**最後一層備援從來沒有真的存在過**。
+    **一律夾**,不分收錄與否 —— `max_output_for` 對未收錄的模型回的就是
+    保守值,而那張表寫明了這個不對稱:「額度給得比真實上限低,最壞是輸出
+    被截斷(可偵測、有重試);給得比真實上限高,是當場 400、整份分析作廢」。
+    """
+    want = max(8192, LLM_REPORT_MAX_TOKENS, _GEMINI_ROLE_TOKENS.get(role, 0))
+    return min(want, _lt.max_output_for(model)[0])
+
+
 def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     """單次呼叫 Gemini REST。失敗時直接 raise，由外層處理重試/降級。"""
     if not GEMINI_API_KEY:
@@ -11897,8 +11911,7 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.3,
-            "maxOutputTokens": max(8192, LLM_REPORT_MAX_TOKENS,
-                                   _GEMINI_ROLE_TOKENS.get(role, 0)),
+            "maxOutputTokens": _gemini_output_tokens(model, role),
         },
     }
     r = requests.post(url, json=payload, timeout=_llm_request_timeout(),

@@ -1807,3 +1807,85 @@ def test_rationale_strip_does_not_eat_legitimate_user_news():
     ]
     for raw, want in blocked:
         assert mr._strip_selection_rationale(raw) == want, raw
+
+
+def _gemini_router(monkeypatch, table):
+    """按型號回不同回應;回 `calls`(實際送出的型號序列)。"""
+    calls = []
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+    monkeypatch.setattr(mr, "_llm_sleep", lambda s: None)
+
+    class _R:
+        def __init__(self, payload):
+            self._p = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._p
+
+    def fake_post(url, json=None, timeout=None, headers=None):
+        model = url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        finish, text = table[model]
+        return _R({"candidates": [{"finishReason": finish,
+                                   "content": {"parts": [{"text": text}]}}]})
+
+    monkeypatch.setattr(mr.requests, "post", fake_post)
+    return calls
+
+
+def test_gemini_safety_then_fallback_records_both_attempts(monkeypatch):
+    """**每一次送出去的請求都要剛好一筆紀錄**(外審 2026-08-17 r4)。
+
+    先前只有成功那一次進 manifest —— 於是「Flash 被 SAFETY 擋、Flash-Lite
+    才成功」在事後長得像「Flash-Lite 一次就成功」,成本、呼叫數與 provider
+    健康度全部看不到被擋的那次。
+    """
+    calls = _gemini_router(monkeypatch, {
+        "gemini-2.5-flash": ("SAFETY", '[{"entity":"Iran"}]'),
+        "gemini-2.5-flash-lite": ("STOP", "[]")})
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._call_gemini("p", role="extractor") == "[]"
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    failed = [a for a in (llm.get("attempts") or [])
+              if a.get("provider") == "gemini"]
+    assert len(failed) == 1, failed
+    assert failed[0]["model"] == "gemini-2.5-flash"
+    assert failed[0]["finish_reason"] == "SAFETY", failed[0]
+    assert failed[0]["fallback_to"] == "gemini-2.5-flash-lite"
+    assert (llm.get("extractor") or {}).get("model") == "gemini-2.5-flash-lite"
+    # 實際只送出兩次(SAFETY 不在同一個模型上重試)—— 帳與行為要對得上
+    assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], calls
+
+
+def test_a_provider_verdict_is_not_retried_on_the_same_model(monkeypatch):
+    """**provider 的裁決不重試同一個模型。** 內容過濾與額度用盡都是對
+    「這一份請求」的判定 —— 原封不動再送兩次只是多付兩次錢、多等 15 秒,
+    結論一樣。"""
+    for reason in ("SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT",
+                   "SPII", "LANGUAGE", "MAX_TOKENS"):
+        calls = _gemini_router(monkeypatch, {
+            "gemini-2.5-flash": (reason, "partial"),
+            "gemini-2.5-flash-lite": ("STOP", "ok")})
+        mr._RUN_MANIFEST.pop("llm", None)
+        assert mr._call_gemini("p") == "ok"
+        assert calls == ["gemini-2.5-flash", "gemini-2.5-flash-lite"], (
+            f"{reason} 在同一個模型上重試了:{calls}")
+
+
+def test_an_unknown_finish_reason_still_gets_limited_retries(monkeypatch):
+    """`OTHER` / 未見過的原因**可能**是暫時性的 —— 允許有限重試,
+    但每一次都要有紀錄(不確定的原因不該直接放棄那個模型)。"""
+    calls = _gemini_router(monkeypatch, {
+        "gemini-2.5-flash": ("OTHER", "partial"),
+        "gemini-2.5-flash-lite": ("STOP", "ok")})
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._call_gemini("p") == "ok"
+    assert calls.count("gemini-2.5-flash") == 3, calls
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    failed = [a for a in (llm.get("attempts") or [])
+              if a.get("provider") == "gemini"]
+    assert len(failed) == 3, "三次都送出去了,紀錄卻不是三筆"
+    assert {a["finish_reason"] for a in failed} == {"OTHER"}

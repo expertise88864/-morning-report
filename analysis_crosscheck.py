@@ -202,6 +202,21 @@ def _claim_graph_problems(obj) -> list:
         if not cited and claims:
             out.append(f"{sec} 沒有回指任何 claim —— "
                        "說不出這一段靠哪幾條主張,稽核就只是裝飾")
+    # **觀察點的完整文字要有上限**(外審 2026-08-17 r4)。身分與跨日回顧
+    # 都用完整文字,而 schema 對它沒有長度限制 —— 一條三萬字的 trigger 會
+    # 被存進 state、活最多 28 天、每天原樣送進 packet。
+    # **不靜默截斷**:截斷會讓身分退回「前 N 字」,那正是這一輪剛拆掉的坑。
+    # 交給修補輪處理 —— 模型知道要把「條件 + 門檻 + 結論」寫在上限之內。
+    import analysis_recap as _arc9
+    for i, w in enumerate((obj or {}).get("watch_triggers") or []):
+        if not isinstance(w, dict):
+            continue
+        _full = _arc9.normalized_trigger(w.get("trigger"))
+        if len(_full) > _arc9.WATCH_TRIGGER_MAX:
+            out.append(
+                f"watch_triggers[{i}] 的 trigger 有 {len(_full)} 字,超過上限 "
+                f"{_arc9.WATCH_TRIGGER_MAX} —— 它會被存進 state 並每天送進"
+                "分析素材;請把「條件 + 門檻 + 結論」寫得更精簡")
     # **回指要連對,不只是連上。** 相容由 `HORIZON_MATRIX` 逐格決定
     # (第二十二輪 P1-5):太短撐不起,差兩階也撐不起。訊息不再說
     # 「全都比它更短」—— 那句話對「差兩階更長」是錯的,而程式會擋它。

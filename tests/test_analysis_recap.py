@@ -1208,3 +1208,42 @@ def test_two_opposing_watches_stay_distinguishable_after_a_round_trip(tmp_path):
     assert any("突破 1200" in t for t in texts), texts
     ids = {str(w.get("watch_id") or "") for w in tomorrow}
     assert len(ids) == 2, ids
+
+
+def test_the_full_watch_text_has_an_enforced_upper_bound():
+    """**完整文字要有上限,而且不靜默截斷**(外審 2026-08-17 r4)。
+
+    身分與跨日回顧都用完整文字,而 schema 對 `trigger` 沒有長度限制 ——
+    一條三萬字的 trigger 會被存進 state、活最多 28 天、每天原樣送進 packet。
+    截斷不是解法(那會讓身分退回「前 N 字」,正是這一輪剛拆掉的坑);
+    交給**驗證問題 → 語意修補**,模型知道要寫得更精簡。
+
+    上限是量出來的:2026-08-17 生產帳本 4 條,長度 16/28/38/39 字。
+    """
+    import analysis_schema as sch
+    import fixtures_analysis as fx
+    pk = _packet(date="2026-08-18")
+    obj = fx.valid_analysis()
+    obj["data_gaps"] = [{"gap_id": g, "what_is_missing": "x",
+                         "impact_on_conclusions": "y"}
+                        for g in ("gap:us_vs_taifex", "gap:prediction_vs_breadth",
+                                  "gap:sector_internal_divergence",
+                                  "gap:rates_vs_tech")]
+    too_long = "很長的條件" * 200
+    assert len(too_long) > rc.WATCH_TRIGGER_MAX
+    obj["watch_triggers"] = [{"trigger": too_long, "why": "x",
+                              "horizon": "intraday", "claim_ids": ["c1"]}]
+    hits = [p for p in sch.validate(obj, pk) if "超過上限" in p]
+    assert hits and str(len(too_long)) in hits[0], hits
+    # 正常長度不得誤報(誤報會訓練出「看到問題就改措辭」的模型行為)
+    obj["watch_triggers"] = [{"trigger": "若美元指數突破 105 則觀察 2330 轉弱",
+                              "why": "x", "horizon": "intraday",
+                              "claim_ids": ["c1"]}]
+    assert not [p for p in sch.validate(obj, pk) if "超過上限" in p]
+
+
+def test_the_bound_is_above_what_production_actually_writes():
+    """上限要**高於生產實際的長度**,否則每天都在報同一個問題。
+    2026-08-17 帳本最長 39 字;上限訂在它的十倍。"""
+    assert rc.WATCH_TRIGGER_MAX >= 10 * 39
+    assert rc.WATCH_TRIGGER_MAX > rc.WATCH_CHARS, "完整文字的上限不得低於顯示上限"

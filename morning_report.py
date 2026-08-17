@@ -11947,7 +11947,8 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     # 會在 manifest 與品質信裡當場看見,不是靜默漂移。
     _reason = str(candidates[0].get("finishReason") or "").upper()
     if _reason != "STOP":
-        raise RuntimeError(
+        raise GeminiCompletionError(
+            _reason,
             f"Gemini finishReason={_reason or 'MISSING'} —— 不是正常結束"
             f"({len(text)} 字元,role={role},model={model})")
     return text
@@ -11967,6 +11968,54 @@ GEMINI_FALLBACK_MODELS = [
     "gemini-2.5-flash-lite",         # 更輕量，較少 503
 ]
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
+
+#: **provider 對這一份請求的裁決**,重送同一份沒有意義(外審 2026-08-17 r4)。
+#: 內容過濾類的判定是「這個 prompt/這段輸出不被允許」—— 原封不動再送兩次
+#: 只是多兩次計費與 15 秒,結論一樣。`MAX_TOKENS` 同理:請求沒縮短、額度
+#: 沒改,重送不會修正造成截斷的條件。這些一律**直接換下一個模型**。
+_GEMINI_VERDICT_REASONS = frozenset({
+    "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII",
+    "LANGUAGE", "IMAGE_SAFETY", "MALFORMED_FUNCTION_CALL", "MAX_TOKENS"})
+
+
+class GeminiCompletionError(RuntimeError):
+    """Gemini 回了東西但**不是正常結束**。
+
+    與傳輸層失敗(逾時、429、5xx)分開:那些重送同一個模型有意義,
+    而 provider 對這份請求的裁決沒有。`retryable` 讓呼叫端不必自己解析
+    訊息字串就能決定要不要在同一個模型上再試。
+    """
+
+    def __init__(self, reason: str, message: str):
+        super().__init__(message)
+        self.finish_reason = str(reason or "MISSING").upper()
+        self.retryable = self.finish_reason not in _GEMINI_VERDICT_REASONS
+
+
+def _next_gemini(model: str) -> str:
+    """降級鏈上的下一棒(沒有就回空字串)—— 紀錄要寫得出「換給誰」。"""
+    try:
+        i = GEMINI_FALLBACK_MODELS.index(model)
+    except ValueError:
+        return ""
+    return (GEMINI_FALLBACK_MODELS[i + 1]
+            if i + 1 < len(GEMINI_FALLBACK_MODELS) else "")
+
+
+def _record_gemini_failure(role: str, model: str, t0: float, err: str,
+                           exc=None, next_model: str = "") -> None:
+    """失敗的那一次也要入帳(**一次請求一筆**)。
+
+    `finish_reason` 是這裡最重要的欄位:事後要分得開「被內容過濾擋下」、
+    「額度用盡截斷」與「傳輸層掛掉」—— 三者的處置完全不同。
+    """
+    _record_llm_call(
+        role, "gemini", model, accepted=False,
+        elapsed=time.monotonic() - t0, error=err[:160],
+        finish_reason=getattr(exc, "finish_reason", "") or "",
+        # 送出去了就可能被計費;被拒(401/402/403)才不計費。
+        billable_unmeasured=not _lt.refusal_reason(exc if exc is not None else err),
+        fallback_to=next_model or "")
 
 
 def _call_gemini(prompt: str, role: str = "primary") -> str:
@@ -11992,6 +12041,12 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
             except requests.exceptions.HTTPError as e:
                 code = e.response.status_code if e.response is not None else None
                 last_err = RuntimeError(_http_error_summary(e))
+                # **每一次送出去的請求都要剛好一筆紀錄**(外審 r4):先前只有
+                # 成功那一次進 manifest —— 於是「Flash 被 SAFETY 擋三次、
+                # Flash-Lite 才成功」在事後長得像「Flash-Lite 一次就成功」,
+                # 成本、呼叫數與 provider 健康度全部看不到那三次。
+                _record_gemini_failure(role, model, _t0, str(last_err),
+                                       exc=e, next_model=_next_gemini(model))
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))   # 5, 15, 45
                     print(f"[llm] HTTP {code} 暫時故障，{wait}s 後重試", file=sys.stderr)
@@ -12002,7 +12057,12 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
             except Exception as e:
                 last_err = e
                 print(f"[llm] {model} 異常: {_redact_secret_text(str(e))}", file=sys.stderr)
-                if attempt < 3:
+                _record_gemini_failure(role, model, _t0,
+                                       _redact_secret_text(str(e)), exc=e,
+                                       next_model=_next_gemini(model))
+                # **provider 的裁決不重試同一個模型**:內容過濾與額度用盡
+                # 都是對「這一份請求」的判定,原樣再送兩次只是多付兩次錢。
+                if getattr(e, "retryable", True) and attempt < 3:
                     _llm_sleep(5)
                     continue
                 break

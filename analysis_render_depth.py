@@ -36,6 +36,16 @@ def _chain_line(chain: list) -> str:
     那種句子(通道與 fact/推論 標記拿掉了 —— 那些括號正是把一句話
     撐成三行的東西,欄位本身仍在 schema 裡被驗證)。
     """
+    # **連續性的判準要與驗證器同一個**(外審 2026-08-17):schema 明說
+    # 「照抄再補充」是合法的接法(`先進封裝產能擴充` → `先進封裝產能擴充
+    # (CoWoS 量產)`),`analysis_validate._same_node` 用包含判準放行 ——
+    # 渲染層若改用逐字相等,**驗證過的連續鏈會被畫成斷鏈**,而讀者只會
+    # 看到一條莫名其妙分成兩段的因果鏈。判準只有一份,不在這裡重寫。
+    try:
+        from analysis_validate import _same_node as _cont
+    except Exception:               # noqa: BLE001 - 判準載不到就退回逐字
+        def _cont(prev_to, cur_from, subjects=()):
+            return str(prev_to or "") == str(cur_from or "")
     segs, nodes = [], []
     for st in (chain or []):
         a, b = _s(st.get("from_what")), _s(st.get("to_what"))
@@ -43,7 +53,8 @@ def _chain_line(chain: list) -> str:
             continue
         if not nodes:
             nodes = [a, b]
-        elif nodes[-1] == a:
+        elif _cont(nodes[-1], a):
+            # 接得上就只補終點 —— 起點的補充細節不再重複印一次。
             nodes.append(b)
         else:
             segs.append(nodes)

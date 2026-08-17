@@ -405,6 +405,19 @@ def _render_case(pk: dict) -> dict:
         {"from_what": "市場關注提高", "to_what": "投資情緒改善",
          "channel": "情緒", "stage": "sentiment", "step_type": "inference",
          "evidence_ids": []}]
+    # **鏈的連續性判準要在指紋裡看得見**(外審 2026-08-17):第二則的
+    # 第二步刻意用 schema 明說的「照抄再補充」形狀(上一步的終點完整
+    # 出現在這一步的起點裡)。逐字相等的探針量不到這條規則 ——
+    # renderer 改回逐字相等會把驗證過的連續鏈畫成斷鏈,而指紋不動。
+    if len(o.get("top_news_analysis") or []) > 1:
+        o["top_news_analysis"][1]["mechanism_steps"] = [
+            {"from_what": "AI 需求", "to_what": "先進封裝產能擴充",
+             "channel": "產能", "stage": "operations", "step_type": "fact",
+             "evidence_ids": []},
+            {"from_what": "先進封裝產能擴充（CoWoS 量產）",
+             "to_what": "台積電營收上修", "channel": "營收",
+             "stage": "financial", "step_type": "inference",
+             "evidence_ids": []}]
     return o
 
 
@@ -722,7 +735,7 @@ _FROZEN = {
     #     收起來;留下判斷、失效條件、傳導鏈一行、逐標的影響一行,以及
     #     句尾的誠實性括號(來源、反面證據、追蹤天數)。**欄位仍在
     #     schema 裡被要求與驗證**,只是不再排進讀者視線。
-    "renderer_version":         (14, "6823a56a74febf61"),
+    "renderer_version":         (14, "ddd94b6e4c2f29cb"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

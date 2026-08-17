@@ -184,6 +184,23 @@ def test_a_broken_chain_is_not_rendered_as_one_arrow_run():
     assert broken == "A → B；X → Y", broken
 
 
+def test_a_chain_that_the_validator_accepts_is_not_drawn_as_broken():
+    """**連續性的判準要與驗證器同一個**(外審 2026-08-17)。
+
+    schema 明說「照抄再補充」是合法接法,`analysis_validate._same_node`
+    用包含判準放行 —— 渲染層若改用逐字相等,一條**驗證過的連續鏈**會被
+    畫成斷鏈,而讀者只會看到一條莫名其妙分成兩段的因果鏈。
+    """
+    import analysis_render_depth as ard
+    import analysis_validate as av
+    steps = [{"from_what": "AI 需求", "to_what": "先進封裝產能擴充"},
+             {"from_what": "先進封裝產能擴充（CoWoS 量產）",
+              "to_what": "台積電營收上修"}]
+    assert av._same_node(steps[0]["to_what"], steps[1]["from_what"]), (
+        "前提:驗證器認為這條鏈是連續的")
+    assert ard._chain_line(steps) == "AI 需求 → 先進封裝產能擴充 → 台積電營收上修"
+
+
 def test_two_effect_sentences_do_not_collide():
     """兩段影響是**兩句話**:先前用「、」黏起來,接出「。、」
     (2026-08-17 生產信裡看得到)。"""

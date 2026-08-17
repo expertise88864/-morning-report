@@ -180,11 +180,23 @@ def trigger_key(text) -> str:
     一個沒有結論的前綴打勾。
     """
     import hashlib
-    import re as _re
-    norm = _re.sub(r"\s+", " ", str(text or "")).strip()
+    norm = normalized_trigger(text)
     if not norm:
         return ""
     return "t" + hashlib.sha256(norm.encode("utf-8")).hexdigest()[:16]
+
+
+def normalized_trigger(text) -> str:
+    """觀察點的**完整**文字(只收斂空白,不截斷)。
+
+    帳本要存這一份(外審 2026-08-17 r3):身分拆開之後,兩條結論相反的
+    觀察點會拿到不同的 `watch_id` —— 但如果存下來的只有截斷文字,明天
+    `usable_watch()` 送進 prompt 的就是兩個不同 ID 配**一模一樣、沒有
+    結論**的描述,模型無法判斷哪個 ID 對應哪個條件,可能關錯或留錯。
+    截斷只在**顯示**的時候做。
+    """
+    import re as _re
+    return _re.sub(r"\s+", " ", str(text or "")).strip()
 
 
 def canonical_trigger(text) -> str:
@@ -212,8 +224,9 @@ def _watch_of(obj) -> list:
         trig = str(w.get("trigger") or "").strip()
         if not trig:
             continue
-        out.append({"trigger": canonical_trigger(trig),   # 顯示/儲存用
-                    "trigger_key": trigger_key(trig),      # 身分用(完整文字)
+        out.append({"trigger": canonical_trigger(trig),      # 顯示用(截斷)
+                    "trigger_full": normalized_trigger(trig),  # 跨日回顧要看得懂
+                    "trigger_key": trigger_key(trig),          # 身分(完整文字)
                     "why": str(w.get("why") or "").strip()[:WATCH_CHARS],
                     "horizon": str(w.get("horizon") or "")[:16]})
         if len(out) >= WATCH_MAX:
@@ -276,7 +289,8 @@ def _watch_ledger(prior) -> list:
         # 完整版時算出來的鍵不同,會被標成一次性一兩天,直到舊條目到期。
         # 這比讓兩條結論相反的觀察點永久共用一個身分好。
         if not str(w.get("trigger_key") or ""):
-            w["trigger_key"] = trigger_key(w.get("trigger"))
+            w["trigger_key"] = trigger_key(w.get("trigger_full")
+                                           or w.get("trigger"))
         if not str(w.get("created") or ""):
             w["created"] = base
         if not str(w.get("deadline") or ""):
@@ -336,7 +350,8 @@ def carry_watch(prior, obj, today: str) -> list:
     # `_watch_ledger()` 已經替舊條目補好鍵(由它**存下來的**那份文字算),
     # 所以這裡只比鍵 —— 再留一條「顯示字串相同也算同一條」的退路,等於把
     # 剛剛拆開的身分又黏回去(第一版就是這樣,結論相反的兩條仍被壓成一條)。
-    seen_keys = {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
+    seen_keys = {str(w.get("trigger_key")
+                        or trigger_key(w.get("trigger_full") or w.get("trigger")))
                  for w in out if str(w.get("trigger") or "").strip()}
     dropped = 0
     for fresh in _watch_of(obj):
@@ -427,7 +442,8 @@ def ledger_triggers(path):
         rec = load(path)
         if not isinstance(rec, dict):
             return None
-        return {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
+        return {str(w.get("trigger_key")
+                        or trigger_key(w.get("trigger_full") or w.get("trigger")))
                 for w in _watch_ledger(rec)
                 if str(w.get("trigger") or "").strip()
                 and str(w.get("status") or WATCH_OPEN) == WATCH_OPEN}
@@ -453,7 +469,8 @@ def tracked_triggers(path, analysis_obj, today: str) -> set:
     測不到的宣稱不留。
     """
     ledger, _seq, _dropped = carry_watch(load(path), analysis_obj, today)
-    return {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
+    return {str(w.get("trigger_key")
+                        or trigger_key(w.get("trigger_full") or w.get("trigger")))
             for w in ledger if str(w.get("trigger") or "").strip()}
 
 
@@ -571,7 +588,11 @@ def usable_watch(recap, target_session_date: str) -> list:
             continue
         out.append({"watch_id": str(w.get("watch_id") or ""),
                     "date": created,
-                    "trigger": str(w.get("trigger") or ""),
+                    # **模型要能分辨兩條結論相反的觀察點**(外審 r3):
+                    # 送截斷版的話,兩個不同 ID 會配一樣的描述。
+                    # 舊條目沒有完整版 → 退回它存下來的那份(遷移限制)。
+                    "trigger": str(w.get("trigger_full")
+                                   or w.get("trigger") or ""),
                     "why": str(w.get("why") or ""),
                     "horizon": str(w.get("horizon") or ""),
                     "deadline": str(w.get("deadline") or "")})

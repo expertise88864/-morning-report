@@ -1173,3 +1173,38 @@ def test_an_overlong_entry_left_by_an_older_version_still_matches(tmp_path):
                               "horizon": "1-5d"}]
     out = ar.render(obj, None, admitted_watch=on_disk)
     assert "一次性觀察" not in out, "舊帳本裡的未截斷值對不上了"
+
+
+def test_two_opposing_watches_stay_distinguishable_after_a_round_trip(tmp_path):
+    """**存進去、讀回來、送進明天的 prompt 都要分得出是哪一條**
+    (外審 2026-08-17 r3)。
+
+    上一版把身分拆開了(兩條拿到不同 `watch_id`),但帳本存下來的仍然
+    只有截斷文字 —— 於是明天 `usable_watch()` 送進 prompt 的是兩個不同
+    ID 配**一模一樣、沒有結論**的描述,模型無法判斷哪個 ID 對應哪個條件,
+    可能關錯或留錯。上一輪的測試只驗記憶體裡的帳本、只渲染今天的完整
+    物件,**沒有走 save → load → usable_watch**,所以看不到後綴掉了。
+    """
+    import fixtures_analysis as fx
+    head = "若美元指數與美債殖利率同步上升" + "而外資連續賣超" * 18
+    assert len(head) > rc.WATCH_CHARS
+    a, b = head + "則觀察 2330 跌破 1100", head + "則觀察 2330 突破 1200"
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": a, "why": "x", "horizon": "1-5d"},
+                             {"trigger": b, "why": "y", "horizon": "1-5d"}]
+    path = tmp_path / "recap.json"
+    assert rc.save(path, obj, _packet(date="2026-08-18")) == rc.SAVED
+    # 讀回來:兩條都在,而且**存了完整文字**
+    rows = rc.load(path)["watch"]
+    assert len(rows) == 2, rows
+    fulls = {str(w.get("trigger_full") or "") for w in rows}
+    assert fulls == {rc.normalized_trigger(a), rc.normalized_trigger(b)}, fulls
+    # 明天的 prompt:兩條的描述必須不一樣(否則模型分不出哪個 ID 是哪條)
+    tomorrow = rc.usable_watch(rc.load(path), "2026-08-19")
+    assert len(tomorrow) == 2, tomorrow
+    texts = {str(w.get("trigger") or "") for w in tomorrow}
+    assert len(texts) == 2, f"兩條在 prompt 裡長得一樣:{texts}"
+    assert any("跌破 1100" in t for t in texts), texts
+    assert any("突破 1200" in t for t in texts), texts
+    ids = {str(w.get("watch_id") or "") for w in tomorrow}
+    assert len(ids) == 2, ids

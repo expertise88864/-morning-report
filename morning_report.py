@@ -12640,18 +12640,40 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         HTTP 4xx 不換(請求本身有問題);額度用完也不換(有減量重試)。只換一次。
         """
         _ep = _extractor_provider()
+        _t0 = time.monotonic()
         try:
             return _dispatch_extractor(_ep, p)
         except (requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError) as e:
             _alt = _lc.fallback_extractor_provider(
                 _ep, lambda k: bool(os.environ.get(k, "").strip()))
+            # **失敗的那次呼叫要留紀錄**(2026-08-17 生產):manifest 只有
+            # `fallback_from: deepseek → gemini`,而「是逾時還是連線中斷、
+            # 花了幾秒才放棄」查不到 —— 那三件事正是判斷「timeout 該不該調」
+            # 的全部依據(批#95 已經為主分析補過同一件事,抽取器漏了)。
+            # 成本也看得到它:送出去了就可能被計費。
+            # **有沒有備援可換都要記**:沒得換的日子反而完全沒有紀錄,
+            # 而那是更該被看見的一天。
+            _record_llm_call(
+                "extractor", _ep, _extractor_model_of(_ep), accepted=False,
+                elapsed=time.monotonic() - _t0,
+                error=f"{type(e).__name__}: {e}"[:160],
+                billable_unmeasured=not _lt.refusal_reason(e),
+                fallback_to=_alt or "")
             if not _alt:
                 raise
             print(f"[llm-extractor] {_ep} 網路失敗({type(e).__name__}),"
                   f"改用 {_alt}", file=sys.stderr)
             _stat["fallback_from"], _stat["fallback_to"] = _ep, _alt
             return _dispatch_extractor(_alt, p)
+
+    def _extractor_model_of(_ep: str) -> str:
+        """紀錄要寫得出**用的是哪個模型** —— 只記 provider 的話,
+        「flash 逾時」與「pro 逾時」在事後長得一樣。"""
+        return {"deepseek": DEEPSEEK_EXTRACTOR_MODEL,
+                "openai": OPENAI_EXTRACTOR_MODEL,
+                "gemini": GEMINI_MODEL,
+                "anthropic": CLAUDE_MODEL}.get(_ep, "")
 
     def _dispatch_extractor(_ep: str, p: str) -> str:
         # 批#90:抽取器可獨立指定 provider(見 `EXTRACTOR_PROVIDER`)。

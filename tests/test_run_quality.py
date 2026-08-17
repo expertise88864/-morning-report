@@ -1917,3 +1917,71 @@ def test_an_http_refusal_from_openai_is_recorded(monkeypatch):
                      llm={"attempts": [dict(att[-1])]})
     assert [f for f in rq.assess(m)
             if f["code"] == "llm_provider_refused_payment"]
+
+
+def _extractor_news():
+    return [{"source": "MOPS", "source_grade": "A", "importance": "critical",
+             "published": "Tue, 02 Jun 2026 00:00:00 GMT",
+             "title": "official critical event",
+             "fulltext": "detailed official disclosure"}]
+
+
+def test_a_failed_extractor_call_is_recorded_before_the_fallback(monkeypatch):
+    """**換 provider 之前那次失敗要留紀錄**(2026-08-17 生產)。
+
+    manifest 當天只有 `fallback_from: deepseek → gemini` —— 是逾時還是
+    連線中斷、花了幾秒才放棄,全部查不到,而那三件事正是判斷
+    「timeout 該不該調」的全部依據(批#95 已經為主分析補過同一件事)。
+    """
+    import requests
+    import morning_report as mr
+
+    def _boom(prompt):
+        raise requests.exceptions.Timeout("read timed out")
+
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+    # `fallback_extractor_provider` 問的是**環境變數**(生產就是這樣判
+    # 有沒有金鑰)—— 只設模組屬性的話根本走不到備援那條路,
+    # 而這條測試量的正是那條路。
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "g")
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _boom)
+    monkeypatch.setattr(mr, "_call_gemini", lambda p, role="primary": "[]")
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr.call_llm_event_extractor(_extractor_news(), [])
+
+    att = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+           if a.get("role") == "extractor"]
+    assert att, "換 provider 之前那次失敗完全沒有進 manifest"
+    assert "Timeout" in str(att[-1].get("error")), att[-1]
+    assert att[-1].get("provider") == "deepseek"
+    assert att[-1].get("model"), "沒記用的是哪個模型 —— flash 逾時與 pro 逾時長得一樣"
+    assert att[-1].get("elapsed_seconds") is not None, "沒記耗時"
+    # 逾時是 server 收下請求之後才斷 —— 照樣計費
+    assert att[-1].get("billable_unmeasured") is True, att[-1]
+    assert att[-1].get("fallback_to") == "gemini"
+
+
+def test_the_record_survives_when_there_is_no_fallback(monkeypatch):
+    """**沒有備援可換的日子反而更該被看見** —— 例外往外拋,但紀錄要留。"""
+    import requests
+    import morning_report as mr
+
+    def _boom(prompt):
+        raise requests.exceptions.ConnectionError("connection reset")
+
+    monkeypatch.setattr(mr, "EXTRACTOR_PROVIDER", "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "k")
+    for k in ("GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.setattr(mr, k, "")
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", _boom)
+    mr._RUN_MANIFEST.pop("llm", None)
+    mr.call_llm_event_extractor(_extractor_news(), [])   # 抽取器自己吞例外
+
+    att = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
+           if a.get("role") == "extractor"]
+    assert att, "沒有備援可換時,那次失敗完全沒有紀錄"
+    assert "ConnectionError" in str(att[-1].get("error")), att[-1]
+    assert not att[-1].get("fallback_to"), "沒換 provider 卻記了換到誰"

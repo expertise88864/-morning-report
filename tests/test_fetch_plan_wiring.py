@@ -166,3 +166,58 @@ def test_plan_for_run_guarantees_ids_for_the_caller():
     # 生產的下一步:同一個 list 交給 fetch —— 它也以 source_item_id 索引
     by_id = {n["source_item_id"]: n for n in news}
     assert all(str(t) in by_id for t in targets), "targets 必須能被 fetch 階段解析"
+
+
+def _editorial_shape():
+    """**抓取層真的會產出的欄位**:沒有 `entities`,只有編輯人工標註。
+
+    上面那份 `_raw_news()` 直接預填 `entities` —— 於是它證明不了規劃器
+    在生產會不會分群(2026-08-17:402 則新聞 402 群)。
+    """
+    return [
+        {"title": "台積電 法說會 上修 全年 資本支出 至 520 億美元",
+         "summary": "台積電上修資本支出", "source": "鉅亨",
+         "source_name": "鉅亨網", "link": "https://news.cnyes.com/a",
+         "published": "2026-08-17T10:00:00Z", "importance": "critical",
+         "company_label": "2330", "cnyes_stocks": ["2330"],
+         "cnyes_keywords": ["台積電"]},
+        {"title": "台積電 法說會 上修 全年 資本支出 至 520 億",
+         "summary": "資本支出上修", "source": "Google:2330",
+         "source_name": "經濟日報", "link": "https://money.udn.com/b",
+         "published": "2026-08-17T10:30:00Z", "importance": "high",
+         "company_label": "2330"},
+        {"title": "台積電 法說會 上修 資本支出 至 520 億美元 全年",
+         "summary": "上修", "source": "Google:2330",
+         "source_name": "工商時報", "link": "https://ctee.com.tw/c",
+         "published": "2026-08-17T11:00:00Z", "importance": "high",
+         "company_label": "2330"},
+        {"title": "長榮 海運 運價 指數 SCFI 連續 三週 上漲",
+         "summary": "運價上漲", "source": "Google:2603",
+         "source_name": "自由時報", "link": "https://ltn.com.tw/e",
+         "published": "2026-08-17T02:00:00Z", "importance": "medium",
+         "company_label": "2603"},
+    ]
+
+
+def test_the_planner_clusters_production_shaped_news(monkeypatch):
+    """**實體要在分群之前就位。**
+
+    規劃器跑在 `normalize_news()` 之前 —— 判準只補在正規化那一層的話,
+    規劃器看到的仍然是「每則新聞自成一群」,而 26 篇全文額度會被同一
+    事件的三家轉載吃掉,其他重大事件連全文都拿不到(外審 2026-08-17)。
+    """
+    news = _editorial_shape()
+    seen = {}
+
+    class _Rec:
+        def record_fulltext_plan(self, out):
+            seen.update(out)
+
+    fp.plan_for_run(news, budget=2, recorder=_Rec())
+    groups = seen.get("per_cluster") or []
+    assert len(groups) == 2, seen
+    assert max(g["size"] for g in groups) == 3, "三家報同一件事沒有併成一群"
+    # 同一件事的三家報導共用一群 → 長榮那則才拿得到第二個全文名額
+    assert len(seen.get("targets") or []) == 2, seen
+    assert all(isinstance(n.get("entities"), list) and n["entities"]
+               for n in news), "規劃器沒有把實體補回原始清單"

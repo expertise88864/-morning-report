@@ -199,7 +199,18 @@ def plan_for_run(news: Optional[list], recorder=None, budget: int = 26,
     """
     import news_clusters as _nc
     import news_ids as _nids
+    import news_normalize as _nn
     news = _nids.assign_source_item_ids(news)
+    # **實體要在分群之前就位**(外審 2026-08-17)。抓取層給的是編輯標註
+    # (`company_label` / `cnyes_stocks` / `cnyes_keywords`),而
+    # `_same_event` 要求實體有交集 —— 這裡不補的話規劃器看到的是「每則
+    # 新聞自成一群」(2026-08-17 生產:402 則 = 402 群),26 篇全文額度
+    # 會被同一事件的重複報導吃掉,其他重大事件連全文都拿不到。
+    # 就地寫入且冪等,與上一行的 `assign_source_item_ids` 同一個先例:
+    # 呼叫端同一個 list 後續拿去抓全文與正規化,兩邊看到的是同一份。
+    for _n in news or []:
+        if isinstance(_n, dict):
+            _n["entities"] = _nn.entities_of(_n)
     out = plan(news, _nc.clusters(news), budget=budget,
                timeline=timeline_records(timeline_file) if timeline_file else [])
     rec = getattr(recorder, "record_fulltext_plan", None)

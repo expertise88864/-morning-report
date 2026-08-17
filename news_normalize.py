@@ -47,8 +47,17 @@ import source_registry as _sr
 _EDITORIAL_ENTITY_FIELDS = ("cnyes_stocks", "cnyes_keywords")
 
 
-def _entities_of(n: dict, clean) -> list:
-    """這則新聞講的是誰(編輯標註 → 實體)。"""
+def entities_of(n: dict, clean=None) -> list:
+    """這則新聞講的是誰(編輯標註 → 實體)。
+
+    **planner 與 packet 共用同一份**(外審 2026-08-17):全文規劃器
+    (`fetch_plan.plan_for_run`)在正規化**之前**就分群 —— 判準寫兩份的話,
+    規劃器看到的仍然是「每則新聞自成一群」,26 篇全文額度會被同一事件的
+    重複報導吃掉,而其他重大事件連全文都拿不到。
+    `clean` 省略時不消毒:規劃器階段的字串不會進 prompt,而消毒器要到
+    packet 那一層才存在。
+    """
+    clean = clean or (lambda x: x)
     out = {clean(str(e)) for e in (n.get("entities") or []) if str(e).strip()}
     lbl = str(n.get("company_label") or "").strip()
     if lbl:
@@ -103,7 +112,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "source_name": clean(str(n.get("source_name") or "")),
             "source_grade": _grade(n),
             "official": bool(n.get("official")),
-            "entities": _entities_of(n, clean),
+            "entities": entities_of(n, clean),
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
         # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。

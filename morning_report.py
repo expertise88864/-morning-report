@@ -13097,14 +13097,26 @@ def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
 
 
 #: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
-#: 多一個機制就等於兩個都測不出來(見 `_luna_analysis` 的 docstring)。
-#: 一輪初始 + **兩輪**修補(2026-08-12 CI #508)。命名類失誤已由正規化
-#: 家族收掉之後,剩下的駁回是實質分析規則(共用驅動的說明、第二個
-#: 總經發布的處置)—— 一輪修補收不完,而那一班還剩 900 秒預算沒用。
-#: 迴圈裡的預算守衛(剩餘 < 一輪實測耗時 + legacy 保留)本來就會在
-#: 時間不夠時放棄後續修補 —— 上限提高只花「還有剩」的預算,
-#: 每一輪同樣計費、同樣進 attempts。
-_LUNA_ATTEMPTS = (False, True, True)
+
+#: **修補額度依模式分開**(外審 2026-08-17 P1-2)。
+#: 先前 syntax 與 semantic 共用 `_LUNA_ATTEMPTS` 這一個計數器 —— 於是
+#: 最前面一個 JSON 逗號問題就會吃掉一輪 semantic 額度。而 2026-08-17
+#: 的生產軌跡證明**完整兩輪 semantic 是收斂所需**:12 → 1 → 0 才通過。
+#: 也就是說「JSON 包裝瑕疵」會確定性地剝奪後續的語意收斂能力,
+#: 讓本來會成功的特化分析落回 legacy。
+#:
+#: 拆的是**邏輯額度**,不是整體防護:wall-clock deadline、legacy 保留額、
+#: 逐次計費與 attempts 紀錄全部不變,而總嘗試數仍有硬上限
+#: (1 + syntax + semantic),不會因為模式輪替而無限延長。
+#: 三種模式,各自的額度說得出理由:
+#:   * `semantic` 2 —— 2026-08-17 生產的收斂軌跡 12 → 1 → 0,**兩輪都用到**;
+#:   * `regenerate` 2 —— 空回應是 provider 的偶發現象(adapter 契約明說),
+#:     沒有底本可修,重試是唯一的補救;這是先前 `_LUNA_ATTEMPTS` 給的
+#:     額度,不因為改成分模式而降級;
+#:   * `syntax` 1 —— 有內容但 JSON 壞掉,「只修語法不改語意」是設計好的
+#:     一次性補救;第二次還壞代表輸出結構性地爛,剩下的時間留給 legacy
+#:     更划算。
+_LUNA_REPAIR_LIMITS = {"syntax": 1, "regenerate": 2, "semantic": 2}
 
 #: 修補前必須為 legacy 備援保留的秒數(2026-08-07 E2E 第五次:legacy 在
 #: flash 上實測 190-310s 才寫得完整份;保留 300 讓「特化失敗 → legacy」
@@ -13190,7 +13202,47 @@ def _luna_analysis(packet: dict, effort: str) -> str:
     #: 修補輪從它接手,而不是從最新那一版 —— 見迴圈末的說明。
     _best_draft = None
     _req_chars = 0
-    for _ai, repair in enumerate(_LUNA_ATTEMPTS):
+    #: 各模式已用的修補次數(額度見 `_LUNA_REPAIR_LIMITS`)。
+    _repair_used = {k: 0 for k in _LUNA_REPAIR_LIMITS}
+    _ai, repair = 0, False
+
+    def _consume_repair(mode: str, label: str, elapsed: float) -> bool:
+        """扣一次修補額度並留痕;回 False = 不該再送(呼叫端 break)。
+
+        **記帳只有一份**:空回應、壞 JSON、語意不合格三條路徑先前各自
+        決定要不要再送一次,而其中一條(空回應)根本沒有記帳 —— 改成
+        while 迴圈之後那就是無限迴圈。時間守衛也收在這裡:剩餘預算裝不下
+        「再一輪 + legacy 保留」就停,把時間留給備援
+        (理由見 `_LEGACY_FALLBACK_RESERVE`)。
+        """
+        nonlocal _ai, repair
+        _slot = _RUN_MANIFEST.setdefault("llm", {})
+        if _repair_used[mode] >= _LUNA_REPAIR_LIMITS[mode]:
+            _slot["repair_budget"] = {"used": dict(_repair_used),
+                                      "limits": dict(_LUNA_REPAIR_LIMITS),
+                                      "exhausted": mode}
+            return False
+        if _LLM_DEADLINE is not None:
+            _remaining = _LLM_DEADLINE - time.monotonic()
+            if _remaining < elapsed + _LEGACY_FALLBACK_RESERVE:
+                print(f"[llm] 剩餘預算 {_remaining:.0f}s 裝不下修補一輪"
+                      f"(上一輪 {elapsed:.0f}s)+ legacy 保留 "
+                      f"{_LEGACY_FALLBACK_RESERVE:.0f}s,放棄修補",
+                      file=sys.stderr)
+                _slot["repair_skipped_budget"] = {
+                    "remaining_seconds": round(_remaining),
+                    "last_attempt_seconds": round(elapsed),
+                    "reserve_seconds": round(_LEGACY_FALLBACK_RESERVE)}
+                return False
+        _repair_used[mode] += 1
+        _ai += 1
+        repair = True
+        _slot.setdefault("repair_modes", []).append(label)
+        _slot["repair_budget"] = {"used": dict(_repair_used),
+                                  "limits": dict(_LUNA_REPAIR_LIMITS)}
+        return True
+
+    while True:
         # **每一次送出去的 body 都要過閘門**(第一輪外審 F1)。先前只在
         # 迴圈前量一次 —— 而修補/加深那次會把上一版的完整 JSON 附進
         # input,送的是一個**更大而且從沒被量過**的 payload。
@@ -13266,6 +13318,13 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 就整段放棄,新增的第二輪永遠走不到;若是加深那次回空,
             # 早退還跳過函式尾端的 `_kept` 回收,把已到手的合法版本一起
             # 丟掉。與 invalid-JSON 路徑當年拆掉的是同一種重複守衛。
+            # **這條路徑也要記帳**(2026-08-17,分模式額度之後):它先前
+            # 靠 `for` 迴圈的長度被擋住,改成 while + 計數器之後不記帳就是
+            # **無限迴圈**(而它的 continue 在時間守衛之前,連 deadline 都
+            # 攔不到)。空回應沒有底本可修 → 標 `regenerate`,額度算在
+            # syntax(兩者都是「沒拿到可用的 JSON」)。
+            if not _consume_repair("regenerate", "regenerate", elapsed):
+                break
             payload = dict(payload, input=(
                 bundle["user_payload"]
                 + "\n\nREPAIR\n上一次沒有輸出任何內容,請直接輸出完整 JSON。"))
@@ -13376,36 +13435,18 @@ def _luna_analysis(packet: dict, effort: str) -> str:
         _RUN_MANIFEST["llm"].setdefault("luna_problems", []).extend(problems[:5])
         print(f"[llm] Luna 輸出不合格({'修補後' if repair else '將修補一次'}):"
               f"{problems[:2]}", file=sys.stderr)
-        # **修補之前先確認 legacy 還有活路**(2026-08-07 E2E 第五次):
-        # flash + 1M payload 單次 310-370s,兩輪跑完 legacy 直接
-        # 「總時間預算已耗盡」→ 信只剩 emergency 備援字。修補值得試,
-        # 但**不值得拿寄信品質去換**:剩餘預算裝不下「再一輪(以第一輪
-        # 實測耗時估)+ legacy 保留額」就放棄修補,把時間留給備援。
-        # **只有還有下一輪可跳時才叫「放棄修補」**(外審 r2):最後一輪
-        # 之後守衛照跑的話,「上限打滿」會被誤記成「預算不夠」——
-        # 這個 trace 存在的理由正是把兩者分開。
-        if _ai + 1 < len(_LUNA_ATTEMPTS) and _LLM_DEADLINE is not None:
-            _remaining = _LLM_DEADLINE - time.monotonic()
-            if _remaining < elapsed + _LEGACY_FALLBACK_RESERVE:
-                print(f"[llm] 剩餘預算 {_remaining:.0f}s 裝不下修補一輪"
-                      f"(第一輪 {elapsed:.0f}s)+ legacy 保留 "
-                      f"{_LEGACY_FALLBACK_RESERVE:.0f}s,放棄修補", file=sys.stderr)
-                # **放棄的決定要留痕**(2026-08-13 生產:只跑了 2/3 輪,
-                # 而 manifest 分不出「預算不夠」與「迴圈壞掉」—— stderr
-                # 在 job log,要 admin 權限才讀得到)。
-                _RUN_MANIFEST.setdefault("llm", {})["repair_skipped_budget"] = {
-                    "remaining_seconds": round(_remaining),
-                    "last_attempt_seconds": round(elapsed),
-                    "reserve_seconds": round(_LEGACY_FALLBACK_RESERVE)}
-                break
+        # 下一輪要用哪個模式,由**這一輪的失敗型態**決定:解析不出來 →
+        # 語法輪(底本是原始文字);解析得出來但不合格 → 語意輪。
+        # 額度、時間守衛與留痕全部收在 `_consume_repair` 一份裡
+        # (2026-08-07 E2E 第五次的理由不變:剩餘預算裝不下「再一輪 +
+        # legacy 保留」就放棄修補,把時間留給備援)。
         # 2026-08-07 flash E2E:兩輪都因「引用了不存在的證據 ID」被擋,而模型
         # 寫的是**看起來很合理**的 ID(market:USDTWD.close —— 但 packet 裡
         # USDTWD 是純量,合法 ID 是 market:USDTWD)。只覆述問題不給出路,
         # 修補就是在賭模型第二次自己猜中 —— 把相近的合法 ID 一併給它。
-        if _ai + 1 >= len(_LUNA_ATTEMPTS):
-            # 最後一輪之後沒有下一次請求 —— 白建 payload 還會讓
-            # `repair_modes` 多記一筆,對不上實際送出的修補數(外審 r1 P3)。
-            continue
+        _next_mode = "syntax" if _parse_exc else "semantic"
+        if not _consume_repair(_next_mode, _next_mode, elapsed):
+            break
         # 修補型態:**只有解析例外才是語法輪**(外審 r1 P2)——
         # 解析成功而根不是物件,是結構/語意問題,底本用序列化後的值。
         _prev_json = (json.dumps(obj, ensure_ascii=False)
@@ -13441,10 +13482,6 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 # 只修語法不改語意 —— 不再從零重寫。
                 previous_raw=(str(out.get("text") or "")
                               if _parse_exc else ""))))
-        # 修補型態留痕:語法輪與語意輪的收斂性質完全不同,
-        # 事後要分得開(2026-08-13 生產只看得到一串 problems_total)。
-        _RUN_MANIFEST.setdefault("llm", {}).setdefault(
-            "repair_modes", []).append("syntax" if _parse_exc else "semantic")
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

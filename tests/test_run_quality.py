@@ -368,7 +368,9 @@ def test_the_gate_runs_on_every_attempt_and_records_its_own_chars():
     src = (Path(__file__).resolve().parents[1]
            / "morning_report.py").read_text(encoding="utf-8")
     body = src.split("def _luna_analysis(")[1].split("\ndef ")[0]
-    head, loop = body.split("for _ai, repair in enumerate(_LUNA_ATTEMPTS):", 1)
+    # 2026-08-17:迴圈改成 while + 分模式額度計數器(語法輪不再吃掉
+    # 語意輪的額度)—— 錨點跟著改,守衛的性質不變。
+    head, loop = body.split("    while True:", 1)
     assert "_pb.request_gate(" not in head, "閘門還在迴圈外只量一次"
     assert "_req_chars = _pb.request_gate(" in loop
     assert "request_chars=_req_chars" in loop, "字元沒有記到那一次呼叫上"
@@ -1607,9 +1609,12 @@ def test_the_luna_loop_allows_a_second_repair():
     迴圈裡的預算守衛在時間不夠時本來就會放棄後續修補,上限提高只花
     「還有剩」的預算。"""
     import morning_report as mr
-    assert len(mr._LUNA_ATTEMPTS) == 3, mr._LUNA_ATTEMPTS
-    assert mr._LUNA_ATTEMPTS[0] is False, "第一輪不是修補"
-    assert all(mr._LUNA_ATTEMPTS[1:]), "後續每一輪都是修補"
+    # 2026-08-17 外審 P1-2:額度依模式分開,語意仍是**兩輪**
+    # (生產軌跡 12 → 1 → 0 兩輪都用到)。語法輪與空回應各有自己的額度,
+    # 不再從語意這邊扣。
+    assert mr._LUNA_REPAIR_LIMITS["semantic"] == 2, mr._LUNA_REPAIR_LIMITS
+    assert mr._LUNA_REPAIR_LIMITS["syntax"] >= 1
+    assert mr._LUNA_REPAIR_LIMITS["regenerate"] >= 1
 
 
 def test_every_rejected_attempt_records_how_many_problems_remain():
@@ -1761,7 +1766,8 @@ def test_exhausting_all_attempts_is_not_recorded_as_a_budget_skip():
 
     def _bad(payload):
         calls.append(1)
-        if len(calls) == len(mr._LUNA_ATTEMPTS):
+        # 壞 JSON 走語法額度(1)→ 初始 + 1 次修補 = 2 次
+        if len(calls) == 1 + mr._LUNA_REPAIR_LIMITS["syntax"]:
             # 最後一輪回應後,讓剩餘預算變負 —— 舊碼會在這裡誤寫 trace
             mr._LLM_DEADLINE = _t.monotonic() - 1
         return {"status": "completed",
@@ -1778,7 +1784,7 @@ def test_exhausting_all_attempts_is_not_recorded_as_a_budget_skip():
             mr._call_llm_analysis_impl(
                 {"QQQ": {"close": 500.0, "change_pct": 1.0}},
                 {"fair_value": 100.0}, {"m": 1.0}, [], [], "")
-        assert len(calls) == len(mr._LUNA_ATTEMPTS), calls
+        assert len(calls) == 1 + mr._LUNA_REPAIR_LIMITS["syntax"], calls
         assert "repair_skipped_budget" not in (mr._RUN_MANIFEST.get("llm")
                                                or {}),             "上限打滿被誤記成預算不夠"
     finally:

@@ -152,7 +152,7 @@ def test_a_network_failure_falls_back_and_is_recorded(luna_on, monkeypatch):
 
 def test_repair_rounds_are_capped_and_every_attempt_is_billed(
         luna_on, monkeypatch):
-    """修補次數的上限**只由 `_LUNA_ATTEMPTS` 決定**,每一輪同樣計費。
+    """修補次數的上限由 `_LUNA_REPAIR_LIMITS` 決定,每一輪同樣計費。
 
     2026-08-12 CI #508:命名類失誤由正規化收掉後,剩下的是實質分析規則,
     一輪修補收不完 —— 上限 1→2。「成本上限 +N」如果不把每一輪修補
@@ -189,15 +189,17 @@ def test_repair_rounds_are_capped_and_every_attempt_is_billed(
     assert attempts[0].get("estimated_cost_usd"), "不合格的那次沒有計費"
     assert attempts[0].get("reject_reason"), "沒有記下為什麼不合格"
 
-    # 每一次都壞 → 打滿 _LUNA_ATTEMPTS 之後落回既有路徑
+    # 每一次都壞 → 打滿該模式的額度之後落回既有路徑
     calls.clear()
     monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (calls.append(p), _response({"壞": "的"}))[1])
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
-    assert len(calls) == len(mr._LUNA_ATTEMPTS), (
-        "全壞時要把 _LUNA_ATTEMPTS 打滿,然後停")
+    # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
+    # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
+    assert len(calls) == 3, (
+        f"全壞時要把語意額度打滿(1 初始 + 2 修補),實際 {len(calls)}")
 
 
 def test_the_manifest_records_which_profile_and_evidence_were_used(
@@ -266,6 +268,129 @@ def test_a_refused_request_is_not_recorded_as_billable(luna_on, monkeypatch):
     assert attempts[-1].get("error"), "失敗原因仍要留著"
 
 
+# ------------------------------- 外審 2026-08-17 P1-2:修補額度依模式分開
+
+def _semantically_bad(tag):
+    """解析得出來、但引用了不存在的證據 ID → 語意輪要處理的那種失敗。"""
+    o = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    o["claim_audit"][0]["evidence_ids"] = [f"market:NOPE_{tag}"]
+    return o
+
+
+def test_a_parse_failure_does_not_consume_the_semantic_repair_budget(
+        luna_on, monkeypatch):
+    """**JSON 包裝瑕疵不得剝奪語意收斂能力。**
+
+    2026-08-17 生產的收斂軌跡是 12 → 1 → 0 —— **完整兩輪語意修補**才
+    通過。先前 syntax 與 semantic 共用一個計數器,於是最前面多一個逗號
+    問題就會吃掉一輪語意額度,本來會成功的特化分析落回 legacy。
+    這條測試就是那個軌跡,只在最前面多一個 malformed 回應。
+    """
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:                     # 語法壞掉
+            r = _response(_GOOD)
+            r["output"][0]["content"][0]["text"] = '{"broken": '
+            return r
+        if len(calls) in (2, 3):                # 兩輪語意都用得到
+            return _response(_semantically_bad(len(calls)))
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("四輪之內收斂了,不該落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    assert len(calls) == 4, f"1 初始 + 1 語法 + 2 語意 = 4,實際 {len(calls)}"
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    assert llm["repair_modes"] == ["syntax", "semantic", "semantic"], llm
+    _used = llm["repair_budget"]["used"]
+    assert (_used["syntax"], _used["semantic"]) == (1, 2), _used
+
+
+def test_the_two_budgets_are_independent(luna_on, monkeypatch):
+    """語法額度用完不影響語意額度,反之亦然 —— 各自到底才停。"""
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        r = _response(_GOOD)                    # 每次都語法壞掉
+        r["output"][0]["content"][0]["text"] = "not json at all"
+        return r
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(
+        mr, "_call_llm_text",
+        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+    # 語法額度是 1 → 初始 + 1 次語法修補就停,**不會**把語意的兩輪也花掉
+    assert len(calls) == 2, f"語法失敗跑了 {len(calls)} 次"
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    _used = llm["repair_budget"]["used"]
+    assert (_used["syntax"], _used["semantic"]) == (1, 0), _used
+    assert llm["repair_budget"]["exhausted"] == "syntax"
+
+
+def test_endless_empty_responses_stop_instead_of_looping_forever(
+        luna_on, monkeypatch):
+    """**空回應那條路徑也要記帳,否則是無限迴圈。**
+
+    它先前靠 `for` 迴圈的長度被擋住;改成 while + 分模式額度之後,不記帳
+    就會永遠 continue —— 而它的 continue 在時間守衛**之前**,連 deadline
+    都攔不到。實作分模式額度時我自己引入過這個缺陷,這條測試是它的門。
+    """
+    calls = []
+    empty = {"status": "completed",
+             "output": [{"type": "message", "role": "assistant",
+                         "content": [{"type": "output_text", "text": ""}]}]}
+
+    def _fake(payload):
+        calls.append(payload)
+        return dict(empty)              # 永遠回空
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    _legacy = ("## 我的明確立場" + chr(10) + "立場：中性" + chr(10) + chr(10)
+               + "## 一句話總結" + chr(10) + "備援。")
+    monkeypatch.setattr(mr, "_call_llm_text", lambda p: _legacy)
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+    assert len(calls) == 1 + mr._LUNA_REPAIR_LIMITS["regenerate"], calls
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    assert llm["repair_budget"]["exhausted"] == "regenerate", llm
+
+
+def test_an_empty_response_is_labelled_regenerate_not_syntax(
+        luna_on, monkeypatch):
+    """**空回應沒有底本可修** —— 那是重新生成,不是修補語法。
+
+    兩者都算在語法額度裡(都是「沒拿到可用的 JSON」),但標籤要分得開,
+    否則事後看不出這一輪到底在做什麼(外審 2026-08-17)。
+    """
+    calls = []
+
+    def _fake(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            r = _response(_GOOD)
+            r["output"][0]["content"][0]["text"] = ""
+            return r
+        return _response(_GOOD)
+
+    monkeypatch.setattr(mr, "_call_deepseek_responses", _fake)
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("第二輪成功了,不該落回"))
+    mr._RUN_MANIFEST.pop("llm", None)
+    assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
+    llm = mr._RUN_MANIFEST.get("llm") or {}
+    assert llm["repair_modes"] == ["regenerate"], llm.get("repair_modes")
+    # 空回應有自己的額度 —— **不佔** syntax,也不佔 semantic
+    _used = llm["repair_budget"]["used"]
+    assert (_used["regenerate"], _used["syntax"], _used["semantic"]) == (1, 0, 0)
+
+
 _UNSUPPORTED = fx.ungrounded_analysis()
 #: **一個反例只違反一條規則,才測得到那一條。** 第十八輪之後,
 #: 沒揭露 gap 與沒分析新聞會先跳出來,而這條測的是「沒有根據」。
@@ -297,7 +422,9 @@ def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert text == legacy, (
         "沒有根據的報告被採用了 —— 它會被原樣寄出,而且看起來很有把握")
-    assert len(calls) == len(mr._LUNA_ATTEMPTS), (
+    # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
+    # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
+    assert len(calls) == 3, (
         f"應該把修補上限打滿再放棄,實際送了 {len(calls)} 次")
     problems = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_problems") or []
     assert any("證據" in p for p in problems), f"拒收原因沒有說清楚:{problems}"
@@ -425,7 +552,9 @@ def test_a_phantom_claim_evidence_id_is_never_laundered(luna_on, monkeypatch):
                         lambda p: "## 我的明確立場\n立場:中性\n\n## 一句話總結\n備援。")
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert "備援。" in text, "幽靈證據被剪掉當成合法,整份輸出被採用了"
-    assert len(calls) == len(mr._LUNA_ATTEMPTS), "應該把修補上限打滿再落回"
+    # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
+    # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
+    assert len(calls) == 3, "應該把語意額度打滿再落回"
 
 
 def test_only_the_decorative_relates_to_is_pruned(luna_on, monkeypatch):
@@ -547,7 +676,7 @@ def test_an_improving_repair_keeps_the_newest_draft(luna_on, monkeypatch):
 
 def test_an_empty_content_on_the_repair_round_does_not_give_up(
         luna_on, monkeypatch):
-    """**上限只由 `_LUNA_ATTEMPTS` 決定**(外審 r1):修補輪回空 content
+    """**空回應有自己的額度**(外審 r1 + 2026-08-17):修補輪回空 content
     原本直接 return —— 新增的第二輪永遠走不到,而 adapter 契約明說
     空 content 是偶發且可修補的。"""
     calls = []
@@ -564,7 +693,8 @@ def test_an_empty_content_on_the_repair_round_does_not_give_up(
                         lambda p: pytest.fail("第三輪成功了,不該落回"))
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert mr._analysis_complete_enough(text), "連兩次空 content 後就放棄了"
-    assert len(calls) == len(mr._LUNA_ATTEMPTS)
+    # 空回應有自己的額度(2)—— 1 初始 + 2 次重新生成 = 3。
+    assert len(calls) == 3, f"連兩次空 content 應再試兩次,實際 {len(calls)}"
 
 
 def test_a_forged_closing_tag_cannot_escape_the_repair_fence():
@@ -684,9 +814,9 @@ def test_repair_modes_match_the_number_of_repair_calls(luna_on, monkeypatch):
     mr._RUN_MANIFEST.pop("llm", None)
     try:
         mr._call_llm_analysis_impl(*_ARGS)
-        assert len(calls) == len(mr._LUNA_ATTEMPTS)
+        assert len(calls) == 3   # 1 初始 + 2 語意修補
         modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes") or []
-        assert len(modes) == len(mr._LUNA_ATTEMPTS) - 1, modes
+        assert len(modes) == 2, modes   # 兩次修補 → 兩筆留痕
     finally:
         mr._RUN_MANIFEST.clear()
         mr._RUN_MANIFEST.update(saved)

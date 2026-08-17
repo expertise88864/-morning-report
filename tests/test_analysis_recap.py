@@ -996,7 +996,8 @@ def test_an_admitted_watch_is_rendered_as_persistent(tmp_path):
     obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
                               "horizon": "1-5d"}]
     admitted = rc.tracked_triggers(str(path), obj, "2026-08-18")
-    assert "美元指數突破 105" in admitted
+    # **身分是完整文字的雜湊**,不是顯示字串(外審 2026-08-17 r2 P2-1)
+    assert rc.trigger_key("美元指數突破 105") in admitted, admitted
     out = ar.render(obj, None, admitted_watch=admitted)
     assert "一次性觀察" not in out
 
@@ -1015,7 +1016,8 @@ def test_admission_and_the_ledger_agree(tmp_path):
         {"trigger": "既有觀察點 1", "why": "x", "horizon": "1-5d"}]
     admitted = rc.tracked_triggers(str(path), obj, "2026-08-18")
     ledger, _seq, dropped = rc.carry_watch(rc.load(str(path)), obj, "2026-08-18")
-    _in_ledger = {str(w.get("trigger") or "") for w in ledger}
+    _in_ledger = {str(w.get("trigger_key") or rc.trigger_key(w.get("trigger")))
+                  for w in ledger}
     # **兩邊是同一個集合**,不是子集 —— 子集判準放得過「渲染端少報一半」
     assert admitted == _in_ledger, (admitted, _in_ledger)
     # 被容量擋掉的那條:兩邊都說沒收
@@ -1042,29 +1044,39 @@ def test_a_trigger_longer_than_the_ledger_limit_is_still_recognised(tmp_path):
     obj["watch_triggers"] = [{"trigger": long_trigger, "why": "資金面",
                               "horizon": "1-5d"}]
     tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
-    assert tracked == {rc.canonical_trigger(long_trigger)}, tracked
+    assert tracked == {rc.trigger_key(long_trigger)}, tracked
     out = ar.render(obj, None, admitted_watch=tracked)
     assert "一次性觀察" not in out, "被收下的超長 trigger 被錯標成一次性"
 
 
-def test_two_triggers_sharing_the_first_120_chars_are_one_entry(tmp_path):
-    """截斷之後相同 → 帳本視為同一條(不重複開)。**渲染端要跟著同一個
-    判準**,否則第二條會被標成一次性,而它其實與第一條是同一個承諾。"""
+def test_two_triggers_sharing_the_first_120_chars_are_two_entries(tmp_path):
+    """**截斷是顯示政策,不是身分政策**(外審 2026-08-17 r2 P2-1)。
+
+    這條測試**原本是反的** —— 它把「前 120 字相同就是同一條」凍結成契約。
+    真實的反例是結論相反的兩條:「…則觀察 2330 跌破 1100」與
+    「…突破 1200」的前 120 字可以完全一樣。壓成一條之後磁碟上只留共同的
+    前綴 —— 隔天連原本是哪一條都不知道,而回顧會對著一個沒有結論的前綴
+    打勾。**測試凍結錯誤的行為,比沒有測試更難發現。**
+    """
     import json as _j
     import analysis_render as ar
     import fixtures_analysis as fx
-    head = "美元" * 70                                  # 前 120 字相同
+    head = "若美元指數與美債殖利率同步上升" + "而外資連續賣超" * 18
+    assert len(head) > rc.WATCH_CHARS, "前提:前綴本身就超過顯示上限"
+    a, b = head + "則觀察 2330 跌破 1100", head + "則觀察 2330 突破 1200"
+    assert rc.canonical_trigger(a) == rc.canonical_trigger(b), "前提:顯示字串相同"
+    assert rc.trigger_key(a) != rc.trigger_key(b), "身分必須不同"
     path = tmp_path / "recap.json"
     path.write_text(_j.dumps({"date": "2026-08-18", "items": [], "watch": []},
                              ensure_ascii=False), encoding="utf-8")
     obj = fx.valid_analysis()
-    obj["watch_triggers"] = [{"trigger": head + "甲", "why": "x", "horizon": "1-5d"},
-                             {"trigger": head + "乙", "why": "y", "horizon": "1-5d"}]
+    obj["watch_triggers"] = [{"trigger": a, "why": "x", "horizon": "1-5d"},
+                             {"trigger": b, "why": "y", "horizon": "1-5d"}]
     ledger, _seq, _dropped = rc.carry_watch(rc.load(str(path)), obj, "2026-08-18")
-    assert len(ledger) == 1, "截斷後相同卻開了兩條"
+    assert len(ledger) == 2, "結論相反的兩條被壓成一條"
     tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
     out = ar.render(obj, None, admitted_watch=tracked)
-    assert "一次性觀察" not in out, out[-300:]
+    assert "一次性觀察" not in out, "兩條都被收下了,不該標一次性"
 
 
 def test_a_failed_save_keeps_the_claim_for_triggers_already_on_disk(tmp_path):
@@ -1084,7 +1096,7 @@ def test_a_failed_save_keeps_the_claim_for_triggers_already_on_disk(tmp_path):
                     "last_reviewed": "", "deadline": "2026-12-31"}]},
         ensure_ascii=False), encoding="utf-8")
     on_disk = rc.ledger_triggers(str(path))
-    assert on_disk == {"美元指數突破 105"}, on_disk
+    assert on_disk == {rc.trigger_key("美元指數突破 105")}, on_disk
 
 
 def test_an_unreadable_ledger_says_it_does_not_know(tmp_path):
@@ -1155,7 +1167,7 @@ def test_an_overlong_entry_left_by_an_older_version_still_matches(tmp_path):
                     "last_reviewed": "", "deadline": "2026-12-31"}]},
         ensure_ascii=False), encoding="utf-8")
     on_disk = rc.ledger_triggers(str(path))
-    assert on_disk == {rc.canonical_trigger(long_trigger)}, on_disk
+    assert on_disk == {rc.trigger_key(long_trigger)}, on_disk
     obj = fx.valid_analysis()
     obj["watch_triggers"] = [{"trigger": long_trigger, "why": "x",
                               "horizon": "1-5d"}]

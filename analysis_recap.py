@@ -170,6 +170,23 @@ WATCH_MAX = 5
 WATCH_CHARS = 120
 
 
+def trigger_key(text) -> str:
+    """觀察點的**身分**:完整文字正規化後的雜湊(空字串回空)。
+
+    **截斷是顯示/儲存政策,不是身分政策**(外審 2026-08-17 r2 P2-1)。
+    先前身分就是 `trigger[:120]`,於是前 120 字相同、結論相反的兩條
+    (「…則觀察 2330 跌破 1100」vs「…突破 1200」)會被壓成同一條,
+    磁碟上只留共同的前綴 —— 隔天連原本是哪一條都不知道,而回顧會對著
+    一個沒有結論的前綴打勾。
+    """
+    import hashlib
+    import re as _re
+    norm = _re.sub(r"\s+", " ", str(text or "")).strip()
+    if not norm:
+        return ""
+    return "t" + hashlib.sha256(norm.encode("utf-8")).hexdigest()[:16]
+
+
 def canonical_trigger(text) -> str:
     """觀察點在帳本裡的**正規形式**(去空白 + 截到 `WATCH_CHARS`)。
 
@@ -195,7 +212,8 @@ def _watch_of(obj) -> list:
         trig = str(w.get("trigger") or "").strip()
         if not trig:
             continue
-        out.append({"trigger": canonical_trigger(trig),
+        out.append({"trigger": canonical_trigger(trig),   # 顯示/儲存用
+                    "trigger_key": trigger_key(trig),      # 身分用(完整文字)
                     "why": str(w.get("why") or "").strip()[:WATCH_CHARS],
                     "horizon": str(w.get("horizon") or "")[:16]})
         if len(out) >= WATCH_MAX:
@@ -252,6 +270,13 @@ def _watch_ledger(prior) -> list:
             w["watch_id"] = f"w{seq}"
             used.add(w["watch_id"])
         w.setdefault("status", WATCH_OPEN)
+        # **身分鍵也是就地升級的一部分**(外審 r2 P2-1):舊帳本沒有這個
+        # 欄位。用它**存下來的**(已截斷的)trigger 算 —— 那是我們唯一
+        # 還有的資訊。誠實記下代價:若那條原本超過 120 字,今天模型再提
+        # 完整版時算出來的鍵不同,會被標成一次性一兩天,直到舊條目到期。
+        # 這比讓兩條結論相反的觀察點永久共用一個身分好。
+        if not str(w.get("trigger_key") or ""):
+            w["trigger_key"] = trigger_key(w.get("trigger"))
         if not str(w.get("created") or ""):
             w["created"] = base
         if not str(w.get("deadline") or ""):
@@ -305,10 +330,17 @@ def carry_watch(prior, obj, today: str) -> list:
         if deadline and today and str(today)[:10] > deadline:
             continue                       # 到期(Python 判,不問模型)
         out.append(w)
-    seen = {str(w.get("trigger") or "") for w in out}
+    # **身分用 `trigger_key`,不是顯示字串**(外審 r2 P2-1)。
+    # 舊帳本沒有這個欄位 → 退回顯示比對(升版當天不重開同一條);
+    # `_watch_ledger()` 會就地補鍵,所以那個退路只作用一天。
+    # `_watch_ledger()` 已經替舊條目補好鍵(由它**存下來的**那份文字算),
+    # 所以這裡只比鍵 —— 再留一條「顯示字串相同也算同一條」的退路,等於把
+    # 剛剛拆開的身分又黏回去(第一版就是這樣,結論相反的兩條仍被壓成一條)。
+    seen_keys = {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
+                 for w in out if str(w.get("trigger") or "").strip()}
     dropped = 0
     for fresh in _watch_of(obj):
-        if fresh["trigger"] in seen:
+        if fresh["trigger_key"] and fresh["trigger_key"] in seen_keys:
             continue
         if len(out) >= WATCH_OPEN_MAX:
             # **容量滿不得靜默丟**(第三十一輪外審 P2-1):信裡渲染了
@@ -322,7 +354,7 @@ def carry_watch(prior, obj, today: str) -> list:
         out.append(dict(fresh, watch_id=f"w{seq}", status=WATCH_OPEN,
                         created=str(today)[:10], last_reviewed="",
                         deadline=_days_after(today, days)))
-        seen.add(fresh["trigger"])
+        seen_keys.add(fresh["trigger_key"])
     return out[:WATCH_OPEN_MAX], seq, dropped
 
 
@@ -395,7 +427,7 @@ def ledger_triggers(path):
         rec = load(path)
         if not isinstance(rec, dict):
             return None
-        return {canonical_trigger(w.get("trigger"))
+        return {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
                 for w in _watch_ledger(rec)
                 if str(w.get("trigger") or "").strip()
                 and str(w.get("status") or WATCH_OPEN) == WATCH_OPEN}
@@ -421,8 +453,8 @@ def tracked_triggers(path, analysis_obj, today: str) -> set:
     測不到的宣稱不留。
     """
     ledger, _seq, _dropped = carry_watch(load(path), analysis_obj, today)
-    return {str(w.get("trigger") or "") for w in ledger
-            if str(w.get("trigger") or "")}
+    return {str(w.get("trigger_key") or trigger_key(w.get("trigger")))
+            for w in ledger if str(w.get("trigger") or "").strip()}
 
 
 def save(path, analysis_obj, packet, manifest=None) -> str:

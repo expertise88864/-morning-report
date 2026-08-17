@@ -351,15 +351,16 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
 
     def _watch_line(w) -> str:
         _t = _s(w.get("trigger"))
-        # **比對要用帳本的正規形式**(外審 2026-08-17 r1):帳本存的是
-        # 截斷後的字串,拿全文比對會讓超過上限的 trigger 被錯標成
-        # 「一次性觀察」—— 而它其實已經被收下了。判準只有一份。
+        # **比對用帳本的身分鍵**(外審 2026-08-17 r2):身分是**完整文字**
+        # 的雜湊,而顯示是截到 120 字 —— 兩者分開之後,前 120 字相同但
+        # 結論相反的兩條(「跌破 1100」vs「突破 1200」)才不會被當成同一條。
+        # 判準只有一份,渲染端不自己算一套。
         try:
-            from analysis_recap import canonical_trigger as _canon
+            from analysis_recap import trigger_key as _tkey
         except Exception:            # noqa: BLE001 - 載不到就退回原文比對
-            def _canon(x):
+            def _tkey(x):
                 return str(x or "").strip()
-        _key = _canon(_t)
+        _key = _tkey(_t)
         _why = _s(w.get("why"))
         # **沒被帳本收下的不得寫成持續追蹤**:那是一個明天不會被兌現的
         # 承諾。標出來而不是隱藏 —— 模型提的內容仍然有參考價值。

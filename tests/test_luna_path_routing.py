@@ -1029,8 +1029,9 @@ def test_a_successful_save_keeps_the_tracking_claim(luna_on, monkeypatch):
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: pytest.fail("分析成功了,不該落回"))
     monkeypatch.setattr(mr._arc, "save", lambda *a, **k: _arc.SAVED)
+    # **身分是完整文字的雜湊**,不是顯示字串(外審 2026-08-17 r2 P2-1)
     monkeypatch.setattr(mr._arc, "tracked_triggers",
-                        lambda *a, **k: {"美元指數突破 105"})
+                        lambda *a, **k: {_arc.trigger_key("美元指數突破 105")})
     mr._RUN_MANIFEST.pop("llm", None)
     text = mr._call_llm_analysis_impl(*_ARGS)
     assert "美元指數突破 105" in text and "一次性觀察" not in text

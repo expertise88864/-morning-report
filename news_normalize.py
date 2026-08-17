@@ -27,6 +27,40 @@ import source_registry as _sr
 # **宣稱要回頭驗**;修法是延遲到呼叫時才取(那時兩個模組都已載完)。
 
 
+#: 抓取層放編輯人工標註的欄位名。**`entities` 不在裡面** ——
+#: 這正是 2026-08-17 查出來的根因:抓取層寫的是 `company_label`
+#: (本報追蹤清單命中的代號)、`cnyes_stocks`(編輯標註的全部代號)、
+#: `cnyes_keywords`(編輯標註的主題詞),而這裡先前只照抄 `entities`。
+#: 於是**整條管線的實體在生產永遠是空的**,而三個依賴它的機制一起死掉:
+#:   * `news_clusters._same_event` 要求實體有交集才併群 → **完全不分群**
+#:     (2026-08-17 生產:402 則新聞 = 402 群);
+#:   * `required_analysis` 要「官方或 ≥3 個獨立來源」的群 —— 每群只有
+#:     一則,那個條件永遠選不出東西;
+#:   * `analysis_recap` 存昨日觀點時「沒有實體就不存」(接不回來的觀點
+#:     是死重量)→ 當天 `eligible 7 / items 0`,**縱向敘事的燃料每天都是
+#:     空的**。
+#: fixture 一直都給 `entities`,所以測試全綠 —— 生產的呼叫形狀與測試的
+#: 呼叫形狀不同,這個 repo 記過的形狀。
+#:
+#: **只收編輯人工標註,不從內文猜公司名**:猜錯的實體會讓兩件不相干的
+#: 事併成一群,而併錯比不併更難查。
+_EDITORIAL_ENTITY_FIELDS = ("cnyes_stocks", "cnyes_keywords")
+
+
+def _entities_of(n: dict, clean) -> list:
+    """這則新聞講的是誰(編輯標註 → 實體)。"""
+    out = {clean(str(e)) for e in (n.get("entities") or []) if str(e).strip()}
+    lbl = str(n.get("company_label") or "").strip()
+    if lbl:
+        out.add(clean(lbl))
+    for field in _EDITORIAL_ENTITY_FIELDS:
+        for v in (n.get(field) or []):
+            s = str(v).strip()
+            if s:
+                out.add(clean(s))
+    return sorted(x for x in out if x)[:12]
+
+
 def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     """(正規化後的新聞, 截斷摘要)。確定性排序、確定性截斷。
 
@@ -69,7 +103,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "source_name": clean(str(n.get("source_name") or "")),
             "source_grade": _grade(n),
             "official": bool(n.get("official")),
-            "entities": sorted({clean(str(e)) for e in (n.get("entities") or [])})[:12],
+            "entities": _entities_of(n, clean),
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
         # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。

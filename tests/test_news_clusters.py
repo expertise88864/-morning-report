@@ -205,3 +205,84 @@ def test_the_packet_carries_the_list_the_model_is_judged_against():
     assert "required_cluster_ids" in dev
     assert "dismissed_events" in dev
     assert "一個事件群只寫" in dev, "沒有告訴模型不要為同一件事寫兩段"
+
+
+# ------------------------------------------------- 生產的呼叫形狀:實體從哪來
+
+def _production_shape():
+    """**抓取層真的會產出的欄位。**
+
+    2026-08-17 查證:生產的新聞 dict **沒有 `entities`** —— 抓取層寫的是
+    `company_label` / `cnyes_stocks` / `cnyes_keywords`。這份 fixture 刻意
+    照抄那個形狀,而不是照抄本檔上面那份(那份直接給 `entities`,
+    正是為什麼整條管線在測試裡是活的、在生產是死的)。
+    """
+    return [
+        {"source": "鉅亨", "source_name": "鉅亨網",
+         "title": "台積電法說會釋出樂觀展望 上調資本支出",
+         "summary": "台積電表示 AI 需求強勁", "published": "2026-08-17T01:00",
+         "company_label": "2330", "cnyes_stocks": ["2330", "2317"],
+         "cnyes_keywords": ["台積電", "AI"]},
+        {"source": "Google:2330", "source_name": "經濟日報",
+         "title": "台積電法說會樂觀展望 上調今年資本支出",
+         "summary": "法人看好", "published": "2026-08-17T02:00",
+         "company_label": "2330"},
+        {"source": "Google:2317", "source_name": "工商時報",
+         "title": "鴻海 AI 伺服器出貨動能強",
+         "summary": "營收創高", "published": "2026-08-17T03:00",
+         "company_label": "2317"},
+    ]
+
+
+def test_editorial_tags_become_entities():
+    """**生產的新聞沒有 `entities`,只有編輯人工標註。**
+
+    先前 `news_normalize` 只照抄 `entities` —— 於是實體在生產永遠是空的,
+    而 `_same_event` 要求實體有交集才併群:2026-08-17 生產 402 則新聞
+    分成 402 群(等於完全沒分群)。
+    """
+    import news_normalize as nn
+    items = nn.normalize_news(_production_shape())[0]
+    by_title = {it["title"][:3]: it for it in items}
+    assert by_title["台積電"]["entities"] == ["2317", "2330", "AI", "台積電"]
+    assert by_title["鴻海 "]["entities"] == ["2317"], "只有 Google 標籤的也要有實體"
+
+
+def test_the_same_story_from_two_publishers_merges_in_production_shape():
+    """同一件事兩家報導 → 一群。**用生產的形狀驗**(上面那份 fixture
+    直接給 `entities`,所以它證明不了生產會不會分群)。"""
+    import news_normalize as nn
+    items = nn.normalize_news(_production_shape())[0]
+    cs = nc.clusters(items)
+    assert len(cs) == 2, [(c["cluster_id"], c["member_source_ids"]) for c in cs]
+    big = max(cs, key=lambda c: len(c["member_source_ids"]))
+    assert len(big["member_source_ids"]) == 2
+
+
+def test_a_generic_keyword_alone_does_not_merge_two_stories():
+    """**編輯的主題詞也會是泛用詞**(「AI」)—— 只共用泛用詞、標題講不同
+    的事,不得併群。併錯比不併更難查。"""
+    import news_normalize as nn
+    items = nn.normalize_news([
+        {"source": "鉅亨", "source_name": "鉅亨網", "title": "台積電法說會上調資本支出",
+         "summary": "", "published": "2026-08-17T01:00", "cnyes_keywords": ["AI"]},
+        {"source": "鉅亨", "source_name": "工商時報", "title": "藥華藥新藥獲美國藥證",
+         "summary": "", "published": "2026-08-17T02:00", "cnyes_keywords": ["AI"]},
+    ])[0]
+    assert len(nc.clusters(items)) == 2
+
+
+def test_yesterdays_view_can_be_saved_from_production_shaped_news():
+    """**縱向敘事的燃料。** `analysis_recap` 沒有實體就不存(接不回來的
+    觀點是死重量)—— 2026-08-17 生產 `eligible 7 / items 0`,於是明天
+    沒有「這件事昨天說過什麼」可比。"""
+    import analysis_recap as arc
+    import news_normalize as nn          # noqa: F401 - 走同一條正規化
+    raw = _production_shape()[:1]
+    pk = ep.build({"QQQ": {"close": 500.0, "change_pct": 1.0}}, {}, {},
+                  raw, [], {}, as_of="x", target_session_date="y", sanitize=str)
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"][0]["source_item_id"] = pk["news"][0]["source_item_id"]
+    out = arc.extract(obj, pk)
+    assert out["items"], f"eligible={out.get('eligible')} 卻一筆都沒存"
+    assert "2330" in out["items"][0]["entities"]

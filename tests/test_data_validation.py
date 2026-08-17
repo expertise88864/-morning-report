@@ -241,7 +241,11 @@ def test_gemini_call_sends_key_header_not_query(monkeypatch):
             return None
 
         def json(self):
-            return {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+            # 2026-08-17 r2:`finishReason` 現在是成功的必要條件 ——
+            # 這條測試量的是「金鑰走 header 不走 query」,所以回一個
+            # **正常結束**的回應,別讓它被完成狀態那條規則絆倒。
+            return {"candidates": [{"finishReason": "STOP",
+                                    "content": {"parts": [{"text": "ok"}]}}]}
 
     def fake_post(url, json, timeout, headers=None):
         captured["url"] = url
@@ -352,22 +356,50 @@ def test_a_truncated_gemini_answer_is_not_treated_as_complete(monkeypatch):
     assert mr._call_gemini_once("gemini-2.5-flash", "p") == "ok"
 
 
-def test_a_response_without_a_finish_reason_still_works(monkeypatch):
-    """舊版/精簡回應沒有 `finishReason` —— 不得因為欄位缺席就當成截斷。"""
-    captured = {}
-    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+def test_only_a_normal_stop_counts_as_a_successful_completion(monkeypatch):
+    """**只有正常結束才算成功**(外審 2026-08-17 r2 的 P1)。
 
-    class FakeResponse:
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
-
-    monkeypatch.setattr(mr.requests, "post",
-                        lambda url, json, timeout, headers=None: FakeResponse())
+    上一版只擋 `MAX_TOKENS`,而 `finishReason` 是 provider 主動告訴我們
+    生成**為什麼**停止 —— `SAFETY` / `RECITATION` / `BLOCKLIST` /
+    `PROHIBITED_CONTENT` / `SPII` / `LANGUAGE` / `OTHER` 都不是正常完成。
+    危險的形狀:被擋在半路的回應剛好仍是合法 JSON(20 件事件只吐前 3 件),
+    解析器沒有理由知道它少了後半段 —— 信裡少一半而沒有任何警訊。
+    而晨報的輸入就是戰爭、資安、制裁、犯罪這類新聞,不能假設不會碰到過濾。
+    """
+    import pytest as _pt
+    # 正常結束 → 收
+    _gemini_stub(monkeypatch, finish="STOP", text="ok")
     assert mr._call_gemini_once("gemini-2.5-flash", "p") == "ok"
-    assert captured == {}
+    # 其餘一律拒(含**缺欄位**:fail-closed 是刻意的取捨 —— 拒錯只是這一棒
+    # 降級,接錯是一份悄悄少掉內容的報告)
+    for reason in ("MAX_TOKENS", "SAFETY", "RECITATION", "LANGUAGE",
+                   "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "OTHER",
+                   "MALFORMED_FUNCTION_CALL", "IMAGE_SAFETY",
+                   "SOMETHING_NEW_FROM_GOOGLE", None):
+        _gemini_stub(monkeypatch, finish=reason,
+                     text='[{"entity": "Iran"}]')   # 合法 JSON,仍不得放行
+        with _pt.raises(RuntimeError) as e:
+            mr._call_gemini_once("gemini-2.5-flash", "p", role="extractor")
+        assert (reason or "MISSING") in str(e.value), (reason, str(e.value))
+
+
+def test_a_blocked_but_valid_json_answer_is_not_a_successful_call(monkeypatch):
+    """**端到端**:被 SAFETY 擋住卻剛好合法的 JSON,不得被記成成功的
+    provider 回應 —— 抽取器會落到確定性路徑,而不是拿半份當全份。"""
+    import pytest as _pt
+    _gemini_stub(monkeypatch, finish="SAFETY",
+                 text='[{"entity": "Iran", "event_type": "geopolitical"}]')
+    with _pt.raises(RuntimeError):
+        mr._call_gemini("p", role="extractor")
+
+
+def test_the_fallback_chain_has_no_retired_endpoint():
+    """**每一棒都必須是還活著的端點。** `gemini-2.0-flash` 於 2026-06-01
+    停止服務(外審 2026-08-17 指出)—— 留在最後一棒等於「最後一層備援」
+    是確定會失敗的那一層。上一批還特地為它算了 8,192 的額度上限:
+    額度算對了,端點卻早就不在。"""
+    assert "gemini-2.0-flash" not in mr.GEMINI_FALLBACK_MODELS
+    assert mr.GEMINI_FALLBACK_MODELS, "降級鏈不得為空"
 
 
 def test_detect_us_holiday_memorial_day():

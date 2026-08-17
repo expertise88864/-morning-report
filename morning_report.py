@@ -11925,25 +11925,46 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     if not parts:
         raise RuntimeError(f"Gemini 回應無 parts: {data}")
     text = parts[0].get("text", "")
-    # **截斷不得當成完整答案**(2026-08-17 生產)。`finishReason` 在這條
-    # 路徑上從來沒有人看 —— 於是被切斷的 JSON 一路傳到解析器,撿回一個
-    # 物件、報 `outcome: ok`,而 manifest 顯示這個能力是健康的。
-    # 另外兩條路徑早就這樣做(DeepSeek 的 `finish_reason=length` 拋出、
-    # OpenAI 的 `length` 無條件當截斷)—— 這裡是漏的那一條。
-    # **拋出而不是回傳半截**:外層的模型降級鏈會換下一個模型再試,
-    # 全掛才落到確定性事件;而回傳半截會讓失敗看起來像成功。
-    if str(candidates[0].get("finishReason") or "").upper() == "MAX_TOKENS":
+    # **只有正常結束才算成功**(外審 2026-08-17 r2 的 P1)。
+    #
+    # 上一版只擋 `MAX_TOKENS`,理由是「不要因為欄位缺席就誤判截斷」——
+    # 而那個判斷是錯的:`finishReason` 是 provider **主動告訴我們生成為
+    # 什麼停止**,`SAFETY` / `RECITATION` / `BLOCKLIST` /
+    # `PROHIBITED_CONTENT` / `SPII` / `LANGUAGE` / `OTHER` 都不是正常完成。
+    # 而晨報的輸入本身就是戰爭、資安、制裁、犯罪這類新聞 —— 不能假設
+    # 永遠不會碰到內容過濾。
+    #
+    # 危險的形狀與 08-17 那次同型:被擋在半路的回應**剛好仍是合法 JSON**
+    # (20 件事件只吐出前 3 件),解析器沒有任何理由知道它少了後半段,
+    # 於是 manifest 顯示這個能力健康、信裡少了一半的事件而沒有任何警訊。
+    # 另外兩條 provider 路徑早就把「非正常結束」當失敗(DeepSeek 的
+    # `finish_reason=length`、OpenAI 的 `length`)。
+    #
+    # **缺欄位也算異常**(fail-closed,刻意的取捨):非串流的
+    # `generateContent` 依契約一定會給 `finishReason`;拒錯的代價是這一棒
+    # 降級(外層還有模型降級鏈,抽取器還有確定性路徑),接錯的代價是一份
+    # 悄悄少掉內容的報告 —— 兩者不對稱。原因與型號寫進錯誤訊息,真的踩到
+    # 會在 manifest 與品質信裡當場看見,不是靜默漂移。
+    _reason = str(candidates[0].get("finishReason") or "").upper()
+    if _reason != "STOP":
         raise RuntimeError(
-            f"Gemini finishReason=MAX_TOKENS —— 額度用完,回應被截斷"
-            f"({len(text)} 字元,role={role})")
+            f"Gemini finishReason={_reason or 'MISSING'} —— 不是正常結束"
+            f"({len(text)} 字元,role={role},model={model})")
     return text
 
 
 # 模型降級鏈：主模型不穩時依序往下試
+#
+# **每一棒都必須是還活著的端點** —— 排一個已停止服務的型號在最後一棒,
+# 等於「最後一層備援」是確定會失敗的那一層。`gemini-2.0-flash` 於
+# 2026-06-01 停止服務(外審 2026-08-17 指出並附 Google 版本紀錄;
+# **我無法從這台機器查證官方頁面**,但移除一個已停用端點的代價是零,
+# 留著的代價是備援鏈最需要它的時候一定沒有救援能力),已移除。
+# 這一棒原本是上一批為它加 8,192 額度上限的那個 —— 額度算對了,
+# 端點卻早就不在了。
 GEMINI_FALLBACK_MODELS = [
     GEMINI_MODEL,                    # 通常是 gemini-2.5-flash
     "gemini-2.5-flash-lite",         # 更輕量，較少 503
-    "gemini-2.0-flash",              # 上一代穩定版
 ]
 RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 

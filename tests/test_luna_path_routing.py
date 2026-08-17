@@ -985,6 +985,39 @@ def test_a_failed_recap_save_drops_the_tracking_claim(luna_on, monkeypatch):
     assert metrics.get("parsed") is True, metrics
 
 
+def test_a_failed_save_still_honours_what_is_on_disk(luna_on, monkeypatch,
+                                                    tmp_path):
+    """**存檔失敗不代表什麼都沒在追**(外審 r2)。
+
+    舊帳本裡已經有同一條 trigger —— 寫入失敗時它仍然留在磁碟上,明天照樣
+    會被追。信裡不得把它標成「一次性觀察」(那是少報,同樣是不準)。
+    """
+    import json as _j
+    import analysis_recap as _arc
+    ledger = tmp_path / "recap.json"
+    ledger.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [],
+         "watch": [{"watch_id": "w1", "trigger": "美元指數突破 105",
+                    "why": "資金面", "horizon": "intraday",
+                    "status": _arc.WATCH_OPEN, "created": "2026-08-10",
+                    "last_reviewed": "", "deadline": "2026-12-31"}]},
+        ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(mr, "ANALYSIS_RECAP_FILE", ledger)
+    obj = json.loads(json.dumps(_GOOD, ensure_ascii=False))
+    obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
+                              "horizon": "intraday", "claim_ids": ["c1"]}]
+    monkeypatch.setattr(mr, "_call_deepseek_responses",
+                        lambda p: _response(obj))
+    monkeypatch.setattr(mr, "_call_llm_text",
+                        lambda p: pytest.fail("分析成功了,不該落回"))
+    monkeypatch.setattr(mr._arc, "save", lambda *a, **k: _arc.FAILED)
+    mr._RUN_MANIFEST.pop("llm", None)
+    text = mr._call_llm_analysis_impl(*_ARGS)
+    assert "美元指數突破 105" in text
+    assert "一次性觀察" not in text, (
+        "舊帳本裡本來就在追的那條被標成一次性 —— 少報也是不準")
+
+
 def test_a_successful_save_keeps_the_tracking_claim(luna_on, monkeypatch):
     """反向:存檔成功時不得把被收下的那條標成一次性。"""
     import analysis_recap as _arc

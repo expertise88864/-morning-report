@@ -13143,7 +13143,14 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
     # 的那幾條會被少報),而少報不會讓讀者以為系統在盯一件它不會盯的事。
     # 指標要用**最後真的寄出去的那份文字**算,不是預演那份。
     if _saved == _arc.FAILED:
-        _honest = _ar.render(obj, packet, admitted_watch=set())
+        # **用磁碟上實際留著的那份重算**(外審 r2):寫入是「暫存檔 →
+        # atomic replace」,失敗時舊帳本通常完整保留 —— 今天再次提出的
+        # 舊 trigger 明天仍然會被追。第一版傳空集合,於是那些條目被標成
+        # 「一次性觀察」= 少報,而少報也是一種不準。
+        # 連磁碟狀態都問不到就傳 `None`(渲染端因此不標,不假裝知道)。
+        _honest = _ar.render(obj, packet,
+                             admitted_watch=_arc.ledger_triggers(
+                                 ANALYSIS_RECAP_FILE))
         if _honest:
             text = _honest
         print("[llm] 昨日觀點存檔失敗 —— 信裡的觀察點改標一次性",

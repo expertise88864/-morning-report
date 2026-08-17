@@ -376,6 +376,28 @@ def _carry_origins(rec: dict, prior: dict) -> None:
                             "direction": str(hit.get("direction") or "")}
 
 
+def ledger_triggers(path):
+    """**磁碟上現在實際追著**的 trigger(正規形式);讀不到回 `None`。
+
+    存檔失敗後要問這個(外審 2026-08-17 r2):寫入是
+    「寫暫存檔 → atomic replace」,失敗時**舊帳本通常完整保留** ——
+    今天再次提出的舊 trigger 明天仍然會被追。第一版在存檔失敗時傳空集合,
+    於是那些條目被標成「一次性觀察」= 少報。
+    `None` 與空集合是兩件事:前者是「問不到磁碟狀態」(渲染端因此不標,
+    不假裝知道),後者是「確定什麼都沒在追」。
+    """
+    try:
+        rec = load(path)
+    except Exception:                       # noqa: BLE001 - 問不到就說不知道
+        return None
+    if not isinstance(rec, dict):
+        return None
+    return {canonical_trigger(w.get("trigger"))
+            for w in _watch_ledger(rec)
+            if str(w.get("trigger") or "").strip()
+            and str(w.get("status") or WATCH_OPEN) == WATCH_OPEN}
+
+
 def tracked_triggers(path, analysis_obj, today: str) -> set:
     """**今天結束後帳本真的在追**的那些 trigger 文字。
 

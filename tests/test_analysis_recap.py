@@ -1065,3 +1065,75 @@ def test_two_triggers_sharing_the_first_120_chars_are_one_entry(tmp_path):
     tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
     out = ar.render(obj, None, admitted_watch=tracked)
     assert "一次性觀察" not in out, out[-300:]
+
+
+def test_a_failed_save_keeps_the_claim_for_triggers_already_on_disk(tmp_path):
+    """**存檔失敗不代表什麼都沒在追**(外審 2026-08-17 r2)。
+
+    寫入是「暫存檔 → atomic replace」,失敗時舊帳本通常完整保留 ——
+    今天再次提出的舊 trigger 明天仍然會被追。第一版在存檔失敗時傳空集合,
+    於是那些條目被標成「一次性觀察」= 少報,而少報也是一種不準。
+    """
+    import json as _j
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [],
+         "watch": [{"watch_id": "w1", "trigger": "美元指數突破 105",
+                    "why": "資金面", "horizon": "1-5d",
+                    "status": rc.WATCH_OPEN, "created": "2026-08-10",
+                    "last_reviewed": "", "deadline": "2026-12-31"}]},
+        ensure_ascii=False), encoding="utf-8")
+    on_disk = rc.ledger_triggers(str(path))
+    assert on_disk == {"美元指數突破 105"}, on_disk
+
+
+def test_an_unreadable_ledger_says_it_does_not_know(tmp_path):
+    """`None` 與空集合是兩件事:問不到磁碟狀態時渲染端**不標**,
+    不假裝知道;確定什麼都沒在追才是空集合。"""
+    assert rc.ledger_triggers(str(tmp_path / "missing.json")) == set()
+    bad = tmp_path / "bad.json"
+    bad.write_text("{ not json", encoding="utf-8")
+    assert rc.ledger_triggers(str(bad)) in (None, set())
+
+
+def test_a_closed_entry_is_not_reported_as_tracked(tmp_path):
+    """已關閉的條目不算在追 —— 帳本只留在燒的那些。"""
+    import json as _j
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [],
+         "watch": [{"watch_id": "w1", "trigger": "已關閉的那條",
+                    "status": "triggered", "horizon": "1-5d"}]},
+        ensure_ascii=False), encoding="utf-8")
+    assert rc.ledger_triggers(str(path)) == set()
+
+
+def test_an_overlong_entry_left_by_an_older_version_still_matches(tmp_path):
+    """**磁碟側也要正規化。**
+
+    帳本是版控裡的 JSON,可能被手改、也可能由更舊的程式寫入未截斷的
+    trigger。渲染端拿的是截斷後的正規形式 —— 磁碟側不跟著正規化,
+    那條就對不上,被錯標成「一次性觀察」。
+    (突變驗證顯示:只用今天寫出來的帳本測不到這條規則,因為那些值
+    **已經**是截斷的 —— 所以這裡刻意造一個未截斷的舊值。)
+    """
+    import json as _j
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    long_trigger = "美元指數" + "很長的條件說明" * 30
+    assert len(long_trigger) > rc.WATCH_CHARS
+    path = tmp_path / "recap.json"
+    path.write_text(_j.dumps(
+        {"date": "2026-08-17", "items": [],
+         "watch": [{"watch_id": "w1", "trigger": long_trigger,   # 未截斷
+                    "why": "x", "horizon": "1-5d",
+                    "status": rc.WATCH_OPEN, "created": "2026-08-10",
+                    "last_reviewed": "", "deadline": "2026-12-31"}]},
+        ensure_ascii=False), encoding="utf-8")
+    on_disk = rc.ledger_triggers(str(path))
+    assert on_disk == {rc.canonical_trigger(long_trigger)}, on_disk
+    obj = fx.valid_analysis()
+    obj["watch_triggers"] = [{"trigger": long_trigger, "why": "x",
+                              "horizon": "1-5d"}]
+    out = ar.render(obj, None, admitted_watch=on_disk)
+    assert "一次性觀察" not in out, "舊帳本裡的未截斷值對不上了"

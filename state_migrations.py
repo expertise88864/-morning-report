@@ -102,3 +102,118 @@ def purge_misattributed_timeline(timeline, known_names) -> tuple:
         else:
             keep[key] = row
     return keep, dropped
+
+
+def _looks_cyber(title: str) -> bool:
+    """標題用的是**宣告過的**資安詞彙(`event_actions` 的 `cyberattack`)。"""
+    import news_events as _ne2
+    text = str(title or "").lower()
+    return any(str(t).lower() in text for t in (_ne2._cyber_tokens() or ()))
+
+
+def purge_mistyped_cyber_stories(ledger) -> tuple:
+    """把「被標成地緣政治的資安事件」清掉(2026-08-18 外審 P2-1)。
+
+    生產 state 現存兩筆:
+
+        e:aapl|l:geopolitical|202608  ← 「Apple 發出間諜軟體威脅通知…」
+        geopolitical:AVGO:2026-08     ← 「駭客攻擊 VMware…」
+
+    它們的**歸因是對的**(標題確實指名那家公司),錯的是型別 —— 所以
+    Commit A 的清理刻意沒有動它們。而型別會一路影響意外度(0.90)、
+    催化權重與延燒追蹤,留著就是每天用錯誤的優先序推一條線。
+
+    **選擇丟掉而不是改型別**:型別寫在 key 裡(`l:geopolitical`),改型別
+    就要改 key,而改 key 會與既有的正確 key 相撞、或製造出第二條同一件事
+    的線。丟掉之後,故事若還活著,下一班會用正確型別重新建立 —— 少幾天
+    延燒天數,比留著一條型別錯誤、意外度灌到 0.9 的線小得多。
+    """
+    keep, dropped = [], []
+    for row in (ledger or []):
+        if not isinstance(row, dict):
+            keep.append(row)
+            continue
+        title = str(row.get("headline") or row.get("last_delta") or "")
+        if (str(row.get("event_type") or "") == "geopolitical"
+                and _looks_cyber(title)):
+            dropped.append(row)
+        else:
+            keep.append(row)
+    return keep, dropped
+
+
+def _cyber_key(key: str, row: dict) -> str:
+    """舊鍵 → **現行身分格式**的鍵。
+
+    現行身分是 `型別:動作:對象:月`(`event_identity.timeline_identity`)。
+    生產現存的是**舊版三段** `型別:主體:月`,而它們的 `identity_schema`
+    已經是最新版 —— 也就是說 `adopt_legacy()` **不會**接手它們
+    (那條路徑只處理舊 schema)。只把型別那一段改掉會產生
+    `cybersecurity:AAPL:2026-08`,而隔天的事件算出來的是
+    `cybersecurity:cyberattack:AAPL:2026-08` —— 對不上,天數從 1 重算,
+    這個改名就白做了(外審 2026-08-18 第二輪)。
+
+    **對象要用身分層的那個函式算,不要抄舊鍵裡的字**(外審第三輪):
+    舊的三段鍵把主體截到 20 字,而現行的 `object_signature` 截到 24 字 ——
+    多主體的列(「A、B、C…」)兩邊會差一段,改名之後照樣對不上。
+    列裡有 `subjects` / `entity`,那才是原始資料。
+    """
+    parts = str(key or "").split(":")
+    if len(parts) != 3:
+        return "cybersecurity:" + str(key)[len("geopolitical:"):]
+    subjects = [str(x) for x in ((row or {}).get("subjects") or ()) if str(x).strip()]
+    if not subjects:
+        ent = str((row or {}).get("entity") or "").strip()
+        subjects = [ent] if ent else [parts[1]]
+    try:
+        import event_identity as _eid
+        obj = _eid.object_signature("cyberattack", subjects)
+    except Exception:                   # noqa: BLE001 - 算不出來就退回舊鍵裡的字
+        obj = parts[1]
+    return f"cybersecurity:cyberattack:{obj}:{parts[2]}"
+
+
+def migrate_cyber_timeline_keys(timeline) -> tuple:
+    """把 `geopolitical:cyberattack:*` 的舊鍵**改名**成 `cybersecurity:…`。
+
+    回 `(新的 state, 被改名的舊鍵)`。
+
+    **改名而不是丟掉**:時間軸的鍵是 `型別:動作:對象:月`,而動作那一段
+    已經明說是 `cyberattack` —— 不必猜,改名是精確的。丟掉會讓一條真的
+    延燒好幾天的線從第 1 天重算(產線停擺、客戶通報、修復進度),那個
+    代價沒有必要付。
+    (線索帳本那邊的鍵沒有動作段,認不出來,所以那邊仍然是丟掉。)
+
+    目標鍵已經存在時**留天數多的那一筆** —— 那是同一件事的兩個世代,
+    保守地選資訊多的;兩筆都留會讓同一條線在排序裡出現兩次。
+    """
+    def _keep_longer(bucket: dict, key: str, row) -> None:
+        """撞鍵時留天數多的那一筆。
+
+        **兩個方向都要擋**:舊鍵改名撞到既有的新鍵、以及既有的新鍵在
+        迴圈後面才被讀到 —— 只擋一邊的話,誰先誰後就決定了結果,而 dict
+        的順序不是判準(突變驗證抓到:只擋一邊時反例分不出勝負)。
+        """
+        prev = bucket.get(key)
+        if isinstance(prev, dict) and isinstance(row, dict):
+            if int(prev.get("days") or 0) >= int(row.get("days") or 0):
+                return
+        bucket[key] = row
+
+    out, renamed = {}, []
+    for key, row in (timeline or {}).items():
+        k = str(key)
+        # 兩種鍵都要收:新版 `型別:動作:對象:月`(動作那段就是 cyberattack),
+        # 以及**舊版三段** `型別:主體:月`(生產現存的 `geopolitical:AAPL:2026-08`
+        # 就是這一種,沒有動作段)—— 後者靠標題認,判準與型別層同一份。
+        _is_cyber_key = (k.startswith("geopolitical:cyberattack:")
+                         or (k.startswith("geopolitical:")
+                             and isinstance(row, dict)
+                             and _looks_cyber(row.get("latest_title"))))
+        if not isinstance(row, dict) or not _is_cyber_key:
+            _keep_longer(out, k, row)
+            continue
+        renamed.append(k)
+        _keep_longer(out, _cyber_key(k, row), dict(row, event_type="cybersecurity",
+                                                   action="cyberattack"))
+    return out, renamed

@@ -100,9 +100,18 @@ ACTION_TABLE = (
     ("arms_sale", "軍售",
      "weapons package", "arms package", "weapons sale",
      "軍售", "對台軍售", "arms sale", "arms package", "FMS"),
+    # 2026-08-18(repo-wide 外審 P2-1):**生產實際的寫法要收得到**。
+    # 兩則真的被誤判成地緣政治的標題,用的詞都不在原本的表裡:
+    #   「Apple 發出間諜軟體威脅通知 用戶恐成攻擊目標」→ 間諜軟體
+    #   「博通單日跌6%,駭客攻擊VMware…」→ 駭客攻擊(表裡只有「駭客入侵」)
+    # 詞彙表只有這一份(型別層也讀它),所以補在這裡而不是各補一份。
+    # **刻意不收單獨的「漏洞」「breach」**:前者太泛(產能漏洞、法規漏洞),
+    # 後者在商業新聞裡是違約(breach of contract)。
     ("cyberattack", "網路攻擊",
-     "網攻", "網路攻擊", "駭客入侵", "勒索軟體", "資安事件",
-     "cyberattack", "ransomware", "data breach"),
+     "網攻", "網路攻擊", "駭客入侵", "駭客攻擊", "駭客", "勒索軟體",
+     "資安事件", "資安漏洞", "間諜軟體", "遭入侵",
+     "cyberattack", "cyber attack", "ransomware", "data breach",
+     "security breach", "spyware", "malware", "zero-day"),
     ("export_control", "出口管制",
      "出口管制", "禁售", "實體清單", "管制清單",
      "export control", "entity list", "chip ban"),

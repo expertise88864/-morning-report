@@ -5592,6 +5592,16 @@ def purge_story_misattribution(ledger: list) -> list:
     if not kn:
         return list(ledger or [])
     keep, dropped = _sm.purge_misattributed_stories(ledger, kn)
+    # 型別錯的那一批(被標成地緣政治的資安事件)是另一件事:歸因是對的,
+    # 所以上面那個清理刻意沒動它們。型別會影響意外度、催化權重與延燒追蹤
+    # —— 留著就是每天用錯誤的優先序推一條線(2026-08-18 外審 P2-1)。
+    keep, _cyber_dropped = _sm.purge_mistyped_cyber_stories(keep)
+    if _cyber_dropped:
+        _RUN_MANIFEST.setdefault("state_migrations", {})["mistyped_cyber"] = {
+            "dropped": len(_cyber_dropped),
+            "examples": [str(r.get("key")) for r in _cyber_dropped[:5]]}
+        print(f"[migrate] 線索帳本清掉 {len(_cyber_dropped)} 條「被標成地緣政治"
+              f"的資安事件」", file=sys.stderr)
     if dropped:
         _RUN_MANIFEST.setdefault("state_migrations", {})["story_misattribution"] = {
             "dropped": len(dropped), "kept": len(keep),
@@ -8584,7 +8594,13 @@ def extract_structured_events(news: list[dict],
             "subject_basis": _basis,
             "related_tickers": _related,
             "query_origin": str(item.get("company_label") or item.get("code") or ""),
-            "event_type": str(item.get("event_type") or _event_type(text)),
+            # **上游給的型別也要過同一條規則**(2026-08-18 外審 P2-1)。
+            # `item["event_type"]` 可能來自 LLM 抽取器,而它照樣會把資安事件
+            # 寫成 geopolitical。只修確定性推導、不修這裡的話,錯誤分類仍會
+            # 每天從另一條路進來 —— 而 state 清理會與它每天打架
+            # (清掉、隔天又寫回來,延燒天數永遠是 1)。
+            "event_type": _ne.normalize_event_type(
+                str(item.get("event_type") or _event_type(text)), text),
             "direction": int(_safe_number(
                 item.get("direction"), _news_event_direction(text))),
             "confidence": round(max(0.05, min(1.0, _safe_number(
@@ -8955,6 +8971,9 @@ def _stock_news_catalysts(snapshot: list[dict],
                 "guidance_raise": 3.0, "guidance_cut": -3.0, "orders": 2.0,
                 "earnings": 2.0, "revenue_growth": 1.5, "export_controls": -2.0,
                 "litigation": -1.5, "geopolitical": -1.5, "general": 1.0,
+                # 拆出來之前它走 geopolitical 的 -1.5 —— **維持同一級**,
+                # 這個 commit 只修分類,不順手改計分模型。
+                "cybersecurity": -1.5,
             }.get(str(event.get("event_type")), 1.0)
             delta = abs(base) * direction * relation_weight
             score_method = "conservative_fallback"
@@ -12945,8 +12964,14 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         "direction is -1, 0, or 1. Use only supplied evidence. "
         "Prefer official disclosures over media rewrites. Merge duplicates. "
         "lifecycle must be rumor, confirmed, implemented, or withdrawn. "
-        "Allowed event_type: guidance_raise, guidance_cut, orders, earnings, "
-        "revenue_growth, export_controls, litigation, geopolitical, general.\n"
+        # **允許清單由 `_LLM_EVENT_TYPES` 產生**(外審 2026-08-18 P2-2):
+        # 手寫一份會與 schema 分歧 —— 2026-08-18 加了 `cybersecurity`,
+        # schema 收得下而 prompt 沒說,模型因此**選不到**它;退而選
+        # general 時 `normalize_event_type` 又刻意不動(它只改
+        # geopolitical),於是錯誤分類原封不動地留著。
+        + "Allowed event_type: " + ", ".join(sorted(_LLM_EVENT_TYPES))
+        + ".\n"
+        +
         "AUTHORITY: when an input item has a non-empty official_event_type, that value "
         "comes from the Taiwan regulator's statutory disclosure clause. Use it verbatim "
         "as event_type for that item; do not substitute your own judgement.\n"
@@ -15040,7 +15065,12 @@ ANALYSIS_RECAP_FILE = STATE_ROOT / "analysis_recap.json"
 #: inline 路徑掃描器看不見 —— 而 line 270 的註解 2026-07 就把它列為
 #: 已知盲點,一直沒補。外審補審 F1 的守衛第一次跑就抓到它。
 GOOAYE_RADAR_FILE = STATE_ROOT / "gooaye_radar.json"
-_TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation"}
+#: 2026-08-18(外審 P2-1):`cybersecurity` 從 geopolitical 拆出來時
+#: **要一起接回延燒追蹤** —— 先前資安事件是「借用」地緣型別才被追蹤的,
+#: 只拆型別不補這裡,會把一個真的會延燒好幾天的事件(產線停擺、
+#: 客戶通報、修復進度)默默降級成單日新聞。
+_TIMELINE_EVENT_TYPES = {"geopolitical", "export_controls", "litigation",
+                         "cybersecurity"}
 def update_event_timeline(structured_events: list[dict],
                           now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     """維護延燒事件 timeline:同主體+型別連續出現則累計天數,3 天無進展退場。"""
@@ -15062,6 +15092,15 @@ def update_event_timeline(structured_events: list[dict],
                     "timeline_misattribution"] = {"dropped": _tl_dropped[:8]}
                 print(f"[migrate] 事件時間軸清掉 {len(_tl_dropped)} 條錯歸因",
                       file=sys.stderr)
+        # 舊鍵改名(2026-08-18 外審 P2-1):資安事件借用地緣型別留下的鍵。
+        # **改名而不是丟掉** —— 動作那一段已經明說是 cyberattack(舊的三段
+        # 鍵則靠標題認),丟掉會讓一條真的延燒好幾天的線從第 1 天重算。
+        state, _tl_cyber = _sm.migrate_cyber_timeline_keys(state)
+        if _tl_cyber:
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "cyber_timeline_keys"] = {"renamed": _tl_cyber[:8]}
+            print(f"[migrate] 事件時間軸改名 {len(_tl_cyber)} 條"
+                  f"(資安事件借用地緣型別的舊鍵)", file=sys.stderr)
     # **舊身分是「某國的某類新聞」,不是事件**(外審 P1-9)。
     # 實測 2026-08-07 的 state 同時有兩種相反的錯:同一條荷姆茲海峽線因為
     # 兩則報導點名的主體集合不同而裂成 `geopolitical:伊朗`(6 天)與

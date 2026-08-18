@@ -616,9 +616,12 @@ def test_a_sibling_survives_the_base_lineage_expiring(tmp_path, monkeypatch):
     """
     # 兩則都要命中 `cyberattack`(否則 base key 本來就不同,
     # 根本沒有同鍵可分,測不到 sibling 這條規則)。
-    day1 = [{"event_type": "geopolitical", "entity": "藥華藥",
+    # 型別是 `cybersecurity`:2026-08-18 起資安事件不再被歸成 geopolitical
+    # (外審 P2-1),而**生產者會把上游給的 geopolitical 也正規化過來** ——
+    # 這個 fixture 若繼續寫 geopolitical,測的就是一個生產不會出現的形狀。
+    day1 = [{"event_type": "cybersecurity", "entity": "藥華藥",
              "title": "藥華藥遭勒索軟體攻擊 產線停擺"},
-            {"event_type": "geopolitical", "entity": "藥華藥",
+            {"event_type": "cybersecurity", "entity": "藥華藥",
              "title": "藥華藥遭駭客入侵 客戶名單外洩"}]
     _, st = _run(tmp_path, monkeypatch, day1, day="2026-08-01")
     assert len(st) == 2, st
@@ -629,7 +632,7 @@ def test_a_sibling_survives_the_base_lineage_expiring(tmp_path, monkeypatch):
     for n, extra in ((2, "後續"), (3, "最新進度"), (4, "主管請辭負責"),
                      (5, "調查結果出爐"), (6, "和解金額出爐")):
         _, st = _run(tmp_path, monkeypatch,
-                     [{"event_type": "geopolitical", "entity": "藥華藥",
+                     [{"event_type": "cybersecurity", "entity": "藥華藥",
                        "title": f"藥華藥遭駭客入侵 客戶名單外洩 {extra}"}],
                      day=f"2026-08-{n:02d}", state=st)
     assert base not in st, "base 那樁停更超過保留期,應該已經退場"
@@ -690,7 +693,7 @@ def test_a_legacy_record_does_not_lend_its_days_to_a_new_incident(tmp_path,
         "subjects": ["藥華藥"], "event_type": "geopolitical",
         "action": "cyberattack", "identity_schema": 6}}
     _, st = _run(tmp_path, monkeypatch,
-                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                 [{"event_type": "cybersecurity", "entity": "藥華藥",
                    "title": "藥華藥遭駭客入侵 客戶名單外洩"}],
                  day="2026-08-09", state=legacy)
     # **今天被更新的那一條**要從第 1 天算起(舊那筆沒被碰,天數當然還在
@@ -708,7 +711,12 @@ def test_a_same_day_follow_up_still_continues_its_line(tmp_path, monkeypatch):
     # 同代(v7)、**今天已經更新過**、但存下來的辨識詞是空的
     # (標題太短時生產真的會寫成空清單)——「不知道」在這裡要沿用,
     # 那是同一天的後續報導,不是跨日的天數繼承。
+    # 舊鍵是資安事件借用地緣型別留下的(2026-08-18 外審 P2-1);載入時會被
+    # **改名**成 `cybersecurity:…`(改名而不是丟掉,延燒天數才不會重算)。
+    # 這條測試要守的仍是原本那件事:同一天的後續報導接得回同一條線,
+    # 而不是開出第二條。
     key = "geopolitical:cyberattack:藥華藥:2026-08"
+    renamed = "cybersecurity:cyberattack:藥華藥:2026-08"
     same_day = {key: {"first_seen": "2026-08-09", "days": 1,
                       "last_seen": "2026-08-09", "latest_title": "藥華藥",
                       "entity": "藥華藥", "subjects": ["藥華藥"],
@@ -716,10 +724,10 @@ def test_a_same_day_follow_up_still_continues_its_line(tmp_path, monkeypatch):
                       "incident_tokens": [],
                       "identity_schema": eid.IDENTITY_SCHEMA_VERSION}}
     _, st = _run(tmp_path, monkeypatch,
-                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                 [{"event_type": "cybersecurity", "entity": "藥華藥",
                    "title": "藥華藥遭勒索軟體攻擊 產線停擺"}],
                  day="2026-08-09", state=same_day)
-    assert list(st) == [key], st
+    assert list(st) == [renamed], st
 
 
 def test_the_recipient_is_the_object_even_when_the_actor_is_missing():
@@ -946,7 +954,7 @@ def test_the_stored_tokens_are_not_shorter_than_what_we_compare_with(
     """
     long_title = "藥華藥遭勒索軟體攻擊 產線停擺 客戶名單外洩 主管請辭 調查展開"
     _, st = _run(tmp_path, monkeypatch,
-                 [{"event_type": "geopolitical", "entity": "藥華藥",
+                 [{"event_type": "cybersecurity", "entity": "藥華藥",
                    "title": long_title}], day="2026-08-09")
     rec = next(iter(st.values()))
     full = sorted(eid.discriminative_tokens(long_title, ["藥華藥"]))

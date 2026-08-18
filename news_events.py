@@ -24,6 +24,24 @@ def _news_event_direction(text: str) -> int:
         return 0
     return 1 if positive else -1
 
+def _cyber_tokens() -> tuple:
+    """資安事件的詞彙**取自身分層的宣告**(`event_actions` 的 `cyberattack`)。
+
+    兩層 taxonomy 曾經自己互相矛盾:身分層判 `cyberattack`、型別層判
+    `geopolitical`。詞彙表只有一份,加一個詞只要改宣告那一處。
+    載不到就回空 tuple —— 那時退回舊行為(仍會被 geopolitical 收走),
+    是誠實的降級:不會因為 import 失敗就把整條規則靜默關掉又假裝有。
+    """
+    try:
+        import event_actions as _ea
+        for row in _ea.ACTION_TABLE:
+            if row and row[0] == "cyberattack":
+                return tuple(row[2:])
+    except Exception:                   # noqa: BLE001 - 宣告載不到就不判
+        pass
+    return ()
+
+
 def _event_type(text: str) -> str:
     """Map noisy headlines to a small, learnable event taxonomy."""
     # 英文 token 需列出複數/變體:word boundary 下 "order" 不再命中 "orders"
@@ -38,6 +56,20 @@ def _event_type(text: str) -> str:
                              "制裁", "sanction", "sanctions", "sanctioned",
                              "sanctioning")),
         ("litigation", ("lawsuit", "lawsuits", "litigation", "訴訟", "裁罰")),
+        # **資安攻擊不是地緣攻擊**(repo-wide 外審 2026-08-18,P2-1)。
+        # 這一條**必須排在 geopolitical 前面**:那一條收「attack / 攻擊」,
+        # 於是任何公司的資安新聞都變成地緣政治事件。生產實例:
+        #   `entity=AAPL、event_type=geopolitical、surprise=0.90`
+        #   ← 「Apple 發出間諜軟體威脅通知 用戶恐成攻擊目標」
+        #   ← 「博通單日跌6%,駭客攻擊VMware讓市場重新定價軟體風險」
+        # 而 geopolitical 拿 0.90 的意外度(prompt 明說 ≥0.6 要優先且醒目)
+        # 與催化評分的地緣權重 —— 那不是標籤好不好看的問題,是真的改了
+        # 優先順序與影響量級。
+        #
+        # **詞彙表不在這裡重寫**:身分層早就宣告過同一組詞
+        # (`event_actions` 的 `cyberattack` 動作),兩份會分歧,而分歧的
+        # 症狀正是這次的缺陷 —— 一層說 cyberattack、另一層說 geopolitical。
+        ("cybersecurity", _cyber_tokens()),
         ("geopolitical", ("war", "missile", "missiles", "attack", "attacks",
                           "attacked", "attacking", "戰爭", "飛彈", "攻擊")),
     )
@@ -51,6 +83,23 @@ def _event_type(text: str) -> str:
         if _matches_any(text or "", list(tokens)):
             return event_type
     return "general"
+
+def normalize_event_type(event_type: str, text: str) -> str:
+    """把**上游給的**型別也帶回同一條規則(2026-08-18 外審 P2-1)。
+
+    `event_type` 可能來自 LLM 抽取器,而它照樣會把資安事件寫成
+    `geopolitical`。只修確定性推導的話,錯誤分類每天會從另一條路進來,
+    而 state 清理會與它每天打架:清掉、隔天又寫回來,延燒天數永遠是 1。
+
+    **只改這一種**(geopolitical → cybersecurity,而且標題要命中宣告過的
+    資安詞彙)—— 不是拿確定性推導覆寫模型的所有判斷:那會把模型讀懂
+    上下文的能力整個丟掉。
+    """
+    et = str(event_type or "")
+    if et == "geopolitical" and _matches_any(text or "", list(_cyber_tokens())):
+        return "cybersecurity"
+    return et
+
 
 def _freshness_weight(age_hours: float) -> float:
     """Fresh events matter most; old duplicates fade quickly."""
@@ -166,6 +215,9 @@ def _event_surprise_score(event: dict) -> float:
         "guidance_raise": 0.90, "guidance_cut": 0.90, "orders": 0.70,
         "earnings": 0.60, "revenue_growth": 0.50, "export_controls": 0.85,
         "litigation": 0.75, "geopolitical": 0.90, "general": 0.35,
+        # 公司資安事件:重大(仍在 prompt 的 ≥0.6 優先門檻內),
+        # 但不是地緣等級 —— 先前它借用 geopolitical 的 0.90。
+        "cybersecurity": 0.70,
     }.get(str(event.get("event_type")), 0.35)
 
 def _event_lifecycle(event: dict) -> str:
@@ -993,7 +1045,8 @@ def _shrunk_event_impact(event_study: dict[tuple, dict],
     return impact, samples, "hierarchical_event_study:" + "+".join(used)
 
 _LLM_EVENT_TYPES = {"guidance_raise", "guidance_cut", "orders", "earnings",
-                    "revenue_growth", "export_controls", "litigation", "geopolitical", "general"}
+                    "revenue_growth", "export_controls", "litigation", "geopolitical",
+                    "cybersecurity", "general"}
 
 # LLM 抽取事件的欄位白名單=extractor prompt 明文要求的欄位。名單外的欄位
 # (source/source_grade/official/quality_score…)一律剝除:LLM(或藏在新聞裡的

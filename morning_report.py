@@ -117,6 +117,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _is_low_value_tech_headline,
 )
 import news_events as _ne
+import completion_contract as _cc
 import state_migrations as _sm
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     llm_event_json_schema,
@@ -12064,10 +12065,12 @@ def _call_gemini_once(model: str, prompt: str, role: str = "primary") -> str:
     # 悄悄少掉內容的報告 —— 兩者不對稱。原因與型號寫進錯誤訊息,真的踩到
     # 會在 manifest 與品質信裡當場看見,不是靜默漂移。
     _reason = str(candidates[0].get("finishReason") or "").upper()
-    if _reason != "STOP":
+    _outcome = _cc.classify("gemini", _reason)
+    if _outcome != _cc.NORMAL:
         raise GeminiCompletionError(
             _reason,
-            f"Gemini finishReason={_reason or 'MISSING'} —— 不是正常結束"
+            f"Gemini finishReason={_reason or 'MISSING'} —— "
+            f"{_cc.describe(_outcome)}"
             f"({len(text)} 字元,role={role},model={model})")
     if not parts:
         raise RuntimeError(f"Gemini 回應無 parts: {data}")
@@ -12093,9 +12096,24 @@ RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 #: 內容過濾類的判定是「這個 prompt/這段輸出不被允許」—— 原封不動再送兩次
 #: 只是多兩次計費與 15 秒,結論一樣。`MAX_TOKENS` 同理:請求沒縮短、額度
 #: 沒改,重送不會修正造成截斷的條件。這些一律**直接換下一個模型**。
-_GEMINI_VERDICT_REASONS = frozenset({
-    "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII",
-    "LANGUAGE", "IMAGE_SAFETY", "MALFORMED_FUNCTION_CALL", "MAX_TOKENS"})
+#: **由共用契約推導**(repo-wide 外審 P1-2):先前這裡是第二份政策,
+#: 而兩份一定會漂。加一個原因只要改 `completion_contract._MAP` 一處。
+_GEMINI_VERDICT_REASONS = _cc.verdict_reasons("gemini")
+
+
+class DeepSeekCompletionError(RuntimeError):
+    """DeepSeek 回了東西但**不是正常結束**(repo-wide 外審 P1-2)。
+
+    與傳輸層失敗(逾時、429、5xx)分開,理由與 Gemini 那個相同:
+    重送同一個模型對傳輸失敗有意義,對 provider 已經做出的裁決沒有。
+    `retryable` 由共用契約決定,呼叫端不必解析訊息字串。
+    """
+
+    def __init__(self, reason: str, outcome: str, message: str):
+        super().__init__(message)
+        self.finish_reason = str(reason or "MISSING")
+        self.outcome = str(outcome or _cc.UNKNOWN)
+        self.retryable = _cc.retryable(self.outcome)
 
 
 class GeminiCompletionError(RuntimeError):
@@ -12295,15 +12313,49 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 if not choices:
                     raise RuntimeError(f"DeepSeek 回應無 choices: {data}")
                 content = choices[0].get("message", {}).get("content")
-                if not content:
-                    raise RuntimeError(f"DeepSeek 回應無 content: {data}")
                 usage = data.get("usage", {})
+                # **先問契約,再檢查 content**(外審 2026-08-18 第二輪 P2):
+                # 被內容政策擋下的回應**本來就常常沒有 content** —— 先擋
+                # 「回應無 content」的話,結束原因與 usage 整個從遙測消失,
+                # 而通用處理器會把 provider 的裁決當成暫時性失敗一再重送。
+                # 另外三條路徑(OpenAI / Gemini / DeepSeek 抽取器)都是
+                # 先分類後驗內容,只有這一條相反。
                 # **截斷必須留下訊號。** 這一行原本不存在,於是 2026-08-02 那班
                 # 「答案被推理擠掉」在 manifest 裡完全看不出來 ——
                 # `finish_reason` 是 None,而唯一的線索是
                 # completion_tokens 剛好等於 max_tokens 這個要人自己去比對的巧合。
                 _finish = str(choices[0].get("finish_reason") or "")
-                if _finish == "length":
+                # **只有正常結束才算成功**(repo-wide 外審 P1-2)。
+                # 先前只擋 `length`,於是官方文件明列的
+                # `insufficient_system_resource`(推理系統資源不足而**生成被
+                # 中斷**)在 content 非空時被當完整答案 —— 與 Gemini 那個
+                # 缺陷同型:被中斷的回應剛好仍是合法 JSON,解析器沒有理由
+                # 知道它少了後半段。政策在 `completion_contract`,這裡只對照。
+                _out = _cc.classify("deepseek", _finish)
+                if _out not in (_cc.NORMAL, _cc.TRUNCATED):
+                    _DEGRADED_STEPS.append(f"llm:{_out}:{role}")
+                    _record_llm_call(
+                        role, "deepseek", model, finish_reason=_finish,
+                        requested_effort=DEEPSEEK_REASONING_EFFORT,
+                        applied_effort=payload.get("reasoning_effort", ""),
+                        slim=slim, backoff_reason=_backoff_reason,
+                        usage=usage or {}, accepted=False,
+                        elapsed=time.monotonic() - _t0,
+                        error=(f"finish_reason={_finish or 'MISSING'} —— "
+                               f"{_cc.describe(_out)}"))
+                    raise DeepSeekCompletionError(
+                        _finish, _out,
+                        f"DeepSeek {role} 非正常結束:"
+                        f"finish_reason={_finish or 'MISSING'}"
+                        f"({_cc.describe(_out)}、"
+                        f"content_len={len(content or '')})")
+                # 走到這裡 outcome 一定是 NORMAL(其餘都在上面拋掉了),
+                # 所以這裡問的是另一件事:**正常結束卻沒有內容**。
+                # 第一版在條件裡多寫了 `and _out == _cc.NORMAL` —— 突變驗證
+                # 證明那半句永遠成立,是測不出來的贅語。
+                if not content:
+                    raise RuntimeError(f"DeepSeek 回應無 content: {data}")
+                if _out == _cc.TRUNCATED:
                     # r1(Codex):**截斷要被拒絕,不只是被看見。**
                     # 我第一版只記了訊號就照樣回傳半截內容 —— 而週日那條路徑
                     # (`analyze_weekend_policy`)沒有完整性檢查,於是同樣的
@@ -12403,6 +12455,20 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                 # 直接往外拋讓呼叫端走它自己的備援(主分析換 provider、
                 # 週日政策段整段省略)。
                 raise
+            except DeepSeekCompletionError as e:
+                # **契約已經判定過了,呼叫端要照辦**(外審 2026-08-18 第二輪 P2)。
+                # 這一筆在上面就記過帳(帶 finish_reason 與 outcome),
+                # 落到通用處理器會**再記一次**(同一個回應既算「已量測」
+                # 又算「計費但未量測」),而且不管契約說什麼都重試三次 ——
+                # 內容裁決與工具請求原樣再送只是多付錢。
+                last_err = e
+                print(f"[llm] DeepSeek {model} {_cc.describe(e.outcome)}"
+                      f"(finish_reason={e.finish_reason})",
+                      file=sys.stderr)
+                if e.retryable and attempt < 3:
+                    _llm_sleep(5)
+                    continue
+                break
             except Exception as e:
                 last_err = e
                 # r1(Codex #5,P2):**這次呼叫已經送出,server 端照樣計費。**
@@ -12629,9 +12695,17 @@ def _call_openai(prompt: str, model: str = "", timeout: float = 0.0,
                 elapsed=time.monotonic() - _t0)
     if _backoff_reason:
         _rec["backoff_reason"] = _backoff_reason
-    if finish == "length":
+    # **只有正常結束才算成功**(repo-wide 外審 P1-2):先前只擋 `length`,
+    # 而 `content_filter` / `tool_calls` 在 content 非空時會被當完整答案。
+    # 政策在 `completion_contract`,這裡只對照。
+    _out = _cc.classify("openai", finish)
+    if _out == _cc.TRUNCATED:
         _record_llm_call(**_rec, accepted=False, error="finish_reason=length")
         raise ExtractorOutputTruncated(f"OpenAI 額度用完{detail}")
+    if _out != _cc.NORMAL:
+        _record_llm_call(**_rec, accepted=False,
+                         error=f"finish_reason={finish} —— {_cc.describe(_out)}")
+        raise RuntimeError(f"OpenAI 非正常結束({_cc.describe(_out)}){detail}")
     if not content:
         _record_llm_call(**_rec, accepted=False, error="empty content")
         raise RuntimeError(f"OpenAI 回應缺少 content{detail}")
@@ -12730,9 +12804,18 @@ def _call_deepseek_extractor(prompt: str) -> str:
     # `_parse_llm_event_json` 需要收尾的 `]`,於是回 `[]`、`outcome` 記成 "ok",
     # 靜默地沒有任何事件,而且**不會觸發減量重試**。
     # 那正是這個功能一直以來的失敗形狀(沉默歸零)換了一件衣服。
-    if finish == "length":
+    # **只有正常結束才算成功**(repo-wide 外審 P1-2):先前只擋 `length`,
+    # 而 `insufficient_system_resource`(推理系統資源不足而生成被中斷)在
+    # content 非空時會被當完整答案 —— 抽取器最容易踩到這一種:
+    # 30 件事件只吐出前 5 件、剛好是合法 JSON,涵蓋率靜默下降。
+    _out = _cc.classify("deepseek", finish)
+    if _out == _cc.TRUNCATED:
         raise ExtractorOutputTruncated(
             f"DeepSeek extractor 額度用完{detail}")
+    if _out != _cc.NORMAL:
+        raise DeepSeekCompletionError(
+            finish, _out,
+            f"DeepSeek extractor 非正常結束({_cc.describe(_out)}){detail}")
     if not content:
         # 空 content 的原因不只一種(內容過濾、模型回了別的欄位…),
         # 但都不是「減量就有救」的那一類。
@@ -12989,27 +13072,66 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
     #: (再要一次輸出),而剛才已經要過了。
     _retry = {"left": 1}
 
-    def _call_or_halve(p: str) -> str:
-        """額度用完 → **把輸入減半**再試一次。
+    # 額度**實際被誰用掉**(給「為什麼沒重試」那一格用)。
+    _spent = {"on": "nothing"}
 
-        批#85:調高 `max_tokens` 是針對已量到的原因(reasoning 吃光額度),
-        但那個係數是估的。減量是與係數無關的結構性退路:不論每則新聞的推理
-        成本是多少,少一半就少一半。只重試一次(成本上限 +1),仍失敗就讓
-        例外往上走,由既有的 except 記進 manifest。
+    def _call_or_halve(p: str) -> str:
+        """一個重試迴圈,**兩種重試共用同一個額度**。
+
+        額度用完 → 把輸入減半再試(批#85:調高 `max_tokens` 是針對已量到的
+        原因,但那個係數是估的;減量是與係數無關的結構性退路)。
+        provider 端**暫時性**中斷(`insufficient_system_resource` 這一類)
+        → 同一份輸入再送一次(中斷與輸入大小無關)。
+
+        **寫成迴圈而不是兩個 except**(外審 2026-08-18 第三輪的延伸):
+        原本第二次呼叫寫在 except 區塊裡,於是「先中斷、後截斷」時截斷那次
+        根本沒有人接 —— 兩條重試路徑互相到不了,額度也就不是真的共用。
+        突變驗證當場證明:把扣額度那一行拿掉,行為完全一樣(那是一個
+        測不出來的守衛)。改成迴圈之後,任一種重試都會用掉同一格額度,
+        最壞情況仍然是「原本 1 次 + 重試 1 次」。
         """
-        try:
-            return _call(p)
-        except ExtractorOutputTruncated:
-            if _retry["left"] <= 0:
-                raise
-            _retry["left"] -= 1
-            half = max(1, len(compact_items) // 2)
-            print(f"[llm-extractor] 額度用完;改用 "
-                  f"{half}/{len(compact_items)} 則重試", file=sys.stderr)
-            _stat["retried"] = True
-            _stat["retry_items"] = half
-            _effective["prompt"] = _prompt_for(compact_items[:half])
-            return _call(_effective["prompt"])
+        prompt_now = p
+        while True:
+            try:
+                return _call(prompt_now)
+            except (DeepSeekCompletionError, GeminiCompletionError) as e:
+                # **契約說可以重試的才重試**:內容裁決與工具請求是對這一份
+                # 請求的判定,原樣再送只是多付錢。
+                # **失敗的那一次要留紀錄**:抽取器的 adapter 只拋不記,
+                # 沒有這一筆的話 manifest 看不出這一棒為什麼多花了一次。
+                # **先記帳,再決定要不要重試**(外審 2026-08-18 第四輪):
+                # 額度用完時原本直接 `raise`,於是**第二次送出去的請求
+                # 完全沒有紀錄** —— manifest 顯示 1 次、實際送了 2 次,
+                # 成本與 provider 健康度都少算一次。
+                # 記帳的條件是「這次請求送出去了」,不是「我們還想不想重試」。
+                _ep_now = _extractor_provider()
+                _record_llm_call(
+                    "extractor", _ep_now, _extractor_model_of(_ep_now),
+                    accepted=False,
+                    finish_reason=str(getattr(e, "finish_reason", "")),
+                    error=f"{type(e).__name__}: {e}"[:160],
+                    billable_unmeasured=not _lt.refusal_reason(e))
+                if not getattr(e, "retryable", False) or _retry["left"] <= 0:
+                    raise
+                _retry["left"] -= 1
+                _stat["retried"] = True
+                _stat["retry_reason"] = str(getattr(e, "outcome", "")
+                                            or getattr(e, "finish_reason", ""))
+                _spent["on"] = _stat["retry_reason"] or "completion_failure"
+                print(f"[llm-extractor] {_stat['retry_reason']} —— "
+                      "同一份輸入再試一次", file=sys.stderr)
+            except ExtractorOutputTruncated:
+                if _retry["left"] <= 0:
+                    raise
+                _retry["left"] -= 1
+                half = max(1, len(compact_items) // 2)
+                print(f"[llm-extractor] 額度用完;改用 "
+                      f"{half}/{len(compact_items)} 則重試", file=sys.stderr)
+                _stat["retried"] = True
+                _stat["retry_items"] = half
+                _spent["on"] = "truncation"
+                prompt_now = _prompt_for(compact_items[:half])
+                _effective["prompt"] = prompt_now
 
     try:
         # **回空陣列有四種原因,而它們的處置不同**(2026-08-11 生產:
@@ -13027,9 +13149,16 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         # 有解析出事件卻全數不合格 → 帶嚴格提醒重試一次(空陣列=合法「無事件」,不重試;成本上限 +1)
         if parsed and not valid and _retry["left"] <= 0:
             # 預算已被截斷重試用掉。記下來,否則「為什麼沒重試」只能猜。
-            print("[llm-extractor] 全數不合格,但重試預算已用於減量 → 不再重試",
-                  file=sys.stderr)
-            _stat["schema_retry_skipped"] = "budget_spent_on_truncation"
+            # **日誌與 manifest 要說同一件事**(外審 2026-08-18 第五輪):
+            # manifest 已經改成記「額度實際被誰用掉」,而這一行還寫死
+            # 「用於減量」—— 兩個診斷互相矛盾時,看日誌的人會被帶錯方向。
+            print(f"[llm-extractor] 全數不合格,但重試預算已用於"
+                  f"{_spent['on']} → 不再重試", file=sys.stderr)
+            # **標籤要說實話**(外審 2026-08-18 第四輪):額度現在有兩種
+            # 用途(減量、provider 中斷),寫死「用於減量」在中斷那一種
+            # 情況下是假的 —— 而這一格存在的理由就是「為什麼沒重試」
+            # 不要靠猜。
+            _stat["schema_retry_skipped"] = f"budget_spent_on_{_spent['on']}"
         elif parsed and not valid:
             print("[llm-extractor] 全數不合格 → 重試一次", file=sys.stderr)
             _retry["left"] -= 1

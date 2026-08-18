@@ -629,7 +629,11 @@ def test_deepseek_400_retries_with_slim_payload(monkeypatch):
         calls.append(json or {})
         if "thinking" in (json or {}):
             return _FakePostResp(400, text='{"error":{"message":"unsupported param"}}')
-        return _FakePostResp(200, {"choices": [{"message": {"content": "分析內容"}}],
+        return _FakePostResp(200, {"choices": [{"message": {"content": "分析內容"},
+                                                # **生產的回應形狀一定帶結束原因**
+                                                # (2026-08-18 P1-2:只有正常結束
+                                                # 才算成功,缺欄位 fail closed)。
+                                                "finish_reason": "stop"}],
                                    "usage": {}})
 
     monkeypatch.setattr(mr.requests, "post", fake_post)
@@ -654,7 +658,8 @@ def test_the_slim_retry_says_why_and_says_it_out_loud(monkeypatch):
         if "thinking" in (json or {}):
             return _FakePostResp(
                 400, text='{"error":{"message":"context length exceeded"}}')
-        return _FakePostResp(200, {"choices": [{"message": {"content": "分析"}}],
+        return _FakePostResp(200, {"choices": [{"message": {"content": "分析"},
+                                                "finish_reason": "stop"}],
                                    "usage": {"prompt_tokens": 3,
                                              "completion_tokens": 2}})
 
@@ -774,7 +779,8 @@ def test_deepseek_request_respects_shared_wall_clock_budget(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=None):
         captured["timeout"] = timeout
         return _FakePostResp(
-            200, {"choices": [{"message": {"content": "ok"}}], "usage": {}})
+            200, {"choices": [{"message": {"content": "ok"},
+                               "finish_reason": "stop"}], "usage": {}})
 
     monkeypatch.setattr(mr.requests, "post", fake_post)
     monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")

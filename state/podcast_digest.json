@@ -4923,6 +4923,66 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74263212",
+        "title": "Meta faces high-stakes federal trial over child safety",
+        "published": "Tue, 18 Aug 2026 17:53:34 +0000",
+        "processed_at": "2026-08-18T19:51:51Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出，Meta 在已輸掉兩起兒童安全相關重大官司後，本次聯邦審判的風險高，且法律費用已導致上月罕見的獲利下滑；Zuckerberg 等高層與前員工將出庭作證。",
+            "美國 7 月新屋開工較前月下滑 12.4% 至約 120.5 萬戶，遠遜市場預期的 134 萬戶；Pantheon Macro 認為，因負擔能力惡化、房貸利率上升與移民減少壓抑需求，未來房屋建築更可能持續下滑而非復甦。",
+            "Goldman Sachs 更新 AI 生產力受惠股名單：S&P 500 中有 65% 公司提及 AI，僅 2% 量化對獲利的影響；點名 CoStar Group、Dollar Tree、eBay、The Trade Desk 為潛在受惠者。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為法律訴訟風險高，且法律費用已侵蝕獲利，前景偏空。"
+            },
+            {
+              "name": "Bath & Body Works",
+              "code": "BBWI",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Citigroup 升評至買進，看好 Q2 財報、新品動能與能源/關稅退稅上檔空間。"
+            },
+            {
+              "name": "CoStar Group",
+              "code": "CSGP",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
+            },
+            {
+              "name": "Dollar Tree",
+              "code": "DLTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
+            },
+            {
+              "name": "eBay",
+              "code": "EBAY",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
+            },
+            {
+              "name": "The Trade Desk",
+              "code": "TTD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "For Metta, which already lost two pivotal cases over harm to children and teens this year, the risks are high."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74249928",
         "title": "Bond vigilantes stir as yields climb",
         "published": "Tue, 18 Aug 2026 10:54:49 +0000",
@@ -5318,39 +5378,6 @@
           "notable_quote": "To put this into perspective for you, 191 megawatts of capacity is enough to energize roughly 143,000 homes at any given time."
         },
         "shown_at": "2026-08-11T22:58:19Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73763864",
-        "title": "GameStop rethinks eBay takeover",
-        "published": "Mon, 10 Aug 2026 15:11:46 +0000",
-        "processed_at": "2026-08-10T20:10:57Z",
-        "digest": {
-          "summary_points": [
-            "主持人報導，GameStop 執行長 Ryan Cohen 傳出可能撤回對 eBay 的 560 億美元收購，改談合作或合資；GameStop 持有 eBay 9.75% 股權，但股價自 5 月以來已下跌 28%，Michael Burry 也出清持股。",
-            "主持人引述策略師數據指出，S&P 500 股息殖利率降至 1.04% 歷史新低，代表股價漲幅遠超過股息成長，而過去市場弱勢時殖利率曾達 3.87%。",
-            "主持人報導，Archer Aviation 宣布收購 Boeing 旗下 Wisk Aero、SkyGrid 與 Insitu，涵蓋電動垂直起降機、空中交通管理及無人機系統，股價因此大漲。"
-          ],
-          "tickers": [
-            {
-              "name": "GameStop",
-              "code": "GME",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人報導 GameStop 股價自 5 月以來下跌 28%，且 Michael Burry 出清持股，市場對收購 eBay 的計畫存疑。"
-            },
-            {
-              "name": "Archer Aviation",
-              "code": "ACHR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人報導 Archer Aviation 收購 Boeing 旗下三家子公司，股價因此大漲。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Wall Street does indeed mistake debt for creativity and does so constantly."
-        },
-        "shown_at": "2026-08-10T22:46:52Z"
       }
     ]
   },

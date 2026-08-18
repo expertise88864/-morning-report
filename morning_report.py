@@ -116,6 +116,8 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
     _strip_html,
     _is_low_value_tech_headline,
 )
+import news_events as _ne
+import state_migrations as _sm
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     llm_event_json_schema,
     timeline_subjects as _timeline_subjects,  # noqa: F401 — 延燒事件主體正規化
@@ -5558,6 +5560,47 @@ def _format_story_prompt_block(ledger) -> str:
             "<UNTRUSTED_SOURCE_DATA>\n" + body + "\n</UNTRUSTED_SOURCE_DATA>")
 
 
+def _run_alias_map(tw0050=None) -> dict:
+    """清理用的別名表。**與 producer 是同一個建表函式**(`_entity_alias_map`)
+    —— 兩份會分歧,而分歧的症狀是「清掉的明天又長回來」。
+
+    清理跑在**抓 universe 之前**(帳本一載入就要乾淨),所以預設用硬編的
+    0050 清單 + 宣告過的美股別名。那是**宣告**,每天都一樣、不依賴當日網路;
+    收錄範圍比當日 universe 窄,而窄只會讓判準更保守(查不到別名的實體
+    一律留著,見 `state_migrations._named`)。
+    """
+    try:
+        rows = list(tw0050 or [])
+        if not rows:
+            rows = [{"code": c, "name": v.get("name"), "industry": v.get("industry", "")}
+                    for c, v in (_fallback_universe() or {}).items()]
+        return _entity_alias_map(rows)
+    except Exception:                   # noqa: BLE001 - 詞彙表建不起來就不清
+        return {}
+
+
+def purge_story_misattribution(ledger: list) -> list:
+    """把「主體在自己的標題裡指不出來」的線索清掉,並記進 run manifest。
+
+    repo-wide 外審 2026-08-18 P1-1:`entity` 先前同時是三件事,確定性層因此
+    把「黃金 8 月大漲 9%」寫成聯發科的 geopolitical 線索。**修 producer 不會
+    把已經寫壞的 state 修好** —— 那幾筆會跨日回流昨日敘事與催化評分。
+    清理是可重入的(清完就不符合條件),不需要「已經跑過」的旗標。
+    """
+    kn = _run_alias_map()
+    if not kn:
+        return list(ledger or [])
+    keep, dropped = _sm.purge_misattributed_stories(ledger, kn)
+    if dropped:
+        _RUN_MANIFEST.setdefault("state_migrations", {})["story_misattribution"] = {
+            "dropped": len(dropped), "kept": len(keep),
+            "examples": [f"{r.get('entity')}|{str(r.get('headline'))[:40]}"
+                         for r in dropped[:5]]}
+        print(f"[migrate] 線索帳本清掉 {len(dropped)} 條錯歸因(主體在標題裡"
+              f"指不出來),保留 {len(keep)} 條", file=sys.stderr)
+    return keep
+
+
 def load_story_ledger_for_run():
     """本次執行要用的線索帳本;回 (ledger, readable)。**readable 為 False 時
     呼叫端不得存檔**——寧可今天沒有線索脈絡,也不能拿局部重建的帳本覆蓋掉
@@ -5569,7 +5612,7 @@ def load_story_ledger_for_run():
     實測把守衛改掉後,60 條線索被覆寫成 1 條,而全套測試仍全綠。
     """
     try:
-        return load_story_ledger(), True
+        return purge_story_misattribution(load_story_ledger()), True
     except StoryLedgerCorrupt as e:
         print(f"[story] 線索帳本損壞({e}),本次不寫入以免覆蓋歷史",
               file=sys.stderr)
@@ -8515,9 +8558,31 @@ def extract_structured_events(news: list[dict],
         parsed_published = _parse_news_time_required(raw_published)
         published = parsed_published or (now - dt.timedelta(days=7))
         age_hours = max(0.0, (now - published).total_seconds() / 3600)
+        # **「這則在講誰」與「這則跟誰有關」分開**(repo-wide 外審 2026-08-18
+        # P1-1)。先前 `entity` 同時是三件事:模型宣告的主體、編輯標註的相關
+        # 個股、以及**發起查詢的那個代號** —— 而 `entity` 是 story key /
+        # timeline / 催化評分 / model history 的身分。生產狀態因此寫進
+        # 「黃金 8 月大漲 9% = 聯發科的 geopolitical event」這種東西。
+        # 判準只有一份(`news_events.resolve_subject`):**主體要在新聞自己的
+        # 文字裡被指名**(括號裡的代號,或宣告過的別名)。指不出來就沒有主體,
+        # 帳本對這種事件另有 cluster 鍵 —— 那是誠實的降級,不是遺漏。
+        # 驗證用**整則新聞的文字**(標題+摘要)—— 摘要也是來源文字,
+        # 標題寫「第二季獲利優於預期」而摘要寫「台積電公布財報」是常見寫法,
+        # 只看標題會把合法主體丟掉(外審 2026-08-18 第三輪)。
+        # round-trip 的問題**不靠收窄定義解決**:事件把 `subject_basis` 帶進
+        # 帳本,清理因此只判**沒有依據的舊列**(見 `state_migrations`)。
+        _cands = [item.get("entity"), item.get("code"), item.get("company_label")]
+        _subject, _basis = _ne.resolve_subject(
+            f"{title} {item.get('summary', '')}", _cands, known_names)
+        # 相關個股與發起查詢的代號各自留欄位:它們仍然有用(橫向、追蹤),
+        # 只是**不再冒充主體**。
+        _related = [str(x) for x in _extra_tracked_codes(item)
+                    if str(x) != _subject][:4]
         event = {
-            "entity": str(item.get("entity") or item.get("code")
-                          or item.get("company_label") or ""),
+            "entity": _subject,
+            "subject_basis": _basis,
+            "related_tickers": _related,
+            "query_origin": str(item.get("company_label") or item.get("code") or ""),
             "event_type": str(item.get("event_type") or _event_type(text)),
             "direction": int(_safe_number(
                 item.get("direction"), _news_event_direction(text))),
@@ -8576,7 +8641,17 @@ def extract_structured_events(news: list[dict],
         # 先前只把 editor_stock_codes 加進 LLM payload,但 LLM 抽取關掉/無金鑰/
         # 時間預算不足/呼叫失敗時全都退回本函式,多公司歸因就整個消失。
         # 只為「company_label 之外的其他追蹤代號」補事件,避免與上面那則重複。
+        # **編輯標註只是「相關」,不是「主體」**(外審 2026-08-18 P1-1)。
+        # 先前這裡把每一個被標註的代號都升格成一個事件的 entity ——
+        # 「黃金大漲」被標了 2454,於是帳本裡出現「聯發科的 geopolitical」。
+        # 現在仍然為多主體新聞補事件(「台積電、美光壓力來了」是真的兩個主體),
+        # 但**那一檔必須在文字裡被指名**;指不出來的就只留在 `related_tickers`。
         primary = str(item.get("company_label") or "")
+        # **主體驗證只在 `append()` 裡做一次。** 這裡曾經也擋一次(指名了才
+        # 展開),但那是**多餘的守衛**:展開出來的那一則一樣要過 `append()`
+        # 的驗證,擋不擋結果相同 —— 突變驗證當場證明「把這裡的守衛拿掉,
+        # 全套照樣綠」。重複的守衛測不出來,而測不出來的守衛在下一次重構時
+        # 會被悄悄拿掉;判準留在一個地方。
         for extra in _extra_tracked_codes(item, exclude=primary):
             append(dict(item, company_label=extra, entity=extra))
     # 批#42 r2(七維度審查,P1)**實跑確認**:法定款別→event_type 的「錨點」原本
@@ -14848,6 +14923,16 @@ def update_event_timeline(structured_events: list[dict],
             state = json.loads(EVENT_TIMELINE_FILE.read_text(encoding="utf-8")) or {}
         except Exception:
             state = {}
+        # 與帳本同一個清理(外審 2026-08-18 P1-1):`geopolitical:2454:2026-08`
+        # 的 latest_title 是「黃金 8 月大漲 9%」—— 那條線會繼續累計天數。
+        _kn_tl = _run_alias_map()
+        if _kn_tl:
+            state, _tl_dropped = _sm.purge_misattributed_timeline(state, _kn_tl)
+            if _tl_dropped:
+                _RUN_MANIFEST.setdefault("state_migrations", {})[
+                    "timeline_misattribution"] = {"dropped": _tl_dropped[:8]}
+                print(f"[migrate] 事件時間軸清掉 {len(_tl_dropped)} 條錯歸因",
+                      file=sys.stderr)
     # **舊身分是「某國的某類新聞」,不是事件**(外審 P1-9)。
     # 實測 2026-08-07 的 state 同時有兩種相反的錯:同一條荷姆茲海峽線因為
     # 兩則報導點名的主體集合不同而裂成 `geopolitical:伊朗`(6 天)與
@@ -15017,6 +15102,12 @@ def update_event_timeline(structured_events: list[dict],
         # 本來是 `NO_MATCH` 的兩樁事會判成 `MATCH` 而直接承接 lineage。
         rec["incident_tokens"] = _tok[:_eid.MAX_SUFFIX_TOKENS]
         rec["entity"] = ident["subjects"][0] if ident["subjects"] else subjects[0]
+        # **依據隨列走**(外審 2026-08-18 P1):生產者用標題+摘要驗證主體,
+        # 而清理只看得到標題 —— 沒有依據的話,只在摘要指名公司的合法時間軸
+        # 明天會被清掉。非空才覆寫:同一條線後續由沒帶依據的事件更新時,
+        # 不該把已經證實過的那筆抹掉。
+        if str(ev.get("subject_basis") or "").strip():
+            rec["subject_basis"] = str(ev.get("subject_basis"))
         rec["subjects"] = ident["subjects"] or subjects
         rec["event_type"] = str(ev.get("event_type") or "")
         rec["action"] = ident["action"]

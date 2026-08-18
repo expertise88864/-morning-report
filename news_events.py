@@ -457,6 +457,122 @@ def _alias_to_code(known_names) -> dict:
     return {k: next(iter(v)) for k, v in hits.items() if len(v) == 1}
 
 
+#: **「這則新聞在講誰」與「這則新聞跟誰有關」是兩件事**
+#: (repo-wide 外審 2026-08-18,P1-1)。
+#:
+#: 生產狀態被污染的實例(都是 Python 確定性層寫進去的,不是模型幻覺):
+#:   * `e:2454|l:geopolitical` ← 「黃金終於鬆開手煞車!8月大漲9%重拾避險光環」
+#:   * `e:2890|l:earnings`     ← 「【公告】勝悅-KY 第2季合併財報董事會日期」
+#:   * `e:3231|l:earnings`     ← 「緯穎飆出6740元歷史新天價」
+#: 成因是同一個:編輯標註的**相關**個股(鉅亨 `stock` 欄位)、以及
+#: **發起查詢的那個代號**,都被直接寫進 `entity`,而 `entity` 是
+#: story key / timeline / 催化評分 / model history 的身分。
+#:
+#: 這裡是唯一的判準:**主體要在新聞自己的文字裡出現**。
+#: 出現的方式只有兩種,兩種都是可核對的事實:
+#:   1. **括號裡的代號**(`緯創(3231)`、`【2330】`)—— 裸數字不算,
+#:      「大盤大漲 2454 點」的 2454 是點數不是聯發科;
+#:   2. 宣告過的公司別名(`known_names` = `{代號: (別名, …)}`,
+#:      那張表是人維護的,不是從新聞猜的)。
+#: **兩者都對不上就沒有主體**(回空字串)—— 那是誠實的降級:
+#: 市場級/總經事件本來就沒有公司主體,帳本對這種事件另有 cluster 鍵。
+#:
+#: 為什麼不是「再加一個關鍵字守衛」:這個判準**取代**了「誰可以當 entity」
+#: 這件事本身,而不是在某一個入口多擋一次。相關個股改放 `related_tickers`,
+#: 發起查詢的代號改放 `query_origin` —— 三個概念不再共用一個欄位。
+_SUBJECT_CODE_BOUNDARY = _re_module.compile(r"[0-9A-Za-z]")
+
+
+def mentions_entity(text: str, code: str, known_names=None) -> str:
+    """這段文字有沒有指名這個實體。回 `"code"` / `"alias"` / `""`。
+
+    **回傳的是依據,不是布林** —— 下游要記得住「憑什麼說它是主體」,
+    而「用代號認出來的」與「用別名認出來的」在出錯時要分得開。
+    """
+    hay = str(text or "")
+    code = str(code or "").strip()
+    if not hay or not code:
+        return ""
+    # 代號:台股是純數字,**裸數字一律不算**。「大盤大漲 2454 點」裡的 2454
+    # 是點數不是聯發科,而「左右不是英數字」這種邊界檢查放它過(自測抓到)。
+    # 台股新聞寫代號的慣例是括號:「緯創(3231)」「(6669)」「【2330】」——
+    # 要求括號相鄰,數字巧合就進不來。沒寫括號的那些,公司名會由別名那一關
+    # 認出來(「2330 台積電法說」有「台積電」),所以不會因此漏掉真的主體。
+    for br_open, br_close in (("(", ")"), ("（", "）"), ("[", "]"),
+                              ("【", "】"), ("〔", "〕")):
+        if f"{br_open}{code}{br_close}" in hay:
+            return "code"
+    # **別名是一個整體,不是幾個可以各自比對的字**(外審 2026-08-18 P1-3)。
+    # 第一版對每個別名再 `.split()` 然後做無邊界子字串比對,於是:
+    #   `Hon Hai` → `Hon`  → 「iPhone demand…」命中鴻海
+    #   `Arm`             → 「pharmaceutical」命中安謀
+    #   `Applied Materials` → `materials` → 任何講材料的新聞命中應用材料
+    # 那正好把這次要關掉的路徑重新打開(查詢代號又被升格成已驗證主體)。
+    #
+    # 純拉丁字母的別名要**詞邊界**(左右不是英數字);中文沒有詞邊界,
+    # 用子字串,但長度至少兩個字(一個字的別名會命中任何句子)。
+    low = hay.lower()
+    for alias in ((known_names or {}).get(code) or ()):
+        a = str(alias or "").strip()
+        if len(a) < 2:
+            continue
+        if _LATIN_ALIAS.fullmatch(a):
+            if _latin_alias_hit(low, a.lower()):
+                return "alias"
+        elif a.lower() in low:
+            return "alias"
+    return ""
+
+
+#: 純拉丁別名(含空白與少數連接符號):`Hon Hai`、`Applied Materials`、`Arm`。
+_LATIN_ALIAS = _re_module.compile(r"[A-Za-z0-9][A-Za-z0-9 .&'-]*")
+
+
+def _latin_alias_hit(low_text: str, alias: str) -> bool:
+    """拉丁別名要落在詞邊界上 —— `Arm` 不得命中 `pharmaceutical`。"""
+    i = low_text.find(alias)
+    while i >= 0:
+        before = low_text[i - 1] if i > 0 else " "
+        j = i + len(alias)
+        after = low_text[j] if j < len(low_text) else " "
+        # **邊界只看 ASCII 英數字**(外審 2026-08-18 第三輪):中文字的
+        # `isalnum()` 也是 True,於是「Arm架構需求升溫」「Apple發表新晶片」
+        # 會被當成別名落在單字內而拒絕 —— 合法主體反而命不中。
+        if not (_SUBJECT_CODE_BOUNDARY.match(before)
+                or _SUBJECT_CODE_BOUNDARY.match(after)):
+            return True
+        i = low_text.find(alias, i + 1)
+    return False
+
+
+def resolve_subject(text: str, candidates, known_names=None) -> tuple:
+    """依序試每個候選,回 `(主體, 依據)`;**沒有一個被文字證實就回 `("", "")`**。
+
+    候選的順序由呼叫端決定(它知道哪個是模型宣告、哪個是編輯標註、
+    哪個只是發起查詢的代號)—— 這裡只負責「文字有沒有指名它」。
+
+    **傳進來的文字要與事後查得到的那份一致**(外審 2026-08-18 P1-1):
+    帳本只存標題,所以生產者也只拿標題來驗 —— 用「標題+摘要」驗、卻用
+    標題清理,會讓清理把生產者昨天建立的**合法** state 刪掉。
+    語意上這也是對的:只在內文被提到的公司是**相關**,不是這則的主體。
+    """
+    for c in candidates or ():
+        c = str(c or "").strip()
+        if not c:
+            continue
+        basis = mentions_entity(text, c, known_names)
+        if basis:
+            return c, basis
+        # **詞彙表沒收錄 ≠ 歸因錯了**(與 `state_migrations._named` 同一條規則)。
+        # 沒有別名可比對時我們**證明不了**它不是主體 —— 這時判它錯會讓
+        # 「詞彙表少一筆」變成「整條公司歸因消失」,而那比錯誤歸因更難察覺:
+        # 信裡會什麼都不說,而不是說錯。所以照舊採用,依據標成 `unverified`,
+        # 下游看得出這一筆沒有被證實過。
+        if not ((known_names or {}).get(c)):
+            return c, "unverified"
+    return "", ""
+
+
 def event_subject_key(title: str, entity: str = "",
                       entity_aliases=(), known_names=None) -> str:
     """事件的**對象指紋**:標題裡除了自己之外的可辨識主體。

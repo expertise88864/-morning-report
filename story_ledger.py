@@ -1168,6 +1168,10 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
             by_key[key] = {
                 "key": key,
                 "entity": str(ev.get("entity") or ""),
+                # **主體是怎麼被證實的**(2026-08-18 P1-1)。清理拿不到當初
+                # 驗證用的摘要,所以帶著依據走:有依據的列由生產者負責,
+                # 沒有依據的才是修正之前寫下的舊列 —— 那些才需要被清。
+                "subject_basis": str(ev.get("subject_basis") or ""),
                 # r5:公司名(代號→名稱)。主體比對必須連名稱一起剝,
                 # 否則同公司的兩件事只靠共同的公司名就能撐過門檻。
                 "entity_name": str((name_map or {}).get(
@@ -1220,6 +1224,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
                 story["last_published"] = str(ev.get("published") or "")
                 story["headline"] = title[:120]
                 story["delta_unconfirmed"] = _unconf
+                # **換了 headline 就要同步依據**(外審 2026-08-18 P1):
+                # 舊列沒有 `subject_basis`,被一則只在摘要指名公司的合法續報
+                # 更新之後,標題仍是泛稱 —— 不同步的話清理明天照樣把它當
+                # 舊污染列刪掉。非空才覆寫。
+                if str(ev.get("subject_basis") or "").strip():
+                    story["subject_basis"] = str(ev.get("subject_basis"))
                 if not _unconf:
                     story["lifecycle"] = str(
                         ev.get("lifecycle") or story.get("lifecycle") or "")
@@ -1280,6 +1290,12 @@ def update_ledger(ledger: list[dict], events: list[dict], today: str,
         story["last_published"] = str(ev.get("published") or "")
         story["headline"] = title[:120]
         story["delta_unconfirmed"] = unconfirmed
+        # **換了 headline 就要同步依據**(外審 2026-08-18 P1):
+        # 舊列沒有 `subject_basis`,被一則只在摘要指名公司的合法續報
+        # 更新之後,標題仍是泛稱 —— 不同步的話清理明天照樣把它當
+        # 舊污染列刪掉。非空才覆寫。
+        if str(ev.get("subject_basis") or "").strip():
+            story["subject_basis"] = str(ev.get("subject_basis"))
         # r6(Codex,P1):型別升級在**事件通過所有驗收之後**才做(見
         # _resolve_story_key 的說明)。線索常以 general 起頭,被講清楚是資訊增加。
         # r7(Codex,P2):升級**必須連 key 一起遷移**。story_key_for_event 由

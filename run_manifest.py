@@ -42,6 +42,9 @@ DIAGNOSTIC_KEYS = (
     "capability_health", "forecast_mixed_versions", "exdiv_preview",
     "corporate_actions", "chips", "llm",
     "state_writes", "event_identity",
+    # 一次性的 state 清理(2026-08-18 P1-1):清掉幾條錯歸因、留下幾條。
+    # **靜默清理與靜默污染一樣糟** —— 它動的是 120 天的歷史。
+    "state_migrations",
     # 兩階段抓取的計畫(重構規格 Commit B):**涵蓋了幾個事件、漏了哪幾個**。
     # 只記「抓了幾篇」會讀起來像涵蓋完整 —— 沒有靜默的上限。
     "news",

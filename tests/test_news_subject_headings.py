@@ -62,14 +62,14 @@ def _news(sid, asset, **over):
 def test_the_heading_names_the_company_and_what_happened():
     """小標題 = **公司(代號,簡介):**,昨天發生什麼事寫在下面那一段。
 
-    2026-08-18 使用者第二次校正:把新聞標題也塞進小標題那一行,標題會長到
-    換行、公司名反而看不出來。他畫的排版是
-        台積電（2330,晶圓代工龍頭）:
-        (這邊敘述昨日有什麼重大新聞)
+    **2026-08-18 第三次校正**:使用者貼了舊信要求照做 —— 公司、昨天發生
+    什麼事、分析在**同一段**裡,底下才接傳導。第二次校正時我把小標題拆成
+    獨立一行,而他要的是舊信那種一段到底的寫法。
     """
-    lines = ard._news_line(_news("n1", "2330"), _packet()).splitlines()
-    assert lines[0] == "**台積電（2330,晶圓代工龍頭）:**", lines[0]
-    assert lines[2].startswith("CoWoS 產能明年再擴一倍。"), lines[2]
+    line = ard._news_line(_news("n1", "2330"), _packet()).splitlines()[0]
+    assert line.startswith("**台積電（2330,晶圓代工龍頭）**:"), line
+    assert "CoWoS 產能明年再擴一倍。" in line, line
+    assert "這件事之所以重要的一段敘述。" in line, line
 
 
 def test_the_company_name_is_not_printed_twice():
@@ -83,15 +83,15 @@ def test_a_short_remainder_keeps_the_whole_headline():
     """削過頭比重複更糟:剩下的不成句就整條留著。"""
     pk = _packet(news=[{"source_item_id": "n1", "title": "台積電法說",
                         "entities": ["2330"]}])
-    body = ard._news_line(_news("n1", "2330"), pk).splitlines()[2]
-    assert body.startswith("台積電法說"), body
+    line = ard._news_line(_news("n1", "2330"), pk).splitlines()[0]
+    assert "台積電法說" in line, line
 
 
 def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head == "**鴻海（2317,其他電子業）:**", head
+    assert head.startswith("**鴻海（2317,其他電子業）**:"), head
 
 
 def test_an_index_is_not_a_subject():
@@ -122,7 +122,7 @@ def test_the_subject_comes_from_the_editorial_entities_first():
                         "entities": ["2317"]}])
     head = ard._news_line(_news("n9", "2330"), pk).splitlines()[0]
     assert "鴻海" in head and "台積電" not in head, head
-    assert head.endswith(":**"), head
+    assert head.startswith("**鴻海（2317"), head
 
 
 # ------------------------------------------------------------ 敘述與兩行標籤
@@ -130,14 +130,14 @@ def test_the_subject_comes_from_the_editorial_entities_first():
 def test_the_narrative_sits_under_the_heading():
     """小標題底下是敘述,再底下才是傳導與什麼會推翻它。
 
-    小標題與敘述之間**要有空行** —— `_md_to_html` 逐行處理,只隔一個
-    換行的話兩者會被併成同一個 `<p>`(見下方 HTML 層那條)。
+    2026-08-18 第三次校正:公司與新聞同一段(舊信的寫法),所以第一行
+    就是完整的那一段;傳導與什麼會推翻它仍各自成行。
     """
     lines = ard._news_line(_news("n1", "2330"), _packet()).splitlines()
-    assert lines[1] == "", lines
-    assert lines[2] == "CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。", lines
-    assert lines[3].strip().startswith("- 傳導:"), lines
-    assert lines[4].strip().startswith("- 什麼會推翻它:"), lines
+    assert ("CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。"
+            in lines[0]), lines
+    assert lines[1].strip().startswith("- 傳導:"), lines
+    assert lines[2].strip().startswith("- 什麼會推翻它:"), lines
 
 
 def test_no_direction_words_per_asset():
@@ -203,9 +203,11 @@ def test_the_heading_and_the_narrative_are_separate_html_blocks():
     """
     import render_utils as ru
     html = ru._md_to_html(ard._news_line(_news("n1", "2330"), _packet()))
-    assert "<p><strong>台積電（2330,晶圓代工龍頭）:</strong></p>" in html, html
-    assert ("<p>CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。</p>"
-            in html), html
+    assert ("<p><strong>台積電（2330,晶圓代工龍頭）</strong>:"
+            "CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。") in html, html
+    assert "</p>" in html.split("這件事之所以重要的一段敘述。")[1][:40], html
+    # 傳導那幾行仍要是自己的清單,不得被吸進同一個 <p>
+    assert "<ul>" in html and "<li>傳導:起點 → 終點</li>" in html, html
 
 
 def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
@@ -266,3 +268,178 @@ def test_each_market_subsection_is_one_html_list():
     html = ru._md_to_html(seg)
     assert html.count("<ul>") == 1, html
     assert html.count("<li>") == 3, html
+
+
+# ------------------------------- 第三次校正:側寫 / 來源 / 佐證等級與信心
+
+def test_the_hand_written_company_profile_survives():
+    """**五十檔手寫的業務簡介不得被丟掉。**
+
+    `tw_universe` 的 `desc` 長成「台積電 — 全球晶圓代工龍頭,先進製程…」,
+    開頭就是公司名。上一版用「開頭是公司名就丟掉」擋退化字串,結果把
+    整批手寫側寫一起丟了,信裡只剩「半導體業」——而使用者要的正是
+    「全球最大晶圓代工廠,先進製程 N3/N2 與 CoWoS 封裝主導 AI 晶片供給」
+    這種一句話。
+    """
+    row = {"name": "台積電", "industry": "半導體業",
+           "desc": "台積電 — 全球晶圓代工龍頭,先進製程 (3nm/5nm) 市佔超過 90%"}
+    assert ard._blurb(row) == "全球晶圓代工龍頭,先進製程 (3nm/5nm) 市佔超過 90%"
+    # 反向:退化字串「<名稱> — <產業別>」仍然只留產業別,不重複公司名。
+    assert ard._blurb({"name": "鴻海", "industry": "其他電子業",
+                       "desc": "鴻海 — 其他電子業"}) == "其他電子業"
+
+
+def test_a_foreign_company_gets_its_declared_profile():
+    """外國個股沒有 universe 那種資料源 —— 側寫是**宣告**(`company_profiles`)。
+    沒宣告就只寫代號,不編造這家公司在做什麼。"""
+    pk = {"news": [{"source_item_id": "f1", "title": "Q4 財報優於預期",
+                    "entities": ["MSFT"]}]}
+    sub = ard.news_subject(_news("f1", "MSFT"), pk)
+    assert sub["label"].startswith("Microsoft（MSFT,"), sub
+    assert "Azure" in sub["label"], sub
+    # 宣告過是標的、但沒有側寫的名字:只寫代號
+    assert ard.news_subject(_news("f2", "MTD"),
+                            {"news": [{"source_item_id": "f2",
+                                       "entities": ["MTD"]}]})["label"] == "MTD"
+
+
+def test_the_display_name_is_not_printed_twice():
+    """主體是代號(MSFT)而標題寫「Microsoft Q4 財報」——
+    只比對代號的話會排成「Microsoft（MSFT,…）:Microsoft Q4 財報…」。"""
+    pk = {"news": [{"source_item_id": "f1", "title": "Microsoft Q4 財報優於預期",
+                    "entities": ["MSFT"]}]}
+    line = ard._news_line(_news("f1", "MSFT"), pk).splitlines()[0]
+    assert line.count("Microsoft") == 1, line
+
+
+def test_the_publisher_is_named():
+    """`（鉅亨網）` —— 發布者是**新聞自己帶的欄位**,不是模型寫的。"""
+    pk = {"news": [{"source_item_id": "p1", "title": "熊本廠測得強震",
+                    "source_name": "鉅亨網", "entities": ["2330"]}],
+          "tw_universe": [{"code": "2330", "name": "台積電",
+                           "industry": "半導體業", "desc": "晶圓代工龍頭"}]}
+    assert "（鉅亨網）" in ard._news_line(_news("p1", "2330"), pk)
+
+
+def test_an_aggregator_alias_is_not_printed_as_a_publisher():
+    """`Google:2330`、`類股-金融-台股` 是內部標籤,印給讀者看沒有意義。"""
+    for alias in ("Google:2330", "類股-金融-台股"):
+        pk = {"news": [{"source_item_id": "p2", "title": "某公司發布財報",
+                        "source": alias, "entities": ["2330"]}],
+              "tw_universe": [{"code": "2330", "name": "台積電",
+                               "industry": "半導體業", "desc": "晶圓代工龍頭"}]}
+        line = ard._news_line(_news("p2", "2330"), pk)
+        assert alias not in line, line
+        assert "（" not in line.split("**:")[1][:40], line
+
+
+def _pk_conf(**cluster):
+    """一群一則新聞的 packet;`cluster` 覆寫那一群的確定性欄位。"""
+    c = {"cluster_id": "cluster:c1", "member_source_ids": ["c1"],
+         "official": False, "independent_sources": 1}
+    c.update(cluster)
+    return {"news": [{"source_item_id": "c1", "title": "某事發生",
+                      "source_grade": "A", "entities": ["2330"]}],
+            "news_clusters": {"clusters": [c]},
+            "tw_universe": [{"code": "2330", "name": "台積電",
+                             "industry": "半導體業", "desc": "晶圓代工龍頭"}]}
+
+
+def test_the_tag_says_the_grade_and_how_many_independent_sources():
+    """`[A 級・2 家獨立報導]` —— **兩件事不同軸**:
+
+    等級講「最好的那個來源有多可靠」,第二格講「有幾家互相獨立地說同一件事」。
+    一家 A 級媒體獨家 = `[A 級・僅單一來源]`,那正是讀者需要看見的組合。
+    """
+    n = _news("c1", "2330")
+    assert "[A 級・3 家獨立報導]" in ard._news_line(n, _pk_conf(independent_sources=3))
+    assert "[A 級・2 家獨立報導]" in ard._news_line(n, _pk_conf(independent_sources=2))
+    assert "[A 級・僅單一來源]" in ard._news_line(n, _pk_conf(independent_sources=1))
+    # **0 不是 1**(外審 2026-08-18 第四輪):查不到發布者、或全是聚合器
+    # 轉載時 `independent_sources` 是 0,而那一群可能有好幾則 ——
+    # 寫成「僅單一來源」是說了一件沒發生的事。
+    assert "[A 級・來源獨立性未驗證]" in ard._news_line(
+        n, _pk_conf(independent_sources=0, size=3,
+                    aggregator_only_sources=3)), "0 被當成 1"
+    assert "[A 級・官方公告]" in ard._news_line(n, _pk_conf(official=True))
+
+
+def test_the_tag_does_not_claim_confidence_in_the_analysis():
+    """**佐證數不是分析的可信度**(外審 2026-08-18,第三次指正)。
+
+    三家獨立報導同一件事,不代表底下那段推論成立 —— 把它寫成「信心:高」
+    會讓一段推測性的分析看起來被驗證過。這份報告沒有 Python 算得出來的
+    「分析信心」,所以就不寫一個;分析可不可信由「傳導」與
+    「什麼會推翻它」自己說。
+    """
+    line = ard._news_line(_news("c1", "2330"), _pk_conf(independent_sources=3))
+    assert "信心" not in line, line
+    assert "傳導:" in line and "什麼會推翻它:" in line, line
+
+
+def test_the_tag_comes_only_from_the_packet():
+    """**模型的欄位不得影響這一格。**
+
+    三版都被駁回過:模型自填 0–1、由鏈的欄位推導、由 packet 推導但仍叫
+    「信心」。這條釘住第一件事 —— 輸入只有 packet。
+    """
+    import analysis_schema as sch
+    props = sch.ANALYSIS_OUTPUT_SCHEMA["properties"]["top_news_analysis"][
+        "items"]["properties"]
+    assert "confidence" not in props, "模型又拿回這一格的決定權"
+    pk = _pk_conf(independent_sources=2)
+    for over in ({"confidence": 0.99}, {"magnitude_band": "unknown"},
+                 {"corroboration_assessment": "single_source"},
+                 {"mechanism_steps": [{"from_what": "A", "to_what": "B",
+                                       "step_type": "unknown"}]},
+                 {"mechanism_steps": []}):
+        line = ard._news_line(_news("c1", "2330", **over), pk)
+        assert "[A 級・2 家獨立報導]" in line, (over, line)
+
+
+def test_the_model_no_longer_writes_the_corroboration_into_the_sentence():
+    """句尾那個「(單一來源)」來自模型的 `corroboration_assessment`,
+    而 packet 分群時就算好同一件事(schema 自己寫著「以 EVIDENCE 為準」)。
+    **兩處寫同一件事、其中一處是模型抄的** —— 留 packet 那份。"""
+    line = ard._news_line(
+        _news("c1", "2330", corroboration_assessment="single_source"),
+        _pk_conf(independent_sources=3))
+    assert "（單一來源）" not in line, line
+    assert "3 家獨立報導" in line, line
+
+
+def test_no_cluster_evidence_means_no_claim():
+    """查不到這則屬於哪一群就**不寫第二格** —— 沒有依據時給一個標籤
+    是最糟的那種假精確。"""
+    # 兩種「查不到」都要測:**沒有任何群**、以及**有群但不含這一則**。
+    # 只測前者的話,反例改的是迴圈內的程式碼而迴圈根本沒跑 —— 突變驗證
+    # 當場抓到那條測試分不出勝負。
+    empty = _pk_conf()
+    empty["news_clusters"] = {"clusters": []}
+    other = _pk_conf(member_source_ids=["zz"], independent_sources=9)
+    for pk in (empty, other):
+        line = ard._news_line(_news("c1", "2330"), pk)
+        assert "獨立報導" not in line and "單一來源" not in line, line
+        assert "[A 級]" in line, line
+
+
+def test_each_half_of_the_tag_can_be_missing_on_its_own():
+    """**缺一半就只寫另一半**,不用一半頂替另一半。"""
+    pk = _pk_conf(independent_sources=3)
+    pk["news"][0].pop("source_grade")
+    line = ard._news_line(_news("c1", "2330"), pk)
+    assert "[3 家獨立報導]" in line, line
+
+
+def test_the_publisher_sits_inside_the_sentence():
+    """標題自帶句末標點時,出處要接在標點**之前**(外審 2026-08-18 P3)——
+    否則排成「公司公布財報。(鉅亨網)。」。**全形半形都要收**。"""
+    tw = [{"code": "2330", "name": "台積電", "industry": "半導體業",
+           "desc": "晶圓代工龍頭"}]
+    for mark in ("。", "！", "？", "!", "?"):
+        pk = {"news": [{"source_item_id": "d1", "title": "台積電公布財報" + mark,
+                        "source_name": "鉅亨網", "entities": ["2330"]}],
+              "tw_universe": tw}
+        line = ard._news_line(_news("d1", "2330"), pk).splitlines()[0]
+        assert "公布財報（鉅亨網）。" in line, (mark, line)
+        assert mark + "（" not in line, (mark, line)

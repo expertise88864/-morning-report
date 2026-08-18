@@ -79,17 +79,20 @@ def _universe_index(packet) -> dict:
 
 
 def _blurb(row: dict) -> str:
-    """一句簡介。**沒有簡介時不重複公司名。**
+    """一句公司側寫。**寫得出「這家公司在做什麼」才有意義。**
 
-    `tw_universe` 的 `desc` 有兩種來源:手寫的業務簡介(「晶圓代工龍頭」),
-    以及查不到時的退化字串「<名稱> — <產業別>」。後者放進
-    「鴻海(2317,鴻海 — 其他電子業)」會把公司名印兩次 —— 那種行是
-    上一版被抱怨的「讀起來像表單」的來源之一。退化字串就只留產業別。
+    `tw_universe` 的 `desc` 有兩種來源,而它們**開頭都是公司名**:
+      * 手寫的業務簡介:`台積電 — 全球晶圓代工龍頭,先進製程市佔超過 90%`
+      * 查不到時的退化字串:`鴻海 — 其他電子業`
+    上一版用「開頭是公司名就丟掉」來擋第二種 —— 那把**五十檔手寫的側寫
+    全部丟掉了**,信裡只剩產業別。判準改成「拿掉開頭的公司名之後還剩什麼」:
+    剩下的若與產業別相同(或空)就是退化字串,否則那就是真正的側寫。
     """
     desc, name = _s(row.get("desc")), _s(row.get("name"))
-    if desc and name and not desc.startswith(name):
-        return desc
-    return _s(row.get("industry"))
+    industry = _s(row.get("industry"))
+    if desc.startswith(name):
+        desc = desc[len(name):].lstrip(" 　—–-:：,,")
+    return desc if desc and desc != industry else industry
 
 
 def news_subject(n: dict, packet=None) -> dict:
@@ -135,7 +138,18 @@ def news_subject(n: dict, packet=None) -> dict:
             except Exception:           # noqa: BLE001 - 單一候選查壞不影響其他
                 continue
             if scope == "equity" and status != "invalid":
-                return {"label": c, "industry": "", "name": c}
+                # 外國個股的側寫是**宣告**(`company_profiles`),台股那半
+                # 來自 universe 的手寫簡介 —— 兩邊都不是從新聞猜出來的。
+                # 沒宣告就只寫名字與代號,不編造這家公司在做什麼。
+                try:
+                    import company_profiles as _cp
+                    disp, prof = _cp.display_name(c), _cp.profile_of(c)
+                except Exception:       # noqa: BLE001 - 側寫載不到不毀渲染
+                    disp, prof = c, ""
+                label = (f"{disp}（{c}" + (f",{prof}" if prof else "") + "）"
+                         if disp != c else
+                         (f"{c}（{prof}）" if prof else c))
+                return {"label": label, "industry": "", "name": c}
     return {"label": "", "industry": "", "name": ""}
 
 
@@ -158,12 +172,101 @@ def _headline_of(n: dict, packet=None, subject_name: str = "") -> str:
     by_id = {_s(x.get("source_item_id")): x for x in ((packet or {}).get("news") or [])
              if isinstance(x, dict)}
     title = _s((by_id.get(_s(n.get("source_item_id"))) or {}).get("title"))
-    name = _s(subject_name)
-    if name and title.startswith(name):
-        rest = title[len(name):].lstrip(" 　:::,,、-—")
-        if len(rest) >= 4:
-            return rest
+    # **代號與顯示名都要能削**:主體是 `MSFT` 而標題寫「Microsoft Q4 財報…」,
+    # 只比對代號的話會排成「Microsoft（MSFT,…）:Microsoft Q4 財報…」。
+    names = [_s(subject_name)]
+    try:
+        import company_profiles as _cp
+        names.append(_cp.display_name(_s(subject_name)))
+    except Exception:                   # noqa: BLE001 - 側寫載不到就只削代號
+        pass
+    for name in sorted({x for x in names if x}, key=len, reverse=True):
+        if title.startswith(name):
+            rest = title[len(name):].lstrip(" 　:::,,、-—")
+            if len(rest) >= 4:
+                return rest
     return title
+
+
+#: 佐證等級的顯示。**這是資料**(packet 的 `source_grade`),不是判斷。
+_GRADES = {"A": "A 級", "B": "B 級", "C": "C 級", "D": "D 級"}
+
+#: 標籤的第二格:**這件事被幾個獨立來源說過**(外審 2026-08-18,三輪)。
+#:
+#: 使用者要的是 `[A 級・信心:中]`。三版都被駁回,而三次的理由是同一個:
+#:   1. 模型自己填 0–1 → 同一份證據在兩次取樣拿到不同標籤;
+#:   2. 由鏈的 `step_type` / `magnitude_band` 推導 → 那些仍是模型寫的;
+#:   3. 由 packet 的獨立來源數推導,但**仍叫「信心」** → 三家獨立報導會讓
+#:      一段推測性的分析看起來被驗證過。第三次的指正是對的:
+#:      **佐證數不是分析的可信度。**
+#:
+#: 所以這一格不再叫「信心」,改寫它真正量到的東西。它是 Python 算的
+#: (`news_clusters` 分群時就算好),而且與「A 級」是不同軸:
+#: 等級講「最好的那個來源有多可靠」,這一格講「有幾家互相獨立地說同一件事」
+#: —— 一家 A 級媒體獨家 = `[A 級・僅單一來源]`,那正是讀者需要的組合。
+#:
+#: **分析本身可不可信,由「傳導」與「什麼會推翻它」自己說**;
+#: 這份報告沒有 Python 算得出來的「分析信心」,所以就不寫一個。
+_CORROBORATION_HIGH = 3
+
+
+def _corroboration_word(n: dict, packet=None) -> str:
+    """`官方公告` / `3 家獨立報導` / `僅單一來源`。**輸入只有 packet。**
+
+    查不到這則屬於哪一群就回空字串 —— 沒有依據時給一個標籤是最糟的
+    那種假精確。
+    """
+    sid = _s(n.get("source_item_id"))
+    if not sid or not isinstance(packet, dict):
+        return ""
+    for c in ((packet.get("news_clusters") or {}).get("clusters") or []):
+        if not isinstance(c, dict) or sid not in (c.get("member_source_ids") or []):
+            continue
+        if c.get("official"):
+            return "官方公告"
+        try:
+            indep = int(c.get("independent_sources") or 0)
+        except (TypeError, ValueError):
+            return ""
+        # **0 不是 1**(外審 2026-08-18 第四輪):`independent_sources == 0`
+        # 代表發布者查不到或全是聚合器轉載 —— 那一群可能有好幾則,
+        # 寫成「僅單一來源」是**說了一件沒發生的事**。
+        if indep >= 2:
+            return f"{indep} 家獨立報導"
+        return "僅單一來源" if indep == 1 else "來源獨立性未驗證"
+    return ""
+
+
+def _credibility(n: dict, packet=None) -> str:
+    """`[A 級・2 家獨立報導]`。**兩半各自缺就各自不寫**,不用另一半頂替。"""
+    by_id = {_s(x.get("source_item_id")): x for x in ((packet or {}).get("news") or [])
+             if isinstance(x, dict)}
+    item = by_id.get(_s(n.get("source_item_id"))) or {}
+    bits = []
+    grade = _GRADES.get(_s(item.get("source_grade")).upper())
+    if grade:
+        bits.append(grade)
+    corr = _corroboration_word(n, packet)
+    if corr:
+        bits.append(corr)
+    return f"[{'・'.join(bits)}]" if bits else ""
+
+
+def _attribution(n: dict, packet=None) -> str:
+    """`（鉅亨台股）`。發布者是**新聞自己帶的欄位**,不是模型寫的。
+
+    `source_name` 是真正的發布者;`source` 常是聚合器別名
+    (`Google:2330`、`類股-金融-台股`)—— 那種字串印給讀者看沒有意義,
+    所以只在它不長得像內部標籤時才退而用它。
+    """
+    by_id = {_s(x.get("source_item_id")): x for x in ((packet or {}).get("news") or [])
+             if isinstance(x, dict)}
+    item = by_id.get(_s(n.get("source_item_id"))) or {}
+    who = _s(item.get("source_name"))
+    if not who:
+        raw = _s(item.get("source"))
+        who = "" if (":" in raw or raw.startswith("類股-")) else raw
+    return f"（{who}）" if who else ""
 
 
 def _news_line(n: dict, packet=None) -> str:
@@ -183,22 +286,20 @@ def _news_line(n: dict, packet=None) -> str:
         return ""
     subject = news_subject(n, packet)
     headline = _headline_of(n, packet, subject.get("name") or "")
-    # **小標題只寫公司,昨日發生什麼事寫在下面那一段**(2026-08-18 使用者
-    # 第二次校正):他要的排版是
-    #     台積電（2330,晶圓代工龍頭）:
-    #     (這邊敘述昨日有什麼重大新聞)
-    #     - 傳導 / - 什麼會推翻它 / - 後續影響
-    # 把新聞標題塞回小標題那一行,標題會長到換行、公司名反而看不出來。
-    # 兩者都查不到就不硬掰一個標題,直接寫敘述 —— 編一個公司名比沒有
-    # 標題糟得多。
-    head = f"**{subject['label']}:**" if subject.get("label") else ""
-    # 敘述 = **昨天發生什麼事**(新聞標題,客觀)+ **為什麼重要**(模型的判斷)。
-    # 先前只有後者,於是讀者要自己猜這段在講哪一則新聞。
-    if headline:
-        body = _join_sentence(headline) + body
-    # 小標題與敘述之間空一行:`_md_to_html` 逐行處理,相鄰的非空行會被
-    # 併成同一個 `<p>` —— 使用者要的是「在公司發生新聞的**下方**寫一段」。
-    out = [(head + chr(10) * 2 + body) if head else body]
+    # **舊版的寫法:公司、昨天發生什麼事、分析,在同一段裡**
+    # (2026-08-18 使用者貼了舊信要求照做):
+    #     台積電（2330,全球晶圓代工龍頭…）:熊本廠測得 7.1 強震…（鉅亨台股）。
+    #     短期產線停機天數將影響 Q3 出貨節奏…[A 級・信心:中]
+    # 底下才接傳導 / 什麼會推翻它 / 後續影響。
+    # 主體查不到就不硬掰一個公司名 —— 直接從新聞本身寫起。
+    lead = f"**{subject['label']}**:" if subject.get("label") else ""
+    # **出處接在句末標點之前**(外審 2026-08-18 P3):標題自帶「。」「!」「?」
+    # 時直接串會排成「公司公布財報。(鉅亨網)。」—— 標點先拿掉,
+    # 由 `_join_sentence` 統一補一個。
+    what = (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + _attribution(n, packet))
+            if headline else "")
+    tail = _credibility(n, packet)
+    out = [lead + what + body + tail]
     chain = [st for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)]
     line = _chain_line(chain)
     if line:
@@ -206,17 +307,11 @@ def _news_line(n: dict, packet=None) -> str:
     inval = _s(n.get("invalidation_signal"))
     if inval:
         out.append(f"  - 什麼會推翻它:{inval}")
-    # 佐證等級收成一句話的尾巴(第二十輪 P2-7 的理由不變:「沒發生」與
-    # 「只有一家說」不能長得一樣)—— 但不再自己佔一行。
-    _CORR = {"single_source": "單一來源", "unverified": "未證實"}
-    lvl = _CORR.get(_s(n.get("corroboration_assessment")))
-    if lvl:
-        out[0] = out[0] + f"（{lvl}）"
-    # **受影響標的仍要列出來,但不再逐檔寫方向**(2026-08-18):使用者的原話
-    # 是「不是整篇都是偏多什麼的」—— 方向與幅度在「各標的合計影響」那一段
-    # (那一段的名字就是在回答方向)。這裡留的是兩件別處沒有的事:
-    # 這則新聞牽動到誰(橫向),以及**哪一個只是推測性傳導**
-    # (第三十二輪 P1-3 的揭露不能因為改版而消失)。
+    # **佐證由 packet 說,不由模型說**(外審 2026-08-18 第三輪的延伸):
+    # 先前句尾那個「(單一來源)」來自模型的 `corroboration_assessment`,
+    # 而同一件事 packet 分群時就算好了(而且 schema 自己寫著「以 EVIDENCE 的
+    # `news_clusters[].corroboration` 為準」)。兩處寫同一件事、其中一處是
+    # 模型抄的 —— 留 packet 那份,放進行尾的標籤裡。
     # **受影響標的與後續影響仍要寫,但不再逐檔掛方向詞**(2026-08-18):
     # 使用者的原話是「不是整篇都是偏多什麼的」—— 方向、幅度與時間窗在
     # 「各標的合計影響」那一段(那一段的名字就是在回答方向)。
@@ -254,6 +349,11 @@ def _assets(n: dict, packet=None) -> list:
                         _s(a.get("second_order_effect"))) if x)
         rows.append(f"  - {head}:{body}" if body else f"  - {head}")
     return rows
+
+
+#: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話
+#: 「財測上修!」會排成「財測上修!(Reuters)。」)。
+_TERMINAL_MARKS = "。." + chr(65281) + chr(65311) + "!?" + chr(65294)
 
 
 def _join_sentence(text: str) -> str:

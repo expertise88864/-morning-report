@@ -744,7 +744,9 @@ _FROZEN = {
     # v16(2026-08-18 第二批):小標題只寫公司、新聞寫在下一段;五段併成
     #     「九、今日市場關注與預測」且排在第八段之後;保留事項的內部
     #     識別碼換成新聞標題。
-    "renderer_version":         (16, "e785872b884b3c37"),
+    # v17(2026-08-18 第三次校正):公司/新聞/分析同一段、側寫、發布者、
+    #     `[A 級・信心:中]`。
+    "renderer_version":         (17, "7e7dc4ad1c97a164"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

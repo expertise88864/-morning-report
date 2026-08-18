@@ -70,8 +70,11 @@ SECTION_NEWS = "八、重點新聞分析"
 #: 不得叫科技板塊」),現在由 `tw_universe` 的產業別(台股)與
 #: `instrument_registry` 的宣告(外國個股)決定;判準在 `industry_class`,
 #: 與「補非科技類股新聞」用的是同一份。
-SUBSECTION_TECH = "科技類股"
-SUBSECTION_OTHER = "其他類股"
+#: 2026-08-18 使用者貼了舊信要求照做,子段名回到舊版的用字。
+#: 這兩個名字曾經被一條測試禁止(「`top_news_analysis` 沒有被依產業
+#: 過濾,就不得叫科技板塊脈動」)—— 現在**真的有過濾**,名字才誠實。
+SUBSECTION_TECH = "科技板塊脈動"
+SUBSECTION_OTHER = "其他類股資訊"
 #: 本段的保留事項(傳導未完成 / 看過但未展開)。**不掛在任一類股底下**
 #: —— 它講的是整段的取捨,掛進「其他類股」會讓讀者以為只有那一類有缺。
 SUBSECTION_NOTES = "本段的保留事項"

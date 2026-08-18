@@ -40,9 +40,16 @@ def test_the_world_events_heading_is_gone():
 
 
 def test_tsmc_does_not_land_in_the_other_sectors_section():
-    """台積電進「其他類股資訊」是語意錯誤,不是排版問題。"""
+    """台積電的 `tsmc_view` 進的是市場那一段,不是「其他類股」。
+
+    2026-08-18:子段名回到舊版用字之後,「其他類股資訊」**本來就會出現**
+    (那是第八段裡非科技新聞的子段名,而且是真的依產業過濾的)。
+    這條測試要守的是原本那件事:`tsmc_view` 不得被歸到其他類股底下。
+    """
     out = _rendered()
-    assert "其他類股資訊" not in out
+    i = out.index(ar.SUBSECTION_OTHER)
+    j = out.index("## " + ar.SECTION_MARKET)
+    assert "守月線" not in out[i:j], out[i:j]
     assert ar.SUBSECTION_TW in out
     i = out.index(ar.SUBSECTION_TW)
     assert "守月線" in out[i:i + 200], "tsmc_view 沒有進台股那一段"
@@ -58,8 +65,11 @@ def test_the_news_section_does_not_claim_to_be_tech_only():
     (舊標題「科技板塊脈動」是既有路徑的段名,仍然不該出現在這裡。)
     """
     out = _rendered()
-    assert "科技板塊脈動" not in out
     assert ar.SECTION_NEWS in out
+    # **這裡不能再寫「科技板塊脈動 不得出現」** —— 2026-08-18 子段名回到
+    # 舊版用字之後那正是合法的段名,而 `_rendered()` 沒有 packet、分不出
+    # 產業,所以那句斷言是**靠巧合過關**的(沒有科技條目就不會有那個子段)。
+    # 判準換成過濾本身,見下面的雙主體案例。
 
     pk = {"tw_universe": [
         {"code": "2330", "name": "台積電", "industry": "半導體業"},

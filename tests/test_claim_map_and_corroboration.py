@@ -124,22 +124,28 @@ def test_a_single_source_event_must_say_what_to_hold_back():
 
 
 def test_the_caveat_reaches_the_letter():
-    """**「沒發生」與「只有一家說」在信裡先前長得一樣。**
+    """**「沒發生」與「只有一家說」在信裡不得長得一樣。**
 
-    2026-08-17 使用者定案(敘事為主):佐證等級收成句尾的
-    `（單一來源）`,不再自己佔一行。**誠實記下代價**:`source_caveat`
-    的說明文字(「僅鉅亨轉述、未見原始報告」)不再進信裡 —— 等級的
-    區分留著,細節只留在 manifest 與 schema 驗證裡。
+    2026-08-17 定案:佐證等級收成句尾一格,不再自己佔一行。
+    **2026-08-18 外審第三輪**:那一格改由 **packet 的分群結果**說
+    (`[A 級・2 家獨立報導]` / `[A 級・僅單一來源]`),不再印模型抄的
+    `corroboration_assessment` —— 同一件事 packet 早就算好了,而 schema
+    自己寫著「以 EVIDENCE 的 news_clusters[].corroboration 為準」。
+    **誠實記下代價**:`source_caveat` 的說明文字(「僅鉅亨轉述、未見原始
+    報告」)不進信裡;等級的區分留著,細節留在 manifest 與 schema 驗證。
     """
+    import evidence_packet as ep
     import analysis_render as ar
-    text = ar.render(fx.valid_analysis())
-    assert "（單一來源）" in text, text[:300]
-    # 多方證實時不印 —— 每則都掛一句等於沒有揭露
-    obj = fx.valid_analysis()
-    for n in obj["top_news_analysis"]:
-        n["corroboration_assessment"] = "multi_source"
-        n["source_caveat"] = "無"
-    assert "僅單一來源" not in ar.render(obj)
+    pk = ep.build({}, {}, {}, fx.news(), [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    text = ar.render(fx.valid_analysis(), pk)
+    assert "僅單一來源" in text, text[:400]
+    # 多方證實時寫的是家數,不是「僅單一來源」—— 兩者在信裡要看得出差別。
+    for c in pk["news_clusters"]["clusters"]:
+        c["independent_sources"] = 3
+    out = ar.render(fx.valid_analysis(), pk)
+    assert "僅單一來源" not in out, out[:400]
+    assert "3 家獨立報導" in out, out[:400]
 
 
 # ---------------------------------------------------------------- P2-1 代表

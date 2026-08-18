@@ -60,33 +60,38 @@ def _news(sid, asset, **over):
 # ------------------------------------------------------------ 小標題的內容
 
 def test_the_heading_names_the_company_and_what_happened():
-    """小標題 = **公司(代號,簡介):昨天發生的那則新聞**。"""
-    line = ard._news_line(_news("n1", "2330"), _packet())
-    head = line.splitlines()[0]
-    assert head.startswith("**台積電（2330,晶圓代工龍頭）:"), head
-    assert "CoWoS 產能明年再擴一倍" in head, head
+    """小標題 = **公司(代號,簡介):**,昨天發生什麼事寫在下面那一段。
+
+    2026-08-18 使用者第二次校正:把新聞標題也塞進小標題那一行,標題會長到
+    換行、公司名反而看不出來。他畫的排版是
+        台積電（2330,晶圓代工龍頭）:
+        (這邊敘述昨日有什麼重大新聞)
+    """
+    lines = ard._news_line(_news("n1", "2330"), _packet()).splitlines()
+    assert lines[0] == "**台積電（2330,晶圓代工龍頭）:**", lines[0]
+    assert lines[2].startswith("CoWoS 產能明年再擴一倍。"), lines[2]
 
 
 def test_the_company_name_is_not_printed_twice():
     """標題開頭與公司同名時只削開頭 —— 「台積電(2330,…):**台積電** CoWoS…」
     是同一個名字印兩次。"""
-    head = ard._news_line(_news("n1", "2330"), _packet()).splitlines()[0]
-    assert head.count("台積電") == 1, head
+    md = ard._news_line(_news("n1", "2330"), _packet())
+    assert md.count("台積電") == 1, md
 
 
 def test_a_short_remainder_keeps_the_whole_headline():
     """削過頭比重複更糟:剩下的不成句就整條留著。"""
     pk = _packet(news=[{"source_item_id": "n1", "title": "台積電法說",
                         "entities": ["2330"]}])
-    head = ard._news_line(_news("n1", "2330"), pk).splitlines()[0]
-    assert "台積電法說" in head, head
+    body = ard._news_line(_news("n1", "2330"), pk).splitlines()[2]
+    assert body.startswith("台積電法說"), body
 
 
 def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head.startswith("**鴻海（2317,其他電子業）:"), head
+    assert head == "**鴻海（2317,其他電子業）:**", head
 
 
 def test_an_index_is_not_a_subject():
@@ -98,9 +103,10 @@ def test_an_index_is_not_a_subject():
     """
     pk = _packet(news=[{"source_item_id": "x1", "title": "費半收漲 2.1%",
                         "entities": ["費半"]}])
-    head = ard._news_line(_news("x1", "費半"), pk).splitlines()[0]
-    assert head == "**費半收漲 2.1%**", head
-    assert ard.news_subject(_news("x1", "費半"), pk)["name"] == "", head
+    md = ard._news_line(_news("x1", "費半"), pk)
+    assert not md.startswith("**"), md
+    assert md.startswith("費半收漲 2.1%。"), md
+    assert ard.news_subject(_news("x1", "費半"), pk)["name"] == "", md
 
 
 def test_no_subject_means_no_invented_heading():
@@ -116,6 +122,7 @@ def test_the_subject_comes_from_the_editorial_entities_first():
                         "entities": ["2317"]}])
     head = ard._news_line(_news("n9", "2330"), pk).splitlines()[0]
     assert "鴻海" in head and "台積電" not in head, head
+    assert head.endswith(":**"), head
 
 
 # ------------------------------------------------------------ 敘述與兩行標籤
@@ -128,7 +135,7 @@ def test_the_narrative_sits_under_the_heading():
     """
     lines = ard._news_line(_news("n1", "2330"), _packet()).splitlines()
     assert lines[1] == "", lines
-    assert lines[2] == "這件事之所以重要的一段敘述。", lines
+    assert lines[2] == "CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。", lines
     assert lines[3].strip().startswith("- 傳導:"), lines
     assert lines[4].strip().startswith("- 什麼會推翻它:"), lines
 
@@ -196,9 +203,9 @@ def test_the_heading_and_the_narrative_are_separate_html_blocks():
     """
     import render_utils as ru
     html = ru._md_to_html(ard._news_line(_news("n1", "2330"), _packet()))
-    head = "<p><strong>台積電（2330,晶圓代工龍頭）:CoWoS 產能明年再擴一倍</strong></p>"
-    assert head in html, html
-    assert "<p>這件事之所以重要的一段敘述。</p>" in html, html
+    assert "<p><strong>台積電（2330,晶圓代工龍頭）:</strong></p>" in html, html
+    assert ("<p>CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。</p>"
+            in html), html
 
 
 def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
@@ -213,4 +220,49 @@ def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
     sub = ard.news_subject(_news("n5", "2330"), pk)
     assert sub["name"] == "ASML", sub
     head = ard._news_line(_news("n5", "2330"), pk).splitlines()[0]
-    assert "台積電" not in head, head
+    assert "台積電" not in head and "ASML" in head, head
+
+
+# ------------------------------------------- 九、今日市場關注與預測(合併段)
+
+def test_a_repeated_sentence_is_written_once_in_the_market_section():
+    """**內文重複的就不用一直寫了**(2026-08-18 使用者原話)。
+
+    五段併成一段之後,同一句「費半走強帶動台股電子」會在綜合、連動、
+    台股三個小段各出現一次 —— 那正是使用者要拿掉的東西。逐字重複才濾,
+    不做語意判斷(語意去重會把兩件不同的事誤刪)。
+    """
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    dup = "費半走強帶動台股電子開盤。"
+    obj["global_market"]["summary"] = dup
+    obj["taiwan_market"]["summary"] = dup
+    text = ar.render(obj)
+    assert text.count(dup) == 1, text[text.index(ar.SECTION_MARKET):]
+
+
+def test_a_different_sentence_is_not_swallowed_by_the_dedup():
+    """反向:去重不得把**不同的**句子吃掉(誤刪比重複糟)。"""
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    obj["global_market"]["summary"] = "美股收紅,費半領漲。"
+    obj["taiwan_market"]["summary"] = "台股量能回升,外資轉買。"
+    text = ar.render(obj)
+    assert "美股收紅,費半領漲。" in text
+    assert "台股量能回升,外資轉買。" in text
+
+
+def test_each_market_subsection_is_one_html_list():
+    """小標題與它底下那幾行是**一個區塊**。
+
+    `_md_to_html` 逐行處理,遇到空行就收掉 `<ul>` —— 逐條之間空一行會讓
+    每一條各自變成一個清單(2026-08-18 自測看得到)。
+    """
+    import fixtures_analysis as fx
+    import render_utils as ru
+    text = ar.render(fx.valid_analysis())
+    seg = text[text.index("### " + ar.SUBSECTION_TW):]
+    seg = seg[:seg.index("### " + ar.SUBSECTION_PRICED)]
+    html = ru._md_to_html(seg)
+    assert html.count("<ul>") == 1, html
+    assert html.count("<li>") == 3, html

@@ -33,6 +33,17 @@ TECH_INDUSTRIES: frozenset = frozenset({
 })
 
 
+#: **已宣告、但不是科技股的外國個股。**
+#:
+#: `instrument_registry` 原本的收錄範圍是「半導體鏈與大型科技股」,所以
+#: 「被宣告」本身就足以當科技的依據。2026-08-18 把涵蓋面補到 NASDAQ-100
+#: 權重前段班之後,那個等式不再成立:`COST` 是零售、`TMUS` 是電信業者。
+#: 這張表是**例外的宣告**,不是猜的 —— 沒被列在這裡的宣告外國個股仍算科技。
+#: (台股的 `通信網路業` 算科技是另一回事:那個分類收的是網通**設備商**,
+#: 不是電信業者。)
+NON_TECH_FOREIGN: frozenset = frozenset({"COST", "TMUS"})
+
+
 def is_tech_industry(industry) -> bool:
     return str(industry or "").strip() in TECH_INDUSTRIES
 
@@ -50,5 +61,7 @@ def is_tech_foreign(name) -> bool:
     except Exception:                   # noqa: BLE001 - 判準載不到就當不知道
         return False
     if status == "invalid" or not cid:
+        return False
+    if str(name or "").strip() in NON_TECH_FOREIGN:
         return False
     return ":EQUITY:" in str(cid) and not str(cid).startswith("TW:")

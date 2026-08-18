@@ -35,7 +35,9 @@ def test_the_top_three_carry_where_the_event_came_from():
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["cluster_id"] = "cluster:n1"
     text = ar.render(obj, pk)
-    top = text[text.index("## 七、"):text.index("## 七之一")]
+    # 2026-08-18:「七之一」併進「九、今日市場關注與預測」,
+    # 三大重點那一段的下界改成第八段的開頭。
+    top = text[text.index("## 七、"):text.index("## " + ar.SECTION_NEWS)]
     # 2026-08-17 使用者定案:來歷從獨立一行收成句尾括號。判準不變 ——
     # 「官方公告」與「僅單一來源」在信裡仍然長得不一樣。
     assert "（官方公告" in top, top
@@ -69,7 +71,7 @@ def test_the_net_effect_per_asset_reaches_the_reader():
          "net_magnitude_band": "negligible", "offsetting_cluster_ids": [],
          "why": "權值股方向互相抵銷", "claim_ids": ["c1"]}]
     text = ar.render(obj, _packet_with_events())
-    assert ar.SECTION_NET in text
+    assert ar.SUBSECTION_NET in text
     assert "**2330**:合計偏多、幅度中等" in text
     assert "**0050**:合計中性" in text
     assert "產能恢復的量級大於升準的資金面壓力" in text
@@ -92,7 +94,7 @@ def test_the_shared_driver_note_reaches_the_reader():
 def test_an_empty_net_effect_list_adds_no_section():
     """沒有衝突的日子不要多一個空段落 —— 版面是有限的。"""
     text = ar.render(fx.valid_analysis(), _packet_with_events())
-    assert ar.SECTION_NET not in text
+    assert ar.SUBSECTION_NET not in text
 
 
 # ================================================================ Commit F

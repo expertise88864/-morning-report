@@ -207,6 +207,12 @@ def test_the_letter_says_how_many_more_chains_are_incomplete():
                                      relates_to=[]) for i in range(1, 6)]
     text = ar.render(obj)
     assert "另有 2 則同樣未完成" in text, text[text.find("傳導未完成"):][:200]
+    # 2026-08-18:識別碼換成新聞標題之後,**查不到標題的那幾則不得整條消失**
+    # —— 理由才是內容,識別碼只是噪音。這裡沒有 packet(查不到任何標題),
+    # 前三則的理由仍要各出現一次,否則「另有 2 則」會變成一句沒有前文的計數。
+    note = text[text.index("傳導未完成"):]
+    note = note[:note.index("*", 3)]
+    assert note.count("沒有推到營收、獲利、估值或股價") == 3, note
 
 
 def test_dismissed_events_are_visible_to_the_reader():
@@ -218,7 +224,12 @@ def test_dismissed_events_are_visible_to_the_reader():
          "supporting_evidence_ids": ["n1"],
          "revisit_trigger": "官方後續公告改變原判斷"}]
     text = ar.render(obj)
-    assert "今日看過但未展開" in text and "cluster:n9" in text
+    assert "今日看過但未展開" in text
+    # 2026-08-18:**識別碼不進信**。`cluster:n9` 對讀者是亂碼(使用者原話:
+    # 「為何一堆亂碼」);有 packet 就換成那則新聞的標題,沒有就只寫理由。
+    # 理由才是「為什麼不談」的答案,識別碼只是噪音。
+    assert "cluster:n9" not in text, text
+    assert "與上次決議一致" in text, text
 
 
 def test_scenario_triggers_reach_the_letter_but_probabilities_do_not():

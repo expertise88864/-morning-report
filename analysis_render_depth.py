@@ -183,19 +183,21 @@ def _news_line(n: dict, packet=None) -> str:
         return ""
     subject = news_subject(n, packet)
     headline = _headline_of(n, packet, subject.get("name") or "")
-    # 小標題:主體 + 昨天發生什麼事。兩者都查不到就不硬掰一個標題,
-    # 直接寫敘述(舊排版)—— 編一個公司名比沒有標題糟得多。
-    head = ""
-    if subject.get("label") and headline:
-        head = f"**{subject['label']}:{headline}**"
-    elif subject.get("label"):
-        head = f"**{subject['label']}**"
-    elif headline:
-        head = f"**{headline}**"
-    # **小標題與敘述之間要空一行**(外審 2026-08-18)。`_md_to_html` 是
-    # 逐行的:相鄰的非空行會被 `" ".join` 併成同一個 `<p>` —— 只隔一個
-    # 換行的話,信裡看到的是「**小標題** 敘述接在後面」,而使用者要的是
-    # 「在公司發生新聞的**下方**寫一段」。空行才會 flush 段落。
+    # **小標題只寫公司,昨日發生什麼事寫在下面那一段**(2026-08-18 使用者
+    # 第二次校正):他要的排版是
+    #     台積電（2330,晶圓代工龍頭）:
+    #     (這邊敘述昨日有什麼重大新聞)
+    #     - 傳導 / - 什麼會推翻它 / - 後續影響
+    # 把新聞標題塞回小標題那一行,標題會長到換行、公司名反而看不出來。
+    # 兩者都查不到就不硬掰一個標題,直接寫敘述 —— 編一個公司名比沒有
+    # 標題糟得多。
+    head = f"**{subject['label']}:**" if subject.get("label") else ""
+    # 敘述 = **昨天發生什麼事**(新聞標題,客觀)+ **為什麼重要**(模型的判斷)。
+    # 先前只有後者,於是讀者要自己猜這段在講哪一則新聞。
+    if headline:
+        body = _join_sentence(headline) + body
+    # 小標題與敘述之間空一行:`_md_to_html` 逐行處理,相鄰的非空行會被
+    # 併成同一個 `<p>` —— 使用者要的是「在公司發生新聞的**下方**寫一段」。
     out = [(head + chr(10) * 2 + body) if head else body]
     chain = [st for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)]
     line = _chain_line(chain)

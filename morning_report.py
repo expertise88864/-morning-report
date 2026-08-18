@@ -913,6 +913,20 @@ def _other_sector_label_from_source(source: str) -> str:
     return ""
 
 
+#: **每天一定要去問有沒有新聞的兩組公司**(2026-08-18 使用者定案)。
+#:
+#: 使用者原話:「有重大新聞的公司 有新聞才報 例如納入台灣0050前10大/
+#: NASDAQ前15大等公司」。這兩張表是**涵蓋面的宣告**,不是報導清單 ——
+#: 查詢送出去之後,有沒有進信仍由既有的重要性門檻決定。
+#: 由 `tests/test_news_coverage.py` 盯著:名字在表上卻沒有對應查詢,
+#: 那個「已涵蓋」的宣稱就是假的。
+TW0050_TOP10_LABELS: tuple = ("2330", "2317", "2454", "2308", "2382",
+                              "2891", "2881", "2882", "3711", "2303")
+#: NASDAQ-100 權重前段班(2026-08-18 當時的前段;權重會變,這是宣告不是即時值)。
+NASDAQ_TOP15_LABELS: tuple = ("NVDA", "MSFT", "AAPL", "AMZN", "AVGO", "META",
+                              "GOOGL", "TSLA", "NFLX", "COST", "PLTR", "CSCO",
+                              "AMD", "TMUS", "ADBE")
+
 GOOGLE_NEWS_COMPANIES: list[tuple] = [
     # --- 美股權值/AI/半導體龍頭 ---
     ("輝達 NVIDIA", "NVDA"), ("超微 AMD", "AMD"), ("博通 Broadcom", "AVGO"),
@@ -921,6 +935,15 @@ GOOGLE_NEWS_COMPANIES: list[tuple] = [
     ("特斯拉 Tesla", "TSLA"), ("高通 Qualcomm", "QCOM"), ("邁威爾 Marvell", "MRVL"),
     ("應用材料 Applied Materials", "AMAT"), ("安謀 Arm", "ARM"),
     ("美超微 Supermicro", "SMCI"), ("Alphabet Google AI", "GOOGL"), ("Meta", "META"),
+    # --- NASDAQ-100 權重前段班補齊(2026-08-18 使用者要求)---
+    # 原話:「有重大新聞的公司 有新聞才報 例如納入台灣0050前10大/
+    # NASDAQ前15大等公司」。**查詢不等於一定報**:抓回來仍要通過既有的
+    # 重要性與分群門檻,當日沒有自家新聞就不會出現在信裡。
+    # 0050 前十大(2330/2317/2454/2308/2382/2891/2881/2882/3711/2303)
+    # 本來就在下面的台股區塊裡,實測缺的是這一側。
+    ("亞馬遜 Amazon AWS", "AMZN"), ("網飛 Netflix", "NFLX"),
+    ("好市多 Costco", "COST"), ("Palantir", "PLTR"),
+    ("思科 Cisco", "CSCO"), ("T-Mobile", "TMUS"), ("奧多比 Adobe", "ADBE"),
     # --- 2330 深度主題查詢(使用者要求 2026-07-14:台積電財報/法說/製程要更深)。
     #     同 label 疊加查詢 → 2330 素材池擴大;dedup 會吸收跨查詢重複,OR 語法已實測可用 ---
     ("台積電 財報 OR 法說 OR 資本支出", "2330"),
@@ -10598,8 +10621,16 @@ def assign_event_sections(events, tw0050=None,
     # **只取非數字代號當「美股科技」**:GOOGLE_NEWS_COMPANIES 同時含台股代號
     # (2330/2882…),照單全收會把國泰金歸到科技板塊(自測抓到)。
     # 台股是否屬科技,一律以 universe 的產業別為準。
+    # **「有被覆蓋」不等於「是科技股」**(外審 2026-08-18)。這個集合原本
+    # 收 `GOOGLE_NEWS_COMPANIES` 裡所有非數字標籤,理由是那張表當時只收
+    # 半導體鏈與大型科技股。同一天把涵蓋面補到 NASDAQ-100 權重前段班之後
+    # 那個前提不成立了 —— Costco 與 T-Mobile 會被指到「八、科技板塊脈動」,
+    # 而那張歸屬表是**直接寫進 prompt 的指令**(不得更動),模型會照辦。
+    # 例外表只有一份(`industry_class.NON_TECH_FOREIGN`),這裡引用它而不是
+    # 再抄一份 —— 兩份會分歧,而分歧的症狀是同一家公司在兩處被分到不同段。
     us_tech = {lbl for _q, lbl in GOOGLE_NEWS_COMPANIES
-               if lbl and not str(lbl).isdigit()}
+               if lbl and not str(lbl).isdigit()
+               and lbl not in _industry_class.NON_TECH_FOREIGN}
     out, seen = [], set()
     for ev in sorted((e for e in (events or []) if isinstance(e, dict)),
                      key=lambda e: -float(e.get("quality_score") or 0)):
@@ -13226,6 +13257,16 @@ _LUNA_REPAIR_LIMITS = {"syntax": 1, "regenerate": 2, "semantic": 2}
 _LEGACY_FALLBACK_RESERVE = 300.0
 
 
+def _structured_stance() -> dict:
+    """特化路徑留下的**結構化立場**(沒有就回空 dict)。
+
+    讀這個而不是解析 markdown:值本來就在 JSON 裡,繞一圈用正則讀回來
+    只會多一個看不出關聯的失效模式(2026-08-18 生產,見 `_accept_luna`)。
+    """
+    st = (_RUN_MANIFEST.get("llm") or {}).get("stance_structured")
+    return st if isinstance(st, dict) and st.get("label") else {}
+
+
 def _accept_luna(obj: dict, packet: dict, text: str) -> str:
     """**特化路徑的唯一接受出口**(外審補審 F2)。
 
@@ -13259,6 +13300,18 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
               file=sys.stderr)
     _RUN_MANIFEST["llm"]["primary_metrics"] = _am.structured_metrics(
         obj, packet, rendered_text=text)
+    # **立場從 JSON 直接留下來,不要事後再從自己產生的 markdown 解析回去。**
+    # 2026-08-18 生產:`stance_dual` 記到 `llm=1 / llm_label=null` ——
+    # 分數解析出來、標籤沒有,於是「LLM 立場與系統不一致」的防線每天觸發,
+    # 結論卡連著幾天只剩「依系統計分:中性。…已略過其方向性建議」。
+    # 特化路徑手上本來就有這個值(schema 的 enum),繞一圈用正則讀回來是
+    # **自己給自己製造的失效模式**:中間任何一個排版改動都會讓它讀不到,
+    # 而症狀出現在結論卡、原因在渲染層,沒有人看得出關聯。
+    _st = obj.get("stance") if isinstance(obj.get("stance"), dict) else {}
+    _RUN_MANIFEST["llm"]["stance_structured"] = {
+        "label": str(_st.get("label") or ""),
+        "score": _st.get("score") if isinstance(_st.get("score"), int) else None,
+        "rationale": str(_st.get("rationale") or "")[:200]}
     return text
 
 
@@ -13843,39 +13896,24 @@ def _render_ma200_html(status: dict) -> str:
     # 信件註腳依使用者要求(2026-07-14)移除。
 
 
-def _render_etf_action_card(fair_00662, pred_0050) -> str:
-    """ETF 今日進出參考價(使用者核心需求:買入/賣出的相對合理價位,行動導向)。
+def _etf_band_cell(center, band) -> str:
+    """今日進出參考:低於下緣相對便宜、高於上緣相對偏貴。
 
-    00662 帶寬 ±0.5%:公允淨值 = QQQ×匯率 的 NAV 套利錨,模型誤差小;
-    0050  帶寬 ±1.0%:衍生自 2330+加權 預測,誤差較大故放寬。
-    低於下緣 = 相對便宜(分批買入參考);高於上緣 = 相對偏貴(分批調節參考)。
+    2026-08-18 使用者要求**併進「六、個股開盤預測」那張表**(原本是表格
+    下面另一張「ETF 今日進出參考價」卡)—— 同一檔的預測與可操作區間
+    分兩處看,讀者要自己對照。舊卡片沒有呼叫端就一併刪掉:留著一個沒人
+    呼叫的渲染函式,等於留下一句「信裡有這張卡」的假宣稱。
+
+    帶寬的理由不變:00662 ±0.5%(公允淨值是 QQQ×匯率 的 NAV 套利錨,
+    模型誤差小)、0050 ±1.0%(衍生自 2330+加權 預測,誤差較大)。
+    **沒有帶寬的標的留白**,不編一個區間出來。
     """
-    # 手機版堆疊式:每檔一卡兩行(原 4 欄表在 390px 寬會擠爆)
-    cards = []
-    for label, center, band in (("00662 富邦NASDAQ", fair_00662, 0.005),
-                                ("0050 元大台灣50", pred_0050, 0.010)):
-        if not isinstance(center, (int, float)) or center <= 0:
-            continue
-        lo = round(center * (1 - band), 2)
-        hi = round(center * (1 + band), 2)
-        cards.append(
-            f"<div style='padding:10px 14px;border-bottom:1px solid #e2e8f0;background:#fff;'>"
-            f"<div style='font-weight:700;color:#0f172a;font-size:15px;'>{label}</div>"
-            f"<div style='font-size:14px;margin-top:6px;line-height:1.9;'>"
-            f"<span style='color:#15803d;font-weight:700;'>&lt; {lo} 可分批買</span>"
-            f"<span style='color:#cbd5e1;'>　|　</span>"
-            f"<span style='color:#475569;'>{lo}~{hi} 觀望</span>"
-            f"<span style='color:#cbd5e1;'>　|　</span>"
-            f"<span style='color:#b91c1c;font-weight:700;'>&gt; {hi} 偏貴</span></div>"
-            f"</div>")
-    if not cards:
-        return ""
-    return (
-        '<div style="border:2px solid #0284c7;border-radius:10px;overflow:hidden;margin:14px 0;">'
-        '<div style="background:#0284c7;color:#fff;padding:8px 14px;font-weight:700;font-size:15px;">'
-        'ETF 今日進出參考價</div>'
-        + "".join(cards) +
-        '</div>')
+    if not isinstance(center, (int, float)) or center <= 0 or not band:
+        return "—"
+    lo, hi = round(center * (1 - band), 2), round(center * (1 + band), 2)
+    return (f"<span style='color:#15803d;font-weight:700;'>&lt;{lo} 買</span>"
+            f"<span style='color:#cbd5e1;'> | </span>"
+            f"<span style='color:#b91c1c;font-weight:700;'>&gt;{hi} 貴</span>")
 
 
 def _render_portfolio_risk_html(risk: dict) -> str:
@@ -15449,10 +15487,9 @@ def _render_poly_pulse_html(rows: list[dict],
         '預測市場觀點(Polymarket)</h2>'
         '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;">'
         '<table style="width:100%;border-collapse:collapse;">' + lines + "</table>"
-        + div_html +
-        "<div style='padding:8px 14px;font-size:11px;color:#94a3b8;'>"
-        "※ Polymarket 為真金押注的預測市場,價格≈市場共識機率,即時但可能劇烈變動;"
-        "僅供參考,不納入本報任何模型計分</div></div>")
+        # 2026-08-18 使用者要求移除註腳:「不納入計分」這件事在每天都一樣的
+        # 情況下只是佔版面;段名已寫明是預測市場觀點。
+        + div_html + "</div>")
 
 
 def _compute_stance_score(quotes: dict) -> dict:
@@ -19787,7 +19824,9 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 相反立場,KPI 已顯示 Python 權威,但結論卡/立場詳情仍是 LLM 文字——
     # 同一封信兩個方向。不合規時以確定性摘要取代、移除矛盾的方向性敘述。
     if _py_authority:
-        _llm_stance = _extract_stance(analysis_for_render)
+        # **先問結構化的那一份**(2026-08-18):特化路徑的立場來自 schema
+        # 的 enum,不必也不該從自己剛產生的 markdown 解析回來。
+        _llm_stance = _structured_stance() or _extract_stance(analysis_for_render)
         _llm_label = str(_llm_stance.get("label") or "")
         # 一句話總結也要驗(Codex r2:十二段抄對、十三段仍可能寫出別的立場詞
         # ——如「資料不足」被寫成「中性」);取 summary 中**字串位置最前**的
@@ -19800,19 +19839,39 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _py_label = str(_sp_render["label"])
         # 批#34:原本是 `(X and X != Y) or (Z and Z != Y)`——兩個條件都被 `X and`
         # 短路,於是「**無法解析**」被當成合規。實測重現:LLM 把標籤寫成英文
-        # (「> **Stance: Bullish**」,_extract_stance 的 regex 只吃中文 → None)
-        # 且一句話總結不含四個立場詞之一(如「全面加碼 00662,2330 站上 2400 元續抱」)
-        # → 防線不觸發 → KPI 顯示 Python 權威「偏空」,同一畫面下方結論卡卻是
+        # (「> **Stance: Bullish**」)且一句話總結不含四個立場詞之一 →
+        # 防線不觸發 → KPI 顯示 Python 權威「偏空」,同一畫面下方結論卡卻是
         # LLM 的「全面加碼」= 同一封信兩個相反立場,正是 PR-2 要防的事。
-        # 改為「必須各自成功解析**且**相符」才算合規;解析不出來一律走確定性摘要。
-        if (_llm_label != _py_label) or (_sum_word != _py_label):
+        #
+        # **2026-08-18 修正兩件事**(使用者:這一大段好幾天都長這樣):
+        #  1. 「一句話總結裡沒有出現立場詞」**不是**立場衝突。8/17 的生產
+        #     就是這樣:LLM 標籤與 Python 都是「中性」,只因總結寫成
+        #     「今日以觀望為主」而整張結論卡被抹掉。只有**寫出不同的
+        #     立場詞**才算矛盾。
+        #  2. 真的矛盾時**不再只留一句空話**。原本的替代文字沒有任何
+        #     可行動的內容;現在把系統立場與分析師觀點並列、寫明以何者
+        #     為準 —— 一封信裡出現兩個立場而**沒有說哪個算數**才是 PR-2
+        #     要防的事,說清楚了就不是。
+        _conflict = ((_llm_label and _llm_label != _py_label)
+                     or (_sum_word and _sum_word != _py_label))
+        _unverifiable = not _llm_label and not _sum_word
+        if _conflict or _unverifiable:
             print(f"[stance-echo] ⚠ LLM 立場詞(十二段「{_llm_label}」/"
                   f"總結「{_sum_word}」)未遵守系統標籤「{_py_label}」"
                   f"→ 結論卡改用確定性摘要,立場詳情已移除", file=sys.stderr)
             # 批#26:不外露淨分,只給標籤
-            summary_text = (f"依系統計分:{_sp_render['label']}。"
-                            f"LLM 摘要與系統立場不一致,已略過其方向性建議;"
-                            f"價位區間見下方預測表。")
+            _why = str(_llm_stance.get("rationale") or "").strip()
+            _why = _why.split("。")[0][:60] if _why else ""
+            if _conflict and _llm_label:
+                summary_text = (f"依系統計分:{_py_label}(以此為準)。"
+                                f"分析師觀點為{_llm_label}"
+                                + (f",理由是{_why}" if _why else "")
+                                + ";兩者不一致時本報以系統計分為準,"
+                                  "價位區間見下方預測表。")
+            else:
+                summary_text = (f"依系統計分:{_py_label}。"
+                                f"本日分析文字未寫出可核對的立場,"
+                                f"已略過其方向性建議;價位區間見下方預測表。")
             analysis_for_render = _strip_llm_sections(
                 analysis_for_render, ("我的明確立場", "一句話總結"))
     # 批#28(Codex r1/r4):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)。
@@ -20022,12 +20081,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _np = _night_for_taiex["night_pct"]
         _nc = "#dc2626" if _np >= 0 else "#16a34a"
         _ns = "+" if _np >= 0 else ""
-        night_row_html = f"""
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">夜盤台指期（{_night_for_taiex.get('date','—')}）</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{_night_for_taiex.get('night_close')} <b style="color:{_nc};">({_ns}{_np}%)</b></td>
-          </tr>"""
+        night_row_html = (
+            f"<div style='flex:1 1 30%;min-width:150px;padding:10px 12px;"
+            f"background:#f8fafc;border-radius:8px;'>"
+            f"<div style='font-size:12px;color:#64748b;'>夜盤台指期"
+            f"（{_night_for_taiex.get('date','—')}）</div>"
+            f"<div style='font-size:17px;font-weight:700;color:#0f172a;"
+            f"font-variant-numeric:tabular-nums;'>"
+            f"{_night_for_taiex.get('night_close')} "
+            f"<span style='color:{_nc};font-size:14px;'>{_ns}{_np}%</span></div></div>")
     if taiex_pred.get("pred_open"):
         # 使用者回饋:SOX/TSM/夜盤個別訊號屬內部計算,信件只顯示最終預測結果
         signal_rows = ""
@@ -20050,37 +20112,38 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                         f'(原始訊號 {raw_sign}{raw_pct:.2f}%)</span>')
         # 使用者要求:開盤預測卡移除「今日立場/短線開盤/操作紀律」整段,以及「區間方法」「已自我校正」
         # 註腳(相關判定改放後台);卡片只保留 昨收/預測漲跌/預測開盤/合理區間/訊號共識。
+        # **2026-08-18 使用者要求:這一段做得更好閱讀、更人性化。**
+        # 原本是一列一項的兩欄表(昨收 / 夜盤 / 預測漲跌 / 預測開盤 /
+        # 合理區間 / 訊號共識 六列),手機上要滑很久才看得完一個數字。
+        # 改成「一個結論 + 一排資訊格」:最重要的預測開盤點位放大成一句
+        # 白話,其餘四項並排成 flex 格(桌機三欄、手機自動折行)。
+        # **數字與判準都沒有改**,只是排法。
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;background:#f8fafc;border-radius:8px;overflow:hidden;">
-          {signal_rows}
-        </table>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;">
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;width:55%;">加權昨收</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</td>
-          </tr>{night_row_html}
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">加權預測漲跌</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%{raw_note}</td>
-          </tr>
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 預測開盤點位</td>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:24px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f}</td>
-          </tr>
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">合理區間</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-variant-numeric:tabular-nums;">{taiex_pred['ci_lower']:,.0f} ~ {taiex_pred['ci_upper']:,.0f}</td>
-          </tr>
-          <tr><td colspan="2" style="height:4px;"></td></tr>
-          <tr>
-            <td style="padding:10px 14px;background:#f8fafc;color:#475569;">訊號共識</td>
-            <td style="padding:10px 14px;background:#f8fafc;text-align:right;font-weight:700;">{taiex_pred['consensus']}</td>
-          </tr>
-        </table>
+        {signal_rows}
+        <div style="margin:12px 0;padding:16px;background:linear-gradient(135deg,#0284c7,#0ea5e9);border-radius:10px;color:#fff;">
+          <div style="font-size:13px;opacity:.9;">今天開盤大約落在</div>
+          <div style="font-size:30px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f}</div>
+          <div style="font-size:14px;margin-top:4px;">
+            較昨收 {taiex_pred['last_close']} <b>{pct_sign}{final_pct:.2f}%</b>{raw_note}
+            ・合理區間 {taiex_pred['ci_lower']:,.0f}~{taiex_pred['ci_upper']:,.0f}
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
+          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
+            <div style="font-size:12px;color:#64748b;">加權昨收</div>
+            <div style="font-size:17px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</div>
+          </div>
+          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
+            <div style="font-size:12px;color:#64748b;">預測漲跌</div>
+            <div style="font-size:17px;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%</div>
+          </div>
+          {night_row_html}
+          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
+            <div style="font-size:12px;color:#64748b;">訊號共識</div>
+            <div style="font-size:17px;font-weight:700;color:#0f172a;">{taiex_pred['consensus']}</div>
+          </div>
+        </div>
         """
 
     # === 0050 ETF 開盤預測卡 ===
@@ -20759,10 +20822,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
     # 取代原本分散的三、四、六大卡;頭部 KPI 已有頭條數字,這裡給昨收/預測/幅度即可。
-    def _pred_row(label: str, last_v, pred_v, pct_v, note: str = "") -> str:
+    def _pred_row(label: str, last_v, pred_v, pct_v, band=None) -> str:
         if last_v is None or pred_v is None:
             return (f"<tr><td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-                    f"<td colspan='3' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>資料缺失</td></tr>")
+                    f"<td colspan='4' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>資料缺失</td></tr>")
         pc = "#dc2626" if (pct_v or 0) >= 0 else "#16a34a"
         sg = "+" if (pct_v or 0) >= 0 else ""
         return (f"<tr>"
@@ -20770,6 +20833,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b;font-variant-numeric:tabular-nums;'>{last_v}</td>"
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;'>{pred_v}</td>"
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:{pc};font-variant-numeric:tabular-nums;'>{sg}{pct_v:.2f}%</td>"
+                f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;white-space:nowrap;'>{_etf_band_cell(pred_v, band)}</td>"
                 f"</tr>")
 
     _p_mid = predictions.get("mid") if isinstance(predictions, dict) else None
@@ -20790,15 +20854,15 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">昨收</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預測開盤／公允價</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預估漲跌</th>
+            <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">今日進出參考</th>
           </tr>
           {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct)}
-          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
-          {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
+          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct, 0.005)}
+          {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct, 0.010)}
         </table>
         {_prediction_delta_note(quotes.get("HISTORY") or [], report_date, {
             "2330": _p_mid, "加權": (quotes.get("TAIEX_PRED") or {}).get("pred_open"),
             "00662": _f_price, "0050": _t_pred})}
-        {_render_etf_action_card(_f_price, _t_pred)}
         """
 
     truncation_notice = ""
@@ -23139,7 +23203,13 @@ def _phase_render(ctx) -> Optional[int]:
         crit_titles = [_external_text(n["title"], 120)
                        for n in news if n.get("importance") == "critical"][:5]
         # G4:存今日 LLM 立場,供明日「敘事變化」段逐字對照(顯示層產物,非凍結計分模型)。
-        _stance_state = _extract_stance(analysis) if isinstance(analysis, str) else {}
+        # **先問結構化的那一份**(2026-08-18):特化路徑的立場來自 schema
+        # 的 enum。從自己產生的 markdown 解析回來,2026-08-18 的生產就記到
+        # `llm_label=null`(分數讀到、標籤沒有),而症狀是結論卡連著幾天
+        # 只剩一句「已略過其方向性建議」。
+        _stance_state = (_structured_stance()
+                         or (_extract_stance(analysis)
+                             if isinstance(analysis, str) else {}))
         # PR-2 雙軌:LLM 分數 vs Python 分數並列記錄與比對 log(切換前的證據累積)
         _sp = quotes.get("STANCE_PY") or {}
         # echo 合規監控(Codex r4 P3):Python 權威存在時**固定**產生紀錄——

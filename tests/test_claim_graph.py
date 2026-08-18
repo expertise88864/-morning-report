@@ -67,7 +67,7 @@ def test_the_letter_shows_each_asset_with_its_downstream_effects():
     而影響本身一定要在。
     """
     text = ar.render(fx.valid_analysis())
-    i, j = text.index(ar.SECTION_NEWS), text.index(ar.SECTION_TW)
+    i, j = text.index(ar.SECTION_NEWS), text.index(ar.SECTION_MARKET)
     section = text[i:j]
     assert "偏多" not in section and "偏空" not in section, section
     assert "權值股開盤定價直接跟隨費半" in section, section

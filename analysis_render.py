@@ -39,7 +39,6 @@ RENDER_SCHEMA_VERSION = 1
 SECTION_TOP3 = "七、昨夜三大重點"
 #: Commit E:逐標的淨效果。**新段落**,不與既有標題衝突 ——
 #: 既有的 `_strip_llm_sections` 只移除它認得的那幾個,新段落原樣留下。
-SECTION_NET = "九之一、各標的合計影響"
 #: 第十五輪 P1-3:**段落名要說實話。**
 #:
 #: 舊的映射把 `global_market`(美股→台股連動)放進「世界大事速覽」——
@@ -53,7 +52,17 @@ SECTION_NET = "九之一、各標的合計影響"
 #: 而信看起來仍然完整,沒有任何錯誤訊息。
 #: Luna 的 schema **沒有**「股市之外的世界」這種欄位,所以正確的做法是
 #: **不要宣稱有**,而不是找一個欄位塞進去。
-SECTION_GLOBAL = "七之二、全球市場與美股台股連動"
+#: **2026-08-18 使用者定案:橫向綜合 / 全球連動 / 台股與台積電 /
+#: 各標的合計影響 / 已被市場反映,五段併成一段。** 原話:「這五大段直接
+#: 整合成今日市場關注與預測類似這樣的一大段標題內就好 … 內文重複的
+#: 就不用一直寫了」。五個 h2 各自佔一張藍色卡片,而它們講的是同一件事的
+#: 五個切面;拆成五段的結果是同一句話在信裡出現三次。
+SECTION_MARKET = "九、今日市場關注與預測"
+SUBSECTION_SYNTHESIS = "訊號的橫向綜合"
+SUBSECTION_GLOBAL = "全球市場與美股台股連動"
+SUBSECTION_TW = "台股與台積電"
+SUBSECTION_NET = "各標的合計影響"
+SUBSECTION_PRICED = "已被市場反映 vs 尚未反映"
 SECTION_NEWS = "八、重點新聞分析"
 #: 第八段的兩個子標題。**2026-08-18 使用者定案**:回到舊版信的
 #: 「科技類股 / 其他類股」兩段寫法。與舊版的差別是**這次真的有過濾**
@@ -66,11 +75,8 @@ SUBSECTION_OTHER = "其他類股"
 #: 本段的保留事項(傳導未完成 / 看過但未展開)。**不掛在任一類股底下**
 #: —— 它講的是整段的取捨,掛進「其他類股」會讓讀者以為只有那一類有缺。
 SUBSECTION_NOTES = "本段的保留事項"
-SECTION_TW = "九、台股與台積電"
-SECTION_PRICED = "已被市場反映 vs 尚未反映"
 #: schema v2:橫向綜合。**排在最前面** —— 使用者要的是「這些訊號合起來
 #: 說什麼」,逐條看完再自己拼是他反映了三次的那個問題。
-SECTION_SYNTHESIS = "七之一、今日訊號的橫向綜合"
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
 
@@ -87,6 +93,57 @@ def _lines(items, fmt) -> list:
             if text:
                 out.append(f"- {text}")
     return out
+
+
+def _sub(title: str, lines: list) -> str:
+    """小標題與它底下那幾行是**一個區塊**。
+
+    區塊之間空一行、區塊之內不空 —— `_md_to_html` 逐行處理,
+    遇到空行就收掉 `<ul>`;逐條之間空一行會讓每一條各自變成
+    一個清單(2026-08-18 自測看得到)。
+    """
+    return "### " + title + chr(10) + chr(10).join(lines)
+
+
+def _headline(ref: str, packet=None) -> str:
+    """把內部識別碼換成**讀者看得懂的那件事**(2026-08-18)。
+
+    信裡出現過 `nfb2726dbc24`、`cluster:n562eeb06cc9` 這種字串 ——
+    使用者的原話是「為何一堆亂碼」。它們是 packet 的 `source_item_id`
+    與群 ID,對系統有意義、對讀者沒有。這裡回查那則新聞的標題;
+    `cluster:` 前綴的群回查群裡任一成員的標題。
+
+    **查不到就回空字串**,呼叫端據此只留計數 —— 印一串識別碼比不印糟:
+    它看起來像出錯,而它其實只是沒被翻譯。
+    """
+    ref = _s(ref)
+    if not ref or not isinstance(packet, dict):
+        return ""
+    by_id = {_s(x.get("source_item_id")): _s(x.get("title"))
+             for x in (packet.get("news") or []) if isinstance(x, dict)}
+    if ref in by_id:
+        return by_id[ref]
+    cid = ref.split(":", 1)[1] if ref.startswith("cluster:") else ref
+    if cid in by_id:
+        return by_id[cid]
+    for c in ((packet.get("news_clusters") or {}).get("clusters") or []):
+        if not isinstance(c, dict) or _s(c.get("cluster_id")) != cid:
+            continue
+        for m in (c.get("member_source_ids") or []):
+            if by_id.get(_s(m)):
+                return by_id[_s(m)]
+    return ""
+
+
+def _first_sentence(text: str, limit: int = 60) -> str:
+    """理由收成一句話。整段理由是寫給驗證器看的,排進信裡就是一面牆。"""
+    t = _s(text)
+    for i, ch in enumerate(t):
+        if ch in "。！？!?":
+            return t[:i + 1]
+        if i >= limit:
+            return t[:limit] + "…"
+    return t
 
 
 def _blocks(items, fmt) -> list:
@@ -252,20 +309,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 
-    # 橫向綜合**排在最前面**:使用者要的是「今天這些訊號合起來說什麼」,
-    # 而不是逐條看完再自己拼。
-    syn = _synthesis(obj.get("cross_market_synthesis"), packet)
-    if syn:
-        parts.append(f"## {SECTION_SYNTHESIS}\n" + syn)
-
-    gm = obj.get("global_market") if isinstance(obj.get("global_market"), dict) else {}
-    glob = [x for x in (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if x]
-    if glob:
-        parts.append(f"## {SECTION_GLOBAL}\n" + "\n".join(f"- {w}" for w in glob))
-
-    # **依產業拆成兩段**(2026-08-18):使用者要回舊版的
-    # 「科技類股 / 其他類股」寫法。分不出產業的主體歸「其他」——
-    # 不猜(把國泰金放進科技板塊是自測抓到過的錯)。
+    # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
+    # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
     for _n in (obj.get("top_news_analysis") or []):
         if not isinstance(_n, dict):
@@ -286,8 +331,12 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
             # 第十九輪 P2-2:先前只印前三則,**其餘靜默消失** ——
             # 八則裡有五則停在情緒時,讀者只看到三則,而「還有幾則」
             # 正是他判斷這封信可不可信的關鍵。
+            # 2026-08-18:**識別碼換成新聞標題**。`nfb2726dbc24` 對讀者是
+            # 亂碼(使用者原話:「為何一堆亂碼」)。查不到標題時**只寫理由**
+            # —— 理由才是內容,識別碼只是噪音;筆數與「另有幾則」不變。
             notes.append("- *傳導未完成:" + "、".join(
-                f"{sid} {why}" for sid, why in stub[:3])
+                (f"{t}({why})" if (t := _headline(sid, packet)) else why)
+                for sid, why in stub[:3])
                 + (f";另有 {len(stub) - 3} 則同樣未完成"
                    if len(stub) > 3 else "")
                 + " —— 這幾則的影響幅度本報無法確認。*")
@@ -296,11 +345,16 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         skipped = [d for d in (obj.get("dismissed_events") or [])
                    if isinstance(d, dict) and _s(d.get("why_not_material"))]
         if skipped:
-            notes.append("- *今日看過但未展開:" + "、".join(
-                f"{_s(d.get('cluster_id'))}({_s(d.get('why_not_material'))})"
-                for d in skipped[:4])
-                + (f";另有 {len(skipped) - 4} 件" if len(skipped) > 4 else "")
-                + "*")
+            # 同上:群 ID 換標題、查不到就只寫理由;理由收成一句話
+            # (整段理由是寫給驗證器看的,排進信裡就是使用者說的那面牆)。
+            def _row(d) -> str:
+                why = _first_sentence(_s(d.get("why_not_material")))
+                t = _headline(_s(d.get("cluster_id")), packet)
+                return f"{t}({why})" if t else why
+            notes.append("- *今日看過但未展開:"
+                         + "、".join(_row(d) for d in skipped[:4])
+                         + (f";另有 {len(skipped) - 4} 件" if len(skipped) > 4 else "")
+                         + "*")
         body = ["## " + SECTION_NEWS]
         if tech_news:
             body.append("### " + SUBSECTION_TECH)
@@ -315,20 +369,51 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         # 各自成段,否則兩則新聞會被黏成同一個 <p>。
         parts.append((chr(10) * 2).join(body))
 
+    # ---------------------------------------------- 九、今日市場關注與預測
+    # 五個切面合成一段(2026-08-18 使用者定案)。**重複的句子只寫一次** ——
+    # 五段各自成立時,同一句「費半走強帶動台股電子」會在綜合、連動、
+    # 台股三處各出現一次;那正是使用者說的「內文重複的就不用一直寫了」。
+    market: list = []
+    _seen: set = set()
+
+    def _fresh(lines: list) -> list:
+        """把已經在這一段寫過的句子濾掉(逐字重複才濾,不做語意判斷)。"""
+        out = []
+        for ln in lines:
+            key = _s(ln).lstrip("-* ").strip()
+            if not key or key in _seen:
+                continue
+            _seen.add(key)
+            out.append(ln)
+        return out
+
+    syn = _synthesis(obj.get("cross_market_synthesis"), packet)
+    syn_lines = _fresh([x for x in syn.split(chr(10)) if _s(x)]) if syn else []
+    if syn_lines:
+        market.append(_sub(SUBSECTION_SYNTHESIS, syn_lines))
+
+    gm = obj.get("global_market") if isinstance(obj.get("global_market"), dict) else {}
+    glob = _fresh([f"- {w}" for w in
+                   (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if w])
+    if glob:
+        market.append(_sub(SUBSECTION_GLOBAL, glob))
+
     # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡
     # 由粗到細 —— 先前 summary 被丟進「台灣本地動態」(那一段講的是
     # 證交所新制、勞動基金這類在地消息),兩者不是同一件事。
     tw = obj.get("taiwan_market") if isinstance(obj.get("taiwan_market"), dict) else {}
-    tw_lines = [x for x in (_s(tw.get("summary")), _s(tw.get("taiex_view")),
-                            _s(tw.get("tsmc_view"))) if x]
+    tw_lines = _fresh([f"- {o}" for o in
+                       (_s(tw.get("summary")), _s(tw.get("taiex_view")),
+                        _s(tw.get("tsmc_view"))) if o])
     if tw_lines:
-        parts.append(f"## {SECTION_TW}\n" + "\n".join(f"- {o}" for o in tw_lines))
+        market.append(_sub(SUBSECTION_TW, tw_lines))
 
     # **逐標的淨效果**(Commit E):同一個標的被不同事件推往相反方向時,
     # 前面幾段各自寫完就結束了 —— 這一段回答「合起來是利多還是利空」。
     nets = _net_effects(obj.get("asset_net_effects"))
-    if nets:
-        parts.append(f"## {SECTION_NET}\n" + nets)
+    net_lines = _fresh([x for x in nets.split(chr(10)) if _s(x)]) if nets else []
+    if net_lines:
+        market.append(_sub(SUBSECTION_NET, net_lines))
 
     # **`priced_in` 先前整段沒有被渲染。** 它是這份 schema 裡最像分析的欄位
     # (「哪些已經在價格裡、哪些還沒」),模型產出了、驗證器檢查了,
@@ -336,13 +421,15 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     pi = obj.get("priced_in") if isinstance(obj.get("priced_in"), dict) else {}
     done = [_s(x) for x in (pi.get("already_reflected") or []) if _s(x)]
     todo = [_s(x) for x in (pi.get("not_yet_reflected") or []) if _s(x)]
-    if done or todo:
-        blk = []
-        if done:
-            blk.append("- **已被市場反映**:" + "、".join(done[:4]))
-        if todo:
-            blk.append("- **尚未反映**:" + "、".join(todo[:4]))
-        parts.append(f"## {SECTION_PRICED}\n" + "\n".join(blk))
+    priced = _fresh([x for x in (
+        ("- **已被市場反映**:" + "、".join(done[:4])) if done else "",
+        ("- **尚未反映**:" + "、".join(todo[:4])) if todo else "") if x])
+    if priced:
+        market.append(_sub(SUBSECTION_PRICED, priced))
+
+    if market:
+        parts.append(("## " + SECTION_MARKET + chr(10) * 2)
+                     + (chr(10) * 2).join(market))
 
     # 情境樹與觀察點:這是 Luna 特化相對於既有散文的實質增量
     tree = obj.get("scenario_tree") if isinstance(obj.get("scenario_tree"), dict) else {}

@@ -97,9 +97,14 @@ def test_section_titles_are_honest_and_all_appear():
     """
     md = ar.render(_obj())
     assert ar.SECTION_TOP3 == mr._SECTION_TOP3, "『昨夜三大重點』的語意兩邊相同,應保持一致"
-    for title in (ar.SECTION_TOP3, ar.SECTION_GLOBAL, ar.SECTION_NEWS,
-                  ar.SECTION_TW, ar.SECTION_STANCE, ar.SECTION_SUMMARY):
+    for title in (ar.SECTION_TOP3, ar.SECTION_NEWS, ar.SECTION_MARKET,
+                  ar.SECTION_STANCE, ar.SECTION_SUMMARY):
         assert f"## {title}" in md, f"渲染結果缺少段落:{title}"
+    # 2026-08-18:全球連動 / 台股與台積電 / 各標的合計影響 / 已被市場反映
+    # 併進「九、今日市場關注與預測」,改用 `###` 小標(使用者:五大段整合
+    # 成一大段標題內就好)。宣告的每一個小標一樣要真的出現。
+    for sub in (ar.SUBSECTION_GLOBAL, ar.SUBSECTION_TW, ar.SUBSECTION_PRICED):
+        assert f"### {sub}" in md, f"渲染結果缺少子段:{sub}"
     for wrong in (mr._SECTION_WORLD, mr._SECTION_TECH, mr._SECTION_OTHER):
         assert wrong not in md, (
             f"渲染層又掛回語意對不上的 legacy 段落名:{wrong}")

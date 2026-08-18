@@ -36,15 +36,15 @@ def test_the_world_events_heading_is_gone():
     """
     out = _rendered()
     assert "世界大事速覽" not in out, "美股連動又被標成世界大事了"
-    assert ar.SECTION_GLOBAL in out
+    assert ar.SUBSECTION_GLOBAL in out
 
 
 def test_tsmc_does_not_land_in_the_other_sectors_section():
     """台積電進「其他類股資訊」是語意錯誤,不是排版問題。"""
     out = _rendered()
     assert "其他類股資訊" not in out
-    assert ar.SECTION_TW in out
-    i = out.index(ar.SECTION_TW)
+    assert ar.SUBSECTION_TW in out
+    i = out.index(ar.SUBSECTION_TW)
     assert "守月線" in out[i:i + 200], "tsmc_view 沒有進台股那一段"
 
 
@@ -86,7 +86,7 @@ def test_the_taiwan_summary_is_not_filed_as_local_news():
     (那一段講的是證交所新制、勞動基金這類在地消息)。"""
     out = _rendered()
     assert "台灣本地動態" not in out
-    i = out.index(ar.SECTION_TW)
+    i = out.index(ar.SUBSECTION_TW)
     assert "量能回升" in out[i:i + 200]
 
 
@@ -96,7 +96,7 @@ def test_priced_in_is_rendered():
     """**這是整份 schema 裡最像分析的欄位**,先前整段沒有被渲染。"""
     out = _rendered(priced_in={"already_reflected": ["美股漲幅"],
                                "not_yet_reflected": ["台積電法說"]})
-    assert ar.SECTION_PRICED in out
+    assert ar.SUBSECTION_PRICED in out
     assert "美股漲幅" in out and "台積電法說" in out
 
 
@@ -182,15 +182,18 @@ def test_the_relationship_line_is_folded_away():
     """
     out = ar.render(fx.valid_analysis())
     assert "與另一則的關係" not in out
-    assert ar.SECTION_SYNTHESIS in out, "橫向綜合那一段本身要還在"
+    assert ar.SUBSECTION_SYNTHESIS in out, "橫向綜合那一段本身要還在"
 
 
 def test_the_synthesis_section_renders_and_leads():
     """橫向綜合要在,而且**排在逐條分析之前** —— 使用者要的是
     「合起來說什麼」,不是自己拼。"""
     out = ar.render(fx.valid_analysis())
-    assert ar.SECTION_SYNTHESIS in out
-    assert out.index(ar.SECTION_SYNTHESIS) < out.index(ar.SECTION_NEWS)
+    assert ar.SUBSECTION_SYNTHESIS in out
+    # 2026-08-18 使用者定案:**逐則新聞在前、綜合判斷在後**。原話是
+    # 「這五大段直接整合成…放在原本新加入的其他類股下方」——
+    # 先前的順序(綜合在前)是上一輪的定案,這一輪被明確取代。
+    assert out.index(ar.SECTION_NEWS) < out.index(ar.SUBSECTION_SYNTHESIS)
     assert "互相強化" in out and "互相抵銷" in out
     assert "今天的主導因子" in out and "什麼會讓它翻盤" in out
 

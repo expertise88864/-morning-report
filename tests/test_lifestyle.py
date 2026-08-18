@@ -22,14 +22,18 @@ def test_render_weather_html():
     assert mr._render_weather_html([]) == ""   # 失敗時整卡消失,不留空殼
 
 
-def test_render_etf_action_card():
-    h = mr._render_etf_action_card(120.87, 100.45)
-    assert "ETF 今日進出參考價" in h
-    assert "120.27" in h and "121.47" in h     # 00662 ±0.5%
-    assert "99.45" in h and "101.45" in h      # 0050 ±1.0%
-    # 手機版堆疊文案
-    assert "可分批買" in h and "偏貴" in h and "觀望" in h
-    assert mr._render_etf_action_card(None, None) == ""
+def test_etf_band_cell():
+    """今日進出參考價 2026-08-18 起是「六」那張表裡的一欄,不再是獨立卡片
+    (使用者:「直接寫在表格內就好」)。帶寬的數字不變。"""
+    assert "120.27" in mr._etf_band_cell(120.87, 0.005)    # 00662 ±0.5%
+    assert "121.47" in mr._etf_band_cell(120.87, 0.005)
+    assert "99.45" in mr._etf_band_cell(100.45, 0.010)     # 0050 ±1.0%
+    assert "101.45" in mr._etf_band_cell(100.45, 0.010)
+    assert "買" in mr._etf_band_cell(120.87, 0.005)
+    assert "貴" in mr._etf_band_cell(120.87, 0.005)
+    # **沒有帶寬的標的留白**,不編一個區間出來(2330 沒有 NAV 錨)。
+    assert mr._etf_band_cell(2400.0, None) == "—"
+    assert mr._etf_band_cell(None, 0.005) == "—"
 
 
 def test_render_sports_html():
@@ -2737,7 +2741,9 @@ def test_fetch_polymarket_pulse_rows(monkeypatch):
 
     h = mr._render_poly_pulse_html(rows)
     assert "預測市場觀點(Polymarket)" in h and "Fed 9月決議" in h
-    assert "不納入本報任何模型計分" in h
+    # 2026-08-18 使用者要求移除註腳:每天一模一樣的免責句只佔版面,
+    # 段名本身已寫明是「預測市場觀點(Polymarket)」。
+    assert "不納入本報任何模型計分" not in h
     assert mr._render_poly_pulse_html([]) == ""
 
 

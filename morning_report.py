@@ -32,6 +32,7 @@ from typing import Optional
 import llm_telemetry as _lt
 import app_context as _app
 import econ_terms as _et
+import industry_class as _industry_class
 import gnews_registry as _gnews_reg
 import llm_http as _lh
 import payload_budget as _pb
@@ -6176,10 +6177,11 @@ def fetch_candidate_company_news(snapshot: list[dict],
 
 # 已由固定重點清單 / 爆發力候選 / 8-K 充分覆蓋的「電子科技」產業;動態非科技公司池排除之,
 # 避免重複查詢並把查詢額度留給真正缺乏個股新聞的非科技類股。
-_TECH_INDUSTRIES_FOR_SECTOR_NEWS: set[str] = {
-    "半導體業", "電腦及週邊設備業", "光電業", "通信網路業", "電子零組件業",
-    "電子通路業", "資訊服務業", "其他電子業", "數位雲端",
-}
+#: **判準只有一份**(2026-08-18):第八段改成依產業拆「科技類股 / 其他類股」
+#: 之後,渲染層也要問同一個問題 —— 兩份集合分歧會讓同一檔股票在
+#: 「補新聞」與「排版」兩處被分到不同類股。集合搬到 `industry_class`,
+#: 這個名字留著當別名(既有呼叫點不動)。
+_TECH_INDUSTRIES_FOR_SECTOR_NEWS: frozenset = _industry_class.TECH_INDUSTRIES
 
 
 def fetch_sector_leader_news(sector_heat: dict,

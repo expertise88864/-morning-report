@@ -195,9 +195,13 @@ def test_a_universe_only_asset_is_labelled_speculative():
         dict(obj["top_news_analysis"][0]["affected_assets"][0],
              asset_id="2330")]
     text = ar.render(obj, pk)
-    lines = [x for x in text.splitlines() if "3661" in x]
-    assert lines and "推測性傳導" in lines[0], lines
-    core = [x for x in text.splitlines() if "2330 " in x and "偏" in x]
+    # 2026-08-18:小標題現在也會寫出主體(「世芯-KY（3661）:…」),所以
+    # 「第一條含 3661 的行」不再是標的那一列。錨在**標的那一列**
+    # (縮排的 `- 3661` 起頭)—— 揭露要貼在被揭露的那個標的身上。
+    # 同一批改動也拿掉了逐標的的方向詞,所以核心標的那一條改用同樣的錨。
+    rows = [x for x in text.splitlines() if x.strip().startswith("- 3661")]
+    assert rows and "推測性傳導" in rows[0], text
+    core = [x for x in text.splitlines() if x.strip().startswith("- 2330")]
     assert core and "推測性傳導" not in core[0], core
 
 

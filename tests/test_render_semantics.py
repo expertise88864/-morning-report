@@ -49,10 +49,36 @@ def test_tsmc_does_not_land_in_the_other_sectors_section():
 
 
 def test_the_news_section_does_not_claim_to_be_tech_only():
-    """`top_news_analysis` 沒有被依產業過濾,就不得叫「科技板塊脈動」。"""
+    """**科技類股那一段裡不得出現非科技的主體。**
+
+    2026-08-18 之前這條的寫法是「沒過濾就不得叫科技板塊脈動」——
+    因為當時 `top_news_analysis` 整包無條件進第八段。使用者定案要回到
+    舊版的「科技類股 / 其他類股」兩段寫法之後,**這一段真的有過濾了**,
+    所以判準跟著換成過濾本身:金融股不得落在科技類股底下。
+    (舊標題「科技板塊脈動」是既有路徑的段名,仍然不該出現在這裡。)
+    """
     out = _rendered()
     assert "科技板塊脈動" not in out
     assert ar.SECTION_NEWS in out
+
+    pk = {"tw_universe": [
+        {"code": "2330", "name": "台積電", "industry": "半導體業"},
+        {"code": "2882", "name": "國泰金", "industry": "金融保險業"}],
+        "news": [{"source_item_id": "t1", "title": "台積電擴產", "entities": ["2330"]},
+                 {"source_item_id": "t2", "title": "國泰金獲利創高", "entities": ["2882"]}]}
+    obj = fx.valid_analysis()
+    base = obj["top_news_analysis"][0]
+    obj["top_news_analysis"] = [
+        dict(base, source_item_id="t1",
+             affected_assets=[dict(base["affected_assets"][0], asset_id="2330")]),
+        dict(base, source_item_id="t2",
+             affected_assets=[dict(base["affected_assets"][0], asset_id="2882")])]
+    text = ar.render(obj, pk)
+    i = text.index(ar.SUBSECTION_TECH)
+    j = text.index(ar.SUBSECTION_OTHER)
+    assert i < j, text
+    assert "台積電" in text[i:j] and "國泰金" not in text[i:j], text[i:j]
+    assert "國泰金" in text[j:], text[j:]
 
 
 def test_the_taiwan_summary_is_not_filed_as_local_news():

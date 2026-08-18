@@ -170,6 +170,22 @@ def test_the_deepen_verdict_sees_the_same_advisories_that_triggered_it():
     assert "depth_advisories(after, evidence_ids)" in body
 
 
+#: **刻意不排進信裡的 `top_news_analysis` 欄位,與理由。**
+#: schema 仍然要求模型填(填了才驗得動因果與引用),但讀者的視線是
+#: 另一件事 —— 一則新聞底下排五六行標籤,使用者的原話是
+#: 「讀起來像表單不像文章」。省略是決策,不是遺漏,所以要留下理由。
+DELIBERATELY_UNRENDERED = {
+    "confirmation_signal": "2026-08-17 定案:只留失效條件那一半",
+    "why_this_magnitude": "2026-08-17 定案:量級的理由仍被驗證,不排進視線",
+    "persistence": "2026-08-17 定案:同上",
+    "relates_to": "橫向綜合那一段已經在講關係",
+    "source_caveat": "佐證**等級**以句尾「（單一來源）」呈現,原文說明不排",
+    "direction": "2026-08-18 定案:逐則方向詞正是「整篇都是偏多什麼的」;方向在「各標的合計影響」那一段合計後出現一次",
+    "magnitude_band": "2026-08-18 定案:同上",
+    "horizon": "2026-08-18 定案:同上",
+}
+
+
 def test_the_coverage_check_cannot_pass_on_an_empty_set():
     """**空集合不算通過。** 掃不到欄位(renderer 改寫法、schema 換路徑)
     時上面那條會真空通過 —— 這裡釘住兩邊都要有實質內容。"""
@@ -178,7 +194,16 @@ def test_the_coverage_check_cannot_pass_on_an_empty_set():
         rendered |= _get_literals(_read(name))
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
-    assert len(rendered & set(news)) >= 8, sorted(rendered & set(news))
+    # **「至少 N 個」擋不住「又少渲染一個」**(2026-08-18):第八段改回
+    # 敘事寫法時,逐標的的方向/幅度/時間窗被拿掉,這條只是從 10 掉到 7,
+    # 而它要防的正是這種事。改成**逐欄位的省略帳本**:沒渲染又不在帳本裡
+    # 的欄位當場紅,逼人寫下理由;已在帳本裡卻又被渲染回去也紅
+    # (帳本過期跟少渲染一樣危險 —— 它會讓下一個人以為那欄沒排進信裡)。
+    unrendered = set(news) - rendered
+    assert unrendered == set(DELIBERATELY_UNRENDERED), (
+        "沒排進信裡又沒寫理由:" + str(sorted(unrendered - set(DELIBERATELY_UNRENDERED)))
+        + ";帳本說沒排、實際排了:"
+        + str(sorted(set(DELIBERATELY_UNRENDERED) - unrendered)))
     assert len(_depth_literals()) >= 20
     # 已知會渲染的三個欄位要在掃描結果裡 —— 掃描本身壞掉時這條先紅。
     # 2026-08-17:哨兵從 `source_caveat` 換成 `invalidation_signal` ——

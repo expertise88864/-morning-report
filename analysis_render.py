@@ -28,7 +28,9 @@ from __future__ import annotations
 from typing import Optional
 
 from analysis_contracts import top_drivers as _top   # 條數與驗證器同源
-from analysis_render_depth import _news_line, _synthesis
+from analysis_render_depth import (_news_line, _synthesis,
+                                   news_subject as _news_subject,
+                                   is_tech as _is_tech)
 
 RENDER_SCHEMA_VERSION = 1
 
@@ -53,6 +55,17 @@ SECTION_NET = "九之一、各標的合計影響"
 #: **不要宣稱有**,而不是找一個欄位塞進去。
 SECTION_GLOBAL = "七之二、全球市場與美股台股連動"
 SECTION_NEWS = "八、重點新聞分析"
+#: 第八段的兩個子標題。**2026-08-18 使用者定案**:回到舊版信的
+#: 「科技類股 / 其他類股」兩段寫法。與舊版的差別是**這次真的有過濾**
+#: —— 舊版那兩個標題是模型自己貼的標籤(所以曾有測試釘住「沒過濾就
+#: 不得叫科技板塊」),現在由 `tw_universe` 的產業別(台股)與
+#: `instrument_registry` 的宣告(外國個股)決定;判準在 `industry_class`,
+#: 與「補非科技類股新聞」用的是同一份。
+SUBSECTION_TECH = "科技類股"
+SUBSECTION_OTHER = "其他類股"
+#: 本段的保留事項(傳導未完成 / 看過但未展開)。**不掛在任一類股底下**
+#: —— 它講的是整段的取捨,掛進「其他類股」會讓讀者以為只有那一類有缺。
+SUBSECTION_NOTES = "本段的保留事項"
 SECTION_TW = "九、台股與台積電"
 SECTION_PRICED = "已被市場反映 vs 尚未反映"
 #: schema v2:橫向綜合。**排在最前面** —— 使用者要的是「這些訊號合起來
@@ -73,6 +86,23 @@ def _lines(items, fmt) -> list:
             text = fmt(it)
             if text:
                 out.append(f"- {text}")
+    return out
+
+
+def _blocks(items, fmt) -> list:
+    """一則新聞 = **一個段落區塊**(小標題 / 敘述 / 傳導 / 什麼會推翻它)。
+
+    與 `_lines` 的差別只有一個:不在整塊前面加 `- `。2026-08-18 使用者要回
+    舊版寫法 —— 舊版的小標題是「公司(代號,簡介):昨天發生什麼事」這樣的
+    **粗體行**,不是清單項目;整塊掛在一個 bullet 底下會讓小標題也長出
+    一顆點,而底下的「傳導 / 什麼會推翻它」才是真正的清單。
+    """
+    out = []
+    for it in (items or []):
+        if isinstance(it, dict):
+            text = fmt(it)
+            if text:
+                out.append(text)
     return out
 
 
@@ -233,8 +263,19 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     if glob:
         parts.append(f"## {SECTION_GLOBAL}\n" + "\n".join(f"- {w}" for w in glob))
 
-    news = _lines(obj.get("top_news_analysis"),
-                  lambda n: _news_line(n, packet))
+    # **依產業拆成兩段**(2026-08-18):使用者要回舊版的
+    # 「科技類股 / 其他類股」寫法。分不出產業的主體歸「其他」——
+    # 不猜(把國泰金放進科技板塊是自測抓到過的錯)。
+    tech_items, other_items = [], []
+    for _n in (obj.get("top_news_analysis") or []):
+        if not isinstance(_n, dict):
+            continue
+        (tech_items if _is_tech(_news_subject(_n, packet))
+         else other_items).append(_n)
+    tech_news = _blocks(tech_items, lambda n: _news_line(n, packet))
+    other_news = _blocks(other_items, lambda n: _news_line(n, packet))
+    news = tech_news + other_news
+    notes = []
     if news:
         # 第十八輪 P1-9:走到財務層是 advisory,加深失敗就照原樣寄出 ——
         # 那對「晨報不可斷」是合理的,對收件人卻是隱瞞:他不知道這條
@@ -245,7 +286,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
             # 第十九輪 P2-2:先前只印前三則,**其餘靜默消失** ——
             # 八則裡有五則停在情緒時,讀者只看到三則,而「還有幾則」
             # 正是他判斷這封信可不可信的關鍵。
-            news.append("- *傳導未完成:" + "、".join(
+            notes.append("- *傳導未完成:" + "、".join(
                 f"{sid} {why}" for sid, why in stub[:3])
                 + (f";另有 {len(stub) - 3} 則同樣未完成"
                    if len(stub) > 3 else "")
@@ -255,12 +296,24 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         skipped = [d for d in (obj.get("dismissed_events") or [])
                    if isinstance(d, dict) and _s(d.get("why_not_material"))]
         if skipped:
-            news.append("- *今日看過但未展開:" + "、".join(
+            notes.append("- *今日看過但未展開:" + "、".join(
                 f"{_s(d.get('cluster_id'))}({_s(d.get('why_not_material'))})"
                 for d in skipped[:4])
                 + (f";另有 {len(skipped) - 4} 件" if len(skipped) > 4 else "")
                 + "*")
-        parts.append(f"## {SECTION_NEWS}\n" + "\n".join(news))
+        body = ["## " + SECTION_NEWS]
+        if tech_news:
+            body.append("### " + SUBSECTION_TECH)
+            body.extend(tech_news)
+        if other_news:
+            body.append("### " + SUBSECTION_OTHER)
+            body.extend(other_news)
+        if notes:
+            body.append("### " + SUBSECTION_NOTES)
+            body.extend(notes)
+        # 條目之間空一行:`_md_to_html` 是逐行的,小標題與敘述要能
+        # 各自成段,否則兩則新聞會被黏成同一個 <p>。
+        parts.append((chr(10) * 2).join(body))
 
     # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡
     # 由粗到細 —— 先前 summary 被丟進「台灣本地動態」(那一段講的是

@@ -57,17 +57,20 @@ def test_opposite_directions_for_two_assets_are_legal():
     assert sch.validate(obj, _IDS) == []
 
 
-def test_the_letter_shows_each_asset_with_its_magnitude_and_horizon():
-    """**方向詞單獨出現就是使用者抱怨的那種句子** —— 一定帶量級與時間。
+def test_the_letter_shows_each_asset_with_its_downstream_effects():
+    """**逐標的的一階/二階影響要進信** —— 那是使用者要的「後續影響、脈絡」。
 
-    2026-08-17 使用者定案(敘事為主):「逐標的影響」那個標題行與巢狀
-    縮排收起來,方向/量級/時間窗改成 `費半 偏多（中等、intraday）`
-    —— **判準不變**:方向不得單獨出現。
+    2026-08-18 使用者定案:逐標的的**方向/量級/時間窗整組拿掉**
+    (原話:「不是整篇都是偏多什麼的」)。那三件事改成在
+    「各標的合計影響」那一段合計後出現一次 —— 這條測試因此換了判準:
+    不再要求「方向一定帶量級」,改成**方向不得出現在逐則新聞裡**、
+    而影響本身一定要在。
     """
     text = ar.render(fx.valid_analysis())
-    # 第二十九輪 P1-2C:fixture 的第一格標的改成費半(先前的 2330 掛在
-    # 費半的新聞上,靠空 universe 放行 —— 那個洞關掉了)。
-    assert "費半 偏多（中等、intraday）" in text, text[:300]
+    i, j = text.index(ar.SECTION_NEWS), text.index(ar.SECTION_TW)
+    section = text[i:j]
+    assert "偏多" not in section and "偏空" not in section, section
+    assert "權值股開盤定價直接跟隨費半" in section, section
     assert "本報看不出次級影響" in text, "誠實承認想不到次級影響也要印出來"
 
 

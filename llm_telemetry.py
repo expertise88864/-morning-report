@@ -49,13 +49,13 @@ MODEL_LIMITS = {
     # Gemini。出處:Google AI for Developers 的 Models 頁(2026-08-17 查),
     # **文件值不是實測值** —— 這裡收的是「不要送超過它會接受的數字」,
     # 用途是把請求夾在上限內,不是宣稱模型一定吐得出這麼多。
-    # 2.0-flash 的 8,192 是必要的:它排在抽取器的降級鏈最後一棒,而
-    # 抽取器的角色額度是 16,000 —— 不夾的話那一棒每次都會收到 HTTP 400,
-    # 等於最後一層備援從來沒有真的存在過(外審 2026-08-17)。
     # `gemini-2.5-flash-lite` 由 `startswith` 落在下面這一列 —— **這是刻意的**
     # (同族的輸出上限,文件同一頁),不是前綴巧合。
+    # `gemini-2.0-flash` 已**連同這張表一起移除**(repo-wide 外審 P3):
+    # 端點 2026-06-01 退役、runtime 降級鏈早已拿掉 —— registry 留著它,
+    # 未來有人看到表裡「支援」就可能重新放回 runtime。真要復活必須連同
+    # 出處一起重新查證(本表自己的規則)。
     "gemini-2.5-flash": {"max_output": 65_536},
-    "gemini-2.0-flash": {"max_output": 8_192},
     "gpt-5.6-sol": {"max_output": 128_000, "context": 1_050_000},
     "gpt-5.6-terra": {"max_output": 128_000, "context": 1_050_000},
     # `efforts` 是**實測**,不是抄文件(批#105)。官方 Models 頁面把 luna 的

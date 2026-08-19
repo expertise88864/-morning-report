@@ -81,10 +81,12 @@ def test_the_caller_records_the_diagnosis():
     from pathlib import Path
     src = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
                   encoding="utf-8").read()
-    i = src.index("_parse_llm_event_json(_call_or_halve(prompt)")
+    # Commit D 分批後解析在 `_run_batch` 內、診斷逐批寫進 `batches[]`
+    # (`_bstat` 是 append 進 manifest `llm_extractor.batches` 的那個 dict)。
+    i = src.index("_parse_llm_event_json(_call_or_halve()")
     seg = src[i - 400:i + 400]
     assert "diag=_pdiag" in seg, seg[-300:]
-    assert '_stat["parse"]' in seg, seg[-300:]
+    assert '_bstat["parse"]' in seg, seg[-300:]
     # 進 manifest 的外部文字要過既有的機密遮蔽
     assert "_redact_secret_text" in seg
 

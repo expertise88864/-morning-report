@@ -322,10 +322,9 @@ def test_every_model_in_the_fallback_chain_gets_a_limit_it_accepts(monkeypatch):
         limit, src = lt.max_output_for(model)
         if src.startswith("MODEL_LIMITS["):
             assert sent <= limit, (model, sent, limit)
-    # 具體的那一棒:2.0-flash 只拿得到 8,192
-    cap = _gemini_stub(monkeypatch, text="[]")
-    mr._call_gemini_once("gemini-2.0-flash", "p", role="extractor")
-    assert cap["payload"]["generationConfig"]["maxOutputTokens"] == 8192
+    # 2.0-flash 已整組退役(runtime 鏈 + registry,repo-wide 外審 P3)——
+    # 具體斷言移到 test_extractor_batching.test_the_retired_model_left_the_registry_too;
+    # 上面的性質迴圈(凡在鏈上、查得到出處就不得超過)仍然守著這件事。
 
 
 def test_an_unlisted_model_gets_the_conservative_limit(monkeypatch):

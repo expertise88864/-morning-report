@@ -4103,9 +4103,12 @@ def test_extractor_halves_the_input_when_the_budget_runs_out(monkeypatch):
     無關的結構性退路。這條驗第二次呼叫的 prompt 裡確實只剩一半的來源項 ——
     不是只驗「有重試」(那會被「重試但送一樣多」蒙混過去)。
     """
+    # Commit D 分批後 20 則會跨兩批 —— 這三條測的是**批內**重試語意,
+    # 用單批放得下的則數(≤EXTRACTOR_BATCH_ITEMS);跨批行為由
+    # tests/test_extractor_batching.py 守。
     news = [{"title": f"台積電消息 {i}", "summary": "內容",
              "source": "測試", "link": f"https://example.com/{i}",
-             "published": "2026-07-31T08:00:00+08:00"} for i in range(20)]
+             "published": "2026-07-31T08:00:00+08:00"} for i in range(8)]
     seen = []
 
     def _fake(prompt):
@@ -4173,7 +4176,8 @@ _BAD_SCHEMA = ('[{"entity":"2330","event_type":"NOT_ALLOWED","direction":0,'
                '"source_item_ids":["n0"]}]')
 
 
-def _news(n=20):
+def _news(n=8):
+    # 預設 8 則 = 單批放得下(Commit D 分批後,這批測試守的是批內語意)。
     return [{"title": f"台積電消息 {i}", "summary": "內容", "source": "測試",
              "link": f"https://example.com/{i}",
              "published": "2026-07-31T08:00:00+08:00"} for i in range(n)]

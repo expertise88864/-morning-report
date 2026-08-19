@@ -240,41 +240,30 @@ def _force_fallback(monkeypatch):
     monkeypatch.setattr(mr, "_call_llm_text", _boom)
 
 
-def test_truncated_gemini_fallback_does_not_ship(monkeypatch, _args, _force_fallback):
-    """主供應商失敗 → Gemini 備援**也**截斷時,必須退回確定性備援文字,
-    不能把半截分析當成正常結果送進渲染層。
+def test_primary_failure_uses_deterministic_text_not_gemini(monkeypatch, _args, _force_fallback):
+    """主分析**不做跨供應商備援**(使用者政策 2026-08-19:Gemini 只保留
+    抽取器的網路故障備援)。主供應商失敗 → 即使 GEMINI_API_KEY 在、
+    Gemini 也不得接手寫主分析;退回確定性備援文字(晨報不可斷)。
 
-    這條是生產實際會走的路徑;函式內另外兩處(主呼叫、concise 重試)早有
-    _analysis_complete_enough,唯獨這條沒有。"""
-    assert not mr._analysis_complete_enough(_TRUNCATED), "測試素材本身應被判為不完整"
-    monkeypatch.setattr(mr, "_call_gemini", lambda _p: _TRUNCATED)
+    舊契約(test_truncated_gemini_fallback_does_not_ship /
+    test_complete_gemini_fallback_is_used)固化的是政策變更前的行為,
+    已由本條取代。"""
+    called = []
+    monkeypatch.setattr(mr, "_call_gemini",
+                        lambda _p, **_k: called.append(1) or "不該被叫到")
 
     out = mr.call_llm_analysis(*_args)
 
-    assert out != _TRUNCATED, "截斷的備援輸出被原樣送出(頂部 KPI 會整排變「—」)"
-    assert out, "應退回確定性備援文字而非空字串"
-
-
-def test_complete_gemini_fallback_is_used(monkeypatch, _args, _force_fallback):
-    """反向:備援輸出**完整**時要正常採用,別讓上一條測試被「一律退回備援文字」
-    這種偷懶實作矇混過關。"""
-    good = ("## 今日重點\n盤面偏多,台積電領漲。\n"
-            "## 我的明確立場\n偏多(淨分 +3)\n"
-            "## 一句話總結\n偏多,留意月線支撐。\n")
-    assert mr._analysis_complete_enough(good), (
-        "測試素材本身要先通過完整性檢查,否則本條對照組會變成永遠不執行的空測試"
-    )
-    monkeypatch.setattr(mr, "_call_gemini", lambda _p: good)
-
-    assert mr.call_llm_analysis(*_args) == good
+    assert not called, "主分析失敗時 Gemini 被叫來寫整份分析(政策外)"
+    assert out, "應退回確定性備援文字而非空字串(晨報不可斷)"
+    # 備援文字自己也不得推薦政策外供應商(外審 r2 P3:舊文案建議
+    # 「切 anthropic / 等 Gemini 恢復」,拆掉備援後它成了主要故障輸出)
+    assert "anthropic" not in out.lower(), out[-300:]
+    assert "Gemini" not in out, out[-300:]
 
 
 def test_all_providers_down_still_returns_text(monkeypatch, _args, _force_fallback):
-    """主供應商與 Gemini 都炸:仍必須回傳可渲染文字(晨報不可斷)。"""
-    def _boom(_p):
-        raise RuntimeError("gemini down")
-
-    monkeypatch.setattr(mr, "_call_gemini", _boom)
+    """主供應商炸掉:仍必須回傳可渲染文字(晨報不可斷)。"""
     assert mr.call_llm_analysis(*_args)
 
 

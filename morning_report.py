@@ -388,7 +388,11 @@ PORTFOLIO_2_NAME = os.environ.get("PORTFOLIO_2_NAME", "持倉2").strip() or "持
 # 就落到 Gemini,而 `validate_llm_config` 內部有 strip、看到的是合法值 ——
 # 於是 `" deepseek "` 會**驗證說沒問題、實際跑另一家**。另兩個 provider 常數
 # 本來就有 strip,只有這個最要緊的漏了。
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
+# 預設 deepseek(使用者政策 2026-08-19:模型一律 deepseek-v4-flash,
+# Gemini 只當抽取器的網路故障備援)—— 生產由 workflow vars 指定,這個
+# 預設只在本機沒設環境變數時生效;先前預設 gemini 會讓本機靜默跑到
+# 政策外的供應商。
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "deepseek").strip().lower()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
@@ -12576,8 +12580,8 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 
 請直接看上方「美股收盤行情」「00662 公允價」「2330 雙模型預測」三個區塊做判斷。
 若情況持續，可考慮：
-- 切換 LLM_PROVIDER 為 anthropic（Claude 付費版較穩）
-- 等待數小時後 Gemini 服務恢復
+- 稍後手動重跑 workflow（DeepSeek 的暫時性故障多在數小時內恢復）
+- 檢查 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL 設定與 DeepSeek 服務狀態頁
 """
 
 
@@ -14096,25 +14100,12 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             return text
         raise RuntimeError("LLM concise retry output incomplete")
     except Exception as e:
-        # 跨供應商備援:主供應商(通常 DeepSeek)整個掛掉時,若有 Gemini 金鑰就改用 Gemini,
-        # 避免單一 API 故障(如 400/限流)導致整份分析空白。
-        if LLM_PROVIDER != "gemini" and GEMINI_API_KEY:
-            try:
-                print(f"[llm] 主供應商失敗({type(e).__name__}),改用 Gemini 備援", file=sys.stderr)
-                # 批#37:備援輸出也要過完整性檢查。同函式上方兩處(主呼叫、concise
-                # 重試)都有 _analysis_complete_enough,唯獨這條**生產實際會走的**
-                # 備援路徑沒有——Gemini 若也截斷會被原樣送出,頂部 KPI/結論卡變「—」,
-                # 而那正是該函式存在的理由。截斷則退回確定性備援文字。
-                _g = _call_gemini(prompt)
-                if _analysis_complete_enough(_g):
-                    return _g
-                print("[llm] Gemini 備援輸出疑似截斷 → 改用備援文字", file=sys.stderr)
-                return _fallback_analysis_text(news, e)
-            except Exception as e2:
-                print(f"[llm] Gemini 備援也失敗: {_redact_secret_text(str(e2))}",
-                      file=sys.stderr)
-                return _fallback_analysis_text(news, e)
-        print(f"[llm] 全部失敗，使用備援文字: {_redact_secret_text(str(e))}",
+        # 主分析**不做跨供應商備援**(使用者政策 2026-08-19,外審同輪確認:
+        # Gemini 只保留抽取器的網路故障備援)。先前這裡會讓 Gemini 接手寫
+        # 整份主分析 —— 那是政策外的供應商在寫信的核心聲音。主供應商失敗
+        # 就退回確定性備援文字:晨報照發、不會斷,manifest 與 stderr 都
+        # 看得到原因。
+        print(f"[llm] 主供應商失敗，使用備援文字: {_redact_secret_text(str(e))}",
               file=sys.stderr)
         return _fallback_analysis_text(news, e)
 

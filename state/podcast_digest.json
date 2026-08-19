@@ -4857,6 +4857,51 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74321072",
+        "title": "IBM hits key quantum computing milestone",
+        "published": "Wed, 19 Aug 2026 15:46:37 +0000",
+        "processed_at": "2026-08-19T19:52:06Z",
+        "digest": {
+          "summary_points": [
+            "美國財政部宣布將長天期公債流動性支持回購上限從20億美元提高至至少40億美元，主持人認為此舉如同「類QE」（QE Lite），有助於防止市場失靈，帶動30年期殖利率從5.3%上方回落至5.19%附近，10年期降至4.65%。",
+            "亞馬遜計劃將無人機配送服務擴展至近500個美國城市，主持人指出這將加劇與沃爾瑪在快速配送上的競爭，對電商物流版圖形成新變數。"
+          ],
+          "tickers": [
+            {
+              "name": "Target",
+              "code": "TGT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "第二季營收與獲利優於預期，即使降價影響仍展現成長，排除關稅退稅後EPS 4.11美元仍勝預期。"
+            },
+            {
+              "name": "Lowe's",
+              "code": "LOW",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "下調全年營收展望至約920億美元，低於市場共識929億，並預期同店銷售持平至成長2%，股價下跌。"
+            },
+            {
+              "name": "Estee Lauder",
+              "code": "EL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財年Q4業績優於預期並上調FY27調整後營業利益率展望，股價走揚。"
+            },
+            {
+              "name": "Amazon",
+              "code": "AMZN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "擴大無人機配送至近500個美國城市，有望強化競爭優勢並與沃爾瑪在快速配送上競爭。"
+            }
+          ],
+          "market_view": "主持人認為財政部擴大長債回購等於向市場注入流動性（類QE），有助於緩解長天期殖利率上升壓力，為債市帶來支撐。",
+          "action_view": "",
+          "notable_quote": "Essentially, the government is willing to buy up twice as much of the old, hard-to-trade, long-dated debt to keep the market from seizing up, some are calling it QE Lite."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74306210",
         "title": "Canada buys 72 hours",
         "published": "Wed, 19 Aug 2026 10:29:04 +0000",
@@ -5238,48 +5283,6 @@
           "notable_quote": "Who benefits as AI data centers create a power shortage?"
         },
         "shown_at": "2026-08-12T22:52:00Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73827346",
-        "title": "The AI watermark you can't erase",
-        "published": "Tue, 11 Aug 2026 18:14:41 +0000",
-        "processed_at": "2026-08-11T20:11:31Z",
-        "digest": {
-          "summary_points": [
-            "主持人報導 Anthropic 將因歐盟 AI 法案，在歐盟推出的新模型全面加入浮水印，適用所有 Claude 產品，並附帶數位簽章的來源中繼資料。",
-            "Sea Limited 因電子商務、數位金融服務與遊戲業務強勁成長，Q2 營收優於預期，股價大漲。",
-            "Rocket Lab 表示 Neutron 火箭首飛時程可能延至 2027 年，股價下跌；公司仍排定 Q4 上發射台，但未重申年底首飛目標。",
-            "Hims & Hers Health 因營業費用暴增 48%，Q2 意外虧損（每股虧 0.37 美元 vs 預期盈餘 0.32 美元），股價下跌。",
-            "PMC 報告指出 2026 年 K 型經濟消費支出差距在 7 月幾乎關閉，勞動市場成為更重要的驅動因素，退稅帶動的效應已大致消退。"
-          ],
-          "tickers": [
-            {
-              "name": "Sea Limited",
-              "code": "SE",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2 營收優於預期，電商、數位金融服務與遊戲業務成長強勁。"
-            },
-            {
-              "name": "Rocket Lab",
-              "code": "RKLB",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Neutron 火箭首飛可能延至 2027 年，時程風險增加。"
-            },
-            {
-              "name": "Hims & Hers Health",
-              "code": "HIMS",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 意外虧損，營業費用大增 48%，盈利能力受疑。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "It's the AI identifier you can't erase, no matter how hard you try."
-        },
-        "shown_at": "2026-08-11T22:58:19Z"
       }
     ]
   },

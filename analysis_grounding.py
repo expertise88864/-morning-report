@@ -120,15 +120,24 @@ def has_content(node: dict) -> bool:
     **誤判的代價不是漏擋,是讓 Luna 在資料稀薄的日子看起來比較不可靠**,
     而那正是這個實驗要量的東西。
     (先前的測試用 `{}` 當空段落 —— 那不是 strict 輸出真正的形狀。)
+
+    repo-wide 外審 2026-08-19 P2-2:**巢狀也要遞迴判**。v22 的合法空
+    macro 是三個 `{analysis:"", evidence_ids:[]}` —— 內層 dict 本身
+    truthy,淺判會把「完全空」當成有內容,稀薄日整份被誤退
+    (正是本 docstring 警告的形狀,換了一層深度捲土重來)。
     """
     if not isinstance(node, dict):
         return False
     for k, v in node.items():
-        if k == "evidence_ids":
+        if str(k) == "evidence_ids":
             continue
-        if isinstance(v, str) and v.strip():
-            return True
-        if not isinstance(v, str) and v:
+        if isinstance(v, str):
+            if v.strip():
+                return True
+        elif isinstance(v, dict):
+            if has_content(v):
+                return True
+        elif v:
             return True
     return False
 

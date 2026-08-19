@@ -745,12 +745,14 @@ def test_every_provider_gets_its_own_model_recorded():
     assert set(mr._PROVIDERS) == set(llm_config.VALID_PROVIDERS), (
         "provider 表與 VALID_PROVIDERS 不一致 —— 新增一家 provider 卻沒有"
         "給它呼叫函式/模型,信會由別家寫、manifest 會記別家的")
-    assert mr._PROVIDER_FALLBACK in mr._PROVIDERS, "落點 provider 不在表裡"
+    # P1-1(2026-08-19):未知 provider 不再落到 Gemini —— 那個 fallthrough
+    # 讓一個 typo 繞過「Gemini 只留抽取器備援」的政策。遙測記
+    # `invalid:<原值>`,不記一個沒有人選過的模型。
     for prov, expect in (("openai", mr.OPENAI_MODEL),
                          ("deepseek", mr.DEEPSEEK_MODEL),
                          ("anthropic", mr.CLAUDE_MODEL),
                          ("gemini", mr.GEMINI_MODEL),
-                         ("typo-provider", mr.GEMINI_MODEL)):
+                         ("typo-provider", "invalid:typo-provider")):
         old = mr.LLM_PROVIDER
         try:
             mr.LLM_PROVIDER = prov
@@ -786,8 +788,23 @@ def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
 
     prod_env = _run_env(prod, "send-report", "DEEPSEEK_MODEL")
     ci_env = _run_env(ci, "dry-run-preview", "DEEPSEEK_MODEL")
-    for key in ("LLM_PROVIDER", "DEEPSEEK_MODEL", "DEEPSEEK_REASONING_EFFORT",
-                "LLM_EVENT_EXTRACTION", "LLM_PRIMARY_PROMPT_PROFILE"):
+    # 2026-08-19 第三輪 P2-4:**不再手抄五個 key** —— 凡是會影響 LLM
+    # 路由/模型/額度/timeout 的生產 env,canary 都要逐字鏡射。清單由
+    # 生產 workflow 的 env 推導(前綴/名單),漂移(生產加了、canary 沒跟)
+    # 就紅 —— 手抄清單正是 EXTRACTOR_PROVIDER 漏掉的原因。
+    # r4 F2:**provider 專屬模型鍵不得因前綴而漏**(CLAUDE_MODEL 沒有
+    # LLM_/DEEPSEEK_ 前綴,手抄前綴清單會靜默漏掉它 —— 生產切 anthropic
+    # 那天 canary 跑的是 Python 預設模型)。凡以 _MODEL 結尾、或在
+    # LLM 路由前綴群的非機密鍵,一律鏡射。
+    _routing_keys = sorted(
+        k for k in prod_env
+        if (k.startswith(("LLM_", "DEEPSEEK_", "EXTRACTOR_"))
+            or k.endswith("_MODEL"))
+        and not k.endswith(("_API_KEY", "_BASE_URL"))
+        and k != "LLM_CONFIG_RAW")
+    assert "EXTRACTOR_PROVIDER" in _routing_keys, "推導清單掉了抽取器路由"
+    assert "CLAUDE_MODEL" in _routing_keys and "GEMINI_MODEL" in _routing_keys
+    for key in _routing_keys:
         assert key in ci_env, f"canary 少了 {key} —— 它會拿到與生產不同的預設"
         assert str(ci_env[key]) == str(prod_env[key]), (
             f"{key} 在 canary 與排程班不一致:"

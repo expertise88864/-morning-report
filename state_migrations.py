@@ -31,6 +31,28 @@ from __future__ import annotations
 import news_events as _ne
 
 
+#: **可信的主體依據**(repo-wide 外審 2026-08-19 P1-2)。`unverified` 是
+#: 舊 producer 的「沒驗過但照收」—— 與 code/alias/literal 語意完全不同,
+#: 不能靠 truthiness 一視同仁豁免:生產帳本裡 `US-Iran War`(模型自取名)
+#: 就是帶著 unverified 永久存活的。
+TRUSTED_SUBJECT_BASES = frozenset(("code", "alias", "literal"))
+
+
+def _revalidated_basis(title: str, code: str, known_names) -> str:
+    """legacy `unverified` 列的重驗:用**新的**信任規則再走一次。
+
+    成功的判準是「解析出來的主體就是這一列的主體」—— 跨語言時 canonical
+    相同也算(entity=俄羅斯、標題 Russia:鍵不動、依據升級),否則升級
+    會改到 story key。查證不出來回空字串(呼叫端清掉)。
+    """
+    subj, basis = _ne.resolve_subject(title, [code], known_names)
+    if basis not in TRUSTED_SUBJECT_BASES or not subj:
+        return ""
+    if subj == code or (_ne.semantic_canonical(code) or code) == subj:
+        return basis
+    return ""
+
+
 def _named(title: str, code: str, known_names) -> bool:
     """標題有沒有指名這個實體。**別名表查不到就當成「不知道」→ 留著。**"""
     if not str(code or "").strip():
@@ -53,8 +75,19 @@ def purge_misattributed_stories(ledger, known_names) -> tuple:
         # 標題+摘要,而帳本只存標題 —— 拿標題去判有依據的列,會把生產者
         # 昨天建立的合法 state 刪掉。這個清理的工作是**修正之前寫下的舊列**,
         # 那些列沒有 `subject_basis`。
-        if str(row.get("subject_basis") or "").strip():
+        _basis = str(row.get("subject_basis") or "").strip()
+        if _basis in TRUSTED_SUBJECT_BASES:
             keep.append(row)
+            continue
+        if _basis == "unverified" and code:
+            # legacy fail-open 列(P1-2):用新的信任規則重驗 ——
+            # Pentagon+五角大廈 升級,US-Iran War 查證不出來就清。
+            _nb = _revalidated_basis(title, code, known_names)
+            if _nb:
+                row["subject_basis"] = _nb
+                keep.append(row)
+            else:
+                dropped.append(row)
             continue
         if title and not _named(title, code, known_names):
             dropped.append(row)
@@ -134,13 +167,23 @@ def purge_misattributed_timeline(timeline, known_names) -> tuple:
         if not isinstance(row, dict):
             keep[key] = row
             continue
-        # 與帳本同一條規則:**帶著依據的列不判**(生產者用標題+摘要驗證,
-        # 清理只看得到標題)。沒有依據的才是修正之前寫下的舊列。
-        if str(row.get("subject_basis") or "").strip():
-            keep[key] = row
-            continue
+        # 與帳本同一條規則:**可信依據的列不判**(生產者用標題+摘要驗證,
+        # 清理只看得到標題);legacy `unverified` 用新的信任規則重驗
+        # (P1-2:US-Iran War 就是帶著 unverified 在時間軸永久存活的)。
+        _basis = str(row.get("subject_basis") or "").strip()
         title = str(row.get("latest_title") or "")
         code = _timeline_subject(key, row)
+        if _basis in TRUSTED_SUBJECT_BASES:
+            keep[key] = row
+            continue
+        if _basis == "unverified" and code:
+            _nb = _revalidated_basis(title, code, known_names)
+            if _nb:
+                row["subject_basis"] = _nb
+                keep[key] = row
+            else:
+                dropped.append(key)
+            continue
         if title and not _named(title, code, known_names):
             dropped.append(key)
         else:

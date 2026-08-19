@@ -12774,19 +12774,37 @@ _PROVIDERS = {
     "openai": (lambda p: _call_openai(p), lambda: OPENAI_MODEL),
     "gemini": (lambda p: _call_gemini(p), lambda: GEMINI_MODEL),
 }
-#: 對不上任何 provider 時的落點 —— 歷來就是 Gemini(免費備援)。**遙測跟著
-#: 這個 fallthrough 走**:manifest 記實際發生的事,設定錯誤另由驗證報。
-_PROVIDER_FALLBACK = "gemini"
+class InvalidLLMConfig(RuntimeError):
+    """主分析的 provider 設定不合法 —— **fail closed**,不得代打。
+
+    repo-wide 外審 2026-08-19 P1-1:先前對不上任何 provider 就落到
+    Gemini(歷史上的免費備援)—— 於是 `LLM_PROVIDER=deepseke` 這一個
+    typo 會讓政策外的供應商寫整份主分析,正好繞過「Gemini 只留抽取器
+    備援」的政策;而 `validate_llm_config` 標了 `fatal=True` 的問題,
+    runtime 卻沒有任何 `is_fatal` 的消費端。晨報不可斷 ≠ 設錯時隨便
+    找一家幫忙寫:這個例外會被主分析的既有降級接住,走**確定性緊急
+    備援文字**,manifest 記 config_invalid。
+    """
 
 
 def _call_llm_text(prompt: str) -> str:
     """Dispatch an LLM task without mixing extraction and report-writing prompts."""
-    return _PROVIDERS.get(LLM_PROVIDER, _PROVIDERS[_PROVIDER_FALLBACK])[0](prompt)
+    if LLM_PROVIDER not in _PROVIDERS:
+        raise InvalidLLMConfig(
+            f"LLM_PROVIDER={LLM_PROVIDER!r} 不是合法 provider"
+            f"(可用 {'/'.join(sorted(_PROVIDERS))})—— 不代打")
+    return _PROVIDERS[LLM_PROVIDER][0](prompt)
 
 
 def _primary_model() -> str:
-    """本班主分析真正會用的模型名 —— 與 `_call_llm_text` 讀同一張表。"""
-    return _PROVIDERS.get(LLM_PROVIDER, _PROVIDERS[_PROVIDER_FALLBACK])[1]()
+    """本班主分析真正會用的模型名 —— 與 `_call_llm_text` 讀同一張表。
+
+    設定不合法時回 `invalid:<原值>`:遙測要記實際狀態,不能記一個
+    沒有人選過的模型(P1-1 前這裡會謊報 Gemini)。
+    """
+    if LLM_PROVIDER not in _PROVIDERS:
+        return f"invalid:{LLM_PROVIDER}"
+    return _PROVIDERS[LLM_PROVIDER][1]()
 
 
 class ExtractorOutputTruncated(RuntimeError):
@@ -23640,6 +23658,18 @@ def _phase_llm_analysis(ctx) -> None:
     if _cfg:
         _RUN_MANIFEST["llm"]["config_issues"] = _cfg
         _DEGRADED_STEPS.append("llm:config_issue")
+    # **fatal 要真的 fatal**(repo-wide 外審 2026-08-19 P1-1):
+    # `validate_llm_config` 標 fatal 的問題(打錯 provider、缺金鑰…)
+    # 先前只印警告就繼續跑 —— 而 dispatcher 的 fallthrough 會讓政策外
+    # 的供應商代打。路由端已 fail-closed(`_call_llm_text` 直接拋
+    # InvalidLLMConfig → 確定性緊急備援);這裡是可觀測性:manifest
+    # 一眼看得出「這一班是設定壞掉」,不用從備援文字反推。
+    _fatal_cfg = [str(x) for x in _cfg if _lc.is_fatal(x)]
+    if _fatal_cfg:
+        _RUN_MANIFEST["llm"]["config_invalid"] = _fatal_cfg
+        _DEGRADED_STEPS.append("llm:config_invalid")
+        print("::error::LLM 設定不合法,主分析將走確定性緊急備援:"
+              + ";".join(_fatal_cfg), flush=True)
     for _m in _cfg:
         print(f"[llm-config] ⚠ {_m}", file=sys.stderr)
     for _k, _e in sorted((_snap.get("sources") or {}).items()):

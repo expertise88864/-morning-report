@@ -241,7 +241,8 @@ def test_an_unknown_subject_needs_a_literal_mention():
     evs = _events([_news("Pentagon confirms new arms package",
                          company_label="Pentagon")])
     assert evs[0]["entity"] == "Pentagon", evs[0]
-    assert evs[0]["subject_basis"] == "literal", evs[0]
+    # 第三輪 P2-1:Pentagon 進了宣告的語意實體表 → 依據是 alias
+    assert evs[0]["subject_basis"] == "alias", evs[0]
     # 逐字指不出來(裸代號不在標題裡)→ 誠實降級:沒有主體
     evs = _events([_news("某新股掛牌首日大漲", company_label="9999")])
     assert evs[0]["entity"] == "", evs[0]

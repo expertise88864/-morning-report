@@ -249,7 +249,17 @@ def _identity(obj) -> dict:
                      (o.get("macro_environment") or {}).get(k)
                      if isinstance((o.get("macro_environment") or {}).get(k),
                                    dict) else {})
-               for k in ("us_rates_fx_vix", "fed_policy", "geopolitics")},
+               for k in ("us_rates_fx_vix", "fed_policy", "geopolitics")
+               # r3(P2-3):**只保護 before 已成立的內容** —— 空切面不進
+               # 身分,否則「空 → 加深補出內容」會因為 `fed_policy::` 這個
+               # 空標記消失而被誤擋,而加深的目的正是把不足補完整。
+               # r4 F1:判準與 has_content 一致 —— **只有證據沒有文字
+               # 也是空**(evidence-only 進身分的話,加深補文字換證據會被
+               # 誤擋)。收進身分之後證據仍在指紋裡(上面的 f-string)。
+               if str((((o.get("macro_environment") or {}).get(k) or {})
+                       if isinstance((o.get("macro_environment") or {})
+                                     .get(k), dict) else {})
+                      .get("analysis") or "").strip()},
         # 第十九輪 P1-11:**第二版可以「更深」而同時刪掉橫向與逐標的。**
         # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
         # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉

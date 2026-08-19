@@ -598,6 +598,48 @@ def _latin_alias_hit(low_text: str, alias: str) -> bool:
     return False
 
 
+#: **宣告過的跨語言語意實體**(repo-wide 外審 2026-08-19 P2-1)。
+#: 晨報的 feed 是中英混合:昨天 `Pentagon`、今天中文續報「五角大廈」——
+#: 只認 candidate 逐字出現會把同一條線切成兩半(story/timeline/recap
+#: 身分全斷)。canonical 統一用英文鍵;比對規則與公司別名一致
+#: (拉丁詞詞邊界、中文子字串≥2 字)。**模型自造的名字(US-Iran War)
+#: 不在表裡、來源又沒有 literal → 照樣拒** —— 這張表是宣告,不是猜測。
+SEMANTIC_ENTITY_ALIASES = {
+    "Pentagon": ("Pentagon", "五角大廈", "美國國防部"),
+    "White House": ("White House", "白宮"),
+    "Fed": ("Fed", "Federal Reserve", "聯準會", "聯儲"),
+    "Russia": ("Russia", "Russian", "俄羅斯"),
+    "Ukraine": ("Ukraine", "烏克蘭"),
+    "China": ("China", "中國大陸", "中國"),
+    "Iran": ("Iran", "伊朗"),
+    "Israel": ("Israel", "以色列"),
+    "EU": ("EU", "European Union", "歐盟"),
+    "OPEC": ("OPEC", "OPEC+", "石油輸出國組織"),
+    "US Dollar": ("US Dollar", "USD", "美元"),
+    "International Criminal Court": (
+        "International Criminal Court", "ICC", "國際刑事法院"),
+}
+
+_SEMANTIC_LOOKUP = {a.lower(): canon
+                    for canon, aliases in SEMANTIC_ENTITY_ALIASES.items()
+                    for a in aliases}
+
+
+def semantic_canonical(name: str) -> str:
+    """這個名字是不是宣告過的語意實體(任一語言的別名)→ canonical 鍵。"""
+    return _SEMANTIC_LOOKUP.get(str(name or "").strip().lower(), "")
+
+
+def _alias_hit(low_text: str, alias: str) -> bool:
+    """單一別名的比對(與 mentions_entity 的別名規則一致)。"""
+    a = str(alias or "").strip()
+    if len(a) < 2:
+        return False
+    if _LATIN_ALIAS.fullmatch(a):
+        return _latin_alias_hit(low_text, a.lower())
+    return a.lower() in low_text
+
+
 def resolve_subject(text: str, candidates, known_names=None) -> tuple:
     """依序試每個候選,回 `(主體, 依據)`;**沒有一個被文字證實就回 `("", "")`**。
 
@@ -609,6 +651,11 @@ def resolve_subject(text: str, candidates, known_names=None) -> tuple:
     標題清理,會讓清理把生產者昨天建立的**合法** state 刪掉。
     語意上這也是對的:只在內文被提到的公司是**相關**,不是這則的主體。
     """
+    # **候選順序是呼叫端的信任編碼**(r5:模型宣告的主體排最前,編輯
+    # 標註/查詢代號在後)—— 不得整體重排。「中國」吃掉中國信託的問題
+    # 改用**內嵌讓位**解:語意別名的命中若內嵌在更長的公司別名裡、而那個
+    # 公司別名就在文字裡,命中的其實是那家公司 —— 這個候選讓位,由後面
+    # 的公司候選(或誰都沒有)接手。
     for c in candidates or ():
         c = str(c or "").strip()
         if not c:
@@ -616,18 +663,60 @@ def resolve_subject(text: str, candidates, known_names=None) -> tuple:
         basis = mentions_entity(text, c, known_names)
         if basis:
             return c, basis
-        # **詞彙表外的候選要在文字裡逐字出現**(repo-wide 外審 2026-08-19
-        # P2:主體信任層級)。先前一律標 `unverified` 照舊採用 —— 於是
-        # 「合法的語意主體」(Pentagon 就在標題裡)與「模型自己取的名字」
-        # (US-Iran War)共用同一條路,後者成了持久化的 entity key。
-        # 逐字比對用與別名同一套規則(拉丁詞要詞邊界、中文子字串≥2 字);
-        # 出現 → 採用、依據標 `literal`;沒出現 → 跳過這個候選 ——
-        # 證明不了「在講它」的名字,不進 story key / timeline / 催化評分。
         if not ((known_names or {}).get(c)):
+            # 宣告過的語意實體:任一語言的別名出現即指名(P2-1 跨語言
+            # 續報不斷線);回 canonical 鍵,中英寫法收斂成同一條線。
+            canon = semantic_canonical(c)
+            if canon:
+                low = str(text or "").lower()
+                hit = next((a for a in SEMANTIC_ENTITY_ALIASES[canon]
+                            if _alias_hit(low, a)), "")
+                if hit and not _embedded_in_company_alias(low, hit,
+                                                          known_names):
+                    return canon, "alias"
+                continue
             if _literal_mention(text, c):
                 return c, "literal"
-            continue
     return "", ""
+
+
+def _embedded_in_company_alias(low_text: str, hit: str, known_names) -> bool:
+    """這個語意別名的**每一次出現**是不是都內嵌在更長的公司別名裡。
+
+    「中國」in「中國信託」而「中國信託」就在文字裡 → 命中的是那家銀行,
+    不是國家(r4 F3 / r5 收斂解)。r6:**要比出現位置,不是存在性** ——
+    「中國宣布新政策,中國信託獲利創高」裡有一個**獨立的**「中國」,
+    只看「文字裡有沒有中國信託」會把合法的國家主體一併壓掉。
+    只有當語意別名的每次出現都落在某個公司別名的區間內,才算內嵌。
+    """
+    h = str(hit or "").lower()
+    if not h:
+        return False
+    spans = []
+    for aliases in (known_names or {}).values():
+        for a in (aliases or ()):
+            al = str(a or "").lower()
+            if len(al) <= len(h) or h not in al:
+                continue
+            start = 0
+            while True:
+                i = low_text.find(al, start)
+                if i < 0:
+                    break
+                spans.append((i, i + len(al)))
+                start = i + 1
+    if not spans:
+        return False
+    start, found = 0, False
+    while True:
+        i = low_text.find(h, start)
+        if i < 0:
+            break
+        found = True
+        if not any(s0 <= i and i + len(h) <= e0 for s0, e0 in spans):
+            return False        # 有獨立出現 → 語意主體成立,不讓位
+        start = i + 1
+    return found
 
 
 #: 期間詞判準與 analysis_validate **共用同一份**(news_rules.PERIOD_TOKEN,

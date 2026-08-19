@@ -143,7 +143,7 @@ def test_phase_functions_take_the_context_as_a_parameter():
 #: **這個數字是量出來的,不是估的。** 我第一版憑印象寫 14、實測是 11 ——
 #: 突變測試(在相位裡多塞一個 `_RUN_MANIFEST` 寫入)因此**沒有轉紅**,
 #: 那條棘輪等於預留了三格空間。門檻要量,不要推理。
-PHASE_RUN_MANIFEST_WRITES = 11
+PHASE_RUN_MANIFEST_WRITES = 12  # 2026-08-19 P1-1:llm.config_invalid(fatal 設定的消費端)
 
 
 def test_direct_run_manifest_writes_in_phases_do_not_grow():

@@ -64,8 +64,9 @@ def test_the_letter_shows_each_asset_with_its_downstream_effects():
     不再是縮排清單。判準不變:影響本身一定要在、方向詞不得出現在逐則裡。
     """
     text = ar.render(fx.valid_analysis())
-    i = text.index(ar.SECTION_NEWS)
-    # 下一個 h2(`### ` 是第八段自己的子段,不是邊界)
+    # 2026-08-19 第四批:新聞段是「八、科技板塊脈動 / 九、其他類股資訊」
+    # 兩個 h2;fixture 沒有 packet → 全落在「其他」。
+    i = text.index(ar.SECTION_OTHER)
     j = text.index(chr(10) + "## ", i)
     section = text[i:j]
     assert "偏多" not in section and "偏空" not in section, section

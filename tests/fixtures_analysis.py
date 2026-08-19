@@ -126,8 +126,14 @@ def valid_analysis() -> dict:
         # schema v2:**這份 fixture 要示範的正是「有深度長什麼樣」。**
         # 兩則刻意不同:n1 說得出量級,n2 誠實說量級判斷不出來 ——
         # 後者是本次改版最重要的合法答案(用形容詞冒充答案才是失敗)。
-        # schema v20:台灣政策(沒有就空陣列 —— strict 全欄位必填)。
+        # schema v20/v21:legacy 骨架的欄位(沒有就空 —— strict 全欄位必填)。
         "taiwan_policy": [],
+        "world_events": [],
+        "upcoming_event_scenarios": [],
+        "narrative_delta": [],
+        "macro_environment": {"us_rates_fx_vix": "", "fed_policy": "",
+                              "geopolitics": ""},
+        "taiwan_local": [],
         "top_news_analysis": [
             {"source_item_id": "n1", "why_it_matters": "費半傳導台股電子",
              "direction": "bullish", "materiality": "high",

@@ -28,7 +28,10 @@ def test_the_policy_section_renders_from_the_schema_field():
          "impact": "內需消費短多,對電子權值中性"}]
     out = ar.render(obj)
     assert ar.SECTION_POLICY in out
-    assert "普發現金一萬元:內需消費短多" in out
+    # 2026-08-19 第四批:政策改成**深度解析的排法** —— 政策名當小標、
+    # 分析當內文(legacy 十之二的樣子),不再是一行一項。
+    assert "**政院拍板 2027 普發現金一萬元**" in out
+    assert "內需消費短多" in out
 
 
 def test_an_empty_policy_list_adds_no_section():
@@ -90,7 +93,11 @@ def test_the_prompt_asks_for_six_to_ten_and_non_tech_coverage():
     text = _io.open(_ROOT / "prompt_profiles.py", encoding="utf-8").read()
     assert "六到十則為目標" in text
     assert "至少一到兩則" in text
-    assert "taiwan_policy" in text
+    # 第四批的骨架欄位也要在 prompt 裡有寫法說明 —— 只在 schema 宣告而
+    # prompt 不提,模型會全部給空(strict 允許空值,而空值合法)。
+    for field in ("taiwan_policy", "world_events", "upcoming_event_scenarios",
+                  "narrative_delta", "macro_environment", "taiwan_local"):
+        assert f"`{field}`" in text, f"prompt 沒有 {field} 的寫法說明"
 
 
 # ---------------------------------------------------------------- 不得回來
@@ -141,3 +148,271 @@ def test_a_deepened_response_cannot_drop_the_policy_section():
     idb = ad._identity(before)
     assert idb["政策項"] - ad._identity(dropped)["政策項"], "刪掉政策段沒被看見"
     assert idb["政策項"] - ad._identity(reworded)["政策項"], "改寫 impact 沒被看見"
+
+
+# ------------------------------------------------- 第四批:legacy 骨架
+
+def _full(**over):
+    obj = fx.valid_analysis()
+    obj["world_events"] = [{"source_item_id": "n1", "what": "美沙簽署核能合作協議",
+                            "why_it_matters": "中東勢力格局重組"}]
+    obj["upcoming_event_scenarios"] = [
+        {"when": "08/20 02:00", "event": "FOMC 會議紀要",
+         "base_expectation": "按兵不動基調", "bull_case": "偏鴿利多 00662",
+         "bear_case": "偏鷹利空成長股", "most_affected": "00662",
+         "invalidation": "油價暴漲蓋過紀要", "evidence_ids": ["n1"]}]
+    obj["narrative_delta"] = [{"prior_view": "美伊戰局逼近十字路口",
+                               "change": "升溫", "evidence_today": "油價單日 +3.79%"}]
+    obj["macro_environment"] = {"us_rates_fx_vix": "10Y 4.657% 高檔",
+                                "fed_policy": "Warsh 鷹派發酵",
+                                "geopolitics": "三線地緣升溫"}
+    obj["taiwan_local"] = [{"source_item_id": "n1",
+                            "what": "中經院估 GDP 破 10%",
+                            "impact": "支撐高本益比"}]
+    obj.update(over)
+    return obj
+
+
+def test_the_legacy_skeleton_renders_in_order():
+    """**七之二 → 七之三 → 七之四 → 七之五 → 十 → 十之二 → 十一。**
+
+    使用者貼了幾個禮拜前的完整實信要求照做 —— 這些段落在 legacy 信都
+    存在、在特化 schema 先前沒有對應欄位,於是整段消失。
+    """
+    obj = _full()
+    obj["taiwan_policy"] = [{"source_item_id": "n1", "what": "太陽光電標準第9條",
+                             "impact": "需求透過模組與工程訂單傳導。"}]
+    out = ar.render(obj)
+    order = [ar.SECTION_WORLD, ar.SECTION_48H, ar.SECTION_DELTA,
+             ar.SECTION_MACRO, ar.SECTION_POLICY, ar.SECTION_LOCAL]
+    idx = [out.index(t) for t in order]
+    assert idx == sorted(idx), [out.index(t) for t in order]
+    assert "美沙簽署核能合作協議:中東勢力格局重組" in out
+    assert "基準預期:按兵不動基調" in out
+    assert "「美伊戰局逼近十字路口」→ **升溫**" in out
+    assert "**(A)** 10Y 4.657% 高檔" in out
+    assert "中經院估 GDP 破 10%:支撐高本益比" in out
+
+
+def test_empty_skeleton_fields_add_no_sections():
+    """空欄位不出段 —— legacy 骨架不是每天每段都有內容。"""
+    out = ar.render(fx.valid_analysis())
+    for t in (ar.SECTION_WORLD, ar.SECTION_48H, ar.SECTION_DELTA,
+              ar.SECTION_MACRO, ar.SECTION_LOCAL):
+        assert t not in out, t
+
+
+
+
+def test_fabricated_ids_in_the_new_sections_are_rejected():
+    """world_events / taiwan_local 的引用也要真的存在 —— 與 taiwan_policy
+    同一關(捏造的引用會讓內容「看起來有根據地」進信)。"""
+    obj = _full()
+    obj["world_events"][0]["source_item_id"] = "捏造的id"
+    probs = [p for p in sch.validate(obj, fx.ids()) if "world_events" in p]
+    assert probs, "捏造的世界大事引用通過了驗證"
+    obj2 = _full()
+    obj2["taiwan_local"][0]["source_item_id"] = "捏造的id"
+    assert [p for p in sch.validate(obj2, fx.ids()) if "taiwan_local" in p]
+
+
+def test_a_deepened_response_cannot_drop_the_skeleton():
+    """加深不得刪掉 legacy 骨架的任何一段(與政策段同一條理由)。"""
+    full = _full()
+    empty = fx.valid_analysis()
+    idf = ad._identity(full)
+    ide = ad._identity(empty)
+    for key in ("世界大事", "在地動態", "情境事件", "敘事變化"):
+        assert idf[key] - ide[key], f"{key} 沒有進加深身分"
+
+
+def test_a_scenario_without_evidence_is_rejected():
+    """**虛構的未來事件要擋得住**(外審第二輪):情境要引用 EVIDENCE 裡
+    真的存在的 ID;沒有來源的未來事件與編的沒有分別。"""
+    obj = _full()
+    obj["upcoming_event_scenarios"][0]["evidence_ids"] = []
+    probs = [p for p in sch.validate(obj, fx.ids())
+             if "upcoming_event_scenarios" in p]
+    assert probs, "沒有來源的情境通過了驗證"
+    obj["upcoming_event_scenarios"][0]["evidence_ids"] = ["捏造的id"]
+    assert [p for p in sch.validate(obj, fx.ids())
+            if "upcoming_event_scenarios" in p]
+
+
+
+
+def test_deepen_cannot_blank_a_render_critical_field():
+    """**身分要含所有會改變渲染內容或可見性的欄位**(外審第二輪):
+    加深版本保留 ID/標題、清空 impact/evidence_today,整段會靜默消失。"""
+    full = _full()
+    blanked_local = _full()
+    blanked_local["taiwan_local"] = [dict(full["taiwan_local"][0], impact="")]
+    blanked_delta = _full()
+    blanked_delta["narrative_delta"] = [dict(full["narrative_delta"][0],
+                                             evidence_today="")]
+    blanked_scen = _full()
+    blanked_scen["upcoming_event_scenarios"] = [
+        dict(full["upcoming_event_scenarios"][0], base_expectation="")]
+    idf = ad._identity(full)
+    assert idf["在地動態"] - ad._identity(blanked_local)["在地動態"], \
+        "清空 impact 沒被看見"
+    assert idf["敘事變化"] - ad._identity(blanked_delta)["敘事變化"], \
+        "清空 evidence_today 沒被看見"
+    assert idf["情境事件"] - ad._identity(blanked_scen)["情境事件"], \
+        "清空情境內文沒被看見"
+
+
+def test_bull_bear_and_target_are_python_authority():
+    """**「最強/最相關」是排名,不變式是 Python 算、模型抄**
+    (外審 2026-08-19 三輪定案 —— 模型自選的版本被駁回)。
+
+    schema **不得**有這兩個欄位(模型沒有決定權);段落與標記改由
+    Python 權威值渲染:多空交鋒來自 11 維立場分的逐維貢獻極值
+    (packet 的 `stance_extremes`),最相關標記由事件群的編輯標註實體
+    推導(2330 / NDX 名單)。
+    """
+    props = sch.ANALYSIS_OUTPUT_SCHEMA["properties"]
+    assert "bull_bear" not in props
+    assert "primary_target" not in props["key_drivers"]["items"]["properties"]
+
+    pk = {"stance_extremes": {"bull": {"dim": "sox", "text": "費半 SOX +2.00%"},
+                              "bear": {"dim": "wti", "text": "WTI 油價 +3.79%"}}}
+    out = ar.render(fx.valid_analysis(), pk)
+    assert "## " + ar.SECTION_BULLBEAR in out
+    assert "多方最強:費半 SOX +2.00%" in out
+    assert "空方最強:WTI 油價 +3.79%" in out
+    # 沒有權威值就整段不排;**單邊也不排** —— 單邊的「交鋒」是結論。
+    assert ar.SECTION_BULLBEAR not in ar.render(fx.valid_analysis())
+    half = {"stance_extremes": {"bull": {"dim": "sox", "text": "費半 +2%"},
+                                "bear": {}}}
+    assert ar.SECTION_BULLBEAR not in ar.render(fx.valid_analysis(), half)
+
+
+def test_the_target_label_is_derived_from_editorial_entities():
+    """最相關標記由**編輯標註實體**推導(Python),模型不參與。"""
+    def _pk(entities):
+        return {"news": [{"source_item_id": "n1", "title": "某事件",
+                          "entities": entities}],
+                "news_clusters": {"clusters": [
+                    {"cluster_id": "c1", "member_source_ids": ["n1"]}]}}
+    assert ar._derived_target(_pk(["2330"]), "c1") == "2330"
+    assert ar._derived_target(_pk(["NVDA"]), "c1") == "00662"
+    # 編輯標註同一家公司會用不同寫法 —— 先過 entity_alias 正規化再比
+    # (外審 2026-08-19 第四輪:逐字比對 TSMC/台積 會漏)
+    assert ar._derived_target(_pk(["TSMC"]), "c1") == "2330"
+    assert ar._derived_target(_pk(["台積"]), "c1") == "2330"
+    assert ar._derived_target(_pk(["輝達"]), "c1") == "00662"
+    # 2330 優先於 NDX(台積電新聞常同時帶美系客戶)
+    assert ar._derived_target(_pk(["2330", "NVDA"]), "c1") == "2330"
+    # 推不出來就不掛 —— 硬掛「市場最相關」是廢話
+    assert ar._derived_target(_pk(["2882"]), "c1") == ""
+    assert ar._derived_target({}, "c1") == ""
+
+
+def test_the_extremes_need_both_signs():
+    """全空方的日子挑不出「多方最強」→ 回空 —— 硬湊一個正貢獻最小的
+    當多方,是把排名變成謊言。
+
+    fixture 用**生產形狀**:QQQ/TSM 在 quotes 頂層、SOX/WTI 在 MACRO
+    (計分器就是這樣讀的;外審 2026-08-19 第四輪抓到第一版把 QQQ
+    塞進 MACRO —— 測了一個生產不會發生的情境)。"""
+    import morning_report as mr
+    all_bear = {"QQQ": {"change_pct": -1.69},
+                "MACRO": {"SOX": {"change_pct": -4.98},
+                          "WTI": {"change_pct": 3.79}}}
+    assert mr._stance_extremes(all_bear) == {}
+    mixed = {"QQQ": {"change_pct": 0.6},
+             "MACRO": {"SOX": {"change_pct": 5.0},
+                       "WTI": {"change_pct": 3.79}}}
+    out = mr._stance_extremes(mixed)
+    assert out["bull"]["dim"] == "sox" and out["bear"]["dim"] == "wti", out
+    # 顯示的是市場事實(漲跌幅),不是 ±分數 —— 計分內部不外露(批#26)
+    assert "%" in out["bull"]["text"] and "分" not in out["bull"]["text"]
+
+
+def test_the_extremes_tie_break_is_threshold_excess():
+    """components 都是 ±1,同分是常態 —— 「最強」不能是欄位插入順序。
+    tie-break 比**超越門檻的幅度**(|值|/該維門檻),讀值器與計分器
+    走同一條資料路徑(外審 2026-08-19 第四輪定案)。"""
+    import morning_report as mr
+    # qqq +0.6(0.6/0.5=1.2 倍門檻)vs sox +5.0(5 倍)→ sox 最強
+    q = {"QQQ": {"change_pct": 0.6},
+         "MACRO": {"SOX": {"change_pct": 5.0},
+                   "WTI": {"change_pct": 3.79}}}
+    assert mr._stance_extremes(q)["bull"]["dim"] == "sox"
+    # 反向:qqq +2.0(4 倍)vs sox +1.2(1.2 倍)→ qqq 最強;
+    # 且顯示值從**頂層** quotes["QQQ"] 讀到(路徑錯了就是光禿禿的名字)
+    q2 = {"QQQ": {"change_pct": 2.0},
+          "MACRO": {"SOX": {"change_pct": 1.2},
+                    "WTI": {"change_pct": 3.79}}}
+    out2 = mr._stance_extremes(q2)
+    assert out2["bull"]["dim"] == "qqq"
+    assert out2["bull"]["text"] == "QQQ +2.00%", out2
+
+
+def test_the_extremes_excess_is_directional():
+    """有基準點的維度(廣度基準 50、VIX 基準 18/22)不能用 |值|/尺度 ——
+    那會反向排序:廣度 40%(剛觸發)算出 0.8 「強」、極端的 10% 反而
+    只有 0.2(外審 2026-08-19 第五輪)。強度沿**觸發方向**量,零點在
+    該維自己的門檻上。"""
+    import morning_report as mr
+    # 廣度 10%(超門檻 1.5 單位)vs WTI +3.5(0.17 單位)→ 廣度是空方最強
+    q1 = {"QQQ": {"change_pct": 0.6}, "BREADTH": {"advance_ratio": 10},
+          "MACRO": {"WTI": {"change_pct": 3.5}}}
+    assert mr._stance_extremes(q1)["bear"]["dim"] == "breadth"
+    # 廣度 40%(剛觸發,0 單位)vs WTI +6(1.0 單位)→ WTI 才是最強
+    q2 = {"QQQ": {"change_pct": 0.6}, "BREADTH": {"advance_ratio": 40},
+          "MACRO": {"WTI": {"change_pct": 6.0}}}
+    assert mr._stance_extremes(q2)["bear"]["dim"] == "wti"
+    # VIX 10(低於門檻 18 兩個帶寬)vs QQQ +0.6 → VIX 是多方最強;
+    # VIX 17(0.25 單位)vs QQQ +2.0(3 單位)→ QQQ 才是
+    q3 = {"QQQ": {"change_pct": 0.6},
+          "MACRO": {"VIX": {"close": 10}, "WTI": {"change_pct": 3.5}}}
+    assert mr._stance_extremes(q3)["bull"]["dim"] == "vix"
+    q4 = {"QQQ": {"change_pct": 2.0},
+          "MACRO": {"VIX": {"close": 17}, "WTI": {"change_pct": 3.5}}}
+    assert mr._stance_extremes(q4)["bull"]["dim"] == "qqq"
+
+
+def test_the_extremes_units_match_the_data():
+    """foreign_top10 是 `foreign_lot` 加總,單位「張」(prompt 同樣格式)
+    —— 第一版標「億」會把 17,131 張寄成 +17131 億(外審 2026-08-19
+    第五輪)。逐維單位是宣告不是猜測。"""
+    import morning_report as mr
+    q = {"FOREIGN_TOP10_TOTAL": 17131.0,
+         "MACRO": {"WTI": {"change_pct": 3.5}}}
+    out = mr._stance_extremes(q)
+    assert out["bull"]["text"] == "外資十大買賣超 +17,131 張", out
+    assert "億" not in out["bull"]["text"]
+
+
+def test_the_vix_display_shows_the_triggering_evidence():
+    """VIX 計分是雙條件(close 18/22 或一年百分位 30/70)——percentile
+    觸發、close 中性或缺值時只顯示 close,會寄出看似中性的「VIX 20.00」
+    或光禿禿的名字(外審 2026-08-19 第六輪)。顯示要選**實際觸發該方向**
+    的條件,兩者都觸發就並列。"""
+    import morning_report as mr
+
+    def _q(vix):
+        return {"QQQ": {"change_pct": 0.6},
+                "MACRO": {"VIX": vix, "WTI": {"change_pct": 3.5}}}
+    # percentile 單獨觸發(close 缺值)
+    out = mr._stance_extremes(_q({"pct_rank_252d": 10}))
+    assert out["bull"]["text"] == "VIX 恐慌指數 一年百分位 10%", out
+    # close 中性(20)+ percentile 觸發 → 證據是 percentile,不是 20.00
+    out = mr._stance_extremes(_q({"close": 20, "pct_rank_252d": 10}))
+    assert out["bull"]["dim"] == "vix"
+    assert out["bull"]["text"] == "VIX 恐慌指數 一年百分位 10%", out
+    # 兩者都觸發 → 並列
+    out = mr._stance_extremes(_q({"close": 10, "pct_rank_252d": 5}))
+    assert out["bull"]["text"] == "VIX 恐慌指數 10.00(一年百分位 5%)", out
+    # close 單獨觸發(原行為不變)
+    out = mr._stance_extremes(_q({"close": 10}))
+    assert out["bull"]["text"] == "VIX 恐慌指數 10.00", out
+
+
+def test_the_packet_carries_the_extremes():
+    """**沒有接進 packet 的權威值等於沒有**(渲染端只看 packet)。"""
+    import io as _io2
+    src = _io2.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    assert '_packet["stance_extremes"] = _stance_extremes(quotes)' in src

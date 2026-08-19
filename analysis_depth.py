@@ -216,6 +216,27 @@ def _identity(obj) -> dict:
         "政策項": {f"{(t or {}).get('source_item_id')}:"
                 f"{(t or {}).get('what')}:{(t or {}).get('impact')}"
                 for t in (o.get("taiwan_policy") or []) if isinstance(t, dict)},
+        # v21(2026-08-19 第四批):legacy 骨架的每一段都要保 —— 不保的話,
+        # 條數 advisory 觸發的加深可以「補了新聞、刪了世界大事/在地動態」
+        # 而勝出。內容也保(換一句就是換一個結論)。
+        # **身分要含所有會改變渲染內容或可見性的欄位**(外審 2026-08-19
+        # 第二輪):只保 ID/標題的話,加深版本可以保留識別欄位、
+        # **清空渲染必要的欄位**(impact / evidence_today / 情境內文)——
+        # renderer 要求那些欄位非空才排,整段就靜默消失。
+        "世界大事": {f"{(w or {}).get('source_item_id')}:{(w or {}).get('what')}:"
+                 f"{(w or {}).get('why_it_matters')}"
+                 for w in (o.get("world_events") or []) if isinstance(w, dict)},
+        "在地動態": {f"{(t or {}).get('source_item_id')}:{(t or {}).get('what')}:"
+                 f"{(t or {}).get('impact')}"
+                 for t in (o.get("taiwan_local") or []) if isinstance(t, dict)},
+        "情境事件": {":".join(str((e or {}).get(k) or "") for k in
+                          ("when", "event", "base_expectation", "bull_case",
+                           "bear_case", "most_affected", "invalidation"))
+                 for e in (o.get("upcoming_event_scenarios") or [])
+                 if isinstance(e, dict)},
+        "敘事變化": {f"{(d or {}).get('prior_view')}:{(d or {}).get('change')}:"
+                 f"{(d or {}).get('evidence_today')}"
+                 for d in (o.get("narrative_delta") or []) if isinstance(d, dict)},
         # 第十九輪 P1-11:**第二版可以「更深」而同時刪掉橫向與逐標的。**
         # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
         # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉

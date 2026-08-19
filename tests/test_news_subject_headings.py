@@ -209,7 +209,7 @@ def test_the_reservations_are_not_filed_under_a_sector():
     text = ar.render(obj)
     i = text.index(ar.SUBSECTION_NOTES)
     assert "今日看過但未展開" in text[i:], text[i:i + 200]
-    assert text.index(ar.SUBSECTION_OTHER) < i, text
+    assert text.index(ar.SECTION_OTHER) < i, text
 
 
 # ------------------------------------------------- 外審 2026-08-18 的兩個 P2

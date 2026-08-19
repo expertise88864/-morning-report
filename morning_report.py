@@ -118,6 +118,7 @@ from news_rules import (  # A5-B3:新聞分類/降噪規則+關鍵字常數已�
 )
 import news_events as _ne
 import completion_contract as _cc
+import company_profiles as _cp
 import state_migrations as _sm
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     llm_event_json_schema,
@@ -923,12 +924,10 @@ def _other_sector_label_from_source(source: str) -> str:
 #: 查詢送出去之後,有沒有進信仍由既有的重要性門檻決定。
 #: 由 `tests/test_news_coverage.py` 盯著:名字在表上卻沒有對應查詢,
 #: 那個「已涵蓋」的宣稱就是假的。
-TW0050_TOP10_LABELS: tuple = ("2330", "2317", "2454", "2308", "2382",
-                              "2891", "2881", "2882", "3711", "2303")
-#: NASDAQ-100 權重前段班(2026-08-18 當時的前段;權重會變,這是宣告不是即時值)。
-NASDAQ_TOP15_LABELS: tuple = ("NVDA", "MSFT", "AAPL", "AMZN", "AVGO", "META",
-                              "GOOGL", "TSLA", "NFLX", "COST", "PLTR", "CSCO",
-                              "AMD", "TMUS", "ADBE")
+#: 兩張涵蓋清單搬到 `company_profiles`(2026-08-19:渲染層要用 NDX 名單,
+#: 而渲染層不能 import 主模組)。這裡是別名 —— 判準只有一份。
+TW0050_TOP10_LABELS = _cp.TW0050_TOP10_LABELS
+NASDAQ_TOP15_LABELS = _cp.NASDAQ_TOP15_LABELS
 
 GOOGLE_NEWS_COMPANIES: list[tuple] = [
     # --- 美股權值/AI/半導體龍頭 ---
@@ -13951,6 +13950,9 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
                                 # r1(Codex,#1):外部文字進 prompt 的唯一入口。
                                 # 前一輪外審立的 P0 控制,新路徑必須接上。
                                 sanitize=_external_text)
+            # 多空交鋒的 Python 權威值(外審 2026-08-19):渲染端從這裡讀,
+            # 模型不參與 —— 排名的不變式是 Python 算。
+            _packet["stance_extremes"] = _stance_extremes(quotes)
             # 2026-08-04:連兩天掛在 evidence_sha 的 `sort_keys` 上。序列化
             # 已經修成不會拋,但**源頭是某個上游欄位塞了非字串鍵** ——
             # 不記下來的話,下次換一個欄位又要從零查一次。
@@ -15729,6 +15731,176 @@ def _render_poly_pulse_html(rows: list[dict],
         # 2026-08-18 使用者要求移除註腳:「不納入計分」這件事在每天都一樣的
         # 情況下只是佔版面;段名已寫明是預測市場觀點。
         + div_html + "</div>")
+
+
+#: 11 維的顯示名、**與計分器同一條資料路徑的讀值器**、顯示格式、以及
+#: 同分時的**方向性門檻超越**(excess:超過該維觸發門檻多少倍)。
+#: 外審 2026-08-19 第五輪:第一版用 |值|/尺度 當強度,對有基準點的維度
+#: 會**反向排序**(廣度 40% 算 0.8 「強」、極端的 10% 反而 0.2;VIX 17
+#: 比更偏多的 VIX 10 「強」)—— 強度必須沿著**觸發方向**量,零點在該維
+#: 自己的門檻上。單位也逐維宣告(foreign_top10 是「張」不是億;第一版
+#: 抄錯單位會把 17,131 張寄成 +17131 億)。
+#: 外審 2026-08-19 第六輪:VIX 的計分是雙條件(close 18/22 或
+#: 252 日百分位 30/70),percentile 觸發、close 中性或缺值時只顯示
+#: close 會寄出看似中性的「VIX 20.00」—— 顯示要選**實際觸發該方向**
+#: 的條件,兩者都觸發就並列。
+def _stance_vix_display(q: dict, sign: int):
+    """VIX 的顯示:選**實際觸發 sign 方向計分**的條件(門檻與計分器
+    逐字一致:close 18/22、252 日百分位 30/70);兩者都觸發就並列,
+    都沒觸發(理論上不會勝出)退回 close、再退回 None。"""
+    m = (q.get("MACRO") or {}).get("VIX") or {}
+    close, rank = m.get("close"), m.get("pct_rank_252d")
+    c_trig = isinstance(close, (int, float)) and (
+        close < 18 if sign > 0 else close > 22)
+    r_trig = isinstance(rank, (int, float)) and (
+        rank < 30 if sign > 0 else rank > 70)
+    if c_trig and r_trig:
+        return f"{close:.2f}(一年百分位 {rank:.0f}%)"
+    if c_trig:
+        return f"{close:.2f}"
+    if r_trig:
+        return f"一年百分位 {rank:.0f}%"
+    return f"{close:.2f}" if isinstance(close, (int, float)) else None
+
+
+def _stance_dim_meta():
+    def _pct(v):
+        return f"{v:+.2f}%"
+
+    def _sym(thr, scale=None):
+        """零點對稱維度:excess = (|值|−門檻)/尺度(門檻 0 時尺度另宣告)。"""
+        sc = scale if scale is not None else thr
+        return lambda v, sign: (abs(v) - thr) / sc
+
+    def _vix_excess(q, sign):
+        m = (q.get("MACRO") or {}).get("VIX") or {}
+        close, rank = m.get("close"), m.get("pct_rank_252d")
+        cands = []
+        if isinstance(close, (int, float)):
+            # 計分門檻 close<18 多 / >22 空;帶寬 4 當一個「門檻單位」
+            cands.append(((18 - close) if sign > 0 else (close - 22)) / 4.0)
+        if isinstance(rank, (int, float)):
+            # rank<30 多 / >70 空;到極端還有 30 的距離當一個單位
+            cands.append(((30 - rank) if sign > 0 else (rank - 70)) / 30.0)
+        return max([c for c in cands if c > 0], default=0.0)
+
+    def _breadth_excess(q, sign):
+        v = ((q.get("BREADTH") or {}).get("advance_ratio"))
+        if not isinstance(v, (int, float)):
+            return 0.0
+        # 計分門檻 ≥60 多 / ≤40 空;每 20 個百分點算一個單位
+        return ((v - 60) if sign > 0 else (40 - v)) / 20.0
+
+    def _wrap(reader, exc):
+        """把單值 excess 包成統一的 (quotes, sign) 介面;讀不到值 → 0。"""
+        def _f(q, sign):
+            v = reader(q)
+            return exc(v, sign) if isinstance(v, (int, float)) else 0.0
+        return _f
+
+    def _macro_field(name, key="change_pct"):
+        def _f(q):
+            return (((q.get("MACRO") or {}).get(name)) or {}).get(key)
+        return _f
+
+    def _top_field(name, key="change_pct"):
+        def _f(q):
+            v = q.get(name)
+            return v.get(key) if isinstance(v, dict) else None
+        return _f
+
+    def r_qqq(q):
+        return ((q.get("QQQ") or {}).get("change_pct"))
+
+    r_sox = _macro_field("SOX")
+    r_nq = _macro_field("NQ")
+    r_wti = _macro_field("WTI")
+    r_tsm = _top_field("TSM")
+    r_vix = _macro_field("VIX", "close")
+    r_vterm = _macro_field("VIX_TERM", "ratio")
+
+    def r_10y(q):
+        m = (q.get("MACRO") or {}).get("10Y") or {}
+        c, pv = m.get("close"), m.get("prev_close")
+        if isinstance(c, (int, float)) and isinstance(pv, (int, float)):
+            return (c - pv) * 100
+        return None
+
+    def r_f10(q):
+        return q.get("FOREIGN_TOP10_TOTAL")
+
+    r_oi = _top_field("TAIFEX_OI", "foreign_oi_net")
+    r_br = _top_field("BREADTH", "advance_ratio")
+
+    return {
+        "qqq": ("QQQ", r_qqq, _pct, _wrap(r_qqq, _sym(0.5))),
+        "sox": ("費半 SOX", r_sox, _pct, _wrap(r_sox, _sym(1.0))),
+        "nq": ("那斯達克期貨", r_nq, _pct, _wrap(r_nq, _sym(0.5))),
+        "wti": ("WTI 油價", r_wti, _pct, _wrap(r_wti, _sym(3.0))),
+        # 門檻 0(任何方向都觸發)—— 尺度宣告 0.5%,與 qqq 一個門檻單位同階
+        "tsm_adr": ("台積電 ADR", r_tsm, _pct, _wrap(r_tsm, _sym(0.0, 0.5))),
+        "10y": ("美債 10 年殖利率", r_10y, lambda v: f"{v:+.1f} bps",
+                _wrap(r_10y, _sym(2.0))),
+        "vix": ("VIX 恐慌指數", r_vix, None, _vix_excess),
+        "vix_term": ("VIX 期限結構", r_vterm, lambda v: f"{v:.2f}",
+                     _wrap(r_vterm, _sym(1.0, 0.1))),
+        # `_foreign_top10_total` = 前十大權值股 foreign_lot 加總,單位「張」
+        # (prompt 同樣格式化成張);門檻 0,尺度宣告單日 10,000 張
+        "foreign_top10": ("外資十大買賣超", r_f10, lambda v: f"{v:+,.0f} 張",
+                          _wrap(r_f10, _sym(0.0, 10_000.0))),
+        "taifex_foreign_oi": ("外資台指期淨部位", r_oi,
+                              lambda v: f"{v:+,.0f} 口",
+                              _wrap(r_oi, _sym(5000.0))),
+        "breadth": ("市場廣度", r_br, lambda v: f"{v:.0f}%", _breadth_excess),
+    }
+
+
+def _stance_extremes(quotes: dict) -> dict:
+    """多空交鋒的 **Python 權威版**(外審 2026-08-19 三輪定案)。
+
+    「哪一條最強」是排名,而排名的不變式是 Python 算、模型抄 ——
+    模型自選的版本被駁回了。從 11 維立場分的**逐維貢獻**挑極值;
+    同分(貢獻都是 ±1)時比**方向性門檻超越**(沿觸發方向超過該維
+    門檻幾個單位;讀值器與計分器同一條資料路徑)。任一邊挑不出來就
+    回空 —— 單邊的「交鋒」是結論不是交鋒,渲染端會整段不排。
+    """
+    try:
+        comp = (_compute_stance_score(quotes or {}) or {}).get("components") or {}
+    except Exception:                   # noqa: BLE001 - 算不出來就不排
+        return {}
+    meta = _stance_dim_meta()
+
+    def _excess(dim: str, sign: int) -> float:
+        _name, _reader, _disp, exc = meta.get(
+            dim, (dim, None, None, lambda q, s: 0.0))
+        try:
+            return max(0.0, float(exc(quotes or {}, sign)))
+        except Exception:               # noqa: BLE001
+            return 0.0
+
+    bulls = [(k, v) for k, v in comp.items() if isinstance(v, int) and v > 0]
+    bears = [(k, v) for k, v in comp.items() if isinstance(v, int) and v < 0]
+    if not bulls or not bears:
+        return {}
+    bull = max(bulls, key=lambda kv: (kv[1], _excess(kv[0], 1)))
+    bear = min(bears, key=lambda kv: (kv[1], -_excess(kv[0], -1)))
+
+    def _one(dim: str, sign: int) -> dict:
+        name, reader, disp, _exc = meta.get(
+            dim, (dim, None, None, None))
+        val_txt = None
+        try:
+            if disp is None and dim == "vix":
+                val_txt = _stance_vix_display(quotes or {}, sign)
+            else:
+                v = reader(quotes or {}) if reader else None
+                if disp and isinstance(v, (int, float)):
+                    val_txt = disp(v)
+        except Exception:               # noqa: BLE001
+            val_txt = None
+        return {"dim": dim, "text": f"{name} {val_txt}" if val_txt else name}
+
+    return {"bull": _one(bull[0], 1), "bear": _one(bear[0], -1)}
 
 
 def _compute_stance_score(quotes: dict) -> dict:

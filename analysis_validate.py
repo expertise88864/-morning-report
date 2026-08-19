@@ -703,9 +703,22 @@ def validate(obj, evidence_ids) -> list:
     # **政策段的引用也要真的存在**(外審 2026-08-19):`taiwan_policy` 是
     # v20 新欄位,漏了這一關的話,一個捏造的 `source_item_id` 會讓政策與
     # 它宣稱的影響**看起來有根據地**進信 —— 那正是引用檢查存在的理由。
-    for i, tpol in enumerate((obj.get("taiwan_policy") or [])):
-        if isinstance(tpol, dict):
-            _check_ids([tpol.get("source_item_id")], f"taiwan_policy[{i}]")
+    # v20/v21 的敘事段落都帶 `source_item_id` —— 捏造的引用會讓內容
+    # 「看起來有根據地」進信,一視同仁全部過同一關。
+    for field in ("taiwan_policy", "world_events", "taiwan_local"):
+        for i, row in enumerate((obj.get(field) or [])):
+            if isinstance(row, dict):
+                _check_ids([row.get("source_item_id")], f"{field}[{i}]")
+    # 情境:**虛構的未來事件要擋得住**(外審 2026-08-19 第二輪)。
+    # 每一件都要引用 EVIDENCE 裡真的存在的 ID;引用了不存在的照樣報。
+    for i, sc in enumerate((obj.get("upcoming_event_scenarios") or [])):
+        if not isinstance(sc, dict):
+            continue
+        where = f"upcoming_event_scenarios[{i}]"
+        _check_ids(sc.get("evidence_ids"), where)
+        if str(sc.get("event") or "").strip() and not (sc.get("evidence_ids") or []):
+            problems.append(f"{where} 沒有引用任何 EVIDENCE ID —— "
+                            "沒有來源的未來事件與編的沒有分別")
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         _check_ids([n.get("source_item_id")], where)

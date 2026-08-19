@@ -35,9 +35,9 @@ def test_the_top_three_carry_where_the_event_came_from():
     obj = fx.valid_analysis()
     obj["key_drivers"][0]["cluster_id"] = "cluster:n1"
     text = ar.render(obj, pk)
-    # 2026-08-18:「七之一」併進「九、今日市場關注與預測」,
-    # 三大重點那一段的下界改成第八段的開頭。
-    top = text[text.index("## 七、"):text.index("## " + ar.SECTION_NEWS)]
+    # 段落幾經改版,下界用「下一個 h2」—— 不釘死某個段名。
+    _i = text.index("## 七、")
+    top = text[_i:text.index(chr(10) + "## ", _i)]
     # 2026-08-17 使用者定案:來歷從獨立一行收成句尾括號。判準不變 ——
     # 「官方公告」與「僅單一來源」在信裡仍然長得不一樣。
     assert "（官方公告" in top, top

@@ -86,3 +86,15 @@ def profile_of(ticker) -> str:
     """一句側寫;**沒有宣告就回空字串**,呼叫端只寫名字與代號,不編造。"""
     row = PROFILES.get(str(ticker or "").strip())
     return row[1] if row else ""
+
+
+#: **每天一定要去問有沒有新聞的兩組公司**(2026-08-18 使用者定案)。
+#: 2026-08-19 從 morning_report 搬到這裡:渲染層要用 NDX 名單推導
+#: 「00662 最相關」的標記,而渲染層不能 import 主模組(循環)。
+#: 判準只有一份 —— morning_report 以別名引用。
+TW0050_TOP10_LABELS: tuple = ("2330", "2317", "2454", "2308", "2382",
+                              "2891", "2881", "2882", "3711", "2303")
+#: NASDAQ-100 權重前段班(2026-08-18 當時的前段;權重會變,這是宣告)。
+NASDAQ_TOP15_LABELS: tuple = ("NVDA", "MSFT", "AAPL", "AMZN", "AVGO", "META",
+                              "GOOGL", "TSLA", "NFLX", "COST", "PLTR", "CSCO",
+                              "AMD", "TMUS", "ADBE")

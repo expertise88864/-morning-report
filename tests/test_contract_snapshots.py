@@ -658,7 +658,9 @@ _FROZEN = {
     #     使用者要的是「合起來是利多還是利空」)、`shared_driver_notes`。
     # v20(2026-08-19):`taiwan_policy` —— legacy 的「台灣本地動態」在
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
-    "output_schema_version":  (20, "d8e74980f46ba8c4"),
+    # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
+    #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
+    "output_schema_version":  (21, "ac83f794e78bdb93"),
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -707,13 +709,13 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (38, "87e4f68357c81bbb"),
+    "primary_profile_version":  (39, "ddc6cc2d1c22795a"),
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     "fallback_profile_version":   (7, "27619c45c92d2128"),
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
-    "postprocess_version":      (8, "55f28f883671eb75"),
+    "postprocess_version":      (9, "90deca8b73048489"),
     # v2(2026-08-04,第十五輪 P1-2/P1-3):段落語意映射修正 + 補上先前
     # 整段丟掉的 priced_in / falsification_trigger / counterevidence /
     # actions_to_consider。**渲染層丟資料時模型再深入也沒用。**
@@ -753,7 +755,8 @@ _FROZEN = {
     #     `[A 級・信心:中]`。
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
-    "renderer_version":         (18, "85c11a972abbc709"),
+    # v19(2026-08-19 第四批):legacy 骨架全回。
+    "renderer_version":         (19, "64255eb3e87ff07b"),
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

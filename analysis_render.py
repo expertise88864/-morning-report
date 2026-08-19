@@ -52,27 +52,22 @@ SECTION_TOP3 = "七、昨夜三大重點"
 #: 而信看起來仍然完整,沒有任何錯誤訊息。
 #: Luna 的 schema **沒有**「股市之外的世界」這種欄位,所以正確的做法是
 #: **不要宣稱有**,而不是找一個欄位塞進去。
-SECTION_NEWS = "八、重點新聞分析"
-#: 2026-08-19 使用者:「原本台灣政策分析也都不見了」。legacy 信有
-#: 「台灣本地動態」,特化 schema 先前沒有對應欄位,那一段因此整個消失。
-#: 內容來自 schema v20 的 `taiwan_policy`(政策,不是行情)。
-SECTION_POLICY = "九、台灣政策與在地動態"
-#: 第八段的兩個子標題。**2026-08-18 使用者定案**:回到舊版信的
-#: 「科技類股 / 其他類股」兩段寫法。與舊版的差別是**這次真的有過濾**
-#: —— 舊版那兩個標題是模型自己貼的標籤(所以曾有測試釘住「沒過濾就
-#: 不得叫科技板塊」),現在由 `tw_universe` 的產業別(台股)與
-#: `instrument_registry` 的宣告(外國個股)決定;判準在 `industry_class`,
-#: 與「補非科技類股新聞」用的是同一份。
-#: 2026-08-18 使用者貼了舊信要求照做,子段名回到舊版的用字。
-#: 這兩個名字曾經被一條測試禁止(「`top_news_analysis` 沒有被依產業
-#: 過濾,就不得叫科技板塊脈動」)—— 現在**真的有過濾**,名字才誠實。
-SUBSECTION_TECH = "科技板塊脈動"
-SUBSECTION_OTHER = "其他類股資訊"
-#: 本段的保留事項(傳導未完成 / 看過但未展開)。**不掛在任一類股底下**
-#: —— 它講的是整段的取捨,掛進「其他類股」會讓讀者以為只有那一類有缺。
+#: 2026-08-19 第四批(使用者貼了幾個禮拜前的完整實信要求照做):
+#: 科技/其他從「八、重點新聞分析」的子段**升回獨立段落** ——
+#: legacy 信就是這兩個 h2。過濾仍是真的(產業別/registry 宣告)。
+SECTION_TECH = "八、科技板塊脈動"
+SECTION_OTHER = "九、其他類股資訊"
+#: 本段的保留事項(傳導未完成 / 看過但未展開)—— 跟在第九段後面。
 SUBSECTION_NOTES = "本段的保留事項"
-#: schema v2:橫向綜合。**排在最前面** —— 使用者要的是「這些訊號合起來
-#: 說什麼」,逐條看完再自己拼是他反映了三次的那個問題。
+#: legacy 信的骨架(2026-08-19 第四批,schema v21 各有對應欄位):
+SECTION_WORLD = "七之二、世界大事速覽"
+SECTION_48H = "七之三、未來 48 小時關鍵事件情境"
+SECTION_DELTA = "七之四、敘事變化(昨日觀點 vs 今日新證據)"
+SECTION_BULLBEAR = "七之五、多空交鋒"
+SECTION_MACRO = "十、總體經濟與政策環境"
+#: 政策深度解析從 v20 的「九、台灣政策與在地動態」改編號(內容同一個欄位)。
+SECTION_POLICY = "十之二、重大政策深度解析"
+SECTION_LOCAL = "十一、台灣本地動態"
 SECTION_STANCE = "我的明確立場"
 SECTION_SUMMARY = "一句話總結"
 
@@ -177,6 +172,42 @@ def _cluster_of(packet, cluster_id: str) -> dict:
     return {}
 
 
+def _derived_target(packet, cluster_id: str) -> str:
+    """這個事件群最相關的持倉標的(**確定性**,由編輯標註實體推導)。
+
+    判準宣告在 `company_profiles`(NDX 名單)—— 兩份會漂,所以不抄。
+    """
+    if not cluster_id or not isinstance(packet, dict):
+        return ""
+    blk = _cluster_of(packet, cluster_id)
+    members = set(blk.get("member_source_ids") or ())
+    if not members:
+        return ""
+    try:
+        import company_profiles as _cp
+        ndx = set(_cp.NASDAQ_TOP15_LABELS)
+    except Exception:                   # noqa: BLE001 - 名單載不到就不掛
+        return ""
+    ents: set = set()
+    for n in (packet.get("news") or []):
+        if isinstance(n, dict) and _s(n.get("source_item_id")) in members:
+            ents |= {_s(e) for e in (n.get("entities") or []) if _s(e)}
+    # 編輯標註同一家公司會用不同寫法(台積電/TSMC/2330/台積、NVDA/輝達),
+    # 逐字比對會漏 —— 先過 `entity_alias.canonical` 正規化再比
+    # (外審 2026-08-19 第四輪)。canonical 對不認得的名字原樣返還,
+    # 所以 NDX 名單兩邊都正規化後聯集,ticker 與中文名都接得住。
+    try:
+        from entity_alias import canonical as _canon
+    except Exception:                   # noqa: BLE001 - 載不到就退回逐字比對
+        _canon = lambda x: x            # noqa: E731
+    canon = {_canon(e) for e in ents} | ents
+    if _canon("2330") in canon or "2330" in canon:
+        return "2330"
+    if canon & ({_canon(t) for t in ndx} | ndx):
+        return "00662"
+    return ""
+
+
 def _event_card(c: dict, packet=None) -> str:
     """一條「昨夜三大重點」。**判斷 + 這件事的來歷。**
 
@@ -187,6 +218,13 @@ def _event_card(c: dict, packet=None) -> str:
     if not line:
         return ""
     cid = _s(c.get("cluster_id"))
+    # 「最相關」標記:**Python 推導,模型不參與**(外審 2026-08-19 三輪
+    # 定案 —— 模型自選的版本被駁回)。判準:這條重點指名的事件群,其成員
+    # 新聞的**編輯標註實體**含 2330/台積電 → 2330;含 NDX 名單裡的美股 →
+    # 00662。推不出來就不掛 —— 硬掛「市場最相關」是廢話。
+    _target = _derived_target(packet, cid)
+    if _target:
+        line = f"**{_target} 最相關**:{line}"
     # **反面證據不依賴 cluster 查得到**:先前兩個早退(沒有 cluster_id、
     # 查不到那一群)會把整個括號跳過,而反面證據是 claim 自己帶的欄位。
     blk = _cluster_of(packet, cid) if cid else {}
@@ -269,6 +307,56 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     if top3:
         parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
 
+    # ------- legacy 骨架(2026-08-19 第四批,schema v21)-------
+    # 世界大事:**股市之外的世界**。這個段名曾被刪(schema 沒有對應欄位
+    # 時掛這個招牌是假的);v21 有 `world_events` 之後,名字才誠實。
+    world = [f"- {_s(w.get('what'))}{_s(w.get('why_it_matters')) and ':' + _s(w.get('why_it_matters'))}"
+             for w in (obj.get("world_events") or [])
+             if isinstance(w, dict) and _s(w.get("what"))]
+    if world:
+        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world))
+
+    # 未來 48 小時:每件事一個小段(基準/偏多/偏空/最受影響/失效)。
+    scen_blocks = []
+    for ev in (obj.get("upcoming_event_scenarios") or []):
+        if not isinstance(ev, dict) or not _s(ev.get("event")):
+            continue
+        head = "**" + "|".join(x for x in (_s(ev.get("when")), _s(ev.get("event"))) if x) + "**"
+        rows = [head]
+        for label, key in (("基準預期", "base_expectation"), ("偏多情境", "bull_case"),
+                           ("偏空情境", "bear_case"), ("最受影響", "most_affected"),
+                           ("失效條件", "invalidation")):
+            if _s(ev.get(key)):
+                rows.append(f"- {label}:{_s(ev.get(key))}")
+        scen_blocks.append(chr(10).join(rows))
+    if scen_blocks:
+        parts.append(f"## {SECTION_48H}" + chr(10) + (chr(10) * 2).join(scen_blocks))
+
+    # 敘事變化:昨日觀點 → 強化/升溫/持續/減弱/反轉。
+    deltas = [f"- 「{_s(d.get('prior_view'))}」→ **{_s(d.get('change'))}**:"
+              f"{_s(d.get('evidence_today'))}"
+              for d in (obj.get("narrative_delta") or [])
+              if isinstance(d, dict) and _s(d.get("prior_view"))
+              and _s(d.get("change")) and _s(d.get("evidence_today"))]
+    if deltas:
+        parts.append(f"## {SECTION_DELTA}" + chr(10) + chr(10).join(deltas))
+
+    # 多空交鋒:**Python 權威**(外審 2026-08-19 三輪定案)。
+    # 「哪一條最強」是排名,不變式是 Python 算、模型抄 —— 這一段的值來自
+    # 11 維立場分的逐維貢獻極值(`morning_report._stance_extremes`,
+    # 經 packet 傳入),模型完全不參與。兩邊都有才排:單邊的「交鋒」
+    # 是結論不是交鋒。
+    ext = (packet or {}).get("stance_extremes") if isinstance(packet, dict) else {}
+    ext = ext if isinstance(ext, dict) else {}
+    _bull = _s(((ext.get("bull") or {}) if isinstance(ext.get("bull"), dict)
+                else {}).get("text"))
+    _bear = _s(((ext.get("bear") or {}) if isinstance(ext.get("bear"), dict)
+                else {}).get("text"))
+    if _bull and _bear:
+        parts.append(f"## {SECTION_BULLBEAR}" + chr(10)
+                     + f"- 多方最強:{_bull}" + chr(10)
+                     + f"- 空方最強:{_bear}")
+
     # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
@@ -315,28 +403,43 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
                          + "、".join(_row(d) for d in skipped[:4])
                          + (f";另有 {len(skipped) - 4} 件" if len(skipped) > 4 else "")
                          + "*")
-        body = ["## " + SECTION_NEWS]
+        # 2026-08-19 第四批:科技/其他升回獨立 h2(legacy 信的排法)。
+        # 條目之間空一行:`_md_to_html` 是逐行的,兩則新聞不能黏成同一個 <p>。
+        body = []
         if tech_news:
-            body.append("### " + SUBSECTION_TECH)
+            body.append("## " + SECTION_TECH)
             body.extend(tech_news)
         if other_news:
-            body.append("### " + SUBSECTION_OTHER)
+            body.append("## " + SECTION_OTHER)
             body.extend(other_news)
         if notes:
             body.append("### " + SUBSECTION_NOTES)
             body.extend(notes)
-        # 條目之間空一行:`_md_to_html` 是逐行的,小標題與敘述要能
-        # 各自成段,否則兩則新聞會被黏成同一個 <p>。
         parts.append((chr(10) * 2).join(body))
 
-    # 台灣政策(2026-08-19):**政策是事件不是行情**,一項一行,
-    # 客觀的「那件事是什麼」在前、判斷在後。空陣列就整段不出現 ——
-    # 沒有政策新聞的日子不需要一個空段落。
-    pol = [f"- {_s(x.get('what'))}:{_s(x.get('impact'))}"
-           for x in (obj.get("taiwan_policy") or [])
-           if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
-    if pol:
-        parts.append(f"## {SECTION_POLICY}" + chr(10) + chr(10).join(pol))
+    # 十、總體經濟與政策環境:(A)(B)(C) 三個切面(legacy 的排法)。
+    macro = obj.get("macro_environment") if isinstance(
+        obj.get("macro_environment"), dict) else {}
+    macro_rows = [f"**({tag})** {_s(macro.get(key))}"
+                  for tag, key in (("A", "us_rates_fx_vix"), ("B", "fed_policy"),
+                                   ("C", "geopolitics")) if _s(macro.get(key))]
+    if macro_rows:
+        parts.append(f"## {SECTION_MACRO}" + chr(10) + (chr(10) * 2).join(macro_rows))
+
+    # 十之二、重大政策深度解析(v20 的 `taiwan_policy`,改編號不改欄位):
+    # **政策名當小標、分析當內文** —— legacy 的排法。一項一段。
+    pol_blocks = [f"**{_s(x.get('what'))}**" + chr(10) + chr(10) + _s(x.get("impact"))
+                  for x in (obj.get("taiwan_policy") or [])
+                  if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
+    if pol_blocks:
+        parts.append(f"## {SECTION_POLICY}" + chr(10) + (chr(10) * 2).join(pol_blocks))
+
+    # 十一、台灣本地動態:一項一行(GDP/例行公告/天氣…)。
+    local = [f"- {_s(x.get('what'))}:{_s(x.get('impact'))}"
+             for x in (obj.get("taiwan_local") or [])
+             if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
+    if local:
+        parts.append(f"## {SECTION_LOCAL}" + chr(10) + chr(10).join(local))
 
     # **「九、今日市場關注與預測」整段拿掉**(2026-08-19 使用者:
     # 「直接刪除整段今日市場關注與預測」)。它是 08-18 那批把五個段落

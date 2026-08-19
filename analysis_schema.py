@@ -59,7 +59,10 @@ import evidence_namespaces as _ns
 #: 模型寫 `gap:other:cpi_pending` 被判成回填不存在的缺口。
 #: v20(2026-08-19):`taiwan_policy` —— legacy 信的「台灣本地動態」在
 #: 特化 schema 沒有對應欄位,那一段因此整個消失(使用者連兩天反映)。
-ANALYSIS_SCHEMA_VERSION = 20
+#: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
+#: `upcoming_event_scenarios` / `narrative_delta` /
+#: `macro_environment` / `taiwan_local`。
+ANALYSIS_SCHEMA_VERSION = 21
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -178,11 +181,12 @@ _AUDITED_CLAIM = _obj(dict(
 #: `claim_ids` 只加在這一份:稽核那一份是**被回指的對象**,不回指別人。
 _DRIVER_CLAIM = _obj(dict(
     {"claim_ids": _arr(_s(), "這條重點靠哪幾條 `claim_audit.claim_id` 支撐"),
-     # 重構規格 Commit C:**三大重點要指名它講的是哪一件事。**
-     # 2026-08-05 那封信的第一段寫的是 QQQ 漲 1.2%、台積電 ADR 跌 0.4%
-     # —— 價格變化是別的事件造成的結果,它沒有主詞也沒有動作。
-     # 要求指名 `cluster_id` 之後,那三格只能放**事件**(候選由
-     # `EVIDENCE.top_events` 給,純價格變化已經整批排除)。
+     # v21(2026-08-19 使用者第四批):legacy 信的三大重點寫成
+     # 「00662 最相關:…」「2330 最相關:…」「第三事件:…」——
+     # 標記讓讀者一眼知道這條跟自己的持倉有什麼關係。
+     # `primary_target`(00662/2330 最相關 標記)**撤下**(外審 2026-08-19
+     # 兩輪堅持):「最相關」是排名,不變式是 Python 算、模型抄。
+     # 確定性版本(由 cluster 主體推導)另案做。
      "cluster_id": _s("這條重點講的是哪一個事件群(`EVIDENCE.top_events."
                       "top_cluster_ids` 裡的 `cluster:<id>`);"
                       "真的不是任何一群才留空,並在 `statement` 說明")},
@@ -262,6 +266,51 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "actions_to_consider": _arr(_s()),
         "risks": _arr(_s()),
     }),
+    # ------- v21(2026-08-19 使用者第四批):legacy 信的整個骨架搬回來 -------
+    # 使用者貼了幾個禮拜前的完整實信要求照做。以下每一段在 legacy 信都
+    # 存在、在特化 schema 先前**沒有對應欄位**,於是整段消失。
+    "world_events": _arr(_obj({
+        "source_item_id": _s("這則世界大事的新聞 ID"),
+        "what": _s("發生了什麼 —— 客觀敘述,含當事方與動作"),
+        "why_it_matters": _s("戰略意涵/對市場之外的世界代表什麼"),
+    }), "**股市之外的世界**(外交/戰爭/科技治理/重大社會事件),約三條;"
+        "美股漲跌、公司財報**不是**世界大事。沒有就空陣列"),
+    "upcoming_event_scenarios": _arr(_obj({
+        "when": _s("時間(台北時間,含日期)"),
+        "event": _s("什麼事件(財報/央行決策/數據發布…)"),
+        "base_expectation": _s("基準預期 —— 市場現在定價的是什麼"),
+        "bull_case": _s("偏多情境:什麼結果會利多、傳導到誰"),
+        "bear_case": _s("偏空情境:什麼結果會利空、傳導到誰"),
+        "most_affected": _s("最受影響的標的(00662/2330/加權…)"),
+        "invalidation": _s("失效條件:什麼情況會讓這整個情境分析失去意義"),
+        # 外審 2026-08-19 第二輪:**虛構的未來事件要擋得住** —— 情境要
+        # 引用 EVIDENCE 裡真的存在的東西(行事曆項或新聞 ID)。
+        "evidence_ids": _EVIDENCE_IDS,
+    }), "**未來 48 小時**的關鍵事件情境(EVIDENCE 的行事曆與新聞裡找),"
+        "一到三件;每件都要引用 EVIDENCE 的 ID;沒有就空陣列"),
+    "narrative_delta": _arr(_obj({
+        "prior_view": _s("昨日的觀點(EVIDENCE 的 ANALYSIS_RECAP 有)"),
+        "change": _enum(("強化", "升溫", "持續", "減弱", "反轉"),
+                        "今日新證據讓它往哪裡走"),
+        "evidence_today": _s("今天的哪些新證據、為什麼是這個方向"),
+    }), "**昨日觀點 vs 今日新證據**;沒有可對照的觀點就空陣列"),
+    # `bull_bear`(多空交鋒)**撤下**(外審 2026-08-19 兩輪堅持):
+    # 「哪一條最強」是排名,不變式是 Python 算、模型抄。正確的版本要從
+    # 11 維立場分的正負貢獻推導(確定性),另案做。
+    "macro_environment": _obj({
+        "us_rates_fx_vix": _s("(A) 美國利率/美元/VIX/通膨 —— 結構與絕對值"
+                              "分開講,對高本益比成長股的壓力說清楚"),
+        "fed_policy": _s("(B) Fed 與美國政府重大政策 —— 今天的增量,"
+                         "不是重複昨天"),
+        "geopolitics": _s("(C) 重大地緣政治與全球政策 —— 對 2330 與台股"
+                          "的傳導寫出來"),
+    }, desc="總體經濟與政策環境,三個切面;沒有增量的切面寫空字串"),
+    "taiwan_local": _arr(_obj({
+        "source_item_id": _s("這則在地新聞的 ID"),
+        "what": _s("那件事是什麼 —— 客觀敘述"),
+        "impact": _s("對台股/情緒/量能的影響 —— 你的判斷"),
+    }), "**台灣本地動態**(總經數據、公司例行公告、天氣、交通…):"
+        "與政策解析分開 —— 這裡是動態,那裡是法規。沒有就空陣列"),
     # v20(2026-08-19 使用者:「原本台灣政策分析也都不見了」):台灣政策/
     # 主管機關動態的分析。**與 `taiwan_market` 不同**:那是行情(加權/台積電
     # 的看法),這是政策(金管會、央行、證交所、稅制、勞動基金、普發現金、

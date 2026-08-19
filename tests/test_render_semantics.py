@@ -53,11 +53,9 @@ def test_the_news_section_does_not_claim_to_be_tech_only():
     (舊標題「科技板塊脈動」是既有路徑的段名,仍然不該出現在這裡。)
     """
     out = _rendered()
-    assert ar.SECTION_NEWS in out
-    # **這裡不能再寫「科技板塊脈動 不得出現」** —— 2026-08-18 子段名回到
-    # 舊版用字之後那正是合法的段名,而 `_rendered()` 沒有 packet、分不出
-    # 產業,所以那句斷言是**靠巧合過關**的(沒有科技條目就不會有那個子段)。
-    # 判準換成過濾本身,見下面的雙主體案例。
+    # 2026-08-19 第四批:新聞段是「八、科技板塊脈動 / 九、其他類股資訊」
+    # 兩個 h2;`_rendered()` 沒有 packet、分不出產業 → 全落在「其他」。
+    assert ar.SECTION_OTHER in out
 
     pk = {"tw_universe": [
         {"code": "2330", "name": "台積電", "industry": "半導體業"},
@@ -72,8 +70,8 @@ def test_the_news_section_does_not_claim_to_be_tech_only():
         dict(base, source_item_id="t2",
              affected_assets=[dict(base["affected_assets"][0], asset_id="2882")])]
     text = ar.render(obj, pk)
-    i = text.index(ar.SUBSECTION_TECH)
-    j = text.index(ar.SUBSECTION_OTHER)
+    i = text.index(ar.SECTION_TECH)
+    j = text.index(ar.SECTION_OTHER)
     assert i < j, text
     assert "台積電" in text[i:j] and "國泰金" not in text[i:j], text[i:j]
     assert "國泰金" in text[j:], text[j:]

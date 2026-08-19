@@ -99,12 +99,15 @@ def test_section_titles_are_honest_and_all_appear():
     assert ar.SECTION_TOP3 == mr._SECTION_TOP3, "『昨夜三大重點』的語意兩邊相同,應保持一致"
     # 2026-08-19:「九、今日市場關注與預測」整段被使用者刪掉
     # (原話:「直接刪除整段今日市場關注與預測」)。
-    for title in (ar.SECTION_TOP3, ar.SECTION_NEWS,
-                  ar.SECTION_STANCE, ar.SECTION_SUMMARY):
+    for title in (ar.SECTION_TOP3, ar.SECTION_STANCE, ar.SECTION_SUMMARY):
         assert f"## {title}" in md, f"渲染結果缺少段落:{title}"
-    for wrong in (mr._SECTION_WORLD, mr._SECTION_TECH, mr._SECTION_OTHER):
-        assert wrong not in md, (
-            f"渲染層又掛回語意對不上的 legacy 段落名:{wrong}")
+    # 2026-08-19 第四批:新聞段升回「八、科技板塊脈動 / 九、其他類股資訊」
+    # 兩個 h2(legacy 的排法,而且**這次真的有過濾**);_obj() 的那一則
+    # 沒有 packet、分不出產業 → 落在「其他」。
+    assert f"## {ar.SECTION_OTHER}" in md, md
+    # 世界大事的段名現在**有 schema 欄位對應**(v21 world_events),
+    # 不再是掛錯的招牌 —— 但 _obj() 沒填,不該出現。
+    assert mr._SECTION_WORLD not in md
 
 
 def test_a_report_without_a_stance_renders_to_nothing_not_to_half():

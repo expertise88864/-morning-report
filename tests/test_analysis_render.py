@@ -97,14 +97,11 @@ def test_section_titles_are_honest_and_all_appear():
     """
     md = ar.render(_obj())
     assert ar.SECTION_TOP3 == mr._SECTION_TOP3, "『昨夜三大重點』的語意兩邊相同,應保持一致"
-    for title in (ar.SECTION_TOP3, ar.SECTION_NEWS, ar.SECTION_MARKET,
+    # 2026-08-19:「九、今日市場關注與預測」整段被使用者刪掉
+    # (原話:「直接刪除整段今日市場關注與預測」)。
+    for title in (ar.SECTION_TOP3, ar.SECTION_NEWS,
                   ar.SECTION_STANCE, ar.SECTION_SUMMARY):
         assert f"## {title}" in md, f"渲染結果缺少段落:{title}"
-    # 2026-08-18:全球連動 / 台股與台積電 / 各標的合計影響 / 已被市場反映
-    # 併進「九、今日市場關注與預測」,改用 `###` 小標(使用者:五大段整合
-    # 成一大段標題內就好)。宣告的每一個小標一樣要真的出現。
-    for sub in (ar.SUBSECTION_GLOBAL, ar.SUBSECTION_TW, ar.SUBSECTION_PRICED):
-        assert f"### {sub}" in md, f"渲染結果缺少子段:{sub}"
     for wrong in (mr._SECTION_WORLD, mr._SECTION_TECH, mr._SECTION_OTHER):
         assert wrong not in md, (
             f"渲染層又掛回語意對不上的 legacy 段落名:{wrong}")
@@ -134,7 +131,9 @@ def test_the_claim_line_is_prose_not_a_form():
     md = ar.render(_obj())
     assert "信心 70%" not in md, "機械欄位又跑回信裡"
     assert "（推論" not in md and "(推論" not in md.replace("步驟(推論)", "")
-    assert "什麼情況代表這個判斷錯了" in md, "失效條件是留下來的那一半"
+    # 2026-08-19:七段的失效條件也收起來了(使用者:「我只要三大消息重點
+    # 即可」)—— schema 仍要求,評分用,不進視線。
+    assert "什麼情況代表這個判斷錯了" not in md
 
 
 def test_data_gaps_and_contradictions_reach_the_email():
@@ -204,10 +203,10 @@ def test_a_universe_only_asset_is_labelled_speculative():
     # 「第一條含 3661 的行」不再是標的那一列。錨在**標的那一列**
     # (縮排的 `- 3661` 起頭)—— 揭露要貼在被揭露的那個標的身上。
     # 同一批改動也拿掉了逐標的的方向詞,所以核心標的那一條改用同樣的錨。
-    rows = [x for x in text.splitlines() if x.strip().startswith("- 3661")]
-    assert rows and "推測性傳導" in rows[0], text
-    core = [x for x in text.splitlines() if x.strip().startswith("- 2330")]
-    assert core and "推測性傳導" not in core[0], core
+    # 2026-08-19:逐標的影響併進散文(`3661〔推測性傳導〕:…`)。
+    # 判準不變:揭露要貼在被揭露的那個標的身上。
+    assert "3661〔推測性傳導〕" in text, text
+    assert "2330〔" not in text, text
 
 
 def test_a_named_or_core_asset_is_not_labelled():

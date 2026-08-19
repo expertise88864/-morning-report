@@ -22,18 +22,13 @@ def test_render_weather_html():
     assert mr._render_weather_html([]) == ""   # 失敗時整卡消失,不留空殼
 
 
-def test_etf_band_cell():
-    """今日進出參考價 2026-08-18 起是「六」那張表裡的一欄,不再是獨立卡片
-    (使用者:「直接寫在表格內就好」)。帶寬的數字不變。"""
-    assert "120.27" in mr._etf_band_cell(120.87, 0.005)    # 00662 ±0.5%
-    assert "121.47" in mr._etf_band_cell(120.87, 0.005)
-    assert "99.45" in mr._etf_band_cell(100.45, 0.010)     # 0050 ±1.0%
-    assert "101.45" in mr._etf_band_cell(100.45, 0.010)
-    assert "買" in mr._etf_band_cell(120.87, 0.005)
-    assert "貴" in mr._etf_band_cell(120.87, 0.005)
-    # **沒有帶寬的標的留白**,不編一個區間出來(2330 沒有 NAV 錨)。
-    assert mr._etf_band_cell(2400.0, None) == "—"
-    assert mr._etf_band_cell(None, 0.005) == "—"
+def test_the_etf_band_column_is_gone():
+    """今日進出參考價那一欄 2026-08-19 被使用者刪掉(「直接刪除etf建議
+    購買區間價格」;那一欄的 nowrap 也是信件被拉寬、字體變小的元兇)。
+    渲染函式一併刪除 —— 留著沒有呼叫端的函式等於留下「信裡有這張卡」
+    的假宣稱。"""
+    assert not hasattr(mr, "_etf_band_cell")
+    assert not hasattr(mr, "_render_etf_action_card")
 
 
 def test_render_sports_html():

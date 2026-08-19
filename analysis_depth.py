@@ -43,6 +43,18 @@ def depth_advisories(obj, packet=None) -> list:
     if not isinstance(obj, dict):
         return out
     news = [n for n in (obj.get("top_news_analysis") or []) if isinstance(n, dict)]
+    # **條數也是深度**(2026-08-19 使用者:「科技類股怎麼只有四篇新聞…
+    # 我要的是更多新聞 且要能涵蓋到重要新聞」)。當日素材充足(packet 收了
+    # 幾十則)而只分析四五則,漏掉的不是版面是內容。門檻是結構性的:
+    # 素材夠(≥20 則)才要求條數(≥6),素材貧乏的日子不硬湊 —— 湊出來的
+    # 那幾則會是把同一件事寫兩遍。
+    _avail = len((packet or {}).get("news") or []) if isinstance(packet, dict) else 0
+    if _avail >= 20 and len(news) < 6:
+        out.append(
+            f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
+            f"{_avail} 則新聞 —— 目標 6–10 則;優先補未被涵蓋的重大事件"
+            "(依 materiality 五項判準),科技之外(金融/航運/傳產/生技)"
+            "當日有重大新聞時至少 1–2 則。不足時要在 data_gaps 說明為什麼")
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         steps = [s for s in (n.get("mechanism_steps") or []) if isinstance(s, dict)]
@@ -197,6 +209,13 @@ def _identity(obj) -> dict:
                  for x in (c.get("counterevidence_ids") or [])},
         "資料缺口": {str((g or {}).get("what_is_missing") or "")
                  for g in (o.get("data_gaps") or []) if isinstance(g, dict)},
+        # 2026-08-19(外審):`taiwan_policy` 是 v20 新欄位 —— 不進身分的話,
+        # 條數 advisory 觸發的加深可以「補了新聞、刪了政策段」而勝出,
+        # 使用者才剛要回來的段落又靜默消失。**內容也要保**(不只 ID):
+        # 換一句 impact 就是換了一個結論。
+        "政策項": {f"{(t or {}).get('source_item_id')}:"
+                f"{(t or {}).get('what')}:{(t or {}).get('impact')}"
+                for t in (o.get("taiwan_policy") or []) if isinstance(t, dict)},
         # 第十九輪 P1-11:**第二版可以「更深」而同時刪掉橫向與逐標的。**
         # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
         # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉

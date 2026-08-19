@@ -14125,26 +14125,6 @@ def _render_ma200_html(status: dict) -> str:
     # 信件註腳依使用者要求(2026-07-14)移除。
 
 
-def _etf_band_cell(center, band) -> str:
-    """今日進出參考:低於下緣相對便宜、高於上緣相對偏貴。
-
-    2026-08-18 使用者要求**併進「六、個股開盤預測」那張表**(原本是表格
-    下面另一張「ETF 今日進出參考價」卡)—— 同一檔的預測與可操作區間
-    分兩處看,讀者要自己對照。舊卡片沒有呼叫端就一併刪掉:留著一個沒人
-    呼叫的渲染函式,等於留下一句「信裡有這張卡」的假宣稱。
-
-    帶寬的理由不變:00662 ±0.5%(公允淨值是 QQQ×匯率 的 NAV 套利錨,
-    模型誤差小)、0050 ±1.0%(衍生自 2330+加權 預測,誤差較大)。
-    **沒有帶寬的標的留白**,不編一個區間出來。
-    """
-    if not isinstance(center, (int, float)) or center <= 0 or not band:
-        return "—"
-    lo, hi = round(center * (1 - band), 2), round(center * (1 + band), 2)
-    return (f"<span style='color:#15803d;font-weight:700;'>&lt;{lo} 買</span>"
-            f"<span style='color:#cbd5e1;'> | </span>"
-            f"<span style='color:#b91c1c;font-weight:700;'>&gt;{hi} 貴</span>")
-
-
 def _render_portfolio_risk_html(risk: dict) -> str:
     """G1|持倉曝險卡(白話)。只顯示比例/情境/壓力,無任何持股明細。
 
@@ -21081,10 +21061,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === 個股開盤預測(2330 / 00662 / 0050 三合一精簡表,置於加權預測下方)===
     # 取代原本分散的三、四、六大卡;頭部 KPI 已有頭條數字,這裡給昨收/預測/幅度即可。
-    def _pred_row(label: str, last_v, pred_v, pct_v, band=None) -> str:
+    def _pred_row(label: str, last_v, pred_v, pct_v) -> str:
         if last_v is None or pred_v is None:
             return (f"<tr><td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;'>{label}</td>"
-                    f"<td colspan='4' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>資料缺失</td></tr>")
+                    f"<td colspan='3' style='padding:9px 12px;border-bottom:1px solid #e2e8f0;color:#dc2626;font-size:13px;'>資料缺失</td></tr>")
         pc = "#dc2626" if (pct_v or 0) >= 0 else "#16a34a"
         sg = "+" if (pct_v or 0) >= 0 else ""
         return (f"<tr>"
@@ -21092,7 +21072,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#64748b;font-variant-numeric:tabular-nums;'>{last_v}</td>"
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;'>{pred_v}</td>"
                 f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:{pc};font-variant-numeric:tabular-nums;'>{sg}{pct_v:.2f}%</td>"
-                f"<td style='padding:9px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;white-space:nowrap;'>{_etf_band_cell(pred_v, band)}</td>"
                 f"</tr>")
 
     _p_mid = predictions.get("mid") if isinstance(predictions, dict) else None
@@ -21113,11 +21092,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">昨收</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預測開盤／公允價</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">預估漲跌</th>
-            <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">今日進出參考</th>
           </tr>
           {_pred_row("2330 台積電", _p_last, _p_mid, _p_pct)}
-          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct, 0.005)}
-          {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct, 0.010)}
+          {_pred_row("00662 富邦NASDAQ 公允價", _f_last, _f_price, _f_pct)}
+          {_pred_row("0050 元大台灣50", _t_last, _t_pred, _t_pct)}
         </table>
         {_prediction_delta_note(quotes.get("HISTORY") or [], report_date, {
             "2330": _p_mid, "加權": (quotes.get("TAIEX_PRED") or {}).get("pred_open"),

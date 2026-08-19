@@ -29,30 +29,18 @@ def _rendered(**over):
 
 # ---------------------------------------------------------------- 段落要說實話
 
-def test_the_world_events_heading_is_gone():
-    """**Luna 的 schema 沒有「股市之外的世界」這種欄位。**
+def test_the_retired_sections_stay_retired():
+    """**退休的段落名不得再出現。**
 
-    沒有就不要宣稱有 —— 找一個欄位塞進去,收件人會以為那是世界大事。
+    「世界大事速覽」是 legacy 掛錯招牌的段名(schema 沒有那個概念);
+    「今日市場關注與預測」是 2026-08-18 併出來、隔天被使用者整段刪掉的
+    (「直接刪除整段今日市場關注與預測」)。名字再出現代表有人把段落
+    加回去了,而那兩個決定都有明確的使用者原話。
     """
     out = _rendered()
-    assert "世界大事速覽" not in out, "美股連動又被標成世界大事了"
-    assert ar.SUBSECTION_GLOBAL in out
-
-
-def test_tsmc_does_not_land_in_the_other_sectors_section():
-    """台積電的 `tsmc_view` 進的是市場那一段,不是「其他類股」。
-
-    2026-08-18:子段名回到舊版用字之後,「其他類股資訊」**本來就會出現**
-    (那是第八段裡非科技新聞的子段名,而且是真的依產業過濾的)。
-    這條測試要守的是原本那件事:`tsmc_view` 不得被歸到其他類股底下。
-    """
-    out = _rendered()
-    i = out.index(ar.SUBSECTION_OTHER)
-    j = out.index("## " + ar.SECTION_MARKET)
-    assert "守月線" not in out[i:j], out[i:j]
-    assert ar.SUBSECTION_TW in out
-    i = out.index(ar.SUBSECTION_TW)
-    assert "守月線" in out[i:i + 200], "tsmc_view 沒有進台股那一段"
+    assert "世界大事速覽" not in out
+    assert "今日市場關注與預測" not in out
+    assert "訊號的橫向綜合" not in out
 
 
 def test_the_news_section_does_not_claim_to_be_tech_only():
@@ -91,31 +79,32 @@ def test_the_news_section_does_not_claim_to_be_tech_only():
     assert "國泰金" in text[j:], text[j:]
 
 
-def test_the_taiwan_summary_is_not_filed_as_local_news():
-    """`taiwan_market.summary` 是台股整體,不是「台灣本地動態」
-    (那一段講的是證交所新制、勞動基金這類在地消息)。"""
-    out = _rendered()
-    assert "台灣本地動態" not in out
-    i = out.index(ar.SUBSECTION_TW)
-    assert "量能回升" in out[i:i + 200]
+def test_the_market_fields_are_deliberately_unrendered():
+    """`taiwan_market` / `global_market` / `priced_in` / `asset_net_effects` /
+    `cross_market_synthesis` **刻意不渲染**(2026-08-19 使用者刪掉整段)。
+
+    欄位仍在 schema 裡被要求與驗證 —— 模型先想清楚全局才寫得好逐則,
+    拿掉要求會讓第八段的品質跟著掉。這條釘住「不渲染」是決策不是遺漏:
+    這幾個欄位的內容不得出現在信裡。
+    """
+    out = _rendered(
+        priced_in={"already_reflected": ["獨特的已反映句"],
+                   "not_yet_reflected": ["獨特的未反映句"]})
+    assert "獨特的已反映句" not in out and "獨特的未反映句" not in out
+    assert "已被市場反映" not in out
+    assert "各標的合計影響" not in out
 
 
 # ---------------------------------------------------------------- 不得丟資料
 
-def test_priced_in_is_rendered():
-    """**這是整份 schema 裡最像分析的欄位**,先前整段沒有被渲染。"""
-    out = _rendered(priced_in={"already_reflected": ["美股漲幅"],
-                               "not_yet_reflected": ["台積電法說"]})
-    assert ar.SUBSECTION_PRICED in out
-    assert "美股漲幅" in out and "台積電法說" in out
-
-
-def test_the_falsification_trigger_reaches_the_reader():
-    """schema 把它列為必填,理由是「說不出什麼情況我就錯了的判斷,
-    事後無法評分」。**要求了卻不顯示,那個必填只保護了 JSON。**"""
+def test_the_falsification_trigger_is_folded_from_the_top_three():
+    """**七段只留三大重點本身**(2026-08-19 使用者:「我只要三大消息重點
+    即可」)。失效條件仍在 schema 裡被要求與驗證(評分用),且第八段的
+    逐則分析裡「若…,此判斷不成立」仍在 —— 失效條件沒有從信裡整個消失。
+    """
     out = _rendered()
-    assert "什麼情況代表這個判斷錯了" in out
-    assert "夜盤翻黑" in out
+    assert "什麼情況代表這個判斷錯了" not in out
+    assert "此判斷不成立" in out, "第八段的失效條件也一起消失了"
 
 
 def test_counterevidence_is_flagged():
@@ -176,8 +165,10 @@ def test_the_invalidation_signal_reaches_the_reader():
     2026-08-17 使用者定案:量級/為什麼是這個量級/確認訊號收起來
     (它們仍在 schema 裡被要求與驗證)。失效條件不能一起收 ——
     說不出什麼情況自己會錯的判斷,事後無法評分。"""
+    # 2026-08-19:字樣從「什麼會推翻它:X」改成散文「若X,此判斷不成立」
+    # (使用者:整合成一小段落語句敘述)。**判準不變**:失效條件要在。
     out = ar.render(fx.valid_analysis())
-    assert "什麼會推翻它" in out
+    assert "此判斷不成立" in out
     assert "量級中等" not in out and "成立要看到" not in out
 
 
@@ -190,22 +181,10 @@ def test_the_relationship_line_is_folded_away():
     (「這則與那則方向相反」)會被提到 —— 那個細節確實不再進信裡。
     欄位仍在 schema 裡被要求與驗證。
     """
+    # 2026-08-19:橫向綜合那一段也被使用者刪掉了(整段「今日市場關注與
+    # 預測」)—— 這條只剩前半:逐則的關係行不得再出現。
     out = ar.render(fx.valid_analysis())
     assert "與另一則的關係" not in out
-    assert ar.SUBSECTION_SYNTHESIS in out, "橫向綜合那一段本身要還在"
-
-
-def test_the_synthesis_section_renders_and_leads():
-    """橫向綜合要在,而且**排在逐條分析之前** —— 使用者要的是
-    「合起來說什麼」,不是自己拼。"""
-    out = ar.render(fx.valid_analysis())
-    assert ar.SUBSECTION_SYNTHESIS in out
-    # 2026-08-18 使用者定案:**逐則新聞在前、綜合判斷在後**。原話是
-    # 「這五大段直接整合成…放在原本新加入的其他類股下方」——
-    # 先前的順序(綜合在前)是上一輪的定案,這一輪被明確取代。
-    assert out.index(ar.SECTION_NEWS) < out.index(ar.SUBSECTION_SYNTHESIS)
-    assert "互相強化" in out and "互相抵銷" in out
-    assert "今天的主導因子" in out and "什麼會讓它翻盤" in out
 
 
 def test_a_broken_chain_is_not_rendered_as_one_arrow_run():
@@ -241,15 +220,14 @@ def test_a_chain_that_the_validator_accepts_is_not_drawn_as_broken():
 
 
 def test_two_effect_sentences_do_not_collide():
-    """兩段影響是**兩句話**:先前用「、」黏起來,接出「。、」
-    (2026-08-17 生產信裡看得到)。"""
+    """兩段影響接進散文時不得接出「。、」(2026-08-17 生產信裡看得到)。
+    2026-08-19 改散文之後由 `_assets_prose` 負責:效果去尾再用「、」接。"""
     import analysis_render_depth as ard
-    rows = ard._assets({"affected_assets": [
-        {"asset_id": "2330", "direction": "bearish", "magnitude_band": "small",
-         "horizon": "1-5d", "first_order_effect": "折現率上升。",
+    prose = ard._assets_prose({"affected_assets": [
+        {"asset_id": "2330", "first_order_effect": "折現率上升。",
          "second_order_effect": "折價可能擴大"}]})
-    assert rows and "。、" not in rows[0], rows
-    assert rows[0].endswith("折價可能擴大。"), rows
+    assert prose and "。、" not in prose, prose
+    assert prose == "2330:折現率上升、折價可能擴大。", prose
 
 
 def test_the_counterevidence_flag_survives_without_a_cluster():
@@ -272,7 +250,8 @@ def test_the_provenance_paren_sits_on_the_claim_sentence():
          "cluster_id": "cluster:x"}
     pk = {"news_clusters": {"clusters": [{"cluster_id": "cluster:x",
                                           "official": True}]}}
-    lines = ar._event_card(c, pk).splitlines()
-    assert len(lines) == 2, lines
-    assert lines[0].endswith("（官方公告）"), lines
-    assert "官方公告" not in lines[1], lines
+    # 2026-08-19:失效條件從七段收起來之後 `_event_card` 只回一行,
+    # 來歷括號接在句尾。**判準的核心不變**:括號要跟著判斷那一句。
+    line = ar._event_card(c, pk)
+    assert chr(10) not in line, line
+    assert line.endswith("（官方公告）"), line

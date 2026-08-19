@@ -57,7 +57,9 @@ import evidence_namespaces as _ns
 #: 規則要用它自己要求的方式寫。
 #: v19(2026-08-12 生產):`gap_id` 說明寫出 `gap:other` 可加標籤 ——
 #: 模型寫 `gap:other:cpi_pending` 被判成回填不存在的缺口。
-ANALYSIS_SCHEMA_VERSION = 19
+#: v20(2026-08-19):`taiwan_policy` —— legacy 信的「台灣本地動態」在
+#: 特化 schema 沒有對應欄位,那一段因此整個消失(使用者連兩天反映)。
+ANALYSIS_SCHEMA_VERSION = 20
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -260,6 +262,16 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "actions_to_consider": _arr(_s()),
         "risks": _arr(_s()),
     }),
+    # v20(2026-08-19 使用者:「原本台灣政策分析也都不見了」):台灣政策/
+    # 主管機關動態的分析。**與 `taiwan_market` 不同**:那是行情(加權/台積電
+    # 的看法),這是政策(金管會、央行、證交所、稅制、勞動基金、普發現金、
+    # 產業政策)。legacy 信有「台灣本地動態」一段,特化 schema 先前沒有
+    # 對應欄位,於是那一段整個消失。當日沒有這類新聞就空陣列。
+    "taiwan_policy": _arr(_obj({
+        "source_item_id": _s("這則政策新聞的 ID"),
+        "what": _s("那件事是什麼 —— 客觀敘述,不要複述標題"),
+        "impact": _s("對台股/產業/資金面的影響 —— 你的判斷"),
+    }), "台灣政策與主管機關動態;沒有就空陣列,不拿總經數據或公司新聞充數"),
     "top_news_analysis": _arr(_obj({
         "source_item_id": _s(),
         "why_it_matters": _s("不要複述標題"),

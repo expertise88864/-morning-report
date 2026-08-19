@@ -60,41 +60,25 @@ def test_a_driver_without_a_cluster_still_renders():
     assert obj["key_drivers"][0]["statement"] in text
 
 
-def test_the_net_effect_per_asset_reaches_the_reader():
-    """**使用者第六條回饋逐字**:「對 2330、對 0050、利多還是利空」。"""
+
+
+
+def test_the_net_effect_and_shared_driver_sections_are_retired():
+    """「各標的合計影響」與共用驅動說明隨「今日市場關注與預測」被使用者
+    整段刪掉(2026-08-19)。欄位仍在 schema 裡被要求與驗證;這條釘住
+    它們**不再**出現在信裡。"""
     obj = fx.valid_analysis()
     obj["asset_net_effects"] = [
         {"asset_id": "2330", "net_direction": "bullish",
          "net_magnitude_band": "moderate", "offsetting_cluster_ids": ["c"],
-         "why": "產能恢復的量級大於升準的資金面壓力", "claim_ids": ["c1"]},
-        {"asset_id": "0050", "net_direction": "neutral",
-         "net_magnitude_band": "negligible", "offsetting_cluster_ids": [],
-         "why": "權值股方向互相抵銷", "claim_ids": ["c1"]}]
-    text = ar.render(obj, _packet_with_events())
-    assert ar.SUBSECTION_NET in text
-    assert "**2330**:合計偏多、幅度中等" in text
-    assert "**0050**:合計中性" in text
-    assert "產能恢復的量級大於升準的資金面壓力" in text
-    # **英文 enum 不得直接進信**(使用者第一條回饋:信裡不要英文)
-    assert "bullish" not in text and "negligible" not in text
-
-
-def test_the_shared_driver_note_reaches_the_reader():
-    """「三個獨立訊號同向」與「同一件事的三個表現」對讀者是完全不同的
-    訊息。"""
-    obj = fx.valid_analysis()
+         "why": "獨特的淨效果理由句", "claim_ids": ["c1"]}]
     obj["cross_market_synthesis"]["shared_driver_notes"] = [
-        {"driver": "us_monetary", "cluster_ids": ["cluster:n1", "cluster:n2"],
-         "why_not_double_counted": "只把降息預期計一次,殖利率當它的價格表現"}]
+        {"driver": "us_monetary", "cluster_ids": ["cluster:n1"],
+         "why_not_double_counted": "獨特的不重複計權句"}]
     text = ar.render(obj, _packet_with_events())
-    assert "共用同一個驅動" in text
-    assert "只把降息預期計一次" in text
-
-
-def test_an_empty_net_effect_list_adds_no_section():
-    """沒有衝突的日子不要多一個空段落 —— 版面是有限的。"""
-    text = ar.render(fx.valid_analysis(), _packet_with_events())
-    assert ar.SUBSECTION_NET not in text
+    assert "獨特的淨效果理由句" not in text
+    assert "獨特的不重複計權句" not in text
+    assert "各標的合計影響" not in text
 
 
 # ================================================================ Commit F

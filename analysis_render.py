@@ -28,7 +28,7 @@ from __future__ import annotations
 from typing import Optional
 
 from analysis_contracts import top_drivers as _top   # 條數與驗證器同源
-from analysis_render_depth import (_news_line, _synthesis,
+from analysis_render_depth import (_news_line,
                                    news_subject as _news_subject,
                                    is_tech as _is_tech)
 
@@ -52,18 +52,11 @@ SECTION_TOP3 = "七、昨夜三大重點"
 #: 而信看起來仍然完整,沒有任何錯誤訊息。
 #: Luna 的 schema **沒有**「股市之外的世界」這種欄位,所以正確的做法是
 #: **不要宣稱有**,而不是找一個欄位塞進去。
-#: **2026-08-18 使用者定案:橫向綜合 / 全球連動 / 台股與台積電 /
-#: 各標的合計影響 / 已被市場反映,五段併成一段。** 原話:「這五大段直接
-#: 整合成今日市場關注與預測類似這樣的一大段標題內就好 … 內文重複的
-#: 就不用一直寫了」。五個 h2 各自佔一張藍色卡片,而它們講的是同一件事的
-#: 五個切面;拆成五段的結果是同一句話在信裡出現三次。
-SECTION_MARKET = "九、今日市場關注與預測"
-SUBSECTION_SYNTHESIS = "訊號的橫向綜合"
-SUBSECTION_GLOBAL = "全球市場與美股台股連動"
-SUBSECTION_TW = "台股與台積電"
-SUBSECTION_NET = "各標的合計影響"
-SUBSECTION_PRICED = "已被市場反映 vs 尚未反映"
 SECTION_NEWS = "八、重點新聞分析"
+#: 2026-08-19 使用者:「原本台灣政策分析也都不見了」。legacy 信有
+#: 「台灣本地動態」,特化 schema 先前沒有對應欄位,那一段因此整個消失。
+#: 內容來自 schema v20 的 `taiwan_policy`(政策,不是行情)。
+SECTION_POLICY = "九、台灣政策與在地動態"
 #: 第八段的兩個子標題。**2026-08-18 使用者定案**:回到舊版信的
 #: 「科技類股 / 其他類股」兩段寫法。與舊版的差別是**這次真的有過濾**
 #: —— 舊版那兩個標題是模型自己貼的標籤(所以曾有測試釘住「沒過濾就
@@ -96,16 +89,6 @@ def _lines(items, fmt) -> list:
             if text:
                 out.append(f"- {text}")
     return out
-
-
-def _sub(title: str, lines: list) -> str:
-    """小標題與它底下那幾行是**一個區塊**。
-
-    區塊之間空一行、區塊之內不空 —— `_md_to_html` 逐行處理,
-    遇到空行就收掉 `<ul>`;逐條之間空一行會讓每一條各自變成
-    一個清單(2026-08-18 自測看得到)。
-    """
-    return "### " + title + chr(10) + chr(10).join(lines)
 
 
 def _headline(ref: str, packet=None) -> str:
@@ -179,12 +162,12 @@ def _claim_line(c: dict) -> str:
     body = _s(c.get("statement"))
     if not body:
         return ""
-    line = body
-    # **失效條件先前也被丟掉。** schema 把它列為必填,理由寫在測試裡:
-    # 「說不出什麼情況我就錯了的判斷,事後無法評分」。既然要求了就要顯示,
-    # 否則那個必填只保護了 JSON,沒有保護讀者。
-    trigger = _s(c.get("falsification_trigger"))
-    return line + (f"\n  - 什麼情況代表這個判斷錯了:{trigger}" if trigger else "")
+    # **失效條件收起來**(2026-08-19 使用者:「我只要三大消息重點即可」)。
+    # 它仍在 schema 裡被要求與驗證 —— 「說不出什麼情況我就錯了的判斷,
+    # 事後無法評分」那個理由沒有變,變的是它評分用、不進讀者的視線。
+    # 第八段的逐則分析裡「若…,此判斷不成立」仍在,失效條件沒有從信裡
+    # 整個消失。
+    return body
 
 
 def _cluster_of(packet, cluster_id: str) -> dict:
@@ -245,32 +228,6 @@ def _event_card(c: dict, packet=None) -> str:
         return line
     head, _, rest = line.partition("\n")
     return head + f"（{'、'.join(bits)}）" + (f"\n{rest}" if rest else "")
-
-
-def _net_effects(rows) -> str:
-    """**逐標的的淨效果。** 使用者的第六條回饋逐字是:
-    「對整體經濟/對 2330/對 0050/**利多還是利空**」。
-
-    schema 收了、驗證器擋了,而先前渲染層一個字都沒印 —— 那個必填
-    只保護了 JSON,沒有保護讀者(與 `falsification_trigger` 同一個形狀)。
-    """
-    out = []
-    word = {"bullish": "偏多", "bearish": "偏空", "neutral": "中性",
-            "unknown": "判斷不出來"}
-    band = {"negligible": "可忽略", "small": "小", "moderate": "中等",
-            "large": "大", "unknown": "量級不明"}
-    for r in (rows or []):
-        if not isinstance(r, dict):
-            continue
-        aid = _s(r.get("asset_id"))
-        if not aid:
-            continue
-        d = word.get(_s(r.get("net_direction")), _s(r.get("net_direction")))
-        m = band.get(_s(r.get("net_magnitude_band")), "")
-        head = f"- **{aid}**:合計{d}" + (f"、幅度{m}" if m else "")
-        why = _s(r.get("why"))
-        out.append(head + (f"\n  - 為什麼是這個方向:{why}" if why else ""))
-    return "\n".join(out)
 
 
 def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
@@ -372,67 +329,23 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         # 各自成段,否則兩則新聞會被黏成同一個 <p>。
         parts.append((chr(10) * 2).join(body))
 
-    # ---------------------------------------------- 九、今日市場關注與預測
-    # 五個切面合成一段(2026-08-18 使用者定案)。**重複的句子只寫一次** ——
-    # 五段各自成立時,同一句「費半走強帶動台股電子」會在綜合、連動、
-    # 台股三處各出現一次;那正是使用者說的「內文重複的就不用一直寫了」。
-    market: list = []
-    _seen: set = set()
+    # 台灣政策(2026-08-19):**政策是事件不是行情**,一項一行,
+    # 客觀的「那件事是什麼」在前、判斷在後。空陣列就整段不出現 ——
+    # 沒有政策新聞的日子不需要一個空段落。
+    pol = [f"- {_s(x.get('what'))}:{_s(x.get('impact'))}"
+           for x in (obj.get("taiwan_policy") or [])
+           if isinstance(x, dict) and _s(x.get("what")) and _s(x.get("impact"))]
+    if pol:
+        parts.append(f"## {SECTION_POLICY}" + chr(10) + chr(10).join(pol))
 
-    def _fresh(lines: list) -> list:
-        """把已經在這一段寫過的句子濾掉(逐字重複才濾,不做語意判斷)。"""
-        out = []
-        for ln in lines:
-            key = _s(ln).lstrip("-* ").strip()
-            if not key or key in _seen:
-                continue
-            _seen.add(key)
-            out.append(ln)
-        return out
-
-    syn = _synthesis(obj.get("cross_market_synthesis"), packet)
-    syn_lines = _fresh([x for x in syn.split(chr(10)) if _s(x)]) if syn else []
-    if syn_lines:
-        market.append(_sub(SUBSECTION_SYNTHESIS, syn_lines))
-
-    gm = obj.get("global_market") if isinstance(obj.get("global_market"), dict) else {}
-    glob = _fresh([f"- {w}" for w in
-                   (_s(gm.get("summary")), _s(gm.get("us_to_tw_linkage"))) if w])
-    if glob:
-        market.append(_sub(SUBSECTION_GLOBAL, glob))
-
-    # 台股與台積電。`summary` 是台股整體、兩個 view 是細部,**同一段**裡
-    # 由粗到細 —— 先前 summary 被丟進「台灣本地動態」(那一段講的是
-    # 證交所新制、勞動基金這類在地消息),兩者不是同一件事。
-    tw = obj.get("taiwan_market") if isinstance(obj.get("taiwan_market"), dict) else {}
-    tw_lines = _fresh([f"- {o}" for o in
-                       (_s(tw.get("summary")), _s(tw.get("taiex_view")),
-                        _s(tw.get("tsmc_view"))) if o])
-    if tw_lines:
-        market.append(_sub(SUBSECTION_TW, tw_lines))
-
-    # **逐標的淨效果**(Commit E):同一個標的被不同事件推往相反方向時,
-    # 前面幾段各自寫完就結束了 —— 這一段回答「合起來是利多還是利空」。
-    nets = _net_effects(obj.get("asset_net_effects"))
-    net_lines = _fresh([x for x in nets.split(chr(10)) if _s(x)]) if nets else []
-    if net_lines:
-        market.append(_sub(SUBSECTION_NET, net_lines))
-
-    # **`priced_in` 先前整段沒有被渲染。** 它是這份 schema 裡最像分析的欄位
-    # (「哪些已經在價格裡、哪些還沒」),模型產出了、驗證器檢查了,
-    # 而收件人從來沒看到 —— 這正好是使用者反映「只有數據沒有分析」的一部分。
-    pi = obj.get("priced_in") if isinstance(obj.get("priced_in"), dict) else {}
-    done = [_s(x) for x in (pi.get("already_reflected") or []) if _s(x)]
-    todo = [_s(x) for x in (pi.get("not_yet_reflected") or []) if _s(x)]
-    priced = _fresh([x for x in (
-        ("- **已被市場反映**:" + "、".join(done[:4])) if done else "",
-        ("- **尚未反映**:" + "、".join(todo[:4])) if todo else "") if x])
-    if priced:
-        market.append(_sub(SUBSECTION_PRICED, priced))
-
-    if market:
-        parts.append(("## " + SECTION_MARKET + chr(10) * 2)
-                     + (chr(10) * 2).join(market))
+    # **「九、今日市場關注與預測」整段拿掉**(2026-08-19 使用者:
+    # 「直接刪除整段今日市場關注與預測」)。它是 08-18 那批把五個段落
+    # (橫向綜合/全球連動/台股與台積電/各標的合計影響/已被市場反映)
+    # 併成的一段,而使用者隔天的回饋是整段都不要 —— 重點在第八段的
+    # 逐則敘事,綜合判斷由頂部結論卡與第七段承擔。
+    # 對應的欄位仍在 schema 裡被要求與驗證(拿掉要求會讓第八段的品質
+    # 跟著掉:模型是先想清楚全局才寫得好逐則);它們進
+    # `DELIBERATELY_UNRENDERED_TOP_LEVEL` 帳本,不是被遺忘。
 
     # 情境樹與觀察點:這是 Luna 特化相對於既有散文的實質增量
     tree = obj.get("scenario_tree") if isinstance(obj.get("scenario_tree"), dict) else {}

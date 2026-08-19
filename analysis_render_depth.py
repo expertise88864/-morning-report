@@ -16,18 +16,6 @@ def _s(v) -> str:
     return v.strip() if isinstance(v, str) else ""
 
 
-#: 量級的中文。**`unknown` 不寫成「影響有限」** —— 那正好是使用者抱怨的
-#: 那種形容詞;誠實的說法是「量級判斷不出來」,後面接缺什麼資料。
-_BANDS = {"negligible": "量級可忽略", "small": "量級小", "moderate": "量級中等",
-          "large": "量級大", "unknown": "量級判斷不出來"}
-_RELS = {"reinforcing": "互相強化", "conflicting": "方向相反",
-         "competing_for_same_capacity": "互相排擠(搶同一段產能)",
-         "same_underlying_driver": "同一個底層驅動"}
-#: 因果步驟的可信度。**沒有證據的推論要看得出來**,否則整條鏈讀起來像事實。
-_STEP = {"fact": "", "inference": "(推論)", "scenario": "(情境)",
-         "unknown": "(資料不足)"}
-
-
 def _chain_line(chain: list) -> str:
     """因果鏈壓成一行:`A → B → C`。
 
@@ -98,58 +86,62 @@ def _blurb(row: dict) -> str:
 def news_subject(n: dict, packet=None) -> dict:
     """**這則新聞在講誰**:`{"label": 顯示用, "industry": 產業別, "name": 主體}`。
 
-    使用者 2026-08-18 定案:小標題要回到「哪間公司昨天發生什麼事」,
-    而不是一串偏多/偏空。主體的來源依序是:
-      1. 新聞自己的**編輯標註實體**(`entities`,人工標的代號/公司名);
-      2. `affected_assets` 的第一個標的(模型宣告的受影響對象)。
-    台股查 `tw_universe` 拿名稱、代號、產業別與一句簡介。
-    **查不到就用原字串**,不編造公司名;完全沒有主體時回空 label,
-    呼叫端會退回沒有小標題的舊排版(編一個公司名比沒有標題糟得多)。
+    **候選要在標題裡被指名才算主體**(2026-08-19 生產:五則新聞的小標題
+    全是「台積電」—— 總經新聞被 `Google:2330` 查回來就帶著 2330 的編輯
+    標註,而這裡沒驗證就採用。那與事件層修過的 P1-1 是**同一種病**:
+    「跟誰有關」被當成「在講誰」)。判準與事件層同一個函式
+    (`news_events.mentions_entity`),不在這裡重寫一份。
+
+    指不出來就沒有公司主體 —— 呼叫端會用**新聞標題本身**當小標題,
+    那正是使用者要的:「小標題是要昨日新聞的標題,不是都台積電」。
     """
     idx = _universe_index(packet)
     by_id = {_s(x.get("source_item_id")): x for x in ((packet or {}).get("news") or [])
              if isinstance(x, dict)}
     item = by_id.get(_s(n.get("source_item_id"))) or {}
+    title = _s(item.get("title"))
     cands = [_s(e) for e in (item.get("entities") or []) if _s(e)]
     cands += [_s(a.get("asset_id")) for a in (n.get("affected_assets") or [])
               if isinstance(a, dict) and _s(a.get("asset_id"))]
     try:
+        import news_events as _ne
+    except Exception:                   # noqa: BLE001 - 判準載不到就沒有主體
+        _ne = None
+    try:
         import instrument_registry as _ir
-    except Exception:                   # noqa: BLE001 - 查不到就只認 universe
+    except Exception:                   # noqa: BLE001
         _ir = None
-    # **一個候選一個候選地問完兩張表,再換下一個候選**(外審 2026-08-18)。
-    # 先前是「先拿所有候選掃 universe,掃不到再拿所有候選問 registry」——
-    # 那讓**查得到的地方**壓過了上面寫的候選順序:`entities=["ASML"]` 而
-    # `affected_assets` 是 2330 時,ASML 不在當日台股 universe 裡,於是
-    # 小標題寫成「台積電」,而標題與編輯標註講的都是 ASML。
+    try:
+        import company_profiles as _cp
+    except Exception:                   # noqa: BLE001
+        _cp = None
     for c in cands:
         row = idx.get(c)
-        if row:
-            code, name, blurb = _s(row.get("code")), _s(row.get("name")), _blurb(row)
+        if row is not None:
+            # 台股:別名 = universe 宣告的公司名。**標題沒指名就跳過。**
+            code = _s(row.get("code")) or c
+            kn = {code: (_s(row.get("name")),)}
+            if _ne is None or not _ne.mentions_entity(title, code, kn):
+                continue
+            name, blurb = _s(row.get("name")), _blurb(row)
             label = f"{name}（{code}" + (f",{blurb}" if blurb else "") + "）"
             return {"label": label, "industry": _s(row.get("industry")), "name": name}
-        # 不在當日 universe 的:**只有個股能當主體**。
-        # 「費半」「加權指數」「WTI」不是「哪間公司昨天發生什麼事」的答案
-        # —— 拿指數當小標題,讀者看到的是一個沒有主體的標題。範疇問
-        # `instrument_registry`(它就是回答「這是哪一種標的」的那個模組)。
-        if _ir is not None:
-            try:
-                _cid, scope, status = _ir.resolve_status(c)
-            except Exception:           # noqa: BLE001 - 單一候選查壞不影響其他
-                continue
-            if scope == "equity" and status != "invalid":
-                # 外國個股的側寫是**宣告**(`company_profiles`),台股那半
-                # 來自 universe 的手寫簡介 —— 兩邊都不是從新聞猜出來的。
-                # 沒宣告就只寫名字與代號,不編造這家公司在做什麼。
-                try:
-                    import company_profiles as _cp
-                    disp, prof = _cp.display_name(c), _cp.profile_of(c)
-                except Exception:       # noqa: BLE001 - 側寫載不到不毀渲染
-                    disp, prof = c, ""
-                label = (f"{disp}（{c}" + (f",{prof}" if prof else "") + "）"
-                         if disp != c else
-                         (f"{c}（{prof}）" if prof else c))
-                return {"label": label, "industry": "", "name": c}
+        # 外國個股:範疇問 registry,別名 = 宣告的顯示名 + 代號本身。
+        if _ir is None or _ne is None:
+            continue
+        try:
+            _cid, scope, status = _ir.resolve_status(c)
+        except Exception:               # noqa: BLE001 - 單一候選查壞不影響其他
+            continue
+        if scope != "equity" or status == "invalid":
+            continue
+        disp = _cp.display_name(c) if _cp else c
+        if not _ne.mentions_entity(title, c, {c: (disp, c)}):
+            continue
+        prof = _cp.profile_of(c) if _cp else ""
+        label = (f"{disp}（{c}" + (f",{prof}" if prof else "") + "）"
+                 if disp != c else (f"{c}（{prof}）" if prof else c))
+        return {"label": label, "industry": "", "name": c}
     return {"label": "", "industry": "", "name": ""}
 
 
@@ -270,85 +262,80 @@ def _attribution(n: dict, packet=None) -> str:
 
 
 def _news_line(n: dict, packet=None) -> str:
-    """一則新聞:**哪間公司、昨天發生什麼事**,底下才接傳導與失效條件。
+    """一則新聞 = **一小段散文**(2026-08-19 使用者定案)。
 
-    **2026-08-18 使用者定案(第三次要求)**:小標題要回到舊版的寫法 ——
-    「公司(代號,簡介):昨天發生的那則新聞」是**客觀事實**,由新聞標題
-    與 `tw_universe` 的宣告資料組出來,不是模型的判斷;模型的判斷寫在
-    下面那一段敘述,再下面才是一行傳導、一行什麼會推翻它。
+    形狀:
 
-    先前整段由「偏多/偏空、量級、時間窗」開頭 —— 使用者的原話是
-    「而不是整篇都是偏多什麼的」。逐標的方向沒有消失,它在
-    「各標的合計影響」那一段(那一段的名字就是在講方向)。
+        **小標題**:昨天發生什麼事(發布者)。為什麼重要。
+        傳導:A → B → C;若 X,此判斷不成立。2330:一階、二階。[A 級・佐證]
+
+    * **小標題優先是公司**(標題有指名時),否則就是**新聞標題本身** ——
+      使用者原話:「小標題是要昨日新聞的標題,不是都台積電」。
+    * 傳導 / 什麼會推翻它 / 逐標的影響**併進同一段**,不再排成清單 ——
+      使用者原話:「全部整合成一小段落語句敘述即可」。
+      內容一樣都在,少的是排版的行數。
     """
     body = _s(n.get("why_it_matters"))
     if not body:
         return ""
     subject = news_subject(n, packet)
     headline = _headline_of(n, packet, subject.get("name") or "")
-    # **舊版的寫法:公司、昨天發生什麼事、分析,在同一段裡**
-    # (2026-08-18 使用者貼了舊信要求照做):
-    #     台積電（2330,全球晶圓代工龍頭…）:熊本廠測得 7.1 強震…（鉅亨台股）。
-    #     短期產線停機天數將影響 Q3 出貨節奏…[A 級・信心:中]
-    # 底下才接傳導 / 什麼會推翻它 / 後續影響。
-    # 主體查不到就不硬掰一個公司名 —— 直接從新聞本身寫起。
-    lead = f"**{subject['label']}**:" if subject.get("label") else ""
-    # **出處接在句末標點之前**(外審 2026-08-18 P3):標題自帶「。」「!」「?」
-    # 時直接串會排成「公司公布財報。(鉅亨網)。」—— 標點先拿掉,
-    # 由 `_join_sentence` 統一補一個。
-    what = (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + _attribution(n, packet))
-            if headline else "")
-    tail = _credibility(n, packet)
-    out = [lead + what + body + tail]
-    chain = [st for st in (n.get("mechanism_steps") or []) if isinstance(st, dict)]
-    line = _chain_line(chain)
-    if line:
-        out.append("  - 傳導:" + line)
+    attribution = _attribution(n, packet)
+    if subject.get("label"):
+        lead = (f"**{subject['label']}**:"
+                + (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + attribution)
+                   if headline else ""))
+    elif headline:
+        # 沒有公司主體(總經/利率/油價…):**新聞標題就是小標題**。
+        lead = _join_sentence(f"**{headline.rstrip(_TERMINAL_MARKS)}**" + attribution)
+    else:
+        lead = ""
+    parts = [lead + body if lead else body]
+    chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
+                         if isinstance(st, dict)])
+    if chain:
+        parts.append(f"傳導:{chain}。")
     inval = _s(n.get("invalidation_signal"))
     if inval:
-        out.append(f"  - 什麼會推翻它:{inval}")
-    # **佐證由 packet 說,不由模型說**(外審 2026-08-18 第三輪的延伸):
-    # 先前句尾那個「(單一來源)」來自模型的 `corroboration_assessment`,
-    # 而同一件事 packet 分群時就算好了(而且 schema 自己寫著「以 EVIDENCE 的
-    # `news_clusters[].corroboration` 為準」)。兩處寫同一件事、其中一處是
-    # 模型抄的 —— 留 packet 那份,放進行尾的標籤裡。
-    # **受影響標的與後續影響仍要寫,但不再逐檔掛方向詞**(2026-08-18):
-    # 使用者的原話是「不是整篇都是偏多什麼的」—— 方向、幅度與時間窗在
-    # 「各標的合計影響」那一段(那一段的名字就是在回答方向)。
-    # 這裡留下的是別處沒有的兩件事:一階/二階影響(使用者要的「後續
-    # 影響、脈絡」),以及**哪一個只是推測性傳導**(第三十二輪 P1-3
-    # 的揭露不能因為改版而消失)。
-    out.extend(_assets(n, packet))
-    return chr(10).join(out)
+        parts.append(_join_sentence(f"若{inval},此判斷不成立"))
+    assets = _assets_prose(n, packet)
+    if assets:
+        parts.append(assets)
+    tail = _credibility(n, packet)
+    if tail:
+        parts.append(tail)
+    # 同一段:`_md_to_html` 會把相鄰的非空行併進同一個 <p>,
+    # 這裡直接用空格接起來,語意與排版一致。
+    return " ".join(parts)
 
 
-def _assets(n: dict, packet=None) -> list:
+def _assets_prose(n: dict, packet=None) -> str:
+    """逐標的影響壓成**句子**:`2330:一階、二階;00662:…。`
+
+    〔推測性傳導〕的揭露不因改排版而消失(第三十二輪 P1-3)——
+    判準仍回 validator 問,不在渲染層自己判一份。
+    """
+    try:
+        import analysis_validate as _av9
+    except Exception:                   # noqa: BLE001 - 標籤失敗不毀渲染
+        _av9 = None
     rows = []
     for a in (n.get("affected_assets") or []):
         if not isinstance(a, dict) or not _s(a.get("asset_id")):
             continue
-        # **兩層傳導要分得開**(第三十二輪 P1-3,選項 B):只靠當日
-        # universe 放行的標的,讀者要能自行折價 —— universe 證明它是
-        # 真股票,證明不了這件事真的會傳導到它。判準回 validator 問
-        # (`speculative_transmission`),不在渲染層自己判一份。
-        _spec = ""
-        try:
-            import analysis_validate as _av9
-            if _av9.speculative_transmission(_s(a.get("asset_id")), n, packet):
-                _spec = "〔推測性傳導,未宣告的供應鏈關係〕"
-        except Exception:               # noqa: BLE001 - 標籤失敗不毀渲染
-            _spec = ""
-        # **2026-08-18:方向/幅度/時間窗整組拿掉。** 那三個標籤逐檔重複,
-        # 正是使用者說的「整篇都是偏多什麼的」;同樣的三件事在
-        # 「各標的合計影響」那一段有一次、而且是合計後的版本。
-        head = _s(a.get("asset_id")) + _spec
-        # 兩段影響是**兩句話**,先前用「、」黏起來會接出「。、」
-        # (2026-08-17 生產信裡看得到)。
-        body = "".join(_join_sentence(x) for x in
-                       (_s(a.get("first_order_effect")),
-                        _s(a.get("second_order_effect"))) if x)
-        rows.append(f"  - {head}:{body}" if body else f"  - {head}")
-    return rows
+        aid = _s(a.get("asset_id"))
+        spec = ""
+        if _av9 is not None:
+            try:
+                if _av9.speculative_transmission(aid, n, packet):
+                    spec = "〔推測性傳導〕"
+            except Exception:           # noqa: BLE001
+                spec = ""
+        effects = "、".join(x.rstrip("。") for x in
+                            (_s(a.get("first_order_effect")),
+                             _s(a.get("second_order_effect"))) if x)
+        rows.append(f"{aid}{spec}:{effects}" if effects else f"{aid}{spec}")
+    return _join_sentence(";".join(rows)) if rows else ""
 
 
 #: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話
@@ -360,96 +347,3 @@ def _join_sentence(text: str) -> str:
     """接成句子:自己有句末標點就不再補一個。"""
     t = str(text or "").strip()
     return t if (not t or t[-1] in "。！？;;") else t + "。"
-
-
-def _tension_head(tid: str, packet) -> str:
-    """張力本身長什麼樣 —— **由 renderer 從 packet 回查,不讓模型重述數字**。
-
-    第十八輪:信裡連著三個「矛盾調和:…(偏向前者)」,而讀者無從知道
-    「前者」是 QQQ、是開盤預測、還是產業中位數。調和說得再好,
-    看不出在調和什麼就等於沒說。
-    """
-    if not isinstance(packet, dict):
-        return ""
-    for it in ((packet.get("signal_tensions") or {}).get("items") or []):
-        if not isinstance(it, dict) or f"tension:{it.get('tension_id')}" != tid:
-            continue
-
-        def _one(side):
-            side = side if isinstance(side, dict) else {}
-            v, u = side.get("value"), _s(side.get("unit"))
-            num = (f"{v:+.2f}".rstrip("0").rstrip(".") if isinstance(v, float)
-                   else f"{v:+}" if isinstance(v, int) else "")
-            return f"{_s(side.get('label'))} {num}{'%' if u == '%' else ' ' + u}".strip()
-        return (f"【{_s(it.get('topic'))}】{_one(it.get('left'))} ↔ "
-                f"{_one(it.get('right'))}")
-    return ""
-
-
-def _synthesis(cms: dict, packet=None) -> str:
-    """橫向綜合。**這是這次改版要的東西** —— 訊號之間的關係,
-    而不是把各市場各寫一句。"""
-    if not isinstance(cms, dict):
-        return ""
-    rows = []
-    for key, name in (("reinforcing_signals", "互相強化"),
-                      ("conflicting_signals", "互相抵銷")):
-        vals = [_s(x) for x in (cms.get(key) or []) if _s(x)]
-        if vals:
-            rows.append(f"- **{name}**:" + "、".join(vals[:5]))
-    # Commit E:**共用底層驅動的說明要進信。** 「三個獨立訊號同向」與
-    # 「同一件事的三個表現」對讀者是完全不同的訊息 —— schema 收了、
-    # 驗證器擋了,而先前渲染層一個字都沒印。
-    for x in (cms.get("shared_driver_notes") or []):
-        if not isinstance(x, dict):
-            continue
-        why = _s(x.get("why_not_double_counted"))
-        cids = [_s(c) for c in (x.get("cluster_ids") or []) if _s(c)]
-        if why and len(cids) >= 2:
-            rows.append(f"- **這 {len(cids)} 件事共用同一個驅動**,"
-                        f"不重複計權:{why}")
-    if _s(cms.get("dominant_driver")):
-        rows.append(f"- **今天的主導因子**:{_s(cms.get('dominant_driver'))}"
-                    + (f" —— {_s(cms.get('why_it_dominates'))}"
-                       if _s(cms.get("why_it_dominates")) else ""))
-    for key, name in (("net_effect_intraday", "即日"),
-                      ("net_effect_next_days", "未來 1–5 日")):
-        if _s(cms.get(key)):
-            rows.append(f"- **{name}**:{_s(cms.get(key))}")
-    src = [_s(x) for x in (cms.get("funds_moving_from") or []) if _s(x)]
-    dst = [_s(x) for x in (cms.get("funds_moving_to") or []) if _s(x)]
-    if src or dst:
-        rows.append("- **資金流向**:"
-                    + ("、".join(src[:4]) if src else "(來源不明)")
-                    + " → " + ("、".join(dst[:4]) if dst else "(去向不明)"))
-    # 第十七輪 P1-3:**逐筆張力的調和要看得到。** 只印一句「訊號互有矛盾」
-    # 等於沒有處理 —— 而那正是這個結構要取代的東西。
-    # 第十八輪 P1-7:同向訊號的解讀也要進信 —— 只印矛盾的話,
-    # 「兩個訊號其實是同一個底層驅動」這種話讀者永遠看不到。
-    for r in (cms.get("alignment_readings") or []):
-        if not isinstance(r, dict) or not _s(r.get("interpretation")):
-            continue
-        head = _tension_head(_s(r.get("alignment_id")), packet)
-        if head:
-            rows.append(f"  - {head}")
-        extra = _s(r.get("marginal_information"))
-        risk = _s(r.get("double_count_risk"))
-        rows.append(f"  - **同向訊號**:{_s(r.get('interpretation'))}"
-                    + (f";增量資訊:{extra}" if extra else "")
-                    + (f"。會不會重複計算:{risk}" if risk else ""))
-    for r in (cms.get("tension_resolutions") or []):
-        if not isinstance(r, dict) or not _s(r.get("resolution")):
-            continue
-        side = {"left": "偏向前者", "right": "偏向後者",
-                "neither": "兩邊都不夠強"}.get(_s(r.get("dominant_side")), "")
-        head = _tension_head(_s(r.get("tension_id")), packet)
-        if head:
-            rows.append(f"  - {head}")
-        rows.append(f"  - **矛盾調和**:{_s(r.get('resolution'))}"
-                    + (f"({side})" if side else "")
-                    + (f";{_s(r.get('why'))}" if _s(r.get("why")) else "")
-                    + (f"。什麼情況分出勝負:{_s(r.get('decision_rule'))}"
-                       if _s(r.get("decision_rule")) else ""))
-    if _s(cms.get("what_would_flip_it")):
-        rows.append(f"- **什麼會讓它翻盤**:{_s(cms.get('what_would_flip_it'))}")
-    return "\n".join(rows)

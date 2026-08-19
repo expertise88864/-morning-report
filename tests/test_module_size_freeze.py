@@ -405,7 +405,9 @@ MODULE_CEILINGS = {
     # 第十九輪:strict 預算拆去 `schema_budget`(provider 限制 ≠ 契約形狀,
     # 而且前者超標時測試全綠、真實 API 整份拒收)。
     # Commit C:`key_drivers[].cluster_id`(SCHEMA v11)。實測 382。
-    "analysis_schema.py": 500,
+    # 2026-08-19:`taiwan_policy`(legacy 的「台灣本地動態」在特化 schema
+    # 沒有對應欄位,那一段整個消失 —— 使用者連兩天反映)。實測 511 行。
+    "analysis_schema.py": 530,
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、
@@ -614,7 +616,9 @@ MODULE_CEILINGS = {
     # CI #502:need 集合改讀 required_disclosures(單一真相來源)
     # 第三十一輪外審:鏈交接拆 fail-open(泛用詞清單)
     # 第三十二輪 P1-3 選項 B:傳導分層+推測性標籤
-    "analysis_validate.py": 1040,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    # 2026-08-19:taiwan_policy 的引用檢查(捏造的 source_item_id 不得
+    # 讓政策「看起來有根據地」進信)。實測 1045 行。
+    "analysis_validate.py": 1070,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度
@@ -636,7 +640,9 @@ MODULE_CEILINGS = {
     # 分家的話「提示說夠深、指標說不夠深」會同時成立。
     # 分析面縱深第二批:重述檢查本體搬去 analysis_recap,這裡只剩
     # 三行委派 —— 棘輪跟著**降**(465→452 實測)。
-    "analysis_depth.py": 460,
+    # 2026-08-19:條數 advisory(素材 ≥20 則而只分析 <6 則 → 加深)。
+    # 實測 464 行。
+    "analysis_depth.py": 480,
     # 第十八輪:階段與深度指標拆去 `analysis_stages` —— **後果不同**:
     # 深度提示錯了只是多跑一次;階段判斷錯了會讓收件人讀到假的完整度。
     # 第二十輪 P1-3:實測 230 —— 加的是 `is_numeric_anchor`

@@ -700,6 +700,12 @@ def validate(obj, evidence_ids) -> list:
                 f"top_news_analysis 對 {sid!r} 寫了 {n_times} 段 —— "
                 "同一則新聞只該有一個分析單位")
     own_ids = {str(n.get("source_item_id") or "") for n in news}
+    # **政策段的引用也要真的存在**(外審 2026-08-19):`taiwan_policy` 是
+    # v20 新欄位,漏了這一關的話,一個捏造的 `source_item_id` 會讓政策與
+    # 它宣稱的影響**看起來有根據地**進信 —— 那正是引用檢查存在的理由。
+    for i, tpol in enumerate((obj.get("taiwan_policy") or [])):
+        if isinstance(tpol, dict):
+            _check_ids([tpol.get("source_item_id")], f"taiwan_policy[{i}]")
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         _check_ids([n.get("source_item_id")], where)

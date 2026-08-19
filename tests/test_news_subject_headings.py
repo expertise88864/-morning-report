@@ -94,19 +94,39 @@ def test_the_fallback_blurb_does_not_repeat_the_name():
     assert head.startswith("**鴻海（2317,其他電子業）**:"), head
 
 
-def test_an_index_is_not_a_subject():
-    """「費半」「加權指數」不是「哪間公司昨天發生什麼事」的答案。
+def test_a_macro_news_headline_is_its_own_heading():
+    """**沒有公司主體時,新聞標題本身就是小標題**(2026-08-19 使用者:
+    「小標題是要昨日新聞的標題,不是都台積電」)。
 
-    總經/指數新聞仍然有小標題 —— 使用者要的是「小標題先客觀敘述昨日
-    發生什麼事情」,新聞標題自己就是那件事。這條擋的是**把指數當公司**:
-    「費半:費半收漲 2.1%」那種寫法會讓讀者以為費半是一間公司。
+    「費半收漲 2.1%」不是任何一家公司的新聞 —— 粗體印標題,不掛公司名。
     """
     pk = _packet(news=[{"source_item_id": "x1", "title": "費半收漲 2.1%",
                         "entities": ["費半"]}])
     md = ard._news_line(_news("x1", "費半"), pk)
-    assert not md.startswith("**"), md
-    assert md.startswith("費半收漲 2.1%。"), md
+    assert md.startswith("**費半收漲 2.1%**"), md
     assert ard.news_subject(_news("x1", "費半"), pk)["name"] == "", md
+
+
+def test_a_tagged_company_the_title_never_names_is_not_the_subject():
+    """**這是 2026-08-19 生產的直接反例**:五則新聞的小標題全是「台積電」。
+
+    總經新聞被 `Google:2330` 查回來就帶著 2330 的編輯標註,而主體判定
+    沒驗證就採用 —— 與事件層修過的 P1-1 是同一種病(「跟誰有關」被當成
+    「在講誰」)。判準與事件層同一個函式:標題要指名才算主體。
+    """
+    for title in ("美債殖利率急升成亞洲AI股最大風險！台韓科技股首當其衝",
+                  "華爾街為何收回Fed升息預期？9月按兵不動機率升至69%",
+                  "〈能源盤後〉美伊和談希望消退 原油收逾3週新高"):
+        pk = _packet(news=[{"source_item_id": "m1", "title": title,
+                            "entities": ["2330"]}])
+        n = _news("m1", "2330")
+        assert ard.news_subject(n, pk)["name"] == "", title
+        md = ard._news_line(n, pk)
+        assert "台積電（2330" not in md, md
+        assert md.startswith(f"**{title}**"), md
+    # 反向:標題真的指名就照舊掛公司
+    pk = _packet()
+    assert ard.news_subject(_news("n1", "2330"), pk)["name"] == "台積電"
 
 
 def test_no_subject_means_no_invented_heading():
@@ -127,17 +147,17 @@ def test_the_subject_comes_from_the_editorial_entities_first():
 
 # ------------------------------------------------------------ 敘述與兩行標籤
 
-def test_the_narrative_sits_under_the_heading():
-    """小標題底下是敘述,再底下才是傳導與什麼會推翻它。
+def test_the_item_is_one_prose_paragraph():
+    """一則新聞 = **一小段散文**(2026-08-19 使用者:「傳導 什麼會推翻他
+    股票如2330/00662這些全部整合成一小段落語句敘述即可」)。
 
-    2026-08-18 第三次校正:公司與新聞同一段(舊信的寫法),所以第一行
-    就是完整的那一段;傳導與什麼會推翻它仍各自成行。
+    內容一樣都在(傳導、失效條件、逐標的影響),少的是排版的行數。
     """
-    lines = ard._news_line(_news("n1", "2330"), _packet()).splitlines()
-    assert ("CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。"
-            in lines[0]), lines
-    assert lines[1].strip().startswith("- 傳導:"), lines
-    assert lines[2].strip().startswith("- 什麼會推翻它:"), lines
+    md = ard._news_line(_news("n1", "2330"), _packet())
+    assert chr(10) not in md, md
+    assert "傳導:起點 → 終點" in md, md
+    assert "若什麼情況代表判斷錯了,此判斷不成立" in md, md
+    assert "2330:一階影響、二階影響。" in md, md
 
 
 def test_no_direction_words_per_asset():
@@ -194,22 +214,6 @@ def test_the_reservations_are_not_filed_under_a_sector():
 
 # ------------------------------------------------- 外審 2026-08-18 的兩個 P2
 
-def test_the_heading_and_the_narrative_are_separate_html_blocks():
-    """**信裡看到的才算數。**
-
-    `_md_to_html` 是逐行的:相鄰的非空行會被併成同一個 `<p>`,於是
-    「**小標題** 敘述接在後面」—— 而使用者要的是「在公司發生新聞的
-    **下方**寫一段」。這條穿過真正的 HTML 轉譯器,不只看中間的 Markdown。
-    """
-    import render_utils as ru
-    html = ru._md_to_html(ard._news_line(_news("n1", "2330"), _packet()))
-    assert ("<p><strong>台積電（2330,晶圓代工龍頭）</strong>:"
-            "CoWoS 產能明年再擴一倍。這件事之所以重要的一段敘述。") in html, html
-    assert "</p>" in html.split("這件事之所以重要的一段敘述。")[1][:40], html
-    # 傳導那幾行仍要是自己的清單,不得被吸進同一個 <p>
-    assert "<ul>" in html and "<li>傳導:起點 → 終點</li>" in html, html
-
-
 def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
     """**候選順序不能被「哪張表查得到」壓過。**
 
@@ -226,51 +230,6 @@ def test_the_editorial_entity_wins_even_when_it_is_a_foreign_equity():
 
 
 # ------------------------------------------- 九、今日市場關注與預測(合併段)
-
-def test_a_repeated_sentence_is_written_once_in_the_market_section():
-    """**內文重複的就不用一直寫了**(2026-08-18 使用者原話)。
-
-    五段併成一段之後,同一句「費半走強帶動台股電子」會在綜合、連動、
-    台股三個小段各出現一次 —— 那正是使用者要拿掉的東西。逐字重複才濾,
-    不做語意判斷(語意去重會把兩件不同的事誤刪)。
-    """
-    import fixtures_analysis as fx
-    obj = fx.valid_analysis()
-    dup = "費半走強帶動台股電子開盤。"
-    obj["global_market"]["summary"] = dup
-    obj["taiwan_market"]["summary"] = dup
-    text = ar.render(obj)
-    assert text.count(dup) == 1, text[text.index(ar.SECTION_MARKET):]
-
-
-def test_a_different_sentence_is_not_swallowed_by_the_dedup():
-    """反向:去重不得把**不同的**句子吃掉(誤刪比重複糟)。"""
-    import fixtures_analysis as fx
-    obj = fx.valid_analysis()
-    obj["global_market"]["summary"] = "美股收紅,費半領漲。"
-    obj["taiwan_market"]["summary"] = "台股量能回升,外資轉買。"
-    text = ar.render(obj)
-    assert "美股收紅,費半領漲。" in text
-    assert "台股量能回升,外資轉買。" in text
-
-
-def test_each_market_subsection_is_one_html_list():
-    """小標題與它底下那幾行是**一個區塊**。
-
-    `_md_to_html` 逐行處理,遇到空行就收掉 `<ul>` —— 逐條之間空一行會讓
-    每一條各自變成一個清單(2026-08-18 自測看得到)。
-    """
-    import fixtures_analysis as fx
-    import render_utils as ru
-    text = ar.render(fx.valid_analysis())
-    seg = text[text.index("### " + ar.SUBSECTION_TW):]
-    seg = seg[:seg.index("### " + ar.SUBSECTION_PRICED)]
-    html = ru._md_to_html(seg)
-    assert html.count("<ul>") == 1, html
-    assert html.count("<li>") == 3, html
-
-
-# ------------------------------- 第三次校正:側寫 / 來源 / 佐證等級與信心
 
 def test_the_hand_written_company_profile_survives():
     """**五十檔手寫的業務簡介不得被丟掉。**
@@ -292,7 +251,8 @@ def test_the_hand_written_company_profile_survives():
 def test_a_foreign_company_gets_its_declared_profile():
     """外國個股沒有 universe 那種資料源 —— 側寫是**宣告**(`company_profiles`)。
     沒宣告就只寫代號,不編造這家公司在做什麼。"""
-    pk = {"news": [{"source_item_id": "f1", "title": "Q4 財報優於預期",
+    # 2026-08-19:標題要指名主體(顯示名或代號都算)—— fixture 跟上判準。
+    pk = {"news": [{"source_item_id": "f1", "title": "Microsoft Q4 財報優於預期",
                     "entities": ["MSFT"]}]}
     sub = ard.news_subject(_news("f1", "MSFT"), pk)
     assert sub["label"].startswith("Microsoft（MSFT,"), sub
@@ -300,6 +260,7 @@ def test_a_foreign_company_gets_its_declared_profile():
     # 宣告過是標的、但沒有側寫的名字:只寫代號
     assert ard.news_subject(_news("f2", "MTD"),
                             {"news": [{"source_item_id": "f2",
+                                       "title": "MTD beats estimates",
                                        "entities": ["MTD"]}]})["label"] == "MTD"
 
 
@@ -324,13 +285,14 @@ def test_the_publisher_is_named():
 def test_an_aggregator_alias_is_not_printed_as_a_publisher():
     """`Google:2330`、`類股-金融-台股` 是內部標籤,印給讀者看沒有意義。"""
     for alias in ("Google:2330", "類股-金融-台股"):
-        pk = {"news": [{"source_item_id": "p2", "title": "某公司發布財報",
+        pk = {"news": [{"source_item_id": "p2", "title": "台積電發布財報",
                         "source": alias, "entities": ["2330"]}],
               "tw_universe": [{"code": "2330", "name": "台積電",
                                "industry": "半導體業", "desc": "晶圓代工龍頭"}]}
         line = ard._news_line(_news("p2", "2330"), pk)
         assert alias not in line, line
-        assert "（" not in line.split("**:")[1][:40], line
+        # 出處括號不得出現(那個 source 是內部標籤)—— 標題後面直接接句號
+        assert "發布財報。" in line, line
 
 
 def _pk_conf(**cluster):
@@ -374,7 +336,7 @@ def test_the_tag_does_not_claim_confidence_in_the_analysis():
     """
     line = ard._news_line(_news("c1", "2330"), _pk_conf(independent_sources=3))
     assert "信心" not in line, line
-    assert "傳導:" in line and "什麼會推翻它:" in line, line
+    assert "傳導:" in line and "此判斷不成立" in line, line
 
 
 def test_the_tag_comes_only_from_the_packet():

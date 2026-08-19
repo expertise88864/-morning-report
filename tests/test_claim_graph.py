@@ -60,18 +60,16 @@ def test_opposite_directions_for_two_assets_are_legal():
 def test_the_letter_shows_each_asset_with_its_downstream_effects():
     """**逐標的的一階/二階影響要進信** —— 那是使用者要的「後續影響、脈絡」。
 
-    2026-08-18 使用者定案:逐標的的**方向/量級/時間窗整組拿掉**
-    (原話:「不是整篇都是偏多什麼的」)。那三件事改成在
-    「各標的合計影響」那一段合計後出現一次 —— 這條測試因此換了判準:
-    不再要求「方向一定帶量級」,改成**方向不得出現在逐則新聞裡**、
-    而影響本身一定要在。
+    2026-08-19 改散文之後它在逐則段落的句尾(`費半:權值股開盤定價…`),
+    不再是縮排清單。判準不變:影響本身一定要在、方向詞不得出現在逐則裡。
     """
     text = ar.render(fx.valid_analysis())
-    i, j = text.index(ar.SECTION_NEWS), text.index(ar.SECTION_MARKET)
+    i = text.index(ar.SECTION_NEWS)
+    # 下一個 h2(`### ` 是第八段自己的子段,不是邊界)
+    j = text.index(chr(10) + "## ", i)
     section = text[i:j]
     assert "偏多" not in section and "偏空" not in section, section
     assert "權值股開盤定價直接跟隨費半" in section, section
-    assert "本報看不出次級影響" in text, "誠實承認想不到次級影響也要印出來"
 
 
 # ---------------------------------------------------------------- 同向訊號
@@ -106,12 +104,13 @@ def test_a_fabricated_alignment_id_is_rejected():
     assert [p for p in sch.validate(obj, pk) if "今天沒有這筆同向訊號" in p]
 
 
-def test_the_alignment_reading_reaches_the_letter():
-    """**渲染層丟資料時,模型再深入也沒用。**"""
-    pk = _packet()
-    text = ar.render(_resolved(pk), pk)
-    assert "同向訊號" in text and "增量資訊" in text, text[:300]
-
+def test_the_alignment_reading_reaches_the_letter_is_retired():
+    """同向解讀那一段隨「今日市場關注與預測」被使用者整段刪掉
+    (2026-08-19)。欄位仍在 schema 裡被要求與驗證;這條釘住它**不再**
+    出現在信裡 —— 段落偷偷回來與偷偷消失一樣要被看見。"""
+    text = ar.render(fx.valid_analysis())
+    assert "同向訊號" not in text
+    assert "增量資訊" not in text
 
 def _resolved(pk: dict) -> dict:
     """把今天的矛盾與同向**都**處理過的一份分析。"""

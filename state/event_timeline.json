@@ -33,7 +33,7 @@
   ],
   "latest_summary": "",
   "object": "",
-  "subject_basis": "unverified"
+  "subject_basis": "alias"
  },
  "cybersecurity:cyberattack:AAPL:2026-08": {
   "first_seen": "2026-08-18",
@@ -127,7 +127,7 @@
    "us"
   ],
   "entity": "International Criminal Court",
-  "subject_basis": "unverified",
+  "subject_basis": "alias",
   "subjects": [
    "International Criminal Court"
   ],
@@ -169,7 +169,7 @@
    "駐軍"
   ],
   "entity": "Pentagon",
-  "subject_basis": "unverified",
+  "subject_basis": "alias",
   "subjects": [
    "Pentagon"
   ],
@@ -199,7 +199,7 @@
    "who"
   ],
   "entity": "俄羅斯",
-  "subject_basis": "unverified",
+  "subject_basis": "alias",
   "subjects": [
    "俄羅斯"
   ],
@@ -233,7 +233,7 @@
    "面進"
   ],
   "entity": "伊朗",
-  "subject_basis": "unverified",
+  "subject_basis": "alias",
   "subjects": [
    "伊朗"
   ],
@@ -267,7 +267,7 @@
    "飛彈"
   ],
   "entity": "阿聯",
-  "subject_basis": "unverified",
+  "subject_basis": "literal",
   "subjects": [
    "阿聯"
   ],
@@ -275,84 +275,33 @@
   "action": "",
   "identity_schema": 12
  },
- "export_controls:export_control:中國:2026-08": {
-  "first_seen": "2026-08-19",
+ "geopolitical:北韓:2026-08": {
+  "first_seen": "2026-08-20",
   "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "陸持續收緊稀土出口管制！日本電動車、半導體供應鏈面臨危機",
-  "latest_summary": "",
-  "object": "中國",
-  "incident_tokens": [
-   "供應",
-   "出口",
-   "動車",
-   "半導",
-   "危機",
-   "口管",
-   "土出",
-   "導體",
-   "應鏈",
-   "持續",
-   "收緊",
-   "日本",
-   "本電",
-   "稀土",
-   "管制",
-   "緊稀",
-   "續收",
-   "臨危",
-   "鏈面",
-   "陸持",
-   "電動",
-   "面臨",
-   "體供"
-  ],
-  "entity": "中國",
-  "subject_basis": "unverified",
-  "subjects": [
-   "中國"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 12
- },
- "geopolitical:US-Iran War:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "美伊戰爭／60天談判期限到，川普不延長要伊朗舉白旗投降，德黑蘭放話「轉守為攻」，油價漲勢再起 - 今周刊",
+  "last_seen": "2026-08-20",
+  "latest_title": "川普：預計今年會晤金正恩　稱北韓有57枚強大核武",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
-   "60",
-   "不延",
-   "伊戰",
-   "伊朗",
-   "價漲",
-   "再起",
-   "判期",
-   "勢再",
-   "天談",
-   "守為",
+   "57",
+   "今年",
+   "大核",
    "川普",
-   "延長",
-   "德黑",
-   "戰爭",
-   "投降",
-   "放話",
-   "旗投",
-   "普不",
-   "朗舉",
-   "期限",
-   "油價",
-   "漲勢",
-   "為攻",
-   "白旗"
+   "年會",
+   "強大",
+   "晤金",
+   "會晤",
+   "枚強",
+   "核武",
+   "正恩",
+   "計今",
+   "金正",
+   "預計"
   ],
-  "entity": "US-Iran War",
-  "subject_basis": "unverified",
+  "entity": "北韓",
+  "subject_basis": "literal",
   "subjects": [
-   "US-Iran War"
+   "北韓"
   ],
   "event_type": "geopolitical",
   "action": "",

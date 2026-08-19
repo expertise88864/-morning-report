@@ -311,7 +311,12 @@ def test_stock_news_catalyst_direct_outweighs_supply_chain():
         "title": "台積電上修展望 訂單增加",
         "summary": "",
     }]
-    out = mr._stock_news_catalysts(snapshot, news, [])
+    # 生產形狀:事件由帶詞彙表的抽取建好再傳入(AST 測試釘住這個接線;
+    # Commit C 之後無詞彙表的候選要逐字出現才有主體)。
+    kn = {"2330": ("台積電",), "2382": ("廣達",), "NVDA": ("NVIDIA", "輝達")}
+    out = mr._stock_news_catalysts(
+        snapshot, news, [],
+        events=mr.extract_structured_events(news, [], known_names=kn))
     assert out["2330"]["score"] > out["2382"]["score"] > 0
 
 

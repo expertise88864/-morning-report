@@ -7,6 +7,7 @@ from typing import Optional
 
 from num_utils import _safe_number
 
+from news_rules import PERIOD_TOKEN as _PERIOD_TOKEN_SHARED
 from news_rules import (
     NEWS_NEGATIVE_TERMS,
     NEWS_POSITIVE_TERMS,
@@ -615,14 +616,38 @@ def resolve_subject(text: str, candidates, known_names=None) -> tuple:
         basis = mentions_entity(text, c, known_names)
         if basis:
             return c, basis
-        # **詞彙表沒收錄 ≠ 歸因錯了**(與 `state_migrations._named` 同一條規則)。
-        # 沒有別名可比對時我們**證明不了**它不是主體 —— 這時判它錯會讓
-        # 「詞彙表少一筆」變成「整條公司歸因消失」,而那比錯誤歸因更難察覺:
-        # 信裡會什麼都不說,而不是說錯。所以照舊採用,依據標成 `unverified`,
-        # 下游看得出這一筆沒有被證實過。
+        # **詞彙表外的候選要在文字裡逐字出現**(repo-wide 外審 2026-08-19
+        # P2:主體信任層級)。先前一律標 `unverified` 照舊採用 —— 於是
+        # 「合法的語意主體」(Pentagon 就在標題裡)與「模型自己取的名字」
+        # (US-Iran War)共用同一條路,後者成了持久化的 entity key。
+        # 逐字比對用與別名同一套規則(拉丁詞要詞邊界、中文子字串≥2 字);
+        # 出現 → 採用、依據標 `literal`;沒出現 → 跳過這個候選 ——
+        # 證明不了「在講它」的名字,不進 story key / timeline / 催化評分。
         if not ((known_names or {}).get(c)):
-            return c, "unverified"
+            if _literal_mention(text, c):
+                return c, "literal"
+            continue
     return "", ""
+
+
+#: 期間詞判準與 analysis_validate **共用同一份**(news_rules.PERIOD_TOKEN,
+#: r3:兩份已漂移過 —— 1Q/1H/CY25/2Q26 一邊擋、一邊放)。裸數字的排除是
+#: 這一側自己的:「成交量 3231 張」的 3231 是張數不是矽創;嚴格的
+#: `mentions_entity` 本來就拒裸數字(要括號),literal fallback 不得把
+#: 那條路重新打開。合法股票代號仍走括號代號規則。
+
+
+def _literal_mention(text: str, cand: str) -> bool:
+    """候選字串**自己**有沒有逐字出現在文字裡(規則與別名比對一致)。"""
+    a = str(cand or "").strip()
+    if len(a) < 2:
+        return False
+    if a.isdigit() or _PERIOD_TOKEN_SHARED.fullmatch(a):
+        return False
+    low = str(text or "").lower()
+    if _LATIN_ALIAS.fullmatch(a):
+        return _latin_alias_hit(low, a.lower())
+    return a.lower() in low
 
 
 def event_subject_key(title: str, entity: str = "",

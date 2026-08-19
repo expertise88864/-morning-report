@@ -28,7 +28,10 @@ import sys
 #: v8(2026-08-19):`validate` 對 `taiwan_policy[].source_item_id` 的
 #: 引用檢查 —— 指紋含驗證行為,政策引用這一關算行為改變。
 #: v9(2026-08-19 第四批):world_events/taiwan_local 的引用檢查。
-POSTPROCESS_VERSION = 9
+#: v10(v22,repo-wide 外審 2026-08-19 P1-B):schema 的 narrative_delta/
+#: macro_environment 換形狀(綁 prior_view_id 與 evidence_ids),修補與
+#: 驗證走的形狀跟著變 —— 行為雜湊變了就要升版,樣本才不混群。
+POSTPROCESS_VERSION = 10
 #: v2:段落語意修正+補回四欄位;v3:schema v2 深度渲染;
 #: v4(第十七輪 P1-3):逐筆張力調和進信 —— 只印「訊號互有矛盾」等於沒處理。
 #: v10(Commit C):`key_drivers` 多了 `cluster_id`,渲染的欄位集合

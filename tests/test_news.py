@@ -1563,15 +1563,18 @@ def test_every_feed_resolves_to_a_publisher_family():
 def test_deterministic_extractor_emits_events_for_all_tracked_codes():
     """批#39 r2:編輯標註的多代號關聯在**確定性路徑**也要生效——LLM 抽取
     關掉/無金鑰/預算不足/失敗時全都退回這條路,多公司歸因不能整個消失。"""
-    tracked = [lbl for _, lbl in mr.GOOGLE_NEWS_COMPANIES][:2]
+    # 生產形狀(Commit C 後抽取一定帶詞彙表):兩家都要**在文中被指名**
+    # 才各自成事件 —— 主體驗證與多代號關聯是同一條規則,不再有
+    # 「貼了標就算」的通道。
+    kn = {"2330": ("台積電",), "2317": ("鴻海",)}
     news = [{
-        "source": "鉅亨台股", "title": "兩家同時受影響的消息", "summary": "內容",
-        "published": "2026-07-25T00:00:00+00:00",
-        "company_label": tracked[0], "cnyes_stocks": [tracked[0], tracked[1], "9999"],
+        "source": "鉅亨台股", "title": "台積電與鴻海同受出口新規影響",
+        "summary": "內容", "published": "2026-07-25T00:00:00+00:00",
+        "company_label": "2330", "cnyes_stocks": ["2330", "2317", "9999"],
     }]
-    events = mr.extract_structured_events(news, [])
+    events = mr.extract_structured_events(news, [], known_names=kn)
     entities = {e["entity"] for e in events}
-    assert tracked[0] in entities and tracked[1] in entities, \
+    assert "2330" in entities and "2317" in entities, \
         f"第二個追蹤代號沒有產生事件:{entities}"
     assert "9999" not in entities, "未追蹤的代號不得產生事件"
 
@@ -1906,7 +1909,8 @@ def test_ambiguous_title_does_not_get_a_guessed_published():
             {"title": title, "source": "B報", "entity": "2330",
              "event_type": "orders", "direction": 1,
              "published": "2026-07-29T01:00:00+00:00"}]
-    llm = [{"title": title, "entity": "3231", "event_type": "orders",
+    # Commit C:詞彙表外的 LLM entity 要逐字出現才收 —— 「輝達」就在標題裡
+    llm = [{"title": title, "entity": "輝達", "event_type": "orders",
             "direction": 1, "summary": "x", "confidence": 0.6,
             "published": "2026-07-28T00:00:00+00:00"}]
     out = mr.extract_structured_events(news, [], llm, now)

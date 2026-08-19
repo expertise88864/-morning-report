@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 21
+ANALYSIS_SCHEMA_VERSION = 22
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -288,23 +288,43 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "evidence_ids": _EVIDENCE_IDS,
     }), "**未來 48 小時**的關鍵事件情境(EVIDENCE 的行事曆與新聞裡找),"
         "一到三件;每件都要引用 EVIDENCE 的 ID;沒有就空陣列"),
+    # v22(repo-wide 外審 2026-08-19 P1-B):敘事變化要**綁真的昨日觀點與
+    # 今天的證據**。先前三個裸字串 —— 模型可以編一個「昨日判斷 Fed 已準備
+    # 大幅降息」再自己「強化」它,schema/validator/grounding 全部擋不住,
+    # 而欄位名稱讓讀者以為那真的是系統記得的昨日觀點。
     "narrative_delta": _arr(_obj({
+        "prior_view_id": _s("昨日觀點的 ID(EVIDENCE 的 ANALYSIS_RECAP "
+                            "每條有 id,照抄)"),
         "prior_view": _s("昨日的觀點(EVIDENCE 的 ANALYSIS_RECAP 有)"),
         "change": _enum(("強化", "升溫", "持續", "減弱", "反轉"),
                         "今日新證據讓它往哪裡走"),
         "evidence_today": _s("今天的哪些新證據、為什麼是這個方向"),
-    }), "**昨日觀點 vs 今日新證據**;沒有可對照的觀點就空陣列"),
+        "evidence_ids": _EVIDENCE_IDS,
+    }), "**昨日觀點 vs 今日新證據**;每條都要帶 prior_view_id 與今天的 "
+        "EVIDENCE ID;沒有可對照的觀點就空陣列"),
     # `bull_bear`(多空交鋒)**撤下**(外審 2026-08-19 兩輪堅持):
     # 「哪一條最強」是排名,不變式是 Python 算、模型抄。正確的版本要從
     # 11 維立場分的正負貢獻推導(確定性),另案做。
+    # v22(repo-wide 外審 2026-08-19 P1-B):三個裸字串是**沒有證據契約的
+    # 自由文字通道** ——「美伊已達成永久和平協議」這種完全虛構、不帶數字的
+    # 句子可以一路進信。有內容的切面必須引用 EVIDENCE。
     "macro_environment": _obj({
-        "us_rates_fx_vix": _s("(A) 美國利率/美元/VIX/通膨 —— 結構與絕對值"
-                              "分開講,對高本益比成長股的壓力說清楚"),
-        "fed_policy": _s("(B) Fed 與美國政府重大政策 —— 今天的增量,"
-                         "不是重複昨天"),
-        "geopolitics": _s("(C) 重大地緣政治與全球政策 —— 對 2330 與台股"
-                          "的傳導寫出來"),
-    }, desc="總體經濟與政策環境,三個切面;沒有增量的切面寫空字串"),
+        "us_rates_fx_vix": _obj({
+            "analysis": _s("(A) 美國利率/美元/VIX/通膨 —— 結構與絕對值"
+                           "分開講,對高本益比成長股的壓力說清楚"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }, desc="(A) 切面;沒有增量就 analysis 空字串、evidence_ids 空陣列"),
+        "fed_policy": _obj({
+            "analysis": _s("(B) Fed 與美國政府重大政策 —— 今天的增量,"
+                           "不是重複昨天"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }, desc="(B) 切面;同上"),
+        "geopolitics": _obj({
+            "analysis": _s("(C) 重大地緣政治與全球政策 —— 對 2330 與台股"
+                           "的傳導寫出來"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }, desc="(C) 切面;同上"),
+    }, desc="總體經濟與政策環境,三個切面;有內容的切面必須引用 EVIDENCE"),
     "taiwan_local": _arr(_obj({
         "source_item_id": _s("這則在地新聞的 ID"),
         "what": _s("那件事是什麼 —— 客觀敘述"),

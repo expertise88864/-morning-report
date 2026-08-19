@@ -230,15 +230,21 @@ def test_the_catalyst_scorer_gets_events_built_with_the_vocabulary():
             "生產沒有把算好的事件傳進催化評分"
 
 
-def test_a_subject_the_vocabulary_does_not_cover_is_still_used():
-    """**詞彙表沒收錄 ≠ 歸因錯了**(生產者側,與清理側同一條規則)。
-
-    判它錯會讓「詞彙表少一筆」變成「整條公司歸因消失」—— 那比錯誤歸因
-    更難察覺:信裡會什麼都不說,而不是說錯。
+def test_an_unknown_subject_needs_a_literal_mention():
+    """**主體信任層級**(repo-wide 外審 2026-08-19 P2,取代舊的
+    「詞彙表沒收錄照舊採用 unverified」契約):詞彙表外的候選要在文字裡
+    **逐字出現**才採用(依據 `literal`);逐字都指不出來的名字不進
+    story key / timeline / 催化評分 —— 持久化一個證明不了的 entity key,
+    比「這一則沒有主體」更難察覺也更難清。
     """
+    # 逐字出現 → 採用(Pentagon 這類合法語意主體不受詞彙表限制)
+    evs = _events([_news("Pentagon confirms new arms package",
+                         company_label="Pentagon")])
+    assert evs[0]["entity"] == "Pentagon", evs[0]
+    assert evs[0]["subject_basis"] == "literal", evs[0]
+    # 逐字指不出來(裸代號不在標題裡)→ 誠實降級:沒有主體
     evs = _events([_news("某新股掛牌首日大漲", company_label="9999")])
-    assert evs[0]["entity"] == "9999", evs[0]
-    assert evs[0]["subject_basis"] == "unverified", evs[0]
+    assert evs[0]["entity"] == "", evs[0]
 
 
 # ------------------------------------------------- 外審 2026-08-18 的三個 P1

@@ -82,7 +82,7 @@ DEEPSEEK_LEGACY_VERSION = 7
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 39
+LUNA_XHIGH_VERSION = 40
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -287,11 +287,15 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   從 EVIDENCE 的行事曆與新聞找）:基準預期（市場現在定價什麼）、
   偏多情境、偏空情境、最受影響的標的、失效條件。
 - **`narrative_delta` 是昨日觀點 vs 今日新證據**:EVIDENCE 的
-  ANALYSIS_RECAP 有昨日的觀點，逐條說今天的新證據讓它**強化/升溫/持續/
+  ANALYSIS_RECAP 每條觀點都有 `id`（pv 開頭），`prior_view_id` **照抄那個
+  id**、`evidence_ids` 引用今天真的存在的 EVIDENCE ID —— 兩者缺一不可，
+  昨日觀點不可自行虛構。逐條說今天的新證據讓它**強化/升溫/持續/
   減弱/反轉**，憑什麼。沒有可對照的觀點就空陣列。
 - **`macro_environment` 三個切面**:（A） 美國利率/美元/VIX/通膨、
-  （B） Fed 與美國政府重大政策、（C） 重大地緣政治 —— 各寫今天的**增量**，
-  對 2330 與台股的傳導寫出來。
+  （B） Fed 與美國政府重大政策、（C） 重大地緣政治 —— 各是
+  `{{analysis, evidence_ids}}`：analysis 寫今天的**增量**與對 2330 與台股
+  的傳導；**有內容就必須引用 EVIDENCE 的 ID**，沒有增量的切面
+  analysis 空字串、evidence_ids 空陣列。
 - **`taiwan_local` 是台灣本地動態**:總經數據、公司例行公告、天氣、
   交通這一類**動態**（法規解析放 `taiwan_policy`）。
 # 分析維度

@@ -336,7 +336,9 @@ def test_production_wires_both_ends_of_the_loop():
         "存檔沒有走具名常數(push 登錄檢查看不見 inline 路徑)"
     # 讀取端:與 EVENT_TIMELINE 同一段接進 quotes
     assert "_arc.load(ANALYSIS_RECAP_FILE)" in src
-    assert 'quotes["ANALYSIS_RECAP"] = _recap_state' in src
+    # v22:注入時逐條蓋 pv id(prior_view_id 的可驗對象),仍是同段接線
+    assert 'quotes["ANALYSIS_RECAP"] = dict(' in src
+    assert 'id=f"pv{_i + 1}"' in src
     # **每一個接受出口都要經過同一個 finalizer**(外審補審 F2):
     # 加深失敗沿用第一版那條先前不存 recap,信照寄而明天沒有基準。
     # 2026-08-17:第三個出口 —— 加深**沒有額度/時間**時直接用留著的合法

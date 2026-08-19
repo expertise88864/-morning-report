@@ -5612,6 +5612,15 @@ def purge_story_misattribution(ledger: list) -> list:
             "examples": [str(r.get("key")) for r in _cyber_dropped[:5]]}
         print(f"[migrate] 線索帳本清掉 {len(_cyber_dropped)} 條「被標成地緣政治"
               f"的資安事件」", file=sys.stderr)
+    # nested timeline 點(repo-wide 外審 2026-08-19 P1-A):story 列乾淨
+    # 不代表軌跡乾淨,而軌跡會重新餵給模型。
+    keep, _pt_dropped = _sm.purge_misattributed_timeline_points(keep, kn)
+    if _pt_dropped:
+        _RUN_MANIFEST.setdefault("state_migrations", {})["misattributed_points"] = {
+            "dropped": len(_pt_dropped),
+            "examples": [f"{k}|{t[:40]}" for k, t in _pt_dropped[:5]]}
+        print(f"[migrate] 線索軌跡清掉 {len(_pt_dropped)} 個錯歸因的 nested "
+              f"point(story 本身保留)", file=sys.stderr)
     if dropped:
         _RUN_MANIFEST.setdefault("state_migrations", {})["story_misattribution"] = {
             "dropped": len(dropped), "kept": len(keep),
@@ -23226,7 +23235,17 @@ def _phase_events_and_models(ctx) -> None:
         _DEGRADED_STEPS.append("analysis_recap_unreadable")
         print("::warning::昨日觀點 state 讀不動,已另存 .corrupt", flush=True)
         _recap_state = {}
-    quotes["ANALYSIS_RECAP"] = _recap_state
+    # v22(repo-wide 外審 2026-08-19 P1-B):昨日觀點逐條蓋上 Python 派的
+    # id(pv1…)—— narrative_delta 的 prior_view_id 才有可驗的對象。
+    # 只動 packet 視圖,state 檔本身不動;EVIDENCE 與 validator 讀同一份。
+    # **只對 `usable()` 的觀點派 ID**(同批外審 r2):同日重跑時 state 已是
+    # 今天剛存的觀點,無條件派 ID 等於繞過既有的同日防線 —— 模型拿今天
+    # 比今天,產生假的持續/強化/反轉,而 validator 還認那個 ID。
+    quotes["ANALYSIS_RECAP"] = dict(
+        _recap_state,
+        items=[dict(it, id=f"pv{_i + 1}")
+               for _i, it in enumerate(
+                   _arc.usable(_recap_state, target_session_date))])
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events)

@@ -81,7 +81,10 @@ from __future__ import annotations
 #: `gap:payload_omitted:*` 先前被自己的驗證器判成回填。
 #: v35(第三十一輪外審 P1-4):鏈交接拆掉兩個 fail-open —— 辨識詞太少
 #: 改不接(照抄的短節點由包含判準放行)、單一泛用詞不算指名。
-GROUNDING_VERSION = 35
+#: v36(v22,repo-wide 外審 2026-08-19 P1-B):RENDERED 涵蓋 v20/v21 六個
+#: 新段落;narrative_delta 綁 prior_view_id + evidence_ids、macro 三切面
+#: 有內容必有證據(硬性檢查在 analysis_validate)。
+GROUNDING_VERSION = 36
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
@@ -90,7 +93,13 @@ RENDERED = ("executive_summary", "key_drivers", "taiwan_market",
             "cross_market_synthesis", "priced_in",
             # 外審 P1-7.4:淨效果會進信(「合起來是利多還是利空」),
             # 卻不在這份清單裡 —— 於是品質指標與孤兒判定都看不到它。
-            "asset_net_effects")
+            "asset_net_effects",
+            # v22(repo-wide 外審 2026-08-19 P1-B):v20/v21 的六個新段落
+            # 全部會進信,卻不在這份清單 —— is_rendered/孤兒判定看不到
+            # 它們。narrative_delta/macro 的證據**硬性**檢查在
+            # analysis_validate(單一判準,這裡不重複第二份)。
+            "world_events", "upcoming_event_scenarios", "narrative_delta",
+            "macro_environment", "taiwan_local", "taiwan_policy")
 
 #: schema 裡帶 `evidence_ids` 而且會被寄出去的物件段落
 #: (`key_drivers` 與 `claim_audit` 是清單,另外處理)。

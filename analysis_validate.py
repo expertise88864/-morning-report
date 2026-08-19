@@ -92,8 +92,9 @@ _CONCEPT_TERMS = frozenset({
 #: (這個 repo 記過)。帶數字的期間詞沒有這個歧義:美股代號不含數字,
 #: 台股代號是純數字加選擇性的字尾,兩邊都不會長成 `Q2` / `FY25`。
 #: 代價是裸 `FY`、`YTD` 仍可能混進來 —— 那是刻意選的那一側。
-_PERIOD_TOKEN = _re.compile(
-    r"Q[1-4]|[1-4]Q|H[12]|[12]H|(?:FY|CY)[0-9]{2,4}", _re.IGNORECASE)
+#: 判準本體移到 `news_rules.PERIOD_TOKEN`(r3:與 news_events 的
+#: literal-subject 篩查共用同一份,兩份已經漂移過一次)。
+from news_rules import PERIOD_TOKEN as _PERIOD_TOKEN  # noqa: E402
 
 
 #: **既是期間縮寫、也可能是代號**的那些(外審第二輪 P2)。
@@ -719,6 +720,37 @@ def validate(obj, evidence_ids) -> list:
         if str(sc.get("event") or "").strip() and not (sc.get("evidence_ids") or []):
             problems.append(f"{where} 沒有引用任何 EVIDENCE ID —— "
                             "沒有來源的未來事件與編的沒有分別")
+    # v22(repo-wide 外審 2026-08-19 P1-B):敘事變化要**綁真的昨日觀點**。
+    # prior_view_id 必須是 packet 裡 ANALYSIS_RECAP 真的有的 id(Python 派
+    # 的 pv1…),今天的證據也要真的存在 —— 否則「昨日判斷 Fed 已準備大幅
+    # 降息 → 強化」可以整條虛構,而欄位名稱讓讀者以為那是系統記得的觀點。
+    _pv_ok = {str((it or {}).get("id") or "")
+              for it in ((((packet or {}).get("market") or {})
+                          .get("ANALYSIS_RECAP") or {}).get("items") or [])
+              if isinstance(it, dict)} - {""}
+    for i, d in enumerate((obj.get("narrative_delta") or [])):
+        if not isinstance(d, dict):
+            continue
+        where = f"narrative_delta[{i}]"
+        if str(d.get("prior_view_id") or "") not in _pv_ok:
+            problems.append(f"{where} 的 prior_view_id "
+                            f"{d.get('prior_view_id')!r} 不在昨日觀點清單裡 "
+                            "—— 昨日觀點不可虛構")
+        _check_ids(d.get("evidence_ids"), where)
+        if not (d.get("evidence_ids") or []):
+            problems.append(f"{where} 沒有引用今天的任何 EVIDENCE ID —— "
+                            "沒有新證據就談不上強化或反轉")
+    # v22:總經三切面有內容就要有證據(裸字串時代「美伊已達成永久和平
+    # 協議」可以不帶任何根據進信)。
+    _mac = obj.get("macro_environment") if isinstance(
+        obj.get("macro_environment"), dict) else {}
+    for _k in ("us_rates_fx_vix", "fed_policy", "geopolitics"):
+        _sec = _mac.get(_k) if isinstance(_mac.get(_k), dict) else {}
+        where = f"macro_environment.{_k}"
+        _check_ids(_sec.get("evidence_ids"), where)
+        if (str(_sec.get("analysis") or "").strip()
+                and not (_sec.get("evidence_ids") or [])):
+            problems.append(f"{where} 有內容卻沒有任何 EVIDENCE ID")
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         _check_ids([n.get("source_item_id")], where)

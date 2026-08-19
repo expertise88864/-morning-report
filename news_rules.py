@@ -7,6 +7,18 @@ import re
 from typing import Optional
 
 
+#: **期間詞的單一判準**(repo-wide 外審 2026-08-19 r3:先前
+#: analysis_validate 與 news_events 各養一份,已經漂移 —— 1Q/1H/CY25/2Q26
+#: 一邊擋得住、一邊放行)。只收「帶數字」的形狀:裸縮寫(MTD/TTM)可能
+#: 是真代號,絕對黑名單會誤殺(analysis_validate 的教訓,誤殺比漏放危險)。
+#: 兩個消費端:asset/entity 候選的 fullmatch 篩查 —— Q2、2Q、H1、1H、
+#: FY25、CY25、2Q26、1H26、2026Q3、2026H1 都不是公司。
+PERIOD_TOKEN = re.compile(
+    r"Q[1-4]|[1-4]Q(?:[0-9]{2,4})?|H[12]|[12]H(?:[0-9]{2,4})?"
+    r"|(?:FY|CY)[0-9]{2,4}|[0-9]{4}Q[1-4]|[0-9]{4}H[12]",
+    re.IGNORECASE)
+
+
 NEWS_POSITIVE_TERMS = [
     "上修", "優於預期", "創高", "成長", "增加", "擴產", "訂單", "得標",
     "獲利", "轉盈", "調升", "beat", "raise", "raised", "growth", "record",

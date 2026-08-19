@@ -476,13 +476,22 @@ def test_followup_label_requires_the_article_to_mention_the_company():
                "source_name": "某報",
                "published": "2026-07-27T02:00:00+00:00"}
 
+    # Commit C(2026-08-19 主體信任層級)之後,這條污染通道在 producer 端
+    # 就關了:貼標的文章沒提到鴻海 → 主體驗證擋下 → 分數不再膨脹。
+    # feed 端的貼標閘(_process_feed_item)仍是第一道防線 —— 這裡驗的
+    # 是**第二道**:就算標籤漏進來,下游也不得把它當 direct。
+    kn = {"2317": ("鴻海",), "2382": ("廣達",)}
     labelled = mr._stock_news_catalysts(
-        universe, [dict(article, company_label="2317")], [])
-    plain = mr._stock_news_catalysts(universe, [article], [])
-    assert labelled["2317"]["score"] > plain["2317"]["score"], \
-        "對照組無效 —— 貼標本來就該讓分數變高,否則測不到污染"
-    assert labelled["2317"]["evidence"][0]["relation"] == "direct"
-    assert plain["2317"]["evidence"][0]["relation"] != "direct"
+        universe, [dict(article, company_label="2317")], [],
+        events=mr.extract_structured_events(
+            [dict(article, company_label="2317")], [], known_names=kn))
+    plain = mr._stock_news_catalysts(
+        universe, [article], [],
+        events=mr.extract_structured_events([article], [], known_names=kn))
+    assert labelled["2317"]["score"] == plain["2317"]["score"], \
+        "貼標仍讓分數膨脹 —— 主體驗證沒有擋住查詢漂移的標籤"
+    assert all(e.get("relation") != "direct"
+               for e in labelled["2317"]["evidence"]), labelled["2317"]
 
 
 def test_followup_label_gate_runs_where_the_article_text_is(monkeypatch):

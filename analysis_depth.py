@@ -234,9 +234,22 @@ def _identity(obj) -> dict:
                            "bear_case", "most_affected", "invalidation"))
                  for e in (o.get("upcoming_event_scenarios") or [])
                  if isinstance(e, dict)},
-        "敘事變化": {f"{(d or {}).get('prior_view')}:{(d or {}).get('change')}:"
-                 f"{(d or {}).get('evidence_today')}"
+        "敘事變化": {f"{(d or {}).get('prior_view_id')}:"
+                 f"{(d or {}).get('prior_view')}:{(d or {}).get('change')}:"
+                 f"{(d or {}).get('evidence_today')}:"
+                 + ",".join(sorted(str(x) for x in
+                                   ((d or {}).get("evidence_ids") or [])))
                  for d in (o.get("narrative_delta") or []) if isinstance(d, dict)},
+        # v22(repo-wide 外審 2026-08-19 P2):**加深不得改寫或清空總經三格**
+        # —— 先前 identity 沒有它,第二版把 (A)(B)(C) 全清空或改成相反結論,
+        # 只要其他集合沒少照樣勝出,而 renderer 用的就是第二版。
+        "總經": {(lambda _sec: f"{k}:{_sec.get('analysis') or ''}:"
+                 + ",".join(sorted(str(x) for x in
+                                   (_sec.get("evidence_ids") or []))))(
+                     (o.get("macro_environment") or {}).get(k)
+                     if isinstance((o.get("macro_environment") or {}).get(k),
+                                   dict) else {})
+               for k in ("us_rates_fx_vix", "fed_policy", "geopolitics")},
         # 第十九輪 P1-11:**第二版可以「更深」而同時刪掉橫向與逐標的。**
         # 先前只保護新聞、張力、反證、缺口四個集合,於是「多一個財務層
         # 步驟、刪掉台積電與指數的差異分析、刪掉全部同向解讀、刪掉

@@ -83,6 +83,50 @@ def _timeline_subject(key: str, row: dict) -> str:
     return parts[1] if len(parts) == 3 else ""
 
 
+def purge_misattributed_timeline_points(rows, known_names):
+    """清**正確 story 裡的錯 nested point**(repo-wide 外審 2026-08-19 P1-A)。
+
+    story 列與 event_timeline 列的清理都做過了,但 story 的 `timeline[]`
+    是會重新餵給模型的軌跡(`_arc_steps` / story prompt)—— 生產實證:
+    2330 earnings story 的軌跡裡還活著「迅得上半年EPS3.79元」。
+    這與 market wrap 的教訓同形狀(story headline 乾淨,nested 點仍髒,
+    見 story_ledger 對 is_market_wrap 的逐點掃描)。
+
+    判準與 story 列一致:
+    - point 帶 `b`(subject_basis,producer 已用當時的完整文字裁決過)
+      → 保留 —— 標題重驗會誤殺「靠摘要證實」的合法 point;
+    - legacy point(無 `b`)→ 用標題對 story 主體保守重驗,指不出來就清;
+    - 詞彙表查不到 story 主體 → 整列不動(證明不了 ≠ 錯,與 `_named` 同)。
+
+    回 (rows, dropped):rows 就地更新 timeline;dropped 是 (key, 標題) 清單。
+    可重入:清完的點不會再出現。
+    """
+    dropped = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("entity") or "")
+        tl = row.get("timeline") or []
+        if not code or not tl or not (known_names or {}).get(code):
+            continue
+        keep = []
+        for p in tl:
+            if not isinstance(p, dict):
+                keep.append(p)
+                continue
+            if str(p.get("b") or ""):
+                keep.append(p)
+                continue
+            title = str(p.get("t") or "")
+            if _ne.mentions_entity(title, code, known_names):
+                keep.append(p)
+            else:
+                dropped.append((str(row.get("key") or ""), title[:60]))
+        if len(keep) != len(tl):
+            row["timeline"] = keep
+    return rows, dropped
+
+
 def purge_misattributed_timeline(timeline, known_names) -> tuple:
     """事件時間軸同一套判準。主體來自列的欄位(舊列才解析鍵)。"""
     keep, dropped = {}, []

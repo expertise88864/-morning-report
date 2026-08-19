@@ -193,18 +193,20 @@ def test_event_clustering_prefers_official_source_and_decays_old_news():
         [{
             "source": "CNBC",
             "company_label": "2330",
-            "title": "2330 raises guidance",
+            # Commit C 後裸數字不再能當主體(3231 張數的教訓);
+            # 台股新聞寫代號的慣例本來就是括號 —— 用生產的形狀。
+            "title": "(2330) raises guidance",
             "published": "2026-06-01T22:00:00Z",
         }, {
             "source": "Blog",
             "company_label": "2454",
-            "title": "2454 raises guidance",
+            "title": "(2454) raises guidance",
             "published": "2026-05-29T00:00:00Z",
         }],
         [{
             "source": "MOPS",
             "code": "2330",
-            "title": "2330 raises guidance",
+            "title": "(2330) raises guidance",
             "published": "2026-06-01T21:00:00Z",
         }],
         now=now,

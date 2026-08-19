@@ -738,15 +738,25 @@ def _norm_point_title(raw) -> str:
 
 
 def _timeline_entry(ev: dict, today: str, facts) -> dict:
-    """一個時間點。刻意用短鍵名(d/t/l/s/f):479 條線索 × 6 點,
-    鍵名長度直接反映在 state 檔大小與每日 commit 的 diff 量上。"""
-    return {
+    """一個時間點。刻意用短鍵名(d/t/l/s/f/b):479 條線索 × 6 點,
+    鍵名長度直接反映在 state 檔大小與每日 commit 的 diff 量上。
+
+    `b` = 主體出處(subject_basis,repo-wide 外審 2026-08-19 P1-A):
+    產生這個事件時主體是**用哪一份文字證實的**(code/alias;可能是摘要,
+    而 point 只存標題)。沒有它,日後的清理無法區分「靠摘要驗過的合法
+    point」與「歸因錯誤的舊 point」—— 只能對標題重驗,會誤殺前者。
+    只在非空時落盤(空 = 沒被證實,清理時照舊用標題保守重驗)。"""
+    out = {
         "d": str(today)[:10],
         "t": str(ev.get("title") or ev.get("headline") or "")[:80],
         "l": str(ev.get("link") or "")[:200],
         "s": str(ev.get("source_name") or ev.get("source") or "")[:24],
         "f": sorted(facts)[:4] if facts else [],
     }
+    _b = str(ev.get("subject_basis") or "")[:12]
+    if _b:
+        out["b"] = _b
+    return out
 
 
 #: 同一天最多留幾個軌跡點。1 會讓同日的第二件事**靜默消失**;

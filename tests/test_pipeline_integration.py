@@ -25,6 +25,9 @@ import story_ledger as sl
 NOW = dt.datetime(2026, 7, 30, tzinfo=dt.timezone.utc)
 TODAY = "2026-07-30"
 VOCAB = {"2330": "台積電", "2317": "鴻海", "2382": "廣達", "2884": "玉山金"}
+#: 生產的呼叫形狀(Commit C 主體信任層級後,抽取一定帶詞彙表;
+#: `mentions_entity` 的值要是**別名序列**,字串會被逐字元迭代)。
+KNOWN = {k: (v,) for k, v in VOCAB.items()}
 
 
 def _item(title, source, **kw):
@@ -55,13 +58,15 @@ NEWS = [
     _item("台積電獲輝達CoWoS追加訂單", "自由財經",
           entity="2330", event_type="orders", direction=1),
     _item("公告本公司115年6月份自結合併營收", "MOPS",
-          entity="2884", event_type="revenue_growth", direction=0),
+          entity="2884", event_type="revenue_growth", direction=0,
+          summary="玉山金控自結合併營收"),
     _item("台股收跌1195.97點 電子權值股領跌", "經濟日報財經"),
 ]
 
 
 def _run_pipeline(news, today=TODAY, ledger=None):
-    events = mr.extract_structured_events(news, [], None, NOW)
+    events = mr.extract_structured_events(news, [], None, NOW,
+                                          known_names=KNOWN)
     events = mr.apply_event_timeline([], events)
     led = sl.update_ledger(ledger or [], events, today, VOCAB)
     sections = mr.assign_event_sections(events, None)
@@ -155,7 +160,7 @@ def test_follow_up_next_day_extends_the_same_story():
         [_item("廣達買友達華亞廠案完成交割 AI伺服器產能到位", "中央社財經",
                entity="2382", event_type="orders", direction=1,
                published="2026-07-31T01:00:00+00:00")], [], None,
-        NOW + dt.timedelta(days=1))), "2026-07-31", VOCAB)
+        NOW + dt.timedelta(days=1), known_names=KNOWN)), "2026-07-31", VOCAB)
     assert len(led2) == before, "續報又開了一條新線索"
     quanta = next(s for s in led2 if s.get("entity") == "2382")
     assert len(quanta["timeline"]) >= 2, "軌跡沒有累積"
@@ -168,8 +173,9 @@ def test_consecutive_periods_stay_separate_episodes():
     led2 = sl.update_ledger(led, mr.apply_event_timeline([], mr.extract_structured_events(
         [_item("公告本公司115年7月份自結合併營收", "MOPS", entity="2884",
                event_type="revenue_growth", direction=0,
+               summary="玉山金控自結合併營收",
                published="2026-08-06T01:00:00+00:00")], [], None,
-        NOW + dt.timedelta(days=7))), "2026-08-06", VOCAB)
+        NOW + dt.timedelta(days=7), known_names=KNOWN)), "2026-08-06", VOCAB)
     keys = {s["key"] for s in led2 if s.get("entity") == "2884"}
     assert len(keys) == 2, f"六月與七月營收黏成同一集:{keys}"
 
@@ -232,6 +238,6 @@ def test_llm_events_that_pass_schema_actually_reach_the_output():
             "published": "2026-07-30T01:00:00+00:00"}]
     valid, dropped = ne._validate_llm_events(llm)
     assert dropped == 0 and valid, "測試素材自己就過不了 schema,對照組無效"
-    out = mr.extract_structured_events(NEWS, [], valid, NOW)
+    out = mr.extract_structured_events(NEWS, [], valid, NOW, known_names=KNOWN)
     survived = [e for e in out if e.get("source") == "LLM extractor"]
     assert len(survived) == 1, "通過 schema 的 LLM 事件沒有活到輸出"

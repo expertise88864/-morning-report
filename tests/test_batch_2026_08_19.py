@@ -161,11 +161,16 @@ def _full(**over):
          "base_expectation": "按兵不動基調", "bull_case": "偏鴿利多 00662",
          "bear_case": "偏鷹利空成長股", "most_affected": "00662",
          "invalidation": "油價暴漲蓋過紀要", "evidence_ids": ["n1"]}]
-    obj["narrative_delta"] = [{"prior_view": "美伊戰局逼近十字路口",
-                               "change": "升溫", "evidence_today": "油價單日 +3.79%"}]
-    obj["macro_environment"] = {"us_rates_fx_vix": "10Y 4.657% 高檔",
-                                "fed_policy": "Warsh 鷹派發酵",
-                                "geopolitics": "三線地緣升溫"}
+    obj["narrative_delta"] = [{"prior_view_id": "pv1",
+                               "prior_view": "美伊戰局逼近十字路口",
+                               "change": "升溫",
+                               "evidence_today": "油價單日 +3.79%",
+                               "evidence_ids": ["n1"]}]
+    obj["macro_environment"] = {
+        "us_rates_fx_vix": {"analysis": "10Y 4.657% 高檔",
+                            "evidence_ids": ["n1"]},
+        "fed_policy": {"analysis": "Warsh 鷹派發酵", "evidence_ids": ["n1"]},
+        "geopolitics": {"analysis": "三線地緣升溫", "evidence_ids": ["n1"]}}
     obj["taiwan_local"] = [{"source_item_id": "n1",
                             "what": "中經院估 GDP 破 10%",
                             "impact": "支撐高本益比"}]

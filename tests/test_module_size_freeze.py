@@ -454,7 +454,7 @@ MODULE_CEILINGS = {
     # EVIDENCE_BEARING 與版本註解 —— 判準本身仍然只有兩個函式。
     # 第二十六輪 P1-5:多的是 v26 的版本註記(判準在 `analysis_contracts`,
     # 這裡只有版本號)。**實測 137 行**。
-    "analysis_grounding.py": 165,
+    "analysis_grounding.py": 180,  # v22 RENDERED 六段+版本註解(2026-08-19 P1-B);現況 170
     # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
     # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
     # 金絲雀探測都需要那個答案。**實測 137 行**(初訂 110 是依 95 行抓的
@@ -538,7 +538,7 @@ MODULE_CEILINGS = {
     # 底下)。實測 453 行。
     # 2026-08-18 第二批:五段併成「九、今日市場關注與預測」(逐段的
     # 去重、子段區塊化),保留事項的識別碼換標題。實測 540 行。
-    "analysis_render.py": 560,
+    "analysis_render.py": 590,  # v22 macro 讀 analysis 子欄位 + r2 敘事原文依 ID 取回;現況 579
     # 第二十四輪 P1-12:標的的**型別身分**(canonical id + 範疇)。
     # 先前沒有「標的」這個型別 —— 判斷散在四處各憑字串形狀猜,而白名單
     # 被當成「與這件事有關」的免死金牌。實測 71 行。
@@ -557,7 +557,7 @@ MODULE_CEILINGS = {
     # 判準不在這裡重寫,呼叫 `news_events.mentions_entity`。實測 73 行。
     # 2026-08-18 外審 P2-1:再加「被標成地緣的資安事件」清理與舊鍵改名。
     # 實測 187 行。
-    "state_migrations.py": 230,
+    "state_migrations.py": 275,  # nested timeline point 清理(2026-08-19 P1-A);現況 263
     # 2026-08-18 P1-2:三家 provider 共用的 completion contract。
     # adapter 只做對照,不自己發明政策 —— 三套政策一定會再漂。
     # 實測 125 行。
@@ -620,7 +620,7 @@ MODULE_CEILINGS = {
     # 第三十二輪 P1-3 選項 B:傳導分層+推測性標籤
     # 2026-08-19:taiwan_policy 的引用檢查(捏造的 source_item_id 不得
     # 讓政策「看起來有根據地」進信)。實測 1045 行。
-    "analysis_validate.py": 1070,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
+    "analysis_validate.py": 1100,  # v22 敘事/總經證據檢查;現況 1089,    # 2026-08-08 外審 P1-8:key-driver 反證也要驗
     # 第十八輪:完整性檢查(必分析覆蓋、同向解讀、claim 圖)拆出來 ——
     # 「形狀對不對」與「有沒有真的做完」是兩種不同的失敗。
     # 第十九輪:實測 217 —— 加的是語意判準(總結要回指、立場的時間尺度

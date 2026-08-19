@@ -131,8 +131,11 @@ def valid_analysis() -> dict:
         "world_events": [],
         "upcoming_event_scenarios": [],
         "narrative_delta": [],
-        "macro_environment": {"us_rates_fx_vix": "", "fed_policy": "",
-                              "geopolitics": ""},
+        # v22:三切面是 {analysis, evidence_ids}(有內容必有證據)
+        "macro_environment": {
+            "us_rates_fx_vix": {"analysis": "", "evidence_ids": []},
+            "fed_policy": {"analysis": "", "evidence_ids": []},
+            "geopolitics": {"analysis": "", "evidence_ids": []}},
         "taiwan_local": [],
         "top_news_analysis": [
             {"source_item_id": "n1", "why_it_matters": "費半傳導台股電子",

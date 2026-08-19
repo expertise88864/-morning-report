@@ -333,10 +333,24 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         parts.append(f"## {SECTION_48H}" + chr(10) + (chr(10) * 2).join(scen_blocks))
 
     # 敘事變化:昨日觀點 → 強化/升溫/持續/減弱/反轉。
-    deltas = [f"- 「{_s(d.get('prior_view'))}」→ **{_s(d.get('change'))}**:"
+    # **昨日觀點的文字依 ID 取回 Python 保存的 statement**(同批外審 r2):
+    # 模型可以拿合法的 pv1 配上改寫過的「昨日觀點」—— validator 只驗 ID
+    # 存在,信裡就會出現偽造的昨日。packet 查得到就用 Python 的原文;
+    # 查不到(舊測試無 packet)才退回模型抄本 —— validator 是門,這裡
+    # 只負責不讓抄本蓋過原文。
+    _pv_map = {str((it or {}).get("id") or ""):
+               str((it or {}).get("statement") or "")
+               for it in ((((packet or {}).get("market") or {})
+                           .get("ANALYSIS_RECAP") or {}).get("items") or [])
+               if isinstance(it, dict)}
+
+    def _pv_text(d):
+        return (_pv_map.get(str(d.get("prior_view_id") or ""))
+                or _s(d.get("prior_view")))
+    deltas = [f"- 「{_pv_text(d)}」→ **{_s(d.get('change'))}**:"
               f"{_s(d.get('evidence_today'))}"
               for d in (obj.get("narrative_delta") or [])
-              if isinstance(d, dict) and _s(d.get("prior_view"))
+              if isinstance(d, dict) and _pv_text(d)
               and _s(d.get("change")) and _s(d.get("evidence_today"))]
     if deltas:
         parts.append(f"## {SECTION_DELTA}" + chr(10) + chr(10).join(deltas))
@@ -420,9 +434,15 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     # 十、總體經濟與政策環境:(A)(B)(C) 三個切面(legacy 的排法)。
     macro = obj.get("macro_environment") if isinstance(
         obj.get("macro_environment"), dict) else {}
-    macro_rows = [f"**({tag})** {_s(macro.get(key))}"
+
+    def _macro_text(key):
+        sec = macro.get(key)
+        # v22:切面是 {analysis, evidence_ids} 物件(裸字串時代已終結 ——
+        # 有內容必有證據,證據檢查在 validator,信裡只排 analysis)。
+        return _s(sec.get("analysis")) if isinstance(sec, dict) else ""
+    macro_rows = [f"**({tag})** {_macro_text(key)}"
                   for tag, key in (("A", "us_rates_fx_vix"), ("B", "fed_policy"),
-                                   ("C", "geopolitics")) if _s(macro.get(key))]
+                                   ("C", "geopolitics")) if _macro_text(key)]
     if macro_rows:
         parts.append(f"## {SECTION_MACRO}" + chr(10) + (chr(10) * 2).join(macro_rows))
 

@@ -3,6 +3,26 @@
     "name": "股癌",
     "episodes": [
       {
+        "guid": "2b09a713-b103-4bf6-8cb8-745034ef0531",
+        "title": "EP689 | 🏐",
+        "published": "Wed, 19 Aug 2026 08:43:14 GMT",
+        "processed_at": "2026-08-19T14:33:00Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為七月科技股回檔三成仍可接受，因上半年獲利豐厚，且八月反彈速度超預期；若未破底，應視為健康修正並尋找新主流，而非恐慌離場。",
+            "針對WSJ報導AI資本開支有3兆美元表外負債，主持人認為短期不會引爆，但當AI相關債務商品開始賣給散戶才是泡沫警訊；目前AI變現能力已被證明（如Anthropic），多頭尚未結束，但需長期警惕。",
+            "主持人將AI供應鏈分為Components（零組件缺貨）、Bottleneck（瓶頸產能）與Value Add（價值加成）三類，並認為記憶體是最缺且展望最明確的零組件，若記憶體股價無法維持強勢，其他零組件難享更高本益比；瓶頸段若封裝測試股價停滯，則輪動可能轉向Value Add。",
+            "主持人以年度績效作為風險控管：若年度獲利回吐至僅剩20-30%且再被吃掉，即使基本面指標正面也會考慮離場；他接受無法賣在最高點，通常需回吐部分漲幅才能出場。",
+            "主持人認為研究品質與投資績效非正相關，熱門題材中市場會過度樂觀，即使報告數字有誤只要能抓住重點、股票有人追捧就能獲利；重點在選對產業趨勢，而非追求完美報告。",
+            "主持人累積產業知識的方法：從個股研究（如貿聯）理解電纜、連接器，掌握手機/PC邏輯後跳島至AI伺服器，底層邏輯相通，無需聲量優勢也能建立分析能力。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為近期回檔是健康修正，因上半年獲利豐厚，且八月反彈超預期；多頭格局尚未改變，但需留意AI表外負債的長期風險，並觀察哪個族群率先突破前高以確認下一個主流。",
+          "action_view": "以年度績效作為風控，若年度獲利回吐過多會考慮減碼觀望；當前選擇留在市場，在回檔中尋找率先創高的族群（偏向Value Add）作為加碼方向。",
+          "notable_quote": "一個完全正確的報告，不代表在你的投資上面可以去獲得一些收益"
+        }
+      },
+      {
         "guid": "986db49f-de3d-49e4-9ef7-dd721bdc240c",
         "title": "EP688 | 🥽",
         "published": "Sat, 15 Aug 2026 06:36:40 GMT",
@@ -548,91 +568,6 @@
           "notable_quote": "Meta來參加AI租賃大賽，我覺得是好事，可是對於一些細部的東西，像是Neo Cloud，或是像一些供應鏈可能去炒本夢比的，就有機會會開始要去面對一些現實的鐵拳。"
         },
         "shown_at": "2026-07-11T22:36:13Z"
-      },
-      {
-        "guid": "4c045cc2-378b-4653-a683-c93fc37d0a2d",
-        "title": "EP677 | 🐎",
-        "published": "Wed, 08 Jul 2026 08:03:15 GMT",
-        "processed_at": "2026-07-08T10:36:50Z",
-        "digest": {
-          "summary_points": [
-            "主持人回憶自己年輕時最大槓桿約 2.5 倍（融資開滿），現今年輕人透過信貸、融資、股期等槓桿倍數可達 5-6 倍以上，風險更高。",
-            "觀察到韓國股市投機氣氛濃厚，近期降槓桿引發震盪，推測台股可能也出現類似降槓桿行為導致中小型股回檔。",
-            "台股加權指數仍在右上角，中小型股尾盤轉強，部分個股跌破季線可能轉弱，但功率元件、CCL、Wafer 等強勢族群仍守在 5 日與 10 日線上。",
-            "功率元件族群因市值較小，大型法人不易進駐，需關注可容納大資金的族群，如被動元件雖進入修正但仍在季線上。",
-            "近期 Semi-Analysis 報告（如 Kyber NVL 144 延遲、800V DC 延遲）引發市場震盪，但主持人認為這些多為修正短期預期，長期 AI 趨勢不變，市場過度反應。",
-            "Semi-Analysis 提到的 Kyber NVL 144 延遲並非新聞，產業早有預期；800V DC 滲透率 5% 實為正向訊號，市場錯誤解讀。",
-            "主持人強調市場常交易尚未量產的研發專案，預期拉高後下修造成波動，但公司基本面無變化，投資者不應恐慌。",
-            "在 AI 族群中，TSMC 與 NVIDIA 估值相對便宜但股價表現落後，反而週邊公司估值較高，反映市場偏好因素。",
-            "主持人認為 TSMC 如同市場避風港，動盪時資金會回流，表現穩健；NVIDIA 則因 AI 領導地位且估值便宜，值得長期持有。",
-            "軟體股方面，主持人認為 Token 成本下降有利軟體公司，點名 Palantir、CrowdStrike、Cloudflare 等，若 CPU 族群轉弱可能將資金轉移至此。",
-            "主持人長期持有 Tesla 主要出於對馬斯克的信仰，希望未來 SpaceX 能收購 Tesla，視為信仰投資。",
-            "主持人建議操作上應見招拆招，觀察強勢族群是否持續創高；個人因質押額度已滿無法加碼，但心態中性偏多。",
-            "關於熊市，主持人認為台股今年已漲 50%，遠優於過去平均 8-12%；熊市一定會來，但無法預測，應守住本金避免毀滅性虧損。"
-          ],
-          "tickers": [
-            {
-              "name": "NVIDIA",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "AI 領導地位且估值便宜，長期持有。"
-            },
-            {
-              "name": "Tesla",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "信仰股，長期持有，希望被 SpaceX 收購。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
-            },
-            {
-              "name": "CrowdStrike",
-              "code": "CRWD",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
-            },
-            {
-              "name": "Cloudflare",
-              "code": "NET",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Token 成本下降有利軟體股，股價型態好，可能轉移資金。"
-            },
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "市場動盪時資金回流，穩健避險，但無明確多空。"
-            },
-            {
-              "name": "國巨",
-              "code": "2327",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "被動元件族群進入修正但仍在季線上，中性觀察。"
-            },
-            {
-              "name": "華新科",
-              "code": "2492",
-              "market": "TW",
-              "direction": "neutral",
-              "reason": "被動元件族群進入修正但仍在季線上，中性觀察。"
-            }
-          ],
-          "market_view": "主持人認為台股仍處於多頭，近期中小型回檔為槓桿清理，強勢族群如功率元件、CCL、Wafer 仍撐盤，輪動持續，行情未結束。",
-          "action_view": "主持人建議見招拆招，觀察強勢族群是否持續創高，若強勢股轉弱則注意資金輪動至其他如軟體股；個人因質押額度已滿，暫時按兵不動，但心態中性偏多。",
-          "notable_quote": "其實我覺得根本沒什麼好解的，因為你去看一下加權指數，基本上就在右上角。"
-        },
-        "shown_at": "2026-07-09T23:10:08Z"
       }
     ]
   },
@@ -4922,6 +4857,29 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74306210",
+        "title": "Canada buys 72 hours",
+        "published": "Wed, 19 Aug 2026 10:29:04 +0000",
+        "processed_at": "2026-08-19T14:05:59Z",
+        "digest": {
+          "summary_points": [
+            "BTIG 分析師警告，美股交易越來越像一場因子音樂椅遊戲，投資者應在音樂停止前先就定位，暗示市場可能出現輪動或回調。"
+          ],
+          "tickers": [
+            {
+              "name": "Lazy Boy",
+              "code": "LZB",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "第一季財報遜於預期，且第二季營收展望低於市場共識，股價盤前大跌19%"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "BTIG says investors should secure a chair before the music stops."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74263212",
         "title": "Meta faces high-stakes federal trial over child safety",
         "published": "Tue, 18 Aug 2026 17:53:34 +0000",
@@ -5320,63 +5278,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "It's the AI identifier you can't erase, no matter how hard you try."
-        },
-        "shown_at": "2026-08-11T22:58:19Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73814051",
-        "title": "Riot’s $9.1B AI mystery",
-        "published": "Tue, 11 Aug 2026 10:29:26 +0000",
-        "processed_at": "2026-08-11T14:35:45Z",
-        "digest": {
-          "summary_points": [
-            "Anthropic 傳以 91 億美元與比特幣礦商 Riot Platforms 簽約,20 年供應德州 Rockdale 廠 100MW AI 算力容量,含延長選項總值最高上看 161 億美元,Riot 盤前大漲 20%。",
-            "Plug Power 盤前漲 11%:Q2 財報優於預期,毛利率從負 31% 改善至接近損益兩平,營運費用年減 50% 至 6,200 萬美元,並上調 2026 會計年度營收成長目標至 15–16%。",
-            "SpaceX 收復 135 美元 IPO 發行價:週一收漲 4.2% 至 138.74 美元,為 7 月 16 日以來首度站回發行價之上,較 8 月 3 日盤中低點 104.83 美元明顯反彈。",
-            "英特爾將股票發行規模擴大至 200 億美元,定價每股 95 美元。",
-            "Upwork 盤前重挫 20%:Q2 EPS 小幅不及預期,且 Q3 與全年財測顯著低於預期,引發市場對成長放緩的擔憂。",
-            "油價單日大漲約 5 美元,西德州原油上漲 2.6% 至每桶 84 美元、布蘭特上漲 2.3% 至 89 美元,美股期指盤前走跌,今日留意 10 點成屋銷售數據。"
-          ],
-          "tickers": [
-            {
-              "name": "Riot Platforms",
-              "code": "RIOT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "與 Anthropic 簽訂 91 億美元 AI 算力供應合約,盤前大漲 20%。"
-            },
-            {
-              "name": "Plug Power",
-              "code": "PLUG",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2 財報優於預期、毛利率接近損益兩平,並上調 2026 財年營收成長目標。"
-            },
-            {
-              "name": "Upwork",
-              "code": "UPWK",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Q2 EPS 不及預期且 Q3/全年財測顯著低於預期,股價盤前重挫 20%。"
-            },
-            {
-              "name": "Intel",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "擴大股票發行至 200 億美元、定價 95 美元,籌資動作稀釋股權但充實資本。"
-            },
-            {
-              "name": "Monster Beverage",
-              "code": "MNST",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "2 拆 1 股票分割今日生效。"
-            }
-          ],
-          "market_view": "美股期指盤前走跌,油價單日大漲約 5 美元(西德州 84 美元、布蘭特 89 美元),顯示地緣風險升溫壓抑風險情緒;HSBC 則認為股市派對尚未結束。",
-          "action_view": "節目未給明確操作建議,主要提示留意油價大漲與地緣風險對大盤的壓抑,以及盤後/盤前個股因財報與大單消息出現的劇烈波動。",
-          "notable_quote": "To put this into perspective for you, 191 megawatts of capacity is enough to energize roughly 143,000 homes at any given time."
         },
         "shown_at": "2026-08-11T22:58:19Z"
       }

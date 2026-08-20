@@ -403,8 +403,10 @@ def build_news_link_index(news: list) -> list:
     """新聞語料 → 來源連結索引 [{"t"(token 集), "u"(URL), "m"(媒體小寫)}]。
 
     (2026-08-20 使用者)分析文的來源引用(鉅亨/CNBC…)要能點回原文。
-    媒體名取 Google News 標題的「 - 媒體」尾碼,沒有就用 feed 來源名;
-    標題先剝掉媒體尾碼再取 token,免得媒體名自己變成內容特徵。
+    媒體優先序(外審 2026-08-20):`source_name` 是真正媒體,`source` 常是
+    聚合器代號(Google:2330)只當最後退路;標題的「 - 尾碼」要「像媒體」
+    (等於/包含 source_name,或在別名表)才剝 —— 真副標題要留在內容 token,
+    媒體尾碼則要剝掉,免得媒體名自己變成內容特徵。
     """
     out = []
     for it in news or []:
@@ -413,10 +415,15 @@ def build_news_link_index(news: list) -> list:
             url = str(it.get("link") or "")
             if not title or not url.startswith("http"):
                 continue
-            media = ""
+            media = str(it.get("source_name") or "").strip()
             if " - " in title:
-                title, media = title.rsplit(" - ", 1)
-            elif it.get("source"):
+                base, tail = title.rsplit(" - ", 1)
+                tail = tail.strip()
+                tl, ml = tail.lower(), media.lower()
+                if not media or tl in ml or ml in tl or tl in _CITE_MEDIA_ALIASES:
+                    title = base
+                    media = media or tail
+            if not media and it.get("source"):
                 media = str(it["source"])
             out.append({"t": _cite_sig_tokens(title),
                         "u": url, "m": media.strip().lower()})
@@ -461,6 +468,10 @@ def _link_source_citations(html: str, sources: list) -> str:
         toks = _cite_sig_tokens(_h.unescape(line)[-200:])
         cited_medias = [t.strip() for t in _re.split("[／/、]", inner)
                         if t.strip()]
+        if len(cited_medias) > 1:
+            # 群組引用(鉅亨/CNBC)不連:單一 <a> 蓋住整組,點到另一家的
+            # 名字也會進同一篇 —— 錯誤歸屬,錯連比不連糟(外審 2026-08-20)。
+            return m.group(0)
         best_u, best, second = "", 0, 0
         for it in sources:
             if cited_medias and not any(_media_ok(c, it["m"])

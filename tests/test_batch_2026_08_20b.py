@@ -97,6 +97,39 @@ def test_the_confidence_tag_is_never_linked():
     assert "href=" not in h
 
 
+def test_a_group_citation_is_never_linked():
+    """（鉅亨／CNBC）整組包單一 <a> 會讓點 CNBC 的人連到鉅亨的文章 ——
+    錯誤歸屬(外審 2026-08-20 R1-1)。群組引用一律不連。"""
+    h = _linked("Fed 7月會議紀要偏鷹,3名官員主張立即升息（鉅亨／CNBC）")
+    assert "href=" not in h
+
+
+def test_the_index_prefers_source_name_over_the_aggregator_tag():
+    """生產 Google 條目:source=聚合器代號、source_name=真媒體、標題無尾碼
+    (外審 2026-08-20 R1-2)。忽略 source_name 會讓媒體變成 google:2330,
+    正確的（鉅亨）引用永遠比對失敗、一條連結都出不來。"""
+    news = [{"title": "Fed會議紀要:3官員主張立即降息 內部分歧加深",
+             "link": "https://news.cnyes.com/news/id/123",
+             "source": "Google:富邦金", "source_name": "鉅亨網"}]
+    idx = build_news_link_index(news)
+    assert idx[0]["m"] == "鉅亨網"
+    h = _link_source_citations(
+        _dim_source_citations("Fed 7月會議紀要,3名官員主張立即降息、內部分歧加深（鉅亨）"),
+        idx)
+    assert 'href="https://news.cnyes.com/news/id/123"' in h
+
+
+def test_a_real_subtitle_is_not_eaten_as_media():
+    """「 - 副標題」不是媒體:source_name 在場且尾碼對不上 → 尾碼留在
+    內容 token、媒體仍取 source_name。"""
+    news = [{"title": "台積電法說會四大重點 - 資本支出上修",
+             "link": "https://news.cnyes.com/news/id/9",
+             "source": "Google:2330", "source_name": "鉅亨網"}]
+    idx = build_news_link_index(news)
+    assert idx[0]["m"] == "鉅亨網"
+    assert {"資本", "支出"} <= idx[0]["t"], "副標題被當媒體剝掉了"
+
+
 # ── (5) 台指期 vs 現貨列已刪 ─────────────────────────────────────────────
 def test_the_basis_line_is_gone():
     assert "_basis_line_html(quotes.get" not in _SRC, \

@@ -415,16 +415,25 @@ def build_news_link_index(news: list) -> list:
             url = str(it.get("link") or "")
             if not title or not url.startswith("http"):
                 continue
+            src = str(it.get("source") or "").strip()
             media = str(it.get("source_name") or "").strip()
+            # 外審 R2:媒體先從欄位確立 —— source_name,否則非聚合器的
+            # source(直接 RSS 的 feed 名,如 CNBC Top News)。標題尾碼只在
+            # 「像媒體」(對得上已確立媒體/在別名表)或「聚合器條目且欄位
+            # 都沒給」(Google News 的「標題 - 媒體」慣例)時才當媒體剝掉;
+            # 否則是真副標題,要留在內容 token 裡。
+            is_agg = src.lower().startswith(("google:", "類股-", "世界-"))
+            if not media and src and not is_agg:
+                media = src
             if " - " in title:
                 base, tail = title.rsplit(" - ", 1)
                 tail = tail.strip()
                 tl, ml = tail.lower(), media.lower()
-                if not media or tl in ml or ml in tl or tl in _CITE_MEDIA_ALIASES:
+                if ((media and (tl in ml or ml in tl))
+                        or tl in _CITE_MEDIA_ALIASES
+                        or (not media and is_agg)):
                     title = base
                     media = media or tail
-            if not media and it.get("source"):
-                media = str(it["source"])
             out.append({"t": _cite_sig_tokens(title),
                         "u": url, "m": media.strip().lower()})
         except Exception:

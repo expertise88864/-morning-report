@@ -130,6 +130,33 @@ def test_a_real_subtitle_is_not_eaten_as_media():
     assert {"資本", "支出"} <= idx[0]["t"], "副標題被當媒體剝掉了"
 
 
+def test_a_direct_feed_subtitle_survives_without_source_name():
+    """直接 RSS(CNBC feed):entry 常沒有 source_name,但 source 是可靠的
+    feed 名(外審 R2)。原本 `not media` 把任何「 - 尾碼」無條件當媒體 ——
+    CNBC 的副標題變成媒體名,正確的（CNBC）引用永遠連不上。"""
+    news = [{"title": "Fed policy shift explained - What investors need to know",
+             "link": "https://www.cnbc.com/2026/08/20/fed.html",
+             "source": "CNBC Top News"}]
+    idx = build_news_link_index(news)
+    assert idx[0]["m"] == "cnbc top news", idx[0]["m"]
+    assert {"investors", "know"} <= idx[0]["t"], "副標題被當媒體剝掉了"
+    h = _link_source_citations(
+        _dim_source_citations(
+            "Fed policy shift explained,investors 該注意的重點（CNBC）"), idx)
+    assert 'href="https://www.cnbc.com/2026/08/20/fed.html"' in h
+
+
+def test_an_aggregator_item_without_fields_still_uses_the_title_tail():
+    """聚合器條目(Google:xxx)且 source_name 缺席 → Google News 的
+    「標題 - 媒體」慣例仍然成立,尾碼當媒體剝掉。"""
+    news = [{"title": "Fed會議紀要:官員主張立即降息 - 鉅亨網",
+             "link": "https://news.cnyes.com/news/id/77",
+             "source": "Google:富邦金"}]
+    idx = build_news_link_index(news)
+    assert idx[0]["m"] == "鉅亨網"
+    assert "鉅亨" not in "".join(idx[0]["t"]) or "亨網" not in idx[0]["t"]
+
+
 # ── (5) 台指期 vs 現貨列已刪 ─────────────────────────────────────────────
 def test_the_basis_line_is_gone():
     assert "_basis_line_html(quotes.get" not in _SRC, \

@@ -13442,6 +13442,50 @@ def _canonicalize_evidence_ids(obj, packet: dict) -> None:
           + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
 
 
+def _align_corroboration(obj, packet: dict) -> None:
+    """佐證等級**資料說了算** —— 模型往上寫的一律改寫成計算值,不駁回。
+
+    2026-08-20 生產:top_news_analysis 兩則把 single_source 寫成
+    multi_source,連同一條鏈斷 → 5 條驗證失敗、修補沒收斂、整份特化
+    分析退回既有路徑。這一格的真值本來就在 packet(cluster 的
+    corroboration),叫模型猜再駁回是白燒修補配額 ——「Python 算、
+    模型抄」的欄位,抄錯就代抄(canonicalize-not-reject,與證據 ID
+    正規化同一個政策)。**只往下改**(誇大→計算值);模型比計算值保守
+    時不動(validator 本來就放行保守)。降級成弱等級而 source_caveat
+    空著時,補確定性的標準警語 —— 它陳述的是計算出的事實,不是編造。
+    改寫進 manifest,靜默美化與靜默駁回一樣糟。
+    """
+    if not isinstance(obj, dict) or not isinstance(packet, dict):
+        return
+    groups = (packet.get("news_clusters") or {}).get("clusters") or []
+    rank = {"unverified": 0, "single_source": 1, "multi_source": 2,
+            "official": 3}
+    changed = []
+    for n in (obj.get("top_news_analysis") or []):
+        if not isinstance(n, dict):
+            continue
+        sid = str(n.get("source_item_id") or "")
+        want = ""
+        for c in groups:
+            if sid in (c.get("member_source_ids") or ()):
+                want = str(c.get("corroboration") or "")
+                break
+        got = str(n.get("corroboration_assessment") or "")
+        if want and got and rank.get(got, 0) > rank.get(want, 0):
+            n["corroboration_assessment"] = want
+            if (want in ("single_source", "unverified")
+                    and not str(n.get("source_caveat") or "").strip()):
+                n["source_caveat"] = ("僅單一來源報導,尚未經其他獨立"
+                                      "媒體證實,細節可能修正")
+            changed.append(f"{sid}:{got}→{want}")
+    if changed:
+        slot = _RUN_MANIFEST.setdefault("llm", {})
+        slot["corroboration_aligned"] = len(changed)
+        slot["corroboration_rewrites"] = changed[:6]
+        print(f"[llm] 佐證等級改寫 {len(changed)} 筆(資料說了算):"
+              + "、".join(changed[:3]), file=sys.stderr)
+
+
 def _canonicalize_tension_ids(obj, packet: dict) -> None:
     """把少了 `tension:` 前綴的張力 ID 補上(判準見 `tension_refs`)。
 
@@ -13902,6 +13946,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 自發現缺口的命名也是(CI #506:`gap:model_calibration` ——
             # 真缺口、錯命名,整份作廢)。need 裡的 ID 一個都不動。
             _canonicalize_gap_ids(obj, packet)
+            # 佐證等級是資料決定的欄位(2026-08-20 生產:誇大兩筆 →
+            # 整份特化作廢)—— 代抄而不是駁回。
+            _align_corroboration(obj, packet)
             obj = _prune_phantom_audit_ids(obj, packet)
         # **傳 packet 不是 ids。** 上一批把選優與指標接上了 packet,
         # 卻留下**主閘門**吃 ID 集合 —— 於是「今天有張力卻沒處理」
@@ -20599,15 +20646,18 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         _np = _night_for_taiex["night_pct"]
         _nc = "#dc2626" if _np >= 0 else "#16a34a"
         _ns = "+" if _np >= 0 else ""
+        # 2026-08-20 使用者:第五段的四格並排把信件左右拉長,iPhone 上
+        # 字被縮小 —— 改 2×2 表格(上下兩列)。flex 在部分郵件客戶端不支援,
+        # min-width×4 會把版面撐到 600px+;表格才是郵件排版的可靠原語。
         night_row_html = (
-            f"<div style='flex:1 1 30%;min-width:150px;padding:10px 12px;"
-            f"background:#f8fafc;border-radius:8px;'>"
+            f"<td style='width:50%;padding:10px 12px;"
+            f"background:#f8fafc;border-radius:8px;vertical-align:top;'>"
             f"<div style='font-size:12px;color:#64748b;'>夜盤台指期"
             f"（{_night_for_taiex.get('date','—')}）</div>"
             f"<div style='font-size:17px;font-weight:700;color:#0f172a;"
             f"font-variant-numeric:tabular-nums;'>"
             f"{_night_for_taiex.get('night_close')} "
-            f"<span style='color:{_nc};font-size:14px;'>{_ns}{_np}%</span></div></div>")
+            f"<span style='color:{_nc};font-size:14px;'>{_ns}{_np}%</span></div></td>")
     if taiex_pred.get("pred_open"):
         # 使用者回饋:SOX/TSM/夜盤個別訊號屬內部計算,信件只顯示最終預測結果
         signal_rows = ""
@@ -20647,21 +20697,25 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             ・合理區間 {taiex_pred['ci_lower']:,.0f}~{taiex_pred['ci_upper']:,.0f}
           </div>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">
-          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
-            <div style="font-size:12px;color:#64748b;">加權昨收</div>
-            <div style="font-size:17px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</div>
-          </div>
-          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
-            <div style="font-size:12px;color:#64748b;">預測漲跌</div>
-            <div style="font-size:17px;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%</div>
-          </div>
-          {night_row_html}
-          <div style="flex:1 1 30%;min-width:150px;padding:10px 12px;background:#f8fafc;border-radius:8px;">
-            <div style="font-size:12px;color:#64748b;">訊號共識</div>
-            <div style="font-size:17px;font-weight:700;color:#0f172a;">{taiex_pred['consensus']}</div>
-          </div>
-        </div>
+        <table style="width:100%;border-collapse:separate;border-spacing:6px;table-layout:fixed;margin:8px 0;">
+          <tr>
+            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
+              <div style="font-size:12px;color:#64748b;">加權昨收</div>
+              <div style="font-size:17px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</div>
+            </td>
+            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
+              <div style="font-size:12px;color:#64748b;">預測漲跌</div>
+              <div style="font-size:17px;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%</div>
+            </td>
+          </tr>
+          <tr>
+            {night_row_html or '<td style="width:50%;"></td>'}
+            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
+              <div style="font-size:12px;color:#64748b;">訊號共識</div>
+              <div style="font-size:17px;font-weight:700;color:#0f172a;">{taiex_pred['consensus']}</div>
+            </td>
+          </tr>
+        </table>
         """
 
     # === 0050 ETF 開盤預測卡 ===

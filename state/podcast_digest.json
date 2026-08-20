@@ -1726,6 +1726,56 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "850d0717-e949-4f40-931a-a9dcd9783885",
+        "title": "EP329. Anthropic 成長減速、模型二與 Astra、Meta 被兩黨一起告 | M觀點",
+        "published": "Thu, 20 Aug 2026 15:22:10 GMT",
+        "processed_at": "2026-08-20T20:53:09Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Anthropic 7月 ARR 650億美元低於市場預期的700億美元，只是「情緒面」衝擊，不代表 AI 長線動能改變，主因是市占率被 OpenAI GPT-5.6 與 Grok 4.5 搶走，而非整體 AI 需求放緩。",
+            "主持人拆解成長率：Anthropic 5至7月 ARR 成長38%，但可能 6 月成長25%、7 月僅10%；相較 OpenAI 企業端 ARR 月增32%、Grok API 首週 token 量三倍，顯示 Anthropic 短期壓力極大。",
+            "主持人認為 AI 最大隱憂是「企業省錢/提升生產力做得到，但生產力無法轉換成營收」，若這點不打通，AI 市場成長率未來一年可能出現急速放緩的轉折點。",
+            "主持人透露 Anthropic 內部最強模型 Model 2（比 Misos 有感進步，預估 AAII 約65分）不打算對外發布，只作為下一代模型的開發基礎；他反駁「頂尖 AI Lab 最強模型只留自用、跨足各產業」的說法，認為忽略產業摩擦與規模經濟。",
+            "主持人預期 OpenAI 的 Astra 就是 GPT-6，參數規模約5兆，可能11月推出；年底美國模型將是 Anthropic、OpenAI、Google Gemini 4 Pro、xAI Grok 5 四強爭霸，他給四家各25%機率成為最強。",
+            "主持人評論 Meta 青少年成癮訴訟：核心難點是證明 Meta「故意」設計成癮機制，他預期 Meta 主要罪名可能不成立，但法官仍可能要求產品調整；此案將替注意力經濟畫紅線，YouTube、TikTok 等都會受影響。",
+            "主持人觀察美國10年期公債殖利率從3月低點4%升至4.7%，認為主因不是通膨，而是科技巨頭為 AI 資本支出發債搶走資金；這對股市估值是潛在利空。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 ARR 不如預期是競爭搶市占，若上市後大跌他會買入，因仍是最強前沿模型且算力供應將增加"
+            },
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人指出企業端 ARR 月增 32%，搶走 Anthropic 市占，競爭力轉強"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人預期訴訟主要罪名可能不成立，但法官可能要求產品調整，影響中性偏負面"
+            },
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人預期 Gemini 4 Pro 會很強，年底四強爭霸中 Google 有 25% 機率成為最強"
+            }
+          ],
+          "market_view": "主持人認為美債殖利率升至4.7%是科技巨頭發債搶資金所致，並非通膨擔憂，對股市估值是潛在利空；AI 長線仍看好，但企業生產力無法轉換成營收，未來一年可能出現轉折。",
+          "action_view": "若 Anthropic 上市後因 ARR 不如預期大跌，主持人會進場買入；AI infra 短線情緒受挫但長線不變，需留意企業 AI 生產力兌現為營收的轉折。",
+          "notable_quote": "AI產業一個月，等於傳統的科技產業maybe半年左右"
+        }
+      },
+      {
         "guid": "dbeef481-226a-4556-a855-caba3bb9787b",
         "title": "EP328. SPCX Grok 4.6、谷歌 Gemini 3.7 Flash、Anthropic 上市估值 | M觀點",
         "published": "Mon, 17 Aug 2026 06:16:31 GMT",
@@ -2280,51 +2330,6 @@
           "notable_quote": "科技業因為科技產品或者科技的本質，就是破壞性創新，大家可能只會看到創新，但是他前面是破壞性，所以是這兩合在一起的時候，就是一定有人是受傷，一定有人是benefit的。"
         },
         "shown_at": "2026-07-09T23:10:08Z"
-      },
-      {
-        "guid": "5c3f3ef5-76e1-4c4c-b2bf-ce6a2a6332a9",
-        "title": "EP317. 特斯拉第二季大賣 + 企業 AI 論戰延燒 | M觀點",
-        "published": "Mon, 06 Jul 2026 05:30:00 GMT",
-        "processed_at": "2026-07-06T06:48:28Z",
-        "digest": {
-          "summary_points": [
-            "特斯拉 Q2 2026 交車 480,126 輛，創 Q2 新高，年增 25% 以上，QoQ 增 34%，遠超華爾街預期的 40.6 萬輛。",
-            "特斯拉 Q2 生產 451,758 輛，交付高於生產因第一季在途車交車，庫存消化順利。",
-            "能源儲存部署 13.5 GWh，年增 41%，主持人預期未來 3-5 年可穩定年增 20-30%。",
-            "歐洲銷售前五月年增 57%，法國翻倍、瑞典增 56%，受惠油價高、低價 Model 3/Model Y L 推出及 FSD 獲批。",
-            "Model Y L（七人座）7 月 2 日在北美推出，德州廠生產，預計第四季開始貢獻銷售。",
-            "主持人認為特斯拉汽車業務重要性降低，未來股價關鍵在 FSD 採用率、Robotaxi 大規模上路及 Optimus 機器人。",
-            "FSD 採用率預期 Q2 財報向好，Hardware 3.0 的 V14 Lite 版推出有助舊車採用。",
-            "Robotaxi 目前車輛數仍少，市場期待 Cybercab 大量上路，傳聞 7 月 4 日可能增加，服務擴至邁阿密。",
-            "Optimus 機器人預計 7 月量產並可能舉辦發表會，all-in podcast 主持人稱 Optimus 表現優於 Figure AI。",
-            "特斯拉 Q2 財報預計不錯，但數字公布後股價未漲，可能因預先上漲及利多出盡。",
-            "Palantir CEO 批評 OpenAI/Anthropic 只顧自身，主持人認為其平台加模型路線正確，模型可替換、平台難取代。",
-            "OpenAI 與 Anthropic 都推出部署公司抄襲 Palantir 路線，微軟也推出 Microsoft Frontier Company，投資 25 億美元、6000 名工程師，證明市場需要企業級 AI 部署。",
-            "微軟 CEO 納德拉也強調企業應將智慧財產保留在平台端而非送給模型公司，與 Palantir 觀點一致。",
-            "橋水基金與 Thinking Machine 合作，用開源模型 Qwen 3 235B fine-tune 金融任務，準確率從 70% 升至 85%，成本降 13.8 倍，擊敗前沿模型，證明企業可用自有資料打造更強更便宜的專用模型。",
-            "主持人認為 Palantir 平台具獨特優勢，不會被消滅，市場擴大後各方共存（類似 AWS、Azure、Google Cloud），Palantir 安全無虞。"
-          ],
-          "tickers": [
-            {
-              "name": "特斯拉",
-              "code": "TSLA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "交車數字強勁創 Q2 新高，FSD 採用率、Robotaxi 與 Optimus 前景看好，汽車業務重要性雖降但整體成長動能佳。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "平台路線證實正確，Ontology 及部署能力具護城河，且市場擴大下仍將是關鍵玩家，不會被模型公司取代。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "特斯拉現在整個汽車業務在特斯拉的重要性其實已經蠻低的，無論是 Robotaxi 無論是 Otomos 都比他重要。"
-        },
-        "shown_at": "2026-07-06T23:02:03Z"
       }
     ]
   },
@@ -4845,6 +4850,56 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74410003",
+        "title": "Walmart flashes consumer warning",
+        "published": "Thu, 20 Aug 2026 18:47:45 +0000",
+        "processed_at": "2026-08-20T19:57:50Z",
+        "digest": {
+          "summary_points": [
+            "Walmart 財報示警美國消費轉弱：美國同店銷售僅年增 2.6%，遠低於預期的 3.7%，創六年最慢增速；Q3 每股盈餘指引 62-64 美分、全年 280-287 美元，均不及市場共識。",
+            "Bespoke 統計指出，Walmart 在過去 7 次財報日中有 6 次股價收跌，顯示市場對其保守展望明顯偏空；管理層稱低於共識的財測反映將關稅退稅再投資於客戶降價。",
+            "阿里巴巴（Alibaba）財報後股價下跌但脫離低點，市場在 AI 支出大增與雲端成長加速之間權衡；分析師普遍仍持正面看法，認為雲端業務是支撐。",
+            "Deere 財報優於預期，營建設備、小型農機與草坪產品需求強勁，抵銷大型農業設備的下行循環，激勵股價走揚。",
+            "Advance Auto Parts 大跌，因 DIY 維修通路在第二季明顯受家庭預算緊縮衝擊，尤其季末最後四周銷售動能惡化。",
+            "費城聯準銀行製造業指數 8 月升至 47.4，遠優於預期的 25，為 2021 年 4 月以來最高，帶動美債殖利率上揚，10 年期回到 4.75%、30 年期達 5.25%。",
+            "美國財政部長 Bessent 表示可能提高 30 年期公債買回額度，超過先前公布的每期 40 億美元，以傳遞「殖利率未反映基本面」的訊息。"
+          ],
+          "tickers": [
+            {
+              "name": "沃爾瑪 (Walmart)",
+              "code": "WMT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指出 Walmart 財報對消費支出示警，財測低於共識，且歷史顯示其財報日多數下跌，因此偏空看待。"
+            },
+            {
+              "name": "阿里巴巴 (Alibaba)",
+              "code": "BABA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "市場在 AI 支出與雲端成長加速之間權衡，分析師維持正面看法但股價下跌，方向未明。"
+            },
+            {
+              "name": "迪爾公司 (Deere)",
+              "code": "DE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報優於預期，營建設備等業務抵消農業設備低迷，帶動股價上漲。"
+            },
+            {
+              "name": "Advance Auto Parts",
+              "code": "AAP",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "DIY 通路受家庭預算緊縮打擊，股價重挫，顯示基本面轉弱。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "we believe that the yields don't reflect the underlying fundamentals"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74381167",
         "title": "Moderna’s $44B booster",
         "published": "Thu, 20 Aug 2026 10:55:23 +0000",
@@ -5217,54 +5272,6 @@
           "notable_quote": "Brin also wants the AI team to focus on more recursive self-improvement, a compounding process where an AI system helps design, code, or train its own next generation."
         },
         "shown_at": "2026-08-13T22:52:15Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73849996",
-        "title": "Inflation cools but stays stubborn",
-        "published": "Wed, 12 Aug 2026 15:23:32 +0000",
-        "processed_at": "2026-08-12T20:10:53Z",
-        "digest": {
-          "summary_points": [
-            "7月CPI年增3.4%符合預期，核心CPI年增2.5%，連續第65個月高於2%目標；分析師認為報告給聯準會更多時間，但不改變整體通膨軌跡。",
-            "聯準會9月升息機率由48%降至43%；Janney策略師Guy Labar表示目前處於「不降息不升息」經濟，聯準會主席Kevin Warsh出面明說對市場有利。",
-            "Domino's Pizza推出個人底特律風格新披薩，分析師Andrew Charles看好其納入6.99美元Mix & Match平台有助於降低客單價侵蝕風險，但質疑定價是否夠低，因為消費者可能改買中尺寸披薩。",
-            "現貨黃金反彈至4400美元/盎司，為6月5日以來高點並站上100日均線；Nomura的Charlie Magellicott稱「黃金重置」，量化基金由空翻多投入約15億美元，若突破5056美元將全力做多。"
-          ],
-          "tickers": [
-            {
-              "name": "CoreWeave",
-              "code": "",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "上調2026年營收展望至124-132億美元（原120-130億），並上調調整後營業利益展望，股價大漲逾15%。"
-            },
-            {
-              "name": "Super Micro Computer",
-              "code": "SMCI",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q1 EPS指引1.00-1.10美元遠超市場預期的0.72美元，股價走高。"
-            },
-            {
-              "name": "H&R Block",
-              "code": "HRB",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q4財報大幅擊敗預期，2027年EPS指引6.04-6.24美元優於市場共識5.86美元，並提高季度股息10%至0.46美元。"
-            },
-            {
-              "name": "Domino's Pizza",
-              "code": "DPZ",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師Andrew Charles看好新披薩納入Mix & Match平台有助客單價，但質疑定價可能不夠低，因此態度中性。"
-            }
-          ],
-          "market_view": "美國經濟處於「不降息不升息」的狀態，但聯準會缺乏前瞻指引，市場被迫對沖各種可能結果。",
-          "action_view": "",
-          "notable_quote": "We're now in a no-cut-no-hike economy, but it would be good for markets for Fed Chairman Kevin Warsh to come out and say so."
-        },
-        "shown_at": "2026-08-12T22:52:00Z"
       }
     ]
   },

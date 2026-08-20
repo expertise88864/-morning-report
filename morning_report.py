@@ -93,6 +93,8 @@ from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保
     _md_to_html,
     _style_analysis_html,
     _dim_source_citations,
+    _link_source_citations,
+    build_news_link_index,
     _wrap_stance,
     _render_kpi_strip,
     _render_model_evidence_html,
@@ -880,6 +882,11 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     "金融-台股": "壽險 OR 金控 OR 淨息差 OR 投資收益",
     # 全球金融精準化:原「美股 金融」太泛,收斂到會傳導台股壽險/銀行的具體題材
     "金融-全球": "Fed 銀行股 OR 美債殖利率 OR 壽險 投資收益",
+    # 金控集團動態(2026-08-20):國泰金(2882)/中信金(2891)母公司與主要
+    # 子公司(銀行/壽險/投信)的重大消息、財報、裁罰、購併,供「九、其他
+    # 類股」金融條目取材。標籤與 prompt 只以一般類股素材呈現。
+    "金融-金控": ("國泰金 OR 國泰人壽 OR 國泰世華 OR 國泰投信 "
+              "OR 中信金 OR 中國信託 OR 台灣人壽 OR 中信銀"),
     "航運-台股": "長榮 OR 陽明 OR 萬海 OR 貨櫃航運",
     "航運-全球": "運價 OR BDI OR SCFI OR 塞港 OR 紅海航運",
     # 生技收斂到個股+催化(新藥/臨床/健保),去政策雜訊;實測召回 ~48 則、命中臨床/個股
@@ -2286,23 +2293,6 @@ def fetch_analyst_rating_momentum(tickers=_ANALYST_MOMENTUM_TICKERS, days: int =
         print(f"[analyst] 評等動能 {len(out)} 檔(net: "
               + ", ".join(f"{k}{v['net']:+d}" for k, v in out.items()) + ")")
     return out
-
-
-def _basis_line_html(basis: dict) -> str:
-    """台指期與現貨價差 → 純事實一行(不下情緒結論;隱藏基差/逆價差術語)。無資料回空。"""
-    if not basis or basis.get("diff") is None or basis.get("spot") is None:
-        return ""
-    diff = basis["diff"]
-    hl = "高" if diff > 0 else ("低" if diff < 0 else "持平")
-    season = ("　7-8 月除息旺季期貨常低於現貨,屬季節性、非看空訊號"
-              if basis.get("div_season") else "")
-    return (
-        "<div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
-        "padding:12px 18px;margin:12px 0;font-size:13px;color:#334155;line-height:1.7;'>"
-        "<b style='color:#0f172a;'>台指期 vs 大盤現貨</b>　"
-        f"近月期貨 {basis['fut_settle']:,.0f}、大盤現貨 {basis['spot']:,.0f}"
-        f"(期貨{hl} <b>{abs(diff):,.0f}</b> 點)"
-        f"<span style='color:#94a3b8;'>{season}</span></div>")
 
 
 def _yield_curve_read(macro: dict) -> dict:
@@ -15730,7 +15720,14 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 if len(items) >= topic_limit:
                     break
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                # 2026-08-20 使用者回報:在地快訊出現三個月前的舊聞(彰基 AI
+                # 換臉)。原本 `if pub and … < cutoff` 是 fail-open —— RSS 條目
+                # ★缺日期就完全不檢查★,而 Google 重新收錄的舊文正是日期最
+                # 不可靠的一群。改 fail-closed:沒有日期＝無從確認新鮮度＝不收
+                # (寧可少一則,不可端出三個月前的舊聞)。
+                if not pub:
+                    continue
+                if dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
                 title = str(entry.get("title", ""))[:90]
                 # 批#15 地區過濾:標題須含中彰投雲地名或追蹤實體詞
@@ -15785,7 +15782,9 @@ def fetch_ai_model_news(hours: int = 30) -> list[dict]:
                 if len(out) >= 8:
                     return out
                 pub = entry.get("published_parsed") or entry.get("updated_parsed")
-                if pub and dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
+                if not pub:            # 同在地快訊:缺日期 fail-closed(見該處)
+                    continue
+                if dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
                 title = str(entry.get("title", ""))[:110]
                 if not title or _local_title_is_dup(title, seen):
@@ -18559,17 +18558,18 @@ def _poly_delta_suffix(delta, days: int = 1) -> str:
 
 def _poly_prob_line(rows: list[dict]) -> str:
     """[{'name','prob',delta?,low_vol?}] → 「甲 58%(↑7pp)・乙 42%」。
-    量低標記改「行級聚合」:任一名量低 → 行尾一次「(部分量低⚠)」——
+    量低標記改「行級聚合」:任一名量低 → 行尾一次「(部分量低)」——
+    (2026-08-20 使用者:去掉 ⚠ emoji)
     逐名標記讓每行塞滿⚠難以閱讀(2026-07-17 使用者反映)。"""
     body = "・".join(
         f"{r['name']} {r['prob']}%"
         f"{_poly_delta_suffix(r.get('delta'), r.get('delta_days', 1))}"
         for r in rows)
     if any(r.get("low_vol") for r in rows):
-        body += "(部分量低⚠)"
+        body += "(部分量低)"
     # 批#17:bid-ask 價差寬=顯示價不可精確解讀,行級聚合提示
     if any(r.get("wide") for r in rows):
-        body += "(部分價差寬⚠)"
+        body += "(部分價差寬)"
     return body
 
 
@@ -20670,7 +20670,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             final_pct = (final_pred / last_close_val - 1) * 100
         else:
             final_pct = raw_pct if raw_pct is not None else 0
-        pct_color = "#dc2626" if final_pct >= 0 else "#16a34a"
         pct_sign = "+" if final_pct >= 0 else ""
         # 若校正讓 raw 與 final 顯著不同(>0.05 pct point),括號內附原始訊號值供參考
         raw_note = ""
@@ -20686,35 +20685,41 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         # 改成「一個結論 + 一排資訊格」:最重要的預測開盤點位放大成一句
         # 白話,其餘四項並排成 flex 格(桌機三欄、手機自動折行)。
         # **數字與判準都沒有改**,只是排法。
+        # 2026-08-20 使用者:預測漲跌 % 直接接在「今天開盤大約落在 44,719」
+        # 大字後方,不再佔一格 —— 少一格、行寬更收斂,信件不會被左右拉長。
+        # 剩三格(昨收/夜盤/訊號共識)仍走 2×2 表格,夜盤缺席時併成一列。
+        _cell_close = (
+            '<td style="width:50%;padding:10px 12px;background:#f8fafc;'
+            'border-radius:8px;vertical-align:top;">'
+            '<div style="font-size:12px;color:#64748b;">加權昨收</div>'
+            '<div style="font-size:17px;font-weight:700;color:#0f172a;'
+            f'font-variant-numeric:tabular-nums;">{taiex_pred["last_close"]}'
+            '</div></td>')
+        _cell_cons = (
+            '<td style="width:50%;padding:10px 12px;background:#f8fafc;'
+            'border-radius:8px;vertical-align:top;">'
+            '<div style="font-size:12px;color:#64748b;">訊號共識</div>'
+            '<div style="font-size:17px;font-weight:700;color:#0f172a;">'
+            f'{taiex_pred["consensus"]}</div></td>')
+        if night_row_html:
+            _pred_grid_rows = (
+                f"<tr>{_cell_close}{night_row_html}</tr>"
+                f"<tr>{_cell_cons}<td style=\"width:50%;\"></td></tr>")
+        else:
+            _pred_grid_rows = f"<tr>{_cell_close}{_cell_cons}</tr>"
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         {signal_rows}
         <div style="margin:12px 0;padding:16px;background:linear-gradient(135deg,#0284c7,#0ea5e9);border-radius:10px;color:#fff;">
           <div style="font-size:13px;opacity:.9;">今天開盤大約落在</div>
-          <div style="font-size:30px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f}</div>
+          <div style="font-size:30px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f} <span style="font-size:16px;">({pct_sign}{final_pct:.2f}%)</span></div>
           <div style="font-size:14px;margin-top:4px;">
-            較昨收 {taiex_pred['last_close']} <b>{pct_sign}{final_pct:.2f}%</b>{raw_note}
+            較昨收 {taiex_pred['last_close']}{raw_note}
             ・合理區間 {taiex_pred['ci_lower']:,.0f}~{taiex_pred['ci_upper']:,.0f}
           </div>
         </div>
         <table style="width:100%;border-collapse:separate;border-spacing:6px;table-layout:fixed;margin:8px 0;">
-          <tr>
-            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
-              <div style="font-size:12px;color:#64748b;">加權昨收</div>
-              <div style="font-size:17px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;">{taiex_pred['last_close']}</div>
-            </td>
-            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
-              <div style="font-size:12px;color:#64748b;">預測漲跌</div>
-              <div style="font-size:17px;font-weight:700;color:{pct_color};font-variant-numeric:tabular-nums;">{pct_sign}{final_pct:.2f}%</div>
-            </td>
-          </tr>
-          <tr>
-            {night_row_html or '<td style="width:50%;"></td>'}
-            <td style="width:50%;padding:10px 12px;background:#f8fafc;border-radius:8px;vertical-align:top;">
-              <div style="font-size:12px;color:#64748b;">訊號共識</div>
-              <div style="font-size:17px;font-weight:700;color:#0f172a;">{taiex_pred['consensus']}</div>
-            </td>
-          </tr>
+          {_pred_grid_rows}
         </table>
         """
 
@@ -21133,7 +21138,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         </div>
         """
     # 台指期與現貨價差(純事實,不下情緒結論;獨立於夜盤資料是否存在)
-    night_html += _basis_line_html(quotes.get("TAIFEX_BASIS") or {})
 
     macro_table_html = ""
     if macro_rows:
@@ -21389,6 +21393,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _dim_source_citations(analysis_html)   # 批#27:來源淡化,信心標保留
+    # 2026-08-20 使用者:來源引用(鉅亨/CNBC…)可點 → 保守比對新聞語料,
+    # 只有「同媒體+內容高重合且無並列競爭者」才上連結;錯連比不連糟,
+    # 比不出來就維持原樣的淡化文字。索引缺席(舊測試/降級運行)= no-op。
+    analysis_html = _link_source_citations(
+        analysis_html, quotes.get("NEWS_LINK_INDEX") or [])
     analysis_html = _wrap_stance(analysis_html)
     # (llm_label 已隨信尾三行移除而不再需要,2026-07-14)
 
@@ -21535,6 +21544,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
             {taiex_html}
 
+            {breadth_html}
+
             {combined_pred_html}
 
             {portfolio_risk_html}
@@ -21542,8 +21553,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             {ma200_html}
 
             {tw_calendar_html}
-
-            {breadth_html}
 
             {midterm_html}
 
@@ -23772,6 +23781,13 @@ def _phase_render(ctx) -> Optional[int]:
     # 批#32:渲染整體 fallback——單張卡片有 _safe_block 兜底,但若 render_html 本體
     # (行情表/KPI/尺寸守衛…)仍拋例外,原本會讓 main 直接退出、當天整封信不寄。
     # 改為退化成「極簡信」(行情+預測+分析全文),確保收件人一定收得到東西。
+    # 來源引用超連結的索引(2026-08-20):render 不做網路呼叫,索引在這裡
+    # 從已抓好的 news 建好塞進 quotes;失敗只代表沒有連結,不得影響寄信。
+    try:
+        quotes["NEWS_LINK_INDEX"] = build_news_link_index(news)
+    except Exception as e:      # noqa: BLE001 — 晨報不可斷
+        print(f"[render] 來源連結索引建置失敗(改無連結): {e}", file=sys.stderr)
+        quotes["NEWS_LINK_INDEX"] = []
     try:
         html = render_html(quotes, fair, predictions, analysis, report_date, mode)
     except Exception as e:      # noqa: BLE001 — 晨報不可斷

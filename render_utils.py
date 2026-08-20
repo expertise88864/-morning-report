@@ -374,6 +374,113 @@ def _dim_source_citations(html: str) -> str:
     return _re.sub(r"\[([^\[\]]{1,60})\]", _repl, html)
 
 
+#: 引用媒體名 → 語料端別名(來源連結比對用;一律小寫比對)
+_CITE_MEDIA_ALIASES: dict = {
+    "鉅亨": ("鉅亨", "anue", "cnyes"), "鉅亨網": ("鉅亨", "anue", "cnyes"),
+    "cnbc": ("cnbc",), "路透": ("路透", "reuters"), "彭博": ("彭博", "bloomberg"),
+    "bloomberg": ("彭博", "bloomberg"), "reuters": ("路透", "reuters"),
+    "日經": ("日經", "nikkei"), "日經亞洲": ("日經", "nikkei"),
+    "中央社": ("中央社", "cna"), "工商時報": ("工商", "ctee"),
+    "自由財經": ("自由", "ltn"), "自由時報": ("自由", "ltn"),
+    "經濟日報": ("經濟日報", "udn"), "udn": ("udn",),
+    "moneydj": ("moneydj",), "yahoo": ("yahoo",),
+    "金融時報": ("金融時報", "ft"),
+}
+
+
+def _cite_sig_tokens(text: str) -> set:
+    """內容比對用的特徵 token:CJK 二元組 + 拉丁詞(≥2)+ 數字串。"""
+    import re as _re
+    toks: set = set()
+    for run in _re.findall("[\u4e00-\u9fff]{2,}", text):
+        toks.update(run[i:i + 2] for i in range(len(run) - 1))
+    toks.update(w.lower() for w in _re.findall("[A-Za-z]{2,}", text))
+    toks.update(_re.findall("[0-9]+(?:[.][0-9]+)?", text))
+    return toks
+
+
+def build_news_link_index(news: list) -> list:
+    """新聞語料 → 來源連結索引 [{"t"(token 集), "u"(URL), "m"(媒體小寫)}]。
+
+    (2026-08-20 使用者)分析文的來源引用(鉅亨/CNBC…)要能點回原文。
+    媒體名取 Google News 標題的「 - 媒體」尾碼,沒有就用 feed 來源名;
+    標題先剝掉媒體尾碼再取 token,免得媒體名自己變成內容特徵。
+    """
+    out = []
+    for it in news or []:
+        try:
+            title = str(it.get("title") or "")
+            url = str(it.get("link") or "")
+            if not title or not url.startswith("http"):
+                continue
+            media = ""
+            if " - " in title:
+                title, media = title.rsplit(" - ", 1)
+            elif it.get("source"):
+                media = str(it["source"])
+            out.append({"t": _cite_sig_tokens(title),
+                        "u": url, "m": media.strip().lower()})
+        except Exception:
+            continue
+    return out[:600]
+
+
+def _link_source_citations(html: str, sources: list) -> str:
+    """把 `_dim_source_citations` 產出的來源 span 升級成超連結(保守比對)。
+
+    ★錯連比不連糟★:連到不相干的文章等於替內容背書一個假出處。三個條件
+    全過才上連結 —— ①引用媒體與語料條目的媒體對得上(任一端缺媒體才
+    放寬)、②該行內容與標題的特徵 token 重合 ≥3、③最佳候選與次佳分得
+    出高下(同分=歧義)。比不出來 → 原樣保留淡化文字。
+    sources 缺席(舊測試/降級運行)= no-op。
+    """
+    import html as _h
+    import re as _re
+    if not sources:
+        return html
+
+    def _media_ok(cited: str, item_media: str) -> bool:
+        c = cited.strip().lower()
+        aliases = (_CITE_MEDIA_ALIASES.get(c) or (c,)) if c else ()
+        if not aliases or not item_media:
+            return True     # 缺媒體 → 交給內容重合門檻
+        return any(a in item_media or item_media in a for a in aliases)
+
+    _span_pat = _re.compile(
+        '<span style="color:#94a3b8;font-size:12px;font-weight:400;'
+        'font-variant-numeric:normal;">（([^<）]{1,60})）</span>')
+
+    def _repl(m: "_re.Match") -> str:
+        inner = m.group(1)
+        # 該行內容:回頭找最近的區塊邊界,剝標籤、反轉義後取特徵 token
+        pre = m.string[:m.start()]
+        _nl = chr(10)
+        cut = max(pre.rfind(t) for t in ("<br", "<li", "</p", "</h",
+                                         "</td", "</div", _nl))
+        line = _re.sub("<[^>]+>", " ", pre[max(cut, 0):])
+        toks = _cite_sig_tokens(_h.unescape(line)[-200:])
+        cited_medias = [t.strip() for t in _re.split("[／/、]", inner)
+                        if t.strip()]
+        best_u, best, second = "", 0, 0
+        for it in sources:
+            if cited_medias and not any(_media_ok(c, it["m"])
+                                        for c in cited_medias):
+                continue
+            score = len(toks & it["t"])
+            if score > best:
+                best_u, second, best = it["u"], best, score
+            elif score > second:
+                second = score
+        if best >= 3 and best > second and best_u:
+            safe = _h.escape(best_u, quote=True)
+            return (f'<a href="{safe}" target="_blank" '
+                    f'style="color:#64748b;text-decoration:underline;">'
+                    f"{m.group(0)}</a>")
+        return m.group(0)
+
+    return _span_pat.sub(_repl, html)
+
+
 def _wrap_stance(html: str) -> str:
     """把『我的明確立場』段做更醒目的藍色 callout box。"""
     marker = "我的明確立場"
@@ -850,9 +957,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"{htmllib.escape(str(r.get('name', '')))} {r.get('prob', 0)}%{_poly_delta_sfx(r)}"
             for r in rows or [])
         if any(r.get("low_vol") for r in rows or []):
-            body += "　(部分量低⚠)"
+            body += "　(部分量低)"
         if any(r.get("wide") for r in rows or []):   # 批#17:價差寬=顯示價不可盡信
-            body += "　(部分價差寬⚠)"
+            body += "　(部分價差寬)"
         return body
 
     def _poly_odds_block(label: str, content_lines: list, note: str = "Polymarket") -> str:

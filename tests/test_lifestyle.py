@@ -302,7 +302,7 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 def test_other_sector_queries_precision():
     """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 16                               # + 房市政策-台股(2026-07-17 批#14)
+    assert len(q) == 17               # + 房市政策-台股(批#14)+ 金融-金控(2026-08-20)
     assert "新青安" in q["房市政策-台股"]
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字
@@ -2142,7 +2142,9 @@ def test_wc_odds_line_conversion_and_render():
 def test_fetch_local_news_and_render(monkeypatch):
     """在地快訊卡:各主題抓 2 則(標題+連結),渲染黑字可點;逐主題失敗略過、無資料回空。"""
     import datetime as dt
-    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    # 2026-08-20:缺日期改 fail-closed(彰基三個月舊聞事件)→ fake 要帶
+    # published_parsed(真 feedparser 解析出的 struct_time),否則被判缺日期。
+    now_parsed = dt.datetime.now(dt.timezone.utc).timetuple()
 
     class Feed:
         def __init__(self, url):
@@ -2150,7 +2152,7 @@ def test_fetch_local_news_and_render(monkeypatch):
             if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:
                 self.entries = [{"title": "斗六長照大樓爭取9億經費",
                                  "link": "https://news.example.com/douliu",
-                                 "published": now_gmt}]
+                                 "published_parsed": now_parsed}]
             else:
                 raise TimeoutError("其他主題模擬失敗")
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
@@ -2595,14 +2597,14 @@ def test_local_title_fuzzy_dedup(monkeypatch):
 
     # 端到端:同事件兩則進 feed,只留一則
     import datetime as dt
-    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    now_parsed = dt.datetime.now(dt.timezone.utc).timetuple()
 
     class Feed:
         def __init__(self, url):
             if "%E9%87%8D%E5%A4%A7%E5%BB%BA%E8%A8%AD" in url:   # 建設 query
-                self.entries = [{"title": a, "link": "https://x/1", "published": now_gmt},
-                                {"title": b, "link": "https://x/2", "published": now_gmt},
-                                {"title": c, "link": "https://x/3", "published": now_gmt}]
+                self.entries = [{"title": a, "link": "https://x/1", "published_parsed": now_parsed},
+                                {"title": b, "link": "https://x/2", "published_parsed": now_parsed},
+                                {"title": c, "link": "https://x/3", "published_parsed": now_parsed}]
             else:
                 self.entries = []
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
@@ -3060,7 +3062,7 @@ def test_poly_prob_line_renders_delta_and_low_volume():
         {"name": "法國", "prob": 2, "delta": 0.4},   # |d|<1 不顯示
     ])
     # 批#14:量低改行級聚合,不再逐名標
-    assert line == "西班牙 58%(↑16pp)・阿根廷 42%(↓16pp)・英格蘭 3%・法國 2%(部分量低⚠)"
+    assert line == "西班牙 58%(↑16pp)・阿根廷 42%(↓16pp)・英格蘭 3%・法國 2%(部分量低)"
     assert mr._poly_prob_line([{"name": "甲", "prob": 60}]) == "甲 60%"
 
 
@@ -3209,16 +3211,16 @@ def test_local_region_filter_rejects_ncsist_collision(monkeypatch):
     """Codex 批#15 r6:「中科院」(國防)撞裸「中科」token——剝除後再比對;
     真正的中科園區新聞(中科擴線)不受影響。"""
     import datetime as dt
-    now_gmt = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    now_parsed = dt.datetime.now(dt.timezone.utc).timetuple()
 
     class Feed:
         def __init__(self, url):
             if "%E5%BD%B0%E6%BF%B1%E5%B7%A5%E6%A5%AD%E5%8D%80" in url:  # 產業/科技 query
                 self.entries = [
                     {"title": "中科院無人機飛彈試射成功", "link": "https://x/1",
-                     "published": now_gmt},                       # 國防新聞 → 擋
+                     "published_parsed": now_parsed},                       # 國防新聞 → 擋
                     {"title": "李長榮先進材料中科擴線動土", "link": "https://x/2",
-                     "published": now_gmt},                       # 真中科 → 收
+                     "published_parsed": now_parsed},                       # 真中科 → 收
                 ]
             else:
                 self.entries = []
@@ -3247,7 +3249,7 @@ def test_poly_outright_stable_ids_and_wide_spread(monkeypatch):
     by = {r["name"]: r for r in rows}
     assert by["Anthropic"]["hist_key"] == "111" and by["Anthropic"]["wide"] is False
     assert by["Google"]["hist_key"] == "222" and by["Google"]["wide"] is True
-    assert "(部分價差寬⚠)" in mr._poly_prob_line(rows)
+    assert "(部分價差寬)" in mr._poly_prob_line(rows)   # 2026-08-20:去 ⚠
     # alias 回退:昨日快照以「譯名」為 key → 今日改 id 仍算得出 delta
     now = dt.datetime(2026, 7, 18, 6, tzinfo=mr.TPE)
     hist = {"pulse|x": {"curr": {"date": "2026-07-17",

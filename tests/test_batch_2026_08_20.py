@@ -17,9 +17,12 @@ _SRC = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
 
 def test_taiex_kpi_cells_are_a_table_not_flex():
     """第五段資訊格是 2×2 表格:flex 在部分郵件客戶端不支援,
-    min-width×4 會把版面撐到 600px+,手機字被縮小(2026-08-20 使用者)。"""
-    i = _SRC.index(">五、加權指數開盤預測</h2>")
-    seg = _SRC[i:i + 4000]
+    min-width×4 會把版面撐到 600px+,手機字被縮小(2026-08-20 使用者)。
+
+    第二批把 % 併進大字後,格子改成先組好(`_cell_close`/`_cell_cons`)再塞進
+    模板 —— 探針窗因此從模板抬頭改成涵蓋「組格子 → 模板」整段,斷言不變。"""
+    i = _SRC.index('night_row_html = ""')
+    seg = _SRC[i:_SRC.index("{_pred_grid_rows}") + 200]
     assert "display:flex" not in seg, "第五段仍在用 flex 並排"
     assert "table-layout:fixed" in seg, "資訊格沒有走固定欄寬表格"
     assert seg.count('width:50%') >= 3, "不是兩欄(50%)的 2×2 排法"

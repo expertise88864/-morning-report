@@ -947,19 +947,6 @@ def test_optional_5y30y_failure_does_not_degrade_macro_quality():
     assert macro_row is not None and macro_row["status"] == "ok"   # 不因選配失敗降級
 
 
-def test_basis_line_html_factual_no_sentiment():
-    """台指期價差:純事實(不下看多/看空),隱藏「基差/逆價差」術語,除息季加季節註記。"""
-    h = mr._basis_line_html({"fut_settle": 45565, "spot": 45381, "diff": 184, "div_season": True})
-    assert "近月期貨 45,565" in h and "大盤現貨 45,381" in h and "期貨高 <b>184</b>" in h
-    assert "除息旺季" in h and "非看空訊號" in h
-    # 不下情緒結論、不吐術語
-    for bad in ("法人看多", "法人看空", "法人避險", "基差", "逆價差", "正價差"):
-        assert bad not in h
-    low = mr._basis_line_html({"fut_settle": 45300, "spot": 45400, "diff": -100, "div_season": False})
-    assert "期貨低 <b>100</b>" in h.replace("184", "184") or "期貨低 <b>100</b>" in low
-    assert mr._basis_line_html({}) == ""                    # 無資料 → 空
-
-
 # ===================== A4 估值溫度 + A5 選擇權磁吸價(2026-07-14)=====================
 
 def test_third_wednesday():

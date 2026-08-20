@@ -4845,6 +4845,38 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74381167",
+        "title": "Moderna’s $44B booster",
+        "published": "Thu, 20 Aug 2026 10:55:23 +0000",
+        "processed_at": "2026-08-20T14:08:41Z",
+        "digest": {
+          "summary_points": [
+            "Moderna 因個人化 mRNA 癌症疫苗臨床數據正面，單日暴漲 176.97% 至 174.38 美元，市值增加 440 億美元，創 S&P 500 本世紀最大單日漲幅；但分析師維持「持有」觀望，股價盤前回跌 11%。",
+            "比特幣逼近 7 萬美元，24 小時內加密貨幣空頭清算達 27.4 億美元，為 2021 年以來最大軋空規模，總清算量近 30 億美元。",
+            "Wolfspeed 因會計年度第四季調整後每股虧損 2.26 美元，遠遜市場預期的 1.47 美元，股價重挫 10%。"
+          ],
+          "tickers": [
+            {
+              "name": "Moderna",
+              "code": "MRNA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "癌症疫苗利多暴漲，但分析師建議等待完整數據，盤前回跌。"
+            },
+            {
+              "name": "Wolfspeed",
+              "code": "WOLF",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "虧損擴大，股價大跌。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "My dad just texted me saying they cured cancer, and I should buy as much mRNA as I can."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74321072",
         "title": "IBM hits key quantum computing milestone",
         "published": "Wed, 19 Aug 2026 15:46:37 +0000",
@@ -5231,46 +5263,6 @@
           "market_view": "美國經濟處於「不降息不升息」的狀態，但聯準會缺乏前瞻指引，市場被迫對沖各種可能結果。",
           "action_view": "",
           "notable_quote": "We're now in a no-cut-no-hike economy, but it would be good for markets for Fed Chairman Kevin Warsh to come out and say so."
-        },
-        "shown_at": "2026-08-12T22:52:00Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73841821",
-        "title": "NYC delivery model detour",
-        "published": "Wed, 12 Aug 2026 10:35:54 +0000",
-        "processed_at": "2026-08-12T14:36:44Z",
-        "digest": {
-          "summary_points": [
-            "紐約市提出《送貨保護法》,要求第三方配送公司直接僱用最後一哩工人,主要針對亞馬遜,若通過將增加其營運成本,並可能迫使亞馬遜考慮將配送業務移出紐約。",
-            "加州法官初步拒絕以「逆佔有原則」要求 Edison International 承擔伊頓大火數十億美元財產損失,Edison 股價上漲 3%,若裁定成為最終判決,Edison 可主張免除無過失責任。",
-            "雲端 AI 基礎設施供應商 CoreWeave 公佈 Q2 營收近乎倍增,股價大漲 17%,顯示 AI 基礎設施需求持續加速。"
-          ],
-          "tickers": [
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "紐約市《送貨保護法》要求直接僱用最後一哩工人,增加營運成本,並可能迫使亞馬遜重新考慮紐約配送布局。"
-            },
-            {
-              "name": "Edison International",
-              "code": "EIX",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "加州法官初步拒絕追究伊頓大火賠償責任,若裁定確定可避免數十億美元損失,股價上漲 3%。"
-            },
-            {
-              "name": "CoreWeave",
-              "code": "CRWV",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Q2 營收年增近一倍,AI 基礎設施需求加速,財報優於預期,股價上漲 17%。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Who benefits as AI data centers create a power shortage?"
         },
         "shown_at": "2026-08-12T22:52:00Z"
       }
@@ -7073,6 +7065,49 @@
   "fwdguidance": {
     "name": "Forward Guidance",
     "episodes": [
+      {
+        "guid": "9909eeee-9c27-11f1-ab19-cf682a15597e",
+        "title": "Treasury-Led Financial Repression Is Ushering In A Debasement Regime | Weekly Roundup",
+        "published": "Thu, 20 Aug 2026 10:00:00 -0000",
+        "processed_at": "2026-08-20T14:16:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為財政部將長債回購規模至少翻倍至每次40億美元，以短債融資買長債，等同變相QE與Operation Twist，是明確的貨幣貶值(debasement)訊號，與2023年獲利時期相似。",
+            "貝森特過去抨擊葉倫，如今卻加大干預，顯示財政主導(fiscal dominance)地位確立，政策目標是支撐AI建設與中期選舉，而非控制通膨。",
+            "預期中期選舉前（約2.5個月）政策持續寬鬆，但之後可能轉向；貝森特深知通膨風險，可能故意放任債市對民主黨施壓。",
+            "今日跨資產反應：QQQ下跌、美元走弱，黃金漲3.5-4%突破4500，比特幣出現12.7億美元空頭清算，顯示資金轉向硬資產；對外國投資者而言，美股因美元貶值實際報酬更差。",
+            "主持人認為當前與2023年類似，但不同在於股市處於歷史高位，干預更不尋常；應持有通膨保護資產（黃金、比特幣、做空美元），而非單純做空股市，因為名義價格會上漲。",
+            "油市方面，主持人認為荷莫茲海峽問題未解、全球庫存下降，石油及成品油價格可能上行，做多石油有正套利（年化20-30%）。",
+            "對科技股謹慎，半導體可能形成右肩；Anthropic IPO可能在10月成為市場頂部（類比SpaceX IPO）。偏好neocloud與醫療創新（如Moderna大漲150%）。"
+          ],
+          "tickers": [
+            {
+              "name": "Energy Select Sector SPDR Fund",
+              "code": "XLE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為XLE突破新高，顯示油市供應緊張，後市仍有上行空間"
+            },
+            {
+              "name": "Bitcoin",
+              "code": "",
+              "market": "",
+              "direction": "bullish",
+              "reason": "主持人認為比特幣是通膨保護資產，受惠於債務貨幣化與美元貶值，今日出現大規模空頭清算"
+            },
+            {
+              "name": "Moderna",
+              "code": "MRNA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人提到其癌症試驗激勵股價大漲150%，但表示不會追高，僅認為醫療創新值得關注"
+            }
+          ],
+          "market_view": "主持人認為美國財政部透過長債回購變相執行QE，驅動美元貶值與通膨回升，市場正經歷從科技股轉向硬資產的板塊輪動；短期政策寬鬆至少持續到年底，但長期有通膨失控風險。",
+          "action_view": "操作上建議持有黃金、比特幣等通膨保護資產，做空美元，做多石油(XLE)；避免追高半導體與科技股，轉向被低估的防禦性板塊如醫療保健。",
+          "notable_quote": "This is Japan stuff. And if you want to know how this ends, go price gold, oil and anything else that's a hard asset in yen, because this is the playbook."
+        }
+      },
       {
         "guid": "5cfaa964-95cb-11f1-8ae8-6b9f8f5585ff",
         "title": "The Growth Strategy Trapping The Fed | Darius Dale",

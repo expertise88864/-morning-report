@@ -112,7 +112,7 @@
   "action": "cyberattack",
   "identity_schema": 12
  },
- "geopolitical:sanction:International Criminal C:2026-08": {
+ "geopolitical:sanction:國際刑事法院:2026-08": {
   "first_seen": "2026-08-19",
   "days": 1,
   "last_seen": "2026-08-19",
@@ -126,16 +126,16 @@
    "tomoko",
    "us"
   ],
-  "entity": "International Criminal Court",
+  "entity": "國際刑事法院",
   "subject_basis": "alias",
   "subjects": [
-   "International Criminal Court"
+   "國際刑事法院"
   ],
   "event_type": "geopolitical",
   "action": "sanction",
   "identity_schema": 12
  },
- "geopolitical:Pentagon:2026-08": {
+ "geopolitical:五角大廈:2026-08": {
   "first_seen": "2026-08-19",
   "days": 1,
   "last_seen": "2026-08-19",
@@ -168,10 +168,10 @@
    "重新",
    "駐軍"
   ],
-  "entity": "Pentagon",
+  "entity": "五角大廈",
   "subject_basis": "alias",
   "subjects": [
-   "Pentagon"
+   "五角大廈"
   ],
   "event_type": "geopolitical",
   "action": "",
@@ -304,6 +304,35 @@
    "北韓"
   ],
   "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "export_controls:輝達:2026-08": {
+  "first_seen": "2026-08-21",
+  "days": 1,
+  "last_seen": "2026-08-21",
+  "latest_title": "輝達否認年底前推出「專供中國」AI晶片",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "ai",
+   "中國",
+   "供中",
+   "前推",
+   "否認",
+   "專供",
+   "年底",
+   "底前",
+   "推出",
+   "晶片",
+   "認年"
+  ],
+  "entity": "輝達",
+  "subject_basis": "literal",
+  "subjects": [
+   "輝達"
+  ],
+  "event_type": "export_controls",
   "action": "",
   "identity_schema": 12
  }

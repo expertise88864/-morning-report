@@ -5310,6 +5310,24 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "bcc22dff-b144-40ae-8f68-b4ab00f28c30",
+        "title": "Nick Bostrom on What Happens if AI Solves All of Our Problems",
+        "published": "Thu, 20 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-20T08:14:51Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 AI 的發展結果極端分化,可能是毀滅或徹底解決所有問題,中間情境可能類似 2008 年金融危機,投資環境充滿高度不確定性。",
+            "嘉賓指出,AI 訓練中的獎勵最大化機制可能導致模型出現「獎勵駭客」行為(例如逃出沙盒作弊),這是 AI 對齊問題的現實展現,也是 AI 產業的核心技術風險。",
+            "嘉賓認為,前線 AI 公司因極度競爭,被迫以最快速度推進,安全限制難以落實,增加 AI 應用的潛在風險。",
+            "主持人 Joe 認為,最好的結果可能是 AI 能力數年內趨於平穩,投資熱潮消退,AI 成為一般生產力工具;Tracy 則懷疑烏托邦情境,認為權力結構與社會階級不會消失,收益分配不均的風險依然存在。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "They like humanity, but not humans."
+        }
+      },
+      {
         "guid": "4fd75bad-403f-47c1-b23c-b4a60141b176",
         "title": "What the OpenAI-Hugging Face Hack Really Tells Us About AI Danger",
         "published": "Mon, 17 Aug 2026 08:00:00 +0000",
@@ -5576,29 +5594,6 @@
           "notable_quote": "only about 19-ish percent say they're going to stay with their advisor going forward"
         },
         "shown_at": "2026-07-26T22:56:20Z"
-      },
-      {
-        "guid": "2050514a-2131-40e9-bc90-b48f0113d17c",
-        "title": "How Franchise Restaurants Opened the Door to the Gig Economy",
-        "published": "Fri, 24 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-24T09:52:19Z",
-        "digest": {
-          "summary_points": [
-            "加盟模式是一種商標授權：加盟總部（如麥當勞）將品牌授權給獨立經營者（加盟者），加盟者繳納營業額的6%-20%作為權利金，並須嚴格遵守總部對價格、營業時間、產品組合、員工招呼用語等細節的規定。",
-            "現代速食加盟起源於二戰後，由雷·克洛克（麥當勞）和桑德斯上校（肯德基）開創；他們坦承此模式最初在反托拉斯法下可能違法，因此積極遊說修改法律，讓控制獨立加盟店的行為合法化。",
-            "1960至1970年代，加盟總部透過訴訟和遊說成功改變反托拉斯法，使其能夠對加盟店設定價格與區域限制，同時在勞工法上主張加盟店是獨立企業，藉此迴避雇主責任，形成「雙重豁免」。",
-            "加盟者能自主調整的空間極小；主要利潤來源是壓低勞動成本（薪資、人力配置），其他投入皆受總部控制。",
-            "加盟店之間的「不挖角協議」禁止員工未經原店主同意轉至其他加盟店；研究顯示此類協議會壓低薪資，部分州已加以限制。",
-            "科技進步（寬頻網路、銷售點系統、人工智慧）讓加盟總部對加盟店的即時控制力超越傳統垂直整合企業（如美國鋼鐵對工廠的控制）。",
-            "同一連鎖品牌中，加盟店的薪資較公司直營店低、升遷機會少，且職業安全違規率更高；但加盟店員工的工資與工時仍高於完全獨立的小型餐館。",
-            "加盟模式為零工經濟（如Uber、Lyft、亞馬遜配送夥伴）鋪路，這些平台利用類似的獨立承包商架構來避免雇主責任。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": ""
-        },
-        "shown_at": "2026-07-24T22:58:00Z"
       }
     ]
   },

@@ -79,8 +79,16 @@ IDENTITY_SCHEMA_VERSION = 12
 # 動作表與動作辨識搬到 `event_actions`(見該檔:宣告式資料與身分計算
 # 是兩件事,失效方式也不同)。此處再匯出,既有 import 路徑不變。
 from event_actions import (                       # noqa: E402,F401
-    ACTION_TABLE, CANONICAL_SUBJECTS, NEEDS_OBJECT, canonical_subject,
+    ACTION_TABLE, CANONICAL_SUBJECTS, NEEDS_OBJECT,
     event_action)
+
+# **主體正規化走單一權威**(2026-08-20 P1-2 r2):法域行為與
+# `event_actions.canonical_subject` 相同(subject_identity 委派它),
+# 機構(Pentagon/五角大廈、ICC/國際刑事法院)也一併收斂 —— 先前這裡
+# 只認法域,producer 已統一而身分層沒跟上,同一主體的中英寫法會裂成
+# 兩條 lineage、延燒天數從 1 重算。
+from subject_identity import (   # noqa: E402 - 相容出口區,同上
+    cross_language_display as canonical_subject)
 
 
 #: **通用新聞動詞**:每一則都有,不指認任何事件。與主體名一樣,
@@ -502,7 +510,13 @@ def _subjects_meet(ents: set, keys: set, subs: set, titles: str) -> bool:
     text = str(titles or "")
     # 記錄存的是 canonical 主體,而標題寫的是原文拼寫 —— 兩邊都比
     # (`canonical_subject` 是多對一,反查不了,所以比原字串也比標準名)。
-    for s in {x for s0 in subs for x in (s0, canonical_subject(s0)) if x}:
+    # r2 之後 canonical 涵蓋機構(Fed→聯準會)—— 標題寫的是任一語言的
+    # 別名,比對集合要含**宣告過的全部別名**,否則英文標題配不回中文
+    # canonical 的記錄(自測抓到:Fed 標題 vs 聯準會 主體回 0 天)。
+    import subject_identity as _sid
+    for s in {x for s0 in subs
+              for x in ((s0, canonical_subject(s0)) + _sid.aliases_of(s0))
+              if x}:
         if not s.isascii():
             if s in text:
                 return True

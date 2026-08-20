@@ -216,7 +216,7 @@ MODULE_CEILINGS = {
     # 2026-08-17 外審 P1-1:UNKNOWN 分兩種(舊代記錄無辨識詞 = 遷移相容;
     # 記錄是現行代而今天證據不足 = 保守不承接)—— 判準與 producer 對齊。
     # 實測 1011。
-    "event_identity.py": 1020,
+    "event_identity.py": 1040,  # r2:主體正規化走單一權威+別名納入標題比對;現況 1025
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
@@ -557,7 +557,8 @@ MODULE_CEILINGS = {
     # 判準不在這裡重寫,呼叫 `news_events.mentions_entity`。實測 73 行。
     # 2026-08-18 外審 P2-1:再加「被標成地緣的資安事件」清理與舊鍵改名。
     # 實測 187 行。
-    "state_migrations.py": 320,  # 第三輪 P1-2:legacy unverified 重驗+信任層級;現況 306
+    "state_migrations.py": 420,  # r2 撞鍵走 incident 政策(_place_by_incident);現況 385
+    "subject_identity.py": 170,  # 主體身分單一權威(2026-08-20 P1-2);現況 114 —— 加主體改表,不該長邏輯  # 第三輪 P1-2:legacy unverified 重驗+信任層級;現況 306
     # 2026-08-18 P1-2:三家 provider 共用的 completion contract。
     # adapter 只做對照,不自己發明政策 —— 三套政策一定會再漂。
     # 實測 125 行。

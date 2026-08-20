@@ -240,7 +240,8 @@ def test_an_unknown_subject_needs_a_literal_mention():
     # 逐字出現 → 採用(Pentagon 這類合法語意主體不受詞彙表限制)
     evs = _events([_news("Pentagon confirms new arms package",
                          company_label="Pentagon")])
-    assert evs[0]["entity"] == "Pentagon", evs[0]
+    # 2026-08-20 P1-2:canonical 統一採中文顯示名(subject_identity)
+    assert evs[0]["entity"] == "五角大廈", evs[0]
     # 第三輪 P2-1:Pentagon 進了宣告的語意實體表 → 依據是 alias
     assert evs[0]["subject_basis"] == "alias", evs[0]
     # 逐字指不出來(裸代號不在標題裡)→ 誠實降級:沒有主體

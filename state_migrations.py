@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import news_events as _ne
+import subject_identity as _si
 
 
 #: **可信的主體依據**(repo-wide 外審 2026-08-19 P1-2)。`unverified` 是
@@ -48,7 +49,7 @@ def _revalidated_basis(title: str, code: str, known_names) -> str:
     subj, basis = _ne.resolve_subject(title, [code], known_names)
     if basis not in TRUSTED_SUBJECT_BASES or not subj:
         return ""
-    if subj == code or (_ne.semantic_canonical(code) or code) == subj:
+    if subj == code or _si.same_subject(subj, code):
         return basis
     return ""
 
@@ -229,6 +230,97 @@ def purge_mistyped_cyber_stories(ledger) -> tuple:
     return keep, dropped
 
 
+def _keep_longer(bucket: dict, key: str, row) -> None:
+    """撞鍵時留天數多的那一筆(改鍵遷移共用;兩個方向都要擋 ——
+    只擋一邊的話,dict 順序就決定了結果,而順序不是判準)。"""
+    prev = bucket.get(key)
+    if isinstance(prev, dict) and isinstance(row, dict):
+        if int(prev.get("days") or 0) >= int(row.get("days") or 0):
+            return
+    bucket[key] = row
+
+
+def migrate_cross_language_timeline_keys(timeline) -> tuple:
+    """把主體是英文寫法的鍵改名成跨語言正規名(Pentagon→五角大廈)。
+
+    2026-08-20 P1-2 r2:producer 與 event_identity 已統一走
+    `subject_identity`,但既有 **current-schema** 列若留著英文主體
+    (`geopolitical:Pentagon:2026-08`、4 段鍵的 ICC 對象段),隔天算出的
+    鍵對不上 → 同一條 lifecycle 裂成兩條、延燒天數從 1 重算,收斂白做。
+    `adopt_legacy()` 只處理舊 schema,接不了它們 —— 照 cyber 改鍵的先例
+    處理:**改名不丟資料**;4 段鍵的對象段用 `object_signature` 對
+    正規化後的 subjects 重算(不抄舊鍵裡截過的字);row 的 entity/subjects
+    同步正規化;撞鍵留天數多者。可重入。
+    """
+    import subject_identity as _sid
+    out, renamed = {}, []
+    for key, row in (timeline or {}).items():
+        k = str(key)
+        parts = k.split(":")
+        if not isinstance(row, dict) or len(parts) not in (3, 4):
+            _place_by_incident(out, k, row)   # 未改名列同一政策(r3:順序不得決定誰活)
+            continue
+        ent = str(row.get("entity") or "").strip()
+        subs = [str(x).strip() for x in (row.get("subjects") or ())
+                if str(x).strip()] or ([ent] if ent else [])
+        c_ent = _sid.cross_language_display(ent) or ent
+        c_subs = [_sid.cross_language_display(x) or x for x in subs]
+        c_seg = (_sid.cross_language_display(parts[1]) or parts[1]
+                 if len(parts) == 3 else parts[1])
+        if c_ent == ent and c_subs == subs and (len(parts) != 3
+                                                or c_seg == parts[1]):
+            _place_by_incident(out, k, row)   # 未改名列同一政策(r3:順序不得決定誰活)
+            continue
+        if len(parts) == 3:
+            new_key = f"{parts[0]}:{c_seg}:{parts[2]}"
+        else:
+            import event_identity as _eid
+            obj = _eid.object_signature(parts[1], c_subs or [c_ent])
+            new_key = f"{parts[0]}:{parts[1]}:{obj}:{parts[3]}"
+        new_row = dict(row, entity=c_ent)
+        if row.get("subjects"):
+            new_row["subjects"] = c_subs
+        renamed.append(k)
+        _place_by_incident(out, new_key, new_row)
+    return out, renamed
+
+
+def _place_by_incident(bucket: dict, key: str, row) -> None:
+    """撞鍵時走**既有的 incident 政策**(r2 外審 P1):`_keep_longer` 只用
+    天數裁決,會把「共用 base key 的另一樁」滅掉 —— 而 base key 刻意粗
+    (主體:型別:月),producer 靠 `incident_match` + sibling 鍵保住不同樁。
+    遷移端同一份政策:同一樁(MATCH)才併(留天數多);另一樁/不知道 →
+    掛 sibling(`base#incident_suffix`,與 producer 同一個後綴函式),
+    後綴再撞就退避加序號(遷移端的撞鍵本來就罕見,退避只求不滅資料)。
+    """
+    import event_identity as _eid
+    prev = bucket.get(key)
+    if prev is None or not isinstance(prev, dict) or not isinstance(row, dict):
+        if prev is None:
+            bucket[key] = row
+        else:
+            _keep_longer(bucket, key, row)
+        return
+    verdict = _eid.incident_match(prev.get("incident_tokens"),
+                                  row.get("incident_tokens"))
+    if verdict == _eid.MATCH:
+        _keep_longer(bucket, key, row)
+        return
+    sib = f"{key}#{_eid.incident_suffix(row.get('incident_tokens') or [])}"
+    n = 2
+    while sib in bucket:
+        prev_sib = bucket.get(sib)
+        if (isinstance(prev_sib, dict)
+                and _eid.incident_match(prev_sib.get("incident_tokens"),
+                                        row.get("incident_tokens"))
+                == _eid.MATCH):
+            _keep_longer(bucket, sib, row)
+            return
+        sib = f"{key}#{_eid.incident_suffix(row.get('incident_tokens') or [])}~{n}"
+        n += 1
+    bucket[sib] = row
+
+
 def _cyber_key(key: str, row: dict) -> str:
     """舊鍵 → **現行身分格式**的鍵。
 
@@ -274,19 +366,6 @@ def migrate_cyber_timeline_keys(timeline) -> tuple:
     目標鍵已經存在時**留天數多的那一筆** —— 那是同一件事的兩個世代,
     保守地選資訊多的;兩筆都留會讓同一條線在排序裡出現兩次。
     """
-    def _keep_longer(bucket: dict, key: str, row) -> None:
-        """撞鍵時留天數多的那一筆。
-
-        **兩個方向都要擋**:舊鍵改名撞到既有的新鍵、以及既有的新鍵在
-        迴圈後面才被讀到 —— 只擋一邊的話,誰先誰後就決定了結果,而 dict
-        的順序不是判準(突變驗證抓到:只擋一邊時反例分不出勝負)。
-        """
-        prev = bucket.get(key)
-        if isinstance(prev, dict) and isinstance(row, dict):
-            if int(prev.get("days") or 0) >= int(row.get("days") or 0):
-                return
-        bucket[key] = row
-
     out, renamed = {}, []
     for key, row in (timeline or {}).items():
         k = str(key)

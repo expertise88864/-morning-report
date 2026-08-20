@@ -1,211 +1,259 @@
 # -*- coding: utf-8 -*-
-"""2026-08-20 生產回饋批(第二批,使用者逐條指示)。
+"""repo-wide 外審 2026-08-20(base 435e604→28bc34c)的五條驗收回歸。
 
-(1) ⚠ emoji 移除;(2) 第五段預測漲跌 % 併入大字、拿掉獨立格;
-(3) 廣度+類股熱度搬到第五段正下方;(4) 來源引用(鉅亨/CNBC…)可點 ——
-保守比對,錯連比不連糟;(5) 台指期 vs 現貨列刪除;(6) 在地快訊缺日期
-fail-closed(三個月前的彰基舊聞就是這樣進來的);(7) 金控雙雄集團素材。
+P1-1 佐證 sentinel、P1-2 主體身分三套權威互打(生產已誤刪 UAE/台電)、
+P2-1 抽取器逐批重撞失效端點。
 """
-import io
-import datetime as dt
-from pathlib import Path
+import sys
+
+import requests
 
 import morning_report as mr
-from render_utils import (
-    _dim_source_citations,
-    _link_source_citations,
-    build_news_link_index,
-)
+import news_events as ne
+import state_migrations as sm
+import story_ledger as sl
 
-_SRC = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
-               encoding="utf-8").read()
+sys.path.insert(0, "tests")
 
-
-# ── (1) ⚠ 移除 ───────────────────────────────────────────────────────────
-def test_low_volume_markers_have_no_emoji():
-    rows = [{"name": "甲", "prob": 58, "low_vol": True},
-            {"name": "乙", "prob": 42, "wide": True}]
-    line = mr._poly_prob_line(rows)
-    assert "⚠" not in line, line
-    assert "(部分量低)" in line and "(部分價差寬)" in line
+_KN = {"2330": ("台積電",)}
 
 
-# ── (2) 第五段版面 ───────────────────────────────────────────────────────
-def test_pred_pct_sits_beside_the_big_number():
-    """預測漲跌 % 接在「今天開盤大約落在 44,719」後方,不再獨立佔一格
-    (2026-08-20 使用者:少一格、行寬收斂,信件不被左右拉長)。"""
-    i = _SRC.index(">五、加權指數開盤預測</h2>")
-    seg = _SRC[i:i + 4000]
-    big = seg[seg.index("今天開盤大約落在"):]
-    assert "{pct_sign}{final_pct:.2f}%" in big[:big.index("</div>", big.index("font-size:30px"))], \
-        "預測 % 沒有跟在大字後面"
-    assert ">預測漲跌</div>" not in seg, "獨立的「預測漲跌」格應已移除"
-    assert "display:flex" not in seg and "table-layout:fixed" in seg
+def test_aligned_corroboration_passes_the_validator():
+    """外審反例 1:multi_source + caveat=「無」—— 完全照 schema 寫的模型
+    輸出,降級後不得再被 validator 以「沒有 caveat」駁回;寫了矛盾內文
+    (「兩家媒體已證實」)也一律換成確定性警語。"""
+    import analysis_schema as sch
+    pk = {"news": [{"source_item_id": "n1", "title": "x", "summary": "",
+                    "importance": "normal"}],
+          "news_clusters": {"clusters": [
+              {"cluster_id": "c1", "member_source_ids": ["n1"],
+               "corroboration": "single_source"}]},
+          "market": {}}
+    for cav in ("", "無", "無。", "N/A", "none", "兩家媒體已證實"):
+        obj = {"top_news_analysis": [
+            {"source_item_id": "n1",
+             "corroboration_assessment": "multi_source",
+             "source_caveat": cav}]}
+        mr._align_corroboration(obj, pk)
+        row = obj["top_news_analysis"][0]
+        assert row["corroboration_assessment"] == "single_source", (cav, row)
+        assert row["source_caveat"].startswith("僅單一來源"), (cav, row)
+        probs = [p for p in sch.validate(obj, pk)
+                 if "佐證" in p or "source_caveat" in p]
+        assert not probs, (cav, probs)
 
 
-# ── (3) 廣度緊接第五段 ───────────────────────────────────────────────────
-def test_breadth_block_sits_right_below_section_five():
-    i = _SRC.index("{taiex_html}")
-    j = _SRC.index("{breadth_html}")
-    k = _SRC.index("{combined_pred_html}")
-    assert i < j < k, "廣度+類股熱度要緊接在第五段之後、0050 之前"
-    assert _SRC.count("{breadth_html}") == 1
+def test_uae_and_taipower_legacy_rows_survive_migration():
+    """外審反例 2(生產實證):同一班 migration 刪 `UAE|阿聯控伊朗…`、
+    producer 卻對同一則判 `阿聯` literal 保留 —— 一邊刪一邊寫。
+    重驗走 subject_identity 之後,跨語言 legacy 列升級保留、鍵不動。"""
+    rows = [{"key": "e:uae|l:geopolitical|202608", "entity": "UAE",
+             "subject_basis": "unverified",
+             "headline": "阿聯控伊朗發射彈道飛彈", "timeline": []},
+            {"key": "e:taipower|l:policy|202608", "entity": "Taipower",
+             "subject_basis": "unverified",
+             "headline": "10月電價拚續凍 台電盼立院同意撥補", "timeline": []},
+            {"key": "e:usiranwar|l:geopolitical|202608",
+             "entity": "US-Iran War", "subject_basis": "unverified",
+             "headline": "美伊戰爭/60天談判期限到", "timeline": []}]
+    keep, dropped = sm.purge_misattributed_stories(rows, _KN)
+    kept = {r["entity"]: r["subject_basis"] for r in keep}
+    assert kept == {"UAE": "alias", "Taipower": "alias"}, (kept, dropped)
+    assert [r["entity"] for r in dropped] == ["US-Iran War"]
 
 
-# ── (4) 來源引用超連結 ───────────────────────────────────────────────────
-_NEWS = [
-    {"title": "Fed會議紀要:3官員主張立即降息 內部分歧加深 - 鉅亨網",
-     "link": "https://news.cnyes.com/news/id/123"},
-    {"title": "創意電子董事會通過400億元聯貸案 - 鉅亨網",
-     "link": "https://news.cnyes.com/news/id/456"},
-    {"title": "台積電先進封裝產能明年翻倍 - 工商時報",
-     "link": "https://ctee.com.tw/news/789"},
-]
+def test_legacy_russian_story_adopts_english_follow_up():
+    """外審反例 3:昨天的 story entity=俄羅斯、今天英文續報 entity=Russia
+    —— 必須接回同一條 story,不得開新條。"""
+    vocab = {"2330": "台積電"}
+    ev0 = {"entity": "俄羅斯", "entity_name": "", "event_type": "geopolitical",
+           "direction": -1, "lifecycle": "confirmed", "confidence": 0.8,
+           "title": "俄羅斯宣布新一輪動員", "source": "x", "source_grade": "B",
+           "published": "2026-08-19T01:00:00+00:00"}
+    led = sl.update_ledger([], [ev0], "2026-08-19", vocab)
+    n0 = len(led)
+    ev1 = dict(ev0, entity="Russia",
+               title="Russia escalates mobilization, officials say",
+               published="2026-08-20T01:00:00+00:00")
+    led2 = sl.update_ledger(led, [ev1], "2026-08-20", vocab)
+    assert len(led2) == n0, ("英文續報開了新 story",
+                             [r.get("key") for r in led2])
 
 
-def _linked(html):
-    return _link_source_citations(_dim_source_citations(html),
-                                  build_news_link_index(_NEWS))
+def test_story_candidate_matching_bridges_languages():
+    """直接量 `_match_open_story` 那道主體閘(孤立測試:上一條走的是
+    timeline 鍵正規化,量不到這裡):同主體的跨語言寫法不得被原樣比對
+    擋下 —— 昨天 entity=俄羅斯 的線索,今天 entity=Russia 的續報要配得到。"""
+    story = {"key": "e:俄羅斯|l:geopolitical|202608", "entity": "俄羅斯",
+             "entity_name": "", "headline": "俄羅斯宣布新一輪動員 情勢升級",
+             "state": "developing", "timeline": [], "last_update": "2026-08-19"}
+    ev = {"entity": "Russia", "entity_name": "",
+          "title": "俄羅斯宣布新一輪動員 官員證實情勢升級",
+          "event_type": "geopolitical",
+          "published": "2026-08-20T01:00:00+00:00"}
+    got = sl._match_open_story(ev, {story["key"]: story})
+    assert got == story["key"], f"跨語言續報沒配回既有線索:{got!r}"
 
 
-def test_a_confident_citation_becomes_a_link():
-    h = _linked("Fed 7月會議紀要偏鷹,3名官員主張立即升息（鉅亨）")
-    assert 'href="https://news.cnyes.com/news/id/123"' in h
-    assert "text-decoration:underline" in h
+def test_timeline_lifecycle_continues_across_languages():
+    """外審反例 4:歷史 lifecycle 鍵是 `…:俄羅斯:…`,英文續報不得裂成
+    新 lifecycle、重拿 full weight —— 鍵先過 canonical 顯示名。"""
+    base = {"event_type": "geopolitical", "title": "x",
+            "published": "2026-08-20T00:00:00+00:00"}
+    k_en = ne._event_timeline_key(dict(base, entity="Russia"))
+    k_zh = ne._event_timeline_key(dict(base, entity="俄羅斯"))
+    assert k_en == k_zh == ("俄羅斯", "geopolitical|2026-08"), (k_en, k_zh)
+    k_uae = ne._event_timeline_key(dict(base, entity="UAE"))
+    assert k_uae[0] == "阿聯", k_uae
 
 
-def test_an_unrelated_line_stays_unlinked():
-    """★錯連比不連糟★:比不出內容重合就維持淡化文字。"""
-    h = _linked("完全無關的一句話,講天氣與午餐（鉅亨）")
-    assert "href=" not in h
+def test_circuit_breaker_skips_dead_primary(monkeypatch):
+    """外審反例 5(生產實證):三批各撞一次 DeepSeek 45.5s timeout 才換
+    Gemini(~136s 純浪費+三筆未計量計費)。第一批傳輸失敗即開路,
+    其餘批直接走備援;manifest 記開路點與略過次數。"""
+    ds_calls, gm_calls = [], []
+
+    def dead_deepseek(_p):
+        ds_calls.append(1)
+        raise requests.exceptions.ConnectionError("read timed out")
+
+    monkeypatch.setattr(mr, "_call_deepseek_extractor", dead_deepseek)
+    monkeypatch.setattr(mr, "_call_gemini",
+                        lambda p, role="primary": gm_calls.append(1) or "[]")
+    monkeypatch.setattr(mr, "_extractor_provider", lambda: "deepseek")
+    monkeypatch.setattr(mr, "DEEPSEEK_API_KEY", "x")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "x")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    news = [{"title": f"台積電消息{i}", "summary": "", "source": "鉅亨台股",
+             "published": "2026-08-20T06:00:00+08:00"} for i in range(35)]
+    mr.call_llm_event_extractor(news, [])
+    assert len(ds_calls) == 1, f"失效端點被撞了 {len(ds_calls)} 次(應 1 次)"
+    assert len(gm_calls) == 3, f"備援呼叫 {len(gm_calls)} 次(應 3 批各 1)"
+    stat = mr._RUN_MANIFEST.get("llm_extractor") or {}
+    circ = stat.get("circuit") or {}
+    assert circ.get("open_after_batch") == 0 and \
+        circ.get("primary_attempts_skipped") == 2, circ
 
 
-def test_a_media_mismatch_stays_unlinked():
-    """內容像但媒體對不上 → 不連(引用寫 CNBC 就不能連到鉅亨的文章)。"""
-    h = _linked("Fed 會議紀要偏鷹,官員主張立即升息,分歧加深（CNBC）")
-    assert "href=" not in h
+# ------------------------------------------------- 同批外審 r2:兩個 finding
 
 
-def test_no_index_is_a_noop():
-    h = _dim_source_citations("台積電先進封裝產能翻倍（工商時報）")
-    assert _link_source_citations(h, []) == h
+def test_org_subjects_share_one_lineage_across_languages():
+    """event_identity 的主體正規化走單一權威(r2 F1):Pentagon 與
+    五角大廈必須收斂成同一個 lineage 主體,法域行為不變。"""
+    import event_identity as ei
+    assert ei.canonical_subject("Pentagon") == ei.canonical_subject("五角大廈") \
+        == "五角大廈"
+    assert ei.canonical_subject("Russia") == "俄羅斯"
+    assert ei.canonical_subject("2330") == "2330"
 
 
-def test_the_confidence_tag_is_never_linked():
-    """信心標 [A級・信心:中] 不是來源,不得被連結。"""
-    h = _linked("mRNA癌症疫苗三期數據 [A級・信心:中]")
-    assert "href=" not in h
+def test_current_schema_org_keys_are_renamed_without_losing_days():
+    """生產現存的兩種形狀(3 段 Pentagon、4 段 ICC 對象段)要**改名不
+    丟資料**:天數保留、row 主體同步正規化、可重入。"""
+    tl = {"geopolitical:Pentagon:2026-08": {
+              "entity": "Pentagon", "subjects": ["Pentagon"], "days": 3,
+              "latest_title": "伊朗戰爭衝擊五角大廈"},
+          "geopolitical:sanction:International Criminal C:2026-08": {
+              "entity": "International Criminal Court",
+              "subjects": ["International Criminal Court"], "days": 2,
+              "latest_title": "ICC 制裁案"}}
+    out, renamed = sm.migrate_cross_language_timeline_keys(tl)
+    assert len(renamed) == 2, renamed
+    assert out["geopolitical:五角大廈:2026-08"]["days"] == 3
+    assert out["geopolitical:五角大廈:2026-08"]["entity"] == "五角大廈"
+    icc = [k for k in out if k.startswith("geopolitical:sanction:")]
+    assert icc and "國際刑事法院" in icc[0], icc
+    out2, renamed2 = sm.migrate_cross_language_timeline_keys(out)
+    assert not renamed2, "改過名的鍵又被改一次(不可重入)"
 
 
-def test_a_group_citation_is_never_linked():
-    """（鉅亨／CNBC）整組包單一 <a> 會讓點 CNBC 的人連到鉅亨的文章 ——
-    錯誤歸屬(外審 2026-08-20 R1-1)。群組引用一律不連。"""
-    h = _linked("Fed 7月會議紀要偏鷹,3名官員主張立即升息（鉅亨／CNBC）")
-    assert "href=" not in h
+def test_key_collision_uses_the_incident_policy_not_days():
+    """r2 外審 P1:base key 刻意粗,撞鍵不能只用天數裁決 ——
+    Pentagon 與 五角大廈 若是**不同樁**(辨識詞不重疊),兩條都要活
+    (輸家掛 sibling);同一樁(MATCH)才併、留天數多者。"""
+    distinct = {"geopolitical:五角大廈:2026-08": {
+                    "entity": "五角大廈", "days": 5,
+                    "incident_tokens": ["預算", "審查", "國會"],
+                    "latest_title": "五角大廈預算審查"},
+                "geopolitical:Pentagon:2026-08": {
+                    "entity": "Pentagon", "days": 3,
+                    "incident_tokens": ["中東", "駐軍", "重新評估"],
+                    "latest_title": "Pentagon re-evaluates"}}
+    out, _ = sm.migrate_cross_language_timeline_keys(distinct)
+    assert len(out) == 2, f"另一樁被天數裁決滅掉:{sorted(out)}"
+    assert any("#" in k for k in out), sorted(out)
+    same = {"geopolitical:五角大廈:2026-08": {
+                "entity": "五角大廈", "days": 5,
+                "incident_tokens": ["中東", "駐軍", "重新評估"]},
+            "geopolitical:Pentagon:2026-08": {
+                "entity": "Pentagon", "days": 3,
+                "incident_tokens": ["中東", "駐軍", "重新評估"]}}
+    out2, _ = sm.migrate_cross_language_timeline_keys(same)
+    assert len(out2) == 1
+    assert out2["geopolitical:五角大廈:2026-08"]["days"] == 5
+    # r3:**插入順序不得決定誰活** —— 英文列在前(先被改名放進 canonical
+    # 鍵)、中文列在後(未改名、走早退分支)也要兩條都活。
+    reversed_order = {"geopolitical:Pentagon:2026-08": {
+                          "entity": "Pentagon", "days": 3,
+                          "incident_tokens": ["中東", "駐軍", "重新評估"],
+                          "latest_title": "Pentagon re-evaluates"},
+                      "geopolitical:五角大廈:2026-08": {
+                          "entity": "五角大廈", "days": 5,
+                          "incident_tokens": ["預算", "審查", "國會"],
+                          "latest_title": "五角大廈預算審查"}}
+    out3, _ = sm.migrate_cross_language_timeline_keys(reversed_order)
+    assert len(out3) == 2, f"反序時另一樁被滅:{sorted(out3)}"
 
 
-def test_the_index_prefers_source_name_over_the_aggregator_tag():
-    """生產 Google 條目:source=聚合器代號、source_name=真媒體、標題無尾碼
-    (外審 2026-08-20 R1-2)。忽略 source_name 會讓媒體變成 google:2330,
-    正確的（鉅亨）引用永遠比對失敗、一條連結都出不來。"""
-    news = [{"title": "Fed會議紀要:3官員主張立即降息 內部分歧加深",
-             "link": "https://news.cnyes.com/news/id/123",
-             "source": "Google:富邦金", "source_name": "鉅亨網"}]
-    idx = build_news_link_index(news)
-    assert idx[0]["m"] == "鉅亨網"
-    h = _link_source_citations(
-        _dim_source_citations("Fed 7月會議紀要,3名官員主張立即降息、內部分歧加深（鉅亨）"),
-        idx)
-    assert 'href="https://news.cnyes.com/news/id/123"' in h
+def test_gemini_transport_failure_opens_the_circuit(monkeypatch):
+    """r2 F2:主抽取器設 Gemini 時,傳輸失敗被 adapter 包成 RuntimeError,
+    斷路器永遠不開 —— 各 adapter 要把傳輸失敗翻成中立的
+    ExtractorTransportError,斷路器才接得到。"""
+    posts, ds_calls = [], []
+
+    def dead_post(url, json=None, timeout=None, headers=None):
+        posts.append(1)
+        raise requests.exceptions.ConnectionError("read timed out")
+
+    monkeypatch.setattr(mr.requests, "post", dead_post)
+    monkeypatch.setattr(mr, "_call_deepseek_extractor",
+                        lambda p: ds_calls.append(1) or "[]")
+    monkeypatch.setattr(mr, "_extractor_provider", lambda: "gemini")
+    monkeypatch.setattr(mr, "GEMINI_API_KEY", "k")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "x")
+    monkeypatch.setenv("LLM_EVENT_EXTRACTION", "1")
+    monkeypatch.setattr(mr, "_llm_sleep", lambda s: None)
+    news = [{"title": f"台積電消息{i}", "summary": "", "source": "鉅亨台股",
+             "published": "2026-08-20T06:00:00+08:00"} for i in range(35)]
+    mr.call_llm_event_extractor(news, [])
+    stat = mr._RUN_MANIFEST.get("llm_extractor") or {}
+    circ = stat.get("circuit") or {}
+    assert circ.get("open_after_batch") == 0, (circ, len(posts))
+    assert circ.get("primary_attempts_skipped") == 2, circ
+    assert len(ds_calls) == 3, f"備援呼叫 {len(ds_calls)} 次(應 3 批各 1)"
 
 
-def test_a_real_subtitle_is_not_eaten_as_media():
-    """「 - 副標題」不是媒體:source_name 在場且尾碼對不上 → 尾碼留在
-    內容 token、媒體仍取 source_name。"""
-    news = [{"title": "台積電法說會四大重點 - 資本支出上修",
-             "link": "https://news.cnyes.com/news/id/9",
-             "source": "Google:2330", "source_name": "鉅亨網"}]
-    idx = build_news_link_index(news)
-    assert idx[0]["m"] == "鉅亨網"
-    assert {"資本", "支出"} <= idx[0]["t"], "副標題被當媒體剝掉了"
+def test_anthropic_transport_error_is_neutralized(monkeypatch):
+    """Anthropic 的 SDK 連線例外也要翻成中立型別。"""
+    import sys as _sys
+    import types
 
+    class _FakeConnErr(Exception):
+        pass
 
-def test_a_direct_feed_subtitle_survives_without_source_name():
-    """直接 RSS(CNBC feed):entry 常沒有 source_name,但 source 是可靠的
-    feed 名(外審 R2)。原本 `not media` 把任何「 - 尾碼」無條件當媒體 ——
-    CNBC 的副標題變成媒體名,正確的（CNBC）引用永遠連不上。"""
-    news = [{"title": "Fed policy shift explained - What investors need to know",
-             "link": "https://www.cnbc.com/2026/08/20/fed.html",
-             "source": "CNBC Top News"}]
-    idx = build_news_link_index(news)
-    assert idx[0]["m"] == "cnbc top news", idx[0]["m"]
-    assert {"investors", "know"} <= idx[0]["t"], "副標題被當媒體剝掉了"
-    h = _link_source_citations(
-        _dim_source_citations(
-            "Fed policy shift explained,investors 該注意的重點（CNBC）"), idx)
-    assert 'href="https://www.cnbc.com/2026/08/20/fed.html"' in h
-
-
-def test_an_aggregator_item_without_fields_still_uses_the_title_tail():
-    """聚合器條目(Google:xxx)且 source_name 缺席 → Google News 的
-    「標題 - 媒體」慣例仍然成立,尾碼當媒體剝掉。"""
-    news = [{"title": "Fed會議紀要:官員主張立即降息 - 鉅亨網",
-             "link": "https://news.cnyes.com/news/id/77",
-             "source": "Google:富邦金"}]
-    idx = build_news_link_index(news)
-    assert idx[0]["m"] == "鉅亨網"
-    assert "鉅亨" not in "".join(idx[0]["t"]) or "亨網" not in idx[0]["t"]
-
-
-# ── (5) 台指期 vs 現貨列已刪 ─────────────────────────────────────────────
-def test_the_basis_line_is_gone():
-    assert "_basis_line_html(quotes.get" not in _SRC, \
-        "台指期 vs 大盤現貨列應已不再渲染(2026-08-20 使用者要求刪除)"
-
-
-# ── (6) 在地快訊:缺日期 fail-closed ─────────────────────────────────────
-def test_local_news_drops_dateless_entries(monkeypatch):
-    """2026-08-20 使用者回報:在地快訊出現三個月前的彰基舊聞。
-    `if pub and … < cutoff` 是 fail-open —— 缺日期的條目完全不檢查就放行,
-    而 Google 重新收錄的舊文正是日期最不可靠的一群。缺日期=不收。"""
-    now_parsed = dt.datetime.now(dt.timezone.utc).timetuple()
-
-    class Feed:
-        def __init__(self, url):
-            # ★fake 要用真 feedparser 的形狀★:有日期的條目帶 published_parsed
-            #  (struct_time);缺日期的就是兩個欄位都沒有。
-            self.entries = [
-                {"title": "彰基總院長遭AI換臉賣護膝"},              # 缺日期 → 不收
-                {"title": "彰化鐵路高架化再獲中央補助",
-                 "published_parsed": now_parsed},
-            ]
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda url, *a, **k: Feed(url))
-    out = mr.fetch_local_news()
-    flat = [x["title"] for items in out.values() for x in items]
-    assert all("AI換臉" not in t for t in flat), \
-        f"★缺日期的舊聞放行了★ {flat}"
-    assert any("鐵路高架" in t for t in flat), "有日期的新聞要照收"
-
-
-def test_old_entries_are_still_cut_by_date(monkeypatch):
-    old_parsed = (dt.datetime.now(dt.timezone.utc)
-                  - dt.timedelta(days=90)).timetuple()
-
-    class Feed:
-        def __init__(self, url):
-            self.entries = [{"title": "彰基三個月前的舊聞",
-                             "published_parsed": old_parsed}]
-    monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
-                        lambda url, *a, **k: Feed(url))
-    assert mr.fetch_local_news() == {}
-
-
-# ── (7) 金控雙雄素材 ─────────────────────────────────────────────────────
-def test_the_holding_groups_feed_exists():
-    q = mr.OTHER_SECTOR_QUERIES.get("金融-金控") or ""
-    for kw in ("國泰金", "國泰人壽", "中信金", "中國信託", "台灣人壽"):
-        assert kw in q, f"金控查詢缺 {kw}"
-    assert "類股-金融-金控" in mr.RSS_FEEDS, "查詢沒有併入 RSS_FEEDS"
-    # 信件/prompt 端以一般類股素材呈現:查詢與標籤不得帶「使用者」字眼
-    assert "使用者" not in q and "使用者" not in "金融-金控"
+    fake = types.SimpleNamespace(
+        APIConnectionError=_FakeConnErr,
+        Anthropic=lambda **k: types.SimpleNamespace(
+            messages=types.SimpleNamespace(
+                create=lambda **kw: (_ for _ in ()).throw(
+                    _FakeConnErr("conn reset")))))
+    monkeypatch.setitem(_sys.modules, "anthropic", fake)
+    monkeypatch.setattr(mr, "ANTHROPIC_API_KEY", "k")
+    try:
+        mr._call_anthropic("p")
+        raise AssertionError("沒有拋例外")
+    except mr.ExtractorTransportError:
+        pass

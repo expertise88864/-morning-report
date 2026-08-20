@@ -131,7 +131,7 @@ def test_invented_llm_labels_never_become_entity_keys():
                               ["US-Iran War"], kn) == ("", "")
     # Pentagon 已進宣告的語意實體表(第三輪 P2-1)→ 依據升級為 alias
     assert ne.resolve_subject("Pentagon confirms new arms package",
-                              ["Pentagon"], kn) == ("Pentagon", "alias")
+                              ["Pentagon"], kn) == ("五角大廈", "alias")
     # 表外的名字仍走 literal(逐字出現才收)
     assert ne.resolve_subject("SpaceX wins new launch contract",
                               ["SpaceX"], kn) == ("SpaceX", "literal")
@@ -278,15 +278,17 @@ def test_legacy_unverified_cross_language_subject_is_upgraded():
 
 def test_cross_language_semantic_subject_resolves():
     """producer 側(P2-1):candidate 語言 ≠ 標題語言時,宣告過的語意實體
-    仍要接得上(canonical 統一);模型自造的名字不因語意相似而自動接受。"""
+    仍要接得上;canonical 採**中文顯示名**(2026-08-20 P1-2:對齊
+    event_actions 法域權威與既有 state —— 英文 canonical 會讓續報接不回
+    `geopolitical:俄羅斯:…` 的舊鍵);模型自造的名字不因語意相似而接受。"""
     import news_events as ne
     kn = {"2330": ("台積電",)}
     assert ne.resolve_subject("伊朗戰爭衝擊五角大廈重新評估中東駐軍",
-                              ["Pentagon"], kn) == ("Pentagon", "alias")
+                              ["Pentagon"], kn) == ("五角大廈", "alias")
     assert ne.resolve_subject("Russia says its economy is strong",
-                              ["俄羅斯"], kn) == ("Russia", "alias")
+                              ["俄羅斯"], kn) == ("俄羅斯", "alias")
     assert ne.resolve_subject("黃金與美元同步走強",
-                              ["US Dollar"], kn) == ("US Dollar", "alias")
+                              ["US Dollar"], kn) == ("美元", "alias")
     assert ne.resolve_subject("美伊戰爭情勢升溫",
                               ["US-Iran War"], kn) == ("", "")
 
@@ -341,15 +343,15 @@ def test_company_alias_beats_semantic_entity():
     assert ne.resolve_subject("中國信託獲利創高", ["China"], kn) == ("", "")
     # 真正的中國新聞不受影響
     assert ne.resolve_subject("中國出口管制升級",
-                              ["China"], kn) == ("China", "alias")
+                              ["China"], kn) == ("中國", "alias")
     # r6:**比出現位置不是存在性** —— 同一段文字同時有獨立的「中國」與
     # 「中國信託」時,合法的國家主體不得被公司別名的存在一併壓掉。
     assert ne.resolve_subject("中國宣布新政策,中國信託獲利創高",
-                              ["China"], kn) == ("China", "alias")
+                              ["China"], kn) == ("中國", "alias")
     # r5:**候選順序保留** —— 模型宣告的主體(Pentagon)在前就先贏,
     # 不因後面有公司候選而被整體重排。
     assert ne.resolve_subject("Pentagon 與台積電同日成為焦點",
-                              ["Pentagon", "2330"], kn) == ("Pentagon", "alias")
+                              ["Pentagon", "2330"], kn) == ("五角大廈", "alias")
 
 
 def test_evidence_only_macro_section_is_not_protected_identity():

@@ -12141,6 +12141,16 @@ RETRY_STATUS_CODES = {429, 500, 502, 503, 504}
 _GEMINI_VERDICT_REASONS = _cc.verdict_reasons("gemini")
 
 
+class ExtractorTransportError(RuntimeError):
+    """provider 的**傳輸層**失敗(逾時/連線)—— 斷路器只認這一型。
+
+    外審 2026-08-20 r2:斷路器原本只接 requests 例外,而 Gemini adapter
+    把一切包成 RuntimeError、Anthropic 拋 SDK 例外 —— 主抽取器設成那兩家
+    時斷路器永遠不開,每批照樣重撞失效端點。各 adapter 負責把傳輸失敗
+    翻成這一型;內容裁決/額度問題不是傳輸失敗,不翻。
+    """
+
+
 class DeepSeekCompletionError(RuntimeError):
     """DeepSeek 回了東西但**不是正常結束**(repo-wide 外審 P1-2)。
 
@@ -12251,6 +12261,11 @@ def _call_gemini(prompt: str, role: str = "primary") -> str:
                     _llm_sleep(5)
                     continue
                 break
+    if isinstance(last_err, (requests.exceptions.Timeout,
+                             requests.exceptions.ConnectionError)):
+        # 最後一棒也是傳輸層失敗 → 翻成中立型別,斷路器才接得到
+        raise ExtractorTransportError(
+            f"Gemini 傳輸層失敗(所有降級模型): {last_err}") from last_err
     raise RuntimeError(f"Gemini 所有降級模型皆失敗: {last_err}")
 
 
@@ -12263,11 +12278,14 @@ def _call_anthropic(prompt: str) -> str:
         api_key=ANTHROPIC_API_KEY,
         timeout=_llm_request_timeout(),
     )
-    msg = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=LLM_REPORT_MAX_TOKENS,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        msg = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=LLM_REPORT_MAX_TOKENS,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIConnectionError as e:   # 含 APITimeoutError 子類
+        raise ExtractorTransportError(f"Anthropic 傳輸層失敗: {e}") from e
     return msg.content[0].text
 
 
@@ -13034,12 +13052,32 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
         HTTP 4xx 不換(請求本身有問題);額度用完也不換(有減量重試)。只換一次。
         """
         _ep = _extractor_provider()
+        # 斷路器開著 → 這一批不再撞已證明失效的主 provider,直接備援
+        # (備援不可用時仍走主 provider —— 有機會總比沒有好)。
+        if _circuit["open"]:
+            _alt0 = _lc.fallback_extractor_provider(
+                _ep, lambda k: bool(os.environ.get(k, "").strip()))
+            if _alt0:
+                _circuit["skipped"] += 1
+                _stat["circuit"] = {
+                    "open_after_batch": _circuit["after_batch"],
+                    "reason": _circuit["reason"],
+                    "primary_attempts_skipped": _circuit["skipped"]}
+                return _dispatch_extractor(_alt0, p)
         _t0 = time.monotonic()
         _before = len((_RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
         try:
             return _dispatch_extractor(_ep, p)
         except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError) as e:
+                requests.exceptions.ConnectionError,
+                ExtractorTransportError) as e:
+            if not _circuit["open"]:
+                _circuit.update(open=True, reason=f"{type(e).__name__}",
+                                after_batch=_cur_batch["i"])
+                _stat["circuit"] = {
+                    "open_after_batch": _circuit["after_batch"],
+                    "reason": _circuit["reason"],
+                    "primary_attempts_skipped": _circuit["skipped"]}
             _alt = _lc.fallback_extractor_provider(
                 _ep, lambda k: bool(os.environ.get(k, "").strip()))
             # **有些 provider 自己就會記**(`_call_openai` 的網路失敗
@@ -13120,6 +13158,14 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                   "parsed": 0, "valid": 0, "dropped": 0, "retried": False,
                   "outcome": "unknown", "batch_size": EXTRACTOR_BATCH_ITEMS,
                   "batches": []})
+
+    #: **同一 run 的 provider 斷路器**(外審 2026-08-20 P2-1):08/20 生產
+    #: 三批各自撞一次 DeepSeek 45.5s read timeout 才換 Gemini —— 第一批
+    #: 已經證明這個端點在此 timeout 下失效,之後每批再撞一次是純浪費
+    #: (multiplied ~136s + 三筆送出未計量的計費)。只有**傳輸層**失敗
+    #: (逾時/連線中斷)開路;schema/語意駁回可能是 input-specific,不開。
+    _circuit = {"open": False, "reason": "", "after_batch": None, "skipped": 0}
+    _cur_batch = {"i": -1}
 
     def _prompt_for(items: list) -> str:
         """整份 prompt = 固定前綴 + 該批清單(repo-wide 外審 Commit D)。
@@ -13277,6 +13323,7 @@ def call_llm_event_extractor(news: list[dict], mops: list[dict],
                           "valid": 0, "dropped": 0, "retried": False,
                           "outcome": "unknown"}
                 _stat["batches"].append(_bstat)
+                _cur_batch["i"] = _bi
                 if _bi and time.monotonic() >= _extractor_deadline:
                     _bstat["outcome"] = "skipped:deadline"
                     _DEGRADED_STEPS.append(f"llm-extractor 批 {_bi}(時間預算)")
@@ -13463,10 +13510,17 @@ def _align_corroboration(obj, packet: dict) -> None:
         got = str(n.get("corroboration_assessment") or "")
         if want and got and rank.get(got, 0) > rank.get(want, 0):
             n["corroboration_assessment"] = want
-            if (want in ("single_source", "unverified")
-                    and not str(n.get("source_caveat") or "").strip()):
+            # **strong→weak 時兩個欄位一起無條件代寫**(外審 2026-08-20
+            # P1-1):模型在它以為的 strong 等級下,schema 要它把 caveat
+            # 寫「無」—— 只補空字串的話,「無」非空、不補,下一關的
+            # validator 卻把「無/無。/N/A」全視為沒有 caveat → 最典型的
+            # 合規輸出照樣被駁。而模型寫了內文(「兩家媒體已證實」)時,
+            # 降級後留著是自相矛盾 —— 一律換成確定性警語(陳述計算事實)。
+            if want in ("single_source", "unverified"):
                 n["source_caveat"] = ("僅單一來源報導,尚未經其他獨立"
-                                      "媒體證實,細節可能修正")
+                                      "媒體證實,細節可能修正"
+                                      if want == "single_source" else
+                                      "來源獨立性未驗證,內容請保留")
             changed.append(f"{sid}:{got}→{want}")
     if changed:
         slot = _RUN_MANIFEST.setdefault("llm", {})
@@ -15222,6 +15276,14 @@ def update_event_timeline(structured_events: list[dict],
         # **改名而不是丟掉** —— 動作那一段已經明說是 cyberattack(舊的三段
         # 鍵則靠標題認),丟掉會讓一條真的延燒好幾天的線從第 1 天重算。
         state, _tl_cyber = _sm.migrate_cyber_timeline_keys(state)
+        # 跨語言主體的鍵收斂(2026-08-20 P1-2 r2:Pentagon→五角大廈)
+        state, _tl_lang = _sm.migrate_cross_language_timeline_keys(state)
+        if _tl_lang:
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "cross_language_keys"] = {"renamed": len(_tl_lang),
+                                          "examples": _tl_lang[:5]}
+            print(f"[migrate] 時間軸改名 {len(_tl_lang)} 條跨語言主體鍵",
+                  file=sys.stderr)
         if _tl_cyber:
             _RUN_MANIFEST.setdefault("state_migrations", {})[
                 "cyber_timeline_keys"] = {"renamed": _tl_cyber[:8]}

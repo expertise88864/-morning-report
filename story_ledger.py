@@ -40,6 +40,7 @@ import re
 # Codex r2(P1):否定判準**只有一份**,定義在 news_events(無第一方相依)。
 # 兩邊各維護一份會分歧——上一輪就是這樣讓同一句話在兩個訊號上結論相反。
 import news_events as _ne_module
+import subject_identity as _si
 from news_events import (is_negated_decision, is_pending_decision,
                          _content_bigrams, strip_outlet_suffix)
 
@@ -970,7 +971,10 @@ def _match_open_story(ev: dict, by_key: dict) -> str:
         # 代號是**額外資訊**,不是衝突:一邊有、一邊沒有,仍可能是同一件事。
         # 兩邊都有卻不同才是真的衝突(不同公司)。
         # 有一邊 entityless 時採較嚴的門檻——少了代號這個錨,證據本來就較弱。
-        if ent and cand_ent and cand_ent != ent:
+        # 2026-08-20 P1-2:昨天的 story entity=俄羅斯、今天事件 entity=Russia
+        # —— 原樣比對會開新 story,續報接不回去。同主體判準只有一份
+        # (subject_identity);不同主體照舊擋。
+        if ent and cand_ent and not _si.same_subject(cand_ent, ent):
             continue
         pair_threshold = (threshold if (ent and cand_ent)
                           else STORY_MATCH_THRESHOLD_NO_ENTITY)

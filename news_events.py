@@ -16,6 +16,8 @@ from news_rules import (
 import datetime as dt
 import re as _re_module
 
+import subject_identity as _si
+
 
 def _news_event_direction(text: str) -> int:
     """用明確事件詞判斷消息方向；同時有多空詞或沒有方向時不加分。"""
@@ -598,36 +600,18 @@ def _latin_alias_hit(low_text: str, alias: str) -> bool:
     return False
 
 
-#: **宣告過的跨語言語意實體**(repo-wide 外審 2026-08-19 P2-1)。
-#: 晨報的 feed 是中英混合:昨天 `Pentagon`、今天中文續報「五角大廈」——
-#: 只認 candidate 逐字出現會把同一條線切成兩半(story/timeline/recap
-#: 身分全斷)。canonical 統一用英文鍵;比對規則與公司別名一致
-#: (拉丁詞詞邊界、中文子字串≥2 字)。**模型自造的名字(US-Iran War)
-#: 不在表裡、來源又沒有 literal → 照樣拒** —— 這張表是宣告,不是猜測。
-SEMANTIC_ENTITY_ALIASES = {
-    "Pentagon": ("Pentagon", "五角大廈", "美國國防部"),
-    "White House": ("White House", "白宮"),
-    "Fed": ("Fed", "Federal Reserve", "聯準會", "聯儲"),
-    "Russia": ("Russia", "Russian", "俄羅斯"),
-    "Ukraine": ("Ukraine", "烏克蘭"),
-    "China": ("China", "中國大陸", "中國"),
-    "Iran": ("Iran", "伊朗"),
-    "Israel": ("Israel", "以色列"),
-    "EU": ("EU", "European Union", "歐盟"),
-    "OPEC": ("OPEC", "OPEC+", "石油輸出國組織"),
-    "US Dollar": ("US Dollar", "USD", "美元"),
-    "International Criminal Court": (
-        "International Criminal Court", "ICC", "國際刑事法院"),
-}
-
-_SEMANTIC_LOOKUP = {a.lower(): canon
-                    for canon, aliases in SEMANTIC_ENTITY_ALIASES.items()
-                    for a in aliases}
+#: 語意實體的表與判準已**上收到 `subject_identity`**(repo-wide 外審
+#: 2026-08-20 P1-2:三套 canonical 權威在生產互打 —— 同一班 migration 把
+#: `UAE|阿聯控伊朗…` 當不認得刪掉,producer 對同一則新聞卻判 `阿聯`
+#: literal 保留)。canonical 從英文改採**中文顯示名**(與 event_actions
+#: 法域表及既有 state 一致 —— Russia 的續報才接得回
+#: `geopolitical:俄羅斯:…` 的舊鍵)。這裡只留薄轉接,**別再往這裡加表**。
+SEMANTIC_ENTITY_ALIASES = None  # 已上收;留名擋「有人照舊 import 表本體」
 
 
 def semantic_canonical(name: str) -> str:
-    """這個名字是不是宣告過的語意實體(任一語言的別名)→ canonical 鍵。"""
-    return _SEMANTIC_LOOKUP.get(str(name or "").strip().lower(), "")
+    """這個名字有沒有宣告過的跨語言身分 → canonical 顯示名(認不得回空)。"""
+    return _si.canonical_display(name) if _si.aliases_of(name) else ""
 
 
 def _alias_hit(low_text: str, alias: str) -> bool:
@@ -669,7 +653,7 @@ def resolve_subject(text: str, candidates, known_names=None) -> tuple:
             canon = semantic_canonical(c)
             if canon:
                 low = str(text or "").lower()
-                hit = next((a for a in SEMANTIC_ENTITY_ALIASES[canon]
+                hit = next((a for a in _si.aliases_of(canon)
                             if _alias_hit(low, a)), "")
                 if hit and not _embedded_in_company_alias(low, hit,
                                                           known_names):
@@ -841,6 +825,12 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
     財報/財測/營收類事件附季度 bucket 成獨立 episode(向後相容:previous map
     每次由歷史事件 dict 重算本函式,舊紀錄會以同一規則重新分桶,無 state 遷移)。"""
     entity = str(event.get("entity") or "").strip()
+    # **鍵只對法域/機構做跨語言正規**(2026-08-20 P1-2):歷史鍵是
+    # `geopolitical:俄羅斯:…`,英文續報 entity=Russia 原樣進鍵會讓同一條
+    # lifecycle 裂成兩條、confirmed 重拿 full weight。公司鍵慣例是代號,
+    # 不動(canonical_display 會把 2330 收斂成台積電 —— 那是重寫全部
+    # 公司鍵,第一版就踩了這個雷,測試當場紅)。
+    entity = _si.cross_language_display(entity) or entity
     event_type = str(event.get("event_type") or "general").strip() or "general"
     if not entity or event_type == "general":
         import hashlib

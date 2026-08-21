@@ -4831,6 +4831,45 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74450717",
+        "title": "Ross finds value in value",
+        "published": "Fri, 21 Aug 2026 10:33:35 +0000",
+        "processed_at": "2026-08-21T14:07:16Z",
+        "digest": {
+          "summary_points": [
+            "Ross Stores 公布強勁財報，同店銷售年增10%，營收63億美元，每股獲利2.66美元，遠優於預期；公司上調全年財測並將今年新開店數提高至115家，盤前股價大漲8%。",
+            "MicroStrategy 因比特幣持有部位轉為獲利而重返盈利，盤前股價上漲10%，反映加密貨幣行情對公司財報的正面影響。",
+            "多家華爾街機構發布樂觀看法：摩根士丹利預測金價明年可能突破5000美元，Jefferies 則預期 Nvidia 下一季營收將超出市場預期30億美元。"
+          ],
+          "tickers": [
+            {
+              "name": "Ross Stores",
+              "code": "ROST",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報優於預期，上調年度財測，盤前股價上漲8%"
+            },
+            {
+              "name": "MicroStrategy",
+              "code": "MSTR",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "比特幣持倉轉佳，重返獲利，股價上漲10%"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Jefferies 預期 Q2 營收將超預期30億美元，市場看好AI需求"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74410003",
         "title": "Walmart flashes consumer warning",
         "published": "Thu, 20 Aug 2026 18:47:45 +0000",
@@ -5227,32 +5266,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "Nebius is what the top of a boom looks like."
-        },
-        "shown_at": "2026-08-13T22:52:15Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73903795",
-        "title": "Google pushes harder on Gemini",
-        "published": "Thu, 13 Aug 2026 10:30:59 +0000",
-        "processed_at": "2026-08-13T20:08:24Z",
-        "digest": {
-          "summary_points": [
-            "Cisco 上季財報與本季財測皆優於預期，產品訂單年增 35%（不含超大規模資料中心為 25%），網絡產品訂單年增 40% 且連續八季雙位數成長；但盤前股價反而下跌，主持人指出主因是過去三個月已累積約 35% 漲幅，且管理層預期 2027 年從超大規模資料中心取得 75 億美元 AI 相關營收。",
-            "Google 共同創辦人 Sergey Brin 敦促 AI 團隊全力提升 Gemini 模型能力，要求加速開發、聚焦變現，並強調遞迴式自我改進，反映 Google 在 AI 商業化上更加積極。",
-            "韓國 Cosplay 指數重新進入技術性牛市，呼應 AI 交易反彈。"
-          ],
-          "tickers": [
-            {
-              "name": "Cisco Systems",
-              "code": "CSCO",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "財報與財測優異但盤前下跌，因先前累積漲幅約35%已反映利多。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Brin also wants the AI team to focus on more recursive self-improvement, a compounding process where an AI system helps design, code, or train its own next generation."
         },
         "shown_at": "2026-08-13T22:52:15Z"
       }
@@ -6144,6 +6157,33 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-the-app-store-in-the-shadow-of-ai-offensive-and-defensive-cybersecurity-q-a-on-financial-planning-ai-writing-american-sports",
+        "title": "(Preview) The App Store in the Shadow of AI, Offensive and Defensive Cybersecurity, Q&amp;A on Financial Planning, AI Wr",
+        "published": "Fri, 21 Aug 2026 08:59:38 +0000",
+        "processed_at": "2026-08-21T14:10:46Z",
+        "digest": {
+          "summary_points": [
+            "主持人班·湯普森認為,蘋果 App Store 的監管爭議(歐盟 DMA 和解、德國反壟斷調查)如今在 AI 面前已顯得不重要,這反映科技業從停滯轉向成長,大家不再執著於分餅。",
+            "班指出蘋果的 ATT(應用程式追蹤透明化)明顯反競爭,因為蘋果對第三方使用不同且嚇人的用語、對自己則用正向表述;德國主管機關要求統一措辭是正確結果,但耗時四年,廣告生態早已重組。",
+            "主持人將此連結到歐盟 AI 法:當年 DMA 因太晚出手而失效,現在想提早監管 AI 也一樣會因變化太快而容易出錯;與其過早監管,不如先享受成長。",
+            "安德魯與班都認為,就像當年的 TikTok 爭議,蘋果的監管問題即使實際影響可能更大,但在 AI 時代已難以激起同樣熱情,因為成長與機會轉移了注意力。",
+            "班坦言自己對 App Store 規範分析感到倦怠,因為內容一直重複;但這也凸顯一個正面事實:App Store 創造了巨大消費者剩餘與數兆美元價值,即使有蘋果的壞行為,他仍寧可接受這種世界。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認為蘋果 App Store 曾創造龐大價值,但 ATT 政策與監管反競爭;整體多空未明,僅指出監管壓力在 AI 時代相對次要。"
+            }
+          ],
+          "market_view": "主持人認為科技產業正處於 AI 帶動的成長期,成長能淡化監管與分餅的衝突;整體對科技股前景並非看空,但未給出明確大盤方向。",
+          "action_view": "未提及具體加減碼或操作建議;討論重點在於監管與成長的宏觀取捨。",
+          "notable_quote": "When things are growing and everyone's getting richer, all the problems that inevitably exist because the world is messing don't really matter that much and no one cares that much."
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-nvidias-answer-to-capital-constraints-googles-attrition-and-direction-q-a-on-ai-writing-vision-pro-vibe-coding",
         "title": "(Preview) Nvidia’s Answer to Capital Constraints, Google’s Attrition and Direction, Q&amp;A on AI Writing, Vision Pro, V",

@@ -5292,6 +5292,26 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "8387538d-5ecf-4b07-a3f0-b4ab00e1cbc5",
+        "title": "Jasmine Sun on What the AI Industry Got Wrong About the Public Backlash",
+        "published": "Fri, 21 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-21T08:14:30Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出 AI 建設的關鍵瓶頸不再是資本而是電力、土地與政治/監管核准；與過去 SaaS 時代不同，這是網路史上首見的實體限制，且投資人仍願意砸錢但實體供給跟不上。",
+            "記者實地走訪威斯康辛與密西根後發現，資料中心反對聲浪比太陽能電廠、核電廠、電池儲存等更強烈，且連不住在附近的人也反對——主因是民眾「不認為需要 AI」以及對大型企業與政府的不信任。",
+            "地方官員與開發商推銷資料中心幾乎全以房地產稅收為賣點，但永久就業僅數十人、營造工作多為外地人，加上 Foxconn 跳票前例，居民普遍不認為自己能直接受惠。",
+            "開發商與小鎮權力極不對稱，例如密西根州 Celine 鎮（人口不到 3000）投票否決後遭開發商以「排他性分區」興訟而被迫和解；這使居民質疑民主程序，也讓在地反對更難化解。",
+            "交易條件正快速逆轉：兩年前地方政府爭相以租稅優惠與 NDA 吸引資料中心，如今因反彈激烈，開發商須先承諾社區福利（如教師獎金）；主持人認為這將使超大規模業者的每一座資料中心成本與負債持續增加。",
+            "主持人總結：資料中心建置成本上升、稅收保證可能成為資產負債表上的重大負債，但 AI 產業真正擔憂的是網路攻擊與生物武器風險，矽谷與美國其他地區的認知落差正是政治反彈加劇的原因。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為 AI 資本支出雖無資金短缺，但實體資源（電力/土地/核准）將成為制約，且資料中心成本持續上揚；未對大盤方向表示看法。",
+          "action_view": "",
+          "notable_quote": "Everything is just getting more expensive."
+        }
+      },
+      {
         "guid": "bcc22dff-b144-40ae-8f68-b4ab00f28c30",
         "title": "Nick Bostrom on What Happens if AI Solves All of Our Problems",
         "published": "Thu, 20 Aug 2026 08:00:00 +0000",
@@ -5559,24 +5579,6 @@
           "notable_quote": "What is happening now is that we take this entire international part, chop it off, and say, wait, these rules do not apply anymore. What applies now is essentially national sort of mercantilist policy."
         },
         "shown_at": "2026-07-27T22:56:38Z"
-      },
-      {
-        "guid": "6027c695-2425-4510-bd41-b491014d8b7a",
-        "title": "How Financial Advisors Can Grow During the Great Wealth Transfer (Sponsored Content)",
-        "published": "Sun, 26 Jul 2026 10:00:00 +0000",
-        "processed_at": "2026-07-26T14:50:41Z",
-        "digest": {
-          "summary_points": [
-            "根據 Cerule 報告，未來 25 年將有超過 100 兆美元的財富轉移給下一代。",
-            "約 81% 的下一代表示不會繼續使用父母的理財顧問。",
-            "顧問與客戶在溝通保護、退休規劃等話題上存在巨大認知差距。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "only about 19-ish percent say they're going to stay with their advisor going forward"
-        },
-        "shown_at": "2026-07-26T22:56:20Z"
       }
     ]
   },

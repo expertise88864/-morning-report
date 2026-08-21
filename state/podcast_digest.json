@@ -6419,6 +6419,27 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "688c4809-9cf4-4d77-b5d7-482ee43e7ccc",
+        "title": "Dario Defends Himself, Datacenter Panic, AI Doomer Trap, Senate Toss-Up",
+        "published": "Fri, 21 Aug 2026 14:14:00 +0000",
+        "processed_at": "2026-08-21T20:03:31Z",
+        "digest": {
+          "summary_points": [
+            "Sacks直指Dario的AI監管主張是「監管俘獲」，批評Anthropic刻意散播AI失業恐慌（如預測1-5年內50%入門知識工作者失業）卻從未修正，如今又推動類似FINRA的監管機構，實為FDA/FAA式審批，將拖慢美國AI發展並讓中國領先。",
+            "Chamath與Sacks警告反資料中心運動蔓延：德州州長Abbott與賓州州長Shapiro相繼限制資料中心，加上共和黨內部備忘錄要求AI公司停止「rage baiting」，顯示AI恐懼已引發兩黨政治反彈，將威脅前沿模型公司的融資能力，因其資產負債表最差且無法取得算力。",
+            "Chamath對比開放與封閉模型：開放模型搭配任何harness能力反而提升，封閉模型在自己的harness下能力衰減，因此開放模型更便宜且高效；但Sacks預測監管將藉「標準一致」之名逐步禁止開放模型，導致美國經濟競爭力下降。",
+            "Freiberg認為RSI（遞迴自我改進）是真實可能且可能很快發生，屆時任何國家監管都無法阻止，因為只要有晶片、電力和網路就能在境外（如冰島、太空）運行；因此美國應吸引並留住前沿實驗室，而非把資料中心逼走。",
+            "關於中期選舉：Sacks認為民調嚴重高估民主黨（歷史平均偏差D+3.7），且當前民調過度採樣年輕進步派；Freiberg則指出年輕人對社會主義接受度上升（53%的40歲以下保守派支持政府經營雜貨店），認為債務螺旋將導致2028年出現AOC式總統。",
+            "Chamath批評矽谷已失去理想主義，企業界只顧賺錢，導致公眾將資料中心視為「億萬富翁的寺廟」，形成仇富情緒；呼籲企業界展現更負責任的面貌，否則將助長社會主義浪潮。",
+            "Sacks主張AI安全應透過公開論文、會議、開放標準協作，而非祕密的SRO；Demis的FINRA式提案不可行，因為FINRA本質是保護現有大公司，開放透明才能避免監管俘獲。"
+          ],
+          "tickers": [],
+          "market_view": "主持人認為美國經濟短期仍穩健（如小企業信心上升、就業增加），但長期財政赤字與30年期殖利率不斷創高（本週達5.3%）構成風險，加上政治轉向社會主義的壓力，對市場形成結構性威脅。",
+          "action_view": "主持人未給出明確買賣建議，但強調需關注收益率與政策風險；Chamath建議政府應運用聯邦土地與資源推動平價住宅與技職培訓，以挽回公眾信任。",
+          "notable_quote": "It's just a repackaging of what Dario has always wanted, which is an FDA for AI. Now he's saying it's an FAA for AI."
+        }
+      },
+      {
         "guid": "428ae13c-11c4-4412-876b-0559528050e9",
         "title": "Flock CEO Garrett Langley on Controversy, \"Surveillance State\" Claims, and Privacy vs Safety",
         "published": "Tue, 18 Aug 2026 00:47:00 +0000",
@@ -6828,60 +6849,6 @@
           "notable_quote": "They have a very simple straightforward strategy: Number one, brand yourself as a safe AI company. Number two, ban unsafe AI. Three, profit."
         },
         "shown_at": "2026-07-18T22:37:18Z"
-      },
-      {
-        "guid": "e55cd042-2dc9-45cc-861d-c2c70c36f835",
-        "title": "Former Intel CEO on What Went Wrong, What's Next + Lovable CEO on the Real Promise of Vibe Coding",
-        "published": "Wed, 15 Jul 2026 20:55:00 +0000",
-        "processed_at": "2026-07-16T05:20:42Z",
-        "digest": {
-          "summary_points": [
-            "英特爾由商業領袖而非技術領袖領導時，做出了錯誤的技術決策，例如將1000億美元用於股票回購和股息，而非投資新工廠和EUV機台。",
-            "蘋果在2008-2009年因不信任英特爾的晶片進步，開始自研晶片（Apple Silicon），最終成功。",
-            "輝達（Nvidia）從圖形卡透過CUDA軟體堆疊和SIMT技術，轉變為通用計算平台，抓住HPC和AI浪潮。",
-            "台積電（TSMC）以代工模式崛起，產量是英特爾的5倍（後續7倍），成為半導體行業主流。",
-            "《晶片法案》使美國先進晶片製造比例從12%提升至約18%，但仍有長路要走。",
-            "台灣能源儲備不足三週，一旦封鎖或斷電，全球經濟影響將超過大蕭條。",
-            "AI建設受能源容量限制（全球能源增長僅4-5%），天然防止過度泡沫，但長期看好20年擴張。",
-            "量子計算將於2030年前展現有意義的成果，結合經典計算、AI與量子計算將帶來巨大變革。",
-            "當前AI公司（如11 Labs、Lovable）擁有真實收入和利潤，與網路泡沫不同，但估值偏高可能引發修正。",
-            "英特爾回歸技術領導，開始成為代工廠，但需加速供應鏈韌性建設。"
-          ],
-          "tickers": [
-            {
-              "name": "英特爾",
-              "code": "INTC",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "討論英特爾過去錯誤與當前轉型（成為代工廠），但未明確看多或看空。"
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "輝達從圖形卡成功轉型為AI計算平台，長期受益於AI需求。"
-            },
-            {
-              "name": "台積電",
-              "code": "TSM",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "台積電主導代工市場，但地緣風險與競爭壓力需關注。"
-            },
-            {
-              "name": "蘋果",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "蘋果自研晶片成功，但當前未獲具體評論。"
-            }
-          ],
-          "market_view": "科技股長期看好（AI、量子），但短期估值偏高且受能源容量與地緣風險（台灣）制約，可能出現修正。",
-          "action_view": "建議在修正時保持謹慎，關注供應鏈韌性與能源基礎建設投資。",
-          "notable_quote": "The island of taiwan has less than three weeks of energy reserves... the economic impact of a brown out of taiwan is greater than the great depression."
-        },
-        "shown_at": "2026-07-16T22:53:17Z"
       }
     ]
   },

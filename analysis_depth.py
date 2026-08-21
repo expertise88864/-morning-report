@@ -142,6 +142,26 @@ def depth_advisories(obj, packet=None) -> list:
     # (見 `_registry_of`)—— 那時沒有事件群,重述檢查整段跳過。
     import analysis_recap as _rc
     out.extend(_rc.restatements(obj, packet if isinstance(packet, dict) else {}))
+    # 2026-08-21 實信(特化路徑成功的第一天):十、總經與十之二、政策深析
+    # **整段消失** —— FOMC 紀要與 3.9 兆總預算被塞進第九段,
+    # macro_environment/taiwan_policy 全空。合法(schema 允許空)但淺:
+    # 素材在而段落空白,加深要點名。判準是結構性的(查空欄+素材量)。
+    _mac = (obj.get("macro_environment")
+            if isinstance(obj.get("macro_environment"), dict) else {})
+    _mac_empty = not any(
+        str((_mac.get(k) or {}).get("analysis") or "").strip()
+        for k in ("us_rates_fx_vix", "fed_policy", "geopolitics")
+        if isinstance(_mac.get(k), dict))
+    if _mac_empty and _avail >= 10:
+        out.append("macro_environment 三個切面全空,而 EVIDENCE 有行情與"
+                   "新聞素材 —— (A)(B)(C) 各寫今天的增量並引用 EVIDENCE 的"
+                   " ID,真的沒有增量的切面才留空")
+    _gaz = (((packet or {}).get("market") or {}).get("GAZETTE_RECORDS")
+            if isinstance(packet, dict) else None) or []
+    if _gaz and not (obj.get("taiwan_policy") or []):
+        out.append(f"taiwan_policy 空白,而 EVIDENCE 有 {len(_gaz)} 筆行政院"
+                   "公報 —— 逐項寫政策深析(source_item_id 回指來源),"
+                   "確無資本市場影響的才略過")
     return out
 
 

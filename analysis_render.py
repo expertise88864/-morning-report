@@ -305,7 +305,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
                                 order.get(_s(c.get("materiality")), 3)))
     top3 = [x for x in (_event_card(c, packet) for c in _top(drivers, packet)) if x]
     if top3:
-        parts.append(f"## {SECTION_TOP3}\n" + "\n".join(top3))
+        # **各自成段**(2026-08-21 實信:單一換行被 markdown 摺成同一段,
+        # 三條重點黏成一坨、佐證括號看起來像連環重複)。
+        parts.append(f"## {SECTION_TOP3}\n" + "\n\n".join(top3))
 
     # ------- legacy 骨架(2026-08-19 第四批,schema v21)-------
     # 世界大事:**股市之外的世界**。這個段名曾被刪(schema 沒有對應欄位

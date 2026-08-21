@@ -18422,7 +18422,7 @@ def _poly_yes_prob(market: dict) -> Optional[float]:
         return None
 
 
-# 24h 成交量低於此值 → 標「量低⚠」:機率上升但流動性極低可能只是少數交易,
+# 24h 成交量低於此值 → 標「量低」:機率上升但流動性極低可能只是少數交易,
 # 不應把價格當精確機率(GPT-5.6 建議「機率品質」的縮小版,地基批#4)
 _POLY_LOW_VOLUME_USD = 10_000.0
 # 批#17:bid-ask 價差 ≥5pp = 顯示價(midpoint)不可精確解讀為機率
@@ -18859,7 +18859,7 @@ def _poly_binary_detail(key: str, markets: list, now_tpe: dt.datetime,
     except (TypeError, ValueError):
         spread_note = ""
     return (f"機率 {pct}%" + _poly_delta_suffix(d.get("pp"), d.get("days", 1))
-            + spread_note + ("(量低⚠)" if low_vol else ""))
+            + spread_note + ("(量低)" if low_vol else ""))
 
 
 def fetch_polymarket_pulse(now_tpe: Optional[dt.datetime] = None) -> list[dict]:

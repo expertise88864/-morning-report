@@ -3088,7 +3088,7 @@ def test_pulse_binary_detail_with_delta(monkeypatch, tmp_path):
     d2 = dt.datetime(2026, 7, 17, 6, 0, tzinfo=mr.TPE)
     assert mr._poly_binary_detail("pulse|升息", markets, d1) == "機率 52%"
     markets2 = [{"outcomePrices": '["0.59", "0.41"]', "volume24hr": 900}]
-    assert mr._poly_binary_detail("pulse|升息", markets2, d2) == "機率 59%(↑7pp)(量低⚠)"
+    assert mr._poly_binary_detail("pulse|升息", markets2, d2) == "機率 59%(↑7pp)(量低)"
     assert mr._poly_binary_detail("pulse|升息", [], d2) is None
 
 

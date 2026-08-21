@@ -63,3 +63,65 @@ def test_alignment_is_wired_before_phantom_pruning():
                    _SRC.index("def _align_corroboration") + 100)
     seg = _SRC[i:i + 200]
     assert "_prune_phantom_audit_ids" in seg, "改寫沒有排在修剪之前"
+
+
+# --------------------------------------------- 2026-08-21 實信三項
+
+
+def test_top3_items_render_as_separate_paragraphs():
+    """08/21 實信:三大重點用單一換行 join,被 markdown 摺成同一段 ——
+    三條黏成一坨。要空行分段。"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_render as ar
+    import fixtures_analysis as fx
+    o = fx.valid_analysis()
+    o["key_drivers"] = [fx._driver("Fed 訊號轉鷹"),
+                        fx._driver("台積電資本支出上修"),
+                        fx._driver("油價創月新高")]
+    out = ar.render(o)
+    i = out.find(ar.SECTION_TOP3)
+    assert i >= 0
+    seg = out[i:]
+    nxt = seg.find("\n## ")
+    seg = seg[:nxt] if nxt > 0 else seg
+    paras = [x for x in seg.split("\n\n") if x.strip()]
+    # 真正的不變式:三條重點**各在不同段**(標題與第一條同段無妨,
+    # `## ` 行在 markdown 裡自成 h2)。
+    homes = [next(i for i, x in enumerate(paras) if kw in x)
+             for kw in ("Fed 訊號轉鷹", "台積電資本支出上修", "油價創月新高")]
+    assert len(set(homes)) == 3, f"三條重點沒有各自成段:{homes}"
+
+
+def test_low_volume_marker_has_no_warning_emoji():
+    """08/21 實信:「機率 50%(量低⚠)」的 ⚠ 漏拆(聚合行已拆,單一
+    市場那條漏了)—— 使用者已要求全部移除。"""
+    import io
+    from pathlib import Path
+    src = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+                  encoding="utf-8").read()
+    assert "量低⚠" not in src
+
+
+def test_empty_macro_and_policy_sections_get_deepen_advisories():
+    """08/21 實信:特化成功的第一天,十、總經與十之二、政策深析整段
+    消失(素材在、欄位空)。合法但淺 —— 加深要點名;填了就不吵。"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_depth as ad
+    import fixtures_analysis as fx
+    pk = {"news": [{}] * 12,
+          "market": {"GAZETTE_RECORDS": [{"t": "a"}, {"t": "b"}]}}
+    advs = ad.depth_advisories(fx.valid_analysis(), pk)
+    assert any("macro_environment" in a for a in advs), advs
+    assert any("taiwan_policy" in a for a in advs), advs
+    filled = fx.valid_analysis()
+    filled["macro_environment"] = {
+        "us_rates_fx_vix": {"analysis": "10Y 高檔", "evidence_ids": ["n1"]},
+        "fed_policy": {"analysis": "", "evidence_ids": []},
+        "geopolitics": {"analysis": "", "evidence_ids": []}}
+    filled["taiwan_policy"] = [{"source_item_id": "n1", "what": "x",
+                                "impact": "y"}]
+    advs2 = ad.depth_advisories(filled, pk)
+    assert not any("macro_environment" in a for a in advs2), advs2
+    assert not any("taiwan_policy" in a for a in advs2), advs2

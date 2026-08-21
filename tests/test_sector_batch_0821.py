@@ -13,6 +13,10 @@ def test_energy_bucket_and_leaders_are_declared():
     assert "能源-台股" in mr.OTHER_SECTOR_QUERIES
     assert set(mr.SECTOR_LEADERS) >= {"金融", "航運", "生技", "能源", "重電"}
     assert any("台塑化" in x for x in mr.SECTOR_LEADERS["能源"])
+    # 2026-08-22 使用者:金融龍頭加 兆豐/永豐/第一/合庫/玉山
+    _fin = "".join(mr.SECTOR_LEADERS["金融"])
+    for name in ("兆豐金", "永豐金", "第一金", "合庫金", "玉山金"):
+        assert name in _fin, f"金融龍頭缺 {name}"
 
 
 def test_leader_priority_reaches_both_prompts():

@@ -2200,6 +2200,140 @@ def fetch_taifex_foreign_futures() -> dict:
     return {}
 
 
+def _http_post(url, **kwargs):
+    """POST 的單一入口(TAIFEX 官網每日報表)。**抽成模組層函式是為了讓測試
+    攔得到** —— 直接呼叫 `requests.post` 的話,既有的籌碼測試會在跑測試時
+    打真網路(這個 repo 記過:測試碰網路 = 本機綠、CI 紅)。"""
+    return requests.post(url, **kwargs)
+
+
+def _taifex_daily_csv(path: str, extra: Optional[dict] = None,
+                      days_back: int = 6) -> list:
+    """TAIFEX **官網每日報表**的 CSV 下載(Big5)。回 `list[list[str]]`(含表頭)。
+
+    2026-08-22 追查籌碼 fill_rate 只有 35% 的根因:`openapi.taifex.com.tw`
+    這兩個端點**同時出了兩個問題** —— (a) 資料停在 8/19,而 8/20、8/21 都
+    是交易日(所以 `chips:source_date_mismatch` 每天觸發、特徵天天留空);
+    (b) `OpenInterestOfLargeTradersFutures` 已改成回 **CSV**(Content-Type
+    `application/octet-stream`,帶 BOM),而呼叫端還在 `r.json()` —— 那條
+    路現在必然拋例外、fail-safe 回 `{}`。官網的下載端點兩項都有當日資料
+    (實測 8/21 齊全),所以改成**官網優先、OpenAPI 備援**。
+
+    官網是 POST + Big5,比 OpenAPI 脆;所以不是取代而是**兩層**:
+    官網拿不到就退回 OpenAPI(舊資料仍好過沒有,而日期守衛照樣把不匹配的
+    值擋在計分之外)。
+    """
+    import csv as _csv
+    import datetime as _dt
+    import io as _io
+    today = _dt.datetime.now(TPE).date()
+    form = {"down_type": "1",
+            "queryStartDate": (today - _dt.timedelta(days=days_back)).strftime("%Y/%m/%d"),
+            "queryEndDate": today.strftime("%Y/%m/%d")}
+    form.update(extra or {})
+    r = _http_post(f"https://www.taifex.com.tw/cht/3/{path}", data=form,
+                   timeout=(5, 15),
+                   headers={"User-Agent": "Mozilla/5.0",
+                            "Content-Type": "application/x-www-form-urlencoded"})
+    r.raise_for_status()
+    txt = r.content.decode("big5hkscs", errors="replace")
+    return [row for row in _csv.reader(_io.StringIO(txt)) if row]
+
+
+def _taifex_pcr_from_site() -> dict:
+    """官網 PCR:`日期,賣權成交量,買權成交量,成交量比率%,賣權未平倉,買權未平倉,未平倉比率%`
+    (欄序與 OpenAPI 的 JSON 欄位一致)。"""
+    rows = _taifex_daily_csv("pcRatioDown")
+    best = None
+    for row in rows[1:]:
+        if len(row) < 7 or not row[0].strip()[:4].isdigit():
+            continue
+        d = row[0].strip().replace("/", "")
+        if best is None or d > best[0]:
+            best = (d, row)
+    if not best:
+        return {}
+    d, row = best
+    return {"date": d, "pc_vol_ratio": _to_float(row[3]),
+            "pc_oi_ratio": _to_float(row[6])}
+
+
+def _taifex_large_from_site(contract: str = "TX") -> dict:
+    """官網大額交易人:所有契約合計在官網是 `999999`(OpenAPI 用 `999912`);
+    交易人類別 0 = 全部、1 = 其中的特定法人。"""
+    rows = _taifex_daily_csv("largeTraderFutDown", {"commodityId": "TXF"})
+    want = [r for r in rows[1:]
+            if len(r) >= 10 and r[1].strip() == contract and r[3].strip() == "999999"]
+    if not want:
+        return {}
+    latest = max(r[0].strip() for r in want)
+
+    def _pick(kind: str):
+        return next((r for r in want
+                     if r[0].strip() == latest and r[4].strip() == kind), None)
+
+    allt, spec = _pick("0"), _pick("1")
+    if not allt:
+        return {}
+    b, sell, oi = (_to_int_strict(allt[7]), _to_int_strict(allt[8]),
+                   _to_int_strict(allt[9]))
+    if b is None or sell is None or not oi:
+        return {}
+    out = {"date": latest.replace("/", ""), "top10_buy": b, "top10_sell": sell,
+           "top10_net": b - sell, "oi_market": oi,
+           "top10_long_pct": round(b / oi * 100, 1),
+           "top10_short_pct": round(sell / oi * 100, 1),
+           "concentration_pct": round(max(b, sell) / oi * 100, 1)}
+    if spec:
+        sb, ss = _to_int_strict(spec[7]), _to_int_strict(spec[8])
+        if sb is not None and ss is not None:
+            out["spec_top10_net"] = sb - ss
+    return out
+
+
+def _openapi_rows(resp) -> list:
+    """TAIFEX OpenAPI 的回應:JSON 陣列或 CSV(欄名中文)都要能解成 dict 清單。
+
+    2026-08-22:`OpenInterestOfLargeTradersFutures` 從 JSON 改成 CSV,而
+    呼叫端只寫了 `r.json()` —— 端點換格式那天,備援就靜默消失了。
+    """
+    import csv as _csv
+    import io as _io
+    # **先試 JSON**:呼叫端(含測試的假 Response)可能只實作 `.json()`。
+    # 先前用 `.content` 判頭一個字元,遇到沒有 content 的物件會誤走 CSV 分支
+    # 而回空清單 —— 端點還是 JSON 的日子備援就靜默消失了。
+    try:
+        data = resp.json()
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return [data]
+    except Exception:                       # noqa: BLE001 - 不是 JSON 就走 CSV
+        pass
+    body = resp.content if hasattr(resp, "content") else b""
+    txt = (body.decode("utf-8-sig", errors="replace") if body
+           else (resp.text if hasattr(resp, "text") else ""))
+    #: CSV → 對齊 JSON 的欄名(呼叫端只認這幾個)
+    _MAP = {"日期": "Date", "契約": "Contract", "到期月份(週別)": "SettlementMonth",
+            "交易人類別": "TypeOfTraders", "前十大交易人買方數量": "Top10Buy",
+            "前十大交易人賣方數量": "Top10Sell", "全市場未沖銷部位數": "OIOfMarket"}
+    out = []
+    for row in _csv.DictReader(_io.StringIO(txt)):
+        out.append({_MAP.get(str(k).strip(), str(k).strip()): v
+                    for k, v in row.items()})
+    return out
+
+
+def _to_int_strict(v):
+    """缺欄位/空/壞值回 None —— 不可回 0,那會算出假部位。"""
+    if v is None or str(v).strip() in ("", "-", "NA"):
+        return None
+    try:
+        return int(float(str(v).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_taifex_options_pc_ratio() -> dict:
     """TAIFEX 台指選擇權 Put/Call ratio(本土選擇權情緒;TAIFEX OpenAPI JSON)。
 
@@ -2207,6 +2341,24 @@ def fetch_taifex_options_pc_ratio() -> dict:
     避險/偏空部位濃;極端高常是散戶過度避險 → 反向(contrarian)偏多訊號。補晨報缺的
     『台股本土情緒』(現只有美股 VIX)。失敗回 {}(fail-safe,不影響晨報)。
     """
+    try:
+        site = _taifex_pcr_from_site()      # 官網當日報表(OpenAPI 落後 2 個交易日)
+        if site.get("pc_oi_ratio") is None and site.get("pc_vol_ratio") is None:
+            # **HTTP 200 但報表不可用**(空表/欄位漂移/沒有合法列)時
+            # helper 回 `{}` 而不是拋 —— 只在 except 記標籤的話,
+            # 最現實的那種失敗反而沒有痕跡(r2 外審)。
+            raise ValueError("官網 PCR 報表沒有可用的列")
+        if True:
+            print(f"[taifex] TXO P/C(官網 {site['date']})OI {site.get('pc_oi_ratio')}%"
+                  f" / vol {site.get('pc_vol_ratio')}%")
+            return site
+    except Exception as e:                  # noqa: BLE001 - 官網較脆,退 OpenAPI
+        # **降級要留痕**(外審 P3):官網是當日來源,退到已知落後的 OpenAPI
+        # 之後 manifest 看起來仍然健康 —— 那正是這批要修的 35% 的樣子。
+        if "chips:pcr_site_fallback" not in _DEGRADED_STEPS:
+            _DEGRADED_STEPS.append("chips:pcr_site_fallback")
+        print(f"[taifex] PCR 官網來源失敗,改用 OpenAPI: {type(e).__name__}",
+              file=sys.stderr)
     try:
         r = _http_get("https://openapi.taifex.com.tw/v1/PutCallRatio",
                          timeout=(5, 10), headers={"User-Agent": "Mozilla/5.0"})
@@ -2237,9 +2389,27 @@ def fetch_taifex_large_traders(contract: str = "TX") -> dict:
         top10_long_pct, top10_short_pct, concentration_pct, spec_top10_net}。
     """
     try:
+        site = _taifex_large_from_site(contract)   # 官網當日報表(OpenAPI 落後)
+        if not site:
+            raise ValueError("官網大額交易人報表沒有可用的列")   # 同上
+        if True:
+            print(f"[taifex] {contract} 大額交易人(官網 {site['date']})Top10 淨 "
+                  f"{site['top10_net']:+d} 口(集中度 {site['concentration_pct']}%)")
+            return site
+    except Exception as e:                  # noqa: BLE001 - 官網較脆,退 OpenAPI
+        # **降級要留痕**(外審 P3):官網是當日來源,退到已知落後的 OpenAPI
+        # 之後 manifest 看起來仍然健康 —— 那正是這批要修的 35% 的樣子。
+        if "chips:large_site_fallback" not in _DEGRADED_STEPS:
+            _DEGRADED_STEPS.append("chips:large_site_fallback")
+        print(f"[taifex] 大額交易人官網來源失敗,改用 OpenAPI: {type(e).__name__}",
+              file=sys.stderr)
+    try:
         r = _http_get("https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures",
                          timeout=(5, 12), headers={"User-Agent": "Mozilla/5.0"})
-        data = r.json() or []
+        # **這個端點已改回 CSV**(2026-08-22 實測:Content-Type
+        # `application/octet-stream`、帶 BOM)。只吃 JSON 的話這條備援等於
+        # 不存在 —— 兩種格式都要能解。
+        data = _openapi_rows(r)
         rows = [x for x in data if x.get("Contract") == contract
                 and str(x.get("SettlementMonth")) == "999912"]      # 所有契約合計
         if not rows:
@@ -2252,14 +2422,7 @@ def fetch_taifex_large_traders(contract: str = "TX") -> dict:
         if not allt:
             return {}
 
-        def _strict_int(v):
-            # 嚴格解析:缺欄位/空/壞值回 None(不可用 _to_int,它壞值回 0 會算出假部位)
-            if v is None or str(v).strip() in ("", "-", "NA"):
-                return None
-            try:
-                return int(float(str(v).replace(",", "").strip()))
-            except (TypeError, ValueError):
-                return None
+        _strict_int = _to_int_strict     # 判準只有一份(見該函式)
         b, s, oi = (_strict_int(allt.get("Top10Buy")),
                     _strict_int(allt.get("Top10Sell")),
                     _strict_int(allt.get("OIOfMarket")))
@@ -15907,6 +16070,8 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
     # 斗六/雲林獨立主題已撤(2026-07-16 使用者要求):斗六詞併入建設/房市/學區,
     # 各主題統一涵蓋台中/彰化/南投/斗六
     ("建設", "台中捷運 OR 彰化市 建設 OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
+    # 台中大巨蛋(中信集團 BOT):進度/招商/賽事與周邊交通,屬在地重大建設。
+    ("台中大巨蛋", "台中大巨蛋 OR 台中巨蛋 OR 中信 台中巨蛋 OR 台中 巨蛋 進度", 3),
     ("建商動態", "合新建設 OR 國雄建設 OR 台中 建商 OR 彰化 建商"),
     ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 斗六 房市 OR 台中 建案 OR 台中 預售屋"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),

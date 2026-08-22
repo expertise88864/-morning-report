@@ -59,6 +59,9 @@ KNOWN_DEGRADED = frozenset({
     "sector:institutional_missing",
     # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
     "state:alias_map_unavailable",
+    # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
+    # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
+    "chips:pcr_site_fallback", "chips:large_site_fallback",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",

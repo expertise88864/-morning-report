@@ -87,12 +87,14 @@ def test_enough_items_do_not_trigger_the_advisory():
     assert not any("目標 6" in a for a in advs), advs
 
 
-def test_the_prompt_asks_for_six_to_ten_and_non_tech_coverage():
+def test_the_prompt_asks_for_enough_items_and_non_tech_coverage():
     """prompt 要真的說出目標 —— advisory 只能事後補救,第一次就寫夠
-    比修補一次便宜。"""
+    比修補一次便宜。2026-08-22 使用者回饋「科技與其他類股都偏少」後,
+    目標從六到十改成十到十六,並改成**兩段各有下限**(八與九是獨立段落,
+    不是一段的附屬)。"""
     text = _io.open(_ROOT / "prompt_profiles.py", encoding="utf-8").read()
-    assert "六到十則為目標" in text
-    assert "至少一到兩則" in text
+    assert "十到十六則為目標" in text
+    assert "科技至少六則、科技之外至少五則" in text
     # 第四批的骨架欄位也要在 prompt 裡有寫法說明 —— 只在 schema 宣告而
     # prompt 不提,模型會全部給空(strict 允許空值,而空值合法)。
     for field in ("taiwan_policy", "world_events", "upcoming_event_scenarios",

@@ -28,6 +28,13 @@ def _registry_of(packet):
     return _reg.registry(packet)
 
 
+#: 兩段條目不足時**模型自己宣告**的缺口代號(`data_gaps[].gap_id`)。
+#: 用代號而不是關鍵字:任何提到「科技」的缺口都能關掉建議的話,
+#: 這條守衛就等於不存在(r4 外審)。代號要同步寫進 prompt。
+TECH_COVERAGE_GAP = "gap:other:tech_coverage"
+SECTOR_COVERAGE_GAP = "gap:other:sector_coverage"
+
+
 def depth_advisories(obj, packet=None) -> list:
     """**合法但淺**的地方(空 = 夠深)。與 `validate()` 刻意分開:
 
@@ -49,12 +56,59 @@ def depth_advisories(obj, packet=None) -> list:
     # 素材夠(≥20 則)才要求條數(≥6),素材貧乏的日子不硬湊 —— 湊出來的
     # 那幾則會是把同一件事寫兩遍。
     _avail = len((packet or {}).get("news") or []) if isinstance(packet, dict) else 0
-    if _avail >= 20 and len(news) < 6:
-        out.append(
-            f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
-            f"{_avail} 則新聞 —— 目標 6–10 則;優先補未被涵蓋的重大事件"
-            "(依 materiality 五項判準),科技之外(金融/航運/傳產/生技)"
-            "當日有重大新聞時至少 1–2 則。不足時要在 data_gaps 說明為什麼")
+    # **兩段各自要夠**(2026-08-22 使用者:科技與其他類股都偏少)。
+    # 判準要與 prompt 的目標一致 —— prompt 說十到十六、科技≥6、非科技≥5,
+    # 而這裡先前還在執行舊契約(總數 6、非科技 1–2):守衛與 prompt 打架時,
+    # 模型交出六則就沒有人會要求它補,信裡的兩段照樣稀薄。
+    # 分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判一次
+    # 的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
+    if _avail >= 20:
+        try:
+            from analysis_render_depth import is_tech as _is_tech
+            from analysis_render_depth import news_subject as _subj
+            _tech = sum(1 for n in news if _is_tech(_subj(n, packet)))
+            # **素材面也要照同一支分類數一次**(r2 外審):只看產出的比例
+            # 會在「當天真的沒有那個類股的料」時要求一個做不到的下限 ——
+            # 模型即使誠實寫進 data_gaps 也照樣被催,那是在逼它湊。
+            _src_tech = sum(
+                1 for it in ((packet or {}).get("news") or [])
+                if isinstance(it, dict)
+                and _is_tech(_subj({"source_item_id": it.get("source_item_id")},
+                                   packet)))
+            _src_other = _avail - _src_tech
+        except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數
+            _tech = _src_tech = _src_other = None
+        _other = None if _tech is None else len(news) - _tech
+        # 模型自己說了「今天這一類沒有料」就不再催(它有出口,而且那個出口
+        # 是被驗證器盯著的欄位,不是一句白話)。
+        # **出口是宣告式的缺口代號,不是關鍵字**(r4 外審):上一版把所有
+        # 欄位攤成一個字串再問「有沒有出現『科技』」—— 於是一筆完全無關的
+        # 缺口(「缺科技類股法人買賣超資料」)就能把這條建議關掉,而那正是
+        # 這條建議要抓的稀薄段落。這個 repo 記過同一形狀:
+        # 便利的判斷式不等於它要代表的狀態。
+        # 代號同時寫進 prompt(`prompt_profiles`),否則出口存在而模型不知道。
+        _gap_ids = {str((g or {}).get("gap_id") or "").strip()
+                    for g in ((obj.get("data_gaps") or [])
+                              if isinstance(obj, dict) else [])
+                    if isinstance(g, dict)}
+        if len(news) < 10:
+            out.append(
+                f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
+                f"{_avail} 則新聞 —— 目標 10–16 則;優先補未被涵蓋的重大事件"
+                "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
+        if (_tech is not None and _tech < 6 and (_src_tech or 0) >= 6
+                and TECH_COVERAGE_GAP not in _gap_ids):
+            out.append(
+                f"科技條目只有 {_tech} 則,而素材有 {_src_tech} 則"
+                "(第八段靠它) —— 目標至少 6 則;"
+                "同族群要寫不同事件,不是同一件事換句話說")
+        if (_other is not None and _other < 5 and (_src_other or 0) >= 5
+                and SECTOR_COVERAGE_GAP not in _gap_ids):
+            out.append(
+                f"科技以外只有 {_other} 則,而素材有 {_src_other} 則"
+                "(第九段靠它) —— 目標至少 5 則"
+                "(金融/航運/傳產/生技/能源/營建/重電/汽車/觀光),"
+                "優先挑該類股龍頭的重大公告或財報")
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         steps = [s for s in (n.get("mechanism_steps") or []) if isinstance(s, dict)]

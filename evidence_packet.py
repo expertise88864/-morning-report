@@ -603,7 +603,18 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
     news_by_id = {str(n.get("source_item_id") or ""): n
                   for n in (packet or {}).get("news") or []
                   if isinstance(n, dict)}
-    market = (packet or {}).get("market") or {}
+    # **registry 是唯一的權威**(2026-08-22 外審 P2-1)。先前這裡自己認
+    # 命名空間,只解得出新聞與 `market:` 的巢狀路徑 —— 而 validator 認可的
+    # 命名空間還有 `fact:`/`valuation:`/`prediction:`/`quality:`/`tension:`/
+    # `universe:`/`portfolio:`/`calibration:`。結果不是假引用(那條被切片
+    # 範圍的判準擋住了),而是**誤拒**:一份本來修得好的輸出,因為修補看不到
+    # 它需要的證據而修不動、落到 format_only 或 legacy。
+    # registry 本來就帶 `value`/`unit`/`as_of`/`source`/`quality`,所以
+    # 「哪些 ID 合法」與「這個 ID 的內容是什麼」從此是同一份資料。
+    try:
+        reg = evidence_meta(packet) or {}
+    except Exception:                       # noqa: BLE001 - registry 壞了只給新聞
+        reg = {}
     used = 0
     for eid in ids or ():
         eid = str(eid)
@@ -614,19 +625,22 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
                     "source": str(item.get("source_name")
                                   or item.get("source") or "")[:40],
                     "entities": [str(e) for e in (item.get("entities") or [])][:6]}
-        elif eid.startswith("market:"):
-            cur = market
-            for part in eid[len("market:"):].split("."):
-                cur = cur.get(part) if isinstance(cur, dict) else None
-                if cur is None:
-                    break
-            if cur is None:
-                continue
-            body = cur if not isinstance(cur, dict) else {
-                k: v for k, v in list(cur.items())[:6]
-                if not isinstance(v, (dict, list))}
         else:
-            continue
+            meta = reg.get(eid)
+            if not isinstance(meta, dict):
+                continue
+            # **`quote` 是數字的意義所在**(r1 外審):`fact:` 的 registry
+            # 刻意存下那句原文 —— 少了它,模型看到「80 億美元」卻不知道那是
+            # 訂單、營收、資本支出還是獲利,而 ID 仍會進 visible_ids,
+            # 於是切片判準會放行一個語意上沒有根據的新引用。
+            # 上限 200 字並計入同一個預算(誠實少給,不是給一個裸數字)。
+            body = {k: meta.get(k) for k in
+                    ("value", "unit", "quote", "as_of", "source", "quality")
+                    if meta.get(k) not in (None, "")}
+            if isinstance(body.get("quote"), str):
+                body["quote"] = body["quote"][:200]
+            if not body:
+                continue
         cost = len(eid) + len(_json.dumps(body, ensure_ascii=False, default=str))
         if used + cost > budget_chars:
             break

@@ -259,3 +259,77 @@ def test_two_consecutive_slice_rounds_cannot_launder_an_invented_id():
     assert check(invented) == ["fact:invented"], "第一輪沒擋下捏造的 ID"
     # 第二輪:基準**不得**被剛剛那份被拒的回應撐大
     assert check(invented) == ["fact:invented"], "第二輪被洗白了"
+
+
+# ------------------------------------ 外審 P2-1:registry 與 resolver 同一套
+
+def _rich_packet():
+    import evidence_packet as ep
+    q = {"QQQ": {"close": 700.0, "change_pct": 0.3},
+         "MACRO": {"10Y": {"close": 4.74}},
+         "SECTOR_HEAT": {"sectors": {"半導體業": {"value_yi": 2376}}}}
+    return ep.build(
+        q, {"fair": 120.6}, {"pred": 2419.1},
+        [{"title": "台積電法說", "source": "a", "link": "x",
+          "entities": ["2330"], "summary": "擴產",
+          "published": "2026-08-22T00:00:00+00:00"}],
+        [], {}, as_of="x", target_session_date="y", sanitize=str)
+
+
+def test_every_registry_id_has_a_resolver():
+    """P2-1:validator 認可的命名空間比 resolver 認得的多 —— 結果不是假引用
+    (切片範圍的判準擋住了),而是**誤拒**:一份本來修得好的輸出因為修補
+    看不到它需要的證據而修不動,落到 format_only 或 legacy。"""
+    import evidence_packet as ep
+    pk = _rich_packet()
+    ids = sorted(ep.evidence_ids(pk))
+    assert len(ids) >= 10, ids
+    got = ep.evidence_snippets(pk, ids, budget_chars=500_000)
+    missing = [i for i in ids if i not in got]
+    assert not missing, f"registry 認可但 resolver 解不出來:{missing}"
+
+
+def test_resolver_covers_the_non_news_namespaces():
+    """逐一點名 review 列的命名空間(不是只驗總數)。"""
+    import evidence_packet as ep
+    pk = _rich_packet()
+    ids = sorted(ep.evidence_ids(pk))
+    got = ep.evidence_snippets(pk, ids, budget_chars=500_000)
+    seen = {i.split(":")[0] for i in got if ":" in i}
+    for ns in ("market", "valuation", "prediction"):
+        assert ns in seen, f"{ns}: 沒有任何 ID 被解出內容({sorted(seen)})"
+    # 新聞仍是**內容**(標題/摘要),不是 registry 的中繼資料
+    news_id = pk["news"][0]["source_item_id"]
+    assert got[news_id]["title"] == "台積電法說"
+
+
+def test_resolver_still_respects_the_budget():
+    """接上 registry 之後預算仍然是硬的(誠實少給,不是給一份名冊)。"""
+    import evidence_packet as ep
+    pk = _rich_packet()
+    ids = sorted(ep.evidence_ids(pk))
+    small = ep.evidence_snippets(pk, ids, budget_chars=120)
+    assert 0 < len(small) < len(ids)
+    assert ep.evidence_snippets(pk, ids, budget_chars=0) == {}
+
+
+def test_numeric_fact_keeps_the_quote_that_gives_it_meaning():
+    """r1 外審:`fact:` 的 registry 刻意存 `quote` —— 少了它,模型看到
+    「80 億美元」卻不知道那是訂單、營收、資本支出還是獲利,而 ID 仍會進
+    visible_ids,切片判準因此會放行一個語意上沒有根據的新引用。"""
+    import evidence_packet as ep
+    pk = ep.build(
+        {"QQQ": {"close": 700.0}}, {}, {},
+        [{"title": "鴻海擴大美國 AI 產能", "source": "a", "link": "x",
+          "entities": ["2317"], "summary": "斥資 80 億美元",
+          "published": "2026-08-22T00:00:00+00:00",
+          "numeric_facts": {"capex": {"value": 80, "unit": "億美元",
+                                      "quote": "鴻海公告斥資 80 億美元擴大美國 AI 伺服器產能"}}}],
+        [], {}, as_of="x", target_session_date="y", sanitize=str)
+    facts = [i for i in ep.evidence_ids(pk) if str(i).startswith("fact:")]
+    assert facts, "packet 沒有數字事實可測"
+    got = ep.evidence_snippets(pk, facts, budget_chars=500_000)
+    for fid in facts:
+        assert fid in got, fid
+        assert got[fid].get("quote"), f"{fid} 只剩裸數字:{got[fid]}"
+        assert "80" in str(got[fid].get("quote")) or got[fid].get("value") == 80

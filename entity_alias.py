@@ -38,8 +38,6 @@ ALIAS_GROUPS = (
     ("華碩", "ASUS", "2357"),
     ("國巨", "2327"),
     ("大立光", "3008"),
-    ("長榮", "2603"),
-    ("陽明", "2609"),
     ("台新新光金", "2887"),
     ("富邦金", "2881"),
     # 深度優化(橫向):跨語言合併的前提是實體組有交集,而外媒寫英文名。
@@ -65,15 +63,29 @@ ALIAS_GROUPS = (
 
 #: `別名 → 組編號`。**一個別名只能屬於一組** —— 屬於兩組等於把兩個
 #: 主體接起來,而那是誤併。
+#: 2026-08-22:表裡原有兩組**逐字重複**的宣告(長榮/2603、陽明/2609)。
+#: `setdefault` 讓後出現的那份完全不生效 —— 改到它的人不會看到任何
+#: 變化,而那是最難查的一種。重複由 `tests/test_batch_2026_08_22b.py`
+#: 的守衛擋住。組代表(每組第一個)自 2026-08-22 起是**持久鍵的一部分**
+#: (見 `subject_identity.identity_name`),重排組內順序 = 靜默改寫 state。
 _INDEX: dict = {}
+#: 大小寫不敏感的**後備**索引(2026-08-22 外審 r1 P1)。持久化的 story 鍵
+#: 是 `_norm` 過的**小寫**字串(`e:nvda|…`,生產有 116 筆;`e:aapl` 91 筆)
+#: —— 逐字索引查不到 `nvda`,於是那些線的鍵永遠遷移不掉,而 producer
+#: 明天寫的是 `e:輝達`,同一家公司再裂一次。先查逐字(保住宣告的寫法),
+#: 查不到才 casefold。
+_INDEX_CI: dict = {}
 for _i, _grp in enumerate(ALIAS_GROUPS):
     for _name in _grp:
         _INDEX.setdefault(str(_name), _i)
+        _INDEX_CI.setdefault(str(_name).casefold(), _i)
 
 
 def group_of(name) -> int:
-    """這個名字屬於哪一組(-1 = 不在表裡)。"""
-    return _INDEX.get(str(name or ""), -1)
+    """這個名字屬於哪一組(-1 = 不在表裡;大小寫不敏感)。"""
+    n = str(name or "")
+    gi = _INDEX.get(n)
+    return _INDEX_CI.get(n.casefold(), -1) if gi is None else gi
 
 
 def canonical(name) -> str:

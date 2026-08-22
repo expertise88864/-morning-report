@@ -825,12 +825,13 @@ def _event_timeline_key(event: dict) -> tuple[str, str]:
     財報/財測/營收類事件附季度 bucket 成獨立 episode(向後相容:previous map
     每次由歷史事件 dict 重算本函式,舊紀錄會以同一規則重新分桶,無 state 遷移)。"""
     entity = str(event.get("entity") or "").strip()
-    # **鍵只對法域/機構做跨語言正規**(2026-08-20 P1-2):歷史鍵是
-    # `geopolitical:俄羅斯:…`,英文續報 entity=Russia 原樣進鍵會讓同一條
-    # lifecycle 裂成兩條、confirmed 重拿 full weight。公司鍵慣例是代號,
-    # 不動(canonical_display 會把 2330 收斂成台積電 —— 那是重寫全部
-    # 公司鍵,第一版就踩了這個雷,測試當場紅)。
-    entity = _si.cross_language_display(entity) or entity
+    # **鍵的主體走機器身分**(2026-08-22 外審 P1):法域/機構
+    # (Russia/俄羅斯)之外,**公司也要收斂**。上一版把公司排除在外,
+    # 理由是「公司鍵慣例是代號」—— 而生產 state 裡就有
+    # `export_controls:輝達:2026-08`,前提不成立;輝達/NVIDIA/NVDA
+    # 因此是三條 lifecycle。收斂配 `state_migrations` 的鍵遷移
+    # (與 08/21 生產跑過的那條同一支)。
+    entity = _si.identity_name(entity) or entity
     event_type = str(event.get("event_type") or "general").strip() or "general"
     if not entity or event_type == "general":
         import hashlib
@@ -895,7 +896,9 @@ def _event_generation_bridge_key(event: dict) -> tuple:
         r"\W+", "", str(event.get("title") or "").lower())[:48]
     if not title:
         return ()
-    return (str(event.get("entity") or ""),
+    # 主體走機器身分(2026-08-22 外審 P1):橋接鍵原樣帶 entity,
+    # 舊代記錄寫 NVIDIA、今天寫輝達時連這條退路都接不上。
+    return (_si.identity_name(str(event.get("entity") or "")),
             str(event.get("event_type") or "general"), title)
 
 
@@ -1058,7 +1061,13 @@ def apply_event_timeline(model_history: list[dict],
 #: 跳版 —— 不跳的話,舊的 schema-3 事件會被當成同代而錯誤接續:
 #: 同一筆訂單的舊 ID 是 `2奈米,蘋果`、新 ID 是 `2nm,aapl`,
 #: 兩者並存卻都自稱當代,event-study 會把它算成兩個獨立的可信事件。
-EVENT_SCHEMA_VERSION = 4
+#: 批#115 起為 5(2026-08-22 外審 r1 P1):**公司主體改走機器身分**,
+#: `_event_instance_id` 由 `_event_timeline_key` 雜湊而來 —— 部署前存下的
+#: `2330|earnings|2026Q2` 與部署後的 `台積電|earnings|2026Q2` 是兩個 ID,
+#: 而兩者都自稱 schema 4。不跳版的話 event-study 會把同一樁事算成兩個
+#: 獨立的可信事件(那正是 3→4 跳版時記下的同一種傷害)。跳版後舊
+#: evidence 走既定的 session 級 fallback。
+EVENT_SCHEMA_VERSION = 5
 
 
 def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:

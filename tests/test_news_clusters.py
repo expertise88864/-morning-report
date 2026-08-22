@@ -285,4 +285,6 @@ def test_yesterdays_view_can_be_saved_from_production_shaped_news():
     obj["top_news_analysis"][0]["source_item_id"] = pk["news"][0]["source_item_id"]
     out = arc.extract(obj, pk)
     assert out["items"], f"eligible={out.get('eligible')} 卻一筆都沒存"
-    assert "2330" in out["items"][0]["entities"]
+    # 2026-08-22 外審 P1:recap 的實體也走同一權威(組代表寫法);
+    # 比對端本來就是別名感知(`entity_alias.expand`),存哪一種寫法都接得上。
+    assert "台積電" in out["items"][0]["entities"]

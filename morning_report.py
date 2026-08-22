@@ -5653,9 +5653,22 @@ def purge_story_misattribution(ledger: list) -> list:
     清理是可重入的(清完就不符合條件),不需要「已經跑過」的旗標。
     """
     kn = _run_alias_map()
+    # **公司鍵遷移不依賴 alias map**(2026-08-22 外審 r1 P2):它先前排在
+    # `if not kn: return` 之後 —— alias map 取不到的那天(`_run_alias_map`
+    # 吞例外回 {})整批公司舊鍵靜默孤立,而降級清單、manifest、警告全都
+    # 沒有痕跡。遷移移到閘門之前;alias map 空掉本身也要留痕。
+    keep, _story_renamed = _sm.migrate_company_story_keys(ledger)
+    if _story_renamed:
+        _RUN_MANIFEST.setdefault("state_migrations", {})["story_company_keys"] = {
+            "renamed": len(_story_renamed), "examples": _story_renamed[:5]}
+        print(f"[migrate] 線索帳本改名 {len(_story_renamed)} 條公司鍵"
+              f"(主體段改走機器身分)", file=sys.stderr)
     if not kn:
-        return list(ledger or [])
-    keep, dropped = _sm.purge_misattributed_stories(ledger, kn)
+        _DEGRADED_STEPS.append("state:alias_map_unavailable")
+        print("[migrate] 取不到代號→名稱對照,跳過錯歸因清理(公司鍵遷移已完成)",
+              file=sys.stderr)
+        return keep
+    keep, dropped = _sm.purge_misattributed_stories(keep, kn)
     # 型別錯的那一批(被標成地緣政治的資安事件)是另一件事:歸因是對的,
     # 所以上面那個清理刻意沒動它們。型別會影響意外度、催化權重與延燒追蹤
     # —— 留著就是每天用錯誤的優先序推一條線(2026-08-18 外審 P2-1)。
@@ -15442,7 +15455,16 @@ def update_event_timeline(structured_events: list[dict],
         # 鍵則靠標題認),丟掉會讓一條真的延燒好幾天的線從第 1 天重算。
         state, _tl_cyber = _sm.migrate_cyber_timeline_keys(state)
         # 跨語言主體的鍵收斂(2026-08-20 P1-2 r2:Pentagon→五角大廈)
-        state, _tl_lang = _sm.migrate_cross_language_timeline_keys(state)
+        state, _tl_lang, _tl_obj = _sm.migrate_cross_language_timeline_keys(
+            state)
+        if _tl_obj:
+            # 鍵沒動、只把 row 的 object 修回與鍵一致(外審 P2)——
+            # 與改名分開記,否則 manifest 會宣稱改了沒改的鍵。
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "timeline_object_repaired"] = {"count": len(_tl_obj),
+                                               "examples": _tl_obj[:5]}
+            print(f"[migrate] 時間軸修正 {len(_tl_obj)} 條列的對象欄位"
+                  f"(鍵已正規化、object 仍是遷移前的值)", file=sys.stderr)
         if _tl_lang:
             _RUN_MANIFEST.setdefault("state_migrations", {})[
                 "cross_language_keys"] = {"renamed": len(_tl_lang),

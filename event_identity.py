@@ -88,7 +88,7 @@ from event_actions import (                       # noqa: E402,F401
 # 只認法域,producer 已統一而身分層沒跟上,同一主體的中英寫法會裂成
 # 兩條 lineage、延燒天數從 1 重算。
 from subject_identity import (   # noqa: E402 - 相容出口區,同上
-    cross_language_display as canonical_subject)
+    identity_name as canonical_subject)
 
 
 #: **通用新聞動詞**:每一則都有,不指認任何事件。與主體名一樣,
@@ -392,6 +392,18 @@ def _objects_agree(mine: str, theirs: str) -> bool:
     —— 所以:單一側的明確對象出現在多元側的候選裡就算對上;
     **兩側都是多元時仍要求相等**(兩個都分不出,猜了就是擲骰子)。
     """
+    # **兩側都先走機器身分**(2026-08-22 外審 P1/P2 的共同根)。
+    # 存下來的對象是**當天那個寫法**:舊記錄寫 `TSMC`、
+    # `International Criminal C`,而今天算出來的是組代表寫法 ——
+    # 逐字比對必然不一致,世系接不上。遷移會修 state 裡的值,
+    # 但讀端不能依賴遷移跑過(舊備份、外部餵入的記錄都繞得過去)。
+    def _canon(side: str) -> str:
+        # `canonical_subject` 就是 `subject_identity.identity_name`
+        # (見本檔上方相容出口)—— 判準只能有一份。
+        return "、".join(canonical_subject(p) or p
+                         for p in str(side or "").split("、"))
+
+    mine, theirs = _canon(mine), _canon(theirs)
     if mine == theirs:
         return True
     ma, tb = mine.split("、"), theirs.split("、")

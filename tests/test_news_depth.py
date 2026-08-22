@@ -625,7 +625,9 @@ def test_entityless_story_upgrades_its_entity_and_stops_absorbing_others():
                            "2026-07-30", vocab)
     assert len(led) == 1
     assert led[0]["entity"] == "2303", "entity 沒升級 —— 線索仍是萬用牌"
-    assert led[0]["key"].startswith("e:2303|"), "key 沒跟著遷移(r7 的教訓)"
+    # 2026-08-22 外審 P1:鍵的主體改走機器身分(組代表寫法),代號版與
+    # 名稱版收斂成同一把 —— 這裡驗的仍是「key 有跟著 entity 升級」。
+    assert led[0]["key"].startswith("e:聯電|"), "key 沒跟著遷移(r7 的教訓)"
     # (3) 另一家公司的同型標題不得被吸進去
     led = sl.update_ledger(led, [dict(
         base, entity="2330", entity_name="台積電",
@@ -633,7 +635,7 @@ def test_entityless_story_upgrades_its_entity_and_stops_absorbing_others():
         link="https://a/3", source_name="鉅亨台股")], "2026-07-31", vocab)
     keys = {s["key"] for s in led}
     assert len(led) == 2, f"另一家公司被萬用牌吸走:{keys}"
-    assert any(k.startswith("e:2330|") for k in keys)
+    assert any(k.startswith("e:台積電|") for k in keys)
 
 
 def test_entity_upgrade_happens_in_a_single_update_ledger_call():
@@ -665,7 +667,8 @@ def test_entity_upgrade_happens_in_a_single_update_ledger_call():
     assert "" not in by_ent, (
         f"線索仍是 entityless 萬用牌:{[(s.get('entity'), s['key']) for s in led]}")
     assert set(by_ent) == {"2303", "2330"}, f"公司被錯併:{set(by_ent)}"
-    assert by_ent["2303"]["key"].startswith("e:2303|"), "key 沒跟著遷移"
+    # 2026-08-22 外審 P1:鍵的主體是組代表寫法(row 的 entity 仍是代號)。
+    assert by_ent["2303"]["key"].startswith("e:聯電|"), "key 沒跟著遷移"
 
 
 def test_story_card_is_gone_but_the_narrative_source_survives():

@@ -17,10 +17,14 @@
 - `same_subject(a, b)`:兩個寫法是不是同一個主體。
 - `aliases_of(name)`:這個主體宣告過的全部別名(供逐字驗證)。
 
-持久化的 state **不重寫鍵**:story/timeline 的既有 entity 原樣留著,
 所有比較(story 匹配、timeline 鍵、migration 重驗、producer 正規化)
 一律先過這裡。要新增一個主體:法域加 `event_actions.CANONICAL_SUBJECTS`,
 機構/貨幣加下面的 `_ORG_ALIASES` —— 不要再開第四張表。
+
+**持久化的鍵會被重寫**(2026-08-22 外審 P1 起,取代原本「不重寫鍵」的
+說法):`identity_name` 是鍵的主體權威,而既有 state 由
+`state_migrations` 的兩支遷移改名(event timeline / story ledger)。
+所以這裡的 canonical 寫法是**契約**,不是顯示偏好 —— 改它要配遷移。
 """
 from __future__ import annotations
 
@@ -70,22 +74,29 @@ def canonical_display(name) -> str:
     return comp if comp else n
 
 
-def cross_language_display(name) -> str:
-    """**只做法域/機構**的跨語言正規名;公司與認不得的名字原樣返還。
+def identity_name(name) -> str:
+    """**持久化鍵的主體權威**(機器身分)—— 法域/機構/公司全部收斂。
 
-    timeline/story 的公司鍵慣例是**代號**(`2330|earnings|…`)——
-    `canonical_display` 會把 2330 收斂成台積電,拿它當鍵等於重寫全部
-    公司鍵(生產 state 大遷移)。跨語言互打的病灶只在法域/機構
-    (Russia/俄羅斯、UAE/阿聯、Pentagon/五角大廈),鍵的收斂只做這一段。
+    2026-08-22 外審 P1:上一版刻意把公司排除在鍵的收斂之外,理由是
+    「公司鍵慣例是代號,收斂等於重寫全部公司鍵」。**那個前提被生產
+    自己反證**:`state/event_timeline.json` 存在
+    `export_controls:輝達:2026-08` —— 公司中文名早就在當持久身分。
+    於是同一家公司的三種寫法(輝達/NVIDIA/NVDA)是三條 lifecycle:
+    昨天 rumor、今天 confirmed 卻查不到前一代,重新拿 full weight,
+    污染的是 event_id、延燒天數、unique event 計數與 event-study 樣本。
+
+    **顯示字串與機器身分今天是同一個字串,但契約不同**:顯示可以改
+    措辭,機器身分改一個字就要配一次 state 遷移。組代表(
+    `entity_alias.ALIAS_GROUPS` 每組第一個)因此成為**凍結的契約**,
+    重排組內順序會靜默改寫所有持久鍵 —— 由
+    `tests/test_batch_2026_08_22b.py` 的凍結表釘住。
+
+    刻意**不**自創 `equity:US:NVDA` 這種命名空間 ID(外審的建議形):
+    別名表沒有市場/交易所欄位,那個 ID 得先憑空補一份對照資料,而補錯
+    就是新的一類誤併。宣告過的組代表已經是穩定 ID,且已有生產驗證過的
+    遷移路徑(08/21 renamed 2 條)。
     """
-    n = str(name or "").strip()
-    if not n:
-        return ""
-    org = _ORG_LOOKUP.get(n.lower())
-    if org:
-        return org
-    juris = _ea.canonical_subject(n)
-    return juris if juris != n else n
+    return canonical_display(name)
 
 
 def same_subject(a, b) -> bool:

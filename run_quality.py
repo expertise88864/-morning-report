@@ -57,6 +57,8 @@ KNOWN_DEGRADED = frozenset({
     # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
     # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
     "sector:institutional_missing",
+    # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
+    "state:alias_map_unavailable",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",

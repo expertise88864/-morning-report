@@ -146,7 +146,12 @@ def test_org_subjects_share_one_lineage_across_languages():
     assert ei.canonical_subject("Pentagon") == ei.canonical_subject("五角大廈") \
         == "五角大廈"
     assert ei.canonical_subject("Russia") == "俄羅斯"
-    assert ei.canonical_subject("2330") == "2330"
+    # 2026-08-22 外審 P1:**這一行原本釘的是相反的決策**(「公司鍵慣例是
+    # 代號、不收斂」)。生產 state 裡的 `export_controls:輝達:2026-08`
+    # 反證了那個前提 —— 公司中文名早就是持久身分,而不收斂讓
+    # 輝達/NVIDIA/NVDA 成為三條 lifecycle。現在公司也走同一權威。
+    assert ei.canonical_subject("2330") == ei.canonical_subject("TSMC") \
+        == "台積電"
 
 
 def test_current_schema_org_keys_are_renamed_without_losing_days():
@@ -159,13 +164,13 @@ def test_current_schema_org_keys_are_renamed_without_losing_days():
               "entity": "International Criminal Court",
               "subjects": ["International Criminal Court"], "days": 2,
               "latest_title": "ICC 制裁案"}}
-    out, renamed = sm.migrate_cross_language_timeline_keys(tl)
+    out, renamed, _ = sm.migrate_cross_language_timeline_keys(tl)
     assert len(renamed) == 2, renamed
     assert out["geopolitical:五角大廈:2026-08"]["days"] == 3
     assert out["geopolitical:五角大廈:2026-08"]["entity"] == "五角大廈"
     icc = [k for k in out if k.startswith("geopolitical:sanction:")]
     assert icc and "國際刑事法院" in icc[0], icc
-    out2, renamed2 = sm.migrate_cross_language_timeline_keys(out)
+    out2, renamed2, _ = sm.migrate_cross_language_timeline_keys(out)
     assert not renamed2, "改過名的鍵又被改一次(不可重入)"
 
 
@@ -181,7 +186,7 @@ def test_key_collision_uses_the_incident_policy_not_days():
                     "entity": "Pentagon", "days": 3,
                     "incident_tokens": ["中東", "駐軍", "重新評估"],
                     "latest_title": "Pentagon re-evaluates"}}
-    out, _ = sm.migrate_cross_language_timeline_keys(distinct)
+    out, _, _ = sm.migrate_cross_language_timeline_keys(distinct)
     assert len(out) == 2, f"另一樁被天數裁決滅掉:{sorted(out)}"
     assert any("#" in k for k in out), sorted(out)
     same = {"geopolitical:五角大廈:2026-08": {
@@ -190,7 +195,7 @@ def test_key_collision_uses_the_incident_policy_not_days():
             "geopolitical:Pentagon:2026-08": {
                 "entity": "Pentagon", "days": 3,
                 "incident_tokens": ["中東", "駐軍", "重新評估"]}}
-    out2, _ = sm.migrate_cross_language_timeline_keys(same)
+    out2, _, _ = sm.migrate_cross_language_timeline_keys(same)
     assert len(out2) == 1
     assert out2["geopolitical:五角大廈:2026-08"]["days"] == 5
     # r3:**插入順序不得決定誰活** —— 英文列在前(先被改名放進 canonical
@@ -203,7 +208,7 @@ def test_key_collision_uses_the_incident_policy_not_days():
                           "entity": "五角大廈", "days": 5,
                           "incident_tokens": ["預算", "審查", "國會"],
                           "latest_title": "五角大廈預算審查"}}
-    out3, _ = sm.migrate_cross_language_timeline_keys(reversed_order)
+    out3, _, _ = sm.migrate_cross_language_timeline_keys(reversed_order)
     assert len(out3) == 2, f"反序時另一樁被滅:{sorted(out3)}"
 
 

@@ -946,7 +946,7 @@ def test_event_timeline_quarterly_episode_and_withdrawn_restart():
     # 批#67(P1-2):期別改取標題寫明的**會計期間**,不再取 published。
     # 這個 fixture 自己就寫著「Q2 財報」而發布於七月 —— 舊碼掛 2026Q3,
     # 也就是**把 bug 寫成了期望值**。分集的語意不變(Q1/Q2 仍是兩集)。
-    assert out["timeline_key"] == "2330|earnings|2026Q2"
+    assert out["timeline_key"] == "台積電|earnings|2026Q2"
     assert out["is_incremental"] is True                      # 不被 Q1 的 confirmed 吃掉
     assert out["lifecycle_weight"] > 0
     # 同一季重複報導仍被抑制(episode 內語意不變)
@@ -977,7 +977,9 @@ def test_corrective_a_round2_fixes():
            "published": "2026-02-10T08:00:00+00:00", "title": "1月營收"}
     hist = [{"session_date": "2026-01-10", "structured_events": [jan]}]
     out = mr.apply_event_timeline(hist, [feb])[0]
-    assert out["timeline_key"] == "2330|revenue_growth|2026-02"
+    # 2026-08-22 外審 P1:公司也走機器身分(輝達/NVIDIA/NVDA 曾是三條
+    # lifecycle),鍵的主體是組代表寫法而非代號。
+    assert out["timeline_key"] == "台積電|revenue_growth|2026-02"
     assert out["lifecycle_weight"] > 0
     # 同月重複報導仍抑制
     out2 = mr.apply_event_timeline(
@@ -1017,7 +1019,7 @@ def test_event_timeline_orders_get_monthly_episodes():
            "published": "2026-06-20T08:00:00+00:00", "title": "六月訂單"}
     hist = [{"session_date": "2026-03-05", "structured_events": [mar]}]
     out = mr.apply_event_timeline(hist, [jun])[0]
-    assert out["timeline_key"] == "2330|orders|2026-06"
+    assert out["timeline_key"] == "台積電|orders|2026-06"
     assert out["is_incremental"] is True and out["lifecycle_weight"] > 0
     # 同月重複報導仍抑制
     out2 = mr.apply_event_timeline(
@@ -2549,10 +2551,14 @@ def test_event_identity_migration_is_measurable():
     assert all(o["entity"] == "2330" for o in pairs), "觀測沒帶 entity"
     assert stats["by_schema"] == {"3": 2}
 
-    # 已經是當代的事件不該被重算(否則計數會永遠不歸零,看不出遷移完成)
+    # 已經是當代的事件不該被重算(否則計數會永遠不歸零,看不出遷移完成)。
+    # **用常數而不是寫死數字**(2026-08-22 外審 r1 跳版到 5 時這裡假紅):
+    # 這條驗的是「當代不重算」,不是「4 不重算」。
+    from news_events import EVENT_SCHEMA_VERSION
     fresh = [{"session_date": "2026-08-02", "structured_events": [
         {"title": "台積電獲蘋果2奈米大單", "entity": "2330",
-         "event_type": "orders", "event_schema": 4, "subject_key": "2nm,aapl"}]}]
+         "event_type": "orders", "event_schema": EVENT_SCHEMA_VERSION,
+         "subject_key": "2nm,aapl"}]}]
     done: dict = {}
     apply_event_timeline(fresh, [], known_names=kn, migration_stats=done)
     assert done.get("recomputed", 0) == 0, done

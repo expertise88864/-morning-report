@@ -251,9 +251,13 @@ def migrate_cross_language_timeline_keys(timeline) -> tuple:
     處理:**改名不丟資料**;4 段鍵的對象段用 `object_signature` 對
     正規化後的 subjects 重算(不抄舊鍵裡截過的字);row 的 entity/subjects
     同步正規化;撞鍵留天數多者。可重入。
+
+    回 `(timeline, renamed, repaired)`:`renamed` 是鍵真的改了的列,
+    `repaired` 是鍵沒動、只把 row 的 `object` 修回與鍵一致的列
+    (2026-08-22 外審 P2)。
     """
     import subject_identity as _sid
-    out, renamed = {}, []
+    out, renamed, repaired = {}, [], []
     for key, row in (timeline or {}).items():
         k = str(key)
         parts = k.split(":")
@@ -263,26 +267,65 @@ def migrate_cross_language_timeline_keys(timeline) -> tuple:
         ent = str(row.get("entity") or "").strip()
         subs = [str(x).strip() for x in (row.get("subjects") or ())
                 if str(x).strip()] or ([ent] if ent else [])
-        c_ent = _sid.cross_language_display(ent) or ent
-        c_subs = [_sid.cross_language_display(x) or x for x in subs]
-        c_seg = (_sid.cross_language_display(parts[1]) or parts[1]
+        c_ent = _sid.identity_name(ent) or ent
+        c_subs = [_sid.identity_name(x) or x for x in subs]
+        c_seg = (_sid.identity_name(parts[1]) or parts[1]
                  if len(parts) == 3 else parts[1])
-        if c_ent == ent and c_subs == subs and (len(parts) != 3
-                                                or c_seg == parts[1]):
+        # **4 段鍵的 object 欄位也要跟著正規化**(2026-08-22 外審 P2)。
+        # 上一版只重算了鍵裡的對象段,row 的 `object` 原樣留著 ——
+        # 生產現況正是 `key=…:國際刑事法院:2026-08` 配
+        # `object="International Criminal C"`(遷移前的英文截斷值),
+        # 同一列的鍵身分與列身分互相矛盾。而消費端
+        # (`event_identity._lineage_hits`)**優先信任存下來的 object**、
+        # 算不出一致就 `continue`,於是中文續報接不回這條世系。
+        # 更糟的是它**修不掉自己**:鍵已正規化 → 下一班的相等判斷成立
+        # → 永遠不進修補分支。所以判斷要把 object 一起算進去。
+        obj = ""
+        if len(parts) == 4:
+            import event_identity as _eid
+            # **與 producer 同一支**(2026-08-22 外審 r1 P1)。上一版用
+            # `object_signature`,但 producer(`timeline_identity` 與落盤)
+            # 用的是 `action_object` —— 兩者對 **directional action** 不等價:
+            # 軍售記錄的對象是「台灣」,簽章卻是「台灣、美國」。用簽章重算
+            # 會把鍵改成 `arms_sale:台灣、美國:…`,而明天 producer 算的是
+            # `arms_sale:台灣:…` —— 天數重設、世系裂成兩條,正是本批要修的
+            # 那種傷害由我自己造出來。實測:
+            # `object_signature("arms_sale", ["美國","台灣"]) == "台灣、美國"`。
+            obj = _eid.action_object(
+                parts[1], str(row.get("latest_title") or ""),
+                c_subs or [c_ent],
+                summary=str(row.get("latest_summary") or ""))
+            if obj == _eid.UNKNOWN_OBJECT:
+                # **`"?"` 是「辨識不出來」,不是一個新身分**(r2 外審 P1)。
+                # 它是 truthy,於是「最新標題變模糊」的日子(「美國軍售案
+                # 追蹤」、summary 空)會把 `arms_sale:台灣` 改寫成
+                # `arms_sale:?` 並覆寫 object —— 明天那則明確的「對台軍售」
+                # 反而接不回來。重算失敗就沿用既有的身分。
+                obj = ""
+        # 算不出對象就**沿用既有的非空值**(不得拿空字串、佔位符或另一套
+        # 算法蓋掉當天算好的身分)。
+        stale_obj = bool(obj) and str(row.get("object") or "") != obj
+        if len(parts) == 4 and not obj:
+            obj = str(row.get("object") or "") or parts[2]
+        if (c_ent == ent and c_subs == subs
+                and (len(parts) != 3 or c_seg == parts[1])
+                and not stale_obj):
             _place_by_incident(out, k, row)   # 未改名列同一政策(r3:順序不得決定誰活)
             continue
         if len(parts) == 3:
             new_key = f"{parts[0]}:{c_seg}:{parts[2]}"
         else:
-            import event_identity as _eid
-            obj = _eid.object_signature(parts[1], c_subs or [c_ent])
             new_key = f"{parts[0]}:{parts[1]}:{obj}:{parts[3]}"
         new_row = dict(row, entity=c_ent)
         if row.get("subjects"):
             new_row["subjects"] = c_subs
-        renamed.append(k)
+        if obj:
+            new_row["object"] = obj
+        # **改名與只修對象要分開報**:把「鍵沒動、只修好 object」記成
+        # rename,manifest 就在宣稱一件沒發生的事。
+        (renamed if new_key != k else repaired).append(k)
         _place_by_incident(out, new_key, new_row)
-    return out, renamed
+    return out, renamed, repaired
 
 
 def _place_by_incident(bucket: dict, key: str, row) -> None:
@@ -382,4 +425,50 @@ def migrate_cyber_timeline_keys(timeline) -> tuple:
         renamed.append(k)
         _keep_longer(out, _cyber_key(k, row), dict(row, event_type="cybersecurity",
                                                    action="cyberattack"))
+    return out, renamed
+
+
+def migrate_company_story_keys(ledger) -> tuple:
+    """線索帳本的鍵改走機器身分:`e:2330|l:earnings|2026q3` →
+    `e:台積電|l:…`(2026-08-22 外審 P1 的**必要配套**)。
+
+    `story_key_for_event` 是從 `_event_timeline_key` 衍生的,主體段一旦
+    改走組代表寫法,生產帳本裡 9,846 列的公司線今天就全部對不上新鍵。
+    而歸屬雖然會先試 `_match_open_story`(主體相似度),**它接不住這種
+    情況**:後續報導的標題與原標題差得夠遠時分數不過門檻 —— 自測反例
+    (〈台積電法說〉AI 營收… → 台積電法說會確認先進封裝擴產)當場裂成
+    兩條。不遷移就是上線第一天切斷所有公司線,比原缺陷更糟。
+
+    **撞鍵不合併**:目標鍵已經有人時就原地不動。合併兩條線索要決定
+    軌跡點、首見日與權威來源怎麼取捨,那是另一種語意;而原地不動不丟
+    任何資料,重複線索本來就會被既有的主體比對隨時間收斂。可重入。
+    """
+    import subject_identity as _sid
+    import story_ledger as _sl
+    src = list(ledger or [])
+    taken = {str(r.get("key") or "") for r in src if isinstance(r, dict)}
+    out, renamed = [], []
+    for r in src:
+        if not isinstance(r, dict):
+            out.append(r)
+            continue
+        k = str(r.get("key") or "")
+        if not k.startswith("e:") or "|" not in k:
+            out.append(r)
+            continue
+        subj, rest = k[2:].split("|", 1)
+        # 鍵是 `_norm` 過的字串 —— 遷移端要用同一支,否則算出來的新鍵
+        # 與 producer 明天算的不一致(那等於換個方式再裂一次)。
+        new_subj = _sl._norm(_sid.identity_name(subj) or subj)
+        new_key = f"e:{new_subj}|{rest}"
+        if new_key == k or new_key in taken:
+            out.append(r)
+            continue
+        taken.discard(k)
+        taken.add(new_key)
+        # **不就地改呼叫端的列**:遷移回傳新清單,輸入保持原樣 ——
+        # 就地變異會讓「沒跑遷移」的對照組拿到已經改過的資料
+        # (自測的反例當場失效,而那正是驗證這條規則的東西)。
+        out.append(dict(r, key=new_key))
+        renamed.append(k)
     return out, renamed

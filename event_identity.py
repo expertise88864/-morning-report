@@ -526,9 +526,13 @@ def _subjects_meet(ents: set, keys: set, subs: set, titles: str) -> bool:
     # 別名,比對集合要含**宣告過的全部別名**,否則英文標題配不回中文
     # canonical 的記錄(自測抓到:Fed 標題 vs 聯準會 主體回 0 天)。
     import subject_identity as _sid
+    # **裸數字/期間詞不算指名**(r1 外審 P2):`aliases_of` 自 2026-08-22
+    # 起回公司別名組,裡面含股票代號 —— 「成交量 3231 張」會讓不相關的
+    # 新聞被當成緯創舊事件的續報(延燒天數、全文抓取優先權跟著錯)。
+    # 判準與 producer 共用 `subject_identity.usable_alias`。
     for s in {x for s0 in subs
               for x in ((s0, canonical_subject(s0)) + _sid.aliases_of(s0))
-              if x}:
+              if x and _sid.usable_alias(x)}:
         if not s.isascii():
             if s in text:
                 return True

@@ -107,6 +107,22 @@ def same_subject(a, b) -> bool:
     return aa == bb or canonical_display(aa) == canonical_display(bb)
 
 
+#: 期間詞:與 `news_rules.PERIOD_TOKEN` 同一份(該模組是單一權威)。
+def usable_alias(a) -> bool:
+    """這個寫法**單獨出現**時算不算指名了那個主體。
+
+    裸數字(股票代號)與期間詞不算:它們在文字裡多半是張數/金額/季別。
+    2026-08-22 r1 外審:這條規則原本只長在 `news_events.resolve_subject`,
+    而 `aliases_of` 開始回公司別名(含代號)之後,`event_identity.
+    _subjects_meet` 也會拿 `3231` 去比對「成交量 3231 張」——
+    同一條規則要在**身分層**只有一份,否則擋住的那條路會從沒擋的漏回來。
+    """
+    import news_rules as _nr
+    x = str(a or "").strip()
+    return (len(x) >= 2 and not x.isdigit()
+            and not _nr.PERIOD_TOKEN.fullmatch(x))
+
+
 def aliases_of(name) -> tuple[str, ...]:
     """這個主體宣告過的全部別名(含 canonical 本身);認不得回空 tuple。
 
@@ -118,6 +134,16 @@ def aliases_of(name) -> tuple[str, ...]:
         return ()
     if canon in _ORG_ALIASES:
         return _ORG_ALIASES[canon]
+    # **公司也要在這裡**(2026-08-22 repo-wide 外審 P1-2)。先前只回機構與
+    # 法域,而 producer 的跨語言驗證(`news_events.semantic_canonical`)
+    # 是「`aliases_of` 非空才成立」—— 於是中文標題〈輝達否認…〉配上
+    # 抽取器給的候選 `NVIDIA` 三條路全滅(known_names 查的是代號 NVDA、
+    # 語意驗證因空 alias 不成立、literal 找不到英文字),entity 掉成空。
+    # 鍵那一層收斂得再好也沒用:資料根本沒有以那個身分進來。
+    # 這也讓本函式的 docstring(「宣告過的全部別名」)重新成立。
+    _gi = _al.group_of(canon)
+    if _gi >= 0:
+        return tuple(_al.ALIAS_GROUPS[_gi])
     juris = tuple({canon}
                   | {a for a, c in _ea.CANONICAL_SUBJECTS.items() if c == canon})
     if len(juris) > 1 or canon in _ea.CANONICAL_SUBJECTS.values():

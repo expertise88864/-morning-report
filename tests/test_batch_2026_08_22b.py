@@ -313,3 +313,52 @@ def test_a_definite_object_still_repairs_an_unknown_placeholder():
     out, renamed, repaired = sm.migrate_cross_language_timeline_keys(tl)
     assert list(out) == ["geopolitical:arms_sale:台灣:2026-08"], list(out)
     assert renamed == [old_key] and repaired == []
+
+
+# ------------------------------- repo-wide 外審 2026-08-22 P1-2:producer ingress
+
+def test_resolve_subject_accepts_company_aliases_across_languages():
+    """**鍵那一層收斂得再好也沒用,如果資料沒有以那個身分進來。**
+
+    中文標題〈輝達否認…〉配上抽取器給的候選 `NVIDIA`,先前三條路全滅:
+    `known_names` 查的是代號 NVDA、語意驗證因 `aliases_of` 不含公司而
+    不成立、literal 找不到英文字 —— entity 掉成空。隔天英文續報 literal
+    成立變成 NVIDIA → 昨天是 entityless、今天是輝達,依然接不起來。
+    """
+    kn = {"NVDA": ("輝達", "NVIDIA"), "2330": ("台積電",)}
+    assert ne.resolve_subject(
+        "輝達否認年底前推出專供中國 AI 晶片", ["NVIDIA"], kn) == ("輝達", "alias")
+    assert ne.resolve_subject(
+        "台積電法說會確認先進封裝擴產", ["TSMC"], kn) == ("台積電", "alias")
+    assert ne.resolve_subject(
+        "NVIDIA denies China chip report", ["輝達"], kn)[1] == "alias"
+    # **候選在 known_names 裡時仍回代號**,這是刻意的:下游
+    # (`event_subject_key`、`purge_misattributed_*`)都用代號查對照表,
+    # 回中文名會打斷那些查詢。跨語言收斂由鍵那一層負責(見下一條)。
+    assert ne.resolve_subject("輝達否認擴大管制", ["NVDA"], kn)[0] == "NVDA"
+
+
+def test_resolve_subject_still_rejects_unrelated_and_bare_numbers():
+    """防護不得反過來製造誤併(誤併比漏併危險)。裸數字尤其危險:
+    公司別名組含代號(緯創=3231),而「成交量 3231 張」的 3231 是張數
+    —— literal 路徑本來就擋,別名路徑漏了同一條規則(自測回歸)。"""
+    kn = {"2330": ("台積電",)}
+    assert ne.resolve_subject("聯電法說會", ["TSMC"], kn) == ("", "")
+    assert ne.resolve_subject("成交量 3231 張創天量", ["3231"], kn) == ("", "")
+    assert ne.resolve_subject("Q2 earnings beat", ["Q2"], kn) == ("", "")
+
+
+def test_producer_and_key_layer_agree_end_to_end():
+    """從 producer 入口一路到持久鍵:兩天不同語言的同一則事件必須落同一把鍵
+    (先前的測試直接把乾淨 entity 塞進 structured event,繞過會弄丟資料的
+    producer —— 這條補上那一段)。"""
+    kn = {"NVDA": ("輝達", "NVIDIA")}
+    day1, b1 = ne.resolve_subject("輝達否認擴大出口管制傳聞", ["NVIDIA"], kn)
+    day2, b2 = ne.resolve_subject(
+        "NVIDIA confirms expanded export curbs", ["NVDA"], kn)
+    assert b1 == b2 == "alias"
+    k1 = ne._event_timeline_key({"entity": day1, "event_type": "export_controls",
+                                 "date": "2026-08-22"})
+    k2 = ne._event_timeline_key({"entity": day2, "event_type": "export_controls",
+                                 "date": "2026-08-23"})
+    assert k1 == k2, (k1, k2)

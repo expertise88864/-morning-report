@@ -110,6 +110,8 @@ class ManifestRecorder:
         # 同樣是**同一個 list 物件**,不是複本。
         self.degraded = [] if degraded is None else degraded
         self._log = log or (lambda m: print(m, file=sys.stderr))
+        #: 壞掉的持久 state 明細(見 `note_state_corrupt`)
+        self._state_corrupt: list = []
 
     # ── 階段計時 ────────────────────────────────────────────────────
     def mark_phase(self, label: str, clock: float) -> None:
@@ -152,6 +154,20 @@ class ManifestRecorder:
         self.data.setdefault("news", {})["fulltext_plan"] = entry
 
     # ── state 寫入帳 ────────────────────────────────────────────────
+    def note_state_corrupt(self, file: str, why: str) -> None:
+        """壞掉的持久 state 明細**由 recorder 擁有**(2026-08-22 r1 外審)。
+
+        先前呼叫端直接寫進 `_RUN_MANIFEST["state_writes"]["corrupt"]`,
+        而 `record_state_writes` 是**整段覆寫**那一格 —— 明細在落地前就沒了,
+        程式裡「manifest 留痕」的宣稱因此是假的。
+        """
+        self._state_corrupt.append({"file": str(file)[:60],
+                                    "why": str(why)[:120]})
+
+    def state_corrupt(self) -> list:
+        """已登記的壞檔明細(供 refresh 路徑一併保留)。"""
+        return list(self._state_corrupt)
+
     def record_state_writes(self, writes: dict) -> list:
         """把寫入帳彙整進 manifest,回傳失敗的檔名(呼叫端決定要不要降級)。
 
@@ -163,6 +179,8 @@ class ManifestRecorder:
             "failed": failed,
             "detail": {k: v for k, v in sorted((writes or {}).items())
                        if not v.get("ok")}}
+        if self._state_corrupt:
+            self.data["state_writes"]["corrupt"] = list(self._state_corrupt)
         return failed
 
     # ── 組裝 ────────────────────────────────────────────────────────

@@ -122,6 +122,7 @@ import news_events as _ne
 import completion_contract as _cc
 import company_profiles as _cp
 import state_migrations as _sm
+import state_store as _ss
 from news_events import (  # A5-B5:結構化事件純規則層已抽出,同名 re-export 保相容
     llm_event_json_schema,
     timeline_subjects as _timeline_subjects,  # noqa: F401 — 延燒事件主體正規化
@@ -7233,15 +7234,30 @@ def backfill_model_history(model_history: list[dict],
     return merged, report
 
 
+def _register_state_corrupt(label: str, exc) -> None:
+    """壞掉的持久 state 要**被看見**(外審 P1-3):不覆寫是對的,但沉默
+    不是 —— 「今天沒更新」與「今天沒事」在紀錄裡不能長得一樣。"""
+    _DEGRADED_STEPS.append(f"state:corrupt:{label}")
+    # 明細由 recorder 擁有(r1 外審):直接寫 manifest 那一格會被
+    # `record_state_writes` 整段覆寫掉,留痕的宣稱因此是假的。
+    _RECORDER.note_state_corrupt(label, getattr(exc, "why", str(exc)))
+    print(f"[state] {label} 讀不動,**本班不覆寫**(保留原檔):{exc}",
+          file=sys.stderr)
+
+
 def _active_top5_codes() -> set:
     """Top5 帳本仍需後續價格的持倉代號(批#23 r2,Codex P1):跌出 Top100 的
     弱勢持倉若不持續抓價,結算時被靜默剔除=倖存者偏誤讓 executable 成績偏高。"""
     try:
-        if not FORECAST_LEDGER_FILE.exists():
+        try:
+            data, _st = _ss.load_json_state(FORECAST_LEDGER_FILE, expected=list)
+        except _ss.StateCorrupt as _e:
+            # 這個函式的宣稱是「不抓價=倖存者偏誤」——壞檔靜默回空集合
+            # 正好造成它要防的偏誤。留痕(仍回空,呼叫端只是少抓幾檔價)。
+            _register_state_corrupt("forecast_ledger", _e)
             return set()
-        data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
         out: set = set()
-        for e in data if isinstance(data, list) else []:
+        for e in data:
             if e.get("type") != "top5":
                 continue
             if e.get("status") == "awaiting_entry":
@@ -8022,12 +8038,14 @@ def update_source_health_history(report: dict, today: str, keep_days: int = 30,
         ok, fail = int((s or {}).get("ok", 0)), int((s or {}).get("fail", 0))
         if ok or fail:
             feeds_today[host] = bool(ok)
-    hist: list = []
+    # 壞檔不得被截成「只剩今天」(外審 P2):這份歷史的用途正是
+    # 「今天不是偶發,是連續壞了很多天」——重置它會讓 watchdog 失憶,
+    # 而失憶的方向恰好是**低估**問題。
     try:
-        if SOURCE_HEALTH_HISTORY_FILE.exists():
-            hist = json.loads(SOURCE_HEALTH_HISTORY_FILE.read_text(encoding="utf-8")) or []
-    except Exception:
-        hist = []
+        hist, _ = _ss.load_json_state(SOURCE_HEALTH_HISTORY_FILE, expected=list)
+    except _ss.StateCorrupt as _e:
+        _register_state_corrupt("source_health_history", _e)
+        return []          # 回傳型別是「連續失敗項目」清單
     hist = [h for h in hist if isinstance(h, dict) and h.get("date") != today]
     row = {"date": today, "checks": {k: bool(v) for k, v in checks.items()},
            "feeds": feeds_today}
@@ -9146,14 +9164,11 @@ CONFORMAL_Q_LO, CONFORMAL_Q_HI = -2.0, 6.0
 
 
 def _load_conformal_state() -> dict:
-    try:
-        if CONFORMAL_STATE_FILE.exists():
-            data = json.loads(CONFORMAL_STATE_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, dict):          # JSON 合法但非 dict → 視為無狀態
-                return data
-    except Exception:
-        pass
-    return {}
+    """壞檔 raise(外審 P2):`{}` 會被下游當成「沒有校準歷史」,
+    而 q 從既有值掉回預設等於把區間校準重置 —— 與「還沒開始校準」
+    完全不同的一件事。"""
+    data, _st = _ss.load_json_state(CONFORMAL_STATE_FILE, expected=dict)
+    return data
 
 
 def _save_conformal_state(state: dict) -> None:
@@ -9177,7 +9192,12 @@ def _update_conformal_q(prev_q: float, coverage_pct) -> float:
 def compute_conformal_adjustments(walk_forward: Optional[dict], save: bool = True) -> dict:
     """每日一次:讀上次 q、依 walk-forward 各 horizon 的 interval_coverage_pct 更新、(非 DRY_RUN 才)存回。
     回 {forecast_key: q_pct}(加到 80% band 的加性調整)。"""
-    prev = _load_conformal_state()
+    try:
+        prev = _load_conformal_state()
+    except _ss.StateCorrupt as _e:
+        # 讀不動就**整段跳過**:不算、不寫。沿用既有 q(檔案沒被動過)。
+        _register_state_corrupt("conformal_intervals", _e)
+        return {}          # 回傳型別是調整表;空 = 本班不調整(沿用既有 q)
     out = {}
     for key in MODEL_TARGETS:
         _m = (walk_forward or {}).get(key) or {}
@@ -10176,7 +10196,9 @@ def _refresh_state_writes_in_manifest() -> None:
         if not isinstance(base, dict):
             return
         failed = sorted(k for k, v in _STATE_WRITES.items() if not v.get("ok"))
+        _corrupt = _RECORDER.state_corrupt()
         base["state_writes"] = {
+            **({"corrupt": _corrupt} if _corrupt else {}),
             "attempted": len(_STATE_WRITES), "failed": failed,
             "detail": {k: v for k, v in sorted(_STATE_WRITES.items())
                        if not v.get("ok")}}
@@ -16483,14 +16505,15 @@ def update_top5_ledger(model_history: list, top5: list[dict],
     sessions=權威交易日序列(缺紀錄不壓縮);taiex_opens={session: 大盤實際
     開盤}(來自 history.json 回填)。與 Forecast Ledger 同檔(type=top5)。
     顯示+state,不回饋任何計分。回 {"stats", "created"}。"""
-    ledger: list = []
-    if FORECAST_LEDGER_FILE.exists():
-        try:
-            data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                ledger = data
-        except Exception as e:
-            print(f"[top5-ledger] 載入失敗,重建: {e}", file=sys.stderr)
+    # **讀不動就不寫**(外審 P1-3):這個檔同時承載預測記分帳本、Top5
+    # 可執行帳本與 MZ 影子 OOS 樣本。先前是「讀失敗 → ledger=[] → 結尾
+    # 無條件覆寫」,一次暫時性損壞就把幾百列歷史換成今天這一列,而下一班
+    # 讀到的是合法 JSON —— 那個新基線從此看起來完全正常。
+    try:
+        ledger, _ = _ss.load_json_state(FORECAST_LEDGER_FILE, expected=list)
+    except _ss.StateCorrupt as _e:
+        _register_state_corrupt("forecast_ledger", _e)
+        return {"stats": {}, "created": False, "skipped": "state_corrupt"}
     # 除權息事件史:呼叫端沒給就自己讀 state(測試可注入,生產不必改接線)。
     # 讀不出來時**不是**當成空的——那會讓所有橫向誤判成「沒有除權息」;
     # 空覆蓋範圍會讓 exdiv_coverage_ok 全數回 False,橫向一律作廢(fail-closed)。
@@ -17721,14 +17744,13 @@ def update_forecast_ledger(history: list, predictions: dict, taiex_pred: dict,
     {"resolved": [...], "stats": {...}, "today": [...]};失敗由呼叫端吞。
     sessions=權威交易日序列(批#23,五審 P2):目標日在日曆內但資料缺=
     Yahoo 漏抓非休市,只能等待/逾期 void;不在日曆內才可對齊下一 session。"""
-    ledger: list = []
-    if FORECAST_LEDGER_FILE.exists():
-        try:
-            data = json.loads(FORECAST_LEDGER_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                ledger = data
-        except Exception as e:
-            print(f"[ledger] 載入失敗,重建: {e}", file=sys.stderr)
+    # 同一政策(外審 P1-3):讀不動就不寫,原始位元組留著就是保存現場。
+    try:
+        ledger, _ = _ss.load_json_state(FORECAST_LEDGER_FILE, expected=list)
+    except _ss.StateCorrupt as _e:
+        _register_state_corrupt("forecast_ledger", _e)
+        return {"resolved": [], "stats": {}, "today": [],
+                "skipped": "state_corrupt"}
     today = now_tpe.strftime("%Y-%m-%d")
     # 1) 結算:target 已過且 history 有回填實際開盤
     actuals: dict[tuple, float] = {}

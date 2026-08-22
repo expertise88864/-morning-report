@@ -7,7 +7,6 @@ from typing import Optional
 
 from num_utils import _safe_number
 
-from news_rules import PERIOD_TOKEN as _PERIOD_TOKEN_SHARED
 from news_rules import (
     NEWS_NEGATIVE_TERMS,
     NEWS_POSITIVE_TERMS,
@@ -653,8 +652,12 @@ def resolve_subject(text: str, candidates, known_names=None) -> tuple:
             canon = semantic_canonical(c)
             if canon:
                 low = str(text or "").lower()
+                # **裸數字/期間詞不算指名**(2026-08-22 P1-2 自測回歸):
+                # 公司別名組含代號(緯創 = 3231),而「成交量 3231 張創天量」
+                # 的 3231 是張數。literal 路徑本來就擋裸數字,別名路徑漏了
+                # 同一條規則 —— 判準收斂成 `_usable_alias` 一份。
                 hit = next((a for a in _si.aliases_of(canon)
-                            if _alias_hit(low, a)), "")
+                            if _usable_alias(a) and _alias_hit(low, a)), "")
                 if hit and not _embedded_in_company_alias(low, hit,
                                                           known_names):
                     return canon, "alias"
@@ -710,12 +713,16 @@ def _embedded_in_company_alias(low_text: str, hit: str, known_names) -> bool:
 #: 那條路重新打開。合法股票代號仍走括號代號規則。
 
 
+#: 判準的家在身分層(`subject_identity.usable_alias`)—— 這裡只 re-export,
+#: 讓 `_literal_mention` 與語意別名比對、`event_identity._subjects_meet`
+#: 三個消費端共用同一份(r1 外審:漏掉第三個就從那裡漏回來)。
+_usable_alias = _si.usable_alias
+
+
 def _literal_mention(text: str, cand: str) -> bool:
     """候選字串**自己**有沒有逐字出現在文字裡(規則與別名比對一致)。"""
     a = str(cand or "").strip()
-    if len(a) < 2:
-        return False
-    if a.isdigit() or _PERIOD_TOKEN_SHARED.fullmatch(a):
+    if not _usable_alias(a):
         return False
     low = str(text or "").lower()
     if _LATIN_ALIAS.fullmatch(a):

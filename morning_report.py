@@ -5821,7 +5821,14 @@ def purge_story_misattribution(ledger: list) -> list:
     # `if not kn: return` 之後 —— alias map 取不到的那天(`_run_alias_map`
     # 吞例外回 {})整批公司舊鍵靜默孤立,而降級清單、manifest、警告全都
     # 沒有痕跡。遷移移到閘門之前;alias map 空掉本身也要留痕。
-    keep, _story_renamed = _sm.migrate_company_story_keys(ledger)
+    keep, _story_act = _sm.migrate_story_action_event_types(ledger)
+    if _story_act:
+        _RUN_MANIFEST.setdefault("state_migrations", {})[
+            "story_action_event_types"] = {"renamed": len(_story_act),
+                                           "examples": _story_act[:5]}
+        print(f"[migrate] 線索帳本改名 {len(_story_act)} 條(動作→型別契約)",
+              file=sys.stderr)
+    keep, _story_renamed = _sm.migrate_company_story_keys(keep)
     if _story_renamed:
         _RUN_MANIFEST.setdefault("state_migrations", {})["story_company_keys"] = {
             "renamed": len(_story_renamed), "examples": _story_renamed[:5]}
@@ -15733,6 +15740,15 @@ def update_event_timeline(structured_events: list[dict],
         # 鍵則靠標題認),丟掉會讓一條真的延燒好幾天的線從第 1 天重算。
         state, _tl_cyber = _sm.migrate_cyber_timeline_keys(state)
         # 跨語言主體的鍵收斂(2026-08-20 P1-2 r2:Pentagon→五角大廈)
+        # action→event_type 契約的配套(外審 P2-3):producer 統一之後,
+        # 既有的 `export_controls:sanction:*` 今天算不出來 —— 不遷移就孤立。
+        state, _tl_act = _sm.migrate_action_event_types(state)
+        if _tl_act:
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "action_event_types"] = {"renamed": len(_tl_act),
+                                         "examples": _tl_act[:5]}
+            print(f"[migrate] 時間軸改名 {len(_tl_act)} 條(動作→型別契約)",
+                  file=sys.stderr)
         state, _tl_lang, _tl_obj = _sm.migrate_cross_language_timeline_keys(
             state)
         if _tl_obj:

@@ -966,7 +966,11 @@ def test_event_timeline_quarterly_episode_and_withdrawn_restart():
 def test_corrective_a_round2_fixes():
     """修正批A r2:動詞變形命中/月營收按月分集/outcomes 存在但空不得走位置法。"""
     # F2:sanctioned/attacked 等動詞變形
-    assert mr._event_type("US sanctioned chipmaker under new ban") == "export_controls"
+    # 2026-08-22 外審 P2-3:同一 action 只能有一個 event_type —— 制裁
+    # (sanction)歸 geopolitical,出口管制(export_control)才是
+    # export_controls;兩條入口共用 `normalize_event_type`。
+    assert mr._event_type("US sanctioned chipmaker under new ban") == "geopolitical"
+    assert mr._event_type("US export controls on chip tools") == "export_controls"
     assert mr._event_type("Facility attacked overnight") == "geopolitical"
     # 語意含混詞刻意不收:economy contracted 不是接單
     assert mr._event_type("Economy contracted sharply") == "general"

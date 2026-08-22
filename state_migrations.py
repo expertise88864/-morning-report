@@ -472,3 +472,92 @@ def migrate_company_story_keys(ledger) -> tuple:
         out.append(dict(r, key=new_key))
         renamed.append(k)
     return out, renamed
+
+
+def migrate_story_action_event_types(ledger) -> tuple:
+    """線索帳本的 lineage 段對齊 action→event_type 契約(r1 外審 P2)。
+
+    story key 是 `e:<主體>|l:<型別>|<期別>`,型別段直接來自
+    `_event_timeline_key` —— 契約改了而帳本沒遷移的話,同一條制裁線索的
+    續報今天算出 `geopolitical`、帳本裡是 `export_controls`,標題改寫幅度
+    大到過不了模糊比對時就會另開一條、原線索孤立(公司鍵那次同型)。
+
+    判準與 producer 同一份:**型別段要在粗粒度家族內**,動作由該列存下來的
+    標題推導。撞鍵原地不動(不合併,不丟資料)。可重入。
+    """
+    import event_actions as _ea
+    import story_ledger as _sl
+    src = list(ledger or [])
+    taken = {str(r.get("key") or "") for r in src if isinstance(r, dict)}
+    out, renamed = [], []
+    _family = set(_ea.ACTION_EVENT_TYPE.values()) | {"", "general"}
+    for r in src:
+        if not isinstance(r, dict):
+            out.append(r)
+            continue
+        k = str(r.get("key") or "")
+        if not k.startswith("e:") or "|l:" not in k:
+            out.append(r)
+            continue
+        head, lineage = k.split("|l:", 1)
+        seg = lineage.split("|", 1)
+        cur = seg[0]
+        title = str(r.get("headline") or r.get("last_delta") or "")
+        want = (_ea.ACTION_EVENT_TYPE.get(_ea.event_action(title, ""))
+                if cur in _family else None)
+        if not want or want == cur:
+            out.append(r)
+            continue
+        new_key = f"{head}|l:" + "|".join([_sl._norm(want)] + seg[1:])
+        if new_key in taken:
+            out.append(r)
+            continue
+        taken.discard(k)
+        taken.add(new_key)
+        # **列的 event_type 也要跟著改**(r2 外審):只改鍵的話,追蹤查詢會
+        # 拿列裡的舊型別去找「出口管制」而不是地緣制裁,而型別升級只處理
+        # `general → 具體`,永遠自己修不回來。同一個缺陷我在 timeline 那支
+        # 修過一次,這裡漏了 —— 鍵與列不得互相矛盾。
+        out.append(dict(r, key=new_key, event_type=want))
+        renamed.append(k)
+    return out, renamed
+
+
+def migrate_action_event_types(timeline) -> tuple:
+    """鍵的 event_type 段對齊 `event_actions.ACTION_EVENT_TYPE`。
+
+    2026-08-22 外審 P2-3 的必要配套:同一個動作先前會因入口不同拿到不同
+    event_type(生產同時有 `export_controls:sanction:*` 與
+    `geopolitical:sanction:*`)。producer 統一之後,既有的舊鍵今天算不出來
+    —— 與公司鍵那次同一個道理:**改判準要配遷移,否則上線第一天全部孤立**。
+
+    只改**第一段**(event_type),其餘照抄;撞鍵沿用既有的 incident 政策
+    (同一樁才併、留天數多者)。可重入。
+    """
+    import event_actions as _ea
+    out, renamed = {}, []
+    for key, row in (timeline or {}).items():
+        k = str(key)
+        parts = k.split(":")
+        if not isinstance(row, dict) or len(parts) < 3:
+            _place_by_incident(out, k, row)
+            continue
+        # **判準要與 producer 同一份**(自測抓到):producer 只在
+        # event_type 屬於粗粒度家族時才對齊(模型說 litigation 而動作是
+        # cyberattack 時,那則新聞真的是在講訴訟)。遷移比它更aggressive 的話,
+        # 會把 `litigation:cyberattack:*` 改成 producer 明天算不出來的鍵 ——
+        # 與公司鍵那次的軍售完全同型。
+        _family = set(_ea.ACTION_EVENT_TYPE.values()) | {"", "general"}
+        want = (_ea.ACTION_EVENT_TYPE.get(parts[1])
+                if parts[0] in _family else None)
+        if not want or want == parts[0]:
+            _place_by_incident(out, k, row)
+            continue
+        new_key = ":".join([want] + parts[1:])
+        # **列也要改**(r1 外審 P3):只改鍵的話,鍵說 geopolitical、列裡的
+        # `event_type` 還是 export_controls —— 與 ICC 那次的 stale object
+        # 同型,而且同日重跑會把舊型別讀回活躍時間軸。
+        new_row = dict(row, event_type=want) if row.get("event_type") else row
+        renamed.append(k)
+        _place_by_incident(out, new_key, new_row)
+    return out, renamed

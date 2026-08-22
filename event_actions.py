@@ -46,6 +46,27 @@ SITUATION_ACTIONS = frozenset({"hormuz_passage", "strait_tension"})
 #:
 #: 判準刻意保守:寧可認不出(降級回主體集合,行為與舊版相同),
 #: 不要誤認(把兩件事黏成一件是不可逆的,而且會靜靜地錯很多天)。
+#: **同一個動作只能有一個 event_type**(2026-08-22 外審 P2-3)。
+#:
+#: 先前確定性推導與 LLM 抽取器對同一則新聞會給不同答案:
+#: 「美國宣布制裁伊朗」→ `_event_type()` 回 `export_controls`,
+#: 而抽取器給 `geopolitical` 時只有資安那一條會被修 —— 於是同一件事的
+#: story key / timeline key / lifecycle / event-study 桶全部分裂。
+#: 生產 state 兩種都有(`export_controls:sanction:*` 與
+#: `geopolitical:sanction:*`)。
+#:
+#: 這張表是**宣告**:動作認得出來時,event_type 由它決定,兩條入口拿到
+#: 同一個答案。只收「識別可靠且身分鍵必須穩定」的動作 —— 不是拿確定性
+#: 推導覆寫模型的所有判斷(那會把模型讀懂上下文的能力丟掉)。
+#: `sanction` 選 `geopolitical` 而不是 `export_controls`:制裁是地緣行為,
+#: 出口管制是另一個動作(`export_control`),而且生產既有列以前者居多。
+ACTION_EVENT_TYPE = {
+    "cyberattack": "cybersecurity",
+    "sanction": "geopolitical",
+    "export_control": "export_controls",
+}
+
+
 #: `NEEDS_OBJECT` 的動作**必須帶對象才構成身分**(第二十五輪 P1-2)。
 #:
 #: 上一版的鍵是 `{型別}:{動作}:{月份}` —— 完全不含對象,於是同一個月裡
@@ -120,8 +141,12 @@ ACTION_TABLE = (
     ("fx_intervention", "匯市干預",
      "匯市干預", "干預匯市", "聯合干預", "fx intervention",
      "yen-market intervention", "currency intervention"),
+    # **英文字形變化要收齊**(2026-08-22 外審 r1):`_event_type` 的詞彙表
+    # 認得 sanctions/sanctioned/sanctioning,而這裡只有 sanction ——
+    # 那些字形的標題會讓兩條入口拿到不同的 event_type,分裂照舊。
     ("sanction", "制裁",
-     "制裁", "凍結資產", "sanction", "asset freeze"),
+     "制裁", "凍結資產", "sanction", "sanctions", "sanctioned", "sanctioning",
+     "asset freeze"),
     # 台海情勢自帶地理對象,同上。
     # **`軍演` 單獨出現不是台海事件**(2026-08-08 自查):
     # 「伊朗革命衛隊舉行軍演」被判成 `strait_tension` —— 一個伊朗的軍事

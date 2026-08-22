@@ -227,7 +227,10 @@ def test_event_schema_version_was_bumped_with_the_formula():
     """r1 P1:`_event_instance_id` 由 timeline key 雜湊而來,主體公式改了
     就必須跳版 —— 否則舊 ID 與新 ID 都自稱當代,event-study 把同一樁事
     算成兩個獨立可信事件(3→4 跳版時記過同一種傷害)。"""
-    assert ne.EVENT_SCHEMA_VERSION == 5
+    # 2026-08-22 外審 P2-3 再跳一次(action→event_type 契約也改了身分公式,
+    # 制裁從 export_controls 改判 geopolitical)。這條驗的是「公式改了有跳版」,
+    # 所以數字會跟著走 —— 重點在**每次改公式都要有這一次更新**。
+    assert ne.EVENT_SCHEMA_VERSION == 6
 
 
 def test_migration_object_uses_the_producer_authority():

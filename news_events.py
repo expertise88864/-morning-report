@@ -45,7 +45,12 @@ def _cyber_tokens() -> tuple:
 
 
 def _event_type(text: str) -> str:
-    """Map noisy headlines to a small, learnable event taxonomy."""
+    """Map noisy headlines to a small, learnable event taxonomy.
+
+    **結尾一定過 `normalize_event_type`**(2026-08-22 外審 P2-3):
+    詞彙規則把「制裁」收在 `export_controls` 裡,而動作層說那是 `sanction`
+    (與 `export_control` 是兩個動作)—— 兩條入口不過同一支就會分裂。
+    """
     # 英文 token 需列出複數/變體:word boundary 下 "order" 不再命中 "orders"
     # (舊 substring 靠副作用吃到複數,改法時一併補齊)
     rules = (
@@ -83,8 +88,8 @@ def _event_type(text: str) -> str:
     # (GPT-5.6 二審 P1)。lower 化由 _matches_any 內部處理。
     for event_type, tokens in rules:
         if _matches_any(text or "", list(tokens)):
-            return event_type
-    return "general"
+            return normalize_event_type(event_type, text)
+    return normalize_event_type("general", text)
 
 def normalize_event_type(event_type: str, text: str) -> str:
     """把**上游給的**型別也帶回同一條規則(2026-08-18 外審 P2-1)。
@@ -98,6 +103,24 @@ def normalize_event_type(event_type: str, text: str) -> str:
     上下文的能力整個丟掉。
     """
     et = str(event_type or "")
+    # **同一個動作只能有一個 event_type**(2026-08-22 外審 P2-3):
+    # 對照表宣告在 `event_actions.ACTION_EVENT_TYPE`(動作那一層才知道
+    # 「制裁」與「出口管制」是兩個動作)。兩條入口(確定性推導與抽取器
+    # 輸出)都過這裡,拿到的答案才會一樣。
+    # **只在型別本身屬於這個粗粒度家族時才對齊**:模型說 `earnings` 而標題
+    # 提到駭客攻擊時,那則新聞真的是在講財報 —— 既有測試釘住這個決策
+    # (不拿確定性推導覆寫模型的所有判斷)。要修的是**家族內部的分裂**:
+    # 「制裁」在確定性路徑落 `export_controls`、在抽取器落 `geopolitical`,
+    # 兩者都是這個家族的成員,而動作層說那是同一個 `sanction`。
+    try:
+        import event_actions as _ea2
+        _family = set(_ea2.ACTION_EVENT_TYPE.values()) | {"", "general"}
+        if et in _family:
+            _mapped = _ea2.ACTION_EVENT_TYPE.get(_ea2.event_action(text or "", ""))
+            if _mapped:
+                return _mapped
+    except Exception:                   # noqa: BLE001 - 對照壞了退回舊規則
+        pass
     if et == "geopolitical" and _matches_any(text or "", list(_cyber_tokens())):
         return "cybersecurity"
     return et
@@ -952,6 +975,16 @@ def apply_event_timeline(model_history: list[dict],
     previous_bridge: dict[tuple, str] = {}
     for record in sorted(model_history or [], key=lambda item: item.get("session_date", "")):
         for event in record.get("structured_events") or []:
+            # **歷史事件的型別也要過同一支**(2026-08-22 外審 r1):
+            # 部署前的制裁事件存的是 `export_controls`,今天算出來是
+            # `geopolitical` —— 主鍵與橋接鍵都用存下來的型別的話,前態查不到,
+            # confirmed 會重新拿到完整權重。非破壞性:只在本次比對中對齊,
+            # 不寫回 state(與 subject_key 重算同一個做法)。
+            _et0 = str(event.get("event_type") or "")
+            _et1 = normalize_event_type(
+                _et0, f"{event.get('title') or ''} {event.get('summary') or ''}")
+            if _et1 != _et0:
+                event = dict(event, event_type=_et1)
             lifecycle = str(event.get("lifecycle") or _event_lifecycle(event))
             # 為**舊世代**的歷史事件用當前公式重算身分(見 docstring)。
             # 不寫回 state —— 這裡只是為了讓兩代主鍵在本次比對中對齊。
@@ -1074,7 +1107,13 @@ def apply_event_timeline(model_history: list[dict],
 #: 而兩者都自稱 schema 4。不跳版的話 event-study 會把同一樁事算成兩個
 #: 獨立的可信事件(那正是 3→4 跳版時記下的同一種傷害)。跳版後舊
 #: evidence 走既定的 session 級 fallback。
-EVENT_SCHEMA_VERSION = 5
+#: 批#116 起為 6(2026-08-22 外審 r1):**action→event_type 契約**讓制裁
+#: 從 `export_controls` 改判 `geopolitical`,而 `_event_instance_id` 由
+#: `_event_timeline_key`(含型別)雜湊而來 —— 不跳版的話,部署前後的兩個
+#: ID 都自稱 schema 5,event-study 會把同一樁制裁算成兩個獨立可信事件,
+#: 而且 learned impact 分別落在兩個桶。跳版後舊 evidence 走既定的
+#: session 級 fallback。
+EVENT_SCHEMA_VERSION = 6
 
 
 def _event_study_dedupe_key(row: dict, evidence: dict) -> tuple:

@@ -193,6 +193,18 @@ def proxy_headroom(manifest) -> Optional[dict]:
             "observed_rejected_tokens": OBSERVED_REJECTED_TOKENS}
 
 
+def measure_request(body: dict) -> int:
+    """與 `request_gate` **同一把尺**(單一判準):量整個 body 序列化後的
+    字元數。呼叫端用它做**送出前**的長度決策(2026-08-22 生產:修補輪
+    要在組 payload 時就知道裝不裝得下,才能切 slim —— 量測與閘門不同尺
+    的話,決策會在閘門前後各說各話)。公式的理由見 `request_gate`。
+    """
+    try:
+        return len(json.dumps(body or {}, ensure_ascii=False, default=str))
+    except (TypeError, ValueError):     # pragma: no cover - default=str 已保護
+        return len(str(body))
+
+
 def request_gate(body: dict, *, manifest=None,
                  limit: int = MAX_REQUEST_CHARS) -> int:
     """對**真正要送出去的 request body** 做最終檢查(外審 P1-4)。
@@ -212,10 +224,7 @@ def request_gate(body: dict, *, manifest=None,
 
     超標直接 `PayloadBudgetExceeded`(呼叫端落回 legacy,信照樣寄)。
     """
-    try:
-        chars = len(json.dumps(body or {}, ensure_ascii=False, default=str))
-    except (TypeError, ValueError):     # pragma: no cover - default=str 已保護
-        chars = len(str(body))
+    chars = measure_request(body)
     if manifest is not None:
         manifest.setdefault("llm", {}).setdefault(
             "payload_budget", {})["final_request_chars"] = chars

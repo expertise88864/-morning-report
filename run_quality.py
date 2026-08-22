@@ -54,6 +54,9 @@ KNOWN_DEGRADED = frozenset({
     # 端點回前一天的資料)。行為是對的 —— 寧可留空也不要錯位
     # (批#83),缺的那一格與原因都在 manifest["chips"]。
     "chips:source_date_mismatch",
+    # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
+    # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
+    "sector:institutional_missing",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",
@@ -272,15 +275,22 @@ def assess(manifest, *, mode: str = "watchdog",
     # 開始忽略這封信,連真的那天也一起忽略。
     digest = is_weekend_digest(m)
     origin = _ao.normalize(_dig(m, "llm", "analysis_origin"))
+    # 失敗原因跟著**會發出的那一筆**走(2026-08-22 生產 + 外審 r1 P2):
+    # 例外名先前只從 unknown_degradation 漏出來,該家族在第 11 條列為
+    # 已知之後,原因必須騎在真的會發出的 finding 上 —— 而 emergency 也是
+    # Luna 失敗的可能終點(特化失敗 → legacy 再失敗),只掛在
+    # not_specialized 分支的話,最嚴重的那種日子反而沒有原因。
+    _lerr = _dig(m, "llm", "luna_path_error", "error")
+    _lsuffix = f"(特化失敗原因:{str(_lerr)[:160]})" if _lerr else ""
     if digest:
         pass
     elif origin == _ao.EMERGENCY_FALLBACK:
         add("analysis_emergency", "degraded",
-            "信裡沒有任何模型判斷,寄出的是 Python 組的備援文字")
+            "信裡沒有任何模型判斷,寄出的是 Python 組的備援文字" + _lsuffix)
     elif origin != _ao.LUNA_SPECIALIZED:
         add("analysis_not_specialized", "degraded",
             f"主分析走的是「{_ao.describe(origin)}」—— "
-            "特化路徑的事件卡、淨效果、橫向綜合今天都不在信裡")
+            "特化路徑的事件卡、淨效果、橫向綜合今天都不在信裡" + _lsuffix)
 
     # ---- 2. 特化路徑被自己的驗證擋下(2026-08-04→08 連續五天)
     #
@@ -598,8 +608,15 @@ def assess(manifest, *, mode: str = "watchdog",
                 else "金鑰無效或沒有權限,需要換金鑰/開通")))
 
     # ---- 11. 沒見過的降級
+    # `llm:luna_path_failed:<例外類名>` 是**已分類的家族**:後綴是開放集,
+    # frozenset 列舉不完(2026-08-22 生產:PayloadBudgetExceeded 被當成
+    # 「沒見過的降級」,把讀者引去「字彙缺漏」的方向 —— 真正的故事由
+    # analysis_not_specialized(帶失敗原因)與最終閘門判準講)。
+    # 前綴豁免**只給這一個**確定開放的家族;其餘標籤維持逐一列舉,
+    # 不得變成順手塞新標籤的後門。
     unknown = [s for s in (m.get("degraded_steps") or [])
-               if str(s) not in KNOWN_DEGRADED]
+               if str(s) not in KNOWN_DEGRADED
+               and not str(s).startswith("llm:luna_path_failed:")]
     if unknown:
         add("unknown_degradation", "degraded",
             "沒見過的降級步驟:" + "、".join(str(s) for s in unknown))

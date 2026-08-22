@@ -13752,6 +13752,38 @@ def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
     return hints[:6]
 
 
+def _repair_request_payload(payload: dict, user_payload: str, tail: str,
+                            packet: dict) -> tuple:
+    """修補輪的請求 payload:裝得下就附完整資料包,裝不下就切 slim。
+
+    2026-08-22 生產(外審 P2-2 的另一半,當時記了待辦):packet 修剪到
+    99.1 萬(合格)+ 修正指示與前一版 JSON 11 萬 = 110.3 萬,爆掉 110 萬
+    硬閘門;第一版已被驗證駁回、`_kept` 是 None,閘門例外把整條特化
+    路徑帶落 legacy —— 五條問題裡三條只要補一步標 inference 就能過。
+
+    slim 丟的是**資料包**、留的是**底本**:「沒點到的照抄」只需要底本
+    (問題清單跟著 tail 走),證據引用改用合法 ID 全集約束 —— 修正
+    不需要重讀 99 萬字。量測與硬閘門**同一把尺**
+    (`_pb.measure_request`);裝得下的日子完整上下文照舊,行為不變。
+    回傳 `(payload, slim 紀錄或 None)`。
+    """
+    full = dict(payload, input=user_payload + tail)
+    full_chars = _pb.measure_request(full)
+    if full_chars <= _pb.MAX_REQUEST_CHARS:
+        return full, None
+    try:
+        idx = "、".join(sorted(_ep.evidence_ids(packet)))
+    except Exception:                   # noqa: BLE001 - 索引壞了 slim 照走
+        idx = "(索引生成失敗;僅可沿用前一版已有的引用,新增引用一律標 inference)"
+    slim = dict(payload, input=(
+        "(修補輪:因請求長度限制,本輪不重附完整資料包;你在上一輪已"
+        "讀過完整資料。修正下列問題時,證據引用**只能**取自以下合法 "
+        "ID 全集,不在其中的引用一律移除或改標 inference。)\n"
+        "合法證據 ID 全集:" + idx + "\n" + tail))
+    return slim, {"full_chars": full_chars,
+                  "slim_chars": _pb.measure_request(slim)}
+
+
 #: Luna 的嘗試序列:第一次正常送,第二次是修補。**上限只由這裡決定** ——
 
 #: **修補額度依模式分開**(外審 2026-08-17 P1-2)。
@@ -14230,18 +14262,24 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                     "repair_bases", []).append(
                         f"best@{_best_draft[0]}(本輪 {len(problems)})")
         _hints = _repair_evidence_hints(_base_problems, packet)
-        payload = dict(payload, input=(
-            bundle["user_payload"]
-            + _repair_instruction(
-                _base_problems, _hints,
-                # **帶當輪被拒的那一版**(外審 r1):「沒列到的保持原樣」
-                # 要給得出原樣;第二輪自然帶到第二版(obj 是當輪解析的)。
-                # 除非當輪比先前**明顯更差**(見上)。
-                previous_json=_prev_json,
-                # 壞 JSON 時帶**原始文字**當底本(第三十二輪 P1-2):
-                # 只修語法不改語意 —— 不再從零重寫。
-                previous_raw=(str(out.get("text") or "")
-                              if _parse_exc else ""))))
+        _tail = _repair_instruction(
+            _base_problems, _hints,
+            # **帶當輪被拒的那一版**(外審 r1):「沒列到的保持原樣」
+            # 要給得出原樣;第二輪自然帶到第二版(obj 是當輪解析的)。
+            # 除非當輪比先前**明顯更差**(見上)。
+            previous_json=_prev_json,
+            # 壞 JSON 時帶**原始文字**當底本(第三十二輪 P1-2):
+            # 只修語法不改語意 —— 不再從零重寫。
+            previous_raw=(str(out.get("text") or "")
+                          if _parse_exc else ""))
+        # 2026-08-22 生產:修補請求裝不下硬閘門時切 slim(理由見 helper)。
+        payload, _slim_rec = _repair_request_payload(
+            payload, bundle["user_payload"], _tail, packet)
+        if _slim_rec is not None:
+            _RUN_MANIFEST.setdefault("llm", {})["repair_payload_slim"] = _slim_rec
+            print(f"[llm] 修補請求 {_slim_rec['full_chars']:,} 字元裝不下"
+                  f"硬閘門,改送 slim({_slim_rec['slim_chars']:,})",
+                  file=sys.stderr)
     if _kept is not None:
         # 加深那一次失敗了(不合法或渲染不出來)—— 用留著的合法版本。
         # **淺不是落回 legacy 的理由**,那只會換來一封更淺的信。

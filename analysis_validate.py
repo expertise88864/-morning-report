@@ -1088,3 +1088,47 @@ def validate(obj, evidence_ids) -> list:
 # 呼叫端仍可從這裡取用,一次只改一件事。
 from analysis_depth import (                      # noqa: E402,F401
     depth_advisories, deepen_input, deepen_is_an_improvement)
+
+
+#: 單數的**證據**引用欄位(既有驗證器對它們做存在性檢查)。
+#: r3 外審:`tension_id` 與 `alignment_id` **不在這裡** —— 它們是結構欄位
+#: (另一組命名空間,合法性由 `required_tension_ids` 那套自己驗)。
+#: 收進來的話,切片修補補上一筆本來就該補的 tension_resolutions,
+#: 會被判成「新增了看不到內容的引用」而讓一份正確的修補作廢。
+_SINGULAR_EVIDENCE_FIELDS = frozenset({"source_item_id"})
+
+
+def cited_evidence_ids(obj) -> set:
+    """`obj` 裡**所有被引用的證據 ID**(遞迴;鍵名以 `evidence_ids` 結尾)。
+
+    2026-08-22 外審 P1-1 r2:修補輪只附證據切片時,要能分辨「沿用前一版
+    的引用」與「新增一個自己這輪看不到內容的引用」。後者才是洗白 ——
+    驗證器只驗 ID 存在,於是引用合法、語意不支持的 claim 會過關。
+
+    r2 外審:**單數的證據引用欄位也算**(但只收真的是證據的那些,
+    見 `_SINGULAR_EVIDENCE_FIELDS`)。`source_item_id` 在 v20/v21 的
+    world_events / taiwan_policy / taiwan_local / 敘事段落都是證據引用
+    (既有驗證器對它逐一做存在性檢查,見 `_check_ids([row.get(
+    "source_item_id")])`)—— 只收 `*evidence_ids` 清單的話,切片判準看不到
+    它們,捏造的單數引用照樣過關。
+    """
+    out: set = set()
+
+    def _walk(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                key = str(k)
+                if key.endswith("evidence_ids") and isinstance(v, list):
+                    out.update(str(i) for i in v if str(i).strip())
+                elif key in _SINGULAR_EVIDENCE_FIELDS and isinstance(
+                        v, (str, int)):
+                    if str(v).strip():
+                        out.add(str(v))
+                else:
+                    _walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                _walk(v)
+
+    _walk(obj)
+    return out

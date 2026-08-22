@@ -579,3 +579,57 @@ def market_refs(market, prefix: str = "", depth: int = 0) -> set:
 # 呼叫端仍從這裡取用 —— 一次只改一件事,搬動才證明得了只換位置。
 from evidence_serialize import (                  # noqa: E402,F401
     canonical_json, evidence_sha, nonstring_key_paths)
+
+
+def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
+    """`證據 ID → 這個 ID 的實際內容`,塞到預算為止(2026-08-22 外審 P1-1)。
+
+    修補輪的請求是**另一次無狀態推論**(DeepSeek 的 body 只有
+    `model/instructions/input/store`,沒有 `previous_response_id`,
+    `store` 預設還是 False)—— 「你上一輪已讀過完整資料」是假前提。
+    先前的 slim 只送**合法 ID 的名字**:模型知道 `n1283` 合法,卻不知道
+    它在講什麼。要補一條有證據的 claim 時它只剩兩條路 —— 不補(修補失敗),
+    或隨便挑一個合法 ID(引用存在、語意不支持)。後者更危險:驗證器只
+    驗 ID 存在,於是**假引用會通過**。
+
+    所以切片給的是**內容**。`ids` 的順序就是優先序(呼叫端排:問題點名的
+    在前、前一版已引用的次之、其餘候選最後),塞不下就停 —— 誠實地少給,
+    而不是給一份看起來完整的名冊。
+    """
+    import json as _json
+    out: dict = {}
+    if budget_chars <= 0:
+        return out
+    news_by_id = {str(n.get("source_item_id") or ""): n
+                  for n in (packet or {}).get("news") or []
+                  if isinstance(n, dict)}
+    market = (packet or {}).get("market") or {}
+    used = 0
+    for eid in ids or ():
+        eid = str(eid)
+        item = news_by_id.get(eid)
+        if item is not None:
+            body = {"title": str(item.get("title") or "")[:120],
+                    "summary": str(item.get("summary") or "")[:240],
+                    "source": str(item.get("source_name")
+                                  or item.get("source") or "")[:40],
+                    "entities": [str(e) for e in (item.get("entities") or [])][:6]}
+        elif eid.startswith("market:"):
+            cur = market
+            for part in eid[len("market:"):].split("."):
+                cur = cur.get(part) if isinstance(cur, dict) else None
+                if cur is None:
+                    break
+            if cur is None:
+                continue
+            body = cur if not isinstance(cur, dict) else {
+                k: v for k, v in list(cur.items())[:6]
+                if not isinstance(v, (dict, list))}
+        else:
+            continue
+        cost = len(eid) + len(_json.dumps(body, ensure_ascii=False, default=str))
+        if used + cost > budget_chars:
+            break
+        out[eid] = body
+        used += cost
+    return out

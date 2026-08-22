@@ -20589,9 +20589,15 @@ def _radar_processed_guids() -> set:
     晨報 Podcast 段不再重複。讀檔失敗一律回空集(降級為不去重,最壞重複一次)。"""
     try:
         p = GOOAYE_RADAR_FILE
-        if not p.exists():
+        try:
+            data, _st = _ss.load_json_state(p, expected=dict)
+        except _ss.StateCorrupt as _e:
+            # 晨報不可斷 → 這裡降級成「不去重」(最壞重複一次),
+            # 但要留痕:否則「今天沒去重」與「雷達今天沒寄東西」長得一樣。
+            _register_state_corrupt("gooaye_radar", _e)
             return set()
-        data = json.loads(p.read_text(encoding="utf-8"))
+        if _st == "missing":
+            return set()
         out = set()
         for show in (data or {}).values():
             if isinstance(show, dict):

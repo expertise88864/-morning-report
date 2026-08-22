@@ -155,6 +155,10 @@ jobs:
 
           # Anthropic Claude（付費高品質，可留空）
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # llm_config.VALID_PROVIDERS 宣告 openai 可用,workflow 卻沒注入它的
+          # 金鑰 —— 一個被宣告為合法的設定實際上啟動不了(2026-08-22 外審 P2-6)。
+          # 契約由測試盯著:宣告與注入要一致。
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLAUDE_MODEL: claude-sonnet-4-6
 
           # SEC EDGAR User-Agent 聯絡信箱（選填，不設則自動用 GMAIL_USER）

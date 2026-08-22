@@ -62,6 +62,8 @@ KNOWN_DEGRADED = frozenset({
     # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
     # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
     "chips:pcr_site_fallback", "chips:large_site_fallback",
+    # 雷達 state 讀不動:晨報只降級成「不去重」(最壞重複一次)。
+    "state:corrupt:gooaye_radar",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",

@@ -25,6 +25,7 @@ import requests
 
 import morning_report as mr
 import podcast_digest as pdg
+import state_store as _ss
 
 #: 批#74 r1(Codex,P2):**生產者與消費者必須共用同一個 state 根。**
 #: 晨報的 state 路徑已改由 `STATE_ROOT` 衍生,而這裡仍硬寫 `state/…` ——
@@ -75,14 +76,15 @@ def _gooaye_cfg() -> dict:
 
 # ---------- 雷達自有 state(與晨報 podcast_digest.json 分開,避免互相污染)----------
 def load_radar_state() -> dict:
-    if RADAR_STATE_FILE.exists():
-        try:
-            data = json.loads(RADAR_STATE_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
-        except Exception as e:
-            log(f"state 讀取失敗(視為空): {e}")
-    return {}
+    """壞檔**往上拋**(2026-08-22 外審 P2-5)。雷達比 podcast 更嚴,因為它的
+    副作用是**寄信**:壞檔當空 → 已寄過的最新一集看起來沒寄過 → 重新轉錄、
+    重新分析、**重複寄一封雷達信** → 寄成功之後才把空 state + 這一筆寫回去,
+    舊的 processed GUID 永久消失。
+
+    「今天少寄一封」的代價遠低於「對同一集重複寄信」。
+    """
+    data, _st = _ss.load_json_state(RADAR_STATE_FILE, expected=dict)
+    return data
 
 
 def save_radar_state(state: dict) -> None:
@@ -96,7 +98,11 @@ def save_radar_state(state: dict) -> None:
 
 
 def radar_processed_guids() -> set:
-    """供 morning_report 去重用:雷達已處理(已寄)的股癌 guid 集合。"""
+    """供 morning_report 去重用:雷達已處理(已寄)的股癌 guid 集合。
+
+    **讀不動時往上拋**(呼叫端是晨報,它自己決定要降級成不去重還是別的)——
+    在這裡吞掉會讓「今天沒去重」與「今天沒有雷達寄過東西」長得一樣。
+    """
     out = set()
     for show in (load_radar_state() or {}).values():
         if not isinstance(show, dict):
@@ -986,7 +992,12 @@ def _build_whitelist() -> dict:
 
 def process_new_episode() -> int:
     cfg = _gooaye_cfg()
-    state = load_radar_state()
+    try:
+        state = load_radar_state()
+    except _ss.StateCorrupt as e:
+        # **不得寄送**:重複寄信是使用者看得到的傷害,而且蓋不掉。
+        log(f"雷達 state 讀不動,本班不寄送(原檔保留): {e}")
+        return 2
     found = pdg.find_new_episodes(cfg, state, limit=1)
     if not found:
         log("無股癌新集(或皆已處理)→ 不寄信")

@@ -21,6 +21,8 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import feedparser
+
+import state_store as _ss
 import requests
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
@@ -268,14 +270,18 @@ def _entry_age_hours(entry) -> float:
 
 
 def load_state() -> dict:
-    if STATE_FILE.exists():
-        try:
-            data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
-        except Exception as e:
-            log(f"state 讀取失敗(視為空): {e}")
-    return {}
+    """壞檔**往上拋**(2026-08-22 外審 P2-4)。
+
+    先前是「讀不出來就視為空」,而 `save_state` 之後會無條件覆寫同一個檔:
+    一次暫時性損壞 → 所有 processed GUID 消失 → 近 72 小時的集數全部被當成
+    新集重新轉錄 → 只要成功一集就把 `{}` + 這一集寫回去,**歷史 summaries
+    與 processed GUID 永久消失**。與晨報那批修掉的 forecast_ledger 同型。
+
+    這是獨立 workflow,沒有「晨報不可斷」的理由 —— 讀不動就整班不做事,
+    原始位元組留著(不覆寫就是保存現場)。
+    """
+    data, _st = _ss.load_json_state(STATE_FILE, expected=dict)
+    return data
 
 
 def save_state(state: dict) -> None:
@@ -538,7 +544,12 @@ def main() -> int:
     if not DEEPSEEK_API_KEY:
         log("缺 DEEPSEEK_API_KEY,結束")
         return 1
-    state = load_state()
+    try:
+        state = load_state()
+    except _ss.StateCorrupt as e:
+        # **不轉錄、不寄送、不寫新 state**:重跑一次比毀掉歷史便宜。
+        log(f"state 讀不動,本班不做事(原檔保留): {e}")
+        return 2
     started = time.monotonic()
 
     # 第一輪:盤點所有節目的新集(只打 RSS,便宜)

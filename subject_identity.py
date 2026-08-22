@@ -132,8 +132,28 @@ def aliases_of(name) -> tuple[str, ...]:
     canon = canonical_display(name)
     if not canon:
         return ()
-    if canon in _ORG_ALIASES:
-        return _ORG_ALIASES[canon]
+    # **同一個主體的別名做聯集**(2026-08-22 外審 P2-2):三張表都可能各自
+    # 宣告一部分(`_ORG_ALIASES` 有 Federal Reserve/聯儲、`entity_alias` 有
+    # 美聯儲)。先前是「第一張表命中就回」,漏掉的那些在 producer 端就等於
+    # 不存在。**別名的來源可以有多個,但 identity 只有一個** —— 聯集的成員
+    # 全部 canonical 到同一個 `canon`,所以不會併到別的主體。
+    out: list = []
+    seen: set = set()
+
+    def _add(names):
+        for n in names or ():
+            n = str(n or "").strip()
+            if n and n not in seen:
+                seen.add(n)
+                out.append(n)
+
+    _add(_ORG_ALIASES.get(canon))
+    _gi = _al.group_of(canon)
+    if _gi >= 0:
+        _add(_al.ALIAS_GROUPS[_gi])
+    if out:
+        _add([canon])
+        return tuple(out)
     # **公司也要在這裡**(2026-08-22 repo-wide 外審 P1-2)。先前只回機構與
     # 法域,而 producer 的跨語言驗證(`news_events.semantic_canonical`)
     # 是「`aliases_of` 非空才成立」—— 於是中文標題〈輝達否認…〉配上
@@ -141,9 +161,6 @@ def aliases_of(name) -> tuple[str, ...]:
     # 語意驗證因空 alias 不成立、literal 找不到英文字),entity 掉成空。
     # 鍵那一層收斂得再好也沒用:資料根本沒有以那個身分進來。
     # 這也讓本函式的 docstring(「宣告過的全部別名」)重新成立。
-    _gi = _al.group_of(canon)
-    if _gi >= 0:
-        return tuple(_al.ALIAS_GROUPS[_gi])
     juris = tuple({canon}
                   | {a for a, c in _ea.CANONICAL_SUBJECTS.items() if c == canon})
     if len(juris) > 1 or canon in _ea.CANONICAL_SUBJECTS.values():

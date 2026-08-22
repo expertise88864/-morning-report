@@ -152,17 +152,59 @@ def depth_advisories(obj, packet=None) -> list:
         str((_mac.get(k) or {}).get("analysis") or "").strip()
         for k in ("us_rates_fx_vix", "fed_policy", "geopolitics")
         if isinstance(_mac.get(k), dict))
-    if _mac_empty and _avail >= 10:
-        out.append("macro_environment 三個切面全空,而 EVIDENCE 有行情與"
-                   "新聞素材 —— (A)(B)(C) 各寫今天的增量並引用 EVIDENCE 的"
-                   " ID,真的沒有增量的切面才留空")
-    _gaz = (((packet or {}).get("market") or {}).get("GAZETTE_RECORDS")
-            if isinstance(packet, dict) else None) or []
+    # **觸發要看真的有沒有總經素材**(2026-08-22 外審 P3)。上一版用
+    # `_avail >= 10`(當日新聞則數)當代理 —— 12 則全是公司財報的日子
+    # 照樣要求補 (A)(B)(C)。更糟的是 MACRO 抓取失敗那天素材根本不在,
+    # 而建議仍叫模型「寫今天的增量」:那是在誘導它編造沒有的數字。
+    if _mac_empty and _macro_evidence(packet):
+        out.append("macro_environment 三個切面全空,而 EVIDENCE 有利率/匯率"
+                   "或地緣事件素材 —— (A)(B)(C) 各寫今天的增量並引用"
+                   " EVIDENCE 的 ID,真的沒有增量的切面才留空")
+    # 公報**逐筆分類**已經有宣告式的判準(`tw_policy_sources` 的關注分類碼,
+    # 生產每天都在算「關注 N 筆」)—— 用它,不要用「清單非空」:
+    # 公報每個工作日都有東西,大多與資本市場無關。
+    import tw_policy_sources as _tps      # 分類碼的宣告在那裡(單一權威)
+    _gaz = [r for r in _gazette_records(packet) if _tps.is_focus_record(r)]
     if _gaz and not (obj.get("taiwan_policy") or []):
-        out.append(f"taiwan_policy 空白,而 EVIDENCE 有 {len(_gaz)} 筆行政院"
-                   "公報 —— 逐項寫政策深析(source_item_id 回指來源),"
-                   "確無資本市場影響的才略過")
+        out.append(f"taiwan_policy 空白,而 EVIDENCE 有 {len(_gaz)} 筆**關注"
+                   "分類**的行政院公報 —— 逐項寫政策深析(source_item_id "
+                   "回指來源),確無資本市場影響的才略過")
     return out
+
+
+#: 「今天真的有總經素材嗎」的判準。**只認宣告過的來源**:利率/匯率那組
+#: (`MACRO`/`USDTWD`,(A) 切面的直接素材)與地緣型別的結構化事件
+#: ((C) 切面)。認不出來就不催 —— 素材不在還要求寫,等於要模型編。
+_MACRO_EVIDENCE_EVENT_TYPES = frozenset({"geopolitical"})
+
+
+def _has_observation(block) -> bool:
+    """這一格是**真的觀測到值**,還是只是一筆失敗紀錄。
+
+    r1(外審):`fetch_macro_indicators` 抓不到時寫的是
+    `{"10Y": {"error": "..."}}` —— 整個 MACRO 仍然 truthy。只問「在不在」
+    的話,全線斷料那天判準照樣說「有素材」,而那正是這批要消掉的行為
+    (素材不在還要求引用 ID = 誘導編造)。
+    """
+    if isinstance(block, dict):
+        if "error" in block:
+            return False
+        return any(_has_observation(v) for v in block.values())
+    return block is not None and block != ""
+
+
+def _macro_evidence(packet) -> bool:
+    mk = (packet or {}).get("market") or {} if isinstance(packet, dict) else {}
+    if _has_observation(mk.get("MACRO")) or _has_observation(mk.get("USDTWD")):
+        return True
+    return any(isinstance(e, dict)
+               and str(e.get("event_type") or "") in _MACRO_EVIDENCE_EVENT_TYPES
+               for e in (mk.get("STRUCTURED_NEWS_EVENTS") or []))
+
+
+def _gazette_records(packet) -> list:
+    mk = (packet or {}).get("market") or {} if isinstance(packet, dict) else {}
+    return [r for r in (mk.get("GAZETTE_RECORDS") or []) if isinstance(r, dict)]
 
 
 def deepen_input(user_payload: str, advisories: list, previous=None) -> str:

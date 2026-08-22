@@ -84,7 +84,7 @@ from __future__ import annotations
 #: v36(v22,repo-wide 外審 2026-08-19 P1-B):RENDERED 涵蓋 v20/v21 六個
 #: 新段落;narrative_delta 綁 prior_view_id + evidence_ids、macro 三切面
 #: 有內容必有證據(硬性檢查在 analysis_validate)。
-GROUNDING_VERSION = 36
+GROUNDING_VERSION = 37
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

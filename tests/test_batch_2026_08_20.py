@@ -110,8 +110,13 @@ def test_empty_macro_and_policy_sections_get_deepen_advisories():
     sys.path.insert(0, "tests")
     import analysis_depth as ad
     import fixtures_analysis as fx
+    # 2026-08-22 外審 P3:觸發改看**真的有沒有素材**,不是新聞則數/
+    # 公報清單非空。這裡給利率素材與**關注分類**(520 金融)的公報。
     pk = {"news": [{}] * 12,
-          "market": {"GAZETTE_RECORDS": [{"t": "a"}, {"t": "b"}]}}
+          "market": {"MACRO": {"10Y": {"close": 4.74}},
+                     "GAZETTE_RECORDS": [
+                         {"title": "銀行法修正", "category_codes": ["520"]},
+                         {"title": "產業條例", "category_codes": ["550"]}]}}
     advs = ad.depth_advisories(fx.valid_analysis(), pk)
     assert any("macro_environment" in a for a in advs), advs
     assert any("taiwan_policy" in a for a in advs), advs
@@ -125,3 +130,47 @@ def test_empty_macro_and_policy_sections_get_deepen_advisories():
     advs2 = ad.depth_advisories(filled, pk)
     assert not any("macro_environment" in a for a in advs2), advs2
     assert not any("taiwan_policy" in a for a in advs2), advs2
+
+
+def test_deepen_advisories_do_not_fire_without_the_material():
+    """外審 P3 點名的兩個誤觸情境 —— 素材不在就不該催,否則是在誘導
+    模型寫它手上沒有的東西(而那正是幽靈引用的來源)。"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_depth as ad
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    # (1) 12 則全是公司新聞、利率/匯率/地緣素材都不在 → 不催總經
+    quiet = {"news": [{}] * 12, "market": {"QQQ": {"close": 700}}}
+    assert not any("macro_environment" in a
+                   for a in ad.depth_advisories(obj, quiet)), "沒素材還催總經"
+    # (2) 公報有東西但**全部不在關注分類** → 不催政策深析
+    offtopic = {"news": [{}] * 12,
+                "market": {"GAZETTE_RECORDS": [
+                    {"title": "某機關人事令", "category_codes": ["999"]}]}}
+    assert not any("taiwan_policy" in a
+                   for a in ad.depth_advisories(obj, offtopic)), "非關注分類也催"
+    # (3) 地緣事件在 → 總經該催(判準不是整個失效)
+    geo = {"news": [], "market": {"STRUCTURED_NEWS_EVENTS": [
+        {"event_type": "geopolitical", "title": "制裁"}]}}
+    assert any("macro_environment" in a for a in ad.depth_advisories(obj, geo))
+
+
+def test_error_only_macro_is_not_evidence():
+    """r1 外審:`fetch_macro_indicators` 全線失敗時仍寫出
+    `{"10Y": {"error": ...}}` —— 整個 MACRO 是 truthy。只問「在不在」
+    等於斷料那天照樣催,而那正是這批要消掉的行為。"""
+    import sys
+    sys.path.insert(0, "tests")
+    import analysis_depth as ad
+    import fixtures_analysis as fx
+    obj = fx.valid_analysis()
+    broken = {"news": [{}] * 12, "market": {"MACRO": {
+        "10Y": {"error": "資料不足"}, "VIX": {"error": "timeout"}}}}
+    assert not any("macro_environment" in a
+                   for a in ad.depth_advisories(obj, broken)), "只有錯誤紀錄也算素材"
+    # 一格壞、一格好 → 仍算有素材(判準不得因防護而整個失效)
+    partial = {"news": [], "market": {"MACRO": {
+        "10Y": {"error": "資料不足"}, "VIX": {"close": 15.1}}}}
+    assert any("macro_environment" in a
+               for a in ad.depth_advisories(obj, partial))

@@ -825,7 +825,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (36, "db0c56b77fb37ffe"),  # v36 RENDERED 補六段(2026-08-19 P1-B)
+    "grounding_version":      (37, "aedfab6c966f63f4"),  # v37 加深建議改看真素材(2026-08-22 外審 P3;MACRO 只有 error 紀錄不算素材)  # v36 RENDERED 補六段(2026-08-19 P1-B)
 }
 
 

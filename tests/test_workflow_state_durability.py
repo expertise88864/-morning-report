@@ -86,7 +86,12 @@ def test_morning_report_degrades_but_never_dies_on_radar_corruption(
     assert mr._radar_processed_guids() == set()
     assert any("state:corrupt:gooaye_radar" in s
                for s in mr._DEGRADED_STEPS[before:])
-    assert "state:corrupt:gooaye_radar" in rq.KNOWN_DEGRADED
+    # 2026-08-22 外審 P3:個別註冊被**家族**取代 —— `state:corrupt:*` 有自己
+    # 的 finding(說得出哪份壞了),所以不再從 unknown_degradation 重報。
+    got = rq.assess({"degraded_steps": ["state:corrupt:gooaye_radar"],
+                     "llm": {"analysis_origin": "luna_specialized"}})
+    codes = {x["code"] for x in got}
+    assert "unknown_degradation" not in codes and         "persistent_state_corrupt" in codes, codes
 
 
 def test_no_workflow_keeps_its_own_corrupt_policy():

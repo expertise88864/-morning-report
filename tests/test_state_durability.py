@@ -204,3 +204,28 @@ def test_history_state_still_saves_when_healthy(monkeypatch, tmp_path):
     assert mr.save_history_state({"date": "2026-08-22"}, push=False) is True
     rows = json.loads(f.read_text(encoding="utf-8"))
     assert sorted(r["date"] for r in rows) == ["2026-08-01", "2026-08-22"]
+
+
+def test_corrupt_state_gets_its_own_finding_not_generic_unknown():
+    """外審 P3:`state:corrupt:*` 是後綴開放的家族,先前只有 gooaye_radar
+    被個別註冊,其餘四個會以「沒見過的降級」出現 —— 而那個說法會把讀者
+    引去「字彙缺漏」的方向,而不是「哪一份 state 壞了、要人處理」。"""
+    import run_quality as rq
+    m = {"degraded_steps": ["state:corrupt:forecast_ledger",
+                            "state:corrupt:history"],
+         "llm": {"analysis_origin": "luna_specialized"},
+         "state_writes": {"corrupt": [{"file": "forecast_ledger",
+                                       "why": "JSON 解析失敗"}]}}
+    found = {f["code"]: f for f in rq.assess(m)}
+    assert "unknown_degradation" not in found, found
+    f = found.get("persistent_state_corrupt")
+    assert f and f["severity"] == "defect", found
+    assert "forecast_ledger" in f["detail"] and "history" in f["detail"]
+    assert "JSON 解析失敗" in f["detail"], "manifest 的原因沒被帶出來"
+    # 沒有壞檔的日子不得無中生有
+    clean = {"degraded_steps": [], "llm": {"analysis_origin": "luna_specialized"}}
+    assert "persistent_state_corrupt" not in {x["code"] for x in rq.assess(clean)}
+    # 豁免只給這個家族:別的新標籤照樣要被抓
+    other = {"degraded_steps": ["state:brand_new"],
+             "llm": {"analysis_origin": "luna_specialized"}}
+    assert "unknown_degradation" in {x["code"] for x in rq.assess(other)}

@@ -62,8 +62,6 @@ KNOWN_DEGRADED = frozenset({
     # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
     # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
     "chips:pcr_site_fallback", "chips:large_site_fallback",
-    # 雷達 state 讀不動:晨報只降級成「不去重」(最壞重複一次)。
-    "state:corrupt:gooaye_radar",
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",
@@ -614,6 +612,25 @@ def assess(manifest, *, mode: str = "watchdog",
                 "帳戶餘額不足,需要儲值" if _why == "payment"
                 else "金鑰無效或沒有權限,需要換金鑰/開通")))
 
+    # ---- 10b. 持久 state 壞掉(2026-08-22 外審 P3)
+    #
+    # 資料是安全的(寫入端 fail-closed、原檔沒被覆寫),但**需要人處理**:
+    # 壞檔不會自己好,而且在修好之前那份 state 每天都不會更新。
+    # 說出「哪一份壞了」比「發現未知降級」有用得多 —— 後者還會把讀者
+    # 引去「字彙缺漏」的方向。
+    _corrupt = sorted({str(s).split(":", 2)[-1]
+                       for s in (m.get("degraded_steps") or [])
+                       if str(s).startswith("state:corrupt:")})
+    if _corrupt:
+        _why = {str(r.get("file")): str(r.get("why") or "")
+                for r in (_dig(m, "state_writes", "corrupt", default=[]) or [])
+                if isinstance(r, dict)}
+        add("persistent_state_corrupt", "defect",
+            "持久 state 讀不動(寫入端已 fail-closed、原檔未被覆寫,但在修好"
+            "之前它每天都不會更新):"
+            + "、".join(f"{f}({_why[f][:60]})" if _why.get(f) else f
+                       for f in _corrupt))
+
     # ---- 11. 沒見過的降級
     # `llm:luna_path_failed:<例外類名>` 是**已分類的家族**:後綴是開放集,
     # frozenset 列舉不完(2026-08-22 生產:PayloadBudgetExceeded 被當成
@@ -621,9 +638,13 @@ def assess(manifest, *, mode: str = "watchdog",
     # analysis_not_specialized(帶失敗原因)與最終閘門判準講)。
     # 前綴豁免**只給這一個**確定開放的家族;其餘標籤維持逐一列舉,
     # 不得變成順手塞新標籤的後門。
+    # `state:corrupt:<檔名>` 與 `llm:luna_path_failed:<例外類名>` 都是**後綴
+    # 開放**的家族,frozenset 列舉不完;各自有專屬 finding 把話說清楚
+    # (見上面兩條),所以不再從這裡以「沒見過」的名義重報一次。
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED
-               and not str(s).startswith("llm:luna_path_failed:")]
+               and not str(s).startswith(("llm:luna_path_failed:",
+                                          "state:corrupt:"))]
     if unknown:
         add("unknown_degradation", "degraded",
             "沒見過的降級步驟:" + "、".join(str(s) for s in unknown))

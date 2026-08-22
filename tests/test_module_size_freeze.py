@@ -246,7 +246,7 @@ MODULE_CEILINGS = {
     # 第三十二輪 Commit C:partial salvage 與 watch drop 進品質守門
     # 2026-08-15:供應商擋下請求(402 餘額/401 金鑰)要說得出該做什麼 ——
     # 與「服務不穩」處置不同,而品質信當天只說得出「沒見過的降級」。實測 621。
-    "run_quality.py": 645,  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
+    "run_quality.py": 700,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

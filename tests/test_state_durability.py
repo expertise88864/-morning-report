@@ -178,3 +178,29 @@ def test_subjects_meet_ignores_bare_numeric_company_aliases():
     # 簽名:(今日實體集, 今日別名組, 記錄的主體集, 今日標題)
     assert not ei._subjects_meet(set(), set(), {"緯創"}, "成交量 3231 張創天量")
     assert ei._subjects_meet(set(), set(), {"緯創"}, "緯創法說會展望樂觀")
+
+
+def test_history_state_wrong_root_type_is_not_overwritten(monkeypatch, tmp_path):
+    """外審 P2:`{}` 是合法 JSON 但 root 型別不對 —— 先前靜默變成
+    `existing = []`,整份歷史(預測校準與歷史記憶)被今天這一筆蓋掉。
+    與 forecast_ledger 同一形狀,只是更安靜(連 log 都沒有)。"""
+    f = tmp_path / "history.json"
+    f.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(mr, "STATE_FILE", f)
+    before = f.read_bytes()
+    steps = len(mr._DEGRADED_STEPS)
+    assert mr.save_history_state({"date": "2026-08-22"}, push=False) is False
+    assert f.read_bytes() == before, "整份歷史被覆寫"
+    assert any("state:corrupt:history" in s for s in mr._DEGRADED_STEPS[steps:])
+    # 讀端降級但不中止(晨報不可斷)
+    assert mr.load_history_state() == []
+
+
+def test_history_state_still_saves_when_healthy(monkeypatch, tmp_path):
+    """防護不得把正常路徑一起關掉。"""
+    f = tmp_path / "history.json"
+    f.write_text(json.dumps([{"date": "2026-08-01"}]), encoding="utf-8")
+    monkeypatch.setattr(mr, "STATE_FILE", f)
+    assert mr.save_history_state({"date": "2026-08-22"}, push=False) is True
+    rows = json.loads(f.read_text(encoding="utf-8"))
+    assert sorted(r["date"] for r in rows) == ["2026-08-01", "2026-08-22"]

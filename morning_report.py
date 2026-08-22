@@ -10087,13 +10087,18 @@ def calibrate_predictions(fair: dict, predictions: dict, taiex_pred: dict,
 
 def load_history_state(days: int = 90) -> list[dict]:
     """讀取過去 N 天的歷史記憶（critical 事件 + 外資籌碼 + 立場）。"""
-    if not STATE_FILE.exists():
+    try:
+        data, _st = _ss.load_json_state(STATE_FILE, expected=list)
+    except _ss.StateCorrupt as _e:
+        # 讀不動**不是**「從本次開始累積」(外審 P2):這份是預測校準與
+        # 歷史記憶,靜默當空的話這一班會用空基準算校準,而 `save` 那側
+        # 會把它寫成新基線。留痕 + 回空(讀端降級),寫端由 `save` 擋。
+        _register_state_corrupt("history", _e)
+        return []
+    if _st == "missing":
         print("[state] 無歷史記憶檔，將從本次開始累積")
         return []
     try:
-        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        if not isinstance(data, list):
-            return []
         # 只保留過去 days 天
         cutoff = (dt.datetime.now(TPE) - dt.timedelta(days=days)).strftime("%Y-%m-%d")
         recent = _normalize_history_entries(
@@ -10334,11 +10339,14 @@ def save_history_state(entry: dict, days_to_keep: int = 90,
     改由呼叫端無論如何都執行一次 push。
     """
     try:
-        existing = []
-        if STATE_FILE.exists():
-            existing = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            if not isinstance(existing, list):
-                existing = []
+        # **讀不動就不寫**(外審 P2):先前「合法 JSON 但 root 型別不對」
+        # (`{}`)會靜默變成 `existing = []`,接著整份歷史被今天這一筆蓋掉
+        # —— 與 forecast_ledger 同一形狀,只是更安靜(連 log 都沒有)。
+        try:
+            existing, _ = _ss.load_json_state(STATE_FILE, expected=list)
+        except _ss.StateCorrupt as _e:
+            _register_state_corrupt("history", _e)
+            return False
 
         # 同一個 target session 只保留最後產生的版本。週六與週一晨報都指向
         # 週一開盤，週一版會自然覆蓋週六版，不再重複污染 bias / MAE。

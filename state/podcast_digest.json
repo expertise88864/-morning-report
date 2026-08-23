@@ -4891,6 +4891,32 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74590007",
+        "title": "Nvidia and Jackson Hole take center stage",
+        "published": "Sun, 23 Aug 2026 17:09:05 +0000",
+        "processed_at": "2026-08-23T19:47:26Z",
+        "digest": {
+          "summary_points": [
+            "Nvidia 本週三公布財報，選擇權市場預期股價波動約 6%；Mott Capital 警告，若成績「好但不驚艷」，股價可能大跌 11% 至 190 美元支撐區，上檔空間有限。",
+            "Nvidia 財報將牽動 AI 與半導體族群，Marvell、Micron、Arm、AMD 與 Nvidia 的股價相關性最高，可能隨之劇烈波動。",
+            "Jackson Hole 演說前，分析師 Damer Tokic 認為聯準會主席 Warsh 將重申實質利率上升而通膨預期錨定，傳達鴿派訊息，但這將使名目長債利率續升，殖利率曲線走陡。",
+            "Geneva Investor 指出財政部長 Besant 與 Fed 主席 Warsh 在長天期利率上目標相反，Besant 欲壓低 10 與 30 年期利率，Warsh 則希望縮減資產負債表，使長端利率機制性上升。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "分析師警告財報可能引發獲利了結，股價有下探 190 美元的風險，但整體看法偏向中性。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "investors and traders may be left with the post-NVIDIA earnings hangover again"
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74450717",
         "title": "Ross finds value in value",
         "published": "Fri, 21 Aug 2026 10:33:35 +0000",
@@ -5274,61 +5300,6 @@
           "notable_quote": "Shares are down even after AMAT reported fiscal third quarter results and guidance that topped Wall Street's forecast, suggesting investors want it more."
         },
         "shown_at": "2026-08-15T22:10:34Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/73920403",
-        "title": "Trump vaccine order faces major hurdle",
-        "published": "Thu, 13 Aug 2026 15:26:35 +0000",
-        "processed_at": "2026-08-13T20:07:03Z",
-        "digest": {
-          "summary_points": [
-            "7月 PPI 月增率持平，低於市場預期的 0.2%；年增率從 5.5% 降至 4.7%，核心 PPI 年增率也降至 4.2%，市場對聯準會 9 月升息的預期進一步降溫。",
-            "Jack in the Box 連續第二日反彈，分析師對其「Jack on Track」計畫感到鼓舞，包括降低槓桿與整頓績效不佳門市，但認為在速食漢堡競爭激烈與低消費力環境下仍有挑戰。",
-            "大空頭 Michael Burry 加大對 Nebius、美光、甲骨文及 iShares 半導體 ETF 的放空部位，並稱 Nebius 的飆漲是「繁榮期頂部看起來的樣子」。",
-            "IBM 與 OpenAI 宣布合作，將 GPT 5.6 等模型與代理工具嵌入 IBM Consulting Advantage，以協助企業大規模部署 AI 並強化網路安全防禦。"
-          ],
-          "tickers": [
-            {
-              "name": "Jack in the Box",
-              "code": "JACK",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "分析師對其轉型計畫鼓舞，但警告速食漢堡競爭與弱勢消費族群仍是阻力。"
-            },
-            {
-              "name": "Nebius",
-              "code": "NBIS",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 加碼放空，認為其股價暴漲是繁榮期頂部特徵。"
-            },
-            {
-              "name": "美光",
-              "code": "MU",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 增加放空部位。"
-            },
-            {
-              "name": "甲骨文",
-              "code": "ORCL",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 增加放空部位。"
-            },
-            {
-              "name": "iShares 半導體 ETF",
-              "code": "SOXX",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Michael Burry 增加放空部位。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Nebius is what the top of a boom looks like."
-        },
-        "shown_at": "2026-08-13T22:52:15Z"
       }
     ]
   },

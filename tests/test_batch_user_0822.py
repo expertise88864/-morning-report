@@ -111,13 +111,20 @@ def test_jargon_gets_a_short_gloss_rule():
     assert "第一次出現時" in src and "不重複解釋" in src
 
 
-def test_taichung_dome_is_a_local_topic():
-    """在地快訊要有台中大巨蛋;而且信件本身不得出現「使用者要求」這類字眼。"""
+def test_taichung_dome_rides_along_with_construction():
+    """2026-08-23 使用者:**不要獨立區塊**,併進「建設」——併進來之後它與
+    其他在地建設共用同一個上限,沒有新聞的日子不會有空欄位、也不會每天
+    固定佔一格。信件本身不得出現「使用者要求」這類字眼。"""
     labels = [q[0] for q in mr.LOCAL_NEWS_QUERIES]
-    assert "台中大巨蛋" in labels
-    q = next(x for x in mr.LOCAL_NEWS_QUERIES if x[0] == "台中大巨蛋")
-    assert "台中大巨蛋" in q[1] and "台中巨蛋" in q[1]
-    assert len(q) == 3 and q[2] == 3, "沒有設每主題上限"
+    assert "台中大巨蛋" not in labels, "獨立區塊還在"
+    q = next(x for x in mr.LOCAL_NEWS_QUERIES if x[0] == "建設")
+    assert "台中大巨蛋" in q[1] and "台中巨蛋" in q[1], q[1]
+    # 併進去不得把原本的在地建設詞條擠掉
+    for kw in ("台中捷運", "彰化市 建設", "雲林 重大建設"):
+        assert kw in q[1], kw
+    # **信件上看得到的只有 label**(區塊標題就是它)—— 標題是中性的
+    # 「建設」,所以信裡不會出現任何「這是誰點名的」痕跡。
+    assert all("巨蛋" not in str(x[0]) for x in mr.LOCAL_NEWS_QUERIES)
 
 
 # ------------------------------------------------ 外審 r1:兩條 CONFIRMED
@@ -236,3 +243,30 @@ def test_the_gap_exit_is_declared_in_the_prompt():
     src = io.open(Path(pp.__file__), encoding="utf-8").read()
     assert ad.TECH_COVERAGE_GAP in src, "科技缺口代號沒寫進 prompt"
     assert ad.SECTOR_COVERAGE_GAP in src, "其他類股缺口代號沒寫進 prompt"
+
+
+def test_weekend_digest_section_order_matches_the_weekday_letter():
+    """2026-08-23 使用者:週日信的順序要與平日晨報一致 ——
+    天氣 → 未來 7 天風險事件 → 重大政策深度解析 → 在地快訊 → Podcast →
+    體育 → 醫學文獻。先前體育/Podcast 在前、風險事件墊底,同一組區塊卻
+    兩種順序,讀者每週要重新找一次東西在哪。"""
+    html = mr.render_weekend_digest_html(
+        "2026-08-23 (Sun)",
+        weather_html="<div>W_WEATHER</div>",
+        sports_html="<div>W_SPORTS</div>",
+        podcast_html="<div>W_PODCAST</div>",
+        journals_html="<div>W_JOURNALS</div>",
+        calendar_html="<div>W_CALENDAR</div>",
+        local_news_html="<div>W_LOCAL</div>",
+        policy_analysis_html="<div>W_POLICY</div>")
+    order = ["W_WEATHER", "W_CALENDAR", "W_POLICY", "W_LOCAL",
+             "W_PODCAST", "W_SPORTS", "W_JOURNALS"]
+    pos = [html.index(m) for m in order]
+    assert pos == sorted(pos), [
+        (m, html.index(m)) for m in order]
+    # 缺席的區塊不留空殼(既有行為)
+    lean = mr.render_weekend_digest_html(
+        "2026-08-23 (Sun)", weather_html="<div>W_WEATHER</div>",
+        sports_html="", podcast_html="", journals_html="",
+        calendar_html="", local_news_html="", policy_analysis_html="")
+    assert "W_WEATHER" in lean and "W_SPORTS" not in lean

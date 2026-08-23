@@ -16085,9 +16085,11 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
      "中友百貨 彰化 OR 彰化 百貨 OR 彰化 鐵路高架 OR 大埔截水溝", 3),
     # 斗六/雲林獨立主題已撤(2026-07-16 使用者要求):斗六詞併入建設/房市/學區,
     # 各主題統一涵蓋台中/彰化/南投/斗六
-    ("建設", "台中捷運 OR 彰化市 建設 OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
-    # 台中大巨蛋(中信集團 BOT):進度/招商/賽事與周邊交通,屬在地重大建設。
-    ("台中大巨蛋", "台中大巨蛋 OR 台中巨蛋 OR 中信 台中巨蛋 OR 台中 巨蛋 進度", 3),
+    # 台中大巨蛋併在「建設」裡(2026-08-23 使用者:不要獨立區塊、有新聞
+    # 才出現)—— 併進來之後它與其他在地建設**共用同一個上限**,
+    # 沒有新聞的日子不會有空欄位,也不會每天固定佔一格。
+    ("建設", "台中捷運 OR 台中大巨蛋 OR 台中巨蛋 OR 彰化市 建設 "
+             "OR 草屯 建設 OR 斗六 建設 OR 雲林 重大建設"),
     ("建商動態", "合新建設 OR 國雄建設 OR 台中 建商 OR 彰化 建商"),
     ("房市", "台中 房市 OR 彰化 房市 OR 南投 房市 OR 斗六 房市 OR 台中 建案 OR 台中 預售屋"),
     ("產業/科技", "中科 OR 彰濱工業區 OR 雲林科技工業區 OR 二林 園區"),
@@ -22939,19 +22941,25 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
                                calendar_html: str,
                                local_news_html: str = "",
                                policy_analysis_html: str = "") -> str:
-    """週日綜合輕量信:天氣/在地快訊/體育/Podcast/政策解析/文獻,不跑行情與預測。"""
+    """週日綜合輕量信:天氣/風險事件/政策解析/在地/Podcast/體育/文獻。
+
+    **段落順序與平日晨報一致**(2026-08-23 使用者):天氣 → 未來 7 天風險
+    事件 → 重大政策深度解析 → 在地快訊 → Podcast → 體育 → 醫學文獻。
+    先前是體育與 Podcast 在前、風險事件墊底 —— 兩封信同一組區塊卻不同順序,
+    讀者每週要重新找一次東西在哪。
+    """
     body = "".join(s for s in (
         weather_html,
         '<div style="margin:8px 0 16px;padding:10px 14px;background:#f0fdf4;'
         'border-left:5px solid #16a34a;border-radius:4px;font-size:13px;color:#475569;">'
         '週日綜合:本日不開盤,僅彙整週末新增的體育戰績、Podcast 與重大政策訊息。'
         '</div>',
-        sports_html,
-        podcast_html,
-        local_news_html,
-        policy_analysis_html,
-        journals_html,
         calendar_html,
+        policy_analysis_html,
+        local_news_html,
+        podcast_html,
+        sports_html,
+        journals_html,
     ) if s)
     return f"""<!DOCTYPE html>
 <html lang="zh-TW">

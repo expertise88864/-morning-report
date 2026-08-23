@@ -233,16 +233,19 @@ def test_lifestyle_sources_fail_independently(monkeypatch):
         monkeypatch.setattr(mr, "fetch_weather", _mk([{"name": "彰化市"}], fail[0]))
         monkeypatch.setattr(mr, "fetch_local_news", _mk({"建設": []}, fail[1]))
         monkeypatch.setattr(mr, "fetch_suspension_news", _mk([{"title": "x"}], fail[2]))
+        # 2026-08-23:CWA 警特報與停班課同組 fail 位(同屬天氣警訊,獨立 try)
+        monkeypatch.setattr(mr, "fetch_cwa_alerts", _mk([{"title": "警"}], fail[2]))
         # 批#16:AI 模型素材同屬獨立降級(測試中一律 mock,不連網)
         monkeypatch.setattr(mr, "fetch_ai_model_news", _mk([{"title": "K3"}], fail[3]))
         monkeypatch.setattr(mr, "fetch_openrouter_new_models", _mk(["07-16 上架 x"], fail[3]))
         quotes = {}
         mr._fetch_lifestyle_quotes(quotes, now)
         assert set(quotes) == {"WEATHER", "LOCAL_NEWS", "SUSPENSION_NEWS",
-                               "AI_MODELS"}, fail
+                               "CWA_ALERTS", "AI_MODELS"}, fail
         assert quotes["WEATHER"] == ([] if fail[0] else [{"name": "彰化市"}]), fail
         assert quotes["LOCAL_NEWS"] == ({} if fail[1] else {"建設": []}), fail
         assert quotes["SUSPENSION_NEWS"] == ([] if fail[2] else [{"title": "x"}]), fail
+        assert quotes["CWA_ALERTS"] == ([] if fail[2] else [{"title": "警"}]), fail
         assert quotes["AI_MODELS"]["news"] == ([] if fail[3] else [{"title": "K3"}]), fail
         assert quotes["AI_MODELS"]["pricing"] == ([] if fail[3] else ["07-16 上架 x"]), fail
 

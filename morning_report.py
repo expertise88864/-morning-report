@@ -14983,12 +14983,30 @@ def fetch_weather() -> list[dict]:
                 "daily": ("temperature_2m_max,temperature_2m_min,"
                           "precipitation_probability_max,weather_code,"
                           "precipitation_sum,wind_gusts_10m_max,wind_speed_10m_max"),
-                "timezone": "Asia/Taipei", "forecast_days": 1}, timeout=15)
+                # 8 天(2026-08-23 使用者:要**未來**一週)—— 回應含今天,
+                # 渲染端把今天砍掉(它已在大字行),要剩七格就得要 8 天
+                # (r1 外審抓到 7-1=6 的 off-by-one)。今日欄位語意不變
+                # (全取 index 0),一週另附在 `week`。
+                "timezone": "Asia/Taipei", "forecast_days": 8}, timeout=15)
             r.raise_for_status()
             d = r.json().get("daily", {})
             code = int((d.get("weather_code") or [0])[0])
             label = next((lbl for codes, lbl in _WMO_CODE_LABEL if code in codes), "—")
+            week = []
+            for i, day in enumerate(d.get("time") or []):
+                try:
+                    _wd = "一二三四五六日"[dt.date.fromisoformat(str(day)).weekday()]
+                    week.append({
+                        "date": str(day), "wd": _wd,
+                        "t_min": round(float((d.get("temperature_2m_min") or [])[i])),
+                        "t_max": round(float((d.get("temperature_2m_max") or [])[i])),
+                        "rain_prob": int((d.get("precipitation_probability_max")
+                                          or [])[i] or 0),
+                    })
+                except (IndexError, TypeError, ValueError):
+                    continue        # 缺哪天就少哪天,不整包丟掉
             out.append({
+                "week": week,
                 "name": name,
                 "t_min": round(float((d.get("temperature_2m_min") or [0])[0])),
                 "t_max": round(float((d.get("temperature_2m_max") or [0])[0])),
@@ -15158,16 +15176,87 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
         return []
 
 
+_CWA_WARNING_RSS = "https://www.cwa.gov.tw/rss/Data/cwa_warning.xml"
+
+
+def fetch_cwa_alerts(max_items: int = 3) -> list[dict]:
+    """氣象署警特報 RSS(2026-08-23 使用者:要颱風的消息)。
+
+    海上/陸上**颱風警報**發布時就在這條 RSS 裡 —— 這是官方權威源,
+    比抓「颱風」新聞乾淨(新聞會把路徑猜測、外圍環流花絮都撈進來)。
+    豪雨/強風/低溫等特報一併顯示(對通勤同樣有用)。
+    CWA 憑證與 dgpa 同病(缺 Subject Key Identifier)→ 走 relaxed-strict。
+    只收 36 小時內的(警特報有時效,舊的早已解除);失敗回空,不影響晨報。
+    回 [{"title", "link", "typhoon": bool}...]。
+    """
+    import email.utils as _eut
+    import re as _re
+    try:
+        body = _http_get_relaxed_strict(_CWA_WARNING_RSS).decode("utf-8", "replace")
+        now = dt.datetime.now(dt.timezone.utc)
+        out: list[dict] = []
+        for item in _re.findall(r"<item>(.*?)</item>", body, _re.S):
+            ti = _re.search(r"<title>(.*?)</title>", item, _re.S)
+            lk = _re.search(r"<link>(.*?)</link>", item, _re.S)
+            pd = _re.search(r"<pubDate>(.*?)</pubDate>", item, _re.S)
+            title = _re.sub(r"\s+", " ", (ti.group(1) if ti else "")).strip()
+            if not title:
+                continue
+            if pd:
+                try:
+                    pub = _eut.parsedate_to_datetime(pd.group(1).strip())
+                    if pub.tzinfo is None:
+                        pub = pub.replace(tzinfo=dt.timezone.utc)
+                    if (now - pub) > dt.timedelta(hours=36):
+                        continue
+                except (TypeError, ValueError):
+                    pass            # 日期解析不了就不以時效過濾(寧多勿漏)
+            out.append({"title": title[:90],
+                        "link": (lk.group(1).strip() if lk else ""),
+                        "typhoon": "颱風" in title})
+            if len(out) >= max_items:
+                break
+        if out:
+            print(f"[weather] CWA 警特報 {len(out)} 則"
+                  + ("(含颱風)" if any(x["typhoon"] for x in out) else ""))
+        return out
+    except Exception as e:                  # noqa: BLE001 - 晨報不可斷
+        print(f"[weather] CWA 警特報抓取失敗: {e}", file=sys.stderr)
+        return []
+
+
 def _render_weather_html(locs: list[dict],
-                         suspension: Optional[list] = None) -> str:
-    # 天氣抓取失敗但有停班停課公告 → 公告仍須顯示(重要資訊不可因天氣源掛掉而消失,
-    # Codex review);兩者皆空才回空。
-    if not locs and not suspension:
+                         suspension: Optional[list] = None,
+                         alerts: Optional[list] = None) -> str:
+    # 天氣抓取失敗但有停班停課公告/警特報 → 仍須顯示(重要資訊不可因
+    # 天氣源掛掉而消失,Codex review);全部皆空才回空。
+    if not locs and not suspension and not alerts:
         return ""
     import html as _h
     parts = "　|　".join(
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
         for loc in locs) if locs else "(天氣資料暫缺)"
+    # 未來一週(2026-08-23 使用者):每地一行,七格「週幾 低~高° 雨%」。
+    def _week_line(loc) -> str:
+        wk = [w for w in (loc.get("week") or [])][:8]   # 今天 + 未來七天
+        if len(wk) < 2:                      # 只有今天 → 沒有「未來」可言
+            return ""
+        cells = "　".join(
+            f"{w['wd']} {w['t_min']}~{w['t_max']}° "
+            f"<span style='color:#0369a1;'>{w['rain_prob']}%</span>"
+            for w in wk[1:])                 # 今天已在大字行,一週列從明天起
+        return (f"<br><span style='font-size:12px;color:#475569;'>"
+                f"未來一週({_h.escape(str(loc['name']))}):{cells}</span>")
+
+    week_html = "".join(_week_line(loc) for loc in (locs or []))
+    # CWA 警特報(颱風紅字、其餘橙字;可點官方頁;無警報日自動消失)
+    alerts_html = "".join(
+        f"<br><a href='{_h.escape(str(a.get('link', '')))}' "
+        f"style='color:{'#b91c1c' if a.get('typhoon') else '#c2410c'};"
+        f"text-decoration:none;font-weight:700;'>"
+        f"{'🌀' if a.get('typhoon') else '⚠'} 氣象署:"
+        f"{_h.escape(str(a.get('title', '')))}</a>"
+        for a in (alerts or []))
     # 颱風風雨門檻警示(達標/接近才出現;紅字)
     signal = _typhoon_signal(locs)
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
@@ -15183,7 +15272,7 @@ def _render_weather_html(locs: list[dict],
         f"padding:12px 16px;margin:0 0 14px;font-size:13px;color:#0c4a6e;line-height:1.8;'>"
         f"<b>早安!</b>　{parts}<br>"
         f"<span style='color:#0369a1;'>{_weather_advice(locs)}</span>"
-        f"{signal_html}{susp_html}</div>")
+        f"{week_html}{alerts_html}{signal_html}{susp_html}</div>")
 
 
 def _render_weekly_recap_html(history: list[dict]) -> str:
@@ -21029,7 +21118,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         max_episodes=max(1, len(_pod_eps_init)))
     weather_html = _safe_block("天氣", _render_weather_html,
                                quotes.get("WEATHER") or [],
-                               quotes.get("SUSPENSION_NEWS") or [])
+                               quotes.get("SUSPENSION_NEWS") or [],
+                               quotes.get("CWA_ALERTS") or [])
     local_news_html = _safe_block("在地快訊", _render_local_news_html,
                                   quotes.get("LOCAL_NEWS") or {})
     ma200_html = _safe_block("MA200", _render_ma200_html,
@@ -23032,6 +23122,11 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     except Exception as e:
         print(f"[weekend] 停班停課新聞抓取失敗: {e}", file=sys.stderr)
         suspension = []
+    try:
+        cwa_alerts = fetch_cwa_alerts()          # 警特報(含颱風警報)
+    except Exception as e:
+        print(f"[weekend] CWA 警特報抓取失敗: {e}", file=sys.stderr)
+        cwa_alerts = []
 
     if not _weekend_digest_has_content(sports, podcast_eps, journals, now_tpe):
         print("[weekend] 無新增體育/Podcast 內容 → 本週日不寄信")
@@ -23080,7 +23175,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         _DEGRADED_STEPS.append("weekend_policy_analysis")
         policy_analysis_html = ""
 
-    weather_html = _render_weather_html(weather or [], suspension or [])
+    weather_html = _render_weather_html(weather or [], suspension or [],
+                                        cwa_alerts or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
     # 與平日報對稱:渲染「全部」載入的集,再把「這些」集標成已顯示(見下方 deliver_report)。
     # 若沿用 renderer 預設 14 集上限卻對 deliver_report 傳入完整 podcast_eps,第 15 集起會被
@@ -23163,6 +23259,13 @@ def _fetch_lifestyle_quotes(quotes: dict, now_tpe: dt.datetime) -> None:
     except Exception as e:
         print(f"[main] 停班停課抓取失敗(不影響晨報): {e}", file=sys.stderr)
         quotes["SUSPENSION_NEWS"] = []
+    try:
+        # 與停班課**獨立降級**(golden fault 測試盯著:一個來源掛掉不得
+        # 把另一個一起帶走 —— 同一個 try 就是把兩者綁死)。
+        quotes["CWA_ALERTS"] = fetch_cwa_alerts()             # 警特報(含颱風警報)
+    except Exception as e:
+        print(f"[main] CWA 警特報抓取失敗(不影響晨報): {e}", file=sys.stderr)
+        quotes["CWA_ALERTS"] = []
     # 批#16:AI 前沿模型動態(新聞與 OpenRouter 定價各自獨立降級)。
     # setdefault 合併:POLY_PULSE 已先寫入 AI_MODELS["market"](批#17),
     # 這裡不得整個 dict 覆寫

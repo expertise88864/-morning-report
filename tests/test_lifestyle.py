@@ -3477,3 +3477,98 @@ def test_sports_header_is_not_fooled_by_words_inside_other_blocks():
         assert ghost not in head, f"區塊內文提到 {ghost} 就被列進標題"
     # 內文本身照常保留(只是不影響標題)
     assert "NBA開球" in out
+
+
+# ---------------- 2026-08-23 使用者:未來一週預報 + CWA 警特報(颱風消息)
+
+def _om_daily_7d():
+    """Open-Meteo 8 天回應(生產形狀:今天 + 未來七天)。"""
+    days = [f"2026-08-{d:02d}" for d in range(23, 31)]
+    return {"daily": {
+        "time": days,
+        "temperature_2m_max": [31, 32, 33, 31, 30, 29, 31, 30],
+        "temperature_2m_min": [24, 25, 25, 24, 24, 23, 24, 23],
+        "precipitation_probability_max": [98, 60, 30, 20, 40, 70, 50, 45],
+        "weather_code": [95, 80, 2, 1, 61, 95, 80, 61],
+        "precipitation_sum": [40, 10, 0, 0, 5, 30, 8, 6],
+        "wind_gusts_10m_max": [60, 40, 30, 25, 30, 50, 35, 30],
+        "wind_speed_10m_max": [30, 20, 15, 12, 15, 25, 18, 15]}}
+
+
+def test_fetch_weather_carries_a_seven_day_week(monkeypatch):
+    """使用者 2026-08-23:要未來一週預測。今日欄位語意不變(index 0),
+    一週附在 `week`(七天、含週幾/溫度/降雨)。"""
+    class _R:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return _om_daily_7d()
+    sent = {}
+
+    def _fake_get(url, params=None, **k):
+        sent.update(params or {})
+        return _R()
+    monkeypatch.setattr(mr, "_http_get", _fake_get)
+    locs = mr.fetch_weather()
+    # mock 吃掉了 params —— 「請求真的要 7 天」要另外量(突變驗證抓到)
+    assert sent.get("forecast_days") == 8, "未來七格要 8 天(含今天;r1 外審)"
+    assert len(locs) == len(mr.WEATHER_LOCATIONS)
+    loc = locs[0]
+    assert (loc["t_min"], loc["t_max"], loc["rain_prob"]) == (24, 31, 98)
+    wk = loc["week"]
+    assert len(wk) == 8 and wk[0]["date"] == "2026-08-23"
+    assert wk[1]["t_max"] == 32 and wk[1]["rain_prob"] == 60
+    assert all(w["wd"] in "一二三四五六日" for w in wk)
+
+
+def test_weather_card_renders_the_week_and_cwa_alerts(monkeypatch):
+    """一週列從**明天**起(今天已在大字行);CWA 警特報一行一則、颱風紅字;
+    警特報不因天氣源掛掉而消失。"""
+    class _R:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return _om_daily_7d()
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    locs = mr.fetch_weather()
+    alerts = [{"title": "08/23 18:25 發布豪雨特報", "link": "https://cwa/x",
+               "typhoon": False},
+              {"title": "08/24 08:30 發布海上颱風警報", "link": "https://cwa/y",
+               "typhoon": True}]
+    h = mr._render_weather_html(locs, [], alerts)
+    assert "未來一週" in h
+    assert "2026-08-23" not in h and "一 24~31°" not in h, "今天混進一週列"
+    # **未來要真的是七格**(r1 外審:7 天含今天、砍掉今天只剩 6 —— 測試
+    # 只驗「今天不在」量不到 off-by-one,格數要數出來)
+    week_seg = h.split("未來一週")[1].split("<br>")[0]
+    assert week_seg.count("~") == 7, f"未來格數 {week_seg.count('~')} != 7"
+    assert "豪雨特報" in h and "海上颱風警報" in h
+    assert "🌀" in h and "#b91c1c" in h, "颱風沒有紅字標記"
+    # 天氣源掛掉 → 警特報仍在
+    h2 = mr._render_weather_html([], [], alerts)
+    assert "海上颱風警報" in h2
+    # 全空 → 整卡消失(既有行為)
+    assert mr._render_weather_html([], [], []) == ""
+
+
+def test_cwa_alerts_parse_and_filter(monkeypatch):
+    """RSS 解析:36 小時內才收、颱風旗標、上限;失敗回空不影響晨報。"""
+    import email.utils as eut
+    import datetime as dtm
+    now = dtm.datetime.now(dtm.timezone.utc)
+    fresh = eut.format_datetime(now - dtm.timedelta(hours=2))
+    stale = eut.format_datetime(now - dtm.timedelta(hours=60))
+    rss = f"""<rss><channel>
+      <item><title>08/23 16:21 發布陸上強風特報</title>
+        <link>https://cwa/a</link><pubDate>{fresh}</pubDate></item>
+      <item><title>08/24 08:30 發布海上颱風警報</title>
+        <link>https://cwa/b</link><pubDate>{fresh}</pubDate></item>
+      <item><title>08/20 00:00 發布大雨特報</title>
+        <link>https://cwa/c</link><pubDate>{stale}</pubDate></item>
+    </channel></rss>""".encode("utf-8")
+    monkeypatch.setattr(mr, "_http_get_relaxed_strict", lambda *a, **k: rss)
+    got = mr.fetch_cwa_alerts()
+    assert [a["title"][:14] for a in got] == ["08/23 16:21 發布", "08/24 08:30 發布"]
+    assert got[1]["typhoon"] is True and got[0]["typhoon"] is False
+    # 失敗回空
+    monkeypatch.setattr(mr, "_http_get_relaxed_strict",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")))
+    assert mr.fetch_cwa_alerts() == []

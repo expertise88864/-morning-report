@@ -1231,6 +1231,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             f"<span style='color:#94a3b8;'>"
             f"{htmllib.escape((str(f.get('date', '')) + ' ' + str(f.get('start', ''))).strip())}</span>　"
             f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}"
+            + (f"　<span style='color:#64748b;font-size:12px;'>@ "
+               f"{htmllib.escape(str(f['venue']))}</span>" if f.get("venue") else "")
             + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
                f"{htmllib.escape(str(f['odds']))}</div>" if f.get("odds") else "")
             + "</div>"

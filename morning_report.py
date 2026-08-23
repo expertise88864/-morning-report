@@ -20164,6 +20164,70 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
+def _cpbl_venue_map(as_of: Optional[dt.datetime] = None,
+                    days: int = 9) -> dict:
+    """CPBL **官網**賽程 → `{(MM/DD, 主隊全名): 場地}`(2026-08-24 使用者:
+    賽程要有球場地點)。
+
+    Yahoo scoreboard **沒有場地**(`stadium` 是指向 `gamestadium` 表的參照,
+    而該表在 scoreboard 與 boxscore 回應裡都是空的 —— 實測確認)。官網
+    `/schedule/getgamedatas` 有(`FieldAbbe`:洲際/大巨蛋/新莊…),但
+    **生產(GitHub Actions 海外 IP)可能被 geo-block**(2026-07 中職比分
+    就是因此改用 Yahoo)。所以場地是**加值欄**:Yahoo 仍是賽程骨幹,
+    這裡抓得到就補、抓不到回 {}(賽程照出、只少場地)。
+
+    官網是 ASP.NET:先 GET /schedule 取頁面 JS 裡的
+    `RequestVerificationToken`(**不是** hidden input 那顆),POST 時放
+    **header** 並帶 `X-Requested-With`(實測缺一不可)。
+    """
+    import re as _re
+    try:
+        sess = requests.Session()
+        ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"}
+        pr = sess.get("https://www.cpbl.com.tw/schedule", headers=ua,
+                      timeout=(5, 15))
+        pr.raise_for_status()
+        m = _re.search(r"RequestVerificationToken:\s*'([^']+)'", pr.text)
+        if not m:
+            # **geo-block 最現實的形狀就是這裡**(r1 外審):200/403 回一頁
+            # 沒有 token 的 blocked HTML —— 靜默 return 會讓場地消失得無聲
+            # 無息。走同一條 except(同一種留痕),不另立第二種沉默。
+            raise ValueError("頁面沒有 RequestVerificationToken(疑似被擋)")
+        _now = as_of or dt.datetime.now(TPE)
+        r = sess.post(
+            "https://www.cpbl.com.tw/schedule/getgamedatas",
+            # 年份與視窗跟呼叫端同一個時鐘(r1 外審 P3:fetch 吃 now_tpe 而
+            # 這裡吃 wall clock,回放/跨年時兩邊對不上)。
+            data={"year": str(_now.year), "kindCode": "A"},
+            headers={**ua, "RequestVerificationToken": m.group(1),
+                     "X-Requested-With": "XMLHttpRequest",
+                     "Referer": "https://www.cpbl.com.tw/schedule"},
+            timeout=(5, 20))
+        r.raise_for_status()
+        games = json.loads((r.json() or {}).get("GameDatas") or "[]")
+        today = _now.date()
+        out: dict = {}
+        for g in games:
+            try:
+                when = dt.datetime.fromisoformat(str(g.get("GameDateTimeS")))
+            except (TypeError, ValueError):
+                continue
+            if not (today <= when.date() <= today + dt.timedelta(days=days)):
+                continue
+            field = str(g.get("FieldAbbe") or "").strip()
+            home = str(g.get("HomeTeamName") or "").strip()
+            if field and home:
+                out[(when.strftime("%m/%d"), home)] = field
+        if out:
+            print(f"[sports] CPBL 官網場地對照 {len(out)} 場")
+        return out
+    except Exception as e:                  # noqa: BLE001 - 海外 IP 被擋屬預期
+        print(f"[sports] CPBL 官網場地略過(海外 IP 常見): {str(e)[:60]}",
+              file=sys.stderr)
+        return {}
+
+
 def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
                               days: int = 7) -> list[dict]:
     """中華職棒「未來一週賽程」(對戰組合+台北開賽日期時間)。
@@ -20215,7 +20279,18 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
     out.sort(key=lambda x: x["_ko"])
     for x in out:
         x.pop("_ko", None)
-    return out[:16]
+    out = out[:16]
+    # 場地是加值欄(對照見 `_cpbl_venue_map`):Yahoo 短名(中信/統一)是
+    # 官網全名(中信兄弟/統一7-ELEVEn獅)的子字串,配同日期即可對上;
+    # 對不上就不填(少一欄優於錯欄)。
+    if out:
+        venues = _cpbl_venue_map(now_tpe, days + 2)
+        for x in out:
+            for (d, home_full), field in venues.items():
+                if d == x["date"] and x["home"] and x["home"] in home_full:
+                    x["venue"] = field
+                    break
+    return out
 
 
 def _espn_week_fixtures(league_path: str, now_tpe: dt.datetime, days: int = 7,

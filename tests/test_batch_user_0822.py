@@ -270,3 +270,110 @@ def test_weekend_digest_section_order_matches_the_weekday_letter():
         sports_html="", podcast_html="", journals_html="",
         calendar_html="", local_news_html="", policy_analysis_html="")
     assert "W_WEATHER" in lean and "W_SPORTS" not in lean
+
+
+# ---------------- 2026-08-24 使用者:中職未來賽程要有球場地點
+
+def test_cpbl_venue_map_speaks_the_official_protocol(monkeypatch):
+    """官網是 ASP.NET:token 在頁面 JS(不是 hidden input),POST 放 header
+    並帶 X-Requested-With(實測缺一不可)。生產海外 IP 被擋 → 回 {}。"""
+    import json as _json
+
+    class _Sess:
+        def get(self, url, **k):
+            class _R:
+                text = ("$.ajax({ url: '/schedule/getgamedatas', headers: {"
+                        " RequestVerificationToken: 'TOK123' },")
+                def raise_for_status(self): pass
+            return _R()
+
+        def post(self, url, data=None, headers=None, **k):
+            assert headers.get("RequestVerificationToken") == "TOK123"
+            assert headers.get("X-Requested-With") == "XMLHttpRequest"
+
+            class _R:
+                status_code = 200
+                def raise_for_status(self): pass
+                def json(self):
+                    import datetime as dtm
+                    d = (dtm.datetime.now(mr.TPE) + dtm.timedelta(days=1))
+                    return {"Success": True, "GameDatas": _json.dumps([
+                        {"GameDateTimeS": d.strftime("%Y-%m-%dT18:35:00"),
+                         "HomeTeamName": "統一7-ELEVEn獅",
+                         "VisitingTeamName": "味全龍", "FieldAbbe": "大巨蛋"}])}
+            return _R()
+
+    monkeypatch.setattr(mr.requests, "Session", _Sess)
+    vm = mr._cpbl_venue_map()
+    assert len(vm) == 1
+    (d, home), field = next(iter(vm.items()))
+    assert home == "統一7-ELEVEn獅" and field == "大巨蛋"
+    # 官網掛掉(連線例外)→ {}(賽程照出、只少場地)
+    class _Boom:
+        def get(self, *a, **k): raise RuntimeError("geo-blocked")
+    monkeypatch.setattr(mr.requests, "Session", _Boom)
+    assert mr._cpbl_venue_map() == {}
+    # **geo-block 最現實的形狀**(r1 外審):HTTP 200 回一頁沒有 token 的
+    # blocked HTML —— 也要留痕地退化,不得無聲消失
+    class _Blocked:
+        def get(self, *a, **k):
+            class _R:
+                text = "<html>Access denied</html>"
+                def raise_for_status(self): pass
+            return _R()
+    monkeypatch.setattr(mr.requests, "Session", _Blocked)
+    import contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        assert mr._cpbl_venue_map() == {}
+    assert "CPBL 官網場地略過" in buf.getvalue(), "blocked HTML 沒有留痕"
+
+
+def test_fixtures_carry_venue_and_survive_without_it(monkeypatch):
+    """走**真的** `fetch_cpbl_today_fixtures`(mock Yahoo 回應,不打網路)——
+    直接驗補綴規則會繞過 fetch 尾端的接線,那正是「測試要用生產的呼叫
+    形狀」要防的。對照缺席時賽程照出、只少 venue(少一欄優於錯欄)。"""
+    import datetime as dtm
+    from email.utils import format_datetime
+    now = dtm.datetime.now(mr.TPE)
+    ko = (now + dtm.timedelta(days=1)).replace(hour=18, minute=35, second=0)
+    tomorrow = ko.strftime("%m/%d")
+
+    class _R:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self):
+            return {"service": {"scoreboard": {
+                "games": {"cpbl.g.1": {
+                    "status_type": "status.type.pregame",
+                    "start_time": format_datetime(ko),
+                    "away_team_id": "a", "home_team_id": "h"}},
+                "teams": {"a": {"display_name": "味全"},
+                          "h": {"display_name": "統一"}}}}}
+    monkeypatch.setattr(mr, "_http_get", lambda *a, **k: _R())
+    got_asof = {}
+
+    def _vm(as_of=None, days=9):
+        got_asof["as_of"] = as_of
+        return {(tomorrow, "統一7-ELEVEn獅"): "大巨蛋"}
+    monkeypatch.setattr(mr, "_cpbl_venue_map", _vm)
+    fx = mr.fetch_cpbl_today_fixtures(now)
+    # 兩個抓取要用**同一個時鐘**(r1 外審 P3:回放時各看各的會對不上)
+    assert got_asof["as_of"] is now
+    ours = [x for x in fx if x["home"] == "統一"]
+    assert ours and ours[0].get("venue") == "大巨蛋", fx
+    # 對照缺席 → 賽程照出、只少 venue
+    monkeypatch.setattr(mr, "_cpbl_venue_map", lambda as_of=None, days=9: {})
+    fx2 = mr.fetch_cpbl_today_fixtures(now)
+    assert any(x["home"] == "統一" for x in fx2)
+    assert all("venue" not in x for x in fx2)
+
+
+def test_fixture_renderer_shows_the_venue():
+    """渲染:`日期 時間 客 vs 主 @ 場地`;沒有 venue 的列不得出現空殼 @。"""
+    import render_utils as ru
+    src = io.open(Path(ru.__file__), encoding="utf-8").read()
+    i = src.index("中華職棒 未來一週賽程")
+    seg = src[max(0, i - 2000):i]
+    assert 'f.get("venue")' in seg, "渲染端沒有 venue 條件"
+    assert "@ " in seg

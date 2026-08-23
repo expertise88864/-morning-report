@@ -1,235 +1,4 @@
 {
- "geopolitical:hormuz_passage:2026-08": {
-  "first_seen": "2026-08-05",
-  "days": 5,
-  "last_seen": "2026-08-19",
-  "latest_title": "川普：未與伊朗進行或排定任何談判 荷莫茲海峽現正開放",
-  "entity": "伊朗",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "hormuz_passage",
-  "identity_schema": 12,
-  "incident_tokens": [
-   "任何",
-   "何談",
-   "定任",
-   "峽現",
-   "川普",
-   "或排",
-   "排定",
-   "未與",
-   "正開",
-   "海峽",
-   "現正",
-   "茲海",
-   "荷莫",
-   "莫茲",
-   "行或",
-   "談判",
-   "進行",
-   "開放"
-  ],
-  "latest_summary": "",
-  "object": "",
-  "subject_basis": "alias"
- },
- "geopolitical:sanction:國際刑事法院:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "US sanctions International Criminal Court chief Tomoko Akane",
-  "latest_summary": "",
-  "object": "International Criminal C",
-  "incident_tokens": [
-   "akane",
-   "chief",
-   "sanctions",
-   "tomoko",
-   "us"
-  ],
-  "entity": "國際刑事法院",
-  "subject_basis": "alias",
-  "subjects": [
-   "國際刑事法院"
-  ],
-  "event_type": "geopolitical",
-  "action": "sanction",
-  "identity_schema": 12
- },
- "geopolitical:五角大廈:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "伊朗戰爭衝擊五角大廈重新評估中東駐軍擬撤出波斯灣- 國際 - 自由時報",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "中東",
-   "五角",
-   "伊朗",
-   "估中",
-   "出波",
-   "國際",
-   "大廈",
-   "廈重",
-   "戰爭",
-   "撤出",
-   "擊五",
-   "擬撤",
-   "斯灣",
-   "新評",
-   "朗戰",
-   "東駐",
-   "波斯",
-   "爭衝",
-   "衝擊",
-   "角大",
-   "評估",
-   "軍擬",
-   "重新",
-   "駐軍"
-  ],
-  "entity": "五角大廈",
-  "subject_basis": "alias",
-  "subjects": [
-   "五角大廈"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:俄羅斯:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "Russia says its economy is strong. It just fired a top economist who warned otherwise",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "economist",
-   "economy",
-   "fired",
-   "is",
-   "it",
-   "its",
-   "just",
-   "otherwise",
-   "strong",
-   "top",
-   "warned",
-   "who"
-  ],
-  "entity": "俄羅斯",
-  "subject_basis": "alias",
-  "subjects": [
-   "俄羅斯"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:伊朗:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "伊朗不忍了！政策轉向全面進攻、揚言打破美軍封鎖 - news.cnyes.com",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "不忍",
-   "全面",
-   "向全",
-   "封鎖",
-   "忍了",
-   "打破",
-   "揚言",
-   "政策",
-   "破美",
-   "策轉",
-   "美軍",
-   "言打",
-   "軍封",
-   "轉向",
-   "進攻",
-   "面進"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:阿聯:2026-08": {
-  "first_seen": "2026-08-19",
-  "days": 1,
-  "last_seen": "2026-08-19",
-  "latest_title": "阿聯控伊朗發射彈道飛彈 稱作好準備因應威脅",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "伊朗",
-   "作好",
-   "備因",
-   "因應",
-   "好準",
-   "威脅",
-   "射彈",
-   "彈道",
-   "應威",
-   "控伊",
-   "朗發",
-   "準備",
-   "發射",
-   "稱作",
-   "道飛",
-   "飛彈"
-  ],
-  "entity": "阿聯",
-  "subject_basis": "literal",
-  "subjects": [
-   "阿聯"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:北韓:2026-08": {
-  "first_seen": "2026-08-20",
-  "days": 1,
-  "last_seen": "2026-08-20",
-  "latest_title": "川普：預計今年會晤金正恩　稱北韓有57枚強大核武",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "57",
-   "今年",
-   "大核",
-   "川普",
-   "年會",
-   "強大",
-   "晤金",
-   "會晤",
-   "枚強",
-   "核武",
-   "正恩",
-   "計今",
-   "金正",
-   "預計"
-  ],
-  "entity": "北韓",
-  "subject_basis": "literal",
-  "subjects": [
-   "北韓"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
  "export_controls:輝達:2026-08": {
   "first_seen": "2026-08-21",
   "days": 1,
@@ -313,7 +82,7 @@
   "action": "",
   "identity_schema": 12
  },
- "export_controls:sanction:伊朗:2026-08": {
+ "geopolitical:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-22",
   "days": 1,
   "last_seen": "2026-08-22",
@@ -344,7 +113,7 @@
   "subjects": [
    "伊朗"
   ],
-  "event_type": "export_controls",
+  "event_type": "geopolitical",
   "action": "sanction",
   "identity_schema": 12
  },
@@ -420,6 +189,185 @@
    "GOOGL"
   ],
   "event_type": "litigation",
+  "action": "",
+  "identity_schema": 12
+ },
+ "litigation:META:2026-08": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "【美股巨頭】Meta面臨1.4兆美元罰款上限訴訟，549美元的股價守得住嗎？ - CMoney投資網誌",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "549",
+   "上限",
+   "住嗎",
+   "價守",
+   "元的",
+   "元罰",
+   "兆美",
+   "守得",
+   "巨頭",
+   "得住",
+   "款上",
+   "的股",
+   "罰款",
+   "美元",
+   "美股",
+   "股價",
+   "股巨",
+   "訴訟",
+   "限訴",
+   "面臨"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 12
+ },
+ "litigation:META:2026-08#92575e": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "Meta面臨兒童安全訴訟風暴 投資者應該擔心嗎？ - forecastock.tw",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "兒童",
+   "全訴",
+   "安全",
+   "心嗎",
+   "應該",
+   "投資",
+   "擔心",
+   "童安",
+   "者應",
+   "臨兒",
+   "訟風",
+   "訴訟",
+   "該擔",
+   "資者",
+   "面臨",
+   "風暴"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:sanction:伊朗:2026-08#89ec92": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "US threatened new sanctions against Iran",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "against",
+   "new",
+   "sanctions",
+   "threatened",
+   "us"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 12
+ },
+ "geopolitical:tariff_action:加拿大:2026-08": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "New 50% US tariffs on Canadian goods take effect",
+  "latest_summary": "",
+  "object": "加拿大",
+  "incident_tokens": [
+   "50",
+   "canadian",
+   "effect",
+   "goods",
+   "new",
+   "on",
+   "take",
+   "tariffs",
+   "us"
+  ],
+  "entity": "加拿大",
+  "subject_basis": "alias",
+  "subjects": [
+   "加拿大"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 12
+ },
+ "export_controls:蘋果:2026-08": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "傳川普政府擬批准蘋果採購中國記憶體晶片",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "中國",
+   "國記",
+   "川普",
+   "府擬",
+   "憶體",
+   "批准",
+   "採購",
+   "擬批",
+   "政府",
+   "普政",
+   "晶片",
+   "記憶",
+   "購中",
+   "體晶"
+  ],
+  "entity": "蘋果",
+  "subject_basis": "alias",
+  "subjects": [
+   "蘋果"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:伊朗:2026-08#b65a5e": {
+  "first_seen": "2026-08-24",
+  "days": 1,
+  "last_seen": "2026-08-24",
+  "latest_title": "伊朗高層表示應聚焦結束戰爭",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "應聚",
+   "戰爭",
+   "束戰",
+   "焦結",
+   "結束",
+   "聚焦",
+   "高層"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
   "action": "",
   "identity_schema": 12
  }

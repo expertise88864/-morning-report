@@ -4891,6 +4891,31 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74649398",
+        "title": "Bessent brings out the bond bazooka",
+        "published": "Mon, 24 Aug 2026 15:57:44 +0000",
+        "processed_at": "2026-08-24T19:57:53Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出，財長貝森特可能動用近1兆美元的TGA資金來資助擴大長期公債回購（稱為「Treasury twist」），這改變了市場對融資方式的預期，但長債殖利率在公告後仍高於初期低點，顯示市場對操作規模及資源來源存疑。",
+            "主持人評論Jersey Mike's獲多家投行看漲評級，稱分析師「鼻子貼著磨刀石」預測股價「英雄式上漲」，但警告若盈利出問題，股價可能重挫，暗示當前樂觀情緒或有過度之嫌。",
+            "主持人表示，漢堡吧正成為中國速食市場的新戰場，百勝中國旗下必勝客已開設第300家漢堡吧，該模式在Q2為母公司帶來雙位數增量銷售，契合消費者對平價、可攜帶單人餐的需求。"
+          ],
+          "tickers": [
+            {
+              "name": "Jersey Mike's",
+              "code": "JM",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人認可分析師普遍看漲，但警告若盈利表現不佳，股價可能大幅下跌。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Analysts of the sub-sector have clearly had their noses to the Grindr stone and predict a heroic rise in the share price. But as something were to torpedo earnings, we'd end up with a lot of po-boys."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74633876",
         "title": "AI plans weigh on BABA",
         "published": "Mon, 24 Aug 2026 10:35:28 +0000",
@@ -5288,33 +5313,6 @@
           "notable_quote": "As for investors, the deployment represents an early operational milestone for one of Rocket Lab's larger satellite manufacturing contracts."
         },
         "shown_at": "2026-08-17T22:30:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74132214",
-        "title": "Retail earnings put consumers in the spotlight",
-        "published": "Sun, 16 Aug 2026 16:23:03 +0000",
-        "processed_at": "2026-08-16T19:46:42Z",
-        "digest": {
-          "summary_points": [
-            "本週美國零售股為焦點,Home Depot、Target、Walmart 陸續公布財報;主持人特別點出 Walmart 為重頭戲,並引述 Oppenheimer 下調評等至 Perform,預估美國同店銷售僅約 3%,低於市場預期的 3.8%,反映對消費力道的疑慮。",
-            "週三公布 Fed 會議紀要,Wells Fargo 經濟學家預期內容顯示官員願意耐心等待通膨進展,但若通膨未進一步降溫,未來升息門檻低;9 月會議將取決於接下來就業與通膨數據。",
-            "AI 新創 Anthropic 預測 2028 年營收約 1900-2000 億美元,將影響其 IPO 估值,並參考 Cloudflare、Palantir、SpaceX 等估值基準;顯示 AI 資本支出可望在未來產生高營收與利潤。",
-            "交易公司 Jane Street 上個月因投資 Situational Awareness 被迫賤賣給 Citadel,損失達 150 億美元,對以嚴謹風險管理聞名的該公司是罕見挫折。"
-          ],
-          "tickers": [
-            {
-              "name": "沃爾瑪",
-              "code": "WMT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Oppenheimer 下調評等至 Perform,預期美國同店銷售約 3% 低於市場共識的 3.8%,顯示消費力道恐不如預期。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "We expect strong grocery momentum to continue in a more difficult backdrop lately, and are modeling a moderation for both the general merchandise and health and wellness categories."
-        },
-        "shown_at": "2026-08-16T22:26:46Z"
       }
     ]
   },

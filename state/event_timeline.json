@@ -1,33 +1,4 @@
 {
- "export_controls:輝達:2026-08": {
-  "first_seen": "2026-08-21",
-  "days": 1,
-  "last_seen": "2026-08-21",
-  "latest_title": "輝達否認年底前推出「專供中國」AI晶片",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "ai",
-   "中國",
-   "供中",
-   "前推",
-   "否認",
-   "專供",
-   "年底",
-   "底前",
-   "推出",
-   "晶片",
-   "認年"
-  ],
-  "entity": "輝達",
-  "subject_basis": "literal",
-  "subjects": [
-   "輝達"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 12
- },
  "geopolitical:伊朗:2026-08#25d2f3": {
   "first_seen": "2026-08-22",
   "days": 1,
@@ -369,6 +340,172 @@
   ],
   "event_type": "geopolitical",
   "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:sanction:伊朗:2026-08#61b7d5": {
+  "first_seen": "2026-08-25",
+  "days": 1,
+  "last_seen": "2026-08-25",
+  "latest_title": "從制裁伊朗到制裁全世界？美國二級制裁範圍或大幅擴張 - capitalfutures.com.tw",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "世界",
+   "二級",
+   "全世",
+   "到制",
+   "制裁",
+   "國二",
+   "圍或",
+   "大幅",
+   "幅擴",
+   "從制",
+   "或大",
+   "擴張",
+   "範圍",
+   "級制",
+   "美國",
+   "裁全",
+   "裁範"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 12
+ },
+ "geopolitical:伊朗:2026-08": {
+  "first_seen": "2026-08-25",
+  "days": 1,
+  "last_seen": "2026-08-25",
+  "latest_title": "美國預計公布對伊朗施加經濟壓力計畫",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "力計",
+   "加經",
+   "國預",
+   "壓力",
+   "施加",
+   "濟壓",
+   "經濟",
+   "美國",
+   "計畫",
+   "預計"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 12
+ },
+ "geopolitical:tariff_action:加拿大:2026-08#1d9027": {
+  "first_seen": "2026-08-25",
+  "days": 1,
+  "last_seen": "2026-08-25",
+  "latest_title": "美國對約200億美元加拿大進口商品加徵50%關稅生效",
+  "latest_summary": "",
+  "object": "加拿大",
+  "incident_tokens": [
+   "200",
+   "50",
+   "億美",
+   "加徵",
+   "口商",
+   "品加",
+   "商品",
+   "國對",
+   "對約",
+   "生效",
+   "稅生",
+   "美元",
+   "美國",
+   "進口",
+   "關稅"
+  ],
+  "entity": "加拿大",
+  "subject_basis": "alias",
+  "subjects": [
+   "加拿大"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 12
+ },
+ "geopolitical:tariff_action:加拿大:2026-08#91f8bb": {
+  "first_seen": "2026-08-25",
+  "days": 1,
+  "last_seen": "2026-08-25",
+  "latest_title": "加拿大宣布9月8日起對美國實施等額報復性關稅",
+  "latest_summary": "",
+  "object": "加拿大",
+  "incident_tokens": [
+   "國實",
+   "報復",
+   "實施",
+   "對美",
+   "復性",
+   "性關",
+   "施等",
+   "日起",
+   "等額",
+   "美國",
+   "起對",
+   "關稅",
+   "額報"
+  ],
+  "entity": "加拿大",
+  "subject_basis": "alias",
+  "subjects": [
+   "加拿大"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 12
+ },
+ "geopolitical:sanction:伊朗:2026-08#adb4f9": {
+  "first_seen": "2026-08-25",
+  "days": 1,
+  "last_seen": "2026-08-25",
+  "latest_title": "川普擬祭毀滅性制裁、伊朗貨幣大崩盤 200萬里亞爾才能換到1美元 - 自由財經",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "200",
+   "亞爾",
+   "制裁",
+   "大崩",
+   "崩盤",
+   "川普",
+   "幣大",
+   "性制",
+   "才能",
+   "換到",
+   "擬祭",
+   "普擬",
+   "毀滅",
+   "滅性",
+   "爾才",
+   "祭毀",
+   "美元",
+   "能換",
+   "萬里",
+   "貨幣",
+   "里亞"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
   "identity_schema": 12
  }
 }

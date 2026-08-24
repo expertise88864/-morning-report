@@ -87,6 +87,59 @@ def load_radar_state() -> dict:
     return data
 
 
+def publish_radar_state(state: dict, message: str) -> bool:
+    """把 state 寫檔**並發佈到跨 runner 的持久儲存**(git)。
+
+    2026-08-24 外審 r1:先落 pending 只寫到 runner 本機檔案 —— 而 state 是在
+    程式跑完之後由 workflow 的另一個 step 才 push 的。寄信成功、push 失敗
+    (或 runner 中途死掉)時,下一班是**全新 checkout**:看不到 pending,
+    於是重寄同一集。exactly-once 的佔位必須在寄送**之前**就是全域可見的。
+
+    本機/DRY_RUN 沒有 git 發佈這回事 —— 那時寫檔成功就算數(單機執行本來
+    就看得到自己寫的檔)。
+    """
+    if not save_radar_state(state):
+        return False
+    if not (os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("DRY_RUN") != "1"):
+        return True
+    try:
+        mr._git_commit_and_push_state([str(RADAR_STATE_FILE)], message)
+    except Exception as e:                      # noqa: BLE001
+        log(f"state 發佈失敗: {str(e)[:150]}")
+        return False
+    # `_git_commit_and_push_state` 自己吞 push 失敗(晨報不可斷),所以要
+    # **回讀確認**。判準是「遠端收到了嗎」——
+    # 2026-08-24 外審 r2:第一版查的是 `git status --porcelain`,而 push
+    # 失敗時 commit **已經建好**,工作區因此是乾淨的 → 確認通過、信照寄,
+    # 下一班全新 checkout 仍然看不到那筆 pending。查錯了東西比不查更糟,
+    # 因為它看起來像有在查。
+    # 正確的判準:本地有沒有領先上游的 commit(`@{u}..HEAD` 為 0 才是
+    # 「遠端已經有了」)。
+    try:
+        import subprocess
+        r = subprocess.run(["git", "rev-list", "--count", "@{u}..HEAD"],
+                           capture_output=True, text=True, timeout=15)
+        if r.returncode != 0:
+            log(f"發佈確認失敗(取不到上游): {(r.stderr or '')[:100]}")
+            return False
+        if (r.stdout or "").strip() not in ("0", ""):
+            log(f"本地仍領先上游 {r.stdout.strip()} 個 commit → 視為未發佈")
+            return False
+        # 工作區也要乾淨:commit 沒建成的話 push 也帶不走它。
+        r2 = subprocess.run(["git", "status", "--porcelain",
+                             str(RADAR_STATE_FILE)],
+                            capture_output=True, text=True, timeout=15)
+        if r2.returncode != 0 or (r2.stdout or "").strip():
+            log(f"state 仍有未提交變更 → 視為未發佈: "
+                f"{(r2.stdout or '').strip()[:80]}")
+            return False
+    except Exception as e:                      # noqa: BLE001
+        log(f"state 發佈確認失敗: {str(e)[:120]}")
+        return False
+    return True
+
+
 def save_radar_state(state: dict) -> bool:
     """寫入成功回 True。**失敗要說得出來**(2026-08-24 外審 P2):先前這裡
     吞掉例外、呼叫端照樣 `return 0` —— 信已經寄出但沒有留下紀錄,下一次
@@ -1004,10 +1057,20 @@ def process_new_episode() -> int:
         # **不得寄送**:重複寄信是使用者看得到的傷害,而且蓋不掉。
         log(f"雷達 state 讀不動,本班不寄送(原檔保留): {e}")
         return 2
+    # **卡在 pending 的集數要有人看見**(否則它只是靜靜地永遠不寄)。
+    _stuck = [e for sh in state.values() if isinstance(sh, dict)
+              for e in (sh.get("episodes") or [])
+              if isinstance(e, dict) and e.get("pending_since")
+              and not e.get("radar_sent_at")]
+    if _stuck:
+        log("⚠ 有 " + str(len(_stuck)) + " 集停在 pending(寄送與標記之間中斷):"
+            + "、".join(str(e.get("title") or e.get("guid"))[:30]
+                       for e in _stuck[:3])
+            + " —— **不自動重寄**(重複的信收不回來),請人工確認後補寄或清掉")
     found = pdg.find_new_episodes(cfg, state, limit=1)
     if not found:
         log("無股癌新集(或皆已處理)→ 不寄信")
-        return 0
+        return 2 if _stuck else 0
     entry, audio_url, dur = found[0]
     guid = str(entry.get("id") or entry.get("link") or entry.get("title") or "")
     title = str(entry.get("title", ""))[:120]
@@ -1069,24 +1132,52 @@ def process_new_episode() -> int:
             log(f"DRY_RUN 預覽寫入失敗: {e}")
         return 0
 
-    if not _deliver(html, subject):
-        log("寄信失敗 → 不標記(下次重試,deliver-then-mark)")
-        return 1
-
-    # 寄信成功才標記(deliver-then-mark):寫雷達自有 state;晨報讀此檔的 radar_sent_at 去重,
-    # 雷達本身不碰 podcast_digest.json(避免與 podcast-digest workflow 競寫)。
-    state.setdefault(cfg["key"], {"name": cfg["name"], "episodes": []})
+    # ---- 兩階段寄送(2026-08-24 外審 P2):**先落 pending,再寄。**
+    #
+    # 先前是 deliver-then-mark:寄出後才寫 state,寫檔失敗就只剩一行紅字,
+    # 而下一班 `find_new_episodes` 看不到這個 guid → **重寄同一封**。
+    # email 的副作用不對稱:漏一封可以補寄,重複寄出去的收不回來。
+    # 所以把「我要寄這一集」先變成 durable 事實 —— `find_new_episodes` 只看
+    # guid 在不在,pending 記錄天然就擋住第二次;真的漏寄時由人看 pending
+    # 決定補寄(fail-closed,不自動重試)。
     now_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    state[cfg["key"]]["episodes"].insert(0, {
+    show = state.setdefault(cfg["key"], {"name": cfg["name"], "episodes": []})
+    show["episodes"].insert(0, {
         "guid": guid, "title": title, "published": published,
-        "processed_at": now_iso, "radar_sent_at": now_iso,
+        "processed_at": now_iso, "pending_since": now_iso,
         "sectors": [{"name": s["name"], "stance": s["stance"]} for s in extract["sectors"]],
     })
-    state[cfg["key"]]["episodes"] = state[cfg["key"]]["episodes"][:20]
-    if not save_radar_state(state):
-        # 已寄出、但沒記下來。**這不是綠燈** —— 下次執行會重寄同一集,
-        # 而使用者收到的是重複的信。回非零讓 workflow 亮紅、有人看得到。
-        log("⚠ 已寄出但 state 未寫入 → 下次會重寄同一集,需人工確認")
+    show["episodes"] = show["episodes"][:20]
+    if not publish_radar_state(state, "chore: reserve gooaye radar send "
+                                      f"{guid[:40]} [skip ci]"):
+        # 佔不到位就**不寄**。佔位必須是**跨 runner** 可見的 —— 只寫本機
+        # 檔案的話,寄信成功而 workflow 的 push step 失敗時,下一班全新
+        # checkout 看不到 pending,照樣重寄。
+        log("⚠ pending 佔位未能發佈 → 本班不寄(避免無法記錄的寄送)")
+        return 1
+
+    if not _deliver(html, subject):
+        # 沒寄出去:把 pending 收回來,讓下一班可以正常重試。收不回來也
+        # 只是少寄一封(而不是重複寄),那是刻意選的方向。
+        show["episodes"] = [e for e in show["episodes"]
+                            if e.get("guid") != guid]
+        if not publish_radar_state(state, "chore: release gooaye radar "
+                                          f"reservation {guid[:40]} [skip ci]"):
+            log("⚠ 寄信失敗且 pending 收不回 → 這一集要人工確認是否補寄")
+        else:
+            log("寄信失敗 → pending 已收回,下次重試")
+        return 1
+
+    for ep in show["episodes"]:
+        if ep.get("guid") == guid:
+            ep.pop("pending_since", None)
+            ep["radar_sent_at"] = now_iso
+    if not publish_radar_state(state, "chore: update gooaye radar state "
+                                      "[skip ci]"):
+        # 已寄出、狀態停在 pending。**不會重寄**(guid 已在 state 裡),
+        # 但晨報的去重讀的是 `radar_sent_at` —— 它會以為沒寄過。回非零。
+        log("⚠ 已寄出但 radar_sent_at 未寫入 → 停在 pending,需人工確認"
+            "(不會重寄,但晨報今日可能不會對這一集去重)")
         return 1
     return 0
 

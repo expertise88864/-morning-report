@@ -288,6 +288,52 @@ def test_radar_state_roundtrip_and_processed_guids(tmp_path, monkeypatch):
     assert gr.save_radar_state({"x": 1}) is True    # 成功要說得出來
 
 
+def test_send_then_mark_failure_does_not_resend(monkeypatch, tmp_path):
+    """2026-08-24 外審 P2:上一批只修好了「別謊報成功」,exactly-once 仍不
+    存在 —— 程式自己承認「下次會重寄同一集」。email 的副作用不對稱:漏一封
+    可以補寄,重複寄出去的收不回來。所以改成**先落 pending、再寄**:
+    `find_new_episodes` 只看 guid 在不在,pending 記錄天然擋住第二次。"""
+    f = tmp_path / "radar.json"
+    monkeypatch.setattr(gr, "RADAR_STATE_FILE", f)
+    # 寄送成功、但標記 sent 的那一次寫檔失敗 → state 停在 pending
+    state = {"gooaye": {"name": "股癌", "episodes": [
+        {"guid": "g9", "title": "第 500 集", "pending_since": "2026-08-24T00:00:00Z"}]}}
+    gr.save_radar_state(state)
+    # 下一班:那個 guid 已經在 state 裡 → 不會被當成新集
+    found = [{"id": "g9"}, {"id": "g10"}]
+    picked = [e for e in found
+              if not any(ep.get("guid") == e["id"]
+                         for ep in gr.load_radar_state()["gooaye"]["episodes"])]
+    assert [e["id"] for e in picked] == ["g10"], picked
+    # 而且晨報的去重**不會**把它當成已寄(radar_sent_at 才是已寄的判準)
+    assert gr.radar_processed_guids() == set()
+    # 卡住的 pending 要有人看得見,而且不自動重寄
+    import inspect
+    src = inspect.getsource(gr.process_new_episode)
+    i = 0
+    seg = src[i:i + 2500]
+    assert "pending_since" in seg and "不自動重寄" in seg, seg[:400]
+
+
+def test_pending_is_written_before_the_send(monkeypatch, tmp_path):
+    """順序就是這條規則的全部:先寄再落 pending 等於沒有改。"""
+    import inspect
+    src = inspect.getsource(gr.process_new_episode)
+    i_pending = src.index('"pending_since": now_iso')
+    # pending 記錄**要帶那一集的 guid**:`find_new_episodes` 只比 guid,
+    # 少了它(或寫成空字串)這條佔位就攔不住第二次寄送。
+    rec = src[src.rindex("insert(0, {", 0, i_pending):i_pending]
+    assert '"guid": guid,' in rec, rec
+    # **佔位要 publish,不是只 save**(2026-08-24 外審 r1):state 是在程式
+    # 跑完後由 workflow 另一個 step 才 push 的 —— 寄信成功而 push 失敗時,
+    # 下一班是全新 checkout,看不到只寫在本機的 pending,照樣重寄。
+    i_save = src.index("if not publish_radar_state(state,", i_pending)
+    i_send = src.index("if not _deliver(html, subject):")
+    assert i_pending < i_save < i_send, (i_pending, i_save, i_send)
+    # 寄送失敗要把 pending 收回來(否則一次網路失敗就永久卡住那一集)
+    assert "e.get(\"guid\") != guid" in src[i_send:i_send + 600], src[i_send:i_send + 600]
+
+
 def test_delivered_but_unrecorded_is_not_a_green_run(monkeypatch, tmp_path):
     """2026-08-24 外審 P2:寄信成功之後 `save_radar_state` 吞掉例外、
     `process_new_episode` 照樣 `return 0`。信已經寄出但沒有留下
@@ -300,8 +346,8 @@ def test_delivered_but_unrecorded_is_not_a_green_run(monkeypatch, tmp_path):
     # 接線:寄送成功後拿到 False 必須回非零(不是只印一行 log)
     import inspect
     src = inspect.getsource(gr.process_new_episode)
-    i = src.index("if not save_radar_state(state):")
-    assert "return 1" in src[i:i + 400], src[i:i + 400]
+    i = src.rindex("if not publish_radar_state(state,")
+    assert "return 1" in src[i:i + 500], src[i:i + 500]
 
 
 # ===================== oneliner 加深(F)=====================
@@ -341,3 +387,53 @@ def test_stock_news_oneliner_empty_returns_dash(monkeypatch):
     monkeypatch.setattr(mr, "_feedparser_parse_url_with_timeout",
                         lambda u: _OLFeed([]))
     assert gr._stock_news_oneliner("2603", "長榮") == "—"
+
+
+def test_the_reservation_must_be_globally_visible_before_sending(monkeypatch,
+                                                                 tmp_path):
+    """2026-08-24 外審 r1/r2:pending 只寫 runner 本機檔案,而 state 是程式跑完
+    之後由 workflow 的另一個 step 才 push 的。寄信成功、push 失敗(或 runner
+    中途死掉)→ 下一班全新 checkout 看不到 pending → **重寄同一集**。
+    佔位必須在寄送之前就是跨 runner 可見的,而「可見」的判準是**遠端收到
+    了嗎** —— 不是工作區乾不乾淨(push 失敗時 commit 已經建好,工作區
+    正是乾淨的;查錯東西比不查更糟,因為它看起來像有在查)。"""
+    import subprocess
+    f = tmp_path / "radar.json"
+    monkeypatch.setattr(gr, "RADAR_STATE_FILE", f)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.delenv("DRY_RUN", raising=False)
+    calls = []
+    monkeypatch.setattr(gr.mr, "_git_commit_and_push_state",
+                        lambda paths, msg: calls.append((paths, msg)))
+
+    def _git(ahead="0", dirty="", rc=0):
+        class _R:
+            def __init__(self, out):
+                self.returncode, self.stdout, self.stderr = rc, out, ""
+
+        def run(cmd, *a, **k):
+            if "rev-list" in cmd:
+                return _R(ahead)
+            return _R(dirty)
+        monkeypatch.setattr(subprocess, "run", run)
+
+    _git()                          # push 成功:遠端已有、工作區乾淨
+    assert gr.publish_radar_state({"a": 1}, "msg") is True
+    assert calls and str(f) in calls[0][0], calls
+
+    # **這是 r2 抓到的那個洞**:push 失敗 → commit 還在本地(領先上游 1),
+    # 而工作區乾淨。舊判準會說「已發佈」,信照寄,下一班重寄。
+    _git(ahead="1", dirty="")
+    assert gr.publish_radar_state({"a": 1}, "msg") is False
+
+    _git(ahead="0", dirty=" M state/gooaye_radar.json")   # commit 沒建成
+    assert gr.publish_radar_state({"a": 1}, "msg") is False
+
+    _git(rc=1)                      # 取不到上游 → 證不出來就不算發佈
+    assert gr.publish_radar_state({"a": 1}, "msg") is False
+
+    # 本機/DRY_RUN 沒有 git 發佈這回事:寫檔成功就算數
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    calls.clear()
+    assert gr.publish_radar_state({"a": 1}, "msg") is True
+    assert not calls, "本機執行不該去動 git"

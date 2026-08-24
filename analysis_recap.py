@@ -614,13 +614,29 @@ def usable_watch(recap, target_session_date: str) -> list:
     return out
 
 
-def usable(recap, target_session_date: str) -> list:
-    """**同日重跑不得自比。** 只有日期**早於**今天交易日的觀點可用 ——
-    等於今天的是同日重跑寫進去的,拿它比就是「今天比今天」,
-    會產生假的強化/推翻。晚於今天的是時鐘或資料錯亂,同樣不可用。"""
+def usable(recap, target_session_date: str,
+           previous_session: str = "") -> list:
+    """**同日重跑不得自比,而且「昨日」要真的是上一個交易日。**
+
+    同日重跑:今天寫進去的觀點拿來比就是「今天比今天」,會產生假的
+    強化/推翻;晚於今天的是時鐘或資料錯亂。這兩條原本就有。
+
+    2026-08-24 外審 P2 加的是第三條:先前只要求 `date < 今天`,於是
+    **任何多久以前的觀點都會被掛成「昨日觀點」**。這不是假設性的 ——
+    08/24 那班 Luna 因 `PayloadBudgetExceeded` 落回 legacy,recap 就停在
+    08/21;08/25 一旦恢復,四天前、而且中間漏掉一個真正交易日(08/24)的
+    觀點會被當成昨天,而 prompt 與渲染的語意都是「昨日觀點 vs 今日新證據」。
+
+    `previous_session` 給 `market.LAST_TRADING_SESSION`(Python 從交易日曆
+    算的,不是日期減一)。給了就必須**正好相等**:週五 → 週一仍然成立
+    (上一個交易日就是週五),週五 → 週二則不成立(中間隔了週一)。
+    沒給(舊呼叫端/測試)時退回原本的判準 —— 但生產路徑一律要給。
+    """
     r = recap if isinstance(recap, dict) else {}
     date = str(r.get("date") or "")
     if not date or not target_session_date or date >= str(target_session_date):
+        return []
+    if previous_session and date != str(previous_session):
         return []
     return [dict(it, date=date) for it in (r.get("items") or [])
             if isinstance(it, dict) and str(it.get("statement") or "").strip()]

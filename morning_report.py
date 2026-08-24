@@ -13970,8 +13970,53 @@ def _repair_evidence_hints(problems: list, packet: dict) -> list[str]:
 _REPAIR_SLICE_MAX = 80
 
 
+
+
+#: 證據 ID 的詞法:**以分隔符斷詞**,不是以字元集列舉 —— 列舉會漏掉
+#: 中文路徑段(`…sectors.半導體業.median_pct`)。冒號與點是 ID 的一部分,
+#: 不能當分隔符;JSON 的 `"key": "value"` 冒號兩側有引號,會先被斷開。
+_ID_TOKEN = r"[^\s\"'`,,、。;;!?()()\[\]{}<>」「【】]+"
+
+
+def _problem_named_ids(problems, hints, legal) -> list:
+    """驗證問題**明確點名**的證據 ID(照它們在問題裡出現的順序)。
+
+    2026-08-24 外審 P2:先前優先序是 `i for i in legal if i in tail`,而
+    `tail` 同時裝著問題清單**與整份 PREVIOUS_OUTPUT** —— 「這一條問題要看
+    的東西」與「前一版任何地方引用過的東西」壓成同一格,再依 ID 字母排序
+    取前 80 筆。`n…` 排在 `tension:…` 前面,於是前一版引用 80 則新聞的那天,
+    validator 唯一點名的 `tension:t_rates_vs_tech` 會排在第 81 位被砍掉 ——
+    **size cap 首先丟掉最需要修的那一筆**,而系統還會告訴模型「這個 ID
+    本輪看不到,不得保留」。
+
+    另外 `in tail` 是子字串比對:`market:MACRO` 會因為 tail 裡出現
+    `market:MACRO.10Y.close` 而被算成點名,一路吃掉名額。這裡改成
+    **錨定的 ID 詞法**(前後不接 ID 的合法字元),只認真的被寫出來的那個。
+    """
+    import re as _re
+    legal_set = set(legal)
+    out: list = []
+    # 詞法要涵蓋**兩種形狀**的合法 ID:帶命名空間的(`market:MACRO.10Y.close`、
+    # `gazette:167811`)與**裸的新聞 ID**(`n1283` —— 沒有冒號,而它正是最常
+    # 被點名的一類;只認冒號形狀的話,新聞的點名一筆都收不到)。
+    # 取**完整的詞**再查表:子字串比對會讓 `market:MACRO` 因為文字裡出現
+    # `market:MACRO.10Y.close` 而被算成點名,一路吃掉名額。
+    for text in list(problems or []) + list(hints or []):
+        # **詞法不能只認 ASCII**(2026-08-24 外審 r2):合法 ID 會帶中文
+        # 路徑段(`market:SECTOR_HEAT.sectors.半導體業.median_pct` —— 由
+        # `signal_tensions` 產生)。ASCII 詞法在「半」就停住,那筆真正的
+        # 引用整條掉進第 3 層,而且不會有 unseen 警告。改成**切分隔符**:
+        # ID 允許的字元(含 CJK)都留在詞裡,只有空白/引號/標點會斷開。
+        for tok in _re.findall(_ID_TOKEN, str(text)):
+            tok = tok.rstrip(".,;:-")
+            if tok in legal_set and tok not in out:
+                out.append(tok)
+    return out
+
+
 def _repair_request_payload(payload: dict, user_payload: str, tail: str,
-                            packet: dict) -> tuple:
+                            packet: dict, *, problems=None,
+                            hints=None) -> tuple:
     """修補輪的請求 payload:裝得下就附完整資料包,裝不下就切 slim。
 
     2026-08-22 生產(外審 P2-2 的另一半,當時記了待辦):packet 修剪到
@@ -14002,11 +14047,34 @@ def _repair_request_payload(payload: dict, user_payload: str, tail: str,
         legal = sorted(_ep.evidence_ids(packet))
     except Exception:                   # noqa: BLE001 - 索引壞了仍要修補
         legal = []
-    # **優先序**:問題點名/前一版引用過的(都在 tail 裡)→ 其餘候選。
-    # 前者是「修這一條需要看到的東西」,後者是「要新增一條有證據的 claim
-    # 時挑得到的東西」—— 沒有後者,模型只能不補或亂猜。
-    named = [i for i in legal if i in tail]
-    rest = [i for i in legal if i not in tail]
+    # 「前一版引用過」要只看前一版那一段。整個 tail 還含問題清單與指示
+    # 文字 —— 拿它當「引用過」的判準,等於把第 1 層與第 2 層再混一次。
+    #
+    # **形狀要照生產的那個**(2026-08-24 外審 r1):`llm_postprocess` 送出的
+    # 是裸的 `PREVIOUS_OUTPUT` 標題 + `<UNTRUSTED_SOURCE_DATA>` 圍欄,
+    # **沒有** `<PREVIOUS_OUTPUT>` 尖括號標籤。我第一版照著自己捏的形狀
+    # 抓,生產永遠抓不到 → 整段退回 tail,等於這個修正沒有發生
+    # (而測試自己捏了同一個假形狀,所以是綠的)。
+    _i = tail.find("PREVIOUS_OUTPUT")
+    prev_json = ""
+    if _i >= 0:
+        _j = tail.find("</UNTRUSTED_SOURCE_DATA>", _i)
+        prev_json = tail[_i:_j if _j > 0 else len(tail)]
+    # **優先序是三層,不是兩層**(2026-08-24 外審 P2):
+    #   1. 問題明確點名的 —— 修這一條非看不到不可,任何上限都不得砍它;
+    #   2. 前一版引用過的 —— 「沒點到的照抄」要抄得出來;
+    #   3. 其餘候選 —— 要新增一條有證據的 claim 時挑得到的東西。
+    # 前兩層先前混成同一格再按字母排序,於是 cap 會先砍掉第 1 層。
+    problem_ids = _problem_named_ids(problems, hints, legal)
+    # 第 2 層也走**完整詞**比對(`_problem_named_ids` 同一支):`i in prev_json`
+    # 是子字串,前一版寫 `market:MACRO.10Y.close` 會把父節點 `market:MACRO`
+    # 一起算成「引用過」,佔掉上限而真正被引用的葉節點反而被砍。
+    _seen = set(problem_ids)
+    prior = [i for i in _problem_named_ids([prev_json], [], legal)
+             if i not in _seen]
+    _seen |= set(prior)
+    rest = [i for i in legal if i not in _seen]
+    named = problem_ids + prior
     prefix = (
         "(修補輪:因請求長度限制,本輪**不重附完整資料包**。這是一次"
         "獨立的推論 —— 下面 REPAIR_EVIDENCE 圍欄裡的內容就是你這一輪看得到"
@@ -14609,7 +14677,8 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                           if _parse_exc else ""))
         # 2026-08-22 生產:修補請求裝不下硬閘門時切 slim(理由見 helper)。
         payload, _slim_rec = _repair_request_payload(
-            payload, bundle["user_payload"], _tail, packet)
+            payload, bundle["user_payload"], _tail, packet,
+            problems=_base_problems, hints=_hints)
         # 下一輪模型看得到內容的 ID(完整資料包 = None,不受限)
         _sent_visible = _slim_rec.get("visible_ids") if _slim_rec else None
         if _slim_rec is not None:
@@ -20330,6 +20399,22 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
                 if d == x["date"] and x["home"] and x["home"] in home_full:
                     x["venue"] = field
                     break
+        # **「本機測得到、Actions 可能永遠測不到」的功能要留下痕跡**
+        # (2026-08-24 外審 P3)。CPBL 官網對 GitHub Actions 的海外 IP 可能
+        # geo-block —— 那時賽程照出、場地永遠空,而信照樣寄成功、run-quality
+        # 也看不出使用者要的「地點」其實從未在生產工作過。stderr 一行在
+        # 隔天就沖掉了,manifest 才留得住。
+        _matched = sum(1 for x in out if x.get("venue"))
+        _RUN_MANIFEST.setdefault("sports", {})["cpbl_venue"] = {
+            "attempted": True, "fixtures": len(out), "matched": _matched,
+            "source": "cpbl.com.tw",
+            # 一筆都沒對上 ≠ 抓失敗:也可能是隊名對不上。分開記,
+            # 因為處置不同(前者查 IP/端點,後者查對照邏輯)。
+            "reason": ("" if _matched else
+                       "fetch_empty" if not venues else "no_match"),
+        }
+        if out and not _matched:
+            _DEGRADED_STEPS.append("sports:cpbl_venue_missing")
     return out
 
 
@@ -24137,11 +24222,28 @@ def _phase_events_and_models(ctx) -> None:
     # **只對 `usable()` 的觀點派 ID**(同批外審 r2):同日重跑時 state 已是
     # 今天剛存的觀點,無條件派 ID 等於繞過既有的同日防線 —— 模型拿今天
     # 比今天,產生假的持續/強化/反轉,而 validator 還認那個 ID。
+    # **「昨日」要真的是上一個交易日**(2026-08-24 外審 P2):先前只要求
+    # 早於今天,於是任何多久以前的觀點都會被派 `pv…` 掛成昨日觀點。
+    # 08/24 那班落 legacy、recap 停在 08/21,08/25 恢復時就會把四天前
+    # (而且中間漏掉 08/24 這個真正交易日)的觀點講成昨天。
+    _prev_sess = str(quotes.get("LAST_TRADING_SESSION") or "")
+    _recap_ok = _arc.usable(_recap_state, target_session_date, _prev_sess)
+    if _prev_sess and _recap_state.get("items") and not _recap_ok             and str(_recap_state.get("date") or "") < target_session_date:
+        # **不是昨天的就不要冒充昨天。** 整包不進 packet —— 留著的話
+        # `ANALYSIS_RECAP` 仍會序列化進 Luna 的 payload,而 prompt 明說
+        # 那是「昨日觀點」。降級要記(靜默地少一段,沒有人查得出原因)。
+        _DEGRADED_STEPS.append(
+            f"recap:not_previous_session:{_recap_state.get('date')}")
+        # **只隔離觀點,不動觀察點帳本**(2026-08-24 外審 r1):`watch` 有
+        # 自己的逐筆生命週期(`carry_watch` 讓 `not_triggered` 活到各自的
+        # deadline,`usable_watch` 也按每筆 created/deadline 判定)—— 它不
+        # 依賴「整份 recap 是不是上一個交易日」。整包清掉會讓那天的模型
+        # 一條開放觀察點都不回顧,而那是另一種靜默。
+        _recap_state = dict(_recap_state, items=[])
     quotes["ANALYSIS_RECAP"] = dict(
         _recap_state,
         items=[dict(it, id=f"pv{_i + 1}")
-               for _i, it in enumerate(
-                   _arc.usable(_recap_state, target_session_date))])
+               for _i, it in enumerate(_recap_ok)])
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)
     quotes["SOURCE_HEALTH"] = build_source_health_report(
         tw0050, news, structured_events)

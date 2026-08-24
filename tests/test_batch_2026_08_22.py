@@ -462,11 +462,12 @@ def test_gazette_records_are_citable_like_news():
     assert "gazette:167811" in ids and "gazette:167812" in ids, sorted(ids)[:8]
     # 切片解得出**內容**(標題就是它的意義所在,與 fact 的 quote 同理)
     got = ep.evidence_snippets(pk, ["gazette:167811"], budget_chars=9999)
-    assert got["gazette:167811"]["quote"] == "銀行法部分條文修正"
+    assert got["gazette:167811"]["title"] == "銀行法部分條文修正"
     assert got["gazette:167811"]["source"] == "行政院公報"
     # **新鮮度用公報自己的出刊日**,不是 packet 當日(週末補抓的是前一
     # 出刊日的公報;讀不存在的 `date` 會一律退回今天,把舊公報標成新的)
-    assert got["gazette:167811"]["as_of"] == "2026-08-21", got["gazette:167811"]
+    meta = ep.evidence_meta(pk)["gazette:167811"]
+    assert meta["as_of"] == "2026-08-21", meta
     # 模型讀到的**素材塊裡看得到這個 id**(先前那裡沒印過任何 id 欄位,
     # 模型只能從內文或連結猜一個數字 —— 必然對不上 registry)
     block = tps.format_gazette_block(recs, lambda v, n=0: str(v or "")[:n or 999])
@@ -609,3 +610,312 @@ def test_visible_ids_only_contains_what_the_model_can_read(monkeypatch):
         assert rec["visible_ids"] <= {_TID, "market:QQQ"}
         for vid in rec["visible_ids"]:
             assert vid in out["input"], vid
+
+
+def test_gazette_slice_carries_what_the_policy_prompt_demands():
+    """2026-08-24 外審 P1:`gazette:*` 走 generic metadata branch,切出來只有
+    `quote = 標題`。而 prompt 對 `taiwan_policy.impact` 要的是「修了什麼、
+    適用對象、生效日、對產業/公司怎麼傳導、什麼情況下低於預期」—— 那不是
+    知道法規名稱就能回答的。修補輪是**另一次無狀態推論**:模型看得到一個
+    合法 ID、看不到法令內容,只能把 `source_item_id` 補上去而 impact 憑
+    第一輪的記憶重寫,驗證器卻只驗 ID 存在 → 假引用通過。"""
+    import evidence_packet as ep
+    import tw_policy_sources as tps
+    recs = tps.parse_gazette_xml(
+        "<G><R><MetaId>167811</MetaId><Title>銀行法部分條文修正</Title>"
+        "<Category>[520]金融</Category>"
+        "<PubGovName>金融監督管理委員會</PubGovName>"
+        "<Date_Published>2026-08-21</Date_Published>"
+        "<Comment_Deadline>2026-09-30</Comment_Deadline>"
+        "<ThemeSubject>本案為法規草案預告,調整銀行資本適足率計算</ThemeSubject>"
+        "<Explain>配合巴塞爾協定,提高第一類資本比率下限</Explain>"
+        "<HTMLContent>&lt;p&gt;第四十四條之一修正為…&lt;/p&gt;</HTMLContent>"
+        "<Keyword>資本適足率;銀行法;巴塞爾</Keyword></R></G>")
+    pk = ep.build({"GAZETTE_RECORDS": recs}, {}, {}, [], [], {},
+                  as_of="2026-08-24", target_session_date="y", sanitize=str)
+    body = ep.evidence_snippets(pk, ["gazette:167811"],
+                                budget_chars=9999)["gazette:167811"]
+    # prompt 逐項要的東西,切片裡都要找得到
+    for field in ("title", "publisher", "date_published", "theme_subject",
+                  "explain", "content", "keywords"):
+        assert body.get(field), (field, body)
+    # **草案 vs 已定案**:少了截止日,模型會把草案寫成既成事實
+    assert body["comment_deadline"] == "2026-09-30", body
+    assert "第一類資本" in body["explain"] and "第四十四條" in body["content"]
+    # 但仍要有界:法令原文可以很長,切片不是重送整篇
+    assert len(body["content"]) <= 800 and len(body["explain"]) <= 500
+    # 沒有內容的公報不得端出空殼(語意充分性那條規則要照樣適用)
+    pk2 = ep.build({"GAZETTE_RECORDS": [{"meta_id": "9"}]}, {}, {}, [], [],
+                   {}, as_of="x", target_session_date="y", sanitize=str)
+    assert "gazette:9" not in ep.evidence_snippets(pk2, ["gazette:9"],
+                                                   budget_chars=9999)
+
+
+def test_the_item_cap_never_drops_what_the_problem_named(monkeypatch):
+    """2026-08-24 外審 P2:80 筆上限的優先序只有兩層 —— 「問題點名的」與
+    「前一版引用過的」壓成同一格,再依 ID 字母排序。`n…` 排在 `tension:…`
+    前面,所以前一版引用 80 則新聞的那天,validator 唯一點名的
+    `tension:t_rates_vs_tech` 排在第 81 位被砍掉。**size cap 首先丟掉最
+    需要修的那一筆**,而系統還會告訴模型「這個 ID 本輪看不到」。"""
+    import evidence_packet as ep
+    import signal_tensions as st
+    quotes = {"QQQ": {"close": 700.0, "change_pct": 2.1},
+              "MACRO": {"10Y": {"close": 4.74, "prev_close": 4.59}}}
+    news = [{"source_item_id": f"n{i:03d}", "title": f"新聞{i}",
+             "summary": "內容", "source_name": "來源", "entities": []}
+            for i in range(120)]
+    pk = ep.build(quotes, {}, {}, news, [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    pk["signal_tensions"] = st.detect(quotes)
+    tid = "tension:t_rates_vs_tech"
+    assert tid in ep.evidence_ids(pk)
+
+    # 前一版引用了 100 則新聞;問題只點名那條張力
+    # **用生產真正組出來的 tail**(不是自己捏的形狀):`llm_postprocess`
+    # 送的是裸的 `PREVIOUS_OUTPUT` 標題 + `<UNTRUSTED_SOURCE_DATA>` 圍欄,
+    # 沒有尖括號標籤 —— 捏一個不存在的形狀,量到的是另一個系統。
+    import llm_postprocess as lp
+    prev = json.dumps({"cited": [f"n{i:03d}" for i in range(100)]},
+                      ensure_ascii=False)
+    problems = [f"{tid} 的多空衝突沒有 net effect"]
+    tail = lp.repair_instruction(problems, [], previous_json=prev)
+    assert "PREVIOUS_OUTPUT" in tail and "<PREVIOUS_OUTPUT>" not in tail
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, tail, pk,
+        problems=problems, hints=[])
+    assert rec and rec["mode"] == "evidence_slice", rec
+    assert rec["evidence_items"] <= mr._REPAIR_SLICE_MAX
+    assert tid in rec["visible_ids"], (
+        "問題點名的證據被 80 筆上限砍掉了", sorted(rec["visible_ids"])[:5])
+    assert tid in out["input"], "點名的證據沒有真的進到請求裡"
+
+
+def test_the_production_call_site_actually_passes_the_problems():
+    """接線:上面兩條都在直接呼叫 helper —— 生產呼叫端不傳 `problems`
+    的話,第一層永遠是空的而測試照樣全綠(這個 repo 記過:沒有呼叫端的
+    參數等於那個 docstring 是假的)。"""
+    import ast
+    import inspect
+    src = io.open(Path(mr.__file__), encoding="utf-8").read()
+    calls = [n for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.Call)
+             and getattr(n.func, "id", "") == "_repair_request_payload"]
+    assert calls, "找不到 _repair_request_payload 的呼叫端"
+    for c in calls:
+        kw = {k.arg for k in c.keywords}
+        assert {"problems", "hints"} <= kw, sorted(kw)
+        # 而且傳的不是常數 None(那與沒傳一樣)
+        for k in c.keywords:
+            if k.arg in ("problems", "hints"):
+                assert not (isinstance(k.value, ast.Constant)
+                            and k.value.value is None), k.arg
+    del inspect
+
+
+def test_a_parent_path_is_not_named_by_its_child(monkeypatch):
+    """`in tail` 是子字串比對:tail 出現 `market:MACRO.10Y.close` 時,
+    `market:MACRO` 也會被算成「問題點名」,一路吃掉 80 筆的名額。"""
+    legal = ["market:MACRO", "market:MACRO.10Y.close", "n1"]
+    got = mr._problem_named_ids(["引用了不存在的證據 ID:"
+                                 "'market:MACRO.10Y.close'"], [], legal)
+    assert got == ["market:MACRO.10Y.close"], got
+    # 點名的順序就是優先序(問題先出現的先進切片)
+    assert mr._problem_named_ids(["n1 與 market:MACRO 都有問題"], [],
+                                 legal) == ["n1", "market:MACRO"]
+    # **裸的新聞 ID 也要收得到**(`n1283` 沒有冒號,而它正是最常被點名的
+    # 一類):只認冒號形狀的詞法會讓新聞的點名一筆都進不了第一層。
+    assert mr._problem_named_ids(
+        ["top_news_analysis[3] 引用了不存在的證據 ID:'n1283'"], [],
+        legal + ["n1283"]) == ["n1283"]
+
+
+def _recap(date, n=2):
+    return {"date": date,
+            "items": [{"statement": f"觀點{i}", "entities": ["2330"]}
+                      for i in range(n)]}
+
+
+def test_yesterday_view_must_be_the_previous_trading_session():
+    """2026-08-24 外審 P2:`usable()` 只檢查 `recap.date < 今天`,於是**任何
+    多久以前的觀點都會被掛成「昨日觀點」**。這不是假設 —— 08/24 那班 Luna
+    因 `PayloadBudgetExceeded` 落回 legacy,`state/analysis_recap.json` 就停在
+    08/21;08/25 一旦恢復,四天前、而且中間漏掉一個真正交易日(08/24)的
+    觀點會被當成昨天,而 prompt 與渲染的語意都是「昨日觀點 vs 今日新證據」。"""
+    import analysis_recap as ar
+    # 週五 → 週一:上一個交易日就是週五,成立(不可以把週末誤判成 stale)
+    assert ar.usable(_recap("2026-08-21"), "2026-08-24", "2026-08-21")
+    # 週五 → 週二:中間隔了真正的交易日 08/24,不是昨天
+    assert ar.usable(_recap("2026-08-21"), "2026-08-25", "2026-08-24") == []
+    # 同日重跑仍然擋(原本的防線不得因為這批而消失)
+    assert ar.usable(_recap("2026-08-25"), "2026-08-25", "2026-08-24") == []
+    # 沒有交易日曆時退回舊判準(不因為算不出來就整段消失)
+    assert ar.usable(_recap("2026-08-21"), "2026-08-25", "")
+
+
+def test_a_stale_recap_does_not_reach_the_prompt_at_all(monkeypatch):
+    """只修 `_yview` 不夠:`ANALYSIS_RECAP` 本身也會整包序列化進 Luna 的
+    payload,而 prompt 明說那是「昨日觀點」。所以整段不進 quotes,而且
+    **降級要記在真正有消費端的管道**(先前我在 packet 裡自己發明了一個
+    `degraded` 鍵 —— 沒有人讀,等於靜默)。"""
+    import run_quality as rq
+    # 消費端認得這個後綴開放的家族(不會被報成「沒見過的降級」)
+    got = rq.assess({"report_kind": rq.MORNING_REPORT,
+                     "degraded_steps": ["recap:not_previous_session:2026-08-21"],
+                     "llm": {"analysis_origin": "specialized"}})
+    codes = {f["code"] for f in got}
+    assert "recap_not_previous_session" in codes, codes
+    assert "unknown_degradation" not in codes, got
+    # 專屬 finding 說得出停在哪一天(catch-all 只會說「沒見過」)
+    detail = [f["detail"] for f in got
+              if f["code"] == "recap_not_previous_session"][0]
+    assert "2026-08-21" in detail, detail
+    # 別的新標籤照樣要被抓(豁免只給這個家族,不是後門)
+    codes2 = {f["code"] for f in rq.assess(
+        {"report_kind": rq.MORNING_REPORT, "degraded_steps": ["recap:whatever"],
+         "llm": {"analysis_origin": "specialized"}})}
+    assert "unknown_degradation" in codes2, codes2
+
+
+def test_the_quotes_boundary_drops_the_stale_recap_and_records_it():
+    """接線:上面兩條驗的是判準與消費端,生產邊界少一行就全部落空。
+    這裡對 `main()` 那一段做結構檢查 —— 它必須(1)拿上一個交易日當判準、
+    (2)不可用時把 items 清掉、(3)把降級記進 `_DEGRADED_STEPS`。"""
+    src = io.open(Path(mr.__file__), encoding="utf-8").read()
+    i = src.index("_recap_ok = _arc.usable(")
+    seg = src[i:src.index('quotes["FEATURE_DRIFT"]', i)]
+    assert "_prev_sess" in seg, seg
+    assert "recap:not_previous_session" in seg, seg
+    assert "_DEGRADED_STEPS.append" in seg, seg
+    # 清掉的是**觀點**,不是整份 state:`watch` 有自己的逐筆期限
+    # (`carry_watch` 讓 not_triggered 活到各自的 deadline),整包清掉會讓
+    # 那天一條開放觀察點都不回顧 —— 那是另一種靜默。
+    assert "dict(_recap_state, items=[])" in seg, seg
+
+
+def test_cpbl_venue_leaves_a_trace_when_geo_blocked(monkeypatch):
+    """2026-08-24 外審 P3:CPBL 官網對 GitHub Actions 的海外 IP 可能
+    geo-block —— 那時賽程照出、場地永遠空,而信寄送成功、run-quality 也看不出
+    使用者要的「地點」其實從未在生產工作過。stderr 隔天就沖掉了。"""
+    import datetime as dt
+    import run_quality as rq
+    mr._RUN_MANIFEST.pop("sports", None)
+    mr._DEGRADED_STEPS.clear()
+    monkeypatch.setattr(mr, "_cpbl_venue_map", lambda *a, **k: {})
+
+    class _R:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"service": {"scoreboard": {
+                "games": {"g1": {"status_type": "pregame",
+                                 "start_time": "Tue, 25 Aug 2026 10:35:00 GMT",
+                                 "away_team_id": "a", "home_team_id": "h"}},
+                "teams": {"a": {"display_name": "統一"},
+                          "h": {"display_name": "中信"}}}}}
+
+    monkeypatch.setattr(mr, "_http_get_json", lambda *a, **k: _R().json(),
+                        raising=False)
+    monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _R())
+    got = mr.fetch_cpbl_today_fixtures(dt.datetime(2026, 8, 24, 6,
+                                                   tzinfo=mr.TPE))
+    assert got, "上游 fixture 沒組出來,量不到這條規則"
+    slot = mr._RUN_MANIFEST["sports"]["cpbl_venue"]
+    assert slot["fixtures"] and slot["matched"] == 0
+    assert slot["reason"] == "fetch_empty", slot
+    assert "sports:cpbl_venue_missing" in mr._DEGRADED_STEPS
+    # 消費端認得(不是「沒見過的降級」)
+    codes = {f["code"] for f in rq.assess(
+        {"report_kind": rq.MORNING_REPORT,
+         "degraded_steps": ["sports:cpbl_venue_missing"],
+         "llm": {"analysis_origin": "specialized"}})}
+    assert "unknown_degradation" not in codes, codes
+
+
+def test_prior_layer_does_not_credit_a_parent_path():
+    """2026-08-24 外審 r1:第 2 層用 `i in prev_json` 是子字串 —— 前一版寫
+    `market:MACRO.10Y.close`,父節點 `market:MACRO` 也會被算成「引用過」而
+    佔掉 80 筆的名額(registry 兩者都註冊)。而且第一版抓前一版那一段用的是
+    自己捏的 `<PREVIOUS_OUTPUT>` 尖括號標籤 —— 生產送的是裸標題 +
+    `<UNTRUSTED_SOURCE_DATA>` 圍欄,所以那段整個退回 tail,修正等於沒發生。"""
+    import evidence_packet as ep
+    import llm_postprocess as lp
+    pk = ep.build({"MACRO": {"10Y": {"close": 4.74}}}, {}, {},
+                  [{"source_item_id": f"n{i:03d}", "title": "t",
+                    "summary": "s"} for i in range(100)],
+                  [], {}, as_of="x", target_session_date="y", sanitize=str)
+    legal = sorted(ep.evidence_ids(pk))
+    assert "market:MACRO" in legal and "market:MACRO.10Y.close" in legal
+    prev = json.dumps({"cited": ["market:MACRO.10Y.close"]},
+                      ensure_ascii=False)
+    tail = lp.repair_instruction(["某條有問題"], [], previous_json=prev)
+    # 生產形狀:抓得到前一版那一段(抓不到就整段退回 tail = 修正沒發生)
+    i = tail.find("PREVIOUS_OUTPUT")
+    j = tail.find("</UNTRUSTED_SOURCE_DATA>", i)
+    assert i >= 0 and j > i, tail[:200]
+    got = mr._problem_named_ids([tail[i:j]], [], legal)
+    assert got == ["market:MACRO.10Y.close"], got
+
+    # **端到端**:上面驗的是 helper,第 2 層真的用它才算數。把上限壓到 1,
+    # 名額只夠一筆 —— 那一筆必須是真正被引用的葉節點,不是父節點。
+    # (父節點字母序在前,子字串版會先拿到它。)
+    monkey = mr._REPAIR_SLICE_MAX
+    try:
+        mr._REPAIR_SLICE_MAX = 1
+        out, rec = mr._repair_request_payload(
+            {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, tail, pk,
+            problems=["某條有問題"], hints=[])
+    finally:
+        mr._REPAIR_SLICE_MAX = monkey
+    if rec and rec["mode"] == "evidence_slice":
+        assert rec["visible_ids"] == {"market:MACRO.10Y.close"}, (
+            "第 2 層還在用子字串:父節點佔掉了名額", rec["visible_ids"])
+
+
+def test_a_stale_recap_keeps_its_open_watch_points():
+    """2026-08-24 外審 r1:stale 分支把整份 state 換掉,連 `watch` 一起丟。
+    但觀察點有**自己的逐筆生命週期** —— `carry_watch` 讓 not_triggered 活到
+    各自的 deadline,`usable_watch` 也按每筆 created/deadline 判定,它不依賴
+    「整份 recap 是不是上一個交易日」。整包清掉 = 那天一條開放觀察點都不
+    回顧,而 state 檔本身沒變(`save()` 從磁碟讀 prior),所以只有那一天
+    靜靜地少一整段。"""
+    import analysis_recap as ar
+    state = {"date": "2026-08-21", "watch_seq": 2,
+             "items": [{"statement": "觀點", "entities": ["2330"]}],
+             "watch": [{"id": "w1", "status": ar.WATCH_OPEN,
+                        "trigger": "外資轉買超", "why": "why",
+                        "horizon": "1-4w", "created": "2026-08-21",
+                        "deadline": "2026-09-18"}]}
+    # 觀點不可用(不是上一個交易日)……
+    assert ar.usable(state, "2026-08-25", "2026-08-24") == []
+    # ……但觀察點照它自己的期限仍然開著
+    assert ar.usable_watch(state, "2026-08-25"), "開放觀察點被連坐了"
+    # 生產邊界隔離的是觀點,不是整份 state
+    stale = dict(state, items=[])
+    assert stale.get("watch") and stale.get("watch_seq") == 2
+    assert ar.usable_watch(stale, "2026-08-25")
+
+
+def test_id_lexeme_survives_a_chinese_path_segment():
+    """2026-08-24 外審 r2:合法 ID 會帶中文路徑段(`signal_tensions` 產生的
+    `market:SECTOR_HEAT.sectors.半導體業.median_pct`)。ASCII 詞法在「半」就
+    停住 —— 那筆真正的引用整條掉進第 3 層,80 筆上限之下就被砍掉,而且
+    因為它仍是合法 ID,驗證器照樣接受模型從前一版照抄的引用,連 unseen
+    警告都不會有。"""
+    legal = ["market:SECTOR_HEAT.sectors.半導體業.median_pct",
+             "market:MACRO", "market:MACRO.10Y.close", "n1283"]
+    got = mr._problem_named_ids(
+        ["cross_market_synthesis 引用了不存在的證據 ID:"
+         "'market:SECTOR_HEAT.sectors.半導體業.median_pct'"], [], legal)
+    assert got == ["market:SECTOR_HEAT.sectors.半導體業.median_pct"], got
+    # 前一版那一段是 JSON:引號會斷詞,ID 本身完整留下
+    prev = json.dumps({"evidence_ids": [
+        "market:SECTOR_HEAT.sectors.半導體業.median_pct", "n1283"]},
+        ensure_ascii=False)
+    assert set(mr._problem_named_ids([prev], [], legal)) == {
+        "market:SECTOR_HEAT.sectors.半導體業.median_pct", "n1283"}
+    # 而且仍然不得把父路徑算進來(修中文不能把上一條修正弄壞)
+    assert mr._problem_named_ids(["寫了 market:MACRO.10Y.close"], [],
+                                 legal) == ["market:MACRO.10Y.close"]

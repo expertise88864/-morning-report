@@ -166,9 +166,13 @@ def test_only_usable_recap_items_get_pv_ids():
     from pathlib import Path
     src = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
                   encoding="utf-8").read()
-    i = src.index('quotes["ANALYSIS_RECAP"] = dict(')
-    seg = src[i:i + 400]
-    assert "_arc.usable(_recap_state, target_session_date)" in seg, seg
+    i = src.index('_recap_ok = _arc.usable(')
+    seg = src[i:src.index("quotes[\"FEATURE_DRIFT\"]", i)]
+    assert "_arc.usable(_recap_state, target_session_date" in seg, seg
+    assert "enumerate(_recap_ok)" in seg, seg
+    # **而且要把上一個交易日一起傳**(2026-08-24 外審 P2):少了它,
+    # 任何多久以前的觀點都會被派 pv id 掛成「昨日觀點」。
+    assert "_prev_sess" in seg and "LAST_TRADING_SESSION" in src[i - 400:i]
 
 
 def test_numeric_and_period_tokens_are_not_literal_subjects():

@@ -335,8 +335,14 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 而模型先前沒有 diff 的對象。同日重跑的守衛在 `usable`(拿今天比
     # 今天會產生假的強化/推翻);比對身分與 continuing_days 同一套。
     import analysis_recap as _rc
+    # **新鮮度在 packet 邊界解掉**(2026-08-24 外審 P2):只修 `_yview` 不夠,
+    # `ANALYSIS_RECAP` 本身也會整包送進 Luna,而 prompt 明說那是「昨日觀點」。
+    # 判準是**上一個交易日**(Python 從交易日曆算的),不是「比今天早」。
+    _prev_session = str((packet["market"] or {}).get("LAST_TRADING_SESSION")
+                        or "")
     _recap_items = _rc.usable(packet["market"].get("ANALYSIS_RECAP"),
-                              str(packet.get("target_session_date") or ""))
+                              str(packet.get("target_session_date") or ""),
+                              _prev_session)
 
     def _yview(c):
         ents = {str(e) for m in c["member_source_ids"]
@@ -669,6 +675,11 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
     news_by_id = {str(n.get("source_item_id") or ""): n
                   for n in (packet or {}).get("news") or []
                   if isinstance(n, dict)}
+    gazettes_by_id = {
+        str(g.get("meta_id") or g.get("id") or ""): g
+        for g in (((packet or {}).get("market") or {}).get("GAZETTE_RECORDS")
+                  or [])
+        if isinstance(g, dict) and (g.get("meta_id") or g.get("id"))}
     tensions_by_id = {
         str(t.get("tension_id") or ""): t
         for t in (((packet or {}).get("signal_tensions") or {}).get("items")
@@ -697,6 +708,37 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
                     "source": str(item.get("source_name")
                                   or item.get("source") or "")[:40],
                     "entities": [str(e) for e in (item.get("entities") or [])][:6]}
+        elif eid.startswith("gazette:"):
+            # **公報的語意不是它的標題**(2026-08-24 外審 P1)。registry 只
+            # 存 `quote = title`,所以切片切出來是「銀行法部分條文修正」——
+            # 而 prompt 對 `taiwan_policy.impact` 要的是「修了什麼、適用
+            # 對象、生效日、成本怎麼傳導、什麼情況下低於預期」。修補輪是
+            # **另一次無狀態推論**:模型看得到一個合法 ID、看不到法令內容,
+            # 於是它能做的只有把 `source_item_id` 補上去,而 impact 那段是
+            # 憑第一輪的記憶重寫 —— 驗證器只驗 ID 存在,那條假引用會通過。
+            # 這與 `tension:` 是同一類:合法 ID ≠ 撐得住那條 claim 的證據。
+            g = gazettes_by_id.get(eid[len("gazette:"):]) or {}
+            if not g:
+                continue
+            body = {k: v for k, v in (
+                ("title", str(g.get("title") or "")[:120]),
+                ("publisher", str(g.get("publisher") or "")[:40]),
+                ("date_published", str(g.get("date_published") or "")[:20]),
+                # 草案預告 vs 已定案 —— 這一欄在不在,決定 impact 該不該
+                # 寫「尚未定案」。少了它模型會把草案寫成既成事實。
+                ("comment_deadline", str(g.get("comment_deadline") or "")[:20]),
+                ("theme_subject", str(g.get("theme_subject") or "")[:300]),
+                ("explain", str(g.get("explain") or "")[:500]),
+                ("content", str(g.get("content") or "")[:800]),
+                ("keywords", [str(k) for k in (g.get("keywords") or [])][:10]),
+            ) if v}
+            # 專用分支要自己套語意充分性(generic branch 那條規則在
+            # `else` 裡):只有一個「來源:行政院公報」的空殼,與端出
+            # 一個看得到名字卻看不到內容的 ID 是同一件事。
+            if not any(body.get(k) for k in ("title", "theme_subject",
+                                             "explain", "content")):
+                continue
+            body["source"] = "行政院公報"
         elif eid.startswith("tension:"):
             # **張力的語意不在 registry 的 metadata 裡**(2026-08-24 外審 P1):
             # 那裡只有 as_of/source/quality —— 模型知道「有一個叫

@@ -59,6 +59,9 @@ KNOWN_DEGRADED = frozenset({
     "sector:institutional_missing",
     # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
     "state:alias_map_unavailable",
+    # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外
+    # IP 可能 geo-block)。賽程照出、只少場地;明細在 manifest.sports。
+    "sports:cpbl_venue_missing",
     # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
     # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
     "chips:pcr_site_fallback", "chips:large_site_fallback",
@@ -641,10 +644,20 @@ def assess(manifest, *, mode: str = "watchdog",
     # `state:corrupt:<檔名>` 與 `llm:luna_path_failed:<例外類名>` 都是**後綴
     # 開放**的家族,frozenset 列舉不完;各自有專屬 finding 把話說清楚
     # (見上面兩條),所以不再從這裡以「沒見過」的名義重報一次。
+    # `recap:not_previous_session:<日期>` 同樣是後綴開放的家族(日期會變),
+    # 專屬 finding 在下面 —— 它說得出停在哪一天,catch-all 只會說「沒見過」。
+    _stale_recap = [str(s) for s in (m.get("degraded_steps") or [])
+                    if str(s).startswith("recap:not_previous_session:")]
+    if _stale_recap:
+        add("recap_not_previous_session", "degraded",
+            "昨日觀點不是上一個交易日,整段未進 EVIDENCE:"
+            + "、".join(x.split(":", 2)[-1] for x in _stale_recap)
+            + "(通常代表前一班主分析落回 legacy,recap 沒有更新)")
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED
                and not str(s).startswith(("llm:luna_path_failed:",
-                                          "state:corrupt:"))]
+                                          "state:corrupt:",
+                                          "recap:not_previous_session:"))]
     if unknown:
         add("unknown_degradation", "degraded",
             "沒見過的降級步驟:" + "、".join(str(s) for s in unknown))

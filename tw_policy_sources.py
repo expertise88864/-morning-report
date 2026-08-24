@@ -214,6 +214,13 @@ def format_gazette_block(records: list[dict], sanitize, limit: int = 6,
         labels = "、".join(focus_labels(rec)) or "其他"
         head = f"■【{labels}】{sanitize(rec.get('publisher'), 30)}:{sanitize(rec.get('title'), 120)}"
         lines.append(head)
+        # **引用 id 要印出來**(2026-08-24 生產:`taiwan_policy` 連兩天在
+        # 同一筆公報上被 schema 擋掉)。prompt 要求公報項目填
+        # `source_item_id`,但這個素材塊先前**沒有印過任何 id 欄位** ——
+        # 模型只能從內文或連結猜一個數字出來,必然對不上 registry。
+        # 印**完整字串**而不是裸 id:讓模型照抄,而不是自己組合前綴。
+        if rec.get("meta_id"):
+            lines.append(f"  引用 id:gazette:{sanitize(rec.get('meta_id'), 40)}")
         if rec.get("date_published"):
             lines.append(f"  發布日:{sanitize(rec.get('date_published'), 30)}")
         if rec.get("comment_deadline"):

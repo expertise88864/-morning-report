@@ -208,6 +208,35 @@ def registry(packet: Optional[dict]) -> dict:
                 "usable_for_inference": True, "why_unusable": "",
             }
 
+    # 1b. **行政院公報**(2026-08-24 生產:連兩天在同一筆公報上失敗 ——
+    # 08/22 寫 `167811`、08/24 寫 `gazette:167811`)。根因不是模型:prompt
+    # 要 `taiwan_policy` 引用 GAZETTE_RECORDS,schema 要 `source_item_id`,
+    # 而公報**沒有可引用的 item id** —— 合法的只有
+    # `market:GAZETTE_RECORDS.<id>.title` 這種路徑式葉節點,那不是「來源
+    # 項目的 id」。模型猜的 `gazette:<id>` 才是這個欄位該有的形狀,
+    # 所以把它變成真的(與新聞的 `source_item_id` 同一種東西)。
+    for g in ((pk.get("market") or {}).get("GAZETTE_RECORDS") or []):
+        if not isinstance(g, dict):
+            continue
+        # **`meta_id` 是 producer 的欄位**(`tw_policy_sources.parse_gazette_xml`
+        # 從 XML 的 `MetaId` 取,一路到 packet 都沒有被改名)。先前這裡讀
+        # `id` —— 生產的每一筆公報都在下一行被跳過,`gazette:*` 從未進過
+        # registry,而測試自己捏了 `{"id": ...}` 所以看不出來。
+        gid = str(g.get("meta_id") or g.get("id") or "").strip()
+        if not gid:
+            continue
+        out[f"gazette:{gid}"] = {
+            "value": None, "unit": "",
+            "quote": str(g.get("title") or "")[:200],
+            # `date_published` 是 producer 的欄位(`date` 不存在 —— 讀它會
+            # 一律退回 packet 當日,把週末補抓到的前一出刊日公報標成今天)。
+            "as_of": str(g.get("date_published") or as_of),
+            "as_of_precision": "source",
+            "observed_session": "", "session": session,
+            "source": "行政院公報", "quality": "official",
+            "usable_for_inference": True, "why_unusable": "",
+        }
+
     # 2. 行情。逐區塊,因為**新鮮度是逐區塊的**(美股休市只影響美股側)。
     # **`as_of` 是 packet 級的,不是每個欄位自己的。** 先前每一格都掛上
     # packet 的 as_of 與 target session —— 那是**假精確**:QQQ 可能是前一個

@@ -271,6 +271,21 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 第十八輪 P1-8:**模型要知道今天有哪幾項沒有答案。** 不給清單而
     # 要求逐項揭露,等於要它猜驗證器在想什麼 —— 那種規則只會逼出
     # 「什麼都寫一點」的自保式輸出。
+    # **公報的引用 id 要寫進 packet 本身**(2026-08-24 外審 pass2 P1)。
+    # Luna 路徑吃的是 `canonical_json(packet)` —— 它從來沒看過
+    # `format_gazette_block()`(那只餵 legacy 與週日政策 prompt)。packet 裡
+    # 公報只有 `meta_id`,所以模型 08/22 抄了裸的 `167811`、08/24 自己加了
+    # 前綴變成 `gazette:167811`。要它照抄,就得**先有那個字串可抄**。
+    # 建新 dict 而不是原地改:`packet["market"]` 存的是 `quotes` 裡**同一個**
+    # 物件,原地寫會回頭汙染呼叫端的 quotes(legacy prompt 也讀那份)。
+    # 型別要先確認:`GAZETTE_RECORDS` 不保證是 list(測試餵過 dict,
+    # 生產也可能因上游改形狀而變)。對 dict 做列表推導會拿到**鍵的清單**
+    # —— 資料被靜靜換掉,而不是報錯。
+    if isinstance(packet["market"].get("GAZETTE_RECORDS"), list):
+        packet["market"]["GAZETTE_RECORDS"] = [
+            (dict(_g, citation_id=f"gazette:{_g['meta_id']}")
+             if isinstance(_g, dict) and _g.get("meta_id") else _g)
+            for _g in packet["market"]["GAZETTE_RECORDS"]]
     import tension_refs as _tr
     packet["required_disclosures"] = _tr.required_gap_ids(
         packet["signal_tensions"])
@@ -581,6 +596,57 @@ from evidence_serialize import (                  # noqa: E402,F401
     canonical_json, evidence_sha, nonstring_key_paths)
 
 
+#: 容器攤平時單一葉節點的字數上限(法令原文一筆就 1200+ 字)。
+_LEAF_CHARS = 200
+
+
+def _market_subtree(packet: dict, eid: str, cap: int = 8):
+    """`market:A.B` → packet 那個節點底下的純量(容器節點的語意)。
+
+    2026-08-24 外審 P1 的配套:語意充分性判準會把「只有記帳欄位」的 ID
+    擋掉,而 `market:` 的容器節點(`market:MACRO`)本來就沒有單一 value ——
+    它的內容在子樹裡。不取出來的話,一個合法且有意義的引用會被誤判成
+    語意空而消失(那正是上一輪修掉的 false rejection)。
+    """
+    if not str(eid).startswith("market:"):
+        return None
+    cur = (packet or {}).get("market") or {}
+    for part in str(eid)[len("market:"):].split("."):
+        cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
+            return None
+    if not isinstance(cur, (dict, list)):
+        return cur if not isinstance(cur, str) else cur[:_LEAF_CHARS]
+    # 巢狀容器(`market:MACRO` 底下全是 dict)攤平成帶路徑的葉節點 ——
+    # 「有哪些鍵」不是內容,**那些數字才是**。
+    #
+    # list 也要走同一條路(2026-08-24 外審 P2):`market:GAZETTE_RECORDS`
+    # 是**清單**,最多 60 筆、每筆帶 1200+ 字的法令原文。先前 `not
+    # isinstance(cur, dict)` 直接回傳原物件 —— 整份清單原封不動進切片,
+    # 完全繞過 cap,一個 ID 就能吃光預算,把後面更相關的證據擠掉
+    # (`evidence_snippets` 超額就 break)。cap 對兩種容器一體適用。
+    flat: dict = {}
+
+    def _walk(node, prefix=""):
+        if len(flat) >= cap:
+            return
+        pairs = (node.items() if isinstance(node, dict)
+                 else enumerate(node) if isinstance(node, list) else ())
+        for k, v in pairs:
+            if len(flat) >= cap:
+                return
+            path = f"{prefix}{k}"
+            if isinstance(v, (dict, list)):
+                _walk(v, path + ".")
+            elif isinstance(v, str):
+                flat[path] = v[:_LEAF_CHARS]
+            else:
+                flat[path] = v
+
+    _walk(cur)
+    return flat or None
+
+
 def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
     """`證據 ID → 這個 ID 的實際內容`,塞到預算為止(2026-08-22 外審 P1-1)。
 
@@ -603,6 +669,12 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
     news_by_id = {str(n.get("source_item_id") or ""): n
                   for n in (packet or {}).get("news") or []
                   if isinstance(n, dict)}
+    tensions_by_id = {
+        str(t.get("tension_id") or ""): t
+        for t in (((packet or {}).get("signal_tensions") or {}).get("items")
+                  if isinstance((packet or {}).get("signal_tensions"), dict)
+                  else []) or []
+        if isinstance(t, dict) and t.get("tension_id")}
     # **registry 是唯一的權威**(2026-08-22 外審 P2-1)。先前這裡自己認
     # 命名空間,只解得出新聞與 `market:` 的巢狀路徑 —— 而 validator 認可的
     # 命名空間還有 `fact:`/`valuation:`/`prediction:`/`quality:`/`tension:`/
@@ -625,6 +697,45 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
                     "source": str(item.get("source_name")
                                   or item.get("source") or "")[:40],
                     "entities": [str(e) for e in (item.get("entities") or [])][:6]}
+        elif eid.startswith("tension:"):
+            # **張力的語意不在 registry 的 metadata 裡**(2026-08-24 外審 P1):
+            # 那裡只有 as_of/source/quality —— 模型知道「有一個叫
+            # tension:t_rate_tech 的合法東西」,卻不知道是**哪兩個訊號在
+            # 互相矛盾、各是多少**。而 slim 的 prompt 明講「切片就是你這輪
+            # 看得到的全部證據」,於是它只能無根據地生一個 resolution。
+            # 真正的語意在 packet 的 `signal_tensions.items[]`,照它切。
+            item = tensions_by_id.get(eid[len("tension:"):]) or {}
+            if not item:
+                continue
+
+            def _side(x):
+                # producer 的 `label` 是**泛稱**(「十年期美債利率變動」、
+                # 「QQQ 日漲跌」),數字在 `value`/`unit` 這兩個獨立欄位裡
+                # (`signal_tensions._side`)。只留 label 等於只告訴模型
+                # 「有兩個東西在打架」而不說各是多少 —— 那還是解不出
+                # resolution。`derived_from` 一併帶:衍生值(利率差)的原始
+                # 欄位要看得到,否則模型會自己重算,違反 Python 權威。
+                x = x if isinstance(x, dict) else {}
+                out = {"label": str(x.get("label") or "")[:120],
+                       "value": x.get("value"),
+                       "unit": str(x.get("unit") or "")[:12],
+                       "evidence_refs": [str(r) for r in (
+                           x.get("evidence_refs")
+                           or ([x.get("evidence_ref")] if x.get("evidence_ref")
+                               else []))][:4]}
+                if x.get("derived_from"):
+                    out["derived_from"] = [str(r) for r
+                                           in x["derived_from"]][:4]
+                return out
+
+            body = {"kind": str(item.get("kind") or "tension"),
+                    "topic": str(item.get("topic") or "")[:80],
+                    "relationship": str(item.get("relationship") or "")[:40],
+                    "left": _side(item.get("left")),
+                    "right": _side(item.get("right")),
+                    "caveat": str(item.get("caveat")
+                                  or (reg.get(eid) or {}).get("why_unusable")
+                                  or "")[:200]}
         else:
             meta = reg.get(eid)
             if not isinstance(meta, dict):
@@ -637,6 +748,19 @@ def evidence_snippets(packet: dict, ids, *, budget_chars: int) -> dict:
             body = {k: meta.get(k) for k in
                     ("value", "unit", "quote", "as_of", "source", "quality")
                     if meta.get(k) not in (None, "")}
+            # **只有記帳欄位不算證據**(2026-08-24 外審 P1):`as_of`/`source`/
+            # `quality` 說不出這個 ID **主張了什麼**。切了等於送一個看得到
+            # 名字卻看不到內容的 ID —— 而它會進 `visible_ids`,讓切片範圍的
+            # 判準放行一個沒有根據的新引用。說不出內容就不要送。
+            if not any(k in body for k in ("value", "quote")):
+                # **容器節點的語意在 packet 子樹裡**:`market:MACRO` 沒有
+                # 單一 value,但它底下的純量就是它的內容 —— 那是語意,
+                # 不是記帳。取得到就用,取不到才算「說不出主張什麼」。
+                sub = _market_subtree(packet, eid)
+                if sub:
+                    body = dict(body, value=sub)
+                else:
+                    continue
             if isinstance(body.get("quote"), str):
                 body["quote"] = body["quote"][:200]
             if not body:

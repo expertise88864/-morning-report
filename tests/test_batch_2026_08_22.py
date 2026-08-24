@@ -432,3 +432,180 @@ def test_never_sends_a_request_it_knows_is_oversize(monkeypatch):
         {"model": "m"}, "x" * 10, chr(10) + "TAIL", pk)
     assert rec["mode"] == "format_only" and rec["evidence_items"] == 0
     assert "不得新增任何帶證據引用的 claim" in out["input"]
+
+
+def test_gazette_records_are_citable_like_news():
+    """2026-08-24 生產:`taiwan_policy` 連兩天在同一筆公報上失敗 ——
+    08/22 寫 `167811`、08/24 寫 `gazette:167811`。根因不是模型:prompt 要它
+    引用 GAZETTE_RECORDS、schema 要 `source_item_id`,而公報**沒有可引用的
+    item id**(只有 `market:GAZETTE_RECORDS.<id>.title` 這種路徑式葉節點,
+    那不是「來源項目的 id」)。模型猜的形狀才是對的,所以把它變成真的。"""
+    import evidence_packet as ep
+    import tw_policy_sources as tps
+    # **用 producer 的輸出,不要自己捏**(第一版捏了 `{"id": ...}`,而
+    # `parse_gazette_xml` 給的是 `meta_id` —— 生產的每一筆都會被跳過,
+    # 測試卻是綠的)。
+    recs = tps.parse_gazette_xml(
+        "<Gazettes>"
+        "<G><MetaId>167811</MetaId><Title>銀行法部分條文修正</Title>"
+        "<Date_Published>2026-08-21</Date_Published>"
+        "<Category>[520]金融</Category><GazetteHTML>u</GazetteHTML></G>"
+        "<G><MetaId>167812</MetaId><Title>產業創新條例</Title>"
+        "<Category>[550]經濟</Category><GazetteHTML>v</GazetteHTML></G>"
+        "</Gazettes>")
+    assert [r["meta_id"] for r in recs] == ["167811", "167812"]
+    pk = ep.build(
+        {"QQQ": {"close": 700.0}, "GAZETTE_RECORDS": recs},
+        {}, {}, [], [], {}, as_of="2026-08-24", target_session_date="y",
+        sanitize=str)
+    ids = ep.evidence_ids(pk)
+    assert "gazette:167811" in ids and "gazette:167812" in ids, sorted(ids)[:8]
+    # 切片解得出**內容**(標題就是它的意義所在,與 fact 的 quote 同理)
+    got = ep.evidence_snippets(pk, ["gazette:167811"], budget_chars=9999)
+    assert got["gazette:167811"]["quote"] == "銀行法部分條文修正"
+    assert got["gazette:167811"]["source"] == "行政院公報"
+    # **新鮮度用公報自己的出刊日**,不是 packet 當日(週末補抓的是前一
+    # 出刊日的公報;讀不存在的 `date` 會一律退回今天,把舊公報標成新的)
+    assert got["gazette:167811"]["as_of"] == "2026-08-21", got["gazette:167811"]
+    # 模型讀到的**素材塊裡看得到這個 id**(先前那裡沒印過任何 id 欄位,
+    # 模型只能從內文或連結猜一個數字 —— 必然對不上 registry)
+    block = tps.format_gazette_block(recs, lambda v, n=0: str(v or "")[:n or 999])
+    assert "gazette:167811" in block, block[:200]
+    # 沒有 id 的公報不得產生半截 ID,素材塊也不得印出空前綴
+    pk2 = ep.build({"GAZETTE_RECORDS": [{"title": "無 id"}]}, {}, {}, [], [],
+                   {}, as_of="x", target_session_date="y", sanitize=str)
+    assert not [i for i in ep.evidence_ids(pk2) if i.startswith("gazette:")]
+    assert "gazette:" not in tps.format_gazette_block(
+        [{"title": "無 id", "category_codes": ["520"]}],
+        lambda v, n=0: str(v or "")[:n or 999])
+
+
+def test_citation_id_injection_does_not_reshape_the_block():
+    """加 `citation_id` 的那段先前用列表推導無條件跑 —— `GAZETTE_RECORDS`
+    是 dict 時會被換成**鍵的清單**(資料靜靜消失,不報錯)。"""
+    import evidence_packet as ep
+    weird = {"docs": ["原文"], "note": "上游改了形狀"}
+    pk = ep.build({"GAZETTE_RECORDS": weird}, {}, {}, [], [], {},
+                  as_of="x", target_session_date="y", sanitize=str)
+    assert pk["market"]["GAZETTE_RECORDS"] == weird
+    # list 裡混進非 dict 也不得炸、不得被吃掉
+    pk2 = ep.build({"GAZETTE_RECORDS": ["純字串", {"meta_id": "9", "title": "t"}]},
+                   {}, {}, [], [], {}, as_of="x", target_session_date="y",
+                   sanitize=str)
+    got = pk2["market"]["GAZETTE_RECORDS"]
+    assert got[0] == "純字串" and got[1]["citation_id"] == "gazette:9"
+
+
+def test_prompt_tells_the_model_the_gazette_citation_shape():
+    """出口只在 registry 認得、prompt 沒說 = 模型還是會猜(它已經猜過兩次)。"""
+    import prompt_profiles as pp
+    src = io.open(Path(pp.__file__), encoding="utf-8").read()
+    assert "citation_id" in src, "prompt 沒說公報怎麼引用"
+    # **要看 Luna 真的送出去的那份 payload**(外審 pass2 P1):Luna 吃的是
+    # `canonical_json(packet)`,它從來沒看過 `format_gazette_block()` ——
+    # 那個 formatter 只餵 legacy 與週日政策 prompt。指令叫模型照抄一個
+    # 它的輸入裡不存在的字串,等於還是要它猜(它已經猜過兩次)。
+    import evidence_packet as ep
+    import tw_policy_sources as tps
+    recs = tps.parse_gazette_xml(
+        "<G><R><MetaId>167811</MetaId><Title>銀行法</Title>"
+        "<Category>[520]金融</Category></R></G>")
+    pk = ep.build({"GAZETTE_RECORDS": recs}, {}, {}, [], [], {},
+                  as_of="2026-08-24", target_session_date="y", sanitize=str)
+    payload = pp.luna_user_payload(pk)
+    assert "gazette:167811" in payload, "Luna 的輸入裡沒有可抄的引用 id"
+    # legacy 那條路徑走 formatter,同樣要看得到
+    assert "gazette:167811" in tps.format_gazette_block(
+        recs, lambda v, n=0: str(v or "")[:n or 999])
+
+
+#: 生產的張力 id(由 `signal_tensions.detect()` 產生,不是測試自訂)。
+_TID = "tension:t_rates_vs_tech"
+
+
+def _tension_packet():
+    """**張力由 producer 產生**(第一版手寫 items,把數字塞進 `label` ——
+    生產的 label 是「十年期美債利率變動」這種泛稱,數字在獨立的
+    `value`/`unit` 欄位。捏出來的形狀讓「切片丟掉數值」看不出來)。"""
+    import evidence_packet as ep
+    import signal_tensions as st
+    quotes = {"QQQ": {"close": 700.0, "change_pct": 2.1},
+              "MACRO": {"10Y": {"close": 4.74, "prev_close": 4.59}}}
+    pk = ep.build(quotes, {}, {}, [], [], {}, as_of="x",
+                  target_session_date="y", sanitize=str)
+    pk["signal_tensions"] = st.detect(quotes)
+    assert [i["tension_id"] for i in pk["signal_tensions"]["items"]]         == ["t_rates_vs_tech"], pk["signal_tensions"]
+    return pk
+
+
+def test_tension_slice_carries_the_two_conflicting_sides():
+    """2026-08-24 外審 P1:`tension:` 先前切出來只有 as_of/source/quality ——
+    模型知道「有一個叫 t_rate_tech 的合法東西」,卻不知道**是哪兩個訊號在
+    互相矛盾、各是多少**。而 slim 明講「切片就是你這輪看得到的全部證據」,
+    於是它只能無根據地生一個 resolution。"""
+    import evidence_packet as ep
+    pk = _tension_packet()
+    got = ep.evidence_snippets(pk, [_TID], budget_chars=9999)
+    b = got[_TID]
+    # **數值必須在**:label 是泛稱,少了 value/unit 模型仍不知道各是多少
+    assert b["left"]["value"] == 15.0 and b["left"]["unit"] == "bps", b["left"]
+    assert b["right"]["value"] == 2.1 and b["right"]["unit"] == "%", b["right"]
+    assert "利率" in b["left"]["label"] and "QQQ" in b["right"]["label"]
+    # 衍生值要帶原始欄位,否則模型會自己重算(違反 Python 權威)
+    assert b["left"]["derived_from"] == ["market:MACRO.10Y.close",
+                                         "market:MACRO.10Y.prev_close"]
+    assert b["right"]["evidence_refs"] == ["market:QQQ.change_pct"]
+    assert b["relationship"] == "yield_up_tech_up"
+
+
+def test_semantically_empty_evidence_is_not_offered_at_all():
+    """**能 resolve ID ≠ 送出了語意**(外審 P1 的 property):只有記帳欄位
+    (as_of/source/quality)的 ID 說不出它主張什麼 —— 切了等於送一個看得到
+    名字卻看不到內容的東西,而它會進 `visible_ids`,讓切片範圍的判準放行
+    一個沒有根據的新引用。"""
+    import evidence_packet as ep
+    pk = _tension_packet()
+    ids = sorted(ep.evidence_ids(pk))
+    got = ep.evidence_snippets(pk, ids, budget_chars=500_000)
+    for eid, body in got.items():
+        assert any(k in body for k in
+                   ("value", "quote", "title", "left")), (eid, body)
+    # 張力 item 不見了(packet 壞掉)→ 那個 ID 不得被當成可引用
+    pk2 = _tension_packet()
+    pk2["signal_tensions"] = {"items": []}
+    assert _TID not in ep.evidence_snippets(pk2, [_TID], budget_chars=9999)
+
+
+def test_list_container_cannot_eat_the_whole_slice_budget():
+    """2026-08-24 外審 P2:`market:GAZETTE_RECORDS` 是**清單**,最多 60 筆、
+    每筆帶 1200+ 字法令原文。容器攤平先前只處理 dict,非 dict 直接回傳原
+    物件 —— 整份清單原封不動進切片,完全繞過上限,一個 ID 就吃光預算,
+    把後面更相關的證據擠掉(`evidence_snippets` 超額就 break)。"""
+    import evidence_packet as ep
+    recs = [{"meta_id": str(i), "title": "法令" + str(i),
+             "content": "原" * 3000, "category_codes": ["520"]}
+            for i in range(60)]
+    pk = ep.build({"QQQ": {"close": 700.0}, "GAZETTE_RECORDS": recs},
+                  {}, {}, [], [], {}, as_of="x", target_session_date="y",
+                  sanitize=str)
+    sub = ep._market_subtree(pk, "market:GAZETTE_RECORDS")
+    assert isinstance(sub, dict) and len(sub) <= 8, type(sub)
+    assert all(len(str(v)) <= 200 for v in sub.values()),         max(len(str(v)) for v in sub.values())
+    # 容器排在最前面時,後面的證據仍進得來(預算沒被一個 ID 吃光)
+    got = ep.evidence_snippets(pk, ["market:GAZETTE_RECORDS", "gazette:59"],
+                               budget_chars=6000)
+    assert "gazette:59" in got, list(got)
+
+
+def test_visible_ids_only_contains_what_the_model_can_read(monkeypatch):
+    """接線:切片範圍的 `visible_ids` 就是切片本身 —— 語意空的既然不進切片,
+    也就不會被當成「這一輪看得到」。"""
+    pk = _tension_packet()
+    monkeypatch.setattr(mr._ep, "evidence_ids",
+                        lambda p: {_TID, "market:QQQ"})
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, chr(10) + "TAIL", pk)
+    if rec["mode"] == "evidence_slice":
+        assert rec["visible_ids"] <= {_TID, "market:QQQ"}
+        for vid in rec["visible_ids"]:
+            assert vid in out["input"], vid

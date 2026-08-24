@@ -84,7 +84,7 @@ DEEPSEEK_LEGACY_VERSION = 11  # 2026-08-22 金融龍頭+5; 2026-08-21 r2:選材�
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 43
+LUNA_XHIGH_VERSION = 44
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -307,6 +307,10 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   `impact` 是**多句的深度解析** —— 修了什麼、適用對象、生效日、
   對哪些產業/公司的需求或成本怎麼傳導、什麼情況下拉動會低於預期。
   公報沒寫的數字不要編。當日沒有就空陣列。
+  **公報的 `source_item_id` 照抄該筆的 `citation_id`**
+  (長得像 `gazette:167811`,不要自己從 `meta_id` 組)—— 與新聞用 `n…`
+  是同一種東西;
+  政策新聞則照樣寫那則新聞的 id。
 - **`world_events` 是股市之外的世界**（約三條）:外交、戰爭、科技治理、
   重大社會事件。美股漲跌、公司財報**不是**世界大事。每條寫發生了什麼
   與它的戰略意涵。

@@ -1715,6 +1715,43 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "2bc39045-e008-4b9c-987d-e6cb6dad2c5f",
+        "title": "EP330. 輝達 GPU 要漲價、中國機器人跑很快、特斯拉新消息更新 | M觀點",
+        "published": "Mon, 24 Aug 2026 05:42:40 GMT",
+        "processed_at": "2026-08-24T08:56:41Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為輝達敢對GPU漲價15%（連上一代Blackwell也漲），證明AI算力仍極度供不應求，且不怕客戶轉單，因為在電力有限下輝達GPU的單位經濟最好。",
+            "主持人指出本季科技巨頭調高資本支出主要是因記憶體等零組件漲價，並非增加伺服器數量，反映供應鏈極度緊俏。",
+            "主持人認為目前僅5%企業高度使用AI，未來95%企業從Generative AI進入Agentic AI時使用量可能爆增10倍，支撐長線AI需求。",
+            "主持人對AI算力長期需求持審慎樂觀：保守估年化成長20-50%（雲端十年年化約20%），但認為80-100%的極端估計過於樂觀。",
+            "中國人形機器人跑步破紀錄，主持人認為極限運動能力對商業化價值極低，真正關鍵是量產成本與實體AI大腦，而中國在大腦方面落後特斯拉至少五年。",
+            "特斯拉刻意減少Model Y投入Robotaxi車隊，主持人解讀為管理層對Cybercab短期規模化推出信心極高，並預估年底前至少部署300台Cybercab。",
+            "FSD V15已開始上路測試，參數量更大、上下文窗口擴大、延遲再降20%，主持人認為將是跳躍式升級，並可能推動Robotaxi明年爆量擴張。",
+            "Optimus Gen3量產延遲至未來數月，主持人承認工程難度高於預期，但認為特斯拉路線正確：先做通用機器人收集數據，長期才有飛輪效應。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為漲價反映需求極度強勁，且輝達GPU在電力有限下單位經濟最佳，未來一年仍供不應求。"
+            },
+            {
+              "name": "特斯拉",
+              "code": "TSLA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好Robotaxi短期擴張與FSD升級，認為Optimus雖延遲但路線正確，整體對特斯拉未來樂觀。"
+            }
+          ],
+          "market_view": "主持人認為未來5-10年AI算力需求仍強勁成長（保守估年化20-50%），但對AI股估值持審慎樂觀態度，需留意泡沫風險。",
+          "action_view": "主持人分享自身操作：對SpaceX部位尚未買滿，會趁回調分批慢慢加碼；對AI股整體採審慎樂觀，未明確建議追高。",
+          "notable_quote": "如果未來我們整個世界對於算力的需求成長，20%到50%的年成長幅度，年化成長就很誇張了。"
+        }
+      },
+      {
         "guid": "850d0717-e949-4f40-931a-a9dcd9783885",
         "title": "EP329. Anthropic 成長減速、模型二與 Astra、Meta 被兩黨一起告 | M觀點",
         "published": "Thu, 20 Aug 2026 15:22:10 GMT",
@@ -2275,51 +2312,6 @@
           "notable_quote": "現在才四局上半，五比二，有必要認輸嗎？"
         },
         "shown_at": "2026-07-14T22:51:49Z"
-      },
-      {
-        "guid": "aa467feb-5e2f-49aa-b3f9-a5f157771d85",
-        "title": "EP318. 科技股能持續打敗大盤嗎？Feat. 曼報Pro Vincent | M觀點",
-        "published": "Thu, 09 Jul 2026 15:50:00 GMT",
-        "processed_at": "2026-07-09T17:01:58Z",
-        "digest": {
-          "summary_points": [
-            "過去十年科技股大幅跑贏大盤，主因科技占GDP比重持續增加、輕資產高ROIC的商業模式（如電商、行動廣告）以及低利率環境有利折現未來現金流。",
-            "Vincent認為未來十年科技股仍可能跑贏大盤，但幅度將縮小至約1-2個百分點，不如過去十年明顯。",
-            "AI帶來的經濟價值增長樂觀，但增加的利潤分配目前以基礎設施層獲利最大，模型層與應用層尚未真正獲利，未來三角形可能改變，基礎設施占比稍降。",
-            "科技巨頭的AI資本支出大增使產業變得相對重資產，但若投資週期拉長至二十年，仍可能合理化目前的高支出。",
-            "利率正常化環境下，科技股折現估值不再如以往有利，抑制評價擴張。",
-            "科技產業投資應關注「變化」，因為破壞性創新會不斷重塑競爭格局，需預測技術變革對供應鏈的影響。",
-            "舉例硬碟技術從LMR轉向PMR時，分析供應鏈各環節找出受益者（如光陽科因賤金屬需求大增而受惠）與受損者，此為科技股投資典型研究模式。",
-            "研究科技變化可從領先者（如蘋果、輝達）的規格設計推演客戶需求（性能、CP值或成本），以判斷技術路線與贏家。",
-            "台積電先進製程近乎壟斷，有定價能力，目前仍「under monetized」，未來三至五年無強力競爭者，Vincent認為還有上漲空間且持有。",
-            "記憶體產業正從強週期轉向結構成長，透過簽長約換取穩定性，但最甜美的投資時點可能已過，Vincent對高利潤的可持續性存疑，認為客戶可能尋求減少用量。",
-            "美國科技巨頭的核心業務仍是印鈔機，即使AI資本支出三年無回報，下跌空間有限，目前估值便宜。",
-            "輝達AI業務仍在S-curve加速階段，後續有Rubin等產品拉長成長跑道，增長尚未到頂。",
-            "利用S-curve投資策略：在技術生命週期的早期和加速期逐步加碼，在成長速度最亮眼時（S-curve中間點）開始減碼，避免後半段成長放緩的風險。",
-            "投資想法生成應保持好奇心，研究自己有興趣的領域（如太空資料中心、無人機），長期可能轉化為有把握的投資主題。",
-            "Vincent分享過去在Hedge Fund做科技股多空策略時，會針對特定技術轉變（如硬碟規格）深度分析後，進行多空配對交易。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "先進製程近乎壟斷，有定價能力，未來三至五年無敵手，目前仍低估，Vincent認為還有上漲空間且持有。"
-            },
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "AI業務仍在S-curve加速階段，後續產品Rubin等拉長成長跑道，增長尚未到頂。"
-            }
-          ],
-          "market_view": "Vincent認為未來十年科技股仍可能跑贏大盤，但幅度將縮小至約1-2個百分點，不如過去十年明顯。",
-          "action_view": "利用S-curve投資策略：在技術生命週期的早期和加速期逐步加碼，在成長速度最亮眼時（S-curve中間點）開始減碼，避免後半段成長放緩的風險。",
-          "notable_quote": "科技業因為科技產品或者科技的本質，就是破壞性創新，大家可能只會看到創新，但是他前面是破壞性，所以是這兩合在一起的時候，就是一定有人是受傷，一定有人是benefit的。"
-        },
-        "shown_at": "2026-07-09T23:10:08Z"
       }
     ]
   },
@@ -5346,6 +5338,26 @@
     "name": "Odd Lots",
     "episodes": [
       {
+        "guid": "568c6e3c-2159-45c2-8e4d-b4ad011d7c22",
+        "title": "The Nigerian Industrial Behemoth That Could Reshape the African Economy",
+        "published": "Mon, 24 Aug 2026 08:00:00 +0000",
+        "processed_at": "2026-08-24T09:05:41Z",
+        "digest": {
+          "summary_points": [
+            "主持人Tracy對來賓Joe Studwell的人口密度理論特別感興趣，認為非洲人口密度正在改變，這可能是未來經濟發展的關鍵驅動力。",
+            "主持人Joe認為非洲歷史上因土地充足、人口稀疏，導致不同族群鮮少衝突，但隨著人口增至15億，這種動態正在改變，可能帶來新的政治與經濟挑戰。",
+            "主持人認同製造業對非洲發展的重要性，認為非洲不應跳過製造業直接發展高附加值服務業，因為服務業需要更高教育門檻，且印度案例顯示其就業規模有限。",
+            "主持人指出，中國對非洲的製造業投資（如鋼鐵廠）是因為非洲當地價格遠高於中國，例如鋼材在非洲售價約每噸1000美元，遠高於中國的500至600美元，這為非洲帶來發展機會。",
+            "主持人認為Dangote煉油廠的IPO將是非洲史上最大上市案，並預期會獲得超額認購，因為這是投資者首次接觸到非洲真正的優質工業資產。",
+            "主持人Tracy在總結時提到，非洲內部市場隨著人口密度增加而擴大，可能減少對出口的依賴，這是值得關注的轉變。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Well, the thing I find really interesting about Joe, the other Joe's argument is the population density aspect of it because that feels to me like something which is changing."
+        }
+      },
+      {
         "guid": "8387538d-5ecf-4b07-a3f0-b4ab00e1cbc5",
         "title": "Jasmine Sun on What the AI Industry Got Wrong About the Public Backlash",
         "published": "Fri, 21 Aug 2026 08:00:00 +0000",
@@ -5608,32 +5620,6 @@
           "notable_quote": "Iran's Supreme Leader didn't have the absolute power. He needs to manage between all different gods and goddesses. In the case of Odysseus, you see that he is supported by some gods to go back home, but some angry gods are trying to block his return... a businessman in Iran is just like, it's a real odyssey."
         },
         "shown_at": "2026-07-30T23:04:08Z"
-      },
-      {
-        "guid": "dac96181-5b1e-4549-a0f9-b491013fe961",
-        "title": "Branko Milanovic on What Comes After Globalization",
-        "published": "Mon, 27 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-27T21:03:35Z",
-        "digest": {
-          "summary_points": [
-            "當前全球經濟秩序正從新自由主義全球化轉向「國家市場自由主義」，國內維持新自由主義政策，但國際貿易轉為重商主義且零和博弈。",
-            "中國崛起導致西方國家低層與中產階級的全球經濟地位相對下降，助長民粹反彈，並使焦點轉向貿易保護主義而非國內再分配。",
-            "「大象圖」顯示全球不平等因中國成長而下降，但西方中產階級停滯，政治壓力導向指責中國而非處理國內不平等。",
-            "中國消費佔GDP比率偏低（約40-45%），原因包括薪資壓縮及國有企業保留盈餘用於策略性投資（如AI、太空、航空）。",
-            "美國出現新型精英階級（homo plautia），兼具高勞動收入與高資本收入，強化功績主義自我認知，形成難以撼動的上層階級。",
-            "中國精英階級的收入來源已從國有部門快速轉向私營部門，40年內重現英國資本主義階級150年的演變。",
-            "美國與歐洲大體延續川普時代對中國的政策，拜登繼續關稅與科技限制，反映兩黨對經濟民族主義的共識。",
-            "歐洲面臨結構性困境：切斷廉價俄羅斯能源、限制移民（儘管人口下降）、以及中國在電動車與製造業的競爭。",
-            "中國成長如今增加全球不平等，因其拉大與貧窮國家的差距；未來不平等下降取決於印度與非洲的成長。",
-            "對極端財富課稅被提議作為「教訓性」工具，用以傳達億萬富翁不能控制國家的訊息，但國內再分配政策仍被忽略。",
-            "習近平已清除共產黨內的富裕企業家，明確表示富人不得參與決策，這與江澤民時期的「三個代表」政策形成對比。"
-          ],
-          "tickers": [],
-          "market_view": "主持人認為全球化正在退潮，轉向國家市場自由主義，但未對大盤提出明確看法。",
-          "action_view": "",
-          "notable_quote": "What is happening now is that we take this entire international part, chop it off, and say, wait, these rules do not apply anymore. What applies now is essentially national sort of mercantilist policy."
-        },
-        "shown_at": "2026-07-27T22:56:38Z"
       }
     ]
   },
@@ -6903,6 +6889,62 @@
   "circuit": {
     "name": "The Circuit",
     "episodes": [
+      {
+        "guid": "16b331fc-37f8-427a-9583-53c817f7a53c",
+        "title": "EP 189: Analyzing ADI Earnings, Custom Silicon Shifts, and Semiconductor Debt",
+        "published": "Sun, 23 Aug 2026 16:10:27 -0700",
+        "processed_at": "2026-08-24T09:12:09Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 ADI 終於加入 AI 資料中心派對：資料中心營收已佔 ADI 約 10% 且季度倍增，並給出每 GW 資料中心有 10~15 億美元 analog 含量的估算，顯示 analog 在 800V 資料中心時代價值量大增。",
+            "主持人提醒 analog 成長路徑可能不平順：目前 800V 資料中心仍在原型階段，真正放量要到 2028，2027 年可能出現資料中心營收增速放緩的斷層。",
+            "主持人解析 Marvell 與 Google 擴大合作：認為這是 Marvell 的重大勝利，可減輕過度依賴 Amazon 的疑慮；但 Marvell 角色偏向 XPU 周邊（CXL、光電、網路），並非取代 Broadcom 的 TPU 核心設計，對 Broadcom 只是小負面。",
+            "主持人對 Broadcom 傳出籌組 600 億美元 SPV 與 Nvidia 500 億美元 SPV 感到擔憂：半導體公司過去幾乎不舉債，如今被迫用資產負債表競爭，債務與 SPV 的隱藏義務可能成為未來風險。",
+            "主持人認為 Moderna 的黑色素瘤疫苗被誤解為「AI 治病」：實際上是 bioinformatics 個人化計算，AI 尚未真的發明新藥；但上海 Insilico 用 AI 強化藥物開發流程、五年內擁有 30 個管線，顯示 AI 是流程加速器而非最終解答。",
+            "主持人觀察到資料中心建置的地方阻力升溫（如亞馬遜在家鄉附近建資料中心遭遇居民抗議），AI 情緒轉差，但主持人仍維持長期樂觀，認為 AI 才剛開始。"
+          ],
+          "tickers": [
+            {
+              "name": "Analog Devices",
+              "code": "ADI",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "資料中心營收倍增、每 GW 類比含量高，SAM 比預期大，進入 AI 供電商機。"
+            },
+            {
+              "name": "Texas Instruments",
+              "code": "TXN",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "數據中心類比營收同樣倍增，800V 轉換將帶來高規格 IC 需求。"
+            },
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Google 合作降低亞馬遜集中度，XPU 周邊/CXL/光電角色明確。"
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Google 增加 Marvell 做周邊是小負面，但仍掌握 TPU 核心，且 SPV 籌資增加財務風險。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "用 500 億美元 SPV 融資資料中心，顯示需要以資產負債表競爭，技術優勢非絕對。"
+            }
+          ],
+          "market_view": "主持人認為 AI 基礎建設長期仍樂觀，但短期出現地方抗爭、情緒轉差，且半導體公司開始用資產負債表競爭，需留意債務與資金結構風險。",
+          "action_view": "操作上可關注 analog 供應鏈（ADI/TI）受惠 800V 資料中心轉型，但要留意 2027 年可能出現成長空窗；同時對半導體公司透過 SPV 籌資的隱藏風險保持警覺。",
+          "notable_quote": "I'm getting calls from fixed income investors and fixed income journalists. I've never talked to these people in my life."
+        }
+      },
       {
         "guid": "ab487da6-004f-4add-abcb-f2dd75fa74bf",
         "title": "EP 188: The Wild West of Optical, Cisco's AI Hack, and Is Compute an Investable Asset",

@@ -333,3 +333,102 @@ def test_numeric_fact_keeps_the_quote_that_gives_it_meaning():
         assert fid in got, fid
         assert got[fid].get("quote"), f"{fid} 只剩裸數字:{got[fid]}"
         assert "80" in str(got[fid].get("quote")) or got[fid].get("value") == 80
+
+
+# -------------------- 2026-08-24 生產:slim 反而比 full 大(整條落 legacy)
+
+def _many_news_packet(n=4000):
+    """registry 很大的 packet(生產 08/24 有 6,875 個合法 ID)。"""
+    return {"news": [{"source_item_id": f"n{i}", "title": f"標題{i}" * 6,
+                      "summary": f"摘要{i}" * 12, "entities": ["2330"]}
+                     for i in range(n)],
+            "market": {"TAIEX": {"close": 45224.29}}}
+
+
+def test_slim_repair_is_never_bigger_than_the_gate(monkeypatch):
+    """08/24 生產事故:`slim_chars` 1,258,788 > `full_chars` 1,106,194 >
+    閘門 1,100,000 —— 修補請求被閘門擋下,整條特化路徑落 legacy。
+
+    根因是**估算**:成本算在未逃逸的內容上,而閘門量的是外層 JSON 序列化
+    之後的長度(切片本身是 JSON,塞進 input 時每個引號都再逃逸一次)。
+    修法不是估得更準,是**量出來**。
+    """
+    pk = _many_news_packet()
+    ids = [f"n{i}" for i in range(4000)]
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda p: set(ids))
+    fat = "x" * pb.MAX_REQUEST_CHARS
+    out, rec = mr._repair_request_payload({"model": "m"}, fat,
+                                          chr(10) + "TAIL", pk)
+    assert rec["slim_chars"] <= pb.MAX_REQUEST_CHARS, rec
+    assert rec["slim_chars"] < rec["full_chars"], rec
+    assert pb.request_gate(dict(out)) <= pb.MAX_REQUEST_CHARS
+    # 真的有送出證據內容(不是退化成 format_only 就算過)
+    assert rec["mode"] == "evidence_slice" and rec["evidence_items"] >= 1
+
+
+def test_slice_is_capped_so_it_stays_a_slice(monkeypatch):
+    """08/24 切了 6,875 筆 —— 那不是切片,是整份 registry。優先序已排好,
+    取前 N 筆;模型用不到那麼多,注意力還被稀釋。"""
+    pk = _many_news_packet()
+    ids = [f"n{i}" for i in range(4000)]
+    monkeypatch.setattr(mr._ep, "evidence_ids", lambda p: set(ids))
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, chr(10) + "TAIL", pk)
+    assert rec["evidence_items"] <= mr._REPAIR_SLICE_MAX, rec
+    assert mr._REPAIR_SLICE_MAX <= 200, "上限本身要是個切片的量級"
+
+
+def test_shrink_falls_back_to_format_only_when_nothing_fits(monkeypatch):
+    """砍到底仍塞不下 → format_only(絕不送一個已知會被閘門擋下的請求)。"""
+    pk = _many_news_packet(50)
+    monkeypatch.setattr(mr._ep, "evidence_ids",
+                        lambda p: {f"n{i}" for i in range(50)})
+    # tail 自己就頂到閘門 → 任何切片都塞不下
+    huge_tail = chr(10) + "T" * (pb.MAX_REQUEST_CHARS - 500)
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, huge_tail, pk)
+    assert rec["mode"] == "format_only" and rec["evidence_items"] == 0
+    assert "不得新增任何帶證據引用的 claim" in out["input"]
+
+
+def test_oversize_build_shrinks_instead_of_sending(monkeypatch):
+    """**量到才算數**的安全網要**可達且可驗**。
+
+    筆數上限(80)本身已讓切片遠小於閘門,所以自然情況下這條路不會走到 ——
+    但「很難觸發」不等於「不用驗」:直接讓量測回報超標,證明它會**砍半重量**
+    而不是把一個已知超標的請求送出去(08/24 就是送了 1,258,788 那一發)。
+    """
+    pk = _many_news_packet(200)
+    monkeypatch.setattr(mr._ep, "evidence_ids",
+                        lambda p: {f"n{i}" for i in range(200)})
+    real = pb.measure_request
+    state = {"lie": True}
+
+    def _measure(body):
+        # 前幾次回報超標(逼它砍半),切到 <= 10 筆才說實話
+        v = real(body)
+        if state["lie"] and str(body.get("input", "")).count('"n') > 10:
+            return pb.MAX_REQUEST_CHARS + 1
+        return v
+    monkeypatch.setattr(mr._pb, "measure_request", _measure)
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * pb.MAX_REQUEST_CHARS, chr(10) + "TAIL", pk)
+    assert rec["mode"] == "evidence_slice", rec
+    assert 0 < rec["evidence_items"] <= 10, rec
+    assert real(out) <= pb.MAX_REQUEST_CHARS
+
+
+def test_never_sends_a_request_it_knows_is_oversize(monkeypatch):
+    """量測永遠回報超標 → 退 format_only,不得送出。
+
+    (走的是**早退**那條:probe 已超標 → room ≤ 0 → 切片為空。
+    砍半迴圈那條由上一個測試涵蓋 —— 兩條路都要回到同一個結論。)"""
+    pk = _many_news_packet(50)
+    monkeypatch.setattr(mr._ep, "evidence_ids",
+                        lambda p: {f"n{i}" for i in range(50)})
+    monkeypatch.setattr(mr._pb, "measure_request",
+                        lambda b: pb.MAX_REQUEST_CHARS + 1)
+    out, rec = mr._repair_request_payload(
+        {"model": "m"}, "x" * 10, chr(10) + "TAIL", pk)
+    assert rec["mode"] == "format_only" and rec["evidence_items"] == 0
+    assert "不得新增任何帶證據引用的 claim" in out["input"]

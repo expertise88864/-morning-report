@@ -129,6 +129,13 @@ jobs:
           LLM_PRIMARY_PROMPT_PROFILE: ${{ vars.LLM_PRIMARY_PROMPT_PROFILE || '' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # canary 也要拿得到每一家**合法 provider** 的金鑰(2026-08-24 外審
+          # P2):`LLM_PROVIDER` 在這裡跟著 repo variable 走,使用者把它設成
+          # openai 時,少了這一把的 canary 跑的是「沒有金鑰的 openai」——
+          # 它會紅,但紅的原因與生產無關;或更糟,退回備援而綠得毫無意義。
+          # 生產 workflow 2026-08-22 才修過同一個洞。契約由
+          # `tests/test_workflow_contract.py` 用 `PROVIDER_KEY_ENV` 雙向盯著。
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
           TZ: Asia/Taipei
         run: python morning_report.py

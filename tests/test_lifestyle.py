@@ -860,6 +860,26 @@ def test_weekend_digest_content_gate():
         {"cpbl": [1, 2], "standings": {"美聯": [1]}}, [], [], now) is False  # 純戰績表
     assert mr._weekend_digest_has_content({}, [], [1], now) is False        # 文獻不單獨觸發
     assert mr._weekend_digest_has_content({}, [], [], now) is False
+    # 2026-08-24 外審 P1-2:颱風警報/停班課**自己就是寄信的理由** ——
+    # 先前只是版面內容,颱風夜若沒有新 podcast、沒有昨日賽果,整封信
+    # (連同停班公告)不會寄出,而那正是讀者最需要它的一天。
+    assert mr._weekend_digest_has_content(
+        {}, [], [], now,
+        alerts=[{"title": "陸上颱風警報", "typhoon": True}]) is True
+    assert mr._weekend_digest_has_content(
+        {}, [], [], now, suspension=[{"title": "台中市明日停班停課"}]) is True
+    # 一般特報不觸發(常態出現;為它寄信會讓「有信=有事」失效)
+    assert mr._weekend_digest_has_content(
+        {}, [], [], now,
+        alerts=[{"title": "大雨特報", "typhoon": False}]) is False
+    # 接線:生產呼叫端真的把這兩樣傳進去了(不然上面三條只是在測死碼)
+    import io as _io
+    import re
+    src = _io.open(mr.__file__, encoding="utf-8").read()
+    call = re.search(r"if not _weekend_digest_has_content\((.{0,200}?)\):",
+                     src, re.S)
+    assert call and "alerts=cwa_alerts" in call.group(1), call
+    assert "suspension=suspension" in call.group(1), call.group(1)
 
 
 def test_fetch_worldcup_parses_espn(monkeypatch):
@@ -3572,3 +3592,50 @@ def test_cwa_alerts_parse_and_filter(monkeypatch):
     monkeypatch.setattr(mr, "_http_get_relaxed_strict",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")))
     assert mr.fetch_cwa_alerts() == []
+
+
+def test_weekend_manifest_records_real_elapsed_time(monkeypatch, tmp_path):
+    """2026-08-24 外審 P3:週日的 manifest 恆為 `total_seconds: 0.0` /
+    `phases: []` —— 相位標記只寫在平日主流程,而 `total_seconds()` 少於
+    兩個標記就回 0.0。週日正是「沒寄信也算正常」的那一天,manifest 說它
+    跑了零秒,看起來與「根本沒跑」一模一樣。"""
+    import datetime as dt
+
+    for name, val in (("fetch_weather", []), ("fetch_sports_digest", {}),
+                      ("load_podcast_digest", []),
+                      ("fetch_medical_journal_articles", []),
+                      ("translate_journal_titles", []),
+                      ("fetch_event_calendar", []), ("fetch_local_news", {}),
+                      ("fetch_suspension_news", []), ("fetch_cwa_alerts", [])):
+        monkeypatch.setattr(mr, name, lambda *a, _v=val, **k: _v)
+    monkeypatch.setattr(mr, "_git_commit_and_push_state", lambda *a, **k: None)
+    monkeypatch.setattr(mr, "_mark_delivery_in_manifest", lambda **k: None)
+    seen = {}
+
+    def _capture(now_tpe, *, report_kind):
+        seen["phases"] = mr._RECORDER.phases()
+        seen["total"] = mr._RECORDER.total_seconds()
+
+    monkeypatch.setattr(mr, "_write_run_manifest", _capture)
+    mr._RECORDER.data["marks"].clear()
+    # 無新內容那條路徑(週日最常走的一條)也必須量得到時間
+    assert mr.run_weekend_digest(dt.datetime(2026, 8, 23, 7, 0,
+                                             tzinfo=mr.TPE)) == 0
+    assert seen["phases"], "週日 manifest 的 phases 是空的"
+    # `total_seconds()` 少於兩個標記就回 0.0(那正是先前的症狀),所以
+    # 「量得到時間」的判準是標記數,不是一個對任何 float 都成立的下限。
+    assert len(mr._RECORDER.data["marks"]) >= 2, mr._RECORDER.data["marks"]
+    labels = [p["label"] for p in seen["phases"]]
+    assert any("週末" in ln for ln in labels), labels
+    # **性質**:凡是會寫出 manifest 的位置,前面都得有至少兩個標記 ——
+    # 少於兩個就是 0.0。用寫入點反推,而不是數總數(數量門檻擋不住
+    # 「剛好少一個」的那條路徑,實測會靜靜通過)。
+    import inspect
+    body = inspect.getsource(mr.run_weekend_digest)
+    sites = [k for k in range(len(body))
+             if body.startswith("_write_run_manifest(", k)]
+    assert len(sites) >= 3, f"週日只剩 {len(sites)} 個 manifest 寫入點"
+    for k in sites:
+        assert body[:k].count("_mark_phase(") >= 2, (
+            f"第 {sites.index(k) + 1} 個 manifest 寫入點之前只有 "
+            f"{body[:k].count('_mark_phase(')} 個標記 → total_seconds 會是 0.0")

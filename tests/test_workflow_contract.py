@@ -811,9 +811,25 @@ def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
             f"canary={ci_env[key]!r} vs 排程={prod_env[key]!r}")
     assert ci_env["DRY_RUN"] == "1", "canary 必須是 DRY_RUN(不寄信)"
 
+    # **每一家合法 provider 的金鑰,兩邊都要注入**(2026-08-24 外審 P2)。
+    # 上面的路由比對刻意排除了 `_API_KEY`,於是「宣告為合法卻沒有金鑰」
+    # 這個洞掉在兩份 workflow 的縫隙裡:生產 2026-08-22 補了 OpenAI,
+    # canary 沒有。而 `LLM_PROVIDER` 在兩邊都跟著同一個 repo variable 走 ——
+    # 使用者切過去那天,canary 驗的是一條沒有金鑰的路。
+    # 表用 `llm_config.PROVIDER_KEY_ENV`(dispatcher 自己那份),不手抄。
+    import llm_config as lc
+    assert set(lc.PROVIDER_KEY_ENV) == set(lc.VALID_PROVIDERS), (
+        "provider→金鑰表與合法清單不一致 —— 這條檢查會漏掉沒對上的那家")
+    for prov, key in sorted(lc.PROVIDER_KEY_ENV.items()):
+        for where, env in (("排程班", prod_env), ("canary", ci_env)):
+            assert key in env, (
+                f"{where} 沒有注入 {key},但 {prov} 是 VALID_PROVIDERS 的成員"
+                " —— 一個宣告為合法的設定實際上啟動不了")
+            assert "secrets." in str(env[key]), (
+                f"{where} 的 {key} 不是從 Secrets 來的:{env[key]!r}")
+
     # **時間預算要裝得下**:max 推理下總預算 1200s,12 分鐘的 job timeout
     # 會在 canary 證明任何事之前先把它砍掉。
-    import llm_config as lc
     job_seconds = int(ci["jobs"]["dry-run-preview"]["timeout-minutes"]) * 60
     assert job_seconds > lc.MAX_TOTAL_TIMEOUT, (
         f"canary 的 job timeout {job_seconds}s 裝不下 LLM 總預算 "

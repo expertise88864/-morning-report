@@ -28,11 +28,111 @@ def _registry_of(packet):
     return _reg.registry(packet)
 
 
-#: 兩段條目不足時**模型自己宣告**的缺口代號(`data_gaps[].gap_id`)。
+#: 兩段條目不足時 prompt 要模型用的缺口代號(`data_gaps[].gap_id`)。
+#: **這不是閘門** —— 素材夠不夠由 Python 數(見 `depth_advisories`);
+#: 這兩個代號的用途是讓缺口自己說出是哪一段,`gap:other:*` 是
+#: `tension_refs.canonicalize_gap_ids` 認得的契約命名空間。
+#: 常數是**單一定義**:prompt 裡的字面值由測試比對回這裡。
 #: 用代號而不是關鍵字:任何提到「科技」的缺口都能關掉建議的話,
 #: 這條守衛就等於不存在(r4 外審)。代號要同步寫進 prompt。
 TECH_COVERAGE_GAP = "gap:other:tech_coverage"
 SECTOR_COVERAGE_GAP = "gap:other:sector_coverage"
+
+
+#: 這兩個代號合起來是一個集合:它們**宣稱的是輸出自己的形狀**,
+#: 而加深輪的工作正是改變那個形狀 —— 見 `_identity` 與
+#: `contradicted_coverage_gaps`。
+COVERAGE_GAPS = frozenset({TECH_COVERAGE_GAP, SECTOR_COVERAGE_GAP})
+
+#: 兩段的條目下限(prompt 也是這個數;`COVERAGE_FLOORS` 是單一定義)。
+COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 6, SECTOR_COVERAGE_GAP: 5}
+
+
+def section_counts(obj, packet=None):
+    """`(科技條目數, 科技以外條目數)`;分類壞掉或無法分類時回 `(None, None)`。
+
+    分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判
+    一次的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
+    """
+    news = [n for n in ((obj or {}).get("top_news_analysis") or [])
+            if isinstance(n, dict)]
+    try:
+        from analysis_render_depth import is_tech as _is_tech
+        from analysis_render_depth import news_subject as _subj
+        tech = sum(1 for n in news if _is_tech(_subj(n, packet)))
+    except Exception:                       # noqa: BLE001 - 分類壞了不猜
+        return None, None
+    return tech, len(news) - tech
+
+
+def coverage_gap_faults(before, after, packet=None) -> list:
+    """涵蓋率缺口的**雙向**規則。回一串人看得懂的理由(空 = 沒問題)。
+
+    這兩個代號宣稱的是「輸出自己那一段條目不足」,所以它**該不該在**
+    完全由那一版自己的條目數決定:
+
+      - 達標了還留著 → 那句話被自己的內容否證,而它會照樣印在信裡。
+      - 沒達標卻撤掉 → **撤掉了一句還成立的揭露**(2026-08-24 r3 外審:
+        上一版把這兩個代號無條件從身分保存與面向計數裡豁免,於是
+        「提早撤掉」沒有任何守衛看得到 —— 修一個洞開一個洞)。
+
+    兩條各自有自己的訊息:處置不同(一邊是撤掉那句話,一邊是把它放回去)。
+    """
+    out: list = []
+    tech, other = section_counts(after, packet)
+    # **兩個方向的舉證責任不一樣**(2026-08-24 r4 外審)。上一版數不出來就
+    # 一律放行 —— 那同時放過了「撤掉一句還成立的揭露」,而它不需要任何
+    # 證明就過關。分開來看:
+    #   - 留著 → 要**證明**那一段已達標才算矛盾;證不出來就別擋(不亂擋加深)。
+    #   - 撤掉 → 要**證明**那一段已達標才可以撤;證不出來就是不可以撤。
+    # 「證不出來」偏向哪一邊,取決於哪一邊的後果不可逆:讀者收到一份看起來
+    # 完整的報告,比多留一句過時的揭露嚴重。
+    got = {TECH_COVERAGE_GAP: tech, SECTOR_COVERAGE_GAP: other}
+    for gid in sorted(COVERAGE_GAPS):
+        floor, n = COVERAGE_FLOORS[gid], got[gid]
+        in_b, in_a = _declares(before, gid), _declares(after, gid)
+        if in_b and not in_a and n is None:
+            out.append(f"第二版撤掉了 `{gid}`,但分類不出那一段有幾則 ——"
+                       f"**撤掉揭露要有證明**,證不出已達下限 {floor} 就不可以撤")
+        elif in_a and n is not None and n >= floor:
+            out.append(f"第二版留著 `{gid}`(那一段不足),但它自己已經有 "
+                       f"{n} 則(下限 {floor}) —— 那句話已被自己的內容否證,"
+                       "要刪掉或改寫成真正還缺的東西")
+        elif in_b and not in_a and n is not None and n < floor:
+            out.append(f"第二版撤掉了 `{gid}`,但那一段仍然只有 {n} 則"
+                       f"(下限 {floor}) —— 那句揭露還成立,不可以就這樣消失"
+                       "(讀者會收到一份看起來完整的報告)")
+    return out
+
+
+def _declares(obj, gid: str) -> bool:
+    """`obj` 的 `data_gaps` 有沒有宣告這個代號。"""
+    return any(str((g or {}).get("gap_id") or "").strip() == gid
+               for g in ((obj or {}).get("data_gaps") or [])
+               if isinstance(g, dict))
+
+
+def contradicted_coverage_gaps(obj, packet=None) -> list:
+    """宣告了「這一段不足」而**輸出自己**那一段已經達標的缺口代號。
+
+    2026-08-24 r2 外審:矛盾要用**輸出內部**判,不是從素材則數推論。
+    「EVIDENCE 有 12 則科技新聞」推不出「宣告是假的」—— 12 則可能是同一
+    件事的 12 家轉載,那時候寫 `gap:other:tech_coverage` 是誠實的。
+    但**輸出自己有 6 則科技條目卻同時說第八段不足**,那句話就是被它自己
+    的內容否證的,而且它會照樣印在信裡(`analysis_render` 的「資料缺口」段)。
+
+    這正是加深輪的常態產物:第一版 2 則 + 缺口(一致),補到 6 則之後
+    缺口沒跟著撤(不一致)。所以這兩個代號**不進身分保存**(見 `_identity`),
+    讓加深輪撤得掉它。
+    """
+    ids = {str((g or {}).get("gap_id") or "").strip()
+           for g in ((obj or {}).get("data_gaps") or []) if isinstance(g, dict)}
+    tech, other = section_counts(obj, packet)
+    if tech is None:
+        return []
+    got = {TECH_COVERAGE_GAP: tech, SECTOR_COVERAGE_GAP: other}
+    return [gid for gid in sorted(COVERAGE_GAPS)
+            if gid in ids and got[gid] >= COVERAGE_FLOORS[gid]]
 
 
 def depth_advisories(obj, packet=None) -> list:
@@ -66,7 +166,7 @@ def depth_advisories(obj, packet=None) -> list:
         try:
             from analysis_render_depth import is_tech as _is_tech
             from analysis_render_depth import news_subject as _subj
-            _tech = sum(1 for n in news if _is_tech(_subj(n, packet)))
+            _tech, _ = section_counts(obj, packet)
             # **素材面也要照同一支分類數一次**(r2 外審):只看產出的比例
             # 會在「當天真的沒有那個類股的料」時要求一個做不到的下限 ——
             # 模型即使誠實寫進 data_gaps 也照樣被催,那是在逼它湊。
@@ -79,36 +179,52 @@ def depth_advisories(obj, packet=None) -> list:
         except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數
             _tech = _src_tech = _src_other = None
         _other = None if _tech is None else len(news) - _tech
-        # 模型自己說了「今天這一類沒有料」就不再催(它有出口,而且那個出口
-        # 是被驗證器盯著的欄位,不是一句白話)。
-        # **出口是宣告式的缺口代號,不是關鍵字**(r4 外審):上一版把所有
-        # 欄位攤成一個字串再問「有沒有出現『科技』」—— 於是一筆完全無關的
-        # 缺口(「缺科技類股法人買賣超資料」)就能把這條建議關掉,而那正是
-        # 這條建議要抓的稀薄段落。這個 repo 記過同一形狀:
-        # 便利的判斷式不等於它要代表的狀態。
-        # 代號同時寫進 prompt(`prompt_profiles`),否則出口存在而模型不知道。
-        _gap_ids = {str((g or {}).get("gap_id") or "").strip()
-                    for g in ((obj.get("data_gaps") or [])
-                              if isinstance(obj, dict) else [])
-                    if isinstance(g, dict)}
         if len(news) < 10:
             out.append(
                 f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
                 f"{_avail} 則新聞 —— 目標 10–16 則;優先補未被涵蓋的重大事件"
                 "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
-        if (_tech is not None and _tech < 6 and (_src_tech or 0) >= 6
-                and TECH_COVERAGE_GAP not in _gap_ids):
+        # **出口由 Python 判,不由模型宣告**(2026-08-24 外審 P2)。先前
+        # 「模型填了缺口代號就不再催」與 `_src_tech >= 6`(素材面的同一個
+        # 問題,Python 自己數的)並存 —— 而後者才是事實。兩者衝突時前者贏,
+        # 等於模型只要寫一行 `gap:other:tech_coverage` 就能關掉這條建議,
+        # 即使 EVIDENCE 裡明明躺著十幾則科技新聞。素材夠不夠是可數的,
+        # 不是可宣告的。
+        if _tech is not None and _tech < 6 and (_src_tech or 0) >= 6:
             out.append(
                 f"科技條目只有 {_tech} 則,而素材有 {_src_tech} 則"
                 "(第八段靠它) —— 目標至少 6 則;"
-                "同族群要寫不同事件,不是同一件事換句話說")
-        if (_other is not None and _other < 5 and (_src_other or 0) >= 5
-                and SECTOR_COVERAGE_GAP not in _gap_ids):
+                "同族群要寫不同事件,不是同一件事換句話說。"
+                "素材雖多但都是同一件事的轉載時,把那個理由寫進 data_gaps"
+                "(揭露,不是省略);補足之後 `gap:other:tech_coverage` 要"
+                "一併撤掉,那句話就不再成立")
+        if _other is not None and _other < 5 and (_src_other or 0) >= 5:
             out.append(
                 f"科技以外只有 {_other} 則,而素材有 {_src_other} 則"
                 "(第九段靠它) —— 目標至少 5 則"
                 "(金融/航運/傳產/生技/能源/營建/重電/汽車/觀光),"
                 "優先挑該類股龍頭的重大公告或財報")
+        # r1 外審(2026-08-24):這裡曾經多一條「宣告了缺料但素材充足 →
+        # 點名它說假話」。移除,兩個理由:
+        #   1. **它宣稱的事沒有被證明。** `_src_tech` 數的是**素材則數**,
+        #      12 則可能是同一件事的 12 家轉載 —— 「素材充足」推不出
+        #      「宣告是假的」。這個 repo 記過同一形狀:便利的述詞不等於
+        #      它要代表的狀態。
+        #   2. **加深輪結構上滿足不了它。** `deepen_input` 明講「保留同樣的
+        #      資料缺口」,而 `_identity()` 把 `what_is_missing` 納入不可
+        #      遺失身分 —— 模型照著建議刪掉那個缺口,
+        #      `deepen_is_an_improvement` 就判定「第二版弄丟了資料缺口」而
+        #      沿用第一版。一條做了會被否決的建議,比沒有這條更糟。
+    # **被輸出自己否證的涵蓋率缺口**(2026-08-24 r2 外審)。不受 `_avail`
+    # 門檻限制:素材少的日子照樣不該印一句被自己內容否證的揭露。
+    for _gid in contradicted_coverage_gaps(obj, packet):
+        _n = dict(zip((TECH_COVERAGE_GAP, SECTOR_COVERAGE_GAP),
+                      section_counts(obj, packet)))[_gid]
+        out.append(
+            f"data_gaps 還留著 `{_gid}`(那一段不足),但這一版自己已經有 "
+            f"{_n} 則(下限 {COVERAGE_FLOORS[_gid]}) —— 那句話已經不成立,"
+            "請把它刪掉或改寫成真正還缺的東西(它會印在信的「資料缺口」段)")
+
     for i, n in enumerate(news):
         where = f"top_news_analysis[{i}]"
         steps = [s for s in (n.get("mechanism_steps") or []) if isinstance(s, dict)]
@@ -281,6 +397,10 @@ def deepen_input(user_payload: str, advisories: list, previous=None) -> str:
     return (user_payload + "\n\nDEEPEN\n上一版輸出合法,但深度不足。" + prev
             + "請**保留上一版所有已經成立的內容**(同一批新聞、同一個立場、"
             "同樣的資料缺口),只針對下列各點加深,再輸出**完整** JSON。"
+            "唯一的例外是 `gap:other:tech_coverage` / "
+            "`gap:other:sector_coverage`:那兩句宣稱的是**這一版自己**"
+            "那一段條目不足,補足之後就不再成立 —— 補足了就把它刪掉"
+            "(其餘缺口一律保留)。"
             "沒有根據的關係與證據**不得硬湊** —— 加深是把已有的證據"
             "走完因果鏈與量級判斷,不是編造新內容;真的判斷不出量級就選 "
             "unknown 並寫缺哪些資料:\n"
@@ -323,8 +443,15 @@ def _identity(obj) -> dict:
         "反面證據": {f"{c.get('claim_id')}:{x}"
                  for c in (o.get("claim_audit") or []) if isinstance(c, dict)
                  for x in (c.get("counterevidence_ids") or [])},
+        # **涵蓋率缺口不進身分**(2026-08-24 r2 外審):它宣稱的是輸出
+        # 自己那一段的形狀,而加深輪的工作正是改變那個形狀。保它的話,
+        # 「補了條目就該撤掉那句話」在結構上做不到 —— 模型照建議撤掉,
+        # 這裡就判定「第二版弄丟了資料缺口」而沿用含矛盾的第一版。
+        # 其餘缺口(真的缺資料)照舊保。
         "資料缺口": {str((g or {}).get("what_is_missing") or "")
-                 for g in (o.get("data_gaps") or []) if isinstance(g, dict)},
+                 for g in (o.get("data_gaps") or []) if isinstance(g, dict)
+                 and str((g or {}).get("gap_id") or "").strip()
+                 not in COVERAGE_GAPS},
         # 2026-08-19(外審):`taiwan_policy` 是 v20 新欄位 —— 不進身分的話,
         # 條數 advisory 觸發的加深可以「補了新聞、刪了政策段」而勝出,
         # 使用者才剛要回來的段落又靜默消失。**內容也要保**(不只 ID):
@@ -550,7 +677,14 @@ def _dominance(obj) -> dict:
     return {
         "news_items": len(news),
         "high_materiality": sum(1 for n in news if n.get("materiality") == "high"),
-        "data_gaps": len((obj or {}).get("data_gaps") or []),
+        # **涵蓋率缺口不計入**(2026-08-24 r2 外審):這個面向是「揭露有沒有
+        # 變少」,而涵蓋率缺口宣稱的是輸出自己那一段的形狀 —— 補足條目之後
+        # 撤掉它是**修正**,不是少揭露一件事。連同 `_identity` 的豁免,
+        # 三道守衛(數量/身分/面向)要一起放行,少放一道就仍然撤不掉。
+        "data_gaps": sum(
+            1 for g in ((obj or {}).get("data_gaps") or [])
+            if isinstance(g, dict)
+            and str(g.get("gap_id") or "").strip() not in COVERAGE_GAPS),
         "step_evidence": ev,
         "addressed_tensions": len(cms.get("tension_resolutions") or []),
         "counterevidence": sum(len((c or {}).get("counterevidence_ids") or [])
@@ -584,6 +718,12 @@ def deepen_is_an_improvement(before, after, *, evidence_ids) -> tuple:
     # packet-aware 提示),而選優數的是不含它們的那一套。第二版**剛好把
     # packet-aware 的那幾條修好**時,盲測的數量沒有變少 → 判定沒有改善 →
     # 把真正的改善丟掉,沿用第一版。
+    # **矛盾要清掉才算改善**(2026-08-24 r2 外審)。排在數量比較**之前**:
+    # 留著矛盾的第二版有時剛好讓總數持平,那時它會被「提示沒有減少」擋掉 ——
+    # 結果對、訊息卻指向錯的原因,而處置不同(補深度 vs 撤掉那句話)。
+    _bad = coverage_gap_faults(before, after, evidence_ids)
+    if _bad:
+        return False, _bad[0]
     adv_b = depth_advisories(before, evidence_ids)
     adv_a = depth_advisories(after, evidence_ids)
     if len(adv_a) >= len(adv_b):

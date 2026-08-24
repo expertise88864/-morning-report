@@ -87,14 +87,20 @@ def load_radar_state() -> dict:
     return data
 
 
-def save_radar_state(state: dict) -> None:
+def save_radar_state(state: dict) -> bool:
+    """寫入成功回 True。**失敗要說得出來**(2026-08-24 外審 P2):先前這裡
+    吞掉例外、呼叫端照樣 `return 0` —— 信已經寄出但沒有留下紀錄,下一次
+    執行看不到 `radar_sent_at` 就會**再寄一次同一集**,而 workflow 顯示綠燈。
+    """
     try:
         RADAR_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         tmp = RADAR_STATE_FILE.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
         tmp.replace(RADAR_STATE_FILE)
+        return True
     except Exception as e:
         log(f"state 寫入失敗: {e}")
+        return False
 
 
 def radar_processed_guids() -> set:
@@ -1077,7 +1083,11 @@ def process_new_episode() -> int:
         "sectors": [{"name": s["name"], "stance": s["stance"]} for s in extract["sectors"]],
     })
     state[cfg["key"]]["episodes"] = state[cfg["key"]]["episodes"][:20]
-    save_radar_state(state)
+    if not save_radar_state(state):
+        # 已寄出、但沒記下來。**這不是綠燈** —— 下次執行會重寄同一集,
+        # 而使用者收到的是重複的信。回非零讓 workflow 亮紅、有人看得到。
+        log("⚠ 已寄出但 state 未寫入 → 下次會重寄同一集,需人工確認")
+        return 1
     return 0
 
 

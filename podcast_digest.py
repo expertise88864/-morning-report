@@ -569,6 +569,7 @@ def main() -> int:
     pending.sort(key=_process_order_key)
     used_min = 0.0
     updated = False
+    save_failed = False
     for cfg, entry, audio_url, dur in pending:
         if used_min + dur > DAILY_BUDGET_MINUTES:
             log(f"{cfg['name']}: 超出每日預算({used_min:.0f}+{dur:.0f}"
@@ -582,13 +583,28 @@ def main() -> int:
             log(f"{cfg['name']}: 剩餘 job 時間不足以安全完成，留待下次")
             continue
         try:
-            if process_episode(cfg, state, entry, audio_url):
-                updated = True
-                used_min += dur
-                save_state(state)   # 逐集落盤:後面失敗/超時不丟已完成的摘要
+            ok = process_episode(cfg, state, entry, audio_url)
         except Exception as e:
             log(f"{cfg['name']} 處理失敗(不影響其他節目): {str(e)[:150]}")
+            continue
+        if not ok:
+            continue
+        updated = True
+        used_min += dur
+        try:
+            save_state(state)   # 逐集落盤:後面失敗/超時不丟已完成的摘要
+            save_failed = False     # 後來的成功會把先前那集一併寫進去
+        except Exception as e:
+            # **落盤失敗不能算成功**(2026-08-24 外審 P2):先前這行與轉錄
+            # 共用同一個 except,寫檔失敗會被歸類成「處理失敗」,而 `updated`
+            # 早已是 True → 結尾照樣印「已寫入 <檔>」並回 0。轉錄是這條
+            # 流程最貴的一步,靜默丟掉它比失敗更糟。
+            save_failed = True
+            log(f"state 寫入失敗(本次摘要未落盤): {str(e)[:150]}")
 
+    if save_failed:
+        log(f"⚠ 已轉錄但未寫入 {STATE_FILE} → 這些集數下次會重做")
+        return 1
     if updated:
         log(f"已寫入 {STATE_FILE}(共轉錄 {used_min:.0f} 分鐘音檔)")
     else:

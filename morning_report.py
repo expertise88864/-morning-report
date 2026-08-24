@@ -23116,16 +23116,31 @@ def _render_weekend_policy_html(analysis_md: str, htmllib) -> str:
 
 def _weekend_digest_has_content(sports: dict, podcast_eps: list,
                                 journals: list,
-                                now_tpe: Optional[dt.datetime] = None) -> bool:
+                                now_tpe: Optional[dt.datetime] = None,
+                                *, alerts: Optional[list] = None,
+                                suspension: Optional[list] = None) -> bool:
     """週日輕量信只在「週六信之後才新增」的內容時才寄(使用者需求:有新的才寄)。
 
     用時效判定「新」,而非只看「存在」,避免與週六信重複:
       - Podcast:load_podcast_digest 已以 shown_at 去重,回傳的即未顯示過的新集。
       - 世足/NBA/中職:使用者明確要求週日要看「昨日戰績」,故昨日/今日的賽果視為當日新內容
         (這是刻意的每日戰報,賽季中與週六信小幅重疊屬預期;NBA 回看 5 天的舊場次不算)。
-      - 文獻(7 天窗)、純戰績表、一般體育新聞:僅作版面內容,不單獨觸發寄信。
+      - 颱風警報(CWA)與停班停課公告:**自己就觸發**,見下方註解。
+      - 文獻(7 天窗)、純戰績表、一般體育新聞、一般特報:僅作版面內容,不單獨觸發寄信。
     """
     now_tpe = now_tpe or dt.datetime.now(TPE)
+    # **颱風警報與停班停課自己就是寄信的理由**(2026-08-24 外審 P1-2)。
+    # 這兩樣是週日晚間才會出現、而且直接改變讀者週一行動的東西;先前它們
+    # 只是版面內容 —— 沒有新 podcast、沒有昨日賽果的颱風夜,整封信(連同
+    # 停班公告)不會寄出。這是**唯一**會因為靜默而讓讀者實際受損的區塊,
+    # 其餘(文獻、戰績表)照舊只搭便車。
+    #
+    # 一般特報(豪雨/強風/低溫)不觸發:它們常態出現,單獨為此寄一封信
+    # 會讓「有信 = 有事」這個訊號本身失效。門檻放在**颱風警報**。
+    if any((a or {}).get("typhoon") for a in (alerts or [])):
+        return True
+    if suspension:          # 人事總處有公告才非空(無公告時 fetcher 回空)
+        return True
     if podcast_eps:
         return True
     sports = sports or {}
@@ -23205,6 +23220,11 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     import html as _htmllib
     report_date = now_tpe.strftime("%Y-%m-%d (%a)")
     print(f"[weekend] 開始產生週日綜合 — {report_date}")
+    # **週日的 manifest 先前恆為 `total_seconds: 0.0` / `phases: []`**
+    # (2026-08-24 外審 P3):相位標記只寫在平日主流程,而 `total_seconds()`
+    # 少於兩個標記就回 0.0 —— manifest 說這一班跑了零秒,看起來像沒跑過,
+    # 而週日正是「沒寄信也算正常」的那一天,最需要看得出它到底做了什麼。
+    _mark_phase("週末:啟動")
 
     try:
         weather = fetch_weather()
@@ -23243,8 +23263,12 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         print(f"[weekend] CWA 警特報抓取失敗: {e}", file=sys.stderr)
         cwa_alerts = []
 
-    if not _weekend_digest_has_content(sports, podcast_eps, journals, now_tpe):
-        print("[weekend] 無新增體育/Podcast 內容 → 本週日不寄信")
+    _mark_phase("週末:抓取(天氣/體育/文獻/日曆/在地/警特報)")
+
+    if not _weekend_digest_has_content(sports, podcast_eps, journals, now_tpe,
+                                       alerts=cwa_alerts,
+                                       suspension=suspension):
+        print("[weekend] 無新增體育/Podcast/颱風警報/停班課 → 本週日不寄信")
         # r2(Codex,P1):**這條路徑也必須更新 manifest**。批#69 的看門狗判定
         # 「今天有沒有跑」靠的就是它,而我寫在看門狗裡的理由正是
         # 「週日不寄信是正常的,但 manifest 只要跑過就會更新,不會假警報」——
@@ -23290,6 +23314,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         _DEGRADED_STEPS.append("weekend_policy_analysis")
         policy_analysis_html = ""
 
+    _mark_phase("週末:公報/政策解析")
+
     weather_html = _render_weather_html(weather or [], suspension or [],
                                         cwa_alerts or [])
     sports_html = _render_sports_html(sports or {}, _htmllib)
@@ -23313,6 +23339,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         # DRY_RUN 從這裡直接 return,於是根本沒有檔案 ——
         # 斷言只會說「找不到 run_manifest.json」,而不是那句說得出下一步的
         # 「這一班寄的是週日綜合信,請在交易日重新 dispatch」。
+        _mark_phase("週末:渲染(DRY_RUN)")
         _write_run_manifest(now_tpe, report_kind=_rq.WEEKEND_DIGEST)
         # 同時寫入晨報慣用的預覽路徑,讓 CI 的 dry-run-preview artifact 在週日也抓得到。
         for out in ("/tmp/morning_report_preview.html",
@@ -23323,6 +23350,8 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
               "(同時 /tmp/weekend_digest_preview.html)")
         return 0
 
+    _mark_phase("週末:渲染")
+
     subject = f"📰 週日綜合 {report_date} | 體育 / Podcast / 政策 / 醫界"
     # 寄信成功後才標記 podcast 已顯示(避免漏寄)。週日不寫入預測歷史:weekend 筆記的
     # target_session_date 會指向週一,與週六晨報的「週一預測」撞號,save_history_state
@@ -23331,6 +23360,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
     # model_history),不可讓 persist 再推一次完整清單(批#33)
     deliver_report(html, subject, None, podcast_eps,
                    push_state=False)
+    _mark_phase("週末:寄送")
     # r2(七維度審查,P2):**週日路徑的降級紀錄原本是死寫入。**
     # _DEGRADED_STEPS 只有兩個讀取端(_write_run_manifest 與資料品質區),
     # 兩者都在 main() 的平日分支;run_weekend_digest 從不呼叫 _write_run_manifest,

@@ -285,6 +285,23 @@ def test_radar_state_roundtrip_and_processed_guids(tmp_path, monkeypatch):
         {"guid": "g2"}]}})                          # g2 未寄 → 不算已處理
     assert gr.load_radar_state()["gooaye"]["episodes"][0]["guid"] == "g1"
     assert gr.radar_processed_guids() == {"g1"}     # 只有已寄(radar_sent_at)的算
+    assert gr.save_radar_state({"x": 1}) is True    # 成功要說得出來
+
+
+def test_delivered_but_unrecorded_is_not_a_green_run(monkeypatch, tmp_path):
+    """2026-08-24 外審 P2:寄信成功之後 `save_radar_state` 吞掉例外、
+    `process_new_episode` 照樣 `return 0`。信已經寄出但沒有留下
+    `radar_sent_at` —— 下一次執行會**重寄同一集**,而 workflow 是綠的。"""
+    monkeypatch.setattr(gr, "RADAR_STATE_FILE",
+                        tmp_path / "nope" / "x.json")
+    monkeypatch.setattr(gr.Path, "mkdir",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("ro")))
+    assert gr.save_radar_state({"a": 1}) is False   # 失敗要說得出來
+    # 接線:寄送成功後拿到 False 必須回非零(不是只印一行 log)
+    import inspect
+    src = inspect.getsource(gr.process_new_episode)
+    i = src.index("if not save_radar_state(state):")
+    assert "return 1" in src[i:i + 400], src[i:i + 400]
 
 
 # ===================== oneliner 加深(F)=====================

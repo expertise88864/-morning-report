@@ -106,3 +106,48 @@ def test_http_get_retries_on_5xx(monkeypatch):
     monkeypatch.setattr(pd.time, "sleep", lambda *_: None)
     monkeypatch.setattr(pd.requests, "get", fake)
     assert pd._http_get("https://x", retries=2).status_code == 200 and calls["n"] == 2
+
+
+def test_state_write_failure_is_not_reported_as_success(monkeypatch):
+    """2026-08-24 外審 P2:落盤失敗先前與轉錄共用同一個 except,被歸類成
+    「處理失敗(不影響其他節目)」——而 `updated` 早已是 True,結尾照樣印
+    「已寫入 <檔>」並回 0。轉錄是這條流程最貴的一步,靜默丟掉比失敗更糟。"""
+    cfg = {"key": "show", "name": "Show", "search": "Show", "priority": 1}
+    monkeypatch.setattr(pd, "DEEPSEEK_API_KEY", "test")
+    monkeypatch.setattr(pd, "PODCASTS", [cfg])
+    monkeypatch.setattr(pd, "load_state", lambda: {})
+    monkeypatch.setattr(
+        pd, "find_new_episodes",
+        lambda *a, **k: [(_entry("one"), "https://example.com/one.mp3", 20)])
+    monkeypatch.setattr(
+        pd, "process_episode", lambda cfg, state, entry, audio_url: True)
+
+    def _boom(state):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(pd, "save_state", _boom)
+    assert pd.main() == 1, "轉錄了但沒寫進檔案,不可以回報成功"
+
+
+def test_a_later_successful_write_clears_the_earlier_failure(monkeypatch):
+    """逐集落盤共用同一個 `state` dict:後面那次成功會把前面那集一併寫進去,
+    所以不該因為第一次失敗就永遠算失敗(那是相反方向的假警報)。"""
+    cfg = {"key": "show", "name": "Show", "search": "Show", "priority": 1}
+    monkeypatch.setattr(pd, "DEEPSEEK_API_KEY", "test")
+    monkeypatch.setattr(pd, "PODCASTS", [cfg])
+    monkeypatch.setattr(pd, "load_state", lambda: {})
+    monkeypatch.setattr(
+        pd, "find_new_episodes",
+        lambda *a, **k: [(_entry("one"), "https://example.com/one.mp3", 20),
+                         (_entry("two"), "https://example.com/two.mp3", 20)])
+    monkeypatch.setattr(
+        pd, "process_episode", lambda cfg, state, entry, audio_url: True)
+    calls = []
+
+    def _flaky(state):
+        calls.append(1)
+        if len(calls) == 1:
+            raise OSError("transient")
+
+    monkeypatch.setattr(pd, "save_state", _flaky)
+    assert pd.main() == 0 and len(calls) == 2, calls

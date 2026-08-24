@@ -185,10 +185,23 @@ def test_depth_advisory_matches_the_prompt_targets():
     # r2 外審:**素材真的沒有那一類**時不得要求做不到的下限(那是逼它湊)
     d = _adv(2, 9, src_tech=2)
     assert "第八段靠它" not in d, d
-    # 模型用**指定代號**宣告該段缺料 → 有出口
+    # 2026-08-24 外審 P2:**出口由 Python 判,不由模型宣告。** 這個期待
+    # 先前寫成「模型填了代號就不再催」—— 那與同一條規則裡 Python 自己數的
+    # `src_tech=12` 直接衝突,等於模型寫一行字就能關掉建議。
     e = _adv(2, 9, src_tech=12,
              gaps=((ad.TECH_COVERAGE_GAP, "今日科技新聞多為重複報導"),))
-    assert "第八段靠它" not in e, e
+    assert "第八段靠它" in e, e
+    # 但**不得反過來斷言那句宣告是假的**(r1 外審):`src_tech` 數的是素材
+    # 則數,12 則可能是同一件事的 12 家轉載 —— 「素材充足」推不出「宣告
+    # 是假的」。建議要給的是誠實的揭露路徑,不是指控。
+    assert "缺口要對得上事實" not in e, e
+    assert "轉載" in e and "data_gaps" in e, e
+    # 常數是單一定義:prompt 裡的字面值要對得回來(否則模型收到的代號與
+    # 這裡認得的不是同一個,而兩邊都看起來合理)
+    import prompt_profiles as pp
+    pp_src = io.open(Path(pp.__file__), encoding="utf-8").read()
+    assert ad.TECH_COVERAGE_GAP in pp_src, ad.TECH_COVERAGE_GAP
+    assert ad.SECTOR_COVERAGE_GAP in pp_src, ad.SECTOR_COVERAGE_GAP
     # r4 外審:**無關的缺口只要提到「科技」就關掉建議** = 守衛等於不存在
     f = _adv(2, 9, src_tech=12,
              gaps=(("gap:other:chips", "缺科技類股法人買賣超資料"),))
@@ -377,3 +390,110 @@ def test_fixture_renderer_shows_the_venue():
     seg = src[max(0, i - 2000):i]
     assert 'f.get("venue")' in seg, "渲染端沒有 venue 條件"
     assert "@ " in seg
+
+
+def test_a_coverage_gap_must_be_droppable_once_the_section_is_filled():
+    """2026-08-24 r2 外審:這條路徑上有一個結構性衝突 —— `deepen_input` 要
+    模型「保留同樣的資料缺口」,`_identity()` 又把 `what_is_missing` 納入
+    不可遺失身分。於是「補足條目之後撤掉那句『這一段不足』」做不到:模型
+    照建議撤掉,選優判準就說「第二版弄丟了資料缺口」而沿用第一版。
+    而**留著**也不行 —— 那句話會被自己的內容否證,並照樣印在信的
+    「資料缺口」段(`analysis_render`)。所以撤得掉必須成立,留著必須被擋。"""
+    import analysis_depth as ad
+    import sys
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+
+    def _obj(n_tech, gap=True):
+        o = fx.valid_analysis()
+        rows = [{"source_item_id": f"t{i}", "why_it_matters": "x",
+                 "direction": "bullish", "materiality": "medium"}
+                for i in range(n_tech)]
+        rows += [{"source_item_id": f"o{i}", "why_it_matters": "x",
+                  "direction": "bullish", "materiality": "medium"}
+                 for i in range(9)]
+        o["top_news_analysis"] = rows
+        o["data_gaps"] = ([{"gap_id": ad.TECH_COVERAGE_GAP,
+                            "what_is_missing": "科技新聞多為同一件事的轉載",
+                            "impact_on_conclusions": "第八段條目偏少"}]
+                          if gap else [])
+        return o
+
+    # fixture 的 `claim_audit` 引用 `n1`、`cross_market_synthesis` 引用
+    # `market:QQQ.change_pct` —— packet 少了它們,第二版會因為「引用了不存在
+    # 的證據 ID」被否決,量到的就不是這條測試要問的事。
+    pk_news = ([{"source_item_id": "n1", "title": "基準新聞"},
+                {"source_item_id": "n2", "title": "基準新聞二"}]
+               + [{"source_item_id": f"t{i}", "entities": ["2330"],
+                   "title": "台積電先進封裝再擴產"} for i in range(12)]
+               + [{"source_item_id": f"o{i}", "entities": ["2603"],
+                   "title": "長榮美西運價連四漲"} for i in range(12)]
+               + [{"source_item_id": f"x{i}"} for i in range(30)])
+    pk = {"news": pk_news, "market": {"QQQ": {"change_pct": 1.8}},
+          "tw_universe": [
+              {"code": "2330", "name": "台積電", "industry": "半導體業"},
+              {"code": "2603", "name": "長榮", "industry": "航運業"}]}
+
+    before = _obj(2)                     # 2 則 + 缺口 → 一致,不算矛盾
+    assert ad.contradicted_coverage_gaps(before, pk) == [], before["data_gaps"]
+    assert "第八段靠它" in chr(10).join(ad.depth_advisories(before, pk))
+
+    kept = _obj(6)                       # 補到 6 則卻留著那句話 → 矛盾
+    assert ad.contradicted_coverage_gaps(kept, pk) == [ad.TECH_COVERAGE_GAP]
+    assert "已經不成立" in chr(10).join(ad.depth_advisories(kept, pk))
+    ok, why = ad.deepen_is_an_improvement(before, kept, evidence_ids=pk)
+    assert not ok and "否證" in why, (ok, why)
+
+    dropped = _obj(6, gap=False)         # 補了條目、撤掉那句話 → 才是改善
+    assert "第八段靠它" not in chr(10).join(ad.depth_advisories(dropped, pk))
+    ok, why = ad.deepen_is_an_improvement(before, dropped, evidence_ids=pk)
+    assert ok, f"撤掉被否證的缺口反而被身分保存擋住了:{why}"
+
+    # **提早撤掉也要擋**(2026-08-24 r3 外審):上一版把這兩個代號無條件
+    # 從身分保存與面向計數裡豁免,於是「那一段還是只有 2 則卻把揭露刪了」
+    # 沒有任何守衛看得到 —— 修一個洞開一個洞。規則是**雙向**的:
+    # 該在不在、不該在還在,兩邊都算 fault,而且訊息要分得開(處置不同)。
+    early = _obj(2, gap=False)
+    assert ad.coverage_gap_faults(before, early, pk), "提早撤掉沒有被抓"
+    ok, why = ad.deepen_is_an_improvement(before, early, evidence_ids=pk)
+    assert not ok and "還成立" in why, (ok, why)
+    # 兩條訊息要分得開:留著矛盾 vs 提早撤掉
+    kept_why = ad.coverage_gap_faults(before, kept, pk)[0]
+    early_why = ad.coverage_gap_faults(before, early, pk)[0]
+    assert "否證" in kept_why and "否證" not in early_why, (kept_why, early_why)
+
+    # 分類壞掉時**不猜**:回空而不是擋死。分不出科技/非科技的那一天,
+    # 把每一次加深都判成 fault 會讓整條加深路徑靜默失效(而症狀只是
+    # 「信變淺了」,沒有人看得出原因)。
+    import analysis_render_depth as ard
+    _real = ard.is_tech
+    try:
+        ard.is_tech = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x"))
+        # 留著 → 證不出矛盾就別擋(不亂擋加深)
+        assert ad.coverage_gap_faults(before, kept, pk) == [], "分類壞了卻擋死"
+        assert ad.contradicted_coverage_gaps(kept, pk) == []
+        # 撤掉 → **證不出已達標就不可以撤**(2026-08-24 r4 外審):上一版
+        # 數不出來就一律放行,於是這條刪除路徑不需要任何證明就過關,而
+        # `_identity` / `_dominance` 都已經無條件豁免這兩個代號。
+        faults = ad.coverage_gap_faults(before, early, pk)
+        assert faults and "要有證明" in faults[0], faults
+        ok2, why2 = ad.deepen_is_an_improvement(before, early, evidence_ids=pk)
+        assert not ok2 and "要有證明" in why2, (ok2, why2)
+    finally:
+        ard.is_tech = _real
+
+    # **其餘缺口照舊保**:身分保存的豁免只給涵蓋率那兩個代號
+    # 反例只靠身分保存分勝負:a2 的涵蓋率建議已清掉(6 則),所以數量關
+    # 讓它通過、矛盾判準也放行 —— 唯一還會擋它的就是「弄丟了 chips 缺口」。
+    b2, a2 = _obj(2), _obj(6, gap=False)
+    b2["data_gaps"].append({"gap_id": "gap:other:chips",
+                            "what_is_missing": "缺法人買賣超",
+                            "impact_on_conclusions": "籌碼判斷保守"})
+    ok, why = ad.deepen_is_an_improvement(b2, a2, evidence_ids=pk)
+    assert not ok and "資料缺口" in why, (ok, why)
+
+    # **加深輪的 prompt 也要說得對**:它明講「保留同樣的資料缺口」,而這批
+    # 要求的正是「補足之後把那句話刪掉」—— 規格沒改的話,模型收到的是
+    # 兩條互相矛盾的指令,而它只看得到 prompt。
+    spec = ad.deepen_input("payload", ["補科技"], previous={"x": 1})
+    assert ad.TECH_COVERAGE_GAP in spec and "刪掉" in spec, spec[-400:]

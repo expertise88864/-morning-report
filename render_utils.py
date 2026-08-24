@@ -1229,10 +1229,15 @@ def _render_sports_html(sports: dict, htmllib) -> str:
         rows = "".join(
             f"<div style='font-size:13px;color:#334155;line-height:1.85;'>"
             f"<span style='color:#94a3b8;'>"
-            f"{htmllib.escape((str(f.get('date', '')) + ' ' + str(f.get('start', ''))).strip())}</span>　"
+            f"{htmllib.escape((str(f.get('date', '')) + ' ' + str(f.get('start', ''))).strip())}"
+            # 場地緊跟在時間後面(2026-08-24 使用者:「08/25 18:35@斗六
+            # 味全 vs 統一」)—— 先前排在隊伍後面,一眼看過去是「幾點、
+            # 誰打誰」,地點被擠到句尾。
+            + (f"<span style='color:#0f766e;'>@"
+               f"{htmllib.escape(str(f['venue']))}</span>"
+               if f.get("venue") else "")
+            + "</span>　"
             f"{htmllib.escape(f['away'])} vs {htmllib.escape(f['home'])}"
-            + (f"　<span style='color:#64748b;font-size:12px;'>@ "
-               f"{htmllib.escape(str(f['venue']))}</span>" if f.get("venue") else "")
             + (f"<div style='font-size:11px;color:#b45309;margin-left:2px;'>"
                f"{htmllib.escape(str(f['odds']))}</div>" if f.get("odds") else "")
             + "</div>"

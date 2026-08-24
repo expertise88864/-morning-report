@@ -45,7 +45,20 @@ SECTOR_COVERAGE_GAP = "gap:other:sector_coverage"
 COVERAGE_GAPS = frozenset({TECH_COVERAGE_GAP, SECTOR_COVERAGE_GAP})
 
 #: 兩段的條目下限(prompt 也是這個數;`COVERAGE_FLOORS` 是單一定義)。
-COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 6, SECTOR_COVERAGE_GAP: 5}
+#: 2026-08-24 使用者第二次反映「科技/其他類股新聞有點少」—— 那天的信是
+#: 7 + 6 = 13 則,**剛好卡在舊目標**(10–16 / ≥6 / ≥5),所以沒有任何守衛
+#: 會催它。目標整組上調;字面值只寫在這裡,比較與文案都從這裡取。
+COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 8, SECTOR_COVERAGE_GAP: 7}
+
+#: `top_news_analysis` 的總則數目標(下限就是兩段下限之和 —— 分開訂會
+#: 出現「兩段都達標而總數不達標」這種自相矛盾的催促)。
+NEWS_TARGET_MIN = sum(COVERAGE_FLOORS.values())
+NEWS_TARGET_MAX = NEWS_TARGET_MIN + 5
+
+#: 要求條數的前提:素材面要真的夠(素材貧乏的日子硬湊,湊出來的是把
+#: 同一件事寫兩遍)。門檻跟著目標走 —— 寫死 20 的話,目標一上調它就
+#: 相對變鬆,而那正是「守衛與 prompt 打架」的老形狀。
+NEWS_SOURCE_MIN = NEWS_TARGET_MIN * 2
 
 
 def section_counts(obj, packet=None):
@@ -162,7 +175,7 @@ def depth_advisories(obj, packet=None) -> list:
     # 模型交出六則就沒有人會要求它補,信裡的兩段照樣稀薄。
     # 分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判一次
     # 的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
-    if _avail >= 20:
+    if _avail >= NEWS_SOURCE_MIN:
         try:
             from analysis_render_depth import is_tech as _is_tech
             from analysis_render_depth import news_subject as _subj
@@ -179,10 +192,11 @@ def depth_advisories(obj, packet=None) -> list:
         except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數
             _tech = _src_tech = _src_other = None
         _other = None if _tech is None else len(news) - _tech
-        if len(news) < 10:
+        if len(news) < NEWS_TARGET_MIN:
             out.append(
                 f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
-                f"{_avail} 則新聞 —— 目標 10–16 則;優先補未被涵蓋的重大事件"
+                f"{_avail} 則新聞 —— 目標 {NEWS_TARGET_MIN}–{NEWS_TARGET_MAX} 則;"
+                "優先補未被涵蓋的重大事件"
                 "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
         # **出口由 Python 判,不由模型宣告**(2026-08-24 外審 P2)。先前
         # 「模型填了缺口代號就不再催」與 `_src_tech >= 6`(素材面的同一個
@@ -190,18 +204,20 @@ def depth_advisories(obj, packet=None) -> list:
         # 等於模型只要寫一行 `gap:other:tech_coverage` 就能關掉這條建議,
         # 即使 EVIDENCE 裡明明躺著十幾則科技新聞。素材夠不夠是可數的,
         # 不是可宣告的。
-        if _tech is not None and _tech < 6 and (_src_tech or 0) >= 6:
+        _tf = COVERAGE_FLOORS[TECH_COVERAGE_GAP]
+        if _tech is not None and _tech < _tf and (_src_tech or 0) >= _tf:
             out.append(
                 f"科技條目只有 {_tech} 則,而素材有 {_src_tech} 則"
-                "(第八段靠它) —— 目標至少 6 則;"
+                f"(第八段靠它) —— 目標至少 {_tf} 則;"
                 "同族群要寫不同事件,不是同一件事換句話說。"
                 "素材雖多但都是同一件事的轉載時,把那個理由寫進 data_gaps"
                 "(揭露,不是省略);補足之後 `gap:other:tech_coverage` 要"
                 "一併撤掉,那句話就不再成立")
-        if _other is not None and _other < 5 and (_src_other or 0) >= 5:
+        _of = COVERAGE_FLOORS[SECTOR_COVERAGE_GAP]
+        if _other is not None and _other < _of and (_src_other or 0) >= _of:
             out.append(
                 f"科技以外只有 {_other} 則,而素材有 {_src_other} 則"
-                "(第九段靠它) —— 目標至少 5 則"
+                f"(第九段靠它) —— 目標至少 {_of} 則"
                 "(金融/航運/傳產/生技/能源/營建/重電/汽車/觀光),"
                 "優先挑該類股龍頭的重大公告或財報")
         # r1 外審(2026-08-24):這裡曾經多一條「宣告了缺料但素材充足 →

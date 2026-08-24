@@ -99,9 +99,27 @@ def test_bad_rows_never_become_zero_positions(monkeypatch):
 def test_sector_targets_were_raised():
     """使用者 2026-08-22:科技與其他類股都偏少。兩段各自要有下限。"""
     src = io.open(Path(pp.__file__), encoding="utf-8").read()
-    assert "十到十六則為目標" in src
-    assert "科技至少六則、科技之外至少五則" in src
+    assert "十五到二十則為目標" in src
+    assert "科技至少八則、科技之外至少七則" in src
     assert "六到十則為目標" not in src, "舊目標還在(兩個數字打架)"
+    # **prompt 的數字要與守衛的常數是同一組**(2026-08-24):兩邊各養一份的
+    # 話,守衛催的下限與 prompt 要求的下限可以不一樣 —— 模型照 prompt 交
+    # 了卷,守衛還在催;或反過來,守衛不催而信裡就是偏少(那正是使用者
+    # 08/24 又反映一次的形狀:7+6=13 剛好卡在舊目標上,沒有人會催它)。
+    import analysis_depth as ad
+    _cn = "零一二三四五六七八九十"
+
+    def _zh(n):                          # 8 → 八、15 → 十五、20 → 二十
+        if n < 10:
+            return _cn[n]
+        tens, ones = divmod(n, 10)
+        return ((_cn[tens] if tens > 1 else "") + "十"
+                + (_cn[ones] if ones else ""))
+
+    assert (_zh(8), _zh(15), _zh(20)) == ("八", "十五", "二十")
+    assert f"科技至少{_zh(ad.COVERAGE_FLOORS[ad.TECH_COVERAGE_GAP])}則" in src
+    assert f"科技之外至少{_zh(ad.COVERAGE_FLOORS[ad.SECTOR_COVERAGE_GAP])}則"         in src
+    assert f"{_zh(ad.NEWS_TARGET_MIN)}到{_zh(ad.NEWS_TARGET_MAX)}則為目標" in src
 
 
 def test_jargon_gets_a_short_gloss_rule():
@@ -172,15 +190,17 @@ def test_depth_advisory_matches_the_prompt_targets():
         return "\n".join(ad.depth_advisories(obj, pk))
 
     # 六則(舊契約認為夠)→ 現在要被點名
-    assert "10–16" in _adv(3, 3), "六則仍被當成足夠"
+    assert f"{ad.NEWS_TARGET_MIN}–{ad.NEWS_TARGET_MAX}" in _adv(3, 3), "六則仍被當成足夠"
     # 十則但全是科技 → 第九段沒東西
     a = _adv(10, 0)
     assert "科技以外只有 0 則" in a, a
     # 科技不足
     b = _adv(2, 9)
     assert "科技條目只有 2 則" in b, b
-    # 兩段都夠就不吵
-    c = _adv(6, 5)
+    # 兩段都夠就不吵(下限跟著 `COVERAGE_FLOORS` 走 —— 寫死數字的話,
+    # 目標一上調這條就會變成「達標也被吵」而看不出是測試過時)
+    c = _adv(ad.COVERAGE_FLOORS[ad.TECH_COVERAGE_GAP],
+             ad.COVERAGE_FLOORS[ad.SECTOR_COVERAGE_GAP])
     assert "第八段靠它" not in c and "第九段靠它" not in c, c
     # r2 外審:**素材真的沒有那一類**時不得要求做不到的下限(那是逼它湊)
     d = _adv(2, 9, src_tech=2)
@@ -287,7 +307,7 @@ def test_weekend_digest_section_order_matches_the_weekday_letter():
 
 # ---------------- 2026-08-24 使用者:中職未來賽程要有球場地點
 
-def test_cpbl_venue_map_speaks_the_official_protocol(monkeypatch):
+def test_cpbl_venue_map_speaks_the_official_protocol(monkeypatch, tmp_path):
     """官網是 ASP.NET:token 在頁面 JS(不是 hidden input),POST 放 header
     並帶 X-Requested-With(實測缺一不可)。生產海外 IP 被擋 → 回 {}。"""
     import json as _json
@@ -316,16 +336,25 @@ def test_cpbl_venue_map_speaks_the_official_protocol(monkeypatch):
                          "VisitingTeamName": "味全龍", "FieldAbbe": "大巨蛋"}])}
             return _R()
 
+    # 快取要隔離:這條測的是**協定**,不是「本機剛好有一份整季快取」
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", tmp_path / "v.json")
     monkeypatch.setattr(mr.requests, "Session", _Sess)
     vm = mr._cpbl_venue_map()
     assert len(vm) == 1
     (d, home), field = next(iter(vm.items()))
     assert home == "統一7-ELEVEn獅" and field == "大巨蛋"
-    # 官網掛掉(連線例外)→ {}(賽程照出、只少場地)
+    # 成功那次會把整季寫進快取 —— 所以下面測「無快取」要換一條乾淨路徑
+    assert (tmp_path / "v.json").exists(), "成功抓取沒有落快取"
+
     class _Boom:
         def get(self, *a, **k): raise RuntimeError("geo-blocked")
     monkeypatch.setattr(mr.requests, "Session", _Boom)
+    # 有快取 → 照樣答得出球場(這正是生產被 geo-block 那天要的行為)
+    assert mr._cpbl_venue_map() and mr._VENUE_FROM_CACHE.get("hit") is True
+    # 無快取 → {}(賽程照出、只少場地)
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", tmp_path / "empty.json")
     assert mr._cpbl_venue_map() == {}
+    assert mr._VENUE_FROM_CACHE.get("hit") is False
     # **geo-block 最現實的形狀**(r1 外審):HTTP 200 回一頁沒有 token 的
     # blocked HTML —— 也要留痕地退化,不得無聲消失
     class _Blocked:
@@ -339,7 +368,7 @@ def test_cpbl_venue_map_speaks_the_official_protocol(monkeypatch):
     buf = io.StringIO()
     with contextlib.redirect_stderr(buf):
         assert mr._cpbl_venue_map() == {}
-    assert "CPBL 官網場地略過" in buf.getvalue(), "blocked HTML 沒有留痕"
+    assert "CPBL 官網場地抓取失敗" in buf.getvalue(), "blocked HTML 沒有留痕"
 
 
 def test_fixtures_carry_venue_and_survive_without_it(monkeypatch):
@@ -383,13 +412,22 @@ def test_fixtures_carry_venue_and_survive_without_it(monkeypatch):
 
 
 def test_fixture_renderer_shows_the_venue():
-    """渲染:`日期 時間 客 vs 主 @ 場地`;沒有 venue 的列不得出現空殼 @。"""
+    """渲染:`日期 時間@場地　客 vs 主`(2026-08-24 使用者指定的版面 ——
+    場地緊跟時間,不是排在隊伍後面);沒有 venue 的列不得出現空殼 @。"""
+    import html as _h
     import render_utils as ru
-    src = io.open(Path(ru.__file__), encoding="utf-8").read()
-    i = src.index("中華職棒 未來一週賽程")
-    seg = src[max(0, i - 2000):i]
-    assert 'f.get("venue")' in seg, "渲染端沒有 venue 條件"
-    assert "@ " in seg
+    rows = ru._render_sports_html({"cpbl_fixtures": [
+        {"date": "08/25", "start": "18:35", "away": "味全", "home": "統一",
+         "venue": "亞太主"},
+        {"date": "08/27", "start": "18:35", "away": "台鋼", "home": "富邦"}]},
+        _h)
+    import re as _re
+    text = _re.sub("<[^>]+>", "", _re.sub("<div", chr(10) + "<div", rows))
+    lines = [ln.strip() for ln in text.splitlines() if "vs" in ln]
+    assert lines[0].startswith("08/25 18:35@亞太主"), lines
+    assert lines[0].endswith("味全 vs 統一"), lines
+    # 沒有場地的列不得留下空殼 @
+    assert "@" not in lines[1] and lines[1] == "08/27 18:35　台鋼 vs 富邦", lines
 
 
 def test_a_coverage_gap_must_be_droppable_once_the_section_is_filled():
@@ -438,13 +476,14 @@ def test_a_coverage_gap_must_be_droppable_once_the_section_is_filled():
     assert ad.contradicted_coverage_gaps(before, pk) == [], before["data_gaps"]
     assert "第八段靠它" in chr(10).join(ad.depth_advisories(before, pk))
 
-    kept = _obj(6)                       # 補到 6 則卻留著那句話 → 矛盾
+    _floor = ad.COVERAGE_FLOORS[ad.TECH_COVERAGE_GAP]
+    kept = _obj(_floor)                  # 補到下限卻留著那句話 → 矛盾
     assert ad.contradicted_coverage_gaps(kept, pk) == [ad.TECH_COVERAGE_GAP]
     assert "已經不成立" in chr(10).join(ad.depth_advisories(kept, pk))
     ok, why = ad.deepen_is_an_improvement(before, kept, evidence_ids=pk)
     assert not ok and "否證" in why, (ok, why)
 
-    dropped = _obj(6, gap=False)         # 補了條目、撤掉那句話 → 才是改善
+    dropped = _obj(_floor, gap=False)    # 補了條目、撤掉那句話 → 才是改善
     assert "第八段靠它" not in chr(10).join(ad.depth_advisories(dropped, pk))
     ok, why = ad.deepen_is_an_improvement(before, dropped, evidence_ids=pk)
     assert ok, f"撤掉被否證的缺口反而被身分保存擋住了:{why}"
@@ -485,7 +524,7 @@ def test_a_coverage_gap_must_be_droppable_once_the_section_is_filled():
     # **其餘缺口照舊保**:身分保存的豁免只給涵蓋率那兩個代號
     # 反例只靠身分保存分勝負:a2 的涵蓋率建議已清掉(6 則),所以數量關
     # 讓它通過、矛盾判準也放行 —— 唯一還會擋它的就是「弄丟了 chips 缺口」。
-    b2, a2 = _obj(2), _obj(6, gap=False)
+    b2, a2 = _obj(2), _obj(_floor, gap=False)
     b2["data_gaps"].append({"gap_id": "gap:other:chips",
                             "what_is_missing": "缺法人買賣超",
                             "impact_on_conclusions": "籌碼判斷保守"})
@@ -497,3 +536,67 @@ def test_a_coverage_gap_must_be_droppable_once_the_section_is_filled():
     # 兩條互相矛盾的指令,而它只看得到 prompt。
     spec = ad.deepen_input("payload", ["補科技"], previous={"x": 1})
     assert ad.TECH_COVERAGE_GAP in spec and "刪掉" in spec, spec[-400:]
+
+
+def test_venue_survives_a_geo_blocked_run(monkeypatch, tmp_path):
+    """2026-08-24 使用者:信裡看不到球場。本機抓得到、生產抓不到 ——
+    Actions 是海外 IP,而 CPBL 官網 2026-07 就已經被證實會擋(比分因此改走
+    Yahoo)。球場**會輪動**(中信在大巨蛋也在洲際、樂天在大巨蛋也在桃園),
+    所以靜態主場表會寫錯 —— 錯的地點比沒有地點糟。改成快取官方原始資料:
+    任何一次抓得到就把整季寫下來,之後被擋的日子照樣答得出正確球場。"""
+    cache = tmp_path / "v.json"
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", cache)
+    mr._save_cpbl_venue_cache({"08/25|統一7-ELEVEn獅": "亞太主",
+                               "08/25|中信兄弟": "大巨蛋"})
+
+    class _Boom:
+        def get(self, *a, **k):
+            raise RuntimeError("geo-blocked")
+
+    monkeypatch.setattr(mr.requests, "Session", _Boom)
+    vm = mr._cpbl_venue_map()
+    assert vm[("08/25", "統一7-ELEVEn獅")] == "亞太主", vm
+    assert mr._VENUE_FROM_CACHE.get("hit") is True
+    # **空的不覆寫**:抓到 0 場與「今天沒比賽」分不開,覆寫等於把整季擦掉
+    mr._save_cpbl_venue_cache({})
+    assert mr._load_cpbl_venue_cache(), "空結果把快取擦掉了"
+    # 快取要跟著 state 一起 push,否則它只活在那一次 runner 上
+    assert str(mr.CPBL_VENUE_FILE) in mr._state_push_paths() or \
+        "cpbl_venues.json" in " ".join(mr._state_push_paths())
+
+
+def test_an_http_ok_but_empty_season_still_uses_the_cache(monkeypatch,
+                                                          tmp_path):
+    """r1 外審:軟性 geo-block(HTTP 200 + 空 GameDatas)先前直接回 {} ——
+    快取被保護著不被覆寫,卻沒有人去讀它。「不覆寫」與「用得上」是兩件事,
+    只做前者等於白留了一份快取:那天場地照樣全部消失,而 manifest 還會
+    標成 `source: none`。"""
+    import json as _json
+    cache = tmp_path / "v.json"
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", cache)
+    mr._save_cpbl_venue_cache({"08/25|統一7-ELEVEn獅": "亞太主"})
+
+    class _Sess:
+        def get(self, url, **k):
+            class _R:
+                text = "RequestVerificationToken: 'TOK'"
+
+                def raise_for_status(self):
+                    pass
+            return _R()
+
+        def post(self, url, **k):
+            class _R:
+                def raise_for_status(self):
+                    pass
+
+                def json(self):
+                    return {"Success": True, "GameDatas": _json.dumps([])}
+            return _R()
+
+    monkeypatch.setattr(mr.requests, "Session", _Sess)
+    vm = mr._cpbl_venue_map()
+    assert vm[("08/25", "統一7-ELEVEn獅")] == "亞太主", vm
+    assert mr._VENUE_FROM_CACHE.get("hit") is True
+    # 而且**不得覆寫**快取(空的回應把整季擦掉,下一班就真的沒了)
+    assert mr._load_cpbl_venue_cache(), "空回應把快取擦掉了"

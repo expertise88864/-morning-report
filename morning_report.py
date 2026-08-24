@@ -10479,7 +10479,8 @@ def _state_push_paths() -> list[str]:
     """批#33:所有需要 commit 回 repo 的 state 路徑(單一事實來源)。
     抽出來讓 push 可以脫離 save_history_state 獨立呼叫(見該函式與
     persist_delivered_report_state 的說明),也方便測試核對登錄完整性。"""
-    return [str(STATE_FILE), str(MODEL_HISTORY_FILE),
+    return [str(CPBL_VENUE_FILE),
+            str(STATE_FILE), str(MODEL_HISTORY_FILE),
             str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
             str(ANALYSIS_RECAP_FILE),   # 外審 F1:昨日觀點閉環,不跨日累積則每天都沒有 diff 基準
@@ -20273,6 +20274,56 @@ def fetch_cpbl_scores(now_tpe: Optional[dt.datetime] = None) -> list[dict]:
     return out[:10]
 
 
+CPBL_VENUE_FILE = STATE_ROOT / "cpbl_venues.json"
+
+
+def _isoparse_ok(v) -> bool:
+    try:
+        dt.datetime.fromisoformat(str(v))
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def _load_cpbl_venue_cache() -> dict:
+    """`{(MM/DD, 主隊全名): 場地}`;沒有或壞掉回空(場地是加值欄)。"""
+    try:
+        data, st = _ss.load_json_state(CPBL_VENUE_FILE, expected=dict)
+    except _ss.StateCorrupt as e:
+        _register_state_corrupt("cpbl_venues", e)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out = {}
+    for k, v in data.items():
+        d, _, h = str(k).partition("|")
+        if d and h and v:
+            out[(d, h)] = str(v)
+    return out
+
+
+def _save_cpbl_venue_cache(flat: dict) -> None:
+    """整季場地快取。**寫失敗不影響晨報** —— 它只是加值欄的備援。"""
+    if not flat:
+        return              # 空的不覆寫:抓到 0 場與「今天沒比賽」分不開
+    try:
+        CPBL_VENUE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CPBL_VENUE_FILE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(flat, ensure_ascii=False, indent=1,
+                                  sort_keys=True), encoding="utf-8")
+        tmp.replace(CPBL_VENUE_FILE)
+        _STATE_WRITES["cpbl_venues"] = {"ok": True}
+    except Exception as e:              # noqa: BLE001 - 晨報不可斷
+        print(f"[sports] 場地快取寫入失敗: {e}", file=sys.stderr)
+        _STATE_WRITES["cpbl_venues"] = {"ok": False, "why": str(e)[:80]}
+
+
+#: 這一次的場地是不是走了快取(`_cpbl_venue_map` 每次呼叫都會覆寫)。
+#: 呼叫端需要分得出來源 —— 只看「有沒有對照表」的話,快取撐著的日子
+#: 看起來與官網正常的日子一模一樣,而快取何時過期沒有人知道。
+_VENUE_FROM_CACHE: dict = {}
+
+
 def _cpbl_venue_map(as_of: Optional[dt.datetime] = None,
                     days: int = 9) -> dict:
     """CPBL **官網**賽程 → `{(MM/DD, 主隊全名): 場地}`(2026-08-24 使用者:
@@ -20290,6 +20341,7 @@ def _cpbl_venue_map(as_of: Optional[dt.datetime] = None,
     **header** 並帶 `X-Requested-With`(實測缺一不可)。
     """
     import re as _re
+    _VENUE_FROM_CACHE["hit"] = False
     try:
         sess = requests.Session()
         ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -20328,13 +20380,44 @@ def _cpbl_venue_map(as_of: Optional[dt.datetime] = None,
             home = str(g.get("HomeTeamName") or "").strip()
             if field and home:
                 out[(when.strftime("%m/%d"), home)] = field
+        # **整季一起快取**(2026-08-24 使用者:信裡看不到球場)。生產是
+        # GitHub Actions 的海外 IP,官網很可能被 geo-block(2026-07 中職比分
+        # 就是因此改用 Yahoo);而球場**會輪動**(中信在大巨蛋也在洲際、
+        # 樂天在大巨蛋也在桃園)—— 靜態主場表會寫錯,錯的地點比沒有地點糟。
+        # 所以快取的是**官方原始資料**本身:任何一次抓得到就把整季寫下來,
+        # 之後抓不到的日子照樣答得出正確球場。
+        season = {
+            (dt.datetime.fromisoformat(str(g.get("GameDateTimeS"))
+                                       ).strftime("%m/%d"),
+             str(g.get("HomeTeamName") or "").strip()):
+            str(g.get("FieldAbbe") or "").strip()
+            for g in games
+            if str(g.get("FieldAbbe") or "").strip()
+            and str(g.get("HomeTeamName") or "").strip()
+            and _isoparse_ok(g.get("GameDateTimeS"))}
+        if not season:
+            # **HTTP 成功但整季一場都沒有** = 軟性 geo-block 或後端暫時壞掉
+            # (r1 外審)。這條路先前直接 `return out`(空的)—— 快取被保護
+            # 著不被覆寫,卻沒有人去讀它,於是那天場地照樣全部消失,而
+            # manifest 還會標成 `source: none`。「不覆寫」與「用得上」是
+            # 兩件事,只做前者等於白留了一份快取。
+            cached = _load_cpbl_venue_cache()
+            _VENUE_FROM_CACHE["hit"] = bool(cached)
+            print("[sports] CPBL 官網回應無賽程(疑似軟性阻擋)"
+                  + (f" → 用快取 {len(cached)} 場" if cached else " → 無快取"),
+                  file=sys.stderr)
+            return cached
+        _save_cpbl_venue_cache({f"{d}|{h}": v for (d, h), v in season.items()})
         if out:
             print(f"[sports] CPBL 官網場地對照 {len(out)} 場")
         return out
     except Exception as e:                  # noqa: BLE001 - 海外 IP 被擋屬預期
-        print(f"[sports] CPBL 官網場地略過(海外 IP 常見): {str(e)[:60]}",
+        cached = _load_cpbl_venue_cache()
+        _VENUE_FROM_CACHE["hit"] = bool(cached)
+        print(f"[sports] CPBL 官網場地抓取失敗(海外 IP 常見): {str(e)[:60]}"
+              + (f" → 用快取 {len(cached)} 場" if cached else " → 無快取"),
               file=sys.stderr)
-        return {}
+        return cached
 
 
 def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
@@ -20394,6 +20477,7 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
     # 對不上就不填(少一欄優於錯欄)。
     if out:
         venues = _cpbl_venue_map(now_tpe, days + 2)
+        _live = bool(venues) and not _VENUE_FROM_CACHE.get("hit")
         for x in out:
             for (d, home_full), field in venues.items():
                 if d == x["date"] and x["home"] and x["home"] in home_full:
@@ -20407,7 +20491,12 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
         _matched = sum(1 for x in out if x.get("venue"))
         _RUN_MANIFEST.setdefault("sports", {})["cpbl_venue"] = {
             "attempted": True, "fixtures": len(out), "matched": _matched,
-            "source": "cpbl.com.tw",
+            # **來源要分得出來**:官網直取 vs 快取回退 —— 前者代表 Actions
+            # 沒被擋(那條路還活著),後者代表被擋但我們還答得出來。
+            # 只看 matched 的話,快取撐著的日子看起來一切正常,而快取
+            # 什麼時候過期沒有人知道。
+            "source": ("cpbl.com.tw" if _live else
+                       "cache" if venues else "none"),
             # 一筆都沒對上 ≠ 抓失敗:也可能是隊名對不上。分開記,
             # 因為處置不同(前者查 IP/端點,後者查對照邏輯)。
             "reason": ("" if _matched else

@@ -93,8 +93,8 @@ def test_the_prompt_asks_for_enough_items_and_non_tech_coverage():
     目標從六到十改成十到十六,並改成**兩段各有下限**(八與九是獨立段落,
     不是一段的附屬)。"""
     text = _io.open(_ROOT / "prompt_profiles.py", encoding="utf-8").read()
-    assert "十到十六則為目標" in text
-    assert "科技至少六則、科技之外至少五則" in text
+    assert "十五到二十則為目標" in text   # 2026-08-24 使用者再次反映條數偏少
+    assert "科技至少八則、科技之外至少七則" in text
     # 第四批的骨架欄位也要在 prompt 裡有寫法說明 —— 只在 schema 宣告而
     # prompt 不提,模型會全部給空(strict 允許空值,而空值合法)。
     for field in ("taiwan_policy", "world_events", "upcoming_event_scenarios",

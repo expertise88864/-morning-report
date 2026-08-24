@@ -84,7 +84,7 @@ DEEPSEEK_LEGACY_VERSION = 11  # 2026-08-22 金融龍頭+5; 2026-08-21 r2:選材�
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 44
+LUNA_XHIGH_VERSION = 45
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -286,9 +286,9 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 # 排序與取捨
 新聞多不等於重要。依這五項判斷 materiality,而不是依篇幅或熱度:
 市場影響、時效性、來源權威、意外程度(與既有共識的落差)、持續性。
-- **`top_news_analysis` 以十到十六則為目標**。當日素材充足而只寫七八則，
+- **`top_news_analysis` 以十五到二十則為目標**。當日素材充足而只寫十二三則，
   漏掉的不是版面是內容。
-  分配上**科技至少六則、科技之外至少五則**（金融／航運／傳產／生技／能源／
+  分配上**科技至少八則、科技之外至少七則**（金融／航運／傳產／生技／能源／
   營建／重電／汽車／觀光）——信裡的「八、科技板塊脈動」與「九、其他類股」
   是兩個獨立段落，各自靠自己的條目撐起來，不是一段的附屬。
   同一族群（如記憶體、塑化）寫兩則以上時，**要是不同的事件**，不是同一件事

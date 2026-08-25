@@ -4888,6 +4888,69 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74685569",
+        "title": "OpenAI chip takes on Nvidia",
+        "published": "Tue, 25 Aug 2026 18:07:42 +0000",
+        "processed_at": "2026-08-25T19:58:09Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI 自研推論晶片 Jolapeno（與博通合作）在 Semi-Analysis 的 Inference X 測試中，於多數場景表現優於 Nvidia Blackwell，但 Semi-Analysis 認為比較不盡公平，因 Jolapeno 真正的對手是採用 HBM4 的 Nvidia Rubin，且 Jolapeno 距量產尚遠。主持人強調此消息顯示 AI 晶片競爭加劇，但未對投資方向明確表態。",
+            "Dick's Sporting Goods 因財報不如預期並下修全年展望而大跌，主席 Ed Stack 指出運動鞋與服飾市場促銷活動增加，公司為維持競爭力而降價，但對 Foot Locker 影響更大。主持人認為這反映消費零售環境轉弱，但未建議具體操作。",
+            "迪士尼提供自願提早退休方案給符合資格的高階主管（總監級以上），涵蓋 Disney Entertainment、ESPN 與企業職能部門，顯示其持續削減成本與重整人力。主持人未評論投資影響。",
+            "AMD 獲 Raymond James 上調評等至 Strong Buy，理由是 Agentec AI 將成為 CPU 市場主要新增長引擎。主持人對 AMD 後市看法偏正面，但未給出目標價。",
+            "億萬富翁 Stanley Druckenmiller 批評美國財政部計劃將長天期公債回購規模倍增，認為政府壓抑長債利率是補貼拖延行為，最終將失敗。主持人引用此觀點，暗示對美國長期公債看法偏空，但未明說操作。",
+            "Druckenmiller 透露其專欄文章由 AI 撰寫，他認為使用 AI 就像用計算機，不感羞恥。此為花絮，與投資無直接關聯，但反映 AI 工具在金融界的滲透。"
+          ],
+          "tickers": [
+            {
+              "name": "OpenAI",
+              "code": "",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "自研晶片 Jolapeno 表現出色但距量產仍遠，與 Nvidia 競爭加劇。"
+            },
+            {
+              "name": "Broadcom",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "合作開發 OpenAI 自研晶片，測試表現優於 Blackwell，顯示其在 AI 客製化晶片領域的優勢。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Jolapeno 在部分測試勝過 Blackwell，且 Rubin 即將推出，但競爭加劇可能影響其市占。"
+            },
+            {
+              "name": "Dick's Sporting Goods",
+              "code": "DKS",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報不如預期，下修全年展望，因運動用品市場促銷競爭激烈。"
+            },
+            {
+              "name": "Disney",
+              "code": "DIS",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "提供自願提早退休方案以降低成本，但對營運影響未明。"
+            },
+            {
+              "name": "AMD",
+              "code": "AMD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "獲 Raymond James 上調至 Strong Buy，Agentec AI 被視為新成長引擎。"
+            }
+          ],
+          "market_view": "主持人未明確表達整體大盤看法，但轉述 Druckenmiller 對財政部壓抑長債利率的批評，暗示對長期公債市場擔憂。",
+          "action_view": "主持人未給出明確操作建議，僅報導事件與市場反應。",
+          "notable_quote": "Every basis point of artificial yield suppression is a subsidy to procrastination."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74680146",
         "title": "Coffee rally hits PSL season",
         "published": "Tue, 25 Aug 2026 10:48:45 +0000",
@@ -5284,39 +5347,6 @@
           "notable_quote": "Are 30-year bonds really so safe that 5.2 percent interest is enough? For me, no."
         },
         "shown_at": "2026-08-18T22:29:01Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74213028",
-        "title": "McDonald's gets a Red Bull boost",
-        "published": "Mon, 17 Aug 2026 15:29:57 +0000",
-        "processed_at": "2026-08-17T19:52:56Z",
-        "digest": {
-          "summary_points": [
-            "摩根士丹利認為,麥當勞首次將能量飲料(Red Bull Dragonberry Energizer)納入菜單,可能成為下半年投資人觀察的「swing factor」,因為調查顯示 60% 的能量飲料消費是增量需求。",
-            "Wells Fargo 將 Ulta Beauty 升評至 Overweight,理由是核心業務需求與執行改善,且公司聚焦大型企業(增加產能、擴展合作夥伴)正開始見效。",
-            "高盛報告《第二次太空時代》指出,太空正從「最終邊境」變成機構化資產類別,預估 2035 年太空經濟達 1.8 兆美元;2025 年投資逾 550 億美元,2026 年第一季更創下 360 億美元紀錄。"
-          ],
-          "tickers": [
-            {
-              "name": "Ulta Beauty",
-              "code": "ULTA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Wells Fargo 升評至 Overweight,認為核心業務需求與執行改善,大型企業策略奏效。"
-            },
-            {
-              "name": "McDonald's",
-              "code": "MCD",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "能量飲料平台上架可能成為下半年股價變數,摩根士丹利認為值得觀察。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "Space is moving from the final frontier to an institutional asset class."
-        },
-        "shown_at": "2026-08-17T22:30:06Z"
       }
     ]
   },

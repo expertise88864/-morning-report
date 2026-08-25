@@ -247,9 +247,9 @@ def reference_problems(obj, packet) -> list:
                     f"{sorted(set(cids))} 不是本日任何一組共用驅動 —— "
                     f"本日共 {len(groups)} 組")
             else:
-                want = next(g["driver"] for g in groups if set(cids) == g["ids"])
-                got = str(note.get("driver") or "")
-                if want and got and got != want:
+                _g = next(g for g in groups if set(cids) == g["ids"])
+                want, got = _g["driver"], str(note.get("driver") or "")
+                if want and got and not _driver_matches(got, _g):
                     out.append(
                         f"shared_driver_notes 宣稱的驅動是 {got!r},"
                         f"而這組事件群在本日被歸類為 {want!r}")
@@ -282,6 +282,42 @@ def _claim_covers_asset(claim, asset_id: str) -> bool:
     return asset_id in named
 
 
+def _driver_matches(got: str, group: dict) -> bool:
+    """模型寫的驅動名指的**是不是**這一組的驅動。
+
+    2026-08-25 生產:模型寫 `'AI 資本支出循環（ai_capex）'`,而判準拿它跟
+    裸代號 `'ai_capex'` 做字串相等 → 駁回。可是 packet 給它的就是
+    `driver`(代號)**與** `label`(中文名)兩個欄位 —— 它寫的是把兩欄接
+    起來,**意圖零歧義**。同一天 `'聯準會政策路徑、美債殖利率、美國就業、
+    美國通膨（us_monetary）'` 也是同一個形狀,兩條佔掉 14 條駁回裡的 2 條。
+
+    這個 repo 對這種形狀的既定作法是**正規化收下,不是駁回**:命名失誤
+    只要指得回唯一一個對象就不該讓整份分析作廢。
+
+    **接受的寫法是列舉的,不是「有出現就算」**(r1 外審):第一版用
+    無錨點的詞法搜尋,於是 `'美國就業（ai_capex）'`(錯標籤配對代號)、
+    `'不是 ai_capex'`、`'fed_policy / ai_capex'` 全部照過 —— 而
+    docstring 寫的是「三種寫法」。**判準比它自己的宣稱寬**,等於默許
+    一個指錯或含糊的驅動名把 Luna 判成合格而不要求修補。
+
+    正好這四種(空白忽略、括號全形半形皆可):
+      代號 / 標籤 / 標籤(代號) / 代號(標籤)
+    """
+    import re as _re
+
+    def _n(x: str) -> str:
+        return (_re.sub(r"\s+", "", str(x or ""))
+                .replace("（", "(").replace("）", ")"))
+
+    want, label = str(group.get("driver") or ""), str(group.get("label") or "")
+    if not want:
+        return True
+    ok = {_n(want)}
+    if label:
+        ok |= {_n(label), _n(f"{label}({want})"), _n(f"{want}({label})")}
+    return _n(got) in ok
+
+
 def _shared_driver_groups(packet):
     """本日 Python 算出來的共用驅動組 `[{ids, driver}]`;
     拿不到 `event_graph` 就回 `None`(沒有分母就不驗這一條)。"""
@@ -293,7 +329,12 @@ def _shared_driver_groups(packet):
         if isinstance(g, dict):
             ids = {str(c) for c in (g.get("cluster_ids") or [])}
             if ids:
-                out.append({"ids": ids, "driver": str(g.get("driver") or "")})
+                out.append({"ids": ids,
+                            "driver": str(g.get("driver") or ""),
+                            # **標籤也要帶過來**:packet 給模型的是
+                            # `driver`(代號)**與** `label`(中文名)兩欄,
+                            # 而判準只拿代號比 —— 見下方 `_driver_matches`。
+                            "label": str(g.get("label") or "")})
     return out
 
 

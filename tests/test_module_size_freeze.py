@@ -190,7 +190,7 @@ MODULE_CEILINGS = {
     # 「DeepSeek 實際回什麼」必須是寫下來、測得到的東西。
     # 第二十五輪 P2-1:commentary 永遠不得當 final 替補(三個 bucket)。
     # 2026-08-09 P2:契約判準抽成 `contract_problems`(線上金絲雀與離線測試共用一份)
-    "deepseek_responses.py": 425,
+    "deepseek_responses.py": 500,  # 2026-08-25 生產:散文+圍欄裡的 JSON 要救得回來(否則白燒一輪修補);現況 469
     # 延燒事件的身分(外審 P1-9)。動作表是宣告式的,說明佔了大半 ——
     # 那是這個模組的重點:身分不能靠相似度,每一列都要說得出
     # 代碼與判準。`adopt_legacy` 由主模組搬進來(refactor_audit 判
@@ -576,7 +576,7 @@ MODULE_CEILINGS = {
     # 第二十六輪 P1-5:那「兩側」要錨回**證據側**(`_side_grounding_problems`
     # 與 `_evidence_news_ids`)—— 判準留在這裡而不是散到呼叫端,
     # 正是本模組存在的理由。**實測 404 行**。
-    "analysis_contracts.py": 410,   # 2026-08-08 外審 P1-7/P1-8:淨效果的標的/方向/抵銷集合與共用驅動比對(判準集中在這裡,呼叫端才不會各寫一份)
+    "analysis_contracts.py": 480,   # 2026-08-25 生產:driver 名稱誤拒(label（code） vs code);現況 441  # 2026-08-08 外審 P1-7/P1-8:淨效果的標的/方向/抵銷集合與共用驅動比對(判準集中在這裡,呼叫端才不會各寫一份)
     # schema v2:深度欄位的渲染(因果鏈/量級/關係/橫向綜合)。
     # 與 `analysis_render` 分開:段落順序跟著信件結構走,條目寫法跟著
     # schema 版本走。實測 98 行。

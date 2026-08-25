@@ -153,6 +153,57 @@ def strip_json_fence(text: str) -> str:
     return t.strip()
 
 
+def json_object_from_text(text):
+    """從模型的回覆裡把那個 JSON **物件**找出來,回 `(obj, how)`。
+
+    找不到回 `(None, "")` —— **失敗仍然是失敗**,這裡不猜內容。
+
+    2026-08-25 生產:修補輪回來的是
+
+        ## 修正說明
+        上一輪輸出經逐項檢查,確認以下七項問題須修正…
+        ## 修正後的完整輸出
+        ```json
+        {"executive_summary": …
+
+    `json.loads` 在第 0 個字元就死了,於是那一輪被判成**語法輪** ——
+    而語法本來就是對的,問題清單裡多一條「不是合法 JSON」,一整輪
+    修補額度白燒(那天 `repair_modes` 是 semantic→syntax→semantic,
+    而 semantic 的額度是 2,用完就落 legacy)。
+
+    `strip_json_fence` 救不了這個:它只處理**開頭就是圍欄**的形狀,
+    而這裡圍欄前後都有散文。
+
+    三種候選依序試,先精確再寬鬆:
+      1. 原文本身(最常見的正常情況);
+      2. ```json 圍欄裡的內容(模型在講話,答案在圍欄裡);
+      3. 第一個 `{` 到最後一個 `}`(連圍欄都沒有的散文夾帶)。
+    **截斷救不回來**(沒有收尾的 `}` 三種都會失敗)—— 那本來就該被判成
+    語法輪,分類是對的。
+    """
+    import json as _json
+    import re as _re
+    raw = str(text or "")
+    cands = [("raw", raw.strip()), ("fence", "")]
+    m = _re.search(r'''```(?:json)?[ \t]*\n(.*?)(?:\n[ \t]*```|\Z)''',
+                   raw, _re.S)
+    if m:
+        cands[1] = ("fence", m.group(1))
+    i, j = raw.find("{"), raw.rfind("}")
+    if 0 <= i < j:
+        cands.append(("braces", raw[i:j + 1]))
+    for how, body in cands:
+        if not body:
+            continue
+        try:
+            obj = _json.loads(body)
+        except Exception:               # noqa: BLE001 - 下一個候選
+            continue
+        if isinstance(obj, dict):
+            return obj, how
+    return None, ""
+
+
 def contract_problems(response) -> list:
     """這份回應**還解析得動嗎**(合格回空清單)。
 

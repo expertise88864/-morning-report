@@ -14488,15 +14488,22 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # JSON 字串 —— 同樣是包裝問題,不是內容問題。
             obj = json.loads(out["text"])
         except Exception as _je:            # noqa: BLE001 - 非 JSON 就是不合格
-            # 「不是合法 JSON」是四種原因的統稱(截斷/引號/圍欄/雙重編碼)
-            # —— 抽取器那側早有 diag,主分析這側先前一個字都不留
-            # (2026-08-13 生產:attempt0 只記了那六個字)。
+            # **包裝問題不是內容問題**(2026-08-25 生產):修補輪回來的是
+            # 「## 修正說明 …(散文)… ```json {…}」—— `json.loads` 在第 0
+            # 個字元就死,那一輪被判成**語法輪**,而語法本來就是對的。
+            # 那天 `repair_modes` 是 semantic→syntax→semantic,semantic 的
+            # 額度是 2 —— 一整輪修補被一個圍欄燒掉,然後落 legacy。
+            # `strip_json_fence` 救不了:它只處理開頭就是圍欄的形狀。
+            # **截斷仍然救不回來**,那本來就該是語法輪(分類是對的)。
+            obj, _how = _dsr.json_object_from_text(out.get("text"))
+            _parse_exc = obj is None
             _RUN_MANIFEST.setdefault("llm", {})["primary_parse_error"] = {
                 "error": f"{type(_je).__name__}: {_je}"[:80],
                 "head": str(out.get("text") or "")[:120],
-                "tail": str(out.get("text") or "")[-80:]}
-            obj = None
-            _parse_exc = True
+                "tail": str(out.get("text") or "")[-80:],
+                # 救回來了也要留痕:模型正在偏離「只回 JSON」的契約,
+                # 而信看起來會完全正常 —— 沒有這一格就沒有人知道。
+                "recovered_by": _how}
         else:
             _parse_exc = False
             # **雙重解碼是嘗試,失敗不算解析例外**(外審 r2):字串根

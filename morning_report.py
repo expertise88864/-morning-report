@@ -20292,8 +20292,15 @@ def _isoparse_ok(v) -> bool:
         return False
 
 
-def _load_cpbl_venue_cache() -> dict:
-    """`{(MM/DD, 主隊全名): 場地}`;沒有或壞掉回空(場地是加值欄)。"""
+def _load_cpbl_venue_cache(season: Optional[int] = None) -> dict:
+    """`{(MM/DD, 主隊全名): 場地}`;沒有、壞掉、或**不是這一季**回空。
+
+    2026-08-25 外審 P2:第一版的鍵是 `MM/DD|主隊`,**沒有年份**。
+    2027-08-25 那天官網照樣被擋、Wikipedia 又剛好失敗時,`08/25|中信兄弟`
+    會命中 2026 年的那一筆 —— 把去年的球場印成今年的。而這個功能一開始
+    就寫著「猜錯的地點比沒有地點糟」,那正好違反它自己的判準。
+    所以快取帶 `season`,對不上就整份不用(寧可少一欄)。
+    """
     try:
         data, st = _ss.load_json_state(CPBL_VENUE_FILE, expected=dict)
     except _ss.StateCorrupt as e:
@@ -20301,22 +20308,49 @@ def _load_cpbl_venue_cache() -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
+    want = season or dt.datetime.now(TPE).year
+    got = data.get("season")
+    if got != want:
+        # 舊格式(沒有 season 欄)也走這條 —— 它的年份不可考,而
+        # 「不可考」與「是別年的」對讀者的後果一樣。
+        print(f"[sports] 場地快取不是本季({got!r} ≠ {want}),不採用",
+              file=sys.stderr)
+        return {}
+    games = data.get("games")
+    if not isinstance(games, dict):
+        # `load_json_state(expected=dict)` **只驗最外層** —— 巢狀那一層壞掉
+        # (`"games": ["x"]`)時 `(x or {}).items()` 會拋,而這裡是從
+        # `_cpbl_venue_map` 的 except 裡呼叫的:例外會往外逃,把**整個中職
+        # 賽程**一起帶走(不只是球場)。壞檔照既有規約登記、不覆寫。
+        _register_state_corrupt(
+            "cpbl_venues", ValueError(f"games 不是物件:{type(games).__name__}"))
+        return {}
     out = {}
-    for k, v in data.items():
+    for k, v in games.items():
         d, _, h = str(k).partition("|")
         if d and h and v:
             out[(d, h)] = str(v)
     return out
 
 
-def _save_cpbl_venue_cache(flat: dict) -> None:
-    """整季場地快取。**寫失敗不影響晨報** —— 它只是加值欄的備援。"""
+def _save_cpbl_venue_cache(flat: dict, season: Optional[int] = None) -> None:
+    """整季場地快取。**寫失敗不影響晨報** —— 它只是加值欄的備援。
+
+    帶 `season` 與 `fetched_at`:鍵是 `MM/DD|主隊`,跨年會相同(見
+    `_load_cpbl_venue_cache`)。
+    """
     if not flat:
         return              # 空的不覆寫:抓到 0 場與「今天沒比賽」分不開
     try:
         CPBL_VENUE_FILE.parent.mkdir(parents=True, exist_ok=True)
         tmp = CPBL_VENUE_FILE.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(flat, ensure_ascii=False, indent=1,
+        payload = {
+            "season": season or dt.datetime.now(TPE).year,
+            "fetched_at": dt.datetime.now(TPE).strftime("%Y-%m-%d %H:%M"),
+            "source": "cpbl.com.tw",
+            "games": dict(sorted(flat.items())),
+        }
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=1,
                                   sort_keys=True), encoding="utf-8")
         tmp.replace(CPBL_VENUE_FILE)
         _STATE_WRITES["cpbl_venues"] = {"ok": True}
@@ -20490,18 +20524,19 @@ def _cpbl_venue_map(as_of: Optional[dt.datetime] = None,
             # 著不被覆寫,卻沒有人去讀它,於是那天場地照樣全部消失,而
             # manifest 還會標成 `source: none`。「不覆寫」與「用得上」是
             # 兩件事,只做前者等於白留了一份快取。
-            cached = _load_cpbl_venue_cache()
+            cached = _load_cpbl_venue_cache(_now.year)
             _VENUE_FROM_CACHE["hit"] = bool(cached)
             print("[sports] CPBL 官網回應無賽程(疑似軟性阻擋)"
                   + (f" → 用快取 {len(cached)} 場" if cached else " → 無快取"),
                   file=sys.stderr)
             return cached
-        _save_cpbl_venue_cache({f"{d}|{h}": v for (d, h), v in season.items()})
+        _save_cpbl_venue_cache({f"{d}|{h}": v for (d, h), v in season.items()},
+                               _now.year)
         if out:
             print(f"[sports] CPBL 官網場地對照 {len(out)} 場")
         return out
     except Exception as e:                  # noqa: BLE001 - 海外 IP 被擋屬預期
-        cached = _load_cpbl_venue_cache()
+        cached = _load_cpbl_venue_cache((as_of or dt.datetime.now(TPE)).year)
         _VENUE_FROM_CACHE["hit"] = bool(cached)
         print(f"[sports] CPBL 官網場地抓取失敗(海外 IP 常見): {str(e)[:60]}"
               + (f" → 用快取 {len(cached)} 場" if cached else " → 無快取"),
@@ -20565,68 +20600,81 @@ def fetch_cpbl_today_fixtures(now_tpe: Optional[dt.datetime] = None,
     # 官網全名(中信兄弟/統一7-ELEVEn獅)的子字串,配同日期即可對上;
     # 對不上就不填(少一欄優於錯欄)。
     if out:
-        # **三層來源**(2026-08-25 生產確認官網對 Actions 是擋的):
-        #   1. CPBL 官網 —— 權威,但生產連不到(本機/未來若解封時才走);
-        #   2. Wikipedia —— **在 Actions 真的連得上**(戰績表早就走它),
-        #      逐場球場、與官網零筆分歧(全季 351 場比對過);
-        #   3. 快取 —— 前兩者都失敗時的最後一道,內容仍是官方原始資料。
-        # 官網優先不是為了「更好」,而是它是唯一不依賴第三方轉載的那份。
-        venues = _cpbl_venue_map(now_tpe, days + 2)
-        _cached = bool(_VENUE_FROM_CACHE.get("hit"))
-        # 官網走了快取(= 生產的實際情形)或整個失敗時才問 Wikipedia。
-        # 官網正常的日子不覆蓋 —— 它是唯一不依賴第三方轉載的那份。
-        _wiki = (_cpbl_venue_from_wikipedia(now_tpe, days + 2)
-                 if (_cached or not venues) else {})
-        # **逐場查,不是整張表替換**(2026-08-25 外審 P2)。第一版只要
-        # Wikipedia 有任何一筆就把整張表換掉 —— 而社群頁面可能只更新了
-        # 一部分未來賽事,那時快取明明答得出來的場次會變成沒有球場。
-        # 兩張表都留著,逐場依序問:Wikipedia(社群,更新較勤)→ 快取
-        # (官方原始資料,但可能是好幾天前的)。
-        _layers = ([("wikipedia", _wiki)] if _wiki else [])
-        if venues:
-            _layers.append(("cache" if _cached else "cpbl.com.tw", venues))
-        _hits: dict = {}
-        for x in out:
-            # 官網的鍵是**全名**(統一7-ELEVEn獅)、Wikipedia 是**簡稱**
-            # (統一),而 Yahoo 給的 `x["home"]` 是簡稱 —— 兩種都要對得上。
-            # 單向就夠(簡稱 ⊆ 全名、簡稱 = 簡稱);第一版加了反向比對,
-            # 而**兩種來源都造不出需要它的情形** —— 量不到差別的規則
-            # 不留(它只會多出誤配的機會)。`test_short_and_full_home_names…`
-            # 釘住兩種鍵都配得上。
-            for _name, _map in _layers:
-                _f = next((v for (d, home_key), v in _map.items()
-                           if d == x["date"] and x["home"]
-                           and x["home"] in home_key), "")
-                if _f:
-                    x["venue"] = _f
-                    _hits[_name] = _hits.get(_name, 0) + 1
-                    break
-        # 主要來源 = 實際答出最多場的那一個(不是「問過誰」)
-        _src = max(_hits, key=_hits.get) if _hits else (
-            "none" if not _layers else _layers[0][0])
-        # **「本機測得到、Actions 可能永遠測不到」的功能要留下痕跡**
-        # (2026-08-24 外審 P3)。CPBL 官網對 GitHub Actions 的海外 IP 可能
-        # geo-block —— 那時賽程照出、場地永遠空,而信照樣寄成功、run-quality
-        # 也看不出使用者要的「地點」其實從未在生產工作過。stderr 一行在
-        # 隔天就沖掉了,manifest 才留得住。
-        _matched = sum(1 for x in out if x.get("venue"))
-        _RUN_MANIFEST.setdefault("sports", {})["cpbl_venue"] = {
-            "attempted": True, "fixtures": len(out), "matched": _matched,
-            # **來源要分得出來**:官網直取 vs 快取回退 —— 前者代表 Actions
-            # 沒被擋(那條路還活著),後者代表被擋但我們還答得出來。
-            # 只看 matched 的話,快取撐著的日子看起來一切正常,而快取
-            # 什麼時候過期沒有人知道。
-            "source": _src,
-            # 逐場的來源命中數:混合來源的日子(Wikipedia 補一部分、
-            # 快取補其餘)只看單一 `source` 是看不出來的。
-            "by_source": dict(sorted(_hits.items())),
-            # 一筆都沒對上 ≠ 抓失敗:也可能是隊名對不上。分開記,
-            # 因為處置不同(前者查 IP/端點,後者查對照邏輯)。
-            "reason": ("" if _matched else
-                       "fetch_empty" if not _layers else "no_match"),
-        }
-        if out and not _matched:
-            _DEGRADED_STEPS.append("sports:cpbl_venue_missing")
+        # **場地是加值欄:它的任何失敗都不得帶走賽程**(2026-08-25 外審)。
+        # 壞檔那條路徑證明了這不是理論 —— 例外從 `_cpbl_venue_map` 的
+        # except 裡逃出來,而呼叫端的 try 會把 `cpbl_fixtures` 整段丟掉:
+        # 讀者少的不是一個地點,是一整週的賽程。守衛放在這裡才涵蓋
+        # 「未來又有人在場地這條路上拋出東西」。
+        try:
+            # **三層來源**(2026-08-25 生產確認官網對 Actions 是擋的):
+            #   1. CPBL 官網 —— 權威,但生產連不到(本機/未來若解封時才走);
+            #   2. Wikipedia —— **在 Actions 真的連得上**(戰績表早就走它),
+            #      逐場球場、與官網零筆分歧(全季 351 場比對過);
+            #   3. 快取 —— 前兩者都失敗時的最後一道,內容仍是官方原始資料。
+            # 官網優先不是為了「更好」,而是它是唯一不依賴第三方轉載的那份。
+            venues = _cpbl_venue_map(now_tpe, days + 2)
+            _cached = bool(_VENUE_FROM_CACHE.get("hit"))
+            # 官網走了快取(= 生產的實際情形)或整個失敗時才問 Wikipedia。
+            # 官網正常的日子不覆蓋 —— 它是唯一不依賴第三方轉載的那份。
+            _wiki = (_cpbl_venue_from_wikipedia(now_tpe, days + 2)
+                     if (_cached or not venues) else {})
+            # **逐場查,不是整張表替換**(2026-08-25 外審 P2)。第一版只要
+            # Wikipedia 有任何一筆就把整張表換掉 —— 而社群頁面可能只更新了
+            # 一部分未來賽事,那時快取明明答得出來的場次會變成沒有球場。
+            # 兩張表都留著,逐場依序問:Wikipedia(社群,更新較勤)→ 快取
+            # (官方原始資料,但可能是好幾天前的)。
+            _layers = ([("wikipedia", _wiki)] if _wiki else [])
+            if venues:
+                _layers.append(("cache" if _cached else "cpbl.com.tw", venues))
+            _hits: dict = {}
+            for x in out:
+                # 官網的鍵是**全名**(統一7-ELEVEn獅)、Wikipedia 是**簡稱**
+                # (統一),而 Yahoo 給的 `x["home"]` 是簡稱 —— 兩種都要對得上。
+                # 單向就夠(簡稱 ⊆ 全名、簡稱 = 簡稱);第一版加了反向比對,
+                # 而**兩種來源都造不出需要它的情形** —— 量不到差別的規則
+                # 不留(它只會多出誤配的機會)。`test_short_and_full_home_names…`
+                # 釘住兩種鍵都配得上。
+                for _name, _map in _layers:
+                    _f = next((v for (d, home_key), v in _map.items()
+                               if d == x["date"] and x["home"]
+                               and x["home"] in home_key), "")
+                    if _f:
+                        x["venue"] = _f
+                        _hits[_name] = _hits.get(_name, 0) + 1
+                        break
+            # 主要來源 = 實際答出最多場的那一個(不是「問過誰」)
+            _src = max(_hits, key=_hits.get) if _hits else (
+                "none" if not _layers else _layers[0][0])
+            # **「本機測得到、Actions 可能永遠測不到」的功能要留下痕跡**
+            # (2026-08-24 外審 P3)。CPBL 官網對 GitHub Actions 的海外 IP 可能
+            # geo-block —— 那時賽程照出、場地永遠空,而信照樣寄成功、run-quality
+            # 也看不出使用者要的「地點」其實從未在生產工作過。stderr 一行在
+            # 隔天就沖掉了,manifest 才留得住。
+            _matched = sum(1 for x in out if x.get("venue"))
+            _RUN_MANIFEST.setdefault("sports", {})["cpbl_venue"] = {
+                "attempted": True, "fixtures": len(out), "matched": _matched,
+                # **來源要分得出來**:官網直取 vs 快取回退 —— 前者代表 Actions
+                # 沒被擋(那條路還活著),後者代表被擋但我們還答得出來。
+                # 只看 matched 的話,快取撐著的日子看起來一切正常,而快取
+                # 什麼時候過期沒有人知道。
+                "source": _src,
+                # 逐場的來源命中數:混合來源的日子(Wikipedia 補一部分、
+                # 快取補其餘)只看單一 `source` 是看不出來的。
+                "by_source": dict(sorted(_hits.items())),
+                # 一筆都沒對上 ≠ 抓失敗:也可能是隊名對不上。分開記,
+                # 因為處置不同(前者查 IP/端點,後者查對照邏輯)。
+                "reason": ("" if _matched else
+                           "fetch_empty" if not _layers else "no_match"),
+            }
+            if out and not _matched:
+                _DEGRADED_STEPS.append("sports:cpbl_venue_missing")
+        except Exception as _ve:        # noqa: BLE001 - 賽程照出
+            print(f"[sports] 場地補值略過(賽程不受影響): "
+                  f"{type(_ve).__name__}: {str(_ve)[:60]}", file=sys.stderr)
+            _RUN_MANIFEST.setdefault("sports", {})["cpbl_venue"] = {
+                "attempted": True, "fixtures": len(out), "matched": 0,
+                "source": "none", "by_source": {},
+                "reason": f"error:{type(_ve).__name__}"}
     return out
 
 

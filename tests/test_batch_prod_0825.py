@@ -182,7 +182,7 @@ def test_the_venue_falls_through_official_then_wikipedia_then_cache(monkeypatch,
     import inspect
     src = inspect.getsource(mr.fetch_cpbl_today_fixtures)
     i = src.index("venues = _cpbl_venue_map(")
-    seg = src[i:i + 1600]
+    seg = src[i:i + 2600]
     assert "_cpbl_venue_from_wikipedia" in seg, seg
     # 官網走了快取(= 生產的實際情形)時才問 Wikipedia,而不是無條件覆蓋
     assert "if (_cached or not venues) else {}" in seg, seg
@@ -260,3 +260,145 @@ def test_partial_wikipedia_coverage_still_uses_the_cache(monkeypatch):
     # 混合來源要看得出來 —— 只有一個 `source` 的話,快取補的那一場是隱形的
     assert slot["by_source"] == {"cache": 1, "wikipedia": 1}, slot
     assert slot["matched"] == 2 and slot["reason"] == "", slot
+
+
+def test_section_coverage_is_judged_by_that_sections_own_material():
+    """2026-08-25 外審 P2:整組涵蓋率建議先前包在 `_avail >= 30` 底下,而
+    逐段的判準本來就已經是「那一段的素材夠不夠」—— 兩套並存的結果是
+    **15~29 則素材的那一大段完全不進判斷**。使用者已經兩次反映科技與其他
+    類股太少,而守衛在合理的生產區間裡靜靜地什麼都不做。"""
+    import sys
+
+    import analysis_depth as ad
+    sys.path.insert(0, "tests")
+    import fixtures_analysis as fx
+
+    def _adv(n_tech, n_other, src_tech, src_other):
+        obj = fx.valid_analysis()
+        rows, pk_news = [], []
+        for i in range(src_tech):
+            pk_news.append({"source_item_id": f"t{i}", "entities": ["2330"],
+                            "title": "台積電先進封裝再擴產"})
+        for i in range(src_other):
+            pk_news.append({"source_item_id": f"o{i}", "entities": ["2603"],
+                            "title": "長榮美西運價連四漲"})
+        for i in range(n_tech):
+            rows.append({"source_item_id": f"t{i}", "why_it_matters": "x",
+                         "direction": "bullish", "materiality": "medium"})
+        for i in range(n_other):
+            rows.append({"source_item_id": f"o{i}", "why_it_matters": "x",
+                         "direction": "bullish", "materiality": "medium"})
+        obj["top_news_analysis"] = rows
+        obj["data_gaps"] = []
+        pk = {"news": pk_news, "market": {},
+              "tw_universe": [
+                  {"code": "2330", "name": "台積電", "industry": "半導體業"},
+                  {"code": "2603", "name": "長榮", "industry": "航運業"}]}
+        return chr(10).join(ad.depth_advisories(obj, pk))
+
+    # 外審的反例:素材 29 則(科技 15 / 其他 14),輸出只有 7 + 6
+    a = _adv(7, 6, src_tech=15, src_other=14)
+    assert "第八段靠它" in a, ("29 則素材落進盲區,科技不足沒有被催", a)
+    assert "第九段靠它" in a, a
+
+    # 更小的例子:素材 20 則也足以達成 8 + 7
+    b = _adv(6, 6, src_tech=10, src_other=10)
+    assert "第八段靠它" in b and "第九段靠它" in b, b
+
+    # **不得逼它湊**:那一段的素材真的不夠時不催(這是既有的規則,
+    # 拆掉全域門檻不可以把它一起拆掉)
+    c = _adv(6, 9, src_tech=7, src_other=20)
+    assert "第八段靠它" not in c, ("科技素材只有 7 則卻要求 8 則", c)
+    assert "第九段靠它" not in c, c
+
+    # 總則數那一條有自己的素材前提:素材本身就少於目標時不催
+    d = _adv(5, 5, src_tech=6, src_other=6)
+    assert f"{ad.NEWS_TARGET_MIN}–" not in d, ("素材只有 12 則卻要求 15 則", d)
+
+    # **認不出主體的新聞不算任何一段的素材**:素材面問的是「今天真的有
+    # 那一段的料嗎」,而 `not is_tech` 只代表「沒被認出是科技」。先前
+    # `_src_other = 總數 - 科技` 把空白新聞全算成非科技 —— 10 則沒有主體
+    # 的新聞就足以要求第九段寫 7 則,那正是「逼它湊」。
+    obj = fx.valid_analysis()
+    obj["top_news_analysis"] = [{"source_item_id": f"z{i}",
+                                 "why_it_matters": "x",
+                                 "direction": "bullish",
+                                 "materiality": "medium"} for i in range(4)]
+    obj["data_gaps"] = []
+    blank = ad.depth_advisories(obj, {"news": [{"source_item_id": f"z{i}"}
+                                               for i in range(10)],
+                                      "market": {}, "tw_universe": []})
+    assert not any("靠它" in x for x in blank), blank
+
+
+def test_the_venue_cache_is_scoped_to_its_season(monkeypatch, tmp_path):
+    """2026-08-25 外審 P2:快取的鍵是 `MM/DD|主隊`,**沒有年份**。
+    2027-08-25 官網照樣被擋、Wikipedia 又剛好失敗時,`08/25|中信兄弟` 會
+    命中 2026 年那一筆 —— 把去年的球場印成今年的。而這個功能一開始就寫著
+    「猜錯的地點比沒有地點糟」,那正好違反它自己的判準。"""
+    cache = tmp_path / "v.json"
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", cache)
+    mr._save_cpbl_venue_cache({"08/25|中信兄弟": "大巨蛋"}, 2026)
+    body = json.loads(cache.read_text(encoding="utf-8"))
+    assert body["season"] == 2026 and body["games"], body
+    assert body.get("fetched_at"), body      # 多舊了要查得出來
+
+    assert mr._load_cpbl_venue_cache(2026) == {("08/25", "中信兄弟"): "大巨蛋"}
+    assert mr._load_cpbl_venue_cache(2027) == {}, "去年的球場被當成今年的"
+
+    # 舊格式(沒有 season 欄)也不採用:年份不可考,後果與「是別年的」一樣
+    cache.write_text(json.dumps({"08/25|中信兄弟": "大巨蛋"},
+                                ensure_ascii=False), encoding="utf-8")
+    assert mr._load_cpbl_venue_cache(2026) == {}, "舊格式沒有年份卻被採用"
+
+    # 接線:官網失敗時要用**那一天的**季別去讀,不是 wall clock
+    import inspect
+    src = inspect.getsource(mr._cpbl_venue_map)
+    assert "_load_cpbl_venue_cache(_now.year)" in src, src[-600:]
+    assert "_load_cpbl_venue_cache((as_of or dt.datetime.now(TPE)).year)" in src
+
+
+def test_a_corrupt_cache_must_not_take_the_whole_schedule_with_it(monkeypatch,
+                                                                  tmp_path):
+    """2026-08-25 外審:`load_json_state(expected=dict)` **只驗最外層**。
+    `{"season": 2026, "games": ["x"]}` 時 `(x or {}).items()` 會拋 ——
+    而那是從 `_cpbl_venue_map` 的 except 裡呼叫的,例外往外逃、呼叫端的
+    try 把 `cpbl_fixtures` 整段丟掉:讀者少的不是一個地點,是一整週的賽程。
+    (`[] or {}` 是 `{}` 所以空 list 剛好躲過 —— 非空的才炸。)"""
+    cache = tmp_path / "v.json"
+    monkeypatch.setattr(mr, "CPBL_VENUE_FILE", cache)
+    cache.write_text(json.dumps({"season": 2026, "games": ["壞掉"]},
+                                ensure_ascii=False), encoding="utf-8")
+    mr._DEGRADED_STEPS.clear()
+    assert mr._load_cpbl_venue_cache(2026) == {}
+    assert any("cpbl_venues" in d for d in mr._DEGRADED_STEPS), \
+        mr._DEGRADED_STEPS
+
+    # **賽程不受影響**:場地那條路上拋出任何東西都不得帶走 fixtures
+    now = dt.datetime(2026, 8, 25, 6, 0, tzinfo=mr.TPE)
+
+    class _R:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"service": {"scoreboard": {
+                "games": {"g1": {"status_type": "pregame",
+                                 "start_time": "Tue, 25 Aug 2026 10:35:00 GMT",
+                                 "away_team_id": "a", "home_team_id": "h"}},
+                "teams": {"a": {"display_name": "樂天"},
+                          "h": {"display_name": "中信"}}}}}
+
+    monkeypatch.setattr(mr.requests, "get", lambda *a, **k: _R())
+    monkeypatch.setattr(mr, "_cpbl_venue_map",
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            RuntimeError("場地那條路炸了")))
+    mr._RUN_MANIFEST.pop("sports", None)
+    got = mr.fetch_cpbl_today_fixtures(now)
+    assert got and got[0]["home"] == "中信", got
+    assert "venue" not in got[0], got
+    slot = mr._RUN_MANIFEST["sports"]["cpbl_venue"]
+    assert slot["reason"].startswith("error:"), slot
+    assert slot["fixtures"] == 1 and slot["matched"] == 0, slot

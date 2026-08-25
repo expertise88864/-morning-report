@@ -1142,12 +1142,18 @@ def process_new_episode() -> int:
     # 決定補寄(fail-closed,不自動重試)。
     now_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     show = state.setdefault(cfg["key"], {"name": cfg["name"], "episodes": []})
-    show["episodes"].insert(0, {
+    # **佔位失敗要能還原到原樣**(2026-08-25 外審 P2)。先前是
+    # `insert(0, …)` 之後 `[:20]`,而寄送失敗的收回只把 pending 濾掉 ——
+    # 被上限擠掉的第 20 筆**永遠回不來**:20 → 19 → 18…。那份清單正是
+    # 「處理過哪些 guid」的歷史,舊 guid 被侵蝕掉之後,RSS 哪天再把它列
+    # 出來就會變成「沒處理過」→ 重寄舊集,正好是這套兩階段協定要消除的
+    # 東西。收回改成**還原快照**,不是「刪掉 pending」。
+    _prior_episodes = list(show["episodes"])
+    show["episodes"] = ([{
         "guid": guid, "title": title, "published": published,
         "processed_at": now_iso, "pending_since": now_iso,
         "sectors": [{"name": s["name"], "stance": s["stance"]} for s in extract["sectors"]],
-    })
-    show["episodes"] = show["episodes"][:20]
+    }] + _prior_episodes)[:20]
     if not publish_radar_state(state, "chore: reserve gooaye radar send "
                                       f"{guid[:40]} [skip ci]"):
         # 佔不到位就**不寄**。佔位必須是**跨 runner** 可見的 —— 只寫本機
@@ -1159,8 +1165,7 @@ def process_new_episode() -> int:
     if not _deliver(html, subject):
         # 沒寄出去:把 pending 收回來,讓下一班可以正常重試。收不回來也
         # 只是少寄一封(而不是重複寄),那是刻意選的方向。
-        show["episodes"] = [e for e in show["episodes"]
-                            if e.get("guid") != guid]
+        show["episodes"] = _prior_episodes
         if not publish_radar_state(state, "chore: release gooaye radar "
                                           f"reservation {guid[:40]} [skip ci]"):
             log("⚠ 寄信失敗且 pending 收不回 → 這一集要人工確認是否補寄")

@@ -55,10 +55,11 @@ COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 8, SECTOR_COVERAGE_GAP: 7}
 NEWS_TARGET_MIN = sum(COVERAGE_FLOORS.values())
 NEWS_TARGET_MAX = NEWS_TARGET_MIN + 5
 
-#: 要求條數的前提:素材面要真的夠(素材貧乏的日子硬湊,湊出來的是把
-#: 同一件事寫兩遍)。門檻跟著目標走 —— 寫死 20 的話,目標一上調它就
-#: 相對變鬆,而那正是「守衛與 prompt 打架」的老形狀。
-NEWS_SOURCE_MIN = NEWS_TARGET_MIN * 2
+#: 總則數那一條的素材前提(逐段那兩條用**自己那一段**的素材數,見
+#: `depth_advisories`)。2026-08-25 外審:先前是 `目標 × 2` 且整組建議
+#: 都包在它底下 —— 憑空的倍數,而且造出 15~29 則素材的盲區。改成「有
+#: 那麼多素材才要求那麼多則」,不多要一倍。
+NEWS_SOURCE_MIN = NEWS_TARGET_MIN
 
 
 def section_counts(obj, packet=None):
@@ -175,62 +176,81 @@ def depth_advisories(obj, packet=None) -> list:
     # 模型交出六則就沒有人會要求它補,信裡的兩段照樣稀薄。
     # 分類走**渲染端同一支**(`analysis_render_depth.is_tech`)—— 兩邊各判一次
     # 的話,建議說的「科技不足」與信上實際分到第八段的條目可以是兩件事。
-    if _avail >= NEWS_SOURCE_MIN:
-        try:
-            from analysis_render_depth import is_tech as _is_tech
-            from analysis_render_depth import news_subject as _subj
-            _tech, _ = section_counts(obj, packet)
-            # **素材面也要照同一支分類數一次**(r2 外審):只看產出的比例
-            # 會在「當天真的沒有那個類股的料」時要求一個做不到的下限 ——
-            # 模型即使誠實寫進 data_gaps 也照樣被催,那是在逼它湊。
-            _src_tech = sum(
-                1 for it in ((packet or {}).get("news") or [])
-                if isinstance(it, dict)
-                and _is_tech(_subj({"source_item_id": it.get("source_item_id")},
-                                   packet)))
-            _src_other = _avail - _src_tech
-        except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數
-            _tech = _src_tech = _src_other = None
-        _other = None if _tech is None else len(news) - _tech
-        if len(news) < NEWS_TARGET_MIN:
-            out.append(
-                f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
-                f"{_avail} 則新聞 —— 目標 {NEWS_TARGET_MIN}–{NEWS_TARGET_MAX} 則;"
-                "優先補未被涵蓋的重大事件"
-                "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
-        # **出口由 Python 判,不由模型宣告**(2026-08-24 外審 P2)。先前
-        # 「模型填了缺口代號就不再催」與 `_src_tech >= 6`(素材面的同一個
-        # 問題,Python 自己數的)並存 —— 而後者才是事實。兩者衝突時前者贏,
-        # 等於模型只要寫一行 `gap:other:tech_coverage` 就能關掉這條建議,
-        # 即使 EVIDENCE 裡明明躺著十幾則科技新聞。素材夠不夠是可數的,
-        # 不是可宣告的。
-        _tf = COVERAGE_FLOORS[TECH_COVERAGE_GAP]
-        if _tech is not None and _tech < _tf and (_src_tech or 0) >= _tf:
-            out.append(
-                f"科技條目只有 {_tech} 則,而素材有 {_src_tech} 則"
-                f"(第八段靠它) —— 目標至少 {_tf} 則;"
-                "同族群要寫不同事件,不是同一件事換句話說。"
-                "素材雖多但都是同一件事的轉載時,把那個理由寫進 data_gaps"
-                "(揭露,不是省略);補足之後 `gap:other:tech_coverage` 要"
-                "一併撤掉,那句話就不再成立")
-        _of = COVERAGE_FLOORS[SECTOR_COVERAGE_GAP]
-        if _other is not None and _other < _of and (_src_other or 0) >= _of:
-            out.append(
-                f"科技以外只有 {_other} 則,而素材有 {_src_other} 則"
-                f"(第九段靠它) —— 目標至少 {_of} 則"
-                "(金融/航運/傳產/生技/能源/營建/重電/汽車/觀光),"
-                "優先挑該類股龍頭的重大公告或財報")
-        # r1 外審(2026-08-24):這裡曾經多一條「宣告了缺料但素材充足 →
-        # 點名它說假話」。移除,兩個理由:
-        #   1. **它宣稱的事沒有被證明。** `_src_tech` 數的是**素材則數**,
-        #      12 則可能是同一件事的 12 家轉載 —— 「素材充足」推不出
-        #      「宣告是假的」。這個 repo 記過同一形狀:便利的述詞不等於
-        #      它要代表的狀態。
-        #   2. **加深輪結構上滿足不了它。** `deepen_input` 明講「保留同樣的
-        #      資料缺口」,而 `_identity()` 把 `what_is_missing` 納入不可
-        #      遺失身分 —— 模型照著建議刪掉那個缺口,
-        #      `deepen_is_an_improvement` 就判定「第二版弄丟了資料缺口」而
-        #      沿用第一版。一條做了會被否決的建議,比沒有這條更糟。
+    # **可行性由「那一段的素材夠不夠」判,不由全域則數判**
+    # (2026-08-25 外審 P2)。先前整組建議包在 `_avail >= 30` 底下,而
+    # 逐段的判準本來就已經是 `_src_tech >= 8` / `_src_other >= 7` ——
+    # 兩套並存的結果是 15~29 則素材的那一大段(科技 15、其他 14、輸出
+    # 只有 7+6)完全不進判斷,一句催促都不會發出。使用者已經**兩次**
+    # 反映這兩段太少,而守衛在合理的生產區間裡靜靜地什麼都不做。
+    #
+    # 全域門檻只留給**總則數**那一條(它沒有逐段的分母可用),而且改成
+    # 「兩段的下限加起來」而不是「目標 × 2」—— 後者是憑空的倍數。
+    try:
+        from analysis_render_depth import is_tech as _is_tech
+        from analysis_render_depth import news_subject as _subj
+        _tech, _ = section_counts(obj, packet)
+        # **素材面也要照同一支分類數一次**(r2 外審):只看產出的比例
+        # 會在「當天真的沒有那個類股的料」時要求一個做不到的下限 ——
+        # 模型即使誠實寫進 data_gaps 也照樣被催,那是在逼它湊。
+        # **素材面與產出面問的是兩個不同的問題**(2026-08-25 外審之後補):
+        #   產出面 `_other = 總數 - 科技` —— 問「信上會分到哪一段」,
+        #     而渲染端第九段本來就收所有非科技條目,認不出主體的也在那裡;
+        #   素材面問的是「今天**真的有**那一段的料嗎」—— 那是能力判斷,
+        #     `not is_tech` 只代表「沒被認出是科技」,不代表「是非科技」。
+        # 先前 `_src_other = _avail - _src_tech` 把**認不出主體的新聞全部
+        # 算成非科技素材**,於是 10 則空白新聞就足以要求第九段寫 7 則。
+        _src_tech = _src_other = 0
+        for it in ((packet or {}).get("news") or []):
+            if not isinstance(it, dict):
+                continue
+            sub = _subj({"source_item_id": it.get("source_item_id")}, packet)
+            if _is_tech(sub):
+                _src_tech += 1
+            elif (sub or {}).get("industry") or (sub or {}).get("name"):
+                _src_other += 1
+            # 認不出主體的:兩段都不算(它不是任何一段的「料」)
+    except Exception:                   # noqa: BLE001 - 分類壞了只檢查總數
+        _tech = _src_tech = _src_other = None
+    _other = None if _tech is None else len(news) - _tech
+    if len(news) < NEWS_TARGET_MIN and _avail >= NEWS_TARGET_MIN:
+        out.append(
+            f"top_news_analysis 只有 {len(news)} 則,而 EVIDENCE 收了 "
+            f"{_avail} 則新聞 —— 目標 {NEWS_TARGET_MIN}–{NEWS_TARGET_MAX} 則;"
+            "優先補未被涵蓋的重大事件"
+            "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
+    # **出口由 Python 判,不由模型宣告**(2026-08-24 外審 P2)。先前
+    # 「模型填了缺口代號就不再催」與 `_src_tech >= 6`(素材面的同一個
+    # 問題,Python 自己數的)並存 —— 而後者才是事實。兩者衝突時前者贏,
+    # 等於模型只要寫一行 `gap:other:tech_coverage` 就能關掉這條建議,
+    # 即使 EVIDENCE 裡明明躺著十幾則科技新聞。素材夠不夠是可數的,
+    # 不是可宣告的。
+    _tf = COVERAGE_FLOORS[TECH_COVERAGE_GAP]
+    if _tech is not None and _tech < _tf and (_src_tech or 0) >= _tf:
+        out.append(
+            f"科技條目只有 {_tech} 則,而素材有 {_src_tech} 則"
+            f"(第八段靠它) —— 目標至少 {_tf} 則;"
+            "同族群要寫不同事件,不是同一件事換句話說。"
+            "素材雖多但都是同一件事的轉載時,把那個理由寫進 data_gaps"
+            "(揭露,不是省略);補足之後 `gap:other:tech_coverage` 要"
+            "一併撤掉,那句話就不再成立")
+    _of = COVERAGE_FLOORS[SECTOR_COVERAGE_GAP]
+    if _other is not None and _other < _of and (_src_other or 0) >= _of:
+        out.append(
+            f"科技以外只有 {_other} 則,而素材有 {_src_other} 則"
+            f"(第九段靠它) —— 目標至少 {_of} 則"
+            "(金融/航運/傳產/生技/能源/營建/重電/汽車/觀光),"
+            "優先挑該類股龍頭的重大公告或財報")
+    # r1 外審(2026-08-24):這裡曾經多一條「宣告了缺料但素材充足 →
+    # 點名它說假話」。移除,兩個理由:
+    #   1. **它宣稱的事沒有被證明。** `_src_tech` 數的是**素材則數**,
+    #      12 則可能是同一件事的 12 家轉載 —— 「素材充足」推不出
+    #      「宣告是假的」。這個 repo 記過同一形狀:便利的述詞不等於
+    #      它要代表的狀態。
+    #   2. **加深輪結構上滿足不了它。** `deepen_input` 明講「保留同樣的
+    #      資料缺口」,而 `_identity()` 把 `what_is_missing` 納入不可
+    #      遺失身分 —— 模型照著建議刪掉那個缺口,
+    #      `deepen_is_an_improvement` 就判定「第二版弄丟了資料缺口」而
+    #      沿用第一版。一條做了會被否決的建議,比沒有這條更糟。
     # **被輸出自己否證的涵蓋率缺口**(2026-08-24 r2 外審)。不受 `_avail`
     # 門檻限制:素材少的日子照樣不該印一句被自己內容否證的揭露。
     for _gid in contradicted_coverage_gaps(obj, packet):

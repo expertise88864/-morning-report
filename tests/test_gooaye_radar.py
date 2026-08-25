@@ -322,7 +322,7 @@ def test_pending_is_written_before_the_send(monkeypatch, tmp_path):
     i_pending = src.index('"pending_since": now_iso')
     # pending 記錄**要帶那一集的 guid**:`find_new_episodes` 只比 guid,
     # 少了它(或寫成空字串)這條佔位就攔不住第二次寄送。
-    rec = src[src.rindex("insert(0, {", 0, i_pending):i_pending]
+    rec = src[src.rindex('show["episodes"] = ([{', 0, i_pending):i_pending]
     assert '"guid": guid,' in rec, rec
     # **佔位要 publish,不是只 save**(2026-08-24 外審 r1):state 是在程式
     # 跑完後由 workflow 另一個 step 才 push 的 —— 寄信成功而 push 失敗時,
@@ -330,8 +330,10 @@ def test_pending_is_written_before_the_send(monkeypatch, tmp_path):
     i_save = src.index("if not publish_radar_state(state,", i_pending)
     i_send = src.index("if not _deliver(html, subject):")
     assert i_pending < i_save < i_send, (i_pending, i_save, i_send)
-    # 寄送失敗要把 pending 收回來(否則一次網路失敗就永久卡住那一集)
-    assert "e.get(\"guid\") != guid" in src[i_send:i_send + 600], src[i_send:i_send + 600]
+    # 寄送失敗要把 pending 收回來(否則一次網路失敗就永久卡住那一集),
+    # 而且是**還原快照**不是刪掉 pending —— 見
+    # `test_a_failed_delivery_must_not_erode_the_guid_history`。
+    assert "_prior_episodes" in src[i_send:i_send + 600], src[i_send:i_send + 600]
 
 
 def test_delivered_but_unrecorded_is_not_a_green_run(monkeypatch, tmp_path):
@@ -437,3 +439,49 @@ def test_the_reservation_must_be_globally_visible_before_sending(monkeypatch,
     calls.clear()
     assert gr.publish_radar_state({"a": 1}, "msg") is True
     assert not calls, "本機執行不該去動 git"
+
+
+def test_a_failed_delivery_must_not_erode_the_guid_history(monkeypatch,
+                                                           tmp_path):
+    """2026-08-25 外審 P2:佔位是 `insert(0,…)` 之後 `[:20]`,而寄送失敗的
+    收回只把 pending 濾掉 —— **被上限擠掉的第 20 筆永遠回不來**:
+    20 → 19 → 18…。那份清單正是「處理過哪些 guid」的歷史(`find_new_episodes`
+    只比 guid),舊 guid 被侵蝕掉之後 RSS 哪天再列出它就變成「沒處理過」→
+    重寄舊集,正好是這套兩階段協定要消除的東西。
+
+    這裡直接跑那一段:滿載 20 筆 + 佔位 + 寄送失敗 → GUID 集合必須完全不變。
+    """
+    def _reserve_then_fail(state, key, new_guid, delivered):
+        """`process_new_episode` 佔位/收回那一段的形狀(同一組動作)。"""
+        show = state.setdefault(key, {"name": "股癌", "episodes": []})
+        prior = list(show["episodes"])
+        show["episodes"] = ([{"guid": new_guid, "pending_since": "t"}]
+                            + prior)[:20]
+        assert any(e["guid"] == new_guid for e in show["episodes"])
+        if not delivered:
+            show["episodes"] = prior
+        return show
+
+    old = [{"guid": f"E{i:02d}", "radar_sent_at": "t"} for i in range(1, 21)]
+    st = {"gooaye": {"name": "股癌", "episodes": list(old)}}
+    show = _reserve_then_fail(st, "gooaye", "N1", delivered=False)
+    assert [e["guid"] for e in show["episodes"]] == [e["guid"] for e in old]
+    assert len(show["episodes"]) == 20, len(show["episodes"])
+
+    # 連續三次失敗也不得少一筆(先前是 20 → 19 → 18 → 17)
+    for k in range(3):
+        show = _reserve_then_fail(st, "gooaye", f"N{k+2}", delivered=False)
+    assert {e["guid"] for e in show["episodes"]} == {e["guid"] for e in old}
+
+    # 寄成功那條路仍然要把新的那筆留下(收回不可以連成功也一起還原)
+    show = _reserve_then_fail(st, "gooaye", "N9", delivered=True)
+    assert show["episodes"][0]["guid"] == "N9"
+    assert len(show["episodes"]) == 20
+
+    # 接線:生產那一段用的是**還原快照**,不是「刪掉 pending」
+    import inspect
+    src = inspect.getsource(gr.process_new_episode)
+    i = src.index("if not _deliver(html, subject):")
+    seg = src[i:i + 500]
+    assert 'show["episodes"] = _prior_episodes' in seg, seg
+    assert 'e.get("guid") != guid' not in seg, seg

@@ -4888,6 +4888,37 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74680146",
+        "title": "Coffee rally hits PSL season",
+        "published": "Tue, 25 Aug 2026 10:48:45 +0000",
+        "processed_at": "2026-08-25T14:14:12Z",
+        "digest": {
+          "summary_points": [
+            "咖啡期貨創六個月新高，主因市場擔憂巴西優質咖啡豆短期供應，加上哥倫比亞月初強震；超級聖嬰現象被視為後續價格（尤其是羅布斯塔）的重大上行風險。",
+            "比特幣突破 80,800 美元，七日累計漲逾 23%，為三年來最強週線漲勢；美國財長宣布增加長天期公債回購以壓低長債殖利率，導致美元轉弱、強化貨幣貶值交易，資金流向比特幣與黃金等替代資產。"
+          ],
+          "tickers": [
+            {
+              "name": "Bloom Energy",
+              "code": "BE",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因眾議員 Nancy Pelosi 揭露買進股票與長天期買權，股價上漲 5%"
+            },
+            {
+              "name": "Intel",
+              "code": "INTC",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "因眾議員 Nancy Pelosi 揭露買進股票與長天期買權，股價上漲 3%"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The move triggered renewed dollar selling and strengthened the so-called debasement trade, benefiting alternative assets such as Bitcoin and gold."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74649398",
         "title": "Bessent brings out the bond bazooka",
         "published": "Mon, 24 Aug 2026 15:57:44 +0000",
@@ -5284,32 +5315,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "Space is moving from the final frontier to an institutional asset class."
-        },
-        "shown_at": "2026-08-17T22:30:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74196793",
-        "title": "Rocket Lab gains altitude",
-        "published": "Mon, 17 Aug 2026 10:47:48 +0000",
-        "processed_at": "2026-08-17T14:00:36Z",
-        "digest": {
-          "summary_points": [
-            "Rocket Lab 為 MDA Space 打造的 8 顆衛星成功入軌，這是其 1.43 億美元、共 17 顆衛星合約的首次部署；主持人認為這代表 Rocket Lab 大型衛星製造合約的早期營運里程碑。",
-            "受伊朗戰爭影響，卡達天然氣製液廠遭到攻擊，Group 3 基礎油價格幾乎暴漲三倍至每噸約 4,000 美元；Stellantis 與福斯等車廠改用替代潤滑油，但供應仍吃緊，可能持續壓抑車廠成本。",
-            "哥倫比亞總統請求川普暫時取消對哥國商品的關稅，以協助地震災後復甦；主持人分析若成真，可望支撐哥國出口商並降低經濟中斷，但農業、製造、礦業與運輸業仍可能因重建而長期受干擾。"
-          ],
-          "tickers": [
-            {
-              "name": "Rocket Lab",
-              "code": "RKLB",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "主持人認為此次衛星部署是其大型衛星製造合約的早期營運里程碑，屬於正面訊號。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "As for investors, the deployment represents an early operational milestone for one of Rocket Lab's larger satellite manufacturing contracts."
         },
         "shown_at": "2026-08-17T22:30:06Z"
       }

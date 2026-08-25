@@ -61,7 +61,9 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 #: 與 HEAD 逐行 diff 過:**只有這三行**,指示文字與其他段落逐位元組相同。
 # 2026-08-21:九段龍頭優先選材進 legacy prompt(v9;r2 移到圍欄外+無條件)——刻意變更
 LEGACY_PROMPT_SHA256 = (
-    "53eef5f44e8bd745016872f6ec2d9bbfe7e6b6fcce039e4e1eae22e789cbe978")
+    "9db500dbcb5d1466e6fce96bac53dd079cc5a2ed2a0739d6ceb8db85567b1d7c")
+#: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
+#: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。
 
 #: 段落順序也是契約的一部分。LLM 對「重要的東西放前面」很敏感,
 #: 而順序被改動時 prompt 雜湊會變,但雜湊說不出是順序變了還是內文變了。

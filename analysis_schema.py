@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 22
+ANALYSIS_SCHEMA_VERSION = 23  # v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -273,6 +273,16 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "source_item_id": _s("這則世界大事的新聞 ID"),
         "what": _s("發生了什麼 —— 客觀敘述,含當事方與動作"),
         "why_it_matters": _s("戰略意涵/對市場之外的世界代表什麼"),
+        # 2026-08-25 使用者:「世界大事速覽也要有解析這條新聞的後續可能
+        # 影響」。`why_it_matters` 問的是**現在**為什麼重要,那是評價;
+        # 這一欄問的是**接下來** —— 兩件不同的事,合成一欄的結果就是
+        # 08/25 那封信裡的「地緣政治緩和有指標意義」:讀者拿不到任何
+        # 可以拿去做判斷的東西。做成欄位而不是多一句叮嚀,因為 strict
+        # schema 會強制它出現。
+        "what_next": _s("**後續可能影響**:接下來可能怎麼發展、什麼會跟著"
+                        "改變、要盯什麼訊號才知道往哪一邊走。寫得出路徑"
+                        "(誰受影響→透過什麼→什麼時候看得到);不確定就"
+                        "寫成條件式(『若…則…』),**不要編時間表或數字**"),
     }), "**股市之外的世界**(外交/戰爭/科技治理/重大社會事件),約三條;"
         "美股漲跌、公司財報**不是**世界大事。沒有就空陣列"),
     "upcoming_event_scenarios": _arr(_obj({

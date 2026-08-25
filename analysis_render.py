@@ -312,8 +312,17 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     # ------- legacy 骨架(2026-08-19 第四批,schema v21)-------
     # 世界大事:**股市之外的世界**。這個段名曾被刪(schema 沒有對應欄位
     # 時掛這個招牌是假的);v21 有 `world_events` 之後,名字才誠實。
-    world = [f"- {_s(w.get('what'))}{_s(w.get('why_it_matters')) and ':' + _s(w.get('why_it_matters'))}"
-             for w in (obj.get("world_events") or [])
+    def _world_line(w) -> str:
+        # 2026-08-25 使用者:每條也要有「後續可能影響」。它另起一行 ——
+        # 併在同一句尾巴會被讀成同一件事,而它問的是不同的問題(接下來
+        # 會怎樣 vs 現在為什麼重要)。沒有那一欄就只印前兩段(舊資料相容)。
+        head = _s(w.get("what"))
+        why = _s(w.get("why_it_matters"))
+        nxt = _s(w.get("what_next"))
+        line = f"- {head}" + (f":{why}" if why else "")
+        return line + (f"{chr(10)}  後續可能影響:{nxt}" if nxt else "")
+
+    world = [_world_line(w) for w in (obj.get("world_events") or [])
              if isinstance(w, dict) and _s(w.get("what"))]
     if world:
         parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world))

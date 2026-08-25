@@ -710,6 +710,18 @@ def validate(obj, evidence_ids) -> list:
         for i, row in enumerate((obj.get(field) or [])):
             if isinstance(row, dict):
                 _check_ids([row.get("source_item_id")], f"{field}[{i}]")
+    # **「後續可能影響」不得是空字串**(2026-08-25 使用者 + 外審)。
+    # strict schema 的 `required` 只保證**欄位在**,`type: string` 收下
+    # `""` —— 而渲染端沒有那一欄就整行省略,於是使用者要的那件事會
+    # **靜默消失**,信看起來完全正常。可驗的東西要真的去驗。
+    for i, row in enumerate((obj.get("world_events") or [])):
+        if not isinstance(row, dict) or not str(row.get("what") or "").strip():
+            continue
+        if not str(row.get("what_next") or "").strip():
+            problems.append(
+                f"world_events[{i}] 沒有寫 `what_next`(後續可能影響)—— "
+                "「現在為什麼重要」與「接下來會怎樣」是兩個問題,"
+                "只答前者的話讀者拿不到可以拿去做判斷的東西")
     # 情境:**虛構的未來事件要擋得住**(外審 2026-08-19 第二輪)。
     # 每一件都要引用 EVIDENCE 裡真的存在的 ID;引用了不存在的照樣報。
     for i, sc in enumerate((obj.get("upcoming_event_scenarios") or [])):

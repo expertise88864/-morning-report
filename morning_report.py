@@ -12791,6 +12791,21 @@ def _call_deepseek(prompt: str, role: str = "primary") -> str:
                     continue
                 _record_llm_call(slim=slim, backoff_reason=_backoff_reason,
                                  **_fail_rec)
+                # **被拒的請求不重試,也不換模型**(2026-08-26 生產:
+                # 402 Insufficient Balance)。`refusal_reason` 的 docstring
+                # 自己就寫著「重試幾次都一樣,要有人去處理帳號」——
+                # 而餘額是**帳號級**的:換一個模型再送一次,結果一模一樣。
+                # 08/26 那班因此打了四次。空轉的代價不是白花錢(被拒不計費,
+                # 同一個分類器已經用來判這個),是**把有限的時間預算燒掉**。
+                # `break` 只跳出重試迴圈、外層還會試下一個模型 —— 所以是
+                # `raise`,而且拋 `last_err`(與模型全試完那條路同一個形狀,
+                # 呼叫端的處置不變)。
+                _refused = _lt.refusal_reason(e)
+                if _refused:
+                    print(f"[llm] DeepSeek 被拒({_refused},HTTP {code})——"
+                          "不重試、不換模型(要有人處理帳號)", file=sys.stderr)
+                    raise RuntimeError(
+                        f"DeepSeek 所有模型皆失敗: {last_err}") from e
                 if code in RETRY_STATUS_CODES and attempt < 3:
                     wait = 5 * (3 ** (attempt - 1))
                     print(f"[llm] DeepSeek HTTP {code}，{wait}s 後重試", file=sys.stderr)
@@ -12886,10 +12901,35 @@ def _fallback_analysis_text(news: list[dict], err: Exception) -> str:
 ## 二、提示
 
 請直接看上方「美股收盤行情」「00662 公允價」「2330 雙模型預測」三個區塊做判斷。
-若情況持續，可考慮：
-- 稍後手動重跑 workflow（DeepSeek 的暫時性故障多在數小時內恢復）
-- 檢查 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL 設定與 DeepSeek 服務狀態頁
+{_fallback_next_step(err)}
 """
+
+
+#: 失敗原因 → **該做什麼**。2026-08-26 生產:DeepSeek 402 餘額不足,而信裡
+#: 寫的是「稍後手動重跑(暫時性故障多在數小時內恢復)」—— 那句話對這個原因
+#: 是**錯的**,重跑幾次都一樣,使用者照著做只是浪費一個早上。訊息要能分開
+#: **處置不同**的原因(這個 repo 的既定規約),而分類器
+#: (`llm_telemetry.refusal_reason`)本來就有,只是沒有人拿它寫這段字。
+_FALLBACK_NEXT_STEP = {
+    "payment": ("**這不是暫時性故障,重跑不會好。** LLM 供應商回「餘額不足」"
+                "(HTTP 402):" + chr(10) + ""
+                "- 到 DeepSeek 帳戶儲值,額度恢復後再手動重跑 workflow" + chr(10) + ""
+                "- 儲值前重跑只會再收到同一封降級信"),
+    "auth": ("**這不是暫時性故障,重跑不會好。** LLM 供應商回「認證失敗」"
+             "(HTTP 401/403):" + chr(10) + ""
+             "- 檢查 `DEEPSEEK_API_KEY` 是否過期或被撤銷(GitHub Secrets)" + chr(10) + ""
+             "- 金鑰換過之後再手動重跑 workflow"),
+}
+
+
+def _fallback_next_step(err: Exception) -> str:
+    """降級信的「接下來該做什麼」。分不出原因時給原本那段通用建議。"""
+    step = _FALLBACK_NEXT_STEP.get(_lt.refusal_reason(err))
+    if step:
+        return step
+    return ("若情況持續，可考慮：" + chr(10) + ""
+            "- 稍後手動重跑 workflow（供應商的暫時性故障多在數小時內恢復）" + chr(10) + ""
+            "- 檢查 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL 設定與服務狀態頁")
 
 
 def _analysis_complete_enough(text: str) -> bool:

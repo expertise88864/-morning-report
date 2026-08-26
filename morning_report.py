@@ -13917,6 +13917,50 @@ def _canonicalize_gap_ids(obj, packet: dict) -> None:
           + "、".join(f"{a}→{b}" for a, b in changed[:3]), file=sys.stderr)
 
 
+#: Python **自己算得出來**的缺口:區塊被 payload 預算裁掉。
+#: 其餘(張力查不成)要模型說明「所以呢」,那是它的工作,不在這裡回填。
+_MACHINE_KNOWN_GAP_PREFIX = "gap:payload_omitted:"
+
+
+def _backfill_machine_known_gaps(obj, packet: dict) -> None:
+    """`gap:payload_omitted:*` 模型沒抄回來就由 Python 補上。
+
+    2026-08-26 生產(儲值後重跑):十條駁回裡有兩條是
+    `gap:payload_omitted:HISTORY` / `…:STRUCTURED_NEWS_EVENTS` 沒揭露。
+    那兩件事**是 Python 算出來的**(`payload_budget.trim` 知道裁了哪個
+    區塊、多少字元,連要顯示的句子都寫好放在 `required_disclosures`),
+    卻要求模型逐字抄回 `data_gaps`,抄漏就整份作廢 —— 讀者因此拿到完全
+    沒有揭露的 legacy 版本,比補上去更糟。
+
+    這與 `_canonicalize_gap_ids` 同一個模式:**機器知道答案的事不要用
+    駁回去逼模型猜對**。只補這一個前綴;張力類的缺口仍然要模型自己寫
+    (那要說出「所以今天少了什麼判斷」,Python 沒有那個答案)。
+    """
+    if not isinstance(obj, dict):
+        return
+    need = packet.get("required_disclosures")
+    if not isinstance(need, dict):
+        return
+    rows = obj.get("data_gaps")
+    if not isinstance(rows, list):
+        rows = []
+        obj["data_gaps"] = rows
+    told = {str((g or {}).get("gap_id") or "")
+            for g in rows if isinstance(g, dict)}
+    added = []
+    for gid, why in sorted(need.items()):
+        if not str(gid).startswith(_MACHINE_KNOWN_GAP_PREFIX) or gid in told:
+            continue
+        rows.append({"gap_id": str(gid), "what_is_missing": str(why),
+                     "impact_on_conclusions":
+                         "這塊資料沒有進到分析輸入,相關判斷少了它的支撐"})
+        added.append(str(gid))
+    if added:
+        _RUN_MANIFEST.setdefault("llm", {})["machine_gaps_backfilled"] = added
+        print(f"[llm] Python 補上機器已知缺口 {len(added)} 筆:"
+              + "、".join(added[:3]), file=sys.stderr)
+
+
 def _prune_phantom_audit_ids(obj, packet: dict):
     """**只修剪裝飾層**的幽靈引用(`relates_to`),證據欄位一律不動。
 
@@ -14575,6 +14619,9 @@ def _luna_analysis(packet: dict, effort: str) -> str:
             # 自發現缺口的命名也是(CI #506:`gap:model_calibration` ——
             # 真缺口、錯命名,整份作廢)。need 裡的 ID 一個都不動。
             _canonicalize_gap_ids(obj, packet)
+            # **機器知道答案的缺口由 Python 補**(2026-08-26 生產:
+            # `gap:payload_omitted:*` 沒抄回來,十條駁回裡佔兩條)。
+            _backfill_machine_known_gaps(obj, packet)
             # 佐證等級是資料決定的欄位(2026-08-20 生產:誇大兩筆 →
             # 整份特化作廢)—— 代抄而不是駁回。
             _align_corroboration(obj, packet)

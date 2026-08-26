@@ -711,7 +711,9 @@ def best_view(entities, items, titles: str = "", summary: str = "",
         my_obj = _eid.view_identity(titles, ents,
                                     summary=summary)["object"] if (
             their_action or today_action) else ""
-        if my_obj and their_obj and my_obj != their_obj:
+        # 判準只能有一份(見下方 `action_match` 的註解):嚴格相等會把
+        # 「伊朗」與退回的候選集合「伊朗、美國」判成不同。
+        if my_obj and their_obj and not _eid.objects_agree(my_obj, their_obj):
             continue
         # **只用辨識詞比**(第二輪外審 F2):主體相交已經在上一行判過,
         # 標題重疊若又被主體名與「宣布」這類套語灌滿,等於把同一份
@@ -741,7 +743,12 @@ def best_view(entities, items, titles: str = "", summary: str = "",
         if action_match and today_action in _eid.NEEDS_OBJECT:
             # 帶對象的動作:動作相同還不夠,對象也要相同(第三輪外審 F2)。
             # 算不出對象一律不當作動作命中 —— 退回標題辨識詞那一關。
-            action_match = bool(my_obj) and my_obj == their_obj
+            # **判準只能有一份**(2026-08-26):嚴格相等會把「伊朗」與
+            # 退回的候選集合「伊朗、美國」判成不同 —— 而 timeline 那側
+            # 早就用 `objects_agree` 處理這件事(單一側的明確對象出現在
+            # 多元側的候選裡就算對上;兩側都多元時才要求相等)。
+            action_match = bool(my_obj) and _eid.objects_agree(my_obj,
+                                                               their_obj)
         if action_match and not _comparable(titles, it.get("title")):
             # **跨語言:同動作+同對象只證明「可能是同一件」**(第三十一輪
             # 外審 P1-2)。同公司的兩起資安事件、同受援國的兩批軍售 ——

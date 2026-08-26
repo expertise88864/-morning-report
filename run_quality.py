@@ -57,6 +57,12 @@ KNOWN_DEGRADED = frozenset({
     # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
     # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
     "sector:institutional_missing",
+    # 供應商擋下請求(餘額/金鑰)→ 跳過 legacy 直接走緊急備援
+    # (2026-08-26)。**這裡註冊只是為了不落成「沒見過的降級」** ——
+    # 它本身已經有專屬 finding(`llm_provider_refused_*`,說得出是哪一種、
+    # 該做什麼),那條才是通報的主體。
+    "llm:provider_refused:payment",
+    "llm:provider_refused:auth",
     # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
     "state:alias_map_unavailable",
     # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外

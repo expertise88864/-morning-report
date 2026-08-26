@@ -14799,6 +14799,18 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             _DEGRADED_STEPS.append(_lbl)
             _RUN_MANIFEST.setdefault("llm", {})["luna_path_error"] = _err
             _pending_failure = (_packet, type(e).__name__)
+            # **帳號級的拒絕不要再落 legacy**(2026-08-26 外審 P2)。
+            # 落回 legacy 會用**同一個帳號**再打一次 DeepSeek —— 餘額不足
+            # 或金鑰失效是帳號級的,Responses 沒錢不代表 Chat 會突然有錢,
+            # 那次請求的成功機率是零,而它照樣吃掉 run budget。
+            # 只對這兩種跳過:一般的語意/語法/內容失敗仍然照舊落 legacy
+            # (那是 legacy 存在的理由,不可以一起關掉)。
+            _refused = _lt.refusal_reason(e)
+            if _refused:
+                print(f"[llm] Luna 被拒({_refused})—— 跳過 legacy"
+                      "(同一個帳號,再打一次也是同樣結果)", file=sys.stderr)
+                _DEGRADED_STEPS.append(f"llm:provider_refused:{_refused}")
+                return _fallback_analysis_text(news, e)
     # 第十四輪 P0-1:走到這裡就是 legacy 這一條。**分成兩種**:根本沒開特化
     # (legacy_primary),與特化試過才落回(legacy_fallback_after_luna_failure)。
     # 後者的寫信模型仍可能是 Luna,是最容易被讀成「Luna 成功」的那一種。
@@ -15993,6 +16005,13 @@ def update_event_timeline(structured_events: list[dict],
         # action→event_type 契約的配套(外審 P2-3):producer 統一之後,
         # 既有的 `export_controls:sanction:*` 今天算不出來 —— 不遷移就孤立。
         state, _tl_act = _sm.migrate_action_event_types(state)
+        state, _tl_sanc = _sm.migrate_sanction_objects(state)
+        if _tl_sanc:
+            # **記在 `state_migrations` 底下**(r1 外審):`event_identity`
+            # 那個 dict 在事件迴圈之後會被**整個重新指派**,寫在那裡的痕跡
+            # 會被無聲蓋掉 —— 遷移真的跑了卻查不到。其他遷移也都記這裡。
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "sanction_objects_renamed"] = len(_tl_sanc)
         if _tl_act:
             _RUN_MANIFEST.setdefault("state_migrations", {})[
                 "action_event_types"] = {"renamed": len(_tl_act),

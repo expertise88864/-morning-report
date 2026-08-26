@@ -255,11 +255,18 @@ def test_a_refused_request_is_not_recorded_as_billable(luna_on, monkeypatch):
     monkeypatch.setattr(mr, "_call_deepseek_responses",
                         lambda p: (_ for _ in ()).throw(
                             _HTTP402("402 Client Error: Payment Required")))
+    # **被拒之後不得再打一次同一個帳號**(2026-08-26 外審 P2):餘額不足
+    # 是帳號級的,Responses 沒錢不代表 Chat 會突然有錢。這個 mock 從
+    # 「legacy 的替身」變成**哨兵** —— 它被呼叫到就是缺陷。
+    _legacy_called = []
     monkeypatch.setattr(
         mr, "_call_llm_text",
-        lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
+        lambda p: _legacy_called.append(1) or
+        "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     mr._RUN_MANIFEST.pop("llm", None)
-    assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
+    out = mr._call_llm_analysis_impl(*_ARGS)
+    assert not _legacy_called, "402 之後又用同一個帳號打了一次 legacy"
+    assert "原始新聞清單" in out and "重跑不會好" in out, out[:200]
 
     attempts = [a for a in ((mr._RUN_MANIFEST.get("llm") or {}).get("attempts") or [])
                 if a.get("role") == "primary"]

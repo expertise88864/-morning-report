@@ -50,6 +50,7 @@
 from __future__ import annotations
 
 import re
+import re as _re
 
 #: 身分公式的版本。**改動判定規則就要升版** —— 舊 state 的鍵是用舊公式
 #: 算的,不升版就沒有人知道混在一起的兩批鍵各自是什麼意思。
@@ -72,7 +73,7 @@ import re
 #: v11(縱深第五批):標題家具(來源名與版名)不進辨識詞。
 #: v10(第二十九輪 Commit 2):`CANONICAL_SUBJECTS` 補齊法域的中英對應
 #: (France→法國 等 28 組)—— 主體正規化是鍵的一部分,表變了鍵就變。
-IDENTITY_SCHEMA_VERSION = 12
+IDENTITY_SCHEMA_VERSION = 13  # v13 2026-08-26:制裁對象要在受詞位置(sanction:Oil)
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -752,7 +753,129 @@ def action_object(action: str, title, subjects, summary="") -> str:
     if act in DIRECTIONAL_ACTIONS:
         return (directional_object(act, title, subjects, summary=summary)
                 or UNKNOWN_OBJECT)
+    if act == "sanction":
+        # **被提到 ≠ 被制裁**(2026-08-26 外審,生產已污染)。
+        # `state/event_timeline.json` 出現過
+        # `geopolitical:sanction:Oil:2026-08`,標題是
+        # 「Oil Falls Further Despite Fresh U.S. Sanctions on Iran」——
+        # Oil 是**被影響的資產**,Iran 才是制裁對象。字面提及守衛救不了:
+        # Oil 確實出現在標題裡,它證明的是「這則新聞談到 Oil」,不是
+        # 「Oil 被制裁」。而 `sanction` 的 `OBJECT_SCOPE` 是 `any`
+        # (制裁也可以針對公司),所以法域過濾也擋不住。
+        # 這裡只做一件很窄的事:找**制裁詞的受詞位置**上的已知主體。
+        # 點得出來就用它(那天的 Oil 會變回伊朗,與另外七條同一條線);
+        # 點不出來就**維持原行為** —— 只在「證明得了是別人」時才推翻,
+        # 不因為剖析不出來就把對得上的事件一起打掉。
+        tgt = sanction_target(title, subjects, summary=summary)
+        if tgt:
+            return tgt
     return object_signature(act, subjects)
+
+
+#: 制裁詞的**受詞位置**。只放語意零歧義的兩種形狀。
+#:
+#: **刻意不收「制裁X」這種後置形式**(2026-08-26 外審連五輪)。中文的
+#: 被動要靠字面判:`遭/被/受` 都可能是動詞語素(承受/感受/忍受),而
+#: 「遭美國制裁**中國**譴責」的下一個子句主體又會被讀成受詞 —— 五輪
+#: 下來每收窄一次就長出新的邊界情形,那代表這個工具類別不對,不是還差
+#: 一個補丁。本模組的一貫取捨是「寧可認不出(退回主體簽章,行為與改動
+#: 前相同),不要誤認」,所以這裡只留** X 明確站在受詞位置**的兩種:
+#:   英文 `sanctions on/against/targeting X`、中文 `對X制裁`。
+#: 代價:中文「制裁伊朗」型的標題不再被剖析,那時行為與今天相同 ——
+#: **不是給出錯的答案,是不給答案**。
+_SANCTION_EN = _re.compile(
+    r"(?:sanctions?|sanctioned|sanctioning)\s+(?:on|against|targeting)\s+",
+    _re.I)
+_SANCTION_ZH_AFTER = _re.compile(r"制裁")
+#: **主體自己就是受詞**的被動式:`<主體><遭|被|受><施加方>制裁`。
+#: 判準用的是**我們已經有的主體**,不是從中文語法推被動 —— 前五輪都在
+#: 試「從前面的字推斷」,而 `遭/被/受` 是動詞語素(承受/感受/忍受)、
+#: 後面又可能是下一個子句的主詞,每收窄一次就長出新的邊界情形。
+_PASSIVE_TAIL = _re.compile(r"[遭被受][^,,。;;、\s]{0,8}$")
+_SANCTION_ZH_BEFORE = _re.compile(
+    r"對\s*([^,,。;;、\s]{1,12}?)\s*(?:的)?\s*制裁")
+
+
+def _sanction_spans(text, subjects) -> list:
+    """這段文字裡**受詞位置**的片段(沒有就回空清單)。"""
+    t = str(text or "")
+    if not t.strip():
+        return []
+    spans = [m.group(1) for m in _SANCTION_ZH_BEFORE.finditer(t)]
+    for m in _SANCTION_EN.finditer(t):
+        spans.append(t[m.end():m.end() + 40])
+    for m in _SANCTION_ZH_AFTER.finditer(t):
+        # 「<主體>遭/被/受<施加方>制裁」→ **主體自己就是受詞**,
+        # 後面那個是下一個子句的主詞(「…遭美國制裁**中國**譴責」)。
+        # 這一條看的是我們已經有的主體,不是猜中文語法。
+        if _subject_is_the_patient(t[:m.start()], subjects):
+            continue
+        spans.append(t[m.end():m.end() + 20])
+    return [sp for sp in spans if str(sp).strip()]
+
+
+def _subject_is_the_patient(before: str, subjects) -> bool:
+    """`制裁` 之前是不是「<某個主體><遭|被|受><施加方>」。"""
+    b = str(before or "")
+    m = _PASSIVE_TAIL.search(b)
+    if not m:
+        return False
+    # **必須是結尾,不是「出現在裡面」**(r7 外審):docstring 說的是
+    # 「主體緊接在被動標記前面」,而子字串比對讓
+    # 「台積電**承**受美國制裁伊朗衝擊」的 head(`台積電承`)也算命中 ——
+    # 宣稱與實作差一層,而差的那一層正好是這條規則的全部內容。
+    head = b[:m.start()].strip().lower()
+    return any(head.endswith(str(x or "").strip().lower())
+               for x in (subjects or []) if str(x or "").strip())
+
+
+def _earliest_known(span: str, known: dict) -> str:
+    """受詞位置裡**最先出現**的那個已知主體(沒有回空字串)。
+
+    r1 外審兩條:先前依**別名長度**挑,`sanctions on Iran and Saudi Arabia`
+    會挑到沙烏地 —— 而受詞位置的語意是「動作詞後面**第一個**」;ASCII
+    別名先前是裸子字串比對,`us` 會在 `cause` 裡命中。位置相同時才用長度
+    決勝(`US` vs `USA`)。
+    """
+    low = str(span or "").lower()
+    best = None
+    for alias, canon in known.items():
+        if not alias:
+            continue
+        if alias.isascii():
+            m = _re.search(r"(?<![a-z0-9])" + _re.escape(alias)
+                           + r"(?![a-z0-9])", low)
+            pos = m.start() if m else -1
+        else:
+            pos = low.find(alias)
+        if pos < 0:
+            continue
+        if best is None or (pos, -len(alias)) < (best[0], -len(best[1])):
+            best = (pos, alias, canon)
+    return best[2] if best else ""
+
+
+def sanction_target(title, subjects, summary="") -> str:
+    """制裁詞的受詞位置上點得出來的**已知主體**(點不出來回空字串)。
+
+    只認 `CANONICAL_SUBJECTS` 的主體 —— 商品名(Oil/Gold)不在裡面,所以
+    「被影響的資產」進不了受詞。公司類的對象通常也不在,那時回空字串、
+    維持原行為(保守:只在**證明得了是別人**時才推翻;更嚴的 fail-closed
+    實測會重新製造前一輪外審修掉的 over-merge)。
+
+    標題與摘要**分開掃**:接起來會在邊界造出假的受詞位置。
+    """
+    known = {}
+    for alias, canon in CANONICAL_SUBJECTS.items():
+        known[str(alias).lower()] = canon
+    for canon in set(CANONICAL_SUBJECTS.values()):
+        known[str(canon).lower()] = canon
+    for text in (title, summary):
+        for sp in _sanction_spans(text, subjects):
+            hit = _earliest_known(sp, known)
+            if hit:
+                return hit
+    return ""
 
 
 def object_signature(action: str, subjects) -> str:
@@ -781,6 +904,13 @@ def object_signature(action: str, subjects) -> str:
         juris = [n for n in names if n in set(CANONICAL_SUBJECTS.values())]
         names = juris or names
     return "、".join(sorted(dict.fromkeys(names)))[:24]
+
+
+#: `_objects_agree` 的公開出口(2026-08-26):`analysis_recap` 先前自己寫
+#: `my_obj == their_obj` 的嚴格相等 —— 而「單一明確對象 vs 退回的候選
+#: 集合」本來就該算對上(那正是 `_objects_agree` 存在的理由)。判準只能
+#: 有一份,兩個消費端呼叫同一支。
+objects_agree = _objects_agree
 
 
 def display_label(record) -> str:

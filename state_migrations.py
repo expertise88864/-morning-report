@@ -523,6 +523,44 @@ def migrate_story_action_event_types(ledger) -> tuple:
     return out, renamed
 
 
+def migrate_sanction_objects(timeline) -> tuple:
+    """制裁鍵的對象段改用 producer 現在的判準重算(2026-08-26 外審)。
+
+    生產出現過 `geopolitical:sanction:Oil:2026-08` —— 標題是
+    「Oil Falls Further Despite Fresh U.S. Sanctions on Iran」,Oil 是被
+    影響的資產、Iran 才是制裁對象。判準修好之後,那一列今天算出來的鍵是
+    `…:伊朗:…`,而**舊鍵留在 state 裡就是一條永遠接不上的孤立線**
+    —— 與公司鍵、event_type 那兩次同一個道理:改判準要配遷移。
+
+    重算只用 `event_identity.sanction_target`(**producer 自己那支**),
+    不在這裡另寫一份判準;算不出來或沒變就原樣保留。撞鍵沿用既有的
+    incident 政策。可重入。
+    """
+    import event_identity as _eid
+    out, renamed = {}, []
+    for key, row in (timeline or {}).items():
+        k = str(key)
+        parts = k.split(":")
+        if not isinstance(row, dict) or len(parts) < 4 or parts[1] != "sanction":
+            _place_by_incident(out, k, row)
+            continue
+        tgt = _eid.sanction_target(row.get("latest_title"),
+                                   row.get("subjects") or [],
+                                   summary=row.get("latest_summary") or "")
+        if not tgt or tgt == parts[2]:
+            _place_by_incident(out, k, row)
+            continue
+        new_key = ":".join([parts[0], parts[1], tgt] + parts[3:])
+        # **列也要改**:只改鍵的話,鍵說伊朗、列裡的 `object`/`entity`
+        # 還是 Oil —— 同日重跑會把舊對象讀回活躍時間軸(ICC 那次的形狀)。
+        new_row = dict(row, object=tgt)
+        if row.get("entity"):
+            new_row["entity"] = tgt
+        renamed.append(k)
+        _place_by_incident(out, new_key, new_row)
+    return out, renamed
+
+
 def migrate_action_event_types(timeline) -> tuple:
     """鍵的 event_type 段對齊 `event_actions.ACTION_EVENT_TYPE`。
 

@@ -218,7 +218,7 @@ MODULE_CEILINGS = {
     # 2026-08-17 外審 P1-1:UNKNOWN 分兩種(舊代記錄無辨識詞 = 遷移相容;
     # 記錄是現行代而今天證據不足 = 保守不承接)—— 判準與 producer 對齊。
     # 實測 1011。
-    "event_identity.py": 1_060,  # 2026-08-22 r1 外審 P2:_subjects_meet 套 usable_alias(裸數字別名);現況 1041  # r2:主體正規化走單一權威+別名納入標題比對;現況 1025
+    "event_identity.py": 1_200,  # 2026-08-26 r2:被動由「後面有沒有受詞」判;現況 1144  # 2026-08-26 外審:制裁受詞位置剖析(sanction:Oil);現況 1120  # 2026-08-22 r1 外審 P2:_subjects_meet 套 usable_alias(裸數字別名);現況 1041  # r2:主體正規化走單一權威+別名納入標題比對;現況 1025
     # 動作表(宣告式資料 + 純字串函式)。實測 100。
     # Commit 2:ASCII 關鍵詞詞界 + 放行複數(硬化,非已確認缺陷)。實測 151。
     # 第二十七輪外審 P1-5:法域的宣告表(法域永遠不是可交易標的)
@@ -559,7 +559,7 @@ MODULE_CEILINGS = {
     # 判準不在這裡重寫,呼叫 `news_events.mentions_entity`。實測 73 行。
     # 2026-08-18 外審 P2-1:再加「被標成地緣的資安事件」清理與舊鍵改名。
     # 實測 187 行。
-    "state_migrations.py": 600,  # 2026-08-22 外審 P2-3:action→event_type 契約的鍵遷移(判準與 producer 同一份);現況 510
+    "state_migrations.py": 640,  # 2026-08-26 外審:制裁對象遷移;現況 601  # 2026-08-22 外審 P2-3:action→event_type 契約的鍵遷移(判準與 producer 同一份);現況 510
     "subject_identity.py": 170,  # 主體身分單一權威(2026-08-20 P1-2);現況 114 —— 加主體改表,不該長邏輯  # 第三輪 P1-2:legacy unverified 重驗+信任層級;現況 306
     # 2026-08-18 P1-2:三家 provider 共用的 completion contract。
     # adapter 只做對照,不自己發明政策 —— 三套政策一定會再漂。

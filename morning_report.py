@@ -13945,16 +13945,48 @@ def _backfill_machine_known_gaps(obj, packet: dict) -> None:
     if not isinstance(rows, list):
         rows = []
         obj["data_gaps"] = rows
-    told = {str((g or {}).get("gap_id") or "")
-            for g in rows if isinstance(g, dict)}
+    # **有沒有填 ≠ 填了東西**(2026-08-26 外審 P2)。第一版只看 `gap_id`
+    # 在不在,而 schema 對內容沒有非空約束 —— 模型填對 ID、兩個內容欄留空,
+    # 代抄跳過、驗證器放行,而渲染端 `_lines` 會把整列丟掉:使用者**完全
+    # 看不到**那個缺口。那正是這批要避免的失效,只是換了個形狀。
+    # 既然宣告這些欄位的真相擁有者是 Python,就比照 `_align_corroboration`:
+    # 不是「有沒有填」,是**最後一定與機器事實一致** —— upsert 而不是 append。
     added = []
-    for gid, why in sorted(need.items()):
-        if not str(gid).startswith(_MACHINE_KNOWN_GAP_PREFIX) or gid in told:
+    impact = "這塊資料沒有進到分析輸入,相關判斷少了它的支撐"
+    # **同一個 ID 的重複列要先合併**(2026-08-26 外審 r1):schema 沒有
+    # 唯一性約束,而 `setdefault` 只會修到第一列 —— 另一列照樣被渲染,
+    # 信裡出現兩條同樣的資料缺口。合併時保留較具體的非空內容。
+    by_id, merged = {}, []
+    for g in rows:
+        if not isinstance(g, dict):
+            merged.append(g)
             continue
-        rows.append({"gap_id": str(gid), "what_is_missing": str(why),
-                     "impact_on_conclusions":
-                         "這塊資料沒有進到分析輸入,相關判斷少了它的支撐"})
-        added.append(str(gid))
+        gid = str(g.get("gap_id") or "")
+        if gid.startswith(_MACHINE_KNOWN_GAP_PREFIX) and gid in by_id:
+            keep = by_id[gid]
+            for f in ("what_is_missing", "impact_on_conclusions"):
+                if not str(keep.get(f) or "").strip():
+                    keep[f] = g.get(f)
+            continue
+        by_id.setdefault(gid, g)
+        merged.append(g)
+    rows[:] = merged
+    for gid, why in sorted(need.items()):
+        if not str(gid).startswith(_MACHINE_KNOWN_GAP_PREFIX):
+            continue
+        row = by_id.get(str(gid))
+        if row is None:
+            rows.append({"gap_id": str(gid), "what_is_missing": str(why),
+                         "impact_on_conclusions": impact})
+            added.append(str(gid))
+            continue
+        if not str(row.get("what_is_missing") or "").strip():
+            row["what_is_missing"] = str(why)
+            added.append(str(gid))
+        if not str(row.get("impact_on_conclusions") or "").strip():
+            row["impact_on_conclusions"] = impact
+            if str(gid) not in added:
+                added.append(str(gid))
     if added:
         _RUN_MANIFEST.setdefault("llm", {})["machine_gaps_backfilled"] = added
         print(f"[llm] Python 補上機器已知缺口 {len(added)} 筆:"
@@ -16052,7 +16084,10 @@ def update_event_timeline(structured_events: list[dict],
         # action→event_type 契約的配套(外審 P2-3):producer 統一之後,
         # 既有的 `export_controls:sanction:*` 今天算不出來 —— 不遷移就孤立。
         state, _tl_act = _sm.migrate_action_event_types(state)
-        state, _tl_sanc = _sm.migrate_sanction_objects(state)
+        state, _tl_sanc, _tl_sanc_fix = _sm.migrate_sanction_objects(state)
+        if _tl_sanc_fix:
+            _RUN_MANIFEST.setdefault("state_migrations", {})[
+                "sanction_rows_repaired"] = len(_tl_sanc_fix)
         if _tl_sanc:
             # **記在 `state_migrations` 底下**(r1 外審):`event_identity`
             # 那個 dict 在事件迴圈之後會被**整個重新指派**,寫在那裡的痕跡
@@ -16250,18 +16285,29 @@ def update_event_timeline(structured_events: list[dict],
             ident["action"], str(ev.get("title") or ""),
             ident["subjects"] or subjects,
             summary=str(ev.get("summary") or "")) if ident["action"] else ""
+        # **今天寫下的列就要四欄一致**(2026-08-26 外審 r2)。`object` 已經
+        # 是剖析出來的制裁對象(伊朗),而 `entity`/`subjects` 還是事件抽出
+        # 來的主體(Oil)—— 消費端 `_lineage_hits` **subjects 優先**,於是
+        # 鍵叫 `sanction:伊朗` 的新列,明天仍然接不上伊朗。遷移修的是歷史,
+        # 這裡不修的話**每天都在生產新的不一致**。
+        _sanc_tgt = (_eid.sanction_target(
+            str(ev.get("title") or ""), ident["subjects"] or subjects,
+            summary=str(ev.get("summary") or ""))
+            if ident["action"] == "sanction" else "")
         # **存幾個要與比對用的一致**(外審第二輪 F2):存 12 個而後綴
         # 吃 24 個的話,隔天比對的分母是被截短的那一份 —— 重疊率被灌高,
         # 本來是 `NO_MATCH` 的兩樁事會判成 `MATCH` 而直接承接 lineage。
         rec["incident_tokens"] = _tok[:_eid.MAX_SUFFIX_TOKENS]
-        rec["entity"] = ident["subjects"][0] if ident["subjects"] else subjects[0]
+        rec["entity"] = (_sanc_tgt or (ident["subjects"][0]
+                                       if ident["subjects"] else subjects[0]))
         # **依據隨列走**(外審 2026-08-18 P1):生產者用標題+摘要驗證主體,
         # 而清理只看得到標題 —— 沒有依據的話,只在摘要指名公司的合法時間軸
         # 明天會被清掉。非空才覆寫:同一條線後續由沒帶依據的事件更新時,
         # 不該把已經證實過的那筆抹掉。
         if str(ev.get("subject_basis") or "").strip():
             rec["subject_basis"] = str(ev.get("subject_basis"))
-        rec["subjects"] = ident["subjects"] or subjects
+        rec["subjects"] = ([_sanc_tgt] if _sanc_tgt
+                           else (ident["subjects"] or subjects))
         rec["event_type"] = str(ev.get("event_type") or "")
         rec["action"] = ident["action"]
         rec["identity_schema"] = _eid.IDENTITY_SCHEMA_VERSION

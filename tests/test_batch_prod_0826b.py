@@ -68,3 +68,53 @@ def test_the_hook_runs_on_the_production_path():
     src = io.open(Path(mr.__file__), encoding="utf-8").read()
     i = src.index("_canonicalize_gap_ids(obj, packet)\n            #")
     assert "_backfill_machine_known_gaps(obj, packet)" in src[i:i + 500]
+
+
+def test_a_blank_machine_gap_row_is_filled_not_skipped():
+    """2026-08-26 外審 P2:第一版只看 `gap_id` 在不在,而 schema 對內容
+    沒有非空約束 —— 模型填對 ID、兩個內容欄留空,代抄跳過、驗證器放行,
+    而渲染端 `_lines` 把整列丟掉:使用者**完全看不到**那個缺口。
+    那正是這批要避免的失效,只是換了個形狀。"""
+    import analysis_render as ar
+    need = {"gap:payload_omitted:HISTORY": "HISTORY 太大,未進入分析輸入"}
+    obj = {"data_gaps": [{"gap_id": "gap:payload_omitted:HISTORY",
+                          "what_is_missing": "  ",
+                          "impact_on_conclusions": ""}]}
+    mr._backfill_machine_known_gaps(obj, {"required_disclosures": need})
+    row = obj["data_gaps"][0]
+    assert row["what_is_missing"] == "HISTORY 太大,未進入分析輸入", row
+    assert row["impact_on_conclusions"].strip(), row
+    # **走到渲染**:helper 的輸出對了不算,要真的出現在信裡
+    lines = ar._lines(obj["data_gaps"],
+                      lambda g: f"{g.get('what_is_missing') or ''}")
+    assert lines and "HISTORY" in lines[0], lines
+    # 模型自己寫了內容就不覆寫(它可能寫得更具體)
+    obj2 = {"data_gaps": [{"gap_id": "gap:payload_omitted:HISTORY",
+                           "what_is_missing": "模型自己的描述",
+                           "impact_on_conclusions": "模型自己的影響"}]}
+    mr._backfill_machine_known_gaps(obj2, {"required_disclosures": need})
+    assert obj2["data_gaps"][0]["what_is_missing"] == "模型自己的描述"
+    # 不得長出重複的同 ID 列
+    assert len(obj2["data_gaps"]) == 1, obj2["data_gaps"]
+
+
+def test_duplicate_machine_gap_rows_are_merged():
+    """r1 外審:schema 沒有唯一性約束,而 `setdefault` 只修到第一列 ——
+    另一列照樣被渲染,信裡出現兩條同樣的資料缺口。"""
+    need = {"gap:payload_omitted:HISTORY": "HISTORY 太大,未進入分析輸入"}
+    obj = {"data_gaps": [
+        {"gap_id": "gap:payload_omitted:HISTORY", "what_is_missing": "",
+         "impact_on_conclusions": ""},
+        {"gap_id": "gap:payload_omitted:HISTORY",
+         "what_is_missing": "模型後來寫的描述", "impact_on_conclusions": ""},
+        {"gap_id": "gap:other:y", "what_is_missing": "a",
+         "impact_on_conclusions": "b"}]}
+    mr._backfill_machine_known_gaps(obj, {"required_disclosures": need})
+    ids = [g["gap_id"] for g in obj["data_gaps"]]
+    assert ids.count("gap:payload_omitted:HISTORY") == 1, obj["data_gaps"]
+    assert "gap:other:y" in ids, ids
+    row = next(g for g in obj["data_gaps"]
+               if g["gap_id"] == "gap:payload_omitted:HISTORY")
+    # 合併時保留較具體的非空模型內容
+    assert row["what_is_missing"] == "模型後來寫的描述", row
+    assert row["impact_on_conclusions"].strip(), row

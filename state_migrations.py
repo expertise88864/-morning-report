@@ -537,7 +537,7 @@ def migrate_sanction_objects(timeline) -> tuple:
     incident 政策。可重入。
     """
     import event_identity as _eid
-    out, renamed = {}, []
+    out, renamed, repaired = {}, [], []
     for key, row in (timeline or {}).items():
         k = str(key)
         parts = k.split(":")
@@ -547,18 +547,43 @@ def migrate_sanction_objects(timeline) -> tuple:
         tgt = _eid.sanction_target(row.get("latest_title"),
                                    row.get("subjects") or [],
                                    summary=row.get("latest_summary") or "")
-        if not tgt or tgt == parts[2]:
+        if not tgt:
             _place_by_incident(out, k, row)
             continue
+        if tgt == parts[2]:
+            # **鍵已經對了不代表列也對**(2026-08-26 外審 r1):上一版的
+            # 半套遷移會留下「鍵是伊朗、`subjects` 還是 Oil」的中間狀態,
+            # 而它跳過這一條 —— 那些列永遠修不好,消費端照樣把它當 Oil。
+            # 鍵不用改,欄位照修。
+            fixed = _sanction_row_fields(row, tgt)
+            if fixed != row:
+                repaired.append(k)
+            _place_by_incident(out, k, fixed)
+            continue
         new_key = ":".join([parts[0], parts[1], tgt] + parts[3:])
-        # **列也要改**:只改鍵的話,鍵說伊朗、列裡的 `object`/`entity`
-        # 還是 Oil —— 同日重跑會把舊對象讀回活躍時間軸(ICC 那次的形狀)。
-        new_row = dict(row, object=tgt)
-        if row.get("entity"):
-            new_row["entity"] = tgt
+        # **帶身分的欄位要一次全部同步**(2026-08-26 外審 P2)。第一版只改
+        # `key`/`entity`/`object`,而消費端 `_lineage_hits` 是
+        # **`subjects` 優先、`entity` 只在 subjects 為空時才補**:
+        # 遷移後那一列的鍵叫 `sanction:伊朗`,消費端卻仍把它當 Oil 的事件,
+        # 下一則伊朗制裁接不回去 —— 鍵改了而世系沒接上,比不改更難查。
+        # `identity_schema` 同理:這一列已經用 v13 公式重寫,卻對
+        # `adopt_legacy` 那類判準宣稱自己是舊世代。
+        new_row = _sanction_row_fields(row, tgt)
         renamed.append(k)
         _place_by_incident(out, new_key, new_row)
-    return out, renamed
+    return out, renamed, repaired
+
+
+def _sanction_row_fields(row: dict, tgt: str) -> dict:
+    """帶身分的欄位一次同步:`object` / `subjects` / `identity_schema`
+    (以及原本就有 `entity` 的話)。**沒有變動就回原物件**,呼叫端據此
+    判斷要不要記一筆修補。"""
+    import event_identity as _eid
+    want = dict(row, object=tgt, subjects=[tgt],
+                identity_schema=_eid.IDENTITY_SCHEMA_VERSION)
+    if row.get("entity"):
+        want["entity"] = tgt
+    return row if want == row else want
 
 
 def migrate_action_event_types(timeline) -> tuple:

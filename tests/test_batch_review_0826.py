@@ -110,20 +110,20 @@ def test_the_polluted_production_row_is_migrated():
               "latest_title": "US threatened new sanctions against Iran",
               "object": "伊朗", "subjects": ["伊朗"], "action": "sanction",
               "days": 3}}
-    out, renamed = sm.migrate_sanction_objects(tl)
+    out, renamed, repaired = sm.migrate_sanction_objects(tl)
     assert renamed == ["geopolitical:sanction:Oil:2026-08"], renamed
     assert not [k for k in out if ":sanction:Oil:" in k], sorted(out)
     moved = out["geopolitical:sanction:伊朗:2026-08"]
     # **列也要改**:只改鍵的話,同日重跑會把舊對象讀回活躍時間軸
     assert moved["object"] == "伊朗" and moved["entity"] == "伊朗", moved
     # 可重入
-    again, ren2 = sm.migrate_sanction_objects(out)
-    assert ren2 == [] and set(again) == set(out), ren2
+    again, ren2, fix2 = sm.migrate_sanction_objects(out)
+    assert ren2 == [] and fix2 == [] and set(again) == set(out), (ren2, fix2)
     # 算不出對象的不動(不因為剖析不出來就打掉對得上的事件)
     keep = {"geopolitical:sanction:某公司:2026-08": {
         "latest_title": "美方宣布制裁該實體", "object": "某公司",
         "subjects": ["某公司"], "action": "sanction"}}
-    kept, ren3 = sm.migrate_sanction_objects(keep)
+    kept, ren3, fix3 = sm.migrate_sanction_objects(keep)
     assert ren3 == [] and set(kept) == set(keep)
 
 
@@ -212,3 +212,129 @@ def test_a_normal_failure_still_falls_back_to_legacy():
     assert "if _refused:" in seg and "return _fallback_analysis_text" in seg
     # 判斷是**條件式**的,不是無條件跳過 legacy
     assert seg.count("return _fallback_analysis_text") == 1, seg
+
+
+def test_the_migrated_row_is_consistent_and_the_consumer_can_follow_it():
+    """2026-08-26 外審 P2:遷移只改 `key`/`entity`/`object`,而消費端
+    `_lineage_hits` 是**`subjects` 優先、`entity` 只在 subjects 為空時
+    才補** —— 那一列的鍵叫 `sanction:伊朗`,消費端卻仍把它當 Oil 的事件,
+    下一則伊朗制裁接不回去。鍵改了而世系沒接上,比不改更難查。"""
+    tl = {"geopolitical:sanction:Oil:2026-08": {
+        "latest_title": _PROD_TITLE, "object": "Oil", "entity": "Oil",
+        "subjects": ["Oil"], "action": "sanction", "days": 3,
+        "event_type": "geopolitical", "identity_schema": 12}}
+    out, renamed, repaired = sm.migrate_sanction_objects(tl)
+    row = out["geopolitical:sanction:伊朗:2026-08"]
+    # **帶身分的欄位要一次全部同步**
+    assert row["entity"] == "伊朗" and row["object"] == "伊朗", row
+    assert row["subjects"] == ["伊朗"], row
+    assert row["identity_schema"] == eid.IDENTITY_SCHEMA_VERSION, row
+
+    # **真的跑消費端**:今天的伊朗制裁續篇要接得回那條線
+    recs = [dict(row, key="geopolitical:sanction:伊朗:2026-08")]
+    days = eid.match_days(recs, ["伊朗"], "美國宣布追加對伊朗制裁")
+    assert days and days > 0, days
+    assert eid.match_lineage(recs, ["伊朗"], "美國宣布追加對伊朗制裁"), recs
+
+    # 可重入:第二次不得再改
+    again, ren2, fix2 = sm.migrate_sanction_objects(out)
+    assert ren2 == [] and fix2 == [] and again == out, (ren2, fix2)
+
+
+def test_an_organization_target_is_not_the_affected_asset_either():
+    """外審 P2:`event_actions` 自己宣告 `OBJECT_SCOPE["sanction"] = "any"`
+    (制裁可以直接針對實體),而第一版的受詞表只有 39 個法域 —— 兩層契約
+    互相矛盾,ICC 剖析不出來就退回主體簽章,又變成 `sanction:Oil`。
+    身分表不再造一份,直接吃 `subject_identity._ORG_LOOKUP`。"""
+    for title in ("Oil falls after U.S. sanctions on International Criminal Court",
+                  "Gold drops after sanctions on ICC",
+                  "油價下跌 美國制裁國際刑事法院"):
+        assert eid.action_object("sanction", title,
+                                 ["Oil"]) == "國際刑事法院", title
+    # 表本身要非空(空表會讓這條規則真空通過)
+    import subject_identity as si
+    assert len(si._ORG_LOOKUP) > 10, len(si._ORG_LOOKUP)
+
+
+def test_a_half_migrated_row_is_still_repaired():
+    """r1 外審:上一版的半套遷移會留下「鍵是伊朗、`subjects` 還是 Oil」的
+    中間狀態,而 `tgt == parts[2]` 直接跳過 —— 那些列**永遠修不好**,
+    消費端照樣把它當 Oil。鍵不用改,欄位照修。"""
+    tl = {"geopolitical:sanction:伊朗:2026-08": {
+        "latest_title": _PROD_TITLE, "object": "伊朗", "entity": "伊朗",
+        "subjects": ["Oil"], "action": "sanction", "days": 3,
+        "identity_schema": 12}}
+    out, renamed, repaired = sm.migrate_sanction_objects(tl)
+    assert renamed == [], renamed
+    assert repaired == ["geopolitical:sanction:伊朗:2026-08"], repaired
+    row = out["geopolitical:sanction:伊朗:2026-08"]
+    assert row["subjects"] == ["伊朗"], row
+    assert row["identity_schema"] == eid.IDENTITY_SCHEMA_VERSION, row
+    # 消費端接得回去
+    recs = [dict(row, key="geopolitical:sanction:伊朗:2026-08")]
+    assert eid.match_days(recs, ["伊朗"], "美國宣布追加對伊朗制裁")
+    # 可重入
+    again, r2, f2 = sm.migrate_sanction_objects(out)
+    assert r2 == [] and f2 == [], (r2, f2)
+
+
+def test_only_word_like_aliases_need_uppercase():
+    """外審連四輪的收斂結果。換過長度門檻、宣告大小寫、表來源三種判準,
+    每一種都在一個方向漏:`len<=3` 擋掉無歧義的 `icc/imf/ecb`,而
+    Title Case 的 `Who` 照樣通過。真正的判別條件是**「這個別名是不是常見
+    英文字」** —— 那是關於英文的事實,不是從長度或大小寫推導得出來的。"""
+    # 撞名的:要全大寫才算
+    assert eid.action_object(
+        "sanction", "New sanctions on companies who help Russia evade controls",
+        ["Oil"]) == "俄羅斯"
+    assert eid.action_object(
+        "sanction", "Sanctions on Companies Who Help Russia",
+        ["Oil"]) == "俄羅斯", "Title Case 的 Who 被當成世界衛生組織"
+    assert eid.action_object("sanction", "sanctions on WHO funding",
+                             ["Oil"]) == "世界衛生組織"
+    # **全大寫標題**(r5 外審):光靠大小寫分不出真縮寫與全大寫句子裡的
+    # 普通單字。受詞的語意是**介詞指向的那一個** —— WHO 排在 COMPANIES
+    # 後面,它不是受詞。這是位置性質,不是大小寫的代理指標。
+    assert eid.action_object(
+        "sanction", "SANCTIONS ON COMPANIES WHO HELP RUSSIA",
+        ["Oil"]) == "俄羅斯"
+    # 冠詞不算(受詞仍在開頭)
+    assert eid.action_object("sanction", "sanctions on the US",
+                             ["Oil"]) == "美國"
+    # 全小寫的代名詞在開頭也不算(兩個條件都要滿足)
+    assert eid.action_object("sanction", "sanctions on us all",
+                             ["Oil"]) == "Oil"
+    # 不撞名的:大小寫一律不敏感
+    for title, want in (("sanctions on icc", "國際刑事法院"),
+                        ("sanctions on imf reserves", "國際貨幣基金"),
+                        ("sanctions against Nato members", "北約"),
+                        ("sanctions on Opec states", "OPEC"),
+                        ("Gold drops after sanctions on ICC", "國際刑事法院")):
+        assert eid.action_object("sanction", title, ["Oil"]) == want, title
+    # 法域縮寫(表裡是小寫,新聞寫大寫)
+    for title, want in (("sanctions on EU widened", "歐盟"),
+                        ("sanctions on US firms", "美國"),
+                        ("sanctions on UK entities", "英國"),
+                        ("sanctions on PRC firms", "中國")):
+        assert eid.action_object("sanction", title, ["Oil"]) == want, title
+    # 較長的混合寫法照舊(標題全大寫也吃得下)
+    assert eid.action_object(
+        "sanction", "SANCTIONS ON IRAN WIDENED", ["Oil"]) == "伊朗"
+    # 表非空(空表會讓這條規則真空通過)
+    assert "who" in eid._WORD_LIKE_ALIASES and "us" in eid._WORD_LIKE_ALIASES
+
+
+def test_todays_row_is_written_consistent_not_repaired_tomorrow():
+    """r2 外審:`object` 已經是剖析出來的制裁對象,而 `entity`/`subjects`
+    還是事件抽出來的主體 —— 消費端 **subjects 優先**,於是鍵叫
+    `sanction:伊朗` 的新列明天仍然接不上伊朗。遷移修的是歷史,寫回不修
+    的話**每天都在生產新的不一致**。"""
+    import inspect
+
+    import morning_report as mr
+    src = inspect.getsource(mr)
+    i = src.index('rec["object"] = _eid.action_object(')
+    seg = src[i:i + 2000]
+    assert "_sanc_tgt = (_eid.sanction_target(" in seg, seg[:400]
+    assert 'rec["entity"] = (_sanc_tgt or' in seg, seg[-800:]
+    assert 'rec["subjects"] = ([_sanc_tgt] if _sanc_tgt' in seg, seg[-800:]

@@ -698,6 +698,10 @@ def directional_object(action: str, title, subjects, summary="") -> str:
     # 的「向」會讓它以為標題找得到,summary 那條路就走不到了。
     # 判準要看**有沒有找到受詞**,不是有沒有出現方向詞。
     text = str(title or "")
+    # **鍵保留原始寫法**(2026-08-26 外審 r1):先前一律小寫,於是
+    # `WHO` 變成 `who`,而英文的關係代名詞 who 到處都是 ——
+    # 「sanctions on companies **who** help Russia」會被寫成
+    # `sanction:世界衛生組織`。縮寫要以縮寫的樣子出現才算數。
     known = {}
     for alias, canon in CANONICAL_SUBJECTS.items():
         known[str(alias).lower()] = canon
@@ -829,6 +833,38 @@ def _subject_is_the_patient(before: str, subjects) -> bool:
                for x in (subjects or []) if str(x or "").strip())
 
 
+#: **與常見英文字撞名的別名**(小寫,對應 `known` 的鍵)。這些要全大寫
+#: 才算命中:`who`/`us`/`fed`/`un` 在英文散文裡到處都是,而
+#: 「sanctions on companies **who** help Russia」若被讀成世界衛生組織,
+#: 那是寫進長期機器狀態的錯誤。代價:全大寫以外的合法寫法(`Fed`)認不出
+#: 來 —— 對這幾個別名而言,漏掉遠比誤認便宜(制裁對象不會是聯準會)。
+#:
+#: **新增別名時要問一次**:它小寫之後是不是英文字?是就加進來。
+_WORD_LIKE_ALIASES = frozenset({"who", "us", "fed", "un", "it", "as", "in"})
+
+#: 受詞片段開頭允許先出現的虛詞(`sanctions on **the** US`)。
+_SPAN_HEAD_SKIP = ("the ", "a ", "an ")
+
+
+def _at_span_head(low: str, pos: int) -> bool:
+    """命中處是不是**受詞片段的開頭**(容許一個冠詞)。
+
+    2026-08-26 外審第五輪:光靠大小寫分不出「真的縮寫」與「全大寫標題裡
+    的普通單字」——「SANCTIONS ON COMPANIES WHO HELP RUSSIA」的 WHO 是
+    全大寫、位置又比 RUSSIA 早,於是又寫成 `sanction:世界衛生組織`。
+    但受詞的語意是**介詞指向的那一個**:span 是 `sanctions on` 後面那段,
+    受詞就在它的開頭。`WHO` 排在 `COMPANIES` 後面,它不是受詞。
+    這是位置性質,不是大小寫的代理指標。
+    """
+    head = str(low or "")[:pos]
+    stripped = head.lstrip()
+    for art in _SPAN_HEAD_SKIP:
+        if stripped.lower().startswith(art):
+            stripped = stripped[len(art):].lstrip()
+            break
+    return not stripped
+
+
 def _earliest_known(span: str, known: dict) -> str:
     """受詞位置裡**最先出現**的那個已知主體(沒有回空字串)。
 
@@ -837,17 +873,29 @@ def _earliest_known(span: str, known: dict) -> str:
     別名先前是裸子字串比對,`us` 會在 `cause` 裡命中。位置相同時才用長度
     決勝(`US` vs `USA`)。
     """
-    low = str(span or "").lower()
+    raw = str(span or "")
+    low = raw.lower()
     best = None
     for alias, canon in known.items():
         if not alias:
             continue
-        if alias.isascii():
-            m = _re.search(r"(?<![a-z0-9])" + _re.escape(alias)
-                           + r"(?![a-z0-9])", low)
-            pos = m.start() if m else -1
-        else:
+        if not alias.isascii():
             pos = low.find(alias)
+        else:
+            m = _re.search(r"(?<![A-Za-z0-9])" + _re.escape(alias)
+                           + r"(?![A-Za-z0-9])", low)
+            pos = m.start() if m else -1
+            # **與常見英文字撞名的別名要全大寫才算**(外審連四輪)。
+            # 四輪下來換過長度門檻、宣告大小寫、表來源三種判準,每一種
+            # 都在一個方向漏:`len<=3` 會擋掉無歧義的 `icc/imf/ecb`,
+            # 而 Title Case 的 `Who` 照樣通過。真正的判別條件是
+            # **「這個別名是不是常見英文字」** —— 那是關於英文的事實,
+            # 不是從長度或大小寫推導得出來的。所以把它宣告成資料
+            # (`_WORD_LIKE_ALIASES`),與本 repo 其他判準表同一個做法。
+            if alias in _WORD_LIKE_ALIASES and pos >= 0 and not (
+                    raw[pos:pos + len(alias)].isupper()
+                    and _at_span_head(low, pos)):
+                pos = -1
         if pos < 0:
             continue
         if best is None or (pos, -len(alias)) < (best[0], -len(best[1])):
@@ -865,11 +913,30 @@ def sanction_target(title, subjects, summary="") -> str:
 
     標題與摘要**分開掃**:接起來會在邊界造出假的受詞位置。
     """
+    # `known[別名] = (正式名, 宣告的大小寫有沒有意義)`。
+    # `CANONICAL_SUBJECTS` 的鍵**一律是小寫**(`us`/`eu`/`iran`),大小寫
+    # 不帶資訊 —— 短別名比對**大寫形式**(新聞寫 US/EU/UK/PRC),既認得出
+    # 縮寫,也不會把英文代名詞 `us` 當成美國。
     known = {}
     for alias, canon in CANONICAL_SUBJECTS.items():
         known[str(alias).lower()] = canon
     for canon in set(CANONICAL_SUBJECTS.values()):
         known[str(canon).lower()] = canon
+    # **組織也是合法的制裁對象**(2026-08-26 外審 P2)。`event_actions` 自己
+    # 宣告 `OBJECT_SCOPE["sanction"] = "any"`(制裁可以直接針對實體),而
+    # 第一版的受詞表只有 39 個法域 —— 兩層契約互相矛盾:
+    # 「Oil falls after U.S. sanctions on International Criminal Court」
+    # 剖析不出 ICC → 退回主體簽章 → 又變成 `sanction:Oil`,同一個生產缺陷。
+    # 身分表**不在這裡再造一份**:`subject_identity._ORG_LOOKUP` 已經是
+    # 全 repo 的宣告式權威(別名→正式名),直接吃它。
+    try:
+        import subject_identity as _si
+        for canon, names in (_si._ORG_ALIASES or {}).items():
+            known.setdefault(str(canon).lower(), canon)
+            for a in (names or []):
+                known.setdefault(str(a).lower(), canon)
+    except Exception:                       # noqa: BLE001 - 法域表仍可用
+        pass
     for text in (title, summary):
         for sp in _sanction_spans(text, subjects):
             hit = _earliest_known(sp, known)

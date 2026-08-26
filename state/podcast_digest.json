@@ -4830,6 +4830,52 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74699984",
+        "title": "Meta settles kids addiction case for $12.7B",
+        "published": "Wed, 26 Aug 2026 17:21:47 +0000",
+        "processed_at": "2026-08-26T22:26:29Z",
+        "digest": {
+          "summary_points": [
+            "Meta 與美國多州檢察長就青少年成癮與劍橋分析資料案達成 127 億美元和解,公司將在 Q3 認列約 100 億美元費用,股價連續第四日上漲。",
+            "7 月核心 PCE 月增 0.2% 符合預期,年增 3.3% 仍遠高於聯準會 2% 目標;整體 PCE 年增 3.7% 高於預期,經濟學家認為數據讓聯準會可以繼續觀望。",
+            "花旗對 Oracle 開啟 90 日催化劑觀察,分析師認為經歷極端錯位後存在機會;Abercrombie & Fitch 因創紀錄淨銷售上調年度財測並擴大庫藏股,股價大漲近 40%。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "報導和解與 Q3 費用,股價連漲但主持人未給明確方向。"
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "花旗分析師認為經歷極端錯位後有機會,開啟 90 日催化劑觀察。"
+            },
+            {
+              "name": "Eli Lilly",
+              "code": "LLY",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "報導 Zepbound 真實世界研究顯示長期使用可降低醫療成本,但主持人未評論。"
+            },
+            {
+              "name": "Abercrombie & Fitch",
+              "code": "ANF",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "創紀錄淨銷售、上調財測與增加庫藏股,股價大漲近 40%。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Back in my day, we got two Sunday games and Monday night football, and we were thankful for it."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74695967",
         "title": "Bullseye misses the mark",
         "published": "Wed, 26 Aug 2026 10:47:36 +0000",
@@ -5234,67 +5280,6 @@
           "notable_quote": "BTIG says investors should secure a chair before the music stops."
         },
         "shown_at": "2026-08-19T22:37:05Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74263212",
-        "title": "Meta faces high-stakes federal trial over child safety",
-        "published": "Tue, 18 Aug 2026 17:53:34 +0000",
-        "processed_at": "2026-08-18T19:51:51Z",
-        "digest": {
-          "summary_points": [
-            "主持人指出，Meta 在已輸掉兩起兒童安全相關重大官司後，本次聯邦審判的風險高，且法律費用已導致上月罕見的獲利下滑；Zuckerberg 等高層與前員工將出庭作證。",
-            "美國 7 月新屋開工較前月下滑 12.4% 至約 120.5 萬戶，遠遜市場預期的 134 萬戶；Pantheon Macro 認為，因負擔能力惡化、房貸利率上升與移民減少壓抑需求，未來房屋建築更可能持續下滑而非復甦。",
-            "Goldman Sachs 更新 AI 生產力受惠股名單：S&P 500 中有 65% 公司提及 AI，僅 2% 量化對獲利的影響；點名 CoStar Group、Dollar Tree、eBay、The Trade Desk 為潛在受惠者。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta Platforms",
-              "code": "META",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "主持人認為法律訴訟風險高，且法律費用已侵蝕獲利，前景偏空。"
-            },
-            {
-              "name": "Bath & Body Works",
-              "code": "BBWI",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Citigroup 升評至買進，看好 Q2 財報、新品動能與能源/關稅退稅上檔空間。"
-            },
-            {
-              "name": "CoStar Group",
-              "code": "CSGP",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
-            },
-            {
-              "name": "Dollar Tree",
-              "code": "DLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
-            },
-            {
-              "name": "eBay",
-              "code": "EBAY",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
-            },
-            {
-              "name": "The Trade Desk",
-              "code": "TTD",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "Goldman Sachs 列入 AI 生產力受惠股清單。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "For Metta, which already lost two pivotal cases over harm to children and teens this year, the risks are high."
-        },
-        "shown_at": "2026-08-18T22:29:01Z"
       }
     ]
   },

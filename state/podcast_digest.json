@@ -4830,6 +4830,30 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74695967",
+        "title": "Bullseye misses the mark",
+        "published": "Wed, 26 Aug 2026 10:47:36 +0000",
+        "processed_at": "2026-08-26T14:11:17Z",
+        "digest": {
+          "summary_points": [
+            "Target 因下架爭議服飾股價跌近 4%，本集引述 Morningstar 分析師看法，認為這反映 Target 競爭定位脆弱，因其靠顧客關係與購物體驗，而非如 Walmart、Costco 以價格取勝。",
+            "Nvidia 今日盤後將公布財報，選擇權市場暗示股價可能波動 6%，歷史相關性最高的個股包括 Marvell、美光、ARM 和 AMD。"
+          ],
+          "tickers": [
+            {
+              "name": "Target",
+              "code": "TGT",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Morningstar 分析師認為其競爭定位脆弱，依賴顧客關係而非價格競爭。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74685569",
         "title": "OpenAI chip takes on Nvidia",
         "published": "Tue, 25 Aug 2026 18:07:42 +0000",
@@ -5269,26 +5293,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "For Metta, which already lost two pivotal cases over harm to children and teens this year, the risks are high."
-        },
-        "shown_at": "2026-08-18T22:29:01Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74249928",
-        "title": "Bond vigilantes stir as yields climb",
-        "published": "Tue, 18 Aug 2026 10:54:49 +0000",
-        "processed_at": "2026-08-18T14:05:09Z",
-        "digest": {
-          "summary_points": [
-            "美國30年期公債殖利率升至5.33%創2007年新高，策略師Yardeni認為「債券義勇軍」正對政府債務、超大規模企業借款與通膨風險提高警覺，尤其擔憂Fed不夠積極抑制通膨。",
-            "Seeking Alpha分析師APAC Research直言30年期公債利率5.2%不足以補償風險，暗示不認同長債「無風險」的看法；這是本集少數對資產的明確觀點。",
-            "那斯達克宣布計劃於2026年12月6日推出23小時交易，從週日晚上9點到週五晚上8點，每日僅休市1小時；這是市場結構重大變革，待SEC批准。",
-            "Google以1000萬美元收購破產精神航空的內部資料與軟體用於AI訓練，拒絕購買客戶個資，AI資料爭奪戰再添案例。",
-            "盤前科技股承壓，那斯達克100期指與標普期指各跌約1.5%，道瓊期指持平；主因長債殖利率上行令風險資產受挫。"
-          ],
-          "tickers": [],
-          "market_view": "主持人指出長債殖利率飆升是當前市場核心風險，債券義勇軍對政府債務與通膨的擔憂壓抑科技股表現，盤前那斯達克100期指跌約1.5%。",
-          "action_view": "APAC Research認為30年期公債5.2%殖利率不夠安全，隱含對長債投資應保守或避開；整體未見明確加減碼建議。",
-          "notable_quote": "Are 30-year bonds really so safe that 5.2 percent interest is enough? For me, no."
         },
         "shown_at": "2026-08-18T22:29:01Z"
       }

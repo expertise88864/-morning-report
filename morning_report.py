@@ -25377,11 +25377,54 @@ _PIPELINE = (
 )
 
 
+def already_delivered_today(now_tpe, *, run_kind: str = "") -> str:
+    """今天這一班**已經有結論了嗎** —— 有就回一句理由,沒有回空字串。
+
+    2026-08-27 起要加第二個 cron 補漏跑(GitHub 會丟掉整點的排程觸發:
+    08/26 22:00Z 那一輪完全沒有被建立,連看門狗自己也一起沒跑)。備援
+    觸發的前提是**同一天不會寄兩次** —— 重複寄同一封信收不回來。
+
+    判準只認**證明得了的事實**:`state/run_manifest.json` 的日期是今天
+    (台北),而且那一班要嘛寄成功、要嘛刻意跳過(週日無新內容)。
+    讀不到、壞掉、日期不是今天、或那一班寄失敗 —— 一律**照跑**。
+    那正是備援存在的理由:模稜兩可時要補寄,不是不寄。
+
+    **只擋排程。** 手動觸發永遠跑得動:它是使用者用來補救的工具
+    (08/26 儲值後就是這樣重寄的),擋掉它等於把救援管道也關上。
+    """
+    if (run_kind or os.environ.get("GITHUB_EVENT_NAME") or "") != "schedule":
+        return ""
+    try:
+        data, _st = _ss.load_json_state(RUN_MANIFEST_FILE, expected=dict)
+    except Exception:                       # noqa: BLE001 - 壞檔就照跑
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    stamped = str(data.get("date") or "")[:10]
+    if stamped != now_tpe.strftime("%Y-%m-%d"):
+        return ""
+    delivery = data.get("delivery")
+    if not isinstance(delivery, dict):
+        return ""
+    if delivery.get("success"):
+        return f"{stamped} 已寄出({delivery.get('run_kind') or '?'})"
+    if str(delivery.get("skipped_reason") or "").strip():
+        return f"{stamped} 已判定不寄({delivery['skipped_reason']})"
+    return ""
+
+
 def main() -> int:
     global _RUN_DEADLINE
     _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
     _DEGRADED_STEPS.clear()
     now_tpe = dt.datetime.now(TPE)
+    # **同日冪等**(2026-08-27):備援 cron 的前提。已經有結論就不再跑 ——
+    # **不覆寫 manifest**:那一份正是「今天寄成功了」的證據,蓋掉它等於
+    # 把證據換成一句「本班沒做事」,看門狗會因此改口。
+    _done = already_delivered_today(now_tpe)
+    if _done:
+        print(f"[main] {_done} —— 本班是備援觸發,不重複寄送")
+        return 0
     # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
     if now_tpe.weekday() == 6:
         return run_weekend_digest(now_tpe)

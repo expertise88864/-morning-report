@@ -2712,10 +2712,12 @@ def test_watchdog_flags_a_stale_manifest(tmp_path):
     p.write_text(_json.dumps({"date": "2026-07-30 06:48"}), encoding="utf-8")
     age, info = rw.manifest_age_hours(now, p)
     assert age is not None and age < 1 and info == "2026-07-30 06:48"
-    # 昨天的時間戳 → 逾時
+    # 昨天的時間戳 → 逾時。**判準問 `_too_old`,不是比 `MAX_AGE_HOURS`**
+    # (2026-08-27):新鮮度改成與冪等守衛同一個(台北日曆日),而
+    # `MAX_AGE_HOURS` 退化成逃生門(未設時是空字串)。
     p.write_text(_json.dumps({"date": "2026-07-29 06:48"}), encoding="utf-8")
-    age, _ = rw.manifest_age_hours(now, p)
-    assert age > rw.MAX_AGE_HOURS
+    age, stamp = rw.manifest_age_hours(now, p)
+    assert age is not None and rw._too_old(now, stamp, age)
     # 檔案不存在 / 壞檔 / 無 date 都必須回 None(視為異常),不得靜默通過
     assert rw.manifest_age_hours(now, tmp_path / "nope.json")[0] is None
     p.write_text("{", encoding="utf-8")

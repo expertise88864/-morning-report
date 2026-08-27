@@ -34,8 +34,16 @@ from pathlib import Path
 
 TPE = dt.timezone(dt.timedelta(hours=8))
 MANIFEST = Path("state/run_manifest.json")
-#: 排程 22:00 UTC(台北 06:00),Actions 常延遲 5-15 分。07:30 檢查給足緩衝。
-MAX_AGE_HOURS = float(os.environ.get("WATCHDOG_MAX_AGE_HOURS", "3"))
+#: **新鮮度判準與冪等守衛同一個:台北日曆日**(2026-08-27 r2 外審)。
+#:
+#: 先前是「3 小時內」,而 `morning_report.already_delivered_today` 用的是
+#: 「manifest 日期是今天(台北)」—— 同一個問題(今天的晨報跑過了嗎)
+#: 兩個尺度。加了補漏跑之後看門狗移到 08:05,於是 04:30 手動跑成功、
+#: 兩個排程都正確地跳過的那一天,看門狗會因為「3.5 小時前」發假警報。
+#: 假警報會訓練人忽略告警,那比沒有看門狗更糟。
+#:
+#: 保留環境變數當逃生門:設了就回到舊的小時判準。
+MAX_AGE_HOURS = os.environ.get("WATCHDOG_MAX_AGE_HOURS", "").strip()
 
 
 def manifest_age_hours(now: dt.datetime, path: Path = MANIFEST):
@@ -56,6 +64,21 @@ def manifest_age_hours(now: dt.datetime, path: Path = MANIFEST):
             continue
         return (now - when).total_seconds() / 3600.0, stamp
     return None, f"run_manifest.json 的 date 無法解析: {stamp!r}"
+
+
+def _too_old(now: dt.datetime, stamp: str, age_hours: float) -> bool:
+    """這份 manifest 是不是**不屬於今天**(台北)。
+
+    判準與 `morning_report.already_delivered_today` 同一個 —— 兩邊問的是
+    同一件事,用兩個尺度只會在邊界互相打架。`WATCHDOG_MAX_AGE_HOURS`
+    設了才回到舊的小時判準(逃生門)。
+    """
+    if MAX_AGE_HOURS:
+        try:
+            return age_hours > float(MAX_AGE_HOURS)
+        except ValueError:
+            pass
+    return str(stamp or "")[:10] != now.strftime("%Y-%m-%d")
 
 
 def delivery_state(path: Path = MANIFEST) -> dict:
@@ -85,10 +108,10 @@ def main() -> int:
     if age is None:
         print(f"[watchdog] 異常:{info}", file=sys.stderr)
         return 1
-    if age > MAX_AGE_HOURS:
+    if _too_old(now, info, age):
         print(f"[watchdog] 異常:最後一次執行是 {info}"
-              f"({age:.1f} 小時前,上限 {MAX_AGE_HOURS} 小時)"
-              "——今天的晨報可能整個沒有跑起來", file=sys.stderr)
+              f"({age:.1f} 小時前)——今天的晨報可能整個沒有跑起來",
+              file=sys.stderr)
         return 1
     # 批#73(第七輪 P2-2):**「有跑過」不等於「有寄到」。**
     # 只看時間戳的話,這些情境會被誤判成正常:

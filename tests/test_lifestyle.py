@@ -876,10 +876,11 @@ def test_weekend_digest_content_gate():
     import io as _io
     import re
     src = _io.open(mr.__file__, encoding="utf-8").read()
-    call = re.search(r"if not _weekend_digest_has_content\((.{0,200}?)\):",
+    call = re.search(r"if not _weekend_digest_has_content\((.{0,300}?)\):",
                      src, re.S)
     assert call and "alerts=cwa_alerts" in call.group(1), call
     assert "suspension=suspension" in call.group(1), call.group(1)
+    assert "week_review_ready=" in call.group(1), call.group(1)
 
 
 def test_fetch_worldcup_parses_espn(monkeypatch):

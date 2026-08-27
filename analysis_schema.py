@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 23  # v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
+ANALYSIS_SCHEMA_VERSION = 24  # v24 2026-08-27:what_next 區分經濟/非經濟事件  # v23: v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -282,7 +282,11 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "what_next": _s("**後續可能影響**:接下來可能怎麼發展、什麼會跟著"
                         "改變、要盯什麼訊號才知道往哪一邊走。寫得出路徑"
                         "(誰受影響→透過什麼→什麼時候看得到);不確定就"
-                        "寫成條件式(『若…則…』),**不要編時間表或數字**"),
+                        "寫成條件式(『若…則…』),**不要編時間表或數字**。"
+                        "純世界大事(災難/社會/政治)寫**事件本身**的下一步"
+                        "(救援/調查/選情/外交),**禁止**硬接「對台股無直接"
+                        "關聯」「對市場影響有限」湊格式 —— 只有真的有經濟"
+                        "傳導的事件才寫市場影響"),
     }), "**股市之外的世界**(外交/戰爭/科技治理/重大社會事件),約三條;"
         "美股漲跌、公司財報**不是**世界大事。沒有就空陣列"),
     "upcoming_event_scenarios": _arr(_obj({

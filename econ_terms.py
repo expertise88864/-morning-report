@@ -58,6 +58,27 @@ _TERMS = {
     "crude oil inventories": "原油庫存",
     "natural gas storage": "天然氣庫存",
     "trade balance": "貿易收支",
+    # ── 央行官員與特別發布(2026-08-27 使用者:「Fed Chairman Warsh
+    #    Speaks 後面要有中文翻譯」「Prelim Benchmark Payrolls Revision
+    #    也要有中文翻譯」)。人名保留原文 —— 譯名(華許/沃許)不統一,
+    #    保留英文反而對得上外電。
+    "fed chairman warsh speaks": "聯準會主席 Warsh 演說",
+    "fed chair warsh speaks": "聯準會主席 Warsh 演說",
+    "prelim benchmark payrolls revision": "非農就業基準修正初值",
+    "prelim gdp q/q": "GDP 季增年率修正值",
+    "prelim gdp price index q/q": "GDP 物價指數修正值",
+    "revised gdp q/q": "GDP 季增年率終值",
+    "jackson hole symposium": "傑克森霍爾央行年會",
+    "treasury currency report": "財政部匯率報告",
+    "core pce price index y/y": "核心個人消費支出物價指數年增率",
+    "chicago pmi": "芝加哥採購經理人指數",
+    "pending home sales m/m": "成屋待完成銷售月增率",
+    "new home sales": "新屋銷售",
+    "existing home sales": "成屋銷售",
+    "cb consumer confidence": "經濟諮商會消費者信心指數",
+    "richmond manufacturing index": "里奇蒙製造業指數",
+    "empire state manufacturing index": "紐約州製造業指數",
+    "philly fed manufacturing index": "費城聯準銀製造業指數",
     # ── 單獨出現在敘述裡的縮寫。**它們是上面那些詞的前綴** ——
     #    `cpi m/m` 必須贏過 `cpi`,而那條性質需要這幾個詞才測得出來。
     "cpi": "消費者物價指數",
@@ -103,6 +124,34 @@ def zh(term: str, *, with_original: bool = True) -> str:
     if not with_original or hit in _NO_SUFFIX:
         return hit
     return f"{hit}（{raw}）"
+
+
+#: **罕見/難懂事件的一句話解說**(2026-08-27 使用者:「最好附上這是
+#: 什麼數據/解釋什麼/什麼目的/作用之類的」)。
+#:
+#: 與 `_TERMS` 分開:翻譯是每個詞都要,解說只給**看名字猜不出用途**的
+#: 那幾個 —— CPI 不需要解說,基準修正需要。鍵與 `_TERMS` 同一套正規化。
+_EXPLAIN = {
+    "prelim benchmark payrolls revision":
+        "勞工統計局每年用完整稅務資料回頭校正過去 12 個月的非農就業數 ——"
+        "大幅下修代表先前的就業其實比公布的弱,會直接改變市場對 Fed 的預期",
+    "fed chairman warsh speaks":
+        "聯準會主席公開談話 —— 措辭的鷹鴿變化會即時改變利率預期,"
+        "影響力可蓋過同日數據",
+    "fed chair warsh speaks":
+        "聯準會主席公開談話 —— 措辭的鷹鴿變化會即時改變利率預期,"
+        "影響力可蓋過同日數據",
+    "jackson hole symposium":
+        "各國央行首長年度聚會 —— 歷史上多次在此預告政策轉向",
+    "treasury currency report":
+        "美國財政部半年度匯率政策報告 —— 被列入觀察名單的經濟體"
+        "(含台灣)匯率政策會受壓",
+}
+
+
+def explain(term: str) -> str:
+    """這個事件是什麼、為什麼要看 —— 認不得回空字串(不硬編)。"""
+    return _EXPLAIN.get(_key(str(term or "")), "")
 
 
 #: 一次掃完所有詞。**逐詞 `re.sub` 會巢狀套疊** —— `CPI m/m` 先被

@@ -61,7 +61,8 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 #: 與 HEAD 逐行 diff 過:**只有這三行**,指示文字與其他段落逐位元組相同。
 # 2026-08-21:九段龍頭優先選材進 legacy prompt(v9;r2 移到圍欄外+無條件)——刻意變更
 LEGACY_PROMPT_SHA256 = (
-    "9db500dbcb5d1466e6fce96bac53dd079cc5a2ed2a0739d6ceb8db85567b1d7c")
+    "4c2d5a4ee749e7bec928b7bab075a6342fd46ee572a2a600a8bac6c1dfddd4b8")
+#: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。
 

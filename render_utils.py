@@ -766,8 +766,17 @@ def _render_event_calendar_html(events: list[dict]) -> str:
     import econ_terms as _et
     if not events:
         return ""
-    events = [dict(e, title=_et.annotate(str(e.get("title") or "")),
-                   note=_et.annotate(str(e.get("note") or "")))
+    def _note(e):
+        # 解說接在既有 note 後面(2026-08-27 使用者:事件「最好附上這是
+        # 什麼數據/什麼目的」)。認不得的事件回空字串,不硬編。
+        base = _et.annotate(str(e.get("note") or ""))
+        why = _et.explain(str(e.get("title") or ""))
+        if not why:
+            return base
+        return f"{base}　※{why}" if base else f"※{why}"
+
+    events = [dict(e, note=_note(e),
+                   title=_et.annotate(str(e.get("title") or "")))
               for e in events]
     rows = "".join(
         f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;"
@@ -1466,6 +1475,9 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                        if r.get("tier") else "")
                     + f"<b>{htmllib.escape(_tennis_zh(r['winner']))}</b> 勝 "
                       f"{htmllib.escape(_tennis_zh(r['loser']))}"
+                    + (f"　<span style='color:#0369a1;'>"
+                       f"{htmllib.escape(str(r['score']))}</span>"
+                       if r.get("score") else "")
                     + ev_note + "</div>")
             live_seg = "".join(live_parts)
             t_inner.append("".join(done_lines) + live_seg)

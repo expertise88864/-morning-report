@@ -92,7 +92,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:tariff_action:加拿大:2026-08": {
   "first_seen": "2026-08-24",
@@ -211,7 +211,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:伊朗:2026-08": {
   "first_seen": "2026-08-25",
@@ -341,7 +341,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:sanction:伊朗:2026-08#ebeeb0": {
   "first_seen": "2026-08-26",
@@ -380,23 +380,30 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:sanction:伊朗:2026-08#71b576": {
   "first_seen": "2026-08-26",
-  "days": 1,
-  "last_seen": "2026-08-26",
-  "latest_title": "美國制裁伊朗經濟新措施",
+  "days": 2,
+  "last_seen": "2026-08-27",
+  "latest_title": "美國升級對伊朗經濟制裁，伊朗普通商家怎樣感受？ - RFI",
   "latest_summary": "",
   "object": "伊朗",
   "incident_tokens": [
    "制裁",
-   "國制",
-   "措施",
-   "新措",
-   "濟新",
+   "升級",
+   "商家",
+   "國升",
+   "家怎",
+   "怎樣",
+   "感受",
+   "普通",
+   "樣感",
+   "濟制",
+   "級對",
    "經濟",
-   "美國"
+   "美國",
+   "通商"
   ],
   "entity": "伊朗",
   "subject_basis": "alias",
@@ -405,7 +412,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:sanction:伊朗:2026-08#f928c7": {
   "first_seen": "2026-08-26",
@@ -439,7 +446,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:台積電:2026-08": {
   "first_seen": "2026-08-26",
@@ -512,7 +519,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:Oil:2026-08": {
   "first_seen": "2026-08-26",
@@ -623,13 +630,13 @@
   "action": "",
   "identity_schema": 12
  },
- "geopolitical:sanction:Oil:2026-08": {
+ "geopolitical:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-26",
   "days": 1,
   "last_seen": "2026-08-26",
   "latest_title": "Oil Falls Further Despite Fresh U.S. Sanctions on Iran -- Market Talk - Moomoo",
   "latest_summary": "",
-  "object": "Oil",
+  "object": "伊朗",
   "incident_tokens": [
    "despite",
    "falls",
@@ -640,14 +647,14 @@
    "sanctions",
    "talk"
   ],
-  "entity": "Oil",
+  "entity": "伊朗",
   "subject_basis": "literal",
   "subjects": [
-   "Oil"
+   "伊朗"
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 12
+  "identity_schema": 13
  },
  "geopolitical:hormuz_passage:2026-08": {
   "first_seen": "2026-08-26",
@@ -686,5 +693,220 @@
   "event_type": "geopolitical",
   "action": "hormuz_passage",
   "identity_schema": 12
+ },
+ "geopolitical:伊朗:2026-08#0e86d6": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "川普預測美伊戰爭將很快結束",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "伊戰",
+   "將很",
+   "川普",
+   "很快",
+   "快結",
+   "戰爭",
+   "普預",
+   "測美",
+   "爭將",
+   "結束",
+   "美伊",
+   "預測"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 13
+ },
+ "export_controls:伊朗:2026-08": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "伊朗何時回到談判桌？川普：完全沒時間表",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "何時",
+   "全沒",
+   "判桌",
+   "到談",
+   "回到",
+   "完全",
+   "川普",
+   "時回",
+   "時間",
+   "沒時",
+   "談判",
+   "間表"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "export_controls",
+  "action": "",
+  "identity_schema": 13
+ },
+ "litigation:META:2026-08#83fd1b": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "Meta巨額和解不是利空？分析師：至少拆掉一顆未爆彈",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "一顆",
+   "不是",
+   "分析",
+   "利空",
+   "和解",
+   "少拆",
+   "巨額",
+   "拆掉",
+   "掉一",
+   "是利",
+   "未爆",
+   "析師",
+   "爆彈",
+   "至少",
+   "解不",
+   "顆未",
+   "額和"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 13
+ },
+ "litigation:META:2026-08#7608a5": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "青少年成癮訴訟Meta砸180億美元和解| 國際 - cna.com.tw",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "180",
+   "億美",
+   "元和",
+   "和解",
+   "少年",
+   "年成",
+   "成癮",
+   "癮訴",
+   "美元",
+   "訴訟",
+   "青少"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 13
+ },
+ "geopolitical:伊朗:2026-08#3913c6": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "川普稱美國未為伊朗重返談判設定時間表",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "判設",
+   "國未",
+   "定時",
+   "川普",
+   "時間",
+   "普稱",
+   "未為",
+   "稱美",
+   "美國",
+   "設定",
+   "談判",
+   "返談",
+   "重返",
+   "間表"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 13
+ },
+ "geopolitical:sanction:伊朗:2026-08#fe42b3": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "美國對伊朗擴大經濟封鎖與次級制裁",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "制裁",
+   "國對",
+   "大經",
+   "封鎖",
+   "擴大",
+   "次級",
+   "濟封",
+   "級制",
+   "經濟",
+   "美國",
+   "與次",
+   "鎖與"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 13
+ },
+ "cybersecurity:OpenAI:2026-08": {
+  "first_seen": "2026-08-27",
+  "days": 1,
+  "last_seen": "2026-08-27",
+  "latest_title": "OpenAI封鎖涉親俄影響行動的ChatGPT帳戶",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "chatgpt",
+   "俄影",
+   "動的",
+   "封鎖",
+   "帳戶",
+   "影響",
+   "涉親",
+   "行動",
+   "親俄",
+   "鎖涉",
+   "響行"
+  ],
+  "entity": "OpenAI",
+  "subject_basis": "literal",
+  "subjects": [
+   "OpenAI"
+  ],
+  "event_type": "cybersecurity",
+  "action": "",
+  "identity_schema": 13
  }
 }

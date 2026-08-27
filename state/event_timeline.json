@@ -1,183 +1,4 @@
 {
- "litigation:META:2026-08": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "【美股巨頭】Meta面臨1.4兆美元罰款上限訴訟，549美元的股價守得住嗎？ - CMoney投資網誌",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "549",
-   "上限",
-   "住嗎",
-   "價守",
-   "元的",
-   "元罰",
-   "兆美",
-   "守得",
-   "巨頭",
-   "得住",
-   "款上",
-   "的股",
-   "罰款",
-   "美元",
-   "美股",
-   "股價",
-   "股巨",
-   "訴訟",
-   "限訴",
-   "面臨"
-  ],
-  "entity": "META",
-  "subject_basis": "alias",
-  "subjects": [
-   "META"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 12
- },
- "litigation:META:2026-08#92575e": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "Meta面臨兒童安全訴訟風暴 投資者應該擔心嗎？ - forecastock.tw",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "兒童",
-   "全訴",
-   "安全",
-   "心嗎",
-   "應該",
-   "投資",
-   "擔心",
-   "童安",
-   "者應",
-   "臨兒",
-   "訟風",
-   "訴訟",
-   "該擔",
-   "資者",
-   "面臨",
-   "風暴"
-  ],
-  "entity": "META",
-  "subject_basis": "alias",
-  "subjects": [
-   "META"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:sanction:伊朗:2026-08#89ec92": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "US threatened new sanctions against Iran",
-  "latest_summary": "",
-  "object": "伊朗",
-  "incident_tokens": [
-   "against",
-   "new",
-   "sanctions",
-   "threatened",
-   "us"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "sanction",
-  "identity_schema": 13
- },
- "geopolitical:tariff_action:加拿大:2026-08": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "New 50% US tariffs on Canadian goods take effect",
-  "latest_summary": "",
-  "object": "加拿大",
-  "incident_tokens": [
-   "50",
-   "canadian",
-   "effect",
-   "goods",
-   "new",
-   "on",
-   "take",
-   "tariffs",
-   "us"
-  ],
-  "entity": "加拿大",
-  "subject_basis": "alias",
-  "subjects": [
-   "加拿大"
-  ],
-  "event_type": "geopolitical",
-  "action": "tariff_action",
-  "identity_schema": 12
- },
- "export_controls:蘋果:2026-08": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "傳川普政府擬批准蘋果採購中國記憶體晶片",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "中國",
-   "國記",
-   "川普",
-   "府擬",
-   "憶體",
-   "批准",
-   "採購",
-   "擬批",
-   "政府",
-   "普政",
-   "晶片",
-   "記憶",
-   "購中",
-   "體晶"
-  ],
-  "entity": "蘋果",
-  "subject_basis": "alias",
-  "subjects": [
-   "蘋果"
-  ],
-  "event_type": "export_controls",
-  "action": "",
-  "identity_schema": 12
- },
- "geopolitical:伊朗:2026-08#b65a5e": {
-  "first_seen": "2026-08-24",
-  "days": 1,
-  "last_seen": "2026-08-24",
-  "latest_title": "伊朗高層表示應聚焦結束戰爭",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "應聚",
-   "戰爭",
-   "束戰",
-   "焦結",
-   "結束",
-   "聚焦",
-   "高層"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
  "geopolitical:sanction:伊朗:2026-08#61b7d5": {
   "first_seen": "2026-08-25",
   "days": 1,
@@ -211,35 +32,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
- },
- "geopolitical:伊朗:2026-08": {
-  "first_seen": "2026-08-25",
-  "days": 1,
-  "last_seen": "2026-08-25",
-  "latest_title": "美國預計公布對伊朗施加經濟壓力計畫",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "力計",
-   "加經",
-   "國預",
-   "壓力",
-   "施加",
-   "濟壓",
-   "經濟",
-   "美國",
-   "計畫",
-   "預計"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
+  "identity_schema": 14
  },
  "geopolitical:tariff_action:加拿大:2026-08#1d9027": {
   "first_seen": "2026-08-25",
@@ -341,7 +134,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:sanction:伊朗:2026-08#ebeeb0": {
   "first_seen": "2026-08-26",
@@ -380,7 +173,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:sanction:伊朗:2026-08#71b576": {
   "first_seen": "2026-08-26",
@@ -412,7 +205,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:sanction:伊朗:2026-08#f928c7": {
   "first_seen": "2026-08-26",
@@ -446,7 +239,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:台積電:2026-08": {
   "first_seen": "2026-08-26",
@@ -519,7 +312,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:Oil:2026-08": {
   "first_seen": "2026-08-26",
@@ -597,39 +390,6 @@
   "action": "",
   "identity_schema": 12
  },
- "geopolitical:伊朗:2026-08#259d07": {
-  "first_seen": "2026-08-26",
-  "days": 1,
-  "last_seen": "2026-08-26",
-  "latest_title": "伊朗影片威脅川普幼子性命　美國特勤局掌握",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "勤局",
-   "國特",
-   "威脅",
-   "子性",
-   "局掌",
-   "川普",
-   "幼子",
-   "影片",
-   "性命",
-   "掌握",
-   "普幼",
-   "片威",
-   "特勤",
-   "美國",
-   "脅川"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 12
- },
  "geopolitical:sanction:伊朗:2026-08": {
   "first_seen": "2026-08-26",
   "days": 1,
@@ -654,7 +414,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:hormuz_passage:2026-08": {
   "first_seen": "2026-08-26",
@@ -693,36 +453,6 @@
   "event_type": "geopolitical",
   "action": "hormuz_passage",
   "identity_schema": 12
- },
- "geopolitical:伊朗:2026-08#0e86d6": {
-  "first_seen": "2026-08-27",
-  "days": 1,
-  "last_seen": "2026-08-27",
-  "latest_title": "川普預測美伊戰爭將很快結束",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "伊戰",
-   "將很",
-   "川普",
-   "很快",
-   "快結",
-   "戰爭",
-   "普預",
-   "測美",
-   "爭將",
-   "結束",
-   "美伊",
-   "預測"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 13
  },
  "export_controls:伊朗:2026-08": {
   "first_seen": "2026-08-27",
@@ -791,23 +521,22 @@
  },
  "litigation:META:2026-08#7608a5": {
   "first_seen": "2026-08-27",
-  "days": 1,
-  "last_seen": "2026-08-27",
-  "latest_title": "青少年成癮訴訟Meta砸180億美元和解| 國際 - cna.com.tw",
+  "days": 2,
+  "last_seen": "2026-08-28",
+  "latest_title": "Meta 成癮訴訟 180億美元天價和解 - 經濟日報",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
    "180",
+   "價和",
    "億美",
-   "元和",
+   "元天",
    "和解",
-   "少年",
-   "年成",
+   "天價",
    "成癮",
    "癮訴",
    "美元",
-   "訴訟",
-   "青少"
+   "訴訟"
   ],
   "entity": "META",
   "subject_basis": "alias",
@@ -816,39 +545,7 @@
   ],
   "event_type": "litigation",
   "action": "",
-  "identity_schema": 13
- },
- "geopolitical:伊朗:2026-08#3913c6": {
-  "first_seen": "2026-08-27",
-  "days": 1,
-  "last_seen": "2026-08-27",
-  "latest_title": "川普稱美國未為伊朗重返談判設定時間表",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "判設",
-   "國未",
-   "定時",
-   "川普",
-   "時間",
-   "普稱",
-   "未為",
-   "稱美",
-   "美國",
-   "設定",
-   "談判",
-   "返談",
-   "重返",
-   "間表"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "geopolitical:sanction:伊朗:2026-08#fe42b3": {
   "first_seen": "2026-08-27",
@@ -878,7 +575,7 @@
   ],
   "event_type": "geopolitical",
   "action": "sanction",
-  "identity_schema": 13
+  "identity_schema": 14
  },
  "cybersecurity:OpenAI:2026-08": {
   "first_seen": "2026-08-27",
@@ -908,5 +605,296 @@
   "event_type": "cybersecurity",
   "action": "",
   "identity_schema": 13
+ },
+ "geopolitical:sanction:伊朗:2026-08#79206b": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "孤立德黑蘭行動升級！川普暗示擬制裁涉伊朗業務中國銀行- 國際 - 自由時報",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "中國",
+   "制裁",
+   "動升",
+   "務中",
+   "升級",
+   "國銀",
+   "國際",
+   "孤立",
+   "川普",
+   "德黑",
+   "擬制",
+   "普暗",
+   "暗示",
+   "業務",
+   "示擬",
+   "立德",
+   "蘭行",
+   "行動",
+   "裁涉",
+   "銀行",
+   "黑蘭"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 14
+ },
+ "geopolitical:sanction:伊朗:2026-08#9501e7": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "美兩黨議員促制裁挺伊朗的中共國有銀行 - 大纪元",
+  "latest_summary": "",
+  "object": "伊朗",
+  "incident_tokens": [
+   "中共",
+   "促制",
+   "兩黨",
+   "共國",
+   "制裁",
+   "員促",
+   "國有",
+   "有銀",
+   "的中",
+   "美兩",
+   "裁挺",
+   "議員",
+   "銀行",
+   "黨議"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 14
+ },
+ "geopolitical:sanction:中國:2026-08": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "美對伊朗經濟施壓　川普暗示可能制裁中國銀行業 - ETtoday新聞雲",
+  "latest_summary": "",
+  "object": "中國",
+  "incident_tokens": [
+   "中國",
+   "制裁",
+   "可能",
+   "國銀",
+   "川普",
+   "施壓",
+   "普暗",
+   "暗示",
+   "濟施",
+   "示可",
+   "經濟",
+   "美對",
+   "能制",
+   "行業",
+   "裁中",
+   "銀行"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "geopolitical",
+  "action": "sanction",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-08": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "U.S.-Iran talks remain stalled as U.S. blockade continues",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "as",
+   "blockade",
+   "continues",
+   "remain",
+   "stalled",
+   "talks"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-08#815f28": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "伊朗戰爭還在打！ 川普高喊「任務完成」 民主黨痛批脫離現實- 國際 - 自由時報",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "主黨",
+   "任務",
+   "務完",
+   "國際",
+   "在打",
+   "完成",
+   "川普",
+   "戰爭",
+   "批脫",
+   "普高",
+   "民主",
+   "爭還",
+   "現實",
+   "痛批",
+   "脫離",
+   "還在",
+   "離現",
+   "高喊",
+   "黨痛"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:tariff_action:加拿大:2026-08#68fb93": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "U.S.-Canada trade dispute escalates with retaliatory tariffs",
+  "latest_summary": "",
+  "object": "加拿大",
+  "incident_tokens": [
+   "dispute",
+   "escalates",
+   "retaliatory",
+   "tariffs",
+   "trade",
+   "with"
+  ],
+  "entity": "加拿大",
+  "subject_basis": "alias",
+  "subjects": [
+   "加拿大"
+  ],
+  "event_type": "geopolitical",
+  "action": "tariff_action",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-08#ea9204": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "伊朗稱美軍海上封鎖阻礙汽油進口",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "上封",
+   "封鎖",
+   "汽油",
+   "油進",
+   "海上",
+   "礙汽",
+   "稱美",
+   "美軍",
+   "軍海",
+   "進口",
+   "鎖阻",
+   "阻礙"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:特斯拉:2026-08": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "特斯拉 FSD 集體訴訟最新進展：車主為何提告？美國、澳洲案件一次看 - electrify.tw",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "fsd",
+   "一次",
+   "主為",
+   "件一",
+   "何提",
+   "提告",
+   "案件",
+   "次看",
+   "洲案",
+   "澳洲",
+   "為何",
+   "美國",
+   "訴訟",
+   "車主",
+   "進展",
+   "集體",
+   "體訴"
+  ],
+  "entity": "特斯拉",
+  "subject_basis": "alias",
+  "subjects": [
+   "特斯拉"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "litigation:2882:2026-08": {
+  "first_seen": "2026-08-28",
+  "days": 1,
+  "last_seen": "2026-08-28",
+  "latest_title": "郭明鑑兼職案 金管會金檢國泰金 很快有裁罰結果 - 中時新聞網",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "兼職",
+   "國泰",
+   "很快",
+   "快有",
+   "明鑑",
+   "會金",
+   "有裁",
+   "檢國",
+   "泰金",
+   "管會",
+   "結果",
+   "罰結",
+   "職案",
+   "裁罰",
+   "郭明",
+   "金檢",
+   "金管",
+   "鑑兼"
+  ],
+  "entity": "2882",
+  "subject_basis": "alias",
+  "subjects": [
+   "2882"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
  }
 }

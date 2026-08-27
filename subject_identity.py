@@ -123,6 +123,59 @@ def usable_alias(a) -> bool:
             and not _nr.PERIOD_TOKEN.fullmatch(x))
 
 
+def declared_targets() -> dict:
+    """全 repo 宣告過的**可指名主體**:別名(小寫)→ 正式名。
+
+    三張表的聯集,先宣告的先贏(法域 > 組織 > 公司):
+      * 法域 —— `event_actions.CANONICAL_SUBJECTS`(39 個);
+      * 組織 —— 本模組的 `_ORG_ALIASES`(ICC/IMF/ECB…);
+      * 公司/實體 —— `entity_alias.ALIAS_GROUPS`(輝達/台積電…)。
+
+    為什麼要有這一支:消費端(制裁受詞解析)先前只吃法域,後來為了 ICC
+    又伸手進本模組的**私有** `_ORG_ALIASES`,而公司那張表在 `entity_alias`
+    —— 三份身分宇宙散在三處,補一個漏一個(`sanctions on NVIDIA` 仍解析
+    不出輝達,退回主體簽章又變成 `sanction:Oil`,與原缺陷同一類)。消費端
+    只消費這一份,不再自維身分表、也不再碰別的模組的私有名字。
+
+    **代號不收**(`entity_alias.is_market_code`):股票代號與市場縮寫要有
+    行情脈絡才算指名那家公司 —— 新聞寫制裁對象不會寫代號,而 `MTD`
+    這種縮寫在財經句子裡另有意思。判準宣告在那張表旁邊,不在這裡推導。
+    """
+    out: dict = {}
+    try:
+        from event_actions import CANONICAL_SUBJECTS as _cs
+        for alias, canon in (_cs or {}).items():
+            out.setdefault(str(alias).lower(), canon)
+        for canon in set((_cs or {}).values()):
+            out.setdefault(str(canon).lower(), canon)
+    except Exception:                       # noqa: BLE001 - 其他表仍可用
+        pass
+    for canon, names in (_ORG_ALIASES or {}).items():
+        out.setdefault(str(canon).lower(), canon)
+        for a in (names or []):
+            out.setdefault(str(a).lower(), canon)
+    try:
+        import entity_alias as _ea
+        for group in (_ea.ALIAS_GROUPS or ()):
+            names = [str(n) for n in (group or ()) if str(n).strip()]
+            if not names:
+                continue
+            canon = names[0]
+            for a in names:
+                # **代號要有行情脈絡才算指名**(r3 外審):第一版只擋純數字,
+                # 於是 `MTD`(同時是 month-to-date)、`MU`、`AAPL` 這些字母
+                # 代號進了受詞表 —— 「oil is up 8% MTD」被讀成制裁梅特勒-
+                # 托利多。判準宣告在 `entity_alias`,與那張表放在一起。
+                if _ea.is_market_code(a):
+                    continue
+                if a in _ea.CONTEXT_DEPENDENT_ALIASES:
+                    continue                # 拼寫證明不了身分(intel/apple)
+                out.setdefault(a.lower(), canon)
+    except Exception:                       # noqa: BLE001 - 法域/組織仍可用
+        pass
+    return out
+
+
 def aliases_of(name) -> tuple[str, ...]:
     """這個主體宣告過的全部別名(含 canonical 本身);認不得回空 tuple。
 

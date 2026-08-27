@@ -69,6 +69,25 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0    # 完整歷史，避免 push 衝突
 
+      # **備援班的同日冪等證據**(r2 外審 P1)。排程觸發的 checkout 檢出的是
+      # 「排程事件建立當時」的 commit:備援班在佇列裡等主班寫完 state,拿到
+      # runner 之後工作區**仍停在等待前的舊快照** —— 只讀工作區的話,主班剛
+      # 寄成功的那份證據看不到,於是再寄一封。信寄出去收不回來。
+      # 這一步跑在取得 concurrency 名額**之後**(整個 job 都是),所以這裡讀到
+      # 的 origin/main 是當下的。讀不到就不產生檔案 → 守衛 fail-open 照跑。
+      - name: 讀取 origin/main 當下的寄送紀錄
+        continue-on-error: true
+        run: |
+          set +e
+          git fetch --quiet origin main || exit 0
+          git show FETCH_HEAD:state/run_manifest.json \
+            > "$RUNNER_TEMP/fresh_run_manifest.json" 2>/dev/null \
+            || rm -f "$RUNNER_TEMP/fresh_run_manifest.json"
+          git show FETCH_HEAD:state/delivery_receipt.json \
+            > "$RUNNER_TEMP/fresh_delivery_receipt.json" 2>/dev/null \
+            || rm -f "$RUNNER_TEMP/fresh_delivery_receipt.json"
+          exit 0
+
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
@@ -90,6 +109,12 @@ jobs:
 
       - name: Run morning report
         env:
+          # origin/main 當下的寄送紀錄(上面那一步寫的;沒寫成就不存在 →
+          # 守衛 fail-open 照跑)。備援班的同日冪等靠它,見 r2 外審 P1。
+          FRESH_RUN_MANIFEST: ${{ runner.temp }}/fresh_run_manifest.json
+          # 寄送收據:SMTP 成功當下就發佈,不等整批 state 的 schema 契約。
+          # 「已經寄出但 state 沒發佈成功」時只有它答得出來(r3 外審 P1)。
+          FRESH_DELIVERY_RECEIPT: ${{ runner.temp }}/fresh_delivery_receipt.json
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           # 收件者可設在 GitHub Variables（vars）或 Secrets；支援多位，以逗號分隔。

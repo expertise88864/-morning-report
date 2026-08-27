@@ -36,10 +36,24 @@ def test_the_target_is_the_first_name_after_the_marker():
 
 
 def test_an_ascii_alias_needs_word_boundaries():
-    """r1 外審:`us` 先前是裸子字串比對,會在 `cause` 裡命中變成美國。"""
+    """r1 外審:`us` 先前是裸子字串比對,會在 `cause` 裡命中變成美國。
+
+    **反例換過兩次,兩次都是同一個病**(r2 外審):
+      (a) 原本的 `sanctions on Nvidia because of cause` —— v14 起公司是
+          合法受詞,`Nvidia` 在 pos 0 命中而判準是位置優先,邊界規則壞掉
+          也量不到;
+      (b) 改成 `…because of cause` 之後仍量不到:`us` 是**常見英文字**,
+          後來那條 `_WORD_LIKE_ALIASES` 規則(要全大寫且在受詞開頭)已經
+          先把它擋掉了 —— 真正在分勝負的是別條規則。
+    反例要用**不在** `_WORD_LIKE_ALIASES` 裡、又真的藏在別的字裡面的別名:
+    `ase`(日月光)藏在 `purchase`。裸子字串比對會把它讀成日月光。
+    """
     assert eid.action_object(
-        "sanction", "sanctions on Nvidia because of cause",
-        ["NVIDIA"]) == "NVIDIA"
+        "sanction", "sanctions on Zeta Corp after the purchase",
+        ["Oil"]) == "Oil"
+    # 公司本身照樣解析得出來(v14 的新能力,見 test_batch_review_0827b)
+    assert eid.action_object("sanction", "sanctions on Nvidia",
+                             ["Oil"]) == "輝達"
 
 
 def test_the_subject_itself_is_the_patient_in_a_passive_clause():

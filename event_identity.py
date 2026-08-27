@@ -73,7 +73,7 @@ import re as _re
 #: v11(縱深第五批):標題家具(來源名與版名)不進辨識詞。
 #: v10(第二十九輪 Commit 2):`CANONICAL_SUBJECTS` 補齊法域的中英對應
 #: (France→法國 等 28 組)—— 主體正規化是鍵的一部分,表變了鍵就變。
-IDENTITY_SCHEMA_VERSION = 13  # v13 2026-08-26:制裁對象要在受詞位置(sanction:Oil)
+IDENTITY_SCHEMA_VERSION = 14  # v14 2026-08-27:制裁受詞納入公司身分(sanctions on NVIDIA → 輝達)
 
 # ---------------------------------------------------------------- 相容出口
 #
@@ -903,6 +903,16 @@ def _earliest_known(span: str, known: dict) -> str:
     return best[2] if best else ""
 
 
+def _si_declared_targets() -> dict:
+    """身分權威表。**取不到就拋** —— 空表會讓制裁受詞解析整個靜默失效,
+    退回主體簽章正是 `sanction:Oil` 那個缺陷本身。"""
+    import subject_identity as _si
+    out = _si.declared_targets()
+    if not out:
+        raise RuntimeError("declared_targets 是空的")
+    return out
+
+
 def sanction_target(title, subjects, summary="") -> str:
     """制裁詞的受詞位置上點得出來的**已知主體**(點不出來回空字串)。
 
@@ -917,26 +927,15 @@ def sanction_target(title, subjects, summary="") -> str:
     # `CANONICAL_SUBJECTS` 的鍵**一律是小寫**(`us`/`eu`/`iran`),大小寫
     # 不帶資訊 —— 短別名比對**大寫形式**(新聞寫 US/EU/UK/PRC),既認得出
     # 縮寫,也不會把英文代名詞 `us` 當成美國。
-    known = {}
-    for alias, canon in CANONICAL_SUBJECTS.items():
-        known[str(alias).lower()] = canon
-    for canon in set(CANONICAL_SUBJECTS.values()):
-        known[str(canon).lower()] = canon
-    # **組織也是合法的制裁對象**(2026-08-26 外審 P2)。`event_actions` 自己
-    # 宣告 `OBJECT_SCOPE["sanction"] = "any"`(制裁可以直接針對實體),而
-    # 第一版的受詞表只有 39 個法域 —— 兩層契約互相矛盾:
-    # 「Oil falls after U.S. sanctions on International Criminal Court」
-    # 剖析不出 ICC → 退回主體簽章 → 又變成 `sanction:Oil`,同一個生產缺陷。
-    # 身分表**不在這裡再造一份**:`subject_identity._ORG_LOOKUP` 已經是
-    # 全 repo 的宣告式權威(別名→正式名),直接吃它。
-    try:
-        import subject_identity as _si
-        for canon, names in (_si._ORG_ALIASES or {}).items():
-            known.setdefault(str(canon).lower(), canon)
-            for a in (names or []):
-                known.setdefault(str(a).lower(), canon)
-    except Exception:                       # noqa: BLE001 - 法域表仍可用
-        pass
+    # **法域、組織、公司都是合法的制裁對象**。`event_actions` 自己宣告
+    # `OBJECT_SCOPE["sanction"] = "any"`(制裁可以直接針對實體),而受詞表
+    # 一開始只有 39 個法域 —— 兩層契約互相矛盾:剖析不出受詞就退回主體
+    # 簽章,於是「Oil falls after U.S. sanctions on X」又變成 `sanction:Oil`。
+    # 2026-08-26 那一輪補了組織(ICC),r2 外審指出**公司仍然漏**:
+    # 「sanctions on NVIDIA」照樣解析不出輝達 —— 補一張表漏一張表,因為
+    # 身分宇宙散在三個模組。現在只消費 `subject_identity.declared_targets()`
+    # 這一份公開權威(法域+組織+公司),這裡不再自維身分表。
+    known = _si_declared_targets()
     for text in (title, summary):
         for sp in _sanction_spans(text, subjects):
             hit = _earliest_known(sp, known)

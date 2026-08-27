@@ -10481,6 +10481,9 @@ def _state_push_paths() -> list[str]:
     抽出來讓 push 可以脫離 save_history_state 獨立呼叫(見該函式與
     persist_delivered_report_state 的說明),也方便測試核對登錄完整性。"""
     return [str(CPBL_VENUE_FILE),
+            # 收據的主路徑是「SMTP 成功當下立刻推」;登記在這裡是為了
+            # 那一次推失敗時還有第二次機會(r3 外審 P1)。
+            str(DELIVERY_RECEIPT_FILE),
             str(STATE_FILE), str(MODEL_HISTORY_FILE),
             str(MODEL_HISTORY_DIR),   # 按月分區(地基批#1);legacy 單檔凍結仍列著無妨
             str(EVENT_TIMELINE_FILE), str(PODCAST_DIGEST_FILE),
@@ -23220,6 +23223,54 @@ def _mark_delivery_in_manifest(**fields) -> None:
     except Exception as e:
         print(f"[manifest] 寄送結果補寫失敗(不影響晨報): {type(e).__name__}",
               file=sys.stderr)
+        return
+    # **有結論的當下就把收據發佈出去**(r3 外審 P1):不等整批 state 的
+    # schema 契約。這一支只在「寄成功」或「刻意不寄」時動作,所以一班最多
+    # 推一次;`attempted` 那種中間狀態不推(它還不是結論)。
+    if delivery.get("success") or str(delivery.get("skipped_reason") or "").strip():
+        _publish_delivery_receipt(base.get("date"), delivery)
+
+
+def _publish_delivery_receipt(date_str, delivery: dict) -> None:
+    """把寄送收據寫檔並**立刻**推回 repo(本機/DRY_RUN 只寫檔)。
+
+    形狀刻意與 run_manifest 相同(`date` + `delivery`),讓備援班的守衛用
+    同一個判準函式讀三個來源,不必為收據多寫一套解讀。
+    推不上去只降級、不拋 —— 信已經寄出了,這裡再炸掉只會讓 job 變紅而
+    幫不上任何事(但要留痕:安靜失敗的症狀剛好就是重複寄信)。
+    """
+    payload = {"date": str(date_str or ""), "delivery": dict(delivery or {}),
+               "github_run_id": os.environ.get("GITHUB_RUN_ID") or ""}
+    try:
+        DELIVERY_RECEIPT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write_text(DELIVERY_RECEIPT_FILE,
+                           json.dumps(payload, ensure_ascii=False, indent=1))
+    except Exception as e:                  # noqa: BLE001
+        print(f"[receipt] 收據寫檔失敗: {type(e).__name__}", file=sys.stderr)
+        _DEGRADED_STEPS.append("delivery_receipt_publish")
+        return
+    if not (os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("DRY_RUN") != "1"):
+        return
+    try:
+        subprocess.run(["git", "config", "user.name", "morning-report-bot"],
+                       check=True, timeout=10)
+        subprocess.run(["git", "config", "user.email", "actions@github.com"],
+                       check=True, timeout=10)
+        subprocess.run(["git", "add", str(DELIVERY_RECEIPT_FILE)],
+                       check=True, timeout=10)
+        if subprocess.run(["git", "diff", "--cached", "--quiet"],
+                          timeout=10).returncode != 0:
+            subprocess.run(["git", "commit", "-m",
+                            f"寄送收據 {payload['date']} [skip ci]"],
+                           check=True, timeout=10)
+            push_committed_state()
+            print("[receipt] 已發佈寄送收據")
+    except Exception as e:                  # noqa: BLE001 - 信已寄出,不再拋
+        print(f"[receipt] 收據發佈失敗: {type(e).__name__}", file=sys.stderr)
+        print("::warning title=delivery-receipt-unpublished::"
+              "寄送收據沒能推上 main;備援班可能因此重複寄信")
+        _DEGRADED_STEPS.append("delivery_receipt_publish")
 
 
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
@@ -25604,7 +25655,62 @@ _PIPELINE = (
 )
 
 
-def already_delivered_today(now_tpe, *, run_kind: str = "") -> str:
+#: 備援班的**新鮮寄送紀錄**檔路徑(由 workflow 設定)。
+#: 排程觸發的 checkout 檢出的是「排程事件建立當時」的 commit —— 備援班在
+#: 佇列裡等主班寫完 state,拿到 runner 之後**工作區仍停在等待前的舊快照**。
+#: 所以 workflow 在取得 concurrency 名額之後,才從 origin/main 讀出當下最新
+#: 的 manifest 寫到這個檔,交給守衛一起看。Python 這端不自己跑 git:
+#: 測試就不會碰網路,而 git 憑證/工作目錄本來就在 workflow 那一側。
+FRESH_MANIFEST_ENV = "FRESH_RUN_MANIFEST"
+
+#: **寄送收據**:只記「今天這班有沒有結論」的極小檔,與整批 state 分開發佈。
+#: run_manifest 帶著 delivery 沒錯,但它跟 history/timeline/ledger 同一批
+#: commit,要等 state schema 契約通過才 push —— 契約失敗或 push 撞 GitHub
+#: 5xx 時,**信已經寄出去了而 origin/main 上沒有任何證據**,備援班於是再寄
+#: 一封(r3 外審 P1)。收據自己一個檔、SMTP 成功當下就推,不夾帶其他 state,
+#: 所以也沒有繞過 schema 閘門的問題。
+DELIVERY_RECEIPT_FILE = STATE_ROOT / "delivery_receipt.json"
+FRESH_RECEIPT_ENV = "FRESH_DELIVERY_RECEIPT"
+
+
+def _manifest_delivery_verdict(data, now_tpe) -> str:
+    """這一份 manifest 能不能證明「今天這班已經有結論」(不能回空字串)。"""
+    if not isinstance(data, dict):
+        return ""
+    stamped = str(data.get("date") or "")[:10]
+    if stamped != now_tpe.strftime("%Y-%m-%d"):
+        return ""
+    delivery = data.get("delivery")
+    if not isinstance(delivery, dict):
+        return ""
+    if delivery.get("success"):
+        return f"{stamped} 已寄出({delivery.get('run_kind') or '?'})"
+    if str(delivery.get("skipped_reason") or "").strip():
+        return f"{stamped} 已判定不寄({delivery['skipped_reason']})"
+    return ""
+
+
+def _fresh_remote_manifest(env_name: str = ""):
+    """origin/main **當下**的寄送紀錄(沒設定/讀不到一律回 None)。
+
+    讀不到就回 None、由呼叫端 fail-open —— 模稜兩可時要補寄,不是不寄。
+    """
+    path = (os.environ.get(env_name or FRESH_MANIFEST_ENV) or "").strip()
+    if not path:
+        return None
+    # **捕捉範圍要剛好**:第一版寫成 `except Exception` 而且用了沒 import 的
+    # `io` —— NameError 被自己吃掉,守衛靜默失效、測試才抓到。讀不到是
+    # I/O 與格式的事,程式錯誤要吵。
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def already_delivered_today(now_tpe, *, run_kind: str = "",
+                            fresh_loader=None) -> str:
     """今天這一班**已經有結論了嗎** —— 有就回一句理由,沒有回空字串。
 
     2026-08-27 起要加第二個 cron 補漏跑(GitHub 會丟掉整點的排程觸發:
@@ -25621,22 +25727,38 @@ def already_delivered_today(now_tpe, *, run_kind: str = "") -> str:
     """
     if (run_kind or os.environ.get("GITHUB_EVENT_NAME") or "") != "schedule":
         return ""
+    # **證據取兩份的聯集**(r2 外審 P1):工作區那一份可能是排程事件建立
+    # 當時的舊快照(主班還在跑、還沒 push),而 origin/main 那一份是當下的。
+    # 聯集是對的方向而不只是「多看一份」:漏看「已寄出」會**重複寄信**
+    # (收不回來),而 manifest 只由跑過的班自己寫 —— 多看一份不可能造出
+    # 假的「已寄」。任一份說今天有結論就不再跑。
     try:
-        data, _st = _ss.load_json_state(RUN_MANIFEST_FILE, expected=dict)
+        local, _st = _ss.load_json_state(RUN_MANIFEST_FILE, expected=dict)
     except Exception:                       # noqa: BLE001 - 壞檔就照跑
-        return ""
-    if not isinstance(data, dict):
-        return ""
-    stamped = str(data.get("date") or "")[:10]
-    if stamped != now_tpe.strftime("%Y-%m-%d"):
-        return ""
-    delivery = data.get("delivery")
-    if not isinstance(delivery, dict):
-        return ""
-    if delivery.get("success"):
-        return f"{stamped} 已寄出({delivery.get('run_kind') or '?'})"
-    if str(delivery.get("skipped_reason") or "").strip():
-        return f"{stamped} 已判定不寄({delivery['skipped_reason']})"
+        local = None
+    loader = fresh_loader or _fresh_remote_manifest
+
+    def _read(env_name):
+        """一個來源讀壞了不可以連累另一個 —— 各自 fail-open。"""
+        try:
+            return loader(env_name)
+        except Exception as e:              # noqa: BLE001 - 守衛不可以弄死整班
+            # 這裡仍然吞:守衛自己炸掉會讓**兩班都死**(晨報不可斷 >
+            # 少寄一封)。但不可以安靜地吞 —— 安靜的話「新鮮證據」這條路
+            # 壞掉沒人知道,而症狀剛好就是重複寄信。
+            print(f"[main] 新鮮寄送紀錄讀取失敗({env_name}/"
+                  f"{type(e).__name__}),照跑", file=sys.stderr)
+            _DEGRADED_STEPS.append("backup_idempotence_probe")
+            return None
+
+    # 收據排最前面:它是 SMTP 成功當下就發佈的那一份,而 manifest 要等整批
+    # state 過契約 —— 「已經寄出但 state 沒發佈成功」時只有收據答得出來。
+    for src, data in (("收據", _read(FRESH_RECEIPT_ENV)),
+                      ("origin/main", _read(FRESH_MANIFEST_ENV)),
+                      ("工作區", local)):
+        verdict = _manifest_delivery_verdict(data, now_tpe)
+        if verdict:
+            return f"{verdict}〔{src}〕"
     return ""
 
 

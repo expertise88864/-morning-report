@@ -570,6 +570,9 @@ _NOT_AN_LLM_SWITCH = {
     # 持股(Secrets;明細不得進 HTML/prompt/state/log)與顯示名稱。
     "PORTFOLIO_1", "PORTFOLIO_2", "PORTFOLIO_1_NAME", "PORTFOLIO_2_NAME",
     # 執行環境,與 LLM 無關。
+    # `FRESH_RUN_MANIFEST` 是備援班的同日冪等證據(origin/main 當下的
+    # 寄送紀錄檔路徑,r2 外審 P1),不是 LLM 開關。
+    "FRESH_RUN_MANIFEST", "FRESH_DELIVERY_RECEIPT",
     "STATE_PUSH_DEFERRED", "TZ",
 }
 

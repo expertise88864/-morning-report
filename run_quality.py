@@ -65,6 +65,8 @@ KNOWN_DEGRADED = frozenset({
     "llm:provider_refused:auth",
     # 週回顧的延燒事件素材有壞列被跳過(2026-08-27):段落照出,只少骨架
     "weekend_week_review_rows",
+    # 備援班的新鮮寄送紀錄讀取失敗(r2 外審 P1):守衛退回只看工作區
+    "backup_idempotence_probe",
     # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
     "state:alias_map_unavailable",
     # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外

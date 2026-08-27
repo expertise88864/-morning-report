@@ -6450,6 +6450,26 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "83789c12-210d-431c-9b7e-8796293414a7",
+        "title": "Eric Weinstein: The State of American Science, Breakthrough Coverups, and the Danger of Physics",
+        "published": "Wed, 26 Aug 2026 23:00:00 +0000",
+        "processed_at": "2026-08-27T23:15:02Z",
+        "digest": {
+          "summary_points": [
+            "Eric Weinstein 主張美國科學自 1960-70 年代以來因《曼斯菲爾德修正案》和同儕審查等政策而陷入停滯，聯邦研究經費的報酬率下降 80 倍，這威脅到長期的創新與經濟成長。",
+            "他批評政府的風險規避型資助模式——把「現代投資組合理論」套用到科學上——主張應資助高 Beta 的個人（例如 Stewart Butterfield 的 Slack 轉型），而非低風險的漸進式專案。",
+            "他預測 AI 很快就會開始閱讀「垃圾桶語料」——被主流科學界嘲笑的異端理論——可能帶來重大科學突破和新一波技術創新。",
+            "他警告現在就將 AI 商業化是危險且過早的，把 Anthropic 的部署比喻為「雇用漢尼拔」——這凸顯了 AI 產業的尾部風險。",
+            "他強調中國正在以金錢和自由吸引頂尖科學家，並建立自己的私人 AI 模型，認為這對美國的科技與科學領導地位構成戰略威脅。",
+            "他稱讚 Elon Musk 是太空探索中「唯一的成年人」，隱含對其火星/月球願景的看好，並強調離開地球是人類生存的必經之路。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "The AIs are going to start reading all of the things that our leading physicists have laughed at. Look out."
+        }
+      },
+      {
         "guid": "64b534f7-b272-4bb8-9238-96055f4fa858",
         "title": "Michael Kratsios: Trump's Science Agenda, Anti-Science Claims, Fauci's Damage, DEI & China",
         "published": "Mon, 24 Aug 2026 23:19:00 +0000",
@@ -6812,51 +6832,6 @@
           "notable_quote": "This is why the 1% that controls open source, if they have it, that the oligarchs are going to get their clocks wrong and we don't need to have a wealth tax."
         },
         "shown_at": "2026-07-25T22:43:07Z"
-      },
-      {
-        "guid": "d4e4932a-4eb5-4007-8f84-4d386c3a22ce",
-        "title": "Mark Cuban on the AI Bubble: Who Actually Gets Wiped Out?",
-        "published": "Mon, 20 Jul 2026 18:51:00 +0000",
-        "processed_at": "2026-07-21T20:52:54Z",
-        "digest": {
-          "summary_points": [
-            "當前AI泡沫不同於2000年網路泡沫，主要由私人資本驅動，可能摧毀VC和PE基金，但不會影響多數公眾。",
-            "市場領導者如Google、Meta大舉借貸數百億美元投資AI，存在私人信貸風險。",
-            "資料中心建設可能過度，若AI在功率效率上出現技術突破，大量資料中心可能變成閒置資產。",
-            "AI在企業部署比預期困難，需要大量前端工程師，並未如預期取代白領工作。",
-            "AI為創業者創造巨大機會，例如Lovable平台每週產生77萬個應用程式。",
-            "大型語言模型在追求真相方面可能優於社群媒體演算法，有助於減少政治資訊不對稱。",
-            "對於AI公司員工，建議考慮使用看跌期權保護以鎖定收益。",
-            "投資領域看好AI初創公司，但認為資料中心投資可能已反映完美預期。"
-          ],
-          "tickers": [
-            {
-              "name": "Lovable",
-              "code": "",
-              "market": "",
-              "direction": "bullish",
-              "reason": "主持人投資的公司，每當傳出倒閉消息時營收反而增加1億美元，目前年營收達6億美元。"
-            },
-            {
-              "name": "Synthesia",
-              "code": "",
-              "market": "",
-              "direction": "bullish",
-              "reason": "主持人早期投資的AI公司，表現出色。"
-            },
-            {
-              "name": "OpenEvidence",
-              "code": "",
-              "market": "",
-              "direction": "bullish",
-              "reason": "主持人投資的醫療AI公司，能協助個人健康管理。"
-            }
-          ],
-          "market_view": "當前AI泡沫主要由私人資本驅動，存在過度建設風險，但不會嚴重影響散戶投資者。",
-          "action_view": "對於AI相關員工，建議考慮使用看跌期權對沖；對於創業者，現在是創立AI相關業務的最佳時機。",
-          "notable_quote": "It's not a bubble that's going to impact most people in the room, right? Or most people across the US. But it could just destroy a lot of VCs and a lot of funds and a lot of PE."
-        },
-        "shown_at": "2026-07-21T22:51:32Z"
       }
     ]
   },

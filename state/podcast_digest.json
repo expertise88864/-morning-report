@@ -1661,6 +1661,56 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "9329ca8c-5f45-466e-a79b-0d8c4cf262dd",
+        "title": "EP331. OpenAI 的晶片、蘋果 M6 & M5 Ultra、Meta 的和解方案 | M觀點",
+        "published": "Thu, 27 Aug 2026 15:18:34 GMT",
+        "processed_at": "2026-08-27T19:13:56Z",
+        "digest": {
+          "summary_points": [
+            "OpenAI 的 Halapeno 晶片在 Inference X 推論測試中，每瓦處理量是 NVIDIA GB200 的 1.5~1.9 倍、延遲低 1.7~3.6 倍，主持人認為這是 ASIC 對輝達 GPU 的又一次挑戰，但 Halapeno 未必贏得了 Google TPU 與亞馬遜 Trainium，僅針對自家模型優化可能特別好。",
+            "主持人認為 OpenAI 有龐大內部需求，自研晶片可把原本每年 200 億美元 GPU 支出的效果用 100 億美元達成，開發花 30~50 億美元也划算；且模型商太強時三大公有雲可能被邊緣化，因此公有雲應支持第三方模型如 Grok。",
+            "主持人判斷輝達市占率會一直掉但不會被消滅：靠 Extreme Co-Design、FP4 精度領先對手 1~2 年、支持開源模型等策略，在 AI 晶片市場年化成長 25% 下輝達仍能成長 23~24%，因此他採取輝達與 ASIC 兩邊都壓。",
+            "蘋果 M6 是首顆台積電 2 奈米晶片，M5 Ultra 記憶體可達 512GB，主持人認為 Mac mini/Mac Studio 已能跑得動後前沿開源模型（如 GLM 5.3 Flash、DeepSeek V4 Flash、Qwen 3.8），在地端 AI 需求支撐下未來一兩年 Mac 會賣得很好。",
+            "主持人認為蘋果這代 M6 只出標準版是過渡策略：M5 與 M6 性能接近、3 奈米成熟成本低，先讓台積電 2 奈米練功，資源集中明年 M7，這樣做合理。",
+            "Meta 以 180 億美元與美國多州檢察官和解（分 10 年支付，且其中 30% 視其他平台是否同樣被要求而可能免付），主持人認為這金額對 Meta 影響不大；Meta 快速和解是因官司會揭露黑料，產品讓步更划算。",
+            "主持人評論 Meta 的青少年保護措施（每日 2 小時上限、夜間禁用、上課時段靜音、隱藏按讚數、演算法可關 AI 推薦）是「社群網路版防沈迷機制」，且家長可自行放寬，他認為這是兼顧自由與保護的合理折衷，對 Meta 長期風險可控。"
+          ],
+          "tickers": [
+            {
+              "name": "NVIDIA",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為市占率會下滑但靠 co-design、軟體精度領先與開源策略仍能漂亮成長，長期持有並與 ASIC 兩邊都壓。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人看好 Mac 未來一兩年在地端 AI 需求下賣得很好，M5 Ultra/M6 定位明確。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "180 億美元分 10 年支付且 30% 有條件免付，產品限制可被家長放寬，影響有限。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人表示半導體部位壓最大是台積電，且 M6 由台積電 2 奈米代工。"
+            }
+          ],
+          "market_view": "主持人認為 AI 晶片市場未來十年年化成長約 25%，輝達市占率會下滑但仍能漂亮成長，ASIC 陣營成長更快；他對輝達長期不悲觀，也不看空整體 AI 算力需求。",
+          "action_view": "操作上採輝達與 ASIC 兩邊都壓，半導體部位以台積電、美光、SK Hynix 為主；若看好不同陣營就都買，不必二選一。",
+          "notable_quote": "輝達市占率會一直掉，但是呢，它自己還是會很漂亮的成長。"
+        }
+      },
+      {
         "guid": "2bc39045-e008-4b9c-987d-e6cb6dad2c5f",
         "title": "EP330. 輝達 GPU 要漲價、中國機器人跑很快、特斯拉新消息更新 | M觀點",
         "published": "Mon, 24 Aug 2026 05:42:40 GMT",
@@ -2200,65 +2250,6 @@
           "notable_quote": "如果SpaceX真的跌到六、七十塊，我會真的很開心去把他加滿買滿啦。"
         },
         "shown_at": "2026-07-16T22:53:17Z"
-      },
-      {
-        "guid": "ee0ca554-9ada-4bcf-a77d-e644cfad35c8",
-        "title": "EP319. xAI & Meta 重回賽道、蘋果要告 OpenAI、微軟 Xbox 大重整 | M觀點",
-        "published": "Mon, 13 Jul 2026 07:25:08 GMT",
-        "processed_at": "2026-07-13T11:46:49Z",
-        "digest": {
-          "summary_points": [
-            "上週AI模型密集發布，OpenAI的GPT 5.6全面上線，XAI的Grog 4.5與Meta的Muse Spark 1.1表現超乎預期，雙雙打臉市場原先看衰的觀點。",
-            "根據Artificial Analysis的AAAI指數，Grog 4.5得分54，實力等同GPT 5.5與Claude Opus 4.8，但平均價格僅GPT 5.6 Tera的60%，且處理任務時消耗的Token僅其1/3，以不到20%成本提供同等能力。",
-            "Meta的Muse Spark 1.1在AAAI得分51，實力介於GPT 5.4與5.5之間，超越開源模型GLM 5.2，成本比GLM 5.2更低，展現Meta仍具模型研發競爭力。",
-            "AI前沿賽局差距有限：Anthropy領先OpenAI約一個月，OpenAI領先XAI兩個月，Meta再落後一到兩個月，整體仍在可追趕範圍，無需認輸。",
-            "XAI與Meta擁有自研模型的三大優勢：算力（大量GPU）、獨家資料（X的高品質文字、Meta的社群數據）、人才，因此不會放棄模型研發；市場過度解讀「賣算力」為投降訊號。",
-            "蘋果正式控告OpenAI竊取商業機密，指控其前任副總裁Tan Tan挖角蘋果員工並要求攜帶機密，已有工程師因未歸還公司筆電而遭調查，顯示OpenAI可能涉系統性竊密。",
-            "微軟宣佈Xbox大裁員，幅度達20%（3,200人），並將四家工作室獨立或出售；新任CEO Asha Sharma坦承Xbox獲利能力僅對手（Sony、任天堂）的1/3至1/10，主機銷量與Game Pass成長皆不如預期。",
-            "主持人認為微軟DNA不適合2C遊戲業務，應考慮將Xbox賣給Netflix等公司；若不放棄，下一代Xbox應轉型為PC based平台，並推出Xbox OS與雙系統版本。",
-            "遊戲產業在AI時代將面臨人力精簡，過去需200人的專案未來可能只需50人，所有遊戲公司目前都處於超編狀態，裁員重整為大勢所趨。",
-            "OpenAI與Anthropy因模型能力而跨足各垂直應用，形成與客戶競爭的「全民公敵」形象，已引發業界反彈，主持人認為這是不健康的文化。",
-            "Meta的Muse Spark 1.1在Coding Agent Index得分69，超越GLM 5.2的58分，但落後GPT 5.5（76分），顯示Meta在代理式程式設計能力上已有顯著進步。",
-            "Grog 4.5的速度快且成本低，成為目前性價比最高的前沿級模型，將搶佔中階市場，並可能吸引原本使用Anthropy和OpenAI的開發者回流。",
-            "對於微軟的Xbox重整，裁員與工作室瘦身被視為正確方向，主因過去過度尊重創作者導致商業化不足，買來的獨立工作室缺乏生存壓力反而影響產品競爭力。",
-            "蘋果提告的訴訟可能迫使OpenAI交出內部文件，若證實高層指引竊密，將打擊OpenAI聲譽與未來合作；主持人認為OpenAI文化與CEO Sam Altman有關。",
-            "Google的Gemini 3.5 Pro預計近期發布，主持人預期實力約與Grog 4.5同級，不會超越GPT 5.6，真正大招可能在年底的Gemini 4.0。"
-          ],
-          "tickers": [
-            {
-              "name": "Meta",
-              "code": "META",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "AI模型Muse Spark 1.1追趕上來，實力介入GPT 5.4與5.5之間，且成本更低，證明Meta仍具競爭力，打臉市場原先看衰觀點。"
-            },
-            {
-              "name": "Microsoft",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "Xbox業務獲利只有對手的1/3到1/10，裁員20%仍難解決根本問題，主持人認為微軟應賣掉Xbox，遊戲業務不適合其企業DNA。"
-            },
-            {
-              "name": "Apple",
-              "code": "AAPL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "提告OpenAI竊取商業機密，目前證據對蘋果有利，但訴訟仍在進行，尚無法判斷對公司財務的實質影響。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "Gemini 3.5 Pro將發表，預計能力與Grog 4.5同級，不會超越GPT 5.6，市場期待有限，真正突破可能待Gemini 4.0。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "現在才四局上半，五比二，有必要認輸嗎？"
-        },
-        "shown_at": "2026-07-14T22:51:49Z"
       }
     ]
   },
@@ -4838,6 +4829,54 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74718544",
+        "title": "New chip tariffs could hit AI race",
+        "published": "Thu, 27 Aug 2026 15:06:05 +0000",
+        "processed_at": "2026-08-27T19:15:10Z",
+        "digest": {
+          "summary_points": [
+            "主持人將川普政府可能對半導體及含晶片產品（如筆電、遊戲主機、伺服器）加徵新關稅列為頭條，引述科技業警告此舉恐阻礙美國AI競賽主導地位，但白宮稱報導屬臆測。",
+            "Okta公布強勁Q2財報並上調全年財測，股價上揚；執行長強調協助企業安全部署AI代理，反映需求強勁。",
+            "HP財報後股價下跌，摩根士丹利分析師看淡2027年度，認為PC出貨彈性風險與列印利潤壓力壓過AI PC利多。",
+            "Build-a-Bear Workshop因需求疲弱與促銷增加，Q2營收與獲利受衝擊，股價下挫。",
+            "初領失業金意外降至20.3萬，低於市場預期，續領人數亦佳，顯示就業市場穩健，市場聚焦聯準會主席傑克森洞演說。"
+          ],
+          "tickers": [
+            {
+              "name": "Okta",
+              "code": "OKTA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2財報強勁且上調全年財測，股價上漲。"
+            },
+            {
+              "name": "HP Inc.",
+              "code": "HPQ",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "財報後下跌，分析師看淡PC與列印業務前景。"
+            },
+            {
+              "name": "Build-a-Bear Workshop",
+              "code": "BBW",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Q2需求疲弱且促銷增加，營收獲利受衝擊。"
+            },
+            {
+              "name": "Take-Two Interactive",
+              "code": "TTWO",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "GTA6預告釋出，遊戲11月19日上市，但股價影響未明確。"
+            }
+          ],
+          "market_view": "就業數據穩健，白宮否認關稅傳言，市場靜待聯準會主席談話，整體方向不明確。",
+          "action_view": "",
+          "notable_quote": "The setup into full-year 2027 looks increasingly challenging, with PC unit elasticity risk and print margin pressure outweighing AI-PC mix upside and an uncertain PS margin recovery."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74714896",
         "title": "Nvidia’s biggest hug yet",
         "published": "Thu, 27 Aug 2026 10:34:38 +0000",
@@ -5267,52 +5306,6 @@
           "notable_quote": "My dad just texted me saying they cured cancer, and I should buy as much mRNA as I can."
         },
         "shown_at": "2026-08-20T22:35:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74321072",
-        "title": "IBM hits key quantum computing milestone",
-        "published": "Wed, 19 Aug 2026 15:46:37 +0000",
-        "processed_at": "2026-08-19T19:52:06Z",
-        "digest": {
-          "summary_points": [
-            "美國財政部宣布將長天期公債流動性支持回購上限從20億美元提高至至少40億美元，主持人認為此舉如同「類QE」（QE Lite），有助於防止市場失靈，帶動30年期殖利率從5.3%上方回落至5.19%附近，10年期降至4.65%。",
-            "亞馬遜計劃將無人機配送服務擴展至近500個美國城市，主持人指出這將加劇與沃爾瑪在快速配送上的競爭，對電商物流版圖形成新變數。"
-          ],
-          "tickers": [
-            {
-              "name": "Target",
-              "code": "TGT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "第二季營收與獲利優於預期，即使降價影響仍展現成長，排除關稅退稅後EPS 4.11美元仍勝預期。"
-            },
-            {
-              "name": "Lowe's",
-              "code": "LOW",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "下調全年營收展望至約920億美元，低於市場共識929億，並預期同店銷售持平至成長2%，股價下跌。"
-            },
-            {
-              "name": "Estee Lauder",
-              "code": "EL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "財年Q4業績優於預期並上調FY27調整後營業利益率展望，股價走揚。"
-            },
-            {
-              "name": "Amazon",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "擴大無人機配送至近500個美國城市，有望強化競爭優勢並與沃爾瑪在快速配送上競爭。"
-            }
-          ],
-          "market_view": "主持人認為財政部擴大長債回購等於向市場注入流動性（類QE），有助於緩解長天期殖利率上升壓力，為債市帶來支撐。",
-          "action_view": "",
-          "notable_quote": "Essentially, the government is willing to buy up twice as much of the old, hard-to-trade, long-dated debt to keep the market from seizing up, some are calling it QE Lite."
-        },
-        "shown_at": "2026-08-19T22:37:05Z"
       }
     ]
   },

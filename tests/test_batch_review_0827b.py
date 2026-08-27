@@ -290,3 +290,150 @@ def test_every_sibling_of_an_excluded_alias_has_a_recorded_decision():
         assert grp and any(x in ea.CONTEXT_DEPENDENT_ALIASES for x in grp[0]), a
 
 
+
+
+# ───────────────────────── r7 外審 ─────────────────────────
+def _git(*args, cwd, **kw):
+    import subprocess
+    # `text=True` 會走 host 的地區編碼(Windows 實測 gbk):git 回顯中文
+    # commit 訊息時解碼失敗,stdout 變 None 而 returncode 仍是 0。
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True,
+                       encoding="utf-8", errors="replace", timeout=60, **kw)
+    assert r.returncode == 0, f"git {args}: {r.stderr}"
+    return r.stdout.strip()
+
+
+def test_publishing_the_receipt_cannot_drag_unvetted_state_onto_main(tmp_path):
+    """r7 外審 P1:**收據不可以順帶把還沒過契約的 state 推上 main。**
+
+    `STATE_PUSH_DEFERRED=1` 那道閘門的全部意義是「信可以先寄,但壞掉的
+    state 不准進 main」。第一版收據走的是 `git add`→`commit`→
+    `push_committed_state()` —— 而 `git push` 推的是分支 HEAD,git 不可能
+    只推 C 不推它的祖先 B。今天的呼叫順序剛好讓收據先發生,但那是**順序
+    的巧合、不是原語的不變量**:誰把 persist 往前挪,保護就無聲消失。
+
+    這條測試把危險序列直接做出來:本機已經有一個「壞掉的 state commit」
+    尚未推,然後發佈收據 —— 遠端必須只看得到收據。
+    """
+    remote = tmp_path / "remote.git"
+    work = tmp_path / "work"
+    _git("init", "--bare", "-b", "main", str(remote), cwd=tmp_path)
+    _git("clone", str(remote), str(work), cwd=tmp_path)
+    _git("config", "user.email", "t@t", cwd=work)
+    _git("config", "user.name", "t", cwd=work)
+    (work / "state").mkdir()
+    (work / "state" / "keep.json").write_text("{}", encoding="utf-8")
+    _git("add", "-A", cwd=work)
+    _git("commit", "-m", "base", cwd=work)
+    _git("push", "origin", "main", cwd=work)
+
+    # 本機:尚未通過 schema 契約的 state commit(還沒推)
+    (work / "state" / "broken_state.json").write_text(
+        "{壞掉的 schema}", encoding="utf-8")
+    _git("add", "-A", cwd=work)
+    _git("commit", "-m", "deferred state (契約還沒跑)", cwd=work)
+
+    # 發佈收據
+    receipt = work / "state" / "delivery_receipt.json"
+    receipt.write_text(json.dumps(
+        {"date": "2026-08-28 06:12",
+         "delivery": {"success": True, "run_kind": "schedule"}},
+        ensure_ascii=False), encoding="utf-8")
+    assert mr.publish_receipt_from_remote_base(receipt, cwd=work) is True
+
+    files = _git("ls-tree", "--name-only", "-r", "main", cwd=remote).split()
+    assert "state/delivery_receipt.json" in files, files
+    assert "state/broken_state.json" not in files, (
+        "收據把還沒過契約的 state 一起帶上 main 了", files)
+    # 收據內容真的在遠端(不是只有檔名)
+    body = json.loads(_git("show", "main:state/delivery_receipt.json",
+                           cwd=remote))
+    assert body["delivery"]["success"] is True
+    # 本機 HEAD 沒有被動到(發佈不碰工作區的歷史)
+    assert "deferred state" in _git("log", "-1", "--pretty=%s", cwd=work)
+    # 內容沒變就不重複推
+    assert mr.publish_receipt_from_remote_base(receipt, cwd=work) is False
+
+
+def test_a_short_ticker_never_swallows_a_jurisdiction():
+    """外審建議永久保留的負向案例。短代號是身分系統很容易再踩到的
+    regression class:`sanctions on Iran` 的 `on`、`categories` 的 `cat`。
+    這兩個代號**今天不在表裡**,所以這條現在是**柵欄**不是缺陷測試 ——
+    將來有人把 ON Semiconductor / Caterpillar 加進來時它會紅。"""
+    assert eid.action_object(
+        "sanction", "U.S. imposes sanctions on Iran", ["Oil"]) == "伊朗"
+    t = si.declared_targets()
+    for word in ("on", "cat", "all", "for", "one", "run", "so"):
+        assert word not in t, f"{word} 進了受詞表 —— 它是常見英文字"
+
+
+def test_an_untracked_receipt_does_not_wedge_the_later_state_push(tmp_path):
+    """r8 外審:**收據推上遠端之後,本機那份還是 untracked。**
+
+    之後整批 state 要推時是 non-fast-forward → `push_state.sh` 走
+    `git pull --rebase --autostash`,而 **autostash 不含 untracked 檔**
+    —— git 拒絕用遠端版本蓋掉本機那個未追蹤的同名檔,重試全滅,
+    通過了契約的 state 反而發佈不出去、job 變紅。
+
+    這條先證明「危險真的存在」(未追蹤時 rebase 會被拒),再證明修法
+    (收據一起 commit)之後整批 state 推得上去。
+    """
+    def _mk():
+        remote = tmp_path / f"r{_mk.n}.git"
+        work = tmp_path / f"w{_mk.n}"
+        _mk.n += 1
+        _git("init", "--bare", "-b", "main", str(remote), cwd=tmp_path)
+        _git("clone", str(remote), str(work), cwd=tmp_path)
+        _git("config", "user.email", "t@t", cwd=work)
+        _git("config", "user.name", "t", cwd=work)
+        (work / "state").mkdir()
+        (work / "state" / "keep.json").write_text("{}", encoding="utf-8")
+        _git("add", "-A", cwd=work)
+        _git("commit", "-m", "base", cwd=work)
+        _git("push", "origin", "main", cwd=work)
+        receipt = work / "state" / "delivery_receipt.json"
+        receipt.write_text(json.dumps({"date": "2026-08-30 07:10",
+                                       "delivery": {"success": True}}),
+                           encoding="utf-8")
+        mr.publish_receipt_from_remote_base(receipt, cwd=work)
+        (work / "state" / "run_manifest.json").write_text(
+            "{}", encoding="utf-8")          # 週日那批 state
+        return work
+    _mk.n = 0
+    import subprocess
+
+    def _push_after_rebase(work, paths):
+        _git("add", *paths, cwd=work)
+        _git("commit", "-m", "weekend state", cwd=work)
+        r = subprocess.run(["git", "pull", "--rebase", "--autostash"],
+                           cwd=work, capture_output=True,
+                           encoding="utf-8", errors="replace", timeout=60)
+        if r.returncode != 0:
+            return r
+        return subprocess.run(["git", "push"], cwd=work, capture_output=True,
+                              encoding="utf-8", errors="replace", timeout=60)
+
+    # ① 收據沒被 commit(修正前的週日路徑)→ rebase 被 untracked 檔擋住
+    bad = _push_after_rebase(_mk(), ["state/run_manifest.json"])
+    assert bad.returncode != 0, "危險不存在的話這條測試就沒有在量東西"
+    assert "untracked" in (bad.stderr + bad.stdout).lower(), bad.stderr
+
+    # ② 收據一起 commit(修正後)→ 整批 state 推得上去
+    ok = _push_after_rebase(
+        _mk(), ["state/run_manifest.json", "state/delivery_receipt.json"])
+    assert ok.returncode == 0, ok.stderr
+
+
+def test_both_sunday_paths_commit_the_receipt():
+    """兩條週日路徑的清單都是**寫死列舉**的(不是 `_state_push_paths()`),
+    所以漏一條就等於漏一整條路徑 —— 用原始碼確認兩處都列了。"""
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    # **錨點要唯一**:第一版用 `str(EMAIL_ARCHIVE_DIR)`,而 `src.index` 命中的
+    # 是更前面 `_state_push_paths()` 裡的那一處 —— 窗口裡剛好也有收據,
+    # 於是把第二條週日清單刪掉這條測試照樣綠(突變驗證才發現)。
+    for anchor in ('f"chore: weekend no-content manifest "',
+                   "§B:週末信件存檔一併 push"):
+        assert src.count(anchor) == 1, f"錨點不唯一:{anchor}"
+        i = src.index(anchor)
+        seg = src[max(0, i - 900):i + 200]
+        assert "DELIVERY_RECEIPT_FILE" in seg, anchor

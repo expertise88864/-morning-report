@@ -1140,6 +1140,9 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE),
                                        str(mr.POLY_HISTORY_FILE),
                                        str(mr.RUN_MANIFEST_FILE),
+                                       # r8 外審:收據若留成 untracked,之後
+                                       # 這批的 rebase 會被 git 拒絕
+                                       str(mr.DELIVERY_RECEIPT_FILE),
                                        str(mr.EMAIL_ARCHIVE_DIR)]
     assert str(mr.RUN_MANIFEST_FILE) in pushes[0][1], "manifest 沒被 push = 寫了白寫"
     # 寄信必須早於標記/ push(at-least-once:寄成功才落狀態)
@@ -1202,7 +1205,11 @@ def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
 
     assert rc == 0
     assert events == [], "不寄信的路徑不得動 podcast/history 狀態"
-    assert pushes == [[str(mr.RUN_MANIFEST_FILE)]],         "無內容的週日沒有更新 manifest → 看門狗會誤報"
+    # 收據(r8 外審):它已被獨立推上遠端,本機那份若留成 untracked,
+    # 之後這批 state 的 `pull --rebase --autostash` 會被 git 拒絕
+    # (autostash 不含 untracked)→ 通過契約的 state 反而推不上去。
+    assert pushes == [[str(mr.RUN_MANIFEST_FILE),
+                       str(mr.DELIVERY_RECEIPT_FILE)]],         "無內容的週日沒有更新 manifest → 看門狗會誤報"
 
 
 def test_fetch_worldcup_off_season_returns_empty(monkeypatch):

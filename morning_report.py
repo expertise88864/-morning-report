@@ -23253,24 +23253,83 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
             and os.environ.get("DRY_RUN") != "1"):
         return
     try:
-        subprocess.run(["git", "config", "user.name", "morning-report-bot"],
-                       check=True, timeout=10)
-        subprocess.run(["git", "config", "user.email", "actions@github.com"],
-                       check=True, timeout=10)
-        subprocess.run(["git", "add", str(DELIVERY_RECEIPT_FILE)],
-                       check=True, timeout=10)
-        if subprocess.run(["git", "diff", "--cached", "--quiet"],
-                          timeout=10).returncode != 0:
-            subprocess.run(["git", "commit", "-m",
-                            f"寄送收據 {payload['date']} [skip ci]"],
-                           check=True, timeout=10)
-            push_committed_state()
-            print("[receipt] 已發佈寄送收據")
+        publish_receipt_from_remote_base(DELIVERY_RECEIPT_FILE)
     except Exception as e:                  # noqa: BLE001 - 信已寄出,不再拋
         print(f"[receipt] 收據發佈失敗: {type(e).__name__}", file=sys.stderr)
         print("::warning title=delivery-receipt-unpublished::"
               "寄送收據沒能推上 main;備援班可能因此重複寄信")
         _DEGRADED_STEPS.append("delivery_receipt_publish")
+
+
+#: 收據在 repo 裡的路徑(git 用的 POSIX 相對路徑,與磁碟路徑分開)。
+RECEIPT_REPO_PATH = "state/delivery_receipt.json"
+
+
+def publish_receipt_from_remote_base(local_file, *, cwd=None,
+                                     branch: str = "main") -> bool:
+    """把收據**單獨**推上 `branch`,完全不碰工作區的 HEAD / index / 檔案。
+
+    r7 外審 P1:第一版是「`git add` 收據 → `git commit` → `push_committed_state()`」。
+    那等於把兩種**相反**的持久性語意綁在同一個發佈原語上:
+
+      * 整批 state —— **不可以**立刻發佈,要等 `test_state_schema_contract`
+        通過(`STATE_PUSH_DEFERRED=1` 那道閘門的全部意義:信可以先寄,
+        但壞掉的 state 不准進 main);
+      * 寄送收據 —— **必須**立刻發佈,而且要能在後續 state 契約失敗時存活。
+
+    `git push` 推的是分支 HEAD,而 git 不可能只推 C 不推它的祖先 B。
+    所以只要收據 commit 的祖先裡有「尚未通過契約的 state commit」,
+    收據就會**順帶把它帶上 main**,那道閘門就沒了。今天的呼叫順序剛好
+    讓收據先發生 —— 但那是順序的巧合,不是原語的不變量:誰把 persist
+    往前挪一點,保護就消失,而且不會有任何錯誤訊息。
+
+    改用 plumbing 從 **origin/main 的樹** 直接長出一個只差收據那一個檔的
+    commit,再 `push <sha>:main`。工作區 HEAD 是什麼完全不參與 ——
+    這樣「發佈收據」與「發佈整批 state」在結構上就不可能互相夾帶。
+
+    回傳 True = 真的推了;False = 內容與遠端相同,不需要推。
+    """
+    import tempfile
+
+    def _git(*args, **kw):
+        env = dict(os.environ, **kw.pop("env_extra", {}))
+        # **編碼要明講**:`text=True` 在 Windows 走地區編碼(實測 gbk),
+        # git 回顯中文 commit 訊息時解碼失敗 —— stdout 會變成 `None`
+        # 而 returncode 仍是 0(錯得很安靜)。runner 是 UTF-8 才碰巧沒事。
+        return subprocess.run(["git", *args], cwd=cwd, env=env,
+                              capture_output=True,
+                              encoding="utf-8", errors="replace",
+                              timeout=kw.pop("timeout", 60), **kw)
+
+    def _out(*args, **kw):
+        r = _git(*args, **kw)
+        if r.returncode != 0:
+            raise RuntimeError(f"git {args[0]} 失敗: {r.stderr.strip()[:200]}")
+        return r.stdout.strip()
+
+    _out("fetch", "--quiet", "origin", branch)
+    base = _out("rev-parse", "FETCH_HEAD")
+    blob = _out("hash-object", "-w", "--", str(local_file))
+    # 遠端已經是同一份內容就不推(重複 commit 沒有意義,也省一次寫入)
+    cur = _git("rev-parse", f"{base}:{RECEIPT_REPO_PATH}")
+    if cur.returncode == 0 and cur.stdout.strip() == blob:
+        print("[receipt] 遠端收據已是最新,不重複發佈")
+        return False
+    with tempfile.TemporaryDirectory() as tmp:
+        idx = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
+        _out("read-tree", base, env_extra=idx)
+        _out("update-index", "--add", "--cacheinfo",
+             f"100644,{blob},{RECEIPT_REPO_PATH}", env_extra=idx)
+        tree = _out("write-tree", env_extra=idx)
+    author = {"GIT_AUTHOR_NAME": "morning-report-bot",
+              "GIT_AUTHOR_EMAIL": "actions@github.com",
+              "GIT_COMMITTER_NAME": "morning-report-bot",
+              "GIT_COMMITTER_EMAIL": "actions@github.com"}
+    commit = _out("commit-tree", tree, "-p", base, "-m",
+                  "寄送收據 [skip ci]", env_extra=author)
+    _out("push", "origin", f"{commit}:refs/heads/{branch}")
+    print("[receipt] 已發佈寄送收據(獨立於整批 state)")
+    return True
 
 
 def deliver_report(html: str, subject: str, state_entry: Optional[dict],
@@ -24053,7 +24112,13 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
                 attempted=False, success=False,
                 skipped_reason="weekend_no_new_content")
             _git_commit_and_push_state(
-                [str(RUN_MANIFEST_FILE)],
+                [str(RUN_MANIFEST_FILE),
+                 # **收據要一起 commit**(r8 外審):它已經被獨立推上遠端,
+                 # 本機卻還是 untracked。之後這一批 state 推的時候會是
+                 # non-fast-forward → `pull --rebase --autostash`,而
+                 # autostash **不含 untracked** —— git 拒絕用遠端版本蓋掉
+                 # 本機那個未追蹤的同名檔,整批 state 於是推不上去、job 變紅。
+                 str(DELIVERY_RECEIPT_FILE)],
                 f"chore: weekend no-content manifest "
                 f"{now_tpe.strftime('%Y-%m-%d')} [skip ci]")
         except Exception as e:
@@ -24159,6 +24224,7 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         [str(PODCAST_DIGEST_FILE),
          str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
          str(RUN_MANIFEST_FILE),   # r1(Codex,P1):不列進來就等於沒寫(看門狗讀 repo)
+         str(DELIVERY_RECEIPT_FILE),  # r8 外審:見上方週日無內容路徑的說明
          str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")

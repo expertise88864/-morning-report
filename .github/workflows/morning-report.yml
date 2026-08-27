@@ -23,6 +23,10 @@ on:
     # 手動觸發永遠跑得動(那是使用者的救援管道)。
     # 兩班共用同一個 concurrency group,所以第二班會排隊等第一班寫完
     # state 才開始,讀得到最新的 manifest。
+    # 2026-08-28:08/26 起連四個觸發點 GitHub 完全沒有建立 run(看門狗的
+    # 23:45Z 同樣全滅,podcast 的四班照常)—— workflow 檔在第一次失蹤前
+    # 零變更,這是 GitHub 端排程註冊卡死的已知長尾問題;push 一次
+    # workflow 檔變更可強制重新註冊。此註解就是那次 touch。
     - cron: "7 22 * * *"    # 06:07 TPE — 主要
     - cron: "47 22 * * *"   # 06:47 TPE — 補漏跑(已寄過就空轉結束)
   workflow_dispatch:   # 允許手動觸發測試

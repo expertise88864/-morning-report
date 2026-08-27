@@ -14,6 +14,7 @@ on:
     # 假警報會讓人把看門狗關掉,那比沒有看門狗更糟。
     # 00:05 UTC = 08:05 台北,留 23 分鐘餘裕。餘裕由
     # `tests/test_batch_backup_cron.py` 用兩個 workflow 的實際值算出來釘住。
+    # 2026-08-28:排程註冊卡死的 touch(說明見 morning-report.yml 的 cron 註解)
     - cron: "5 0 * * *"
   workflow_dispatch:
 

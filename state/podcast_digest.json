@@ -538,6 +538,41 @@
     "name": "游庭皓的財經皓角",
     "episodes": [
       {
+        "guid": "tag:soundcloud,2010:tracks/2389157007",
+        "title": "2026/8/27(四)輝達財報再超標!追高意願低?美股為何原地踏步?【早晨財經速解讀】",
+        "published": "Thu, 27 Aug 2026 01:12:35 +0000",
+        "processed_at": "2026-08-27T12:25:24Z",
+        "digest": {
+          "summary_points": [
+            "主持人強調輝達財報最大意義並非超預期，而是客戶結構擴散：超大雲端公司營收487億美元、其他AI/企業/主權AI客戶403億美元，顯示AI基礎建設不再是少數CSP軍備競賽，外溢效果明顯。",
+            "主持人認為輝達Q3營收指引1080億美元（高於預期1042億）且剔除中國業務後仍能達千億，並預估2027年營收將成長70%，以目前低本益比而言股價有上漲空間，但因市值太大，右側追買意願低。",
+            "主持人點出真正關鍵是輝達將採購承諾從1190億暴增至2790億美元，提前鎖定記憶體供應，顯示其比任何人更看好AI；毛利率因記憶體漲價可能從75%下滑至71-72%，但不代表失去定價能力。",
+            "主持人分析輝達面對四面競爭（自研ASIC、博通、Marvell等）但市佔率仍90%，且營收增速70%高於AMD（40%）、博通（30%）、Intel（<10%），認為是增量市場競爭，輝達護城河在規模、供應鏈、資本實力與台積電先進製程。",
+            "主持人稱最大風險是表外財務：科技巨頭表外AI承諾合計達3.1兆美元，輝達變金融工具為客戶提供擔保；自由現金流轉負主因資料中心沒蓋完，不是需求不足，預估2027年底至2028年初翻正，真正變數是州政府監管延後建置。",
+            "主持人操作思路：輝達今年股價僅漲5-12%，本益比33倍為五年來最便宜，左側買盤隨時可能浮現，右側追買意願低；他個人偏樂觀，但強調投資應分散風險，不要單押個股。"
+          ],
+          "tickers": [
+            {
+              "name": "輝達",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為輝達財報強勁且本益比33倍為五年來最便宜，左側買盤隨時可能浮現，但因市值太大右側追買意願低，他個人偏樂觀。"
+            },
+            {
+              "name": "台積電",
+              "code": "2330",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為所有AI晶片公司最終都高度仰賴台積電先進製程與封裝，台積電是輝達與其他AI晶片競爭者的關鍵護城河。"
+            }
+          ],
+          "market_view": "主持人對AI長線前景樂觀，認為消費電子需求疲弱但所有需求集中在AI，AI資本支出未見降溫；市場最大變數在資料中心建置進度與州政府監管風險。",
+          "action_view": "輝達本益比33倍、五年來最便宜，左側買盤可能隨時浮現，但右側追買意願低；主持人個人偏樂觀，建議可適度佈局但必須分散風險，不要單押個股。",
+          "notable_quote": "再好的雞蛋，也不值得把所有廚房都只設計成一種蛋殼，投資也是如此，你不要把雞蛋放在同一個籃子裡頭。"
+        }
+      },
+      {
         "guid": "tag:soundcloud,2010:tracks/2388345195",
         "title": "2026/8/26(三)美債回購能 救川普選情?日本缺工 歐洲缺膽 誰能突圍?【早晨財經速解讀】",
         "published": "Wed, 26 Aug 2026 01:10:33 +0000",
@@ -1005,36 +1040,6 @@
           "notable_quote": "你相不相信AI能夠達成生產力的提升？而且在未來幾年，你認為現在建置的算力中心跟不上你的AI需求，這是最大的一個起見點。"
         },
         "shown_at": "2026-08-12T22:52:00Z"
-      },
-      {
-        "guid": "tag:soundcloud,2010:tracks/2379425969",
-        "title": "2026/8/11(二)AI舉債時代 自由現金流能翻正?外資再加空單!台股還能攻?【早晨財經速解讀】",
-        "published": "Tue, 11 Aug 2026 01:08:05 +0000",
-        "processed_at": "2026-08-11T03:50:45Z",
-        "digest": {
-          "summary_points": [
-            "主持人預判AI資料中心將在2028年提前看到自由現金流全面翻正，屆時算力需求將推動新一輪資本支出，出口至少還有2-3年供給瓶頸期。",
-            "外資今年賣超台股1.6兆，但本地散戶、ETF與退休基金買盤已能完全接走外資拋貨，市場定價結構改變，不能再以外資買賣做為漲跌判斷。",
-            "台積電7月營收年增45%並上修全年展望至40%以上，證實AI晶片需求仍強，且資料中心建置潮仍有2-3年，有利台股及出口續揚。",
-            "台灣出口連續33個月成長，前7月累計年增44.7%，帶動上市櫃上半年營收達30.1兆元，科技業帶動金融業繁榮，形成內部資金循環。",
-            "零股交易6年暴增70倍，定期定額ETF化讓散戶不易被洗掉，但個人股票放款半年增1兆元，金管會已提高融資預警線至150%以控制風險。",
-            "台灣通膨連續三個月高於2%警戒線，央行理事主張立即升息以壓抑股市與通膨，市場已開始押注升息，10年期公債殖利率衝上2008年以來新高。",
-            "美國科技巨頭大量發債籌資，殖利率高達7-8%，但主持人認為AI正處「先求有再求好」階段，基礎設施不足比效率不足更致命，建設完成後營收有望回饋。"
-          ],
-          "tickers": [
-            {
-              "name": "台積電",
-              "code": "2330",
-              "market": "TW",
-              "direction": "bullish",
-              "reason": "營收暴增上修展望，主持人認為AI資料中心需求將支撐未來2-3年，有利台股及出口。"
-            }
-          ],
-          "market_view": "台股在外資持續賣超下，由本地資金支撐續強，但通膨升溫與央行可能升息增添短線壓力，長線仍受AI出口帶動看好。",
-          "action_view": "關注AI出口受惠股，但須留意槓桿風險與央行升息動向，切勿被外資賣超誤導而恐慌。",
-          "notable_quote": "投資最危險的，不是看錯數字，是數字看對了，但解釋錯原因了。"
-        },
-        "shown_at": "2026-08-11T22:58:19Z"
       }
     ]
   },
@@ -4833,6 +4838,53 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74714896",
+        "title": "Nvidia’s biggest hug yet",
+        "published": "Thu, 27 Aug 2026 10:34:38 +0000",
+        "processed_at": "2026-08-27T11:56:08Z",
+        "digest": {
+          "summary_points": [
+            "Nvidia 財報與財測優於預期，並傳出以 129 億美元收購 AI 平台 Hugging Face，盤前上漲 7%，顯示 AI 需求動能仍強。",
+            "Salesforce 第二季 AI 相關營收明顯成長，並與 Anthropic 建立新合作關係，調整後 EPS 達 5.90 美元，盤前大漲 11%。",
+            "Wendys 因 Trian 基金放棄提出私有化收購，盤前下跌 13%，新執行長 Bob Wright 將推動五點轉型計畫。",
+            "CrowdStrike 第二季 ARR 年增 25%，財報優於預期，股價上漲 10%，顯示資安需求持續強勁。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報與財測超預期，並擬收購 Hugging Face 強化 AI 生態系地位"
+            },
+            {
+              "name": "Salesforce",
+              "code": "CRM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "AI 相關營收成長顯著，並與 Anthropic 合作，市場反應正面"
+            },
+            {
+              "name": "Wendy's",
+              "code": "WEN",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Trian 放棄私有化收購，股價大跌，營運轉型仍待觀察"
+            },
+            {
+              "name": "CrowdStrike",
+              "code": "CRWD",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Q2 ARR 年增 25%，財報優於預期，股價上漲"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": ""
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74699984",
         "title": "Meta settles kids addiction case for $12.7B",
         "published": "Wed, 26 Aug 2026 17:21:47 +0000",
@@ -5261,30 +5313,6 @@
           "notable_quote": "Essentially, the government is willing to buy up twice as much of the old, hard-to-trade, long-dated debt to keep the market from seizing up, some are calling it QE Lite."
         },
         "shown_at": "2026-08-19T22:37:05Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74306210",
-        "title": "Canada buys 72 hours",
-        "published": "Wed, 19 Aug 2026 10:29:04 +0000",
-        "processed_at": "2026-08-19T14:05:59Z",
-        "digest": {
-          "summary_points": [
-            "BTIG 分析師警告，美股交易越來越像一場因子音樂椅遊戲，投資者應在音樂停止前先就定位，暗示市場可能出現輪動或回調。"
-          ],
-          "tickers": [
-            {
-              "name": "Lazy Boy",
-              "code": "LZB",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "第一季財報遜於預期，且第二季營收展望低於市場共識，股價盤前大跌19%"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "BTIG says investors should secure a chair before the music stops."
-        },
-        "shown_at": "2026-08-19T22:37:05Z"
       }
     ]
   },
@@ -5321,6 +5349,27 @@
   "oddlots": {
     "name": "Odd Lots",
     "episodes": [
+      {
+        "guid": "23fe5a8c-d1c2-4e74-975b-b4b30028ce5d",
+        "title": "Kansas City Fed President Jeffrey Schmid on the First Jackson Hole of the Warsh Era",
+        "published": "Thu, 27 Aug 2026 11:30:00 +0000",
+        "processed_at": "2026-08-27T12:30:28Z",
+        "digest": {
+          "summary_points": [
+            "堪薩斯城聯準銀行總裁 Jeff Schmid 在 Jackson Hole 表示,美國經濟正以 2%–3.5% 成長,殖利率曲線已大致正常化,長天期利率受 AI 與資料中心建設帶動的信貸需求影響。",
+            "他認為資料中心建設已對其他產業產生排擠效應,例如鋼、銅等原物料與機械設備需求,聯準會必須拆解成長中由科技與 AI 驅動的成分,才能讓通膨回到 2%。",
+            "他對經濟擴張持續性樂觀,但指出嬰兒潮世代每年約 400 萬人退休,勞動力結構轉變是重大挑戰,並主張用 AI 加速知識傳承,不能等員工到 55、65 歲才學會。",
+            "關於長天期債券殖利率,他認為這是商業與公共部門競逐信貸的供需結果;殖利率上升會對資本決策產生行為影響,但 25 個基點的政策變動很少讓企業取消長期建廠計畫,反而對短期庫存融資決策更敏感。",
+            "他直言通膨「必須處理」,目前物價再度升至 3% 中段,且認為現行利率政策其實相當寬鬆;他支持主席 Warsh 對 2% 通膨目標的承諾。",
+            "他解釋自己過去投票反對決議的邏輯:異議是表達對「通膨 vs 充分就業」兩大任務風險權重與多數意見不同,而非個人意氣之爭。",
+            "關於 Warsh 的任務小組,他表示目前各區域聯準銀行總裁尚未被直接諮詢,真正的對話要等研究成果出爐;兩位主持人評論:市場對新主席的反應函數仍存在模糊空間,而眼前最迫切的問題仍是通膨高於 3%。"
+          ],
+          "tickers": [],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "We clearly have had a bit of a surge into the mid-threes. It has to be addressed."
+        }
+      },
       {
         "guid": "568c6e3c-2159-45c2-8e4d-b4ad011d7c22",
         "title": "The Nigerian Industrial Behemoth That Could Reshape the African Economy",
@@ -5580,31 +5629,6 @@
           "notable_quote": "It is a stealth taxpayer bailout."
         },
         "shown_at": "2026-07-31T22:59:06Z"
-      },
-      {
-        "guid": "519b7338-f6ec-4d99-a8a2-b496012a0db1",
-        "title": "How the Iranian Economy Actually Works",
-        "published": "Thu, 30 Jul 2026 08:00:00 +0000",
-        "processed_at": "2026-07-30T10:08:04Z",
-        "digest": {
-          "summary_points": [
-            "伊朗的經濟是「黑手黨國家」，公民根據對體系的忠誠度獲得回報，而非平等。",
-            "石油仍是主要收入來源，但伊朗也擁有鋼鐵、農業等多元化的產業。",
-            "國營企業（宗教基金會）和革命衛隊控制經濟的很大部分，能免稅進口貨物且不受審計。",
-            "科技新創產業在2015年核協議後蓬勃發展，但成功的公司被迫將股份出售給與安全部門相關的實體以換取保護。",
-            "新創公司如DigiKala（伊朗的亞馬遜）和Snap（叫車服務）最終將股權讓給了宗教基金會等實體。",
-            "政府內部的派系鬥爭造成混亂；即使與某個實體達成協議，也無法保證不受其他派系侵害。",
-            "伊朗的最高領袖優先考慮意識形態而非經濟成長，即使有利也拒絕外國投資。",
-            "在2025年的伊朗戰爭中，伊朗較高的痛苦承受力（高通膨、高失業率）使其能比美國撐得更久。",
-            "美國假設經濟整合會帶來自由化，但失敗了，因為伊朗優先考慮軍事和意識形態目標。",
-            "來自競爭派系（革命衛隊、宗教基金會、神職人員）的不確定性比單純的腐敗對企業更有害。"
-          ],
-          "tickers": [],
-          "market_view": "伊朗經濟由類似黑手黨的國家結構主導，忠誠度決定獲取資源的機會，而相互競爭的派系為企業帶來極大的不確定性。",
-          "action_view": "",
-          "notable_quote": "Iran's Supreme Leader didn't have the absolute power. He needs to manage between all different gods and goddesses. In the case of Odysseus, you see that he is supported by some gods to go back home, but some angry gods are trying to block his return... a businessman in Iran is just like, it's a real odyssey."
-        },
-        "shown_at": "2026-07-30T23:04:08Z"
       }
     ]
   },
@@ -7112,6 +7136,43 @@
   "fwdguidance": {
     "name": "Forward Guidance",
     "episodes": [
+      {
+        "guid": "3655ef36-a18c-11f1-aeca-cbd655fc898d",
+        "title": "Druck Calls Out Bessent & Will Jackson Hole Derail The Debasement Trade? | Weekly Roundup",
+        "published": "Thu, 27 Aug 2026 10:00:00 -0000",
+        "processed_at": "2026-08-27T12:38:29Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為，財政部透過買回公債與動用 TGA 干預債市，短期壓低殖利率，但無法解決赤字與債務結構問題，最終將導致通膨與貶值交易持續。",
+            "針對 Druckenmiller 批評 Bessent 的買回公債政策，主持人解讀這是精心安排的輿論操作，將責任導向國會，並非真的反對 Bessent，且雙方私下可能已協調。",
+            "主持人預期 Jackson Hole 會議中，Fed 主席 Warsh 不太可能發表強硬鷹派言論，因為這與政府壓低殖利率的方向衝突，會議結果可能是「nothing burger」。",
+            "主持人持續看多黃金與比特幣等「無法印刷」的資產，認為在政府持續干預與法幣貶值環境下，這些資產將繼續上漲。",
+            "主持人質疑 Anthropic 的 IPO，認為其宣稱營收可能超過 30 兆美元荒謬至極，AI 前沿模型護城河不穩，面臨開源與中國模型的激烈競爭，泡沫跡象與 2021 年加密幣高點相似。",
+            "主持人指出，中國模型的使用量直線上升，美國可能在 AI 競賽中落後；價值累積將流向應用層而非基礎設施，目前基礎設施估值本末倒置。",
+            "主持人警告，AI 泡沫可能演變為系統性風險，若民主黨贏得國會，政府救助案可能受阻，債務上限危機與 AI 危機可能同時爆發，政治不確定性高。",
+            "操作層面，主持人建議持有抗貶值資產，不要做空債券，且在勞工節前不宜做出激進配置，因為短線流動性低且政策干預強烈。"
+          ],
+          "tickers": [
+            {
+              "name": "Anthropic",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為其 IPO 估值荒謬，AI 護城河不穩，將面臨開源模型與中國模型競爭，泡沫可能破裂。"
+            },
+            {
+              "name": "SpaceX",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人提到 SpaceX 上市後未回到發行價，顯示大規模 IPO 後表現差，Anthropic 可能重蹈覆轍。"
+            }
+          ],
+          "market_view": "主持人認為短期市場受政策強力干預，債市與油市風險被壓制，整體風險偏向下檔有撐，但長期債務與赤字問題未解，通膨與貶值壓力將持續，市場結構脆弱。",
+          "action_view": "操作上，主持人偏向持有黃金、比特幣等無法印刷的資產，避免做空債券；短期內（勞工節前）不宜積極交易，等待更多催化劑。",
+          "notable_quote": "they're debasing fiat and they're telling you what they're going to do. So until then, like I think you can rest on it."
+        }
+      },
       {
         "guid": "9909eeee-9c27-11f1-ab19-cf682a15597e",
         "title": "Treasury-Led Financial Repression Is Ushering In A Debasement Regime | Weekly Roundup",

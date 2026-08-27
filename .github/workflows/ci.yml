@@ -58,7 +58,7 @@ jobs:
   dry-run-preview:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 40   # 第三十一輪外審 P2-5:要 > 應用自己的 2100s 預算+安裝/上傳邊際,否則程式沒超預算卻被 runner 先殺
+    timeout-minutes: 50   # 第三十一輪外審 P2-5:要 > 應用自己的預算+安裝/上傳邊際(2026-08-27 隨 2700s 放寬)
     # **這個 job 不容忍任何失敗**(第三輪外審 F1)。
     #
     # 我前兩版都在替 `continue-on-error` 辯護,理由是「連外部服務,

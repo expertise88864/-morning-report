@@ -128,3 +128,25 @@ def test_the_watchdog_uses_the_same_freshness_rule_as_the_guard(monkeypatch):
     assert w._too_old(now, "2026-08-27 04:30", 3.5)
     monkeypatch.setattr(w, "MAX_AGE_HOURS", "壞掉")
     assert not w._too_old(now, "2026-08-27 04:30", 3.5), "壞值應退回日期判準"
+
+
+def test_the_three_budget_layers_fit_inside_each_other():
+    """2026-08-27 使用者拍板「加時間」(LLM 1200→1800):三層預算要一起
+    動 —— 只動 LLM 那層的話,run 預算或 job timeout 會先把它砍掉,
+    多出來的時間一秒都用不到(第三十一輪 P2-5 的同一個形狀)。"""
+    from pathlib import Path
+
+    import llm_config as lc
+    import yaml
+    base, _ = lc.timeout_base("deepseek")
+    llm_total = lc.timeout_for("max", base)
+    assert llm_total >= 1800, llm_total
+    assert lc.MAX_TOTAL_TIMEOUT >= llm_total
+    # run 預算要裝得下「LLM 全額 + 抓取/渲染的實測 ~800s」
+    assert mr.RUN_BUDGET_SECONDS >= llm_total + 800, mr.RUN_BUDGET_SECONDS
+    # job timeout 要裝得下 run 預算 + 安裝/上傳邊際
+    root = Path(mr.__file__).resolve().parent / ".github" / "workflows"
+    wf = yaml.safe_load((root / "morning-report.yml").read_text(
+        encoding="utf-8"))
+    job_s = int(wf["jobs"]["send-report"]["timeout-minutes"]) * 60
+    assert job_s > mr.RUN_BUDGET_SECONDS + 120, (job_s, mr.RUN_BUDGET_SECONDS)

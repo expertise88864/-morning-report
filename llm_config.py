@@ -103,7 +103,14 @@ PROVIDER_TIMEOUT_BASE = {
     # 拉到 (300, 150):max 之下總額 900s、單次 450s,約是實測值的 2.6 倍。
     # 2026-08-07 再拉總額基準到 400(max 之下 1200s):flash + 1M payload
     # 單次 310-370s,900s 裝不下「兩輪特化 + legacy」(見 MAX_TOTAL_TIMEOUT)。
-    "deepseek": (400.0, 150.0),
+    # 2026-08-27 使用者拍板「加時間」:400 → 600(max 之下 1800s)。
+    # 08/25~27 連三班的實測形狀:第一次特化 385~520s + 修補一輪 206~295s
+    # 已貼 1200s,semantic 額度 2 只跑得了 1 輪 —— 不是次數用完是時間。
+    # 1800 = 首輪(~520s)+ 兩輪修補(~600s)+ legacy 備援(~450s)+ 裕度。
+    # 邊際成本是**條件性**的:多的那輪 slim 修補約 $0.03~0.04,一次過的
+    # 日子一毛不多花;代價是最壞情況信晚 ~20 分鐘(RUN_BUDGET 與 job
+    # timeout 同批放寬)。
+    "deepseek": (600.0, 150.0),
 }
 DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
 
@@ -113,7 +120,10 @@ DEFAULT_TIMEOUT_BASE = (180.0, 75.0)
 #: 900 之下「兩輪特化 + legacy 備援」在結構上不可能 —— E2E 第五次實測
 #: 兩輪特化跑完,legacy 直接「總時間預算已耗盡」,信只剩 emergency 備援字。
 #: 1200 = 兩輪(~740s)+ legacy(~450s);job timeout-minutes 40 仍有餘裕。
-MAX_TOTAL_TIMEOUT = 1200.0
+#: 2026-08-27:1200 → 1800(使用者拍板「加時間」,理由見 deepseek 基準的
+#: 註解)。RUN_BUDGET_SECONDS 2100→2700、兩個 workflow 的 timeout-minutes
+#: 40→50 同批放寬 —— 三層預算要一起動,只動一層等於沒動。
+MAX_TOTAL_TIMEOUT = 1800.0
 
 
 def timeout_base(provider: str) -> tuple:

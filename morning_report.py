@@ -591,7 +591,8 @@ def _llm_config_resolved() -> dict:
 # 記整體 deadline,昂貴且「非核心」的步驟(全文擷取、LLM 事件抽取)在動工前檢查剩餘時間,
 # 不足就跳過、用當次已有資料組信寄出——寧可少一塊資料,不可整封信被 timeout 吞掉。
 # 核心(行情/預測/LLM 主分析/寄信)永遠執行;主分析本身另有 LLM_TOTAL_TIMEOUT 保護。
-RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "2100"))
+# 2026-08-27:2100 → 2700(LLM 總預算 1200→1800 的連動;三層一起放寬)。
+RUN_BUDGET_SECONDS = float(os.environ.get("RUN_BUDGET_SECONDS", "2700"))
 #: 有預測的**公開**標的。除息偵測與事後校正都以這組為準。
 #: 第十一輪 P2-3:原本是 main() 裡的字面量,拆相位時它得跨兩個相位 ——
 #: 與其把一份常數當成相位的回傳值(回傳值會讓人以為它是**算**出來的),

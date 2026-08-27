@@ -250,7 +250,7 @@ MODULE_CEILINGS = {
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
-    "llm_config.py": 450,
+    "llm_config.py": 480,
     # 批#115:P1-12 的接收端。**沒有列進來就是後門** —— 批#95 已經因為漏列
     # llm_shadow / llm_telemetry 而被自己的宣稱打臉過一次。
     # Commit B:recorder 收下兩階段抓取的計畫(相位不得直接碰

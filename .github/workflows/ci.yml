@@ -1,6 +1,6 @@
 name: CI
 
-# 與每日寄信的 morning-report.yml 完全獨立；CI 不會寄信、不影響排程。
+# 與每日寄信的 morning-report-a.yml 完全獨立；CI 不會寄信、不影響排程。
 on:
   push:
   pull_request:
@@ -106,7 +106,7 @@ jobs:
         env:
           DRY_RUN: "1"
           RUN_NONCE: ${{ steps.nonce.outputs.value }}
-          # 以下各項**與 morning-report.yml 逐字相同** —— canary 的價值
+          # 以下各項**與 morning-report-a.yml 逐字相同** —— canary 的價值
           # 全部來自「跑的是同一條路」(外審 P2-1;2026-08-19 第三輪 P2-4:
           # EXTRACTOR_PROVIDER/抽取器模型/timeout 也要鏡射 —— repo variable
           # 設了 EXTRACTOR_PROVIDER=gemini 時,少了這一項的 canary 跑的是

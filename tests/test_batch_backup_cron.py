@@ -81,7 +81,7 @@ def test_the_workflow_really_has_a_backup_trigger():
 
     import yaml
     root = Path(mr.__file__).resolve().parent / ".github" / "workflows"
-    wf = yaml.safe_load((root / "morning-report.yml").read_text(
+    wf = yaml.safe_load((root / "morning-report-a.yml").read_text(
         encoding="utf-8"))
     on = wf.get("on") or wf.get(True)
     crons = [str(c["cron"]) for c in on["schedule"]]
@@ -98,7 +98,7 @@ def test_the_workflow_really_has_a_backup_trigger():
     delay_allowance = 15          # 實測排程延遲 8~15 分
     latest_finish = (max(int(c.split()[1]) * 60 + int(c.split()[0])
                          for c in crons) + delay_allowance + job_cap)
-    wd = yaml.safe_load((root / "report-watchdog.yml").read_text(
+    wd = yaml.safe_load((root / "report-watchdog-a.yml").read_text(
         encoding="utf-8"))
     wd_on = wd.get("on") or wd.get(True)
     wd_cron = str(wd_on["schedule"][0]["cron"]).split()
@@ -146,7 +146,7 @@ def test_the_three_budget_layers_fit_inside_each_other():
     assert mr.RUN_BUDGET_SECONDS >= llm_total + 800, mr.RUN_BUDGET_SECONDS
     # job timeout 要裝得下 run 預算 + 安裝/上傳邊際
     root = Path(mr.__file__).resolve().parent / ".github" / "workflows"
-    wf = yaml.safe_load((root / "morning-report.yml").read_text(
+    wf = yaml.safe_load((root / "morning-report-a.yml").read_text(
         encoding="utf-8"))
     job_s = int(wf["jobs"]["send-report"]["timeout-minutes"]) * 60
     assert job_s > mr.RUN_BUDGET_SECONDS + 120, (job_s, mr.RUN_BUDGET_SECONDS)

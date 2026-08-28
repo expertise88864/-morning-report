@@ -41,7 +41,14 @@ for ((i = 1; i <= ATTEMPTS; i++)); do
   # rebase 失敗不要當場死:可能只是這一輪沒東西可 rebase(5xx 的情況),
   # 下一輪的 push 仍然值得試。真的推不上去由迴圈結束時的 exit 1 說話。
   git fetch origin || true
-  git pull --rebase --autostash || true
+  # **rebase 失敗要收拾乾淨**(2026-08-28 外審 P2)。原本只是 `|| true`:
+  # 真的撞到語意衝突時,工作區會停在「rebase in progress + 有衝突標記」,
+  # 下一輪的 push/pull 失敗語意就不再乾淨(看起來像網路問題,其實是卡住)。
+  # 中止之後至少回到可預期的狀態,最終仍以 `exit 1` 說「沒發佈成功」。
+  if ! git pull --rebase --autostash; then
+    echo "[push_state] rebase 沒過 —— 中止並回到乾淨狀態" >&2
+    git rebase --abort 2>/dev/null || true
+  fi
   sleep "${nap}"
 done
 

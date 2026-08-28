@@ -225,15 +225,21 @@ def test_url_scheme_check_still_rejects_deceptive_schemes():
     """縱深防禦的判準本身。
 
     批#86:線索追蹤**卡片**已移除(敘事連貫改由八/九段的「前情 → 今日進展」
-    寫法承擔),原本驗渲染層的那半段隨之刪除。但 `_is_web_url` 仍是帳本與
-    其他渲染共用的判準,而舊資料與手動編輯的 state 都可能帶著不合格的連結
+    寫法承擔),原本驗渲染層的那半段隨之刪除。但這個判準仍是帳本與
+    其他渲染共用的,而舊資料與手動編輯的 state 都可能帶著不合格的連結
     回流 —— 這條繼續釘住它。
+
+    2026-08-28 外審 P2:改名為 `safe_href` 並成為**全 repo 唯一**那一份。
+    先前叫 `_is_web_url`,而它在**生產碼裡沒有任何呼叫端** —— 只有這條
+    測試在守它。「測試守著一段沒接上的程式碼」比沒有防護更糟:它讓人
+    以為連結有把關,而 CWA 警特報、停班公告、體育連結當時只做了
+    `html.escape`(擋屬性逃逸,擋不住 `javascript:` scheme)。
     """
     for bad in ("httpx://evil", "httpjavascript:alert(1)", "javascript:x",
                 "ftp://x", "", None):
-        assert not ru._is_web_url(bad), f"{bad!r} 被放行"
+        assert not ru.safe_href(bad), f"{bad!r} 被放行"
     for good in ("https://a.com", "http://a.com/1"):
-        assert ru._is_web_url(good)
+        assert ru.safe_href(good) == good
 
 
 def test_followup_results_carry_the_target_entity(monkeypatch):

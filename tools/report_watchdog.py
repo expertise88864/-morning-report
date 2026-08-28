@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""晨報看門狗:07:00 檢查今天的信到底有沒有產出過。
+"""晨報看門狗:**台北 08:05** 檢查今天的信到底有沒有產出過。
+
+(時間隨補漏跑 cron 移過兩次;寫死在註解裡的舊時間會讓事故當下
+ 對錯時間軸 —— 2026-08-28 外審 P2 指出這裡與 workflow 都還停在 07:30。)
 
 **為什麼需要它(不是「多一層保險」而已)**:
-`.github/workflows/morning-report.yml` 的註解已經寫明殘餘風險——
+`.github/workflows/morning-report-a.yml` 的註解已經寫明殘餘風險——
 morning 與 podcast 共用 `state-writers` 這個 concurrency group 且不取消,
 一旦某個 run 在 **pending 階段**被第三個 run 擠掉,job 根本不會啟動,
 於是**連 workflow 內的告警步驟也不會執行**。那種失敗是完全無聲的:
@@ -187,7 +190,7 @@ def morning_runs_active_today(now: dt.datetime, get_json) -> int:
     try:
         data = get_json(
             "https://api.github.com/repos/expertise88864/-morning-report"
-            "/actions/workflows/morning-report.yml/runs?per_page=20")
+            "/actions/workflows/morning-report-a.yml/runs?per_page=20")
         today = now.strftime("%Y-%m-%d")
         n = 0
         for r in (data or {}).get("workflow_runs") or []:
@@ -265,7 +268,7 @@ def dispatch_runs_today(now: dt.datetime, get_json) -> int:
     try:
         data = get_json(
             "https://api.github.com/repos/expertise88864/-morning-report"
-            "/actions/workflows/morning-report.yml/runs"
+            "/actions/workflows/morning-report-a.yml/runs"
             "?event=workflow_dispatch&per_page=20")
         today = now.strftime("%Y-%m-%d")
         n = 0
@@ -355,7 +358,7 @@ def rescue(now: dt.datetime, rc: int, *, get_json=None, post=None) -> tuple:
         # **標記成補寄**:晨報那端據此套用同日冪等(執行當下再判一次)。
         # 沒有這個標記的 `workflow_dispatch` 是使用者的人工救援,不受擋。
         post("https://api.github.com/repos/expertise88864/-morning-report"
-             "/actions/workflows/morning-report.yml/dispatches",
+             "/actions/workflows/morning-report-a.yml/dispatches",
              {"ref": "main", "inputs": {"rescue": "true"}})
         return True, "已自動觸發補寄(workflow_dispatch)"
     except Exception as e:                  # noqa: BLE001

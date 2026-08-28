@@ -8714,20 +8714,15 @@ def _safe_source_url(raw) -> str:
 
     r1(Codex,P2):渲染端原本只檢查 `startswith("http")` —— `httpx://`、
     `httpjavascript:` 都會通過並變成可點的 href,可觸發外部協定處理程式。
-    改在**存進 state 之前**就篩掉,渲染端另有第二道(縱深防禦):
-    這個值會跨日回流,越早收斂越好。
+    改在**存進 state 之前**就篩掉:這個值會跨日回流,越早收斂越好。
+
+    2026-08-28 外審 P2:上面原本還寫著「渲染端另有第二道(縱深防禦)」
+    —— **那句話是假的**。渲染端那份 `_is_web_url` 零呼叫端,而 CWA 警特報、
+    停班公告、體育連結都只做了 `html.escape`。判準現在只有一份
+    (`render_utils.safe_href`),這裡委派過去,渲染端也真的接上了。
     """
-    from urllib.parse import urlsplit
-    u = str(raw or "").strip()
-    if not u or len(u) > 500:
-        return ""
-    try:
-        parts = urlsplit(u)
-    except ValueError:
-        return ""
-    if parts.scheme.lower() not in ("http", "https") or not parts.netloc:
-        return ""
-    return u
+    from render_utils import safe_href as _safe
+    return _safe(raw)
 
 
 #: 美股實體的**公司名別名**。r1(Codex,P1):批#72 第一版把 `GOOGLE_NEWS_COMPANIES`
@@ -15527,7 +15522,7 @@ def _render_weather_html(locs: list[dict],
     week_html = "".join(_week_line(loc) for loc in (locs or []))
     # CWA 警特報(颱風紅字、其餘橙字;可點官方頁;無警報日自動消失)
     alerts_html = "".join(
-        f"<br><a href='{_h.escape(str(a.get('link', '')))}' "
+        f"<br><a href='{_h.escape(_safe_source_url(a.get('link')), quote=True)}' "
         f"style='color:{'#b91c1c' if a.get('typhoon') else '#c2410c'};"
         f"text-decoration:none;font-weight:700;'>"
         f"{'🌀' if a.get('typhoon') else '⚠'} 氣象署:"
@@ -15539,7 +15534,7 @@ def _render_weather_html(locs: list[dict],
                    if signal else "")
     # 停班停課公告新聞(縣市公告即時,黑字可點;無公告日自動消失)
     susp_html = "".join(
-        f"<br><a href='{_h.escape(str(i.get('link', '')))}' "
+        f"<br><a href='{_h.escape(_safe_source_url(i.get('link')), quote=True)}' "
         f"style='color:#0f172a;text-decoration:none;font-weight:700;'>"
         f"🏫 {_h.escape(str(i.get('title', '')))}</a>"
         for i in (suspension or []))
@@ -18872,7 +18867,7 @@ def _render_local_news_html(local: dict) -> str:
         lines = "".join(
             "<div style='font-size:13px;color:#334155;line-height:1.85;margin-top:4px;'>"
             "<span style='color:#94a3b8;'>・</span>"
-            + (f"<a href='{_h.escape(str(i.get('link', '')))}' "
+            + (f"<a href='{_h.escape(_safe_source_url(i.get('link')), quote=True)}' "
                f"style='color:#0f172a;text-decoration:none;'>{_h.escape(str(i.get('title', '')))}</a>"
                if i.get("link") else _h.escape(str(i.get("title", ""))))
             + "</div>"

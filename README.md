@@ -3,7 +3,7 @@
 每天台灣時間 **約 06:00–06:20** 自動寄送一封繁體中文晨報。這不是新聞摘要器,而是一個
 **個人化情報平台**:美股/台股行情與預測、總經、法人籌碼、預測市場(Polymarket)、
 天氣與颱風警示、中彰投雲在地快訊、重大政策深度解析(行政院公報)、Podcast 重點、醫學文獻、
-體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 2,600+ 單元測試。
+體育賽事與賭盤——並內建模型自我校正、資料品質監控、來源降級與 3,000+ 單元測試。
 
 ---
 
@@ -58,7 +58,7 @@
 | `deepseek`(**預設**) | https://platform.deepseek.com | NT$3–10 | `DEEPSEEK_API_KEY`;固定 `deepseek-v4-flash` + 思考模式;**唯一走特化結構化路徑的 provider** |
 | `gemini`(免費備援) | https://aistudio.google.com/apikey | NT$0 | `GEMINI_API_KEY` |
 | `anthropic`(品質最佳) | https://console.anthropic.com | NT$30–46 | `ANTHROPIC_API_KEY` |
-| `openai`(GPT-5.6 系列) | https://platform.openai.com | NT$22(luna)–NT$220(terra) | `OPENAI_API_KEY`;**排程班沒有設這把金鑰**(2026-08-07 移除),要用需自行加進 workflow;走 legacy prompt,不走特化路徑 |
+| `openai`(GPT-5.6 系列) | https://platform.openai.com | NT$22(luna)–NT$220(terra) | `OPENAI_API_KEY`;排程班**有**注入這把金鑰(2026-08-07 曾移除,之後又加回;抽取器備援會用到);走 legacy prompt,不走特化路徑 |
 
 > 建議同時設 `GEMINI_API_KEY` 當免費備援;全部 LLM 失敗仍會寄出含行情與新聞的基本版。
 
@@ -135,7 +135,7 @@
 
 | Workflow | 排程(UTC) | 功能 |
 |---|---|---|
-| `morning-report.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
+| `morning-report-a.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
 | `podcast-digest.yml` | 每日 4 次 | faster-whisper 本地轉錄 + DeepSeek 摘要 → `state/podcast_digest.json` |
 | `gooaye-radar.yml` | 週三/六下午 | 股癌新集偵測 → 族群雷達獨立信 |
 | `ci.yml` | push/PR | ruff + py_compile + pytest;另有手動 dry-run-preview |

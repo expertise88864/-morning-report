@@ -492,8 +492,10 @@ def _link_source_citations(html: str, sources: list) -> str:
             elif score > second:
                 second = score
         if best >= 3 and best > second and best_u:
-            safe = _h.escape(best_u, quote=True)
-            return (f'<a href="{safe}" target="_blank" '
+            clean = safe_href(best_u)
+            if not clean:
+                return m.group(0)
+            return (f'<a href="{_h.escape(clean, quote=True)}" target="_blank" '
                     f'style="color:#64748b;text-decoration:underline;">'
                     f"{m.group(0)}</a>")
         return m.group(0)
@@ -1515,7 +1517,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             # 舊格式純字串(state 殘留/降級)→ 純文字,不崩
             if isinstance(t, dict):
                 title = htmllib.escape(str(t.get("title", "")))
-                link = htmllib.escape(str(t.get("link", "")))
+                link = htmllib.escape(safe_href(t.get("link")), quote=True)
                 if link:
                     return (f"<li style='margin:3px 0;'><a href='{link}' "
                             f"style='color:#0f172a;text-decoration:none;'>{title}</a></li>")
@@ -1570,14 +1572,37 @@ _NEWS_LABEL_TO_SECTION = {"世足": "世足", "中華職棒": "中職", "網球"
                           "MLB": "MLB", "NBA": "NBA"}
 
 
-def _is_web_url(raw) -> str:
-    """只有 http/https 才算可點的網址(scheme 需完全相等,不是 startswith)。"""
+def safe_href(raw) -> str:
+    """外部連結 → **可以放進 `href` 的乾淨 URL**;不合格回空字串。
+
+    **全 repo 只有這一份判準**(2026-08-28 外審 P2)。先前是:
+      * `morning_report._safe_source_url` 只用在**一個**寫入點(新聞進 state);
+      * `render_utils._is_web_url` 定義了但**零呼叫端**;
+      * 而 `_safe_source_url` 的 docstring 宣稱「渲染端另有第二道(縱深
+        防禦)」—— 那句話是假的。
+    於是 CWA 警特報、停班停課公告、體育賽事這些**外部來源**的連結,
+    渲染時只做了 `html.escape`。escape 擋得住屬性逃逸(`" onclick=`),
+    但擋不住 scheme:`javascript:alert(1)` escape 完還是
+    `javascript:alert(1)`,照樣是一個可點的 href。
+    信件用戶端多半會擋,但那是別人的邊界,不是我們的。
+
+    判準:scheme 必須**完全等於** http/https(不是 startswith ——
+    `httpx://`、`httpjavascript:` 都會通過 startswith)、要有 netloc、
+    長度有上限、不含控制字元(換行可以把屬性拆開)。
+    """
     from urllib.parse import urlsplit
+    url = str(raw or "").strip()
+    if not url or len(url) > 500:
+        return ""
+    if any(ord(c) < 32 or ord(c) == 127 for c in url):
+        return ""                       # 控制字元(換行可以把屬性拆開)
     try:
-        parts = urlsplit(str(raw or "").strip())
+        parts = urlsplit(url)
     except ValueError:
-        return False
-    return parts.scheme.lower() in ("http", "https") and bool(parts.netloc)
+        return ""
+    if parts.scheme.lower() not in ("http", "https") or not parts.netloc:
+        return ""
+    return url
 
 
 def _fmt_fact(raw) -> str:

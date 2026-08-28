@@ -50,7 +50,7 @@ echo.
 :stage
 echo === Staging files ===
 git add morning_report.py requirements.txt README.md .gitignore commit_push.bat
-git add tests .github/workflows/morning-report.yml .github/workflows/ci.yml
+git add tests .github/workflows/morning-report-a.yml .github/workflows/ci.yml
 REM old test script removed; untrack it if still tracked (no error if absent)
 git rm --cached --ignore-unmatch test_with_mock.py >nul 2>&1
 echo.

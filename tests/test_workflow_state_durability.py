@@ -133,7 +133,7 @@ def test_every_declared_provider_has_its_key_in_production():
     from pathlib import Path
     import llm_config as lc
     wf = _io.open(Path(__file__).resolve().parents[1]
-                  / ".github" / "workflows" / "morning-report.yml",
+                  / ".github" / "workflows" / "morning-report-a.yml",
                   encoding="utf-8").read()
     missing = [p for p in lc.VALID_PROVIDERS
                if f"{lc.PROVIDER_KEY_ENV[p]}:" not in wf]

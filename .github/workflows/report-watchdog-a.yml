@@ -1,6 +1,7 @@
+# 檔名的 `-a`:排程註冊急救(說明見 morning-report-a.yml 檔頭)。
 name: Morning Report Watchdog
 
-# 台北 07:30(UTC 23:30)——晨報排程是 22:00 UTC,Actions 常延遲 5-15 分,
+# 台北 08:05(UTC 00:05)——晨報排程是 22:07/22:47 UTC,Actions 常延遲 5-15 分,
 # 給足緩衝再檢查,避免因為排隊延遲就誤報。
 on:
   schedule:
@@ -14,7 +15,7 @@ on:
     # 假警報會讓人把看門狗關掉,那比沒有看門狗更糟。
     # 00:05 UTC = 08:05 台北,留 23 分鐘餘裕。餘裕由
     # `tests/test_batch_backup_cron.py` 用兩個 workflow 的實際值算出來釘住。
-    # 2026-08-28:排程註冊卡死的 touch(說明見 morning-report.yml 的 cron 註解)
+    # 2026-08-28:排程註冊卡死的 touch(說明見 morning-report-a.yml 的 cron 註解)
     - cron: "5 0 * * *"
   workflow_dispatch:
 
@@ -157,7 +158,7 @@ jobs:
                   "任何東西會發出這封信。\n")
           else:
               body = (
-                  "看門狗在台北 07:30 檢查 state/run_manifest.json,發現最後一次\n"
+                  "看門狗在台北 08:05 檢查 state/run_manifest.json,發現最後一次\n"
                   "執行的時間戳超過門檻,或有執行但沒有成功寄出。可能原因:\n"
                   "  - 排程 run 在 pending 階段被 state-writers group 的其他 run 擠掉\n"
                   "    (job 不會啟動,workflow 內的告警步驟也不會執行)\n"

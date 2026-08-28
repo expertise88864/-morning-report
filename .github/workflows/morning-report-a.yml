@@ -1,3 +1,7 @@
+# 檔名的 `-a` 是 2026-08-29 的排程急救:08/26 起本檔與看門狗的 cron 連三天
+# 完全沒有建立 run(touch 與 disable/enable 都救不回,podcast 正常)——
+# GitHub 端的排程註冊死透了,改檔名讓它被當成**全新的 workflow** 重建註冊。
+# 舊 run 歷史掛在舊檔名下。若再改名,記得同步 watchdog 的 API URL 與測試。
 name: Morning Report
 
 on:

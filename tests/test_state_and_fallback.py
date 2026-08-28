@@ -517,7 +517,7 @@ def test_state_schema_contract_has_a_daily_trigger():
     """
     from pathlib import Path
     text = (Path(__file__).resolve().parents[1]
-            / ".github" / "workflows" / "morning-report.yml"
+            / ".github" / "workflows" / "morning-report-a.yml"
             ).read_text(encoding="utf-8")
     assert "tests/test_state_schema_contract.py" in text, \
         "每日 workflow 沒有執行 state schema 契約 —— 它只會在有人 push 時被跑到"

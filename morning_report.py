@@ -25739,6 +25739,16 @@ DELIVERY_RECEIPT_FILE = STATE_ROOT / "delivery_receipt.json"
 FRESH_RECEIPT_ENV = "FRESH_DELIVERY_RECEIPT"
 
 
+def is_rescue_run() -> bool:
+    """這一班是不是**看門狗的自動補寄**(由 workflow input 傳進來)。
+
+    人工觸發不會設它 —— 兩者的語意不同:補寄是「代替沒跑起來的排程」,
+    所以要受同日冪等保護;人工觸發是「使用者明知今天寄過了,還是要再寄」。
+    """
+    return str(os.environ.get("RESCUE_RUN", "")).strip().lower() in (
+        "1", "true", "yes")
+
+
 def _manifest_delivery_verdict(data, now_tpe) -> str:
     """這一份 manifest 能不能證明「今天這班已經有結論」(不能回空字串)。"""
     if not isinstance(data, dict):
@@ -25791,7 +25801,17 @@ def already_delivered_today(now_tpe, *, run_kind: str = "",
     **只擋排程。** 手動觸發永遠跑得動:它是使用者用來補救的工具
     (08/26 儲值後就是這樣重寄的),擋掉它等於把救援管道也關上。
     """
-    if (run_kind or os.environ.get("GITHUB_EVENT_NAME") or "") != "schedule":
+    # **補寄班也要受擋**(r9 外審 P1)。看門狗的自動補寄走 `workflow_dispatch`,
+    # 而這道守衛原本只擋 `schedule` —— 等於我親手開了一條繞過自己守衛的路:
+    # 主班已經寄成功、看門狗因為 checkout 是舊快照而誤判 → 補寄班照跑 →
+    # **第二封信**。而且這是 TOCTOU:看門狗判斷的當下就算正確,補寄班要等
+    # 排隊才執行,那之間主班可能已經寄成功。所以判定要在**執行當下**再做
+    # 一次,不能只信觸發當下的判斷。
+    #
+    # 人工觸發(`rescue` 沒設或為 false)仍然永遠跑得動 —— 那是使用者的
+    # 救援管道,08/28 早上就是這樣補寄的,不能為了修這條把它一起封掉。
+    _kind = (run_kind or os.environ.get("GITHUB_EVENT_NAME") or "")
+    if _kind != "schedule" and not is_rescue_run():
         return ""
     # **證據取兩份的聯集**(r2 外審 P1):工作區那一份可能是排程事件建立
     # 當時的舊快照(主班還在跑、還沒 push),而 origin/main 那一份是當下的。

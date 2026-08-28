@@ -573,6 +573,8 @@ _NOT_AN_LLM_SWITCH = {
     # `FRESH_RUN_MANIFEST` 是備援班的同日冪等證據(origin/main 當下的
     # 寄送紀錄檔路徑,r2 外審 P1),不是 LLM 開關。
     "FRESH_RUN_MANIFEST", "FRESH_DELIVERY_RECEIPT",
+    # 這一班是不是看門狗的自動補寄(r9 外審 P1:補寄要受同日冪等擋)
+    "RESCUE_RUN",
     "STATE_PUSH_DEFERRED", "TZ",
 }
 

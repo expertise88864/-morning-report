@@ -145,7 +145,72 @@ AUTO_RESCUE = (os.environ.get("WATCHDOG_AUTO_RESCUE", "1").strip()
                not in ("0", "false", "no", ""))
 
 
+def fresh_conclusion(now: dt.datetime) -> str:
+    """origin/main **當下**說今天有結論了嗎(沒有回空字串)。
+
+    看門狗讀的是 checkout 裡的 manifest,而排程觸發的 checkout 檢出的是
+    **排程事件建立當時**的 commit —— 主班在那之後才寄成功的話,看門狗
+    看不到,於是誤判「今天沒寄」而去補寄(r9 外審 P1)。
+    這裡讀 workflow 在 job 內 fetch 出來的那兩份(檔案路徑由環境變數傳),
+    Python 不自己跑 git:測試就不會碰網路。
+    """
+    for env in ("WATCHDOG_FRESH_RECEIPT", "WATCHDOG_FRESH_MANIFEST"):
+        path = (os.environ.get(env) or "").strip()
+        if not path:
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError, UnicodeDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        if str(data.get("date") or "")[:10] != now.strftime("%Y-%m-%d"):
+            continue
+        d = data.get("delivery")
+        if not isinstance(d, dict):
+            continue
+        if d.get("success"):
+            return f"origin/main 說今天已寄出({d.get('run_kind') or '?'})"
+        if str(d.get("skipped_reason") or "").strip():
+            return f"origin/main 說今天刻意不寄({d['skipped_reason']})"
+    return ""
+
+
+def morning_runs_active_today(now: dt.datetime, get_json) -> int:
+    """今天(台北)還在排隊/執行中的晨報 run 有幾個。讀不到回 **-1**。
+
+    **check-time ≠ execution-time**(r9 外審):主班還在跑的時候 manifest
+    當然是舊的,看門狗若只看 manifest 就會判「沒寄」而去補 —— 而補寄班
+    排在主班後面,等它執行時主班早就寄成功了。有人在跑就不要插隊。
+    """
+    try:
+        data = get_json(
+            "https://api.github.com/repos/expertise88864/-morning-report"
+            "/actions/workflows/morning-report.yml/runs?per_page=20")
+        today = now.strftime("%Y-%m-%d")
+        n = 0
+        for r in (data or {}).get("workflow_runs") or []:
+            if str(r.get("status") or "") not in ("queued", "in_progress",
+                                                  "waiting", "requested",
+                                                  "pending"):
+                continue
+            stamp = str(r.get("created_at") or "")
+            if not stamp:
+                continue
+            when = dt.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=dt.timezone.utc).astimezone(TPE)
+            if when.strftime("%Y-%m-%d") == today:
+                n += 1
+        return n
+    except Exception as e:                  # noqa: BLE001
+        print(f"[watchdog] 查不出今天在跑的晨報({type(e).__name__})",
+              file=sys.stderr)
+        return -1
+
+
 def rescue_decision(rc: int, dispatch_runs_today: int, *,
+                    active_runs: int, fresh_verdict: str,
                     enabled: bool = True) -> tuple:
     """要不要自動補寄?回 `(要不要, 理由)`。**純函式,判準在這裡。**
 
@@ -167,6 +232,16 @@ def rescue_decision(rc: int, dispatch_runs_today: int, *,
     """
     if not enabled:
         return False, "自動補寄已關閉(WATCHDOG_AUTO_RESCUE)"
+    # **新鮮證據優先於 checkout**(r9 外審 P1):checkout 是排程事件建立
+    # 當時的快照,主班在那之後寄成功的話,rc 會是 1 而信其實已經到了。
+    if fresh_verdict:
+        return False, fresh_verdict
+    # **有人在跑就不要插隊**:主班還在跑時 manifest 當然是舊的,而補寄班
+    # 排在它後面 —— 等補寄班執行時主班早就寄成功了。查不出來也不補。
+    if active_runs != 0:
+        return False, ("查不出今天有沒有晨報在跑 —— 不知道的時候不寄"
+                       if active_runs < 0 else
+                       f"今天還有 {active_runs} 個晨報 run 在排隊/執行中")
     if rc != 1:
         return False, ("今天的信已經寄出(品質另計)" if rc == 2 else "一切正常")
     # **只有「確定是 0」才補**。第一版寫 `> 0`,於是查不出來的 `-1` 一路
@@ -265,16 +340,23 @@ def rescue(now: dt.datetime, rc: int, *, get_json=None, post=None) -> tuple:
     # **先問一次不需要網路的部分**。用 `0`(唯一可能回 True 的計數)去問:
     # 它都說不補的話,任何計數都不會補 —— 判準單調,所以這個提前退出
     # 不可能與下面那次的結論相反(判準仍然只有 `rescue_decision` 一份)。
-    if not rescue_decision(rc, 0, enabled=AUTO_RESCUE)[0]:
-        return False, rescue_decision(rc, 0, enabled=AUTO_RESCUE)[1]
+    fresh = fresh_conclusion(now)
+    pre = rescue_decision(rc, 0, active_runs=0, fresh_verdict=fresh,
+                          enabled=AUTO_RESCUE)
+    if not pre[0]:
+        return False, pre[1]
     try:
-        n = dispatch_runs_today(now, get_json)
-        go, why = rescue_decision(rc, n, enabled=AUTO_RESCUE)
+        go, why = rescue_decision(
+            rc, dispatch_runs_today(now, get_json),
+            active_runs=morning_runs_active_today(now, get_json),
+            fresh_verdict=fresh, enabled=AUTO_RESCUE)
         if not go:
             return False, why
+        # **標記成補寄**:晨報那端據此套用同日冪等(執行當下再判一次)。
+        # 沒有這個標記的 `workflow_dispatch` 是使用者的人工救援,不受擋。
         post("https://api.github.com/repos/expertise88864/-morning-report"
              "/actions/workflows/morning-report.yml/dispatches",
-             {"ref": "main"})
+             {"ref": "main", "inputs": {"rescue": "true"}})
         return True, "已自動觸發補寄(workflow_dispatch)"
     except Exception as e:                  # noqa: BLE001
         return False, f"自動補寄失敗({type(e).__name__})—— 需要人工補寄"

@@ -41,6 +41,23 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
+      # **決定要不要補寄之前,先看 origin/main 當下說什麼**(r9 外審 P1)。
+      # 排程觸發的 checkout 檢出的是「排程事件建立當時」的 commit ——
+      # 主班在那之後才寄成功的話,看門狗看不到,於是誤判「今天沒寄」
+      # 而去補一封。讀不到就不產生檔案(判準另有「有人在跑就不插隊」兜底)。
+      - name: 讀取 origin/main 當下的寄送紀錄
+        continue-on-error: true
+        run: |
+          set +e
+          git fetch --quiet origin main || exit 0
+          git show FETCH_HEAD:state/delivery_receipt.json \
+            > "$RUNNER_TEMP/wd_receipt.json" 2>/dev/null \
+            || rm -f "$RUNNER_TEMP/wd_receipt.json"
+          git show FETCH_HEAD:state/run_manifest.json \
+            > "$RUNNER_TEMP/wd_manifest.json" 2>/dev/null \
+            || rm -f "$RUNNER_TEMP/wd_manifest.json"
+          exit 0
+
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
@@ -76,6 +93,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WATCHDOG_AUTO_RESCUE: ${{ vars.WATCHDOG_AUTO_RESCUE || '1' }}
+          # origin/main 當下的結論(上一步 fetch 出來的)。checkout 是
+          # 排程事件建立當時的舊快照,只信它會誤判 → 多寄一封(r9 外審 P1)。
+          WATCHDOG_FRESH_RECEIPT: ${{ runner.temp }}/wd_receipt.json
+          WATCHDOG_FRESH_MANIFEST: ${{ runner.temp }}/wd_manifest.json
         run: python tools/report_watchdog.py --rescue
 
       - name: Alert

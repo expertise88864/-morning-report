@@ -30,6 +30,13 @@ on:
     - cron: "7 22 * * *"    # 06:07 TPE — 主要
     - cron: "47 22 * * *"   # 06:47 TPE — 補漏跑(已寄過就空轉結束)
   workflow_dispatch:   # 允許手動觸發測試
+    inputs:
+      rescue:
+        description: >-
+          看門狗的自動補寄(會套用同日冪等:今天已經寄成功就不重複寄)。
+          人工補寄請保持 false —— 那是使用者明知寄過了仍要再寄的救援管道。
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # 允許 push 回 state/history.json
@@ -119,6 +126,9 @@ jobs:
           # 寄送收據:SMTP 成功當下就發佈,不等整批 state 的 schema 契約。
           # 「已經寄出但 state 沒發佈成功」時只有它答得出來(r3 外審 P1)。
           FRESH_DELIVERY_RECEIPT: ${{ runner.temp }}/fresh_delivery_receipt.json
+          # 這一班是不是看門狗的自動補寄。是的話**同日冪等照樣適用** ——
+          # 補寄班要等排隊才執行,那之間主班可能已經寄成功(r9 外審 P1)。
+          RESCUE_RUN: ${{ inputs.rescue }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           # 收件者可設在 GitHub Variables（vars）或 Secrets；支援多位，以逗號分隔。

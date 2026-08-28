@@ -75,7 +75,7 @@ jobs:
     outputs:
       delivered: ${{ steps.report.outputs.delivered }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0    # 完整歷史，避免 push 衝突

@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v4
 
       # **決定要不要補寄之前,先看 origin/main 當下說什麼**(r9 外審 P1)。
       # 排程觸發的 checkout 檢出的是「排程事件建立當時」的 commit ——

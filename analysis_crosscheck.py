@@ -71,7 +71,11 @@ def _coverage_problems(obj, packet, analysed_ids) -> list:
     import news_clusters as _nc
     out: list = []
     info = packet.get("news_clusters") or {}
-    need = list(info.get("required_cluster_ids") or [])
+    # **清單自己會有重複**(2026-08-28 生產:同一個 cid 被報了兩次)。
+    # 重複的駁回對模型是零資訊,卻讓問題數虛胖 —— 而問題數正是
+    # 「收斂了沒有」的判準。保序去重。
+    need = list(dict.fromkeys(str(c) for c in
+                              (info.get("required_cluster_ids") or [])))
     if not need:
         return out
     groups = info.get("clusters") or []
@@ -386,11 +390,22 @@ def event_graph_problems(obj, packet) -> list:
                        and cs <= {str(c) for c in (g.get("cluster_ids") or [])}
                        for d, cs in notes)
         if len(hit) >= 2 and not _handled:
+            # **訊息要指名對方真正要的那個集合**(2026-08-28 生產):這裡
+            # 原本報的是 `hit`(三大重點與本組的交集),而
+            # `analysis_contracts.reference_problems` 要求 note 的
+            # `cluster_ids` 與**整組**完全一致 —— 模型照著訊息寫下交集,
+            # 下一關就被「不是本日任何一組共用驅動」打回。兩關各自看都
+            # 合理,合起來讓修補在結構上收斂不了(08/28 那班 13 條駁回
+            # 裡有 4 條是這一對來回)。訊息改報整組,並說清楚為什麼
+            # 要列到沒進三大重點的那幾件。
+            _all = sorted(str(c) for c in (g.get("cluster_ids") or []))
             out.append(
                 f"三大重點裡有 {len(hit)} 件事共用同一個底層驅動"
                 f"({g.get('label')}:{hit})—— 各加一次權重等於同一件事"
                 f"說 {len(hit)} 次。請在 `cross_market_synthesis."
-                f"shared_driver_notes` 寫 driver={g.get('driver')!r} "
+                f"shared_driver_notes` 寫 driver={g.get('driver')!r}、"
+                f"`cluster_ids` 填**整組** {_all}"
+                "(本組全部成員,不是只填三大重點用到的那幾個)"
                 "並說明為什麼不算重複計權")
     # ── 3) 總經發布 → 聯合情境
     # 第二十三輪 P1-8:主發布之外的總經發布不得被忽略 —— CPI 與 Fed

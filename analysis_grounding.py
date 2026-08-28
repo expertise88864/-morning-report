@@ -84,7 +84,11 @@ from __future__ import annotations
 #: v36(v22,repo-wide 外審 2026-08-19 P1-B):RENDERED 涵蓋 v20/v21 六個
 #: 新段落;narrative_delta 綁 prior_view_id + evidence_ids、macro 三切面
 #: 有內容必有證據(硬性檢查在 analysis_validate)。
-GROUNDING_VERSION = 37
+#: v38(2026-08-28 生產):共用驅動的駁回訊息改指名**整組** cluster_ids
+#: (原本報交集,而下一關要求與整組一致 —— 模型照做就被打回,兩關
+#: 合起來讓修補收斂不了);`required_cluster_ids` 保序去重。
+#: 驗證行為變了就要升版,樣本才不混群。
+GROUNDING_VERSION = 38
 
 #: 會被 renderer 排進信裡的段落。
 RENDERED = ("executive_summary", "key_drivers", "taiwan_market",

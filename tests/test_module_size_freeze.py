@@ -456,7 +456,7 @@ MODULE_CEILINGS = {
     # EVIDENCE_BEARING 與版本註解 —— 判準本身仍然只有兩個函式。
     # 第二十六輪 P1-5:多的是 v26 的版本註記(判準在 `analysis_contracts`,
     # 這裡只有版本號)。**實測 137 行**。
-    "analysis_grounding.py": 180,  # v22 RENDERED 六段+版本註解(2026-08-19 P1-B);現況 170
+    "analysis_grounding.py": 195,  # v22 RENDERED 六段+版本註解(2026-08-19 P1-B);現況 170
     # 本地 strict JSON Schema 檢查(第十三輪 P2-3/P2-4)。驗證只發生在遠端時,
     # 本地沒有東西會說「這個物件 API 根本不會接受」—— 而測試 fixture 與
     # 金絲雀探測都需要那個答案。**實測 137 行**(初訂 110 是依 95 行抓的
@@ -634,7 +634,7 @@ MODULE_CEILINGS = {
     # 它該長的方向;超過 300 就再拆。
     # Commit C:`top_event_problems`(三大重點要是三個事件的契約)。實測 320。
     # 第二十五輪 P1-6:已處理身分改 (驅動, 群集)。
-    "analysis_crosscheck.py": 465,
+    "analysis_crosscheck.py": 500,
     # 第十六輪:從 `analysis_validate` 再拆出的**深度判準**。與合法性刻意
     # 分開,因為兩者的後果不同:不合法 → 修補/落回;**淺 → 什麼都不擋**,
     # 只決定要不要把還沒用掉的那次呼叫拿去加深。實測 145 行。

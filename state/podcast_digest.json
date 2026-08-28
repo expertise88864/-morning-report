@@ -4843,6 +4843,59 @@
     "name": "Wall Street Breakfast",
     "episodes": [
       {
+        "guid": "https://api.spreaker.com/episode/74731329",
+        "title": "Marvell beats, street shrugs",
+        "published": "Fri, 28 Aug 2026 09:42:11 +0000",
+        "processed_at": "2026-08-28T13:19:04Z",
+        "digest": {
+          "summary_points": [
+            "主持人指出Marvell第二季財報與指引優於預期，但盤前股價大跌8%，反映市場對AI相關成長的期待已極高。",
+            "主持人報導Michael Burry買進Nvidia買權作為避險，同時擴大放空Oracle與Palantir，顯示對AI高估值股的謹慎態度。",
+            "主持人提醒今日焦點是聯準會主席Kevin Warsh在Jackson Hole的演說，可能影響市場對利率路徑的預期。"
+          ],
+          "tickers": [
+            {
+              "name": "Marvell Technology",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "財報優於預期但股價大跌8%，顯示市場期待過高，短線情緒謹慎。"
+            },
+            {
+              "name": "PayPal",
+              "code": "PYPL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人指出其近年來面臨Apple Pay與Google Pay的激烈競爭。"
+            },
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "Michael Burry買進Nvidia買權作為避險，顯示對其仍有信心。"
+            },
+            {
+              "name": "Oracle",
+              "code": "ORCL",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry擴大放空Oracle，反映對其估值或前景的疑慮。"
+            },
+            {
+              "name": "Palantir",
+              "code": "PLTR",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "Michael Burry擴大放空Palantir，反映對其估值或前景的疑慮。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Marvell technology is down 8% in pre-market action, even as the semiconductor company reported second quarter results and guidance that topped Wall Street's forecast, suggesting investors want it more."
+        }
+      },
+      {
         "guid": "https://api.spreaker.com/episode/74718544",
         "title": "New chip tariffs could hit AI race",
         "published": "Thu, 27 Aug 2026 15:06:05 +0000",
@@ -5287,39 +5340,6 @@
           "market_view": "",
           "action_view": "",
           "notable_quote": "we believe that the yields don't reflect the underlying fundamentals"
-        },
-        "shown_at": "2026-08-20T22:35:06Z"
-      },
-      {
-        "guid": "https://api.spreaker.com/episode/74381167",
-        "title": "Moderna’s $44B booster",
-        "published": "Thu, 20 Aug 2026 10:55:23 +0000",
-        "processed_at": "2026-08-20T14:08:41Z",
-        "digest": {
-          "summary_points": [
-            "Moderna 因個人化 mRNA 癌症疫苗臨床數據正面，單日暴漲 176.97% 至 174.38 美元，市值增加 440 億美元，創 S&P 500 本世紀最大單日漲幅；但分析師維持「持有」觀望，股價盤前回跌 11%。",
-            "比特幣逼近 7 萬美元，24 小時內加密貨幣空頭清算達 27.4 億美元，為 2021 年以來最大軋空規模，總清算量近 30 億美元。",
-            "Wolfspeed 因會計年度第四季調整後每股虧損 2.26 美元，遠遜市場預期的 1.47 美元，股價重挫 10%。"
-          ],
-          "tickers": [
-            {
-              "name": "Moderna",
-              "code": "MRNA",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "癌症疫苗利多暴漲，但分析師建議等待完整數據，盤前回跌。"
-            },
-            {
-              "name": "Wolfspeed",
-              "code": "WOLF",
-              "market": "US",
-              "direction": "bearish",
-              "reason": "虧損擴大，股價大跌。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "My dad just texted me saying they cured cancer, and I should buy as much mRNA as I can."
         },
         "shown_at": "2026-08-20T22:35:06Z"
       }
@@ -6204,6 +6224,50 @@
   "sharptech": {
     "name": "Sharp Tech (Ben Thompson)",
     "episodes": [
+      {
+        "guid": "https://sharptech.fm/member/episode/preview-metas-new-restrictions-for-teens-nvidias-open-source-investments-q-a-on-netflix-druckenmiller-parameters-and-performance",
+        "title": "(Preview) Meta’s New Restrictions for Teens, Nvidia’s Open Source Investments, Q&amp;A on Netflix, Druckenmiller, Parame",
+        "published": "Fri, 28 Aug 2026 08:59:25 +0000",
+        "processed_at": "2026-08-28T13:23:09Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Meta 的 171 億美元和解是「監管俘虜」的經典操作：在自身選擇的條件下把多年監管懸念一次了結，且條款很可能成為後續同類訴訟的實質判準，對 Meta 相對有利。",
+            "Ben 指出這項和解繞過第一修正案——限制飲食失調內容、美顏濾鏡等原本受言論自由保護，但透過州檢察長與私人公司和解而取得類似法律效力，令人本能地不安。",
+            "Ben 的預設是「父母該盡責」，但也承認集體行動困境；他舉學校用手機隔離袋強制收手機為例，認為以法律/和解設定限制預設值能減輕父母負擔，這是保守派 vs 自由意志主義的辯論。",
+            "Andrew 引用澳洲禁止 16 歲以下用社群媒體的初步成效：禁令後 3 個月仍有 81% 兒童使用年齡受限平台，因此對 Meta 和解的實際效果抱持觀望。",
+            "Ben 警告許多聲稱手機/社群媒體傷害的研究與 2012 年前後疾病定義改變高度混淆，數據未必乾淨；但以自身經驗他也承認限制使用對自己有益。",
+            "在年齡驗證議題上，Ben 認為若一定要做，應由 Apple 和 Google 提供 API，因為它們最受信任、有 root 權限；但他保留對整體方向的反對權。",
+            "Ben 指出這對 Meta 股價是利多：和解金額在 Meta 十年現金流中微不足道，且若 YouTube/TikTok 不跟進 Meta 可能不用支付，等於把監管成本轉嫁給競爭對手，消除長期 overhang。",
+            "Ben 推測 YouTube 與 TikTok 可能自願跟進以躲避更不利的判決；Andrew 猜 Google 先動，Ben 反過來猜 TikTok 可能先動。"
+          ],
+          "tickers": [
+            {
+              "name": "Meta Platforms",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "和解以相對有利條件清除監管懸念、股價壓力減輕，且條款可能壓迫競爭對手跟進。"
+            },
+            {
+              "name": "Alphabet (Google)",
+              "code": "GOOGL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "旗下 YouTube 可能被迫跟進 Meta 的青少年限制，增加合規成本，但也可能透過自願跟進提前消除風險。"
+            },
+            {
+              "name": "Apple",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "Ben 認為若要有年齡驗證，Apple 應承擔提供 API 的角色，強化其平台信任地位，但也增加義務。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "If you're going to get there, best to get there on your terms. And that is kind of what Meta did."
+        }
+      },
       {
         "guid": "https://sharptech.fm/member/episode/preview-the-app-store-in-the-shadow-of-ai-offensive-and-defensive-cybersecurity-q-a-on-financial-planning-ai-writing-american-sports",
         "title": "(Preview) The App Store in the Shadow of AI, Offensive and Defensive Cybersecurity, Q&amp;A on Financial Planning, AI Wr",

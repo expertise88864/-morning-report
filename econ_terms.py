@@ -150,8 +150,22 @@ _EXPLAIN = {
 
 
 def explain(term: str) -> str:
-    """這個事件是什麼、為什麼要看 —— 認不得回空字串(不硬編)。"""
-    return _EXPLAIN.get(_key(str(term or "")), "")
+    """這個事件是什麼、為什麼要看 —— 認不得回空字串(不硬編)。
+
+    **要掃描,不是精確查表**(2026-08-28 實信):日曆的標題帶著幣別前綴
+    (`[USD] Prelim Benchmark Payrolls Revision`),精確查表一律落空 ——
+    翻譯出得來(`annotate` 是掃描)、解說卻整批不見。掃描用的是與
+    `annotate` **同一個** `_PATTERN`(長詞優先),不另造一套會漂移的比對。
+    """
+    raw = str(term or "")
+    hit = _EXPLAIN.get(_key(raw))
+    if hit:
+        return hit
+    for m in _PATTERN.finditer(raw):        # 長詞優先由 _PATTERN 保證
+        hit = _EXPLAIN.get(_key(m.group(0)))
+        if hit:
+            return hit
+    return ""
 
 
 #: 一次掃完所有詞。**逐詞 `re.sub` 會巢狀套疊** —— `CPI m/m` 先被

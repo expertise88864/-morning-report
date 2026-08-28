@@ -241,3 +241,42 @@ def test_week_review_is_wired_into_the_sunday_email():
     assert mr._render_week_review_html("", None) == ""
     html = mr._render_week_review_html("### 本週大事回顧\n- 測試", None)
     assert "本週回顧與下週展望" in html and "測試" in html
+
+
+# ─────────── 2026-08-28 實信:兩項回饋只修了一半 ───────────
+def test_the_calendar_explanation_survives_the_currency_prefix():
+    """**測試用了生產不會產生的形狀。** 08/27 那批我用
+    `title='Prelim Benchmark Payrolls Revision'` 驗過解說會出現,而生產的
+    日曆標題帶幣別前綴 —— `[USD] Prelim Benchmark Payrolls Revision`。
+    `annotate` 是掃描所以翻譯照出,`explain` 是精確查表所以**解說整批不見**:
+    08/28 實信的那一列只有「前值 -911K」,沒有 ※。
+    """
+    import econ_terms as et
+    for title in ("[USD] Prelim Benchmark Payrolls Revision",
+                  "Prelim Benchmark Payrolls Revision",
+                  "[USD] Fed Chairman Warsh Speaks"):
+        assert et.explain(title), title
+    assert et.explain("[USD] CPI m/m") == ""        # 常見的不硬編
+    assert et.explain("[USD] 完全不認得的東西") == ""
+    # 走生產的渲染路徑(帶前綴)
+    from render_utils import _render_event_calendar_html
+    html = _render_event_calendar_html([
+        {"date": dt.date(2026, 8, 28), "time": "22:00",
+         "title": "[USD] Prelim Benchmark Payrolls Revision",
+         "note": "前值 -911K", "impact": "high"}])
+    assert "非農就業基準修正初值" in html
+    assert "※" in html and "校正" in html, html[-200:]
+
+
+def test_the_date_first_header_debris_is_stripped_too():
+    """08/28 實信:`## 2026-08-28 晨報` 被 `_md_to_html` 渲染成 24px 大標題
+    進了信裡。08/27 那批我只寫了「晨報+日期」的排法 —— 同一種殘骸換個
+    順序就漏掉。日期片段抽出來,兩種排法共用。"""
+    import llm_postprocess as lp
+    for ln in ("2026-08-28 晨報", "## 2026-08-28 晨報", "晨報 2026/08/27",
+               "2026/08/28 晨報", "晨報 2026-08-28"):
+        assert re.search(lp._HEADER_DEBRIS_RE, ln), ln
+    # 敘述句仍是內容(日期出現在句子裡不算殘骸)
+    for ln in ("晨報今天提到 2026/08/27 的行情",
+               "2026-08-28 晨報的重點是輝達財報"):
+        assert not re.search(lp._HEADER_DEBRIS_RE, ln), ln

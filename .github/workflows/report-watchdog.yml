@@ -20,6 +20,11 @@ on:
 
 permissions:
   contents: read   # 唯讀:看門狗不參與 state 競爭,否則自己會變成問題來源
+  # **自動補寄**(使用者 2026-08-28 定案)。偵測到今天沒寄成功時,觸發一次
+  # 晨報的 `workflow_dispatch`。`GITHUB_TOKEN` 對 `workflow_dispatch` 是防遞迴
+  # 規則的**例外**(其他事件用它觸發才不會建立新 run),所以不必另開 PAT。
+  # 這不是寫 state 的權限 —— 看門狗仍然不參與 state 競爭。
+  actions: write
 
 # **刻意不用 `state-writers`**。morning 與 podcast 共用那個 group 且不取消,
 # 一旦某個 run 在 pending 階段被擠掉,job 根本不會啟動、連 workflow 內的告警
@@ -59,6 +64,20 @@ jobs:
             echo "WATCHDOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # **補寄跑在告警之前,但不取代告警**(使用者 2026-08-28 定案)。
+      # 判準在 `report_watchdog.rescue_decision`(純函式,有測試):
+      # 只在 rc=1(今天沒跑起來/沒寄成功)、且今天還沒有任何
+      # workflow_dispatch 時才補,一天最多一次;查不出來就不補。
+      # 補寄結果寫進告警信 —— 無聲的自動修復會讓「排程壞了」永遠沒人知道。
+      - name: Auto rescue
+        id: rescue
+        if: steps.check.outputs.rc == '1'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WATCHDOG_AUTO_RESCUE: ${{ vars.WATCHDOG_AUTO_RESCUE || '1' }}
+        run: python tools/report_watchdog.py --rescue
+
       - name: Alert
         if: steps.check.outputs.rc != '0'
         env:
@@ -73,6 +92,9 @@ jobs:
           QUALITY_RECIPIENT: ${{ vars.QUALITY_RECIPIENT }}
           WATCHDOG_RC: ${{ steps.check.outputs.rc }}
           WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
+          # 補寄結果一起進告警信:自動修復不可以是無聲的,否則
+          #「排程壞了」這件事永遠沒有人知道(而它已經連壞三天)。
+          WATCHDOG_RESCUE: ${{ steps.rescue.outputs.note }}
         run: |
           python - <<'PY'
           import os, smtplib, ssl, datetime as dt
@@ -122,6 +144,12 @@ jobs:
                   "  - 執行中途失敗且未寫入 manifest\n\n"
                   f"{detail}\n\n"
                   "請到 Actions 頁面查看 Morning Report 的最近一次執行。\n")
+          # 自動補寄的結果(2026-08-28):有補要說,沒補要說為什麼不補。
+          # 「已觸發」不等於「信會到」—— 那一班照樣可能失敗,所以這裡
+          # 只宣稱送出了觸發,不宣稱結果。
+          rescue = os.environ.get("WATCHDOG_RESCUE", "").strip()
+          if rescue:
+              body += f"\n自動補寄:{rescue}\n(已觸發不等於已寄到,請確認信箱)\n"
           msg.set_content(body)
           with smtplib.SMTP("smtp.gmail.com", 587) as s:
               s.starttls(context=ssl.create_default_context())

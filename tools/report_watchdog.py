@@ -140,6 +140,75 @@ def main() -> int:
     return _quality_exit(info)
 
 
+#: 自動補寄的開關(repo variable 可關)。預設開 —— 使用者 2026-08-28 定案。
+AUTO_RESCUE = (os.environ.get("WATCHDOG_AUTO_RESCUE", "1").strip()
+               not in ("0", "false", "no", ""))
+
+
+def rescue_decision(rc: int, dispatch_runs_today: int, *,
+                    enabled: bool = True) -> tuple:
+    """要不要自動補寄?回 `(要不要, 理由)`。**純函式,判準在這裡。**
+
+    2026-08-28:GitHub 連四個排程觸發點沒有建立 run(看門狗自己也一起
+    沒跑),使用者早上發現沒信、由人工補寄。這一支把那個動作自動化。
+    **它會主動寄信給收件人,所以判準一律取保守的那一邊:**
+
+      * 只在 `rc == 1`(今天沒跑起來 / 沒寄成功)才補。`rc == 2` 是
+        「寄到了但品質差」—— 信已經在收件匣裡,再寄一封是打擾不是修復。
+        `rc == 0` 更不用說。
+      * **一天最多補一次**:判準是「今天已經有 workflow_dispatch 的
+        run 了嗎」(可觀察的事實,不必另外存狀態)。已經補過卻仍然沒信,
+        那就不是排程漏跑,再補一次也不會好 —— 留給人看。
+        使用者自己手動補過的那一天同樣不再自動補,理由相同。
+      * 開關關掉就不補(逃生門)。
+
+    **補寄不取代告警**:兩件事都要做,而且告警要說有沒有補成功。
+    無聲的自動修復會讓「排程壞了」這件事永遠沒有人知道。
+    """
+    if not enabled:
+        return False, "自動補寄已關閉(WATCHDOG_AUTO_RESCUE)"
+    if rc != 1:
+        return False, ("今天的信已經寄出(品質另計)" if rc == 2 else "一切正常")
+    # **只有「確定是 0」才補**。第一版寫 `> 0`,於是查不出來的 `-1` 一路
+    # 放行 —— 而上面那段 docstring 說的是「查不出來就不補」。宣稱與實作
+    # 差的那一層,正好是這個能力最危險的地方(不知道的時候多寄一封)。
+    if dispatch_runs_today != 0:
+        if dispatch_runs_today < 0:
+            return False, "查不出今天補寄過幾次 —— 不知道的時候不寄"
+        return False, (f"今天已經有 {dispatch_runs_today} 次手動/補寄觸發 —— "
+                       "再補一次也不會好,留給人判斷")
+    return True, "今天沒有寄成功、也還沒有補寄過"
+
+
+def dispatch_runs_today(now: dt.datetime, get_json) -> int:
+    """今天(台北)已經有幾次 `workflow_dispatch` 的晨報 run。
+
+    `get_json(url)` 由呼叫端注入 —— 測試不碰網路。讀不到就回 **-1**
+    (呼叫端據此**不補**:查不出來就是不知道,而「不知道」時多寄一封
+    的代價比少寄一封高)。
+    """
+    try:
+        data = get_json(
+            "https://api.github.com/repos/expertise88864/-morning-report"
+            "/actions/workflows/morning-report.yml/runs"
+            "?event=workflow_dispatch&per_page=20")
+        today = now.strftime("%Y-%m-%d")
+        n = 0
+        for r in (data or {}).get("workflow_runs") or []:
+            stamp = str(r.get("created_at") or "")
+            if not stamp:
+                continue
+            when = dt.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=dt.timezone.utc).astimezone(TPE)
+            if when.strftime("%Y-%m-%d") == today:
+                n += 1
+        return n
+    except Exception as e:                  # noqa: BLE001
+        print(f"[watchdog] 查不出今天的補寄次數({type(e).__name__})",
+              file=sys.stderr)
+        return -1
+
+
 def _quality_exit(info: str) -> int:
     """跑起來也寄到了 —— 再問一次「跑成了嗎」。
 
@@ -156,5 +225,65 @@ def _quality_exit(info: str) -> int:
     return 2
 
 
+def _rescue_cli() -> int:
+    """`--rescue`:workflow 用的入口。**永遠回 0** —— 補寄失敗不得讓
+    看門狗這個 job 變紅到蓋掉真正的告警;結果寫進 `GITHUB_OUTPUT`
+    讓告警信帶上去。"""
+    done, why = rescue(dt.datetime.now(TPE), 1)
+    print(f"[watchdog] 自動補寄:{'已觸發' if done else '未觸發'} —— {why}")
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a", encoding="utf-8") as fh:
+            label = "已自動觸發補寄" if done else "未補寄"
+            fh.write("note=%s:%s\n" % (label, why))
+    return 0
+
+
+
+
+def rescue(now: dt.datetime, rc: int, *, get_json=None, post=None) -> tuple:
+    """判斷 + 執行補寄。回 `(有沒有補, 一句話說明)`;**永不拋**。
+
+    看門狗的本業是告警,補寄失敗不得把告警一起弄死。
+    """
+    if get_json is None or post is None:
+        import urllib.request as _u
+
+        def _req(url, data=None):
+            req = _u.Request(
+                url, data=data,
+                headers={"Accept": "application/vnd.github+json",
+                         "Authorization":
+                             f"Bearer {os.environ.get('GITHUB_TOKEN', '')}",
+                         "Content-Type": "application/json",
+                         "User-Agent": "morning-report-watchdog"},
+                method="POST" if data is not None else "GET")
+            with _u.urlopen(req, timeout=30) as r:
+                return json.loads(r.read() or b"{}") if data is None else True
+        get_json = get_json or (lambda url: _req(url))
+        post = post or (lambda url, body: _req(url, json.dumps(body).encode()))
+    # **先問一次不需要網路的部分**。用 `0`(唯一可能回 True 的計數)去問:
+    # 它都說不補的話,任何計數都不會補 —— 判準單調,所以這個提前退出
+    # 不可能與下面那次的結論相反(判準仍然只有 `rescue_decision` 一份)。
+    if not rescue_decision(rc, 0, enabled=AUTO_RESCUE)[0]:
+        return False, rescue_decision(rc, 0, enabled=AUTO_RESCUE)[1]
+    try:
+        n = dispatch_runs_today(now, get_json)
+        go, why = rescue_decision(rc, n, enabled=AUTO_RESCUE)
+        if not go:
+            return False, why
+        post("https://api.github.com/repos/expertise88864/-morning-report"
+             "/actions/workflows/morning-report.yml/dispatches",
+             {"ref": "main"})
+        return True, "已自動觸發補寄(workflow_dispatch)"
+    except Exception as e:                  # noqa: BLE001
+        return False, f"自動補寄失敗({type(e).__name__})—— 需要人工補寄"
+
+
+# **`__main__` 一定要在最後**(r1 外審 P1):`rescue()` 原本被 append 到
+# 檔案尾端、在這個區塊之後 —— `python tools/report_watchdog.py --rescue`
+# 執行到這裡時它還沒定義,`NameError` 當場炸掉。而 8 條測試全綠,
+# 因為它們是 `import` 模組(定義全跑完)再直接呼叫函式,
+# **從來沒有走過生產真正用的那個入口**。
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_rescue_cli() if "--rescue" in sys.argv[1:] else main())

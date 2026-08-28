@@ -1325,9 +1325,9 @@
    "news.google.com": true
   },
   "queries": {
-   "Google-半導體": 50,
+   "Google-半導體": 54,
    "Google-美股科技": 41,
-   "Google-Fed利率": 21,
+   "Google-Fed利率": 19,
    "Google-台股大盤": 37,
    "Google-地緣": 0,
    "Google-散熱": 4,
@@ -1337,7 +1337,7 @@
    "世界-國際大事": 100,
    "世界-災難極端": 100,
    "世界-科學太空": 100,
-   "世界-AI大事": 34
+   "世界-AI大事": 33
   },
   "drama": 0
  }

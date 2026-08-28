@@ -3267,8 +3267,16 @@
     "漲停鎖死"
    ]
   ],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "2357": 966.0,
+   "2615": 113.0,
+   "6531": 920.0,
+   "3037": 1170.0,
+   "2408": 529.0
+  },
+  "taiex_entry": 45890.18
  },
  {
   "question": "2330_open_up",
@@ -3363,7 +3371,7 @@
   "type": "top5",
   "created": "2026-08-28",
   "ledger_schema_version": 2,
-  "created_at": "2026-08-28T07:22:18.493635+08:00",
+  "created_at": "2026-08-28T08:20:59.462350+08:00",
   "target_session": "2026-08-28",
   "base_session": "2026-08-27",
   "codes": [
@@ -3393,7 +3401,7 @@
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
   "created": "2026-08-28",
-  "created_at": "2026-08-28T07:22:18.493635+08:00",
+  "created_at": "2026-08-28T08:20:59.462350+08:00",
   "target": "2026-08-28",
   "threshold": 2410.0,
   "pred_pct": 0.838,
@@ -3410,15 +3418,15 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "81027a84aa79"
+   "git_sha": "a545c791ebc8"
   },
-  "git_sha": "81027a84aa79"
+  "git_sha": "a545c791ebc8"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
   "created": "2026-08-28",
-  "created_at": "2026-08-28T07:22:18.493635+08:00",
+  "created_at": "2026-08-28T08:20:59.462350+08:00",
   "target": "2026-08-28",
   "threshold": 45975.22,
   "pred_pct": 0.569,
@@ -3435,21 +3443,21 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "81027a84aa79"
+   "git_sha": "a545c791ebc8"
   },
-  "git_sha": "81027a84aa79"
+  "git_sha": "a545c791ebc8"
  },
  {
   "type": "mz_shadow",
   "created": "2026-08-28",
-  "created_at": "2026-08-28T07:22:18.493635+08:00",
+  "created_at": "2026-08-28T08:20:59.462350+08:00",
   "target": "2026-08-28",
   "raw": 2430.19,
-  "shadow": 2425.64,
+  "shadow": 2425.82,
   "base": 2410.0,
-  "a": 1.807,
-  "b": 0.6854,
-  "n_train": 71,
+  "a": 1.99,
+  "b": 0.6852,
+  "n_train": 72,
   "forecast_version": "prob-v2",
   "mz_rule": "delta-mz-hac-v1",
   "versions": {
@@ -3460,8 +3468,8 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "81027a84aa79"
+   "git_sha": "a545c791ebc8"
   },
-  "git_sha": "81027a84aa79"
+  "git_sha": "a545c791ebc8"
  }
 ]

@@ -88,15 +88,12 @@ PODCASTS = [
     #   WSJ What's News(與 Wall Street Breakfast 同為美股每日快訊;世界新聞信中已有速覽)
     {"key": "macromicro", "name": "財經M平方", "search": "財經M平方",
      "lang": "zh", "country": "TW", "priority": 2},
-    # --- 英文每日新聞(短,便宜;美股盤前僅留最精煉的一檔) ---
-    {"key": "ws-breakfast", "name": "Wall Street Breakfast", "search": "Wall Street Breakfast",
-     "lang": "en", "country": "US", "priority": 1},
+    # 2026-08-29 使用者拍板再瘦身,刪三檔英文節目:
+    #   Wall Street Breakfast(美股每日快訊,與信中美股區重複)
+    #   Odd Lots(總經深度,與皓角/財經M平方的總經視角重疊)
+    #   Sharp Tech(科技評論,與 M觀點/財報狗的科技視角重疊)
+    # All-In / The Circuit / Forward Guidance 留著(使用者未點名)。
     # --- 英文深度 / 科技(預算內輪轉;貼近 2330/00662 半導體與 NASDAQ 曝險) ---
-    {"key": "oddlots", "name": "Odd Lots", "search": "Odd Lots Bloomberg",
-     "lang": "en", "country": "US", "priority": 2},
-    {"key": "sharptech", "name": "Sharp Tech (Ben Thompson)",
-     "search": "Sharp Tech Ben Thompson",
-     "lang": "en", "country": "US", "priority": 2},   # 科技/半導體策略,貼 2330/00662
     {"key": "allin", "name": "All-In Podcast", "search": "All-In Podcast",
      "lang": "en", "country": "US", "priority": 2},    # 總經+科技+市場,週更格局大
     # 2026-07-31 新增(以真實 feed 實測後挑選):

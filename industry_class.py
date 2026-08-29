@@ -65,3 +65,36 @@ def is_tech_foreign(name) -> bool:
     if str(name or "").strip() in NON_TECH_FOREIGN:
         return False
     return ":EQUITY:" in str(cid) and not str(cid).startswith("TW:")
+
+
+#: **產業級科技新聞的標題判準**(2026-08-29)。只給「無可指名主體」的
+#: 新聞用 —— 有主體時公司的產業別優先,這張表不參與。宣告式關鍵字,
+#: 與本模組其他判準同一個做法;寧漏勿誤(漏了只是掉到「其他類股」,
+#: 誤收會把金融/航運塞進科技段)。
+_TECH_HEADLINE_KEYWORDS = (
+    "半導體", "晶片", "晶圓", "記憶體", "DRAM", "HBM", "NAND", "GPU",
+    "CPU", "ASIC", "AI", "資料中心", "數據中心", "伺服器", "載板",
+    "CCL", "銅箔基板", "PCB", "封裝", "CoWoS", "EUV", "光刻", "面板",
+    # 「代工」不可裸列(r1 外審):成衣代工/製鞋代工也叫代工 ——
+    # 跨產業通用詞要收**科技複合形**,與地名判準「田中鎮不收裸田中」同理
+    "晶圓代工", "電子代工", "半導體代工",
+    "算力", "雲端運算", "NVIDIA", "輝達", "台積電",
+)
+
+
+def is_tech_headline(title) -> bool:
+    """這個標題是不是產業級的科技新聞(無主體時的退路判準)。
+
+    ASCII 關鍵字要**詞邊界**:裸子字串的 `AI` 會在 `SAID`、`AIRLINE`
+    裡命中 —— 與 `event_identity` 的別名比對同一個教訓。
+    """
+    import re as _re
+    t = str(title or "")
+    for k in _TECH_HEADLINE_KEYWORDS:
+        if not k.isascii():
+            if k in t:
+                return True
+        elif _re.search(r"(?<![A-Za-z0-9])" + _re.escape(k)
+                        + r"(?![A-Za-z0-9])", t, _re.I):
+            return True
+    return False

@@ -77,8 +77,10 @@ def test_the_renderer_shows_it_on_its_own_line():
         {"what": "沒有後續欄位的舊資料", "why_it_matters": "仍要渲染"}]
     md = ar.render(obj)
     assert md, "fixture 渲染不出東西,量不到這條規則"
+    # 2026-08-29 使用者:「排版格式跑掉了」→ 改成一氣呵成段落
+    # (標題句。解讀句。後續可能影響:…),不再「head:why」黏接。
     assert "後續可能影響:若其他家族企業跟進申請" in md, md
-    assert "沒有後續欄位的舊資料:仍要渲染" in md, md
+    assert "沒有後續欄位的舊資料。仍要渲染。" in md, md
     # 舊資料不得長出一個空的「後續可能影響:」
     assert md.count("後續可能影響") == 1, md
 

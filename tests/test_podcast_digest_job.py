@@ -65,8 +65,11 @@ def test_core_podcasts_marked_high_accuracy():
     # 已剔除的節目不應再存在
     for gone in ("ft-briefing", "unhedged", "animalspirits", "investlikebest"):
         assert gone not in by_key
-    # 新增的節目應存在
-    assert "sharptech" in by_key and "allin" in by_key
+    # 2026-08-29 使用者拍板刪 WSB/Odd Lots/Sharp Tech —— sharptech 移進
+    # 「不應存在」那一側;英文節目剩 All-In/The Circuit/Forward Guidance
+    for gone in ("ws-breakfast", "oddlots", "sharptech"):
+        assert gone not in by_key, gone
+    assert "allin" in by_key
 
 
 def test_main_processes_multiple_episodes_from_same_show(monkeypatch):

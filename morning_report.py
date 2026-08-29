@@ -5031,7 +5031,11 @@ def fetch_ma200_status() -> dict:
     回測 5–10 年「站上才持有、跌破轉中性」能把最大回撤砍約 1/3、Sharpe 升;但長多市場(15 年窗)
     0050/2330 的 CAGR 反輸買進持有(離場成本+鋸齒洗刷),未計交易成本/證交稅。失敗逐檔略過,回 {}。
     用未還原收盤(與券商看到的報價一致);最新收盤優先用 TWSE 官方現值(與第六點同源、
-    避免 yfinance 落後 1 日造成信中同檔兩個收盤),MA200 仍用 yfinance trailing(同為未還原收盤,基準一致)。"""
+    避免 yfinance 落後 1 日造成信中同檔兩個收盤),MA200 仍用 yfinance trailing(同為未還原收盤,基準一致)。
+
+    2026-08-29:上面「與第六點同源」這句**先前是假的** —— 第六點(`predict_2330`)
+    一直用 yfinance,於是 08/29 實信裡 2330 出現兩個收盤(六 2410 / 這裡 2420)。
+    兩邊現在都優先用 `fetch_twse_close`,那句話才成立。"""
     out: dict = {}
     # 對齊使用者實際持股(ETF 為主);00631L 為 2x 槓桿,長抱波動耗損大、回測中
     # 趨勢紀律對它最關鍵(15 年買進持有最大回撤 -96.9%),故特別納入。
@@ -5279,7 +5283,20 @@ def calc_2330_predictions(tsm_close: float, tsm_prev_close: float,
     if hist_2330 is None or hist_2330.empty:
         return {"error": "缺 2330 歷史價"}
 
+    # **昨收要用 TWSE 官方現值**(2026-08-29 實信)。yfinance 的台股收盤
+    # **會落後一個交易日**,而 `fetch_ma200_status` 早就為了這件事改用
+    # TWSE 官方值,還在註解裡寫「與第六點一致、消除 yfinance 落後 1 日」
+    # —— **那句話是假的**:第六點(本函式)一直用 yfinance。結果就是它
+    # 想避免的那件事:同一封信裡 2330 出現兩個收盤(六 2410 / 長線 2420),
+    # 而且**頭條那個預測漲跌是拿舊基準算的**(-1.07% 應為 -1.48%)。
+    # 取不到官方值才退回 yfinance(晨報不可斷)。
     last_2330 = safe_float(hist_2330.iloc[-1]["Close"])
+    try:
+        _official = fetch_twse_close("2330")
+        if _official and _official > 0:
+            last_2330 = float(_official)
+    except Exception:                   # noqa: BLE001 - 官方值拿不到就用原本的
+        pass
     tsm_pct = (tsm_close - tsm_prev_close) / tsm_prev_close
 
     # 模型 1：漲跌幅 1:1
@@ -16462,6 +16479,12 @@ LOCAL_NEWS_QUERIES: list[tuple] = [
     # 彰基/中國醫(使用者夫妻任職)整合於此(2026-07-15 拍板,自醫界卡遷入;
     # 兩院的裁罰/感染等硬新聞仍會依一般規則上醫界卡,此處涵蓋建設/決策/一般消息)
     ("彰基/中國醫", "彰化基督教醫院 OR 彰基 OR 中國醫藥大學附設醫院 OR 中醫大附醫"),
+    # 醫界追蹤(2026-08-29 使用者):台大「等床 12 天死亡」事件的後續 ——
+    # 民眾態度、政府態度與政策。全國性醫界新聞,**不受地區過濾**
+    # (第 4 欄 national=True;台大/衛福部的標題沒有中彰投地名)。
+    # 事件降溫、查詢連日空手後可撤(與「選情」同一種生命週期)。
+    ("醫界追蹤", "台大醫院 急診 OR 等床 死亡 OR 急診 壅塞 OR 急診 爆滿 "
+     "OR 衛福部 病床 OR 醫院 量能 OR 急診 改革", 3, True),
     ("彰化重點追蹤",
      "中友百貨 彰化 OR 彰化 百貨 OR 彰化 鐵路高架 OR 大埔截水溝", 3),
     # 斗六/雲林獨立主題已撤(2026-07-16 使用者要求):斗六詞併入建設/房市/學區,
@@ -16639,6 +16662,7 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
     for row in LOCAL_NEWS_QUERIES:
         label, query = row[0], row[1]
         topic_limit = row[2] if len(row) > 2 else per_label
+        national = bool(row[3]) if len(row) > 3 else False
         try:
             # when=2d:Google 伺服器端 when:1d 只回 24h 內,會吃掉 24-30h 的新聞;
             # 抓寬一天、由下方 cutoff 精確限制 30h(Codex review)
@@ -16663,7 +16687,10 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                 # 國防新聞的「中科院」會撞裸「中科」token(Codex r6);剝除後
                 # 若標題另含真正的中科/其他地名詞仍可通過。
                 region_check = title.replace("中科院", "")
-                if not any(tok in region_check for tok in _LOCAL_REGION_TOKENS):
+                # national 主題(醫界追蹤等全國事件)免地區過濾 ——
+                # 台大/衛福部的標題不會有中彰投地名,照擋等於這個主題不存在
+                if not national and not any(
+                        tok in region_check for tok in _LOCAL_REGION_TOKENS):
                     continue
                 if _local_title_is_dup(title, seen_bigrams):
                     continue
@@ -21267,8 +21294,10 @@ _RENDER_TOP5_CARD = True
 # WSJ What's News 等)的 state 殘留不再進信件。與 podcast_digest.PODCASTS 同步維護。
 _PODCAST_DISPLAY_RANK: dict[str, int] = {name: i for i, name in enumerate([
     "股癌", "游庭皓的財經皓角", "財報狗", "M觀點", "財經M平方",
-    "Wall Street Breakfast", "Odd Lots", "Sharp Tech (Ben Thompson)",
+    # 2026-08-29 使用者拍板刪三檔(WSB/Odd Lots/Sharp Tech):
+    # 這份白名單同時是 state 殘留的過濾器 —— 已刪節目不再進信。
     "Money Talks (Economist)", "All-In Podcast", "BG2 Pod",
+    "The Circuit", "Forward Guidance",
 ])}
 # keep 模式超標時逐步壓「每集重點條數」的階梯(不丟任何一集)。
 # 為何不改砍集數:load_podcast_digest 每節目最多取 2 集未顯示、且丟棄 >96h 的未顯示集,
@@ -21991,13 +22020,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         # 2026-08-20 使用者:預測漲跌 % 直接接在「今天開盤大約落在 44,719」
         # 大字後方,不再佔一格 —— 少一格、行寬更收斂,信件不會被左右拉長。
         # 剩三格(昨收/夜盤/訊號共識)仍走 2×2 表格,夜盤缺席時併成一列。
-        _cell_close = (
-            '<td style="width:50%;padding:10px 12px;background:#f8fafc;'
-            'border-radius:8px;vertical-align:top;">'
-            '<div style="font-size:12px;color:#64748b;">加權昨收</div>'
-            '<div style="font-size:17px;font-weight:700;color:#0f172a;'
-            f'font-variant-numeric:tabular-nums;">{taiex_pred["last_close"]}'
-            '</div></td>')
+        # 「加權昨收」那一格已刪(2026-08-29 使用者:藍色大字卡的
+        # 「較昨收 46331.45」就是同一個數字,再列一格是重複)。
         _cell_cons = (
             '<td style="width:50%;padding:10px 12px;background:#f8fafc;'
             'border-radius:8px;vertical-align:top;">'
@@ -22005,11 +22029,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             '<div style="font-size:17px;font-weight:700;color:#0f172a;">'
             f'{taiex_pred["consensus"]}</div></td>')
         if night_row_html:
-            _pred_grid_rows = (
-                f"<tr>{_cell_close}{night_row_html}</tr>"
-                f"<tr>{_cell_cons}<td style=\"width:50%;\"></td></tr>")
+            _pred_grid_rows = f"<tr>{night_row_html}{_cell_cons}</tr>"
         else:
-            _pred_grid_rows = f"<tr>{_cell_close}{_cell_cons}</tr>"
+            _pred_grid_rows = (f"<tr>{_cell_cons}"
+                               '<td style="width:50%;"></td></tr>')
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         {signal_rows}

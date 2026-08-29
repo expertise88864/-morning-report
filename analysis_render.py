@@ -312,15 +312,23 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     # ------- legacy 骨架(2026-08-19 第四批,schema v21)-------
     # 世界大事:**股市之外的世界**。這個段名曾被刪(schema 沒有對應欄位
     # 時掛這個招牌是假的);v21 有 `world_events` 之後,名字才誠實。
+    def _sent(t: str) -> str:
+        """句尾補標點 —— 兩句黏接時「…航運中。:戰爭…」那種
+        「。:」殘骸就是沒做這件事的樣子(2026-08-29 實信)。"""
+        t = _s(t)
+        return t if (not t or t[-1] in "。!?!?…」)』") else t + "。"
+
     def _world_line(w) -> str:
-        # 2026-08-25 使用者:每條也要有「後續可能影響」。它另起一行 ——
-        # 併在同一句尾巴會被讀成同一件事,而它問的是不同的問題(接下來
-        # 會怎樣 vs 現在為什麼重要)。沒有那一欄就只印前兩段(舊資料相容)。
-        head = _s(w.get("what"))
-        why = _s(w.get("why_it_matters"))
+        # 2026-08-29 使用者:「這邊整個排版格式跑掉了」。第一版用
+        # 「head:why」黏接 —— head 尾常帶句號,排成「…。:戰…」;
+        # 「後續可能影響」又另起縮排行,在郵件客戶端裡斷成碎片。
+        # 改成 legacy 信的排法:**標題句。解讀句。後續可能影響:…**
+        # 一氣呵成一個段落(郵件渲染最穩的形狀)。
+        head = _sent(w.get("what"))
+        why = _sent(w.get("why_it_matters"))
         nxt = _s(w.get("what_next"))
-        line = f"- {head}" + (f":{why}" if why else "")
-        return line + (f"{chr(10)}  後續可能影響:{nxt}" if nxt else "")
+        return ("- " + head + why
+                + (f"後續可能影響:{_sent(nxt)}" if nxt else "")).rstrip()
 
     world = [_world_line(w) for w in (obj.get("world_events") or [])
              if isinstance(w, dict) and _s(w.get("what"))]
@@ -385,11 +393,25 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
+    _news_by_id = {_s(x.get("source_item_id")): x
+                   for x in ((packet or {}).get("news") or [])
+                   if isinstance(x, dict)}
     for _n in (obj.get("top_news_analysis") or []):
         if not isinstance(_n, dict):
             continue
-        (tech_items if _is_tech(_news_subject(_n, packet))
-         else other_items).append(_n)
+        _subj = _news_subject(_n, packet)
+        # **無主體的新聞退回標題判準**(2026-08-29 實信):主體判準只認
+        # 「可指名的公司」,於是長鑫、SK 海力士、CCL 漲價、NVL72 這種
+        # **產業級**科技新聞(標題沒指名台股/註冊個股)全部掉進
+        # 「其他類股」—— 那天八段只剩兩條,九段變科技大雜燴。
+        # 有主體時仍以主體為準(公司的產業別比關鍵字可靠)。
+        _is_t = _is_tech(_subj)
+        if not _is_t and not _subj.get("label"):
+            import industry_class as _ic
+            _title = _s((_news_by_id.get(_s(_n.get("source_item_id")))
+                         or {}).get("title"))
+            _is_t = _ic.is_tech_headline(_title)
+        (tech_items if _is_t else other_items).append(_n)
     tech_news = _blocks(tech_items, lambda n: _news_line(n, packet))
     other_news = _blocks(other_items, lambda n: _news_line(n, packet))
     news = tech_news + other_news
@@ -531,10 +553,15 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
         _wr_lines = []
         for w in wr:
             wid = str(w.get("watch_id") or "")
-            label = _wid_text.get(wid) or wid
+            # **不可以叫 `label`**(2026-08-29 實信):`label` 在函式開頭
+            # 已經綁定成**立場**(偏多/偏空/中性),這個迴圈把它蓋掉之後,
+            # 底下的「立場:{label}」印的是最後一條昨日觀察點的文字 ——
+            # 實信印出「立場:NVDA財報前AI板塊資金動向(2330是否站穩2400)」。
+            # 特化路徑第一次上線就中,因為 legacy 路徑不走這一段。
+            watch_text = _wid_text.get(wid) or wid
             status = _WR_ZH.get(str(w.get("status") or ""), "?")
             what = _s(w.get("what_happened"))
-            _wr_lines.append(f"{label}：{status}"
+            _wr_lines.append(f"{watch_text}：{status}"
                              + (f"（{what}）" if what else ""))
         if _wr_lines:
             parts.append("## 昨日觀察點回顧\n" + "\n".join(_wr_lines))

@@ -6535,6 +6535,49 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "6d431e83-eb88-4082-9b0c-aec16b34ea7b",
+        "title": "Nvidia's Historic Quarter, SaaS Comeback, Bessent vs Druck, America's Debt Crisis, Cancer Vaccine",
+        "published": "Sat, 29 Aug 2026 01:19:00 +0000",
+        "processed_at": "2026-08-29T02:35:39Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為 Nvidia 財報證明 AI 資本支出熱潮並未泡沫化：單季營收 962 億美元、年增 106%，且下季財測優於市場預期，但股價僅 12 倍本益比。",
+            "主持人指出 Nvidia 透過收購 Hugging Face 與 Poolside 加速擁抱開源，並與雲端客戶形成既合作又競爭的全面收斂格局，未來大型科技公司都將同時擁有自有的雲端、模型與晶片。",
+            "主持人認為 Salesforce 大漲逾 20% 顯示「SaaS 末日」論過度誇大：像 Salesforce 這類核心系統紀錄平台反而能靠 AI 代理解鎖既有功能，而垂直型 SaaS 才更容易受到衝擊。",
+            "主持人解讀貝森買回長債與 Druckenmiller 投書：這反映財政部長無法真正壓低長天期殖利率，真正的問題在於國會持續擴張支出，未來 12 個月需再融資 10 兆美元債務。",
+            "主持人警告若 30 年期公債殖利率升至 6%，將是「死亡螺旋」的開端，最終必須靠國會削減支出或 AI 帶動的經濟成長才能化解。",
+            "主持人認為烏克蘭情勢對俄羅斯有利，澤倫斯基應接受川普的建議與俄國達成協議，否則烏克蘭的經濟與軍事將持續耗損。",
+            "主持人指 Moderna 的癌症「疫苗」其實是個人化新生抗原免疫療法，核心技術由公共資金長期支持，擔憂藥廠以專利與監管將價格推至 50 萬美元，形成監管俘獲。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "財報超預期且下季財測強勁，證明 AI 資本支出持續，本益比僅 12 倍。"
+            },
+            {
+              "name": "Salesforce",
+              "code": "CRM",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "SaaS 末日論過度誇大，平台型系統紀錄公司能與 AI 代理互補，股價大漲逾 20%。"
+            },
+            {
+              "name": "Moderna",
+              "code": "MRNA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "癌症免疫療法技術有效，但定價與專利監管作法令主持人失望，認為應更開放。"
+            }
+          ],
+          "market_view": "主持人認為 AI 熱潮仍有基本面支撐，但長天期公債殖利率攀升反映美國財政紀律失控，若殖利率續升至 6% 將開啟長期的經濟痛苦。",
+          "action_view": "主持人建議關注長債殖利率與國會財政行動，並強調平台型系統紀錄公司（如 Salesforce）相對具有防禦性，而垂直型 SaaS 風險較高。",
+          "notable_quote": "If you see the 30 year at 6%, it is the beginning of a death spiral."
+        }
+      },
+      {
         "guid": "83789c12-210d-431c-9b7e-8796293414a7",
         "title": "Eric Weinstein: The State of American Science, Breakthrough Coverups, and the Danger of Physics",
         "published": "Wed, 26 Aug 2026 23:00:00 +0000",
@@ -6884,40 +6927,6 @@
           "notable_quote": "People think that you wake up one day and you just have this company with these employees and you have all these great clients and you're in these magazines and it's great. Let me tell you, every day you got to wake up and commit yourself to the mission."
         },
         "shown_at": "2026-07-30T23:04:08Z"
-      },
-      {
-        "guid": "d2e9f5ad-85fb-49f6-bc5c-65f32868b632",
-        "title": "The Fight Over Open Source AI, Anthropic's $1.5B Payout, NYC Socialists: Evictions = Violence?",
-        "published": "Fri, 24 Jul 2026 20:46:00 +0000",
-        "processed_at": "2026-07-25T05:02:52Z",
-        "digest": {
-          "summary_points": [
-            "中國開源模型 Kimmy K3 性能與美國前沿模型相當，但成本低 50%，引發白宮關於禁止中國開源模型的討論。",
-            "David Sacks 警告禁止開源將傷害美國 AI 領導地位，並指控 Anthropic 試圖進行監管捕獲以保護利潤。",
-            "蒸餾爭議：Anthropic 指控中國模型蒸餾其輸出，但 Sacks 和 Friedberg 指出虛偽，因為 Anthropic 和 OpenAI 自己也用版權內容訓練。",
-            "開源 AI 快速商品化，價值正從基礎模型轉移到應用層和基礎設施層（雲端、晶片）。",
-            "Google 本季財報優於預期，但資本支出飆升至 1950-2050 億美元，首次出現自由現金流為負，股價跌 7-10%；Chamath 和 Sacks 仍長期看多。",
-            "Tesla 資本支出年增 140%，自由現金流轉負，股價跌 14%；主持人未明確表達對 Tesla 的看法。",
-            "SpaceX IPO 較首日收盤價下跌 30%，市值 1.5 兆美元，面臨鎖定期到期壓力。",
-            "Anthropic 因盜版 700 萬本書籍以 15 億美元和解版權訴訟，凸顯合理使用的不確定性及對 AI 訓練成本的潛在風險。",
-            "Friedberg 認為中國的長期策略是商品化知識經濟，利用龐大的製造和能源優勢，在分子轉換領域掌握價值。",
-            "Sacks 反駁美國仍領先六個月；Anthropic 和 OpenAI 營收仍快速成長（Anthropic 年化營收 700 億美元，OpenAI 加速增長）。",
-            "所有主持人同意開源將持續存在，但前沿實驗室可透過向上移動到應用層和企業服務來獲勝。"
-          ],
-          "tickers": [
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "最佳定位從 AI 基礎設施和雲端獲取價值；碎片化有利於 Google 的晶片和雲端業務。"
-            }
-          ],
-          "market_view": "市場對 Google 和 Tesla 的巨額資本支出感到失望，但主持人認為長期投資 AI 基礎設施是正確策略，尤其看好 Google 的複合效應。",
-          "action_view": "建議投資者關注 Google 等擁有基礎設施和雲端業務的公司，而非僅押注前沿模型。",
-          "notable_quote": "This is why the 1% that controls open source, if they have it, that the oligarchs are going to get their clocks wrong and we don't need to have a wealth tax."
-        },
-        "shown_at": "2026-07-25T22:43:07Z"
       }
     ]
   },

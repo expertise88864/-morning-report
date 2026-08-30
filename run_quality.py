@@ -659,6 +659,28 @@ def assess(manifest, *, mode: str = "watchdog",
             + "、".join(f"{f}({_why[f][:60]})" if _why.get(f) else f
                        for f in _corrupt))
 
+    # ---- 10b. **登記過 ≠ 可以靜音**(2026-08-30 外審)
+    # 上一批為了修「沒見過的降級步驟:gazette」,把 17 個標籤一次補進
+    # `KNOWN_DEGRADED` —— 而那個集合的語意是「已知**且可接受**」。
+    # 結果 `story_ledger_corrupt`(120 天敘事連續性讀不動)、
+    # `delivery_receipt_publish`(防重複寄信的收據沒發佈成功)、
+    # `analysis_recap_unreadable`(明天的昨日觀點會缺)這三個**安全機制
+    # 失效**的訊號,從「至少會報 unknown」變成完全不出聲 —— 修正比缺陷
+    # 更糟的形狀。登記讓掃描守衛過得去,能不能靜音是另一個問題。
+    _ALARMING = {
+        "story_ledger_corrupt": (
+            "defect", "敘事帳本讀不出來 —— 今天的信沒有 120 天的事件脈絡,"
+            "而且舊檔刻意不覆寫(fail-closed);持久檔要修"),
+        "delivery_receipt_publish": (
+            "defect", "寄送收據沒能發佈 —— 那是防止備援班重複寄信的證據,"
+            "它失效時「已經寄過」在 origin/main 上沒有紀錄"),
+        "analysis_recap_unreadable": (
+            "defect", "昨日觀點讀不出來 —— 明天的「敘事變化」會整段缺席"),
+    }
+    for _label, (_sev, _why) in _ALARMING.items():
+        if _label in (m.get("degraded_steps") or []):
+            add(_label, _sev, _why)
+
     # ---- 11. 沒見過的降級
     # `llm:luna_path_failed:<例外類名>` 是**已分類的家族**:後綴是開放集,
     # frozenset 列舉不完(2026-08-22 生產:PayloadBudgetExceeded 被當成

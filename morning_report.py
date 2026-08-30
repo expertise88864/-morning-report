@@ -23227,7 +23227,15 @@ def _mark_delivery_in_manifest(**fields) -> None:
             base = json.loads(RUN_MANIFEST_FILE.read_text(encoding="utf-8")) or {}
         if not isinstance(base, dict):
             return
-        delivery = dict(base.get("delivery") or {})
+        # **本班的結論不繼承上一班的**(2026-08-30 外審):`base` 可能是
+        # checkout 來的舊 manifest。舊的 `skipped_reason`(週日無新內容)
+        # 會跟著被複製,今天真的寄成功時就變成
+        # `success=true` + `skipped_reason=舊值` —— 而看門狗**先讀
+        # skipped_reason**,於是把「寄出去了」判成「刻意沒寄」。
+        # 終局欄位一律由本班重新決定,只有非終局的補充欄位可以沿用。
+        delivery = {k: v for k, v in (base.get("delivery") or {}).items()
+                    if k not in ("attempted", "success", "skipped_reason",
+                                 "error")}
         delivery.update(fields)
         if fields.get("success"):
             _gha_output("delivered", "true")

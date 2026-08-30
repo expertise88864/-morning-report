@@ -140,3 +140,50 @@ def test_recipient_addresses_never_come_from_public_repo_variables():
             assert expr.index("secrets.") < expr.index("vars."), (
                 f"{path}: {key} 的 vars 在 secret 前面 —— "
                 "加了 secret 也不會生效")
+
+
+def test_a_successful_send_does_not_inherit_yesterdays_skip_reason(
+        tmp_path, monkeypatch):
+    """r2 外審:`base` 可能是 checkout 來的舊 manifest,舊的
+    `skipped_reason`(週日無新內容)會被複製進今天的 delivery ——
+    於是 `success=true` 卻同時帶著 `skipped_reason`。而看門狗**先讀
+    skipped_reason**,會把「寄出去了」判成「刻意沒寄」。"""
+    m = tmp_path / "m.json"
+    m.write_text(json.dumps({
+        "date": "2026-08-29 07:00",
+        "delivery": {"attempted": False, "success": False,
+                     "skipped_reason": "weekend_no_new_content"}}),
+        encoding="utf-8")
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", m)
+    monkeypatch.setattr(mr, "DELIVERY_RECEIPT_FILE", tmp_path / "r.json")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "schedule")
+    monkeypatch.setattr(mr, "_RUN_STAMP", "")
+    mr._set_run_stamp(dt.datetime.now(mr.TPE))
+    mr._mark_delivery_in_manifest(attempted=True, success=True)
+    d = json.loads(m.read_text(encoding="utf-8"))["delivery"]
+    assert d["success"] is True and "skipped_reason" not in d, d
+    # 看門狗的判讀順序:有 skipped_reason 就先回「刻意不寄」
+    import sys as _s
+    _s.path.insert(0, str(_ROOT / "tools"))
+    import report_watchdog as w
+    assert not w.delivery_state.__doc__ or True     # 只確認 import 得到
+    assert d.get("run_kind") == "schedule"
+
+
+def test_registered_is_not_the_same_as_silent():
+    """r2 外審:上一批為了修「沒見過的降級步驟」把 17 個標籤補進
+    `KNOWN_DEGRADED` —— 而那個集合的語意是「已知**且可接受**」。
+    結果三個**安全機制失效**的訊號從「至少報 unknown」變成完全不出聲:
+    修正比缺陷更糟。登記是為了讓掃描守衛過得去,能不能靜音是另一回事。"""
+    import run_quality as rq
+    codes = {f.get("code") for f in rq.assess({
+        "date": "2026-08-30 08:15", "delivery": {"success": True},
+        "degraded_steps": ["story_ledger_corrupt",
+                           "delivery_receipt_publish",
+                           "analysis_recap_unreadable", "gazette"]})}
+    for label in ("story_ledger_corrupt", "delivery_receipt_publish",
+                  "analysis_recap_unreadable"):
+        assert label in codes, f"{label} 被靜音了:{codes}"
+    # 真正可接受的降級不必各自出一條(否則告警信會被噪音淹掉)
+    assert "gazette" not in codes

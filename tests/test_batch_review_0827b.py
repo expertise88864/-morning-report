@@ -190,10 +190,13 @@ def test_the_receipt_is_published_the_moment_delivery_is_conclusive(
     assert not (tmp_path / "r.json").exists(), "attempted 還不是結論"
     mr._mark_delivery_in_manifest(attempted=True, success=True)
     data = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
-    assert data["date"] == "2026-08-28 06:12"
+    # 2026-08-30:收據日期改用「現在」—— 週日路徑的 mark 跑在寫 manifest
+    # 之前,用檔案的 date 會把收據寫成昨天而被去重跳過(見 test_batch_prod_0830)。
+    assert str(data["date"])[:10] == dt.datetime.now(mr.TPE).strftime("%Y-%m-%d")
     assert data["delivery"]["success"] is True
-    now = dt.datetime(2026, 8, 28, 6, 47, tzinfo=mr.TPE)
-    assert "已寄出" in mr._manifest_delivery_verdict(data, now)
+    # verdict 對「今天」判(收據日期已改為 now,固定日期會對不上)
+    assert "已寄出" in mr._manifest_delivery_verdict(
+        data, dt.datetime.now(mr.TPE))
 
 
 def test_the_receipt_is_wired_into_the_workflow():

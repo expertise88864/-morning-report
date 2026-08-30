@@ -65,9 +65,9 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
           # 留空 RADAR_RECIPIENT → 與晨報同一批收件者
-          RADAR_RECIPIENT: ${{ vars.RADAR_RECIPIENT || secrets.RADAR_RECIPIENT }}
+          RADAR_RECIPIENT: ${{ secrets.RADAR_RECIPIENT || vars.RADAR_RECIPIENT }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 選填:設了 FINMIND_TOKEN(免費註冊)可拉高外資持股查詢額度;留空則用免 token 免費額度

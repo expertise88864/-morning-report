@@ -105,13 +105,13 @@ jobs:
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          RECIPIENT: ${{ vars.RECIPIENT || secrets.RECIPIENT }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
           # [晨報品質](rc=2)只寄品質信箱(使用者指定 2026-08-13):
           # 主收件人只想收晨報本體;品質告警是維運訊號,分流。
           # 要換位址時設 repo variable QUALITY_RECIPIENT 蓋過預設。
           # 位址走 repo variable(公開 repo 不放個人信箱;外審 P2-3)。
           # 沒設時 Python 端回退主收件人 —— 告警不可斷。
-          QUALITY_RECIPIENT: ${{ vars.QUALITY_RECIPIENT }}
+          QUALITY_RECIPIENT: ${{ secrets.QUALITY_RECIPIENT || vars.QUALITY_RECIPIENT }}
           WATCHDOG_RC: ${{ steps.check.outputs.rc }}
           WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
           # 補寄結果一起進告警信:自動修復不可以是無聲的,否則

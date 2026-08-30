@@ -23231,8 +23231,13 @@ def _mark_delivery_in_manifest(**fields) -> None:
         delivery.update(fields)
         if fields.get("success"):
             _gha_output("delivered", "true")
-        delivery.setdefault("run_kind",
-                            os.environ.get("GITHUB_EVENT_NAME") or "local")
+        # **run_kind 一律用本班的觸發方式**(2026-08-30 實信):原本
+        # setdefault,而週日路徑的 mark 跑在寫 manifest **之前**,`base`
+        # 是**昨天的檔** —— delivery dict 連同昨天的 run_kind 一起被繼承,
+        # 08/30 排程班的 manifest 於是記成 workflow_dispatch。
+        if "run_kind" not in fields:
+            delivery["run_kind"] = (os.environ.get("GITHUB_EVENT_NAME")
+                                    or "local")
         base["delivery"] = delivery
         _RUN_MANIFEST["delivery"] = delivery
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -23246,7 +23251,13 @@ def _mark_delivery_in_manifest(**fields) -> None:
     # schema 契約。這一支只在「寄成功」或「刻意不寄」時動作,所以一班最多
     # 推一次;`attempted` 那種中間狀態不推(它還不是結論)。
     if delivery.get("success") or str(delivery.get("skipped_reason") or "").strip():
-        _publish_delivery_receipt(base.get("date"), delivery)
+        # **收據的日期用「現在」**(2026-08-30 實信):週日的 mark 在寫
+        # manifest 之前,`base` 是昨天的檔 —— 收據 payload 變成「昨天+
+        # success」,與遠端內容相同而被去重跳過,今天的寄送沒有收據。
+        # **用本班開跑時釘的戳,不是寄完的牆鐘**(2026-08-30 外審):
+        # 手動觸發可以午夜前開始、午夜後寄出 —— 用牆鐘會把收據蓋成隔天,
+        # 隔天的排程讀到就整班跳過。
+        _publish_delivery_receipt(_run_stamp(), delivery)
 
 
 def _publish_delivery_receipt(date_str, delivery: dict) -> None:
@@ -23843,6 +23854,9 @@ def _build_week_review_prompt(now_tpe) -> str:
 ### 下週關注方向
 3-4 條:本週懸而未決的事(談判/財報/數據/政策)下週會怎麼收斂、看什麼訊號。
 只能從上方素材延伸,**不得編造下週的行事曆項目**;不確定日期就寫「時間未定」。
+**已經發生、結果已知的事不得列入**:素材裡早段寫「輝達財報將牽動台股」而
+更晚的素材已在講財報結果時,財報就是已發生的事 —— 列它等於把上週寫成下週。
+只寫尚未發生或尚未有結論的。
 
 **鐵則**:(a) 每一條都要對得回上方素材,素材沒有的事件不得出現;
 (b) 不寫投資建議、不喊價位;(c) 立場變化(偏多→中性)可以引用,那是本報
@@ -23886,6 +23900,11 @@ def _render_week_review_html(analysis_md: str, htmllib) -> str:
     """本週回顧段(與政策解析同一個版式;空字串 = 整段省略)。"""
     if not (analysis_md or "").strip():
         return ""
+    # 模型自加的 `---` 水平線:`_md_to_html` 不認得,會印成三個橫槓的
+    # 文字行(2026-08-30 實信)。段落間距版面已有,直接拿掉。
+    analysis_md = chr(10).join(
+        ln for ln in str(analysis_md).splitlines()
+        if ln.strip() not in ("---", "***", "___"))
     from render_utils import _md_to_html as _md, _style_analysis_html
     body = _style_analysis_html(_md(analysis_md))
     return (
@@ -24059,6 +24078,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
 def run_weekend_digest(now_tpe: dt.datetime) -> int:
     """週日輕量綜合信:不跑行情/ML/預測,只抓週末新增的體育/Podcast/政策/醫界/文獻,
     且僅在有新內容時才寄信(使用者需求)。寄出後標記 podcast 已顯示並 push state。"""
+    _set_run_stamp(now_tpe)          # 本班身分:週日也是入口之一
     import html as _htmllib
     report_date = now_tpe.strftime("%Y-%m-%d (%a)")
     print(f"[weekend] 開始產生週日綜合 — {report_date}")
@@ -25739,6 +25759,27 @@ _PIPELINE = (
 )
 
 
+#: **本班的日期戳**,開跑當下釘一次(`_set_run_stamp`)。
+#: 2026-08-30 外審:收據日期先前用「寄送完成時的牆鐘」,而手動觸發可以
+#: 在午夜前開始、午夜後寄出 —— 收據會被蓋成**隔天**,於是隔天 06:07 的
+#: 排程讀到它就整班跳過,真正的隔天晨報缺席。同一次執行的所有產物
+#: (manifest / 收據 / 遙測)必須說同一個事實,那個事實在開跑時就定了。
+_RUN_STAMP: str = ""
+
+
+def _set_run_stamp(now_tpe) -> str:
+    """釘住本班的日期戳(冪等:同一次執行只認第一次)。"""
+    global _RUN_STAMP
+    if not _RUN_STAMP:
+        _RUN_STAMP = now_tpe.strftime("%Y-%m-%d %H:%M")
+    return _RUN_STAMP
+
+
+def _run_stamp() -> str:
+    """本班的日期戳;沒釘過就以現在補釘(單元測試直接呼叫渲染時)。"""
+    return _RUN_STAMP or _set_run_stamp(dt.datetime.now(TPE))
+
+
 #: 備援班的**新鮮寄送紀錄**檔路徑(由 workflow 設定)。
 #: 排程觸發的 checkout 檢出的是「排程事件建立當時」的 commit —— 備援班在
 #: 佇列裡等主班寫完 state,拿到 runner 之後**工作區仍停在等待前的舊快照**。
@@ -25871,6 +25912,7 @@ def main() -> int:
     _RUN_DEADLINE = time.monotonic() + RUN_BUDGET_SECONDS   # P0-2 保命 deadline
     _DEGRADED_STEPS.clear()
     now_tpe = dt.datetime.now(TPE)
+    _set_run_stamp(now_tpe)
     # **同日冪等**(2026-08-27):備援 cron 的前提。已經有結論就不再跑 ——
     # **不覆寫 manifest**:那一份正是「今天寄成功了」的證據,蓋掉它等於
     # 把證據換成一句「本班沒做事」,看門狗會因此改口。

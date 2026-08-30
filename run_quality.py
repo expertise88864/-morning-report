@@ -78,6 +78,21 @@ KNOWN_DEGRADED = frozenset({
     # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
     "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
     "medical_journals", "sports", "policy",
+    # ── 2026-08-30:**這一整批本來全都會變成「沒見過的降級步驟」。**
+    # 08/29 的品質告警信實際印出「unknown_degradation —— 沒見過的降級
+    # 步驟:gazette」,查下去發現不是漏一個,是漏 17 個 —— 只註冊了
+    # `weekend_gazette` 而平日路徑發的是 `gazette`。新增標籤要同批註冊
+    # 在消費端,否則退化成「未知」;現在有 `test_every_emitted_degradation
+    # _label_is_registered` 機械化守住,不再靠記得。
+    "gazette", "weekend_gazette", "weekend_policy_analysis",
+    "weekend_week_review", "article_extractor", "horizontal_queries",
+    "sector_map_unavailable", "story_ledger_corrupt",
+    "analysis_recap_unreadable", "policy_keywords_load",
+    "policy_keywords_save", "delivery_receipt_publish",
+    # 除權息/公司行動(前綴族,逐個列出來才看得出漏了誰)
+    "corpact:fetch_failed", "corpact:delisted_fetch_failed",
+    "corpact:history_unreadable", "corpact:persist_failed",
+    "corpact:update_failed",
 })
 
 

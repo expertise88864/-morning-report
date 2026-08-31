@@ -88,6 +88,12 @@ jobs:
     # 由晨報自己在寄信成功後寫這個 output(見 `_gha_output`),不靠步驟的成敗推測。
     outputs:
       delivered: ${{ steps.report.outputs.delivered }}
+      # **品質結果要有消費端才算數**(2026-08-31 r1 外審):第一版只加了
+      # 自評步驟、`continue-on-error: true`,而註解卻宣稱「結果寫進 output
+      # 由獨立 job 判讀」—— 那個 output 與那個 job 都不存在。判準會跑、
+      # 會印 annotation,然後**沒有任何人收到通知**。
+      quality_defect: ${{ steps.quality.outputs.defect }}
+      quality_detail: ${{ steps.quality.outputs.detail }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -267,6 +273,36 @@ jobs:
           TZ: Asia/Taipei
         run: python -m pytest tests/test_state_schema_contract.py -q
 
+      # **本班自己判品質**(2026-08-31 外審 P1:completion race)。
+      # 品質判準先前只由看門狗事後跑,而看門狗可能在主班**還在跑**的時候
+      # 啟動 —— 它讀到的 manifest 是舊的,看不到「這班最後 Luna 會失敗」
+      # (08/31 正是 20→12→2 到最後才落 legacy)。而晨報自己的
+      # alert-on-failure 只看 job 成敗,「信寄了但落回 legacy」在它眼中是
+      # 成功。產出者在收尾自己判一次,就沒有「太早來、看不到結果」的競態。
+      #
+      # `continue-on-error` 是刻意的:品質有瑕疵不等於晨報沒寄出,讓它把
+      # job 變紅會使失敗告警誤報「晨報未寄出」。但**不變紅不等於不通知**
+      # —— 結果寫成 job output,由下方 `alert-on-quality` 消費。
+      - name: 本班品質自評(不影響 job 成敗)
+        id: quality
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        env:
+          TZ: Asia/Taipei
+        run: |
+          set +e
+          OUT="$(python tools/assert_run_quality.py --mode watchdog 2>&1)"
+          RC=$?
+          set -e
+          echo "$OUT"
+          if [ "$RC" -ne 0 ]; then DEFECT=true; else DEFECT=false; fi
+          {
+            echo "defect=$DEFECT"
+            echo "detail<<QUALITY_EOF"
+            echo "$OUT"
+            echo "QUALITY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       # 沒有 `if:` 是刻意的:上一步失敗時這一步會被跳過,
       # 壞掉的 state 就留在 runner 上隨之丟棄,不會進 main。
       - name: 發佈 state(契約通過後才 push)
@@ -277,6 +313,31 @@ jobs:
   # 批#32 r1(Codex F1):告警必須是**獨立 job**。原本放在 send-report 的最後一步,
   # 但 job 撞 timeout-minutes: 25 被 GitHub 終止時,整個 job(含後續步驟)一起被殺
   # ——恰好是最該告警的那種失敗完全不會通知。改用 needs + always() 另起一個 job。
+  # **品質告警是獨立 job**(2026-08-31 r1 外審 P1)。`send-report` 保持綠
+  # —— 品質有瑕疵不等於晨報沒寄出;但「不變紅」不等於「不通知」,
+  # 這個 job 專門消費品質結果。信件內容在 `tools/quality_alert.py`
+  # (獨立腳本才測得到,而且 workflow 裡不再有巢狀 heredoc)。
+  alert-on-quality:
+    needs: send-report
+    if: ${{ always() && needs.send-report.outputs.quality_defect == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+      # 不 continue-on-error:告警寄不出去要紅 —— 靜默成功的告警等於沒有告警。
+      - name: 品質告警信
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
+          QUALITY_RECIPIENT: ${{ secrets.QUALITY_RECIPIENT || vars.QUALITY_RECIPIENT }}
+          QUALITY_DETAIL: ${{ needs.send-report.outputs.quality_detail }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python tools/quality_alert.py
+
   alert-on-failure:
     needs: send-report
     if: ${{ always() && (needs.send-report.result == 'failure' || needs.send-report.result == 'cancelled' || needs.send-report.result == 'skipped') }}

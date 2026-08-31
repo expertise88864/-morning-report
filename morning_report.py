@@ -23241,8 +23241,16 @@ def _mark_delivery_in_manifest(**fields) -> None:
         # 終局欄位一律由本班重新決定,只有非終局的補充欄位可以沿用。
         delivery = {k: v for k, v in (base.get("delivery") or {}).items()
                     if k not in ("attempted", "success", "skipped_reason",
-                                 "error")}
+                                 "error", "delivered_at")}
         delivery.update(fields)
+        # **`date` 是開跑時刻,不是寄出時刻**(2026-08-31 使用者定 09:00 SLA
+        # 之後才發現):08/31 那班 `date=08:30`、`total_seconds=2088` ——
+        # 信其實 09:05 才寄出,而 state 看起來像「08:30 成功」。同日冪等
+        # 需要的是**開跑日**(跨午夜不能記成隔天),SLA 需要的是**寄出的
+        # 那一刻** —— 兩件事,兩個欄位。
+        if fields.get("success") and "delivered_at" not in fields:
+            delivery["delivered_at"] = dt.datetime.now(TPE).isoformat(
+                timespec="seconds")
         if fields.get("success"):
             _gha_output("delivered", "true")
         # **run_kind 一律用本班的觸發方式**(2026-08-30 實信):原本

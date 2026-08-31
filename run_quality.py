@@ -31,6 +31,8 @@
 """
 from __future__ import annotations
 
+import datetime as _dt
+
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
@@ -45,6 +47,11 @@ import llm_telemetry as _lt
 #: **當日真的沒有那類資料時空掉是正常的** —— 生產那邊的註解本來就
 #: 這樣寫,而第一版的判準忽略了它,等於製造可預期的假警報。
 ALWAYS_REALIZABLE = frozenset({"market:", "calibration:", "quality:"})
+
+#: **送達期限**(2026-08-31 使用者定案):信可以晚到,但台股 09:00 開盤
+#: 前必須到。判準寫成常數,`tests/test_batch_prod_0831.py` 釘住它 ——
+#: 改期限要連測試一起改,不能默默放寬。
+SLA_HOUR, SLA_MINUTE = 9, 0
 
 KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
@@ -658,6 +665,28 @@ def assess(manifest, *, mode: str = "watchdog",
             "之前它每天都不會更新):"
             + "、".join(f"{f}({_why[f][:60]})" if _why.get(f) else f
                        for f in _corrupt))
+
+    # ---- 10a. **09:00 SLA**(2026-08-31 使用者定案:信可以晚到,但台股
+    # 開盤前必須到)。先前 state 只有 `date`(**開跑時刻**),而 08/31 那班
+    # `date=08:30`、`total_seconds=2088` —— 信其實 09:05 才寄出,監控資料
+    # 看起來卻像「08:30 成功」。**宣告了 SLA 卻沒有欄位能稽核它**,那條
+    # SLA 就只是一句話。判準吃 `delivery.delivered_at`(寄出的那一刻)。
+    #
+    # 舊 manifest 沒有這個欄位 —— **不當成違規**(那會在部署當天產生一次
+    # 確定的假警報,而假警報會訓練人忽略告警)。
+    _dv = m.get("delivery") if isinstance(m.get("delivery"), dict) else {}
+    _at = str(_dv.get("delivered_at") or "").strip()
+    if _dv.get("success") and _at:
+        try:
+            _when = _dt.datetime.fromisoformat(_at)
+            if (_when.hour, _when.minute) >= (SLA_HOUR, SLA_MINUTE):
+                add("delivery_sla_missed", "defect",
+                    f"晨報 {_when:%H:%M} 才寄出,超過 {SLA_HOUR:02d}:"
+                    f"{SLA_MINUTE:02d} 的送達期限(台股開盤)—— "
+                    "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
+        except ValueError:
+            add("delivered_at_unparsable", "degraded",
+                f"寄出時刻讀不出來:{_at!r} —— SLA 這一天無法稽核")
 
     # ---- 10b. **登記過 ≠ 可以靜音**(2026-08-30 外審)
     # 上一批為了修「沒見過的降級步驟:gazette」,把 17 個標籤一次補進

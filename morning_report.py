@@ -14328,14 +14328,20 @@ def _repair_request_payload(payload: dict, user_payload: str, tail: str,
 #: 逐次計費與 attempts 紀錄全部不變,而總嘗試數仍有硬上限
 #: (1 + syntax + semantic),不會因為模式輪替而無限延長。
 #: 三種模式,各自的額度說得出理由:
-#:   * `semantic` 2 —— 2026-08-17 生產的收斂軌跡 12 → 1 → 0,**兩輪都用到**;
+#:   * `semantic` 3 —— 2026-08-31 使用者拍板 2 → 3:08/29 起步 7 條駁回
+#:     兩輪內通過,08/31 起步 12 條兩輪差一點(chain_break 為主)——
+#:     起步駁回多的日子兩輪不夠。時間試算:首輪 ~520s + 三輪 slim 各
+#:     ≤300s = 1,420s < 1800s 總預算,塞得下;多的一輪只在需要的日子花
+#:     (~$0.03)。2026-08-17 的軌跡是 12 → 1 → 0 兩輪都用到 —— 第三輪
+#:     是給「12 → 3 → 1」這種差一步的日子;
+
 #:   * `regenerate` 2 —— 空回應是 provider 的偶發現象(adapter 契約明說),
 #:     沒有底本可修,重試是唯一的補救;這是先前 `_LUNA_ATTEMPTS` 給的
 #:     額度,不因為改成分模式而降級;
 #:   * `syntax` 1 —— 有內容但 JSON 壞掉,「只修語法不改語意」是設計好的
 #:     一次性補救;第二次還壞代表輸出結構性地爛,剩下的時間留給 legacy
 #:     更划算。
-_LUNA_REPAIR_LIMITS = {"syntax": 1, "regenerate": 2, "semantic": 2}
+_LUNA_REPAIR_LIMITS = {"syntax": 1, "regenerate": 2, "semantic": 3}
 
 #: 修補前必須為 legacy 備援保留的秒數(2026-08-07 E2E 第五次:legacy 在
 #: flash 上實測 190-310s 才寫得完整份;保留 300 讓「特化失敗 → legacy」

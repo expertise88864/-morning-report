@@ -1609,10 +1609,10 @@ def test_the_luna_loop_allows_a_second_repair():
     迴圈裡的預算守衛在時間不夠時本來就會放棄後續修補,上限提高只花
     「還有剩」的預算。"""
     import morning_report as mr
-    # 2026-08-17 外審 P1-2:額度依模式分開,語意仍是**兩輪**
-    # (生產軌跡 12 → 1 → 0 兩輪都用到)。語法輪與空回應各有自己的額度,
-    # 不再從語意這邊扣。
-    assert mr._LUNA_REPAIR_LIMITS["semantic"] == 2, mr._LUNA_REPAIR_LIMITS
+    # 2026-08-31 使用者拍板:語意 2 → **3**(08/29 起步 7 條兩輪過、
+    # 08/31 起步 12 條兩輪差一點 —— 起步駁回多的日子兩輪不夠;時間
+    # 520+300×3=1,420s < 1800s 塞得下)。語法輪與空回應各有自己的額度。
+    assert mr._LUNA_REPAIR_LIMITS["semantic"] == 3, mr._LUNA_REPAIR_LIMITS
     assert mr._LUNA_REPAIR_LIMITS["syntax"] >= 1
     assert mr._LUNA_REPAIR_LIMITS["regenerate"] >= 1
 

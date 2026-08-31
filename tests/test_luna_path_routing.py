@@ -196,10 +196,10 @@ def test_repair_rounds_are_capped_and_every_attempt_is_billed(
     monkeypatch.setattr(mr, "_call_llm_text",
                         lambda p: "## 我的明確立場\n立場：中性\n\n## 一句話總結\n備援。")
     assert "備援。" in mr._call_llm_analysis_impl(*_ARGS)
-    # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
-    # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
-    assert len(calls) == 3, (
-        f"全壞時要把語意額度打滿(1 初始 + 2 修補),實際 {len(calls)}")
+    # **額度依模式分開**:語意 3 輪(2026-08-31 使用者拍板 2→3)
+    # → 1 初始 + 3 = 4。期望值寫明,不從單一常數推。
+    assert len(calls) == 4, (
+        f"全壞時要把語意額度打滿(1 初始 + 3 修補),實際 {len(calls)}")
 
 
 def test_the_manifest_records_which_profile_and_evidence_were_used(
@@ -377,10 +377,11 @@ def test_deepen_does_not_grant_extra_semantic_rounds(luna_on, monkeypatch):
         lambda p: pytest.fail("加深失敗要用留著的淺版,不落回 legacy"))
     mr._RUN_MANIFEST.pop("llm", None)
     assert mr._analysis_complete_enough(mr._call_llm_analysis_impl(*_ARGS))
-    # 1 初始 + 1 加深 + 1 語意 = 3(語意額度 2,加深已用掉 1)
-    assert len(calls) == 3, calls
+    # 1 初始 + 1 加深 + 2 語意 = 4(語意額度 3 —— 2026-08-31 拍板 2→3,
+    # 加深佔掉 1 之後仍剩兩輪真正的修補)
+    assert len(calls) == 4, calls
     llm = mr._RUN_MANIFEST.get("llm") or {}
-    assert llm["repair_budget"]["used"]["semantic"] == 2, llm["repair_budget"]
+    assert llm["repair_budget"]["used"]["semantic"] == 3, llm["repair_budget"]
     assert llm.get("deepen_failed") is True, "加深失敗沒有留痕"
 
 
@@ -513,8 +514,8 @@ def test_an_ungrounded_report_is_rejected_and_falls_back(luna_on, monkeypatch):
         "沒有根據的報告被採用了 —— 它會被原樣寄出,而且看起來很有把握")
     # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
     # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
-    assert len(calls) == 3, (
-        f"應該把修補上限打滿再放棄,實際送了 {len(calls)} 次")
+    assert len(calls) == 4, (
+        f"應該把修補上限打滿再放棄(1 初始 + 3 語意),實際送了 {len(calls)} 次")
     problems = (mr._RUN_MANIFEST.get("llm") or {}).get("luna_problems") or []
     assert any("證據" in p for p in problems), f"拒收原因沒有說清楚:{problems}"
 
@@ -643,7 +644,7 @@ def test_a_phantom_claim_evidence_id_is_never_laundered(luna_on, monkeypatch):
     assert "備援。" in text, "幽靈證據被剪掉當成合法,整份輸出被採用了"
     # **額度依模式分開**(2026-08-17):語意 2 輪 → 1 初始 + 2 = 3。
     # `_LUNA_ATTEMPTS` 已移除 —— 期望值寫明,不從單一常數推。
-    assert len(calls) == 3, "應該把語意額度打滿再落回"
+    assert len(calls) == 4, "應該把語意額度打滿再落回(1 初始 + 3 語意)"
 
 
 def test_only_the_decorative_relates_to_is_pruned(luna_on, monkeypatch):
@@ -903,9 +904,9 @@ def test_repair_modes_match_the_number_of_repair_calls(luna_on, monkeypatch):
     mr._RUN_MANIFEST.pop("llm", None)
     try:
         mr._call_llm_analysis_impl(*_ARGS)
-        assert len(calls) == 3   # 1 初始 + 2 語意修補
+        assert len(calls) == 4   # 1 初始 + 3 語意修補(2026-08-31 拍板 2→3)
         modes = (mr._RUN_MANIFEST.get("llm") or {}).get("repair_modes") or []
-        assert len(modes) == 2, modes   # 兩次修補 → 兩筆留痕
+        assert len(modes) == 3, modes   # 三次修補 → 三筆留痕
     finally:
         mr._RUN_MANIFEST.clear()
         mr._RUN_MANIFEST.update(saved)

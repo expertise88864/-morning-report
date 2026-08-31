@@ -697,9 +697,14 @@ def assess(manifest, *, mode: str = "watchdog",
     # **「不知道它是哪一版」不等於「它一定是最舊版」**(r2 外審)。
     # `_safe_int` 讓壞值變 0 → 判成 legacy → 反而拿到豁免:版本資訊壞掉
     # 的檔比正常檔更寬鬆。三態分開:沒有(真 legacy)/ 讀得出來 / 壞掉。
+    # **「欄位不存在」與「欄位存在但值是 null」是兩件事**(2026-09-01 r3 外審):
+    # 用 `.get()` 的回傳值判斷缺席,會把 `{"manifest_schema": null}` 這種
+    # **版本資訊已經損壞**的檔判成「舊版,當時還沒有這個欄位」——
+    # 又一次讓壞掉的檔拿到比合法新檔更寬鬆的待遇。key 在不在要問 key。
+    _has_schema = "manifest_schema" in m
     _raw_schema = m.get("manifest_schema")
     _schema, _schema_bad = 0, False
-    if _raw_schema is not None:
+    if _has_schema:
         # **只接受正整數**(2026-09-01 r2 外審):`int()` 對 `0.9` 給 0、
         # 對 `False` 給 0,負數則原樣通過 —— 這些壞值都會小於功能世代 1
         # 而拿到 legacy 豁免,SLA 又一次稽核不到。「欄位缺席」才是真舊檔;

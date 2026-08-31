@@ -701,6 +701,30 @@ def _gha_output(key: str, value: str) -> None:
         print(f"[gha] step output 寫入失敗: {e}", file=sys.stderr)
 
 
+def _publish_terminal_outcome(outcome: str, *, state_dirty: bool) -> None:
+    """發佈本班的**終局**控制訊號 —— `run_outcome` 與 `state_dirty` 一起。
+
+    2026-09-01 r3 外審:上一輪只把 `state_dirty` 升級成 required,`run_outcome`
+    仍走 best-effort —— 但 workflow 拿它決定要不要跑品質自評。也就是
+    「控制流程依賴一個允許靜默失敗的 transport」,與剛修掉的那條同型:
+    SMTP 成功、manifest 與收據都成功,只有寫 `run_outcome=delivered` 的
+    那一瞬 I/O 失敗 → 被吞 → 品質自評整個不執行,而 job 是綠的。
+
+    兩個訊號寫在同一支裡是為了**不漂移**:它們描述同一件事的兩面,
+    分散在不同地方遲早會有一邊忘了更新。
+
+    **這一支不往外拋**:呼叫點在收尾之後,但它的呼叫端(週日路徑)
+    有 catch-all,拋出去只會被吞掉,而且會打斷同一段裡剩下的收尾。
+    失敗訊號改走 `_REQUIRED_OUTPUT_FAILED` —— 退出碼吞不掉。
+    """
+    for key, value in (("run_outcome", outcome),
+                       ("state_dirty", "true" if state_dirty else "false")):
+        try:
+            _gha_output_required(key, value)
+        except OSError:
+            continue        # 旗標已設,`_final_exit_code()` 會把這一班判紅
+
+
 #: 有沒有哪個**控制流** step output 寫失敗過。
 #: r2 外審第三輪:光靠 `raise` 不夠 —— 週日無內容路徑把
 #: `_mark_delivery_in_manifest()` 整段包在 `except Exception` 裡再 `return 0`,
@@ -23264,7 +23288,7 @@ def _mark_delivery_in_manifest(**fields) -> None:
     這裡在 `send_email` 成功之後、`persist_delivered_report_state`(內含 push)
     之前補寫,所以同一次 commit 會把它帶回 repo。
     """
-    _dirty = False
+    _outcome, _dirty = "", False
     try:
         base = {}
         if RUN_MANIFEST_FILE.exists():
@@ -23293,12 +23317,10 @@ def _mark_delivery_in_manifest(**fields) -> None:
             _gha_output("delivered", "true")
             # 本班真的產出了 manifest 並寄出 —— 品質自評與 state 契約
             # 只對這種 run 有意義(2026-09-01 外審 P1)。
-            _gha_output("run_outcome", "delivered")
-            _dirty = True
+            _outcome, _dirty = "delivered", True
         elif str(fields.get("skipped_reason") or "").strip():
-            _gha_output("run_outcome", "intentionally_skipped")
             # 刻意不寄的日子仍然寫了 manifest(看門狗靠它判「今天跑過」)
-            _dirty = True
+            _outcome, _dirty = "intentionally_skipped", True
         # **run_kind 一律用本班的觸發方式**(2026-08-30 實信):原本
         # setdefault,而週日路徑的 mark 跑在寫 manifest **之前**,`base`
         # 是**昨天的檔** —— delivery dict 連同昨天的 run_kind 一起被繼承,
@@ -23331,10 +23353,10 @@ def _mark_delivery_in_manifest(**fields) -> None:
         # 手動觸發可以午夜前開始、午夜後寄出 —— 用牆鐘會把收據蓋成隔天,
         # 隔天的排程讀到就整班跳過。
         _publish_delivery_receipt(_run_stamp(), delivery)
-    # **最後才寫控制流 output**:上面的 manifest 落檔與收據發佈都比
-    # 「讓寫入失敗可見」更重要,所以放在它們之後 —— 這一支會拋。
-    if _dirty:
-        _gha_output_required("state_dirty", "true")
+    # **最後才發控制流訊號**:上面的 manifest 落檔與收據發佈都比
+    # 「讓寫入失敗可見」更重要,所以放在它們之後。
+    if _outcome:
+        _publish_terminal_outcome(_outcome, state_dirty=_dirty)
 
 
 def _publish_delivery_receipt(date_str, delivery: dict) -> None:
@@ -26023,7 +26045,7 @@ def main() -> int:
     _done = already_delivered_today(now_tpe)
     if _done:
         print(f"[main] {_done} —— 本班是備援觸發,不重複寄送")
-        _gha_output("run_outcome", "already_delivered")
+        _publish_terminal_outcome("already_delivered", state_dirty=False)
         return 0
     # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
     if now_tpe.weekday() == 6:

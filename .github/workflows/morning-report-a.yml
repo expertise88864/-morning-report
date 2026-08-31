@@ -94,6 +94,15 @@ jobs:
       # 會印 annotation,然後**沒有任何人收到通知**。
       quality_alertable: ${{ steps.quality.outputs.alertable }}
       quality_detail: ${{ steps.quality.outputs.summary }}
+      # **判準自己壞掉也要有人收到**(2026-09-01 r3 外審):品質自評是
+      # `continue-on-error`,所以它失敗時 job 仍是綠的 → alert-on-failure
+      # 不啟動;而輸出寫不進去時 `alertable` 缺席 → alert-on-quality 也不
+      # 啟動。結果是 Actions UI 有紅色 step,卻沒有任何一封信。
+      # `outcome` 保留 continue-on-error **之前**的原始結果,正是這裡要的。
+      quality_step_outcome: ${{ steps.quality.outcome }}
+      # 判準**跑完了**的標記。它對任何 defect 刻意 exit 1(退出碼服務
+      # CI),所以 outcome=failure 不代表判準壞了 —— 兩者要分開問。
+      quality_assessed: ${{ steps.quality.outputs.assessed }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -326,7 +335,9 @@ jobs:
     # 這個 job 只要 checkout 程式碼 + 寄 SMTP,不寫 repo。
     permissions:
       contents: read
-    if: ${{ always() && needs.send-report.outputs.quality_alertable == 'true' }}
+    if: ${{ always() && (needs.send-report.outputs.quality_alertable == 'true'
+            || (needs.send-report.outputs.quality_step_outcome == 'failure'
+                && needs.send-report.outputs.quality_assessed != 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -342,6 +353,9 @@ jobs:
           RECIPIENT: ${{ secrets.RECIPIENT }}
           QUALITY_RECIPIENT: ${{ secrets.QUALITY_RECIPIENT || vars.QUALITY_RECIPIENT }}
           QUALITY_DETAIL: ${{ needs.send-report.outputs.quality_detail }}
+          # 讓信分得出「內容降級」與「判準自己失敗、品質狀態不明」。
+          QUALITY_STEP_OUTCOME: ${{ needs.send-report.outputs.quality_step_outcome }}
+          QUALITY_ASSESSED: ${{ needs.send-report.outputs.quality_assessed }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: python tools/quality_alert.py
 

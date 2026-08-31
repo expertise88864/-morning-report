@@ -97,6 +97,13 @@ def _emit_outputs(findings) -> None:
         "alertable": "true" if findings else "false",
         "max_severity": "defect" if "defect" in sev else (
             "degraded" if findings else "none"),
+        # **「判準跑完了」與「判準說結果是壞的」是兩件事**(r3 外審第二輪)。
+        # 這個 step 對任何 defect 刻意 `return 1`(退出碼服務 CI),於是
+        # `steps.quality.outcome` 會是 `failure` —— 拿它當「判準自己崩了」
+        # 的依據,會把**判準正常運作並明確指出 defect** 的那一班,
+        # 誤報成「品質狀態不明」,而它其實知道得很清楚。
+        # 崩潰要用「有沒有留下完成標記」判,不是用退出碼判。
+        "assessed": "true",
     }
     try:
         with open(path, "a", encoding="utf-8") as fh:

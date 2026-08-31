@@ -340,8 +340,8 @@ def test_a_no_op_backup_skips_the_expensive_tail(tmp_path, monkeypatch):
     i = src.index('_gha_output("state_dirty", "false")')
     j = src.index('_gha_output("run_outcome", "running")')
     assert j < i, "預設值要在最前面(早退路徑也要看得到)"
-    # 翻成 true 的那一支是**會拋的**版本(控制流依據,見下一條測試)
-    assert '_gha_output_required("state_dirty", "true")' in src
+    # 翻成 true 的那一支走**終局訊號**那條路(控制流依據,見下面兩條測試)
+    assert "_publish_terminal_outcome(_outcome, state_dirty=_dirty)" in src
 
 
 def test_a_broken_output_channel_is_not_silent(tmp_path, monkeypatch):
@@ -394,7 +394,7 @@ def test_a_control_flow_output_does_not_fail_silently(tmp_path, monkeypatch):
     assert '_gha_output("state_dirty"' not in body, (
         "控制流 output 還寫在會被 except 吞掉的 try 區塊裡")
     assert body.index("_publish_delivery_receipt(_run_stamp()") < body.index(
-        '_gha_output_required("state_dirty", "true")'), (
+        "_publish_terminal_outcome(_outcome, state_dirty=_dirty)"), (
         "為了讓寫入失敗可見,反而砍掉了收據發佈")
 
 
@@ -423,3 +423,138 @@ def test_a_swallowed_output_failure_still_turns_the_job_red(tmp_path, monkeypatc
     src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
     assert "sys.exit(_final_exit_code(main()))" in src, (
         "entry point 沒有接上 —— 那個旗標就只是一個沒人讀的變數")
+
+
+def test_a_null_version_is_corruption_not_a_legacy_file():
+    """r3 外審:`{"manifest_schema": null}` 與 `{}` 是兩件事 —— 前者是
+    「版本資訊已經損壞」,後者才是「當時還沒有這個欄位」。用 `.get()` 的
+    回傳值判斷缺席會把兩者壓成一格,壞掉的檔又一次拿到比合法新檔
+    更寬鬆的待遇。**key 在不在要問 key。**"""
+    def _codes(m):
+        return {f["code"] for f in rq.assess(m)}
+    base = {"date": "2026-09-01 05:10", "delivery": {"success": True},
+            "llm": {"analysis_origin": "luna_specialized"}}
+    codes = _codes(dict(base, manifest_schema=None))
+    assert "manifest_schema_invalid" in codes, codes
+    assert "delivered_at_missing" in codes, ("null 拿到了 legacy 豁免", codes)
+    # 真正的舊檔(key 根本不存在)仍然豁免
+    assert "manifest_schema_invalid" not in _codes(dict(base))
+    assert "delivered_at_missing" not in _codes(dict(base))
+
+
+def test_a_broken_assessor_still_reaches_a_human(tmp_path, monkeypatch):
+    """r3 外審:品質自評是 `continue-on-error` —— 它失敗時 job 仍是綠的,
+    `alert-on-failure` 不啟動;而輸出寫不進去時 `alertable` 缺席,
+    `alert-on-quality` 也不啟動。結果是 Actions UI 有紅色 step,
+    **卻沒有任何一封信**。上一輪只做到「對 Actions UI 不靜默」。"""
+    import yaml
+    import sys as _sys
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        encoding="utf-8").read())
+    outs = wf["jobs"]["send-report"]["outputs"]
+    # `outcome` 保留 continue-on-error **之前**的原始結果
+    assert outs["quality_step_outcome"] == "${{ steps.quality.outcome }}"
+    cond = " ".join(wf["jobs"]["alert-on-quality"]["if"].split())
+    assert "quality_step_outcome == 'failure'" in cond, cond
+    assert "quality_alertable == 'true'" in cond, "原本的觸發條件不見了"
+
+    # 信要分得出兩種狀況 —— detail 是空的也不可以說今天沒事
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import quality_alert as qa
+    now = dt.datetime(2026, 9, 1, 5, 10)
+    broken = qa.build_message("", "http://run", now, assessor_failed=True)
+    assert "品質狀態不明" in broken["Subject"], broken["Subject"]
+    normal = qa.build_message("x", "http://run", now)
+    assert broken["Subject"] != normal["Subject"]
+    src = io.open(_ROOT / "tools" / "quality_alert.py", encoding="utf-8").read()
+    assert "QUALITY_STEP_OUTCOME" in src and "assessor_failed=(" in src, (
+        "main() 沒有把 step outcome 接到 build_message —— 那個參數沒人給")
+
+
+def test_a_defect_is_not_mistaken_for_a_broken_assessor(tmp_path, monkeypatch):
+    """r3 外審第二輪:那個 step 對**任何 defect** 刻意 `return 1`
+    (退出碼服務 CI),所以 `steps.quality.outcome` 會是 `failure` ——
+    拿它當「判準自己崩了」的依據,會把判準**正常運作並明確指出 defect**
+    的那一班誤報成「品質狀態不明」,而它其實知道得很清楚。
+
+    「跑完了」與「結果是壞的」是兩件事:崩潰要用**有沒有留下完成標記**判。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import assert_run_quality as arq
+    import quality_alert as qa
+
+    # 判準真的判到 defect:退出碼 1,但完成標記在
+    out = tmp_path / "out.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    rc = arq.main(["--manifest", str(_write_manifest(tmp_path, {
+        "date": "2026-09-01 05:10", "manifest_schema": 1,
+        "delivery": {"success": True,
+                     "delivered_at": "2026-09-01T09:30:00+08:00"},
+        "llm": {"analysis_origin": "luna_specialized"}})),
+        "--mode", "watchdog"])
+    written = out.read_text(encoding="utf-8")
+    assert rc == 1, "SLA 超時應該是 defect"
+    assert "assessed=true" in written, "判準跑完了卻沒有留下完成標記"
+    assert "alertable=true" in written
+
+    def _failed(outcome, assessed):
+        return outcome == "failure" and assessed != "true"
+
+    now = dt.datetime(2026, 9, 1, 5, 10)
+    # failure + 有完成標記 + 有 detail → 這是 A,不是 B
+    a = qa.build_message("delivery_sla_missed …", "u", now,
+                         assessor_failed=_failed("failure", "true"))
+    assert "品質狀態不明" not in a["Subject"], a["Subject"]
+    # failure + 沒有完成標記 → 才是 B
+    b = qa.build_message("", "u", now,
+                         assessor_failed=_failed("failure", ""))
+    assert "品質狀態不明" in b["Subject"], b["Subject"]
+
+    wf = _yaml_workflow()
+    cond = " ".join(wf["jobs"]["alert-on-quality"]["if"].split())
+    assert "quality_assessed != 'true'" in cond, cond
+    assert wf["jobs"]["send-report"]["outputs"]["quality_assessed"] == (
+        "${{ steps.quality.outputs.assessed }}")
+
+
+def _write_manifest(tmp_path, payload):
+    p = tmp_path / "run_manifest.json"
+    p.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return p
+
+
+def _yaml_workflow():
+    import yaml
+    return yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        encoding="utf-8").read())
+
+
+def test_the_terminal_outcome_is_not_best_effort(tmp_path, monkeypatch):
+    """r3 外審:上一輪只把 `state_dirty` 升級成 required,而 workflow 拿
+    `run_outcome` 決定要不要跑品質自評 —— **控制流程依賴一個允許靜默失敗
+    的 transport**,與剛修掉的那條同型。
+
+    兩個訊號封裝在同一支裡是為了不漂移;而它**不往外拋**:呼叫端
+    (週日路徑)有 catch-all,拋出去只會被吞掉又打斷剩下的收尾。
+    """
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    assert '_gha_output("run_outcome", "delivered")' not in src
+    assert '_gha_output("run_outcome", "already_delivered")' not in src
+    assert '_gha_output("run_outcome", "intentionally_skipped")' not in src
+
+    monkeypatch.setattr(mr, "_REQUIRED_OUTPUT_FAILED", False)
+    out = tmp_path / "out.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    mr._publish_terminal_outcome("delivered", state_dirty=True)
+    written = out.read_text(encoding="utf-8")
+    assert "run_outcome=delivered" in written and "state_dirty=true" in written
+    assert not mr._REQUIRED_OUTPUT_FAILED
+
+    # 通道壞掉:不拋(收尾不被打斷),但旗標讓這一班變紅
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "nope" / "o.txt"))
+    mr._publish_terminal_outcome("already_delivered", state_dirty=False)
+    assert mr._REQUIRED_OUTPUT_FAILED, "終局訊號寫丟了,卻沒有留下任何痕跡"
+    assert mr._final_exit_code(0) == 1

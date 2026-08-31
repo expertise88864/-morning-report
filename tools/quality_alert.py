@@ -26,8 +26,35 @@ from email.message import EmailMessage
 TPE = dt.timezone(dt.timedelta(hours=8))
 
 
-def build_message(detail: str, run_url: str, now: dt.datetime) -> EmailMessage:
-    """告警信本體(純函式,好測)。"""
+def build_message(detail: str, run_url: str, now: dt.datetime,
+                  *, assessor_failed: bool = False) -> EmailMessage:
+    """告警信本體(純函式,好測)。
+
+    **兩種訊息要分得開**(2026-09-01 r3 外審):
+
+      A 判準說話了 —— 「信寄出了,但有段落沒跑成」,detail 就是那幾條。
+      B 判準自己壞了 —— 「信寄出了,但品質狀態不明」。這時 detail
+        很可能是空的(結果根本沒寫出來),而**不能因為沒有 detail 就
+        說今天沒事** —— 那正是最需要有人去看一眼的情形。
+    """
+    if assessor_failed:
+        msg = EmailMessage()
+        msg["Subject"] = (f"[晨報品質] {now:%Y-%m-%d %H:%M} "
+                          "品質自評本身失敗,今天的品質狀態不明")
+        msg.set_content(chr(10).join([
+            "晨報寄出去了,但**品質自評這一步自己失敗** —— 今天的信有沒有",
+            "段落沒跑成,現在沒有人知道。",
+            "",
+            "常見原因:判準結果寫不進 GITHUB_OUTPUT(傳送通道失效)、",
+            "manifest 解析失敗、判準本身拋例外。",
+            "",
+            "判準結果(可能是空的,因為它沒能寫出來):",
+            (detail or "(無)").strip(),
+            "",
+            "請直接看執行紀錄裡那一步的 error annotation:",
+            run_url,
+        ]))
+        return msg
     msg = EmailMessage()
     msg["Subject"] = (f"[晨報品質] {now:%Y-%m-%d %H:%M} "
                       "信寄出了,但有段落沒跑成")
@@ -61,7 +88,15 @@ def main() -> int:
         return 1
     msg = build_message(os.environ.get("QUALITY_DETAIL", ""),
                         os.environ.get("RUN_URL", ""),
-                        dt.datetime.now(TPE))
+                        dt.datetime.now(TPE),
+                        # 崩潰 = 這一步跑失敗了**而且**沒有留下完成標記。
+                        # 只看退出碼會把「判準正常指出 defect」誤報成
+                        # 「品質狀態不明」(r3 外審第二輪)。
+                        assessor_failed=(
+                            os.environ.get("QUALITY_STEP_OUTCOME", "").strip()
+                            == "failure"
+                            and os.environ.get("QUALITY_ASSESSED", "").strip()
+                            != "true"))
     msg["From"], msg["To"] = user, to
     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
         smtp.starttls(context=ssl.create_default_context())

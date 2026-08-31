@@ -6984,6 +6984,43 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "bd8c2709-7cb6-4766-9a80-24b591f4bdb0",
+        "title": "EP 189: NVIDIA and Marvell Earnings, Hot Chips Hot Takes",
+        "published": "Mon, 31 Aug 2026 09:00:01 -0700",
+        "processed_at": "2026-08-31T23:25:59Z",
+        "digest": {
+          "summary_points": [
+            "Nvidia 給出下一會計年度營收成長至少 70% 的指引,高於市場預期,並表示若產能足夠可望更高,顯示 AI 需求極度強勁。",
+            "Nvidia 毛利率預估從 75% 降至 72%,主因記憶體成本上漲,即便漲價也無法完全轉嫁,凸顯記憶體供應商的定價權提升。",
+            "Nvidia 開始運用資產負債表大規模融資與投資供應鏈(規模達數百億美元),以扶持生態系,這是新的競爭優勢但伴隨反壟斷與財務風險。",
+            "Nvidia 對超大規模客戶的銷售模式開始從整櫃轉為零組件(如 CPU+GPU),使得營收與毛利率建模更複雜。",
+            "Marvell 財報後股價大跌,因其 60% 營收成長遜於 Nvidia 的 70%,遭市場解讀為流失市佔;但主持人認為其專注 XPU attach 的策略正確。",
+            "Marvell 與 Google 的 120 億美元潛在交易缺乏轉化時間表,是市場失望主因;主持人仍抱持樂觀,認為將在投資人日有更多細節。",
+            "Hot Chips 顯示 AI 推論架構進入「era of ferment」,各家在記憶體、ASIC 與軟體路徑上激烈分歧,未來標準化方向不明,投資難度提高。",
+            "記憶體廠商轉向客製化 HBM base die,雖能優化效能,但將使記憶體成本上升、互換性下降,並可能造成同一 GPU 搭配不同記憶體時的性能差異。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為其需求強勁、成長展望佳,但供應鏈受限與毛利率壓力是隱憂。"
+            },
+            {
+              "name": "Marvell",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人肯定其 XPU attach 策略與 Google 合約潛力,但成長遜於 Nvidia 且缺乏細節,短期觀望。"
+            }
+          ],
+          "market_view": "",
+          "action_view": "",
+          "notable_quote": "Nvidia is most incentivized to help Intel execute here and that they are customer zero cleaning the pipe for Intel the same way that Apple did for TSMC."
+        }
+      },
+      {
         "guid": "16b331fc-37f8-427a-9583-53c817f7a53c",
         "title": "EP 189: Analyzing ADI Earnings, Custom Silicon Shifts, and Semiconductor Debt",
         "published": "Sun, 23 Aug 2026 16:10:27 -0700",

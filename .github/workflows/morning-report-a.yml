@@ -92,8 +92,8 @@ jobs:
       # 自評步驟、`continue-on-error: true`,而註解卻宣稱「結果寫進 output
       # 由獨立 job 判讀」—— 那個 output 與那個 job 都不存在。判準會跑、
       # 會印 annotation,然後**沒有任何人收到通知**。
-      quality_defect: ${{ steps.quality.outputs.defect }}
-      quality_detail: ${{ steps.quality.outputs.detail }}
+      quality_alertable: ${{ steps.quality.outputs.alertable }}
+      quality_detail: ${{ steps.quality.outputs.summary }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -283,25 +283,22 @@ jobs:
       # `continue-on-error` 是刻意的:品質有瑕疵不等於晨報沒寄出,讓它把
       # job 變紅會使失敗告警誤報「晨報未寄出」。但**不變紅不等於不通知**
       # —— 結果寫成 job output,由下方 `alert-on-quality` 消費。
+      # **只對真的產出本班 manifest 的 run 判品質**(2026-09-01 外審 P1):
+      # 備援班 no-op 時工作區的 manifest 是 checkout 來的**舊**那份 ——
+      # 拿它判會得到沒有意義的綠燈,或對著昨天的缺陷再寄一封「本班品質
+      # 異常」,而那封信自己宣稱「由產出者在收尾時判定」是假的。
+      #
+      # **判準吃結構化 output,不吃退出碼**:退出碼的語意是「CI 要不要
+      # 擋」,只有 defect 會非零;而 `analysis_not_specialized`(Luna 落回
+      # legacy)這種**最該通知**的事是 degraded —— 綁退出碼的話,這套機制
+      # 當初要抓的那件事自己不會發告警。
       - name: 本班品質自評(不影響 job 成敗)
         id: quality
-        if: ${{ always() && !cancelled() }}
+        if: ${{ always() && !cancelled() && steps.report.outputs.run_outcome == 'delivered' }}
         continue-on-error: true
         env:
           TZ: Asia/Taipei
-        run: |
-          set +e
-          OUT="$(python tools/assert_run_quality.py --mode watchdog 2>&1)"
-          RC=$?
-          set -e
-          echo "$OUT"
-          if [ "$RC" -ne 0 ]; then DEFECT=true; else DEFECT=false; fi
-          {
-            echo "defect=$DEFECT"
-            echo "detail<<QUALITY_EOF"
-            echo "$OUT"
-            echo "QUALITY_EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: python tools/assert_run_quality.py --mode watchdog
 
       # 沒有 `if:` 是刻意的:上一步失敗時這一步會被跳過,
       # 壞掉的 state 就留在 runner 上隨之丟棄,不會進 main。
@@ -319,7 +316,11 @@ jobs:
   # (獨立腳本才測得到,而且 workflow 裡不再有巢狀 heredoc)。
   alert-on-quality:
     needs: send-report
-    if: ${{ always() && needs.send-report.outputs.quality_defect == 'true' }}
+    # **不繼承 workflow 層的 contents: write**(2026-09-01 外審 P2):
+    # 這個 job 只要 checkout 程式碼 + 寄 SMTP,不寫 repo。
+    permissions:
+      contents: read
+    if: ${{ always() && needs.send-report.outputs.quality_alertable == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -340,6 +341,9 @@ jobs:
 
   alert-on-failure:
     needs: send-report
+    # 同上:告警 job 不需要 repo 寫入權。
+    permissions:
+      contents: read
     if: ${{ always() && (needs.send-report.result == 'failure' || needs.send-report.result == 'cancelled' || needs.send-report.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -98,6 +98,12 @@ def run_binding() -> dict:
     }
 
 
+#: **manifest 的世代**。判準端(`run_quality`)據此知道
+#: 「這一版起 `delivered_at` 是必填」——「舊檔沒有就豁免」需要一個截止點。
+#: 數字只有一個定義:那邊 import 這裡,不各寫一份。
+MANIFEST_SCHEMA = 1
+
+
 class ManifestRecorder:
     """擁有 manifest dict,並提供記錄操作。
 
@@ -199,6 +205,13 @@ class ManifestRecorder:
         """
         out = {
             "date": date,
+            # **世代標記蓋在這裡,不在寄送補寫那一步**(2026-09-01 r1 外審)。
+            # 第一版蓋在 `_mark_delivery_in_manifest` 的 `base` 上,而週日
+            # 路徑之後會呼叫 `_write_run_manifest()` **從頭重建**文件 ——
+            # 標記就掉了,那份 manifest 於是永久保有「舊檔豁免」,
+            # `delivered_at` 缺席永遠不會被判成缺陷。
+            # 這裡是唯一的權威產生器,每一條寫入路徑都會經過。
+            "manifest_schema": MANIFEST_SCHEMA,
             # **這一班寄的是哪一種信**(2026-08-09 生產)。週日綜合信走的是
             # 輕量路徑,根本不跑主分析 —— 而 `run_quality` 不知道有這回事,
             # 於是每個週日都會發一封「有段落沒跑成」。

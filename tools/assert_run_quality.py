@@ -64,6 +64,7 @@ def main(argv=None) -> int:
                          expected_sha=args.expected_sha,
                          expected_run_id=args.expected_run_id,
                          expected_nonce=args.expected_nonce)
+    _emit_outputs(findings)
     if not findings:
         print("[canary] 特化路徑走完了,判準全過")
         return 0
@@ -71,7 +72,41 @@ def main(argv=None) -> int:
         level = "error" if f.get("severity") == "defect" else "warning"
         print(f"::{level}::{f.get('code')} —— {f.get('detail')}")
     print(rq.summarize(findings))
+    # **退出碼服務 CI(strict canary 要擋),通知政策不看它。**
     return 1 if any(f.get("severity") == "defect" for f in findings) else 0
+
+
+def _emit_outputs(findings) -> None:
+    """把判準結果寫成 GitHub Actions step output(非 Actions 環境 no-op)。
+
+    **通知政策不可以綁在退出碼上**(2026-09-01 外審 P1)。退出碼的語意是
+    「CI 要不要擋」—— 只有 `defect` 會讓它非零。而 `analysis_not_specialized`
+    (Luna 落回 legacy)、`llm:provider_refused:payment`(餘額用光)這些
+    **要通知的事**都是 `degraded`:拿退出碼當通知判準的話,這套機制當初
+    要抓的那件事自己不會發告警。看門狗那端則是「有任何 finding 就告警」
+    —— 兩套監控對同一件事說不同的話,是更糟的狀態。
+    """
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    sev = {str(f.get("severity") or "") for f in findings}
+    rows = {
+        "has_findings": "true" if findings else "false",
+        "has_defect": "true" if "defect" in sev else "false",
+        # 有任何 finding 就通知 —— 與看門狗同一個判準。
+        "alertable": "true" if findings else "false",
+        "max_severity": "defect" if "defect" in sev else (
+            "degraded" if findings else "none"),
+    }
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            lines = [f"{k}={v}" for k, v in rows.items()]
+            lines.append("summary<<QUALITY_EOF")
+            lines.append(rq.summarize(findings) if findings else "")
+            lines.append("QUALITY_EOF")
+            fh.write("\n".join(lines) + "\n")
+    except OSError as e:
+        print(f"[canary] 判準結果寫不進 GITHUB_OUTPUT: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

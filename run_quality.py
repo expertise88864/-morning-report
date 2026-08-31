@@ -36,6 +36,7 @@ import datetime as _dt
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
+from run_manifest import MANIFEST_SCHEMA as _MANIFEST_SCHEMA
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -52,6 +53,22 @@ ALWAYS_REALIZABLE = frozenset({"market:", "calibration:", "quality:"})
 #: 前必須到。判準寫成常數,`tests/test_batch_prod_0831.py` 釘住它 ——
 #: 改期限要連測試一起改,不能默默放寬。
 SLA_HOUR, SLA_MINUTE = 9, 0
+
+#: SLA 判準的時區。**期限是「台北的九點」,不是「寫下那個字串的當地九點」**
+#: (2026-09-01 外審 P2):目前 writer 寫 `+08:00`,判準直接讀 hour 剛好對;
+#: 但 writer 若哪天改寫 UTC(`2026-09-01T01:05:34+00:00` 就是台北 09:05),
+#: 判準會看到 hour=1 而說「沒有超時」—— 悄悄失效。判準自己守住時區語意。
+SLA_TZ = _dt.timezone(_dt.timedelta(hours=8))
+
+#: **`delivered_at` 從哪一版開始是必填**(2026-09-01 外審 P2)。
+#: 「舊 manifest 沒有這個欄位不算違規」是對的(否則部署當天必定一次假
+#: 警報),但沒有截止點的話那個豁免是**永久**的 —— 將來某條新寄信路徑
+#: 忘了寫,判準會說「沒問題」而不是「SLA 無法稽核」。
+#: 產出端在**權威產生器** `run_manifest.ManifestRecorder.build()` 寫下
+#: `manifest_schema`(r1 外審:先前蓋在寄送補寫那一步,而週日路徑之後
+#: 會從頭重建文件,標記就掉了)。這一版(含)以後,寄成功卻沒有
+#: `delivered_at` 就是 defect。**數字只有一個定義**(見檔頭的 import)。
+MANIFEST_SCHEMA_WITH_DELIVERED_AT = _MANIFEST_SCHEMA
 
 KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
@@ -676,17 +693,28 @@ def assess(manifest, *, mode: str = "watchdog",
     # 確定的假警報,而假警報會訓練人忽略告警)。
     _dv = m.get("delivery") if isinstance(m.get("delivery"), dict) else {}
     _at = str(_dv.get("delivered_at") or "").strip()
+    _schema = _safe_int(m.get("manifest_schema"))
     if _dv.get("success") and _at:
         try:
             _when = _dt.datetime.fromisoformat(_at)
+            # **時區要正規化**:期限是「台北的九點」。沒帶時區的字串
+            # 視為台北(產出端一直是 TPE),帶了就換算過來。
+            _when = (_when.replace(tzinfo=SLA_TZ) if _when.tzinfo is None
+                     else _when.astimezone(SLA_TZ))
             if (_when.hour, _when.minute) >= (SLA_HOUR, SLA_MINUTE):
+                _why = ("" if digest else "(台股開盤)")
                 add("delivery_sla_missed", "defect",
                     f"晨報 {_when:%H:%M} 才寄出,超過 {SLA_HOUR:02d}:"
-                    f"{SLA_MINUTE:02d} 的送達期限(台股開盤)—— "
+                    f"{SLA_MINUTE:02d} 的送達期限{_why} —— "
                     "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
         except ValueError:
             add("delivered_at_unparsable", "degraded",
                 f"寄出時刻讀不出來:{_at!r} —— SLA 這一天無法稽核")
+    elif _dv.get("success") and _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT:
+        # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。
+        add("delivered_at_missing", "defect",
+            f"寄送成功卻沒有寫下實際寄出時刻(manifest_schema={_schema})"
+            " —— SLA 無法稽核,而它是使用者定案的送達期限")
 
     # ---- 10b. **登記過 ≠ 可以靜音**(2026-08-30 外審)
     # 上一批為了修「沒見過的降級步驟:gazette」,把 17 個標籤一次補進

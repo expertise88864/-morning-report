@@ -23253,6 +23253,11 @@ def _mark_delivery_in_manifest(**fields) -> None:
                 timespec="seconds")
         if fields.get("success"):
             _gha_output("delivered", "true")
+            # 本班真的產出了 manifest 並寄出 —— 品質自評與 state 契約
+            # 只對這種 run 有意義(2026-09-01 外審 P1)。
+            _gha_output("run_outcome", "delivered")
+        elif str(fields.get("skipped_reason") or "").strip():
+            _gha_output("run_outcome", "intentionally_skipped")
         # **run_kind 一律用本班的觸發方式**(2026-08-30 實信):原本
         # setdefault,而週日路徑的 mark 跑在寫 manifest **之前**,`base`
         # 是**昨天的檔** —— delivery dict 連同昨天的 run_kind 一起被繼承,
@@ -23262,6 +23267,11 @@ def _mark_delivery_in_manifest(**fields) -> None:
                                     or "local")
         base["delivery"] = delivery
         _RUN_MANIFEST["delivery"] = delivery
+        # **世代標記由權威產生器蓋**(r1 外審):先前蓋在這裡,而週日路徑
+        # 之後會 `_write_run_manifest()` 從頭重建文件 —— 標記就掉了。
+        # 這裡只保留補寫路徑的相容:重建過的檔已經有了,沒有的是那些
+        # 還沒被重建過的舊檔(照舊豁免)。
+        base.setdefault("manifest_schema", _rq_schema_with_delivered_at())
         RUN_MANIFEST_FILE.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write_text(RUN_MANIFEST_FILE,
                            json.dumps(base, ensure_ascii=False, indent=1))
@@ -25820,6 +25830,22 @@ DELIVERY_RECEIPT_FILE = STATE_ROOT / "delivery_receipt.json"
 FRESH_RECEIPT_ENV = "FRESH_DELIVERY_RECEIPT"
 
 
+def _safe_manifest_schema(base) -> int:
+    try:
+        return int((base or {}).get("manifest_schema") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _rq_schema_with_delivered_at() -> int:
+    """判準那端宣告的世代 —— 兩邊只有一個數字(不各寫一份會漂移)。"""
+    try:
+        import run_quality as _rq
+        return int(_rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT)
+    except Exception:                       # noqa: BLE001
+        return 1
+
+
 def is_rescue_run() -> bool:
     """這一班是不是**看門狗的自動補寄**(由 workflow input 傳進來)。
 
@@ -25938,9 +25964,15 @@ def main() -> int:
     # **同日冪等**(2026-08-27):備援 cron 的前提。已經有結論就不再跑 ——
     # **不覆寫 manifest**:那一份正是「今天寄成功了」的證據,蓋掉它等於
     # 把證據換成一句「本班沒做事」,看門狗會因此改口。
+    # **本班到底做了什麼**(2026-09-01 外審 P1):品質自評與 state 契約
+    # 只該對「真的產出了本班 manifest」的 run 執行。備援班 no-op 時
+    # 工作區的 manifest 是 checkout 來的**舊**那份 —— 拿它判品質會得到
+    # 一個沒有意義的綠燈,或對著昨天的缺陷再寄一封「本班品質異常」。
+    _gha_output("run_outcome", "running")
     _done = already_delivered_today(now_tpe)
     if _done:
         print(f"[main] {_done} —— 本班是備援觸發,不重複寄送")
+        _gha_output("run_outcome", "already_delivered")
         return 0
     # 週日(台北)走輕量綜合信:不開盤,只在有新增體育/Podcast/政策/醫界時才寄。
     if now_tpe.weekday() == 6:

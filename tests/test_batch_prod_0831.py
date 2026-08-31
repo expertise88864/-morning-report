@@ -71,14 +71,13 @@ def test_the_sla_deadline_is_a_pinned_constant():
     assert (rq.SLA_HOUR, rq.SLA_MINUTE) == (9, 0)
 
 
-def test_a_quality_defect_actually_reaches_a_human(monkeypatch):
-    """**完成競態**(外審 P1):品質判準先前只由看門狗事後跑,而看門狗
-    可能在主班還在跑時啟動,看不到「這班最後 Luna 會失敗」。
+def test_a_quality_problem_actually_reaches_a_human(monkeypatch):
+    """**整條鏈**:步驟寫 output → job 暴露 → 有消費端讀它。
 
-    第一版我只加了自評步驟 + `continue-on-error`,註解卻宣稱「結果寫進
-    output 由獨立 job 判讀」—— **那個 output 與那個 job 都不存在**
-    (r1 外審)。判準會跑、會印 annotation,然後沒有任何人收到通知。
-    這條驗的是**整條鏈**:步驟寫 output → job 暴露 output → 有消費端。
+    r1 抓到第一版只有自評步驟(output 與消費端都不存在);
+    r2 又抓到**通知政策綁在退出碼上** —— 退出碼只有 `defect` 會非零,
+    而 `analysis_not_specialized`(Luna 落回 legacy)這種最該通知的事
+    是 `degraded`,於是這套機制當初要抓的那件事自己不會發告警。
     """
     import yaml
     wf = yaml.safe_load(io.open(
@@ -88,36 +87,85 @@ def test_a_quality_defect_actually_reaches_a_human(monkeypatch):
     steps = send["steps"]
     names = [s.get("name") or "" for s in steps]
 
-    # ① 步驟存在、有 id、不讓 job 變紅、位置在寄信之後發佈之前
     q = [s for s in steps if (s.get("name") or "").startswith("本班品質")]
     assert q, names
     q = q[0]
-    assert q.get("id") == "quality", q
+    assert q.get("id") == "quality"
     assert q.get("continue-on-error") is True, "品質瑕疵不得讓 job 變紅"
     assert "assert_run_quality" in q["run"]
+    # **只對真的產出本班 manifest 的 run 判**(r2 外審):no-op 備援班
+    # 讀到的是 checkout 來的舊 manifest。
+    assert "run_outcome == 'delivered'" in q["if"], q["if"]
     i = names.index(q["name"])
     assert names.index("Run morning report") < i < names.index(
         "發佈 state(契約通過後才 push)")
 
-    # ② 步驟真的寫 output(不是只印 annotation)
-    assert "GITHUB_OUTPUT" in q["run"] and "defect=" in q["run"], q["run"]
-
-    # ③ job 把它暴露出去
+    # job 暴露的是 **alertable**(不是退出碼推導的 defect)
     outs = send.get("outputs") or {}
-    assert "steps.quality.outputs.defect" in str(outs.get("quality_defect"))
-    assert "steps.quality.outputs.detail" in str(outs.get("quality_detail"))
+    assert "steps.quality.outputs.alertable" in str(outs.get("quality_alertable"))
+    assert "steps.quality.outputs.summary" in str(outs.get("quality_detail"))
 
-    # ④ **有消費端**,而且它讀的就是那個 output
+    # 有消費端,而且讀的就是那個 output
     alert = wf["jobs"].get("alert-on-quality")
     assert alert, "沒有消費端 = 判準跑完沒有人知道"
-    assert "quality_defect" in alert["if"] and "'true'" in alert["if"], alert["if"]
+    assert "quality_alertable" in alert["if"] and "'true'" in alert["if"]
     assert alert.get("needs") == "send-report"
     body = str(alert["steps"])
-    assert "quality_alert.py" in body
-    assert "QUALITY_DETAIL" in body, "告警信沒帶上判準說了什麼"
-    # ⑤ 失敗告警的觸發條件不含品質(兩者語意不同,不可混為一談)
-    fail_if = wf["jobs"]["alert-on-failure"]["if"]
-    assert "quality" not in fail_if, fail_if
+    assert "quality_alert.py" in body and "QUALITY_DETAIL" in body
+    # 告警 job 不需要 repo 寫入權(r2 外審 P2)
+    assert (alert.get("permissions") or {}).get("contents") == "read"
+    # 失敗告警的觸發條件不含品質(兩者語意不同)
+    assert "quality" not in wf["jobs"]["alert-on-failure"]["if"]
+
+
+def test_a_degraded_only_run_still_notifies(tmp_path, monkeypatch):
+    """**08/31 那班的形狀**:Luna 落回 legacy → `analysis_not_specialized`
+    是 `degraded` → 退出碼 0。綁退出碼的話不會通知,而看門狗那端「有任何
+    finding 就告警」—— 兩套監控對同一件事說不同的話,比只有一套更糟。"""
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import assert_run_quality as arq
+    out = tmp_path / "gh_out"
+    out.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    arq._emit_outputs([{"code": "analysis_not_specialized",
+                        "severity": "degraded", "detail": "落回 legacy"}])
+    text = out.read_text(encoding="utf-8")
+    assert "alertable=true" in text, text
+    assert "has_defect=false" in text, text        # 退出碼仍是 0(CI 不擋)
+    assert "max_severity=degraded" in text
+    assert "analysis_not_specialized" in text, "摘要沒帶上判準說了什麼"
+    # 全過的日子不得通知
+    out.write_text("", encoding="utf-8")
+    arq._emit_outputs([])
+    assert "alertable=false" in out.read_text(encoding="utf-8")
+
+
+def test_the_run_says_what_it_actually_did(tmp_path, monkeypatch):
+    """`run_outcome` 是品質自評與 state 契約的閘門 —— 沒有它,no-op 備援班
+    會拿舊 manifest 判品質(false green,或對著昨天的缺陷再寄一封)。"""
+    out = tmp_path / "gh_out"
+    out.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    m = tmp_path / "m.json"
+    m.write_text(json.dumps({"date": "2026-09-01 05:10", "delivery": {}}),
+                 encoding="utf-8")
+    monkeypatch.setattr(mr, "RUN_MANIFEST_FILE", m)
+    monkeypatch.setattr(mr, "DELIVERY_RECEIPT_FILE", tmp_path / "r.json")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setattr(mr, "_RUN_STAMP", "")
+    mr._set_run_stamp(dt.datetime(2026, 9, 1, 5, 10, tzinfo=mr.TPE))
+    mr._mark_delivery_in_manifest(attempted=True, success=True)
+    assert "run_outcome=delivered" in out.read_text(encoding="utf-8")
+    # 刻意不寄的日子不是 delivered
+    out.write_text("", encoding="utf-8")
+    mr._mark_delivery_in_manifest(attempted=False, success=False,
+                                  skipped_reason="weekend_no_new_content")
+    assert "run_outcome=intentionally_skipped" in out.read_text(encoding="utf-8")
+    # 接線:no-op 早退那一條也要說
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    j = src.index("本班是備援觸發,不重複寄送")
+    assert "already_delivered" in src[j:j + 200]
 
 
 def test_the_quality_alert_says_what_went_wrong():
@@ -138,3 +186,83 @@ def test_the_quality_alert_says_what_went_wrong():
     assert "delivery_sla_missed" in text, "沒帶上判準說了什麼"
     assert "https://example/run/1" in text
     assert "看門狗" in text, "要說清楚這封是產出者自己發的"
+
+
+def test_the_sla_deadline_is_taipei_nine_not_local_nine():
+    """r2 外審 P2:期限是「**台北**的九點」。目前 writer 寫 `+08:00`,
+    直接讀 hour 剛好對 —— 但 writer 若改寫 UTC(`01:05:34+00:00` 就是
+    台北 09:05),判準會看到 hour=1 而說「沒有超時」,**悄悄失效**。
+    判準自己守住時區語意,不靠 writer 剛好寫對。"""
+    def _codes(at):
+        return {f["code"] for f in rq.assess({
+            "date": "2026-09-01 05:10",
+            "delivery": {"success": True, "delivered_at": at},
+            "llm": {"analysis_origin": "luna_specialized"}})}
+    # 同一個時刻的三種寫法,判準要說同一句話
+    for at in ("2026-09-01T09:05:34+08:00",      # 台北
+               "2026-09-01T01:05:34+00:00",      # UTC
+               "2026-08-31T21:05:34-04:00"):     # 紐約
+        assert "delivery_sla_missed" in _codes(at), at
+    # 準時的也一樣(換算後 05:41 台北)
+    for at in ("2026-09-01T05:41:00+08:00", "2026-08-31T21:41:00+00:00"):
+        assert "delivery_sla_missed" not in _codes(at), at
+    # 沒帶時區 → 視為台北(產出端一直是 TPE)
+    assert "delivery_sla_missed" in _codes("2026-09-01T09:05:34")
+    assert "delivery_sla_missed" not in _codes("2026-09-01T05:41:00")
+
+
+def test_the_missing_timestamp_exemption_has_an_end_date():
+    """r2 外審 P2:「舊 manifest 沒有這個欄位不算違規」是對的(否則部署
+    當天必定一次假警報),但**沒有截止點的話那個豁免是永久的** ——
+    將來某條新寄信路徑忘了寫,判準會說「沒問題」而不是「無法稽核」。"""
+    def _codes(extra):
+        m = {"date": "2026-09-01 05:10", "delivery": {"success": True},
+             "llm": {"analysis_origin": "luna_specialized"}}
+        m.update(extra)
+        return {f["code"] for f in rq.assess(m)}
+    # 這一版(含)以後:缺 delivered_at 是 defect
+    assert "delivered_at_missing" in _codes(
+        {"manifest_schema": rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT})
+    # 舊 manifest(沒有世代標記):豁免,不製造假警報
+    assert "delivered_at_missing" not in _codes({})
+    # **世代只有一個定義**(不然兩邊會漂移)
+    import run_manifest as rm
+    assert rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT == rm.MANIFEST_SCHEMA
+
+
+def test_the_generation_marker_survives_the_sunday_rebuild():
+    """r1 外審:第一版把世代標記蓋在 `_mark_delivery_in_manifest` 的 `base`
+    上,而**週日路徑之後會 `_write_run_manifest()` 從頭重建文件** ——
+    標記就掉了,那份 manifest 於是永久保有「舊檔豁免」,
+    `delivered_at` 缺席永遠不會被判成缺陷。
+
+    我的原測試只 grep 原始碼有沒有那一行,**從來沒走過標記→重建的序列**
+    —— 那正是缺陷所在的地方。這條走權威產生器本身。
+    """
+    import run_manifest as rm
+    doc = rm.ManifestRecorder().build(
+        date="2026-08-30 08:30", report_kind="weekend_digest",
+        budget_seconds=2700.0, news_workers=4, degraded_steps=[], feeds={})
+    assert doc.get("manifest_schema") == rm.MANIFEST_SCHEMA, doc.get(
+        "manifest_schema")
+    # 重建出來的文件,配上「寄成功但沒寫 delivered_at」→ 必須是缺陷
+    doc["delivery"] = {"success": True}
+    codes = {f["code"] for f in rq.assess(doc)}
+    assert "delivered_at_missing" in codes, codes
+
+
+def test_a_weekend_digest_is_not_told_the_market_opens():
+    """r2 外審 P2:週日沒有台股開盤 —— SLA 仍然適用(使用者要的是
+    「09:00 前」),但訊息不該說一個當天不存在的理由。"""
+    def _detail(m):
+        return "".join(f["detail"] for f in rq.assess(m)
+                       if f["code"] == "delivery_sla_missed")
+    base = {"date": "2026-08-30 08:30",
+            "delivery": {"success": True,
+                         "delivered_at": "2026-08-30T09:05:00+08:00"}}
+    weekday = dict(base, llm={"analysis_origin": "luna_specialized"})
+    assert "台股開盤" in _detail(weekday), _detail(weekday)
+    sunday = dict(base, report_kind="weekend_digest")
+    d = _detail(sunday)
+    assert d, "週日的 SLA 照樣要判"
+    assert "台股開盤" not in d, d

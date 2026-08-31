@@ -77,12 +77,14 @@ def test_the_watchdog_time_in_docs_matches_the_cron():
                       encoding="utf-8").read()
     wf = yaml.safe_load(wf_text)
     crons = [c["cron"] for c in wf[True]["schedule"]]
-    assert crons == ["5 0 * * *"], crons
-    # 00:05 UTC = 08:05 台北 —— 三處人看得到的文字都要說同一件事
-    assert "07:30" not in wf_text, "workflow 裡還留著舊時間"
+    # 2026-08-31 使用者定案 SLA(09:00 前必到)→ 整組前移:23:50Z = 07:50
+    assert crons == ["50 23 * * *"], crons
+    # 人看得到的文字要與 cron 說同一件事(釘「沒有舊時刻」,不逐字釘位置)
+    for stale in ("07:30", "08:05"):
+        assert stale not in wf_text, f"workflow 裡還留著舊時間 {stale}"
     doc = io.open(_ROOT / "tools" / "report_watchdog.py",
                   encoding="utf-8").read()
-    assert "08:05" in doc.split("\n\n")[0], doc.split("\n\n")[0]
+    assert "07:50" in doc.split("\n\n")[0], doc.split("\n\n")[0]
 
 
 def test_a_failed_rebase_is_cleaned_up():

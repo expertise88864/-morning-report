@@ -106,7 +106,17 @@ def _emit_outputs(findings) -> None:
             lines.append("QUALITY_EOF")
             fh.write("\n".join(lines) + "\n")
     except OSError as e:
-        print(f"[canary] 判準結果寫不進 GITHUB_OUTPUT: {e}", file=sys.stderr)
+        # **通道自己失效不得靜默**(2026-09-01 r2 外審):寫不進去 →
+        # `quality_alertable` 缺席 → 告警 job 的條件不成立 → 沒有人收到,
+        # 而步驟是 `continue-on-error`,連紅燈都沒有。那正好違反這批
+        # 修正的核心:「判準有跑」不等於「有人收到」。
+        # 印成 error annotation(Actions 摘要頁看得到)並**拋出去** ——
+        # 步驟仍被 continue-on-error 吸收(晨報不會因此變紅),
+        # 但 Actions 上會留下明確的失敗紀錄。
+        print("::error title=quality-output-unwritable::"
+              f"判準結果寫不進 GITHUB_OUTPUT({e})—— 品質告警這一班發不出去",
+              file=sys.stderr)
+        raise
 
 
 if __name__ == "__main__":

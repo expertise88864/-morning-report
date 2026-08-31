@@ -98,10 +98,16 @@ def run_binding() -> dict:
     }
 
 
-#: **manifest 的世代**。判準端(`run_quality`)據此知道
-#: 「這一版起 `delivered_at` 是必填」——「舊檔沒有就豁免」需要一個截止點。
-#: 數字只有一個定義:那邊 import 這裡,不各寫一份。
-MANIFEST_SCHEMA = 1
+#: **功能導入的世代**(一旦定案就**永遠不動**)。
+#: r2 外審:先前判準端寫 `MANIFEST_SCHEMA_WITH_DELIVERED_AT = MANIFEST_SCHEMA`
+#: —— 把「delivered_at 從第幾版開始必填」綁成「現在最新是第幾版」。
+#: 下一次為了別的欄位 bump 到 2,`{"manifest_schema": 1}` 的檔就會從
+#: 「必須有 delivered_at」變回「舊檔豁免」——**這次加世代的目的自己失效**。
+#: 兩者是不同概念:一個是歷史事實,一個是當下狀態。
+SCHEMA_V1_DELIVERY_TIMESTAMP = 1
+
+#: **現在最新是第幾版**。新增欄位時只動這裡,上面的歷史世代不准動。
+MANIFEST_SCHEMA = SCHEMA_V1_DELIVERY_TIMESTAMP
 
 
 class ManifestRecorder:

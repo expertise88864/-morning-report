@@ -701,6 +701,43 @@ def _gha_output(key: str, value: str) -> None:
         print(f"[gha] step output 寫入失敗: {e}", file=sys.stderr)
 
 
+#: 有沒有哪個**控制流** step output 寫失敗過。
+#: r2 外審第三輪:光靠 `raise` 不夠 —— 週日無內容路徑把
+#: `_mark_delivery_in_manifest()` 整段包在 `except Exception` 裡再 `return 0`,
+#: 第二層 catch-all 又把它吞掉了(而那個 catch-all 本身是對的:無內容路徑的
+#: commit 失敗刻意不擋)。**能被吞的訊號就不是保證**;退出碼吞不掉。
+_REQUIRED_OUTPUT_FAILED = False
+
+
+def _gha_output_required(key: str, value: str) -> None:
+    """寫一個**被 workflow 當成控制流依據**的 step output —— 失敗要看得見。
+
+    2026-09-01 r2 外審:`_gha_output()` 的 except 註解寫「觀測性失敗不得
+    影響晨報」,那對觀測性訊號是對的。但 `state_dirty` 不是觀測性訊號:
+    workflow 拿它決定要不要跑 state 契約與**要不要 push state**。寫失敗
+    → output 停在初始的 `false` → 兩步都跳過 → 已 commit 的 state 隨
+    runner 消失,而 job 顯示成功。同一個 helper 服務兩種語意,吞例外的
+    政策就會套到不該吞的那一邊。
+
+    這一支印 error annotation 並**把例外拋出去**;呼叫點必須放在所有
+    收尾(manifest 落檔、收據發佈)**之後** —— 否則為了讓失敗可見,
+    反而砍掉比它更重要的東西。
+    """
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"{key}={value}" + chr(10))
+    except OSError as e:
+        global _REQUIRED_OUTPUT_FAILED
+        _REQUIRED_OUTPUT_FAILED = True
+        print(f"::error title=step-output-unwritable::{key}={value} "
+              f"寫不進 GITHUB_OUTPUT({e})—— workflow 會漏掉 state 收尾",
+              file=sys.stderr)
+        raise
+
+
 def _append_actions_summary(manifest: dict) -> None:
     """GitHub Actions Step Summary(環境變數 GITHUB_STEP_SUMMARY 指向的檔)。非 Actions 環境則 no-op。"""
     path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -23227,6 +23264,7 @@ def _mark_delivery_in_manifest(**fields) -> None:
     這裡在 `send_email` 成功之後、`persist_delivered_report_state`(內含 push)
     之前補寫,所以同一次 commit 會把它帶回 repo。
     """
+    _dirty = False
     try:
         base = {}
         if RUN_MANIFEST_FILE.exists():
@@ -23256,8 +23294,11 @@ def _mark_delivery_in_manifest(**fields) -> None:
             # 本班真的產出了 manifest 並寄出 —— 品質自評與 state 契約
             # 只對這種 run 有意義(2026-09-01 外審 P1)。
             _gha_output("run_outcome", "delivered")
+            _dirty = True
         elif str(fields.get("skipped_reason") or "").strip():
             _gha_output("run_outcome", "intentionally_skipped")
+            # 刻意不寄的日子仍然寫了 manifest(看門狗靠它判「今天跑過」)
+            _dirty = True
         # **run_kind 一律用本班的觸發方式**(2026-08-30 實信):原本
         # setdefault,而週日路徑的 mark 跑在寫 manifest **之前**,`base`
         # 是**昨天的檔** —— delivery dict 連同昨天的 run_kind 一起被繼承,
@@ -23290,6 +23331,10 @@ def _mark_delivery_in_manifest(**fields) -> None:
         # 手動觸發可以午夜前開始、午夜後寄出 —— 用牆鐘會把收據蓋成隔天,
         # 隔天的排程讀到就整班跳過。
         _publish_delivery_receipt(_run_stamp(), delivery)
+    # **最後才寫控制流 output**:上面的 manifest 落檔與收據發佈都比
+    # 「讓寫入失敗可見」更重要,所以放在它們之後 —— 這一支會拋。
+    if _dirty:
+        _gha_output_required("state_dirty", "true")
 
 
 def _publish_delivery_receipt(date_str, delivery: dict) -> None:
@@ -25969,6 +26014,12 @@ def main() -> int:
     # 工作區的 manifest 是 checkout 來的**舊**那份 —— 拿它判品質會得到
     # 一個沒有意義的綠燈,或對著昨天的缺陷再寄一封「本班品質異常」。
     _gha_output("run_outcome", "running")
+    # **`state_dirty` 與 `run_outcome` 是兩件事**(2026-09-01 r2 外審):
+    # 前者問「這一班有沒有改動 state」,後者問「做了什麼」。備援班 no-op
+    # 時沒有任何 state 變動 —— 契約與發佈都不必跑(實測那條契約約 3 分鐘,
+    # 而三班排程裡有兩班每天都是 no-op,那是常態不是例外)。
+    # 預設 false,真的寫了 state 才翻成 true。
+    _gha_output("state_dirty", "false")
     _done = already_delivered_today(now_tpe)
     if _done:
         print(f"[main] {_done} —— 本班是備援觸發,不重複寄送")
@@ -25998,5 +26049,24 @@ def main() -> int:
     return 0
 
 
+def _final_exit_code(rc) -> int:
+    """`main()` 的回傳值 → process 的退出碼。
+
+    **收尾照做,但這一班必須是紅的**:每一條 return 路徑、每一層 catch-all
+    都在 `main()` 裡結束了 —— manifest 落檔、收據發佈、state commit 全部跑完,
+    而 workflow 收不到 `state_dirty` 這個控制流訊號,state 契約與發佈都會被
+    略過。job 綠著把 state 丟掉是最壞的組合。
+
+    既有的失敗碼優先(`not rc` 才覆寫):這裡只負責把「靜默成功」改成紅燈,
+    不負責改寫別人已經判定的失敗原因。
+    """
+    rc = int(rc or 0)
+    if _REQUIRED_OUTPUT_FAILED and not rc:
+        print("::error title=state-handoff-lost::控制流 step output 寫入失敗 —— "
+              "這一班的 state 不會被驗證也不會被發佈", file=sys.stderr)
+        return 1
+    return rc
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_final_exit_code(main()))

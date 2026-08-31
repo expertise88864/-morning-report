@@ -266,3 +266,160 @@ def test_a_weekend_digest_is_not_told_the_market_opens():
     d = _detail(sunday)
     assert d, "週日的 SLA 照樣要判"
     assert "台股開盤" not in d, d
+
+
+def test_the_feature_epoch_does_not_move_when_the_schema_bumps(monkeypatch):
+    """r2 外審 P1:先前寫 `MANIFEST_SCHEMA_WITH_DELIVERED_AT = MANIFEST_SCHEMA`
+    —— 把「delivered_at 從第幾版開始必填」綁成「現在最新是第幾版」。
+    下一次為了別的欄位 bump 到 2,`{"manifest_schema": 1}` 的檔就會從
+    「必須有」變回「舊檔豁免」——**這次加世代的目的自己失效**。
+
+    反例刻意模擬「將來 bump 了」:歷史世代不得跟著動。
+    """
+    import importlib
+    import run_manifest as rm
+    assert rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT == rm.SCHEMA_V1_DELIVERY_TIMESTAMP
+
+    # **patch 判準端的副本量不到這條規則**:`MANIFEST_SCHEMA_WITH_DELIVERED_AT`
+    # 在 import 時就綁定完了,改 `_CURRENT_MANIFEST_SCHEMA` 兩個版本都會過。
+    # 要模擬的是「將來某天,以 bump 過的版本啟動」—— 動產生器端再 reload。
+    monkeypatch.setattr(rm, "MANIFEST_SCHEMA",
+                        rm.SCHEMA_V1_DELIVERY_TIMESTAMP + 2)
+    try:
+        future = importlib.reload(rq)
+        assert future.MANIFEST_SCHEMA_WITH_DELIVERED_AT == 1, (
+            "歷史世代跟著現行版一起動了",
+            future.MANIFEST_SCHEMA_WITH_DELIVERED_AT)
+        codes = {f["code"] for f in future.assess({
+            "date": "2026-09-01 05:10", "manifest_schema": 1,
+            "delivery": {"success": True},
+            "llm": {"analysis_origin": "luna_specialized"}})}
+        assert "delivered_at_missing" in codes, (
+            "schema bump 之後,舊版的必填要求被鬆掉了", codes)
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rq)
+
+
+def test_an_unreadable_schema_is_not_treated_as_the_oldest(monkeypatch):
+    """r2 外審 P2:`_safe_int` 讓壞值變 0 → 判成 legacy → **反而拿到豁免**。
+    版本資訊壞掉的檔比正常檔更寬鬆,那是反的:
+    「不知道它是哪一版」不等於「它一定是最舊版」。"""
+    def _codes(schema):
+        m = {"date": "2026-09-01 05:10", "delivery": {"success": True},
+             "llm": {"analysis_origin": "luna_specialized"}}
+        if schema is not _MISSING:
+            m["manifest_schema"] = schema
+        return {f["code"] for f in rq.assess(m)}
+    bad = _codes("garbage")
+    assert "manifest_schema_invalid" in bad, bad
+    assert "delivered_at_missing" in bad, "版本壞掉反而放行了"
+    future = _codes(9)
+    assert "manifest_schema_unsupported" in future, future
+    # 真正的舊檔(完全沒有這個欄位)仍然豁免 —— 不製造部署當天的假警報
+    assert "delivered_at_missing" not in _codes(_MISSING)
+
+
+_MISSING = object()
+
+
+def test_a_no_op_backup_skips_the_expensive_tail(tmp_path, monkeypatch):
+    """r2 外審 P2(有 08/31 生產實測支撐):備援班 no-op 時 app 約 1 秒
+    結束,而 state 契約實測約 3 分鐘 —— 三班排程裡有兩班每天都是 no-op,
+    那是**常態不是例外**。`state_dirty` 與 `run_outcome` 語意分開:
+    前者問「有沒有改動 state」,後者問「做了什麼」。"""
+    import yaml
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        encoding="utf-8").read())
+    steps = {s.get("name") or "": s for s in wf["jobs"]["send-report"]["steps"]}
+    for name in ("驗證落地 state 的 schema 契約", "發佈 state(契約通過後才 push)"):
+        assert "state_dirty == 'true'" in steps[name]["if"], (name, steps[name])
+    # 產出端真的會發這個 output,而且預設是 false(沒改就是沒改)
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    i = src.index('_gha_output("state_dirty", "false")')
+    j = src.index('_gha_output("run_outcome", "running")')
+    assert j < i, "預設值要在最前面(早退路徑也要看得到)"
+    # 翻成 true 的那一支是**會拋的**版本(控制流依據,見下一條測試)
+    assert '_gha_output_required("state_dirty", "true")' in src
+
+
+def test_a_broken_output_channel_is_not_silent(tmp_path, monkeypatch):
+    """r2 外審 P2:寫不進 `GITHUB_OUTPUT` → `quality_alertable` 缺席 →
+    告警條件不成立 → 沒有人收到,而步驟是 continue-on-error、連紅燈都沒有。
+    這正好違反這批修正的核心:「判準有跑」不等於「有人收到」。"""
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import assert_run_quality as arq
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "nope" / "out.txt"))
+    import pytest as _pytest
+    with _pytest.raises(OSError):
+        arq._emit_outputs([{"code": "x", "severity": "degraded", "detail": "d"}])
+
+
+def test_only_a_positive_integer_counts_as_a_version(monkeypatch):
+    """r2 外審第二輪:`int(0.9)` → 0、`int(False)` → 0、負數原樣通過 ——
+    這些壞值都小於功能世代 1,於是拿到 legacy 豁免,SLA 又一次稽核不到。
+    「欄位缺席」才是真舊檔;**存在但不合法的值一律不得豁免**。"""
+    def _codes(v):
+        return {f["code"] for f in rq.assess({
+            "date": "2026-09-01 05:10", "manifest_schema": v,
+            "delivery": {"success": True},
+            "llm": {"analysis_origin": "luna_specialized"}})}
+    for bad in (0.9, 1.0, False, True, -1, 0, "garbage", [1], {"v": 1}):
+        codes = _codes(bad)
+        assert "manifest_schema_invalid" in codes, (bad, codes)
+        assert "delivered_at_missing" in codes, (f"{bad!r} 拿到了豁免", codes)
+    assert "manifest_schema_invalid" not in _codes(1)
+
+
+def test_a_control_flow_output_does_not_fail_silently(tmp_path, monkeypatch):
+    """r2 外審第二輪:`_gha_output()` 的 except 註解寫「觀測性失敗不得影響
+    晨報」—— 對觀測性訊號是對的。但 `state_dirty` 是 workflow 的**控制流
+    依據**(要不要跑契約、要不要 push state):寫失敗 → 停在初始 `false`
+    → 兩步都跳過 → 已 commit 的 state 隨 runner 消失,而 job 顯示成功。
+
+    而且「讓失敗可見」不可以砍掉比它更重要的東西:寫入必須排在
+    manifest 落檔與收據發佈**之後**(那兩件事包在會 return 的 except 裡)。
+    """
+    import pytest as _pytest
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "nope" / "out.txt"))
+    with _pytest.raises(OSError):
+        mr._gha_output_required("state_dirty", "true")
+    mr._gha_output("state_dirty", "true")        # 觀測性那支照舊不拋
+
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    body = src[src.index("def _mark_delivery_in_manifest("):]
+    body = body[:body.index("\ndef _publish_delivery_receipt(")]
+    assert '_gha_output("state_dirty"' not in body, (
+        "控制流 output 還寫在會被 except 吞掉的 try 區塊裡")
+    assert body.index("_publish_delivery_receipt(_run_stamp()") < body.index(
+        '_gha_output_required("state_dirty", "true")'), (
+        "為了讓寫入失敗可見,反而砍掉了收據發佈")
+
+
+def test_a_swallowed_output_failure_still_turns_the_job_red(tmp_path, monkeypatch):
+    """r2 外審第三輪:光靠 `raise` 不夠。週日無內容路徑把
+    `_mark_delivery_in_manifest()` 整段包在 `except Exception` 裡再 `return 0`
+    —— 第二層 catch-all 又把它吞掉了,而那個 catch-all 本身是對的
+    (無內容路徑的 commit 失敗刻意不擋信)。**能被吞的訊號就不是保證。**
+
+    退出碼吞不掉:訊號改走模組旗標,由 entry point 在所有 catch-all
+    之外決定退出碼。
+    """
+    monkeypatch.setattr(mr, "_REQUIRED_OUTPUT_FAILED", False)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "nope" / "out.txt"))
+    try:                                    # ← 模擬週日路徑的 catch-all
+        mr._gha_output_required("state_dirty", "true")
+    except Exception:                       # noqa: BLE001
+        pass
+    assert mr._REQUIRED_OUTPUT_FAILED, "訊號被 catch-all 吞掉了"
+    assert mr._final_exit_code(0) == 1, "收尾成功,但 workflow 收不到訊號 → 要紅"
+    assert mr._final_exit_code(None) == 1
+    assert mr._final_exit_code(2) == 2, "既有的失敗原因被覆寫了"
+    monkeypatch.setattr(mr, "_REQUIRED_OUTPUT_FAILED", False)
+    assert mr._final_exit_code(0) == 0, "正常班被判成紅的"
+
+    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    assert "sys.exit(_final_exit_code(main()))" in src, (
+        "entry point 沒有接上 —— 那個旗標就只是一個沒人讀的變數")

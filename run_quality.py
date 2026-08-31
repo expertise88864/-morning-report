@@ -36,7 +36,8 @@ import datetime as _dt
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
-from run_manifest import MANIFEST_SCHEMA as _MANIFEST_SCHEMA
+from run_manifest import MANIFEST_SCHEMA as _CURRENT_MANIFEST_SCHEMA
+from run_manifest import SCHEMA_V1_DELIVERY_TIMESTAMP as _V1_DELIVERED_AT
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -68,7 +69,7 @@ SLA_TZ = _dt.timezone(_dt.timedelta(hours=8))
 #: `manifest_schema`(r1 外審:先前蓋在寄送補寫那一步,而週日路徑之後
 #: 會從頭重建文件,標記就掉了)。這一版(含)以後,寄成功卻沒有
 #: `delivered_at` 就是 defect。**數字只有一個定義**(見檔頭的 import)。
-MANIFEST_SCHEMA_WITH_DELIVERED_AT = _MANIFEST_SCHEMA
+MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
 
 KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
@@ -693,7 +694,30 @@ def assess(manifest, *, mode: str = "watchdog",
     # 確定的假警報,而假警報會訓練人忽略告警)。
     _dv = m.get("delivery") if isinstance(m.get("delivery"), dict) else {}
     _at = str(_dv.get("delivered_at") or "").strip()
-    _schema = _safe_int(m.get("manifest_schema"))
+    # **「不知道它是哪一版」不等於「它一定是最舊版」**(r2 外審)。
+    # `_safe_int` 讓壞值變 0 → 判成 legacy → 反而拿到豁免:版本資訊壞掉
+    # 的檔比正常檔更寬鬆。三態分開:沒有(真 legacy)/ 讀得出來 / 壞掉。
+    _raw_schema = m.get("manifest_schema")
+    _schema, _schema_bad = 0, False
+    if _raw_schema is not None:
+        # **只接受正整數**(2026-09-01 r2 外審):`int()` 對 `0.9` 給 0、
+        # 對 `False` 給 0,負數則原樣通過 —— 這些壞值都會小於功能世代 1
+        # 而拿到 legacy 豁免,SLA 又一次稽核不到。「欄位缺席」才是真舊檔;
+        # 存在但不合法的值一律是 invalid,而且不得豁免。
+        if isinstance(_raw_schema, bool) or not isinstance(_raw_schema, int):
+            _schema_bad = True
+        elif _raw_schema < 1:
+            _schema_bad = True
+        else:
+            _schema = _raw_schema
+    if _schema_bad:
+        add("manifest_schema_invalid", "defect",
+            f"manifest_schema 讀不出來:{_raw_schema!r} —— 版本契約失效,"
+            "不能用它決定哪些欄位是必填的")
+    elif _schema > _CURRENT_MANIFEST_SCHEMA:
+        add("manifest_schema_unsupported", "degraded",
+            f"manifest_schema={_schema} 比本程式認得的 "
+            f"{_CURRENT_MANIFEST_SCHEMA} 新 —— 判準可能漏驗新欄位")
     if _dv.get("success") and _at:
         try:
             _when = _dt.datetime.fromisoformat(_at)
@@ -710,7 +734,8 @@ def assess(manifest, *, mode: str = "watchdog",
         except ValueError:
             add("delivered_at_unparsable", "degraded",
                 f"寄出時刻讀不出來:{_at!r} —— SLA 這一天無法稽核")
-    elif _dv.get("success") and _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT:
+    elif _dv.get("success") and (
+            _schema_bad or _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT):
         # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。
         add("delivered_at_missing", "defect",
             f"寄送成功卻沒有寫下實際寄出時刻(manifest_schema={_schema})"

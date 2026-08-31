@@ -267,8 +267,12 @@ jobs:
       # state 早就在 main 上,契約只能事後告訴你。現在晨報只 commit
       # (`STATE_PUSH_DEFERRED=1`),契約通過才由下一步發佈。
       # 信在此之前就已經寄出,所以這不影響「晨報不可斷」。
+      # **沒有 state 變動就不必驗、也不必發佈**(2026-09-01 r2 外審):
+      # 備援班 no-op 時 app 約 1 秒就結束,而這條契約實測約 3 分鐘 ——
+      # 三班排程裡有兩班每天都是 no-op,那是**常態不是例外**:白跑 runner、
+      # 延長 `state-writers` 佔用、增加排隊壓力,而備援本身是可靠性機制。
       - name: 驗證落地 state 的 schema 契約
-        if: ${{ always() && !cancelled() }}
+        if: ${{ always() && !cancelled() && steps.report.outputs.state_dirty == 'true' }}
         env:
           TZ: Asia/Taipei
         run: python -m pytest tests/test_state_schema_contract.py -q
@@ -300,9 +304,11 @@ jobs:
           TZ: Asia/Taipei
         run: python tools/assert_run_quality.py --mode watchdog
 
-      # 沒有 `if:` 是刻意的:上一步失敗時這一步會被跳過,
+      # 沒有 `always()` 是刻意的:上一步失敗時這一步會被跳過,
       # 壞掉的 state 就留在 runner 上隨之丟棄,不會進 main。
+      # `state_dirty` 條件同上:沒改到 state 就沒有東西要發佈。
       - name: 發佈 state(契約通過後才 push)
+        if: ${{ steps.report.outputs.state_dirty == 'true' }}
         env:
           TZ: Asia/Taipei
         run: python -c "import morning_report as mr; mr.push_committed_state()"

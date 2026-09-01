@@ -1,9 +1,10 @@
 {
- "date": "2026-08-31 08:30",
+ "date": "2026-09-01 08:00",
  "delivery": {
   "attempted": true,
   "success": true,
-  "run_kind": "schedule"
+  "delivered_at": "2026-09-01T08:28:35+08:00",
+  "run_kind": "workflow_dispatch"
  },
- "github_run_id": "33344764532"
+ "github_run_id": "33452952985"
 }

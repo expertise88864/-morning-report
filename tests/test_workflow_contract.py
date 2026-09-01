@@ -28,7 +28,7 @@ import llm_config
 import yaml
 
 WF_PATH = (Path(__file__).resolve().parents[1]
-           / ".github" / "workflows" / "morning-report-a.yml")
+           / ".github" / "workflows" / "morning-report-b.yml")
 
 #: 這些必須可由 repo variable 覆寫 —— 切換模型要能隨時改、隨時退回。
 #:
@@ -781,7 +781,7 @@ def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
-    prod = yaml.safe_load((root / "morning-report-a.yml").read_text(encoding="utf-8"))
+    prod = yaml.safe_load((root / "morning-report-b.yml").read_text(encoding="utf-8"))
     ci = yaml.safe_load((root / "ci.yml").read_text(encoding="utf-8"))
 
     def _run_env(wf, job, needle):

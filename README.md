@@ -135,7 +135,7 @@
 
 | Workflow | 排程(UTC) | 功能 |
 |---|---|---|
-| `morning-report-a.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
+| `morning-report-b.yml` | 每日 22:00(=台北 06:00) | 主晨報;週日走輕量綜合信;寄信成功後 commit state |
 | `podcast-digest.yml` | 每日 4 次 | faster-whisper 本地轉錄 + DeepSeek 摘要 → `state/podcast_digest.json` |
 | `gooaye-radar.yml` | 週三/六下午 | 股癌新集偵測 → 族群雷達獨立信 |
 | `ci.yml` | push/PR | ruff + py_compile + pytest;另有手動 dry-run-preview |

@@ -1,4 +1,4 @@
-# 檔名的 `-a`:排程註冊急救(說明見 morning-report-a.yml 檔頭)。
+# 檔名的 `-a`:排程註冊急救(說明見 morning-report-b.yml 檔頭)。
 name: Morning Report Watchdog
 
 # 台北 07:50(UTC 23:50)——晨報排程是 21:07/21:52/22:42 UTC(2026-08-31 前移),
@@ -13,7 +13,8 @@ on:
     # manifest,對著**還在跑**的那一班發「晨報沒有跑起來」的假警報 ——
     # 假警報會讓人把看門狗關掉,那比沒有看門狗更糟。餘裕由
     # `tests/test_batch_backup_cron.py` 用兩個 workflow 的實際值算出來釘住。
-    # 2026-08-28:排程註冊卡死的 touch(說明見 morning-report-a.yml 的 cron 註解)
+    # 2026-08-28:排程註冊卡死的 touch;2026-09-01 檔名 -a→-b 第二次急救
+    # (改 cron 會讓排程註冊卡死,說明見 morning-report-b.yml 檔頭)
     # 2026-08-31:晨報整組前移一小時(09:00 SLA),看門狗跟著前移 ——
     # 補漏跑二最晚 22:42Z+15 分延遲+50 分 job = 23:47Z 寫完 manifest,
     # 23:50Z 在其後。它自己也會被 GitHub 拖(08/30 實測晚 4 小時 51 分),

@@ -176,7 +176,7 @@ def test_the_watchdog_distinguishes_broken_from_never_ran():
     assert "def _quality_exit" in src
     assert "return 2" in src, "跑壞了與沒跑起來共用回傳碼"
     wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
-          / "report-watchdog-a.yml").read_text(encoding="utf-8")
+          / "report-watchdog-b.yml").read_text(encoding="utf-8")
     assert "outputs.rc != '0'" in wf, "workflow 還在看舊的 stale 旗標"
     assert "WATCHDOG_RC" in wf and "WATCHDOG_DETAIL" in wf
 
@@ -1834,7 +1834,7 @@ def test_quality_recipient_has_no_hardcoded_personal_fallback():
     """公開 repo 不放個人信箱 —— 位址只能來自 repo variable。"""
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1]
-           / ".github" / "workflows" / "report-watchdog-a.yml"
+           / ".github" / "workflows" / "report-watchdog-b.yml"
            ).read_text(encoding="utf-8")
     assert "f94001115" not in src, "個人信箱不得寫死在公開 workflow"
     assert "vars.QUALITY_RECIPIENT" in src

@@ -76,7 +76,7 @@ def test_rescue_never_raises_and_never_posts_when_it_should_not():
                        post=lambda u, b: posted.append((u, b)))
     assert ok is True and len(posted) == 1, (ok, why, posted)
     url, body = posted[0]
-    assert url.endswith("/actions/workflows/morning-report-a.yml/dispatches")
+    assert url.endswith("/actions/workflows/morning-report-b.yml/dispatches")
     # 標記見 `test_D_...`(r9 外審之後,補寄一定帶 rescue=true)
     assert body["ref"] == "main"
 
@@ -85,7 +85,7 @@ def test_the_rescue_is_wired_into_the_workflow():
     """沒有接線的話,上面那些判準只是一段永遠不執行的宣稱。"""
     import yaml
     wf = yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "report-watchdog-a.yml",
+        _ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
         encoding="utf-8").read())
     assert wf["permissions"].get("actions") == "write", wf["permissions"]
     steps = wf["jobs"]["check"]["steps"]
@@ -229,7 +229,7 @@ def test_D_a_genuine_scheduler_miss_still_gets_exactly_one_rescue(monkeypatch):
                        post=lambda u, b: posted.append((u, b)))
     assert ok is True and len(posted) == 1, (ok, why, posted)
     url, body = posted[0]
-    assert url.endswith("/actions/workflows/morning-report-a.yml/dispatches")
+    assert url.endswith("/actions/workflows/morning-report-b.yml/dispatches")
     # **標記成補寄**:晨報那端據此在執行當下套用同日冪等
     assert body == {"ref": "main", "inputs": {"rescue": "true"}}, body
 
@@ -259,7 +259,7 @@ def test_the_rescue_flag_is_wired_through_both_workflows():
     """旗標要**兩端都接上**才有意義:看門狗送出去、晨報收得到。"""
     import yaml
     wd = yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "report-watchdog-a.yml",
+        _ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
         encoding="utf-8").read())
     rescue_step = [s for s in wd["jobs"]["check"]["steps"]
                    if s.get("name") == "Auto rescue"][0]
@@ -267,7 +267,7 @@ def test_the_rescue_flag_is_wired_through_both_workflows():
         assert key in rescue_step["env"], key
     src = io.open(_ROOT / "tools" / "report_watchdog.py", encoding="utf-8").read()
     assert '"inputs": {"rescue": "true"}' in src, "送出的 dispatch 沒有標記"
-    mrw = io.open(_ROOT / ".github" / "workflows" / "morning-report-a.yml",
+    mrw = io.open(_ROOT / ".github" / "workflows" / "morning-report-b.yml",
                   encoding="utf-8").read()
     assert "RESCUE_RUN: ${{ inputs.rescue }}" in mrw
     assert "rescue:" in mrw.split("workflow_dispatch:")[1][:400]

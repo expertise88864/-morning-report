@@ -52,7 +52,7 @@ def test_the_fresh_evidence_path_is_wired_into_the_workflow():
     """證據檔是 workflow 產生的 —— 沒有那一步,守衛永遠讀不到新鮮的那份
     (那條 Python 分支就只是一段永遠不執行的宣稱)。fetch 必須在 job 內
     (= 取得 concurrency 名額之後)才有意義。"""
-    wf = io.open(_ROOT / ".github" / "workflows" / "morning-report-a.yml",
+    wf = io.open(_ROOT / ".github" / "workflows" / "morning-report-b.yml",
                  encoding="utf-8").read()
     assert "git fetch --quiet origin main" in wf
     assert "FETCH_HEAD:state/run_manifest.json" in wf
@@ -200,7 +200,7 @@ def test_the_receipt_is_published_the_moment_delivery_is_conclusive(
 
 
 def test_the_receipt_is_wired_into_the_workflow():
-    wf = io.open(_ROOT / ".github" / "workflows" / "morning-report-a.yml",
+    wf = io.open(_ROOT / ".github" / "workflows" / "morning-report-b.yml",
                  encoding="utf-8").read()
     assert "FETCH_HEAD:state/delivery_receipt.json" in wf
     assert wf.index("FETCH_HEAD:state/delivery_receipt.json") < wf.index(

@@ -1,7 +1,12 @@
-# 檔名的 `-a` 是 2026-08-29 的排程急救:08/26 起本檔與看門狗的 cron 連三天
-# 完全沒有建立 run(touch 與 disable/enable 都救不回,podcast 正常)——
-# GitHub 端的排程註冊死透了,改檔名讓它被當成**全新的 workflow** 重建註冊。
-# 舊 run 歷史掛在舊檔名下。若再改名,記得同步 watchdog 的 API URL 與測試。
+# 檔名的 `-b` 是 2026-09-01 的第二次排程急救(`-a` 是 08/29 的第一次):
+# 08/31 上午 push cron 前移之後,本檔與看門狗**再也沒有任何 schedule run**
+# ——09/01 三班+看門狗全部沒被建立(podcast 正常,workflow 皆 active),
+# 與 08/26–28 完全同型。已兩次驗證:**改這個 repo 的 cron 之後,GitHub 的
+# 排程註冊會卡死;touch 與 disable/enable 都救不回,唯一有效的是改檔名**,
+# 讓它被當成全新的 workflow 重建註冊。舊 run 歷史掛在舊檔名下。
+# ⚠ 因此:**動 cron 的同一批就要一併改檔名**,不要等隔天發現沒寄信。
+# 若再改名,記得同步 watchdog 的 API URL、ci.yml、commit_push.bat 與測試
+# (全域 grep 舊檔名,2026-09-01 有 14 個檔引用)。
 name: Morning Report
 
 on:

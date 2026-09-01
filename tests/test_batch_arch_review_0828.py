@@ -73,7 +73,7 @@ def test_the_watchdog_time_in_docs_matches_the_cron():
     """事故當下對錯時間軸比沒有註解更糟。cron 移過兩次,而註解、模組
     docstring、告警信內文都還停在舊時間(2026-08-28 外審 P2)。"""
     import yaml
-    wf_text = io.open(_ROOT / ".github" / "workflows" / "report-watchdog-a.yml",
+    wf_text = io.open(_ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
                       encoding="utf-8").read()
     wf = yaml.safe_load(wf_text)
     crons = [c["cron"] for c in wf[True]["schedule"]]

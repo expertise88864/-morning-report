@@ -81,7 +81,7 @@ def test_a_quality_problem_actually_reaches_a_human(monkeypatch):
     """
     import yaml
     wf = yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        _ROOT / ".github" / "workflows" / "morning-report-b.yml",
         encoding="utf-8").read())
     send = wf["jobs"]["send-report"]
     steps = send["steps"]
@@ -330,7 +330,7 @@ def test_a_no_op_backup_skips_the_expensive_tail(tmp_path, monkeypatch):
     前者問「有沒有改動 state」,後者問「做了什麼」。"""
     import yaml
     wf = yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        _ROOT / ".github" / "workflows" / "morning-report-b.yml",
         encoding="utf-8").read())
     steps = {s.get("name") or "": s for s in wf["jobs"]["send-report"]["steps"]}
     for name in ("驗證落地 state 的 schema 契約", "發佈 state(契約通過後才 push)"):
@@ -450,7 +450,7 @@ def test_a_broken_assessor_still_reaches_a_human(tmp_path, monkeypatch):
     import yaml
     import sys as _sys
     wf = yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        _ROOT / ".github" / "workflows" / "morning-report-b.yml",
         encoding="utf-8").read())
     outs = wf["jobs"]["send-report"]["outputs"]
     # `outcome` 保留 continue-on-error **之前**的原始結果
@@ -528,7 +528,7 @@ def _write_manifest(tmp_path, payload):
 def _yaml_workflow():
     import yaml
     return yaml.safe_load(io.open(
-        _ROOT / ".github" / "workflows" / "morning-report-a.yml",
+        _ROOT / ".github" / "workflows" / "morning-report-b.yml",
         encoding="utf-8").read())
 
 

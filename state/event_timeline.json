@@ -454,18 +454,15 @@
   "first_seen": "2026-09-01",
   "days": 1,
   "last_seen": "2026-09-01",
-  "latest_title": "美軍睽違1個月再炸伊朗 伊飛彈、無人機襲約旦基地 - 公視新聞網PNN",
+  "latest_title": "美軍睽違1個月再炸伊朗 伊飛彈、無人機襲約旦基地 - news.pts.org.tw",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
-   "pnn",
    "人機",
    "伊飛",
    "個月",
-   "公視",
    "再炸",
    "基地",
-   "新聞",
    "旦基",
    "月再",
    "機襲",
@@ -473,9 +470,7 @@
    "睽違",
    "約旦",
    "美軍",
-   "聞網",
    "襲約",
-   "視新",
    "軍睽",
    "飛彈"
   ],
@@ -556,6 +551,36 @@
    "3037"
   ],
   "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#e41775": {
+  "first_seen": "2026-09-01",
+  "days": 1,
+  "last_seen": "2026-09-01",
+  "latest_title": "油金／美攻擊伊朗小島 和談前景未明 紐油漲2.83% - news.ustv.com.tw",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "83",
+   "前景",
+   "和談",
+   "小島",
+   "攻擊",
+   "景未",
+   "未明",
+   "油漲",
+   "油金",
+   "紐油",
+   "美攻",
+   "談前"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
   "action": "",
   "identity_schema": 14
  }

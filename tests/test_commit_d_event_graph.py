@@ -593,3 +593,26 @@ def test_a_named_institution_beats_a_generic_verb_of_the_same_length():
     assert eg.driver_of("聯準會升息") == "fed_policy"
     assert eg.driver_of("FOMC 降息") == "fed_policy"
 
+
+
+def test_the_prompt_teaches_the_plural_macro_rule_the_checker_enforces():
+    """2026-09-01 生產實信:判準端(第二十四輪 P1-7)要求**每一個**未駁回
+    的總經發布 × 三個分支都要引用;而 prompt 只教了單數
+    (`macro_release_cluster_id` 不為空時引用「它」)。兩個發布的日子,
+    模型第一輪照單數規格寫 → 起手 12 條駁回,semantic 修補 3 輪救不完,
+    落回 legacy。**prompt 是模型第一輪看到的規格 —— 關卡要什麼,
+    規格就要教什麼**(同 08/29 交集 vs 整組那次,修訊息不修契約)。
+    """
+    import io as _io
+    from pathlib import Path
+    import prompt_profiles as pp
+    src = _io.open(Path(pp.__file__).with_suffix(".py"),
+                   encoding="utf-8").read()
+    i = src.index("總經發布是情境樹的分岔本身")
+    para = src[i:i + 700]
+    assert "macro_release_cluster_ids" in para, (
+        "prompt 教的還是單數欄位 —— 兩個發布的日子第一輪必定被駁回")
+    assert "每一個" in para, "沒教「每一個未駁回的發布都要條件化」"
+    assert "dismissed_events" in para, (
+        "沒教駁回這個唯一的出口 —— 判準端明寫「駁回了的發布不必條件化」,"
+        "prompt 不教等於要求模型條件化它認為不影響的東西")

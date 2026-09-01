@@ -84,7 +84,7 @@ DEEPSEEK_LEGACY_VERSION = 13  # 2026-08-27 使用者七項(0050 行/七之二規
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 47
+LUNA_XHIGH_VERSION = 48  # v48 2026-09-01:總經發布規則教複數(每一個未駁回×三分支+駁回出口),與判準端對齊
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -249,9 +249,13 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   `cross_market_synthesis.shared_driver_notes` 說明**為什麼不算重複計權**
   （只計一次？還是它們其實是傳導鏈上可分辨的兩段？）。
 - **總經發布是情境樹的分岔本身，不是一件會影響市場的事。**
-  `EVIDENCE.event_graph.macro_release_cluster_id` 不為空時，
-  `scenario_tree` 的 base / bull / bear **三個分支都要**有一條引用它的
-  主張 —— 三個分支若條件在三件不同的事上，那不是情境樹，是三個故事。
+  `EVIDENCE.event_graph.macro_release_cluster_ids` 裡**每一個**你沒有
+  駁回的發布，`scenario_tree` 的 base / bull / bear **三個分支都要**有
+  一條引用它的主張 —— 同日兩個發布時,分岔是它們的**交叉組合**
+  (CPI 高 × Fed 鷹、CPI 高 × Fed 鴿……),只條件在其中一個,另一個
+  就被降級成一則新聞。三個分支若條件在三件不同的事上，那不是情境樹，
+  是三個故事。真的判斷某個發布今天不影響,唯一的出口是把它寫進
+  `dismissed_events`(要說得出理由)—— 駁回了的發布不必條件化。
 - `required_cluster_ids` 是本報依**官方來源與報導家數**選出來的必分析事件
   (不是你自評的重要性)。每一個都要分析;真的判斷今天不值得談,
   就寫進 `dismissed_events` 並說明為什麼 ——

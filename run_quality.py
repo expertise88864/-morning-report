@@ -31,6 +31,7 @@
 """
 from __future__ import annotations
 
+import re as _re
 import datetime as _dt
 
 import analysis_origin as _ao
@@ -76,20 +77,39 @@ MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
 MANIFEST_SCHEMA_WITH_FIRST_DELIVERY = _V2_FIRST_DELIVERY
 
 
-def _sla_deadline(manifest_date, fallback: _dt.datetime) -> _dt.datetime:
-    """這個**營業日**的送達期限(台北 09:00)。
+def _sla_business_day(manifest_date):
+    """SLA 的**營業日**(讀不出來回 `None`)。
 
-    營業日取自 manifest 的 `date`(開跑時刻 —— 跨午夜的手動觸發也記
-    開跑日,那正是同日冪等用的那一天)。讀不出來就退回用**送達時刻
-    自己那一天**:等於回到只比鐘面的舊行為,不會憑空放行,也不會
-    因為一個壞掉的日期欄位就把整天判成遲到。
+    取自 manifest 的 `date`(開跑時刻 —— 跨午夜的手動觸發也記開跑日,
+    那正是同日冪等用的那一天)。**讀不出來要回 None,不要自己猜一天**:
+    先前退回用送達時刻那一天,於是同一封晚了 15 小時的信,只因為日期
+    證據壞掉就從 defect 變成乾淨通過(r6 外審)。
     """
     try:
-        day = _dt.date.fromisoformat(str(manifest_date or "")[:10])
+        return _dt.date.fromisoformat(str(manifest_date or "")[:10])
     except ValueError:
-        day = fallback.date()
-    return _dt.datetime.combine(day, _dt.time(SLA_HOUR, SLA_MINUTE),
-                                tzinfo=SLA_TZ)
+        return None
+
+
+#: 產出端寫的是 `datetime.now(TPE).isoformat(timespec="seconds")`,
+#: 也就是「日期 + 分隔符 + 至少 HH:MM」。**只驗「解得開」不夠**
+#: (r6 外審第二輪):`fromisoformat("2026-09-01")` 會成功並給出**午夜**,
+#: 而午夜必然早於 09:00 —— 一個根本不含送達時刻的值於是乾淨通過。
+_ISO_DATETIME_RE = _re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+
+
+def _parse_sla_time(raw):
+    """把 ISO 時刻換算到 SLA 時區;不符合產出端契約就回 `None`(**不拋**)。
+
+    兩個 timestamp 要各自報自己的問題 —— 共用一個 `except` 連是哪一個
+    壞掉都說不出來。
+    """
+    if not _ISO_DATETIME_RE.match(str(raw or "")):
+        return None                         # 只有日期、或根本不是時刻
+    try:
+        return _to_sla_tz(str(raw))
+    except (ValueError, TypeError):
+        return None
 
 
 def _to_sla_tz(raw: str) -> _dt.datetime:
@@ -774,46 +794,82 @@ def assess(manifest, *, mode: str = "watchdog",
                 f"寄送成功卻沒有寫下「今天第一次送達」的時刻"
                 f"(manifest_schema={_schema}) —— 當日送達期限只能拿本班"
                 "時刻代替,同日補寄會被誤判成整天遲到")
-        try:
-            _first_when = _to_sla_tz(_first_at)
-            _when = _to_sla_tz(_at)
+        # **必填欄位「內容壞掉」不可以比「整個缺席」更寬鬆**(r6 外審):
+        # 先前兩個 timestamp 共用一個 `except ValueError` → 一律
+        # `delivered_at_unparsable`(degraded),而缺欄位是 defect ——
+        # contract inversion,而且連是哪一個壞掉都說不出來。各自解析、
+        # 各自報,現行世代要求的那個壞掉就是 defect。
+        _when = _parse_sla_time(_at)
+        if _when is None:
+            add("delivered_at_invalid", "defect",
+                f"寄出時刻讀不出來:{_at!r} —— 這是 v"
+                f"{MANIFEST_SCHEMA_WITH_DELIVERED_AT} 起的必填欄位,"
+                "SLA 這一天無法稽核")
+        _first_when = _parse_sla_time(_raw_first) if _raw_first else None
+        if _raw_first and _first_when is None:
+            _sev = ("defect" if (_schema_bad
+                                 or _schema >= MANIFEST_SCHEMA_WITH_FIRST_DELIVERY)
+                    else "degraded")
+            add("first_delivered_at_invalid", _sev,
+                f"「今天第一次送達」讀不出來:{_raw_first!r} —— "
+                "當日送達期限只能拿本班時刻代替")
+        # **不知道營業日 = SLA 無法稽核,不是「那就當作準時」**(r6 外審)。
+        # 先前壞掉的 `date` 會退回用**送達時刻自己那一天**,於是同一封晚了
+        # 15 小時 20 分的信,只因為日期證據壞掉就從 defect 變成乾淨通過
+        # —— 而我上一輪的測試還把那個 fail-open 釘成了正確答案。
+        # 現在先報 defect,再用同一個 fallback 做**輔助**判斷:
+        # 抓得到的遲到照樣抓,但這一天不可能是 clean pass。
+        _day = _sla_business_day(m.get("date"))
+        if _day is None:
+            add("manifest_business_date_invalid", "defect",
+                f"營業日讀不出來:{m.get('date')!r} —— "
+                f"組不出 {SLA_HOUR:02d}:{SLA_MINUTE:02d} 的送達期限,"
+                "以下的 SLA 判定只是最佳努力")
+        if _when is not None or _first_when is not None:
             _why = ("" if digest else "(台股開盤)")
-            # **期限是一個時刻,不是一個鐘面**(2026-09-01 r5 外審):
-            # 先前比 `(hour, minute) >= (9, 0)` —— 那問的是「寄出時間的鐘面
-            # 是不是 09:00 以後」,而 SLA 問的是「**這個營業日**的 09:00
-            # 之前有沒有送達」。實測:date=09-01 而信 `09-02T00:20` 才送達
-            # (晚了 15 小時 20 分),鐘面 00:20 < 09:00 → 判成準時。
-            # 跨過午夜的遲到會變成 false negative,而那正是最嚴重的遲到。
-            _deadline = _sla_deadline(m.get("date"), _first_when)
-            # **「今天第一次」必須真的在今天**(r5 外審第二輪):`first`
-            # 是 stale/corrupt state 留下的**前一天**時刻時,它必然小於
-            # 今天的期限 → 判成「今天曾準時送達」→ 真正的遲到被吞掉。
-            # 而這個洞是**改成絕對時間比較之後才出現的**:先前只比鐘面時,
-            # 昨天 09:30 的鐘面仍 ≥ 09:00,會被抓到。修正要看它與既有
-            # 行為的組合,不能只看它自己。
-            # 只擋**早於**營業日:晚於是合法的(跨午夜才寄出的真遲到)。
-            if _first_when.date() < _deadline.date():
-                add("first_delivered_at_out_of_range", "defect",
-                    f"「今天第一次送達」寫的是 {_first_when:%Y-%m-%d %H:%M},"
-                    f"早於本班的營業日 {_deadline:%Y-%m-%d} —— "
-                    "state 沒跟上或壞掉了;本班時刻先當成當日事實")
-                _first_when = _when     # 保守:退回用本班自己的時刻
-            if _first_when >= _deadline:
-                add("delivery_sla_missed", "defect",
-                    f"今天第一次送達是 {_first_when:%H:%M},超過 "
-                    f"{SLA_HOUR:02d}:{SLA_MINUTE:02d} 的送達期限{_why} —— "
-                    "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
-            elif _when >= _deadline:
-                # 今天準時送過了,這一班只是同日的補寄/重跑 ——
-                # 是事實要記,但**不是**「今天沒收到信」。
-                add("run_delivered_after_target", "degraded",
-                    f"本班 {_when:%H:%M} 才寄出(超過 {SLA_HOUR:02d}:"
-                    f"{SLA_MINUTE:02d}),但今天第一次送達是 "
-                    f"{_first_when:%H:%M} —— 當日送達期限已經達成,"
-                    "這一班是同日的補寄或重跑")
-        except ValueError:
-            add("delivered_at_unparsable", "degraded",
-                f"寄出時刻讀不出來:{_first_at!r} —— SLA 這一天無法稽核")
+            _deadline = _dt.datetime.combine(
+                _day or (_when or _first_when).date(),
+                _dt.time(SLA_HOUR, SLA_MINUTE), tzinfo=SLA_TZ)
+            # **時序不可能的一對不是可信的 SLA 證據**(r6 外審):
+            # 「第一次」晚於「最新這次」在語意上不成立,而它會憑空造出
+            # 一個 SLA defect(而 `delivered_at` 自己就證明那時送達過),
+            # 或者兩個都早於期限而**完全沒有 finding**。
+            if (_first_when is not None and _when is not None
+                    and _first_when > _when):
+                add("delivery_timestamp_order_invalid", "defect",
+                    f"「第一次送達」{_first_when:%m-%d %H:%M} 晚於「本班送達」"
+                    f"{_when:%m-%d %H:%M} —— 時序不可能,兩個時刻都不可信,"
+                    "本班不判 SLA")
+            else:
+                # 缺 `first` 的舊檔退回用本班時刻:單班時兩者相同,多班時
+                # 偏向**誤報成未達成** —— 保守的那一邊,不是豁免。
+                _first_when = _first_when if _first_when is not None else _when
+                _when = _when if _when is not None else _first_when
+                # **「今天第一次」必須真的在今天**(r5 外審第二輪):`first`
+                # 是 stale/corrupt state 留下的**前一天**時刻時,它必然小於
+                # 今天的期限 → 判成「今天曾準時送達」→ 真正的遲到被吞掉。
+                # 這個洞是改成絕對時間比較之後才出現的:先前只比鐘面時,
+                # 昨天 09:30 的鐘面仍 ≥ 09:00,會被抓到。
+                # 只擋**早於**營業日:晚於是合法的(跨午夜才寄出的真遲到)。
+                if _first_when.date() < _deadline.date():
+                    add("first_delivered_at_out_of_range", "defect",
+                        f"「今天第一次送達」寫的是 {_first_when:%Y-%m-%d %H:%M},"
+                        f"早於本班的營業日 {_deadline:%Y-%m-%d} —— "
+                        "state 沒跟上或壞掉了;本班時刻先當成當日事實")
+                    _first_when = _when     # 保守:退回用本班自己的時刻
+                if _first_when >= _deadline:
+                    add("delivery_sla_missed", "defect",
+                        f"今天第一次送達是 {_first_when:%H:%M},超過 "
+                        f"{SLA_HOUR:02d}:{SLA_MINUTE:02d} 的送達期限{_why} —— "
+                        "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
+                elif _when >= _deadline:
+                    # 今天準時送過了,這一班只是同日的補寄/重跑 ——
+                    # 是事實要記,但**不是**「今天沒收到信」。
+                    add("run_delivered_after_target", "degraded",
+                        f"本班 {_when:%H:%M} 才寄出(超過 {SLA_HOUR:02d}:"
+                        f"{SLA_MINUTE:02d}),但今天第一次送達是 "
+                        f"{_first_when:%H:%M} —— 當日送達期限已經達成,"
+                        "這一班是同日的補寄或重跑")
     elif _dv.get("success") and (
             _schema_bad or _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT):
         # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。

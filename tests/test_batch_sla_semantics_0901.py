@@ -381,13 +381,81 @@ def test_the_deadline_is_an_instant_not_a_clock_face():
         "本班跨日才寄出,鐘面 00:20 卻被當成準時", crossed)
 
 
-def test_an_unreadable_business_date_falls_back_to_the_old_behaviour():
-    """`date` 讀不出來就退回用「送達時刻自己那一天」—— 等於回到只比鐘面
-    的舊行為。不憑空放行,也不因為一個壞掉的日期欄位就把整天判成遲到。"""
-    assert "delivery_sla_missed" in _sla_codes(
-        "2026-09-01T09:30:00+08:00", date="壞掉的日期")
-    assert "delivery_sla_missed" not in _sla_codes(
-        "2026-09-02T00:20:00+08:00", date="壞掉的日期")
+def test_an_unreadable_business_date_is_a_defect_not_a_clean_pass():
+    """r6 外審:**不知道營業日 = SLA 無法稽核,不是「那就當作準時」。**
+
+    先前壞掉的 `date` 會退回用送達時刻自己那一天,於是同一封晚了 15 小時
+    20 分的信,只因為日期證據壞掉就從 defect 變成**乾淨通過** ——
+    ★而我上一輪寫的測試還把那個 fail-open 釘成了正確答案★
+    (它斷言 `delivery_sla_missed not in ...`,而程式註解同時宣稱
+    「不會憑空放行」—— 兩者矛盾,跨午夜情境證明會放行)。
+
+    現在:先報 defect,再用同一個 fallback 做**輔助**判斷 ——
+    抓得到的遲到照樣抓,但這一天不可能是 clean pass。
+    """
+    crossed = _sla_codes("2026-09-02T00:20:00+08:00", date="壞掉的日期")
+    assert "manifest_business_date_invalid" in crossed, crossed
+    # 最重要的一條:這一天不可以看起來乾淨
+    assert any(f["severity"] == "defect" for f in rq.assess(
+        {"date": "壞掉的日期", "manifest_schema": 2,
+         "llm": {"analysis_origin": "luna_specialized"},
+         "delivery": {"success": True,
+                      "delivered_at": "2026-09-02T00:20:00+08:00",
+                      "first_delivered_at": "2026-09-02T00:20:00+08:00"}})), (
+        "晚了 15 小時的信,因為日期壞掉而完全乾淨")
+    # 日期正常時不可以誤報
+    assert "manifest_business_date_invalid" not in _sla_codes(
+        "2026-09-01T08:28:35+08:00")
+
+
+def test_a_malformed_required_timestamp_is_not_softer_than_a_missing_one():
+    """r6 外審:兩個 timestamp 先前共用一個 `except ValueError` → 一律
+    `delivered_at_unparsable`(**degraded**),而缺欄位是 defect ——
+    contract inversion:必填欄位「內容壞掉」比「整個缺席」還寬鬆,
+    而且連是哪一個壞掉都說不出來。"""
+    def _sev(dv, schema=2):
+        m = {"date": "2026-09-01 05:10", "manifest_schema": schema,
+             "llm": {"analysis_origin": "luna_specialized"},
+             "delivery": dict(dv, success=True)}
+        return {f["code"]: f["severity"] for f in rq.assess(m)}
+
+    ok = "2026-09-01T08:28:35+08:00"
+    # v2:兩個必填欄位壞掉都是 defect,而且分得出是哪一個
+    assert _sev({"delivered_at": ok, "first_delivered_at": "垃圾"}).get(
+        "first_delivered_at_invalid") == "defect"
+    assert _sev({"delivered_at": "垃圾", "first_delivered_at": ok}).get(
+        "delivered_at_invalid") == "defect"
+    # v1 的檔案 first 還不是必填 —— 壞掉是 degraded,不是 defect
+    assert _sev({"delivered_at": ok, "first_delivered_at": "垃圾"},
+                schema=1).get("first_delivered_at_invalid") == "degraded"
+    # 缺席仍然照舊
+    assert _sev({"delivered_at": ok}).get(
+        "first_delivered_at_missing") == "defect"
+    assert _sev({"delivered_at": ok, "first_delivered_at": ok}) .get(
+        "first_delivered_at_invalid") is None
+
+
+def test_an_impossible_chronology_is_not_trusted_evidence():
+    """r6 外審:「第一次」晚於「最新這次」在語意上不成立。它會憑空造出
+    一個 SLA defect(而 `delivered_at` 自己就證明那時送達過),或者兩個
+    都早於期限而**完全沒有 finding**。時序壞掉的一對不是可信的證據。"""
+    def _codes(first, at):
+        m = {"date": "2026-09-01 05:10", "manifest_schema": 2,
+             "llm": {"analysis_origin": "luna_specialized"},
+             "delivery": {"success": True, "delivered_at": at,
+                          "first_delivered_at": first}}
+        return {f["code"] for f in rq.assess(m)}
+
+    bad = _codes("2026-09-01T09:16:00+08:00", "2026-09-01T08:28:00+08:00")
+    assert "delivery_timestamp_order_invalid" in bad, bad
+    assert "delivery_sla_missed" not in bad, (
+        "拿時序不可能的一對判出了 SLA 違規", bad)
+    # 兩個都早於期限、時序仍然不可能 —— 先前會完全沒有 finding
+    quiet = _codes("2026-09-01T08:50:00+08:00", "2026-09-01T08:20:00+08:00")
+    assert "delivery_timestamp_order_invalid" in quiet, quiet
+    # 正常時序不可以誤報
+    assert "delivery_timestamp_order_invalid" not in _codes(
+        "2026-09-01T08:28:35+08:00", "2026-09-01T09:16:23+08:00")
 
 
 def test_the_first_delivery_field_has_its_own_epoch():
@@ -455,3 +523,35 @@ def test_a_stale_first_delivery_cannot_certify_today(tmp_path):
               "2026-09-01 05:10")
     assert "first_delivered_at_out_of_range" not in late, late
     assert "delivery_sla_missed" in late, late
+
+
+def test_a_date_without_a_time_is_not_a_delivery_timestamp():
+    """r6 外審第二輪:**只驗「解得開」不夠**。
+    `datetime.fromisoformat("2026-09-01")` 會成功並給出**午夜**,
+    而午夜必然早於 09:00 —— 一個根本不含送達時刻的值於是乾淨通過:
+    沒有 timestamp defect,也沒有 SLA finding。
+
+    先前的壞值測試用的是「垃圾」這種 `fromisoformat` 會拒絕的字串,
+    量不到「語法可解析但語意不完整」這一類。
+    """
+    def _codes(v, schema=2):
+        m = {"date": "2026-09-01 05:10", "manifest_schema": schema,
+             "llm": {"analysis_origin": "luna_specialized"},
+             "delivery": {"success": True, "delivered_at": v,
+                          "first_delivered_at": v}}
+        return {f["code"]: f["severity"] for f in rq.assess(m)}
+
+    for date_only in ("2026-09-01", "20260901", "2026-09-01T", "2026-09-01 "):
+        got = _codes(date_only)
+        assert got.get("delivered_at_invalid") == "defect", (date_only, got)
+        assert got.get("first_delivered_at_invalid") == "defect", (date_only, got)
+
+    # 產出端真正寫出來的形狀不可以被誤擋
+    import datetime as _d
+    real = _d.datetime(2026, 9, 1, 8, 28, 35,
+                       tzinfo=_d.timezone(_d.timedelta(hours=8))).isoformat(
+                           timespec="seconds")
+    assert "delivered_at_invalid" not in _codes(real), real
+    assert "2026-09-01T08:28:35+08:00" == real, real
+    # 分鐘精度(人工 backfill 常見)也要收
+    assert "delivered_at_invalid" not in _codes("2026-09-01 08:28")

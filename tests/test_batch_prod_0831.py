@@ -62,8 +62,13 @@ def test_a_letter_after_nine_is_a_defect_not_a_silent_success():
     assert "delivery_sla_missed" not in _codes("2026-08-31T08:59:59+08:00")
     # 舊 manifest 沒有這個欄位 → **不得**產生假警報
     assert "delivery_sla_missed" not in _codes("")
-    # 壞值要說得出來,不是靜靜跳過
-    assert "delivered_at_unparsable" in _codes("garbage")
+    # 壞值要說得出來,不是靜靜跳過 —— 而且 r6 外審之後它是 **defect**:
+    # 必填欄位「內容壞掉」不可以比「整個缺席」更寬鬆。
+    _bad = {f["code"]: f["severity"] for f in rq.assess({
+        "date": "2026-08-31 05:10", "manifest_schema": 1,
+        "delivery": {"success": True, "delivered_at": "garbage"},
+        "llm": {"analysis_origin": "luna_specialized"}})}
+    assert _bad.get("delivered_at_invalid") == "defect", _bad
 
 
 def test_the_sla_deadline_is_a_pinned_constant():

@@ -249,7 +249,12 @@ MODULE_CEILINGS = {
     # 2026-09-01 r2 外審:schema 三態判準(缺席/壞掉/比我新)+ SLA 稽核;現況 802
     # 2026-09-01 r4 外審:day-SLA vs per-run 時刻拆成兩個 finding;現況 838
     # 2026-09-01 r5 外審:SLA 比完整期限(跨日遲到)+ first_delivered_at 世代;現況 875
-    "run_quality.py": 900,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
+    # 2026-09-01 r6 外審:壞 timestamp/壞營業日/時序倒置各自成 finding;現況 934。
+    # ⚠ 連續四批調高(790→815→850→900→950)。`refactor_audit.py` 只服務
+    # morning_report.py,這個檔沒有機械化評估;人工看:SLA 判定(約 90 行
+    # + 3 個 helper)已經內聚到可以獨立成 `delivery_sla.py`。**下一批單獨做**
+    # —— 與修正混批會讓外審難審,而且純搬移要用 verify-move 逐行比對。
+    "run_quality.py": 950,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。

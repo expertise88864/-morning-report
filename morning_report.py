@@ -10553,7 +10553,7 @@ def _state_push_paths() -> list[str]:
     """批#33:所有需要 commit 回 repo 的 state 路徑(單一事實來源)。
     抽出來讓 push 可以脫離 save_history_state 獨立呼叫(見該函式與
     persist_delivered_report_state 的說明),也方便測試核對登錄完整性。"""
-    return [str(CPBL_VENUE_FILE),
+    paths = [str(CPBL_VENUE_FILE),
             # 收據的主路徑是「SMTP 成功當下立刻推」;登記在這裡是為了
             # 那一次推失敗時還有第二次機會(r3 外審 P1)。
             str(DELIVERY_RECEIPT_FILE),
@@ -10572,6 +10572,13 @@ def _state_push_paths() -> list[str]:
             str(EXDIV_HISTORY_FILE),   # 批#66:除權息事件史。預告表在除權息日後就把該筆移除,不跨日累積則結算當下查不到
             str(CORPORATE_ACTION_FILE),   # 批#82:暫停交易/復牌史。TWTAWU 是**快照**,不跨日累積則結算當下查不到
             str(EMAIL_ARCHIVE_DIR)]   # §B:寄出信件 HTML 存檔(去識別),供日後檢索/RAG
+    # **登記要讓掃描守衛看得見**:`test_every_state_path_is_registered_for_push`
+    # 只掃這一支的 body 找 `str(常數)`。先前把它藏在 `_with_quarantine()` 裡,
+    # 守衛於是說這個 state 檔沒有登記 —— 而它是對的:登記在別的函式裡,
+    # 下一個人在這裡讀清單就看不到它。字面留在這裡,存在性判斷照舊。
+    if DELIVERY_RECEIPT_QUARANTINE.exists():
+        paths.append(str(DELIVERY_RECEIPT_QUARANTINE))
+    return paths
 
 
 def save_history_state(entry: dict, days_to_keep: int = 90,
@@ -23313,6 +23320,14 @@ def _mark_delivery_in_manifest(**fields) -> None:
         if fields.get("success") and "delivered_at" not in fields:
             delivery["delivered_at"] = dt.datetime.now(TPE).isoformat(
                 timespec="seconds")
+        # **判準讀的是 manifest,而一天的可用性事實在收據上**(r4 外審):
+        # 今天第一次成功送達的時刻要一起帶進 manifest,否則同日補寄會把
+        # 「今天準時送過」抹掉 —— 09/01 就是這樣被判成 SLA 未達成的。
+        if delivery.get("success") and delivery.get("delivered_at"):
+            _first = _day_first_delivery(_run_stamp(),
+                                         str(delivery["delivered_at"]))
+            if _first:
+                delivery["first_delivered_at"] = _first
         if fields.get("success"):
             _gha_output("delivered", "true")
             # 本班真的產出了 manifest 並寄出 —— 品質自評與 state 契約
@@ -23359,6 +23374,140 @@ def _mark_delivery_in_manifest(**fields) -> None:
         _publish_terminal_outcome(_outcome, state_dirty=_dirty)
 
 
+def _receipt_sources():
+    """本班查得到的收據來源:`(名稱, 檔案路徑)`,**先遠端再本機**。
+
+    同日前一班寫的收據在 origin/main 上(workflow 先 fetch 下來);
+    工作區那份是 checkout 來的,可能還是昨天那份。
+    """
+    return (("origin/main", (os.environ.get(FRESH_RECEIPT_ENV) or "").strip()),
+            ("工作區", str(DELIVERY_RECEIPT_FILE)))
+
+
+def _receipt_first_delivered_at(date_str: str):
+    """既有收據裡「今天第一次成功送達」的時刻 → `(時刻, 壞掉的來源)`。
+
+    第二個回傳值是 `None`(沒有壞)或一個 dict:`source` / `why` / `raw`。
+    **`raw` 要一路帶回來**(r4 外審第四輪):先前只回描述字串,呼叫端
+    只能用 `"工作區" in 描述` 去猜該隔離哪一份 —— 又一次拿便利的判斷式
+    代表語意狀態,而權威來源(origin/main)壞掉時反而不會被保存。
+
+    **「沒有」與「讀不出來」要分開**:壞檔回空字串的話,它與「今天還沒
+    寄過」長得一樣 —— 呼叫端會把本班當成今天的第一次,把先前那個準時
+    送達的事實覆寫掉。
+
+    **不拋**:兩層都要驗成 dict。`delivery` 是非空 list / 字串 / 數字時
+    `.get()` 會 AttributeError,而這一支的呼叫點在
+    `_mark_delivery_in_manifest` 的 try 內 —— 例外會被那個 catch-all
+    吞掉並 `return`:manifest 不寫、**收據不發**,看門狗於是看不到今天
+    寄過,可能補一封重複的信。
+    """
+    corrupt = None
+
+    def _bad(name, why, raw):
+        # 先遇到的那個優先(遠端是權威來源,排在前面)
+        return corrupt or {"source": name, "why": f"{name}: {why}", "raw": raw}
+
+    for name, path in _receipt_sources():
+        if not path or not os.path.isfile(path):
+            continue                        # 這一班沒有這個來源 —— 不是壞掉
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                raw = fh.read()
+        except OSError as e:
+            corrupt = _bad(name, f"讀不到({e})", "")
+            continue
+        try:
+            data = json.loads(raw)
+        except ValueError as e:
+            corrupt = _bad(name, f"JSON 壞掉({e})", raw)
+            continue
+        if not isinstance(data, dict):
+            corrupt = _bad(name, f"根不是物件({type(data).__name__})", raw)
+            continue
+        if str(data.get("date") or "")[:10] != str(date_str or "")[:10]:
+            continue                        # 別天的收據,不是壞掉
+        dv = data.get("delivery")
+        if not isinstance(dv, dict):
+            corrupt = _bad(name, f"delivery 不是物件({type(dv).__name__})", raw)
+            continue
+        if not dv.get("success"):
+            continue
+        first = str(dv.get("first_delivered_at") or dv.get("delivered_at") or "")
+        if first:
+            return first, corrupt           # 救回值了,但壞掉的來源仍要留痕
+    return "", corrupt
+
+
+def _day_first_delivery(date_str: str, this_run_at: str) -> str:
+    """本班要寫進收據/manifest 的 `first_delivered_at`(讀不動就回空)。
+
+    讀不動而且救不回既有值時**留空**,而不是填本班時刻:判準端缺這個
+    欄位會退回用本班時刻,那是**保守的那一邊**(可能誤報 SLA 未達成)。
+    填本班時刻則會把「今天準時送過」改寫成「今天 09:16 才第一次送達」
+    —— 把看得見的壞換成安靜的假事實。
+    """
+    prior, corrupt = _receipt_first_delivered_at(date_str)
+    # **救回來了也要留痕**(r4 外審第二輪):遠端那份壞掉、本機那份剛好
+    # 補得上時,先前在迴圈裡就 return 了 —— 壞掉的事實完全不出聲。
+    # 「今天沒更新」與「今天沒事」在紀錄裡不可以長得一樣,而且
+    # 「有備援救回來」不是「沒有壞」。
+    if corrupt:
+        # 兩層都要:**明細**(哪個來源、壞在哪,進 manifest)與
+        # **原始內容**(可能還救得回 `first_delivered_at`,進隔離檔)。
+        # 只留明細的話,120 字元裝不下那個時間戳(r4 外審第三輪)。
+        kept = _quarantine_corrupt_receipt(corrupt)
+        _register_state_corrupt(
+            "delivery_receipt",
+            ValueError(corrupt["why"] + ";"
+                       + ("已由另一個來源補上" if prior
+                          else "當日第一次送達的時刻查不出來")
+                       + ("(原檔已隔離)" if kept else "")))
+    if prior:
+        return prior
+    if corrupt:
+        # **收據照樣要發**:不發的後果是看門狗看不到今天寄過 → 重複寄信
+        # (收不回來),比誤報一次 SLA 嚴重得多。repo 既有的「壞檔不覆寫」
+        # 政策針對的是**會累積歷史**的 state(如 story_ledger,覆寫會丟失
+        # 過去);收據是每天重寫的**單筆**證據,保留它反而讓看門狗讀到
+        # 一份自己都知道讀不動的檔。壞掉的位元組已由上面的隔離檔保存。
+        return ""
+    return str(this_run_at or "")
+
+
+def _quarantine_corrupt_receipt(info: dict) -> bool:
+    """把讀不動的收據**原封不動**留一份,再讓本班覆寫正本(r4 外審)。
+
+    只留例外描述不夠:`note_state_corrupt()` 上限 120 字元,而壞掉的檔案
+    裡**可能還留著救得回來的東西** —— 截斷的 JSON 往往看得到
+    `"first_delivered_at": "…"` 那一段,人工修得回。
+    正本仍然覆寫(理由見 `_day_first_delivery`),所以順序是**先存副本
+    再覆寫**。隔離檔進版控,不然跟著 runner 消失就等於沒存。
+
+    **哪一個來源壞掉就存哪一個**:遠端(origin/main)是權威來源,
+    它壞掉時更該保存 —— 用來源名稱去猜會漏掉它(r4 外審第四輪)。
+    """
+    raw = str((info or {}).get("raw") or "")
+    if not raw:
+        return False                        # 連內容都拿不到,沒有東西可留
+    try:
+        _atomic_write_text(DELIVERY_RECEIPT_QUARANTINE, json.dumps({
+            "quarantined_at": dt.datetime.now(TPE).isoformat(
+                timespec="seconds"),
+            "source": str((info or {}).get("source") or ""),
+            "why": str((info or {}).get("why") or "")[:300],
+            # 原始內容:留給人看的,不是給程式解析的。
+            "raw": raw[:8000],
+            "truncated": len(raw) > 8000,
+        }, ensure_ascii=False, indent=1))
+    except OSError as e:                    # 隔離失敗不擋信 —— 但要出聲
+        print(f"[receipt] 壞掉的收據沒能隔離: {e}", file=sys.stderr)
+        return False
+    print(f"[receipt] 讀不動的收據({info.get('source')})已隔離到 "
+          f"{DELIVERY_RECEIPT_QUARANTINE.name}", file=sys.stderr)
+    return True
+
+
 def _publish_delivery_receipt(date_str, delivery: dict) -> None:
     """把寄送收據寫檔並**立刻**推回 repo(本機/DRY_RUN 只寫檔)。
 
@@ -23367,7 +23516,19 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
     推不上去只降級、不拋 —— 信已經寄出了,這裡再炸掉只會讓 job 變紅而
     幫不上任何事(但要留痕:安靜失敗的症狀剛好就是重複寄信)。
     """
-    payload = {"date": str(date_str or ""), "delivery": dict(delivery or {}),
+    _dv = dict(delivery or {})
+    # **「今天有沒有在期限前收到信」與「這一班幾點寄的」是兩件事**
+    # (2026-09-01 r4 外審,今天真實踩到):今天 08:28 已經送達一次,
+    # 儲值後 08:42 手動補寄、09:16 送達 —— 收據被覆寫成 09:16 之後,
+    # 判準說今天 `delivery_sla_missed`,而今天其實準時送達過。
+    # 一天的可用性事實**不可以被同一天後來的補寄抹掉**:第一次成功
+    # 送達的時刻只寫一次,同日之後的任何一班都只更新 `delivered_at`。
+    if _dv.get("success") and _dv.get("delivered_at"):
+        _first = _day_first_delivery(str(date_str or ""),
+                                     str(_dv["delivered_at"]))
+        if _first:
+            _dv["first_delivered_at"] = _first
+    payload = {"date": str(date_str or ""), "delivery": _dv,
                "github_run_id": os.environ.get("GITHUB_RUN_ID") or ""}
     try:
         DELIVERY_RECEIPT_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -24248,14 +24409,14 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
             _mark_delivery_in_manifest(
                 attempted=False, success=False,
                 skipped_reason="weekend_no_new_content")
-            _git_commit_and_push_state(
+            _git_commit_and_push_state(_with_quarantine(
                 [str(RUN_MANIFEST_FILE),
                  # **收據要一起 commit**(r8 外審):它已經被獨立推上遠端,
                  # 本機卻還是 untracked。之後這一批 state 推的時候會是
                  # non-fast-forward → `pull --rebase --autostash`,而
                  # autostash **不含 untracked** —— git 拒絕用遠端版本蓋掉
                  # 本機那個未追蹤的同名檔,整批 state 於是推不上去、job 變紅。
-                 str(DELIVERY_RECEIPT_FILE)],
+                 str(DELIVERY_RECEIPT_FILE)]),
                 f"chore: weekend no-content manifest "
                 f"{now_tpe.strftime('%Y-%m-%d')} [skip ci]")
         except Exception as e:
@@ -24357,12 +24518,12 @@ def run_weekend_digest(now_tpe: dt.datetime) -> int:
         _write_run_manifest(now_tpe, report_kind=_rq.WEEKEND_DIGEST)
     except Exception as e:
         print(f"[weekend] run manifest 寫入失敗: {type(e).__name__}", file=sys.stderr)
-    _git_commit_and_push_state(
+    _git_commit_and_push_state(_with_quarantine(
         [str(PODCAST_DIGEST_FILE),
          str(POLY_HISTORY_FILE),   # 週日體育卡也會更新 Polymarket 快照
          str(RUN_MANIFEST_FILE),   # r1(Codex,P1):不列進來就等於沒寫(看門狗讀 repo)
          str(DELIVERY_RECEIPT_FILE),  # r8 外審:見上方週日無內容路徑的說明
-         str(EMAIL_ARCHIVE_DIR)],   # §B:週末信件存檔一併 push
+         str(EMAIL_ARCHIVE_DIR)]),   # §B:週末信件存檔一併 push
         f"chore: weekend podcast state {now_tpe.strftime('%Y-%m-%d')} [skip ci]")
     print("[weekend] 週日綜合已寄出")
     return 0
@@ -25894,6 +26055,18 @@ FRESH_MANIFEST_ENV = "FRESH_RUN_MANIFEST"
 #: 一封(r3 外審 P1)。收據自己一個檔、SMTP 成功當下就推,不夾帶其他 state,
 #: 所以也沒有繞過 schema 閘門的問題。
 DELIVERY_RECEIPT_FILE = STATE_ROOT / "delivery_receipt.json"
+#: 讀不動的收據在被覆寫**之前**留下的副本(進版控,見 `_quarantine_corrupt_receipt`)。
+DELIVERY_RECEIPT_QUARANTINE = STATE_ROOT / "delivery_receipt.corrupt.json"
+
+
+def _with_quarantine(paths: list) -> list:
+    """有壞檔隔離時才把它一起發佈 —— **沒有的日子清單完全不變**。
+
+    無條件加進清單的話,99.9% 的日子都在為一個不存在的檔案改變發佈行為,
+    而且每個 patch 收據路徑的測試都要記得多 patch 一個常數。
+    """
+    return list(paths) + ([str(DELIVERY_RECEIPT_QUARANTINE)]
+                          if DELIVERY_RECEIPT_QUARANTINE.exists() else [])
 FRESH_RECEIPT_ENV = "FRESH_DELIVERY_RECEIPT"
 
 

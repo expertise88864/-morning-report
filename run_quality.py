@@ -71,6 +71,17 @@ SLA_TZ = _dt.timezone(_dt.timedelta(hours=8))
 #: `delivered_at` 就是 defect。**數字只有一個定義**(見檔頭的 import)。
 MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
 
+
+def _to_sla_tz(raw: str) -> _dt.datetime:
+    """把 ISO 時刻換算到 SLA 的時區(期限是「台北的九點」)。
+
+    沒帶時區的字串視為台北(產出端一直是 TPE),帶了就換算過來。
+    解不出來會拋 `ValueError` —— 呼叫端要報「這一天無法稽核」。
+    """
+    when = _dt.datetime.fromisoformat(raw)
+    return (when.replace(tzinfo=SLA_TZ) if when.tzinfo is None
+            else when.astimezone(SLA_TZ))
+
 KNOWN_DEGRADED = frozenset({
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
     "llm:effort_not_applied:primary",
@@ -724,21 +735,35 @@ def assess(manifest, *, mode: str = "watchdog",
             f"manifest_schema={_schema} 比本程式認得的 "
             f"{_CURRENT_MANIFEST_SCHEMA} 新 —— 判準可能漏驗新欄位")
     if _dv.get("success") and _at:
+        # **「今天有沒有準時收到信」與「這一班幾點寄的」是兩件事**
+        # (2026-09-01 r4 外審,當天真實踩到):09/01 08:28 已經送達一次,
+        # 儲值後手動補寄、09:16 再送一次 —— 收據被覆寫之後,判準說
+        # 今天 SLA 未達成,而今天其實**準時送達過**。一天的可用性事實
+        # 不可以被同一天後來的補寄抹掉。
+        # 缺 `first_delivered_at` 的舊檔退回用本班時刻:單班時兩者相同,
+        # 多班時會偏向**誤報成未達成** —— 這不是豁免,是保守的那一邊。
+        _first_at = str(_dv.get("first_delivered_at") or _at)
         try:
-            _when = _dt.datetime.fromisoformat(_at)
-            # **時區要正規化**:期限是「台北的九點」。沒帶時區的字串
-            # 視為台北(產出端一直是 TPE),帶了就換算過來。
-            _when = (_when.replace(tzinfo=SLA_TZ) if _when.tzinfo is None
-                     else _when.astimezone(SLA_TZ))
-            if (_when.hour, _when.minute) >= (SLA_HOUR, SLA_MINUTE):
-                _why = ("" if digest else "(台股開盤)")
+            _first_when = _to_sla_tz(_first_at)
+            _when = _to_sla_tz(_at)
+            _why = ("" if digest else "(台股開盤)")
+            _limit = (SLA_HOUR, SLA_MINUTE)
+            if (_first_when.hour, _first_when.minute) >= _limit:
                 add("delivery_sla_missed", "defect",
-                    f"晨報 {_when:%H:%M} 才寄出,超過 {SLA_HOUR:02d}:"
-                    f"{SLA_MINUTE:02d} 的送達期限{_why} —— "
+                    f"今天第一次送達是 {_first_when:%H:%M},超過 "
+                    f"{SLA_HOUR:02d}:{SLA_MINUTE:02d} 的送達期限{_why} —— "
                     "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
+            elif (_when.hour, _when.minute) >= _limit:
+                # 今天準時送過了,這一班只是同日的補寄/重跑 ——
+                # 是事實要記,但**不是**「今天沒收到信」。
+                add("run_delivered_after_target", "degraded",
+                    f"本班 {_when:%H:%M} 才寄出(超過 {SLA_HOUR:02d}:"
+                    f"{SLA_MINUTE:02d}),但今天第一次送達是 "
+                    f"{_first_when:%H:%M} —— 當日送達期限已經達成,"
+                    "這一班是同日的補寄或重跑")
         except ValueError:
             add("delivered_at_unparsable", "degraded",
-                f"寄出時刻讀不出來:{_at!r} —— SLA 這一天無法稽核")
+                f"寄出時刻讀不出來:{_first_at!r} —— SLA 這一天無法稽核")
     elif _dv.get("success") and (
             _schema_bad or _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT):
         # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。

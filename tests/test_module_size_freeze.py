@@ -254,7 +254,13 @@ MODULE_CEILINGS = {
     # morning_report.py,這個檔沒有機械化評估;人工看:SLA 判定(約 90 行
     # + 3 個 helper)已經內聚到可以獨立成 `delivery_sla.py`。**下一批單獨做**
     # —— 與修正混批會讓外審難審,而且純搬移要用 verify-move 逐行比對。
-    "run_quality.py": 950,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
+    # 2026-09-01 r7 外審:delivery.success 三態契約(三個模組共用一份判準);現況 978。
+    # ⚠⚠ **一天內第五次調高**(790→815→850→900→950→1000)。外審已指出:
+    # 「本來 ceiling 是阻止模組長大,現在變成記錄它目前多大」—— 棘輪失效。
+    # `delivery_sla.py` 的抽出工單已經開了兩批,**下一批必須做**,
+    # 而 `test_the_sla_extraction_is_not_deferred_forever` 會在超過
+    # 1000 行時直接擋下來,不接受第六次調高。
+    "run_quality.py": 1000,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -736,6 +742,22 @@ def test_main_module_does_not_grow_past_the_ceiling():
         "  這是**棘輪**:請先把等量的邏輯搬到葉模組或刪除,而不是調高數字。\n"
         "  可搬性請用 `python tools/refactor_audit.py group <FUNC...>` 判定"
         "(判 BLOCK 的絕不搬)。")
+
+
+def test_the_sla_extraction_is_not_deferred_forever():
+    """**棘輪要有一個不能再調的點**(2026-09-01 r7 外審)。
+
+    `run_quality.py` 的上限一天內調高五次 —— 每次新增契約就把數字往上推,
+    測試照樣綠,那它記錄的是「目前多大」而不是「不准再大」。
+    抽出 `delivery_sla.py` 的工單已經開了兩批。
+
+    這條在**上限本身**超過 1000 時失敗:要繼續長,就得先把 SLA 判定
+    搬出去,而不是再改一次數字。
+    """
+    cap = MODULE_CEILINGS["run_quality.py"]
+    assert cap <= 1000, (
+        f"run_quality.py 的上限已經是 {cap} —— 不要再調高了,"
+        "先把 SLA 判定抽成 delivery_sla.py(工單見這一行上方的註解)")
 
 
 def test_leaf_modules_do_not_absorb_the_bloat():

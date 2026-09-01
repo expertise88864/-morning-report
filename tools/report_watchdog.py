@@ -84,14 +84,62 @@ def _too_old(now: dt.datetime, stamp: str, age_hours: float) -> bool:
     return str(stamp or "")[:10] != now.strftime("%Y-%m-%d")
 
 
-def delivery_state(path: Path = MANIFEST) -> dict:
-    """manifest 裡的寄送結果。讀不到或舊格式沒有這個欄位時回 {}。"""
+#: `delivery_state()` 的四種結果。
+EVIDENCE_LEGACY_MISSING = "legacy_missing"    #: 真舊檔:當時還沒有這個欄位
+EVIDENCE_CURRENT_MISSING = "current_missing"  #: 現行世代卻沒有 —— writer 壞了
+EVIDENCE_INVALID = "invalid"                  #: 有,但型別不對
+EVIDENCE_VALID = "valid"
+
+
+def _rq_delivery_success(dv) -> str:
+    """`delivery.success` 的三態判定 —— **判準本體在 `run_quality`**,
+    這裡只是轉接:兩套監控對同一件事必須說同一句話。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import run_quality as _rq
+    return _rq.delivery_success(dv)
+
+
+def delivery_state(path: Path = MANIFEST):
+    """manifest 裡的寄送結果 → `(狀態, delivery dict)`。
+
+    2026-09-01 r7 外審:先前**三種狀態壓成一個 `{}`** ——
+    真舊檔沒有這個欄位、現行世代的 writer 沒寫出來、欄位型別壞掉,
+    全部被解讀成「舊格式,正常」。而看門狗存在的理由正是
+    「**有跑過 ≠ 有成功寄到**」:證據不見了或壞掉,恰恰是最該吵的時候,
+    卻被當成最安靜的那一種。
+
+    `manifest_schema` 已經正式到 v2,現行 writer 的 manifest 再缺
+    `delivery`,已經不能叫 legacy。
+    """
     try:
         raw = json.loads(path.read_text(encoding="utf-8")) or {}
-    except Exception:
-        return {}
-    d = raw.get("delivery")
-    return d if isinstance(d, dict) else {}
+    except Exception:                       # noqa: BLE001 - 讀不到就當沒證據
+        return EVIDENCE_LEGACY_MISSING, {}
+    if not isinstance(raw, dict):
+        return EVIDENCE_INVALID, {}
+    # **先看寄送證據本身**(r7 外審第三輪):`manifest_schema` 壞掉**不會**
+    # 讓一個明確的 `success: true` 失效。先前我把 schema 檢查排在前面,
+    # 於是「版本壞掉但確實寄出了」被判成「沒寄到」(rc=1)——
+    # 而 rc=1 會觸發自動補寄:**把漏報換成了重複寄信**,那是收不回來的
+    # 那一邊。版本壞掉是品質缺陷,由 `run_quality` 報(rc=2),
+    # 不是由看門狗宣稱沒寄到。
+    if "delivery" in raw:
+        d = raw["delivery"]
+        if not isinstance(d, dict):
+            return EVIDENCE_INVALID, {}
+        return EVIDENCE_VALID, d
+    # 到這裡才需要問「這份檔有沒有義務寫出 delivery」。
+    # **key 在不在要問 key**(`run_quality` 已經確立過同一條:欄位缺席才是
+    # 舊檔,存在但無效是**壞掉**)。先前用 `.get()` 的回傳值判,於是
+    # `manifest_schema: null / "2" / false` 全都被當成「真舊檔」——
+    # 版本資訊壞掉的檔反而拿到最寬鬆的待遇。
+    if "manifest_schema" not in raw:
+        return EVIDENCE_LEGACY_MISSING, {}  # 真舊檔:當時還沒有世代標記
+    schema = raw["manifest_schema"]
+    if (isinstance(schema, bool) or not isinstance(schema, int)
+            or schema < 1):
+        return EVIDENCE_INVALID, {}         # 版本壞掉**又**沒有寄送證據
+    return EVIDENCE_CURRENT_MISSING, {}
 
 
 def quality_findings(path: Path = MANIFEST) -> list:
@@ -121,19 +169,38 @@ def main() -> int:
     #   - 05:30 手動跑過、06:00 正式排程在 pending 被擠掉 → 07:30 時 age < 3h
     #   - manifest 更新了,但在寄信那一步失敗
     # 而看門狗存在的理由正是後者。
-    delivery = delivery_state()
-    if not delivery:
-        # 舊格式 manifest 沒有這個欄位。**不當成異常**——那會在部署當天
+    evidence, delivery = delivery_state()
+    if evidence == EVIDENCE_LEGACY_MISSING:
+        # 真舊格式 manifest 沒有這個欄位。**不當成異常**——那會在部署當天
         # 產生一次確定的假警報,而假警報會訓練人忽略告警。
         print(f"[watchdog] 正常(舊格式 manifest,無寄送欄位):{info}"
               f"({age:.1f} 小時前)")
         return _quality_exit(info)
+    if evidence == EVIDENCE_CURRENT_MISSING:
+        print(f"[watchdog] 異常:{info} 的 manifest 有世代標記卻**沒有寄送"
+              "欄位** —— 這不是舊檔,是 writer 沒寫出來,"
+              "今天有沒有寄到查不出來", file=sys.stderr)
+        return 1
+    if evidence == EVIDENCE_INVALID:
+        print(f"[watchdog] 異常:{info} 的寄送紀錄型別壞掉 —— "
+              "今天有沒有寄到查不出來", file=sys.stderr)
+        return 1
+    # **先驗證據本身,再讀它說什麼**(r7 外審第二輪):`skipped_reason`
+    # 原本排在前面,於是「`success` 型別壞掉」的檔只要順便有這個欄位,
+    # 就會走「刻意不寄 → 正常」而完全不檢查。壞掉的證據不可以因為
+    # 它剛好也說了一句「我今天不寄」就被信任。
+    _sent = _rq_delivery_success(delivery)
+    if _sent == "invalid":
+        print(f"[watchdog] 異常:{info} 的 delivery.success 不是布林值"
+              f"({delivery.get('success')!r}) —— truthy 的垃圾會被當成"
+              "「寄出去了」", file=sys.stderr)
+        return 1
     if delivery.get("skipped_reason"):
         # 刻意不寄(週日無新內容)。批#69 r2 才剛修掉同型的假警報。
         print(f"[watchdog] 正常:{info} 刻意未寄信"
               f"({delivery.get('skipped_reason')})")
         return 0        # 刻意不寄的日子沒有「信的品質」可談
-    if not delivery.get("success"):
+    if _sent != "succeeded":
         print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
               f"(attempted={delivery.get('attempted')}、"
               f"run_kind={delivery.get('run_kind')})", file=sys.stderr)
@@ -173,7 +240,9 @@ def fresh_conclusion(now: dt.datetime) -> str:
         d = data.get("delivery")
         if not isinstance(d, dict):
             continue
-        if d.get("success"):
+        if _rq_delivery_success(d) == "invalid":
+            continue    # 證據壞掉 —— 不可以拿它宣稱今天已有結論
+        if _rq_delivery_success(d) == "succeeded":
             return f"origin/main 說今天已寄出({d.get('run_kind') or '?'})"
         if str(d.get("skipped_reason") or "").strip():
             return f"origin/main 說今天刻意不寄({d['skipped_reason']})"

@@ -2881,21 +2881,25 @@ def test_watchdog_requires_successful_delivery_not_just_freshness(tmp_path):
             body["delivery"] = delivery
         p.write_text(_json.dumps(body), encoding="utf-8")
 
+    # r7 外審後 `delivery_state()` 回 `(狀態, delivery)` 四態 ——
+    # 「真舊檔沒有」「現行世代沒寫出來」「型別壞掉」不再壓成同一個 `{}`。
     # 有執行、但沒有成功寄出 → 必須是異常
     write({"attempted": True, "success": False, "run_kind": "schedule"})
-    assert rw.delivery_state(p) == {"attempted": True, "success": False,
-                                    "run_kind": "schedule"}
+    assert rw.delivery_state(p) == (rw.EVIDENCE_VALID, {
+        "attempted": True, "success": False, "run_kind": "schedule"})
     # 刻意不寄(週日無新內容)→ 正常,不得誤報(批#69 r2 修過同型假警報)
     write({"attempted": False, "success": False,
            "skipped_reason": "weekend_no_new_content"})
-    assert rw.delivery_state(p)["skipped_reason"] == "weekend_no_new_content"
+    assert rw.delivery_state(p)[1]["skipped_reason"] == "weekend_no_new_content"
     # 成功寄出 → 正常
     write({"attempted": True, "success": True, "run_kind": "schedule"})
-    assert rw.delivery_state(p)["success"] is True
+    assert rw.delivery_state(p)[1]["success"] is True
     # **舊格式 manifest 沒有這個欄位時不得當成異常** —— 那會在部署當天產生
     # 一次確定的假警報,而假警報會訓練人忽略告警。
+    # (沒有 `manifest_schema` = 真舊檔;現行世代缺欄位是另一回事,
+    #  見 `tests/test_batch_watchdog_contract_0901.py`。)
     write(None)
-    assert rw.delivery_state(p) == {}
+    assert rw.delivery_state(p) == (rw.EVIDENCE_LEGACY_MISSING, {})
 
 
 def test_delivery_outcome_is_written_before_the_state_push():

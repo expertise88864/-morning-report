@@ -77,6 +77,34 @@ MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
 MANIFEST_SCHEMA_WITH_FIRST_DELIVERY = _V2_FIRST_DELIVERY
 
 
+#: 一份 manifest/收據能不能證明「寄出去了」—— **三態,不是布林**。
+DELIVERY_SUCCEEDED = "succeeded"      #: `success is True`
+DELIVERY_NOT_SUCCEEDED = "not_yet"    #: `success is False`,或還沒有結論
+DELIVERY_SUCCESS_INVALID = "invalid"  #: 有這個欄位,但型別不是 bool
+
+
+def delivery_success(dv) -> str:
+    """`delivery.success` 的**三態**判定(單一定義,三個模組共用)。
+
+    2026-09-01 r7 外審:先前每個消費端各自寫 `if dv.get("success")` ——
+    truthiness。於是 `"false"` / `1` / `"no"` / `[1]` 全都被當成「寄出去了」,
+    而 `"false"` 是壞掉的 state 最可能長的樣子。
+
+    這個欄位是**控制流事實**(要不要告警、要不要自動補寄、要不要判 SLA、
+    origin/main 有沒有結論),所以它要跟 `manifest_schema` 一樣做精確型別
+    契約:`is True` 才算成功,`is False` 才算沒成功,其餘一律「壞掉」——
+    而壞掉**不可以**被當成「沒成功」靜靜吞掉,也不可以被當成成功。
+    """
+    if not isinstance(dv, dict) or "success" not in dv:
+        return DELIVERY_NOT_SUCCEEDED
+    raw = dv["success"]
+    if raw is True:
+        return DELIVERY_SUCCEEDED
+    if raw is False:
+        return DELIVERY_NOT_SUCCEEDED
+    return DELIVERY_SUCCESS_INVALID
+
+
 def _sla_business_day(manifest_date):
     """SLA 的**營業日**(讀不出來回 `None`)。
 
@@ -774,7 +802,13 @@ def assess(manifest, *, mode: str = "watchdog",
         add("manifest_schema_unsupported", "degraded",
             f"manifest_schema={_schema} 比本程式認得的 "
             f"{_CURRENT_MANIFEST_SCHEMA} 新 —— 判準可能漏驗新欄位")
-    if _dv.get("success") and _at:
+    _dv_state = delivery_success(_dv)
+    if _dv_state == DELIVERY_SUCCESS_INVALID:
+        add("delivery_success_invalid", "defect",
+            f"delivery.success 不是布林值:{_dv.get('success')!r} —— "
+            "它決定要不要告警、要不要補寄、要不要判 SLA,"
+            "truthy 的垃圾會被當成「寄出去了」")
+    if _dv_state == DELIVERY_SUCCEEDED and _at:
         # **「今天有沒有準時收到信」與「這一班幾點寄的」是兩件事**
         # (2026-09-01 r4 外審,當天真實踩到):09/01 08:28 已經送達一次,
         # 儲值後手動補寄、09:16 再送一次 —— 收據被覆寫之後,判準說
@@ -870,7 +904,7 @@ def assess(manifest, *, mode: str = "watchdog",
                         f"{SLA_MINUTE:02d}),但今天第一次送達是 "
                         f"{_first_when:%H:%M} —— 當日送達期限已經達成,"
                         "這一班是同日的補寄或重跑")
-    elif _dv.get("success") and (
+    elif _dv_state == DELIVERY_SUCCEEDED and (
             _schema_bad or _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT):
         # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。
         add("delivered_at_missing", "defect",

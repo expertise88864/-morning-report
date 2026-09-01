@@ -23431,7 +23431,7 @@ def _receipt_first_delivered_at(date_str: str):
         if not isinstance(dv, dict):
             corrupt = _bad(name, f"delivery 不是物件({type(dv).__name__})", raw)
             continue
-        if _rq.delivery_success(dv) != _rq.DELIVERY_SUCCEEDED:
+        if _rq.delivery_outcome(dv) != _rq.OUTCOME_DELIVERED:
             continue
         first = str(dv.get("first_delivered_at") or dv.get("delivered_at") or "")
         if first:
@@ -26110,11 +26110,13 @@ def _manifest_delivery_verdict(data, now_tpe) -> str:
     # truthiness —— `"false"` / `1` / `"no"` 都會被當成「今天已經寄出」而
     # **擋掉補寄**,那是「漏寄一整天」的方向。判準本體在 `run_quality`,
     # 兩套監控對同一件事要說同一句話。
-    if _rq.delivery_success(delivery) == _rq.DELIVERY_SUCCESS_INVALID:
-        return ""       # 證據壞掉 —— 不可以拿它擋掉補寄(見上方說明)
-    if _rq.delivery_success(delivery) == _rq.DELIVERY_SUCCEEDED:
+    # **同一個狀態機**(r8 外審):矛盾的組合(同時宣稱寄出與刻意不寄)、
+    # 型別壞掉、只有一半的欄位 —— 都不是「今天已經有結論」,不可以拿來
+    # 擋掉補寄。擋錯的方向是漏寄一整天。
+    _o = _rq.delivery_outcome(delivery)
+    if _o == _rq.OUTCOME_DELIVERED:
         return f"{stamped} 已寄出({delivery.get('run_kind') or '?'})"
-    if str(delivery.get("skipped_reason") or "").strip():
+    if _o == _rq.OUTCOME_SKIPPED:
         return f"{stamped} 已判定不寄({delivery['skipped_reason']})"
     return ""
 

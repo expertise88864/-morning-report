@@ -91,12 +91,16 @@ EVIDENCE_INVALID = "invalid"                  #: 有,但型別不對
 EVIDENCE_VALID = "valid"
 
 
-def _rq_delivery_success(dv) -> str:
-    """`delivery.success` 的三態判定 —— **判準本體在 `run_quality`**,
-    這裡只是轉接:兩套監控對同一件事必須說同一句話。"""
+def _rq_delivery_outcome(dv) -> str:
+    """`delivery` 的**終局狀態** —— 判準本體在 `run_quality`,這裡只是轉接。
+
+    r8 外審:先前每個 consumer 各自把 `success` 與 `skipped_reason` 排成
+    自己的順序,於是同一份 state 在看門狗主流程與 `fresh_conclusion()`
+    說**不同的話**。收斂成一個狀態機之後,順序不再是誰寫的問題。
+    """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
-    return _rq.delivery_success(dv)
+    return _rq.delivery_outcome(dv)
 
 
 def delivery_state(path: Path = MANIFEST):
@@ -134,6 +138,14 @@ def delivery_state(path: Path = MANIFEST):
     # `manifest_schema: null / "2" / false` 全都被當成「真舊檔」——
     # 版本資訊壞掉的檔反而拿到最寬鬆的待遇。
     if "manifest_schema" not in raw:
+        # **豁免要有截止日**(r8 外審):只看 key 在不在,等於一個永遠不會
+        # 到期的 legacy 豁免 —— 而上面已經確認這份 manifest 是**今天**的。
+        # 截止日由 `run_quality` 擁有(判準只有一份)。
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import run_quality as _rq
+        day = _rq._sla_business_day(raw.get("date"))
+        if day is not None and day >= _rq.MANIFEST_SCHEMA_REQUIRED_FROM:
+            return EVIDENCE_INVALID, {}     # 這麼新的檔不可能是舊格式
         return EVIDENCE_LEGACY_MISSING, {}  # 真舊檔:當時還沒有世代標記
     schema = raw["manifest_schema"]
     if (isinstance(schema, bool) or not isinstance(schema, int)
@@ -185,24 +197,28 @@ def main() -> int:
         print(f"[watchdog] 異常:{info} 的寄送紀錄型別壞掉 —— "
               "今天有沒有寄到查不出來", file=sys.stderr)
         return 1
-    # **先驗證據本身,再讀它說什麼**(r7 外審第二輪):`skipped_reason`
-    # 原本排在前面,於是「`success` 型別壞掉」的檔只要順便有這個欄位,
-    # 就會走「刻意不寄 → 正常」而完全不檢查。壞掉的證據不可以因為
-    # 它剛好也說了一句「我今天不寄」就被信任。
-    _sent = _rq_delivery_success(delivery)
-    if _sent == "invalid":
-        print(f"[watchdog] 異常:{info} 的 delivery.success 不是布林值"
-              f"({delivery.get('success')!r}) —— truthy 的垃圾會被當成"
-              "「寄出去了」", file=sys.stderr)
+    # **一個狀態機,不是幾個 if**(r8 外審):`success` 與 `skipped_reason`
+    # 的排列順序先前各處不同,同一份 state 在這裡與 `fresh_conclusion()`
+    # 說不同的話。矛盾的組合(同時宣稱寄出與刻意不寄)現在會被拒絕。
+    _outcome = _rq_delivery_outcome(delivery)
+    if _outcome == "invalid":
+        print(f"[watchdog] 異常:{info} 的寄送紀錄自相矛盾或型別壞掉"
+              f"(success={delivery.get('success')!r}、"
+              f"skipped_reason={delivery.get('skipped_reason')!r}) —— "
+              "今天有沒有寄到查不出來", file=sys.stderr)
         return 1
-    if delivery.get("skipped_reason"):
+    if _outcome == "intentionally_skipped":
         # 刻意不寄(週日無新內容)。批#69 r2 才剛修掉同型的假警報。
+        # **但控制面的缺陷仍然要驗**(r8 外審):先前這裡直接 `return 0`,
+        # 於是 schema 壞掉之類的問題在「刻意不寄」的日子完全無聲 ——
+        # 而 workflow 的品質自評只在 `run_outcome == delivered` 時跑,
+        # 那條路也補不到。信的內容不必驗(今天本來就沒有信)。
         print(f"[watchdog] 正常:{info} 刻意未寄信"
               f"({delivery.get('skipped_reason')})")
-        return 0        # 刻意不寄的日子沒有「信的品質」可談
-    if _sent != "succeeded":
+        return _control_plane_exit(info)
+    if _outcome != "delivered":
         print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
-              f"(attempted={delivery.get('attempted')}、"
+              f"(狀態={_outcome}、attempted={delivery.get('attempted')}、"
               f"run_kind={delivery.get('run_kind')})", file=sys.stderr)
         return 1
     print(f"[watchdog] 正常:{info} 已寄出({age:.1f} 小時前、"
@@ -240,11 +256,11 @@ def fresh_conclusion(now: dt.datetime) -> str:
         d = data.get("delivery")
         if not isinstance(d, dict):
             continue
-        if _rq_delivery_success(d) == "invalid":
-            continue    # 證據壞掉 —— 不可以拿它宣稱今天已有結論
-        if _rq_delivery_success(d) == "succeeded":
+        # 同一個狀態機 —— 這裡與看門狗主流程不可以對同一份 state 說不同的話。
+        _o = _rq_delivery_outcome(d)
+        if _o == "delivered":
             return f"origin/main 說今天已寄出({d.get('run_kind') or '?'})"
-        if str(d.get("skipped_reason") or "").strip():
+        if _o == "intentionally_skipped":
             return f"origin/main 說今天刻意不寄({d['skipped_reason']})"
     return ""
 
@@ -369,6 +385,35 @@ def _quality_exit(info: str) -> int:
         return 0
     print(f"[watchdog] 品質異常({info}):\n" + _rq.summarize(findings),
           file=sys.stderr)
+    return 2
+
+
+#: 「信的內容」那一類 finding —— 刻意不寄的日子沒有信,不該拿它們報警。
+_CONTENT_ONLY_PREFIXES = ("analysis_", "luna_", "news_", "sector_",
+                          "podcast_", "story_", "forecast_", "recap_")
+
+
+def _control_plane_exit(info: str) -> int:
+    """**刻意不寄的日子也要驗控制面**(r8 外審)。
+
+    先前這條路直接 `return 0`:於是 `manifest_schema` 壞掉之類的問題,
+    在「今天不寄信」的日子完全無聲 —— 而 workflow 的品質自評只在
+    `run_outcome == 'delivered'` 時跑,那條路也補不到。
+
+    但**不能**直接跑完整判準:那裡面有一大類「信的內容夠不夠好」的
+    判準,而今天本來就沒有信 —— 硬跑會製造假警報,
+    而假警報會訓練人忽略告警(這個系統修過三次同型問題)。
+    所以只留控制面的那些。
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import run_quality as _rq
+    findings = [f for f in quality_findings()
+                if not str(f.get("code") or "").startswith(
+                    _CONTENT_ONLY_PREFIXES)]
+    if not findings:
+        return 0
+    print(f"[watchdog] 控制面異常({info},今天刻意不寄信):" + chr(10)
+          + _rq.summarize(findings), file=sys.stderr)
     return 2
 
 

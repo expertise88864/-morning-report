@@ -254,6 +254,9 @@ MODULE_CEILINGS = {
     # morning_report.py,這個檔沒有機械化評估;人工看:SLA 判定(約 90 行
     # + 3 個 helper)已經內聚到可以獨立成 `delivery_sla.py`。**下一批單獨做**
     # —— 與修正混批會讓外審難審,而且純搬移要用 verify-move 逐行比對。
+    # 2026-09-01 r8:delivery 契約搬進 `delivery_contract.py`(1000 行硬閘門
+    # 擋下來的第一次 —— 它逼出了這次搬移,而不是第六次調高數字)。
+    "delivery_contract.py": 150,   # 現況 93
     # 2026-09-01 r7 外審:delivery.success 三態契約(三個模組共用一份判準);現況 978。
     # ⚠⚠ **一天內第五次調高**(790→815→850→900→950→1000)。外審已指出:
     # 「本來 ceiling 是阻止模組長大,現在變成記錄它目前多大」—— 棘輪失效。

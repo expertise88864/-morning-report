@@ -34,6 +34,21 @@ from __future__ import annotations
 import re as _re
 import datetime as _dt
 
+# **判準只有一份**:`delivery` 的契約住在 `delivery_contract`。
+# 這裡 re-export 是為了不動既有呼叫端(`rq.delivery_outcome(...)` 等)——
+# 搬家不該順便改動所有 consumer 的寫法,那會讓「純搬移」變成一批新的行為。
+from delivery_contract import (      # noqa: F401
+    DELIVERY_NOT_SUCCEEDED,
+    DELIVERY_SUCCEEDED,
+    DELIVERY_SUCCESS_INVALID,
+    OUTCOME_DELIVERED,
+    OUTCOME_FAILED,
+    OUTCOME_INCOMPLETE,
+    OUTCOME_INVALID,
+    OUTCOME_SKIPPED,
+    delivery_outcome,
+    delivery_success,
+)
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
@@ -76,33 +91,14 @@ MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
 #: 幾點。缺了不是「舊檔」,是當日可用性無法稽核。
 MANIFEST_SCHEMA_WITH_FIRST_DELIVERY = _V2_FIRST_DELIVERY
 
-
-#: 一份 manifest/收據能不能證明「寄出去了」—— **三態,不是布林**。
-DELIVERY_SUCCEEDED = "succeeded"      #: `success is True`
-DELIVERY_NOT_SUCCEEDED = "not_yet"    #: `success is False`,或還沒有結論
-DELIVERY_SUCCESS_INVALID = "invalid"  #: 有這個欄位,但型別不是 bool
-
-
-def delivery_success(dv) -> str:
-    """`delivery.success` 的**三態**判定(單一定義,三個模組共用)。
-
-    2026-09-01 r7 外審:先前每個消費端各自寫 `if dv.get("success")` ——
-    truthiness。於是 `"false"` / `1` / `"no"` / `[1]` 全都被當成「寄出去了」,
-    而 `"false"` 是壞掉的 state 最可能長的樣子。
-
-    這個欄位是**控制流事實**(要不要告警、要不要自動補寄、要不要判 SLA、
-    origin/main 有沒有結論),所以它要跟 `manifest_schema` 一樣做精確型別
-    契約:`is True` 才算成功,`is False` 才算沒成功,其餘一律「壞掉」——
-    而壞掉**不可以**被當成「沒成功」靜靜吞掉,也不可以被當成成功。
-    """
-    if not isinstance(dv, dict) or "success" not in dv:
-        return DELIVERY_NOT_SUCCEEDED
-    raw = dv["success"]
-    if raw is True:
-        return DELIVERY_SUCCEEDED
-    if raw is False:
-        return DELIVERY_NOT_SUCCEEDED
-    return DELIVERY_SUCCESS_INVALID
+#: `manifest_schema` **自己**的豁免截止日(台北)。
+#: r8 外審:前面幾條世代都靠 `manifest_schema` 判「這份檔有沒有義務寫」,
+#: 但 `manifest_schema` 自己缺席時只能說「舊檔」—— 一個**永遠不會到期**
+#: 的豁免,與先前修掉的 `delivered_at` / `first_delivered_at` 完全同型。
+#: 它需要一個不依賴自己的歷史錨點:營業日在這一天之後還沒有世代標記,
+#: 就不是舊檔,是 writer 沒寫出來。
+#: 刻意設 09-02 而不是 09-01 —— 部署當天早上真正的舊 manifest 不該被追溯判錯。
+MANIFEST_SCHEMA_REQUIRED_FROM = _dt.date(2026, 9, 2)
 
 
 def _sla_business_day(manifest_date):
@@ -771,6 +767,19 @@ def assess(manifest, *, mode: str = "watchdog",
     #
     # 舊 manifest 沒有這個欄位 —— **不當成違規**(那會在部署當天產生一次
     # 確定的假警報,而假警報會訓練人忽略告警)。
+    # **型別壞掉不可以靜靜變成 `{}`**(2026-09-01 r7 外審):那等於把
+    # 「寄送結論損毀」偽裝成「還沒有結論」,而後者在判準眼中是安靜的。
+    # 看門狗那端已經會因此 rc=1;判準這端也要出聲,否則品質告警鏈
+    # (canary / alert-on-quality)對同一件事說的話不一樣。
+    #
+    # **「缺 delivery」刻意不在這裡報**:canary 是 `DRY_RUN=1` 不寄信,
+    # 它的 manifest 正常就沒有這個欄位。「這一班該有結論了嗎」需要時序
+    # 資訊(有沒有 run 還在跑),那是看門狗有而判準沒有的 —— 所以那半
+    # 留在看門狗(`EVIDENCE_CURRENT_MISSING` → rc=1)。
+    if "delivery" in m and not isinstance(m.get("delivery"), dict):
+        add("delivery_structure_invalid", "defect",
+            f"delivery 不是物件:{type(m.get('delivery')).__name__} —— "
+            "今天有沒有寄到查不出來,而它決定要不要補寄")
     _dv = m.get("delivery") if isinstance(m.get("delivery"), dict) else {}
     _at = str(_dv.get("delivered_at") or "").strip()
     # **「不知道它是哪一版」不等於「它一定是最舊版」**(r2 外審)。
@@ -781,6 +790,13 @@ def assess(manifest, *, mode: str = "watchdog",
     # **版本資訊已經損壞**的檔判成「舊版,當時還沒有這個欄位」——
     # 又一次讓壞掉的檔拿到比合法新檔更寬鬆的待遇。key 在不在要問 key。
     _has_schema = "manifest_schema" in m
+    if not _has_schema:
+        _bday = _sla_business_day(m.get("date"))
+        if _bday is not None and _bday >= MANIFEST_SCHEMA_REQUIRED_FROM:
+            add("manifest_schema_missing", "defect",
+                f"營業日 {_bday} 的 manifest 沒有 manifest_schema —— "
+                f"{MANIFEST_SCHEMA_REQUIRED_FROM} 之後產生的檔不可能是舊檔,"
+                "而所有欄位的必填判定都靠它")
     _raw_schema = m.get("manifest_schema")
     _schema, _schema_bad = 0, False
     if _has_schema:
@@ -802,13 +818,19 @@ def assess(manifest, *, mode: str = "watchdog",
         add("manifest_schema_unsupported", "degraded",
             f"manifest_schema={_schema} 比本程式認得的 "
             f"{_CURRENT_MANIFEST_SCHEMA} 新 —— 判準可能漏驗新欄位")
-    _dv_state = delivery_success(_dv)
-    if _dv_state == DELIVERY_SUCCESS_INVALID:
-        add("delivery_success_invalid", "defect",
-            f"delivery.success 不是布林值:{_dv.get('success')!r} —— "
+    # **判準自己也是 consumer**(2026-09-01 r8 外審第二輪):我把看門狗與
+    # `morning_report` 都換成了五態狀態機,卻漏了這裡 —— 於是矛盾的紀錄
+    # (同時宣稱寄出與刻意不寄)在看門狗被拒絕,在判準卻仍被當成「成功」
+    # 而拿去判 SLA:**同一份 state 兩種結論**,正是收斂狀態機要消滅的事。
+    # 而我的測試只驗了原始碼字串(誰呼叫了什麼),沒驗 `assess()` 的行為。
+    _dv_outcome = delivery_outcome(_dv) if _dv else OUTCOME_INCOMPLETE
+    if _dv_outcome == OUTCOME_INVALID:
+        add("delivery_state_invalid", "defect",
+            f"寄送紀錄自相矛盾或型別壞掉(success={_dv.get('success')!r}、"
+            f"skipped_reason={_dv.get('skipped_reason')!r})—— "
             "它決定要不要告警、要不要補寄、要不要判 SLA,"
-            "truthy 的垃圾會被當成「寄出去了」")
-    if _dv_state == DELIVERY_SUCCEEDED and _at:
+            "而這一份說不出今天到底寄了沒")
+    if _dv_outcome == OUTCOME_DELIVERED and _at:
         # **「今天有沒有準時收到信」與「這一班幾點寄的」是兩件事**
         # (2026-09-01 r4 外審,當天真實踩到):09/01 08:28 已經送達一次,
         # 儲值後手動補寄、09:16 再送一次 —— 收據被覆寫之後,判準說
@@ -904,7 +926,7 @@ def assess(manifest, *, mode: str = "watchdog",
                         f"{SLA_MINUTE:02d}),但今天第一次送達是 "
                         f"{_first_when:%H:%M} —— 當日送達期限已經達成,"
                         "這一班是同日的補寄或重跑")
-    elif _dv_state == DELIVERY_SUCCEEDED and (
+    elif _dv_outcome == OUTCOME_DELIVERED and (
             _schema_bad or _schema >= MANIFEST_SCHEMA_WITH_DELIVERED_AT):
         # 這一版以後就是必填 —— 缺了不是「沒問題」,是「SLA 無法稽核」。
         add("delivered_at_missing", "defect",

@@ -38,6 +38,7 @@ import analysis_recap as _arc
 import llm_telemetry as _lt
 from run_manifest import MANIFEST_SCHEMA as _CURRENT_MANIFEST_SCHEMA
 from run_manifest import SCHEMA_V1_DELIVERY_TIMESTAMP as _V1_DELIVERED_AT
+from run_manifest import SCHEMA_V2_FIRST_DELIVERY as _V2_FIRST_DELIVERY
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -70,6 +71,25 @@ SLA_TZ = _dt.timezone(_dt.timedelta(hours=8))
 #: 會從頭重建文件,標記就掉了)。這一版(含)以後,寄成功卻沒有
 #: `delivered_at` 就是 defect。**數字只有一個定義**(見檔頭的 import)。
 MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
+#: 從這一版起,寄送成功的 manifest **必須**寫得出「今天第一次送達」是
+#: 幾點。缺了不是「舊檔」,是當日可用性無法稽核。
+MANIFEST_SCHEMA_WITH_FIRST_DELIVERY = _V2_FIRST_DELIVERY
+
+
+def _sla_deadline(manifest_date, fallback: _dt.datetime) -> _dt.datetime:
+    """這個**營業日**的送達期限(台北 09:00)。
+
+    營業日取自 manifest 的 `date`(開跑時刻 —— 跨午夜的手動觸發也記
+    開跑日,那正是同日冪等用的那一天)。讀不出來就退回用**送達時刻
+    自己那一天**:等於回到只比鐘面的舊行為,不會憑空放行,也不會
+    因為一個壞掉的日期欄位就把整天判成遲到。
+    """
+    try:
+        day = _dt.date.fromisoformat(str(manifest_date or "")[:10])
+    except ValueError:
+        day = fallback.date()
+    return _dt.datetime.combine(day, _dt.time(SLA_HOUR, SLA_MINUTE),
+                                tzinfo=SLA_TZ)
 
 
 def _to_sla_tz(raw: str) -> _dt.datetime:
@@ -742,18 +762,48 @@ def assess(manifest, *, mode: str = "watchdog",
         # 不可以被同一天後來的補寄抹掉。
         # 缺 `first_delivered_at` 的舊檔退回用本班時刻:單班時兩者相同,
         # 多班時會偏向**誤報成未達成** —— 這不是豁免,是保守的那一邊。
-        _first_at = str(_dv.get("first_delivered_at") or _at)
+        _raw_first = str(_dv.get("first_delivered_at") or "")
+        _first_at = _raw_first or _at
+        # **缺席的豁免要有截止點**(r5 外審,與上一輪 `delivered_at` 同型):
+        # 退回用本班時刻是**保守側**的行為(可能誤報成未達成),但只有
+        # v2 之前的檔才有資格說「當時還沒有這個欄位」。v2 以後缺了,
+        # 就是 writer 沒寫出來 —— 當日可用性從此無法用事實稽核。
+        if not _raw_first and (_schema_bad
+                               or _schema >= MANIFEST_SCHEMA_WITH_FIRST_DELIVERY):
+            add("first_delivered_at_missing", "defect",
+                f"寄送成功卻沒有寫下「今天第一次送達」的時刻"
+                f"(manifest_schema={_schema}) —— 當日送達期限只能拿本班"
+                "時刻代替,同日補寄會被誤判成整天遲到")
         try:
             _first_when = _to_sla_tz(_first_at)
             _when = _to_sla_tz(_at)
             _why = ("" if digest else "(台股開盤)")
-            _limit = (SLA_HOUR, SLA_MINUTE)
-            if (_first_when.hour, _first_when.minute) >= _limit:
+            # **期限是一個時刻,不是一個鐘面**(2026-09-01 r5 外審):
+            # 先前比 `(hour, minute) >= (9, 0)` —— 那問的是「寄出時間的鐘面
+            # 是不是 09:00 以後」,而 SLA 問的是「**這個營業日**的 09:00
+            # 之前有沒有送達」。實測:date=09-01 而信 `09-02T00:20` 才送達
+            # (晚了 15 小時 20 分),鐘面 00:20 < 09:00 → 判成準時。
+            # 跨過午夜的遲到會變成 false negative,而那正是最嚴重的遲到。
+            _deadline = _sla_deadline(m.get("date"), _first_when)
+            # **「今天第一次」必須真的在今天**(r5 外審第二輪):`first`
+            # 是 stale/corrupt state 留下的**前一天**時刻時,它必然小於
+            # 今天的期限 → 判成「今天曾準時送達」→ 真正的遲到被吞掉。
+            # 而這個洞是**改成絕對時間比較之後才出現的**:先前只比鐘面時,
+            # 昨天 09:30 的鐘面仍 ≥ 09:00,會被抓到。修正要看它與既有
+            # 行為的組合,不能只看它自己。
+            # 只擋**早於**營業日:晚於是合法的(跨午夜才寄出的真遲到)。
+            if _first_when.date() < _deadline.date():
+                add("first_delivered_at_out_of_range", "defect",
+                    f"「今天第一次送達」寫的是 {_first_when:%Y-%m-%d %H:%M},"
+                    f"早於本班的營業日 {_deadline:%Y-%m-%d} —— "
+                    "state 沒跟上或壞掉了;本班時刻先當成當日事實")
+                _first_when = _when     # 保守:退回用本班自己的時刻
+            if _first_when >= _deadline:
                 add("delivery_sla_missed", "defect",
                     f"今天第一次送達是 {_first_when:%H:%M},超過 "
                     f"{SLA_HOUR:02d}:{SLA_MINUTE:02d} 的送達期限{_why} —— "
                     "排程延遲或本班跑太久,兩者的處置不同,看 total_seconds")
-            elif (_when.hour, _when.minute) >= _limit:
+            elif _when >= _deadline:
                 # 今天準時送過了,這一班只是同日的補寄/重跑 ——
                 # 是事實要記,但**不是**「今天沒收到信」。
                 add("run_delivered_after_target", "degraded",

@@ -341,3 +341,117 @@ def test_the_authoritative_source_is_quarantined_too(tmp_path, monkeypatch):
         "權威來源壞掉卻沒被隔離", kept)
     assert "2026-09-01T08:28:35+08:00" in kept["raw"], (
         "那個還救得回的時間戳沒了", kept)
+
+
+def _sla_codes(first, at=None, date="2026-09-01 05:10", schema=2):
+    m = {"date": date, "manifest_schema": schema,
+         "llm": {"analysis_origin": "luna_specialized"},
+         "delivery": {"success": True, "delivered_at": at or first}}
+    if first:
+        m["delivery"]["first_delivered_at"] = first
+    return {f["code"] for f in rq.assess(m)}
+
+
+def test_the_deadline_is_an_instant_not_a_clock_face():
+    """r5 外審:先前比 `(hour, minute) >= (9, 0)` —— 那問的是「寄出時間的
+    鐘面是不是 09:00 以後」,而 SLA 問的是「**這個營業日**的 09:00 之前有
+    沒有送達」。實測:date=09-01 而信 `09-02T00:20` 才送達(晚了 15 小時
+    20 分),鐘面 00:20 < 09:00 → 判成準時。**跨過午夜的遲到會變成 false
+    negative,而那正是最嚴重的遲到。**"""
+    assert "delivery_sla_missed" not in _sla_codes("2026-09-01T08:59:59+08:00")
+    assert "delivery_sla_missed" in _sla_codes("2026-09-01T09:00:00+08:00")
+    # 跨日:這一天的期限早就過了
+    assert "delivery_sla_missed" in _sla_codes("2026-09-02T00:20:00+08:00"), (
+        "晚了 15 小時卻因為鐘面是 00:20 而判成準時")
+    # 同一個時刻用 UTC 寫:換算成台北是 09-02 00:20,一樣要抓到
+    assert "delivery_sla_missed" in _sla_codes("2026-09-01T16:20:00+00:00")
+    # 今天的真實情況:第一次準時、本班是同日補寄
+    today = _sla_codes("2026-09-01T08:28:35+08:00",
+                       at="2026-09-01T09:16:23+08:00")
+    assert "delivery_sla_missed" not in today
+    assert "run_delivered_after_target" in today
+
+    # **本班那條判準也要用同一個期限**:第一次準時、而這一班拖到隔天
+    # 凌晨才寄出。上面那組兩個時刻同日,鐘面比較和期限比較結果一樣 ——
+    # 量不到這條規則(突變驗證抓到的白測)。
+    crossed = _sla_codes("2026-09-01T08:28:35+08:00",
+                         at="2026-09-02T00:20:00+08:00")
+    assert "delivery_sla_missed" not in crossed, "當日第一次是準時的"
+    assert "run_delivered_after_target" in crossed, (
+        "本班跨日才寄出,鐘面 00:20 卻被當成準時", crossed)
+
+
+def test_an_unreadable_business_date_falls_back_to_the_old_behaviour():
+    """`date` 讀不出來就退回用「送達時刻自己那一天」—— 等於回到只比鐘面
+    的舊行為。不憑空放行,也不因為一個壞掉的日期欄位就把整天判成遲到。"""
+    assert "delivery_sla_missed" in _sla_codes(
+        "2026-09-01T09:30:00+08:00", date="壞掉的日期")
+    assert "delivery_sla_missed" not in _sla_codes(
+        "2026-09-02T00:20:00+08:00", date="壞掉的日期")
+
+
+def test_the_first_delivery_field_has_its_own_epoch():
+    """r5 外審:導入 `first_delivered_at` 時我沒有跟著開世代 —— 於是
+    「缺這個欄位」永遠只能解讀成「舊檔」,分不出「新 writer 壞了」。
+    這正是上一輪剛為 `delivered_at` 修過的同型缺陷(沒有截止點的豁免)。
+    """
+    import run_manifest as rm
+    assert rm.MANIFEST_SCHEMA == rm.SCHEMA_V2_FIRST_DELIVERY
+    # **上一輪那條修正在真正的 bump 下經住了**:歷史世代沒有跟著移動
+    assert rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT == rm.SCHEMA_V1_DELIVERY_TIMESTAMP
+    assert rq.MANIFEST_SCHEMA_WITH_FIRST_DELIVERY == rm.SCHEMA_V2_FIRST_DELIVERY
+
+    late = "2026-10-01T09:20:00+08:00"
+    v1 = _sla_codes("", at=late, date="2026-10-01 05:10", schema=1)
+    assert "first_delivered_at_missing" not in v1, ("v1 是真的舊檔", v1)
+    v2 = _sla_codes("", at=late, date="2026-10-01 05:10", schema=2)
+    assert "first_delivered_at_missing" in v2, ("v2 缺欄位就是 writer 壞了", v2)
+    ok = _sla_codes("2026-10-01T05:30:00+08:00", at=late,
+                    date="2026-10-01 05:10", schema=2)
+    assert "first_delivered_at_missing" not in ok
+    assert "delivery_sla_missed" not in ok, "第一次 05:30 是準時的"
+
+
+def test_the_producer_stamps_the_new_generation():
+    """世代由權威產生器蓋 —— 沒接上的話,新欄位的必填要求永遠不會生效。"""
+    import run_manifest as rm
+    rec = rm.ManifestRecorder()
+    built = rec.build(date="2026-09-02 05:07", report_kind="daily",
+                      budget_seconds=2700.0, news_workers=4,
+                      degraded_steps=[])
+    assert built["manifest_schema"] == rm.SCHEMA_V2_FIRST_DELIVERY
+
+
+def test_a_stale_first_delivery_cannot_certify_today(tmp_path):
+    """r5 外審第二輪:`first_delivered_at` 是 stale/corrupt state 留下的
+    **前一天**時刻時,它必然小於今天的期限 → 判成「今天曾準時送達」→
+    真正的遲到被吞掉。
+
+    **這個洞是改成絕對時間比較之後才出現的**:先前只比鐘面時,昨天
+    09:30 的鐘面仍 ≥ 09:00,會被抓到。修正的正確性不能只看它自己 ——
+    要看它與既有行為的組合。
+    """
+    def _c(first, at, date):
+        m = {"date": date, "manifest_schema": 2,
+             "llm": {"analysis_origin": "luna_specialized"},
+             "delivery": {"success": True, "delivered_at": at,
+                          "first_delivered_at": first}}
+        return {f["code"] for f in rq.assess(m)}
+
+    stale = _c("2026-09-01T09:30:00+08:00", "2026-09-02T09:30:00+08:00",
+               "2026-09-02 05:07")
+    assert "first_delivered_at_out_of_range" in stale, stale
+    assert "delivery_sla_missed" in stale, (
+        "今天根本沒有準時送達過,卻被昨天的時刻背書", stale)
+
+    # 退回用本班時刻之後,本班準時就仍然是準時
+    ok = _c("2026-09-01T09:30:00+08:00", "2026-09-02T05:30:00+08:00",
+            "2026-09-02 05:07")
+    assert "first_delivered_at_out_of_range" in ok
+    assert "delivery_sla_missed" not in ok, ok
+
+    # **晚於營業日是合法的**:跨午夜才寄出的真遲到,不是契約缺陷
+    late = _c("2026-09-02T00:20:00+08:00", "2026-09-02T00:20:00+08:00",
+              "2026-09-01 05:10")
+    assert "first_delivered_at_out_of_range" not in late, late
+    assert "delivery_sla_missed" in late, late

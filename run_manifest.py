@@ -106,8 +106,14 @@ def run_binding() -> dict:
 #: 兩者是不同概念:一個是歷史事實,一個是當下狀態。
 SCHEMA_V1_DELIVERY_TIMESTAMP = 1
 
+#: v2:`delivery.first_delivered_at`(**今天第一次**成功送達的時刻)。
+#: 2026-09-01 r5 外審:導入這個欄位時我沒有跟著開世代 —— 於是
+#: 「缺這個欄位」永遠只能解讀成「舊檔」,分不出「新 writer 壞了」,
+#: 又是一個沒有截止點的 migration 豁免(上一輪剛為 `delivered_at` 修過同型)。
+SCHEMA_V2_FIRST_DELIVERY = 2
+
 #: **現在最新是第幾版**。新增欄位時只動這裡,上面的歷史世代不准動。
-MANIFEST_SCHEMA = SCHEMA_V1_DELIVERY_TIMESTAMP
+MANIFEST_SCHEMA = SCHEMA_V2_FIRST_DELIVERY
 
 
 class ManifestRecorder:

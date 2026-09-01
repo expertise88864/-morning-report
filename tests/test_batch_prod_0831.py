@@ -225,9 +225,16 @@ def test_the_missing_timestamp_exemption_has_an_end_date():
         {"manifest_schema": rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT})
     # 舊 manifest(沒有世代標記):豁免,不製造假警報
     assert "delivered_at_missing" not in _codes({})
-    # **世代只有一個定義**(不然兩邊會漂移)
+    # **世代只有一個定義**(不然兩邊會漂移)——而那個定義是**功能導入的
+    # 那一版**,不是「現在最新是第幾版」。
+    # 這一行原本寫 `== rm.MANIFEST_SCHEMA`,把上一輪剛修掉的那個錯誤宣稱
+    # 又釘回測試裡;2026-09-01 第一次真正 bump(v2 `first_delivered_at`)
+    # 才讓它現形 —— **測試的期望也是一種宣稱**。
     import run_manifest as rm
-    assert rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT == rm.MANIFEST_SCHEMA
+    assert rq.MANIFEST_SCHEMA_WITH_DELIVERED_AT == (
+        rm.SCHEMA_V1_DELIVERY_TIMESTAMP)
+    assert rm.MANIFEST_SCHEMA > rm.SCHEMA_V1_DELIVERY_TIMESTAMP, (
+        "現行版已經前進了,這條測試才有意義")
 
 
 def test_the_generation_marker_survives_the_sunday_rebuild():

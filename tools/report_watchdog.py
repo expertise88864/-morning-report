@@ -16,9 +16,12 @@ morning 與 podcast 共用 `state-writers` 這個 concurrency group 且不取消
      等到輪到它時,要監看的 run 早就結束了(或它自己也被擠掉)。
   2. 只讀不寫——它不能參與 state 競爭,否則自己變成問題來源。
 
-判定依據是 `state/run_manifest.json` 的 `date`(每次執行都會更新)。
-用它而不是 history.json:週日輕量信在沒有新內容時本來就可能不寄,
-但 manifest 只要跑過就會更新,不會產生假警報。
+判定依據是 manifest 的 `date`(每次執行都會更新)。用它而不是 history.json:
+週日輕量信在沒有新內容時本來就可能不寄,但 manifest 只要跑過就會更新,
+不會產生假警報。**讀的是 `origin/main` 當下那一份**(workflow 在 job 內
+fetch,路徑用環境變數傳;`authoritative_manifest()`)—— 排程觸發的 checkout
+是「排程事件建立當時」的快照,主班之後才寄成功的話它就過時了。
+新鮮的讀不到才退回 checkout。
 
 **批#N(2026-08-08):「有跑」與「跑成了」是兩件事。**
 2026-08-04 → 08-08 連續五天,特化路徑每天被自己的引用檢查擋下、
@@ -26,8 +29,12 @@ morning 與 podcast 共用 `state-writers` 這個 concurrency group 且不取消
 使用者是把信貼進對話裡才發現的。判準搬到 `run_quality.assess()`
 (純函式,吃 manifest);這裡只負責接線與告警文字。
 
-回傳碼:0=正常,1=沒跑起來/沒寄到,2=跑起來了但**跑壞了**
-(呼叫端據此寄不同主旨的告警信)。
+回傳碼(**五階,不是三階** —— 完整定義見 `RC_*` 常數,那裡是唯一的一份):
+  0 正常/信到了而且沒話說(也包含「信到了、state 還在寫」)
+  1 沒跑起來或沒寄到 → 補寄 + 告警 + 紅
+  2 信到了但有**缺陷** → 告警 + 紅
+  3 只有降級,而且主班那封品質信確認寄成了 → 不重複告警、不染紅
+  4 只有降級,但主班那封查不到成功紀錄 → 補寄一次,仍不算事故
 """
 import datetime as dt
 import json
@@ -48,15 +55,75 @@ MANIFEST = Path("state/run_manifest.json")
 #: 保留環境變數當逃生門:設了就回到舊的小時判準。
 MAX_AGE_HOURS = os.environ.get("WATCHDOG_MAX_AGE_HOURS", "").strip()
 
+#: workflow 在 job 內從 `origin/main` fetch 出來的兩份證據(路徑用環境變數
+#: 傳;Python 不自己跑 git —— 測試就不會碰網路)。
+FRESH_RECEIPT_ENV = "WATCHDOG_FRESH_RECEIPT"
+FRESH_MANIFEST_ENV = "WATCHDOG_FRESH_MANIFEST"
 
-def manifest_age_hours(now: dt.datetime, path: Path = MANIFEST):
-    """回 (age_hours, 讀到的日期字串)。檔案不存在或無法解析回 (None, 原因)。"""
+#: `authoritative_manifest()` 的來源標籤。
+SOURCE_FRESH, SOURCE_CHECKOUT = "origin/main", "checkout"
+
+
+def _read_fresh_json(env: str):
+    """讀一份新鮮證據(讀不到/不是物件回 None)。**只有一個解析器。**"""
+    path = (os.environ.get(env) or "").strip()
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _is_today(data, now: dt.datetime) -> bool:
+    return str((data or {}).get("date") or "")[:10] == now.strftime("%Y-%m-%d")
+
+
+def authoritative_manifest(now: dt.datetime, path: Path = MANIFEST):
+    """今天這一班的**權威** manifest → `(raw, 來源, 讀不到的原因)`。
+
+    **rc / 告警 / 紅綠 / 補寄要基於同一份事實**(r15 外審):`rescue()` 早就
+    會看 `origin/main` 當下說什麼,而看門狗主流程只讀 checkout —— 排程觸發的
+    checkout 是**排程事件建立當時**的快照。主班在那之後才寄成功的日子:
+    補寄正確地不補,但 rc 仍是 1,於是告警信說「今天的晨報可能沒有跑起來」、
+    Actions 把看門狗染紅 —— **信其實已經在收件匣裡**。假事故會訓練人忽略
+    告警,那正是這幾輪一直在消除的東西。
+
+    規則:`origin/main` 的 manifest 是**今天**的就用它(它至少與 checkout
+    一樣新);否則退回 checkout。而且整個判準只讀**一次** —— 先前
+    age / delivery / quality / run_id 各讀各的檔,同一份 state 有四次
+    看到不同內容的機會。
+    """
+    fresh = _read_fresh_json(FRESH_MANIFEST_ENV)
+    if fresh is not None and _is_today(fresh, now):
+        return fresh, SOURCE_FRESH, ""
     if not path.exists():
-        return None, "run_manifest.json 不存在"
+        return None, SOURCE_CHECKOUT, "run_manifest.json 不存在"
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
-        return None, f"run_manifest.json 解析失敗: {e}"
+    except Exception as e:                  # noqa: BLE001
+        return None, SOURCE_CHECKOUT, f"run_manifest.json 解析失敗: {e}"
+    if not isinstance(raw, dict):
+        return None, SOURCE_CHECKOUT, (
+            f"run_manifest.json 不是物件(是 {type(raw).__name__})")
+    return raw, SOURCE_CHECKOUT, ""
+
+
+def manifest_age_hours(now: dt.datetime, path: Path = MANIFEST, *, raw=None):
+    """回 (age_hours, 讀到的日期字串)。檔案不存在或無法解析回 (None, 原因)。
+
+    `raw` 給呼叫端傳**已經讀好**的 manifest(權威來源可能是 origin/main 的
+    那一份,不是 checkout 這個檔)—— 判準不可以邊做邊換手上的證據。
+    """
+    if raw is None:
+        if not path.exists():
+            return None, "run_manifest.json 不存在"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return None, f"run_manifest.json 解析失敗: {e}"
     stamp = str((raw or {}).get("date") or "").strip()
     if not stamp:
         return None, "run_manifest.json 沒有 date 欄位"
@@ -103,7 +170,7 @@ def _rq_delivery_outcome(dv) -> str:
     return _rq.delivery_outcome(dv)
 
 
-def delivery_state(path: Path = MANIFEST):
+def delivery_state(path: Path = MANIFEST, *, raw=None):
     """manifest 裡的寄送結果 → `(狀態, delivery dict)`。
 
     2026-09-01 r7 外審:先前**三種狀態壓成一個 `{}`** ——
@@ -115,10 +182,11 @@ def delivery_state(path: Path = MANIFEST):
     `manifest_schema` 已經正式到 v2,現行 writer 的 manifest 再缺
     `delivery`,已經不能叫 legacy。
     """
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8")) or {}
-    except Exception:                       # noqa: BLE001 - 讀不到就當沒證據
-        return EVIDENCE_LEGACY_MISSING, {}
+    if raw is None:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8")) or {}
+        except Exception:                   # noqa: BLE001 - 讀不到就當沒證據
+            return EVIDENCE_LEGACY_MISSING, {}
     if not isinstance(raw, dict):
         return EVIDENCE_INVALID, {}
     # **先看寄送證據本身**(r7 外審第三輪):`manifest_schema` 壞掉**不會**
@@ -154,12 +222,13 @@ def delivery_state(path: Path = MANIFEST):
     return EVIDENCE_CURRENT_MISSING, {}
 
 
-def quality_findings(path: Path = MANIFEST) -> list:
+def quality_findings(path: Path = MANIFEST, *, raw=None) -> list:
     """今天這一班的品質判準(判準本體在 `run_quality`)。"""
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8")) or {}
-    except Exception:
-        return []
+    if raw is None:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return []
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
     return _rq.assess(raw)
@@ -167,36 +236,133 @@ def quality_findings(path: Path = MANIFEST) -> list:
 
 def main() -> int:
     now = dt.datetime.now(TPE)
-    age, info = manifest_age_hours(now)
+    rc = _assess(now)
+    if rc != RC_NOT_DELIVERED:
+        return rc
+    # **四件事要基於同一份事實**(r15 外審):rc、告警文字、紅綠、補寄。
+    # `rescue_decision()` 早就會看 origin/main 當下的**收據**,而收據是
+    # 獨立 push 的(`publish_receipt_from_remote_base()`,2026-08-27)——
+    # 整批 state 沒推上去的日子它仍然在。手上的 manifest 說「今天沒有結論」
+    # 而收據說「已經寄出去了」時,正確的話是「跑起來了但 state 沒跟上」,
+    # 不是「今天的晨報可能沒有跑起來」。後者會寄一封宣告假事故的信,
+    # 而補寄那一步早就(正確地)決定不補 —— 兩邊對同一份 state 說不同的話。
+    fresh = _fresh_verdict(now)
+    if not fresh:
+        return rc
+    outcome, verdict = fresh["outcome"], fresh["text"]
+    producer = fresh["run_id"]
+    gap = _state_gap_kind(outcome, fresh["delivery"])
+    # 上面那幾行「異常……可能整個沒有跑起來」已經印出去了,而告警信會把
+    # 整段 stderr 帶上 —— 所以這裡要**明講它不成立**,否則收信的人先讀到的
+    # 是一句被推翻的話。
+    settled = ("信已經寄達" if outcome == "delivered"
+               else "**這一班**正常決定不寄")
+    # **收據早於整批 state 是設計,不是故障**(r16 外審 + Codex deep 同時指到)。
+    # `publish_receipt_from_remote_base()` 在 SMTP 成功的當下就獨立 push,
+    # 而整批 state 要等這一班跑完剩下的工作、過 schema 契約、品質自評,
+    # 才在最後一步 commit/push(`morning-report-b.yml` 的
+    # 「發佈 state(契約通過後才 push)」)。所以
+    # 「收據是今天的、manifest 還不是」是**正常的中間狀態**,只有在那一班
+    # 已經結束之後才是缺陷。這裡沿用既有的那把尺:有人在跑就不插隊。
+    if _receipt_producer_still_running(producer):
+        print(f"[watchdog] **更正上面那句**:{verdict},而且**寫下那份收據的"
+          f"那一班**(run {producer or '?'})還在跑 —— "
+              f"{settled},state 還沒寫完。這不是事故,不必告警。",
+              file=sys.stderr)
+        return RC_OK
+    _gha_output("state_gap", gap)
+    print(f"[watchdog] **更正上面那句**:{verdict} —— {settled},"
+          "所以這不是「今天沒有信」,而是「這一班已經結束、state 卻沒有落地」。"
+          "收據是獨立 push 的(`publish_receipt_from_remote_base()`),"
+          "整批 state 沒推上去時它仍然會在。",
+          file=sys.stderr)
+    return RC_QUALITY_DEFECT
+
+
+#: `state_gap` 的三種值 —— 告警信靠它決定要說什麼。
+#: **`skipped` 是關於「這一班」的,不是關於「今天」的**(Codex deep 第三輪):
+#: 手動觸發**豁免**同日冪等(`already_delivered_today`:「只擋排程」),
+#: 所以「稍早寄過、後來一班手動跑、沒有新內容於是刻意不寄」是合法的一天。
+#: 那天的收據會是 `skipped_reason=…` **而且** `first_delivered_at=稍早`。
+GAP_DELIVERED = "delivered"
+GAP_SKIPPED = "skipped"
+GAP_SKIPPED_AFTER_DELIVERY = "skipped_after_delivery"
+
+
+def _state_gap_kind(outcome: str, delivery: dict) -> str:
+    """這個 state gap 要用哪一種說法。
+
+    注意 `GAP_SKIPPED` 能宣稱的只有「**收據上沒有**今天的
+    `first_delivered_at`」—— 那個欄位讀不動又救不回來時本來就會留空
+    (`morning_report._day_first_delivery` 的既有契約),所以它不是
+    「今天沒有人寄過信」的證明。信裡的措辭要跟著這個界線。
+    """
+    if outcome != "intentionally_skipped":
+        return GAP_DELIVERED
+    if str((delivery or {}).get("first_delivered_at") or "").strip():
+        return GAP_SKIPPED_AFTER_DELIVERY
+    return GAP_SKIPPED
+
+
+def _receipt_producer_still_running(run_id, get_json=None) -> bool:
+    """**寫下這份收據的那一班**還在跑嗎。查不出來一律回 False。
+
+    Codex deep 第二輪:先前問的是「今天**有沒有任何**晨報 run 在跑」——
+    而多個排程班本來就是常態(05:07 / 05:52 / 06:42)。收據那一班已經
+    結束、state 真的沒落地,只要補漏跑還在排隊,整個告警就被靜音了。
+    補漏跑看到「今天已寄過」會空轉結束,它**不會**去補寫那份 manifest,
+    所以「有別的 run 在跑」對這個問題根本不是答案。
+
+    方向刻意與補寄相反:補寄「不知道就不寄」(多寄一封收不回來);
+    這裡「不知道就照樣說出來」—— 少報一次 state 沒落地,沒有人會知道。
+    """
+    if not run_id:
+        return False                        # 沒有 run id 就沒有「還在跑」的證據
+    return _run_status(run_id,
+                       get_json or _default_get_json()) not in ("", "completed")
+
+
+def _assess(now: dt.datetime) -> int:
+    """看門狗的本體判準 —— 只讀**一次**權威 manifest。"""
+    # `MANIFEST` 明寫出來:預設引數在 `def` 當下就綁死,
+    # 測試換掉模組層的路徑時打不到它(而那正是測試唯一的注入點)。
+    raw, source, why = authoritative_manifest(now, MANIFEST)
+    if raw is None:
+        print(f"[watchdog] 異常:{why}", file=sys.stderr)
+        return RC_NOT_DELIVERED
+    if source == SOURCE_FRESH:
+        print("[watchdog] 判準用的是 origin/main 當下的 manifest —— "
+              "checkout 是排程事件建立當時的快照")
+    age, info = manifest_age_hours(now, raw=raw)
     if age is None:
         print(f"[watchdog] 異常:{info}", file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     if _too_old(now, info, age):
         print(f"[watchdog] 異常:最後一次執行是 {info}"
               f"({age:.1f} 小時前)——今天的晨報可能整個沒有跑起來",
               file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     # 批#73(第七輪 P2-2):**「有跑過」不等於「有寄到」。**
     # 只看時間戳的話,這些情境會被誤判成正常:
     #   - 05:30 手動跑過、06:00 正式排程在 pending 被擠掉 → 07:30 時 age < 3h
     #   - manifest 更新了,但在寄信那一步失敗
     # 而看門狗存在的理由正是後者。
-    evidence, delivery = delivery_state()
+    evidence, delivery = delivery_state(raw=raw)
     if evidence == EVIDENCE_LEGACY_MISSING:
         # 真舊格式 manifest 沒有這個欄位。**不當成異常**——那會在部署當天
         # 產生一次確定的假警報,而假警報會訓練人忽略告警。
         print(f"[watchdog] 正常(舊格式 manifest,無寄送欄位):{info}"
               f"({age:.1f} 小時前)")
-        return _quality_exit(info)
+        return _quality_exit(info, raw=raw)
     if evidence == EVIDENCE_CURRENT_MISSING:
         print(f"[watchdog] 異常:{info} 的 manifest 有世代標記卻**沒有寄送"
               "欄位** —— 這不是舊檔,是 writer 沒寫出來,"
               "今天有沒有寄到查不出來", file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     if evidence == EVIDENCE_INVALID:
         print(f"[watchdog] 異常:{info} 的寄送紀錄型別壞掉 —— "
               "今天有沒有寄到查不出來", file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     # **一個狀態機,不是幾個 if**(r8 外審):`success` 與 `skipped_reason`
     # 的排列順序先前各處不同,同一份 state 在這裡與 `fresh_conclusion()`
     # 說不同的話。矛盾的組合(同時宣稱寄出與刻意不寄)現在會被拒絕。
@@ -206,7 +372,7 @@ def main() -> int:
               f"(success={delivery.get('success')!r}、"
               f"skipped_reason={delivery.get('skipped_reason')!r}) —— "
               "今天有沒有寄到查不出來", file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     if _outcome == "intentionally_skipped":
         # 刻意不寄(週日無新內容)。批#69 r2 才剛修掉同型的假警報。
         # **但控制面的缺陷仍然要驗**(r8 外審):先前這裡直接 `return 0`,
@@ -215,15 +381,15 @@ def main() -> int:
         # 那條路也補不到。信的內容不必驗(今天本來就沒有信)。
         print(f"[watchdog] 正常:{info} 刻意未寄信"
               f"({delivery.get('skipped_reason')})")
-        return _control_plane_exit(info)
+        return _control_plane_exit(info, raw=raw)
     if _outcome != "delivered":
         print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
               f"(狀態={_outcome}、attempted={delivery.get('attempted')}、"
               f"run_kind={delivery.get('run_kind')})", file=sys.stderr)
-        return 1
+        return RC_NOT_DELIVERED
     print(f"[watchdog] 正常:{info} 已寄出({age:.1f} 小時前、"
           f"run_kind={delivery.get('run_kind')})")
-    return _quality_exit(info)
+    return _quality_exit(info, raw=raw)
 
 
 #: 自動補寄的開關(repo variable 可關)。預設開 —— 使用者 2026-08-28 定案。
@@ -232,26 +398,25 @@ AUTO_RESCUE = (os.environ.get("WATCHDOG_AUTO_RESCUE", "1").strip()
 
 
 def fresh_conclusion(now: dt.datetime) -> str:
+    """`_fresh_verdict()` 的人話那一份(`rescue_decision` 吃這個字串)。"""
+    return _fresh_verdict(now).get("text", "")
+
+
+def _fresh_verdict(now: dt.datetime) -> dict:
     """origin/main **當下**說今天有結論了嗎(沒有回空字串)。
 
-    看門狗讀的是 checkout 裡的 manifest,而排程觸發的 checkout 檢出的是
-    **排程事件建立當時**的 commit —— 主班在那之後才寄成功的話,看門狗
-    看不到,於是誤判「今天沒寄」而去補寄(r9 外審 P1)。
-    這裡讀 workflow 在 job 內 fetch 出來的那兩份(檔案路徑由環境變數傳),
-    Python 不自己跑 git:測試就不會碰網路。
+    排程觸發的 checkout 檢出的是**排程事件建立當時**的 commit —— 主班在
+    那之後才寄成功的話,checkout 裡的 manifest 看不到,於是誤判「今天沒寄」
+    而去補寄(r9 外審 P1)。這裡讀 workflow 在 job 內 fetch 出來的那兩份
+    (檔案路徑由環境變數傳),Python 不自己跑 git:測試就不會碰網路。
+
+    r15:主流程現在也吃同一份新鮮證據(`authoritative_manifest()` 走
+    manifest;這一支多看**收據** —— 收據是獨立 push 的,整批 state 沒推
+    上去的日子只有它會是今天的)。rc / 告警 / 紅綠 / 補寄同一份事實。
     """
-    for env in ("WATCHDOG_FRESH_RECEIPT", "WATCHDOG_FRESH_MANIFEST"):
-        path = (os.environ.get(env) or "").strip()
-        if not path:
-            continue
-        try:
-            with open(path, encoding="utf-8") as fh:
-                data = json.load(fh)
-        except (OSError, ValueError, UnicodeDecodeError):
-            continue
-        if not isinstance(data, dict):
-            continue
-        if str(data.get("date") or "")[:10] != now.strftime("%Y-%m-%d"):
+    for env in (FRESH_RECEIPT_ENV, FRESH_MANIFEST_ENV):
+        data = _read_fresh_json(env)
+        if data is None or not _is_today(data, now):
             continue
         d = data.get("delivery")
         if not isinstance(d, dict):
@@ -259,10 +424,16 @@ def fresh_conclusion(now: dt.datetime) -> str:
         # 同一個狀態機 —— 這裡與看門狗主流程不可以對同一份 state 說不同的話。
         _o = _rq_delivery_outcome(d)
         if _o == "delivered":
-            return f"origin/main 說今天已寄出({d.get('run_kind') or '?'})"
+            return {"outcome": _o, "delivery": d,
+                    "run_id": str(data.get("github_run_id") or ""),
+                    "text": ("origin/main 說今天已寄出"
+                             f"({d.get('run_kind') or '?'})")}
         if _o == "intentionally_skipped":
-            return f"origin/main 說今天刻意不寄({d['skipped_reason']})"
-    return ""
+            return {"outcome": _o, "delivery": d,
+                    "run_id": str(data.get("github_run_id") or ""),
+                    "text": ("origin/main 說今天刻意不寄"
+                             f"({d['skipped_reason']})")}
+    return {}
 
 
 def morning_runs_active_today(now: dt.datetime, get_json) -> int:
@@ -444,20 +615,40 @@ def producer_alert_state(run_id, get_json) -> str:
             else ACK_PENDING)
 
 
-def _run_is_terminal(run_id, get_json) -> bool:
-    """那一次 workflow run 走完了嗎(查不到就當「還沒」)。"""
+def _run_status(run_id, get_json) -> str:
+    """那一次 workflow run 現在的狀態;**查不到回空字串**(= 不知道)。
+
+    「還在跑」與「查不出來」是兩件事,而它們的處置相反:ACK 那條路
+    不知道就當「還沒完」(不敢說 unsent),state gap 那條路不知道就
+    照樣說出來(少報一次沒有人會知道)。壓成一個布林值的話,
+    兩邊只能共用一個方向。
+    """
     try:
         run = get_json(
             "https://api.github.com/repos/expertise88864/-morning-report"
             f"/actions/runs/{run_id}")
-    except Exception:                       # noqa: BLE001 - 查不到當還沒完
-        return False
-    return str((run or {}).get("status") or "") == "completed"
+    except Exception:                       # noqa: BLE001 - 查不到 = 不知道
+        return ""
+    return str((run or {}).get("status") or "")
 
 
-def producer_alert_delivered(run_id, get_json, *, sleep=None,
-                             tries: int = 3, wait: float = 20.0) -> bool:
-    """主班那封品質信**確認**寄成了嗎 —— pending 時做有界重試。
+def _run_is_terminal(run_id, get_json) -> bool:
+    """那一次 workflow run 走完了嗎(查不到就當「還沒」)。"""
+    return _run_status(run_id, get_json) == "completed"
+
+
+def producer_alert_state_after_retry(run_id, get_json, *, sleep=None,
+                                     tries: int = 3, wait: float = 20.0) -> str:
+    """主班那封品質信的**終局**四態 —— pending 時做有界重試。
+
+    回 `ACK_SENT` / `ACK_UNSENT` / `ACK_UNKNOWN`(不會回 `ACK_PENDING`:
+    那是還沒問完的中間態,耐心用完就變 `ACK_UNKNOWN`)。
+
+    r16 外審:先前叫 `producer_alert_delivered(...) -> bool`,而它回的是
+    **字串**。現有 caller 寫的是 `ack == ACK_SENT` 所以是安全的,但下一個
+    照 annotation 寫 `if producer_alert_delivered(...)` 的人會拿到
+    `"unsent"` / `"unknown"` / `"pending"` —— **全部都是 truthy**。
+    那正是這個 repo 修過好幾次的 `success="false"` 同族缺陷。
 
     一直 pending 到最後仍回 `False`(補寄)。權衡:重複一封 vs 漏一封 ——
     後者是「判準說的話沒有人收到」,比較糟。而 rc=4 的信本來就說明
@@ -488,11 +679,18 @@ def _gha_output(key: str, value: str) -> None:
         print(f"[watchdog] step output 寫入失敗: {e}", file=sys.stderr)
 
 
-def _manifest_run_id() -> str:
-    """本班 manifest 記下的 GitHub run id(讀不到回空字串)。"""
-    try:
-        raw = json.loads(MANIFEST.read_text(encoding="utf-8")) or {}
-    except Exception:                       # noqa: BLE001
+def _manifest_run_id(raw=None) -> str:
+    """本班 manifest 記下的 GitHub run id(讀不到回空字串)。
+
+    **要用權威來源的那一份**:checkout 是舊快照,它的 run_id 是**昨天**那一班
+    —— 拿它去查品質告警 job 的狀態,問的是錯的那一次執行。
+    """
+    if raw is None:
+        try:
+            raw = json.loads(MANIFEST.read_text(encoding="utf-8")) or {}
+        except Exception:                   # noqa: BLE001
+            return ""
+    if not isinstance(raw, dict):
         return ""
     return str(raw.get("github_run_id") or "")
 
@@ -511,7 +709,7 @@ def _default_get_json():
     return _get
 
 
-def _quality_exit(info: str, get_json=None, sleep=None) -> int:
+def _quality_exit(info: str, get_json=None, sleep=None, *, raw=None) -> int:
     """跑起來也寄到了 —— 再問一次「跑成了嗎」。
 
     **缺陷與降級要分開**:呼叫端要能分辨「今天沒有信」、「信寄到了但
@@ -522,7 +720,7 @@ def _quality_exit(info: str, get_json=None, sleep=None) -> int:
     """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
-    findings = quality_findings()
+    findings = quality_findings(raw=raw)
     if not findings:
         return RC_OK
     defect = any(f.get("severity") == "defect" for f in findings)
@@ -533,13 +731,13 @@ def _quality_exit(info: str, get_json=None, sleep=None) -> int:
     # **去重要基於「收到了」,不是「應該收到了」**(r11 外審):
     # 主班的品質告警是獨立 job,寄失敗時它會紅,但看門狗不查就等於
     # 主動放棄第二條通知路 —— 而那正是它存在的理由。
-    run_id = _manifest_run_id()
+    run_id = _manifest_run_id(raw)
     # **等待要能被注入**(r12 外審第三輪):這裡的 pending 重試預設是
     # 2×20 秒。目前測試不會慢,是因為 `conftest` 為了別的目的
     # (批#37 的退避)patch 了**全域** `time.sleep` —— 那是巧合的保護,
     # 不是明確的注入。conftest 哪天改了,這條路就會真的等 160 秒。
-    ack = producer_alert_delivered(run_id, get_json or _default_get_json(),
-                                   sleep=sleep)
+    ack = producer_alert_state_after_retry(
+        run_id, get_json or _default_get_json(), sleep=sleep)
     if ack == ACK_SENT:
         print("[watchdog] 只有降級,而且主班那封品質信**確認寄成了** —— "
               "不重複寄信、不把這一班染紅", file=sys.stderr)
@@ -561,7 +759,7 @@ def _quality_exit(info: str, get_json=None, sleep=None) -> int:
 #:  `payload_*` / `phantom_refs` 這些內容類全都會被當成控制面。)
 
 
-def _control_plane_exit(info: str) -> int:
+def _control_plane_exit(info: str, *, raw=None) -> int:
     """**刻意不寄的日子也要驗控制面**(r8 外審)。
 
     先前這條路直接 `return 0`:於是 `manifest_schema` 壞掉之類的問題,
@@ -575,7 +773,7 @@ def _control_plane_exit(info: str) -> int:
     """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
-    findings = [f for f in quality_findings()
+    findings = [f for f in quality_findings(raw=raw)
                 if f.get("domain") != _rq.DOMAIN_CONTENT]
     if not findings:
         return RC_OK

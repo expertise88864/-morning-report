@@ -5,9 +5,11 @@
 GPT-5.6 三審 P1:先前三個回測腳本直接讀 legacy 單檔,分區上線後 legacy 停在
 2026-07-15/143 筆,月報與 D1/IC 評估的樣本會凍結或倒退。
 """
+import datetime as _dt
 import gzip
 import hashlib
 import json
+import re
 import sys
 import os
 from pathlib import Path
@@ -120,6 +122,120 @@ def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
     return manifest
 
 
+#: 分區每一列的**語意**必要欄位 —— 缺任何一個,那一列對消費端就沒有意義。
+#: (`taiex_close` 允許 `None`:真實 state 242 列裡有 65 列是 None ——
+#:  收盤價當天抓不到是既有事實,不是壞資料;但**欄位本身必須在**。)
+PARTITION_REQUIRED_FIELDS = ("session_date", "taiex_close", "stocks",
+                             "model_version")
+
+#: 大盤收盤價的合理下界。與凍結 legacy `model_history.json` 的契約同一個值
+#: —— 先前 live 分區的語意契約**比凍結的舊檔還鬆**,那是反過來的。
+_TAIEX_CLOSE_FLOOR = 1000
+
+#: 分區檔名的月份(`2026-09.json.gz` → `2026-09`)。
+_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
+
+
+def partition_semantic_issues(name: str, rows) -> list:
+    """一個分區的**語意**違規清單(空 list = 沒話說)。
+
+    `verify_history_integrity()` 答的是「這份 state **自洽**嗎」——
+    checksum、row_count、月份、manifest 對得上。它不答「它還**有意義**嗎」:
+    `[]`、重複的 `session_date`、只有 `session_date` 的空殼、
+    `taiex_close: "壞掉"` —— 全部自洽,全部沒有意義。
+
+    r15 外審:這條規則先前只住在 `tests/test_state_schema_contract.py`,
+    於是 **publish gate(pytest)比正式 strict consumer 嚴** ——
+    而 `load_model_history(strict=True)` 的宣稱是「月報/回測必須 fail-closed,
+    不得靜默少樣本或讓統計漂移」。規則搬到這裡,兩邊呼叫同一支。
+
+    `name` 只用來取月份(`2026-09.json.gz` → `2026-09`);不像月份的檔名
+    就不驗月份(這支函式不該對檔名慣例有意見)。
+    """
+    issues = []
+    if not isinstance(rows, list):
+        return [f"{name} 的 root 不是 list(是 {type(rows).__name__})"]
+    if not rows:
+        # 空分區:manifest 會誠實記下 row_count 0 而完全自洽 ——
+        # 但那個月的資料就是不見了,消費端不會知道。
+        return [f"{name} 是空分區(0 列)—— 自洽,但那個月的樣本消失了"]
+    month = str(name).split(".", 1)[0]
+    check_month = bool(_MONTH_RE.match(month))
+    seen = set()
+    for i, row in enumerate(rows, 1):
+        if not isinstance(row, dict):
+            issues.append(f"{name} 第 {i} 列不是 dict(是 {type(row).__name__})")
+            continue
+        missing = [k for k in PARTITION_REQUIRED_FIELDS if k not in row]
+        if missing:
+            issues.append(f"{name} 第 {i} 列缺欄位:{missing}")
+        day = str(row.get("session_date") or "")
+        # **必須剛好是 `YYYY-MM-DD`**:`datetime.fromisoformat()` 連
+        # `"2026-09-01T08:00:00"` 都收,而 loader 是
+        # `merged[row["session_date"]] = row` —— 拿**原字串**當鍵。
+        # 同一個交易日多一個時間部分就是另一個 session,重複檢查也看不出來。
+        try:
+            parsed = _dt.date.fromisoformat(day)
+        except ValueError:
+            parsed = None
+        if parsed is None or parsed.isoformat() != day:
+            issues.append(
+                f"{name} 第 {i} 列的 session_date 不是 YYYY-MM-DD:{day!r}"
+                " —— loader 用原字串當 merge key")
+        elif check_month and day[:7] != month:
+            issues.append(f"{name} 第 {i} 列的月份是 {day[:7]},不屬於 {month}")
+        if day and day in seen:
+            issues.append(
+                f"{name} 有重複的 session_date {day} —— loader 是"
+                " `merged[session_date] = row`,第二列直接蓋掉第一列:"
+                "manifest 說幾列,消費端拿到的卻更少")
+        seen.add(day)
+        issues.extend(_row_value_issues(name, i, row))
+    return issues
+
+
+def _row_value_issues(name: str, i: int, row: dict) -> list:
+    """一列的**值**契約 —— 「欄位在」不等於「值有意義」。
+
+    r15 外審:先前只驗 `k not in row`,於是
+    `{"taiex_close": "壞掉", "stocks": [], "model_version": null}`
+    四個欄位都在、日期合法、月份合法、沒有重複 —— 完全通過。
+    """
+    out = []
+    close = row.get("taiex_close")
+    if close is not None:
+        if isinstance(close, bool) or not isinstance(close, (int, float)):
+            out.append(f"{name} 第 {i} 列的 taiex_close 不是數字:{close!r}")
+        elif not (close > _TAIEX_CLOSE_FLOOR):
+            out.append(f"{name} 第 {i} 列的 taiex_close 不合理:{close!r}")
+    if "stocks" in row and not isinstance(row.get("stocks"), dict):
+        # `stocks` 是 `{code: row}` 的映射;變成 list 的話,下游
+        # `.get(code)` 會靜默拿不到任何一檔,而不是壞掉。
+        out.append(f"{name} 第 {i} 列的 stocks 不是 dict"
+                   f"(是 {type(row.get('stocks')).__name__})")
+    if "model_version" in row:
+        mv = row.get("model_version")
+        if not isinstance(mv, str) or not mv.strip():
+            out.append(f"{name} 第 {i} 列的 model_version 不是非空字串:{mv!r}")
+    return out
+
+
+def validate_partition_semantics(path) -> None:
+    """讀一個分區檔並驗語意;有違規就 raise `HistoryIntegrityError`。
+
+    給「手上只有路徑」的呼叫端(state 契約 gate)用;
+    `verify_history_integrity()` 走 in-memory 那一支,不重讀檔案。
+    """
+    path = Path(path)
+    try:
+        rows = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
+    except Exception as e:                  # noqa: BLE001
+        raise HistoryIntegrityError(f"{path.name} 解壓/解析失敗: {e}") from e
+    issues = partition_semantic_issues(path.name, rows)
+    if issues:
+        raise HistoryIntegrityError("; ".join(issues[:6]))
+
+
 def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
                              strict: bool = False,
                              require_manifest: bool | None = None) -> dict:
@@ -127,7 +243,8 @@ def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
     {"ok": bool, "issues": [...], "has_manifest": bool}。
     issues 型別:checksum_mismatch / row_count_mismatch / missing_partition /
     extra_partition / month_mismatch / schema_mismatch / corrupt /
-    missing_manifest。
+    missing_manifest / semantic_violation(自洽但沒有意義:空分區、重複
+    session_date、空殼列、值型別壞掉)。
     strict=True 時有任一 issue 即 raise HistoryIntegrityError(離線 fail-closed);
     strict=False 只回報告(production 由呼叫端降級提示,晨報仍寄)。
 
@@ -196,6 +313,14 @@ def verify_history_integrity(partition_dir: Path = DEFAULT_PARTITION_DIR,
                 if bad:
                     _flag("month_mismatch",
                           f"{path.name} 含非本月日期 {bad[:3]}")
+                # **一致性不等於有意義**(r15 外審):上面驗完
+                # 「這份 state 自洽嗎」,這裡問「它還有意義嗎」。
+                # 同一支函式也給 state 契約 gate 用 —— publish gate 與
+                # strict consumer 不可以對同一份分區說不同的話。
+                # (`month_mismatch` 那條刻意留著:它是既有的 issue kind,
+                #  兩條規則同時 flag 同一個檔不會有害。)
+                for _detail in partition_semantic_issues(path.name, data)[:6]:
+                    _flag("semantic_violation", _detail)
             except Exception as e:
                 _flag("corrupt", f"{path.name} 解壓/解析失敗: {e}")
     if manifest is not None:

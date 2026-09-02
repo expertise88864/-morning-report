@@ -1567,8 +1567,18 @@ def test_forecast_prob_threshold_denominator_consistency():
 
 
 def _write_partition(pdir, name, items):
+    """**用 production 的列形狀**(r15 外審):真實 state 的 242 列**每一列**
+    都有 `session_date` / `taiex_close` / `stocks` / `model_version`,而
+    `partition_semantic_issues()` 現在會擋缺欄位的列。fixture 少寫幾個欄位,
+    測到的就是 production 不會發生的形狀 —— 而且會讓「本來只該有一種
+    corruption」的測試多帶一個 issue kind,分不清它到底抓到了什麼。
+
+    刻意壞掉的那些(非 dict 的列、故意缺 `session_date`)照樣原樣寫進去。
+    """
     import gzip as _gz
     import json as _js
+    _shape = {"taiex_close": 24000.0, "stocks": {}, "model_version": "v-test"}
+    items = [{**_shape, **it} if isinstance(it, dict) else it for it in items]
     pdir.mkdir(parents=True, exist_ok=True)
     payload = _js.dumps(items, ensure_ascii=False, separators=(",", ":"))
     (pdir / name).write_bytes(_gz.compress(payload.encode("utf-8"), mtime=0))
@@ -1724,7 +1734,10 @@ def test_save_path_does_not_baseline_same_month_tamper(monkeypatch, tmp_path):
     monkeypatch.setattr(mr, "MODEL_HISTORY_FILE", tmp_path / "legacy.json")
 
     def _clean(code_close):
-        return {"session_date": "2026-07-01", "taiex_close": 100,
+        # r15:用 production 的列形狀 —— 真實 state 的每一列都有
+        # `model_version`,收盤價也不會是 100(實際最低 27468)。
+        return {"session_date": "2026-07-01", "taiex_close": 24000.0,
+                "model_version": "v-test",
                 "stocks": {"2330": {"code": "2330", "close": code_close}}}
 
     # 建立乾淨當月分區(session 07-01)+ manifest
@@ -2632,7 +2645,8 @@ def test_strict_integrity_rejects_a_missing_manifest():
 
     pdir = pathlib.Path(tempfile.mkdtemp()) / "parts"
     pdir.mkdir()
-    rows = [{"session_date": "2026-07-01", "taiex_close": 1.0}]
+    rows = [{"session_date": "2026-07-01", "taiex_close": 24000.0,
+             "stocks": {}, "model_version": "v-test"}]   # production 的列形狀
     (pdir / "2026-07.json.gz").write_bytes(
         gzip.compress(_json.dumps(rows).encode("utf-8")))
 

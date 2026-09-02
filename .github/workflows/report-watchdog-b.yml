@@ -84,6 +84,13 @@ jobs:
           # 查不到會退到 rc=4「補寄一次」—— 少了 token 就等於天天多寄一封,
           # 所以這個 env 是必要的,不是可選的。
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # **rc / 告警 / 紅綠 / 補寄要看同一份事實**(r15 外審):上一步
+          # fetch 出來的 origin/main 當下狀態,先前**只給 `--rescue`** ——
+          # 於是主班在排程事件建立**之後**才寄成功的日子,補寄(正確地)
+          # 不補,rc 卻仍然是 1:告警信宣告一場沒有發生的事故、Actions 把
+          # 看門狗染紅,而信其實已經在收件匣裡。假事故會訓練人忽略告警。
+          WATCHDOG_FRESH_RECEIPT: ${{ runner.temp }}/wd_receipt.json
+          WATCHDOG_FRESH_MANIFEST: ${{ runner.temp }}/wd_manifest.json
         run: |
           set +e
           OUT="$(python tools/report_watchdog.py 2>&1)"
@@ -140,6 +147,10 @@ jobs:
           # 第四態:unsent(確定沒送成)vs unknown(還不知道)——
           # 主旨對兩者說同一句話的話,第四態在最醒目的地方就合流了。
           WATCHDOG_ACK: ${{ steps.check.outputs.ack_state }}
+          # rc=2 的預設主旨是「信寄出了,但有段落沒跑成」—— 而這一類的
+          # rc=2 掉的是 **state**,信本身好好的(刻意不寄的日子甚至根本
+          # 沒有信)。判準分得出來、信卻說反話,等於沒分(Codex deep P3)。
+          WATCHDOG_STATE_GAP: ${{ steps.check.outputs.state_gap }}
           WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
           # 補寄結果一起進告警信:自動修復不可以是無聲的,否則
           #「排程壞了」這件事永遠沒有人知道(而它已經連壞三天)。
@@ -167,7 +178,14 @@ jobs:
               to = os.environ.get("QUALITY_RECIPIENT", "").strip() or to
           # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
           # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
-          if rc == "4":
+          gap = os.environ.get("WATCHDOG_STATE_GAP", "").strip()
+          if rc == "2" and gap:
+              sent = {"delivered": "信已寄達",
+                      "skipped_after_delivery": "這一班刻意不寄(今天稍早已寄過)",
+                      }.get(gap, "這一班刻意不寄")
+              msg["Subject"] = (f"[晨報品質] {now} {sent},"
+                                "但這一班的 state 沒有落地")
+          elif rc == "4":
               ack = os.environ.get("WATCHDOG_ACK", "")
               tail = ("但主班那封品質信**仍無法確認**"
                       if ack == "unknown" else "但主班那封品質信確認未送成")
@@ -181,7 +199,34 @@ jobs:
           # **內文要對得上主旨。** 先前這裡寫死「時間戳超過門檻」的
           # 可能原因 —— 品質告警共用它的話,信會說一件沒發生的事,
           # 而那比沒有告警更難查。
-          if rc == "4":
+          if rc == "2" and gap == "delivered":
+              body = (
+                  "今天的晨報**有寄到**,信本身沒有問題 —— 掉的是 **state**:\n"
+                  "`origin/main` 上有今天的寄送收據(收據在 SMTP 成功的當下\n"
+                  "就獨立 push),卻沒有今天的 run_manifest。\n"
+                  "而寫下那份收據的那一班**已經結束**,所以不是「還在寫」——\n"
+                  "可能是 schema 契約擋下了整批 state,或最後那一步 push 失敗。\n\n"
+                  f"{detail}\n\n"
+                  "**不必補寄** —— 信的部分已經完成了,要查的是 state。\n")
+          elif rc == "2" and gap:
+              # **這是關於「這一班」的,不是關於「今天」的**(Codex deep
+              # 第三輪):手動觸發豁免同日冪等,所以「稍早寄過、後來一班
+              # 手動跑而沒有新內容」是合法的一天。收據記的是那一班的結論。
+              earlier = (gap == "skipped_after_delivery")
+              body = (
+                  "**這一班**刻意不寄(週日無新內容那條路)——\n"
+                  + ("今天稍早**已經寄過一封**(收據裡有 first_delivered_at),\n"
+                     "這一班只是沒有新東西可寄。\n" if earlier else
+                     "收據上**沒有**今天的 first_delivered_at,\n"
+                     "所以看不出今天稍早有沒有寄過(那個欄位讀不動時也會留空)。\n") +
+                  "掉的是 **state**:`origin/main` 上有今天的收據\n"
+                  "(它記的是這一班決定不寄,在那個決定之後就獨立 push),\n"
+                  "卻沒有今天的 run_manifest。而寫下它的那一班**已經結束**,\n"
+                  "所以不是「還在寫」—— 可能是 schema 契約擋下了整批 state,\n"
+                  "或最後那一步 push 失敗。\n\n"
+                  f"{detail}\n\n"
+                  "**不必補寄** —— 這一班本來就不該寄信,要查的是 state。\n")
+          elif rc == "4":
               body = (
                   "今天的晨報**有寄到**,判準也只有「降級」等級的意見 ——\n"
                   "這不是事故。寄這封信的原因是:**主班收尾時那封品質信\n"

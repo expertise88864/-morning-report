@@ -330,12 +330,18 @@ def test_an_intentional_skip_still_checks_the_control_plane(tmp_path,
         "analysis_not_specialized" not in kept), (
         "刻意不寄的日子拿「信的內容」報警 —— 那會製造假警報")
 
-    src = io.open(_ROOT / "tools" / "report_watchdog.py",
-                  encoding="utf-8").read()
-    body = src[src.index("def main("):]
-    seg = body[body.index('_outcome == "intentionally_skipped"'):]
-    assert "_control_plane_exit(info)" in seg[:600], (
-        "刻意不寄那條又變回直接 return 0")
+    # **真的跑一次**(r15):先前這裡是「原始碼裡有沒有出現
+    # `_control_plane_exit(info)` 這個字串」—— 那條 assert 只釘住寫法,
+    # 換個參數就誤紅,而真的把它改回 `return 0` 之外的等價寫法則抓不到。
+    import datetime as _dt
+    today = _dt.datetime.now(w.TPE).strftime("%Y-%m-%d")
+    fresh = tmp_path / "wd_manifest.json"
+    fresh.write_text(json.dumps(dict(broken, date=f"{today} 05:20")),
+                     encoding="utf-8")
+    monkeypatch.setenv("WATCHDOG_FRESH_MANIFEST", str(fresh))
+    monkeypatch.delenv("WATCHDOG_FRESH_RECEIPT", raising=False)
+    assert w.main() == w.RC_QUALITY_DEFECT, (
+        "刻意不寄的日子,控制面缺陷又變成一行綠色的 job log")
 
 
 def test_one_state_machine_not_several_orderings():
@@ -633,7 +639,7 @@ def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
     # 而且查不到會退到 rc=4,測試看起來像壞掉。
     def _rc(findings):
         monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
-        monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
+        monkeypatch.setattr(w, "_manifest_run_id", lambda *a, **k: "1")
         return w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
             "jobs": [{"name": "alert-on-quality", "status": "completed",
                       "conclusion": "success"}]})
@@ -703,7 +709,7 @@ def test_rc3_only_applies_where_its_premise_holds(monkeypatch):
     monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
         {"code": "recap_not_previous_session", "severity": "degraded",
          "detail": "x", "domain": rq.DOMAIN_CONTENT}])
-    monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
+    monkeypatch.setattr(w, "_manifest_run_id", lambda *a, **k: "1")
     assert w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
         "jobs": [{"name": "alert-on-quality", "status": "completed",
                       "conclusion": "success"}]}
@@ -731,7 +737,7 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
     monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
         {"code": "recap_not_previous_session", "severity": "degraded",
          "detail": "x", "domain": rq.DOMAIN_CONTENT}])
-    monkeypatch.setattr(w, "_manifest_run_id", lambda: "33570065708")
+    monkeypatch.setattr(w, "_manifest_run_id", lambda *a, **k: "33570065708")
 
     naps = []
 
@@ -767,7 +773,7 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
     assert w._quality_exit("x", get_json=_boom,
                            sleep=naps.append) == w.RC_QUALITY_DEGRADED_UNSENT
     # manifest 沒有 run_id 同理
-    monkeypatch.setattr(w, "_manifest_run_id", lambda: "")
+    monkeypatch.setattr(w, "_manifest_run_id", lambda *a, **k: "")
     assert w._quality_exit("x", get_json=_jobs(
         {"jobs": [{"name": "alert-on-quality", "status": "completed",
                    "conclusion": "success"}]})
@@ -857,6 +863,49 @@ def _run_alert_script(rc, **env):
         else:
             _s.modules.pop("smtplib", None)
     return captured[0] if captured else None
+
+
+def test_a_state_gap_alert_does_not_blame_the_letter():
+    """rc=2 的預設主旨是「信寄出了,但有段落沒跑成」。
+
+    但看門狗現在有一類 rc=2 是「信好好的,掉的是 **state**」——
+    收據在 `origin/main` 上、manifest 沒跟上,而那一班已經結束。
+    刻意不寄的日子更極端:那天**本來就沒有信**,而預設主旨會宣告
+    一封不存在的信品質不好(Codex deep P3)。
+    """
+    plain = _run_alert_script(2)
+    gap = _run_alert_script(2, WATCHDOG_STATE_GAP="delivered")
+    skip = _run_alert_script(2, WATCHDOG_STATE_GAP="skipped")
+    after = _run_alert_script(2,
+                              WATCHDOG_STATE_GAP="skipped_after_delivery")
+    for m in (gap, skip, after):
+        assert m is not None and m["To"] == "ops@example.com"
+        assert "沒跑成" not in m["Subject"], ("怪錯了對象", m["Subject"])
+        assert "state" in m["Subject"], m["Subject"]
+        assert "不必補寄" in m.get_content()
+    # Codex deep 第二輪:主旨改對了、**內文還在說** 收據是「SMTP 成功的
+    # 當下」push 的、「信的部分已經完成了」—— 而那天根本沒有寄過信。
+    skip_text = skip.get_content()
+    assert "SMTP" not in skip_text and "信的部分已經完成" not in skip_text,         skip_text[:300]
+    # 但也**不可以**反過來宣稱「今天沒有人寄過信」——收據上那個欄位
+    # 讀不動時本來就會留空,缺席不是證明(Codex deep 第三輪)。
+    assert "沒有寄過任何信" not in skip_text, skip_text[:300]
+    assert "看不出今天稍早有沒有寄過" in skip_text, skip_text[:300]
+    assert "SMTP" in gap.get_content()      # 有寄的那天照樣要說清楚
+    # Codex deep 第三輪:收據記的是**這一班**的結論。手動觸發豁免同日冪等,
+    # 所以「稍早寄過、後來一班刻意不寄」是合法的一天 —— 對那天說
+    # 「今天沒有寄過任何信」是假的。
+    after_text = after.get_content()
+    assert "已經寄過一封" in after_text, after_text[:300]
+    assert "也沒有寄過任何信" not in after_text, after_text[:300]
+    assert "稍早已寄過" in after["Subject"], after["Subject"]
+    assert after["Subject"] != skip["Subject"]
+    assert gap["Subject"] != plain["Subject"], "state 掉了與信有缺共用主旨"
+    assert gap["Subject"] != skip["Subject"], (
+        "刻意不寄的日子說了「信已寄達」", skip["Subject"])
+    assert "寄達" not in skip["Subject"], skip["Subject"]
+    # 沒有 state_gap 的一般 rc=2 不可以被這次改動帶走
+    assert "但有段落沒跑成" in plain["Subject"], plain["Subject"]
 
 
 def test_the_degraded_resend_does_not_announce_a_fake_incident():
@@ -952,7 +1001,7 @@ def test_a_pending_alert_is_not_a_failed_one():
     # 有界重試:pending → 等 → 成功(r13 之後回**四態字串**,不是布林)
     seq = iter([J("in_progress"), J("completed", "success")])
     naps = []
-    assert w.producer_alert_delivered(
+    assert w.producer_alert_state_after_retry(
         "1", lambda u: next(seq), sleep=naps.append,
         tries=3, wait=0) == w.ACK_SENT
     assert len(naps) == 1, naps
@@ -960,7 +1009,7 @@ def test_a_pending_alert_is_not_a_failed_one():
     # 自己的預算,不是「producer 確定不會寄」這個事實。兩者都補寄,
     # 但訊息要說得出差別。
     naps.clear()
-    assert w.producer_alert_delivered(
+    assert w.producer_alert_state_after_retry(
         "1", lambda u: J("in_progress"), sleep=naps.append,
         tries=3, wait=0) == w.ACK_UNKNOWN
     assert len(naps) == 2, naps
@@ -981,11 +1030,11 @@ def test_running_out_of_patience_is_not_a_fact_about_the_producer():
                             else jobs)
 
     # 耐心用完 → unknown(而 run 其實還在跑)
-    assert w.producer_alert_delivered(
+    assert w.producer_alert_state_after_retry(
         "1", _api(J("in_progress"), "in_progress"),
         sleep=lambda s: None, tries=3, wait=0) == w.ACK_UNKNOWN
     # 整個 run 都結束了、告警確實失敗 → unsent
-    assert w.producer_alert_delivered(
+    assert w.producer_alert_state_after_retry(
         "1", _api(J("completed", "failure"), "completed"),
         sleep=lambda s: None, tries=3, wait=0) == w.ACK_UNSENT
     # 兩者都補寄(rc=4),但看門狗說的話不一樣

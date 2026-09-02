@@ -593,46 +593,24 @@ def _v_gzip_intact(path):
 #:   `[]`(空分區)、重複的 `session_date`、只有 `session_date` 的空殼。
 #: 而正式 loader 是 `merged[row["session_date"]] = row` —— 重複的第二列
 #: 直接蓋掉第一列:**manifest 說 2 列,消費端只拿到 1 個交易日**。
-_PARTITION_REQUIRED_FIELDS = ("session_date", "taiex_close", "stocks",
-                              "model_version")
-
-
 def _v_model_partition(path):
     """分區的**一致性**由 `verify_history_integrity()` 驗;**語意**在這裡。
 
     兩層分開:前者答「這份 state 自洽嗎」,後者答「它還有意義嗎」。
+
+    **但規則不住在這裡**(r15 外審):語意契約先前只存在於這個測試模組,
+    於是 publish gate(pytest)比正式 strict consumer
+    (`load_model_history(strict=True)` → `verify_history_integrity()`)嚴 ——
+    而後者的宣稱正是「月報/回測必須 fail-closed,不得靜默少樣本」。
+    兩邊現在呼叫 `model_history_store.partition_semantic_issues()` 同一支。
     """
-    import gzip
-    import json as _json
+    import model_history_store as _mh
     _v_gzip_intact(path)
-    month = path.name.split(".", 1)[0]      # `2026-09.json.gz` → `2026-09`
-    with gzip.open(path, "rb") as fh:
-        rows = _json.loads(fh.read())
-    assert isinstance(rows, list) and rows, f"{path.name} 是空分區"
-    seen = set()
-    for i, row in enumerate(rows, 1):
-        assert isinstance(row, dict), (path.name, i, type(row).__name__)
-        missing = [k for k in _PARTITION_REQUIRED_FIELDS if k not in row]
-        assert not missing, f"{path.name} 第 {i} 列缺欄位:{missing}"
-        day = str(row.get("session_date") or "")
-        # **必須剛好是 `YYYY-MM-DD`**(r14 外審第二輪):`_iso_like()` 走
-        # `datetime.fromisoformat()`,`"2026-09-01T08:00:00"` 也會過 ——
-        # 而 loader 是 `merged[row["session_date"]] = row`,拿**原字串**
-        # 當鍵:`"2026-09-01"` 與 `"2026-09-01T08:00:00"` 是兩個不同的鍵,
-        # 同一個交易日於是變成兩個 session,而重複檢查也看不出來。
-        try:
-            parsed = _dt.date.fromisoformat(day)
-        except ValueError:
-            parsed = None
-        assert parsed is not None and parsed.isoformat() == day, (
-            f"{path.name} 第 {i} 列的 session_date 不是 YYYY-MM-DD:{day!r}"
-            " —— loader 用原字串當 merge key,多一個時間部分就是另一個 session")
-        assert day[:7] == month, f"{path.name} 第 {i} 列的月份是 {day[:7]}"
-        assert day not in seen, (
-            f"{path.name} 有重複的 session_date {day} —— "
-            "loader 是 `merged[session_date] = row`,第二列會直接蓋掉第一列:"
-            "manifest 說幾列,消費端拿到的卻更少")
-        seen.add(day)
+    try:
+        _mh.validate_partition_semantics(path)
+    except _mh.HistoryIntegrityError as e:
+        # 契約 gate 的慣例是 AssertionError(見 `Contract.validate`)。
+        raise AssertionError(str(e)) from e
 
 
 STATE_PATTERNS = (
@@ -926,6 +904,51 @@ def _fake_partition(rows, month="2026-09"):
     return p
 
 
+
+def test_the_strict_consumer_and_the_publish_gate_say_the_same_thing():
+    """**規則只有一份**(r15 外審):語意契約先前只住在這個測試模組。
+
+    於是同一份分區有兩種待遇:
+
+      * publish gate(pytest → `_v_model_partition`)—— 較嚴
+      * 正式 strict consumer(`load_model_history(strict=True)`)—— 較寬
+
+    而後者的 docstring 宣稱的是「月報/回測必須 fail-closed,靜默少一個月的
+    樣本會讓 IC/回測指標無聲漂移」。r13 才剛修掉同型的一次(manifest 形狀
+    手抄一份較弱的),這次差異落在 partition 語意。
+
+    這個測試把兩條路指向同一個反例:**兩邊都要炸**。
+    """
+    import model_history_store as _mh
+
+    good = {"session_date": "2026-09-01", "taiex_close": 24000.0,
+            "stocks": {}, "model_version": "v1"}
+    for name, rows in (
+            ("重複 session_date", [good, dict(good, taiex_close=24001.0)]),
+            ("空殼列", [{"session_date": "2026-09-01"}]),
+            ("空分區", []),
+            ("taiex_close 是字串", [dict(good, taiex_close="24000")]),
+            ("stocks 不是 dict", [dict(good, stocks=[])]),
+            ("model_version 是 null", [dict(good, model_version=None)])):
+        part = _fake_partition(rows)            # 暫存目錄,不碰真實 state
+        d = part.parent
+        # manifest 誠實記下磁碟現況 —— 這些反例全都**自洽**,
+        # checksum 與 row_count 完全相符。要抓的正是「一致地錯」。
+        _mh.write_partition_manifest(d, rewritten={part.name})
+
+        with pytest.raises(AssertionError):     # publish gate
+            _v_model_partition(part)
+
+        with pytest.raises(_mh.HistoryIntegrityError):   # 正式 strict consumer
+            _mh.load_model_history(d / "nonexistent-legacy.json", d,
+                                   strict=True)
+
+        # production(strict=False)不擋(晨報不可斷),但要**說出來**:
+        report = _mh.verify_history_integrity(d, strict=False)
+        kinds = {i["kind"] for i in report["issues"]}
+        assert not report["ok"] and "semantic_violation" in kinds, (
+            f"{name}:production 這條路完全沒有意見 —— {report}")
+
 def test_the_partition_semantics_are_checked():
     """r14 外審:`verify_history_integrity()` 是**一致性** verifier ——
     它保證 state **自洽**(checksum、row_count、月份、manifest 對得上),
@@ -955,7 +978,16 @@ def test_the_partition_semantics_are_checked():
              [dict(good[0], session_date="2026-09-01T08:00:00")]),
             ("同日的 date 與 timestamp 並存",
              good + [dict(good[0], session_date="2026-09-01T08:00:00")]),
-            ("非零填充的日期", [dict(good[0], session_date="2026-9-1")])):
+            ("非零填充的日期", [dict(good[0], session_date="2026-9-1")]),
+            # r15 外審:先前只驗「欄位在不在」,值壞掉一律放行 —— 而**凍結**
+            # 的 legacy `model_history.json` 反過來要求 taiex_close 是數字且
+            # > 1000(`test_model_history_rows_have_a_session_date_and_sane_prices`)。
+            # live 分區的語意契約比凍結的舊檔還鬆,那是反過來的。
+            ("taiex_close 是字串", [dict(good[0], taiex_close="24000")]),
+            ("taiex_close 是 bool", [dict(good[0], taiex_close=True)]),
+            ("stocks 不是 dict", [dict(good[0], stocks=[])]),
+            ("model_version 是 null", [dict(good[0], model_version=None)]),
+            ("model_version 是空字串", [dict(good[0], model_version="  ")])):
         with pytest.raises(AssertionError):
             _v_model_partition(_fake_partition(rows))
 
@@ -979,30 +1011,65 @@ def test_the_state_invariant_actually_fails_the_run(monkeypatch):
     `git checkout -- state/` 收尾 —— 那會**無條件丟棄使用者所有未提交的
     state 修改**;而我在同一批才剛寫下「刻意不自動還原,那會把使用者的
     修改一起丟掉」。現在改用假的 session 直接驗 hook:不碰 repo 一個位元組。★
+
+    ★第三個教訓(r16 外審,P3):判準是「跑完之後乾淨嗎」,也就是拿
+    **HEAD** 當基準 —— 而它要問的是「**這一輪測試**有沒有改東西」。
+    使用者開跑前本來就有合法的未提交 state(這個 repo 的生產流程會改
+    `state/`),於是一輪什麼都沒碰的測試也會被判成偷改 state。★
     """
     import types
     conftest = _importlib.import_module("conftest")
     assert hasattr(conftest, "pytest_sessionfinish")
+    root = Path(conftest.__file__).resolve().parents[1]
 
-    def _run_hook(returncode, stdout):
+    def _with_git(returncode, stdout, fn):
         def _fake_run(*a, **kw):
             return types.SimpleNamespace(returncode=returncode,
                                          stdout=stdout, stderr="")
         monkeypatch.setattr(_subprocess, "run", _fake_run)
-        session = types.SimpleNamespace(exitstatus=0)
         try:
-            conftest.pytest_sessionfinish(session, 0)
+            return fn()
         finally:
             monkeypatch.undo()
-        return session.exitstatus
 
-    assert _run_hook(0, "") == 0                        # 乾淨 → 不動
-    assert _run_hook(0, " M state/analysis_recap.json") != 0, (
+    def _fingerprint(returncode, stdout):
+        return _with_git(returncode, stdout,
+                         lambda: conftest._state_fingerprint(root))
+
+    def _run_hook(baseline, returncode, stdout):
+        def _go():
+            monkeypatch.setattr(conftest, "_STATE_BASELINE", baseline)
+            session = types.SimpleNamespace(exitstatus=0)
+            conftest.pytest_sessionfinish(session, 0)
+            return session.exitstatus
+        return _with_git(returncode, stdout, _go)
+
+    clean = _fingerprint(0, "")
+    dirty_line = " M state/analysis_recap.json"
+    dirty = _fingerprint(0, dirty_line)
+
+    assert _run_hook(clean, 0, "") == 0                     # 乾淨 → 不動
+    assert _run_hook(clean, 0, dirty_line) != 0, (
         "測試偷改了 state,而整輪 pytest 的退出碼仍是 0 —— "
         "印出來不等於擋下來")
-    assert _run_hook(0, " D state/gooaye_radar.json") != 0
-    # git 查不動 = 不知道,而不知道不可以被讀成「沒事」
-    assert _run_hook(128, "") != 0, "git status 失敗被當成 clean"
+    assert _run_hook(clean, 0, " D state/gooaye_radar.json") != 0
+
+    # ---- r16:基準是「這一輪開始時」,不是 HEAD ----
+    assert _run_hook(dirty, 0, dirty_line) == 0, (
+        "使用者開跑前就有合法的未提交 state,而一輪什麼都沒碰的測試"
+        "被判成偷改了 state —— 那道不變式驗錯了東西")
+    # 但「本來就髒」不等於「隨便動」:同一個檔內容變了仍要擋。
+    tampered = (dirty[0], dict(dirty[1],
+                               **{"state/analysis_recap.json": "另一個雜湊"}))
+    assert _run_hook(tampered, 0, dirty_line) != 0, (
+        "測試改動了一個**本來就是 M** 的檔 —— porcelain 兩次一模一樣,"
+        "只比對狀態行就漏掉這一整類")
+    # 測試把使用者的未提交修改「還原」掉也是破壞,不是恢復乾淨。
+    assert _run_hook(dirty, 0, "") != 0
+
+    # git 查不動 = 不知道,而不知道不可以被讀成「沒事」(兩端都要)
+    assert _run_hook(clean, 128, "") != 0, "git status 失敗被當成 clean"
+    assert _run_hook(None, 0, "") != 0, "開跑時查不動被當成 clean"
 
     # 這條測試自己不製造它要防的災難
     assert (STATE / "gooaye_radar.json").exists()

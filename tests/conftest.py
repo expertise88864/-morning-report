@@ -328,7 +328,68 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
 #: 搬走 analysis_recap;最後那次還是我在**驗證守衛修正時**造成的)。
 #:
 #: 這一層不依賴「有沒有漏 patch 哪個 API」:整輪測試跑完之後,
-#: 直接問 git「`state/` 有沒有被動過」。漏掉任何一個 API 都逃不過。
+#: 直接問 git「`state/` 有沒有被動過」。
+#:
+#: **但它是事後偵測,不是寫入隔離**(2026-09-02 r15 外審)。它掛在
+#: `pytest_sessionfinish` —— 只有 pytest **正常走完**才會執行。SIGKILL、
+#: runner crash、IDE 的 stop、斷電都不會跑到這裡,而「測試中途被強制
+#: 中斷」正是那次真的弄丟 `analysis_recap` 的形狀(我在驗證守衛修正時
+#: 把它搬走,然後暫存目錄被清掉)。所以這裡只宣稱:
+#:
+#:   * 正常結束的那一輪,漏 patch 哪個 API 都會被抓到;
+#:   * 被強制中止的那一輪,**這一層什麼都保證不了**。
+#:
+#: 真正的隔離是「測試永遠只拿到可丟棄的 state 根目錄」(`STATE_ROOT`
+#: 已經有那個機制,但 state 契約那批測試存在的理由正是去讀**真實**的
+#: state,不能一律改)。那是還沒做完的事,不要用這一層假裝它做完了。
+#: 這一輪**開始時** `state/` 長什麼樣。`None` = 查不動;
+#: `"__unset__"` = `pytest_sessionstart` 根本沒跑(不是 pytest 主流程)。
+_STATE_BASELINE = "__unset__"
+
+
+def _state_fingerprint(root):
+    """`state/` 現在的樣子 → `(porcelain 行, {髒檔: 內容雜湊})`;查不動回 None。
+
+    **雜湊那一半是必要的**:porcelain 只說「這個檔是 M」——
+    測試改動一個**本來就是 M** 的檔,前後兩次的 porcelain 完全一樣。
+    只比對狀態行等於漏掉那一類。
+    """
+    import hashlib
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", "state"],
+            cwd=root, capture_output=True, encoding="utf-8",
+            errors="replace", timeout=60)
+    except Exception:                       # noqa: BLE001
+        return None
+    if out.returncode != 0:
+        return None
+    lines = tuple(ln for ln in (out.stdout or "").splitlines() if ln.strip())
+    digests = {}
+    for ln in lines:
+        rel = ln[3:].strip().strip('"')
+        rel = rel.split(" -> ")[-1]         # rename:記重新命名之後那個
+        f = root / rel
+        try:
+            digests[rel] = hashlib.sha256(f.read_bytes()).hexdigest()
+        except OSError:
+            digests[rel] = "<讀不到>"        # 已刪除也是一種狀態
+    return lines, digests
+
+
+def pytest_sessionstart(session):
+    """**基準是「這一輪開始時」,不是 HEAD**(2026-09-03 r16 外審)。
+
+    先前直接問「跑完之後 state/ 乾淨嗎」—— 於是使用者在開跑之前就有
+    合法的未提交 state(這個 repo 的生產流程本來就會改 `state/`)時,
+    一輪什麼都沒碰的測試也會被判成「測試動了 state」。
+    那道不變式要驗的是**測試有沒有改東西**,不是「你開跑前乾不乾淨」。
+    """
+    global _STATE_BASELINE
+    _STATE_BASELINE = _state_fingerprint(_PathLib(__file__).resolve().parents[1])
+
+
 def _pytest_failed_code() -> int:
     """讓整輪 pytest 以「有測試失敗」的退出碼結束。"""
     code = getattr(pytest, "ExitCode", None)
@@ -336,34 +397,35 @@ def _pytest_failed_code() -> int:
 
 
 def pytest_sessionfinish(session, exitstatus):
-    import subprocess
     root = _PathLib(__file__).resolve().parents[1]
-    try:
-        out = subprocess.run(
-            ["git", "status", "--porcelain", "--", "state"],
-            cwd=root, capture_output=True, encoding="utf-8",
-            errors="replace", timeout=60)
-    except Exception:                       # noqa: BLE001 - 沒有 git 就跳過
-        return
-    if out.returncode != 0:
+    after = _state_fingerprint(root)
+    if _STATE_BASELINE is None or after is None:
         # **查詢失敗不等於乾淨**(r14 外審第二輪):git 出錯就當成
         # 「不知道」,而不知道不可以被讀成「沒事」—— 這道不變式的
         # 全部意義就是不依賴任何人的自律。
-        print("[state-invariant] git status 查不動,無法確認 state 是否被動過:"
-              + (out.stderr or "").strip()[:200], file=_sys.stderr)
+        print("[state-invariant] git status 查不動,無法確認 state 是否被動過",
+              file=_sys.stderr)
         session.exitstatus = _pytest_failed_code()
         return
-    dirty = [ln for ln in (out.stdout or "").splitlines() if ln.strip()]
-    if not dirty:
+    if _STATE_BASELINE == "__unset__":
+        return                              # sessionstart 沒跑(不是 pytest 主流程)
+    before_lines, before_hashes = _STATE_BASELINE
+    after_lines, after_hashes = after
+    changed = sorted(
+        set(after_lines) - set(before_lines)) or []
+    changed += sorted(f"{rel}(內容變了)" for rel, h in after_hashes.items()
+                      if rel in before_hashes and before_hashes[rel] != h)
+    gone = sorted(set(before_lines) - set(after_lines))
+    if not changed and not gone:
         return
     # **不自動還原**:那會把使用者自己的修改一起丟掉(這個 repo 的
     # `state/` 本來就會被生產流程改)。只把事實喊出來,並指出怎麼救。
-    print("\n" + "=" * 68, file=_sys.stderr)
-    print("[state-invariant] 測試跑完後 state/ 被動過了:", file=_sys.stderr)
-    for ln in dirty[:20]:
+    print(chr(10) + "=" * 68, file=_sys.stderr)
+    print("[state-invariant] 這一輪測試改動了 state/:", file=_sys.stderr)
+    for ln in (changed + gone)[:20]:
         print("   " + ln, file=_sys.stderr)
-    print("如果這不是你有意的改動,請 `git restore -- state/` 還原;"
-          "\n測試不應該修改 repo 的真實 state(見上面的守衛說明)。",
+    print("測試不應該修改 repo 的真實 state(見上面的守衛說明);"
+          + chr(10) + "確認不是你自己要的改動之後,用 `git restore -- state/` 還原。",
           file=_sys.stderr)
     print("=" * 68, file=_sys.stderr)
     # **印出來不等於擋下來**(r14 外審第二輪):先前只 print,退出碼仍是 0

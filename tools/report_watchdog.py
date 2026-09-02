@@ -396,6 +396,10 @@ RC_QUALITY_DEGRADED_UNSENT = 4
 
 #: 主班那封品質信的三態 —— **「還沒跑完」不是「沒送成」**。
 ACK_SENT, ACK_PENDING, ACK_UNSENT = "sent", "pending", "unsent"
+#: **「我等不下去了」不是「它確定不會寄」**(r13 外審):耐心用完是
+#: 看門狗自己的預算,不是關於 producer 的事實。補寄政策與 `unsent` 相同
+#: (漏一封比重複一封糟),但訊息要說得出差別。
+ACK_UNKNOWN = "unknown"
 
 
 def producer_alert_state(run_id, get_json) -> str:
@@ -434,7 +438,21 @@ def producer_alert_state(run_id, get_json) -> str:
     # 先前在「目前的 job 都 completed」時直接回 UNSENT,等於把那一秒
     # 判成「不會有告警了」而立刻補寄。缺席一律 pending,交給有界重試;
     # 重試耗盡才當成沒送成。
-    return ACK_PENDING
+    # r13:要斷定 `unsent`,得問**整個 run 的終局狀態** —— jobs 清單
+    # 答不出這件事。run 已 completed → alert job 確定不會再出現。
+    return (ACK_UNSENT if _run_is_terminal(run_id, get_json)
+            else ACK_PENDING)
+
+
+def _run_is_terminal(run_id, get_json) -> bool:
+    """那一次 workflow run 走完了嗎(查不到就當「還沒」)。"""
+    try:
+        run = get_json(
+            "https://api.github.com/repos/expertise88864/-morning-report"
+            f"/actions/runs/{run_id}")
+    except Exception:                       # noqa: BLE001 - 查不到當還沒完
+        return False
+    return str((run or {}).get("status") or "") == "completed"
 
 
 def producer_alert_delivered(run_id, get_json, *, sleep=None,
@@ -451,10 +469,11 @@ def producer_alert_delivered(run_id, get_json, *, sleep=None,
     for i in range(max(1, tries)):
         state = producer_alert_state(run_id, get_json)
         if state != ACK_PENDING:
-            return state == ACK_SENT
+            return state
         if i < tries - 1:
             sleep(wait)
-    return False
+    # 耐心用完 —— 那是看門狗的預算,不是 producer 的事實。
+    return ACK_UNKNOWN
 
 
 def _manifest_run_id() -> str:
@@ -507,12 +526,15 @@ def _quality_exit(info: str, get_json=None, sleep=None) -> int:
     # 2×20 秒。目前測試不會慢,是因為 `conftest` 為了別的目的
     # (批#37 的退避)patch 了**全域** `time.sleep` —— 那是巧合的保護,
     # 不是明確的注入。conftest 哪天改了,這條路就會真的等 160 秒。
-    if producer_alert_delivered(run_id, get_json or _default_get_json(),
-                                sleep=sleep):
+    ack = producer_alert_delivered(run_id, get_json or _default_get_json(),
+                                   sleep=sleep)
+    if ack == ACK_SENT:
         print("[watchdog] 只有降級,而且主班那封品質信**確認寄成了** —— "
               "不重複寄信、不把這一班染紅", file=sys.stderr)
         return RC_QUALITY_DEGRADED
-    print(f"[watchdog] 只有降級,但主班的品質告警查不到成功紀錄"
+    why = ("那一班已經結束、而品質告警沒有成功" if ack == ACK_UNSENT
+           else "等到逾時仍查不出結果(可能還在跑)")
+    print(f"[watchdog] 只有降級,但{why}"
           f"(run {run_id or '?'})—— 補寄一次,但這不算事故",
           file=sys.stderr)
     return RC_QUALITY_DEGRADED_UNSENT

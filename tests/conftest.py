@@ -261,10 +261,31 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
         _orig = getattr(_Path, _name)
         monkeypatch.setattr(_Path, _name,
                             _guard_move(f"Path.{_name}", _orig), raising=False)
-    _orig_replace = _os.replace
-    monkeypatch.setattr(_os, "replace",
-                        _guard("os.replace", _orig_replace,
-                               lambda a, kw: a[1] if len(a) > 1 else None))
+    # **`os.rename` 也要擋,而且兩端都要檢查**(2026-09-02 r13 外審)。
+    #
+    # 先前只 patch 了 `os.replace`,而 `shutil.move` 走的是 `os.rename`
+    # —— 於是一條「把真實 state 搬走再用 finally 搬回來」的測試**完全沒有
+    # 被擋下**。而那個檔正是剛被標成「必要」的 `analysis_recap.json`:
+    # pytest 被強制中斷時它就永遠不見了(這件事在驗證修正時**真的發生過
+    # 一次**,靠 `git checkout` 救回來)。
+    #
+    # 更隱蔽的是舊寫法只看 `a[1]`(**目的地**):於是「搬**進** state」會擋、
+    # 「從 state **搬走**」不擋 —— 而後者才是不可回復的那個方向。
+    # `Path.replace/rename` 的守衛早就兩端都看了,`os.*` 這一半沒跟上:
+    # 同一條規則兩份實作,其中一份漏了半邊。
+    def _guard_os_move(name, orig):
+        def wrapper(src, dst, *a, **kw):
+            for candidate in (src, dst):
+                if _blocked(candidate):
+                    raise AssertionError(
+                        f"測試試圖搬動 repo 的真實 state:{name} "
+                        f"{src} → {dst}")
+            return orig(src, dst, *a, **kw)
+        return wrapper
+
+    for _fn in ("replace", "rename"):
+        _orig_os = getattr(_os, _fn)
+        monkeypatch.setattr(_os, _fn, _guard_os_move(f"os.{_fn}", _orig_os))
     _orig_open = _builtins.open
 
     def _open_guard(file, mode="r", *a, **kw):

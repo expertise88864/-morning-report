@@ -931,21 +931,59 @@ def test_a_pending_alert_is_not_a_failed_one():
         "jobs": [{"name": "send-report", "status": "in_progress"}]}) == (
         w.ACK_PENDING)
     # **「目前的 job 都 completed」證明不了「整個 run 結束了」**
-    # (r12 外審第二輪:我原本的測試把這個錯誤推論釘住了)——
-    # alert job 缺席一律 pending,交給有界重試決定。
-    assert w.producer_alert_state("1", lambda u: {
-        "jobs": [{"name": "send-report", "status": "completed",
-                  "conclusion": "success"}]}) == w.ACK_PENDING
+    # (r12:我原本的測試把這個錯誤推論釘住了)。r13 補上正確的問法 ——
+    # 去查**整個 run** 的終局狀態:還在跑 → pending;已 completed →
+    # alert job 確定不會再出現 → unsent。
+    only_send = {"jobs": [{"name": "send-report", "status": "completed",
+                           "conclusion": "success"}]}
+    def _api(run_status):
+        return lambda url: ({"status": run_status} if "/jobs" not in url
+                            else only_send)
+    assert w.producer_alert_state("1", _api("in_progress")) == w.ACK_PENDING
+    assert w.producer_alert_state("1", _api("completed")) == w.ACK_UNSENT
 
-    # 有界重試:pending → 等 → 成功
+    # 有界重試:pending → 等 → 成功(r13 之後回**四態字串**,不是布林)
     seq = iter([J("in_progress"), J("completed", "success")])
     naps = []
     assert w.producer_alert_delivered(
-        "1", lambda u: next(seq), sleep=naps.append, tries=3, wait=0) is True
+        "1", lambda u: next(seq), sleep=naps.append,
+        tries=3, wait=0) == w.ACK_SENT
     assert len(naps) == 1, naps
-    # 一直 pending → 最後仍補寄(漏一封比重複一封糟)
+    # 一直 pending → `unknown`(**不是** `unsent`):耐心用完是看門狗
+    # 自己的預算,不是「producer 確定不會寄」這個事實。兩者都補寄,
+    # 但訊息要說得出差別。
     naps.clear()
     assert w.producer_alert_delivered(
         "1", lambda u: J("in_progress"), sleep=naps.append,
-        tries=3, wait=0) is False
+        tries=3, wait=0) == w.ACK_UNKNOWN
     assert len(naps) == 2, naps
+
+
+def test_running_out_of_patience_is_not_a_fact_about_the_producer():
+    """r13 外審:三態把「等到逾時」折進 `unsent`,於是 rc=4 的訊息會宣稱
+    「查不到成功紀錄」,而讀者無從分辨**確定沒寄**與**還在等**。
+
+    補寄政策兩者相同(漏一封比重複一封糟),但**事實要分開記**。
+    """
+    J = lambda st, con=None: {  # noqa: E731
+        "jobs": [{"name": "alert-on-quality", "status": st,
+                  "conclusion": con}]}
+
+    def _api(jobs, run_status):
+        return lambda url: ({"status": run_status} if "/jobs" not in url
+                            else jobs)
+
+    # 耐心用完 → unknown(而 run 其實還在跑)
+    assert w.producer_alert_delivered(
+        "1", _api(J("in_progress"), "in_progress"),
+        sleep=lambda s: None, tries=3, wait=0) == w.ACK_UNKNOWN
+    # 整個 run 都結束了、告警確實失敗 → unsent
+    assert w.producer_alert_delivered(
+        "1", _api(J("completed", "failure"), "completed"),
+        sleep=lambda s: None, tries=3, wait=0) == w.ACK_UNSENT
+    # 兩者都補寄(rc=4),但看門狗說的話不一樣
+    import io as _io
+    src = _io.open(_ROOT / "tools" / "report_watchdog.py",
+                   encoding="utf-8").read()
+    assert "那一班已經結束、而品質告警沒有成功" in src
+    assert "等到逾時仍查不出結果" in src

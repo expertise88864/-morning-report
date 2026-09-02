@@ -20,6 +20,7 @@ DeepSeek 的**原始 payload** 跑到 state)。那需要真實回應樣本,而�
 """
 import collections as _co
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -450,7 +451,26 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
 #: 而 `"shape"` 那一類也只驗 `isinstance(data, (dict, list))` ——
 #: `analysis_recap` 從 dict 變成 list 也會通過,而它正是昨日觀點閉環的核心:
 #: 那種錯不會讓晨報 crash,只會讓明天的連續性**無聲消失**。
-Contract = _co.namedtuple("Contract", "root validate")
+#: `required`:**這個檔在成熟的 production 上必須存在**。
+#: r13 外審:closed-world 只防「多出陌生檔」,沒防「必要檔消失」——
+#: `if not path.exists(): continue` 加上「跑到的契約數 >= 10」這個總量
+#: 下限,等於**刪掉一個(甚至好幾個)檔仍然全綠**。
+#: 而 `analysis_recap.load()` 對不存在的檔回 `{}` —— 那會被當成
+#: 「今天沒有昨日觀點」而不是損壞:state gate 綠 → push → 明天新 runner
+#: 讀到空的 → **連續性無聲消失**。正是這套系統一直在防的形狀。
+#:
+#: 但**不可以粗暴地全部 required**:全新 repo 與功能還沒跑過時本來就沒有。
+#: 用 `required_from`(台北日期)當歷史錨點 —— 與 `MANIFEST_SCHEMA_REQUIRED_FROM`
+#: 同一個手法:那一天之後這個檔還不見,就不是「還沒跑過」。
+Contract = _co.namedtuple("Contract", "root validate required_from")
+Contract.__new__.__defaults__ = (None,)
+
+
+def _required_today(contract, today) -> bool:
+    """這個檔今天必須存在嗎。`required_from` 是 None = 永遠選擇性。"""
+    if not contract.required_from:
+        return False
+    return today >= contract.required_from
 
 
 def _rows(data, key=None):
@@ -492,10 +512,23 @@ def _v_source_health(rows):
         assert isinstance(r.get("checks"), dict), r.get("checks")
 
 
-def _v_model_history_manifest(d):
-    parts = d.get("partitions")
-    assert isinstance(parts, (list, dict)) and parts, "沒有分區清單"
-    assert isinstance(d.get("schema_version"), int), d.get("schema_version")
+def _v_model_history_manifest(_d):
+    """**接上正式 consumer 的驗證器,不要手抄一份較弱的**(r13 外審)。
+
+    先前這裡自己寫「partitions 是 list 或 dict 且非空、schema_version 是 int」
+    —— 而 `model_history_store` 的正式契約是:partitions **必須是 dict**、
+    `schema_version` 必須等於 `HISTORY_SCHEMA_VERSION`(目前 3)。
+    於是 `{"schema_version": 999, "partitions": ["foo"]}` 在這道 gate 通過,
+    在真正的 consumer 卻是 corrupt —— **publish gate 與消費端說不同的話**。
+
+    `verify_history_integrity()` 一次涵蓋:JSON 解析、root 型別、每列形狀、
+    `session_date`、月份與檔名一致、SHA256、row count、manifest 少列/多列、
+    schema 世代。那才是 single source of truth。
+    """
+    import model_history_store as _mh
+    report = _mh.verify_history_integrity(
+        partition_dir=STATE / "model_history", require_manifest=True)
+    assert report.get("ok"), report.get("issues")
 
 
 def _v_nonempty_mapping(d):
@@ -509,17 +542,17 @@ def _v_nonempty_rows(rows):
 #: 每個 state 檔都要對上一條 —— 而且 validator **會被真的呼叫**
 #: (`test_every_contract_is_actually_executed`)。
 STATE_CONTRACTS = {
-    "run_manifest.json": Contract(dict, _v_nonempty_mapping),
-    "delivery_receipt.json": Contract(dict, _v_nonempty_mapping),
-    "model_history.json": Contract(list, _v_nonempty_rows),
-    "story_ledger.json": Contract(list, _v_nonempty_rows),
+    "run_manifest.json": Contract(dict, _v_nonempty_mapping, "2026-08-01"),
+    "delivery_receipt.json": Contract(dict, _v_nonempty_mapping, "2026-08-29"),
+    "model_history.json": Contract(list, _v_nonempty_rows, "2026-08-01"),
+    "story_ledger.json": Contract(list, _v_nonempty_rows, "2026-08-01"),
     "forecast_ledger.json": Contract(list, _v_nonempty_rows),
     "exdiv_history.json": Contract(dict, _v_nonempty_mapping),
     # r12:這四個是下一班 continuity / observability 價值最高的
-    "analysis_recap.json": Contract(dict, _v_analysis_recap),
+    "analysis_recap.json": Contract(dict, _v_analysis_recap, "2026-08-08"),
     "event_timeline.json": Contract(dict, _v_event_timeline),
-    "source_health_history.json": Contract(list, _v_source_health),
-    "model_history/manifest.json": Contract(dict, _v_model_history_manifest),
+    "source_health_history.json": Contract(list, _v_source_health, "2026-08-01"),
+    "model_history/manifest.json": Contract(dict, _v_model_history_manifest, "2026-08-01"),
     # 其餘先鎖**根型別**(比 `isinstance(dict, list)` 嚴格),語意分批補
     "conformal_intervals.json": Contract(dict, _v_nonempty_mapping),
     "corporate_actions.json": Contract(dict, _v_nonempty_mapping),
@@ -550,9 +583,15 @@ def _v_gzip_intact(path):
     assert total, f"{path.name} 解出來是空的"
 
 
+def _v_model_partition(_path):
+    """分區的**語意**由 `verify_history_integrity()` 一次驗完(見上面的說明)
+    —— 這裡只確認 gzip 本身完整,語意不再手抄。"""
+    _v_gzip_intact(_path)
+
+
 STATE_PATTERNS = (
-    ("emails/*.html.gz", _v_gzip_intact),        # 寄出信件存檔(去識別)
-    ("model_history/*.json.gz", _v_gzip_intact),  # 按月分區
+    ("emails/*.html.gz", _v_gzip_intact),          # 寄出信件存檔(去識別)
+    ("model_history/*.json.gz", _v_model_partition),
 )
 
 #: 不是「跨日累積的 state」的東西(目前沒有;留這一格是為了讓豁免**顯式**)。
@@ -599,10 +638,19 @@ def test_every_contract_is_actually_executed():
     ★換成 namedtuple 的當下,三條舊測試(`kind != "shape"` / `"jsonl"` /
     `"gzip"`)瞬間全部空轉而照樣綠 —— 那正是這條斷言存在的理由。★
     """
-    executed = []
+    import datetime as _dt
+    today = _dt.datetime.now(
+        _dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d")
+    executed, missing = [], []
     for rel, contract in sorted(STATE_CONTRACTS.items()):
         path = STATE / rel
         if not path.exists():
+            # **「不存在」也要有契約**(r13 外審):先前一律 `continue`,
+            # 加上「跑到的契約數 >= 10」這個總量下限,等於刪掉一個(甚至
+            # 好幾個)必要檔仍然全綠。而 `analysis_recap.load()` 對不存在
+            # 的檔回 `{}` —— 那會被讀成「今天沒有昨日觀點」而不是損壞。
+            if _required_today(contract, today):
+                missing.append(f"{rel}(自 {contract.required_from} 起必須存在)")
             continue                        # 該功能還沒跑過
         if contract.root == "jsonl":
             rows = []
@@ -630,6 +678,11 @@ def test_every_contract_is_actually_executed():
                 f"{contract.root.__name__}")
             contract.validate(data)
         executed.append(rel)
+    assert not missing, (
+        f"成熟 production 的必要 state 不見了:{missing} —— "
+        "消費端多半會把它讀成「今天沒有」而不是「壞掉了」,"
+        "那正是這套系統一直在防的無聲失效。"
+        "確定要移除某個 state,請把它的 required_from 拿掉並註明理由。")
     assert len(executed) >= 10, ("跑到的契約太少,registry 可能沒被執行",
                                  executed)
 
@@ -686,3 +739,124 @@ def test_the_bounded_state_is_validated_all_the_way_through():
         (STATE / "source_health_history.json").read_text(encoding="utf-8"))
     assert len(real) > 20, ("來源健康史只有 %d 筆,取樣與否量不出差別"
                             % len(real))
+
+
+def test_a_missing_required_state_is_not_silence(tmp_path, monkeypatch):
+    """r13 外審:closed-world 只防「多出陌生檔」,沒防「必要檔消失」——
+    `if not path.exists(): continue` 加上「跑到的契約數 >= 10」這個**總量**
+    下限,等於刪掉一個(甚至好幾個)必要檔仍然全綠。
+
+    而 `analysis_recap.load()` 對不存在的檔回 `{}` —— 那會被讀成
+    「今天沒有昨日觀點」而不是損壞:gate 綠 → push → 明天新 runner
+    讀到空的 → **連續性無聲消失**。
+    """
+    # 這幾個檔在成熟 production 上是必要的
+    for rel in ("analysis_recap.json", "run_manifest.json",
+                "delivery_receipt.json", "source_health_history.json",
+                "model_history/manifest.json"):
+        c = STATE_CONTRACTS[rel]
+        assert c.required_from, f"{rel} 沒有標成必要"
+        assert _required_today(c, "2026-09-03"), rel
+        # 而歷史錨點之前不算(全新 repo / 功能還沒跑過時本來就沒有)
+        assert not _required_today(c, "2026-07-01"), rel
+    # 沒標 required_from 的仍然是選擇性
+    opt = STATE_CONTRACTS["gooaye_radar.json"]
+    assert not opt.required_from
+    assert not _required_today(opt, "2026-12-31")
+
+    # **在 tmp 造一份 state 樹來驗,絕不搬動真實的**(r13 外審第二輪):
+    # 我原本用 `shutil.move` 把 `analysis_recap.json` 搬走再 `finally` 搬回
+    # —— pytest 被強制中斷時那個檔就永遠不見了,而它正是這條測試剛標成
+    # 「必要」的那一個。而且 conftest 的守衛當時**沒擋住**(它 patch 了
+    # `os.replace` 但沒 patch `os.rename`,而 `shutil.move` 走後者)——
+    # 守衛的漏洞讓人以為有保護,那比沒有守衛更糟。已一併補上。
+    import shutil
+    # **整棵複製再刪一個** —— 逐項挑會漏掉 `STATE_PATTERNS` 那些分區檔,
+    # 而 `verify_history_integrity()` 會因此報 missing_partition:
+    # 那是測試自己造出來的假故障,不是被測的性質。
+    fake = tmp_path / "state"
+    shutil.copytree(STATE, fake)
+    (fake / "analysis_recap.json").unlink()  # 刻意讓必要 state 缺席
+    monkeypatch.setattr(sys.modules[__name__], "STATE", fake)
+    try:
+        with pytest.raises(AssertionError, match="必要 state"):
+            test_every_contract_is_actually_executed()
+    finally:
+        monkeypatch.undo()
+    assert (STATE / "analysis_recap.json").exists(), "真實 state 被動到了"
+
+
+def _fake_history(manifest, tmp=[]):
+    """在暫存目錄造一份 model_history 樹(不碰真實 state)。"""
+    import json as _json
+    import tempfile
+    d = Path(tempfile.mkdtemp()) / "model_history"
+    d.mkdir(parents=True)
+    (d / "manifest.json").write_text(
+        _json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    tmp.append(d)
+    return d
+
+
+def test_the_history_gate_speaks_the_consumer_contract():
+    """r13 外審:`model_history` 的 gate 先前手抄了一份**較弱**的規格
+    ——「partitions 是 list 或 dict 且非空、schema_version 是 int」——
+    而正式 consumer 要求 partitions **必須是 dict**、`schema_version`
+    必須等於 `HISTORY_SCHEMA_VERSION`。
+
+    於是 `{"schema_version": 999, "partitions": ["foo"]}` 在 publish gate
+    通過、在真正的消費端卻是 corrupt。**已經有 single source of truth,
+    就不要在 gate 再抄一份。**
+    """
+    import model_history_store as mh
+    src = Path(__file__).read_text(encoding="utf-8")
+    assert "verify_history_integrity" in src, (
+        "gate 又自己手抄了一份 model_history 的規格")
+    # gate 用的就是消費端那一支
+    report = mh.verify_history_integrity(
+        partition_dir=STATE / "model_history", require_manifest=True)
+    assert report["ok"], report["issues"]
+    _v_model_history_manifest(None)          # 不可以拋
+
+    # **而它真的比手抄的嚴格**:先前那份會放行的東西,消費端的驗證器不會。
+    # (在 tmp 目錄驗 —— conftest 禁止測試寫真實 state,那道守衛是對的。)
+    bad = mh.verify_history_integrity(
+        partition_dir=_fake_history(
+            {"schema_version": 999, "partitions": ["foo"]}),
+        require_manifest=True)
+    assert not bad["ok"], "手抄版會放行的 manifest,消費端也放行了"
+    assert any("partitions" in i or "schema" in i
+               for i in map(str, bad["issues"])), bad["issues"]
+
+
+def test_the_state_guard_covers_shutil_move(tmp_path):
+    """r13 外審第二輪:conftest 的守衛 patch 了 `Path.rename` /
+    `Path.replace` / `os.replace`,**卻沒有 `os.rename`** —— 而
+    `shutil.move` 走的正是後者。
+
+    於是我上一版那條「把真實 `analysis_recap.json` 搬走再 finally 搬回」
+    的測試**完全沒有被擋下**;pytest 一旦被強制中斷,那個檔就永遠不見了
+    (而它正是同一批剛標成「必要」的那一個)。
+
+    ★守衛自己的漏洞讓人以為有保護,那比沒有守衛更糟。★
+    """
+    import os as _os
+    import shutil
+    # **用一個不存在的 state 路徑** —— 守衛看的是路徑,不是檔案在不在。
+    # ★這條測試的第一版拿真實的 `analysis_recap.json` 當實驗品:
+    # 突變(把守衛改回只有 `replace`)的那一刻,它就真的被搬走了,
+    # 而 tmp_path 隨後被清掉 —— **我在驗證這個修正時親手弄丟了它**,
+    # 靠 `git checkout` 才救回來。守衛的測試自己不可以需要那個守衛。★
+    ghost = STATE / "__guard_probe_does_not_exist__.json"
+    assert not ghost.exists()
+    for call, label in (
+            (lambda: shutil.move(str(ghost), str(tmp_path / "x.json")),
+             "shutil.move"),
+            (lambda: _os.rename(str(ghost), str(tmp_path / "y.json")),
+             "os.rename"),
+            (lambda: _os.replace(str(ghost), str(tmp_path / "z.json")),
+             "os.replace")):
+        with pytest.raises(AssertionError, match="真實 state"):
+            call()
+    # 真實的必要 state 從頭到尾沒有被碰過
+    assert (STATE / "analysis_recap.json").exists()

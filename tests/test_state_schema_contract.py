@@ -19,6 +19,9 @@ DeepSeek 的**原始 payload** 跑到 state)。那需要真實回應樣本,而�
   - 訊息要指出「哪一筆、哪個欄位」,而不是只說形狀不對
 """
 import collections as _co
+import importlib as _importlib
+import subprocess as _subprocess
+import datetime as _dt
 import json
 import sys
 from pathlib import Path
@@ -583,10 +586,53 @@ def _v_gzip_intact(path):
     assert total, f"{path.name} 解出來是空的"
 
 
-def _v_model_partition(_path):
-    """分區的**語意**由 `verify_history_integrity()` 一次驗完(見上面的說明)
-    —— 這裡只確認 gzip 本身完整,語意不再手抄。"""
-    _v_gzip_intact(_path)
+#: 一列 model-history 至少要有的欄位 —— **不是「有 session_date 就算」**。
+#: r14 外審:`verify_history_integrity()` 是**一致性** verifier(checksum、
+#: row_count、月份、manifest 對得上),它保證 state **自洽**,不保證
+#: state **有意義**。三個反例實測全部放行:
+#:   `[]`(空分區)、重複的 `session_date`、只有 `session_date` 的空殼。
+#: 而正式 loader 是 `merged[row["session_date"]] = row` —— 重複的第二列
+#: 直接蓋掉第一列:**manifest 說 2 列,消費端只拿到 1 個交易日**。
+_PARTITION_REQUIRED_FIELDS = ("session_date", "taiex_close", "stocks",
+                              "model_version")
+
+
+def _v_model_partition(path):
+    """分區的**一致性**由 `verify_history_integrity()` 驗;**語意**在這裡。
+
+    兩層分開:前者答「這份 state 自洽嗎」,後者答「它還有意義嗎」。
+    """
+    import gzip
+    import json as _json
+    _v_gzip_intact(path)
+    month = path.name.split(".", 1)[0]      # `2026-09.json.gz` → `2026-09`
+    with gzip.open(path, "rb") as fh:
+        rows = _json.loads(fh.read())
+    assert isinstance(rows, list) and rows, f"{path.name} 是空分區"
+    seen = set()
+    for i, row in enumerate(rows, 1):
+        assert isinstance(row, dict), (path.name, i, type(row).__name__)
+        missing = [k for k in _PARTITION_REQUIRED_FIELDS if k not in row]
+        assert not missing, f"{path.name} 第 {i} 列缺欄位:{missing}"
+        day = str(row.get("session_date") or "")
+        # **必須剛好是 `YYYY-MM-DD`**(r14 外審第二輪):`_iso_like()` 走
+        # `datetime.fromisoformat()`,`"2026-09-01T08:00:00"` 也會過 ——
+        # 而 loader 是 `merged[row["session_date"]] = row`,拿**原字串**
+        # 當鍵:`"2026-09-01"` 與 `"2026-09-01T08:00:00"` 是兩個不同的鍵,
+        # 同一個交易日於是變成兩個 session,而重複檢查也看不出來。
+        try:
+            parsed = _dt.date.fromisoformat(day)
+        except ValueError:
+            parsed = None
+        assert parsed is not None and parsed.isoformat() == day, (
+            f"{path.name} 第 {i} 列的 session_date 不是 YYYY-MM-DD:{day!r}"
+            " —— loader 用原字串當 merge key,多一個時間部分就是另一個 session")
+        assert day[:7] == month, f"{path.name} 第 {i} 列的月份是 {day[:7]}"
+        assert day not in seen, (
+            f"{path.name} 有重複的 session_date {day} —— "
+            "loader 是 `merged[session_date] = row`,第二列會直接蓋掉第一列:"
+            "manifest 說幾列,消費端拿到的卻更少")
+        seen.add(day)
 
 
 STATE_PATTERNS = (
@@ -638,7 +684,6 @@ def test_every_contract_is_actually_executed():
     ★換成 namedtuple 的當下,三條舊測試(`kind != "shape"` / `"jsonl"` /
     `"gzip"`)瞬間全部空轉而照樣綠 —— 那正是這條斷言存在的理由。★
     """
-    import datetime as _dt
     today = _dt.datetime.now(
         _dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d")
     executed, missing = [], []
@@ -750,12 +795,12 @@ def test_a_missing_required_state_is_not_silence(tmp_path, monkeypatch):
     「今天沒有昨日觀點」而不是損壞:gate 綠 → push → 明天新 runner
     讀到空的 → **連續性無聲消失**。
     """
-    # 這幾個檔在成熟 production 上是必要的
-    for rel in ("analysis_recap.json", "run_manifest.json",
-                "delivery_receipt.json", "source_health_history.json",
-                "model_history/manifest.json"):
-        c = STATE_CONTRACTS[rel]
-        assert c.required_from, f"{rel} 沒有標成必要"
+    # **registry-driven,不要手抄名單**(r14 外審):上一版列了 5 個
+    # 而實際標成必要的有 7 個 —— 「宣稱七個、實測五個」正是這一整批
+    # 在修的那種問題(declared ≠ mechanically exercised)。
+    required = {rel: c for rel, c in STATE_CONTRACTS.items() if c.required_from}
+    assert len(required) >= 7, ("必要 state 少於預期", sorted(required))
+    for rel, c in required.items():
         assert _required_today(c, "2026-09-03"), rel
         # 而歷史錨點之前不算(全新 repo / 功能還沒跑過時本來就沒有)
         assert not _required_today(c, "2026-07-01"), rel
@@ -774,15 +819,23 @@ def test_a_missing_required_state_is_not_silence(tmp_path, monkeypatch):
     # **整棵複製再刪一個** —— 逐項挑會漏掉 `STATE_PATTERNS` 那些分區檔,
     # 而 `verify_history_integrity()` 會因此報 missing_partition:
     # 那是測試自己造出來的假故障,不是被測的性質。
-    fake = tmp_path / "state"
-    shutil.copytree(STATE, fake)
-    (fake / "analysis_recap.json").unlink()  # 刻意讓必要 state 缺席
-    monkeypatch.setattr(sys.modules[__name__], "STATE", fake)
-    try:
-        with pytest.raises(AssertionError, match="必要 state"):
-            test_every_contract_is_actually_executed()
-    finally:
-        monkeypatch.undo()
+    # **逐個必要檔都要證明缺席會紅**(而不是只證明其中一個)——
+    # 而且要**數得出來**:少驗幾個的話下面那條斷言會紅
+    # (突變驗證抓到:改成只驗 `analysis_recap` 時測試照樣過)。
+    proved = []
+    for rel in sorted(required):
+        fake = tmp_path / rel.replace("/", "_")
+        shutil.copytree(STATE, fake)
+        (fake / rel).unlink()
+        monkeypatch.setattr(sys.modules[__name__], "STATE", fake)
+        try:
+            with pytest.raises(AssertionError, match="必要 state"):
+                test_every_contract_is_actually_executed()
+        finally:
+            monkeypatch.undo()
+        proved.append(rel)
+    assert sorted(proved) == sorted(required), (
+        "有必要 state 沒有被證明「缺席會紅」", sorted(set(required) - set(proved)))
     assert (STATE / "analysis_recap.json").exists(), "真實 state 被動到了"
 
 
@@ -860,3 +913,96 @@ def test_the_state_guard_covers_shutil_move(tmp_path):
             call()
     # 真實的必要 state 從頭到尾沒有被碰過
     assert (STATE / "analysis_recap.json").exists()
+
+
+def _fake_partition(rows, month="2026-09"):
+    """在暫存目錄造一個分區檔(不碰真實 state)。"""
+    import gzip
+    import json as _json
+    import tempfile
+    p = Path(tempfile.mkdtemp()) / f"{month}.json.gz"
+    with gzip.open(p, "wb") as fh:
+        fh.write(_json.dumps(rows, ensure_ascii=False).encode())
+    return p
+
+
+def test_the_partition_semantics_are_checked():
+    """r14 外審:`verify_history_integrity()` 是**一致性** verifier ——
+    它保證 state **自洽**(checksum、row_count、月份、manifest 對得上),
+    不保證 state **有意義**。三個反例實測全部放行。
+
+    最漂亮的是重複的 `session_date`:正式 loader 是
+    `merged[row["session_date"]] = row`,第二列直接蓋掉第一列 ——
+    **manifest 說 2 列,消費端只拿到 1 個交易日**,而 checksum 與
+    row_count 都完全相符。那不是「不一致」,是「一致地錯」。
+    """
+    good = [{"session_date": "2026-09-01", "taiex_close": 24000,
+             "stocks": {}, "model_version": "v1"}]
+    _v_model_partition(_fake_partition(good))       # 正常的不可以誤擋
+
+    for name, rows in (
+            ("空分區", []),
+            ("重複 session_date", good + [dict(good[0], taiex_close=99999)]),
+            ("只有 session_date 的空殼", [{"session_date": "2026-09-01"}]),
+            ("月份對不上", [dict(good[0], session_date="2026-08-01")]),
+            ("列不是 dict", ["不是 dict"]),
+            ("日期不是 ISO", [dict(good[0], session_date="壞掉")]),
+            # r14 外審第二輪:`_iso_like()` 走 `datetime.fromisoformat()`,
+            # **timestamp 也會過** —— 而 loader 拿原字串當 merge key,
+            # `"2026-09-01"` 與 `"2026-09-01T08:00:00"` 是兩個不同的鍵:
+            # 同一個交易日變成兩個 session,而重複檢查也看不出來。
+            ("timestamp 當 session_date",
+             [dict(good[0], session_date="2026-09-01T08:00:00")]),
+            ("同日的 date 與 timestamp 並存",
+             good + [dict(good[0], session_date="2026-09-01T08:00:00")]),
+            ("非零填充的日期", [dict(good[0], session_date="2026-9-1")])):
+        with pytest.raises(AssertionError):
+            _v_model_partition(_fake_partition(rows))
+
+    # 真實分區照樣通過(否則上面那些反例只是理論)
+    import fnmatch
+    real = [r for r in _state_files()
+            if fnmatch.fnmatch(r, "model_history/*.json.gz")]
+    assert real, "沒有真實分區可驗"
+    for rel in real:
+        _v_model_partition(STATE / rel)
+
+
+def test_the_state_invariant_actually_fails_the_run(monkeypatch):
+    """r14 外審第二輪:那道 git 不變式先前**只 print,退出碼仍是 0**
+    —— CI 照樣綠,而它的整個目的就是在 push 之前擋住。
+    ★而我驗證它時只看「有沒有印出警告」,沒看退出碼 ——
+    那是「印出來 ≠ 擋下來」的觀測版本,同一種錯的兩面。★
+
+    ★第二個教訓(r14 第三輪,P1):這條測試的上一版**在真實 repo 裡跑
+    探針**,讓子 pytest 刪掉真的 `gooaye_radar.json`,再
+    `git checkout -- state/` 收尾 —— 那會**無條件丟棄使用者所有未提交的
+    state 修改**;而我在同一批才剛寫下「刻意不自動還原,那會把使用者的
+    修改一起丟掉」。現在改用假的 session 直接驗 hook:不碰 repo 一個位元組。★
+    """
+    import types
+    conftest = _importlib.import_module("conftest")
+    assert hasattr(conftest, "pytest_sessionfinish")
+
+    def _run_hook(returncode, stdout):
+        def _fake_run(*a, **kw):
+            return types.SimpleNamespace(returncode=returncode,
+                                         stdout=stdout, stderr="")
+        monkeypatch.setattr(_subprocess, "run", _fake_run)
+        session = types.SimpleNamespace(exitstatus=0)
+        try:
+            conftest.pytest_sessionfinish(session, 0)
+        finally:
+            monkeypatch.undo()
+        return session.exitstatus
+
+    assert _run_hook(0, "") == 0                        # 乾淨 → 不動
+    assert _run_hook(0, " M state/analysis_recap.json") != 0, (
+        "測試偷改了 state,而整輪 pytest 的退出碼仍是 0 —— "
+        "印出來不等於擋下來")
+    assert _run_hook(0, " D state/gooaye_radar.json") != 0
+    # git 查不動 = 不知道,而不知道不可以被讀成「沒事」
+    assert _run_hook(128, "") != 0, "git status 失敗被當成 clean"
+
+    # 這條測試自己不製造它要防的災難
+    assert (STATE / "gooaye_radar.json").exists()

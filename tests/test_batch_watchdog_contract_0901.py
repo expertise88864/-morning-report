@@ -871,6 +871,13 @@ def test_the_degraded_resend_does_not_announce_a_fake_incident():
         "宣告了一場沒有發生的事故", m["Subject"])
     text = m.get_content()
     assert "有寄到" in text and "不是事故" in text, text[:200]
+    # r14:第四態要傳到**最醒目的那一層**(主旨),否則 unsent 與 unknown
+    # 在 operator 先看到的地方又合流了。
+    unknown = _run_alert_script(4, WATCHDOG_ACK="unknown")
+    unsent = _run_alert_script(4, WATCHDOG_ACK="unsent")
+    assert "仍無法確認" in unknown["Subject"], unknown["Subject"]
+    assert "確認未送成" in unsent["Subject"], unsent["Subject"]
+    assert unknown["Subject"] != unsent["Subject"]
 
     # 另外兩條路不可以被這次改動帶壞
     q = _run_alert_script(2)
@@ -880,7 +887,7 @@ def test_the_degraded_resend_does_not_announce_a_fake_incident():
     # rc=2 的分支也量不出來(突變驗證抓到的白測)。
     assert m["Subject"] != q["Subject"], (
         "rc=4 用了 rc=2 的主旨 —— 讀信的人會以為今天的信有缺", m["Subject"])
-    assert "沒送成" in m["Subject"] and "沒送成" not in q["Subject"]
+    assert "品質信" in m["Subject"] and "品質信" not in q["Subject"]
     assert m.get_content() != q.get_content()
     n = _run_alert_script(1)
     assert n["To"] == "reader@example.com" and "沒有跑起來" in n["Subject"]

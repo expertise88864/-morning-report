@@ -137,6 +137,9 @@ jobs:
           # 沒設時 Python 端回退主收件人 —— 告警不可斷。
           QUALITY_RECIPIENT: ${{ secrets.QUALITY_RECIPIENT || vars.QUALITY_RECIPIENT }}
           WATCHDOG_RC: ${{ steps.check.outputs.rc }}
+          # 第四態:unsent(確定沒送成)vs unknown(還不知道)——
+          # 主旨對兩者說同一句話的話,第四態在最醒目的地方就合流了。
+          WATCHDOG_ACK: ${{ steps.check.outputs.ack_state }}
           WATCHDOG_DETAIL: ${{ steps.check.outputs.detail }}
           # 補寄結果一起進告警信:自動修復不可以是無聲的,否則
           #「排程壞了」這件事永遠沒有人知道(而它已經連壞三天)。
@@ -165,8 +168,10 @@ jobs:
           # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
           # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
           if rc == "4":
-              msg["Subject"] = (f"[晨報品質] {now} 信寄出了、只有降級 —— "
-                                "但主班那封品質信沒送成")
+              ack = os.environ.get("WATCHDOG_ACK", "")
+              tail = ("但主班那封品質信**仍無法確認**"
+                      if ack == "unknown" else "但主班那封品質信確認未送成")
+              msg["Subject"] = f"[晨報品質] {now} 信寄出了、只有降級 —— {tail}"
           elif is_quality:
               msg["Subject"] = f"[晨報品質] {now} 信寄出了,但有段落沒跑成"
           else:

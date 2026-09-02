@@ -16,6 +16,8 @@ os.environ.setdefault("LLM_PROVIDER", "gemini")
 
 import pandas as pd
 import pytest
+from pathlib import Path as _PathLib
+import sys as _sys
 
 import morning_report as mr
 
@@ -314,3 +316,57 @@ def _never_write_repo_state(monkeypatch, tmp_path_factory):
                 inside = False
             if inside:
                 monkeypatch.setattr(mod, attr, d / value.name, raising=False)
+
+
+# ---------------------------------------------------------------- state 不變式
+#: **不要再玩打地鼠**(2026-09-02 r14 外審)。
+#:
+#: 目前的 monkeypatch 守衛列舉了 `Path.write_text/write_bytes/unlink/
+#: rename/replace`、`os.rename/replace`、`builtins.open` —— 但仍漏
+#: `os.remove` / `os.rmdir` / `shutil.rmtree` / `Path.open` / `os.truncate`…
+#: 而這個 repo 已經有三次實害紀錄(覆寫 manifest、清掉 exdiv history、
+#: 搬走 analysis_recap;最後那次還是我在**驗證守衛修正時**造成的)。
+#:
+#: 這一層不依賴「有沒有漏 patch 哪個 API」:整輪測試跑完之後,
+#: 直接問 git「`state/` 有沒有被動過」。漏掉任何一個 API 都逃不過。
+def _pytest_failed_code() -> int:
+    """讓整輪 pytest 以「有測試失敗」的退出碼結束。"""
+    code = getattr(pytest, "ExitCode", None)
+    return int(code.TESTS_FAILED) if code is not None else 1
+
+
+def pytest_sessionfinish(session, exitstatus):
+    import subprocess
+    root = _PathLib(__file__).resolve().parents[1]
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--", "state"],
+            cwd=root, capture_output=True, encoding="utf-8",
+            errors="replace", timeout=60)
+    except Exception:                       # noqa: BLE001 - 沒有 git 就跳過
+        return
+    if out.returncode != 0:
+        # **查詢失敗不等於乾淨**(r14 外審第二輪):git 出錯就當成
+        # 「不知道」,而不知道不可以被讀成「沒事」—— 這道不變式的
+        # 全部意義就是不依賴任何人的自律。
+        print("[state-invariant] git status 查不動,無法確認 state 是否被動過:"
+              + (out.stderr or "").strip()[:200], file=_sys.stderr)
+        session.exitstatus = _pytest_failed_code()
+        return
+    dirty = [ln for ln in (out.stdout or "").splitlines() if ln.strip()]
+    if not dirty:
+        return
+    # **不自動還原**:那會把使用者自己的修改一起丟掉(這個 repo 的
+    # `state/` 本來就會被生產流程改)。只把事實喊出來,並指出怎麼救。
+    print("\n" + "=" * 68, file=_sys.stderr)
+    print("[state-invariant] 測試跑完後 state/ 被動過了:", file=_sys.stderr)
+    for ln in dirty[:20]:
+        print("   " + ln, file=_sys.stderr)
+    print("如果這不是你有意的改動,請 `git restore -- state/` 還原;"
+          "\n測試不應該修改 repo 的真實 state(見上面的守衛說明)。",
+          file=_sys.stderr)
+    print("=" * 68, file=_sys.stderr)
+    # **印出來不等於擋下來**(r14 外審第二輪):先前只 print,退出碼仍是 0
+    # —— CI 照樣綠,而這道不變式的整個目的就是在 push 之前擋住。
+    # 我自己驗證時只看「有沒有印出警告」,沒看退出碼:那是同一種錯的觀測版本。
+    session.exitstatus = _pytest_failed_code()

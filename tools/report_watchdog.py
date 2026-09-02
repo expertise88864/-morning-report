@@ -476,6 +476,18 @@ def producer_alert_delivered(run_id, get_json, *, sleep=None,
     return ACK_UNKNOWN
 
 
+def _gha_output(key: str, value: str) -> None:
+    """寫一個 GitHub Actions step output(非 Actions 環境 no-op)。"""
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"{key}={value}" + chr(10))
+    except OSError as e:                    # 觀測性失敗不得影響告警
+        print(f"[watchdog] step output 寫入失敗: {e}", file=sys.stderr)
+
+
 def _manifest_run_id() -> str:
     """本班 manifest 記下的 GitHub run id(讀不到回空字串)。"""
     try:
@@ -534,6 +546,10 @@ def _quality_exit(info: str, get_json=None, sleep=None) -> int:
         return RC_QUALITY_DEGRADED
     why = ("那一班已經結束、而品質告警沒有成功" if ack == ACK_UNSENT
            else "等到逾時仍查不出結果(可能還在跑)")
+    # **第四態要傳到最醒目的那一層**(r14 外審):Python 這裡分得出
+    # `unsent`(確定沒送成)與 `unknown`(我還不知道),但信件主旨對兩者
+    # 說同一句「沒送成」—— 在 operator 最先看到的地方又合流了。
+    _gha_output("ack_state", ack)
     print(f"[watchdog] 只有降級,但{why}"
           f"(run {run_id or '?'})—— 補寄一次,但這不算事故",
           file=sys.stderr)

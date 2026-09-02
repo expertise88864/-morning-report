@@ -486,6 +486,20 @@ def test_every_finding_declares_its_domain():
     src = io.open(_ROOT / "run_quality.py", encoding="utf-8").read()
     codes = set(re.findall(r'add\("([a-z0-9_:]+)"', src))
     assert len(codes) >= 40, ("掃描器疑似失配,只找到", sorted(codes))
+    # **動態產生的 code 也要算進來**(r10 外審):守衛先前只掃字面
+    # `add("...")`,而 `_ALARMING` 那三個是 `add(_label, ...)` 產生的 ——
+    # 它們從來沒被這道守衛檢查過,全部落到「沒登記 → 預設控制面」。
+    # 「所有字面 add() 都登記」成立,不等於「所有可能產生的 finding
+    # 都登記」;閉世界斷言要涵蓋工廠。
+    codes |= set(re.findall(r'"([a-z0-9_]+)":\s*\(\s*"(?:defect|degraded)"',
+                            src))
+    # **守衛自己要掃得到那些工廠**:少了這一句,拿掉上面的動態掃描也不會
+    # 讓任何測試變紅(那三個 code 剛好都登記了)—— 反例被前置條件擋住,
+    # 而下一個忘記登記的動態 code 就會靜靜溜過去。
+    for dyn in ("story_ledger_corrupt", "delivery_receipt_publish",
+                "analysis_recap_unreadable"):
+        assert dyn in codes, (
+            f"守衛掃不到動態產生的 {dyn} —— 閉世界斷言漏了工廠")
     prefixes = tuple(p for p, _ in rq._DOMAIN_PREFIXES)
     missing = sorted(c for c in codes
                      if c not in rq._FINDING_DOMAINS
@@ -604,3 +618,93 @@ def test_the_gate_pushed_out_two_more_boundaries():
     assert "KNOWN_DEGRADED = frozenset" in rq_src
     assert "KNOWN_DEGRADED" not in io.open(
         _ROOT / "delivery_sla.py", encoding="utf-8").read()
+
+
+def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
+    """r10 外審(**9/2 自然重現**):`recap_not_previous_session` 是 degraded,
+    而且是**前一天** Luna 落 legacy 的合理後果。它讓看門狗 09:27 又寄了
+    一封與主班 07:42 **完全相同**的品質信,並把 Actions 上的看門狗染紅
+    —— 而那天 07:37 準時寄達、SLA 過、特化路徑過、state 契約過。
+
+    紅色的「Morning Report Watchdog」很容易被讀成「今天出事了」。
+    """
+    def _rc(findings):
+        monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
+        return w._quality_exit("2026-09-02 07:14")
+
+    assert _rc([]) == w.RC_OK
+    degraded = [{"code": "recap_not_previous_session", "severity": "degraded",
+                 "detail": "昨日觀點停在 08-31", "domain": rq.DOMAIN_CONTENT}]
+    assert _rc(degraded) == w.RC_QUALITY_DEGRADED, "降級被當成缺陷"
+    defect = degraded + [{"code": "luna_rejected", "severity": "defect",
+                          "detail": "x", "domain": rq.DOMAIN_CONTENT}]
+    assert _rc(defect) == w.RC_QUALITY_DEFECT, "有缺陷卻被降級處理"
+
+    # workflow:只有 rc=1/2 才寄信與染紅
+    import yaml
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
+        encoding="utf-8").read())
+    steps = {s.get("name") or "": s for j in wf["jobs"].values()
+             for s in j.get("steps", [])}
+    for name in ("Alert", "Fail the run so it is visible in the Actions list"):
+        cond = " ".join(steps[name]["if"].split())
+        assert "rc == '1'" in cond and "rc == '2'" in cond, (name, cond)
+        assert "rc != '0'" not in cond, (
+            f"{name} 又變回「只要不是 0 就當事故」", cond)
+    assert "rc == '1'" in steps["Auto rescue"]["if"], "補寄的條件被動到了"
+
+
+def test_the_domain_registry_covers_the_dynamic_factories():
+    """r10 外審:守衛先前只掃字面 `add("...")`,而 `_ALARMING` 那三個是
+    `add(_label, ...)` 產生的 —— **它們從來沒被這道守衛檢查過**,
+    全部落到「沒登記 → 預設控制面」。
+
+    「所有字面 `add()` 都登記」成立,不等於「所有可能產生的 finding
+    都登記」。而 `analysis_recap_unreadable` 是**內容連續性**
+    (明天的昨日觀點會缺),在刻意不寄的日子不該拿它報警。
+    """
+    for code, want in (("story_ledger_corrupt", rq.DOMAIN_CONTROL_PLANE),
+                       ("delivery_receipt_publish", rq.DOMAIN_CONTROL_PLANE),
+                       ("analysis_recap_unreadable", rq.DOMAIN_CONTENT)):
+        assert code in rq._FINDING_DOMAINS, f"{code} 沒有明確登記"
+        assert rq.finding_domain(code) == want, code
+
+
+def test_rc3_only_applies_where_its_premise_holds(monkeypatch):
+    """r10 外審第二輪(**我引入的**):rc=3 的意思是「主班收尾時已經寄過
+    同一封了,不必說第二遍」—— 而主班的品質自評條件是
+    `run_outcome == 'delivered'`,**刻意不寄的日子根本不跑**。
+
+    在 `_control_plane_exit()` 回 3 就是把控制面的問題降成一行綠色的
+    job log,沒有人會知道。前提不成立的地方不能套用同一個結論。
+    """
+    def _skip(findings):
+        monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
+        return w._control_plane_exit("2026-09-06 05:20")
+
+    # 刻意不寄 + 控制面 finding(**降級也算**)→ 一律告警並染紅
+    for sev in ("degraded", "defect"):
+        rc = _skip([{"code": "manifest_schema_unsupported", "severity": sev,
+                     "detail": "x", "domain": rq.DOMAIN_CONTROL_PLANE}])
+        assert rc == w.RC_QUALITY_DEFECT, (sev, rc)
+    # 內容類仍然濾掉(今天本來就沒有信)
+    assert _skip([{"code": "analysis_not_specialized", "severity": "degraded",
+                   "detail": "x", "domain": rq.DOMAIN_CONTENT}]) == w.RC_OK
+    assert _skip([]) == w.RC_OK
+
+    # 而寄成功那條路上,前提成立 —— rc=3 照舊
+    monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
+        {"code": "recap_not_previous_session", "severity": "degraded",
+         "detail": "x", "domain": rq.DOMAIN_CONTENT}])
+    assert w._quality_exit("2026-09-02 07:14") == w.RC_QUALITY_DEGRADED
+
+    # 前提本身要釘住:主班的品質自評確實只在 delivered 時跑
+    import yaml
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "morning-report-b.yml",
+        encoding="utf-8").read())
+    quality = [s for s in wf["jobs"]["send-report"]["steps"]
+               if "品質自評" in (s.get("name") or "")][0]
+    assert "run_outcome == 'delivered'" in quality["if"], (
+        "主班品質自評的條件變了 —— rc=3 的前提要重新檢查", quality["if"])

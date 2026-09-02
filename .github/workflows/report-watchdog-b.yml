@@ -109,8 +109,9 @@ jobs:
           WATCHDOG_FRESH_MANIFEST: ${{ runner.temp }}/wd_manifest.json
         run: python tools/report_watchdog.py --rescue
 
+      # rc=3(只有降級)不寄:主班收尾時已經自評並寄過同一封了。
       - name: Alert
-        if: steps.check.outputs.rc != '0'
+        if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -189,6 +190,11 @@ jobs:
           print("[watchdog] 告警信已寄出")
           PY
 
+      # **只有降級不染紅**(2026-09-02 r10 外審,自然重現):9/2 那天信
+      # 07:37 準時寄達、SLA 過、特化路徑過,只有一個 degraded(而且是
+      # 前一天的後果),看門狗卻被染紅 —— Actions 上一個紅色的
+      # 「Morning Report Watchdog」很容易被讀成「今天出事了」。
+      # rc=3 仍然會在 job log 留下完整訊息,只是不當成事故。
       - name: Fail the run so it is visible in the Actions list
-        if: steps.check.outputs.rc != '0'
+        if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
         run: exit 1

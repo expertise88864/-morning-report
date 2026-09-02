@@ -80,6 +80,14 @@ _FINDING_DOMAINS = {
     "payload_proxy_thin": DOMAIN_CONTENT,
     "phantom_refs": DOMAIN_CONTENT,
     "watch_dropped_capacity": DOMAIN_CONTENT,
+    # ---- `_ALARMING` 家族(**動態產生**,不是字面 `add("...")`)
+    # r10 外審:守衛只掃字面 code,這三個因此從來沒被檢查過,
+    # 全部落到「沒登記 → 預設控制面」。前兩個當控制面是對的,
+    # 但 `analysis_recap_unreadable` 是**內容連續性** —— 明天的昨日觀點
+    # 會缺,那是信的內容問題,在刻意不寄的日子不該拿它報警。
+    "story_ledger_corrupt": DOMAIN_CONTROL_PLANE,
+    "delivery_receipt_publish": DOMAIN_CONTROL_PLANE,
+    "analysis_recap_unreadable": DOMAIN_CONTENT,
 }
 
 

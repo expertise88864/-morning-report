@@ -372,20 +372,47 @@ def dispatch_runs_today(now: dt.datetime, get_json) -> int:
         return -1
 
 
+#: 看門狗的退出碼 —— **四階,不是三階**(2026-09-02 r10 外審,自然重現)。
+#:
+#:   0  今天的信寄到了,而且判準沒話說
+#:   1  今天沒有信 → 補寄 + 告警 + 紅
+#:   2  信寄到了,但有**缺陷**(程式或接線壞了)→ 告警 + 紅
+#:   3  信寄到了,只有**降級**(讀者少拿到東西,可能是外部因素)
+#:      → **不重複告警、不染紅**。這一階的前提是「主班收尾時已經寄過
+#:      同一封了」,而那只在**寄成功**的日子成立(品質自評的條件是
+#:      `run_outcome == 'delivered'`)—— 所以 rc=3 只給 `_quality_exit()`,
+#:      刻意不寄那條路一律回 2(見 `_control_plane_exit`)。
+#:
+#: 9/2 的實況:`recap_not_previous_session`(degraded,而且是**前一天**
+#: Luna 落 legacy 的合理後果)讓看門狗 09:27 又寄了一封與主班 07:42
+#: **完全相同**的品質信,並把 Actions 上的看門狗染成紅色 —— 而今天
+#: 07:37 準時寄達、SLA 過、特化路徑過、state 契約過。
+#: 紅色的 `Morning Report Watchdog` 很容易被讀成「今天出事了」。
+RC_OK, RC_NOT_DELIVERED, RC_QUALITY_DEFECT, RC_QUALITY_DEGRADED = 0, 1, 2, 3
+
+
 def _quality_exit(info: str) -> int:
     """跑起來也寄到了 —— 再問一次「跑成了嗎」。
 
-    **回 2 而不是 1**:呼叫端要能分辨「今天沒有信」與「今天的信比它
-    該有的樣子差」—— 兩者的緊急程度與該做的事都不同。
+    **缺陷與降級要分開**:呼叫端要能分辨「今天沒有信」、「信寄到了但
+    程式壞了」與「信寄到了、只是少了一段」—— 三者的緊急程度與該做的事
+    都不同。而降級那一類**主班自己已經在收尾時寄過同一封信了**
+    (品質自評的條件是 `run_outcome == 'delivered'`,今天寄成功就會跑),
+    看門狗再寄一次只是同一件事說兩遍。
     """
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
     findings = quality_findings()
     if not findings:
-        return 0
-    print(f"[watchdog] 品質異常({info}):\n" + _rq.summarize(findings),
-          file=sys.stderr)
-    return 2
+        return RC_OK
+    defect = any(f.get("severity") == "defect" for f in findings)
+    print(f"[watchdog] 品質{'異常' if defect else '降級'}({info}):" + chr(10)
+          + _rq.summarize(findings), file=sys.stderr)
+    if defect:
+        return RC_QUALITY_DEFECT
+    print("[watchdog] 只有降級,且主班收尾時已經自評並告警過 —— "
+          "不重複寄信、不把這一班染紅", file=sys.stderr)
+    return RC_QUALITY_DEGRADED
 
 
 #: (r9 外審後改用 finding 自己宣告的 `domain`,不再從名字猜 ——
@@ -410,10 +437,15 @@ def _control_plane_exit(info: str) -> int:
     findings = [f for f in quality_findings()
                 if f.get("domain") != _rq.DOMAIN_CONTENT]
     if not findings:
-        return 0
+        return RC_OK
     print(f"[watchdog] 控制面異常({info},今天刻意不寄信):" + chr(10)
           + _rq.summarize(findings), file=sys.stderr)
-    return 2
+    # **rc=3 的前提在這條路上不成立**(r10 外審第二輪):3 的意思是
+    # 「主班收尾時已經寄過同一封了,不必說第二遍」—— 而主班的品質自評
+    # 條件是 `run_outcome == 'delivered'`,刻意不寄的日子**根本不跑**。
+    # 在這裡回 3 就是把控制面的問題降成一行綠色的 job log,沒有人會知道。
+    # 只要還留著控制面 finding(降級也算),就得告警並染紅。
+    return RC_QUALITY_DEFECT
 
 
 def _rescue_cli() -> int:

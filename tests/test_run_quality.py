@@ -174,10 +174,18 @@ def test_the_watchdog_distinguishes_broken_from_never_ran():
     src = (Path(__file__).resolve().parents[1]
            / "tools" / "report_watchdog.py").read_text(encoding="utf-8")
     assert "def _quality_exit" in src
-    assert "return 2" in src, "跑壞了與沒跑起來共用回傳碼"
+    # r10 外審後是**四階**:0 乾淨 / 1 沒有信 / 2 有缺陷 / 3 只有降級。
+    # 「沒有信」與「信比它該有的樣子差」仍然分得開(這條測試的原意),
+    # 而降級又從缺陷裡分了出來 —— 那一類主班收尾時已經自評並告警過。
+    for name in ("RC_NOT_DELIVERED", "RC_QUALITY_DEFECT",
+                 "RC_QUALITY_DEGRADED"):
+        assert name in src, f"回傳碼的階層少了 {name}"
+    assert "RC_QUALITY_DEFECT, RC_QUALITY_DEGRADED = 0, 1, 2, 3" in src
     wf = (Path(__file__).resolve().parents[1] / ".github" / "workflows"
           / "report-watchdog-b.yml").read_text(encoding="utf-8")
-    assert "outputs.rc != '0'" in wf, "workflow 還在看舊的 stale 旗標"
+    assert "outputs.rc == '1'" in wf, "workflow 還在看舊的 stale 旗標"
+    assert "outputs.rc != '0'" not in wf, (
+        "又變回「只要不是 0 就當事故」—— 只有降級的日子會被染紅")
     assert "WATCHDOG_RC" in wf and "WATCHDOG_DETAIL" in wf
 
 

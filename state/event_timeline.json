@@ -523,5 +523,124 @@
   "event_type": "geopolitical",
   "action": "tariff_action",
   "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#f1f867": {
+  "first_seen": "2026-09-03",
+  "days": 1,
+  "last_seen": "2026-09-03",
+  "latest_title": "川普：美國準備隨時再次攻擊伊朗 - TVBS新聞網",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "備隨",
+   "再次",
+   "國準",
+   "川普",
+   "攻擊",
+   "時再",
+   "次攻",
+   "準備",
+   "美國",
+   "隨時"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:鴻海:2026-09": {
+  "first_seen": "2026-09-03",
+  "days": 1,
+  "last_seen": "2026-09-03",
+  "latest_title": "鴻海稱供應鏈去風險化加速，倡議「Made with Taiwan」在地共同製造",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "made",
+   "taiwan",
+   "with",
+   "供應",
+   "倡議",
+   "共同",
+   "加速",
+   "化加",
+   "去風",
+   "同製",
+   "在地",
+   "地共",
+   "應鏈",
+   "稱供",
+   "製造",
+   "鏈去",
+   "險化",
+   "風險"
+  ],
+  "entity": "鴻海",
+  "subject_basis": "alias",
+  "subjects": [
+   "鴻海"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:中國:2026-09": {
+  "first_seen": "2026-09-03",
+  "days": 1,
+  "last_seen": "2026-09-03",
+  "latest_title": "報導稱北京修訂國防動員法",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "修訂",
+   "動員",
+   "員法",
+   "國防",
+   "訂國",
+   "防動"
+  ],
+  "entity": "中國",
+  "subject_basis": "alias",
+  "subjects": [
+   "中國"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:俄羅斯:2026-09": {
+  "first_seen": "2026-09-03",
+  "days": 1,
+  "last_seen": "2026-09-03",
+  "latest_title": "普丁稱俄軍在烏克蘭戰爭佔上風",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "丁稱",
+   "上風",
+   "佔上",
+   "俄軍",
+   "克蘭",
+   "在烏",
+   "戰爭",
+   "普丁",
+   "烏克",
+   "爭佔",
+   "稱俄",
+   "蘭戰",
+   "軍在"
+  ],
+  "entity": "俄羅斯",
+  "subject_basis": "alias",
+  "subjects": [
+   "俄羅斯"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
  }
 }

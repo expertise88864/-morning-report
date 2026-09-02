@@ -323,7 +323,8 @@ def test_an_intentional_skip_still_checks_the_control_plane(tmp_path,
     codes = {f["code"] for f in rq.assess(broken)}
     assert "manifest_schema_invalid" in codes, codes
     # 控制面的留下,信的內容那類濾掉
-    kept = [c for c in codes if not c.startswith(w._CONTENT_ONLY_PREFIXES)]
+    kept = [f["code"] for f in rq.assess(broken)
+            if f.get("domain") != rq.DOMAIN_CONTENT]
     assert "manifest_schema_invalid" in kept
     assert "analysis_not_specialized" in codes and (
         "analysis_not_specialized" not in kept), (
@@ -377,16 +378,18 @@ def test_the_skip_path_alerts_on_control_plane_but_not_on_content(monkeypatch):
     刻意不寄的日子:控制面壞掉要 rc=2,而「信的內容」那類 finding
     一條都不可以觸發告警(今天本來就沒有信)。
     """
-    content_only = [{"code": "analysis_not_specialized",
-                     "severity": "degraded", "detail": "落回 legacy"},
-                    {"code": "luna_rejected", "severity": "defect",
-                     "detail": "特化輸出被擋"}]
+    # r9 外審後 finding 自己帶 `domain`(不再從名字猜)
+    content_only = [{"code": "analysis_not_specialized", "detail": "落回 legacy",
+                     "severity": "degraded", "domain": rq.DOMAIN_CONTENT},
+                    {"code": "payload_over_budget", "detail": "packet 超標",
+                     "severity": "defect", "domain": rq.DOMAIN_CONTENT}]
     monkeypatch.setattr(w, "quality_findings", lambda *a, **k: content_only)
     assert w._control_plane_exit("測試") == 0, (
         "刻意不寄的日子拿「信的內容」報警 —— 那會製造假警報")
 
     mixed = content_only + [{"code": "manifest_schema_invalid",
-                             "severity": "defect", "detail": "版本壞掉"}]
+                             "severity": "defect", "detail": "版本壞掉",
+                             "domain": rq.DOMAIN_CONTROL_PLANE}]
     monkeypatch.setattr(w, "quality_findings", lambda *a, **k: mixed)
     assert w._control_plane_exit("測試") == 2, "控制面壞掉卻沒有告警"
 
@@ -467,3 +470,137 @@ def test_the_assessor_is_a_consumer_too():
     assert mr._manifest_delivery_verdict(
         {"date": "2026-09-02 05:07", "delivery": contradictory},
         dt.datetime(2026, 9, 2, 5, 20, tzinfo=mr.TPE)) == ""
+
+
+def test_every_finding_declares_its_domain():
+    """r9 外審:分類**不可以從名字猜**。實測 47 個 finding code 裡只有 7 個
+    符合舊的前綴表,而 `fetch_plan_no_clusters` / `payload_over_budget` /
+    `phantom_refs` / `event_extractor_partial` / `watch_dropped_capacity`
+    這些明顯是內容管線的 finding 全都會被當成控制面 —— 在「今天刻意不寄」
+    的日子就是假警報。
+
+    這道守衛掃 `run_quality.py` 裡**所有** `add("...")` 的字面 code,
+    要求每一個都在宣告表裡(前綴家族除外)。空集合不算通過。
+    """
+    import re
+    src = io.open(_ROOT / "run_quality.py", encoding="utf-8").read()
+    codes = set(re.findall(r'add\("([a-z0-9_:]+)"', src))
+    assert len(codes) >= 40, ("掃描器疑似失配,只找到", sorted(codes))
+    prefixes = tuple(p for p, _ in rq._DOMAIN_PREFIXES)
+    missing = sorted(c for c in codes
+                     if c not in rq._FINDING_DOMAINS
+                     and not c.startswith(prefixes))
+    assert not missing, (
+        f"這些 finding 沒有宣告 domain:{missing} —— "
+        "沒登記會落到控制面(多吵一次),但那不是可以長期依賴的預設")
+    # 分類本身要有意義:兩類都不可以是空的
+    doms = set(rq._FINDING_DOMAINS.values())
+    assert doms == {rq.DOMAIN_CONTROL_PLANE, rq.DOMAIN_CONTENT}, doms
+    # 外審點名的那幾個一定要在內容類(它們正是舊前綴表漏掉的)
+    for c in ("fetch_plan_no_clusters", "payload_over_budget", "phantom_refs",
+              "event_extractor_partial", "watch_dropped_capacity",
+              "manifest_incomplete", "namespace_unrealizable"):
+        assert rq.finding_domain(c) == rq.DOMAIN_CONTENT, c
+    # 而 assess() 真的把 domain 帶在每一條 finding 上
+    for f in rq.assess({"date": "2026-09-02 05:20", "manifest_schema": 2,
+                        "llm": {"analysis_origin": "legacy"},
+                        "delivery": {"success": True, "attempted": True}}):
+        assert f.get("domain") in (rq.DOMAIN_CONTROL_PLANE,
+                                   rq.DOMAIN_CONTENT), f
+
+
+def test_the_record_defects_do_not_rewrite_the_outcome():
+    """r9 外審:**「有沒有寄出」與「這份紀錄本身合不合法」是兩個維度。**
+
+    `attempted` 是輔助 metadata。它壞掉不可以改寫結局 —— 明確的
+    `success: true` 是很強的「已寄出」證據,因為旁邊的欄位不一致就判成
+    INVALID → rc=1 → 自動補寄,那是把「metadata 壞了」變成**真的重複
+    寄信**(收不回來的那一邊)。所以瑕疵只進 `defects`,由品質判準報。
+    """
+    import delivery_contract as dc
+    # 結局不變,但留下瑕疵
+    for dv, want_defect in (
+            ({"attempted": False, "success": True},
+             dc.DEFECT_ATTEMPTED_VS_DELIVERED),
+            ({"attempted": "yes", "success": True},
+             dc.DEFECT_ATTEMPTED_INVALID)):
+        outcome, defects = dc.delivery_verdict(dv)
+        assert outcome == dc.OUTCOME_DELIVERED, (dv, outcome)
+        assert want_defect in defects, (dv, defects)
+    skipped = dc.delivery_verdict(
+        {"attempted": True, "success": False, "skipped_reason": "w"})
+    assert skipped[0] == dc.OUTCOME_SKIPPED
+    assert dc.DEFECT_ATTEMPTED_VS_SKIPPED in skipped[1]
+    # 完全正常的兩種結局不留瑕疵
+    assert dc.delivery_verdict({"attempted": True, "success": True}) == (
+        dc.OUTCOME_DELIVERED, ())
+    assert dc.delivery_verdict(
+        {"attempted": False, "success": False, "skipped_reason": "w"}) == (
+        dc.OUTCOME_SKIPPED, ())
+
+    # 判準把瑕疵報成 degraded(不是 defect —— 信確實寄出去了)
+    codes = {f["code"]: f["severity"] for f in rq.assess({
+        "date": "2026-09-02 05:20", "manifest_schema": 2,
+        "llm": {"analysis_origin": "legacy"},
+        "delivery": {"attempted": False, "success": True,
+                     "delivered_at": "2026-09-02T05:30:00+08:00",
+                     "first_delivered_at": "2026-09-02T05:30:00+08:00"}})}
+    assert codes.get(
+        "delivery_record_attempted_false_but_delivered") == "degraded", codes
+    assert "delivery_state_invalid" not in codes, (
+        "metadata 不一致被升級成「說不出寄了沒」—— 那會觸發補寄", codes)
+
+
+def test_a_skip_reason_must_be_a_string():
+    """r9 外審:`bool(str(dv.get("skipped_reason") or "").strip())` ——
+    `str()` 會把 `1` / `True` / `["..."]` / `{...}` 全部變成非空字串,
+    於是壞掉的型別被合法化成「刻意不寄」,看門狗就不會補寄。
+    這與上一輪修掉的 `success="false"` 是**完全同族**的問題:
+    文件宣稱嚴格的狀態機,實作卻又做 coercion。
+
+    這個欄位**決定結局**,所以型別壞掉是 INVALID(不像 `attempted`
+    那種輔助 metadata 只留瑕疵)。
+    """
+    import delivery_contract as dc
+    for junk in (1, True, ["weekend_no_new_content"], {"foo": "bar"}, 0.5):
+        dv = {"attempted": False, "success": False, "skipped_reason": junk}
+        assert dc.delivery_outcome(dv) == dc.OUTCOME_INVALID, (junk, dv)
+    # 真正的字串照舊;空白字串等於沒有理由
+    assert dc.delivery_outcome({
+        "attempted": False, "success": False,
+        "skipped_reason": "weekend_no_new_content"}) == dc.OUTCOME_SKIPPED
+    assert dc.delivery_outcome({
+        "attempted": True, "success": False,
+        "skipped_reason": "   "}) == dc.OUTCOME_FAILED
+
+
+def test_the_gate_pushed_out_two_more_boundaries():
+    """r9:1000 行閘門**第二次**擋下「再加一點」。
+
+    這批加了 domain 分類表(47 個 code)之後 `run_quality.py` 到 1098 行,
+    閘門不接受第七次調高數字 —— 於是搬出兩個自足的邊界:
+    `finding_domains.py`(分類登記表)與 `delivery_sla.py`(期限原語)。
+
+    **判準本體仍在 `run_quality`**:`assess()` 裡產生
+    `delivery_sla_missed` / `run_delivered_after_target` 的那段與 `add()`
+    閉包綁著,要拆得再動一次結構 —— 那應該獨立成一批(這一批已經有
+    四條行為修正)。誠實少搬。
+    """
+    import delivery_sla as ds
+    import finding_domains as fd
+    assert rq.finding_domain is fd.finding_domain
+    assert rq._sla_business_day is ds._sla_business_day
+    assert rq.MANIFEST_SCHEMA_REQUIRED_FROM == ds.MANIFEST_SCHEMA_REQUIRED_FROM
+
+    rq_src = io.open(_ROOT / "run_quality.py", encoding="utf-8").read()
+    assert len(rq_src.splitlines()) <= 1000, "又長回閘門之上了"
+    # 搬走的不可以留第二份
+    for gone in ("def finding_domain", "def _sla_business_day",
+                 "def _to_sla_tz"):
+        assert gone not in rq_src, f"{gone} 搬走了卻又留了一份"
+    # 判準本體確實還在(這次刻意沒搬)
+    assert 'add("delivery_sla_missed"' in rq_src
+    # `KNOWN_DEGRADED` 不屬於期限原語 —— 第一次切片把它一起搬走了
+    assert "KNOWN_DEGRADED = frozenset" in rq_src
+    assert "KNOWN_DEGRADED" not in io.open(
+        _ROOT / "delivery_sla.py", encoding="utf-8").read()

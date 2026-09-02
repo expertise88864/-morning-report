@@ -54,40 +54,91 @@ OUTCOME_INCOMPLETE = "incomplete"     #: 還沒有結論(attempted 中間狀態)
 OUTCOME_INVALID = "invalid"           #: 型別壞掉,或**互相矛盾**
 
 
-def delivery_outcome(dv) -> str:
-    """一份 `delivery` 到底是什麼結局 —— **一個狀態機,不是幾個 if**。
+#: 紀錄本身的契約瑕疵 —— **與「有沒有寄出」是兩個維度**。
+#: r9 外審:`attempted` 是輔助 metadata,它壞掉**不可以**改寫結局。
+#: 明確的 `success: true` 是很強的「已寄出」證據;因為旁邊的欄位不一致
+#: 就判成 INVALID → rc=1 → 自動補寄,那是把「metadata 壞了」變成
+#: **真的重複寄信**(收不回來的那一邊)。所以瑕疵只進 `defects`,
+#: 由品質判準報,不動控制流。
+DEFECT_ATTEMPTED_INVALID = "attempted_not_boolean"
+DEFECT_ATTEMPTED_VS_DELIVERED = "attempted_false_but_delivered"
+DEFECT_ATTEMPTED_VS_SKIPPED = "attempted_true_but_skipped"
 
-    2026-09-01 r8 外審:先前每個 consumer 各自把 `success` 與
-    `skipped_reason` 排成自己的順序,於是**同一份 state 在兩處說不同的話**:
-    `{"success": true, "skipped_reason": "..."}` 在看門狗主流程是
-    「刻意未寄信」,在 `fresh_conclusion()` 是「今天已寄出」。
-    那不是誰的順序寫錯,是**這一對欄位從來沒有被當成一個狀態**看待 ——
-    矛盾的組合根本沒有人拒絕它。
 
-    不變量(外審給的表):
+def _skip_reason(dv):
+    """`skipped_reason` 的三態:`None`(沒有)/ 字串 / `False`(型別壞掉)。
 
-        DELIVERED   success is True,  沒有 skipped_reason
-        SKIPPED     success is False, skipped_reason 非空
-        FAILED      success is False, 沒有 skipped_reason,attempted is True
-        INCOMPLETE  還沒有結論(只有 attempted,或什麼都還沒寫)
-        INVALID     型別壞掉,或**同時**宣稱寄出與刻意不寄
+    r9 外審:先前寫 `bool(str(dv.get("skipped_reason") or "").strip())`
+    —— `str()` 會把 `1` / `True` / `["..."]` / `{...}` 全部變成非空字串,
+    於是壞掉的型別被合法化成「刻意不寄」。這與上一輪修掉的
+    `success="false"` 是**完全同族**的問題:文件宣稱嚴格的狀態機,
+    實作卻又做 coercion。
 
-    「只有 `skipped_reason` 而沒有 `success: false`」也是 INVALID:
-    產出端一定成對寫(`attempted=False, success=False, skipped_reason=...`),
-    少一半就是這份 state 不是它寫的。
+    這個欄位**決定結局**(是不是刻意不寄),所以型別壞掉是 INVALID,
+    不是瑕疵 —— 與 `attempted` 那種輔助 metadata 不同。
+    """
+    raw = dv.get("skipped_reason")
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return False
+    return raw.strip() or None
+
+
+def delivery_verdict(dv):
+    """→ `(結局, 契約瑕疵 tuple)` —— **兩個維度,不要壓成一個字串**。
+
+    r9 外審:「有沒有寄出」與「這份紀錄本身是否完全合法」是兩件事。
+    前者決定控制流(要不要補寄、要不要告警沒寄到),後者決定品質告警。
     """
     if not isinstance(dv, dict):
-        return OUTCOME_INVALID
+        return OUTCOME_INVALID, ()
     state = delivery_success(dv)
     if state == DELIVERY_SUCCESS_INVALID:
-        return OUTCOME_INVALID
-    skipped = bool(str(dv.get("skipped_reason") or "").strip())
+        return OUTCOME_INVALID, ()
+    reason = _skip_reason(dv)
+    if reason is False:                     # 型別壞掉 —— 說不出這是什麼結局
+        return OUTCOME_INVALID, ()
+    skipped = reason is not None
+
+    defects = []
+    attempted = dv.get("attempted")
+    if "attempted" in dv and not isinstance(attempted, bool):
+        defects.append(DEFECT_ATTEMPTED_INVALID)
+        attempted = None
+
     if state == DELIVERY_SUCCEEDED:
-        # **不可以同時宣稱寄出與刻意不寄**
-        return OUTCOME_INVALID if skipped else OUTCOME_DELIVERED
+        # **不可以同時宣稱寄出與刻意不寄** —— 兩個終局宣稱互斥
+        if skipped:
+            return OUTCOME_INVALID, tuple(defects)
+        if attempted is False:
+            defects.append(DEFECT_ATTEMPTED_VS_DELIVERED)
+        return OUTCOME_DELIVERED, tuple(defects)
     if skipped:
-        return (OUTCOME_SKIPPED if dv.get("success") is False
-                else OUTCOME_INVALID)
-    if dv.get("attempted") is True and dv.get("success") is False:
-        return OUTCOME_FAILED
-    return OUTCOME_INCOMPLETE
+        # 「刻意不寄」要有明確的 `success: false`,不能只有一半
+        if dv.get("success") is not False:
+            return OUTCOME_INVALID, tuple(defects)
+        if attempted is True:
+            defects.append(DEFECT_ATTEMPTED_VS_SKIPPED)
+        return OUTCOME_SKIPPED, tuple(defects)
+    if attempted is True and dv.get("success") is False:
+        return OUTCOME_FAILED, tuple(defects)
+    return OUTCOME_INCOMPLETE, tuple(defects)
+
+
+def delivery_outcome(dv) -> str:
+    """`delivery_verdict()` 的結局那一維(既有呼叫端沿用這支)。
+
+    不變量(r8 外審給的表,r9 補上 `attempted` 與 `skipped_reason` 的型別):
+
+        DELIVERED   success is True,  沒有 skipped_reason
+        SKIPPED     success is False, skipped_reason 是**非空字串**
+        FAILED      success is False, 沒有 skipped_reason,attempted is True
+        INCOMPLETE  還沒有結論
+        INVALID     型別壞掉,或**同時**宣稱寄出與刻意不寄
+
+    `attempted` 的不一致**不在這裡**:它是輔助 metadata,壞掉只進
+    `defects`(見 `delivery_verdict`)—— 否則會把「metadata 壞了」
+    變成自動補寄,也就是真的重複寄信。
+    """
+    return delivery_verdict(dv)[0]

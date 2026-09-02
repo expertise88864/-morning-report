@@ -31,7 +31,6 @@
 """
 from __future__ import annotations
 
-import re as _re
 import datetime as _dt
 
 # **判準只有一份**:`delivery` 的契約住在 `delivery_contract`。
@@ -48,13 +47,33 @@ from delivery_contract import (      # noqa: F401
     OUTCOME_SKIPPED,
     delivery_outcome,
     delivery_success,
+    delivery_verdict,
+)
+# 分類表住在 `finding_domains`(見該模組的說明)。re-export 讓既有
+# 呼叫端(`rq.DOMAIN_CONTENT`、`rq.finding_domain(...)`)不必改寫。
+from finding_domains import (        # noqa: F401
+    DOMAIN_CONTENT,
+    DOMAIN_CONTROL_PLANE,
+    _DOMAIN_PREFIXES,
+    _FINDING_DOMAINS,
+    finding_domain,
+)
+# 期限原語住在 `delivery_sla`(判準本體仍在這個檔,見該模組的說明)。
+from delivery_sla import (          # noqa: F401
+    MANIFEST_SCHEMA_REQUIRED_FROM,
+    MANIFEST_SCHEMA_WITH_DELIVERED_AT,
+    MANIFEST_SCHEMA_WITH_FIRST_DELIVERY,
+    SLA_HOUR,
+    SLA_MINUTE,
+    SLA_TZ,
+    _parse_sla_time,
+    _sla_business_day,
+    _to_sla_tz,
 )
 import analysis_origin as _ao
 import analysis_recap as _arc
 import llm_telemetry as _lt
 from run_manifest import MANIFEST_SCHEMA as _CURRENT_MANIFEST_SCHEMA
-from run_manifest import SCHEMA_V1_DELIVERY_TIMESTAMP as _V1_DELIVERED_AT
-from run_manifest import SCHEMA_V2_FIRST_DELIVERY as _V2_FIRST_DELIVERY
 
 #: 已知且可接受的降級步驟。**不在這裡的一律報出來** —— 白名單而不是
 #: 黑名單,是因為新的降級原因會不斷出現,而「沒見過的降級」正是最
@@ -69,133 +88,6 @@ ALWAYS_REALIZABLE = frozenset({"market:", "calibration:", "quality:"})
 
 #: **送達期限**(2026-08-31 使用者定案):信可以晚到,但台股 09:00 開盤
 #: 前必須到。判準寫成常數,`tests/test_batch_prod_0831.py` 釘住它 ——
-#: 改期限要連測試一起改,不能默默放寬。
-SLA_HOUR, SLA_MINUTE = 9, 0
-
-#: SLA 判準的時區。**期限是「台北的九點」,不是「寫下那個字串的當地九點」**
-#: (2026-09-01 外審 P2):目前 writer 寫 `+08:00`,判準直接讀 hour 剛好對;
-#: 但 writer 若哪天改寫 UTC(`2026-09-01T01:05:34+00:00` 就是台北 09:05),
-#: 判準會看到 hour=1 而說「沒有超時」—— 悄悄失效。判準自己守住時區語意。
-SLA_TZ = _dt.timezone(_dt.timedelta(hours=8))
-
-#: **`delivered_at` 從哪一版開始是必填**(2026-09-01 外審 P2)。
-#: 「舊 manifest 沒有這個欄位不算違規」是對的(否則部署當天必定一次假
-#: 警報),但沒有截止點的話那個豁免是**永久**的 —— 將來某條新寄信路徑
-#: 忘了寫,判準會說「沒問題」而不是「SLA 無法稽核」。
-#: 產出端在**權威產生器** `run_manifest.ManifestRecorder.build()` 寫下
-#: `manifest_schema`(r1 外審:先前蓋在寄送補寫那一步,而週日路徑之後
-#: 會從頭重建文件,標記就掉了)。這一版(含)以後,寄成功卻沒有
-#: `delivered_at` 就是 defect。**數字只有一個定義**(見檔頭的 import)。
-MANIFEST_SCHEMA_WITH_DELIVERED_AT = _V1_DELIVERED_AT
-#: 從這一版起,寄送成功的 manifest **必須**寫得出「今天第一次送達」是
-#: 幾點。缺了不是「舊檔」,是當日可用性無法稽核。
-MANIFEST_SCHEMA_WITH_FIRST_DELIVERY = _V2_FIRST_DELIVERY
-
-#: `manifest_schema` **自己**的豁免截止日(台北)。
-#: r8 外審:前面幾條世代都靠 `manifest_schema` 判「這份檔有沒有義務寫」,
-#: 但 `manifest_schema` 自己缺席時只能說「舊檔」—— 一個**永遠不會到期**
-#: 的豁免,與先前修掉的 `delivered_at` / `first_delivered_at` 完全同型。
-#: 它需要一個不依賴自己的歷史錨點:營業日在這一天之後還沒有世代標記,
-#: 就不是舊檔,是 writer 沒寫出來。
-#: 刻意設 09-02 而不是 09-01 —— 部署當天早上真正的舊 manifest 不該被追溯判錯。
-MANIFEST_SCHEMA_REQUIRED_FROM = _dt.date(2026, 9, 2)
-
-
-def _sla_business_day(manifest_date):
-    """SLA 的**營業日**(讀不出來回 `None`)。
-
-    取自 manifest 的 `date`(開跑時刻 —— 跨午夜的手動觸發也記開跑日,
-    那正是同日冪等用的那一天)。**讀不出來要回 None,不要自己猜一天**:
-    先前退回用送達時刻那一天,於是同一封晚了 15 小時的信,只因為日期
-    證據壞掉就從 defect 變成乾淨通過(r6 外審)。
-    """
-    try:
-        return _dt.date.fromisoformat(str(manifest_date or "")[:10])
-    except ValueError:
-        return None
-
-
-#: 產出端寫的是 `datetime.now(TPE).isoformat(timespec="seconds")`,
-#: 也就是「日期 + 分隔符 + 至少 HH:MM」。**只驗「解得開」不夠**
-#: (r6 外審第二輪):`fromisoformat("2026-09-01")` 會成功並給出**午夜**,
-#: 而午夜必然早於 09:00 —— 一個根本不含送達時刻的值於是乾淨通過。
-_ISO_DATETIME_RE = _re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
-
-
-def _parse_sla_time(raw):
-    """把 ISO 時刻換算到 SLA 時區;不符合產出端契約就回 `None`(**不拋**)。
-
-    兩個 timestamp 要各自報自己的問題 —— 共用一個 `except` 連是哪一個
-    壞掉都說不出來。
-    """
-    if not _ISO_DATETIME_RE.match(str(raw or "")):
-        return None                         # 只有日期、或根本不是時刻
-    try:
-        return _to_sla_tz(str(raw))
-    except (ValueError, TypeError):
-        return None
-
-
-def _to_sla_tz(raw: str) -> _dt.datetime:
-    """把 ISO 時刻換算到 SLA 的時區(期限是「台北的九點」)。
-
-    沒帶時區的字串視為台北(產出端一直是 TPE),帶了就換算過來。
-    解不出來會拋 `ValueError` —— 呼叫端要報「這一天無法稽核」。
-    """
-    when = _dt.datetime.fromisoformat(raw)
-    return (when.replace(tzinfo=SLA_TZ) if when.tzinfo is None
-            else when.astimezone(SLA_TZ))
-
-KNOWN_DEGRADED = frozenset({
-    # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
-    "llm:effort_not_applied:primary",
-    "llm:effort_not_applied:extractor",
-    # TAIFEX 來源日期對不上該交易日(2026-08-11 首次在生產觸發:
-    # 端點回前一天的資料)。行為是對的 —— 寧可留空也不要錯位
-    # (批#83),缺的那一格與原因都在 manifest["chips"]。
-    "chips:source_date_mismatch",
-    # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
-    # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
-    "sector:institutional_missing",
-    # 供應商擋下請求(餘額/金鑰)→ 跳過 legacy 直接走緊急備援
-    # (2026-08-26)。**這裡註冊只是為了不落成「沒見過的降級」** ——
-    # 它本身已經有專屬 finding(`llm_provider_refused_*`,說得出是哪一種、
-    # 該做什麼),那條才是通報的主體。
-    "llm:provider_refused:payment",
-    "llm:provider_refused:auth",
-    # 週回顧的延燒事件素材有壞列被跳過(2026-08-27):段落照出,只少骨架
-    "weekend_week_review_rows",
-    # 備援班的新鮮寄送紀錄讀取失敗(r2 外審 P1):守衛退回只看工作區
-    "backup_idempotence_probe",
-    # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
-    "state:alias_map_unavailable",
-    # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外
-    # IP 可能 geo-block)。賽程照出、只少場地;明細在 manifest.sports。
-    "sports:cpbl_venue_missing",
-    # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
-    # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
-    "chips:pcr_site_fallback", "chips:large_site_fallback",
-    # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
-    "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
-    "medical_journals", "sports", "policy",
-    # ── 2026-08-30:**這一整批本來全都會變成「沒見過的降級步驟」。**
-    # 08/29 的品質告警信實際印出「unknown_degradation —— 沒見過的降級
-    # 步驟:gazette」,查下去發現不是漏一個,是漏 17 個 —— 只註冊了
-    # `weekend_gazette` 而平日路徑發的是 `gazette`。新增標籤要同批註冊
-    # 在消費端,否則退化成「未知」;現在有 `test_every_emitted_degradation
-    # _label_is_registered` 機械化守住,不再靠記得。
-    "gazette", "weekend_gazette", "weekend_policy_analysis",
-    "weekend_week_review", "article_extractor", "horizontal_queries",
-    "sector_map_unavailable", "story_ledger_corrupt",
-    "analysis_recap_unreadable", "policy_keywords_load",
-    "policy_keywords_save", "delivery_receipt_publish",
-    # 除權息/公司行動(前綴族,逐個列出來才看得出漏了誰)
-    "corpact:fetch_failed", "corpact:delisted_fetch_failed",
-    "corpact:history_unreadable", "corpact:persist_failed",
-    "corpact:update_failed",
-})
-
-
 def _safe_int(v):
     """拿得到就回 int,拿不到回 0(判準不因型別而爆掉)。"""
     try:
@@ -378,6 +270,57 @@ def is_weekend_digest(manifest) -> bool:
     return str(m.get("report_kind") or "") == WEEKEND_DIGEST
 
 
+
+KNOWN_DEGRADED = frozenset({
+    # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
+    "llm:effort_not_applied:primary",
+    "llm:effort_not_applied:extractor",
+    # TAIFEX 來源日期對不上該交易日(2026-08-11 首次在生產觸發:
+    # 端點回前一天的資料)。行為是對的 —— 寧可留空也不要錯位
+    # (批#83),缺的那一格與原因都在 manifest["chips"]。
+    "chips:source_date_mismatch",
+    # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
+    # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
+    "sector:institutional_missing",
+    # 供應商擋下請求(餘額/金鑰)→ 跳過 legacy 直接走緊急備援
+    # (2026-08-26)。**這裡註冊只是為了不落成「沒見過的降級」** ——
+    # 它本身已經有專屬 finding(`llm_provider_refused_*`,說得出是哪一種、
+    # 該做什麼),那條才是通報的主體。
+    "llm:provider_refused:payment",
+    "llm:provider_refused:auth",
+    # 週回顧的延燒事件素材有壞列被跳過(2026-08-27):段落照出,只少骨架
+    "weekend_week_review_rows",
+    # 備援班的新鮮寄送紀錄讀取失敗(r2 外審 P1):守衛退回只看工作區
+    "backup_idempotence_probe",
+    # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
+    "state:alias_map_unavailable",
+    # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外
+    # IP 可能 geo-block)。賽程照出、只少場地;明細在 manifest.sports。
+    "sports:cpbl_venue_missing",
+    # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
+    # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
+    "chips:pcr_site_fallback", "chips:large_site_fallback",
+    # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
+    "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
+    "medical_journals", "sports", "policy",
+    # ── 2026-08-30:**這一整批本來全都會變成「沒見過的降級步驟」。**
+    # 08/29 的品質告警信實際印出「unknown_degradation —— 沒見過的降級
+    # 步驟:gazette」,查下去發現不是漏一個,是漏 17 個 —— 只註冊了
+    # `weekend_gazette` 而平日路徑發的是 `gazette`。新增標籤要同批註冊
+    # 在消費端,否則退化成「未知」;現在有 `test_every_emitted_degradation
+    # _label_is_registered` 機械化守住,不再靠記得。
+    "gazette", "weekend_gazette", "weekend_policy_analysis",
+    "weekend_week_review", "article_extractor", "horizontal_queries",
+    "sector_map_unavailable", "story_ledger_corrupt",
+    "analysis_recap_unreadable", "policy_keywords_load",
+    "policy_keywords_save", "delivery_receipt_publish",
+    # 除權息/公司行動(前綴族,逐個列出來才看得出漏了誰)
+    "corpact:fetch_failed", "corpact:delisted_fetch_failed",
+    "corpact:history_unreadable", "corpact:persist_failed",
+    "corpact:update_failed",
+})
+
+
 def assess(manifest, *, mode: str = "watchdog",
            expected_sha: str = "", expected_run_id: str = "",
            expected_nonce: str = "") -> list:
@@ -399,7 +342,8 @@ def assess(manifest, *, mode: str = "watchdog",
     out: list = []
 
     def add(code, severity, detail):
-        out.append({"code": code, "severity": severity, "detail": detail})
+        out.append({"code": code, "severity": severity, "detail": detail,
+                    "domain": finding_domain(code)})
 
     # ---- 1. 主分析走了哪條路
     #
@@ -823,7 +767,17 @@ def assess(manifest, *, mode: str = "watchdog",
     # (同時宣稱寄出與刻意不寄)在看門狗被拒絕,在判準卻仍被當成「成功」
     # 而拿去判 SLA:**同一份 state 兩種結論**,正是收斂狀態機要消滅的事。
     # 而我的測試只驗了原始碼字串(誰呼叫了什麼),沒驗 `assess()` 的行為。
-    _dv_outcome = delivery_outcome(_dv) if _dv else OUTCOME_INCOMPLETE
+    _dv_outcome, _dv_defects = (delivery_verdict(_dv) if _dv
+                                else (OUTCOME_INCOMPLETE, ()))
+    # **紀錄本身的瑕疵是品質問題,不是控制流問題**(r9 外審):
+    # `attempted` 與結局不一致時,結局仍然照 `success` 算 —— 明確的
+    # `success: true` 是很強的「已寄出」證據,因為旁邊的欄位壞掉就
+    # 改判成「沒寄到」會觸發自動補寄,那是真的重複寄信。
+    for _d in _dv_defects:
+        add("delivery_record_" + _d, "degraded",
+            f"寄送紀錄的欄位互相對不上({_d})—— 結局仍照 success 判定"
+            "(明確的寄送證據不因旁邊的 metadata 壞掉而失效),但這份紀錄"
+            "說不清楚它自己是怎麼寫出來的")
     if _dv_outcome == OUTCOME_INVALID:
         add("delivery_state_invalid", "defect",
             f"寄送紀錄自相矛盾或型別壞掉(success={_dv.get('success')!r}、"

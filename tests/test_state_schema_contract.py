@@ -202,6 +202,49 @@ def test_run_manifest_carries_the_observability_fields():
                 f"manifest 的 {optional} 型別錯:{type(m[optional]).__name__}"
 
 
+def test_the_persisted_delivery_obeys_the_canonical_contract():
+    """**落地的 state 要吃同一份契約**(2026-09-01 r9 外審)。
+
+    先前這個檔只驗 `delivery` 是不是 dict —— 而 `delivery_contract.py`
+    已經定義了完整的狀態機(success 精確布林、skipped_reason 必須是
+    非空字串、兩個終局宣稱互斥)。在這裡手抄一份規格,遲早會與那份
+    canonical contract 漂移;**共用它**才能做到
+
+        unit contract = watchdog contract = idempotence contract
+                      = persisted state contract
+    """
+    import delivery_contract as dc
+
+    def _check(name, dv):
+        """真實 state 與反例走**同一段**判定 —— 否則這道 gate 壞掉時,
+        真實 state 剛好合法就永遠看不出來(突變驗證抓到的:改掉
+        `delivery_verdict` 的呼叫,這條測試照樣綠)。"""
+        outcome, defects = dc.delivery_verdict(dv)
+        assert outcome != dc.OUTCOME_INVALID, (
+            f"{name} 的 delivery 不符合 canonical contract:{dv!r}")
+        assert not defects, (f"{name} 的 delivery 欄位互相對不上:{defects}")
+        # 落地的收據/manifest 只會是**終局**(中間狀態不該被 commit)
+        assert outcome in (dc.OUTCOME_DELIVERED, dc.OUTCOME_SKIPPED,
+                           dc.OUTCOME_FAILED), (name, outcome)
+
+    for name in ("run_manifest.json", "delivery_receipt.json"):
+        payload = _load(name)
+        dv = payload.get("delivery")
+        if dv is not None:
+            _check(name, dv)
+
+    # **這道 gate 真的會抓嗎** —— 用反例證明它不是空轉
+    import pytest
+    for bad in ({"success": True, "skipped_reason": "w"},
+                {"success": "false"},
+                {"attempted": False, "success": False,
+                 "skipped_reason": ["w"]}):
+        with pytest.raises(AssertionError):
+            _check("反例", bad)
+    with pytest.raises(AssertionError):     # 結局正確但欄位對不上
+        _check("反例", {"attempted": False, "success": True})
+
+
 # ------------------------------------------------- story ledger:轉載去重
 #: 未合併轉載的上限:取「絕對下限」與「批量佔比」的較大者。
 #:

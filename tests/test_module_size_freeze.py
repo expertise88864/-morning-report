@@ -256,7 +256,10 @@ MODULE_CEILINGS = {
     # —— 與修正混批會讓外審難審,而且純搬移要用 verify-move 逐行比對。
     # 2026-09-01 r8:delivery 契約搬進 `delivery_contract.py`(1000 行硬閘門
     # 擋下來的第一次 —— 它逼出了這次搬移,而不是第六次調高數字)。
-    "delivery_contract.py": 150,   # 現況 93
+    "delivery_contract.py": 200,   # 現況 144(r9:兩維度 verdict + skip 型別契約)
+    # 2026-09-02 r9:1000 行閘門**第二次**擋下「再加一點」,逼出兩個邊界。
+    "finding_domains.py": 150,     # 現況 99 —— finding 的分類登記表
+    "delivery_sla.py": 150,        # 現況 96 —— 期限原語(判準本體仍在 run_quality)
     # 2026-09-01 r7 外審:delivery.success 三態契約(三個模組共用一份判準);現況 978。
     # ⚠⚠ **一天內第五次調高**(790→815→850→900→950→1000)。外審已指出:
     # 「本來 ceiling 是阻止模組長大,現在變成記錄它目前多大」—— 棘輪失效。

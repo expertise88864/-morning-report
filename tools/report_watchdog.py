@@ -388,9 +388,9 @@ def _quality_exit(info: str) -> int:
     return 2
 
 
-#: 「信的內容」那一類 finding —— 刻意不寄的日子沒有信,不該拿它們報警。
-_CONTENT_ONLY_PREFIXES = ("analysis_", "luna_", "news_", "sector_",
-                          "podcast_", "story_", "forecast_", "recap_")
+#: (r9 外審後改用 finding 自己宣告的 `domain`,不再從名字猜 ——
+#:  實測 47 個 code 裡只有 7 個符合舊的前綴表,而 `fetch_plan_*` /
+#:  `payload_*` / `phantom_refs` 這些內容類全都會被當成控制面。)
 
 
 def _control_plane_exit(info: str) -> int:
@@ -408,8 +408,7 @@ def _control_plane_exit(info: str) -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import run_quality as _rq
     findings = [f for f in quality_findings()
-                if not str(f.get("code") or "").startswith(
-                    _CONTENT_ONLY_PREFIXES)]
+                if f.get("domain") != _rq.DOMAIN_CONTENT]
     if not findings:
         return 0
     print(f"[watchdog] 控制面異常({info},今天刻意不寄信):" + chr(10)

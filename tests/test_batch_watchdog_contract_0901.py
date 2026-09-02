@@ -635,7 +635,8 @@ def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
         monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
         monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
         return w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
-            "jobs": [{"name": "alert-on-quality", "conclusion": "success"}]})
+            "jobs": [{"name": "alert-on-quality", "status": "completed",
+                      "conclusion": "success"}]})
 
     assert _rc([]) == w.RC_OK
     degraded = [{"code": "recap_not_previous_session", "severity": "degraded",
@@ -704,7 +705,8 @@ def test_rc3_only_applies_where_its_premise_holds(monkeypatch):
          "detail": "x", "domain": rq.DOMAIN_CONTENT}])
     monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
     assert w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
-        "jobs": [{"name": "alert-on-quality", "conclusion": "success"}]}
+        "jobs": [{"name": "alert-on-quality", "status": "completed",
+                      "conclusion": "success"}]}
     ) == w.RC_QUALITY_DEGRADED
 
     # 前提本身要釘住:主班的品質自評確實只在 delivered 時跑
@@ -731,31 +733,44 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
          "detail": "x", "domain": rq.DOMAIN_CONTENT}])
     monkeypatch.setattr(w, "_manifest_run_id", lambda: "33570065708")
 
+    naps = []
+
     def _jobs(payload):
         return lambda url: payload
 
+    def _exit(payload):
+        """**明確注入 sleeper**:pending 的重試預設 2×20 秒,而目前不會慢
+        只是因為 `conftest` 為了別的目的 patch 了全域 `time.sleep` ——
+        依賴那個巧合的話,conftest 一改這條測試就會等 160 秒。"""
+        return w._quality_exit("x", get_json=_jobs(payload),
+                               sleep=naps.append)
+
     ok = w._quality_exit("x", get_json=_jobs(
-        {"jobs": [{"name": "alert-on-quality", "conclusion": "success"}]}))
+        {"jobs": [{"name": "alert-on-quality", "status": "completed",
+                   "conclusion": "success"}]}))
     assert ok == w.RC_QUALITY_DEGRADED, "確認寄成了卻還是重寄"
 
     for payload in ({"jobs": [{"name": "alert-on-quality",
+                               "status": "completed",
                                "conclusion": "failure"}]},
-                    {"jobs": [{"name": "alert-on-quality",
+                    {"jobs": [{"name": "alert-on-quality", "status": "completed",
                                "conclusion": "cancelled"}]},
-                    {"jobs": [{"name": "send-report",
+                    {"jobs": [{"name": "send-report", "status": "completed",
                                "conclusion": "success"}]},   # 那個 job 沒跑
                     {"jobs": []}, {}):
-        rc = w._quality_exit("x", get_json=_jobs(payload))
+        rc = _exit(payload)
         assert rc == w.RC_QUALITY_DEGRADED_UNSENT, (payload, rc)
 
     # API 查不到也要當成「沒送成」—— 不可以因為查詢失敗就推定已通知
     def _boom(url):
         raise OSError("no network")
-    assert w._quality_exit("x", get_json=_boom) == w.RC_QUALITY_DEGRADED_UNSENT
+    assert w._quality_exit("x", get_json=_boom,
+                           sleep=naps.append) == w.RC_QUALITY_DEGRADED_UNSENT
     # manifest 沒有 run_id 同理
     monkeypatch.setattr(w, "_manifest_run_id", lambda: "")
     assert w._quality_exit("x", get_json=_jobs(
-        {"jobs": [{"name": "alert-on-quality", "conclusion": "success"}]})
+        {"jobs": [{"name": "alert-on-quality", "status": "completed",
+                   "conclusion": "success"}]})
     ) == w.RC_QUALITY_DEGRADED_UNSENT
 
     # workflow:rc=4 要寄信,但不算事故
@@ -885,3 +900,52 @@ def test_the_degraded_resend_cannot_turn_the_job_red():
     assert "rc == '4'" in coe, ("rc=4 的寄送失敗仍會染紅", coe)
     assert "rc == '1'" not in coe and "rc == '2'" not in coe, (
         "把 rc=1/2 的失敗也吞掉了 —— 告警寄不出去必須是紅的", coe)
+
+
+def test_a_pending_alert_is_not_a_failed_one():
+    """r12 外審:「還沒跑完」不是「沒送成」。
+
+    `alert-on-quality` 依賴 `send-report`,兩者之間天生有幾秒空窗 ——
+    9/2 的實際時間是 `send-report` 07:42:29 完成、alert job 07:42:30 建立、
+    07:42:37 寄完。看門狗若在那幾秒之間查到 `queued` / `in_progress`,
+    先前會判「沒送成」而補一封,然後主班自己也寄成功
+    —— **剛修掉的重複告警在 unlucky timing 下回來**。
+    """
+    J = lambda st, con=None, extra=(): {  # noqa: E731
+        "jobs": [{"name": "alert-on-quality", "status": st,
+                  "conclusion": con}, *extra]}
+    # 三態本身
+    assert w.producer_alert_state("1", lambda u: J("completed", "success")) == (
+        w.ACK_SENT)
+    for st in ("queued", "in_progress", "waiting"):
+        assert w.producer_alert_state("1", lambda u, s=st: J(s)) == (
+            w.ACK_PENDING), st
+    assert w.producer_alert_state("1", lambda u: J("completed", "failure")) == (
+        w.ACK_UNSENT)
+    # API 出錯是**可重試**的狀態,不是「確定沒送成」
+    def _boom(url):
+        raise OSError("no network")
+    assert w.producer_alert_state("1", _boom) == w.ACK_PENDING
+    # 那個 job 還沒出現,但本次執行還有別的 job 在跑 → 它可能還沒建立
+    assert w.producer_alert_state("1", lambda u: {
+        "jobs": [{"name": "send-report", "status": "in_progress"}]}) == (
+        w.ACK_PENDING)
+    # **「目前的 job 都 completed」證明不了「整個 run 結束了」**
+    # (r12 外審第二輪:我原本的測試把這個錯誤推論釘住了)——
+    # alert job 缺席一律 pending,交給有界重試決定。
+    assert w.producer_alert_state("1", lambda u: {
+        "jobs": [{"name": "send-report", "status": "completed",
+                  "conclusion": "success"}]}) == w.ACK_PENDING
+
+    # 有界重試:pending → 等 → 成功
+    seq = iter([J("in_progress"), J("completed", "success")])
+    naps = []
+    assert w.producer_alert_delivered(
+        "1", lambda u: next(seq), sleep=naps.append, tries=3, wait=0) is True
+    assert len(naps) == 1, naps
+    # 一直 pending → 最後仍補寄(漏一封比重複一封糟)
+    naps.clear()
+    assert w.producer_alert_delivered(
+        "1", lambda u: J("in_progress"), sleep=naps.append,
+        tries=3, wait=0) is False
+    assert len(naps) == 2, naps

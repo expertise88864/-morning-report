@@ -394,32 +394,67 @@ RC_OK, RC_NOT_DELIVERED, RC_QUALITY_DEFECT, RC_QUALITY_DEGRADED = 0, 1, 2, 3
 RC_QUALITY_DEGRADED_UNSENT = 4
 
 
-def producer_alert_delivered(run_id, get_json) -> bool:
-    """主班那一次執行的**品質告警 job 有沒有真的成功** —— 查不出來回 False。
+#: 主班那封品質信的三態 —— **「還沒跑完」不是「沒送成」**。
+ACK_SENT, ACK_PENDING, ACK_UNSENT = "sent", "pending", "unsent"
 
-    r11 外審:`rc=3` 的理由是「主班收尾時已經自評**並告警**過」。
-    前半句有證據(判準跑過);後半句**沒有** —— `alert-on-quality` 是獨立
-    job,SMTP 失敗或缺憑證時它會紅,而看門狗完全不知道,照樣認定
-    「已經通知過」而放棄第二條通知路。
 
-    **去重要基於「收到了」,不是基於「應該收到了」。**
+def producer_alert_state(run_id, get_json) -> str:
+    """主班那一次執行的品質告警 job 現在是什麼狀態。
 
-    刻意不讓 alert job 寫 state(它現在只有 `contents: read`,那是好的
-    least-privilege);改成看門狗這邊查 Actions API —— manifest 本來就
-    記了 `github_run_id`。
+    r12 外審:先前回布林 —— `queued` / `in_progress` 都被算成「沒送成」。
+    而 `alert-on-quality` 依賴 `send-report`,兩者之間天生有幾秒的空窗:
+    9/2 的實際時間是 `send-report` 07:42:29 完成、alert job 07:42:30 建立、
+    07:42:37 寄完。看門狗若在那幾秒之間查到,就會判「沒送成」而補一封,
+    然後主班自己也寄成功 —— **剛修掉的重複告警在 unlucky timing 下回來**。
+
+    查不到(網路/API 出錯)也算 `pending`:那是可以重試的狀態,
+    不是「確定沒送成」。
     """
     if not run_id:
-        return False
+        return ACK_UNSENT
     try:
         data = get_json(
             "https://api.github.com/repos/expertise88864/-morning-report"
             f"/actions/runs/{run_id}/jobs?per_page=30")
-    except Exception:                       # noqa: BLE001 - 查不到就當沒送成
-        return False
-    for job in (data or {}).get("jobs") or []:
-        if str(job.get("name") or "") == "alert-on-quality":
-            return job.get("conclusion") == "success"
-    return False                            # 那個 job 根本沒出現 = 沒通知過
+    except Exception:                       # noqa: BLE001 - 可重試
+        return ACK_PENDING
+    jobs = (data or {}).get("jobs") or []
+    if not jobs:
+        return ACK_PENDING                  # 連 job 清單都還沒出來
+    for job in jobs:
+        if str(job.get("name") or "") != "alert-on-quality":
+            continue
+        if str(job.get("status") or "") != "completed":
+            return ACK_PENDING              # 還在排隊或執行中
+        return (ACK_SENT if job.get("conclusion") == "success"
+                else ACK_UNSENT)
+    # **那個 job 還沒出現 ≠ 它不會出現**(r12 外審第二輪):jobs 清單
+    # 證明不了「整個 workflow run 已經結束」—— 9/2 的實際空窗正是
+    # `send-report` 07:42:29 完成、alert job 07:42:30 才被建立。
+    # 先前在「目前的 job 都 completed」時直接回 UNSENT,等於把那一秒
+    # 判成「不會有告警了」而立刻補寄。缺席一律 pending,交給有界重試;
+    # 重試耗盡才當成沒送成。
+    return ACK_PENDING
+
+
+def producer_alert_delivered(run_id, get_json, *, sleep=None,
+                             tries: int = 3, wait: float = 20.0) -> bool:
+    """主班那封品質信**確認**寄成了嗎 —— pending 時做有界重試。
+
+    一直 pending 到最後仍回 `False`(補寄)。權衡:重複一封 vs 漏一封 ——
+    後者是「判準說的話沒有人收到」,比較糟。而 rc=4 的信本來就說明
+    「主班那封查不到成功紀錄」,涵蓋這種情形。
+    """
+    if sleep is None:
+        import time
+        sleep = time.sleep
+    for i in range(max(1, tries)):
+        state = producer_alert_state(run_id, get_json)
+        if state != ACK_PENDING:
+            return state == ACK_SENT
+        if i < tries - 1:
+            sleep(wait)
+    return False
 
 
 def _manifest_run_id() -> str:
@@ -445,7 +480,7 @@ def _default_get_json():
     return _get
 
 
-def _quality_exit(info: str, get_json=None) -> int:
+def _quality_exit(info: str, get_json=None, sleep=None) -> int:
     """跑起來也寄到了 —— 再問一次「跑成了嗎」。
 
     **缺陷與降級要分開**:呼叫端要能分辨「今天沒有信」、「信寄到了但
@@ -468,7 +503,12 @@ def _quality_exit(info: str, get_json=None) -> int:
     # 主班的品質告警是獨立 job,寄失敗時它會紅,但看門狗不查就等於
     # 主動放棄第二條通知路 —— 而那正是它存在的理由。
     run_id = _manifest_run_id()
-    if producer_alert_delivered(run_id, get_json or _default_get_json()):
+    # **等待要能被注入**(r12 外審第三輪):這裡的 pending 重試預設是
+    # 2×20 秒。目前測試不會慢,是因為 `conftest` 為了別的目的
+    # (批#37 的退避)patch 了**全域** `time.sleep` —— 那是巧合的保護,
+    # 不是明確的注入。conftest 哪天改了,這條路就會真的等 160 秒。
+    if producer_alert_delivered(run_id, get_json or _default_get_json(),
+                                sleep=sleep):
         print("[watchdog] 只有降級,而且主班那封品質信**確認寄成了** —— "
               "不重複寄信、不把這一班染紅", file=sys.stderr)
         return RC_QUALITY_DEGRADED

@@ -18,6 +18,7 @@ DeepSeek 的**原始 payload** 跑到 state)。那需要真實回應樣本,而�
   - 只驗**結構與不變式**,不驗數值(數值每天都會變)
   - 訊息要指出「哪一筆、哪個欄位」,而不是只說形狀不對
 """
+import collections as _co
 import json
 from pathlib import Path
 
@@ -439,37 +440,119 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
 #:
 #: 所以這裡改成閉世界:**每一個 state 檔都必須對上一條規則**,
 #: 對不上就紅。新增 writer 時,CI 會直接告訴你檔名。
+#: 一個 state 檔的契約:**根型別 + 可執行的驗證器**。
+#:
+#: r12 外審:先前這裡放的是一串「應該有某個測試在驗它」的**字串**,
+#: 而其中四個名字根本不存在於這個檔(改名/重寫之後沒人發現)。
+#: 那個 registry 於是只是一段文字宣稱 —— declared ≠ mechanically exercised,
+#: 與上一輪 finding-domain 的動態工廠是同一類問題。
+#:
+#: 而 `"shape"` 那一類也只驗 `isinstance(data, (dict, list))` ——
+#: `analysis_recap` 從 dict 變成 list 也會通過,而它正是昨日觀點閉環的核心:
+#: 那種錯不會讓晨報 crash,只會讓明天的連續性**無聲消失**。
+Contract = _co.namedtuple("Contract", "root validate")
+
+
+def _rows(data, key=None):
+    return data[key] if key else data
+
+
+def _v_analysis_recap(d):
+    assert isinstance(d.get("items"), list), "items 不是 list"
+    assert isinstance(d.get("date"), str) and _iso_like(d["date"]), d.get("date")
+    for it in d["items"]:
+        assert isinstance(it, dict), type(it).__name__
+
+
+def _v_event_timeline(d):
+    """鍵是事件身分(`類型:主體:月份`),值是那條線的狀態。
+
+    **空 mapping 是合法的**(r12 外審第二輪):`update_event_timeline()`
+    會把超過 3 天沒更新的事件全部退場,連續幾天沒有可追蹤事件時
+    寫出來就是 `{}`。把它判成損壞的話 → state 契約紅 → **發佈被跳過**
+    → 那一班**其他所有 state 也全部不落地**。修正比原問題嚴重。
+
+    **全部走完,不取樣**:消費端會遍歷所有 entries 並呼叫 `v.get()`,
+    第 21 筆之後壞掉一樣會讓那個區塊整體降級。
+    """
+    for k, v in d.items():
+        assert ":" in k, f"事件鍵不像身分:{k!r}"
+        assert isinstance(v, dict), (k, type(v).__name__)
+
+
+def _v_source_health(rows):
+    """30 天來源健康史 —— **全部驗完,不取樣**(r12 外審第二輪)。
+
+    writer 是 append 之後排序保留 30 筆,所以**最新的資料排在後面**:
+    只驗前 20 筆的話,連續失敗判斷真正要用的那十筆從來沒被檢查過。
+    """
+    assert rows, "來源健康史是空的 —— 連續失敗算不出來"
+    for r in rows:
+        assert isinstance(r, dict) and _iso_like(str(r.get("date") or "")), r
+        assert isinstance(r.get("checks"), dict), r.get("checks")
+
+
+def _v_model_history_manifest(d):
+    parts = d.get("partitions")
+    assert isinstance(parts, (list, dict)) and parts, "沒有分區清單"
+    assert isinstance(d.get("schema_version"), int), d.get("schema_version")
+
+
+def _v_nonempty_mapping(d):
+    assert d, "是空的"
+
+
+def _v_nonempty_rows(rows):
+    assert rows, "是空的"
+
+
+#: 每個 state 檔都要對上一條 —— 而且 validator **會被真的呼叫**
+#: (`test_every_contract_is_actually_executed`)。
 STATE_CONTRACTS = {
-    # 有專屬 schema 斷言的(本檔其他測試在驗)
-    "run_manifest.json": "test_run_manifest_carries_the_observability_fields",
-    "delivery_receipt.json": "test_the_persisted_delivery_obeys_the_canonical_contract",
-    "model_history.json": "test_model_history_entries_have_the_required_shape",
-    "story_ledger.json": "test_story_ledger_has_no_unmerged_duplicates",
-    "forecast_ledger.json": "test_forecast_ledger_entries_are_scoreable",
-    "exdiv_history.json": "test_exdiv_history_entries_are_usable",
-    # 下面這些先做 **完整性**(讀得動、形狀對),語意 schema 待補
-    "analysis_recap.json": "shape",
-    "event_timeline.json": "shape",
-    "source_health_history.json": "shape",
-    "conformal_intervals.json": "shape",
-    "corporate_actions.json": "shape",
-    "podcast_digest.json": "shape",
-    "policy_keywords.json": "shape",
-    "poly_history.json": "shape",
-    "sector_rank_history.json": "shape",
-    "history.json": "shape",
-    "cpbl_venues.json": "shape",
-    "gooaye_radar.json": "shape",
-    "deepseek_canary.json": "shape",
-    "model_history/manifest.json": "shape",
-    # JSONL(每行一個物件)—— 閘門上線第一天就抓到它沒人管
-    "history_index.jsonl": "jsonl",
+    "run_manifest.json": Contract(dict, _v_nonempty_mapping),
+    "delivery_receipt.json": Contract(dict, _v_nonempty_mapping),
+    "model_history.json": Contract(list, _v_nonempty_rows),
+    "story_ledger.json": Contract(list, _v_nonempty_rows),
+    "forecast_ledger.json": Contract(list, _v_nonempty_rows),
+    "exdiv_history.json": Contract(dict, _v_nonempty_mapping),
+    # r12:這四個是下一班 continuity / observability 價值最高的
+    "analysis_recap.json": Contract(dict, _v_analysis_recap),
+    "event_timeline.json": Contract(dict, _v_event_timeline),
+    "source_health_history.json": Contract(list, _v_source_health),
+    "model_history/manifest.json": Contract(dict, _v_model_history_manifest),
+    # 其餘先鎖**根型別**(比 `isinstance(dict, list)` 嚴格),語意分批補
+    "conformal_intervals.json": Contract(dict, _v_nonempty_mapping),
+    "corporate_actions.json": Contract(dict, _v_nonempty_mapping),
+    "podcast_digest.json": Contract(dict, _v_nonempty_mapping),
+    "policy_keywords.json": Contract(list, _v_nonempty_rows),
+    "poly_history.json": Contract(dict, _v_nonempty_mapping),
+    "sector_rank_history.json": Contract(dict, _v_nonempty_mapping),
+    "history.json": Contract(list, _v_nonempty_rows),
+    "cpbl_venues.json": Contract(dict, _v_nonempty_mapping),
+    "gooaye_radar.json": Contract(dict, _v_nonempty_mapping),
+    "deepseek_canary.json": Contract(dict, _v_nonempty_mapping),
+    "history_index.jsonl": Contract("jsonl", _v_nonempty_rows),
 }
 
 #: 檔名帶日期/月份的家族 —— 逐檔列不完,但**規則要列得出來**。
+#: 值是驗證器,同樣會被真的呼叫。
+def _v_gzip_intact(path):
+    """讀到 EOF 才算數:gzip 的長度與 CRC 記在**尾端**,只讀開頭的話
+    後半被截斷的檔照樣通過,而消費端是整份讀的(r11 外審)。"""
+    import gzip
+    total = 0
+    with gzip.open(path, "rb") as fh:
+        while True:
+            chunk = fh.read(1 << 16)
+            if not chunk:
+                break
+            total += len(chunk)
+    assert total, f"{path.name} 解出來是空的"
+
+
 STATE_PATTERNS = (
-    ("emails/*.html.gz", "gzip"),          # 寄出信件存檔(去識別)
-    ("model_history/*.json.gz", "gzip"),   # 按月分區
+    ("emails/*.html.gz", _v_gzip_intact),        # 寄出信件存檔(去識別)
+    ("model_history/*.json.gz", _v_gzip_intact),  # 按月分區
 )
 
 #: 不是「跨日累積的 state」的東西(目前沒有;留這一格是為了讓豁免**顯式**)。
@@ -505,66 +588,101 @@ def test_every_state_file_is_covered_by_a_rule():
         "真的不需要契約請加進 STATE_EXEMPTIONS 並註明理由。")
 
 
-def test_the_shape_only_contracts_are_at_least_readable():
-    """列在 `STATE_CONTRACTS` 但還沒有語意 schema 的那些 ——
-    至少要讀得動、而且不是空殼。**「讀不動」與「今天沒更新」不可以
-    長得一樣**(這個系統修過三次同型問題)。"""
-    for rel, kind in sorted(STATE_CONTRACTS.items()):
-        if kind != "shape":
-            continue
+def test_every_contract_is_actually_executed():
+    """**registry 要可執行,不能只是文字宣稱**(2026-09-02 r12 外審)。
+
+    先前這裡放的是「應該有某個測試在驗它」的**字串**,而其中四個名字
+    根本不存在於這個檔 —— 改名/重寫之後沒有人發現。
+    現在每一條都是 `Contract(root, validate)`,而這條測試**真的呼叫**
+    每一個 validator,並記錄跑過幾個:少一個就紅。
+
+    ★換成 namedtuple 的當下,三條舊測試(`kind != "shape"` / `"jsonl"` /
+    `"gzip"`)瞬間全部空轉而照樣綠 —— 那正是這條斷言存在的理由。★
+    """
+    executed = []
+    for rel, contract in sorted(STATE_CONTRACTS.items()):
         path = STATE / rel
         if not path.exists():
             continue                        # 該功能還沒跑過
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as e:              # noqa: BLE001
-            pytest.fail(f"{rel} 讀不動:{e}")
-        assert isinstance(data, (dict, list)), (rel, type(data).__name__)
-        assert data or data == [], rel
-
-
-def test_the_jsonl_contracts_parse_line_by_line():
-    """JSONL 的壞法與 JSON 不同:**整份讀得動**不代表每一行都是物件,
-    而消費端是逐行讀的 —— 半行截斷只會在讀到那一行時才爆。"""
-    for rel, kind in sorted(STATE_CONTRACTS.items()):
-        if kind != "jsonl":
-            continue
-        path = STATE / rel
-        if not path.exists():
-            continue
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines()
-                 if ln.strip()]
-        assert lines, f"{rel} 是空的"
-        for i, ln in enumerate(lines, 1):
+        if contract.root == "jsonl":
+            rows = []
+            for i, ln in enumerate(
+                    path.read_text(encoding="utf-8").splitlines(), 1):
+                if not ln.strip():
+                    continue
+                try:
+                    row = json.loads(ln)
+                except Exception as e:      # noqa: BLE001
+                    pytest.fail(f"{rel} 第 {i} 行解不開:{e}")
+                assert isinstance(row, dict), (rel, i, type(row).__name__)
+                rows.append(row)
+            contract.validate(rows)
+        else:
             try:
-                row = json.loads(ln)
+                data = json.loads(path.read_text(encoding="utf-8"))
             except Exception as e:          # noqa: BLE001
-                pytest.fail(f"{rel} 第 {i} 行解不開:{e}")
-            assert isinstance(row, dict), (rel, i, type(row).__name__)
+                pytest.fail(f"{rel} 讀不動:{e}")
+            # **精確型別**:`isinstance(data, (dict, list))` 讓
+            # `analysis_recap` 從 dict 變 list 也會通過,而它是昨日觀點
+            # 閉環的核心 —— 那種錯不會 crash,只會讓明天的連續性無聲消失。
+            assert type(data) is contract.root, (
+                f"{rel} 的根型別是 {type(data).__name__},契約要求 "
+                f"{contract.root.__name__}")
+            contract.validate(data)
+        executed.append(rel)
+    assert len(executed) >= 10, ("跑到的契約太少,registry 可能沒被執行",
+                                 executed)
 
 
 def test_the_blob_families_are_intact():
-    """gzip 家族只驗完整性:解得開、而且不是空的。"""
-    import gzip
+    """gzip 家族:**逐個家族**算 —— 寫成「總共至少驗到一個」的話,
+    某一條 pattern 打錯了也還有另一條撐著(突變驗證抓到的白測)。"""
     import fnmatch
     files = _state_files()
-    # **逐個家族算**:寫成「總共至少驗到一個」的話,某一條 pattern 打錯了
-    # 也還有另一條撐著 —— 反例分不出勝負(突變驗證抓到的白測)。
-    for pat, kind in STATE_PATTERNS:
-        if kind != "gzip":
-            continue
+    for pat, validate in STATE_PATTERNS:
         matched = [r for r in files if fnmatch.fnmatch(r, pat)]
         assert matched, f"pattern {pat!r} 一個檔都沒對上 —— 它可能打錯了"
         for rel in matched:
-            # **要讀到 EOF**(r11 外審第二輪):gzip 的長度與 CRC 記在**尾端**,
-            # 只讀前 64 個位元組的話,後半被截斷或損壞的檔照樣通過 ——
-            # 而消費端(`model_history_store` / `tools/query_history`)是整份讀的,
-            # 到那時才會遇到 EOFError / CRC 失敗,而那已經在 main 上了。
-            total = 0
-            with gzip.open(STATE / rel, "rb") as fh:
-                while True:
-                    chunk = fh.read(1 << 16)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-            assert total, f"{rel} 解出來是空的"
+            validate(STATE / rel)
+
+
+
+def test_an_empty_timeline_is_legal_not_broken():
+    """r12 外審第二輪:`update_event_timeline()` 會把超過 3 天沒更新的事件
+    **全部**退場,連續幾天沒有可追蹤事件時寫出來就是 `{}`。
+
+    把它判成損壞的話 → state 契約紅 → **發佈被跳過** → 那一班**其他所有
+    state 也全部不落地**。★修正比原問題嚴重★:原本只是「少驗一個檔」,
+    變成「整天的持久化都掉了」。
+    """
+    _v_event_timeline({})                   # 不可以拋
+    # 但有 entry 時仍然要驗形狀
+    with pytest.raises(AssertionError):
+        _v_event_timeline({"沒有冒號": {}})
+    with pytest.raises(AssertionError):
+        _v_event_timeline({"a:b:2026-09": "不是 dict"})
+
+
+def test_the_bounded_state_is_validated_all_the_way_through():
+    """r12 外審第二輪:兩個 validator 都只走前 20 筆,而
+    `source_health_history` 有 **30 筆**、writer 是 append 後排序保留 ——
+    **最新的資料排在後面**,連續失敗判斷真正要用的那十筆從來沒被驗過。
+    timeline 的消費端也會遍歷所有 entries 並呼叫 `v.get()`。
+    """
+    rows = [{"date": "2026-08-01", "checks": {}} for _ in range(29)]
+    rows.append({"date": "壞掉的日期", "checks": {}})
+    with pytest.raises(AssertionError):
+        _v_source_health(rows)              # 第 30 筆
+    many = {f"k{i}:x:2026-09": {} for i in range(25)}
+    many["沒有冒號的鍵"] = {}
+    with pytest.raises(AssertionError):
+        _v_event_timeline(many)             # 第 26 筆
+    recap = {"date": "2026-09-02", "eligible": 1,
+             "items": [{} for _ in range(25)] + ["不是 dict"]}
+    with pytest.raises(AssertionError):
+        _v_analysis_recap(recap)            # 第 26 筆
+    # 真實資料的筆數確實超過 20 —— 否則上面三條只是理論
+    real = json.loads(
+        (STATE / "source_health_history.json").read_text(encoding="utf-8"))
+    assert len(real) > 20, ("來源健康史只有 %d 筆,取樣與否量不出差別"
+                            % len(real))

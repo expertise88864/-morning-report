@@ -78,6 +78,12 @@ jobs:
       # 2 要看 manifest 說哪一塊沒走完(判準在 `run_quality`)。
       - name: Check last run
         id: check
+        env:
+          # 只有降級時,判準要查主班的 `alert-on-quality` job 有沒有真的
+          # 寄成(r11 外審:去重要基於「收到了」,不是「應該收到了」)。
+          # 查不到會退到 rc=4「補寄一次」—— 少了 token 就等於天天多寄一封,
+          # 所以這個 env 是必要的,不是可選的。
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
           OUT="$(python tools/report_watchdog.py 2>&1)"
@@ -110,8 +116,16 @@ jobs:
         run: python tools/report_watchdog.py --rescue
 
       # rc=3(只有降級)不寄:主班收尾時已經自評並寄過同一封了。
+      # rc=4:只有降級,但主班那封品質信查不到成功紀錄 —— 補寄一次。
+      # 去重要基於「收到了」,不是「應該收到了」(r11 外審)。
+      # **rc=4 的寄送失敗不得染紅**(r11 外審第二輪):rc=4 的契約是
+      # 「只有降級,不是事故」,而缺憑證正是它的觸發情境之一 ——
+      # 補寄再失敗一次就把 job 弄紅,等於自己違反自己的契約。
+      # rc=1/2 維持原本的語意(告警寄不出去就是要紅)。
       - name: Alert
+        continue-on-error: ${{ steps.check.outputs.rc == '4' }}
         if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
+            || steps.check.outputs.rc == '4'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -140,12 +154,20 @@ jobs:
           now = dt.datetime.now(tpe).strftime("%Y-%m-%d %H:%M")
           msg = EmailMessage()
           rc = os.environ.get("WATCHDOG_RC", "1")
-          if rc == "2":
+          # **「這是不是品質告警」只判斷一次**(r11 外審第二輪):先前三處
+          # 各寫 `rc == "2"`,於是新增 rc=4(只有降級、但主班那封沒送成)
+          # 之後,它會走到「今天的晨報可能沒有跑起來」那條路 ——
+          # 寄給一般收件人、主旨宣告一場沒有發生的事故。信其實已經寄達了。
+          is_quality = rc in ("2", "4")
+          if is_quality:
               # 品質告警分流;沒設品質信箱就回到原收件人(告警不可斷)
               to = os.environ.get("QUALITY_RECIPIENT", "").strip() or to
           # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
           # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
-          if rc == "2":
+          if rc == "4":
+              msg["Subject"] = (f"[晨報品質] {now} 信寄出了、只有降級 —— "
+                                "但主班那封品質信沒送成")
+          elif is_quality:
               msg["Subject"] = f"[晨報品質] {now} 信寄出了,但有段落沒跑成"
           else:
               msg["Subject"] = f"[晨報看門狗] {now} 今天的晨報可能沒有跑起來"
@@ -154,7 +176,16 @@ jobs:
           # **內文要對得上主旨。** 先前這裡寫死「時間戳超過門檻」的
           # 可能原因 —— 品質告警共用它的話,信會說一件沒發生的事,
           # 而那比沒有告警更難查。
-          if rc == "2":
+          if rc == "4":
+              body = (
+                  "今天的晨報**有寄到**,判準也只有「降級」等級的意見 ——\n"
+                  "這不是事故。寄這封信的原因是:**主班收尾時那封品質信\n"
+                  "查不到成功紀錄**(alert-on-quality 失敗、被取消,或查不到),\n"
+                  "所以由看門狗補一次,免得判準說的話沒有人收到。\n\n"
+                  f"{detail}\n\n"
+                  "去重是基於「確認收到了」而不是「應該收到了」——\n"
+                  "主班那封確認寄成時,這封信不會出現。\n")
+          elif is_quality:
               body = (
                   "晨報跑起來也寄出去了,但**有段落沒跑成** —— 收件人今天\n"
                   "拿到的比它該有的樣子少。判準見 `run_quality.assess()`。\n\n"

@@ -96,10 +96,13 @@ def test_the_rescue_is_wired_into_the_workflow():
     # 補寄**不取代告警**:告警仍在,而且排在補寄之後(才帶得到結果)
     assert names.index("Auto rescue") < names.index("Alert")
     alert = steps[names.index("Alert")]
-    # r10 外審:rc=3(只有降級)不寄 —— 主班收尾時已經寄過同一封。
+    # r10:rc=3(只有降級、而且主班那封**確認寄成了**)不寄。
+    # r11:rc=4(只有降級,但主班那封查不到成功紀錄)**要寄** ——
+    # 去重要基於「收到了」,不是「應該收到了」。
     cond = " ".join(alert["if"].split())
     assert cond == ("steps.check.outputs.rc == '1' || "
-                    "steps.check.outputs.rc == '2'"), cond
+                    "steps.check.outputs.rc == '2' || "
+                    "steps.check.outputs.rc == '4'"), cond
     assert "WATCHDOG_RESCUE" in (alert.get("env") or {})
 
 

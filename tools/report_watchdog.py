@@ -389,9 +389,63 @@ def dispatch_runs_today(now: dt.datetime, get_json) -> int:
 #: 07:37 準時寄達、SLA 過、特化路徑過、state 契約過。
 #: 紅色的 `Morning Report Watchdog` 很容易被讀成「今天出事了」。
 RC_OK, RC_NOT_DELIVERED, RC_QUALITY_DEFECT, RC_QUALITY_DEGRADED = 0, 1, 2, 3
+#:   4  只有降級,**而且主班那封品質信沒有送成**(或查不出來)
+#:      → 由看門狗補寄一次,但仍不算事故(不染紅)
+RC_QUALITY_DEGRADED_UNSENT = 4
 
 
-def _quality_exit(info: str) -> int:
+def producer_alert_delivered(run_id, get_json) -> bool:
+    """主班那一次執行的**品質告警 job 有沒有真的成功** —— 查不出來回 False。
+
+    r11 外審:`rc=3` 的理由是「主班收尾時已經自評**並告警**過」。
+    前半句有證據(判準跑過);後半句**沒有** —— `alert-on-quality` 是獨立
+    job,SMTP 失敗或缺憑證時它會紅,而看門狗完全不知道,照樣認定
+    「已經通知過」而放棄第二條通知路。
+
+    **去重要基於「收到了」,不是基於「應該收到了」。**
+
+    刻意不讓 alert job 寫 state(它現在只有 `contents: read`,那是好的
+    least-privilege);改成看門狗這邊查 Actions API —— manifest 本來就
+    記了 `github_run_id`。
+    """
+    if not run_id:
+        return False
+    try:
+        data = get_json(
+            "https://api.github.com/repos/expertise88864/-morning-report"
+            f"/actions/runs/{run_id}/jobs?per_page=30")
+    except Exception:                       # noqa: BLE001 - 查不到就當沒送成
+        return False
+    for job in (data or {}).get("jobs") or []:
+        if str(job.get("name") or "") == "alert-on-quality":
+            return job.get("conclusion") == "success"
+    return False                            # 那個 job 根本沒出現 = 沒通知過
+
+
+def _manifest_run_id() -> str:
+    """本班 manifest 記下的 GitHub run id(讀不到回空字串)。"""
+    try:
+        raw = json.loads(MANIFEST.read_text(encoding="utf-8")) or {}
+    except Exception:                       # noqa: BLE001
+        return ""
+    return str(raw.get("github_run_id") or "")
+
+
+def _default_get_json():
+    """看門狗查 Actions API 用的最小 GET(與 `rescue()` 同一套 header)。"""
+    import urllib.request as _u
+
+    def _get(url):
+        req = _u.Request(url, headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN', '')}",
+            "User-Agent": "morning-report-watchdog"})
+        with _u.urlopen(req, timeout=30) as r:
+            return json.loads(r.read() or b"{}")
+    return _get
+
+
+def _quality_exit(info: str, get_json=None) -> int:
     """跑起來也寄到了 —— 再問一次「跑成了嗎」。
 
     **缺陷與降級要分開**:呼叫端要能分辨「今天沒有信」、「信寄到了但
@@ -410,9 +464,18 @@ def _quality_exit(info: str) -> int:
           + _rq.summarize(findings), file=sys.stderr)
     if defect:
         return RC_QUALITY_DEFECT
-    print("[watchdog] 只有降級,且主班收尾時已經自評並告警過 —— "
-          "不重複寄信、不把這一班染紅", file=sys.stderr)
-    return RC_QUALITY_DEGRADED
+    # **去重要基於「收到了」,不是「應該收到了」**(r11 外審):
+    # 主班的品質告警是獨立 job,寄失敗時它會紅,但看門狗不查就等於
+    # 主動放棄第二條通知路 —— 而那正是它存在的理由。
+    run_id = _manifest_run_id()
+    if producer_alert_delivered(run_id, get_json or _default_get_json()):
+        print("[watchdog] 只有降級,而且主班那封品質信**確認寄成了** —— "
+              "不重複寄信、不把這一班染紅", file=sys.stderr)
+        return RC_QUALITY_DEGRADED
+    print(f"[watchdog] 只有降級,但主班的品質告警查不到成功紀錄"
+          f"(run {run_id or '?'})—— 補寄一次,但這不算事故",
+          file=sys.stderr)
+    return RC_QUALITY_DEGRADED_UNSENT
 
 
 #: (r9 外審後改用 finding 自己宣告的 `domain`,不再從名字猜 ——

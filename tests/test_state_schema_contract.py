@@ -422,3 +422,149 @@ def test_the_newest_cohort_has_no_unmerged_syndicated_duplicates():
     assert len(mirror) <= cap, (
         f"{newest} 這批有 {len(mirror)} 對含無代號的鏡像重複,超過上限 {cap} —— "
         f"批#71 的跨桶比對可能**整體**失效:\n  {_fmt(mirror)}")
+
+
+# ---------------------------------------------- 閉世界:每個 state 檔都要有人管
+#: **這道 gate 的理念是 fail-closed,但它的涵蓋清單本身是 open-world**
+#: (2026-09-02 r11 外審)。實測 `state/` 下有 90 個檔,而點名到的只有 5 個。
+#:
+#: workflow 的順序是「寫 state → local commit → **這個檔** → 通過才 push」,
+#: 設計目的就是「壞掉的 state 不可以先進 main 再事後發現」。但如果某個
+#: writer 新增了一個檔、或既有檔的 schema 漂掉而這裡根本沒碰它,
+#: pytest 全綠 → 照樣 push → 明天的新 runner 讀到壞檔。
+#:
+#: `analysis_recap` 不是小角落:2026-08-08 的真實事故就是它寫了但沒進 push,
+#: 而 GitHub Actions 每天是新 runner —— 次日永遠讀不到,整條閉環 no-op,
+#: 本機測試仍全綠。
+#:
+#: 所以這裡改成閉世界:**每一個 state 檔都必須對上一條規則**,
+#: 對不上就紅。新增 writer 時,CI 會直接告訴你檔名。
+STATE_CONTRACTS = {
+    # 有專屬 schema 斷言的(本檔其他測試在驗)
+    "run_manifest.json": "test_run_manifest_carries_the_observability_fields",
+    "delivery_receipt.json": "test_the_persisted_delivery_obeys_the_canonical_contract",
+    "model_history.json": "test_model_history_entries_have_the_required_shape",
+    "story_ledger.json": "test_story_ledger_has_no_unmerged_duplicates",
+    "forecast_ledger.json": "test_forecast_ledger_entries_are_scoreable",
+    "exdiv_history.json": "test_exdiv_history_entries_are_usable",
+    # 下面這些先做 **完整性**(讀得動、形狀對),語意 schema 待補
+    "analysis_recap.json": "shape",
+    "event_timeline.json": "shape",
+    "source_health_history.json": "shape",
+    "conformal_intervals.json": "shape",
+    "corporate_actions.json": "shape",
+    "podcast_digest.json": "shape",
+    "policy_keywords.json": "shape",
+    "poly_history.json": "shape",
+    "sector_rank_history.json": "shape",
+    "history.json": "shape",
+    "cpbl_venues.json": "shape",
+    "gooaye_radar.json": "shape",
+    "deepseek_canary.json": "shape",
+    "model_history/manifest.json": "shape",
+    # JSONL(每行一個物件)—— 閘門上線第一天就抓到它沒人管
+    "history_index.jsonl": "jsonl",
+}
+
+#: 檔名帶日期/月份的家族 —— 逐檔列不完,但**規則要列得出來**。
+STATE_PATTERNS = (
+    ("emails/*.html.gz", "gzip"),          # 寄出信件存檔(去識別)
+    ("model_history/*.json.gz", "gzip"),   # 按月分區
+)
+
+#: 不是「跨日累積的 state」的東西(目前沒有;留這一格是為了讓豁免**顯式**)。
+STATE_EXEMPTIONS: dict = {}
+
+
+def _state_files():
+    return sorted(
+        str(p.relative_to(STATE)).replace("\\", "/")
+        for p in STATE.rglob("*") if p.is_file())
+
+
+def test_every_state_file_is_covered_by_a_rule():
+    """**閉世界**:`state/` 下的每一個檔都要對上一條規則。
+
+    對不上就紅,而且訊息直接給檔名 —— 新增 writer 卻忘了寫契約時,
+    這道 gate 會在 push 之前擋下來(它跑在 local commit 之後、push 之前)。
+    """
+    import fnmatch
+    files = _state_files()
+    assert len(files) >= 10, ("掃描器疑似失配", files[:5])
+    unknown = []
+    for rel in files:
+        if rel in STATE_CONTRACTS or rel in STATE_EXEMPTIONS:
+            continue
+        if any(fnmatch.fnmatch(rel, pat) for pat, _ in STATE_PATTERNS):
+            continue
+        unknown.append(rel)
+    assert not unknown, (
+        f"這些 state 檔沒有任何契約或豁免:{unknown}\n"
+        "新增跨日累積的 state 時要在 STATE_CONTRACTS 加一行(並補斷言),"
+        "檔名帶日期的家族加進 STATE_PATTERNS,"
+        "真的不需要契約請加進 STATE_EXEMPTIONS 並註明理由。")
+
+
+def test_the_shape_only_contracts_are_at_least_readable():
+    """列在 `STATE_CONTRACTS` 但還沒有語意 schema 的那些 ——
+    至少要讀得動、而且不是空殼。**「讀不動」與「今天沒更新」不可以
+    長得一樣**(這個系統修過三次同型問題)。"""
+    for rel, kind in sorted(STATE_CONTRACTS.items()):
+        if kind != "shape":
+            continue
+        path = STATE / rel
+        if not path.exists():
+            continue                        # 該功能還沒跑過
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:              # noqa: BLE001
+            pytest.fail(f"{rel} 讀不動:{e}")
+        assert isinstance(data, (dict, list)), (rel, type(data).__name__)
+        assert data or data == [], rel
+
+
+def test_the_jsonl_contracts_parse_line_by_line():
+    """JSONL 的壞法與 JSON 不同:**整份讀得動**不代表每一行都是物件,
+    而消費端是逐行讀的 —— 半行截斷只會在讀到那一行時才爆。"""
+    for rel, kind in sorted(STATE_CONTRACTS.items()):
+        if kind != "jsonl":
+            continue
+        path = STATE / rel
+        if not path.exists():
+            continue
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines()
+                 if ln.strip()]
+        assert lines, f"{rel} 是空的"
+        for i, ln in enumerate(lines, 1):
+            try:
+                row = json.loads(ln)
+            except Exception as e:          # noqa: BLE001
+                pytest.fail(f"{rel} 第 {i} 行解不開:{e}")
+            assert isinstance(row, dict), (rel, i, type(row).__name__)
+
+
+def test_the_blob_families_are_intact():
+    """gzip 家族只驗完整性:解得開、而且不是空的。"""
+    import gzip
+    import fnmatch
+    files = _state_files()
+    # **逐個家族算**:寫成「總共至少驗到一個」的話,某一條 pattern 打錯了
+    # 也還有另一條撐著 —— 反例分不出勝負(突變驗證抓到的白測)。
+    for pat, kind in STATE_PATTERNS:
+        if kind != "gzip":
+            continue
+        matched = [r for r in files if fnmatch.fnmatch(r, pat)]
+        assert matched, f"pattern {pat!r} 一個檔都沒對上 —— 它可能打錯了"
+        for rel in matched:
+            # **要讀到 EOF**(r11 外審第二輪):gzip 的長度與 CRC 記在**尾端**,
+            # 只讀前 64 個位元組的話,後半被截斷或損壞的檔照樣通過 ——
+            # 而消費端(`model_history_store` / `tools/query_history`)是整份讀的,
+            # 到那時才會遇到 EOFError / CRC 失敗,而那已經在 main 上了。
+            total = 0
+            with gzip.open(STATE / rel, "rb") as fh:
+                while True:
+                    chunk = fh.read(1 << 16)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+            assert total, f"{rel} 解出來是空的"

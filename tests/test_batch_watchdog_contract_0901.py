@@ -628,9 +628,14 @@ def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
 
     紅色的「Morning Report Watchdog」很容易被讀成「今天出事了」。
     """
+    # **一定要注入 `get_json`**:r11 之後,只有降級時判準會去查主班的
+    # `alert-on-quality` job 有沒有真的寄成 —— 不注入就會真的碰網路,
+    # 而且查不到會退到 rc=4,測試看起來像壞掉。
     def _rc(findings):
         monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
-        return w._quality_exit("2026-09-02 07:14")
+        monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
+        return w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
+            "jobs": [{"name": "alert-on-quality", "conclusion": "success"}]})
 
     assert _rc([]) == w.RC_OK
     degraded = [{"code": "recap_not_previous_session", "severity": "degraded",
@@ -697,7 +702,10 @@ def test_rc3_only_applies_where_its_premise_holds(monkeypatch):
     monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
         {"code": "recap_not_previous_session", "severity": "degraded",
          "detail": "x", "domain": rq.DOMAIN_CONTENT}])
-    assert w._quality_exit("2026-09-02 07:14") == w.RC_QUALITY_DEGRADED
+    monkeypatch.setattr(w, "_manifest_run_id", lambda: "1")
+    assert w._quality_exit("2026-09-02 07:14", get_json=lambda url: {
+        "jobs": [{"name": "alert-on-quality", "conclusion": "success"}]}
+    ) == w.RC_QUALITY_DEGRADED
 
     # 前提本身要釘住:主班的品質自評確實只在 delivered 時跑
     import yaml
@@ -708,3 +716,172 @@ def test_rc3_only_applies_where_its_premise_holds(monkeypatch):
                if "品質自評" in (s.get("name") or "")][0]
     assert "run_outcome == 'delivered'" in quality["if"], (
         "主班品質自評的條件變了 —— rc=3 的前提要重新檢查", quality["if"])
+
+
+def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
+    """r11 外審:`rc=3` 的理由是「主班收尾時已經自評**並告警**過」。
+    前半句有證據(判準跑過);後半句**沒有** —— `alert-on-quality` 是獨立
+    job,SMTP 失敗或缺憑證時它會紅,而看門狗完全不知道,照樣認定
+    「已經通知過」而放棄第二條通知路。
+
+    **去重要基於「收到了」,不是基於「應該收到了」。**
+    """
+    monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
+        {"code": "recap_not_previous_session", "severity": "degraded",
+         "detail": "x", "domain": rq.DOMAIN_CONTENT}])
+    monkeypatch.setattr(w, "_manifest_run_id", lambda: "33570065708")
+
+    def _jobs(payload):
+        return lambda url: payload
+
+    ok = w._quality_exit("x", get_json=_jobs(
+        {"jobs": [{"name": "alert-on-quality", "conclusion": "success"}]}))
+    assert ok == w.RC_QUALITY_DEGRADED, "確認寄成了卻還是重寄"
+
+    for payload in ({"jobs": [{"name": "alert-on-quality",
+                               "conclusion": "failure"}]},
+                    {"jobs": [{"name": "alert-on-quality",
+                               "conclusion": "cancelled"}]},
+                    {"jobs": [{"name": "send-report",
+                               "conclusion": "success"}]},   # 那個 job 沒跑
+                    {"jobs": []}, {}):
+        rc = w._quality_exit("x", get_json=_jobs(payload))
+        assert rc == w.RC_QUALITY_DEGRADED_UNSENT, (payload, rc)
+
+    # API 查不到也要當成「沒送成」—— 不可以因為查詢失敗就推定已通知
+    def _boom(url):
+        raise OSError("no network")
+    assert w._quality_exit("x", get_json=_boom) == w.RC_QUALITY_DEGRADED_UNSENT
+    # manifest 沒有 run_id 同理
+    monkeypatch.setattr(w, "_manifest_run_id", lambda: "")
+    assert w._quality_exit("x", get_json=_jobs(
+        {"jobs": [{"name": "alert-on-quality", "conclusion": "success"}]})
+    ) == w.RC_QUALITY_DEGRADED_UNSENT
+
+    # workflow:rc=4 要寄信,但不算事故
+    import yaml
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
+        encoding="utf-8").read())
+    steps = {s.get("name") or s.get("id"): s for j in wf["jobs"].values()
+             for s in j.get("steps", [])}
+    alert = " ".join(steps["Alert"]["if"].split())
+    assert "rc == '4'" in alert, alert
+    fail = " ".join(
+        steps["Fail the run so it is visible in the Actions list"]["if"].split())
+    # **正面比對**:寫成「`rc == '4'` 不在裡面」量不到規則 ——
+    # 退回 `rc != '0'` 的話那個否定式照樣成立(突變驗證抓到的白測)。
+    assert fail == ("steps.check.outputs.rc == '1' || "
+                    "steps.check.outputs.rc == '2'"), (
+        "只有降級不該染紅,而條件要明確列舉", fail)
+    # 查 API 要有 token —— 少了它會天天查不到而多寄一封
+    assert "GITHUB_TOKEN" in (steps["Check last run"].get("env") or {}), (
+        "判準查不到 job conclusion 就會退到 rc=4,每天多寄一封")
+
+
+def _run_alert_script(rc, **env):
+    """把 workflow 內嵌的告警腳本**真的執行一次**,回傳組出來的信。
+
+    r11 外審第二輪:先前只驗 YAML 的 `if` 條件 —— 那量不到「rc=4 會走到
+    哪一條路由」。新增 rc=4 之後它其實會寄給一般收件人、主旨宣告一場
+    沒有發生的事故(「今天的晨報可能沒有跑起來」),而信明明已經寄達。
+    條件對了不代表內容對。
+    """
+    import os
+    import sys as _s
+    import textwrap
+    import types
+    wf = io.open(_ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
+                 encoding="utf-8").read()
+    seg = wf[wf.index("- name: Alert"):]
+    seg = seg[:seg.index("- name: Fail the run")]
+    body = seg[seg.index("python - <<'PY'") + len("python - <<'PY'"):]
+    body = body[:body.index("\n          PY")]
+
+    captured = []
+
+    class _SMTP:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def starttls(self, **k):
+            pass
+
+        def login(self, *a):
+            pass
+
+        def send_message(self, m):
+            captured.append(m)
+
+    fake = types.ModuleType("smtplib")
+    fake.SMTP = _SMTP
+    old_mod = _s.modules.get("smtplib")
+    _s.modules["smtplib"] = fake
+    old_env = dict(os.environ)
+    try:
+        os.environ.update({"GMAIL_USER": "u", "GMAIL_APP_PASSWORD": "p",
+                           "RECIPIENT": "reader@example.com",
+                           "QUALITY_RECIPIENT": "ops@example.com",
+                           "WATCHDOG_RC": str(rc),
+                           "WATCHDOG_DETAIL": "細節", **env})
+        try:
+            exec(compile(textwrap.dedent(body), "<alert>", "exec"), {})
+        except SystemExit:
+            pass
+    finally:
+        os.environ.clear()
+        os.environ.update(old_env)
+        if old_mod is not None:
+            _s.modules["smtplib"] = old_mod
+        else:
+            _s.modules.pop("smtplib", None)
+    return captured[0] if captured else None
+
+
+def test_the_degraded_resend_does_not_announce_a_fake_incident():
+    """r11 外審第二輪:rc=4 走錯路由會寄給一般收件人,主旨說
+    「今天的晨報可能沒有跑起來」—— 而信明明已經寄達,只是主班那封
+    品質信沒送成。**誤導性告警比沒有告警更難查。**"""
+    m = _run_alert_script(4)
+    assert m is not None
+    assert m["To"] == "ops@example.com", ("rc=4 寄給了一般收件人", m["To"])
+    assert "晨報品質" in m["Subject"], m["Subject"]
+    assert "沒有跑起來" not in m["Subject"], (
+        "宣告了一場沒有發生的事故", m["Subject"])
+    text = m.get_content()
+    assert "有寄到" in text and "不是事故" in text, text[:200]
+
+    # 另外兩條路不可以被這次改動帶壞
+    q = _run_alert_script(2)
+    assert q["To"] == "ops@example.com" and "但有段落沒跑成" in q["Subject"]
+    # **rc=4 與 rc=2 說的是不同的事**:前者「信沒問題,是通知沒送成」,
+    # 後者「信有段落沒跑成」。只斷言「都屬於品質類」的話,rc=4 掉到
+    # rc=2 的分支也量不出來(突變驗證抓到的白測)。
+    assert m["Subject"] != q["Subject"], (
+        "rc=4 用了 rc=2 的主旨 —— 讀信的人會以為今天的信有缺", m["Subject"])
+    assert "沒送成" in m["Subject"] and "沒送成" not in q["Subject"]
+    assert m.get_content() != q.get_content()
+    n = _run_alert_script(1)
+    assert n["To"] == "reader@example.com" and "沒有跑起來" in n["Subject"]
+
+
+def test_the_degraded_resend_cannot_turn_the_job_red():
+    """rc=4 的契約是「只有降級,不是事故」,而**缺憑證正是它的觸發情境
+    之一** —— 補寄再失敗一次就把 job 弄紅,等於自己違反自己的契約。
+    rc=1/2 維持原本的語意(告警寄不出去就是要紅)。"""
+    import yaml
+    wf = yaml.safe_load(io.open(
+        _ROOT / ".github" / "workflows" / "report-watchdog-b.yml",
+        encoding="utf-8").read())
+    alert = [s for j in wf["jobs"].values() for s in j.get("steps", [])
+             if (s.get("name") or "") == "Alert"][0]
+    coe = str(alert.get("continue-on-error") or "")
+    assert "rc == '4'" in coe, ("rc=4 的寄送失敗仍會染紅", coe)
+    assert "rc == '1'" not in coe and "rc == '2'" not in coe, (
+        "把 rc=1/2 的失敗也吞掉了 —— 告警寄不出去必須是紅的", coe)

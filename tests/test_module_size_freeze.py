@@ -155,7 +155,19 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_290  # 2026-09-01 r4 第四輪:壞收據隔離(先存副本再覆寫);現況 26274  # 2026-09-01 r4 外審第二輪:壞收據與「沒寄過」分開(哨兵+兩層型別驗證);現況 26208。已跑 refactor_audit group(收據那五支)→ BLOCK:與 DELIVERY_RECEIPT_FILE/_DEGRADED_STEPS/_NO_SOURCE 等模組層 state 綁死,誠實少搬  # 2026-09-01 r4 外審:當日可用性與本班時刻拆開(收據記住第一次送達);現況 26142  # 2026-09-01 外審:run_outcome 接線 + manifest 世代標記  # 2026-08-29 使用者六項(醫界追蹤/刪贅格/雙昨收官方值);現況 25906  # 2026-08-27 r3 外審 P1:寄送收據獨立發佈(不等整批 state 過契約);現況 25802  # 2026-08-27 使用者七項(0050/行事曆解說/網球比分/週日回顧);  # 2026-08-27:同日冪等(備援 cron 的前提);現況 25451  # 2026-08-26:機器已知缺口由 Python 代抄;現況 25327  # 2026-08-25 外審 P2:快取季別+壞檔不得帶走賽程;現況 25258  # 2026-08-25 使用者:球場改走 Wikipedia(官網對 Actions 確認被擋);現況 25161  # 2026-08-24 使用者:球場快取(官網對 Actions geo-block,整季快取回退);現況 25058  # 2026-08-24 外審:修補三層優先序+recap 新鮮度邊界+CPBL 場地留痕;現況 24965  # 2026-08-24 生產事故:修補切片量到才算數(筆數上限+砍半重量);現況 24862  # 2026-08-24 使用者:中職場地(官網對照 _cpbl_venue_map);現況 24814  # 2026-08-23 使用者:一週預報(week 解析)+CWA 警特報 fetcher+渲染;現況 24740  # 2026-08-22 外審 P2 群:radar state 留痕+action 型別遷移接線;現況 24629  # 2026-08-22 使用者:TAIFEX 改官網每日報表為主源(OpenAPI 落後 2 個交易日且已改回 CSV)+台中大巨蛋在地查詢;現況 24588  # 2026-08-22 外審 P1-1 r2:切片範圍的驗證(新增看不到內容的引用不算有根據);現況 24437  # 2026-08-22 外審 P1-1 r1:切片進圍欄+看不到內容的引用要點名;現況 24411  # 2026-08-22 外審 P1-1:修補 payload 三級策略;現況 24390  # 2026-08-22 repo-wide 外審 P1-3:持久 state 壞檔不覆寫(_register_state_corrupt + 五處接線)  # 2026-08-22 外審 r1 P2:公司鍵遷移移到 alias-map 閘門之前+降級留痕;現況 24334  # 2026-08-22 外審 P1/P2:公司持久身分配套(story 鍵遷移接線)+ timeline object 修正留痕;現況 24330  # 2026-08-22 生產事故:slim 修補 payload(helper+接線;修補請求爆掉硬閘門讓整條特化路徑落 legacy);現況 24312  # 2026-08-20 生產回饋第二批:來源引用連結索引接線+第五段 grid 重排+在地快訊 fail-closed;現況 24094  # 2026-08-20 生產回饋:第五段 2×2 表格+佐證等級代抄;現況 24061  # 2026-08-19 外審第三輪 P1-1:路由 fail-closed(InvalidLLMConfig)+ fatal 消費端;現況 24007  # 2026-08-19 使用者政策:LLM_PROVIDER 預設 gemini→deepseek(含政策註解;第二輪拆主分析 Gemini 備援後淨減);現況 23958  # 2026-08-19 D/E 外審 r1:抽取器全程deadline(批次不吃核心尾段)+ 跨批 ID 圍欄;現況 23951  # 2026-08-19 repo-wide Commit D/E:抽取器有界批次+per-batch coverage、Gemini 抽取器關思考、多 part 串接;現況 23917  # 2026-08-19 外審第六輪 P2:VIX 顯示選實際觸發該方向的條件(close/一年百分位,都觸發就並列);現況 23878  # 2026-08-19 外審第五輪 P2:tie-break 改方向性門檻超越(有基準點的維度 |值|/尺度 會反向排序)+ 逐維顯示單位宣告(foreign_top10 是張不是億;讀值器 lambda 改 def 過 ruff);現況 23851  # 2026-08-19 外審第四輪 P2:多空交鋒的讀值器表(與計分器同資料路徑)+ 門檻倍數 tie-break;先前 23793  # 2026-08-18 外審 P2-1:資安事件從 geopolitical 拆出來(型別正規化、延燒追蹤、舊鍵改名);現況 23722  # 2026-08-18 P1-2:三家 provider 共用 completion contract 的接線(DeepSeek 主路徑/抽取器、OpenAI、Gemini 各自只做對照);現況 23643  # 2026-08-18 P1-1:事件主體語意分層(主體要在文字裡被指名)+ state 清理接線;現況 23549  # 2026-08-18 第二批:結論卡不再解析自己的 markdown(立場從 JSON 留下來)、五段合併後的段落常數清理、NASDAQ-100 前段班補查詢與涵蓋宣告、ETF 進出參考價併進第六段那張表、第五段改資訊格排版;現況 23461  # 2026-08-17 外審 r4:Gemini 失敗狀態機(每次送出一筆紀錄、provider 裁決不重試同一個模型、finish_reason 進帳);現況 23378  # 2026-08-17 外審 P2-1 r1:存檔失敗就不得留著「持續追蹤」的宣稱(渲染時的 admission 只是預演,真正寫進磁碟是 finalizer);現況 23290  # 2026-08-17 外審 P1-2 r1:加深也要扣額度(先前不佔額度,繞過 deadline 與legacy 保留額);現況 23264  # 2026-08-17 外審 P1-2:修補額度依模式分開(syntax/regenerate/semantic 各自計數,記帳與時間守衛收斂成一個 _consume_repair);現況 23234  # 2026-08-17 Gemini 截斷偵測 + 抽取器角色額度(35 則新聞抽出 1 個事件的根因:思考吃光 8192,答案在陣列中間被切斷而 finishReason 沒人看);現況 23189  # 2026-08-17 抽取器換 provider 前那次失敗要留紀錄(生產只看得到 fallback_from,是逾時還是斷線、花了幾秒查不到);現況 23169  # 2026-08-15 修補從最好的草稿接手(08-13 生產:1 條 → 修補後 95 條,而下一輪會從 95 條那版繼續修);現況 23133  # 2026-08-15 中職戰績:當前半季 + 全年兩張表(季後賽資格同時看半季冠軍與全年勝率,只給一張表會漏掉另一半);分段名取自資料源宣告不從場次推導;外審 r1 補「全年要不到要登錄降級」(error/empty 分開記,刻意抑制不算);現況 23100  # 2026-08-13 v4-pro 切換:Responses effort 送出前正規化(none 保留); 第三十二輪 P1-2 r1:非物件根走語意修補+最後一輪不白建 payload; 第三十二輪 P1-2:壞 JSON 修補帶原始底本 + repair_modes 留痕;現況見 wc  # 2026-08-13 排程實跑:三個可觀測性缺口(放棄修補留痕/主分析 parse error 留頭尾/駁回記 kinds 分佈);現況 22908  # 第三十一輪外審 r1:timeline 落盤補 object/latest_summary(match_days 記錄側要讀的欄位);現況 22885  # 外審 r1:修補帶當輪被拒版本 + 空 content 不再早退(第二套上限拆掉,`_kept` 回收不被跳過);現況 22868  # CI #506:gap ID 正規化接線(真缺口錯命名不該整份作廢;判準在 tension_refs,這裡只有接線與manifest 痕跡,與張力 ID 那一對同形狀);現況 22849  # 2026-08-11 外審 r1(P2):每一次 HTTP 失敗都自己留紀錄 —— 精簡重試若也失敗,換模型時 `_backoff_reason` 清空,原本那個 400 的理由整個消失;現況 22832  # 2026-08-11:精簡重試要說得出為什麼(400 理由進 manifest + `llm:slim_retry:<role>` 降級)—— OpenAI 那條路徑早就這樣做,DeepSeek 這條漏了;現況 22803  # 2026-08-11 CI #495:張力 ID 正規化接線(`tension_resolutions[].tension_id` 不是證據欄位,證據那條走不到它) —— 判準在 `tension_refs`,這裡只有接線與 manifest 痕跡,與既有的證據 ID 接線是同一對;現況 22788  # 2026-08-10 證據 ID 正規化接線(近似 ID 讓整份特化分析作廢);現況 22742  # 第二十七輪外審 P1-3:三態承接政策(`_hosts`);現況 22583  # 2026-08-09:manifest 記下這一班寄的是哪一種信(週日綜合不是壞掉的平日報)+ keyed_by_action 遙測補 action+object;現況 22545  # Commit 2:同鍵不同樁的分線接線(外審 P1-4A/B);現況 22511  # 外審補審 F1/F2:ANALYSIS_RECAP_FILE / GOOAYE_RADAR_FILE 具名常數(inline 路徑守衛看不見)+ `_accept_luna` finalizer(兩個接受出口各寫一遍會漂移);現況 22467  # 2026-08-07 拆影子+拆政策/醫界情報後現況 22243(量出來的)
+MAIN_MODULE_LINE_CEILING = 26_289  # **凍結在現況**(2026-09-03 r17 架構外審 P1)。
+#: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
+#: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
+#: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
+#: 那不是改善架構)。
+#:
+#: 新政策(使用者 2026-09-03 定案「先不做主檔重構」,所以這道閘門**要有出口**):
+#:   * **新功能一律開模組** —— 這條不因為缺行數而放寬。
+#:   * bug fix 需要幾行就調幾行,理由寫在這一行後面(既有慣例)。
+#:     零餘裕的閘門會在下一次事故當場卡住 hotfix,而「我造了一道沒有出口的
+#:     閘門」是這個 repo 自己記錄過的錯。
+#:   * 抽出程式碼之後**必須往下調** —— `test_the_ceiling_is_not_far_above_reality`
+#:     的餘裕已從 600 收到 100,所以它放不鬆、也藏不住成長。
 
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
@@ -310,7 +322,9 @@ MODULE_CEILINGS = {
     # 證據包的序列化與指紋。指紋是實驗公平性的全部依據,值得自己的檔與
     # 測試。**只做序列化,不碰組裝** —— 出現欄位取捨就表示放錯地方。
     # 實測 134 行。
-    "evidence_serialize.py": 170,
+    # 2026-09-03 r17:邊界正規化(`normalize_json`)搬進來 —— 型別契約封在
+    # 一個地方,而不是靠每個序列化點各自記得 `default=str`。170→215。
+    "evidence_serialize.py": 240,
     # 第十八輪 P1-1/P1-2:證據**圖**(每個 ID 的值/單位/時間/來源/
     # 能不能推論)。與 `evidence_packet` 分開,是因為「packet 裡有什麼」
     # 與「這些東西各自是什麼、可不可信」是兩個問題,而後者才是
@@ -793,10 +807,31 @@ def test_the_ceiling_is_not_far_above_reality():
     也就是說「降低上限」是被強制的,而不是靠自律。
     """
     n = _lines("morning_report.py")
-    slack = MAIN_MODULE_LINE_CEILING - n
-    assert slack <= 600, (
-        f"上限 {MAIN_MODULE_LINE_CEILING} 比實際 {n} 行高出 {slack} 行 —— "
-        "棘輪鬆掉了,請把上限調降到接近現況(建議 現況 + 200)。")
+    assert ceiling_slack_ok(MAIN_MODULE_LINE_CEILING, n), (
+        f"上限 {MAIN_MODULE_LINE_CEILING} 比實際 {n} 行高出 "
+        f"{MAIN_MODULE_LINE_CEILING - n} 行 —— 棘輪鬆掉了,"
+        "請把上限調降到接近現況(建議 現況 + 20)。")
+
+
+#: 棘輪容許的餘裕。600 → 100(2026-09-03 r17 架構外審):**600 行的餘裕
+#: 就是它一路長上來的那條路** —— 上限「貼著現況」卻仍容得下半個新功能。
+MAX_CEILING_SLACK = 100
+
+
+def ceiling_slack_ok(ceiling: int, actual: int) -> bool:
+    """上限貼著現況嗎。**抽成述詞才驗得到那個常數本身** —— 先前它寫死在
+    assert 裡,而「把上限與餘裕一起放寬」的突變不會讓任何測試變紅
+    (反例沒有隔離出被測的那條規則)。"""
+    return ceiling - actual <= MAX_CEILING_SLACK
+
+
+def test_the_slack_rule_itself_is_enforced():
+    """那個常數要真的擋得住東西 —— 用假設的數字驗,不依賴今天的行數。"""
+    assert ceiling_slack_ok(26_289, 26_289)         # 貼著現況
+    assert ceiling_slack_ok(26_389, 26_289)         # 剛好 100
+    assert not ceiling_slack_ok(26_390, 26_289)     # 101 就不行
+    assert not ceiling_slack_ok(26_889, 26_289), (
+        "600 行的餘裕又回來了 —— 那正是主檔從 22,243 長到 26,290 的那條路")
 
 
 def test_every_root_module_is_either_capped_or_explicitly_exempt():

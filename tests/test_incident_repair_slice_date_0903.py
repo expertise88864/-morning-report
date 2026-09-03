@@ -88,6 +88,90 @@ def test_the_slice_really_can_carry_a_raw_date_from_a_packet(monkeypatch):
                for v in (got["market:MACRO"].get("value") or {}).values()), got
 
 
+def test_the_boundary_normalizes_instead_of_relying_on_default_str():
+    """**`default=str` 是最後一道保險,不是正常路徑**(r17 架構外審 P1)。
+
+    依賴它的話 `Decimal("4.25")` 會悄悄變成字串 `"4.25"` —— 不會炸、
+    測試全綠,而型別契約已經改了。所以進 prompt 之前就轉,而且每一種
+    型別有明確規則(日期走 ISO、Decimal 保持是數字)。
+    """
+    import decimal
+    tree, hits = es.normalize_json({
+        "market": {"nfp": _NFP, "yield": decimal.Decimal("4.25"),
+                   "tags": {"b", "a"}, "nan": float("nan"), "ok": 1.5}})
+    assert tree["market"]["nfp"] == "2026-09-04"
+    assert tree["market"]["yield"] == 4.25 and isinstance(
+        tree["market"]["yield"], float), "Decimal 被轉成字串了"
+    assert tree["market"]["tags"] == ["a", "b"]
+    assert tree["market"]["nan"] is None, "NaN 不是合法 JSON"
+    assert tree["market"]["ok"] == 1.5
+    # 轉過的都要留痕 —— 那是真正該修的上游欄位
+    assert sorted(hits) == sorted([
+        "market.nfp(date)", "market.yield(Decimal)",
+        "market.tags(set)", "market.nan(non_finite_float)"]), hits
+    # 轉完就是 JSON 原生,而且**冪等**
+    assert es.nonjson_value_paths(tree) == []
+    assert es.normalize_json(tree) == (tree, [])
+    json.dumps(tree, ensure_ascii=False)      # 不靠 default 也送得出去
+
+
+def test_a_non_finite_decimal_follows_the_same_rule_as_a_float():
+    """`Decimal("NaN")` 轉成 float 之後**仍然**是 NaN(Codex r1 P2)。
+
+    上面那條「NaN/inf → null」的契約先前只套在原生 float 那條路 ——
+    Decimal 這條會回一個非有限的 float,不是合法 JSON,而且要再呼叫
+    一次才會變 None:**冪等也不成立**。
+    """
+    import decimal
+    # **兩種失效路徑都要**(量出來的):`sNaN` 的 `float()` 會**拋例外**
+    # (先前的 except 回 `str(node)` —— 正好重現「Decimal 悄悄變字串」);
+    # 而 `1e400` 的 `is_finite()` 是 **True**、`float()` 卻給 `inf`,
+    # 所以只靠 `is_finite()` 也漏。
+    for raw in ("NaN", "Infinity", "-Infinity", "sNaN", "1e400", "-1e400"):
+        tree, hits = es.normalize_json({"x": decimal.Decimal(raw)})
+        assert tree == {"x": None}, (raw, tree)
+        assert hits == ["x(non_finite_decimal)"], (raw, hits)
+        assert es.normalize_json(tree) == (tree, []), "不冪等"
+    # 有限的照樣保持是數字
+    tree, _ = es.normalize_json({"x": decimal.Decimal("4.25")})
+    assert tree["x"] == 4.25 and isinstance(tree["x"], float)
+
+
+def test_a_key_collision_is_deterministic_and_never_silent():
+    """字串化之後撞在一起的鍵,不可以看**插入順序**決定誰活(Codex r1 P2)。
+
+    `{"1": …, 1: …}` 是這個 repo **被支援且被診斷**的情境
+    (`_key_order` / `nonstring_key_paths` / `test_canonical_json_keys`)——
+    在 canonical serialization 之前就丟掉一個,等於送進 prompt 的證據與
+    指紋只因為 dict 的插入順序不同而改變。
+    """
+    a = es.normalize_json({"1": "string", 1: "integer"})
+    b = es.normalize_json({1: "integer", "1": "string"})
+    assert a == b, ("插入順序改變了結果", a, b)
+    assert a[1] == ["1(key_collision)"], "碰撞被靜靜吃掉了"
+    # 判準要與 canonical_json 一致(依 `_key_order` 排序後由後者勝出,
+    # 那也是 JSON 解析器對重複鍵的結果)
+    assert a[0] == json.loads(es.canonical_json({"1": "string", 1: "integer"}))
+    # 沒有碰撞時不可以誤報
+    assert es.normalize_json({"a": 1, "b": 2})[1] == []
+
+
+def test_the_packet_is_normalized_before_it_reaches_the_prompt():
+    """接上去了才算數:正規化要真的發生在 packet 建好、送出去之前。"""
+    tree = ast.parse((_ROOT / "morning_report.py").read_text(encoding="utf-8"))
+
+    def _calls(node):
+        return {ast.unparse(n.func) for n in ast.walk(node)
+                if isinstance(n, ast.Call)}
+
+    hosts = [f for f in ast.walk(tree)
+             if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and "_luna_analysis" in _calls(f)]
+    assert hosts, "錨點沒了"
+    assert any("_es.normalize_json" in _calls(f) for f in hosts), (
+        "packet 沒有在送進 prompt 之前正規化")
+
+
 def test_the_offending_upstream_field_is_recorded(monkeypatch):
     """`default=str` 是止血 —— **源頭**仍然是某個上游欄位放了 `date` 物件。
 
@@ -116,5 +200,5 @@ def test_the_diagnostic_is_wired_next_to_its_twin():
              if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
              and "_ep.nonstring_key_paths" in _calls(f)]
     assert hosts, "孿生診斷不見了 —— 這條測試的錨點沒了"
-    assert any("_es.nonjson_value_paths" in _calls(f) for f in hosts), (
+    assert any("_es.normalize_json" in _calls(f) for f in hosts), (
         "值的型別診斷沒有接在 packet 建好的那個地方")

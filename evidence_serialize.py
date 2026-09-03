@@ -87,6 +87,89 @@ def nonjson_value_paths(node, path: str = "") -> list:
     return out
 
 
+def normalize_json(node, path: str = ""):
+    """把整棵樹轉成 **JSON 原生型別**,回 `(新的樹, 被轉過的路徑清單)`。
+
+    r17 外審 P1(2026-09-03 生產事故的根治):`default=str` 是**最後一道
+    保險**,正常路徑不該依賴它 —— 它會把 `Decimal("4.25")` 變成字串
+    `"4.25"`,型別悄悄改了而測試全綠。所以在**進 prompt 之前**就轉,
+    而且每一種型別有明確規則:
+
+      date / datetime → ISO 字串(而不是 `str()` 的區域格式)
+      Decimal         → float(**保持是數字**)
+      set / tuple     → list
+      Enum            → 它的 value
+      其餘非原生      → `str()`,但**留下路徑**(那是要修的上游欄位)
+
+    **回新的樹,不就地改**:packet 的子樹與 `quotes` 共用物件,就地改會
+    連帶改掉後面渲染要用的真值。
+    """
+    import datetime as _d
+    import decimal as _dec
+    import enum as _e
+    if isinstance(node, dict):
+        out, hits, won = {}, [], {}
+        for k, v in node.items():
+            here = f"{path}.{k}" if path else str(k)
+            nv, nh = normalize_json(v, here)
+            hits += nh
+            nk = k if isinstance(k, str) else str(k)
+            if nk in out:
+                # **混型別鍵是被支援且被診斷的情境**(`_key_order` /
+                # `nonstring_key_paths`),不是這裡可以靜靜丟掉一個的地方
+                # (Codex r1 P2):`{"1": ..., 1: ...}` 字串化後撞在一起,
+                # 誰活下來會變成**看插入順序**。判準沿用 canonical_json:
+                # 依 `_key_order` 排序後由後者勝出(那也是 JSON 解析器對
+                # 重複鍵的結果)。碰撞本身要留痕 —— 上游該修。
+                hits.append(f"{here}(key_collision)")
+                if _key_order(k) < _key_order(won[nk]):
+                    continue
+            out[nk], won[nk] = nv, k
+        return out, hits
+    if isinstance(node, (list, tuple, set)):
+        seq = sorted(node, key=str) if isinstance(node, set) else node
+        out, hits = [], []
+        for i, v in enumerate(seq):
+            nv, nh = normalize_json(v, f"{path}[{i}]")
+            out.append(nv)
+            hits += nh
+        # tuple / set 本身也是一種轉換 —— 上游欄位仍然要修
+        if not isinstance(node, list):
+            hits = [f"{path or '(root)'}({type(node).__name__})"] + hits
+        return out, hits
+    if isinstance(node, bool) or node is None or isinstance(node, (str, int)):
+        return node, []
+    if isinstance(node, float):
+        # NaN / inf 不是合法 JSON(`json.dumps` 預設會產出 `NaN` 字面值,
+        # 那是**別的解析器讀不懂**的東西)。轉成 null 並留痕。
+        if node != node or node in (float("inf"), float("-inf")):
+            return None, [f"{path or '(root)'}(non_finite_float)"]
+        return node, []
+    tag = f"{path or '(root)'}({type(node).__name__})"
+    if isinstance(node, (_d.datetime, _d.date, _d.time)):
+        return node.isoformat(), [tag]
+    if isinstance(node, _dec.Decimal):
+        # **兩道都要**(Codex r1/r2 P2,而且是量出來的不是推理出來的):
+        #   `Decimal("sNaN")`  → `float()` 直接拋 ValueError(先前的 except
+        #                        回 `str(node)`,正好重現「Decimal 悄悄變字串」)
+        #   `Decimal("1e400")` → `is_finite()` 是 **True**,`float()` 卻給 inf
+        # 少任何一道都會漏掉一種。契約是「NaN/inf → null」與
+        # 「Decimal 保持是數字」,兩者都不能靠字串化蒙混過去。
+        nf = f"{path or '(root)'}(non_finite_decimal)"
+        if not node.is_finite():
+            return None, [nf]
+        try:
+            f = float(node)
+        except (ValueError, OverflowError):   # 有限的 Decimal 走不到這裡
+            return None, [f"{path or '(root)'}(decimal_unconvertible)"]
+        if f != f or f in (float("inf"), float("-inf")):
+            return None, [nf]
+        return f, [tag]
+    if isinstance(node, _e.Enum):
+        return normalize_json(node.value, path)[0], [tag]
+    return str(node), [tag]
+
+
 def canonical_json(packet: dict) -> str:
     """穩定序列化。**排序鍵、無空白、不逃逸非 ASCII、無法序列化的轉字串。**
 

@@ -14978,12 +14978,13 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             _nsk = _ep.nonstring_key_paths(_packet)[:8]
             if _nsk:
                 _RUN_MANIFEST.setdefault("llm", {})["evidence_nonstring_keys"] = _nsk
-            # 孿生診斷(2026-09-03 生產):**值**的型別。`default=str` 讓
-            # 它不再炸,但那是止血 —— 源頭仍然是某個上游欄位把 `date`
-            # 物件放進了 packet,不記下來就查不到是哪一個。
-            _njv = _es.nonjson_value_paths(_packet)[:8]
+            # **邊界正規化**(r17 外審 P1;2026-09-03 事故的根治):進 prompt
+            # 之前一律轉成 JSON 原生型別,`default=str` 只留作最後保險 ——
+            # 依賴它的話 `Decimal` 會悄悄變成字串。轉過的路徑要留痕:那是
+            # 真正該修的上游欄位。回新的樹,不就地改(與 quotes 共用物件)。
+            _packet, _njv = _es.normalize_json(_packet)
             if _njv:
-                _RUN_MANIFEST.setdefault("llm", {})["evidence_nonjson_values"] = _njv
+                _RUN_MANIFEST.setdefault("llm", {})["evidence_normalized"] = _njv[:8]
             _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
             if _text:
                 # 第十四輪 P0-1:**只有走到這裡才算 Luna 特化成功。**

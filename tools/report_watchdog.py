@@ -35,6 +35,7 @@ fetch,路徑用環境變數傳;`authoritative_manifest()`)—— 排程觸發的
   2 信到了但有**缺陷** → 告警 + 紅
   3 只有降級,而且主班那封品質信確認寄成了 → 不重複告警、不染紅
   4 只有降級,但主班那封查不到成功紀錄 → 補寄一次,仍不算事故
+  5 有缺陷,但主班那封**確認寄成了** → 不重複寄信,但**照樣染紅**
 """
 import datetime as dt
 import json
@@ -563,6 +564,15 @@ RC_OK, RC_NOT_DELIVERED, RC_QUALITY_DEFECT, RC_QUALITY_DEGRADED = 0, 1, 2, 3
 #:   4  只有降級,**而且主班那封品質信沒有送成**(或查不出來)
 #:      → 由看門狗補寄一次,但仍不算事故(不染紅)
 RC_QUALITY_DEGRADED_UNSENT = 4
+#:   5  有**缺陷**,但主班那封品質信**確認寄成了** → **不重複寄,但照樣染紅**
+#:
+#: 2026-09-03 自然重現:那天有 `luna_rejected`(defect),產出者 07:42 自評後
+#: 寄了一封,看門狗 09:30 又寄了一封**內容完全相同**的。r11 立的原則是
+#: 「去重要基於『收到了』,不是『應該收到了』」—— 但那套 ACK 機制先前只接在
+#: 「只有降級」那條路(3/4),缺陷這條無條件再寄。
+#: **紅不能一起拿掉**:缺陷本來就該在 Actions 上看得見,那與「要不要再寄一封
+#: 同樣的信」是兩件事(rc=3 是「連紅都不必」,rc=5 是「紅要,信不必」)。
+RC_QUALITY_DEFECT_ACKED = 5
 
 
 #: 主班那封品質信的三態 —— **「還沒跑完」不是「沒送成」**。
@@ -726,11 +736,12 @@ def _quality_exit(info: str, get_json=None, sleep=None, *, raw=None) -> int:
     defect = any(f.get("severity") == "defect" for f in findings)
     print(f"[watchdog] 品質{'異常' if defect else '降級'}({info}):" + chr(10)
           + _rq.summarize(findings), file=sys.stderr)
-    if defect:
-        return RC_QUALITY_DEFECT
     # **去重要基於「收到了」,不是「應該收到了」**(r11 外審):
     # 主班的品質告警是獨立 job,寄失敗時它會紅,但看門狗不查就等於
     # 主動放棄第二條通知路 —— 而那正是它存在的理由。
+    # r18(9/3 自然重現):這一段先前只服務「只有降級」那條路,缺陷那條在
+    # 上面就 `return RC_QUALITY_DEFECT` 了 —— 於是有缺陷的日子必定收到兩封
+    # 內容相同的信。查一次,兩條路共用結論。
     run_id = _manifest_run_id(raw)
     # **等待要能被注入**(r12 外審第三輪):這裡的 pending 重試預設是
     # 2×20 秒。目前測試不會慢,是因為 `conftest` 為了別的目的
@@ -739,6 +750,12 @@ def _quality_exit(info: str, get_json=None, sleep=None, *, raw=None) -> int:
     ack = producer_alert_state_after_retry(
         run_id, get_json or _default_get_json(), sleep=sleep)
     if ack == ACK_SENT:
+        if defect:
+            # **紅要留著,信不必再寄一次。** 缺陷該在 Actions 上看得見,
+            # 而「同一份判準說的話有沒有人收到」已經確認了。
+            print("[watchdog] 有缺陷,但主班那封品質信**確認寄成了** —— "
+                  "不重複寄信;這一班仍然染紅(缺陷要看得見)", file=sys.stderr)
+            return RC_QUALITY_DEFECT_ACKED
         print("[watchdog] 只有降級,而且主班那封品質信**確認寄成了** —— "
               "不重複寄信、不把這一班染紅", file=sys.stderr)
         return RC_QUALITY_DEGRADED
@@ -748,6 +765,10 @@ def _quality_exit(info: str, get_json=None, sleep=None, *, raw=None) -> int:
     # `unsent`(確定沒送成)與 `unknown`(我還不知道),但信件主旨對兩者
     # 說同一句「沒送成」—— 在 operator 最先看到的地方又合流了。
     _gha_output("ack_state", ack)
+    if defect:
+        print(f"[watchdog] 有缺陷,而且{why}"
+              f"(run {run_id or '?'})—— 由看門狗寄一次", file=sys.stderr)
+        return RC_QUALITY_DEFECT
     print(f"[watchdog] 只有降級,但{why}"
           f"(run {run_id or '?'})—— 補寄一次,但這不算事故",
           file=sys.stderr)

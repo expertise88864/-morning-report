@@ -303,3 +303,72 @@ def test_the_workflow_gives_the_verdict_step_the_same_evidence(monkeypatch):
     for env in (w.FRESH_RECEIPT_ENV, w.FRESH_MANIFEST_ENV):
         name = check["env"][env].rsplit("/", 1)[-1]
         assert name in fetch, f"{env} 指向的 {name} 根本沒有被 fetch 出來"
+
+
+# ------------------------------------------------ r18:缺陷日的重複品質信
+def _quality(monkeypatch, findings, ack_job):
+    """跑 `_quality_exit`,注入 findings 與主班那封品質信的 job 狀態。"""
+    monkeypatch.setattr(w, "quality_findings", lambda *a, **k: findings)
+    monkeypatch.setattr(w, "_manifest_run_id", lambda *a, **k: "RUN")
+    return w._quality_exit("2026-09-03 07:14", get_json=lambda url: ack_job,
+                           sleep=lambda _s: None)
+
+
+_DEFECT = [{"code": "luna_rejected", "severity": "defect",
+            "detail": "特化輸出被驗證擋下", "domain": "content"}]
+_DEGRADED = [{"code": "analysis_not_specialized", "severity": "degraded",
+              "detail": "落 legacy", "domain": "content"}]
+_SENT = {"jobs": [{"name": "alert-on-quality", "status": "completed",
+                   "conclusion": "success"}]}
+_FAILED = {"jobs": [{"name": "alert-on-quality", "status": "completed",
+                     "conclusion": "failure"}]}
+
+
+def test_a_defect_day_does_not_send_the_same_letter_twice(monkeypatch):
+    """**9/3 自然重現**:那天有 `luna_rejected`(defect),產出者 07:42
+    自評後寄了一封,看門狗 09:30 又寄了一封**內容完全相同**的。
+
+    r11 立的原則是「去重要基於『收到了』,不是『應該收到了』」—— 但那套
+    ACK 機制先前只接在「只有降級」那條路,缺陷這條在它之前就 return 了。
+    """
+    assert _quality(monkeypatch, _DEFECT, _SENT) == w.RC_QUALITY_DEFECT_ACKED
+
+
+def test_a_defect_day_still_turns_the_run_red(monkeypatch):
+    """**紅與信是兩件事。** rc=3 是「連紅都不必」,rc=5 是「紅要,信不必」
+    —— 缺陷本來就該在 Actions 上看得見,那不因為信已經寄過而消失。"""
+    text = _WF.read_text(encoding="utf-8")
+    doc = yaml.safe_load(text)
+    steps = {s.get("name"): s for s in doc["jobs"]["check"]["steps"]}
+    fail = steps["Fail the run so it is visible in the Actions list"]["if"]
+    alert = steps["Alert"]["if"]
+    assert "'5'" in fail, "rc=5 沒有染紅 —— 缺陷在 Actions 上會變成綠色"
+    assert "'5'" not in alert, "rc=5 仍然會寄第二封信"
+
+
+def test_an_unconfirmed_alert_still_gets_a_second_letter(monkeypatch):
+    """**只有「確認寄成」才省下那封信。** 沒送成、或查不出來,一律照寄 ——
+    漏一封的代價是「判準說的話沒有人收到」,比重複一封糟。"""
+    assert _quality(monkeypatch, _DEFECT, _FAILED) == w.RC_QUALITY_DEFECT
+    # 查不出來(job 還沒出現、run 也還沒結束)→ 也要寄
+    assert _quality(monkeypatch, _DEFECT, {"jobs": []}) == w.RC_QUALITY_DEFECT
+    # 只有降級那條路不可以被這次改動帶壞
+    assert _quality(monkeypatch, _DEGRADED, _SENT) == w.RC_QUALITY_DEGRADED
+    assert _quality(monkeypatch, _DEGRADED, _FAILED) == (
+        w.RC_QUALITY_DEGRADED_UNSENT)
+
+
+def test_the_skip_path_never_dedupes_against_a_letter_nobody_sent(monkeypatch):
+    """**刻意不寄的日子沒有產出者那封信可以去重。**
+
+    產出者的品質自評條件是 `run_outcome == 'delivered'` —— 那天根本不跑。
+    在那條路上套用 ACK 去重,就是把控制面的缺陷降成一行綠色的 job log
+    (r10 第二輪對 rc=3 立過同一條)。
+    """
+    # **控制面**的缺陷才留得下來(內容類那天本來就該被濾掉:沒有信)
+    import run_quality as rq
+    monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [
+        {"code": "manifest_schema_invalid", "severity": "defect",
+         "detail": "世代標記壞掉", "domain": rq.DOMAIN_CONTROL_PLANE}])
+    monkeypatch.setattr(w, "_default_get_json", lambda: lambda url: _SENT)
+    assert w._control_plane_exit("2026-09-03 07:14") == w.RC_QUALITY_DEFECT

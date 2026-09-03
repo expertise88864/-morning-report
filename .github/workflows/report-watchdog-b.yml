@@ -276,6 +276,10 @@ jobs:
       # 前一天的後果),看門狗卻被染紅 —— Actions 上一個紅色的
       # 「Morning Report Watchdog」很容易被讀成「今天出事了」。
       # rc=3 仍然會在 job log 留下完整訊息,只是不當成事故。
+      # rc=5:有缺陷,但主班那封品質信**確認寄成了** —— 信不必再寄一次
+      # (上面的 Alert 條件刻意不含 5),但**紅要留著**:缺陷該在 Actions
+      # 上看得見。9/3 自然重現:同一份判準那天寄了兩封內容相同的信。
       - name: Fail the run so it is visible in the Actions list
         if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
+            || steps.check.outputs.rc == '5'
         run: exit 1

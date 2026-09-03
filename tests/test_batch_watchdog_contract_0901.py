@@ -7,6 +7,7 @@
 證據不見了或壞掉,恰恰是最該吵的時候。
 """
 import io
+import re
 import json
 import sys
 from pathlib import Path
@@ -650,7 +651,12 @@ def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
     assert _rc(degraded) == w.RC_QUALITY_DEGRADED, "降級被當成缺陷"
     defect = degraded + [{"code": "luna_rejected", "severity": "defect",
                           "detail": "x", "domain": rq.DOMAIN_CONTENT}]
-    assert _rc(defect) == w.RC_QUALITY_DEFECT, "有缺陷卻被降級處理"
+    # r18:主班那封**確認寄成**時,缺陷日不再重複寄同一封信,但**仍然染紅**
+    # (rc=5)。這條測試要釘的不變式是「缺陷不得被當成降級」—— 也就是
+    # 它不可以掉進 rc=3 那一格,而不是它必須恰好是 2。
+    assert _rc(defect) in (w.RC_QUALITY_DEFECT, w.RC_QUALITY_DEFECT_ACKED), (
+        "有缺陷卻被降級處理")
+    assert _rc(defect) != w.RC_QUALITY_DEGRADED
 
     # workflow:只有 rc=1/2 才寄信與染紅
     import yaml
@@ -664,6 +670,12 @@ def test_a_degraded_only_day_is_not_an_incident(monkeypatch):
         assert "rc == '1'" in cond and "rc == '2'" in cond, (name, cond)
         assert "rc != '0'" not in cond, (
             f"{name} 又變回「只要不是 0 就當事故」", cond)
+    # r18:rc=5 只染紅、不寄信 —— 兩個條件不可以再度合流
+    _fail = " ".join(
+        steps["Fail the run so it is visible in the Actions list"]["if"].split())
+    assert "rc == '5'" in _fail, "缺陷已去重的日子在 Actions 上變成綠色"
+    assert "rc == '5'" not in " ".join(steps["Alert"]["if"].split()), (
+        "rc=5 又會寄第二封信")
     assert "rc == '1'" in steps["Auto rescue"]["if"], "補寄的條件被動到了"
 
 
@@ -792,9 +804,10 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
         steps["Fail the run so it is visible in the Actions list"]["if"].split())
     # **正面比對**:寫成「`rc == '4'` 不在裡面」量不到規則 ——
     # 退回 `rc != '0'` 的話那個否定式照樣成立(突變驗證抓到的白測)。
-    assert fail == ("steps.check.outputs.rc == '1' || "
-                    "steps.check.outputs.rc == '2'"), (
-        "只有降級不該染紅,而條件要明確列舉", fail)
+    # r18:改成「這個條件恰好列舉了哪幾個碼」,而不是逐字比對整個字串 ——
+    # 加一個新退出碼就得改一次字面值,那會逼人去動測試而不是想清楚語意。
+    assert set(re.findall(r"rc == '(\d)'", fail)) == {"1", "2", "5"}, (
+        "染紅的碼變了:只有降級(3/4)不該染紅,缺陷(2/5)一定要", fail)
     # 查 API 要有 token —— 少了它會天天查不到而多寄一封
     assert "GITHUB_TOKEN" in (steps["Check last run"].get("env") or {}), (
         "判準查不到 job conclusion 就會退到 rc=4,每天多寄一封")

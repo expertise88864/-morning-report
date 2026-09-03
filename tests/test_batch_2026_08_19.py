@@ -181,7 +181,7 @@ def _full(**over):
 
 
 def test_the_legacy_skeleton_renders_in_order():
-    """**七之二 → 七之三 → 七之四 → 七之五 → 十 → 十之二 → 十一。**
+    """**七之二 → 七之三 → 七之四 → 十 → 十之二 → 十一。**(七之五已刪,2026-09-03)
 
     使用者貼了幾個禮拜前的完整實信要求照做 —— 這些段落在 legacy 信都
     存在、在特化 schema 先前沒有對應欄位,於是整段消失。
@@ -283,17 +283,13 @@ def test_bull_bear_and_target_are_python_authority():
     assert "bull_bear" not in props
     assert "primary_target" not in props["key_drivers"]["items"]["properties"]
 
+    # 2026-09-03 使用者刪掉「七之五、多空交鋒」:權威值仍進 packet 給模型當
+    # 證據,但**不再渲染成一段** —— 有極值也不排。
     pk = {"stance_extremes": {"bull": {"dim": "sox", "text": "費半 SOX +2.00%"},
                               "bear": {"dim": "wti", "text": "WTI 油價 +3.79%"}}}
     out = ar.render(fx.valid_analysis(), pk)
-    assert "## " + ar.SECTION_BULLBEAR in out
-    assert "多方最強:費半 SOX +2.00%" in out
-    assert "空方最強:WTI 油價 +3.79%" in out
-    # 沒有權威值就整段不排;**單邊也不排** —— 單邊的「交鋒」是結論。
-    assert ar.SECTION_BULLBEAR not in ar.render(fx.valid_analysis())
-    half = {"stance_extremes": {"bull": {"dim": "sox", "text": "費半 +2%"},
-                                "bear": {}}}
-    assert ar.SECTION_BULLBEAR not in ar.render(fx.valid_analysis(), half)
+    assert "多空交鋒" not in out and "多方最強" not in out
+    assert not hasattr(ar, "SECTION_BULLBEAR")
 
 
 def test_the_target_label_is_derived_from_editorial_entities():

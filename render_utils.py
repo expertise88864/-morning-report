@@ -919,32 +919,28 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
 
 
 def _mlb_series_odds_div(s: dict, htmllib) -> str:
-    """MLB 系列賽賭盤:合併成單一小字行(批#14 使用者反映多行「賭盤:…」重複難讀)。
-    單場:「賭盤:道奇 52%・洋基 48%(Polymarket)」照舊;
-    連戰:「賭盤(Polymarket):07/18 光芒 46%・紅襪 54%;07/19 光芒 48%・紅襪 52%」。"""
+    """MLB 賭盤:**一行**,與中職那一行同一個樣子(2026-09-03 使用者:
+    「直接 賭盤:樂天 46%・味全 54%(Polymarket) 這樣即可」)。
+    單場:「賭盤:道奇 52%・洋基 48%(Polymarket)」;
+    連戰:「賭盤:07/18:光芒 46%・紅襪 54%;07/19:光芒 48%・紅襪 52%(Polymarket)」
+    —— 每場的勝率都在(帶日期),但不再各自佔一行、也不再另起一個標題行。"""
     odds_list = s.get("odds_list") or []
     if not odds_list:
         return ""
 
     def _strip(o: str) -> str:
-        # 批#15:條目分隔「・」前後補空,不再整串黏在一起
         return (str(o).replace("賭盤:", "").replace("(Polymarket)", "")
                 .replace("・", " ・ ").strip())
 
     if len(odds_list) == 1 and s.get("n", 1) == 1:
-        return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;"
-                f"line-height:1.8;'>賭盤:{htmllib.escape(_strip(odds_list[0][1]))}"
-                f"<span style='color:#94a3b8;'>　(Polymarket)</span></div>")
-    # 連戰:每個比賽日各自一行(舊版以「;」串成一長行難讀,批#15)
-    rows = "".join(
-        "<div style='color:#b45309;padding-left:10px;'>"
-        + (f"{htmllib.escape(day)}:" if day else "")
-        + htmllib.escape(_strip(o)) + "</div>"
-        for day, o in odds_list)
-    return (f"<div style='font-size:11px;line-height:1.8;margin-left:2px;'>"
-            f"<span style='color:#0f172a;font-weight:700;'>賭盤"
-            f"<span style='color:#94a3b8;font-weight:400;'>　(Polymarket)</span></span>"
-            f"{rows}</div>")
+        body = htmllib.escape(_strip(odds_list[0][1]))
+    else:
+        body = ";".join(
+            (f"{htmllib.escape(day)}:" if day else "") + htmllib.escape(_strip(o))
+            for day, o in odds_list)
+    return (f"<div style='font-size:11px;color:#b45309;margin-left:2px;"
+            f"line-height:1.8;'>賭盤:{body}"
+            f"<span style='color:#94a3b8;'>　(Polymarket)</span></div>")
 
 
 def _render_sports_html(sports: dict, htmllib) -> str:

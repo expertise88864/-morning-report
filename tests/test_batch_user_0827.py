@@ -23,18 +23,18 @@ import morning_report as mr
 _ROOT = Path(mr.__file__).resolve().parent
 
 
-def test_the_conclusion_card_has_a_0050_line():
-    """格式塊要有 0050 那一行,而且呼叫端真的填了值(佔位漏填會拋
-    KeyError → 整份 prompt 組不出來,那是接線斷掉的形狀)。"""
-    assert "{key_0050_line}" in mr._STANCE_FORMAT_BLOCK
-    assert "0050 操作建議" in mr._STANCE_FORMAT_BLOCK
+def test_the_conclusion_card_no_longer_carries_the_three_action_lines():
+    """2026-08-27 使用者要 0050 那一行;2026-09-03 使用者把 2330/00662/0050 三行
+    **一起刪掉**(價位在六段表格裡就好)。格式塊不得再有它們,呼叫端也不得
+    再填那三個佔位(填了不存在的佔位不會炸,但那是沒有接線的死碼)。"""
+    for gone in ("{key_0050_line}", "{key_2330_line}", "{key_00662_line}",
+                 "0050 操作建議", "00662 操作建議", "2330 開盤關鍵價位", "第 4-6 行"):
+        assert gone not in mr._STANCE_FORMAT_BLOCK, gone
     src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
     i = src.index("_STANCE_FORMAT_BLOCK.format(")
-    assert "key_0050_line=key_0050_line" in src[i:i + 400]
-    # 計算端:有預測就給價位;沒有就明說資料未提供(嚴禁編造)
-    j = src.index('_t50 = quotes.get("TW0050_PRED")')
-    seg = src[j:j + 700]
-    assert "pred_open" in seg and "嚴禁編造" in seg
+    seg = src[i:i + 300]
+    assert "key_0050_line" not in seg and "key_2330_line" not in seg
+    assert "key_2330_line = " not in src and "key_00662_line = " not in src
 
 
 def test_header_debris_is_stripped_but_content_is_kept():

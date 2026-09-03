@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_309  # 2026-09-03 r18 Codex deep P1:manifest 在卻沒登錄的既有分區不得當『全新分區』簽名(兩個入口都要擋)—— **bug fix 的 +6 行**;現況 26,305。  # 2026-09-03 r18 外審 P1:model_history manifest 壞掉不得被當成「沒有 manifest」(讀不動就不寫、留痕、本班跳過)—— **bug fix 的 +9 行,不是新功能**;現況 26,298。  # **凍結在現況**(2026-09-03 r17 架構外審 P1)。
+MAIN_MODULE_LINE_CEILING = 26_308  # 2026-09-03 Codex r1 兩條 bug fix(+7):一週表按日期對齊(fetch 會跳過壞掉的那天)、舊章節照習慣吐回來時渲染端確定性移除;現況 26,308。  # 2026-09-03 使用者七項:刪七之五/結論卡三行/前言守衛/警特報縣市/一週天氣表 —— 淨減 8 行,**往下調**(棘輪政策)。  # 2026-09-03 r18 Codex deep P1:manifest 在卻沒登錄的既有分區不得當『全新分區』簽名(兩個入口都要擋)—— **bug fix 的 +6 行**;現況 26,305。  # 2026-09-03 r18 外審 P1:model_history manifest 壞掉不得被當成「沒有 manifest」(讀不動就不寫、留痕、本班跳過)—— **bug fix 的 +9 行,不是新功能**;現況 26,298。  # **凍結在現況**(2026-09-03 r17 架構外審 P1)。
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,

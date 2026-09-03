@@ -63,7 +63,6 @@ SUBSECTION_NOTES = "本段的保留事項"
 SECTION_WORLD = "七之二、世界大事速覽"
 SECTION_48H = "七之三、未來 48 小時關鍵事件情境"
 SECTION_DELTA = "七之四、敘事變化(昨日觀點 vs 今日新證據)"
-SECTION_BULLBEAR = "七之五、多空交鋒"
 SECTION_MACRO = "十、總體經濟與政策環境"
 #: 政策深度解析從 v20 的「九、台灣政策與在地動態」改編號(內容同一個欄位)。
 SECTION_POLICY = "十之二、重大政策深度解析"
@@ -374,21 +373,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     if deltas:
         parts.append(f"## {SECTION_DELTA}" + chr(10) + chr(10).join(deltas))
 
-    # 多空交鋒:**Python 權威**(外審 2026-08-19 三輪定案)。
-    # 「哪一條最強」是排名,不變式是 Python 算、模型抄 —— 這一段的值來自
-    # 11 維立場分的逐維貢獻極值(`morning_report._stance_extremes`,
-    # 經 packet 傳入),模型完全不參與。兩邊都有才排:單邊的「交鋒」
-    # 是結論不是交鋒。
-    ext = (packet or {}).get("stance_extremes") if isinstance(packet, dict) else {}
-    ext = ext if isinstance(ext, dict) else {}
-    _bull = _s(((ext.get("bull") or {}) if isinstance(ext.get("bull"), dict)
-                else {}).get("text"))
-    _bear = _s(((ext.get("bear") or {}) if isinstance(ext.get("bear"), dict)
-                else {}).get("text"))
-    if _bull and _bear:
-        parts.append(f"## {SECTION_BULLBEAR}" + chr(10)
-                     + f"- 多方最強:{_bull}" + chr(10)
-                     + f"- 空方最強:{_bear}")
+    # 七之五「多空交鋒」段已刪(2026-09-03 使用者)。`stance_extremes` 仍留在
+    # packet 裡當證據給模型看,只是不再渲染成一段。
 
     # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。

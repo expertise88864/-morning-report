@@ -476,15 +476,13 @@ def _instruction_chunks(instructions) -> tuple:
 #: 守衛釘在 `_STANCE_FORMAT_BLOCK` 上(`tests/test_markdown.py`):
 #: prompt 改寫而它沒跟上,測試當場紅。
 _STANCE_PROMPT_ECHOES = (
-    "說明為什麼是這個立場",
-    "每句必附數據",
-    "每行獨立成段",
-    "原樣引用",
-    "不可自行更動",
-    "不可改用 ADR 美元價",
-    "不要抄進輸出",
-    "是給你的指令",
-    "禁止只寫",
+    '說明為什麼是這個立場',
+    '每句必附數據',
+    '禁止只寫',
+    # 2026-09-03:結論卡的第 4-6 行與其括號說明整段刪掉,原本釘在那段上的
+    # 片語(每行獨立成段/原樣引用/不可自行更動/不可改用 ADR 美元價/
+    # 是給你的指令/不要抄進輸出)跟著移除 —— 片語表必須是指令原文的子集,
+    # 否則過濾器在比對一份不存在的指令(test_the_prompt_and_the_filter_…)。
 )
 
 
@@ -589,24 +587,6 @@ def _strip_stance_internals(text: str, extra_bad: str = "") -> str:
     return "\n".join(_clean_line(ln) for ln in text.split("\n"))
 
 
-def _sanitize_debate_section(text: str) -> str:
-    """批#28(Codex r1):多空交鋒段(七之五)的計分內部安全網——只抽出「多空交鋒」
-    段套 _strip_stance_internals(clause 刪除計分子句),**其餘段落不動**(八段的
-    正當「距突破門檻」等語言要保留,批#26 F2)。prompt 已禁 LLM 在此段寫計分
-    內部,此為 render 端雙保險:若 LLM 違規寫「淨分 +6」「11 維中 7 項偏多」即移除。"""
-    import re as _re
-    if not isinstance(text, str) or "多空交鋒" not in text:
-        return text
-    # 抽「## …多空交鋒…」標頭到下一個標頭(或文末)的整段,只過濾這段
-    m = _re.search(r"(?ms)^(#{1,6}[^\n]*多空交鋒.*?)(?=^#{1,6}\s|\Z)", text)
-    if not m:
-        return text
-    # 辯論段另禁獨立「11 維(度/模型/計分…)」(prompt 禁詞;基本組只認「維中」);
-    # 負向前瞻排除「11 維持」(如「VIX 11 維持低檔」為正當論點,勿誤刪)
-    cleaned = _strip_stance_internals(m.group(1), extra_bad=r"11\s*維(?!持)")
-    return text[:m.start(1)] + cleaned + text[m.end(1):]
-
-
 def _strip_score_phrases(text: str) -> str:
     """外科式移除計分片語,保留立場標籤與動作(Codex 批#26 r2/r4:一句話總結是
     「立場+動作」單行)。只挖「淨分 ±N 距…門檻」「N 維中 X 項」「N 項偏空/多」;
@@ -696,6 +676,27 @@ def _extract_stance_section(text: str) -> str:
         r"#{1,6}\s*(?:[一-十\d]+、)?我的明確立場[^\n]*\n"
         r"(.*?)(?=\n#{1,6}\s|\Z)", text, _re.S)
     return m.group(1).strip() if m else ""
+
+
+def _strip_preamble_before_first_heading(text: str) -> str:
+    """第一個 **H2**(`## `)正文章節之前的文字整段丟掉。
+
+    2026-09-03 實信:六段表格之後、七段之前多出「早安,交易日 2026/09/03」
+    與「2330 預測:昨收…校正相互抵銷…00662 合理估值資料有限,採簡化版,僅供
+    參考」—— 模型自加的問候與內部試算附註。R18 早就禁止後者進信,而它照樣
+    出現:**prompt 指令是請求不是保證**,要擋得住得在這裡擋。
+    沒有任何標題的輸出原樣保留(那是別的問題,整封信砍掉比留著更糟)。
+    """
+    import re as _re
+    if not isinstance(text, str) or not text:
+        return text
+    # **只認正文章節那一級(`## `)**(Codex r1):模型常先吐 `# 台股晨報` 或
+    # `### 今日摘要` 再接正文,任意層級都算標題的話守衛會停在那個前言標題上,
+    # 問候、附註連同它一起進信。正文章節的契約就是 H2。
+    m = _re.search(r"(?m)^[ 	]*##[ 	]", text)
+    if not m or not text[:m.start()].strip():
+        return text
+    return text[m.start():]
 
 
 def _strip_llm_sections(text: str, section_names: tuple) -> str:

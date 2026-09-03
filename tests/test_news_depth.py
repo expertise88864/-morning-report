@@ -221,7 +221,7 @@ def test_narrative_section_rule_no_longer_contradicts_itself():
     # 錨在**段落標題**上,不是規則區裡提到「七之四」的地方
     # (自測第一版抓到 R16b 的敘述,量到的是另一段文字)
     i = prompt.index("## 七之四、")
-    section = prompt[i:prompt.index("## 七之五", i)]
+    section = prompt[i:prompt.index("## 八、", i)]   # 七之五已刪(2026-09-03)
     assert "哪些**無進展**" not in section, "矛盾的舊要求還在"
     assert "整條不要出現" in section or "整段省略" in section
 

@@ -2820,9 +2820,12 @@ def test_mlb_series_merge_keeps_per_game_odds():
     h = mr._render_sports_html(sports, htmllib)
     assert "2 連戰" in h
     assert "光芒 55% ・ 紅襪 45%" in h and "光芒 48% ・ 紅襪 52%" in h   # 兩場賭盤都在
-    # 批#14:連戰賭盤合併為單一「賭盤(Polymarket):07/18 …;07/19 …」行
-    assert "07/18:" in h and "07/19:" in h   # 批#15:各比賽日獨立一行
-    assert h.count("(Polymarket)") == 1   # 批#15:標籤行只出現一次
+    # 2026-09-03 使用者:賭盤**一行**,與中職那一行同一個樣子 ——
+    # 每場的勝率仍帶日期,但不再各自一行、也不再另起標題行
+    assert "07/18:" in h and "07/19:" in h
+    assert h.count("(Polymarket)") == 1
+    odds = h[h.index("賭盤:"):h.index("(Polymarket)")]
+    assert "<div" not in odds and "07/18:光芒" in odds and ";07/19:" in odds, odds
 
 
 def test_poly_event_is_future_uses_instant_not_date(monkeypatch):
@@ -3563,11 +3566,14 @@ def test_weather_card_renders_the_week_and_cwa_alerts(monkeypatch):
                "typhoon": True}]
     h = mr._render_weather_html(locs, [], alerts)
     assert "未來一週" in h
-    assert "2026-08-23" not in h and "一 24~31°" not in h, "今天混進一週列"
-    # **未來要真的是七格**(r1 外審:7 天含今天、砍掉今天只剩 6 —— 測試
-    # 只驗「今天不在」量不到 off-by-one,格數要數出來)
-    week_seg = h.split("未來一週")[1].split("<br>")[0]
-    assert week_seg.count("~") == 7, f"未來格數 {week_seg.count('~')} != 7"
+    # 2026-09-03 使用者:兩地各一行七格在 iPhone 上讀不了 → 一天一列、一地一欄。
+    # 判準只看**那張表**:警特報標題本來就帶「08/23」,整張卡比對會誤判。
+    table = h[h.index("<table"):h.index("</table>")]
+    assert "08/23" not in table and "08/24" in table, "今天混進一週列"
+    # **未來要真的是七列**(r1 外審的 off-by-one 教訓:格數要數出來)
+    assert table.count("<tr>") == 1 + 7, table.count("<tr>")
+    assert table.count("~") == 7 * len(mr.WEATHER_LOCATIONS)
+    assert "08/24" in table and "彰化市" in table and "台中北區" in table
     assert "豪雨特報" in h and "海上颱風警報" in h
     assert "🌀" in h and "#b91c1c" in h, "颱風沒有紅字標記"
     # 天氣源掛掉 → 警特報仍在
@@ -3586,7 +3592,11 @@ def test_cwa_alerts_parse_and_filter(monkeypatch):
     stale = eut.format_datetime(now - dtm.timedelta(hours=60))
     rss = f"""<rss><channel>
       <item><title>08/23 16:21 發布陸上強風特報</title>
+        <description><![CDATA[ 今(23)日臺中市、彰化縣局部地區有平均風6級以上。 ]]></description>
         <link>https://cwa/a</link><pubDate>{fresh}</pubDate></item>
+      <item><title>08/23 17:00 發布大雨特報</title>
+        <description><![CDATA[ 基隆北海岸、屏東、宜蘭、臺東地區有局部大雨。 ]]></description>
+        <link>https://cwa/z</link><pubDate>{fresh}</pubDate></item>
       <item><title>08/24 08:30 發布海上颱風警報</title>
         <link>https://cwa/b</link><pubDate>{fresh}</pubDate></item>
       <item><title>08/20 00:00 發布大雨特報</title>
@@ -3594,8 +3604,12 @@ def test_cwa_alerts_parse_and_filter(monkeypatch):
     </channel></rss>""".encode("utf-8")
     monkeypatch.setattr(mr, "_http_get_relaxed_strict", lambda *a, **k: rss)
     got = mr.fetch_cwa_alerts()
+    # 2026-09-03 使用者:只要台中/彰化/南投/雲林 —— 沒點到的一般特報不收,
+    # 颱風警報例外(它是週日寄信的觸發條件;海上警報寫的是海域不是縣市)。
     assert [a["title"][:14] for a in got] == ["08/23 16:21 發布", "08/24 08:30 發布"]
     assert got[1]["typhoon"] is True and got[0]["typhoon"] is False
+    assert got[0]["counties"] == ["台中", "彰化"]      # 官方寫「臺中」,顯示「台中」
+    assert got[1]["counties"] == []
     # 失敗回空
     monkeypatch.setattr(mr, "_http_get_relaxed_strict",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")))

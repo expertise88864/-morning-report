@@ -81,7 +81,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _strip_stance_calculation,
     _strip_stance_internals,
     _strip_stance_scaffolding,
-    _sanitize_debate_section,
+    _strip_preamble_before_first_heading,
     _strip_score_phrases,
     _extract_stance,
     _extract_summary,
@@ -11178,21 +11178,10 @@ QQQ X.X% [±1/0]、SOX X.X% [±1/0]、VIX X [±1/0]、TSM ADR X.X% [±1/0]、外
 **第 2 行 — 立場標籤**：
 > **立場：偏多 / 偏空 / 中性 / 資料不足**（{stance_line2_rule}）
 
-**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報涵蓋的個股與 ETF,例:「VIX 16.2(低檔)→成長股估值折扣收斂→00662/NASDAQ 風險資產定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
+**第 3 行 — 理由（3-5 句）**：說明為什麼是這個立場，每句必附數據。**至少一句要寫出「傳導機制」而非只給結論**——把指標一路推到本報涵蓋的個股與 ETF,例:「VIX 16.2(低檔)→成長股估值折扣收斂→台股科技類股定價偏多」「SOX +5.45% → 台積電 ADR 連動 → 2330 開盤有撐」。禁止只寫「VIX 低 → 偏多」這種沒有中間鏈的跳論。
 **批#26 鐵律:理由**只寫「哪些關鍵指標+透過什麼機制+推向什麼結論」,**嚴禁**出現
 「11 維中 X 項偏空/偏多」「N 項偏空僅 M 項偏多」「淨分 ±N」「距門檻多少」這類
 計分內部細節——那是後台計算,讀者只要看到結論與傳導鏈,不要看到幾維幾分。
-
-**第 4-6 行**（**每行獨立成段，中間空行**）：
-
-> **2330 開盤關鍵價位**：{key_2330_line}
-
-> **00662 操作建議**：{key_00662_line} 接著只寫你的結論動作——「加碼 / 觀望 / 減碼」擇一(可附條件價位);**動作前不要複述任何指示語**(如「在此基礎上明確寫」——那是給你的指令,不是報告內容,批#29 實信曾整句回音)。
-
-> **0050 操作建議**：{key_0050_line} 接著同樣只寫結論動作——「加碼 / 觀望 / 減碼」擇一(可附條件價位)。0050 與 00662 的判斷**可以不同**(一個是台股市值前 50、一個是 NASDAQ):理由不同就分開寫,相同也要各自成行,不可合併成「同上」。
-
-（上三行的價位數字由 Python 計算:**原樣引用、不可自行更動、不可改用 ADR 美元價**;
- 這段括號說明是給你的指令,**不要抄進輸出**。）
 
 """
 
@@ -11917,44 +11906,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     _p_ok = isinstance(predictions, dict) and not predictions.get("error")
     _p_mid = predictions.get("mid") if _p_ok else None
     _p_last = predictions.get("last_2330") if isinstance(predictions, dict) else None
-    _band_2330 = 0.015 if us_hol.get("detected") else 0.01
-    if _p_mid:
-        _lo2330 = round(_p_mid * (1 - _band_2330))
-        _hi2330 = round(_p_mid * (1 + _band_2330))
-        # 注意:指令文字(請原樣引用等)不可放進這行 — LLM 會連指令一起抄進信件;
-        # 約束已由 R14 鐵律與「我的明確立場」段的格式說明承擔。
-        key_2330_line = (
-            f"2330 台積電（新台幣計價）：預測開盤中樞 {round(_p_mid)} 元、昨收 "
-            f"{round(_p_last) if _p_last else '—'} 元。關鍵價位——站上 {_hi2330} 元偏強、"
-            f"跌破 {_lo2330} 元轉弱。")
-        _mid2330_txt = str(round(_p_mid))
-    else:
-        key_2330_line = "2330 預測資料未提供 → 本行寫「資料未提供」，**嚴禁自行編造價位**。"
-        _mid2330_txt = "（資料未提供）"
-
-    _f_ok = isinstance(fair, dict) and not fair.get("error")
-    _f_price = fair.get("fair_price") if _f_ok else None
-    _f_last = fair.get("last_00662_price") if isinstance(fair, dict) else None
-    if _f_price:
-        key_00662_line = (
-            f"00662（新台幣計價）：合理估值 {_f_price} 元、昨收 "
-            f"{_f_last if _f_last else '—'} 元。開盤明顯低於 {round(_f_price * 0.995, 2)} 元偏便宜、"
-            f"高於合理值則偏貴。")
-    else:
-        key_00662_line = "00662 估值資料未提供 → 寫「資料未提供」，嚴禁編造。"
-
-    # 0050 操作建議(2026-08-27 使用者:「怎麼沒有 0050 操作建議?」——
-    # 結論卡的 KPI 條有 0050 預測,操作建議卻只有 2330/00662 兩行)。
-    _t50 = quotes.get("TW0050_PRED") or {}
-    _t50_open = _t50.get("pred_open") if not _t50.get("error") else None
-    if _t50_open:
-        key_0050_line = (
-            f"0050（新台幣計價）：預測開盤 {_t50_open} 元、昨收 "
-            f"{_t50.get('last') or '—'} 元。開盤明顯低於 "
-            f"{round(_t50_open * 0.995, 2)} 元偏便宜、站上 "
-            f"{round(_t50_open * 1.005, 2)} 元偏強。")
-    else:
-        key_0050_line = "0050 預測資料未提供 → 寫「資料未提供」，嚴禁編造。"
+    # 結論卡的 2330 / 00662 / 0050 三行操作建議已刪(2026-09-03 使用者:
+    # 價位在六段的表格裡就好)。只留十二段範例要用的 2330 中樞值。
+    _mid2330_txt = str(round(_p_mid)) if _p_mid else "（資料未提供）"
 
     # PR-2 第二階段:系統立場計分區塊(Python 分數=權威;LLM 抄錄+解釋)。
     # 計算失敗時降級回「LLM 自行計算」舊路徑並要求標註,晨報不可斷。
@@ -12042,17 +11996,17 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 (c)若某政策資訊過少(只有標題、無任何細節,且公報亦無對應法令),誠實寫
 「目前僅見標題級報導,細節待官方公告」並只做方向性影響推論,**不可硬湊措施細節**。
 """ if policy_deepdive_block else "")
-    # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之六、週報檢討」段。
-    # (七之五=多空交鋒為每日固定段,批#28;週報順延七之六,保持平日/週一編號皆連續)
+    # G5:週一綜合報才有 WEEKLY_REVIEW(main 依 mode 存入);有才組「七之五、週報檢討」段。
+    # (2026-09-03 使用者刪掉多空交鋒之後,週報段補上七之五,平日/週一編號皆連續)
     weekly_review_block = _format_weekly_review(quotes.get("WEEKLY_REVIEW"))
-    weekly_review_section = (f"""## 七之六、近期預測檢討與本週假設（**僅週一綜合報**;有已結算統計才寫）
+    weekly_review_section = (f"""## 七之五、近期預測檢討與本週假設（**僅週一綜合報**;有已結算統計才寫）
 
 {weekly_review_block}
 
 依上方【最近 7 個已結算預測回顧】,用 **≤6 行**寫:
 1. 這批預測整體準不準——**引用平均絕對誤差與持續偏誤數字**,一句總評(偏樂觀高估/偏保守低估/大致準)。
 2. 這批預測期間哪些重點判斷/事件**成真**、哪些**落空**、哪些只是**一日噪音**——只引用上方事件清單與已知走勢,不杜撰。
-3. 本週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則 00662 補漲」)。
+3. 本週要重點驗證的 **≤3 個假設**(可證偽、具體,如「若 CPI 低於預期則台股科技類股補漲」)。
 **鐵則**:數字只能引用上方統計;事件只能引用上方清單或歷史;不得杜撰未發生的走勢或不存在的事件。
 """ if weekly_review_block else "")
 
@@ -12067,12 +12021,9 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 立場段的格式指令只寫一份(`_STANCE_FORMAT_BLOCK`)—— 這裡填值,
     # 渲染端拿同一份原文比對模型有沒有把它抄回來(外審 r5)。
     _stance_format_block = _STANCE_FORMAT_BLOCK.format(
-        key_0050_line=key_0050_line,
         stance_line1_rule=stance_line1_rule,
-        stance_line2_rule=stance_line2_rule,
-        key_2330_line=key_2330_line,
-        key_00662_line=key_00662_line)
-    return f"""你是嚴謹但敢於下判斷的科技股財經分析師。為一位重押 00662（NASDAQ-100）與 2330（台積電）的台灣投資人寫晨報。
+        stance_line2_rule=stance_line2_rule)
+    return f"""你是嚴謹但敢於下判斷的財經分析師。為一位**以台股為核心**的台灣投資人寫晨報(持有 2330、0050 等台股,兼看 00662/NASDAQ)。晨報的主體是台灣經濟與台股:每一條傳導鏈的終點是「台股/加權/2330/相關類股」,不要以 00662 為主詞來講。
 
 【資料品質（最優先閱讀）】
 {dq_block}
@@ -12234,11 +12185,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 ═══════════════════════════════════════════════════════════
 
 {_writing_rules}
-否則,挑出「最可能牽動台股/00662/2330」的 ≤3 個事件,每個事件寫成一小段(每段 ≤4 行):
+否則,挑出「最可能牽動台股/加權/2330」的 ≤3 個事件,每個事件寫成一小段(每段 ≤4 行):
 - **事件與時間**:照抄清單的名稱與日期時間。
 - **基準預期**:**只能引用**清單內的「預期 X / 前值 Y」;清單**沒有**預期值的事件,寫「無市場共識預期,僅關注方向」,**嚴禁自己編一個數字**。
-- **偏多情境 / 偏空情境**:只寫「數據高於/低於 預期(或前值)時,對成長股(00662/2330/加權)偏多或偏空」的**方向與一句話傳導機制**——例:「CPI 低於預期 → 降息預期升溫 → 成長股估值折扣收斂 → 偏多 00662」。**禁止**寫出「XX 以上就漲 Y%」這種自創的數字門檻。
-- **最受影響**:限 00662 / 0050 / 2330 / 加權 其中一或多個。
+- **偏多情境 / 偏空情境**:只寫「數據高於/低於 預期(或前值)時,對台股(加權/2330/相關類股)偏多或偏空」的**方向與一句話傳導機制**——例:「CPI 低於預期 → 降息預期升溫 → 成長股估值折扣收斂 → 台股科技類股偏多」。**禁止**寫出「XX 以上就漲 Y%」這種自創的數字門檻。
+- **最受影響**:限 加權 / 2330 / 0050 / 相關類股 其中一或多個(00662 只在它真的是主角時才列)。
 - **失效條件**:一句話——什麼情況會讓上面的判斷作廢(如「若同日 Fed 官員鷹派發言蓋過數據」)。
 
 **鐵則**:本段是「若…則…」的條件式沙盤,不是預測;所有門檻一律以「相對預期/前值的高低方向」表述,不得出現任何自創的絕對數字目標。
@@ -12258,18 +12209,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 每條變化都要說清楚**為什麼算強化或降溫**(新證據是什麼、它跟昨日的判斷怎麼對上),不可以只丟一個數字就當作理由(R6c)。
 上方整段是佔位字串「(無昨日紀錄可對照)」時,本段整段省略(不要寫「無昨日紀錄可對照」佔一行)。
 
-## 七之五、多空交鋒（各一句最強論點；**判決以上方系統立場為準，本段只擺雙方最強火力、不另下結論**，批#28）
-
-用**兩行**寫出今日資料下最強的對抗論點,各引今日實際數據/新聞(**不可捏造、不可為對稱硬湊**):
-- **多方最強**：<一句 ≤45 字，今日最有力的做多理由＋來源>
-- **空方最強**：<一句 ≤45 字，今日最有力的做空理由＋來源>
-**鐵則**:(1)兩句都必須錨定今日真實數據/事件(引用具體數字或新聞);(2)**不得**出現「淨分/11 維/距門檻」等計分內部;(3)本段**不下結論、不寫「我認為偏X」或「立場：X」**——立場已由上方系統給定,此處只呈現雙方最強火力,避免與系統立場產生第二個方向;(4)即使今日資料一面倒,弱勢方仍須誠實寫出「對自己最不利的那一點」,不得留空或寫「無」。
-
 {weekly_review_section}
 ## 八、科技板塊脈動（**7–10 條,最多 12 條**;有料就寫滿,沒料 7 條也可)
 
 **重要**:寫 7-10 條;只有 A 級具體事實很多時才可到 12 條。R12 已放寬:B 級資訊也可寫但須明確標註信心降級。
-本段**只寫科技/半導體類股**(00662 與 2330 相關);非科技類股一律寫在下方「九、其他類股資訊」,不要混在這裡。
+本段**只寫科技/半導體類股**(台積電供應鏈與台股科技類股);非科技類股一律寫在下方「九、其他類股資訊」,不要混在這裡。
 **台積電自家動態優先且可加深**:新聞素材中凡屬 2330 自家的**財報/月營收數字、
 法說會(展望/資本支出/毛利率指引)、先進製程(N2/A16)、CoWoS 先進封裝、海內外擴產、大客戶訂單**,
 一律優先入選,可寫 **2-3 條**深入分析(其他公司仍每家至多 1 條);法說/財報季時把「數字 vs 市場預期」
@@ -12286,7 +12230,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 
 **深度鐵則（每條必須三段式因果鏈，否則就是填充垃圾）**：
 1. **事件**：發生什麼——具體產品 / 合約 / 財報數字 / 法說發言 / SEC 表單 / MOPS 公告 ＋ 來源。
-2. **傳導機制**：為何牽動 2330 / 00662——必須點名**具體機制**（CoWoS / HBM / 先進製程 N2 / 稼動率 / AI 伺服器拉貨 / 匯率 / 出口管制），不是只說「有正面影響」。
+2. **傳導機制**：為何牽動 2330 / 台股科技類股——必須點名**具體機制**（CoWoS / HBM / 先進製程 N2 / 稼動率 / AI 伺服器拉貨 / 匯率 / 出口管制），不是只說「有正面影響」。
 3. **量級＋時間＋信心**：**不是**「利多/利空/中性」那個方向詞。要回答
    **「多大、多快、憑什麼是這個量級」**——例:「CoWoS 月產能約增一成，
    最快第四季反映在 2330 稼動率」。
@@ -12387,7 +12331,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 **【生技｜台灣】某新藥廠**：旗下新藥獲納入健保 / 取得 FDA 里程碑 [UDN]。屬個股重大利多、帶動生技類股情緒。**[A 級・信心:中]**
 **【汽車｜全球】特斯拉（TSLA，全球電動車龍頭）**：Robotaxi 取得進展但股價受晶片股拖累 [MoneyDJ]。電動車供應鏈台廠（和大、貿聯-KY）可留意。**[B 級・信心:中-低]**
 
-**不可**與 00662 / 2330 硬扯傳導；改從「該類股 / 相關台股 / 整體市場」的角度說明。R12 的 A/B/C 級透明標記規則同樣適用(只有「迎來轉折」「市場關注」這類沒內容的 C 級標題不要寫)。
+**不可**與 2330 / 台股科技類股硬扯傳導；改從「該類股 / 相關台股 / 整體市場」的角度說明。R12 的 A/B/C 級透明標記規則同樣適用(只有「迎來轉折」「市場關注」這類沒內容的 C 級標題不要寫)。
 
 ## 十、台灣本地動態（必寫，不可略）
 
@@ -12420,7 +12364,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
 （不要用「樂觀/保守/審慎」等同義詞改寫,讓讀者一眼看到同一個立場詞；
  風險或操作紀律可在動作裡補述,但開頭立場詞要一致）。
 
-範例：「偏多操作 00662，2330 守穩 {_mid2330_txt} 元逢回加碼」（**2330 價位請用上方 Python 提供的新台幣中樞值，不可寫成美元 ADR 價**）
+範例：「偏多,2330 守穩 {_mid2330_txt} 元逢回加碼、台股科技類股順勢」（**2330 價位請用上方 Python 提供的新台幣中樞值，不可寫成美元 ADR 價**）
 """
 
 
@@ -15572,15 +15516,35 @@ def fetch_suspension_news(hours: int = 30) -> list[dict]:
 _CWA_WARNING_RSS = "https://www.cwa.gov.tw/rss/Data/cwa_warning.xml"
 
 
+#: 警特報只看這四個縣市(2026-09-03 使用者:「我只需要台中彰化南投與雲林」)。
+#: CWA 的 RSS 標題只有「發布大雨特報」,縣市在 `<description>` 裡;
+#: 官方寫「臺中」,這裡統一顯示「台中」。
+_CWA_COUNTIES = (("臺中", "台中"), ("台中", "台中"), ("彰化", "彰化"),
+                 ("南投", "南投"), ("雲林", "雲林"))
+
+
+def _cwa_counties(desc: str) -> list:
+    """描述文字裡點到的目標縣市(依固定順序、去重)。"""
+    out = []
+    for key, show in _CWA_COUNTIES:
+        if key in (desc or "") and show not in out:
+            out.append(show)
+    return out
+
+
 def fetch_cwa_alerts(max_items: int = 3) -> list[dict]:
     """氣象署警特報 RSS(2026-08-23 使用者:要颱風的消息)。
 
     海上/陸上**颱風警報**發布時就在這條 RSS 裡 —— 這是官方權威源,
     比抓「颱風」新聞乾淨(新聞會把路徑猜測、外圍環流花絮都撈進來)。
-    豪雨/強風/低溫等特報一併顯示(對通勤同樣有用)。
     CWA 憑證與 dgpa 同病(缺 Subject Key Identifier)→ 走 relaxed-strict。
     只收 36 小時內的(警特報有時效,舊的早已解除);失敗回空,不影響晨報。
-    回 [{"title", "link", "typhoon": bool}...]。
+
+    2026-09-03 使用者:特報要標**哪幾個縣市**,而且只要台中/彰化/南投/雲林。
+    縣市在 `<description>`(標題只有「發布大雨特報」);沒點到這四個的
+    一般特報**不收**。**颱風警報例外**:它是週日寄信的觸發條件之一
+    (2026-08-24 外審),而海上警報寫的是海域不是縣市 —— 照收,標得到縣市就標。
+    回 [{"title", "link", "typhoon": bool, "counties": [..]}...]。
     """
     import email.utils as _eut
     import re as _re
@@ -15592,6 +15556,7 @@ def fetch_cwa_alerts(max_items: int = 3) -> list[dict]:
             ti = _re.search(r"<title>(.*?)</title>", item, _re.S)
             lk = _re.search(r"<link>(.*?)</link>", item, _re.S)
             pd = _re.search(r"<pubDate>(.*?)</pubDate>", item, _re.S)
+            ds = _re.search(r"<description>(.*?)</description>", item, _re.S)
             title = _re.sub(r"\s+", " ", (ti.group(1) if ti else "")).strip()
             if not title:
                 continue
@@ -15604,9 +15569,15 @@ def fetch_cwa_alerts(max_items: int = 3) -> list[dict]:
                         continue
                 except (TypeError, ValueError):
                     pass            # 日期解析不了就不以時效過濾(寧多勿漏)
+            desc = _re.sub(r"\s+", " ", ds.group(1)) if ds else ""
+            desc = desc.replace("<![CDATA[", "").replace("]]>", "")
+            typhoon = "颱風" in title
+            counties = _cwa_counties(desc)
+            if not typhoon and not counties:
+                continue            # 別的縣市的特報,對讀者沒有決策價值
             out.append({"title": title[:90],
                         "link": (lk.group(1).strip() if lk else ""),
-                        "typhoon": "颱風" in title})
+                        "typhoon": typhoon, "counties": counties})
             if len(out) >= max_items:
                 break
         if out:
@@ -15629,27 +15600,52 @@ def _render_weather_html(locs: list[dict],
     parts = "　|　".join(
         f"<b>{loc['name']}</b> {loc['t_min']}~{loc['t_max']}°C {loc['label']}・降雨 {loc['rain_prob']}%"
         for loc in locs) if locs else "(天氣資料暫缺)"
-    # 未來一週(2026-08-23 使用者):每地一行,七格「週幾 低~高° 雨%」。
-    def _week_line(loc) -> str:
-        wk = [w for w in (loc.get("week") or [])][:8]   # 今天 + 未來七天
-        if len(wk) < 2:                      # 只有今天 → 沒有「未來」可言
+    # 未來一週(2026-08-23 使用者要一週;2026-09-03:兩地各一行七格在
+    # iPhone 上擠成三四行、對不齊 → 改成一張小表:一天一列、一地一欄)。
+    def _week_table(locs) -> str:
+        # **按日期對齊,不是按索引**(Codex r1):`fetch_weather()` 對缺欄位的
+        # 那一天是「跳過」,只有一地缺某天時後面會整段前移 —— 索引對齊會把
+        # 兩個不同日期排在同一列、還套上其中一地的日期標籤。
+        cols = []
+        for loc in (locs or []):
+            wk = [w for w in (loc.get("week") or [])[1:8] if w.get("date")]
+            if wk:                                # 今天已在大字行,從明天起
+                cols.append((str(loc.get("name") or ""), {w["date"]: w for w in wk}))
+        if not cols:
             return ""
-        cells = "　".join(
-            f"{w['wd']} {w['t_min']}~{w['t_max']}° "
-            f"<span style='color:#0369a1;'>{w['rain_prob']}%</span>"
-            for w in wk[1:])                 # 今天已在大字行,一週列從明天起
-        return (f"<br><span style='font-size:12px;color:#475569;'>"
-                f"未來一週({_h.escape(str(loc['name']))}):{cells}</span>")
+        dates = sorted({d for _, by in cols for d in by})[:7]
+        _th = "font-weight:600;color:#475569;padding:2px 6px;"
+        head = "".join(f"<th style='text-align:right;{_th}'>{_h.escape(n)}</th>"
+                       for n, _ in cols)
+        rows = []
+        for d in dates:
+            lead = next(by[d] for _, by in cols if d in by)
+            label = f"{lead.get('wd', '')} {d[5:].replace('-', '/')}".strip()
+            cells = "".join(
+                (f"<td style='text-align:right;padding:2px 6px;white-space:nowrap;'>"
+                 f"{by[d]['t_min']}~{by[d]['t_max']}° "
+                 f"<span style='color:#0369a1;'>{by[d]['rain_prob']}%</span></td>")
+                if d in by else "<td style='text-align:right;padding:2px 6px;color:#94a3b8;'>—</td>"
+                for _, by in cols)
+            rows.append(f"<tr><td style='color:#475569;padding:2px 6px;"
+                        f"white-space:nowrap;'>{_h.escape(label)}</td>{cells}</tr>")
+        return ("<table style='border-collapse:collapse;font-size:12px;margin-top:6px;'>"
+                f"<tr><th style='text-align:left;{_th}'>未來一週</th>{head}</tr>"
+                + "".join(rows) + "</table>")
 
-    week_html = "".join(_week_line(loc) for loc in (locs or []))
-    # CWA 警特報(颱風紅字、其餘橙字;可點官方頁;無警報日自動消失)
-    alerts_html = "".join(
-        f"<br><a href='{_h.escape(_safe_source_url(a.get('link')), quote=True)}' "
-        f"style='color:{'#b91c1c' if a.get('typhoon') else '#c2410c'};"
-        f"text-decoration:none;font-weight:700;'>"
-        f"{'🌀' if a.get('typhoon') else '⚠'} 氣象署:"
-        f"{_h.escape(str(a.get('title', '')))}</a>"
-        for a in (alerts or []))
+    week_html = _week_table(locs)
+    # CWA 警特報(颱風紅字、其餘橙字;可點官方頁;無警報日自動消失)。
+    # 2026-09-03 使用者:要看得出是哪幾個縣市 —— 標題後面帶上。
+    def _alert_line(a) -> str:
+        cs = [str(c) for c in (a.get("counties") or []) if c]
+        tail = f"（{'、'.join(cs)}）" if cs else ""
+        return (f"<br><a href='{_h.escape(_safe_source_url(a.get('link')), quote=True)}' "
+                f"style='color:{'#b91c1c' if a.get('typhoon') else '#c2410c'};"
+                f"text-decoration:none;font-weight:700;'>"
+                f"{'🌀' if a.get('typhoon') else '⚠'} 氣象署:"
+                f"{_h.escape(str(a.get('title', '')))}{_h.escape(tail)}</a>")
+
+    alerts_html = "".join(_alert_line(a) for a in (alerts or []))
     # 颱風風雨門檻警示(達標/接近才出現;紅字)
     signal = _typhoon_signal(locs)
     signal_html = (f"<br><b style='color:#b91c1c;'>⚠ {_h.escape(signal)}</b>"
@@ -21785,7 +21781,13 @@ def _safe_block(label: str, fn, *args, **kwargs) -> str:
 def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 report_date: str, mode: str) -> str:
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
-    analysis_for_render = _strip_llm_watchlist_section(analysis)
+    # 第一個標題之前的東西一律不進信(2026-09-03 實信:「早安,交易日…」與
+    # 「2330 預測:…採簡化版」前言;R18 禁了它照樣出現 —— 指令不是守衛)。
+    analysis_for_render = _strip_preamble_before_first_heading(analysis)
+    analysis_for_render = _strip_llm_watchlist_section(analysis_for_render)
+    # 七之五「多空交鋒」已從 prompt 刪除(2026-09-03),但模型會照舊習慣把它
+    # 吐回來 —— prompt 不再要求 ≠ 模型不再寫。渲染端確定性移除(Codex r1)。
+    analysis_for_render = _strip_llm_sections(analysis_for_render, ("多空交鋒",))
     # 數字健全性最後防線:把 LLM 誤植的 2330「美元 ADR 價」改回新台幣中樞值
     analysis_for_render = _sanitize_llm_2330_prices(analysis_for_render, predictions)
     # 一般畸形數字(如「3,2424」逗號後 4+ 位)全文遮蔽——2330 專用修正管不到的其它段落(如科技脈動目標價)
@@ -21878,7 +21880,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 批#28(Codex r1/r4):多空交鋒段的計分內部安全網(只過濾該段,不碰八段門檻語言)。
     # **必須在 _strip_stance_calculation 之前**——否則辯論行「[來源] …，淨分 +6」同時
     # 含「淨分」與「[」會被 calc-strip 整行誤刪(連論點本體+來源一起消失,Codex r4)。
-    analysis_for_render = _sanitize_debate_section(analysis_for_render)
     # 抽完立場/淨分後,再把 11 維計算行自顯示移除(計算仍要求 LLM 輸出以保品質)
     analysis_for_render = _strip_stance_calculation(analysis_for_render)
     # 一句話總結是「立場+動作」單行,用外科式移除(保留開頭立場標籤,批#26 r2/r4)

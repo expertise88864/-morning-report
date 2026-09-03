@@ -1145,56 +1145,6 @@ def test_batch26_stance_internals_scoped_to_stance_section():
     assert "11 維中" not in html                            # 立場段計分內部仍被移除
 
 
-def test_batch28_sanitize_debate_section_scoped():
-    """批#28(Codex r1):多空交鋒段的計分內部安全網——只過濾該段,八段門檻語言保留。"""
-    from llm_postprocess import _sanitize_debate_section
-    t = ("## 七之五、多空交鋒\n"
-         "- **多方最強**：SOX 反彈，淨分 +6，11 維中 7 項偏多\n"
-         "- **空方最強**：油價飆升壓成長股，偏空觀望\n"
-         "## 八、科技板塊脈動\n台積電距突破門檻 2%，量能回升→2330 有撐。")
-    out = _sanitize_debate_section(t)
-    debate = out.split("## 八")[0]
-    assert "淨分 +6" not in debate and "11 維" not in debate   # 計分內部移除
-    assert "SOX 反彈" in debate and "油價飆升" in debate and "偏空觀望" in debate
-    assert "距突破門檻 2%" in out and "量能回升" in out         # 八段不受影響
-    # 無多空交鋒段 → 原樣返回
-    assert _sanitize_debate_section("## 八、只有科技段\n距突破門檻 2%") == \
-        "## 八、只有科技段\n距突破門檻 2%"
-
-
-def test_batch28_debate_strips_bare_11_dim_but_not_maintain():
-    """批#28 r2(Codex):辯論段獨立「11 維(模型/度)」也移除(基本組只認「維中」);
-    但「11 維持」(如 VIX 11 維持低檔)為正當論點,不得誤刪。"""
-    from llm_postprocess import _sanitize_debate_section, _strip_stance_internals
-    t = ("## 七之五、多空交鋒\n"
-         "- **多方最強**：11 維模型顯示多方佔優，SOX +2.1%\n"
-         "- **空方最強**：VIX 11 維持低檔但油價升，偏空\n## 八、科技\n量能回升")
-    d = _sanitize_debate_section(t).split("## 八")[0]
-    assert "11 維模型" not in d and "SOX +2.1%" in d      # 計分維度移除、市場數據保留
-    assert "維持低檔" in d                                 # 「11 維持」不誤刪
-    # 其他段(不傳 extra_bad)行為不變:基本組不刪獨立「11 維」
-    assert "11 維模型" in _strip_stance_internals("理由：11 維模型顯示多方")
-
-
-def test_batch28_render_strips_noncompliant_debate_internals():
-    """批#28(Codex r1):LLM 若在多空交鋒段違規寫計分內部,render 後 HTML 不得
-    出現「淨分/11 維」,但多空論點本體保留。"""
-    q = _full_quotes()
-    # Codex r4:含 R10b 規定的 [媒體名] 來源 + 違規「淨分」——不得被 calc-strip
-    # (淨分+[ 整行刪)連論點+來源一起誤刪;辯論 sanitizer 須在 calc-strip 之前跑
-    analysis = ("## 七之五、多空交鋒\n"
-                "- **多方最強**：[Reuters] TSM ADR +0.99%，淨分 +6 撐盤\n"
-                "- **空方最強**：10Y 升至 4.6%，11 維中 7 項偏空壓估值\n"
-                "## 十二、我的明確立場\n> **立場：中性**\n"
-                "## 十三、一句話總結\n中性觀望")
-    html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
-                          "2026-06-02", "每日報")
-    assert "淨分" not in html and "11 維" not in html          # 計分內部不外露
-    assert "多方最強" in html and "空方最強" in html            # 論點結構保留(兩行都在)
-    assert "TSM ADR" in html and "10Y 升至 4.6%" in html        # 論點本體保留
-    assert "Reuters" in html                                    # 合規來源保留(未被整行誤刪)
-
-
 def test_batch26_stance_label_line_keeps_label(monkeypatch):
     """Codex 批#26 r8:立場標籤行帶淨分「**立場：偏空**（淨分 -6）」時,
     整段刪除會丟掉「偏空」並留畸形「**立場：」——改外科式,標籤保留。"""
@@ -1411,9 +1361,10 @@ def test_an_echo_inside_a_sentence_does_not_take_the_price_with_it():
     """**句內把片語拿掉,剩下的還有東西就留**(外審 r4):回音與 Python
     算出來的價位可能在同一句裡 —— 整句丟會把價位一起帶走。"""
     from llm_postprocess import _strip_stance_scaffolding as strip
-    out = strip("原樣引用 2,396 元，站上偏強。",
+    # 2026-09-03:「原樣引用」那段括號說明已刪,改用仍在指令原文裡的片語
+    out = strip("每句必附數據 2,396 元，站上偏強。",
                 instructions=mr._STANCE_FORMAT_BLOCK)
-    assert "原樣引用" not in out and "2,396 元" in out and "站上偏強" in out, out
+    assert "每句必附數據" not in out and "2,396 元" in out and "站上偏強" in out, out
     # 真正的內容一個字都不動
     keep = "> **主要風險**：CPI 高於預期。"
     assert strip(keep, instructions=mr._STANCE_FORMAT_BLOCK) == keep
@@ -1445,7 +1396,7 @@ def test_the_prompt_and_the_filter_read_the_same_block():
 #: 實信裡**整行粗體**的那 11 行,每一行都是段落標題。
 _REAL_HEADINGS = (
     "七、昨夜三大重點", "七之二、世界大事速覽", "七之三、未來 48 小時關鍵事件情境",
-    "七之四、敘事變化", "七之五、多空交鋒", "八、科技板塊脈動",
+    "七之四、敘事變化", "八、科技板塊脈動",
     "九、其他類股資訊", "十、台灣本地動態", "十之二、重大政策深度解析",
     "十一、我的明確立場", "十二、一句話總結",
 )
@@ -1455,7 +1406,6 @@ _REAL_BODY = (
     "**美國7月消費者物價指數（CPI）｜2026-08-12 20:30**：核心CPI月增率預期0.2%",
     "**台積電（2330，全球晶圓代工龍頭，先進製程市占逾九成）**：昨日董事會核准",
     "**世芯-KY（3661，AI客製化晶片設計服務廠）**：延續7月營收年增181%的動能",
-    "**多方最強**：台積電核准294億美元資本支出、TSM ADR漲0.86%",
     # **章節名開頭、後面還有內容**:只認整行的話這是內文;若改成
     # 「粗體開頭就升級」,`.+?` 會把後面那半句**整段丟掉**。
     "**十一、我的明確立場**：中性,VIX 15.28 處一年第 13 個百分位",

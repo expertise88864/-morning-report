@@ -58,6 +58,14 @@ def nonstring_key_paths(node, path: str = "") -> list:
     return out
 
 
+#: normalization 的四種**嚴重度**(r18 外審 P2)。先前全部混在同一個
+#: 清單裡,而 `date → ISO` 與 `未知物件 → str()` 完全不是同一件事:
+#: 前者無損、後者**語意已經漂掉**。混在一起再取前 8 個,等於用雜訊蓋掉訊號。
+NORM_LOSSLESS = "lossless"    #: date/Decimal/numpy/Enum/tuple/set → 等價的原生值
+NORM_LOSSY = "lossy"          #: 未知物件 → `str()`,型別語意沒了
+NORM_DROPPED = "dropped"      #: NaN/inf → null,值沒了
+NORM_COLLISION = "collision"  #: 字串化後撞在一起的鍵,有一個值被蓋掉
+
 #: JSON 原生型別 —— 其餘都要靠 `default=` 才送得出去。
 _JSON_NATIVE = (str, int, float, bool, type(None), dict, list)
 
@@ -87,6 +95,21 @@ def nonjson_value_paths(node, path: str = "") -> list:
     return out
 
 
+def _via(value, path: str, tag):
+    """轉一手之後再正規化,**內層的 hits 不可以丟掉**(Codex deep P2)。
+
+    先前寫 `normalize_json(v, path)[0]` —— 只取樹、扔掉診斷。於是
+    `np.complex128(...).item()` 回一個 Python `complex`、再掉到 `str()`
+    的那種情形,對外只報成「無損」:`summarize_normalization()` 數不到
+    lossy、`run_quality` 也就不會報 —— 而模型收到的已經是字串。
+    內層有比無損更嚴重的結果時,外面那層轉換本身也不算無損。
+    """
+    tree, nested = normalize_json(value, path)
+    if any(k != NORM_LOSSLESS for k, _ in nested):
+        return tree, nested
+    return tree, [tag] + nested
+
+
 def normalize_json(node, path: str = ""):
     """把整棵樹轉成 **JSON 原生型別**,回 `(新的樹, 被轉過的路徑清單)`。
 
@@ -107,6 +130,7 @@ def normalize_json(node, path: str = ""):
     import datetime as _d
     import decimal as _dec
     import enum as _e
+    import numbers as _num
     if isinstance(node, dict):
         out, hits, won = {}, [], {}
         for k, v in node.items():
@@ -121,13 +145,18 @@ def normalize_json(node, path: str = ""):
                 # 誰活下來會變成**看插入順序**。判準沿用 canonical_json:
                 # 依 `_key_order` 排序後由後者勝出(那也是 JSON 解析器對
                 # 重複鍵的結果)。碰撞本身要留痕 —— 上游該修。
-                hits.append(f"{here}(key_collision)")
+                hits.append((NORM_COLLISION, f"{here}(key_collision)"))
                 if _key_order(k) < _key_order(won[nk]):
                     continue
             out[nk], won[nk] = nv, k
         return out, hits
     if isinstance(node, (list, tuple, set)):
-        seq = sorted(node, key=str) if isinstance(node, set) else node
+        # **`str` 不是全序**(r18 外審 P2):`{1, "1"}` 兩個元素的 `str()`
+        # 完全相同,而 Python 的穩定排序會保留 **set 的迭代順序** ——
+        # 那個順序跨 process 不保證一致(字串雜湊有隨機種子)。同一份證據
+        # 因此可能產生兩種表示,而它會進 prompt、進指紋。判準沿用鍵那邊
+        # 已經有的全序 `_key_order`(型別名 + 字串形式)。
+        seq = sorted(node, key=_key_order) if isinstance(node, set) else node
         out, hits = [], []
         for i, v in enumerate(seq):
             nv, nh = normalize_json(v, f"{path}[{i}]")
@@ -135,7 +164,8 @@ def normalize_json(node, path: str = ""):
             hits += nh
         # tuple / set 本身也是一種轉換 —— 上游欄位仍然要修
         if not isinstance(node, list):
-            hits = [f"{path or '(root)'}({type(node).__name__})"] + hits
+            hits = [(NORM_LOSSLESS,
+                     f"{path or '(root)'}({type(node).__name__})")] + hits
         return out, hits
     if isinstance(node, bool) or node is None or isinstance(node, (str, int)):
         return node, []
@@ -143,9 +173,26 @@ def normalize_json(node, path: str = ""):
         # NaN / inf 不是合法 JSON(`json.dumps` 預設會產出 `NaN` 字面值,
         # 那是**別的解析器讀不懂**的東西)。轉成 null 並留痕。
         if node != node or node in (float("inf"), float("-inf")):
-            return None, [f"{path or '(root)'}(non_finite_float)"]
+            return None, [(NORM_DROPPED, f"{path or '(root)'}(non_finite_float)")]
         return node, []
-    tag = f"{path or '(root)'}({type(node).__name__})"
+    _p = f"{path or '(root)'}({type(node).__name__})"
+    tag = (NORM_LOSSLESS, _p)
+    # **NumPy 的純量不是 Python 的純量**(r18 外審 P2):
+    #   `isinstance(np.int64(5), int)` → False
+    #   `isinstance(np.float32(1.2), float)` → False
+    #   `isinstance(np.bool_(True), bool)` → False
+    # 於是它們先前全部掉到最後那行 `str(node)`:`5` 變 `"5"`、
+    # `True` 變 `"True"` —— **不會炸、測試全綠、型別已經改了**,
+    # 正是這支函式存在的理由(9/3 的 `date` 是同一族的另一種)。
+    # 而 numpy / pandas 是這個 repo 的硬依賴,不是理論情境。
+    # 順序要緊:`bool` 是 `Integral` 的子型別,得先問。
+    if isinstance(node, _num.Integral):
+        return int(node), [tag]
+    if isinstance(node, _num.Real):
+        f = float(node)
+        if f != f or f in (float("inf"), float("-inf")):
+            return None, [(NORM_DROPPED, f"{path or '(root)'}(non_finite_real)")]
+        return f, [tag]
     if isinstance(node, (_d.datetime, _d.date, _d.time)):
         return node.isoformat(), [tag]
     if isinstance(node, _dec.Decimal):
@@ -155,19 +202,55 @@ def normalize_json(node, path: str = ""):
         #   `Decimal("1e400")` → `is_finite()` 是 **True**,`float()` 卻給 inf
         # 少任何一道都會漏掉一種。契約是「NaN/inf → null」與
         # 「Decimal 保持是數字」,兩者都不能靠字串化蒙混過去。
-        nf = f"{path or '(root)'}(non_finite_decimal)"
+        nf = (NORM_DROPPED, f"{path or '(root)'}(non_finite_decimal)")
         if not node.is_finite():
             return None, [nf]
         try:
             f = float(node)
         except (ValueError, OverflowError):   # 有限的 Decimal 走不到這裡
-            return None, [f"{path or '(root)'}(decimal_unconvertible)"]
+            return None, [(NORM_LOSSY,
+                           f"{path or '(root)'}(decimal_unconvertible)")]
         if f != f or f in (float("inf"), float("-inf")):
             return None, [nf]
         return f, [tag]
     if isinstance(node, _e.Enum):
-        return normalize_json(node.value, path)[0], [tag]
-    return str(node), [tag]
+        return _via(node.value, path, tag)
+    # **`np.bool_` 連 `numbers.Integral` 都不是**(實測):上面兩條攔不到它,
+    # 它會掉到最後那行變成 `"True"`。NumPy / Pandas 的純量都提供 `.item()`
+    # 回 Python 原生值 —— 用它比在這個 leaf 模組 import numpy 好
+    # (這裡刻意只依賴 stdlib),而且 `np.datetime64` / `pd.Timestamp`
+    # 之類未來冒出來的型別也一起接住。
+    _item = getattr(node, "item", None)
+    if callable(_item):
+        try:
+            v = _item()
+        except Exception:                   # noqa: BLE001 - 接不住就退回 str
+            v = node
+        if type(v) is not type(node):       # 防自我遞迴
+            return _via(v, path, tag)
+    return str(node), [(NORM_LOSSY, _p)]
+
+
+def summarize_normalization(hits) -> dict:
+    """把 hits 收成**可以進 manifest、也判得動嚴重度**的一份摘要。
+
+    r18 外審 P2:先前直接把整串 hits 截前 8 個寫進 manifest ——
+    於是 1~8 全是無損的 `date → ISO`、第 9 個才是 `未知物件 → str()` 時,
+    **真正嚴重的那一個根本不會被記下來**。分類計數不會被截斷。
+    """
+    counts = {NORM_LOSSLESS: 0, NORM_LOSSY: 0,
+              NORM_DROPPED: 0, NORM_COLLISION: 0}
+    samples: dict = {}
+    for kind, where in hits or ():
+        counts[kind] = counts.get(kind, 0) + 1
+        # 每一類各留幾筆:嚴重的那幾類不會被無損那類擠掉
+        samples.setdefault(kind, [])
+        if len(samples[kind]) < 4:
+            samples[kind].append(where)
+    out = {k: v for k, v in counts.items() if v}
+    if samples:
+        out["samples"] = samples
+    return out
 
 
 def canonical_json(packet: dict) -> str:

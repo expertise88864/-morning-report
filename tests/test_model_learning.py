@@ -1784,11 +1784,17 @@ def test_save_path_flags_missing_and_unparseable_partition(monkeypatch, tmp_path
     (pdir / "2026-07.json.gz").write_bytes(b"not gzip at all")
     rec2 = {"session_date": "2026-07-02", "taiex_close": 101,
             "stocks": {"2330": {"code": "2330", "close": 2310.0}}}
+    raw_before = (pdir / "2026-07.json.gz").read_bytes()
     mr.save_model_history_records([rec2])
     # manifest 七月條目仍是原始 sha(未 baseline 重建版)
     assert mh._read_manifest_partitions(pdir)["2026-07.json.gz"]["sha256"] == orig
-    assert any(i["kind"] == "checksum_mismatch"
-               for i in mh.verify_history_integrity(pdir)["issues"])
+    # r18(Codex deep 第三輪):**壞檔現在不再被覆寫**。先前是「視為空、以
+    # 本次視圖重建」,擋住簽名只擋住了「假裝乾淨」—— 那個還可能救得回來的
+    # 檔案照樣被殘缺重建版換掉。所以 verify 報的從 `checksum_mismatch`
+    # (parse 得動但內容不符)變成 `corrupt`(根本解不開),而那更精確。
+    assert (pdir / "2026-07.json.gz").read_bytes() == raw_before, "壞檔被覆寫了"
+    kinds = {i["kind"] for i in mh.verify_history_integrity(pdir)["issues"]}
+    assert "corrupt" in kinds, kinds
 
 
 def test_verify_flags_malformed_partition_rows(tmp_path):

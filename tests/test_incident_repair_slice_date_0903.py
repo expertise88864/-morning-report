@@ -106,9 +106,13 @@ def test_the_boundary_normalizes_instead_of_relying_on_default_str():
     assert tree["market"]["nan"] is None, "NaN 不是合法 JSON"
     assert tree["market"]["ok"] == 1.5
     # 轉過的都要留痕 —— 那是真正該修的上游欄位
+    # r18:hits 帶**嚴重度**(無損轉型與「語意沒了」不是同一件事),
+    # 所以這裡連分級一起釘 —— 比只比對路徑更嚴。
     assert sorted(hits) == sorted([
-        "market.nfp(date)", "market.yield(Decimal)",
-        "market.tags(set)", "market.nan(non_finite_float)"]), hits
+        (es.NORM_LOSSLESS, "market.nfp(date)"),
+        (es.NORM_LOSSLESS, "market.yield(Decimal)"),
+        (es.NORM_LOSSLESS, "market.tags(set)"),
+        (es.NORM_DROPPED, "market.nan(non_finite_float)")]), hits
     # 轉完就是 JSON 原生,而且**冪等**
     assert es.nonjson_value_paths(tree) == []
     assert es.normalize_json(tree) == (tree, [])
@@ -130,7 +134,7 @@ def test_a_non_finite_decimal_follows_the_same_rule_as_a_float():
     for raw in ("NaN", "Infinity", "-Infinity", "sNaN", "1e400", "-1e400"):
         tree, hits = es.normalize_json({"x": decimal.Decimal(raw)})
         assert tree == {"x": None}, (raw, tree)
-        assert hits == ["x(non_finite_decimal)"], (raw, hits)
+        assert hits == [(es.NORM_DROPPED, "x(non_finite_decimal)")], (raw, hits)
         assert es.normalize_json(tree) == (tree, []), "不冪等"
     # 有限的照樣保持是數字
     tree, _ = es.normalize_json({"x": decimal.Decimal("4.25")})
@@ -148,7 +152,7 @@ def test_a_key_collision_is_deterministic_and_never_silent():
     a = es.normalize_json({"1": "string", 1: "integer"})
     b = es.normalize_json({1: "integer", "1": "string"})
     assert a == b, ("插入順序改變了結果", a, b)
-    assert a[1] == ["1(key_collision)"], "碰撞被靜靜吃掉了"
+    assert a[1] == [(es.NORM_COLLISION, "1(key_collision)")], "碰撞被靜靜吃掉了"
     # 判準要與 canonical_json 一致(依 `_key_order` 排序後由後者勝出,
     # 那也是 JSON 解析器對重複鍵的結果)
     assert a[0] == json.loads(es.canonical_json({"1": "string", 1: "integer"}))

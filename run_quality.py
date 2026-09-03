@@ -733,6 +733,35 @@ def assess(manifest, *, mode: str = "watchdog",
     # 用 `.get()` 的回傳值判斷缺席,會把 `{"manifest_schema": null}` 這種
     # **版本資訊已經損壞**的檔判成「舊版,當時還沒有這個欄位」——
     # 又一次讓壞掉的檔拿到比合法新檔更寬鬆的待遇。key 在不在要問 key。
+    # ---- evidence packet 的邊界正規化(r18 外審 P2)
+    #
+    # **「跑完了」不等於「送進去的東西沒被改過」。** 9/3 那次是
+    # `date` 讓整條特化路徑炸掉 —— 看得見。而 `未知物件 → str()`、
+    # `NaN → null`、鍵撞在一起被蓋掉,全都**不會炸**:特化輸出照樣產生、
+    # strict 照樣綠,而餵給模型的證據語意已經漂了。
+    # 診斷先前只進 telemetry,沒有任何判準消費它。
+    _norm = _dig(m, "llm", "evidence_normalized")
+    if isinstance(_norm, dict):
+        _ns = _norm.get("samples") if isinstance(_norm.get("samples"), dict) else {}
+
+        def _sample(kind):
+            got = _ns.get(kind) or []
+            return ("(例:" + "、".join(str(x) for x in got[:3]) + ")") if got else ""
+
+        if _safe_int(_norm.get("lossy")) > 0:
+            add("evidence_value_stringified", "defect",
+                f"{_safe_int(_norm.get('lossy'))} 個證據欄位的型別轉不出來、"
+                f"被 str() 帶過{_sample('lossy')} —— 數字/布林變成字串不會炸,"
+                "但模型看到的語意已經不是原來那個")
+        if _safe_int(_norm.get("collision")) > 0:
+            add("evidence_key_collision", "defect",
+                f"{_safe_int(_norm.get('collision'))} 個證據鍵字串化之後撞在"
+                f"一起{_sample('collision')} —— 其中一個值被蓋掉了")
+        if _safe_int(_norm.get("dropped")) > 0:
+            add("evidence_value_dropped", "degraded",
+                f"{_safe_int(_norm.get('dropped'))} 個證據值不是合法 JSON"
+                f"(NaN/inf),已轉成 null{_sample('dropped')}")
+
     _has_schema = "manifest_schema" in m
     if not _has_schema:
         _bday = _sla_business_day(m.get("date"))

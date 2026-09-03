@@ -38,6 +38,12 @@ _FINDING_DOMAINS = {
     "delivered_at_missing": DOMAIN_CONTROL_PLANE,
     "delivered_at_unparsable": DOMAIN_CONTROL_PLANE,
     "delivery_sla_missed": DOMAIN_CONTROL_PLANE,
+    # r18:evidence packet 的邊界正規化 —— 送進模型的東西被改過,
+    # 那是**接線**的問題(不是「信的內容不夠好」),所以刻意不是 content:
+    # 刻意不寄信的日子也要驗(`_control_plane_exit` 會留下它們)。
+    "evidence_value_stringified": DOMAIN_CONTROL_PLANE,
+    "evidence_key_collision": DOMAIN_CONTROL_PLANE,
+    "evidence_value_dropped": DOMAIN_CONTROL_PLANE,
     "delivery_state_invalid": DOMAIN_CONTROL_PLANE,
     "delivery_structure_invalid": DOMAIN_CONTROL_PLANE,
     "delivery_timestamp_order_invalid": DOMAIN_CONTROL_PLANE,

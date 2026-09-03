@@ -60,16 +60,53 @@ def _partition_entry(items: list) -> dict:
 
 
 def _read_manifest_partitions(partition_dir: Path) -> dict:
-    """讀既有 manifest 的 partitions 區(結構錯誤回空)。"""
+    """讀既有 manifest 的 partitions 區。**壞掉不是「沒有」** ——
+    raise `HistoryIntegrityError`;真的不存在才回 `{}`。
+
+    r18 外審 P1:先前 missing / JSON 壞掉 / root 或 partitions 型別錯誤
+    **全部折成同一個 `{}`**,而 `write_partition_manifest()` 把 `old == {}`
+    讀成「我以前沒有記錄過這些分區」—— 於是磁碟上每一個分區都走「全新分區」
+    那條路,拿**現在的內容**重算 sha256 寫成新基線。
+
+    也就是說:manifest 壞掉的那一天,任何被竄改過的分區都會**被重新簽名**,
+    完整性驗證隔天就變綠。那不是偵測到歷史被改,是替被改過的歷史背書。
+    而 model_history 正是 walk-forward / IC / calibration 的信任錨點。
+
+    `state_store` 對一般 state 早就分清楚 missing 與 corrupt(壞檔一律
+    raise、不覆寫);這裡是同一條規則最後一個沒有套用的地方。
+    """
+    return _manifest_state(partition_dir)[1]
+
+
+def _manifest_state(partition_dir: Path) -> tuple:
+    """`(manifest 在不在, partitions 區)`。壞掉一律 raise。
+
+    r18 第二輪(Codex deep P1):上一版只補了「解析/型別壞掉」那個洞 ——
+    而 `{"partitions": {}}` 或**漏記某些分區**的 manifest 仍然回 `{}`,
+    與「真的沒有 manifest」完全一樣。於是磁碟上那些沒被記到的分區照樣走
+    「全新分區」那條路,拿現在的內容重算 sha256 —— 重新簽名的路徑還在。
+    而 `verify_history_integrity()` 對同一種情形報的是 `extra_partition`
+    (**已經是完整性違規**),兩邊對同一份 state 說不同的話。
+    """
     mpath = partition_dir / MANIFEST_NAME
     if not mpath.exists():
-        return {}
+        return False, {}                    # 真的沒有 —— 可以初始化
     try:
-        m = json.loads(mpath.read_text(encoding="utf-8"))
-        parts = m.get("partitions") if isinstance(m, dict) else None
-        return parts if isinstance(parts, dict) else {}
-    except Exception:
-        return {}
+        raw = mpath.read_text(encoding="utf-8")
+    except OSError as e:
+        raise HistoryIntegrityError(f"{MANIFEST_NAME} 讀取失敗: {e}") from e
+    try:
+        m = json.loads(raw)
+    except ValueError as e:
+        raise HistoryIntegrityError(f"{MANIFEST_NAME} 解析失敗: {e}") from e
+    if not isinstance(m, dict):
+        raise HistoryIntegrityError(
+            f"{MANIFEST_NAME} root 非 dict: {type(m).__name__}")
+    parts = m.get("partitions")
+    if not isinstance(parts, dict):
+        raise HistoryIntegrityError(
+            f"{MANIFEST_NAME} partitions 非 dict: {type(parts).__name__}")
+    return True, parts
 
 
 def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
@@ -85,7 +122,12 @@ def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
     manifest: dict = {"schema_version": HISTORY_SCHEMA_VERSION, "partitions": {}}
     if not partition_dir.exists():
         return manifest
-    old = _read_manifest_partitions(partition_dir)
+    # **舊 manifest 讀不動就不要寫新的**(r18 外審 P1):`old` 是判斷
+    # 「這個分區是不是被外部改過」的唯一依據,拿不到它就分不出
+    # 「全新分區」與「被竄改的舊分區」—— 而那兩者的處置正好相反。
+    # 這裡讓例外往上傳:呼叫端(morning_report)會記 state 壞檔並跳過,
+    # 壞掉的 manifest 原封留著給 strict 稽核。
+    had_manifest, old = _manifest_state(partition_dir)
     baseline_all = rewritten is None
     rewritten = set(rewritten or [])
     damaged: list = []
@@ -110,8 +152,14 @@ def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
             else:
                 manifest["partitions"][name] = old[name]   # 未重寫卻變了=損壞
                 damaged.append(f"{name}(未重寫卻與 manifest 不符)")
+        elif not had_manifest:
+            manifest["partitions"][name] = entry           # 首次建檔
         else:
-            manifest["partitions"][name] = entry           # 全新分區
+            # **manifest 在,卻沒記到這個檔**:那是 `verify_history_integrity`
+            # 眼中的 `extra_partition` —— 已經是完整性違規。本次沒有刻意重寫
+            # 它,就不可以拿現在的內容替它簽名(那正是「替被改過的歷史背書」
+            # 的另一條路)。留白 → verify 繼續 flag,人工修復。
+            damaged.append(f"{name}(manifest 未登錄且本次未重寫)")
     if damaged:
         print(f"[model_state] ⚠ manifest 偵測到未重寫卻異動/損壞的分區,"
               f"保留舊 checksum 供 strict 稽核: {damaged[:4]}", file=sys.stderr)

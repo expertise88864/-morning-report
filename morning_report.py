@@ -7332,8 +7332,17 @@ def save_model_history_records(records: list[dict],
             by_month.setdefault(str(item.get("session_date", ""))[:7], []).append(item)
         MODEL_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
         from model_history_store import (
-            _read_manifest_partitions, payload_sha256, write_partition_manifest)
-        _old_manifest = _read_manifest_partitions(MODEL_HISTORY_DIR)
+            HistoryIntegrityError, _manifest_state, payload_sha256,
+            write_partition_manifest)
+        try:
+            _had_manifest, _old_manifest = _manifest_state(MODEL_HISTORY_DIR)
+        except HistoryIntegrityError as _e:
+            # **manifest 壞掉 ≠ 沒有 manifest**(r18 外審 P1):它是判斷
+            # 「這個分區有沒有被外部改過」的唯一依據。讀不動還照寫,等於
+            # 拿今天磁碟上的內容替**可能已經被竄改的歷史**重新簽名。
+            # 本班整段不寫(壞檔原封留著給 strict 稽核),但要留痕。
+            _register_state_corrupt("model_history_manifest", _e)
+            return
         written = 0
         rewritten_names: set = set()
         for month, items in by_month.items():
@@ -7356,21 +7365,29 @@ def save_model_history_records(records: list[dict],
                     # 執行間不該被改動)。不符=外部竄改——即使今天有新 session,
                     # 也不得把「舊列的竄改」隨新資料一起 baseline(Codex r1 r2 P1)。
                     _rec = _old_manifest.get(path.name)
-                    if _rec and _rec.get("sha256") != payload_sha256(
+                    # **manifest 在、卻沒登錄這個既有檔**:那是
+                    # `verify_history_integrity` 眼中的 `extra_partition`
+                    # —— 已經是完整性違規,不可以當「全新分區」拿現況簽名
+                    # (Codex deep P1)。**只有檔案存在時才算**:全新月份
+                    # 的檔還不存在,那條路必須照常建立第一份基線。
+                    if _had_manifest and not _rec:
+                        tampered = True
+                    elif _rec and _rec.get("sha256") != payload_sha256(
                             list(month_merged.values())):
                         tampered = True
                         print(f"[model_state] ⚠ 分區 {path.name} 合併前內容與 "
                               f"manifest 不符(疑遭竄改)——本次寫入不 baseline,"
                               f"保留舊 checksum 供稽核", file=sys.stderr)
                 except Exception as e:
-                    # 壞檔:視為空(其內容 loader 也讀不到),以本次視圖重建。
-                    # 但若 manifest 曾登錄此分區→這是「解析失敗的損毀」,不得
-                    # 拿記憶體殘缺視圖 baseline 成乾淨(Codex r3 P1)
-                    print(f"[model_state] 分區 {path.name} 既有內容解析失敗,重建: {e}",
-                          file=sys.stderr)
-                    month_merged = {}
-                    if _has_old_entry:
-                        tampered = True
+                    # **壞檔不得被覆寫**(Codex deep r3 P1)。原本是
+                    # 「視為空、以本次視圖重建」—— 而擋住簽名只擋住了
+                    # 「假裝乾淨」,沒有擋住**資料消失**:一個還可能救得回來
+                    # 的檔案會被殘缺重建版永久換掉。`state_store` 早就立好
+                    # 「壞檔一律不覆寫」,這裡是最後一個沒有套用的地方。
+                    # 本月整個跳過(其他月份不受影響),留痕等人工修復;
+                    # 代價是今天這一天的列不落地 —— 用一天換一個月,值得。
+                    _register_state_corrupt(f"model_history:{path.name}", e)
+                    continue
             elif _has_old_entry:
                 # manifest 登錄過但檔案消失=遺失,同樣不得 baseline 記憶體重建版
                 tampered = True
@@ -14984,7 +15001,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             # 真正該修的上游欄位。回新的樹,不就地改(與 quotes 共用物件)。
             _packet, _njv = _es.normalize_json(_packet)
             if _njv:
-                _RUN_MANIFEST.setdefault("llm", {})["evidence_normalized"] = _njv[:8]
+                _RUN_MANIFEST.setdefault("llm", {})["evidence_normalized"] = (
+                    _es.summarize_normalization(_njv))
             _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
             if _text:
                 # 第十四輪 P0-1:**只有走到這裡才算 Luna 特化成功。**

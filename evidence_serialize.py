@@ -58,6 +58,35 @@ def nonstring_key_paths(node, path: str = "") -> list:
     return out
 
 
+#: JSON 原生型別 —— 其餘都要靠 `default=` 才送得出去。
+_JSON_NATIVE = (str, int, float, bool, type(None), dict, list)
+
+
+def nonjson_value_paths(node, path: str = "") -> list:
+    """哪些位置的**值**不是 JSON 原生型別(給診斷用,不影響序列化)。
+
+    `nonstring_key_paths` 的孿生。2026-09-03 生產:特化路徑掛在
+    `TypeError: Object of type date is not JSON serializable`,而修補輪的
+    切片內容取自 packet 的 `market:` 子樹與 registry 的 `value` —— 兩者
+    都是**原樣**帶過去的。知道「是值的型別」還不夠,要知道**是哪個上游
+    欄位**才修得到源頭(2026-08-04 那次的教訓,換一層再犯一次)。
+
+    **只記路徑與型別,不記值**:manifest 進公開 repo,而 packet 裡有
+    `portfolio:` 這種不可外流的東西。型別足以定位欄位。
+    """
+    out: list = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            here = f"{path}.{k}" if path else str(k)
+            out += nonjson_value_paths(v, here)
+    elif isinstance(node, (list, tuple)):
+        for i, v in enumerate(node):
+            out += nonjson_value_paths(v, f"{path}[{i}]")
+    elif not isinstance(node, _JSON_NATIVE):
+        out.append(f"{path or '(root)'}({type(node).__name__})")
+    return out
+
+
 def canonical_json(packet: dict) -> str:
     """穩定序列化。**排序鍵、無空白、不逃逸非 ASCII、無法序列化的轉字串。**
 

@@ -39,6 +39,7 @@ import payload_budget as _pb
 import sector_readout as _sr
 import prompt_profiles as _pp
 import evidence_packet as _ep
+import evidence_serialize as _es
 import analysis_schema as _sch
 import analysis_render as _ar
 import analysis_metrics as _am
@@ -14347,8 +14348,13 @@ def _repair_request_payload(payload: dict, user_payload: str, tail: str,
                 ) if unseen else ""
 
     def _build(sl: dict) -> tuple:
+        # **`default=str` 與其他三處同一把尺**(2026-09-03 生產事故):同一份
+        # body 的**成本估算**吃 `default=str`(`evidence_packet` 的 `cost=`),
+        # 送出去這一次先前沒有 —— 帶 `date` 的證據**通過預算檢查、序列化時
+        # 炸掉**,整條特化路徑落 legacy。切片刻意不轉型(數值要保持數值),
+        # 所以承擔在這裡;政策見 `evidence_serialize.canonical_json`。
         _body = _re2.sub(r"(?i)UNTRUSTED_SOURCE_DATA", "UNTRUSTED-SOURCE-DATA",
-                         json.dumps(sl, ensure_ascii=False))
+                         json.dumps(sl, ensure_ascii=False, default=str))
         _unseen = [i for i in named if i not in sl]
         return dict(payload, input=(
             prefix + "<UNTRUSTED_SOURCE_DATA>\nREPAIR_EVIDENCE\n"
@@ -14972,6 +14978,12 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
             _nsk = _ep.nonstring_key_paths(_packet)[:8]
             if _nsk:
                 _RUN_MANIFEST.setdefault("llm", {})["evidence_nonstring_keys"] = _nsk
+            # 孿生診斷(2026-09-03 生產):**值**的型別。`default=str` 讓
+            # 它不再炸,但那是止血 —— 源頭仍然是某個上游欄位把 `date`
+            # 物件放進了 packet,不記下來就查不到是哪一個。
+            _njv = _es.nonjson_value_paths(_packet)[:8]
+            if _njv:
+                _RUN_MANIFEST.setdefault("llm", {})["evidence_nonjson_values"] = _njv
             _text = _luna_analysis(_packet, _PRIMARY_EFFORT)
             if _text:
                 # 第十四輪 P0-1:**只有走到這裡才算 Luna 特化成功。**

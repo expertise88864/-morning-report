@@ -1,187 +1,4 @@
 {
- "geopolitical:Oil:2026-08": {
-  "first_seen": "2026-08-26",
-  "days": 2,
-  "last_seen": "2026-08-31",
-  "latest_title": "ONON On - Oil jumps more than 2% after US attack on Iran's Larak island - 股市爆料同學會 - CMoney",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "after",
-   "attack",
-   "iran",
-   "island",
-   "jumps",
-   "larak",
-   "more",
-   "on",
-   "onon",
-   "than",
-   "us",
-   "同學",
-   "學會",
-   "市爆",
-   "料同",
-   "爆料",
-   "股市"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:特斯拉:2026-08#5f66f0": {
-  "first_seen": "2026-08-31",
-  "days": 1,
-  "last_seen": "2026-08-31",
-  "latest_title": "特斯拉停產太陽能屋頂瓦片，成本昂貴簽約後加價曾引起集體訴訟 - TechNews 科技新報",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "停產",
-   "價曾",
-   "加價",
-   "太陽",
-   "屋頂",
-   "引起",
-   "後加",
-   "成本",
-   "昂貴",
-   "曾引",
-   "本昂",
-   "瓦片",
-   "產太",
-   "簽約",
-   "約後",
-   "能屋",
-   "訴訟",
-   "貴簽",
-   "起集",
-   "陽能",
-   "集體",
-   "頂瓦",
-   "體訴"
-  ],
-  "entity": "特斯拉",
-  "subject_basis": "alias",
-  "subjects": [
-   "特斯拉"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-08#00c16c": {
-  "first_seen": "2026-08-31",
-  "days": 1,
-  "last_seen": "2026-08-31",
-  "latest_title": "美軍突襲！時隔一個月再度攻擊伊朗轟炸火箭發射陣地- 國際 - 自由時報",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "一個",
-   "個月",
-   "再度",
-   "國際",
-   "射陣",
-   "度攻",
-   "攻擊",
-   "時隔",
-   "月再",
-   "火箭",
-   "炸火",
-   "發射",
-   "突襲",
-   "箭發",
-   "美軍",
-   "軍突",
-   "轟炸",
-   "陣地",
-   "隔一"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:NYK:2026-08": {
-  "first_seen": "2026-08-31",
-  "days": 1,
-  "last_seen": "2026-08-31",
-  "latest_title": "NYK explores alternative shipping routes amid Middle East conflict",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "alternative",
-   "amid",
-   "conflict",
-   "east",
-   "explores",
-   "middle",
-   "routes",
-   "shipping"
-  ],
-  "entity": "NYK",
-  "subject_basis": "literal",
-  "subjects": [
-   "NYK"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:3037:2026-08": {
-  "first_seen": "2026-08-31",
-  "days": 1,
-  "last_seen": "2026-08-31",
-  "latest_title": "欣興遭搜索",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "搜索",
-   "欣興",
-   "興遭",
-   "遭搜"
-  ],
-  "entity": "3037",
-  "subject_basis": "alias",
-  "subjects": [
-   "3037"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:欣興電子:2026-08": {
-  "first_seen": "2026-08-31",
-  "days": 1,
-  "last_seen": "2026-08-31",
-  "latest_title": "欣興電子被報導涉及洗產地",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "及洗",
-   "洗產",
-   "涉及",
-   "產地"
-  ],
-  "entity": "欣興電子",
-  "subject_basis": "literal",
-  "subjects": [
-   "欣興電子"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:伊朗:2026-09": {
   "first_seen": "2026-09-01",
   "days": 1,
@@ -641,6 +458,38 @@
   ],
   "event_type": "geopolitical",
   "action": "",
+  "identity_schema": 14
+ },
+ "export_controls:export_control:3037:2026-09": {
+  "first_seen": "2026-09-04",
+  "days": 1,
+  "last_seen": "2026-09-04",
+  "latest_title": "欣興捲入「洗產地」疑雲，出口管制風險受關注",
+  "latest_summary": "",
+  "object": "3037",
+  "incident_tokens": [
+   "出口",
+   "制風",
+   "受關",
+   "口管",
+   "捲入",
+   "欣興",
+   "洗產",
+   "產地",
+   "疑雲",
+   "管制",
+   "興捲",
+   "關注",
+   "險受",
+   "風險"
+  ],
+  "entity": "3037",
+  "subject_basis": "code",
+  "subjects": [
+   "3037"
+  ],
+  "event_type": "export_controls",
+  "action": "export_control",
   "identity_schema": 14
  }
 }

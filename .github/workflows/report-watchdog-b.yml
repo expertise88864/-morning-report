@@ -133,6 +133,7 @@ jobs:
         continue-on-error: ${{ steps.check.outputs.rc == '4' }}
         if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
             || steps.check.outputs.rc == '4'
+            || steps.check.outputs.rc == '6'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -172,14 +173,22 @@ jobs:
           # 各寫 `rc == "2"`,於是新增 rc=4(只有降級、但主班那封沒送成)
           # 之後,它會走到「今天的晨報可能沒有跑起來」那條路 ——
           # 寄給一般收件人、主旨宣告一場沒有發生的事故。信其實已經寄達了。
-          is_quality = rc in ("2", "4")
+          # rc=6 也走品質信箱:那是**維運**訊號(部署與 state 版本對不上),
+          # 不是收件人要看的東西。
+          is_quality = rc in ("2", "4", "6")
           if is_quality:
               # 品質告警分流;沒設品質信箱就回到原收件人(告警不可斷)
               to = os.environ.get("QUALITY_RECIPIENT", "").strip() or to
           # **主旨要分得出兩件事**:沒有信、與信比它該有的樣子差 ——
           # 緊急程度與該做的事都不同,共用主旨會讓後者被當成前者忽略。
           gap = os.environ.get("WATCHDOG_STATE_GAP", "").strip()
-          if rc == "2" and gap:
+          # **一條 if/elif 鏈,不是兩條**:`EmailMessage` 只允許一個 Subject,
+          # 設第二次會 raise ValueError —— 那封信於是**完全寄不出去**
+          # (Codex r1 P1:我加的告警自己把自己弄成寄不出去的)。
+          if rc == "6":
+              msg["Subject"] = (f"[晨報品質] {now} 看門狗**判不動** —— "
+                                "它手上的判準比 state 舊")
+          elif rc == "2" and gap:
               sent = {"delivered": "信已寄達",
                       "skipped_after_delivery": "這一班刻意不寄(今天稍早已寄過)",
                       }.get(gap, "這一班刻意不寄")
@@ -199,7 +208,20 @@ jobs:
           # **內文要對得上主旨。** 先前這裡寫死「時間戳超過門檻」的
           # 可能原因 —— 品質告警共用它的話,信會說一件沒發生的事,
           # 而那比沒有告警更難查。
-          if rc == "2" and gap == "delivered":
+          if rc == "6":
+              body = (
+                  "看門狗這一班**沒有下任何品質結論**,因為它讀到的 manifest\n"
+                  "是由比它新的那版程式寫的(schema 比它認得的大)。\n\n"
+                  "原因是結構性的:排程觸發的 checkout 是**排程事件建立當時**\n"
+                  "的 commit,而 state 是 `origin/main` **當下**的 ——\n"
+                  "bump manifest_schema 的那一天就會這樣。\n\n"
+                  "「不認得」既不是健康也不是降級,是**判不動**:\n"
+                  "舊判準讀新欄位,每一個結論都沒有契約保證。\n"
+                  "所以這一班也**不自動補寄**(不知道的時候多寄一封收不回來)。\n\n"
+                  f"{detail}\n\n"
+                  "**信到底有沒有寄到,請看上面收據那一行**(收據的格式穩定,\n"
+                  "與 manifest 的世代無關)。下一班的 checkout 追上之後就會恢復。\n")
+          elif rc == "2" and gap == "delivered":
               body = (
                   "今天的晨報**有寄到**,信本身沒有問題 —— 掉的是 **state**:\n"
                   "`origin/main` 上有今天的寄送收據(收據在 SMTP 成功的當下\n"
@@ -282,4 +304,5 @@ jobs:
       - name: Fail the run so it is visible in the Actions list
         if: steps.check.outputs.rc == '1' || steps.check.outputs.rc == '2'
             || steps.check.outputs.rc == '5'
+            || steps.check.outputs.rc == '6'
         run: exit 1

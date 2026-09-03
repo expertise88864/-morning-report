@@ -806,8 +806,9 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
     # 退回 `rc != '0'` 的話那個否定式照樣成立(突變驗證抓到的白測)。
     # r18:改成「這個條件恰好列舉了哪幾個碼」,而不是逐字比對整個字串 ——
     # 加一個新退出碼就得改一次字面值,那會逼人去動測試而不是想清楚語意。
-    assert set(re.findall(r"rc == '(\d)'", fail)) == {"1", "2", "5"}, (
-        "染紅的碼變了:只有降級(3/4)不該染紅,缺陷(2/5)一定要", fail)
+    assert set(re.findall(r"rc == '(\d)'", fail)) == {"1", "2", "5", "6"}, (
+        "染紅的碼變了:只有降級(3/4)不該染紅;缺陷(2/5)與判不動(6)一定要",
+        fail)
     # 查 API 要有 token —— 少了它會天天查不到而多寄一封
     assert "GITHUB_TOKEN" in (steps["Check last run"].get("env") or {}), (
         "判準查不到 job conclusion 就會退到 rc=4,每天多寄一封")

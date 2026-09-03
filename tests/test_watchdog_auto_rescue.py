@@ -99,10 +99,12 @@ def test_the_rescue_is_wired_into_the_workflow():
     # r10:rc=3(只有降級、而且主班那封**確認寄成了**)不寄。
     # r11:rc=4(只有降級,但主班那封查不到成功紀錄)**要寄** ——
     # 去重要基於「收到了」,不是「應該收到了」。
+    # r19:逐字比對整個字串會逼人為了加一個碼去改字面值,而不是想清楚語意。
+    # 改成「恰好列舉哪幾個碼」:1/2/4/6 要寄,3(已確認送達)與
+    # 5(有缺陷但主班那封確認寄成)不寄。
+    import re as _re
     cond = " ".join(alert["if"].split())
-    assert cond == ("steps.check.outputs.rc == '1' || "
-                    "steps.check.outputs.rc == '2' || "
-                    "steps.check.outputs.rc == '4'"), cond
+    assert set(_re.findall(r"rc == '(\d)'", cond)) == {"1", "2", "4", "6"}, cond
     assert "WATCHDOG_RESCUE" in (alert.get("env") or {})
 
 

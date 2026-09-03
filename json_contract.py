@@ -29,6 +29,8 @@ r1(Codex,#2):第一版漏了 `minimum`/`maximum`,**而且沒把它們列進
 """
 from __future__ import annotations
 
+import math as _math
+
 #: 本模組**真的會檢查**的關鍵字。`description` 只是說明,不影響合法性。
 IMPLEMENTED = frozenset({
     "type", "properties", "required", "additionalProperties", "items",
@@ -65,14 +67,32 @@ _TYPES = {"object": dict, "array": list, "string": str, "boolean": bool,
           "integer": int, "number": (int, float), "null": type(None)}
 
 
+def is_json_number(value) -> bool:
+    """這個值是**合法的 JSON 數字**嗎。
+
+    Python 的數字模型與 JSON 的不一樣,而差異每一條都咬過人:
+      * `bool` 是 `int` 的子類 —— `True` 不是 JSON number(既有判準)
+      * `NaN` / `inf` / `-inf` **是 Python float,但 JSON 沒有這些值**
+        (r19 外審 P2:`json.dumps` 會產出 `NaN` 字面值,那是別的解析器
+        讀不懂的東西;而 `NaN` 的比較運算全為 False,所以連
+        `minimum`/`maximum` 都繞得過去 —— 型別與範圍兩關全過)。
+
+    這支是**唯一的一份**:`evidence_serialize.normalize_json()` 也用它,
+    免得兩邊各自重新發明一次 JSON 的數字語意。
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return not isinstance(value, float) or _math.isfinite(value)
+
+
 def _type_ok(value, want: str) -> bool:
     py = _TYPES.get(want)
     if py is None:
         return True
-    if want == "integer" and isinstance(value, bool):
-        return False          # Python 的 bool 是 int 的子類
-    if want in ("number", "integer") and isinstance(value, bool):
-        return False
+    if want in ("number", "integer"):
+        # bool 與非有限值都不是合法的 JSON 數字(判準只有 `is_json_number`)
+        if not is_json_number(value):
+            return False
     return isinstance(value, py)
 
 
@@ -93,6 +113,13 @@ def violations(obj, schema: dict, path: str = "") -> list:
 
     want = schema.get("type")
     if isinstance(want, str) and not _type_ok(obj, want):
+        # **處置不同的原因要分得開**:`NaN` 的型別「是」float,說它
+        # 「型別應為 number,實際 float」會讓人以為判準壞了 ——
+        # 真正的原因是 JSON 沒有這個值。
+        if (want in ("number", "integer") and isinstance(obj, float)
+                and not _math.isfinite(obj)):
+            return [f"{path or '(root)'}:{obj!r} 不是合法的 JSON 數字"
+                    "(JSON 沒有 NaN / Infinity)"]
         return [f"{path or '(root)'}:型別應為 {want},實際 "
                 f"{type(obj).__name__}"]
 

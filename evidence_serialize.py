@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import json_contract as _jc
 from typing import Optional
 
 
@@ -172,7 +173,10 @@ def normalize_json(node, path: str = ""):
     if isinstance(node, float):
         # NaN / inf 不是合法 JSON(`json.dumps` 預設會產出 `NaN` 字面值,
         # 那是**別的解析器讀不懂**的東西)。轉成 null 並留痕。
-        if node != node or node in (float("inf"), float("-inf")):
+        # 判準用 `json_contract.is_json_number` —— **只有一份**:
+        # r19 外審指出 strict validator 那邊自己另寫了一套(而且漏了
+        # 非有限值),兩邊各自發明 JSON 的數字語意遲早會分岔。
+        if not _jc.is_json_number(node):
             return None, [(NORM_DROPPED, f"{path or '(root)'}(non_finite_float)")]
         return node, []
     _p = f"{path or '(root)'}({type(node).__name__})"
@@ -190,7 +194,7 @@ def normalize_json(node, path: str = ""):
         return int(node), [tag]
     if isinstance(node, _num.Real):
         f = float(node)
-        if f != f or f in (float("inf"), float("-inf")):
+        if not _jc.is_json_number(f):
             return None, [(NORM_DROPPED, f"{path or '(root)'}(non_finite_real)")]
         return f, [tag]
     if isinstance(node, (_d.datetime, _d.date, _d.time)):
@@ -210,7 +214,7 @@ def normalize_json(node, path: str = ""):
         except (ValueError, OverflowError):   # 有限的 Decimal 走不到這裡
             return None, [(NORM_LOSSY,
                            f"{path or '(root)'}(decimal_unconvertible)")]
-        if f != f or f in (float("inf"), float("-inf")):
+        if not _jc.is_json_number(f):
             return None, [nf]
         return f, [tag]
     if isinstance(node, _e.Enum):

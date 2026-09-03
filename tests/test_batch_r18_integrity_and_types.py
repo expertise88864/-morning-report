@@ -14,12 +14,15 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 import evidence_serialize as es                                # noqa: E402
 import model_history_store as mh                               # noqa: E402
 import run_quality as rq                                       # noqa: E402
+
+_WF_WD = _ROOT / ".github" / "workflows" / "report-watchdog-b.yml"
 
 
 # ------------------------------------------------------------------ P1
@@ -294,3 +297,116 @@ def test_the_quality_gate_consumes_the_normalization_report():
     for code in ("evidence_value_stringified", "evidence_key_collision",
                  "evidence_value_dropped"):
         assert rq.finding_domain(code) == rq.DOMAIN_CONTROL_PLANE, code
+
+
+# --------------------------------------------- r19:fresh data + stale interpreter
+def test_a_future_schema_is_not_judged_by_an_older_validator(tmp_path,
+                                                             monkeypatch):
+    """**排程 checkout 的 commit 與 state 的 commit 不是同一個。**
+
+    前幾輪修好了「stale state」(改讀 origin/main 當下那份),卻造出
+    **fresh data + stale interpreter**:bump `manifest_schema` 的那一天,
+    看門狗會拿舊判準去解讀新欄位。`run_quality` 對這種情形只報一個
+    `degraded`,然後照樣往下判 —— log 誠實地寫著「不認得」,自動化卻繼續
+    做決策(要不要補寄、要不要染紅、要不要寄品質信)。
+
+    「不認得」既不是健康也不是降級,是**判不動**。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import report_watchdog as w
+    import run_manifest as rm
+
+    today = __import__("datetime").datetime.now(w.TPE).strftime("%Y-%m-%d")
+    fresh = tmp_path / "wd_manifest.json"
+
+    def _put(schema):
+        fresh.write_text(json.dumps({
+            "date": f"{today} 05:20", "manifest_schema": schema,
+            "github_run_id": "R",
+            "delivery": {"attempted": True, "success": True,
+                         "delivered_at": f"{today}T07:33:55+08:00",
+                         "first_delivered_at": f"{today}T07:33:55+08:00",
+                         "run_kind": "schedule"}}), encoding="utf-8")
+        monkeypatch.setenv(w.FRESH_MANIFEST_ENV, str(fresh))
+        monkeypatch.delenv(w.FRESH_RECEIPT_ENV, raising=False)
+        monkeypatch.setattr(w, "quality_findings", lambda *a, **k: [])
+        monkeypatch.setattr(w, "_default_get_json",
+                            lambda: lambda url: {"status": "completed"})
+        return w.main()
+
+    assert _put(rm.MANIFEST_SCHEMA) == w.RC_OK          # 同版:照常判
+    assert _put(rm.MANIFEST_SCHEMA + 1) == w.RC_VALIDATOR_TOO_OLD, (
+        "舊判準對著新 schema 給了一個它證明不了的結論")
+    # **不可以掉進補寄那一格**:不知道的時候多寄一封是收不回來的那一邊
+    assert w.RC_VALIDATOR_TOO_OLD != w.RC_NOT_DELIVERED
+
+
+def test_the_stale_validator_alert_can_actually_be_sent():
+    """**我加的告警自己把自己弄成寄不出去的**(Codex r1 P1)。
+
+    rc=6 設了 Subject,然後又掉進 `is_quality` 那條再設一次 ——
+    而 `EmailMessage` 只允許一個 Subject,第二次會 raise
+    `ValueError: There may be at most 1 Subject headers`。
+    於是那封「判不動」的信**完全寄不出去**,而測試只驗了 workflow 條件裡
+    有沒有 `rc == '6'`,從來沒有真的執行過那段寄信程式。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tests"))
+    from test_batch_watchdog_contract_0901 import _run_alert_script
+
+    m = _run_alert_script(6)
+    assert m is not None, "rc=6 沒有寄出任何信"
+    assert "判不動" in m["Subject"], m["Subject"]
+    assert m["To"] == "ops@example.com", "維運訊號寄給了一般收件人"
+    body = m.get_content()
+    assert "不自動補寄" in body and "收據" in body
+    # 其他碼不可以被這次改動帶壞(同一條 if/elif 鏈)
+    for rc, want in ((1, "沒有跑起來"), (2, "沒跑成"), (4, "只有降級")):
+        other = _run_alert_script(rc)
+        assert other is not None and want in other["Subject"], (rc, other)
+
+
+def test_the_stale_validator_note_only_trusts_the_receipt(tmp_path,
+                                                          monkeypatch):
+    """判不動那條路的「信寄到了沒」**只能看收據**(Codex r1 P2)。
+
+    先前用 `fresh_conclusion()`,而它讀不到收據時會**回退到 manifest** ——
+    回頭解讀我上一行才剛宣稱判不動的那份檔,再把結論標成「收據說」。
+    既解讀了不該解讀的東西,也說了一句假話。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "tools"))
+    import report_watchdog as w
+    now = __import__("datetime").datetime.now(w.TPE)
+    today = now.strftime("%Y-%m-%d")
+    fut = tmp_path / "wd_manifest.json"
+    fut.write_text(json.dumps({
+        "date": f"{today} 05:20", "manifest_schema": 99,
+        "delivery": {"attempted": True, "success": True,
+                     "run_kind": "schedule"}}), encoding="utf-8")
+    monkeypatch.setenv(w.FRESH_MANIFEST_ENV, str(fut))
+    monkeypatch.delenv(w.FRESH_RECEIPT_ENV, raising=False)
+    note = w._receipt_note(now)
+    assert "收據也讀不到" in note, ("拿 manifest 冒充收據", note)
+    assert "已寄出" not in note
+
+    rcpt = tmp_path / "wd_receipt.json"
+    rcpt.write_text(json.dumps({
+        "date": f"{today} 05:20",
+        "delivery": {"attempted": True, "success": True,
+                     "run_kind": "schedule"}}), encoding="utf-8")
+    monkeypatch.setenv(w.FRESH_RECEIPT_ENV, str(rcpt))
+    assert "已寄出" in w._receipt_note(now)
+
+
+def test_the_stale_validator_state_alerts_and_is_visible():
+    """判不動要有人知道(告警),而且要看得見(染紅);但**不補寄**。"""
+    doc = yaml.safe_load(_WF_WD.read_text(encoding="utf-8"))
+    steps = {s.get("name"): s for s in doc["jobs"]["check"]["steps"]}
+    alert = " ".join(steps["Alert"]["if"].split())
+    fail = " ".join(
+        steps["Fail the run so it is visible in the Actions list"]["if"].split())
+    rescue = " ".join(steps["Auto rescue"]["if"].split())
+    assert "rc == '6'" in alert and "rc == '6'" in fail, (alert, fail)
+    assert "rc == '6'" not in rescue, "判不動的時候還會自動補寄"

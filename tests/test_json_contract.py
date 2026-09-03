@@ -14,6 +14,8 @@ r1(Codex,#2)抓到的正是這個:第一版沒實作 `minimum`/`maximum`,
 被指出來。**守衛不能自己決定要掃多大。**
 """
 import analysis_schema as sch
+import pytest
+
 import json_contract as jc
 
 
@@ -120,3 +122,38 @@ def test_every_violation_says_where():
     assert len(hits) == 2
     assert any("stance.score" in h for h in hits)
     assert any("key_drivers[0].materiality" in h for h in hits)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_floats_are_not_json_numbers(value):
+    """**Python 的 float 模型不等於 JSON 的數字模型**(r19 外審 P2)。
+
+    JSON 沒有 `NaN` / `Infinity`。而這支的宣稱是「保證這個物件 API 會接受」
+    —— 放行它們等於本地說合法、真正的 structured boundary 說不合法,
+    正是它自己文件裡最不希望發生的那件事。
+    """
+    assert jc.violations(value, {"type": "number"}), f"{value!r} 被當成合法"
+    # **`NaN` 的比較運算全為 False** —— 只擋範圍是擋不住的:
+    # `nan < 0` 與 `nan > 1` 都是 False,所以型別那關不擋就整個過了。
+    assert jc.violations(value, {"type": "number",
+                                 "minimum": 0, "maximum": 1})
+    # 訊息要說得出真正的原因(說「型別應為 number,實際 float」會讓人
+    # 以為判準壞了 —— 它的型別**確實**是 float)
+    assert "JSON" in jc.violations(value, {"type": "number"})[0]
+
+
+def test_finite_numbers_are_still_accepted():
+    """不可以矯枉過正:正常的數字照樣要過。"""
+    for value in (0, 1, -3, 0.0, 1.5, -2.25, 10**18):
+        assert jc.violations(value, {"type": "number"}) == [], value
+    assert jc.violations(1, {"type": "integer"}) == []
+
+
+def test_the_json_number_rule_has_one_definition():
+    """`evidence_serialize` 與 strict validator 不可以各自發明一次。"""
+    import evidence_serialize as es
+    for value in (float("nan"), float("inf"), True, 1.5):
+        in_contract = not jc.violations(value, {"type": "number"})
+        assert in_contract == jc.is_json_number(value), value
+    # normalize 那邊走的是同一支判準:非法的一律變 null
+    assert es.normalize_json({"x": float("inf")})[0] == {"x": None}

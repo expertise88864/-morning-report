@@ -36,6 +36,7 @@ fetch,路徑用環境變數傳;`authoritative_manifest()`)—— 排程觸發的
   3 只有降級,而且主班那封品質信確認寄成了 → 不重複告警、不染紅
   4 只有降級,但主班那封查不到成功紀錄 → 補寄一次,仍不算事故
   5 有缺陷,但主班那封**確認寄成了** → 不重複寄信,但**照樣染紅**
+  6 手上這版判準比 state 舊 → 判不動;告警 + 紅,但**不自動補寄**
 """
 import datetime as dt
 import json
@@ -157,6 +158,26 @@ EVIDENCE_LEGACY_MISSING = "legacy_missing"    #: 真舊檔:當時還沒有這個
 EVIDENCE_CURRENT_MISSING = "current_missing"  #: 現行世代卻沒有 —— writer 壞了
 EVIDENCE_INVALID = "invalid"                  #: 有,但型別不對
 EVIDENCE_VALID = "valid"
+
+
+def _receipt_note(now: dt.datetime) -> str:
+    """判不動那條路要說的「信到底寄到了沒」——**只看收據**。
+
+    Codex r1 P2:先前寫 `fresh_conclusion(now)`,而它讀不到收據時會**回退到
+    manifest** —— 也就是回頭去解讀我上一行才剛宣稱「判不動」的那份檔,
+    再把結論標成「收據說」。既解讀了不該解讀的東西,也說了一句假話。
+    收據沒有 `manifest_schema`,它的形狀是獨立且穩定的契約,所以只有它
+    在這條路上還算數。
+    """
+    v = _fresh_verdict(now, (FRESH_RECEIPT_ENV,)).get("text", "")
+    return f" 收據說:{v}" if v else " 收據也讀不到(它是獨立的一份,不受影響)。"
+
+
+def _rq_manifest_schema() -> int:
+    """**這版程式**認得的 manifest 世代(判準只有一份,在 `run_manifest`)。"""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from run_manifest import MANIFEST_SCHEMA
+    return int(MANIFEST_SCHEMA)
 
 
 def _rq_delivery_outcome(dv) -> str:
@@ -334,6 +355,19 @@ def _assess(now: dt.datetime) -> int:
     if source == SOURCE_FRESH:
         print("[watchdog] 判準用的是 origin/main 當下的 manifest —— "
               "checkout 是排程事件建立當時的快照")
+    # **資料的版本要與判準的版本對得上**(r19 外審 P2-high)。比我新的
+    # schema 表示這份 state 是由**還沒 checkout 到的那版程式**寫的:
+    # 欄位語意可能已經改了,舊判準讀出來的每一個結論都沒有契約保證。
+    _schema = raw.get("manifest_schema")
+    if (isinstance(_schema, int) and not isinstance(_schema, bool)
+            and _schema > _rq_manifest_schema()):
+        print(f"[watchdog] **判不動**:manifest_schema={_schema} 比這版判準"
+              f"認得的 {_rq_manifest_schema()} 新 —— checkout 是排程事件建立"
+              "當時的 commit,而 state 是 origin/main 當下的。今天的品質判斷"
+              "一律不作數,也不自動補寄(不知道的時候不寄)。"
+              + _receipt_note(now),
+              file=sys.stderr)
+        return RC_VALIDATOR_TOO_OLD
     age, info = manifest_age_hours(now, raw=raw)
     if age is None:
         print(f"[watchdog] 異常:{info}", file=sys.stderr)
@@ -403,7 +437,7 @@ def fresh_conclusion(now: dt.datetime) -> str:
     return _fresh_verdict(now).get("text", "")
 
 
-def _fresh_verdict(now: dt.datetime) -> dict:
+def _fresh_verdict(now: dt.datetime, sources=None) -> dict:
     """origin/main **當下**說今天有結論了嗎(沒有回空字串)。
 
     排程觸發的 checkout 檢出的是**排程事件建立當時**的 commit —— 主班在
@@ -415,7 +449,7 @@ def _fresh_verdict(now: dt.datetime) -> dict:
     manifest;這一支多看**收據** —— 收據是獨立 push 的,整批 state 沒推
     上去的日子只有它會是今天的)。rc / 告警 / 紅綠 / 補寄同一份事實。
     """
-    for env in (FRESH_RECEIPT_ENV, FRESH_MANIFEST_ENV):
+    for env in (sources or (FRESH_RECEIPT_ENV, FRESH_MANIFEST_ENV)):
         data = _read_fresh_json(env)
         if data is None or not _is_today(data, now):
             continue
@@ -573,6 +607,17 @@ RC_QUALITY_DEGRADED_UNSENT = 4
 #: **紅不能一起拿掉**:缺陷本來就該在 Actions 上看得見,那與「要不要再寄一封
 #: 同樣的信」是兩件事(rc=3 是「連紅都不必」,rc=5 是「紅要,信不必」)。
 RC_QUALITY_DEFECT_ACKED = 5
+#:   6  **手上這版判準比 state 舊** —— 今天的品質判斷一律不作數
+#:
+#: r19 外審 P2-high:排程觸發的 checkout 是排程事件建立當時的 commit,
+#: 而 state 是從 `origin/main` 當下 fetch 的 —— 前面幾輪修好了「stale state」,
+#: 卻造出「fresh data + stale interpreter」。schema 從 v1 bump 到 v2 就發生在
+#: 這個 session 裡,不是理論情境。
+#: `run_quality` 對這種情形只報一個 `degraded`,**然後繼續用舊判準解讀新資料**
+#: —— log 誠實地寫著「不認得這個版本」,自動化卻照樣做決策。
+#: 「不認得」既不是健康、也不是降級:它是**判不動**,而判不動時
+#: 不可以自動補寄(不知道的時候多寄一封是收不回來的那一邊)。
+RC_VALIDATOR_TOO_OLD = 6
 
 
 #: 主班那封品質信的三態 —— **「還沒跑完」不是「沒送成」**。

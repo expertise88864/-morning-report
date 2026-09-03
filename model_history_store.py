@@ -420,9 +420,15 @@ def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
             data = json.loads(legacy_file.read_text(encoding="utf-8"))
             # 語法合法但結構錯(如整檔是 {})不是「空歷史」:strict 必炸——
             # 否則回測靜默少掉整段樣本(Codex r1 P1)
-            if strict and not isinstance(data, list):
-                raise HistoryIntegrityError(
-                    f"legacy model_history 結構錯誤: {type(data).__name__} 非 list")
+            if not isinstance(data, list):
+                # strict 必炸;非 strict(晨報)略過但**要說**(全案審查 ST-3):
+                # `for item in []` 不會進 except,於是壞掉的 legacy 檔與空檔在
+                # log 裡長得一樣,而 walk-forward 樣本數靜默少一截。
+                if strict:
+                    raise HistoryIntegrityError(
+                        f"legacy model_history 結構錯誤: {type(data).__name__} 非 list")
+                print(f"[model_state] legacy root 型別是 {type(data).__name__} 非 list,"
+                      f"整檔略過(不是空歷史)", file=sys.stderr)
             for item in data if isinstance(data, list) else []:
                 if isinstance(item, dict) and item.get("session_date"):
                     merged[item["session_date"]] = item
@@ -436,9 +442,14 @@ def load_model_history(legacy_file: Path = DEFAULT_LEGACY_FILE,
         for path in sorted(partition_dir.glob("*.json.gz")):
             try:
                 data = json.loads(gzip.decompress(path.read_bytes()).decode("utf-8"))
-                if strict and not isinstance(data, list):
-                    raise HistoryIntegrityError(
-                        f"分區 {path.name} 結構錯誤: {type(data).__name__} 非 list")
+                if not isinstance(data, list):
+                    # 同 legacy(全案審查 ST-3):非 strict 也要留一行,
+                    # 否則「這個月沒樣本」與「這個月的檔壞了」分不開。
+                    if strict:
+                        raise HistoryIntegrityError(
+                            f"分區 {path.name} 結構錯誤: {type(data).__name__} 非 list")
+                    print(f"[model_state] 分區 {path.name} root 型別是 "
+                          f"{type(data).__name__} 非 list,略過", file=sys.stderr)
                 for item in data if isinstance(data, list) else []:
                     if isinstance(item, dict) and item.get("session_date"):
                         merged[item["session_date"]] = item   # 分區優先(較新)

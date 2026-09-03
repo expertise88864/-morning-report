@@ -77,16 +77,26 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
     r = None
     sent = 0
     last_trigger = None
+    last_exc = None
     for attempt in range(_LLM_RETRIES + 1):
         left = None if deadline_at is None else deadline_at - time.monotonic()
         if left is not None and left <= 0:
-            if sent:
-                _gave_up(last_trigger, "退避途中預算用完")
+            if not sent:
+                # **None ⇔ 一次都沒送**(全案審查 2026-09-03 LM-8):呼叫端據此
+                # 把這次失敗記成「不計費」。送過的話下面兩條路都不會回 None。
+                return None
+            _gave_up(last_trigger, "退避途中預算用完")
+            if r is None and last_exc is not None:
+                # 送過、但每一次都是傳輸層例外(可能含 ReadTimeout:伺服器也許
+                # 已經做工)—— 狀態未知,不可冒充「沒送」;把最後的例外拋回去,
+                # 呼叫端走既有的 billable 路徑。
+                raise last_exc
             return r
         try:
             sent += 1
             r = requests.post(url, json=body, headers=headers,
                               timeout=timeout if left is None else min(timeout, left))
+            last_exc = None     # 這一次有回應:更早的傳輸例外不再代表最新狀態
         except requests.exceptions.RequestException as e:
             # 傳輸層斷線也要退避重試(2026-08-07 E2E 第六次:DeepSeek 回應
             # 中途斷線 ChunkedEncodingError,一發就整天放棄特化路徑)。
@@ -101,6 +111,9 @@ def post_with_backoff(url: str, body: dict, headers: dict, *,
             if left is not None:
                 wait = min(wait, max(0.0, left - 1.0))
             last_trigger = type(e).__name__
+            last_exc = e
+            r = None            # **最後一次的結果才算數**(Codex deep r1 P3):留著更早那個
+                                # 429 回應,deadline 出口會回它而不是拋這次的例外
             _note("retry_after_status",
                   {"status": last_trigger, "wait_seconds": round(wait, 1)})
             print(f"[llm] 傳輸中斷({type(e).__name__})退避 {wait:.0f}s 後重試"

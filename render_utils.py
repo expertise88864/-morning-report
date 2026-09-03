@@ -3,6 +3,7 @@ Markdown→HTML、分析 HTML 上色、立場包裝、總經單行格式;皆純�
 不依賴 morning_report 其它符號;morning_report 以 re-export 保相容,既有測試零修改。"""
 from __future__ import annotations
 
+import html as _h
 import re
 from typing import Optional
 
@@ -777,8 +778,14 @@ def _render_event_calendar_html(events: list[dict]) -> str:
             return base
         return f"{base}　※{why}" if base else f"※{why}"
 
-    events = [dict(e, note=_note(e),
-                   title=_et.annotate(str(e.get("title") or "")))
+    # **外部文字進 HTML 一律 escape**(全案審查 2026-09-03 FR-2):ForexFactory
+    # 的 title / note / time 是外部 JSON,先前是全信唯一沒過 `html.escape` /
+    # `_external_text` 就進 HTML 的欄位(`_md_to_html`、`safe_href`、CPBL/NBA
+    # 都做了)。順序是先 annotate 再 escape:`econ_terms` 只吐純文字,而術語表
+    # 裡有「S&P」這種含 `&` 的鍵,先 escape 會讓它對不上。
+    events = [dict(e, note=_h.escape(_note(e)),
+                   title=_h.escape(_et.annotate(str(e.get("title") or ""))),
+                   time=_h.escape(str(e.get("time") or "")))
               for e in events]
     rows = "".join(
         f"<tr><td style='padding:7px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;"

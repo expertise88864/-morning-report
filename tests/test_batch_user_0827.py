@@ -30,7 +30,7 @@ def test_the_conclusion_card_no_longer_carries_the_three_action_lines():
     for gone in ("{key_0050_line}", "{key_2330_line}", "{key_00662_line}",
                  "0050 操作建議", "00662 操作建議", "2330 開盤關鍵價位", "第 4-6 行"):
         assert gone not in mr._STANCE_FORMAT_BLOCK, gone
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("_STANCE_FORMAT_BLOCK.format(")
     seg = src[i:i + 300]
     assert "key_0050_line" not in seg and "key_2330_line" not in seg
@@ -185,7 +185,7 @@ def test_week_review_material_alone_triggers_the_sunday_email(monkeypatch):
     assert mr._weekend_digest_has_content(
         {}, [], [], now, week_review_ready=False) is False
     # 接線:呼叫端在早退判斷前真的算了素材、傳了進去
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("_wr_ready = bool(_build_week_review_prompt(now_tpe))")
     j = src.index("if not _weekend_digest_has_content", i)
     assert i < j and "week_review_ready=_wr_ready" in src[j:j + 400]
@@ -227,7 +227,7 @@ def test_a_corrupt_timeline_leaves_a_trace_not_silence(monkeypatch, tmp_path):
 def test_week_review_is_wired_into_the_sunday_email():
     """接線:抓取有 try(失敗整段省略)、渲染端收參數、body 順序在政策
     解析之後。空字串不得長出空標題。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("def run_weekend_digest")
     seg = src[i:src.index("def ", i + 10)]
     assert "analyze_week_in_review(now_tpe)" in seg

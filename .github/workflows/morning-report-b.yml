@@ -298,6 +298,7 @@ jobs:
       # 三班排程裡有兩班每天都是 no-op,那是**常態不是例外**:白跑 runner、
       # 延長 `state-writers` 佔用、增加排隊壓力,而備援本身是可靠性機制。
       - name: 驗證落地 state 的 schema 契約
+        id: contract
         if: ${{ always() && !cancelled() && steps.report.outputs.state_dirty == 'true' }}
         env:
           TZ: Asia/Taipei
@@ -330,11 +331,18 @@ jobs:
           TZ: Asia/Taipei
         run: python tools/assert_run_quality.py --mode watchdog
 
-      # 沒有 `always()` 是刻意的:上一步失敗時這一步會被跳過,
+      # 沒有 `always()` 是刻意的:契約失敗時這一步必須被跳過,
       # 壞掉的 state 就留在 runner 上隨之丟棄,不會進 main。
+      # **閘門是契約那一步,不是晨報那一步**(全案審查 2026-09-03 DL-3):
+      # 先前這裡沒有任何 status function,GitHub 隱含套用 `success()` ——
+      # 而晨報在「多收件人部分被拒」時刻意以退出碼 1 結束(`_MAIL_UNRESOLVED`,
+      # 為了讓 alert-on-failure 告警),於是契約明明過了、發佈卻被跳過,
+      # 當天 state 只 commit 在 runner 上,隨 runner 消失。
+      # `!cancelled()` 是 status function,所以不再隱含 `success()`;
+      # 真正的條件是契約步驟的 outcome(它自己被跳過時 outcome 是 skipped)。
       # `state_dirty` 條件同上:沒改到 state 就沒有東西要發佈。
       - name: 發佈 state(契約通過後才 push)
-        if: ${{ steps.report.outputs.state_dirty == 'true' }}
+        if: ${{ !cancelled() && steps.contract.outcome == 'success' && steps.report.outputs.state_dirty == 'true' }}
         env:
           TZ: Asia/Taipei
         run: python -c "import morning_report as mr; mr.push_committed_state()"

@@ -58,9 +58,22 @@ _FINDING_DOMAINS = {
     "run_binding_mismatch": DOMAIN_CONTROL_PLANE,
     "run_binding_missing": DOMAIN_CONTROL_PLANE,
     "persistent_state_corrupt": DOMAIN_CONTROL_PLANE,
+    # 全案審查 2026-09-03 TC-2:`state:write_failed:<檔名…>` 這個家族先前既沒
+    # 登記也沒有專屬 finding —— 每次出現都被報成「沒見過的降級步驟」。
+    "state_write_failed": DOMAIN_CONTROL_PLANE,
+    # LLM 設定(fatal / 非致命)是控制面的事:與信的內容無關,刻意不寄的日子也該知道。
+    "llm:config_invalid": DOMAIN_CONTROL_PLANE,
+    "llm:config_issue": DOMAIN_CONTROL_PLANE,
     "identity_generations_mixed": DOMAIN_CONTROL_PLANE,
     "unknown_degradation": DOMAIN_CONTROL_PLANE,
     # ---- 內容:今天的信夠不夠好(刻意不寄的日子沒有信可談)
+    # 全案審查 2026-09-03 TC-2:`dq:<source>:<check>`(data_quality 的 error 級
+    # 檢查)同樣是沒登記、沒 finding 的動態家族;原始資料在 manifest 的
+    # `data_checks.errors`。餵信的資料來源壞了是內容面的事(週日沒有這批抓取)。
+    "data_quality_error": DOMAIN_CONTENT,
+    # 渲染失敗(同批):主體失敗寄的是極簡版(defect);單張卡被略過(degraded)。
+    "render_body_failed": DOMAIN_CONTENT,
+    "render_card_failed": DOMAIN_CONTENT,
     "analysis_emergency": DOMAIN_CONTENT,
     "analysis_not_specialized": DOMAIN_CONTENT,
     "luna_rejected": DOMAIN_CONTENT,

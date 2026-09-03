@@ -112,7 +112,7 @@ def test_the_deleted_sections_do_not_come_back():
     assert "什麼情況代表這個判斷錯了" not in out
     import morning_report as mr
     assert not hasattr(mr, "_etf_band_cell")
-    src = _io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert "今日進出參考</th>" not in src
 
 

@@ -33,10 +33,12 @@ ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
 5. Codex 必須 read-only,且關閉 web search 與 apps。
 6. 獨立驗證每一項 Codex finding(CONFIRMED / REJECTED / UNCERTAIN)。
 7. 只修 CONFIRMED 的 finding。
-8. 預設只跑一輪 review。
-9. 第二輪僅允許在 confirmed P0 / P1 / material P2 修正之後,且必須 resume 原 session。
-10. 每個 task 最多兩輪外部 review。
-11. documentation-only、comment-only、typo-only、tests-only、純 cosmetic 變更跳過外部 review。
+8. **迭代到 APPROVE 為止,無輪數上限**(使用者定案 2026-07-13,取代舊「最多兩輪」;
+   與 `tools/codex_review.sh` 檔頭一致 —— 全案審查 2026-09-03 DC-1 發現這裡還停在舊政策,
+   照字面執行會在 REQUEST_CHANGES 未收斂時提前 push)。
+9. 每一輪都 `resume` 同一個 session,不得重建;每次 resume 都必須跟在真正 CONFIRMED 的修正之後,
+   REJECTED 的 finding 附證據說明,不為它再跑一輪。
+10. documentation-only、comment-only、typo-only、tests-only、純 cosmetic 變更跳過外部 review。
 
 細節見 `.claude/skills/gpt-review/SKILL.md`。**APPROVE 才 push。** 歷史上 Codex 擋下多個真 bug
 (state 檔漏登錄、stale FX 誤入計分、`float('nan')` 不拋例外、podcast 集數餓死、2026 世足第 3 名

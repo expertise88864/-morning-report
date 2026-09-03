@@ -168,7 +168,7 @@ def test_the_run_says_what_it_actually_did(tmp_path, monkeypatch):
                                   skipped_reason="weekend_no_new_content")
     assert "run_outcome=intentionally_skipped" in out.read_text(encoding="utf-8")
     # 接線:no-op 早退那一條也要說
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     j = src.index("本班是備援觸發,不重複寄送")
     assert "already_delivered" in src[j:j + 200]
 
@@ -348,7 +348,7 @@ def test_a_no_op_backup_skips_the_expensive_tail(tmp_path, monkeypatch):
     for name in ("驗證落地 state 的 schema 契約", "發佈 state(契約通過後才 push)"):
         assert "state_dirty == 'true'" in steps[name]["if"], (name, steps[name])
     # 產出端真的會發這個 output,而且預設是 false(沒改就是沒改)
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index('_gha_output("state_dirty", "false")')
     j = src.index('_gha_output("run_outcome", "running")')
     assert j < i, "預設值要在最前面(早退路徑也要看得到)"
@@ -400,7 +400,7 @@ def test_a_control_flow_output_does_not_fail_silently(tmp_path, monkeypatch):
         mr._gha_output_required("state_dirty", "true")
     mr._gha_output("state_dirty", "true")        # 觀測性那支照舊不拋
 
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     body = src[src.index("def _mark_delivery_in_manifest("):]
     body = body[:body.index("\ndef _publish_delivery_receipt(")]
     assert '_gha_output("state_dirty"' not in body, (
@@ -432,7 +432,7 @@ def test_a_swallowed_output_failure_still_turns_the_job_red(tmp_path, monkeypatc
     monkeypatch.setattr(mr, "_REQUIRED_OUTPUT_FAILED", False)
     assert mr._final_exit_code(0) == 0, "正常班被判成紅的"
 
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert "sys.exit(_final_exit_code(main()))" in src, (
         "entry point 沒有接上 —— 那個旗標就只是一個沒人讀的變數")
 
@@ -552,7 +552,7 @@ def test_the_terminal_outcome_is_not_best_effort(tmp_path, monkeypatch):
     兩個訊號封裝在同一支裡是為了不漂移;而它**不往外拋**:呼叫端
     (週日路徑)有 catch-all,拋出去只會被吞掉又打斷剩下的收尾。
     """
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert '_gha_output("run_outcome", "delivered")' not in src
     assert '_gha_output("run_outcome", "already_delivered")' not in src
     assert '_gha_output("run_outcome", "intentionally_skipped")' not in src

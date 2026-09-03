@@ -288,9 +288,21 @@ def error_blames_param(err: Optional[dict], param: str) -> bool:
         return False
     if str(err.get("param") or "") == param:
         return True
-    # 有些回應把參數名放在訊息裡而不是 param 欄位
-    return (param in str(err.get("message") or "")
-            and str(err.get("type") or "") == "invalid_request_error")
+    # 有些回應把參數名放在訊息裡而不是 param 欄位。**只認「像參數名」的出現**
+    # (全案審查 2026-09-03 LM-10):帶引號/反引號、或本身是 dotted 路徑;
+    # 裸的葉名不算 —— `context` 這種常見字會讓「maximum context length
+    # exceeded」被歸因成 `reasoning.context`,drop 掉之後同一份 1.1M 字元
+    # 請求原樣再送,直到 OPTIONAL_FIELDS 用盡才拋。有上限,但白燒時間預算。
+    if str(err.get("type") or "") != "invalid_request_error":
+        return False
+    import re as _re
+    msg = str(err.get("message") or "")
+    for m in _re.finditer(r"(?<![\w.])" + _re.escape(param) + r"(?![\w.])", msg):
+        before = msg[m.start() - 1:m.start()] if m.start() else ""
+        after = msg[m.end():m.end() + 1]
+        if "." in param or before in ("'", '"', "`") or after in ("'", '"', "`"):
+            return True
+    return False
 
 
 def response_blames_param(response, param: str) -> bool:

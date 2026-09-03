@@ -1,7 +1,23 @@
 # Luna 5.6 xhigh vs DeepSeek V4 Pro max — 十配對實驗
 
 分支 `luna56-xhigh-specialization`,base `cd41fee`。
-**尚未合併,尚未啟動。** 本文件說明架構、啟動步驟、回切方式與已知限制。
+
+> **現況(2026-09-03 更新,全案審查 DC-2)** —— 下面的內容是規劃當時寫的,
+> 之後的三件事文件沒有跟上:
+> 1. **已於 2026-08-02 上線**(第六節第 1 點),不是「尚未啟動」。
+> 2. **2026-08-19 生產回退到 `deepseek-v4-flash`**(見 `AGENTS.md` / memory 的
+>    LLM 政策)。Luna 只剩抽取器備援。
+> 3. **`luna56_xhigh_v1` 這個 profile 名與 `analysis_origin=luna_specialized`
+>    標籤之後被沿用給 DeepSeek 特化路徑**:`morning_report.py` 的判斷式是
+>    `if _profile == "luna56_xhigh_v1" and DEEPSEEK_API_KEY:`,不是本文描述的
+>    `OPENAI_API_KEY`。這是刻意的(prompt profile 與路徑結構沒變,只換供應商),
+>    但依本文理解「Luna 路徑 = 呼叫 OpenAI」會誤判資料流向;`model_history`
+>    裡的 `luna_specialized` 溯源標籤指的是**特化路徑**,不是供應商。
+> 4. 第七節表列的 `openai_responses.py`、`llm_experiment.py` 已不在 repo 內。
+>
+> 以下原文保留作規劃紀錄,不再是現況。
+
+**當時尚未合併,尚未啟動。** 本文件說明架構、啟動步驟、回切方式與已知限制。
 
 ---
 

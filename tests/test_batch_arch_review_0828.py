@@ -38,7 +38,7 @@ def test_the_url_rule_has_exactly_one_implementation():
     # 禁的是舊**實作**,不是名字 —— `safe_href` 的註解會提到它的歷史,
     # 那是說明不是第二份判準(第一版把兩者混為一談,自己紅了)。
     assert "def _is_web_url" not in src, "舊的那份還在(會漂移)"
-    body = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    body = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = body.index("def _safe_source_url(")
     seg = body[i:i + 1400]
     assert "safe_href" in seg, "沒有委派過去,等於又養了第二份判準"

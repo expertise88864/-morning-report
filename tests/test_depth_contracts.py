@@ -184,7 +184,11 @@ def test_no_depth_gain_is_not_an_improvement():
 def test_the_deepen_prompt_carries_the_previous_output():
     """不附上一版,模型只能整份重生 —— 那正是上面那些退步的來源。"""
     txt = ad.deepen_input("PAYLOAD", ["a"], previous=fx.valid_analysis())
-    assert "<PREVIOUS_OUTPUT>" in txt and "</PREVIOUS_OUTPUT>" in txt
+    # 全案審查 2026-09-03 LM-3:上一版是回流的不可信資料 —— 與修補輪同一支
+    # `previous_output_block`(裸 `PREVIOUS_OUTPUT` 標題 + 標準不信任圍欄),
+    # 不再是自己捏的 `<PREVIOUS_OUTPUT>` 尖括號標籤。
+    assert "PREVIOUS_OUTPUT" in txt and "<PREVIOUS_OUTPUT>" not in txt
+    assert txt.count("<UNTRUSTED_SOURCE_DATA>") == 1 == txt.count("</UNTRUSTED_SOURCE_DATA>")
     assert "保留上一版所有已經成立的內容" in txt
     assert "不得硬湊" in txt
     assert txt.startswith("PAYLOAD"), "證據不見了"

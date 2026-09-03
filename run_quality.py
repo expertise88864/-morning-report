@@ -271,54 +271,10 @@ def is_weekend_digest(manifest) -> bool:
 
 
 
-KNOWN_DEGRADED = frozenset({
-    # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
-    "llm:effort_not_applied:primary",
-    "llm:effort_not_applied:extractor",
-    # TAIFEX 來源日期對不上該交易日(2026-08-11 首次在生產觸發:
-    # 端點回前一天的資料)。行為是對的 —— 寧可留空也不要錯位
-    # (批#83),缺的那一格與原因都在 manifest["chips"]。
-    "chips:source_date_mismatch",
-    # T86 法人資料當日缺席(2026-08-21 批新增的標籤,**當批漏了註冊**,
-    # 缺席日會被誤報成「沒見過的降級」):熱度表只缺法人欄,其餘照常。
-    "sector:institutional_missing",
-    # 供應商擋下請求(餘額/金鑰)→ 跳過 legacy 直接走緊急備援
-    # (2026-08-26)。**這裡註冊只是為了不落成「沒見過的降級」** ——
-    # 它本身已經有專屬 finding(`llm_provider_refused_*`,說得出是哪一種、
-    # 該做什麼),那條才是通報的主體。
-    "llm:provider_refused:payment",
-    "llm:provider_refused:auth",
-    # 週回顧的延燒事件素材有壞列被跳過(2026-08-27):段落照出,只少骨架
-    "weekend_week_review_rows",
-    # 備援班的新鮮寄送紀錄讀取失敗(r2 外審 P1):守衛退回只看工作區
-    "backup_idempotence_probe",
-    # 代號→名稱對照當日取不到:公司鍵遷移照跑,只跳過錯歸因清理。
-    "state:alias_map_unavailable",
-    # 中職未來賽程有場次、但一場都對不到球場(CPBL 官網對 Actions 的海外
-    # IP 可能 geo-block)。賽程照出、只少場地;明細在 manifest.sports。
-    "sports:cpbl_venue_missing",
-    # TAIFEX 官網當日報表拿不到,退回已知落後的 OpenAPI(日期守衛仍會
-    # 把不匹配的值擋在計分外;這是「今天的籌碼可能是舊的」的訊號)。
-    "chips:pcr_site_fallback", "chips:large_site_fallback",
-    # 時間預算不夠而跳過的加值步驟(核心報告仍完整)。
-    "重大事件全文擷取", "podcast", "story_ledger", "story_ledger_save",
-    "medical_journals", "sports", "policy",
-    # ── 2026-08-30:**這一整批本來全都會變成「沒見過的降級步驟」。**
-    # 08/29 的品質告警信實際印出「unknown_degradation —— 沒見過的降級
-    # 步驟:gazette」,查下去發現不是漏一個,是漏 17 個 —— 只註冊了
-    # `weekend_gazette` 而平日路徑發的是 `gazette`。新增標籤要同批註冊
-    # 在消費端,否則退化成「未知」;現在有 `test_every_emitted_degradation
-    # _label_is_registered` 機械化守住,不再靠記得。
-    "gazette", "weekend_gazette", "weekend_policy_analysis",
-    "weekend_week_review", "article_extractor", "horizontal_queries",
-    "sector_map_unavailable", "story_ledger_corrupt",
-    "analysis_recap_unreadable", "policy_keywords_load",
-    "policy_keywords_save", "delivery_receipt_publish",
-    # 除權息/公司行動(前綴族,逐個列出來才看得出漏了誰)
-    "corpact:fetch_failed", "corpact:delisted_fetch_failed",
-    "corpact:history_unreadable", "corpact:persist_failed",
-    "corpact:update_failed",
-})
+# 降級標籤登記表(`KNOWN_DEGRADED` / `OPEN_FAMILIES`)在 `degradation_registry`
+# —— 資料抽出去,判準留這裡(全案審查 2026-09-03 TC-2;1000 行閘門)。
+from degradation_registry import (  # noqa: F401,E402
+    KNOWN_DEGRADED, OPEN_FAMILIES, SURFACE_AS_UNKNOWN)
 
 
 def assess(manifest, *, mode: str = "watchdog",
@@ -703,6 +659,30 @@ def assess(manifest, *, mode: str = "watchdog",
             + "、".join(f"{f}({_why[f][:60]})" if _why.get(f) else f
                        for f in _corrupt))
 
+    # ---- 9c. state 寫入失敗(全案審查 2026-09-03 TC-2):`state:write_failed:<檔名…>`
+    # 這個家族先前既沒登記也沒有專屬 finding —— 每次出現都被報成「沒見過的
+    # 降級步驟」(08/29 事故同型)。權威來源是 manifest 的 `state_writes.failed`
+    # (recorder 只記失敗項);那個標籤只是回聲,所以家族豁免、這裡說清楚。
+    _failed_writes = [str(x) for x in (_dig(m, "state_writes", "failed", default=[]) or [])]
+    if _failed_writes:
+        add("state_write_failed", "defect",
+            "state 檔寫入失敗(內容仍為前一版,下一班會再試):"
+            + "、".join(sorted(_failed_writes)))
+
+    # ---- 9d. 資料品質 error 級(同批):`dq:<source>:<check>` 也是動態家族。
+    # 原始資料在 `data_checks.errors`(檢查名與細節都在),不必從標籤回推。
+    # error 級 = 該來源本班的資料不可信(row_count / required_fields 那一類);
+    # warn 級只累積趨勢,不在這裡。
+    _dq_errors = [e for e in (_dig(m, "data_checks", "errors", default=[]) or [])
+                  if isinstance(e, dict)]
+    if _dq_errors:
+        add("data_quality_error", "degraded",
+            "資料品質檢查 error 級失敗(該來源本班的資料不可信):"
+            + "、".join(f"{e.get('source')}:{e.get('check')}"
+                        + (f"({str(e.get('detail'))[:60]})" if e.get("detail") else "")
+                        for e in _dq_errors[:6])
+            + (f" …另 {len(_dq_errors) - 6} 項" if len(_dq_errors) > 6 else ""))
+
     # ---- 10a. **09:00 SLA**(2026-08-31 使用者定案:信可以晚到,但台股
     # 開盤前必須到)。先前 state 只有 `date`(**開跑時刻**),而 08/31 那班
     # `date=08:30`、`total_seconds=2088` —— 信其實 09:05 才寄出,監控資料
@@ -933,10 +913,33 @@ def assess(manifest, *, mode: str = "watchdog",
             "它失效時「已經寄過」在 origin/main 上沒有紀錄"),
         "analysis_recap_unreadable": (
             "defect", "昨日觀點讀不出來 —— 明天的「敘事變化」會整段缺席"),
+        # 全案審查 2026-09-03 TC-2(AST 掃描器解出的):兩個 LLM 設定標籤先前沒有
+        # 任何消費端,每次都是「沒見過的降級步驟」。fatal 是 defect ——
+        # 主分析走了確定性緊急備援,而且重跑不會好,設定要修。
+        "llm:config_invalid": (
+            "defect", "LLM 設定不合法(fatal:provider 打錯 / 缺金鑰…),主分析走了"
+            "確定性緊急備援 —— 明細在 manifest `llm.config_invalid`;重跑不會好"),
+        "llm:config_issue": (
+            "degraded", "LLM 設定有非致命問題(明細在 manifest `llm.config_issues`)"
+            " —— 路由仍照政策走,但設定與宣告的不一致"),
     }
     for _label, (_sev, _why) in _ALARMING.items():
         if _label in (m.get("degraded_steps") or []):
             add(_label, _sev, _why)
+
+    # ---- 10c. 渲染失敗(同批):`渲染-<卡片>` 是 `_safe_render` 的家族,每一張
+    # 被略過的卡對讀者都是「那一段今天沒有」;主渲染失敗更嚴重 —— 寄出去的是
+    # 極簡版。兩者先前都沒有消費端。
+    _body_failed = "渲染-主體(改寄極簡版)"
+    _steps = [str(s) for s in (m.get("degraded_steps") or [])]
+    if _body_failed in _steps:
+        add("render_body_failed", "defect",
+            "主渲染失敗,寄出去的是極簡版(沒有卡片與分析版面)—— 例外類名在 job log")
+    _cards = sorted({s[len("渲染-"):] for s in _steps
+                     if s.startswith("渲染-") and s != _body_failed})
+    if _cards:
+        add("render_card_failed", "degraded",
+            "有卡片渲染失敗被略過(信少了這幾張):" + "、".join(_cards))
 
     # ---- 11. 沒見過的降級
     # `llm:luna_path_failed:<例外類名>` 是**已分類的家族**:後綴是開放集,
@@ -959,9 +962,7 @@ def assess(manifest, *, mode: str = "watchdog",
             + "(通常代表前一班主分析落回 legacy,recap 沒有更新)")
     unknown = [s for s in (m.get("degraded_steps") or [])
                if str(s) not in KNOWN_DEGRADED
-               and not str(s).startswith(("llm:luna_path_failed:",
-                                          "state:corrupt:",
-                                          "recap:not_previous_session:"))]
+               and not str(s).startswith(OPEN_FAMILIES)]
     if unknown:
         add("unknown_degradation", "degraded",
             "沒見過的降級步驟:" + "、".join(str(s) for s in unknown))

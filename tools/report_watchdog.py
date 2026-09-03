@@ -44,6 +44,15 @@ import os
 import sys
 from pathlib import Path
 
+#: repo 名從環境變數讀(全案審查 2026-09-03 DL-10):五處 API URL 先前寫死
+#: `expertise88864/-morning-report`。改名或 fork 時方向不一致而且靜默 ——
+#: `dispatch_runs_today` 404 → -1 → 不補(安全側);`producer_alert_state`
+#: 每次例外 → pending → 重試耗盡 → ACK_UNKNOWN → **每天** rc=4 多寄一封品質信;
+#: `_run_status` 回空 → 「還在跑」那道擋失效。Actions 一定會給 GITHUB_REPOSITORY,
+#: 預設值只給本機執行用。
+GITHUB_REPO = os.environ.get("GITHUB_REPOSITORY", "").strip() or "expertise88864/-morning-report"
+GITHUB_API_REPO = f"https://api.github.com/repos/{GITHUB_REPO}"
+
 TPE = dt.timezone(dt.timedelta(hours=8))
 MANIFEST = Path("state/run_manifest.json")
 #: **新鮮度判準與冪等守衛同一個:台北日曆日**(2026-08-27 r2 外審)。
@@ -309,6 +318,12 @@ def main() -> int:
 GAP_DELIVERED = "delivered"
 GAP_SKIPPED = "skipped"
 GAP_SKIPPED_AFTER_DELIVERY = "skipped_after_delivery"
+#: 第四種:**刻意不寄的日子,控制面有問題**(全案審查 DL-4)。
+#: `_control_plane_exit` 直接回 2,而 `main()` 對 `rc != RC_NOT_DELIVERED`
+#: 立刻 return —— `state_gap` 從來沒被寫過,於是告警落到預設那條路,
+#: 主旨與內文都說「晨報跑起來也寄出去了」,而那天根本沒有信。
+#: 它與其他三種的差別:**這裡沒有宣稱 state 掉了**,只宣稱這一班刻意不寄。
+GAP_SKIPPED_CONTROL_PLANE = "skipped_control_plane"
 
 
 def _state_gap_kind(outcome: str, delivery: dict) -> str:
@@ -416,7 +431,8 @@ def _assess(now: dt.datetime) -> int:
         # 那條路也補不到。信的內容不必驗(今天本來就沒有信)。
         print(f"[watchdog] 正常:{info} 刻意未寄信"
               f"({delivery.get('skipped_reason')})")
-        return _control_plane_exit(info, raw=raw)
+        return _control_plane_exit(info, raw=raw,
+                                   gap=GAP_SKIPPED_CONTROL_PLANE)
     if _outcome != "delivered":
         print(f"[watchdog] 異常:{info} 有執行但**沒有成功寄出**"
               f"(狀態={_outcome}、attempted={delivery.get('attempted')}、"
@@ -480,8 +496,8 @@ def morning_runs_active_today(now: dt.datetime, get_json) -> int:
     """
     try:
         data = get_json(
-            "https://api.github.com/repos/expertise88864/-morning-report"
-            "/actions/workflows/morning-report-b.yml/runs?per_page=20")
+            GITHUB_API_REPO
+            + "/actions/workflows/morning-report-b.yml/runs?per_page=20")
         today = now.strftime("%Y-%m-%d")
         n = 0
         for r in (data or {}).get("workflow_runs") or []:
@@ -558,8 +574,8 @@ def dispatch_runs_today(now: dt.datetime, get_json) -> int:
     """
     try:
         data = get_json(
-            "https://api.github.com/repos/expertise88864/-morning-report"
-            "/actions/workflows/morning-report-b.yml/runs"
+            GITHUB_API_REPO
+            + "/actions/workflows/morning-report-b.yml/runs"
             "?event=workflow_dispatch&per_page=20")
         today = now.strftime("%Y-%m-%d")
         n = 0
@@ -618,6 +634,19 @@ RC_QUALITY_DEFECT_ACKED = 5
 #: 「不認得」既不是健康、也不是降級:它是**判不動**,而判不動時
 #: 不可以自動補寄(不知道的時候多寄一封是收不回來的那一邊)。
 RC_VALIDATOR_TOO_OLD = 6
+#:   7  **看門狗自己壞了** —— 今天的狀態不明(不是「今天沒寄到」)
+#:
+#: 全案審查 2026-09-03 DL-1:`main()` 與 `_assess()` 都沒有 try,而它們讀的是
+#: 上游寫的 manifest —— 任何一格型別不對(`llm.luna_problems` 是 dict 時
+#: `problems[:3]` TypeError)或 `run_quality` import 失敗,Python 就以
+#: **退出碼 1** 結束。而 1 是 `RC_NOT_DELIVERED`:workflow 會寄「今天的晨報
+#: 可能沒有跑起來」給**主收件人**、染紅、並啟動補寄判定 —— 信其實可能已經
+#: 寄達。假事故訓練人忽略告警,而這正好發生在「state 壞掉」這個看門狗最該
+#: 說清楚的情境。產出端 `assert_run_quality.py` 早就用 `assessed` 完成標記把
+#: 「判準自己崩了」與「判準指出 defect」分開,這一端沒有等價機制。
+#: 7 走**品質信箱**(維運訊號)、染紅、**不補寄**(判不動時多寄一封收不回來,
+#: 與 rc=6 同一條原則)。
+RC_WATCHDOG_BROKEN = 7
 
 
 #: 主班那封品質信的三態 —— **「還沒跑完」不是「沒送成」**。
@@ -644,8 +673,8 @@ def producer_alert_state(run_id, get_json) -> str:
         return ACK_UNSENT
     try:
         data = get_json(
-            "https://api.github.com/repos/expertise88864/-morning-report"
-            f"/actions/runs/{run_id}/jobs?per_page=30")
+            GITHUB_API_REPO
+            + f"/actions/runs/{run_id}/jobs?per_page=30")
     except Exception:                       # noqa: BLE001 - 可重試
         return ACK_PENDING
     jobs = (data or {}).get("jobs") or []
@@ -680,8 +709,8 @@ def _run_status(run_id, get_json) -> str:
     """
     try:
         run = get_json(
-            "https://api.github.com/repos/expertise88864/-morning-report"
-            f"/actions/runs/{run_id}")
+            GITHUB_API_REPO
+            + f"/actions/runs/{run_id}")
     except Exception:                       # noqa: BLE001 - 查不到 = 不知道
         return ""
     return str((run or {}).get("status") or "")
@@ -825,7 +854,7 @@ def _quality_exit(info: str, get_json=None, sleep=None, *, raw=None) -> int:
 #:  `payload_*` / `phantom_refs` 這些內容類全都會被當成控制面。)
 
 
-def _control_plane_exit(info: str, *, raw=None) -> int:
+def _control_plane_exit(info: str, *, raw=None, gap: str = "") -> int:
     """**刻意不寄的日子也要驗控制面**(r8 外審)。
 
     先前這條路直接 `return 0`:於是 `manifest_schema` 壞掉之類的問題,
@@ -850,6 +879,12 @@ def _control_plane_exit(info: str, *, raw=None) -> int:
     # 條件是 `run_outcome == 'delivered'`,刻意不寄的日子**根本不跑**。
     # 在這裡回 3 就是把控制面的問題降成一行綠色的 job log,沒有人會知道。
     # 只要還留著控制面 finding(降級也算),就得告警並染紅。
+    #
+    # **告警要說得出「今天沒有信」**(全案審查 DL-4):這條路先前不寫
+    # `state_gap`,而 `main()` 拿到非 1 的 rc 就直接 return —— 告警於是落到
+    # 「信寄出了,但有段落沒跑成」那句,那天根本沒有信。
+    if gap:
+        _gha_output("state_gap", gap)
     return RC_QUALITY_DEFECT
 
 
@@ -907,8 +942,8 @@ def rescue(now: dt.datetime, rc: int, *, get_json=None, post=None) -> tuple:
             return False, why
         # **標記成補寄**:晨報那端據此套用同日冪等(執行當下再判一次)。
         # 沒有這個標記的 `workflow_dispatch` 是使用者的人工救援,不受擋。
-        post("https://api.github.com/repos/expertise88864/-morning-report"
-             "/actions/workflows/morning-report-b.yml/dispatches",
+        post(GITHUB_API_REPO
+             + "/actions/workflows/morning-report-b.yml/dispatches",
              {"ref": "main", "inputs": {"rescue": "true"}})
         return True, "已自動觸發補寄(workflow_dispatch)"
     except Exception as e:                  # noqa: BLE001
@@ -921,4 +956,16 @@ def rescue(now: dt.datetime, rc: int, *, get_json=None, post=None) -> tuple:
 # 因為它們是 `import` 模組(定義全跑完)再直接呼叫函式,
 # **從來沒有走過生產真正用的那個入口**。
 if __name__ == "__main__":
-    sys.exit(_rescue_cli() if "--rescue" in sys.argv[1:] else main())
+    # **看門狗自己崩潰不可以冒充「今天沒寄到」**(全案審查 DL-1):
+    # 未捕捉的例外讓 Python 回 1,而 1 = `RC_NOT_DELIVERED`。
+    # `SystemExit` 是 `BaseException` 不是 `Exception`,所以正常的
+    # `sys.exit(rc)` 不會被這裡攔下來。
+    try:
+        sys.exit(_rescue_cli() if "--rescue" in sys.argv[1:] else main())
+    except Exception:
+        import traceback
+        # GitHub 的 `::error` 讓它在 job 摘要就看得到,不用翻 log。
+        print("::error title=看門狗自己壞了::"
+              "本班沒有下任何投遞/品質結論,rc=7", file=sys.stderr)
+        traceback.print_exc()
+        sys.exit(RC_WATCHDOG_BROKEN)

@@ -94,7 +94,7 @@ def test_the_letter_never_shows_two_closes_for_the_same_stock(monkeypatch):
 def test_both_close_sources_prefer_the_official_value():
     """機械化:兩個算收盤的地方都要先問 TWSE 官方值。少一邊就會再次
     出現「同一封信兩個昨收」—— 那正是這條要防的。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     for anchor in ('last_2330 = safe_float(hist_2330.iloc[-1]["Close"])',
                    'out[sym] = {"name": name, "close": round(last, 2)'):
         i = src.index(anchor)

@@ -168,6 +168,29 @@ def _block_outbound_network(monkeypatch):
 
     monkeypatch.setattr(_socket, "getaddrinfo", guard_getaddrinfo)
     monkeypatch.setattr(_socket, "create_connection", guard_create_connection)
+    # **curl_cffi 不經 Python socket**(全案審查 2026-09-03 TC-1):lock 裡的
+    # yfinance 寫死 `from curl_cffi import requests`(它存在的理由就是繞過
+    # Yahoo 對 requests/urllib3 指紋的封鎖),連線在 libcurl 的 C 層完成 ——
+    # 上面兩個 patch 對它完全無效:沒套 `fake_yf` 的測試若走到 yfinance,
+    # 不會報 NetworkBlockedInTests,而是安靜地真的打一次 Yahoo。這個守衛的
+    # 整個目的是「打通打不通斷言都一樣」,對這個套件先前不成立。
+    # `Session.request` 是 curl_cffi 所有同步請求的必經點
+    # (`get()` → `request()` → `Session().request()`)。
+    try:
+        import curl_cffi.requests as _curl_requests
+    except Exception:                        # noqa: BLE001 - 沒裝就沒有這條路
+        _curl_requests = None
+    if _curl_requests is not None:
+        from urllib.parse import urlsplit as _urlsplit
+        _real_curl_request = _curl_requests.Session.request
+
+        def guard_curl_request(self, method, url, *a, **kw):
+            host = _urlsplit(str(url)).hostname or str(url)
+            if host not in _ALLOWED_HOSTS:
+                raise _blocked(host)
+            return _real_curl_request(self, method, url, *a, **kw)
+
+        monkeypatch.setattr(_curl_requests.Session, "request", guard_curl_request)
 
 
 @pytest.fixture(autouse=True)

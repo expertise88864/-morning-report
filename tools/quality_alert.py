@@ -102,7 +102,13 @@ def main() -> int:
         smtp.starttls(context=ssl.create_default_context())
         smtp.login(user, pwd)
         smtp.send_message(msg)
-    print(f"[quality] 已寄出品質告警給 {to}")
+    # **不印收件者位址**(全案審查 DL-2):`QUALITY_RECIPIENT` 走
+    # `secrets.QUALITY_RECIPIENT || vars.QUALITY_RECIPIENT`,而 GitHub
+    # **不遮蔽 repo variable** —— 沒設成 secret 的日子,個人信箱會明文出現
+    # 在公開 repo 的 Actions log。`morning_report.send_email` 早就立了這條
+    # 規則(它只印收件者**人數**),看門狗的 Alert 也只印「告警信已寄出」;
+    # 這裡是同一條防線上唯一沒裝的一格。
+    print("[quality] 已寄出品質告警")
     return 0
 
 

@@ -184,12 +184,45 @@ def refusal_reason(exc_or_text) -> str:
     憑空多出一筆(2026-08-15 生產:DeepSeek 402 餘額不足,manifest
     卻寫「已送出但沒有 usage —— 那些仍會計費」)。
     """
+    return _REFUSED_BEFORE_WORK.get(_status_code(exc_or_text), "")
+
+
+def _status_code(exc_or_text) -> int:
+    """例外/訊息裡的 HTTP 狀態碼;找不到回 0。"""
     exc = exc_or_text
     code = getattr(getattr(exc, "response", None), "status_code", None)
     if not isinstance(code, int):
         m = _STATUS_IN_TEXT.search(str(exc or ""))
         code = int(m.group(1)) if m else 0
-    return _REFUSED_BEFORE_WORK.get(code, "")
+    return code
+
+
+class BudgetExhaustedBeforeSend(TimeoutError):
+    """時間預算在**送出請求之前**就用完了 —— 這一次什麼都沒送(全案審查
+    2026-09-03 LM-8)。是 `TimeoutError` 的子類,既有的 `except TimeoutError`
+    照接;差別只在成本帳:它確定不計費。"""
+    sent = False
+
+
+#: 供應商在**做工之前**就拒絕的狀態碼 —— 這些不會計費。403 刻意不在
+#: (見 `_REFUSED_BEFORE_WORK` 的說明:它證明不了是哪一種)。
+_NOT_BILLED_STATUS = frozenset({400, 401, 402, 422, 429})
+
+
+def billable_unmeasured(exc_or_text) -> bool:
+    """這次失敗的請求**可能已經計費而我們量不到 usage** 嗎。
+
+    全案審查 2026-09-03 LM-8:先前八處寫 `not refusal_reason(e)`,而
+    `refusal_reason` 只認 401/402 —— 「時間預算耗盡、未再送出請求」的
+    `TimeoutError`、400(請求被拒)、429(退避用盡)全部記成計費,
+    `run_cost_summary` 便報「另有 N 次呼叫已送出但沒有 usage —— 那些仍會
+    計費」,而例外訊息自己寫著「未再送出」。回 True 是保守方向(對不上帳單
+    時多算不少算),所以只對**確定沒做工**的兩類回 False:送出前就放棄的、
+    與做工前就被拒的狀態碼。
+    """
+    if getattr(exc_or_text, "sent", None) is False:
+        return False
+    return _status_code(exc_or_text) not in _NOT_BILLED_STATUS
 
 
 #: 成本紀錄要帶的計價中繼資料。**只記總額,對不上帳單時就分不出原因。**

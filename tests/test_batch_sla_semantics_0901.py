@@ -133,7 +133,7 @@ def test_a_stale_checkout_does_not_supply_todays_first_delivery(tmp_path,
 def test_the_producer_puts_the_day_fact_where_the_assessor_reads_it():
     """判準讀 manifest,而當日事實在收據上 —— 產出端要把它帶過去,
     否則這整條修正在生產路徑上等於沒接。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     body = src[src.index("def _mark_delivery_in_manifest("):]
     body = body[:body.index("\ndef _publish_delivery_receipt(")]
     assert '_receipt_first_delivered_at(' in body, (
@@ -272,7 +272,7 @@ def test_the_quarantine_file_is_published_or_it_vanishes(tmp_path,
     (tmp_path / "q.json").write_text("{}", encoding="utf-8")
     assert mr._with_quarantine(["a"]) == ["a", str(tmp_path / "q.json")]
 
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert src.count("_with_quarantine(") >= 4, (
         "有發佈 state 的地方沒有經過這一支 —— 隔離檔會跟 runner 一起消失")
 

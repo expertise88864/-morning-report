@@ -9,7 +9,6 @@
 5. (詢問)世界大事的代表性 —— 回答,無程式變更。
 6. 醫界追蹤:台大等床 12 天死亡事件的後續(民眾/政府/政策)。
 """
-import io
 import time
 from pathlib import Path
 
@@ -24,7 +23,7 @@ _ROOT = Path(mr.__file__).resolve().parent
 def test_the_taiex_card_shows_the_close_only_once():
     """藍色大字卡的「較昨收 46331.45」與下方獨立格「加權昨收 46331.45」
     是同一個數字印兩次 —— 使用者:「不用寫」。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("五、加權指數開盤預測</h2>")   # 錨 h2 本體,不是註解
     seg = src[max(0, i - 4000):i + 2000]
     assert "較昨收" in seg

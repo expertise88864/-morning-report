@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 24  # v24 2026-08-27:what_next 區分經濟/非經濟事件  # v23: v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
+ANALYSIS_SCHEMA_VERSION = 25  # v25 2026-09-03 全案審查 LM-4:source_caveat 說明改「會排進信」、confirmation_signal 改「不排進信」(描述進 prompt,所以升版)  # v24 2026-08-27:what_next 區分經濟/非經濟事件  # v23: v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -394,9 +394,13 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
         "corroboration_assessment": _enum(
             ("official", "multi_source", "single_source", "unverified"),
             "這則事件的佐證等級;以 EVIDENCE 的 `news_clusters[].corroboration` 為準"),
+        # 全案審查 2026-09-03 LM-4:`source_caveat` 現在真的由 `_news_line`
+        # 排進信(單一來源/未證實時接一句「保留:…」);`confirmation_signal`
+        # 只供深度指標與加深身分,**不排進信**(2026-08-19 使用者要求一小段
+        # 散文,不再多一句)—— 描述要對得上實作。
         "source_caveat": _s("單一來源或未證實時要說出讀者該保留什麼;"
-                            "多方證實或官方公告寫「無」"),
-        "confirmation_signal": _s("什麼出現代表這條真的在走"),
+                            "多方證實或官方公告寫「無」(會排進信)"),
+        "confirmation_signal": _s("什麼出現代表這條真的在走(供深度指標,不排進信)"),
         "invalidation_signal": _s("什麼出現代表這條不成立"),
         # 第十八輪:**同一件事對不同標的的影響不一樣。** 先前每則只有
         # 單一 direction/magnitude/horizon,於是「對台積電中期中度正面、

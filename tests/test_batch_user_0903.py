@@ -21,7 +21,7 @@ import llm_postprocess as lp                                   # noqa: E402
 import morning_report as mr                                    # noqa: E402
 import writing_rules as wr                                     # noqa: E402
 
-_SRC = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+_SRC = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
 
 
 # ------------------------------------------------------------------ ②

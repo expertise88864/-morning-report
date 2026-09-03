@@ -430,7 +430,7 @@ def test_an_untracked_receipt_does_not_wedge_the_later_state_push(tmp_path):
 def test_both_sunday_paths_commit_the_receipt():
     """兩條週日路徑的清單都是**寫死列舉**的(不是 `_state_push_paths()`),
     所以漏一條就等於漏一整條路徑 —— 用原始碼確認兩處都列了。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     # **錨點要唯一**:第一版用 `str(EMAIL_ARCHIVE_DIR)`,而 `src.index` 命中的
     # 是更前面 `_state_push_paths()` 裡的那一處 —— 窗口裡剛好也有收據,
     # 於是把第二條週日清單刪掉這條測試照樣綠(突變驗證才發現)。

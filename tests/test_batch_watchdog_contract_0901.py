@@ -98,7 +98,7 @@ def test_both_monitors_share_one_predicate():
         "看門狗自己又寫了一套判準")
     assert 'd.get("success"):' not in src, (
         "還有 truthiness 判斷沒有改掉")
-    mr_src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    mr_src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert "_rq.delivery_outcome(delivery)" in mr_src
 
 
@@ -272,7 +272,7 @@ def test_a_broken_delivery_shape_is_not_silent_in_the_assessor():
 def test_the_canary_is_not_broken_by_the_new_finding():
     """DRY_RUN 的 canary 走不到 `_mark_delivery_in_manifest()` ——
     這條測試把那個前提釘住:它一旦不成立,上面那條的推理就垮了。"""
-    src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index("_mark_delivery_in_manifest(attempted=True, success=True)")
     before = src[:i]
     j = before.rindex("def deliver_report(")
@@ -373,7 +373,7 @@ def test_one_state_machine_not_several_orderings():
                  encoding="utf-8").read()
     assert wd.count("_rq_delivery_outcome(") >= 3, (
         "看門狗還有地方自己排 success / skipped_reason 的順序")
-    mr_src = io.open(_ROOT / "morning_report.py", encoding="utf-8").read()
+    mr_src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     assert "_rq.delivery_outcome(delivery)" in mr_src
     assert "_rq.delivery_outcome(dv)" in mr_src
 
@@ -621,8 +621,13 @@ def test_the_gate_pushed_out_two_more_boundaries():
         assert gone not in rq_src, f"{gone} 搬走了卻又留了一份"
     # 判準本體確實還在(這次刻意沒搬)
     assert 'add("delivery_sla_missed"' in rq_src
-    # `KNOWN_DEGRADED` 不屬於期限原語 —— 第一次切片把它一起搬走了
-    assert "KNOWN_DEGRADED = frozenset" in rq_src
+    # `KNOWN_DEGRADED` 不屬於期限原語 —— 第一次切片把它一起搬進 delivery_sla。
+    # 2026-09-03 全案審查 TC-2:它與 `OPEN_FAMILIES` 現在住在自己的登記表
+    # `degradation_registry.py`(資料,不是判準;同 finding_domains 的分法),
+    # run_quality 再匯出 —— 這是閘門要的「推出邊界」,不是第七次調高數字。
+    import degradation_registry as dr
+    assert "KNOWN_DEGRADED = frozenset" not in rq_src
+    assert rq.KNOWN_DEGRADED is dr.KNOWN_DEGRADED and rq.OPEN_FAMILIES is dr.OPEN_FAMILIES
     assert "KNOWN_DEGRADED" not in io.open(
         _ROOT / "delivery_sla.py", encoding="utf-8").read()
 
@@ -806,8 +811,9 @@ def test_dedupe_requires_an_acknowledged_delivery(monkeypatch):
     # 退回 `rc != '0'` 的話那個否定式照樣成立(突變驗證抓到的白測)。
     # r18:改成「這個條件恰好列舉了哪幾個碼」,而不是逐字比對整個字串 ——
     # 加一個新退出碼就得改一次字面值,那會逼人去動測試而不是想清楚語意。
-    assert set(re.findall(r"rc == '(\d)'", fail)) == {"1", "2", "5", "6"}, (
-        "染紅的碼變了:只有降級(3/4)不該染紅;缺陷(2/5)與判不動(6)一定要",
+    # 全案審查 2026-09-03 DL-1:7 = 看門狗自己崩潰,判不動 → 與 6 同一類,要紅。
+    assert set(re.findall(r"rc == '(\d)'", fail)) == {"1", "2", "5", "6", "7"}, (
+        "染紅的碼變了:只有降級(3/4)不該染紅;缺陷(2/5)、判不動(6)與自己壞掉(7)一定要",
         fail)
     # 查 API 要有 token —— 少了它會天天查不到而多寄一封
     assert "GITHUB_TOKEN" in (steps["Check last run"].get("env") or {}), (

@@ -304,6 +304,20 @@ def _news_line(n: dict, packet=None) -> str:
     tail = _credibility(n, packet)
     if tail:
         parts.append(tail)
+    # **`source_caveat` 要進信**(全案審查 2026-09-03 LM-4):驗證器為單一來源
+    # 強制它非空(寫「無」即駁回、燒一輪 semantic 額度),schema 說「由 renderer
+    # 固定呈現」—— 而這裡從未讀取,讀者只看到「僅單一來源」的標籤,「該保留
+    # 什麼」一句都沒進信。判準回 validator 問(與 `_assets_prose` 同一個理由:
+    # 不在渲染層自己判一份);多方證實/官方那些寫「無」的不排。
+    cav = _s(n.get("source_caveat"))
+    if cav and cav != "無":
+        try:
+            import analysis_validate as _av10
+            weak = _av10.weakly_corroborated(n, packet)
+        except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
+            weak = False
+        if weak:
+            parts.append(_join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
     # 同一段:`_md_to_html` 會把相鄰的非空行併進同一個 <p>,
     # 這裡直接用空格接起來,語意與排版一致。
     return " ".join(parts)

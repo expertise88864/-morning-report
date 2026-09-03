@@ -104,7 +104,8 @@ def test_the_rescue_is_wired_into_the_workflow():
     # 5(有缺陷但主班那封確認寄成)不寄。
     import re as _re
     cond = " ".join(alert["if"].split())
-    assert set(_re.findall(r"rc == '(\d)'", cond)) == {"1", "2", "4", "6"}, cond
+    # 全案審查 2026-09-03 DL-1:7 = 看門狗自己崩潰,走品質信箱告警(不補寄)。
+    assert set(_re.findall(r"rc == '(\d)'", cond)) == {"1", "2", "4", "6", "7"}, cond
     assert "WATCHDOG_RESCUE" in (alert.get("env") or {})
 
 

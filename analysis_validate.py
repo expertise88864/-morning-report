@@ -26,6 +26,32 @@ import analysis_grounding as _gr
 import analysis_contracts as _ac  # noqa: E402
 from analysis_contracts import KEY_DRIVERS_REQUIRED, key_drivers_required  # noqa: E402,F401
 
+
+def weakly_corroborated(n: dict, packet) -> bool:
+    """這則新聞要不要帶 `source_caveat`:packet 算出的佐證等級**或**模型自評
+    任一為單一來源/未證實(第二十一輪 P2-4 的聯集語意,不是 `want or got`
+    短路)。驗證器與渲染端**共用這一份**(全案審查 2026-09-03 LM-4:先前
+    驗證器為它強制非空、加深身分保護它、`_align_corroboration` 代寫它,而
+    渲染端從未讀取 —— 讀者只看到「僅單一來源」的標籤,「該保留什麼」一句都
+    沒進信)。"""
+    want = ""
+    if packet is not None:
+        for c in ((packet.get("news_clusters") or {}).get("clusters") or []):
+            if str(n.get("source_item_id") or "") in (c.get("member_source_ids") or ()):
+                want = str(c.get("corroboration") or "")
+                break
+    got = str(n.get("corroboration_assessment") or "")
+    weak = {"single_source", "unverified"}
+    return want in weak or got in weak
+
+
+def _q(value, limit: int = 80) -> str:
+    """模型自由文字進問題訊息前**截斷**(全案審查 2026-09-03 LM-3):問題清單
+    落在圍欄外的信任區,而這些片段是模型寫的、長度沒有上限。偽造圍欄標籤的
+    中和在 `llm_postprocess.repair_instruction` 那個唯一出口做;這裡只管長度。"""
+    s = str(value or "")
+    return repr(s[:limit] + ("…" if len(s) > limit else ""))
+
 #: **不算標的的泛稱。** 這些字出現在 `asset_id` 時,那一格等於沒有拆 ——
 #: 而 renderer 會把它排得跟真的逐標的分析一模一樣,讓泛論看起來更像
 #: 深度分析。**比不拆更糟。**(第十九輪 P1-9)
@@ -606,7 +632,7 @@ def validate(obj, evidence_ids) -> list:
     def _check_ids(ids, where):
         for i in (ids or []):
             if str(i) not in known:
-                problems.append(f"{where} 引用了不存在的證據 ID:{i!r}")
+                problems.append(f"{where} 引用了不存在的證據 ID:{_q(i)}")
 
     for i, c in enumerate(obj.get("claim_audit") or []):
         if not isinstance(c, dict):
@@ -622,6 +648,12 @@ def validate(obj, evidence_ids) -> list:
                 "卻沒有任何支持證據")
     # **「昨夜三大重點」的條數**(P1-5;判準與判斷都在 `analysis_contracts`)
     problems += _ac.key_driver_count_problems(obj, packet)
+    # 條數契約過了不等於每一張卡都排得出來(全案審查 LM-2):`_claim_line`
+    # 對空 statement 回 `""`,渲染端少一張事件卡,而「恰好 N 條」已通過。
+    for i, d in enumerate((obj.get("key_drivers") or [])):
+        if isinstance(d, dict) and not str(d.get("statement") or "").strip():
+            problems.append(f"key_drivers[{i}] 的 statement 是空的 —— 條數契約"
+                            "過了,但渲染端會少一張事件卡")
     for i, d in enumerate(obj.get("key_drivers") or []):
         if isinstance(d, dict):
             _check_ids(d.get("evidence_ids"), f"key_drivers[{i}]")
@@ -710,6 +742,31 @@ def validate(obj, evidence_ids) -> list:
         for i, row in enumerate((obj.get(field) or [])):
             if isinstance(row, dict):
                 _check_ids([row.get("source_item_id")], f"{field}[{i}]")
+    # **「欄位在」不等於「填了東西」**(全案審查 2026-09-03 LM-2):strict schema
+    # 只保證 required,`""` 是合法字串;而渲染端對 what / impact 任一為空的列
+    # **整列不排**(`analysis_render` 的 pol_blocks / local),於是政策段可以
+    # 「驗過了」卻從信裡消失,讀者以為今天沒有政策。與 world_events.what_next
+    # 同一條規則:可驗的東西要真的去驗,讓修補輪去補,而不是靜默丟掉。
+    for field in ("taiwan_policy", "taiwan_local"):
+        for i, row in enumerate((obj.get(field) or [])):
+            if not isinstance(row, dict):
+                continue
+            for k in ("what", "impact"):
+                if not str(row.get(k) or "").strip():
+                    problems.append(
+                        f"{field}[{i}] 的 `{k}` 是空的 —— 渲染端會整列丟掉,"
+                        "讀者看不到這一項;要嘛填內容,要嘛整列移除")
+    # **揭露了 ID 卻沒說缺什麼,等於沒揭露**(LM-2):required_disclosures 那段
+    # 只看 gap_id,而渲染端對空的 what_is_missing 整列不排 —— 一個必須揭露的
+    # 缺口可以「驗過了」卻從信裡消失。`_backfill_machine_known_gaps` 的 docstring
+    # 早就點名(「有沒有填 ≠ 填了東西」),但只修了 `gap:payload_omitted:*`。
+    # 不依賴 packet,所以放在這裡,不放進那個守衛裡。
+    for i, g in enumerate((obj.get("data_gaps") or [])):
+        if (isinstance(g, dict) and str(g.get("gap_id") or "").strip()
+                and not str(g.get("what_is_missing") or "").strip()):
+            problems.append(
+                f"data_gaps[{i}]({g.get('gap_id')}) 的 what_is_missing 是空的"
+                " —— 揭露了 ID 卻沒說缺什麼,渲染端整列不排,等於沒揭露")
     # **「後續可能影響」不得是空字串**(2026-08-25 使用者 + 外審)。
     # strict schema 的 `required` 只保證**欄位在**,`type: string` 收下
     # `""` —— 而渲染端沒有那一欄就整行省略,於是使用者要的那件事會
@@ -746,12 +803,17 @@ def validate(obj, evidence_ids) -> list:
         where = f"narrative_delta[{i}]"
         if str(d.get("prior_view_id") or "") not in _pv_ok:
             problems.append(f"{where} 的 prior_view_id "
-                            f"{d.get('prior_view_id')!r} 不在昨日觀點清單裡 "
+                            f"{_q(d.get('prior_view_id'))} 不在昨日觀點清單裡 "
                             "—— 昨日觀點不可虛構")
         _check_ids(d.get("evidence_ids"), where)
         if not (d.get("evidence_ids") or []):
             problems.append(f"{where} 沒有引用今天的任何 EVIDENCE ID —— "
                             "沒有新證據就談不上強化或反轉")
+        # 渲染端要 `change` 與 `evidence_today` 都非空才排這一列(LM-2)。
+        for k in ("change", "evidence_today"):
+            if not str(d.get(k) or "").strip():
+                problems.append(f"{where} 的 `{k}` 是空的 —— 渲染端要兩者都有"
+                                "才排,空的會讓這條敘事變化靜默消失")
     # v22:總經三切面有內容就要有證據(裸字串時代「美伊已達成永久和平
     # 協議」可以不帶任何根據進信)。
     _mac = obj.get("macro_environment") if isinstance(
@@ -914,8 +976,9 @@ def validate(obj, evidence_ids) -> list:
             # want=multi_source、got=single_source 時取到 multi_source,
             # 於是保守降級的那則不要求 caveat —— 而 renderer 仍然把它
             # 印成「僅單一來源」,讀者看到警語卻沒有看到該保留什麼。
-            _weak = {"single_source", "unverified"}
-            if want in _weak or got in _weak:
+            # 判準只有一份(`weakly_corroborated`),渲染端也用它決定要不要排
+            # 「保留:…」(LM-4)—— 兩邊各算一份就會漂移。
+            if weakly_corroborated(n, packet):
                 cav = str(n.get("source_caveat") or "").strip()
                 if not cav or cav in ("無", "無。", "N/A", "none"):
                     problems.append(
@@ -960,8 +1023,8 @@ def validate(obj, evidence_ids) -> list:
             if prev_to and cur_from and not _same_node(prev_to, cur_from,
                                                       _step_subj):
                 problems.append(
-                    f"{where}.mechanism_steps[{j}] 從 {cur_from!r} 開始,"
-                    f"而上一步走到 {prev_to!r} —— 鏈斷了,"
+                    f"{where}.mechanism_steps[{j}] 從 {_q(cur_from)} 開始,"
+                    f"而上一步走到 {_q(prev_to)} —— 鏈斷了,"
                     "中間缺的那一步要補上(不確定就標 inference)")
 
     cms = obj.get("cross_market_synthesis")
@@ -983,7 +1046,7 @@ def validate(obj, evidence_ids) -> list:
                 problems.append(f"訊號張力 {x} 沒有對應的 tension_resolutions 條目")
         for x in sorted(got - need):
             problems.append(
-                f"tension_resolutions 宣稱處理了 {x!r},而今天沒有這筆張力"
+                f"tension_resolutions 宣稱處理了 {_q(x)},而今天沒有這筆張力"
                 "(或它已標為不可用)—— 不得回填不存在的 ID")
         # 第十八輪 P1-6:**重複不算多處理一筆。** `got` 是集合,所以同一筆
         # 填三次仍然滿足 required —— 而指標數的是 `len(res)`,於是
@@ -1046,7 +1109,7 @@ def validate(obj, evidence_ids) -> list:
             if gid.startswith("gap:other:"):
                 continue
             problems.append(
-                f"data_gaps 宣稱 {gid!r},而今天沒有這一項 —— "
+                f"data_gaps 宣稱 {_q(gid)},而今天沒有這一項 —— "
                 "自己發現的缺口請填 `gap:other`(可加標籤:`gap:other:<標籤>`)")
         # **不同步的資料不得單獨支撐今天的方向判斷。** 談「美股沒開所以
         # 參考性下降」需要引用它,所以不禁止引用 —— 禁止的是**只**靠它。
@@ -1091,7 +1154,7 @@ def validate(obj, evidence_ids) -> list:
     label = ((obj.get("stance") or {}) if isinstance(obj.get("stance"), dict)
              else {}).get("label")
     if label is not None and label not in _labels:
-        problems.append(f"立場詞彙不合法:{label!r}")
+        problems.append(f"立場詞彙不合法:{_q(label)}")
     return problems
 
 # ---------------------------------------------------------------- 相容出口

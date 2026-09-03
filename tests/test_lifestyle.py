@@ -1137,7 +1137,10 @@ def test_run_weekend_digest_sends_without_history_pollution(monkeypatch):
     # 批#69 r1(Codex,P1):`run_manifest` 加進週日的 push 清單。原本不在裡面,
     # 而它又寫在 push **之後** → 週日寫出來的 manifest 永遠不會被 commit,
     # repo 裡的檔案停在週六;看門狗讀那個檔判定「今天有沒有跑」,週日必然誤報。
-    assert pushes and pushes[0][1] == [str(mr.PODCAST_DIGEST_FILE),
+    # 全案審查 2026-09-03 DL-7:體育卡會重抓場地快取,manifest 的
+    # `cpbl_venues ok:true` 要對得上 —— 檔案得在清單裡。
+    assert pushes and pushes[0][1] == [str(mr.CPBL_VENUE_FILE),
+                                       str(mr.PODCAST_DIGEST_FILE),
                                        str(mr.POLY_HISTORY_FILE),
                                        str(mr.RUN_MANIFEST_FILE),
                                        # r8 外審:收據若留成 untracked,之後
@@ -1209,6 +1212,7 @@ def test_run_weekend_digest_skips_when_no_new_content(monkeypatch):
     # 之後這批 state 的 `pull --rebase --autostash` 會被 git 拒絕
     # (autostash 不含 untracked)→ 通過契約的 state 反而推不上去。
     assert pushes == [[str(mr.RUN_MANIFEST_FILE),
+                       str(mr.CPBL_VENUE_FILE),       # DL-7:抓過體育卡,場地快取可能重寫
                        str(mr.DELIVERY_RECEIPT_FILE)]],         "無內容的週日沒有更新 manifest → 看門狗會誤報"
 
 

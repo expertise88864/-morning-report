@@ -25,6 +25,10 @@ jobs:
           # 批#35 r2(Codex):**不**升級 pip——未鎖版 pip 會被下載並立即執行,
           # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
           pip install -r requirements.txt
+          # 測試工具不屬於「最新允許的執行期依賴」這個受測對象,但沒有它
+          # 就跑不了測試(外審 2026-09-04 P3 拆檔之後 requirements.txt 裡
+          # 不再有 pytest)。這裡刻意不鎖版:金絲雀本來就是要撞新版本。
+          pip install pytest PyYAML
           pip list
       - name: Compile + tests
         run: |

@@ -49,8 +49,12 @@ echo.
 
 :stage
 echo === Staging files ===
-git add morning_report.py requirements.txt README.md .gitignore commit_push.bat
-git add tests .github/workflows/morning-report-b.yml .github/workflows/ci.yml
+REM **不要列舉檔名**(外審 2026-09-04 P2):這份清單早就漏了幾十個模組、
+REM 多數 workflow 與這次新增的 requirements-dev.*。漏 stage 不會報錯,
+REM 它會安安靜靜地 commit 半套 —— CI 接著引用一份 repo 裡不存在的 lock。
+REM state/ 仍然排除:那是線上跑出來的紀錄,本機 DRY_RUN 產生的版本一旦
+REM 推上去就會蓋掉生產的記憶。下面的 git status 是提交前的人工確認點。
+git add -A -- . ":(exclude)state"
 REM old test script removed; untrack it if still tracked (no error if absent)
 git rm --cached --ignore-unmatch test_with_mock.py >nul 2>&1
 echo.

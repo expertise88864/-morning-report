@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """**測試用到的套件要在 lock 裡**(2026-08-09,CI 連紅四個 commit)。
 
-本機什麼都裝得有,CI 只裝 `requirements.lock`。於是一條裸 `import yaml`
+本機什麼都裝得有,CI 只裝 lock 裡的東西。於是一條裸 `import yaml`
 在本機永遠是綠的,而在 CI 是 ImportError —— 而且那條測試盯的正是
 「CI 會不會容忍失敗」,守衛失效的地方剛好就是它要保護的地方。
 
@@ -70,6 +70,22 @@ def _top_level_imports(path: Path) -> set:
     return out
 
 
+def _lock_ci_installs_for_tests() -> Path:
+    """**CI 跑 pytest 的那個 job 實際安裝的 lock**,不是寫死的檔名。
+
+    2026-09-04 依賴分層之後,測試工具搬到 `requirements-dev.lock`,而這個
+    守衛原本寫死 `requirements.lock` —— 判準跟著它要保護的東西一起改才有用,
+    否則它會開始報一堆假的「缺套件」,而假警報的下場通常是有人把守衛關掉。
+    """
+    text = io.open(_ROOT / ".github" / "workflows" / "ci.yml", encoding="utf-8").read()
+    job = text[text.index("  test:"):]
+    nxt = re.search(r"\n  (?=\S)", job[1:])          # 下一個 job(縮排剛好兩格)
+    job = job[:nxt.start() + 1] if nxt else job
+    locks = set(re.findall(r"-r\s+(requirements[A-Za-z0-9._-]*\.lock)", job))
+    assert len(locks) == 1, f"CI 的 test job 裝了 {locks or '零'} 份 lock —— 判準說不出要驗哪一份"
+    return _ROOT / locks.pop()
+
+
 def _locked_distributions() -> set:
     """lock 裡**釘住的套件名**。
 
@@ -78,7 +94,7 @@ def _locked_distributions() -> set:
     `名稱==版本` 的名稱。
     """
     out = set()
-    for line in io.open(_ROOT / "requirements.lock", encoding="utf-8"):
+    for line in io.open(_lock_ci_installs_for_tests(), encoding="utf-8"):
         m = re.match(r"([A-Za-z0-9][A-Za-z0-9._-]*)\s*==", line)
         if m:
             out.add(m.group(1).lower().replace("_", "-"))
@@ -121,7 +137,8 @@ def test_no_test_makes_itself_optional_with_importorskip():
     `pytest.importorskip` 讓一個測試在缺套件的環境自動變綠 —— 而缺套件
     的環境正是 CI。`test_workflow_contract` 先前就是這樣:它盯的是
     「CI 會不會容忍失敗」,而它在 CI 裡從來沒有跑過。
-    要用第三方套件就把它加進 `requirements.txt` 並重編 lock。
+    要用第三方套件就把它加進 `requirements-dev.txt`(測試工具)或
+    `requirements.txt`(晨報自己要 import 的)並重編 lock。
     """
     # **用 AST 找真正的呼叫**,不是找這幾個字:這個檔自己的說明文字裡
     # 就有「importorskip」,字串比對會讓守衛把自己報成違規。

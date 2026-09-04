@@ -337,6 +337,15 @@ jobs:
       # 備援班 no-op 時 app 約 1 秒就結束,而這條契約實測約 3 分鐘 ——
       # 三班排程裡有兩班每天都是 no-op,那是**常態不是例外**:白跑 runner、
       # 延長 `state-writers` 佔用、增加排隊壓力,而備援本身是可靠性機制。
+      # 契約用 pytest,而**晨報自己一行都不 import 它**(外審 2026-09-04 P3:
+      # 依賴分層)。所以測試工具是在信寄出**之後**才裝的:執行晨報的那一段
+      # 只有執行期依賴,而這一步的 env 裡沒有任何 secret。
+      # 共用套件的版本與 requirements.lock 逐字相同(dev lock 由它編譯而來),
+      # 所以這裡只會多裝那幾個測試工具,不會把剛跑過的環境換掉。
+      - name: 安裝契約檢查用的測試工具(信已寄出)
+        if: ${{ always() && !cancelled() && steps.report.outputs.state_dirty == 'true' }}
+        run: pip install --require-hashes -r requirements-dev.lock
+
       - name: 驗證落地 state 的 schema 契約
         id: contract
         if: ${{ always() && !cancelled() && steps.report.outputs.state_dirty == 'true' }}

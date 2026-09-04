@@ -1,0 +1,24 @@
+# 只有 CI 與本機開發需要的東西(外審 2026-09-04 P3:依賴分層)。
+#
+# 這些原本混在 requirements.txt 裡,於是 requirements.lock —— 也就是每天早上
+# 那個持有 Gmail 憑證與 LLM 金鑰的行程所安裝的東西 —— 會一併裝進 pytest 與
+# PyYAML。晨報一行都不會 import 它們,卻要承擔它們的相依鏈。
+#
+# **這個檔要本機裝得起來**(`pip install -r requirements-dev.txt`),所以它
+# 引的是 requirements.txt 而不是 requirements.lock:lock 是用
+# `--python-platform linux` 編的,hash 只涵蓋 Linux wheel,在 Windows 上
+# `--require-hashes` 找不到對應檔案。
+#
+# 那「CI 要跑在 production 真正安裝的版本上」怎麼保證?**由編譯保證**:
+# lock-refresh 用 `-c requirements.lock` 編這一份,共用套件的版本因此被生產
+# lock 釘死,不是要靠人記得對齊的約定。tests/test_dependency_layering_0904.py
+# 驗的是兩份 lock 的實際 pin,不是這句話。
+-r requirements.txt
+
+pytest>=8.0.0
+# workflow 契約測試要解析 YAML。**不可改成 importorskip** ——
+# 那些測試盯的正是「CI 會不會容忍失敗」,在 CI 裡跳過等於沒有守衛
+# (2026-08-09:裸 import 讓 CI 連紅四個 commit,而本機一直是綠的)。
+PyYAML>=6.0
+# lint 與 CI/preflight 用的同一支;釘死版本才不會某天自己升版後開始報新規則
+ruff==0.15.15

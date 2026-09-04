@@ -78,6 +78,14 @@ jobs:
           set -euo pipefail
           COMMON="--python-version 3.11 --python-platform x86_64-unknown-linux-gnu --generate-hashes"
           uv pip compile requirements.txt          $COMMON -o requirements.lock
+          # **必須排在主 lock 之後,而且要帶 `-c requirements.lock`**:
+          # 共用套件的版本因此被生產 lock 釘死 —— CI 跑的是 production 真正
+          # 裝的那些版本,而這件事是編譯出來的結果,不是要靠人對齊的約定
+          # (外審 2026-09-04 P3)。dev 來源檔本身引的是 requirements.txt,
+          # 這樣它在 Windows 本機也 `pip install` 得起來(lock 的 hash 只
+          # 涵蓋 Linux wheel)。
+          uv pip compile requirements-dev.txt -c requirements.lock \
+                                                   $COMMON -o requirements-dev.lock
           uv pip compile requirements-podcast.in   $COMMON -o requirements-podcast.lock
           uv pip compile requirements-radar.in     $COMMON -o requirements-radar.lock
           uv pip compile requirements-uvtool.in    $COMMON -o requirements-uvtool.lock
@@ -86,7 +94,8 @@ jobs:
         id: diff
         run: |
           set -euo pipefail
-          if git diff --quiet -- requirements.lock requirements-podcast.lock \
+          if git diff --quiet -- requirements.lock requirements-dev.lock \
+                                 requirements-podcast.lock \
                                  requirements-radar.lock requirements-uvtool.lock; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "[lock-refresh] 無更新"
@@ -104,6 +113,7 @@ jobs:
           name: refreshed-locks
           path: |
             requirements.lock
+            requirements-dev.lock
             requirements-podcast.lock
             requirements-radar.lock
             requirements-uvtool.lock
@@ -140,8 +150,15 @@ jobs:
         run: |
           set -euo pipefail
           python -m venv /tmp/venv-main
-          /tmp/venv-main/bin/pip install --require-hashes -r requirements.lock
+          # 裝 dev lock:pytest 已經不在生產 lock 裡了,而它的執行期版本
+          # 與生產 lock 逐字相同 —— 這裡驗到的仍然是 production 會裝的東西。
+          /tmp/venv-main/bin/pip install --require-hashes -r requirements-dev.lock
           /tmp/venv-main/bin/python -m pytest -q
+          # 生產 lock 本身也要能獨立裝起來、而且晨報真的 import 得動 ——
+          # 少了這一步,「生產 lock 漏掉某個執行期套件」要到隔天早上才知道。
+          python -m venv /tmp/venv-prod
+          /tmp/venv-prod/bin/pip install --require-hashes -r requirements.lock
+          /tmp/venv-prod/bin/python -c "import morning_report"
           python -m venv /tmp/venv-podcast
           /tmp/venv-podcast/bin/pip install --require-hashes -r requirements-podcast.lock
           /tmp/venv-podcast/bin/python -c "import faster_whisper, feedparser, requests"
@@ -176,7 +193,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add requirements.lock requirements-podcast.lock \
+          git add requirements.lock requirements-dev.lock requirements-podcast.lock \
                   requirements-radar.lock requirements-uvtool.lock
           git commit -m "chore(deps): 每月重編譯依賴 lock(含 hash)"
           git push -u origin "$BRANCH"
@@ -184,8 +201,8 @@ jobs:
             '自動重跑 uv pip compile --generate-hashes(uv 本身亦鎖版+hash)。' \
             '' \
             '已在唯讀 job 內驗證(GITHUB_TOKEN 建立的 PR 不會觸發 ci.yml,故不依賴它):' \
-            '- 三份 lock 皆以 --require-hashes 實際安裝成功' \
-            '- 主 lock 環境跑過完整 pytest' \
+            '- 每一份 lock 皆以 --require-hashes 實際安裝成功' \
+            '- dev lock 環境跑過完整 pytest;生產 lock 另外單獨裝起來並 import morning_report' \
             '- podcast / radar 環境通過 import 冒煙測試' \
             '' \
             '本 job 未執行任何新解析的依賴(權限隔離)。合併前仍請依 CLAUDE.md 走 Codex 閘門。')

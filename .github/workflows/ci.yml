@@ -28,8 +28,10 @@ jobs:
         run: |
           # 批#35 r2(Codex):**不**升級 pip——未鎖版 pip 會被下載並立即執行,
           # 而本 job 持有寫入權限/金鑰;runner 內建 pip 已足以做 --require-hashes 安裝。
-          pip install -r requirements.lock
-          pip install "ruff==0.15.15"
+          # 測試工具(pytest / PyYAML / ruff)在 requirements-dev.lock,
+          # 它由 requirements.lock 編譯而來 —— 所以 CI 跑的執行期版本與
+          # production 逐字相同,只是多了測試工具(外審 2026-09-04 P3)。
+          pip install --require-hashes -r requirements-dev.lock
 
       # 全 repo 掃描,不再手寫模組清單(GPT-5.6 review P2:清單曾漏掉
       # render_utils/news_rules/session_calendar 等拆出模組,每次拆檔都要記得更新)

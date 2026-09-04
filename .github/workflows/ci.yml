@@ -14,7 +14,12 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # **量出來的,不是推出來的**(2026-09-04):實測整個 job 9 分 21 秒
+    # (單元測試 8 分 56 秒),而上限是 10 分 —— 餘裕只有 39 秒。job 被
+    # GitHub 砍掉時的紅燈與程式碼無關,而且訊息是「The operation was
+    # canceled」,查起來又是一輪。上限仍然要有(卡死的測試會跑到天荒地老),
+    # 但要留得下一次加測試的空間:20 分鐘 ≈ 實測的兩倍。
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 

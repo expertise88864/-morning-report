@@ -217,6 +217,27 @@ def test_readme_test_count_is_a_floor_not_a_boast():
         f"README 宣稱 {claimed}+,實際 {actual} —— 差距太大,請更新宣稱數")
 
 
+def test_the_gate_has_room_to_finish():
+    """**上限要量,不要推**(2026-09-04)。
+
+    實測 CI 的 `test` job 跑 9 分 21 秒,而上限是 10 分 —— 餘裕 39 秒。
+    再加幾條測試就會被 GitHub 砍掉,而那種紅燈與程式碼無關、訊息是
+    「The operation was canceled」,又要查一輪。pytest.ini 的註解裡就記著
+    上一次因為這個被砍掉的事故。
+
+    上限仍然要有:卡死的測試不會自己停下來。這條把「有上限」和「上限不會
+    緊到讓正常的一輪跑不完」兩件事一起釘住。
+    """
+    #: 2026-09-04 實測(check-run 的 started/completed 相減),分鐘
+    measured = 10
+    ci = yaml.safe_load((Path(__file__).resolve().parents[1] / ".github" / "workflows"
+                         / "ci.yml").read_text(encoding="utf-8"))
+    t = ci["jobs"]["test"].get("timeout-minutes")
+    assert t, "擋門的 job 沒有上限 —— 卡死的測試會一直跑"
+    assert t >= 2 * measured, f"上限 {t} 分對實測 {measured} 分沒有餘裕"
+    assert t <= 60, f"上限 {t} 分等於實質上沒有上限"
+
+
 def test_the_workflow_does_not_pin_values_that_disable_in_code_logic():
     """批#97:**workflow 寫死一個值,等於把程式裡的機制變成死碼。**
 

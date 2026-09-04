@@ -141,6 +141,30 @@ def _identity(text: str) -> str:
     return text
 
 
+def _is_frame(v) -> bool:
+    """pandas DataFrame / Series(鴨子型別:不為此多 import pandas)。"""
+    return (type(v).__name__ in ("DataFrame", "Series")
+            and hasattr(v, "to_dict") and hasattr(v, "iloc"))
+
+
+def _without_frames(node):
+    """把 **只給 Python 算的** pandas 物件從 market 投影拿掉。
+
+    2026-09-04 生產:`fetch_quote()` 回的 dict 帶著 `history`(1 個月的 OHLC
+    DataFrame,給均線/波動度算的),而 `EVIDENCE_QUOTE_KEYS` 含 QQQ/TSM/SPY,
+    整個 dict 照收 —— `normalize_json` 對它只能 `str()`(一張文字表格進 prompt),
+    品質判準每天報一條 `evidence_value_stringified` defect。DataFrame 不是證據,
+    是證據的原料;投影在**這一層**做,不是在序列化那一層把它變成字串或靜默丟掉
+    (那正是 r18 把「未知型別 → str」升成 defect 的理由)。`signal_tensions` 與
+    `portfolio_summary` 吃的是原始 quotes,不受影響。
+    """
+    if isinstance(node, dict):
+        return {k: _without_frames(v) for k, v in node.items() if not _is_frame(v)}
+    if isinstance(node, list):
+        return [_without_frames(v) for v in node if not _is_frame(v)]
+    return node
+
+
 def sanitize_tree(node, clean):
     """遞迴把消毒器套用到**每一個字串葉節點**,數值型別原樣保留。
 
@@ -255,7 +279,7 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         "as_of": str(as_of or ""),
         "target_session_date": str(target_session_date or ""),
         "trading_session": str(trading_session or ""),
-        "market": {k: (quotes or {}).get(k) for k in EVIDENCE_QUOTE_KEYS
+        "market": {k: _without_frames((quotes or {}).get(k)) for k in EVIDENCE_QUOTE_KEYS
                    if (quotes or {}).get(k) is not None},
         "valuation_00662": fair or {},
         "predictions_2330": predictions or {},

@@ -1,138 +1,4 @@
 {
- "geopolitical:伊朗:2026-09": {
-  "first_seen": "2026-09-01",
-  "days": 1,
-  "last_seen": "2026-09-01",
-  "latest_title": "美軍睽違1個月再炸伊朗 伊飛彈、無人機襲約旦基地 - news.pts.org.tw",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "人機",
-   "伊飛",
-   "個月",
-   "再炸",
-   "基地",
-   "旦基",
-   "月再",
-   "機襲",
-   "無人",
-   "睽違",
-   "約旦",
-   "美軍",
-   "襲約",
-   "軍睽",
-   "飛彈"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:Oil:2026-09": {
-  "first_seen": "2026-09-01",
-  "days": 1,
-  "last_seen": "2026-09-01",
-  "latest_title": "ONON On - Analysis-Depleted US oil stash loses potency as Iran war grinds on - 股市爆料同學會 - C",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "analysis",
-   "as",
-   "depleted",
-   "grinds",
-   "iran",
-   "loses",
-   "on",
-   "onon",
-   "potency",
-   "stash",
-   "us",
-   "war",
-   "同學",
-   "學會",
-   "市爆",
-   "料同",
-   "爆料",
-   "股市"
-  ],
-  "entity": "Oil",
-  "subject_basis": "literal",
-  "subjects": [
-   "Oil"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "litigation:3037:2026-09": {
-  "first_seen": "2026-09-01",
-  "days": 1,
-  "last_seen": "2026-09-01",
-  "latest_title": "欣興傳遭桃園地檢署第二波搜索，洗產地爭議延燒",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "二波",
-   "園地",
-   "地檢",
-   "地爭",
-   "延燒",
-   "搜索",
-   "桃園",
-   "檢署",
-   "欣興",
-   "波搜",
-   "洗產",
-   "爭議",
-   "產地",
-   "第二",
-   "署第",
-   "議延",
-   "遭桃"
-  ],
-  "entity": "3037",
-  "subject_basis": "alias",
-  "subjects": [
-   "3037"
-  ],
-  "event_type": "litigation",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09#e41775": {
-  "first_seen": "2026-09-01",
-  "days": 1,
-  "last_seen": "2026-09-01",
-  "latest_title": "油金／美攻擊伊朗小島 和談前景未明 紐油漲2.83% - news.ustv.com.tw",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "83",
-   "前景",
-   "和談",
-   "小島",
-   "攻擊",
-   "景未",
-   "未明",
-   "油漲",
-   "油金",
-   "紐油",
-   "美攻",
-   "談前"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "litigation:2882:2026-09": {
   "first_seen": "2026-09-02",
   "days": 1,
@@ -490,6 +356,66 @@
   ],
   "event_type": "export_controls",
   "action": "export_control",
+  "identity_schema": 14
+ },
+ "litigation:META:2026-09#19449c": {
+  "first_seen": "2026-09-05",
+  "days": 1,
+  "last_seen": "2026-09-05",
+  "latest_title": "【美股巨頭】Meta年跌7%卻有18億訴訟出清，Cramer說現在是買點？ - CMoney投資網誌",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "18",
+   "cramer",
+   "億訴",
+   "出清",
+   "卻有",
+   "在是",
+   "巨頭",
+   "年跌",
+   "是買",
+   "現在",
+   "美股",
+   "股巨",
+   "訟出",
+   "訴訟",
+   "說現",
+   "買點"
+  ],
+  "entity": "META",
+  "subject_basis": "alias",
+  "subjects": [
+   "META"
+  ],
+  "event_type": "litigation",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#89eab5": {
+  "first_seen": "2026-09-05",
+  "days": 1,
+  "last_seen": "2026-09-05",
+  "latest_title": "Trump says U.S. may soon strike Iran's Pickaxe Mountain nuclear facility",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "facility",
+   "may",
+   "mountain",
+   "nuclear",
+   "pickaxe",
+   "soon",
+   "strike",
+   "trump"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
   "identity_schema": 14
  }
 }

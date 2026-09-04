@@ -15,8 +15,13 @@ name: Lock Refresh
 #  r3 **權限隔離(關鍵)**:執行「新解析出來的依賴」與「持有寫入 token 做 push」
 #     必須分屬不同 job。被投毒的套件在 import 時即可裝 git hook 或改 GITHUB_PATH,
 #     若同 job 稍後拿到 GH_TOKEN,persist-credentials: false 也擋不住。
-#     故:compile-and-verify 為唯讀 job(contents: read),只把產出的 lock 檔
-#     以 artifact 交棒;open-pr 為乾淨 job,**不執行任何新依賴**,只 commit/push/PR。
+#  2026-09-04 外審 P2(兩輪):權限分離之後,**產物的完整性**還沒分離 ——
+#     舊結構是同一個 job「compile → 安裝並跑測試 → upload」,被投毒的依賴跑在
+#     同一個可寫工作區,可以就地改寫 lock(第一版補的 sha256 指紋也擋不住:
+#     指紋檔與被檢查的檔在同一個信任邊界,而且核對與 upload 之間仍有空窗)。
+#     三段式才閉合:resolve 只跑 uv、**先上傳** candidate → verify 下載後才安裝
+#     並執行新依賴(權限只有 contents: read,動不到已上傳的 artifact,也不上傳)
+#     → open-pr 只在 verify 成功後跑,下載的是 resolve 那一份。
 
 on:
   schedule:
@@ -32,11 +37,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  compile-and-verify:
+  # ── A. 解析並**立刻**交棒(這個 job 不執行任何新解析的依賴)────────────
+  #
+  # 2026-09-04 外審 P2 第二輪:上一版是「compile → 指紋 → 安裝並跑 pytest →
+  # 核對指紋 → upload」,而**指紋檔與待上傳的檔案都在同一個可寫工作區**:
+  # 被投毒的依賴可以連 `/tmp/locks.sha` 一起改,或留一個背景行程在核對之後、
+  # upload 讀檔之前再動手。檢查與被檢查的東西同屬一個信任邊界時,檢查證明不了
+  # 完整性。改成三段:
+  #   A resolve  只跑 uv compile(uv 自己是鎖版+hash 的),**先上傳** candidate;
+  #   B verify   下載 candidate → 安裝並跑測試(新依賴在這裡執行);它沒有
+  #              `actions: write`,動不到 A 已上傳的 artifact,也不上傳任何東西;
+  #   C open-pr  只有 B 成功才跑,下載的是 **A 那一份**,commit、開 PR。
+  # artifact 上傳後不可覆寫(upload-artifact v4+),而 B 的權限只有 contents: read
+  # —— 所以 C 拿到的位元組必然等於 A 編譯出來的那一份。
+  resolve:
     runs-on: ubuntu-latest
-    timeout-minutes: 45   # 含三份 lock 的實裝驗證(faster-whisper 相依較大)
+    timeout-minutes: 20
     permissions:
-      contents: read      # 唯讀:此 job 會執行新解析的依賴,不得握有任何寫入能力
+      contents: read
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
     steps:
@@ -76,10 +94,49 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # 在唯讀 job 內驗證(不依賴 PR 觸發 CI);新依賴的 import-time 程式碼在此執行,
-      # 但本 job 沒有任何寫入權限與 token,即使被投毒也拿不到東西。
-      - name: Verify locks install & tests pass
+      # **在執行任何新依賴之前上傳**:這一段是整個信任邊界的關鍵。
+      # 此 job 到目前為止只跑過 `uv`(它自己是鎖版+hash 安裝的),沒有執行過
+      # 任何新解析出來的套件 —— 所以這份 artifact 的內容就是編譯器的輸出。
+      - name: Upload candidate locks (before any new dependency runs)
         if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: refreshed-locks
+          path: |
+            requirements.lock
+            requirements-podcast.lock
+            requirements-radar.lock
+            requirements-uvtool.lock
+          retention-days: 7
+
+  # ── B. 驗證(新依賴在這裡執行;它動不到 A 的 artifact,也不上傳任何東西)──
+  verify:
+    needs: resolve
+    if: needs.resolve.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45   # 含三份 lock 的實裝驗證(faster-whisper 相依較大)
+    permissions:
+      contents: read      # **沒有 actions: write** —— 改不了、刪不了 A 上傳的 artifact
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      # 驗的是 A 交棒的那一份,不是工作區裡 checkout 出來的舊 lock
+      - name: Download candidate locks
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: refreshed-locks
+
+      # 在唯讀 job 內驗證(不依賴 PR 觸發 CI);新依賴的 import-time 程式碼在此執行,
+      # 但本 job 沒有任何寫入權限與 token,即使被投毒也拿不到東西 ——
+      # **而且它在這裡對工作區做的任何修改都不會流到 open-pr**(C 重新下載 A 的 artifact)。
+      - name: Verify locks install & tests pass
         run: |
           set -euo pipefail
           python -m venv /tmp/venv-main
@@ -92,21 +149,10 @@ jobs:
           /tmp/venv-radar/bin/pip install --require-hashes -r requirements-radar.lock
           /tmp/venv-radar/bin/python -c "import faster_whisper, yfinance, pandas"
 
-      - name: Upload refreshed locks
-        if: steps.diff.outputs.changed == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: refreshed-locks
-          path: |
-            requirements.lock
-            requirements-podcast.lock
-            requirements-radar.lock
-            requirements-uvtool.lock
-          retention-days: 7
-
+  # ── C. 開 PR(乾淨 runner;拿的是 A 那一份,而且只在 B 成功後才跑)────────
   open-pr:
-    needs: compile-and-verify
-    if: needs.compile-and-verify.outputs.changed == 'true'
+    needs: [resolve, verify]
+    if: needs.resolve.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -34,6 +34,16 @@ def test_parse_portfolio_filters_nonpositive():
 
 
 # ---------- calc_portfolio_actual（昨日帳上漲跌 = 前天收盤 vs 昨天收盤;持股單位=股數）----------
+#
+# **股數 fixture 一律用合成代號**(外審 2026-09-04 P1)。這個 repo 是公開的,而
+# `.gitignore` 曾經逐一列出實際持股代號 —— 兩者一拼,「實際持股代號 + 看起來很像
+# 真的股數」就成了可推論的持股明細(舊 fixture 連換算過程都寫在註解裡)。
+# 代號用 `TEST*`:`calc_portfolio_actual` 對代號格式沒有要求(它只查 closes_map),
+# 而合成代號讓外部讀者一眼看出這是造的。上面的 `_parse_portfolio` 測的是**字串
+# 格式**、數量是個位數的示範值,不在此列。守衛在
+# `tests/test_public_repo_privacy_0904.py`。
+_A, _B, _C = "TESTETF", "TESTLEV", "TESTCO"
+
 
 def test_actual_empty_portfolio():
     assert mr.calc_portfolio_actual({}, {}) == {}
@@ -41,26 +51,26 @@ def test_actual_empty_portfolio():
 
 def test_actual_no_closes_returns_empty():
     # 有持股但 closes_map 沒資料 → 回 {}
-    assert mr.calc_portfolio_actual({"2330": 1}, {}) == {}
+    assert mr.calc_portfolio_actual({_C: 1}, {}) == {}
 
 
 def test_actual_realized_gain():
-    portfolio = {"00662": 7059, "00631L": 19000}   # 單位=股數(原 7.059 張 / 19 張)
+    portfolio = {_A: 5000, _B: 20000}          # 單位=股數
     # closes_map: (前天收盤, 昨天收盤)
-    closes = {"00662": (120.0, 121.2), "00631L": (210.0, 215.0)}
+    closes = {_A: (120.0, 121.2), _B: (210.0, 215.0)}
     out = mr.calc_portfolio_actual(portfolio, closes)
-    # 00662: 7059股 ×(121.2−120.0)=7059×1.2 = 8,470.8
-    # 00631L: 19000股 ×(215−210)=19000×5 = 95,000
-    # 前天市值 = 7059×120 + 19000×210 = 847,080 + 3,990,000 = 4,837,080
-    assert out["gain_amount"] == round(8470.8 + 95000.0, 0)   # 103471
-    assert out["prev_value"] == 4837080
-    # gain% = 103470.8 / 4837080 × 100 ≈ 2.14%
-    assert out["gain_pct"] == round((103470.8 / 4837080) * 100, 2)
+    # A: 5000股 ×(121.2−120.0)=5000×1.2 = 6,000
+    # B: 20000股 ×(215−210)=20000×5 = 100,000
+    # 前天市值 = 5000×120 + 20000×210 = 600,000 + 4,200,000 = 4,800,000
+    assert out["gain_amount"] == round(6000.0 + 100000.0, 0)   # 106000
+    assert out["prev_value"] == 4800000
+    # gain% = 106000 / 4800000 × 100 ≈ 2.21%
+    assert out["gain_pct"] == round((106000.0 / 4800000) * 100, 2)
     assert out["n_holdings"] == 2 and out["n_priced"] == 2
 
 
 def test_actual_negative_day():
-    out = mr.calc_portfolio_actual({"0050": 10000}, {"0050": (103.0, 102.0)})
+    out = mr.calc_portfolio_actual({_A: 10000}, {_A: (103.0, 102.0)})
     # 10000股 ×(102−103) = −10,000
     assert out["gain_amount"] == -10000
     assert out["gain_pct"] == round((-10000 / 1030000) * 100, 2)
@@ -68,19 +78,19 @@ def test_actual_negative_day():
 
 def test_actual_skips_unpriced_holding():
     out = mr.calc_portfolio_actual(
-        {"2330": 1000, "9999": 1000}, {"2330": (1000.0, 1010.0)})
+        {_C: 1000, "TESTNOPRICE": 1000}, {_C: (1000.0, 1010.0)})
     assert out["n_holdings"] == 2
     assert out["n_priced"] == 1
-    assert out["gain_amount"] == 10000   # 只有 2330: 1000股×(1010−1000)
+    assert out["gain_amount"] == 10000   # 只有 _C: 1000股×(1010−1000)
 
 
 def test_actual_output_has_no_stock_codes():
     """隱私關鍵:回傳彙總 dict 不可含任何個股代號 / 股數。"""
     out = mr.calc_portfolio_actual(
-        {"2330": 5000, "2454": 3000}, {"2330": (1000.0, 1010.0), "2454": (1300.0, 1290.0)})
+        {_C: 5000, _A: 3000}, {_C: (1000.0, 1010.0), _A: (1300.0, 1290.0)})
     assert set(out.keys()) <= {"gain_pct", "gain_amount", "prev_value",
                                 "last_value", "n_holdings", "n_priced"}
-    assert "2454" not in str(out)
+    assert _A not in str(out)
 
 
 # ---------- detect_ex_dividend_today（公開卡 2330/0050/00662 用）----------

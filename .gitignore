@@ -20,8 +20,10 @@ OPTIMIZATION_PLAN.md
 # G7 歷史索引:本機查詢產物(由 tools/query_history.py index 隨時可重建)
 state/history_index.jsonl
 
-# 含實際持股代號(00631L/00662/2330),而本 repo 是**公開**的。
+# 含**實際持股明細**,而本 repo 是**公開**的。
 # 2026-07-26:git add -A 曾誤收此檔,已在 push 前攔下。列入忽略避免再次發生。
+# 2026-09-04 外審 P1:這行原本**逐一列出持股代號** —— 忽略規則本身變成揭露,
+# 而且它是永久留在 git history 裡的那一種。描述持股用類別,不要點名。
 UPGRADE_PLAN_*.md
 
 # 盲評卡:含**兩份完整分析文字**。repo 是公開的,而這是使用者的晨報內容 ——

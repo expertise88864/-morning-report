@@ -17,16 +17,20 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Mapping, Sequence
+from typing import Any
 from importlib import metadata
 from pathlib import Path
 
 # Windows 的主控台是 cp950:訊息裡的中文與符號編不進去會**直接拋例外**,
 # 於是這道守衛會因為「印不出來」而失敗 —— 一個與它要量的事完全無關的原因。
-for _s in (sys.stdout, sys.stderr):
-    try:
-        _s.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, ValueError):   # 被接管的串流(pytest capture 等)
-        pass
+for _stream in (sys.stdout, sys.stderr):
+    _rc: Any = getattr(_stream, "reconfigure", None)
+    if _rc is not None:
+        try:
+            _rc(encoding="utf-8", errors="replace")
+        except ValueError:             # 被接管的串流(pytest capture 等)
+            pass
 
 _ROOT = Path(__file__).resolve().parents[1]
 _PIN = re.compile(r"^([A-Za-z0-9._-]+)==([^\s\\]+)")
@@ -51,7 +55,7 @@ def _norm(name: str) -> str:
     return name.lower().replace("_", "-")
 
 
-def installed_all() -> dict:
+def installed_all() -> dict[str, str]:
     """本機裝了什麼 → `{正規化名字: 版本}`。"""
     out = {}
     for dist in metadata.distributions():
@@ -61,7 +65,11 @@ def installed_all() -> dict:
     return out
 
 
-def compare(want: dict, got: dict, allowed=None):
+_Row = tuple[str, str | None, str | None]
+
+
+def compare(want: Mapping[str, str], got: Mapping[str, str],
+            allowed: Mapping[str, str] | None = None) -> tuple[list[_Row], list[_Row], list[_Row]]:
     """純函式:`(不一致, 沒裝, 多出來的)`。
 
     **「多出來的」是第三個方向,而它正是最容易被漏掉的那個**(外審 r1 P1)。
@@ -70,7 +78,9 @@ def compare(want: dict, got: dict, allowed=None):
     只看「lock 裡的每一筆對不對」永遠看不到它。
     """
     allowed = _ALLOWED_EXTRAS if allowed is None else allowed
-    wrong, missing, extra = [], [], []
+    wrong: list[_Row] = []
+    missing: list[_Row] = []
+    extra: list[_Row] = []
     for name, expect in sorted(want.items()):
         actual = got.get(name)
         if actual is None:
@@ -84,7 +94,7 @@ def compare(want: dict, got: dict, allowed=None):
     return wrong, missing, extra
 
 
-def pins(lock: Path) -> dict:
+def pins(lock: Path) -> dict[str, str]:
     out = {}
     for line in lock.read_text(encoding="utf-8").splitlines():
         m = _PIN.match(line)
@@ -93,18 +103,18 @@ def pins(lock: Path) -> dict:
     return out
 
 
-def drift(lock: Path):
+def drift(lock: Path) -> tuple[list[_Row], list[_Row], list[_Row]]:
     """→ `(不一致, 沒裝, 多出來的)`,都是 `[(套件, 期望, 實際)]`。"""
     return compare(pins(lock), installed_all())
 
 
-def ci_python_version(workflow: Path):
+def ci_python_version(workflow: Path) -> str | None:
     """CI 用哪個 Python —— 從 workflow 讀,不要寫死。"""
     m = re.search(r'python-version:\s*"?([0-9.]+)"?', workflow.read_text(encoding="utf-8"))
     return m.group(1) if m else None
 
 
-def main(argv=()) -> int:
+def main(argv: Sequence[str] = ()) -> int:
     lock = _ROOT / "requirements-dev.lock"
     if not lock.exists():
         print(f"[env] 找不到 {lock.name} —— 無法確認本機與 CI 是否一致", file=sys.stderr)

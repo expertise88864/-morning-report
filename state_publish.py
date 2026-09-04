@@ -15,6 +15,9 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Iterable, Sequence
+from pathlib import Path
+from typing import Any
 
 
 #: 收據在 repo 裡的路徑(git 用的 POSIX 相對路徑,與磁碟路徑分開)。
@@ -27,7 +30,8 @@ RECEIPT_REPO_PATH = "state/delivery_receipt.json"
 RECEIPT_PUSH_BACKOFF_SEC = (5, 15)
 
 
-def publish_receipt_from_remote_base(local_file, *, cwd=None,
+def publish_receipt_from_remote_base(local_file: str | Path, *,
+                                     cwd: str | Path | None = None,
                                      branch: str = "main") -> bool:
     """把收據**單獨**推上 `branch`,完全不碰工作區的 HEAD / index / 檔案。
 
@@ -53,7 +57,7 @@ def publish_receipt_from_remote_base(local_file, *, cwd=None,
     """
     import tempfile
 
-    def _git(*args, **kw):
+    def _git(*args: str, **kw: Any) -> subprocess.CompletedProcess[str]:
         env = dict(os.environ, **kw.pop("env_extra", {}))
         # **編碼要明講**:`text=True` 在 Windows 走地區編碼(實測 gbk),
         # git 回顯中文 commit 訊息時解碼失敗 —— stdout 會變成 `None`
@@ -63,7 +67,7 @@ def publish_receipt_from_remote_base(local_file, *, cwd=None,
                               encoding="utf-8", errors="replace",
                               timeout=kw.pop("timeout", 60), **kw)
 
-    def _out(*args, **kw):
+    def _out(*args: str, **kw: Any) -> str:
         r = _git(*args, **kw)
         if r.returncode != 0:
             raise RuntimeError(f"git {args[0]} 失敗: {r.stderr.strip()[:200]}")
@@ -153,7 +157,7 @@ def normalize_repo_path(raw: str) -> str:
     return norm
 
 
-def validated_allowlist(lines) -> list:
+def validated_allowlist(lines: Iterable[str]) -> list[str]:
     """白名單(`_state_push_paths()` 的輸出)—— 每一條都要在 `state/` 底下。"""
     out = []
     for ln in lines:
@@ -168,7 +172,8 @@ def _under(path: str, root: str) -> bool:
     return path == root or path.startswith(root + "/")
 
 
-def validated_deletions(lines, allowlist) -> list:
+def validated_deletions(lines: Iterable[str],
+                        allowlist: Iterable[str]) -> list[str]:
     """刪除清單:正規化 + 必須落在白名單條目之下。空清單是合法的。"""
     allow = validated_allowlist(allowlist)
     out = []
@@ -182,7 +187,7 @@ def validated_deletions(lines, allowlist) -> list:
     return out
 
 
-def _cli(argv) -> int:
+def _cli(argv: Sequence[str]) -> int:
     """`python -m state_publish paths|deletions <白名單檔> [刪除檔]`。
 
     把**驗過的**路徑逐行印出來給 workflow 用 —— shell 不再自己判斷路徑安全,

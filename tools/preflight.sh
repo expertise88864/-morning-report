@@ -18,20 +18,23 @@ cd "$(dirname "$0")/.."
 if [ -d .venv/Scripts ]; then export PATH="$PWD/.venv/Scripts:$PATH"; fi
 if [ -d .venv/bin ]; then export PATH="$PWD/.venv/bin:$PATH"; fi
 
-echo "[preflight] 0/4 環境是否與 CI 一致"
+echo "[preflight] 0/5 環境是否與 CI 一致"
 python tools/env_drift.py
 
-echo "[preflight] 1/4 語法檢查"
+echo "[preflight] 1/5 語法檢查"
 python -m compileall -q . -x '(\.git|\.venv|__pycache__)'
 
-echo "[preflight] 2/4 Lint"
+echo "[preflight] 2/5 Lint"
 python -m ruff check .
 
-echo "[preflight] 3/4 單元測試"
+echo "[preflight] 3/5 型別檢查(mypy.ini 列出的邊界模組)"
+python -m mypy --config-file mypy.ini
+
+echo "[preflight] 4/5 單元測試"
 # `--junitxml` 是為了 CI 的 annotation(job log 要 admin 才讀得到)。
 # 這裡照抄同一條指令是刻意的:契約是**逐字對應**,放寬成「忽略報告用的
 # 旗標」就等於開了一類「CI 有而本機沒有」的缺口。順帶本機失敗時也有
 # 同一份 pytest-report.xml 可以看。
 python -m pytest -q --junitxml=pytest-report.xml
 
-echo "[preflight] ✅ 與 CI 相同的三項檢查全部通過(環境版本亦已對齊)"
+echo "[preflight] ✅ 與 CI 相同的檢查全部通過(環境版本亦已對齊)"

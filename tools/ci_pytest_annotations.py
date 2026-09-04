@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 #: annotation 的訊息會被截斷,留下最有用的頭尾各一段
@@ -37,7 +38,7 @@ def _shorten(s: str) -> str:
     return s[:_HEAD] + "\n…(中略)…\n" + s[-_TAIL:]
 
 
-def _file_of(case) -> str:
+def _file_of(case: ET.Element) -> str:
     """testcase → repo 相對路徑。
 
     **實測過三種形狀**(2026-09-04,pytest 9;外審 r1 指出我原本猜錯了):
@@ -62,7 +63,7 @@ def _file_of(case) -> str:
     return "/".join(parts) + ".py" if parts else ""
 
 
-def annotations(xml_path: Path):
+def iter_annotations(xml_path: Path) -> Iterator[tuple[str, str, str, str]]:
     """讀 junit XML → 逐筆 `(檔, 行, 標題, 訊息)`。"""
     root = ET.parse(xml_path).getroot()
     for case in root.iter("testcase"):
@@ -70,8 +71,9 @@ def annotations(xml_path: Path):
             file = _file_of(case)
             # junit 的 line 是 0-based;annotation 是 1-based。收集錯誤沒有 line
             # (整個模組都掛了,沒有哪一行特別對) —— 指到第 1 行。
+            raw = case.get("line")
             try:
-                line = str(int(case.get("line")) + 1)
+                line = str(int(raw) + 1) if raw is not None else "1"
             except (TypeError, ValueError):
                 line = "1"
             title = f"{case.get('classname') or ''}::{case.get('name') or ''}".strip(":")
@@ -79,7 +81,7 @@ def annotations(xml_path: Path):
             yield file, line, title, _shorten(body)
 
 
-def main(argv) -> int:
+def main(argv: Sequence[str]) -> int:
     if len(argv) < 2:
         print("::error title=ci-annotations::用法: ci_pytest_annotations.py <junit.xml>")
         return 0
@@ -91,7 +93,7 @@ def main(argv) -> int:
               "pytest 可能在產生報告之前就結束了(usage error / 直譯器層級的錯誤)")
         return 0
     try:
-        rows = list(annotations(xml_path))
+        rows = list(iter_annotations(xml_path))
     except ET.ParseError as e:
         print(f"::error title=ci-annotations::{_esc(f'報告解析不動:{e}')}")
         return 0

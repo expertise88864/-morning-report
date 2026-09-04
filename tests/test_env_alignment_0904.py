@@ -87,12 +87,24 @@ def test_the_failure_message_points_at_a_script_that_exists():
     assert "$PY" in body.split("=")[0] or "PY=" in body, "沒有指到 venv 的直譯器"
 
 
-def test_the_drift_check_can_actually_print_its_message(capsys):
+def test_the_drift_check_can_actually_print_its_message():
     """Windows 的主控台是 cp950:訊息編不進去會直接拋例外,守衛就會因為
-    **與它要量的事無關的原因**而失敗(第一版當場踩到)。"""
-    src = (_ROOT / "tools" / "env_drift.py").read_text(encoding="utf-8")
-    assert "reconfigure(encoding=" in src
-    assert 'errors="replace"' in src
+    **與它要量的事無關的原因**而失敗(第一版當場踩到)。
+
+    **驗性質,不驗字串**:第一版斷言原始碼裡有 `reconfigure(encoding=`,
+    重構成 `getattr(stream, "reconfigure")` 之後守衛就失準了 —— 它盯的是
+    寫法,不是「訊息印得出來」這件事。這裡把輸出編碼壓成 cp950 真的跑一次。
+    """
+    import os
+    import subprocess
+    env = dict(os.environ, PYTHONIOENCODING="cp950")
+    r = subprocess.run([sys.executable, "tools/env_drift.py"], cwd=str(_ROOT),
+                       capture_output=True, encoding="utf-8", errors="replace",
+                       env=env, timeout=300)
+    both = (r.stdout or "") + (r.stderr or "")
+    assert "UnicodeEncodeError" not in both, both[-800:]
+    # 退出碼 0/1 都合法(看這個環境有沒有漂移);2 以上代表它自己壞了
+    assert r.returncode in (0, 1), (r.returncode, both[-800:])
 
 
 def test_a_package_the_lock_does_not_have_is_reported():

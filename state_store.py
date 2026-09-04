@@ -31,19 +31,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 
 class StateCorrupt(RuntimeError):
     """讀得到檔案但內容不可信。**與「檔案不存在」語意不同** —— 兩者
     的正確處置相反:不存在可以建立,不可信不能覆寫。"""
 
-    def __init__(self, path, why: str):
+    def __init__(self, path: Any, why: str) -> None:
         super().__init__(f"{path}: {why}")
         self.path = str(path)
         self.why = why
 
 
-def load_json_state(path, *, expected=list):
+def load_json_state(path: Any, *, expected: type = list) -> tuple[Any, str]:
     """回 `(value, status)`;`status` 是 `"missing"` 或 `"ok"`。
 
     壞檔一律 `raise StateCorrupt` —— **不回傳空值**。回空值正是這條規則

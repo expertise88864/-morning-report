@@ -46,6 +46,12 @@ jobs:
       - name: Lint
         run: python -m ruff check .
 
+      # 型別檢查只涵蓋 mypy.ini 列出的邊界模組(外審 2026-09-04 P3)。
+      # 主模組一次全開會得到一份沒有人會看的清單 —— 而沒人看的檢查器
+      # 等於沒有檢查器。加模組的方式是把它補到零錯誤,不是放寬規則。
+      - name: Type check (boundary modules)
+        run: python -m mypy --config-file mypy.ini
+
       - name: Run unit tests
         run: python -m pytest -q --junitxml=pytest-report.xml
 

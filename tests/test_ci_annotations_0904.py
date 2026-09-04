@@ -75,7 +75,7 @@ def collect_error_report(tmp_path_factory):
 
 
 def test_a_real_failure_points_at_the_real_line(real_report):
-    rows = {r[2].split("::")[-1]: r for r in ann.annotations(real_report)}
+    rows = {r[2].split("::")[-1]: r for r in ann.iter_annotations(real_report)}
     assert "test_bad" in rows, rows
     file, line, _title, body = rows["test_bad"]
     assert file.endswith("test_bad.py"), file
@@ -86,9 +86,9 @@ def test_a_real_failure_points_at_the_real_line(real_report):
 
 def test_a_collection_error_is_annotated_too(collect_error_report):
     """**收集錯誤正是 exit code 2 的那一種** —— 也是最需要被說出來的那一種。"""
-    rows = [r for r in ann.annotations(collect_error_report)
+    rows = [r for r in ann.iter_annotations(collect_error_report)
             if "test_collect" in r[2] + r[0]]
-    assert rows, list(ann.annotations(collect_error_report))
+    assert rows, list(ann.iter_annotations(collect_error_report))
     file, line, _title, body = rows[0]
     assert file.endswith("test_collect.py"), file
     assert line == "1"                      # 整個模組掛掉,沒有哪一行特別對
@@ -104,7 +104,7 @@ def test_the_fallback_still_points_at_a_python_file(tmp_path):
     的路徑 annotation 會指不到地方。
     """
     xml = _report(tmp_path, "test_bad.py", _BAD, family="xunit2")
-    rows = list(ann.annotations(xml))
+    rows = list(ann.iter_annotations(xml))
     assert rows, "xunit2 報告裡沒有失敗 —— 這條測試沒有量到東西"
     file = rows[0][0]
     assert file.endswith(".py"), file

@@ -102,8 +102,8 @@ def test_a_quality_problem_actually_reaches_a_human(monkeypatch):
     # 讀到的是 checkout 來的舊 manifest。
     assert "run_outcome == 'delivered'" in q["if"], q["if"]
     i = names.index(q["name"])
-    assert names.index("Run morning report") < i < names.index(
-        "發佈 state(契約通過後才 push)")
+    # 2026-09-04 外審 P2:發佈搬到獨立 job,send-report 這一段的下界改成交棒。
+    assert names.index("Run morning report") < i < names.index("交棒給發佈 job")
 
     # job 暴露的是 **alertable**(不是退出碼推導的 defect)
     outs = send.get("outputs") or {}
@@ -345,8 +345,14 @@ def test_a_no_op_backup_skips_the_expensive_tail(tmp_path, monkeypatch):
         _ROOT / ".github" / "workflows" / "morning-report-b.yml",
         encoding="utf-8").read())
     steps = {s.get("name") or "": s for s in wf["jobs"]["send-report"]["steps"]}
-    for name in ("驗證落地 state 的 schema 契約", "發佈 state(契約通過後才 push)"):
+    for name in ("驗證落地 state 的 schema 契約", "交棒給發佈 job"):
         assert "state_dirty == 'true'" in steps[name]["if"], (name, steps[name])
+    # 發佈搬到獨立 job(2026-09-04 外審 P2)—— 同一個閘門,改在**取回 state 的
+    # 那一步**;job 的 if 不綁 state_dirty,因為收據要在上游失敗時照樣發佈
+    # (Codex P1)。
+    pub = wf["jobs"]["publish-state"]
+    dl = next(s for s in pub["steps"] if s.get("id") == "statedl")
+    assert "state_dirty == 'true'" in str(dl["if"]), dl
     # 產出端真的會發這個 output,而且預設是 false(沒改就是沒改)
     src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     i = src.index('_gha_output("state_dirty", "false")')

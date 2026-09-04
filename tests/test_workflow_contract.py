@@ -482,6 +482,10 @@ def test_the_state_contract_gates_the_push_not_the_other_way_round():
     只看得到 I/O 失敗,看不到 schema 損壞、跨檔版本不一致、語意空資料。
 
     信在契約之前就已寄出,所以這不違反「晨報不可斷」。
+
+    2026-09-04(外審 P2):發佈搬到獨立的 `publish-state` job —— 順序不變
+    (晨報 → 契約 → 發佈),只是最後那一段跨了 job 邊界,因為**跑第三方依賴的
+    job 不該握有寫入憑證**。閘門從「步驟的 if」變成「job 的 if 讀契約的 outcome」。
     """
     wf = _workflow()
     steps = wf["jobs"]["send-report"]["steps"]
@@ -490,17 +494,35 @@ def test_the_state_contract_gates_the_push_not_the_other_way_round():
                     if "morning_report.py" in str(s.get("run") or ""))
     contract_i = next(i for i, s in enumerate(steps)
                       if "test_state_schema_contract" in str(s.get("run") or ""))
-    push_i = next((i for i, s in enumerate(steps)
-                   if "push_committed_state" in str(s.get("run") or "")), None)
-    assert push_i is not None, f"沒有獨立的發佈步驟:{names}"
-    assert report_i < contract_i < push_i, (
-        f"順序必須是 晨報 → 契約 → 發佈,實際是 {report_i}/{contract_i}/{push_i}")
+    # **要找的是整批 state 那次交棒**;收據那次刻意排在契約**之前**
+    # (Codex 2026-09-04 P1:寄出當下就交出去,不能被契約卡住)。
+    handoff_i = next((i for i, s in enumerate(steps)
+                      if (s.get("with") or {}).get("name") == "state-to-publish"), None)
+    assert handoff_i is not None, f"沒有交棒步驟:{names}"
+    receipt_i = next((i for i, s in enumerate(steps)
+                      if (s.get("with") or {}).get("name") == "delivery-receipt"), None)
+    assert receipt_i is not None and receipt_i < contract_i, (
+        f"收據交棒必須早於契約:{receipt_i}/{contract_i}")
+    assert "always" in str(steps[receipt_i].get("if") or ""), \
+        "收據交棒要用 always() —— 逾時/取消時它更需要跑"
+    assert report_i < contract_i < handoff_i, (
+        f"順序必須是 晨報 → 契約 → 交棒,實際是 {report_i}/{contract_i}/{handoff_i}")
 
     # 晨報必須被告知延後 push,否則它會自己推出去、契約再擋也來不及
     assert (steps[report_i].get("env") or {}).get("STATE_PUSH_DEFERRED") == "1"
-    # 發佈步驟**不得**有 `if: always()` —— 契約失敗時它必須被跳過
-    assert "always" not in str(steps[push_i].get("if") or ""), \
-        "發佈步驟用了 always(),契約失敗照樣 push —— 閘門形同虛設"
+
+    pub = wf["jobs"]["publish-state"]
+    push_step = next(s for s in pub["steps"]
+                     if "push_state.sh" in str(s.get("run") or ""))
+    # 發佈**不得**有 `always()` —— 契約失敗時它必須被跳過;閘門讀的是
+    # 契約步驟的 outcome(晨報自己可能以退出碼 1 結束而契約其實過了)。
+    cond = str(push_step.get("if") or "")
+    assert "always" not in cond and "contract_outcome == 'success'" in cond, cond
+    assert "always" not in str(pub.get("if") or "")
+    # `state_dirty` 的閘門在**取回 state 的那一步**,不在 job 的 if ——
+    # job 綁了它就會把收據一起擋掉(Codex 2026-09-04 P1)。
+    dl = next(s for s in pub["steps"] if s.get("id") == "statedl")
+    assert str(dl.get("if") or "").count("state_dirty == 'true'") == 1, dl
 
     import morning_report as mr
     assert hasattr(mr, "push_committed_state")

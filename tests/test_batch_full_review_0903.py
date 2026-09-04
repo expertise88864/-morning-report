@@ -154,15 +154,29 @@ def test_dl2_the_quality_alert_never_prints_the_recipient(monkeypatch, capsys):
 
 
 def test_dl3_state_publication_is_gated_by_the_contract_step_not_by_the_report_step():
-    """DL-3:晨報以退出碼 1 結束(多收件人部分被拒)時,契約過了就要發佈。"""
+    """DL-3:晨報以退出碼 1 結束(多收件人部分被拒)時,契約過了就要發佈。
+
+    2026-09-04 外審 P2 之後發佈搬到獨立的 `publish-state` job(跑第三方依賴的
+    job 不得握有寫入憑證)。**要守的性質沒變**:閘門讀的是契約那一步的 outcome,
+    不是晨報那一步的成敗;而且不得隱含 `success()`。只是現在跨了 job 邊界 ——
+    `needs.send-report.outputs.contract_outcome`,而 job 的 if 用 `!cancelled()`。
+    """
     import yaml
     d = yaml.safe_load((_ROOT / ".github/workflows/morning-report-b.yml")
                        .read_text(encoding="utf-8"))
-    steps = {s.get("name"): s for s in d["jobs"]["send-report"]["steps"] if s.get("name")}
+    send = d["jobs"]["send-report"]
+    steps = {s.get("name"): s for s in send["steps"] if s.get("name")}
     assert steps["驗證落地 state 的 schema 契約"].get("id") == "contract"
-    cond = str(steps["發佈 state(契約通過後才 push)"]["if"])
-    assert "steps.contract.outcome == 'success'" in cond, cond
-    assert "!cancelled()" in cond, "沒有 status function 就隱含 success() —— 又回到原病"
+    # 契約的 outcome 要真的被交出去(不是 job 的成敗)
+    assert "steps.contract.outcome" in str((send.get("outputs") or {}).get("contract_outcome"))
+
+    pub = d["jobs"]["publish-state"]
+    job_cond = str(pub.get("if") or "")
+    assert "!cancelled()" in job_cond, "沒有 status function 就隱含 success() —— 又回到原病"
+    assert "always" not in job_cond
+    push = next(s for s in pub["steps"] if "push_state.sh" in str(s.get("run") or ""))
+    cond = str(push.get("if") or "")
+    assert "contract_outcome == 'success'" in cond, cond
     assert "always" not in cond
 
 

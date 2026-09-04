@@ -23476,6 +23476,15 @@ def _mark_delivery_in_manifest(**fields) -> None:
         if "run_kind" not in fields:
             delivery["run_kind"] = (os.environ.get("GITHUB_EVENT_NAME")
                                     or "local")
+        # **延後發佈要寫進落地的 manifest,不能只留在記憶體**(Codex 2026-09-04 P3):
+        # 這一格必須在下面那次 atomic write **之前**寫好 —— `_publish_delivery_receipt`
+        # 是在寫檔之後才被呼叫的,它在那裡改 `_RUN_MANIFEST` 不會進檔案,
+        # 而 `_refresh_state_writes_in_manifest` 只補 state-write 欄位。
+        # 看門狗與品質判準讀的是**檔案**,記憶體裡的宣稱它們看不到。
+        if (os.environ.get("STATE_PUSH_DEFERRED") == "1"
+                and os.environ.get("GITHUB_ACTIONS") == "true"
+                and os.environ.get("DRY_RUN") != "1"):
+            delivery["receipt_publish"] = "deferred"
         base["delivery"] = delivery
         _RUN_MANIFEST["delivery"] = delivery
         # **世代標記由權威產生器蓋**(r1 外審):先前蓋在這裡,而週日路徑
@@ -23674,6 +23683,19 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
     if not (os.environ.get("GITHUB_ACTIONS") == "true"
             and os.environ.get("DRY_RUN") != "1"):
         return
+    if os.environ.get("STATE_PUSH_DEFERRED") == "1":
+        # **這個行程沒有寫入憑證**(外審 2026-09-04 P2):compute 與 publish 拆成
+        # 兩個 job 之後,跑第三方依賴與應用程式碼的那個 job 是 `contents: read`
+        # 且 `persist-credentials: false` —— 推不動,也**不該**推得動。
+        # 收據檔已經寫好,由發佈 job 用同一支 `state_publish` 原語推上去,
+        # 而且它是那個 job 的**第一件事**(在 state 契約閘門之前),
+        # 「已經寄出但 state 沒發佈成功」那條不變式因此維持。
+        # 這不是降級:延後發佈是設計,不是失敗。**留痕寫在 `_mark_delivery_in_manifest`**
+        # (manifest 落地之前那一格),這裡只補記憶體那份與印訊息 ——
+        # 兩邊都寫是為了讓「還沒落地就被讀」的路徑也看得到同一件事。
+        _RUN_MANIFEST.setdefault("delivery", {})["receipt_publish"] = "deferred"
+        print("[receipt] 收據已寫檔,發佈交給 publish-state job(本行程無寫入憑證)")
+        return
     try:
         publish_receipt_from_remote_base(DELIVERY_RECEIPT_FILE)
     except Exception as e:                  # noqa: BLE001 - 信已寄出,不再拋
@@ -23683,101 +23705,14 @@ def _publish_delivery_receipt(date_str, delivery: dict) -> None:
         _DEGRADED_STEPS.append("delivery_receipt_publish")
 
 
-#: 收據在 repo 裡的路徑(git 用的 POSIX 相對路徑,與磁碟路徑分開)。
-RECEIPT_REPO_PATH = "state/delivery_receipt.json"
-
-
-#: 收據 push 的退避秒數(第 1 次失敗等 5 秒、第 2 次等 15 秒),與
-#: `tools/push_state.sh` 相同;**有界**(總共 +20 秒),不得撞 job timeout。
-#: 抽成常數是為了讓測試把它設成 (0, 0) 之後真的走過重試迴圈。
-RECEIPT_PUSH_BACKOFF_SEC = (5, 15)
-
-
-def publish_receipt_from_remote_base(local_file, *, cwd=None,
-                                     branch: str = "main") -> bool:
-    """把收據**單獨**推上 `branch`,完全不碰工作區的 HEAD / index / 檔案。
-
-    r7 外審 P1:第一版是「`git add` 收據 → `git commit` → `push_committed_state()`」。
-    那等於把兩種**相反**的持久性語意綁在同一個發佈原語上:
-
-      * 整批 state —— **不可以**立刻發佈,要等 `test_state_schema_contract`
-        通過(`STATE_PUSH_DEFERRED=1` 那道閘門的全部意義:信可以先寄,
-        但壞掉的 state 不准進 main);
-      * 寄送收據 —— **必須**立刻發佈,而且要能在後續 state 契約失敗時存活。
-
-    `git push` 推的是分支 HEAD,而 git 不可能只推 C 不推它的祖先 B。
-    所以只要收據 commit 的祖先裡有「尚未通過契約的 state commit」,
-    收據就會**順帶把它帶上 main**,那道閘門就沒了。今天的呼叫順序剛好
-    讓收據先發生 —— 但那是順序的巧合,不是原語的不變量:誰把 persist
-    往前挪一點,保護就消失,而且不會有任何錯誤訊息。
-
-    改用 plumbing 從 **origin/main 的樹** 直接長出一個只差收據那一個檔的
-    commit,再 `push <sha>:main`。工作區 HEAD 是什麼完全不參與 ——
-    這樣「發佈收據」與「發佈整批 state」在結構上就不可能互相夾帶。
-
-    回傳 True = 真的推了;False = 內容與遠端相同,不需要推。
-    """
-    import tempfile
-
-    def _git(*args, **kw):
-        env = dict(os.environ, **kw.pop("env_extra", {}))
-        # **編碼要明講**:`text=True` 在 Windows 走地區編碼(實測 gbk),
-        # git 回顯中文 commit 訊息時解碼失敗 —— stdout 會變成 `None`
-        # 而 returncode 仍是 0(錯得很安靜)。runner 是 UTF-8 才碰巧沒事。
-        return subprocess.run(["git", *args], cwd=cwd, env=env,
-                              capture_output=True,
-                              encoding="utf-8", errors="replace",
-                              timeout=kw.pop("timeout", 60), **kw)
-
-    def _out(*args, **kw):
-        r = _git(*args, **kw)
-        if r.returncode != 0:
-            raise RuntimeError(f"git {args[0]} 失敗: {r.stderr.strip()[:200]}")
-        return r.stdout.strip()
-
-    author = {"GIT_AUTHOR_NAME": "morning-report-bot",
-              "GIT_AUTHOR_EMAIL": "actions@github.com",
-              "GIT_COMMITTER_NAME": "morning-report-bot",
-              "GIT_COMMITTER_EMAIL": "actions@github.com"}
-    # **有界重試,與 `tools/push_state.sh` 同一政策**(全案審查 DL-5):
-    # 先前 fetch→push 各只做一次。GitHub 暫時性 5xx(push_state.sh 檔頭記錄
-    # 2026-08-13 實際發生過)或 fetch 與 push 之間有人推了 main(使用者推程式碼)
-    # 就 non-fast-forward → 只留一個降級標籤。第二次機會是整批 state 的延後
-    # push,但那條要先過契約 —— 而「契約失敗那天收據仍在」正是收據被獨立
-    # 出來的理由;兩者同日發生時 origin/main 上沒有今天的任何證據,備援班
-    # 就會再寄一封(收不回來)。每一輪都**重新 fetch 取新 base** 再長 commit:
-    # non-fast-forward 的正解是換基底,不是重推同一個 sha。
-    for _attempt in range(len(RECEIPT_PUSH_BACKOFF_SEC) + 1):
-        _out("fetch", "--quiet", "origin", branch)
-        base = _out("rev-parse", "FETCH_HEAD")
-        blob = _out("hash-object", "-w", "--", str(local_file))
-        # 遠端已經是同一份內容就不推(重複 commit 沒有意義,也省一次寫入)
-        cur = _git("rev-parse", f"{base}:{RECEIPT_REPO_PATH}")
-        if cur.returncode == 0 and cur.stdout.strip() == blob:
-            print("[receipt] 遠端收據已是最新,不重複發佈")
-            return False
-        with tempfile.TemporaryDirectory() as tmp:
-            idx = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
-            _out("read-tree", base, env_extra=idx)
-            _out("update-index", "--add", "--cacheinfo",
-                 f"100644,{blob},{RECEIPT_REPO_PATH}", env_extra=idx)
-            tree = _out("write-tree", env_extra=idx)
-        commit = _out("commit-tree", tree, "-p", base, "-m",
-                      "寄送收據 [skip ci]", env_extra=author)
-        try:
-            _out("push", "origin", f"{commit}:refs/heads/{branch}")
-        except RuntimeError as e:
-            if _attempt >= len(RECEIPT_PUSH_BACKOFF_SEC):
-                raise
-            nap = RECEIPT_PUSH_BACKOFF_SEC[_attempt]
-            print(f"[receipt] push 失敗(第 {_attempt + 1} 次):{e} —— "
-                  f"{nap}s 後以 origin/{branch} 當下為基底再試", file=sys.stderr)
-            time.sleep(nap)
-            continue
-        print("[receipt] 已發佈寄送收據(獨立於整批 state"
-              + (f",第 {_attempt + 1} 次才成功" if _attempt else "") + ")")
-        return True
-    raise RuntimeError("receipt push 重試迴圈沒有結論")   # 迴圈一定 return 或 raise
+# 收據發佈的原語住在 `state_publish`(只用 stdlib)—— 有寫入權限的發佈 job
+# 不必安裝任何第三方套件就能呼叫它(外審 2026-09-04 P2)。這裡 re-export,
+# 既有呼叫端與測試(`mr.publish_receipt_from_remote_base`)不必改寫。
+from state_publish import (  # noqa: E402,F401
+    RECEIPT_PUSH_BACKOFF_SEC,
+    RECEIPT_REPO_PATH,
+    publish_receipt_from_remote_base,
+)
 
 
 def _record_delivery_failure(exc: BaseException) -> None:

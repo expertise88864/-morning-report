@@ -270,6 +270,7 @@ MODULE_CEILINGS = {
     # 擋下來的第一次 —— 它逼出了這次搬移,而不是第六次調高數字)。
     "delivery_contract.py": 200,   # 現況 144(r9:兩維度 verdict + skip 型別契約)
     # 2026-09-02 r9:1000 行閘門**第二次**擋下「再加一點」,逼出兩個邊界。
+    "state_publish.py": 250,   # 2026-09-04 外審 P2:收據發佈原語 + 交棒清單的詞法路徑驗證(Codex r2 P1);只用 stdlib,好讓有寫入權限的發佈 job 不必安裝第三方套件;現況 215
     "finding_domains.py": 150,     # 現況 99 —— finding 的分類登記表
     "degradation_registry.py": 130,  # 2026-09-03 全案審查 TC-2:KNOWN_DEGRADED / OPEN_FAMILIES 從 run_quality 抽出(1000 行閘門要的是推出邊界,不是調高數字);現況約 92
     "delivery_sla.py": 150,        # 現況 96 —— 期限原語(判準本體仍在 run_quality)

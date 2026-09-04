@@ -231,7 +231,8 @@ def test_the_lock_refresh_hands_off_before_running_new_dependencies():
     # 的 uvtool lock,而且發生在 Recompile **之前** —— 那不是新依賴。
     # 真正的不變量是:Recompile 之後、Upload 之前,不得執行任何安裝或測試。
     assert recompile < up, names
-    between = yaml.dump(steps[recompile + 1:up], allow_unicode=True)
+    # width 要放到最大:預設 80 會在 `pip install` 中間插換行,黑名單就靜默失準
+    between = yaml.dump(steps[recompile + 1:up], allow_unicode=True, width=10 ** 9)
     for forbidden in ("pip install", "pytest", "venv"):
         assert forbidden not in between, (forbidden, names[recompile + 1:up])
     for i, s in enumerate(steps[:recompile]):

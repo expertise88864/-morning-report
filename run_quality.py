@@ -683,6 +683,19 @@ def assess(manifest, *, mode: str = "watchdog",
                         for e in _dq_errors[:6])
             + (f" …另 {len(_dq_errors) - 6} 項" if len(_dq_errors) > 6 else ""))
 
+    # ---- 9e. 新聞卡被丟(2026-09-04 實信):模型分析 18 則、信裡只渲染 7 則,
+    # 「九、其他類股資訊」整段不見,而 `news_analyzed` 仍寫 18 —— 指標對得上
+    # 模型、對不上讀者。渲染端現在把每一則的結果記進 `llm.news_render`。
+    _nr = _dig(m, "llm", "news_render", default={}) or {}
+    _dropped = [d for d in (_nr.get("dropped") or []) if isinstance(d, dict)]
+    if _dropped:
+        add("news_cards_dropped", "defect",
+            f"模型分析 {_safe_int(_nr.get('analyzed'))} 則新聞,信裡只渲染 "
+            f"{_safe_int(_nr.get('rendered_tech')) + _safe_int(_nr.get('rendered_other'))} 則 —— "
+            f"{len(_dropped)} 則因正文(why_it_matters)為空被渲染端丟掉:"
+            + "、".join(f"{d.get('sid')}({d.get('section')})" for d in _dropped[:8])
+            + (f" …另 {len(_dropped) - 8} 則" if len(_dropped) > 8 else ""))
+
     # ---- 10a. **09:00 SLA**(2026-08-31 使用者定案:信可以晚到,但台股
     # 開盤前必須到)。先前 state 只有 `date`(**開跑時刻**),而 08/31 那班
     # `date=08:30`、`total_seconds=2088` —— 信其實 09:05 才寄出,監控資料

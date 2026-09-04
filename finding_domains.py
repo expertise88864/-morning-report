@@ -74,6 +74,8 @@ _FINDING_DOMAINS = {
     # 渲染失敗(同批):主體失敗寄的是極簡版(defect);單張卡被略過(degraded)。
     "render_body_failed": DOMAIN_CONTENT,
     "render_card_failed": DOMAIN_CONTENT,
+    # 2026-09-04 實信:模型分析 18 則、信裡只渲染 7 則(空正文被丟)。
+    "news_cards_dropped": DOMAIN_CONTENT,
     "analysis_emergency": DOMAIN_CONTENT,
     "analysis_not_specialized": DOMAIN_CONTENT,
     "luna_rejected": DOMAIN_CONTENT,

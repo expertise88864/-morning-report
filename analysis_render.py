@@ -267,7 +267,8 @@ def _event_card(c: dict, packet=None) -> str:
     return head + f"（{'、'.join(bits)}）" + (f"\n{rest}" if rest else "")
 
 
-def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
+def render(obj: Optional[dict], packet=None, admitted_watch=None,
+           diag: Optional[dict] = None) -> str:
     """把驗證過的分析 JSON 轉成晨報 Markdown。
 
     **無法渲染時回空字串**,不回半份。呼叫端會據此走既有的降級路徑 ——
@@ -379,6 +380,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
     # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
+    tech_news, other_news, _diag_rows = [], [], []
     _news_by_id = {_s(x.get("source_item_id")): x
                    for x in ((packet or {}).get("news") or [])
                    if isinstance(x, dict)}
@@ -398,8 +400,22 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None) -> str:
                          or {}).get("title"))
             _is_t = _ic.is_tech_headline(_title)
         (tech_items if _is_t else other_items).append(_n)
-    tech_news = _blocks(tech_items, lambda n: _news_line(n, packet))
-    other_news = _blocks(other_items, lambda n: _news_line(n, packet))
+        # **丟掉的卡要留痕**(2026-09-04 實信):`_news_line` 對空的
+        # `why_it_matters` 回空、`_blocks` 不排 —— 模型分析 18 則、信裡只剩 7 則,
+        # 「九、其他類股資訊」整段消失,而 `news_analyzed` 仍寫 18。這裡把每一則
+        # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
+        # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
+        _text = _news_line(_n, packet)
+        (tech_news if _is_t else other_news).append(_text) if _text else None
+        _diag_rows.append({"sid": _s(_n.get("source_item_id")),
+                           "section": "tech" if _is_t else "other",
+                           "rendered": bool(_text),
+                           "why_chars": len(_s(_n.get("why_it_matters")))})
+    if isinstance(diag, dict):
+        diag.clear()
+        diag.update({"analyzed": len(_diag_rows),
+                     "rendered_tech": len(tech_news), "rendered_other": len(other_news),
+                     "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})
     news = tech_news + other_news
     notes = []
     if news:

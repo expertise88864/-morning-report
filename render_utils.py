@@ -925,6 +925,86 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
         + "".join(cards))
 
 
+def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
+    """近 5 日資金輪動 —— **一張完整的表**,不是四顆膠囊。
+
+    2026-09-04 使用者:「關於信件內資金輪動的地方我希望能夠清楚、詳細看到資金
+    輪動狀況」。先前只印前 4 強 / 後 2 弱的膠囊,類股之間的相對位置、有多少檔
+    跟著漲、當天的錢有沒有真的進去,全部看不到。
+
+    每一列一個類股,依「相對大盤」由強到弱:
+      近 5 日中位 / 相對大盤 / 5 日上漲檔數÷成分檔數(晨報 universe 口徑,
+      `_sector_rotation` 算的)+ 今日成交占比・法人淨買賣(估)・領漲股
+      (全市場口徑,與「類股熱度表」同源;類股名稱對不上時該欄留「—」)。
+    兩個口徑不同,表頭與註腳都寫明;紅漲綠跌是台股慣例。
+    """
+    rows = list((rot or {}).get("table") or [])
+    if not rows:
+        return ""
+    sectors = (heat or {}).get("sectors") or {}
+    rows.sort(key=lambda r: (r.get("relative") or 0), reverse=True)
+    strong = {r[0] for r in (rot.get("strong") or [])}
+    weak = {r[0] for r in (rot.get("weak") or [])}
+
+    def _col(v) -> str:
+        return "#dc2626" if (v or 0) >= 0 else "#16a34a"
+
+    def _cell(txt, *, color="", bold=False, align="right", muted=False) -> str:
+        style = ("padding:5px 6px;border-bottom:1px solid #f1e6d2;font-size:12px;"
+                 f"text-align:{align};white-space:nowrap;"
+                 + (f"color:{color};" if color else ("color:#94a3b8;" if muted else ""))
+                 + ("font-weight:700;" if bold else ""))
+        return f"<td style='{style}'>{txt}</td>"
+
+    trs = []
+    for r in rows:
+        ind = str(r.get("industry") or "")
+        med, rel = float(r.get("median_5d") or 0), float(r.get("relative") or 0)
+        s = sectors.get(ind) if isinstance(sectors.get(ind), dict) else None
+        tag = ("<span style='color:#dc2626;'>▲</span> " if ind in strong
+               else "<span style='color:#16a34a;'>▼</span> " if ind in weak else "")
+        lead = ""
+        if s and s.get("leaders"):
+            m = s["leaders"][0]
+            try:
+                lead = (f"{_h.escape(str(m.get('code') or ''))} "
+                        f"{_h.escape(str(m.get('name') or ''))} {float(m.get('pct') or 0):+.1f}%")
+            except (TypeError, ValueError):
+                lead = ""
+        name_cell = (f"{tag}{_h.escape(ind)}"
+                     + (f"<div style='font-size:11px;color:#94a3b8;font-weight:400;'>領漲 {lead}</div>"
+                        if lead else ""))
+        if s:
+            share = s.get("value_share_pct")
+            inst = s.get("inst_net_yi")
+            today = (f"{float(share):.1f}%" if isinstance(share, (int, float)) else "—")
+            today += (f"・法人 {float(inst):+,.0f} 億" if isinstance(inst, (int, float)) else "")
+        else:
+            today = "—"
+        trs.append(
+            "<tr>" + _cell(name_cell, align="left", bold=True)
+            + _cell(f"{med:+.1f}%", color=_col(med), bold=True)
+            + _cell(f"{rel:+.1f}", color=_col(rel))
+            + _cell(f"{int(r.get('up_5d') or 0)}/{int(r.get('members') or 0)}")
+            + _cell(today, muted=not s) + "</tr>")
+    head = "".join(
+        f"<th style='padding:5px 6px;font-size:11px;color:#92400e;text-align:{a};"
+        f"border-bottom:1px solid #fcd9b6;white-space:nowrap;'>{t}</th>"
+        for t, a in (("類股", "left"), ("5 日中位", "right"), ("相對大盤", "right"),
+                     ("5 日上漲/檔", "right"), ("今日成交占比・法人", "right")))
+    mm = float((rot or {}).get("market_median") or 0)
+    return (
+        "<div style='margin:4px 0 14px;padding:10px 12px;background:#fffbeb;border-radius:8px;'>"
+        "<div style='font-size:13px;font-weight:600;color:#92400e;margin-bottom:6px;'>"
+        f"近 5 日資金輪動（各類股中位漲幅 vs 大盤中位 {mm:+.1f}%；▲ 強勢 / ▼ 轉弱）</div>"
+        "<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;'>"
+        f"<tr>{head}</tr>{''.join(trs)}</table></div>"
+        "<div style='font-size:11px;color:#94a3b8;margin-top:6px;'>"
+        "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝資金相對流入）；"
+        "今日成交占比・法人淨買賣（估）・領漲＝全市場口徑，與上方類股熱度表同源。"
+        "純參考、非買賣訊號。</div></div>")
+
+
 def _mlb_series_odds_div(s: dict, htmllib) -> str:
     """MLB 賭盤:**一行**,與中職那一行同一個樣子(2026-09-03 使用者:
     「直接 賭盤:樂天 46%・味全 54%(Polymarket) 這樣即可」)。

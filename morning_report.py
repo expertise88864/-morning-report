@@ -90,6 +90,7 @@ from llm_postprocess import (  # A5-Step1:LLM 後處理純函式已抽出,此處
     _parse_llm_event_json,
 )
 from render_utils import (  # A5-Step2/B2:渲染純函式已抽出,re-export 保相容
+    _render_sector_rotation_table,
     compact_inline_styles,
     _format_macro_line,
     _md_to_html,
@@ -14492,7 +14493,8 @@ def _accept_luna(obj: dict, packet: dict, text: str) -> str:
         # 連磁碟狀態都問不到就傳 `None`(渲染端因此不標,不假裝知道)。
         _honest = _ar.render(obj, packet,
                              admitted_watch=_arc.ledger_triggers(
-                                 ANALYSIS_RECAP_FILE))
+                                 ANALYSIS_RECAP_FILE),
+                             diag=_RUN_MANIFEST["llm"].setdefault("news_render", {}))
         if _honest:
             text = _honest
         print("[llm] 昨日觀點存檔失敗 —— 信裡的觀察點改標一次性",
@@ -14836,7 +14838,10 @@ def _luna_analysis(packet: dict, effort: str) -> str:
                 _admitted = None
                 print(f"[llm] 觀察點 admission 查詢失敗:{str(_e_adm)[:80]}",
                       file=sys.stderr)
-            text = _ar.render(obj, packet, admitted_watch=_admitted)
+            # `diag`:分析了幾則、渲染了幾則、哪幾則被丟 —— 進 manifest,
+            # `run_quality` 據此報 `news_cards_dropped`(2026-09-04 實信:18 → 7)。
+            text = _ar.render(obj, packet, admitted_watch=_admitted,
+                              diag=_RUN_MANIFEST["llm"].setdefault("news_render", {}))
             if text:
                 _record(True)
                 # 深度不足時,把**還沒用掉的修補額度**拿來加深(第十五輪)。
@@ -21815,7 +21820,15 @@ def _sector_rotation(snapshot: list, min_members: int = 3, top_n: int = 4) -> di
         return {}
     ranked.sort(key=lambda r: r[1], reverse=True)
     weak = [r for r in ranked[::-1][:2] if r not in ranked[:top_n]]   # 最弱 2 類,排除與強勢重疊
-    return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak}
+    # **完整的表**(2026-09-04 使用者:「希望能夠清楚、詳細看到資金輪動狀況」):
+    # 先前只給前 4 強 / 後 2 弱的膠囊。每一類股都列:近 5 日中位、相對大盤、
+    # 5 日內上漲的檔數 / 成分檔數 —— 由 `render_utils._render_sector_rotation_table`
+    # 與當日類股熱度(全市場口徑的成交占比 / 法人 / 領漲)合成一張表。
+    table = [{"industry": ind, "median_5d": med, "relative": rel, "members": n,
+              "up_5d": sum(1 for p in by_ind[ind] if p > 0)}
+             for ind, med, rel, n in ranked]
+    return {"market_median": round(mkt, 2), "strong": ranked[:top_n], "weak": weak,
+            "table": table}
 
 
 def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
@@ -22492,29 +22505,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                 if top_score < 60
                 else f"台股客觀關注排名 Top {len(top5)}（由高至低）"
             )
-            # 資金輪動(借鏡 daily_stock_analysis sector rotation):各類股近 5 日中位漲幅 vs 大盤
-            sector_rotation_html = ""
+            # 資金輪動:各類股近 5 日中位漲幅 vs 大盤 —— **一張完整的表**
+            # (2026-09-04 使用者要清楚、詳細看到輪動狀況;先前只有前 4 強/後 2 弱
+            # 的膠囊)。渲染在 render_utils,與當日類股熱度(全市場口徑)合成。
             _rot = _sector_rotation(universe_snapshot)
-            if _rot:
-                def _rot_chip(item):
-                    ind, med, rel, _n = item
-                    col = "#dc2626" if med >= 0 else "#16a34a"   # 台股慣例:紅漲綠跌
-                    return (f'<span style="display:inline-block;background:#fff;border:1px solid #fcd9b6;'
-                            f'color:{col};padding:2px 8px;border-radius:8px;font-size:12px;margin:0 4px 4px 0;">'
-                            f'{_htmllib.escape(ind)} {med:+.1f}%'
-                            f'<span style="color:#94a3b8;"> (相對{rel:+.1f})</span></span>')
-                strong_chips = "".join(_rot_chip(it) for it in _rot["strong"])
-                weak_chips = "".join(_rot_chip(it) for it in _rot["weak"])
-                weak_part = (f'<div style="margin-top:4px;"><span style="font-size:12px;color:#64748b;">轉弱：</span>'
-                             f'{weak_chips}</div>' if weak_chips else "")
-                sector_rotation_html = (
-                    f'<div style="margin:4px 0 14px;padding:10px 12px;background:#fffbeb;border-radius:8px;">'
-                    f'<div style="font-size:13px;font-weight:600;color:#92400e;margin-bottom:6px;">'
-                    f'近 5 日資金輪動（類股中位漲幅，大盤中位 {_rot["market_median"]:+.1f}%）</div>'
-                    f'<div>{strong_chips}</div>{weak_part}'
-                    f'<div style="font-size:11px;color:#94a3b8;margin-top:6px;">'
-                    f'※ 各類股成分股近 5 日漲幅中位數；「相對」為減去全市場中位數（&gt;0＝資金相對流入）。純參考、非買賣訊號。</div>'
-                    f'</div>')
+            sector_rotation_html = _render_sector_rotation_table(
+                _rot, quotes.get("SECTOR_HEAT") or {}) if _rot else ""
             # 批#20 #6:普跌日誠實標註(不改分數——regime 調的是「可靠度認知」)
             _adv = (quotes.get("BREADTH") or {}).get("advance_ratio")
             regime_note = ""

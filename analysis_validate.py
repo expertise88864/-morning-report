@@ -732,6 +732,16 @@ def validate(obj, evidence_ids) -> list:
             problems.append(
                 f"top_news_analysis 對 {sid!r} 寫了 {n_times} 段 —— "
                 "同一則新聞只該有一個分析單位")
+    # **空正文的卡片會靜默消失**(2026-09-04 實信):渲染端 `_news_line` 對空的
+    # `why_it_matters` 直接回空、`_blocks` 不排 —— 9/4 模型分析 18 則、信裡只有
+    # 7 則,「九、其他類股資訊」整段不見;9/2 同型(19 → 12)。schema 的字串型別
+    # 不擋空字串;昨晚 LM-2 補了政策/缺口/敘事變化/事件卡,漏了這一欄。
+    for i, n in enumerate(news):
+        if not str(n.get("why_it_matters") or "").strip():
+            problems.append(
+                f"top_news_analysis[{i}]({n.get('source_item_id')}) 的 why_it_matters"
+                " 是空的 —— 渲染端會整張卡丟掉,讀者看不到這一則;"
+                "要嘛寫內容,要嘛整則移除")
     own_ids = {str(n.get("source_item_id") or "") for n in news}
     # **政策段的引用也要真的存在**(外審 2026-08-19):`taiwan_policy` 是
     # v20 新欄位,漏了這一關的話,一個捏造的 `source_item_id` 會讓政策與

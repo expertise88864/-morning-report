@@ -138,15 +138,15 @@ def test_deletions_are_handed_off_not_silently_dropped():
     run = _executable(push.get("run"))
     assert "git rm" in run and "_state_deleted.txt" in run
     # 新增與刪除**都只用驗證器的輸出**;shell 不再自己判斷路徑安全
-    assert "python -m state_publish paths" in run
-    assert "python -m state_publish deletions" in run
+    assert "python3 -m state_publish paths" in run
+    assert "python3 -m state_publish deletions" in run
     assert "case " not in run, "shell 前綴比對擋不住 state/../ —— 交給驗證器"
     # 驗證器**被擋下時要讓整步失敗**:`mapfile < <(cmd)` 的退出碼不受 set -e
     # 檢查,shell 會拿到空陣列繼續跑完 —— 靜默的「成功」比失敗更難發現。
     assert "set -euo pipefail" in run
     assert "< <(" not in run, "process substitution 會吞掉驗證器的退出碼"
     for mode in ("paths", "deletions"):
-        assert re.search(rf"python -m state_publish {mode} [^\n|]*>", run), (mode, run)
+        assert re.search(rf"python3 -m state_publish {mode} [^\n|]*>", run), (mode, run)
     # 真的會修剪的那條路徑仍在白名單裡(不然這條測試在守一個不存在的東西)
     assert "EMAIL_ARCHIVE_DIR" in (_ROOT / "morning_report.py").read_text(encoding="utf-8")
     src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
@@ -277,6 +277,23 @@ def test_the_validator_cli_fails_closed(tmp_path, capsys):
     assert "unsafe-publish-path" in capsys.readouterr().err
     # 刪除檔不存在(當天沒有刪除)是合法的
     assert sp._cli(["state_publish", "deletions", str(paths), str(tmp_path / "nope.txt")]) == 0
+
+
+def test_the_credentialed_job_calls_the_interpreter_that_is_guaranteed_to_exist():
+    """這個 job 刻意沒有 `setup-python`,所以只能用 image 保證有的 `python3`。
+
+    裸 `python` 在不在 PATH 上要看 Ubuntu image 有沒有裝 python-is-python3 ——
+    猜錯不會安靜地少發佈一次 state 就算了:收據推不上去,下一班讀不到遠端
+    收據就再寄一封(那個守衛是 fail-open)。
+    """
+    pub = _wf()["jobs"]["publish-state"]
+    assert not any("setup-python" in str(s.get("uses") or "") for s in pub["steps"])
+    calls = []
+    for step in pub["steps"]:
+        for ln in _executable(step.get("run") or "").splitlines():
+            calls += re.findall(r"(?<![\w./-])python3?(?![\w.-])", ln)
+    assert calls, "發佈 job 應該要呼叫直譯器(不然這條測試在守一個不存在的東西)"
+    assert set(calls) == {"python3"}, calls
 
 
 def test_the_publish_primitive_needs_no_third_party_package():

@@ -206,7 +206,11 @@ def test_readme_test_count_is_a_floor_not_a_boast():
     # 用 AST 數 test 函式:這是**下界**(parametrize 會展開成更多筆),
     # 所以「宣稱 ≤ AST 數」是比實際更嚴格的要求,不會誤判成通過。
     actual = 0
-    for path in sorted((root / "tests").glob("test_*.py")):
+    # **遞迴**:2026-09-04 有 26 個檔搬進 tests/incidents/,非遞迴的 glob
+    # 當場靜默少看六分之一。下面那句斷言讓「範圍又縮掉」會出聲。
+    paths = sorted((root / "tests").rglob("test_*.py"))
+    assert any("incidents" in p.parts for p in paths), "掃描範圍縮掉了"
+    for path in paths:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) \
                     and node.name.startswith("test_"):

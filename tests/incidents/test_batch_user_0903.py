@@ -14,7 +14,13 @@ import io
 import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[1]
+# **錨點不能依賴 import 順序,也不能依賴目錄深度**(2026-09-04 搬進
+# tests/incidents/ 時修):這個檔要先把 repo 根目錄放進 sys.path 才 import
+# 得到 morning_report,所以不能用 `mr.__file__`;而 `parents[1]` 把根目錄
+# 編碼成相對深度,搬家就指到別的地方。往上走到看得見 morning_report.py 的
+# 那一層 —— 那是「repo 根目錄」這個性質本身。
+_ROOT = next(p for p in Path(__file__).resolve().parents
+             if (p / "morning_report.py").is_file())
 sys.path.insert(0, str(_ROOT))
 import analysis_render as ar                                   # noqa: E402
 import llm_postprocess as lp                                   # noqa: E402

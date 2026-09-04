@@ -15,7 +15,7 @@ on:
     # (r1 外審):看門狗排在補漏跑的名目結束時間之前,會讀到昨天的
     # manifest,對著**還在跑**的那一班發「晨報沒有跑起來」的假警報 ——
     # 假警報會讓人把看門狗關掉,那比沒有看門狗更糟。餘裕由
-    # `tests/test_batch_backup_cron.py` 用兩個 workflow 的實際值算出來釘住。
+    # `tests/incidents/test_batch_backup_cron.py` 用兩個 workflow 的實際值算出來釘住。
     # 2026-08-28:排程註冊卡死的 touch;2026-09-01 檔名 -a→-b 第二次急救
     # (排程註冊會整組靜默失效;**改 cron 不是已證實的根因** ——
     #  第一次事故前根本沒改 cron。說明見 morning-report-b.yml 檔頭)

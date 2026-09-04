@@ -89,7 +89,7 @@ def identity_name(name) -> str:
     措辭,機器身分改一個字就要配一次 state 遷移。組代表(
     `entity_alias.ALIAS_GROUPS` 每組第一個)因此成為**凍結的契約**,
     重排組內順序會靜默改寫所有持久鍵 —— 由
-    `tests/test_batch_2026_08_22b.py` 的凍結表釘住。
+    `tests/incidents/test_batch_2026_08_22b.py` 的凍結表釘住。
 
     刻意**不**自創 `equity:US:NVDA` 這種命名空間 ID(外審的建議形):
     別名表沒有市場/交易所欄位,那個 ID 得先憑空補一份對照資料,而補錯

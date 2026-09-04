@@ -39,10 +39,10 @@ def _registered() -> set:
 
 
 def _used():
-    """所有 `@pytest.mark.X` 的 X → 用到它的檔案。
+    """所有 `pytest.mark.X` 的 X → 用到它的檔案。
 
-    **用 AST 找真正的裝飾器**,不是搜這幾個字:這個檔自己的說明文字裡就
-    寫著 `@pytest.mark.slow`,字串比對會把守衛自己報成違規。
+    **用 AST 找真正的取用**,不是搜這幾個字:這個檔自己的說明文字裡就
+    寫著 `pytest.mark.slow`,字串比對會把守衛自己報成違規。
     """
     out = {}
     for path in sorted(_ROOT.glob("tests/**/*.py")):
@@ -50,14 +50,17 @@ def _used():
             tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
         except SyntaxError:                 # 語法錯由 compileall 那一關負責
             continue
+        # **不能只看裝飾器**:`pytestmark = pytest.mark.X`(模組層級)與
+        # `item.add_marker(pytest.mark.X)`(conftest 動態套用)也是真的用法,
+        # 而只掃 decorator_list 會把它們判成「登記了卻沒人用」—— 一個會逼人
+        # 把守衛關掉的誤報。改成掃所有 `pytest.mark.X` 的屬性存取。
         for node in ast.walk(tree):
-            for deco in getattr(node, "decorator_list", []):
-                expr = deco.func if isinstance(deco, ast.Call) else deco
-                # pytest.mark.X 或 pytest.mark.X(...)
-                if (isinstance(expr, ast.Attribute)
-                        and isinstance(expr.value, ast.Attribute)
-                        and expr.value.attr == "mark"):
-                    out.setdefault(expr.attr, set()).add(path.name)
+            if (isinstance(node, ast.Attribute)
+                    and isinstance(node.value, ast.Attribute)
+                    and node.value.attr == "mark"
+                    and isinstance(node.value.value, ast.Name)
+                    and node.value.value.id == "pytest"):
+                out.setdefault(node.attr, set()).add(path.name)
     return out
 
 

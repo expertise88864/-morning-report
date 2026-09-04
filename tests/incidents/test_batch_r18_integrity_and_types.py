@@ -6,6 +6,7 @@
   * `set` 用 `str` 當排序鍵不是全序 → 同一份證據兩種表示
   * normalization 診斷只進 telemetry,沒有任何判準消費它
 """
+import morning_report as mr  # noqa: E402
 import decimal
 import gzip
 import json
@@ -16,7 +17,7 @@ import numpy as np
 import pytest
 import yaml
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(mr.__file__).resolve().parent
 sys.path.insert(0, str(_ROOT))
 import evidence_serialize as es                                # noqa: E402
 import model_history_store as mh                               # noqa: E402

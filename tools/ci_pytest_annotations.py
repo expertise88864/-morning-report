@@ -43,11 +43,11 @@ def _file_of(case: ET.Element) -> str:
 
     **實測過三種形狀**(2026-09-04,pytest 9;外審 r1 指出我原本猜錯了):
 
-        一般失敗   file="tests/test_a.py"(Windows 上是反斜線) classname="tests.test_a"
-        收集錯誤   file="tests/test_c.py"  classname=""        name="tests.test_c"
+        一般失敗   file="<測試檔路徑>"(Windows 上是反斜線) classname="<dotted 模組>"
+        收集錯誤   file="<測試檔路徑>"      classname=""        name="<dotted 模組>"
         沒有 file  (xunit2 家族;`pytest.ini` 已釘 legacy,這是保險絲)
 
-    最後那種只能從 dotted 名字還原 —— `tests.test_a` → `tests/test_a.py`。
+    最後那種只能從 dotted 名字還原(`a.b` → `a/b.py`)。
     少了 `.py` 的路徑 annotation 會指不到地方,所以副檔名要補回去。
     """
     f = (case.get("file") or "").strip().replace("\\", "/")

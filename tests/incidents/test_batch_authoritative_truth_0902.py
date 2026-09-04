@@ -11,6 +11,7 @@
 
 (後者的測試在 `tests/test_state_schema_contract.py`,與它驗的東西放一起。)
 """
+import morning_report as mr  # noqa: E402
 import datetime as dt
 import json
 import sys
@@ -19,7 +20,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(mr.__file__).resolve().parent
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "tools"))
 import report_watchdog as w                                    # noqa: E402

@@ -87,7 +87,7 @@ from run_manifest import MANIFEST_SCHEMA as _CURRENT_MANIFEST_SCHEMA
 ALWAYS_REALIZABLE = frozenset({"market:", "calibration:", "quality:"})
 
 #: **送達期限**(2026-08-31 使用者定案):信可以晚到,但台股 09:00 開盤
-#: 前必須到。判準寫成常數,`tests/test_batch_prod_0831.py` 釘住它 ——
+#: 前必須到。判準寫成常數,`tests/incidents/test_batch_prod_0831.py` 釘住它 ——
 def _safe_int(v):
     """拿得到就回 int,拿不到回 0(判準不因型別而爆掉)。"""
     try:

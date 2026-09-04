@@ -2917,7 +2917,7 @@ def test_watchdog_requires_successful_delivery_not_just_freshness(tmp_path):
     # **舊格式 manifest 沒有這個欄位時不得當成異常** —— 那會在部署當天產生
     # 一次確定的假警報,而假警報會訓練人忽略告警。
     # (沒有 `manifest_schema` = 真舊檔;現行世代缺欄位是另一回事,
-    #  見 `tests/test_batch_watchdog_contract_0901.py`。)
+    #  見 `tests/incidents/test_batch_watchdog_contract_0901.py`。)
     write(None)
     assert rw.delivery_state(p) == (rw.EVIDENCE_LEGACY_MISSING, {})
 

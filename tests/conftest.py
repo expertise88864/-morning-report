@@ -19,7 +19,16 @@ import pytest
 from pathlib import Path as _PathLib
 import sys as _sys
 
+
 import morning_report as mr
+
+# **子目錄裡的測試也要 import 得到 `fixtures_analysis`**(2026-09-04)。
+# pytest 只會把「測試檔自己所在的目錄」放進 sys.path,所以 tests/incidents/
+# 底下的檔案看不到住在 tests/ 的共用 fixture 模組 —— 那會在收集階段炸,
+# 也就是退出碼 2 那一種最難查的失敗。
+_TESTS_DIR = str(_PathLib(__file__).resolve().parent)
+if _TESTS_DIR not in _sys.path:
+    _sys.path.insert(0, _TESTS_DIR)
 
 
 @pytest.fixture(autouse=True)
@@ -399,6 +408,41 @@ def _state_fingerprint(root):
         except OSError:
             digests[rel] = "<讀不到>"        # 已刪除也是一種狀態
     return lines, digests
+
+
+#: `tests/incidents/` 底下的每一條都是 incident 回歸測試(外審 2026-09-04 P3)。
+#: 那些檔原本以批次/日期命名散在 tests/ 裡,共同性質不是主題而是**來歷**。
+_INCIDENT_DIR = _PathLib(__file__).resolve().parent / "incidents"
+
+
+def is_incident_path(path) -> bool:
+    """這個檔案在不在 `tests/incidents/` 裡。
+
+    **前綴比對不等於路徑包含**(外審 2026-09-04 r1 P3):`str.startswith`
+    會把 `incidents_archive/` 這種兄弟目錄底下的檔也算進來,於是 `-m incident`
+    悄悄多出一批不是事故回歸的測試 —— 而那個標記的意義就是「來歷」。
+    (同一天在發佈路徑上也踩過一次:`state/../morning_report.py` 通過了
+    `case "$p" in state/*)`。)
+    """
+    try:
+        return _PathLib(str(path)).resolve().is_relative_to(_INCIDENT_DIR)
+    except (OSError, ValueError):
+        return False
+
+
+def pytest_collection_modifyitems(items):
+    """**標記用目錄套,而且 hook 放在這個唯一的 conftest 裡。**
+
+    在 `tests/incidents/` 底下也放一個 conftest 是更直覺的寫法,但兩個 conftest 在
+    `sys.modules` 裡都叫 `conftest` —— `tests/test_no_network.py` 的
+    `from conftest import NetworkBlockedInTests` 會拿到子目錄那一個,
+    整輪在收集階段就掛掉(2026-09-04 實測)。所以只留一個。
+
+    用目錄而不是在 26 個檔案裡各寫一行:新丟進去的檔自動被標,不會有人忘記。
+    """
+    for item in items:
+        if is_incident_path(getattr(item, "path", None) or getattr(item, "fspath", "")):
+            item.add_marker(pytest.mark.incident)
 
 
 def pytest_sessionstart(session):

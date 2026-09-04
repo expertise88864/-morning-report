@@ -11,7 +11,7 @@ from pathlib import Path
 
 import morning_report as mr
 
-_SRC = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+_SRC = io.open(Path(mr.__file__).resolve().parent / "morning_report.py",
                encoding="utf-8").read()
 
 
@@ -98,7 +98,7 @@ def test_low_volume_marker_has_no_warning_emoji():
     市場那條漏了)—— 使用者已要求全部移除。"""
     import io
     from pathlib import Path
-    src = io.open(Path(__file__).resolve().parents[1] / "morning_report.py",
+    src = io.open(Path(mr.__file__).resolve().parent / "morning_report.py",
                   encoding="utf-8").read()
     assert "量低⚠" not in src
 

@@ -4,6 +4,7 @@
 分散的行為各自測在原檔;這裡放**跨檔的三件事**:
 台灣政策段(schema v20)、條數 advisory、以及「刪掉的段落不得回來」。
 """
+import morning_report as mr  # noqa: E402
 import io as _io
 from pathlib import Path as _Path
 
@@ -13,7 +14,7 @@ import analysis_schema as sch
 import fixtures_analysis as fx
 
 #: **路徑錨在這個檔案自己身上**,不靠 CWD。
-_ROOT = _Path(__file__).resolve().parents[1]
+_ROOT = _Path(mr.__file__).resolve().parent
 
 
 # ---------------------------------------------------------------- 台灣政策段

@@ -13,7 +13,7 @@
 
 `run_quality` 以 `from degradation_registry import …` 再匯出,既有的
 `rq.KNOWN_DEGRADED` / `rq.OPEN_FAMILIES` 呼叫端與測試不必改。
-註冊守衛:`tests/test_batch_prod_0830.py::test_every_emitted_degradation_label_is_registered`
+註冊守衛:`tests/incidents/test_batch_prod_0830.py::test_every_emitted_degradation_label_is_registered`
 (AST 掃 `morning_report.py` 每一個 `_DEGRADED_STEPS.append`,對照這兩個常數)。
 """
 from __future__ import annotations

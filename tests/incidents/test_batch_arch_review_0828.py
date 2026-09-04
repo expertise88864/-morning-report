@@ -110,6 +110,6 @@ def test_no_operational_reference_to_the_old_workflow_names():
         encoding="utf-8", errors="replace", timeout=60)
     hits = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
     # 允許的殘留:純歷史說明(測試自己、外審 context)
-    allowed = {"tests/test_batch_arch_review_0828.py"}
+    allowed = {"tests/incidents/test_batch_arch_review_0828.py"}
     bad = [h for h in hits if h not in allowed]
     assert not bad, f"這些檔還在引用舊 workflow 檔名:{bad}"

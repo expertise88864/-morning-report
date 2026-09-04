@@ -125,7 +125,12 @@ def _scan_source(filename: str, source: str) -> list:
 
 
 def _quantity_fixtures() -> list:
-    return [row for path in sorted(_TESTS.glob("test_*.py"))
+    # **遞迴**:2026-09-04 有 26 個檔搬進 tests/incidents/,非遞迴的 glob
+    # 當場靜默少看六分之一。下面那句斷言讓「範圍又縮掉」會出聲。
+    paths = sorted(_TESTS.rglob("test_*.py"))
+    assert any("incidents" in p.parts for p in paths), \
+        "掃不到 tests/incidents/ —— 隱私守衛的範圍縮掉了"
+    return [row for path in paths
             for row in _scan_source(path.name, path.read_text(encoding="utf-8"))]
 
 

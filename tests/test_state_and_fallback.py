@@ -386,7 +386,11 @@ def test_no_test_file_reads_repo_files_through_a_cwd_relative_path():
     root = Path(__file__).resolve().parents[1]
     top = {e.name for e in root.iterdir()}
     offenders = []
-    for src in sorted(Path(__file__).resolve().parent.glob("*.py")):
+    srcs = sorted(Path(__file__).resolve().parent.rglob("*.py"))
+    # **遞迴**:2026-09-04 有 26 個檔搬進 tests/incidents/,非遞迴的 glob
+    # 當場靜默少看六分之一。下面那句斷言讓「範圍又縮掉」會出聲。
+    assert any("incidents" in p.parts for p in srcs), "掃描範圍縮掉了"
+    for src in srcs:
         tree = _ast.parse(src.read_text(encoding="utf-8"))
         for node in _ast.walk(tree):
             if not isinstance(node, _ast.Call) or not node.args:

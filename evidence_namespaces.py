@@ -41,7 +41,7 @@ NAMESPACES = (
     # 那個欄位從來沒有被產生過(真正的鍵是 `mid`/`last_2330`/`model1_1to1`
     # 這些)。模型照著範例寫,三條引用全被判不存在,整份特化分析作廢
     # (2026-08-10 current-head 生產驗收:10 條驗證失敗)。
-    # 守衛見 `tests/test_evidence_namespaces.py`:說明裡的每一個 ID
+    # 守衛見 `tests/test_evidence_namespace_realizable.py`:說明裡的每一個 ID
     # 都要能從代表性 packet 生得出來。
     ("prediction:", "2330 開盤預測的欄位,**不帶標的段**"
                     "(`prediction:mid`、`prediction:last_2330`);"

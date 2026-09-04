@@ -782,7 +782,15 @@ def validate(obj, evidence_ids) -> list:
     # `""` —— 而渲染端沒有那一欄就整行省略,於是使用者要的那件事會
     # **靜默消失**,信看起來完全正常。可驗的東西要真的去驗。
     for i, row in enumerate((obj.get("world_events") or [])):
-        if not isinstance(row, dict) or not str(row.get("what") or "").strip():
+        if not isinstance(row, dict):
+            continue
+        # **空的 `what` 先前被這裡直接跳過**(Codex 2026-09-04 P2):渲染端只排
+        # `what` 非空的列,於是一條空殼的世界大事「驗過了」卻從信裡消失 ——
+        # 與空正文新聞卡同一個形狀。空的就是問題,不是豁免。
+        if not str(row.get("what") or "").strip() or not str(row.get("why_it_matters") or "").strip():
+            problems.append(
+                f"world_events[{i}] 的 what / why_it_matters 有空的 —— 渲染端會整條丟掉,"
+                "讀者看不到這一件;要嘛填內容,要嘛整條移除")
             continue
         if not str(row.get("what_next") or "").strip():
             problems.append(

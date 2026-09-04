@@ -70,6 +70,29 @@ def entities_of(n: dict, clean=None) -> list:
     return sorted(x for x in out if x)[:12]
 
 
+#: 世界新聞來源名的前綴(抓取端「世界-<類別>」)。
+WORLD_SOURCE_PREFIX = "世界-"
+
+
+def world_cat_of(n) -> str:
+    """這則新聞是不是「世界大事」的料、屬哪一類;不是就回空字串。
+
+    **唯一的一份判準**(Codex 2026-09-04 P2):legacy 取材段(`morning_report`
+    的 `_world_cat_of`)與特化路徑的深度守衛(`analysis_depth`)先前各寫一份 ——
+    後者只認 `source` 前綴,去重後保留在一般來源上的 `world_cat`、以及
+    「中央社國際」全部數不到,守衛在真有五則料的日子空轉。三條規則與 legacy
+    原文逐字相同:`world_cat` 欄位、來源名「世界-<類別>」、來源正是「中央社國際」。
+    """
+    n = n if isinstance(n, dict) else {}
+    wc = str(n.get("world_cat") or "").strip()
+    if wc:
+        return wc
+    src = str(n.get("source") or "")
+    if src.startswith(WORLD_SOURCE_PREFIX):
+        return src[len(WORLD_SOURCE_PREFIX):]
+    return src if src == "中央社國際" else ""
+
+
 def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     """(正規化後的新聞, 截斷摘要)。確定性排序、確定性截斷。
 
@@ -112,6 +135,11 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "source_name": clean(str(n.get("source_name") or "")),
             "source_grade": _grade(n),
             "official": bool(n.get("official")),
+            # **世界大事的料要看得出來**(Codex 2026-09-04 P2):legacy 取材段靠
+            # `world_cat`(抓取端依來源名「世界-<類別>」打的標)分出世界新聞,
+            # 而 packet 先前把它丟了 —— 特化路徑的守衛只能看 `source` 前綴,
+            # 去重後保留在一般來源上的 `world_cat` 與「中央社國際」全部數不到。
+            "world_cat": clean(str(n.get("world_cat") or "")),
             "entities": entities_of(n, clean),
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })

@@ -11250,13 +11250,11 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     # 會把 Fed/台股/公司消息從配額裡擠掉——市場仍是本報核心(Codex review)。
     # (真正牽動市場的地緣事件仍由既有 Google-地緣/CNBC 等一般來源進桶,不受影響。)
     def _world_cat_of(n: dict) -> str:
-        wc = str(n.get("world_cat") or "")
-        if wc:
-            return wc
-        src = str(n.get("source", ""))
-        if src.startswith("世界-"):
-            return src[3:]
-        return src if src == "中央社國際" else ""
+        # **唯一的判準在 `news_normalize.world_cat_of`**(Codex 2026-09-04 P2):
+        # 特化路徑的世界大事守衛先前自己寫了一份較窄的(只認「世界-」前綴),
+        # 在真有五則料的日子空轉。這裡只轉接,規則三條逐字搬過去。
+        from news_normalize import world_cat_of
+        return world_cat_of(n)
 
     # world_and_market=同一事件同時來自市場與世界來源(dedup 時標記)→ 兩個版面都收
     market_news = [n for n in news
@@ -15072,8 +15070,8 @@ def _call_llm_analysis_impl(quotes: dict, fair: dict, predictions: dict,
               # 2026-08-25 使用者要求世界大事要有「後續可能影響」——
               # 這裡的「每條一行」會在長度重試那一輪把它壓掉,而重試是
               # 常態不是例外。改成限制**條數**不限制那一條的完整性。
-              "上一版容易過長。請完整輸出所有章節，但更短：世界大事速覽最多 3 條"
-              "(每條仍要含「所以會怎樣」與「後續可能影響」);"
+              "上一版容易過長。請完整輸出所有章節，但更短：世界大事速覽仍要 5 條"
+              "(2026-09-04 使用者定案;每條更精簡,但仍要含「所以會怎樣」與「後續可能影響」);"
               "科技板塊脈動 6-8 條(只寫科技);"
               "其他類股資訊依類股熱度表挑今日在動且確有新聞的類股、每類 1-2 條、"
               "以真正的新聞事件為主(非股價/法人/營收數據),無新聞的類股略過;"

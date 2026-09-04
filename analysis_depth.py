@@ -54,6 +54,10 @@ COVERAGE_FLOORS = {TECH_COVERAGE_GAP: 8, SECTOR_COVERAGE_GAP: 7}
 #: 出現「兩段都達標而總數不達標」這種自相矛盾的催促)。
 NEWS_TARGET_MIN = sum(COVERAGE_FLOORS.values())
 NEWS_TARGET_MAX = NEWS_TARGET_MIN + 5
+#: 世界大事速覽的條數(2026-09-04 使用者:「世界大事改成五條」)。prompt 說五條,
+#: 這裡是它的守衛:素材夠(packet 新聞的 `source` 帶「世界-」前綴 ≥ 5 則)而輸出
+#: 不足五條時,用加深輪把它補齊 —— prompt 指令不是保證。
+WORLD_EVENTS_TARGET = 5
 
 #: 總則數那一條的素材前提(逐段那兩條用**自己那一段**的素材數,見
 #: `depth_advisories`)。2026-08-25 外審:先前是 `目標 × 2` 且整組建議
@@ -218,6 +222,26 @@ def depth_advisories(obj, packet=None) -> list:
             f"{_avail} 則新聞 —— 目標 {NEWS_TARGET_MIN}–{NEWS_TARGET_MAX} 則;"
             "優先補未被涵蓋的重大事件"
             "(依 materiality 五項判準)。不足時要在 data_gaps 說明為什麼")
+    # **世界大事速覽要五條**(2026-09-04 使用者)。素材面走 `news_normalize.world_cat_of`
+    # —— 與 legacy 取材段**同一支**判準(`world_cat` 欄位 / 來源「世界-」前綴 /
+    # 中央社國際;Codex P2:只認前綴會漏掉去重後掛在一般來源上的世界標記)。
+    # 產出面只數**渲染得出來**的條目(Codex P2:渲染端只排 `what` 非空的列,
+    # 數 dict 會把空殼算成一條 —— 信裡剩四條而守衛不催);三個指示欄位都要有。
+    # 素材貧乏的日子不硬湊(湊出來的會是市場新聞冒充世界大事)。
+    from news_normalize import world_cat_of as _world_cat_of
+    _world_out = [w for w in (obj.get("world_events") or [])
+                  if isinstance(w, dict) and all(str(w.get(k) or "").strip()
+                                                 for k in ("what", "why_it_matters", "what_next"))]
+    # `packet` 也可能是 ID 集合(`deepen_is_an_improvement(evidence_ids=…)` 的
+    # 舊呼叫形狀)—— 那時沒有素材可數,一律不催。
+    _src_world = (sum(1 for it in (packet.get("news") or []) if _world_cat_of(it))
+                  if isinstance(packet, dict) else 0)
+    if len(_world_out) < WORLD_EVENTS_TARGET and _src_world >= WORLD_EVENTS_TARGET:
+        out.append(
+            f"world_events 只有 {len(_world_out)} 條,而 EVIDENCE 收了 {_src_world} 則"
+            f"世界大事(來源「世界-」開頭)—— 目標 {WORLD_EVENTS_TARGET} 條"
+            "(股市之外的世界:外交、戰爭、科技治理、重大社會事件),"
+            "每條仍要 what / why_it_matters / what_next")
     # **出口由 Python 判,不由模型宣告**(2026-08-24 外審 P2)。先前
     # 「模型填了缺口代號就不再催」與 `_src_tech >= 6`(素材面的同一個
     # 問題,Python 自己數的)並存 —— 而後者才是事實。兩者衝突時前者贏,

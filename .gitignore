@@ -29,3 +29,6 @@ UPGRADE_PLAN_*.md
 # 盲評卡:含**兩份完整分析文字**。repo 是公開的,而這是使用者的晨報內容 ——
 # 通道由他決定(LLM_BLIND_REVIEW_SINK),不是 commit 進來的預設。
 artifacts/
+
+# CI 的 junit 報告(只在 runner 上產生)
+pytest-report.xml

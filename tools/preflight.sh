@@ -19,6 +19,10 @@ echo "[preflight] 2/3 Lint"
 python -m ruff check .
 
 echo "[preflight] 3/3 單元測試"
-python -m pytest -q
+# `--junitxml` 是為了 CI 的 annotation(job log 要 admin 才讀得到)。
+# 這裡照抄同一條指令是刻意的:契約是**逐字對應**,放寬成「忽略報告用的
+# 旗標」就等於開了一類「CI 有而本機沒有」的缺口。順帶本機失敗時也有
+# 同一份 pytest-report.xml 可以看。
+python -m pytest -q --junitxml=pytest-report.xml
 
 echo "[preflight] ✅ 與 CI 相同的三項檢查全部通過"

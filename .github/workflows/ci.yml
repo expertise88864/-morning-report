@@ -42,7 +42,15 @@ jobs:
         run: python -m ruff check .
 
       - name: Run unit tests
-        run: python -m pytest -q
+        run: python -m pytest -q --junitxml=pytest-report.xml
+
+      # **CI 紅了要看得見為什麼**:job log 要 repo admin 才讀得到,而
+      # annotation 是公開的。2026-09-04 我碰到連三個 commit 紅、唯一讀得到
+      # 的訊息是「Process completed with exit code 2」,於是只能用猜的。
+      # 這一步自己永遠 exit 0 —— 診斷工具不該有能力改變 job 的結論。
+      - name: 把 pytest 的失敗轉成 annotation
+        if: ${{ always() }}
+        run: python tools/ci_pytest_annotations.py pytest-report.xml
 
   # 手動觸發：用真實資料跑一次完整流程（不寄信），產出 HTML 預覽 artifact。
   # 連 Yahoo / TWSE / LLM，可能因外部服務不穩而失敗 —— 故設 continue-on-error，

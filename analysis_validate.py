@@ -21,6 +21,7 @@ from __future__ import annotations
 import re as _re
 
 import analysis_grounding as _gr
+import stance_authority as _stance_authority
 
 #: 條數契約住在 `analysis_contracts`(P1-5:判準只能有一份)。此處再匯出。
 import analysis_contracts as _ac  # noqa: E402
@@ -1174,6 +1175,7 @@ def validate(obj, evidence_ids) -> list:
              else {}).get("label")
     if label is not None and label not in _labels:
         problems.append(f"立場詞彙不合法:{_q(label)}")
+    problems.extend(_stance_authority.problems(obj, packet))
     return problems
 
 # ---------------------------------------------------------------- 相容出口

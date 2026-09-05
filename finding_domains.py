@@ -111,6 +111,8 @@ _FINDING_DOMAINS = {
     "story_ledger_corrupt": DOMAIN_CONTROL_PLANE,
     "delivery_receipt_publish": DOMAIN_CONTROL_PLANE,
     "analysis_recap_unreadable": DOMAIN_CONTENT,
+    "stance:score_failed": DOMAIN_CONTENT,
+    "stance:attribution_failed": DOMAIN_CONTENT,
 }
 
 

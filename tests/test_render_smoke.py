@@ -14,6 +14,7 @@ def _fixture():
             "SOX": {"close": 14246.96, "change_pct": 3.92, "pct_rank_1y": 99},
         },
         "MARKET_REGIME": "neutral",
+        "STANCE_PY": {"total": 5, "label": "偏多", "components": {"qqq": 1}},
         "MARKET_BREADTH": {"advance_ratio": 69.4, "advancers": 757, "decliners": 238},
         "TAIEX_PRED": {"last_close": 46125.9, "pred_pct": 0.91, "pred_point": 46545},
         "TW0050_PRED": {"pred_open": 109.31, "last": 107.8},
@@ -54,4 +55,4 @@ def test_render_html_smoke_has_core_sections():
     assert "煙霧測試龍頭" in html                            # Top5 卡已加回(使用者 2026-07-18)
     assert "124.43" in html                                      # 00662 公允價(六段)
     assert "個股開盤預測" in html                                # 六段結構標題(防整段被移除)
-    assert "偏多" in html                                        # 立場(由 analysis 驅動)
+    assert "偏多" in html                                        # 立場(由 Python 權威驅動)

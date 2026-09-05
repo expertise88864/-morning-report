@@ -484,8 +484,9 @@ jobs:
       # 2. 整批 state:要有東西可發佈,而且契約通過才推。
       - name: 取回 send-report 交棒的 state
         id: statedl
-        if: ${{ needs.send-report.outputs.state_dirty == 'true' }}
-        continue-on-error: true
+        # CR-04:只有預期可發佈時才下載;預期 artifact 缺席必須讓 job 變紅。
+        if: ${{ needs.send-report.outputs.state_dirty == 'true'
+            && needs.send-report.outputs.contract_outcome == 'success' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: state-to-publish
@@ -528,6 +529,27 @@ jobs:
           fi
           git commit -m "chore: update state $(date -u +%Y-%m-%d) [skip ci]"
           bash tools/push_state.sh
+
+  alert-on-state-failure:
+    needs: [send-report, publish-state]
+    if: ${{ always() && (needs.publish-state.result == 'failure'
+            || needs.publish-state.result == 'cancelled') }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          persist-credentials: false
+      - name: State 發佈失敗告警(不重寄晨報)
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DELIVERED: ${{ needs.send-report.outputs.delivered }}
+          PUBLISH_RESULT: ${{ needs.publish-state.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 tools/state_publish_alert.py
 
   alert-on-quality:
     needs: send-report

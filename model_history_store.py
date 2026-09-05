@@ -128,9 +128,12 @@ def write_partition_manifest(partition_dir: Path = DEFAULT_PARTITION_DIR,
     # 這裡讓例外往上傳:呼叫端(morning_report)會記 state 壞檔並跳過,
     # 壞掉的 manifest 原封留著給 strict 稽核。
     had_manifest, old = _manifest_state(partition_dir)
+    # CR-01:glob 看不到的舊月份也必須保留,否則日常存檔會洗掉缺檔證據。
+    manifest["partitions"].update(old)
     baseline_all = rewritten is None
     rewritten = set(rewritten or [])
-    damaged: list = []
+    present_names = {path.name for path in partition_dir.glob("*.json.gz")}
+    damaged: list = [f"{name}(已登錄分區缺檔)" for name in old if name not in present_names]
     for path in sorted(partition_dir.glob("*.json.gz")):
         name = path.name
         try:

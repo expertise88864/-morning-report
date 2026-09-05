@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 25  # v25 2026-09-03 全案審查 LM-4:source_caveat 說明改「會排進信」、confirmation_signal 改「不排進信」(描述進 prompt,所以升版)  # v24 2026-08-27:what_next 區分經濟/非經濟事件  # v23: v23 2026-08-25 使用者:world_events 加 what_next(後續可能影響)
+ANALYSIS_SCHEMA_VERSION = 26  # CR-02:Python 計分缺席時 stance.score 允許 null,不得補造分數。
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -214,9 +214,9 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
     "stance": _obj({
         "claim_ids": _arr(_s(), "支撐這一段的 `claim_audit.claim_id`"),
         "label": _enum(STANCE_LABELS),
-        "score": {"type": "integer", "minimum": -11, "maximum": 11,
-                  "description": "與 Python 11 維立場分同尺度;不一致時要在 "
-                                 "contradictions 說明理由"},
+        "score": {"type": ["integer", "null"], "minimum": -11, "maximum": 11,
+                  "description": "抄錄 market.STANCE_PY.total;Python 計分缺席時必須 "
+                                 "null 且 label 為資料不足,禁止自行計算"},
         "confidence": _num("0–1"),
         "time_horizon": _enum(HORIZONS),
         "rationale": _s(),

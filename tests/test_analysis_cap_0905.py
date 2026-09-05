@@ -278,7 +278,8 @@ def test_the_minimal_fallback_letter_is_capped_too():
     saved_llm = mr._RUN_MANIFEST.get('llm')
     try:
         _reset_cap_marks()
-        html = mr._render_minimal_html({}, {}, {}, huge, "2026-09-05", "每日報")
+        html = mr._render_minimal_html({"STANCE_PY": {"total": 6, "label": "偏多"}},
+                                       {}, {}, huge, "2026-09-05", "每日報")
         rec = mr._RUN_MANIFEST['llm']['analysis_cap']
         assert rec['chars'] == len(huge) and rec['kept'] <= mr.ANALYSIS_TEXT_FUSE
         assert "render:analysis_capped" in mr._DEGRADED_STEPS

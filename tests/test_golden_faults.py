@@ -342,7 +342,7 @@ def test_batch32_safe_block_isolates_card_failure():
 
 
 def test_batch32_minimal_html_fallback_has_core_numbers():
-    """主渲染整個失敗時的極簡信:必須仍帶行情、預測與分析全文。"""
+    """極簡信保留行情與預測;CR-02:缺 Python 計分時不能保留 LLM 方向結論。"""
     q = {"QQQ": {"close": 520.0, "change_pct": 1.2},
          "TSM": {"close": 220.0, "change_pct": -0.8},
          "TAIEX_PRED": {"pred_open": 44500.0}}
@@ -350,7 +350,8 @@ def test_batch32_minimal_html_fallback_has_core_numbers():
                                 "## 十二、我的明確立場\n> **立場:偏空**",
                                 "2026-07-25", "每日報")
     assert "520.00" in h and "2,400.00" in h and "120.50" in h and "44,500" in h
-    assert "偏空" in h and "極簡版" in h
+    assert "立場未知" in h and "極簡版" in h
+    assert "偏空" not in h
 
 
 def test_batch32_render_failure_still_sends_via_minimal(monkeypatch):

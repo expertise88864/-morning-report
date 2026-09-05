@@ -1,5 +1,17 @@
 # 晨報系統(-morning-report-main)— 常駐工作規則
 
+## 使用者最新定案：push 前本機 CI 全綠，push 後驗證 GitHub CI（2026-09-05）
+
+- 所有專案、所有改動都適用，包括程式、文件、設定、測試、生成物、修正及空 audit commit；任何分支的 push 都不得自行豁免。
+- 任何分支 push 前，核對實際待推內容的完整適用本機 CI 等效檢查，全部必須成功；push 後追蹤該完整 SHA 的 GitHub CI，全綠才可宣告交付完成。失敗、取消、逾時、等待、應跑卻跳過、無結果或讀不到，都不是通過。
+- 保留可核對的 SHA、CI 執行連結／ID 與各項結果。本機測試、lint、build、preflight 通過，以及模型 review APPROVE，都不能冒充遠端 CI 成功。
+- 修正、重新生成、合併、rebase 或新增 commit 後，舊版本的 CI 結果不得直接沿用；必須驗證新的實際待推版本。
+- Claude 額度不足時仍可保留本機成果並標記 `Claude-Opus-5-Review: pending`、安排補審；這只延後模型審查，絕不豁免 CI 全綠。補審後的 audit push 也必須遵守本規則。
+- 使用者已明確選擇「任何分支 push 前先通過本機 CI 等效檢查，push 後再驗證 GitHub CI」；不要再要求第一次 push 前先有遠端 CI。任何分支都無本機檢查豁免；缺 CI 或本機必要檢查無法執行時仍須回報並取得決定，不能視為全綠。
+- 不得透過 `--no-verify`、skip-ci 標記、關閉／刪除檢查、降低門檻、改 branch protection 或宣稱非必要檢查等方式製造全綠。
+- 本定案優先於本檔及舊任務／排程中「本機驗證後可直接 push」「額度不足可先 push」等較寬鬆敘述；既有醫療內容核可、模型、effort 與 review 要求仍須同時滿足。
+
+
 > 本檔每個 session 自動載入。地圖:`OPTIMIZATION_PLAN.md`(路線圖+進度);
 > 重構施工圖:`A5_MODULARIZATION_MAP.md`;檢核工具:`tools/refactor_audit.py`。
 > 這三份多為 untracked(reset --hard 不會刪)。**以文件為地圖、以程式碼為準**——
@@ -18,6 +30,11 @@
 3. 讀 OPTIMIZATION_PLAN.md 頂部進度區,確認要做的事沒被做過、沒被否決過。
 
 ## 2. 驗收流水線(每個 commit)
+使用者 2026-09-05 最新定案：**任何分支 push 前，本機 CI 等效檢查必須全綠；
+push 後繼續驗證該 SHA 的 GitHub CI 全綠，才可宣告交付完成。** 詳見 AGENTS.md
+「所有改動的 CI 推送門檻」。這包含文件／測試與補審 audit，Claude quota pending
+不豁免 CI；不得加入 skip-CI 或放寬測試以製造綠燈。
+
 ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
 動渲染則 DRY_RUN 預覽 → **Claude Opus 5 diff 閘門** → **Codex 推送閘門** → push。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。

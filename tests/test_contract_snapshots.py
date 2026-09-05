@@ -464,6 +464,19 @@ def _legacy_prompt() -> str:
                             {"model1": 1000.0}, _NEWS, [], "")
 
 
+def _stance_authority_probes() -> list:
+    """CR-02:舊 ID-only probes 看不到當日 Python 計分缺席,要用真 packet 形狀。"""
+    out = []
+    for sp, score, label in (({}, 6, "偏多"), ({}, None, "資料不足"),
+                             ({}, None, "中性"),
+                             ({"total": 6, "label": "偏多"}, None, "資料不足")):
+        pk, obj = _packet(), fx.valid_analysis()
+        pk["market"]["STANCE_PY"] = sp
+        obj["stance"].update(score=score, label=label)
+        out.append(sch.validate(obj, pk))
+    return out
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
@@ -543,7 +556,8 @@ def _behaviour() -> dict:
                                   + _chain_probes(pk)
                                   + [_anchor_scope_probe()]
                                   + _top_event_probe()
-                                  + _event_graph_probe()),
+                                  + _event_graph_probe()
+                                  + _stance_authority_probes()),
     }
 
 
@@ -660,7 +674,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (25, "d8065916e8d3def4"),  # v25 2026-09-03 全案審查 LM-4:source_caveat/confirmation_signal 說明對齊實作(描述進 prompt)  # v24 (24, "63b248bfc32961b2")  # v22 敘事/總經證據契約(2026-08-19 P1-B)
+    "output_schema_version":  (26, "ffc5f5ab7273c4b4"),  # CR-02:stance.score 可 null,未知不是零分。
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -709,11 +723,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (50, "5bfafe960996d812"),  # v50 2026-09-04 使用者:世界大事速覽五條  # v49 (49, "764ba098eed2a393")  # v49 2026-09-03 使用者:整封信只講一個故事+傳導終點改台股  # v48 2026-09-01:總經發布教複數,兩關卡對齊  # v44 2026-08-24:公報可引用(gazette:<id>)  # v43 2026-08-22 使用者:類股加量(科技≥6/其他≥5)+術語首次出現要括號解釋  # v42 金融龍頭+5(2026-08-22)
+    "primary_profile_version":  (51, "8dd1d0e6679716ef"),  # CR-02:結構化路徑亦禁止在缺 Python 計分時補造立場。
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (16, "5d189e3cac8e2bf2"),  # v16 2026-09-04 使用者:世界大事速覽 5 條(含過長重試)  # v15 (15, "c893ce93bb0886ba")  # v15 2026-09-03 全案審查 LM-7:圍欄內取材指令搬到圍欄外  # v14 (14, "60dcf947358f0f32")  # v14 2026-09-03 使用者七項(刪七之五/結論卡三行/前言守衛/台股為主/R16c)  # v11 金融龍頭+5(2026-08-22)
+    "fallback_profile_version":  (17, "cc097405929a1305"),  # CR-02:缺 Python 計分時禁止 LLM 補算;原 v16 5d189e3cac8e2bf2。
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -825,7 +839,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (38, "a05a56500bf972f1"),  # v38 共用驅動駁回改指名整組(2026-08-28 生產:兩關互相矛盾讓修補收斂不了)+required 去重  # v37 加深建議改看真素材(2026-08-22 外審 P3;MACRO 只有 error 紀錄不算素材)  # v36 RENDERED 補六段(2026-08-19 P1-B)
+    "grounding_version":      (39, "cb951652b91e55cf"),  # CR-02:新增 packet-aware 未知/null 立場判準與 probes。
 }
 
 

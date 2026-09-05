@@ -21,12 +21,12 @@ from __future__ import annotations
 import math
 import sys
 from itertools import combinations
-from pathlib import Path
 
 import numpy as np
 
+from model_history_store import load_model_history
+
 EULER = 0.5772156649015329       # Euler–Mascheroni 常數
-HIST = Path("state/model_history.json")
 FACTORS = ["pct_5d", "ma20_dist_pct", "day_pct", "vol_ratio_20d",
            "daily_vol_pct", "market_cap", "slippage_bps"]
 HORIZON = 5
@@ -159,10 +159,7 @@ def pbo_cscv(perf, n_splits: int = 16) -> dict:
 
 def _build_factor_return_matrix() -> tuple[np.ndarray, list[str]]:
     """從 model_history 建「每日 × 各因子」的 IC 矩陣(每個因子當一個策略,每日 IC 當該期績效)。"""
-    import json
-    if not HIST.exists():
-        return np.empty((0, 0)), []
-    snaps = [s for s in json.loads(HIST.read_text(encoding="utf-8"))
+    snaps = [s for s in load_model_history(strict=True)
              if s.get("session_date") and isinstance(s.get("stocks"), dict)]
     snaps.sort(key=lambda s: s["session_date"])
     n = len(snaps)
@@ -174,8 +171,8 @@ def _build_factor_return_matrix() -> tuple[np.ndarray, list[str]]:
         import pandas as pd
         if len(xs) < MIN_NAMES:
             return np.nan
-        rx = pd.Series(xs).rank().to_numpy()
-        ry = pd.Series(ys).rank().to_numpy()
+        rx = pd.Series(xs).rank().to_numpy(copy=True)
+        ry = pd.Series(ys).rank().to_numpy(copy=True)
         rx -= rx.mean()
         ry -= ry.mean()
         den = math.sqrt(float((rx * rx).sum()) * float((ry * ry).sum()))
@@ -214,7 +211,7 @@ def main() -> int:
             pass
     M, facs = _build_factor_return_matrix()
     if M.size == 0:
-        print(f"資料不足(需 {HIST} 累積足夠交易日)")
+        print("資料不足(需 model_history 合併面板累積足夠交易日)")
         return 1
     T, N = M.shape
     print(f"因子報酬矩陣:{T} 期 × {N} 因子(每因子每日 IC 當該期績效)\n")

@@ -1,5 +1,17 @@
 # AGENTS.md — 給自動化程式代理(Codex CLI / Claude Code 等)的專案約定
 
+## 使用者最新定案：push 前本機 CI 全綠，push 後驗證 GitHub CI（2026-09-05）
+
+- 所有專案、所有改動都適用，包括程式、文件、設定、測試、生成物、修正及空 audit commit；任何分支的 push 都不得自行豁免。
+- 任何分支 push 前，核對實際待推內容的完整適用本機 CI 等效檢查，全部必須成功；push 後追蹤該完整 SHA 的 GitHub CI，全綠才可宣告交付完成。失敗、取消、逾時、等待、應跑卻跳過、無結果或讀不到，都不是通過。
+- 保留可核對的 SHA、CI 執行連結／ID 與各項結果。本機測試、lint、build、preflight 通過，以及模型 review APPROVE，都不能冒充遠端 CI 成功。
+- 修正、重新生成、合併、rebase 或新增 commit 後，舊版本的 CI 結果不得直接沿用；必須驗證新的實際待推版本。
+- Claude 額度不足時仍可保留本機成果並標記 `Claude-Opus-5-Review: pending`、安排補審；這只延後模型審查，絕不豁免 CI 全綠。補審後的 audit push 也必須遵守本規則。
+- 使用者已明確選擇「任何分支 push 前先通過本機 CI 等效檢查，push 後再驗證 GitHub CI」；不要再要求第一次 push 前先有遠端 CI。任何分支都無本機檢查豁免；缺 CI 或本機必要檢查無法執行時仍須回報並取得決定，不能視為全綠。
+- 不得透過 `--no-verify`、skip-ci 標記、關閉／刪除檢查、降低門檻、改 branch protection 或宣稱非必要檢查等方式製造全綠。
+- 本定案優先於本檔及舊任務／排程中「本機驗證後可直接 push」「額度不足可先 push」等較寬鬆敘述；既有醫療內容核可、模型、effort 與 review 要求仍須同時滿足。
+
+
 本檔由 Codex CLI 原生讀取,故**外部審查時會自動生效**,不必每輪在 prompt 裡重述。
 與 `CLAUDE.md` 的關係:CLAUDE.md 是使用者對 Claude Code 的工作流程規範(何時審、
 怎麼審);本檔是**專案本身的不變式**,任何代理修改本 repo 都適用。
@@ -44,6 +56,18 @@
    本 repo 目前為**公開**,新增文件前請確認不含持倉組成。
 
 ## 工程慣例
+
+### 所有改動的 CI 推送門檻（使用者 2026-09-05 定案）
+
+- 任何分支 push 前，先依目前 CI workflow 完成本機等效檢查，全部必須退出碼 0。
+  本 repo 的 push CI 為 `.github/workflows/ci.yml`：鎖版依賴驗證、全案 compileall、
+  Ruff、mypy 與完整 pytest；不得用 focused tests 冒充全套。記錄本機／runner 差異。
+- push 後必須追蹤**該次完整 SHA** 的 GitHub CI，所有適用必要檢查成功才可宣告交付完成。
+  失敗、等待、取消、逾時、未觸發或讀不到結果都不是通過；條件未適用的 job 另行註明。
+- 所有文件、測試、設定、補審修正與空 audit commit 同樣適用。內容改變就重新驗證相關
+  項目。Claude 額度不足只允許延後 Claude 審查，**不能豁免 CI**。
+- 本機必要檢查無法執行時回報並取得決定；禁止跳過 hook、加 skip-CI、停用測試／job
+  或放寬門檻來製造全綠。CI 真缺陷修正後以新 commit 走同一流程，不改寫已發佈歷史。
 
 ### Claude Opus 5 強制 diff review
 

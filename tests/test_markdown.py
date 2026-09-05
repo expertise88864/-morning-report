@@ -77,6 +77,7 @@ def test_batch29_instruction_echo_stripped():
     """批#29:prompt 指令「在此基礎上明確寫」曾被 LLM 整句回音進 00662 建議行;
     render 端確定性替換兜底。"""
     q = _full_quotes()
+    q["STANCE_PY"] = {"total": 4, "label": "偏多"}
     analysis = ("## 十二、我的明確立場\n> **立場：偏多**\n"
                 "> **00662 操作建議**：合理估值 122.4 元。在此基礎上明確寫：若開盤"
                 "價低於 121.8 元可加碼。\n## 十三、一句話總結\n偏多操作")
@@ -153,7 +154,7 @@ def test_render_html_size_guard_truncates_low_priority(monkeypatch):
 def test_render_html_has_preheader_with_key_numbers():
     """收件匣預覽文字(preheader):含當日關鍵數字、在正文之前、隱藏、無持股洩漏、冪等。"""
     import re
-    q = {**_full_quotes(),
+    q = {**_full_quotes(), "STANCE_PY": {"total": 3, "label": "偏多"},
          "TAIEX_PRED": {"pred_open": 45210, "last_close": 45000, "weighted_pct": 0.47,
                         "ci_lower": 44500, "ci_upper": 45900, "consensus": "偏多",
                         "signals": [], "signal_std": 2.0, "signal_count": 3},
@@ -181,12 +182,12 @@ def test_render_html_has_preheader_with_key_numbers():
 
 
 def test_render_html_preheader_falls_back_without_data():
-    """無任何預測數字時 preheader 退回標題,不留空(空預覽會被 Gmail 抓信首雜訊)。"""
+    """CR-02:無預測與權威立場時 preheader 明說資料不足,不留空或假造立場。"""
     import re
     html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
                           "沒有立場", "2026-06-16", "每日報")
     ph = re.search(r'mso-hide:all[^>]*>([^<]*)</div>', html).group(1)
-    assert ph.strip() and "美股晨報" in ph
+    assert ph.strip() and "立場資料不足" in ph
 
 
 def test_archive_report_html_redacts_and_prunes(tmp_path, monkeypatch):
@@ -533,17 +534,17 @@ def test_fallback_stance_from_signals():
     assert mr._fallback_stance_from_signals({"TAIEX_PRED": {}}) == {}
 
 
-def test_render_html_stance_falls_back_when_llm_incomplete():
-    """LLM 分析未含可解析立場時,頂部 KPI 立場用訊號共識保底,不顯示「—」。
-    (開盤預測卡的「今日立場」區塊已依使用者要求移除,立場僅留頂部 KPI 條。)"""
+def test_render_html_stance_is_unknown_without_python_authority():
+    """CR-02:訊號共識不能冒充既定 Python 計分,即使 LLM 也缺席仍顯示未知。"""
     q = {**_full_quotes(), "TAIEX_PRED": {
         "last_close": 45000, "pred_open": 45200, "weighted_pct": 0.44,
         "ci_lower": 44000, "ci_upper": 46000, "consensus": "偏多 (2/3 訊號)",
         "signals": [], "interval_method": "x"}}
-    # 分析文沒有「我的明確立場/淨分」→ 立場抽取失敗 → 應退回訊號共識「偏多」
+    # 分析與權威計分皆缺席,不能用不同的計分方法造出權威立場。
     html = mr.render_html(q, {"error": "x"}, {"error": "x"},
                           "七、昨夜重點\n只有新聞沒有立場段落", "2026-06-16", "每日報")
-    assert ">偏多</div>" in html        # 頂部 KPI 立場保底顯示「偏多」(不顯示「—」)
+    assert ">資料不足</div>" in html and "立場未知" in html
+    assert ">偏多</div>" not in html
     assert "今日立場：" not in html       # 開盤預測卡的立場區塊已移除
 
 
@@ -749,6 +750,7 @@ def test_render_html_shows_attention_candidate_price_forecast(monkeypatch):
 def test_render_html_moves_top5_to_bottom_after_taiwan_awareness_sections(monkeypatch):
     monkeypatch.setattr(mr, "_RENDER_TOP5_CARD", True)   # 卡預設隱藏(2026-07-15),本測試驗保留的渲染碼
     q = _full_quotes()
+    q["STANCE_PY"] = {"total": 5, "label": "偏多"}
     q["TAIFEX_OI"] = {
         "date": "2026/06/02", "foreign_oi_net": -21000,
         "invest_oi_net": 1000, "dealer_oi_net": -500,
@@ -1107,9 +1109,12 @@ def test_batch26_hidden_display_elements():
     assert "立場變化歸因" not in html
 
 
-def test_batch26_summary_strips_net_score():
+def test_batch26_summary_strips_net_score(monkeypatch):
     """Codex 批#26 r1:一句話總結若含「淨分 -6」,頂部結論卡不得殘留。"""
+    # This fixture supplies legacy Markdown, not a previous run's structured stance.
+    monkeypatch.setattr(mr, "_structured_stance", lambda: {})
     q = _full_quotes()
+    q["STANCE_PY"] = {"total": -6, "label": "偏空"}
     analysis = ("## 十二、我的明確立場\n> **立場：偏空**\n"
                 "## 十三、一句話總結\n偏空(淨分 -6),減碼 00662 待戰事明朗")
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, analysis,
@@ -1290,9 +1295,11 @@ def test_the_macro_rows_follow_the_requested_order():
         assert html.find("美債利率環境") > at[-1]
 
 
-def test_the_email_itself_has_no_scaffolding_lines():
+def test_the_email_itself_has_no_scaffolding_lines(monkeypatch):
     """**沒接上等於不存在**:上面那條測試直接呼叫函式,拿掉 `render_html`
     裡的呼叫端它照樣綠 —— 而讀者看的是信。這一條走生產路徑。"""
+    # Keep this legacy Markdown fixture independent of global run-manifest state.
+    monkeypatch.setattr(mr, "_structured_stance", lambda: {})
     analysis = chr(10).join([
         "## 十一、我的明確立場",
         "**第 1 行 — 11 維計分行**",
@@ -1303,7 +1310,8 @@ def test_the_email_itself_has_no_scaffolding_lines():
         "",
         "## 十二、一句話總結",
         "中性操作,2330 守穩 2,373 元。"])
-    html = mr.render_html(_full_quotes(), {"error": "x"}, {"error": "x"},
+    q = {**_full_quotes(), "STANCE_PY": {"total": 0, "label": "中性"}}
+    html = mr.render_html(q, {"error": "x"}, {"error": "x"},
                           analysis, "2026-06-16", "每日報")
     assert "第 1 行" not in html and "第 2 行" not in html, "鷹架進了信裡"
     assert "第 3 行" not in html

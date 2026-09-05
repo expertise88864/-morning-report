@@ -4,7 +4,8 @@
 
 本輪是 repo-wide、風險導向審查，不是只審新增 Claude hooks 的 diff。審查基準為
 `7d75f3a`；期間同步至 `15fcf85` 的兩筆遠端更新只修改 Podcast state。
-確認 4 項既有問題，其中 2 項 P1、2 項 P2。**未修改這些產品邏輯，也未更動模型係數。**
+確認 4 項既有問題，其中 2 項 P1、2 項 P2。初次審查僅提出 findings；使用者隨後
+授權修復全部四項，本次修復狀態與驗證列於下節。**未更動模型係數。**
 沒有證据可以把「測試通過」或「workflow diff 獲准」說成整個專案沒有缺陷。
 
 檢查方式分三層：全案靜態檢查與既有測試、核心路徑人工追蹤、對高風險假設做
@@ -24,6 +25,46 @@
 | 新審查流程 | 唯讀 reviewer、精確模型證據、staged/untracked/outgoing diff、quota 分類、Git-backed pending／audit |
 
 ## CONFIRMED findings
+
+### 修復追蹤（使用者授權後）
+
+下列原始 findings 保留作稽核紀錄，不代表修復後仍有相同行為。
+
+| Finding | 已實作的修正 | 回歸證據 |
+| --- | --- | --- |
+| CR-01 | manifest 以舊登錄為基底，缺月條目及 checksum 保留並告警；不觸碰真實歷史 | 三種 rewritten 模式與日常 save 跨月情境，重寫後 strict 仍拒絕缺月 |
+| CR-02 | 計分／歸因分開降級；Python 不可得時 prompt 禁止補算、正常／極簡渲染顯示未知、主要歷史欄位存 null | NaN 歸因故障保留有效 Python 分數；LLM 診斷值不回流權威；品質告警與 DRY_RUN 預覽測試 |
+| CR-03 | 三個入口改用 strict 共用 legacy＋分區 loader；保留研究公式、窗格與門檻 | 合成 31 筆 legacy＋9 筆分區全部納入；損壞分區三入口皆拒絕；缺資料仍明確退出／回空 |
+| CR-04 | 只在 dirty＋契約成功時要求下載 artifact，下載失敗讓 publish job 失敗；獨立 state 告警消費 publish 結果 | workflow 契約、已寄／未知文案、SMTP 成功／失敗與缺憑證測試；告警不重寄晨報 |
+
+研究整合測試另重現目前 pandas 的唯讀陣列錯誤：`rank().to_numpy()` 後就地
+去均值會拋 `ValueError`。兩處改成 `to_numpy(copy=True)`，僅確保陣列可寫，
+不改 Spearman、IC 或 PBO 數學定義。所有資料與 SMTP 測試均為合成／mock。
+CR-02 刻意改變 legacy prompt 的「計分缺席」契約，因此同步將
+`DEEPSEEK_LEGACY_VERSION` 由 16 升至 17 並更新兩份行為指紋；這不是模型係數升版。
+
+獨立 Codex review 第一輪另確認 CR-02 的結構化主路徑漏接未知契約（P2）：
+原 schema 強制整數、prompt 未禁止計分缺席時自行判斷。已補齊結構化 prompt、
+nullable score、獨立 `stance_authority.py` 語意檢查與本地 JSON union 型別驗證；
+profile／schema／grounding 版本同步升為 51／26／39。新增真實 bundle 與 null／
+布林／非有限值／超範圍等回歸，相關 **138 項通過**；第二輪沿用原工作階段，
+取得 `NO_ACTIONABLE_FINDINGS`、`APPROVE`（GPT-5.6 Sol high，唯讀）。
+
+三支研究 CLI 也以目前磁碟的真實歷史唯讀執行，退出碼皆 0：alpha／IC 讀到
+245 個交易日（截至 2026-09-04），overfit 產生 189 期 × 7 因子矩陣。
+僅記錄樣本涵蓋與執行成功，不把這次驗證當成調整計分係數的回測授權。
+
+本次新增回歸測試：`tests/test_full_review_fixes_0905.py` 26 項與
+`tests/test_stance_unknown_contract_0905.py` 22 項。完整套件另抓到兩個 legacy
+渲染測試會讀到前面案例殘留的 structured stance；已局部隔離該來源，並刻意注入
+相反立場驗證，沒有削弱正式渲染的權威檢查。
+
+修復最終本機驗收（2026-09-06）：**3527 passed、2 skipped、673 warnings，
+退出碼 0，702.62 秒**。全案 compileall、Ruff、mypy（5 邊界模組）、pip check、
+鎖版依賴 `pip install --dry-run --require-hashes -r requirements-dev.lock` 均退出 0，
+依賴 dry-run 沒有需安裝項目。DRY_RUN 真實渲染預覽僅寫臨時檔；真實 state 無 diff。
+本機 Windows／Python 3.13.1 不冒充 GitHub Linux／Python 3.11 的平台驗證。
+Claude 未取得 APPROVE 前持續視為未審，不以本機測試或 Codex 複審取代。
 
 ### CR-01 — P1：重建 manifest 會抹除已遺失月份的證據
 
@@ -103,6 +144,8 @@ state artifact 下載採 `continue-on-error: true`；下載失敗只讓後續 pu
 
 ## 驗證紀錄
 
+以下是初次審查／流程建置階段的歷史紀錄；四項修復的最新驗收以上節為準。
+
 - 全案 Ruff：通過。
 - 專案 `.venv` 的 mypy boundary modules：5 個模組、零錯誤。
 - 專案 `.venv` 的 typing + Claude workflow focused tests：32 passed。
@@ -128,3 +171,11 @@ commit 以 `Claude-Opus-5-Review: pending` 和 `Claude-Opus-5-Review-Effort: hig
 補審以完整 SHA 追蹤，成功後另推空 audit commit 記錄 passed／reviewed SHA；不改寫
 已發佈歷史。排程屬本機 Codex task，電腦必須開機且 Codex 可執行；Claude 必須保持登入。
 這是 Codex 本機 Git 專案的工作流程，不能宣稱已攔截所有純網頁 ChatGPT/cloud 專案。
+
+使用者 2026-09-05 另明確選定全專案 CI 規則：**任何分支 push 前先通過本機完整
+CI 等效檢查，push 後再追蹤該 SHA 的 GitHub CI 全綠才交付**。已寫入本機 Codex／
+Claude 全域規則、本專案 AGENTS.md／CLAUDE.md 與既有補審排程；也已通知其餘
+本機專案任務同步。Claude pending 與空 audit commit 都不豁免 CI，不用 skip-CI。
+本次 push CI 只有 `ci.yml` 的必要 test job；付費服務的手動 dry-run-preview
+不因 push 觸發，沒有把它的條件略過當成實跑成功。遠端執行證據以交付 SHA 的
+GitHub Actions 記錄及 task 最終回報為準，不預先宣称尚未執行的 CI 已通過。

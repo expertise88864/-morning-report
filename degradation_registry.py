@@ -52,6 +52,8 @@ OPEN_FAMILIES = ("llm:luna_path_failed:", "state:corrupt:",
 SURFACE_AS_UNKNOWN = ("llm:slim_retry:", "llm:truncated:", "llm:")
 
 KNOWN_DEGRADED = frozenset({
+    # CR-02:兩種失敗各自有 run_quality 告警,不可靜默吞掉。
+    "stance:score_failed", "stance:attribution_failed",
     # 推理強度沒被 provider 套用:影響深度,不影響管線是否走完。
     "llm:effort_not_applied:primary",
     "llm:effort_not_applied:extractor",

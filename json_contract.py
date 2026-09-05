@@ -112,6 +112,14 @@ def violations(obj, schema: dict, path: str = "") -> list:
             "先實作再用,不要讓它靜默通過")
 
     want = schema.get("type")
+    if isinstance(want, list):
+        # CR-02:nullable score 仍須驗型別、範圍;不能把 type 陣列當成沒約束。
+        if not want or any(not isinstance(t, str) or t not in _TYPES for t in want):
+            raise NotImplementedError(f"{path or '(root)'}:不支援的 type 陣列 {want!r}")
+        matched = next((t for t in want if _type_ok(obj, t)), None)
+        if matched is None:
+            return [f"{path or '(root)'}:型別應為 {want},實際 {type(obj).__name__}"]
+        return violations(obj, {**schema, "type": matched}, path)
     if isinstance(want, str) and not _type_ok(obj, want):
         # **處置不同的原因要分得開**:`NaN` 的型別「是」float,說它
         # 「型別應為 number,實際 float」會讓人以為判準壞了 ——

@@ -11948,7 +11948,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     _mid2330_txt = str(round(_p_mid)) if _p_mid else "（資料未提供）"
 
     # PR-2 第二階段:系統立場計分區塊(Python 分數=權威;LLM 抄錄+解釋)。
-    # 計算失敗時降級回「LLM 自行計算」舊路徑並要求標註,晨報不可斷。
+    # CR-02:計算失敗只標未知,不可讓 LLM 補算成權威;其餘分析照常。
     _sp_block = _format_stance_py_block(quotes.get("STANCE_PY") or {},
                                         quotes.get("STANCE_ATTRIB") or {})
     # 權威/降級兩模式的指令必須整組切換,不可混用(Codex r1 P2:降級時先要求
@@ -11964,12 +11964,10 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
         stance_line2_rule = "=【系統立場計分】的標籤,不可更動"
     else:
         stance_py_block_section = (
-            "(【系統立場計分】今日不可用——降級模式:**由你依下方規則自行計算"
-            "全部 11 維(強制執行,每個訊號引用資料區真實數字)**,"
-            "並在計分行末標註「(系統計分缺席,本行為 LLM 自算)」)")
-        stance_line1_rule = ("強制顯示全部 11 維,不可省略、不可憑感覺給分;"
-                             "行末標註「(系統計分缺席,本行為 LLM 自算)」")
-        stance_line2_rule = "按淨分自動判定"
+            "【系統立場計分】系統計分缺席,權威立場未知。禁止自行計算、補造分數"
+            "或依下方規則判定立場;其餘新聞分析照常。")
+        stance_line1_rule = "只寫「系統計分缺席,立場未知」,不列分數"
+        stance_line2_rule = "只寫「資料不足」,不判定多空或中性"
 
     # G2:未來 ~48h 重要行事曆事件(含既有預期/前值),供「七之三、事件情境決策表」取材。
     event_scenario_lines = _format_event_scenarios(quotes.get("EVENT_CALENDAR"))
@@ -18931,7 +18929,7 @@ _STANCE_DIM_ZH = (("qqq", "QQQ"), ("sox", "SOX"), ("vix", "VIX"),
 
 def _format_stance_py_block(sp: dict, attrib: Optional[dict] = None) -> str:
     """【系統立場計分】prompt 區塊:11 維各自貢獻+淨分+標籤+品質欄+變化歸因。
-    sp 空(計算失敗)回空字串——prompt 退回舊的 LLM 自算路徑(降級)。"""
+    sp 空(計算失敗)回空字串——呼叫端必須標未知,不得交給 LLM 補算。"""
     comps = (sp or {}).get("components") or {}
     if not comps or (sp or {}).get("total") is None:
         return ""
@@ -21881,6 +21879,10 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     不碰任何可能是例外來源的卡片邏輯——目標是「一定寄得出去」而非好看。"""
     import html as _h
 
+    if (quotes.get("STANCE_PY") or {}).get("total") is None:
+        analysis = _strip_llm_sections(str(analysis or ""), ("我的明確立場", "一句話總結"))
+        analysis = "系統計分缺席,立場未知；本日不提供權威方向性結論。\n\n" + analysis
+
     def _num(v, dec=2):
         n = _safe_number(v)
         return f"{n:,.{dec}f}" if n is not None else "—"
@@ -21978,7 +21980,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     except Exception as _e:
         print(f"[render] 敘述-數字交叉驗證略過: {_e}", file=sys.stderr)
     # PR-2 第二階段:顯示立場以 Python 分數為權威(LLM 只負責解釋);
-    # Python 計算失敗才退回解析 LLM 文字,再退 Python 訊號共識保底
+    # CR-02:Python 計算失敗只能顯示未知,不能另換計分或採 LLM 結論。
     _sp_render = quotes.get("STANCE_PY") or {}
     _py_authority = (isinstance(_sp_render.get("total"), int)
                      and bool(_sp_render.get("label")))
@@ -21986,11 +21988,12 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         stance = {"score": _sp_render["total"], "label": _sp_render["label"],
                   "source": "python"}
     else:
-        stance = _extract_stance(analysis_for_render)
-        # LLM 未產出可解析的立場(輸出不完整/格式變異)時,用 Python 訊號共識保底
-        if stance.get("score") is None and not stance.get("label"):
-            stance = _fallback_stance_from_signals(quotes) or stance
+        stance = {"score": None, "label": "資料不足", "source": "unavailable"}
+        analysis_for_render = _strip_llm_sections(
+            analysis_for_render, ("我的明確立場", "一句話總結"))
     summary_text = _extract_summary(analysis_for_render)
+    if not _py_authority:
+        summary_text = "系統計分缺席,立場未知；本日不提供權威方向性結論。"
     # PR-2 第二階段合規防線(Codex r1 P1):LLM 若未遵守「原樣採用」而寫出
     # 相反立場,KPI 已顯示 Python 權威,但結論卡/立場詳情仍是 LLM 文字——
     # 同一封信兩個方向。不合規時以確定性摘要取代、移除矛盾的方向性敘述。
@@ -25933,7 +25936,7 @@ def _phase_llm_analysis(ctx) -> None:
           f"、抽取器={_extractor_provider()})")
     # PR-2 第二階段(2026-07-18 使用者拍板):Python 11 維立場分=權威——
     # 進 prompt(LLM 抄錄+解釋)與顯示(KPI);另算 Decision Attribution
-    # (今日 vs 前日分項變化)。計算失敗降級回 LLM 自算(晨報不可斷)。
+    # (今日 vs 前日分項變化)。CR-02:歸因不是計分的成功條件;失敗各自留痕。
     try:
         quotes["STANCE_PY"] = _compute_stance_score(quotes)
         _sp = quotes["STANCE_PY"]
@@ -25941,15 +25944,20 @@ def _phase_llm_analysis(ctx) -> None:
               f" components={_sp['components']}"
               + (f" missing={_sp['missing']}" if _sp['missing'] else "")
               + (" [美股休市 stale]" if _sp['stale_us'] else ""))
+    except Exception as e:
+        print(f"[stance-py] 計算失敗(立場未知,不影響晨報): {e}", file=sys.stderr)
+        quotes["STANCE_PY"] = {}
+        _DEGRADED_STEPS.append("stance:score_failed")
+    quotes["STANCE_ATTRIB"] = {}
+    try:
         quotes["STANCE_ATTRIB"] = _stance_attribution(
             quotes["STANCE_PY"], quotes.get("HISTORY") or [],
             today=now_tpe.strftime("%Y-%m-%d"))
         if quotes["STANCE_ATTRIB"].get("changes"):
             print(f"[stance-attrib] {quotes['STANCE_ATTRIB']}")
     except Exception as e:
-        print(f"[stance-py] 計算失敗(不影響晨報): {e}", file=sys.stderr)
-        quotes["STANCE_PY"] = {}
-        quotes["STANCE_ATTRIB"] = {}
+        print(f"[stance-attrib] 歸因失敗(保留 Python 立場): {e}", file=sys.stderr)
+        _DEGRADED_STEPS.append("stance:attribution_failed")
     analysis = call_llm_analysis(quotes, fair, predictions, news, tw0050, calibration)
     ctx.analysis = analysis
 
@@ -26000,15 +26008,11 @@ def _phase_render(ctx) -> Optional[int]:
         # 寫入端先消毒;讀取端同樣要包(舊 state 已含未消毒內容)。
         crit_titles = [_external_text(n["title"], 120)
                        for n in news if n.get("importance") == "critical"][:5]
-        # G4:存今日 LLM 立場,供明日「敘事變化」段逐字對照(顯示層產物,非凍結計分模型)。
-        # **先問結構化的那一份**(2026-08-18):特化路徑的立場來自 schema
-        # 的 enum。從自己產生的 markdown 解析回來,2026-08-18 的生產就記到
-        # `llm_label=null`(分數讀到、標籤沒有),而症狀是結論卡連著幾天
-        # 只剩一句「已略過其方向性建議」。
+        # CR-02:LLM 立場只供診斷;優先取結構化值,避免 markdown 回讀遺失標籤。
         _stance_state = (_structured_stance()
                          or (_extract_stance(analysis)
                              if isinstance(analysis, str) else {}))
-        # PR-2 雙軌:LLM 分數 vs Python 分數並列記錄與比對 log(切換前的證據累積)
+        # LLM 分數 vs Python 權威並列記錄,供抄錄合規診斷。
         _sp = quotes.get("STANCE_PY") or {}
         # echo 合規監控(Codex r4 P3):Python 權威存在時**固定**產生紀錄——
         # score/label 任一不一致或 LLM 漏寫皆 agree=False(舊寫法 LLM 漏寫時
@@ -26034,12 +26038,11 @@ def _phase_render(ctx) -> Optional[int]:
                 # 「原樣抄錄」指令(echo 合規監控,非計分分歧)
                 "authority": "python"}
         # 主立場欄位以 Python 權威為準(Codex r4 P2:存 LLM 不合規立場會讓
-        # 明日 narrative delta 宣稱「昨日立場:偏多」的虛假翻轉);Python 缺席
-        # 才回退 LLM;LLM 原話另存 _llm 欄供 echo 歷史
+        # 明日 narrative delta 宣稱「昨日立場:偏多」的虛假翻轉)。CR-02:Python
+        # 缺席存 null,LLM 原話僅存 _llm 診斷欄,不得提升為權威。
         _authority_label = (_sp.get("label") if _sp.get("total") is not None
-                            else _stance_state.get("label"))
-        _authority_score = (_sp.get("total") if _sp.get("total") is not None
-                            else _stance_state.get("score"))
+                            else None)
+        _authority_score = _sp.get("total")
         pending_state_entry = {
             "date": now_tpe.strftime("%Y-%m-%d"),
             "stance_label": _authority_label,

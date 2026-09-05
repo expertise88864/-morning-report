@@ -447,6 +447,7 @@ MODULE_CEILINGS = {
     # 沒有對應欄位,那一段整個消失 —— 使用者連兩天反映)。實測 511 行。
     # 2026-08-19 第四批:legacy 骨架六個欄位。實測 562 行。
     "analysis_schema.py": 620,
+    "stance_authority.py": 40,  # CR-02:結構化未知立場契約,獨立純函式邊界。
     "schema_budget.py": 90,
     # 第十九輪 P2-3:**「有沒有填欄位」與「有沒有真的做到」是兩種量測。**
     # 前者在 `analysis_metrics`/`analysis_stages`;後者要知道駁回不算覆蓋、

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""因子有效性檢驗(Information Coefficient)— 用 state/model_history.json 的歷史面板。
+"""因子有效性檢驗(Information Coefficient)— 用完整性驗證後的合併歷史面板。
 
 對每個「已逐日儲存」的因子(動能/流動性/規模),算它與「未來 k 交易日報酬」的
 橫斷面 Spearman 相關(IC):每個交易日算一次 IC,再看 平均 IC、IC-IR(平均/標準差)、
@@ -12,14 +12,13 @@ forward return 由同一股票跨快照 close join 計算(model_history 未存 t
 """
 from __future__ import annotations
 
-import json
 import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-HIST = Path("state/model_history.json")
+from model_history_store import load_model_history
+
 HORIZONS = [5, 10, 20]
 # 數值越大越「看多」的因子(IC 直接解讀);size/波動/滑價為中性,看 IC 正負即可。
 FACTORS = ["pct_5d", "ma20_dist_pct", "day_pct", "vol_ratio_20d",
@@ -32,8 +31,8 @@ def _spearman(x: np.ndarray, y: np.ndarray) -> float:
     像 slippage_bps 這種大量同值因子被 argsort 假造排序而扭曲 IC。"""
     if len(x) < MIN_NAMES:
         return np.nan
-    rx = pd.Series(x).rank().to_numpy()      # method='average':同值取平均秩
-    ry = pd.Series(y).rank().to_numpy()
+    rx = pd.Series(x).rank().to_numpy(copy=True)  # CoW 下仍可就地去均值;同值取平均秩
+    ry = pd.Series(y).rank().to_numpy(copy=True)
     rx -= rx.mean()
     ry -= ry.mean()
     denom = np.sqrt((rx * rx).sum() * (ry * ry).sum())
@@ -41,13 +40,13 @@ def _spearman(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def main() -> int:
-    if not HIST.exists():
-        print(f"缺 {HIST}")
-        return 1
-    snaps = json.loads(HIST.read_text(encoding="utf-8"))
+    snaps = load_model_history(strict=True)
     snaps = [s for s in snaps if s.get("session_date") and isinstance(s.get("stocks"), dict)]
     snaps.sort(key=lambda s: s["session_date"])
     n = len(snaps)
+    if not n:
+        print("缺 model_history 歷史樣本")
+        return 1
     print(f"面板:{n} 個交易日 {snaps[0]['session_date']}~{snaps[-1]['session_date']};"
           f"每日約 {len(snaps[-1]['stocks'])} 檔\n")
 

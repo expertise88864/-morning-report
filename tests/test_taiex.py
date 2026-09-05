@@ -327,7 +327,7 @@ def test_stance_py_block_and_attribution_formatting():
 
 def test_prompt_uses_python_stance_authority():
     """PR-2 第二階段:prompt 含【系統立場計分】權威區塊與抄錄指令;
-    Python 計分缺席時降級為 LLM 自算+標註。"""
+    Python 計分缺席時標未知,禁止 LLM 補算。"""
     quotes = _stance_quotes()
     quotes["STANCE_PY"] = mr._compute_stance_score(quotes)
     quotes.update({"SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {},
@@ -392,8 +392,7 @@ def test_stance_attribution_skips_same_day_entries():
 
 
 def test_prompt_degraded_mode_instructions_consistent():
-    """Codex r1 P2:降級模式(Python 計分缺席)不得殘留「原樣抄錄/禁止自算」
-    互斥指令;權威模式反之不得出現「強制自算標註」。"""
+    """CR-02:權威與未知模式都禁止自算;缺席時不能要求抄錄不存在的分數。"""
     quotes = _stance_quotes()
     quotes.update({"SEC_FILINGS": [], "TAIFEX_OI": {}, "MARGIN": {},
                    "WEEKLY": {}, "EARNINGS_PROXIMITY": {}, "HISTORY": [],
@@ -405,8 +404,9 @@ def test_prompt_degraded_mode_instructions_consistent():
     assert "系統計分缺席,本行為 LLM 自算" not in p_auth
     quotes["STANCE_PY"] = {}
     p_deg = mr._build_prompt(quotes, {"error": "x"}, {"error": "x"}, [], [], "")
-    assert "系統計分缺席" in p_deg and "自行計算" in p_deg
-    assert "原樣抄錄" not in p_deg and "禁止自行計算" not in p_deg
+    assert "系統計分缺席" in p_deg and "立場未知" in p_deg
+    assert "原樣抄錄" not in p_deg and "禁止自行計算" in p_deg
+    assert "本行為 LLM 自算" not in p_deg
 
 
 def test_summary_stance_word_also_enforced():

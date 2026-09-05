@@ -752,6 +752,10 @@ def assess(manifest, *, mode: str = "watchdog",
     # 失效**的訊號,從「至少會報 unknown」變成完全不出聲 —— 修正比缺陷
     # 更糟的形狀。登記讓掃描守衛過得去,能不能靜音是另一個問題。
     _ALARMING = {
+        "stance:score_failed": (
+            "defect", "Python 立場計分失敗,權威立場未知;未採 LLM 自算替代"),
+        "stance:attribution_failed": (
+            "degraded", "立場跨日歸因失敗,缺少變化說明;當日 Python 分數仍保留"),
         "story_ledger_corrupt": (
             "defect", "敘事帳本讀不出來 —— 今天的信沒有 120 天的事件脈絡,"
             "而且舊檔刻意不覆寫(fail-closed);持久檔要修"),

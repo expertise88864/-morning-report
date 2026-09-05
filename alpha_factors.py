@@ -13,15 +13,14 @@ correlation/scale/decay_linear…),clean-room 自寫;再用這些算子組幾條
 """
 from __future__ import annotations
 
-import json
 import math
 import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-HIST = Path("state/model_history.json")
+from model_history_store import load_model_history
+
 HORIZON = 5
 MIN_NAMES = 15
 
@@ -110,9 +109,7 @@ ALPHAS = {
 
 def _build_panels() -> dict:
     """從 model_history 建 {field: DataFrame(index=date, columns=code)}(close/open/volume)。"""
-    if not HIST.exists():
-        return {}
-    snaps = [s for s in json.loads(HIST.read_text(encoding="utf-8"))
+    snaps = [s for s in load_model_history(strict=True)
              if s.get("session_date") and isinstance(s.get("stocks"), dict)]
     snaps.sort(key=lambda s: s["session_date"])
     if len(snaps) < HORIZON + 30:
@@ -166,7 +163,7 @@ def main() -> int:
             pass
     P = _build_panels()
     if not P:
-        print(f"資料不足(需 {HIST} 累積足夠交易日)")
+        print("資料不足(需 model_history 合併面板累積足夠交易日)")
         return 1
     close = P["close"]
     fwd = close.shift(-HORIZON) / close - 1.0          # 未來 HORIZON 日報酬

@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if [ -x .venv/Scripts/python.exe ]; then
+  PYTHON=.venv/Scripts/python.exe
+elif [ -x .venv/bin/python ]; then
+  PYTHON=.venv/bin/python
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+  PYTHON=python
+else
+  echo '[claude-review] BLOCKED: Python 3 was not found on PATH.' >&2
+  exit 4
+fi
+
+# Preserve Git's pre-push stdin; claude_diff_review.py reads every outgoing ref.
+exec "$PYTHON" tools/claude_diff_review.py push --remote-name "${1:-origin}"

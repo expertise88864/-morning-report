@@ -48,6 +48,16 @@ echo [setup] Done. Using branch: %REMOTE_BRANCH%
 echo.
 
 :stage
+echo === Installing mandatory Claude Opus 5 review hooks ===
+powershell -NoProfile -ExecutionPolicy Bypass -File "tools\install_claude_review_hooks.ps1"
+if errorlevel 1 (
+  echo.
+  echo [ERROR] Claude review hooks could not be installed. Commit is blocked.
+  pause
+  exit /b 1
+)
+echo.
+
 echo === Staging files ===
 REM **不要列舉檔名**(外審 2026-09-04 P2):這份清單早就漏了幾十個模組、
 REM 多數 workflow 與這次新增的 requirements-dev.*。漏 stage 不會報錯,

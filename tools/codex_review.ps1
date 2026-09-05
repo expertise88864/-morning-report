@@ -10,13 +10,13 @@ mode:
   diff      低風險/局部(文案、註解、CSS、tests-only)      medium / 額外檔 3 / findings 3
   targeted  一般非 trivial 實作(預設)                      medium / 額外檔 12 / findings 5
   deep      auth、金流、DB migration、併發、資安、大重構     high   / 額外檔 30 / findings 8
-  resume    第二輪(僅限 confirmed P0/P1/material P2 修正後)
+  resume    後續輪(僅限 confirmed P0/P1/material P2 修正後;沿用同一 session)
 
 設計原則(勿改):
   * 絕不把完整 diff 放進 prompt 或 argv;Codex 在 repo 內自行跑 git。
   * --ignore-user-config 隔離 ~/.codex/config.toml(不載 plugins/apps/browser/notify/node_repl)。
   * --sandbox read-only:Codex 不得寫檔、commit、跑 tests/build/lint/probe。
-  * 每個 task 最多兩輪;第二輪必須 resume 同一 session。
+  * 迭代到 APPROVE 為止,無輪數上限;每一輪必須 resume 同一 session。
   * 結果只讀「最後一則訊息」(-o),不掃整份輸出(prompt 回顯會誤判)。
 
 環境變數(選用):
@@ -143,34 +143,51 @@ function Write-Usage([string]$M, [string]$E, [string]$B, [int]$Pass) {
     return $res
 }
 
-# ================= resume(第二輪) =================
+# ================= resume(後續輪) =================
 if ($Mode -eq 'resume') {
-    $Sid = $BaseRef   # 第二個位置參數在 resume 模式下即 session-id
+    $RecordedSid = if (Test-Path $SessionFile) {
+        (Get-Content $SessionFile -Raw).Trim().ToLowerInvariant()
+    } else { '' }
+    $Sid = if ($BaseRef) { $BaseRef.Trim().ToLowerInvariant() } else { '' }
     if (-not $Sid) {
-        if (-not (Test-Path $SessionFile)) {
-            Die "找不到第一輪 session id($SessionFile 不存在)。請以明確 session id 執行:.\tools\codex_review.ps1 resume <session-id>。不要用 --last(可能 resume 到別的專案)。"
+        if (-not $RecordedSid) {
+            Die "找不到第一輪 session id($SessionFile 不存在)。請先在同一 repo 完成第一輪,不要用 --last(可能 resume 到別的專案)。"
         }
-        $Sid = (Get-Content $SessionFile -Raw).Trim()
+        $Sid = $RecordedSid
+    } elseif (-not $RecordedSid) {
+        Die '本 repo 沒有第一輪 session 紀錄可比對;拒絕以未經驗證的 session id resume。'
+    } elseif ($Sid -cne $RecordedSid) {
+        Die "提供的 session id 與本 repo 第一輪紀錄不符。提供:$Sid;紀錄:$RecordedSid。resume 只能沿用同一 task 的 session。"
+    }
+    if ($Sid -notmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') {
+        Die "session id 格式不正確:'$Sid'(需為 UUID)。"
     }
     $PrevPass = if (Test-Path $PassFile) { (Get-Content $PassFile -Raw).Trim() } else { '0' }
-    if ($PrevPass -ne '1') { Die "第二輪只能在完成第一輪之後執行(目前 pass=$PrevPass)。每個 task 最多兩輪。" }
+    $ParsedPass = 0
+    if (-not [int]::TryParse($PrevPass, [ref]$ParsedPass) -or $ParsedPass -lt 1) {
+        Die "續審只能在完成第一輪之後執行(目前 pass=$PrevPass)。"
+    }
+    $ThisPass = $ParsedPass + 1
+    if ($ThisPass -ge 6) {
+        [Console]::Error.WriteLine("[codex-review] 提醒:這是第 $ThisPass 輪;若 finding 已被證據否定,應據理 REJECTED,不要只為綠燈迴圈。")
+    }
 
     $last = (Get-Content $UsageTsv | Select-Object -Last 1) -split "`t"
     $ResumeEffort = if ($last.Count -ge 5 -and $last[4]) { $last[4] } else { 'medium' }
     $ResumeBase   = if ($last.Count -ge 6 -and $last[5]) { $last[5] } else { 'unavailable' }
 
-    $ResumePrompt = @'
-Second and final review pass. Inspect only the corrections made for CONFIRMED
+    $ResumePrompt = @"
+Follow-up review pass #$ThisPass. Inspect only the corrections made for CONFIRMED
 findings from the previous review. Verify that those defects are resolved and
 that the corrections introduced no concrete regression. Do not repeat the
 original full repository exploration. Remain strictly read-only: do not modify
 files, run tests, builds, linters, package managers, application code, or ad hoc
 probes, and do not use web search, browser, apps, connectors, or external MCP
 tools. End with exactly APPROVE or REQUEST_CHANGES.
-'@
+"@
 
     $flags = Build-Flags $ResumeEffort 'resume'
-    Write-Host "[codex-review] resume session=$Sid effort=$ResumeEffort (pass 2/2)"
+    Write-Host "[codex-review] resume session=$Sid effort=$ResumeEffort (pass $ThisPass)"
     # 必須是「真正 0 位元組」:PS 5.1 的 `'' | Out-File -Encoding utf8` 會寫 BOM+CRLF(5 bytes),
     # 讓下方「啟動失敗(Length -eq 0)不計第二輪」的守門永遠不觸發(Codex review P1)。
     [System.IO.File]::WriteAllText($LastMsg, '')
@@ -186,9 +203,9 @@ tools. End with exactly APPROVE or REQUEST_CHANGES.
     if ($codexRc -ne 0 -and ((Get-Item $LastMsg).Length -eq 0)) {
         Die "codex exec resume 啟動失敗(exit=$codexRc),未產生任何 review;不計為第二輪(pass 仍為 1)。"
     }
-    '2' | Out-File -FilePath $PassFile -Encoding ascii -NoNewline
-    $result = Write-Usage 'resume' $ResumeEffort $ResumeBase 2
-    Write-Host "`n[codex-review] result=$result (pass 2/2)"
+    [string]$ThisPass | Out-File -FilePath $PassFile -Encoding ascii -NoNewline
+    $result = Write-Usage 'resume' $ResumeEffort $ResumeBase $ThisPass
+    Write-Host "`n[codex-review] result=$result (pass $ThisPass)"
     # 限流只在「沒有取得明確裁決」時才有意義:transcript 內文提到 rate limit 字樣
     # 不可推翻已完成的裁決(2026-07-12 .sh 版實際誤判過,兩版同步修正)。
     if ($result -eq 'APPROVE') { exit 0 }
@@ -334,7 +351,7 @@ $prompt = $PromptTemplate.
     Replace('{{VERIFICATION_RESULTS}}', $ver)
 
 $flags = Build-Flags $Effort 'exec'
-Write-Host "[codex-review] mode=$Mode effort=$Effort base=$BaseRef model=$Model (pass 1/2, read-only, user-config ignored)"
+Write-Host "[codex-review] mode=$Mode effort=$Effort base=$BaseRef model=$Model (pass 1, read-only, user-config ignored)"
 # 真正 0 位元組初始化(理由同 resume 區塊:Out-File utf8 會寫 BOM+CRLF,啟動失敗守門失效)。
 [System.IO.File]::WriteAllText($LastMsg, '')
 $args1 = @('exec') + $flags + @($prompt)
@@ -347,7 +364,7 @@ if ($codexRc -ne 0 -and (Get-Item $LastMsg).Length -eq 0) {
 
 '1' | Out-File -FilePath $PassFile -Encoding ascii -NoNewline
 $result = Write-Usage $Mode $Effort $BaseRef 1
-Write-Host "`n[codex-review] result=$result (pass 1/2)  usage -> $UsageTsv"
+Write-Host "`n[codex-review] result=$result (pass 1)  usage -> $UsageTsv"
 # 限流只在「沒有取得明確裁決」時才有意義(理由同 resume 區塊;.sh 版曾實際誤判)。
 if ($result -eq 'APPROVE') { exit 0 }
 elseif ($result -eq 'REQUEST_CHANGES') { exit 2 }

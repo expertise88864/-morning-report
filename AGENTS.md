@@ -45,6 +45,31 @@
 
 ## 工程慣例
 
+### Claude Opus 5 強制 diff review
+
+- **所有 diff 都要審,沒有文件/tests/cosmetic 例外。** commit 或 push 前執行
+  `python tools/claude_diff_review.py worktree`。取得精確 `APPROVE` 才可稱審查通過;
+  使用者 2026-09-05 定案:僅額度不足可先推送已驗證的 task-owned 變更並補審。
+- reviewer 固定使用完整模型 ID `claude-opus-5`、effort `high`、唯讀工具白名單;
+  **不得 fallback** 到 alias、Sonnet、舊 Opus 或其他模型。未登入、模型證據缺失、
+  非明確裁決仍阻擋;只有可確認的 provider 額度／限流錯誤可延後。
+- 遇到 Claude 額度或限流時,wrapper 必須在被忽略的
+  `.claude-review/pending_review.json` 以 atomic write 記錄 `PENDING`、diff fingerprint
+  與可安全解析的 reset 時間,不得保存 diff 或完整錯誤輸出。代理必須在同一 task 建立／更新
+  reset 後的自動補審排程;補審仍須使用 `claude-opus-5`、effort `high`。
+  commit-msg hook 為內容變更加入 `Claude-Opus-5-Review: pending` 與
+  `Claude-Opus-5-Review-Effort: high`。**PENDING 是未審,不是 APPROVE**。
+  `python tools/claude_diff_review.py pending` 掃描所有本機／遠端追蹤分支的未審 commit;
+  逐筆執行 `python tools/claude_diff_review.py commit --commit <完整 SHA>`。
+  通過後建立空的後續 audit commit,帶 `Claude-Opus-5-Review: passed`、
+  `Claude-Opus-5-Review-Effort: high`、`Claude-Opus-5-Reviewed-Commit: <完整 SHA>`。
+  不得 amend 或 force-push 已發佈歷史。補審 findings 驗證後才修;修正仍需重新審核。
+- finding 必須逐項由主代理驗證;只修 `CONFIRMED`,修正後 diff 已改變就必須重新 review。
+- Git 的 `.githooks/pre-commit`、`commit-msg` 與 `.githooks/pre-push` 負責審查與待審標記;
+  執行 `powershell -NoProfile -ExecutionPolicy Bypass -File tools/install_claude_review_hooks.ps1`
+  安裝。**禁止**以 `--no-verify`、改 `core.hooksPath`、刪 audit trail 或其他方式繞過。
+- 這條是 Claude 第二意見;原有 Codex review 規則仍然適用,不可拿其中一個取代另一個。
+
 - **驗證一律取真退出碼**:`pytest -q > f 2>&1; E=$?`。
   **絕不可用 `pytest | grep`**——管線會吃掉非零退出碼,曾因此把壞掉的樹推上線。
 - 多行字串置換用編輯器工具,不要用 heredoc 內嵌 Python(`\n` 會被吃掉,反覆踩過)。

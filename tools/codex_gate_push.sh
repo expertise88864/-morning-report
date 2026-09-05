@@ -8,11 +8,12 @@
 # 政策(不得在本檔繞過):
 #   * 本檔不自行組 reviewer prompt、不自行取 diff、不硬編 reasoning effort、
 #     不呼叫 MCP、不使用 --skip-git-repo-check。一律委派 tools/codex_review.sh。
-#   * 一般 push 只允許一次 `targeted` + medium。
+#   * 一般 push 的第一輪使用 `targeted` + medium。
 #   * `deep`(high)必須由明確風險分類觸發:auth / 授權 / secrets / 金流 /
 #     DB migration / 破壞性資料操作 / 併發 / 冪等 / 產線事故 / 資料完整性 / 大型跨模組重構。
-#   * 收到 REQUEST_CHANGES 不得自動修正後無限重審。由 Claude Code 逐項驗證 findings,
-#     只修 CONFIRMED,且第二輪必須 `tools/codex_review.sh resume <session-id>`(每 task 最多兩輪)。
+#   * 收到 REQUEST_CHANGES 後由 Claude Code 逐項驗證 findings,只修 CONFIRMED;
+#     每次修正後都必須用 `tools/codex_review.sh resume <session-id>` 沿用同一 session,
+#     直到 APPROVE,不得另開 session 規避上下文。
 #
 # 前置:呼叫者(Claude Code)必須已完成 ruff / py_compile / pytest,並把摘要放進
 #       CODEX_REVIEW_VERIFICATION 環境變數,或寫進 task-context 檔。
@@ -50,7 +51,7 @@ case "$RC" in
   2)
     echo "[gate] >>> REQUEST_CHANGES:不 push。" >&2
     echo "[gate]     下一步由 Claude Code 逐項驗證 findings(CONFIRMED / REJECTED / UNCERTAIN)," >&2
-    echo "[gate]     只修 CONFIRMED;若修正涉及 P0/P1/material P2,再跑一次(且僅一次):" >&2
+    echo "[gate]     只修 CONFIRMED;若修正涉及 P0/P1/material P2,沿用同一 session 繼續審到 APPROVE:" >&2
     echo "[gate]     bash tools/codex_review.sh resume \$(cat .codex-review/last_session_id)" >&2
     exit 2
     ;;

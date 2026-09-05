@@ -16,3 +16,6 @@ state/**/*.json -diff
 state/**/*.json.gz -diff binary
 state/*.json -diff
 state/emails/** -diff binary
+
+# Git hooks are POSIX shell scripts even when installed from Windows.
+.githooks/* text eol=lf

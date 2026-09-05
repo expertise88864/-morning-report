@@ -32,3 +32,6 @@ artifacts/
 
 # CI 的 junit 報告(只在 runner 上產生)
 pytest-report.xml
+
+# Local audit trail for the mandatory Claude Opus 5 diff gate.
+.claude-review/

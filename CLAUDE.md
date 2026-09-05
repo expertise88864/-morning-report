@@ -10,15 +10,39 @@
 **晨報不可斷**:所有抓取/解析 try + graceful degrade;寧可少一塊資料,不可整封信失敗。
 
 ## 1. 開工儀式(每次固定)
-1. `git fetch && git reset --hard origin/main`(慣例:放棄本地、以遠端為準)。
+1. 先 `git status --short`,再 `git fetch`。若已有任何本機 diff,必須保留並先走
+   Claude Opus 5 review;**不得**用 `git reset --hard`、checkout 或 clean 把尚未審查的 diff 消掉。
+   只有使用者明確指定要放棄的精確變更才可另行處理。
 2. `python -m pytest -q` 確認基準全綠(2026-07-04 基準:**476 passed**;之後以
    OPTIMIZATION_PLAN.md 頂部進度區記載的最新數為準——**只能增、不能減**)。
 3. 讀 OPTIMIZATION_PLAN.md 頂部進度區,確認要做的事沒被做過、沒被否決過。
 
 ## 2. 驗收流水線(每個 commit)
 ruff → `python -m py_compile <改過的檔>` → `python -m pytest`(全套)→
-動渲染則 DRY_RUN 預覽 → **Codex 推送閘門** → push。
+動渲染則 DRY_RUN 預覽 → **Claude Opus 5 diff 閘門** → **Codex 推送閘門** → push。
 一主題一 commit;繁中 commit message;結尾 `Co-Authored-By: Claude <當前模型名> <noreply@anthropic.com>`。
+
+### Claude Opus 5 mandatory diff review
+
+**所有 diff 都必須審,包括 docs-only、comment-only、tests-only 與 cosmetic。** 在宣告完成、
+commit 或 push 前執行 `python tools/claude_diff_review.py worktree`。額度不足時可先推送已驗證
+變更並標記 `Claude-Opus-5-Review: pending`,未審不得聲稱 `APPROVE`。
+wrapper 固定完整模型 ID `claude-opus-5`、effort `high`、唯讀工具白名單;**不得 fallback**
+到 alias、Sonnet、舊 Opus 或其他模型。未登入、無法證明實際模型、或沒有明確裁決時
+一律 fail closed,回報使用者,不得把「review 沒跑成」解讀為通過。
+
+若因額度／限流未取得裁決,wrapper 會把該 diff fingerprint 以 `PENDING` 寫入被 Git 忽略的
+`.claude-review/pending_review.json`;代理必須依 CLI 回報的 reset 時間,在同一 task 建立或更新
+自動補審排程。補審仍固定 `claude-opus-5` + effort `high`,不得降級。使用者 2026-09-05
+明確允許額度不足時先 commit/push 並標記未審。以 `pending` 子命令列出尚未補審 SHA,
+逐筆執行 `commit --commit <SHA>`;通過後用空 audit commit 記錄 `passed` 與
+`Claude-Opus-5-Reviewed-Commit: <SHA>`。不得改寫已 push 的歷史,詳見 AGENTS.md。
+
+Git 的 `.githooks/pre-commit` / `pre-push` 會再次執行 gate;不得使用 `--no-verify`、改掉
+`core.hooksPath` 或以任何方式繞過。安裝/修復指令:
+`powershell -NoProfile -ExecutionPolicy Bypass -File tools/install_claude_review_hooks.ps1`。
+修正任何 confirmed finding 後 diff 已改變,必須重跑。本閘門是額外的 Claude 第二意見;
+下方既有 Codex review 對 non-trivial 變更仍必須執行。
 
 ## External Codex review policy
 

@@ -6508,6 +6508,40 @@
     "name": "All-In Podcast",
     "episodes": [
       {
+        "guid": "a3cf57b6-0471-4554-a7e1-a41345c06d96",
+        "title": "GPT-6 Hits AGI? Tech Euphoria 2.0, SF Mansion Shortage, NYC Bans AI in Schools & Venezuela Oil Deal",
+        "published": "Fri, 04 Sep 2026 23:10:00 +0000",
+        "processed_at": "2026-09-05T06:28:02Z",
+        "digest": {
+          "summary_points": [
+            "Chamath 認為 AGI 其實今年初就已存在，OpenAI 發表 GPT-6/Astra 不是真正的分水嶺；真正趨勢是每次智慧的成本被壓得愈來愈低，且 3-4 個月內開源模型就會追上，因此投資人不必過度反應。",
+            "主持人普遍認為目前市場比較像 1998 年而不是 1999 年——部分未上市新創（如 Instinct）估值已到 25 億美元、用 50-100 倍營收定價，顯示有泡沫跡象，但行情可能還會再走約三年才出現顯著修正。",
+            "Sacks 認為 AI 市場已經分成「前沿智慧」（Anthropic/OpenAI 雙頭寡占）與「商品化智慧」（其餘開源/平價模型）兩層；真正要關注的是未來走向封閉寡占還是開放多元，他站在開放陣營。",
+            "關於 Hugging Face 事件，Friedberg/Sacks 拆解後認為只是動態 agent 程式碼對上靜態 sandbox，加上 14 把曝露的 API keys，並非 AI 自我覺醒或逃逸；未來資安會是 AI 攻防，所以不需要因此暫停 AI 開發或成立 FDA 式的 AI 監管。",
+            "Sacks 認為美國拿下委內瑞拉油田是商業交易而非 nation-building，對美國能源安全與委內瑞拉經濟算雙贏；Friedberg 則提醒，未來委內瑞拉政權是否尊重產權將是關鍵，否則有被沒收的風險。"
+          ],
+          "tickers": [
+            {
+              "name": "Nvidia",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Nvidia 收購 Hugging Face 後將成為 OpenAI/Anthropic 最強競爭者，以開放生態和垂直整合方案搶攻企業 AI 市場，並壓低 token 價格。"
+            },
+            {
+              "name": "Instinct",
+              "code": "",
+              "market": "US",
+              "direction": "bearish",
+              "reason": "主持人認為這個個人 AI 助理公司估值 25 億美元太離譜，反映市場已出現泡沫跡象。"
+            }
+          ],
+          "market_view": "主持人普遍認為目前處於 AI 多頭行情的早期（類似 1998 年），估值已有泡沫特徵但尚未到頂，整體可能再持續約三年。",
+          "action_view": "主持人建議創辦人把握高估值窗口，出售 10-20% 持股並盡快完成融資，以保有現金與選擇權；Sacks 個人計畫在六個月內出清舊金山房地產。",
+          "notable_quote": "We're at the beginning of the beginning."
+        }
+      },
+      {
         "guid": "6d431e83-eb88-4082-9b0c-aec16b34ea7b",
         "title": "Nvidia's Historic Quarter, SaaS Comeback, Bessent vs Druck, America's Debt Crisis, Cancer Vaccine",
         "published": "Sat, 29 Aug 2026 01:19:00 +0000",
@@ -6876,31 +6910,6 @@
           "notable_quote": "We are all in on pre-training our own models on this video data on the internet."
         },
         "shown_at": "2026-07-29T22:53:55Z"
-      },
-      {
-        "guid": "b24360d6-fb80-49d5-a15d-8ff6954e04d7",
-        "title": "Reggie Gooden The Business Manager Trusted By Elite Celebrities Reveals How Wealth Is Built!",
-        "published": "Tue, 28 Jul 2026 05:05:15 GMT",
-        "processed_at": "2026-07-30T05:17:29Z",
-        "digest": {
-          "summary_points": [
-            "Reggie Gooden 從會計轉行針灸，再轉型為娛樂/運動員的業務經理，強調「管家職責」與「複利效應」是成功的關鍵。",
-            "客戶最大的財務錯誤源於生活方式管理不當；保持可教導的心態比任何策略都重要。",
-            "對於一次性大筆收入（如娛樂業），至少一半應立即存入避稅帳戶，剩餘再規劃使用。",
-            "加密貨幣波動過大且無實質支撐，建議客戶避開；房地產仍是穩健的長期資產類別。",
-            "最佳投資：退休帳戶（IRA、401k）、房地產；最差投資：親友經營的無商業價值的「興趣型事業」。",
-            "保護自己免受不良顧問傷害的方法是：要求完全透明、定期查看財務資訊，且所有合約需經律師審閱。",
-            "年薪500萬美元在加州稅後實得約125-200萬，仍需節制消費才能累積財富。",
-            "專業運動員應學會說「不」，並將支出決策交給財務團隊；長遠眼光比即時享樂更重要。",
-            "Reggie 的 legacy 是成為他人信賴的管家，無論對客戶、員工或家人都一樣。",
-            "「All in」代表即使不知道結果，也要全心投入夢想與使命。"
-          ],
-          "tickers": [],
-          "market_view": "",
-          "action_view": "",
-          "notable_quote": "People think that you wake up one day and you just have this company with these employees and you have all these great clients and you're in these magazines and it's great. Let me tell you, every day you got to wake up and commit yourself to the mission."
-        },
-        "shown_at": "2026-07-30T23:04:08Z"
       }
     ]
   },

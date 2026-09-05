@@ -402,7 +402,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         (tech_items if _is_t else other_items).append(_n)
         # **丟掉的卡要留痕**(2026-09-04 實信):`_news_line` 對空的
         # `why_it_matters` 回空、`_blocks` 不排 —— 模型分析 18 則、信裡只剩 7 則,
-        # 「九、其他類股資訊」整段消失,而 `news_analyzed` 仍寫 18。這裡把每一則
+        # 而 `news_analyzed` 仍寫 18。(九段整段消失的主因另有其人:
+        # `morning_report._cap_analysis_text` 的舊上限,2026-09-05 查明。)這裡把每一則
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
         _text = _news_line(_n, packet)

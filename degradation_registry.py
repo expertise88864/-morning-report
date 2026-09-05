@@ -111,6 +111,9 @@ KNOWN_DEGRADED = frozenset({
     "sector_map_unavailable", "story_ledger_corrupt",
     "analysis_recap_unreadable", "policy_keywords_load",
     "policy_keywords_save", "delivery_receipt_publish",
+    # 2026-09-05:分析文字撞到保險絲被截 —— 先前 6,000 的上限每天靜默吃掉
+    # 九、十段而沒有任何標籤;現在截了就登記,run_quality 報 `analysis_capped`。
+    "render:analysis_capped",
     # 除權息/公司行動(前綴族,逐個列出來才看得出漏了誰)
     "corpact:fetch_failed", "corpact:delisted_fetch_failed",
     "corpact:history_unreadable", "corpact:persist_failed",

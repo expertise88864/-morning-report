@@ -21677,14 +21677,35 @@ def mark_podcast_episodes_shown(episodes: list[dict]) -> None:
         print(f"[podcast] 標記已顯示失敗(下封可能重複): {e}", file=sys.stderr)
 
 
-def _cap_analysis_text(text: str, max_chars: int = 6000) -> str:
+#: LLM 分析文字的**保險絲**上限(字元)。**量出來的,不是推出來的**。
+#:
+#: 2026-09-05 查明:舊值 6,000 是 2026-07 為「4–5k 字的散文分析」設的,而特化
+#: 渲染器(2026-08-19 起)一張新聞卡就約 560 字純文字(markdown 約 620),
+#: 八段最多 12 張、九段最多 10 張(prompt 上限),加上七/七之二(5 條)/七之三/
+#: 七之四/十/情境/資料缺口 —— **正常日約 17,000 字、合法最大約 20,000 字**。
+#: 於是它**每天都在靜默腰斬尾段**:09-02〜09-05 四天信裡的分析區純文字全都是
+#: ~5,500 字(那就是天花板);十、總體經濟從來沒進過信;九段先前被截到只剩
+#: 4–6 張,9/4 世界大事改五條後切點前移,九段整段落在切點之後 —— 使用者連兩天
+#: 問「其他類股為何消失」,而 9/4 我把它歸咎於空正文卡(那件事是真的,但不是
+#: 主因:9/5 渲染端 18/18 都渲染了,九段照樣不見)。
+#:
+#: 40,000 ≈ 合法最大值的兩倍:正常輸出完整,真的跑飛(灌了幾萬字正文)仍擋得住。
+#: 而且截斷**不再是靜默的**:`_note_analysis_capped` 登記降級標籤 +
+#: manifest,`run_quality` 據此報 `analysis_capped`。
+#: tests/test_analysis_cap_0905.py 用生產量級的物件跑真渲染器釘住這個下界。
+ANALYSIS_TEXT_FUSE = 40_000
+
+
+def _cap_analysis_text(text: str, max_chars: int = ANALYSIS_TEXT_FUSE,
+                       diag: dict | None = None) -> str:
     """LLM 分析異常過長時在段落邊界截斷(保險絲,防模型跑飛)。
 
-    2400→3200→3800:歷次擴充(其他類股 8 類、世界大事速覽)後調升,仍常截到十/十一。
-    3800→6000(2026-07-14):使用者拍板「內容完整優先、接受 Gmail 摺疊」(尺寸守衛改
-    full 模式)後,本上限不再為信件大小服務,只防 LLM 異常輸出;正常分析(~4-5k 字)
-    應完整呈現,不再截斷末段。(原文寫「十、總經/十一、台灣動態」,但批#58 已刪除
-    「十、總體經濟與政策環境」整段並把編號前挪——留著已刪的段名會誤導後人。)"""
+    `diag`(可選 dict):真的截了就寫 `{chars, limit, kept, lost_sections}`。
+    截斷是內容損失,**不可以靜默** —— 2026-09-05 之前它每天把九、十整段
+    吃掉,而 manifest 與品質判準沒有一個字。
+
+    2400→3200→3800→6000(2026-07-14,只防 LLM 異常輸出)→40,000(2026-09-05,
+    見 `ANALYSIS_TEXT_FUSE`;6,000 對特化渲染器的正常輸出來說是天天截)。"""
     if not text or len(text) <= max_chars:
         return text
     cut = text.rfind("\n\n", 0, max_chars)
@@ -21699,7 +21720,32 @@ def _cap_analysis_text(text: str, max_chars: int = 6000) -> str:
     while lines and lines[-1].lstrip().startswith("#"):
         lines.pop()
     # 截斷不再附註解文字(使用者要求 2026-07-14);截斷本身仍保留(防極端超長)
-    return "\n".join(lines).rstrip()
+    out = "\n".join(lines).rstrip()
+    if isinstance(diag, dict):
+        # 哪幾段整段沒了 —— 對讀者而言那才是損失的單位,不是字元數
+        before = _md_section_headings(text)
+        after = set(_md_section_headings(out))
+        diag.clear()
+        diag.update({"chars": len(text), "limit": int(max_chars), "kept": len(out),
+                     "lost_sections": [h for h in before if h not in after]})
+    return out
+
+
+def _md_section_headings(text: str) -> list:
+    """`## 八、科技板塊脈動` 這種標題行的標題文字,依出現順序。"""
+    import re
+    return [m.group(1).strip() for m in
+            re.finditer(r"^#{1,6}[ \t]+(.+?)[ \t]*$", str(text or ""), flags=re.M)]
+
+
+def _note_analysis_capped(diag: dict) -> None:
+    """截斷要留痕:降級標籤 + manifest;`run_quality` 據此報 `analysis_capped`。"""
+    _RUN_MANIFEST.setdefault("llm", {})["analysis_cap"] = dict(diag)
+    if "render:analysis_capped" not in _DEGRADED_STEPS:
+        _DEGRADED_STEPS.append("render:analysis_capped")
+    lost = "、".join(str(x) for x in (diag.get("lost_sections") or [])) or "無"
+    print(f"[render] ⚠ 分析文字 {diag.get('chars')} 字超過保險絲 {diag.get('limit')},"
+          f"截到 {diag.get('kept')} 字;整段消失:{lost}", file=sys.stderr)
 
 
 def _estimated_email_kb(html: str) -> float:
@@ -21854,7 +21900,20 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     _t = (quotes or {}).get("TAIEX_PRED") or {}
     if isinstance(_t, dict) and _t.get("pred_open") is not None:
         preds.append(f"加權預測 {_num(_t.get('pred_open'), 0)}")
-    body = _md_to_html(str(analysis or "")) if analysis else "<p>（分析未產出）</p>"
+    # **極簡信也要走同一道保險絲**(Codex 2026-09-05 r1 P2):主渲染炸掉時這裡
+    # 拿到的是未截斷的原文 —— 主路徑若已登記「截了」而這裡寄出全文,manifest
+    # 就在對一份沒寄出的文字說話;反過來則超長文照寄且沒有紀錄。同一個函式、
+    # 同一個上限,並以**實際寄出的文字**登記,兩條路徑的結論才一致。
+    _cap_diag: dict = {}
+    analysis = _cap_analysis_text(str(analysis or ""), diag=_cap_diag)
+    if _cap_diag:
+        _note_analysis_capped(_cap_diag)
+    else:
+        # 寄出的就是全文:主路徑留下的「截了」是對另一份文字的宣稱,撤掉
+        (_RUN_MANIFEST.get("llm") or {}).pop("analysis_cap", None)
+        while "render:analysis_capped" in _DEGRADED_STEPS:
+            _DEGRADED_STEPS.remove("render:analysis_capped")
+    body = _md_to_html(analysis) if analysis else "<p>（分析未產出）</p>"
     return (
         "<div style=\"font-family:-apple-system,'Noto Sans TC',sans-serif;"
         "max-width:680px;margin:0 auto;padding:16px;color:#1f2937;\">"
@@ -22921,7 +22980,11 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                             f"</td></tr>")
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
-    analysis_for_render = _cap_analysis_text(analysis_for_render)
+    # 截斷是內容損失,要留痕(2026-09-05:舊上限每天靜默吃掉九、十段)
+    _cap_diag: dict = {}
+    analysis_for_render = _cap_analysis_text(analysis_for_render, diag=_cap_diag)
+    if _cap_diag:
+        _note_analysis_capped(_cap_diag)
     analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _dim_source_citations(analysis_html)   # 批#27:來源淡化,信心標保留

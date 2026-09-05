@@ -76,6 +76,8 @@ _FINDING_DOMAINS = {
     "render_card_failed": DOMAIN_CONTENT,
     # 2026-09-04 實信:模型分析 18 則、信裡只渲染 7 則(空正文被丟)。
     "news_cards_dropped": DOMAIN_CONTENT,
+    # 2026-09-05:分析文字撞到保險絲,整段(九、十…)沒進信 —— 內容損失。
+    "analysis_capped": DOMAIN_CONTENT,
     "analysis_emergency": DOMAIN_CONTENT,
     "analysis_not_specialized": DOMAIN_CONTENT,
     "luna_rejected": DOMAIN_CONTENT,

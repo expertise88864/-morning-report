@@ -602,10 +602,10 @@ def test_the_gate_pushed_out_two_more_boundaries():
     閘門不接受第七次調高數字 —— 於是搬出兩個自足的邊界:
     `finding_domains.py`(分類登記表)與 `delivery_sla.py`(期限原語)。
 
-    **判準本體仍在 `run_quality`**:`assess()` 裡產生
-    `delivery_sla_missed` / `run_delivered_after_target` 的那段與 `add()`
-    閉包綁著,要拆得再動一次結構 —— 那應該獨立成一批(這一批已經有
-    四條行為修正)。誠實少搬。
+    r9 當時**判準本體仍在 `run_quality`**(與 `add()` 閉包綁著,誠實少搬)。
+    2026-09-05 閘門第二次擋下「再加一點」(分析保險絲的 finding),第二批把
+    判準本體也搬進 `delivery_sla.assess_delivery`,`assess()` 只委派 ——
+    這條守衛跟著翻面:本體必須在 delivery_sla,run_quality 不得留第二份。
     """
     import delivery_sla as ds
     import finding_domains as fd
@@ -617,10 +617,12 @@ def test_the_gate_pushed_out_two_more_boundaries():
     assert len(rq_src.splitlines()) <= 1000, "又長回閘門之上了"
     # 搬走的不可以留第二份
     for gone in ("def finding_domain", "def _sla_business_day",
-                 "def _to_sla_tz"):
+                 "def _to_sla_tz", 'add("delivery_sla_missed"'):
         assert gone not in rq_src, f"{gone} 搬走了卻又留了一份"
-    # 判準本體確實還在(這次刻意沒搬)
-    assert 'add("delivery_sla_missed"' in rq_src
+    # 判準本體住在 delivery_sla,而 run_quality 真的在委派(2026-09-05 第二批)
+    sla_src = io.open(_ROOT / "delivery_sla.py", encoding="utf-8").read()
+    assert "def assess_delivery(" in sla_src and 'add("delivery_sla_missed"' in sla_src
+    assert "assess_delivery(m, add, digest=digest)" in rq_src
     # `KNOWN_DEGRADED` 不屬於期限原語 —— 第一次切片把它一起搬進 delivery_sla。
     # 2026-09-03 全案審查 TC-2:它與 `OPEN_FAMILIES` 現在住在自己的登記表
     # `degradation_registry.py`(資料,不是判準;同 finding_domains 的分法),

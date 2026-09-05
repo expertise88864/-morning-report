@@ -142,9 +142,14 @@ def test_the_producer_puts_the_day_fact_where_the_assessor_reads_it():
 
 
 def test_the_new_label_is_registered_with_its_consumer():
-    """新的降級標籤要在消費端登記,否則退化成「沒見過的降級」。"""
+    """新的降級標籤要在消費端登記,否則退化成「沒見過的降級」。
+
+    消費端 2026-09-05 起是 `delivery_sla.assess_delivery`(判準本體搬過去了);
+    第一版盯的是 `run_quality.py` 的原始碼 —— 盯「住在哪」的守衛一搬家就紅,
+    改盯「在唯一的擁有者那裡」。行為斷言不變:透過 assess 拿得到同一個 finding。
+    """
     assert "run_delivered_after_target" in io.open(
-        _ROOT / "run_quality.py", encoding="utf-8").read()
+        _ROOT / "delivery_sla.py", encoding="utf-8").read()
     codes = _codes({"delivered_at": "2026-09-01T09:16:23+08:00",
                     "first_delivered_at": "2026-09-01T08:28:35+08:00"})
     assert codes["run_delivered_after_target"] == "degraded"

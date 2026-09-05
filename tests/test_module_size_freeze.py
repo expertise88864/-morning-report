@@ -273,14 +273,14 @@ MODULE_CEILINGS = {
     "state_publish.py": 250,   # 2026-09-04 外審 P2:收據發佈原語 + 交棒清單的詞法路徑驗證(Codex r2 P1);只用 stdlib,好讓有寫入權限的發佈 job 不必安裝第三方套件;現況 215
     "finding_domains.py": 150,     # 現況 99 —— finding 的分類登記表
     "degradation_registry.py": 130,  # 2026-09-03 全案審查 TC-2:KNOWN_DEGRADED / OPEN_FAMILIES 從 run_quality 抽出(1000 行閘門要的是推出邊界,不是調高數字);現況約 92
-    "delivery_sla.py": 150,        # 現況 96 —— 期限原語(判準本體仍在 run_quality)
+    "delivery_sla.py": 320,        # 2026-09-05 第二批搬出:SLA 判準本體(assess_delivery)也住進來了,這是工單指定的抽出目標;現況 288  # 前值 150:期限原語
     # 2026-09-01 r7 外審:delivery.success 三態契約(三個模組共用一份判準);現況 978。
     # ⚠⚠ **一天內第五次調高**(790→815→850→900→950→1000)。外審已指出:
     # 「本來 ceiling 是阻止模組長大,現在變成記錄它目前多大」—— 棘輪失效。
     # `delivery_sla.py` 的抽出工單已經開了兩批,**下一批必須做**,
     # 而 `test_the_sla_extraction_is_not_deferred_forever` 會在超過
     # 1000 行時直接擋下來,不接受第六次調高。
-    "run_quality.py": 1000,  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
+    "run_quality.py": 850,  # 2026-09-05 SLA 判準本體搬到 delivery_sla —— 抽出**往下調**(棘輪政策);現況 833(含分析保險絲的 9f finding)。前值 1000  # 2026-08-22 外審 P3:state:corrupt 家族的專屬 finding(說得出哪份壞了);現況 666  # 2026-08-22:luna_path_failed 家族豁免+失敗原因騎在 not_specialized 上;現況 636
     # 批#120:`llm_telemetry` 撞到 700 行上限時的去處。上限守衛做了它該做的事:
     # 指出那個檔已經在做兩件事(計價量測 vs 設定驗證)。切點依相依方向選,
     # 不依主題喜好 —— 見 `llm_config` 的 docstring。
@@ -777,10 +777,13 @@ def test_the_sla_extraction_is_not_deferred_forever():
     這條在**上限本身**超過 1000 時失敗:要繼續長,就得先把 SLA 判定
     搬出去,而不是再改一次數字。
     """
+    # 2026-09-05:SLA 判定已搬到 delivery_sla.assess_delivery(第二次被這道閘門
+    # 擋下時做的),run_quality 降到 833。硬點跟著往下:下一次撞到,抽的是
+    # 9a–9f 那批「manifest 動態家族 → finding」的轉接(約 80 行),不是調數字。
     cap = MODULE_CEILINGS["run_quality.py"]
-    assert cap <= 1000, (
+    assert cap <= 900, (
         f"run_quality.py 的上限已經是 {cap} —— 不要再調高了,"
-        "先把 SLA 判定抽成 delivery_sla.py(工單見這一行上方的註解)")
+        "先把 9a–9f 的動態家族轉接抽出去(工單見這一行上方的註解)")
 
 
 def test_leaf_modules_do_not_absorb_the_bloat():

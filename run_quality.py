@@ -696,6 +696,14 @@ def assess(manifest, *, mode: str = "watchdog",
             + "、".join(f"{d.get('sid')}({d.get('section')})" for d in _dropped[:8])
             + (f" …另 {len(_dropped) - 8} 則" if len(_dropped) > 8 else ""))
 
+    _email = _dig(m, "llm", "email_html", default={}) or {}
+    if _email.get("missing_sections") or _safe_int(_email.get("lost_cards")):
+        add("email_content_lost", "defect",
+            "最終寄信 HTML 遺失分析內容：" + "、".join(_email.get("missing_sections") or [])
+            + f"；少 {_safe_int(_email.get('lost_cards'))} 張新聞傳導卡")
+    if _email.get("audit_error") or _email.get("mobile_error"):
+        add("email_finalization_failed", "defect", "最終郵件排版或內容檢查失敗，已保留原信")
+
     # ---- 9f. 分析文字撞到保險絲(2026-09-05):`_cap_analysis_text` 截了就把
     # `{chars, limit, kept, lost_sections}` 記進 `llm.analysis_cap`。整段消失是
     # 內容損失 —— 舊上限 6,000 每天靜默吃掉九、十段,使用者連問兩天才查到。

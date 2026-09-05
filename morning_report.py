@@ -56,6 +56,7 @@ import analysis_validate as _av
 import evidence_registry as _reg
 import top5_readout as _t5r
 import writing_rules as _wr
+from email_content_audit import finalize as _finalize_email, _estimated_email_kb
 from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urlparse
 
@@ -21746,15 +21747,6 @@ def _note_analysis_capped(diag: dict) -> None:
           f"截到 {diag.get('kept')} 字;整段消失:{lost}", file=sys.stderr)
 
 
-def _estimated_email_kb(html: str) -> float:
-    """估算 Gmail 是否會剪信用的大小(KB)。
-    Gmail ~102KB 截斷量的是「解碼後的 HTML 內容」本身(Email on Acid 6000+ 封實測、
-    Litmus、Mailchimp 一致),而非 base64 編碼後大小——base64 信反而更晚才剪(~110KB)。
-    故直接量解碼後 UTF-8 大小即可,不可再 ×1.37(那會在離真正危險還有 ~30KB 餘裕時就誤判超標,
-    把使用者要看的內容過早砍掉)。"""
-    return len(html.encode("utf-8")) / 1024.0
-
-
 # 超標時的預設犧牲優先序(先移除最前者;依使用者指定:政策→醫界→醫學文獻→五檔觀察,
 # 其後才是低價值卡片,Podcast 與體育殿後、萬不得已才動)。
 _TRUNCATE_SECTIONS = ("journals", "top5",
@@ -21916,7 +21908,7 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
         while "render:analysis_capped" in _DEGRADED_STEPS:
             _DEGRADED_STEPS.remove("render:analysis_capped")
     body = _md_to_html(analysis) if analysis else "<p>（分析未產出）</p>"
-    return (
+    return _finalize_email(analysis, (
         "<div style=\"font-family:-apple-system,'Noto Sans TC',sans-serif;"
         "max-width:680px;margin:0 auto;padding:16px;color:#1f2937;\">"
         f"<h2 style=\"color:#b45309;\">美股晨報 {_h.escape(str(report_date))}"
@@ -21928,7 +21920,7 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
            f"<tr><th>標的</th><th>收盤</th><th>漲跌</th></tr>{''.join(rows)}</table>"
            if rows else "")
         + (f"<p><b>{_h.escape('・'.join(preds))}</b></p>" if preds else "")
-        + f"<div style='margin-top:18px;'>{body}</div></div>")
+        + f"<div style='margin-top:18px;'>{body}</div></div>"), _RUN_MANIFEST)
 
 
 def _safe_block(label: str, fn, *args, **kwargs) -> str:
@@ -22313,7 +22305,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         taiex_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">五、加權指數開盤預測</h2>
         {signal_rows}
-        <div style="margin:12px 0;padding:16px;background:linear-gradient(135deg,#0284c7,#0ea5e9);border-radius:10px;color:#fff;">
+        <div style="margin:12px 0;padding:16px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);border-radius:10px;color:#fff;">
           <div style="font-size:13px;opacity:.9;">今天開盤大約落在</div>
           <div style="font-size:30px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f} <span style="font-size:16px;">({pct_sign}{final_pct:.2f}%)</span></div>
           <div style="font-size:14px;margin-top:4px;">
@@ -22349,8 +22341,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           </tr>
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 0050 今日合理價</td>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{p50}</td>
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 0050 今日合理價</td>
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{p50}</td>
           </tr>
         </table>
         <p style="font-size:12px;color:#94a3b8;margin:6px 0;">預測方法：{tw0050p_data.get('method','—')}（0050 約 50% 為 2330）</p>
@@ -22843,8 +22835,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           {premium_row}
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 00662 今日合理價估值</td>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 00662 今日合理價估值</td>
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:22px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">{fair['fair_price']}</td>
           </tr>
         </table>
         {fair_foot}
@@ -22897,8 +22889,8 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             rows_html += f"""
           <tr><td colspan="2" style="height:4px;"></td></tr>
           <tr>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 2330 今日合理價</td>
-            <td style="padding:14px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;font-weight:700;border-radius:6px 0 0 6px;">★ 2330 今日合理價</td>
+            <td style="padding:14px;background:#0284c7;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;text-align:right;font-size:26px;font-weight:700;border-radius:0 6px 6px 0;font-variant-numeric:tabular-nums;">
               {predictions['mid']}<br>
               <span style="font-size:12px;font-weight:400;opacity:0.80;">區間 {rng[0]} ~ {rng[1]}</span>
             </td>
@@ -23073,13 +23065,13 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     preheader = _htmllib.escape("　".join(_ph_bits) or f"美股晨報 {report_date}")
 
     def _assemble() -> str:
-        """組裝並**壓掉重複的 inline style**(批#103)。
+        """組裝、壓掉重複 style 並套用手機排版;尺寸判斷要量真正會寄的 HTML。
 
         壓縮放在這裡而不是最後一步,是為了讓上面所有 `_estimated_email_kb`
         看到的都是**實際會寄出的大小** —— 否則溢位邏輯會照著虛胖的數字去砍
         區塊,而那些區塊其實塞得下。
         """
-        return compact_inline_styles(_assemble_raw())
+        return _finalize_email(analysis, compact_inline_styles(_assemble_raw()), _RUN_MANIFEST)
 
     def _assemble_raw() -> str:
         return f"""<!DOCTYPE html>
@@ -23098,7 +23090,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
           <!-- HERO -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0c4a6e,#0284c7);padding:26px 28px 20px;color:#ffffff;">
+            <td style="background:#0c4a6e;background:linear-gradient(135deg,#0c4a6e,#0284c7);padding:26px 28px 20px;color:#ffffff;">
               <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">MORNING MARKET BRIEF</div>
               <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.3;">美股晨報</h1>
               <div style="margin-top:6px;font-size:15px;opacity:0.92;">{report_date} ・ <span style="background:rgba(255,255,255,0.18);padding:2px 10px;border-radius:12px;font-size:13px;">{mode}</span></div>
@@ -23288,7 +23280,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
             f'(行情、2330/00662/0050 預測與結論完整保留){tail}。</div>')
         html = _assemble()
     # 使用者要求移除「本期內容較長」琥珀提示(keep 模式下不再顯示任何提示橫幅)。
-    final_kb = _estimated_email_kb(html)   # 含橫幅後的真實大小
+    final_kb = _estimated_email_kb(html)   # 含橫幅與手機樣式後的真實大小
     if final_kb > 102:
         print(f"[render] ⚠ 郵件約 {final_kb:.0f}KB,已逾 Gmail 102KB,信末可能被剪",
               file=sys.stderr)
@@ -24501,7 +24493,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
         sports_html,
         journals_html,
     ) if s)
-    return f"""<!DOCTYPE html>
+    return _finalize_email("", f"""<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="utf-8">
@@ -24514,7 +24506,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
       <td align="center" style="padding:12px 4px;">
         <table role="presentation" style="max-width:680px;width:100%;border-collapse:collapse;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(15,23,42,0.06);overflow:hidden;">
           <tr>
-            <td style="background:linear-gradient(135deg,#065f46,#16a34a);padding:26px 28px 20px;color:#ffffff;">
+            <td style="background:#065f46;background:linear-gradient(135deg,#065f46,#16a34a);padding:26px 28px 20px;color:#ffffff;">
               <div style="font-size:13px;letter-spacing:2px;opacity:0.85;margin-bottom:6px;">WEEKEND DIGEST</div>
               <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.3;">週日綜合</h1>
               <div style="margin-top:6px;font-size:15px;opacity:0.92;">{report_date} ・ <span style="background:rgba(255,255,255,0.18);padding:2px 10px;border-radius:12px;font-size:13px;">週日綜合</span></div>
@@ -24531,7 +24523,7 @@ def render_weekend_digest_html(report_date: str, weather_html: str,
     </tr>
   </table>
 </body>
-</html>"""
+</html>""", _RUN_MANIFEST)
 
 
 def run_weekend_digest(now_tpe: dt.datetime) -> int:

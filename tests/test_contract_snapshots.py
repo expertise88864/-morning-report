@@ -648,7 +648,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (34, "b6917e89d5e9c427"),  # v34 2026-09-04:news 項目保留 world_cat(Codex P2:世界大事守衛與取材段同一把尺)  # v33 (33, "5dacf45c472fcebd")
+    "evidence_schema_version":  (35, "660c30f1abaae586"),  # 0906:類股涵蓋保留與來源標籤。
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -674,7 +674,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (26, "ffc5f5ab7273c4b4"),  # CR-02:stance.score 可 null,未知不是零分。
+    "output_schema_version":  (27, "96a059ded3b12bba"),  # 0906:確認訊號渲染契約。
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -723,11 +723,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (51, "8dd1d0e6679716ef"),  # CR-02:結構化路徑亦禁止在缺 Python 計分時補造立場。
+    "primary_profile_version":  (52, "d3043bea1bd60a75"),  # 0906:因果/時程/增量證據。
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (17, "cc097405929a1305"),  # CR-02:缺 Python 計分時禁止 LLM 補算;原 v16 5d189e3cac8e2bf2。
+    "fallback_profile_version":  (18, "0704183e3d6d4007"),  # 0906:legacy 共用縱向分析規則。
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -772,7 +772,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (21, "269ac6c86527c1c4"),  # v21 2026-09-03 全案審查 LM-4:單一來源新聞行接「保留:…」  # v20 (20, "e7ed2c6c9b219c19")
+    "renderer_version":       (22, "2f082a066d3ce55f"),  # 0906:量級/觀察窗/確認條件進信。
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

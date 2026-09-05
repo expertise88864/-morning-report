@@ -11,6 +11,8 @@
 """
 from __future__ import annotations
 
+import news_impact as _impact
+
 
 def _s(v) -> str:
     return v.strip() if isinstance(v, str) else ""
@@ -295,6 +297,9 @@ def _news_line(n: dict, packet=None) -> str:
                          if isinstance(st, dict)])
     if chain:
         parts.append(f"傳導:{chain}。")
+    impact = _impact.readout(n, _s)
+    if impact:
+        parts.append(impact)
     inval = _s(n.get("invalidation_signal"))
     if inval:
         parts.append(_join_sentence(f"若{inval},此判斷不成立"))

@@ -18,6 +18,7 @@ from typing import Optional
 import news_clusters as _nc
 import news_facts as _nf
 import source_registry as _sr
+import news_coverage as _coverage
 
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
@@ -140,6 +141,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             # 而 packet 先前把它丟了 —— 特化路徑的守衛只能看 `source` 前綴,
             # 去重後保留在一般來源上的 `world_cat` 與「中央社國際」全部數不到。
             "world_cat": clean(str(n.get("world_cat") or "")),
+            "coverage_buckets": _coverage.buckets(n),
             "entities": entities_of(n, clean),
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
@@ -166,7 +168,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     # 而改版常拿到新 ID —— 同一篇佔兩個名額、在事件群裡灌高 size。
     # 排序後保留第一則(等級高/較新的那則);**跨來源永不去重**
     # (兩家寫一樣的標題是常態,那是分群的工作)。
-    seen_fp, deduped, near_dropped = set(), [], 0
+    seen_fp, deduped, near_dropped = {}, [], 0
     for x in items:
         # **「同一家」要用發布者判,不是用聚合器別名判**(Commit E)。
         # `source` 常是 `Google:2330` 這種查詢代號 —— 同一個查詢帶回
@@ -177,9 +179,12 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             _sr.owner_of_item(x) or x.get("source_name") or x["source"],
             x["title"])
         if fp[1] and fp in seen_fp:
+            prior = seen_fp[fp]
+            prior["coverage_buckets"] = sorted(set(_coverage.buckets(prior)) |
+                                               set(_coverage.buckets(x)))
             near_dropped += 1
             continue
-        seen_fp.add(fp)
+        seen_fp[fp] = x
         deduped.append(x)
     items = deduped
     # 第十九輪 P1-3:**先分群、先保障,再截斷。** 先前是排序後直接留前 220,
@@ -188,12 +193,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
     # 分母一開始就把真正重要的事件排除掉了。
     info = _nc.required_analysis(items)
     forced = _forced_ids(items, info)
-    kept = [x for x in items if x["source_item_id"] in forced]
-    for x in items:
-        if len(kept) >= MAX_NEWS_ITEMS:
-            break
-        if x["source_item_id"] not in forced:
-            kept.append(x)
+    kept, coverage = _coverage.select(items, forced, MAX_NEWS_ITEMS)
     kept.sort(key=lambda x: (_GRADE_RANK[x["source_grade"]],
                              _neg_time(x["published"]), x["source_item_id"]))
     dropped = [x for x in items if x not in kept]
@@ -201,6 +201,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
              "news_dropped": len(dropped),
              "news_dropped_by_grade": _count_by_grade(dropped),
              "required_forced_in": len(forced),
+             "coverage": coverage,
              "near_duplicates_dropped": near_dropped,
              "summaries_truncated": sum(1 for x in kept if x["summary_truncated"])}
     return kept, trunc, info

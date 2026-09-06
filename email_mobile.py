@@ -55,6 +55,7 @@ class _Tables(HTMLParser):
             if self.stack:
                 self.stack[-1]["nested"] = True
             table = dict(self._tag(), rows=[], nested=False, merged=False,
+                         root=not self.stack,
                          preserve=dict(attrs).get("data-mobile-layout") == "table",
                          presentation=dict(attrs).get("role") == "presentation")
             self.tables.append(table)
@@ -98,6 +99,10 @@ def enhance(html: str) -> str:
         decorate(parser.body, "mail-reading")
     for table in parser.tables:
         rows = table["rows"]
+        # Email clients may discard BODY attributes. Anchor the reading rules
+        # to the actual outer presentation table, without resizing inner cards.
+        if table["root"] and table["presentation"]:
+            decorate(table, "mail-reading")
         if table["nested"] or table["presentation"] or table["preserve"] or not rows:
             continue
         header = rows[0]["cells"]

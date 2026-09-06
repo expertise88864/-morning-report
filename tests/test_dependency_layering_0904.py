@@ -122,6 +122,8 @@ def test_every_job_that_runs_pytest_installs_something_that_provides_it():
                 continue
             seen += 1
             ok = ("requirements-dev.lock" in installed
+                  or ("requirements-dev.txt" in installed and re.search(
+                      r"^pytest[<=>]", (_ROOT / "requirements-dev.txt").read_text(encoding="utf-8"), re.M))
                   or re.search(r"pip install [^\n]*\bpytest\b", installed))
             assert ok, f"{wf_name}:{job_name} 跑 pytest 卻沒裝它"
     assert seen >= 3, f"只找到 {seen} 個跑 pytest 的 job —— 掃描條件可能失準了"

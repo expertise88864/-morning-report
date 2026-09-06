@@ -57,7 +57,7 @@ def test_small_or_merged_or_unnamed_tables_do_not_stack(body):
 def test_nested_layout_is_not_stacked_but_its_data_table_is():
     raw = page('<table role="presentation"><tr><td>' + table() + '</td></tr></table>')
     out = mobile.enhance(raw)
-    assert '<table role="presentation">' in out
+    assert '<table role="presentation" class="mail-reading">' in out
     assert 'class="s0 mail-data mail-stack"' in out
 
 

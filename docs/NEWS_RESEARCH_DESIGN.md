@@ -78,6 +78,10 @@ sections, compact mobile typography, and Python investment authority remain.
   themes and supplies older matched evidence. Legacy title-only history remains
   available during cold start. State starts accumulating only after deployment;
   previously missing raw evidence is not manufactured from old model output.
+  Weekly material retains complete URLs up to 2048 characters; longer links are
+  explicitly unavailable, never shortened into broken links. A 36k-character
+  source budget retains all selected current themes, then fairly allocates
+  preceding reports and records omissions instead of silently cutting URLs.
 - Offline tests and structural counters do not establish production writing
   quality. Candidate CI and a non-sending, isolated-state pipeline dry-run must
   still verify the delivered SHA, actual provider path, HTML and run diagnostics.

@@ -172,6 +172,10 @@ MAIN_MODULE_LINE_CEILING = 26_485  # 外審尺寸修正:finalize 移入 assembly
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
+    # 2026-09-06: candidate delivery gate and offline contract tests are new root
+    # modules. Freeze their measured initial sizes; no existing cap is raised.
+    "_delivery.py": 329,
+    "_test_delivery.py": 182,
     "news_coverage.py": 120,
     "finance_editorial.py": 220,  # 新模組首版含去重原始證據保留,不提高既有模組上限。
     "news_impact.py": 100,

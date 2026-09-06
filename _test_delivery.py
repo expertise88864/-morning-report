@@ -173,7 +173,7 @@ class DeliveryTests(unittest.TestCase):
             d.preview_url(Fake(), SHA)
 
     def test_morning_dry_run_routing(self):
-        self.assertFalse(d.needs_morning_preview(["AGENTS.md", "_delivery.py", "tests/test_email.py"]))
+        self.assertFalse(d.needs_morning_preview(["AGENTS.md", "_delivery.py", "tests/test_email_quality_0906.py"]))
         for path in ("morning_report.py", "news_rules.py", "requirements.lock", ".github/workflows/morning-report-b.yml"):
             self.assertTrue(d.needs_morning_preview([path]))
 

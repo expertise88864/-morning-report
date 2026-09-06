@@ -4184,7 +4184,7 @@
   "type": "top5",
   "created": "2026-09-07",
   "ledger_schema_version": 2,
-  "created_at": "2026-09-07T06:52:02.414845+08:00",
+  "created_at": "2026-09-07T07:14:34.709054+08:00",
   "target_session": "2026-09-07",
   "base_session": "2026-09-04",
   "codes": [
@@ -4209,7 +4209,7 @@
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
   "created": "2026-09-07",
-  "created_at": "2026-09-07T06:52:02.414845+08:00",
+  "created_at": "2026-09-07T07:14:34.709054+08:00",
   "target": "2026-09-07",
   "threshold": 2410.0,
   "pred_pct": 1.263,
@@ -4226,15 +4226,15 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "ee536857a56c"
+   "git_sha": "69485dc441ce"
   },
-  "git_sha": "ee536857a56c"
+  "git_sha": "69485dc441ce"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
   "created": "2026-09-07",
-  "created_at": "2026-09-07T06:52:02.414845+08:00",
+  "created_at": "2026-09-07T07:14:34.709054+08:00",
   "target": "2026-09-07",
   "threshold": 46551.13,
   "pred_pct": 0.72,
@@ -4251,14 +4251,14 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "ee536857a56c"
+   "git_sha": "69485dc441ce"
   },
-  "git_sha": "ee536857a56c"
+  "git_sha": "69485dc441ce"
  },
  {
   "type": "mz_shadow",
   "created": "2026-09-07",
-  "created_at": "2026-09-07T06:52:02.414845+08:00",
+  "created_at": "2026-09-07T07:14:34.709054+08:00",
   "target": "2026-09-07",
   "raw": 2440.44,
   "shadow": 2432.93,
@@ -4276,8 +4276,8 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "ee536857a56c"
+   "git_sha": "69485dc441ce"
   },
-  "git_sha": "ee536857a56c"
+  "git_sha": "69485dc441ce"
  }
 ]

@@ -160,7 +160,7 @@ def test_history_ids_exist_but_cannot_be_today_direction_evidence():
 def test_history_citations_must_match_the_current_story():
     pk = packet()
     eid = pk["historical_sources"][0]["evidence_id"]
-    good = {"top_news_analysis": [{"source_item_id": "n1", "historical_context": {"evolution": "前期仍在施工。", "evidence_ids": [eid]}}]}
+    good = {"top_news_analysis": [{"source_item_id": "n1", "why_it_matters": "目前仍在施工，未證實投產。", "historical_context": {"evolution": "前期仍在施工。", "evidence_ids": [eid]}}]}
     assert context.validate(good, pk) == []
     bad = copy.deepcopy(good)
     bad["top_news_analysis"][0]["source_item_id"] = "unrelated"
@@ -196,6 +196,28 @@ def test_diagnostics_do_not_claim_semantic_correctness():
     assert result["with_valid_history_citations"] == 0
     assert result["deep_topics_analyzed"] == 0
     assert result["semantic_truth_evaluated"] is False
+
+
+def test_selected_deep_topics_cannot_silently_disappear():
+    pk = packet()
+    assert pk["research"]["deep_topics"]
+    assert any("深入主題" in p for p in context.validate({"top_news_analysis": []}, pk))
+    assert not context.validate({"top_news_analysis": []}, {"research": {}})
+
+
+def test_deep_topic_requires_renderable_analysis_not_an_empty_placeholder():
+    pk = packet()
+    obj = {"top_news_analysis": [{"source_item_id": "n1", "why_it_matters": " "}]}
+    assert any("深入主題" in p for p in context.validate(obj, pk))
+    obj["top_news_analysis"][0]["why_it_matters"] = "僅有施工消息，缺投產與訂單證據，尚不能量化獲利。"
+    assert not context.validate(obj, pk)
+
+
+def test_deep_topic_accepts_another_current_member_without_duplicate_coverage():
+    pk = packet()
+    pk["research"]["deep_topics"][0]["member_source_ids"].append("same_event")
+    obj = {"top_news_analysis": [{"source_item_id": "same_event", "why_it_matters": "同事件另一來源。"}]}
+    assert not context.validate(obj, pk)
 
 
 def test_funnel_separates_title_only_and_fulltext():

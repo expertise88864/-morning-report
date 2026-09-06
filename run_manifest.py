@@ -23,7 +23,6 @@ BLOCK 的理由消失,才有可能真的搬走。
 from __future__ import annotations
 
 import os
-
 import sys
 from typing import Optional
 
@@ -249,7 +248,9 @@ class ManifestRecorder:
                           "fail": int((s or {}).get("fail", 0))}
                       for h, s in (feeds or {}).items()},
         }
-        out.update({k: self.data.get(k) for k in DIAGNOSTIC_KEYS})
+        # Before SMTP omit absent delivery; preserve explicit null for validation.
+        out.update({k: self.data.get(k) for k in DIAGNOSTIC_KEYS
+                    if k != "delivery" or k in self.data})
         return out
 
     # ── LLM 呼叫 ────────────────────────────────────────────────────

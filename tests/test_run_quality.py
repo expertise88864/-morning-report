@@ -80,6 +80,33 @@ def test_a_healthy_run_reports_nothing():
     assert rq.summarize([]) == ""
 
 
+def _built_canary(monkeypatch, **recorded):
+    """Exercise the real writer, not a hand-written approximation of its JSON."""
+    import run_manifest as rm
+    monkeypatch.setenv("GITHUB_SHA", "abc123")
+    monkeypatch.setenv("GITHUB_RUN_ID", "42")
+    monkeypatch.setenv("RUN_NONCE", "deadbeef")
+    recorder = rm.ManifestRecorder()
+    recorder.data.update(_ok_manifest())
+    recorder.data.update(recorded)
+    return recorder.build(date="2026-09-06 07:00", report_kind=rq.MORNING_REPORT,
+                          budget_seconds=2700, news_workers=4, degraded_steps=[])
+
+
+def test_actual_canary_writer_preserves_absent_delivery(monkeypatch):
+    manifest = _built_canary(monkeypatch)
+    assert "delivery" not in manifest  # No SMTP attempt: absence is not a null record.
+    assert rq.assess(manifest, mode="strict", expected_sha="abc123",
+                     expected_run_id="42", expected_nonce="deadbeef") == []
+
+
+@pytest.mark.parametrize("bad", [None, [], "invalid", 42])
+def test_writer_does_not_hide_explicitly_invalid_delivery(monkeypatch, bad):
+    manifest = _built_canary(monkeypatch, delivery=bad)
+    assert "delivery" in manifest and manifest["delivery"] == bad
+    assert "delivery_structure_invalid" in {f["code"] for f in rq.assess(manifest)}
+
+
 def test_the_five_day_silent_degradation_is_caught():
     """**這條測試存在的理由。** 拿 2026-08-08 生產 manifest 的形狀:
     特化輸出被驗證擋下、退回 legacy —— 當時沒有任何東西會說話。"""

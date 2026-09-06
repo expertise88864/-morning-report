@@ -500,7 +500,8 @@ def _research_probe() -> dict:
         "2026-09-01T07:00+08:00", sanitize=str)[0][0]
     eid = old["evidence_id"]
     pk = {"as_of": "2026-09-06T07:00+08:00", "historical_sources": [old],
-          "research": {"contexts": {"n1": {"evidence_ids": [eid]}}}}
+          "research": {"contexts": {"n1": {"evidence_ids": [eid]}}, "deep_topics": [
+              {"cluster_id": "cluster:n1", "source_item_id": "n1", "member_source_ids": ["n1"]}]}}
     row = dict(fx.valid_analysis()["top_news_analysis"][0], historical_context={
         "evolution": "先前仍在施工，本次尚無投產確認", "evidence_ids": [eid]})
     valid = {"top_news_analysis": [row]}
@@ -513,6 +514,7 @@ def _research_probe() -> dict:
     return {"render": [analysis_render_depth._news_line(row, pk),
                        analysis_render_depth._news_line(empty["top_news_analysis"][0], pk)],
             "grounding": [av.validate(valid, pk), av.validate(wrong, pk), av.validate(current_inference, pk),
+                          av.validate({"top_news_analysis": []}, pk),
                           _ad.news_regressions(valid, empty)]}
 
 
@@ -879,7 +881,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (40, "3d5e5f157bba1734"),  # 歷史匹配、當期推論負例與前情保留。
+    "grounding_version":      (41, "dc803d8cea7f6ae8"),  # 跨日引用與深入主題漏寫的正反例。
 }
 
 

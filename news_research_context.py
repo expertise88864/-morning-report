@@ -137,6 +137,12 @@ def validate(obj: dict, packet: dict) -> list:
                     problems.append(f"{current}: 歷史 ID 僅限 historical_context，不可支持當期推論")
                 check_scope(child, current)
     check_scope(obj)
+    rendered = {r.get("source_item_id") for r in obj.get("top_news_analysis") or []
+                if isinstance(r, dict) and str(r.get("why_it_matters") or "").strip()}
+    for topic in (packet.get("research") or {}).get("deep_topics") or []:
+        if not rendered.intersection(topic["member_source_ids"]):
+            problems.append(f"深入主題 {topic['cluster_id']} 漏寫 top_news_analysis；"
+                            f"請分析當期來源 {topic['source_item_id']}，證據不足須明示限制，不得編造")
     for index, row in enumerate(obj.get("top_news_analysis") or []):
         if not isinstance(row, dict):
             continue  # Existing schema validation diagnoses the row itself.

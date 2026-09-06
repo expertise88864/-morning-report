@@ -40,8 +40,11 @@ def test_every_schema_evidence_array_enforces_the_history_boundary(field):
     # nested current-effect/watch/narrative structures, not just claim_audit.
     pk = packet()
     eid = pk["historical_sources"][0]["evidence_id"]
-    assert context.validate({"nested": [{"nested": {field: [eid, "n1"]}}]}, pk)
-    assert not context.validate({"nested": [{"nested": {field: ["n1"]}}]}, pk)
+    valid_rows = [{"source_item_id": "n1", "why_it_matters": "尚缺投產證據，無法量化。"}]
+    assert any("歷史 ID 僅限" in p for p in context.validate(
+        {"top_news_analysis": valid_rows, "nested": [{"nested": {field: [eid, "n1"]}}]}, pk))
+    assert not context.validate(
+        {"top_news_analysis": valid_rows, "nested": [{"nested": {field: ["n1"]}}]}, pk)
 
 
 def test_updated_only_feed_keeps_canonical_time_in_memory_and_replay(tmp_path):

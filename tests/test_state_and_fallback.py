@@ -887,8 +887,11 @@ def test_the_recorder_builds_a_manifest_without_touching_the_world():
     assert built["phases"][0]["seconds"] == 30.0
     assert built["degraded_steps"] == ["a", "b"], "重複的降級項沒有去重"
     assert built["feeds"] == {"example.com": {"ok": 3, "fail": 1}}
-    # 每一個診斷鍵都必須出現(即使值是 None)—— 這正是白名單的意義
+    # 寄送尚未發生時不製造 null delivery；其他診斷鍵仍保留缺值。
     for key in rm.DIAGNOSTIC_KEYS:
+        if key == "delivery":
+            assert key not in built
+            continue
         assert key in built, f"{key} 沒有被帶出去"
     assert built["llm_extractor"] == {"called": True, "valid": 3}
     # 暫時鍵不落地

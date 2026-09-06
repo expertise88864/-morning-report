@@ -102,3 +102,10 @@ outside the temporary state tree are explicitly blocked. Strict acceptance binds
 the fresh manifest to the same SHA, Actions run and nonce; HTML and manifest are
 uploaded as evidence. The optional local `--kind scheduled` preview follows actual
 calendar dispatch and is not evidence of weekday specialized-analysis success.
+
+The first live canary exposed two acceptance gaps: the manifest writer serialized
+absent delivery as null, and the model omitted all three planned deep topics.
+Absent delivery now stays absent before SMTP (explicit invalid records still
+fail). Selected deep themes must appear as nonempty current-source analysis;
+omissions enter the existing bounded repair path, without extra model calls or
+fabricated depth. This is a coverage guarantee, not a semantic quality score.

@@ -4080,8 +4080,16 @@
    "2603"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "6442": 1860.0,
+   "6515": 7275.0,
+   "2885": 68.9,
+   "2615": 115.0,
+   "2603": 238.0
+  },
+  "taiex_entry": 45991.28
  },
  {
   "question": "2330_open_up",
@@ -4174,9 +4182,9 @@
  },
  {
   "type": "top5",
-  "created": "2026-09-05",
+  "created": "2026-09-07",
   "ledger_schema_version": 2,
-  "created_at": "2026-09-05T06:58:29.214089+08:00",
+  "created_at": "2026-09-07T06:52:02.414845+08:00",
   "target_session": "2026-09-07",
   "base_session": "2026-09-04",
   "codes": [
@@ -4200,8 +4208,8 @@
  {
   "question": "2330_open_up",
   "label": "2330 開盤高於昨收",
-  "created": "2026-09-05",
-  "created_at": "2026-09-05T06:58:29.214089+08:00",
+  "created": "2026-09-07",
+  "created_at": "2026-09-07T06:52:02.414845+08:00",
   "target": "2026-09-07",
   "threshold": 2410.0,
   "pred_pct": 1.263,
@@ -4218,19 +4226,19 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "a0cf554fe03e"
+   "git_sha": "ee536857a56c"
   },
-  "git_sha": "a0cf554fe03e"
+  "git_sha": "ee536857a56c"
  },
  {
   "question": "taiex_open_up",
   "label": "加權指數開盤高於昨收",
-  "created": "2026-09-05",
-  "created_at": "2026-09-05T06:58:29.214089+08:00",
+  "created": "2026-09-07",
+  "created_at": "2026-09-07T06:52:02.414845+08:00",
   "target": "2026-09-07",
   "threshold": 46551.13,
-  "pred_pct": 0.82,
-  "prob": 0.95,
+  "pred_pct": 0.72,
+  "prob": 0.933,
   "sigma": 0.882,
   "sigma_n": 60,
   "base_rate": 0.6,
@@ -4243,21 +4251,21 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "a0cf554fe03e"
+   "git_sha": "ee536857a56c"
   },
-  "git_sha": "a0cf554fe03e"
+  "git_sha": "ee536857a56c"
  },
  {
   "type": "mz_shadow",
-  "created": "2026-09-05",
-  "created_at": "2026-09-05T06:58:29.214089+08:00",
+  "created": "2026-09-07",
+  "created_at": "2026-09-07T06:52:02.414845+08:00",
   "target": "2026-09-07",
   "raw": 2440.44,
-  "shadow": 2432.64,
+  "shadow": 2432.93,
   "base": 2410.0,
-  "a": 1.611,
-  "b": 0.6908,
-  "n_train": 77,
+  "a": 1.911,
+  "b": 0.6905,
+  "n_train": 78,
   "forecast_version": "prob-v2",
   "mz_rule": "delta-mz-hac-v1",
   "versions": {
@@ -4268,8 +4276,8 @@
    "mz_rule": "delta-mz-hac-v1",
    "event_schema": 6,
    "ledger_schema": 2,
-   "git_sha": "a0cf554fe03e"
+   "git_sha": "ee536857a56c"
   },
-  "git_sha": "a0cf554fe03e"
+  "git_sha": "ee536857a56c"
  }
 ]

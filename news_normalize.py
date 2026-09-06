@@ -19,6 +19,7 @@ import news_clusters as _nc
 import news_facts as _nf
 import source_registry as _sr
 import news_coverage as _coverage
+import finance_editorial as _finance
 
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
@@ -125,6 +126,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "fulltext": fulltext[:MAX_FULLTEXT_CHARS],
             "fulltext_truncated": len(fulltext) > MAX_FULLTEXT_CHARS,
             "published": str(n.get("published") or ""),
+            "date_missing": bool(n.get("date_missing")),
             "source": clean(str(n.get("source") or "")),
             # **發布者身分要留下來**(Commit B 的整套獨立性靠它)。
             # 先前只留 `source` —— 而那一欄常常是聚合器別名
@@ -145,6 +147,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "entities": entities_of(n, clean),
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
+        _finance.retain_evidence(items[-1], n, clean=clean)
         # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。
         # 沒有這一步,「80 億美元訂單」在 registry 裡是 value=None ——
         # 模型抄成 8 億,檢查器只看得到「引用了 n3」。
@@ -182,6 +185,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             prior = seen_fp[fp]
             prior["coverage_buckets"] = sorted(set(_coverage.buckets(prior)) |
                                                set(_coverage.buckets(x)))
+            _finance.retain_evidence(prior, prior, x)
             near_dropped += 1
             continue
         seen_fp[fp] = x

@@ -34,6 +34,7 @@ import app_context as _app
 import econ_terms as _et
 import industry_class as _industry_class
 import gnews_registry as _gnews_reg
+import finance_editorial as _finance_editorial
 import llm_http as _lh
 import payload_budget as _pb
 import sector_readout as _sr
@@ -970,9 +971,7 @@ OTHER_SECTOR_QUERIES: dict[str, str] = {
     "金融-台股": "壽險 OR 金控 OR 淨息差 OR 投資收益",
     # 全球金融精準化:原「美股 金融」太泛,收斂到會傳導台股壽險/銀行的具體題材
     "金融-全球": "Fed 銀行股 OR 美債殖利率 OR 壽險 投資收益",
-    # 金控集團動態(2026-08-20):國泰金(2882)/中信金(2891)母公司與主要
-    # 子公司(銀行/壽險/投信)的重大消息、財報、裁罰、購併,供「九、其他
-    # 類股」金融條目取材。標籤與 prompt 只以一般類股素材呈現。
+    **_finance_editorial.QUERIES,
     "金融-金控": ("國泰金 OR 國泰人壽 OR 國泰世華 OR 國泰投信 "
               "OR 中信金 OR 中國信託 OR 台灣人壽 OR 中信銀"),
     "航運-台股": "長榮 OR 陽明 OR 萬海 OR 貨櫃航運",
@@ -11369,6 +11368,7 @@ def _build_prompt(quotes: dict, fair: dict, predictions: dict,
     news_block += ("\n\n[Other sector coverage (dated headlines only)]\n"   # 規則在圍欄外(LM-7)
                    + "\n".join(sec_lines))
 
+    news_block += _finance_editorial.legacy_block(news, _external_text)
     # 世界大事(非市場)新聞獨立成段:供「世界大事速覽」取材。以 world_cat 判定
     # (dedup 後仍保留;來源前綴僅為 fallback)。每類最多 4 則:保留跨類別多樣性
     # (國際/災難/科學/AI),同時控 prompt 長度(Codex 第二意見)。

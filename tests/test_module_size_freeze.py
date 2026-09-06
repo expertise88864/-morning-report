@@ -173,6 +173,7 @@ MAIN_MODULE_LINE_CEILING = 26_485  # 外審尺寸修正:finalize 移入 assembly
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
     "news_coverage.py": 120,
+    "finance_editorial.py": 220,  # 新模組首版含去重原始證據保留,不提高既有模組上限。
     "news_impact.py": 100,
     "email_mobile.py": 200,
     "email_content_audit.py": 110,

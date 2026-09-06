@@ -1353,7 +1353,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
             for t in teams)
         return ("<div style='margin:8px 0;'><b style='color:#0f172a;'>"
                 + htmllib.escape(title) + "</b>"
-                "<table style='width:100%;border-collapse:collapse;margin-top:4px;'>"
+                '<table data-mobile-layout="table" '
+                "style='width:100%;border-collapse:collapse;margin-top:4px;'>"
                 "<tr style='background:#f8fafc;'><th style='padding:4px 10px;text-align:left;"
                 "font-size:12px;color:#64748b;'>排名</th><th style='padding:4px 10px;"
                 "text-align:right;font-size:12px;color:#64748b;'>勝-和-敗</th>"

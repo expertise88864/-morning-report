@@ -477,6 +477,18 @@ def _stance_authority_probes() -> list:
     return out
 
 
+def _financial_render_probe() -> str:
+    """Exercise actual financial-card ordering; old fixtures were tech only."""
+    obj = fx.valid_analysis()
+    template = obj["top_news_analysis"][0]
+    titles = ("富邦金營運公告", "台灣人壽公告增資", "國泰世華投資計畫")
+    rows = [{"source_item_id": str(i), "title": title, "source": "類股-金融-台股",
+             "published": "2026-09-05T12:00:00+08:00"} for i, title in enumerate(titles)]
+    obj["top_news_analysis"] = [dict(template, source_item_id=str(i), affected_assets=[])
+                                for i in range(3)]
+    return ar.render(obj, {"news": rows})
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
@@ -530,7 +542,7 @@ def _behaviour() -> dict:
         # 改了 renderer 而指紋不動,「版本升了行為沒變」就會誤報。
         # 這個 repo 已經栽過同一形狀兩次(legacy prompt 那兩層)。
         "renderer_version": _sha([ar.render(_ANALYSIS),
-                                  ar.render(_render_case(pk), pk)]),
+                                  ar.render(_render_case(pk), pk), _financial_render_probe()]),
         # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
         # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
         # v3:接受政策含「深度加深」的觸發條件 —— depth_advisories 的行為
@@ -648,7 +660,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (35, "660c30f1abaae586"),  # 0906:類股涵蓋保留與來源標籤。
+    "evidence_schema_version":  (36, "2469f972b22e98f9"),  # 金融取材與缺失日期保留。
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -723,11 +735,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (52, "d3043bea1bd60a75"),  # 0906:因果/時程/增量證據。
+    "primary_profile_version":  (53, "e8ec097000715c09"),  # 金融集團取材共用規則。
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (18, "0704183e3d6d4007"),  # 0906:legacy 共用縱向分析規則。
+    "fallback_profile_version":  (19, "9123f7a572ad9ddc"),  # 金融素材與共用規則。
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -772,7 +784,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (22, "2f082a066d3ce55f"),  # 0906:量級/觀察窗/確認條件進信。
+    "renderer_version":       (23, "1785de4c607eb12a"),  # 金融卡片排序;增加非科技探針。
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

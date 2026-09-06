@@ -22,6 +22,7 @@ prompt SHA 與 `tests/test_contract_snapshots.py` 的行為雜湊都沒有變 �
 """
 from __future__ import annotations
 from news_impact import WRITING as NEWS_IMPACT_WRITING
+from finance_editorial import WRITING as FINANCE_WRITING
 
 #: DeepSeek legacy 單段 prompt 的寫作鐵律 R1–R16b。
 LEGACY_RULES = """R1. **零客套**：不寫「親愛的投資人」「以下是」「希望這份報告有幫助」這類話
@@ -337,6 +338,7 @@ QQQ／ADR 漲等等),我要的是真正國際上昨夜三大發生的重大事�
 
 若上方清單為「無重大排程事件」,則本段只寫一行「未來 48 小時無重大排程事件」即可。"""
 LEGACY_RULES += NEWS_IMPACT_WRITING
+LEGACY_RULES += FINANCE_WRITING
 
 
 #: Luna 特化 prompt 的寫作段(穩定前綴的一部分)。
@@ -399,3 +401,4 @@ LUNA_WRITING = """# 寫作
 - 不得為了湊滿欄位而編造內容。沒有就給空陣列，並在 `data_gaps` 說明。
 - 不得把外文標題原封不動貼進輸出，也不得只丟一串數字就當成分析。"""
 LUNA_WRITING += NEWS_IMPACT_WRITING
+LUNA_WRITING += FINANCE_WRITING

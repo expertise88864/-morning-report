@@ -1,14 +1,15 @@
 """Deterministic editorial coverage reserves, not investment scores.
 
-Only registered feed provenance is used; never infer an issuer or independent
-confirmation from a query label. Required event representatives always win.
+Registered feed provenance and dated financial topic mentions are used; neither
+implies an issuer or independent confirmation. Required events always win.
 """
 from collections import Counter
+import finance_editorial as _finance
 
 SECTORS = ("金融", "航運", "生技", "汽車", "傳產", "營建", "房市政策",
            "中彰投建設", "重電", "觀光", "能源")
 WORLD = ("國際大事", "災難極端", "科學太空", "AI大事", "中央社國際")
-BUCKETS = tuple("sector:" + s for s in SECTORS) + tuple("world:" + s for s in WORLD)
+BUCKETS = _finance.GROUPS + tuple("sector:" + s for s in SECTORS) + tuple("world:" + s for s in WORLD)
 RESERVE_PER_BUCKET = 3
 REGIONAL_SOURCES = frozenset({"類股-房市-中彰投", "類股-建商-中彰投", "類股-建設-中彰投"})
 
@@ -17,7 +18,7 @@ def buckets(item: dict) -> list[str]:
     """Finite allowlist; provenance survives upstream duplicate replacement."""
     old = item.get("coverage_buckets")
     out = {b for b in (old if isinstance(old, list) else ())
-           if isinstance(b, str) and b in BUCKETS}
+           if isinstance(b, str) and b in BUCKETS and b not in _finance.GROUPS}
     source = str(item.get("source") or "")
     if source in REGIONAL_SOURCES:
         out.add("sector:中彰投建設")
@@ -32,6 +33,11 @@ def buckets(item: dict) -> list[str]:
         world = source
     if world in WORLD:
         out.add("world:" + world)
+    # Topic matches never become company_label/entities or investment scores.
+    financial = _finance.groups(item)
+    if financial:
+        out.update(financial)
+        out.add("sector:金融")
     return sorted(out)
 
 
@@ -53,6 +59,8 @@ def select(items: list[dict], forced: set, limit: int) -> tuple[list[dict], dict
     tally = Counter(b for x in kept for b in buckets(x))
     for floor in range(1, RESERVE_PER_BUCKET + 1):
         for bucket in BUCKETS:
+            if bucket in _finance.GROUPS and floor > 2:
+                continue
             if len(kept) >= limit or tally[bucket] >= floor:
                 continue
             candidate = next((x for x in by_bucket[bucket]

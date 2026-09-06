@@ -302,7 +302,8 @@ def test_supply_chain_tag_does_not_touch_scoring_map():
 def test_other_sector_queries_precision():
     """生技收斂到個股+催化、金融偏壽險投資收益;擴充到 8 類(核心四類雙軌 + 新增四類台股)。"""
     q = mr.OTHER_SECTOR_QUERIES
-    assert len(q) == 18               # + 金融-金控(08-20)+ 能源-台股(08-21)
+    assert len(q) == 22               # 0906:金融集團/子公司/建設投資四條查詢。
+    assert {"金融-銀行壽險", "金融-保險資管", "金融-轉投資", "金融-建設投資"} <= q.keys()
     assert "新青安" in q["房市政策-台股"]
     assert "藥華藥" in q["生技-台股"] and "臨床" in q["生技-台股"]
     assert "生技股" not in q["生技-台股"]              # 去掉過寬關鍵字

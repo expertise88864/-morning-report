@@ -12,8 +12,9 @@ import re
 _CSS = """<style id="morning-mobile">
 @media screen and (max-width:600px){
 .mail-reading{width:100%!important;min-width:0!important;-webkit-text-size-adjust:100%;}
-.mail-reading p,.mail-reading li{font-size:16px!important;line-height:1.85!important;word-wrap:break-word;}
-.mail-reading h2,.mail-reading h3{font-size:20px!important;line-height:1.45!important;}
+.mail-reading p,.mail-reading li{font-size:14px!important;line-height:1.7!important;word-wrap:break-word;}
+.mail-reading h2{font-size:18px!important;line-height:1.45!important;}
+.mail-reading h3{font-size:16px!important;line-height:1.45!important;}
 .mail-reading a{word-wrap:break-word;}
 .mail-data{width:100%!important;table-layout:fixed!important;}
 .mail-data td,.mail-data th{font-size:14px!important;padding:8px 5px!important;white-space:normal!important;word-wrap:break-word;}
@@ -54,6 +55,7 @@ class _Tables(HTMLParser):
             if self.stack:
                 self.stack[-1]["nested"] = True
             table = dict(self._tag(), rows=[], nested=False, merged=False,
+                         preserve=dict(attrs).get("data-mobile-layout") == "table",
                          presentation=dict(attrs).get("role") == "presentation")
             self.tables.append(table)
             self.stack.append(table)
@@ -96,7 +98,7 @@ def enhance(html: str) -> str:
         decorate(parser.body, "mail-reading")
     for table in parser.tables:
         rows = table["rows"]
-        if table["nested"] or table["presentation"] or not rows:
+        if table["nested"] or table["presentation"] or table["preserve"] or not rows:
             continue
         header = rows[0]["cells"]
         # Only genuine data headers; never guess what layout cells mean.

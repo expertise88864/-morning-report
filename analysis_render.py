@@ -384,7 +384,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     _news_by_id = {_s(x.get("source_item_id")): x
                    for x in ((packet or {}).get("news") or [])
                    if isinstance(x, dict)}
-    for _n in (obj.get("top_news_analysis") or []):
+    import finance_editorial as _finance
+    for _n in _finance.order_analyses(obj.get("top_news_analysis"), packet):
         if not isinstance(_n, dict):
             continue
         _subj = _news_subject(_n, packet)

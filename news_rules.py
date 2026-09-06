@@ -138,6 +138,7 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
     import difflib
     import re as _re
     import news_coverage as _coverage
+    import finance_editorial as _finance
 
     def _norm(t: str) -> str:
         t = (t or "").lower().strip()
@@ -197,6 +198,7 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             wcat = n.get("world_cat") or kept[dup_index].get("world_cat")
             coverage = sorted(set(_coverage.buckets(n)) |
                               set(_coverage.buckets(kept[dup_index])))
+            finance_headlines = _finance.merge_evidence(n, kept[dup_index])
             # 混源重複(一版來自市場來源、一版來自世界來源)→ 標 world_and_market:
             # 該事件同屬兩個版面,市場配額桶與世界取材段都要收,不可因帶 world_cat
             # 就被市場桶排除(Codex review 第二輪:否則跨源大事件從市場桶消失)。
@@ -217,6 +219,8 @@ def dedup_news(news: list[dict], similarity: float = 0.85) -> list[dict]:
             kept[dup_index]["official"] = combined_official
             if coverage:
                 kept[dup_index]["coverage_buckets"] = coverage
+            if finance_headlines:
+                kept[dup_index]["finance_headlines"] = finance_headlines
             if label and not kept[dup_index].get("company_label"):
                 kept[dup_index]["company_label"] = label
             if wcat and not kept[dup_index].get("world_cat"):

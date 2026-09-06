@@ -23023,7 +23023,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     _t_pct = ((_t_pred / _t_last - 1) * 100) if (_t_pred and _t_last) else None
     combined_pred_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#e0f2fe;border-left:5px solid #0284c7;border-radius:4px;">六、個股開盤預測與公允價（2330 / 0050 開盤;00662 公允價）</h2>
-        <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
+        <table data-mobile-layout="table" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
           <tr style="background:#f1f5f9;">
             <th style="padding:8px 12px;text-align:left;color:#475569;font-size:12px;">標的</th>
             <th style="padding:8px 12px;text-align:right;color:#475569;font-size:12px;">昨收</th>

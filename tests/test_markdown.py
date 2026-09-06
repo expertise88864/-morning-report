@@ -1220,9 +1220,12 @@ def test_compacting_styles_preserves_every_element_and_its_effective_style():
     sheet_src = re.search(r"<style>(.*?)</style>", out, re.S)
     assert sheet_src, "沒有產生 <style> 區塊"
     sheet = dict(re.findall(r"\.(s\d+)\{(.*?)\}", sheet_src.group(1)))
+    def declarations(style):
+        return dict(p.split(":", 1) for p in (style or "").split(";") if ":" in p)
+
     for (t1, st1, _), (t2, st2, cls) in zip(a.els, b.els):
-        effective = st2 if st2 is not None else (sheet.get(cls) if cls else None)
-        assert t1 == t2 and (st1 or "") == (effective or ""), (
+        effective = declarations(sheet.get(cls)) | declarations(st2)
+        assert t1 == t2 and declarations(st1) == effective, (
             f"{t1} 的有效樣式變了:{st1!r} → {effective!r}")
 
     assert len(out.encode()) < len(html.encode()), "沒有變小"

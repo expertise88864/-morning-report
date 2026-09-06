@@ -274,11 +274,11 @@ def _style_analysis_html(html: str) -> str:
         ("<h4>", "<h4 style=\"color:#0c4a6e;font-size:16px;font-weight:700;margin:20px 0 8px;\">"),
         ("<h1>", "<h1 style=\"color:#0f172a;font-size:24px;margin:24px 0 12px;\">"),
         # 段落
-        ("<p>", "<p style=\"margin:14px 0;line-height:1.95;color:#1f2937;font-size:15px;\">"),
+        ("<p>", "<p style=\"margin:14px 0;line-height:1.7;color:#1f2937;font-size:14px;\">"),
         # 列表
-        ("<ul>", "<ul style=\"margin:14px 0 18px;padding-left:24px;line-height:1.95;color:#1f2937;font-size:15px;\">"),
-        ("<ol>", "<ol style=\"margin:14px 0 18px;padding-left:24px;line-height:1.95;color:#1f2937;font-size:15px;\">"),
-        ("<li>", "<li style=\"margin:8px 0;padding-left:4px;\">"),
+        ("<ul>", "<ul style=\"margin:14px 0 18px;padding-left:24px;line-height:1.7;color:#1f2937;font-size:14px;\">"),
+        ("<ol>", "<ol style=\"margin:14px 0 18px;padding-left:24px;line-height:1.7;color:#1f2937;font-size:14px;\">"),
+        ("<li>", "<li style=\"margin:8px 0;padding-left:4px;font-size:14px;\">"),
         # 強調
         ("<strong>", "<strong style=\"color:#0c4a6e;font-weight:700;\">"),
         ("<em>", "<em style=\"color:#475569;\">"),
@@ -1743,7 +1743,15 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
             counts[value] = counts.get(value, 0) + 1
     # 依「省下的位元組」排序才會先處理長而重複的;同分時用字串排序保證輸出穩定
     # (輸出穩定 = 兩封信的 diff 有意義,而不是每天 class 編號都在跳)。
-    worth = sorted((v for v, n in counts.items() if n >= min_uses),
+    # Font size and numeric alignment must survive clients discarding classes.
+    # Keep short styles inline when the fallback would erase the byte saving.
+    def retained(value):
+        return "".join(p.strip() + ";" for p in value.split(";")
+                       if p.partition(":")[0].strip().lower() in
+                       {"font-size", "text-align", "line-height"})
+
+    worth = sorted((v for v, n in counts.items() if n >= min_uses
+                    and n * (len(v) - len(retained(v)) - 18) > len(v) + 12),
                    key=lambda v: (-len(v) * counts[v], v))
     if not worth:
         return html
@@ -1755,7 +1763,10 @@ def compact_inline_styles(html: str, min_uses: int = _STYLE_CLASS_MIN_USES) -> s
         def _sub(sm):
             value = sm.group(2)
             cls = names.get(value)
-            return f' class="{cls}"' if cls else sm.group(0)
+            if not cls:
+                return sm.group(0)
+            fallback = retained(value)
+            return f' class="{cls}"' + (f' style="{fallback}"' if fallback else "")
 
         return _STYLE_ATTR_RE.sub(_sub, tag)
 

@@ -17,5 +17,5 @@ else
   exit 4
 fi
 
-# Preserve Git's pre-push stdin; claude_diff_review.py reads every outgoing ref.
-exec "$PYTHON" tools/claude_diff_review.py push --remote-name "${1:-origin}"
+# The delivery wrapper preserves stdin and then runs the unchanged Claude gate.
+exec "$PYTHON" _delivery.py pre-push --remote "${1:-origin}"

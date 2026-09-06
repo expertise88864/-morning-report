@@ -862,6 +862,13 @@ def test_the_ci_canary_runs_the_same_settings_as_the_scheduled_job():
             f"{key} 在 canary 與排程班不一致:"
             f"canary={ci_env[key]!r} vs 排程={prod_env[key]!r}")
     assert ci_env["DRY_RUN"] == "1", "canary 必須是 DRY_RUN(不寄信)"
+    # Include non-LLM data providers (e.g. FRED), and endpoint/contact settings.
+    # Derive from production: another newly configured provider must not hide.
+    data_keys = {k for k in prod_env if k.endswith(("_API_KEY", "_BASE_URL"))
+                 or k == "CONTACT_EMAIL"}
+    assert "FRED_API_KEY" in data_keys
+    for key in data_keys:
+        assert key in ci_env and ci_env[key] == prod_env[key], f"canary data-provider drift: {key}"
 
     # **每一家合法 provider 的金鑰,兩邊都要注入**(2026-08-24 外審 P2)。
     # 上面的路由比對刻意排除了 `_API_KEY`,於是「宣告為合法卻沒有金鑰」

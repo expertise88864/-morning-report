@@ -1,0 +1,62 @@
+{
+  "repository": "expertise88864/-morning-report",
+  "require_pr": false,
+  "claude_hook": true,
+  "morning_dry_run": true,
+  "workflows": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "jobs": [
+        "test"
+      ],
+      "candidate_skips": [
+        "dry-run-preview"
+      ],
+      "main_skips": [
+        "dry-run-preview"
+      ],
+      "steps": {
+        "test": {
+          "required": [
+            "Setup Python",
+            "Install dependencies",
+            "Syntax check",
+            "Lint",
+            "Type check (boundary modules)",
+            "Run unit tests",
+            "把 pytest 的失敗轉成 annotation"
+          ],
+          "conditional": []
+        },
+        "dry-run-preview": {
+          "required": [
+            "Setup Python",
+            "Install dependencies",
+            "Remove the checked-in manifest so a stale one cannot pass",
+            "Mint this invocation's nonce",
+            "Run morning report (DRY_RUN, no email)",
+            "Assert the run actually produced the specialized output",
+            "Upload HTML preview"
+          ],
+          "conditional": []
+        }
+      }
+    },
+    {
+      "path": ".github/workflows/delivery.yml",
+      "jobs": [
+        "Delivery contract"
+      ],
+      "candidate_skips": [],
+      "main_skips": [],
+      "steps": {
+        "Delivery contract": {
+          "required": [
+            "Delivery Python regression tests"
+          ],
+          "conditional": []
+        }
+      }
+    }
+  ]
+}

@@ -86,3 +86,15 @@ sections, compact mobile typography, and Python investment authority remain.
 - No production SMTP, official state mutation, subscription change, new runtime
   dependency, scoring coefficient change, or automatic model substitution is
   part of the development-time verification.
+
+## Full production-path canary
+
+Manual CI now runs `tools/preview_morning_report.py --kind full` with `DRY_RUN=1`.
+Before importing the production module it copies checked-in historical state to
+a fresh temporary directory, excluding the stale manifest. It runs the existing
+production phase list with actual time/provider settings, including on Sundays;
+scheduled Sunday dispatch itself is unchanged. SMTP, state push and atomic writes
+outside the temporary state tree are explicitly blocked. Strict acceptance binds
+the fresh manifest to the same SHA, Actions run and nonce; HTML and manifest are
+uploaded as evidence. The optional local `--kind scheduled` preview follows actual
+calendar dispatch and is not evidence of weekday specialized-analysis success.

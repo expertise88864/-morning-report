@@ -63,9 +63,9 @@ jobs:
         if: ${{ always() }}
         run: python tools/ci_pytest_annotations.py pytest-report.xml
 
-  # 手動觸發：用真實資料跑一次完整流程（不寄信），產出 HTML 預覽 artifact。
-  # 連 Yahoo / TWSE / LLM，可能因外部服務不穩而失敗 —— 故設 continue-on-error，
-  # 不影響 CI 綠燈，也不影響每日排程。
+  # 手動觸發：用真實資料跑完整平日分析流程（週日也可），不寄信。
+  # STATE_ROOT 在 import 前複製到獨立暫存樹；SMTP/push/跨樹 atomic write 禁止。
+  # Yahoo / TWSE / LLM 的失敗不會被算成通過；正式寄信排程完全不變。
   #
   # 外審 P2-1:**這個 job 的設定必須與排程班一致**,否則它證明的是另一條路。
   # 先前 model 預設 v4-pro、effort 預設 high、`LLM_EVENT_EXTRACTION=0` ——
@@ -135,6 +135,8 @@ jobs:
           LLM_EVENT_EXTRACTION: "1"
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'deepseek' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          DEEPSEEK_BASE_URL: https://api.deepseek.com
           # 與生產一致(2026-08-15 主分析改回 v4-flash)—— 驗收關跑的
           # 要是生產真的會跑的那個模型。
           DEEPSEEK_MODEL: deepseek-v4-flash
@@ -159,7 +161,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
           TZ: Asia/Taipei
-        run: python morning_report.py
+        run: python tools/preview_morning_report.py --kind full
 
       # **「跑完了、exit 0」證明不了什麼**:降級成 legacy、兩階段抓取
       # 整段 no-op、昨日觀點沒存下來 —— 三者都會 exit 0。canary 的綠燈
@@ -175,15 +177,18 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           RUN_NONCE: ${{ steps.nonce.outputs.value }}
+          PREVIEW_MANIFEST: ${{ steps.run.outputs.preview_manifest }}
         # **strict**:這個 job 的名字是「證明特化輸出真的產生了」,
         # 所以退回 legacy 就是不通過(每日生產的 watchdog 用 watchdog 模式,
         # 額度用罄那幾天不該天天當成程式缺陷)。
-        run: python tools/assert_run_quality.py --mode strict
+        run: python tools/assert_run_quality.py --mode strict --manifest "$PREVIEW_MANIFEST"
 
       - name: Upload HTML preview
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: morning-report-preview
-          path: /tmp/morning_report_preview.html
-          if-no-files-found: warn
+          path: |
+            /tmp/morning_report_preview.html
+            ${{ steps.run.outputs.preview_manifest }}
+          if-no-files-found: error

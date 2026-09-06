@@ -26071,7 +26071,7 @@ def _phase_render(ctx) -> Optional[int]:
         persist_delivered_report_state(
             pending_state_entry,
             quotes.get("PODCAST_SHOWN_EPISODES", quotes.get("PODCAST_DIGEST")) or [],
-            mark_podcasts=False,
+            mark_podcasts=False, push=False,
         )
         out = "/tmp/morning_report_preview.html"
         with open(out, "w", encoding="utf-8") as f:

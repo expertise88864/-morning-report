@@ -244,7 +244,10 @@ def test_hooks_cover_commit_and_push_and_installer_is_used_by_batch_entrypoint()
     )
 
     assert "claude_diff_review.py staged" in pre_commit
-    assert "claude_diff_review.py push" in pre_push
+    assert '_delivery.py pre-push --remote' in pre_push
+    delivery = (ROOT / '_delivery.py').read_text(encoding='utf-8')
+    assert '[sys.executable, "tools/claude_diff_review.py", "push", "--remote-name", args.remote]' in delivery
+    assert 'cwd=ROOT, input="".join(lines)' in delivery
     assert "install_claude_review_hooks.ps1" in batch
     assert "config --local core.hooksPath .githooks" in installer
     assert "100755" in installer

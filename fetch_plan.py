@@ -112,10 +112,14 @@ def plan(news: Optional[list], clusters: Optional[list],
     for c in ranked:
         members = [str(m) for m in (c.get("member_source_ids") or [])]
         rep = str(c.get("representative_source_id") or "")
-        # 代表先(它是分群時資訊量最高的那則),其餘依重要性、ID 決勝
+        # 代表先；第二篇優先不同的已知編輯群組，不把同通訊社轉載當新觀點。
+        import source_registry as _sources
+        rep_group = _sources.owner_of_item(by_id.get(rep) or {})
         order = ([rep] if rep in members else []) + sorted(
             [m for m in members if m != rep],
-            key=lambda m: (_imp(by_id.get(m)), m))
+            key=lambda m: (not bool(_sources.owner_of_item(by_id.get(m) or {})
+                                   and _sources.owner_of_item(by_id.get(m) or {}) != rep_group),
+                           _imp(by_id.get(m)), m))
         picked = [m for m in order if _fetchable(by_id.get(m))][:MAX_PER_CLUSTER]
         per_cluster.append({"cluster_id": str(c.get("cluster_id") or ""),
                             "picked": picked, "size": len(members)})

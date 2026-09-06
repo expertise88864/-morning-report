@@ -141,7 +141,7 @@ def test_every_rendered_field_is_protected_from_deepening():
     這裡兩邊都用 AST 掃:**渲染器讀得到的新聞/標的欄位,加深不得
     讓它由有變無**。清單漂移這次是機械檢查,不是我記得。"""
     rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py"):
+    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py"):
         rendered |= _get_literals(_read(name))
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]
@@ -198,7 +198,7 @@ def test_the_coverage_check_cannot_pass_on_an_empty_set():
     """**空集合不算通過。** 掃不到欄位(renderer 改寫法、schema 換路徑)
     時上面那條會真空通過 —— 這裡釘住兩邊都要有實質內容。"""
     rendered = set()
-    for name in ("analysis_render.py", "analysis_render_depth.py"):
+    for name in ("analysis_render.py", "analysis_render_depth.py", "news_research_context.py"):
         rendered |= _get_literals(_read(name))
     news = sch.ANALYSIS_OUTPUT_SCHEMA["properties"][
         "top_news_analysis"]["items"]["properties"]

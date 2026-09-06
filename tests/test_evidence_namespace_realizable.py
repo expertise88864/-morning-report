@@ -22,10 +22,16 @@ import re
 import evidence_namespaces as ns
 import evidence_packet as ep
 import fixtures_analysis as fx
+import news_memory
 
 #: 生產形狀:每一類輸入都**照 `morning_report` 真的傳的樣子**給。
 #: 用簡化形狀量「命名空間有沒有實現」,量到的是 fixture 不是生產。
 _QUOTES = {
+    "NEWS_MEMORY": news_memory.observations([
+        {"title": "台積電法說會下週登場", "entities": ["台積電"],
+         "summary": "先前報導關注資本支出", "source": "經濟日報",
+         "link": "https://example.com/earlier-earnings", "published": "2026-08-01T06:00+08:00"}
+    ], "2026-08-01T07:00+08:00", sanitize=str)[0],
     "QQQ": {"change_pct": 1.76, "close": 500.0},
     "TAIFEX_OI": {"foreign_oi_net": -87911},
     "TAIEX_PRED": {"pred_open": 44512.0, "pred_pct": 0.65},
@@ -379,4 +385,3 @@ def test_a_day_without_numeric_facts_says_so():
     # 有數字事實的日子不列(不要為了列而列)
     rich = _rich_packet()
     assert "fact:" not in rich["unavailable_namespaces"]
-

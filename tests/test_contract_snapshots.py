@@ -489,6 +489,33 @@ def _financial_render_probe() -> str:
     return ar.render(obj, {"news": rows})
 
 
+def _research_probe() -> dict:
+    """Exercise real dated rendering, cross-story rejection and depth retention."""
+    import copy
+    import news_memory
+    import analysis_render_depth
+    old = news_memory.observations([{"title": "台積電高雄廠工程進度",
+        "summary": "工程仍在施工", "published": "2026-09-01T06:00+08:00",
+        "link": "https://example.com/previous", "entities": ["台積電"]}],
+        "2026-09-01T07:00+08:00", sanitize=str)[0][0]
+    eid = old["evidence_id"]
+    pk = {"as_of": "2026-09-06T07:00+08:00", "historical_sources": [old],
+          "research": {"contexts": {"n1": {"evidence_ids": [eid]}}}}
+    row = dict(fx.valid_analysis()["top_news_analysis"][0], historical_context={
+        "evolution": "先前仍在施工，本次尚無投產確認", "evidence_ids": [eid]})
+    valid = {"top_news_analysis": [row]}
+    wrong = copy.deepcopy(valid)
+    wrong["top_news_analysis"][0]["historical_context"]["evidence_ids"] = ["history:fake"]
+    empty = copy.deepcopy(valid)
+    empty["top_news_analysis"][0]["historical_context"] = {"evolution": "", "evidence_ids": []}
+    current_inference = copy.deepcopy(valid)
+    current_inference["top_news_analysis"][0]["affected_assets"][0]["evidence_ids"] = [eid]
+    return {"render": [analysis_render_depth._news_line(row, pk),
+                       analysis_render_depth._news_line(empty["top_news_analysis"][0], pk)],
+            "grounding": [av.validate(valid, pk), av.validate(wrong, pk), av.validate(current_inference, pk),
+                          _ad.news_regressions(valid, empty)]}
+
+
 def _behaviour() -> dict:
     """每個契約版本**現在**的行為指紋。"""
     pk = _packet()
@@ -542,7 +569,8 @@ def _behaviour() -> dict:
         # 改了 renderer 而指紋不動,「版本升了行為沒變」就會誤報。
         # 這個 repo 已經栽過同一形狀兩次(legacy prompt 那兩層)。
         "renderer_version": _sha([ar.render(_ANALYSIS),
-                                  ar.render(_render_case(pk), pk), _financial_render_probe()]),
+                                  ar.render(_render_case(pk), pk), _financial_render_probe(),
+                                  _research_probe()["render"]]),
         # **接受契約要用正反案例量**(第十三輪 P1-3)。只餵合格輸入的話,
         # 把規則放寬到全部放行,雜湊照樣不變 —— 那種快照量不到「擋不擋」。
         # v3:接受政策含「深度加深」的觸發條件 —— depth_advisories 的行為
@@ -569,7 +597,7 @@ def _behaviour() -> dict:
                                   + [_anchor_scope_probe()]
                                   + _top_event_probe()
                                   + _event_graph_probe()
-                                  + _stance_authority_probes()),
+                                  + _stance_authority_probes() + _research_probe()["grounding"]),
     }
 
 
@@ -660,7 +688,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (36, "2469f972b22e98f9"),  # 金融取材與缺失日期保留。
+    "evidence_schema_version":  (37, "bf12bcc909709f3a"),  # 跨日來源與有界研究計畫。
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -686,7 +714,7 @@ _FROZEN = {
     #     特化 schema 沒有對應欄位,那一段整個消失(使用者連兩天反映)。
     # v21(2026-08-19 第四批):world_events / 48h 情境 / 敘事變化 /
     #     多空交鋒 / 總經環境 / 在地動態 / primary_target。
-    "output_schema_version":  (27, "96a059ded3b12bba"),  # 0906:確認訊號渲染契約。
+    "output_schema_version":  (28, "c27817bc1f737363"),  # 歷史敘事與匹配來源引用。
     # v4(2026-08-03 晚):可讀性三修——全中文轉述、術語白話化、數字要有下文。
     # v5(2026-08-04):Python 排好的表要被合起來解讀(R17)、七之二要寫得出傳導路徑。
     # v6(2026-08-04 二次):方向形容詞不是分析——量級/時間取代方向詞、
@@ -735,11 +763,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (53, "e8ec097000715c09"),  # 金融集團取材共用規則。
+    "primary_profile_version":  (54, "c780ba18ce0eb5c0"),  # 跨日規則與歷史 ID 使用邊界;Python 權威不變。
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (19, "9123f7a572ad9ddc"),  # 金融素材與共用規則。
+    "fallback_profile_version":  (20, "b7839174148bbc4d"),  # legacy 同步提供歷史來源與使用邊界。
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -784,7 +812,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (23, "1785de4c607eb12a"),  # 金融卡片排序;增加非科技探針。
+    "renderer_version":       (24, "88f54792aaaa1553"),  # 原新聞段內的前情與來源連結;含 fallback 探針。
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -851,7 +879,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (39, "cb951652b91e55cf"),  # CR-02:新增 packet-aware 未知/null 立場判準與 probes。
+    "grounding_version":      (40, "3d5e5f157bba1734"),  # 歷史匹配、當期推論負例與前情保留。
 }
 
 

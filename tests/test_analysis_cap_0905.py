@@ -169,6 +169,34 @@ def test_the_fuse_sits_above_the_legitimate_maximum():
     assert mr.ANALYSIS_TEXT_FUSE <= 100_000, "保險絲要仍然是保險絲"
 
 
+def test_source_linked_history_does_not_cut_other_sectors_or_macro():
+    """532-character links were observed in live RSS; count URLs, not just prose."""
+    import json
+    import news_memory
+    import news_research_context
+    obj, pk = production_scale_analysis(12, 10), _packet(12, 10)
+    pk.update(as_of="2026-09-06T07:00+08:00", historical_sources=[], research={"contexts": {}})
+    for index, row in enumerate(obj["top_news_analysis"]):
+        ids = []
+        for version in range(1 if index < 6 else 2):
+            old = news_memory.observations([{
+                "title": "來源容量測試", "summary": "僅測排版容量，非真實新聞敘事",
+                "published": "2026-09-01T06:00+08:00",
+                "link": "https://example.com/" + "a" * 500 + row["source_item_id"] + str(version)}],
+                "2026-09-01T07:00+08:00", sanitize=str)[0][0]
+            pk["historical_sources"].append(old)
+            ids.append(old["evidence_id"])
+        pk["research"]["contexts"][row["source_item_id"]] = {"evidence_ids": ids}
+        row["historical_context"] = {"evolution": "先前進度與本次增量的來源容量測試敘事。",
+                                     "evidence_ids": ids}
+    assert len(json.dumps(pk["historical_sources"], ensure_ascii=False)) <= news_research_context.MAX_HISTORY_CHARS
+    text = ar.render(obj, pk)
+    assert len(text) > 40_000, "fixture 必須重現新增合法引用被舊保險絲截斷"
+    assert mr._cap_analysis_text(text) == text
+    assert mr.ANALYSIS_TEXT_FUSE >= 1.5 * len(text)
+    assert ar.SECTION_OTHER in text and ar.SECTION_MACRO in text
+
+
 def test_a_cut_is_never_silent():
     """截了就要說得出:多少字、上限多少、剩多少、**哪幾段整段沒了**。"""
     text, _ = _render(_TYPICAL_TECH, _TYPICAL_OTHER)

@@ -293,6 +293,10 @@ def _news_line(n: dict, packet=None) -> str:
     else:
         lead = ""
     parts = [lead + body if lead else body]
+    import news_research_context as _research
+    history = _research.history_prose(n, packet)
+    if history:
+        parts.append(history)
     chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
                          if isinstance(st, dict)])
     if chain:

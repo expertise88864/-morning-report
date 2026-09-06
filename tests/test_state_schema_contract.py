@@ -613,10 +613,24 @@ def _v_model_partition(path):
         raise AssertionError(str(e)) from e
 
 
+def _v_news_partition(path):
+    """Publish gate and reader share chronology, checksum and shape rules."""
+    import news_memory
+    try:
+        news_memory.read_partition(path)
+    except (ValueError, OSError, TypeError) as exc:
+        raise AssertionError(str(exc)) from exc
+
+
 STATE_PATTERNS = (
     ("emails/*.html.gz", _v_gzip_intact),          # 寄出信件存檔(去識別)
     ("model_history/*.json.gz", _v_model_partition),
+    ("news_memory/*.json.gz", _v_news_partition),
 )
+
+# New source-only memory legitimately has no partition before first ingestion.
+# Its pattern and validator are exercised below even during that cold start.
+COLD_START_PATTERNS = {"news_memory/*.json.gz"}
 
 #: 不是「跨日累積的 state」的東西(目前沒有;留這一格是為了讓豁免**顯式**)。
 STATE_EXEMPTIONS: dict = {}
@@ -717,9 +731,28 @@ def test_the_blob_families_are_intact():
     files = _state_files()
     for pat, validate in STATE_PATTERNS:
         matched = [r for r in files if fnmatch.fnmatch(r, pat)]
-        assert matched, f"pattern {pat!r} 一個檔都沒對上 —— 它可能打錯了"
+        assert matched or pat in COLD_START_PATTERNS, f"pattern {pat!r} 一個檔都沒對上 —— 它可能打錯了"
         for rel in matched:
             validate(STATE / rel)
+
+
+def test_news_memory_contract_runs_even_before_first_ingestion(tmp_path):
+    import fnmatch
+    import news_memory
+    import gzip
+    row = news_memory.observations([{
+        "title": "公司公布工程進度", "published": "2026-09-01T06:00+08:00",
+        "link": "https://example.com/report", "summary": "施工中"}],
+        "2026-09-01T07:00+08:00", sanitize=str)[0][0]
+    path = tmp_path / "2026-09-01.json.gz"
+    path.write_bytes(gzip.compress(json.dumps({"schema": 1, "rows": [row]}).encode()))
+    validators = [v for pat, v in STATE_PATTERNS if fnmatch.fnmatch("news_memory/" + path.name, pat)]
+    assert len(validators) == 1
+    validators[0](path)
+    del row["content_level"]
+    path.write_bytes(gzip.compress(json.dumps({"schema": 1, "rows": [row]}).encode()))
+    with pytest.raises(AssertionError):
+        validators[0](path)
 
 
 

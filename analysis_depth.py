@@ -399,6 +399,8 @@ def depth_advisories(obj, packet=None) -> list:
         out.append(f"taiwan_policy 空白,而 EVIDENCE 有 {len(_gaz)} 筆**關注"
                    "分類**的行政院公報 —— 逐項寫政策深析(source_item_id "
                    "回指來源),確無資本市場影響的才略過")
+    import news_research_context as _research
+    out.extend(_research.advisories(obj, packet or {}))
     return out
 
 
@@ -692,6 +694,8 @@ def _news_identity(obj) -> dict:
             "magnitude_known": n.get("magnitude_band") not in (None, "", "unknown"),
             "said": {k for k in _NEWS_KEPT if str(n.get(k) or "").strip()},
         }
+        if (n.get("historical_context") or {}).get("evolution"):
+            out[str(n.get("source_item_id") or "")]["said"].add("historical_context")
     return out
 
 

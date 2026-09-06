@@ -238,6 +238,7 @@ def deepen_preservation(before, after) -> dict:
 def quality_metrics(obj: Optional[dict], packet: Optional[dict],
                     text: str = "") -> dict:
     """全部集合起來。**刻意不合成總分。**"""
+    import news_research_context as _research
     return {
         "schema_version": QUALITY_METRICS_VERSION,
         "required_event_coverage": required_event_coverage(obj, packet),
@@ -248,4 +249,5 @@ def quality_metrics(obj: Optional[dict], packet: Optional[dict],
         "claim_graph": claim_graph_saturation(obj),
         "corroboration": corroboration_exposure(obj, packet),
         "fact_anchors": fact_anchor_usage(obj, packet),
+        "longitudinal_research": _research.metrics(obj or {}, packet or {}),
     }

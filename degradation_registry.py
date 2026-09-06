@@ -110,6 +110,7 @@ KNOWN_DEGRADED = frozenset({
     # _label_is_registered` 機械化守住,不再靠記得。
     "gazette", "weekend_gazette", "weekend_policy_analysis",
     "weekend_week_review", "article_extractor", "horizontal_queries",
+    "news_memory", "news_research_budget", "news_research_fetch", "news_research_plan",
     "sector_map_unavailable", "story_ledger_corrupt",
     "analysis_recap_unreadable", "policy_keywords_load",
     "policy_keywords_save", "delivery_receipt_publish",

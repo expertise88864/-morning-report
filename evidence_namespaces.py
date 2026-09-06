@@ -20,6 +20,7 @@ from __future__ import annotations
 #: `(前綴, 一句話說明, 是不是量化錨點)`。**順序就是 prompt 裡的順序。**
 NAMESPACES = (
     ("n<編號>", "新聞（EVIDENCE 的 `news[].source_item_id`）", False),
+    ("history:", "有日期與來源的歷史報導，只可支持前情，不能單獨支持今日方向", False),
     ("fact:", "新聞裡帶單位的數字（逐則列在 `numeric_facts`）", True),
     ("market:", "行情欄位（`market:QQQ.change_pct` 這種葉節點）", True),
     ("derived:", "本報算出來的衍生值（附來源欄位）", True),

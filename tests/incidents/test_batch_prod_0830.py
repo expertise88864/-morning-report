@@ -53,11 +53,11 @@ def test_the_week_review_prompt_forbids_already_settled_events():
     """實信第 4 條把**已公布的輝達財報**寫成「下週關注、時間未定」——
     上週被寫成下週。規則要用素材裡真實的形狀說明(prompt 要示範它要求
     的東西),這裡驗規則存在且在圍欄外。"""
-    src = (_ROOT / "morning_report.py").read_text(encoding="utf-8")
+    src = (_ROOT / "week_review.py").read_text(encoding="utf-8")
     i = src.index("### 下週關注方向")
     seg = src[i:i + 800]
     assert "已經發生、結果已知的事不得列入" in seg
-    j = src.index("def _build_week_review_prompt")
+    j = src.index("def build(")
     fence = src.index("</UNTRUSTED_SOURCE_DATA>", j)
     assert src.index("已經發生、結果已知的事不得列入", j) > fence
 

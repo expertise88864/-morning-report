@@ -620,15 +620,15 @@ def validate(obj, evidence_ids) -> list:
       - **會進到信裡的段落有沒有帶得出根據**(第十二輪 P1-3)
       - 立場詞彙是否合法
 
-    ## 第十二輪 P1-3:strict schema 保證形狀,不保證根據
-
-    「有話說就要說得出根據」那一半在 `analysis_grounding`(緣由寫在那裡)。
-    這裡只保留「ID 存不存在」與立場詞彙 —— 形狀與根據刻意分成兩個模組。
+    strict schema 保證形狀；analysis_grounding 驗根據，本模組驗引用與立場。
     """
     problems: list = []
     if not isinstance(obj, dict):
         return ["輸出不是 JSON 物件"]
     known, packet = _registry(evidence_ids)
+    if isinstance(packet, dict):
+        import news_research_context as _research
+        problems.extend(_research.validate(obj, packet))
 
     def _check_ids(ids, where):
         for i in (ids or []):

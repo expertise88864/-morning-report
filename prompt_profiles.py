@@ -46,7 +46,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 19  # 2026-09-06:金融集團取材,不輸出編輯設定。
+DEEPSEEK_LEGACY_VERSION = 20  # Historical sources and bounded research.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -79,12 +79,11 @@ DEEPSEEK_LEGACY_VERSION = 19  # 2026-09-06:金融集團取材,不輸出編輯設
 #: 已如此),prompt 先前仍寫「任意個股要被新聞點名」,兩邊說法
 #: 不一致會讓模型無所適從。
 #: v38(2026-08-19 使用者第三批):`top_news_analysis` 目標 6–10 則、
-#: 非科技至少 1–2 則;新增 `taiwan_policy`(台灣政策/主管機關動態)。
 #: v39(2026-08-19 第四批):legacy 信的整個骨架 —— world_events /
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 53  # 2026-09-06:金融集團取材,不輸出編輯設定。
+LUNA_XHIGH_VERSION = 54  # Historical sources and bounded research.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -409,6 +408,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 """
 
 
+from news_research_context import RESEARCH_RULES as _RESEARCH_RULES  # noqa: E402
+LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _RESEARCH_RULES
 def luna_user_payload(packet: dict) -> str:
     """當日證據。**只有證據,沒有任何指令** —— 指令都在穩定前綴裡。
 

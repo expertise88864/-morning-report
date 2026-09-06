@@ -174,6 +174,8 @@ def registry(packet: Optional[dict]) -> dict:
     out: dict = {}
 
     # 1. 新聞。**每則都有自己的時間與來源** —— 那正是 market 側缺的東西。
+    import news_research_context as _research
+    out.update(_research.history_registry(pk))
     for n in (pk.get("news") or []):
         if not isinstance(n, dict) or not n.get("source_item_id"):
             continue

@@ -62,7 +62,7 @@ import evidence_namespaces as _ns
 #: v21(2026-08-19 第四批):legacy 信的整個骨架 —— `world_events` /
 #: `upcoming_event_scenarios` / `narrative_delta` /
 #: `macro_environment` / `taiwan_local`。
-ANALYSIS_SCHEMA_VERSION = 27  # 2026-09-06:驗證條件隨量級/觀察窗排進新聞散文。
+ANALYSIS_SCHEMA_VERSION = 28  # Source-linked longitudinal analysis.
 
 #: 立場詞彙沿用 Python 端既有的四個值(`_compute_stance_score`)。
 #: 刻意不自創一套 —— 渲染層與「立場一致性」指標都吃這一組,
@@ -357,6 +357,10 @@ ANALYSIS_OUTPUT_SCHEMA = _obj({
     }), "台灣政策與主管機關動態;沒有就空陣列,不拿總經數據或公司新聞充數"),
     "top_news_analysis": _arr(_obj({
         "source_item_id": _s(),
+        "historical_context": _obj({
+            "evolution": _s("一至兩句先前報導→今日增量；無匹配歷史時空字串，不得補造"),
+            "evidence_ids": _EVIDENCE_IDS,
+        }, desc="只引用 research.contexts 本則匹配的歷史來源；不以本報舊觀點自證"),
         "why_it_matters": _s("不要複述標題"),
         "direction": _enum(DIRECTIONS),
         "materiality": _enum(MATERIALITY),

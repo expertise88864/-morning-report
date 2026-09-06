@@ -115,6 +115,24 @@ def history_registry(packet: dict) -> dict:
     return out
 
 
+def accepted_dismissals(obj: dict, packet: dict) -> set:
+    """Reuse the existing evidence-backed dismissal contract; never count as analysis."""
+    import analysis_crosscheck as coverage
+    allowed = coverage.dismissable_cluster_ids(packet)
+    accepted = set()
+    for row in obj.get("dismissed_events") or []:
+        if not isinstance(row, dict):
+            continue
+        cid = str(row.get("cluster_id") or "")
+        if cid not in allowed:
+            continue
+        focused = dict(packet, news_clusters=dict(packet.get("news_clusters") or {},
+                                                  required_cluster_ids=[cid]))
+        if not coverage._coverage_problems({"dismissed_events": [row]}, focused, []):
+            accepted.add(cid)
+    return accepted
+
+
 def validate(obj: dict, packet: dict) -> list:
     """Fail closed on fake/cross-story history, not on absence of history."""
     import analysis_schema
@@ -139,8 +157,9 @@ def validate(obj: dict, packet: dict) -> list:
     check_scope(obj)
     rendered = {r.get("source_item_id") for r in obj.get("top_news_analysis") or []
                 if isinstance(r, dict) and str(r.get("why_it_matters") or "").strip()}
+    dismissed = accepted_dismissals(obj, packet)
     for topic in (packet.get("research") or {}).get("deep_topics") or []:
-        if not rendered.intersection(topic["member_source_ids"]):
+        if not rendered.intersection(topic["member_source_ids"]) and topic["cluster_id"] not in dismissed:
             problems.append(f"深入主題 {topic['cluster_id']} 漏寫 top_news_analysis；"
                             f"請分析當期來源 {topic['source_item_id']}，證據不足須明示限制，不得編造")
     for index, row in enumerate(obj.get("top_news_analysis") or []):
@@ -171,6 +190,8 @@ def advisories(obj: dict, packet: dict) -> list:
                 not (row.get("historical_context") or {}).get("evolution")):
             out.append(f"{sid} 有可追溯的跨日報導，請補 historical_context 的前情與本次增量並引用")
     for topic in research.get("deep_topics") or []:
+        if topic["cluster_id"] in accepted_dismissals(obj, packet):
+            continue
         row = next((rows[s] for s in topic["member_source_ids"] if s in rows), None)
         if row is None:
             out.append(f"深入主題 {topic['cluster_id']} 尚未分析；有證據才展開，不得編造補量")
@@ -199,6 +220,8 @@ def metrics(obj: dict, packet: dict) -> dict:
             "deep_topics_expected": len(research.get("deep_topics") or []),
             "deep_topics_analyzed": sum(bool(rendered_ids.intersection(t["member_source_ids"]))
                                         for t in research.get("deep_topics") or []),
+            "deep_topics_dismissed": sum(t["cluster_id"] in accepted_dismissals(obj, packet)
+                                         for t in research.get("deep_topics") or []),
             "semantic_truth_evaluated": False,
             "selected_source_coverage": research.get("selected_sources") or {},
             "analyzed_source_coverage": snapshot([n for n in packet.get("news") or []

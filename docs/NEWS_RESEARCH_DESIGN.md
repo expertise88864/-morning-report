@@ -106,6 +106,8 @@ calendar dispatch and is not evidence of weekday specialized-analysis success.
 The first live canary exposed two acceptance gaps: the manifest writer serialized
 absent delivery as null, and the model omitted all three planned deep topics.
 Absent delivery now stays absent before SMTP (explicit invalid records still
-fail). Selected deep themes must appear as nonempty current-source analysis;
-omissions enter the existing bounded repair path, without extra model calls or
-fabricated depth. This is a coverage guarantee, not a semantic quality score.
+fail). Selected deep themes must appear as nonempty current-source analysis or
+have an evidence-backed dismissal under the existing coverage contract, with a
+concrete reason and revisit trigger. Silent omissions enter the existing bounded
+repair path, without extra model calls or fabricated depth. Dismissed themes are
+counted separately, never as analyzed. Coverage is not a semantic quality score.

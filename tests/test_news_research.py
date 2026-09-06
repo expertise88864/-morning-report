@@ -220,6 +220,25 @@ def test_deep_topic_accepts_another_current_member_without_duplicate_coverage():
     assert not context.validate(obj, pk)
 
 
+def test_deep_topic_may_be_explicitly_dismissed_under_the_existing_evidence_contract():
+    pk = packet()
+    topic = pk["research"]["deep_topics"][0]
+    dismissal = {"cluster_id": topic["cluster_id"],
+                 "why_not_material": "目前僅例行工地進度，無新增訂單或投產證據支持獲利增量",
+                 "supporting_evidence_ids": [topic["source_item_id"]],
+                 "revisit_trigger": "公司公告量產或新增訂單"}
+    obj = {"top_news_analysis": [], "dismissed_events": [dismissal]}
+    assert not context.validate(obj, pk)
+    assert not context.advisories(obj, pk)
+    result = context.metrics(obj, pk)
+    assert result["deep_topics_analyzed"] == 0 and result["deep_topics_dismissed"] == 1
+    for key, invalid in [("why_not_material", ""), ("revisit_trigger", ""),
+                         ("supporting_evidence_ids", ["unrelated"])]:
+        bad = copy.deepcopy(obj)
+        bad["dismissed_events"][0][key] = invalid
+        assert any("深入主題" in p for p in context.validate(bad, pk))
+
+
 def test_funnel_separates_title_only_and_fulltext():
     result = context.snapshot([article(summary=""), article(2), article(3, fulltext="全文")])
     assert (result["title_only"], result["summary_only"], result["fulltext"]) == (1, 1, 1)

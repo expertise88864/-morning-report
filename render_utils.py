@@ -254,10 +254,10 @@ def _md_to_html(text: str) -> str:
     # Convert escaped Markdown links before source-label dimming. Keep long RSS
     # destinations in href, not in visible text that expands narrow email tables.
     def link(m):
-        url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
-        if not url:
+        clean_url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
+        if not clean_url:
             return m.group(0)
-        return (f'<a href="{html_lib.escape(url, quote=True)}" '
+        return (f'<a href="{html_lib.escape(clean_url, quote=True)}" '
                 'style="color:#94a3b8;font-size:12px;font-weight:400;'
                 f'font-variant-numeric:normal;">{m.group(1)}</a>')
     return re.sub(r"\[([^\[\]<>\n]{1,120})\]\((https?://[^\s()<>]{1,4096})\)", link, html)

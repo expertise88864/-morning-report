@@ -495,6 +495,7 @@ def _research_probe() -> dict:
     import news_memory
     import analysis_render_depth
     import render_utils
+    import news_research_context
     old = news_memory.observations([{"title": "台積電高雄廠工程進度",
         "summary": "工程仍在施工", "published": "2026-09-01T06:00+08:00",
         "link": "https://example.com/previous", "entities": ["台積電"]}],
@@ -512,12 +513,17 @@ def _research_probe() -> dict:
     empty["top_news_analysis"][0]["historical_context"] = {"evolution": "", "evidence_ids": []}
     current_inference = copy.deepcopy(valid)
     current_inference["top_news_analysis"][0]["affected_assets"][0]["evidence_ids"] = [eid]
+    dismissal_packet = dict(pk, top_events={"top_cluster_ids": ["cluster:n1"]},
+        news_clusters={"clusters": [{"cluster_id": "cluster:n1", "member_source_ids": ["n1"]}]})
+    dismissed = {"dismissed_events": [{"cluster_id": "cluster:n1", "supporting_evidence_ids": ["n1"],
+        "why_not_material": "目前只是施工進度，沒有新增投產或訂單證據", "revisit_trigger": "公司公告量產"}]}
     return {"render": [analysis_render_depth._news_line(row, pk),
                        analysis_render_depth._news_line(empty["top_news_analysis"][0], pk),
                        render_utils._dim_source_citations(render_utils._md_to_html(
                            analysis_render_depth._news_line(row, pk)))],
             "grounding": [av.validate(valid, pk), av.validate(wrong, pk), av.validate(current_inference, pk),
                           av.validate({"top_news_analysis": []}, pk),
+                          news_research_context.validate(dismissed, dismissal_packet),
                           _ad.news_regressions(valid, empty)]}
 
 
@@ -884,7 +890,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (41, "dc803d8cea7f6ae8"),  # 跨日引用與深入主題漏寫的正反例。
+    "grounding_version":      (42, "4546014cb0755cba"),  # 跨日引用、深入主題漏寫及有證據的正式駁回。
 }
 
 

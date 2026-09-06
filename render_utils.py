@@ -251,7 +251,16 @@ def _md_to_html(text: str) -> str:
     html = re.sub(r"\*\*([^*\n]+?)\*\*", r"<strong>\1</strong>", html)
     html = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"<em>\1</em>", html)
 
-    return html
+    # Convert escaped Markdown links before source-label dimming. Keep long RSS
+    # destinations in href, not in visible text that expands narrow email tables.
+    def link(m):
+        url = safe_href(html_lib.unescape(m.group(2)), max_chars=2048)
+        if not url:
+            return m.group(0)
+        return (f'<a href="{html_lib.escape(url, quote=True)}" '
+                'style="color:#94a3b8;font-size:12px;font-weight:400;'
+                f'font-variant-numeric:normal;">{m.group(1)}</a>')
+    return re.sub(r"\[([^\[\]<>\n]{1,120})\]\((https?://[^\s()<>]{1,4096})\)", link, html)
 
 
 def _style_analysis_html(html: str) -> str:
@@ -1656,7 +1665,7 @@ _NEWS_LABEL_TO_SECTION = {"世足": "世足", "中華職棒": "中職", "網球"
                           "MLB": "MLB", "NBA": "NBA"}
 
 
-def safe_href(raw) -> str:
+def safe_href(raw, *, max_chars: int = 500) -> str:
     """外部連結 → **可以放進 `href` 的乾淨 URL**;不合格回空字串。
 
     **全 repo 只有這一份判準**(2026-08-28 外審 P2)。先前是:
@@ -1676,7 +1685,7 @@ def safe_href(raw) -> str:
     """
     from urllib.parse import urlsplit
     url = str(raw or "").strip()
-    if not url or len(url) > 500:
+    if not url or len(url) > max_chars:
         return ""
     if any(ord(c) < 32 or ord(c) == 127 for c in url):
         return ""                       # 控制字元(換行可以把屬性拆開)

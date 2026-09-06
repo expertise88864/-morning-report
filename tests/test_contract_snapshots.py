@@ -494,6 +494,7 @@ def _research_probe() -> dict:
     import copy
     import news_memory
     import analysis_render_depth
+    import render_utils
     old = news_memory.observations([{"title": "台積電高雄廠工程進度",
         "summary": "工程仍在施工", "published": "2026-09-01T06:00+08:00",
         "link": "https://example.com/previous", "entities": ["台積電"]}],
@@ -512,7 +513,9 @@ def _research_probe() -> dict:
     current_inference = copy.deepcopy(valid)
     current_inference["top_news_analysis"][0]["affected_assets"][0]["evidence_ids"] = [eid]
     return {"render": [analysis_render_depth._news_line(row, pk),
-                       analysis_render_depth._news_line(empty["top_news_analysis"][0], pk)],
+                       analysis_render_depth._news_line(empty["top_news_analysis"][0], pk),
+                       render_utils._dim_source_citations(render_utils._md_to_html(
+                           analysis_render_depth._news_line(row, pk)))],
             "grounding": [av.validate(valid, pk), av.validate(wrong, pk), av.validate(current_inference, pk),
                           av.validate({"top_news_analysis": []}, pk),
                           _ad.news_regressions(valid, empty)]}
@@ -814,7 +817,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (24, "88f54792aaaa1553"),  # 原新聞段內的前情與來源連結;含 fallback 探針。
+    "renderer_version":       (25, "370722fbf4a5aed9"),  # 真實 Markdown→HTML→來源標示鏈保留可點連結。
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

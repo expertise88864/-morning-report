@@ -6870,6 +6870,57 @@
     "name": "The Circuit",
     "episodes": [
       {
+        "guid": "6d6d6ac1-d72c-46be-993e-4c6703720a4d",
+        "title": "Ep 191: Agents Gone Wild: Broadcom’s ASICs and the AI Frontier",
+        "published": "Mon, 07 Sep 2026 08:05:04 -0700",
+        "processed_at": "2026-09-07T18:27:49Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為博通本季財報雖缺乏驚喜、股價週跌約 4%，但經營層給的 2027 財年 1,150 億美元與 2028 財年 2,300 億美元 AI 客製化晶片相關營收目標應是地板而非天花板，他相信最終會超標。",
+            "博通首度公開承認 Google 專案有聯發科競爭，反映客製化 ASIC 訂單已從『整包獨拿』變成運算晶片、網路、I/O 等多供應商混搭，主持人認為這會讓相關營收模型變得複雜、更難估算。",
+            "主持人認為管理層用『別看毛利率、要看營業利益率』來回應毛利率下滑雖有道理，但與先前強調毛利率會因規模擴大的說法互相矛盾，這種反覆是市場失望的原因之一。",
+            "主持人提出『2027 年是最大瓶頸年、2028 年才開始紓解』的論點：供應鏈大約要到 2025 年底至 2026 年初才因長約取得擴大產能的信心，按半導體建廠時程，新增產能不可能在 2027 年前上線。",
+            "到了 2028 年，台積電、記憶體等大規模新產能陸續開出後，即使供需缺口收斂，價格談判方向也可能從賣方市場轉變；主持人提醒市場尚未把 2028-2029 年的紓解情境充分計入模型。",
+            "主持人實算輝達與博通的營運槓桿後認為兩者目前是平手：營收都遠比費用成長更快，都是 AI 基礎建設的贏家，不該簡化成非此即彼的零和對決。",
+            "主持人認為輝達以約 130 億美元收購 Hugging Face，直接經濟效益有限，但戰略上是為了留在 AI 軟體生態的中心並維持開放模型生態；他相信五年後封閉與開放模型會並存，企業會依任務自動選擇。",
+            "即使開放模型普及，主持人仍認為邊疆模型（frontier models）會持續存在並獲得投資，因為國家安全與『用最先進防禦次先進』的邏輯，會讓政府和關鍵任務客戶繼續支持 OpenAI、Anthropic 這類最前緣的模型開發。"
+          ],
+          "tickers": [
+            {
+              "name": "博通（Broadcom）",
+              "code": "AVGO",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為博通給出的 AI 客製化晶片營收目標是下限，實際有望超標；即使有聯發科競爭與毛利率疑慮，它仍擁有最大 gigawatt 級客製化運算客戶群。"
+            },
+            {
+              "name": "輝達（Nvidia）",
+              "code": "NVDA",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人比較後認為輝達與博通的營運槓桿目前是平手，都是 AI 基建贏家；收購 Hugging Face 屬戰略布局，直接財務貢獻有限。"
+            },
+            {
+              "name": "邁威爾（Marvell）",
+              "code": "MRVL",
+              "market": "US",
+              "direction": "neutral",
+              "reason": "主持人觀察 Marvell 在 Google 與 Amazon 的機會被描述得很精確，可能來自網路/I/O 等附屬產品而非完整的運算晶片，使其潛在營收更難估算。"
+            },
+            {
+              "name": "聯發科",
+              "code": "2454",
+              "market": "TW",
+              "direction": "bullish",
+              "reason": "主持人認為聯發科在客製化 ASIC 的執行力優於預期，已打入 Google 供應鏈，是博通不可忽視的競爭者。"
+            }
+          ],
+          "market_view": "主持人認為整體 AI 供應鏈仍嚴重供不應求，『供給受限』是各家財報的共同基調；瓶頸交易已被充分挖掘，2027 年將是供給最吃緊的一年，2028 年起產能紓解才會陸續出現，但供需仍難完全平衡。",
+          "action_view": "主持人認為瓶頸交易已結束，接下來的操作要回到更挑剔、更講究個別公司的分析，不能像去年一樣亂買都會漲；同時他提醒 2028 年產能紓解後，供應鏈價格談判方向可能改變，現在做模型就要把這層納入。",
+          "notable_quote": "We've turned over every rock. We've searched under every cushion couch and we know where all the bottlenecks are. So then what, what do we do now?"
+        }
+      },
+      {
         "guid": "bd8c2709-7cb6-4766-9a80-24b591f4bdb0",
         "title": "EP 189: NVIDIA and Marvell Earnings, Hot Chips Hot Takes",
         "published": "Mon, 31 Aug 2026 09:00:01 -0700",

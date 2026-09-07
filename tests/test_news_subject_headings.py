@@ -154,7 +154,7 @@ def test_the_item_is_one_prose_paragraph():
     內容一樣都在(傳導、失效條件、逐標的影響),少的是排版的行數。
     """
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert chr(10) not in md, md
+    assert "\n\n傳導:" in md, md  # 2026-09-07: separate prose paragraphs.
     assert "傳導:起點 → 終點" in md, md
     assert "若什麼情況代表判斷錯了,此判斷不成立" in md, md
     assert "2330:一階影響、二階影響。" in md, md
@@ -207,9 +207,9 @@ def test_the_reservations_are_not_filed_under_a_sector():
     obj = fx.valid_analysis()
     obj["dismissed_events"] = [{"cluster_id": "c9", "why_not_material": "重複報導"}]
     text = ar.render(obj)
-    i = text.index(ar.SUBSECTION_NOTES)
-    assert "今日看過但未展開" in text[i:], text[i:i + 200]
-    assert text.index(ar.SECTION_OTHER) < i, text
+    assert ar.SUBSECTION_NOTES not in text
+    assert "今日看過但未展開" not in text
+    assert obj["dismissed_events"][0]["why_not_material"] == "重複報導"
 
 
 # ------------------------------------------------- 外審 2026-08-18 的兩個 P2

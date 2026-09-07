@@ -131,7 +131,8 @@ def _render(n_tech: int, n_other: int):
 def test_the_builder_really_produces_both_sections():
     """先確認 fixture 自己成立:九段真的有卡(否則下面全在守一個空集合)。"""
     text, diag = _render(_TYPICAL_TECH, _TYPICAL_OTHER)
-    assert diag["rendered_tech"] == _TYPICAL_TECH and diag["rendered_other"] == _TYPICAL_OTHER
+    assert diag["rendered_tech"] == 6 and diag["rendered_other"] == 6
+    assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - 12
     assert diag["dropped"] == []
     for sec in (ar.SECTION_TECH, ar.SECTION_OTHER, ar.SECTION_MACRO, ar.SECTION_WORLD):
         assert f"## {sec}" in text, sec
@@ -155,9 +156,9 @@ def test_the_default_fuse_keeps_the_whole_letter():
         text, diag = _render(n_t, n_o)
         kept = mr._cap_analysis_text(text)
         assert kept == text, f"{n_t}+{n_o} 張卡被截了:{len(text)} → {len(kept)}"
-        for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO, "情境與觸發條件", "資料缺口"):
+        for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO, "觸發條件一", "調和:"):
             assert sec in kept, sec
-        assert kept.count("傳導:") == n_t + n_o
+        assert kept.count("傳導:") == min(6, n_t) + min(6, n_o)
 
 
 def test_the_fuse_sits_above_the_legitimate_maximum():
@@ -191,7 +192,10 @@ def test_source_linked_history_does_not_cut_other_sectors_or_macro():
                                      "evidence_ids": ids}
     assert len(json.dumps(pk["historical_sources"], ensure_ascii=False)) <= news_research_context.MAX_HISTORY_CHARS
     text = ar.render(obj, pk)
-    assert len(text) > 40_000, "fixture 必須重現新增合法引用被舊保險絲截斷"
+    # 2026-09-07: only six cards per sector are displayed; assert all selected
+    # source links survive instead of requiring the old 22-card output size.
+    assert text.count("https://example.com/") == 18
+    assert len(text) > 6000, "仍須超過舊保險絲，證明長引用不截掉後段"
     assert mr._cap_analysis_text(text) == text
     assert mr.ANALYSIS_TEXT_FUSE >= 1.5 * len(text)
     assert ar.SECTION_OTHER in text and ar.SECTION_MACRO in text

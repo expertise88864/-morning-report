@@ -64,7 +64,7 @@ POSTPROCESS_VERSION = 10
 #: v20(2026-08-29 使用者):七之二改一氣呵成段落(標題句。解讀句。
 #: 後續可能影響:…);八/九分類對無主體新聞退回標題判準(產業級科技
 #: 新聞不再全部掉進「其他類股」)。
-RENDERER_VERSION = 25  # 2026-09-06:跨日 Markdown 來源轉成可點擊連結，不裸露長網址。
+RENDERER_VERSION = 26  # 2026-09-07:reader prose, six-card sections and private diagnostics.
 
 #: 契約快照追蹤的版本欄位(2026-08-08 自 llm_experiment.COHORT_FIELDS 遷入:
 #: 實驗已拆,但「哪些契約版本要被凍結追蹤」這份登錄簿必須活著 ——

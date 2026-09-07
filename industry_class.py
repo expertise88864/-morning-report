@@ -45,7 +45,9 @@ NON_TECH_FOREIGN: frozenset = frozenset({"COST", "TMUS"})
 
 
 def is_tech_industry(industry) -> bool:
-    return str(industry or "").strip() in TECH_INDUSTRIES
+    value = str(industry or "").strip()
+    # TWSE may supply its industry code instead of the display name.
+    return value in TECH_INDUSTRIES or value in {"24", "25", "26", "27", "28", "29", "30", "31", "36"}
 
 
 def is_tech_foreign(name) -> bool:

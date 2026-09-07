@@ -1022,7 +1022,7 @@ def _title_hint(title) -> str:
     if not t:
         return ""
     t = re.split(r"\s[-–—|]\s", t)[0].strip()
-    return t[:TITLE_HINT_CHARS] + ("…" if len(t) > TITLE_HINT_CHARS else "")
+    return t
 
 
 def action_label(code: str) -> str:

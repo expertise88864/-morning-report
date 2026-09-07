@@ -83,7 +83,7 @@ DEEPSEEK_LEGACY_VERSION = 20  # Historical sources and bounded research.
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 54  # Historical sources and bounded research.
+LUNA_XHIGH_VERSION = 55  # Reader prose and explicit AI-model coverage.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -404,7 +404,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   一律寫進 `data_gaps`** —— 那代表今天某個橫向面向根本沒查成，
   不揭露的話收件人會以為查過了。
 
-{_wr.LUNA_WRITING}
+{_wr.LUNA_WRITING + chr(10) + _wr.READER_PROSE}
 """
 
 

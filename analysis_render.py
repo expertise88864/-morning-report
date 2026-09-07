@@ -26,11 +26,10 @@ Luna 走 strict Structured Outputs,拿到的是 JSON。**模型不直接控制�
 from __future__ import annotations
 
 from typing import Optional
+import reader_prose as _reader
 
 from analysis_contracts import top_drivers as _top   # 條數與驗證器同源
-from analysis_render_depth import (_news_line,
-                                   news_subject as _news_subject,
-                                   is_tech as _is_tech)
+from analysis_render_depth import _news_line
 
 RENDER_SCHEMA_VERSION = 1
 
@@ -342,12 +341,12 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             continue
         head = "**" + "|".join(x for x in (_s(ev.get("when")), _s(ev.get("event"))) if x) + "**"
         rows = [head]
-        for label, key in (("基準預期", "base_expectation"), ("偏多情境", "bull_case"),
+        for field_label, key in (("基準預期", "base_expectation"), ("偏多情境", "bull_case"),
                            ("偏空情境", "bear_case"), ("最受影響", "most_affected"),
                            ("失效條件", "invalidation")):
             if _s(ev.get(key)):
-                rows.append(f"- {label}:{_s(ev.get(key))}")
-        scen_blocks.append(chr(10).join(rows))
+                rows.append(f"{field_label}:{_s(ev.get(key))}")
+        scen_blocks.append(rows[0] + "\n\n" + " ".join(rows[1:]))
     if scen_blocks:
         parts.append(f"## {SECTION_48H}" + chr(10) + (chr(10) * 2).join(scen_blocks))
 
@@ -381,25 +380,18 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
     tech_news, other_news, _diag_rows = [], [], []
-    _news_by_id = {_s(x.get("source_item_id")): x
-                   for x in ((packet or {}).get("news") or [])
-                   if isinstance(x, dict)}
     import finance_editorial as _finance
-    for _n in _finance.order_analyses(obj.get("top_news_analysis"), packet):
+    _selected, _limited = _reader.select_cards(
+        _finance.order_analyses(obj.get("top_news_analysis"), packet), packet or {})
+    for _n in _selected:
         if not isinstance(_n, dict):
             continue
-        _subj = _news_subject(_n, packet)
         # **無主體的新聞退回標題判準**(2026-08-29 實信):主體判準只認
         # 「可指名的公司」,於是長鑫、SK 海力士、CCL 漲價、NVL72 這種
         # **產業級**科技新聞(標題沒指名台股/註冊個股)全部掉進
         # 「其他類股」—— 那天八段只剩兩條,九段變科技大雜燴。
         # 有主體時仍以主體為準(公司的產業別比關鍵字可靠)。
-        _is_t = _is_tech(_subj)
-        if not _is_t and not _subj.get("label"):
-            import industry_class as _ic
-            _title = _s((_news_by_id.get(_s(_n.get("source_item_id")))
-                         or {}).get("title"))
-            _is_t = _ic.is_tech_headline(_title)
+        _is_t = _reader.article_is_tech(_n, packet or {})
         (tech_items if _is_t else other_items).append(_n)
         # **丟掉的卡要留痕**(2026-09-04 實信):`_news_line` 對空的
         # `why_it_matters` 回空、`_blocks` 不排 —— 模型分析 18 則、信裡只剩 7 則,
@@ -415,7 +407,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                            "why_chars": len(_s(_n.get("why_it_matters")))})
     if isinstance(diag, dict):
         diag.clear()
-        diag.update({"analyzed": len(_diag_rows),
+        diag.update({"analyzed": len(_diag_rows) + len(_limited),
+                     "editorial_limit": 6,
+                     "editorial_omitted": [_s(c.get("source_item_id")) for c in _limited],
                      "rendered_tech": len(tech_news), "rendered_other": len(other_news),
                      "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})
     news = tech_news + other_news
@@ -618,4 +612,4 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     parts.append(f"## {SECTION_STANCE}\n" + "\n".join(stance_lines))
 
     parts.append(f"## {SECTION_SUMMARY}\n{summary}")
-    return "\n\n".join(parts)
+    return _reader.public_sections("\n\n".join(parts), obj, packet)

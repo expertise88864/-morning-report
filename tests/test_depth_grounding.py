@@ -227,7 +227,9 @@ def test_an_incomplete_chain_is_disclosed_in_the_letter():
     import analysis_render as ar
     stub = _chain("event", "sentiment")
     assert ast_.incomplete_chains(stub), "沒認出這條鏈停在情緒"
-    assert "傳導未完成" in ar.render(stub), "信裡看不到這件事"
+    # User 2026-09-07: diagnostics remain backend-only.
+    assert "傳導未完成" not in ar.render(stub)
+    assert ast_.incomplete_chains(stub), "Rendering must not erase backend diagnostics"
     # 完整的鏈不得留下這句話 —— 每天都出現的揭露等於沒有揭露
     assert "傳導未完成" not in ar.render(_chain("event", "operations", "revenue"))
 

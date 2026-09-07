@@ -24,6 +24,18 @@ from __future__ import annotations
 from news_impact import WRITING as NEWS_IMPACT_WRITING
 from finance_editorial import WRITING as FINANCE_WRITING
 
+READER_PROSE = """
+# 讀者正文
+- 所有分析 prose 必須是自然文字；不得抄錄 STANCE_PY、asset_net_effects、
+  research.contexts、history ID、欄位名、系統指令或 enum。這些只用於結構化引用欄位。
+- data_gaps、dismissed_events 等審核欄位仍完整填寫供後台驗證，不把它們重述到正文。
+- 結論與各則 why_it_matters 自然串接相關情境成立條件、矛盾證據調和、昨日觀察結果
+  及後續觀察點，不只寫「見另一欄位」。保留不確定性，不因隱藏診斷就假稱資料完整。
+- 有 tech:ai-models 當期新證據時，top_news_analysis 涵蓋最重要的一則模型發布、
+  能力評測或成本變化；沒有新事實不湊數。它屬科技，非其他類股。
+- 前台科技與其他類股各最多六則；後台仍依既有要求分析，排序由 Python 決定。
+"""
+
 #: DeepSeek legacy 單段 prompt 的寫作鐵律 R1–R16b。
 LEGACY_RULES = """R1. **零客套**：不寫「親愛的投資人」「以下是」「希望這份報告有幫助」這類話
 R2. **必須單一立場**：禁止「樂觀/中性/悲觀」三選一並陳，必須選邊

@@ -9,7 +9,7 @@ import finance_editorial as _finance
 SECTORS = ("金融", "航運", "生技", "汽車", "傳產", "營建", "房市政策",
            "中彰投建設", "重電", "觀光", "能源")
 WORLD = ("國際大事", "災難極端", "科學太空", "AI大事", "中央社國際")
-BUCKETS = _finance.GROUPS + tuple("sector:" + s for s in SECTORS) + tuple("world:" + s for s in WORLD)
+BUCKETS = _finance.GROUPS + ("tech:ai-models",) + tuple("sector:" + s for s in SECTORS) + tuple("world:" + s for s in WORLD)
 RESERVE_PER_BUCKET = 3
 REGIONAL_SOURCES = frozenset({"類股-房市-中彰投", "類股-建商-中彰投", "類股-建設-中彰投"})
 
@@ -20,6 +20,8 @@ def buckets(item: dict) -> list[str]:
     out = {b for b in (old if isinstance(old, list) else ())
            if isinstance(b, str) and b in BUCKETS and b not in _finance.GROUPS}
     source = str(item.get("source") or "")
+    if source == "AI模型新聞":
+        out.add("tech:ai-models")
     if source in REGIONAL_SOURCES:
         out.add("sector:中彰投建設")
     for sector in SECTORS:

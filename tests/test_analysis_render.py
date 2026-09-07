@@ -142,8 +142,9 @@ def test_the_claim_line_is_prose_not_a_form():
 def test_data_gaps_and_contradictions_reach_the_email():
     """只記在 manifest 等於沒有揭露 —— 收件人看到的是一份看起來完整的報告。"""
     md = ar.render(_obj())
-    assert "資料缺口" in md and "當日融資餘額" in md
-    assert "證據衝突與調和" in md and "以現貨為準" in md
+    # 2026-09-07 user: diagnostic sections stay in JSON, prose is integrated.
+    assert "## 資料缺口" not in md and "當日融資餘額" not in md
+    assert "## 證據衝突與調和" not in md and "以現貨為準" in md
     assert "失效條件" in md and "台積電法說釋出降價訊號" in md
 
 

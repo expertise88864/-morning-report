@@ -136,8 +136,8 @@ def test_production_sized_report_reaches_final_html_without_missing_sectors(monk
                           "2026-09-06", "每日報")
     diag = mr._RUN_MANIFEST["llm"]["email_html"]
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 0
-    assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": other, "html": other}
-    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": tech, "html": tech}
+    assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": min(6, other), "html": min(6, other)}
+    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": min(6, tech), "html": min(6, tech)}
     assert 'id="morning-mobile"' in html
     assert html.index(ar.SECTION_TECH) < html.index(ar.SECTION_OTHER) < html.index(ar.SECTION_MACRO)
-    assert len(re.findall(r"傳導[:：]", html)) == tech + other
+    assert len(re.findall(r"傳導[:：]", html)) == min(6, tech) + min(6, other)

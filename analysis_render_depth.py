@@ -283,13 +283,21 @@ def _news_line(n: dict, packet=None) -> str:
     subject = news_subject(n, packet)
     headline = _headline_of(n, packet, subject.get("name") or "")
     attribution = _attribution(n, packet)
+    from render_utils import safe_href
+    from urllib.parse import quote
+    item = next((x for x in ((packet or {}).get("news") or [])
+                 if isinstance(x, dict) and x.get("source_item_id") == n.get("source_item_id")), {})
+    href = safe_href(str(item.get("url") or item.get("link") or ""), max_chars=2048)
+    if headline and href:
+        headline = f"[{headline.replace('[', '（').replace(']', '）')}]({quote(href, safe=':/?=&%#@+;,$!-_~')})"
     if subject.get("label"):
         lead = (f"**{subject['label']}**:"
                 + (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + attribution)
                    if headline else ""))
     elif headline:
         # 沒有公司主體(總經/利率/油價…):**新聞標題就是小標題**。
-        lead = _join_sentence(f"**{headline.rstrip(_TERMINAL_MARKS)}**" + attribution)
+        display_head = headline if href else f"**{headline.rstrip(_TERMINAL_MARKS)}**"
+        lead = _join_sentence(display_head + attribution)
     else:
         lead = ""
     parts = [lead + body if lead else body]
@@ -300,7 +308,7 @@ def _news_line(n: dict, packet=None) -> str:
     chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
                          if isinstance(st, dict)])
     if chain:
-        parts.append(f"傳導:{chain}。")
+        parts.append(f"\n\n傳導:{chain}。\n\n")
     impact = _impact.readout(n, _s)
     if impact:
         parts.append(impact)
@@ -326,7 +334,7 @@ def _news_line(n: dict, packet=None) -> str:
         except Exception:               # noqa: BLE001 - 判準失敗不毀渲染
             weak = False
         if weak:
-            parts.append(_join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
+            parts.append("\n\n" + _join_sentence(f"保留:{cav.rstrip(_TERMINAL_MARKS)}"))
     # 同一段:`_md_to_html` 會把相鄰的非空行併進同一個 <p>,
     # 這裡直接用空格接起來,語意與排版一致。
     return " ".join(parts)

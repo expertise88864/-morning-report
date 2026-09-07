@@ -260,7 +260,10 @@ def _md_to_html(text: str) -> str:
         return (f'<a href="{html_lib.escape(clean_url, quote=True)}" '
                 'style="color:#94a3b8;font-size:12px;font-weight:400;'
                 f'font-variant-numeric:normal;">{m.group(1)}</a>')
-    return re.sub(r"\[([^\[\]<>\n]{1,120})\]\((https?://[^\s()<>]{1,4096})\)", link, html)
+    html = re.sub(r"\[([^\[\]<>\n]{1,600})\]\((https?://[^\s()<>]{1,4096})\)", link, html)
+    # Reader-requested small caveats; escaping above still applies.
+    return re.sub(r"<p>(保留[:：].*?)</p>",
+                  r'<p style="font-size:12px!important;color:#64748b;line-height:1.6!important;">\1</p>', html)
 
 
 def _style_analysis_html(html: str) -> str:

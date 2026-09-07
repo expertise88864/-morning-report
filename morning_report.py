@@ -14,6 +14,7 @@
 """
 
 from __future__ import annotations
+from reader_prose import public_sections
 
 import datetime as dt
 import json
@@ -16920,11 +16921,14 @@ def fetch_ai_model_news(hours: int = 30) -> list[dict]:
                     continue
                 if dt.datetime(*pub[:6], tzinfo=dt.timezone.utc) < cutoff:
                     continue
-                title = str(entry.get("title", ""))[:110]
+                title = str(entry.get("title", ""))
                 if not title or _local_title_is_dup(title, seen):
                     continue
                 seen.append(_local_seen_entry(title))
-                out.append({"title": title})
+                out.append({"title": title, "link": str(entry.get("link") or ""),
+                            "published": dt.datetime(*pub[:6], tzinfo=dt.timezone.utc).isoformat(),
+                            "source": "AI模型新聞", "summary": str(entry.get("summary") or ""),
+                            "source_name": str((entry.get("source") or {}).get("title") or "")})
         except Exception as e:
             print(f"[ai-models] 新聞查詢失敗(略過): {e}", file=sys.stderr)
     return out
@@ -21875,6 +21879,7 @@ def _render_minimal_html(quotes: dict, fair: dict, predictions: dict,
     """批#32:主渲染失敗時的極簡信(最後防線)。只用最基本的字串拼接與 escape,
     不碰任何可能是例外來源的卡片邏輯——目標是「一定寄得出去」而非好看。"""
     import html as _h
+    analysis = public_sections(str(analysis or ""))
 
     if (quotes.get("STANCE_PY") or {}).get("total") is None:
         analysis = _strip_llm_sections(str(analysis or ""), ("我的明確立場", "一句話總結"))
@@ -21950,7 +21955,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     import html as _htmllib   # 整個 render_html 共用：用於各段 user-supplied 字串 escape
     # 第一個標題之前的東西一律不進信(2026-09-03 實信:「早安,交易日…」與
     # 「2330 預測:…採簡化版」前言;R18 禁了它照樣出現 —— 指令不是守衛)。
-    analysis_for_render = _strip_preamble_before_first_heading(analysis)
+    analysis_for_render = public_sections(_strip_preamble_before_first_heading(analysis))
     analysis_for_render = _strip_llm_watchlist_section(analysis_for_render)
     # 七之五「多空交鋒」已從 prompt 刪除(2026-09-03),但模型會照舊習慣把它
     # 吐回來 —— prompt 不再要求 ≠ 模型不再寫。渲染端確定性移除(Codex r1)。

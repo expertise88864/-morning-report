@@ -2,7 +2,7 @@
   "repository": "expertise88864/-morning-report",
   "require_pr": false,
   "claude_hook": true,
-  "morning_dry_run": true,
+  "morning_dry_run": false,
   "workflows": [
     {
       "path": ".github/workflows/ci.yml",

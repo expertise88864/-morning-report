@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """**線上契約金絲雀**:DeepSeek 現在還是不是我們解析的那個形狀。
 
+2026-09-07 使用者已停用付費測試：CLI 禁止執行，以下為歷史設計說明。
+函式只保留供離線 mock 契約測試，不得透過 import 呼叫真實 provider。
+
 離線的契約測試(`tests/test_deepseek_contract.py`)釘的是 2026-08-08 的
 實機 fixture —— 它守得住「我們的 adapter 有沒有被改壞」,守不住
 「provider 有沒有換契約」。而後者的第一個徵兆會是**某天早上的信壞掉**,
@@ -242,4 +245,5 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit("Paid live canary disabled by user policy (2026-09-07). "
+                     "Use offline contract tests and the next scheduled morning report.")

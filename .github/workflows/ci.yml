@@ -77,7 +77,9 @@ jobs:
   # 而總預算是 1200 秒(兩輪特化 + legacy 備援)—— 12 分鐘裝不下,
   # canary 會在證明任何事之前先被 job timeout 砍掉。
   dry-run-preview:
-    if: github.event_name == 'workflow_dispatch'
+    # User decision 2026-09-07: no paid test generation. Retained for history,
+    # not a required gate or a successful live verification. Use next day's report.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 50   # 第三十一輪外審 P2-5:要 > 應用自己的預算+安裝/上傳邊際(2026-08-27 隨 2700s 放寬)
     # **這個 job 不容忍任何失敗**(第三輪外審 F1)。

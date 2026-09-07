@@ -123,12 +123,12 @@ def test_guard_installer_fails_on_a_missing_production_interface(tmp_path, monke
         preview.install_guards(SimpleNamespace(_atomic_write_bytes=lambda *a: None), tmp_path)
 
 
-def test_manual_ci_uses_full_isolation_and_exact_fresh_manifest():
+def test_paid_ci_is_disabled_but_preserves_isolation_contract():
     import yaml
     root = Path(__file__).resolve().parents[1]
     workflow = yaml.safe_load((root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     job = workflow["jobs"]["dry-run-preview"]
-    assert job["if"] == "github.event_name == 'workflow_dispatch'"
+    assert job["if"] == "${{ false }}"  # Explicit user opt-out, not a green live check.
     run = next(s for s in job["steps"] if s.get("id") == "run")
     assert run["run"] == "python tools/preview_morning_report.py --kind full"
     assert run["env"]["DRY_RUN"] == "1"

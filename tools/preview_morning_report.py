@@ -1,4 +1,7 @@
-"""Non-sending, isolated-state canary; full pipeline even on Sundays.
+"""Retired paid canary; CLI disabled by user decision 2026-09-07.
+
+Helpers remain for offline fixture tests only; do not invoke main/full_pipeline
+with live providers. Content acceptance waits for the next scheduled report.
 
 The production entry point and schedule are unchanged. Real current time,
 configured providers and the production phase list are preserved. Call in a
@@ -91,4 +94,5 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit("Paid test generation disabled by user policy (2026-09-07). "
+                     "DRY_RUN=1 is not free; inspect the next scheduled morning report.")

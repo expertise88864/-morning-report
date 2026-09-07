@@ -588,7 +588,6 @@ _PROVIDER_KEY = {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY",
 
 
 if __name__ == "__main__":
-    # matrix 模式: 有值就只探測那一個 provider
-    # (第十輪 P1-3 要真實探測,P0-1 要金鑰隔離 —— matrix 同時滿足兩者)。
-    _only = _provider_env("CANARY_PROVIDER")
-    raise SystemExit(probe_one_provider(_only) if _only else main())
+    # Offline tests may use the helpers with mocked transports, never live probes.
+    raise SystemExit("Paid configuration probes disabled by user policy (2026-09-07). "
+                     "Use offline tests and the next scheduled morning report.")

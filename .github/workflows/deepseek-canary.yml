@@ -27,6 +27,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   contract:
+    # User decision 2026-09-07: no paid API tests, including weekly live probes.
+    # Keep offline contract tests; inspect the next scheduled production report.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -660,7 +660,8 @@ def test_the_acceptance_assertion_can_actually_fail_the_job():
     job = ci["jobs"]["dry-run-preview"]
     assert job.get("continue-on-error") is not True,         "job 層仍容忍失敗 —— 斷言紅了 workflow 還是綠的"
     steps = {str(st.get("name", "")): st for st in job["steps"]}
-    assert job.get("if") == "github.event_name == 'workflow_dispatch'",         "這個 job 若進了每次 push 的路徑,不容忍失敗的決定要重新評估"
+    # 2026-09-07 user opt-out: retired live job, not passing live evidence.
+    assert job.get("if") == "${{ false }}"
     # **每一步都不得容忍失敗** —— 主流程掛掉時沒有 manifest,
     # 那是「沒有證據」,不是「跳過」。
     for name, st in steps.items():

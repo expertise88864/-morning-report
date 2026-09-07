@@ -1,5 +1,20 @@
 # Remote-first delivery — 2026-09-06
 
+## Latest user decision — 2026-09-07: no paid test generation
+This supersedes the earlier morning-report live preview requirement. Do not call
+paid model APIs for tests, previews, canaries, manual reruns or post-fix validation.
+Use offline fixtures, render-only checks, lint, types and the complete ordinary CI.
+The manual paid preview, LLM configuration probes and weekly DeepSeek live canary jobs are disabled, and
+their CLI entry points refuse execution. They are not passing live checks.
+`morning_dry_run` is false by explicit user choice; exact-SHA candidate and formal
+CI gates remain required. Never dispatch production to substitute for a paid test.
+After deployment, record content acceptance as pending the next day's scheduled
+report; inspect that existing report/manifest without regeneration, then fix any
+confirmed issues through the same offline-CI delivery process. Do not claim live
+content or iPhone Gmail acceptance from offline tests. Production morning-report
+and Podcast processing schedules, quality warnings and independent code reviews
+are unchanged. Re-enabling paid testing requires a new explicit user decision.
+
 The user explicitly replaced mandatory full local CI before candidate pushes.
 Production remains fail-closed. This is a delivery workflow, not permission to
 change medical content, visual baselines, credentials, recipients or scoring.
@@ -31,10 +46,8 @@ Record all applicable CI and actual deployment/smoke evidence separately.
 ## Project boundaries
 - CMUH: full Windows CI, existing Security workflow, version/manifest consistency.
   The updater still reads main; no release source/medical/punch behavior changes.
-- Morning report: ordinary candidate tests use fakes and do not send mail. Relevant
-  production pipeline changes also require the existing manual dry-run-preview on
-  the candidate (DRY_RUN=1, isolated runner, read-only repository permission).
-  Read-only previews must not persist state or modify production concurrency.
+- Morning report: candidate tests use fakes and do not send mail or call paid APIs.
+  Live content validation waits for the next day's scheduled report, as above.
   Operational state-writing schedules are not automatically redesigned by this tool.
 - DermNotes/HsiaoEye: PR and Preview browser must pass before main. Production
   deployment's ignored-build gate allows only exact candidate-CI-green commits.

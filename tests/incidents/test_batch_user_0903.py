@@ -45,7 +45,8 @@ def test_the_preamble_before_the_first_heading_never_reaches_the_letter():
     # 沒有任何標題的輸出原樣保留 —— 整封砍掉比留著更糟
     assert lp._strip_preamble_before_first_heading("整封沒有標題") == "整封沒有標題"
     # 接線:渲染管線第一步就是它
-    i = _SRC.index("analysis_for_render = _strip_preamble_before_first_heading(analysis)")
+    # Reader projection wraps the preamble guard; it must still run first.
+    i = _SRC.index("analysis_for_render = public_sections(_strip_preamble_before_first_heading(analysis))")
     assert i < _SRC.index("analysis_for_render = _strip_llm_watchlist_section(")
     # prompt 也明講(雙保險,但守衛是上面那個)
     assert "輸出的第一行必須就是下面這個標題" in wr.LEGACY_RULES

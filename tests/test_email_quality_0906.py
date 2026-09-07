@@ -131,10 +131,12 @@ def test_production_sized_report_reaches_final_html_without_missing_sectors(monk
     monkeypatch.setattr(mr, "_http_get", no_network)
     monkeypatch.setattr(mr.requests, "get", no_network)
     analysis, _ = _render(tech, other)
+    analysis = 'PREAMBLE_MUST_NOT_REACH_EMAIL\n' + analysis
     html = mr.render_html(copy.deepcopy(_golden_quotes()), {"error": "fixture"},
                           {"error": "fixture"}, analysis,
                           "2026-09-06", "每日報")
     diag = mr._RUN_MANIFEST["llm"]["email_html"]
+    assert 'PREAMBLE_MUST_NOT_REACH_EMAIL' not in html
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 0
     assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": min(6, other), "html": min(6, other)}
     assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": min(6, tech), "html": min(6, tech)}

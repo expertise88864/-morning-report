@@ -27,38 +27,6 @@
   "action": "",
   "identity_schema": 14
  },
- "export_controls:export_control:3037:2026-09": {
-  "first_seen": "2026-09-04",
-  "days": 1,
-  "last_seen": "2026-09-04",
-  "latest_title": "欣興捲入「洗產地」疑雲，出口管制風險受關注",
-  "latest_summary": "",
-  "object": "3037",
-  "incident_tokens": [
-   "出口",
-   "制風",
-   "受關",
-   "口管",
-   "捲入",
-   "欣興",
-   "洗產",
-   "產地",
-   "疑雲",
-   "管制",
-   "興捲",
-   "關注",
-   "險受",
-   "風險"
-  ],
-  "entity": "3037",
-  "subject_basis": "code",
-  "subjects": [
-   "3037"
-  ],
-  "event_type": "export_controls",
-  "action": "export_control",
-  "identity_schema": 14
- },
  "litigation:META:2026-09#19449c": {
   "first_seen": "2026-09-05",
   "days": 1,
@@ -156,25 +124,23 @@
  },
  "geopolitical:hormuz_passage:2026-09": {
   "first_seen": "2026-09-07",
-  "days": 1,
-  "last_seen": "2026-09-07",
-  "latest_title": "伊朗稱將在荷姆茲海峽附近設立禁區",
+  "days": 2,
+  "last_seen": "2026-09-08",
+  "latest_title": "伊朗宣布將在荷姆茲海峽外設立禁區",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
    "在荷",
+   "外設",
    "姆茲",
    "將在",
-   "峽附",
+   "峽外",
    "海峽",
    "禁區",
-   "稱將",
    "立禁",
    "茲海",
    "荷姆",
-   "設立",
-   "近設",
-   "附近"
+   "設立"
   ],
   "entity": "伊朗",
   "subject_basis": "alias",
@@ -255,6 +221,67 @@
   "subject_basis": "alias",
   "subjects": [
    "烏克蘭"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:中國大陸:2026-09": {
+  "first_seen": "2026-09-08",
+  "days": 1,
+  "last_seen": "2026-09-08",
+  "latest_title": "中國大陸加強台灣以東海域巡邏、加大對台施壓",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "以東",
+   "加大",
+   "加強",
+   "台施",
+   "域巡",
+   "大對",
+   "對台",
+   "巡邏",
+   "強台",
+   "施壓",
+   "東海",
+   "海域",
+   "灣以"
+  ],
+  "entity": "中國大陸",
+  "subject_basis": "literal",
+  "subjects": [
+   "中國大陸"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#d4e2be": {
+  "first_seen": "2026-09-08",
+  "days": 1,
+  "last_seen": "2026-09-08",
+  "latest_title": "美伊軍事衝突升溫並波及油輪",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "並波",
+   "事衝",
+   "伊軍",
+   "升溫",
+   "及油",
+   "油輪",
+   "波及",
+   "溫並",
+   "突升",
+   "美伊",
+   "衝突",
+   "軍事"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
   ],
   "event_type": "geopolitical",
   "action": "",

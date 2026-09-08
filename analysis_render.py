@@ -306,7 +306,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     if top3:
         # **各自成段**(2026-08-21 實信:單一換行被 markdown 摺成同一段,
         # 三條重點黏成一坨、佐證括號看起來像連環重複)。
-        parts.append(f"## {SECTION_TOP3}\n" + "\n\n".join(top3))
+        parts.append(f"## {SECTION_TOP3}\n" + "\n\n".join('- ' + x for x in top3))
 
     # ------- legacy 骨架(2026-08-19 第四批,schema v21)-------
     # 世界大事:**股市之外的世界**。這個段名曾被刪(schema 沒有對應欄位
@@ -329,10 +329,10 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         return ("- " + head + why
                 + (f"後續可能影響:{_sent(nxt)}" if nxt else "")).rstrip()
 
-    world = [_world_line(w) for w in (obj.get("world_events") or [])
+    world = [_world_line(w) for w in _reader.importance_order(obj.get("world_events") or [], packet or {})
              if isinstance(w, dict) and _s(w.get("what"))]
     if world:
-        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world))
+        parts.append(f"## {SECTION_WORLD}" + chr(10) + chr(10).join(world[:5]))
 
     # 未來 48 小時:每件事一個小段(基準/偏多/偏空/最受影響/失效)。
     scen_blocks = []
@@ -345,7 +345,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                            ("偏空情境", "bear_case"), ("最受影響", "most_affected"),
                            ("失效條件", "invalidation")):
             if _s(ev.get(key)):
-                rows.append(f"{field_label}:{_s(ev.get(key))}")
+                prefix = {"bull_case": "若有利條件成立，", "bear_case": "但若風險發生，",
+                          "most_affected": "主要牽動", "invalidation": "上述判斷不適用於："}.get(key, "")
+                rows.append(prefix + _sent(ev.get(key)))
         scen_blocks.append(rows[0] + "\n\n" + " ".join(rows[1:]))
     if scen_blocks:
         parts.append(f"## {SECTION_48H}" + chr(10) + (chr(10) * 2).join(scen_blocks))
@@ -409,6 +411,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         diag.clear()
         diag.update({"analyzed": len(_diag_rows) + len(_limited),
                      "editorial_limit": 6,
+                     "editorial_limit_tech": 4,
                      "editorial_omitted": [_s(c.get("source_item_id")) for c in _limited],
                      "rendered_tech": len(tech_news), "rendered_other": len(other_news),
                      "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})

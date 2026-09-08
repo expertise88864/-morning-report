@@ -24,6 +24,7 @@ def _sections(text: str, html: bool) -> dict[str, str]:
         text = re.sub(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>",
                       lambda m: "\n## " + re.sub(r"<[^>]+>", "", m[1]) + "\n",
                       text, flags=re.I | re.S)
+        text = re.sub(r'</(?:p|li|div)>', '\n', text, flags=re.I)
         text = unescape(re.sub(r"<[^>]+>", "", text))
     chunks = re.split(r"(?m)^#{1,6}\s+([^\n]+)\n?", text)
     return {chunks[i].strip(): chunks[i + 1] for i in range(1, len(chunks) - 1, 2)}
@@ -43,12 +44,18 @@ def audit(analysis: str, html: str) -> dict:
         if section == SECTIONS[2]:
             continue
         counts[section] = {
-            "expected": len(re.findall(r"傳導[:：]", before[section])),
-            "html": len(re.findall(r"傳導[:：]", after.get(section, "")))}
+            "expected": _chain_count(before[section]),
+            "html": _chain_count(after.get(section, ""))}
     return {"expected_sections": expected,
             "missing_sections": [s for s in expected if s not in after],
             "chain_counts": counts,
             "lost_cards": sum(max(0, c["expected"] - c["html"]) for c in counts.values())}
+
+
+def _chain_count(text: str) -> int:
+    """Count causal sentences even when the reader-facing form has no field label."""
+    return sum(1 for sentence in re.split(r'[。\n]', text)
+               if '→' in sentence or re.search(r'傳導[:：]', sentence))
 
 
 def finalize(analysis: str, html: str, manifest: dict) -> str:

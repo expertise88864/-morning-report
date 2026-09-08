@@ -172,7 +172,8 @@ MAIN_MODULE_LINE_CEILING = 26_400  # 2026-09-06:週回顧素材抽至 week_revie
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
-    "reader_prose.py": 170,  # Reader-only projection; no state or network.
+    "reader_prose.py": 140,  # Selection extracted; do not reabsorb it.
+    "reader_selection.py": 80,  # Read-only importance and category selection.
     "news_memory.py": 330,
     "news_research_context.py": 310,
     "news_research_runtime.py": 250,

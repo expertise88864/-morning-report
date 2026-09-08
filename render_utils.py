@@ -376,6 +376,9 @@ def _dim_source_citations(html: str) -> str:
 
     def _repl_paren(m: "_re.Match") -> str:
         inner = m.group(1)
+        if re.fullmatch(r'(?:[A-D] 級・)?(?:僅單一來源|\d+ 家獨立報導)(?:、有反面證據)?', inner):
+            return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;">'
+                    + m.group(0) + '</span>')
         if not _is_media_group(inner):
             return m.group(0)
         return ('<span style="color:#94a3b8;font-size:12px;font-weight:400;'
@@ -880,14 +883,10 @@ def _render_podcast_html(episodes: list[dict], snapshot: list[dict], htmllib,
     dir_label = {"bullish": ("看多", "#dc2626"), "bearish": ("看空", "#16a34a"),
                  "neutral": ("中性", "#64748b")}
     # 國際快訊壓到 6 條,把版面留給台股(iPhone Gmail 102KB);其餘(含未知/新增節目)維持 15 條
-    intl_shows = {"FT News Briefing", "WSJ What's News", "Wall Street Breakfast",
-                  "Unhedged (FT)", "Odd Lots", "Money Talks (Economist)",
-                  "Sharp Tech (Ben Thompson)", "All-In Podcast",
-                  "Animal Spirits", "Invest Like the Best"}
     cards = []
     for ep in episodes[:max(1, max_episodes)]:
         d = ep.get("digest") or {}
-        max_pts = 6 if ep.get("show", "") in intl_shows else 15
+        max_pts = 5
         if compact_points is not None:               # 局部縮減:進一步壓低每集條數
             max_pts = min(max_pts, compact_points)
         points = "".join(
@@ -963,7 +962,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
 
     def _cell(txt, *, color="", bold=False, align="right", muted=False) -> str:
         style = ("padding:5px 6px;border-bottom:1px solid #f1e6d2;font-size:12px;"
-                 f"text-align:{align};white-space:nowrap;"
+                 f"text-align:{align};white-space:normal;overflow-wrap:anywhere;"
                  + (f"color:{color};" if color else ("color:#94a3b8;" if muted else ""))
                  + ("font-weight:700;" if bold else ""))
         return f"<td style='{style}'>{txt}</td>"
@@ -1001,7 +1000,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
             + _cell(today, muted=not s) + "</tr>")
     head = "".join(
         f"<th style='padding:5px 6px;font-size:11px;color:#92400e;text-align:{a};"
-        f"border-bottom:1px solid #fcd9b6;white-space:nowrap;'>{t}</th>"
+        f"border-bottom:1px solid #fcd9b6;white-space:normal;'>{t}</th>"
         for t, a in (("類股", "left"), ("5 日中位", "right"), ("相對大盤", "right"),
                      ("5 日上漲/檔", "right"), ("今日成交占比・法人", "right")))
     mm = float((rot or {}).get("market_median") or 0)
@@ -1009,7 +1008,7 @@ def _render_sector_rotation_table(rot: dict, heat: dict) -> str:
         "<div style='margin:4px 0 14px;padding:10px 12px;background:#fffbeb;border-radius:8px;'>"
         "<div style='font-size:13px;font-weight:600;color:#92400e;margin-bottom:6px;'>"
         f"近 5 日資金輪動（各類股中位漲幅 vs 大盤中位 {mm:+.1f}%；▲ 強勢 / ▼ 轉弱）</div>"
-        "<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;'>"
+        "<div><table data-mobile-layout='table' style='width:100%;table-layout:fixed;border-collapse:collapse;'>"
         f"<tr>{head}</tr>{''.join(trs)}</table></div>"
         "<div style='font-size:11px;color:#94a3b8;margin-top:6px;'>"
         "※ 5 日中位 / 相對大盤 / 上漲檔數＝晨報 universe 成分股口徑（相對 &gt;0＝資金相對流入）；"

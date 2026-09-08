@@ -214,11 +214,11 @@ def test_render_podcast_international_point_cap():
     intl = [{"show": "Odd Lots", "title": "x",
              "digest": {"summary_points": [f"pt{i}" for i in range(10)]}}]
     h = mr._render_podcast_html(intl, [], htmllib)
-    assert "pt5" in h and "pt6" not in h          # 國際 → 只到第 6 條
+    assert "pt4" in h and "pt5" not in h          # Every show: five points.
     tw = [{"show": "股癌", "title": "x",
            "digest": {"summary_points": [f"pt{i}" for i in range(12)]}}]
     h2 = mr._render_podcast_html(tw, [], htmllib)
-    assert "pt11" in h2                            # 台系 → 全展開(≤15)
+    assert "pt4" in h2 and "pt5" not in h2
 
 
 def test_render_podcast_html(tmp_path, monkeypatch):

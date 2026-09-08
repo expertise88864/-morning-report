@@ -192,15 +192,16 @@ def test_the_legacy_skeleton_renders_in_order():
                              "impact": "需求透過模組與工程訂單傳導。"}]
     out = ar.render(obj)
     order = [ar.SECTION_WORLD, ar.SECTION_48H, ar.SECTION_DELTA,
-             ar.SECTION_MACRO, ar.SECTION_POLICY, ar.SECTION_LOCAL]
+             ar.SECTION_MACRO, ar.SECTION_POLICY]
+    assert ar.SECTION_LOCAL not in out and '中經院估 GDP 破 10%' in out
     idx = [out.index(t) for t in order]
     assert idx == sorted(idx), [out.index(t) for t in order]
     # 2026-08-29 使用者:七之二改一氣呵成段落(標題句。解讀句。)
     assert "美沙簽署核能合作協議。中東勢力格局重組。" in out
-    assert "基準預期:按兵不動基調" in out
+    assert "按兵不動基調" in out and "基準預期:" not in out
     assert "「美伊戰局逼近十字路口」→ **升溫**" in out
     assert "**(A)** 10Y 4.657% 高檔" in out
-    assert "中經院估 GDP 破 10%:支撐高本益比" in out
+    assert "中經院估 GDP 破 10%。支撐高本益比" in out
 
 
 def test_empty_skeleton_fields_add_no_sections():

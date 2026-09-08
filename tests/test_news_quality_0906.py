@@ -109,7 +109,7 @@ def test_reader_sees_validated_horizon_magnitude_confirmation_in_one_paragraph(h
             "confirmation_signal": "後續營收公告是否顯示出貨增加",
             "invalidation_signal": "訂單取消", "affected_assets": []}
     text = ard._news_line(card)
-    assert label in text and "後續營收公告" in text and "無法估算獲利幅度" in text
+    assert label not in text and "後續營收公告" in text and "無法估算獲利幅度" in text
     assert "訂單取消" in text and "\n" not in text
     assert "後續驗證" in text
 

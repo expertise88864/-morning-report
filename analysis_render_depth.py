@@ -117,7 +117,11 @@ def news_subject(n: dict, packet=None) -> dict:
         import company_profiles as _cp
     except Exception:                   # noqa: BLE001
         _cp = None
-    for c in cands:
+    # Missing editorial entities must not hide a company explicitly named in the headline.
+    cands += list(dict.fromkeys(_s(r.get('code')) for r in idx.values()))
+    if _cp:
+        cands += list(_cp.PROFILES)
+    for c in dict.fromkeys(cands):
         row = idx.get(c)
         if row is not None:
             # 台股:別名 = universe 宣告的公司名。**標題沒指名就跳過。**
@@ -291,7 +295,7 @@ def _news_line(n: dict, packet=None) -> str:
     if headline and href:
         headline = f"[{headline.replace('[', '（').replace(']', '）')}]({quote(href, safe=':/?=&%#@+;,$!-_~')})"
     if subject.get("label"):
-        lead = (f"**{subject['label']}**:"
+        lead = (f"**{subject['label']}**\n\n"
                 + (_join_sentence(headline.rstrip(_TERMINAL_MARKS) + attribution)
                    if headline else ""))
     elif headline:
@@ -300,7 +304,7 @@ def _news_line(n: dict, packet=None) -> str:
         lead = _join_sentence(display_head + attribution)
     else:
         lead = ""
-    parts = [lead + body if lead else body]
+    parts = [lead + '\n\n' + body if lead else body]
     import news_research_context as _research
     history = _research.history_prose(n, packet)
     if history:
@@ -308,10 +312,14 @@ def _news_line(n: dict, packet=None) -> str:
     chain = _chain_line([st for st in (n.get("mechanism_steps") or [])
                          if isinstance(st, dict)])
     if chain:
-        parts.append(f"\n\n傳導:{chain}。\n\n")
+        parts.append(f"\n\n{chain}。")
     impact = _impact.readout(n, _s)
     if impact:
-        parts.append(impact)
+        import re
+        # September 8 attachment item 9 explicitly hides the observation window;
+        # validated horizon/state remain intact. Keep the magnitude reasoning.
+        impact = re.sub(r'影響觀察窗：[^。]*。\s*', '', impact)
+        parts.append(impact.replace('量級依據：', ''))
     inval = _s(n.get("invalidation_signal"))
     if inval:
         parts.append(_join_sentence(f"若{inval},此判斷不成立"))
@@ -365,8 +373,14 @@ def _assets_prose(n: dict, packet=None) -> str:
         effects = "、".join(x.rstrip("。") for x in
                             (_s(a.get("first_order_effect")),
                              _s(a.get("second_order_effect"))) if x)
-        rows.append(f"{aid}{spec}:{effects}" if effects else f"{aid}{spec}")
-    return _join_sentence(";".join(rows)) if rows else ""
+        row = _universe_index(packet).get(aid) or {}
+        import company_profiles
+        name = _s(row.get('name')) or company_profiles.display_name(aid)
+        label = f'{name}({aid})' if name and name != aid else aid
+        # Preserve uncertainty in ordinary language rather than a schema label.
+        effects = ('可能' if spec else '') + effects
+        rows.append(f"{label}:{effects}" if effects else label)
+    return '\n\n' + '\n\n'.join(_join_sentence(r) for r in rows) if rows else ""
 
 
 #: 句末標點(**全形半形都要**,外審 2026-08-18:只收半形的話

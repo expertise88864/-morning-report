@@ -151,7 +151,7 @@ def test_the_mechanism_chain_reaches_the_reader():
     """**模型填了因果鏈,讀者要看得到** —— 突變驗證第一輪抓到這裡沒測試:
     把渲染那兩行拿掉,全套照樣綠。schema 再深,渲染丟掉就等於沒有。"""
     out = ar.render(fx.valid_analysis())
-    assert "傳導:" in out
+    assert "傳導:" not in out
     assert "費半收漲 → 台股電子開盤定價" in out
     # 2026-08-17:通道與 fact/推論 標記收起來(使用者:讀起來像表單)。
     # **鏈本身還在**,而且節點串成一行 —— 那正是這條測試在保護的東西。
@@ -225,7 +225,7 @@ def test_two_effect_sentences_do_not_collide():
         {"asset_id": "2330", "first_order_effect": "折現率上升。",
          "second_order_effect": "折價可能擴大"}]})
     assert prose and "。、" not in prose, prose
-    assert prose == "2330:折現率上升、折價可能擴大。", prose
+    assert prose.strip() == "2330:折現率上升、折價可能擴大。", prose
 
 
 def test_the_counterevidence_flag_survives_without_a_cluster():

@@ -15349,7 +15349,7 @@ def _render_summary_bar(summary: str, stance_detail: str, htmllib) -> str:
 
     headline = (f"<div style='font-size:16px;color:#0f172a;font-weight:700;"
                 f"line-height:1.55;'>{htmllib.escape(summary)}</div>" if summary else "")
-    detail = (f"<div style='font-size:13px;color:#334155;line-height:1.8;"
+    detail = (f"<div style='font-size:14px;color:#334155;line-height:1.7;"
               f"margin-top:8px;'>{_fmt(stance_detail)}</div>" if stance_detail else "")
     return f"""
           <tr>
@@ -22104,8 +22104,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                               quotes.get("SPORTS") or {}, _htmllib)
     event_calendar_html = _safe_block("風險事件日曆", _render_event_calendar_html,
                                       quotes.get("EVENT_CALENDAR") or [])
-    event_timeline_html = _safe_block("事件延燒", _render_event_timeline_html,
-                                      quotes.get("EVENT_TIMELINE") or [], _htmllib)
+    event_timeline_html = ""  # Hide display only; cross-day tracking remains active.
     tw_calendar_html = _safe_block("台股行事曆", _render_tw_calendar_html,
                                    quotes.get("TW_CALENDAR") or {})
     journals_html = _safe_block("醫學文獻", _render_journals_html,
@@ -22320,7 +22319,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
           <div style="font-size:30px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;">{taiex_pred['pred_open']:,.0f} <span style="font-size:16px;">({pct_sign}{final_pct:.2f}%)</span></div>
           <div style="font-size:14px;margin-top:4px;">
             較昨收 {taiex_pred['last_close']}{raw_note}
-            ・合理區間 {taiex_pred['ci_lower']:,.0f}~{taiex_pred['ci_upper']:,.0f}
           </div>
         </div>
         <table style="width:100%;border-collapse:separate;border-spacing:6px;table-layout:fixed;margin:8px 0;">
@@ -22367,6 +22365,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         # 批#20 #3:可執行性過濾(漲跌停鎖死/近日除權息)——與 main 的追蹤
         # 帳本用同一個確定性 helper,卡片與帳本名單必然一致
         top5, _t5_excluded = _top5_tradeable_filter(scored, quotes)
+        top5 = top5[:3]  # Reader shortlist only; retain scoring and historical tracking.
         if top5:
             # FinMind 補值(EPS年增/外資持股)已於 main 抓取階段併入 snapshot;render 只讀不抓(避免寄信前 live HTTP)
             rows_html = []

@@ -154,8 +154,8 @@ def test_scenario_narratives_reach_the_email_but_model_probabilities_do_not():
     # r2(Codex,#5):**機率不進信件。** 信裡出現的數字必須是 Python 算的,
     # 而情境機率沒有任何 Python 來源;標明「模型主觀」仍不滿足那個不變式。
     # 情境**敘述**要在(那是判讀的內容),數字留在 JSON 供指標使用。
-    assert "基準" in md and "區間震盪" in md
-    assert "偏空" in md and "跌破季線" in md
+    assert "區間震盪" in md and "站回月線" in md and "跌破季線" in md
+    assert "**偏空**:" not in md and "跌破季線" in md
     assert "60%" not in md and "15%" not in md, f"模型自訂的機率進了信件:{md}"
 
 
@@ -209,7 +209,7 @@ def test_a_universe_only_asset_is_labelled_speculative():
     # 同一批改動也拿掉了逐標的的方向詞,所以核心標的那一條改用同樣的錨。
     # 2026-08-19:逐標的影響併進散文(`3661〔推測性傳導〕:…`)。
     # 判準不變:揭露要貼在被揭露的那個標的身上。
-    assert "3661〔推測性傳導〕" in text, text
+    assert "世芯-KY(3661):可能" in text, text
     assert "2330〔" not in text, text
 
 

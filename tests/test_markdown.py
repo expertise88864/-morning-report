@@ -802,7 +802,7 @@ def test_render_html_warns_when_watchlist_scores_are_low_confidence(monkeypatch)
         },
     } for index in range(5)]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-03", "每日報")
-    assert "台股波段觀察名單 Top 5" in html         # 低信心→波段框架(標題)
+    assert "台股波段觀察名單 Top 3" in html
     assert "相對排名" in html                       # 標題仍標相對排名
     assert "不是買進訊號" in html                   # 精簡圖例仍保留風險提示
     assert "中長線(波段)結構觀察" not in html       # 冗長說明已依使用者要求移除
@@ -823,7 +823,7 @@ def test_render_html_top5_market_state_note_removed_on_big_up_day(monkeypatch):
                            "5d": {"expected_price": 106.0, "lower": 94.0, "upper": 116.0}},
     } for i in range(5)]
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
-    assert "台股波段觀察名單 Top 5" in html         # 大漲日仍正常渲染觀察名單
+    assert "台股波段觀察名單 Top 3" in html
     assert "為何大漲日也都是" not in html           # 冗長說明已依使用者要求移除
     assert "不隨大盤起伏調整" not in html
 
@@ -969,7 +969,7 @@ def test_render_html_full_mode_default_never_compacts(monkeypatch):
     q = {**_full_quotes(), "PODCAST_DIGEST": eps}
     html = mr.render_html(q, {"error": "x"}, {"error": "x"}, "x", "2026-06-16", "每日報")
     assert html.count("EPMARK") == 10                  # 10 集全在
-    assert html.count("PTMARK") == 150                 # 條數完全沒壓(10 集 × 15 條)
+    assert html.count("PTMARK") == 50                  # All ten episodes, five points each.
     assert len(q["PODCAST_SHOWN_EPISODES"]) == 10      # 全部標記已顯示
     assert "已暫略" not in html                         # 無任何區塊被移除
 

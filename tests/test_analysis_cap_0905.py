@@ -131,8 +131,8 @@ def _render(n_tech: int, n_other: int):
 def test_the_builder_really_produces_both_sections():
     """先確認 fixture 自己成立:九段真的有卡(否則下面全在守一個空集合)。"""
     text, diag = _render(_TYPICAL_TECH, _TYPICAL_OTHER)
-    assert diag["rendered_tech"] == 6 and diag["rendered_other"] == 6
-    assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - 12
+    assert diag["rendered_tech"] == 4 and diag["rendered_other"] == 6
+    assert len(diag["editorial_omitted"]) == _TYPICAL_TECH + _TYPICAL_OTHER - 10
     assert diag["dropped"] == []
     for sec in (ar.SECTION_TECH, ar.SECTION_OTHER, ar.SECTION_MACRO, ar.SECTION_WORLD):
         assert f"## {sec}" in text, sec
@@ -145,9 +145,9 @@ def test_the_old_fuse_cut_the_letter_inside_section_eight():
     assert len(text) > 6000, f"生產量級的輸出只有 {len(text)} 字?尺寸常數量錯了"
     old = mr._cap_analysis_text(text, max_chars=6000)
     assert f"## {ar.SECTION_TECH}" in old
-    assert f"## {ar.SECTION_OTHER}" not in old, "舊上限下九段應該整段消失(這正是事故)"
+    assert len(old) < len(text), "舊上限仍會截斷四則科技新聞後的完整內容"
     assert f"## {ar.SECTION_MACRO}" not in old
-    assert old.count("傳導:") < _TYPICAL_TECH, "舊上限下八段應該只剩幾張卡(9/5 實信:5 張)"
+    assert old.count("→") < text.count("→"), "舊上限仍遺失部分因果分析"
 
 
 def test_the_default_fuse_keeps_the_whole_letter():
@@ -158,7 +158,7 @@ def test_the_default_fuse_keeps_the_whole_letter():
         assert kept == text, f"{n_t}+{n_o} 張卡被截了:{len(text)} → {len(kept)}"
         for sec in (ar.SECTION_OTHER, ar.SECTION_MACRO, "觸發條件一", "調和:"):
             assert sec in kept, sec
-        assert kept.count("傳導:") == min(6, n_t) + min(6, n_o)
+        assert kept.count("→") == text.count("→") and "傳導:" not in kept
 
 
 def test_the_fuse_sits_above_the_legitimate_maximum():
@@ -194,7 +194,7 @@ def test_source_linked_history_does_not_cut_other_sectors_or_macro():
     text = ar.render(obj, pk)
     # 2026-09-07: only six cards per sector are displayed; assert all selected
     # source links survive instead of requiring the old 22-card output size.
-    assert text.count("https://example.com/") == 18
+    assert text.count("https://example.com/") == 16
     assert len(text) > 6000, "仍須超過舊保險絲，證明長引用不截掉後段"
     assert mr._cap_analysis_text(text) == text
     assert mr.ANALYSIS_TEXT_FUSE >= 1.5 * len(text)
@@ -207,7 +207,7 @@ def test_a_cut_is_never_silent():
     diag: dict = {}
     out = mr._cap_analysis_text(text, max_chars=6000, diag=diag)
     assert diag["chars"] == len(text) and diag["limit"] == 6000 and diag["kept"] == len(out)
-    assert ar.SECTION_OTHER in diag["lost_sections"]
+    assert ar.SECTION_OTHER not in diag["lost_sections"]  # Four tech cards allow other-sector heading through.
     assert ar.SECTION_MACRO in diag["lost_sections"]
     assert ar.SECTION_TECH not in diag["lost_sections"], "八段還在,不該報成消失"
     # 沒截就什麼都不寫 —— 「有 diag 就是有截」要成立,消費端才不必再猜
@@ -227,7 +227,7 @@ def test_the_cut_reaches_the_manifest_and_the_quality_verdict():
         mr._note_analysis_capped(diag)
         assert "render:analysis_capped" in mr._DEGRADED_STEPS
         rec = mr._RUN_MANIFEST["llm"]["analysis_cap"]
-        assert rec["kept"] < rec["chars"] and ar.SECTION_OTHER in rec["lost_sections"]
+        assert rec["kept"] < rec["chars"] and ar.SECTION_MACRO in rec["lost_sections"]
         # 同一班截兩次不該登記成兩條(watchdog 信裡會重複)
         mr._note_analysis_capped(diag)
         assert mr._DEGRADED_STEPS.count("render:analysis_capped") == 1
@@ -252,7 +252,7 @@ def test_the_cut_reaches_the_manifest_and_the_quality_verdict():
     sev = hit.get("severity") if isinstance(hit, dict) else getattr(hit, "severity", None)
     assert sev == "defect", sev
     detail = str(hit.get("detail") if isinstance(hit, dict) else getattr(hit, "detail", ""))
-    assert ar.SECTION_OTHER in detail, detail
+    assert ar.SECTION_MACRO in detail, detail
     # 標籤與 finding 都要登記(否則會被報成「沒見過的降級步驟」)
     assert "render:analysis_capped" in dr.KNOWN_DEGRADED
     assert fd.finding_domain("analysis_capped") == fd.DOMAIN_CONTENT

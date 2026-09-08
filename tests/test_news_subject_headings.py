@@ -66,8 +66,8 @@ def test_the_heading_names_the_company_and_what_happened():
     什麼事、分析在**同一段**裡,底下才接傳導。第二次校正時我把小標題拆成
     獨立一行,而他要的是舊信那種一段到底的寫法。
     """
-    line = ard._news_line(_news("n1", "2330"), _packet()).splitlines()[0]
-    assert line.startswith("**台積電（2330,晶圓代工龍頭）**:"), line
+    line = ard._news_line(_news("n1", "2330"), _packet())
+    assert line.startswith("**台積電（2330,晶圓代工龍頭）**\n\n"), line
     assert "CoWoS 產能明年再擴一倍。" in line, line
     assert "這件事之所以重要的一段敘述。" in line, line
 
@@ -76,14 +76,14 @@ def test_the_company_name_is_not_printed_twice():
     """標題開頭與公司同名時只削開頭 —— 「台積電(2330,…):**台積電** CoWoS…」
     是同一個名字印兩次。"""
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert md.count("台積電") == 1, md
+    assert md.count("台積電") == 2 and '台積電(2330):' in md, md
 
 
 def test_a_short_remainder_keeps_the_whole_headline():
     """削過頭比重複更糟:剩下的不成句就整條留著。"""
     pk = _packet(news=[{"source_item_id": "n1", "title": "台積電法說",
                         "entities": ["2330"]}])
-    line = ard._news_line(_news("n1", "2330"), pk).splitlines()[0]
+    line = ard._news_line(_news("n1", "2330"), pk)
     assert "台積電法說" in line, line
 
 
@@ -91,7 +91,7 @@ def test_the_fallback_blurb_does_not_repeat_the_name():
     """`desc` 查不到時是「<名稱> — <產業別>」的退化字串 ——
     放進括號會排成「鴻海(2317,鴻海 — 其他電子業)」。"""
     head = ard._news_line(_news("n4", "2317"), _packet()).splitlines()[0]
-    assert head.startswith("**鴻海（2317,其他電子業）**:"), head
+    assert head == "**鴻海（2317,其他電子業）**", head
 
 
 def test_a_macro_news_headline_is_its_own_heading():
@@ -154,10 +154,9 @@ def test_the_item_is_one_prose_paragraph():
     內容一樣都在(傳導、失效條件、逐標的影響),少的是排版的行數。
     """
     md = ard._news_line(_news("n1", "2330"), _packet())
-    assert "\n\n傳導:" in md, md  # 2026-09-07: separate prose paragraphs.
-    assert "傳導:起點 → 終點" in md, md
+    assert "\n\n起點 → 終點" in md and "傳導:" not in md, md
     assert "若什麼情況代表判斷錯了,此判斷不成立" in md, md
-    assert "2330:一階影響、二階影響。" in md, md
+    assert "台積電(2330):一階影響、二階影響。" in md, md
 
 
 def test_no_direction_words_per_asset():
@@ -336,7 +335,7 @@ def test_the_tag_does_not_claim_confidence_in_the_analysis():
     """
     line = ard._news_line(_news("c1", "2330"), _pk_conf(independent_sources=3))
     assert "信心" not in line, line
-    assert "傳導:" in line and "此判斷不成立" in line, line
+    assert "起點 → 終點" in line and "此判斷不成立" in line, line
 
 
 def test_the_tag_comes_only_from_the_packet():
@@ -402,6 +401,6 @@ def test_the_publisher_sits_inside_the_sentence():
         pk = {"news": [{"source_item_id": "d1", "title": "台積電公布財報" + mark,
                         "source_name": "鉅亨網", "entities": ["2330"]}],
               "tw_universe": tw}
-        line = ard._news_line(_news("d1", "2330"), pk).splitlines()[0]
+        line = ard._news_line(_news("d1", "2330"), pk)
         assert "公布財報（鉅亨網）。" in line, (mark, line)
         assert mark + "（" not in line, (mark, line)

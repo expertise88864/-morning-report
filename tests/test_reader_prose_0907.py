@@ -37,8 +37,8 @@ def test_categories_limit_and_technology_without_registry_subject():
     cards = [{'source_item_id': str(i), 'why_it_matters': '有新的需求'} for i in range(18)]
     pk = {'news': news}
     selected, omitted = rp.select_cards(cards, pk)
-    assert len(selected) == 12 and len(omitted) == 6
-    assert sum(rp.article_is_tech(c, pk) for c in selected) == 6
+    assert len(selected) == 10 and len(omitted) == 8
+    assert sum(rp.article_is_tech(c, pk) for c in selected) == 4
     for title in ('美光重返高點', '聯亞營收成長', '廠務工程在手訂單', 'Claude 模型發布'):
         assert rp.article_is_tech({'source_item_id': 'x'}, {'news': [{'source_item_id': 'x', 'title': title}]})
 
@@ -48,7 +48,7 @@ def test_headline_link_and_caveat_survive_safe_html_as_small_text():
          'mechanism_steps': [{'from_what': '需求', 'to_what': '出貨'}]}
     pk = {'news': [{'source_item_id': 'x', 'title': '模型發布', 'url': 'https://example.com/news?a=1&b=2'}]}
     md = ard._news_line(n, pk)
-    assert '\n\n傳導:' in md
+    assert '需求 → 出貨' in md and '傳導:' not in md
     html = ru._style_analysis_html(ru._md_to_html(md + '\n\n保留:單一來源。'))
     assert 'href="https://example.com/news?a=1&amp;b=2"' in html
     assert 'font-size:12px' in html
@@ -73,7 +73,7 @@ def test_ai_model_news_reaches_sanitized_packet_and_reserve():
     cards = [{'source_item_id': str(i)} for i in range(7)] + [{'source_item_id': item['source_item_id']}]
     pk['news'] += [{'source_item_id': str(i), 'title': '半導體產能'} for i in range(7)]
     selected, _ = rp.select_cards(cards, pk)
-    assert len(selected) == 6 and selected[0]['source_item_id'] == item['source_item_id']
+    assert len(selected) == 4 and selected[0]['source_item_id'] == item['source_item_id']
 
 
 def test_financial_subject_with_ai_words_stays_other_and_both_groups_reserved():
@@ -135,7 +135,7 @@ def test_selection_uses_full_python_ranking_beyond_top_three():
               'top_events': {'ranked': [{'cluster_id': f'c{i}'} for i in range(9)],
                              'top_cluster_ids': ['c0', 'c1', 'c2']}}
     selected, _ = rp.select_cards(cards, packet)
-    assert [c['source_item_id'] for c in selected] == list(map(str, range(6)))
+    assert [c['source_item_id'] for c in selected] == list(map(str, range(4)))
 
 
 def test_mobile_caveat_inline_priority_overrides_generic_paragraph_size():

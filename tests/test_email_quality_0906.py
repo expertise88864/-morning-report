@@ -1,7 +1,6 @@
 """Final email, not just intermediate Markdown, is the acceptance boundary."""
 import copy
 from html.parser import HTMLParser
-import re
 
 import pytest
 
@@ -139,7 +138,7 @@ def test_production_sized_report_reaches_final_html_without_missing_sectors(monk
     assert 'PREAMBLE_MUST_NOT_REACH_EMAIL' not in html
     assert diag["missing_sections"] == [] and diag["lost_cards"] == 0
     assert diag["chain_counts"][ar.SECTION_OTHER] == {"expected": min(6, other), "html": min(6, other)}
-    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": min(6, tech), "html": min(6, tech)}
+    assert diag["chain_counts"][ar.SECTION_TECH] == {"expected": min(4, tech), "html": min(4, tech)}
     assert 'id="morning-mobile"' in html
     assert html.index(ar.SECTION_TECH) < html.index(ar.SECTION_OTHER) < html.index(ar.SECTION_MACRO)
-    assert len(re.findall(r"傳導[:：]", html)) == min(6, tech) + min(6, other)
+    assert '傳導:' not in html and html.count('→') >= min(4, tech) + min(6, other)

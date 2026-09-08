@@ -26,26 +26,21 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
     """Four tech / six other cards, ranked by Python event importance."""
     import finance_editorial as finance
     items = {n.get("source_item_id"): n for n in packet.get("news", []) if isinstance(n, dict)}
+    import editorial_priority
     ordered = importance_order(cards, packet)
+    distinct = editorial_priority.distinct(ordered, packet)
     selected = []
     for tech in (True, False):
-        group = [c for c in ordered if article_is_tech(c, packet) == tech]
-        if tech:
-            reserve = []
-        else:
+        group = [c for c in distinct if article_is_tech(c, packet) == tech]
+        reserve = editorial_priority.required_representatives(group, packet)
+        if not tech:
             preferred = finance.balanced([items.get(c.get("source_item_id"), {}) for c in group], 1)
-            reserve = [c for c in group if any(items.get(c.get("source_item_id")) is n for n in preferred)]
+            reserve += [c for c in group if c not in reserve and any(items.get(c.get("source_item_id")) is n for n in preferred)]
         selected.extend((reserve + [c for c in group if c not in reserve])[:4 if tech else 6])
     return selected, [c for c in ordered if c not in selected]
 
 
 def importance_order(cards: list, packet: dict) -> list:
-    """Use existing Python event ranking, preserving source order for unranked items."""
-    events = packet.get('top_events') or {}
-    order = [r.get('cluster_id') for r in events.get('ranked', [])] or events.get('top_cluster_ids', [])
-    ranks = {cid: i for i, cid in enumerate(order)}
-    membership = {sid: str(c.get("cluster_id") or "") for c in
-                  (packet.get("news_clusters") or {}).get("clusters", [])
-                  for sid in c.get("member_source_ids", [])}
-    return sorted((c for c in cards if isinstance(c, dict)), key=lambda c:
-                     ranks.get(membership.get(c.get("source_item_id")), 999))
+    """Reader ordering does not change authoritative required-event coverage."""
+    import editorial_priority
+    return editorial_priority.order(cards, packet)

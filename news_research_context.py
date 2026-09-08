@@ -261,12 +261,13 @@ def history_prose(row: dict, packet: dict) -> str:
         if not ids or any(i not in allowed or i not in valid for i in ids):
             return ""  # Direct rendering must not bypass the validation boundary.
     else:
-        ids = sorted(allowed.intersection(valid), key=lambda i: sources[i]["published_at"])[:1]
+        ids = sorted(allowed.intersection(valid), key=lambda i: sources[i]["published_at"])
         if not ids:
             return ""
-        original = sources[ids[0]]
-        title = re.sub(r"[\[\]<>*_`#]", "", original["title"])[:70]
-        evolution = f"{original['published_at'][:10]} 曾報導「{title}」；以上為當時報導，非今日新進展。"
+        ids = list(dict.fromkeys([ids[0], ids[-1]]))
+        evolution = '；'.join(sources[i]['published_at'][:10] + ' 曾報導「' +
+                             re.sub(r"[\[\]<>*_`#]", '', sources[i]['title'])[:70] + '」' for i in ids)
+        evolution += '；以上為當時報導，非今日新進展。'
     links = [f"[{sources[i]['published_at'][:10]} 原始報導]({quote(sources[i]['url'], safe=':/?=&%')})"
              for i in ids[:2]]
     return "前情與變化:" + evolution.rstrip("。") + "。" + " ".join(links)

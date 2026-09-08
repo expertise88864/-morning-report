@@ -141,7 +141,7 @@ def test_self_comparison_is_not_historical_context():
 
 
 def test_retrieval_keeps_origin_and_latest_and_reports_omissions():
-    archive = [observation(day=d) for d in range(1, 10)]
+    archive = [observation(day=d, summary=f'高雄廠擴建工程仍在施工，階段 {d} 完工，尚未正式投產。') for d in range(1, 10)]
     contexts, refs = memory.retrieve([article(10, source_item_id="n1")], archive, "2026-09-11T07:00+08:00")
     assert len(refs) == 6 and refs[0]["published_at"].startswith("2026-09-01")
     assert refs[-1]["published_at"].startswith("2026-09-09")

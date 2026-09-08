@@ -33,7 +33,8 @@ def test_supporting_conditions_are_in_conclusion_not_lost():
 
 
 def test_categories_limit_and_technology_without_registry_subject():
-    news = [{'source_item_id': str(i), 'title': '台積擴產' if i < 9 else '航運運價'} for i in range(18)]
+    # Distinct events exercise category caps, not syndicated-copy deduplication.
+    news = [{'source_item_id': str(i), 'title': ('台積擴產' if i < 9 else '航運運價') + f'第{i}案'} for i in range(18)]
     cards = [{'source_item_id': str(i), 'why_it_matters': '有新的需求'} for i in range(18)]
     pk = {'news': news}
     selected, omitted = rp.select_cards(cards, pk)
@@ -71,13 +72,13 @@ def test_ai_model_news_reaches_sanitized_packet_and_reserve():
     assert 'external-marker' not in item['title'] and 'cleaned' in item['title']
     assert 'tech:ai-models' in item['coverage_buckets']
     cards = [{'source_item_id': str(i)} for i in range(7)] + [{'source_item_id': item['source_item_id']}]
-    pk['news'] += [{'source_item_id': str(i), 'title': '半導體產能'} for i in range(7)]
+    pk['news'] += [{'source_item_id': str(i), 'title': f'半導體產能第{i}案'} for i in range(7)]
     selected, _ = rp.select_cards(cards, pk)
     assert len(selected) == 4 and selected[0]['source_item_id'] == item['source_item_id']
 
 
 def test_financial_subject_with_ai_words_stays_other_and_both_groups_reserved():
-    pk = {'news': [{'source_item_id': str(i), 'title': '航運運價'} for i in range(7)] + [
+    pk = {'news': [{'source_item_id': str(i), 'title': f'航運運價第{i}案'} for i in range(7)] + [
           {'source_item_id': 'c', 'title': '中信金 AI 營運成長', 'published': '2026-09-07'},
           {'source_item_id': 'k', 'title': '國泰金 獲利', 'published': '2026-09-07'}]}
     selected, _ = rp.select_cards([{'source_item_id': n['source_item_id']} for n in pk['news']], pk)
@@ -130,7 +131,7 @@ def test_derived_evidence_routes_to_related_existing_section(field, heading, ref
 
 def test_selection_uses_full_python_ranking_beyond_top_three():
     cards = [{'source_item_id': str(i)} for i in reversed(range(9))]
-    packet = {'news': [{'source_item_id': str(i), 'title': '台積擴產'} for i in range(9)],
+    packet = {'news': [{'source_item_id': str(i), 'title': f'台積擴產第{i}案'} for i in range(9)],
               'news_clusters': {'clusters': [{'cluster_id': f'c{i}', 'member_source_ids': [str(i)]} for i in range(9)]},
               'top_events': {'ranked': [{'cluster_id': f'c{i}'} for i in range(9)],
                              'top_cluster_ids': ['c0', 'c1', 'c2']}}

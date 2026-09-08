@@ -273,7 +273,8 @@ def retrieve(news: list, archive: list, as_of: str, limit: int = 6) -> tuple[dic
         hits = [r for r in candidates.values() if related(item, r) and
                 not (r["url"] == url and r["title"] == item.get("title"))]
         hits.sort(key=lambda r: (timestamp(r["published_at"]), timestamp(r["observed_at"]), r["evidence_id"]))
-        selected = hits if len(hits) <= limit else hits[:1] + (hits[-(limit - 1):] if limit > 1 else [])
+        import news_memory_selection
+        selected = news_memory_selection.select(hits, limit)
         contexts[sid] = {"evidence_ids": [r["evidence_id"] for r in selected],
                          "available_observations": len(hits), "omitted_observations": len(hits) - len(selected),
                          "status": "historical_sources" if selected else "no_matched_history"}

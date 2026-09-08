@@ -22076,10 +22076,16 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
         "在此基礎上，", stance_detail)
     analysis_for_render = _strip_llm_sections(
         analysis_for_render, ("我的明確立場", "一句話總結"))
+    # 截斷是內容損失,要留痕;Podcast 只比對最後會顯示的分析。
+    _cap_diag: dict = {}
+    analysis_for_render = _cap_analysis_text(analysis_for_render, diag=_cap_diag)
+    if _cap_diag:
+        _note_analysis_capped(_cap_diag)
     # 渲染「全部」載入的集數(不設武斷上限):load_podcast_digest 已限制每節目最多 2 集未顯示,
     # 若這裡再砍集數,排序靠後的節目會永遠輪不到、96h 後過期消失(Codex review)。
     # 超標時改由下方 keep/trim 分支「先壓條數、必要時才減集數並同步下修 shown 數」處理。
-    _pod_eps_init = quotes.get("PODCAST_DIGEST") or []
+    import podcast_overlap
+    _pod_eps_init = podcast_overlap.for_report(quotes, analysis_for_render + '\n' + stance_detail, _safe_block)
     podcast_html = _safe_block(
         "Podcast", _render_podcast_html,
         _pod_eps_init, quotes.get("TW_UNIVERSE_SNAPSHOT") or [], _htmllib,
@@ -22984,11 +22990,6 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                             f"</td></tr>")
 
     # ===== 4. LLM 分析（Markdown → HTML 後加樣式;過長先在段落邊界截斷） =====
-    # 截斷是內容損失,要留痕(2026-09-05:舊上限每天靜默吃掉九、十段)
-    _cap_diag: dict = {}
-    analysis_for_render = _cap_analysis_text(analysis_for_render, diag=_cap_diag)
-    if _cap_diag:
-        _note_analysis_capped(_cap_diag)
     analysis_html = _md_to_html(analysis_for_render)
     analysis_html = _style_analysis_html(analysis_html)
     analysis_html = _dim_source_citations(analysis_html)   # 批#27:來源淡化,信心標保留
@@ -23202,7 +23203,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
     # 三模式下行情表/2330·00662·0050 預測卡/結論永不被移除。門檻 95KB:對 ~102KB 真實線留安全邊際。
     LIMIT_KB = 95.0
     overflow_mode = os.environ.get("EMAIL_OVERFLOW_MODE", "full").strip().lower()
-    podcast_eps = quotes.get("PODCAST_DIGEST") or []
+    podcast_eps = _pod_eps_init
     pod_snapshot = quotes.get("TW_UNIVERSE_SNAPSHOT") or []
     # 追蹤「實際出現在信中的 Podcast 集數」:局部縮減/整塊移除後,只有真正顯示的集才該被
     # 標成已顯示(否則被砍掉的集會被誤標 shown、永遠不再出現 —— 曾導致整日 Podcast 消失)。

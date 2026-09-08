@@ -173,7 +173,11 @@ MAIN_MODULE_LINE_CEILING = 26_400  # 2026-09-06:週回顧素材抽至 week_revie
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
     "reader_prose.py": 140,  # Selection extracted; do not reabsorb it.
-    "reader_selection.py": 80,  # Read-only importance and category selection.
+    "reader_selection.py": 60,  # Editorial priority moved into its own module.
+    "editorial_priority.py": 100,
+    "content_overlap.py": 90,
+    "podcast_overlap.py": 70,
+    "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,
     "news_research_runtime.py": 250,

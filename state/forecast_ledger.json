@@ -1786,6 +1786,11 @@
     "void": true,
     "reason": "corpact_coverage_gap",
     "session": "2026-08-18"
+   },
+   "20": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-09-08"
    }
   },
   "entry": {
@@ -3721,7 +3726,13 @@
    ]
   ],
   "status": "entered",
-  "res": {},
+  "res": {
+   "5": {
+    "void": true,
+    "reason": "corpact_coverage_gap",
+    "session": "2026-09-08"
+   }
+  },
   "entry": {
    "2408": 551.0,
    "2313": 254.5,
@@ -4213,8 +4224,16 @@
    "3017"
   ],
   "excluded": [],
-  "status": "awaiting_entry",
-  "res": {}
+  "status": "entered",
+  "res": {},
+  "entry": {
+   "3231": 199.5,
+   "3661": 4175.0,
+   "3653": 6000.0,
+   "2885": 70.9,
+   "3017": 3595.0
+  },
+  "taiex_entry": 46724.0
  },
  {
   "question": "2330_open_up",
@@ -4366,7 +4385,12 @@
    "ledger_schema": 2,
    "git_sha": "7931b5f0bb14"
   },
-  "git_sha": "7931b5f0bb14"
+  "git_sha": "7931b5f0bb14",
+  "resolved": "2026-09-09",
+  "outcome": true,
+  "actual": 2465.0,
+  "brier_model": 0.0335,
+  "brier_base": 0.2228
  },
  {
   "question": "taiex_open_up",
@@ -4391,7 +4415,12 @@
    "ledger_schema": 2,
    "git_sha": "7931b5f0bb14"
   },
-  "git_sha": "7931b5f0bb14"
+  "git_sha": "7931b5f0bb14",
+  "resolved": "2026-09-09",
+  "outcome": true,
+  "actual": 47335.24,
+  "brier_model": 0.0335,
+  "brier_base": 0.1513
  },
  {
   "type": "mz_shadow",
@@ -4416,6 +4445,110 @@
    "ledger_schema": 2,
    "git_sha": "7931b5f0bb14"
   },
-  "git_sha": "7931b5f0bb14"
+  "git_sha": "7931b5f0bb14",
+  "resolved": "2026-09-09",
+  "actual": 2465.0,
+  "err_raw": 24.97,
+  "err_shadow": 17.61
+ },
+ {
+  "type": "top5",
+  "created": "2026-09-09",
+  "ledger_schema_version": 2,
+  "created_at": "2026-09-09T07:18:26.292937+08:00",
+  "target_session": "2026-09-09",
+  "base_session": "2026-09-08",
+  "codes": [
+   "7769",
+   "2360",
+   "2885",
+   "3037",
+   "2408"
+  ],
+  "raw_codes": [
+   "7769",
+   "2360",
+   "2885",
+   "3037",
+   "2408"
+  ],
+  "excluded": [],
+  "status": "awaiting_entry",
+  "res": {}
+ },
+ {
+  "question": "2330_open_up",
+  "label": "2330 開盤高於昨收",
+  "created": "2026-09-09",
+  "created_at": "2026-09-09T07:18:26.292937+08:00",
+  "target": "2026-09-09",
+  "threshold": 2470.0,
+  "pred_pct": 0.733,
+  "prob": 0.783,
+  "sigma": 1.466,
+  "sigma_n": 60,
+  "base_rate": 0.541,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "609c577348e5"
+  },
+  "git_sha": "609c577348e5"
+ },
+ {
+  "question": "taiex_open_up",
+  "label": "加權指數開盤高於昨收",
+  "created": "2026-09-09",
+  "created_at": "2026-09-09T07:18:26.292937+08:00",
+  "target": "2026-09-09",
+  "threshold": 47105.78,
+  "pred_pct": 0.18,
+  "prob": 0.6,
+  "sigma": 0.855,
+  "sigma_n": 60,
+  "base_rate": 0.622,
+  "forecast_version": "prob-v2",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "609c577348e5"
+  },
+  "git_sha": "609c577348e5"
+ },
+ {
+  "type": "mz_shadow",
+  "created": "2026-09-09",
+  "created_at": "2026-09-09T07:18:26.292937+08:00",
+  "target": "2026-09-09",
+  "raw": 2488.1,
+  "shadow": 2484.44,
+  "base": 2470.0,
+  "a": 1.936,
+  "b": 0.691,
+  "n_train": 79,
+  "forecast_version": "prob-v2",
+  "mz_rule": "delta-mz-hac-v1",
+  "versions": {
+   "point_2330": "2330-open-adr-momentum-bias-v1",
+   "point_taiex": "taiex-open-nightfut-v1",
+   "universe_model": "tw-top100-decay-regime-ridge-platt-quantile-v4",
+   "probability_rule": "prob-v2",
+   "mz_rule": "delta-mz-hac-v1",
+   "event_schema": 6,
+   "ledger_schema": 2,
+   "git_sha": "609c577348e5"
+  },
+  "git_sha": "609c577348e5"
  }
 ]

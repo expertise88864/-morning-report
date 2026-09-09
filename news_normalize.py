@@ -20,12 +20,12 @@ import news_facts as _nf
 import source_registry as _sr
 import news_coverage as _coverage
 import finance_editorial as _finance
+import official_announcements as _announcements
 
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
 # `from evidence_packet import ...` —— 先 import evidence_packet 剛好成功
-# (常數已定義),先 import news_normalize 就炸(它反向進入一個
-# 尚未定義 `normalize_news` 的半初始化模組)。實測確認。
+# (常數已定義),反向 import 則讀到尚未定義 normalize_news 的半初始化模組。
 # **宣稱要回頭驗**;修法是延遲到呼叫時才取(那時兩個模組都已載完)。
 
 
@@ -148,6 +148,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
             "url": clean(str(n.get("link") or n.get("url") or "")),
         })
         _finance.retain_evidence(items[-1], n, clean=clean)
+        _announcements.retain(items[-1], n)
         # **新聞裡的數字要變成可引用、可核對的事實**(深度加強第二批)。
         # 沒有這一步,「80 億美元訂單」在 registry 裡是 value=None ——
         # 模型抄成 8 億,檢查器只看得到「引用了 n3」。
@@ -181,6 +182,8 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
         fp = _nf.title_fingerprint(
             _sr.owner_of_item(x) or x.get("source_name") or x["source"],
             x["title"])
+        if _announcements.issuer(x):  # Generic titles recur across issuers/events.
+            fp = (fp[0], x['source_item_id'])
         if fp[1] and fp in seen_fp:
             prior = seen_fp[fp]
             prior["coverage_buckets"] = sorted(set(_coverage.buckets(prior)) |

@@ -27,16 +27,18 @@ def select_cards(cards: list, packet: dict) -> tuple[list, list]:
     import finance_editorial as finance
     items = {n.get("source_item_id"): n for n in packet.get("news", []) if isinstance(n, dict)}
     import editorial_priority
+    from reader_editorial import is_macro
     ordered = importance_order(cards, packet)
     distinct = editorial_priority.distinct(ordered, packet)
     selected = []
     for tech in (True, False):
-        group = [c for c in distinct if article_is_tech(c, packet) == tech]
+        group = [c for c in distinct if not is_macro(c, packet) and article_is_tech(c, packet) == tech]
         reserve = editorial_priority.required_representatives(group, packet)
         if not tech:
             preferred = finance.balanced([items.get(c.get("source_item_id"), {}) for c in group], 1)
             reserve += [c for c in group if c not in reserve and any(items.get(c.get("source_item_id")) is n for n in preferred)]
         selected.extend((reserve + [c for c in group if c not in reserve])[:4 if tech else 6])
+    selected.extend(c for c in distinct if is_macro(c, packet))
     return selected, [c for c in ordered if c not in selected]
 
 

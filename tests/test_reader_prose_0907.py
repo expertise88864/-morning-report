@@ -25,11 +25,13 @@ def test_stance_does_not_become_last_upcoming_field_and_audit_is_private():
     assert obj == original
 
 
-def test_supporting_conditions_are_in_conclusion_not_lost():
+def test_supporting_conditions_move_out_of_conclusion_without_loss():
     md = rp.public_sections('## 情境與觸發條件\n- **偏多**:通膨降溫\n  - 什麼情況代表它成立:CPI低於預期\n\n'
                             '## 我的明確立場\n立場：中性\n\n## 一句話總結\n等待數據')
     stance = md.split('## 我的明確立場')[1].split('## 一句話總結')[0]
-    assert '通膨降溫' in stance and 'CPI低於預期' in stance
+    assert '通膨降溫' not in stance and 'CPI低於預期' not in stance
+    outlook = md.split('## 七之五、情境推演與後續觀察')[1].split('## 我的明確立場')[0]
+    assert '通膨降溫' in outlook and 'CPI低於預期' in outlook
 
 
 def test_categories_limit_and_technology_without_registry_subject():

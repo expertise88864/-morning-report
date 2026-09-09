@@ -12,6 +12,7 @@ import time
 import event_score
 import news_memory as memory
 import news_normalize
+import official_announcements
 import news_research_context as context
 
 MAX_QUERIES = 5
@@ -150,7 +151,9 @@ def enrich(ctx, directory, *, sanitize, atomic_write, fetch_feed, make_url,
                                      if memory.timestamp(n["published"]) >= now - dt.timedelta(hours=30)]
     try:
         as_of = dt.datetime.now(memory.TPE).isoformat()
-        rows, skipped = memory.observations((ctx.news or []) + extra, as_of, sanitize=sanitize)
+        rows, skipped = memory.observations((ctx.news or []) + extra +
+            official_announcements.reader_sources(getattr(ctx, 'tw_mops', None) or []),
+            as_of, sanitize=sanitize)
         known = {r["evidence_id"] for r in archive}
         added = memory.save(directory, [r for r in rows if r["evidence_id"] not in known],
                             as_of, atomic_write=atomic_write)

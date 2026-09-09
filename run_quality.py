@@ -695,7 +695,7 @@ def assess(manifest, *, mode: str = "watchdog",
     if _dropped:
         add("news_cards_dropped", "defect",
             f"模型分析 {_safe_int(_nr.get('analyzed'))} 則新聞,信裡只渲染 "
-            f"{_safe_int(_nr.get('rendered_tech')) + _safe_int(_nr.get('rendered_other'))} 則 —— "
+            f"{sum(_safe_int(_nr.get('rendered_' + section)) for section in ('tech', 'other', 'macro'))} 則 —— "
             f"{len(_dropped)} 則因正文(why_it_matters)為空被渲染端丟掉:"
             + "、".join(f"{d.get('sid')}({d.get('section')})" for d in _dropped[:8])
             + (f" …另 {len(_dropped) - 8} 則" if len(_dropped) > 8 else ""))

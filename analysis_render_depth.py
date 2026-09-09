@@ -102,6 +102,8 @@ def news_subject(n: dict, packet=None) -> dict:
              if isinstance(x, dict)}
     item = by_id.get(_s(n.get("source_item_id"))) or {}
     title = _s(item.get("title"))
+    import official_announcements
+    issuer = official_announcements.issuer(item)
     cands = [_s(e) for e in (item.get("entities") or []) if _s(e)]
     cands += [_s(a.get("asset_id")) for a in (n.get("affected_assets") or [])
               if isinstance(a, dict) and _s(a.get("asset_id"))]
@@ -121,13 +123,13 @@ def news_subject(n: dict, packet=None) -> dict:
     cands += list(dict.fromkeys(_s(r.get('code')) for r in idx.values()))
     if _cp:
         cands += list(_cp.PROFILES)
-    for c in dict.fromkeys(cands):
+    for c in dict.fromkeys(([issuer] if issuer else []) + cands):
         row = idx.get(c)
         if row is not None:
             # 台股:別名 = universe 宣告的公司名。**標題沒指名就跳過。**
             code = _s(row.get("code")) or c
             kn = {code: (_s(row.get("name")),)}
-            if _ne is None or not _ne.mentions_entity(title, code, kn):
+            if code != issuer and (_ne is None or not _ne.mentions_entity(title, code, kn)):
                 continue
             name, blurb = _s(row.get("name")), _blurb(row)
             label = f"{name}（{code}" + (f",{blurb}" if blurb else "") + "）"
@@ -170,6 +172,8 @@ def _headline_of(n: dict, packet=None, subject_name: str = "") -> str:
     by_id = {_s(x.get("source_item_id")): x for x in ((packet or {}).get("news") or [])
              if isinstance(x, dict)}
     title = _s((by_id.get(_s(n.get("source_item_id"))) or {}).get("title"))
+    from reader_editorial import chinese_headline
+    title = chinese_headline(title)
     # **代號與顯示名都要能削**:主體是 `MSFT` 而標題寫「Microsoft Q4 財報…」,
     # 只比對代號的話會排成「Microsoft（MSFT,…）:Microsoft Q4 財報…」。
     names = [_s(subject_name)]

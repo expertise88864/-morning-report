@@ -383,7 +383,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     # **第八段先寫、市場那一段後寫**(2026-08-18 使用者定案):
     # 使用者要的順序是「哪間公司昨天發生什麼事」在前,綜合判斷在後。
     tech_items, other_items = [], []
-    tech_news, other_news, _diag_rows = [], [], []
+    tech_news, other_news, macro_news, _diag_rows = [], [], [], []
+    from reader_editorial import is_macro
     import finance_editorial as _finance
     _selected, _limited = _reader.select_cards(
         _finance.order_analyses(obj.get("top_news_analysis"), packet), packet or {})
@@ -396,6 +397,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 「其他類股」—— 那天八段只剩兩條,九段變科技大雜燴。
         # 有主體時仍以主體為準(公司的產業別比關鍵字可靠)。
         _is_t = _reader.article_is_tech(_n, packet or {})
+        _is_macro = is_macro(_n, packet or {})
         (tech_items if _is_t else other_items).append(_n)
         # **丟掉的卡要留痕**(2026-09-04 實信):`_news_line` 對空的
         # `why_it_matters` 回空、`_blocks` 不排 —— 模型分析 18 則、信裡只剩 7 則,
@@ -404,9 +406,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
         # 的渲染結果記進 `diag`(進 manifest `llm.news_render`),讓判準說得出
         # 「分析了幾則、渲染了幾則、丟了哪幾則」;驗證器另擋空正文。
         _text = _news_line(_n, packet)
-        (tech_news if _is_t else other_news).append(_text) if _text else None
+        (macro_news if _is_macro else tech_news if _is_t else other_news).append(_text) if _text else None
         _diag_rows.append({"sid": _s(_n.get("source_item_id")),
-                           "section": "tech" if _is_t else "other",
+                           "section": "macro" if _is_macro else "tech" if _is_t else "other",
                            "rendered": bool(_text),
                            "why_chars": len(_s(_n.get("why_it_matters")))})
     if isinstance(diag, dict):
@@ -416,6 +418,7 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                      "editorial_limit_tech": 4,
                      "editorial_omitted": [_s(c.get("source_item_id")) for c in _limited],
                      "rendered_tech": len(tech_news), "rendered_other": len(other_news),
+                     "rendered_macro": len(macro_news),
                      "dropped": [r for r in _diag_rows if not r["rendered"]][:20]})
     news = tech_news + other_news
     notes = []
@@ -479,6 +482,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     macro_rows = [f"**({tag})** {_macro_text(key)}"
                   for tag, key in (("A", "us_rates_fx_vix"), ("B", "fed_policy"),
                                    ("C", "geopolitics")) if _macro_text(key)]
+    from reader_editorial import integrate_macro
+    macro_rows = integrate_macro(macro_rows + macro_news)
     if macro_rows:
         parts.append(f"## {SECTION_MACRO}" + chr(10) + (chr(10) * 2).join(macro_rows))
 

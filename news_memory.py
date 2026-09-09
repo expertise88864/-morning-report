@@ -20,6 +20,7 @@ import event_identity as identity
 import news_normalize
 import source_registry
 import entity_alias
+import official_announcements as announcements
 
 SCHEMA = 1
 LOOKBACK_DAYS = 90
@@ -126,8 +127,8 @@ def observations(news, observed_at: str, *, sanitize) -> tuple[list, dict]:
             "entities": [sanitize(e) for e in subjects(n)],
         }
         # Content revisions receive a new ID; first-observed time is not hashed.
-        rid = "history:" + _hash({k: row[k] for k in (
-            "document_id", "title", "excerpt", "published_at", "content_level")})
+        announcements.retain(row, n)
+        rid = "history:" + _hash(announcements.fingerprint_fields(row))
         row["evidence_id"] = rid
         rows.setdefault(rid, row)
     return list(rows.values()), skipped
@@ -147,8 +148,9 @@ def _validate(row) -> None:
             not isinstance(row.get("entities"), list) or
             not all(isinstance(e, str) for e in row["entities"])):
         raise ValueError("invalid source observation")
-    expected = "history:" + _hash({k: row[k] for k in (
-        "document_id", "title", "excerpt", "published_at", "content_level")})
+    expected = "history:" + _hash(announcements.fingerprint_fields(row))
+    if any(k in row for k in ('announcement_issuer', 'announcement_provenance')) and not announcements.issuer(row):
+        raise ValueError('invalid announcement identity')
     if row["document_id"] != _hash(source_url(row["url"])) or row["evidence_id"] != expected:
         raise ValueError("source observation fingerprint mismatch")
     pub, seen = timestamp(row.get("published_at")), timestamp(row.get("observed_at"))
@@ -271,7 +273,8 @@ def retrieve(news: list, archive: list, as_of: str, limit: int = 6) -> tuple[dic
                       for r in index.get(ent, [])}
         url = source_url(item.get("url") or item.get("link"))
         hits = [r for r in candidates.values() if related(item, r) and
-                not (r["url"] == url and r["title"] == item.get("title"))]
+                (bool(announcements.issuer(item)) or
+                 not (r["url"] == url and r["title"] == item.get("title")))]
         hits.sort(key=lambda r: (timestamp(r["published_at"]), timestamp(r["observed_at"]), r["evidence_id"]))
         import news_memory_selection
         selected = news_memory_selection.select(hits, limit)

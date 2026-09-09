@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """**EvidencePacket v1** —— provider 中立的證據包(Luna 特化實驗的公平性基礎)。
 
-## 這個模組要解決什麼
-
 十天實驗要比較的是「Luna xhigh + Luna 專用 prompt」對上「DeepSeek V4 Pro max +
 既有 prompt」。兩邊的 prompt **刻意不同**(那正是「深度特化」的意思),所以
 公平性不可能建立在「同一份 prompt 字串」上 —— 它只能建立在:
@@ -105,7 +103,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
 #: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
 #: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
-EVIDENCE_SCHEMA_VERSION = 39  # Evidence-backed financial coverage obligations.
+EVIDENCE_SCHEMA_VERSION = 40  # Official issuer provenance in reader evidence.
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -273,8 +271,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         # 那時沒有任何東西會變紅,只有注入內容會靜靜進 prompt。
         raise ValueError("evidence_packet.build 需要 sanitize —— "
                          "外部文字進 prompt 必須經過消毒器")
+    import official_announcements
     news = ((news or []) + ((quotes or {}).get("NEWS_RESEARCH_SOURCES") or [])
             + (((quotes or {}).get("AI_MODELS") or {}).get("news") or []))
+    news += official_announcements.reader_sources((quotes or {}).get('TW_MOPS') or [])
     kept_news, trunc, cluster_info = normalize_news(news, sanitize)
     packet = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,

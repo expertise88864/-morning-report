@@ -175,6 +175,8 @@ MODULE_CEILINGS = {
     "reader_prose.py": 140,  # Selection extracted; do not reabsorb it.
     "reader_selection.py": 60,  # Editorial priority moved into its own module.
     "editorial_priority.py": 100,
+    "reader_editorial.py": 110,
+    "official_announcements.py": 70,
     "content_overlap.py": 90,
     "podcast_overlap.py": 70,
     "fomc_calendar.py": 25,
@@ -549,7 +551,7 @@ MODULE_CEILINGS = {
     # 用行數當代理在這裡擋錯了東西,所以改成**直接驗那個性質**:
     # `test_the_writing_rules_module_holds_no_logic` 保證這裡只有字串常數。
     # 上限仍然留著,當「有人把整個 prompt 系統搬進來」的最後一道背牆。
-    "writing_rules.py": 420,
+    "writing_rules.py": 410,  # Reader editorial rules extracted; ceiling reduced from 420.
     # 第十四輪 P1-4:**逐側**的成本與延遲(manifest 隔天被覆蓋,帳本是追加的)。
     # 兩件事:從 manifest 擷取一列、跨帳本彙總。**不做任何分攤** ——
     # 抽取器標 shared,按比例拆給兩側是編造。實測 151 行。

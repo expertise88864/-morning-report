@@ -5,7 +5,8 @@ import sys
 
 import email_mobile
 
-SECTIONS = ("八、科技板塊脈動", "九、其他類股資訊", "十、總體經濟與政策環境")
+from reader_editorial import OUTLOOK_HEADING
+SECTIONS = ("八、科技板塊脈動", "九、其他類股資訊", "十、總體經濟與政策環境", OUTLOOK_HEADING)
 
 
 def _estimated_email_kb(html: str) -> float:
@@ -41,8 +42,6 @@ def audit(analysis: str, html: str) -> dict:
     expected = [s for s in SECTIONS if s in before]
     counts = {}
     for section in expected[:]:
-        if section == SECTIONS[2]:
-            continue
         counts[section] = {
             "expected": _chain_count(before[section]),
             "html": _chain_count(after.get(section, ""))}

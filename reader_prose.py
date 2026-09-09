@@ -34,7 +34,7 @@ def _clean_prose(text: str) -> str:
 
 
 def public_sections(markdown: str, obj=None, packet=None) -> str:
-    """Merge supporting discussion into the conclusion, hide diagnostic sections.
+    """Route supporting discussion out of the executive conclusion.
 
     This acts on the rendered copy, never on validated JSON or persisted state.
     Keep every scenario and observation, including one-off tracking caveats.
@@ -45,6 +45,7 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
     kept, additions = [], []
     obj, packet = obj or {}, packet or {}
     cards, _ = select_cards(obj.get('top_news_analysis') or [], packet)
+    from reader_editorial import is_macro, MACRO_HEADING, OUTLOOK_HEADING
     def expanded(refs):
         result = set(refs)
         for item in packet.get('news') or []:
@@ -68,6 +69,8 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
         refs = expanded(refs)
         for card in cards:
             if card.get('source_item_id') in refs:
+                if is_macro(card, packet):
+                    return MACRO_HEADING
                 return '八、科技板塊脈動' if article_is_tech(card, packet) else '九、其他類股資訊'
         for block in (obj.get('macro_environment') or {}).values():
             if isinstance(block, dict) and block.get('analysis') and refs.intersection(expanded(block.get('evidence_ids') or [])):
@@ -81,7 +84,7 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
                         return ('八、科技板塊脈動' if article_is_tech(block, packet)
                                 else '九、其他類股資訊')
                     return heading
-        return '我的明確立場'
+        return OUTLOOK_HEADING
     rows_by_title = {'證據衝突與調和': obj.get('contradictions') or [],
                      '昨日觀察點回顧': obj.get('watch_review') or [],
                      '觀察觸發點': obj.get('watch_triggers') or []}
@@ -98,7 +101,8 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
             paragraphs = [" ".join(p.splitlines()).strip() for p in paragraphs if p.strip()]
             rows = rows_by_title.get(title, [])
             for index, prose in enumerate(paragraphs):
-                target = destination(rows[index]) if index < len(rows) else '我的明確立場'
+                target = (OUTLOOK_HEADING if title == '情境與觸發條件' else
+                          destination(rows[index]) if index < len(rows) else OUTLOOK_HEADING)
                 additions.append((target, prose))
         elif title == '十一、台灣本地動態':
             local_rows = [row for row in obj.get('taiwan_local') or []
@@ -106,6 +110,8 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
             for row in local_rows:
                 target = ('八、科技板塊脈動' if article_is_tech(row, packet)
                           else '九、其他類股資訊')
+                if is_macro(row, packet):
+                    target = MACRO_HEADING
                 prose = str(row['what']).rstrip('。:：') + '。' + str(row['impact'])
                 additions.append((target, prose))
             if not local_rows and body.strip():
@@ -121,7 +127,7 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
                 insert_at = next((i for i, section in enumerate(kept)
                                   if section.startswith('## 我的明確立場\n')), len(kept))
                 kept.insert(insert_at, '## ' + target + '\n' + prose + '\n\n')
-    # One readable conclusion paragraph, preserving all conditional content.
+    # Keep short paragraphs; supporting scenarios and observations live elsewhere.
     for i, section in enumerate(kept):
         if section.startswith('## 我的明確立場\n'):
             head, _, body = section.partition('\n')
@@ -130,5 +136,5 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
                      for line in body.splitlines() if line.strip()]
             contract = [line for line in lines if line.startswith(('立場：', '淨分 '))]
             prose = [line for line in lines if line not in contract]
-            kept[i] = head + '\n' + '\n'.join(contract) + '\n' + ' '.join(prose) + '\n\n'
+            kept[i] = head + '\n' + '\n'.join(contract) + '\n\n' + '\n\n'.join(prose) + '\n\n'
     return clean_text("".join(kept))

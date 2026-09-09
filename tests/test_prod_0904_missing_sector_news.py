@@ -115,7 +115,9 @@ def test_the_rotation_table_renders_every_sector_with_today_context():
     assert pos == sorted(pos), "要依相對大盤由強到弱排"
     assert "▲" in html and "▼" in html                     # 強勢 / 轉弱標記
     assert "35.5%" in html and "法人 -288 億" in html       # 全市場口徑的今日欄
-    assert "領漲 2408 南亞科 -7.8%" in html
+    # The representative is chosen by traded value, not by price performance.
+    assert "成交代表 2408 南亞科 -7.8%" in html
+    assert "領漲 2408" not in html
     assert "元大金&lt;b&gt;" in html and "元大金<b>" not in html   # 外部名稱 escape
     assert body.count("<tr>") == 6                          # 表頭 + 5 類股
     assert "4/4" in html and "2/3" in html                  # 半導體 4 檔全漲;航運 3 檔漲 2 檔

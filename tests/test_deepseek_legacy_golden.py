@@ -73,7 +73,7 @@ _FIXTURE = _ROOT / "tests" / "fixtures" / "legacy_prompt_input.json"
 # 「仍要 5 條」。逐行 diff 過,只有這兩處字面動了。
 # CR-02 2026-09-05:刻意修正未知模式,禁止 LLM 自算;有 Python 權威時抄錄規則不變。
 LEGACY_PROMPT_SHA256 = (
-    "ed82aae149df751535790d25811f6c67b6368fece03b59359c3435356dbc4450")  # 2026-09-09:fact/timing/causality guidance shared with structured mode.
+    "0c03d5db771fc6e07efc2bfd12926cebcf62c666d9c31c06c098b83ec1632333")  # 2026-09-09:concise conclusion and cross-section roles shared with structured mode.
 #: 2026-08-27 使用者七項:七之二「非經濟不硬扯市場」+0050 操作建議行+行事曆解說。
 #: 2026-08-25 使用者:七之二每條要加「後續可能影響」(`writing_rules`
 #: 的組成規則從兩段變三段;legacy 是目前每天實際走的那條路)。

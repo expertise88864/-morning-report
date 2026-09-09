@@ -10,7 +10,7 @@ import re
 import content_overlap as overlap
 import event_score
 
-VERSION = 1
+VERSION = 2
 _DEVELOPMENT = re.compile(
     r'簽署|得標|停產|擴產|量產|召回|裁定|起訴|制裁|禁令|下修財測|上修財測|'
     r'財報|營收|升息|降息|地震|颱風|停火|開戰|併購|收購|'
@@ -53,6 +53,11 @@ def order(cards: list, packet: dict) -> list:
             1 if development else -1 if _PREVIEW.search(title) else 0)
         repeated = any(overlap.duplicate(body, history[eid]['title'] + ' ' + history[eid]['excerpt'])
                        for eid in (contexts.get(sid) or {}).get('evidence_ids', []) if eid in history)
+        from analysis_render_depth import news_subject
+        from reader_editorial import recurring_revenue
+        repeated = repeated or recurring_revenue(source, [history[eid] for eid in
+            (contexts.get(sid) or {}).get('evidence_ids', []) if eid in history],
+            news_subject(card, packet).get('name', ''))
         return (-tier, repeated, ranks.get(membership.get(sid), 999))
     return sorted((c for c in cards if isinstance(c, dict)), key=key)
 

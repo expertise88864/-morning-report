@@ -253,7 +253,7 @@ WATCH_HORIZON_DAYS = {"intraday": 1, "1-5d": 5, "1-4w": 28}
 #: 認不出 horizon 時的預設。取短的:過期只是少追一條(可以再開),
 #: 而永遠不過期的觀察點會累積成一張沒有人看的清單。
 WATCH_DEFAULT_DAYS = 5
-#: 同時**開著**的觀察點上限。回顧要逐條,開十條等於逼明天寫十條回顧。
+#: 每日送模型回顧的名額,不是保存上限。其餘條目留存至關閉/到期。
 WATCH_OPEN_MAX = 8
 
 #: 觀察點的狀態。`not_triggered` **不是終局** —— 那正是外審 P1-2 的
@@ -370,20 +370,15 @@ def carry_watch(prior, obj, today: str) -> list:
     for fresh in _watch_of(obj):
         if fresh["trigger_key"] and fresh["trigger_key"] in seen_keys:
             continue
-        if len(out) >= WATCH_OPEN_MAX:
-            # **容量滿不得靜默丟**(第三十一輪外審 P2-1):信裡渲染了
-            # 「後續觀察點」,帳本卻沒記住 —— 讀者以為系統在盯,明天
-            # 它整條消失,而 telemetry 一個字都沒有。這裡先記下數字;
-            # 「渲染的必須被接住」的更強保證需要渲染端配合,另案。
-            dropped += 1
-            continue
+        # 每日回顧名額只限制 prompt,不能丟棄已在信中提出的觀察。
+        # 每日新增量由 WATCH_MAX 限制,既有條目仍依到期/結案回收。
         seq += 1
         days = WATCH_HORIZON_DAYS.get(fresh["horizon"], WATCH_DEFAULT_DAYS)
         out.append(dict(fresh, watch_id=f"w{seq}", status=WATCH_OPEN,
                         created=str(today)[:10], last_reviewed="",
                         deadline=_days_after(today, days)))
         seen_keys.add(fresh["trigger_key"])
-    return out[:WATCH_OPEN_MAX], seq, dropped
+    return out, seq, dropped
 
 
 #: `save()` 的三種結果。**「沒東西可存」不是「存檔失敗」**
@@ -570,6 +565,15 @@ def load(path) -> dict:
         return {"unreadable": True, "items": []}
 
 
+def prompt_recap(recap: dict, target_session_date: str) -> dict:
+    """Project an expanded ledger for prompts without changing persisted state."""
+    if len(recap.get("watch") or []) <= WATCH_OPEN_MAX:
+        return dict(recap)
+    selected = {w["watch_id"] for w in usable_watch(recap, target_session_date)}
+    return dict(recap, watch=[w for w in _watch_ledger(recap)
+                             if w["watch_id"] in selected])
+
+
 def usable_watch(recap, target_session_date: str) -> list:
     """昨天的觀察點,配上 Python 派的代號(`w1`…)。
 
@@ -583,7 +587,14 @@ def usable_watch(recap, target_session_date: str) -> list:
     if not session:
         return []
     out = []
-    for w in _watch_ledger(r):
+    # 未回顧/最久未回顧優先,避免前八條長期佔滿名額。
+    # 同等等待時間再按到期日排序;不修改保存的 ID/期限/原文。
+    ledger = _watch_ledger(r)
+    if len(ledger) > WATCH_OPEN_MAX:
+        ledger.sort(key=lambda w: (
+            str(w.get("last_reviewed") or w.get("created") or r.get("date") or ""),
+            str(w.get("deadline") or ""), str(w.get("watch_id") or "")))
+    for w in ledger:
         if str(w.get("status") or WATCH_OPEN) != WATCH_OPEN:
             continue
         deadline = str(w.get("deadline") or "")

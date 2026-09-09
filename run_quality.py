@@ -506,7 +506,7 @@ def assess(manifest, *, mode: str = "watchdog",
     if _wd > 0:
         add("watch_dropped_capacity", "degraded",
             f"觀察點帳本已滿,今天有 {_wd} 條新觀察點沒被記住 ——"
-            " 信裡寫了「接下來觀察」,明天它會無聲消失")
+            " 未加入跨日追蹤,請檢查觀察點保存流程")
 
     # ---- 10. strict(CI canary):綠燈必須代表「特化輸出真的產生了」
     if strict:

@@ -1397,7 +1397,8 @@ def test_fetch_event_calendar_dedupes_fomc_across_sources(monkeypatch):
     fomc = [e for e in events if mr._event_category(e["title"]) == "FOMC"]
     assert len(fomc) == 1                              # 跨日期 + 三來源 → 收斂成一筆
     assert "FOMC 利率決策" in fomc[0]["title"]          # 保留中文時區說明的規則式那筆
-    assert fomc[0]["date"] == dt.date(2026, 6, 17)     # 保留規則式美國會議日
+    assert fomc[0]["date"] == dt.date(2026, 6, 18)     # 台北公布日,不是美國會議日
+    assert fomc[0]["time"] == "02:00"
     # 不漏資訊:規則式 note 仍在,且併入 FF 的預期/前值
     assert "決策日前後" in fomc[0]["note"]
     assert "預期 4.50%" in fomc[0]["note"]

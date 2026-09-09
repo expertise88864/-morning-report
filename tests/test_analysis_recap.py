@@ -963,7 +963,7 @@ def _full_ledger(today="2026-08-18"):
                       for i in range(1, rc.WATCH_OPEN_MAX + 1)]}
 
 
-def test_a_capacity_dropped_watch_is_not_rendered_as_persistent(tmp_path):
+def test_a_watch_beyond_daily_review_capacity_is_still_persistent(tmp_path):
     """**信上不得承諾帳本不會兌現的事。**
 
     帳本滿了,今天模型又提一條 —— 先前信裡照樣印成「觀察觸發點」,
@@ -979,11 +979,11 @@ def test_a_capacity_dropped_watch_is_not_rendered_as_persistent(tmp_path):
     obj["watch_triggers"] = [{"trigger": "美元指數突破 105", "why": "資金面",
                               "horizon": "1-5d"}]
     tracked = rc.tracked_triggers(str(path), obj, "2026-08-18")
-    assert "美元指數突破 105" not in tracked, "帳本滿了卻收下了新條目"
-    assert len(tracked) == rc.WATCH_OPEN_MAX, "帳本原本那幾條要還在"
+    assert rc.trigger_key("美元指數突破 105") in tracked
+    assert len(tracked) == rc.WATCH_OPEN_MAX + 1, "原有條目與新條目都要保留"
     out = ar.render(obj, None, admitted_watch=tracked)
     assert "美元指數突破 105" in out, "內容仍要印出來(有參考價值)"
-    assert "一次性觀察,未納入持續追蹤" in out, "沒有標出它不會被持續追蹤"
+    assert "一次性觀察,未納入持續追蹤" not in out
 
 
 def test_an_admitted_watch_is_rendered_as_persistent(tmp_path):
@@ -1022,9 +1022,8 @@ def test_admission_and_the_ledger_agree(tmp_path):
                   for w in ledger}
     # **兩邊是同一個集合**,不是子集 —— 子集判準放得過「渲染端少報一半」
     assert admitted == _in_ledger, (admitted, _in_ledger)
-    # 被容量擋掉的那條:兩邊都說沒收
-    assert "新的一條" not in admitted and "新的一條" not in _in_ledger
-    assert dropped == 1, dropped
+    assert rc.trigger_key("新的一條") in admitted
+    assert dropped == 0, dropped
 
 
 def test_a_trigger_longer_than_the_ledger_limit_is_still_recognised(tmp_path):

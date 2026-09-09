@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_400  # 2026-09-06:週回顧素材抽至 week_review，主檔只留接線；由 26_485 向下收緊。
+MAIN_MODULE_LINE_CEILING = 26_397  # 2026-09-09:FOMC 時區換算抽至 fomc_calendar。
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -177,6 +177,7 @@ MODULE_CEILINGS = {
     "editorial_priority.py": 100,
     "content_overlap.py": 90,
     "podcast_overlap.py": 70,
+    "fomc_calendar.py": 25,
     "news_memory_selection.py": 60,
     "news_memory.py": 330,
     "news_research_context.py": 310,

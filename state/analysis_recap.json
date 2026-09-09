@@ -481,7 +481,19 @@
    "created": "2026-09-09",
    "last_reviewed": "",
    "deadline": "2026-10-07"
+  },
+  {
+   "trigger": "9/30 美光財報前，DRAM 現貨價與 HBM 長約是否有官方報價確認",
+   "trigger_full": "9/30 美光財報前，DRAM 現貨價與 HBM 長約是否有官方報價確認",
+   "trigger_key": "t7a7e717d10c4c53a",
+   "why": "台股記憶體已漲一個月，9/30 財報是整個短缺敘事能不能被獲利兌現的驗證點；財報前若有報價鬆動，記憶體會領先修正",
+   "horizon": "1-4w",
+   "watch_id": "w37",
+   "status": "open",
+   "created": "2026-09-09",
+   "last_reviewed": "",
+   "deadline": "2026-10-07"
   }
  ],
- "watch_seq": 36
+ "watch_seq": 37
 }

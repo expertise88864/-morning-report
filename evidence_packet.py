@@ -437,6 +437,10 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
     # 「觸發了沒」。代號由 Python 派(w1…),schema 的 `watch_review`
     # 逐條回指,validator 驗全覆蓋 —— 漏一條驗證就說話,
     # 「逐日追蹤」才是性質而不是宣稱。
+    _prompt_recap = packet["market"].get("ANALYSIS_RECAP")
+    if isinstance(_prompt_recap, dict):
+        packet["market"]["ANALYSIS_RECAP"] = _rc.prompt_recap(
+            _prompt_recap, str(packet.get("target_session_date") or ""))
     packet["yesterday_watch"] = _rc.usable_watch(
         packet["market"].get("ANALYSIS_RECAP"),
         str(packet.get("target_session_date") or ""))

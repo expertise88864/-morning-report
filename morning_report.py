@@ -15786,11 +15786,8 @@ def _rule_based_events(today: dt.date, horizon_days: int = 7) -> list[dict]:
     """規則式市場結構日:FOMC、台指期結算、美股三巫、MSCI 季調生效(近似)。"""
     events = []
     end = today + dt.timedelta(days=horizon_days)
-    for fomc in FOMC_2026:
-        if today <= fomc <= end:
-            events.append({"date": fomc, "time": "02:00(隔日凌晨)",
-                           "title": "FOMC 利率決策(台北時間隔日凌晨 2:00 公布)",
-                           "note": "決策日前後美股波動放大", "impact": "high"})
+    import fomc_calendar
+    events.extend(fomc_calendar.events(FOMC_2026, today, end))
     for probe in (today, (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)):
         y, m = probe.year, probe.month
         settle = _third_weekday_of_month(y, m, 2)
@@ -25424,7 +25421,7 @@ def _phase_events_and_models(ctx) -> None:
         # 一條開放觀察點都不回顧,而那是另一種靜默。
         _recap_state = dict(_recap_state, items=[])
     quotes["ANALYSIS_RECAP"] = dict(
-        _recap_state,
+        _arc.prompt_recap(_recap_state, target_session_date),
         items=[dict(it, id=f"pv{_i + 1}")
                for _i, it in enumerate(_recap_ok)])
     quotes["FEATURE_DRIFT"] = build_feature_drift_report(model_history, tw0050)

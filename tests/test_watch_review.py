@@ -499,14 +499,13 @@ def test_the_closed_counter_counts_closures_not_rejections(tmp_path):
     man = {}
     rc.save(f, obj, {"target_session_date": "2026-08-10", "news": [],
                      "news_clusters": {"clusters": []}}, manifest=man)
-    assert man["llm"]["watch_open"] == rc.WATCH_OPEN_MAX
+    assert man["llm"]["watch_open"] == rc.WATCH_OPEN_MAX + 5
     assert man["llm"]["watch_closed_today"] == 0, man["llm"]
 
 
 
-def test_a_full_ledger_reports_how_many_watches_it_dropped():
-    """**容量滿不得靜默丟**(第三十一輪外審 P2-1):信裡渲染了觀察點、
-    帳本沒接住 —— 至少 telemetry 要看得到掉了幾條。"""
+def test_a_full_review_batch_does_not_drop_persisted_watches():
+    """每日回顧名額與保存分離:第九條不能消失。"""
     prior = {"date": "2026-08-09", "watch_seq": rc.WATCH_OPEN_MAX, "watch": [
         {"watch_id": f"w{i}", "trigger": f"既有觸發 {i}", "why": "w",
          "horizon": "1-4w", "status": rc.WATCH_OPEN, "created": "2026-08-01",
@@ -516,5 +515,6 @@ def test_a_full_ledger_reports_how_many_watches_it_dropped():
         prior, _analysis(watch_triggers=[
             {"trigger": "今天信裡渲染的新觀察點", "why": "w",
              "horizon": "1-4w"}]), "2026-08-10")
-    assert len(led) == rc.WATCH_OPEN_MAX
-    assert dropped == 1, (dropped, [w["trigger"] for w in led])
+    assert len(led) == rc.WATCH_OPEN_MAX + 1
+    assert dropped == 0
+    assert led[-1]['trigger'] == '今天信裡渲染的新觀察點'

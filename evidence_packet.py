@@ -105,7 +105,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
 #: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
 #: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
-EVIDENCE_SCHEMA_VERSION = 38  # Dated AI-model news now enters normalized evidence.
+EVIDENCE_SCHEMA_VERSION = 39  # Evidence-backed financial coverage obligations.
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,
@@ -445,6 +445,8 @@ def build(quotes: dict, fair: dict, predictions: dict, news: Optional[list],
         packet["market"].get("ANALYSIS_RECAP"),
         str(packet.get("target_session_date") or ""))
     import event_score as _es
+    import finance_editorial as _finance
+    packet["finance_analysis_candidates"] = _finance.analysis_candidates(kept_news)
     packet["top_events"] = _es.rank(_kept_clusters, kept_news)
     # **事件之間的關係由 Python 先算**(重構規格 Commit D):哪些事件
     # 共用同一個底層驅動(三段各加一次權重 = 同一件事說三次)、

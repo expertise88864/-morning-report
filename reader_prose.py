@@ -13,12 +13,18 @@ def clean_text(text: str) -> str:
 
 def _clean_prose(text: str) -> str:
     """Remove schema echoes, not the economic explanation following them."""
+    from reader_fact_labels import medical_terms
+    text = medical_terms(text)
     text = re.sub(r"(?:抄錄系統計分\s*)?`?STANCE_PY\.total`?\s*=\s*[+-]?\d+"
                   r"\s*[（(]\s*label\s*[:：]\s*[^）)]+[）)]\s*[。. ]*", "", text)
     text = re.sub(r"[（(]見\s*`?asset_net_effects`?[^）)]*[）)]", "", text)
     text = re.sub(r'`?(?<![A-Za-z0-9_])STANCE_PY(?:\.[A-Za-z_][A-Za-z0-9_]*)?`?', '整體立場', text)
     text = re.sub(r'`?(?<![A-Za-z0-9_])asset_net_effects(?![A-Za-z0-9_])`?', '各項消息合計影響', text)
     text = re.sub(r"[（(]fact[）)]", "", text)
+    text = re.sub(r'系統立場(?:只有|為|是)?', '整體立場為', text)
+    text = re.sub(r'系統把它折成\s*[+-]?\d+(?:分)?[，,。]?', '', text)
+    text = re.sub(r'ALERTS(?:的解釋)?', '風險訊號', text)
+    text = re.sub(r'(整體立場為[^。\n（）]{0,8})[（(][+-]?\d+[）)]', r'\1', text)
     text = re.sub(r'(?<![A-Za-z_])moderate(?![A-Za-z_])', '中等', text).replace("本報看不出次級影響", "")
     text = re.sub(r"、(?=[。；;])", "", text)
     text = re.sub(r'\*\*(基準|偏多|偏空)\*\*[:：]',

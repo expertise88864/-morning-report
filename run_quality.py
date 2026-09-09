@@ -503,6 +503,10 @@ def assess(manifest, *, mode: str = "watchdog",
     # **看得見丟掉還不夠**(P2-2):信裡渲染了「後續觀察點」而帳本
     # 沒接住 —— telemetry 有了,還要有人讀它。
     _wd = _safe_int(_dig(m, "llm", "watch_dropped_capacity"))
+    _expired_watch = _safe_int(_dig(m, "llm", "watch_expired_unreviewed"))
+    if _expired_watch > 0:
+        add("watch_expired_unreviewed", "degraded",
+            f"{_expired_watch} 條觀察點到期前未獲回顧，請檢查每日回顧排程與積壓")
     if _wd > 0:
         add("watch_dropped_capacity", "degraded",
             f"觀察點帳本已滿,今天有 {_wd} 條新觀察點沒被記住 ——"

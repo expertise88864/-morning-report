@@ -57,7 +57,7 @@ def _continuing(cluster: dict, by_id: dict, timeline) -> int:
 
 def _rank(cluster: dict, by_id: dict, days: int = 0) -> tuple:
     """事件群的抓取優先序。
-    **官方 → 獨立群組數 → 延燒中 → 群內最高重要性 → ID。**
+    **高重要性事件 → 官方 → 獨立群組數 → 延燒中 → 重要性 → ID。**
 
     延燒中(昨天以前已在追蹤)排在同獨立度的新事件之前,理由是縱向的:
     延續事件在信裡要寫**增量**(昨天 vs 今天),增量需要全文的細節;
@@ -67,7 +67,7 @@ def _rank(cluster: dict, by_id: dict, days: int = 0) -> tuple:
     """
     members = [by_id.get(m) for m in (cluster.get("member_source_ids") or [])]
     best = min([_imp(m) for m in members if m], default=9)
-    return (not cluster.get("official"),
+    return (best > 1, not cluster.get("official"),
             -int(cluster.get("independent_sources") or 0),
             0 if days >= 2 else 1,
             best, str(cluster.get("cluster_id") or ""))

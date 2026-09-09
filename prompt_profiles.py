@@ -46,7 +46,7 @@ import writing_rules as _wr
 #: 句式不得雷同;**格式模板與兩個範例自己在示範那個毛病**,整個重寫。
 #: v8(2026-08-20):其他類股新增「金融-金控」標籤(國泰金/中信金集團
 #: 素材),prompt 的類股清單多一節 —— 指示文字沒動,是素材面擴充。
-DEEPSEEK_LEGACY_VERSION = 20  # Historical sources and bounded research.
+DEEPSEEK_LEGACY_VERSION = 21  # Shared fact/causality guidance; no extra paid calls.
 #: v2(2026-08-03):改成敘事寫法 + 全形標點。使用者的原話是
 #: 「有些文字都擠在一起、半形全形混用、要像說故事那樣有邏輯性」。
 #: v3(同日):規則自己用半形舉例被外審抓到,做全形轉換;位元組變了就進版。
@@ -83,7 +83,7 @@ DEEPSEEK_LEGACY_VERSION = 20  # Historical sources and bounded research.
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 55  # Reader prose and explicit AI-model coverage.
+LUNA_XHIGH_VERSION = 56  # Source-grounded terminology, timing and financial coverage.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -187,7 +187,7 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 - **回指要連對,不只是連上。** 立場寫 1-4 週,就要有一條談 1-4 週的
   主張撐著 —— 全部靠今日盤前的主張撐一個一個月的判斷,那是形式上的引用。
 - **有多日軌跡的線索要寫成發展,像在說一個進行中的故事。**
-  `EVIDENCE.yesterday_watch` 是**本報還開著的觀察點**（不只昨天那批；
+  `EVIDENCE.yesterday_watch` 是**本日排定回顧的開放觀察點子集**（不代表全部帳本；
   1–4 週的預期會一直帶著，直到觸發、前提消失或到期）——
   每一條都要在 `watch_review` 逐條回顧(用它的 `watch_id`):
   預期的情況今天出現了(triggered,**要引今天的證據 ID**)、

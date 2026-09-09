@@ -105,6 +105,7 @@ _FINDING_DOMAINS = {
     "payload_proxy_thin": DOMAIN_CONTENT,
     "phantom_refs": DOMAIN_CONTENT,
     "watch_dropped_capacity": DOMAIN_CONTENT,
+    "watch_expired_unreviewed": DOMAIN_CONTENT,
     # ---- `_ALARMING` 家族(**動態產生**,不是字面 `add("...")`)
     # r10 外審:守衛只掃字面 code,這三個因此從來沒被檢查過,
     # 全部落到「沒登記 → 預設控制面」。前兩個當控制面是對的,

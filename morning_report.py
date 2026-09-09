@@ -15835,9 +15835,7 @@ _STRUCTURAL_EVENT_CATS = {"FOMC", "WITCHING", "TW_SETTLE"}
 def _dedupe_calendar_events(events: list[dict]) -> list[dict]:
     """事件日曆去重(保序,就地填補 note)。
     一般事件:同日同類別只留一筆(FF 本週重疊、不同寫法收斂)。
-    結構性事件(FOMC/三巫/結算)跨來源日期可能差一天(規則式用美國會議日 6/17、
-    FF 用台北公布日 6/18)→ 與同類別且日期相差 ≤1 天的已留事件視為同一筆;但相隔
-    較遠者(較長 horizon 下不同月份的結算日)仍各自保留,不可一律塌成一筆。
+    結構性事件(FOMC/三巫/結算)同類相差≤1天合併;不同月份保留。
     保留者無 note 而被丟的同類事件有(如 FF 的預期/前值)→ 補上,不漏資訊。"""
     def _merge_note(kept: dict, dup: dict) -> None:
         # 併入被丟者的 note(如 FF 的預期/前值);保留者已有 note 時附加「不同」內容,
@@ -15908,7 +15906,8 @@ def fetch_event_calendar(now_tpe: Optional[dt.datetime] = None,
                                "note": "、".join(extra), "impact": "high"})
         except Exception as ex:
             print(f"[calendar] FF 日曆抓取失敗: {ex}", file=sys.stderr)
-    events = _dedupe_calendar_events(events)
+    from event_clock import future_rows
+    events = _dedupe_calendar_events(future_rows(events, now_tpe))
 
     # 重點美股財報(yfinance earnings;逐檔輕量,失敗逐檔略過)
     for tk in ("NVDA", "AAPL", "MSFT", "AVGO", "TSLA", "AMD", "GOOGL", "META", "MU", "QCOM"):
@@ -16870,6 +16869,9 @@ def fetch_local_news(now_tpe: Optional[dt.datetime] = None,
                         tok in region_check for tok in _LOCAL_REGION_TOKENS):
                     continue
                 if _local_title_is_dup(title, seen_bigrams):
+                    continue
+                from news_display_quality import relevant
+                if not relevant(label, title):
                     continue
                 seen_bigrams.append(_local_seen_entry(title))
                 items.append({"title": title,
@@ -21485,7 +21487,8 @@ def fetch_sports_digest(now_tpe: Optional[dt.datetime] = None) -> dict:
                 # 保留原文連結(使用者要求 2026-07-14:標題做超連結,有興趣可點進去)
                 titles.append({"title": str(entry.get("title", ""))[:90],
                                "link": str(entry.get("link", ""))})
-            out["news"][label] = titles
+            from news_display_quality import unique
+            out["news"][label] = unique(titles)
         except Exception as e:
             print(f"[sports] {label} 新聞抓取失敗: {e}", file=sys.stderr)
     return out
@@ -22599,10 +22602,10 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
                     f"{h}日 超額 {s['mean_excess_pct']:+.2f}%・勝率 {s['win_rate']:.0f}%"
                     f"(近{s['n']}期)" for h, s in sorted(_tk.items(), key=lambda kv: int(kv[0])))
                 track_note = (f'<div style="font-size:12px;color:#475569;margin:6px 0;">'
-                              f'<b>Top5 追蹤成績</b>(等權 vs 大盤):{_seg}</div>')
+                              f'<b>五檔策略追蹤成績</b>（帳本追蹤五檔，非上方 Top3 成績；等權 vs 大盤）:{_seg}</div>')
             else:
                 track_note = ('<div style="font-size:11px;color:#94a3b8;margin:4px 0;">'
-                              'Top5 追蹤帳本已啟動,5/20 日超額成績累積中</div>')
+                              '五檔策略帳本已啟動（非上方 Top3 成績），5/20 日超額成績累積中</div>')
             smart_money_html = f"""
         <h2 style="color:#0f172a;font-size:20px;margin:32px 0 12px;padding:8px 14px;background:#fff7ed;border-left:5px solid #ea580c;border-radius:4px;">{title_text}</h2>
         {regime_note}
@@ -23190,10 +23193,7 @@ def render_html(quotes: dict, fair: dict, predictions: dict, analysis: str,
 
     # === Gmail ~102KB 剪裁防護 ===
     # Gmail 量的是「解碼後 HTML」大小(~102KB;base64 信更晚才剪),_estimated_email_kb 已直接量解碼後大小。
-    # 預設 full 模式(使用者 2026-07-14 拍板:「信件超過大小沒關係,接受被折疊,手動打開就好」):
-    #   完全不壓縮、不減集、不移除任何區塊——內容完整優先,超過 102KB 由 Gmail 摺疊、
-    #   使用者點「查看整封郵件」展開。07-13/14 的教訓:keep 模式的減集把 10 集 Podcast
-    #   擠到剩 1 集,比摺疊更傷。
+    # 使用者2026-09-09再確認full:單封完整內容，不減集不刪段，接受必要時展開。
     # keep 模式(EMAIL_OVERFLOW_MODE=keep):不移除區塊,但逐步壓 Podcast 條數/集數到 95KB 內。
     # trim 模式(EMAIL_OVERFLOW_MODE=trim):依優先序局部縮減 + 整塊移除,完全避免摺疊;
     #   犧牲序可由 EMAIL_TRUNCATE_ORDER 覆寫。

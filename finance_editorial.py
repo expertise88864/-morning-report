@@ -29,6 +29,9 @@ QUERIES = {
 
 WRITING = """
 ## 金融產業取材
+- 結構化模式若提供 EVIDENCE.finance_analysis_candidates，即列出當期實質事件來源代號。
+  每組至少選一個代號寫入 top_news_analysis；只分析該來源能支持的事實，
+  摘要不足以推估獲利時明說尚無法量化，不捏造數字或因果。
 - 金融條目優先分析中信金控與國泰金控及其銀行、壽險、產險、證券、投信、
   轉投資事業的實質新聞；兩個集團都有重大新事實時，各自涵蓋，不讓一方洗版。
   台灣人壽及其台中超巨蛋／運動產業園區 BOT 案亦屬此範圍；投資案不是子公司。
@@ -52,6 +55,33 @@ def routine_promotion(title: str) -> bool:
                          r"(?:調漲|上調|調高|提高|新增|加收|開徵).{0,8}手續費|"
                          r"手續費.{0,8}(?:調漲|上調|調高|提高|新增|加收|開徵)", title)
     return bool(routine and not material)
+
+
+def analysis_candidates(news: list) -> list[list[str]]:
+    """At most two evidence-backed coverage obligations; never output preferences."""
+    candidates = [(str(n["source_item_id"]), material_groups(n))
+                  for n in news if isinstance(n, dict) and n.get("source_item_id")]
+    return [[sid for sid, topics in candidates if group in topics]
+            for group in GROUPS if any(group in topics for _, topics in candidates)]
+
+
+def material_groups(item: dict) -> set[str]:
+    """Admit each dated original on its own merits, not the winning copy's wording."""
+    material = re.compile(r"財報|獲利|淨利|盈餘|(?<![A-Za-z])EPS(?![A-Za-z])|"
+                          r"營收|增資|法說|併購|收購|裁罰|違規|減損|匯損|"
+                          r"投資|處分|標售|簽約|得標|動工|資本|保費|理賠|股利", re.I)
+    originals = item.get("finance_headlines")
+    rows = [item] + (originals if isinstance(originals, list) else [])
+    return {group for row in rows if isinstance(row, dict)
+            and material.search(str(row.get("title") or "")) for group in _direct_groups(row)}
+
+
+def coverage_problems(obj: dict, packet: dict) -> list[str]:
+    chosen = {n.get("source_item_id") for n in obj.get("top_news_analysis", [])
+              if isinstance(n, dict)}
+    return ["金融實質事件缺分析：top_news_analysis 至少涵蓋其中一個來源 " + ", ".join(ids)
+            for ids in packet.get("finance_analysis_candidates", [])
+            if ids and not chosen.intersection(ids)]
 
 
 def _direct_groups(item: dict) -> tuple[str, ...]:

@@ -221,7 +221,7 @@ def test_the_email_shows_the_review_with_the_original_trigger():
          "why": "", "horizon": "1w", "date": "2026-08-09"}]}
     text = ar.render(obj, pk)
     assert "昨日觀察點回顧" not in text  # Integrated prose, no standalone heading.
-    assert "美光財報上修 HBM 出貨：已觸發（美光財報如期上修）" in text
+    assert "2026-08-09 提出的觀察「美光財報上修 HBM 出貨」：已觸發（美光財報如期上修）" in text
     # 沒有回顧就沒有這一節(不要空標題)
     obj["watch_review"] = []
     assert "昨日觀察點回顧" not in ar.render(obj, pk)
@@ -412,7 +412,7 @@ def test_the_prompt_declares_the_lifecycle():
                    encoding="utf-8").read()
     i = src.index("EVIDENCE.yesterday_watch")
     seg = src[i:i + 900]
-    assert "還開著" in seg, seg
+    assert "回顧的開放觀察點子集" in seg, seg
     assert "留到明天" in seg, seg
     assert "過期由本報判" in seg, seg
 

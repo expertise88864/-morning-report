@@ -69,7 +69,8 @@ def _coverage_problems(obj, packet, analysed_ids) -> list:
     模型仍可主張某個事件今天不值得談,但**要留下理由**。
     """
     import news_clusters as _nc
-    out: list = []
+    import finance_editorial as _finance
+    out: list = _finance.coverage_problems(obj, packet)
     info = packet.get("news_clusters") or {}
     # **清單自己會有重複**(2026-08-28 生產:同一個 cid 被報了兩次)。
     # 重複的駁回對模型是零資訊,卻讓問題數虛胖 —— 而問題數正是

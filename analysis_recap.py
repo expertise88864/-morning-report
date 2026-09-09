@@ -255,6 +255,7 @@ WATCH_HORIZON_DAYS = {"intraday": 1, "1-5d": 5, "1-4w": 28}
 WATCH_DEFAULT_DAYS = 5
 #: 每日送模型回顧的名額,不是保存上限。其餘條目留存至關閉/到期。
 WATCH_OPEN_MAX = 8
+WATCH_STORAGE_MAX = 256  # Backstop for malformed/undated legacy entries; never evict existing rows.
 
 #: 觀察點的狀態。`not_triggered` **不是終局** —— 那正是外審 P1-2 的
 #: 缺陷:1–4 週的觀察點今天回「還沒」,明天就從帳本上消失了。
@@ -369,6 +370,9 @@ def carry_watch(prior, obj, today: str) -> list:
     dropped = 0
     for fresh in _watch_of(obj):
         if fresh["trigger_key"] and fresh["trigger_key"] in seen_keys:
+            continue
+        if len(out) >= WATCH_STORAGE_MAX:
+            dropped += 1
             continue
         # 每日回顧名額只限制 prompt,不能丟棄已在信中提出的觀察。
         # 每日新增量由 WATCH_MAX 限制,既有條目仍依到期/結案回收。
@@ -498,6 +502,11 @@ def save(path, analysis_obj, packet, manifest=None) -> str:
             slot["recap_eligible"] = int(rec.get("eligible") or 0)
             slot["recap_extracted"] = len(rec["items"])
             slot["watch_open"] = len(rec["watch"])
+            slot["watch_backlog"] = max(0, len(rec["watch"]) - WATCH_OPEN_MAX)
+            slot["watch_expired_unreviewed"] = sum(
+                not w.get("last_reviewed") and bool(w.get("deadline"))
+                and bool(_today) and _today > str(w["deadline"])
+                for w in _prior_watch)
             if _watch_dropped:
                 slot["watch_dropped_capacity"] = _watch_dropped
             # **關閉數要數「原本開著、現在不在帳本上」的那幾條**
@@ -592,6 +601,7 @@ def usable_watch(recap, target_session_date: str) -> list:
     ledger = _watch_ledger(r)
     if len(ledger) > WATCH_OPEN_MAX:
         ledger.sort(key=lambda w: (
+            0 if w.get("deadline") and str(w["deadline"]) <= _days_after(session, 1) else 1,
             str(w.get("last_reviewed") or w.get("created") or r.get("date") or ""),
             str(w.get("deadline") or ""), str(w.get("watch_id") or "")))
     for w in ledger:

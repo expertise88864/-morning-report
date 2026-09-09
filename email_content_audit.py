@@ -61,6 +61,10 @@ def _chain_count(text: str) -> int:
 def finalize(analysis: str, html: str, manifest: dict) -> str:
     """Caller-owned degradation: an optional transformation must not lose mail."""
     record = {}
+    from email_markup import compact
+    original_bytes = len(html.encode("utf-8"))
+    html = compact(html)
+    record["markup_bytes_saved"] = original_bytes - len(html.encode("utf-8"))
     try:
         html = email_mobile.enhance(html)
         record["mobile"] = "enhanced" if 'id="morning-mobile"' in html else "inline_fallback"
@@ -75,5 +79,6 @@ def finalize(analysis: str, html: str, manifest: dict) -> str:
         record["audit_error"] = type(exc).__name__
         print("::warning::Final email content audit unavailable", file=sys.stderr)
     record["html_bytes"] = len(html.encode("utf-8"))
+    record["gmail_clipping_possible"] = record["html_bytes"] > 102 * 1024
     manifest.setdefault("llm", {})["email_html"] = record
     return html

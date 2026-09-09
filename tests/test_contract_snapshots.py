@@ -702,7 +702,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (38, "230b8d97bb7ce955"),  # Dated AI-model evidence and coverage reserve.
+    "evidence_schema_version":  (39, "f5c42af8551c9b76"),  # Financial source-to-analysis obligations.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -777,11 +777,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (55, "2d6beb15896b4e87"),  # Reader prose and AI-model coverage; scoring unchanged.
+    "primary_profile_version":  (56, "4547c4b7374760da"),  # Fact/timing/causality guidance and bounded watch subset.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (20, "b7839174148bbc4d"),  # legacy 同步提供歷史來源與使用邊界。
+    "fallback_profile_version":  (21, "50a5a2fb76da086c"),  # Shared fact guidance, no paid validation.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -826,7 +826,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (29, "898f37fb15cc1422"),  # Watch/calendar update; baseline fixture unchanged.
+    "renderer_version":       (30, "898f37fb15cc1422"),  # Dated watch quotes/time labels; baseline unchanged.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。
@@ -893,7 +893,7 @@ _FROZEN = {
     # v27(P1-6):會計期間不是標的;「永遠不是標的」與「與這件事無關」
     # 拆成兩個問題(訊息才說得出真正的理由)。`_asset_probes()` 的標題
     # 帶上 Q2,新規則才是靠自己分勝負的那一條。
-    "grounding_version":      (42, "4546014cb0755cba"),  # 跨日引用、深入主題漏寫及有證據的正式駁回。
+    "grounding_version":      (43, "4546014cb0755cba"),  # Finance coverage checked; baseline has no finance candidates.
 }
 
 

@@ -339,7 +339,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     for ev in (obj.get("upcoming_event_scenarios") or []):
         if not isinstance(ev, dict) or not _s(ev.get("event")):
             continue
-        head = "**" + "|".join(x for x in (_s(ev.get("when")), _s(ev.get("event"))) if x) + "**"
+        from reader_fact_labels import scenario_time
+        when = scenario_time(_s(ev.get("event")), _s(ev.get("when")), packet or {})
+        head = "**" + "|".join(x for x in (when, _s(ev.get("event"))) if x) + "**"
         rows = [head]
         for field_label, key in (("基準預期", "base_expectation"), ("偏多情境", "bull_case"),
                            ("偏空情境", "bear_case"), ("最受影響", "most_affected"),
@@ -551,6 +553,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
                      if isinstance(w, dict)}
         _WR_ZH = {"triggered": "已觸發", "not_triggered": "未觸發",
                   "no_longer_relevant": "不再相關"}
+        _watch_dates = {str(w.get("watch_id") or ""): str(w.get("date") or "")
+                        for w in (packet or {}).get("yesterday_watch", []) if isinstance(w, dict)}
         _wr_lines = []
         for w in wr:
             wid = str(w.get("watch_id") or "")
@@ -560,6 +564,8 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             # 實信印出「立場:NVDA財報前AI板塊資金動向(2330是否站穩2400)」。
             # 特化路徑第一次上線就中,因為 legacy 路徑不走這一段。
             watch_text = _wid_text.get(wid) or wid
+            if _watch_dates.get(wid):
+                watch_text = f"{_watch_dates[wid]} 提出的觀察「{watch_text}」"
             status = _WR_ZH.get(str(w.get("status") or ""), "?")
             what = _s(w.get("what_happened"))
             _wr_lines.append(f"{watch_text}：{status}"

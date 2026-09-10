@@ -1551,7 +1551,8 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     f"<b>{htmllib.escape(_tennis_zh(fin['winner']))}</b>"
                     f"<span style='color:#94a3b8;font-size:11px;'>"
                     f"　（決賽勝 {htmllib.escape(_tennis_zh(fin['loser']))}"
-                    f"・{htmllib.escape(str(fin.get('date', '')))}）</span></div>")
+                    f"・{htmllib.escape(str(fin.get('date', '')))}"
+                    f" {htmllib.escape(str(fin.get('finish_note') or ''))}）</span></div>")
             live_parts = []
             for r in live_lines:
                 rd = _tennis_round_zh(str(r.get("round") or ""))   # 批#30:標輪次
@@ -1575,6 +1576,7 @@ def _render_sports_html(sports: dict, htmllib) -> str:
                     + (f"　<span style='color:#0369a1;'>"
                        f"{htmllib.escape(str(r['score']))}</span>"
                        if r.get("score") else "")
+                    + (f"（{htmllib.escape(str(r['finish_note']))}）" if r.get('finish_note') else '')
                     + ev_note + "</div>")
             live_seg = "".join(live_parts)
             t_inner.append("".join(done_lines) + live_seg)

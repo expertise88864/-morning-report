@@ -571,7 +571,9 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
             watch_text = _wid_text.get(wid) or wid
             if _watch_dates.get(wid):
                 watch_text = f"{_watch_dates[wid]} 提出的觀察「{watch_text}」"
-            status = _WR_ZH.get(str(w.get("status") or ""), "?")
+            from reader_revision import watch_status
+            status = ('部分成立，續追蹤' if watch_status(w) != w.get('status')
+                      else _WR_ZH.get(str(w.get("status") or ""), "?"))
             what = _s(w.get("what_happened"))
             _wr_lines.append(f"{watch_text}：{status}"
                              + (f"（{what}）" if what else ""))
@@ -614,15 +616,15 @@ def render(obj: Optional[dict], packet=None, admitted_watch=None,
     if _s(pf.get("summary")):
         stance_lines.append(_s(pf.get("summary")))
     # `actions_to_consider` 先前沒有被渲染 —— 模型寫了、驗證了、沒人看得到。
-    for a in (pf.get("actions_to_consider") or [])[:3]:
+    for a in (pf.get("actions_to_consider") or []):
         if _s(a):
             stance_lines.append(f"可考慮的做法:{_s(a)}")
-    for r in (pf.get("risks") or [])[:3]:
+    for r in (pf.get("risks") or []):
         if _s(r):
             stance_lines.append(f"風險:{_s(r)}")
     inval = [_s(t) for t in (tree.get("invalidation_triggers") or []) if _s(t)]
     if inval:
-        stance_lines.append("失效條件:" + "、".join(inval[:3]))
+        stance_lines.append("失效條件:" + "、".join(inval))
     parts.append(f"## {SECTION_STANCE}\n" + "\n".join(stance_lines))
 
     parts.append(f"## {SECTION_SUMMARY}\n{summary}")

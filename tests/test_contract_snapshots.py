@@ -782,11 +782,11 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (57, "3033006ccc41c326"),  # Concise executive conclusion and editorial roles.
+    "primary_profile_version":  (58, "fea8209c55d2d1aa"),  # Time-causal and numerical editorial safeguards.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。
-    "fallback_profile_version":  (22, "e95aee92058c28f8"),  # Shared concise/cross-section writing guidance.
+    "fallback_profile_version":  (23, "796d2f6d9fe1ec82"),  # Shared precision guidance.
     # v2(第二十四輪 P1-10):加深選優的身分補上四段可見欄位;
     # 探針同時補上 `_identity`(先前完全量不到選優規則)。
     # v8(2026-08-19):taiwan_policy 的引用檢查。
@@ -831,7 +831,7 @@ _FROZEN = {
     # v18(2026-08-19 第三批):主體要被標題指名、逐則散文、七段收掉
     #     失效條件、市場段整段刪除、新增台灣政策段。
     # v19(2026-08-19 第四批):legacy 骨架全回。
-    "renderer_version":       (31, "362e6e49695fcd4a"),  # Scenarios/unmapped observations use a neutral outlook section.
+    "renderer_version":       (32, "a1c30f67da4e748c"),  # Supporting risks outside conclusion, partial watches retained.
     # v2(schema v2):cross_market_synthesis 進 RENDERED 與 EVIDENCE_BEARING。
     # v3(第十五輪):接受政策加「合法但淺 → 用剩餘額度加深一次」;
     # 指紋納入 depth_advisories 的行為。

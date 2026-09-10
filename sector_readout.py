@@ -42,7 +42,7 @@ def readout(sector_heat: Optional[dict]) -> str:
 
     # 1. **衝突優先**:錢最多的類股裡,中位與權值領頭方向相反。
     med = _num(top.get("median_pct"))
-    leaders = [m for m in (top.get("leaders") or []) if isinstance(m, dict)]
+    leaders = [m for m in (top.get("leaders") or [])[:2] if isinstance(m, dict)]
     down_leads = [m for m in leaders
                   if (_num(m.get("pct")) or 0) <= -_MIN_LEADER_DROP]
     if med is not None and med > 0 and down_leads:
@@ -50,11 +50,11 @@ def readout(sector_heat: Optional[dict]) -> str:
         # 第二十一輪 P2-6:**輸入撐不起「買盤在中小型」這個因果結論** ——
         # 非 leader 未必是中小型,而且這一段直接進 HTML,不經 claim 稽核。
         # 只描述表上看得到的事:漲勢不是這兩檔權值帶的。
-        bits.append(f"{top_name}中位上漲而權值領頭{names}收黑,"
-                    "漲勢並非由這兩檔權值股主導")
+        bits.append(f"{top_name}中位上漲而成交代表{names}收黑,"
+                    "類股內漲跌分化")
     elif med is not None and med < 0 and leaders and all(
             (_num(m.get("pct")) or 0) >= _MIN_LEADER_DROP for m in leaders[:2]):
-        bits.append(f"{top_name}權值領頭收紅而中位下跌,類股內部分化")
+        bits.append(f"{top_name}成交代表收紅而中位下跌,類股內部分化")
 
     # 2. 集中度:單一類股吃掉超過門檻的成交。
     share = _num(top.get("value_share_pct"))

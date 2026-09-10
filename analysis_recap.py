@@ -335,10 +335,8 @@ def carry_watch(prior, obj, today: str) -> list:
     代號由 Python 派且**跨日穩定**(`w7`)—— 回顧要逐條對帳,帳本的鍵
     就得是我們發的;每天重新編號的話,昨天的 `w1` 明天指到另一件事。
     """
-    reviewed = {}
-    for r in ((obj or {}).get("watch_review") or []):
-        if isinstance(r, dict) and str(r.get("watch_id") or ""):
-            reviewed[str(r["watch_id"])] = str(r.get("status") or "")
+    from reader_revision import watch_reviews
+    reviewed = watch_reviews(obj or {})
     _ledger = _watch_ledger(prior)
     seq = max([int((prior or {}).get("watch_seq") or 0)]
               + [int(str(w.get("watch_id") or "w0")[1:] or 0)

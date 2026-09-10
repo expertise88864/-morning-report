@@ -92,6 +92,8 @@ def is_tech_headline(title) -> bool:
     """
     import re as _re
     t = str(title or "")
+    if _re.search(r'(?:三星|Samsung|台積電|Intel|英特爾).{0,20}\d+(?:\.\d+)?\s*(?:奈米|nm)', t, _re.I):
+        return True
     for k in _TECH_HEADLINE_KEYWORDS:
         if not k.isascii():
             if k in t:

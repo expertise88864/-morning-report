@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_397  # 2026-09-09:FOMC 時區換算抽至 fomc_calendar。
+MAIN_MODULE_LINE_CEILING = 26_390  # Tennis score rendering extracted; no ceiling increase.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -172,10 +172,12 @@ MAIN_MODULE_LINE_CEILING = 26_397  # 2026-09-09:FOMC 時區換算抽至 fomc_cal
 #: 其餘模組的上限。它們是「抽出去之後應該接住成長」的地方,
 #: 上限比較寬鬆但仍然有 —— 否則只是把膨脹換個檔案繼續。
 MODULE_CEILINGS = {
-    "reader_prose.py": 140,  # Selection extracted; do not reabsorb it.
+    "reader_prose.py": 132,  # Conclusion projection extracted; do not reabsorb it.
     "reader_selection.py": 60,  # Editorial priority moved into its own module.
     "editorial_priority.py": 100,
     "reader_editorial.py": 110,
+    "reader_revision.py": 85,
+    "sports_quality.py": 85,
     "official_announcements.py": 70,
     "content_overlap.py": 90,
     "podcast_overlap.py": 70,

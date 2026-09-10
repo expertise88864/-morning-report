@@ -127,14 +127,5 @@ def public_sections(markdown: str, obj=None, packet=None) -> str:
                 insert_at = next((i for i, section in enumerate(kept)
                                   if section.startswith('## 我的明確立場\n')), len(kept))
                 kept.insert(insert_at, '## ' + target + '\n' + prose + '\n\n')
-    # Keep short paragraphs; supporting scenarios and observations live elsewhere.
-    for i, section in enumerate(kept):
-        if section.startswith('## 我的明確立場\n'):
-            head, _, body = section.partition('\n')
-            body = re.sub(r'系統計分[^。\n]*。', '', body)
-            lines = [re.sub(r'^(?:可考慮的做法|風險)[:：]', '', line.strip())
-                     for line in body.splitlines() if line.strip()]
-            contract = [line for line in lines if line.startswith(('立場：', '淨分 '))]
-            prose = [line for line in lines if line not in contract]
-            kept[i] = head + '\n' + '\n'.join(contract) + '\n\n' + '\n\n'.join(prose) + '\n\n'
-    return clean_text("".join(kept))
+    from reader_revision import conclusion
+    return clean_text(conclusion(kept, obj))

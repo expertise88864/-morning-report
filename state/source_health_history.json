@@ -1,63 +1,5 @@
 [
  {
-  "date": "2026-08-07",
-  "checks": {
-   "universe": true,
-   "institutional": true,
-   "revenue": true,
-   "liquidity": true,
-   "news": true,
-   "structured_events": true,
-   "tw_policy_intelligence": true,
-   "tw_medical_intelligence": true,
-   "tw_policy_official_sources": true,
-   "tw_medical_official_sources": true
-  },
-  "feeds": {
-   "search.cnbc.com": true,
-   "feeds.bloomberg.com": true,
-   "finance.yahoo.com": true,
-   "feeds.feedburner.com": true,
-   "www.federalreserve.gov": true,
-   "api.cnyes.com": true,
-   "openapi.twse.com.tw": true,
-   "news.ltn.com.tw": true,
-   "technews.tw": true,
-   "tw.stock.yahoo.com": true,
-   "money.udn.com": true,
-   "udn.com": true,
-   "www.scmp.com": true,
-   "asia.nikkei.com": true,
-   "feeds.bbci.co.uk": true,
-   "news.google.com": true,
-   "www.ey.gov.tw": true,
-   "www.mohw.gov.tw": true,
-   "www.fsc.gov.tw": true,
-   "www.cbc.gov.tw": true,
-   "www.moi.gov.tw": true,
-   "www.mol.gov.tw": true,
-   "www.moea.gov.tw": true,
-   "www.cdc.gov.tw": true,
-   "www.fda.gov.tw": true
-  },
-  "queries": {
-   "Google-半導體": 42,
-   "Google-美股科技": 39,
-   "Google-Fed利率": 7,
-   "Google-台股大盤": 31,
-   "Google-地緣": 1,
-   "Google-散熱": 18,
-   "Google-先進封裝": 4,
-   "Google-載板PCB": 7,
-   "Google-光通訊": 8,
-   "世界-國際大事": 100,
-   "世界-災難極端": 100,
-   "世界-科學太空": 100,
-   "世界-AI大事": 51
-  },
-  "drama": 0
- },
- {
   "date": "2026-08-08",
   "checks": {
    "universe": true,
@@ -1367,6 +1309,53 @@
    "世界-災難極端": 100,
    "世界-科學太空": 100,
    "世界-AI大事": 46
+  },
+  "drama": 0
+ },
+ {
+  "date": "2026-09-11",
+  "checks": {
+   "universe": true,
+   "institutional": true,
+   "revenue": true,
+   "liquidity": true,
+   "news": true,
+   "structured_events": true
+  },
+  "feeds": {
+   "search.cnbc.com": true,
+   "feeds.bloomberg.com": true,
+   "finance.yahoo.com": true,
+   "feeds.feedburner.com": true,
+   "www.federalreserve.gov": true,
+   "api.cnyes.com": true,
+   "openapi.twse.com.tw": true,
+   "news.ltn.com.tw": true,
+   "technews.tw": true,
+   "tw.stock.yahoo.com": true,
+   "money.udn.com": true,
+   "udn.com": true,
+   "www.scmp.com": true,
+   "asia.nikkei.com": true,
+   "feeds.bbci.co.uk": true,
+   "news.google.com": true
+  },
+  "queries": {
+   "Google-半導體": 41,
+   "Google-美股科技": 42,
+   "Google-Fed利率": 31,
+   "Google-台股大盤": 40,
+   "Google-地緣": 99,
+   "Google-半導體設備": 15,
+   "Google-能源電網": 41,
+   "Google-散熱": 8,
+   "Google-先進封裝": 10,
+   "Google-載板PCB": 8,
+   "Google-光通訊": 4,
+   "世界-國際大事": 100,
+   "世界-災難極端": 100,
+   "世界-科學太空": 100,
+   "世界-AI大事": 48
   },
   "drama": 0
  }

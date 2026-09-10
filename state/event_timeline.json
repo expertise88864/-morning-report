@@ -1,67 +1,4 @@
 {
- "geopolitical:伊朗:2026-09#ca38fb": {
-  "first_seen": "2026-09-02",
-  "days": 2,
-  "last_seen": "2026-09-07",
-  "latest_title": "美軍證實攻擊3艘伊朗油輪，回應伊朗向美軍艦艇發射飛彈",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "向美",
-   "射飛",
-   "攻擊",
-   "油輪",
-   "發射",
-   "美軍",
-   "艇發",
-   "艦艇",
-   "軍艦",
-   "飛彈"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:烏克蘭:2026-09": {
-  "first_seen": "2026-09-07",
-  "days": 1,
-  "last_seen": "2026-09-07",
-  "latest_title": "澤倫斯基稱俄烏戰爭恐持續至另一個嚴冬",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "一個",
-   "俄烏",
-   "個嚴",
-   "倫斯",
-   "另一",
-   "嚴冬",
-   "基稱",
-   "恐持",
-   "戰爭",
-   "持續",
-   "斯基",
-   "澤倫",
-   "烏戰",
-   "爭恐",
-   "稱俄",
-   "續至",
-   "至另"
-  ],
-  "entity": "烏克蘭",
-  "subject_basis": "alias",
-  "subjects": [
-   "烏克蘭"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
  "geopolitical:hormuz_passage:2026-09": {
   "first_seen": "2026-09-07",
   "days": 2,
@@ -89,81 +26,6 @@
   ],
   "event_type": "geopolitical",
   "action": "hormuz_passage",
-  "identity_schema": 14
- },
- "geopolitical:伊朗:2026-09": {
-  "first_seen": "2026-09-07",
-  "days": 1,
-  "last_seen": "2026-09-07",
-  "latest_title": "美國能源部長稱美伊核協議可能無法達成",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "伊核",
-   "協議",
-   "可能",
-   "國能",
-   "核協",
-   "法達",
-   "源部",
-   "無法",
-   "稱美",
-   "美伊",
-   "美國",
-   "能源",
-   "能無",
-   "議可",
-   "達成",
-   "部長",
-   "長稱"
-  ],
-  "entity": "伊朗",
-  "subject_basis": "alias",
-  "subjects": [
-   "伊朗"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
-  "identity_schema": 14
- },
- "geopolitical:烏克蘭:2026-09#5463e3": {
-  "first_seen": "2026-09-07",
-  "days": 1,
-  "last_seen": "2026-09-07",
-  "latest_title": "美國特使團抵達基輔並會晤澤倫斯基，推動俄烏和平方案",
-  "latest_summary": "",
-  "object": "",
-  "incident_tokens": [
-   "並會",
-   "使團",
-   "俄烏",
-   "倫斯",
-   "動俄",
-   "和平",
-   "國特",
-   "團抵",
-   "基輔",
-   "平方",
-   "抵達",
-   "推動",
-   "斯基",
-   "方案",
-   "晤澤",
-   "會晤",
-   "澤倫",
-   "烏和",
-   "特使",
-   "美國",
-   "輔並",
-   "達基"
-  ],
-  "entity": "烏克蘭",
-  "subject_basis": "alias",
-  "subjects": [
-   "烏克蘭"
-  ],
-  "event_type": "geopolitical",
-  "action": "",
   "identity_schema": 14
  },
  "geopolitical:中國大陸:2026-09": {
@@ -229,33 +91,21 @@
  },
  "geopolitical:Oil:2026-09": {
   "first_seen": "2026-09-09",
-  "days": 1,
-  "last_seen": "2026-09-09",
-  "latest_title": "ONON On - Brent crude oil near $98 after Iran's Houthi allies attack multiple Saudi energy",
+  "days": 2,
+  "last_seen": "2026-09-11",
+  "latest_title": "Iran war disrupts oil supply and drives crude above $100",
   "latest_summary": "",
   "object": "",
   "incident_tokens": [
-   "98",
-   "after",
-   "allies",
-   "attack",
-   "brent",
+   "100",
+   "above",
+   "and",
    "crude",
-   "energy",
-   "facilities",
-   "houthi",
+   "disrupts",
+   "drives",
    "iran",
-   "multiple",
-   "near",
-   "on",
-   "onon",
-   "saudi",
-   "同學",
-   "學會",
-   "市爆",
-   "料同",
-   "爆料",
-   "股市"
+   "supply",
+   "war"
   ],
   "entity": "Oil",
   "subject_basis": "literal",
@@ -377,7 +227,7 @@
   "action": "cyberattack",
   "identity_schema": 14
  },
- "export_controls:sanction:輝達:2026-09": {
+ "geopolitical:sanction:輝達:2026-09": {
   "first_seen": "2026-09-10",
   "days": 1,
   "last_seen": "2026-09-10",
@@ -401,8 +251,71 @@
   "subjects": [
    "輝達"
   ],
-  "event_type": "export_controls",
+  "event_type": "geopolitical",
   "action": "sanction",
+  "identity_schema": 14
+ },
+ "geopolitical:Oil:2026-09#0b2a90": {
+  "first_seen": "2026-09-11",
+  "days": 1,
+  "last_seen": "2026-09-11",
+  "latest_title": "U.S. crude oil tops $100 again – last seen in May – as market braces for prolonged Iran wa",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "100",
+   "again",
+   "as",
+   "braces",
+   "crude",
+   "in",
+   "iran",
+   "last",
+   "may",
+   "prolonged",
+   "seen",
+   "tops",
+   "war"
+  ],
+  "entity": "Oil",
+  "subject_basis": "literal",
+  "subjects": [
+   "Oil"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
+  "identity_schema": 14
+ },
+ "geopolitical:伊朗:2026-09#2177f4": {
+  "first_seen": "2026-09-11",
+  "days": 1,
+  "last_seen": "2026-09-11",
+  "latest_title": "伊朗地下設施恢復較低速彈道飛彈生產",
+  "latest_summary": "",
+  "object": "",
+  "incident_tokens": [
+   "下設",
+   "低速",
+   "地下",
+   "彈生",
+   "彈道",
+   "復較",
+   "恢復",
+   "施恢",
+   "生產",
+   "設施",
+   "較低",
+   "速彈",
+   "道飛",
+   "飛彈"
+  ],
+  "entity": "伊朗",
+  "subject_basis": "alias",
+  "subjects": [
+   "伊朗"
+  ],
+  "event_type": "geopolitical",
+  "action": "",
   "identity_schema": 14
  }
 }

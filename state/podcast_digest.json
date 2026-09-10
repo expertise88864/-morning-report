@@ -1612,6 +1612,47 @@
     "name": "M觀點",
     "episodes": [
       {
+        "guid": "095e9e51-2984-458c-81d7-038842234375",
+        "title": "EP335. 蘋果摺疊手機登場、大 Agent 時代來了、Vibe Coding 101 | M觀點",
+        "published": "Thu, 10 Sep 2026 17:30:02 GMT",
+        "processed_at": "2026-09-10T23:02:33Z",
+        "digest": {
+          "summary_points": [
+            "主持人認為蘋果 iPhone Duo 即使售價高達 7.5 萬至 11.9 萬台幣且無驚喜，仍會成為最成功的摺疊手機，預估年銷量 1,200-1,300 萬支，高於 IDC 的 1,000 萬支，因果粉消費力強且具身份地位象徵。",
+            "主持人研判標準版 iPhone 18 延後是因記憶體太貴，蘋果將有限記憶體優先留給高毛利的 Pro 機型，並等待記憶體價格回穩或回落，反映記憶體成本對產品節奏的影響。",
+            "主持人認為 AI agent 已進入 2.0：從自建電腦跑 OpenCloud/Codex 轉為雲端託管，GrokBot 是他用過最像虛擬員工的產品，具長期記憶、跨 Bot 協作並可串接 Telegram 自動執行任務。",
+            "主持人認為 Meta Muse 若維持每週一億 token 免費額度並整合智慧眼鏡，殺傷力很強，可能只有 Google 能抗衡，對 Meta 生態系是利多。",
+            "主持人認為微軟 Project OPPO 的價值不在 AI 技術最強，而在企業資安與權限控管整合，讓 Copilot 能在 Fortune 500 落地，這是其他 AI 工具無法取代的企業缺口。"
+          ],
+          "tickers": [
+            {
+              "name": "蘋果",
+              "code": "AAPL",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 iPhone Duo 將成為最成功摺疊機，高單價有助業績，預估銷量可達 1,200-1,300 萬支。"
+            },
+            {
+              "name": "微軟",
+              "code": "MSFT",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Project OPPO 結合企業資安與權限，能讓 Copilot 在大型企業落地，微軟在企業 AI agent 有獨特優勢。"
+            },
+            {
+              "name": "Meta",
+              "code": "META",
+              "market": "US",
+              "direction": "bullish",
+              "reason": "主持人認為 Meta Muse 高免費額度與生活任務優化，加上智慧眼鏡整合，將非常有競爭力。"
+            }
+          ],
+          "market_view": "摺疊手機市場仍小眾，蘋果 iPhone Duo 不會改變整體格局，但會是摺疊機中最成功；AI agent 進入雲端託管 2.0，重量級廠商加入將加速應用。",
+          "action_view": "",
+          "notable_quote": "我如果是果粉我一定會買。"
+        }
+      },
+      {
         "guid": "f31c3775-74fc-40c9-a75a-fc040da400b2",
         "title": "EP334. GPT-6 Astra 挑戰 AGI、輝達的投資護城河、Cybercab 正式登場 | M觀點",
         "published": "Mon, 07 Sep 2026 07:00:05 GMT",
@@ -2131,70 +2172,6 @@
           "notable_quote": "我覺得這次的修正，就是在修正說，到底這些AI infra，能不能維持，我們前幾個月，認為它們會有的這個超高的成長率。"
         },
         "shown_at": "2026-07-30T23:04:08Z"
-      },
-      {
-        "guid": "2ddb8de0-0571-47d0-ab5f-1297a3976cf6",
-        "title": "EP323. Opus 5 正式發表、星艦第十三飛達標、開放模型的公開信 | M觀點",
-        "published": "Mon, 27 Jul 2026 07:07:47 GMT",
-        "processed_at": "2026-07-27T11:56:20Z",
-        "digest": {
-          "summary_points": [
-            "Anthropic 推出 Cloud Opus 5，AAII 評分 61 分超越 Fable 5 的 60 分，且成本便宜 26%。",
-            "Opus 5 在 AACAI（coding agent index）以 extra high 模式得 67 分與 GPT5.6 並列第一，成本比 Fable 5 低 30%。",
-            "Opus 5 雖性能與 Fable 5 同級且成本較低，但主持人認為仍無法根本解決 Anthropic 面臨的價格戰困境，因為 CP 值仍不及 GPT5.6 soul 與 Grock 4.5。",
-            "XAI 預告未來兩週推出 Grock 4.6（2 兆參數模型），四周後推出 Grock 4.7，主持人預估 AAII 評分可望提升至 57-58 分，AACAI 提升至 66-67 分，將具競爭力。",
-            "SpaceX 星艦第 13 次試飛成功部署 Starlink V3 衛星並完美軟濺落，馬斯克預告下次將嘗試用筷子夾星艦。",
-            "SpaceX 股價從高點腰斬至 115 美元，主持人認為合理估值 84 美元，加上馬斯克信仰溢價目標 92 美元，上下 25% 區間（70-115 美元）已進入守備範圍，上週小幅加碼。",
-            "輝達、微軟、Meta、Palantir 等 25 家科技公司簽署聯名公開信支持開放權重模型，反對美國政府禁止開源模型。",
-            "公開信主張不應禁止中國開源模型，但可對最嚴重蒸餾行為以商業訴訟處理，主持人認為川普政府可能將特定中國公司列入實體清單但不會全面封鎖。",
-            "模型商品化趨勢下，輝達、微軟等平台層受益，而 Anthropic、OpenAI 等模型研發商面臨利潤率壓縮。",
-            "主持人認為美國本土開源模型如 Nemotron 與 Thinking Machine Lab 的 Inkling 有潛力，輝達應加速更新 Nemotron 版本以維持競爭力。",
-            "亞馬遜未簽署公開信，主持人猜測因先前與 Anthropic 的關係不願再次背刺，但雲業務利益上應支持開放模型。",
-            "主持人對 SpaceX 操作思路：已從部位 1% 小幅加碼至 1.5%，若股價續跌至 90 幾美元將買滿至目標 3-4% 部位。",
-            "模型競爭進入成本效率時代，主持人預期未來企業將採混合模式：頂級任務用封閉模型、主力工作用 CP 值高模型、機密工作用本地開源模型。"
-          ],
-          "tickers": [
-            {
-              "name": "輝達",
-              "code": "NVDA",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "模型競爭越激烈對輝達賣硬體越有利，為公開信帶頭大哥。"
-            },
-            {
-              "name": "微軟",
-              "code": "MSFT",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "公有雲平台將受益於模型通用商品化。"
-            },
-            {
-              "name": "Palantir",
-              "code": "PLTR",
-              "market": "US",
-              "direction": "bullish",
-              "reason": "企業端 AI 平台價值在模型商品化下更凸顯。"
-            },
-            {
-              "name": "Google",
-              "code": "GOOGL",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "立場尷尬但最終簽署公開信，雲業務受益但自研模型可能受衝擊。"
-            },
-            {
-              "name": "亞馬遜",
-              "code": "AMZN",
-              "market": "US",
-              "direction": "neutral",
-              "reason": "未簽署公開信，但公有雲業務利益上應支持，可能因與 Anthropic 關係而保持觀望。"
-            }
-          ],
-          "market_view": "",
-          "action_view": "SpaceX 股價若跌至 90 幾美元將買滿至目標 3-4% 部位，目前已在 110 幾元小幅加碼至 1.5%。",
-          "notable_quote": "模型越接近通用商品，那這些 AI 研發公司就不能賺這麼好的利潤了，那誰會獲益呢，就是平台層。"
-        },
-        "shown_at": "2026-07-27T22:56:38Z"
       }
     ]
   },

@@ -112,7 +112,8 @@ def observations(news, observed_at: str, *, sanitize) -> tuple[list, dict]:
         if not url or not title:
             skipped["no_source"] += 1
             continue
-        body = str(n.get("fulltext") or n.get("summary") or "")
+        from source_text import visible_summary
+        body = str(n.get("fulltext") or visible_summary(n.get("summary") or ""))
         excerpt = sanitize(body)[:EXCERPT_CHARS]
         row = {
             "document_id": _hash(url), "url": url, "title": title,
@@ -233,6 +234,9 @@ def save(directory: Path, rows: list, as_of: str, *, atomic_write) -> int:
 
 def related(a: dict, b: dict) -> bool:
     """Conservative retrieval, not a mutation of authoritative event identity."""
+    import history_quality
+    if not history_quality.eligible(a) or not history_quality.eligible(b) or not history_quality.revenue_periods_match(a, b):
+        return False
     ea = set(identity.canonical_subjects(subjects(a)))
     eb = set(identity.canonical_subjects(subjects(b)))
     if not ea.intersection(eb):

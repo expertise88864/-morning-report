@@ -83,7 +83,7 @@ DEEPSEEK_LEGACY_VERSION = 23  # Time-causal and numerical editorial safeguards.
 #: upcoming_event_scenarios / narrative_delta / macro_environment /
 #: taiwan_local;taiwan_policy 改成公報深度解析。
 #: (bull_bear 與 primary_target 經外審撤下:排名的不變式是 Python 算。)
-LUNA_XHIGH_VERSION = 58  # Time-causal and numerical editorial safeguards.
+LUNA_XHIGH_VERSION = 59  # Shared-driver arrays must match the complete Python group.
 
 #: 粗略的 token 估算。**這是護欄用的,不是計費用的。**
 #: 中文約 1 token/字、英數約 1 token/4 字元;混排取 1.8 字元/token 的保守中值。
@@ -254,7 +254,8 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
   看到的是「三個獨立訊號同向」。`EVIDENCE.event_graph.
   shared_driver_groups` 已經把它們框出來；用到其中兩件以上時，要在
   `cross_market_synthesis.shared_driver_notes` 說明**為什麼不算重複計權**
-  （只計一次？還是它們其實是傳導鏈上可分辨的兩段？）。
+  （只計一次？還是它們其實是傳導鏈上可分辨的兩段？）。driver 與 cluster_ids
+  必須照抄同一組的完整集合，不只列自己引用的交集，不自行增減或重組成新群。
 - **總經發布是情境樹的分岔本身，不是一件會影響市場的事。**
   `EVIDENCE.event_graph.macro_release_cluster_ids` 裡**每一個**你沒有
   駁回的發布，`scenario_tree` 的 base / bull / bear **三個分支都要**有
@@ -406,7 +407,6 @@ LUNA_DEVELOPER_INSTRUCTIONS = f"""\
 
 {_wr.LUNA_WRITING + chr(10) + _wr.READER_PROSE}
 """
-
 
 from news_research_context import RESEARCH_RULES as _RESEARCH_RULES  # noqa: E402
 LUNA_DEVELOPER_INSTRUCTIONS += "\n" + _RESEARCH_RULES

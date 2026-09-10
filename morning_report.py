@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 from reader_prose import public_sections
+from source_text import entry_summary as _rss_summary
 
 import datetime as dt
 import json
@@ -6376,7 +6377,7 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
                 out.append({
                     "source": f"Google:{label}",
                     "title": entry.get("title", ""),
-                    "summary": (entry.get("summary", "") or "")[:800],
+                    "summary": _rss_summary(entry),
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "company_label": label,
@@ -6408,7 +6409,7 @@ def _process_feed_item(w: dict, cutoff: dt.datetime) -> list[dict]:
             item = {
                 "source": source,
                 "title": entry.get("title", ""),
-                "summary": (entry.get("summary", "") or "")[:800],
+                "summary": _rss_summary(entry),
                 "link": entry.get("link", ""),
                 "published": entry.get("published", ""),
                 "source_name": source_name,
@@ -6590,7 +6591,7 @@ def fetch_candidate_company_news(snapshot: list[dict],
                 item = {
                     "source": f"Google:{code}",
                     "title": entry.get("title", ""),
-                    "summary": (entry.get("summary", "") or "")[:800],
+                    "summary": _rss_summary(entry),
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "company_label": code,
@@ -6667,7 +6668,7 @@ def fetch_sector_leader_news(sector_heat: dict,
                     item = {
                         "source": f"Google:{code}",
                         "title": entry.get("title", ""),
-                        "summary": (entry.get("summary", "") or "")[:800],
+                        "summary": _rss_summary(entry),
                         "link": entry.get("link", ""),
                         "published": entry.get("published", ""),
                         "company_label": code,
@@ -6740,7 +6741,7 @@ def fetch_8k_company_news(sec_filings: list[dict],
                 item = {
                     "source": f"Google:{t}",
                     "title": entry.get("title", ""),
-                    "summary": (entry.get("summary", "") or "")[:800],
+                    "summary": _rss_summary(entry),
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
                     "company_label": t,
@@ -16152,18 +16153,8 @@ def fetch_medical_journal_articles(per_journal: int = 3) -> list[dict]:
                               params={"db": "pubmed", "id": ",".join(ids),
                                       "retmode": "json"}, timeout=20)
             res = r2.json().get("result", {})
-            kept = 0
-            for pid in ids:
-                if kept >= per_journal:
-                    break
-                item = res.get(pid) or {}
-                title = str(item.get("title") or "").strip().rstrip(".")
-                low = title.lower()
-                if not title or low.startswith(("comment", "reply", "erratum",
-                                                "correction", "response to")):
-                    continue
-                out.append({"journal": short, "pmid": pid, "title": title})
-                kept += 1
+            from journal_selection import articles
+            out.extend(articles(ids, res, short, per_journal))
             time.sleep(0.5)   # NCBI 禮貌限速
         except Exception as e:
             print(f"[journals] {short} 抓取失敗: {e}", file=sys.stderr)

@@ -103,7 +103,7 @@ from evidence_serialize import core_evidence_sha  # noqa: F401
 #: —— 世系是單一契約,recap/origin 同世系直接接、不同世系直接否。
 #: v33(2026-08-14 生產):universe 條目本身可引用(`universe:2317`)
 #: —— 「這檔在今天的上市清單裡」的語意單位是條目,不是它的葉子。
-EVIDENCE_SCHEMA_VERSION = 40  # Official issuer provenance in reader evidence.
+EVIDENCE_SCHEMA_VERSION = 41  # Visible RSS summaries and period-safe research retrieval.
 
 #: 新聞來源等級的排序權重(小的優先)。官方 > A > B > C > 未知。
 #: 截斷時依此排序,**不是依抓取順序** —— 抓取順序沒有語意,

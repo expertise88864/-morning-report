@@ -2,13 +2,14 @@
 import datetime as dt
 
 import content_overlap as overlap
+from source_text import visible_summary
 
 
 def select(hits: list, limit: int) -> list:
     """Preserve origin/latest plus distinct intervening weeks and publishers."""
     unique, seen = [], set()
     for row in hits:
-        text = row['title'] + ' ' + row['excerpt']
+        text = row['title'] + ' ' + visible_summary(row['excerpt'])
         key = overlap.signature(text)
         if key and key in seen:
             continue

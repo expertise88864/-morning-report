@@ -552,7 +552,10 @@ def _behaviour() -> dict:
             'title': '公告本公司115年8月份自結合併營收', 'summary': '',
             'published': '2026-09-08T05:00:00+08:00',
             'link': 'https://mops.twse.com.tw/mops/#/web/t05st01'}]},
-            {}, {}, [], [], {}, sanitize=str))]),
+            {}, {}, [], [], {}, sanitize=str)),
+        _versionless(ep.build({}, {}, {}, [{'title': '台積電營收成長', 'source_item_id': 'html1',
+            'summary': '<a href="https://example.com/rss-token">營收+2.5%，並非下降</a>',
+            'published': '2026-09-10', 'link': 'https://example.com/news'}], [], {}, sanitize=str))]),
         "output_schema_version": _sha(sch.ANALYSIS_OUTPUT_SCHEMA),
         # **profile 的指紋不該被證據契約牽動。** 餵 `luna`(由真實
         # `_packet()` 建的)時,evidence 加一個欄位就讓 prompt 契約亮紅 ——
@@ -707,7 +710,7 @@ _FROZEN = {
     # v23(外審補審):timeline 記錄整筆帶著走、yesterday_view 加事件層
     # 比對、跨語言橋接要事件類別一致。
     # v24(縱深第四批):`story_arcs` 接進 packet(線索帳本先前只餵 legacy)
-    "evidence_schema_version":  (40, "bc01457416b60f3a"),  # Official announcement issuer provenance.
+    "evidence_schema_version":  (41, "644cd7938bbe1191"),  # RSS markup and research-period regression fixture.
     # v2(schema v2):top_news_analysis 加因果鏈/量級/關係;新增
     # cross_market_synthesis。prompt 叫模型深入而 schema 沒地方放,
     # 是使用者三次「堆疊數據」回饋在結構層的根因(第十五輪 P1-1)。
@@ -782,7 +785,7 @@ _FROZEN = {
     # v28(縱深第四批):多日軌跡的線索寫成發展;狀態不得改判、脈絡不是證據
     # v38(2026-08-19):條數目標六到十則、非科技至少一到兩則、
     #     `taiwan_policy` 欄位說明。
-    "primary_profile_version":  (58, "fea8209c55d2d1aa"),  # Time-causal and numerical editorial safeguards.
+    "primary_profile_version":  (59, "d3c21b0340ab3a2d"),  # Complete Python shared-driver group instructions.
     # v7:同一批(legacy 與 Luna 共用 `writing_rules`)。
     # v8(2026-08-20):其他類股新增「金融-金控」標籤,固定輸入下 prompt
     # 多一節空素材;指示文字沒動(diff 只有三行,見 legacy golden 的說明)。

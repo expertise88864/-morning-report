@@ -21,7 +21,7 @@ import source_registry as _sr
 import news_coverage as _coverage
 import finance_editorial as _finance
 import official_announcements as _announcements
-
+from source_text import visible_summary
 # 第二十輪 P2-3:**上一版的註解宣稱「沒有循環」,而循環是真的。**
 # `evidence_packet` 底部 `from news_normalize import ...`、這裡頂層又
 # `from evidence_packet import ...` —— 先 import evidence_packet 剛好成功
@@ -116,7 +116,7 @@ def normalize_news(news: Optional[list], sanitize=None) -> tuple:
         # **每一個外部字串都要過消毒器。** 標題、摘要、全文、來源名、
         # 實體、URL 全部是抓來的,任何一個都可能帶注入內容。
         clean = sanitize or _identity
-        summary = clean(str(n.get("summary") or ""))
+        summary = clean(visible_summary(n.get("summary") or ""))
         fulltext = clean(str(n.get("fulltext") or ""))
         items.append({
             "source_item_id": sid,

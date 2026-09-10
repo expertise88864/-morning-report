@@ -52,7 +52,8 @@ def build(packet: dict, archive: list) -> dict:
     """Attach historical sources for every selected article within a total cap."""
     news = packet.get("news") or []
     contexts, historical = memory.retrieve(news, archive, packet.get("as_of") or "")
-    by_history = {r["evidence_id"]: r for r in historical}
+    from source_text import history_projection
+    by_history = {r["evidence_id"]: history_projection(r) for r in historical}
     by_news = {n["source_item_id"]: n for n in news}
     cluster_data = packet.get("news_clusters") or {}
     clusters = {c["cluster_id"]: c for c in cluster_data.get("clusters") or []}

@@ -155,7 +155,7 @@ import pytest
 #: `_int_env` + `_prompt_profile_for` + `_llm_config_resolved` 的對應條目)、
 #: Responses 呼叫與驗證修補迴圈。它們碰 requests/金鑰/`_RUN_MANIFEST`,
 #: 經 refactor_audit 判 BLOCK —— 實質內容都在七個新葉模組裡(各自有上限)。
-MAIN_MODULE_LINE_CEILING = 26_390  # Tennis score rendering extracted; no ceiling increase.
+MAIN_MODULE_LINE_CEILING = 26_380  # Journal selection extracted; no ceiling increase.
 #: 先前它從 22,243 一路被調到 26,290 —— 每一次都寫了理由,但方向一直往上,
 #: 而 `AGENTS.md` 早就寫著「新功能請開獨立模組,不要再往 morning_report.py
 #: 疊」。外審說得對:**metric 開始反過來控制行為**(我為了進上限而壓註解,
@@ -178,6 +178,9 @@ MODULE_CEILINGS = {
     "reader_editorial.py": 110,
     "reader_revision.py": 85,
     "sports_quality.py": 85,
+    "source_text.py": 65,
+    "journal_selection.py": 55,
+    "history_quality.py": 55,
     "official_announcements.py": 70,
     "content_overlap.py": 90,
     "podcast_overlap.py": 70,

@@ -57,6 +57,9 @@ def search_plan(news: list, archive: list, as_of: str, *, sanitize) -> list:
         return []
     latest = {}
     for row in archive:
+        from history_quality import eligible
+        if not eligible(row):
+            continue
         anchor = _anchor(row)
         pub = memory.timestamp(row.get("published_at"))
         seen = memory.timestamp(row.get("observed_at"))

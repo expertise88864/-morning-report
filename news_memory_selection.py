@@ -7,9 +7,19 @@ from source_text import visible_summary
 
 def select(hits: list, limit: int) -> list:
     """Preserve origin/latest plus distinct intervening weeks and publishers."""
+    def identity(row):
+        return (row.get('document_id'), row['published_at'], row['title'])
+
+    # A pre-upgrade truncated anchor can contain no visible excerpt. Prefer
+    # its readable twin, but never collapse two nonempty factual revisions.
+    readable = {identity(r) for r in hits
+                if r.get('document_id') and visible_summary(r['excerpt']).strip()}
     unique, seen = [], set()
     for row in hits:
-        text = row['title'] + ' ' + visible_summary(row['excerpt'])
+        excerpt = visible_summary(row['excerpt']).strip()
+        if not excerpt and identity(row) in readable:
+            continue
+        text = row['title'] + ' ' + excerpt
         key = overlap.signature(text)
         if key and key in seen:
             continue

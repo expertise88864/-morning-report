@@ -16,7 +16,8 @@ def articles(ids: list, records: dict, journal: str, limit: int) -> list:
         types = types_of(pid)
         if not title or types.intersection({'comment', 'published erratum'}):
             continue
-        if re.search(r'^(?:comment(?:\s+on)?|reply|erratum|correction|response to)\b|'
+        if re.search(r'^(?:(?:comments?|commentary|corrections?)(?:\s*:|\s+(?:on|to)\b)|'
+                     r'(?:reply|erratum|response to)\b)|'
                      r'(?:[.:—–-]\s*)(?:reply|authors?[’\x27]?\s+reply|author response)$', title, re.I):
             continue
         key = re.sub(r'\s+', ' ', unicodedata.normalize('NFKC', title)).casefold()
